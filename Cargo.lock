@@ -131,20 +131,6 @@ dependencies = [
 
 [[package]]
 name = "anstream"
-version = "0.5.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b1f58811cfac344940f1a400b6e6231ce35171f614f26439e80f8c1465c5cc0c"
-dependencies = [
- "anstyle",
- "anstyle-parse",
- "anstyle-query",
- "anstyle-wincon 2.1.0",
- "colorchoice",
- "utf8parse",
-]
-
-[[package]]
-name = "anstream"
 version = "0.6.11"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "6e2e1ebcb11de5c03c67de28a7df593d32191b44939c482e97702baaaa6ab6a5"
@@ -152,7 +138,7 @@ dependencies = [
  "anstyle",
  "anstyle-parse",
  "anstyle-query",
- "anstyle-wincon 3.0.2",
+ "anstyle-wincon",
  "colorchoice",
  "utf8parse",
 ]
@@ -179,16 +165,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e28923312444cdd728e4738b3f9c9cac739500909bb3d3c94b43551b16517648"
 dependencies = [
  "windows-sys 0.52.0",
-]
-
-[[package]]
-name = "anstyle-wincon"
-version = "2.1.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "58f54d10c6dfa51283a066ceab3ec1ab78d13fae00aa49243a45e4571fb79dfd"
-dependencies = [
- "anstyle",
- "windows-sys 0.48.0",
 ]
 
 [[package]]
@@ -534,7 +510,7 @@ version = "4.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "458bf1f341769dfcf849846f65dffdf9146daa56bcd2a47cb4e1de9915567c99"
 dependencies = [
- "anstream 0.6.11",
+ "anstream",
  "anstyle",
  "clap_lex",
  "strsim 0.11.0",
@@ -572,7 +548,7 @@ checksum = "98cc8fbded0c607b7ba9dd60cd98df59af97e84d24e49c8557331cfc26d301ce"
 name = "clippy"
 version = "0.1.78"
 dependencies = [
- "anstream 0.5.0",
+ "anstream",
  "clippy_config",
  "clippy_lints",
  "clippy_utils",
@@ -580,7 +556,7 @@ dependencies = [
  "filetime",
  "futures",
  "if_chain",
- "itertools",
+ "itertools 0.12.1",
  "parking_lot",
  "quote",
  "regex",
@@ -592,7 +568,7 @@ dependencies = [
  "tester",
  "tokio",
  "toml 0.7.8",
- "ui_test",
+ "ui_test 0.22.2",
  "walkdir",
 ]
 
@@ -613,7 +589,7 @@ dependencies = [
  "aho-corasick",
  "clap",
  "indoc",
- "itertools",
+ "itertools 0.12.1",
  "opener",
  "shell-escape",
  "walkdir",
@@ -628,7 +604,7 @@ dependencies = [
  "clippy_config",
  "clippy_utils",
  "declare_clippy_lint",
- "itertools",
+ "itertools 0.12.1",
  "quine-mc_cluskey",
  "regex",
  "regex-syntax 0.8.2",
@@ -650,7 +626,7 @@ version = "0.1.78"
 dependencies = [
  "arrayvec",
  "clippy_config",
- "itertools",
+ "itertools 0.12.1",
  "rustc-semver",
 ]
 
@@ -974,7 +950,7 @@ checksum = "a0afaad2b26fa326569eb264b1363e8ae3357618c43982b3f285f0774ce76b69"
 name = "declare_clippy_lint"
 version = "0.1.78"
 dependencies = [
- "itertools",
+ "itertools 0.12.1",
  "quote",
  "syn 2.0.48",
 ]
@@ -1230,7 +1206,7 @@ version = "0.11.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "6c012a26a7f605efc424dd53697843a72be7dc86ad2d01f7814337794a12231d"
 dependencies = [
- "anstream 0.6.11",
+ "anstream",
  "anstyle",
  "env_filter",
  "humantime",
@@ -2055,6 +2031,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "itertools"
+version = "0.12.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ba291022dbbd398a455acf126c1e341954079855bc60dfdda641363bd6922569"
+dependencies = [
+ "either",
+]
+
+[[package]]
 name = "itoa"
 version = "1.0.10"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2476,7 +2461,7 @@ dependencies = [
  "regex",
  "rustc_version",
  "smallvec",
- "ui_test",
+ "ui_test 0.21.2",
 ]
 
 [[package]]
@@ -3469,7 +3454,7 @@ dependencies = [
 name = "rustc_ast_passes"
 version = "0.0.0"
 dependencies = [
- "itertools",
+ "itertools 0.11.0",
  "rustc_ast",
  "rustc_ast_pretty",
  "rustc_attr",
@@ -3489,7 +3474,7 @@ dependencies = [
 name = "rustc_ast_pretty"
 version = "0.0.0"
 dependencies = [
- "itertools",
+ "itertools 0.11.0",
  "rustc_ast",
  "rustc_span",
  "thin-vec",
@@ -3529,7 +3514,7 @@ name = "rustc_borrowck"
 version = "0.0.0"
 dependencies = [
  "either",
- "itertools",
+ "itertools 0.11.0",
  "polonius-engine",
  "rustc_data_structures",
  "rustc_errors",
@@ -3582,7 +3567,7 @@ name = "rustc_codegen_llvm"
 version = "0.0.0"
 dependencies = [
  "bitflags 2.4.2",
- "itertools",
+ "itertools 0.11.0",
  "libc",
  "measureme",
  "object",
@@ -3618,7 +3603,7 @@ dependencies = [
  "ar_archive_writer",
  "bitflags 2.4.2",
  "cc",
- "itertools",
+ "itertools 0.11.0",
  "jobserver",
  "libc",
  "object",
@@ -3899,7 +3884,7 @@ dependencies = [
 name = "rustc_hir_analysis"
 version = "0.0.0"
 dependencies = [
- "itertools",
+ "itertools 0.11.0",
  "rustc_arena",
  "rustc_ast",
  "rustc_attr",
@@ -3938,7 +3923,7 @@ dependencies = [
 name = "rustc_hir_typeck"
 version = "0.0.0"
 dependencies = [
- "itertools",
+ "itertools 0.11.0",
  "rustc_ast",
  "rustc_attr",
  "rustc_data_structures",
@@ -4222,7 +4207,7 @@ name = "rustc_mir_build"
 version = "0.0.0"
 dependencies = [
  "either",
- "itertools",
+ "itertools 0.11.0",
  "rustc_apfloat",
  "rustc_arena",
  "rustc_ast",
@@ -4269,7 +4254,7 @@ name = "rustc_mir_transform"
 version = "0.0.0"
 dependencies = [
  "either",
- "itertools",
+ "itertools 0.11.0",
  "rustc_arena",
  "rustc_ast",
  "rustc_attr",
@@ -4349,7 +4334,7 @@ dependencies = [
 name = "rustc_passes"
 version = "0.0.0"
 dependencies = [
- "itertools",
+ "itertools 0.11.0",
  "rustc_ast",
  "rustc_ast_pretty",
  "rustc_attr",
@@ -4599,7 +4584,7 @@ name = "rustc_trait_selection"
 version = "0.0.0"
 dependencies = [
  "bitflags 2.4.2",
- "itertools",
+ "itertools 0.11.0",
  "rustc_ast",
  "rustc_attr",
  "rustc_data_structures",
@@ -4638,7 +4623,7 @@ dependencies = [
 name = "rustc_transmute"
 version = "0.0.0"
 dependencies = [
- "itertools",
+ "itertools 0.11.0",
  "rustc_data_structures",
  "rustc_hir",
  "rustc_infer",
@@ -4653,7 +4638,7 @@ dependencies = [
 name = "rustc_ty_utils"
 version = "0.0.0"
 dependencies = [
- "itertools",
+ "itertools 0.11.0",
  "rustc_data_structures",
  "rustc_errors",
  "rustc_fluent_macro",
@@ -4701,7 +4686,7 @@ dependencies = [
  "askama",
  "expect-test",
  "indexmap",
- "itertools",
+ "itertools 0.11.0",
  "minifier",
  "once_cell",
  "regex",
@@ -4783,7 +4768,7 @@ dependencies = [
  "dirs",
  "getopts",
  "ignore",
- "itertools",
+ "itertools 0.11.0",
  "lazy_static",
  "regex",
  "rustfmt-config_proc_macro",
@@ -5043,6 +5028,16 @@ checksum = "7b5fac59a5cb5dd637972e5fca70daf0523c9067fcdc4842f053dae04a18f8e9"
 dependencies = [
  "libc",
  "windows-sys 0.48.0",
+]
+
+[[package]]
+name = "spanned"
+version = "0.1.6"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ad48ded9f0734eca7058107cc170767b8758e41e4088fb0020e7ff7ec6b0d92d"
+dependencies = [
+ "bstr",
+ "color-eyre",
 ]
 
 [[package]]
@@ -5793,6 +5788,34 @@ dependencies = [
  "rustfix",
  "serde",
  "serde_json",
+ "tempfile",
+]
+
+[[package]]
+name = "ui_test"
+version = "0.22.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "0b1ded30ff8c9d83e8d85d7e8e8aabbaf2c282a2b0ea09ef3f1accd4906134c7"
+dependencies = [
+ "annotate-snippets 0.10.1",
+ "anyhow",
+ "bstr",
+ "cargo-platform",
+ "cargo_metadata 0.18.1",
+ "color-eyre",
+ "colored",
+ "comma",
+ "crossbeam-channel",
+ "indicatif",
+ "lazy_static",
+ "levenshtein",
+ "prettydiff",
+ "regex",
+ "rustc_version",
+ "rustfix",
+ "serde",
+ "serde_json",
+ "spanned",
  "tempfile",
 ]
 
