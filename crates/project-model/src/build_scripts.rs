@@ -440,8 +440,7 @@ impl WorkspaceBuildScripts {
                 if let Ok(it) = utf8_stdout(cargo_config) {
                     return Ok(it);
                 }
-                let mut cmd = Command::new(Tool::Rustc.path());
-                Sysroot::set_rustup_toolchain_env(&mut cmd, sysroot);
+                let mut cmd = Sysroot::rustc(sysroot);
                 cmd.envs(extra_env);
                 cmd.args(["--print", "target-libdir"]);
                 utf8_stdout(cmd)
