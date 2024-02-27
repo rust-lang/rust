@@ -42,7 +42,7 @@ use hir_ty::{
 use itertools::Itertools;
 use smallvec::SmallVec;
 use syntax::{
-    ast::{self, AstNode, BinExpr, Expr, IdentPat, PathExpr},
+    ast::{self, AstNode},
     SyntaxKind, SyntaxNode, TextRange, TextSize,
 };
 use triomphe::Arc;
