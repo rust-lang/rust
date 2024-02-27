@@ -315,21 +315,14 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         // The set of places that we are creating fake borrows of. If there are
         // no match guards then we don't need any fake borrows, so don't track
         // them.
-        let mut fake_borrows = match_has_guard
+        let fake_borrows = match_has_guard
             .then(|| util::FakeBorrowCollector::collect_fake_borrows(self, candidates));
 
         let otherwise_block = self.cfg.start_new_block();
 
         // This will generate code to test scrutinee_place and
         // branch to the appropriate arm block
-        self.match_candidates(
-            match_start_span,
-            scrutinee_span,
-            block,
-            otherwise_block,
-            candidates,
-            &mut fake_borrows,
-        );
+        self.match_candidates(match_start_span, scrutinee_span, block, otherwise_block, candidates);
 
         // See the doc comment on `match_candidates` for why we may have an
         // otherwise block. Match checking will ensure this is actually
@@ -1236,7 +1229,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     ///
     /// Note how we test `x` twice. This is the tradeoff of backtracking automata: we prefer smaller
     /// code size at the expense of non-optimal code paths.
-    #[instrument(skip(self, fake_borrows), level = "debug")]
+    #[instrument(skip(self), level = "debug")]
     fn match_candidates<'pat>(
         &mut self,
         span: Span,
@@ -1244,7 +1237,6 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         start_block: BasicBlock,
         otherwise_block: BasicBlock,
         candidates: &mut [&mut Candidate<'pat, 'tcx>],
-        fake_borrows: &mut Option<FxIndexSet<Place<'tcx>>>,
     ) {
         let mut split_or_candidate = false;
         for candidate in &mut *candidates {
@@ -1281,7 +1273,6 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     start_block,
                     otherwise_block,
                     &mut *new_candidates,
-                    fake_borrows,
                 );
             } else {
                 self.match_simplified_candidates(
@@ -1290,7 +1281,6 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     start_block,
                     otherwise_block,
                     candidates,
-                    fake_borrows,
                 );
             }
         });
@@ -1303,7 +1293,6 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         mut start_block: BasicBlock,
         otherwise_block: BasicBlock,
         candidates: &mut [&mut Candidate<'_, 'tcx>],
-        fake_borrows: &mut Option<FxIndexSet<Place<'tcx>>>,
     ) {
         match candidates {
             [] => {
@@ -1315,14 +1304,13 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             [first, remaining @ ..] if first.match_pairs.is_empty() => {
                 // The first candidate has satisfied all its match pairs; we link it up and continue
                 // with the remaining candidates.
-                start_block = self.select_matched_candidate(first, start_block, fake_borrows);
+                start_block = self.select_matched_candidate(first, start_block);
                 self.match_simplified_candidates(
                     span,
                     scrutinee_span,
                     start_block,
                     otherwise_block,
                     remaining,
-                    fake_borrows,
                 )
             }
             candidates => {
@@ -1333,7 +1321,6 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     candidates,
                     start_block,
                     otherwise_block,
-                    fake_borrows,
                 );
             }
         }
@@ -1368,7 +1355,6 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         &mut self,
         candidate: &mut Candidate<'_, 'tcx>,
         start_block: BasicBlock,
-        fake_borrows: &mut Option<FxIndexSet<Place<'tcx>>>,
     ) -> BasicBlock {
         assert!(candidate.otherwise_block.is_none());
         assert!(candidate.pre_binding_block.is_none());
@@ -1444,19 +1430,11 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         candidates: &mut [&mut Candidate<'_, 'tcx>],
         start_block: BasicBlock,
         otherwise_block: BasicBlock,
-        fake_borrows: &mut Option<FxIndexSet<Place<'tcx>>>,
     ) {
         let (first_candidate, remaining_candidates) = candidates.split_first_mut().unwrap();
         assert!(first_candidate.subcandidates.is_empty());
         if !matches!(first_candidate.match_pairs[0].test_case, TestCase::Or { .. }) {
-            self.test_candidates(
-                span,
-                scrutinee_span,
-                candidates,
-                start_block,
-                otherwise_block,
-                fake_borrows,
-            );
+            self.test_candidates(span, scrutinee_span, candidates, start_block, otherwise_block);
             return;
         }
 
@@ -1467,14 +1445,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         let remainder_start = self.cfg.start_new_block();
         let or_span = first_match_pair.pattern.span;
         // Test the alternatives of this or-pattern.
-        self.test_or_pattern(
-            first_candidate,
-            start_block,
-            remainder_start,
-            pats,
-            or_span,
-            fake_borrows,
-        );
+        self.test_or_pattern(first_candidate, start_block, remainder_start, pats, or_span);
 
         if !remaining_match_pairs.is_empty() {
             // If more match pairs remain, test them after each subcandidate.
@@ -1495,7 +1466,6 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     &mut [leaf_candidate],
                     or_start,
                     or_otherwise,
-                    fake_borrows,
                 );
             });
         }
@@ -1507,12 +1477,11 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             remainder_start,
             otherwise_block,
             remaining_candidates,
-            fake_borrows,
         );
     }
 
     #[instrument(
-        skip(self, start_block, otherwise_block, or_span, fake_borrows, candidate, pats),
+        skip(self, start_block, otherwise_block, or_span, candidate, pats),
         level = "debug"
     )]
     fn test_or_pattern<'pat>(
@@ -1522,7 +1491,6 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         otherwise_block: BasicBlock,
         pats: &[FlatPat<'pat, 'tcx>],
         or_span: Span,
-        fake_borrows: &mut Option<FxIndexSet<Place<'tcx>>>,
     ) {
         debug!("candidate={:#?}\npats={:#?}", candidate, pats);
         let mut or_candidates: Vec<_> = pats
@@ -1537,7 +1505,6 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             start_block,
             otherwise_block,
             &mut or_candidate_refs,
-            fake_borrows,
         );
         candidate.subcandidates = or_candidates;
         self.merge_trivial_subcandidates(candidate, self.source_info(or_span));
@@ -1597,7 +1564,6 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     fn pick_test(
         &mut self,
         candidates: &mut [&mut Candidate<'_, 'tcx>],
-        fake_borrows: &mut Option<FxIndexSet<Place<'tcx>>>,
     ) -> (PlaceBuilder<'tcx>, Test<'tcx>) {
         // Extract the match-pair from the highest priority candidate
         let match_pair = &candidates.first().unwrap().match_pairs[0];
@@ -1799,10 +1765,9 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         candidates: &'b mut [&'c mut Candidate<'pat, 'tcx>],
         start_block: BasicBlock,
         otherwise_block: BasicBlock,
-        fake_borrows: &mut Option<FxIndexSet<Place<'tcx>>>,
     ) {
         // Extract the match-pair from the highest priority candidate and build a test from it.
-        let (match_place, test) = self.pick_test(candidates, fake_borrows);
+        let (match_place, test) = self.pick_test(candidates);
 
         // For each of the N possible test outcomes, build the vector of candidates that applies if
         // the test has that particular outcome.
@@ -1819,7 +1784,6 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 remainder_start,
                 otherwise_block,
                 remaining_candidates,
-                fake_borrows,
             );
             remainder_start
         } else {
@@ -1841,7 +1805,6 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                         candidate_start,
                         remainder_start,
                         &mut *candidates,
-                        fake_borrows,
                     );
                     candidate_start
                 } else {
