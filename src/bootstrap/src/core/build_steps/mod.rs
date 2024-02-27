@@ -5,6 +5,7 @@ pub(crate) mod dist;
 pub(crate) mod doc;
 pub(crate) mod format;
 pub(crate) mod install;
+pub(crate) mod lint;
 pub(crate) mod llvm;
 pub(crate) mod run;
 pub(crate) mod setup;

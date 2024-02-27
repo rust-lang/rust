@@ -21,7 +21,7 @@ fn output_result(cmd: &mut Command) -> Result<String, String> {
             String::from_utf8(output.stderr).map_err(|err| format!("{err:?}"))?
         ));
     }
-    Ok(String::from_utf8(output.stdout).map_err(|err| format!("{err:?}"))?)
+    String::from_utf8(output.stdout).map_err(|err| format!("{err:?}"))
 }
 
 /// Finds the remote for rust-lang/rust.
@@ -64,18 +64,14 @@ pub fn rev_exists(rev: &str, git_dir: Option<&Path>) -> Result<bool, String> {
     match output.status.code() {
         Some(0) => Ok(true),
         Some(128) => Ok(false),
-        None => {
-            return Err(format!(
-                "git didn't exit properly: {}",
-                String::from_utf8(output.stderr).map_err(|err| format!("{err:?}"))?
-            ));
-        }
-        Some(code) => {
-            return Err(format!(
-                "git command exited with status code: {code}: {}",
-                String::from_utf8(output.stderr).map_err(|err| format!("{err:?}"))?
-            ));
-        }
+        None => Err(format!(
+            "git didn't exit properly: {}",
+            String::from_utf8(output.stderr).map_err(|err| format!("{err:?}"))?
+        )),
+        Some(code) => Err(format!(
+            "git command exited with status code: {code}: {}",
+            String::from_utf8(output.stderr).map_err(|err| format!("{err:?}"))?
+        )),
     }
 }
 
@@ -96,7 +92,7 @@ pub fn updated_master_branch(
         }
     }
 
-    Err(format!("Cannot find any suitable upstream master branch"))
+    Err("Cannot find any suitable upstream master branch".to_string())
 }
 
 pub fn get_git_merge_base(
@@ -117,7 +113,7 @@ pub fn get_git_merge_base(
 pub fn get_git_modified_files(
     config: &GitConfig<'_>,
     git_dir: Option<&Path>,
-    extensions: &Vec<&str>,
+    extensions: &[&str],
 ) -> Result<Option<Vec<String>>, String> {
     let merge_base = get_git_merge_base(config, git_dir)?;
 

@@ -1117,6 +1117,47 @@ HELP: to skip test's attempt to check tidiness, pass `--skip src/tools/tidy` to 
                 crate::exit!(1);
             }
             crate::core::build_steps::format::format(builder, !builder.config.cmd.bless(), &[]);
+
+            // TODO: don't run this by default (check if clippy is enabled in the build configuration)
+            builder.info("lint check");
+            crate::core::build_steps::lint::lint(
+                builder,
+                &[
+                    // builder.src.join("src/bootstrap"),
+                    builder.src.join("src/tools/build_helper"),
+                    builder.src.join("src/tools/build-manifest"),
+                    builder.src.join("src/tools/bump-stage0"),
+                    builder.src.join("src/tools/cargotest"),
+                    builder.src.join("src/tools/collect-license-metadata"),
+                    builder.src.join("src/tools/compiletest"),
+                    builder.src.join("src/tools/coverage-dump"),
+                    builder.src.join("src/tools/error_index_generator"),
+                    builder.src.join("src/tools/expand-yaml-anchors"),
+                    builder.src.join("src/tools/generate-copyright"),
+                    builder.src.join("src/tools/generate-windows-sys"),
+                    builder.src.join("src/tools/html-checker"),
+                    builder.src.join("src/tools/jsondocck"),
+                    builder.src.join("src/tools/jsondoclint"),
+                    builder.src.join("src/tools/linkchecker"),
+                    builder.src.join("src/tools/lint-docs"),
+                    builder.src.join("src/tools/lld-wrapper"),
+                    builder.src.join("src/tools/miropt-test-tools"),
+                    builder.src.join("src/tools/opt-dist"),
+                    builder.src.join("src/tools/remote-test-client"),
+                    builder.src.join("src/tools/remote-test-server"),
+                    builder.src.join("src/tools/replace-version-placeholder"),
+                    builder.src.join("src/tools/rust-demangler"),
+                    builder.src.join("src/tools/rust-installer"),
+                    builder.src.join("src/tools/rustbook"),
+                    builder.src.join("src/tools/rustdoc-gui-test"),
+                    builder.src.join("src/tools/rustdoc-themes"),
+                    builder.src.join("src/tools/suggest-tests"),
+                    builder.src.join("src/tools/tier-check"),
+                    builder.src.join("src/tools/unicode-table-generator"),
+                    builder.src.join("src/tools/unstable-book-gen"),
+                    builder.src.join("src/tools/x"),
+                ],
+            );
         }
 
         builder.info("tidy check");

@@ -30,7 +30,7 @@ impl CiEnv {
             // The explicit `TERM=xterm` environment is needed for
             // `--color always` to actually work. This env var was lost when
             // compiling through the Makefile. Very strange.
-            cmd.env("TERM", "xterm").args(&["--color", "always"]);
+            cmd.env("TERM", "xterm").args(["--color", "always"]);
         }
     }
 }

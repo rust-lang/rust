@@ -27,6 +27,7 @@ pub fn fail(s: &str) -> ! {
     detail_exit(1, cfg!(test));
 }
 
+#[allow(clippy::result_unit_err)]
 pub fn try_run(cmd: &mut Command, print_cmd_on_fail: bool) -> Result<(), ()> {
     let status = match cmd.status() {
         Ok(status) => status,
