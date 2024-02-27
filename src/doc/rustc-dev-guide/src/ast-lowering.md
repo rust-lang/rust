@@ -1,6 +1,6 @@
-# Lowering
+# AST lowering
 
-The lowering step converts AST to [HIR](hir.html).
+The AST lowering step converts AST to [HIR](hir.html).
 This means many structures are removed if they are irrelevant
 for type analysis or similar syntax agnostic analyses. Examples
 of such structures include but are not limited to

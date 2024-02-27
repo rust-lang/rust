@@ -13,18 +13,21 @@ by T-lang.
 
 ## How does it work?
 
-This doc is ordered mostly via the compilation pipeline. AST -> HIR ->
-astconv -> typeck.
+This doc is ordered mostly via the compilation pipeline:
 
-### AST and HIR
+1. AST lowering (AST -> HIR)
+2. HIR ty lowering (HIR -> rustc_middle::ty data types)
+3. typeck
 
-AST -> HIR lowering for RPITITs is almost the same as lowering RPITs. We
+### AST lowering
+
+AST lowering for RPITITs is almost the same as lowering RPITs. We
 still lower them as
 [`hir::ItemKind::OpaqueTy`](https://doc.rust-lang.org/nightly/nightly-rustc/rustc_hir/hir/struct.OpaqueTy.html).
 The two differences are that:
 
 We record `in_trait` for the opaque. This will signify that the opaque
-is an RPITIT for astconv, diagnostics that deal with HIR, etc.
+is an RPITIT for HIR ty lowering, diagnostics that deal with HIR, etc.
 
 We record `lifetime_mapping`s for the opaque type, described below.
 
@@ -49,7 +52,7 @@ bounds that enforce equality between these duplicated lifetimes and
 their source lifetimes in order to properly typecheck these GATs, which
 will be discussed below.
 
-##### note:
+##### Note
 
 It may be better if we were able to lower without duplicates and for
 that I think we would need to stop distinguishing between early and late
@@ -59,14 +62,14 @@ late-bound lifetimes in generics
 PR similar to [Inherit function lifetimes for impl-trait
 #103449](https://github.com/rust-lang/rust/pull/103449).
 
-### Astconv
+### HIR ty lowering
 
-The main change to astconv is that we lower `hir::TyKind::OpaqueDef` for
-an RPITIT to a projection instead of an opaque, using a newly
+The main change to HIR ty lowering is that we lower `hir::TyKind::OpaqueDef`
+for an RPITIT to a projection instead of an opaque, using a newly
 synthesized def-id for a new associated type in the trait. We'll
 describe how exactly we get this def-id in the next section.
 
-This means that any time we call `ast_ty_to_ty` on the RPITIT, we end up
+This means that any time we call `lower_ty` on the RPITIT, we end up
 getting a projection back instead of an opaque. This projection can then
 be normalized to the right value -- either the original opaque if we're
 in the trait, or the inferred type of the RPITIT if we're in an impl.

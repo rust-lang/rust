@@ -519,7 +519,7 @@ are:
     macros.
 
 - Early lint pass: Works on [AST nodes] after [macro expansion] and name
-  resolution, just before [HIR lowering]. These lints are for purely
+  resolution, just before [AST lowering]. These lints are for purely
   syntactical lints.
   - Example: The [`unused_parens`] lint checks for parenthesized-expressions
     in situations where they are not needed, like an `if` condition.
@@ -550,7 +550,7 @@ compiler](#linting-early-in-the-compiler).
 
 
 [AST nodes]: the-parser.md
-[HIR lowering]: lowering.md
+[AST lowering]: ast-lowering.md
 [HIR nodes]: hir.md
 [MIR nodes]: mir/index.md
 [macro expansion]: macro-expansion.md

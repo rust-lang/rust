@@ -73,12 +73,12 @@ HIR is built directly from the AST, so it happens before any `ty::Ty` is produce
 HIR is built, some basic type inference and type checking is done. During the type inference, we
 figure out what the `ty::Ty` of everything is and we also check if the type of something is
 ambiguous. The `ty::Ty` is then used for type checking while making sure everything has the
-expected type. The [`astconv` module][astconv] is where the code responsible for converting a
-`rustc_hir::Ty` into a `ty::Ty` is located. The main routine used is `ast_ty_to_ty`. This occurs
-during the type-checking phase, but also in other parts of the compiler that want to ask
+expected type. The [`hir_ty_lowering` module][hir_ty_lowering] is where the code responsible for
+lowering a `rustc_hir::Ty` to a `ty::Ty` is located. The main routine used is `lower_ty`.
+This occurs during the type-checking phase, but also in other parts of the compiler that want to ask
 questions like "what argument types does this function expect?"
 
-[astconv]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_hir_analysis/astconv/index.html
+[hir_ty_lowering]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_hir_analysis/hir_ty_lowering/index.html
 
 **How semantics drive the two instances of `Ty`**
 

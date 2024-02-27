@@ -97,7 +97,7 @@
     - [Feature Gate Checking](./feature-gate-ck.md)
     - [Lang Items](./lang-items.md)
 - [The HIR (High-level IR)](./hir.md)
-    - [Lowering AST to HIR](./lowering.md)
+    - [Lowering AST to HIR](./ast-lowering.md)
     - [Debugging](./hir-debugging.md)
 - [The THIR (Typed High-level IR)](./thir.md)
 - [The MIR (Mid-level IR)](./mir/index.md)
