@@ -37,7 +37,7 @@ LL | declare_const!(_ONCE: Once = Once::new());
    = note: this error originates in the macro `declare_const` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: a `const` item should never be interior mutable
-  --> tests/ui/declare_interior_mutable_const/others.rs:43:13
+  --> tests/ui/declare_interior_mutable_const/others.rs:44:13
    |
 LL |             const _BAZ: Cell<usize> = Cell::new(0);
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

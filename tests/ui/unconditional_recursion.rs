@@ -147,6 +147,7 @@ macro_rules! impl_partial_eq {
     ($ty:ident) => {
         impl PartialEq for $ty {
             fn eq(&self, other: &Self) -> bool {
+                //~^ ERROR: function cannot return without recursing
                 self == other
             }
         }
@@ -156,7 +157,6 @@ macro_rules! impl_partial_eq {
 struct S5;
 
 impl_partial_eq!(S5);
-//~^ ERROR: function cannot return without recursing
 
 struct S6 {
     field: String,

@@ -211,6 +211,7 @@ error: all fields have the same prefix: `some`
   --> tests/ui/struct_fields.rs:226:13
    |
 LL | /             struct MacroStruct {
+LL | |
 LL | |                 some_a: i32,
 LL | |                 some_b: i32,
 LL | |                 some_c: i32,
@@ -249,6 +250,7 @@ error: all fields have the same prefix: `some`
   --> tests/ui/struct_fields.rs:291:13
    |
 LL | /             struct $struct_name {
+LL | |
 LL | |                 $field1: i32,
 LL | |                 $field2: i32,
 LL | |                 $field3: i32,

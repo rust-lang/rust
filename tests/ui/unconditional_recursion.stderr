@@ -291,6 +291,7 @@ error: function cannot return without recursing
   --> tests/ui/unconditional_recursion.rs:149:13
    |
 LL | /             fn eq(&self, other: &Self) -> bool {
+LL | |
 LL | |                 self == other
 LL | |             }
    | |_____________^
@@ -299,7 +300,7 @@ LL |   impl_partial_eq!(S5);
    |   -------------------- in this macro invocation
    |
 note: recursive call site
-  --> tests/ui/unconditional_recursion.rs:150:17
+  --> tests/ui/unconditional_recursion.rs:151:17
    |
 LL |                 self == other
    |                 ^^^^^^^^^^^^^
