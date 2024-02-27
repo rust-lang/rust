@@ -4,6 +4,7 @@ use crate::error;
 use crate::mir::{ConstAlloc, ConstValue};
 use crate::ty::{layout, tls, Ty, TyCtxt, ValTree};
 
+use rustc_ast_ir::Mutability;
 use rustc_data_structures::sync::Lock;
 use rustc_errors::{
     DiagnosticArgName, DiagnosticArgValue, DiagnosticMessage, ErrorGuaranteed, IntoDiagnosticArg,
@@ -12,7 +13,6 @@ use rustc_macros::HashStable;
 use rustc_session::CtfeBacktrace;
 use rustc_span::{def_id::DefId, Span, DUMMY_SP};
 use rustc_target::abi::{call, Align, Size, VariantIdx, WrappingRange};
-use rustc_type_ir::Mutability;
 
 use std::borrow::Cow;
 use std::{any::Any, backtrace::Backtrace, fmt};
