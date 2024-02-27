@@ -1,5 +1,5 @@
 error: format specifiers have no effect on `format_args!()`
-  --> $DIR/unused_format_specs_unfixable.rs:12:15
+  --> tests/ui/unused_format_specs_unfixable.rs:12:15
    |
 LL |     println!("{:5}.", format_args!(""));
    |               ^^^^
@@ -17,7 +17,7 @@ LL +     println!("{}.", format_args!(""));
    |
 
 error: format specifiers have no effect on `format_args!()`
-  --> $DIR/unused_format_specs_unfixable.rs:16:15
+  --> tests/ui/unused_format_specs_unfixable.rs:16:15
    |
 LL |     println!("{:.3}", format_args!("abcde"));
    |               ^^^^^
@@ -33,7 +33,7 @@ LL +     println!("{}", format_args!("abcde"));
    |
 
 error: format specifiers have no effect on `format_args!()`
-  --> $DIR/unused_format_specs_unfixable.rs:19:15
+  --> tests/ui/unused_format_specs_unfixable.rs:19:15
    |
 LL |     println!("{:5}.", format_args_from_macro!());
    |               ^^^^
@@ -46,7 +46,7 @@ LL +     println!("{}.", format_args_from_macro!());
    |
 
 error: format specifiers have no effect on `format_args!()`
-  --> $DIR/unused_format_specs_unfixable.rs:23:15
+  --> tests/ui/unused_format_specs_unfixable.rs:23:15
    |
 LL |     println!("{args:5}");
    |               ^^^^^^^^

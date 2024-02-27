@@ -6,8 +6,7 @@ use clippy_utils::diagnostics::{span_lint, span_lint_and_sugg};
 use clippy_utils::source::snippet_with_applicability;
 use clippy_utils::sugg::Sugg;
 use clippy_utils::{
-    get_parent_node, higher, is_else_clause, is_expn_of, peel_blocks, peel_blocks_with_stmt, span_extract_comment,
-    SpanlessEq,
+    higher, is_else_clause, is_expn_of, peel_blocks, peel_blocks_with_stmt, span_extract_comment, SpanlessEq,
 };
 use rustc_ast::ast::LitKind;
 use rustc_errors::Applicability;
@@ -138,8 +137,8 @@ fn condition_needs_parentheses(e: &Expr<'_>) -> bool {
 
 fn is_parent_stmt(cx: &LateContext<'_>, id: HirId) -> bool {
     matches!(
-        get_parent_node(cx.tcx, id),
-        Some(Node::Stmt(..) | Node::Block(Block { stmts: &[], .. }))
+        cx.tcx.parent_hir_node(id),
+        Node::Stmt(..) | Node::Block(Block { stmts: &[], .. })
     )
 }
 

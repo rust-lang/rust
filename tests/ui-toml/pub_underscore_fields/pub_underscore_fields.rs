@@ -63,4 +63,10 @@ fn main() {
         _pub: String,
         pub(crate) _mark: PhantomData<u8>,
     }
+
+    // shouldn't warn when `#[allow]` is used on field level
+    pub struct AllowedViolations {
+        #[allow(clippy::pub_underscore_fields)]
+        pub _first: u32,
+    }
 }

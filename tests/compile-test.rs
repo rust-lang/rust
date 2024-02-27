@@ -4,6 +4,7 @@
 #![warn(rust_2018_idioms, unused_lifetimes)]
 #![allow(unused_extern_crates)]
 
+use ui_test::spanned::Spanned;
 use ui_test::{status_emitter, Args, CommandBuilder, Config, Match, Mode, OutputConflictHandling};
 
 use std::collections::BTreeMap;
@@ -112,20 +113,21 @@ fn base_config(test_dir: &str) -> (Config, Args) {
 
     let target_dir = PathBuf::from(var_os("CARGO_TARGET_DIR").unwrap_or_else(|| "target".into()));
     let mut config = Config {
-        mode: Mode::Yolo {
-            rustfix: ui_test::RustfixMode::Everything,
-        },
+        output_conflict_handling: OutputConflictHandling::Error,
         filter_files: env::var("TESTNAME")
             .map(|filters| filters.split(',').map(str::to_string).collect())
             .unwrap_or_default(),
         target: None,
+        bless_command: Some("cargo uibless".into()),
         out_dir: target_dir.join("ui_test"),
         ..Config::rustc(Path::new("tests").join(test_dir))
     };
-    config.with_args(&args, /* bless by default */ false);
-    if let OutputConflictHandling::Error(err) = &mut config.output_conflict_handling {
-        *err = "cargo uibless".into();
-    }
+    config.comment_defaults.base().mode = Some(Spanned::dummy(Mode::Yolo {
+        rustfix: ui_test::RustfixMode::Everything,
+    }))
+    .into();
+    config.comment_defaults.base().diagnostic_code_prefix = Some(Spanned::dummy("clippy::".into())).into();
+    config.with_args(&args);
     let current_exe_path = env::current_exe().unwrap();
     let deps_path = current_exe_path.parent().unwrap();
     let profile_path = deps_path.parent().unwrap();
@@ -179,9 +181,7 @@ fn run_internal_tests() {
         return;
     }
     let (mut config, args) = base_config("ui-internal");
-    if let OutputConflictHandling::Error(err) = &mut config.output_conflict_handling {
-        *err = "cargo uitest --features internal -- -- --bless".into();
-    }
+    config.bless_command = Some("cargo uitest --features internal -- -- --bless".into());
 
     ui_test::run_tests_generic(
         vec![config],
@@ -196,8 +196,10 @@ fn run_ui_toml() {
     let (mut config, args) = base_config("ui-toml");
 
     config
-        .stderr_filters
-        .push((Match::from(env::current_dir().unwrap().as_path()), b"$DIR"));
+        .comment_defaults
+        .base()
+        .normalize_stderr
+        .push((Match::from(env::current_dir().unwrap().as_path()), b"$DIR".into()));
 
     ui_test::run_tests_generic(
         vec![config],
@@ -213,6 +215,8 @@ fn run_ui_toml() {
     .unwrap();
 }
 
+// Allow `Default::default` as `OptWithSpan` is not nameable
+#[allow(clippy::default_trait_access)]
 fn run_ui_cargo() {
     if IS_RUSTC_TEST_SUITE {
         return;
@@ -234,11 +238,13 @@ fn run_ui_cargo() {
     } else {
         "cargo-clippy"
     });
-    config.edition = None;
+    config.comment_defaults.base().edition = Default::default();
 
     config
-        .stderr_filters
-        .push((Match::from(env::current_dir().unwrap().as_path()), b"$DIR"));
+        .comment_defaults
+        .base()
+        .normalize_stderr
+        .push((Match::from(env::current_dir().unwrap().as_path()), b"$DIR".into()));
 
     let ignored_32bit = |path: &Path| {
         // FIXME: for some reason the modules are linted in a different order for this test
@@ -248,7 +254,8 @@ fn run_ui_cargo() {
     ui_test::run_tests_generic(
         vec![config],
         |path, config| {
-            path.ends_with("Cargo.toml") && ui_test::default_any_file_filter(path, config) && !ignored_32bit(path)
+            path.ends_with("Cargo.toml")
+                .then(|| ui_test::default_any_file_filter(path, config) && !ignored_32bit(path))
         },
         |_config, _path, _file_contents| {},
         status_emitter::Text::from(args.format),

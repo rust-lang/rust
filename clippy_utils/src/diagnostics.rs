@@ -40,7 +40,7 @@ fn docs_link(diag: &mut DiagnosticBuilder<'_, ()>, lint: &'static Lint) {
 ///
 /// ```ignore
 /// error: usage of mem::forget on Drop type
-///   --> $DIR/mem_forget.rs:17:5
+///   --> tests/ui/mem_forget.rs:17:5
 ///    |
 /// 17 |     std::mem::forget(seven);
 ///    |     ^^^^^^^^^^^^^^^^^^^^^^^
@@ -65,7 +65,7 @@ pub fn span_lint<T: LintContext>(cx: &T, lint: &'static Lint, sp: impl Into<Mult
 ///
 /// ```text
 /// error: constant division of 0.0 with 0.0 will always result in NaN
-///   --> $DIR/zero_div_zero.rs:6:25
+///   --> tests/ui/zero_div_zero.rs:6:25
 ///    |
 /// 6  |     let other_f64_nan = 0.0f64 / 0.0;
 ///    |                         ^^^^^^^^^^^^
@@ -103,14 +103,14 @@ pub fn span_lint_and_help<T: LintContext>(
 ///
 /// ```text
 /// error: calls to `std::mem::forget` with a reference instead of an owned value. Forgetting a reference does nothing.
-///   --> $DIR/drop_forget_ref.rs:10:5
+///   --> tests/ui/drop_forget_ref.rs:10:5
 ///    |
 /// 10 |     forget(&SomeStruct);
 ///    |     ^^^^^^^^^^^^^^^^^^^
 ///    |
 ///    = note: `-D clippy::forget-ref` implied by `-D warnings`
 /// note: argument has type &SomeStruct
-///   --> $DIR/drop_forget_ref.rs:10:12
+///   --> tests/ui/drop_forget_ref.rs:10:12
 ///    |
 /// 10 |     forget(&SomeStruct);
 ///    |            ^^^^^^^^^^^
@@ -186,7 +186,7 @@ pub fn span_lint_hir_and_then(
 ///
 /// ```text
 /// error: This `.fold` can be more succinctly expressed as `.any`
-/// --> $DIR/methods.rs:390:13
+/// --> tests/ui/methods.rs:390:13
 ///     |
 /// 390 |     let _ = (0..3).fold(false, |acc, x| acc || x > 2);
 ///     |                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `.any(|x| x > 2)`

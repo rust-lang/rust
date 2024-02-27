@@ -1,11 +1,11 @@
 error: missing trait method provided by default: `provided`
-  --> $DIR/missing_trait_methods.rs:22:1
+  --> tests/ui/missing_trait_methods.rs:22:1
    |
 LL | impl A for Partial {}
    | ^^^^^^^^^^^^^^^^^^
    |
 help: implement the method
-  --> $DIR/missing_trait_methods.rs:5:5
+  --> tests/ui/missing_trait_methods.rs:5:5
    |
 LL |     fn provided() {}
    |     ^^^^^^^^^^^^^
@@ -13,13 +13,13 @@ LL |     fn provided() {}
    = help: to override `-D warnings` add `#[allow(clippy::missing_trait_methods)]`
 
 error: missing trait method provided by default: `b`
-  --> $DIR/missing_trait_methods.rs:25:1
+  --> tests/ui/missing_trait_methods.rs:25:1
    |
 LL | impl B for Partial {
    | ^^^^^^^^^^^^^^^^^^
    |
 help: implement the method
-  --> $DIR/missing_trait_methods.rs:15:5
+  --> tests/ui/missing_trait_methods.rs:15:5
    |
 LL |     fn b<'a, T: AsRef<[u8]>>(a: &'a T) -> &'a [u8] {
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

@@ -1,5 +1,5 @@
 error: boxed return of the sized type `[u8; 64]`
-  --> $DIR/unnecessary_box_returns.rs:3:11
+  --> tests/ui-toml/unnecessary_box_returns/unnecessary_box_returns.rs:3:11
    |
 LL | fn f() -> Box<[u8; 64]> {
    |           ^^^^^^^^^^^^^ help: try: `[u8; 64]`

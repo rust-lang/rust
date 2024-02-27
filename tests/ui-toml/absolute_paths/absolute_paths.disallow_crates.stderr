@@ -1,5 +1,5 @@
 error: consider bringing this path into scope with the `use` keyword
-  --> $DIR/absolute_paths.rs:40:5
+  --> tests/ui-toml/absolute_paths/absolute_paths.rs:40:5
    |
 LL |     std::f32::MAX;
    |     ^^^^^^^^^^^^^
@@ -8,61 +8,61 @@ LL |     std::f32::MAX;
    = help: to override `-D warnings` add `#[allow(clippy::absolute_paths)]`
 
 error: consider bringing this path into scope with the `use` keyword
-  --> $DIR/absolute_paths.rs:41:5
+  --> tests/ui-toml/absolute_paths/absolute_paths.rs:41:5
    |
 LL |     core::f32::MAX;
    |     ^^^^^^^^^^^^^^
 
 error: consider bringing this path into scope with the `use` keyword
-  --> $DIR/absolute_paths.rs:42:5
+  --> tests/ui-toml/absolute_paths/absolute_paths.rs:42:5
    |
 LL |     ::core::f32::MAX;
    |     ^^^^^^^^^^^^^^^^
 
 error: consider bringing this path into scope with the `use` keyword
-  --> $DIR/absolute_paths.rs:43:5
+  --> tests/ui-toml/absolute_paths/absolute_paths.rs:43:5
    |
 LL |     crate::a::b::c::C;
    |     ^^^^^^^^^^^^^^^^^
 
 error: consider bringing this path into scope with the `use` keyword
-  --> $DIR/absolute_paths.rs:44:5
+  --> tests/ui-toml/absolute_paths/absolute_paths.rs:44:5
    |
 LL |     crate::a::b::c::d::e::f::F;
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: consider bringing this path into scope with the `use` keyword
-  --> $DIR/absolute_paths.rs:45:5
+  --> tests/ui-toml/absolute_paths/absolute_paths.rs:45:5
    |
 LL |     crate::a::A;
    |     ^^^^^^^^^^^
 
 error: consider bringing this path into scope with the `use` keyword
-  --> $DIR/absolute_paths.rs:46:5
+  --> tests/ui-toml/absolute_paths/absolute_paths.rs:46:5
    |
 LL |     crate::a::b::B;
    |     ^^^^^^^^^^^^^^
 
 error: consider bringing this path into scope with the `use` keyword
-  --> $DIR/absolute_paths.rs:47:5
+  --> tests/ui-toml/absolute_paths/absolute_paths.rs:47:5
    |
 LL |     crate::a::b::c::C::ZERO;
    |     ^^^^^^^^^^^^^^^^^
 
 error: consider bringing this path into scope with the `use` keyword
-  --> $DIR/absolute_paths.rs:48:5
+  --> tests/ui-toml/absolute_paths/absolute_paths.rs:48:5
    |
 LL |     helper::b::c::d::e::f();
    |     ^^^^^^^^^^^^^^^^^^^^^
 
 error: consider bringing this path into scope with the `use` keyword
-  --> $DIR/absolute_paths.rs:49:5
+  --> tests/ui-toml/absolute_paths/absolute_paths.rs:49:5
    |
 LL |     ::helper::b::c::d::e::f();
    |     ^^^^^^^^^^^^^^^^^^^^^^^
 
 error: consider bringing this path into scope with the `use` keyword
-  --> $DIR/absolute_paths.rs:58:5
+  --> tests/ui-toml/absolute_paths/absolute_paths.rs:58:5
    |
 LL |     ::std::f32::MAX;
    |     ^^^^^^^^^^^^^^^

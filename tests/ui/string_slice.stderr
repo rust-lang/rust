@@ -1,5 +1,5 @@
 error: indexing into a string may panic if the index is within a UTF-8 character
-  --> $DIR/string_slice.rs:5:6
+  --> tests/ui/string_slice.rs:5:6
    |
 LL |     &"Ölkanne"[1..];
    |      ^^^^^^^^^^^^^^
@@ -8,13 +8,13 @@ LL |     &"Ölkanne"[1..];
    = help: to override `-D warnings` add `#[allow(clippy::string_slice)]`
 
 error: indexing into a string may panic if the index is within a UTF-8 character
-  --> $DIR/string_slice.rs:9:6
+  --> tests/ui/string_slice.rs:9:6
    |
 LL |     &m[2..5];
    |      ^^^^^^^
 
 error: indexing into a string may panic if the index is within a UTF-8 character
-  --> $DIR/string_slice.rs:12:6
+  --> tests/ui/string_slice.rs:12:6
    |
 LL |     &s[0..2];
    |      ^^^^^^^

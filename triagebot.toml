@@ -6,7 +6,7 @@ allow-unauthenticated = [
 
 # Allows shortcuts like `@rustbot ready`
 #
-# See https://github.com/rust-lang/triagebot/wiki/Shortcuts
+# See https://forge.rust-lang.org/triagebot/shortcuts.html
 [shortcut]
 
 # Have rustbot inform users about the *No Merge Policy*
@@ -19,6 +19,7 @@ new_pr = true
 
 [assign]
 contributing_url = "https://github.com/rust-lang/rust-clippy/blob/master/CONTRIBUTING.md"
+users_on_vacation = ["xFrednet"]
 
 [assign.owners]
 "/.github" = ["@flip1995"]
@@ -32,4 +33,5 @@ contributing_url = "https://github.com/rust-lang/rust-clippy/blob/master/CONTRIB
     "@dswij",
     "@Jarcho",
     "@blyxyas",
+    "@y21",
 ]

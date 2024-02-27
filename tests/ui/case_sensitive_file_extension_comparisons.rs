@@ -51,4 +51,9 @@ fn main() {
     let _ = String::new().ends_with("a.ext");
     let _ = "str".ends_with("a.extA");
     TestStruct {}.ends_with("a.ext");
+
+    // Shouldn't fail if the extension has no ascii letter
+    let _ = String::new().ends_with(".123");
+    let _ = "str".ends_with(".123");
+    TestStruct {}.ends_with(".123");
 }

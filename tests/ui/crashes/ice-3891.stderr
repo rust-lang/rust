@@ -1,5 +1,5 @@
 error: invalid suffix `x` for number literal
-  --> $DIR/ice-3891.rs:2:5
+  --> tests/ui/crashes/ice-3891.rs:2:5
    |
 LL |     1x;
    |     ^^ invalid suffix `x`

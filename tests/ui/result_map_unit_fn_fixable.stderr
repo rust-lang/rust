@@ -1,5 +1,5 @@
 error: called `map(f)` on an `Result` value where `f` is a function that returns the unit type `()`
-  --> $DIR/result_map_unit_fn_fixable.rs:34:5
+  --> tests/ui/result_map_unit_fn_fixable.rs:34:5
    |
 LL |     x.field.map(do_nothing);
    |     ^^^^^^^^^^^^^^^^^^^^^^^-
@@ -10,7 +10,7 @@ LL |     x.field.map(do_nothing);
    = help: to override `-D warnings` add `#[allow(clippy::result_map_unit_fn)]`
 
 error: called `map(f)` on an `Result` value where `f` is a function that returns the unit type `()`
-  --> $DIR/result_map_unit_fn_fixable.rs:36:5
+  --> tests/ui/result_map_unit_fn_fixable.rs:36:5
    |
 LL |     x.field.map(do_nothing);
    |     ^^^^^^^^^^^^^^^^^^^^^^^-
@@ -18,7 +18,7 @@ LL |     x.field.map(do_nothing);
    |     help: try: `if let Ok(x_field) = x.field { do_nothing(x_field) }`
 
 error: called `map(f)` on an `Result` value where `f` is a function that returns the unit type `()`
-  --> $DIR/result_map_unit_fn_fixable.rs:38:5
+  --> tests/ui/result_map_unit_fn_fixable.rs:38:5
    |
 LL |     x.field.map(diverge);
    |     ^^^^^^^^^^^^^^^^^^^^-
@@ -26,7 +26,7 @@ LL |     x.field.map(diverge);
    |     help: try: `if let Ok(x_field) = x.field { diverge(x_field) }`
 
 error: called `map(f)` on an `Result` value where `f` is a closure that returns the unit type `()`
-  --> $DIR/result_map_unit_fn_fixable.rs:44:5
+  --> tests/ui/result_map_unit_fn_fixable.rs:44:5
    |
 LL |     x.field.map(|value| x.do_result_nothing(value + captured));
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^-
@@ -34,7 +34,7 @@ LL |     x.field.map(|value| x.do_result_nothing(value + captured));
    |     help: try: `if let Ok(value) = x.field { x.do_result_nothing(value + captured) }`
 
 error: called `map(f)` on an `Result` value where `f` is a closure that returns the unit type `()`
-  --> $DIR/result_map_unit_fn_fixable.rs:46:5
+  --> tests/ui/result_map_unit_fn_fixable.rs:46:5
    |
 LL |     x.field.map(|value| { x.do_result_plus_one(value + captured); });
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^-
@@ -42,7 +42,7 @@ LL |     x.field.map(|value| { x.do_result_plus_one(value + captured); });
    |     help: try: `if let Ok(value) = x.field { x.do_result_plus_one(value + captured); }`
 
 error: called `map(f)` on an `Result` value where `f` is a closure that returns the unit type `()`
-  --> $DIR/result_map_unit_fn_fixable.rs:49:5
+  --> tests/ui/result_map_unit_fn_fixable.rs:49:5
    |
 LL |     x.field.map(|value| do_nothing(value + captured));
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^-
@@ -50,7 +50,7 @@ LL |     x.field.map(|value| do_nothing(value + captured));
    |     help: try: `if let Ok(value) = x.field { do_nothing(value + captured) }`
 
 error: called `map(f)` on an `Result` value where `f` is a closure that returns the unit type `()`
-  --> $DIR/result_map_unit_fn_fixable.rs:51:5
+  --> tests/ui/result_map_unit_fn_fixable.rs:51:5
    |
 LL |     x.field.map(|value| { do_nothing(value + captured) });
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^-
@@ -58,7 +58,7 @@ LL |     x.field.map(|value| { do_nothing(value + captured) });
    |     help: try: `if let Ok(value) = x.field { do_nothing(value + captured) }`
 
 error: called `map(f)` on an `Result` value where `f` is a closure that returns the unit type `()`
-  --> $DIR/result_map_unit_fn_fixable.rs:53:5
+  --> tests/ui/result_map_unit_fn_fixable.rs:53:5
    |
 LL |     x.field.map(|value| { do_nothing(value + captured); });
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^-
@@ -66,7 +66,7 @@ LL |     x.field.map(|value| { do_nothing(value + captured); });
    |     help: try: `if let Ok(value) = x.field { do_nothing(value + captured); }`
 
 error: called `map(f)` on an `Result` value where `f` is a closure that returns the unit type `()`
-  --> $DIR/result_map_unit_fn_fixable.rs:55:5
+  --> tests/ui/result_map_unit_fn_fixable.rs:55:5
    |
 LL |     x.field.map(|value| { { do_nothing(value + captured); } });
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^-
@@ -74,7 +74,7 @@ LL |     x.field.map(|value| { { do_nothing(value + captured); } });
    |     help: try: `if let Ok(value) = x.field { do_nothing(value + captured); }`
 
 error: called `map(f)` on an `Result` value where `f` is a closure that returns the unit type `()`
-  --> $DIR/result_map_unit_fn_fixable.rs:58:5
+  --> tests/ui/result_map_unit_fn_fixable.rs:58:5
    |
 LL |     x.field.map(|value| diverge(value + captured));
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^-
@@ -82,7 +82,7 @@ LL |     x.field.map(|value| diverge(value + captured));
    |     help: try: `if let Ok(value) = x.field { diverge(value + captured) }`
 
 error: called `map(f)` on an `Result` value where `f` is a closure that returns the unit type `()`
-  --> $DIR/result_map_unit_fn_fixable.rs:60:5
+  --> tests/ui/result_map_unit_fn_fixable.rs:60:5
    |
 LL |     x.field.map(|value| { diverge(value + captured) });
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^-
@@ -90,7 +90,7 @@ LL |     x.field.map(|value| { diverge(value + captured) });
    |     help: try: `if let Ok(value) = x.field { diverge(value + captured) }`
 
 error: called `map(f)` on an `Result` value where `f` is a closure that returns the unit type `()`
-  --> $DIR/result_map_unit_fn_fixable.rs:62:5
+  --> tests/ui/result_map_unit_fn_fixable.rs:62:5
    |
 LL |     x.field.map(|value| { diverge(value + captured); });
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^-
@@ -98,7 +98,7 @@ LL |     x.field.map(|value| { diverge(value + captured); });
    |     help: try: `if let Ok(value) = x.field { diverge(value + captured); }`
 
 error: called `map(f)` on an `Result` value where `f` is a closure that returns the unit type `()`
-  --> $DIR/result_map_unit_fn_fixable.rs:64:5
+  --> tests/ui/result_map_unit_fn_fixable.rs:64:5
    |
 LL |     x.field.map(|value| { { diverge(value + captured); } });
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^-
@@ -106,7 +106,7 @@ LL |     x.field.map(|value| { { diverge(value + captured); } });
    |     help: try: `if let Ok(value) = x.field { diverge(value + captured); }`
 
 error: called `map(f)` on an `Result` value where `f` is a closure that returns the unit type `()`
-  --> $DIR/result_map_unit_fn_fixable.rs:69:5
+  --> tests/ui/result_map_unit_fn_fixable.rs:69:5
    |
 LL |     x.field.map(|value| { let y = plus_one(value + captured); });
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^-
@@ -114,7 +114,7 @@ LL |     x.field.map(|value| { let y = plus_one(value + captured); });
    |     help: try: `if let Ok(value) = x.field { let y = plus_one(value + captured); }`
 
 error: called `map(f)` on an `Result` value where `f` is a closure that returns the unit type `()`
-  --> $DIR/result_map_unit_fn_fixable.rs:71:5
+  --> tests/ui/result_map_unit_fn_fixable.rs:71:5
    |
 LL |     x.field.map(|value| { plus_one(value + captured); });
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^-
@@ -122,7 +122,7 @@ LL |     x.field.map(|value| { plus_one(value + captured); });
    |     help: try: `if let Ok(value) = x.field { plus_one(value + captured); }`
 
 error: called `map(f)` on an `Result` value where `f` is a closure that returns the unit type `()`
-  --> $DIR/result_map_unit_fn_fixable.rs:73:5
+  --> tests/ui/result_map_unit_fn_fixable.rs:73:5
    |
 LL |     x.field.map(|value| { { plus_one(value + captured); } });
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^-
@@ -130,7 +130,7 @@ LL |     x.field.map(|value| { { plus_one(value + captured); } });
    |     help: try: `if let Ok(value) = x.field { plus_one(value + captured); }`
 
 error: called `map(f)` on an `Result` value where `f` is a closure that returns the unit type `()`
-  --> $DIR/result_map_unit_fn_fixable.rs:76:5
+  --> tests/ui/result_map_unit_fn_fixable.rs:76:5
    |
 LL |     x.field.map(|ref value| { do_nothing(value + captured) });
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^-
@@ -138,7 +138,7 @@ LL |     x.field.map(|ref value| { do_nothing(value + captured) });
    |     help: try: `if let Ok(ref value) = x.field { do_nothing(value + captured) }`
 
 error: called `map(f)` on an `Result` value where `f` is a closure that returns the unit type `()`
-  --> $DIR/result_map_unit_fn_fixable.rs:78:5
+  --> tests/ui/result_map_unit_fn_fixable.rs:78:5
    |
 LL |     x.field.map(|value| println!("{:?}", value));
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^-

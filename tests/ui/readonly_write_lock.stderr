@@ -1,5 +1,5 @@
 error: this write lock is used only for reading
-  --> $DIR/readonly_write_lock.rs:16:22
+  --> tests/ui/readonly_write_lock.rs:16:22
    |
 LL |         let writer = lock.write().unwrap();
    |                      ^^^^^^^^^^^^ help: consider using a read lock instead: `lock.read()`
@@ -8,7 +8,7 @@ LL |         let writer = lock.write().unwrap();
    = help: to override `-D warnings` add `#[allow(clippy::readonly_write_lock)]`
 
 error: this write lock is used only for reading
-  --> $DIR/readonly_write_lock.rs:23:22
+  --> tests/ui/readonly_write_lock.rs:23:22
    |
 LL |         let writer = lock.write().unwrap();
    |                      ^^^^^^^^^^^^ help: consider using a read lock instead: `lock.read()`

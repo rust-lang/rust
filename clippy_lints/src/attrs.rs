@@ -1,7 +1,9 @@
 //! checks for attributes
 
 use clippy_config::msrvs::{self, Msrv};
-use clippy_utils::diagnostics::{span_lint, span_lint_and_help, span_lint_and_sugg, span_lint_and_then};
+use clippy_utils::diagnostics::{
+    span_lint, span_lint_and_help, span_lint_and_note, span_lint_and_sugg, span_lint_and_then,
+};
 use clippy_utils::is_from_proc_macro;
 use clippy_utils::macros::{is_panic, macro_backtrace};
 use clippy_utils::source::{first_line_of_span, is_present_in_source, snippet_opt, without_block_comments};
@@ -433,6 +435,56 @@ declare_clippy_lint! {
     "prevent from misusing the wrong attr name"
 }
 
+declare_clippy_lint! {
+    /// ### What it does
+    /// Checks for `#[cfg_attr(feature = "cargo-clippy", ...)]` and for
+    /// `#[cfg(feature = "cargo-clippy")]` and suggests to replace it with
+    /// `#[cfg_attr(clippy, ...)]` or `#[cfg(clippy)]`.
+    ///
+    /// ### Why is this bad?
+    /// This feature has been deprecated for years and shouldn't be used anymore.
+    ///
+    /// ### Example
+    /// ```no_run
+    /// #[cfg(feature = "cargo-clippy")]
+    /// struct Bar;
+    /// ```
+    ///
+    /// Use instead:
+    /// ```no_run
+    /// #[cfg(clippy)]
+    /// struct Bar;
+    /// ```
+    #[clippy::version = "1.78.0"]
+    pub DEPRECATED_CLIPPY_CFG_ATTR,
+    suspicious,
+    "usage of `cfg(feature = \"cargo-clippy\")` instead of `cfg(clippy)`"
+}
+
+declare_clippy_lint! {
+    /// ### What it does
+    /// Checks for `#[cfg_attr(clippy, allow(clippy::lint))]`
+    /// and suggests to replace it with `#[allow(clippy::lint)]`.
+    ///
+    /// ### Why is this bad?
+    /// There is no reason to put clippy attributes behind a clippy `cfg` as they are not
+    /// run by anything else than clippy.
+    ///
+    /// ### Example
+    /// ```no_run
+    /// #![cfg_attr(clippy, allow(clippy::deprecated_cfg_attr))]
+    /// ```
+    ///
+    /// Use instead:
+    /// ```no_run
+    /// #![allow(clippy::deprecated_cfg_attr)]
+    /// ```
+    #[clippy::version = "1.78.0"]
+    pub UNNECESSARY_CLIPPY_CFG,
+    suspicious,
+    "usage of `cfg_attr(clippy, allow(clippy::lint))` instead of `allow(clippy::lint)`"
+}
+
 declare_lint_pass!(Attributes => [
     ALLOW_ATTRIBUTES_WITHOUT_REASON,
     INLINE_ALWAYS,
@@ -512,6 +564,7 @@ impl<'tcx> LateLintPass<'tcx> for Attributes {
                                             || is_word(lint, sym::deprecated)
                                             || is_word(lint, sym!(unreachable_pub))
                                             || is_word(lint, sym!(unused))
+                                            || is_word(lint, sym!(unused_import_braces))
                                             || extract_clippy_lint(lint).map_or(false, |s| {
                                                 matches!(
                                                     s.as_str(),
@@ -794,6 +847,8 @@ impl_lint_pass!(EarlyAttributes => [
     EMPTY_LINE_AFTER_DOC_COMMENTS,
     NON_MINIMAL_CFG,
     MAYBE_MISUSED_CFG,
+    DEPRECATED_CLIPPY_CFG_ATTR,
+    UNNECESSARY_CLIPPY_CFG,
 ]);
 
 impl EarlyLintPass for EarlyAttributes {
@@ -803,6 +858,7 @@ impl EarlyLintPass for EarlyAttributes {
 
     fn check_attribute(&mut self, cx: &EarlyContext<'_>, attr: &Attribute) {
         check_deprecated_cfg_attr(cx, attr, &self.msrv);
+        check_deprecated_cfg(cx, attr);
         check_mismatched_target_os(cx, attr);
         check_minimal_cfg_condition(cx, attr);
         check_misused_cfg(cx, attr);
@@ -857,39 +913,146 @@ fn check_empty_line_after_outer_attr(cx: &EarlyContext<'_>, item: &rustc_ast::It
     }
 }
 
-fn check_deprecated_cfg_attr(cx: &EarlyContext<'_>, attr: &Attribute, msrv: &Msrv) {
-    if msrv.meets(msrvs::TOOL_ATTRIBUTES)
-        // check cfg_attr
-        && attr.has_name(sym::cfg_attr)
-        && let Some(items) = attr.meta_item_list()
-        && items.len() == 2
-        // check for `rustfmt`
-        && let Some(feature_item) = items[0].meta_item()
-        && feature_item.has_name(sym::rustfmt)
-        // check for `rustfmt_skip` and `rustfmt::skip`
-        && let Some(skip_item) = &items[1].meta_item()
-        && (skip_item.has_name(sym!(rustfmt_skip))
-            || skip_item
-                .path
-                .segments
-                .last()
-                .expect("empty path in attribute")
-                .ident
-                .name
-                == sym::skip)
-        // Only lint outer attributes, because custom inner attributes are unstable
-        // Tracking issue: https://github.com/rust-lang/rust/issues/54726
-        && attr.style == AttrStyle::Outer
-    {
+fn check_cargo_clippy_attr(cx: &EarlyContext<'_>, item: &rustc_ast::MetaItem) {
+    if item.has_name(sym::feature) && item.value_str().is_some_and(|v| v.as_str() == "cargo-clippy") {
         span_lint_and_sugg(
             cx,
-            DEPRECATED_CFG_ATTR,
-            attr.span,
-            "`cfg_attr` is deprecated for rustfmt and got replaced by tool attributes",
-            "use",
-            "#[rustfmt::skip]".to_string(),
+            DEPRECATED_CLIPPY_CFG_ATTR,
+            item.span,
+            "`feature = \"cargo-clippy\"` was replaced by `clippy`",
+            "replace with",
+            "clippy".to_string(),
             Applicability::MachineApplicable,
         );
+    }
+}
+
+fn check_deprecated_cfg_recursively(cx: &EarlyContext<'_>, attr: &rustc_ast::MetaItem) {
+    if let Some(ident) = attr.ident() {
+        if ["any", "all", "not"].contains(&ident.name.as_str()) {
+            let Some(list) = attr.meta_item_list() else { return };
+            for item in list.iter().filter_map(|item| item.meta_item()) {
+                check_deprecated_cfg_recursively(cx, item);
+            }
+        } else {
+            check_cargo_clippy_attr(cx, attr);
+        }
+    }
+}
+
+fn check_deprecated_cfg(cx: &EarlyContext<'_>, attr: &Attribute) {
+    if attr.has_name(sym::cfg)
+        && let Some(list) = attr.meta_item_list()
+    {
+        for item in list.iter().filter_map(|item| item.meta_item()) {
+            check_deprecated_cfg_recursively(cx, item);
+        }
+    }
+}
+
+fn check_deprecated_cfg_attr(cx: &EarlyContext<'_>, attr: &Attribute, msrv: &Msrv) {
+    // check cfg_attr
+    if attr.has_name(sym::cfg_attr)
+        && let Some(items) = attr.meta_item_list()
+        && items.len() == 2
+        && let Some(feature_item) = items[0].meta_item()
+    {
+        // check for `rustfmt`
+        if feature_item.has_name(sym::rustfmt)
+            && msrv.meets(msrvs::TOOL_ATTRIBUTES)
+            // check for `rustfmt_skip` and `rustfmt::skip`
+            && let Some(skip_item) = &items[1].meta_item()
+            && (skip_item.has_name(sym!(rustfmt_skip))
+                || skip_item
+                    .path
+                    .segments
+                    .last()
+                    .expect("empty path in attribute")
+                    .ident
+                    .name
+                    == sym::skip)
+            // Only lint outer attributes, because custom inner attributes are unstable
+            // Tracking issue: https://github.com/rust-lang/rust/issues/54726
+            && attr.style == AttrStyle::Outer
+        {
+            span_lint_and_sugg(
+                cx,
+                DEPRECATED_CFG_ATTR,
+                attr.span,
+                "`cfg_attr` is deprecated for rustfmt and got replaced by tool attributes",
+                "use",
+                "#[rustfmt::skip]".to_string(),
+                Applicability::MachineApplicable,
+            );
+        } else {
+            check_deprecated_cfg_recursively(cx, feature_item);
+            if let Some(behind_cfg_attr) = items[1].meta_item() {
+                check_clippy_cfg_attr(cx, feature_item, behind_cfg_attr, attr);
+            }
+        }
+    }
+}
+
+fn check_clippy_cfg_attr(
+    cx: &EarlyContext<'_>,
+    cfg_attr: &rustc_ast::MetaItem,
+    behind_cfg_attr: &rustc_ast::MetaItem,
+    attr: &Attribute,
+) {
+    if cfg_attr.has_name(sym::clippy)
+        && let Some(ident) = behind_cfg_attr.ident()
+        && Level::from_symbol(ident.name, Some(attr.id)).is_some()
+        && let Some(items) = behind_cfg_attr.meta_item_list()
+    {
+        let nb_items = items.len();
+        let mut clippy_lints = Vec::with_capacity(items.len());
+        for item in items {
+            if let Some(meta_item) = item.meta_item()
+                && let [part1, _] = meta_item.path.segments.as_slice()
+                && part1.ident.name == sym::clippy
+            {
+                clippy_lints.push(item.span());
+            }
+        }
+        if clippy_lints.is_empty() {
+            return;
+        }
+        if nb_items == clippy_lints.len() {
+            if let Some(snippet) = snippet_opt(cx, behind_cfg_attr.span) {
+                span_lint_and_sugg(
+                    cx,
+                    UNNECESSARY_CLIPPY_CFG,
+                    attr.span,
+                    "no need to put clippy lints behind a `clippy` cfg",
+                    "replace with",
+                    format!(
+                        "#{}[{}]",
+                        if attr.style == AttrStyle::Inner { "!" } else { "" },
+                        snippet
+                    ),
+                    Applicability::MachineApplicable,
+                );
+            }
+        } else {
+            let snippet = clippy_lints
+                .iter()
+                .filter_map(|sp| snippet_opt(cx, *sp))
+                .collect::<Vec<_>>()
+                .join(",");
+            span_lint_and_note(
+                cx,
+                UNNECESSARY_CLIPPY_CFG,
+                clippy_lints,
+                "no need to put clippy lints behind a `clippy` cfg",
+                None,
+                &format!(
+                    "write instead: `#{}[{}({})]`",
+                    if attr.style == AttrStyle::Inner { "!" } else { "" },
+                    ident.name,
+                    snippet
+                ),
+            );
+        }
     }
 }
 

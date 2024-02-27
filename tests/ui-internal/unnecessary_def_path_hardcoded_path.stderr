@@ -1,5 +1,5 @@
 error: hardcoded path to a diagnostic item
-  --> $DIR/unnecessary_def_path_hardcoded_path.rs:10:36
+  --> tests/ui-internal/unnecessary_def_path_hardcoded_path.rs:10:36
    |
 LL |     const DEREF_TRAIT: [&str; 4] = ["core", "ops", "deref", "Deref"];
    |                                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -9,7 +9,7 @@ LL |     const DEREF_TRAIT: [&str; 4] = ["core", "ops", "deref", "Deref"];
    = help: to override `-D warnings` add `#[allow(clippy::unnecessary_def_path)]`
 
 error: hardcoded path to a language item
-  --> $DIR/unnecessary_def_path_hardcoded_path.rs:11:40
+  --> tests/ui-internal/unnecessary_def_path_hardcoded_path.rs:11:40
    |
 LL |     const DEREF_MUT_TRAIT: [&str; 4] = ["core", "ops", "deref", "DerefMut"];
    |                                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -17,7 +17,7 @@ LL |     const DEREF_MUT_TRAIT: [&str; 4] = ["core", "ops", "deref", "DerefMut"]
    = help: convert all references to use `LangItem::DerefMut`
 
 error: hardcoded path to a diagnostic item
-  --> $DIR/unnecessary_def_path_hardcoded_path.rs:12:43
+  --> tests/ui-internal/unnecessary_def_path_hardcoded_path.rs:12:43
    |
 LL |     const OPS_MOD: [&str; 5] = ["core", "ops"];
    |                                ^^^^^^^^^^^^^^^

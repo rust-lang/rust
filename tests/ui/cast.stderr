@@ -1,5 +1,5 @@
 error: casting `i32` to `f32` causes a loss of precision (`i32` is 32 bits wide, but `f32`'s mantissa is only 23 bits wide)
-  --> $DIR/cast.rs:16:5
+  --> tests/ui/cast.rs:17:5
    |
 LL |     x0 as f32;
    |     ^^^^^^^^^
@@ -8,37 +8,37 @@ LL |     x0 as f32;
    = help: to override `-D warnings` add `#[allow(clippy::cast_precision_loss)]`
 
 error: casting `i64` to `f32` causes a loss of precision (`i64` is 64 bits wide, but `f32`'s mantissa is only 23 bits wide)
-  --> $DIR/cast.rs:20:5
+  --> tests/ui/cast.rs:21:5
    |
 LL |     x1 as f32;
    |     ^^^^^^^^^
 
 error: casting `i64` to `f64` causes a loss of precision (`i64` is 64 bits wide, but `f64`'s mantissa is only 52 bits wide)
-  --> $DIR/cast.rs:22:5
+  --> tests/ui/cast.rs:23:5
    |
 LL |     x1 as f64;
    |     ^^^^^^^^^
 
 error: casting `u32` to `f32` causes a loss of precision (`u32` is 32 bits wide, but `f32`'s mantissa is only 23 bits wide)
-  --> $DIR/cast.rs:25:5
+  --> tests/ui/cast.rs:26:5
    |
 LL |     x2 as f32;
    |     ^^^^^^^^^
 
 error: casting `u64` to `f32` causes a loss of precision (`u64` is 64 bits wide, but `f32`'s mantissa is only 23 bits wide)
-  --> $DIR/cast.rs:28:5
+  --> tests/ui/cast.rs:29:5
    |
 LL |     x3 as f32;
    |     ^^^^^^^^^
 
 error: casting `u64` to `f64` causes a loss of precision (`u64` is 64 bits wide, but `f64`'s mantissa is only 52 bits wide)
-  --> $DIR/cast.rs:30:5
+  --> tests/ui/cast.rs:31:5
    |
 LL |     x3 as f64;
    |     ^^^^^^^^^
 
 error: casting `f32` to `i32` may truncate the value
-  --> $DIR/cast.rs:33:5
+  --> tests/ui/cast.rs:34:5
    |
 LL |     1f32 as i32;
    |     ^^^^^^^^^^^
@@ -48,7 +48,7 @@ LL |     1f32 as i32;
    = help: to override `-D warnings` add `#[allow(clippy::cast_possible_truncation)]`
 
 error: casting `f32` to `u32` may truncate the value
-  --> $DIR/cast.rs:35:5
+  --> tests/ui/cast.rs:36:5
    |
 LL |     1f32 as u32;
    |     ^^^^^^^^^^^
@@ -56,7 +56,7 @@ LL |     1f32 as u32;
    = help: if this is intentional allow the lint with `#[allow(clippy::cast_possible_truncation)]` ...
 
 error: casting `f32` to `u32` may lose the sign of the value
-  --> $DIR/cast.rs:35:5
+  --> tests/ui/cast.rs:36:5
    |
 LL |     1f32 as u32;
    |     ^^^^^^^^^^^
@@ -65,7 +65,7 @@ LL |     1f32 as u32;
    = help: to override `-D warnings` add `#[allow(clippy::cast_sign_loss)]`
 
 error: casting `f64` to `f32` may truncate the value
-  --> $DIR/cast.rs:39:5
+  --> tests/ui/cast.rs:40:5
    |
 LL |     1f64 as f32;
    |     ^^^^^^^^^^^
@@ -73,7 +73,7 @@ LL |     1f64 as f32;
    = help: if this is intentional allow the lint with `#[allow(clippy::cast_possible_truncation)]` ...
 
 error: casting `i32` to `i8` may truncate the value
-  --> $DIR/cast.rs:41:5
+  --> tests/ui/cast.rs:42:5
    |
 LL |     1i32 as i8;
    |     ^^^^^^^^^^
@@ -85,7 +85,7 @@ LL |     i8::try_from(1i32);
    |     ~~~~~~~~~~~~~~~~~~
 
 error: casting `i32` to `u8` may truncate the value
-  --> $DIR/cast.rs:43:5
+  --> tests/ui/cast.rs:44:5
    |
 LL |     1i32 as u8;
    |     ^^^^^^^^^^
@@ -97,7 +97,7 @@ LL |     u8::try_from(1i32);
    |     ~~~~~~~~~~~~~~~~~~
 
 error: casting `f64` to `isize` may truncate the value
-  --> $DIR/cast.rs:45:5
+  --> tests/ui/cast.rs:46:5
    |
 LL |     1f64 as isize;
    |     ^^^^^^^^^^^^^
@@ -105,7 +105,7 @@ LL |     1f64 as isize;
    = help: if this is intentional allow the lint with `#[allow(clippy::cast_possible_truncation)]` ...
 
 error: casting `f64` to `usize` may truncate the value
-  --> $DIR/cast.rs:47:5
+  --> tests/ui/cast.rs:48:5
    |
 LL |     1f64 as usize;
    |     ^^^^^^^^^^^^^
@@ -113,13 +113,13 @@ LL |     1f64 as usize;
    = help: if this is intentional allow the lint with `#[allow(clippy::cast_possible_truncation)]` ...
 
 error: casting `f64` to `usize` may lose the sign of the value
-  --> $DIR/cast.rs:47:5
+  --> tests/ui/cast.rs:48:5
    |
 LL |     1f64 as usize;
    |     ^^^^^^^^^^^^^
 
 error: casting `u32` to `u16` may truncate the value
-  --> $DIR/cast.rs:50:5
+  --> tests/ui/cast.rs:51:5
    |
 LL |     1f32 as u32 as u16;
    |     ^^^^^^^^^^^^^^^^^^
@@ -131,7 +131,7 @@ LL |     u16::try_from(1f32 as u32);
    |     ~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 error: casting `f32` to `u32` may truncate the value
-  --> $DIR/cast.rs:50:5
+  --> tests/ui/cast.rs:51:5
    |
 LL |     1f32 as u32 as u16;
    |     ^^^^^^^^^^^
@@ -139,13 +139,13 @@ LL |     1f32 as u32 as u16;
    = help: if this is intentional allow the lint with `#[allow(clippy::cast_possible_truncation)]` ...
 
 error: casting `f32` to `u32` may lose the sign of the value
-  --> $DIR/cast.rs:50:5
+  --> tests/ui/cast.rs:51:5
    |
 LL |     1f32 as u32 as u16;
    |     ^^^^^^^^^^^
 
 error: casting `i32` to `i8` may truncate the value
-  --> $DIR/cast.rs:55:22
+  --> tests/ui/cast.rs:56:22
    |
 LL |         let _x: i8 = 1i32 as _;
    |                      ^^^^^^^^^
@@ -157,7 +157,7 @@ LL |         let _x: i8 = 1i32.try_into();
    |                      ~~~~~~~~~~~~~~~
 
 error: casting `f32` to `i32` may truncate the value
-  --> $DIR/cast.rs:57:9
+  --> tests/ui/cast.rs:58:9
    |
 LL |         1f32 as i32;
    |         ^^^^^^^^^^^
@@ -165,7 +165,7 @@ LL |         1f32 as i32;
    = help: if this is intentional allow the lint with `#[allow(clippy::cast_possible_truncation)]` ...
 
 error: casting `f64` to `i32` may truncate the value
-  --> $DIR/cast.rs:59:9
+  --> tests/ui/cast.rs:60:9
    |
 LL |         1f64 as i32;
    |         ^^^^^^^^^^^
@@ -173,7 +173,7 @@ LL |         1f64 as i32;
    = help: if this is intentional allow the lint with `#[allow(clippy::cast_possible_truncation)]` ...
 
 error: casting `f32` to `u8` may truncate the value
-  --> $DIR/cast.rs:61:9
+  --> tests/ui/cast.rs:62:9
    |
 LL |         1f32 as u8;
    |         ^^^^^^^^^^
@@ -181,13 +181,13 @@ LL |         1f32 as u8;
    = help: if this is intentional allow the lint with `#[allow(clippy::cast_possible_truncation)]` ...
 
 error: casting `f32` to `u8` may lose the sign of the value
-  --> $DIR/cast.rs:61:9
+  --> tests/ui/cast.rs:62:9
    |
 LL |         1f32 as u8;
    |         ^^^^^^^^^^
 
 error: casting `u8` to `i8` may wrap around the value
-  --> $DIR/cast.rs:66:5
+  --> tests/ui/cast.rs:67:5
    |
 LL |     1u8 as i8;
    |     ^^^^^^^^^
@@ -196,31 +196,31 @@ LL |     1u8 as i8;
    = help: to override `-D warnings` add `#[allow(clippy::cast_possible_wrap)]`
 
 error: casting `u16` to `i16` may wrap around the value
-  --> $DIR/cast.rs:69:5
+  --> tests/ui/cast.rs:70:5
    |
 LL |     1u16 as i16;
    |     ^^^^^^^^^^^
 
 error: casting `u32` to `i32` may wrap around the value
-  --> $DIR/cast.rs:71:5
+  --> tests/ui/cast.rs:72:5
    |
 LL |     1u32 as i32;
    |     ^^^^^^^^^^^
 
 error: casting `u64` to `i64` may wrap around the value
-  --> $DIR/cast.rs:73:5
+  --> tests/ui/cast.rs:74:5
    |
 LL |     1u64 as i64;
    |     ^^^^^^^^^^^
 
 error: casting `usize` to `isize` may wrap around the value
-  --> $DIR/cast.rs:75:5
+  --> tests/ui/cast.rs:76:5
    |
 LL |     1usize as isize;
    |     ^^^^^^^^^^^^^^^
 
 error: casting `usize` to `i8` may truncate the value
-  --> $DIR/cast.rs:78:5
+  --> tests/ui/cast.rs:79:5
    |
 LL |     1usize as i8;
    |     ^^^^^^^^^^^^
@@ -232,7 +232,7 @@ LL |     i8::try_from(1usize);
    |     ~~~~~~~~~~~~~~~~~~~~
 
 error: casting `usize` to `i16` may truncate the value
-  --> $DIR/cast.rs:81:5
+  --> tests/ui/cast.rs:82:5
    |
 LL |     1usize as i16;
    |     ^^^^^^^^^^^^^
@@ -244,7 +244,7 @@ LL |     i16::try_from(1usize);
    |     ~~~~~~~~~~~~~~~~~~~~~
 
 error: casting `usize` to `i16` may wrap around the value on targets with 16-bit wide pointers
-  --> $DIR/cast.rs:81:5
+  --> tests/ui/cast.rs:82:5
    |
 LL |     1usize as i16;
    |     ^^^^^^^^^^^^^
@@ -253,7 +253,7 @@ LL |     1usize as i16;
    = note: for more information see https://doc.rust-lang.org/reference/types/numeric.html#machine-dependent-integer-types
 
 error: casting `usize` to `i32` may truncate the value on targets with 64-bit wide pointers
-  --> $DIR/cast.rs:86:5
+  --> tests/ui/cast.rs:87:5
    |
 LL |     1usize as i32;
    |     ^^^^^^^^^^^^^
@@ -265,19 +265,19 @@ LL |     i32::try_from(1usize);
    |     ~~~~~~~~~~~~~~~~~~~~~
 
 error: casting `usize` to `i32` may wrap around the value on targets with 32-bit wide pointers
-  --> $DIR/cast.rs:86:5
+  --> tests/ui/cast.rs:87:5
    |
 LL |     1usize as i32;
    |     ^^^^^^^^^^^^^
 
 error: casting `usize` to `i64` may wrap around the value on targets with 64-bit wide pointers
-  --> $DIR/cast.rs:90:5
+  --> tests/ui/cast.rs:91:5
    |
 LL |     1usize as i64;
    |     ^^^^^^^^^^^^^
 
 error: casting `u16` to `isize` may wrap around the value on targets with 16-bit wide pointers
-  --> $DIR/cast.rs:95:5
+  --> tests/ui/cast.rs:96:5
    |
 LL |     1u16 as isize;
    |     ^^^^^^^^^^^^^
@@ -286,13 +286,13 @@ LL |     1u16 as isize;
    = note: for more information see https://doc.rust-lang.org/reference/types/numeric.html#machine-dependent-integer-types
 
 error: casting `u32` to `isize` may wrap around the value on targets with 32-bit wide pointers
-  --> $DIR/cast.rs:99:5
+  --> tests/ui/cast.rs:100:5
    |
 LL |     1u32 as isize;
    |     ^^^^^^^^^^^^^
 
 error: casting `u64` to `isize` may truncate the value on targets with 32-bit wide pointers
-  --> $DIR/cast.rs:102:5
+  --> tests/ui/cast.rs:103:5
    |
 LL |     1u64 as isize;
    |     ^^^^^^^^^^^^^
@@ -304,25 +304,55 @@ LL |     isize::try_from(1u64);
    |     ~~~~~~~~~~~~~~~~~~~~~
 
 error: casting `u64` to `isize` may wrap around the value on targets with 64-bit wide pointers
-  --> $DIR/cast.rs:102:5
+  --> tests/ui/cast.rs:103:5
    |
 LL |     1u64 as isize;
    |     ^^^^^^^^^^^^^
 
 error: casting `i32` to `u32` may lose the sign of the value
-  --> $DIR/cast.rs:107:5
+  --> tests/ui/cast.rs:108:5
    |
 LL |     -1i32 as u32;
    |     ^^^^^^^^^^^^
 
 error: casting `isize` to `usize` may lose the sign of the value
-  --> $DIR/cast.rs:110:5
+  --> tests/ui/cast.rs:111:5
    |
 LL |     -1isize as usize;
    |     ^^^^^^^^^^^^^^^^
 
+error: casting `i8` to `u8` may lose the sign of the value
+  --> tests/ui/cast.rs:122:5
+   |
+LL |     (i8::MIN).abs() as u8;
+   |     ^^^^^^^^^^^^^^^^^^^^^
+
+error: casting `i64` to `u64` may lose the sign of the value
+  --> tests/ui/cast.rs:126:5
+   |
+LL |     (-1i64).abs() as u64;
+   |     ^^^^^^^^^^^^^^^^^^^^
+
+error: casting `isize` to `usize` may lose the sign of the value
+  --> tests/ui/cast.rs:127:5
+   |
+LL |     (-1isize).abs() as usize;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: casting `i64` to `u64` may lose the sign of the value
+  --> tests/ui/cast.rs:134:5
+   |
+LL |     (unsafe { (-1i64).checked_abs().unwrap_unchecked() }) as u64;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: casting `i64` to `u64` may lose the sign of the value
+  --> tests/ui/cast.rs:149:5
+   |
+LL |     (unsafe { (-1i64).checked_isqrt().unwrap_unchecked() }) as u64;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
 error: casting `i64` to `i8` may truncate the value
-  --> $DIR/cast.rs:179:5
+  --> tests/ui/cast.rs:200:5
    |
 LL |     (-99999999999i64).min(1) as i8;
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -334,7 +364,7 @@ LL |     i8::try_from((-99999999999i64).min(1));
    |     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 error: casting `u64` to `u8` may truncate the value
-  --> $DIR/cast.rs:193:5
+  --> tests/ui/cast.rs:214:5
    |
 LL |     999999u64.clamp(0, 256) as u8;
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -346,7 +376,7 @@ LL |     u8::try_from(999999u64.clamp(0, 256));
    |     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 error: casting `main::E2` to `u8` may truncate the value
-  --> $DIR/cast.rs:216:21
+  --> tests/ui/cast.rs:237:21
    |
 LL |             let _ = self as u8;
    |                     ^^^^^^^^^^
@@ -358,7 +388,7 @@ LL |             let _ = u8::try_from(self);
    |                     ~~~~~~~~~~~~~~~~~~
 
 error: casting `main::E2::B` to `u8` will truncate the value
-  --> $DIR/cast.rs:218:21
+  --> tests/ui/cast.rs:239:21
    |
 LL |             let _ = Self::B as u8;
    |                     ^^^^^^^^^^^^^
@@ -367,7 +397,7 @@ LL |             let _ = Self::B as u8;
    = help: to override `-D warnings` add `#[allow(clippy::cast_enum_truncation)]`
 
 error: casting `main::E5` to `i8` may truncate the value
-  --> $DIR/cast.rs:260:21
+  --> tests/ui/cast.rs:281:21
    |
 LL |             let _ = self as i8;
    |                     ^^^^^^^^^^
@@ -379,13 +409,13 @@ LL |             let _ = i8::try_from(self);
    |                     ~~~~~~~~~~~~~~~~~~
 
 error: casting `main::E5::A` to `i8` will truncate the value
-  --> $DIR/cast.rs:262:21
+  --> tests/ui/cast.rs:283:21
    |
 LL |             let _ = Self::A as i8;
    |                     ^^^^^^^^^^^^^
 
 error: casting `main::E6` to `i16` may truncate the value
-  --> $DIR/cast.rs:279:21
+  --> tests/ui/cast.rs:300:21
    |
 LL |             let _ = self as i16;
    |                     ^^^^^^^^^^^
@@ -397,7 +427,7 @@ LL |             let _ = i16::try_from(self);
    |                     ~~~~~~~~~~~~~~~~~~~
 
 error: casting `main::E7` to `usize` may truncate the value on targets with 32-bit wide pointers
-  --> $DIR/cast.rs:298:21
+  --> tests/ui/cast.rs:319:21
    |
 LL |             let _ = self as usize;
    |                     ^^^^^^^^^^^^^
@@ -409,7 +439,7 @@ LL |             let _ = usize::try_from(self);
    |                     ~~~~~~~~~~~~~~~~~~~~~
 
 error: casting `main::E10` to `u16` may truncate the value
-  --> $DIR/cast.rs:345:21
+  --> tests/ui/cast.rs:366:21
    |
 LL |             let _ = self as u16;
    |                     ^^^^^^^^^^^
@@ -421,7 +451,7 @@ LL |             let _ = u16::try_from(self);
    |                     ~~~~~~~~~~~~~~~~~~~
 
 error: casting `u32` to `u8` may truncate the value
-  --> $DIR/cast.rs:356:13
+  --> tests/ui/cast.rs:377:13
    |
 LL |     let c = (q >> 16) as u8;
    |             ^^^^^^^^^^^^^^^
@@ -433,7 +463,7 @@ LL |     let c = u8::try_from(q >> 16);
    |             ~~~~~~~~~~~~~~~~~~~~~
 
 error: casting `u32` to `u8` may truncate the value
-  --> $DIR/cast.rs:360:13
+  --> tests/ui/cast.rs:381:13
    |
 LL |     let c = (q / 1000) as u8;
    |             ^^^^^^^^^^^^^^^^
@@ -445,76 +475,180 @@ LL |     let c = u8::try_from(q / 1000);
    |             ~~~~~~~~~~~~~~~~~~~~~~
 
 error: casting `i32` to `u32` may lose the sign of the value
-  --> $DIR/cast.rs:379:5
+  --> tests/ui/cast.rs:393:9
+   |
+LL |         (x * x) as u32;
+   |         ^^^^^^^^^^^^^^
+
+error: casting `i32` to `u32` may lose the sign of the value
+  --> tests/ui/cast.rs:398:32
+   |
+LL |     let _a = |x: i32| -> u32 { (x * x * x * x) as u32 };
+   |                                ^^^^^^^^^^^^^^^^^^^^^^
+
+error: casting `i32` to `u32` may lose the sign of the value
+  --> tests/ui/cast.rs:400:5
+   |
+LL |     (2_i32).checked_pow(3).unwrap() as u32;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: casting `i32` to `u32` may lose the sign of the value
+  --> tests/ui/cast.rs:401:5
    |
 LL |     (-2_i32).pow(3) as u32;
    |     ^^^^^^^^^^^^^^^^^^^^^^
 
 error: casting `i32` to `u32` may lose the sign of the value
-  --> $DIR/cast.rs:384:5
+  --> tests/ui/cast.rs:406:5
+   |
+LL |     (-5_i32 % 2) as u32;
+   |     ^^^^^^^^^^^^^^^^^^^
+
+error: casting `i32` to `u32` may lose the sign of the value
+  --> tests/ui/cast.rs:408:5
+   |
+LL |     (-5_i32 % -2) as u32;
+   |     ^^^^^^^^^^^^^^^^^^^^
+
+error: casting `i32` to `u32` may lose the sign of the value
+  --> tests/ui/cast.rs:411:5
+   |
+LL |     (-2_i32 >> 1) as u32;
+   |     ^^^^^^^^^^^^^^^^^^^^
+
+error: casting `i32` to `u32` may lose the sign of the value
+  --> tests/ui/cast.rs:415:5
+   |
+LL |     (x * x) as u32;
+   |     ^^^^^^^^^^^^^^
+
+error: casting `i32` to `u32` may lose the sign of the value
+  --> tests/ui/cast.rs:416:5
    |
 LL |     (x * x * x) as u32;
    |     ^^^^^^^^^^^^^^^^^^
 
 error: casting `i16` to `u16` may lose the sign of the value
-  --> $DIR/cast.rs:388:5
+  --> tests/ui/cast.rs:420:5
    |
 LL |     (y * y * y * y * -2) as u16;
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: casting `i16` to `u16` may lose the sign of the value
-  --> $DIR/cast.rs:391:5
+  --> tests/ui/cast.rs:422:5
    |
-LL |     (y * y * y * 2) as u16;
+LL |     (y * y * y / y * 2) as u16;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: casting `i16` to `u16` may lose the sign of the value
+  --> tests/ui/cast.rs:423:5
+   |
+LL |     (y * y / y * 2) as u16;
    |     ^^^^^^^^^^^^^^^^^^^^^^
 
 error: casting `i16` to `u16` may lose the sign of the value
-  --> $DIR/cast.rs:393:5
+  --> tests/ui/cast.rs:425:5
    |
-LL |     (y * y * y * -2) as u16;
+LL |     (y / y * y * -2) as u16;
    |     ^^^^^^^^^^^^^^^^^^^^^^^
 
+error: equal expressions as operands to `/`
+  --> tests/ui/cast.rs:425:6
+   |
+LL |     (y / y * y * -2) as u16;
+   |      ^^^^^
+   |
+   = note: `#[deny(clippy::eq_op)]` on by default
+
+error: casting `i16` to `u16` may lose the sign of the value
+  --> tests/ui/cast.rs:428:5
+   |
+LL |     (y + y + y + -2) as u16;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^
+
+error: casting `i16` to `u16` may lose the sign of the value
+  --> tests/ui/cast.rs:430:5
+   |
+LL |     (y + y + y + 2) as u16;
+   |     ^^^^^^^^^^^^^^^^^^^^^^
+
+error: casting `i16` to `u16` may lose the sign of the value
+  --> tests/ui/cast.rs:434:5
+   |
+LL |     (z + -2) as u16;
+   |     ^^^^^^^^^^^^^^^
+
+error: casting `i16` to `u16` may lose the sign of the value
+  --> tests/ui/cast.rs:436:5
+   |
+LL |     (z + z + 2) as u16;
+   |     ^^^^^^^^^^^^^^^^^^
+
 error: casting `i32` to `u32` may lose the sign of the value
-  --> $DIR/cast.rs:398:9
+  --> tests/ui/cast.rs:439:9
+   |
+LL |         (a * a * b * b * c * c) as u32;
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: casting `i32` to `u32` may lose the sign of the value
+  --> tests/ui/cast.rs:440:9
    |
 LL |         (a * b * c) as u32;
    |         ^^^^^^^^^^^^^^^^^^
 
 error: casting `i32` to `u32` may lose the sign of the value
-  --> $DIR/cast.rs:400:9
+  --> tests/ui/cast.rs:442:9
    |
 LL |         (a * -b * c) as u32;
    |         ^^^^^^^^^^^^^^^^^^^
 
 error: casting `i32` to `u32` may lose the sign of the value
-  --> $DIR/cast.rs:403:9
+  --> tests/ui/cast.rs:444:9
+   |
+LL |         (a * b * c * c) as u32;
+   |         ^^^^^^^^^^^^^^^^^^^^^^
+
+error: casting `i32` to `u32` may lose the sign of the value
+  --> tests/ui/cast.rs:445:9
    |
 LL |         (a * -2) as u32;
    |         ^^^^^^^^^^^^^^^
 
 error: casting `i32` to `u32` may lose the sign of the value
-  --> $DIR/cast.rs:405:9
+  --> tests/ui/cast.rs:447:9
    |
 LL |         (a * b * c * -2) as u32;
    |         ^^^^^^^^^^^^^^^^^^^^^^^
 
 error: casting `i32` to `u32` may lose the sign of the value
-  --> $DIR/cast.rs:408:9
+  --> tests/ui/cast.rs:449:9
+   |
+LL |         (a / b) as u32;
+   |         ^^^^^^^^^^^^^^
+
+error: casting `i32` to `u32` may lose the sign of the value
+  --> tests/ui/cast.rs:450:9
    |
 LL |         (a / b * c) as u32;
    |         ^^^^^^^^^^^^^^^^^^
 
 error: casting `i32` to `u32` may lose the sign of the value
-  --> $DIR/cast.rs:410:9
+  --> tests/ui/cast.rs:452:9
    |
 LL |         (a / b + b * c) as u32;
    |         ^^^^^^^^^^^^^^^^^^^^^^
 
 error: casting `i32` to `u32` may lose the sign of the value
-  --> $DIR/cast.rs:412:9
+  --> tests/ui/cast.rs:454:9
    |
-LL |         a.pow(3) as u32;
-   |         ^^^^^^^^^^^^^^^
+LL |         a.saturating_pow(3) as u32;
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: aborting due to 63 previous errors
+error: casting `i32` to `u32` may lose the sign of the value
+  --> tests/ui/cast.rs:456:9
+   |
+LL |         (a.abs() * b.pow(2) / c.abs()) as u32
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 85 previous errors
 

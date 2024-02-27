@@ -1,5 +1,5 @@
 error: statement with no effect
-  --> $DIR/no_effect_return.rs:9:9
+  --> tests/ui/no_effect_return.rs:9:9
    |
 LL |         0u32;
    |         -^^^^
@@ -10,7 +10,7 @@ LL |         0u32;
    = help: to override `-D warnings` add `#[allow(clippy::no_effect)]`
 
 error: statement with no effect
-  --> $DIR/no_effect_return.rs:18:9
+  --> tests/ui/no_effect_return.rs:18:9
    |
 LL |         0u32;
    |         -^^^^
@@ -18,7 +18,7 @@ LL |         0u32;
    |         help: did you mean to return it?: `return`
 
 error: statement with no effect
-  --> $DIR/no_effect_return.rs:27:9
+  --> tests/ui/no_effect_return.rs:27:9
    |
 LL |         0i32 as C;
    |         -^^^^^^^^^
@@ -26,19 +26,19 @@ LL |         0i32 as C;
    |         help: did you mean to return it?: `return`
 
 error: statement with no effect
-  --> $DIR/no_effect_return.rs:36:9
+  --> tests/ui/no_effect_return.rs:36:9
    |
 LL |         0u128;
    |         ^^^^^^
 
 error: statement with no effect
-  --> $DIR/no_effect_return.rs:46:9
+  --> tests/ui/no_effect_return.rs:46:9
    |
 LL |         0u16;
    |         ^^^^^
 
 error: statement with no effect
-  --> $DIR/no_effect_return.rs:54:9
+  --> tests/ui/no_effect_return.rs:54:9
    |
 LL |         [1u16];
    |         -^^^^^^
@@ -46,7 +46,7 @@ LL |         [1u16];
    |         help: did you mean to return it?: `return`
 
 error: statement with no effect
-  --> $DIR/no_effect_return.rs:62:9
+  --> tests/ui/no_effect_return.rs:62:9
    |
 LL |         ControlFlow::Break::<()>(());
    |         -^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -54,13 +54,13 @@ LL |         ControlFlow::Break::<()>(());
    |         help: did you mean to return it?: `return`
 
 error: statement with no effect
-  --> $DIR/no_effect_return.rs:80:9
+  --> tests/ui/no_effect_return.rs:80:9
    |
 LL |         ();
    |         ^^^
 
 error: statement with no effect
-  --> $DIR/no_effect_return.rs:89:9
+  --> tests/ui/no_effect_return.rs:89:9
    |
 LL |         ();
    |         ^^^

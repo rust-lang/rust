@@ -1,5 +1,5 @@
 error: missing documentation for a function
-  --> $DIR/pub_crate_missing_doc.rs:13:5
+  --> tests/ui-toml/pub_crate_missing_docs/pub_crate_missing_doc.rs:13:5
    |
 LL |     pub(crate) fn crate_no_docs() {}
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -8,25 +8,25 @@ LL |     pub(crate) fn crate_no_docs() {}
    = help: to override `-D warnings` add `#[allow(clippy::missing_docs_in_private_items)]`
 
 error: missing documentation for a function
-  --> $DIR/pub_crate_missing_doc.rs:16:5
+  --> tests/ui-toml/pub_crate_missing_docs/pub_crate_missing_doc.rs:16:5
    |
 LL |     pub(super) fn super_no_docs() {}
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: missing documentation for a function
-  --> $DIR/pub_crate_missing_doc.rs:24:9
+  --> tests/ui-toml/pub_crate_missing_docs/pub_crate_missing_doc.rs:24:9
    |
 LL |         pub(crate) fn sub_crate_no_docs() {}
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: missing documentation for a struct field
-  --> $DIR/pub_crate_missing_doc.rs:34:9
+  --> tests/ui-toml/pub_crate_missing_docs/pub_crate_missing_doc.rs:34:9
    |
 LL |         pub(crate) crate_field_no_docs: (),
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: missing documentation for a struct
-  --> $DIR/pub_crate_missing_doc.rs:40:5
+  --> tests/ui-toml/pub_crate_missing_docs/pub_crate_missing_doc.rs:40:5
    |
 LL | /     pub(crate) struct CrateStructNoDocs {
 LL | |         /// some docs
@@ -38,13 +38,13 @@ LL | |     }
    | |_____^
 
 error: missing documentation for a struct field
-  --> $DIR/pub_crate_missing_doc.rs:43:9
+  --> tests/ui-toml/pub_crate_missing_docs/pub_crate_missing_doc.rs:43:9
    |
 LL |         pub(crate) crate_field_no_docs: (),
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: missing documentation for a type alias
-  --> $DIR/pub_crate_missing_doc.rs:52:1
+  --> tests/ui-toml/pub_crate_missing_docs/pub_crate_missing_doc.rs:52:1
    |
 LL | type CrateTypedefNoDocs = String;
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

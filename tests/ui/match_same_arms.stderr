@@ -1,12 +1,12 @@
 error: this match arm has an identical body to the `_` wildcard arm
-  --> $DIR/match_same_arms.rs:12:9
+  --> tests/ui/match_same_arms.rs:12:9
    |
 LL |         Abc::A => 0,
    |         ^^^^^^^^^^^ help: try removing the arm
    |
    = help: or try changing either arm body
 note: `_` wildcard arm here
-  --> $DIR/match_same_arms.rs:14:9
+  --> tests/ui/match_same_arms.rs:14:9
    |
 LL |         _ => 0,
    |         ^^^^^^
@@ -14,7 +14,7 @@ LL |         _ => 0,
    = help: to override `-D warnings` add `#[allow(clippy::match_same_arms)]`
 
 error: this match arm has an identical body to another arm
-  --> $DIR/match_same_arms.rs:18:9
+  --> tests/ui/match_same_arms.rs:18:9
    |
 LL |         (1, .., 3) => 42,
    |         ----------^^^^^^
@@ -23,13 +23,13 @@ LL |         (1, .., 3) => 42,
    |
    = help: or try changing either arm body
 note: other arm here
-  --> $DIR/match_same_arms.rs:19:9
+  --> tests/ui/match_same_arms.rs:19:9
    |
 LL |         (.., 3) => 42,
    |         ^^^^^^^^^^^^^
 
 error: this match arm has an identical body to another arm
-  --> $DIR/match_same_arms.rs:25:9
+  --> tests/ui/match_same_arms.rs:25:9
    |
 LL |         51 => 1,
    |         --^^^^^
@@ -38,13 +38,13 @@ LL |         51 => 1,
    |
    = help: or try changing either arm body
 note: other arm here
-  --> $DIR/match_same_arms.rs:24:9
+  --> tests/ui/match_same_arms.rs:24:9
    |
 LL |         42 => 1,
    |         ^^^^^^^
 
 error: this match arm has an identical body to another arm
-  --> $DIR/match_same_arms.rs:26:9
+  --> tests/ui/match_same_arms.rs:26:9
    |
 LL |         41 => 2,
    |         --^^^^^
@@ -53,13 +53,13 @@ LL |         41 => 2,
    |
    = help: or try changing either arm body
 note: other arm here
-  --> $DIR/match_same_arms.rs:27:9
+  --> tests/ui/match_same_arms.rs:27:9
    |
 LL |         52 => 2,
    |         ^^^^^^^
 
 error: this match arm has an identical body to another arm
-  --> $DIR/match_same_arms.rs:33:9
+  --> tests/ui/match_same_arms.rs:33:9
    |
 LL |         2 => 2,
    |         -^^^^^
@@ -68,13 +68,13 @@ LL |         2 => 2,
    |
    = help: or try changing either arm body
 note: other arm here
-  --> $DIR/match_same_arms.rs:32:9
+  --> tests/ui/match_same_arms.rs:32:9
    |
 LL |         1 => 2,
    |         ^^^^^^
 
 error: this match arm has an identical body to another arm
-  --> $DIR/match_same_arms.rs:35:9
+  --> tests/ui/match_same_arms.rs:35:9
    |
 LL |         3 => 2,
    |         -^^^^^
@@ -83,13 +83,13 @@ LL |         3 => 2,
    |
    = help: or try changing either arm body
 note: other arm here
-  --> $DIR/match_same_arms.rs:32:9
+  --> tests/ui/match_same_arms.rs:32:9
    |
 LL |         1 => 2,
    |         ^^^^^^
 
 error: this match arm has an identical body to another arm
-  --> $DIR/match_same_arms.rs:33:9
+  --> tests/ui/match_same_arms.rs:33:9
    |
 LL |         2 => 2,
    |         -^^^^^
@@ -98,13 +98,13 @@ LL |         2 => 2,
    |
    = help: or try changing either arm body
 note: other arm here
-  --> $DIR/match_same_arms.rs:35:9
+  --> tests/ui/match_same_arms.rs:35:9
    |
 LL |         3 => 2,
    |         ^^^^^^
 
 error: this match arm has an identical body to another arm
-  --> $DIR/match_same_arms.rs:52:17
+  --> tests/ui/match_same_arms.rs:52:17
    |
 LL |                 CommandInfo::External { name, .. } => name.to_string(),
    |                 ----------------------------------^^^^^^^^^^^^^^^^^^^^
@@ -113,7 +113,7 @@ LL |                 CommandInfo::External { name, .. } => name.to_string(),
    |
    = help: or try changing either arm body
 note: other arm here
-  --> $DIR/match_same_arms.rs:51:17
+  --> tests/ui/match_same_arms.rs:51:17
    |
 LL |                 CommandInfo::BuiltIn { name, .. } => name.to_string(),
    |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

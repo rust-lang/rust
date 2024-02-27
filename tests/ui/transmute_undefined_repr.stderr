@@ -1,5 +1,5 @@
 error: transmute from `Ty2<u32, i32>` which has an undefined layout
-  --> $DIR/transmute_undefined_repr.rs:29:33
+  --> tests/ui/transmute_undefined_repr.rs:29:33
    |
 LL |         let _: Ty2C<u32, i32> = transmute(value::<Ty2<u32, i32>>());
    |                                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -8,13 +8,13 @@ LL |         let _: Ty2C<u32, i32> = transmute(value::<Ty2<u32, i32>>());
    = help: to override `-D warnings` add `#[allow(clippy::transmute_undefined_repr)]`
 
 error: transmute into `Ty2<u32, i32>` which has an undefined layout
-  --> $DIR/transmute_undefined_repr.rs:33:32
+  --> tests/ui/transmute_undefined_repr.rs:33:32
    |
 LL |         let _: Ty2<u32, i32> = transmute(value::<Ty2C<u32, i32>>());
    |                                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: transmute from `Ty<Ty2<u32, i32>>` to `Ty2<u32, f32>`, both of which have an undefined layout
-  --> $DIR/transmute_undefined_repr.rs:42:32
+  --> tests/ui/transmute_undefined_repr.rs:42:32
    |
 LL |         let _: Ty2<u32, f32> = transmute(value::<Ty<Ty2<u32, i32>>>());
    |                                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -22,7 +22,7 @@ LL |         let _: Ty2<u32, f32> = transmute(value::<Ty<Ty2<u32, i32>>>());
    = note: two instances of the same generic type (`Ty2`) may have different layouts
 
 error: transmute from `Ty2<u32, f32>` to `Ty<Ty2<u32, i32>>`, both of which have an undefined layout
-  --> $DIR/transmute_undefined_repr.rs:46:36
+  --> tests/ui/transmute_undefined_repr.rs:46:36
    |
 LL |         let _: Ty<Ty2<u32, i32>> = transmute(value::<Ty2<u32, f32>>());
    |                                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -30,7 +30,7 @@ LL |         let _: Ty<Ty2<u32, i32>> = transmute(value::<Ty2<u32, f32>>());
    = note: two instances of the same generic type (`Ty2`) may have different layouts
 
 error: transmute from `Ty<&Ty2<u32, i32>>` to `&Ty2<u32, f32>`, both of which have an undefined layout
-  --> $DIR/transmute_undefined_repr.rs:54:33
+  --> tests/ui/transmute_undefined_repr.rs:54:33
    |
 LL |         let _: &Ty2<u32, f32> = transmute(value::<Ty<&Ty2<u32, i32>>>());
    |                                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -38,7 +38,7 @@ LL |         let _: &Ty2<u32, f32> = transmute(value::<Ty<&Ty2<u32, i32>>>());
    = note: two instances of the same generic type (`Ty2`) may have different layouts
 
 error: transmute from `&Ty2<u32, f32>` to `Ty<&Ty2<u32, i32>>`, both of which have an undefined layout
-  --> $DIR/transmute_undefined_repr.rs:58:37
+  --> tests/ui/transmute_undefined_repr.rs:58:37
    |
 LL |         let _: Ty<&Ty2<u32, i32>> = transmute(value::<&Ty2<u32, f32>>());
    |                                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -46,7 +46,7 @@ LL |         let _: Ty<&Ty2<u32, i32>> = transmute(value::<&Ty2<u32, f32>>());
    = note: two instances of the same generic type (`Ty2`) may have different layouts
 
 error: transmute from `std::boxed::Box<Ty2<u32, u32>>` to `&mut Ty2<u32, f32>`, both of which have an undefined layout
-  --> $DIR/transmute_undefined_repr.rs:88:45
+  --> tests/ui/transmute_undefined_repr.rs:88:45
    |
 LL |         let _: &'static mut Ty2<u32, f32> = transmute(value::<Box<Ty2<u32, u32>>>());
    |                                             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -54,7 +54,7 @@ LL |         let _: &'static mut Ty2<u32, f32> = transmute(value::<Box<Ty2<u32, 
    = note: two instances of the same generic type (`Ty2`) may have different layouts
 
 error: transmute from `&mut Ty2<u32, f32>` to `std::boxed::Box<Ty2<u32, u32>>`, both of which have an undefined layout
-  --> $DIR/transmute_undefined_repr.rs:92:37
+  --> tests/ui/transmute_undefined_repr.rs:92:37
    |
 LL |         let _: Box<Ty2<u32, u32>> = transmute(value::<&'static mut Ty2<u32, f32>>());
    |                                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -62,7 +62,7 @@ LL |         let _: Box<Ty2<u32, u32>> = transmute(value::<&'static mut Ty2<u32,
    = note: two instances of the same generic type (`Ty2`) may have different layouts
 
 error: transmute into `*const Ty2<u32, u32>` which has an undefined layout
-  --> $DIR/transmute_undefined_repr.rs:189:39
+  --> tests/ui/transmute_undefined_repr.rs:189:39
    |
 LL |         let _: *const Ty2<u32, u32> = transmute(value::<*const Ty2C<u32, Ty2<u32, u32>>>());
    |                                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -70,7 +70,7 @@ LL |         let _: *const Ty2<u32, u32> = transmute(value::<*const Ty2C<u32, Ty
    = note: the contained type `Ty2<u32, u32>` has an undefined layout
 
 error: transmute from `*const Ty2<u32, u32>` which has an undefined layout
-  --> $DIR/transmute_undefined_repr.rs:193:50
+  --> tests/ui/transmute_undefined_repr.rs:193:50
    |
 LL |         let _: *const Ty2C<u32, Ty2<u32, u32>> = transmute(value::<*const Ty2<u32, u32>>());
    |                                                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -78,7 +78,7 @@ LL |         let _: *const Ty2C<u32, Ty2<u32, u32>> = transmute(value::<*const T
    = note: the contained type `Ty2<u32, u32>` has an undefined layout
 
 error: transmute from `std::vec::Vec<Ty2<U, i32>>` to `std::vec::Vec<Ty2<T, u32>>`, both of which have an undefined layout
-  --> $DIR/transmute_undefined_repr.rs:240:35
+  --> tests/ui/transmute_undefined_repr.rs:240:35
    |
 LL |         let _: Vec<Ty2<T, u32>> = transmute(value::<Vec<Ty2<U, i32>>>());
    |                                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -86,7 +86,7 @@ LL |         let _: Vec<Ty2<T, u32>> = transmute(value::<Vec<Ty2<U, i32>>>());
    = note: two instances of the same generic type (`Vec`) may have different layouts
 
 error: transmute from `std::vec::Vec<Ty2<T, u32>>` to `std::vec::Vec<Ty2<U, i32>>`, both of which have an undefined layout
-  --> $DIR/transmute_undefined_repr.rs:244:35
+  --> tests/ui/transmute_undefined_repr.rs:244:35
    |
 LL |         let _: Vec<Ty2<U, i32>> = transmute(value::<Vec<Ty2<T, u32>>>());
    |                                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

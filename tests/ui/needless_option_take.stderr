@@ -1,5 +1,5 @@
 error: called `Option::take()` on a temporary value
-  --> $DIR/needless_option_take.rs:12:5
+  --> tests/ui/needless_option_take.rs:12:5
    |
 LL |     x.as_ref().take();
    |     ^^^^^^^^^^^^^^^^^ help: try: `x.as_ref()`

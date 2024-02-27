@@ -1,6 +1,6 @@
 use clippy_config::types::PubUnderscoreFieldsBehaviour;
 use clippy_utils::attrs::is_doc_hidden;
-use clippy_utils::diagnostics::span_lint_and_help;
+use clippy_utils::diagnostics::span_lint_hir_and_then;
 use clippy_utils::is_path_lang_item;
 use rustc_hir::{FieldDef, Item, ItemKind, LangItem};
 use rustc_lint::{LateContext, LateLintPass};
@@ -69,13 +69,15 @@ impl<'tcx> LateLintPass<'tcx> for PubUnderscoreFields {
                 // We ignore fields that are `PhantomData`.
                 && !is_path_lang_item(cx, field.ty, LangItem::PhantomData)
             {
-                span_lint_and_help(
+                span_lint_hir_and_then(
                     cx,
                     PUB_UNDERSCORE_FIELDS,
+                    field.hir_id,
                     field.vis_span.to(field.ident.span),
                     "field marked as public but also inferred as unused because it's prefixed with `_`",
-                    None,
-                    "consider removing the underscore, or making the field private",
+                    |diag| {
+                        diag.help("consider removing the underscore, or making the field private");
+                    },
                 );
             }
         }

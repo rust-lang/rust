@@ -1,11 +1,11 @@
 use clippy_utils::diagnostics::span_lint_and_then;
-use clippy_utils::path_to_local;
 use clippy_utils::source::snippet;
 use clippy_utils::visitors::{for_each_expr, is_local_used};
+use clippy_utils::{in_constant, path_to_local};
 use rustc_ast::{BorrowKind, LitKind};
 use rustc_errors::Applicability;
 use rustc_hir::def::{DefKind, Res};
-use rustc_hir::{Arm, BinOpKind, Expr, ExprKind, MatchSource, Node, Pat, PatKind};
+use rustc_hir::{Arm, BinOpKind, Expr, ExprKind, MatchSource, Node, Pat, PatKind, UnOp};
 use rustc_lint::LateContext;
 use rustc_span::symbol::Ident;
 use rustc_span::{Span, Symbol};
@@ -123,7 +123,7 @@ fn check_method_calls<'tcx>(
         // `s if s.is_empty()` becomes ""
         // `arr if arr.is_empty()` becomes []
 
-        if ty.is_str() {
+        if ty.is_str() && !in_constant(cx, if_expr.hir_id) {
             r#""""#.into()
         } else if slice_like {
             "[]".into()
@@ -269,7 +269,11 @@ fn expr_can_be_pat(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
                     Res::Def(DefKind::Struct | DefKind::Enum | DefKind::Ctor(..), ..),
                 )
             },
-            ExprKind::AddrOf(..) | ExprKind::Array(..) | ExprKind::Tup(..) | ExprKind::Struct(..) => true,
+            ExprKind::AddrOf(..)
+            | ExprKind::Array(..)
+            | ExprKind::Tup(..)
+            | ExprKind::Struct(..)
+            | ExprKind::Unary(UnOp::Neg, _) => true,
             ExprKind::Lit(lit) if !matches!(lit.node, LitKind::Float(..)) => true,
             _ => false,
         } {

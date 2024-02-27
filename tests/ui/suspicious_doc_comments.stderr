@@ -1,5 +1,5 @@
 error: this is an outer doc comment and does not apply to the parent module or crate
-  --> $DIR/suspicious_doc_comments.rs:5:1
+  --> tests/ui/suspicious_doc_comments.rs:5:1
    |
 LL | ///! Fake module documentation.
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -12,7 +12,7 @@ LL | //! Fake module documentation.
    |
 
 error: this is an outer doc comment and does not apply to the parent module or crate
-  --> $DIR/suspicious_doc_comments.rs:9:5
+  --> tests/ui/suspicious_doc_comments.rs:9:5
    |
 LL |     ///! This module contains useful functions.
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -23,7 +23,7 @@ LL |     //! This module contains useful functions.
    |
 
 error: this is an outer doc comment and does not apply to the parent module or crate
-  --> $DIR/suspicious_doc_comments.rs:21:5
+  --> tests/ui/suspicious_doc_comments.rs:21:5
    |
 LL | /     /**! This module contains useful functions.
 LL | |      */
@@ -36,7 +36,7 @@ LL +      */
    |
 
 error: this is an outer doc comment and does not apply to the parent module or crate
-  --> $DIR/suspicious_doc_comments.rs:35:5
+  --> tests/ui/suspicious_doc_comments.rs:35:5
    |
 LL | /     ///! This module
 LL | |     ///! contains
@@ -51,7 +51,7 @@ LL ~     //! useful functions.
    |
 
 error: this is an outer doc comment and does not apply to the parent module or crate
-  --> $DIR/suspicious_doc_comments.rs:43:5
+  --> tests/ui/suspicious_doc_comments.rs:43:5
    |
 LL | /     ///! a
 LL | |     ///! b
@@ -64,7 +64,7 @@ LL ~     //! b
    |
 
 error: this is an outer doc comment and does not apply to the parent module or crate
-  --> $DIR/suspicious_doc_comments.rs:51:5
+  --> tests/ui/suspicious_doc_comments.rs:51:5
    |
 LL |     ///! a
    |     ^^^^^^
@@ -75,7 +75,7 @@ LL |     //! a
    |
 
 error: this is an outer doc comment and does not apply to the parent module or crate
-  --> $DIR/suspicious_doc_comments.rs:57:5
+  --> tests/ui/suspicious_doc_comments.rs:57:5
    |
 LL | /     ///! a
 LL | |
@@ -90,7 +90,7 @@ LL ~     //! b
    |
 
 error: this is an outer doc comment and does not apply to the parent module or crate
-  --> $DIR/suspicious_doc_comments.rs:69:5
+  --> tests/ui/suspicious_doc_comments.rs:69:5
    |
 LL |     ///! Very cool macro
    |     ^^^^^^^^^^^^^^^^^^^^
@@ -101,7 +101,7 @@ LL |     //! Very cool macro
    |
 
 error: this is an outer doc comment and does not apply to the parent module or crate
-  --> $DIR/suspicious_doc_comments.rs:76:5
+  --> tests/ui/suspicious_doc_comments.rs:76:5
    |
 LL |     ///! Huh.
    |     ^^^^^^^^^

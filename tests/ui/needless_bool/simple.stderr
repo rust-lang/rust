@@ -1,5 +1,5 @@
 error: this if-then-else expression will always return true
-  --> $DIR/simple.rs:14:5
+  --> tests/ui/needless_bool/simple.rs:14:5
    |
 LL | /     if x {
 LL | |         true
@@ -12,7 +12,7 @@ LL | |     };
    = help: to override `-D warnings` add `#[allow(clippy::needless_bool)]`
 
 error: this if-then-else expression will always return false
-  --> $DIR/simple.rs:19:5
+  --> tests/ui/needless_bool/simple.rs:19:5
    |
 LL | /     if x {
 LL | |         false
@@ -22,7 +22,7 @@ LL | |     };
    | |_____^
 
 error: this if-then-else expression will always return true
-  --> $DIR/simple.rs:34:5
+  --> tests/ui/needless_bool/simple.rs:34:5
    |
 LL | /     if x {
 LL | |         return true;
@@ -32,7 +32,7 @@ LL | |     };
    | |_____^
 
 error: this if-then-else expression will always return false
-  --> $DIR/simple.rs:42:5
+  --> tests/ui/needless_bool/simple.rs:42:5
    |
 LL | /     if x {
 LL | |         return false;

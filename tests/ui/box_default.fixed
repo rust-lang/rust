@@ -21,7 +21,7 @@ macro_rules! outer {
 fn main() {
     let _string: Box<String> = Box::default();
     let _byte = Box::<u8>::default();
-    let _vec = Box::<Vec<u8>>::default();
+    let _vec = Box::<Vec::<u8>>::default();
     let _impl = Box::<ImplementsDefault>::default();
     let _impl2 = Box::<ImplementsDefault>::default();
     let _impl3: Box<ImplementsDefault> = Box::default();
@@ -103,4 +103,20 @@ fn issue_11868() {
 
     foo(bar!(vec![]));
     foo(bar!(vec![1]));
+}
+
+// Issue #11927: The quickfix for the `Box::new` suggests replacing with `Box::<Inner>::default()`,
+// removing the `outer::` segment.
+fn issue_11927() {
+    mod outer {
+        #[derive(Default)]
+        pub struct Inner {
+            _i: usize,
+        }
+    }
+
+    fn foo() {
+        let _b = Box::<outer::Inner>::default();
+        let _b = Box::<std::collections::HashSet::<i32>>::default();
+    }
 }

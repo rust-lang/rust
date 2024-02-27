@@ -4,7 +4,8 @@
     clippy::result_filter_map,
     clippy::needless_borrow,
     clippy::option_filter_map,
-    clippy::redundant_closure
+    clippy::redundant_closure,
+    clippy::unnecessary_get_then_check
 )]
 
 use std::collections::HashMap;

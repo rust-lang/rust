@@ -67,6 +67,20 @@ fn match_same_arms() {
         _ => (),
     }
 
+    // No warning because guards are different
+    let _ = match Some(42) {
+        Some(a) if a == 42 => a,
+        Some(a) if a == 24 => a,
+        Some(_) => 24,
+        None => 0,
+    };
+
+    let _ = match (Some(42), Some(42)) {
+        (Some(a), None) if a == 42 => a,
+        (None, Some(a)) if a == 42 => a, //~ ERROR: this match arm has an identical body to another arm
+        _ => 0,
+    };
+
     match (Some(42), Some(42)) {
         (Some(a), ..) => bar(a), //~ ERROR: this match arm has an identical body to another arm
         (.., Some(a)) => bar(a),

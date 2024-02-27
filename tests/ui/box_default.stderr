@@ -1,5 +1,5 @@
 error: `Box::new(_)` of default value
-  --> $DIR/box_default.rs:22:32
+  --> tests/ui/box_default.rs:22:32
    |
 LL |     let _string: Box<String> = Box::new(Default::default());
    |                                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `Box::default()`
@@ -8,94 +8,106 @@ LL |     let _string: Box<String> = Box::new(Default::default());
    = help: to override `-D warnings` add `#[allow(clippy::box_default)]`
 
 error: `Box::new(_)` of default value
-  --> $DIR/box_default.rs:23:17
+  --> tests/ui/box_default.rs:23:17
    |
 LL |     let _byte = Box::new(u8::default());
    |                 ^^^^^^^^^^^^^^^^^^^^^^^ help: try: `Box::<u8>::default()`
 
 error: `Box::new(_)` of default value
-  --> $DIR/box_default.rs:24:16
+  --> tests/ui/box_default.rs:24:16
    |
 LL |     let _vec = Box::new(Vec::<u8>::new());
-   |                ^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `Box::<Vec<u8>>::default()`
+   |                ^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `Box::<Vec::<u8>>::default()`
 
 error: `Box::new(_)` of default value
-  --> $DIR/box_default.rs:25:17
+  --> tests/ui/box_default.rs:25:17
    |
 LL |     let _impl = Box::new(ImplementsDefault::default());
    |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `Box::<ImplementsDefault>::default()`
 
 error: `Box::new(_)` of default value
-  --> $DIR/box_default.rs:26:18
+  --> tests/ui/box_default.rs:26:18
    |
 LL |     let _impl2 = Box::new(<ImplementsDefault as Default>::default());
    |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `Box::<ImplementsDefault>::default()`
 
 error: `Box::new(_)` of default value
-  --> $DIR/box_default.rs:27:42
+  --> tests/ui/box_default.rs:27:42
    |
 LL |     let _impl3: Box<ImplementsDefault> = Box::new(Default::default());
    |                                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `Box::default()`
 
 error: `Box::new(_)` of default value
-  --> $DIR/box_default.rs:29:28
+  --> tests/ui/box_default.rs:29:28
    |
 LL |     let _in_macro = outer!(Box::new(String::new()));
    |                            ^^^^^^^^^^^^^^^^^^^^^^^ help: try: `Box::<String>::default()`
 
 error: `Box::new(_)` of default value
-  --> $DIR/box_default.rs:30:34
+  --> tests/ui/box_default.rs:30:34
    |
 LL |     let _string_default = outer!(Box::new(String::from("")));
    |                                  ^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `Box::<String>::default()`
 
 error: `Box::new(_)` of default value
-  --> $DIR/box_default.rs:31:46
+  --> tests/ui/box_default.rs:31:46
    |
 LL |     let _vec2: Box<Vec<ImplementsDefault>> = Box::new(vec![]);
    |                                              ^^^^^^^^^^^^^^^^ help: try: `Box::default()`
 
 error: `Box::new(_)` of default value
-  --> $DIR/box_default.rs:32:33
+  --> tests/ui/box_default.rs:32:33
    |
 LL |     let _vec3: Box<Vec<bool>> = Box::new(Vec::from([]));
    |                                 ^^^^^^^^^^^^^^^^^^^^^^^ help: try: `Box::default()`
 
 error: `Box::new(_)` of default value
-  --> $DIR/box_default.rs:33:25
+  --> tests/ui/box_default.rs:33:25
    |
 LL |     let _vec4: Box<_> = Box::new(Vec::from([false; 0]));
    |                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `Box::<Vec<bool>>::default()`
 
 error: `Box::new(_)` of default value
-  --> $DIR/box_default.rs:35:16
+  --> tests/ui/box_default.rs:35:16
    |
 LL |     call_ty_fn(Box::new(u8::default()));
    |                ^^^^^^^^^^^^^^^^^^^^^^^ help: try: `Box::default()`
 
 error: `Box::new(_)` of default value
-  --> $DIR/box_default.rs:47:5
+  --> tests/ui/box_default.rs:47:5
    |
 LL |     Box::new(bool::default())
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `Box::<bool>::default()`
 
 error: `Box::new(_)` of default value
-  --> $DIR/box_default.rs:64:28
+  --> tests/ui/box_default.rs:64:28
    |
 LL |     let _: Box<dyn Read> = Box::new(ImplementsDefault::default());
    |                            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `Box::<ImplementsDefault>::default()`
 
 error: `Box::new(_)` of default value
-  --> $DIR/box_default.rs:73:17
+  --> tests/ui/box_default.rs:73:17
    |
 LL |         let _ = Box::new(WeirdPathed::default());
    |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `Box::<WeirdPathed>::default()`
 
 error: `Box::new(_)` of default value
-  --> $DIR/box_default.rs:85:18
+  --> tests/ui/box_default.rs:85:18
    |
 LL |             Some(Box::new(Foo::default()))
    |                  ^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `Box::<Foo>::default()`
 
-error: aborting due to 16 previous errors
+error: `Box::new(_)` of default value
+  --> tests/ui/box_default.rs:119:18
+   |
+LL |         let _b = Box::new(outer::Inner::default());
+   |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `Box::<outer::Inner>::default()`
+
+error: `Box::new(_)` of default value
+  --> tests/ui/box_default.rs:120:18
+   |
+LL |         let _b = Box::new(std::collections::HashSet::<i32>::new());
+   |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `Box::<std::collections::HashSet::<i32>>::default()`
+
+error: aborting due to 18 previous errors
 
