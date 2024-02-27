@@ -237,7 +237,6 @@
 
 use crate::cmp::Ordering;
 use crate::fmt::{self, Debug, Display};
-use crate::intrinsics;
 use crate::marker::{PhantomData, Unsize};
 use crate::mem::{self, size_of};
 use crate::ops::{CoerceUnsized, Deref, DerefMut, DispatchFromDyn};
@@ -436,7 +435,10 @@ impl<T> Cell<T> {
     #[stable(feature = "move_cell", since = "1.17.0")]
     pub fn swap(&self, other: &Self) {
         fn is_nonoverlapping<T>(src: *const T, dst: *const T) -> bool {
-            intrinsics::is_nonoverlapping(src.cast(), dst.cast(), size_of::<T>(), 1)
+            let src_usize = src.addr();
+            let dst_usize = dst.addr();
+            let diff = src_usize.abs_diff(dst_usize);
+            diff >= size_of::<T>()
         }
 
         if ptr::eq(self, other) {

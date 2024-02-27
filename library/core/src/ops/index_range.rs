@@ -1,4 +1,4 @@
-use crate::intrinsics::{unchecked_add, unchecked_sub};
+use crate::intrinsics::{assert_unsafe_precondition, unchecked_add, unchecked_sub};
 use crate::iter::{FusedIterator, TrustedLen};
 use crate::num::NonZero;
 
@@ -19,9 +19,10 @@ impl IndexRange {
     /// - `start <= end`
     #[inline]
     pub const unsafe fn new_unchecked(start: usize, end: usize) -> Self {
-        crate::panic::debug_assert_nounwind!(
-            start <= end,
-            "IndexRange::new_unchecked requires `start <= end`"
+        assert_unsafe_precondition!(
+            check_library_ub,
+            "IndexRange::new_unchecked requires `start <= end`",
+            (start: usize = start, end: usize = end) => start <= end,
         );
         IndexRange { start, end }
     }

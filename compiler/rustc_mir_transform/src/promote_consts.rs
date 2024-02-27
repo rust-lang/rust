@@ -446,7 +446,7 @@ impl<'tcx> Validator<'_, 'tcx> {
                 NullOp::SizeOf => {}
                 NullOp::AlignOf => {}
                 NullOp::OffsetOf(_) => {}
-                NullOp::DebugAssertions => {}
+                NullOp::UbCheck(_) => {}
             },
 
             Rvalue::ShallowInitBox(_, _) => return Err(Unpromotable),
