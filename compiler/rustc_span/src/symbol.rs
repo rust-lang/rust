@@ -1690,6 +1690,7 @@ symbols! {
         suggestion,
         sym,
         sync,
+        synthetic,
         t32,
         target,
         target_abi,

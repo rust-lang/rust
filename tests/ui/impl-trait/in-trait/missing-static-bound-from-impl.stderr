@@ -1,10 +1,10 @@
-error[E0310]: the associated type `<T as Original>::{opaque#0}` may not live long enough
+error[E0310]: the associated type `impl Fn()` may not live long enough
   --> $DIR/missing-static-bound-from-impl.rs:11:9
    |
 LL |         Box::new(<T as Original>::f())
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |         |
-   |         the associated type `<T as Original>::{opaque#0}` must be valid for the static lifetime...
+   |         the associated type `impl Fn()` must be valid for the static lifetime...
    |         ...so that the type `impl Fn()` will meet its required lifetime bounds
 
 error: aborting due to 1 previous error
