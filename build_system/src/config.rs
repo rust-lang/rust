@@ -192,9 +192,7 @@ impl ConfigInfo {
         command
     }
 
-    fn download_gccjit_if_needed(&mut self) -> Result<(), String> {
-        let output_dir = Path::new(crate::BUILD_DIR).join("libgccjit");
-
+    pub fn get_gcc_commit(&self) -> Result<String, String> {
         let commit_hash_file = self.compute_path("libgccjit.version");
         let content = fs::read_to_string(&commit_hash_file).map_err(|_| {
             format!(
@@ -212,7 +210,14 @@ impl ConfigInfo {
                 commit,
             ));
         }
-        let output_dir = output_dir.join(commit);
+        Ok(commit.to_string())
+    }
+
+    fn download_gccjit_if_needed(&mut self) -> Result<(), String> {
+        let output_dir = Path::new(crate::BUILD_DIR).join("libgccjit");
+        let commit = self.get_gcc_commit()?;
+
+        let output_dir = output_dir.join(&commit);
         if !output_dir.is_dir() {
             std::fs::create_dir_all(&output_dir).map_err(|err| {
                 format!(

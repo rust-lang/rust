@@ -1,6 +1,6 @@
 use crate::rustc_info::get_rustc_path;
 use crate::utils::{
-    cargo_install, git_clone, remove_file, run_command, run_command_with_output, walk_dir,
+    cargo_install, git_clone_root_dir, remove_file, run_command, run_command_with_output, walk_dir,
 };
 
 use std::fs;
@@ -152,7 +152,7 @@ fn clone_and_setup<F>(repo_url: &str, checkout_commit: &str, extra: Option<F>) -
 where
     F: Fn(&Path) -> Result<(), String>,
 {
-    let clone_result = git_clone(repo_url, Some(&Path::new(crate::BUILD_DIR)), false)?;
+    let clone_result = git_clone_root_dir(repo_url, &Path::new(crate::BUILD_DIR), false)?;
     if !clone_result.ran_clone {
         println!("`{}` has already been cloned", clone_result.repo_name);
     }
