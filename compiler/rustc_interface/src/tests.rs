@@ -608,6 +608,7 @@ fn test_codegen_options_tracking_hash() {
     tracked!(profile_generate, SwitchWithOptPath::Enabled(None));
     tracked!(profile_use, Some(PathBuf::from("abc")));
     tracked!(relocation_model, Some(RelocModel::Pic));
+    tracked!(relro_level, Some(RelroLevel::Full));
     tracked!(soft_float, true);
     tracked!(split_debuginfo, Some(SplitDebuginfo::Packed));
     tracked!(symbol_mangling_version, Some(SymbolManglingVersion::V0));
@@ -805,7 +806,6 @@ fn test_unstable_options_tracking_hash() {
     tracked!(profile_sample_use, Some(PathBuf::from("abc")));
     tracked!(profiler_runtime, "abc".to_string());
     tracked!(relax_elf_relocations, Some(true));
-    tracked!(relro_level, Some(RelroLevel::Full));
     tracked!(remap_cwd_prefix, Some(PathBuf::from("abc")));
     tracked!(sanitizer, SanitizerSet::ADDRESS);
     tracked!(sanitizer_cfi_canonical_jump_tables, None);

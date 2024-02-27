@@ -587,7 +587,7 @@ impl Session {
 
         let dbg_opts = &self.opts.unstable_opts;
 
-        let relro_level = dbg_opts.relro_level.unwrap_or(self.target.relro_level);
+        let relro_level = self.opts.cg.relro_level.unwrap_or(self.target.relro_level);
 
         // Only enable this optimization by default if full relro is also enabled.
         // In this case, lazy binding was already unavailable, so nothing is lost.

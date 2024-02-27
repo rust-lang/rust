@@ -2013,7 +2013,7 @@ fn add_library_search_dirs(cmd: &mut dyn Linker, sess: &Session, self_contained:
 /// Add options making relocation sections in the produced ELF files read-only
 /// and suppressing lazy binding.
 fn add_relro_args(cmd: &mut dyn Linker, sess: &Session) {
-    match sess.opts.unstable_opts.relro_level.unwrap_or(sess.target.relro_level) {
+    match sess.opts.cg.relro_level.unwrap_or(sess.target.relro_level) {
         RelroLevel::Full => cmd.full_relro(),
         RelroLevel::Partial => cmd.partial_relro(),
         RelroLevel::Off => cmd.no_relro(),
