@@ -15,7 +15,9 @@ use rustc_span::symbol::{sym, Symbol};
 use rustc_span::{ErrorGuaranteed, Span, DUMMY_SP};
 use rustc_target::abi::call::FnAbi;
 use rustc_target::abi::*;
-use rustc_target::spec::{abi::Abi as SpecAbi, HasTargetSpec, PanicStrategy, Target};
+use rustc_target::spec::{
+    abi::Abi as SpecAbi, HasTargetSpec, HasWasmCAbiOpt, PanicStrategy, Target, WasmCAbi,
+};
 
 use std::borrow::Cow;
 use std::cmp;
@@ -539,6 +541,12 @@ impl<'tcx> HasTargetSpec for TyCtxt<'tcx> {
     }
 }
 
+impl<'tcx> HasWasmCAbiOpt for TyCtxt<'tcx> {
+    fn wasm_c_abi_opt(&self) -> WasmCAbi {
+        self.sess.opts.unstable_opts.wasm_c_abi
+    }
+}
+
 impl<'tcx> HasTyCtxt<'tcx> for TyCtxt<'tcx> {
     #[inline]
     fn tcx(&self) -> TyCtxt<'tcx> {
@@ -581,6 +589,12 @@ impl<'tcx, T: HasDataLayout> HasDataLayout for LayoutCx<'tcx, T> {
 impl<'tcx, T: HasTargetSpec> HasTargetSpec for LayoutCx<'tcx, T> {
     fn target_spec(&self) -> &Target {
         self.tcx.target_spec()
+    }
+}
+
+impl<'tcx, T: HasWasmCAbiOpt> HasWasmCAbiOpt for LayoutCx<'tcx, T> {
+    fn wasm_c_abi_opt(&self) -> WasmCAbi {
+        self.tcx.wasm_c_abi_opt()
     }
 }
 

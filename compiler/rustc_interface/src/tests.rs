@@ -17,7 +17,9 @@ use rustc_session::{build_session, getopts, CompilerIO, EarlyDiagCtxt, Session};
 use rustc_span::edition::{Edition, DEFAULT_EDITION};
 use rustc_span::symbol::sym;
 use rustc_span::{FileName, SourceFileHashAlgorithm};
-use rustc_target::spec::{CodeModel, LinkerFlavorCli, MergeFunctions, PanicStrategy, RelocModel};
+use rustc_target::spec::{
+    CodeModel, LinkerFlavorCli, MergeFunctions, PanicStrategy, RelocModel, WasmCAbi,
+};
 use rustc_target::spec::{RelroLevel, SanitizerSet, SplitDebuginfo, StackProtector, TlsModel};
 use std::collections::{BTreeMap, BTreeSet};
 use std::num::NonZero;
@@ -836,6 +838,7 @@ fn test_unstable_options_tracking_hash() {
     tracked!(verify_llvm_ir, true);
     tracked!(virtual_function_elimination, true);
     tracked!(wasi_exec_model, Some(WasiExecModel::Reactor));
+    tracked!(wasm_c_abi, WasmCAbi::Spec);
     // tidy-alphabetical-end
 
     macro_rules! tracked_no_crate_hash {

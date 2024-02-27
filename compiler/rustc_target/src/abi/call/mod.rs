@@ -1,6 +1,6 @@
 use crate::abi::{self, Abi, Align, FieldsShape, Size};
 use crate::abi::{HasDataLayout, TyAbiInterface, TyAndLayout};
-use crate::spec::{self, HasTargetSpec};
+use crate::spec::{self, HasTargetSpec, HasWasmCAbiOpt};
 use rustc_span::Symbol;
 use std::fmt;
 use std::str::FromStr;
@@ -782,7 +782,7 @@ impl<'a, Ty> FnAbi<'a, Ty> {
     ) -> Result<(), AdjustForForeignAbiError>
     where
         Ty: TyAbiInterface<'a, C> + Copy,
-        C: HasDataLayout + HasTargetSpec,
+        C: HasDataLayout + HasTargetSpec + HasWasmCAbiOpt,
     {
         if abi == spec::abi::Abi::X86Interrupt {
             if let Some(arg) = self.args.first_mut() {
@@ -839,7 +839,9 @@ impl<'a, Ty> FnAbi<'a, Ty> {
             "sparc" => sparc::compute_abi_info(cx, self),
             "sparc64" => sparc64::compute_abi_info(cx, self),
             "nvptx64" => {
-                if cx.target_spec().adjust_abi(abi, self.c_variadic) == spec::abi::Abi::PtxKernel {
+                if cx.target_spec().adjust_abi(cx, abi, self.c_variadic)
+                    == spec::abi::Abi::PtxKernel
+                {
                     nvptx64::compute_ptx_kernel_abi_info(cx, self)
                 } else {
                     nvptx64::compute_abi_info(self)
@@ -848,7 +850,7 @@ impl<'a, Ty> FnAbi<'a, Ty> {
             "hexagon" => hexagon::compute_abi_info(self),
             "riscv32" | "riscv64" => riscv::compute_abi_info(cx, self),
             "wasm32" | "wasm64" => {
-                if cx.target_spec().adjust_abi(abi, self.c_variadic) == spec::abi::Abi::Wasm {
+                if cx.target_spec().adjust_abi(cx, abi, self.c_variadic) == spec::abi::Abi::Wasm {
                     wasm::compute_wasm_abi_info(self)
                 } else {
                     wasm::compute_c_abi_info(cx, self)

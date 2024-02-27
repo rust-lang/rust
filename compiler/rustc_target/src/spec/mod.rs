@@ -1807,6 +1807,19 @@ impl HasTargetSpec for Target {
     }
 }
 
+/// Which C ABI to use for `wasm32-unknown-unknown`.
+#[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
+pub enum WasmCAbi {
+    /// Spec-compliant C ABI.
+    Spec,
+    /// Legacy ABI. Which is non-spec-compliant.
+    Legacy,
+}
+
+pub trait HasWasmCAbiOpt {
+    fn wasm_c_abi_opt(&self) -> WasmCAbi;
+}
+
 type StaticCow<T> = Cow<'static, T>;
 
 /// Optional aspects of a target specification.
@@ -2417,9 +2430,21 @@ impl DerefMut for Target {
 
 impl Target {
     /// Given a function ABI, turn it into the correct ABI for this target.
-    pub fn adjust_abi(&self, abi: Abi, c_variadic: bool) -> Abi {
+    pub fn adjust_abi<C>(&self, cx: &C, abi: Abi, c_variadic: bool) -> Abi
+    where
+        C: HasWasmCAbiOpt,
+    {
         match abi {
-            Abi::C { .. } => self.default_adjusted_cabi.unwrap_or(abi),
+            Abi::C { .. } => {
+                if self.arch == "wasm32"
+                    && self.os == "unknown"
+                    && cx.wasm_c_abi_opt() == WasmCAbi::Spec
+                {
+                    abi
+                } else {
+                    self.default_adjusted_cabi.unwrap_or(abi)
+                }
+            }
 
             // On Windows, `extern "system"` behaves like msvc's `__stdcall`.
             // `__stdcall` only applies on x86 and on non-variadic functions:
