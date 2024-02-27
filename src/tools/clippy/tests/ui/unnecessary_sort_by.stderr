@@ -1,5 +1,5 @@
 error: consider using `sort`
-  --> $DIR/unnecessary_sort_by.rs:12:5
+  --> tests/ui/unnecessary_sort_by.rs:12:5
    |
 LL |     vec.sort_by(|a, b| a.cmp(b));
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `vec.sort()`
@@ -8,67 +8,67 @@ LL |     vec.sort_by(|a, b| a.cmp(b));
    = help: to override `-D warnings` add `#[allow(clippy::unnecessary_sort_by)]`
 
 error: consider using `sort`
-  --> $DIR/unnecessary_sort_by.rs:13:5
+  --> tests/ui/unnecessary_sort_by.rs:13:5
    |
 LL |     vec.sort_unstable_by(|a, b| a.cmp(b));
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `vec.sort_unstable()`
 
 error: consider using `sort_by_key`
-  --> $DIR/unnecessary_sort_by.rs:14:5
+  --> tests/ui/unnecessary_sort_by.rs:14:5
    |
 LL |     vec.sort_by(|a, b| (a + 5).abs().cmp(&(b + 5).abs()));
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `vec.sort_by_key(|a| (a + 5).abs())`
 
 error: consider using `sort_by_key`
-  --> $DIR/unnecessary_sort_by.rs:15:5
+  --> tests/ui/unnecessary_sort_by.rs:15:5
    |
 LL |     vec.sort_unstable_by(|a, b| id(-a).cmp(&id(-b)));
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `vec.sort_unstable_by_key(|a| id(-a))`
 
 error: consider using `sort_by_key`
-  --> $DIR/unnecessary_sort_by.rs:18:5
+  --> tests/ui/unnecessary_sort_by.rs:18:5
    |
 LL |     vec.sort_by(|a, b| (b + 5).abs().cmp(&(a + 5).abs()));
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `vec.sort_by_key(|b| std::cmp::Reverse((b + 5).abs()))`
 
 error: consider using `sort_by_key`
-  --> $DIR/unnecessary_sort_by.rs:19:5
+  --> tests/ui/unnecessary_sort_by.rs:19:5
    |
 LL |     vec.sort_unstable_by(|a, b| id(-b).cmp(&id(-a)));
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `vec.sort_unstable_by_key(|b| std::cmp::Reverse(id(-b)))`
 
 error: consider using `sort_by_key`
-  --> $DIR/unnecessary_sort_by.rs:29:5
+  --> tests/ui/unnecessary_sort_by.rs:29:5
    |
 LL |     vec.sort_by(|a, b| (***a).abs().cmp(&(***b).abs()));
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `vec.sort_by_key(|a| (***a).abs())`
 
 error: consider using `sort_by_key`
-  --> $DIR/unnecessary_sort_by.rs:30:5
+  --> tests/ui/unnecessary_sort_by.rs:30:5
    |
 LL |     vec.sort_unstable_by(|a, b| (***a).abs().cmp(&(***b).abs()));
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `vec.sort_unstable_by_key(|a| (***a).abs())`
 
 error: consider using `sort_by_key`
-  --> $DIR/unnecessary_sort_by.rs:89:9
+  --> tests/ui/unnecessary_sort_by.rs:89:9
    |
 LL |         args.sort_by(|a, b| a.name().cmp(&b.name()));
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `args.sort_by_key(|a| a.name())`
 
 error: consider using `sort_by_key`
-  --> $DIR/unnecessary_sort_by.rs:90:9
+  --> tests/ui/unnecessary_sort_by.rs:90:9
    |
 LL |         args.sort_unstable_by(|a, b| a.name().cmp(&b.name()));
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `args.sort_unstable_by_key(|a| a.name())`
 
 error: consider using `sort_by_key`
-  --> $DIR/unnecessary_sort_by.rs:92:9
+  --> tests/ui/unnecessary_sort_by.rs:92:9
    |
 LL |         args.sort_by(|a, b| b.name().cmp(&a.name()));
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `args.sort_by_key(|b| std::cmp::Reverse(b.name()))`
 
 error: consider using `sort_by_key`
-  --> $DIR/unnecessary_sort_by.rs:93:9
+  --> tests/ui/unnecessary_sort_by.rs:93:9
    |
 LL |         args.sort_unstable_by(|a, b| b.name().cmp(&a.name()));
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `args.sort_unstable_by_key(|b| std::cmp::Reverse(b.name()))`

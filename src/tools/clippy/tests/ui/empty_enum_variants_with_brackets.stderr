@@ -1,5 +1,5 @@
 error: enum variant has empty brackets
-  --> $DIR/empty_enum_variants_with_brackets.rs:7:16
+  --> tests/ui/empty_enum_variants_with_brackets.rs:7:16
    |
 LL |     EmptyBraces {},
    |                ^^^
@@ -9,7 +9,7 @@ LL |     EmptyBraces {},
    = help: remove the brackets
 
 error: enum variant has empty brackets
-  --> $DIR/empty_enum_variants_with_brackets.rs:8:21
+  --> tests/ui/empty_enum_variants_with_brackets.rs:8:21
    |
 LL |     EmptyParentheses(),
    |                     ^^
@@ -17,7 +17,7 @@ LL |     EmptyParentheses(),
    = help: remove the brackets
 
 error: enum variant has empty brackets
-  --> $DIR/empty_enum_variants_with_brackets.rs:14:16
+  --> tests/ui/empty_enum_variants_with_brackets.rs:14:16
    |
 LL |     EmptyBraces {},
    |                ^^^
@@ -25,7 +25,7 @@ LL |     EmptyBraces {},
    = help: remove the brackets
 
 error: enum variant has empty brackets
-  --> $DIR/empty_enum_variants_with_brackets.rs:15:21
+  --> tests/ui/empty_enum_variants_with_brackets.rs:15:21
    |
 LL |     EmptyParentheses(),
    |                     ^^

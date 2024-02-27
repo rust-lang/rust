@@ -1,5 +1,5 @@
 error: needless `fn main` in doctest
-  --> $DIR/needless_doc_main.rs:7:5
+  --> tests/ui/needless_doc_main.rs:7:5
    |
 LL |   /// fn main() {
    |  _____^
@@ -13,7 +13,7 @@ LL | | /// }
    = help: to override `-D warnings` add `#[allow(clippy::needless_doctest_main)]`
 
 error: needless `fn main` in doctest
-  --> $DIR/needless_doc_main.rs:16:5
+  --> tests/ui/needless_doc_main.rs:16:5
    |
 LL |   /// fn main() -> () {
    |  _____^
@@ -23,7 +23,7 @@ LL | | /// }
    | |_____^
 
 error: needless `fn main` in doctest
-  --> $DIR/needless_doc_main.rs:24:5
+  --> tests/ui/needless_doc_main.rs:24:5
    |
 LL |   /// fn main() {
    |  _____^
@@ -33,7 +33,7 @@ LL | | /// }
    | |_____^
 
 error: needless `fn main` in doctest
-  --> $DIR/needless_doc_main.rs:32:5
+  --> tests/ui/needless_doc_main.rs:32:5
    |
 LL |   /// // the fn is not always the first line
    |  _____^

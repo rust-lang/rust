@@ -1,5 +1,5 @@
 error: this function allocates a large amount of stack space
-  --> $DIR/large_stack_frames.rs:12:1
+  --> tests/ui-toml/large_stack_frames/large_stack_frames.rs:12:1
    |
 LL | / fn f2() {
 LL | |

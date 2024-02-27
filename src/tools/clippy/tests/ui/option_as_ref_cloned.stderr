@@ -1,5 +1,5 @@
 error: cloning an `Option<_>` using `.as_ref().cloned()`
-  --> $DIR/option_as_ref_cloned.rs:7:31
+  --> tests/ui/option_as_ref_cloned.rs:7:31
    |
 LL |     let _: Option<String> = x.as_ref().cloned();
    |                               ^^^^^^^^^^^^^^^
@@ -12,7 +12,7 @@ LL |     let _: Option<String> = x.clone();
    |                               ~~~~~
 
 error: cloning an `Option<_>` using `.as_mut().cloned()`
-  --> $DIR/option_as_ref_cloned.rs:8:31
+  --> tests/ui/option_as_ref_cloned.rs:8:31
    |
 LL |     let _: Option<String> = x.as_mut().cloned();
    |                               ^^^^^^^^^^^^^^^
@@ -23,7 +23,7 @@ LL |     let _: Option<String> = x.clone();
    |                               ~~~~~
 
 error: cloning an `Option<_>` using `.as_ref().cloned()`
-  --> $DIR/option_as_ref_cloned.rs:11:32
+  --> tests/ui/option_as_ref_cloned.rs:11:32
    |
 LL |     let _: Option<&String> = y.as_ref().cloned();
    |                                ^^^^^^^^^^^^^^^

@@ -1,5 +1,5 @@
 error: you should use the `starts_with` method
-  --> $DIR/starts_ends_with.rs:7:5
+  --> tests/ui/starts_ends_with.rs:7:5
    |
 LL |     "".chars().next() == Some(' ');
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: like this: `"".starts_with(' ')`
@@ -8,31 +8,31 @@ LL |     "".chars().next() == Some(' ');
    = help: to override `-D warnings` add `#[allow(clippy::chars_next_cmp)]`
 
 error: you should use the `starts_with` method
-  --> $DIR/starts_ends_with.rs:8:5
+  --> tests/ui/starts_ends_with.rs:8:5
    |
 LL |     Some(' ') != "".chars().next();
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: like this: `!"".starts_with(' ')`
 
 error: you should use the `starts_with` method
-  --> $DIR/starts_ends_with.rs:11:5
+  --> tests/ui/starts_ends_with.rs:11:5
    |
 LL |     "".chars().next() == Some('\n');
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: like this: `"".starts_with('\n')`
 
 error: you should use the `starts_with` method
-  --> $DIR/starts_ends_with.rs:12:5
+  --> tests/ui/starts_ends_with.rs:12:5
    |
 LL |     Some('\n') != "".chars().next();
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: like this: `!"".starts_with('\n')`
 
 error: you should use the `starts_with` method
-  --> $DIR/starts_ends_with.rs:17:8
+  --> tests/ui/starts_ends_with.rs:17:8
    |
 LL |     if s.chars().next().unwrap() == 'f' {
    |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: like this: `s.starts_with('f')`
 
 error: you should use the `ends_with` method
-  --> $DIR/starts_ends_with.rs:21:8
+  --> tests/ui/starts_ends_with.rs:21:8
    |
 LL |     if s.chars().next_back().unwrap() == 'o' {
    |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: like this: `s.ends_with('o')`
@@ -41,61 +41,61 @@ LL |     if s.chars().next_back().unwrap() == 'o' {
    = help: to override `-D warnings` add `#[allow(clippy::chars_last_cmp)]`
 
 error: you should use the `ends_with` method
-  --> $DIR/starts_ends_with.rs:25:8
+  --> tests/ui/starts_ends_with.rs:25:8
    |
 LL |     if s.chars().last().unwrap() == 'o' {
    |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: like this: `s.ends_with('o')`
 
 error: you should use the `starts_with` method
-  --> $DIR/starts_ends_with.rs:29:8
+  --> tests/ui/starts_ends_with.rs:29:8
    |
 LL |     if s.chars().next().unwrap() != 'f' {
    |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: like this: `!s.starts_with('f')`
 
 error: you should use the `ends_with` method
-  --> $DIR/starts_ends_with.rs:33:8
+  --> tests/ui/starts_ends_with.rs:33:8
    |
 LL |     if s.chars().next_back().unwrap() != 'o' {
    |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: like this: `!s.ends_with('o')`
 
 error: you should use the `ends_with` method
-  --> $DIR/starts_ends_with.rs:37:8
+  --> tests/ui/starts_ends_with.rs:37:8
    |
 LL |     if s.chars().last().unwrap() != '\n' {
    |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: like this: `!s.ends_with('\n')`
 
 error: you should use the `ends_with` method
-  --> $DIR/starts_ends_with.rs:45:5
+  --> tests/ui/starts_ends_with.rs:45:5
    |
 LL |     "".chars().last() == Some(' ');
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: like this: `"".ends_with(' ')`
 
 error: you should use the `ends_with` method
-  --> $DIR/starts_ends_with.rs:46:5
+  --> tests/ui/starts_ends_with.rs:46:5
    |
 LL |     Some(' ') != "".chars().last();
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: like this: `!"".ends_with(' ')`
 
 error: you should use the `ends_with` method
-  --> $DIR/starts_ends_with.rs:47:5
+  --> tests/ui/starts_ends_with.rs:47:5
    |
 LL |     "".chars().next_back() == Some(' ');
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: like this: `"".ends_with(' ')`
 
 error: you should use the `ends_with` method
-  --> $DIR/starts_ends_with.rs:48:5
+  --> tests/ui/starts_ends_with.rs:48:5
    |
 LL |     Some(' ') != "".chars().next_back();
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: like this: `!"".ends_with(' ')`
 
 error: you should use the `ends_with` method
-  --> $DIR/starts_ends_with.rs:51:5
+  --> tests/ui/starts_ends_with.rs:51:5
    |
 LL |     "".chars().last() == Some('\n');
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: like this: `"".ends_with('\n')`
 
 error: you should use the `ends_with` method
-  --> $DIR/starts_ends_with.rs:52:5
+  --> tests/ui/starts_ends_with.rs:52:5
    |
 LL |     Some('\n') != "".chars().last();
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: like this: `!"".ends_with('\n')`

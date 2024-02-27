@@ -1,7 +1,12 @@
 //@aux-build:proc_macro_attr.rs
 
 #![warn(clippy::semicolon_if_nothing_returned)]
-#![allow(clippy::redundant_closure, clippy::uninlined_format_args, clippy::needless_late_init)]
+#![allow(
+    clippy::redundant_closure,
+    clippy::uninlined_format_args,
+    clippy::needless_late_init,
+    clippy::empty_docs
+)]
 
 #[macro_use]
 extern crate proc_macro_attr;

@@ -530,3 +530,39 @@ mod issue_11952 {
         IntoFuture::into_future(foo([], &0));
     }
 }
+
+fn borrow_checks() {
+    use std::borrow::Borrow;
+    use std::collections::HashSet;
+
+    fn inner(a: &[&str]) {
+        let mut s = HashSet::from([vec!["a"]]);
+        s.remove(a); //~ ERROR: unnecessary use of `to_vec`
+    }
+
+    let mut s = HashSet::from(["a".to_string()]);
+    s.remove("b"); //~ ERROR: unnecessary use of `to_owned`
+    s.remove("b"); //~ ERROR: unnecessary use of `to_string`
+    // Should not warn.
+    s.remove("b");
+
+    let mut s = HashSet::from([vec!["a"]]);
+    s.remove(["b"].as_slice()); //~ ERROR: unnecessary use of `to_vec`
+    s.remove((&["b"]).as_slice()); //~ ERROR: unnecessary use of `to_vec`
+
+    // Should not warn.
+    s.remove(&["b"].to_vec().clone());
+    s.remove(["a"].as_slice());
+
+    trait SetExt {
+        fn foo<Q: Borrow<str>>(&self, _: &String);
+    }
+
+    impl<K> SetExt for HashSet<K> {
+        fn foo<Q: Borrow<str>>(&self, _: &String) {}
+    }
+
+    // Should not lint!
+    HashSet::<i32>::new().foo::<&str>(&"".to_owned());
+    HashSet::<String>::new().get(&1.to_string());
+}

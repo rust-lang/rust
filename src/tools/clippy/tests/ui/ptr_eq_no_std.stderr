@@ -1,5 +1,5 @@
 error: use `core::ptr::eq` when comparing raw pointers
-  --> $DIR/ptr_eq_no_std.rs:31:13
+  --> tests/ui/ptr_eq_no_std.rs:31:13
    |
 LL |     let _ = a as *const _ as usize == b as *const _ as usize;
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `core::ptr::eq(a, b)`
@@ -8,7 +8,7 @@ LL |     let _ = a as *const _ as usize == b as *const _ as usize;
    = help: to override `-D warnings` add `#[allow(clippy::ptr_eq)]`
 
 error: use `core::ptr::eq` when comparing raw pointers
-  --> $DIR/ptr_eq_no_std.rs:32:13
+  --> tests/ui/ptr_eq_no_std.rs:32:13
    |
 LL |     let _ = a as *const _ == b as *const _;
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `core::ptr::eq(a, b)`

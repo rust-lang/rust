@@ -1,5 +1,5 @@
 error: struct `PubOne` has a public `len` method, but no `is_empty` method
-  --> $DIR/len_without_is_empty.rs:7:5
+  --> tests/ui/len_without_is_empty.rs:7:5
    |
 LL |     pub fn len(&self) -> isize {
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -8,7 +8,7 @@ LL |     pub fn len(&self) -> isize {
    = help: to override `-D warnings` add `#[allow(clippy::len_without_is_empty)]`
 
 error: trait `PubTraitsToo` has a `len` method but no (possibly inherited) `is_empty` method
-  --> $DIR/len_without_is_empty.rs:57:1
+  --> tests/ui/len_without_is_empty.rs:57:1
    |
 LL | / pub trait PubTraitsToo {
 LL | |
@@ -17,45 +17,45 @@ LL | | }
    | |_^
 
 error: struct `HasIsEmpty` has a public `len` method, but a private `is_empty` method
-  --> $DIR/len_without_is_empty.rs:71:5
+  --> tests/ui/len_without_is_empty.rs:71:5
    |
 LL |     pub fn len(&self) -> isize {
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
 note: `is_empty` defined here
-  --> $DIR/len_without_is_empty.rs:76:5
+  --> tests/ui/len_without_is_empty.rs:76:5
    |
 LL |     fn is_empty(&self) -> bool {
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: struct `HasWrongIsEmpty` has a public `len` method, but the `is_empty` method has an unexpected signature
-  --> $DIR/len_without_is_empty.rs:84:5
+  --> tests/ui/len_without_is_empty.rs:84:5
    |
 LL |     pub fn len(&self) -> isize {
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
 note: `is_empty` defined here
-  --> $DIR/len_without_is_empty.rs:89:5
+  --> tests/ui/len_without_is_empty.rs:89:5
    |
 LL |     pub fn is_empty(&self, x: u32) -> bool {
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    = note: expected signature: `(&self) -> bool`
 
 error: struct `MismatchedSelf` has a public `len` method, but the `is_empty` method has an unexpected signature
-  --> $DIR/len_without_is_empty.rs:97:5
+  --> tests/ui/len_without_is_empty.rs:97:5
    |
 LL |     pub fn len(self) -> isize {
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^
    |
 note: `is_empty` defined here
-  --> $DIR/len_without_is_empty.rs:102:5
+  --> tests/ui/len_without_is_empty.rs:102:5
    |
 LL |     pub fn is_empty(&self) -> bool {
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    = note: expected signature: `(self) -> bool`
 
 error: trait `DependsOnFoo` has a `len` method but no (possibly inherited) `is_empty` method
-  --> $DIR/len_without_is_empty.rs:177:1
+  --> tests/ui/len_without_is_empty.rs:177:1
    |
 LL | / pub trait DependsOnFoo: Foo {
 LL | |
@@ -64,33 +64,33 @@ LL | | }
    | |_^
 
 error: struct `OptionalLen3` has a public `len` method, but the `is_empty` method has an unexpected signature
-  --> $DIR/len_without_is_empty.rs:223:5
+  --> tests/ui/len_without_is_empty.rs:223:5
    |
 LL |     pub fn len(&self) -> usize {
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
 note: `is_empty` defined here
-  --> $DIR/len_without_is_empty.rs:229:5
+  --> tests/ui/len_without_is_empty.rs:229:5
    |
 LL |     pub fn is_empty(&self) -> Option<bool> {
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    = note: expected signature: `(&self) -> bool`
 
 error: struct `ResultLen` has a public `len` method, but the `is_empty` method has an unexpected signature
-  --> $DIR/len_without_is_empty.rs:236:5
+  --> tests/ui/len_without_is_empty.rs:236:5
    |
 LL |     pub fn len(&self) -> Result<usize, ()> {
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
 note: `is_empty` defined here
-  --> $DIR/len_without_is_empty.rs:243:5
+  --> tests/ui/len_without_is_empty.rs:243:5
    |
 LL |     pub fn is_empty(&self) -> Option<bool> {
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    = note: expected signature: `(&self) -> bool` or `(&self) -> Result<bool>
 
 error: this returns a `Result<_, ()>`
-  --> $DIR/len_without_is_empty.rs:236:5
+  --> tests/ui/len_without_is_empty.rs:236:5
    |
 LL |     pub fn len(&self) -> Result<usize, ()> {
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -100,7 +100,7 @@ LL |     pub fn len(&self) -> Result<usize, ()> {
    = help: to override `-D warnings` add `#[allow(clippy::result_unit_err)]`
 
 error: this returns a `Result<_, ()>`
-  --> $DIR/len_without_is_empty.rs:250:5
+  --> tests/ui/len_without_is_empty.rs:250:5
    |
 LL |     pub fn len(&self) -> Result<usize, ()> {
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -108,7 +108,7 @@ LL |     pub fn len(&self) -> Result<usize, ()> {
    = help: use a custom `Error` type instead
 
 error: this returns a `Result<_, ()>`
-  --> $DIR/len_without_is_empty.rs:255:5
+  --> tests/ui/len_without_is_empty.rs:255:5
    |
 LL |     pub fn is_empty(&self) -> Result<bool, ()> {
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -116,7 +116,7 @@ LL |     pub fn is_empty(&self) -> Result<bool, ()> {
    = help: use a custom `Error` type instead
 
 error: this returns a `Result<_, ()>`
-  --> $DIR/len_without_is_empty.rs:263:5
+  --> tests/ui/len_without_is_empty.rs:263:5
    |
 LL |     pub fn len(&self) -> Result<usize, ()> {
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -124,25 +124,25 @@ LL |     pub fn len(&self) -> Result<usize, ()> {
    = help: use a custom `Error` type instead
 
 error: struct `AsyncLenWithoutIsEmpty` has a public `len` method, but no `is_empty` method
-  --> $DIR/len_without_is_empty.rs:305:5
+  --> tests/ui/len_without_is_empty.rs:305:5
    |
 LL |     pub async fn len(&self) -> usize {
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: struct `AsyncOptionLenWithoutIsEmpty` has a public `len` method, but no `is_empty` method
-  --> $DIR/len_without_is_empty.rs:318:5
+  --> tests/ui/len_without_is_empty.rs:318:5
    |
 LL |     pub async fn len(&self) -> Option<usize> {
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: struct `AsyncResultLenWithoutIsEmpty` has a public `len` method, but no `is_empty` method
-  --> $DIR/len_without_is_empty.rs:340:5
+  --> tests/ui/len_without_is_empty.rs:340:5
    |
 LL |     pub async fn len(&self) -> Result<usize, ()> {
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: type `Alias2` has a public `len` method, but no `is_empty` method
-  --> $DIR/len_without_is_empty.rs:456:5
+  --> tests/ui/len_without_is_empty.rs:456:5
    |
 LL |     pub fn len(&self) -> usize {
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^

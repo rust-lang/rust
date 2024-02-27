@@ -1,5 +1,5 @@
 error: calling `as_bytes()` on a string literal
-  --> $DIR/string_lit_as_bytes.rs:16:14
+  --> tests/ui/string_lit_as_bytes.rs:16:14
    |
 LL |     let bs = "hello there".as_bytes();
    |              ^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using a byte string literal instead: `b"hello there"`
@@ -8,25 +8,25 @@ LL |     let bs = "hello there".as_bytes();
    = help: to override `-D warnings` add `#[allow(clippy::string_lit_as_bytes)]`
 
 error: calling `as_bytes()` on a string literal
-  --> $DIR/string_lit_as_bytes.rs:18:14
+  --> tests/ui/string_lit_as_bytes.rs:18:14
    |
 LL |     let bs = r###"raw string with 3# plus " ""###.as_bytes();
    |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using a byte string literal instead: `br###"raw string with 3# plus " ""###`
 
 error: calling `into_bytes()` on a string literal
-  --> $DIR/string_lit_as_bytes.rs:20:14
+  --> tests/ui/string_lit_as_bytes.rs:20:14
    |
 LL |     let bs = "lit to string".to_string().into_bytes();
    |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using a byte string literal instead: `b"lit to string".to_vec()`
 
 error: calling `into_bytes()` on a string literal
-  --> $DIR/string_lit_as_bytes.rs:21:14
+  --> tests/ui/string_lit_as_bytes.rs:21:14
    |
 LL |     let bs = "lit to owned".to_owned().into_bytes();
    |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using a byte string literal instead: `b"lit to owned".to_vec()`
 
 error: calling `as_bytes()` on a string literal
-  --> $DIR/string_lit_as_bytes.rs:11:26
+  --> tests/ui/string_lit_as_bytes.rs:11:26
    |
 LL |         const B: &[u8] = $b.as_bytes();
    |                          ^^^^^^^^^^^^^ help: consider using a byte string literal instead: `b"warning"`
@@ -37,13 +37,13 @@ LL |     b!("warning");
    = note: this error originates in the macro `b` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: calling `as_bytes()` on `include_str!(..)`
-  --> $DIR/string_lit_as_bytes.rs:38:22
+  --> tests/ui/string_lit_as_bytes.rs:38:22
    |
 LL |     let includestr = include_str!("string_lit_as_bytes.rs").as_bytes();
    |                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using `include_bytes!(..)` instead: `include_bytes!("string_lit_as_bytes.rs")`
 
 error: calling `as_bytes()` on a string literal
-  --> $DIR/string_lit_as_bytes.rs:40:13
+  --> tests/ui/string_lit_as_bytes.rs:40:13
    |
 LL |     let _ = "string with newline\t\n".as_bytes();
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using a byte string literal instead: `b"string with newline\t\n"`

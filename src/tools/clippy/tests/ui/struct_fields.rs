@@ -224,6 +224,7 @@ mod macro_tests {
     macro_rules! mk_struct {
         () => {
             struct MacroStruct {
+                //~^ ERROR: all fields have the same prefix: `some`
                 some_a: i32,
                 some_b: i32,
                 some_c: i32,
@@ -231,24 +232,24 @@ mod macro_tests {
         };
     }
     mk_struct!();
-    //~^ ERROR: all fields have the same prefix: `some`
 
     macro_rules! mk_struct2 {
         () => {
             struct Macrobaz {
                 macrobaz_a: i32,
+                //~^ ERROR: field name starts with the struct's name
                 some_b: i32,
                 some_c: i32,
             }
         };
     }
     mk_struct2!();
-    //~^ ERROR: field name starts with the struct's name
 
     macro_rules! mk_struct_with_names {
         ($struct_name:ident, $field:ident) => {
             struct $struct_name {
                 $field: i32,
+                //~^ ERROR: field name starts with the struct's name
                 other_something: i32,
                 other_field: i32,
             }
@@ -256,7 +257,6 @@ mod macro_tests {
     }
     // expands to `struct Foo { foo: i32, ... }`
     mk_struct_with_names!(Foo, foo);
-    //~^ ERROR: field name starts with the struct's name
 
     // expands to a struct with all fields starting with `other` but should not
     // be linted because some fields come from the macro definition and the other from the input
@@ -289,6 +289,7 @@ mod macro_tests {
     macro_rules! mk_struct_full_def {
         ($struct_name:ident, $field1:ident, $field2:ident, $field3:ident) => {
             struct $struct_name {
+                //~^ ERROR: all fields have the same prefix: `some`
                 $field1: i32,
                 $field2: i32,
                 $field3: i32,
@@ -296,7 +297,6 @@ mod macro_tests {
         };
     }
     mk_struct_full_def!(PrefixData, some_data, some_meta, some_other);
-    //~^ ERROR: all fields have the same prefix: `some`
 }
 
 // should not lint on external code

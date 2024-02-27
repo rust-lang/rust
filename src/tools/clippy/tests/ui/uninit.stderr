@@ -1,5 +1,5 @@
 error: this call for this type may be undefined behavior
-  --> $DIR/uninit.rs:12:29
+  --> tests/ui/uninit.rs:12:29
    |
 LL |     let _: usize = unsafe { MaybeUninit::uninit().assume_init() };
    |                             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -7,13 +7,13 @@ LL |     let _: usize = unsafe { MaybeUninit::uninit().assume_init() };
    = note: `#[deny(clippy::uninit_assumed_init)]` on by default
 
 error: this call for this type may be undefined behavior
-  --> $DIR/uninit.rs:35:29
+  --> tests/ui/uninit.rs:35:29
    |
 LL |     let _: usize = unsafe { MaybeUninit::uninit().assume_init() };
    |                             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: this call for this type may be undefined behavior
-  --> $DIR/uninit.rs:44:29
+  --> tests/ui/uninit.rs:44:29
    |
 LL |         let _: T = unsafe { MaybeUninit::uninit().assume_init() };
    |                             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

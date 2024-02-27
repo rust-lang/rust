@@ -1,5 +1,4 @@
 use clippy_utils::diagnostics::span_lint;
-use clippy_utils::get_parent_node;
 use clippy_utils::ty::implements_trait;
 use rustc_hir::def_id::LocalDefId;
 use rustc_hir::{FnSig, ImplItem, ImplItemKind, Item, ItemKind, Node, TraitItem, TraitItemKind};
@@ -56,8 +55,8 @@ impl<'tcx> LateLintPass<'tcx> for IterNotReturningIterator {
         let name = item.ident.name.as_str();
         if matches!(name, "iter" | "iter_mut")
             && !matches!(
-                get_parent_node(cx.tcx, item.hir_id()),
-                Some(Node::Item(Item { kind: ItemKind::Impl(i), .. })) if i.of_trait.is_some()
+                cx.tcx.parent_hir_node(item.hir_id()),
+                Node::Item(Item { kind: ItemKind::Impl(i), .. }) if i.of_trait.is_some()
             )
         {
             if let ImplItemKind::Fn(fn_sig, _) = &item.kind {

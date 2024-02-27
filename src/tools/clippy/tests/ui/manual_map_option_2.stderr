@@ -1,5 +1,5 @@
 error: manual implementation of `Option::map`
-  --> $DIR/manual_map_option_2.rs:6:13
+  --> tests/ui/manual_map_option_2.rs:6:13
    |
 LL |       let _ = match Some(0) {
    |  _____________^
@@ -22,7 +22,7 @@ LL ~         });
    |
 
 error: manual implementation of `Option::map`
-  --> $DIR/manual_map_option_2.rs:48:13
+  --> tests/ui/manual_map_option_2.rs:48:13
    |
 LL |       let _ = match &s {
    |  _____________^
@@ -32,7 +32,7 @@ LL | |     };
    | |_____^ help: try: `s.as_ref().map(|x| { if let Some(ref s) = s { (x.clone(), s) } else { panic!() } })`
 
 error: manual implementation of `Option::map`
-  --> $DIR/manual_map_option_2.rs:58:17
+  --> tests/ui/manual_map_option_2.rs:58:17
    |
 LL |           let _ = match Some(0) {
    |  _________________^
@@ -42,7 +42,7 @@ LL | |         };
    | |_________^ help: try: `Some(0).map(|x| f(x))`
 
 error: manual implementation of `Option::map`
-  --> $DIR/manual_map_option_2.rs:63:13
+  --> tests/ui/manual_map_option_2.rs:63:13
    |
 LL |       let _ = match Some(0) {
    |  _____________^
@@ -52,7 +52,7 @@ LL | |     };
    | |_____^ help: try: `Some(0).map(|x| unsafe { f(x) })`
 
 error: manual implementation of `Option::map`
-  --> $DIR/manual_map_option_2.rs:67:13
+  --> tests/ui/manual_map_option_2.rs:67:13
    |
 LL |       let _ = match Some(0) {
    |  _____________^

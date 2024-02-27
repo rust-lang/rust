@@ -1,5 +1,5 @@
 error: use of `.then_some(..).unwrap_or(..)` can be written more clearly with `if .. else ..`
-  --> $DIR/obfuscated_if_else.rs:4:5
+  --> tests/ui/obfuscated_if_else.rs:4:5
    |
 LL |     true.then_some("a").unwrap_or("b");
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `if true { "a" } else { "b" }`

@@ -2,8 +2,11 @@ use std::fmt;
 
 use clippy_utils::diagnostics::span_lint_and_help;
 use rustc_ast::ast::{Expr, ExprKind, InlineAsmOptions};
-use rustc_lint::{EarlyContext, EarlyLintPass, Lint};
+use rustc_ast::{InlineAsm, Item, ItemKind};
+use rustc_lint::{EarlyContext, EarlyLintPass, Lint, LintContext};
 use rustc_session::declare_lint_pass;
+use rustc_span::Span;
+use rustc_target::asm::InlineAsmArch;
 
 #[derive(Clone, Copy, PartialEq, Eq)]
 enum AsmStyle {
@@ -31,8 +34,14 @@ impl std::ops::Not for AsmStyle {
     }
 }
 
-fn check_expr_asm_syntax(lint: &'static Lint, cx: &EarlyContext<'_>, expr: &Expr, check_for: AsmStyle) {
-    if let ExprKind::InlineAsm(ref inline_asm) = expr.kind {
+fn check_asm_syntax(
+    lint: &'static Lint,
+    cx: &EarlyContext<'_>,
+    inline_asm: &InlineAsm,
+    span: Span,
+    check_for: AsmStyle,
+) {
+    if matches!(cx.sess().asm_arch, Some(InlineAsmArch::X86 | InlineAsmArch::X86_64)) {
         let style = if inline_asm.options.contains(InlineAsmOptions::ATT_SYNTAX) {
             AsmStyle::Att
         } else {
@@ -43,7 +52,7 @@ fn check_expr_asm_syntax(lint: &'static Lint, cx: &EarlyContext<'_>, expr: &Expr
             span_lint_and_help(
                 cx,
                 lint,
-                expr.span,
+                span,
                 &format!("{style} x86 assembly syntax used"),
                 None,
                 &format!("use {} x86 assembly syntax", !style),
@@ -89,7 +98,15 @@ declare_lint_pass!(InlineAsmX86IntelSyntax => [INLINE_ASM_X86_INTEL_SYNTAX]);
 
 impl EarlyLintPass for InlineAsmX86IntelSyntax {
     fn check_expr(&mut self, cx: &EarlyContext<'_>, expr: &Expr) {
-        check_expr_asm_syntax(Self::get_lints()[0], cx, expr, AsmStyle::Intel);
+        if let ExprKind::InlineAsm(inline_asm) = &expr.kind {
+            check_asm_syntax(Self::get_lints()[0], cx, inline_asm, expr.span, AsmStyle::Intel);
+        }
+    }
+
+    fn check_item(&mut self, cx: &EarlyContext<'_>, item: &Item) {
+        if let ItemKind::GlobalAsm(inline_asm) = &item.kind {
+            check_asm_syntax(Self::get_lints()[0], cx, inline_asm, item.span, AsmStyle::Intel);
+        }
     }
 }
 
@@ -130,6 +147,14 @@ declare_lint_pass!(InlineAsmX86AttSyntax => [INLINE_ASM_X86_ATT_SYNTAX]);
 
 impl EarlyLintPass for InlineAsmX86AttSyntax {
     fn check_expr(&mut self, cx: &EarlyContext<'_>, expr: &Expr) {
-        check_expr_asm_syntax(Self::get_lints()[0], cx, expr, AsmStyle::Att);
+        if let ExprKind::InlineAsm(inline_asm) = &expr.kind {
+            check_asm_syntax(Self::get_lints()[0], cx, inline_asm, expr.span, AsmStyle::Att);
+        }
+    }
+
+    fn check_item(&mut self, cx: &EarlyContext<'_>, item: &Item) {
+        if let ItemKind::GlobalAsm(inline_asm) = &item.kind {
+            check_asm_syntax(Self::get_lints()[0], cx, inline_asm, item.span, AsmStyle::Att);
+        }
     }
 }

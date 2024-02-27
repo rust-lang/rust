@@ -85,7 +85,117 @@ impl<'tcx> LateLintPass<'tcx> for NonminimalBool {
     ) {
         NonminimalBoolVisitor { cx }.visit_body(body);
     }
+
+    fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>) {
+        match expr.kind {
+            ExprKind::Unary(UnOp::Not, sub) => check_inverted_condition(cx, expr.span, sub),
+            // This check the case where an element in a boolean comparison is inverted, like:
+            //
+            // ```
+            // let a = true;
+            // !a == false;
+            // ```
+            ExprKind::Binary(op, left, right) if matches!(op.node, BinOpKind::Eq | BinOpKind::Ne) => {
+                check_inverted_bool_in_condition(cx, expr.span, op.node, left, right);
+            },
+            _ => {},
+        }
+    }
 }
+
+fn inverted_bin_op_eq_str(op: BinOpKind) -> Option<&'static str> {
+    match op {
+        BinOpKind::Eq => Some("!="),
+        BinOpKind::Ne => Some("=="),
+        _ => None,
+    }
+}
+
+fn bin_op_eq_str(op: BinOpKind) -> Option<&'static str> {
+    match op {
+        BinOpKind::Eq => Some("=="),
+        BinOpKind::Ne => Some("!="),
+        _ => None,
+    }
+}
+
+fn check_inverted_condition(cx: &LateContext<'_>, expr_span: Span, sub_expr: &Expr<'_>) {
+    if !expr_span.from_expansion()
+        && let ExprKind::Binary(op, left, right) = sub_expr.kind
+        && let Some(left) = snippet_opt(cx, left.span)
+        && let Some(right) = snippet_opt(cx, right.span)
+    {
+        let Some(op) = inverted_bin_op_eq_str(op.node) else {
+            return;
+        };
+        span_lint_and_sugg(
+            cx,
+            NONMINIMAL_BOOL,
+            expr_span,
+            "this boolean expression can be simplified",
+            "try",
+            format!("{left} {op} {right}",),
+            Applicability::MachineApplicable,
+        );
+    }
+}
+
+fn check_inverted_bool_in_condition(
+    cx: &LateContext<'_>,
+    expr_span: Span,
+    op: BinOpKind,
+    left: &Expr<'_>,
+    right: &Expr<'_>,
+) {
+    if expr_span.from_expansion()
+        && (!cx.typeck_results().node_types()[left.hir_id].is_bool()
+            || !cx.typeck_results().node_types()[right.hir_id].is_bool())
+    {
+        return;
+    }
+
+    let suggestion = match (left.kind, right.kind) {
+        (ExprKind::Unary(UnOp::Not, left_sub), ExprKind::Unary(UnOp::Not, right_sub)) => {
+            let Some(left) = snippet_opt(cx, left_sub.span) else {
+                return;
+            };
+            let Some(right) = snippet_opt(cx, right_sub.span) else {
+                return;
+            };
+            let Some(op) = bin_op_eq_str(op) else { return };
+            format!("{left} {op} {right}")
+        },
+        (ExprKind::Unary(UnOp::Not, left_sub), _) => {
+            let Some(left) = snippet_opt(cx, left_sub.span) else {
+                return;
+            };
+            let Some(right) = snippet_opt(cx, right.span) else {
+                return;
+            };
+            let Some(op) = inverted_bin_op_eq_str(op) else { return };
+            format!("{left} {op} {right}")
+        },
+        (_, ExprKind::Unary(UnOp::Not, right_sub)) => {
+            let Some(left) = snippet_opt(cx, left.span) else { return };
+            let Some(right) = snippet_opt(cx, right_sub.span) else {
+                return;
+            };
+            let Some(op) = inverted_bin_op_eq_str(op) else { return };
+            format!("{left} {op} {right}")
+        },
+        _ => return,
+    };
+    span_lint_and_sugg(
+        cx,
+        NONMINIMAL_BOOL,
+        expr_span,
+        "this boolean expression can be simplified",
+        "try",
+        suggestion,
+        Applicability::MachineApplicable,
+    );
+}
+
 struct NonminimalBoolVisitor<'a, 'tcx> {
     cx: &'a LateContext<'tcx>,
 }

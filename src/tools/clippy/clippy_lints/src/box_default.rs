@@ -1,11 +1,12 @@
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::macros::macro_backtrace;
+use clippy_utils::source::snippet_opt;
 use clippy_utils::ty::expr_sig;
-use clippy_utils::{get_parent_node, is_default_equivalent, path_def_id};
+use clippy_utils::{is_default_equivalent, path_def_id};
 use rustc_errors::Applicability;
 use rustc_hir::def::Res;
 use rustc_hir::intravisit::{walk_ty, Visitor};
-use rustc_hir::{Block, Expr, ExprKind, Local, Node, QPath, TyKind};
+use rustc_hir::{Block, Expr, ExprKind, Local, Node, QPath, Ty, TyKind};
 use rustc_lint::{LateContext, LateLintPass, LintContext};
 use rustc_middle::lint::in_external_macro;
 use rustc_middle::ty::print::with_forced_trimmed_paths;
@@ -41,13 +42,24 @@ declare_lint_pass!(BoxDefault => [BOX_DEFAULT]);
 
 impl LateLintPass<'_> for BoxDefault {
     fn check_expr(&mut self, cx: &LateContext<'_>, expr: &Expr<'_>) {
+        // If the expression is a call (`Box::new(...)`)
         if let ExprKind::Call(box_new, [arg]) = expr.kind
+            // And call is of the form `<T>::something`
+            // Here, it would be `<Box>::new`
             && let ExprKind::Path(QPath::TypeRelative(ty, seg)) = box_new.kind
-            && let ExprKind::Call(arg_path, ..) = arg.kind
-            && !in_external_macro(cx.sess(), expr.span)
-            && (expr.span.eq_ctxt(arg.span) || is_local_vec_expn(cx, arg, expr))
+            // And that method is `new`
             && seg.ident.name == sym::new
+            // And the call is that of a `Box` method
             && path_def_id(cx, ty).map_or(false, |id| Some(id) == cx.tcx.lang_items().owned_box())
+            // And the single argument to the call is another function call
+            // This is the `T::default()` of `Box::new(T::default())`
+            && let ExprKind::Call(arg_path, inner_call_args) = arg.kind
+            // And we are not in a foreign crate's macro
+            && !in_external_macro(cx.sess(), expr.span)
+            // And the argument expression has the same context as the outer call expression
+            // or that we are inside a `vec!` macro expansion
+            && (expr.span.eq_ctxt(arg.span) || is_local_vec_expn(cx, arg, expr))
+            // And the argument is equivalent to `Default::default()`
             && is_default_equivalent(cx, arg)
         {
             span_lint_and_sugg(
@@ -59,7 +71,17 @@ impl LateLintPass<'_> for BoxDefault {
                 if is_plain_default(cx, arg_path) || given_type(cx, expr) {
                     "Box::default()".into()
                 } else if let Some(arg_ty) = cx.typeck_results().expr_ty(arg).make_suggestable(cx.tcx, true) {
-                    with_forced_trimmed_paths!(format!("Box::<{arg_ty}>::default()"))
+                    // Check if we can copy from the source expression in the replacement.
+                    // We need the call to have no argument (see `explicit_default_type`).
+                    if inner_call_args.is_empty()
+                        && let Some(ty) = explicit_default_type(arg_path)
+                        && let Some(s) = snippet_opt(cx, ty.span)
+                    {
+                        format!("Box::<{s}>::default()")
+                    } else {
+                        // Otherwise, use the inferred type's formatting.
+                        with_forced_trimmed_paths!(format!("Box::<{arg_ty}>::default()"))
+                    }
                 } else {
                     return;
                 },
@@ -78,6 +100,20 @@ fn is_plain_default(cx: &LateContext<'_>, arg_path: &Expr<'_>) -> bool {
         cx.tcx.is_diagnostic_item(sym::default_fn, def_id) && path.segments.iter().all(|seg| seg.args.is_none())
     } else {
         false
+    }
+}
+
+// Checks whether the call is of the form `A::B::f()`. Returns `A::B` if it is.
+//
+// In the event we have this kind of construct, it's easy to use `A::B` as a replacement in the
+// quickfix. `f` must however have no parameter. Should `f` have some, then some of the type of
+// `A::B` may be inferred from the arguments. This would be the case for `Vec::from([0; false])`,
+// where the argument to `from` allows inferring this is a `Vec<bool>`
+fn explicit_default_type<'a>(arg_path: &'a Expr<'_>) -> Option<&'a Ty<'a>> {
+    if let ExprKind::Path(QPath::TypeRelative(ty, _)) = &arg_path.kind {
+        Some(ty)
+    } else {
+        None
     }
 }
 
@@ -100,26 +136,23 @@ impl<'tcx> Visitor<'tcx> for InferVisitor {
 }
 
 fn given_type(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
-    match get_parent_node(cx.tcx, expr.hir_id) {
-        Some(Node::Local(Local { ty: Some(ty), .. })) => {
+    match cx.tcx.parent_hir_node(expr.hir_id) {
+        Node::Local(Local { ty: Some(ty), .. }) => {
             let mut v = InferVisitor::default();
             v.visit_ty(ty);
             !v.0
         },
-        Some(
-            Node::Expr(Expr {
+        Node::Expr(Expr {
+            kind: ExprKind::Call(path, args),
+            ..
+        })
+        | Node::Block(Block {
+            expr: Some(Expr {
                 kind: ExprKind::Call(path, args),
                 ..
-            })
-            | Node::Block(Block {
-                expr:
-                    Some(Expr {
-                        kind: ExprKind::Call(path, args),
-                        ..
-                    }),
-                ..
             }),
-        ) => {
+            ..
+        }) => {
             if let Some(index) = args.iter().position(|arg| arg.hir_id == expr.hir_id)
                 && let Some(sig) = expr_sig(cx, path)
                 && let Some(input) = sig.input(index)

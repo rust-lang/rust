@@ -1,5 +1,5 @@
 error: `Iterator::step_by(0)` will panic at runtime
-  --> $DIR/iterator_step_by_zero.rs:4:13
+  --> tests/ui/iterator_step_by_zero.rs:4:13
    |
 LL |     let _ = vec!["A", "B", "B"].iter().step_by(0);
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -8,37 +8,37 @@ LL |     let _ = vec!["A", "B", "B"].iter().step_by(0);
    = help: to override `-D warnings` add `#[allow(clippy::iterator_step_by_zero)]`
 
 error: `Iterator::step_by(0)` will panic at runtime
-  --> $DIR/iterator_step_by_zero.rs:7:13
+  --> tests/ui/iterator_step_by_zero.rs:7:13
    |
 LL |     let _ = "XXX".chars().step_by(0);
    |             ^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: `Iterator::step_by(0)` will panic at runtime
-  --> $DIR/iterator_step_by_zero.rs:9:13
+  --> tests/ui/iterator_step_by_zero.rs:9:13
    |
 LL |     let _ = (0..1).step_by(0);
    |             ^^^^^^^^^^^^^^^^^
 
 error: `Iterator::step_by(0)` will panic at runtime
-  --> $DIR/iterator_step_by_zero.rs:19:13
+  --> tests/ui/iterator_step_by_zero.rs:19:13
    |
 LL |     let _ = (1..).step_by(0);
    |             ^^^^^^^^^^^^^^^^
 
 error: `Iterator::step_by(0)` will panic at runtime
-  --> $DIR/iterator_step_by_zero.rs:21:13
+  --> tests/ui/iterator_step_by_zero.rs:21:13
    |
 LL |     let _ = (1..=2).step_by(0);
    |             ^^^^^^^^^^^^^^^^^^
 
 error: `Iterator::step_by(0)` will panic at runtime
-  --> $DIR/iterator_step_by_zero.rs:25:13
+  --> tests/ui/iterator_step_by_zero.rs:25:13
    |
 LL |     let _ = x.step_by(0);
    |             ^^^^^^^^^^^^
 
 error: `Iterator::step_by(0)` will panic at runtime
-  --> $DIR/iterator_step_by_zero.rs:30:13
+  --> tests/ui/iterator_step_by_zero.rs:30:13
    |
 LL |     let _ = v1.iter().step_by(2 / 3);
    |             ^^^^^^^^^^^^^^^^^^^^^^^^

@@ -1,5 +1,5 @@
 error: lint `clippy::should_assert_eq` has been removed: `assert!()` will be more flexible with RFC 2011
-  --> $DIR/deprecated.rs:5:9
+  --> tests/ui/deprecated.rs:5:9
    |
 LL | #![warn(clippy::should_assert_eq)]
    |         ^^^^^^^^^^^^^^^^^^^^^^^^
@@ -8,91 +8,91 @@ LL | #![warn(clippy::should_assert_eq)]
    = help: to override `-D warnings` add `#[allow(renamed_and_removed_lints)]`
 
 error: lint `clippy::extend_from_slice` has been removed: `.extend_from_slice(_)` is a faster way to extend a Vec by a slice
-  --> $DIR/deprecated.rs:6:9
+  --> tests/ui/deprecated.rs:6:9
    |
 LL | #![warn(clippy::extend_from_slice)]
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: lint `clippy::range_step_by_zero` has been removed: `iterator.step_by(0)` panics nowadays
-  --> $DIR/deprecated.rs:7:9
+  --> tests/ui/deprecated.rs:7:9
    |
 LL | #![warn(clippy::range_step_by_zero)]
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: lint `clippy::unstable_as_slice` has been removed: `Vec::as_slice` has been stabilized in 1.7
-  --> $DIR/deprecated.rs:8:9
+  --> tests/ui/deprecated.rs:8:9
    |
 LL | #![warn(clippy::unstable_as_slice)]
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: lint `clippy::unstable_as_mut_slice` has been removed: `Vec::as_mut_slice` has been stabilized in 1.7
-  --> $DIR/deprecated.rs:9:9
+  --> tests/ui/deprecated.rs:9:9
    |
 LL | #![warn(clippy::unstable_as_mut_slice)]
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: lint `clippy::misaligned_transmute` has been removed: this lint has been split into cast_ptr_alignment and transmute_ptr_to_ptr
-  --> $DIR/deprecated.rs:10:9
+  --> tests/ui/deprecated.rs:10:9
    |
 LL | #![warn(clippy::misaligned_transmute)]
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: lint `clippy::assign_ops` has been removed: using compound assignment operators (e.g., `+=`) is harmless
-  --> $DIR/deprecated.rs:11:9
+  --> tests/ui/deprecated.rs:11:9
    |
 LL | #![warn(clippy::assign_ops)]
    |         ^^^^^^^^^^^^^^^^^^
 
 error: lint `clippy::if_let_redundant_pattern_matching` has been removed: this lint has been changed to redundant_pattern_matching
-  --> $DIR/deprecated.rs:12:9
+  --> tests/ui/deprecated.rs:12:9
    |
 LL | #![warn(clippy::if_let_redundant_pattern_matching)]
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: lint `clippy::unsafe_vector_initialization` has been removed: the replacement suggested by this lint had substantially different behavior
-  --> $DIR/deprecated.rs:13:9
+  --> tests/ui/deprecated.rs:13:9
    |
 LL | #![warn(clippy::unsafe_vector_initialization)]
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: lint `clippy::unused_collect` has been removed: `collect` has been marked as #[must_use] in rustc and that covers all cases of this lint
-  --> $DIR/deprecated.rs:14:9
+  --> tests/ui/deprecated.rs:14:9
    |
 LL | #![warn(clippy::unused_collect)]
    |         ^^^^^^^^^^^^^^^^^^^^^^
 
 error: lint `clippy::replace_consts` has been removed: associated-constants `MIN`/`MAX` of integers are preferred to `{min,max}_value()` and module constants
-  --> $DIR/deprecated.rs:15:9
+  --> tests/ui/deprecated.rs:15:9
    |
 LL | #![warn(clippy::replace_consts)]
    |         ^^^^^^^^^^^^^^^^^^^^^^
 
 error: lint `clippy::regex_macro` has been removed: the regex! macro has been removed from the regex crate in 2018
-  --> $DIR/deprecated.rs:16:9
+  --> tests/ui/deprecated.rs:16:9
    |
 LL | #![warn(clippy::regex_macro)]
    |         ^^^^^^^^^^^^^^^^^^^
 
 error: lint `clippy::find_map` has been removed: this lint has been replaced by `manual_find_map`, a more specific lint
-  --> $DIR/deprecated.rs:17:9
+  --> tests/ui/deprecated.rs:17:9
    |
 LL | #![warn(clippy::find_map)]
    |         ^^^^^^^^^^^^^^^^
 
 error: lint `clippy::filter_map` has been removed: this lint has been replaced by `manual_filter_map`, a more specific lint
-  --> $DIR/deprecated.rs:18:9
+  --> tests/ui/deprecated.rs:18:9
    |
 LL | #![warn(clippy::filter_map)]
    |         ^^^^^^^^^^^^^^^^^^
 
 error: lint `clippy::pub_enum_variant_names` has been removed: set the `avoid-breaking-exported-api` config option to `false` to enable the `enum_variant_names` lint for public items
-  --> $DIR/deprecated.rs:19:9
+  --> tests/ui/deprecated.rs:19:9
    |
 LL | #![warn(clippy::pub_enum_variant_names)]
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: lint `clippy::wrong_pub_self_convention` has been removed: set the `avoid-breaking-exported-api` config option to `false` to enable the `wrong_self_convention` lint for public items
-  --> $DIR/deprecated.rs:20:9
+  --> tests/ui/deprecated.rs:20:9
    |
 LL | #![warn(clippy::wrong_pub_self_convention)]
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

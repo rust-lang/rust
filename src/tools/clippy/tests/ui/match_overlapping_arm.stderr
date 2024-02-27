@@ -1,11 +1,11 @@
 error: some ranges overlap
-  --> $DIR/match_overlapping_arm.rs:12:9
+  --> tests/ui/match_overlapping_arm.rs:12:9
    |
 LL |         0..=10 => println!("0..=10"),
    |         ^^^^^^
    |
 note: overlaps with this
-  --> $DIR/match_overlapping_arm.rs:14:9
+  --> tests/ui/match_overlapping_arm.rs:14:9
    |
 LL |         0..=11 => println!("0..=11"),
    |         ^^^^^^
@@ -13,85 +13,85 @@ LL |         0..=11 => println!("0..=11"),
    = help: to override `-D warnings` add `#[allow(clippy::match_overlapping_arm)]`
 
 error: some ranges overlap
-  --> $DIR/match_overlapping_arm.rs:19:9
+  --> tests/ui/match_overlapping_arm.rs:19:9
    |
 LL |         0..=5 => println!("0..=5"),
    |         ^^^^^
    |
 note: overlaps with this
-  --> $DIR/match_overlapping_arm.rs:22:9
+  --> tests/ui/match_overlapping_arm.rs:22:9
    |
 LL |         FOO..=11 => println!("FOO..=11"),
    |         ^^^^^^^^
 
 error: some ranges overlap
-  --> $DIR/match_overlapping_arm.rs:57:9
+  --> tests/ui/match_overlapping_arm.rs:57:9
    |
 LL |         0..11 => println!("0..11"),
    |         ^^^^^
    |
 note: overlaps with this
-  --> $DIR/match_overlapping_arm.rs:59:9
+  --> tests/ui/match_overlapping_arm.rs:59:9
    |
 LL |         0..=11 => println!("0..=11"),
    |         ^^^^^^
 
 error: some ranges overlap
-  --> $DIR/match_overlapping_arm.rs:83:9
+  --> tests/ui/match_overlapping_arm.rs:83:9
    |
 LL |         0..=10 => println!("0..=10"),
    |         ^^^^^^
    |
 note: overlaps with this
-  --> $DIR/match_overlapping_arm.rs:82:9
+  --> tests/ui/match_overlapping_arm.rs:82:9
    |
 LL |         5..14 => println!("5..14"),
    |         ^^^^^
 
 error: some ranges overlap
-  --> $DIR/match_overlapping_arm.rs:89:9
+  --> tests/ui/match_overlapping_arm.rs:89:9
    |
 LL |         0..7 => println!("0..7"),
    |         ^^^^
    |
 note: overlaps with this
-  --> $DIR/match_overlapping_arm.rs:91:9
+  --> tests/ui/match_overlapping_arm.rs:91:9
    |
 LL |         0..=10 => println!("0..=10"),
    |         ^^^^^^
 
 error: some ranges overlap
-  --> $DIR/match_overlapping_arm.rs:102:9
+  --> tests/ui/match_overlapping_arm.rs:102:9
    |
 LL |         ..=23 => println!("..=23"),
    |         ^^^^^
    |
 note: overlaps with this
-  --> $DIR/match_overlapping_arm.rs:104:9
+  --> tests/ui/match_overlapping_arm.rs:104:9
    |
 LL |         ..26 => println!("..26"),
    |         ^^^^
 
 error: some ranges overlap
-  --> $DIR/match_overlapping_arm.rs:112:9
+  --> tests/ui/match_overlapping_arm.rs:112:9
    |
 LL |         21..=30 => (),
    |         ^^^^^^^
    |
 note: overlaps with this
-  --> $DIR/match_overlapping_arm.rs:114:9
+  --> tests/ui/match_overlapping_arm.rs:114:9
    |
 LL |         21..=40 => (),
    |         ^^^^^^^
 
 error: some ranges overlap
-  --> $DIR/match_overlapping_arm.rs:127:9
+  --> tests/ui/match_overlapping_arm.rs:127:9
    |
 LL |         0..=0x0000_0000_0000_00ff => (),
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^
    |
 note: overlaps with this
-  --> $DIR/match_overlapping_arm.rs:129:9
+  --> tests/ui/match_overlapping_arm.rs:129:9
    |
 LL |         0..=0x0000_0000_0000_ffff => (),
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^

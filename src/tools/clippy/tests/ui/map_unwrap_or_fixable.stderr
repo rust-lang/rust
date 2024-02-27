@@ -1,5 +1,5 @@
 error: called `map(<f>).unwrap_or_else(<g>)` on an `Option` value
-  --> $DIR/map_unwrap_or_fixable.rs:16:13
+  --> tests/ui/map_unwrap_or_fixable.rs:16:13
    |
 LL |       let _ = opt.map(|x| x + 1)
    |  _____________^
@@ -11,7 +11,7 @@ LL | |         .unwrap_or_else(|| 0);
    = help: to override `-D warnings` add `#[allow(clippy::map_unwrap_or)]`
 
 error: called `map(<f>).unwrap_or_else(<g>)` on a `Result` value
-  --> $DIR/map_unwrap_or_fixable.rs:46:13
+  --> tests/ui/map_unwrap_or_fixable.rs:46:13
    |
 LL |       let _ = res.map(|x| x + 1)
    |  _____________^

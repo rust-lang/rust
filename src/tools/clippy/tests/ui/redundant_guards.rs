@@ -1,6 +1,6 @@
 //@aux-build:proc_macros.rs
 #![feature(if_let_guard)]
-#![allow(clippy::no_effect, unused)]
+#![allow(clippy::no_effect, unused, clippy::single_match)]
 #![warn(clippy::redundant_guards)]
 
 #[macro_use]
@@ -16,6 +16,7 @@ struct C(u32, u32);
 
 #[derive(PartialEq)]
 struct FloatWrapper(f32);
+
 fn issue11304() {
     match 0.1 {
         x if x == 0.0 => todo!(),
@@ -115,6 +116,14 @@ fn h(v: Option<u32>) {
         x if matches!(x, Some(0)) => ..,
         _ => ..,
     };
+}
+
+fn negative_literal(i: i32) {
+    match i {
+        i if i == -1 => {},
+        i if i == 1 => {},
+        _ => {},
+    }
 }
 
 // Do not lint
@@ -249,4 +258,50 @@ fn issue11807() {
         Some(Some(x)) if x.starts_with(&[1, 2]) => {},
         _ => {},
     }
+}
+
+mod issue12243 {
+    pub const fn const_fn(x: &str) {
+        match x {
+            // Shouldn't lint.
+            y if y.is_empty() => {},
+            _ => {},
+        }
+    }
+
+    pub fn non_const_fn(x: &str) {
+        match x {
+            y if y.is_empty() => {},
+            //~^ ERROR: redundant guard
+            _ => {},
+        }
+    }
+
+    struct Bar;
+
+    impl Bar {
+        pub const fn const_bar(x: &str) {
+            match x {
+                // Shouldn't lint.
+                y if y.is_empty() => {},
+                _ => {},
+            }
+        }
+
+        pub fn non_const_bar(x: &str) {
+            match x {
+                y if y.is_empty() => {},
+                //~^ ERROR: redundant guard
+                _ => {},
+            }
+        }
+    }
+
+    static FOO: () = {
+        match "" {
+            // Shouldn't lint.
+            x if x.is_empty() => {},
+            _ => {},
+        }
+    };
 }

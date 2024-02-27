@@ -4,8 +4,8 @@ use clippy_utils::source::{snippet, snippet_with_applicability};
 use clippy_utils::sugg::Sugg;
 use clippy_utils::ty::{is_type_diagnostic_item, make_normalized_projection, make_projection};
 use clippy_utils::{
-    can_move_expr_to_closure, fn_def_id, get_enclosing_block, get_parent_node, higher, is_trait_method, path_to_local,
-    path_to_local_id, CaptureKind,
+    can_move_expr_to_closure, fn_def_id, get_enclosing_block, higher, is_trait_method, path_to_local, path_to_local_id,
+    CaptureKind,
 };
 use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::{Applicability, MultiSpan};
@@ -28,104 +28,102 @@ pub(super) fn check<'tcx>(
     iter_expr: &'tcx Expr<'tcx>,
     call_span: Span,
 ) {
-    if let Some(parent) = get_parent_node(cx.tcx, collect_expr.hir_id) {
-        match parent {
-            Node::Expr(parent) => {
-                check_collect_into_intoiterator(cx, parent, collect_expr, call_span, iter_expr);
+    match cx.tcx.parent_hir_node(collect_expr.hir_id) {
+        Node::Expr(parent) => {
+            check_collect_into_intoiterator(cx, parent, collect_expr, call_span, iter_expr);
 
-                if let ExprKind::MethodCall(name, _, args @ ([] | [_]), _) = parent.kind {
-                    let mut app = Applicability::MachineApplicable;
-                    let name = name.ident.as_str();
-                    let collect_ty = cx.typeck_results().expr_ty(collect_expr);
+            if let ExprKind::MethodCall(name, _, args @ ([] | [_]), _) = parent.kind {
+                let mut app = Applicability::MachineApplicable;
+                let name = name.ident.as_str();
+                let collect_ty = cx.typeck_results().expr_ty(collect_expr);
 
-                    let sugg: String = match name {
-                        "len" => {
-                            if let Some(adt) = collect_ty.ty_adt_def()
-                                && matches!(
-                                    cx.tcx.get_diagnostic_name(adt.did()),
-                                    Some(sym::Vec | sym::VecDeque | sym::LinkedList | sym::BinaryHeap)
-                                )
-                            {
-                                "count()".into()
-                            } else {
-                                return;
-                            }
-                        },
-                        "is_empty"
-                            if is_is_empty_sig(cx, parent.hir_id)
-                                && iterates_same_ty(cx, cx.typeck_results().expr_ty(iter_expr), collect_ty) =>
+                let sugg: String = match name {
+                    "len" => {
+                        if let Some(adt) = collect_ty.ty_adt_def()
+                            && matches!(
+                                cx.tcx.get_diagnostic_name(adt.did()),
+                                Some(sym::Vec | sym::VecDeque | sym::LinkedList | sym::BinaryHeap)
+                            )
                         {
-                            "next().is_none()".into()
-                        },
-                        "contains" => {
-                            if is_contains_sig(cx, parent.hir_id, iter_expr)
-                                && let Some(arg) = args.first()
-                            {
-                                let (span, prefix) = if let ExprKind::AddrOf(_, _, arg) = arg.kind {
-                                    (arg.span, "")
-                                } else {
-                                    (arg.span, "*")
-                                };
-                                let snip = snippet_with_applicability(cx, span, "??", &mut app);
-                                format!("any(|x| x == {prefix}{snip})")
+                            "count()".into()
+                        } else {
+                            return;
+                        }
+                    },
+                    "is_empty"
+                        if is_is_empty_sig(cx, parent.hir_id)
+                            && iterates_same_ty(cx, cx.typeck_results().expr_ty(iter_expr), collect_ty) =>
+                    {
+                        "next().is_none()".into()
+                    },
+                    "contains" => {
+                        if is_contains_sig(cx, parent.hir_id, iter_expr)
+                            && let Some(arg) = args.first()
+                        {
+                            let (span, prefix) = if let ExprKind::AddrOf(_, _, arg) = arg.kind {
+                                (arg.span, "")
                             } else {
-                                return;
-                            }
-                        },
-                        _ => return,
-                    };
+                                (arg.span, "*")
+                            };
+                            let snip = snippet_with_applicability(cx, span, "??", &mut app);
+                            format!("any(|x| x == {prefix}{snip})")
+                        } else {
+                            return;
+                        }
+                    },
+                    _ => return,
+                };
 
-                    span_lint_and_sugg(
-                        cx,
-                        NEEDLESS_COLLECT,
-                        call_span.with_hi(parent.span.hi()),
-                        NEEDLESS_COLLECT_MSG,
-                        "replace with",
-                        sugg,
-                        app,
-                    );
+                span_lint_and_sugg(
+                    cx,
+                    NEEDLESS_COLLECT,
+                    call_span.with_hi(parent.span.hi()),
+                    NEEDLESS_COLLECT_MSG,
+                    "replace with",
+                    sugg,
+                    app,
+                );
+            }
+        },
+        Node::Local(l) => {
+            if let PatKind::Binding(BindingAnnotation::NONE | BindingAnnotation::MUT, id, _, None) = l.pat.kind
+                && let ty = cx.typeck_results().expr_ty(collect_expr)
+                && [sym::Vec, sym::VecDeque, sym::BinaryHeap, sym::LinkedList]
+                    .into_iter()
+                    .any(|item| is_type_diagnostic_item(cx, ty, item))
+                && let iter_ty = cx.typeck_results().expr_ty(iter_expr)
+                && let Some(block) = get_enclosing_block(cx, l.hir_id)
+                && let Some(iter_calls) = detect_iter_and_into_iters(block, id, cx, get_captured_ids(cx, iter_ty))
+                && let [iter_call] = &*iter_calls
+            {
+                let mut used_count_visitor = UsedCountVisitor { cx, id, count: 0 };
+                walk_block(&mut used_count_visitor, block);
+                if used_count_visitor.count > 1 {
+                    return;
                 }
-            },
-            Node::Local(l) => {
-                if let PatKind::Binding(BindingAnnotation::NONE | BindingAnnotation::MUT, id, _, None) = l.pat.kind
-                    && let ty = cx.typeck_results().expr_ty(collect_expr)
-                    && [sym::Vec, sym::VecDeque, sym::BinaryHeap, sym::LinkedList]
-                        .into_iter()
-                        .any(|item| is_type_diagnostic_item(cx, ty, item))
-                    && let iter_ty = cx.typeck_results().expr_ty(iter_expr)
-                    && let Some(block) = get_enclosing_block(cx, l.hir_id)
-                    && let Some(iter_calls) = detect_iter_and_into_iters(block, id, cx, get_captured_ids(cx, iter_ty))
-                    && let [iter_call] = &*iter_calls
-                {
-                    let mut used_count_visitor = UsedCountVisitor { cx, id, count: 0 };
-                    walk_block(&mut used_count_visitor, block);
-                    if used_count_visitor.count > 1 {
-                        return;
-                    }
 
-                    // Suggest replacing iter_call with iter_replacement, and removing stmt
-                    let mut span = MultiSpan::from_span(name_span);
-                    span.push_span_label(iter_call.span, "the iterator could be used here instead");
-                    span_lint_hir_and_then(
-                        cx,
-                        super::NEEDLESS_COLLECT,
-                        collect_expr.hir_id,
-                        span,
-                        NEEDLESS_COLLECT_MSG,
-                        |diag| {
-                            let iter_replacement =
-                                format!("{}{}", Sugg::hir(cx, iter_expr, ".."), iter_call.get_iter_method(cx));
-                            diag.multipart_suggestion(
-                                iter_call.get_suggestion_text(),
-                                vec![(l.span, String::new()), (iter_call.span, iter_replacement)],
-                                Applicability::MaybeIncorrect,
-                            );
-                        },
-                    );
-                }
-            },
-            _ => (),
-        }
+                // Suggest replacing iter_call with iter_replacement, and removing stmt
+                let mut span = MultiSpan::from_span(name_span);
+                span.push_span_label(iter_call.span, "the iterator could be used here instead");
+                span_lint_hir_and_then(
+                    cx,
+                    super::NEEDLESS_COLLECT,
+                    collect_expr.hir_id,
+                    span,
+                    NEEDLESS_COLLECT_MSG,
+                    |diag| {
+                        let iter_replacement =
+                            format!("{}{}", Sugg::hir(cx, iter_expr, ".."), iter_call.get_iter_method(cx));
+                        diag.multipart_suggestion(
+                            iter_call.get_suggestion_text(),
+                            vec![(l.span, String::new()), (iter_call.span, iter_replacement)],
+                            Applicability::MaybeIncorrect,
+                        );
+                    },
+                );
+            }
+        },
+        _ => (),
     }
 }
 

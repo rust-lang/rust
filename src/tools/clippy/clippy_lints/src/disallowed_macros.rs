@@ -1,13 +1,16 @@
 use clippy_config::types::DisallowedPath;
-use clippy_utils::diagnostics::span_lint_and_then;
+use clippy_utils::diagnostics::{span_lint_and_then, span_lint_hir_and_then};
 use clippy_utils::macros::macro_backtrace;
 use rustc_ast::Attribute;
 use rustc_data_structures::fx::FxHashSet;
+use rustc_errors::DiagnosticBuilder;
 use rustc_hir::def_id::DefIdMap;
-use rustc_hir::{Expr, ExprKind, ForeignItem, HirId, ImplItem, Item, Pat, Path, Stmt, TraitItem, Ty};
+use rustc_hir::{
+    Expr, ExprKind, ForeignItem, HirId, ImplItem, Item, ItemKind, OwnerId, Pat, Path, Stmt, TraitItem, Ty,
+};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::impl_lint_pass;
-use rustc_span::{ExpnId, Span};
+use rustc_span::{ExpnId, MacroKind, Span};
 
 declare_clippy_lint! {
     /// ### What it does
@@ -57,6 +60,10 @@ pub struct DisallowedMacros {
     conf_disallowed: Vec<DisallowedPath>,
     disallowed: DefIdMap<usize>,
     seen: FxHashSet<ExpnId>,
+
+    // Track the most recently seen node that can have a `derive` attribute.
+    // Needed to use the correct lint level.
+    derive_src: Option<OwnerId>,
 }
 
 impl DisallowedMacros {
@@ -65,10 +72,11 @@ impl DisallowedMacros {
             conf_disallowed,
             disallowed: DefIdMap::default(),
             seen: FxHashSet::default(),
+            derive_src: None,
         }
     }
 
-    fn check(&mut self, cx: &LateContext<'_>, span: Span) {
+    fn check(&mut self, cx: &LateContext<'_>, span: Span, derive_src: Option<OwnerId>) {
         if self.conf_disallowed.is_empty() {
             return;
         }
@@ -80,18 +88,26 @@ impl DisallowedMacros {
 
             if let Some(&index) = self.disallowed.get(&mac.def_id) {
                 let conf = &self.conf_disallowed[index];
-
-                span_lint_and_then(
-                    cx,
-                    DISALLOWED_MACROS,
-                    mac.span,
-                    &format!("use of a disallowed macro `{}`", conf.path()),
-                    |diag| {
-                        if let Some(reason) = conf.reason() {
-                            diag.note(reason);
-                        }
-                    },
-                );
+                let msg = format!("use of a disallowed macro `{}`", conf.path());
+                let add_note = |diag: &mut DiagnosticBuilder<'_, _>| {
+                    if let Some(reason) = conf.reason() {
+                        diag.note(reason);
+                    }
+                };
+                if matches!(mac.kind, MacroKind::Derive)
+                    && let Some(derive_src) = derive_src
+                {
+                    span_lint_hir_and_then(
+                        cx,
+                        DISALLOWED_MACROS,
+                        cx.tcx.local_def_id_to_hir_id(derive_src.def_id),
+                        mac.span,
+                        &msg,
+                        add_note,
+                    );
+                } else {
+                    span_lint_and_then(cx, DISALLOWED_MACROS, mac.span, &msg, add_note);
+                }
             }
         }
     }
@@ -110,49 +126,57 @@ impl LateLintPass<'_> for DisallowedMacros {
     }
 
     fn check_expr(&mut self, cx: &LateContext<'_>, expr: &Expr<'_>) {
-        self.check(cx, expr.span);
+        self.check(cx, expr.span, None);
         // `$t + $t` can have the context of $t, check also the span of the binary operator
         if let ExprKind::Binary(op, ..) = expr.kind {
-            self.check(cx, op.span);
+            self.check(cx, op.span, None);
         }
     }
 
     fn check_stmt(&mut self, cx: &LateContext<'_>, stmt: &Stmt<'_>) {
-        self.check(cx, stmt.span);
+        self.check(cx, stmt.span, None);
     }
 
     fn check_ty(&mut self, cx: &LateContext<'_>, ty: &Ty<'_>) {
-        self.check(cx, ty.span);
+        self.check(cx, ty.span, None);
     }
 
     fn check_pat(&mut self, cx: &LateContext<'_>, pat: &Pat<'_>) {
-        self.check(cx, pat.span);
+        self.check(cx, pat.span, None);
     }
 
     fn check_item(&mut self, cx: &LateContext<'_>, item: &Item<'_>) {
-        self.check(cx, item.span);
-        self.check(cx, item.vis_span);
+        self.check(cx, item.span, self.derive_src);
+        self.check(cx, item.vis_span, None);
+
+        if matches!(
+            item.kind,
+            ItemKind::Struct(..) | ItemKind::Enum(..) | ItemKind::Union(..)
+        ) && macro_backtrace(item.span).all(|m| !matches!(m.kind, MacroKind::Derive))
+        {
+            self.derive_src = Some(item.owner_id);
+        }
     }
 
     fn check_foreign_item(&mut self, cx: &LateContext<'_>, item: &ForeignItem<'_>) {
-        self.check(cx, item.span);
-        self.check(cx, item.vis_span);
+        self.check(cx, item.span, None);
+        self.check(cx, item.vis_span, None);
     }
 
     fn check_impl_item(&mut self, cx: &LateContext<'_>, item: &ImplItem<'_>) {
-        self.check(cx, item.span);
-        self.check(cx, item.vis_span);
+        self.check(cx, item.span, None);
+        self.check(cx, item.vis_span, None);
     }
 
     fn check_trait_item(&mut self, cx: &LateContext<'_>, item: &TraitItem<'_>) {
-        self.check(cx, item.span);
+        self.check(cx, item.span, None);
     }
 
     fn check_path(&mut self, cx: &LateContext<'_>, path: &Path<'_>, _: HirId) {
-        self.check(cx, path.span);
+        self.check(cx, path.span, None);
     }
 
     fn check_attribute(&mut self, cx: &LateContext<'_>, attr: &Attribute) {
-        self.check(cx, attr.span);
+        self.check(cx, attr.span, self.derive_src);
     }
 }

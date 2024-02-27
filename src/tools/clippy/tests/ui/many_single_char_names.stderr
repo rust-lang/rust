@@ -1,5 +1,5 @@
 error: 5 bindings with single-character names in scope
-  --> $DIR/many_single_char_names.rs:5:9
+  --> tests/ui/many_single_char_names.rs:5:9
    |
 LL |     let a: i32;
    |         ^
@@ -14,7 +14,7 @@ LL |             let e: i32;
    = help: to override `-D warnings` add `#[allow(clippy::many_single_char_names)]`
 
 error: 6 bindings with single-character names in scope
-  --> $DIR/many_single_char_names.rs:5:9
+  --> tests/ui/many_single_char_names.rs:5:9
    |
 LL |     let a: i32;
    |         ^
@@ -28,7 +28,7 @@ LL |             let f: i32;
    |                 ^
 
 error: 5 bindings with single-character names in scope
-  --> $DIR/many_single_char_names.rs:5:9
+  --> tests/ui/many_single_char_names.rs:5:9
    |
 LL |     let a: i32;
    |         ^
@@ -40,13 +40,13 @@ LL |             e => panic!(),
    |             ^
 
 error: 8 bindings with single-character names in scope
-  --> $DIR/many_single_char_names.rs:34:13
+  --> tests/ui/many_single_char_names.rs:34:13
    |
 LL | fn bindings(a: i32, b: i32, c: i32, d: i32, e: i32, f: i32, g: i32, h: i32) {}
    |             ^       ^       ^       ^       ^       ^       ^       ^
 
 error: 8 bindings with single-character names in scope
-  --> $DIR/many_single_char_names.rs:38:10
+  --> tests/ui/many_single_char_names.rs:38:10
    |
 LL |     let (a, b, c, d, e, f, g, h): (bool, bool, bool, bool, bool, bool, bool, bool) = unimplemented!();
    |          ^  ^  ^  ^  ^  ^  ^  ^

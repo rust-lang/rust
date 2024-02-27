@@ -1,5 +1,5 @@
 error: single argument that looks like it should be multiple arguments
-  --> $DIR/suspicious_command_arg_space.rs:3:44
+  --> tests/ui/suspicious_command_arg_space.rs:3:44
    |
 LL |     std::process::Command::new("echo").arg("-n hello").spawn().unwrap();
    |                                            ^^^^^^^^^^
@@ -12,7 +12,7 @@ LL |     std::process::Command::new("echo").args(["-n", "hello"]).spawn().unwrap
    |                                        ~~~~ ~~~~~~~~~~~~~~~
 
 error: single argument that looks like it should be multiple arguments
-  --> $DIR/suspicious_command_arg_space.rs:6:43
+  --> tests/ui/suspicious_command_arg_space.rs:6:43
    |
 LL |     std::process::Command::new("cat").arg("--number file").spawn().unwrap();
    |                                           ^^^^^^^^^^^^^^^

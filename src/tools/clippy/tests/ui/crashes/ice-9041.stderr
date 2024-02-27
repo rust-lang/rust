@@ -1,5 +1,5 @@
 error: called `is_some()` after searching an `Iterator` with `find`
-  --> $DIR/ice-9041.rs:5:19
+  --> tests/ui/crashes/ice-9041.rs:5:19
    |
 LL |     things.iter().find(|p| is_thing_ready(p)).is_some()
    |                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using: `any(|p| is_thing_ready(&p))`

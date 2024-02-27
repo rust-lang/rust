@@ -1,5 +1,5 @@
 error: temporary with significant `Drop` can be early dropped
-  --> $DIR/significant_drop_tightening.rs:10:9
+  --> tests/ui/significant_drop_tightening.rs:10:9
    |
 LL |   pub fn complex_return_triggers_the_lint() -> i32 {
    |  __________________________________________________-
@@ -24,7 +24,7 @@ LL +     drop(lock);
    |
 
 error: temporary with significant `Drop` can be early dropped
-  --> $DIR/significant_drop_tightening.rs:104:13
+  --> tests/ui/significant_drop_tightening.rs:104:13
    |
 LL | /     {
 LL | |         let mutex = Mutex::new(1i32);
@@ -44,7 +44,7 @@ LL +         drop(lock);
    |
 
 error: temporary with significant `Drop` can be early dropped
-  --> $DIR/significant_drop_tightening.rs:125:13
+  --> tests/ui/significant_drop_tightening.rs:125:13
    |
 LL | /     {
 LL | |         let mutex = Mutex::new(1i32);
@@ -68,7 +68,7 @@ LL +
    |
 
 error: temporary with significant `Drop` can be early dropped
-  --> $DIR/significant_drop_tightening.rs:131:17
+  --> tests/ui/significant_drop_tightening.rs:131:17
    |
 LL | /     {
 LL | |         let mutex = Mutex::new(vec![1i32]);

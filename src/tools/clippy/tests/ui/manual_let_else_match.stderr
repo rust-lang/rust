@@ -1,5 +1,5 @@
 error: this could be rewritten as `let...else`
-  --> $DIR/manual_let_else_match.rs:36:5
+  --> tests/ui/manual_let_else_match.rs:36:5
    |
 LL | /     let v = match g() {
 LL | |
@@ -13,7 +13,7 @@ LL | |     };
    = help: to override `-D warnings` add `#[allow(clippy::manual_let_else)]`
 
 error: this could be rewritten as `let...else`
-  --> $DIR/manual_let_else_match.rs:43:5
+  --> tests/ui/manual_let_else_match.rs:43:5
    |
 LL | /     let v = match g() {
 LL | |
@@ -23,7 +23,7 @@ LL | |     };
    | |______^ help: consider writing: `let Some(v) = g() else { return };`
 
 error: this could be rewritten as `let...else`
-  --> $DIR/manual_let_else_match.rs:51:9
+  --> tests/ui/manual_let_else_match.rs:51:9
    |
 LL | /         let v = match h() {
 LL | |
@@ -33,7 +33,7 @@ LL | |         };
    | |__________^ help: consider writing: `let ((Some(v), None) | (None, Some(v))) = h() else { continue };`
 
 error: this could be rewritten as `let...else`
-  --> $DIR/manual_let_else_match.rs:57:9
+  --> tests/ui/manual_let_else_match.rs:57:9
    |
 LL | /         let v = match build_enum() {
 LL | |
@@ -43,7 +43,7 @@ LL | |         };
    | |__________^ help: consider writing: `let (Variant::Bar(v) | Variant::Baz(v)) = build_enum() else { continue };`
 
 error: this could be rewritten as `let...else`
-  --> $DIR/manual_let_else_match.rs:66:5
+  --> tests/ui/manual_let_else_match.rs:66:5
    |
 LL | /     let v = match f() {
 LL | |
@@ -53,7 +53,7 @@ LL | |     };
    | |______^ help: consider writing: `let Ok(v) = f() else { return };`
 
 error: this could be rewritten as `let...else`
-  --> $DIR/manual_let_else_match.rs:73:5
+  --> tests/ui/manual_let_else_match.rs:73:5
    |
 LL | /     let v = match f().map_err(|_| ()) {
 LL | |
@@ -63,7 +63,7 @@ LL | |     };
    | |______^ help: consider writing: `let Ok(v) = f().map_err(|_| ()) else { return };`
 
 error: this could be rewritten as `let...else`
-  --> $DIR/manual_let_else_match.rs:81:5
+  --> tests/ui/manual_let_else_match.rs:81:5
    |
 LL | /     let _value = match f {
 LL | |
@@ -73,7 +73,7 @@ LL | |     };
    | |______^ help: consider writing: `let (Variant::Bar(_value) | Variant::Baz(_value)) = f else { return };`
 
 error: this could be rewritten as `let...else`
-  --> $DIR/manual_let_else_match.rs:87:5
+  --> tests/ui/manual_let_else_match.rs:87:5
    |
 LL | /     let _value = match Some(build_enum()) {
 LL | |
@@ -83,7 +83,7 @@ LL | |     };
    | |______^ help: consider writing: `let Some(Variant::Bar(_value) | Variant::Baz(_value)) = Some(build_enum()) else { return };`
 
 error: this could be rewritten as `let...else`
-  --> $DIR/manual_let_else_match.rs:94:5
+  --> tests/ui/manual_let_else_match.rs:94:5
    |
 LL | /     let data = match data.as_slice() {
 LL | |
@@ -93,7 +93,7 @@ LL | |     };
    | |______^ help: consider writing: `let ([data @ .., 0, 0, 0, 0] | [data @ .., 0, 0] | [data @ .., 0]) = data.as_slice() else { return };`
 
 error: this could be rewritten as `let...else`
-  --> $DIR/manual_let_else_match.rs:175:5
+  --> tests/ui/manual_let_else_match.rs:175:5
    |
 LL | /     let msg = match Some("hi") {
 LL | |

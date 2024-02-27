@@ -1,5 +1,5 @@
 error: empty `loop {}` wastes CPU cycles
-  --> $DIR/empty_loop_no_std.rs:13:5
+  --> tests/ui/empty_loop_no_std.rs:13:5
    |
 LL |     loop {}
    |     ^^^^^^^
@@ -9,7 +9,7 @@ LL |     loop {}
    = help: to override `-D warnings` add `#[allow(clippy::empty_loop)]`
 
 error: empty `loop {}` wastes CPU cycles
-  --> $DIR/empty_loop_no_std.rs:26:5
+  --> tests/ui/empty_loop_no_std.rs:26:5
    |
 LL |     loop {}
    |     ^^^^^^^
