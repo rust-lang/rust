@@ -58,16 +58,6 @@ pub(crate) struct IceBugReportOutdated<'a> {
 }
 
 #[derive(Diagnostic)]
-#[diag(driver_impl_ice_bug_report_internal_feature_outdated)]
-pub(crate) struct IceBugReportInternalFeatureOutdated<'a> {
-    pub version: &'a str,
-    #[note(driver_impl_outdated)]
-    pub note_outdated: (),
-    #[note(driver_impl_update)]
-    pub note_update: (),
-}
-
-#[derive(Diagnostic)]
 #[diag(driver_impl_ice_version)]
 pub(crate) struct IceVersion<'a> {
     pub version: &'a str,

@@ -1415,21 +1415,14 @@ fn report_ice(
         && let ver_datetime = OffsetDateTime::new_utc(ver_date, Time::MIDNIGHT)
         && let system_datetime = OffsetDateTime::from(SystemTime::now())
         && system_datetime.checked_sub(36.hours()).is_some_and(|d| d > ver_datetime)
+        && !using_internal_features.load(std::sync::atomic::Ordering::Relaxed)
     {
-        if using_internal_features.load(std::sync::atomic::Ordering::Relaxed) {
-            dcx.emit_note(session_diagnostics::IceBugReportInternalFeatureOutdated {
-                version,
-                note_update: (),
-                note_outdated: (),
-            });
-        } else {
-            dcx.emit_note(session_diagnostics::IceBugReportOutdated {
-                version,
-                bug_report_url,
-                note_update: (),
-                note_url: (),
-            });
-        }
+        dcx.emit_note(session_diagnostics::IceBugReportOutdated {
+            version,
+            bug_report_url,
+            note_update: (),
+            note_url: (),
+        });
     } else {
         if using_internal_features.load(std::sync::atomic::Ordering::Relaxed) {
             dcx.emit_note(session_diagnostics::IceBugReportInternalFeature);
