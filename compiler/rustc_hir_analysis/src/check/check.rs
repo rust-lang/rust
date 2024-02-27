@@ -402,24 +402,11 @@ fn check_opaque_meets_bounds<'tcx>(
         let guar = infcx.err_ctxt().report_fulfillment_errors(errors);
         return Err(guar);
     }
-    match origin {
-        // Nested opaque types occur only in associated types:
-        // ` type Opaque<T> = impl Trait<&'static T, AssocTy = impl Nested>; `
-        // They can only be referenced as `<Opaque<T> as Trait<&'static T>>::AssocTy`.
-        // We don't have to check them here because their well-formedness follows from the WF of
-        // the projection input types in the defining- and use-sites.
-        hir::OpaqueTyOrigin::TyAlias { .. }
-            if tcx.def_kind(tcx.parent(def_id.to_def_id())) == DefKind::OpaqueTy => {}
-        // Can have different predicates to their defining use
-        hir::OpaqueTyOrigin::TyAlias { .. }
-        | hir::OpaqueTyOrigin::FnReturn(..)
-        | hir::OpaqueTyOrigin::AsyncFn(..) => {
-            let wf_tys = ocx.assumed_wf_types_and_report_errors(param_env, defining_use_anchor)?;
-            let implied_bounds = infcx.implied_bounds_tys(param_env, def_id, &wf_tys);
-            let outlives_env = OutlivesEnvironment::with_bounds(param_env, implied_bounds);
-            ocx.resolve_regions_and_report_errors(defining_use_anchor, &outlives_env)?;
-        }
-    }
+
+    let wf_tys = ocx.assumed_wf_types_and_report_errors(param_env, defining_use_anchor)?;
+    let implied_bounds = infcx.implied_bounds_tys(param_env, def_id, &wf_tys);
+    let outlives_env = OutlivesEnvironment::with_bounds(param_env, implied_bounds);
+    ocx.resolve_regions_and_report_errors(defining_use_anchor, &outlives_env)?;
 
     if let hir::OpaqueTyOrigin::FnReturn(..) | hir::OpaqueTyOrigin::AsyncFn(..) = origin {
         // HACK: this should also fall through to the hidden type check below, but the original
