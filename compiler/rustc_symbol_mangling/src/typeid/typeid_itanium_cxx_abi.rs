@@ -546,8 +546,20 @@ fn encode_ty<'tcx>(
             if let Some(cfi_encoding) = tcx.get_attr(def_id, sym::cfi_encoding) {
                 // Use user-defined CFI encoding for type
                 if let Some(value_str) = cfi_encoding.value_str() {
-                    if !value_str.to_string().trim().is_empty() {
-                        s.push_str(value_str.to_string().trim());
+                    let value_str = value_str.to_string();
+                    let str = value_str.trim();
+                    if !str.is_empty() {
+                        s.push_str(str);
+                        // Don't compress user-defined builtin types (see
+                        // https://itanium-cxx-abi.github.io/cxx-abi/abi.html#mangling-builtin and
+                        // https://itanium-cxx-abi.github.io/cxx-abi/abi.html#mangling-compression).
+                        let builtin_types = [
+                            "v", "w", "b", "c", "a", "h", "s", "t", "i", "j", "l", "m", "x", "y",
+                            "n", "o", "f", "d", "e", "g", "z",
+                        ];
+                        if !builtin_types.contains(&str) {
+                            compress(dict, DictKey::Ty(ty, TyQ::None), &mut s);
+                        }
                     } else {
                         #[allow(
                             rustc::diagnostic_outside_of_impl,
@@ -563,7 +575,6 @@ fn encode_ty<'tcx>(
                 } else {
                     bug!("encode_ty: invalid `cfi_encoding` for `{:?}`", ty.kind());
                 }
-                compress(dict, DictKey::Ty(ty, TyQ::None), &mut s);
             } else if options.contains(EncodeTyOptions::GENERALIZE_REPR_C) && adt_def.repr().c() {
                 // For cross-language LLVM CFI support, the encoding must be compatible at the FFI
                 // boundary. For instance:
