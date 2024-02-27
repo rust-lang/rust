@@ -1978,6 +1978,33 @@ fn f() {
     }
 
     #[test]
+    fn goto_deref_mut() {
+        check(
+            r#"
+//- minicore: deref, deref_mut
+
+struct Foo;
+struct Bar;
+
+impl core::ops::Deref for Foo {
+    type Target = Bar;
+    fn deref(&self) -> &Self::Target {}
+}
+
+impl core::ops::DerefMut for Foo {
+    fn deref_mut(&mut self) -> &mut Self::Target {}
+     //^^^^^^^^^
+}
+
+fn f() {
+    let a = Foo;
+    $0*a = Bar;
+}
+"#,
+        );
+    }
+
+    #[test]
     fn goto_bin_op() {
         check(
             r#"
