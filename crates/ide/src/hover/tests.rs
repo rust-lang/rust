@@ -6341,8 +6341,8 @@ fn main() { $0V; }
 
             ```rust
             pub const V: i8 = {
-              let e = 123;
-              f(e)
+                let e = 123;
+                f(e)
             }
             ```
         "#]],
@@ -6368,7 +6368,7 @@ fn main() { $0V; }
 
             ```rust
             pub static V: i8 = {
-              let e = 123;
+                let e = 123;
             }
             ```
         "#]],

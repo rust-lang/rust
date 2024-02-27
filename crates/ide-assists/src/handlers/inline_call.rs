@@ -1348,8 +1348,8 @@ macro_rules! define_foo {
 define_foo!();
 fn bar() -> u32 {
     {
-      let x = 0;
-      x
+        let x = 0;
+        x
     }
 }
 "#,
@@ -1662,7 +1662,7 @@ fn main() {
     let a: A = A{};
     let b = {
         let a = a;
-      a as A
+        a as A
     };
 }
 "#,
@@ -1781,7 +1781,7 @@ fn _hash2(self_: &u64, state: &mut u64) {
     {
         let inner_self_: &u64 = &self_;
         let state: &mut u64 = state;
-      _write_u64(state, *inner_self_)
+        _write_u64(state, *inner_self_)
     };
 }
 "#,
