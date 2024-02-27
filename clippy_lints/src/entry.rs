@@ -214,12 +214,31 @@ impl MapType {
     }
 }
 
+/// Details on an expression checking whether a map contains a key.
+///
+/// For instance, with the following:
+/// ```ignore
+/// !!!self.the_map.contains_key("the_key")
+/// ```
+///
+/// - `negated` will be set to `true` (the 3 `!` negate the condition)
+/// - `map` will be the `self.the_map` expression
+/// - `key` will be the `"the_key"` expression
 struct ContainsExpr<'tcx> {
+    /// Whether the check for `contains_key` was negated.
     negated: bool,
+    /// The map on which the check is performed.
     map: &'tcx Expr<'tcx>,
+    /// The key that is checked to be contained.
     key: &'tcx Expr<'tcx>,
+    /// The context of the whole condition expression.
     call_ctxt: SyntaxContext,
 }
+
+/// Inspect the given expression and return details about the `contains_key` check.
+///
+/// If the given expression is not a `contains_key` check against a `BTreeMap` or a `HashMap`,
+/// return `None`.
 fn try_parse_contains<'tcx>(cx: &LateContext<'_>, expr: &'tcx Expr<'_>) -> Option<(MapType, ContainsExpr<'tcx>)> {
     let mut negated = false;
     let expr = peel_hir_expr_while(expr, |e| match e.kind {
@@ -229,6 +248,7 @@ fn try_parse_contains<'tcx>(cx: &LateContext<'_>, expr: &'tcx Expr<'_>) -> Optio
         },
         _ => None,
     });
+
     match expr.kind {
         ExprKind::MethodCall(
             _,
@@ -261,11 +281,28 @@ fn try_parse_contains<'tcx>(cx: &LateContext<'_>, expr: &'tcx Expr<'_>) -> Optio
     }
 }
 
+/// Details on an expression inserting a key into a map.
+///
+/// For instance, on the following:
+/// ```ignore
+/// self.the_map.insert("the_key", 3 + 4);
+/// ```
+///
+/// - `map` will be the `self.the_map` expression
+/// - `key` will be the `"the_key"` expression
+/// - `value` will be the `3 + 4` expression
 struct InsertExpr<'tcx> {
+    /// The map into which the insertion is performed.
     map: &'tcx Expr<'tcx>,
+    /// The key at which to insert.
     key: &'tcx Expr<'tcx>,
+    /// The value to insert.
     value: &'tcx Expr<'tcx>,
 }
+
+/// Inspect the given expression and return details about the `insert` call.
+///
+/// If the given expression is not an `insert` call into a `BTreeMap` or a `HashMap`, return `None`.
 fn try_parse_insert<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) -> Option<InsertExpr<'tcx>> {
     if let ExprKind::MethodCall(_, map, [key, value], _) = expr.kind {
         let id = cx.typeck_results().type_dependent_def_id(expr.hir_id)?;
@@ -298,7 +335,7 @@ struct Insertion<'tcx> {
     value: &'tcx Expr<'tcx>,
 }
 
-/// This visitor needs to do a multiple things:
+/// This visitor needs to do multiple things:
 /// * Find all usages of the map. An insertion can only be made before any other usages of the map.
 /// * Determine if there's an insertion using the same key. There's no need for the entry api
 ///   otherwise.
@@ -346,13 +383,26 @@ impl<'tcx> InsertSearcher<'_, 'tcx> {
         res
     }
 
-    /// Visits an expression which is not itself in a tail position, but other sibling expressions
+    /// Visit an expression which is not itself in a tail position, but other sibling expressions
     /// may be. e.g. if conditions
     fn visit_non_tail_expr(&mut self, e: &'tcx Expr<'_>) {
         let in_tail_pos = self.in_tail_pos;
         self.in_tail_pos = false;
         self.visit_expr(e);
         self.in_tail_pos = in_tail_pos;
+    }
+
+    /// Visit the key and value expression of an insert expression.
+    /// There may not be uses of the map in either of those two either.
+    fn visit_insert_expr_arguments(&mut self, e: &InsertExpr<'tcx>) {
+        let in_tail_pos = self.in_tail_pos;
+        let allow_insert_closure = self.allow_insert_closure;
+        let is_single_insert = self.is_single_insert;
+        walk_expr(self, e.key);
+        walk_expr(self, e.value);
+        self.in_tail_pos = in_tail_pos;
+        self.allow_insert_closure = allow_insert_closure;
+        self.is_single_insert = is_single_insert;
     }
 }
 impl<'tcx> Visitor<'tcx> for InsertSearcher<'_, 'tcx> {
@@ -425,6 +475,7 @@ impl<'tcx> Visitor<'tcx> for InsertSearcher<'_, 'tcx> {
 
         match try_parse_insert(self.cx, expr) {
             Some(insert_expr) if SpanlessEq::new(self.cx).eq_expr(self.map, insert_expr.map) => {
+                self.visit_insert_expr_arguments(&insert_expr);
                 // Multiple inserts, inserts with a different key, and inserts from a macro can't use the entry api.
                 if self.is_map_used
                     || !SpanlessEq::new(self.cx).eq_expr(self.key, insert_expr.key)
