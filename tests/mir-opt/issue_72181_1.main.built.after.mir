@@ -14,8 +14,6 @@ fn main() -> () {
     scope 1 {
         debug v => _2;
     }
-    scope 2 {
-    }
 
     bb0: {
         StorageLive(_2);

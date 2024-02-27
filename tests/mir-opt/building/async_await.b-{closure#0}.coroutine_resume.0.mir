@@ -93,17 +93,13 @@ fn b::{closure#0}(_1: Pin<&mut {async fn body of b()}>, _2: &mut Context<'_>) ->
         debug __awaitee => (((*(_1.0: &mut {async fn body of b()})) as variant#3).0: {async fn body of a()});
         let _17: ();
         scope 2 {
-        }
-        scope 3 {
             debug result => _17;
         }
     }
-    scope 4 {
+    scope 3 {
         debug __awaitee => (((*(_1.0: &mut {async fn body of b()})) as variant#4).0: {async fn body of a()});
         let _33: ();
-        scope 5 {
-        }
-        scope 6 {
+        scope 4 {
             debug result => _33;
         }
     }

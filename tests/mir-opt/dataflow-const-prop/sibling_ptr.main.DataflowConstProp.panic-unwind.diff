@@ -9,14 +9,12 @@
       let mut _5: *mut u8;
       scope 1 {
           debug x => _1;
+          let _3: *mut u8;
           let _6: u8;
           scope 2 {
-              let _3: *mut u8;
-              scope 3 {
-                  debug p => _3;
-              }
+              debug p => _3;
           }
-          scope 4 {
+          scope 3 {
               debug x1 => _6;
           }
       }
