@@ -736,7 +736,7 @@ fn build_call_shim<'tcx>(
     };
 
     let def_id = instance.def_id();
-    let sig = tcx.fn_sig(def_id);
+    let sig = instance.fn_sig(tcx);
     let sig = sig.map_bound(|sig| tcx.instantiate_bound_regions_with_erased(sig));
 
     assert_eq!(sig_args.is_some(), !instance.has_polymorphic_mir_body());
@@ -770,17 +770,6 @@ fn build_call_shim<'tcx>(
             },
             Adjustment::RefMut => bug!("`RefMut` is never used with indirect calls: {instance:?}"),
         };
-        sig.inputs_and_output = tcx.mk_type_list(&inputs_and_output);
-    }
-
-    // FIXME(eddyb) avoid having this snippet both here and in
-    // `Instance::fn_sig` (introduce `InstanceDef::fn_sig`?).
-    if let ty::InstanceDef::VTableShim(..) = instance {
-        // Modify fn(self, ...) to fn(self: *mut Self, ...)
-        let mut inputs_and_output = sig.inputs_and_output.to_vec();
-        let self_arg = &mut inputs_and_output[0];
-        debug_assert!(tcx.generics_of(def_id).has_self && *self_arg == tcx.types.self_param);
-        *self_arg = Ty::new_mut_ptr(tcx, *self_arg);
         sig.inputs_and_output = tcx.mk_type_list(&inputs_and_output);
     }
 

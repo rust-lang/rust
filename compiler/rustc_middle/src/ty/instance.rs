@@ -321,6 +321,27 @@ impl<'tcx> InstanceDef<'tcx> {
             | InstanceDef::VTableShim(..) => true,
         }
     }
+
+    /// Computes the signature of the InstanceDef, possibly with adjustments based on the kind of
+    /// shim.
+    pub fn fn_sig(&self, tcx: TyCtxt<'tcx>) -> EarlyBinder<ty::PolyFnSig<'tcx>> {
+        tcx.fn_sig(self.def_id()).map_bound(|sig| {
+            sig.map_bound(|mut sig| {
+                if let InstanceDef::VTableShim(..) = self {
+                    // Modify fn(self, ...) to fn(self: *mut Self, ...)
+                    let mut inputs_and_output = sig.inputs_and_output.to_vec();
+                    let self_arg = &mut inputs_and_output[0];
+                    debug_assert!(
+                        tcx.generics_of(self.def_id()).has_self
+                            && *self_arg == tcx.types.self_param
+                    );
+                    *self_arg = Ty::new_mut_ptr(tcx, *self_arg);
+                    sig.inputs_and_output = tcx.mk_type_list(&inputs_and_output);
+                }
+                sig
+            })
+        })
+    }
 }
 
 fn fmt_instance_def(f: &mut fmt::Formatter<'_>, instance_def: &InstanceDef<'_>) -> fmt::Result {

@@ -43,7 +43,7 @@ fn fn_sig_for_fn_abi<'tcx>(
 
     let ty = instance.ty(tcx, param_env);
     match *ty.kind() {
-        ty::FnDef(..) => {
+        ty::FnDef(def_id, args) => {
             // HACK(davidtwco,eddyb): This is a workaround for polymorphization considering
             // parameters unused if they show up in the signature, but not in the `mir::Body`
             // (i.e. due to being inside a projection that got normalized, see
@@ -51,26 +51,11 @@ fn fn_sig_for_fn_abi<'tcx>(
             // track of a polymorphization `ParamEnv` to allow normalizing later.
             //
             // We normalize the `fn_sig` again after instantiating at a later point.
-            let mut sig = match *ty.kind() {
-                ty::FnDef(def_id, args) => tcx
-                    .fn_sig(def_id)
-                    .map_bound(|fn_sig| {
-                        tcx.normalize_erasing_regions(tcx.param_env(def_id), fn_sig)
-                    })
-                    .instantiate(tcx, args),
-                _ => unreachable!(),
-            };
-
-            if let ty::InstanceDef::VTableShim(..) = instance.def {
-                // Modify `fn(self, ...)` to `fn(self: *mut Self, ...)`.
-                sig = sig.map_bound(|mut sig| {
-                    let mut inputs_and_output = sig.inputs_and_output.to_vec();
-                    inputs_and_output[0] = Ty::new_mut_ptr(tcx, inputs_and_output[0]);
-                    sig.inputs_and_output = tcx.mk_type_list(&inputs_and_output);
-                    sig
-                });
-            }
-            sig
+            instance
+                .def
+                .fn_sig(tcx)
+                .map_bound(|fn_sig| tcx.normalize_erasing_regions(tcx.param_env(def_id), fn_sig))
+                .instantiate(tcx, args)
         }
         ty::Closure(def_id, args) => {
             let sig = args.as_closure().sig();
