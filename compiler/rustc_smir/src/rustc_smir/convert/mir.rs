@@ -251,19 +251,12 @@ impl<'tcx> Stable<'tcx> for mir::NullOp<'tcx> {
     type T = stable_mir::mir::NullOp;
     fn stable(&self, tables: &mut Tables<'_>) -> Self::T {
         use rustc_middle::mir::NullOp::*;
-        use rustc_middle::mir::UbKind;
         match self {
             SizeOf => stable_mir::mir::NullOp::SizeOf,
             AlignOf => stable_mir::mir::NullOp::AlignOf,
             OffsetOf(indices) => stable_mir::mir::NullOp::OffsetOf(
                 indices.iter().map(|idx| idx.stable(tables)).collect(),
             ),
-            UbCheck(UbKind::LanguageUb) => {
-                stable_mir::mir::NullOp::UbCheck(stable_mir::mir::UbKind::LanguageUb)
-            }
-            UbCheck(UbKind::LibraryUb) => {
-                stable_mir::mir::NullOp::UbCheck(stable_mir::mir::UbKind::LibraryUb)
-            }
         }
     }
 }
@@ -430,6 +423,22 @@ impl<'tcx> Stable<'tcx> for mir::NonDivergingIntrinsic<'tcx> {
                     count: copy_non_overlapping.count.stable(tables),
                 })
             }
+            NonDivergingIntrinsic::UbCheck {
+                kind,
+                func,
+                args,
+                destination,
+                source_info: _,
+                fn_span: _,
+            } => stable_mir::mir::NonDivergingIntrinsic::UbCheck {
+                kind: match kind {
+                    rustc_middle::mir::UbKind::LibraryUb => stable_mir::mir::UbKind::LibraryUb,
+                    rustc_middle::mir::UbKind::LanguageUb => stable_mir::mir::UbKind::LanguageUb,
+                },
+                func: func.stable(tables),
+                args: args.stable(tables),
+                destination: destination.stable(tables),
+            },
         }
     }
 }

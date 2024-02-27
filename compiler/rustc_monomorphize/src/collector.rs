@@ -833,6 +833,23 @@ impl<'a, 'tcx> MirVisitor<'tcx> for MirUsedCollector<'a, 'tcx> {
         MirVisitor::visit_ty(self, const_.ty(), TyContext::Location(location));
     }
 
+    fn visit_statement(&mut self, statement: &mir::Statement<'tcx>, location: Location) {
+        let tcx = self.tcx;
+        let source = self.body.source_info(location).span;
+
+        if let mir::StatementKind::Intrinsic(box mir::NonDivergingIntrinsic::UbCheck {
+            func, ..
+        }) = &statement.kind
+        {
+            let callee_ty = func.ty(self.body, tcx);
+            let callee_ty = self.monomorphize(callee_ty);
+            // self.check_fn_args_move_size(callee_ty, args, *fn_span, location);
+            visit_fn_use(self.tcx, callee_ty, true, source, &mut self.output)
+        }
+
+        self.super_statement(statement, location);
+    }
+
     fn visit_terminator(&mut self, terminator: &mir::Terminator<'tcx>, location: Location) {
         debug!("visiting terminator {:?} @ {:?}", terminator, location);
         let source = self.body.source_info(location).span;

@@ -1157,7 +1157,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
             Rvalue::Repeat(_, _)
             | Rvalue::ThreadLocalRef(_)
             | Rvalue::AddressOf(_, _)
-            | Rvalue::NullaryOp(NullOp::SizeOf | NullOp::AlignOf | NullOp::UbCheck(_), _)
+            | Rvalue::NullaryOp(NullOp::SizeOf | NullOp::AlignOf, _)
             | Rvalue::Discriminant(_) => {}
         }
         self.super_rvalue(rvalue, location);
@@ -1248,6 +1248,16 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                 if op_cnt_ty != self.tcx.types.usize {
                     self.fail(location, format!("bad arg ({op_cnt_ty:?} != usize)"))
                 }
+            }
+            StatementKind::Intrinsic(box NonDivergingIntrinsic::UbCheck {
+                kind: _,
+                func: _,
+                args: _,
+                destination: _,
+                source_info: _,
+                fn_span: _,
+            }) => {
+                // FIXME
             }
             StatementKind::SetDiscriminant { place, .. } => {
                 if self.mir_phase < MirPhase::Runtime(RuntimePhase::Initial) {

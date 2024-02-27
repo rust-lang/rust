@@ -444,6 +444,13 @@ macro_rules! make_mir_visitor {
                                 self.visit_operand(dst, location);
                                 self.visit_operand(count, location);
                             }
+                           NonDivergingIntrinsic::UbCheck { kind: _, func, args, destination: _, source_info: _, fn_span: _ } => {
+                                self.visit_operand(func, location);
+                                self.visit_operand(args, location);
+                                // FIXME destination is always a ZST so this probably won't make
+                                // things explode, but we don't have a PlaceContext for this
+                                // situation that won't make ssa.rs ICE.
+                            }
                         }
                     }
                     StatementKind::ConstEvalCounter => {}

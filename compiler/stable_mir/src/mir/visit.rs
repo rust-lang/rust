@@ -228,6 +228,11 @@ pub trait MirVisitor {
                     self.visit_operand(dst, location);
                     self.visit_operand(count, location);
                 }
+                NonDivergingIntrinsic::UbCheck { kind: _, func, args, destination } => {
+                    self.visit_operand(func, location);
+                    self.visit_operand(args, location);
+                    self.visit_place(destination, PlaceContext::MUTATING, location);
+                }
             },
             StatementKind::ConstEvalCounter => {}
             StatementKind::Nop => {}

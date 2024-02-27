@@ -1,9 +1,11 @@
 use rustc_middle::mir;
 use rustc_middle::mir::NonDivergingIntrinsic;
 use rustc_session::config::OptLevel;
+use rustc_span::source_map::respan;
 
 use super::FunctionCx;
 use super::LocalRef;
+use crate::mir::block::TerminatorCodegenHelper;
 use crate::traits::*;
 
 impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
@@ -89,6 +91,44 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 let dst = dst_val.immediate();
                 let src = src_val.immediate();
                 bx.memcpy(dst, align, src, align, bytes, crate::MemFlags::empty());
+            }
+            mir::StatementKind::Intrinsic(box NonDivergingIntrinsic::UbCheck {
+                kind: _,
+                ref func,
+                ref args,
+                destination,
+                fn_span,
+                source_info,
+            }) => {
+                if bx.tcx().sess.opts.debug_assertions {
+                    let bb = mir::BasicBlock::MAX;
+                    let args = vec![respan(source_info.span, args.clone())];
+                    let terminator = mir::Terminator {
+                        source_info,
+                        kind: mir::TerminatorKind::Call {
+                            func: func.clone(),
+                            args: args.clone(),
+                            destination,
+                            target: Some(bb),
+                            unwind: mir::UnwindAction::Unreachable,
+                            call_source: mir::CallSource::Normal,
+                            fn_span,
+                        },
+                    };
+                    let helper = TerminatorCodegenHelper { bb, terminator: &terminator };
+                    self.codegen_call_terminator(
+                        helper,
+                        bx,
+                        &terminator,
+                        func,
+                        args.as_slice(),
+                        destination,
+                        Some(bb),
+                        mir::UnwindAction::Unreachable,
+                        fn_span,
+                        true, // mergeable_succ
+                    );
+                }
             }
             mir::StatementKind::FakeRead(..)
             | mir::StatementKind::Retag { .. }

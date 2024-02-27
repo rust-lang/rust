@@ -1367,6 +1367,10 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                     stmt.source_info.span,
                     "Unexpected NonDivergingIntrinsic::CopyNonOverlapping, should only appear after lowering_intrinsics",
                 ),
+                NonDivergingIntrinsic::UbCheck { .. } => span_bug!(
+                    stmt.source_info.span,
+                    "Unexpected NonDivergingIntrinsic::UbCheck, should only appear after lowering_intrinsics",
+                ),
             },
             StatementKind::FakeRead(..)
             | StatementKind::StorageLive(..)
@@ -2001,7 +2005,6 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                     ConstraintCategory::SizedBound,
                 );
             }
-            &Rvalue::NullaryOp(NullOp::UbCheck(_), _) => {}
 
             Rvalue::ShallowInitBox(operand, ty) => {
                 self.check_operand(operand, location);

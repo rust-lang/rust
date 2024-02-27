@@ -174,7 +174,7 @@ fn check_rvalue<'tcx>(
                 ))
             }
         },
-        Rvalue::NullaryOp(NullOp::SizeOf | NullOp::AlignOf | NullOp::OffsetOf(_) | NullOp::UbCheck(_), _)
+        Rvalue::NullaryOp(NullOp::SizeOf | NullOp::AlignOf | NullOp::OffsetOf(_), _)
         | Rvalue::ShallowInitBox(_, _) => Ok(()),
         Rvalue::UnaryOp(_, operand) => {
             let ty = operand.ty(body, tcx);
@@ -221,6 +221,13 @@ fn check_statement<'tcx>(
             check_operand(tcx, src, span, body)?;
             check_operand(tcx, count, span, body)
         },
+        StatementKind::Intrinsic(box NonDivergingIntrinsic::UbCheck { 
+            func, args, ..
+        }) => {
+            check_operand(tcx, func, span, body)?;
+            check_operand(tcx, args, span, body)
+        },
+ 
         // These are all NOPs
         StatementKind::StorageLive(_)
         | StatementKind::StorageDead(_)

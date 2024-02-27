@@ -136,6 +136,16 @@ pub trait ValueAnalysis<'tcx> {
             }) => {
                 // This statement represents `*dst = *src`, `count` times.
             }
+            NonDivergingIntrinsic::UbCheck {
+                kind: _,
+                func: _,
+                args: _,
+                destination: _,
+                source_info: _,
+                fn_span: _,
+            } => {
+                // FIXME: Why are the above allowed to ignore everything?
+            }
         }
     }
 

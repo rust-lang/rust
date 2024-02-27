@@ -2640,8 +2640,15 @@ pub const fn is_val_statically_known<T: Copy>(_arg: T) -> bool {
 #[unstable(feature = "core_intrinsics", issue = "none")]
 #[inline(always)]
 #[cfg_attr(not(bootstrap), rustc_intrinsic)]
-pub(crate) const fn check_library_ub() -> bool {
-    cfg!(debug_assertions)
+#[rustc_nounwind]
+pub(crate) const fn check_library_ub<F, Args>(f: F, args: Args)
+where
+    F: Fn(Args) + Copy,
+    Args: Copy,
+{
+    if cfg!(debug_assertions) {
+        f(args);
+    }
 }
 
 /// Whether we should check for library UB. This evaluate to the value of `cfg!(debug_assertions)`
@@ -2656,8 +2663,15 @@ pub(crate) const fn check_library_ub() -> bool {
 #[unstable(feature = "core_intrinsics", issue = "none")]
 #[inline(always)]
 #[cfg_attr(not(bootstrap), rustc_intrinsic)]
-pub(crate) const fn check_language_ub() -> bool {
-    cfg!(debug_assertions)
+#[rustc_nounwind]
+pub(crate) const fn check_language_ub<F, Args>(f: F, args: Args)
+where
+    F: Fn(Args) + Copy,
+    Args: Copy,
+{
+    if cfg!(debug_assertions) {
+        f(args);
+    }
 }
 
 /// Allocates a block of memory at compile time.
@@ -2670,9 +2684,9 @@ pub(crate) const fn check_language_ub() -> bool {
 ///    - At runtime, it is not checked.
 #[rustc_const_unstable(feature = "const_heap", issue = "79597")]
 #[unstable(feature = "core_intrinsics", issue = "none")]
-#[rustc_nounwind]
 #[cfg_attr(not(bootstrap), rustc_intrinsic)]
 #[cfg_attr(bootstrap, inline)]
+#[rustc_nounwind]
 pub const unsafe fn const_allocate(_size: usize, _align: usize) -> *mut u8 {
     // const eval overrides this function, but runtime code should always just return null pointers.
     crate::ptr::null_mut()
@@ -2756,7 +2770,7 @@ macro_rules! assert_unsafe_precondition {
             #[cfg_attr(not(bootstrap), inline)]
             #[rustc_nounwind]
             #[rustc_const_unstable(feature = "ub_checks", issue = "none")]
-            const fn precondition_check($($name:$ty),*) {
+            const fn precondition_check(($($name,)*): ($($ty,)*)) {
                 if !$e {
                     ::core::panicking::panic_nounwind(
                         concat!("unsafe precondition(s) violated: ", $message)
@@ -2764,9 +2778,7 @@ macro_rules! assert_unsafe_precondition {
                 }
             }
 
-            if ::core::intrinsics::$kind() {
-                precondition_check($($arg,)*);
-            }
+            ::core::intrinsics::$kind(precondition_check, ($($arg,)*));
         }
     };
 }

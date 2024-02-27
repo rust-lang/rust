@@ -62,6 +62,18 @@ impl<'cx, 'tcx> Visitor<'tcx> for LoanInvalidationsGenerator<'cx, 'tcx> {
                 self.consume_operand(location, dst);
                 self.consume_operand(location, count);
             }
+            StatementKind::Intrinsic(box NonDivergingIntrinsic::UbCheck {
+                kind: _,
+                func,
+                args,
+                destination,
+                source_info: _,
+                fn_span: _,
+            }) => {
+                self.consume_operand(location, func);
+                self.consume_operand(location, args);
+                self.mutate_place(location, *destination, Shallow(None));
+            }
             // Only relevant for mir typeck
             StatementKind::AscribeUserType(..)
             // Only relevant for liveness and unsafeck

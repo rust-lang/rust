@@ -462,6 +462,13 @@ pub struct CopyNonOverlapping {
 pub enum NonDivergingIntrinsic {
     Assume(Operand),
     CopyNonOverlapping(CopyNonOverlapping),
+    UbCheck { kind: UbKind, func: Operand, args: Operand, destination: Place },
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub enum UbKind {
+    LanguageUb,
+    LibraryUb,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -639,7 +646,6 @@ impl Rvalue {
             Rvalue::NullaryOp(NullOp::SizeOf | NullOp::AlignOf | NullOp::OffsetOf(..), _) => {
                 Ok(Ty::usize_ty())
             }
-            Rvalue::NullaryOp(NullOp::UbCheck(_), _) => Ok(Ty::bool_ty()),
             Rvalue::Aggregate(ak, ops) => match *ak {
                 AggregateKind::Array(ty) => Ty::try_new_array(ty, ops.len() as u64),
                 AggregateKind::Tuple => Ok(Ty::new_tuple(
@@ -1006,14 +1012,6 @@ pub enum NullOp {
     AlignOf,
     /// Returns the offset of a field.
     OffsetOf(Vec<(VariantIdx, FieldIdx)>),
-    /// cfg!(debug_assertions), but at codegen time
-    UbCheck(UbKind),
-}
-
-#[derive(Clone, Debug, Eq, PartialEq)]
-pub enum UbKind {
-    LanguageUb,
-    LibraryUb,
 }
 
 impl Operand {

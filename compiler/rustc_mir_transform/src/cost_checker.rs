@@ -47,7 +47,8 @@ impl<'tcx> Visitor<'tcx> for CostChecker<'_, 'tcx> {
             StatementKind::StorageLive(_)
             | StatementKind::StorageDead(_)
             | StatementKind::Deinit(_)
-            | StatementKind::Nop => {}
+            | StatementKind::Nop
+            | StatementKind::Intrinsic(box NonDivergingIntrinsic::UbCheck { .. }) => {}
             _ => self.cost += INSTR_COST,
         }
     }

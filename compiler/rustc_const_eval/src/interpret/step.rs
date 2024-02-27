@@ -6,6 +6,9 @@ use either::Either;
 
 use rustc_index::IndexSlice;
 use rustc_middle::mir;
+use rustc_middle::mir::NonDivergingIntrinsic;
+use rustc_middle::mir::StatementKind;
+use rustc_middle::mir::UbKind;
 use rustc_middle::ty::layout::LayoutOf;
 use rustc_target::abi::{FieldIdx, FIRST_VARIANT};
 
@@ -35,11 +38,21 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
 
         if let Some(stmt) = basic_block.statements.get(loc.statement_index) {
             let old_frames = self.frame_idx();
+            info!("{:?}", self.frame().loc);
+            trace!("{:?}", self.frame().locals);
             self.statement(stmt)?;
-            // Make sure we are not updating `statement_index` of the wrong frame.
-            assert_eq!(old_frames, self.frame_idx());
-            // Advance the program counter.
-            self.frame_mut().loc.as_mut().left().unwrap().statement_index += 1;
+            // We're stepping into a UbCheck, so we expect stack depth to increase by 1
+            if let StatementKind::Intrinsic(box NonDivergingIntrinsic::UbCheck {
+                kind: UbKind::LibraryUb,
+                ..
+            }) = stmt.kind
+            {
+            } else {
+                // Make sure we are not updating `statement_index` of the wrong frame.
+                assert_eq!(old_frames, self.frame_idx());
+                // Advance the program counter.
+                self.frame_mut().loc.as_mut().left().unwrap().statement_index += 1;
+            }
             return Ok(true);
         }
 
@@ -257,17 +270,6 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                     mir::NullOp::OffsetOf(fields) => {
                         let val = layout.offset_of_subfield(self, fields.iter()).bytes();
                         Scalar::from_target_usize(val, self)
-                    }
-                    mir::NullOp::UbCheck(kind) => {
-                        // We want to enable checks for library UB, because the interpreter doesn't
-                        // know about those on its own.
-                        // But we want to disable checks for language UB, because the interpreter
-                        // has its own better checks for that.
-                        let should_check = match kind {
-                            mir::UbKind::LibraryUb => true,
-                            mir::UbKind::LanguageUb => false,
-                        };
-                        Scalar::from_bool(should_check)
                     }
                 };
                 self.write_scalar(val, &dest)?;

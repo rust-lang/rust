@@ -6,6 +6,7 @@
 use super::{BasicBlock, Const, Local, UserTypeProjection};
 
 use crate::mir::coverage::CoverageKind;
+use crate::mir::SourceInfo;
 use crate::traits::Reveal;
 use crate::ty::adjustment::PointerCoercion;
 use crate::ty::GenericArgsRef;
@@ -444,6 +445,33 @@ pub enum NonDivergingIntrinsic<'tcx> {
     /// **Needs clarification**: Is this typed or not, ie is there a typed load and store involved?
     /// I vaguely remember Ralf saying somewhere that he thought it should not be.
     CopyNonOverlapping(CopyNonOverlapping<'tcx>),
+
+    UbCheck {
+        kind: UbKind,
+        func: Operand<'tcx>,
+        args: Operand<'tcx>,
+        destination: Place<'tcx>,
+        source_info: SourceInfo,
+        fn_span: Span,
+    },
+}
+
+#[derive(
+    Clone,
+    Copy,
+    Debug,
+    PartialEq,
+    Eq,
+    TyEncodable,
+    TyDecodable,
+    Hash,
+    HashStable,
+    TypeFoldable,
+    TypeVisitable
+)]
+pub enum UbKind {
+    LanguageUb,
+    LibraryUb,
 }
 
 /// Describes what kind of retag is to be performed.
@@ -1361,13 +1389,6 @@ pub enum NullOp<'tcx> {
     AlignOf,
     /// Returns the offset of a field
     OffsetOf(&'tcx List<(VariantIdx, FieldIdx)>),
-    UbCheck(UbKind),
-}
-
-#[derive(Clone, Copy, Debug, PartialEq, Eq, TyEncodable, TyDecodable, Hash, HashStable)]
-pub enum UbKind {
-    LanguageUb,
-    LibraryUb,
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]

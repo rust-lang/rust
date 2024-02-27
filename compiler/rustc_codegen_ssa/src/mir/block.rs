@@ -28,19 +28,19 @@ use std::cmp;
 // can happen when BB jumps directly to its successor and the successor has no
 // other predecessors.
 #[derive(Debug, PartialEq)]
-enum MergingSucc {
+pub(crate) enum MergingSucc {
     False,
     True,
 }
 
 /// Used by `FunctionCx::codegen_terminator` for emitting common patterns
 /// e.g., creating a basic block, calling a function, etc.
-struct TerminatorCodegenHelper<'tcx> {
-    bb: mir::BasicBlock,
-    terminator: &'tcx mir::Terminator<'tcx>,
+pub(crate) struct TerminatorCodegenHelper<'term, 'tcx> {
+    pub(crate) bb: mir::BasicBlock,
+    pub(crate) terminator: &'term mir::Terminator<'tcx>,
 }
 
-impl<'a, 'tcx> TerminatorCodegenHelper<'tcx> {
+impl<'term, 'a, 'tcx> TerminatorCodegenHelper<'term, 'tcx> {
     /// Returns the appropriate `Funclet` for the current funclet, if on MSVC,
     /// either already previously cached, or newly created, by `landing_pad_for`.
     fn funclet<'b, Bx: BuilderMethods<'a, 'tcx>>(
@@ -98,6 +98,10 @@ impl<'a, 'tcx> TerminatorCodegenHelper<'tcx> {
         fx: &mut FunctionCx<'a, 'tcx, Bx>,
         target: mir::BasicBlock,
     ) -> (bool, bool) {
+        if self.bb > fx.mir.basic_blocks.len().into() {
+            return (false, false);
+        }
+
         if let Some(ref cleanup_kinds) = fx.cleanup_kinds {
             let funclet_bb = cleanup_kinds[self.bb].funclet_bb(self.bb);
             let target_funclet = cleanup_kinds[target].funclet_bb(target);
@@ -226,8 +230,10 @@ impl<'a, 'tcx> TerminatorCodegenHelper<'tcx> {
             MergingSucc::False
         } else {
             let llret = bx.call(fn_ty, fn_attrs, Some(fn_abi), fn_ptr, llargs, self.funclet(fx));
-            if fx.mir[self.bb].is_cleanup {
-                bx.apply_attrs_to_cleanup_callsite(llret);
+            if let Some(bb) = fx.mir.basic_blocks.get(self.bb) {
+                if bb.is_cleanup {
+                    bx.apply_attrs_to_cleanup_callsite(llret);
+                }
             }
 
             if let Some((ret_dest, target)) = destination {
@@ -296,7 +302,11 @@ impl<'a, 'tcx> TerminatorCodegenHelper<'tcx> {
 /// Codegen implementations for some terminator variants.
 impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
     /// Generates code for a `Resume` terminator.
-    fn codegen_resume_terminator(&mut self, helper: TerminatorCodegenHelper<'tcx>, bx: &mut Bx) {
+    fn codegen_resume_terminator(
+        &mut self,
+        helper: TerminatorCodegenHelper<'_, 'tcx>,
+        bx: &mut Bx,
+    ) {
         if let Some(funclet) = helper.funclet(self) {
             bx.cleanup_ret(funclet, None);
         } else {
@@ -313,7 +323,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
 
     fn codegen_switchint_terminator(
         &mut self,
-        helper: TerminatorCodegenHelper<'tcx>,
+        helper: TerminatorCodegenHelper<'_, 'tcx>,
         bx: &mut Bx,
         discr: &mir::Operand<'tcx>,
         targets: &SwitchTargets,
@@ -451,7 +461,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
     #[tracing::instrument(level = "trace", skip(self, helper, bx))]
     fn codegen_drop_terminator(
         &mut self,
-        helper: TerminatorCodegenHelper<'tcx>,
+        helper: TerminatorCodegenHelper<'_, 'tcx>,
         bx: &mut Bx,
         location: mir::Place<'tcx>,
         target: mir::BasicBlock,
@@ -569,7 +579,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
 
     fn codegen_assert_terminator(
         &mut self,
-        helper: TerminatorCodegenHelper<'tcx>,
+        helper: TerminatorCodegenHelper<'_, 'tcx>,
         bx: &mut Bx,
         terminator: &mir::Terminator<'tcx>,
         cond: &mir::Operand<'tcx>,
@@ -649,7 +659,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
 
     fn codegen_terminate_terminator(
         &mut self,
-        helper: TerminatorCodegenHelper<'tcx>,
+        helper: TerminatorCodegenHelper<'_, 'tcx>,
         bx: &mut Bx,
         terminator: &mir::Terminator<'tcx>,
         reason: UnwindTerminateReason,
@@ -678,7 +688,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
     /// Returns `Some` if this is indeed a panic intrinsic and codegen is done.
     fn codegen_panic_intrinsic(
         &mut self,
-        helper: &TerminatorCodegenHelper<'tcx>,
+        helper: &TerminatorCodegenHelper<'_, 'tcx>,
         bx: &mut Bx,
         intrinsic: Option<Symbol>,
         instance: Option<Instance<'tcx>>,
@@ -744,9 +754,9 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         }
     }
 
-    fn codegen_call_terminator(
+    pub(crate) fn codegen_call_terminator(
         &mut self,
-        helper: TerminatorCodegenHelper<'tcx>,
+        helper: TerminatorCodegenHelper<'_, 'tcx>,
         bx: &mut Bx,
         terminator: &mir::Terminator<'tcx>,
         func: &mir::Operand<'tcx>,
@@ -1068,7 +1078,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
 
     fn codegen_asm_terminator(
         &mut self,
-        helper: TerminatorCodegenHelper<'tcx>,
+        helper: TerminatorCodegenHelper<'_, 'tcx>,
         bx: &mut Bx,
         terminator: &mir::Terminator<'tcx>,
         template: &[ast::InlineAsmTemplatePiece],

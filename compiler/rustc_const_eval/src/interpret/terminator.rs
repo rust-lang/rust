@@ -162,6 +162,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                     &destination,
                     target,
                     if fn_abi.can_unwind { unwind } else { mir::UnwindAction::Unreachable },
+                    false,
                 )?;
                 // Sanity-check that `eval_fn_call` either pushed a new frame or
                 // did a jump to another block.
@@ -506,6 +507,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         destination: &PlaceTy<'tcx, M::Provenance>,
         target: Option<mir::BasicBlock>,
         mut unwind: mir::UnwindAction,
+        is_ubcheck: bool,
     ) -> InterpResult<'tcx> {
         trace!("eval_fn_call: {:#?}", fn_val);
 
@@ -591,12 +593,17 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                     unwind = mir::UnwindAction::Unreachable;
                 }
 
-                self.push_stack_frame(
-                    instance,
-                    body,
-                    destination,
-                    StackPopCleanup::Goto { ret: target, unwind },
-                )?;
+                if is_ubcheck {
+                    self.push_stack_frame(instance, body, destination, StackPopCleanup::Nothing)?;
+                    info!("{:?}", self.frame().loc);
+                } else {
+                    self.push_stack_frame(
+                        instance,
+                        body,
+                        destination,
+                        StackPopCleanup::Goto { ret: target, unwind },
+                    )?;
+                }
 
                 // If an error is raised here, pop the frame again to get an accurate backtrace.
                 // To this end, we wrap it all in a `try` block.
@@ -880,6 +887,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                     destination,
                     target,
                     unwind,
+                    false,
                 )
             }
         }
@@ -956,6 +964,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             &ret.into(),
             Some(target),
             unwind,
+            false,
         )
     }
 }

@@ -23,10 +23,9 @@
                           debug ptr => _6;
                           scope 12 (inlined NonNull::<[bool; 0]>::new_unchecked) {
                               debug ptr => _6;
-                              let mut _8: bool;
-                              let _9: ();
-                              let mut _10: *mut ();
-                              let mut _11: *const [bool; 0];
+                              let mut _8: (*mut (),);
+                              let mut _9: *mut ();
+                              let mut _10: *const [bool; 0];
                               scope 13 {
                               }
                           }
@@ -50,7 +49,6 @@
           StorageLive(_1);
           StorageLive(_2);
           StorageLive(_3);
-          StorageLive(_9);
           StorageLive(_4);
           StorageLive(_5);
           StorageLive(_6);
@@ -60,37 +58,22 @@
 +         _7 = const 1_usize;
 +         _6 = const {0x1 as *mut [bool; 0]};
           StorageDead(_7);
-          StorageLive(_11);
-          StorageLive(_8);
-          _8 = UbCheck(LanguageUb);
-          switchInt(move _8) -> [0: bb4, otherwise: bb2];
-      }
-  
-      bb1: {
-          StorageDead(_1);
-          return;
-      }
-  
-      bb2: {
           StorageLive(_10);
--         _10 = _6 as *mut () (PtrToPtr);
--         _9 = NonNull::<T>::new_unchecked::precondition_check(move _10) -> [return: bb3, unwind unreachable];
-+         _10 = const {0x1 as *mut ()};
-+         _9 = NonNull::<T>::new_unchecked::precondition_check(const {0x1 as *mut ()}) -> [return: bb3, unwind unreachable];
-      }
-  
-      bb3: {
-          StorageDead(_10);
-          goto -> bb4;
-      }
-  
-      bb4: {
+          StorageLive(_8);
+          StorageLive(_9);
+-         _9 = _6 as *mut () (PtrToPtr);
+-         _8 = (move _9,);
++         _9 = const {0x1 as *mut ()};
++         _8 = const ({0x1 as *mut ()},);
+          StorageDead(_9);
+-         UbCheck(LanguageUb): NonNull::<T>::new_unchecked::precondition_check(move _8);
++         UbCheck(LanguageUb): NonNull::<T>::new_unchecked::precondition_check(const ({0x1 as *mut ()},));
           StorageDead(_8);
--         _11 = _6 as *const [bool; 0] (PointerCoercion(MutToConstPointer));
--         _5 = NonNull::<[bool; 0]> { pointer: _11 };
-+         _11 = const {0x1 as *const [bool; 0]};
+-         _10 = _6 as *const [bool; 0] (PointerCoercion(MutToConstPointer));
+-         _5 = NonNull::<[bool; 0]> { pointer: _10 };
++         _10 = const {0x1 as *const [bool; 0]};
 +         _5 = const NonNull::<[bool; 0]> {{ pointer: {0x1 as *const [bool; 0]} }};
-          StorageDead(_11);
+          StorageDead(_10);
           StorageDead(_6);
 -         _4 = Unique::<[bool; 0]> { pointer: move _5, _marker: const PhantomData::<[bool; 0]> };
 +         _4 = const Unique::<[bool; 0]> {{ pointer: NonNull::<[bool; 0]> {{ pointer: {0x1 as *const [bool; 0]} }}, _marker: PhantomData::<[bool; 0]> }};
@@ -100,13 +83,17 @@
           StorageDead(_4);
 -         _2 = Box::<[bool]>(_3, const std::alloc::Global);
 +         _2 = const Box::<[bool]>(Unique::<[bool]> {{ pointer: NonNull::<[bool]> {{ pointer: Indirect { alloc_id: ALLOC1, offset: Size(0 bytes) }: *const [bool] }}, _marker: PhantomData::<[bool]> }}, std::alloc::Global);
-          StorageDead(_9);
           StorageDead(_3);
 -         _1 = A { foo: move _2 };
 +         _1 = const A {{ foo: Box::<[bool]>(Unique::<[bool]> {{ pointer: NonNull::<[bool]> {{ pointer: Indirect { alloc_id: ALLOC2, offset: Size(0 bytes) }: *const [bool] }}, _marker: PhantomData::<[bool]> }}, std::alloc::Global) }};
           StorageDead(_2);
           _0 = const ();
           drop(_1) -> [return: bb1, unwind unreachable];
+      }
+  
+      bb1: {
+          StorageDead(_1);
+          return;
       }
 + }
 + 

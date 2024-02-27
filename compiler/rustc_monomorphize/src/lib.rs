@@ -1,5 +1,6 @@
 #![feature(array_windows)]
 #![feature(is_sorted)]
+#![feature(box_patterns)]
 #![allow(rustc::potential_query_instability)]
 
 #[macro_use]

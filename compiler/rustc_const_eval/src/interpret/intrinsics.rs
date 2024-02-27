@@ -458,6 +458,74 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 let count = self.eval_operand(count, None)?;
                 self.copy_intrinsic(&src, &dst, &count, /* nonoverlapping */ true)
             }
+            NonDivergingIntrinsic::UbCheck {
+                kind,
+                func,
+                args,
+                destination,
+                source_info,
+                fn_span: _,
+            } => {
+                use crate::interpret::FnVal;
+                use crate::rustc_middle::ty::layout::FnAbiOf;
+                use rustc_span::source_map::respan;
+
+                // We want to enable checks for library UB, because the interpreter doesn't
+                // know about those on its own.
+                // But we want to disable checks for language UB, because the interpreter
+                // has its own better checks for that.
+                let should_check = match kind {
+                    mir::UbKind::LibraryUb => true,
+                    mir::UbKind::LanguageUb => false,
+                };
+                if !should_check {
+                    return Ok(());
+                }
+
+                let old_stack = self.frame_idx();
+                let old_loc = self.frame().loc;
+                let func = self.eval_operand(func, None)?;
+                let args =
+                    self.eval_fn_call_arguments(&[respan(source_info.span, args.clone())])?;
+
+                let fn_sig_binder = func.layout.ty.fn_sig(*self.tcx);
+                let fn_sig =
+                    self.tcx.normalize_erasing_late_bound_regions(self.param_env, fn_sig_binder);
+                let extra_args = &args[fn_sig.inputs().len()..];
+                let extra_args =
+                    self.tcx.mk_type_list_from_iter(extra_args.iter().map(|arg| arg.layout().ty));
+
+                let (fn_val, fn_abi, with_caller_location) = match *func.layout.ty.kind() {
+                    ty::FnDef(def_id, args) => {
+                        let instance = self.resolve(def_id, args)?;
+                        (
+                            FnVal::Instance(instance),
+                            self.fn_abi_of_instance(instance, extra_args)?,
+                            instance.def.requires_caller_location(*self.tcx),
+                        )
+                    }
+                    _ => span_bug!(source_info.span, "invalid callee of type {}", func.layout.ty),
+                };
+
+                let destination = self.eval_place(*destination)?;
+                self.eval_fn_call(
+                    fn_val,
+                    (fn_sig.abi, fn_abi),
+                    &args,
+                    with_caller_location,
+                    &destination,
+                    None, // target
+                    mir::UnwindAction::Unreachable,
+                    true,
+                )?;
+                trace!("{:?}", self.frame().locals);
+                // Sanity-check that `eval_fn_call` either pushed a new frame or
+                // did a jump to another block.
+                if self.frame_idx() == old_stack && self.frame().loc == old_loc {
+                    span_bug!(source_info.span, "evaluating this call made no progress");
+                }
+                Ok(())
+            }
         }
     }
 

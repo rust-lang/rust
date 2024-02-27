@@ -155,6 +155,9 @@ pub enum StackPopCleanup {
     /// wants them leaked to intern what they need (and just throw away
     /// the entire `ecx` when it is done).
     Root { cleanup: bool },
+
+    /// FIXME: We're returning from a UbCheck call, don't do anything.
+    Nothing,
 }
 
 /// State of a local variable including a memoized layout
@@ -928,6 +931,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         let cleanup = match return_to_block {
             StackPopCleanup::Goto { .. } => true,
             StackPopCleanup::Root { cleanup, .. } => cleanup,
+            StackPopCleanup::Nothing => true,
         };
         if cleanup {
             // We need to take the locals out, since we need to mutate while iterating.
@@ -964,6 +968,9 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 StackPopCleanup::Root { .. } => {
                     panic!("encountered StackPopCleanup::Root when unwinding!")
                 }
+                StackPopCleanup::Nothing => {
+                    panic!("encountered StackPopCleanup::Nothing when unwinding!")
+                }
             };
             // This must be the very last thing that happens, since it can in fact push a new stack frame.
             self.unwind_to_block(unwind)
@@ -976,6 +983,11 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                         self.stack().is_empty(),
                         "only the topmost frame can have StackPopCleanup::Root"
                     );
+                    Ok(())
+                }
+                StackPopCleanup::Nothing => {
+                    // Advance the program counter.
+                    self.frame_mut().loc.as_mut().left().unwrap().statement_index += 1;
                     Ok(())
                 }
             }

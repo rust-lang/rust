@@ -628,6 +628,10 @@ impl<'cx, 'tcx, R> rustc_mir_dataflow::ResultsVisitor<'cx, 'tcx, R> for MirBorro
                 NonDivergingIntrinsic::CopyNonOverlapping(..) => span_bug!(
                     span,
                     "Unexpected CopyNonOverlapping, should only appear after lower_intrinsics",
+                ),
+                NonDivergingIntrinsic::UbCheck { .. } => span_bug!(
+                    span,
+                    "Unexpected UbCheck, should only appear after lower_intrinsics",
                 )
             }
             // Only relevant for mir typeck

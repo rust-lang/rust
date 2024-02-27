@@ -697,6 +697,9 @@ impl Display for NonDivergingIntrinsic<'_> {
             Self::CopyNonOverlapping(CopyNonOverlapping { src, dst, count }) => {
                 write!(f, "copy_nonoverlapping(dst = {dst:?}, src = {src:?}, count = {count:?})")
             }
+            Self::UbCheck { kind, func, args, .. } => {
+                write!(f, "UbCheck({kind:?}): {func:?}({args:?})")
+            }
         }
     }
 }
@@ -909,7 +912,6 @@ impl<'tcx> Debug for Rvalue<'tcx> {
                     NullOp::SizeOf => write!(fmt, "SizeOf({t})"),
                     NullOp::AlignOf => write!(fmt, "AlignOf({t})"),
                     NullOp::OffsetOf(fields) => write!(fmt, "OffsetOf({t}, {fields:?})"),
-                    NullOp::UbCheck(kind) => write!(fmt, "UbCheck({kind:?})"),
                 }
             }
             ThreadLocalRef(did) => ty::tls::with(|tcx| {

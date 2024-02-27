@@ -509,7 +509,9 @@ pub fn check_intrinsic_type(
                 (0, 0, vec![Ty::new_imm_ptr(tcx, Ty::new_unit(tcx))], tcx.types.usize)
             }
 
-            sym::check_language_ub | sym::check_library_ub => (0, 1, Vec::new(), tcx.types.bool),
+            sym::check_language_ub | sym::check_library_ub => {
+                (2, 1, vec![param(0), param(1)], tcx.types.unit)
+            }
 
             sym::simd_eq
             | sym::simd_ne

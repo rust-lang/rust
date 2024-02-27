@@ -317,6 +317,7 @@ impl<'mir, 'tcx: 'mir> CompileTimeEvalContext<'mir, 'tcx> {
                         dest,
                         ret,
                         mir::UnwindAction::Unreachable,
+                        false,
                     )?;
                     Ok(ControlFlow::Break(()))
                 } else {

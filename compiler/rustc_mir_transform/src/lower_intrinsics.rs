@@ -11,8 +11,15 @@ impl<'tcx> MirPass<'tcx> for LowerIntrinsics {
         let local_decls = &body.local_decls;
         for block in body.basic_blocks.as_mut() {
             let terminator = block.terminator.as_mut().unwrap();
-            if let TerminatorKind::Call { func, args, destination, target, .. } =
-                &mut terminator.kind
+            if let TerminatorKind::Call {
+                func,
+                args,
+                destination,
+                target,
+                call_source: _,
+                fn_span,
+                unwind,
+            } = &mut terminator.kind
                 && let ty::FnDef(def_id, generic_args) = *func.ty(local_decls, tcx).kind()
                 && let Some(intrinsic_name) = tcx.intrinsic(def_id)
             {
@@ -21,31 +28,43 @@ impl<'tcx> MirPass<'tcx> for LowerIntrinsics {
                         terminator.kind = TerminatorKind::Unreachable;
                     }
                     sym::check_language_ub => {
+                        assert_eq!(*unwind, UnwindAction::Unreachable);
+                        let mut args = args.drain(..);
                         let target = target.unwrap();
                         block.statements.push(Statement {
                             source_info: terminator.source_info,
-                            kind: StatementKind::Assign(Box::new((
-                                *destination,
-                                Rvalue::NullaryOp(
-                                    NullOp::UbCheck(UbKind::LanguageUb),
-                                    tcx.types.bool,
-                                ),
-                            ))),
+                            kind: StatementKind::Intrinsic(Box::new(
+                                NonDivergingIntrinsic::UbCheck {
+                                    kind: UbKind::LanguageUb,
+                                    func: args.next().unwrap().node,
+                                    args: args.next().unwrap().node,
+                                    source_info: terminator.source_info,
+                                    destination: *destination,
+                                    fn_span: *fn_span,
+                                },
+                            )),
                         });
+                        drop(args);
                         terminator.kind = TerminatorKind::Goto { target };
                     }
                     sym::check_library_ub => {
+                        assert_eq!(*unwind, UnwindAction::Unreachable);
+                        let mut args = args.drain(..);
                         let target = target.unwrap();
                         block.statements.push(Statement {
                             source_info: terminator.source_info,
-                            kind: StatementKind::Assign(Box::new((
-                                *destination,
-                                Rvalue::NullaryOp(
-                                    NullOp::UbCheck(UbKind::LibraryUb),
-                                    tcx.types.bool,
-                                ),
-                            ))),
+                            kind: StatementKind::Intrinsic(Box::new(
+                                NonDivergingIntrinsic::UbCheck {
+                                    kind: UbKind::LibraryUb,
+                                    func: args.next().unwrap().node,
+                                    args: args.next().unwrap().node,
+                                    source_info: terminator.source_info,
+                                    destination: *destination,
+                                    fn_span: *fn_span,
+                                },
+                            )),
                         });
+                        drop(args);
                         terminator.kind = TerminatorKind::Goto { target };
                     }
                     sym::forget => {
