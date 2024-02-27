@@ -71,7 +71,8 @@ macro_rules! clean_crate_tree {
                 // Since https://github.com/rust-lang/rust/pull/111076 enables
                 // unstable cargo feature (`public-dependency`), we need to ensure
                 // that unstable features are enabled before reading libstd Cargo.toml.
-                cargo.env("RUSTC_BOOTSTRAP", "1");
+                cargo.env("RUSTC_BOOTSTRAP", "1")
+                    .arg("-Zpublic-dependency");
 
                 for krate in &*self.crates {
                     cargo.arg("-p");

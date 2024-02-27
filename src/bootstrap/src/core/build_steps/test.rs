@@ -2899,6 +2899,7 @@ impl Step for Distcheck {
                 // Will read the libstd Cargo.toml
                 // which uses the unstable `public-dependency` feature.
                 .env("RUSTC_BOOTSTRAP", "1")
+                .arg("-Zpublic-dependency")
                 .arg("generate-lockfile")
                 .arg("--manifest-path")
                 .arg(&toml)

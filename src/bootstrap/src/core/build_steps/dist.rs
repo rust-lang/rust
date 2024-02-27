@@ -1014,6 +1014,7 @@ impl Step for PlainSourceTarball {
                 // Will read the libstd Cargo.toml
                 // which uses the unstable `public-dependency` feature.
                 .env("RUSTC_BOOTSTRAP", "1")
+                .arg("-Zpublic-dependency")
                 .current_dir(plain_dst_src);
 
             let config = if !builder.config.dry_run() {
