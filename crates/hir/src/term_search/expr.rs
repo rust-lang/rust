@@ -138,6 +138,8 @@ pub enum Expr {
     Variant { variant: Variant, generics: Vec<Type>, params: Vec<Expr> },
     /// Struct construction
     Struct { strukt: Struct, generics: Vec<Type>, params: Vec<Expr> },
+    /// Tuple construction
+    Tuple { ty: Type, params: Vec<Expr> },
     /// Struct field access
     Field { expr: Box<Expr>, field: Field },
     /// Passing type as reference (with `&`)
@@ -366,6 +368,18 @@ impl Expr {
                 let prefix = mod_item_path_str(sema_scope, &ModuleDef::Adt(Adt::Struct(*strukt)))?;
                 Ok(format!("{prefix}{inner}"))
             }
+            Expr::Tuple { params, .. } => {
+                let args = params
+                    .iter()
+                    .map(|a| {
+                        a.gen_source_code(sema_scope, many_formatter, prefer_no_std, prefer_prelude)
+                    })
+                    .collect::<Result<Vec<String>, DisplaySourceCodeError>>()?
+                    .into_iter()
+                    .join(", ");
+                let res = format!("({args})");
+                Ok(res)
+            }
             Expr::Field { expr, field } => {
                 if expr.contains_many_in_illegal_pos() {
                     return Ok(many_formatter(&expr.ty(db)));
@@ -420,6 +434,7 @@ impl Expr {
             Expr::Struct { strukt, generics, .. } => {
                 Adt::from(*strukt).ty_with_args(db, generics.iter().cloned())
             }
+            Expr::Tuple { ty, .. } => ty.clone(),
             Expr::Field { expr, field } => field.ty_with_args(db, expr.ty(db).type_arguments()),
             Expr::Reference(it) => it.ty(db),
             Expr::Many(ty) => ty.clone(),
