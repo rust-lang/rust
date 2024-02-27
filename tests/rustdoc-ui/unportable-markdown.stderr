@@ -1,0 +1,61 @@
+error: unportable markdown
+  --> $DIR/unportable-markdown.rs:9:5
+   |
+LL |   /// [^foot]: This is nested within the footnote now, but didn't used to be.
+   |  _____^
+LL | |
+LL | | ///
+LL | | ///     This is a multi-paragraph footnote.
+   | |___________________________________________^
+   |
+   = help: new parser sees Start(Paragraph), old sees End(FootnoteDefinition(Borrowed("foot")))
+   = note: `#[deny(rustdoc::unportable_markdown)]` on by default
+
+error: unportable markdown
+  --> $DIR/unportable-markdown.rs:17:10
+   |
+LL | /// test [^]
+   |          ^^^
+   |
+   = help: new parser sees Start(Link { link_type: Shortcut, dest_url: Borrowed("test2"), title: Borrowed(""), id: Borrowed("^") }), old sees nothing
+
+error: unportable markdown
+  --> $DIR/unportable-markdown.rs:26:7
+   |
+LL |   ///   # test
+   |  _______^
+LL | |
+LL | | ///   t_
+   | |____^
+   |
+   = help: new parser sees Start(Heading { level: H1, id: None, classes: [], attrs: [] }), old sees nothing
+
+error: unportable markdown
+  --> $DIR/unportable-markdown.rs:33:40
+   |
+LL | /// *~~__emphasis strike strong__~~* ~~*__strike emphasis strong__*~~
+   |                                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: old parser sees Start(Emphasis), new sees nothing
+
+error: unportable markdown
+  --> $DIR/unportable-markdown.rs:33:41
+   |
+LL | /// *~~__emphasis strike strong__~~* ~~*__strike emphasis strong__*~~
+   |                                         ^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: old parser sees Start(Strong), new sees nothing
+
+error: unportable markdown
+  --> $DIR/unportable-markdown.rs:40:5
+   |
+LL |   /// |
+   |  _____^
+LL | |
+LL | | /// |
+   | |_____^
+   |
+   = help: new parser sees Start(Paragraph), old sees Start(Table([]))
+
+error: aborting due to 6 previous errors
+

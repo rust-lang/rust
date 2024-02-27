@@ -196,6 +196,14 @@ declare_rustdoc_lint! {
     "detects redundant explicit links in doc comments"
 }
 
+declare_rustdoc_lint! {
+    /// This compatibility lint checks for Markdown syntax that works in the old engine but not
+    /// the new one.
+    UNPORTABLE_MARKDOWN,
+    Deny,
+    "detects markdown that is interpreted differently in different parser"
+}
+
 pub(crate) static RUSTDOC_LINTS: Lazy<Vec<&'static Lint>> = Lazy::new(|| {
     vec![
         BROKEN_INTRA_DOC_LINKS,
@@ -209,6 +217,7 @@ pub(crate) static RUSTDOC_LINTS: Lazy<Vec<&'static Lint>> = Lazy::new(|| {
         MISSING_CRATE_LEVEL_DOCS,
         UNESCAPED_BACKTICKS,
         REDUNDANT_EXPLICIT_LINKS,
+        UNPORTABLE_MARKDOWN,
     ]
 });
 
