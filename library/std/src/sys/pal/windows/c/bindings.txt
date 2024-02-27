@@ -1923,6 +1923,7 @@ Windows.Win32.Foundation.HANDLE_FLAG_INHERIT
 Windows.Win32.Foundation.HANDLE_FLAG_PROTECT_FROM_CLOSE
 Windows.Win32.Foundation.HANDLE_FLAGS
 Windows.Win32.Foundation.HMODULE
+Windows.Win32.Foundation.LocalFree
 Windows.Win32.Foundation.MAX_PATH
 Windows.Win32.Foundation.NO_ERROR
 Windows.Win32.Foundation.NTSTATUS
