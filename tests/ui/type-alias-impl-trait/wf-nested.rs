@@ -32,6 +32,7 @@ mod pass {
     use super::*;
     type OuterOpaque<T> = impl Trait<&'static T, Out = impl Sized>;
     fn define<T>() -> OuterOpaque<T> {}
+    //[pass]~^ ERROR `T` may not live long enough
 
     fn define_rpit<T>() -> impl Trait<&'static T, Out = impl Sized> {}
     //[pass]~^ ERROR the parameter type `T` may not live long enough
@@ -43,6 +44,7 @@ mod pass_sound {
     use super::*;
     type OuterOpaque<T> = impl Trait<&'static T, Out = impl Sized>;
     fn define<T>() -> OuterOpaque<T> {}
+    //[pass_sound]~^ ERROR `T` may not live long enough
 
     fn test<T>() {
         let outer = define::<T>();
@@ -57,9 +59,10 @@ mod pass_sound {
 #[cfg(fail)]
 mod fail {
     use super::*;
-    type InnerOpaque<T> = impl Sized; //[fail]~ ERROR `T` may not live long enough
+    type InnerOpaque<T> = impl Sized;
     type OuterOpaque<T> = impl Trait<&'static T, Out = InnerOpaque<T>>;
     fn define<T>() -> OuterOpaque<T> {}
+    //[fail]~^ ERROR the parameter type `T` may not live long enough
 }
 
 fn main() {}

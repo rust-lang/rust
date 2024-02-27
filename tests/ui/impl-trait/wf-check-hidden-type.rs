@@ -11,8 +11,7 @@ impl<'a, 'b> Extend<'a, 'b> for Option<&'b &'a ()> {
 }
 
 fn boom<'a, 'b>() -> impl Extend<'a, 'b> {
-    //~^ ERROR in type `&'b &'a ()`, reference has a longer lifetime than the data it references
-    None::<&'_ &'_ ()>
+    None::<&'_ &'_ ()> //~ ERROR lifetime may not live long enough
 }
 
 fn main() {

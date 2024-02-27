@@ -2,15 +2,13 @@ error[E0277]: the trait bound `B: Bar` is not satisfied
   --> $DIR/issue-90400-2.rs:25:9
    |
 LL |         MyBaz(bar)
-   |         ^^^^^^^^^^ the trait `Bar` is not implemented for `B`, which is required by `MyBaz<B>: Baz`
+   |         ^^^^^^^^^^ the trait `Bar` is not implemented for `B`
    |
-note: required for `MyBaz<B>` to implement `Baz`
-  --> $DIR/issue-90400-2.rs:30:14
+note: required by a bound in `MyBaz`
+  --> $DIR/issue-90400-2.rs:29:17
    |
-LL | impl<B: Bar> Baz for MyBaz<B> {
-   |         ---  ^^^     ^^^^^^^^
-   |         |
-   |         unsatisfied trait bound introduced here
+LL | struct MyBaz<B: Bar>(B);
+   |                 ^^^ required by this bound in `MyBaz`
 help: consider restricting type parameter `B`
    |
 LL |     type FooFn<B: Bar> = impl Baz;
