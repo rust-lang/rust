@@ -165,6 +165,7 @@ language_item_table! {
     AsyncDrop,               sym::async_drop,          async_drop_trait,           Target::Trait,          GenericRequirement::Exact(0);
     AsyncDestruct,           sym::async_destruct,      async_destruct_trait,       Target::Trait,          GenericRequirement::Exact(1);
     AsyncDropInPlace,        sym::async_drop_in_place, async_drop_in_place_fn,     Target::Fn,             GenericRequirement::Exact(2);
+    SurfaceAsyncDropInPlace, sym::surface_async_drop_in_place, surface_async_drop_in_place_fn, Target::Fn, GenericRequirement::Exact(2);
     SliceAsyncDestructor,    sym::slice_async_destructor, slice_async_destructor_ty, Target::Struct,       GenericRequirement::Exact(2);
     SliceAsyncDestructorCtor, sym::slice_async_destructor_ctor, slice_async_destructor_fn, Target::Fn,     GenericRequirement::Exact(2);
     DeferredAsyncDrop,       sym::deferred_async_drop, deferred_async_drop_type,   Target::Enum,           GenericRequirement::Exact(2);

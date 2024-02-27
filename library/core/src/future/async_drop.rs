@@ -50,6 +50,13 @@ pub trait AsyncDestruct<'a>: 'a {
     type AsyncDestructor: Future<Output = ()>;
 }
 
+#[lang = "surface_async_drop_in_place"]
+unsafe fn surface_async_drop_in_place<'a, T: AsyncDrop + 'a>(
+    ptr: *mut T,
+) -> <T as AsyncDrop>::Dropper<'a> {
+    unsafe { <T as AsyncDrop>::async_drop(Pin::new_unchecked(&mut *ptr)) }
+}
+
 #[lang = "slice_async_destructor"]
 struct SliceAsyncDestuctor<'a, T: 'a> {
     left_slice: ptr::NonNull<[T]>,
@@ -120,14 +127,8 @@ const unsafe fn deferred_async_drop<'a, T: 'a>(item: *mut T) -> DeferredAsyncDro
 #[unstable(feature = "future_combinators", issue = "none")]
 #[lang = "future_chain"]
 struct Chain<F1, F2> {
-    inner: ChainDiscr,
-    first: F1,
+    first: Option<F1>,
     second: F2,
-}
-
-enum ChainDiscr {
-    First,
-    Second,
 }
 
 #[unstable(feature = "future_combinators", issue = "none")]
@@ -141,12 +142,12 @@ where
     fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<()> {
         let this = unsafe { self.get_unchecked_mut() };
         loop {
-            match this.inner {
-                ChainDiscr::First => {
-                    ready!(unsafe { Pin::new_unchecked(&mut this.first) }.poll(cx));
-                    this.inner = ChainDiscr::Second;
+            match &mut this.first {
+                Some(first) => {
+                    ready!(unsafe { Pin::new_unchecked(first) }.poll(cx));
+                    this.first = None;
                 }
-                ChainDiscr::Second => {
+                None => {
                     return unsafe { Pin::new_unchecked(&mut this.second) }.poll(cx);
                 }
             }
@@ -157,7 +158,7 @@ where
 #[unstable(feature = "future_combinators", issue = "none")]
 #[lang = "future_chain_ctor"]
 const fn chain<F1, F2>(first: F1, second: F2) -> Chain<F1, F2> {
-    Chain { inner: ChainDiscr::First, first, second }
+    Chain { first: Some(first), second }
 }
 
 #[unstable(feature = "future_combinators", issue = "none")]

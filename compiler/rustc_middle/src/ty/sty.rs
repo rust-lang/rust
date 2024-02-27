@@ -2336,26 +2336,16 @@ impl<'tcx> Ty<'tcx> {
                 Ty::new_projection(tcx, assoc_items[0], args)
             }
             ty::Tuple(tys) => {
-                let deferred_async_drop =
-                    tcx.type_of(tcx.require_lang_item(hir::LangItem::DeferredAsyncDrop, None));
-                let future_chain =
-                    tcx.type_of(tcx.require_lang_item(hir::LangItem::FutureChain, None));
-
-                let mut dtor = tcx
-                    .type_of(tcx.require_lang_item(hir::LangItem::FutureReadyUnit, None))
-                    .instantiate_identity();
-                for ty in tys.iter().rev() {
-                    dtor = future_chain.instantiate(
-                        tcx,
-                        &[
-                            deferred_async_drop
-                                .instantiate(tcx, &[existential_lifetime.into(), ty.into()])
-                                .into(),
-                            dtor.into(),
-                        ],
-                    );
-                }
-                dtor
+                Self::chain_async_destructor_ty(tcx, tys.iter(), existential_lifetime, None)
+            }
+            ty::Adt(adt_def, args) if adt_def.is_struct() => {
+                debug_assert_eq!(adt_def.variants().len(), 1);
+                Self::chain_async_destructor_ty(
+                    tcx,
+                    adt_def.variant(VariantIdx::from_u32(0)).fields.iter().map(|f| f.ty(tcx, args)),
+                    existential_lifetime,
+                    self_ty.is_async_drop(tcx, param_env).then_some(self_ty),
+                )
             }
 
             ty::Bool
@@ -2400,6 +2390,39 @@ impl<'tcx> Ty<'tcx> {
                 bug!("`async_destructor_ty` applied to unexpected type: {:?}", self_ty)
             }
         }
+    }
+
+    fn chain_async_destructor_ty<I>(
+        tcx: TyCtxt<'tcx>,
+        tys: I,
+        existential_lifetime: Region<'tcx>,
+        surface_drop: Option<Ty<'tcx>>,
+    ) -> Ty<'tcx>
+    where
+        I: Iterator<Item = Ty<'tcx>> + DoubleEndedIterator,
+    {
+        let deferred_async_drop =
+            tcx.type_of(tcx.require_lang_item(hir::LangItem::DeferredAsyncDrop, None));
+        let future_chain = tcx.type_of(tcx.require_lang_item(hir::LangItem::FutureChain, None));
+
+        tys.rev()
+            .map(|ty| {
+                deferred_async_drop.instantiate(tcx, &[existential_lifetime.into(), ty.into()])
+            })
+            .chain(surface_drop.map(|self_ty| {
+                let assoc_items = tcx
+                    .associated_item_def_ids(tcx.require_lang_item(hir::LangItem::AsyncDrop, None));
+                Ty::new_projection(
+                    tcx,
+                    assoc_items[0],
+                    [GenericArg::from(self_ty), existential_lifetime.into()],
+                )
+            }))
+            .fold(
+                tcx.type_of(tcx.require_lang_item(hir::LangItem::FutureReadyUnit, None))
+                    .instantiate_identity(),
+                |dtor, ty| future_chain.instantiate(tcx, &[ty.into(), dtor.into()]),
+            )
     }
 
     /// Returns the type of metadata for (potentially fat) pointers to this type,
