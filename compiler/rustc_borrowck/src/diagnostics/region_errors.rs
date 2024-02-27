@@ -1,7 +1,7 @@
 //! Error reporting machinery for lifetime errors.
 
 use rustc_data_structures::fx::FxIndexSet;
-use rustc_errors::{Applicability, DiagnosticBuilder, MultiSpan};
+use rustc_errors::{Applicability, DiagnosticBuilder, ErrorGuaranteed, MultiSpan};
 use rustc_hir as hir;
 use rustc_hir::def::Res::Def;
 use rustc_hir::def_id::DefId;
@@ -73,7 +73,7 @@ impl<'tcx> ConstraintDescription for ConstraintCategory<'tcx> {
 ///
 /// Usually we expect this to either be empty or contain a small number of items, so we can avoid
 /// allocation most of the time.
-pub(crate) struct RegionErrors<'tcx>(Vec<RegionErrorKind<'tcx>>, TyCtxt<'tcx>);
+pub(crate) struct RegionErrors<'tcx>(Vec<(RegionErrorKind<'tcx>, ErrorGuaranteed)>, TyCtxt<'tcx>);
 
 impl<'tcx> RegionErrors<'tcx> {
     pub fn new(tcx: TyCtxt<'tcx>) -> Self {
@@ -82,14 +82,17 @@ impl<'tcx> RegionErrors<'tcx> {
     #[track_caller]
     pub fn push(&mut self, val: impl Into<RegionErrorKind<'tcx>>) {
         let val = val.into();
-        self.1.sess.dcx().delayed_bug(format!("{val:?}"));
-        self.0.push(val);
+        let guar = self.1.sess.dcx().delayed_bug(format!("{val:?}"));
+        self.0.push((val, guar));
     }
     pub fn is_empty(&self) -> bool {
         self.0.is_empty()
     }
-    pub fn into_iter(self) -> impl Iterator<Item = RegionErrorKind<'tcx>> {
+    pub fn into_iter(self) -> impl Iterator<Item = (RegionErrorKind<'tcx>, ErrorGuaranteed)> {
         self.0.into_iter()
+    }
+    pub fn has_errors(&self) -> Option<ErrorGuaranteed> {
+        self.0.get(0).map(|x| x.1)
     }
 }
 
@@ -304,10 +307,11 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
         let mut last_unexpected_hidden_region: Option<(Span, Ty<'_>, ty::OpaqueTypeKey<'tcx>)> =
             None;
 
-        for nll_error in nll_errors.into_iter() {
+        for (nll_error, _) in nll_errors.into_iter() {
             match nll_error {
                 RegionErrorKind::TypeTestError { type_test } => {
-                    // Try to convert the lower-bound region into something named we can print for the user.
+                    // Try to convert the lower-bound region into something named we can print for
+                    // the user.
                     let lower_bound_region = self.to_error_region(type_test.lower_bound);
 
                     let type_test_span = type_test.span;

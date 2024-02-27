@@ -184,12 +184,9 @@ pub(crate) fn compute_regions<'cx, 'tcx>(
     let (closure_region_requirements, nll_errors) =
         regioncx.solve(infcx, body, polonius_output.clone());
 
-    if !nll_errors.is_empty() {
+    if let Some(guar) = nll_errors.has_errors() {
         // Suppress unhelpful extra errors in `infer_opaque_types`.
-        infcx.set_tainted_by_errors(infcx.dcx().span_delayed_bug(
-            body.span,
-            "`compute_regions` tainted `infcx` with errors but did not emit any errors",
-        ));
+        infcx.set_tainted_by_errors(guar);
     }
 
     let remapped_opaque_tys = regioncx.infer_opaque_types(infcx, opaque_type_values);

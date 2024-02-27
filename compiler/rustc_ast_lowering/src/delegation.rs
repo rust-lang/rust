@@ -103,12 +103,8 @@ impl<'hir> LoweringContext<'_, 'hir> {
         span: Span,
     ) -> Result<DefId, ErrorGuaranteed> {
         let sig_id = if self.is_in_trait_impl { item_id } else { path_id };
-        let sig_id = self
-            .resolver
-            .get_partial_res(sig_id)
-            .map(|r| r.expect_full_res().opt_def_id())
-            .unwrap_or(None);
-
+        let sig_id =
+            self.resolver.get_partial_res(sig_id).and_then(|r| r.expect_full_res().opt_def_id());
         sig_id.ok_or_else(|| {
             self.tcx
                 .dcx()

@@ -230,8 +230,7 @@ impl<'a> Parser<'a> {
     /// Also error if the previous token was a doc comment.
     fn error_outer_attrs(&self, attrs: AttrWrapper) {
         if !attrs.is_empty()
-            && let attrs = attrs.take_for_recovery(self.sess)
-            && let attrs @ [.., last] = &*attrs
+            && let attrs @ [.., last] = &*attrs.take_for_recovery(self.sess)
         {
             if last.is_doc_comment() {
                 self.dcx().emit_err(errors::DocCommentDoesNotDocumentAnything {

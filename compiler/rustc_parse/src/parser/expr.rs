@@ -2688,23 +2688,20 @@ impl<'a> Parser<'a> {
         branch_span: Span,
         attrs: AttrWrapper,
     ) {
-        if attrs.is_empty() {
-            return;
+        if !attrs.is_empty()
+            && let [x0 @ xn] | [x0, .., xn] = &*attrs.take_for_recovery(self.sess)
+        {
+            let attributes = x0.span.to(xn.span);
+            let last = xn.span;
+            let ctx = if is_ctx_else { "else" } else { "if" };
+            self.dcx().emit_err(errors::OuterAttributeNotAllowedOnIfElse {
+                last,
+                branch_span,
+                ctx_span,
+                ctx: ctx.to_string(),
+                attributes,
+            });
         }
-
-        let attrs: &[ast::Attribute] = &attrs.take_for_recovery(self.sess);
-        let (attributes, last) = match attrs {
-            [] => return,
-            [x0 @ xn] | [x0, .., xn] => (x0.span.to(xn.span), xn.span),
-        };
-        let ctx = if is_ctx_else { "else" } else { "if" };
-        self.dcx().emit_err(errors::OuterAttributeNotAllowedOnIfElse {
-            last,
-            branch_span,
-            ctx_span,
-            ctx: ctx.to_string(),
-            attributes,
-        });
     }
 
     fn error_on_extra_if(&mut self, cond: &P<Expr>) -> PResult<'a, ()> {
