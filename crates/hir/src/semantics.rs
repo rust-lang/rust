@@ -969,8 +969,10 @@ impl<'db> SemanticsImpl<'db> {
             match value.parent() {
                 Some(parent) => Some(InFile::new(file_id, parent)),
                 None => {
-                    self.cache(value.clone(), file_id);
-                    Some(file_id.macro_file()?.call_node(db))
+                    let call_node = file_id.macro_file()?.call_node(db);
+                    // cache the node
+                    self.parse_or_expand(call_node.file_id);
+                    Some(call_node)
                 }
             }
         })

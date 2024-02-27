@@ -28,6 +28,10 @@ incremental = true
 # Set this to 1 or 2 to get more useful backtraces in debugger.
 debug = 0
 
+[profile.dev-rel]
+inherits = "release"
+debug = 2
+
 [patch.'crates-io']
 # rowan = { path = "../rowan" }
 
