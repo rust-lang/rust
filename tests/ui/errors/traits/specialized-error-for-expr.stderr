@@ -1,0 +1,12 @@
+error[E0277]: `String` is not an iterator
+  --> $DIR/specialized-error-for-expr.rs:3:14
+   |
+LL |     for _ in s {}
+   |              ^ `String` is not an iterator; try calling `.chars()` or `.bytes()`
+   |
+   = help: the trait `Iterator` is not implemented for `String`, which is required by `String: IntoIterator`
+   = note: required for `String` to implement `IntoIterator`
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0277`.

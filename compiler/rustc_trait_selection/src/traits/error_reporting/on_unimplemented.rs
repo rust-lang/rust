@@ -150,16 +150,20 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
         ty::print::with_no_trimmed_paths!(ty::print::with_no_visible_paths!({
             let generics = self.tcx.generics_of(def_id);
             let self_ty = trait_ref.self_ty();
-            // This is also included through the generics list as `Self`,
-            // but the parser won't allow you to use it
-            flags.push((sym::_Self, Some(self_ty.to_string())));
-            if let Some(def) = self_ty.ty_adt_def() {
-                // We also want to be able to select self's original
-                // signature with no type arguments resolved
-                flags.push((
-                    sym::_Self,
-                    Some(self.tcx.type_of(def.did()).instantiate_identity().to_string()),
-                ));
+
+            // Don't add specialized notes on types
+            if !self.tcx.hir().is_impl_block(obligation.cause.body_id) {
+                // This is also included through the generics list as `Self`,
+                // but the parser won't allow you to use it
+                flags.push((sym::_Self, Some(self_ty.to_string())));
+                if let Some(def) = self_ty.ty_adt_def() {
+                    // We also want to be able to select self's original
+                    // signature with no type arguments resolved
+                    flags.push((
+                        sym::_Self,
+                        Some(self.tcx.type_of(def.did()).instantiate_identity().to_string()),
+                    ));
+                }
             }
 
             for param in generics.params.iter() {
