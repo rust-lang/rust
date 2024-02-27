@@ -81,10 +81,10 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                                     let then_blk = unpack!(this.then_else_break(
                                         block,
                                         cond,
-                                        Some(condition_scope),
+                                        Some(condition_scope), // Temp scope
                                         condition_scope,
                                         source_info,
-                                        true,
+                                        true, // Declare `let` bindings normally
                                     ));
 
                                     this.expr_into_dest(destination, then_blk, then)
@@ -146,9 +146,11 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                         this.then_else_break(
                             block,
                             lhs,
-                            Some(condition_scope),
+                            Some(condition_scope), // Temp scope
                             condition_scope,
                             source_info,
+                            // This flag controls how inner `let` expressions are lowered,
+                            // but either way there shouldn't be any of those in here.
                             true,
                         )
                     });
