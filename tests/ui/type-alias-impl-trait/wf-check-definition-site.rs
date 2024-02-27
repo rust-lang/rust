@@ -4,6 +4,11 @@
 //
 // `Opaque<'a> = Static<&'a str>`, vs
 // `Opaque<'a> = Static<&'static str>`.
+//
+// The hidden type of the opaque ends up as `Static<'?0 str>`. When
+// computing member constraints we end up choosing `'a` for `?0` unless
+// `?0` is already required to outlive `'a`. We achieve this by checking
+// that `Static<'?0 str>` is well-formed.
 #![feature(type_alias_impl_trait)]
 
 struct Static<T: 'static>(T);
