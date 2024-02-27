@@ -42,7 +42,7 @@ use hir_ty::{
 use itertools::Itertools;
 use smallvec::SmallVec;
 use syntax::{
-    ast::{self, AstNode},
+    ast::{self, AstNode, BinExpr, Expr, IdentPat, PathExpr},
     SyntaxKind, SyntaxNode, TextRange, TextSize,
 };
 use triomphe::Arc;
@@ -377,14 +377,34 @@ impl SourceAnalyzer {
         db: &dyn HirDatabase,
         prefix_expr: &ast::PrefixExpr,
     ) -> Option<FunctionId> {
-        let (lang_item, fn_name) = match prefix_expr.op_kind()? {
-            ast::UnaryOp::Deref => (LangItem::Deref, name![deref]),
-            ast::UnaryOp::Not => (LangItem::Not, name![not]),
-            ast::UnaryOp::Neg => (LangItem::Neg, name![neg]),
+        let (op_trait, op_fn) = match prefix_expr.op_kind()? {
+            ast::UnaryOp::Deref => {
+                // This can be either `Deref::deref` or `DerefMut::deref_mut`.
+                // Since deref kind is inferenced and stored in `InferenceResult.method_resolution`,
+                // use that result to find out which one it is.
+                let (deref_trait, deref) =
+                    self.lang_trait_fn(db, LangItem::Deref, &name![deref])?;
+                self.infer
+                    .as_ref()
+                    .and_then(|infer| {
+                        let expr = self.expr_id(db, &prefix_expr.clone().into())?;
+                        let (func, _) = infer.method_resolution(expr)?;
+                        let (deref_mut_trait, deref_mut) =
+                            self.lang_trait_fn(db, LangItem::DerefMut, &name![deref_mut])?;
+                        if func == deref_mut {
+                            Some((deref_mut_trait, deref_mut))
+                        } else {
+                            None
+                        }
+                    })
+                    .unwrap_or((deref_trait, deref))
+            }
+            ast::UnaryOp::Not => self.lang_trait_fn(db, LangItem::Not, &name![not])?,
+            ast::UnaryOp::Neg => self.lang_trait_fn(db, LangItem::Neg, &name![neg])?,
         };
+
         let ty = self.ty_of_expr(db, &prefix_expr.expr()?)?;
 
-        let (op_trait, op_fn) = self.lang_trait_fn(db, lang_item, &fn_name)?;
         // HACK: subst for all methods coincides with that for their trait because the methods
         // don't have any generic parameters, so we skip building another subst for the methods.
         let substs = hir_ty::TyBuilder::subst_for_def(db, op_trait, None).push(ty.clone()).build();
