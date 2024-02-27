@@ -576,7 +576,7 @@ impl FileAttr {
                     Ok(SystemTime::new(ext.stx_btime.tv_sec, ext.stx_btime.tv_nsec as i64))
                 } else {
                     Err(io::const_io_error!(
-                        io::ErrorKind::Uncategorized,
+                        io::ErrorKind::Unsupported,
                         "creation time is not available for the filesystem",
                     ))
                 };
