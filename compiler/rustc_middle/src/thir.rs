@@ -815,7 +815,9 @@ pub enum PatKind<'tcx> {
 /// The boundaries must be of the same type and that type must be numeric.
 #[derive(Clone, Debug, PartialEq, HashStable, TypeVisitable)]
 pub struct PatRange<'tcx> {
+    /// Must not be `PosInfinity`.
     pub lo: PatRangeBoundary<'tcx>,
+    /// Must not be `NegInfinity`.
     pub hi: PatRangeBoundary<'tcx>,
     #[type_visitable(ignore)]
     pub end: RangeEnd,
