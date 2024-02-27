@@ -131,8 +131,7 @@ pub(super) fn check(
 
             let cast_from_ptr_size = def.repr().int.map_or(true, |ty| matches!(ty, IntegerType::Pointer(_),));
             let suffix = match (cast_from_ptr_size, is_isize_or_usize(cast_to)) {
-                (false, false) if from_nbits > to_nbits => "",
-                (true, false) if from_nbits > to_nbits => "",
+                (_, false) if from_nbits > to_nbits => "",
                 (false, true) if from_nbits > 64 => "",
                 (false, true) if from_nbits > 32 => " on targets with 32-bit wide pointers",
                 _ => return,

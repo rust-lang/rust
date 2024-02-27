@@ -1,5 +1,5 @@
 error: empty drop implementation
-  --> $DIR/empty_drop.rs:7:1
+  --> tests/ui/empty_drop.rs:7:1
    |
 LL | / impl Drop for Foo {
 LL | |     fn drop(&mut self) {}
@@ -10,7 +10,7 @@ LL | | }
    = help: to override `-D warnings` add `#[allow(clippy::empty_drop)]`
 
 error: empty drop implementation
-  --> $DIR/empty_drop.rs:23:1
+  --> tests/ui/empty_drop.rs:23:1
    |
 LL | / impl Drop for Baz {
 LL | |     fn drop(&mut self) {

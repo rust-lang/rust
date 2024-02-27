@@ -1,5 +1,5 @@
 error: returning the result of a `let` binding from a block
-  --> $DIR/let_and_return.rs:9:5
+  --> tests/ui/let_and_return.rs:9:5
    |
 LL |     let x = 5;
    |     ---------- unnecessary `let` binding
@@ -15,7 +15,7 @@ LL ~     5
    |
 
 error: returning the result of a `let` binding from a block
-  --> $DIR/let_and_return.rs:17:9
+  --> tests/ui/let_and_return.rs:17:9
    |
 LL |         let x = 5;
    |         ---------- unnecessary `let` binding
@@ -29,7 +29,7 @@ LL ~         5
    |
 
 error: returning the result of a `let` binding from a block
-  --> $DIR/let_and_return.rs:80:5
+  --> tests/ui/let_and_return.rs:80:5
    |
 LL |     let line = stdin.lock().lines().next().unwrap().unwrap();
    |     --------------------------------------------------------- unnecessary `let` binding
@@ -43,7 +43,7 @@ LL ~     stdin.lock().lines().next().unwrap().unwrap()
    |
 
 error: returning the result of a `let` binding from a block
-  --> $DIR/let_and_return.rs:171:13
+  --> tests/ui/let_and_return.rs:171:13
    |
 LL |             let clone = Arc::clone(&self.foo);
    |             ---------------------------------- unnecessary `let` binding
@@ -57,7 +57,7 @@ LL ~             (Arc::clone(&self.foo)) as _
    |
 
 error: returning the result of a `let` binding from a block
-  --> $DIR/let_and_return.rs:190:13
+  --> tests/ui/let_and_return.rs:190:13
    |
 LL | /             let result = match self {
 LL | |                 E::A(x) => x,

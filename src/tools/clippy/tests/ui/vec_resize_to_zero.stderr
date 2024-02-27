@@ -1,5 +1,5 @@
 error: emptying a vector with `resize`
-  --> $DIR/vec_resize_to_zero.rs:7:5
+  --> tests/ui/vec_resize_to_zero.rs:7:5
    |
 LL |     v.resize(0, 5);
    |     ^^------------

@@ -1,5 +1,5 @@
 error: used the `ceil` method with a whole number float
-  --> $DIR/unused_rounding.rs:4:13
+  --> tests/ui/unused_rounding.rs:4:13
    |
 LL |     let _ = 1f32.ceil();
    |             ^^^^^^^^^^^ help: remove the `ceil` method call: `1f32`
@@ -8,25 +8,25 @@ LL |     let _ = 1f32.ceil();
    = help: to override `-D warnings` add `#[allow(clippy::unused_rounding)]`
 
 error: used the `floor` method with a whole number float
-  --> $DIR/unused_rounding.rs:5:13
+  --> tests/ui/unused_rounding.rs:5:13
    |
 LL |     let _ = 1.0f64.floor();
    |             ^^^^^^^^^^^^^^ help: remove the `floor` method call: `1.0f64`
 
 error: used the `round` method with a whole number float
-  --> $DIR/unused_rounding.rs:6:13
+  --> tests/ui/unused_rounding.rs:6:13
    |
 LL |     let _ = 1.00f32.round();
    |             ^^^^^^^^^^^^^^^ help: remove the `round` method call: `1.00f32`
 
 error: used the `round` method with a whole number float
-  --> $DIR/unused_rounding.rs:12:13
+  --> tests/ui/unused_rounding.rs:12:13
    |
 LL |     let _ = 3.0_f32.round();
    |             ^^^^^^^^^^^^^^^ help: remove the `round` method call: `3.0_f32`
 
 error: used the `round` method with a whole number float
-  --> $DIR/unused_rounding.rs:14:13
+  --> tests/ui/unused_rounding.rs:14:13
    |
 LL |     let _ = 3_3.0_0_f32.round();
    |             ^^^^^^^^^^^^^^^^^^^ help: remove the `round` method call: `3_3.0_0_f32`

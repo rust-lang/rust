@@ -1,5 +1,5 @@
 error: all if blocks contain the same code at the end
-  --> $DIR/shared_at_bottom.rs:35:5
+  --> tests/ui/branches_sharing_code/shared_at_bottom.rs:35:5
    |
 LL | /         let result = false;
 LL | |
@@ -11,7 +11,7 @@ LL | |     };
    |
    = note: the end suggestion probably needs some adjustments to use the expression result correctly
 note: the lint level is defined here
-  --> $DIR/shared_at_bottom.rs:1:36
+  --> tests/ui/branches_sharing_code/shared_at_bottom.rs:1:36
    |
 LL | #![deny(clippy::if_same_then_else, clippy::branches_sharing_code)]
    |                                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -26,7 +26,7 @@ LL ~     result;
    |
 
 error: all if blocks contain the same code at the end
-  --> $DIR/shared_at_bottom.rs:55:5
+  --> tests/ui/branches_sharing_code/shared_at_bottom.rs:55:5
    |
 LL | /         println!("Same end of block");
 LL | |
@@ -40,7 +40,7 @@ LL +     println!("Same end of block");
    |
 
 error: all if blocks contain the same code at the end
-  --> $DIR/shared_at_bottom.rs:73:5
+  --> tests/ui/branches_sharing_code/shared_at_bottom.rs:73:5
    |
 LL | /         println!(
 LL | |
@@ -61,7 +61,7 @@ LL +     );
    |
 
 error: all if blocks contain the same code at the end
-  --> $DIR/shared_at_bottom.rs:86:9
+  --> tests/ui/branches_sharing_code/shared_at_bottom.rs:86:9
    |
 LL | /             println!("Hello World");
 LL | |
@@ -75,7 +75,7 @@ LL +         println!("Hello World");
    |
 
 error: all if blocks contain the same code at the end
-  --> $DIR/shared_at_bottom.rs:103:5
+  --> tests/ui/branches_sharing_code/shared_at_bottom.rs:103:5
    |
 LL | /         let later_used_value = "A string value";
 LL | |
@@ -94,7 +94,7 @@ LL +     println!("{}", later_used_value);
    |
 
 error: all if blocks contain the same code at the end
-  --> $DIR/shared_at_bottom.rs:117:5
+  --> tests/ui/branches_sharing_code/shared_at_bottom.rs:117:5
    |
 LL | /         let simple_examples = "I now identify as a &str :)";
 LL | |
@@ -112,7 +112,7 @@ LL +     println!("This is the new simple_example: {}", simple_examples);
    |
 
 error: all if blocks contain the same code at the end
-  --> $DIR/shared_at_bottom.rs:183:5
+  --> tests/ui/branches_sharing_code/shared_at_bottom.rs:183:5
    |
 LL | /         x << 2
 LL | |
@@ -128,7 +128,7 @@ LL ~     x << 2;
    |
 
 error: all if blocks contain the same code at the end
-  --> $DIR/shared_at_bottom.rs:192:5
+  --> tests/ui/branches_sharing_code/shared_at_bottom.rs:192:5
    |
 LL | /         x * 4
 LL | |
@@ -144,7 +144,7 @@ LL +     x * 4
    |
 
 error: all if blocks contain the same code at the end
-  --> $DIR/shared_at_bottom.rs:206:44
+  --> tests/ui/branches_sharing_code/shared_at_bottom.rs:206:44
    |
 LL |     if x == 17 { b = 1; a = 0x99; } else { a = 0x99; }
    |                                            ^^^^^^^^^^^

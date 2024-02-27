@@ -1,5 +1,5 @@
 error: accessing last element with `x.get(x.len() - 1)`
-  --> $DIR/get_last_with_len.rs:8:13
+  --> tests/ui/get_last_with_len.rs:8:13
    |
 LL |     let _ = x.get(x.len() - 1);
    |             ^^^^^^^^^^^^^^^^^^ help: try: `x.last()`
@@ -8,31 +8,31 @@ LL |     let _ = x.get(x.len() - 1);
    = help: to override `-D warnings` add `#[allow(clippy::get_last_with_len)]`
 
 error: accessing last element with `s.field.get(s.field.len() - 1)`
-  --> $DIR/get_last_with_len.rs:32:13
+  --> tests/ui/get_last_with_len.rs:32:13
    |
 LL |     let _ = s.field.get(s.field.len() - 1);
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `s.field.last()`
 
 error: accessing last element with `slice.get(slice.len() - 1)`
-  --> $DIR/get_last_with_len.rs:37:13
+  --> tests/ui/get_last_with_len.rs:37:13
    |
 LL |     let _ = slice.get(slice.len() - 1);
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `slice.last()`
 
 error: accessing last element with `array.get(array.len() - 1)`
-  --> $DIR/get_last_with_len.rs:40:13
+  --> tests/ui/get_last_with_len.rs:40:13
    |
 LL |     let _ = array.get(array.len() - 1);
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `array.last()`
 
 error: accessing last element with `deq.get(deq.len() - 1)`
-  --> $DIR/get_last_with_len.rs:43:13
+  --> tests/ui/get_last_with_len.rs:43:13
    |
 LL |     let _ = deq.get(deq.len() - 1);
    |             ^^^^^^^^^^^^^^^^^^^^^^ help: try: `deq.back()`
 
 error: accessing last element with `nested[0].get(nested[0].len() - 1)`
-  --> $DIR/get_last_with_len.rs:46:13
+  --> tests/ui/get_last_with_len.rs:46:13
    |
 LL |     let _ = nested[0].get(nested[0].len() - 1);
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `nested[0].last()`

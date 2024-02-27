@@ -1,5 +1,5 @@
 error: expected `,`, found `a`
-  --> $DIR/issue-3145.rs:2:19
+  --> tests/ui/issue-3145.rs:2:19
    |
 LL |     println!("{}" a);
    |                   ^ expected `,`

@@ -153,10 +153,7 @@ fn all_bindings_are_for_conv<'tcx>(
     let Some(locals) = locals.iter().map(|e| path_to_local(e)).collect::<Option<Vec<_>>>() else {
         return false;
     };
-    let local_parents = locals
-        .iter()
-        .map(|l| cx.tcx.parent_hir_node(*l))
-        .collect::<Vec<_>>();
+    let local_parents = locals.iter().map(|l| cx.tcx.parent_hir_node(*l)).collect::<Vec<_>>();
 
     local_parents
         .iter()

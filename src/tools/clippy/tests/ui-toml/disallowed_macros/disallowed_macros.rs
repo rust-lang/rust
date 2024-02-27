@@ -1,9 +1,12 @@
 //@aux-build:macros.rs
+//@aux-build:proc_macros.rs
 
 #![allow(unused)]
 
 extern crate macros;
+extern crate proc_macros;
 
+use proc_macros::Derive;
 use serde::Serialize;
 
 fn main() {
@@ -40,3 +43,6 @@ trait Y {
 impl Y for S {
     macros::item!();
 }
+
+#[derive(Derive)]
+struct Foo;

@@ -1,6 +1,6 @@
 use clippy_utils::diagnostics::{span_lint_and_sugg, span_lint_and_then};
 use clippy_utils::ty::implements_trait;
-use clippy_utils::{get_parent_node, is_res_lang_ctor, last_path_segment, path_res, std_or_core};
+use clippy_utils::{is_res_lang_ctor, last_path_segment, path_res, std_or_core};
 use rustc_errors::Applicability;
 use rustc_hir::def_id::LocalDefId;
 use rustc_hir::{Expr, ExprKind, ImplItem, ImplItemKind, LangItem, Node, UnOp};
@@ -112,7 +112,7 @@ declare_lint_pass!(NonCanonicalImpls => [NON_CANONICAL_CLONE_IMPL, NON_CANONICAL
 impl LateLintPass<'_> for NonCanonicalImpls {
     #[expect(clippy::too_many_lines)]
     fn check_impl_item(&mut self, cx: &LateContext<'_>, impl_item: &ImplItem<'_>) {
-        let Some(Node::Item(item)) = get_parent_node(cx.tcx, impl_item.hir_id()) else {
+        let Node::Item(item) = cx.tcx.parent_hir_node(impl_item.hir_id()) else {
             return;
         };
         let Some(trait_impl) = cx.tcx.impl_trait_ref(item.owner_id).map(EarlyBinder::skip_binder) else {

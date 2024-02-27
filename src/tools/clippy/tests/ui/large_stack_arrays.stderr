@@ -1,5 +1,5 @@
 error: allocating a local array larger than 512000 bytes
-  --> $DIR/large_stack_arrays.rs:29:14
+  --> tests/ui/large_stack_arrays.rs:29:14
    |
 LL |     let _x = [build(); 3];
    |              ^^^^^^^^^^^^
@@ -9,7 +9,7 @@ LL |     let _x = [build(); 3];
    = help: to override `-D warnings` add `#[allow(clippy::large_stack_arrays)]`
 
 error: allocating a local array larger than 512000 bytes
-  --> $DIR/large_stack_arrays.rs:32:14
+  --> tests/ui/large_stack_arrays.rs:32:14
    |
 LL |     let _y = [build(), build(), build()];
    |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -17,7 +17,7 @@ LL |     let _y = [build(), build(), build()];
    = help: consider allocating on the heap with `vec![build(), build(), build()].into_boxed_slice()`
 
 error: allocating a local array larger than 512000 bytes
-  --> $DIR/large_stack_arrays.rs:38:9
+  --> tests/ui/large_stack_arrays.rs:38:9
    |
 LL |         [0u32; 20_000_000],
    |         ^^^^^^^^^^^^^^^^^^
@@ -25,7 +25,7 @@ LL |         [0u32; 20_000_000],
    = help: consider allocating on the heap with `vec![0u32; 20_000_000].into_boxed_slice()`
 
 error: allocating a local array larger than 512000 bytes
-  --> $DIR/large_stack_arrays.rs:40:9
+  --> tests/ui/large_stack_arrays.rs:40:9
    |
 LL |         [S { data: [0; 32] }; 5000],
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -33,7 +33,7 @@ LL |         [S { data: [0; 32] }; 5000],
    = help: consider allocating on the heap with `vec![S { data: [0; 32] }; 5000].into_boxed_slice()`
 
 error: allocating a local array larger than 512000 bytes
-  --> $DIR/large_stack_arrays.rs:42:9
+  --> tests/ui/large_stack_arrays.rs:42:9
    |
 LL |         [Some(""); 20_000_000],
    |         ^^^^^^^^^^^^^^^^^^^^^^
@@ -41,7 +41,7 @@ LL |         [Some(""); 20_000_000],
    = help: consider allocating on the heap with `vec![Some(""); 20_000_000].into_boxed_slice()`
 
 error: allocating a local array larger than 512000 bytes
-  --> $DIR/large_stack_arrays.rs:44:9
+  --> tests/ui/large_stack_arrays.rs:44:9
    |
 LL |         [E::T(0); 5000],
    |         ^^^^^^^^^^^^^^^
@@ -49,7 +49,7 @@ LL |         [E::T(0); 5000],
    = help: consider allocating on the heap with `vec![E::T(0); 5000].into_boxed_slice()`
 
 error: allocating a local array larger than 512000 bytes
-  --> $DIR/large_stack_arrays.rs:46:9
+  --> tests/ui/large_stack_arrays.rs:46:9
    |
 LL |         [0u8; usize::MAX],
    |         ^^^^^^^^^^^^^^^^^

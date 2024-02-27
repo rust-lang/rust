@@ -1,5 +1,5 @@
 error: methods with the following characteristics: (`to_*` and `self` type is not `Copy`) usually take `self` by reference
-  --> $DIR/wrong_self_conventions_mut.rs:14:24
+  --> tests/ui/wrong_self_conventions_mut.rs:14:24
    |
 LL |         pub fn to_many(&mut self) -> Option<&mut [T]> {
    |                        ^^^^^^^^^
@@ -9,7 +9,7 @@ LL |         pub fn to_many(&mut self) -> Option<&mut [T]> {
    = help: to override `-D warnings` add `#[allow(clippy::wrong_self_convention)]`
 
 error: methods with the following characteristics: (`to_*` and `*_mut`) usually take `self` by mutable reference
-  --> $DIR/wrong_self_conventions_mut.rs:23:28
+  --> tests/ui/wrong_self_conventions_mut.rs:23:28
    |
 LL |         pub fn to_many_mut(&self) -> Option<&[T]> {
    |                            ^^^^^

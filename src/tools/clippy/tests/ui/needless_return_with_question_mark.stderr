@@ -1,5 +1,5 @@
 error: unneeded `return` statement with `?` operator
-  --> $DIR/needless_return_with_question_mark.rs:29:5
+  --> tests/ui/needless_return_with_question_mark.rs:29:5
    |
 LL |     return Err(())?;
    |     ^^^^^^^ help: remove it
@@ -8,7 +8,7 @@ LL |     return Err(())?;
    = help: to override `-D warnings` add `#[allow(clippy::needless_return_with_question_mark)]`
 
 error: unneeded `return` statement with `?` operator
-  --> $DIR/needless_return_with_question_mark.rs:69:9
+  --> tests/ui/needless_return_with_question_mark.rs:69:9
    |
 LL |         return Err(())?;
    |         ^^^^^^^ help: remove it

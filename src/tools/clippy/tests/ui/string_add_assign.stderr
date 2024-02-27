@@ -1,5 +1,5 @@
 error: you assigned the result of adding something to this string. Consider using `String::push_str()` instead
-  --> $DIR/string_add_assign.rs:8:9
+  --> tests/ui/string_add_assign.rs:8:9
    |
 LL |         x = x + ".";
    |         ^^^^^^^^^^^
@@ -8,7 +8,7 @@ LL |         x = x + ".";
    = help: to override `-D warnings` add `#[allow(clippy::string_add_assign)]`
 
 error: manual implementation of an assign operation
-  --> $DIR/string_add_assign.rs:8:9
+  --> tests/ui/string_add_assign.rs:8:9
    |
 LL |         x = x + ".";
    |         ^^^^^^^^^^^ help: replace it with: `x += "."`
@@ -17,7 +17,7 @@ LL |         x = x + ".";
    = help: to override `-D warnings` add `#[allow(clippy::assign_op_pattern)]`
 
 error: manual implementation of an assign operation
-  --> $DIR/string_add_assign.rs:17:5
+  --> tests/ui/string_add_assign.rs:17:5
    |
 LL |     x = x + 1;
    |     ^^^^^^^^^ help: replace it with: `x += 1`

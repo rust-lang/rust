@@ -1,5 +1,5 @@
 error: `as` casting between raw pointers while changing only its constness
-  --> $DIR/ptr_cast_constness.rs:10:41
+  --> tests/ui/ptr_cast_constness.rs:10:41
    |
 LL |     let _: &mut T = std::mem::transmute(p as *mut T);
    |                                         ^^^^^^^^^^^ help: try `pointer::cast_mut`, a safer alternative: `p.cast_mut()`
@@ -8,37 +8,37 @@ LL |     let _: &mut T = std::mem::transmute(p as *mut T);
    = help: to override `-D warnings` add `#[allow(clippy::ptr_cast_constness)]`
 
 error: `as` casting between raw pointers while changing only its constness
-  --> $DIR/ptr_cast_constness.rs:11:19
+  --> tests/ui/ptr_cast_constness.rs:11:19
    |
 LL |     let _ = &mut *(p as *mut T);
    |                   ^^^^^^^^^^^^^ help: try `pointer::cast_mut`, a safer alternative: `p.cast_mut()`
 
 error: `as` casting between raw pointers while changing only its constness
-  --> $DIR/ptr_cast_constness.rs:26:17
+  --> tests/ui/ptr_cast_constness.rs:26:17
    |
 LL |         let _ = *ptr_ptr as *mut u32;
    |                 ^^^^^^^^^^^^^^^^^^^^ help: try `pointer::cast_mut`, a safer alternative: `(*ptr_ptr).cast_mut()`
 
 error: `as` casting between raw pointers while changing only its constness
-  --> $DIR/ptr_cast_constness.rs:29:13
+  --> tests/ui/ptr_cast_constness.rs:29:13
    |
 LL |     let _ = ptr as *mut u32;
    |             ^^^^^^^^^^^^^^^ help: try `pointer::cast_mut`, a safer alternative: `ptr.cast_mut()`
 
 error: `as` casting between raw pointers while changing only its constness
-  --> $DIR/ptr_cast_constness.rs:30:13
+  --> tests/ui/ptr_cast_constness.rs:30:13
    |
 LL |     let _ = mut_ptr as *const u32;
    |             ^^^^^^^^^^^^^^^^^^^^^ help: try `pointer::cast_const`, a safer alternative: `mut_ptr.cast_const()`
 
 error: `as` casting between raw pointers while changing only its constness
-  --> $DIR/ptr_cast_constness.rs:59:13
+  --> tests/ui/ptr_cast_constness.rs:59:13
    |
 LL |     let _ = ptr as *mut u32;
    |             ^^^^^^^^^^^^^^^ help: try `pointer::cast_mut`, a safer alternative: `ptr.cast_mut()`
 
 error: `as` casting between raw pointers while changing only its constness
-  --> $DIR/ptr_cast_constness.rs:60:13
+  --> tests/ui/ptr_cast_constness.rs:60:13
    |
 LL |     let _ = mut_ptr as *const u32;
    |             ^^^^^^^^^^^^^^^^^^^^^ help: try `pointer::cast_const`, a safer alternative: `mut_ptr.cast_const()`

@@ -1,5 +1,5 @@
 error: used `expect()` on an `Option` value
-  --> $DIR/expect_used.rs:7:13
+  --> tests/ui-toml/expect_used/expect_used.rs:7:13
    |
 LL |     let _ = opt.expect("");
    |             ^^^^^^^^^^^^^^
@@ -9,7 +9,7 @@ LL |     let _ = opt.expect("");
    = help: to override `-D warnings` add `#[allow(clippy::expect_used)]`
 
 error: used `expect()` on a `Result` value
-  --> $DIR/expect_used.rs:12:13
+  --> tests/ui-toml/expect_used/expect_used.rs:12:13
    |
 LL |     let _ = res.expect("");
    |             ^^^^^^^^^^^^^^

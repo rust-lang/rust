@@ -11,7 +11,7 @@ use rustc_middle::ty::{self, Ty};
 
 use super::OP_REF;
 
-#[expect(clippy::similar_names, clippy::too_many_lines)]
+#[expect(clippy::too_many_lines)]
 pub(crate) fn check<'tcx>(
     cx: &LateContext<'tcx>,
     e: &'tcx Expr<'_>,

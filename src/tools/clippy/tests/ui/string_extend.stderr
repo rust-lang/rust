@@ -1,5 +1,5 @@
 error: calling `.extend(_.chars())`
-  --> $DIR/string_extend.rs:16:5
+  --> tests/ui/string_extend.rs:16:5
    |
 LL |     s.extend(abc.chars());
    |     ^^^^^^^^^^^^^^^^^^^^^ help: try: `s.push_str(abc)`
@@ -8,19 +8,19 @@ LL |     s.extend(abc.chars());
    = help: to override `-D warnings` add `#[allow(clippy::string_extend_chars)]`
 
 error: calling `.extend(_.chars())`
-  --> $DIR/string_extend.rs:19:5
+  --> tests/ui/string_extend.rs:19:5
    |
 LL |     s.extend("abc".chars());
    |     ^^^^^^^^^^^^^^^^^^^^^^^ help: try: `s.push_str("abc")`
 
 error: calling `.extend(_.chars())`
-  --> $DIR/string_extend.rs:22:5
+  --> tests/ui/string_extend.rs:22:5
    |
 LL |     s.extend(def.chars());
    |     ^^^^^^^^^^^^^^^^^^^^^ help: try: `s.push_str(&def)`
 
 error: calling `.extend(_.chars())`
-  --> $DIR/string_extend.rs:32:5
+  --> tests/ui/string_extend.rs:32:5
    |
 LL |     s.extend(abc[0..2].chars());
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `s.push_str(&abc[0..2])`

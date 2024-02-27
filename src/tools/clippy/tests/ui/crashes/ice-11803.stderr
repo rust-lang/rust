@@ -1,5 +1,5 @@
 error: `impl Trait` used as a function parameter
-  --> $DIR/ice-11803.rs:5:54
+  --> tests/ui/crashes/ice-11803.rs:5:54
    |
 LL | pub fn g<T: IntoIterator<Item = impl Iterator<Item = impl Clone>>>() {
    |                                                      ^^^^^^^^^^
@@ -12,7 +12,7 @@ LL | pub fn g<T: IntoIterator<Item = impl Iterator<Item = impl Clone>>, { /* Gen
    |                                                                  +++++++++++++++++++++++++++++++
 
 error: `impl Trait` used as a function parameter
-  --> $DIR/ice-11803.rs:5:33
+  --> tests/ui/crashes/ice-11803.rs:5:33
    |
 LL | pub fn g<T: IntoIterator<Item = impl Iterator<Item = impl Clone>>>() {
    |                                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

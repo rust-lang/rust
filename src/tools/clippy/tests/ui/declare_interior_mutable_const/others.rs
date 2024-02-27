@@ -14,9 +14,10 @@ const ATOMIC_TUPLE: ([AtomicUsize; 1], Vec<AtomicUsize>, u8) = ([ATOMIC], Vec::n
 macro_rules! declare_const {
     ($name:ident: $ty:ty = $e:expr) => {
         const $name: $ty = $e;
+        //~^ ERROR: interior mutable
     };
 }
-declare_const!(_ONCE: Once = Once::new()); //~ ERROR: interior mutable
+declare_const!(_ONCE: Once = Once::new());
 
 // const ATOMIC_REF: &AtomicUsize = &AtomicUsize::new(7); // This will simply trigger E0492.
 
@@ -49,7 +50,7 @@ mod issue_8493 {
         };
     }
 
-    issue_8493!(); //~ ERROR: interior mutable
+    issue_8493!();
 }
 
 fn main() {}

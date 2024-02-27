@@ -1,5 +1,5 @@
 error: the following explicit lifetimes could be elided: 'a
-  --> $DIR/ice-2774.rs:15:28
+  --> tests/ui/crashes/ice-2774.rs:15:28
    |
 LL | pub fn add_barfoos_to_foos<'a>(bars: &HashSet<&'a Bar>) {
    |                            ^^                  ^^

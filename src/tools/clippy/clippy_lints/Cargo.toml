@@ -14,7 +14,7 @@ cargo_metadata = "0.18"
 clippy_config = { path = "../clippy_config" }
 clippy_utils = { path = "../clippy_utils" }
 declare_clippy_lint = { path = "../declare_clippy_lint" }
-itertools = "0.11"
+itertools = "0.12"
 quine-mc_cluskey = "0.2"
 regex-syntax = "0.8"
 serde = { version = "1.0", features = ["derive"] }

@@ -1,5 +1,5 @@
 error: re-implementing `PartialEq::ne` is unnecessary
-  --> $DIR/partialeq_ne_impl.rs:9:5
+  --> tests/ui/partialeq_ne_impl.rs:9:5
    |
 LL | /     fn ne(&self, _: &Foo) -> bool {
 LL | |

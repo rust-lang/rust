@@ -1,5 +1,6 @@
 #![warn(clippy::implied_bounds_in_impls)]
 #![allow(dead_code)]
+#![feature(impl_trait_in_assoc_type, type_alias_impl_trait)]
 
 use std::ops::{Deref, DerefMut};
 
@@ -119,6 +120,57 @@ mod issue11435 {
     // Associated type `X` is specified, but `Y` is not, so only that associated type should be moved
     // over
     fn f3() -> impl Trait3<i8, i16, i64, X = i32, Y = i128> + Trait4<i8, X = i32> {}
+}
+
+fn issue11880() {
+    trait X {
+        type T;
+        type U;
+    }
+    trait Y: X {
+        type T;
+        type V;
+    }
+    impl X for () {
+        type T = i32;
+        type U = String;
+    }
+    impl Y for () {
+        type T = u32;
+        type V = Vec<u8>;
+    }
+
+    // Can't constrain `X::T` through `Y`
+    fn f() -> impl X<T = i32> + Y {}
+    fn f2() -> impl X<T = i32> + Y<T = u32> {}
+
+    // X::T is never constrained in the first place, so it can be omitted
+    // and left unconstrained
+    fn f3() -> impl X + Y {}
+    fn f4() -> impl X + Y<T = u32> {}
+    fn f5() -> impl X<U = String> + Y<T = u32> {}
+}
+
+fn apit(_: impl Deref + DerefMut) {}
+
+trait Rpitit {
+    fn f() -> impl Deref + DerefMut;
+}
+
+trait Atpit {
+    type Assoc;
+    fn define() -> Self::Assoc;
+}
+impl Atpit for () {
+    type Assoc = impl Deref + DerefMut;
+    fn define() -> Self::Assoc {
+        &mut [] as &mut [()]
+    }
+}
+
+type Tait = impl Deref + DerefMut;
+fn define() -> Tait {
+    &mut [] as &mut [()]
 }
 
 fn main() {}

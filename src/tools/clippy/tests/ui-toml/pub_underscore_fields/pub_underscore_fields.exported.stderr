@@ -1,5 +1,5 @@
 error: field marked as public but also inferred as unused because it's prefixed with `_`
-  --> $DIR/pub_underscore_fields.rs:15:9
+  --> tests/ui-toml/pub_underscore_fields/pub_underscore_fields.rs:15:9
    |
 LL |         pub _b: u8,
    |         ^^^^^^

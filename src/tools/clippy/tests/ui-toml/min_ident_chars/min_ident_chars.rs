@@ -3,7 +3,10 @@
 #![warn(clippy::min_ident_chars)]
 
 extern crate extern_types;
-use extern_types::Aaa;
+use extern_types::{Aaa, LONGER, M, N as W};
+
+pub const N: u32 = 0;
+pub const LONG: u32 = 32;
 
 struct Owo {
     Uwu: u128,

@@ -1,11 +1,11 @@
 error: redundant redefinition of a binding `x`
-  --> $DIR/redundant_locals.rs:13:5
+  --> tests/ui/redundant_locals.rs:13:5
    |
 LL |     let x = x;
    |     ^^^^^^^^^^
    |
 help: `x` is initially defined here
-  --> $DIR/redundant_locals.rs:12:9
+  --> tests/ui/redundant_locals.rs:12:9
    |
 LL |     let x = 1;
    |         ^
@@ -13,157 +13,157 @@ LL |     let x = 1;
    = help: to override `-D warnings` add `#[allow(clippy::redundant_locals)]`
 
 error: redundant redefinition of a binding `x`
-  --> $DIR/redundant_locals.rs:18:5
+  --> tests/ui/redundant_locals.rs:18:5
    |
 LL |     let mut x = x;
    |     ^^^^^^^^^^^^^^
    |
 help: `x` is initially defined here
-  --> $DIR/redundant_locals.rs:17:9
+  --> tests/ui/redundant_locals.rs:17:9
    |
 LL |     let mut x = 1;
    |         ^^^^^
 
 error: redundant redefinition of a binding `x`
-  --> $DIR/redundant_locals.rs:48:5
+  --> tests/ui/redundant_locals.rs:48:5
    |
 LL |     let x = x;
    |     ^^^^^^^^^^
    |
 help: `x` is initially defined here
-  --> $DIR/redundant_locals.rs:47:14
+  --> tests/ui/redundant_locals.rs:47:14
    |
 LL | fn parameter(x: i32) {
    |              ^
 
 error: redundant redefinition of a binding `x`
-  --> $DIR/redundant_locals.rs:53:5
+  --> tests/ui/redundant_locals.rs:53:5
    |
 LL |     let x = x;
    |     ^^^^^^^^^^
    |
 help: `x` is initially defined here
-  --> $DIR/redundant_locals.rs:52:9
+  --> tests/ui/redundant_locals.rs:52:9
    |
 LL |     let x = 1;
    |         ^
 
 error: redundant redefinition of a binding `x`
-  --> $DIR/redundant_locals.rs:54:5
+  --> tests/ui/redundant_locals.rs:54:5
    |
 LL |     let x = x;
    |     ^^^^^^^^^^
    |
 help: `x` is initially defined here
-  --> $DIR/redundant_locals.rs:53:9
+  --> tests/ui/redundant_locals.rs:53:9
    |
 LL |     let x = x;
    |         ^
 
 error: redundant redefinition of a binding `x`
-  --> $DIR/redundant_locals.rs:55:5
+  --> tests/ui/redundant_locals.rs:55:5
    |
 LL |     let x = x;
    |     ^^^^^^^^^^
    |
 help: `x` is initially defined here
-  --> $DIR/redundant_locals.rs:54:9
+  --> tests/ui/redundant_locals.rs:54:9
    |
 LL |     let x = x;
    |         ^
 
 error: redundant redefinition of a binding `x`
-  --> $DIR/redundant_locals.rs:56:5
+  --> tests/ui/redundant_locals.rs:56:5
    |
 LL |     let x = x;
    |     ^^^^^^^^^^
    |
 help: `x` is initially defined here
-  --> $DIR/redundant_locals.rs:55:9
+  --> tests/ui/redundant_locals.rs:55:9
    |
 LL |     let x = x;
    |         ^
 
 error: redundant redefinition of a binding `a`
-  --> $DIR/redundant_locals.rs:62:5
+  --> tests/ui/redundant_locals.rs:62:5
    |
 LL |     let a = a;
    |     ^^^^^^^^^^
    |
 help: `a` is initially defined here
-  --> $DIR/redundant_locals.rs:60:9
+  --> tests/ui/redundant_locals.rs:60:9
    |
 LL |     let a = 1;
    |         ^
 
 error: redundant redefinition of a binding `b`
-  --> $DIR/redundant_locals.rs:63:5
+  --> tests/ui/redundant_locals.rs:63:5
    |
 LL |     let b = b;
    |     ^^^^^^^^^^
    |
 help: `b` is initially defined here
-  --> $DIR/redundant_locals.rs:61:9
+  --> tests/ui/redundant_locals.rs:61:9
    |
 LL |     let b = 2;
    |         ^
 
 error: redundant redefinition of a binding `x`
-  --> $DIR/redundant_locals.rs:69:9
+  --> tests/ui/redundant_locals.rs:69:9
    |
 LL |         let x = x;
    |         ^^^^^^^^^^
    |
 help: `x` is initially defined here
-  --> $DIR/redundant_locals.rs:68:13
+  --> tests/ui/redundant_locals.rs:68:13
    |
 LL |         let x = 1;
    |             ^
 
 error: redundant redefinition of a binding `x`
-  --> $DIR/redundant_locals.rs:76:9
+  --> tests/ui/redundant_locals.rs:76:9
    |
 LL |         let x = x;
    |         ^^^^^^^^^^
    |
 help: `x` is initially defined here
-  --> $DIR/redundant_locals.rs:75:13
+  --> tests/ui/redundant_locals.rs:75:13
    |
 LL |         let x = 1;
    |             ^
 
 error: redundant redefinition of a binding `x`
-  --> $DIR/redundant_locals.rs:79:9
+  --> tests/ui/redundant_locals.rs:79:9
    |
 LL |         let x = x;
    |         ^^^^^^^^^^
    |
 help: `x` is initially defined here
-  --> $DIR/redundant_locals.rs:78:6
+  --> tests/ui/redundant_locals.rs:78:6
    |
 LL |     |x: i32| {
    |      ^
 
 error: redundant redefinition of a binding `x`
-  --> $DIR/redundant_locals.rs:98:9
+  --> tests/ui/redundant_locals.rs:98:9
    |
 LL |         let x = x;
    |         ^^^^^^^^^^
    |
 help: `x` is initially defined here
-  --> $DIR/redundant_locals.rs:95:9
+  --> tests/ui/redundant_locals.rs:95:9
    |
 LL |     let x = 1;
    |         ^
 
 error: redundant redefinition of a binding `a`
-  --> $DIR/redundant_locals.rs:153:5
+  --> tests/ui/redundant_locals.rs:153:5
    |
 LL |     let a = a;
    |     ^^^^^^^^^^
    |
 help: `a` is initially defined here
-  --> $DIR/redundant_locals.rs:151:9
+  --> tests/ui/redundant_locals.rs:151:9
    |
 LL |     let a = WithoutDrop(1);
    |         ^

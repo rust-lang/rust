@@ -6,7 +6,7 @@
     clippy::missing_panics_doc,
     rustc::diagnostic_outside_of_impl,
     rustc::untranslatable_diagnostic,
-    rustc::untranslatable_diagnostic_trivial,
+    rustc::untranslatable_diagnostic_trivial
 )]
 
 extern crate rustc_ast;

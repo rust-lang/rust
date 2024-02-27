@@ -119,7 +119,6 @@ impl<'a, 'tcx> SimilarNamesLocalVisitor<'a, 'tcx> {
 
 // this list contains lists of names that are allowed to be similar
 // the assumption is that no name is ever contained in multiple lists.
-#[rustfmt::skip]
 const ALLOWED_TO_BE_SIMILAR: &[&[&str]] = &[
     &["parsed", "parser"],
     &["lhs", "rhs"],
@@ -131,6 +130,14 @@ const ALLOWED_TO_BE_SIMILAR: &[&[&str]] = &[
     &["wparam", "lparam"],
     &["iter", "item"],
 ];
+
+/// Characters that look visually similar
+const SIMILAR_CHARS: &[(char, char)] = &[('l', 'i'), ('l', '1'), ('i', '1'), ('u', 'v')];
+
+/// Return true if two characters are visually similar
+fn chars_are_similar(a: char, b: char) -> bool {
+    a == b || SIMILAR_CHARS.contains(&(a, b)) || SIMILAR_CHARS.contains(&(b, a))
+}
 
 struct SimilarNamesNameVisitor<'a, 'tcx, 'b>(&'b mut SimilarNamesLocalVisitor<'a, 'tcx>);
 
@@ -189,7 +196,6 @@ impl<'a, 'tcx, 'b> SimilarNamesNameVisitor<'a, 'tcx, 'b> {
         }
     }
 
-    #[expect(clippy::too_many_lines)]
     fn check_ident(&mut self, ident: Ident) {
         let interned_name = ident.name.as_str();
         if interned_name.chars().any(char::is_uppercase) {
@@ -219,71 +225,28 @@ impl<'a, 'tcx, 'b> SimilarNamesNameVisitor<'a, 'tcx, 'b> {
             if allowed_to_be_similar(interned_name, existing_name.exemptions) {
                 continue;
             }
-            match existing_name.len.cmp(&count) {
-                Ordering::Greater => {
-                    if existing_name.len - count != 1
-                        || levenstein_not_1(interned_name, existing_name.interned.as_str())
-                    {
-                        continue;
-                    }
-                },
-                Ordering::Less => {
-                    if count - existing_name.len != 1
-                        || levenstein_not_1(existing_name.interned.as_str(), interned_name)
-                    {
-                        continue;
-                    }
-                },
-                Ordering::Equal => {
-                    let mut interned_chars = interned_name.chars();
-                    let interned_str = existing_name.interned.as_str();
-                    let mut existing_chars = interned_str.chars();
-                    let first_i = interned_chars.next().expect("we know we have at least one char");
-                    let first_e = existing_chars.next().expect("we know we have at least one char");
-                    let eq_or_numeric = |(a, b): (char, char)| a == b || a.is_numeric() && b.is_numeric();
 
-                    if eq_or_numeric((first_i, first_e)) {
-                        let last_i = interned_chars.next_back().expect("we know we have at least two chars");
-                        let last_e = existing_chars.next_back().expect("we know we have at least two chars");
-                        if eq_or_numeric((last_i, last_e)) {
-                            if interned_chars
-                                .zip(existing_chars)
-                                .filter(|&ie| !eq_or_numeric(ie))
-                                .count()
-                                != 1
-                            {
-                                continue;
-                            }
-                        } else {
-                            let second_last_i = interned_chars
-                                .next_back()
-                                .expect("we know we have at least three chars");
-                            let second_last_e = existing_chars
-                                .next_back()
-                                .expect("we know we have at least three chars");
-                            if !eq_or_numeric((second_last_i, second_last_e))
-                                || second_last_i == '_'
-                                || !interned_chars.zip(existing_chars).all(eq_or_numeric)
-                            {
-                                // allowed similarity foo_x, foo_y
-                                // or too many chars differ (foo_x, boo_y) or (foox, booy)
-                                continue;
-                            }
-                        }
-                    } else {
-                        let second_i = interned_chars.next().expect("we know we have at least two chars");
-                        let second_e = existing_chars.next().expect("we know we have at least two chars");
-                        if !eq_or_numeric((second_i, second_e))
-                            || second_i == '_'
-                            || !interned_chars.zip(existing_chars).all(eq_or_numeric)
-                        {
-                            // allowed similarity x_foo, y_foo
-                            // or too many chars differ (x_foo, y_boo) or (xfoo, yboo)
-                            continue;
-                        }
-                    }
-                },
+            let existing_str = existing_name.interned.as_str();
+
+            // The first char being different is usually enough to set identifiers apart, as long
+            // as the characters aren't too similar.
+            if !chars_are_similar(
+                interned_name.chars().next().expect("len >= 1"),
+                existing_str.chars().next().expect("len >= 1"),
+            ) {
+                continue;
             }
+
+            let dissimilar = match existing_name.len.cmp(&count) {
+                Ordering::Greater => existing_name.len - count != 1 || levenstein_not_1(interned_name, existing_str),
+                Ordering::Less => count - existing_name.len != 1 || levenstein_not_1(existing_str, interned_name),
+                Ordering::Equal => Self::equal_length_strs_not_similar(interned_name, existing_str),
+            };
+
+            if dissimilar {
+                continue;
+            }
+
             span_lint_and_then(
                 self.0.cx,
                 SIMILAR_NAMES,
@@ -301,6 +264,57 @@ impl<'a, 'tcx, 'b> SimilarNamesNameVisitor<'a, 'tcx, 'b> {
             span: ident.span,
             len: count,
         });
+    }
+
+    fn equal_length_strs_not_similar(interned_name: &str, existing_name: &str) -> bool {
+        let mut interned_chars = interned_name.chars();
+        let mut existing_chars = existing_name.chars();
+        let first_i = interned_chars.next().expect("we know we have at least one char");
+        let first_e = existing_chars.next().expect("we know we have at least one char");
+        let eq_or_numeric = |(a, b): (char, char)| a == b || a.is_numeric() && b.is_numeric();
+
+        if eq_or_numeric((first_i, first_e)) {
+            let last_i = interned_chars.next_back().expect("we know we have at least two chars");
+            let last_e = existing_chars.next_back().expect("we know we have at least two chars");
+            if eq_or_numeric((last_i, last_e)) {
+                if interned_chars
+                    .zip(existing_chars)
+                    .filter(|&ie| !eq_or_numeric(ie))
+                    .count()
+                    != 1
+                {
+                    return true;
+                }
+            } else {
+                let second_last_i = interned_chars
+                    .next_back()
+                    .expect("we know we have at least three chars");
+                let second_last_e = existing_chars
+                    .next_back()
+                    .expect("we know we have at least three chars");
+                if !eq_or_numeric((second_last_i, second_last_e))
+                    || second_last_i == '_'
+                    || !interned_chars.zip(existing_chars).all(eq_or_numeric)
+                {
+                    // allowed similarity foo_x, foo_y
+                    // or too many chars differ (foo_x, boo_y) or (foox, booy)
+                    return true;
+                }
+            }
+        } else {
+            let second_i = interned_chars.next().expect("we know we have at least two chars");
+            let second_e = existing_chars.next().expect("we know we have at least two chars");
+            if !eq_or_numeric((second_i, second_e))
+                || second_i == '_'
+                || !interned_chars.zip(existing_chars).all(eq_or_numeric)
+            {
+                // allowed similarity x_foo, y_foo
+                // or too many chars differ (x_foo, y_boo) or (xfoo, yboo)
+                return true;
+            }
+        }
+
+        false
     }
 }
 

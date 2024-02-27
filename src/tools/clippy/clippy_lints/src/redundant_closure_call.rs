@@ -200,11 +200,11 @@ impl<'tcx> LateLintPass<'tcx> for RedundantClosureCall {
                             hint = hint.asyncify();
                         }
 
-                        let is_in_fn_call_arg =
-                            clippy_utils::get_parent_node(cx.tcx, expr.hir_id).is_some_and(|x| match x {
-                                Node::Expr(expr) => matches!(expr.kind, hir::ExprKind::Call(_, _)),
-                                _ => false,
-                            });
+                        let is_in_fn_call_arg = if let Node::Expr(expr) = cx.tcx.parent_hir_node(expr.hir_id) {
+                            matches!(expr.kind, hir::ExprKind::Call(_, _))
+                        } else {
+                            false
+                        };
 
                         // avoid clippy::double_parens
                         if !is_in_fn_call_arg {

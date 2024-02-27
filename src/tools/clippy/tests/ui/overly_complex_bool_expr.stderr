@@ -1,11 +1,11 @@
 error: this boolean expression contains a logic bug
-  --> $DIR/overly_complex_bool_expr.rs:11:13
+  --> tests/ui/overly_complex_bool_expr.rs:11:13
    |
 LL |     let _ = a && b || a;
    |             ^^^^^^^^^^^ help: it would look like the following: `a`
    |
 help: this expression can be optimized out by applying boolean operations to the outer expression
-  --> $DIR/overly_complex_bool_expr.rs:11:18
+  --> tests/ui/overly_complex_bool_expr.rs:11:18
    |
 LL |     let _ = a && b || a;
    |                  ^
@@ -13,49 +13,49 @@ LL |     let _ = a && b || a;
    = help: to override `-D warnings` add `#[allow(clippy::overly_complex_bool_expr)]`
 
 error: this boolean expression contains a logic bug
-  --> $DIR/overly_complex_bool_expr.rs:14:13
+  --> tests/ui/overly_complex_bool_expr.rs:14:13
    |
 LL |     let _ = false && a;
    |             ^^^^^^^^^^ help: it would look like the following: `false`
    |
 help: this expression can be optimized out by applying boolean operations to the outer expression
-  --> $DIR/overly_complex_bool_expr.rs:14:22
+  --> tests/ui/overly_complex_bool_expr.rs:14:22
    |
 LL |     let _ = false && a;
    |                      ^
 
 error: this boolean expression contains a logic bug
-  --> $DIR/overly_complex_bool_expr.rs:25:13
+  --> tests/ui/overly_complex_bool_expr.rs:25:13
    |
 LL |     let _ = a == b && a != b;
    |             ^^^^^^^^^^^^^^^^ help: it would look like the following: `false`
    |
 help: this expression can be optimized out by applying boolean operations to the outer expression
-  --> $DIR/overly_complex_bool_expr.rs:25:13
+  --> tests/ui/overly_complex_bool_expr.rs:25:13
    |
 LL |     let _ = a == b && a != b;
    |             ^^^^^^
 
 error: this boolean expression contains a logic bug
-  --> $DIR/overly_complex_bool_expr.rs:27:13
+  --> tests/ui/overly_complex_bool_expr.rs:27:13
    |
 LL |     let _ = a < b && a >= b;
    |             ^^^^^^^^^^^^^^^ help: it would look like the following: `false`
    |
 help: this expression can be optimized out by applying boolean operations to the outer expression
-  --> $DIR/overly_complex_bool_expr.rs:27:13
+  --> tests/ui/overly_complex_bool_expr.rs:27:13
    |
 LL |     let _ = a < b && a >= b;
    |             ^^^^^
 
 error: this boolean expression contains a logic bug
-  --> $DIR/overly_complex_bool_expr.rs:29:13
+  --> tests/ui/overly_complex_bool_expr.rs:29:13
    |
 LL |     let _ = a > b && a <= b;
    |             ^^^^^^^^^^^^^^^ help: it would look like the following: `false`
    |
 help: this expression can be optimized out by applying boolean operations to the outer expression
-  --> $DIR/overly_complex_bool_expr.rs:29:13
+  --> tests/ui/overly_complex_bool_expr.rs:29:13
    |
 LL |     let _ = a > b && a <= b;
    |             ^^^^^

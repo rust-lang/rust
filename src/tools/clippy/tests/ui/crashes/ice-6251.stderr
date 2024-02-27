@@ -1,5 +1,5 @@
 error[E0277]: the size for values of type `[u8]` cannot be known at compilation time
-  --> $DIR/ice-6251.rs:4:45
+  --> tests/ui/crashes/ice-6251.rs:4:45
    |
 LL | fn bug<T>() -> impl Iterator<Item = [(); { |x: [u8]| x }]> {
    |                                             ^ doesn't have a size known at compile-time
@@ -12,7 +12,7 @@ LL | fn bug<T>() -> impl Iterator<Item = [(); { |x: &[u8]| x }]> {
    |                                                +
 
 error[E0277]: the size for values of type `[u8]` cannot be known at compilation time
-  --> $DIR/ice-6251.rs:4:54
+  --> tests/ui/crashes/ice-6251.rs:4:54
    |
 LL | fn bug<T>() -> impl Iterator<Item = [(); { |x: [u8]| x }]> {
    |                                                      ^ doesn't have a size known at compile-time
@@ -21,13 +21,13 @@ LL | fn bug<T>() -> impl Iterator<Item = [(); { |x: [u8]| x }]> {
    = note: the return type of a function must have a statically known size
 
 error[E0308]: mismatched types
-  --> $DIR/ice-6251.rs:4:44
+  --> tests/ui/crashes/ice-6251.rs:4:44
    |
 LL | fn bug<T>() -> impl Iterator<Item = [(); { |x: [u8]| x }]> {
    |                                            ^^^^^^^^^^^ expected `usize`, found closure
    |
    = note: expected type `usize`
-           found closure `{closure@$DIR/ice-6251.rs:4:44: 4:53}`
+           found closure `{closure@tests/ui/crashes/ice-6251.rs:4:44: 4:53}`
 
 error: aborting due to 3 previous errors
 

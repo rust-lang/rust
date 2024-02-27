@@ -1,5 +1,5 @@
 error: used `unwrap()` on an `Option` value
-  --> $DIR/unwrap_expect_used.rs:27:5
+  --> tests/ui/unwrap_expect_used.rs:27:5
    |
 LL |     Some(3).unwrap();
    |     ^^^^^^^^^^^^^^^^
@@ -9,7 +9,7 @@ LL |     Some(3).unwrap();
    = help: to override `-D warnings` add `#[allow(clippy::unwrap_used)]`
 
 error: used `expect()` on an `Option` value
-  --> $DIR/unwrap_expect_used.rs:29:5
+  --> tests/ui/unwrap_expect_used.rs:29:5
    |
 LL |     Some(3).expect("Hello world!");
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -19,7 +19,7 @@ LL |     Some(3).expect("Hello world!");
    = help: to override `-D warnings` add `#[allow(clippy::expect_used)]`
 
 error: used `unwrap()` on a `Result` value
-  --> $DIR/unwrap_expect_used.rs:45:5
+  --> tests/ui/unwrap_expect_used.rs:45:5
    |
 LL |     a.unwrap();
    |     ^^^^^^^^^^
@@ -27,7 +27,7 @@ LL |     a.unwrap();
    = note: if this value is an `Err`, it will panic
 
 error: used `expect()` on a `Result` value
-  --> $DIR/unwrap_expect_used.rs:47:5
+  --> tests/ui/unwrap_expect_used.rs:47:5
    |
 LL |     a.expect("Hello world!");
    |     ^^^^^^^^^^^^^^^^^^^^^^^^
@@ -35,7 +35,7 @@ LL |     a.expect("Hello world!");
    = note: if this value is an `Err`, it will panic
 
 error: used `unwrap_err()` on a `Result` value
-  --> $DIR/unwrap_expect_used.rs:49:5
+  --> tests/ui/unwrap_expect_used.rs:49:5
    |
 LL |     a.unwrap_err();
    |     ^^^^^^^^^^^^^^
@@ -43,7 +43,7 @@ LL |     a.unwrap_err();
    = note: if this value is an `Ok`, it will panic
 
 error: used `expect_err()` on a `Result` value
-  --> $DIR/unwrap_expect_used.rs:51:5
+  --> tests/ui/unwrap_expect_used.rs:51:5
    |
 LL |     a.expect_err("Hello error!");
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^

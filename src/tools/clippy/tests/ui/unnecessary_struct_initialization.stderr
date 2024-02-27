@@ -1,5 +1,5 @@
 error: unnecessary struct building
-  --> $DIR/unnecessary_struct_initialization.rs:32:9
+  --> tests/ui/unnecessary_struct_initialization.rs:32:9
    |
 LL |         Self { ..*self }
    |         ^^^^^^^^^^^^^^^^ help: replace with: `*self`
@@ -8,25 +8,25 @@ LL |         Self { ..*self }
    = help: to override `-D warnings` add `#[allow(clippy::unnecessary_struct_initialization)]`
 
 error: unnecessary struct building
-  --> $DIR/unnecessary_struct_initialization.rs:39:17
+  --> tests/ui/unnecessary_struct_initialization.rs:39:17
    |
 LL |     let mut b = S { ..a };
    |                 ^^^^^^^^^ help: replace with: `a`
 
 error: unnecessary struct building
-  --> $DIR/unnecessary_struct_initialization.rs:42:18
+  --> tests/ui/unnecessary_struct_initialization.rs:42:18
    |
 LL |     let c = &mut S { ..b };
    |                  ^^^^^^^^^ help: replace with: `b`
 
 error: unnecessary struct building
-  --> $DIR/unnecessary_struct_initialization.rs:50:14
+  --> tests/ui/unnecessary_struct_initialization.rs:50:14
    |
 LL |     let g = &S { ..f };
    |              ^^^^^^^^^ help: replace with: `f`
 
 error: unnecessary struct building
-  --> $DIR/unnecessary_struct_initialization.rs:53:18
+  --> tests/ui/unnecessary_struct_initialization.rs:53:18
    |
 LL |       let h = &mut S {
    |  __________________^
@@ -35,7 +35,7 @@ LL | |     };
    | |_____^ help: replace with: `*Box::new(S { f: String::from("foo") })`
 
 error: unnecessary struct building
-  --> $DIR/unnecessary_struct_initialization.rs:72:18
+  --> tests/ui/unnecessary_struct_initialization.rs:72:18
    |
 LL |       let p = &mut T {
    |  __________________^

@@ -1,5 +1,5 @@
 error: unnecessary use of `.write(true)` because there is `.append(true)`
-  --> $DIR/ineffective_open_options.rs:8:9
+  --> tests/ui/ineffective_open_options.rs:8:9
    |
 LL |         .write(true)
    |         ^^^^^^^^^^^^ help: remove `.write(true)`
@@ -8,7 +8,7 @@ LL |         .write(true)
    = help: to override `-D warnings` add `#[allow(clippy::ineffective_open_options)]`
 
 error: unnecessary use of `.write(true)` because there is `.append(true)`
-  --> $DIR/ineffective_open_options.rs:16:9
+  --> tests/ui/ineffective_open_options.rs:16:9
    |
 LL |         .write(true)
    |         ^^^^^^^^^^^^ help: remove `.write(true)`

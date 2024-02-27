@@ -1,266 +1,266 @@
 error: reference as raw pointer
-  --> $DIR/ref_as_ptr.rs:5:13
+  --> tests/ui/ref_as_ptr.rs:7:7
    |
-LL |     let _ = &1u8 as *const _;
-   |             ^^^^^^^^^^^^^^^^ help: try: `std::ptr::from_ref(&1u8)`
+LL |     f(&1u8 as *const _);
+   |       ^^^^^^^^^^^^^^^^ help: try: `std::ptr::from_ref(&1u8)`
    |
    = note: `-D clippy::ref-as-ptr` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::ref_as_ptr)]`
 
 error: reference as raw pointer
-  --> $DIR/ref_as_ptr.rs:6:13
+  --> tests/ui/ref_as_ptr.rs:8:7
    |
-LL |     let _ = &2u32 as *const u32;
-   |             ^^^^^^^^^^^^^^^^^^^ help: try: `std::ptr::from_ref::<u32>(&2u32)`
+LL |     f(&2u32 as *const u32);
+   |       ^^^^^^^^^^^^^^^^^^^ help: try: `std::ptr::from_ref::<u32>(&2u32)`
 
 error: reference as raw pointer
-  --> $DIR/ref_as_ptr.rs:7:13
+  --> tests/ui/ref_as_ptr.rs:9:7
    |
-LL |     let _ = &3.0f64 as *const f64;
-   |             ^^^^^^^^^^^^^^^^^^^^^ help: try: `std::ptr::from_ref::<f64>(&3.0f64)`
+LL |     f(&3.0f64 as *const f64);
+   |       ^^^^^^^^^^^^^^^^^^^^^ help: try: `std::ptr::from_ref::<f64>(&3.0f64)`
 
 error: reference as raw pointer
-  --> $DIR/ref_as_ptr.rs:9:13
+  --> tests/ui/ref_as_ptr.rs:11:7
    |
-LL |     let _ = &4 as *const _ as *const f32;
-   |             ^^^^^^^^^^^^^^ help: try: `std::ptr::from_ref(&4)`
+LL |     f(&4 as *const _ as *const f32);
+   |       ^^^^^^^^^^^^^^ help: try: `std::ptr::from_ref(&4)`
 
 error: reference as raw pointer
-  --> $DIR/ref_as_ptr.rs:10:13
+  --> tests/ui/ref_as_ptr.rs:12:7
    |
-LL |     let _ = &5.0f32 as *const f32 as *const u32;
-   |             ^^^^^^^^^^^^^^^^^^^^^ help: try: `std::ptr::from_ref::<f32>(&5.0f32)`
+LL |     f(&5.0f32 as *const f32 as *const u32);
+   |       ^^^^^^^^^^^^^^^^^^^^^ help: try: `std::ptr::from_ref::<f32>(&5.0f32)`
 
 error: reference as raw pointer
-  --> $DIR/ref_as_ptr.rs:12:13
+  --> tests/ui/ref_as_ptr.rs:14:7
    |
-LL |     let _ = &mut 6u8 as *const _;
-   |             ^^^^^^^^^^^^^^^^^^^^ help: try: `std::ptr::from_ref(&mut 6u8)`
+LL |     f(&mut 6u8 as *const _);
+   |       ^^^^^^^^^^^^^^^^^^^^ help: try: `std::ptr::from_ref(&mut 6u8)`
 
 error: reference as raw pointer
-  --> $DIR/ref_as_ptr.rs:13:13
+  --> tests/ui/ref_as_ptr.rs:15:7
    |
-LL |     let _ = &mut 7u32 as *const u32;
-   |             ^^^^^^^^^^^^^^^^^^^^^^^ help: try: `std::ptr::from_ref::<u32>(&mut 7u32)`
+LL |     f(&mut 7u32 as *const u32);
+   |       ^^^^^^^^^^^^^^^^^^^^^^^ help: try: `std::ptr::from_ref::<u32>(&mut 7u32)`
 
 error: reference as raw pointer
-  --> $DIR/ref_as_ptr.rs:14:13
+  --> tests/ui/ref_as_ptr.rs:16:7
    |
-LL |     let _ = &mut 8.0f64 as *const f64;
-   |             ^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `std::ptr::from_ref::<f64>(&mut 8.0f64)`
+LL |     f(&mut 8.0f64 as *const f64);
+   |       ^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `std::ptr::from_ref::<f64>(&mut 8.0f64)`
 
 error: reference as raw pointer
-  --> $DIR/ref_as_ptr.rs:16:13
+  --> tests/ui/ref_as_ptr.rs:18:7
    |
-LL |     let _ = &mut 9 as *const _ as *const f32;
-   |             ^^^^^^^^^^^^^^^^^^ help: try: `std::ptr::from_ref(&mut 9)`
+LL |     f(&mut 9 as *const _ as *const f32);
+   |       ^^^^^^^^^^^^^^^^^^ help: try: `std::ptr::from_ref(&mut 9)`
 
 error: reference as raw pointer
-  --> $DIR/ref_as_ptr.rs:17:13
+  --> tests/ui/ref_as_ptr.rs:19:7
    |
-LL |     let _ = &mut 10.0f32 as *const f32 as *const u32;
-   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `std::ptr::from_ref::<f32>(&mut 10.0f32)`
+LL |     f(&mut 10.0f32 as *const f32 as *const u32);
+   |       ^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `std::ptr::from_ref::<f32>(&mut 10.0f32)`
 
 error: reference as raw pointer
-  --> $DIR/ref_as_ptr.rs:19:13
+  --> tests/ui/ref_as_ptr.rs:21:7
    |
-LL |     let _ = &mut 11u8 as *mut _;
-   |             ^^^^^^^^^^^^^^^^^^^ help: try: `std::ptr::from_mut(&mut 11u8)`
+LL |     f(&mut 11u8 as *mut _);
+   |       ^^^^^^^^^^^^^^^^^^^ help: try: `std::ptr::from_mut(&mut 11u8)`
 
 error: reference as raw pointer
-  --> $DIR/ref_as_ptr.rs:20:13
+  --> tests/ui/ref_as_ptr.rs:22:7
    |
-LL |     let _ = &mut 12u32 as *mut u32;
-   |             ^^^^^^^^^^^^^^^^^^^^^^ help: try: `std::ptr::from_mut::<u32>(&mut 12u32)`
+LL |     f(&mut 12u32 as *mut u32);
+   |       ^^^^^^^^^^^^^^^^^^^^^^ help: try: `std::ptr::from_mut::<u32>(&mut 12u32)`
 
 error: reference as raw pointer
-  --> $DIR/ref_as_ptr.rs:21:13
+  --> tests/ui/ref_as_ptr.rs:23:7
    |
-LL |     let _ = &mut 13.0f64 as *mut f64;
-   |             ^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `std::ptr::from_mut::<f64>(&mut 13.0f64)`
+LL |     f(&mut 13.0f64 as *mut f64);
+   |       ^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `std::ptr::from_mut::<f64>(&mut 13.0f64)`
 
 error: reference as raw pointer
-  --> $DIR/ref_as_ptr.rs:23:13
+  --> tests/ui/ref_as_ptr.rs:25:7
    |
-LL |     let _ = &mut 14 as *mut _ as *const f32;
-   |             ^^^^^^^^^^^^^^^^^ help: try: `std::ptr::from_mut(&mut 14)`
+LL |     f(&mut 14 as *mut _ as *const f32);
+   |       ^^^^^^^^^^^^^^^^^ help: try: `std::ptr::from_mut(&mut 14)`
 
 error: reference as raw pointer
-  --> $DIR/ref_as_ptr.rs:24:13
+  --> tests/ui/ref_as_ptr.rs:26:7
    |
-LL |     let _ = &mut 15.0f32 as *mut f32 as *const u32;
-   |             ^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `std::ptr::from_mut::<f32>(&mut 15.0f32)`
+LL |     f(&mut 15.0f32 as *mut f32 as *const u32);
+   |       ^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `std::ptr::from_mut::<f32>(&mut 15.0f32)`
 
 error: reference as raw pointer
-  --> $DIR/ref_as_ptr.rs:26:13
+  --> tests/ui/ref_as_ptr.rs:28:7
    |
-LL |     let _ = &1u8 as *const _;
-   |             ^^^^^^^^^^^^^^^^ help: try: `std::ptr::from_ref(&1u8)`
+LL |     f(&1u8 as *const _);
+   |       ^^^^^^^^^^^^^^^^ help: try: `std::ptr::from_ref(&1u8)`
 
 error: reference as raw pointer
-  --> $DIR/ref_as_ptr.rs:27:13
+  --> tests/ui/ref_as_ptr.rs:29:7
    |
-LL |     let _ = &2u32 as *const u32;
-   |             ^^^^^^^^^^^^^^^^^^^ help: try: `std::ptr::from_ref::<u32>(&2u32)`
+LL |     f(&2u32 as *const u32);
+   |       ^^^^^^^^^^^^^^^^^^^ help: try: `std::ptr::from_ref::<u32>(&2u32)`
 
 error: reference as raw pointer
-  --> $DIR/ref_as_ptr.rs:28:13
+  --> tests/ui/ref_as_ptr.rs:30:7
    |
-LL |     let _ = &3.0f64 as *const f64;
-   |             ^^^^^^^^^^^^^^^^^^^^^ help: try: `std::ptr::from_ref::<f64>(&3.0f64)`
+LL |     f(&3.0f64 as *const f64);
+   |       ^^^^^^^^^^^^^^^^^^^^^ help: try: `std::ptr::from_ref::<f64>(&3.0f64)`
 
 error: reference as raw pointer
-  --> $DIR/ref_as_ptr.rs:30:13
+  --> tests/ui/ref_as_ptr.rs:32:7
    |
-LL |     let _ = &4 as *const _ as *const f32;
-   |             ^^^^^^^^^^^^^^ help: try: `std::ptr::from_ref(&4)`
+LL |     f(&4 as *const _ as *const f32);
+   |       ^^^^^^^^^^^^^^ help: try: `std::ptr::from_ref(&4)`
 
 error: reference as raw pointer
-  --> $DIR/ref_as_ptr.rs:31:13
+  --> tests/ui/ref_as_ptr.rs:33:7
    |
-LL |     let _ = &5.0f32 as *const f32 as *const u32;
-   |             ^^^^^^^^^^^^^^^^^^^^^ help: try: `std::ptr::from_ref::<f32>(&5.0f32)`
+LL |     f(&5.0f32 as *const f32 as *const u32);
+   |       ^^^^^^^^^^^^^^^^^^^^^ help: try: `std::ptr::from_ref::<f32>(&5.0f32)`
 
 error: reference as raw pointer
-  --> $DIR/ref_as_ptr.rs:34:13
+  --> tests/ui/ref_as_ptr.rs:36:7
    |
-LL |     let _ = &val as *const _;
-   |             ^^^^^^^^^^^^^^^^ help: try: `std::ptr::from_ref(&val)`
+LL |     f(&val as *const _);
+   |       ^^^^^^^^^^^^^^^^ help: try: `std::ptr::from_ref(&val)`
 
 error: reference as raw pointer
-  --> $DIR/ref_as_ptr.rs:35:13
+  --> tests/ui/ref_as_ptr.rs:37:7
    |
-LL |     let _ = &val as *const i32;
-   |             ^^^^^^^^^^^^^^^^^^ help: try: `std::ptr::from_ref::<i32>(&val)`
+LL |     f(&val as *const i32);
+   |       ^^^^^^^^^^^^^^^^^^ help: try: `std::ptr::from_ref::<i32>(&val)`
 
 error: reference as raw pointer
-  --> $DIR/ref_as_ptr.rs:37:13
+  --> tests/ui/ref_as_ptr.rs:39:7
    |
-LL |     let _ = &val as *const _ as *const f32;
-   |             ^^^^^^^^^^^^^^^^ help: try: `std::ptr::from_ref(&val)`
+LL |     f(&val as *const _ as *const f32);
+   |       ^^^^^^^^^^^^^^^^ help: try: `std::ptr::from_ref(&val)`
 
 error: reference as raw pointer
-  --> $DIR/ref_as_ptr.rs:38:13
+  --> tests/ui/ref_as_ptr.rs:40:7
    |
-LL |     let _ = &val as *const i32 as *const f64;
-   |             ^^^^^^^^^^^^^^^^^^ help: try: `std::ptr::from_ref::<i32>(&val)`
+LL |     f(&val as *const i32 as *const f64);
+   |       ^^^^^^^^^^^^^^^^^^ help: try: `std::ptr::from_ref::<i32>(&val)`
 
 error: reference as raw pointer
-  --> $DIR/ref_as_ptr.rs:41:13
+  --> tests/ui/ref_as_ptr.rs:43:7
    |
-LL |     let _ = &mut val as *mut u8;
-   |             ^^^^^^^^^^^^^^^^^^^ help: try: `std::ptr::from_mut::<u8>(&mut val)`
+LL |     f(&mut val as *mut u8);
+   |       ^^^^^^^^^^^^^^^^^^^ help: try: `std::ptr::from_mut::<u8>(&mut val)`
 
 error: reference as raw pointer
-  --> $DIR/ref_as_ptr.rs:42:13
+  --> tests/ui/ref_as_ptr.rs:44:7
    |
-LL |     let _ = &mut val as *mut _;
-   |             ^^^^^^^^^^^^^^^^^^ help: try: `std::ptr::from_mut(&mut val)`
+LL |     f(&mut val as *mut _);
+   |       ^^^^^^^^^^^^^^^^^^ help: try: `std::ptr::from_mut(&mut val)`
 
 error: reference as raw pointer
-  --> $DIR/ref_as_ptr.rs:44:13
+  --> tests/ui/ref_as_ptr.rs:46:7
    |
-LL |     let _ = &mut val as *const u8;
-   |             ^^^^^^^^^^^^^^^^^^^^^ help: try: `std::ptr::from_ref::<u8>(&mut val)`
+LL |     f(&mut val as *const u8);
+   |       ^^^^^^^^^^^^^^^^^^^^^ help: try: `std::ptr::from_ref::<u8>(&mut val)`
 
 error: reference as raw pointer
-  --> $DIR/ref_as_ptr.rs:45:13
+  --> tests/ui/ref_as_ptr.rs:47:7
    |
-LL |     let _ = &mut val as *const _;
-   |             ^^^^^^^^^^^^^^^^^^^^ help: try: `std::ptr::from_ref(&mut val)`
+LL |     f(&mut val as *const _);
+   |       ^^^^^^^^^^^^^^^^^^^^ help: try: `std::ptr::from_ref(&mut val)`
 
 error: reference as raw pointer
-  --> $DIR/ref_as_ptr.rs:47:13
+  --> tests/ui/ref_as_ptr.rs:49:7
    |
-LL |     let _ = &mut val as *const u8 as *const f64;
-   |             ^^^^^^^^^^^^^^^^^^^^^ help: try: `std::ptr::from_ref::<u8>(&mut val)`
+LL |     f(&mut val as *const u8 as *const f64);
+   |       ^^^^^^^^^^^^^^^^^^^^^ help: try: `std::ptr::from_ref::<u8>(&mut val)`
 
 error: reference as raw pointer
-  --> $DIR/ref_as_ptr.rs:48:32
+  --> tests/ui/ref_as_ptr.rs:50:28
    |
-LL |     let _: *const Option<u8> = &mut val as *const _ as *const _;
-   |                                ^^^^^^^^^^^^^^^^^^^^ help: try: `std::ptr::from_ref(&mut val)`
+LL |     f::<*const Option<u8>>(&mut val as *const _ as *const _);
+   |                            ^^^^^^^^^^^^^^^^^^^^ help: try: `std::ptr::from_ref(&mut val)`
 
 error: reference as raw pointer
-  --> $DIR/ref_as_ptr.rs:50:13
+  --> tests/ui/ref_as_ptr.rs:52:7
    |
-LL |     let _ = &std::array::from_fn(|i| i * i) as *const [usize; 7];
-   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `std::ptr::from_ref::<[usize; 7]>(&std::array::from_fn(|i| i * i))`
+LL |     f(&std::array::from_fn(|i| i * i) as *const [usize; 7]);
+   |       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `std::ptr::from_ref::<[usize; 7]>(&std::array::from_fn(|i| i * i))`
 
 error: reference as raw pointer
-  --> $DIR/ref_as_ptr.rs:51:13
+  --> tests/ui/ref_as_ptr.rs:53:7
    |
-LL |     let _ = &mut std::array::from_fn(|i| i * i) as *const [usize; 8];
-   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `std::ptr::from_ref::<[usize; 8]>(&mut std::array::from_fn(|i| i * i))`
+LL |     f(&mut std::array::from_fn(|i| i * i) as *const [usize; 8]);
+   |       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `std::ptr::from_ref::<[usize; 8]>(&mut std::array::from_fn(|i| i * i))`
 
 error: reference as raw pointer
-  --> $DIR/ref_as_ptr.rs:52:13
+  --> tests/ui/ref_as_ptr.rs:54:7
    |
-LL |     let _ = &mut std::array::from_fn(|i| i * i) as *mut [usize; 9];
-   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `std::ptr::from_mut::<[usize; 9]>(&mut std::array::from_fn(|i| i * i))`
+LL |     f(&mut std::array::from_fn(|i| i * i) as *mut [usize; 9]);
+   |       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `std::ptr::from_mut::<[usize; 9]>(&mut std::array::from_fn(|i| i * i))`
 
 error: reference as raw pointer
-  --> $DIR/ref_as_ptr.rs:70:13
+  --> tests/ui/ref_as_ptr.rs:76:7
    |
-LL |     let _ = val as *const i32;
-   |             ^^^^^^^^^^^^^^^^^ help: try: `std::ptr::from_ref::<i32>(val)`
+LL |     f(val as *const i32);
+   |       ^^^^^^^^^^^^^^^^^ help: try: `std::ptr::from_ref::<i32>(val)`
 
 error: reference as raw pointer
-  --> $DIR/ref_as_ptr.rs:71:13
+  --> tests/ui/ref_as_ptr.rs:77:7
    |
-LL |     let _ = mut_val as *mut i32;
-   |             ^^^^^^^^^^^^^^^^^^^ help: try: `std::ptr::from_mut::<i32>(mut_val)`
+LL |     f(mut_val as *mut i32);
+   |       ^^^^^^^^^^^^^^^^^^^ help: try: `std::ptr::from_mut::<i32>(mut_val)`
 
 error: reference as raw pointer
-  --> $DIR/ref_as_ptr.rs:75:13
+  --> tests/ui/ref_as_ptr.rs:81:7
    |
-LL |     let _ = val as *const _;
-   |             ^^^^^^^^^^^^^^^ help: try: `std::ptr::from_ref(val)`
+LL |     f(val as *const _);
+   |       ^^^^^^^^^^^^^^^ help: try: `std::ptr::from_ref(val)`
 
 error: reference as raw pointer
-  --> $DIR/ref_as_ptr.rs:76:13
+  --> tests/ui/ref_as_ptr.rs:82:7
    |
-LL |     let _ = val as *const [u8];
-   |             ^^^^^^^^^^^^^^^^^^ help: try: `std::ptr::from_ref::<[u8]>(val)`
+LL |     f(val as *const [u8]);
+   |       ^^^^^^^^^^^^^^^^^^ help: try: `std::ptr::from_ref::<[u8]>(val)`
 
 error: reference as raw pointer
-  --> $DIR/ref_as_ptr.rs:80:13
+  --> tests/ui/ref_as_ptr.rs:86:7
    |
-LL |     let _ = val as *mut _;
-   |             ^^^^^^^^^^^^^ help: try: `std::ptr::from_mut(val)`
+LL |     f(val as *mut _);
+   |       ^^^^^^^^^^^^^ help: try: `std::ptr::from_mut(val)`
 
 error: reference as raw pointer
-  --> $DIR/ref_as_ptr.rs:81:13
+  --> tests/ui/ref_as_ptr.rs:87:7
    |
-LL |     let _ = val as *mut str;
-   |             ^^^^^^^^^^^^^^^ help: try: `std::ptr::from_mut::<str>(val)`
+LL |     f(val as *mut str);
+   |       ^^^^^^^^^^^^^^^ help: try: `std::ptr::from_mut::<str>(val)`
 
 error: reference as raw pointer
-  --> $DIR/ref_as_ptr.rs:88:9
-   |
-LL |         self.0 as *const _ as *const _
-   |         ^^^^^^^^^^^^^^^^^^ help: try: `std::ptr::from_ref(self.0)`
-
-error: reference as raw pointer
-  --> $DIR/ref_as_ptr.rs:92:9
+  --> tests/ui/ref_as_ptr.rs:94:9
    |
 LL |         self.0 as *const _ as *const _
    |         ^^^^^^^^^^^^^^^^^^ help: try: `std::ptr::from_ref(self.0)`
 
 error: reference as raw pointer
-  --> $DIR/ref_as_ptr.rs:100:9
+  --> tests/ui/ref_as_ptr.rs:98:9
    |
 LL |         self.0 as *const _ as *const _
    |         ^^^^^^^^^^^^^^^^^^ help: try: `std::ptr::from_ref(self.0)`
 
 error: reference as raw pointer
-  --> $DIR/ref_as_ptr.rs:104:9
+  --> tests/ui/ref_as_ptr.rs:106:9
    |
 LL |         self.0 as *const _ as *const _
    |         ^^^^^^^^^^^^^^^^^^ help: try: `std::ptr::from_ref(self.0)`
 
 error: reference as raw pointer
-  --> $DIR/ref_as_ptr.rs:108:9
+  --> tests/ui/ref_as_ptr.rs:110:9
+   |
+LL |         self.0 as *const _ as *const _
+   |         ^^^^^^^^^^^^^^^^^^ help: try: `std::ptr::from_ref(self.0)`
+
+error: reference as raw pointer
+  --> tests/ui/ref_as_ptr.rs:114:9
    |
 LL |         self.0 as *mut _ as *mut _
    |         ^^^^^^^^^^^^^^^^ help: try: `std::ptr::from_mut(self.0)`

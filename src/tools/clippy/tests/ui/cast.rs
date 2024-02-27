@@ -1,6 +1,7 @@
 //@no-rustfix
 
 #![feature(repr128)]
+#![feature(isqrt)]
 #![allow(incomplete_features)]
 #![warn(
     clippy::cast_precision_loss,
@@ -116,20 +117,40 @@ fn main() {
     i64::MAX as u64;
     i128::MAX as u128;
 
-    (-1i8).abs() as u8;
-    (-1i16).abs() as u16;
-    (-1i32).abs() as u32;
+    (-1i8).saturating_abs() as u8;
+    // abs() can return a negative value in release builds
+    (i8::MIN).abs() as u8;
+    //~^ ERROR: casting `i8` to `u8` may lose the sign of the value
+    (-1i16).saturating_abs() as u16;
+    (-1i32).saturating_abs() as u32;
     (-1i64).abs() as u64;
     (-1isize).abs() as usize;
 
     (-1i8).checked_abs().unwrap() as u8;
+    (i8::MIN).checked_abs().unwrap() as u8;
     (-1i16).checked_abs().unwrap() as u16;
     (-1i32).checked_abs().unwrap() as u32;
-    (-1i64).checked_abs().unwrap() as u64;
-    (-1isize).checked_abs().unwrap() as usize;
+    // SAFETY: -1 is a small number which will always return Some
+    (unsafe { (-1i64).checked_abs().unwrap_unchecked() }) as u64;
+    (-1isize).checked_abs().expect("-1 is a small number") as usize;
+
+    (-1i8).isqrt() as u8;
+    (i8::MIN).isqrt() as u8;
+    (-1i16).isqrt() as u16;
+    (-1i32).isqrt() as u32;
+    (-1i64).isqrt() as u64;
+    (-1isize).isqrt() as usize;
+
+    (-1i8).checked_isqrt().unwrap() as u8;
+    (i8::MIN).checked_isqrt().unwrap() as u8;
+    (-1i16).checked_isqrt().unwrap() as u16;
+    (-1i32).checked_isqrt().unwrap() as u32;
+    // SAFETY: -1 is a small number which will always return Some
+    (unsafe { (-1i64).checked_isqrt().unwrap_unchecked() }) as u64;
+    (-1isize).checked_isqrt().expect("-1 is a small number") as usize;
 
     (-1i8).rem_euclid(1i8) as u8;
-    (-1i8).rem_euclid(1i8) as u16;
+    (-1i8).wrapping_rem_euclid(1i8) as u16;
     (-1i16).rem_euclid(1i16) as u16;
     (-1i16).rem_euclid(1i16) as u32;
     (-1i32).rem_euclid(1i32) as u32;
@@ -138,7 +159,7 @@ fn main() {
     (-1i64).rem_euclid(1i64) as u128;
     (-1isize).rem_euclid(1isize) as usize;
     (1i8).rem_euclid(-1i8) as u8;
-    (1i8).rem_euclid(-1i8) as u16;
+    (1i8).wrapping_rem_euclid(-1i8) as u16;
     (1i16).rem_euclid(-1i16) as u16;
     (1i16).rem_euclid(-1i16) as u32;
     (1i32).rem_euclid(-1i32) as u32;
@@ -371,12 +392,23 @@ fn issue11642() {
         let x = x as i32;
         (x * x) as u32;
         x.pow(2) as u32;
-        (-2_i32).pow(2) as u32
+        (-2_i32).saturating_pow(2) as u32
     }
 
     let _a = |x: i32| -> u32 { (x * x * x * x) as u32 };
 
+    (2_i32).checked_pow(3).unwrap() as u32;
     (-2_i32).pow(3) as u32;
+    //~^ ERROR: casting `i32` to `u32` may lose the sign of the value
+
+    (3_i32 % 2) as u32;
+    (3_i32 % -2) as u32;
+    (-5_i32 % 2) as u32;
+    //~^ ERROR: casting `i32` to `u32` may lose the sign of the value
+    (-5_i32 % -2) as u32;
+    //~^ ERROR: casting `i32` to `u32` may lose the sign of the value
+    (2_i32 >> 1) as u32;
+    (-2_i32 >> 1) as u32;
     //~^ ERROR: casting `i32` to `u32` may lose the sign of the value
 
     let x: i32 = 10;
@@ -387,11 +419,21 @@ fn issue11642() {
     let y: i16 = -2;
     (y * y * y * y * -2) as u16;
     //~^ ERROR: casting `i16` to `u16` may lose the sign of the value
-    (y * y * y * y * 2) as u16;
-    (y * y * y * 2) as u16;
+    (y * y * y / y * 2) as u16;
+    (y * y / y * 2) as u16;
     //~^ ERROR: casting `i16` to `u16` may lose the sign of the value
-    (y * y * y * -2) as u16;
+    (y / y * y * -2) as u16;
     //~^ ERROR: casting `i16` to `u16` may lose the sign of the value
+
+    (y + y + y + -2) as u16;
+    //~^ ERROR: casting `i16` to `u16` may lose the sign of the value
+    (y + y + y + 2) as u16;
+    //~^ ERROR: casting `i16` to `u16` may lose the sign of the value
+
+    let z: i16 = 2;
+    (z + -2) as u16;
+    //~^ ERROR: casting `i16` to `u16` may lose the sign of the value
+    (z + z + 2) as u16;
 
     fn foo(a: i32, b: i32, c: i32) -> u32 {
         (a * a * b * b * c * c) as u32;
@@ -409,8 +451,9 @@ fn issue11642() {
         //~^ ERROR: casting `i32` to `u32` may lose the sign of the value
         (a / b + b * c) as u32;
         //~^ ERROR: casting `i32` to `u32` may lose the sign of the value
-        a.pow(3) as u32;
+        a.saturating_pow(3) as u32;
         //~^ ERROR: casting `i32` to `u32` may lose the sign of the value
         (a.abs() * b.pow(2) / c.abs()) as u32
+        //~^ ERROR: casting `i32` to `u32` may lose the sign of the value
     }
 }

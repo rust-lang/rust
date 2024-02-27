@@ -1,5 +1,5 @@
 error: struct constructor field order is inconsistent with struct definition field order
-  --> $DIR/inconsistent_struct_constructor.rs:28:9
+  --> tests/ui/inconsistent_struct_constructor.rs:28:9
    |
 LL |         Foo { y, x, z };
    |         ^^^^^^^^^^^^^^^ help: try: `Foo { x, y, z }`
@@ -8,7 +8,7 @@ LL |         Foo { y, x, z };
    = help: to override `-D warnings` add `#[allow(clippy::inconsistent_struct_constructor)]`
 
 error: struct constructor field order is inconsistent with struct definition field order
-  --> $DIR/inconsistent_struct_constructor.rs:55:9
+  --> tests/ui/inconsistent_struct_constructor.rs:55:9
    |
 LL | /         Foo {
 LL | |             z,
