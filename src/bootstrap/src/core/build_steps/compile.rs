@@ -398,10 +398,13 @@ fn copy_self_contained_objects(
         let srcdir = builder
             .wasi_root(target)
             .unwrap_or_else(|| {
-                panic!("Target {:?} does not have a \"wasi-root\" key", target.triple)
+                panic!(
+                    "Target {:?} does not have a \"wasi-root\" key in Config.toml",
+                    target.triple
+                )
             })
             .join("lib")
-            .join(target.to_string().replace("-preview1", ""));
+            .join(target.to_string().replace("-preview1", "").replace("p2", ""));
         for &obj in &["libc.a", "crt1-command.o", "crt1-reactor.o"] {
             copy_and_stamp(
                 builder,

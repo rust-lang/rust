@@ -85,6 +85,9 @@ pub mod linux;
 #[cfg(any(target_os = "wasi", doc))]
 pub mod wasi;
 
+#[cfg(any(all(target_os = "wasi", target_env = "p2"), doc))]
+pub mod wasip2;
+
 // windows
 #[cfg(not(all(
     doc,

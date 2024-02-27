@@ -1,46 +1,58 @@
-//! System bindings for the wasm/web platform
+//! System bindings for the wasi preview 2 target.
 //!
-//! This module contains the facade (aka platform-specific) implementations of
-//! OS level functionality for wasm. Note that this wasm is *not* the emscripten
-//! wasm, so we have no runtime here.
+//! This is the next evolution of the original wasi target, and is intended to
+//! replace that target over time.
 //!
-//! This is all super highly experimental and not actually intended for
-//! wide/production use yet, it's still all in the experimental category. This
-//! will likely change over time.
-//!
-//! Currently all functions here are basically stubs that immediately return
-//! errors. The hope is that with a portability lint we can turn actually just
-//! remove all this and just omit parts of the standard library if we're
-//! compiling for wasm. That way it's a compile time error for something that's
-//! guaranteed to be a runtime error!
+//! To begin with, this target mirrors the wasi target 1 to 1, but over
+//! time this will change significantly.
 
 #[path = "../unix/alloc.rs"]
 pub mod alloc;
+#[path = "../wasi/args.rs"]
 pub mod args;
+#[path = "../unix/cmath.rs"]
+pub mod cmath;
+#[path = "../wasi/env.rs"]
 pub mod env;
+#[path = "../wasi/fd.rs"]
 pub mod fd;
+#[path = "../wasi/fs.rs"]
 pub mod fs;
 #[allow(unused)]
 #[path = "../wasm/atomics/futex.rs"]
 pub mod futex;
+#[path = "../wasi/io.rs"]
 pub mod io;
 
+#[path = "../wasi/net.rs"]
 pub mod net;
+#[path = "../wasi/os.rs"]
 pub mod os;
+#[path = "../unix/os_str.rs"]
+pub mod os_str;
+#[path = "../unix/path.rs"]
+pub mod path;
 #[path = "../unsupported/pipe.rs"]
 pub mod pipe;
 #[path = "../unsupported/process.rs"]
 pub mod process;
+#[path = "../wasi/stdio.rs"]
 pub mod stdio;
+#[path = "../wasi/thread.rs"]
 pub mod thread;
 #[path = "../unsupported/thread_local_dtor.rs"]
 pub mod thread_local_dtor;
 #[path = "../unsupported/thread_local_key.rs"]
 pub mod thread_local_key;
+#[path = "../wasi/time.rs"]
 pub mod time;
 
 cfg_if::cfg_if! {
-    if #[cfg(not(target_feature = "atomics"))] {
+    if #[cfg(target_feature = "atomics")] {
+        compile_error!("The wasm32-wasip2 target does not support atomics");
+    } else {
+        #[path = "../unsupported/locks/mod.rs"]
+        pub mod locks;
         #[path = "../unsupported/once.rs"]
         pub mod once;
         #[path = "../unsupported/thread_parking.rs"]
@@ -54,6 +66,7 @@ cfg_if::cfg_if! {
 mod common;
 pub use common::*;
 
+#[path = "../wasi/helpers.rs"]
 mod helpers;
 // These exports are listed individually to work around Rust's glob import
 // conflict rules. If we glob export `helpers` and `common` together, then

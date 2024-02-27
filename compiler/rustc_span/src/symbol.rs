@@ -1881,6 +1881,7 @@ symbols! {
         vtable_align,
         vtable_size,
         warn,
+        wasip2,
         wasm_abi,
         wasm_import_module,
         wasm_target_feature,
