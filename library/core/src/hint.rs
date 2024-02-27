@@ -101,7 +101,11 @@ pub const unsafe fn unreachable_unchecked() -> ! {
     // SAFETY: the safety contract for `intrinsics::unreachable` must
     // be upheld by the caller.
     unsafe {
-        intrinsics::assert_unsafe_precondition!("hint::unreachable_unchecked must never be reached", () => false);
+        intrinsics::assert_unsafe_precondition!(
+            check_language_ub,
+            "hint::unreachable_unchecked must never be reached",
+            () => false
+        );
         intrinsics::unreachable()
     }
 }
@@ -147,6 +151,7 @@ pub const unsafe fn assert_unchecked(cond: bool) {
     // SAFETY: The caller promised `cond` is true.
     unsafe {
         intrinsics::assert_unsafe_precondition!(
+            check_language_ub,
             "hint::assert_unchecked must never be called when the condition is false",
             (cond: bool = cond) => cond,
         );

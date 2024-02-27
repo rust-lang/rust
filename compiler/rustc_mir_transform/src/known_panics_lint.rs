@@ -639,7 +639,7 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
                     NullOp::OffsetOf(fields) => {
                         op_layout.offset_of_subfield(self, fields.iter()).bytes()
                     }
-                    NullOp::DebugAssertions => return None,
+                    NullOp::UbCheck(_) => return None,
                 };
                 ImmTy::from_scalar(Scalar::from_target_usize(val, self), layout).into()
             }

@@ -558,7 +558,7 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
             Rvalue::Cast(_, _, _) => {}
 
             Rvalue::NullaryOp(
-                NullOp::SizeOf | NullOp::AlignOf | NullOp::OffsetOf(_) | NullOp::DebugAssertions,
+                NullOp::SizeOf | NullOp::AlignOf | NullOp::OffsetOf(_) | NullOp::UbCheck(_),
                 _,
             ) => {}
             Rvalue::ShallowInitBox(_, _) => {}

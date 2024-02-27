@@ -515,6 +515,8 @@ symbols! {
         cfi,
         cfi_encoding,
         char,
+        check_language_ub,
+        check_library_ub,
         client,
         clippy,
         clobber_abi,

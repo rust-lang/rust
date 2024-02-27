@@ -806,17 +806,26 @@ impl<T: ?Sized> *const T {
     where
         T: Sized,
     {
-        // SAFETY: The comparison has no side-effects, and the intrinsic
-        // does this check internally in the CTFE implementation.
-        unsafe {
-            assert_unsafe_precondition!(
-                "ptr::sub_ptr requires `self >= origin`",
-                (
-                    this: *const () = self as *const (),
-                    origin: *const () = origin as *const (),
-                ) => this >= origin
-            )
-        };
+        /// `this >= origin`, but may spuriously return true.
+        const fn maybe_ptr_ge(this: *const (), origin: *const ()) -> bool {
+            fn runtime(this: *const (), origin: *const ()) -> bool {
+                this >= origin
+            }
+            const fn comptime(_: *const (), _: *const ()) -> bool {
+                true
+            }
+            // SAFETY: Function is allowed to spuriously return true
+            unsafe { intrinsics::const_eval_select((this, origin), comptime, runtime) }
+        }
+
+        assert_unsafe_precondition!(
+            check_language_ub,
+            "ptr::sub_ptr requires `self >= origin`",
+            (
+                this: *const () = self as *const (),
+                origin: *const () = origin as *const (),
+            ) => maybe_ptr_ge(this, origin)
+        );
 
         let pointee_size = mem::size_of::<T>();
         assert!(0 < pointee_size && pointee_size <= isize::MAX as usize);

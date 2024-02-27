@@ -218,6 +218,7 @@ impl<T: ?Sized> NonNull<T> {
         // SAFETY: the caller must guarantee that `ptr` is non-null.
         unsafe {
             assert_unsafe_precondition!(
+                check_language_ub,
                 "NonNull::new_unchecked requires that the pointer is non-null",
                 (ptr: *mut () = ptr as *mut ()) => !ptr.is_null()
             );

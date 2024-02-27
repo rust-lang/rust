@@ -27,7 +27,7 @@ fn unwrap_unchecked(_1: Option<T>) -> T {
 
     bb1: {
         StorageLive(_3);
-        _3 = cfg!(debug_assertions);
+        _3 = UbCheck(LanguageUb);
         assume(_3);
         _4 = unreachable_unchecked::precondition_check() -> [return: bb3, unwind unreachable];
     }

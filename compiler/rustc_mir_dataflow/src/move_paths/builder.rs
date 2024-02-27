@@ -433,7 +433,7 @@ impl<'b, 'a, 'tcx, F: Fn(Ty<'tcx>) -> bool> Gatherer<'b, 'a, 'tcx, F> {
             | Rvalue::Discriminant(..)
             | Rvalue::Len(..)
             | Rvalue::NullaryOp(
-                NullOp::SizeOf | NullOp::AlignOf | NullOp::OffsetOf(..) | NullOp::DebugAssertions,
+                NullOp::SizeOf | NullOp::AlignOf | NullOp::OffsetOf(..) | NullOp::UbCheck(_),
                 _,
             ) => {}
         }

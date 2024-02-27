@@ -1361,8 +1361,13 @@ pub enum NullOp<'tcx> {
     AlignOf,
     /// Returns the offset of a field
     OffsetOf(&'tcx List<(VariantIdx, FieldIdx)>),
-    /// cfg!(debug_assertions), but expanded in codegen
-    DebugAssertions,
+    UbCheck(UbKind),
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq, TyEncodable, TyDecodable, Hash, HashStable)]
+pub enum UbKind {
+    LanguageUb,
+    LibraryUb,
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]

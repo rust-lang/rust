@@ -2625,24 +2625,38 @@ pub const fn is_val_statically_known<T: Copy>(_arg: T) -> bool {
     false
 }
 
-/// Returns the value of `cfg!(debug_assertions)`, but after monomorphization instead of in
-/// macro expansion.
+/// Whether we should check for library UB. This evaluate to the value of `cfg!(debug_assertions)`
+/// in codegen, and `true` in const-eval/Miri.
 ///
-/// This always returns `false` in const eval and Miri. The interpreter provides better
-/// diagnostics than the checks that this is used to implement. However, this means
-/// you should only be using this intrinsic to guard requirements that, if violated,
-/// immediately lead to UB. Otherwise, const-eval and Miri will miss out on those
-/// checks entirely.
-///
-/// Since this is evaluated after monomorphization, branching on this value can be used to
-/// implement debug assertions that are included in the precompiled standard library, but can
-/// be optimized out by builds that monomorphize the standard library code with debug
+/// This intrinsic is evaluated after monomorphization, and therefore branching on this value can
+/// be used to implement debug assertions that are included in the precompiled standard library,
+/// but can be optimized out by builds that monomorphize the standard library code with debug
 /// assertions disabled. This intrinsic is primarily used by [`assert_unsafe_precondition`].
-#[rustc_const_unstable(feature = "delayed_debug_assertions", issue = "none")]
+///
+/// We have separate intrinsics for library UB and language UB because checkers like the const-eval
+/// interpreter and Miri already implement checks for language UB. Since such checkers do not know
+/// about library preconditions, checks implemented with this intrinsic let them find more UB.
+#[rustc_const_unstable(feature = "ub_checks", issue = "none")]
 #[unstable(feature = "core_intrinsics", issue = "none")]
 #[inline(always)]
 #[cfg_attr(not(bootstrap), rustc_intrinsic)]
-pub(crate) const fn debug_assertions() -> bool {
+pub(crate) const fn check_library_ub() -> bool {
+    cfg!(debug_assertions)
+}
+
+/// Whether we should check for library UB. This evaluate to the value of `cfg!(debug_assertions)`
+/// in codegen, and `false` in const-eval/Miri.
+///
+/// Since checks implemented at the source level must come strictly before the operation that
+/// executes UB, if we enabled library UB checks in const-eval/Miri we would miss out on the
+/// interpreter's improved diagnostics for the cases that our source-level checks catch.
+///
+/// See `check_library_ub` for more information.
+#[rustc_const_unstable(feature = "ub_checks", issue = "none")]
+#[unstable(feature = "core_intrinsics", issue = "none")]
+#[inline(always)]
+#[cfg_attr(not(bootstrap), rustc_intrinsic)]
+pub(crate) const fn check_language_ub() -> bool {
     cfg!(debug_assertions)
 }
 
@@ -2686,11 +2700,11 @@ pub const unsafe fn const_deallocate(_ptr: *mut u8, _size: usize, _align: usize)
 // (`transmute` also falls into this category, but it cannot be wrapped due to the
 // check that `T` and `U` have the same size.)
 
-/// Check that the preconditions of an unsafe function are followed, if debug_assertions are on,
-/// and only at runtime.
+/// Check that the preconditions of an unsafe function are followed, at runtime if debug assertions
+/// are enabled, and in const-eval/Miri if the precondition is for library UB.
 ///
 /// This macro should be called as
-/// `assert_unsafe_precondition!((expr => name: Type, expr => name: Type) => Expression)`
+/// `assert_unsafe_precondition!(check_{library,lang}_ub, (expr => name: Type, expr => name: Type) => Expression)`
 /// where each `expr` will be evaluated and passed in as function argument `name: Type`. Then all
 /// those arguments are passed to a function via [`const_eval_select`].
 ///
@@ -2701,31 +2715,25 @@ pub const unsafe fn const_deallocate(_ptr: *mut u8, _size: usize, _align: usize)
 /// this macro, that monomorphization will contain the check.
 ///
 /// Since these checks cannot be optimized out in MIR, some care must be taken in both call and
-/// implementation to mitigate their compile-time overhead. The runtime function that we
-/// [`const_eval_select`] to is monomorphic, `#[inline(never)]`, and `#[rustc_nounwind]`. That
-/// combination of properties ensures that the code for the checks is only compiled once, and has a
-/// minimal impact on the caller's code size.
+/// implementation to mitigate their compile-time overhead. Calls to this macro always expand to
+/// this structure:
+/// ```ignore (pseudocode)
+/// if ::core::intrinsics::check_language_ub() {
+///     precondition_check(args)
+/// }
+/// ```
+/// where `precondition_check` is monomorphic, and `#[rustc_nounwind]` but `#[inline]` and
+/// `#[rustc_no_mir_inline]`. This combination of attributes ensures that the actual check logic is
+/// compiled only once and generates a minimal amount of IR because the check cannot be inlined in
+/// MIR, but *can* be inlined and fully optimized by a codegen backend.
 ///
-/// Callers should also avoid introducing any other `let` bindings or any code outside this macro in
+/// Callers should avoid introducing any other `let` bindings or any code outside this macro in
 /// order to call it. Since the precompiled standard library is built with full debuginfo and these
 /// variables cannot be optimized out in MIR, an innocent-looking `let` can produce enough
 /// debuginfo to have a measurable compile-time impact on debug builds.
-///
-/// # Safety
-///
-/// Invoking this macro is only sound if the following code is already UB when the passed
-/// expression evaluates to false.
-///
-/// This macro expands to a check at runtime if debug_assertions is set. It has no effect at
-/// compile time, but the semantics of the contained `const_eval_select` must be the same at
-/// runtime and at compile time. Thus if the expression evaluates to false, this macro produces
-/// different behavior at compile time and at runtime, and invoking it is incorrect.
-///
-/// So in a sense it is UB if this macro is useful, but we expect callers of `unsafe fn` to make
-/// the occasional mistake, and this check should help them figure things out.
-#[allow_internal_unstable(const_eval_select, delayed_debug_assertions)] // permit this to be called in stably-const fn
+#[allow_internal_unstable(ub_checks)] // permit this to be called in stably-const fn
 macro_rules! assert_unsafe_precondition {
-    ($message:expr, ($($name:ident:$ty:ty = $arg:expr),*$(,)?) => $e:expr $(,)?) => {
+    ($kind:ident, $message:expr, ($($name:ident:$ty:ty = $arg:expr),*$(,)?) => $e:expr $(,)?) => {
         {
             // #[cfg(bootstrap)] (this comment)
             // When the standard library is compiled with debug assertions, we want the check to inline for better performance.
@@ -2747,17 +2755,17 @@ macro_rules! assert_unsafe_precondition {
             #[cfg_attr(not(bootstrap), rustc_no_mir_inline)]
             #[cfg_attr(not(bootstrap), inline)]
             #[rustc_nounwind]
-            fn precondition_check($($name:$ty),*) {
+            #[rustc_const_unstable(feature = "ub_checks", issue = "none")]
+            const fn precondition_check($($name:$ty),*) {
                 if !$e {
                     ::core::panicking::panic_nounwind(
                         concat!("unsafe precondition(s) violated: ", $message)
                     );
                 }
             }
-            const fn comptime($(_:$ty),*) {}
 
-            if ::core::intrinsics::debug_assertions() {
-                ::core::intrinsics::const_eval_select(($($arg,)*), comptime, precondition_check);
+            if ::core::intrinsics::$kind() {
+                precondition_check($($arg,)*);
             }
         }
     };
@@ -2767,31 +2775,48 @@ pub(crate) use assert_unsafe_precondition;
 /// Checks whether `ptr` is properly aligned with respect to
 /// `align_of::<T>()`.
 #[inline]
-pub(crate) fn is_aligned_and_not_null(ptr: *const (), align: usize) -> bool {
+pub(crate) const fn is_aligned_and_not_null(ptr: *const (), align: usize) -> bool {
     !ptr.is_null() && ptr.is_aligned_to(align)
 }
 
 #[inline]
-pub(crate) fn is_valid_allocation_size(size: usize, len: usize) -> bool {
+pub(crate) const fn is_valid_allocation_size(size: usize, len: usize) -> bool {
     let max_len = if size == 0 { usize::MAX } else { isize::MAX as usize / size };
     len <= max_len
 }
 
 /// Checks whether the regions of memory starting at `src` and `dst` of size
-/// `count * size` do *not* overlap.
+/// `count * size` do *not* overlap. May spuriously return true.
 #[inline]
-pub(crate) fn is_nonoverlapping(src: *const (), dst: *const (), size: usize, count: usize) -> bool {
-    let src_usize = src.addr();
-    let dst_usize = dst.addr();
-    let Some(size) = size.checked_mul(count) else {
-        crate::panicking::panic_nounwind(
-            "is_nonoverlapping: `size_of::<T>() * count` overflows a usize",
-        )
-    };
-    let diff = src_usize.abs_diff(dst_usize);
-    // If the absolute distance between the ptrs is at least as big as the size of the buffer,
-    // they do not overlap.
-    diff >= size
+pub(crate) const fn is_nonoverlapping(
+    src: *const (),
+    dst: *const (),
+    size: usize,
+    count: usize,
+) -> bool {
+    #[inline]
+    fn runtime(src: *const (), dst: *const (), size: usize, count: usize) -> bool {
+        let src_usize = src.addr();
+        let dst_usize = dst.addr();
+        let Some(size) = size.checked_mul(count) else {
+            crate::panicking::panic_nounwind(
+                "is_nonoverlapping: `size_of::<T>() * count` overflows a usize",
+            )
+        };
+        let diff = src_usize.abs_diff(dst_usize);
+        // If the absolute distance between the ptrs is at least as big as the size of the buffer,
+        // they do not overlap.
+        diff >= size
+    }
+
+    #[inline]
+    const fn comptime(_: *const (), _: *const (), _: usize, _: usize) -> bool {
+        true
+    }
+
+    // SAFETY: comptime always returns true, but this function documents that it spuriously returns
+    // true.
+    unsafe { const_eval_select((src, dst, size, count), comptime, runtime) }
 }
 
 /// Copies `count * size_of::<T>()` bytes from `src` to `dst`. The source
@@ -2896,6 +2921,7 @@ pub const unsafe fn copy_nonoverlapping<T>(src: *const T, dst: *mut T, count: us
     // upheld by the caller.
     unsafe {
         assert_unsafe_precondition!(
+            check_language_ub,
             "ptr::copy_nonoverlapping requires that both pointer arguments are aligned and non-null \
             and the specified memory ranges do not overlap",
             (
@@ -2997,6 +3023,7 @@ pub const unsafe fn copy<T>(src: *const T, dst: *mut T, count: usize) {
     // SAFETY: the safety contract for `copy` must be upheld by the caller.
     unsafe {
         assert_unsafe_precondition!(
+            check_language_ub,
             "ptr::copy_nonoverlapping requires that both pointer arguments are aligned and non-null \
             and the specified memory ranges do not overlap",
             (
@@ -3077,6 +3104,7 @@ pub const unsafe fn write_bytes<T>(dst: *mut T, val: u8, count: usize) {
     // SAFETY: the safety contract for `write_bytes` must be upheld by the caller.
     unsafe {
         assert_unsafe_precondition!(
+            check_language_ub,
             "ptr::write_bytes requires that the destination pointer is aligned and non-null",
             (
                 addr: *const () = dst as *const (),
