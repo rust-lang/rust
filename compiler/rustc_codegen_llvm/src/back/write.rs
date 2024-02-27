@@ -16,12 +16,12 @@ use crate::llvm::{
     LLVMAppendBasicBlockInContext, LLVMBuildCall2, LLVMBuildExtractValue, LLVMBuildRet,
     LLVMCountParams, LLVMCountStructElementTypes, LLVMCreateBuilderInContext,
     LLVMCreateStringAttribute, LLVMDeleteFunction, LLVMDisposeBuilder, LLVMDumpModule,
-    LLVMGetBasicBlockTerminator, LLVMGetElementType, LLVMGetFirstFunction, LLVMGetModuleContext,
-    LLVMGetNextFunction, LLVMGetParams, LLVMGetReturnType, LLVMGetStringAttributeAtIndex,
+    LLVMGetBasicBlockTerminator, LLVMGetFirstFunction, LLVMGetModuleContext,
+    LLVMGetNextFunction, LLVMGetParams, LLVMGetReturnType, LLVMRustGetFunctionType, LLVMGetStringAttributeAtIndex,
     LLVMGlobalGetValueType, LLVMIsEnumAttribute, LLVMIsStringAttribute, LLVMPositionBuilderAtEnd,
     LLVMRemoveStringAttributeAtIndex, LLVMReplaceAllUsesWith, LLVMRustAddEnumAttributeAtIndex,
     LLVMRustAddFunctionAttributes, LLVMRustGetEnumAttributeAtIndex,
-    LLVMRustRemoveEnumAttributeAtIndex, LLVMSetValueName2, LLVMTypeOf, LLVMVerifyFunction,
+    LLVMRustRemoveEnumAttributeAtIndex, LLVMSetValueName2, LLVMVerifyFunction,
     LLVMVoidTypeInContext, Value,
 };
 use crate::llvm_util;
@@ -642,8 +642,9 @@ unsafe fn create_wrapper<'a>(
     LLVMSetValueName2(fnc, c_inner_fnc_name.as_ptr(), inner_fnc_name.len() as usize);
 
     let c_outer_fnc_name = CString::new(fnc_name).unwrap();
+    //let u_type = LLVMGetReturnType(u_type);
     let outer_fnc: &Value =
-        LLVMAddFunction(llmod, c_outer_fnc_name.as_ptr(), LLVMGetElementType(u_type) as &Type);
+        LLVMAddFunction(llmod, c_outer_fnc_name.as_ptr(), u_type);
 
     let entry = "fnc_entry".to_string();
     let c_entry = CString::new(entry).unwrap();
@@ -661,6 +662,7 @@ pub(crate) unsafe fn extract_return_type<'a>(
     u_type: &Type,
     fnc_name: String,
 ) -> &'a Value {
+    let f_ty = LLVMRustGetFunctionType(fnc);
     let context = llvm::LLVMGetModuleContext(llmod);
 
     let inner_param_num = LLVMCountParams(fnc);
@@ -675,12 +677,13 @@ pub(crate) unsafe fn extract_return_type<'a>(
     LLVMPositionBuilderAtEnd(builder, outer_bb);
     let struct_ret = LLVMBuildCall2(
         builder,
-        u_type,
+        f_ty,
         fnc,
         outer_args.as_mut_ptr(),
         outer_args.len(),
         c_inner_fnc_name.as_ptr(),
     );
+
     // We can use an arbitrary name here, since it will be used to store a tmp value.
     let inner_grad_name = "foo".to_string();
     let c_inner_grad_name = CString::new(inner_grad_name).unwrap();
@@ -690,6 +693,7 @@ pub(crate) unsafe fn extract_return_type<'a>(
     LLVMDisposeBuilder(builder);
     let _fnc_ok =
         LLVMVerifyFunction(outer_fnc, llvm::LLVMVerifierFailureAction::LLVMAbortProcessAction);
+    dbg!(&outer_fnc);
     outer_fnc
 }
 
@@ -702,7 +706,6 @@ pub(crate) unsafe fn enzyme_ad(
     diag_handler: &DiagCtxt,
     item: AutoDiffItem,
 ) -> Result<(), FatalError> {
-    dbg!("\n\n\n\n\n\n AUTO DIFF \n");
     let autodiff_mode = item.attrs.mode;
     let rust_name = item.source;
     let rust_name2 = &item.target;
@@ -803,7 +806,8 @@ pub(crate) unsafe fn enzyme_ad(
     if item.attrs.mode == DiffMode::Reverse && f_return_type != void_type {
         let num_elem_in_ret_struct = LLVMCountStructElementTypes(f_return_type);
         if num_elem_in_ret_struct == 1 {
-            let u_type = LLVMTypeOf(target_fnc);
+
+            let u_type = LLVMRustGetFunctionType(target_fnc);
             res = extract_return_type(llmod, res, u_type, rust_name2.clone()); // TODO: check if name or name2
         }
     }
