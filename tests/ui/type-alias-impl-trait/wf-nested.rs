@@ -3,7 +3,7 @@
 // See the comments below.
 //
 //@ revisions: pass pass_sound fail
-//@ [pass] check-pass
+//@ [pass] check-fail
 //@ [pass_sound] check-fail
 //@ [fail] check-fail
 
@@ -32,6 +32,9 @@ mod pass {
     use super::*;
     type OuterOpaque<T> = impl Trait<&'static T, Out = impl Sized>;
     fn define<T>() -> OuterOpaque<T> {}
+
+    fn define_rpit<T>() -> impl Trait<&'static T, Out = impl Sized> {}
+    //[pass]~^ ERROR the parameter type `T` may not live long enough
 }
 
 // Test the soundness of `pass` - We should require `T: 'static` at the use site.

@@ -403,16 +403,6 @@ fn check_opaque_meets_bounds<'tcx>(
         return Err(guar);
     }
     match origin {
-        // Checked when type checking the function containing them.
-        hir::OpaqueTyOrigin::FnReturn(..) | hir::OpaqueTyOrigin::AsyncFn(..) => {
-            // HACK: this should also fall through to the hidden type check below, but the original
-            // implementation had a bug where equivalent lifetimes are not identical. This caused us
-            // to reject existing stable code that is otherwise completely fine. The real fix is to
-            // compare the hidden types via our type equivalence/relation infra instead of doing an
-            // identity check.
-            let _ = infcx.take_opaque_types();
-            return Ok(());
-        }
         // Nested opaque types occur only in associated types:
         // ` type Opaque<T> = impl Trait<&'static T, AssocTy = impl Nested>; `
         // They can only be referenced as `<Opaque<T> as Trait<&'static T>>::AssocTy`.
@@ -421,20 +411,33 @@ fn check_opaque_meets_bounds<'tcx>(
         hir::OpaqueTyOrigin::TyAlias { .. }
             if tcx.def_kind(tcx.parent(def_id.to_def_id())) == DefKind::OpaqueTy => {}
         // Can have different predicates to their defining use
-        hir::OpaqueTyOrigin::TyAlias { .. } => {
-            let wf_tys = ocx.assumed_wf_types_and_report_errors(param_env, def_id)?;
+        hir::OpaqueTyOrigin::TyAlias { .. }
+        | hir::OpaqueTyOrigin::FnReturn(..)
+        | hir::OpaqueTyOrigin::AsyncFn(..) => {
+            let wf_tys = ocx.assumed_wf_types_and_report_errors(param_env, defining_use_anchor)?;
             let implied_bounds = infcx.implied_bounds_tys(param_env, def_id, &wf_tys);
             let outlives_env = OutlivesEnvironment::with_bounds(param_env, implied_bounds);
             ocx.resolve_regions_and_report_errors(defining_use_anchor, &outlives_env)?;
         }
     }
-    // Check that any hidden types found during wf checking match the hidden types that `type_of` sees.
-    for (mut key, mut ty) in infcx.take_opaque_types() {
-        ty.hidden_type.ty = infcx.resolve_vars_if_possible(ty.hidden_type.ty);
-        key = infcx.resolve_vars_if_possible(key);
-        sanity_check_found_hidden_type(tcx, key, ty.hidden_type)?;
+
+    if let hir::OpaqueTyOrigin::FnReturn(..) | hir::OpaqueTyOrigin::AsyncFn(..) = origin {
+        // HACK: this should also fall through to the hidden type check below, but the original
+        // implementation had a bug where equivalent lifetimes are not identical. This caused us
+        // to reject existing stable code that is otherwise completely fine. The real fix is to
+        // compare the hidden types via our type equivalence/relation infra instead of doing an
+        // identity check.
+        let _ = infcx.take_opaque_types();
+        Ok(())
+    } else {
+        // Check that any hidden types found during wf checking match the hidden types that `type_of` sees.
+        for (mut key, mut ty) in infcx.take_opaque_types() {
+            ty.hidden_type.ty = infcx.resolve_vars_if_possible(ty.hidden_type.ty);
+            key = infcx.resolve_vars_if_possible(key);
+            sanity_check_found_hidden_type(tcx, key, ty.hidden_type)?;
+        }
+        Ok(())
     }
-    Ok(())
 }
 
 fn sanity_check_found_hidden_type<'tcx>(
