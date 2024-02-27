@@ -69,6 +69,25 @@ fn test_named_thread_truncation() {
     result.unwrap().join().unwrap();
 }
 
+#[cfg(any(
+    target_os = "windows",
+    target_os = "linux",
+    target_os = "macos",
+    target_os = "ios",
+    target_os = "tvos",
+    target_os = "watchos"
+))]
+#[test]
+fn test_get_os_named_thread() {
+    use crate::sys::thread::Thread;
+    let handler = thread::spawn(|| {
+        let name = c"test me please";
+        Thread::set_name(name);
+        assert_eq!(name, Thread::get_name().unwrap().as_c_str());
+    });
+    handler.join().unwrap();
+}
+
 #[test]
 #[should_panic]
 fn test_invalid_named_thread() {
