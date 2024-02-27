@@ -32,6 +32,7 @@ pub use generic_args::*;
 pub use generics::*;
 use rustc_ast as ast;
 use rustc_ast::node_id::NodeMap;
+pub use rustc_ast_ir::{Movability, Mutability};
 use rustc_attr as attr;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexMap, FxIndexSet};
 use rustc_data_structures::intern::Interned;

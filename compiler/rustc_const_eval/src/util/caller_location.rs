@@ -1,10 +1,9 @@
 use rustc_hir::LangItem;
 use rustc_middle::mir;
 use rustc_middle::query::TyCtxtAt;
-use rustc_middle::ty;
 use rustc_middle::ty::layout::LayoutOf;
+use rustc_middle::ty::{self, Mutability};
 use rustc_span::symbol::Symbol;
-use rustc_type_ir::Mutability;
 
 use crate::const_eval::{mk_eval_cx_to_read_const_val, CanAccessMutGlobal, CompileTimeEvalContext};
 use crate::interpret::*;
