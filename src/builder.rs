@@ -31,7 +31,7 @@ use rustc_span::Span;
 use rustc_target::abi::{
     self, call::FnAbi, Align, HasDataLayout, Size, TargetDataLayout, WrappingRange,
 };
-use rustc_target::spec::{HasTargetSpec, Target};
+use rustc_target::spec::{HasTargetSpec, HasWasmCAbiOpt, Target, WasmCAbi};
 
 use crate::common::{type_is_pointer, SignType, TypeReflection};
 use crate::context::CodegenCx;
@@ -2346,6 +2346,12 @@ impl<'tcx> HasParamEnv<'tcx> for Builder<'_, '_, 'tcx> {
 impl<'tcx> HasTargetSpec for Builder<'_, '_, 'tcx> {
     fn target_spec(&self) -> &Target {
         &self.cx.target_spec()
+    }
+}
+
+impl<'tcx> HasWasmCAbiOpt for Builder<'_, '_, 'tcx> {
+    fn wasm_c_abi_opt(&self) -> WasmCAbi {
+        self.cx.wasm_c_abi_opt()
     }
 }
 
