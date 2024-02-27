@@ -415,24 +415,16 @@ fn inline(
         let expr: &ast::Expr = expr;
 
         let mut insert_let_stmt = || {
-            let param_ty = match param_ty {
-                None => None,
-                Some(param_ty) => {
-                    if sema.hir_file_for(param_ty.syntax()).is_macro() {
-                        if let Some(param_ty) =
-                            ast::Type::cast(insert_ws_into(param_ty.syntax().clone()))
-                        {
-                            Some(param_ty)
-                        } else {
-                            Some(param_ty.clone_for_update())
-                        }
-                    } else {
-                        Some(param_ty.clone_for_update())
-                    }
+            let param_ty = param_ty.clone().map(|param_ty| {
+                if sema.hir_file_for(param_ty.syntax()).is_macro() {
+                    ast::Type::cast(insert_ws_into(param_ty.syntax().clone()))
+                        .unwrap_or_else(|| param_ty)
+                } else {
+                    param_ty
                 }
-            };
-            let ty: Option<syntax::ast::Type> =
-                sema.type_of_expr(expr).filter(TypeInfo::has_adjustment).and(param_ty);
+            });
+
+            let ty = sema.type_of_expr(expr).filter(TypeInfo::has_adjustment).and(param_ty);
 
             let is_self = param
                 .name(sema.db)
