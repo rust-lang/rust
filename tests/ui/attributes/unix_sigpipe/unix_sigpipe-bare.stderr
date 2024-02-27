@@ -1,5 +1,5 @@
 error: valid values for `#[unix_sigpipe = "..."]` are `inherit`, `sig_ign`, or `sig_dfl`
-  --> $DIR/unix_sigpipe.rs:3:1
+  --> $DIR/unix_sigpipe-bare.rs:3:1
    |
 LL | #[unix_sigpipe]
    | ^^^^^^^^^^^^^^^
