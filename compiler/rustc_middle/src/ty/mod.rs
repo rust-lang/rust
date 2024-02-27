@@ -203,7 +203,8 @@ pub struct ResolverAstLowering {
     /// Resolutions for import nodes, which have multiple resolutions in different namespaces.
     pub import_res_map: NodeMap<hir::def::PerNS<Option<Res<ast::NodeId>>>>,
     /// Resolutions for labels (node IDs of their corresponding blocks or loops).
-    pub label_res_map: NodeMap<ast::NodeId>,
+    /// The boolean stores if the node is loop. The span is the span of the node.
+    pub label_res_map: NodeMap<(ast::NodeId, bool, Span)>,
     /// Resolutions for lifetimes.
     pub lifetimes_res_map: NodeMap<LifetimeRes>,
     /// Lifetime parameters that lowering will have to introduce.

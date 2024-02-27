@@ -404,3 +404,13 @@ pub(crate) struct AsyncBoundOnlyForFnTraits {
     #[primary_span]
     pub span: Span,
 }
+
+#[derive(Diagnostic)]
+#[diag(ast_lowering_continue_labeled_block, code = E0696)]
+pub struct ContinueLabeledBlock {
+    #[primary_span]
+    #[label]
+    pub span: Span,
+    #[label(ast_lowering_block_label)]
+    pub block_span: Span,
+}

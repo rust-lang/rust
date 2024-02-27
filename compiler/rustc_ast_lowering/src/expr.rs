@@ -8,6 +8,7 @@ use super::errors::{
 };
 use super::ResolverAstLoweringExt;
 use super::{ImplTraitContext, LoweringContext, ParamMode, ParenthesizedGenericArgs};
+use crate::errors::ContinueLabeledBlock;
 use crate::{FnDeclKind, ImplTraitPosition};
 use rustc_ast::ptr::P as AstP;
 use rustc_ast::*;
@@ -279,7 +280,16 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     hir::ExprKind::Break(self.lower_jump_destination(e.id, *opt_label), opt_expr)
                 }
                 ExprKind::Continue(opt_label) => {
-                    hir::ExprKind::Continue(self.lower_jump_destination(e.id, *opt_label))
+                    if opt_label.is_some()
+                        && let Some((_, is_loop, block_span)) = self.resolver.get_label_res(e.id)
+                        && !is_loop
+                    {
+                        hir::ExprKind::Err(
+                            self.dcx().emit_err(ContinueLabeledBlock { span: e.span, block_span }),
+                        )
+                    } else {
+                        hir::ExprKind::Continue(self.lower_jump_destination(e.id, *opt_label))
+                    }
                 }
                 ExprKind::Ret(e) => {
                     let e = e.as_ref().map(|x| self.lower_expr(x));
@@ -1425,8 +1435,8 @@ impl<'hir> LoweringContext<'_, 'hir> {
     fn lower_loop_destination(&mut self, destination: Option<(NodeId, Label)>) -> hir::Destination {
         let target_id = match destination {
             Some((id, _)) => {
-                if let Some(loop_id) = self.resolver.get_label_res(id) {
-                    Ok(self.lower_node_id(loop_id))
+                if let Some((id, _is_loop, _)) = self.resolver.get_label_res(id) {
+                    Ok(self.lower_node_id(id))
                 } else {
                     Err(hir::LoopIdError::UnresolvedLabel)
                 }
