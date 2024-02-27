@@ -3420,11 +3420,12 @@ declare_clippy_lint! {
 declare_clippy_lint! {
     /// ### What it does
     /// Looks for calls to [`Stdin::read_line`] to read a line from the standard input
-    /// into a string, then later attempting to parse this string into a type without first trimming it, which will
-    /// always fail because the string has a trailing newline in it.
+    /// into a string, then later attempting to use that string for an operation that will never
+    /// work for strings with a trailing newline character in it (e.g. parsing into a `i32`).
     ///
     /// ### Why is this bad?
-    /// The `.parse()` call will always fail.
+    /// The operation will always fail at runtime no matter what the user enters, thus
+    /// making it a useless operation.
     ///
     /// ### Example
     /// ```rust,ignore
