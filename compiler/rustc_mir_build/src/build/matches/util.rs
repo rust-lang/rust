@@ -1,5 +1,5 @@
 use crate::build::expr::as_place::{PlaceBase, PlaceBuilder};
-use crate::build::matches::{MatchPair, TestCase};
+use crate::build::matches::{FlatPat, MatchPair, TestCase};
 use crate::build::Builder;
 use rustc_infer::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
 use rustc_middle::mir::*;
@@ -121,7 +121,9 @@ impl<'pat, 'tcx> MatchPair<'pat, 'tcx> {
         let mut subpairs = Vec::new();
         let test_case = match pattern.kind {
             PatKind::Never | PatKind::Wild | PatKind::Error(_) => default_irrefutable(),
-            PatKind::Or { .. } => TestCase::Or,
+            PatKind::Or { ref pats } => TestCase::Or {
+                pats: pats.iter().map(|pat| FlatPat::new(place.clone(), pat, cx)).collect(),
+            },
 
             PatKind::Range(ref range) => {
                 if range.is_full_range(cx.tcx) == Some(true) {

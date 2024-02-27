@@ -12,10 +12,8 @@
 //! sort of test: for example, testing which variant an enum is, or
 //! testing a value against a constant.
 
-use crate::build::expr::as_place::PlaceBuilder;
-use crate::build::matches::{Ascription, Binding, Candidate, MatchPair, TestCase};
+use crate::build::matches::{Ascription, Binding, Candidate, FlatPat, MatchPair, TestCase};
 use crate::build::Builder;
-use rustc_middle::thir::{Pat, PatKind};
 
 use std::mem;
 
@@ -100,7 +98,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         // Move or-patterns to the end, because they can result in us
         // creating additional candidates, so we want to test them as
         // late as possible.
-        match_pairs.sort_by_key(|pair| matches!(pair.pattern.kind, PatKind::Or { .. }));
+        match_pairs.sort_by_key(|pair| matches!(pair.test_case, TestCase::Or { .. }));
         debug!(simplified = ?match_pairs, "simplify_match_pairs");
     }
 
@@ -108,18 +106,17 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     /// single-or-pattern case.
     pub(super) fn create_or_subcandidates<'pat>(
         &mut self,
-        place: &PlaceBuilder<'tcx>,
-        pats: &'pat [Box<Pat<'tcx>>],
+        pats: &[FlatPat<'pat, 'tcx>],
         has_guard: bool,
     ) -> Vec<Candidate<'pat, 'tcx>> {
         pats.iter()
-            .map(|box pat| {
-                let mut candidate = Candidate::new(place.clone(), pat, has_guard, self);
-                if let [MatchPair { pattern: Pat { kind: PatKind::Or { pats }, .. }, place, .. }] =
+            .cloned()
+            .map(|flat_pat| {
+                let mut candidate = Candidate::from_flat_pat(flat_pat, has_guard);
+                if let [MatchPair { test_case: TestCase::Or { pats, .. }, .. }] =
                     &*candidate.match_pairs
                 {
-                    candidate.subcandidates =
-                        self.create_or_subcandidates(place, pats, candidate.has_guard);
+                    candidate.subcandidates = self.create_or_subcandidates(pats, has_guard);
                     candidate.match_pairs.pop();
                 }
                 candidate

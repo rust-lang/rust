@@ -938,6 +938,40 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     }
 }
 
+/// A pattern in a form suitable for generating code.
+#[derive(Debug, Clone)]
+struct FlatPat<'pat, 'tcx> {
+    /// [`Span`] of the original pattern.
+    span: Span,
+
+    /// To match the pattern, all of these must be satisfied...
+    // Invariant: all the `MatchPair`s are recursively simplified.
+    // Invariant: or-patterns must be sorted to the end.
+    match_pairs: Vec<MatchPair<'pat, 'tcx>>,
+
+    /// ...these bindings established...
+    bindings: Vec<Binding<'tcx>>,
+
+    /// ...and these types asserted.
+    ascriptions: Vec<Ascription<'tcx>>,
+}
+
+impl<'tcx, 'pat> FlatPat<'pat, 'tcx> {
+    fn new(
+        place: PlaceBuilder<'tcx>,
+        pattern: &'pat Pat<'tcx>,
+        cx: &mut Builder<'_, 'tcx>,
+    ) -> Self {
+        let mut match_pairs = vec![MatchPair::new(place, pattern, cx)];
+        let mut bindings = Vec::new();
+        let mut ascriptions = Vec::new();
+
+        cx.simplify_match_pairs(&mut match_pairs, &mut bindings, &mut ascriptions);
+
+        FlatPat { span: pattern.span, match_pairs, bindings, ascriptions }
+    }
+}
+
 #[derive(Debug)]
 struct Candidate<'pat, 'tcx> {
     /// [`Span`] of the original pattern that gave rise to this candidate.
@@ -952,11 +986,11 @@ struct Candidate<'pat, 'tcx> {
     match_pairs: Vec<MatchPair<'pat, 'tcx>>,
 
     /// ...these bindings established...
-    // Invariant: not mutated outside `Candidate::new()`.
+    // Invariant: not mutated after candidate creation.
     bindings: Vec<Binding<'tcx>>,
 
     /// ...and these types asserted...
-    // Invariant: not mutated outside `Candidate::new()`.
+    // Invariant: not mutated after candidate creation.
     ascriptions: Vec<Ascription<'tcx>>,
 
     /// ...and if this is non-empty, one of these subcandidates also has to match...
@@ -978,25 +1012,21 @@ impl<'tcx, 'pat> Candidate<'pat, 'tcx> {
         has_guard: bool,
         cx: &mut Builder<'_, 'tcx>,
     ) -> Self {
-        let mut candidate = Candidate {
-            span: pattern.span,
+        Self::from_flat_pat(FlatPat::new(place, pattern, cx), has_guard)
+    }
+
+    fn from_flat_pat(flat_pat: FlatPat<'pat, 'tcx>, has_guard: bool) -> Self {
+        Candidate {
+            span: flat_pat.span,
+            match_pairs: flat_pat.match_pairs,
+            bindings: flat_pat.bindings,
+            ascriptions: flat_pat.ascriptions,
             has_guard,
-            match_pairs: vec![MatchPair::new(place, pattern, cx)],
-            bindings: Vec::new(),
-            ascriptions: Vec::new(),
             subcandidates: Vec::new(),
             otherwise_block: None,
             pre_binding_block: None,
             next_candidate_pre_binding_block: None,
-        };
-
-        cx.simplify_match_pairs(
-            &mut candidate.match_pairs,
-            &mut candidate.bindings,
-            &mut candidate.ascriptions,
-        );
-
-        candidate
+        }
     }
 
     /// Visit the leaf candidates (those with no subcandidates) contained in
@@ -1059,7 +1089,7 @@ enum TestCase<'pat, 'tcx> {
     Constant { value: mir::Const<'tcx> },
     Range(&'pat PatRange<'tcx>),
     Slice { len: usize, variable_length: bool },
-    Or,
+    Or { pats: Box<[FlatPat<'pat, 'tcx>]> },
 }
 
 #[derive(Debug, Clone)]
@@ -1217,7 +1247,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     ) {
         let mut split_or_candidate = false;
         for candidate in &mut *candidates {
-            if let [MatchPair { pattern: Pat { kind: PatKind::Or { pats }, .. }, place, .. }] =
+            if let [MatchPair { test_case: TestCase::Or { pats, .. }, .. }] =
                 &*candidate.match_pairs
             {
                 // Split a candidate in which the only match-pair is an or-pattern into multiple
@@ -1229,8 +1259,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 // }
                 //
                 // only generates a single switch.
-                candidate.subcandidates =
-                    self.create_or_subcandidates(place, pats, candidate.has_guard);
+                candidate.subcandidates = self.create_or_subcandidates(pats, candidate.has_guard);
                 candidate.match_pairs.pop();
                 split_or_candidate = true;
             }
@@ -1449,7 +1478,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     ) {
         let (first_candidate, remaining_candidates) = candidates.split_first_mut().unwrap();
         assert!(first_candidate.subcandidates.is_empty());
-        if !matches!(first_candidate.match_pairs[0].pattern.kind, PatKind::Or { .. }) {
+        if !matches!(first_candidate.match_pairs[0].test_case, TestCase::Or { .. }) {
             self.test_candidates(
                 span,
                 scrutinee_span,
@@ -1463,7 +1492,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
         let match_pairs = mem::take(&mut first_candidate.match_pairs);
         let (first_match_pair, remaining_match_pairs) = match_pairs.split_first().unwrap();
-        let PatKind::Or { ref pats } = &first_match_pair.pattern.kind else { unreachable!() };
+        let TestCase::Or { ref pats } = &first_match_pair.test_case else { unreachable!() };
 
         let remainder_start = self.cfg.start_new_block();
         let or_span = first_match_pair.pattern.span;
@@ -1474,7 +1503,6 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             remainder_start,
             pats,
             or_span,
-            &first_match_pair.place,
             fake_borrows,
         );
 
@@ -1514,7 +1542,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     }
 
     #[instrument(
-        skip(self, start_block, otherwise_block, or_span, place, fake_borrows, candidate, pats),
+        skip(self, start_block, otherwise_block, or_span, fake_borrows, candidate, pats),
         level = "debug"
     )]
     fn test_or_pattern<'pat>(
@@ -1522,15 +1550,15 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         candidate: &mut Candidate<'pat, 'tcx>,
         start_block: BasicBlock,
         otherwise_block: BasicBlock,
-        pats: &'pat [Box<Pat<'tcx>>],
+        pats: &[FlatPat<'pat, 'tcx>],
         or_span: Span,
-        place: &PlaceBuilder<'tcx>,
         fake_borrows: &mut Option<FxIndexSet<Place<'tcx>>>,
     ) {
         debug!("candidate={:#?}\npats={:#?}", candidate, pats);
         let mut or_candidates: Vec<_> = pats
             .iter()
-            .map(|pat| Candidate::new(place.clone(), pat, candidate.has_guard, self))
+            .cloned()
+            .map(|flat_pat| Candidate::from_flat_pat(flat_pat, candidate.has_guard))
             .collect();
         let mut or_candidate_refs: Vec<_> = or_candidates.iter_mut().collect();
         self.match_candidates(
