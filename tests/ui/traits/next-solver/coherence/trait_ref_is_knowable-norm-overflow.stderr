@@ -1,11 +1,11 @@
-error[E0119]: conflicting implementations of trait `Trait` for type `<LocalTy as Overflow>::Assoc`
+error[E0119]: conflicting implementations of trait `Trait`
   --> $DIR/trait_ref_is_knowable-norm-overflow.rs:18:1
    |
 LL | impl<T: Copy> Trait for T {}
    | ------------------------- first implementation here
 LL | struct LocalTy;
 LL | impl Trait for <LocalTy as Overflow>::Assoc {}
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ conflicting implementation for `<LocalTy as Overflow>::Assoc`
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ conflicting implementation
 
 error[E0275]: overflow evaluating the requirement `<T as Overflow>::Assoc: Sized`
   --> $DIR/trait_ref_is_knowable-norm-overflow.rs:10:18

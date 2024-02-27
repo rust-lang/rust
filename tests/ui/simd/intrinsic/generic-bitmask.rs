@@ -3,7 +3,7 @@
 // Test that the simd_bitmask intrinsic produces ok-ish error
 // messages when misused.
 
-#![feature(repr_simd, platform_intrinsics)]
+#![feature(repr_simd, intrinsics)]
 #![allow(non_camel_case_types)]
 
 #[repr(simd)]
@@ -30,7 +30,7 @@ struct u8x32([u8; 32]);
 #[derive(Copy, Clone)]
 struct u8x64([u8; 64]);
 
-extern "platform-intrinsic" {
+extern "rust-intrinsic" {
     fn simd_bitmask<T, U>(x: T) -> U;
 }
 

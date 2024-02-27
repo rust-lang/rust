@@ -15,6 +15,7 @@
 #![feature(lint_reasons)]
 #![feature(proc_macro_internals)]
 #![feature(proc_macro_quote)]
+#![feature(try_blocks)]
 
 extern crate proc_macro;
 

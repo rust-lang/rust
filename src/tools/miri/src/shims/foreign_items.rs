@@ -68,9 +68,9 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         let ret = match ret {
             None =>
                 match link_name.as_str() {
-                    "miri_start_panic" => {
-                        // `check_shim` happens inside `handle_miri_start_panic`.
-                        this.handle_miri_start_panic(abi, link_name, args, unwind)?;
+                    "miri_start_unwind" => {
+                        // `check_shim` happens inside `handle_miri_start_unwind`.
+                        this.handle_miri_start_unwind(abi, link_name, args, unwind)?;
                         return Ok(None);
                     }
                     // This matches calls to the foreign item `panic_impl`.

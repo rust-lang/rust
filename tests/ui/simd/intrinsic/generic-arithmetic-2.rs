@@ -1,6 +1,6 @@
 //@ build-fail
 
-#![feature(repr_simd, platform_intrinsics)]
+#![feature(repr_simd, intrinsics)]
 #![allow(non_camel_case_types)]
 #[repr(simd)]
 #[derive(Copy, Clone)]
@@ -14,7 +14,7 @@ pub struct u32x4(pub u32, pub u32, pub u32, pub u32);
 #[derive(Copy, Clone)]
 pub struct f32x4(pub f32, pub f32, pub f32, pub f32);
 
-extern "platform-intrinsic" {
+extern "rust-intrinsic" {
     fn simd_add<T>(x: T, y: T) -> T;
     fn simd_sub<T>(x: T, y: T) -> T;
     fn simd_mul<T>(x: T, y: T) -> T;

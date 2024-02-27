@@ -1,4 +1,5 @@
 use super::combine::{CombineFields, ObligationEmittingRelation};
+use super::StructurallyRelateAliases;
 use crate::infer::{DefineOpaqueTypes, SubregionOrigin};
 use crate::traits::PredicateObligations;
 
@@ -13,15 +14,17 @@ use rustc_span::Span;
 /// Ensures `a` is made equal to `b`. Returns `a` on success.
 pub struct Equate<'combine, 'infcx, 'tcx> {
     fields: &'combine mut CombineFields<'infcx, 'tcx>,
+    structurally_relate_aliases: StructurallyRelateAliases,
     a_is_expected: bool,
 }
 
 impl<'combine, 'infcx, 'tcx> Equate<'combine, 'infcx, 'tcx> {
     pub fn new(
         fields: &'combine mut CombineFields<'infcx, 'tcx>,
+        structurally_relate_aliases: StructurallyRelateAliases,
         a_is_expected: bool,
     ) -> Equate<'combine, 'infcx, 'tcx> {
-        Equate { fields, a_is_expected }
+        Equate { fields, structurally_relate_aliases, a_is_expected }
     }
 }
 
@@ -99,7 +102,7 @@ impl<'tcx> TypeRelation<'tcx> for Equate<'_, '_, 'tcx> {
                 &ty::Alias(ty::Opaque, ty::AliasTy { def_id: a_def_id, .. }),
                 &ty::Alias(ty::Opaque, ty::AliasTy { def_id: b_def_id, .. }),
             ) if a_def_id == b_def_id => {
-                self.fields.infcx.super_combine_tys(self, a, b)?;
+                infcx.super_combine_tys(self, a, b)?;
             }
             (&ty::Alias(ty::Opaque, ty::AliasTy { def_id, .. }), _)
             | (_, &ty::Alias(ty::Opaque, ty::AliasTy { def_id, .. }))
@@ -120,7 +123,7 @@ impl<'tcx> TypeRelation<'tcx> for Equate<'_, '_, 'tcx> {
                 );
             }
             _ => {
-                self.fields.infcx.super_combine_tys(self, a, b)?;
+                infcx.super_combine_tys(self, a, b)?;
             }
         }
 
@@ -178,6 +181,10 @@ impl<'tcx> TypeRelation<'tcx> for Equate<'_, '_, 'tcx> {
 impl<'tcx> ObligationEmittingRelation<'tcx> for Equate<'_, '_, 'tcx> {
     fn span(&self) -> Span {
         self.fields.trace.span()
+    }
+
+    fn structurally_relate_aliases(&self) -> StructurallyRelateAliases {
+        self.structurally_relate_aliases
     }
 
     fn param_env(&self) -> ty::ParamEnv<'tcx> {

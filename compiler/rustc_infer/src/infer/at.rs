@@ -302,7 +302,23 @@ impl<'a, 'tcx> Trace<'a, 'tcx> {
         let Trace { at, trace, a_is_expected } = self;
         let mut fields = at.infcx.combine_fields(trace, at.param_env, define_opaque_types);
         fields
-            .equate(a_is_expected)
+            .equate(StructurallyRelateAliases::No, a_is_expected)
+            .relate(a, b)
+            .map(move |_| InferOk { value: (), obligations: fields.obligations })
+    }
+
+    /// Equates `a` and `b` while structurally relating aliases. This should only
+    /// be used inside of the next generation trait solver when relating rigid aliases.
+    #[instrument(skip(self), level = "debug")]
+    pub fn eq_structurally_relating_aliases<T>(self, a: T, b: T) -> InferResult<'tcx, ()>
+    where
+        T: Relate<'tcx>,
+    {
+        let Trace { at, trace, a_is_expected } = self;
+        debug_assert!(at.infcx.next_trait_solver());
+        let mut fields = at.infcx.combine_fields(trace, at.param_env, DefineOpaqueTypes::No);
+        fields
+            .equate(StructurallyRelateAliases::Yes, a_is_expected)
             .relate(a, b)
             .map(move |_| InferOk { value: (), obligations: fields.obligations })
     }

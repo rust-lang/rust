@@ -758,7 +758,7 @@ trait UnusedDelimLint {
         }
         impl<'ast> Visitor<'ast> for ErrExprVisitor {
             fn visit_expr(&mut self, expr: &'ast ast::Expr) {
-                if let ExprKind::Err = expr.kind {
+                if let ExprKind::Err(_) = expr.kind {
                     self.has_error = true;
                     return;
                 }

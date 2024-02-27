@@ -108,21 +108,22 @@ impl<'a, Infcx: InferCtxtLike<Interner = I>, I: Interner> Canonicalizer<'a, Infc
         // universes `n`, this algorithm compresses them in place so that:
         //
         // - the new universe indices are as small as possible
-        // - we only create a new universe if we would otherwise put a placeholder in
-        //   the same compressed universe as an existential which cannot name it
+        // - we create a new universe if we would otherwise
+        //   1. put existentials from a different universe into the same one
+        //   2. put a placeholder in the same universe as an existential which cannot name it
         //
         // Let's walk through an example:
         // - var_infos: [E0, U1, E5, U2, E2, E6, U6], curr_compressed_uv: 0, next_orig_uv: 0
         // - var_infos: [E0, U1, E5, U2, E2, E6, U6], curr_compressed_uv: 0, next_orig_uv: 1
         // - var_infos: [E0, U1, E5, U2, E2, E6, U6], curr_compressed_uv: 1, next_orig_uv: 2
         // - var_infos: [E0, U1, E5, U1, E1, E6, U6], curr_compressed_uv: 1, next_orig_uv: 5
-        // - var_infos: [E0, U1, E1, U1, E1, E6, U6], curr_compressed_uv: 1, next_orig_uv: 6
-        // - var_infos: [E0, U1, E1, U1, E1, E2, U2], curr_compressed_uv: 2, next_orig_uv: -
+        // - var_infos: [E0, U1, E2, U1, E1, E6, U6], curr_compressed_uv: 2, next_orig_uv: 6
+        // - var_infos: [E0, U1, E1, U1, E1, E3, U3], curr_compressed_uv: 2, next_orig_uv: -
         //
         // This algorithm runs in `O(n²)` where `n` is the number of different universe
         // indices in the input. This should be fine as `n` is expected to be small.
         let mut curr_compressed_uv = ty::UniverseIndex::ROOT;
-        let mut existential_in_new_uv = false;
+        let mut existential_in_new_uv = None;
         let mut next_orig_uv = Some(ty::UniverseIndex::ROOT);
         while let Some(orig_uv) = next_orig_uv.take() {
             let mut update_uv = |var: &mut CanonicalVarInfo<I>, orig_uv, is_existential| {
@@ -131,14 +132,29 @@ impl<'a, Infcx: InferCtxtLike<Interner = I>, I: Interner> Canonicalizer<'a, Infc
                     Ordering::Less => (), // Already updated
                     Ordering::Equal => {
                         if is_existential {
-                            existential_in_new_uv = true;
-                        } else if existential_in_new_uv {
+                            if existential_in_new_uv.is_some_and(|uv| uv < orig_uv) {
+                                // Condition 1.
+                                //
+                                // We already put an existential from a outer universe
+                                // into the current compressed universe, so we need to
+                                // create a new one.
+                                curr_compressed_uv = curr_compressed_uv.next_universe();
+                            }
+
+                            // `curr_compressed_uv` will now contain an existential from
+                            // `orig_uv`. Trying to canonicalizing an existential from
+                            // a higher universe has to therefore use a new compressed
+                            // universe.
+                            existential_in_new_uv = Some(orig_uv);
+                        } else if existential_in_new_uv.is_some() {
+                            // Condition 2.
+                            //
                             //  `var` is a placeholder from a universe which is not nameable
                             // by an existential which we already put into the compressed
                             // universe `curr_compressed_uv`. We therefore have to create a
                             // new universe for `var`.
                             curr_compressed_uv = curr_compressed_uv.next_universe();
-                            existential_in_new_uv = false;
+                            existential_in_new_uv = None;
                         }
 
                         *var = var.with_updated_universe(curr_compressed_uv);
@@ -174,8 +190,14 @@ impl<'a, Infcx: InferCtxtLike<Interner = I>, I: Interner> Canonicalizer<'a, Infc
             }
         }
 
+        // We uniquify regions and always put them into their own universe
+        let mut first_region = true;
         for var in var_infos.iter_mut() {
             if var.is_region() {
+                if first_region {
+                    first_region = false;
+                    curr_compressed_uv = curr_compressed_uv.next_universe();
+                }
                 assert!(var.is_existential());
                 *var = var.with_updated_universe(curr_compressed_uv);
             }

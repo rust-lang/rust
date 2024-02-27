@@ -34,7 +34,6 @@ fn abi_can_unwind(abi: Abi) -> bool {
         | CCmseNonSecureCall
         | Wasm
         | RustIntrinsic
-        | PlatformIntrinsic
         | Unadjusted => false,
         Rust | RustCall | RustCold => true,
     }

@@ -1516,6 +1516,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     /// In case there is still ambiguity, the returned type may be an inference
     /// variable. This is different from `structurally_resolve_type` which errors
     /// in this case.
+    #[instrument(level = "debug", skip(self, sp), ret)]
     pub fn try_structurally_resolve_type(&self, sp: Span, ty: Ty<'tcx>) -> Ty<'tcx> {
         let ty = self.resolve_vars_with_obligations(ty);
 

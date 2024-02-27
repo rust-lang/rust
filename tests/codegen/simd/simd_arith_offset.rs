@@ -3,9 +3,9 @@
 //
 
 #![crate_type = "lib"]
-#![feature(repr_simd, platform_intrinsics)]
+#![feature(repr_simd, intrinsics)]
 
-extern "platform-intrinsic" {
+extern "rust-intrinsic" {
     pub(crate) fn simd_arith_offset<T, U>(ptrs: T, offsets: U) -> T;
 }
 

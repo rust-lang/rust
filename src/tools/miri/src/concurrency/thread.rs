@@ -143,7 +143,7 @@ pub struct Thread<'mir, 'tcx> {
     join_status: ThreadJoinStatus,
 
     /// Stack of active panic payloads for the current thread. Used for storing
-    /// the argument of the call to `miri_start_panic` (the panic payload) when unwinding.
+    /// the argument of the call to `miri_start_unwind` (the panic payload) when unwinding.
     /// This is pointer-sized, and matches the `Payload` type in `src/libpanic_unwind/miri.rs`.
     ///
     /// In real unwinding, the payload gets passed as an argument to the landing pad,

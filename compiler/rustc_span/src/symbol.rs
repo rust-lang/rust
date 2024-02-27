@@ -487,6 +487,7 @@ symbols! {
         call_once,
         caller_location,
         capture_disjoint_fields,
+        catch_unwind,
         cause,
         cdylib,
         ceilf32,

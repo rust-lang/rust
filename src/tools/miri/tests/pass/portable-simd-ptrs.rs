@@ -1,6 +1,6 @@
 // Separate test without strict provenance
 //@compile-flags: -Zmiri-permissive-provenance
-#![feature(portable_simd, platform_intrinsics)]
+#![feature(portable_simd)]
 use std::ptr;
 use std::simd::prelude::*;
 

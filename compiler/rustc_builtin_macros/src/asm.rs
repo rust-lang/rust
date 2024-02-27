@@ -13,7 +13,7 @@ use rustc_session::lint;
 use rustc_session::parse::ParseSess;
 use rustc_span::symbol::Ident;
 use rustc_span::symbol::{kw, sym, Symbol};
-use rustc_span::{InnerSpan, Span};
+use rustc_span::{ErrorGuaranteed, InnerSpan, Span};
 use rustc_target::asm::InlineAsmArch;
 use smallvec::smallvec;
 
@@ -433,7 +433,10 @@ fn parse_reg<'a>(
     Ok(result)
 }
 
-fn expand_preparsed_asm(ecx: &mut ExtCtxt<'_>, args: AsmArgs) -> Option<ast::InlineAsm> {
+fn expand_preparsed_asm(
+    ecx: &mut ExtCtxt<'_>,
+    args: AsmArgs,
+) -> Result<ast::InlineAsm, ErrorGuaranteed> {
     let mut template = vec![];
     // Register operands are implicitly used since they are not allowed to be
     // referenced in the template string.
@@ -459,10 +462,10 @@ fn expand_preparsed_asm(ecx: &mut ExtCtxt<'_>, args: AsmArgs) -> Option<ast::Inl
             match expr_to_spanned_string(ecx, template_expr, msg) {
                 Ok(template_part) => template_part,
                 Err(err) => {
-                    if let Some((err, _)) = err {
-                        err.emit();
-                    }
-                    return None;
+                    return Err(match err {
+                        Ok((err, _)) => err.emit(),
+                        Err(guar) => guar,
+                    });
                 }
             };
 
@@ -551,8 +554,8 @@ fn expand_preparsed_asm(ecx: &mut ExtCtxt<'_>, args: AsmArgs) -> Option<ast::Inl
                 let err_sp = template_span.from_inner(InnerSpan::new(span.start, span.end));
                 e.span_label(err_sp, label);
             }
-            e.emit();
-            return None;
+            let guar = e.emit();
+            return Err(guar);
         }
 
         curarg = parser.curarg;
@@ -719,7 +722,7 @@ fn expand_preparsed_asm(ecx: &mut ExtCtxt<'_>, args: AsmArgs) -> Option<ast::Inl
         }
     }
 
-    Some(ast::InlineAsm {
+    Ok(ast::InlineAsm {
         template,
         template_strs: template_strs.into_boxed_slice(),
         operands: args.operands,
@@ -736,22 +739,21 @@ pub(super) fn expand_asm<'cx>(
 ) -> Box<dyn base::MacResult + 'cx> {
     match parse_args(ecx, sp, tts, false) {
         Ok(args) => {
-            let expr = if let Some(inline_asm) = expand_preparsed_asm(ecx, args) {
-                P(ast::Expr {
+            let expr = match expand_preparsed_asm(ecx, args) {
+                Ok(inline_asm) => P(ast::Expr {
                     id: ast::DUMMY_NODE_ID,
                     kind: ast::ExprKind::InlineAsm(P(inline_asm)),
                     span: sp,
                     attrs: ast::AttrVec::new(),
                     tokens: None,
-                })
-            } else {
-                DummyResult::raw_expr(sp, true)
+                }),
+                Err(guar) => DummyResult::raw_expr(sp, Some(guar)),
             };
             MacEager::expr(expr)
         }
         Err(err) => {
-            err.emit();
-            DummyResult::any(sp)
+            let guar = err.emit();
+            DummyResult::any(sp, guar)
         }
     }
 }
@@ -762,28 +764,25 @@ pub(super) fn expand_global_asm<'cx>(
     tts: TokenStream,
 ) -> Box<dyn base::MacResult + 'cx> {
     match parse_args(ecx, sp, tts, true) {
-        Ok(args) => {
-            if let Some(inline_asm) = expand_preparsed_asm(ecx, args) {
-                MacEager::items(smallvec![P(ast::Item {
-                    ident: Ident::empty(),
-                    attrs: ast::AttrVec::new(),
-                    id: ast::DUMMY_NODE_ID,
-                    kind: ast::ItemKind::GlobalAsm(Box::new(inline_asm)),
-                    vis: ast::Visibility {
-                        span: sp.shrink_to_lo(),
-                        kind: ast::VisibilityKind::Inherited,
-                        tokens: None,
-                    },
-                    span: sp,
+        Ok(args) => match expand_preparsed_asm(ecx, args) {
+            Ok(inline_asm) => MacEager::items(smallvec![P(ast::Item {
+                ident: Ident::empty(),
+                attrs: ast::AttrVec::new(),
+                id: ast::DUMMY_NODE_ID,
+                kind: ast::ItemKind::GlobalAsm(Box::new(inline_asm)),
+                vis: ast::Visibility {
+                    span: sp.shrink_to_lo(),
+                    kind: ast::VisibilityKind::Inherited,
                     tokens: None,
-                })])
-            } else {
-                DummyResult::any(sp)
-            }
-        }
+                },
+                span: sp,
+                tokens: None,
+            })]),
+            Err(guar) => DummyResult::any(sp, guar),
+        },
         Err(err) => {
-            err.emit();
-            DummyResult::any(sp)
+            let guar = err.emit();
+            DummyResult::any(sp, guar)
         }
     }
 }

@@ -457,7 +457,6 @@ impl RustcInternal for Abi {
             Abi::System { unwind } => rustc_target::spec::abi::Abi::System { unwind },
             Abi::RustIntrinsic => rustc_target::spec::abi::Abi::RustIntrinsic,
             Abi::RustCall => rustc_target::spec::abi::Abi::RustCall,
-            Abi::PlatformIntrinsic => rustc_target::spec::abi::Abi::PlatformIntrinsic,
             Abi::Unadjusted => rustc_target::spec::abi::Abi::Unadjusted,
             Abi::RustCold => rustc_target::spec::abi::Abi::RustCold,
             Abi::RiscvInterruptM => rustc_target::spec::abi::Abi::RiscvInterruptM,

@@ -4,7 +4,7 @@ fn invalid_emoji_usages() {
     let wireless🛜 = "basic emoji"; //~ ERROR: identifiers cannot contain emoji
     // FIXME
     let key1️⃣ = "keycap sequence"; //~ ERROR: unknown start of token
-                                    //~^ WARN: identifier contains an uncommon Unicode codepoint
+                                    //~^ WARN: identifier contains an uncommon character: '\u{fe0f}'
     let flag🇺🇳 = "flag sequence"; //~ ERROR: identifiers cannot contain emoji
     let wales🏴 = "tag sequence"; //~ ERROR: identifiers cannot contain emoji
     let folded🙏🏿 = "modifier sequence"; //~ ERROR: identifiers cannot contain emoji

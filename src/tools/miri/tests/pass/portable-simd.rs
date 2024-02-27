@@ -1,5 +1,5 @@
 //@compile-flags: -Zmiri-strict-provenance
-#![feature(portable_simd, platform_intrinsics, adt_const_params, inline_const, core_intrinsics)]
+#![feature(portable_simd, adt_const_params, inline_const, core_intrinsics)]
 #![allow(incomplete_features, internal_features)]
 use std::intrinsics::simd as intrinsics;
 use std::ptr;
@@ -216,10 +216,7 @@ fn simd_ops_i32() {
 }
 
 fn simd_mask() {
-    extern "platform-intrinsic" {
-        pub(crate) fn simd_bitmask<T, U>(x: T) -> U;
-        pub(crate) fn simd_select_bitmask<M, T>(m: M, yes: T, no: T) -> T;
-    }
+    use std::intrinsics::simd::*;
 
     let intmask = Mask::from_int(i32x4::from_array([0, -1, 0, 0]));
     assert_eq!(intmask, Mask::from_array([false, true, false, false]));
@@ -493,9 +490,6 @@ fn simd_round() {
 
 fn simd_intrinsics() {
     use intrinsics::*;
-    extern "platform-intrinsic" {
-        fn simd_shuffle_generic<T, U, const IDX: &'static [u32]>(x: T, y: T) -> U;
-    }
 
     unsafe {
         // Make sure simd_eq returns all-1 for `true`

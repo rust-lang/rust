@@ -331,7 +331,8 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             ExprKind::Lit(..)
             | ExprKind::ConstBlock(..)
             | ExprKind::IncludedBytes(..)
-            | ExprKind::Err => {}
+            | ExprKind::Err(_)
+            | ExprKind::Dummy => {}
             ExprKind::Path(..) if allow_paths => {}
             ExprKind::Unary(UnOp::Neg, inner) if matches!(inner.kind, ExprKind::Lit(_)) => {}
             _ => {

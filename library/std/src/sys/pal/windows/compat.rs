@@ -21,7 +21,6 @@
 
 use crate::ffi::{c_void, CStr};
 use crate::ptr::NonNull;
-use crate::sync::atomic::Ordering;
 use crate::sys::c;
 
 // This uses a static initializer to preload some imported functions.
@@ -38,6 +37,7 @@ use crate::sys::c;
 // file an issue for discussion; currently we don't guarantee any functionality
 // before main.
 // See https://docs.microsoft.com/en-us/cpp/c-runtime-library/crt-initialization?view=msvc-170
+#[cfg(target_vendor = "win7")]
 #[used]
 #[link_section = ".CRT$XCT"]
 static INIT_TABLE_ENTRY: unsafe extern "C" fn() = init;
@@ -52,6 +52,7 @@ static INIT_TABLE_ENTRY: unsafe extern "C" fn() = init;
 /// negative performance impact in practical situations.
 ///
 /// Currently we only preload `WaitOnAddress` and `WakeByAddressSingle`.
+#[cfg(target_vendor = "win7")]
 unsafe extern "C" fn init() {
     // In an exe this code is executed before main() so is single threaded.
     // In a DLL the system's loader lock will be held thereby synchronizing
@@ -183,6 +184,7 @@ macro_rules! compat_fn_with_fallback {
                 func($($argname),*)
             }
         }
+        #[allow(unused)]
         $(#[$meta])*
         $vis use $symbol::call as $symbol;
     )*)
@@ -191,6 +193,7 @@ macro_rules! compat_fn_with_fallback {
 /// Optionally loaded functions.
 ///
 /// Actual loading of the function defers to $load_functions.
+#[cfg(target_vendor = "win7")]
 macro_rules! compat_fn_optional {
     ($load_functions:expr;
     $(
@@ -218,13 +221,19 @@ macro_rules! compat_fn_optional {
                     NonNull::new(PTR.load(Ordering::Relaxed)).map(|f| unsafe { mem::transmute(f) })
                 }
             }
+            #[inline]
+            pub unsafe extern "system" fn $symbol($($argname: $argtype),*) $(-> $rettype)? {
+                $symbol::option().unwrap()($($argname),*)
+            }
         )+
     )
 }
 
 /// Load all needed functions from "api-ms-win-core-synch-l1-2-0".
+#[cfg(target_vendor = "win7")]
 pub(super) fn load_synch_functions() {
     fn try_load() -> Option<()> {
+        use crate::sync::atomic::Ordering;
         const MODULE_NAME: &CStr = c"api-ms-win-core-synch-l1-2-0";
         const WAIT_ON_ADDRESS: &CStr = c"WaitOnAddress";
         const WAKE_BY_ADDRESS_SINGLE: &CStr = c"WakeByAddressSingle";

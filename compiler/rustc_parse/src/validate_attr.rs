@@ -90,7 +90,7 @@ pub fn parse_meta<'a>(sess: &'a ParseSess, attr: &Attribute) -> PResult<'a, Meta
                     //   been reported.
                     let msg = "attribute value must be a literal";
                     let mut err = sess.dcx.struct_span_err(expr.span, msg);
-                    if let ast::ExprKind::Err = expr.kind {
+                    if let ast::ExprKind::Err(_) = expr.kind {
                         err.downgrade_to_delayed_bug();
                     }
                     return Err(err);

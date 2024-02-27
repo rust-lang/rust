@@ -34,7 +34,7 @@ use rustc_session::lint::builtin::BREAK_WITH_LABEL_AND_LOOP;
 use rustc_session::lint::BuiltinLintDiagnostics;
 use rustc_span::source_map::{self, Spanned};
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
-use rustc_span::{BytePos, Pos, Span};
+use rustc_span::{BytePos, ErrorGuaranteed, Pos, Span};
 use thin_vec::{thin_vec, ThinVec};
 
 /// Possibly accepts an `token::Interpolated` expression (a pre-parsed expression
@@ -131,9 +131,9 @@ impl<'a> Parser<'a> {
                     if self.may_recover() && self.look_ahead(1, |t| t == &token::Comma) =>
                 {
                     // Special-case handling of `foo(_, _, _)`
-                    err.emit();
+                    let guar = err.emit();
                     self.bump();
-                    Ok(self.mk_expr(self.prev_token.span, ExprKind::Err))
+                    Ok(self.mk_expr(self.prev_token.span, ExprKind::Err(guar)))
                 }
                 _ => Err(err),
             },
@@ -667,8 +667,8 @@ impl<'a> Parser<'a> {
         let (span, _) = self.parse_expr_prefix_common(box_kw)?;
         let inner_span = span.with_lo(box_kw.hi());
         let code = self.sess.source_map().span_to_snippet(inner_span).unwrap();
-        self.dcx().emit_err(errors::BoxSyntaxRemoved { span: span, code: code.trim() });
-        Ok((span, ExprKind::Err))
+        let guar = self.dcx().emit_err(errors::BoxSyntaxRemoved { span: span, code: code.trim() });
+        Ok((span, ExprKind::Err(guar)))
     }
 
     fn is_mistaken_not_ident_negation(&self) -> bool {
@@ -860,7 +860,7 @@ impl<'a> Parser<'a> {
                     ExprKind::MethodCall(_) => "a method call",
                     ExprKind::Call(_, _) => "a function call",
                     ExprKind::Await(_, _) => "`.await`",
-                    ExprKind::Err => return Ok(with_postfix),
+                    ExprKind::Err(_) => return Ok(with_postfix),
                     _ => unreachable!("parse_dot_or_call_expr_with_ shouldn't produce this"),
                 }
             );
@@ -1315,7 +1315,7 @@ impl<'a> Parser<'a> {
                         let fields: Vec<_> =
                             fields.into_iter().filter(|field| !field.is_shorthand).collect();
 
-                        if !fields.is_empty() &&
+                        let guar = if !fields.is_empty() &&
                             // `token.kind` should not be compared here.
                             // This is because the `snapshot.token.kind` is treated as the same as
                             // that of the open delim in `TokenTreesReader::parse_token_tree`, even
@@ -1338,11 +1338,11 @@ impl<'a> Parser<'a> {
                                             .collect(),
                                     },
                                 })
-                                .emit();
+                                .emit()
                         } else {
-                            err.emit();
-                        }
-                        Ok(self.mk_expr_err(span))
+                            err.emit()
+                        };
+                        Ok(self.mk_expr_err(span, guar))
                     }
                     Ok(_) => Err(err),
                     Err(err2) => {
@@ -1684,13 +1684,13 @@ impl<'a> Parser<'a> {
             && (self.check_noexpect(&TokenKind::Comma) || self.check_noexpect(&TokenKind::Gt))
         {
             // We're probably inside of a `Path<'a>` that needs a turbofish
-            self.dcx().emit_err(errors::UnexpectedTokenAfterLabel {
+            let guar = self.dcx().emit_err(errors::UnexpectedTokenAfterLabel {
                 span: self.token.span,
                 remove_label: None,
                 enclose_in_block: None,
             });
             consume_colon = false;
-            Ok(self.mk_expr_err(lo))
+            Ok(self.mk_expr_err(lo, guar))
         } else {
             let mut err = errors::UnexpectedTokenAfterLabel {
                 span: self.token.span,
@@ -2039,7 +2039,7 @@ impl<'a> Parser<'a> {
     ) -> PResult<'a, L> {
         if let token::Interpolated(nt) = &self.token.kind
             && let token::NtExpr(e) | token::NtLiteral(e) = &nt.0
-            && matches!(e.kind, ExprKind::Err)
+            && matches!(e.kind, ExprKind::Err(_))
         {
             let mut err = self
                 .dcx()
@@ -2207,7 +2207,7 @@ impl<'a> Parser<'a> {
         let mut snapshot = self.create_snapshot_for_diagnostic();
         match snapshot.parse_expr_array_or_repeat(Delimiter::Brace) {
             Ok(arr) => {
-                self.dcx().emit_err(errors::ArrayBracketsInsteadOfSpaces {
+                let guar = self.dcx().emit_err(errors::ArrayBracketsInsteadOfSpaces {
                     span: arr.span,
                     sub: errors::ArrayBracketsInsteadOfSpacesSugg {
                         left: lo,
@@ -2216,7 +2216,7 @@ impl<'a> Parser<'a> {
                 });
 
                 self.restore_snapshot(snapshot);
-                Some(self.mk_expr_err(arr.span))
+                Some(self.mk_expr_err(arr.span, guar))
             }
             Err(e) => {
                 e.cancel();
@@ -2370,7 +2370,10 @@ impl<'a> Parser<'a> {
             // It is likely that the closure body is a block but where the
             // braces have been removed. We will recover and eat the next
             // statements later in the parsing process.
-            body = self.mk_expr_err(body.span);
+            body = self.mk_expr_err(
+                body.span,
+                self.dcx().span_delayed_bug(body.span, "recovered a closure body as a block"),
+            );
         }
 
         let body_span = body.span;
@@ -2485,7 +2488,7 @@ impl<'a> Parser<'a> {
                 ExprKind::Binary(Spanned { span: binop_span, .. }, _, right)
                     if let ExprKind::Block(_, None) = right.kind =>
                 {
-                    this.dcx().emit_err(errors::IfExpressionMissingThenBlock {
+                    let guar = this.dcx().emit_err(errors::IfExpressionMissingThenBlock {
                         if_span: lo,
                         missing_then_block_sub:
                             errors::IfExpressionMissingThenBlockSub::UnfinishedCondition(
@@ -2493,14 +2496,14 @@ impl<'a> Parser<'a> {
                             ),
                         let_else_sub: None,
                     });
-                    std::mem::replace(right, this.mk_expr_err(binop_span.shrink_to_hi()))
+                    std::mem::replace(right, this.mk_expr_err(binop_span.shrink_to_hi(), guar))
                 }
                 ExprKind::Block(_, None) => {
-                    this.dcx().emit_err(errors::IfExpressionMissingCondition {
+                    let guar = this.dcx().emit_err(errors::IfExpressionMissingCondition {
                         if_span: lo.with_neighbor(cond.span).shrink_to_hi(),
                         block_span: self.sess.source_map().start_point(cond_span),
                     });
-                    std::mem::replace(&mut cond, this.mk_expr_err(cond_span.shrink_to_hi()))
+                    std::mem::replace(&mut cond, this.mk_expr_err(cond_span.shrink_to_hi(), guar))
                 }
                 _ => {
                     return None;
@@ -2520,14 +2523,14 @@ impl<'a> Parser<'a> {
                 let let_else_sub = matches!(cond.kind, ExprKind::Let(..))
                     .then(|| errors::IfExpressionLetSomeSub { if_span: lo.until(cond_span) });
 
-                self.dcx().emit_err(errors::IfExpressionMissingThenBlock {
+                let guar = self.dcx().emit_err(errors::IfExpressionMissingThenBlock {
                     if_span: lo,
                     missing_then_block_sub: errors::IfExpressionMissingThenBlockSub::AddThenBlock(
                         cond_span.shrink_to_hi(),
                     ),
                     let_else_sub,
                 });
-                self.mk_block_err(cond_span.shrink_to_hi())
+                self.mk_block_err(cond_span.shrink_to_hi(), guar)
             }
         } else {
             let attrs = self.parse_outer_attributes()?; // For recovery.
@@ -2797,9 +2800,10 @@ impl<'a> Parser<'a> {
             && !matches!(self.token.kind, token::OpenDelim(Delimiter::Brace))
             && self.may_recover()
         {
-            self.dcx()
+            let guar = self
+                .dcx()
                 .emit_err(errors::MissingExpressionInForLoop { span: expr.span.shrink_to_lo() });
-            let err_expr = self.mk_expr(expr.span, ExprKind::Err);
+            let err_expr = self.mk_expr(expr.span, ExprKind::Err(guar));
             let block = self.mk_block(thin_vec![], BlockCheckMode::Default, self.prev_token.span);
             return Ok(self.mk_expr(
                 lo.to(self.prev_token.span),
@@ -2924,7 +2928,7 @@ impl<'a> Parser<'a> {
                         attrs: Default::default(),
                         pat: self.mk_pat(span, ast::PatKind::Err(guar)),
                         guard: None,
-                        body: Some(self.mk_expr_err(span)),
+                        body: Some(self.mk_expr_err(span, guar)),
                         span,
                         id: DUMMY_NODE_ID,
                         is_placeholder: false,
@@ -2959,7 +2963,7 @@ impl<'a> Parser<'a> {
         let err = |this: &Parser<'_>, stmts: Vec<ast::Stmt>| {
             let span = stmts[0].span.to(stmts[stmts.len() - 1].span);
 
-            this.dcx().emit_err(errors::MatchArmBodyWithoutBraces {
+            let guar = this.dcx().emit_err(errors::MatchArmBodyWithoutBraces {
                 statements: span,
                 arrow: arrow_span,
                 num_statements: stmts.len(),
@@ -2972,7 +2976,7 @@ impl<'a> Parser<'a> {
                     errors::MatchArmBodyWithoutBracesSugg::UseComma { semicolon: semi_sp }
                 },
             });
-            this.mk_expr_err(span)
+            this.mk_expr_err(span, guar)
         };
         // We might have either a `,` -> `;` typo, or a block without braces. We need
         // a more subtle parsing strategy.
@@ -3433,14 +3437,20 @@ impl<'a> Parser<'a> {
         pth: ast::Path,
         recover: bool,
         close_delim: Delimiter,
-    ) -> PResult<'a, (ThinVec<ExprField>, ast::StructRest, bool)> {
+    ) -> PResult<
+        'a,
+        (
+            ThinVec<ExprField>,
+            ast::StructRest,
+            Option<ErrorGuaranteed>, /* async blocks are forbidden in Rust 2015 */
+        ),
+    > {
         let mut fields = ThinVec::new();
         let mut base = ast::StructRest::None;
-        let mut recover_async = false;
+        let mut recovered_async = None;
         let in_if_guard = self.restrictions.contains(Restrictions::IN_IF_GUARD);
 
-        let mut async_block_err = |e: &mut DiagnosticBuilder<'_>, span: Span| {
-            recover_async = true;
+        let async_block_err = |e: &mut DiagnosticBuilder<'_>, span: Span| {
             errors::AsyncBlockIn2015 { span }.add_to_diagnostic(e);
             errors::HelpUseLatestEdition::new().add_to_diagnostic(e);
         };
@@ -3465,9 +3475,34 @@ impl<'a> Parser<'a> {
                 break;
             }
 
-            let recovery_field = self.find_struct_error_after_field_looking_code();
+            // Peek the field's ident before parsing its expr in order to emit better diagnostics.
+            let peek = self
+                .token
+                .ident()
+                .filter(|(ident, is_raw)| {
+                    (!ident.is_reserved() || matches!(is_raw, IdentIsRaw::Yes))
+                        && self.look_ahead(1, |tok| *tok == token::Colon)
+                })
+                .map(|(ident, _)| ident);
+
+            // We still want a field even if its expr didn't parse.
+            let field_ident = |this: &Self, guar: ErrorGuaranteed| {
+                peek.map(|ident| {
+                    let span = ident.span;
+                    ExprField {
+                        ident,
+                        span,
+                        expr: this.mk_expr_err(span, guar),
+                        is_shorthand: false,
+                        attrs: AttrVec::new(),
+                        id: DUMMY_NODE_ID,
+                        is_placeholder: false,
+                    }
+                })
+            };
+
             let parsed_field = match self.parse_expr_field() {
-                Ok(f) => Some(f),
+                Ok(f) => Ok(f),
                 Err(mut e) => {
                     if pth == kw::Async {
                         async_block_err(&mut e, pth.span);
@@ -3499,7 +3534,10 @@ impl<'a> Parser<'a> {
                         return Err(e);
                     }
 
-                    e.emit();
+                    let guar = e.emit();
+                    if pth == kw::Async {
+                        recovered_async = Some(guar);
+                    }
 
                     // If the next token is a comma, then try to parse
                     // what comes next as additional fields, rather than
@@ -3511,18 +3549,20 @@ impl<'a> Parser<'a> {
                         }
                     }
 
-                    None
+                    Err(guar)
                 }
             };
 
-            let is_shorthand = parsed_field.as_ref().is_some_and(|f| f.is_shorthand);
+            let is_shorthand = parsed_field.as_ref().is_ok_and(|f| f.is_shorthand);
             // A shorthand field can be turned into a full field with `:`.
             // We should point this out.
             self.check_or_expected(!is_shorthand, TokenType::Token(token::Colon));
 
             match self.expect_one_of(&[token::Comma], &[token::CloseDelim(close_delim)]) {
                 Ok(_) => {
-                    if let Some(f) = parsed_field.or(recovery_field) {
+                    if let Some(f) =
+                        parsed_field.or_else(|guar| field_ident(self, guar).ok_or(guar)).ok()
+                    {
                         // Only include the field if there's no parse error for the field name.
                         fields.push(f);
                     }
@@ -3532,8 +3572,7 @@ impl<'a> Parser<'a> {
                         async_block_err(&mut e, pth.span);
                     } else {
                         e.span_label(pth.span, "while parsing this struct");
-                        if let Some(f) = recovery_field {
-                            fields.push(f);
+                        if peek.is_some() {
                             e.span_suggestion(
                                 self.prev_token.span.shrink_to_hi(),
                                 "try adding a comma",
@@ -3545,13 +3584,18 @@ impl<'a> Parser<'a> {
                     if !recover {
                         return Err(e);
                     }
-                    e.emit();
+                    let guar = e.emit();
+                    if pth == kw::Async {
+                        recovered_async = Some(guar);
+                    } else if let Some(f) = field_ident(self, guar) {
+                        fields.push(f);
+                    }
                     self.recover_stmt_(SemiColonMode::Comma, BlockMode::Ignore);
                     self.eat(&token::Comma);
                 }
             }
         }
-        Ok((fields, base, recover_async))
+        Ok((fields, base, recovered_async))
     }
 
     /// Precondition: already parsed the '{'.
@@ -3562,37 +3606,16 @@ impl<'a> Parser<'a> {
         recover: bool,
     ) -> PResult<'a, P<Expr>> {
         let lo = pth.span;
-        let (fields, base, recover_async) =
+        let (fields, base, recovered_async) =
             self.parse_struct_fields(pth.clone(), recover, Delimiter::Brace)?;
         let span = lo.to(self.token.span);
         self.expect(&token::CloseDelim(Delimiter::Brace))?;
-        let expr = if recover_async {
-            ExprKind::Err
+        let expr = if let Some(guar) = recovered_async {
+            ExprKind::Err(guar)
         } else {
             ExprKind::Struct(P(ast::StructExpr { qself, path: pth, fields, rest: base }))
         };
         Ok(self.mk_expr(span, expr))
-    }
-
-    /// Use in case of error after field-looking code: `S { foo: () with a }`.
-    fn find_struct_error_after_field_looking_code(&self) -> Option<ExprField> {
-        match self.token.ident() {
-            Some((ident, is_raw))
-                if (matches!(is_raw, IdentIsRaw::Yes) || !ident.is_reserved())
-                    && self.look_ahead(1, |t| *t == token::Colon) =>
-            {
-                Some(ast::ExprField {
-                    ident,
-                    span: self.token.span,
-                    expr: self.mk_expr_err(self.token.span),
-                    is_shorthand: false,
-                    attrs: AttrVec::new(),
-                    id: DUMMY_NODE_ID,
-                    is_placeholder: false,
-                })
-            }
-            _ => None,
-        }
     }
 
     fn recover_struct_comma_after_dotdot(&mut self, span: Span) {
@@ -3718,8 +3741,8 @@ impl<'a> Parser<'a> {
         limits: RangeLimits,
     ) -> ExprKind {
         if end.is_none() && limits == RangeLimits::Closed {
-            self.inclusive_range_with_incorrect_end();
-            ExprKind::Err
+            let guar = self.inclusive_range_with_incorrect_end();
+            ExprKind::Err(guar)
         } else {
             ExprKind::Range(start, end, limits)
         }
@@ -3756,8 +3779,8 @@ impl<'a> Parser<'a> {
         self.mk_expr_with_attrs(span, kind, AttrVec::new())
     }
 
-    pub(super) fn mk_expr_err(&self, span: Span) -> P<Expr> {
-        self.mk_expr(span, ExprKind::Err)
+    pub(super) fn mk_expr_err(&self, span: Span, guar: ErrorGuaranteed) -> P<Expr> {
+        self.mk_expr(span, ExprKind::Err(guar))
     }
 
     /// Create expression span ensuring the span of the parent node
@@ -3949,7 +3972,8 @@ impl MutVisitor for CondChecker<'_> {
             | ExprKind::Become(_)
             | ExprKind::IncludedBytes(_)
             | ExprKind::FormatArgs(_)
-            | ExprKind::Err => {
+            | ExprKind::Err(_)
+            | ExprKind::Dummy => {
                 // These would forbid any let expressions they contain already.
             }
         }

@@ -7,7 +7,7 @@ LL | type A = impl Foo;
    = note: `A` must be used in combination with a concrete type within the same module
 
 error: opaque type's hidden type cannot be another opaque type from the same scope
-  --> $DIR/two_tait_defining_each_other2.rs:11:5
+  --> $DIR/two_tait_defining_each_other2.rs:12:5
    |
 LL |     x // B's hidden type is A (opaquely)
    |     ^ one of the two opaque types used here has to be outside its defining scope

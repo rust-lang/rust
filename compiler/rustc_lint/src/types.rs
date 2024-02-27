@@ -1587,10 +1587,7 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
     }
 
     fn is_internal_abi(&self, abi: SpecAbi) -> bool {
-        matches!(
-            abi,
-            SpecAbi::Rust | SpecAbi::RustCall | SpecAbi::RustIntrinsic | SpecAbi::PlatformIntrinsic
-        )
+        matches!(abi, SpecAbi::Rust | SpecAbi::RustCall | SpecAbi::RustIntrinsic)
     }
 
     /// Find any fn-ptr types with external ABIs in `ty`.
