@@ -1554,6 +1554,8 @@ fn opaque_type_cycle_error(
     err.emit()
 }
 
+// FIXME(@lcnr): This should not be computed per coroutine, but instead once for
+// each typeck root.
 pub(super) fn check_coroutine_obligations(
     tcx: TyCtxt<'_>,
     def_id: LocalDefId,
@@ -1561,7 +1563,7 @@ pub(super) fn check_coroutine_obligations(
     debug_assert!(tcx.is_coroutine(def_id.to_def_id()));
 
     let typeck = tcx.typeck(def_id);
-    let param_env = tcx.param_env(def_id);
+    let param_env = tcx.param_env(typeck.hir_owner.def_id);
 
     let coroutine_interior_predicates = &typeck.coroutine_interior_predicates[&def_id];
     debug!(?coroutine_interior_predicates);

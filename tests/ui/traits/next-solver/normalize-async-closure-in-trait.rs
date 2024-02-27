@@ -1,5 +1,5 @@
 //@ compile-flags: -Znext-solver
-//@ known-bug: unknown
+//@ check-pass
 //@ edition:2021
 
 trait Foo {
