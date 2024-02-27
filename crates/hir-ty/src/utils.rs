@@ -112,6 +112,52 @@ impl Iterator for SuperTraits<'_> {
     }
 }
 
+pub(super) fn elaborate_clause_supertraits(
+    db: &dyn HirDatabase,
+    clauses: impl Iterator<Item = WhereClause>,
+) -> ClauseElaborator<'_> {
+    let mut elaborator = ClauseElaborator { db, stack: Vec::new(), seen: FxHashSet::default() };
+    elaborator.extend_deduped(clauses);
+
+    elaborator
+}
+
+pub(super) struct ClauseElaborator<'a> {
+    db: &'a dyn HirDatabase,
+    stack: Vec<WhereClause>,
+    seen: FxHashSet<WhereClause>,
+}
+
+impl<'a> ClauseElaborator<'a> {
+    fn extend_deduped(&mut self, clauses: impl IntoIterator<Item = WhereClause>) {
+        self.stack.extend(clauses.into_iter().filter(|c| self.seen.insert(c.clone())))
+    }
+
+    fn elaborate_supertrait(&mut self, clause: &WhereClause) {
+        if let WhereClause::Implemented(trait_ref) = clause {
+            direct_super_trait_refs(self.db, trait_ref, |t| {
+                let clause = WhereClause::Implemented(t);
+                if self.seen.insert(clause.clone()) {
+                    self.stack.push(clause);
+                }
+            });
+        }
+    }
+}
+
+impl Iterator for ClauseElaborator<'_> {
+    type Item = WhereClause;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        if let Some(next) = self.stack.pop() {
+            self.elaborate_supertrait(&next);
+            Some(next)
+        } else {
+            None
+        }
+    }
+}
+
 fn direct_super_traits(db: &dyn DefDatabase, trait_: TraitId, cb: impl FnMut(TraitId)) {
     let resolver = trait_.resolver(db);
     let generic_params = db.generic_params(trait_.into());

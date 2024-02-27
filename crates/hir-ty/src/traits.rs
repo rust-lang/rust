@@ -218,6 +218,15 @@ impl FnTrait {
         }
     }
 
+    pub const fn from_lang_item(lang_item: LangItem) -> Option<Self> {
+        match lang_item {
+            LangItem::FnOnce => Some(FnTrait::FnOnce),
+            LangItem::FnMut => Some(FnTrait::FnMut),
+            LangItem::Fn => Some(FnTrait::Fn),
+            _ => None,
+        }
+    }
+
     pub const fn to_chalk_ir(self) -> rust_ir::ClosureKind {
         match self {
             FnTrait::FnOnce => rust_ir::ClosureKind::FnOnce,
