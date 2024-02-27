@@ -315,7 +315,8 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         // The set of places that we are creating fake borrows of. If there are
         // no match guards then we don't need any fake borrows, so don't track
         // them.
-        let mut fake_borrows = match_has_guard.then(FxIndexSet::default);
+        let mut fake_borrows = match_has_guard
+            .then(|| util::FakeBorrowCollector::collect_fake_borrows(self, candidates));
 
         let otherwise_block = self.cfg.start_new_block();
 
@@ -1373,37 +1374,6 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         assert!(candidate.pre_binding_block.is_none());
         assert!(candidate.subcandidates.is_empty());
 
-        if let Some(fake_borrows) = fake_borrows {
-            // Insert a borrows of prefixes of places that are bound and are
-            // behind a dereference projection.
-            //
-            // These borrows are taken to avoid situations like the following:
-            //
-            // match x[10] {
-            //     _ if { x = &[0]; false } => (),
-            //     y => (), // Out of bounds array access!
-            // }
-            //
-            // match *x {
-            //     // y is bound by reference in the guard and then by copy in the
-            //     // arm, so y is 2 in the arm!
-            //     y if { y == 1 && (x = &2) == () } => y,
-            //     _ => 3,
-            // }
-            for Binding { source, .. } in &candidate.bindings {
-                if let Some(i) =
-                    source.projection.iter().rposition(|elem| elem == ProjectionElem::Deref)
-                {
-                    let proj_base = &source.projection[..i];
-
-                    fake_borrows.insert(Place {
-                        local: source.local,
-                        projection: self.tcx.mk_place_elems(proj_base),
-                    });
-                }
-            }
-        }
-
         candidate.pre_binding_block = Some(start_block);
         let otherwise_block = self.cfg.start_new_block();
         if candidate.has_guard {
@@ -1654,13 +1624,6 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 }
             }
             _ => {}
-        }
-
-        // Insert a Shallow borrow of any places that is switched on.
-        if let Some(fb) = fake_borrows
-            && let Some(resolved_place) = match_place.try_to_place(self)
-        {
-            fb.insert(resolved_place);
         }
 
         (match_place, test)
