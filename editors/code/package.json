@@ -1758,13 +1758,6 @@
                     "rs"
                 ],
                 "configuration": "language-configuration.json"
-            },
-            {
-                "id": "rustdoc",
-                "extensions": [
-                    ".rustdoc"
-                ],
-                "configuration": "./language-configuration-rustdoc.json"
             }
         ],
         "grammars": [
@@ -1772,27 +1765,6 @@
                 "language": "ra_syntax_tree",
                 "scopeName": "source.ra_syntax_tree",
                 "path": "ra_syntax_tree.tmGrammar.json"
-            },
-            {
-                "language": "rustdoc",
-                "scopeName": "text.html.markdown.rustdoc",
-                "path": "rustdoc.json",
-                "embeddedLanguages": {
-                    "meta.embedded.block.html": "html",
-                    "meta.embedded.block.markdown": "markdown",
-                    "meta.embedded.block.rust": "rust"
-                }
-            },
-            {
-                "injectTo": [
-                    "source.rust"
-                ],
-                "scopeName": "comment.markdown-cell-inject.rustdoc",
-                "path": "rustdoc-inject.json",
-                "embeddedLanguages": {
-                    "meta.embedded.block.rustdoc": "rustdoc",
-                    "meta.embedded.block.rust": "rust"
-                }
             }
         ],
         "problemMatchers": [
