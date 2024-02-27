@@ -307,6 +307,10 @@ pub fn git_clone(
     git_clone_inner(to_clone, dest, shallow_clone, repo_name)
 }
 
+/// This function differs from `git_clone` in how it handles *where* the repository will be cloned.
+/// In `git_clone`, it is cloned in the provided path. In this function, the path you provide is
+/// the parent folder. So if you pass "a" as folder and try to clone "b.git", it will be cloned into
+/// `a/b`.
 pub fn git_clone_root_dir(
     to_clone: &str,
     dest_parent_dir: &Path,
