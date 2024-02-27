@@ -1148,7 +1148,6 @@ fn iterate_trait_method_candidates(
 ) -> ControlFlow<()> {
     let db = table.db;
     let env = table.trait_env.clone();
-    let self_is_array = matches!(self_ty.kind(Interner), chalk_ir::TyKind::Array(..));
 
     let canonical_self_ty = table.canonicalize(self_ty.clone()).value;
 
@@ -1160,7 +1159,9 @@ fn iterate_trait_method_candidates(
         // 2021.
         // This is to make `[a].into_iter()` not break code with the new `IntoIterator` impl for
         // arrays.
-        if data.skip_array_during_method_dispatch && self_is_array {
+        if data.skip_array_during_method_dispatch
+            && matches!(self_ty.kind(Interner), chalk_ir::TyKind::Array(..))
+        {
             // FIXME: this should really be using the edition of the method name's span, in case it
             // comes from a macro
             if db.crate_graph()[env.krate].edition < Edition::Edition2021 {
