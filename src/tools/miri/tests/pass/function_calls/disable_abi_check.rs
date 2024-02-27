@@ -15,7 +15,7 @@ fn main() {
     unsafe {
         let _ = malloc(0);
         std::mem::transmute::<fn(), extern "C" fn()>(foo)();
-        std::intrinsics::r#try(
+        std::intrinsics::catch_unwind(
             std::mem::transmute::<extern "C" fn(*mut u8), _>(try_fn),
             std::ptr::null_mut(),
             |_, _| unreachable!(),

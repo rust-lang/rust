@@ -39,7 +39,7 @@ pub extern "C" fn start() -> usize {
     let data = 0x1234usize as *mut u8; // Something to recognize
 
     unsafe {
-        core::intrinsics::r#try(|data: *mut u8| {
+        core::intrinsics::catch_unwind(|data: *mut u8| {
             let _log_on_drop = LogOnDrop;
 
             logging::log_str(&alloc::format!("`r#try` called with ptr {:?}", data));

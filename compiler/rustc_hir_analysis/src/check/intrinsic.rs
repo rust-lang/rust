@@ -12,7 +12,7 @@ use rustc_hir as hir;
 use rustc_middle::traits::{ObligationCause, ObligationCauseCode};
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_span::def_id::LocalDefId;
-use rustc_span::symbol::{kw, sym};
+use rustc_span::symbol::sym;
 use rustc_span::{Span, Symbol};
 use rustc_target::spec::abi::Abi;
 
@@ -445,7 +445,7 @@ pub fn check_intrinsic_type(
                 )
             }
 
-            kw::Try => {
+            sym::catch_unwind => {
                 let mut_u8 = Ty::new_mut_ptr(tcx, tcx.types.u8);
                 let try_fn_ty = ty::Binder::dummy(tcx.mk_fn_sig(
                     [mut_u8],
