@@ -1,9 +1,0 @@
-error[E0284]: type annotations needed: cannot satisfy `_ == <<T as Id<_>>::Id as Unnormalizable>::Assoc`
-  --> $DIR/occurs-check-nested-alias.rs:36:9
-   |
-LL |     x = y;
-   |         ^ cannot satisfy `_ == <<T as Id<_>>::Id as Unnormalizable>::Assoc`
-
-error: aborting due to 1 previous error
-
-For more information about this error, try `rustc --explain E0284`.

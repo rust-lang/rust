@@ -1,7 +1,8 @@
 use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::ErrorGuaranteed;
 use rustc_infer::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
-use rustc_infer::infer::{NllRegionVariableOrigin, ObligationEmittingRelation};
+use rustc_infer::infer::NllRegionVariableOrigin;
+use rustc_infer::infer::{ObligationEmittingRelation, StructurallyRelateAliases};
 use rustc_infer::traits::{Obligation, PredicateObligations};
 use rustc_middle::mir::ConstraintCategory;
 use rustc_middle::traits::query::NoSolution;
@@ -546,6 +547,10 @@ impl<'bccx, 'tcx> TypeRelation<'tcx> for NllTypeRelating<'_, 'bccx, 'tcx> {
 impl<'bccx, 'tcx> ObligationEmittingRelation<'tcx> for NllTypeRelating<'_, 'bccx, 'tcx> {
     fn span(&self) -> Span {
         self.locations.span(self.type_checker.body)
+    }
+
+    fn structurally_relate_aliases(&self) -> StructurallyRelateAliases {
+        StructurallyRelateAliases::No
     }
 
     fn param_env(&self) -> ty::ParamEnv<'tcx> {

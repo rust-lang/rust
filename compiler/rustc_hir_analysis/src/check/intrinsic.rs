@@ -12,7 +12,7 @@ use rustc_hir as hir;
 use rustc_middle::traits::{ObligationCause, ObligationCauseCode};
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_span::def_id::LocalDefId;
-use rustc_span::symbol::{kw, sym};
+use rustc_span::symbol::sym;
 use rustc_span::{Span, Symbol};
 use rustc_target::spec::abi::Abi;
 
@@ -445,7 +445,7 @@ pub fn check_intrinsic_type(
                 )
             }
 
-            kw::Try => {
+            sym::catch_unwind => {
                 let mut_u8 = Ty::new_mut_ptr(tcx, tcx.types.u8);
                 let try_fn_ty = ty::Binder::dummy(tcx.mk_fn_sig(
                     [mut_u8],
@@ -510,6 +510,77 @@ pub fn check_intrinsic_type(
 
             sym::debug_assertions => (0, 1, Vec::new(), tcx.types.bool),
 
+            sym::simd_eq
+            | sym::simd_ne
+            | sym::simd_lt
+            | sym::simd_le
+            | sym::simd_gt
+            | sym::simd_ge => (2, 0, vec![param(0), param(0)], param(1)),
+            sym::simd_add
+            | sym::simd_sub
+            | sym::simd_mul
+            | sym::simd_rem
+            | sym::simd_div
+            | sym::simd_shl
+            | sym::simd_shr
+            | sym::simd_and
+            | sym::simd_or
+            | sym::simd_xor
+            | sym::simd_fmin
+            | sym::simd_fmax
+            | sym::simd_fpow
+            | sym::simd_saturating_add
+            | sym::simd_saturating_sub => (1, 0, vec![param(0), param(0)], param(0)),
+            sym::simd_arith_offset => (2, 0, vec![param(0), param(1)], param(0)),
+            sym::simd_neg
+            | sym::simd_bswap
+            | sym::simd_bitreverse
+            | sym::simd_ctlz
+            | sym::simd_cttz
+            | sym::simd_fsqrt
+            | sym::simd_fsin
+            | sym::simd_fcos
+            | sym::simd_fexp
+            | sym::simd_fexp2
+            | sym::simd_flog2
+            | sym::simd_flog10
+            | sym::simd_flog
+            | sym::simd_fabs
+            | sym::simd_ceil
+            | sym::simd_floor
+            | sym::simd_round
+            | sym::simd_trunc => (1, 0, vec![param(0)], param(0)),
+            sym::simd_fpowi => (1, 0, vec![param(0), tcx.types.i32], param(0)),
+            sym::simd_fma => (1, 0, vec![param(0), param(0), param(0)], param(0)),
+            sym::simd_gather => (3, 0, vec![param(0), param(1), param(2)], param(0)),
+            sym::simd_masked_load => (3, 0, vec![param(0), param(1), param(2)], param(2)),
+            sym::simd_masked_store => (3, 0, vec![param(0), param(1), param(2)], Ty::new_unit(tcx)),
+            sym::simd_scatter => (3, 0, vec![param(0), param(1), param(2)], Ty::new_unit(tcx)),
+            sym::simd_insert => (2, 0, vec![param(0), tcx.types.u32, param(1)], param(0)),
+            sym::simd_extract => (2, 0, vec![param(0), tcx.types.u32], param(1)),
+            sym::simd_cast
+            | sym::simd_as
+            | sym::simd_cast_ptr
+            | sym::simd_expose_addr
+            | sym::simd_from_exposed_addr => (2, 0, vec![param(0)], param(1)),
+            sym::simd_bitmask => (2, 0, vec![param(0)], param(1)),
+            sym::simd_select | sym::simd_select_bitmask => {
+                (2, 0, vec![param(0), param(1), param(1)], param(1))
+            }
+            sym::simd_reduce_all | sym::simd_reduce_any => (1, 0, vec![param(0)], tcx.types.bool),
+            sym::simd_reduce_add_ordered | sym::simd_reduce_mul_ordered => {
+                (2, 0, vec![param(0), param(1)], param(1))
+            }
+            sym::simd_reduce_add_unordered
+            | sym::simd_reduce_mul_unordered
+            | sym::simd_reduce_and
+            | sym::simd_reduce_or
+            | sym::simd_reduce_xor
+            | sym::simd_reduce_min
+            | sym::simd_reduce_max => (2, 0, vec![param(0)], param(1)),
+            sym::simd_shuffle => (3, 0, vec![param(0), param(0), param(1)], param(2)),
+            sym::simd_shuffle_generic => (2, 1, vec![param(0), param(0)], param(1)),
+
             other => {
                 tcx.dcx().emit_err(UnrecognizedIntrinsicFunction { span, name: other });
                 return;
@@ -520,103 +591,4 @@ pub fn check_intrinsic_type(
     let sig = tcx.mk_fn_sig(inputs, output, false, unsafety, abi);
     let sig = ty::Binder::bind_with_vars(sig, bound_vars);
     equate_intrinsic_type(tcx, span, intrinsic_id, n_tps, n_lts, n_cts, sig)
-}
-
-/// Type-check `extern "platform-intrinsic" { ... }` functions.
-pub fn check_platform_intrinsic_type(
-    tcx: TyCtxt<'_>,
-    intrinsic_id: LocalDefId,
-    span: Span,
-    name: Symbol,
-) {
-    let generics = tcx.generics_of(intrinsic_id);
-    let param = |n| {
-        if let Some(&ty::GenericParamDef {
-            name, kind: ty::GenericParamDefKind::Type { .. }, ..
-        }) = generics.opt_param_at(n as usize, tcx)
-        {
-            Ty::new_param(tcx, n, name)
-        } else {
-            Ty::new_error_with_message(tcx, span, "expected param")
-        }
-    };
-
-    let (n_tps, n_cts, inputs, output) = match name {
-        sym::simd_eq | sym::simd_ne | sym::simd_lt | sym::simd_le | sym::simd_gt | sym::simd_ge => {
-            (2, 0, vec![param(0), param(0)], param(1))
-        }
-        sym::simd_add
-        | sym::simd_sub
-        | sym::simd_mul
-        | sym::simd_rem
-        | sym::simd_div
-        | sym::simd_shl
-        | sym::simd_shr
-        | sym::simd_and
-        | sym::simd_or
-        | sym::simd_xor
-        | sym::simd_fmin
-        | sym::simd_fmax
-        | sym::simd_fpow
-        | sym::simd_saturating_add
-        | sym::simd_saturating_sub => (1, 0, vec![param(0), param(0)], param(0)),
-        sym::simd_arith_offset => (2, 0, vec![param(0), param(1)], param(0)),
-        sym::simd_neg
-        | sym::simd_bswap
-        | sym::simd_bitreverse
-        | sym::simd_ctlz
-        | sym::simd_cttz
-        | sym::simd_fsqrt
-        | sym::simd_fsin
-        | sym::simd_fcos
-        | sym::simd_fexp
-        | sym::simd_fexp2
-        | sym::simd_flog2
-        | sym::simd_flog10
-        | sym::simd_flog
-        | sym::simd_fabs
-        | sym::simd_ceil
-        | sym::simd_floor
-        | sym::simd_round
-        | sym::simd_trunc => (1, 0, vec![param(0)], param(0)),
-        sym::simd_fpowi => (1, 0, vec![param(0), tcx.types.i32], param(0)),
-        sym::simd_fma => (1, 0, vec![param(0), param(0), param(0)], param(0)),
-        sym::simd_gather => (3, 0, vec![param(0), param(1), param(2)], param(0)),
-        sym::simd_masked_load => (3, 0, vec![param(0), param(1), param(2)], param(2)),
-        sym::simd_masked_store => (3, 0, vec![param(0), param(1), param(2)], Ty::new_unit(tcx)),
-        sym::simd_scatter => (3, 0, vec![param(0), param(1), param(2)], Ty::new_unit(tcx)),
-        sym::simd_insert => (2, 0, vec![param(0), tcx.types.u32, param(1)], param(0)),
-        sym::simd_extract => (2, 0, vec![param(0), tcx.types.u32], param(1)),
-        sym::simd_cast
-        | sym::simd_as
-        | sym::simd_cast_ptr
-        | sym::simd_expose_addr
-        | sym::simd_from_exposed_addr => (2, 0, vec![param(0)], param(1)),
-        sym::simd_bitmask => (2, 0, vec![param(0)], param(1)),
-        sym::simd_select | sym::simd_select_bitmask => {
-            (2, 0, vec![param(0), param(1), param(1)], param(1))
-        }
-        sym::simd_reduce_all | sym::simd_reduce_any => (1, 0, vec![param(0)], tcx.types.bool),
-        sym::simd_reduce_add_ordered | sym::simd_reduce_mul_ordered => {
-            (2, 0, vec![param(0), param(1)], param(1))
-        }
-        sym::simd_reduce_add_unordered
-        | sym::simd_reduce_mul_unordered
-        | sym::simd_reduce_and
-        | sym::simd_reduce_or
-        | sym::simd_reduce_xor
-        | sym::simd_reduce_min
-        | sym::simd_reduce_max => (2, 0, vec![param(0)], param(1)),
-        sym::simd_shuffle => (3, 0, vec![param(0), param(0), param(1)], param(2)),
-        sym::simd_shuffle_generic => (2, 1, vec![param(0), param(0)], param(1)),
-        _ => {
-            let msg = format!("unrecognized platform-specific intrinsic function: `{name}`");
-            tcx.dcx().span_err(span, msg);
-            return;
-        }
-    };
-
-    let sig = tcx.mk_fn_sig(inputs, output, false, hir::Unsafety::Unsafe, Abi::PlatformIntrinsic);
-    let sig = ty::Binder::dummy(sig);
-    equate_intrinsic_type(tcx, span, intrinsic_id, n_tps, 0, n_cts, sig)
 }

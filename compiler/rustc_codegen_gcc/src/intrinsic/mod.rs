@@ -21,7 +21,7 @@ use rustc_middle::ty::{self, Instance, Ty};
 use rustc_middle::ty::layout::LayoutOf;
 #[cfg(feature="master")]
 use rustc_middle::ty::layout::{FnAbiOf, HasTyCtxt};
-use rustc_span::{Span, Symbol, symbol::kw, sym};
+use rustc_span::{Span, Symbol, sym};
 use rustc_target::abi::HasDataLayout;
 use rustc_target::abi::call::{ArgAbi, FnAbi, PassMode};
 use rustc_target::spec::PanicStrategy;
@@ -129,7 +129,7 @@ impl<'a, 'gcc, 'tcx> IntrinsicCallMethods<'tcx> for Builder<'a, 'gcc, 'tcx> {
                     let res = self.context.new_call(None, builtin, &[a]);
                     self.icmp(IntPredicate::IntEQ, res, self.const_i32(0))
                 }
-                kw::Try => {
+                sym::catch_unwind => {
                     try_intrinsic(
                         self,
                         args[0].immediate(),

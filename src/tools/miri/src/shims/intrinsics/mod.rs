@@ -54,7 +54,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
 
         // Some intrinsics are special and need the "ret".
         match intrinsic_name {
-            "try" => return this.handle_try(args, dest, ret),
+            "catch_unwind" => return this.handle_catch_unwind(args, dest, ret),
             _ => {}
         }
 

@@ -16,6 +16,6 @@ trait Trait {}
 impl<T: Copy> Trait for T {}
 struct LocalTy;
 impl Trait for <LocalTy as Overflow>::Assoc {}
-//~^ ERROR conflicting implementations of trait `Trait` for type `<LocalTy as Overflow>::Assoc`
+//~^ ERROR conflicting implementations of trait `Trait`
 
 fn main() {}

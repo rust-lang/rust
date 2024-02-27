@@ -1,8 +1,8 @@
 //@run-pass
 //@ignore-endian-big behavior of simd_select_bitmask is endian-specific
-#![feature(repr_simd, platform_intrinsics)]
+#![feature(repr_simd, intrinsics)]
 
-extern "platform-intrinsic" {
+extern "rust-intrinsic" {
     fn simd_bitmask<T, U>(v: T) -> U;
     fn simd_select_bitmask<T, U>(m: T, a: U, b: U) -> U;
 }

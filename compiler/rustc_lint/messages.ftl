@@ -244,9 +244,28 @@ lint_hidden_unicode_codepoints = unicode codepoint changing visible direction of
 lint_identifier_non_ascii_char = identifier contains non-ASCII characters
 
 lint_identifier_uncommon_codepoints = identifier contains {$codepoints_len ->
-    [one] an uncommon Unicode codepoint
-    *[other] uncommon Unicode codepoints
+    [one] { $identifier_type ->
+        [Exclusion] a character from an archaic script
+        [Technical] a character that is for non-linguistic, specialized usage
+        [Limited_Use] a character from a script in limited use
+        [Not_NFKC] a non normalized (NFKC) character
+        *[other] an uncommon character
+    }
+    *[other] { $identifier_type ->
+        [Exclusion] {$codepoints_len} characters from archaic scripts
+        [Technical] {$codepoints_len} characters that are for non-linguistic, specialized usage
+        [Limited_Use] {$codepoints_len} characters from scripts in limited use
+        [Not_NFKC] {$codepoints_len} non normalized (NFKC) characters
+        *[other] uncommon characters
+    }
 }: {$codepoints}
+    .note = {$codepoints_len ->
+        [one] this character is
+        *[other] these characters are
+    } included in the{$identifier_type ->
+        [Restricted] {""}
+        *[other] {" "}{$identifier_type}
+    } Unicode general security profile
 
 lint_ignored_unless_crate_specified = {$level}({$name}) is ignored unless specified at crate level
 

@@ -1,7 +1,7 @@
 //@ compile-flags: -O --crate-type=rlib
-#![feature(platform_intrinsics, repr_simd)]
+#![feature(intrinsics, repr_simd)]
 
-extern "platform-intrinsic" {
+extern "rust-intrinsic" {
     fn simd_fabs<T>(x: T) -> T;
     fn simd_eq<T, U>(x: T, y: T) -> U;
 }

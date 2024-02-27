@@ -99,7 +99,7 @@ impl<'tcx> Collector<'tcx> {
 
         let sess = self.tcx.sess;
 
-        if matches!(abi, Abi::Rust | Abi::RustIntrinsic | Abi::PlatformIntrinsic) {
+        if matches!(abi, Abi::Rust | Abi::RustIntrinsic) {
             return;
         }
 

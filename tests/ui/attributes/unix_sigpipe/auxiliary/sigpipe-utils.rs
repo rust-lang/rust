@@ -17,17 +17,17 @@ pub fn assert_sigpipe_handler(expected_handler: SignalHandler) {
         target_os = "android",
     )))]
     {
-        let prev = unsafe { libc::signal(libc::SIGPIPE, libc::SIG_IGN) };
+        let actual = unsafe {
+            let mut actual: libc::sigaction = std::mem::zeroed();
+            libc::sigaction(libc::SIGPIPE, std::ptr::null(), &mut actual);
+            actual.sa_sigaction
+        };
 
         let expected = match expected_handler {
             SignalHandler::Ignore => libc::SIG_IGN,
             SignalHandler::Default => libc::SIG_DFL,
         };
-        assert_eq!(prev, expected, "expected sigpipe value matches actual value");
 
-        // Unlikely to matter, but restore the old value anyway
-        unsafe {
-            libc::signal(libc::SIGPIPE, prev);
-        };
+        assert_eq!(actual, expected, "actual and expected SIGPIPE disposition differs");
     }
 }

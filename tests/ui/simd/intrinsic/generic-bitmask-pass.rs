@@ -6,7 +6,7 @@
 
 // Test that the simd_bitmask intrinsic produces correct results.
 
-#![feature(repr_simd, platform_intrinsics)]
+#![feature(repr_simd, intrinsics)]
 #[allow(non_camel_case_types)]
 
 #[repr(simd)]
@@ -21,7 +21,7 @@ struct u8x4(pub u8, pub u8, pub u8, pub u8);
 #[derive(Copy, Clone, PartialEq, Debug)]
 struct Tx4<T>(pub T, pub T, pub T, pub T);
 
-extern "platform-intrinsic" {
+extern "rust-intrinsic" {
     fn simd_bitmask<T, U>(x: T) -> U;
 }
 

@@ -63,21 +63,12 @@ impl<'a, 'tcx> InspectCandidate<'a, 'tcx> {
             infcx.probe(|_| {
                 let mut instantiated_goals = vec![];
                 for goal in &self.nested_goals {
-                    let goal = match ProofTreeBuilder::instantiate_canonical_state(
+                    let goal = ProofTreeBuilder::instantiate_canonical_state(
                         infcx,
                         self.goal.goal.param_env,
                         self.goal.orig_values,
                         *goal,
-                    ) {
-                        Ok((_goals, goal)) => goal,
-                        Err(NoSolution) => {
-                            warn!(
-                                "unexpected failure when instantiating {:?}: {:?}",
-                                goal, self.nested_goals
-                            );
-                            return ControlFlow::Continue(());
-                        }
-                    };
+                    );
                     instantiated_goals.push(goal);
                 }
 

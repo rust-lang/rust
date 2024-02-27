@@ -185,9 +185,12 @@ function preLoadCss(cssUrl) {
 (function() {
     const isHelpPage = window.location.pathname.endsWith("/help.html");
 
-    function loadScript(url) {
+    function loadScript(url, errorCallback) {
         const script = document.createElement("script");
         script.src = url;
+        if (errorCallback !== undefined) {
+            script.onerror = errorCallback;
+        }
         document.head.append(script);
     }
 
@@ -292,11 +295,16 @@ function preLoadCss(cssUrl) {
                 return;
             }
             let searchLoaded = false;
+            // If you're browsing the nightly docs, the page might need to be refreshed for the
+            // search to work because the hash of the JS scripts might have changed.
+            function sendSearchForm() {
+                document.getElementsByClassName("search-form")[0].submit();
+            }
             function loadSearch() {
                 if (!searchLoaded) {
                     searchLoaded = true;
-                    loadScript(getVar("static-root-path") + getVar("search-js"));
-                    loadScript(resourcePath("search-index", ".js"));
+                    loadScript(getVar("static-root-path") + getVar("search-js"), sendSearchForm);
+                    loadScript(resourcePath("search-index", ".js"), sendSearchForm);
                 }
             }
 

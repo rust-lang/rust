@@ -1526,7 +1526,7 @@ pub fn noop_visit_expr<T: MutVisitor>(
         }
         ExprKind::Try(expr) => vis.visit_expr(expr),
         ExprKind::TryBlock(body) => vis.visit_block(body),
-        ExprKind::Lit(_) | ExprKind::IncludedBytes(..) | ExprKind::Err => {}
+        ExprKind::Lit(_) | ExprKind::IncludedBytes(..) | ExprKind::Err(_) | ExprKind::Dummy => {}
     }
     vis.visit_id(id);
     vis.visit_span(span);
@@ -1642,7 +1642,7 @@ impl DummyAstNode for Expr {
     fn dummy() -> Self {
         Expr {
             id: DUMMY_NODE_ID,
-            kind: ExprKind::Err,
+            kind: ExprKind::Dummy,
             span: Default::default(),
             attrs: Default::default(),
             tokens: Default::default(),

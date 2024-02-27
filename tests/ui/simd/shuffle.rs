@@ -2,11 +2,11 @@
 //@ revisions: opt noopt
 //@[noopt] compile-flags: -Copt-level=0
 //@[opt] compile-flags: -O
-#![feature(repr_simd, platform_intrinsics)]
+#![feature(repr_simd, intrinsics)]
 #![allow(incomplete_features)]
 #![feature(adt_const_params)]
 
-extern "platform-intrinsic" {
+extern "rust-intrinsic" {
     fn simd_shuffle<T, I, U>(a: T, b: T, i: I) -> U;
 }
 

@@ -3,9 +3,9 @@
 //
 //@ run-pass
 //@ compile-flags: -Zmir-opt-level=4
-#![feature(platform_intrinsics, repr_simd)]
+#![feature(intrinsics, repr_simd)]
 
-extern "platform-intrinsic" {
+extern "rust-intrinsic" {
     fn simd_shuffle<T, I, U>(x: T, y: T, idx: I) -> U;
 }
 

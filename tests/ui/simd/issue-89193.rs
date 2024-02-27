@@ -3,14 +3,14 @@
 // Test that simd gather instructions on slice of usize don't cause crash
 // See issue #89183 - https://github.com/rust-lang/rust/issues/89193
 
-#![feature(repr_simd, platform_intrinsics)]
+#![feature(repr_simd, intrinsics)]
 #![allow(non_camel_case_types)]
 
 #[repr(simd)]
 #[derive(Copy, Clone, PartialEq, Debug)]
 struct x4<T>(pub T, pub T, pub T, pub T);
 
-extern "platform-intrinsic" {
+extern "rust-intrinsic" {
     fn simd_gather<T, U, V>(x: T, y: U, z: V) -> T;
 }
 

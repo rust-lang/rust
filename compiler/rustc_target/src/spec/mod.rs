@@ -2448,7 +2448,6 @@ impl Target {
             | System { .. }
             | RustIntrinsic
             | RustCall
-            | PlatformIntrinsic
             | Unadjusted
             | Cdecl { .. }
             | RustCold => true,

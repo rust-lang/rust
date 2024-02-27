@@ -162,22 +162,14 @@ impl<'a> Parser<'a> {
 
     fn parse_crate_mod(&mut self) -> Result<ast::Crate, ParserError> {
         let mut parser = AssertUnwindSafe(&mut self.parser);
-
-        // rustfmt doesn't use `run_compiler` like other tools, so it must emit
-        // any stashed diagnostics itself, otherwise the `DiagCtxt` will assert
-        // when dropped. The final result here combines the parsing result and
-        // the `emit_stashed_diagnostics` result.
-        let parse_res = catch_unwind(move || parser.parse_crate_mod());
-        let stashed_res = self.parser.dcx().emit_stashed_diagnostics();
         let err = Err(ParserError::ParsePanicError);
-        match (parse_res, stashed_res) {
-            (Ok(Ok(k)), None) => Ok(k),
-            (Ok(Ok(_)), Some(_guar)) => err,
-            (Ok(Err(db)), _) => {
+        match catch_unwind(move || parser.parse_crate_mod()) {
+            Ok(Ok(k)) => Ok(k),
+            Ok(Err(db)) => {
                 db.emit();
                 err
             }
-            (Err(_), _) => err,
+            Err(_) => err,
         }
     }
 }

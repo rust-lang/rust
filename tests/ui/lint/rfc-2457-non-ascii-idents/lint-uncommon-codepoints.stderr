@@ -1,26 +1,31 @@
-error: identifier contains an uncommon Unicode codepoint: 'µ'
+error: identifier contains a non normalized (NFKC) character: 'µ'
   --> $DIR/lint-uncommon-codepoints.rs:3:7
    |
 LL | const µ: f64 = 0.000001;
    |       ^
    |
+   = note: this character is included in the Not_NFKC Unicode general security profile
 note: the lint level is defined here
   --> $DIR/lint-uncommon-codepoints.rs:1:9
    |
 LL | #![deny(uncommon_codepoints)]
    |         ^^^^^^^^^^^^^^^^^^^
 
-error: identifier contains an uncommon Unicode codepoint: 'ĳ'
+error: identifier contains a non normalized (NFKC) character: 'ĳ'
   --> $DIR/lint-uncommon-codepoints.rs:6:4
    |
 LL | fn dĳkstra() {}
    |    ^^^^^^^
+   |
+   = note: this character is included in the Not_NFKC Unicode general security profile
 
-error: identifier contains uncommon Unicode codepoints: 'ㇻ', 'ㇲ', and 'ㇳ'
-  --> $DIR/lint-uncommon-codepoints.rs:9:9
+error: identifier contains uncommon characters: 'ㇻ', 'ㇲ', and 'ㇳ'
+  --> $DIR/lint-uncommon-codepoints.rs:10:9
    |
 LL |     let ㇻㇲㇳ = "rust";
    |         ^^^^^^
+   |
+   = note: these characters are included in the Unicode general security profile
 
 warning: constant `µ` should have an upper case name
   --> $DIR/lint-uncommon-codepoints.rs:3:7

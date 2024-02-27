@@ -2328,11 +2328,11 @@ impl<'a> Parser<'a> {
             let _ = self.parse_expr()?;
             self.expect_semi()?; // `;`
             let span = eq_sp.to(self.prev_token.span);
-            self.dcx().emit_err(errors::FunctionBodyEqualsExpr {
+            let guar = self.dcx().emit_err(errors::FunctionBodyEqualsExpr {
                 span,
                 sugg: errors::FunctionBodyEqualsExprSugg { eq: eq_sp, semi: self.prev_token.span },
             });
-            (AttrVec::new(), Some(self.mk_block_err(span)))
+            (AttrVec::new(), Some(self.mk_block_err(span, guar)))
         } else {
             let expected = if req_body {
                 &[token::OpenDelim(Delimiter::Brace)][..]

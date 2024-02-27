@@ -34,7 +34,7 @@ use rustc_session::lint::BuiltinLintDiagnostics;
 use rustc_session::parse::feature_err;
 use rustc_session::{Limit, Session};
 use rustc_span::symbol::{sym, Ident};
-use rustc_span::{FileName, LocalExpnId, Span};
+use rustc_span::{ErrorGuaranteed, FileName, LocalExpnId, Span};
 
 use smallvec::SmallVec;
 use std::ops::Deref;
@@ -232,8 +232,8 @@ pub enum SupportsMacroExpansion {
 }
 
 impl AstFragmentKind {
-    pub(crate) fn dummy(self, span: Span) -> AstFragment {
-        self.make_from(DummyResult::any(span)).expect("couldn't create a dummy AST fragment")
+    pub(crate) fn dummy(self, span: Span, guar: ErrorGuaranteed) -> AstFragment {
+        self.make_from(DummyResult::any(span, guar)).expect("couldn't create a dummy AST fragment")
     }
 
     pub fn supports_macro_expansion(self) -> SupportsMacroExpansion {
@@ -604,14 +604,14 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
         (fragment, invocations)
     }
 
-    fn error_recursion_limit_reached(&mut self) {
+    fn error_recursion_limit_reached(&mut self) -> ErrorGuaranteed {
         let expn_data = self.cx.current_expansion.id.expn_data();
         let suggested_limit = match self.cx.ecfg.recursion_limit {
             Limit(0) => Limit(2),
             limit => limit * 2,
         };
 
-        self.cx.dcx().emit_err(RecursionLimitReached {
+        let guar = self.cx.dcx().emit_err(RecursionLimitReached {
             span: expn_data.call_site,
             descr: expn_data.kind.descr(),
             suggested_limit,
@@ -619,14 +619,21 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
         });
 
         self.cx.trace_macros_diag();
+        guar
     }
 
     /// A macro's expansion does not fit in this fragment kind.
     /// For example, a non-type macro in a type position.
-    fn error_wrong_fragment_kind(&mut self, kind: AstFragmentKind, mac: &ast::MacCall, span: Span) {
-        self.cx.dcx().emit_err(WrongFragmentKind { span, kind: kind.name(), name: &mac.path });
-
+    fn error_wrong_fragment_kind(
+        &mut self,
+        kind: AstFragmentKind,
+        mac: &ast::MacCall,
+        span: Span,
+    ) -> ErrorGuaranteed {
+        let guar =
+            self.cx.dcx().emit_err(WrongFragmentKind { span, kind: kind.name(), name: &mac.path });
         self.cx.trace_macros_diag();
+        guar
     }
 
     fn expand_invoc(
@@ -634,36 +641,41 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
         invoc: Invocation,
         ext: &SyntaxExtensionKind,
     ) -> ExpandResult<AstFragment, Invocation> {
-        let recursion_limit =
-            self.cx.reduced_recursion_limit.unwrap_or(self.cx.ecfg.recursion_limit);
+        let recursion_limit = match self.cx.reduced_recursion_limit {
+            Some((limit, _)) => limit,
+            None => self.cx.ecfg.recursion_limit,
+        };
+
         if !recursion_limit.value_within_limit(self.cx.current_expansion.depth) {
-            if self.cx.reduced_recursion_limit.is_none() {
-                self.error_recursion_limit_reached();
-            }
+            let guar = match self.cx.reduced_recursion_limit {
+                Some((_, guar)) => guar,
+                None => self.error_recursion_limit_reached(),
+            };
 
             // Reduce the recursion limit by half each time it triggers.
-            self.cx.reduced_recursion_limit = Some(recursion_limit / 2);
+            self.cx.reduced_recursion_limit = Some((recursion_limit / 2, guar));
 
-            return ExpandResult::Ready(invoc.fragment_kind.dummy(invoc.span()));
+            return ExpandResult::Ready(invoc.fragment_kind.dummy(invoc.span(), guar));
         }
 
         let (fragment_kind, span) = (invoc.fragment_kind, invoc.span());
         ExpandResult::Ready(match invoc.kind {
             InvocationKind::Bang { mac, .. } => match ext {
                 SyntaxExtensionKind::Bang(expander) => {
-                    let Ok(tok_result) = expander.expand(self.cx, span, mac.args.tokens.clone())
-                    else {
-                        return ExpandResult::Ready(fragment_kind.dummy(span));
-                    };
-                    self.parse_ast_fragment(tok_result, fragment_kind, &mac.path, span)
+                    match expander.expand(self.cx, span, mac.args.tokens.clone()) {
+                        Ok(tok_result) => {
+                            self.parse_ast_fragment(tok_result, fragment_kind, &mac.path, span)
+                        }
+                        Err(guar) => return ExpandResult::Ready(fragment_kind.dummy(span, guar)),
+                    }
                 }
                 SyntaxExtensionKind::LegacyBang(expander) => {
                     let tok_result = expander.expand(self.cx, span, mac.args.tokens.clone());
                     let result = if let Some(result) = fragment_kind.make_from(tok_result) {
                         result
                     } else {
-                        self.error_wrong_fragment_kind(fragment_kind, &mac, span);
-                        fragment_kind.dummy(span)
+                        let guar = self.error_wrong_fragment_kind(fragment_kind, &mac, span);
+                        fragment_kind.dummy(span, guar)
                     };
                     result
                 }
@@ -705,11 +717,15 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                         self.cx.dcx().emit_err(UnsupportedKeyValue { span });
                     }
                     let inner_tokens = attr_item.args.inner_tokens();
-                    let Ok(tok_result) = expander.expand(self.cx, span, inner_tokens, tokens)
-                    else {
-                        return ExpandResult::Ready(fragment_kind.dummy(span));
-                    };
-                    self.parse_ast_fragment(tok_result, fragment_kind, &attr_item.path, span)
+                    match expander.expand(self.cx, span, inner_tokens, tokens) {
+                        Ok(tok_result) => self.parse_ast_fragment(
+                            tok_result,
+                            fragment_kind,
+                            &attr_item.path,
+                            span,
+                        ),
+                        Err(guar) => return ExpandResult::Ready(fragment_kind.dummy(span, guar)),
+                    }
                 }
                 SyntaxExtensionKind::LegacyAttr(expander) => {
                     match validate_attr::parse_meta(&self.cx.sess.parse_sess, &attr) {
@@ -729,15 +745,15 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                                 AstFragmentKind::Expr | AstFragmentKind::MethodReceiverExpr
                             ) && items.is_empty()
                             {
-                                self.cx.dcx().emit_err(RemoveExprNotSupported { span });
-                                fragment_kind.dummy(span)
+                                let guar = self.cx.dcx().emit_err(RemoveExprNotSupported { span });
+                                fragment_kind.dummy(span, guar)
                             } else {
                                 fragment_kind.expect_from_annotatables(items)
                             }
                         }
                         Err(err) => {
-                            err.emit();
-                            fragment_kind.dummy(span)
+                            let guar = err.emit();
+                            fragment_kind.dummy(span, guar)
                         }
                     }
                 }
@@ -857,9 +873,9 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                     err.span(span);
                 }
                 annotate_err_with_kind(&mut err, kind, span);
-                err.emit();
+                let guar = err.emit();
                 self.cx.trace_macros_diag();
-                kind.dummy(span)
+                kind.dummy(span, guar)
             }
         }
     }

@@ -1,8 +1,8 @@
-error[E0284]: type annotations needed: cannot satisfy `A == B`
-  --> $DIR/two_tait_defining_each_other2.rs:11:5
+error[E0284]: type annotations needed: cannot satisfy `_ == A`
+  --> $DIR/two_tait_defining_each_other2.rs:10:8
    |
-LL |     x // B's hidden type is A (opaquely)
-   |     ^ cannot satisfy `A == B`
+LL | fn muh(x: A) -> B {
+   |        ^ cannot satisfy `_ == A`
 
 error: aborting due to 1 previous error
 

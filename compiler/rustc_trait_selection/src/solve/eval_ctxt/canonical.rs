@@ -18,7 +18,7 @@ use rustc_infer::infer::canonical::query_response::make_query_region_constraints
 use rustc_infer::infer::canonical::CanonicalVarValues;
 use rustc_infer::infer::canonical::{CanonicalExt, QueryRegionConstraints};
 use rustc_infer::infer::resolve::EagerResolver;
-use rustc_infer::infer::{DefineOpaqueTypes, InferCtxt, InferOk};
+use rustc_infer::infer::{InferCtxt, InferOk};
 use rustc_middle::infer::canonical::Canonical;
 use rustc_middle::traits::query::NoSolution;
 use rustc_middle::traits::solve::{
@@ -80,7 +80,7 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
     ///   the values inferred while solving the instantiated goal.
     /// - `external_constraints`: additional constraints which aren't expressible
     ///   using simple unification of inference variables.
-    #[instrument(level = "debug", skip(self))]
+    #[instrument(level = "debug", skip(self), ret)]
     pub(in crate::solve) fn evaluate_added_goals_and_make_canonical_response(
         &mut self,
         certainty: Certainty,
@@ -191,7 +191,7 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
         param_env: ty::ParamEnv<'tcx>,
         original_values: Vec<ty::GenericArg<'tcx>>,
         response: CanonicalResponse<'tcx>,
-    ) -> Result<(Certainty, Vec<Goal<'tcx, ty::Predicate<'tcx>>>), NoSolution> {
+    ) -> Certainty {
         let instantiation = Self::compute_query_response_instantiation_values(
             self.infcx,
             &original_values,
@@ -201,15 +201,13 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
         let Response { var_values, external_constraints, certainty } =
             response.instantiate(self.tcx(), &instantiation);
 
-        let nested_goals =
-            Self::unify_query_var_values(self.infcx, param_env, &original_values, var_values)?;
+        Self::unify_query_var_values(self.infcx, param_env, &original_values, var_values);
 
         let ExternalConstraintsData { region_constraints, opaque_types } =
             external_constraints.deref();
         self.register_region_constraints(region_constraints);
-        self.register_opaque_types(param_env, opaque_types)?;
-
-        Ok((certainty, nested_goals))
+        self.register_new_opaque_types(param_env, opaque_types);
+        certainty
     }
 
     /// This returns the canoncial variable values to instantiate the bound variables of
@@ -296,32 +294,36 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
         CanonicalVarValues { var_values }
     }
 
-    #[instrument(level = "debug", skip(infcx, param_env), ret)]
+    /// Unify the `original_values` with the `var_values` returned by the canonical query..
+    ///
+    /// This assumes that this unification will always succeed. This is the case when
+    /// applying a query response right away. However, calling a canonical query, doing any
+    /// other kind of trait solving, and only then instantiating the result of the query
+    /// can cause the instantiation to fail. This is not supported and we ICE in this case.
+    ///
+    /// We always structurally instantiate aliases. Relating aliases needs to be different
+    /// depending on whether the alias is *rigid* or not. We're only really able to tell
+    /// whether an alias is rigid by using the trait solver. When instantiating a response
+    /// from the solver we assume that the solver correctly handled aliases and therefore
+    /// always relate them structurally here.
+    #[instrument(level = "debug", skip(infcx), ret)]
     fn unify_query_var_values(
         infcx: &InferCtxt<'tcx>,
         param_env: ty::ParamEnv<'tcx>,
         original_values: &[ty::GenericArg<'tcx>],
         var_values: CanonicalVarValues<'tcx>,
-    ) -> Result<Vec<Goal<'tcx, ty::Predicate<'tcx>>>, NoSolution> {
+    ) {
         assert_eq!(original_values.len(), var_values.len());
 
-        let mut nested_goals = vec![];
+        let cause = ObligationCause::dummy();
         for (&orig, response) in iter::zip(original_values, var_values.var_values) {
-            nested_goals.extend(
-                infcx
-                    .at(&ObligationCause::dummy(), param_env)
-                    .eq(DefineOpaqueTypes::No, orig, response)
-                    .map(|InferOk { value: (), obligations }| {
-                        obligations.into_iter().map(|o| Goal::from(o))
-                    })
-                    .map_err(|e| {
-                        debug!(?e, "failed to equate");
-                        NoSolution
-                    })?,
-            );
+            let InferOk { value: (), obligations } = infcx
+                .at(&cause, param_env)
+                .trace(orig, response)
+                .eq_structurally_relating_aliases(orig, response)
+                .unwrap();
+            assert!(obligations.is_empty());
         }
-
-        Ok(nested_goals)
     }
 
     fn register_region_constraints(&mut self, region_constraints: &QueryRegionConstraints<'tcx>) {
@@ -333,21 +335,17 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
             }
         }
 
-        for member_constraint in &region_constraints.member_constraints {
-            // FIXME: Deal with member constraints :<
-            let _ = member_constraint;
-        }
+        assert!(region_constraints.member_constraints.is_empty());
     }
 
-    fn register_opaque_types(
+    fn register_new_opaque_types(
         &mut self,
         param_env: ty::ParamEnv<'tcx>,
         opaque_types: &[(ty::OpaqueTypeKey<'tcx>, Ty<'tcx>)],
-    ) -> Result<(), NoSolution> {
+    ) {
         for &(key, ty) in opaque_types {
-            self.insert_hidden_type(key, param_env, ty)?;
+            self.insert_hidden_type(key, param_env, ty).unwrap();
         }
-        Ok(())
     }
 }
 
@@ -366,19 +364,21 @@ impl<'tcx> inspect::ProofTreeBuilder<'tcx> {
         )
     }
 
+    /// Instantiate a `CanonicalState`. This assumes that unifying the var values
+    /// trivially succeeds. Adding any inference constraints which weren't present when
+    /// originally computing the canonical query can result in bugs.
     pub fn instantiate_canonical_state<T: TypeFoldable<TyCtxt<'tcx>>>(
         infcx: &InferCtxt<'tcx>,
         param_env: ty::ParamEnv<'tcx>,
         original_values: &[ty::GenericArg<'tcx>],
         state: inspect::CanonicalState<'tcx, T>,
-    ) -> Result<(Vec<Goal<'tcx, ty::Predicate<'tcx>>>, T), NoSolution> {
+    ) -> T {
         let instantiation =
             EvalCtxt::compute_query_response_instantiation_values(infcx, original_values, &state);
 
         let inspect::State { var_values, data } = state.instantiate(infcx.tcx, &instantiation);
 
-        let nested_goals =
-            EvalCtxt::unify_query_var_values(infcx, param_env, original_values, var_values)?;
-        Ok((nested_goals, data))
+        EvalCtxt::unify_query_var_values(infcx, param_env, original_values, var_values);
+        data
     }
 }
