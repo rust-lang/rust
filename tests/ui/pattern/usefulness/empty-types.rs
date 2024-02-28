@@ -338,7 +338,7 @@ fn arrays_and_slices(x: NeverBundle) {
     match slice_never {
         //[normal,min_exh_pats]~^ ERROR `&[]`, `&[_]` and `&[_, _]` not covered
         //[exhaustive_patterns]~^^ ERROR `&[]` not covered
-        //[never_pats]~^^^ ERROR `&[]`, `&[_]` and `&[_, _]` not covered
+        //[never_pats]~^^^ ERROR `&[]`, `&[!]` and `&[!, !]` not covered
         [_, _, _, ..] => {}
     }
     match slice_never {
@@ -352,7 +352,7 @@ fn arrays_and_slices(x: NeverBundle) {
     match slice_never {
         //[normal,min_exh_pats]~^ ERROR `&[]` and `&[_, ..]` not covered
         //[exhaustive_patterns]~^^ ERROR `&[]` not covered
-        //[never_pats]~^^^ ERROR `&[]` and `&[_, ..]` not covered
+        //[never_pats]~^^^ ERROR `&[]` and `&[!, ..]` not covered
         &[..] if false => {}
     }
 
@@ -653,7 +653,7 @@ fn guards_and_validity(x: NeverBundle) {
     }
     match *ref_result_never {
         //[normal,min_exh_pats]~^ ERROR `Ok(_)` not covered
-        //[never_pats]~^^ ERROR `Ok(_)` not covered
+        //[never_pats]~^^ ERROR `Ok(!)` not covered
         // useful, reachable
         Ok(_) if false => {}
         // useful, reachable
@@ -673,7 +673,7 @@ fn diagnostics_subtlety(x: NeverBundle) {
     let x: &Option<Result<!, !>> = &None;
     match *x {
         //[normal,min_exh_pats]~^ ERROR `Some(_)` not covered
-        //[never_pats]~^^ ERROR `Some(_)` not covered
+        //[never_pats]~^^ ERROR `Some(!)` not covered
         None => {}
     }
 }

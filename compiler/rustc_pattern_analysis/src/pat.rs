@@ -292,18 +292,24 @@ impl<Cx: TypeCx> WitnessPat<Cx> {
     pub(crate) fn new(ctor: Constructor<Cx>, fields: Vec<Self>, ty: Cx::Ty) -> Self {
         Self { ctor, fields, ty }
     }
-    pub(crate) fn wildcard(ty: Cx::Ty) -> Self {
-        Self::new(Wildcard, Vec::new(), ty)
+    /// Create a wildcard pattern for this type. If the type is empty, we create a `!` pattern.
+    pub(crate) fn wildcard(cx: &Cx, ty: Cx::Ty) -> Self {
+        let is_empty = cx.ctors_for_ty(&ty).is_ok_and(|ctors| ctors.all_empty());
+        let ctor = if is_empty { Never } else { Wildcard };
+        Self::new(ctor, Vec::new(), ty)
     }
 
     /// Construct a pattern that matches everything that starts with this constructor.
     /// For example, if `ctor` is a `Constructor::Variant` for `Option::Some`, we get the pattern
     /// `Some(_)`.
     pub(crate) fn wild_from_ctor(cx: &Cx, ctor: Constructor<Cx>, ty: Cx::Ty) -> Self {
+        if matches!(ctor, Wildcard) {
+            return Self::wildcard(cx, ty);
+        }
         let fields = cx
             .ctor_sub_tys(&ctor, &ty)
             .filter(|(_, PrivateUninhabitedField(skip))| !skip)
-            .map(|(ty, _)| Self::wildcard(ty))
+            .map(|(ty, _)| Self::wildcard(cx, ty))
             .collect();
         Self::new(ctor, fields, ty)
     }

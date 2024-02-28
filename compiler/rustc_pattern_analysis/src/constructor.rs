@@ -1048,10 +1048,32 @@ impl<Cx: TypeCx> ConstructorSet<Cx> {
                 // In a `MaybeInvalid` place even an empty pattern may be reachable. We therefore
                 // add a dummy empty constructor here, which will be ignored if the place is
                 // `ValidOnly`.
-                missing_empty.push(NonExhaustive);
+                missing_empty.push(Never);
             }
         }
 
         SplitConstructorSet { present, missing, missing_empty }
+    }
+
+    /// Whether this set only contains empty constructors.
+    pub(crate) fn all_empty(&self) -> bool {
+        match self {
+            ConstructorSet::Bool
+            | ConstructorSet::Integers { .. }
+            | ConstructorSet::Ref
+            | ConstructorSet::Union
+            | ConstructorSet::Unlistable => false,
+            ConstructorSet::NoConstructors => true,
+            ConstructorSet::Struct { empty } => *empty,
+            ConstructorSet::Variants { variants, non_exhaustive } => {
+                !*non_exhaustive
+                    && variants
+                        .iter()
+                        .all(|visibility| matches!(visibility, VariantVisibility::Empty))
+            }
+            ConstructorSet::Slice { array_len, subtype_is_empty } => {
+                *subtype_is_empty && matches!(array_len, Some(1..))
+            }
+        }
     }
 }
