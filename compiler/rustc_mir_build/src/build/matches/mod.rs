@@ -1160,6 +1160,19 @@ pub(crate) struct Test<'tcx> {
     kind: TestKind<'tcx>,
 }
 
+/// The branch to be taken after a test.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+enum TestBranch<'tcx> {
+    /// Success branch, used for tests with two possible outcomes.
+    Success,
+    /// Branch corresponding to this constant.
+    Constant(Const<'tcx>, u128),
+    /// Branch corresponding to this variant.
+    Variant(VariantIdx),
+    /// Failure branch for tests with two possible outcomes, and "otherwise" branch for other tests.
+    Failure,
+}
+
 /// `ArmHasGuard` is a wrapper around a boolean flag. It indicates whether
 /// a match arm has a guard expression attached to it.
 #[derive(Copy, Clone, Debug)]
@@ -1636,11 +1649,14 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         match_place: &PlaceBuilder<'tcx>,
         test: &Test<'tcx>,
         mut candidates: &'b mut [&'c mut Candidate<'pat, 'tcx>],
-    ) -> (&'b mut [&'c mut Candidate<'pat, 'tcx>], Vec<Vec<&'b mut Candidate<'pat, 'tcx>>>) {
+    ) -> (
+        &'b mut [&'c mut Candidate<'pat, 'tcx>],
+        FxIndexMap<TestBranch<'tcx>, Vec<&'b mut Candidate<'pat, 'tcx>>>,
+    ) {
         // For each of the N possible outcomes, create a (initially empty) vector of candidates.
         // Those are the candidates that apply if the test has that particular outcome.
-        let mut target_candidates: Vec<Vec<&mut Candidate<'pat, 'tcx>>> = vec![];
-        target_candidates.resize_with(test.targets(), Default::default);
+        let mut target_candidates: FxIndexMap<_, Vec<&mut Candidate<'pat, 'tcx>>> =
+            test.targets().into_iter().map(|branch| (branch, Vec::new())).collect();
 
         let total_candidate_count = candidates.len();
 
@@ -1648,11 +1664,11 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         // point we may encounter a candidate where the test is not relevant; at that point, we stop
         // sorting.
         while let Some(candidate) = candidates.first_mut() {
-            let Some(idx) = self.sort_candidate(&match_place, &test, candidate) else {
+            let Some(branch) = self.sort_candidate(&match_place, &test, candidate) else {
                 break;
             };
             let (candidate, rest) = candidates.split_first_mut().unwrap();
-            target_candidates[idx].push(candidate);
+            target_candidates[&branch].push(candidate);
             candidates = rest;
         }
 
@@ -1797,9 +1813,9 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         // apply. Collect a list of blocks where control flow will
         // branch if one of the `target_candidate` sets is not
         // exhaustive.
-        let target_blocks: Vec<_> = target_candidates
+        let target_blocks: FxIndexMap<_, _> = target_candidates
             .into_iter()
-            .map(|mut candidates| {
+            .map(|(branch, mut candidates)| {
                 if !candidates.is_empty() {
                     let candidate_start = self.cfg.start_new_block();
                     self.match_candidates(
@@ -1809,9 +1825,9 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                         remainder_start,
                         &mut *candidates,
                     );
-                    candidate_start
+                    (branch, candidate_start)
                 } else {
-                    remainder_start
+                    (branch, remainder_start)
                 }
             })
             .collect();
