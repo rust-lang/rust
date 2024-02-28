@@ -1,3 +1,6 @@
+//@revisions: stack tree
+//@compile-flags: -Zmiri-strict-provenance
+//@[tree]compile-flags: -Zmiri-tree-borrows
 #![feature(async_drop, impl_trait_in_assoc_type, noop_waker)]
 #![allow(incomplete_features)]
 
