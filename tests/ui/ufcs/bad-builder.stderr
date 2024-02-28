@@ -7,9 +7,9 @@ LL |     Vec::<Q>::mew()
 note: if you're trying to build a new `Vec<Q>` consider using one of the following associated functions:
       Vec::<T>::new
       Vec::<T>::with_capacity
+      Vec::<T>::try_with_capacity
       Vec::<T>::from_raw_parts
-      Vec::<T, A>::new_in
-      and 2 others
+      and 4 others
   --> $SRC_DIR/alloc/src/vec/mod.rs:LL:COL
 help: there is an associated function `new` with a similar name
    |

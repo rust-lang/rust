@@ -492,6 +492,19 @@ impl String {
         String { vec: Vec::with_capacity(capacity) }
     }
 
+    /// Creates a new empty `String` with at least the specified capacity.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`Err`] if the capacity exceeds `isize::MAX` bytes,
+    /// or if the memory allocator reports failure.
+    ///
+    #[inline]
+    #[unstable(feature = "try_with_capacity", issue = "91913")]
+    pub fn try_with_capacity(capacity: usize) -> Result<String, TryReserveError> {
+        Ok(String { vec: Vec::try_with_capacity(capacity)? })
+    }
+
     // HACK(japaric): with cfg(test) the inherent `[T]::to_vec` method, which is
     // required for this method definition, is not available. Since we don't
     // require this method for testing purposes, I'll just stub it

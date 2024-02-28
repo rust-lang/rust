@@ -20,6 +20,7 @@
 #![feature(pattern)]
 #![feature(trusted_len)]
 #![feature(try_reserve_kind)]
+#![feature(try_with_capacity)]
 #![feature(unboxed_closures)]
 #![feature(associated_type_bounds)]
 #![feature(binary_heap_into_iter_sorted)]
