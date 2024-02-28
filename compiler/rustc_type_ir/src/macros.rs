@@ -51,6 +51,6 @@ TrivialTypeTraversalImpls! {
     crate::DebruijnIndex,
     crate::AliasRelationDirection,
     crate::UniverseIndex,
-    crate::Mutability,
-    crate::Movability,
+    rustc_ast_ir::Mutability,
+    rustc_ast_ir::Movability,
 }
