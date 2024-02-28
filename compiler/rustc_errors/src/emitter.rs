@@ -60,7 +60,7 @@ impl HumanReadableErrorType {
     }
     pub fn new_emitter(
         self,
-        mut dst: Box<dyn WriteColor + Send>,
+        mut dst: Destination,
         fallback_bundle: LazyFallbackBundle,
     ) -> HumanEmitter {
         let (short, color_config) = self.unzip();
@@ -686,10 +686,7 @@ impl HumanEmitter {
         }
     }
 
-    pub fn new(
-        dst: Box<dyn WriteColor + Send>,
-        fallback_bundle: LazyFallbackBundle,
-    ) -> HumanEmitter {
+    pub fn new(dst: Destination, fallback_bundle: LazyFallbackBundle) -> HumanEmitter {
         Self::create(dst, fallback_bundle)
     }
 
@@ -2634,7 +2631,7 @@ fn emit_to_destination(
     Ok(())
 }
 
-pub type Destination = Box<(dyn WriteColor + Send)>;
+pub type Destination = Box<dyn WriteColor + Send>;
 
 struct Buffy {
     buffer_writer: BufferWriter,
