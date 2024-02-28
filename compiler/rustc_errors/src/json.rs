@@ -9,7 +9,7 @@
 
 // FIXME: spec the JSON output properly.
 
-use rustc_span::source_map::{FilePathMapping, SourceMap};
+use rustc_span::source_map::SourceMap;
 use termcolor::{ColorSpec, WriteColor};
 
 use crate::emitter::{
@@ -56,60 +56,6 @@ pub struct JsonEmitter {
 }
 
 impl JsonEmitter {
-    pub fn stderr(
-        registry: Option<Registry>,
-        source_map: Lrc<SourceMap>,
-        fluent_bundle: Option<Lrc<FluentBundle>>,
-        fallback_bundle: LazyFallbackBundle,
-        pretty: bool,
-        json_rendered: HumanReadableErrorType,
-        diagnostic_width: Option<usize>,
-        macro_backtrace: bool,
-        track_diagnostics: bool,
-        terminal_url: TerminalUrl,
-    ) -> JsonEmitter {
-        JsonEmitter {
-            dst: IntoDynSyncSend(Box::new(io::BufWriter::new(io::stderr()))),
-            registry,
-            sm: source_map,
-            fluent_bundle,
-            fallback_bundle,
-            pretty,
-            ui_testing: false,
-            ignored_directories_in_source_blocks: Vec::new(),
-            json_rendered,
-            diagnostic_width,
-            macro_backtrace,
-            track_diagnostics,
-            terminal_url,
-        }
-    }
-
-    pub fn basic(
-        pretty: bool,
-        json_rendered: HumanReadableErrorType,
-        fluent_bundle: Option<Lrc<FluentBundle>>,
-        fallback_bundle: LazyFallbackBundle,
-        diagnostic_width: Option<usize>,
-        macro_backtrace: bool,
-        track_diagnostics: bool,
-        terminal_url: TerminalUrl,
-    ) -> JsonEmitter {
-        let file_path_mapping = FilePathMapping::empty();
-        JsonEmitter::stderr(
-            None,
-            Lrc::new(SourceMap::new(file_path_mapping)),
-            fluent_bundle,
-            fallback_bundle,
-            pretty,
-            json_rendered,
-            diagnostic_width,
-            macro_backtrace,
-            track_diagnostics,
-            terminal_url,
-        )
-    }
-
     pub fn new(
         dst: Box<dyn Write + Send>,
         registry: Option<Registry>,

@@ -28,7 +28,7 @@ use rustc_errors::{
 use rustc_macros::HashStable_Generic;
 pub use rustc_span::def_id::StableCrateId;
 use rustc_span::edition::Edition;
-use rustc_span::source_map::{FileLoader, RealFileLoader, SourceMap};
+use rustc_span::source_map::{FileLoader, FilePathMapping, RealFileLoader, SourceMap};
 use rustc_span::{SourceFileHashAlgorithm, Span, Symbol};
 use rustc_target::asm::InlineAsmArch;
 use rustc_target::spec::{CodeModel, PanicStrategy, RelocModel, RelroLevel};
@@ -39,6 +39,7 @@ use rustc_target::spec::{
 use std::any::Any;
 use std::env;
 use std::fmt;
+use std::io;
 use std::ops::{Div, Mul};
 use std::path::{Path, PathBuf};
 use std::str::FromStr;
@@ -998,7 +999,8 @@ fn default_emitter(
             }
         }
         config::ErrorOutputType::Json { pretty, json_rendered } => Box::new(
-            JsonEmitter::stderr(
+            JsonEmitter::new(
+                Box::new(io::BufWriter::new(io::stderr())),
                 Some(registry),
                 source_map,
                 bundle,
@@ -1478,11 +1480,14 @@ fn mk_emitter(output: ErrorOutputType) -> Box<DynEmitter> {
                     .short_message(short),
             )
         }
-        config::ErrorOutputType::Json { pretty, json_rendered } => Box::new(JsonEmitter::basic(
-            pretty,
-            json_rendered,
+        config::ErrorOutputType::Json { pretty, json_rendered } => Box::new(JsonEmitter::new(
+            Box::new(io::BufWriter::new(io::stderr())),
+            None,
+            Lrc::new(SourceMap::new(FilePathMapping::empty())),
             None,
             fallback_bundle,
+            pretty,
+            json_rendered,
             None,
             false,
             false,
