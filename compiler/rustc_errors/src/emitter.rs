@@ -665,11 +665,10 @@ pub(crate) struct FileWithAnnotatedLines {
 
 impl HumanEmitter {
     pub fn stderr(color_config: ColorConfig, fallback_bundle: LazyFallbackBundle) -> HumanEmitter {
-        let dst = from_stderr(color_config);
-        Self::create(dst, fallback_bundle)
+        Self::new(from_stderr(color_config), fallback_bundle)
     }
 
-    fn create(dst: Destination, fallback_bundle: LazyFallbackBundle) -> HumanEmitter {
+    pub fn new(dst: Destination, fallback_bundle: LazyFallbackBundle) -> HumanEmitter {
         HumanEmitter {
             dst: IntoDynSyncSend(dst),
             sm: None,
@@ -684,10 +683,6 @@ impl HumanEmitter {
             track_diagnostics: false,
             terminal_url: TerminalUrl::No,
         }
-    }
-
-    pub fn new(dst: Destination, fallback_bundle: LazyFallbackBundle) -> HumanEmitter {
-        Self::create(dst, fallback_bundle)
     }
 
     fn maybe_anonymized(&self, line_num: usize) -> Cow<'static, str> {
