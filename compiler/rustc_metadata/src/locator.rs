@@ -220,7 +220,7 @@ use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::memmap::Mmap;
 use rustc_data_structures::owned_slice::slice_owned;
 use rustc_data_structures::svh::Svh;
-use rustc_errors::{DiagnosticArgValue, IntoDiagnosticArg};
+use rustc_errors::{DiagArgValue, IntoDiagnosticArg};
 use rustc_fs_util::try_canonicalize;
 use rustc_session::config;
 use rustc_session::cstore::CrateSource;
@@ -291,11 +291,11 @@ impl fmt::Display for CrateFlavor {
 }
 
 impl IntoDiagnosticArg for CrateFlavor {
-    fn into_diagnostic_arg(self) -> rustc_errors::DiagnosticArgValue {
+    fn into_diagnostic_arg(self) -> rustc_errors::DiagArgValue {
         match self {
-            CrateFlavor::Rlib => DiagnosticArgValue::Str(Cow::Borrowed("rlib")),
-            CrateFlavor::Rmeta => DiagnosticArgValue::Str(Cow::Borrowed("rmeta")),
-            CrateFlavor::Dylib => DiagnosticArgValue::Str(Cow::Borrowed("dylib")),
+            CrateFlavor::Rlib => DiagArgValue::Str(Cow::Borrowed("rlib")),
+            CrateFlavor::Rmeta => DiagArgValue::Str(Cow::Borrowed("rmeta")),
+            CrateFlavor::Dylib => DiagArgValue::Str(Cow::Borrowed("dylib")),
         }
     }
 }

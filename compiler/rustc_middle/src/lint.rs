@@ -2,7 +2,7 @@ use std::cmp;
 
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_data_structures::sorted_map::SortedMap;
-use rustc_errors::{DiagnosticBuilder, DiagnosticMessage, MultiSpan};
+use rustc_errors::{Diag, DiagnosticMessage, MultiSpan};
 use rustc_hir::{HirId, ItemLocalId};
 use rustc_session::lint::{
     builtin::{self, FORBIDDEN_LINT_GROUPS},
@@ -204,7 +204,7 @@ pub fn explain_lint_level_source(
     lint: &'static Lint,
     level: Level,
     src: LintLevelSource,
-    err: &mut DiagnosticBuilder<'_, ()>,
+    err: &mut Diag<'_, ()>,
 ) {
     let name = lint.name_lower();
     if let Level::Allow = level {
@@ -260,8 +260,7 @@ pub fn explain_lint_level_source(
 ///
 /// ## `decorate`
 ///
-/// It is not intended to call `emit`/`cancel` on the `DiagnosticBuilder` passed
-/// in the `decorate` callback.
+/// It is not intended to call `emit`/`cancel` on the `Diag` passed in the `decorate` callback.
 #[track_caller]
 pub fn lint_level(
     sess: &Session,
@@ -270,7 +269,7 @@ pub fn lint_level(
     src: LintLevelSource,
     span: Option<MultiSpan>,
     msg: impl Into<DiagnosticMessage>,
-    decorate: impl for<'a, 'b> FnOnce(&'b mut DiagnosticBuilder<'a, ()>),
+    decorate: impl for<'a, 'b> FnOnce(&'b mut Diag<'a, ()>),
 ) {
     // Avoid codegen bloat from monomorphization by immediately doing dyn dispatch of `decorate` to
     // the "real" work.
@@ -282,7 +281,7 @@ pub fn lint_level(
         src: LintLevelSource,
         span: Option<MultiSpan>,
         msg: impl Into<DiagnosticMessage>,
-        decorate: Box<dyn '_ + for<'a, 'b> FnOnce(&'b mut DiagnosticBuilder<'a, ()>)>,
+        decorate: Box<dyn '_ + for<'a, 'b> FnOnce(&'b mut Diag<'a, ()>)>,
     ) {
         // Check for future incompatibility lints and issue a stronger warning.
         let future_incompatible = lint.future_incompatible;
@@ -314,7 +313,7 @@ pub fn lint_level(
                 //
                 // We can also not mark the lint expectation as fulfilled here right away, as it
                 // can still be cancelled in the decorate function. All of this means that we simply
-                // create a `DiagnosticBuilder` and continue as we would for warnings.
+                // create a `Diag` and continue as we would for warnings.
                 rustc_errors::Level::Expect(expect_id)
             }
             Level::ForceWarn(Some(expect_id)) => rustc_errors::Level::ForceWarning(Some(expect_id)),
@@ -322,7 +321,7 @@ pub fn lint_level(
             Level::Warn => rustc_errors::Level::Warning,
             Level::Deny | Level::Forbid => rustc_errors::Level::Error,
         };
-        let mut err = DiagnosticBuilder::new(sess.dcx(), err_level, "");
+        let mut err = Diag::new(sess.dcx(), err_level, "");
         if let Some(span) = span {
             err.span(span);
         }

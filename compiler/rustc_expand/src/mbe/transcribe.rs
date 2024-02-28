@@ -9,7 +9,7 @@ use rustc_ast::mut_visit::{self, MutVisitor};
 use rustc_ast::token::{self, Delimiter, Token, TokenKind};
 use rustc_ast::tokenstream::{DelimSpacing, DelimSpan, Spacing, TokenStream, TokenTree};
 use rustc_data_structures::fx::FxHashMap;
-use rustc_errors::DiagnosticBuilder;
+use rustc_errors::Diag;
 use rustc_errors::{pluralize, PResult};
 use rustc_span::hygiene::{LocalExpnId, Transparency};
 use rustc_span::symbol::{sym, Ident, MacroRulesNormalizedIdent};
@@ -622,12 +622,7 @@ where
 
 /// Used by meta-variable expressions when an user input is out of the actual declared bounds. For
 /// example, index(999999) in an repetition of only three elements.
-fn out_of_bounds_err<'a>(
-    cx: &ExtCtxt<'a>,
-    max: usize,
-    span: Span,
-    ty: &str,
-) -> DiagnosticBuilder<'a> {
+fn out_of_bounds_err<'a>(cx: &ExtCtxt<'a>, max: usize, span: Span, ty: &str) -> Diag<'a> {
     let msg = if max == 0 {
         format!(
             "meta-variable expression `{ty}` with depth parameter \

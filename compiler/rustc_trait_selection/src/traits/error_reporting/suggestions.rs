@@ -13,8 +13,8 @@ use hir::def::CtorOf;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_errors::{
-    codes::*, pluralize, struct_span_code_err, Applicability, DiagnosticBuilder, EmissionGuarantee,
-    MultiSpan, Style, SuggestionStyle,
+    codes::*, pluralize, struct_span_code_err, Applicability, Diag, EmissionGuarantee, MultiSpan,
+    Style, SuggestionStyle,
 };
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
@@ -121,7 +121,7 @@ pub fn suggest_restriction<'tcx, G: EmissionGuarantee>(
     item_id: LocalDefId,
     hir_generics: &hir::Generics<'tcx>,
     msg: &str,
-    err: &mut DiagnosticBuilder<'_, G>,
+    err: &mut Diag<'_, G>,
     fn_sig: Option<&hir::FnSig<'_>>,
     projection: Option<&ty::AliasTy<'_>>,
     trait_pred: ty::PolyTraitPredicate<'tcx>,
@@ -240,7 +240,7 @@ pub fn suggest_restriction<'tcx, G: EmissionGuarantee>(
 impl<'tcx> TypeErrCtxt<'_, 'tcx> {
     fn suggest_restricting_param_bound(
         &self,
-        err: &mut DiagnosticBuilder<'_>,
+        err: &mut Diag<'_>,
         trait_pred: ty::PolyTraitPredicate<'tcx>,
         associated_ty: Option<(&'static str, Ty<'tcx>)>,
         mut body_id: LocalDefId,
@@ -450,7 +450,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
     fn suggest_dereferences(
         &self,
         obligation: &PredicateObligation<'tcx>,
-        err: &mut DiagnosticBuilder<'_>,
+        err: &mut Diag<'_>,
         trait_pred: ty::PolyTraitPredicate<'tcx>,
     ) -> bool {
         let mut code = obligation.cause.code();
@@ -743,23 +743,22 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
     fn get_closure_name(
         &self,
         def_id: DefId,
-        err: &mut DiagnosticBuilder<'_>,
+        err: &mut Diag<'_>,
         msg: Cow<'static, str>,
     ) -> Option<Symbol> {
-        let get_name =
-            |err: &mut DiagnosticBuilder<'_>, kind: &hir::PatKind<'_>| -> Option<Symbol> {
-                // Get the local name of this closure. This can be inaccurate because
-                // of the possibility of reassignment, but this should be good enough.
-                match &kind {
-                    hir::PatKind::Binding(hir::BindingAnnotation::NONE, _, ident, None) => {
-                        Some(ident.name)
-                    }
-                    _ => {
-                        err.note(msg);
-                        None
-                    }
+        let get_name = |err: &mut Diag<'_>, kind: &hir::PatKind<'_>| -> Option<Symbol> {
+            // Get the local name of this closure. This can be inaccurate because
+            // of the possibility of reassignment, but this should be good enough.
+            match &kind {
+                hir::PatKind::Binding(hir::BindingAnnotation::NONE, _, ident, None) => {
+                    Some(ident.name)
                 }
-            };
+                _ => {
+                    err.note(msg);
+                    None
+                }
+            }
+        };
 
         let hir_id = self.tcx.local_def_id_to_hir_id(def_id.as_local()?);
         match self.tcx.parent_hir_node(hir_id) {
@@ -779,7 +778,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
     fn suggest_fn_call(
         &self,
         obligation: &PredicateObligation<'tcx>,
-        err: &mut DiagnosticBuilder<'_>,
+        err: &mut Diag<'_>,
         trait_pred: ty::PolyTraitPredicate<'tcx>,
     ) -> bool {
         // It doesn't make sense to make this suggestion outside of typeck...
@@ -895,7 +894,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
     fn check_for_binding_assigned_block_without_tail_expression(
         &self,
         obligation: &PredicateObligation<'tcx>,
-        err: &mut DiagnosticBuilder<'_>,
+        err: &mut Diag<'_>,
         trait_pred: ty::PolyTraitPredicate<'tcx>,
     ) {
         let mut span = obligation.cause.span;
@@ -972,7 +971,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
     fn suggest_add_clone_to_arg(
         &self,
         obligation: &PredicateObligation<'tcx>,
-        err: &mut DiagnosticBuilder<'_>,
+        err: &mut Diag<'_>,
         trait_pred: ty::PolyTraitPredicate<'tcx>,
     ) -> bool {
         let self_ty = self.resolve_vars_if_possible(trait_pred.self_ty());
@@ -1157,7 +1156,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
     fn suggest_add_reference_to_arg(
         &self,
         obligation: &PredicateObligation<'tcx>,
-        err: &mut DiagnosticBuilder<'_>,
+        err: &mut Diag<'_>,
         poly_trait_pred: ty::PolyTraitPredicate<'tcx>,
         has_custom_message: bool,
     ) -> bool {
@@ -1378,7 +1377,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
     // Suggest borrowing the type
     fn suggest_borrowing_for_object_cast(
         &self,
-        err: &mut DiagnosticBuilder<'_>,
+        err: &mut Diag<'_>,
         obligation: &PredicateObligation<'tcx>,
         self_ty: Ty<'tcx>,
         target_ty: Ty<'tcx>,
@@ -1414,7 +1413,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
     fn suggest_remove_reference(
         &self,
         obligation: &PredicateObligation<'tcx>,
-        err: &mut DiagnosticBuilder<'_>,
+        err: &mut Diag<'_>,
         trait_pred: ty::PolyTraitPredicate<'tcx>,
     ) -> bool {
         let mut span = obligation.cause.span;
@@ -1533,11 +1532,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
         false
     }
 
-    fn suggest_remove_await(
-        &self,
-        obligation: &PredicateObligation<'tcx>,
-        err: &mut DiagnosticBuilder<'_>,
-    ) {
+    fn suggest_remove_await(&self, obligation: &PredicateObligation<'tcx>, err: &mut Diag<'_>) {
         let hir = self.tcx.hir();
         if let ObligationCauseCode::AwaitableExpr(hir_id) = obligation.cause.code().peel_derives()
             && let hir::Node::Expr(expr) = self.tcx.hir_node(*hir_id)
@@ -1607,7 +1602,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
     fn suggest_change_mut(
         &self,
         obligation: &PredicateObligation<'tcx>,
-        err: &mut DiagnosticBuilder<'_>,
+        err: &mut Diag<'_>,
         trait_pred: ty::PolyTraitPredicate<'tcx>,
     ) {
         let points_at_arg = matches!(
@@ -1685,7 +1680,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
     fn suggest_semicolon_removal(
         &self,
         obligation: &PredicateObligation<'tcx>,
-        err: &mut DiagnosticBuilder<'_>,
+        err: &mut Diag<'_>,
         span: Span,
         trait_pred: ty::PolyTraitPredicate<'tcx>,
     ) -> bool {
@@ -1739,7 +1734,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
     /// emitted.
     fn suggest_impl_trait(
         &self,
-        err: &mut DiagnosticBuilder<'_>,
+        err: &mut Diag<'_>,
         obligation: &PredicateObligation<'tcx>,
         trait_pred: ty::PolyTraitPredicate<'tcx>,
     ) -> bool {
@@ -1809,7 +1804,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
 
     fn point_at_returns_when_relevant(
         &self,
-        err: &mut DiagnosticBuilder<'tcx>,
+        err: &mut Diag<'tcx>,
         obligation: &PredicateObligation<'tcx>,
     ) {
         match obligation.cause.code().peel_derives() {
@@ -1850,7 +1845,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
         cause: &ObligationCauseCode<'tcx>,
         found_node: Option<Node<'_>>,
         param_env: ty::ParamEnv<'tcx>,
-    ) -> DiagnosticBuilder<'tcx> {
+    ) -> Diag<'tcx> {
         pub(crate) fn build_fn_sig_ty<'tcx>(
             infcx: &InferCtxt<'tcx>,
             trait_ref: ty::PolyTraitRef<'tcx>,
@@ -1921,7 +1916,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
 
     fn note_conflicting_fn_args(
         &self,
-        err: &mut DiagnosticBuilder<'_>,
+        err: &mut Diag<'_>,
         cause: &ObligationCauseCode<'tcx>,
         expected: Ty<'tcx>,
         found: Ty<'tcx>,
@@ -2076,7 +2071,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
     fn note_conflicting_closure_bounds(
         &self,
         cause: &ObligationCauseCode<'tcx>,
-        err: &mut DiagnosticBuilder<'tcx>,
+        err: &mut Diag<'tcx>,
     ) {
         // First, look for an `ExprBindingObligation`, which means we can get
         // the uninstantiated predicate list of the called function. And check
@@ -2128,7 +2123,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
 
     fn suggest_fully_qualified_path(
         &self,
-        err: &mut DiagnosticBuilder<'_>,
+        err: &mut Diag<'_>,
         item_def_id: DefId,
         span: Span,
         trait_ref: DefId,
@@ -2195,7 +2190,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
     #[instrument(level = "debug", skip_all, fields(?obligation.predicate, ?obligation.cause.span))]
     fn maybe_note_obligation_cause_for_async_await<G: EmissionGuarantee>(
         &self,
-        err: &mut DiagnosticBuilder<'_, G>,
+        err: &mut Diag<'_, G>,
         obligation: &PredicateObligation<'tcx>,
     ) -> bool {
         let hir = self.tcx.hir();
@@ -2431,7 +2426,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
     #[instrument(level = "debug", skip_all)]
     fn note_obligation_cause_for_async_await<G: EmissionGuarantee>(
         &self,
-        err: &mut DiagnosticBuilder<'_, G>,
+        err: &mut Diag<'_, G>,
         interior_or_upvar_span: CoroutineInteriorOrUpvar,
         is_async: bool,
         outer_coroutine: Option<DefId>,
@@ -2667,7 +2662,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
     fn note_obligation_cause_code<G: EmissionGuarantee, T>(
         &self,
         body_id: LocalDefId,
-        err: &mut DiagnosticBuilder<'_, G>,
+        err: &mut Diag<'_, G>,
         predicate: T,
         param_env: ty::ParamEnv<'tcx>,
         cause_code: &ObligationCauseCode<'tcx>,
@@ -3524,7 +3519,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
     )]
     fn suggest_await_before_try(
         &self,
-        err: &mut DiagnosticBuilder<'_>,
+        err: &mut Diag<'_>,
         obligation: &PredicateObligation<'tcx>,
         trait_pred: ty::PolyTraitPredicate<'tcx>,
         span: Span,
@@ -3582,7 +3577,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
     fn suggest_floating_point_literal(
         &self,
         obligation: &PredicateObligation<'tcx>,
-        err: &mut DiagnosticBuilder<'_>,
+        err: &mut Diag<'_>,
         trait_ref: &ty::PolyTraitRef<'tcx>,
     ) {
         let rhs_span = match obligation.cause.code() {
@@ -3606,7 +3601,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
     fn suggest_derive(
         &self,
         obligation: &PredicateObligation<'tcx>,
-        err: &mut DiagnosticBuilder<'_>,
+        err: &mut Diag<'_>,
         trait_pred: ty::PolyTraitPredicate<'tcx>,
     ) {
         let Some(diagnostic_name) = self.tcx.get_diagnostic_name(trait_pred.def_id()) else {
@@ -3672,7 +3667,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
     fn suggest_dereferencing_index(
         &self,
         obligation: &PredicateObligation<'tcx>,
-        err: &mut DiagnosticBuilder<'_>,
+        err: &mut Diag<'_>,
         trait_pred: ty::PolyTraitPredicate<'tcx>,
     ) {
         if let ObligationCauseCode::ImplDerivedObligation(_) = obligation.cause.code()
@@ -3695,7 +3690,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
     fn note_function_argument_obligation<G: EmissionGuarantee>(
         &self,
         body_id: LocalDefId,
-        err: &mut DiagnosticBuilder<'_, G>,
+        err: &mut Diag<'_, G>,
         arg_hir_id: HirId,
         parent_code: &ObligationCauseCode<'tcx>,
         param_env: ty::ParamEnv<'tcx>,
@@ -3881,7 +3876,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
         &self,
         failed_pred: ty::Predicate<'tcx>,
         param_env: ty::ParamEnv<'tcx>,
-        err: &mut DiagnosticBuilder<'_, G>,
+        err: &mut Diag<'_, G>,
         expr: &hir::Expr<'_>,
     ) {
         let tcx = self.tcx;
@@ -3959,7 +3954,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
         param_env: ty::ParamEnv<'tcx>,
         path_segment: &hir::PathSegment<'_>,
         args: &[hir::Expr<'_>],
-        err: &mut DiagnosticBuilder<'_, G>,
+        err: &mut Diag<'_, G>,
     ) {
         let tcx = self.tcx;
         // Special case for iterator chains, we look at potential failures of `Iterator::Item`
@@ -4060,7 +4055,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
         typeck_results: &TypeckResults<'tcx>,
         type_diffs: Vec<TypeError<'tcx>>,
         param_env: ty::ParamEnv<'tcx>,
-        err: &mut DiagnosticBuilder<'_, G>,
+        err: &mut Diag<'_, G>,
     ) {
         let mut primary_spans = vec![];
         let mut span_labels = vec![];
@@ -4296,7 +4291,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
     /// the array into a slice.
     fn suggest_convert_to_slice(
         &self,
-        err: &mut DiagnosticBuilder<'_>,
+        err: &mut Diag<'_>,
         obligation: &PredicateObligation<'tcx>,
         trait_ref: ty::PolyTraitRef<'tcx>,
         candidate_impls: &[ImplCandidate<'tcx>],
@@ -4368,7 +4363,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
 
     fn explain_hrtb_projection(
         &self,
-        diag: &mut DiagnosticBuilder<'_>,
+        diag: &mut Diag<'_>,
         pred: ty::PolyTraitPredicate<'tcx>,
         param_env: ty::ParamEnv<'tcx>,
         cause: &ObligationCause<'tcx>,
@@ -4434,7 +4429,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
 
     fn suggest_desugaring_async_fn_in_trait(
         &self,
-        err: &mut DiagnosticBuilder<'_>,
+        err: &mut Diag<'_>,
         trait_ref: ty::PolyTraitRef<'tcx>,
     ) {
         // Don't suggest if RTN is active -- we should prefer a where-clause bound instead.
@@ -4525,7 +4520,7 @@ fn hint_missing_borrow<'tcx>(
     found: Ty<'tcx>,
     expected: Ty<'tcx>,
     found_node: Node<'_>,
-    err: &mut DiagnosticBuilder<'_>,
+    err: &mut Diag<'_>,
 ) {
     if matches!(found_node, Node::TraitItem(..)) {
         return;
@@ -4886,7 +4881,7 @@ pub fn suggest_desugaring_async_fn_to_impl_future_in_trait<'tcx>(
 /// they are not allowed and if possible suggest alternatives.
 fn point_at_assoc_type_restriction<G: EmissionGuarantee>(
     tcx: TyCtxt<'_>,
-    err: &mut DiagnosticBuilder<'_, G>,
+    err: &mut Diag<'_, G>,
     self_ty_str: &str,
     trait_name: &str,
     predicate: ty::Predicate<'_>,

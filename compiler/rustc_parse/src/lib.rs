@@ -18,7 +18,7 @@ use rustc_ast::tokenstream::TokenStream;
 use rustc_ast::{AttrItem, Attribute, MetaItem};
 use rustc_ast_pretty::pprust;
 use rustc_data_structures::sync::Lrc;
-use rustc_errors::{DiagnosticBuilder, FatalError, PResult};
+use rustc_errors::{Diag, FatalError, PResult};
 use rustc_session::parse::ParseSess;
 use rustc_span::{FileName, SourceFile, Span};
 
@@ -41,8 +41,7 @@ rustc_fluent_macro::fluent_messages! { "../messages.ftl" }
 // uses a HOF to parse anything, and <source> includes file and
 // `source_str`.
 
-/// A variant of 'panictry!' that works on a `Vec<DiagnosticBuilder>` instead of a single
-/// `DiagnosticBuilder`.
+/// A variant of 'panictry!' that works on a `Vec<Diag>` instead of a single `Diag`.
 macro_rules! panictry_buffer {
     ($e:expr) => {{
         use std::result::Result::{Err, Ok};
@@ -108,7 +107,7 @@ pub fn maybe_new_parser_from_source_str(
     sess: &ParseSess,
     name: FileName,
     source: String,
-) -> Result<Parser<'_>, Vec<DiagnosticBuilder<'_>>> {
+) -> Result<Parser<'_>, Vec<Diag<'_>>> {
     maybe_source_file_to_parser(sess, sess.source_map().new_source_file(name, source))
 }
 
@@ -132,7 +131,7 @@ pub fn new_parser_from_file<'a>(sess: &'a ParseSess, path: &Path, sp: Option<Spa
 fn maybe_source_file_to_parser(
     sess: &ParseSess,
     source_file: Lrc<SourceFile>,
-) -> Result<Parser<'_>, Vec<DiagnosticBuilder<'_>>> {
+) -> Result<Parser<'_>, Vec<Diag<'_>>> {
     let end_pos = source_file.end_position();
     let stream = maybe_file_to_stream(sess, source_file, None)?;
     let mut parser = stream_to_parser(sess, stream, None);
@@ -160,7 +159,7 @@ fn maybe_file_to_stream<'sess>(
     sess: &'sess ParseSess,
     source_file: Lrc<SourceFile>,
     override_span: Option<Span>,
-) -> Result<TokenStream, Vec<DiagnosticBuilder<'sess>>> {
+) -> Result<TokenStream, Vec<Diag<'sess>>> {
     let src = source_file.src.as_ref().unwrap_or_else(|| {
         sess.dcx.bug(format!(
             "cannot lex `source_file` without source: {}",

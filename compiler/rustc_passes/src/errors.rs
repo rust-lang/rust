@@ -6,8 +6,8 @@ use std::{
 use crate::fluent_generated as fluent;
 use rustc_ast::Label;
 use rustc_errors::{
-    codes::*, AddToDiagnostic, Applicability, DiagCtxt, DiagnosticBuilder, DiagnosticSymbolList,
-    EmissionGuarantee, IntoDiagnostic, Level, MultiSpan, SubdiagnosticMessageOp,
+    codes::*, AddToDiagnostic, Applicability, Diag, DiagCtxt, DiagSymbolList, EmissionGuarantee,
+    IntoDiagnostic, Level, MultiSpan, SubdiagnosticMessageOp,
 };
 use rustc_hir::{self as hir, ExprKind, Target};
 use rustc_macros::{Diagnostic, LintDiagnostic, Subdiagnostic};
@@ -864,9 +864,8 @@ pub struct ItemFollowingInnerAttr {
 
 impl<G: EmissionGuarantee> IntoDiagnostic<'_, G> for InvalidAttrAtCrateLevel {
     #[track_caller]
-    fn into_diagnostic(self, dcx: &'_ DiagCtxt, level: Level) -> DiagnosticBuilder<'_, G> {
-        let mut diag =
-            DiagnosticBuilder::new(dcx, level, fluent::passes_invalid_attr_at_crate_level);
+    fn into_diagnostic(self, dcx: &'_ DiagCtxt, level: Level) -> Diag<'_, G> {
+        let mut diag = Diag::new(dcx, level, fluent::passes_invalid_attr_at_crate_level);
         diag.span(self.span);
         diag.arg("name", self.name);
         // Only emit an error with a suggestion if we can create a string out
@@ -1015,8 +1014,8 @@ pub struct BreakNonLoop<'a> {
 
 impl<'a, G: EmissionGuarantee> IntoDiagnostic<'_, G> for BreakNonLoop<'a> {
     #[track_caller]
-    fn into_diagnostic(self, dcx: &DiagCtxt, level: Level) -> DiagnosticBuilder<'_, G> {
-        let mut diag = DiagnosticBuilder::new(dcx, level, fluent::passes_break_non_loop);
+    fn into_diagnostic(self, dcx: &DiagCtxt, level: Level) -> Diag<'_, G> {
+        let mut diag = Diag::new(dcx, level, fluent::passes_break_non_loop);
         diag.span(self.span);
         diag.code(E0571);
         diag.arg("kind", self.kind);
@@ -1159,8 +1158,8 @@ pub struct NakedFunctionsAsmBlock {
 
 impl<G: EmissionGuarantee> IntoDiagnostic<'_, G> for NakedFunctionsAsmBlock {
     #[track_caller]
-    fn into_diagnostic(self, dcx: &DiagCtxt, level: Level) -> DiagnosticBuilder<'_, G> {
-        let mut diag = DiagnosticBuilder::new(dcx, level, fluent::passes_naked_functions_asm_block);
+    fn into_diagnostic(self, dcx: &DiagCtxt, level: Level) -> Diag<'_, G> {
+        let mut diag = Diag::new(dcx, level, fluent::passes_naked_functions_asm_block);
         diag.span(self.span);
         diag.code(E0787);
         for span in self.multiple_asms.iter() {
@@ -1270,8 +1269,8 @@ pub struct NoMainErr {
 
 impl<'a, G: EmissionGuarantee> IntoDiagnostic<'a, G> for NoMainErr {
     #[track_caller]
-    fn into_diagnostic(self, dcx: &'a DiagCtxt, level: Level) -> DiagnosticBuilder<'a, G> {
-        let mut diag = DiagnosticBuilder::new(dcx, level, fluent::passes_no_main_function);
+    fn into_diagnostic(self, dcx: &'a DiagCtxt, level: Level) -> Diag<'a, G> {
+        let mut diag = Diag::new(dcx, level, fluent::passes_no_main_function);
         diag.span(DUMMY_SP);
         diag.code(E0601);
         diag.arg("crate_name", self.crate_name);
@@ -1328,8 +1327,8 @@ pub struct DuplicateLangItem {
 
 impl<G: EmissionGuarantee> IntoDiagnostic<'_, G> for DuplicateLangItem {
     #[track_caller]
-    fn into_diagnostic(self, dcx: &DiagCtxt, level: Level) -> DiagnosticBuilder<'_, G> {
-        let mut diag = DiagnosticBuilder::new(
+    fn into_diagnostic(self, dcx: &DiagCtxt, level: Level) -> Diag<'_, G> {
+        let mut diag = Diag::new(
             dcx,
             level,
             match self.duplicate {
@@ -1566,7 +1565,7 @@ pub enum MultipleDeadCodes<'tcx> {
         num: usize,
         descr: &'tcx str,
         participle: &'tcx str,
-        name_list: DiagnosticSymbolList,
+        name_list: DiagSymbolList,
         #[subdiagnostic]
         parent_info: Option<ParentInfo<'tcx>>,
         #[subdiagnostic]
@@ -1578,7 +1577,7 @@ pub enum MultipleDeadCodes<'tcx> {
         num: usize,
         descr: &'tcx str,
         participle: &'tcx str,
-        name_list: DiagnosticSymbolList,
+        name_list: DiagSymbolList,
         #[subdiagnostic]
         change_fields_suggestion: ChangeFieldsToBeOfUnitType,
         #[subdiagnostic]
@@ -1602,7 +1601,7 @@ pub struct ParentInfo<'tcx> {
 #[note(passes_ignored_derived_impls)]
 pub struct IgnoredDerivedImpls {
     pub name: Symbol,
-    pub trait_list: DiagnosticSymbolList,
+    pub trait_list: DiagSymbolList,
     pub trait_list_len: usize,
 }
 
@@ -1755,7 +1754,7 @@ pub struct UnusedVariableStringInterp {
 impl AddToDiagnostic for UnusedVariableStringInterp {
     fn add_to_diagnostic_with<G: EmissionGuarantee, F: SubdiagnosticMessageOp<G>>(
         self,
-        diag: &mut DiagnosticBuilder<'_, G>,
+        diag: &mut Diag<'_, G>,
         _f: F,
     ) {
         diag.span_label(self.lit, crate::fluent_generated::passes_maybe_string_interpolation);

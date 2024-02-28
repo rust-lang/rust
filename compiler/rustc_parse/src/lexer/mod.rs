@@ -7,7 +7,7 @@ use rustc_ast::ast::{self, AttrStyle};
 use rustc_ast::token::{self, CommentKind, Delimiter, IdentIsRaw, Token, TokenKind};
 use rustc_ast::tokenstream::TokenStream;
 use rustc_ast::util::unicode::contains_text_flow_control_chars;
-use rustc_errors::{codes::*, Applicability, DiagCtxt, DiagnosticBuilder, StashKey};
+use rustc_errors::{codes::*, Applicability, Diag, DiagCtxt, StashKey};
 use rustc_lexer::unescape::{self, EscapeError, Mode};
 use rustc_lexer::{Base, DocStyle, RawStrError};
 use rustc_lexer::{Cursor, LiteralKind};
@@ -47,7 +47,7 @@ pub(crate) fn parse_token_trees<'sess, 'src>(
     mut src: &'src str,
     mut start_pos: BytePos,
     override_span: Option<Span>,
-) -> Result<TokenStream, Vec<DiagnosticBuilder<'sess>>> {
+) -> Result<TokenStream, Vec<Diag<'sess>>> {
     // Skip `#!`, if present.
     if let Some(shebang_len) = rustc_lexer::strip_shebang(src) {
         src = &src[shebang_len..];

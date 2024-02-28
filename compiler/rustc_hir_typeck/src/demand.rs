@@ -1,6 +1,6 @@
 use crate::FnCtxt;
 use rustc_errors::MultiSpan;
-use rustc_errors::{Applicability, DiagnosticBuilder};
+use rustc_errors::{Applicability, Diag};
 use rustc_hir as hir;
 use rustc_hir::def::Res;
 use rustc_hir::intravisit::Visitor;
@@ -19,7 +19,7 @@ use super::method::probe;
 impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     pub fn emit_type_mismatch_suggestions(
         &self,
-        err: &mut DiagnosticBuilder<'_>,
+        err: &mut Diag<'_>,
         expr: &hir::Expr<'tcx>,
         expr_ty: Ty<'tcx>,
         expected: Ty<'tcx>,
@@ -70,7 +70,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
     pub fn emit_coerce_suggestions(
         &self,
-        err: &mut DiagnosticBuilder<'_>,
+        err: &mut Diag<'_>,
         expr: &hir::Expr<'tcx>,
         expr_ty: Ty<'tcx>,
         expected: Ty<'tcx>,
@@ -174,7 +174,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         sp: Span,
         expected: Ty<'tcx>,
         actual: Ty<'tcx>,
-    ) -> Option<DiagnosticBuilder<'tcx>> {
+    ) -> Option<Diag<'tcx>> {
         self.demand_suptype_with_origin(&self.misc(sp), expected, actual)
     }
 
@@ -184,7 +184,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         cause: &ObligationCause<'tcx>,
         expected: Ty<'tcx>,
         actual: Ty<'tcx>,
-    ) -> Option<DiagnosticBuilder<'tcx>> {
+    ) -> Option<Diag<'tcx>> {
         match self.at(cause, self.param_env).sup(DefineOpaqueTypes::Yes, expected, actual) {
             Ok(InferOk { obligations, value: () }) => {
                 self.register_predicates(obligations);
@@ -205,7 +205,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         sp: Span,
         expected: Ty<'tcx>,
         actual: Ty<'tcx>,
-    ) -> Option<DiagnosticBuilder<'tcx>> {
+    ) -> Option<Diag<'tcx>> {
         self.demand_eqtype_with_origin(&self.misc(sp), expected, actual)
     }
 
@@ -214,7 +214,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         cause: &ObligationCause<'tcx>,
         expected: Ty<'tcx>,
         actual: Ty<'tcx>,
-    ) -> Option<DiagnosticBuilder<'tcx>> {
+    ) -> Option<Diag<'tcx>> {
         match self.at(cause, self.param_env).eq(DefineOpaqueTypes::Yes, expected, actual) {
             Ok(InferOk { obligations, value: () }) => {
                 self.register_predicates(obligations);
@@ -252,7 +252,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         expected: Ty<'tcx>,
         mut expected_ty_expr: Option<&'tcx hir::Expr<'tcx>>,
         allow_two_phase: AllowTwoPhase,
-    ) -> (Ty<'tcx>, Option<DiagnosticBuilder<'tcx>>) {
+    ) -> (Ty<'tcx>, Option<Diag<'tcx>>) {
         let expected = self.resolve_vars_with_obligations(expected);
 
         let e = match self.coerce(expr, checked_ty, expected, allow_two_phase, None) {
@@ -280,7 +280,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     /// with some expectation given by `source`.
     pub fn note_source_of_type_mismatch_constraint(
         &self,
-        err: &mut DiagnosticBuilder<'_>,
+        err: &mut Diag<'_>,
         expr: &hir::Expr<'_>,
         source: TypeMismatchSource<'tcx>,
     ) -> bool {
@@ -550,7 +550,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     // expected type.
     pub fn annotate_loop_expected_due_to_inference(
         &self,
-        err: &mut DiagnosticBuilder<'_>,
+        err: &mut Diag<'_>,
         expr: &hir::Expr<'_>,
         error: Option<TypeError<'tcx>>,
     ) {
@@ -673,7 +673,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
     fn annotate_expected_due_to_let_ty(
         &self,
-        err: &mut DiagnosticBuilder<'_>,
+        err: &mut Diag<'_>,
         expr: &hir::Expr<'_>,
         error: Option<TypeError<'tcx>>,
     ) {
@@ -782,7 +782,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
     fn annotate_alternative_method_deref(
         &self,
-        err: &mut DiagnosticBuilder<'_>,
+        err: &mut Diag<'_>,
         expr: &hir::Expr<'_>,
         error: Option<TypeError<'tcx>>,
     ) {
@@ -1029,7 +1029,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
     fn explain_self_literal(
         &self,
-        err: &mut DiagnosticBuilder<'_>,
+        err: &mut Diag<'_>,
         expr: &hir::Expr<'tcx>,
         expected: Ty<'tcx>,
         found: Ty<'tcx>,
@@ -1082,7 +1082,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
     fn note_wrong_return_ty_due_to_generic_arg(
         &self,
-        err: &mut DiagnosticBuilder<'_>,
+        err: &mut Diag<'_>,
         expr: &hir::Expr<'_>,
         checked_ty: Ty<'tcx>,
     ) {

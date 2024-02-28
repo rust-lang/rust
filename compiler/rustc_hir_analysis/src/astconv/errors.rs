@@ -9,7 +9,7 @@ use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
 use rustc_data_structures::sorted_map::SortedMap;
 use rustc_data_structures::unord::UnordMap;
 use rustc_errors::{
-    codes::*, pluralize, struct_span_code_err, Applicability, DiagnosticBuilder, ErrorGuaranteed,
+    codes::*, pluralize, struct_span_code_err, Applicability, Diag, ErrorGuaranteed,
 };
 use rustc_hir as hir;
 use rustc_hir::def_id::{DefId, LocalDefId};
@@ -371,7 +371,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
     // FIXME(fmease): Heavily adapted from `rustc_hir_typeck::method::suggest`. Deduplicate.
     fn note_ambiguous_inherent_assoc_type(
         &self,
-        err: &mut DiagnosticBuilder<'_>,
+        err: &mut Diag<'_>,
         candidates: Vec<DefId>,
         span: Span,
     ) {
@@ -429,7 +429,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         let tcx = self.tcx();
 
         let adt_did = self_ty.ty_adt_def().map(|def| def.did());
-        let add_def_label = |err: &mut DiagnosticBuilder<'_>| {
+        let add_def_label = |err: &mut Diag<'_>| {
             if let Some(did) = adt_did {
                 err.span_label(
                     tcx.def_span(did),

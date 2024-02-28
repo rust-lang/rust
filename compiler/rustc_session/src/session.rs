@@ -22,8 +22,8 @@ use rustc_errors::emitter::{DynEmitter, HumanEmitter, HumanReadableErrorType};
 use rustc_errors::json::JsonEmitter;
 use rustc_errors::registry::Registry;
 use rustc_errors::{
-    codes::*, fallback_fluent_bundle, DiagCtxt, DiagnosticBuilder, DiagnosticMessage,
-    ErrorGuaranteed, FatalAbort, FluentBundle, IntoDiagnostic, LazyFallbackBundle, TerminalUrl,
+    codes::*, fallback_fluent_bundle, Diag, DiagCtxt, DiagnosticMessage, ErrorGuaranteed,
+    FatalAbort, FluentBundle, IntoDiagnostic, LazyFallbackBundle, TerminalUrl,
 };
 use rustc_macros::HashStable_Generic;
 pub use rustc_span::def_id::StableCrateId;
@@ -111,7 +111,7 @@ impl Mul<usize> for Limit {
 }
 
 impl rustc_errors::IntoDiagnosticArg for Limit {
-    fn into_diagnostic_arg(self) -> rustc_errors::DiagnosticArgValue {
+    fn into_diagnostic_arg(self) -> rustc_errors::DiagArgValue {
         self.to_string().into_diagnostic_arg()
     }
 }
@@ -308,7 +308,7 @@ impl Session {
         &'a self,
         err: impl IntoDiagnostic<'a>,
         feature: Symbol,
-    ) -> DiagnosticBuilder<'a> {
+    ) -> Diag<'a> {
         let mut err = self.dcx().create_err(err);
         if err.code.is_none() {
             err.code(E0658);
@@ -1442,10 +1442,7 @@ impl EarlyDiagCtxt {
 
     #[allow(rustc::untranslatable_diagnostic)]
     #[allow(rustc::diagnostic_outside_of_impl)]
-    pub fn early_struct_fatal(
-        &self,
-        msg: impl Into<DiagnosticMessage>,
-    ) -> DiagnosticBuilder<'_, FatalAbort> {
+    pub fn early_struct_fatal(&self, msg: impl Into<DiagnosticMessage>) -> Diag<'_, FatalAbort> {
         self.dcx.struct_fatal(msg)
     }
 

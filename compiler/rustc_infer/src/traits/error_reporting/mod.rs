@@ -2,7 +2,7 @@ use super::ObjectSafetyViolation;
 
 use crate::infer::InferCtxt;
 use rustc_data_structures::fx::FxIndexSet;
-use rustc_errors::{codes::*, struct_span_code_err, Applicability, DiagnosticBuilder, MultiSpan};
+use rustc_errors::{codes::*, struct_span_code_err, Applicability, Diag, MultiSpan};
 use rustc_hir as hir;
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_middle::ty::print::with_no_trimmed_paths;
@@ -18,7 +18,7 @@ impl<'tcx> InferCtxt<'tcx> {
         impl_item_def_id: LocalDefId,
         trait_item_def_id: DefId,
         requirement: &dyn fmt::Display,
-    ) -> DiagnosticBuilder<'tcx> {
+    ) -> Diag<'tcx> {
         let mut err = struct_span_code_err!(
             self.tcx.dcx(),
             error_span,
@@ -45,7 +45,7 @@ pub fn report_object_safety_error<'tcx>(
     hir_id: Option<hir::HirId>,
     trait_def_id: DefId,
     violations: &[ObjectSafetyViolation],
-) -> DiagnosticBuilder<'tcx> {
+) -> Diag<'tcx> {
     let trait_str = tcx.def_path_str(trait_def_id);
     let trait_span = tcx.hir().get_if_local(trait_def_id).and_then(|node| match node {
         hir::Node::Item(item) => Some(item.ident.span),

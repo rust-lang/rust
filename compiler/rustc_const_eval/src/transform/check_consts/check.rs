@@ -1,6 +1,6 @@
 //! The `Visitor` responsible for actually checking a `mir::Body` for invalid operations.
 
-use rustc_errors::{DiagnosticBuilder, ErrorGuaranteed};
+use rustc_errors::{Diag, ErrorGuaranteed};
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
 use rustc_index::bit_set::BitSet;
@@ -187,7 +187,7 @@ pub struct Checker<'mir, 'tcx> {
     local_has_storage_dead: Option<BitSet<Local>>,
 
     error_emitted: Option<ErrorGuaranteed>,
-    secondary_errors: Vec<DiagnosticBuilder<'tcx>>,
+    secondary_errors: Vec<Diag<'tcx>>,
 }
 
 impl<'mir, 'tcx> Deref for Checker<'mir, 'tcx> {
@@ -318,12 +318,12 @@ impl<'mir, 'tcx> Checker<'mir, 'tcx> {
         assert!(err.is_error());
 
         match op.importance() {
-            ops::DiagnosticImportance::Primary => {
+            ops::DiagImportance::Primary => {
                 let reported = err.emit();
                 self.error_emitted = Some(reported);
             }
 
-            ops::DiagnosticImportance::Secondary => self.secondary_errors.push(err),
+            ops::DiagImportance::Secondary => self.secondary_errors.push(err),
         }
     }
 

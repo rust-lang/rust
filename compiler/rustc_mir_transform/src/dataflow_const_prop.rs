@@ -42,7 +42,7 @@ pub(crate) macro throw_machine_stop_str($($tt:tt)*) {{
 
         fn add_args(
             self: Box<Self>,
-            _: &mut dyn FnMut(rustc_errors::DiagnosticArgName, rustc_errors::DiagnosticArgValue),
+            _: &mut dyn FnMut(rustc_errors::DiagArgName, rustc_errors::DiagArgValue),
         ) {}
     }
     throw_machine_stop!(Zst)

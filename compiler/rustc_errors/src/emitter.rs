@@ -1,6 +1,6 @@
 //! The current rustc diagnostics emitter.
 //!
-//! An `Emitter` takes care of generating the output from a `DiagnosticBuilder` struct.
+//! An `Emitter` takes care of generating the output from a `Diag` struct.
 //!
 //! There are various `Emitter` implementations that generate different output formats such as
 //! JSON and human readable output.
@@ -17,9 +17,9 @@ use crate::snippet::{
 use crate::styled_buffer::StyledBuffer;
 use crate::translation::{to_fluent_args, Translate};
 use crate::{
-    diagnostic::DiagnosticLocation, CodeSuggestion, DiagCtxt, Diagnostic, DiagnosticMessage,
-    ErrCode, FluentBundle, LazyFallbackBundle, Level, MultiSpan, SubDiagnostic,
-    SubstitutionHighlight, SuggestionStyle, TerminalUrl,
+    diagnostic::DiagLocation, CodeSuggestion, DiagCtxt, DiagInner, DiagnosticMessage, ErrCode,
+    FluentBundle, LazyFallbackBundle, Level, MultiSpan, Subdiag, SubstitutionHighlight,
+    SuggestionStyle, TerminalUrl,
 };
 use rustc_lint_defs::pluralize;
 
@@ -194,7 +194,7 @@ pub type DynEmitter = dyn Emitter + DynSend;
 /// Emitter trait for emitting errors.
 pub trait Emitter: Translate {
     /// Emit a structured diagnostic.
-    fn emit_diagnostic(&mut self, diag: Diagnostic);
+    fn emit_diagnostic(&mut self, diag: DiagInner);
 
     /// Emit a notification that an artifact has been output.
     /// Currently only supported for the JSON format.
@@ -202,7 +202,7 @@ pub trait Emitter: Translate {
 
     /// Emit a report about future breakage.
     /// Currently only supported for the JSON format.
-    fn emit_future_breakage_report(&mut self, _diags: Vec<Diagnostic>) {}
+    fn emit_future_breakage_report(&mut self, _diags: Vec<DiagInner>) {}
 
     /// Emit list of unused externs.
     /// Currently only supported for the JSON format.
@@ -229,12 +229,12 @@ pub trait Emitter: Translate {
     ///
     /// There are a lot of conditions to this method, but in short:
     ///
-    /// * If the current `Diagnostic` has only one visible `CodeSuggestion`,
+    /// * If the current `DiagInner` has only one visible `CodeSuggestion`,
     ///   we format the `help` suggestion depending on the content of the
     ///   substitutions. In that case, we modify the span and clear the
     ///   suggestions.
     ///
-    /// * If the current `Diagnostic` has multiple suggestions,
+    /// * If the current `DiagInner` has multiple suggestions,
     ///   we leave `primary_span` and the suggestions untouched.
     fn primary_span_formatted(
         &mut self,
@@ -303,7 +303,7 @@ pub trait Emitter: Translate {
     fn fix_multispans_in_extern_macros_and_render_macro_backtrace(
         &self,
         span: &mut MultiSpan,
-        children: &mut Vec<SubDiagnostic>,
+        children: &mut Vec<Subdiag>,
         level: &Level,
         backtrace: bool,
     ) {
@@ -350,7 +350,7 @@ pub trait Emitter: Translate {
                     (in Nightly builds, run with -Z macro-backtrace for more info)",
                 );
 
-                children.push(SubDiagnostic {
+                children.push(Subdiag {
                     level: Level::Note,
                     messages: vec![(DiagnosticMessage::from(msg), Style::NoStyle)],
                     span: MultiSpan::new(),
@@ -362,7 +362,7 @@ pub trait Emitter: Translate {
     fn render_multispans_macro_backtrace(
         &self,
         span: &mut MultiSpan,
-        children: &mut Vec<SubDiagnostic>,
+        children: &mut Vec<Subdiag>,
         backtrace: bool,
     ) {
         for span in iter::once(span).chain(children.iter_mut().map(|child| &mut child.span)) {
@@ -461,11 +461,7 @@ pub trait Emitter: Translate {
     // This does a small "fix" for multispans by looking to see if it can find any that
     // point directly at external macros. Since these are often difficult to read,
     // this will change the span to point at the use site.
-    fn fix_multispans_in_extern_macros(
-        &self,
-        span: &mut MultiSpan,
-        children: &mut Vec<SubDiagnostic>,
-    ) {
+    fn fix_multispans_in_extern_macros(&self, span: &mut MultiSpan, children: &mut Vec<Subdiag>) {
         debug!("fix_multispans_in_extern_macros: before: span={:?} children={:?}", span, children);
         self.fix_multispan_in_extern_macros(span);
         for child in children.iter_mut() {
@@ -518,7 +514,7 @@ impl Emitter for HumanEmitter {
         self.sm.as_ref()
     }
 
-    fn emit_diagnostic(&mut self, mut diag: Diagnostic) {
+    fn emit_diagnostic(&mut self, mut diag: DiagInner) {
         let fluent_args = to_fluent_args(diag.args.iter());
 
         let mut suggestions = diag.suggestions.unwrap_or(vec![]);
@@ -597,7 +593,7 @@ impl Emitter for SilentEmitter {
         None
     }
 
-    fn emit_diagnostic(&mut self, mut diag: Diagnostic) {
+    fn emit_diagnostic(&mut self, mut diag: DiagInner) {
         if diag.level == Level::Fatal {
             diag.sub(Level::Note, self.fatal_note.clone(), MultiSpan::new());
             self.fatal_dcx.emit_diagnostic(diag);
@@ -1235,7 +1231,7 @@ impl HumanEmitter {
         max
     }
 
-    fn get_max_line_num(&mut self, span: &MultiSpan, children: &[SubDiagnostic]) -> usize {
+    fn get_max_line_num(&mut self, span: &MultiSpan, children: &[Subdiag]) -> usize {
         let primary = self.get_multispan_max_line_num(span);
         children
             .iter()
@@ -1331,7 +1327,7 @@ impl HumanEmitter {
         level: &Level,
         max_line_num_len: usize,
         is_secondary: bool,
-        emitted_at: Option<&DiagnosticLocation>,
+        emitted_at: Option<&DiagLocation>,
     ) -> io::Result<()> {
         let mut buffer = StyledBuffer::new();
 
@@ -2098,9 +2094,9 @@ impl HumanEmitter {
         args: &FluentArgs<'_>,
         code: &Option<ErrCode>,
         span: &MultiSpan,
-        children: &[SubDiagnostic],
+        children: &[Subdiag],
         suggestions: &[CodeSuggestion],
-        emitted_at: Option<&DiagnosticLocation>,
+        emitted_at: Option<&DiagLocation>,
     ) {
         let max_line_num_len = if self.ui_testing {
             ANONYMIZED_LINE_NUM.len()

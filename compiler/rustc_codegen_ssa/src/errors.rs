@@ -4,8 +4,8 @@ use crate::assert_module_sources::CguReuse;
 use crate::back::command::Command;
 use crate::fluent_generated as fluent;
 use rustc_errors::{
-    codes::*, DiagCtxt, DiagnosticArgValue, DiagnosticBuilder, EmissionGuarantee, IntoDiagnostic,
-    IntoDiagnosticArg, Level,
+    codes::*, Diag, DiagArgValue, DiagCtxt, EmissionGuarantee, IntoDiagnostic, IntoDiagnosticArg,
+    Level,
 };
 use rustc_macros::Diagnostic;
 use rustc_middle::ty::layout::LayoutError;
@@ -153,8 +153,8 @@ impl<'a> CopyPath<'a> {
 struct DebugArgPath<'a>(pub &'a Path);
 
 impl IntoDiagnosticArg for DebugArgPath<'_> {
-    fn into_diagnostic_arg(self) -> rustc_errors::DiagnosticArgValue {
-        DiagnosticArgValue::Str(Cow::Owned(format!("{:?}", self.0)))
+    fn into_diagnostic_arg(self) -> rustc_errors::DiagArgValue {
+        DiagArgValue::Str(Cow::Owned(format!("{:?}", self.0)))
     }
 }
 
@@ -216,8 +216,8 @@ pub enum LinkRlibError {
 pub struct ThorinErrorWrapper(pub thorin::Error);
 
 impl<G: EmissionGuarantee> IntoDiagnostic<'_, G> for ThorinErrorWrapper {
-    fn into_diagnostic(self, dcx: &DiagCtxt, level: Level) -> DiagnosticBuilder<'_, G> {
-        let build = |msg| DiagnosticBuilder::new(dcx, level, msg);
+    fn into_diagnostic(self, dcx: &DiagCtxt, level: Level) -> Diag<'_, G> {
+        let build = |msg| Diag::new(dcx, level, msg);
         match self.0 {
             thorin::Error::ReadInput(_) => build(fluent::codegen_ssa_thorin_read_input_failure),
             thorin::Error::ParseFileKind(_) => {
@@ -349,8 +349,8 @@ pub struct LinkingFailed<'a> {
 }
 
 impl<G: EmissionGuarantee> IntoDiagnostic<'_, G> for LinkingFailed<'_> {
-    fn into_diagnostic(self, dcx: &DiagCtxt, level: Level) -> DiagnosticBuilder<'_, G> {
-        let mut diag = DiagnosticBuilder::new(dcx, level, fluent::codegen_ssa_linking_failed);
+    fn into_diagnostic(self, dcx: &DiagCtxt, level: Level) -> Diag<'_, G> {
+        let mut diag = Diag::new(dcx, level, fluent::codegen_ssa_linking_failed);
         diag.arg("linker_path", format!("{}", self.linker_path.display()));
         diag.arg("exit_status", format!("{}", self.exit_status));
 
@@ -975,10 +975,10 @@ pub enum ExpectedPointerMutability {
 }
 
 impl IntoDiagnosticArg for ExpectedPointerMutability {
-    fn into_diagnostic_arg(self) -> DiagnosticArgValue {
+    fn into_diagnostic_arg(self) -> DiagArgValue {
         match self {
-            ExpectedPointerMutability::Mut => DiagnosticArgValue::Str(Cow::Borrowed("*mut")),
-            ExpectedPointerMutability::Not => DiagnosticArgValue::Str(Cow::Borrowed("*_")),
+            ExpectedPointerMutability::Mut => DiagArgValue::Str(Cow::Borrowed("*mut")),
+            ExpectedPointerMutability::Not => DiagArgValue::Str(Cow::Borrowed("*_")),
         }
     }
 }

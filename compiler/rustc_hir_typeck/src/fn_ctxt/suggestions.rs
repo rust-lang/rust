@@ -12,7 +12,7 @@ use core::cmp::min;
 use core::iter;
 use rustc_ast::util::parser::{ExprPrecedence, PREC_POSTFIX};
 use rustc_data_structures::packed::Pu128;
-use rustc_errors::{Applicability, DiagnosticBuilder, MultiSpan};
+use rustc_errors::{Applicability, Diag, MultiSpan};
 use rustc_hir as hir;
 use rustc_hir::def::Res;
 use rustc_hir::def::{CtorKind, CtorOf, DefKind};
@@ -48,11 +48,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             .copied()
     }
 
-    pub(in super::super) fn suggest_semicolon_at_end(
-        &self,
-        span: Span,
-        err: &mut DiagnosticBuilder<'_>,
-    ) {
+    pub(in super::super) fn suggest_semicolon_at_end(&self, span: Span, err: &mut Diag<'_>) {
         // This suggestion is incorrect for
         // fn foo() -> bool { match () { () => true } || match () { () => true } }
         err.span_suggestion_short(
@@ -70,7 +66,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     /// - Possible missing return type if the return type is the default, and not `fn main()`.
     pub fn suggest_mismatched_types_on_tail(
         &self,
-        err: &mut DiagnosticBuilder<'_>,
+        err: &mut Diag<'_>,
         expr: &'tcx hir::Expr<'tcx>,
         expected: Ty<'tcx>,
         found: Ty<'tcx>,
@@ -101,7 +97,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     /// ```
     pub(crate) fn suggest_fn_call(
         &self,
-        err: &mut DiagnosticBuilder<'_>,
+        err: &mut Diag<'_>,
         expr: &hir::Expr<'_>,
         found: Ty<'tcx>,
         can_satisfy: impl FnOnce(Ty<'tcx>) -> bool,
@@ -183,7 +179,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
     pub fn suggest_two_fn_call(
         &self,
-        err: &mut DiagnosticBuilder<'_>,
+        err: &mut Diag<'_>,
         lhs_expr: &'tcx hir::Expr<'tcx>,
         lhs_ty: Ty<'tcx>,
         rhs_expr: &'tcx hir::Expr<'tcx>,
@@ -257,7 +253,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
     pub fn suggest_remove_last_method_call(
         &self,
-        err: &mut DiagnosticBuilder<'_>,
+        err: &mut Diag<'_>,
         expr: &hir::Expr<'tcx>,
         expected: Ty<'tcx>,
     ) -> bool {
@@ -286,7 +282,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
     pub fn suggest_deref_ref_or_into(
         &self,
-        err: &mut DiagnosticBuilder<'_>,
+        err: &mut Diag<'_>,
         expr: &hir::Expr<'tcx>,
         expected: Ty<'tcx>,
         found: Ty<'tcx>,
@@ -544,7 +540,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     /// in the heap by calling `Box::new()`.
     pub(in super::super) fn suggest_boxing_when_appropriate(
         &self,
-        err: &mut DiagnosticBuilder<'_>,
+        err: &mut Diag<'_>,
         span: Span,
         hir_id: HirId,
         expected: Ty<'tcx>,
@@ -587,7 +583,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     /// suggest a non-capturing closure
     pub(in super::super) fn suggest_no_capture_closure(
         &self,
-        err: &mut DiagnosticBuilder<'_>,
+        err: &mut Diag<'_>,
         expected: Ty<'tcx>,
         found: Ty<'tcx>,
     ) -> bool {
@@ -624,7 +620,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     #[instrument(skip(self, err))]
     pub(in super::super) fn suggest_calling_boxed_future_when_appropriate(
         &self,
-        err: &mut DiagnosticBuilder<'_>,
+        err: &mut Diag<'_>,
         expr: &hir::Expr<'_>,
         expected: Ty<'tcx>,
         found: Ty<'tcx>,
@@ -736,7 +732,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     /// block is needed to be added too (`|| { expr; }`). This is denoted by `needs_block`.
     pub fn suggest_missing_semicolon(
         &self,
-        err: &mut DiagnosticBuilder<'_>,
+        err: &mut Diag<'_>,
         expression: &'tcx hir::Expr<'tcx>,
         expected: Ty<'tcx>,
         needs_block: bool,
@@ -795,7 +791,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     #[instrument(level = "trace", skip(self, err))]
     pub(in super::super) fn suggest_missing_return_type(
         &self,
-        err: &mut DiagnosticBuilder<'_>,
+        err: &mut Diag<'_>,
         fn_decl: &hir::FnDecl<'tcx>,
         expected: Ty<'tcx>,
         found: Ty<'tcx>,
@@ -913,7 +909,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     /// ```
     fn try_suggest_return_impl_trait(
         &self,
-        err: &mut DiagnosticBuilder<'_>,
+        err: &mut Diag<'_>,
         expected: Ty<'tcx>,
         found: Ty<'tcx>,
         fn_id: hir::HirId,
@@ -1018,7 +1014,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
     pub(in super::super) fn suggest_missing_break_or_return_expr(
         &self,
-        err: &mut DiagnosticBuilder<'_>,
+        err: &mut Diag<'_>,
         expr: &'tcx hir::Expr<'tcx>,
         fn_decl: &hir::FnDecl<'tcx>,
         expected: Ty<'tcx>,
@@ -1117,7 +1113,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
     pub(in super::super) fn suggest_missing_parentheses(
         &self,
-        err: &mut DiagnosticBuilder<'_>,
+        err: &mut Diag<'_>,
         expr: &hir::Expr<'_>,
     ) -> bool {
         let sp = self.tcx.sess.source_map().start_point(expr.span).with_parent(None);
@@ -1135,7 +1131,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     /// if it was possibly mistaken array syntax.
     pub(crate) fn suggest_block_to_brackets_peeling_refs(
         &self,
-        diag: &mut DiagnosticBuilder<'_>,
+        diag: &mut Diag<'_>,
         mut expr: &hir::Expr<'_>,
         mut expr_ty: Ty<'tcx>,
         mut expected_ty: Ty<'tcx>,
@@ -1162,7 +1158,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
     pub(crate) fn suggest_clone_for_ref(
         &self,
-        diag: &mut DiagnosticBuilder<'_>,
+        diag: &mut Diag<'_>,
         expr: &hir::Expr<'_>,
         expr_ty: Ty<'tcx>,
         expected_ty: Ty<'tcx>,
@@ -1197,7 +1193,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
     pub(crate) fn suggest_copied_cloned_or_as_ref(
         &self,
-        diag: &mut DiagnosticBuilder<'_>,
+        diag: &mut Diag<'_>,
         expr: &hir::Expr<'_>,
         expr_ty: Ty<'tcx>,
         expected_ty: Ty<'tcx>,
@@ -1247,7 +1243,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
     pub(crate) fn suggest_into(
         &self,
-        diag: &mut DiagnosticBuilder<'_>,
+        diag: &mut Diag<'_>,
         expr: &hir::Expr<'_>,
         expr_ty: Ty<'tcx>,
         expected_ty: Ty<'tcx>,
@@ -1310,7 +1306,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     /// When expecting a `bool` and finding an `Option`, suggests using `let Some(..)` or `.is_some()`
     pub(crate) fn suggest_option_to_bool(
         &self,
-        diag: &mut DiagnosticBuilder<'_>,
+        diag: &mut Diag<'_>,
         expr: &hir::Expr<'_>,
         expr_ty: Ty<'tcx>,
         expected_ty: Ty<'tcx>,
@@ -1367,7 +1363,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     /// in case the block was mistaken array syntax, e.g. `{ 1 }` -> `[ 1 ]`.
     pub(crate) fn suggest_block_to_brackets(
         &self,
-        diag: &mut DiagnosticBuilder<'_>,
+        diag: &mut Diag<'_>,
         blk: &hir::Block<'_>,
         blk_ty: Ty<'tcx>,
         expected_ty: Ty<'tcx>,
@@ -1407,7 +1403,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     #[instrument(skip(self, err))]
     pub(crate) fn suggest_floating_point_literal(
         &self,
-        err: &mut DiagnosticBuilder<'_>,
+        err: &mut Diag<'_>,
         expr: &hir::Expr<'_>,
         expected_ty: Ty<'tcx>,
     ) -> bool {
@@ -1478,7 +1474,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     #[instrument(skip(self, err))]
     pub(crate) fn suggest_null_ptr_for_literal_zero_given_to_ptr_arg(
         &self,
-        err: &mut DiagnosticBuilder<'_>,
+        err: &mut Diag<'_>,
         expr: &hir::Expr<'_>,
         expected_ty: Ty<'tcx>,
     ) -> bool {
@@ -1516,7 +1512,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
     pub(crate) fn suggest_associated_const(
         &self,
-        err: &mut DiagnosticBuilder<'_>,
+        err: &mut Diag<'_>,
         expr: &hir::Expr<'tcx>,
         expected_ty: Ty<'tcx>,
     ) -> bool {
@@ -1610,7 +1606,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     /// which is a side-effect of autoref.
     pub(crate) fn note_type_is_not_clone(
         &self,
-        diag: &mut DiagnosticBuilder<'_>,
+        diag: &mut Diag<'_>,
         expected_ty: Ty<'tcx>,
         found_ty: Ty<'tcx>,
         expr: &hir::Expr<'_>,
@@ -1810,7 +1806,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         &self,
         blk: &'tcx hir::Block<'tcx>,
         expected_ty: Ty<'tcx>,
-        err: &mut DiagnosticBuilder<'_>,
+        err: &mut Diag<'_>,
     ) -> bool {
         if let Some((span_semi, boxed)) = self.err_ctxt().could_remove_semicolon(blk, expected_ty) {
             if let StatementAsExpression::NeedsBoxing = boxed {
@@ -1855,7 +1851,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
     pub(crate) fn suggest_missing_unwrap_expect(
         &self,
-        err: &mut DiagnosticBuilder<'_>,
+        err: &mut Diag<'_>,
         expr: &hir::Expr<'tcx>,
         expected: Ty<'tcx>,
         found: Ty<'tcx>,
@@ -1938,7 +1934,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
     pub(crate) fn suggest_coercing_result_via_try_operator(
         &self,
-        err: &mut DiagnosticBuilder<'_>,
+        err: &mut Diag<'_>,
         expr: &hir::Expr<'tcx>,
         expected: Ty<'tcx>,
         found: Ty<'tcx>,
@@ -1985,7 +1981,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     /// sole field is of the found type, suggest such variants. (Issue #42764)
     pub(crate) fn suggest_compatible_variants(
         &self,
-        err: &mut DiagnosticBuilder<'_>,
+        err: &mut Diag<'_>,
         expr: &hir::Expr<'_>,
         expected: Ty<'tcx>,
         expr_ty: Ty<'tcx>,
@@ -2174,7 +2170,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
     pub(crate) fn suggest_non_zero_new_unwrap(
         &self,
-        err: &mut DiagnosticBuilder<'_>,
+        err: &mut Diag<'_>,
         expr: &hir::Expr<'_>,
         expected: Ty<'tcx>,
         expr_ty: Ty<'tcx>,
@@ -2718,7 +2714,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
     pub(crate) fn suggest_cast(
         &self,
-        err: &mut DiagnosticBuilder<'_>,
+        err: &mut Diag<'_>,
         expr: &hir::Expr<'_>,
         checked_ty: Ty<'tcx>,
         expected_ty: Ty<'tcx>,
@@ -2846,7 +2842,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let in_const_context = self.tcx.hir().is_inside_const_context(expr.hir_id);
 
         let suggest_fallible_into_or_lhs_from =
-            |err: &mut DiagnosticBuilder<'_>, exp_to_found_is_fallible: bool| {
+            |err: &mut Diag<'_>, exp_to_found_is_fallible: bool| {
                 // If we know the expression the expected type is derived from, we might be able
                 // to suggest a widening conversion rather than a narrowing one (which may
                 // panic). For example, given x: u8 and y: u32, if we know the span of "x",
@@ -2886,9 +2882,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             };
 
         let suggest_to_change_suffix_or_into =
-            |err: &mut DiagnosticBuilder<'_>,
-             found_to_exp_is_fallible: bool,
-             exp_to_found_is_fallible: bool| {
+            |err: &mut Diag<'_>, found_to_exp_is_fallible: bool, exp_to_found_is_fallible: bool| {
                 let exp_is_lhs = expected_ty_expr.is_some_and(|e| self.tcx.hir().is_lhs(e.hir_id));
 
                 if exp_is_lhs {
@@ -3084,7 +3078,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     /// Identify when the user has written `foo..bar()` instead of `foo.bar()`.
     pub(crate) fn suggest_method_call_on_range_literal(
         &self,
-        err: &mut DiagnosticBuilder<'_>,
+        err: &mut Diag<'_>,
         expr: &hir::Expr<'tcx>,
         checked_ty: Ty<'tcx>,
         expected_ty: Ty<'tcx>,
@@ -3162,7 +3156,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     /// block without a tail expression.
     pub(crate) fn suggest_return_binding_for_missing_tail_expr(
         &self,
-        err: &mut DiagnosticBuilder<'_>,
+        err: &mut Diag<'_>,
         expr: &hir::Expr<'_>,
         checked_ty: Ty<'tcx>,
         expected_ty: Ty<'tcx>,

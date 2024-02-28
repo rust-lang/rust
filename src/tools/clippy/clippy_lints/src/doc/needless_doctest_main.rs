@@ -6,7 +6,7 @@ use clippy_utils::diagnostics::span_lint;
 use rustc_ast::{CoroutineKind, Fn, FnRetTy, Item, ItemKind};
 use rustc_data_structures::sync::Lrc;
 use rustc_errors::emitter::HumanEmitter;
-use rustc_errors::{DiagCtxt, DiagnosticBuilder};
+use rustc_errors::{Diag, DiagCtxt};
 use rustc_lint::LateContext;
 use rustc_parse::maybe_new_parser_from_source_str;
 use rustc_parse::parser::ForceCollect;
@@ -53,7 +53,7 @@ pub fn check(
                 let mut parser = match maybe_new_parser_from_source_str(&sess, filename, code) {
                     Ok(p) => p,
                     Err(errs) => {
-                        errs.into_iter().for_each(DiagnosticBuilder::cancel);
+                        errs.into_iter().for_each(Diag::cancel);
                         return (false, test_attr_spans);
                     },
                 };

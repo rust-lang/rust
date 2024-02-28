@@ -11,7 +11,7 @@ pub use self::suggest::SelfSource;
 pub use self::MethodError::*;
 
 use crate::FnCtxt;
-use rustc_errors::{Applicability, DiagnosticBuilder, SubdiagnosticMessage};
+use rustc_errors::{Applicability, Diag, SubdiagnosticMessage};
 use rustc_hir as hir;
 use rustc_hir::def::{CtorOf, DefKind, Namespace};
 use rustc_hir::def_id::DefId;
@@ -126,7 +126,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     #[instrument(level = "debug", skip(self, err, call_expr))]
     pub(crate) fn suggest_method_call(
         &self,
-        err: &mut DiagnosticBuilder<'_>,
+        err: &mut Diag<'_>,
         msg: impl Into<SubdiagnosticMessage> + std::fmt::Debug,
         method_name: Ident,
         self_ty: Ty<'tcx>,

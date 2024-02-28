@@ -1,8 +1,8 @@
 use std::borrow::Cow;
 
 use rustc_errors::{
-    codes::*, DiagCtxt, DiagnosticArgValue, DiagnosticBuilder, DiagnosticMessage,
-    EmissionGuarantee, IntoDiagnostic, Level,
+    codes::*, Diag, DiagArgValue, DiagCtxt, DiagnosticMessage, EmissionGuarantee, IntoDiagnostic,
+    Level,
 };
 use rustc_hir::ConstContext;
 use rustc_macros::{Diagnostic, LintDiagnostic, Subdiagnostic};
@@ -425,7 +425,7 @@ pub struct UndefinedBehavior {
 pub trait ReportErrorExt {
     /// Returns the diagnostic message for this error.
     fn diagnostic_message(&self) -> DiagnosticMessage;
-    fn add_args<G: EmissionGuarantee>(self, diag: &mut DiagnosticBuilder<'_, G>);
+    fn add_args<G: EmissionGuarantee>(self, diag: &mut Diag<'_, G>);
 
     fn debug(self) -> String
     where
@@ -504,7 +504,7 @@ impl<'a> ReportErrorExt for UndefinedBehaviorInfo<'a> {
         }
     }
 
-    fn add_args<G: EmissionGuarantee>(self, diag: &mut DiagnosticBuilder<'_, G>) {
+    fn add_args<G: EmissionGuarantee>(self, diag: &mut Diag<'_, G>) {
         use UndefinedBehaviorInfo::*;
         let dcx = diag.dcx;
         match self {
@@ -670,7 +670,7 @@ impl<'tcx> ReportErrorExt for ValidationErrorInfo<'tcx> {
         }
     }
 
-    fn add_args<G: EmissionGuarantee>(self, err: &mut DiagnosticBuilder<'_, G>) {
+    fn add_args<G: EmissionGuarantee>(self, err: &mut Diag<'_, G>) {
         use crate::fluent_generated as fluent;
         use rustc_middle::mir::interpret::ValidationErrorKind::*;
 
@@ -682,7 +682,7 @@ impl<'tcx> ReportErrorExt for ValidationErrorInfo<'tcx> {
         let message = if let Some(path) = self.path {
             err.dcx.eagerly_translate_to_string(
                 fluent::const_eval_validation_front_matter_invalid_value_with_path,
-                [("path".into(), DiagnosticArgValue::Str(path.into()))].iter().map(|(a, b)| (a, b)),
+                [("path".into(), DiagArgValue::Str(path.into()))].iter().map(|(a, b)| (a, b)),
             )
         } else {
             err.dcx.eagerly_translate_to_string(
@@ -696,7 +696,7 @@ impl<'tcx> ReportErrorExt for ValidationErrorInfo<'tcx> {
         fn add_range_arg<G: EmissionGuarantee>(
             r: WrappingRange,
             max_hi: u128,
-            err: &mut DiagnosticBuilder<'_, G>,
+            err: &mut Diag<'_, G>,
         ) {
             let WrappingRange { start: lo, end: hi } = r;
             assert!(hi <= max_hi);
@@ -715,8 +715,8 @@ impl<'tcx> ReportErrorExt for ValidationErrorInfo<'tcx> {
             };
 
             let args = [
-                ("lo".into(), DiagnosticArgValue::Str(lo.to_string().into())),
-                ("hi".into(), DiagnosticArgValue::Str(hi.to_string().into())),
+                ("lo".into(), DiagArgValue::Str(lo.to_string().into())),
+                ("hi".into(), DiagArgValue::Str(hi.to_string().into())),
             ];
             let args = args.iter().map(|(a, b)| (a, b));
             let message = err.dcx.eagerly_translate_to_string(msg, args);
@@ -797,7 +797,7 @@ impl ReportErrorExt for UnsupportedOpInfo {
             UnsupportedOpInfo::ExternStatic(_) => const_eval_extern_static,
         }
     }
-    fn add_args<G: EmissionGuarantee>(self, diag: &mut DiagnosticBuilder<'_, G>) {
+    fn add_args<G: EmissionGuarantee>(self, diag: &mut Diag<'_, G>) {
         use crate::fluent_generated::*;
 
         use UnsupportedOpInfo::*;
@@ -830,7 +830,7 @@ impl<'tcx> ReportErrorExt for InterpError<'tcx> {
             InterpError::MachineStop(e) => e.diagnostic_message(),
         }
     }
-    fn add_args<G: EmissionGuarantee>(self, diag: &mut DiagnosticBuilder<'_, G>) {
+    fn add_args<G: EmissionGuarantee>(self, diag: &mut Diag<'_, G>) {
         match self {
             InterpError::UndefinedBehavior(ub) => ub.add_args(diag),
             InterpError::Unsupported(e) => e.add_args(diag),
@@ -855,13 +855,13 @@ impl<'tcx> ReportErrorExt for InvalidProgramInfo<'tcx> {
             }
         }
     }
-    fn add_args<G: EmissionGuarantee>(self, diag: &mut DiagnosticBuilder<'_, G>) {
+    fn add_args<G: EmissionGuarantee>(self, diag: &mut Diag<'_, G>) {
         match self {
             InvalidProgramInfo::TooGeneric | InvalidProgramInfo::AlreadyReported(_) => {}
             InvalidProgramInfo::Layout(e) => {
                 // The level doesn't matter, `dummy_diag` is consumed without it being used.
                 let dummy_level = Level::Bug;
-                let dummy_diag: DiagnosticBuilder<'_, ()> =
+                let dummy_diag: Diag<'_, ()> =
                     e.into_diagnostic().into_diagnostic(diag.dcx, dummy_level);
                 for (name, val) in dummy_diag.args.iter() {
                     diag.arg(name.clone(), val.clone());
@@ -887,12 +887,12 @@ impl ReportErrorExt for ResourceExhaustionInfo {
             ResourceExhaustionInfo::AddressSpaceFull => const_eval_address_space_full,
         }
     }
-    fn add_args<G: EmissionGuarantee>(self, _: &mut DiagnosticBuilder<'_, G>) {}
+    fn add_args<G: EmissionGuarantee>(self, _: &mut Diag<'_, G>) {}
 }
 
 impl rustc_errors::IntoDiagnosticArg for InternKind {
-    fn into_diagnostic_arg(self) -> DiagnosticArgValue {
-        DiagnosticArgValue::Str(Cow::Borrowed(match self {
+    fn into_diagnostic_arg(self) -> DiagArgValue {
+        DiagArgValue::Str(Cow::Borrowed(match self {
             InternKind::Static(Mutability::Not) => "static",
             InternKind::Static(Mutability::Mut) => "static_mut",
             InternKind::Constant => "const",

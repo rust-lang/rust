@@ -16,8 +16,8 @@ use rustc_data_structures::sync::Lrc;
 use rustc_errors::emitter::Emitter;
 use rustc_errors::translation::Translate;
 use rustc_errors::{
-    DiagCtxt, DiagnosticArgMap, DiagnosticBuilder, DiagnosticMessage, ErrCode, FatalError,
-    FluentBundle, Level, MultiSpan, Style,
+    Diag, DiagArgMap, DiagCtxt, DiagnosticMessage, ErrCode, FatalError, FluentBundle, Level,
+    MultiSpan, Style,
 };
 use rustc_fs_util::link_or_copy;
 use rustc_hir::def_id::{CrateNum, LOCAL_CRATE};
@@ -1013,7 +1013,7 @@ struct Diagnostic {
     messages: Vec<(DiagnosticMessage, Style)>,
     code: Option<ErrCode>,
     children: Vec<Subdiagnostic>,
-    args: DiagnosticArgMap,
+    args: DiagArgMap,
 }
 
 // A cut-down version of `rustc_errors::SubDiagnostic` that impls `Send`. It's
@@ -1829,16 +1829,16 @@ impl Translate for SharedEmitter {
 }
 
 impl Emitter for SharedEmitter {
-    fn emit_diagnostic(&mut self, mut diag: rustc_errors::Diagnostic) {
+    fn emit_diagnostic(&mut self, mut diag: rustc_errors::DiagInner) {
         // Check that we aren't missing anything interesting when converting to
-        // the cut-down local `Diagnostic`.
+        // the cut-down local `DiagInner`.
         assert_eq!(diag.span, MultiSpan::new());
         assert_eq!(diag.suggestions, Ok(vec![]));
         assert_eq!(diag.sort_span, rustc_span::DUMMY_SP);
         assert_eq!(diag.is_lint, None);
         // No sensible check for `diag.emitted_at`.
 
-        let args = mem::replace(&mut diag.args, DiagnosticArgMap::default());
+        let args = mem::replace(&mut diag.args, DiagArgMap::default());
         drop(
             self.sender.send(SharedEmitterMessage::Diagnostic(Diagnostic {
                 level: diag.level(),
@@ -1880,12 +1880,12 @@ impl SharedEmitterMain {
                     // Convert it back to a full `Diagnostic` and emit.
                     let dcx = sess.dcx();
                     let mut d =
-                        rustc_errors::Diagnostic::new_with_messages(diag.level, diag.messages);
+                        rustc_errors::DiagInner::new_with_messages(diag.level, diag.messages);
                     d.code = diag.code; // may be `None`, that's ok
                     d.children = diag
                         .children
                         .into_iter()
-                        .map(|sub| rustc_errors::SubDiagnostic {
+                        .map(|sub| rustc_errors::Subdiag {
                             level: sub.level,
                             messages: sub.messages,
                             span: MultiSpan::new(),
@@ -1898,7 +1898,7 @@ impl SharedEmitterMain {
                 Ok(SharedEmitterMessage::InlineAsmError(cookie, msg, level, source)) => {
                     assert!(matches!(level, Level::Error | Level::Warning | Level::Note));
                     let msg = msg.strip_prefix("error: ").unwrap_or(&msg).to_string();
-                    let mut err = DiagnosticBuilder::<()>::new(sess.dcx(), level, msg);
+                    let mut err = Diag::<()>::new(sess.dcx(), level, msg);
 
                     // If the cookie is 0 then we don't have span information.
                     if cookie != 0 {

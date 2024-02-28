@@ -40,7 +40,7 @@ use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_data_structures::steal::Steal;
 use rustc_data_structures::tagged_ptr::CopyTaggedPtr;
 use rustc_data_structures::unord::UnordMap;
-use rustc_errors::{DiagnosticBuilder, ErrorGuaranteed, StashKey};
+use rustc_errors::{Diag, ErrorGuaranteed, StashKey};
 use rustc_hir as hir;
 use rustc_hir::def::{CtorKind, CtorOf, DefKind, DocLinkResMap, LifetimeRes, Res};
 use rustc_hir::def_id::{CrateNum, DefId, DefIdMap, LocalDefId, LocalDefIdMap, LocalDefIdSet};
@@ -846,7 +846,7 @@ impl<'tcx> OpaqueHiddenType<'tcx> {
         other: &Self,
         opaque_def_id: LocalDefId,
         tcx: TyCtxt<'tcx>,
-    ) -> Result<DiagnosticBuilder<'tcx>, ErrorGuaranteed> {
+    ) -> Result<Diag<'tcx>, ErrorGuaranteed> {
         if let Some(diag) = tcx
             .sess
             .dcx()

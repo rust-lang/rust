@@ -17,7 +17,7 @@ use crate::registry::Registry;
 use crate::translation::{to_fluent_args, Translate};
 use crate::{
     diagnostic::IsLint, CodeSuggestion, FluentBundle, LazyFallbackBundle, MultiSpan, SpanLabel,
-    SubDiagnostic, TerminalUrl,
+    Subdiag, TerminalUrl,
 };
 use rustc_lint_defs::Applicability;
 
@@ -176,7 +176,7 @@ impl Translate for JsonEmitter {
 }
 
 impl Emitter for JsonEmitter {
-    fn emit_diagnostic(&mut self, diag: crate::Diagnostic) {
+    fn emit_diagnostic(&mut self, diag: crate::DiagInner) {
         let data = Diagnostic::from_errors_diagnostic(diag, self);
         let result = self.emit(EmitTyped::Diagnostic(data));
         if let Err(e) = result {
@@ -192,7 +192,7 @@ impl Emitter for JsonEmitter {
         }
     }
 
-    fn emit_future_breakage_report(&mut self, diags: Vec<crate::Diagnostic>) {
+    fn emit_future_breakage_report(&mut self, diags: Vec<crate::DiagInner>) {
         let data: Vec<FutureBreakageItem<'_>> = diags
             .into_iter()
             .map(|mut diag| {
@@ -340,7 +340,7 @@ struct UnusedExterns<'a, 'b, 'c> {
 }
 
 impl Diagnostic {
-    fn from_errors_diagnostic(diag: crate::Diagnostic, je: &JsonEmitter) -> Diagnostic {
+    fn from_errors_diagnostic(diag: crate::DiagInner, je: &JsonEmitter) -> Diagnostic {
         let args = to_fluent_args(diag.args.iter());
         let sugg = diag.suggestions.iter().flatten().map(|sugg| {
             let translated_message =
@@ -431,16 +431,16 @@ impl Diagnostic {
     }
 
     fn from_sub_diagnostic(
-        diag: &SubDiagnostic,
+        subdiag: &Subdiag,
         args: &FluentArgs<'_>,
         je: &JsonEmitter,
     ) -> Diagnostic {
-        let translated_message = je.translate_messages(&diag.messages, args);
+        let translated_message = je.translate_messages(&subdiag.messages, args);
         Diagnostic {
             message: translated_message.to_string(),
             code: None,
-            level: diag.level.to_str(),
-            spans: DiagnosticSpan::from_multispan(&diag.span, args, je),
+            level: subdiag.level.to_str(),
+            spans: DiagnosticSpan::from_multispan(&subdiag.span, args, je),
             children: vec![],
             rendered: None,
         }

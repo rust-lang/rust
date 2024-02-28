@@ -1,7 +1,7 @@
 use crate::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
 use crate::infer::InferCtxt;
 use crate::traits::{Obligation, ObligationCause, ObligationCtxt};
-use rustc_errors::{codes::*, pluralize, struct_span_code_err, Applicability, DiagnosticBuilder};
+use rustc_errors::{codes::*, pluralize, struct_span_code_err, Applicability, Diag};
 use rustc_hir as hir;
 use rustc_hir::Node;
 use rustc_middle::ty::{self, Ty};
@@ -88,7 +88,7 @@ impl<'tcx> InferCtxt<'tcx> {
         found_args: Vec<ArgKind>,
         is_closure: bool,
         closure_arg_span: Option<Span>,
-    ) -> DiagnosticBuilder<'tcx> {
+    ) -> Diag<'tcx> {
         let kind = if is_closure { "closure" } else { "function" };
 
         let args_str = |arguments: &[ArgKind], other: &[ArgKind]| {

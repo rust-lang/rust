@@ -8,7 +8,7 @@ use crate::infer::ValuePairs;
 use crate::infer::{SubregionOrigin, TypeTrace};
 use crate::traits::{ObligationCause, ObligationCauseCode};
 use rustc_data_structures::intern::Interned;
-use rustc_errors::{DiagnosticBuilder, IntoDiagnosticArg};
+use rustc_errors::{Diag, IntoDiagnosticArg};
 use rustc_hir::def::Namespace;
 use rustc_hir::def_id::DefId;
 use rustc_middle::ty::error::ExpectedFound;
@@ -30,8 +30,8 @@ impl<'tcx, T> IntoDiagnosticArg for Highlighted<'tcx, T>
 where
     T: for<'a> Print<'tcx, FmtPrinter<'a, 'tcx>>,
 {
-    fn into_diagnostic_arg(self) -> rustc_errors::DiagnosticArgValue {
-        rustc_errors::DiagnosticArgValue::Str(self.to_string().into())
+    fn into_diagnostic_arg(self) -> rustc_errors::DiagArgValue {
+        rustc_errors::DiagArgValue::Str(self.to_string().into())
     }
 }
 
@@ -57,7 +57,7 @@ where
 impl<'tcx> NiceRegionError<'_, 'tcx> {
     /// When given a `ConcreteFailure` for a function with arguments containing a named region and
     /// an anonymous region, emit a descriptive diagnostic error.
-    pub(super) fn try_report_placeholder_conflict(&self) -> Option<DiagnosticBuilder<'tcx>> {
+    pub(super) fn try_report_placeholder_conflict(&self) -> Option<Diag<'tcx>> {
         match &self.error {
             ///////////////////////////////////////////////////////////////////////////
             // NB. The ordering of cases in this match is very
@@ -193,7 +193,7 @@ impl<'tcx> NiceRegionError<'_, 'tcx> {
         sub_placeholder: Option<Region<'tcx>>,
         sup_placeholder: Option<Region<'tcx>>,
         value_pairs: &ValuePairs<'tcx>,
-    ) -> Option<DiagnosticBuilder<'tcx>> {
+    ) -> Option<Diag<'tcx>> {
         let (expected_args, found_args, trait_def_id) = match value_pairs {
             ValuePairs::PolyTraitRefs(ExpectedFound { expected, found })
                 if expected.def_id() == found.def_id() =>
@@ -236,7 +236,7 @@ impl<'tcx> NiceRegionError<'_, 'tcx> {
         trait_def_id: DefId,
         expected_args: GenericArgsRef<'tcx>,
         actual_args: GenericArgsRef<'tcx>,
-    ) -> DiagnosticBuilder<'tcx> {
+    ) -> Diag<'tcx> {
         let span = cause.span();
 
         let (leading_ellipsis, satisfy_span, where_span, dup_span, def_id) =

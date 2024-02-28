@@ -17,7 +17,7 @@ use itertools::Itertools;
 use rustc_ast as ast;
 use rustc_data_structures::fx::FxIndexSet;
 use rustc_errors::{
-    codes::*, pluralize, Applicability, DiagnosticBuilder, ErrorGuaranteed, MultiSpan, StashKey,
+    codes::*, pluralize, Applicability, Diag, ErrorGuaranteed, MultiSpan, StashKey,
 };
 use rustc_hir as hir;
 use rustc_hir::def::{CtorOf, DefKind, Res};
@@ -561,7 +561,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             None
         };
 
-        let suggest_confusable = |err: &mut DiagnosticBuilder<'_>| {
+        let suggest_confusable = |err: &mut Diag<'_>| {
             let Some(call_name) = call_ident else {
                 return;
             };
@@ -1369,7 +1369,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         expected_ty: Ty<'tcx>,
         provided_ty: Ty<'tcx>,
         arg: &hir::Expr<'tcx>,
-        err: &mut rustc_errors::DiagnosticBuilder<'tcx>,
+        err: &mut Diag<'tcx>,
     ) {
         if let ty::RawPtr(ty::TypeAndMut { mutbl: hir::Mutability::Mut, .. }) = expected_ty.kind()
             && let ty::RawPtr(ty::TypeAndMut { mutbl: hir::Mutability::Not, .. }) =
@@ -2047,7 +2047,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
     fn label_fn_like(
         &self,
-        err: &mut DiagnosticBuilder<'_>,
+        err: &mut Diag<'_>,
         callable_def_id: Option<DefId>,
         callee_ty: Option<Ty<'tcx>>,
         call_expr: &'tcx hir::Expr<'tcx>,
