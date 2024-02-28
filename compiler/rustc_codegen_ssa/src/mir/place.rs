@@ -104,6 +104,10 @@ impl<'a, 'tcx, V: CodegenObject> PlaceRef<'tcx, V> {
         let mut simple = || {
             let llval = if offset.bytes() == 0 {
                 self.llval
+            } else if field.is_zst() {
+                // FIXME(erikdesjardins): it should be fine to use inbounds for ZSTs too;
+                // keeping this logic for now to preserve previous behavior.
+                bx.ptradd(self.llval, bx.const_usize(offset.bytes()))
             } else {
                 bx.inbounds_ptradd(self.llval, bx.const_usize(offset.bytes()))
             };
@@ -164,6 +168,7 @@ impl<'a, 'tcx, V: CodegenObject> PlaceRef<'tcx, V> {
         debug!("struct_field_ptr: DST field offset: {:?}", offset);
 
         // Adjust pointer.
+        // FIXME(erikdesjardins): should be able to use inbounds here too.
         let ptr = bx.ptradd(self.llval, offset);
 
         PlaceRef { llval: ptr, llextra: self.llextra, layout: field, align: effective_field_align }
