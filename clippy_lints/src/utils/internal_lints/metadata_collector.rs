@@ -74,7 +74,7 @@ const LINT_EMISSION_FUNCTIONS: [&[&str]; 7] = [
     &["clippy_utils", "diagnostics", "span_lint_and_then"],
     &["clippy_utils", "diagnostics", "span_lint_hir_and_then"],
 ];
-const SUGGESTION_DIAGNOSTIC_BUILDER_METHODS: [(&str, bool); 9] = [
+const SUGGESTION_DIAG_METHODS: [(&str, bool); 9] = [
     ("span_suggestion", false),
     ("span_suggestion_short", false),
     ("span_suggestion_verbose", false),
@@ -1067,9 +1067,9 @@ impl<'a, 'hir> intravisit::Visitor<'hir> for IsMultiSpanScanner<'a, 'hir> {
             },
             ExprKind::MethodCall(path, recv, _, _arg_span) => {
                 let (self_ty, _) = walk_ptrs_ty_depth(self.cx.typeck_results().expr_ty(recv));
-                if match_type(self.cx, self_ty, &paths::DIAGNOSTIC_BUILDER) {
+                if match_type(self.cx, self_ty, &paths::DIAG) {
                     let called_method = path.ident.name.as_str().to_string();
-                    for (method_name, is_multi_part) in &SUGGESTION_DIAGNOSTIC_BUILDER_METHODS {
+                    for (method_name, is_multi_part) in &SUGGESTION_DIAG_METHODS {
                         if *method_name == called_method {
                             if *is_multi_part {
                                 self.add_multi_part_suggestion();

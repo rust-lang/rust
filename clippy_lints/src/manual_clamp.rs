@@ -9,7 +9,7 @@ use clippy_utils::{
     peel_blocks_with_stmt, MaybePath,
 };
 use itertools::Itertools;
-use rustc_errors::{Applicability, DiagnosticBuilder};
+use rustc_errors::{Applicability, Diag};
 use rustc_hir::def::Res;
 use rustc_hir::{Arm, BinOpKind, Block, Expr, ExprKind, HirId, PatKind, PathSegment, PrimTy, QPath, StmtKind};
 use rustc_lint::{LateContext, LateLintPass};
@@ -163,7 +163,7 @@ fn emit_suggestion<'tcx>(cx: &LateContext<'tcx>, suggestion: &ClampSuggestion<'t
     };
     let suggestion = format!("{assignment}{input}.clamp({min}, {max}){semicolon}");
     let msg = "clamp-like pattern without using clamp function";
-    let lint_builder = |d: &mut DiagnosticBuilder<'_, ()>| {
+    let lint_builder = |d: &mut Diag<'_, ()>| {
         d.span_suggestion(*span, "replace with clamp", suggestion, Applicability::MaybeIncorrect);
         if *is_float {
             d.note("clamp will panic if max < min, min.is_nan(), or max.is_nan()")
