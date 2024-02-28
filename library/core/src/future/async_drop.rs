@@ -3,6 +3,7 @@
 
 use crate::fmt;
 use crate::future::Future;
+use crate::marker::PhantomPinned;
 use crate::mem::MaybeUninit;
 use crate::pin::Pin;
 use crate::ptr;
@@ -85,6 +86,7 @@ unsafe fn surface_async_drop_in_place<'a, T: AsyncDrop + 'a>(
 struct SliceAsyncDestuctor<'a, T: 'a> {
     left_slice: ptr::NonNull<[T]>,
     elem_dtor: Option<AsyncDropInPlace<'a, T>>,
+    _pinned: PhantomPinned,
 }
 
 #[lang = "slice_async_destructor_ctor"]
@@ -92,6 +94,7 @@ const unsafe fn slice_async_destructor<'a, T: 'a>(inner: *mut [T]) -> SliceAsync
     SliceAsyncDestuctor {
         left_slice: unsafe { ptr::NonNull::new_unchecked(inner) },
         elem_dtor: None,
+        _pinned: PhantomPinned,
     }
 }
 
@@ -121,7 +124,7 @@ impl<'a, T: 'a> Future for SliceAsyncDestuctor<'a, T> {
 #[unstable(feature = "future_combinators", issue = "none")]
 #[lang = "deferred_async_drop"]
 enum DeferredAsyncDrop<'a, T: 'a> {
-    Init { ptr: ptr::NonNull<T> },
+    Init { ptr: ptr::NonNull<T>, _pinned: PhantomPinned },
     Running { dtor: AsyncDropInPlace<'a, T> },
 }
 
@@ -132,7 +135,7 @@ impl<'a, T: 'a> Future for DeferredAsyncDrop<'a, T> {
     fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<()> {
         unsafe {
             let this = self.get_unchecked_mut();
-            if let DeferredAsyncDrop::Init { ptr } = *this {
+            if let DeferredAsyncDrop::Init { ptr, _pinned: _ } = *this {
                 *this = DeferredAsyncDrop::Running { dtor: async_drop_in_place(ptr.as_ptr()) };
             }
 
@@ -145,7 +148,9 @@ impl<'a, T: 'a> Future for DeferredAsyncDrop<'a, T> {
 #[unstable(feature = "future_combinators", issue = "none")]
 #[lang = "deferred_async_drop_ctor"]
 const unsafe fn deferred_async_drop<'a, T: 'a>(item: *mut T) -> DeferredAsyncDrop<'a, T> {
-    unsafe { DeferredAsyncDrop::Init { ptr: ptr::NonNull::new_unchecked(item) } }
+    unsafe {
+        DeferredAsyncDrop::Init { ptr: ptr::NonNull::new_unchecked(item), _pinned: PhantomPinned }
+    }
 }
 
 #[unstable(feature = "future_combinators", issue = "none")]
