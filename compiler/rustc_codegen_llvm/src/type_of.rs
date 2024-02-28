@@ -8,7 +8,7 @@ use rustc_middle::ty::print::{with_no_trimmed_paths, with_no_visible_paths};
 use rustc_middle::ty::{self, Ty, TypeVisitableExt};
 use rustc_target::abi::HasDataLayout;
 use rustc_target::abi::{Abi, Align, FieldsShape};
-use rustc_target::abi::{Int, Pointer, F32, F64};
+use rustc_target::abi::{Int, Pointer, F128, F16, F32, F64};
 use rustc_target::abi::{Scalar, Size, Variants};
 use smallvec::{smallvec, SmallVec};
 
@@ -291,8 +291,10 @@ impl<'tcx> LayoutLlvmExt<'tcx> for TyAndLayout<'tcx> {
     fn scalar_llvm_type_at<'a>(&self, cx: &CodegenCx<'a, 'tcx>, scalar: Scalar) -> &'a Type {
         match scalar.primitive() {
             Int(i, _) => cx.type_from_integer(i),
+            F16 => cx.type_f16(),
             F32 => cx.type_f32(),
             F64 => cx.type_f64(),
+            F128 => cx.type_f128(),
             Pointer(address_space) => cx.type_ptr_ext(address_space),
         }
     }

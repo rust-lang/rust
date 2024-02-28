@@ -394,10 +394,12 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
 
             ty::Infer(ty::FloatVar(_)) => {
                 // This causes a compiler error if any new float kinds are added.
-                let (ty::FloatTy::F32 | ty::FloatTy::F64);
+                let (ty::FloatTy::F16 | ty::FloatTy::F32 | ty::FloatTy::F64 | ty::FloatTy::F128);
                 let possible_floats = [
+                    SimplifiedType::Float(ty::FloatTy::F16),
                     SimplifiedType::Float(ty::FloatTy::F32),
                     SimplifiedType::Float(ty::FloatTy::F64),
+                    SimplifiedType::Float(ty::FloatTy::F128),
                 ];
 
                 for simp in possible_floats {

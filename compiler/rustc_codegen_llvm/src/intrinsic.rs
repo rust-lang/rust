@@ -163,11 +163,15 @@ impl<'ll, 'tcx> IntrinsicCallMethods<'tcx> for Builder<'_, 'll, 'tcx> {
                                     emit_va_arg(self, args[0], ret_ty)
                                 }
                             }
+                            Primitive::F16 => bug!("the va_arg intrinsic does not work with `f16`"),
                             Primitive::F64 | Primitive::Pointer(_) => {
                                 emit_va_arg(self, args[0], ret_ty)
                             }
                             // `va_arg` should never be used with the return type f32.
                             Primitive::F32 => bug!("the va_arg intrinsic does not work with `f32`"),
+                            Primitive::F128 => {
+                                bug!("the va_arg intrinsic does not work with `f128`")
+                            }
                         }
                     }
                     _ => bug!("the va_arg intrinsic does not work with non-scalar types"),

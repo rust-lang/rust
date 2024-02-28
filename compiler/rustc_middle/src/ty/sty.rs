@@ -1580,8 +1580,10 @@ impl<'tcx> Ty<'tcx> {
     pub fn new_float(tcx: TyCtxt<'tcx>, f: ty::FloatTy) -> Ty<'tcx> {
         use ty::FloatTy::*;
         match f {
+            F16 => tcx.types.f16,
             F32 => tcx.types.f32,
             F64 => tcx.types.f64,
+            F128 => tcx.types.f128,
         }
     }
 
@@ -2539,8 +2541,10 @@ impl<'tcx> Ty<'tcx> {
             ty::Bool => Some(sym::bool),
             ty::Char => Some(sym::char),
             ty::Float(f) => match f {
+                ty::FloatTy::F16 => Some(sym::f16),
                 ty::FloatTy::F32 => Some(sym::f32),
                 ty::FloatTy::F64 => Some(sym::f64),
+                ty::FloatTy::F128 => Some(sym::f128),
             },
             ty::Int(f) => match f {
                 ty::IntTy::Isize => Some(sym::isize),

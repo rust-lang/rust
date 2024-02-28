@@ -171,8 +171,10 @@ pub struct TargetDataLayout {
     pub i32_align: AbiAndPrefAlign,
     pub i64_align: AbiAndPrefAlign,
     pub i128_align: AbiAndPrefAlign,
+    pub f16_align: AbiAndPrefAlign,
     pub f32_align: AbiAndPrefAlign,
     pub f64_align: AbiAndPrefAlign,
+    pub f128_align: AbiAndPrefAlign,
     pub pointer_size: Size,
     pub pointer_align: AbiAndPrefAlign,
     pub aggregate_align: AbiAndPrefAlign,
@@ -200,8 +202,10 @@ impl Default for TargetDataLayout {
             i32_align: AbiAndPrefAlign::new(align(32)),
             i64_align: AbiAndPrefAlign { abi: align(32), pref: align(64) },
             i128_align: AbiAndPrefAlign { abi: align(32), pref: align(64) },
+            f16_align: AbiAndPrefAlign::new(align(16)),
             f32_align: AbiAndPrefAlign::new(align(32)),
             f64_align: AbiAndPrefAlign::new(align(64)),
+            f128_align: AbiAndPrefAlign::new(align(128)),
             pointer_size: Size::from_bits(64),
             pointer_align: AbiAndPrefAlign::new(align(64)),
             aggregate_align: AbiAndPrefAlign { abi: align(0), pref: align(64) },
@@ -281,8 +285,10 @@ impl TargetDataLayout {
                     dl.instruction_address_space = parse_address_space(&p[1..], "P")?
                 }
                 ["a", ref a @ ..] => dl.aggregate_align = parse_align(a, "a")?,
+                ["f16", ref a @ ..] => dl.f16_align = parse_align(a, "f16")?,
                 ["f32", ref a @ ..] => dl.f32_align = parse_align(a, "f32")?,
                 ["f64", ref a @ ..] => dl.f64_align = parse_align(a, "f64")?,
+                ["f128", ref a @ ..] => dl.f128_align = parse_align(a, "f128")?,
                 // FIXME(erikdesjardins): we should be parsing nonzero address spaces
                 // this will require replacing TargetDataLayout::{pointer_size,pointer_align}
                 // with e.g. `fn pointer_size_in(AddressSpace)`
@@ -919,8 +925,10 @@ pub enum Primitive {
     /// a negative integer passed by zero-extension will appear positive in
     /// the callee, and most operations on it will produce the wrong values.
     Int(Integer, bool),
+    F16,
     F32,
     F64,
+    F128,
     Pointer(AddressSpace),
 }
 
@@ -931,8 +939,10 @@ impl Primitive {
 
         match self {
             Int(i, _) => i.size(),
+            F16 => Size::from_bits(16),
             F32 => Size::from_bits(32),
             F64 => Size::from_bits(64),
+            F128 => Size::from_bits(128),
             // FIXME(erikdesjardins): ignoring address space is technically wrong, pointers in
             // different address spaces can have different sizes
             // (but TargetDataLayout doesn't currently parse that part of the DL string)
@@ -946,8 +956,10 @@ impl Primitive {
 
         match self {
             Int(i, _) => i.align(dl),
+            F16 => dl.f16_align,
             F32 => dl.f32_align,
             F64 => dl.f64_align,
+            F128 => dl.f128_align,
             // FIXME(erikdesjardins): ignoring address space is technically wrong, pointers in
             // different address spaces can have different alignments
             // (but TargetDataLayout doesn't currently parse that part of the DL string)

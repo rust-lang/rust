@@ -758,6 +758,8 @@ symbols! {
         external,
         external_doc,
         f,
+        f128,
+        f16,
         f16c_target_feature,
         f32,
         f32_legacy_const_digits,
