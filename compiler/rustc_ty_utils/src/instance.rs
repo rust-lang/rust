@@ -57,20 +57,42 @@ fn resolve_instance<'tcx>(
         } else if Some(def_id) == tcx.lang_items().async_drop_in_place_fn() {
             let ty = args.type_at(1);
 
-            debug!(" => nontrivial async drop glue ctor");
             match *ty.kind() {
-                ty::Closure(..)
-                | ty::CoroutineClosure(..)
-                | ty::Coroutine(..)
-                | ty::Tuple(..)
+                ty::Array(..)
+                | ty::Slice(_)
+                | ty::Tuple(_)
+                | ty::Bool
+                | ty::Char
+                | ty::Int(_)
+                | ty::Uint(_)
+                | ty::Float(_)
+                | ty::Str
+                | ty::RawPtr(_)
+                | ty::Ref(..)
+                | ty::FnDef(..)
+                | ty::FnPtr(..)
+                | ty::Infer(ty::IntVar(_) | ty::FloatVar(_))
                 | ty::Adt(..)
                 | ty::Dynamic(..)
-                | ty::Array(..)
-                | ty::Slice(..) => {}
-                // Async drop glue ctor shims can only be built from ADTs.
-                _ => return Ok(None),
+                | ty::Closure(..)
+                | ty::CoroutineClosure(..)
+                | ty::CoroutineWitness(..)
+                | ty::Never
+                | ty::Error(_)
+                | ty::Coroutine(..) => {}
+
+                ty::Param(_)
+                | ty::Alias(..)
+                | ty::Infer(ty::TyVar(_))
+                | ty::Bound(..)
+                | ty::Foreign(_)
+                | ty::Placeholder(_)
+                | ty::Infer(ty::FreshTy(_) | ty::FreshIntTy(_) | ty::FreshFloatTy(_)) => {
+                    return Ok(None);
+                }
             }
 
+            debug!(" =>  async drop glue ctor");
             ty::InstanceDef::AsyncDropGlueCtorShim(def_id, ty)
         } else {
             debug!(" => free item");

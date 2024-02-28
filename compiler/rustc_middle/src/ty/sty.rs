@@ -2353,19 +2353,22 @@ impl<'tcx> Ty<'tcx> {
             | ty::Int(_)
             | ty::Uint(_)
             | ty::Float(_)
-            | ty::Adt(..)
             | ty::Str
             | ty::RawPtr(_)
             | ty::Ref(..)
             | ty::FnDef(..)
             | ty::FnPtr(..)
+            | ty::Infer(IntVar(_) | FloatVar(_)) => tcx
+                .type_of(tcx.require_lang_item(LangItem::FutureReadyUnit, None))
+                .instantiate_identity(),
+
+            ty::Adt(..)
             | ty::Dynamic(..)
             | ty::Closure(..)
             | ty::CoroutineClosure(..)
             | ty::CoroutineWitness(..)
             | ty::Never
             | ty::Error(_)
-            | ty::Infer(IntVar(_) | FloatVar(_))
             | ty::Coroutine(..) => {
                 // This condition is conservative, evaluating to false
                 // in some unclear cases. However `AsyncDrop` as with

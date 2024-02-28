@@ -1,6 +1,7 @@
 #![unstable(feature = "async_drop", issue = "none")]
 #![allow(missing_docs)] // TODO: remove
 
+use crate::fmt;
 use crate::future::Future;
 use crate::mem::MaybeUninit;
 use crate::pin::Pin;
@@ -16,18 +17,41 @@ pub fn async_drop<'a, T: 'a>(value: T) -> impl Future<Output = ()> + 'a {
 }
 
 // TODO: Returned future should be `!Unpin`
-#[unstable(feature = "async_drop", issue = "none")]
 #[lang = "async_drop_in_place"]
 #[allow(unconditional_recursion)]
 // TODO: #[rustc_diagnostic_item = "ptr_drop_in_place"] is needed?
-pub unsafe fn async_drop_in_place<'a, T: ?Sized + 'a>(
+unsafe fn async_drop_in_place_raw<'a, T: ?Sized + 'a>(
     to_drop: *mut T,
 ) -> <T as AsyncDestruct<'a>>::AsyncDestructor {
     // Code here does not matter - this is replaced by the
     // real async drop glue ctor by the compiler.
 
     // SAFETY: see comment above
-    unsafe { async_drop_in_place(to_drop) }
+    unsafe { async_drop_in_place_raw(to_drop) }
+}
+
+#[unstable(feature = "async_drop", issue = "none")]
+pub unsafe fn async_drop_in_place<'a, T: ?Sized + 'a>(to_drop: *mut T) -> AsyncDropInPlace<'a, T> {
+    unsafe { AsyncDropInPlace(async_drop_in_place_raw(to_drop)) }
+}
+
+#[unstable(feature = "async_drop", issue = "none")]
+pub struct AsyncDropInPlace<'a, T: ?Sized + 'a>(<T as AsyncDestruct<'a>>::AsyncDestructor);
+
+#[unstable(feature = "async_drop", issue = "none")]
+impl<'a, T: ?Sized + 'a> fmt::Debug for AsyncDropInPlace<'a, T> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("AsyncDropInPlace").finish_non_exhaustive()
+    }
+}
+
+#[unstable(feature = "async_drop", issue = "none")]
+impl<'a, T: ?Sized + 'a> Future for AsyncDropInPlace<'a, T> {
+    type Output = ();
+
+    fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
+        unsafe { self.map_unchecked_mut(|p| &mut p.0).poll(cx) }
+    }
 }
 
 #[unstable(feature = "async_drop", issue = "none")]
@@ -60,7 +84,7 @@ unsafe fn surface_async_drop_in_place<'a, T: AsyncDrop + 'a>(
 #[lang = "slice_async_destructor"]
 struct SliceAsyncDestuctor<'a, T: 'a> {
     left_slice: ptr::NonNull<[T]>,
-    elem_dtor: Option<<T as AsyncDestruct<'a>>::AsyncDestructor>,
+    elem_dtor: Option<AsyncDropInPlace<'a, T>>,
 }
 
 #[lang = "slice_async_destructor_ctor"]
@@ -98,7 +122,7 @@ impl<'a, T: 'a> Future for SliceAsyncDestuctor<'a, T> {
 #[lang = "deferred_async_drop"]
 enum DeferredAsyncDrop<'a, T: 'a> {
     Init { ptr: ptr::NonNull<T> },
-    Running { dtor: <T as AsyncDestruct<'a>>::AsyncDestructor },
+    Running { dtor: AsyncDropInPlace<'a, T> },
 }
 
 #[unstable(feature = "future_combinators", issue = "none")]

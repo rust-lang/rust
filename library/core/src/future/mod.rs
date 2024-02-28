@@ -40,7 +40,7 @@ pub use poll_fn::{poll_fn, PollFn};
 
 #[cfg(not(bootstrap))]
 #[unstable(feature = "async_drop", issue = "none")]
-pub use async_drop::{async_drop, async_drop_in_place, AsyncDrop};
+pub use async_drop::{async_drop, async_drop_in_place, AsyncDrop, AsyncDropInPlace};
 
 /// This type is needed because:
 ///
