@@ -4,7 +4,8 @@ use crate::MirPass;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_middle::mir::patch::MirPatch;
 use rustc_middle::mir::{
-    BasicBlockData, Body, Local, Operand, Rvalue, StatementKind, TerminatorKind,
+    BasicBlock, BasicBlockData, BasicBlocks, Body, Local, Operand, Rvalue, StatementKind,
+    TerminatorKind,
 };
 use rustc_middle::ty::layout::TyAndLayout;
 use rustc_middle::ty::{Ty, TyCtxt};
@@ -118,9 +119,28 @@ impl<'tcx> MirPass<'tcx> for UninhabitedEnumBranching {
                     unreachable_targets.push(index);
                 }
             }
-
-            let replace_otherwise_to_unreachable = allowed_variants.len() <= 1
-                && !body.basic_blocks[targets.otherwise()].is_empty_unreachable();
+            let otherwise_is_empty_unreachable =
+                body.basic_blocks[targets.otherwise()].is_empty_unreachable();
+            // After resolving https://github.com/llvm/llvm-project/issues/78578,
+            // we can remove the limit on the number of successors.
+            fn check_successors(basic_blocks: &BasicBlocks<'_>, bb: BasicBlock) -> bool {
+                let mut successors = basic_blocks[bb].terminator().successors();
+                let Some(first_successor) = successors.next() else { return true };
+                if successors.next().is_some() {
+                    return true;
+                }
+                if let TerminatorKind::SwitchInt { .. } =
+                    &basic_blocks[first_successor].terminator().kind
+                {
+                    return false;
+                };
+                true
+            }
+            let otherwise_is_last_variant = !otherwise_is_empty_unreachable
+                && allowed_variants.len() == 1
+                && check_successors(&body.basic_blocks, targets.otherwise());
+            let replace_otherwise_to_unreachable = otherwise_is_last_variant
+                || !otherwise_is_empty_unreachable && allowed_variants.is_empty();
 
             if unreachable_targets.is_empty() && !replace_otherwise_to_unreachable {
                 continue;
@@ -129,7 +149,6 @@ impl<'tcx> MirPass<'tcx> for UninhabitedEnumBranching {
             let unreachable_block = patch.unreachable_no_cleanup_block();
             let mut targets = targets.clone();
             if replace_otherwise_to_unreachable {
-                let otherwise_is_last_variant = !allowed_variants.is_empty();
                 if otherwise_is_last_variant {
                     #[allow(rustc::potential_query_instability)]
                     let last_variant = *allowed_variants.iter().next().unwrap();
