@@ -91,7 +91,7 @@ pub(crate) fn handle_did_change_text_document(
 
     if let Ok(path) = from_proto::vfs_path(&params.text_document.uri) {
         let Some(DocumentData { version, data }) = state.mem_docs.get_mut(&path) else {
-            tracing::error!("unexpected DidChangeTextDocument: {}", path);
+            tracing::error!(?path, "unexpected DidChangeTextDocument");
             return Ok(());
         };
         // The version passed in DidChangeTextDocument is the version after all edits are applied
