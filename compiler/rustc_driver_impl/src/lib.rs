@@ -28,7 +28,7 @@ use rustc_errors::{
     markdown, ColorConfig, DiagCtxt, ErrCode, ErrorGuaranteed, FatalError, PResult,
 };
 use rustc_feature::find_gated_cfg;
-use rustc_interface::util::{self, collect_crate_types, get_codegen_backend};
+use rustc_interface::util::{self, get_codegen_backend};
 use rustc_interface::{interface, Queries};
 use rustc_lint::unerased_lint_store;
 use rustc_metadata::creader::MetadataLoader;
@@ -37,6 +37,7 @@ use rustc_session::config::{nightly_options, CG_OPTIONS, Z_OPTIONS};
 use rustc_session::config::{ErrorOutputType, Input, OutFileName, OutputType};
 use rustc_session::getopts::{self, Matches};
 use rustc_session::lint::{Lint, LintId};
+use rustc_session::output::collect_crate_types;
 use rustc_session::{config, filesearch, EarlyDiagCtxt, Session};
 use rustc_span::def_id::LOCAL_CRATE;
 use rustc_span::source_map::FileLoader;
