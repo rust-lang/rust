@@ -354,7 +354,7 @@ trait EvalContextPrivExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
             state.last_key = Some(key);
             trace!("Running TLS dtor {:?} on {:?} at {:?}", instance, ptr, active_thread);
             assert!(
-                !ptr.to_target_usize(this).unwrap() != 0,
+                ptr.to_target_usize(this).unwrap() != 0,
                 "data can't be NULL when dtor is called!"
             );
 
