@@ -1908,6 +1908,9 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                             ct_op: |ct| ct.normalize(self.tcx, ty::ParamEnv::empty()),
                         },
                     );
+                    if cand.references_error() {
+                        return false;
+                    }
                     err.highlighted_help(vec![
                         StringPart::normal(format!("the trait `{}` ", cand.print_trait_sugared())),
                         StringPart::highlighted("is"),
@@ -1932,7 +1935,8 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
         }
 
         let other = if other { "other " } else { "" };
-        let report = |candidates: Vec<TraitRef<'tcx>>, err: &mut Diag<'_>| {
+        let report = |mut candidates: Vec<TraitRef<'tcx>>, err: &mut Diag<'_>| {
+            candidates.retain(|tr| !tr.references_error());
             if candidates.is_empty() {
                 return false;
             }

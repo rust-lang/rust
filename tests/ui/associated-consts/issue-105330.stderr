@@ -55,7 +55,6 @@ error[E0277]: the trait bound `Demo: TraitWAssocConst` is not satisfied
 LL |     foo::<Demo>()();
    |           ^^^^ the trait `TraitWAssocConst` is not implemented for `Demo`
    |
-   = help: the trait `TraitWAssocConst` is implemented for `{type error}`
 note: required by a bound in `foo`
   --> $DIR/issue-105330.rs:11:11
    |
@@ -92,7 +91,6 @@ error[E0277]: the trait bound `Demo: TraitWAssocConst` is not satisfied
 LL |     foo::<Demo>();
    |           ^^^^ the trait `TraitWAssocConst` is not implemented for `Demo`
    |
-   = help: the trait `TraitWAssocConst` is implemented for `{type error}`
 note: required by a bound in `foo`
   --> $DIR/issue-105330.rs:11:11
    |
