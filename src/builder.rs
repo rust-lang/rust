@@ -663,60 +663,60 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
     }
 
     fn neg(&mut self, a: RValue<'gcc>) -> RValue<'gcc> {
-        set_rval_location(self,self.gcc_neg(a))
+        set_rval_location(self, self.gcc_neg(a))
     }
 
     fn fneg(&mut self, a: RValue<'gcc>) -> RValue<'gcc> {
-        set_rval_location(self,self.cx.context.new_unary_op(self.loc, UnaryOp::Minus, a.get_type(), a))
+        set_rval_location(self, self.cx.context.new_unary_op(self.loc, UnaryOp::Minus, a.get_type(), a))
     }
 
     fn not(&mut self, a: RValue<'gcc>) -> RValue<'gcc> {
-        set_rval_location(self,self.gcc_not(a))
+        set_rval_location(self, self.gcc_not(a))
     }
 
     fn unchecked_sadd(&mut self, a: RValue<'gcc>, b: RValue<'gcc>) -> RValue<'gcc> {
-        set_rval_location(self,self.gcc_add(a, b))
+        set_rval_location(self, self.gcc_add(a, b))
     }
 
     fn unchecked_uadd(&mut self, a: RValue<'gcc>, b: RValue<'gcc>) -> RValue<'gcc> {
-        set_rval_location(self,self.gcc_add(a, b))
+        set_rval_location(self, self.gcc_add(a, b))
     }
 
     fn unchecked_ssub(&mut self, a: RValue<'gcc>, b: RValue<'gcc>) -> RValue<'gcc> {
-        set_rval_location(self,self.gcc_sub(a, b))
+        set_rval_location(self, self.gcc_sub(a, b))
     }
 
     fn unchecked_usub(&mut self, a: RValue<'gcc>, b: RValue<'gcc>) -> RValue<'gcc> {
         // TODO(antoyo): should generate poison value?
-        set_rval_location(self,self.gcc_sub(a, b))
+        set_rval_location(self, self.gcc_sub(a, b))
     }
 
     fn unchecked_smul(&mut self, a: RValue<'gcc>, b: RValue<'gcc>) -> RValue<'gcc> {
-        set_rval_location(self,self.gcc_mul(a, b))
+        set_rval_location(self, self.gcc_mul(a, b))
     }
 
     fn unchecked_umul(&mut self, a: RValue<'gcc>, b: RValue<'gcc>) -> RValue<'gcc> {
-        set_rval_location(self,self.gcc_mul(a, b))
+        set_rval_location(self, self.gcc_mul(a, b))
     }
 
     fn fadd_fast(&mut self, lhs: RValue<'gcc>, rhs: RValue<'gcc>) -> RValue<'gcc> {
         // NOTE: it seems like we cannot enable fast-mode for a single operation in GCC.
-        set_rval_location(self,lhs + rhs)
+        set_rval_location(self, lhs + rhs)
     }
 
     fn fsub_fast(&mut self, lhs: RValue<'gcc>, rhs: RValue<'gcc>) -> RValue<'gcc> {
         // NOTE: it seems like we cannot enable fast-mode for a single operation in GCC.
-        set_rval_location(self,lhs - rhs)
+        set_rval_location(self, lhs - rhs)
     }
 
     fn fmul_fast(&mut self, lhs: RValue<'gcc>, rhs: RValue<'gcc>) -> RValue<'gcc> {
         // NOTE: it seems like we cannot enable fast-mode for a single operation in GCC.
-        set_rval_location(self,lhs * rhs)
+        set_rval_location(self, lhs * rhs)
     }
 
     fn fdiv_fast(&mut self, lhs: RValue<'gcc>, rhs: RValue<'gcc>) -> RValue<'gcc> {
         // NOTE: it seems like we cannot enable fast-mode for a single operation in GCC.
-        set_rval_location(self,lhs / rhs)
+        set_rval_location(self, lhs / rhs)
     }
 
     fn frem_fast(&mut self, lhs: RValue<'gcc>, rhs: RValue<'gcc>) -> RValue<'gcc> {
@@ -1014,24 +1014,24 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
     }
 
     fn fptosi(&mut self, value: RValue<'gcc>, dest_ty: Type<'gcc>) -> RValue<'gcc> {
-        set_rval_location(self,self.gcc_float_to_int_cast(value, dest_ty))
+        set_rval_location(self, self.gcc_float_to_int_cast(value, dest_ty))
     }
 
     fn uitofp(&mut self, value: RValue<'gcc>, dest_ty: Type<'gcc>) -> RValue<'gcc> {
-        set_rval_location(self,self.gcc_uint_to_float_cast(value, dest_ty))
+        set_rval_location(self, self.gcc_uint_to_float_cast(value, dest_ty))
     }
 
     fn sitofp(&mut self, value: RValue<'gcc>, dest_ty: Type<'gcc>) -> RValue<'gcc> {
-        set_rval_location(self,self.gcc_int_to_float_cast(value, dest_ty))
+        set_rval_location(self, self.gcc_int_to_float_cast(value, dest_ty))
     }
 
     fn fptrunc(&mut self, value: RValue<'gcc>, dest_ty: Type<'gcc>) -> RValue<'gcc> {
         // TODO(antoyo): make sure it truncates.
-        set_rval_location(self,self.context.new_cast(self.loc, value, dest_ty))
+        set_rval_location(self, self.context.new_cast(self.loc, value, dest_ty))
     }
 
     fn fpext(&mut self, value: RValue<'gcc>, dest_ty: Type<'gcc>) -> RValue<'gcc> {
-        set_rval_location(self,self.context.new_cast(self.loc, value, dest_ty))
+        set_rval_location(self, self.context.new_cast(self.loc, value, dest_ty))
     }
 
     fn ptrtoint(&mut self, value: RValue<'gcc>, dest_ty: Type<'gcc>) -> RValue<'gcc> {
@@ -1059,7 +1059,7 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
             (false, true) => {
                 // NOTE: Projecting a field of a pointer type will attempt a cast from a signed char to
                 // a pointer, which is not supported by gccjit.
-                return self.cx.context.new_cast(self.loc, self.inttoptr(value, val_type.make_pointer()), dest_ty);
+                self.cx.context.new_cast(self.loc, self.inttoptr(value, val_type.make_pointer()), dest_ty)
             },
             (false, false) => {
                 // When they are not pointers, we want a transmute (or reinterpret_cast).
