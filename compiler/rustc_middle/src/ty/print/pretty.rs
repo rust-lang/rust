@@ -715,13 +715,7 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
                 p!(print_def_path(def_id, &[]));
             }
             ty::Alias(ty::Projection | ty::Inherent | ty::Weak, ref data) => {
-                if !(self.should_print_verbose() || with_no_queries())
-                    && self.tcx().is_impl_trait_in_trait(data.def_id)
-                {
-                    return self.pretty_print_opaque_impl_type(data.def_id, data.args);
-                } else {
-                    p!(print(data))
-                }
+                p!(print(data))
             }
             ty::Placeholder(placeholder) => match placeholder.bound.kind {
                 ty::BoundTyKind::Anon => p!(write("{placeholder:?}")),
@@ -3053,7 +3047,17 @@ define_print_and_forward_display! {
         if let DefKind::Impl { of_trait: false } = cx.tcx().def_kind(cx.tcx().parent(self.def_id)) {
             p!(pretty_print_inherent_projection(self))
         } else {
-            p!(print_def_path(self.def_id, self.args));
+            // If we're printing verbosely, or don't want to invoke queries
+            // (`is_impl_trait_in_trait`), then fall back to printing the def path.
+            // This is likely what you want if you're debugging the compiler anyways.
+            if !(cx.should_print_verbose() || with_no_queries())
+                && cx.tcx().is_impl_trait_in_trait(self.def_id)
+            {
+                return cx.pretty_print_opaque_impl_type(self.def_id, self.args);
+            } else {
+                p!(print_def_path(self.def_id, self.args));
+            }
+
         }
     }
 
