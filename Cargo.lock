@@ -3417,16 +3417,27 @@ version = "0.0.0"
 dependencies = [
  "bitflags 2.4.2",
  "memchr",
+ "rustc_ast_ir",
  "rustc_data_structures",
  "rustc_index",
  "rustc_lexer",
  "rustc_macros",
  "rustc_serialize",
  "rustc_span",
- "rustc_type_ir",
  "smallvec",
  "thin-vec",
  "tracing",
+]
+
+[[package]]
+name = "rustc_ast_ir"
+version = "0.0.0"
+dependencies = [
+ "rustc_data_structures",
+ "rustc_macros",
+ "rustc_serialize",
+ "rustc_span",
+ "smallvec",
 ]
 
 [[package]]
@@ -4181,6 +4192,7 @@ dependencies = [
  "rustc_apfloat",
  "rustc_arena",
  "rustc_ast",
+ "rustc_ast_ir",
  "rustc_attr",
  "rustc_data_structures",
  "rustc_error_messages",
@@ -4661,6 +4673,7 @@ version = "0.0.0"
 dependencies = [
  "bitflags 2.4.2",
  "derivative",
+ "rustc_ast_ir",
  "rustc_data_structures",
  "rustc_index",
  "rustc_macros",

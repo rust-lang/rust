@@ -11,11 +11,10 @@ use rustc_middle::mir::interpret::{
     PointerKind, ResourceExhaustionInfo, UndefinedBehaviorInfo, UnsupportedOpInfo,
     ValidationErrorInfo,
 };
-use rustc_middle::ty::{self, Ty};
+use rustc_middle::ty::{self, Mutability, Ty};
 use rustc_span::Span;
 use rustc_target::abi::call::AdjustForForeignAbiError;
 use rustc_target::abi::{Size, WrappingRange};
-use rustc_type_ir::Mutability;
 
 use crate::interpret::InternKind;
 

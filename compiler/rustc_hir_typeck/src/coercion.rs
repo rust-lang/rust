@@ -636,6 +636,20 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
                 {
                     self.resolve_vars_if_possible(trait_pred)
                 }
+                // Eagerly process alias-relate obligations in new trait solver,
+                // since these can be emitted in the process of solving trait goals,
+                // but we need to constrain vars before processing goals mentioning
+                // them.
+                Some(ty::PredicateKind::AliasRelate(..)) => {
+                    let mut fulfill_cx = <dyn TraitEngine<'tcx>>::new(self);
+                    fulfill_cx.register_predicate_obligation(self, obligation);
+                    let errs = fulfill_cx.select_where_possible(self);
+                    if !errs.is_empty() {
+                        return Err(TypeError::Mismatch);
+                    }
+                    coercion.obligations.extend(fulfill_cx.pending_obligations());
+                    continue;
+                }
                 _ => {
                     coercion.obligations.push(obligation);
                     continue;
