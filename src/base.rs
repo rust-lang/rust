@@ -158,7 +158,6 @@ pub fn compile_codegen_unit(tcx: TyCtxt<'_>, cgu_name: Symbol, target_info: Lock
         if env::var("CG_GCCJIT_KEEP_INTERMEDIATES").as_deref() == Ok("1") {
             context.set_keep_intermediates(true);
         }
-
         if env::var("CG_GCCJIT_VERBOSE").as_deref() == Ok("1") {
             context.add_driver_option("-v");
         }

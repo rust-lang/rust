@@ -51,7 +51,10 @@ impl<'a, 'gcc, 'tcx> DebugInfoBuilderMethods for Builder<'a, 'gcc, 'tcx> {
     }
 }
 
-pub fn compute_mir_scopes<'gcc, 'tcx>(
+/// Generate the `debug_context` in an MIR Body.
+/// # Souce of Origin
+/// Copied from `create_scope_map.rs` of rustc_codegen_llvm
+fn compute_mir_scopes<'gcc, 'tcx>(
     cx: &CodegenCx<'gcc, 'tcx>,
     instance: Instance<'tcx>,
     mir: &Body<'tcx>,
@@ -81,6 +84,12 @@ pub fn compute_mir_scopes<'gcc, 'tcx>(
     assert!(instantiated.count() == mir.source_scopes.len());
 }
 
+/// Update the `debug_context`, adding new scope to it,
+/// if it's not added as is denoted in `instantiated`.
+/// 
+/// # Souce of Origin
+/// Copied from `create_scope_map.rs` of rustc_codegen_llvm
+/// FIXME(tempdragon/?): Add Scope Support Here.
 fn make_mir_scope<'gcc, 'tcx>(
     cx: &CodegenCx<'gcc, 'tcx>,
     instance: Instance<'tcx>,
@@ -123,6 +132,39 @@ fn make_mir_scope<'gcc, 'tcx>(
     }
 
     let loc = cx.lookup_debug_loc(scope_data.span.lo());
+
+    /*
+    // FIXME(?): Uncommented when the scope is supported.
+    let file_metadata = file_metadata(cx, &loc.file);
+
+    let parent_dbg_scope = match scope_data.inlined {
+        Some((callee, _)) => {
+            // FIXME(eddyb) this would be `self.monomorphize(&callee)`
+            // if this is moved to `rustc_codegen_ssa::mir::debuginfo`.
+            let callee = cx.tcx.instantiate_and_normalize_erasing_regions(
+                instance.args,
+                ty::ParamEnv::reveal_all(),
+                ty::EarlyBinder::bind(callee),
+            );
+            debug_context.inlined_function_scopes.entry(callee).or_insert_with(|| {
+                let callee_fn_abi = cx.fn_abi_of_instance(callee, ty::List::empty());
+                cx.dbg_scope_fn(callee, callee_fn_abi, None)
+            })
+        }
+        None => parent_scope.dbg_scope,
+    };
+
+    let dbg_scope = unsafe {
+        llvm::LLVMRustDIBuilderCreateLexicalBlock(
+            DIB(cx),
+            parent_dbg_scope,
+            file_metadata,
+            loc.line,
+            loc.col,
+        )
+    };
+    */
+
     let dbg_scope = ();
 
     let inlined_at = scope_data.inlined.map(|(_, callsite_span)| {
@@ -144,8 +186,13 @@ fn make_mir_scope<'gcc, 'tcx>(
     instantiated.insert(scope);
 }
 
-/// Copied from LLVM backend
 impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
+    /// Look up the file, the 1-based indexing line number and column number.
+    /// # Argument
+    /// - `pos`: `BytePos`, the starting position of a piece of code
+    /// # Source of Origin
+    /// Copied from LLVM backend(with a return type from struct to tuple).
+    /// No need to change since you may end up something like this.
     pub fn lookup_debug_loc(&self, pos: BytePos) -> (Lrc<SourceFile>, u32, u32) {
         match self.sess().source_map().lookup_line(pos) {
             Ok(SourceFileAndLine { sf: file, line }) => {
@@ -216,7 +263,6 @@ impl<'gcc, 'tcx> DebugInfoMethods<'tcx> for CodegenCx<'gcc, 'tcx> {
     }
 
     fn debuginfo_finalize(&self) {
-        // TODO(antoyo): Get the debug flag/predicate to allow optional generation of debuginfo.
         self.context.set_debug_info(true)
     }
 
