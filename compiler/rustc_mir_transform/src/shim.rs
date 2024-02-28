@@ -1169,17 +1169,20 @@ fn build_async_destructor_ctor_shim<'tcx>(
                 let slice_ptr_ty = Ty::new_mut_ptr(tcx, Ty::new_slice(tcx, elem_ty));
                 let slice_ptr = locals.push(LocalDecl::with_source_info(slice_ptr_ty, source_info));
 
-                blocks[slice_async_destructor_bb].statements = vec![Statement {
-                    source_info,
-                    kind: StatementKind::Assign(Box::new((
-                        slice_ptr.into(),
-                        Rvalue::Cast(
-                            CastKind::PointerCoercion(PointerCoercion::Unsize),
-                            Operand::Move(self_ptr.into()),
-                            slice_ptr_ty,
-                        ),
-                    ))),
-                }];
+                blocks[slice_async_destructor_bb].statements = vec![
+                    Statement { source_info, kind: StatementKind::StorageLive(slice_ptr) },
+                    Statement {
+                        source_info,
+                        kind: StatementKind::Assign(Box::new((
+                            slice_ptr.into(),
+                            Rvalue::Cast(
+                                CastKind::PointerCoercion(PointerCoercion::Unsize),
+                                Operand::Move(self_ptr.into()),
+                                slice_ptr_ty,
+                            ),
+                        ))),
+                    },
+                ];
                 slice_ptr
             } else {
                 self_ptr
