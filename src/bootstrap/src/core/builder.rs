@@ -1731,15 +1731,16 @@ impl<'a> Builder<'a> {
             },
         );
 
+        let split_debuginfo = self.config.split_debuginfo(target);
         let split_debuginfo_is_stable = target.contains("linux")
             || target.contains("apple")
-            || (target.is_msvc() && self.config.rust_split_debuginfo == SplitDebuginfo::Packed)
-            || (target.is_windows() && self.config.rust_split_debuginfo == SplitDebuginfo::Off);
+            || (target.is_msvc() && split_debuginfo == SplitDebuginfo::Packed)
+            || (target.is_windows() && split_debuginfo == SplitDebuginfo::Off);
 
         if !split_debuginfo_is_stable {
             rustflags.arg("-Zunstable-options");
         }
-        match self.config.rust_split_debuginfo {
+        match split_debuginfo {
             SplitDebuginfo::Packed => rustflags.arg("-Csplit-debuginfo=packed"),
             SplitDebuginfo::Unpacked => rustflags.arg("-Csplit-debuginfo=unpacked"),
             SplitDebuginfo::Off => rustflags.arg("-Csplit-debuginfo=off"),
