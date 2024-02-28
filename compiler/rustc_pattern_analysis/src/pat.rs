@@ -321,6 +321,14 @@ impl<Cx: TypeCx> WitnessPat<Cx> {
         &self.ty
     }
 
+    pub fn is_never_pattern(&self) -> bool {
+        match self.ctor() {
+            Never => true,
+            Or => self.fields.iter().all(|p| p.is_never_pattern()),
+            _ => self.fields.iter().any(|p| p.is_never_pattern()),
+        }
+    }
+
     pub fn iter_fields(&self) -> impl Iterator<Item = &WitnessPat<Cx>> {
         self.fields.iter()
     }

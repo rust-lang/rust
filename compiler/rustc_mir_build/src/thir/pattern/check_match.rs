@@ -1024,6 +1024,14 @@ fn report_non_exhaustive_match<'p, 'tcx>(
 
     let mut suggestion = None;
     let sm = cx.tcx.sess.source_map();
+    let suggested_arm = if witnesses.len() < 4
+        && witnesses.iter().all(|p| p.is_never_pattern())
+        && cx.tcx.features().never_patterns
+    {
+        pattern
+    } else {
+        format!("{pattern} => todo!()")
+    };
     match arms {
         [] if sp.eq_ctxt(expr_span) => {
             // Get the span for the empty match body `{}`.
@@ -1034,7 +1042,7 @@ fn report_non_exhaustive_match<'p, 'tcx>(
             };
             suggestion = Some((
                 sp.shrink_to_hi().with_hi(expr_span.hi()),
-                format!(" {{{indentation}{more}{pattern} => todo!(),{indentation}}}",),
+                format!(" {{{indentation}{more}{suggested_arm},{indentation}}}",),
             ));
         }
         [only] => {
@@ -1060,7 +1068,7 @@ fn report_non_exhaustive_match<'p, 'tcx>(
             };
             suggestion = Some((
                 only.span.shrink_to_hi(),
-                format!("{comma}{pre_indentation}{pattern} => todo!()"),
+                format!("{comma}{pre_indentation}{suggested_arm}"),
             ));
         }
         [.., prev, last] => {
@@ -1083,7 +1091,7 @@ fn report_non_exhaustive_match<'p, 'tcx>(
                 if let Some(spacing) = spacing {
                     suggestion = Some((
                         last.span.shrink_to_hi(),
-                        format!("{comma}{spacing}{pattern} => todo!()"),
+                        format!("{comma}{spacing}{suggested_arm}"),
                     ));
                 }
             }
