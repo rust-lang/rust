@@ -5,7 +5,7 @@ use std::fmt;
 use smallvec::{smallvec, SmallVec};
 
 use crate::constructor::{Constructor, Slice, SliceKind};
-use crate::{SkipField, TypeCx};
+use crate::{PrivateUninhabitedField, TypeCx};
 
 use self::Constructor::*;
 
@@ -80,7 +80,7 @@ impl<Cx: TypeCx> DeconstructedPat<Cx> {
             // Return a wildcard for each field of `other_ctor`.
             (Wildcard, _) => wildcard_sub_tys(),
             // Skip this column.
-            (_, Skip) => smallvec![],
+            (_, PrivateUninhabited) => smallvec![],
             // The only non-trivial case: two slices of different arity. `other_slice` is
             // guaranteed to have a larger arity, so we fill the middle part with enough
             // wildcards to reach the length of the new, larger slice.
@@ -189,7 +189,9 @@ impl<Cx: TypeCx> fmt::Debug for DeconstructedPat<Cx> {
                 }
                 Ok(())
             }
-            Wildcard | Missing | NonExhaustive | Hidden | Skip => write!(f, "_ : {:?}", pat.ty()),
+            Wildcard | Missing | NonExhaustive | Hidden | PrivateUninhabited => {
+                write!(f, "_ : {:?}", pat.ty())
+            }
         }
     }
 }
@@ -299,7 +301,7 @@ impl<Cx: TypeCx> WitnessPat<Cx> {
     pub(crate) fn wild_from_ctor(cx: &Cx, ctor: Constructor<Cx>, ty: Cx::Ty) -> Self {
         let fields = cx
             .ctor_sub_tys(&ctor, &ty)
-            .filter(|(_, SkipField(skip))| !skip)
+            .filter(|(_, PrivateUninhabitedField(skip))| !skip)
             .map(|(ty, _)| Self::wildcard(ty))
             .collect();
         Self::new(ctor, fields, ty)

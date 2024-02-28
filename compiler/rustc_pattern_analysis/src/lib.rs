@@ -82,9 +82,10 @@ use crate::usefulness::{compute_match_usefulness, ValidityConstraint};
 pub trait Captures<'a> {}
 impl<'a, T: ?Sized> Captures<'a> for T {}
 
-/// `bool` newtype that indicates whether we should skip this field during analysis.
+/// `bool` newtype that indicates whether this is a privately uninhabited field that we should skip
+/// during analysis.
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
-pub struct SkipField(pub bool);
+pub struct PrivateUninhabitedField(pub bool);
 
 /// Context that provides type information about constructors.
 ///
@@ -114,7 +115,7 @@ pub trait TypeCx: Sized + fmt::Debug {
         &'a self,
         ctor: &'a Constructor<Self>,
         ty: &'a Self::Ty,
-    ) -> impl Iterator<Item = (Self::Ty, SkipField)> + ExactSizeIterator + Captures<'a>;
+    ) -> impl Iterator<Item = (Self::Ty, PrivateUninhabitedField)> + ExactSizeIterator + Captures<'a>;
 
     /// The set of all the constructors for `ty`.
     ///
