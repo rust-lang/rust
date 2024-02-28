@@ -70,7 +70,7 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
             cx,
             block,
             stack_var_count: Cell::new(0),
-            loc:None
+            loc: None
         }
     }
 
@@ -541,12 +541,7 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
     }
 
     fn fmul(&mut self, a: RValue<'gcc>, b: RValue<'gcc>) -> RValue<'gcc> {
-        let i=a * b;
-        if self.loc.is_some() {
-            #[cfg(feature = "master")]
-            i.set_location(self.loc.clone().unwrap());
-        }
-        i
+        self.cx.context.new_binary_op(self.loc, BinaryOp::Mult, a.get_type(), a, b)
     }
 
     fn udiv(&mut self, a: RValue<'gcc>, b: RValue<'gcc>) -> RValue<'gcc> {
@@ -660,13 +655,7 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
     }
 
     fn or(&mut self, a: RValue<'gcc>, b: RValue<'gcc>) -> RValue<'gcc> {
-        let ret = self.cx.gcc_or(a, b, self.loc);
-        
-        if self.loc.is_some() {
-            #[cfg(feature = "master")]
-            ret.set_location(self.loc.unwrap());
-        }
-        ret
+        self.cx.gcc_or(a, b, self.loc)
     }
 
     fn xor(&mut self, a: RValue<'gcc>, b: RValue<'gcc>) -> RValue<'gcc> {
