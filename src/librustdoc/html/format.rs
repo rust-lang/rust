@@ -575,7 +575,7 @@ fn generate_macro_def_id_path(
         ExternalLocation::Local => {
             // `root_path` always end with a `/`.
             format!(
-                "{root_path}{crate_name}/{path}",
+                "{root_path}{path}",
                 root_path = root_path.unwrap_or(""),
                 path = path.iter().map(|p| p.as_str()).join("/")
             )
