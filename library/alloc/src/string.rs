@@ -1344,7 +1344,6 @@ impl String {
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn push(&mut self, ch: char) {
-
         match ch.len_utf8() {
             1 => self.vec.push(ch as u8),
             _ => self.vec.extend_from_slice(ch.encode_utf8(&mut [0; MAX_LEN_UTF8]).as_bytes()),
