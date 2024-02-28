@@ -501,9 +501,11 @@ impl<'sess, 'src> StringReader<'sess, 'src> {
                 (kind, self.symbol_from_to(start, end))
             }
             rustc_lexer::LiteralKind::Float { base, empty_exponent } => {
+                let mut kind = token::Float;
                 if empty_exponent {
                     let span = self.mk_sp(start, self.pos);
-                    self.dcx().emit_err(errors::EmptyExponentFloat { span });
+                    let guar = self.dcx().emit_err(errors::EmptyExponentFloat { span });
+                    kind = token::Err(guar);
                 }
                 let base = match base {
                     Base::Hexadecimal => Some("hexadecimal"),
@@ -513,9 +515,11 @@ impl<'sess, 'src> StringReader<'sess, 'src> {
                 };
                 if let Some(base) = base {
                     let span = self.mk_sp(start, end);
-                    self.dcx().emit_err(errors::FloatLiteralUnsupportedBase { span, base });
+                    let guar =
+                        self.dcx().emit_err(errors::FloatLiteralUnsupportedBase { span, base });
+                    kind = token::Err(guar)
                 }
-                (token::Float, self.symbol_from_to(start, end))
+                (kind, self.symbol_from_to(start, end))
             }
         }
     }
