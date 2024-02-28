@@ -168,6 +168,7 @@ pub fn add_feature_diagnostics<G: EmissionGuarantee>(
 /// This variant allows you to control whether it is a library or language feature.
 /// Almost always, you want to use this for a language feature. If so, prefer
 /// `add_feature_diagnostics`.
+#[allow(rustc::diagnostic_outside_of_impl)] // FIXME
 pub fn add_feature_diagnostics_for_issue<G: EmissionGuarantee>(
     err: &mut Diag<'_, G>,
     sess: &Session,

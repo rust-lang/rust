@@ -312,6 +312,7 @@ impl Session {
     ) -> Diag<'a> {
         let mut err = self.dcx().create_err(err);
         if err.code.is_none() {
+            #[allow(rustc::diagnostic_outside_of_impl)]
             err.code(E0658);
         }
         add_feature_diagnostics(&mut err, self, feature);
