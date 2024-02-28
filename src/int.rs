@@ -4,7 +4,7 @@
 
 use std::convert::TryFrom;
 
-use gccjit::{ComparisonOp, FunctionType, RValue, ToRValue, Type, UnaryOp, BinaryOp};
+use gccjit::{BinaryOp, ComparisonOp, FunctionType, Location, RValue, ToRValue, Type, UnaryOp};
 use rustc_codegen_ssa::common::{IntPredicate, TypeKind};
 use rustc_codegen_ssa::traits::{BackendTypes, BaseTypeMethods, BuilderMethods, OverflowOp};
 use rustc_middle::ty::{ParamEnv, Ty};
@@ -35,13 +35,13 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
                 else {
                     UnaryOp::BitwiseNegate
                 };
-            self.cx.context.new_unary_op(None, operation, typ, a)
+            self.cx.context.new_unary_op(self.loc, operation, typ, a)
         }
         else {
             let element_type = typ.dyncast_array().expect("element type");
             self.from_low_high_rvalues(typ,
-                self.cx.context.new_unary_op(None, UnaryOp::BitwiseNegate, element_type, self.low(a)),
-                self.cx.context.new_unary_op(None, UnaryOp::BitwiseNegate, element_type, self.high(a)),
+                self.cx.context.new_unary_op(self.loc, UnaryOp::BitwiseNegate, element_type, self.low(a)),
+                self.cx.context.new_unary_op(self.loc, UnaryOp::BitwiseNegate, element_type, self.high(a)),
             )
         }
     }
@@ -49,7 +49,7 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
     pub fn gcc_neg(&self, a: RValue<'gcc>) -> RValue<'gcc> {
         let a_type = a.get_type();
         if self.is_native_int_type(a_type) || a_type.is_vector() {
-            self.cx.context.new_unary_op(None, UnaryOp::Minus, a.get_type(), a)
+            self.cx.context.new_unary_op(self.loc, UnaryOp::Minus, a.get_type(), a)
         }
         else {
             self.gcc_add(self.gcc_not(a), self.gcc_int(a_type, 1))
@@ -57,7 +57,7 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
     }
 
     pub fn gcc_and(&self, a: RValue<'gcc>, b: RValue<'gcc>) -> RValue<'gcc> {
-        self.cx.bitwise_operation(BinaryOp::BitwiseAnd, a, b)
+        self.cx.bitwise_operation(BinaryOp::BitwiseAnd, a, b, self.loc)
     }
 
     pub fn gcc_lshr(&mut self, a: RValue<'gcc>, b: RValue<'gcc>) -> RValue<'gcc> {
@@ -69,7 +69,7 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
             // FIXME(antoyo): remove the casts when libgccjit can shift an unsigned number by a signed number.
             // TODO(antoyo): cast to unsigned to do a logical shift if that does not work.
             if a_type.is_signed(self) != b_type.is_signed(self) {
-                let b = self.context.new_cast(None, b, a_type);
+                let b = self.context.new_cast(self.loc, b, a_type);
                 a >> b
             }
             else {
@@ -95,14 +95,14 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
             let b0_block = func.new_block("b0");
             let actual_else_block = func.new_block("actual_else");
 
-            let result = func.new_local(None, a_type, "shiftResult");
+            let result = func.new_local(self.loc, a_type, "shiftResult");
 
             let sixty_four = self.gcc_int(native_int_type, 64);
             let sixty_three = self.gcc_int(native_int_type, 63);
             let zero = self.gcc_zero(native_int_type);
             let b = self.gcc_int_cast(b, native_int_type);
             let condition = self.gcc_icmp(IntPredicate::IntNE, self.gcc_and(b, sixty_four), zero);
-            self.llbb().end_with_conditional(None, condition, then_block, else_block);
+            self.llbb().end_with_conditional(self.loc, condition, then_block, else_block);
 
             let shift_value = self.gcc_sub(b, sixty_four);
             let high = self.high(a);
@@ -114,27 +114,27 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
                     zero
                 };
             let array_value = self.from_low_high_rvalues(a_type, high >> shift_value, sign);
-            then_block.add_assignment(None, result, array_value);
-            then_block.end_with_jump(None, after_block);
+            then_block.add_assignment(self.loc, result, array_value);
+            then_block.end_with_jump(self.loc, after_block);
 
             let condition = self.gcc_icmp(IntPredicate::IntEQ, b, zero);
-            else_block.end_with_conditional(None, condition, b0_block, actual_else_block);
+            else_block.end_with_conditional(self.loc, condition, b0_block, actual_else_block);
 
-            b0_block.add_assignment(None, result, a);
-            b0_block.end_with_jump(None, after_block);
+            b0_block.add_assignment(self.loc, result, a);
+            b0_block.end_with_jump(self.loc, after_block);
 
             let shift_value = self.gcc_sub(sixty_four, b);
             // NOTE: cast low to its unsigned type in order to perform a logical right shift.
             let unsigned_type = native_int_type.to_unsigned(&self.cx);
-            let casted_low = self.context.new_cast(None, self.low(a), unsigned_type);
-            let shifted_low = casted_low >> self.context.new_cast(None, b, unsigned_type);
-            let shifted_low = self.context.new_cast(None, shifted_low, native_int_type);
+            let casted_low = self.context.new_cast(self.loc, self.low(a), unsigned_type);
+            let shifted_low = casted_low >> self.context.new_cast(self.loc, b, unsigned_type);
+            let shifted_low = self.context.new_cast(self.loc, shifted_low, native_int_type);
             let array_value = self.from_low_high_rvalues(a_type,
                 (high << shift_value) | shifted_low,
                 high >> b,
             );
-            actual_else_block.add_assignment(None, result, array_value);
-            actual_else_block.end_with_jump(None, after_block);
+            actual_else_block.add_assignment(self.loc, result, array_value);
+            actual_else_block.end_with_jump(self.loc, after_block);
 
             // NOTE: since jumps were added in a place rustc does not expect, the current block in the
             // state need to be updated.
@@ -152,13 +152,13 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
                 if a_type.is_vector() {
                     // Vector types need to be bitcast.
                     // TODO(antoyo): perhaps use __builtin_convertvector for vector casting.
-                    b = self.context.new_bitcast(None, b, a.get_type());
+                    b = self.context.new_bitcast(self.loc, b, a.get_type());
                 }
                 else {
-                    b = self.context.new_cast(None, b, a.get_type());
+                    b = self.context.new_cast(self.loc, b, a.get_type());
                 }
             }
-            self.context.new_binary_op(None, operation, a_type, a, b)
+            self.context.new_binary_op(self.loc, operation, a_type, a, b)
         }
         else {
             debug_assert!(a_type.dyncast_array().is_some());
@@ -172,10 +172,10 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
                     (BinaryOp::Minus, false) => "__rust_u128_sub",
                     _ => unreachable!("unexpected additive operation {:?}", operation),
                 };
-            let param_a = self.context.new_parameter(None, a_type, "a");
-            let param_b = self.context.new_parameter(None, b_type, "b");
-            let func = self.context.new_function(None, FunctionType::Extern, a_type, &[param_a, param_b], func_name, false);
-            self.context.new_call(None, func, &[a, b])
+            let param_a = self.context.new_parameter(self.loc, a_type, "a");
+            let param_b = self.context.new_parameter(self.loc, b_type, "b");
+            let func = self.context.new_function(self.loc, FunctionType::Extern, a_type, &[param_a, param_b], func_name, false);
+            self.context.new_call(self.loc, func, &[a, b])
         }
     }
 
@@ -195,7 +195,7 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
         let a_type = a.get_type();
         let b_type = b.get_type();
         if (self.is_native_int_type_or_bool(a_type) && self.is_native_int_type_or_bool(b_type)) || (a_type.is_vector() && b_type.is_vector()) {
-            self.context.new_binary_op(None, operation, a_type, a, b)
+            self.context.new_binary_op(self.loc, operation, a_type, a, b)
         }
         else {
             debug_assert!(a_type.dyncast_array().is_some());
@@ -208,10 +208,10 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
                     "u"
                 };
             let func_name = format!("__{}{}ti3", sign, operation_name);
-            let param_a = self.context.new_parameter(None, a_type, "a");
-            let param_b = self.context.new_parameter(None, b_type, "b");
-            let func = self.context.new_function(None, FunctionType::Extern, a_type, &[param_a, param_b], func_name, false);
-            self.context.new_call(None, func, &[a, b])
+            let param_a = self.context.new_parameter(self.loc, a_type, "a");
+            let param_b = self.context.new_parameter(self.loc, b_type, "b");
+            let func = self.context.new_function(self.loc, FunctionType::Extern, a_type, &[param_a, param_b], func_name, false);
+            self.context.new_call(self.loc, func, &[a, b])
         }
     }
 
@@ -335,10 +335,10 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
         let intrinsic = self.context.get_builtin_function(&name);
         let res = self.current_func()
             // TODO(antoyo): is it correct to use rhs type instead of the parameter typ?
-            .new_local(None, rhs.get_type(), "binopResult")
-            .get_address(None);
+            .new_local(self.loc, rhs.get_type(), "binopResult")
+            .get_address(self.loc);
         let overflow = self.overflow_call(intrinsic, &[lhs, rhs, res], None);
-        (res.dereference(None).to_rvalue(), overflow)
+        (res.dereference(self.loc).to_rvalue(), overflow)
     }
 
     pub fn operation_with_overflow(&self, func_name: &str, lhs: RValue<'gcc>, rhs: RValue<'gcc>) -> (RValue<'gcc>, RValue<'gcc>) {
@@ -346,10 +346,10 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
         let b_type = rhs.get_type();
         debug_assert!(a_type.dyncast_array().is_some());
         debug_assert!(b_type.dyncast_array().is_some());
-        let param_a = self.context.new_parameter(None, a_type, "a");
-        let param_b = self.context.new_parameter(None, b_type, "b");
-        let result_field = self.context.new_field(None, a_type, "result");
-        let overflow_field = self.context.new_field(None, self.bool_type, "overflow");
+        let param_a = self.context.new_parameter(self.loc, a_type, "a");
+        let param_b = self.context.new_parameter(self.loc, b_type, "b");
+        let result_field = self.context.new_field(self.loc, a_type, "result");
+        let overflow_field = self.context.new_field(self.loc, self.bool_type, "overflow");
 
         let ret_ty = Ty::new_tup(self.tcx, &[self.tcx.types.i128, self.tcx.types.bool]);
         let layout = self.tcx.layout_of(ParamEnv::reveal_all().and(ret_ty)).unwrap();
@@ -372,23 +372,23 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
 
         let indirect = matches!(fn_abi.ret.mode, PassMode::Indirect { .. });
 
-        let return_type = self.context.new_struct_type(None, "result_overflow", &[result_field, overflow_field]);
+        let return_type = self.context.new_struct_type(self.loc, "result_overflow", &[result_field, overflow_field]);
         let result =
             if indirect {
-                let return_value = self.current_func().new_local(None, return_type.as_type(), "return_value");
+                let return_value = self.current_func().new_local(self.loc, return_type.as_type(), "return_value");
                 let return_param_type = return_type.as_type().make_pointer();
-                let return_param = self.context.new_parameter(None, return_param_type, "return_value");
-                let func = self.context.new_function(None, FunctionType::Extern, self.type_void(), &[return_param, param_a, param_b], func_name, false);
-                self.llbb().add_eval(None, self.context.new_call(None, func, &[return_value.get_address(None), lhs, rhs]));
+                let return_param = self.context.new_parameter(self.loc, return_param_type, "return_value");
+                let func = self.context.new_function(self.loc, FunctionType::Extern, self.type_void(), &[return_param, param_a, param_b], func_name, false);
+                self.llbb().add_eval(self.loc, self.context.new_call(self.loc, func, &[return_value.get_address(self.loc), lhs, rhs]));
                 return_value.to_rvalue()
             }
             else {
-                let func = self.context.new_function(None, FunctionType::Extern, return_type.as_type(), &[param_a, param_b], func_name, false);
-                self.context.new_call(None, func, &[lhs, rhs])
+                let func = self.context.new_function(self.loc, FunctionType::Extern, return_type.as_type(), &[param_a, param_b], func_name, false);
+                self.context.new_call(self.loc, func, &[lhs, rhs])
             };
-        let overflow = result.access_field(None, overflow_field);
-        let int_result = result.access_field(None, result_field);
-        return (int_result, overflow);
+        let overflow = result.access_field(self.loc, overflow_field);
+        let int_result = result.access_field(self.loc, result_field);
+        (int_result, overflow)
     }
 
     pub fn gcc_icmp(&mut self, op: IntPredicate, mut lhs: RValue<'gcc>, mut rhs: RValue<'gcc>) -> RValue<'gcc> {
@@ -397,7 +397,7 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
         if self.is_non_native_int_type(a_type) || self.is_non_native_int_type(b_type) {
             // This algorithm is based on compiler-rt's __cmpti2:
             // https://github.com/llvm-mirror/compiler-rt/blob/f0745e8476f069296a7c71accedd061dce4cdf79/lib/builtins/cmpti2.c#L21
-            let result = self.current_func().new_local(None, self.int_type, "icmp_result");
+            let result = self.current_func().new_local(self.loc, self.int_type, "icmp_result");
             let block1 = self.current_func().new_block("block1");
             let block2 = self.current_func().new_block("block2");
             let block3 = self.current_func().new_block("block3");
@@ -413,35 +413,35 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
             // the sign is only on high).
             let unsigned_type = native_int_type.to_unsigned(&self.cx);
 
-            let lhs_low = self.context.new_cast(None, self.low(lhs), unsigned_type);
-            let rhs_low = self.context.new_cast(None, self.low(rhs), unsigned_type);
+            let lhs_low = self.context.new_cast(self.loc, self.low(lhs), unsigned_type);
+            let rhs_low = self.context.new_cast(self.loc, self.low(rhs), unsigned_type);
 
-            let condition = self.context.new_comparison(None, ComparisonOp::LessThan, self.high(lhs), self.high(rhs));
-            self.llbb().end_with_conditional(None, condition, block1, block2);
+            let condition = self.context.new_comparison(self.loc, ComparisonOp::LessThan, self.high(lhs), self.high(rhs));
+            self.llbb().end_with_conditional(self.loc, condition, block1, block2);
 
-            block1.add_assignment(None, result, self.context.new_rvalue_zero(self.int_type));
-            block1.end_with_jump(None, after);
+            block1.add_assignment(self.loc, result, self.context.new_rvalue_zero(self.int_type));
+            block1.end_with_jump(self.loc, after);
 
-            let condition = self.context.new_comparison(None, ComparisonOp::GreaterThan, self.high(lhs), self.high(rhs));
-            block2.end_with_conditional(None, condition, block3, block4);
+            let condition = self.context.new_comparison(self.loc, ComparisonOp::GreaterThan, self.high(lhs), self.high(rhs));
+            block2.end_with_conditional(self.loc, condition, block3, block4);
 
-            block3.add_assignment(None, result, self.context.new_rvalue_from_int(self.int_type, 2));
-            block3.end_with_jump(None, after);
+            block3.add_assignment(self.loc, result, self.context.new_rvalue_from_int(self.int_type, 2));
+            block3.end_with_jump(self.loc, after);
 
-            let condition = self.context.new_comparison(None, ComparisonOp::LessThan, lhs_low, rhs_low);
-            block4.end_with_conditional(None, condition, block5, block6);
+            let condition = self.context.new_comparison(self.loc, ComparisonOp::LessThan, lhs_low, rhs_low);
+            block4.end_with_conditional(self.loc, condition, block5, block6);
 
-            block5.add_assignment(None, result, self.context.new_rvalue_zero(self.int_type));
-            block5.end_with_jump(None, after);
+            block5.add_assignment(self.loc, result, self.context.new_rvalue_zero(self.int_type));
+            block5.end_with_jump(self.loc, after);
 
-            let condition = self.context.new_comparison(None, ComparisonOp::GreaterThan, lhs_low, rhs_low);
-            block6.end_with_conditional(None, condition, block7, block8);
+            let condition = self.context.new_comparison(self.loc, ComparisonOp::GreaterThan, lhs_low, rhs_low);
+            block6.end_with_conditional(self.loc, condition, block7, block8);
 
-            block7.add_assignment(None, result, self.context.new_rvalue_from_int(self.int_type, 2));
-            block7.end_with_jump(None, after);
+            block7.add_assignment(self.loc, result, self.context.new_rvalue_from_int(self.int_type, 2));
+            block7.end_with_jump(self.loc, after);
 
-            block8.add_assignment(None, result, self.context.new_rvalue_one(self.int_type));
-            block8.end_with_jump(None, after);
+            block8.add_assignment(self.loc, result, self.context.new_rvalue_one(self.int_type));
+            block8.end_with_jump(self.loc, after);
 
             // NOTE: since jumps were added in a place rustc does not expect, the current block in the
             // state need to be updated.
@@ -451,10 +451,10 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
             let (op, limit) =
                 match op {
                     IntPredicate::IntEQ => {
-                        return self.context.new_comparison(None, ComparisonOp::Equals, cmp, self.context.new_rvalue_one(self.int_type));
+                        return self.context.new_comparison(self.loc, ComparisonOp::Equals, cmp, self.context.new_rvalue_one(self.int_type));
                     },
                     IntPredicate::IntNE => {
-                        return self.context.new_comparison(None, ComparisonOp::NotEquals, cmp, self.context.new_rvalue_one(self.int_type));
+                        return self.context.new_comparison(self.loc, ComparisonOp::NotEquals, cmp, self.context.new_rvalue_one(self.int_type));
                     },
                     // TODO(antoyo): cast to u128 for unsigned comparison. See below.
                     IntPredicate::IntUGT => (ComparisonOp::Equals, 2),
@@ -466,39 +466,39 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
                     IntPredicate::IntSLT => (ComparisonOp::Equals, 0),
                     IntPredicate::IntSLE => (ComparisonOp::LessThanEquals, 1),
                 };
-            self.context.new_comparison(None, op, cmp, self.context.new_rvalue_from_int(self.int_type, limit))
+            self.context.new_comparison(self.loc, op, cmp, self.context.new_rvalue_from_int(self.int_type, limit))
         }
         else if a_type.get_pointee().is_some() && b_type.get_pointee().is_some() {
             // NOTE: gcc cannot compare pointers to different objects, but rustc does that, so cast them to usize.
-            lhs = self.context.new_bitcast(None, lhs, self.usize_type);
-            rhs = self.context.new_bitcast(None, rhs, self.usize_type);
-            self.context.new_comparison(None, op.to_gcc_comparison(), lhs, rhs)
+            lhs = self.context.new_bitcast(self.loc, lhs, self.usize_type);
+            rhs = self.context.new_bitcast(self.loc, rhs, self.usize_type);
+            self.context.new_comparison(self.loc, op.to_gcc_comparison(), lhs, rhs)
         }
         else {
             if a_type != b_type {
                 // NOTE: because libgccjit cannot compare function pointers.
                 if a_type.dyncast_function_ptr_type().is_some() && b_type.dyncast_function_ptr_type().is_some() {
-                    lhs = self.context.new_cast(None, lhs, self.usize_type.make_pointer());
-                    rhs = self.context.new_cast(None, rhs, self.usize_type.make_pointer());
+                    lhs = self.context.new_cast(self.loc, lhs, self.usize_type.make_pointer());
+                    rhs = self.context.new_cast(self.loc, rhs, self.usize_type.make_pointer());
                 }
                 // NOTE: hack because we try to cast a vector type to the same vector type.
                 else if format!("{:?}", a_type) != format!("{:?}", b_type) {
-                    rhs = self.context.new_cast(None, rhs, a_type);
+                    rhs = self.context.new_cast(self.loc, rhs, a_type);
                 }
             }
             match op {
                 IntPredicate::IntUGT | IntPredicate::IntUGE | IntPredicate::IntULT | IntPredicate::IntULE => {
                     if !a_type.is_vector() {
                         let unsigned_type = a_type.to_unsigned(&self.cx);
-                        lhs = self.context.new_cast(None, lhs, unsigned_type);
-                        rhs = self.context.new_cast(None, rhs, unsigned_type);
+                        lhs = self.context.new_cast(self.loc, lhs, unsigned_type);
+                        rhs = self.context.new_cast(self.loc, rhs, unsigned_type);
                     }
                 },
                 // TODO(antoyo): we probably need to handle signed comparison for unsigned
                 // integers.
                 _ => (),
             }
-            self.context.new_comparison(None, op.to_gcc_comparison(), lhs, rhs)
+            self.context.new_comparison(self.loc, op.to_gcc_comparison(), lhs, rhs)
         }
     }
 
@@ -528,12 +528,12 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
         if a_native && b_native {
             // FIXME(antoyo): remove the casts when libgccjit can shift an unsigned number by an unsigned number.
             if a_type.is_unsigned(self) && b_type.is_signed(self) {
-                let a = self.context.new_cast(None, a, b_type);
+                let a = self.context.new_cast(self.loc, a, b_type);
                 let result = a << b;
-                self.context.new_cast(None, result, a_type)
+                self.context.new_cast(self.loc, result, a_type)
             }
             else if a_type.is_signed(self) && b_type.is_unsigned(self) {
-                let b = self.context.new_cast(None, b, a_type);
+                let b = self.context.new_cast(self.loc, b, a_type);
                 a << b
             }
             else {
@@ -557,40 +557,40 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
             let b0_block = func.new_block("b0");
             let actual_else_block = func.new_block("actual_else");
 
-            let result = func.new_local(None, a_type, "shiftResult");
+            let result = func.new_local(self.loc, a_type, "shiftResult");
 
             let b = self.gcc_int_cast(b, native_int_type);
             let sixty_four = self.gcc_int(native_int_type, 64);
             let zero = self.gcc_zero(native_int_type);
             let condition = self.gcc_icmp(IntPredicate::IntNE, self.gcc_and(b, sixty_four), zero);
-            self.llbb().end_with_conditional(None, condition, then_block, else_block);
+            self.llbb().end_with_conditional(self.loc, condition, then_block, else_block);
 
             let array_value = self.from_low_high_rvalues(a_type,
                 zero,
                 self.low(a) << (b - sixty_four),
             );
-            then_block.add_assignment(None, result, array_value);
-            then_block.end_with_jump(None, after_block);
+            then_block.add_assignment(self.loc, result, array_value);
+            then_block.end_with_jump(self.loc, after_block);
 
             let condition = self.gcc_icmp(IntPredicate::IntEQ, b, zero);
-            else_block.end_with_conditional(None, condition, b0_block, actual_else_block);
+            else_block.end_with_conditional(self.loc, condition, b0_block, actual_else_block);
 
-            b0_block.add_assignment(None, result, a);
-            b0_block.end_with_jump(None, after_block);
+            b0_block.add_assignment(self.loc, result, a);
+            b0_block.end_with_jump(self.loc, after_block);
 
             // NOTE: cast low to its unsigned type in order to perform a logical right shift.
             // TODO(antoyo): adjust this ^ comment.
             let unsigned_type = native_int_type.to_unsigned(&self.cx);
-            let casted_low = self.context.new_cast(None, self.low(a), unsigned_type);
-            let shift_value = self.context.new_cast(None, sixty_four - b, unsigned_type);
-            let high_low = self.context.new_cast(None, casted_low >> shift_value, native_int_type);
+            let casted_low = self.context.new_cast(self.loc, self.low(a), unsigned_type);
+            let shift_value = self.context.new_cast(self.loc, sixty_four - b, unsigned_type);
+            let high_low = self.context.new_cast(self.loc, casted_low >> shift_value, native_int_type);
 
             let array_value = self.from_low_high_rvalues(a_type,
                 self.low(a) << b,
                 (self.high(a) << b) | high_low,
             );
-            actual_else_block.add_assignment(None, result, array_value);
-            actual_else_block.end_with_jump(None, after_block);
+            actual_else_block.add_assignment(self.loc, result, array_value);
+            actual_else_block.end_with_jump(self.loc, after_block);
 
             // NOTE: since jumps were added in a place rustc does not expect, the current block in the
             // state need to be updated.
@@ -606,10 +606,10 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
             let native_int_type = arg_type.dyncast_array().expect("get element type");
             let lsb = self.low(arg);
             let swapped_lsb = self.gcc_bswap(lsb, width / 2);
-            let swapped_lsb = self.context.new_cast(None, swapped_lsb, native_int_type);
+            let swapped_lsb = self.context.new_cast(self.loc, swapped_lsb, native_int_type);
             let msb = self.high(arg);
             let swapped_msb = self.gcc_bswap(msb, width / 2);
-            let swapped_msb = self.context.new_cast(None, swapped_msb, native_int_type);
+            let swapped_msb = self.context.new_cast(self.loc, swapped_msb, native_int_type);
 
             // NOTE: we also need to swap the two elements here, in addition to swapping inside
             // the elements themselves like done above.
@@ -625,7 +625,7 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
         if param_type != arg_type {
             arg = self.bitcast(arg, param_type);
         }
-        self.cx.context.new_call(None, bswap, &[arg])
+        self.cx.context.new_call(self.loc, bswap, &[arg])
     }
 }
 
@@ -700,33 +700,33 @@ impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
         }
     }
 
-    fn bitwise_operation(&self, operation: BinaryOp, a: RValue<'gcc>, mut b: RValue<'gcc>) -> RValue<'gcc> {
+    fn bitwise_operation(&self, operation: BinaryOp, a: RValue<'gcc>, mut b: RValue<'gcc>, loc: Option<Location<'gcc>>) -> RValue<'gcc> {
         let a_type = a.get_type();
         let b_type = b.get_type();
         let a_native = self.is_native_int_type_or_bool(a_type);
         let b_native = self.is_native_int_type_or_bool(b_type);
         if a_type.is_vector() && b_type.is_vector() {
             let b = self.bitcast_if_needed(b, a_type);
-            self.context.new_binary_op(None, operation, a_type, a, b)
+            self.context.new_binary_op(loc, operation, a_type, a, b)
         }
         else if a_native && b_native {
             if a_type != b_type {
-                b = self.context.new_cast(None, b, a_type);
+                b = self.context.new_cast(loc, b, a_type);
             }
-            self.context.new_binary_op(None, operation, a_type, a, b)
+            self.context.new_binary_op(loc, operation, a_type, a, b)
         }
         else {
             assert!(!a_native && !b_native, "both types should either be native or non-native for or operation");
             let native_int_type = a_type.dyncast_array().expect("get element type");
             self.from_low_high_rvalues(a_type,
-                self.context.new_binary_op(None, operation, native_int_type, self.low(a), self.low(b)),
-                self.context.new_binary_op(None, operation, native_int_type, self.high(a), self.high(b)),
+                self.context.new_binary_op(loc, operation, native_int_type, self.low(a), self.low(b)),
+                self.context.new_binary_op(loc, operation, native_int_type, self.high(a), self.high(b)),
             )
         }
     }
 
-    pub fn gcc_or(&self, a: RValue<'gcc>, b: RValue<'gcc>) -> RValue<'gcc> {
-        self.bitwise_operation(BinaryOp::BitwiseOr, a, b)
+    pub fn gcc_or(&self, a: RValue<'gcc>, b: RValue<'gcc>, loc: Option<Location<'gcc>>) -> RValue<'gcc> {
+        self.bitwise_operation(BinaryOp::BitwiseOr, a, b, loc)
     }
 
     // TODO(antoyo): can we use https://github.com/rust-lang/compiler-builtins/blob/master/src/int/mod.rs#L379 instead?

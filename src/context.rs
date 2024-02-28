@@ -1,6 +1,6 @@
 use std::cell::{Cell, RefCell};
 
-use gccjit::{Block, CType, Context, Function, FunctionPtrType, FunctionType, LValue, RValue, Type};
+use gccjit::{Block, CType, Context, Function, FunctionPtrType, FunctionType, LValue, Location, RValue, Type};
 use rustc_codegen_ssa::base::wants_msvc_seh;
 use rustc_codegen_ssa::traits::{
     BackendTypes,
@@ -345,7 +345,7 @@ impl<'gcc, 'tcx> BackendTypes for CodegenCx<'gcc, 'tcx> {
     type Funclet = (); // TODO(antoyo)
 
     type DIScope = (); // TODO(antoyo)
-    type DILocation = (); // TODO(antoyo)
+    type DILocation = Location<'gcc>;
     type DIVariable = (); // TODO(antoyo)
 }
 

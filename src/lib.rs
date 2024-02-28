@@ -39,6 +39,7 @@ extern crate rustc_errors;
 extern crate rustc_fluent_macro;
 extern crate rustc_fs_util;
 extern crate rustc_hir;
+extern crate rustc_index;
 #[cfg(feature="master")]
 extern crate rustc_interface;
 extern crate rustc_macros;

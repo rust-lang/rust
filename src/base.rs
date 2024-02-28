@@ -152,14 +152,12 @@ pub fn compile_codegen_unit(tcx: TyCtxt<'_>, cgu_name: Symbol, target_info: Lock
         if env::var("CG_GCCJIT_DUMP_GIMPLE").as_deref() == Ok("1") {
             context.set_dump_initial_gimple(true);
         }
-        context.set_debug_info(true);
         if env::var("CG_GCCJIT_DUMP_EVERYTHING").as_deref() == Ok("1") {
             context.set_dump_everything(true);
         }
         if env::var("CG_GCCJIT_KEEP_INTERMEDIATES").as_deref() == Ok("1") {
             context.set_keep_intermediates(true);
         }
-
         if env::var("CG_GCCJIT_VERBOSE").as_deref() == Ok("1") {
             context.add_driver_option("-v");
         }
