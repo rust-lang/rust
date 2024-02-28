@@ -1646,7 +1646,7 @@ pub fn intrinsic(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Option<ty::IntrinsicDef
     if matches!(tcx.fn_sig(def_id).skip_binder().abi(), Abi::RustIntrinsic)
         || tcx.has_attr(def_id, sym::rustc_intrinsic)
     {
-        Some(ty::IntrinsicDef { name: tcx.item_name(def_id.into()) })
+        Some(ty::IntrinsicDef { name: tcx.item_name(def_id.into()), must_be_overridden: false })
     } else {
         None
     }
