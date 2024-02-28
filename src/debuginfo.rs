@@ -32,10 +32,8 @@ impl<'a, 'gcc, 'tcx> DebugInfoBuilderMethods for Builder<'a, 'gcc, 'tcx> {
         _fragment: Option<Range<Size>>,
     ) {
         // Not sure if this is correct, probably wrong but still keep it here.
-        unsafe {
-            #[cfg(feature = "master")]
-            variable_alloca.set_location(dbg_loc);
-        }
+        #[cfg(feature = "master")]
+        variable_alloca.set_location(dbg_loc);
     }
 
     fn insert_reference_to_gdb_debug_scripts_section_global(&mut self) {
@@ -45,7 +43,7 @@ impl<'a, 'gcc, 'tcx> DebugInfoBuilderMethods for Builder<'a, 'gcc, 'tcx> {
     /// Currently, this function is not yet implemented. It seems that the
     /// debug name and the mangled name should both be included in the LValues.
     /// Besides, a function to get the rvalue type(m_is_lvalue) should also be included.
-    fn set_var_name(&mut self, value: RValue<'gcc>, name: &str) {
+    fn set_var_name(&mut self, _value: RValue<'gcc>, _name: &str) {
         //unimplemented!();
     }
 
@@ -264,7 +262,7 @@ impl<'gcc, 'tcx> DebugInfoMethods<'tcx> for CodegenCx<'gcc, 'tcx> {
                 }
                 rustc_span::RealFileName::Remapped {
                     local_path,
-                    virtual_name,
+                    virtual_name:_,
                 } => if let Some(name) = local_path.as_ref() {
                     if let Some(name) = name.to_str(){
                         self.context.new_location(

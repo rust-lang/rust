@@ -26,7 +26,6 @@ use rustc_codegen_ssa::traits::{
 use rustc_data_structures::fx::FxHashSet;
 use rustc_middle::bug;
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrs;
-use rustc_middle::mir::Rvalue;
 use rustc_middle::ty::{ParamEnv, Ty, TyCtxt};
 use rustc_middle::ty::layout::{FnAbiError, FnAbiOfHelpers, FnAbiRequest, HasParamEnv, HasTyCtxt, LayoutError, LayoutOfHelpers, TyAndLayout};
 use rustc_span::Span;
@@ -401,9 +400,8 @@ impl<'gcc, 'tcx> BackendTypes for Builder<'_, 'gcc, 'tcx> {
 
 pub fn set_rval_location<'a, 'gcc, 'tcx>(bx: &mut Builder<'a,'gcc,'tcx>, r:RValue<'gcc>) -> RValue<'gcc> {
     if bx.loc.is_some(){
-        unsafe {
-            r.set_location(bx.loc.unwrap());
-        }
+        #[cfg(feature = "master")]
+        r.set_location(bx.loc.unwrap());
     }
     r
     
@@ -545,9 +543,8 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
     fn fmul(&mut self, a: RValue<'gcc>, b: RValue<'gcc>) -> RValue<'gcc> {
         let i=a * b;
         if self.loc.is_some() {
-            unsafe{
-                i.set_location(self.loc.clone().unwrap());
-            }
+            #[cfg(feature = "master")]
+            i.set_location(self.loc.clone().unwrap());
         }
         i
     }
@@ -666,7 +663,8 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
         let ret = self.cx.gcc_or(a, b, self.loc);
         
         if self.loc.is_some() {
-            unsafe { ret.set_location(self.loc.unwrap()); }
+            #[cfg(feature = "master")]
+            ret.set_location(self.loc.unwrap());
         }
         ret
     }
