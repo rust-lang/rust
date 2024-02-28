@@ -389,6 +389,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                     kind: _,
                 } = *obligation.cause.code()
                 {
+                    debug!("ObligationCauseCode::CompareImplItemObligation");
                     return self.report_extra_impl_obligation(
                         span,
                         impl_item_def_id,

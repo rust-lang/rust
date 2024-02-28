@@ -669,6 +669,7 @@ impl<'tcx> OnUnimplementedDirective {
             options.iter().filter_map(|(k, v)| v.clone().map(|v| (*k, v))).collect();
 
         for command in self.subcommands.iter().chain(Some(self)).rev() {
+            debug!(?command);
             if let Some(ref condition) = command.condition
                 && !attr::eval_condition(condition, &tcx.sess, Some(tcx.features()), &mut |cfg| {
                     let value = cfg.value.map(|v| {
@@ -824,7 +825,11 @@ impl<'tcx> OnUnimplementedFormatString {
             .filter_map(|param| {
                 let value = match param.kind {
                     GenericParamDefKind::Type { .. } | GenericParamDefKind::Const { .. } => {
-                        trait_ref.args[param.index as usize].to_string()
+                        if let Some(ty) = trait_ref.args[param.index as usize].as_type() {
+                            tcx.short_ty_string(ty, &mut None)
+                        } else {
+                            trait_ref.args[param.index as usize].to_string()
+                        }
                     }
                     GenericParamDefKind::Lifetime => return None,
                 };

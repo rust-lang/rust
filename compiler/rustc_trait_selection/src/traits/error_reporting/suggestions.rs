@@ -3507,7 +3507,8 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
             }
             ObligationCauseCode::OpaqueReturnType(expr_info) => {
                 if let Some((expr_ty, expr_span)) = expr_info {
-                    let expr_ty = with_forced_trimmed_paths!(self.ty_to_string(expr_ty));
+                    let expr_ty =
+                        with_forced_trimmed_paths!(self.tcx.short_ty_string(expr_ty, &mut None));
                     err.span_label(
                         expr_span,
                         with_forced_trimmed_paths!(format!(
