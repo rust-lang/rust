@@ -1,4 +1,6 @@
 //@aux-build: proc_macros.rs
+//@compile-flags: -Zdeduplicate-diagnostics=yes
+
 #![warn(clippy::single_match_else)]
 #![allow(unused, clippy::needless_return, clippy::no_effect, clippy::uninlined_format_args)]
 extern crate proc_macros;

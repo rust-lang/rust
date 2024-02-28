@@ -138,6 +138,7 @@ fn base_config(test_dir: &str) -> (Config, Args) {
             "-Aunused",
             "-Ainternal_features",
             "-Zui-testing",
+            "-Zdeduplicate-diagnostics=no",
             "-Dwarnings",
             &format!("-Ldependency={}", deps_path.display()),
         ]

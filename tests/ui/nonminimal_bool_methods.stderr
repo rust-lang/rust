@@ -1,5 +1,5 @@
 error: this boolean expression can be simplified
-  --> tests/ui/nonminimal_bool_methods.rs:8:13
+  --> tests/ui/nonminimal_bool_methods.rs:10:13
    |
 LL |     let _ = !a.is_some();
    |             ^^^^^^^^^^^^ help: try: `a.is_none()`
@@ -8,73 +8,73 @@ LL |     let _ = !a.is_some();
    = help: to override `-D warnings` add `#[allow(clippy::nonminimal_bool)]`
 
 error: this boolean expression can be simplified
-  --> tests/ui/nonminimal_bool_methods.rs:10:13
+  --> tests/ui/nonminimal_bool_methods.rs:12:13
    |
 LL |     let _ = !a.is_none();
    |             ^^^^^^^^^^^^ help: try: `a.is_some()`
 
 error: this boolean expression can be simplified
-  --> tests/ui/nonminimal_bool_methods.rs:12:13
+  --> tests/ui/nonminimal_bool_methods.rs:14:13
    |
 LL |     let _ = !b.is_err();
    |             ^^^^^^^^^^^ help: try: `b.is_ok()`
 
 error: this boolean expression can be simplified
-  --> tests/ui/nonminimal_bool_methods.rs:14:13
+  --> tests/ui/nonminimal_bool_methods.rs:16:13
    |
 LL |     let _ = !b.is_ok();
    |             ^^^^^^^^^^ help: try: `b.is_err()`
 
 error: this boolean expression can be simplified
-  --> tests/ui/nonminimal_bool_methods.rs:16:13
+  --> tests/ui/nonminimal_bool_methods.rs:18:13
    |
 LL |     let _ = !(a.is_some() && !c);
    |             ^^^^^^^^^^^^^^^^^^^^ help: try: `a.is_none() || c`
 
 error: this boolean expression can be simplified
-  --> tests/ui/nonminimal_bool_methods.rs:17:13
+  --> tests/ui/nonminimal_bool_methods.rs:19:13
    |
 LL |     let _ = !(a.is_some() || !c);
    |             ^^^^^^^^^^^^^^^^^^^^ help: try: `a.is_none() && c`
 
 error: this boolean expression can be simplified
-  --> tests/ui/nonminimal_bool_methods.rs:18:26
+  --> tests/ui/nonminimal_bool_methods.rs:20:26
    |
 LL |     let _ = !(!c ^ c) || !a.is_some();
    |                          ^^^^^^^^^^^^ help: try: `a.is_none()`
 
 error: this boolean expression can be simplified
-  --> tests/ui/nonminimal_bool_methods.rs:19:25
+  --> tests/ui/nonminimal_bool_methods.rs:21:25
    |
 LL |     let _ = (!c ^ c) || !a.is_some();
    |                         ^^^^^^^^^^^^ help: try: `a.is_none()`
 
 error: this boolean expression can be simplified
-  --> tests/ui/nonminimal_bool_methods.rs:20:23
+  --> tests/ui/nonminimal_bool_methods.rs:22:23
    |
 LL |     let _ = !c ^ c || !a.is_some();
    |                       ^^^^^^^^^^^^ help: try: `a.is_none()`
 
 error: this boolean expression can be simplified
-  --> tests/ui/nonminimal_bool_methods.rs:92:8
+  --> tests/ui/nonminimal_bool_methods.rs:94:8
    |
 LL |     if !res.is_ok() {}
    |        ^^^^^^^^^^^^ help: try: `res.is_err()`
 
 error: this boolean expression can be simplified
-  --> tests/ui/nonminimal_bool_methods.rs:93:8
+  --> tests/ui/nonminimal_bool_methods.rs:95:8
    |
 LL |     if !res.is_err() {}
    |        ^^^^^^^^^^^^^ help: try: `res.is_ok()`
 
 error: this boolean expression can be simplified
-  --> tests/ui/nonminimal_bool_methods.rs:96:8
+  --> tests/ui/nonminimal_bool_methods.rs:98:8
    |
 LL |     if !res.is_some() {}
    |        ^^^^^^^^^^^^^^ help: try: `res.is_none()`
 
 error: this boolean expression can be simplified
-  --> tests/ui/nonminimal_bool_methods.rs:97:8
+  --> tests/ui/nonminimal_bool_methods.rs:99:8
    |
 LL |     if !res.is_none() {}
    |        ^^^^^^^^^^^^^^ help: try: `res.is_some()`

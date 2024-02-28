@@ -1,4 +1,6 @@
 //@no-rustfix: overlapping suggestions
+//@compile-flags: -Zdeduplicate-diagnostics=yes
+
 #![allow(clippy::uninlined_format_args)]
 
 #[allow(unused_assignments)]

@@ -1,4 +1,6 @@
 //@aux-build:proc_macro_derive.rs
+//@compile-flags: -Zdeduplicate-diagnostics=yes
+
 #![warn(clippy::std_instead_of_core)]
 #![allow(unused_imports)]
 
