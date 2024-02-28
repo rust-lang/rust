@@ -44,8 +44,8 @@ does is call the `main()` that's in this crate's `lib.rs`, though.)
 * Run `./x setup tools` before getting started. This will configure `x`
   with nice settings for developing rustdoc and other tools, including
   downloading a copy of rustc rather than building it.
-* Use `./x check src/tools/rustdoc` to quickly check for compile errors.
-* Use `./x build` to make a usable
+* Use `./x check rustdoc` to quickly check for compile errors.
+* Use `./x build library rustdoc` to make a usable
   rustdoc you can run on other projects.
   * Add `library/test` to be able to use `rustdoc --test`.
   * Run `rustup toolchain link stage2 build/host/stage2` to add a
