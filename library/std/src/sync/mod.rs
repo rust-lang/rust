@@ -184,7 +184,8 @@ pub use self::lazy_lock::LazyLock;
 #[stable(feature = "once_cell", since = "1.70.0")]
 pub use self::once_lock::OnceLock;
 
-pub(crate) use self::remutex::{ReentrantMutex, ReentrantMutexGuard};
+#[unstable(feature = "reentrant_lock", issue = "121440")]
+pub use self::reentrant_lock::{ReentrantLock, ReentrantLockGuard};
 
 pub mod mpsc;
 
@@ -196,5 +197,5 @@ mod mutex;
 pub(crate) mod once;
 mod once_lock;
 mod poison;
-mod remutex;
+mod reentrant_lock;
 mod rwlock;
