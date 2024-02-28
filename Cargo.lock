@@ -676,7 +676,6 @@ dependencies = [
  "itertools",
  "profile",
  "smallvec",
- "sourcegen",
  "stdx",
  "syntax",
  "test-fixture",
@@ -2502,6 +2501,7 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "flate2",
+ "stdx",
  "time",
  "write-json",
  "xflags",
