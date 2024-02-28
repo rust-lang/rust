@@ -55,7 +55,10 @@ error[E0446]: private type `types::Priv` in public interface
   --> $DIR/private-in-public-warn.rs:22:9
    |
 LL |     struct Priv;
-   |     ----------- `types::Priv` declared as private
+   |     -----------
+   |     |
+   |     `types::Priv` declared as private
+   |     help: consider adding `pub` in front of it
 ...
 LL |         type Alias = Priv;
    |         ^^^^^^^^^^ can't leak private type
@@ -124,7 +127,10 @@ error[E0446]: private type `types::Priv` in public interface
   --> $DIR/private-in-public-warn.rs:32:9
    |
 LL |     struct Priv;
-   |     ----------- `types::Priv` declared as private
+   |     -----------
+   |     |
+   |     `types::Priv` declared as private
+   |     help: consider adding `pub` in front of it
 ...
 LL |         type Alias = Priv;
    |         ^^^^^^^^^^ can't leak private type
@@ -306,7 +312,10 @@ error[E0446]: private type `impls::Priv` in public interface
   --> $DIR/private-in-public-warn.rs:109:9
    |
 LL |     struct Priv;
-   |     ----------- `impls::Priv` declared as private
+   |     -----------
+   |     |
+   |     `impls::Priv` declared as private
+   |     help: consider adding `pub` in front of it
 ...
 LL |         type Alias = Priv;
    |         ^^^^^^^^^^ can't leak private type
@@ -327,7 +336,10 @@ error[E0446]: private type `aliases_pub::Priv` in public interface
   --> $DIR/private-in-public-warn.rs:183:9
    |
 LL |     struct Priv;
-   |     ----------- `aliases_pub::Priv` declared as private
+   |     -----------
+   |     |
+   |     `aliases_pub::Priv` declared as private
+   |     help: consider adding `pub` in front of it
 ...
 LL |         type Check = Priv;
    |         ^^^^^^^^^^ can't leak private type
@@ -336,7 +348,10 @@ error[E0446]: private type `aliases_pub::Priv` in public interface
   --> $DIR/private-in-public-warn.rs:186:9
    |
 LL |     struct Priv;
-   |     ----------- `aliases_pub::Priv` declared as private
+   |     -----------
+   |     |
+   |     `aliases_pub::Priv` declared as private
+   |     help: consider adding `pub` in front of it
 ...
 LL |         type Check = Priv;
    |         ^^^^^^^^^^ can't leak private type
@@ -345,7 +360,10 @@ error[E0446]: private type `aliases_pub::Priv` in public interface
   --> $DIR/private-in-public-warn.rs:189:9
    |
 LL |     struct Priv;
-   |     ----------- `aliases_pub::Priv` declared as private
+   |     -----------
+   |     |
+   |     `aliases_pub::Priv` declared as private
+   |     help: consider adding `pub` in front of it
 ...
 LL |         type Check = Priv;
    |         ^^^^^^^^^^ can't leak private type
@@ -354,7 +372,10 @@ error[E0446]: private type `aliases_pub::Priv` in public interface
   --> $DIR/private-in-public-warn.rs:192:9
    |
 LL |     struct Priv;
-   |     ----------- `aliases_pub::Priv` declared as private
+   |     -----------
+   |     |
+   |     `aliases_pub::Priv` declared as private
+   |     help: consider adding `pub` in front of it
 ...
 LL |         type Check = Priv;
    |         ^^^^^^^^^^ can't leak private type
