@@ -106,6 +106,7 @@ where
                     self.cx,
                     tcx.generics_of(item_def_id),
                     ty::GenericPredicates::default(),
+                    item_def_id,
                 );
                 let params = raw_generics.params;
 
@@ -456,6 +457,7 @@ where
             self.cx,
             tcx.generics_of(item_def_id),
             tcx.explicit_predicates_of(item_def_id),
+            item_def_id,
         );
         let mut generic_params = raw_generics.params;
 
