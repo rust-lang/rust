@@ -18,7 +18,7 @@ use rustc_target::abi::{FieldIdx, Integer, VariantIdx, FIRST_VARIANT};
 use crate::constructor::{
     IntRange, MaybeInfiniteInt, OpaqueId, RangeEnd, Slice, SliceKind, VariantVisibility,
 };
-use crate::{errors, Captures, SkipField, TypeCx};
+use crate::{errors, Captures, PrivateUninhabitedField, TypeCx};
 
 use crate::constructor::Constructor::*;
 
@@ -195,14 +195,16 @@ impl<'p, 'tcx: 'p> RustcMatchCheckCtxt<'p, 'tcx> {
         &'a self,
         ctor: &'a Constructor<'p, 'tcx>,
         ty: RevealedTy<'tcx>,
-    ) -> impl Iterator<Item = (RevealedTy<'tcx>, SkipField)> + ExactSizeIterator + Captures<'a>
-    {
+    ) -> impl Iterator<Item = (RevealedTy<'tcx>, PrivateUninhabitedField)>
+    + ExactSizeIterator
+    + Captures<'a> {
         fn reveal_and_alloc<'a, 'tcx>(
             cx: &'a RustcMatchCheckCtxt<'_, 'tcx>,
             iter: impl Iterator<Item = Ty<'tcx>>,
-        ) -> &'a [(RevealedTy<'tcx>, SkipField)] {
+        ) -> &'a [(RevealedTy<'tcx>, PrivateUninhabitedField)] {
             cx.dropless_arena.alloc_from_iter(
-                iter.map(|ty| cx.reveal_opaque_ty(ty)).map(|ty| (ty, SkipField(false))),
+                iter.map(|ty| cx.reveal_opaque_ty(ty))
+                    .map(|ty| (ty, PrivateUninhabitedField(false))),
             )
         }
         let cx = self;
@@ -230,7 +232,7 @@ impl<'p, 'tcx: 'p> RustcMatchCheckCtxt<'p, 'tcx> {
                                 || cx.tcx.features().min_exhaustive_patterns)
                                 && cx.is_uninhabited(*ty);
                             let skip = is_uninhabited && (!is_visible || is_non_exhaustive);
-                            (ty, SkipField(skip))
+                            (ty, PrivateUninhabitedField(skip))
                         });
                         cx.dropless_arena.alloc_from_iter(tys)
                     }
@@ -249,7 +251,7 @@ impl<'p, 'tcx: 'p> RustcMatchCheckCtxt<'p, 'tcx> {
                 _ => bug!("bad slice pattern {:?} {:?}", ctor, ty),
             },
             Bool(..) | IntRange(..) | F32Range(..) | F64Range(..) | Str(..) | Opaque(..)
-            | NonExhaustive | Hidden | Missing | Skip | Wildcard => &[],
+            | NonExhaustive | Hidden | Missing | PrivateUninhabited | Wildcard => &[],
             Or => {
                 bug!("called `Fields::wildcards` on an `Or` ctor")
             }
@@ -277,7 +279,7 @@ impl<'p, 'tcx: 'p> RustcMatchCheckCtxt<'p, 'tcx> {
             Ref => 1,
             Slice(slice) => slice.arity(),
             Bool(..) | IntRange(..) | F32Range(..) | F64Range(..) | Str(..) | Opaque(..)
-            | NonExhaustive | Hidden | Missing | Skip | Wildcard => 0,
+            | NonExhaustive | Hidden | Missing | PrivateUninhabited | Wildcard => 0,
             Or => bug!("The `Or` constructor doesn't have a fixed arity"),
         }
     }
@@ -805,7 +807,7 @@ impl<'p, 'tcx: 'p> RustcMatchCheckCtxt<'p, 'tcx> {
                 }
             }
             &Str(value) => PatKind::Constant { value },
-            Wildcard | NonExhaustive | Hidden | Skip => PatKind::Wild,
+            Wildcard | NonExhaustive | Hidden | PrivateUninhabited => PatKind::Wild,
             Missing { .. } => bug!(
                 "trying to convert a `Missing` constructor into a `Pat`; this is probably a bug,
                 `Missing` should have been processed in `apply_constructors`"
@@ -841,7 +843,8 @@ impl<'p, 'tcx: 'p> TypeCx for RustcMatchCheckCtxt<'p, 'tcx> {
         &'a self,
         ctor: &'a crate::constructor::Constructor<Self>,
         ty: &'a Self::Ty,
-    ) -> impl Iterator<Item = (Self::Ty, SkipField)> + ExactSizeIterator + Captures<'a> {
+    ) -> impl Iterator<Item = (Self::Ty, PrivateUninhabitedField)> + ExactSizeIterator + Captures<'a>
+    {
         self.ctor_sub_tys(ctor, *ty)
     }
     fn ctors_for_ty(
