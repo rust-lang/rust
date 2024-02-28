@@ -148,8 +148,8 @@ fn check_inverted_bool_in_condition(
     right: &Expr<'_>,
 ) {
     if expr_span.from_expansion()
-        && (!cx.typeck_results().node_types()[left.hir_id].is_bool()
-            || !cx.typeck_results().node_types()[right.hir_id].is_bool())
+        || !cx.typeck_results().node_types()[left.hir_id].is_bool()
+        || !cx.typeck_results().node_types()[right.hir_id].is_bool()
     {
         return;
     }

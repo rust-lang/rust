@@ -173,3 +173,8 @@ fn issue_5794() {
     if !b == !c {} //~ ERROR: this boolean expression can be simplified
     if !b != !c {} //~ ERROR: this boolean expression can be simplified
 }
+
+fn issue_12371(x: usize) -> bool {
+    // Should not warn!
+    !x != 0
+}
