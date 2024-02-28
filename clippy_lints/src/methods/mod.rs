@@ -117,6 +117,7 @@ mod unnecessary_iter_cloned;
 mod unnecessary_join;
 mod unnecessary_lazy_eval;
 mod unnecessary_literal_unwrap;
+mod unnecessary_min_or_max;
 mod unnecessary_result_map_or_else;
 mod unnecessary_sort_by;
 mod unnecessary_to_owned;
@@ -3947,6 +3948,31 @@ declare_clippy_lint! {
 
 declare_clippy_lint! {
     /// ### What it does
+    /// Checks for unnecessary calls to `min()` or `max()` in the following cases
+    /// - Either both side is constant
+    /// - One side is clearly larger than the other, like i32::MIN and an i32 variable
+    ///
+    /// ### Why is this bad?
+    ///
+    /// In the aformentioned cases it is not necessary to call `min()` or `max()`
+    /// to compare values, it may even cause confusion.
+    ///
+    /// ### Example
+    /// ```no_run
+    /// let _ = 0.min(7_u32);
+    /// ```
+    /// Use instead:
+    /// ```no_run
+    /// let _ = 0;
+    /// ```
+    #[clippy::version = "1.78.0"]
+    pub UNNECESSARY_MIN_OR_MAX,
+    complexity,
+    "using 'min()/max()' when there is no need for it"
+}
+
+declare_clippy_lint! {
+    /// ### What it does
     /// Checks for usage of `.map_or_else()` "map closure" for `Result` type.
     ///
     /// ### Why is this bad?
@@ -4267,6 +4293,7 @@ impl_lint_pass!(Methods => [
     UNNECESSARY_GET_THEN_CHECK,
     NEEDLESS_CHARACTER_ITERATION,
     MANUAL_INSPECT,
+    UNNECESSARY_MIN_OR_MAX,
 ]);
 
 /// Extracts a method call name, args, and `Span` of the method name.
@@ -4565,6 +4592,9 @@ impl Methods {
                     Some(("filter", recv2, [arg], _, _)) => bytecount::check(cx, expr, recv2, arg),
                     Some(("bytes", recv2, [], _, _)) => bytes_count_to_len::check(cx, expr, recv, recv2),
                     _ => {},
+                },
+                ("min" | "max", [arg]) => {
+                    unnecessary_min_or_max::check(cx, expr, name, recv, arg);
                 },
                 ("drain", ..) => {
                     if let Node::Stmt(Stmt { hir_id: _, kind, .. }) = cx.tcx.parent_hir_node(expr.hir_id)

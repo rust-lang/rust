@@ -1,5 +1,6 @@
 #![allow(clippy::float_cmp)]
 
+use crate::macros::HirNode;
 use crate::source::{get_source_text, walk_span_to_context};
 use crate::{clip, is_direct_expn_of, sext, unsext};
 
@@ -15,7 +16,7 @@ use rustc_middle::ty::{self, EarlyBinder, FloatTy, GenericArgsRef, IntTy, List, 
 use rustc_middle::{bug, mir, span_bug};
 use rustc_span::def_id::DefId;
 use rustc_span::symbol::{Ident, Symbol};
-use rustc_span::SyntaxContext;
+use rustc_span::{sym, SyntaxContext};
 use rustc_target::abi::Size;
 use std::cmp::Ordering;
 use std::hash::{Hash, Hasher};
@@ -302,6 +303,8 @@ pub enum ConstantSource {
     Local,
     /// The value is dependent on a defined constant.
     Constant,
+    /// The value is dependent on a constant defined in `core` crate.
+    CoreConstant,
 }
 impl ConstantSource {
     pub fn is_local(&self) -> bool {
@@ -415,9 +418,19 @@ impl<'a, 'tcx> ConstEvalLateContext<'a, 'tcx> {
             ExprKind::ConstBlock(ConstBlock { body, .. }) => self.expr(self.lcx.tcx.hir().body(body).value),
             ExprKind::DropTemps(e) => self.expr(e),
             ExprKind::Path(ref qpath) => {
+                let is_core_crate = if let Some(def_id) = self.lcx.qpath_res(qpath, e.hir_id()).opt_def_id() {
+                    self.lcx.tcx.crate_name(def_id.krate) == sym::core
+                } else {
+                    false
+                };
                 self.fetch_path_and_apply(qpath, e.hir_id, self.typeck_results.expr_ty(e), |this, result| {
                     let result = mir_to_const(this.lcx, result)?;
-                    this.source = ConstantSource::Constant;
+                    // If source is already Constant we wouldn't want to override it with CoreConstant
+                    this.source = if is_core_crate && !matches!(this.source, ConstantSource::Constant) {
+                        ConstantSource::CoreConstant
+                    } else {
+                        ConstantSource::Constant
+                    };
                     Some(result)
                 })
             },

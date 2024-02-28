@@ -12,6 +12,7 @@
 #![allow(
     clippy::cast_abs_to_unsigned,
     clippy::no_effect,
+    clippy::unnecessary_min_or_max,
     clippy::unnecessary_operation,
     clippy::unnecessary_literal_unwrap,
     clippy::identity_op
