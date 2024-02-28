@@ -398,12 +398,12 @@ impl<'gcc, 'tcx> BackendTypes for Builder<'_, 'gcc, 'tcx> {
     type DIVariable = <CodegenCx<'gcc, 'tcx> as BackendTypes>::DIVariable;
 }
 
-pub fn set_rval_location<'a, 'gcc, 'tcx>(bx: &mut Builder<'a,'gcc,'tcx>, r:RValue<'gcc>) -> RValue<'gcc> {
+pub fn set_rval_location<'a, 'gcc, 'tcx>(bx: &mut Builder<'a,'gcc,'tcx>, rvalue:RValue<'gcc>) -> RValue<'gcc> {
     if bx.loc.is_some(){
         #[cfg(feature = "master")]
-        r.set_location(bx.loc.unwrap());
+        rvalue.set_location(bx.loc.unwrap());
     }
-    r
+    rvalue
     
 }
 
