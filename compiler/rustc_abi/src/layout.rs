@@ -813,7 +813,7 @@ where
                     break;
                 }
             };
-            if let Some((old_common_prim, common_offset)) = common_prim {
+            if let Some((old_prim, common_offset)) = common_prim {
                 // All variants must be at the same offset
                 if offset != common_offset {
                     common_prim = None;
@@ -822,12 +822,12 @@ where
                 // This is pretty conservative. We could go fancier
                 // by realising that (u8, u8) could just cohabit with
                 // u16 or even u32.
-                let new_common_prim = match (old_common_prim, prim) {
+                let new_prim = match (old_prim, prim) {
                     // Allow all identical primitives.
-                    (x, y) if x == y => Some(x),
+                    (x, y) if x == y => x,
                     // Allow integers of the same size with differing signedness.
                     // We arbitrarily choose the signedness of the first variant.
-                    (p @ Primitive::Int(x, _), Primitive::Int(y, _)) if x == y => Some(p),
+                    (p @ Primitive::Int(x, _), Primitive::Int(y, _)) if x == y => p,
                     // Allow integers mixed with pointers of the same layout.
                     // We must represent this using a pointer, to avoid
                     // roundtripping pointers through ptrtoint/inttoptr.
@@ -835,22 +835,15 @@ where
                     | (i @ Primitive::Int(..), p @ Primitive::Pointer(_))
                         if p.size(dl) == i.size(dl) && p.align(dl) == i.align(dl) =>
                     {
-                        Some(p)
+                        p
                     }
-                    _ => None,
-                };
-                match new_common_prim {
-                    Some(new_prim) => {
-                        // Primitives are compatible.
-                        // We may be updating the primitive here, for example from int->ptr.
-                        common_prim = Some((new_prim, common_offset));
-                    }
-                    None => {
-                        // Primitives are incompatible.
+                    _ => {
                         common_prim = None;
                         break;
                     }
-                }
+                };
+                // We may be updating the primitive here, for example from int->ptr.
+                common_prim = Some((new_prim, common_offset));
             } else {
                 common_prim = Some((prim, offset));
             }
