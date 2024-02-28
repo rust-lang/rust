@@ -1,0 +1,2 @@
+error: `-C stack-protector=basic` and `-C stack-protector=strong` require `-Z unstable-options`
+

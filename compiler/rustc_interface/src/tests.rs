@@ -636,6 +636,7 @@ fn test_codegen_options_tracking_hash() {
     tracked!(relro_level, Some(RelroLevel::Full));
     tracked!(soft_float, true);
     tracked!(split_debuginfo, Some(SplitDebuginfo::Packed));
+    tracked!(stack_protector, StackProtector::All);
     tracked!(symbol_mangling_version, Some(SymbolManglingVersion::V0));
     tracked!(target_cpu, Some(String::from("abc")));
     tracked!(target_feature, String::from("all the features, all of them"));
@@ -851,7 +852,6 @@ fn test_unstable_options_tracking_hash() {
     tracked!(small_data_threshold, Some(16));
     tracked!(split_lto_unit, Some(true));
     tracked!(src_hash_algorithm, Some(SourceFileHashAlgorithm::Sha1));
-    tracked!(stack_protector, StackProtector::All);
     tracked!(teach, true);
     tracked!(thinlto, Some(true));
     tracked!(tiny_const_eval_limit, true);

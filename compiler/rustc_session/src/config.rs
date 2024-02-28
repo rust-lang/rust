@@ -26,7 +26,8 @@ use rustc_span::{
     FileName, FileNameDisplayPreference, RealFileName, SourceFileHashAlgorithm, Symbol, sym,
 };
 use rustc_target::spec::{
-    FramePointer, LinkSelfContainedComponents, LinkerFeatures, SplitDebuginfo, Target, TargetTuple,
+    FramePointer, LinkSelfContainedComponents, LinkerFeatures, SplitDebuginfo, StackProtector,
+    Target, TargetTuple,
 };
 use tracing::debug;
 
@@ -2500,6 +2501,22 @@ pub fn build_session_options(early_dcx: &mut EarlyDiagCtxt, matches: &getopts::M
             if !unstable_opts.unstable_options {
                 early_dcx.early_fatal(
                     "`-C symbol-mangling-version=hashed` requires `-Z unstable-options`",
+                );
+            }
+        }
+    }
+
+    // Check for unstable values of `-C stack-protector`.
+    // This is what prevents them from being used on stable compilers.
+    match cg.stack_protector {
+        // Stable values:
+        StackProtector::All | StackProtector::None => {}
+        // Unstable values:
+        StackProtector::Basic | StackProtector::Strong => {
+            if !unstable_opts.unstable_options {
+                early_dcx.early_fatal(
+                    "`-C stack-protector=basic` and `-C stack-protector=strong` \
+                    require `-Z unstable-options`",
                 );
             }
         }
