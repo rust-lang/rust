@@ -1093,7 +1093,6 @@ fn assemble_candidates_from_impls<'cx, 'tcx>(
                         | ty::CoroutineWitness(..)
                         | ty::Never
                         | ty::Tuple(..)
-                        // Integers and floats always have `u8` as their discriminant.
                         | ty::Infer(ty::InferTy::IntVar(_) | ty::InferTy::FloatVar(..)) => true,
 
                          // type parameters, opaques, and unnormalized projections have pointer
