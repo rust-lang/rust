@@ -133,38 +133,7 @@ fn make_mir_scope<'gcc, 'tcx>(
 
     let loc = cx.lookup_debug_loc(scope_data.span.lo());
 
-    /*
-    // FIXME(?): Uncommented when the scope is supported.
-    let file_metadata = file_metadata(cx, &loc.file);
-
-    let parent_dbg_scope = match scope_data.inlined {
-        Some((callee, _)) => {
-            // FIXME(eddyb) this would be `self.monomorphize(&callee)`
-            // if this is moved to `rustc_codegen_ssa::mir::debuginfo`.
-            let callee = cx.tcx.instantiate_and_normalize_erasing_regions(
-                instance.args,
-                ty::ParamEnv::reveal_all(),
-                ty::EarlyBinder::bind(callee),
-            );
-            debug_context.inlined_function_scopes.entry(callee).or_insert_with(|| {
-                let callee_fn_abi = cx.fn_abi_of_instance(callee, ty::List::empty());
-                cx.dbg_scope_fn(callee, callee_fn_abi, None)
-            })
-        }
-        None => parent_scope.dbg_scope,
-    };
-
-    let dbg_scope = unsafe {
-        llvm::LLVMRustDIBuilderCreateLexicalBlock(
-            DIB(cx),
-            parent_dbg_scope,
-            file_metadata,
-            loc.line,
-            loc.col,
-        )
-    };
-    */
-
+    // FIXME(tempdragon): Add the scope related code here if the scope is supported.
     let dbg_scope = ();
 
     let inlined_at = scope_data.inlined.map(|(_, callsite_span)| {
@@ -180,36 +149,52 @@ fn make_mir_scope<'gcc, 'tcx>(
     debug_context.scopes[scope] = DebugScope {
         dbg_scope,
         inlined_at,
-        file_start_pos: loc.0.start_pos,
-        file_end_pos: loc.0.end_position(),
+        file_start_pos: loc.file.start_pos,
+        file_end_pos: loc.file.end_position(),
     };
     instantiated.insert(scope);
 }
 
+/// A source code location used to generate debug information.
+// FIXME(eddyb) rename this to better indicate it's a duplicate of
+// `rustc_span::Loc` rather than `DILocation`, perhaps by making
+// `lookup_char_pos` return the right information instead.
+pub struct DebugLoc {
+    /// Information about the original source file.
+    pub file: Lrc<SourceFile>,
+    /// The (1-based) line number.
+    pub line: u32,
+    /// The (1-based) column number.
+    pub col: u32,
+}
+
 impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
-    /// Look up the file, the 1-based indexing line number and column number.
-    /// # Argument
-    /// - `pos`: `BytePos`, the starting position of a piece of code
-    /// # Source of Origin
-    /// Copied from LLVM backend(with a return type from struct to tuple).
-    /// No need to change since you may end up something like this.
-    pub fn lookup_debug_loc(&self, pos: BytePos) -> (Lrc<SourceFile>, u32, u32) {
-        match self.sess().source_map().lookup_line(pos) {
+    /// Looks up debug source information about a `BytePos`.
+    // FIXME(eddyb) rename this to better indicate it's a duplicate of
+    // `lookup_char_pos` rather than `dbg_loc`, perhaps by making
+    // `lookup_char_pos` return the right information instead.
+    // Source of Origin: cg_llvm
+    pub fn lookup_debug_loc(&self, pos: BytePos) -> DebugLoc {
+        let (file, line, col) = match self.sess().source_map().lookup_line(pos) {
             Ok(SourceFileAndLine { sf: file, line }) => {
                 let line_pos = file.lines()[line];
 
                 // Use 1-based indexing.
                 let line = (line + 1) as u32;
                 let col = (file.relative_position(pos) - line_pos).to_u32() + 1;
-                (file,
-                 line,
-                 if ! self.sess().target.is_like_msvc {
-                     col } else {
-                     UNKNOWN_COLUMN_NUMBER
-                 }
-                )
+
+                (file, line, col)
             }
             Err(file) => (file, UNKNOWN_LINE_NUMBER, UNKNOWN_COLUMN_NUMBER),
+        };
+
+        // For MSVC, omit the column number.
+        // Otherwise, emit it. This mimics clang behaviour.
+        // See discussion in https://github.com/rust-lang/rust/issues/42921
+        if self.sess().target.is_like_msvc {
+            DebugLoc { file, line, col: UNKNOWN_COLUMN_NUMBER }
+        } else {
+            DebugLoc { file, line, col }
         }
     }
 }
@@ -293,7 +278,7 @@ impl<'gcc, 'tcx> DebugInfoMethods<'tcx> for CodegenCx<'gcc, 'tcx> {
         span: Span,
     ) -> Self::DILocation {
         let pos = span.lo();
-        let (file, line, col) = self.lookup_debug_loc(pos);
+        let DebugLoc{file, line, col} = self.lookup_debug_loc(pos);
         let loc = match &file.name {
             rustc_span::FileName::Real(name) => match name {
                 rustc_span::RealFileName::LocalPath(name) => {
