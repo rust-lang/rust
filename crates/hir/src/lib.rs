@@ -93,7 +93,8 @@ pub use crate::{
     diagnostics::*,
     has_source::HasSource,
     semantics::{
-        DescendPreference, PathResolution, Semantics, SemanticsScope, TypeInfo, VisibleTraits,
+        DescendPreference, PathResolution, Semantics, SemanticsImpl, SemanticsScope, TypeInfo,
+        VisibleTraits,
     },
 };
 
