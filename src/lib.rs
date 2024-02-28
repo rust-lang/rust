@@ -175,7 +175,7 @@ impl CodegenBackend for GccCodegenBackend {
         crate::DEFAULT_LOCALE_RESOURCE
     }
 
-    fn init(&self, sess: &Session) {        
+    fn init(&self, sess: &Session) {
         #[cfg(feature="master")]
         {
             let target_cpu = target_cpu(sess);

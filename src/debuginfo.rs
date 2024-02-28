@@ -31,7 +31,7 @@ impl<'a, 'gcc, 'tcx> DebugInfoBuilderMethods for Builder<'a, 'gcc, 'tcx> {
         _indirect_offsets: &[Size],
         _fragment: Option<Range<Size>>,
     ) {
-        // Not sure if this is correct, probably wrong but still keep it here.
+        // FIXME(tempdragon): Not sure if this is correct, probably wrong but still keep it here.
         #[cfg(feature = "master")]
         variable_alloca.set_location(dbg_loc);
     }
@@ -40,11 +40,10 @@ impl<'a, 'gcc, 'tcx> DebugInfoBuilderMethods for Builder<'a, 'gcc, 'tcx> {
         // TODO(antoyo): insert reference to gdb debug scripts section global.
     }
 
-    /// Currently, this function is not yet implemented. It seems that the
+    /// FIXME(tempdragon): Currently, this function is not yet implemented. It seems that the
     /// debug name and the mangled name should both be included in the LValues.
     /// Besides, a function to get the rvalue type(m_is_lvalue) should also be included.
     fn set_var_name(&mut self, _value: RValue<'gcc>, _name: &str) {
-        //unimplemented!();
     }
 
     fn set_dbg_loc(&mut self, dbg_loc: Self::DILocation) {
@@ -213,7 +212,7 @@ impl<'gcc, 'tcx> DebugInfoMethods<'tcx> for CodegenCx<'gcc, 'tcx> {
         _scope_metadata: Self::DIScope,
         _file: &SourceFile,
     ) -> Self::DIScope {
-        //unimplemented!();
+        // TODO(antoyo): implement.
     }
 
     fn debuginfo_finalize(&self) {
@@ -238,7 +237,7 @@ impl<'gcc, 'tcx> DebugInfoMethods<'tcx> for CodegenCx<'gcc, 'tcx> {
         _fn_abi: &FnAbi<'tcx, Ty<'tcx>>,
         _maybe_definition_llfn: Option<RValue<'gcc>>,
     ) -> Self::DIScope {
-        //unimplemented!();
+        // TODO(antoyo): implement.
     }
 
     fn dbg_loc(
@@ -247,7 +246,6 @@ impl<'gcc, 'tcx> DebugInfoMethods<'tcx> for CodegenCx<'gcc, 'tcx> {
         _inlined_at: Option<Self::DILocation>,
         span: Span,
     ) -> Self::DILocation {
-        //unimplemented!();
         let pos = span.lo();
         let (file, line, col) = self.lookup_debug_loc(pos);
         let loc = match &file.name {
@@ -256,7 +254,7 @@ impl<'gcc, 'tcx> DebugInfoMethods<'tcx> for CodegenCx<'gcc, 'tcx> {
                     if let Some(name) = name.to_str() {
                         self.context
                             .new_location(name, line as i32, col as i32)
-                    }else{
+                    } else{
                         Location::null()
                     }
                 }
@@ -273,7 +271,7 @@ impl<'gcc, 'tcx> DebugInfoMethods<'tcx> for CodegenCx<'gcc, 'tcx> {
                     } else {
                         Location::null()
                     }
-                }else{
+                } else{
                     Location::null()
                 },
             },

@@ -345,7 +345,7 @@ impl<'gcc, 'tcx> BackendTypes for CodegenCx<'gcc, 'tcx> {
     type Funclet = (); // TODO(antoyo)
 
     type DIScope = (); // TODO(antoyo)
-    type DILocation = Location<'gcc>; // TODO(antoyo)
+    type DILocation = Location<'gcc>;
     type DIVariable = (); // TODO(antoyo)
 }
 
