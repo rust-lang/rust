@@ -54385,9 +54385,9 @@ mod tests {
 
     #[simd_test(enable = "avx512f")]
     unsafe fn test_mm512_stream_ps() {
-        #[repr(align(32))]
+        #[repr(align(64))]
         struct Memory {
-            pub data: [f32; 16],
+            pub data: [f32; 16], // 64 bytes
         }
         let a = _mm512_set1_ps(7.0);
         let mut mem = Memory { data: [-1.0; 16] };
