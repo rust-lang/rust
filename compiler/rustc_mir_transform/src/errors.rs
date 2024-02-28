@@ -2,7 +2,7 @@ use std::borrow::Cow;
 
 use rustc_errors::{
     codes::*, Applicability, DecorateLint, DiagCtxt, DiagnosticArgValue, DiagnosticBuilder,
-    DiagnosticMessage, EmissionGuarantee, IntoDiagnostic, Level,
+    DiagnosticMessage, EmissionGuarantee, ErrorGuaranteed, IntoDiagnostic, Level,
 };
 use rustc_macros::{Diagnostic, LintDiagnostic, Subdiagnostic};
 use rustc_middle::mir::{AssertKind, UnsafetyViolationDetails};
@@ -181,9 +181,9 @@ pub(crate) struct UnsafeOpInUnsafeFn {
     pub suggest_unsafe_block: Option<(Span, Span, Span)>,
 }
 
-impl<'a> DecorateLint<'a, ()> for UnsafeOpInUnsafeFn {
+impl<'a> DecorateLint<'a, Option<ErrorGuaranteed>> for UnsafeOpInUnsafeFn {
     #[track_caller]
-    fn decorate_lint<'b>(self, diag: &'b mut DiagnosticBuilder<'a, ()>) {
+    fn decorate_lint<'b>(self, diag: &'b mut DiagnosticBuilder<'a, Option<ErrorGuaranteed>>) {
         let desc = diag.dcx.eagerly_translate_to_string(self.details.label(), [].into_iter());
         diag.arg("details", desc);
         diag.span_label(self.details.span, self.details.label());
@@ -215,8 +215,8 @@ pub(crate) enum AssertLintKind {
     UnconditionalPanic,
 }
 
-impl<'a, P: std::fmt::Debug> DecorateLint<'a, ()> for AssertLint<P> {
-    fn decorate_lint<'b>(self, diag: &'b mut DiagnosticBuilder<'a, ()>) {
+impl<'a, P: std::fmt::Debug> DecorateLint<'a, Option<ErrorGuaranteed>> for AssertLint<P> {
+    fn decorate_lint<'b>(self, diag: &'b mut DiagnosticBuilder<'a, Option<ErrorGuaranteed>>) {
         let message = self.assert_kind.diagnostic_message();
         self.assert_kind.add_args(&mut |name, value| {
             diag.arg(name, value);
@@ -269,8 +269,8 @@ pub(crate) struct MustNotSupend<'tcx, 'a> {
 }
 
 // Needed for def_path_str
-impl<'a> DecorateLint<'a, ()> for MustNotSupend<'_, '_> {
-    fn decorate_lint<'b>(self, diag: &'b mut rustc_errors::DiagnosticBuilder<'a, ()>) {
+impl<'a> DecorateLint<'a, Option<ErrorGuaranteed>> for MustNotSupend<'_, '_> {
+    fn decorate_lint<'b>(self, diag: &'b mut DiagnosticBuilder<'a, Option<ErrorGuaranteed>>) {
         diag.span_label(self.yield_sp, fluent::_subdiag::label);
         if let Some(reason) = self.reason {
             diag.subdiagnostic(diag.dcx, reason);

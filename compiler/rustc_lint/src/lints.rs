@@ -6,7 +6,8 @@ use crate::errors::RequestedLevel;
 use crate::fluent_generated as fluent;
 use rustc_errors::{
     codes::*, AddToDiagnostic, Applicability, DecorateLint, DiagnosticBuilder, DiagnosticMessage,
-    DiagnosticStyledString, EmissionGuarantee, SubdiagnosticMessageOp, SuggestionStyle,
+    DiagnosticStyledString, EmissionGuarantee, ErrorGuaranteed, SubdiagnosticMessageOp,
+    SuggestionStyle,
 };
 use rustc_hir::def_id::DefId;
 use rustc_macros::{LintDiagnostic, Subdiagnostic};
@@ -136,8 +137,11 @@ pub struct BuiltinMissingDebugImpl<'a> {
 }
 
 // Needed for def_path_str
-impl<'a> DecorateLint<'a, ()> for BuiltinMissingDebugImpl<'_> {
-    fn decorate_lint<'b>(self, diag: &'b mut rustc_errors::DiagnosticBuilder<'a, ()>) {
+impl<'a> DecorateLint<'a, Option<ErrorGuaranteed>> for BuiltinMissingDebugImpl<'_> {
+    fn decorate_lint<'b>(
+        self,
+        diag: &'b mut rustc_errors::DiagnosticBuilder<'a, Option<ErrorGuaranteed>>,
+    ) {
         diag.arg("debug", self.tcx.def_path_str(self.def_id));
     }
 
@@ -241,8 +245,8 @@ pub struct BuiltinUngatedAsyncFnTrackCaller<'a> {
     pub session: &'a Session,
 }
 
-impl<'a> DecorateLint<'a, ()> for BuiltinUngatedAsyncFnTrackCaller<'_> {
-    fn decorate_lint<'b>(self, diag: &'b mut DiagnosticBuilder<'a, ()>) {
+impl<'a> DecorateLint<'a, Option<ErrorGuaranteed>> for BuiltinUngatedAsyncFnTrackCaller<'_> {
+    fn decorate_lint<'b>(self, diag: &'b mut DiagnosticBuilder<'a, Option<ErrorGuaranteed>>) {
         diag.span_label(self.label, fluent::lint_label);
         rustc_session::parse::add_feature_diagnostics(
             diag,
@@ -423,8 +427,8 @@ pub struct BuiltinUnpermittedTypeInit<'a> {
     pub tcx: TyCtxt<'a>,
 }
 
-impl<'a> DecorateLint<'a, ()> for BuiltinUnpermittedTypeInit<'_> {
-    fn decorate_lint<'b>(self, diag: &'b mut DiagnosticBuilder<'a, ()>) {
+impl<'a> DecorateLint<'a, Option<ErrorGuaranteed>> for BuiltinUnpermittedTypeInit<'_> {
+    fn decorate_lint<'b>(self, diag: &'b mut DiagnosticBuilder<'a, Option<ErrorGuaranteed>>) {
         diag.arg("ty", self.ty);
         diag.span_label(self.label, fluent::lint_builtin_unpermitted_type_init_label);
         if let InhabitedPredicate::True = self.ty.inhabited_predicate(self.tcx) {
@@ -1163,8 +1167,8 @@ pub struct NonFmtPanicUnused {
 }
 
 // Used because of two suggestions based on one Option<Span>
-impl<'a> DecorateLint<'a, ()> for NonFmtPanicUnused {
-    fn decorate_lint<'b>(self, diag: &'b mut DiagnosticBuilder<'a, ()>) {
+impl<'a> DecorateLint<'a, Option<ErrorGuaranteed>> for NonFmtPanicUnused {
+    fn decorate_lint<'b>(self, diag: &'b mut DiagnosticBuilder<'a, Option<ErrorGuaranteed>>) {
         diag.arg("count", self.count);
         diag.note(fluent::lint_note);
         if let Some(span) = self.suggestion {
@@ -1401,8 +1405,8 @@ pub struct DropTraitConstraintsDiag<'a> {
 }
 
 // Needed for def_path_str
-impl<'a> DecorateLint<'a, ()> for DropTraitConstraintsDiag<'_> {
-    fn decorate_lint<'b>(self, diag: &'b mut DiagnosticBuilder<'a, ()>) {
+impl<'a> DecorateLint<'a, Option<ErrorGuaranteed>> for DropTraitConstraintsDiag<'_> {
+    fn decorate_lint<'b>(self, diag: &'b mut DiagnosticBuilder<'a, Option<ErrorGuaranteed>>) {
         diag.arg("predicate", self.predicate);
         diag.arg("needs_drop", self.tcx.def_path_str(self.def_id));
     }
@@ -1418,8 +1422,8 @@ pub struct DropGlue<'a> {
 }
 
 // Needed for def_path_str
-impl<'a> DecorateLint<'a, ()> for DropGlue<'_> {
-    fn decorate_lint<'b>(self, diag: &'b mut DiagnosticBuilder<'a, ()>) {
+impl<'a> DecorateLint<'a, Option<ErrorGuaranteed>> for DropGlue<'_> {
+    fn decorate_lint<'b>(self, diag: &'b mut DiagnosticBuilder<'a, Option<ErrorGuaranteed>>) {
         diag.arg("needs_drop", self.tcx.def_path_str(self.def_id));
     }
 
@@ -1693,8 +1697,8 @@ pub struct ImproperCTypes<'a> {
 }
 
 // Used because of the complexity of Option<DiagnosticMessage>, DiagnosticMessage, and Option<Span>
-impl<'a> DecorateLint<'a, ()> for ImproperCTypes<'_> {
-    fn decorate_lint<'b>(self, diag: &'b mut DiagnosticBuilder<'a, ()>) {
+impl<'a> DecorateLint<'a, Option<ErrorGuaranteed>> for ImproperCTypes<'_> {
+    fn decorate_lint<'b>(self, diag: &'b mut DiagnosticBuilder<'a, Option<ErrorGuaranteed>>) {
         diag.arg("ty", self.ty);
         diag.arg("desc", self.desc);
         diag.span_label(self.label, fluent::lint_label);
@@ -1836,8 +1840,8 @@ pub enum UnusedDefSuggestion {
 }
 
 // Needed because of def_path_str
-impl<'a> DecorateLint<'a, ()> for UnusedDef<'_, '_> {
-    fn decorate_lint<'b>(self, diag: &'b mut DiagnosticBuilder<'a, ()>) {
+impl<'a> DecorateLint<'a, Option<ErrorGuaranteed>> for UnusedDef<'_, '_> {
+    fn decorate_lint<'b>(self, diag: &'b mut DiagnosticBuilder<'a, Option<ErrorGuaranteed>>) {
         diag.arg("pre", self.pre);
         diag.arg("post", self.post);
         diag.arg("def", self.cx.tcx.def_path_str(self.def_id));
@@ -1919,8 +1923,8 @@ pub struct AsyncFnInTraitDiag {
     pub sugg: Option<Vec<(Span, String)>>,
 }
 
-impl<'a> DecorateLint<'a, ()> for AsyncFnInTraitDiag {
-    fn decorate_lint<'b>(self, diag: &'b mut DiagnosticBuilder<'a, ()>) {
+impl<'a> DecorateLint<'a, Option<ErrorGuaranteed>> for AsyncFnInTraitDiag {
+    fn decorate_lint<'b>(self, diag: &'b mut DiagnosticBuilder<'a, Option<ErrorGuaranteed>>) {
         diag.note(fluent::lint_note);
         if let Some(sugg) = self.sugg {
             diag.multipart_suggestion(fluent::lint_suggestion, sugg, Applicability::MaybeIncorrect);

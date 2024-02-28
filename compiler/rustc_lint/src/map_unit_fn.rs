@@ -74,7 +74,7 @@ impl<'tcx> LateLintPass<'tcx> for MapUnitFn {
                                     suggestion: path.ident.span,
                                     replace: "for_each".to_string(),
                                 },
-                            )
+                            );
                         }
                     } else if let ty::Closure(id, subs) = arg_ty.kind() {
                         let cl_ty = subs.as_closure().sig();
@@ -93,7 +93,7 @@ impl<'tcx> LateLintPass<'tcx> for MapUnitFn {
                                     suggestion: path.ident.span,
                                     replace: "for_each".to_string(),
                                 },
-                            )
+                            );
                         }
                     }
                 }

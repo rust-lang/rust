@@ -72,10 +72,9 @@ impl<'a> DiagnosticDerive<'a> {
 
         // A lifetime of `'a` causes conflicts, but `_sess` is fine.
         let mut imp = structure.gen_impl(quote! {
-            gen impl<'_sess, G>
+            gen impl<'_sess, G: rustc_errors::EmissionGuarantee>
                     rustc_errors::IntoDiagnostic<'_sess, G>
                     for @Self
-                where G: rustc_errors::EmissionGuarantee
             {
 
                 #[track_caller]
@@ -156,11 +155,14 @@ impl<'a> LintDiagnosticDerive<'a> {
         });
 
         let mut imp = structure.gen_impl(quote! {
-            gen impl<'__a> rustc_errors::DecorateLint<'__a, ()> for @Self {
+            gen impl<'__a, G: rustc_errors::EmissionGuarantee>
+                    rustc_errors::DecorateLint<'__a, G>
+                    for @Self
+            {
                 #[track_caller]
                 fn decorate_lint<'__b>(
                     self,
-                    diag: &'__b mut rustc_errors::DiagnosticBuilder<'__a, ()>
+                    diag: &'__b mut rustc_errors::DiagnosticBuilder<'__a, G>
                 ) {
                     #implementation;
                 }

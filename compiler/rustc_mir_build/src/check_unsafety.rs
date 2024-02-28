@@ -4,7 +4,7 @@ use crate::build::ExprCategory;
 use crate::errors::*;
 use rustc_middle::thir::visit::Visitor;
 
-use rustc_errors::DiagnosticArgValue;
+use rustc_errors::{DiagnosticArgValue, ErrorGuaranteed};
 use rustc_hir as hir;
 use rustc_middle::mir::BorrowKind;
 use rustc_middle::thir::*;
@@ -587,7 +587,7 @@ impl UnsafeOpKind {
         hir_id: hir::HirId,
         span: Span,
         suggest_unsafe_block: bool,
-    ) {
+    ) -> Option<ErrorGuaranteed> {
         let parent_id = tcx.hir().get_parent_item(hir_id);
         let parent_owner = tcx.hir_owner_node(parent_id);
         let should_suggest = parent_owner.fn_sig().is_some_and(|sig| sig.header.is_unsafe());

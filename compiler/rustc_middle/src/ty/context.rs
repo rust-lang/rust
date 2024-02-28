@@ -2097,8 +2097,8 @@ impl<'tcx> TyCtxt<'tcx> {
         lint: &'static Lint,
         hir_id: HirId,
         span: impl Into<MultiSpan>,
-        decorator: impl for<'a> DecorateLint<'a, ()>,
-    ) {
+        decorator: impl for<'a> DecorateLint<'a, Option<ErrorGuaranteed>>,
+    ) -> Option<ErrorGuaranteed> {
         let msg = decorator.msg();
         let (level, src) = self.lint_level_at_node(lint, hir_id);
         lint_level(self.sess, lint, level, src, Some(span.into()), msg, |diag| {
@@ -2117,10 +2117,10 @@ impl<'tcx> TyCtxt<'tcx> {
         hir_id: HirId,
         span: impl Into<MultiSpan>,
         msg: impl Into<DiagnosticMessage>,
-        decorate: impl for<'a, 'b> FnOnce(&'b mut DiagnosticBuilder<'a, ()>),
-    ) {
+        decorate: impl for<'a, 'b> FnOnce(&'b mut DiagnosticBuilder<'a, Option<ErrorGuaranteed>>),
+    ) -> Option<ErrorGuaranteed> {
         let (level, src) = self.lint_level_at_node(lint, hir_id);
-        lint_level(self.sess, lint, level, src, Some(span.into()), msg, decorate);
+        lint_level(self.sess, lint, level, src, Some(span.into()), msg, decorate)
     }
 
     /// Emit a lint from a lint struct (some type that implements `DecorateLint`, typically
@@ -2130,8 +2130,8 @@ impl<'tcx> TyCtxt<'tcx> {
         self,
         lint: &'static Lint,
         id: HirId,
-        decorator: impl for<'a> DecorateLint<'a, ()>,
-    ) {
+        decorator: impl for<'a> DecorateLint<'a, Option<ErrorGuaranteed>>,
+    ) -> Option<ErrorGuaranteed> {
         self.node_lint(lint, id, decorator.msg(), |diag| {
             decorator.decorate_lint(diag);
         })
@@ -2147,10 +2147,10 @@ impl<'tcx> TyCtxt<'tcx> {
         lint: &'static Lint,
         id: HirId,
         msg: impl Into<DiagnosticMessage>,
-        decorate: impl for<'a, 'b> FnOnce(&'b mut DiagnosticBuilder<'a, ()>),
-    ) {
+        decorate: impl for<'a, 'b> FnOnce(&'b mut DiagnosticBuilder<'a, Option<ErrorGuaranteed>>),
+    ) -> Option<ErrorGuaranteed> {
         let (level, src) = self.lint_level_at_node(lint, id);
-        lint_level(self.sess, lint, level, src, None, msg, decorate);
+        lint_level(self.sess, lint, level, src, None, msg, decorate)
     }
 
     pub fn in_scope_traits(self, id: HirId) -> Option<&'tcx [TraitCandidate]> {

@@ -1164,7 +1164,7 @@ pub(super) fn check_transparent<'tcx>(tcx: TyCtxt<'tcx>, adt: ty::AdtDef<'tcx>) 
                                 non-zero-sized in the future."
                         ));
                     },
-                )
+                );
             } else {
                 prev_non_exhaustive_1zst = true;
             }

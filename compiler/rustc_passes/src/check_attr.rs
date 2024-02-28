@@ -259,7 +259,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                             attr.span,
                             errors::InnerCrateLevelAttr,
                         ),
-                    }
+                    };
                 }
             }
 

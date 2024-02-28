@@ -3,7 +3,7 @@
 
 use rustc_ast::util::unicode::TEXT_FLOW_CONTROL_CHARS;
 use rustc_errors::{add_elided_lifetime_in_path_suggestion, DiagnosticBuilder};
-use rustc_errors::{Applicability, SuggestionStyle};
+use rustc_errors::{Applicability, ErrorGuaranteed, SuggestionStyle};
 use rustc_middle::middle::stability;
 use rustc_session::config::ExpectedValues;
 use rustc_session::lint::BuiltinLintDiagnostics;
@@ -15,7 +15,7 @@ use rustc_span::BytePos;
 pub(super) fn builtin(
     sess: &Session,
     diagnostic: BuiltinLintDiagnostics,
-    db: &mut DiagnosticBuilder<'_, ()>,
+    db: &mut DiagnosticBuilder<'_, Option<ErrorGuaranteed>>,
 ) {
     match diagnostic {
         BuiltinLintDiagnostics::UnicodeTextFlow(span, content) => {

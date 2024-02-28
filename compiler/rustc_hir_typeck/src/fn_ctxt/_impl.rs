@@ -74,7 +74,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                 .unwrap_or("any code following this expression is unreachable"),
                         );
                     },
-                )
+                );
             }
         }
     }

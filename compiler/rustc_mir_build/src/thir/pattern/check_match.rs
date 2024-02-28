@@ -839,7 +839,7 @@ fn check_for_bindings_named_same_as_variants(
                 ty_path,
                 name,
             },
-        )
+        );
     }
 }
 

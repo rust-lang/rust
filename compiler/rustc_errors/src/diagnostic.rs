@@ -59,12 +59,22 @@ pub trait EmissionGuarantee: Sized {
     fn emit_producing_guarantee(db: DiagnosticBuilder<'_, Self>) -> Self::EmitResult;
 }
 
+/// Used for errors.
 impl EmissionGuarantee for ErrorGuaranteed {
     fn emit_producing_guarantee(db: DiagnosticBuilder<'_, Self>) -> Self::EmitResult {
-        db.emit_producing_error_guaranteed()
+        db.emit_producing_guar()
     }
 }
 
+/// Used for lints that might be errors or non-errors, depending on the
+/// configuration.
+impl EmissionGuarantee for Option<ErrorGuaranteed> {
+    fn emit_producing_guarantee(db: DiagnosticBuilder<'_, Self>) -> Self::EmitResult {
+        db.emit_producing_opt_guar()
+    }
+}
+
+/// Used for non-errors such as warnings, help, notes, etc.
 impl EmissionGuarantee for () {
     fn emit_producing_guarantee(db: DiagnosticBuilder<'_, Self>) -> Self::EmitResult {
         db.emit_producing_nothing();
@@ -1249,7 +1259,7 @@ impl<'a, G: EmissionGuarantee> DiagnosticBuilder<'a, G> {
     }
 
     /// `ErrorGuaranteed::emit_producing_guarantee` uses this.
-    fn emit_producing_error_guaranteed(mut self) -> ErrorGuaranteed {
+    fn emit_producing_guar(mut self) -> ErrorGuaranteed {
         let diag = self.take_diag();
 
         // The only error levels that produce `ErrorGuaranteed` are
@@ -1268,6 +1278,24 @@ impl<'a, G: EmissionGuarantee> DiagnosticBuilder<'a, G> {
 
         let guar = self.dcx.emit_diagnostic(diag);
         guar.unwrap()
+    }
+
+    /// `Option<ErrorGuaranteed>::emit_producing_guarantee` uses this.
+    fn emit_producing_opt_guar(mut self) -> Option<ErrorGuaranteed> {
+        let diag = self.take_diag();
+
+        // See the comment on the assertion in `emit_producing_guar`; this is
+        // similar.
+        let level = diag.level;
+        let guar = self.dcx.emit_diagnostic(diag);
+        if guar.is_some() {
+            assert!(
+                matches!(level, Level::Error | Level::DelayedBug),
+                "invalid diagnostic level ({:?})",
+                level,
+            );
+        }
+        guar
     }
 
     /// Emit and consume the diagnostic.

@@ -1567,7 +1567,7 @@ impl<'tcx> Liveness<'_, 'tcx> {
                         .map(|(_, _, ident_span)| ident_span)
                         .collect::<Vec<_>>(),
                     errors::UnusedVarAssignedOnly { name },
-                )
+                );
             } else if can_remove {
                 let spans = hir_ids_and_spans
                     .iter()

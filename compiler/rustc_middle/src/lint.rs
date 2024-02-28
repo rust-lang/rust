@@ -2,7 +2,7 @@ use std::cmp;
 
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_data_structures::sorted_map::SortedMap;
-use rustc_errors::{DiagnosticBuilder, DiagnosticMessage, MultiSpan};
+use rustc_errors::{DiagnosticBuilder, DiagnosticMessage, ErrorGuaranteed, MultiSpan};
 use rustc_hir::{HirId, ItemLocalId};
 use rustc_session::lint::{
     builtin::{self, FORBIDDEN_LINT_GROUPS},
@@ -204,7 +204,7 @@ pub fn explain_lint_level_source(
     lint: &'static Lint,
     level: Level,
     src: LintLevelSource,
-    err: &mut DiagnosticBuilder<'_, ()>,
+    err: &mut DiagnosticBuilder<'_, Option<ErrorGuaranteed>>,
 ) {
     let name = lint.name_lower();
     if let Level::Allow = level {
@@ -270,8 +270,8 @@ pub fn lint_level(
     src: LintLevelSource,
     span: Option<MultiSpan>,
     msg: impl Into<DiagnosticMessage>,
-    decorate: impl for<'a, 'b> FnOnce(&'b mut DiagnosticBuilder<'a, ()>),
-) {
+    decorate: impl for<'a, 'b> FnOnce(&'b mut DiagnosticBuilder<'a, Option<ErrorGuaranteed>>),
+) -> Option<ErrorGuaranteed> {
     // Avoid codegen bloat from monomorphization by immediately doing dyn dispatch of `decorate` to
     // the "real" work.
     #[track_caller]
@@ -282,8 +282,10 @@ pub fn lint_level(
         src: LintLevelSource,
         span: Option<MultiSpan>,
         msg: impl Into<DiagnosticMessage>,
-        decorate: Box<dyn '_ + for<'a, 'b> FnOnce(&'b mut DiagnosticBuilder<'a, ()>)>,
-    ) {
+        decorate: Box<
+            dyn '_ + for<'a, 'b> FnOnce(&'b mut DiagnosticBuilder<'a, Option<ErrorGuaranteed>>),
+        >,
+    ) -> Option<ErrorGuaranteed> {
         // Check for future incompatibility lints and issue a stronger warning.
         let future_incompatible = lint.future_incompatible;
 
@@ -304,7 +306,7 @@ pub fn lint_level(
                 if has_future_breakage {
                     rustc_errors::Level::Allow
                 } else {
-                    return;
+                    return None;
                 }
             }
             Level::Expect(expect_id) => {
@@ -322,7 +324,9 @@ pub fn lint_level(
             Level::Warn => rustc_errors::Level::Warning,
             Level::Deny | Level::Forbid => rustc_errors::Level::Error,
         };
-        let mut err = DiagnosticBuilder::new(sess.dcx(), err_level, "");
+        // `::<Option<ErrorGuaranteed>>` because this lint could be an error or
+        // a non-error, and the returned guarantee depends on that.
+        let mut err = DiagnosticBuilder::<Option<ErrorGuaranteed>>::new(sess.dcx(), err_level, "");
         if let Some(span) = span {
             err.span(span);
         }
@@ -346,7 +350,7 @@ pub fn lint_level(
 
                 // Don't continue further, since we don't want to have
                 // `diag_span_note_once` called for a diagnostic that isn't emitted.
-                return;
+                return None;
             }
         }
 
@@ -362,8 +366,7 @@ pub fn lint_level(
         // the diagnostic.
         if let Level::Expect(_) = level {
             decorate(&mut err);
-            err.emit();
-            return;
+            return err.emit();
         }
 
         if let Some(future_incompatible) = future_incompatible {

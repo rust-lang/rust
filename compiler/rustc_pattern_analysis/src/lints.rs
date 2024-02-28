@@ -99,7 +99,11 @@ pub(crate) fn lint_nonexhaustive_missing_variants<'p, 'tcx>(
 
                 use rustc_errors::DecorateLint;
                 let mut err = rcx.tcx.dcx().struct_span_warn(arm.pat.data().unwrap().span, "");
-                err.primary_message(decorator.msg());
+                let msg = <NonExhaustiveOmittedPatternLintOnArm as DecorateLint<
+                    '_,
+                    Option<ErrorGuaranteed>,
+                >>::msg(&decorator);
+                err.primary_message(msg);
                 decorator.decorate_lint(&mut err);
                 err.emit();
             }

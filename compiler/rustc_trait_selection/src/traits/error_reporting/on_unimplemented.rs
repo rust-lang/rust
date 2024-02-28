@@ -627,14 +627,13 @@ impl<'tcx> OnUnimplementedDirective {
             }
         } else if is_diagnostic_namespace_variant {
             match &attr.kind {
-                AttrKind::Normal(p) if !matches!(p.item.args, AttrArgs::Empty) => {
-                    tcx.emit_node_span_lint(
+                AttrKind::Normal(p) if !matches!(p.item.args, AttrArgs::Empty) => tcx
+                    .emit_node_span_lint(
                         UNKNOWN_OR_MALFORMED_DIAGNOSTIC_ATTRIBUTES,
                         tcx.local_def_id_to_hir_id(item_def_id.expect_local()),
                         attr.span,
                         MalformedOnUnimplementedAttrLint::new(attr.span),
-                    );
-                }
+                    ),
                 _ => tcx.emit_node_span_lint(
                     UNKNOWN_OR_MALFORMED_DIAGNOSTIC_ATTRIBUTES,
                     tcx.local_def_id_to_hir_id(item_def_id.expect_local()),

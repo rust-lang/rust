@@ -7,7 +7,7 @@ use crate::{get_parent_expr_for_hir, higher};
 use rustc_ast::util::parser::AssocOp;
 use rustc_ast::{ast, token};
 use rustc_ast_pretty::pprust::token_kind_to_string;
-use rustc_errors::Applicability;
+use rustc_errors::{Applicability, ErrorGuaranteed};
 use rustc_hir as hir;
 use rustc_hir::{Closure, ExprKind, HirId, MutTy, TyKind};
 use rustc_hir_typeck::expr_use_visitor::{Delegate, ExprUseVisitor, PlaceBase, PlaceWithHirId};
@@ -732,7 +732,7 @@ pub trait DiagnosticExt<T: LintContext> {
     fn suggest_remove_item(&mut self, cx: &T, item: Span, msg: &str, applicability: Applicability);
 }
 
-impl<T: LintContext> DiagnosticExt<T> for rustc_errors::DiagnosticBuilder<'_, ()> {
+impl<T: LintContext> DiagnosticExt<T> for rustc_errors::DiagnosticBuilder<'_, Option<ErrorGuaranteed>> {
     fn suggest_item_with_attr<D: Display + ?Sized>(
         &mut self,
         cx: &T,

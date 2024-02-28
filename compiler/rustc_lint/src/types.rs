@@ -14,7 +14,7 @@ use crate::{LateContext, LateLintPass, LintContext};
 use rustc_ast as ast;
 use rustc_attr as attr;
 use rustc_data_structures::fx::FxHashSet;
-use rustc_errors::DiagnosticMessage;
+use rustc_errors::{DiagnosticMessage, ErrorGuaranteed};
 use rustc_hir as hir;
 use rustc_hir::{is_range_literal, Expr, ExprKind, Node};
 use rustc_middle::ty::layout::{IntegerExt, LayoutOf, SizeSkeleton};
@@ -310,7 +310,7 @@ fn report_bin_hex_error(
     repr_str: String,
     val: u128,
     negative: bool,
-) {
+) -> Option<ErrorGuaranteed> {
     let (t, actually) = match ty {
         attr::IntType::SignedInt(t) => {
             let actually = if negative {
@@ -697,11 +697,12 @@ fn lint_wide_pointer<'tcx>(
     let (Some(l_span), Some(r_span)) =
         (l.span.find_ancestor_inside(e.span), r.span.find_ancestor_inside(e.span))
     else {
-        return cx.emit_span_lint(
+        cx.emit_span_lint(
             AMBIGUOUS_WIDE_POINTER_COMPARISONS,
             e.span,
             AmbiguousWidePointerComparisons::Spanless,
         );
+        return;
     };
 
     let ne = if binop == hir::BinOpKind::Ne { "!" } else { "" };

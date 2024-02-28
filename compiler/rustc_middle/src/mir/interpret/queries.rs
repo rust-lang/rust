@@ -114,7 +114,7 @@ impl<'tcx> TyCtxt<'tcx> {
                                 self.def_span(ct.def),
                                 "cannot use constants which depend on generic parameters in types",
                                 |_| {},
-                            )
+                            );
                         }
                     }
                 })

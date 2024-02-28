@@ -568,7 +568,7 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, did: LocalDefId) -> CodegenFnAttrs {
                     |lint| {
                         lint.span_note(inline_span, "inlining requested here");
                     },
-                )
+                );
             }
         }
     }

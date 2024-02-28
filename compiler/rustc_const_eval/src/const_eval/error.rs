@@ -1,7 +1,8 @@
 use std::mem;
 
 use rustc_errors::{
-    DiagnosticArgName, DiagnosticArgValue, DiagnosticMessage, IntoDiagnostic, IntoDiagnosticArg,
+    DiagnosticArgName, DiagnosticArgValue, DiagnosticMessage, ErrorGuaranteed, IntoDiagnostic,
+    IntoDiagnosticArg,
 };
 use rustc_hir::CRATE_HIR_ID;
 use rustc_middle::mir::AssertKind;
@@ -170,7 +171,7 @@ pub(super) fn lint<'tcx, 'mir, L>(
     lint: &'static rustc_session::lint::Lint,
     decorator: impl FnOnce(Vec<errors::FrameNote>) -> L,
 ) where
-    L: for<'a> rustc_errors::DecorateLint<'a, ()>,
+    L: for<'a> rustc_errors::DecorateLint<'a, Option<ErrorGuaranteed>>,
 {
     let (span, frames) = get_span_and_frames(tcx, machine);
 

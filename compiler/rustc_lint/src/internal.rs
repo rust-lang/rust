@@ -184,15 +184,13 @@ impl<'tcx> LateLintPass<'tcx> for TyTyKind {
                     };
 
                     match span {
-                        Some(span) => {
-                            cx.emit_span_lint(
-                                USAGE_OF_TY_TYKIND,
-                                path.span,
-                                TykindKind { suggestion: span },
-                            );
-                        }
+                        Some(span) => cx.emit_span_lint(
+                            USAGE_OF_TY_TYKIND,
+                            path.span,
+                            TykindKind { suggestion: span },
+                        ),
                         None => cx.emit_span_lint(USAGE_OF_TY_TYKIND, path.span, TykindDiag),
-                    }
+                    };
                 } else if !ty.span.from_expansion()
                     && path.segments.len() > 1
                     && let Some(ty) = is_ty_or_ty_ctxt(cx, path)

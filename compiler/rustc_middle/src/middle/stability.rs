@@ -9,7 +9,7 @@ use rustc_attr::{
     self as attr, ConstStability, DefaultBodyStability, DeprecatedSince, Deprecation, Stability,
 };
 use rustc_data_structures::unord::UnordMap;
-use rustc_errors::{Applicability, DiagnosticBuilder};
+use rustc_errors::{Applicability, DiagnosticBuilder, ErrorGuaranteed};
 use rustc_feature::GateIssue;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{DefId, LocalDefId, LocalDefIdMap};
@@ -125,7 +125,7 @@ pub fn report_unstable(
 }
 
 pub fn deprecation_suggestion(
-    diag: &mut DiagnosticBuilder<'_, ()>,
+    diag: &mut DiagnosticBuilder<'_, Option<ErrorGuaranteed>>,
     kind: &str,
     suggestion: Option<Symbol>,
     span: Span,
@@ -585,7 +585,7 @@ impl<'tcx> TyCtxt<'tcx> {
         unmarked: impl FnOnce(Span, DefId),
     ) -> bool {
         let soft_handler = |lint, span, msg: String| {
-            self.node_span_lint(lint, id.unwrap_or(hir::CRATE_HIR_ID), span, msg, |_| {})
+            self.node_span_lint(lint, id.unwrap_or(hir::CRATE_HIR_ID), span, msg, |_| {});
         };
         let eval_result =
             self.eval_stability_allow_unstable(def_id, id, span, method_span, allow_unstable);

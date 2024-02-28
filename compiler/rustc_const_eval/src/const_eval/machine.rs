@@ -605,28 +605,16 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for CompileTimeInterpreter<'mir,
                 // to be able to run until the heat death of the universe or power loss, whichever
                 // comes first.
                 let hir_id = ecx.best_lint_scope();
-                let is_error = ecx
-                    .tcx
-                    .lint_level_at_node(
-                        rustc_session::lint::builtin::LONG_RUNNING_CONST_EVAL,
-                        hir_id,
-                    )
-                    .0
-                    .is_error();
                 let span = ecx.cur_span();
-                ecx.tcx.emit_node_span_lint(
+                let guar = ecx.tcx.emit_node_span_lint(
                     rustc_session::lint::builtin::LONG_RUNNING_CONST_EVAL,
                     hir_id,
                     span,
                     LongRunning { item_span: ecx.tcx.span },
                 );
                 // If this was a hard error, don't bother continuing evaluation.
-                if is_error {
-                    let guard = ecx
-                        .tcx
-                        .dcx()
-                        .span_delayed_bug(span, "The deny lint should have already errored");
-                    throw_inval!(AlreadyReported(guard.into()));
+                if let Some(guar) = guar {
+                    throw_inval!(AlreadyReported(guar.into()));
                 }
             } else if new_steps > start && new_steps.is_power_of_two() {
                 // Only report after a certain number of terminators have been evaluated and the

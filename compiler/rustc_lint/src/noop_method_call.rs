@@ -152,7 +152,7 @@ impl<'tcx> LateLintPass<'tcx> for NoopMethodCall {
                     SuspiciousDoubleRefDerefDiag { ty: expr_ty },
                 ),
                 _ => return,
-            }
+            };
         }
     }
 }

@@ -205,7 +205,7 @@ impl<'tcx> MarkSymbolVisitor<'tcx> {
                 assign.hir_id,
                 assign.span,
                 UselessAssignment { is_field_assign, ty: self.typeck_results().expr_ty(lhs) },
-            )
+            );
         }
     }
 
