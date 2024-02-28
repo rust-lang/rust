@@ -223,7 +223,7 @@ fn traverse(
     krate: hir::Crate,
     range_to_highlight: TextRange,
 ) {
-    let is_unlinked = sema.to_module_def(file_id).is_none();
+    let is_unlinked = sema.file_to_module_def(file_id).is_none();
     let mut bindings_shadow_count: FxHashMap<Name, u32> = FxHashMap::default();
 
     enum AttrOrDerive {

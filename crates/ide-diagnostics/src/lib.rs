@@ -315,7 +315,7 @@ pub fn diagnostics(
         handlers::json_is_not_rust::json_in_items(&sema, &mut res, file_id, &node, config);
     }
 
-    let module = sema.to_module_def(file_id);
+    let module = sema.file_to_module_def(file_id);
 
     let ctx = DiagnosticsContext { config, sema, resolve };
     if module.is_none() {

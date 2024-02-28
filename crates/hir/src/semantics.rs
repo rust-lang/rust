@@ -223,12 +223,12 @@ impl<'db, DB: HirDatabase> Semantics<'db, DB> {
         self.imp.resolve_variant(record_lit).map(VariantDef::from)
     }
 
-    pub fn to_module_def(&self, file: FileId) -> Option<Module> {
-        self.imp.to_module_def(file).next()
+    pub fn file_to_module_def(&self, file: FileId) -> Option<Module> {
+        self.imp.file_to_module_defs(file).next()
     }
 
-    pub fn to_module_defs(&self, file: FileId) -> impl Iterator<Item = Module> {
-        self.imp.to_module_def(file)
+    pub fn file_to_module_defs(&self, file: FileId) -> impl Iterator<Item = Module> {
+        self.imp.file_to_module_defs(file)
     }
 
     pub fn to_struct_def(&self, s: &ast::Struct) -> Option<Struct> {
@@ -1237,7 +1237,7 @@ impl<'db> SemanticsImpl<'db> {
         T::to_def(self, src)
     }
 
-    fn to_module_def(&self, file: FileId) -> impl Iterator<Item = Module> {
+    fn file_to_module_defs(&self, file: FileId) -> impl Iterator<Item = Module> {
         self.with_ctx(|ctx| ctx.file_to_def(file)).into_iter().map(Module::from)
     }
 
