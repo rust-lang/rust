@@ -19,6 +19,6 @@ enum UninhabitedVariantSpace { //~ERROR: size: Size(16 bytes)
 
 #[rustc_layout(abi)]
 enum ScalarPairDifferingSign { //~ERROR: abi: ScalarPair
-    A(u64),
-    B(i64),
+    A(u8),
+    B(i8),
 }
