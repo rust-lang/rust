@@ -10,7 +10,7 @@ use clippy_utils::source::{first_line_of_span, is_present_in_source, snippet_opt
 use rustc_ast::token::{Token, TokenKind};
 use rustc_ast::tokenstream::TokenTree;
 use rustc_ast::{
-    AttrArgs, AttrArgsEq, AttrKind, AttrStyle, Attribute, LitKind, MetaItemKind, MetaItemLit, NestedMetaItem,
+    AttrArgs, AttrArgsEq, AttrId, AttrKind, AttrStyle, Attribute, LitKind, MetaItemKind, MetaItemLit, NestedMetaItem,
 };
 use rustc_errors::Applicability;
 use rustc_hir::{
@@ -518,7 +518,7 @@ impl<'tcx> LateLintPass<'tcx> for Attributes {
     fn check_attribute(&mut self, cx: &LateContext<'tcx>, attr: &'tcx Attribute) {
         if let Some(items) = &attr.meta_item_list() {
             if let Some(ident) = attr.ident() {
-                if is_lint_level(ident.name) {
+                if is_lint_level(ident.name, attr.id) {
                     check_clippy_lint_names(cx, ident.name, items);
                 }
                 if matches!(ident.name, sym::allow | sym::expect) {
@@ -556,7 +556,7 @@ impl<'tcx> LateLintPass<'tcx> for Attributes {
                         return;
                     }
                     if let Some(lint_list) = &attr.meta_item_list() {
-                        if attr.ident().map_or(false, |ident| is_lint_level(ident.name)) {
+                        if attr.ident().map_or(false, |ident| is_lint_level(ident.name, attr.id)) {
                             for lint in lint_list {
                                 match item.kind {
                                     ItemKind::Use(..) => {
@@ -1205,6 +1205,6 @@ fn check_mismatched_target_os(cx: &EarlyContext<'_>, attr: &Attribute) {
     }
 }
 
-fn is_lint_level(symbol: Symbol) -> bool {
-    matches!(symbol, sym::allow | sym::expect | sym::warn | sym::deny | sym::forbid)
+fn is_lint_level(symbol: Symbol, attr_id: AttrId) -> bool {
+    Level::from_symbol(symbol, Some(attr_id)).is_some()
 }
