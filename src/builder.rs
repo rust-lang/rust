@@ -722,7 +722,7 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
     fn frem_fast(&mut self, lhs: RValue<'gcc>, rhs: RValue<'gcc>) -> RValue<'gcc> {
         // NOTE: it seems like we cannot enable fast-mode for a single operation in GCC.
         let result = self.frem(lhs, rhs);
-        set_rval_location(self, i);
+        set_rval_location(self, result);
         result
     }
 
