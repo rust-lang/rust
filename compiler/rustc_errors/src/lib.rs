@@ -555,12 +555,14 @@ pub struct DiagCtxtFlags {
 
 impl Drop for DiagCtxtInner {
     fn drop(&mut self) {
-        // Any stashed diagnostics should have been handled by
-        // `emit_stashed_diagnostics` by now.
+        // For tools using `interface::run_compiler` (e.g. rustc, rustdoc)
+        // stashed diagnostics will have already been emitted. But for others
+        // that don't use `interface::run_compiler` (e.g. rustfmt, some clippy
+        // lints) this fallback is necessary.
         //
         // Important: it is sound to produce an `ErrorGuaranteed` when stashing
-        // errors because they are guaranteed to have been emitted by here.
-        assert!(self.stashed_diagnostics.is_empty());
+        // errors because they are guaranteed to be emitted here or earlier.
+        self.emit_stashed_diagnostics();
 
         // Important: it is sound to produce an `ErrorGuaranteed` when emitting
         // delayed bugs because they are guaranteed to be emitted here if
