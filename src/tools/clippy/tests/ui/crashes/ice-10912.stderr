@@ -4,14 +4,5 @@ error: expected at least one digit in exponent
 LL | fn f2() -> impl Sized { && 3.14159265358979323846E }
    |                            ^^^^^^^^^^^^^^^^^^^^^^^
 
-error: long literal lacking separators
-  --> tests/ui/crashes/ice-10912.rs:3:28
-   |
-LL | fn f2() -> impl Sized { && 3.14159265358979323846E }
-   |                            ^^^^^^^^^^^^^^^^^^^^^^^ help: consider: `3.141_592_653_589_793_238_46`
-   |
-   = note: `-D clippy::unreadable-literal` implied by `-D warnings`
-   = help: to override `-D warnings` add `#[allow(clippy::unreadable_literal)]`
-
-error: aborting due to 2 previous errors
+error: aborting due to 1 previous error
 
