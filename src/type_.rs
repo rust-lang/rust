@@ -1,8 +1,8 @@
 use gccjit::{RValue, Struct, Type};
-use rustc_codegen_ssa::traits::{BaseTypeMethods, DerivedTypeMethods, TypeMembershipMethods};
 use rustc_codegen_ssa::common::TypeKind;
-use rustc_middle::{bug, ty};
+use rustc_codegen_ssa::traits::{BaseTypeMethods, DerivedTypeMethods, TypeMembershipMethods};
 use rustc_middle::ty::layout::TyAndLayout;
+use rustc_middle::{bug, ty};
 use rustc_target::abi::{AddressSpace, Align, Integer, Size};
 
 use crate::common::TypeReflection;
@@ -135,12 +135,16 @@ impl<'gcc, 'tcx> BaseTypeMethods<'tcx> for CodegenCx<'gcc, 'tcx> {
         if let Some(typ) = self.struct_types.borrow().get(fields) {
             return typ.clone();
         }
-        let fields: Vec<_> = fields.iter().enumerate()
-            .map(|(index, field)| self.context.new_field(None, *field, &format!("field{}_TODO", index)))
+        let fields: Vec<_> = fields
+            .iter()
+            .enumerate()
+            .map(|(index, field)| {
+                self.context.new_field(None, *field, &format!("field{}_TODO", index))
+            })
             .collect();
         let typ = self.context.new_struct_type(None, "struct", &fields).as_type();
         if packed {
-            #[cfg(feature="master")]
+            #[cfg(feature = "master")]
             typ.set_packed();
         }
         self.struct_types.borrow_mut().insert(types, typ);
@@ -150,17 +154,13 @@ impl<'gcc, 'tcx> BaseTypeMethods<'tcx> for CodegenCx<'gcc, 'tcx> {
     fn type_kind(&self, typ: Type<'gcc>) -> TypeKind {
         if self.is_int_type_or_bool(typ) {
             TypeKind::Integer
-        }
-        else if typ.is_compatible_with(self.float_type) {
+        } else if typ.is_compatible_with(self.float_type) {
             TypeKind::Float
-        }
-        else if typ.is_compatible_with(self.double_type) {
+        } else if typ.is_compatible_with(self.double_type) {
             TypeKind::Double
-        }
-        else if typ.is_vector() {
+        } else if typ.is_vector() {
             TypeKind::Vector
-        }
-        else {
+        } else {
             // TODO(antoyo): support other types.
             TypeKind::Void
         }
@@ -177,14 +177,11 @@ impl<'gcc, 'tcx> BaseTypeMethods<'tcx> for CodegenCx<'gcc, 'tcx> {
     fn element_type(&self, ty: Type<'gcc>) -> Type<'gcc> {
         if let Some(typ) = ty.dyncast_array() {
             typ
-        }
-        else if let Some(vector_type) = ty.dyncast_vector() {
+        } else if let Some(vector_type) = ty.dyncast_vector() {
             vector_type.get_element_type()
-        }
-        else if let Some(typ) = ty.get_pointee() {
+        } else if let Some(typ) = ty.get_pointee() {
             typ
-        }
-        else {
+        } else {
             unreachable!()
         }
     }
@@ -198,11 +195,9 @@ impl<'gcc, 'tcx> BaseTypeMethods<'tcx> for CodegenCx<'gcc, 'tcx> {
         let f64 = self.context.new_type::<f64>();
         if typ.is_compatible_with(f32) {
             32
-        }
-        else if typ.is_compatible_with(f64) {
+        } else if typ.is_compatible_with(f64) {
             64
-        }
-        else {
+        } else {
             panic!("Cannot get width of float type {:?}", typ);
         }
         // TODO(antoyo): support other sizes.
@@ -216,9 +211,9 @@ impl<'gcc, 'tcx> BaseTypeMethods<'tcx> for CodegenCx<'gcc, 'tcx> {
         value.get_type()
     }
 
-    #[cfg_attr(feature="master", allow(unused_mut))]
+    #[cfg_attr(feature = "master", allow(unused_mut))]
     fn type_array(&self, ty: Type<'gcc>, mut len: u64) -> Type<'gcc> {
-        #[cfg(not(feature="master"))]
+        #[cfg(not(feature = "master"))]
         if let Some(struct_type) = ty.is_struct() {
             if struct_type.get_field_count() == 0 {
                 // NOTE: since gccjit only supports i32 for the array size and libcore's tests uses a
@@ -242,12 +237,14 @@ impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
     }
 
     pub fn set_struct_body(&self, typ: Struct<'gcc>, fields: &[Type<'gcc>], packed: bool) {
-        let fields: Vec<_> = fields.iter().enumerate()
+        let fields: Vec<_> = fields
+            .iter()
+            .enumerate()
             .map(|(index, field)| self.context.new_field(None, *field, &format!("field_{}", index)))
             .collect();
         typ.set_fields(None, &fields);
         if packed {
-            #[cfg(feature="master")]
+            #[cfg(feature = "master")]
             typ.as_type().set_packed();
         }
     }
@@ -257,7 +254,10 @@ impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
     }
 }
 
-pub fn struct_fields<'gcc, 'tcx>(cx: &CodegenCx<'gcc, 'tcx>, layout: TyAndLayout<'tcx>) -> (Vec<Type<'gcc>>, bool) {
+pub fn struct_fields<'gcc, 'tcx>(
+    cx: &CodegenCx<'gcc, 'tcx>,
+    layout: TyAndLayout<'tcx>,
+) -> (Vec<Type<'gcc>>, bool) {
     let field_count = layout.fields.count();
 
     let mut packed = false;
@@ -295,5 +295,4 @@ pub fn struct_fields<'gcc, 'tcx>(cx: &CodegenCx<'gcc, 'tcx>, layout: TyAndLayout
     (result, packed)
 }
 
-impl<'gcc, 'tcx> TypeMembershipMethods<'tcx> for CodegenCx<'gcc, 'tcx> {
-}
+impl<'gcc, 'tcx> TypeMembershipMethods<'tcx> for CodegenCx<'gcc, 'tcx> {}

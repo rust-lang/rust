@@ -1,16 +1,16 @@
+use crate::rustc_index::Idx;
 use gccjit::{Location, RValue};
 use rustc_codegen_ssa::mir::debuginfo::{DebugScope, FunctionDebugContext, VariableKind};
 use rustc_codegen_ssa::traits::{DebugInfoBuilderMethods, DebugInfoMethods};
+use rustc_data_structures::sync::Lrc;
 use rustc_index::bit_set::BitSet;
 use rustc_index::IndexVec;
-use rustc_middle::mir::{Body, self, SourceScope};
+use rustc_middle::mir::{self, Body, SourceScope};
 use rustc_middle::ty::{Instance, PolyExistentialTraitRef, Ty};
 use rustc_session::config::DebugInfo;
 use rustc_span::{BytePos, Pos, SourceFile, SourceFileAndLine, Span, Symbol};
 use rustc_target::abi::call::FnAbi;
 use rustc_target::abi::Size;
-use rustc_data_structures::sync::Lrc;
-use crate::rustc_index::Idx;
 use std::ops::Range;
 
 use crate::builder::Builder;
@@ -25,15 +25,15 @@ impl<'a, 'gcc, 'tcx> DebugInfoBuilderMethods for Builder<'a, 'gcc, 'tcx> {
     fn dbg_var_addr(
         &mut self,
         _dbg_var: Self::DIVariable,
-        dbg_loc: Self::DILocation,
-        variable_alloca: Self::Value,
+        _dbg_loc: Self::DILocation,
+        _variable_alloca: Self::Value,
         _direct_offset: Size,
         _indirect_offsets: &[Size],
         _fragment: Option<Range<Size>>,
     ) {
         // FIXME(tempdragon): Not sure if this is correct, probably wrong but still keep it here.
         #[cfg(feature = "master")]
-        variable_alloca.set_location(dbg_loc);
+        _variable_alloca.set_location(_dbg_loc);
     }
 
     fn insert_reference_to_gdb_debug_scripts_section_global(&mut self) {
@@ -43,11 +43,10 @@ impl<'a, 'gcc, 'tcx> DebugInfoBuilderMethods for Builder<'a, 'gcc, 'tcx> {
     /// FIXME(tempdragon): Currently, this function is not yet implemented. It seems that the
     /// debug name and the mangled name should both be included in the LValues.
     /// Besides, a function to get the rvalue type(m_is_lvalue) should also be included.
-    fn set_var_name(&mut self, _value: RValue<'gcc>, _name: &str) {
-    }
+    fn set_var_name(&mut self, _value: RValue<'gcc>, _name: &str) {}
 
     fn set_dbg_loc(&mut self, dbg_loc: Self::DILocation) {
-        self.loc = Some(dbg_loc);
+        self.location = Some(dbg_loc);
     }
 }
 
@@ -86,7 +85,7 @@ fn compute_mir_scopes<'gcc, 'tcx>(
 
 /// Update the `debug_context`, adding new scope to it,
 /// if it's not added as is denoted in `instantiated`.
-/// 
+///
 /// # Souce of Origin
 /// Copied from `create_scope_map.rs` of rustc_codegen_llvm
 /// FIXME(tempdragon/?): Add Scope Support Here.
@@ -119,16 +118,14 @@ fn make_mir_scope<'gcc, 'tcx>(
         return;
     };
 
-    if let Some(vars) = variables
-    {
-        if !vars.contains(scope)
-            && scope_data.inlined.is_none() {
-                // Do not create a DIScope if there are no variables defined in this
-                // MIR `SourceScope`, and it's not `inlined`, to avoid debuginfo bloat.
-                debug_context.scopes[scope] = parent_scope;
-                instantiated.insert(scope);
-                return;
-            }
+    if let Some(vars) = variables {
+        if !vars.contains(scope) && scope_data.inlined.is_none() {
+            // Do not create a DIScope if there are no variables defined in this
+            // MIR `SourceScope`, and it's not `inlined`, to avoid debuginfo bloat.
+            debug_context.scopes[scope] = parent_scope;
+            instantiated.insert(scope);
+            return;
+        }
     }
 
     let loc = cx.lookup_debug_loc(scope_data.span.lo());
@@ -145,7 +142,7 @@ fn make_mir_scope<'gcc, 'tcx>(
     let p_inlined_at = parent_scope.inlined_at;
     // TODO(tempdragon): dbg_scope: Add support for scope extension here.
     inlined_at.or(p_inlined_at);
-    
+
     debug_context.scopes[scope] = DebugScope {
         dbg_scope,
         inlined_at,
@@ -216,7 +213,6 @@ impl<'gcc, 'tcx> DebugInfoMethods<'tcx> for CodegenCx<'gcc, 'tcx> {
         llfn: RValue<'gcc>,
         mir: &mir::Body<'tcx>,
     ) -> Option<FunctionDebugContext<'tcx, Self::DIScope, Self::DILocation>> {
-        // TODO(antoyo)
         if self.sess().opts.debuginfo == DebugInfo::None {
             return None;
         }
@@ -278,33 +274,27 @@ impl<'gcc, 'tcx> DebugInfoMethods<'tcx> for CodegenCx<'gcc, 'tcx> {
         span: Span,
     ) -> Self::DILocation {
         let pos = span.lo();
-        let DebugLoc{file, line, col} = self.lookup_debug_loc(pos);
+        let DebugLoc { file, line, col } = self.lookup_debug_loc(pos);
         let loc = match &file.name {
             rustc_span::FileName::Real(name) => match name {
                 rustc_span::RealFileName::LocalPath(name) => {
                     if let Some(name) = name.to_str() {
-                        self.context
-                            .new_location(name, line as i32, col as i32)
-                    } else{
-                        Location::null()
-                    }
-                }
-                rustc_span::RealFileName::Remapped {
-                    local_path,
-                    virtual_name:_,
-                } => if let Some(name) = local_path.as_ref() {
-                    if let Some(name) = name.to_str(){
-                        self.context.new_location(
-                            name,
-                            line as i32,
-                            col as i32,
-                        )
+                        self.context.new_location(name, line as i32, col as i32)
                     } else {
                         Location::null()
                     }
-                } else{
-                    Location::null()
-                },
+                }
+                rustc_span::RealFileName::Remapped { local_path, virtual_name: _ } => {
+                    if let Some(name) = local_path.as_ref() {
+                        if let Some(name) = name.to_str() {
+                            self.context.new_location(name, line as i32, col as i32)
+                        } else {
+                            Location::null()
+                        }
+                    } else {
+                        Location::null()
+                    }
+                }
             },
             _ => Location::null(),
         };

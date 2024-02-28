@@ -21,10 +21,10 @@ use rustc_span::{sym, Span, Symbol};
 use rustc_target::abi::Align;
 
 use crate::builder::Builder;
-#[cfg(feature = "master")]
-use crate::context::CodegenCx;
 #[cfg(not(feature = "master"))]
 use crate::common::SignType;
+#[cfg(feature = "master")]
+use crate::context::CodegenCx;
 
 pub fn generic_simd_intrinsic<'a, 'gcc, 'tcx>(
     bx: &mut Builder<'a, 'gcc, 'tcx>,
@@ -176,7 +176,8 @@ pub fn generic_simd_intrinsic<'a, 'gcc, 'tcx>(
 
         #[cfg(not(feature = "master"))]
         let shuffled = {
-            let new_elements: Vec<_> = shuffle_indices.chunks_exact(elem_size_bytes as _)
+            let new_elements: Vec<_> = shuffle_indices
+                .chunks_exact(elem_size_bytes as _)
                 .flat_map(|x| x.iter().rev())
                 .map(|&i| {
                     let index = bx.context.new_rvalue_from_long(bx.u64_type, i as _);
@@ -188,7 +189,8 @@ pub fn generic_simd_intrinsic<'a, 'gcc, 'tcx>(
         };
         #[cfg(feature = "master")]
         let shuffled = {
-            let indices: Vec<_> = shuffle_indices.chunks_exact(elem_size_bytes as _)
+            let indices: Vec<_> = shuffle_indices
+                .chunks_exact(elem_size_bytes as _)
                 .flat_map(|x| x.iter().rev())
                 .map(|&i| bx.context.new_rvalue_from_int(bx.u8_type, i as _))
                 .collect();
@@ -202,12 +204,7 @@ pub fn generic_simd_intrinsic<'a, 'gcc, 'tcx>(
     if name == sym::simd_bswap || name == sym::simd_bitreverse {
         require!(
             bx.type_kind(bx.element_type(llret_ty)) == TypeKind::Integer,
-            InvalidMonomorphization::UnsupportedOperation {
-                span,
-                name,
-                in_ty,
-                in_elem,
-            }
+            InvalidMonomorphization::UnsupportedOperation { span, name, in_ty, in_elem }
         );
     }
 
@@ -245,23 +242,27 @@ pub fn generic_simd_intrinsic<'a, 'gcc, 'tcx>(
             .map(|x| bx.context.new_rvalue_from_int(bx.u8_type, x.reverse_bits() as _))
             .chain((16..byte_vector_type_size).map(|_| zero_byte))
             .collect();
-        let hi_nibble = bx.context.new_rvalue_from_vector(None, long_byte_vector_type, &hi_nibble_elements);
+        let hi_nibble =
+            bx.context.new_rvalue_from_vector(None, long_byte_vector_type, &hi_nibble_elements);
 
         let lo_nibble_elements: Vec<_> = (0u8..16)
             .map(|x| bx.context.new_rvalue_from_int(bx.u8_type, (x.reverse_bits() >> 4) as _))
             .chain((16..byte_vector_type_size).map(|_| zero_byte))
             .collect();
-        let lo_nibble = bx.context.new_rvalue_from_vector(None, long_byte_vector_type, &lo_nibble_elements);
+        let lo_nibble =
+            bx.context.new_rvalue_from_vector(None, long_byte_vector_type, &lo_nibble_elements);
 
         let mask = bx.context.new_rvalue_from_vector(
             None,
             long_byte_vector_type,
-            &vec![bx.context.new_rvalue_from_int(bx.u8_type, 0x0f); byte_vector_type_size as _]);
+            &vec![bx.context.new_rvalue_from_int(bx.u8_type, 0x0f); byte_vector_type_size as _],
+        );
 
         let four_vec = bx.context.new_rvalue_from_vector(
             None,
             long_byte_vector_type,
-            &vec![bx.context.new_rvalue_from_int(bx.u8_type, 4); byte_vector_type_size as _]);
+            &vec![bx.context.new_rvalue_from_int(bx.u8_type, 4); byte_vector_type_size as _],
+        );
 
         // Step 2: Byte-swap the input.
         let swapped = simd_bswap(bx, args[0].immediate());
@@ -294,7 +295,8 @@ pub fn generic_simd_intrinsic<'a, 'gcc, 'tcx>(
 
         // Step 5: Combine the results of the shuffle back together and cast back to the original type.
         let result = hi | lo;
-        let cast_ty = bx.context.new_vector_type(elem_type, byte_vector_type_size / (elem_size_bytes as u64));
+        let cast_ty =
+            bx.context.new_vector_type(elem_type, byte_vector_type_size / (elem_size_bytes as u64));
 
         // we might need to truncate if sizeof(v_type) < sizeof(cast_type)
         if type_size_bytes < byte_vector_type_size {
@@ -305,7 +307,7 @@ pub fn generic_simd_intrinsic<'a, 'gcc, 'tcx>(
                     bx.extract_element(cast_result, idx)
                 })
                 .collect();
-            return Ok(bx.context.new_rvalue_from_vector(None, v_type, &elems))
+            return Ok(bx.context.new_rvalue_from_vector(None, v_type, &elems));
         } else {
             // avoid the unnecessary truncation as an optimization.
             return Ok(bx.context.new_bitcast(None, result, v_type));
@@ -702,7 +704,8 @@ pub fn generic_simd_intrinsic<'a, 'gcc, 'tcx>(
         invert: bool,
     ) -> RValue<'gcc> {
         let vector_type = default.get_type();
-        let elem_type = vector_type.unqualified().dyncast_vector().expect("vector type").get_element_type();
+        let elem_type =
+            vector_type.unqualified().dyncast_vector().expect("vector type").get_element_type();
 
         let mut values = Vec::with_capacity(in_len as usize);
         for i in 0..in_len {
@@ -724,7 +727,8 @@ pub fn generic_simd_intrinsic<'a, 'gcc, 'tcx>(
             mask_types.push(bx.context.new_field(None, bx.i32_type, "m"));
             let mask_value = bx.context.new_vector_access(None, mask, index).to_rvalue();
             let mask_value_cast = bx.context.new_cast(None, mask_value, bx.i32_type);
-            let masked = bx.context.new_rvalue_from_int(bx.i32_type, in_len as i32) & mask_value_cast;
+            let masked =
+                bx.context.new_rvalue_from_int(bx.i32_type, in_len as i32) & mask_value_cast;
             let value = index + masked;
             mask_values.push(value);
         }
@@ -965,14 +969,8 @@ pub fn generic_simd_intrinsic<'a, 'gcc, 'tcx>(
             }
         }
 
-        let result = gather(
-            args[0].immediate(),
-            args[1].immediate(),
-            args[2].immediate(),
-            bx,
-            in_len,
-            true,
-        );
+        let result =
+            gather(args[0].immediate(), args[1].immediate(), args[2].immediate(), bx, in_len, true);
 
         let pointers = args[1].immediate();
 

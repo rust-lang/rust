@@ -5,9 +5,9 @@ use std::{
     process::Command,
 };
 
+use boml::Toml;
 use lang_tester::LangTester;
 use tempfile::TempDir;
-use boml::Toml;
 
 /// Controls the compile options (e.g., optimization level) used to compile
 /// test code.
@@ -21,8 +21,7 @@ pub fn main_inner(profile: Profile) {
     let tempdir = TempDir::new().expect("temp dir");
     let current_dir = current_dir().expect("current dir");
     let current_dir = current_dir.to_str().expect("current dir").to_string();
-    let toml = Toml::parse(include_str!("../config.toml"))
-        .expect("Failed to parse `config.toml`");
+    let toml = Toml::parse(include_str!("../config.toml")).expect("Failed to parse `config.toml`");
     let gcc_path = if let Ok(gcc_path) = toml.get_string("gcc-path") {
         PathBuf::from(gcc_path.to_string())
     } else {
@@ -42,12 +41,12 @@ pub fn main_inner(profile: Profile) {
         filename.extension().expect("extension").to_str().expect("to_str") == "rs"
     }
 
-    #[cfg(feature="master")]
+    #[cfg(feature = "master")]
     fn filter(filename: &Path) -> bool {
         rust_filter(filename)
     }
 
-    #[cfg(not(feature="master"))]
+    #[cfg(not(feature = "master"))]
     fn filter(filename: &Path) -> bool {
         if let Some(filename) = filename.to_str() {
             if filename.ends_with("gep.rs") {
@@ -61,13 +60,13 @@ pub fn main_inner(profile: Profile) {
         .test_dir("tests/run")
         .test_file_filter(filter)
         .test_extract(|source| {
-            let lines =
-                source.lines()
-                    .skip_while(|l| !l.starts_with("//"))
-                    .take_while(|l| l.starts_with("//"))
-                    .map(|l| &l[2..])
-                    .collect::<Vec<_>>()
-                    .join("\n");
+            let lines = source
+                .lines()
+                .skip_while(|l| !l.starts_with("//"))
+                .take_while(|l| l.starts_with("//"))
+                .map(|l| &l[2..])
+                .collect::<Vec<_>>()
+                .join("\n");
             Some(lines)
         })
         .test_cmds(move |path| {
@@ -78,10 +77,13 @@ pub fn main_inner(profile: Profile) {
             let mut compiler = Command::new("rustc");
             compiler.args(&[
                 &format!("-Zcodegen-backend={}/target/debug/librustc_codegen_gcc.so", current_dir),
-                "--sysroot", &format!("{}/build_sysroot/sysroot/", current_dir),
+                "--sysroot",
+                &format!("{}/build_sysroot/sysroot/", current_dir),
                 "-Zno-parallel-llvm",
-                "-C", "link-arg=-lc",
-                "-o", exe.to_str().expect("to_str"),
+                "-C",
+                "link-arg=-lc",
+                "-o",
+                exe.to_str().expect("to_str"),
                 path.to_str().expect("to_str"),
             ]);
 
@@ -105,10 +107,7 @@ pub fn main_inner(profile: Profile) {
             match profile {
                 Profile::Debug => {}
                 Profile::Release => {
-                    compiler.args(&[
-                        "-C", "opt-level=3",
-                        "-C", "lto=no",
-                    ]);
+                    compiler.args(&["-C", "opt-level=3", "-C", "lto=no"]);
                 }
             }
             // Test command 2: run `tempdir/x`.
@@ -130,18 +129,10 @@ pub fn main_inner(profile: Profile) {
                 runtime.args(&["chroot", vm_dir, "qemu-m68k-static"]);
                 runtime.arg(inside_vm_exe_path);
                 runtime.current_dir(vm_parent_dir);
-                vec![
-                    ("Compiler", compiler),
-                    ("Copy", copy),
-                    ("Run-time", runtime),
-                ]
-            }
-            else {
+                vec![("Compiler", compiler), ("Copy", copy), ("Run-time", runtime)]
+            } else {
                 let runtime = Command::new(exe);
-                vec![
-                    ("Compiler", compiler),
-                    ("Run-time", runtime),
-                ]
+                vec![("Compiler", compiler), ("Run-time", runtime)]
             }
         })
         .run();
