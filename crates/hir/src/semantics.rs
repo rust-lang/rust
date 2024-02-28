@@ -38,10 +38,11 @@ use crate::{
     db::HirDatabase,
     semantics::source_to_def::{ChildContainer, SourceToDefCache, SourceToDefCtx},
     source_analyzer::{resolve_hir_path, SourceAnalyzer},
-    Access, Adjust, Adjustment, AutoBorrow, BindingMode, BuiltinAttr, Callable, ConstParam, Crate,
-    DeriveHelper, Field, Function, HasSource, HirFileId, Impl, InFile, Label, LifetimeParam, Local,
-    Macro, Module, ModuleDef, Name, OverloadedDeref, Path, ScopeDef, Struct, ToolModule, Trait,
-    TupleField, Type, TypeAlias, TypeParam, VariantDef,
+    Access, Adjust, Adjustment, Adt, AutoBorrow, BindingMode, BuiltinAttr, Callable, Const,
+    ConstParam, Crate, DeriveHelper, Enum, Field, Function, HasSource, HirFileId, Impl, InFile,
+    Label, LifetimeParam, Local, Macro, Module, ModuleDef, Name, OverloadedDeref, Path, ScopeDef,
+    Static, Struct, ToolModule, Trait, TraitAlias, TupleField, Type, TypeAlias, TypeParam, Union,
+    Variant, VariantDef,
 };
 
 pub enum DescendPreference {
@@ -231,12 +232,60 @@ impl<'db, DB: HirDatabase> Semantics<'db, DB> {
         self.imp.file_to_module_defs(file)
     }
 
-    pub fn to_struct_def(&self, s: &ast::Struct) -> Option<Struct> {
-        self.imp.to_def(s).map(Struct::from)
+    pub fn to_adt_def(&self, a: &ast::Adt) -> Option<Adt> {
+        self.imp.to_def(a).map(Adt::from)
+    }
+
+    pub fn to_const_def(&self, c: &ast::Const) -> Option<Const> {
+        self.imp.to_def(c).map(Const::from)
+    }
+
+    pub fn to_enum_def(&self, e: &ast::Enum) -> Option<Enum> {
+        self.imp.to_def(e).map(Enum::from)
+    }
+
+    pub fn to_enum_variant_def(&self, v: &ast::Variant) -> Option<Variant> {
+        self.imp.to_def(v).map(Variant::from)
+    }
+
+    pub fn to_fn_def(&self, f: &ast::Fn) -> Option<Function> {
+        self.imp.to_def(f).map(Function::from)
     }
 
     pub fn to_impl_def(&self, i: &ast::Impl) -> Option<Impl> {
         self.imp.to_def(i).map(Impl::from)
+    }
+
+    pub fn to_macro_def(&self, m: &ast::Macro) -> Option<Macro> {
+        self.imp.to_def(m).map(Macro::from)
+    }
+
+    pub fn to_module_def(&self, m: &ast::Module) -> Option<Module> {
+        self.imp.to_def(m).map(Module::from)
+    }
+
+    pub fn to_static_def(&self, s: &ast::Static) -> Option<Static> {
+        self.imp.to_def(s).map(Static::from)
+    }
+
+    pub fn to_struct_def(&self, s: &ast::Struct) -> Option<Struct> {
+        self.imp.to_def(s).map(Struct::from)
+    }
+
+    pub fn to_trait_alias_def(&self, t: &ast::TraitAlias) -> Option<TraitAlias> {
+        self.imp.to_def(t).map(TraitAlias::from)
+    }
+
+    pub fn to_trait_def(&self, t: &ast::Trait) -> Option<Trait> {
+        self.imp.to_def(t).map(Trait::from)
+    }
+
+    pub fn to_type_alias_def(&self, t: &ast::TypeAlias) -> Option<TypeAlias> {
+        self.imp.to_def(t).map(TypeAlias::from)
+    }
+
+    pub fn to_union_def(&self, u: &ast::Union) -> Option<Union> {
+        self.imp.to_def(u).map(Union::from)
     }
 }
 
