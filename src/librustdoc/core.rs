@@ -20,6 +20,7 @@ use rustc_span::symbol::sym;
 use rustc_span::{source_map, Span};
 
 use std::cell::RefCell;
+use std::io;
 use std::mem;
 use std::rc::Rc;
 use std::sync::LazyLock;
@@ -155,7 +156,8 @@ pub(crate) fn new_dcx(
                 Lrc::new(source_map::SourceMap::new(source_map::FilePathMapping::empty()))
             });
             Box::new(
-                JsonEmitter::stderr(
+                JsonEmitter::new(
+                    Box::new(io::BufWriter::new(io::stderr())),
                     None,
                     source_map,
                     None,
