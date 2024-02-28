@@ -162,7 +162,7 @@ enum EmitTyped<'a> {
     Diagnostic(Diagnostic),
     Artifact(ArtifactNotification<'a>),
     FutureIncompat(FutureIncompatReport<'a>),
-    UnusedExtern(UnusedExterns<'a, 'a, 'a>),
+    UnusedExtern(UnusedExterns<'a>),
 }
 
 impl Translate for JsonEmitter {
@@ -332,11 +332,11 @@ struct FutureIncompatReport<'a> {
 // We could unify this struct the one in rustdoc but they have different
 // ownership semantics, so doing so would create wasteful allocations.
 #[derive(Serialize)]
-struct UnusedExterns<'a, 'b, 'c> {
+struct UnusedExterns<'a> {
     /// The severity level of the unused dependencies lint
     lint_level: &'a str,
     /// List of unused externs by their names.
-    unused_extern_names: &'b [&'c str],
+    unused_extern_names: &'a [&'a str],
 }
 
 impl Diagnostic {
