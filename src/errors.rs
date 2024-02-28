@@ -116,7 +116,7 @@ impl<G: EmissionGuarantee> IntoDiagnostic<'_, G> for TargetFeatureDisableOrEnabl
         let mut diag = DiagnosticBuilder::new(
             dcx,
             level,
-            fluent::codegen_gcc_target_feature_disable_or_enable
+            fluent::codegen_gcc_target_feature_disable_or_enable,
         );
         if let Some(span) = self.span {
             diag.span(span);

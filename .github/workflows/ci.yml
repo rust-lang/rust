@@ -49,6 +49,9 @@ jobs:
       # `llvm-14-tools` is needed to install the `FileCheck` binary which is used for asm tests.
       run: sudo apt-get install ninja-build ripgrep llvm-14-tools
 
+    - name: Install rustfmt
+      run: rustup component add rustfmt
+
     - name: Download artifact
       run: curl -LO https://github.com/antoyo/gcc/releases/latest/download/${{ matrix.libgccjit_version.gcc }}
 
@@ -91,6 +94,9 @@ jobs:
     - name: Run tests
       run: |
         ./y.sh test --release --clean --build-sysroot ${{ matrix.commands }}
+
+    - name: Check formatting
+      run: cargo fmt -- --check
 
   duplicates:
     runs-on: ubuntu-latest

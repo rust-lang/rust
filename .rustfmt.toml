@@ -1,1 +1,1 @@
-ignore = ["/src", "/tests"]
+use_small_heuristics = "Max"
