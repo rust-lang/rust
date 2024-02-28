@@ -440,7 +440,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                                 )
                             })
                             .unwrap_or_default();
-                        let file_note = file.map(|file| format!(
+                        let file_note = file.as_ref().map(|file| format!(
                             "the full trait has been written to '{}'",
                             file.display(),
                         ));
