@@ -303,6 +303,14 @@ impl SourceAnalyzer {
         }
     }
 
+    pub(crate) fn resolve_expr_as_callable(
+        &self,
+        db: &dyn HirDatabase,
+        call: &ast::Expr,
+    ) -> Option<Callable> {
+        self.type_of_expr(db, &call.clone())?.0.as_callable(db)
+    }
+
     pub(crate) fn resolve_field(
         &self,
         db: &dyn HirDatabase,
