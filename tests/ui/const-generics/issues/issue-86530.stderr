@@ -1,4 +1,4 @@
-error[E0277]: the trait bound `&str: X` is not satisfied
+error[E0277]: the trait `X` is not implemented for `&str`
   --> $DIR/issue-86530.rs:16:7
    |
 LL |     z(" ");

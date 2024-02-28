@@ -1,4 +1,4 @@
-error[E0277]: the trait bound `&T: std::io::Read` is not satisfied
+error[E0277]: the trait `std::io::Read` is not implemented for `&T`
   --> $DIR/suggest-change-mut.rs:12:48
    |
 LL |         let mut stream_reader = BufReader::new(&stream);

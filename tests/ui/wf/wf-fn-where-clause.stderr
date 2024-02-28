@@ -1,4 +1,4 @@
-error[E0277]: the trait bound `U: Copy` is not satisfied
+error[E0277]: the trait `Copy` is not implemented for `U`
   --> $DIR/wf-fn-where-clause.rs:8:24
    |
 LL | fn foo<T,U>() where T: ExtraCopy<U>

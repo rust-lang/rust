@@ -8,7 +8,7 @@ type FooFn<B> = impl FnOnce();
 
 fn foo<B: Bar>(bar: B) -> FooFn<B> {
     move || { bar.bar() }
-    //~^ ERROR the trait bound `B: Bar` is not satisfied
+    //~^ ERROR trait `Bar` is not implemented for `B`
 }
 
 fn main() {

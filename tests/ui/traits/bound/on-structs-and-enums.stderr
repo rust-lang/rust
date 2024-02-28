@@ -1,4 +1,4 @@
-error[E0277]: the trait bound `T: Trait` is not satisfied
+error[E0277]: the trait `Trait` is not implemented for `T`
   --> $DIR/on-structs-and-enums.rs:13:9
    |
 LL | impl<T> Foo<T> {
@@ -14,7 +14,7 @@ help: consider restricting type parameter `T`
 LL | impl<T: Trait> Foo<T> {
    |       +++++++
 
-error[E0277]: the trait bound `isize: Trait` is not satisfied
+error[E0277]: the trait `Trait` is not implemented for `isize`
   --> $DIR/on-structs-and-enums.rs:19:8
    |
 LL |     a: Foo<isize>,
@@ -31,7 +31,7 @@ note: required by a bound in `Foo`
 LL | struct Foo<T:Trait> {
    |              ^^^^^ required by this bound in `Foo`
 
-error[E0277]: the trait bound `usize: Trait` is not satisfied
+error[E0277]: the trait `Trait` is not implemented for `usize`
   --> $DIR/on-structs-and-enums.rs:23:10
    |
 LL |     Quux(Bar<usize>),
@@ -48,7 +48,7 @@ note: required by a bound in `Bar`
 LL | enum Bar<T:Trait> {
    |            ^^^^^ required by this bound in `Bar`
 
-error[E0277]: the trait bound `U: Trait` is not satisfied
+error[E0277]: the trait `Trait` is not implemented for `U`
   --> $DIR/on-structs-and-enums.rs:27:8
    |
 LL |     b: Foo<U>,
@@ -64,7 +64,7 @@ help: consider restricting type parameter `U`
 LL | struct Badness<U: Trait> {
    |                 +++++++
 
-error[E0277]: the trait bound `V: Trait` is not satisfied
+error[E0277]: the trait `Trait` is not implemented for `V`
   --> $DIR/on-structs-and-enums.rs:31:21
    |
 LL |     EvenMoreBadness(Bar<V>),
@@ -80,7 +80,7 @@ help: consider restricting type parameter `V`
 LL | enum MoreBadness<V: Trait> {
    |                   +++++++
 
-error[E0277]: the trait bound `i32: Trait` is not satisfied
+error[E0277]: the trait `Trait` is not implemented for `i32`
   --> $DIR/on-structs-and-enums.rs:35:5
    |
 LL |     Foo<i32>,
@@ -97,7 +97,7 @@ note: required by a bound in `Foo`
 LL | struct Foo<T:Trait> {
    |              ^^^^^ required by this bound in `Foo`
 
-error[E0277]: the trait bound `u8: Trait` is not satisfied
+error[E0277]: the trait `Trait` is not implemented for `u8`
   --> $DIR/on-structs-and-enums.rs:39:29
    |
 LL |     DictionaryLike { field: Bar<u8> },

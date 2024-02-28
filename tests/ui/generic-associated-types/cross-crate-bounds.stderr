@@ -1,4 +1,4 @@
-error[E0277]: the trait bound `(): AsRef<()>` is not satisfied
+error[E0277]: the trait `AsRef<()>` is not implemented for `()`
   --> $DIR/cross-crate-bounds.rs:15:16
    |
 LL |     type Bar = ();

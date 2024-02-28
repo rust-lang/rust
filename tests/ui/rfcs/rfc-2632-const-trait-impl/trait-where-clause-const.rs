@@ -19,9 +19,9 @@ trait Foo {
 const fn test1<T: ~const Foo + Bar>() {
     T::a();
     T::b();
-    //FIXME ~^ ERROR the trait bound
+    //FIXME ~^ ERROR the trait
     T::c::<T>();
-    //FIXME ~^ ERROR the trait bound
+    //FIXME ~^ ERROR the trait
 }
 
 const fn test2<T: ~const Foo + ~const Bar>() {

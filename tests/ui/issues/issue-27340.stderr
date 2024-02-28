@@ -9,7 +9,7 @@ LL | struct Bar(Foo);
    |
    = note: this error originates in the derive macro `Copy` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error[E0277]: the trait bound `Foo: Clone` is not satisfied
+error[E0277]: the trait `Clone` is not implemented for `Foo`
   --> $DIR/issue-27340.rs:4:12
    |
 LL | #[derive(Copy, Clone)]

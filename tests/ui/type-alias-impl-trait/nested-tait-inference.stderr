@@ -1,4 +1,4 @@
-error[E0277]: the trait bound `(): Foo<FooX>` is not satisfied
+error[E0277]: the trait `Foo<FooX>` is not implemented for `()`
   --> $DIR/nested-tait-inference.rs:12:13
    |
 LL | fn foo() -> impl Foo<FooX> {

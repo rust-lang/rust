@@ -18,5 +18,5 @@ fn main() {
 #[cfg(fails)]
 fn main() {
     needs::<1>();
-    //[fails]~^ ERROR the trait bound `(): Trait<1>` is not satisfied
+    //[fails]~^ ERROR trait `Trait<1>` is not implemented for `()`
 }

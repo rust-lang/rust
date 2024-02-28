@@ -19,7 +19,7 @@ impl<'a> Trait<'a> for () {
 fn fun2(t: &mut Stuff) -> () {
     let Stuff { inner, .. } = t;
     Trait::do_stuff({ fun(&mut *inner) });
-    //~^ ERROR the trait bound `*mut (): Trait<'_>` is not satisfied
+    //~^ ERROR trait `Trait<'_>` is not implemented for `*mut ()`
 }
 
 fn main() {}

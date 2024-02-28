@@ -16,7 +16,7 @@ where
 fn coerce_lifetime2() {
     <i32 as RefFoo<i32>>::ref_foo(unknown);
     //~^ ERROR cannot find value `unknown` in this scope
-    //~| ERROR the trait bound `for<'a> &'a mut Vec<&'a u32>: Foo<'static, i32>` is not satisfied
+    //~| ERROR trait `for<'a> Foo<'static, i32>` is not implemented for `&'a mut Vec<&'a u32>`
 }
 
 fn main() {}

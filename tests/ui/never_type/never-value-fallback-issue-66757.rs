@@ -25,7 +25,7 @@ impl From<!> for E {
 #[allow(unused_must_use)]
 fn foo(never: !) {
     <E as From<!>>::from(never);  // Ok
-    <E as From<_>>::from(never);  //[nofallback]~ ERROR trait bound `E: From<()>` is not satisfied
+    <E as From<_>>::from(never);  //[nofallback]~ ERROR trait `From<()>` is not implemented for `E`
 }
 
 fn main() { }

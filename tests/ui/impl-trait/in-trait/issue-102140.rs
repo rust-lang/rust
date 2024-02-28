@@ -18,8 +18,8 @@ impl MyTrait for Outer {
 impl dyn MyTrait {
     fn other(&self) -> impl Marker {
         MyTrait::foo(&self)
-        //~^ ERROR the trait bound `&dyn MyTrait: MyTrait` is not satisfied
-        //~| ERROR the trait bound `&dyn MyTrait: MyTrait` is not satisfied
+        //~^ ERROR trait `MyTrait` is not implemented for `&dyn MyTrait`
+        //~| ERROR trait `MyTrait` is not implemented for `&dyn MyTrait`
     }
 }
 

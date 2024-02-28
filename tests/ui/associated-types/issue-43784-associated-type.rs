@@ -11,7 +11,7 @@ impl<T> Partial<T> for T::Assoc where
 }
 
 impl<T> Complete for T {
-    type Assoc = T; //~ ERROR the trait bound `T: Copy` is not satisfied
+    type Assoc = T; //~ ERROR trait `Copy` is not implemented for `T`
 }
 
 fn main() {}

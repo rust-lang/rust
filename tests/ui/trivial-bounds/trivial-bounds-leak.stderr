@@ -20,7 +20,7 @@ note: `Foo` defines an item `test`, perhaps you need to implement it
 LL | pub trait Foo {
    | ^^^^^^^^^^^^^
 
-error[E0277]: the trait bound `i32: Foo` is not satisfied
+error[E0277]: the trait `Foo` is not implemented for `i32`
   --> $DIR/trivial-bounds-leak.rs:25:15
    |
 LL |     Foo::test(&4i32);
@@ -34,7 +34,7 @@ help: this trait has no implementations, consider adding one
 LL | pub trait Foo {
    | ^^^^^^^^^^^^^
 
-error[E0277]: the trait bound `i32: Foo` is not satisfied
+error[E0277]: the trait `Foo` is not implemented for `i32`
   --> $DIR/trivial-bounds-leak.rs:26:22
    |
 LL |     generic_function(5i32);

@@ -1,4 +1,4 @@
-error[E0277]: the trait bound `T: TraitFoo` is not satisfied
+error[E0277]: the trait `TraitFoo` is not implemented for `T`
   --> $DIR/copy-impl-cannot-normalize.rs:22:18
    |
 LL | impl<T> Copy for Foo<T> {}

@@ -17,16 +17,16 @@ trait TimerContext {
 impl<C> TimerContext for C
 where
     C: StackContext,
-    //~^ ERROR: is not satisfied [E0277]
+    //~^ ERROR: the trait
 {
     type Handler = Ctx<C::Dispatcher>;
-    //~^ ERROR: is not satisfied [E0277]
+    //~^ ERROR: the trait
 }
 
 struct EthernetWorker<C>(C)
 where
     Ctx<()>: for<'a> BufferUdpStateContext<&'a ()>;
 impl<C> EthernetWorker<C> {}
-//~^ ERROR: is not satisfied [E0277]
+//~^ ERROR: the trait
 
 fn main() {}

@@ -1,4 +1,4 @@
-error[E0277]: the trait bound `Box<dyn Foo>: Foo` is not satisfied
+error[E0277]: the trait `Foo` is not implemented for `Box<dyn Foo>`
   --> $DIR/object-does-not-impl-trait.rs:6:44
    |
 LL | fn take_object(f: Box<dyn Foo>) { take_foo(f); }

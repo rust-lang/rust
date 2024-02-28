@@ -49,7 +49,7 @@ error[E0131]: `main` function is not allowed to have generic parameters
 LL | fn main<A: TraitWAssocConst<A=32>>() {
    |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^ `main` cannot have generic parameters
 
-error[E0277]: the trait bound `Demo: TraitWAssocConst` is not satisfied
+error[E0277]: the trait `TraitWAssocConst` is not implemented for `Demo`
   --> $DIR/issue-105330.rs:12:11
    |
 LL |     foo::<Demo>()();
@@ -86,7 +86,7 @@ LL |     foo::<Demo>()();
    |     |
    |     call expression requires function
 
-error[E0277]: the trait bound `Demo: TraitWAssocConst` is not satisfied
+error[E0277]: the trait `TraitWAssocConst` is not implemented for `Demo`
   --> $DIR/issue-105330.rs:21:11
    |
 LL |     foo::<Demo>();

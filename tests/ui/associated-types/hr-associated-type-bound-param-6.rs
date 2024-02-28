@@ -10,12 +10,12 @@ where
 }
 
 impl<S, T> X<'_, T> for (S,) {
-    //~^ ERROR the trait bound `for<'b> T: X<'b, T>` is not satisfied
+    //~^ ERROR trait `for<'b> X<'b, T>` is not implemented for `T`
     type U = str;
 }
 
 pub fn main() {
     <(i32,) as X<i32>>::f("abc");
-    //~^ ERROR the trait bound `for<'b> i32: X<'b, i32>` is not satisfied
-    //~| ERROR the trait bound `i32: X<'_, i32>` is not satisfied
+    //~^ ERROR trait `X<'_, i32>` is not implemented for `i32`
+    //~| ERROR trait `for<'b> X<'b, i32>` is not implemented for `i32`
 }

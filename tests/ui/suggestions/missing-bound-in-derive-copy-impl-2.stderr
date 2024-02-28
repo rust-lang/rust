@@ -1,4 +1,4 @@
-error[E0277]: the trait bound `K: Copy` is not satisfied
+error[E0277]: the trait `Copy` is not implemented for `K`
   --> $DIR/missing-bound-in-derive-copy-impl-2.rs:12:14
    |
 LL |     pub loc: Vector2<K>,
@@ -14,7 +14,7 @@ help: consider further restricting this bound
 LL | pub struct AABB<K: Debug + std::marker::Copy> {
    |                          +++++++++++++++++++
 
-error[E0277]: the trait bound `K: Copy` is not satisfied
+error[E0277]: the trait `Copy` is not implemented for `K`
   --> $DIR/missing-bound-in-derive-copy-impl-2.rs:12:5
    |
 LL | #[derive(Debug, Copy, Clone)]
@@ -37,7 +37,7 @@ help: consider further restricting this bound
 LL | pub struct AABB<K: Debug + std::marker::Copy> {
    |                          +++++++++++++++++++
 
-error[E0277]: the trait bound `K: Copy` is not satisfied
+error[E0277]: the trait `Copy` is not implemented for `K`
   --> $DIR/missing-bound-in-derive-copy-impl-2.rs:12:5
    |
 LL | #[derive(Debug, Copy, Clone)]
@@ -59,7 +59,7 @@ help: consider further restricting this bound
 LL | pub struct AABB<K: Debug + std::marker::Copy> {
    |                          +++++++++++++++++++
 
-error[E0277]: the trait bound `K: Copy` is not satisfied
+error[E0277]: the trait `Copy` is not implemented for `K`
   --> $DIR/missing-bound-in-derive-copy-impl-2.rs:15:5
    |
 LL | #[derive(Debug, Copy, Clone)]

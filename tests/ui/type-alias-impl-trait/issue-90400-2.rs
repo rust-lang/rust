@@ -22,7 +22,7 @@ impl Foo for MyFoo {
     type FooFn<B> = impl Baz;
 
     fn foo<B: Bar>(&self, bar: B) -> Self::FooFn<B> {
-        MyBaz(bar) //~ ERROR: the trait bound `B: Bar` is not satisfied
+        MyBaz(bar) //~ ERROR trait `Bar` is not implemented for `B`
     }
 }
 

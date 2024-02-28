@@ -7,7 +7,7 @@ pub fn main() {
 
     // Bool => does not implement iterator.
     for i in false..true {}
-    //~^ ERROR `bool: Step` is not satisfied
+    //~^ ERROR trait `Step` is not implemented for `bool`
 
     // Unsized type.
     let arr: &[_] = &[1, 2, 3];

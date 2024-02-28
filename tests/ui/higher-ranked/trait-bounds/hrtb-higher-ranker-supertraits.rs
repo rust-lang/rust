@@ -15,7 +15,7 @@ fn want_foo_for_some_tcx<'x,F>(f: &'x F)
     where F : Foo<'x>
 {
     want_foo_for_some_tcx(f);
-    want_foo_for_any_tcx(f); //~ ERROR not satisfied
+    want_foo_for_any_tcx(f); //~ ERROR is not implemented
 }
 
 fn want_foo_for_any_tcx<F>(f: &F) //~ WARN cannot return without recursing
@@ -32,7 +32,7 @@ fn want_bar_for_some_ccx<'x,B>(b: &B)
     want_foo_for_any_tcx(b);
 
     want_bar_for_some_ccx(b);
-    want_bar_for_any_ccx(b); //~ ERROR not satisfied
+    want_bar_for_any_ccx(b); //~ ERROR is not implemented
 }
 
 fn want_bar_for_any_ccx<B>(b: &B) //~ WARN cannot return without recursing

@@ -1,4 +1,4 @@
-error[E0277]: the trait bound `T: Clone` is not satisfied
+error[E0277]: the trait `Clone` is not implemented for `T`
   --> $DIR/bounds-are-checked-2.rs:9:5
    |
 LL |     t

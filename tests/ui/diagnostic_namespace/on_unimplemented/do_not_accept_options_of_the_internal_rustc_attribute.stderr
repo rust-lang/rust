@@ -175,7 +175,7 @@ LL | #[diagnostic::on_unimplemented = "Message"]
    = help: only `message`, `note` and `label` are allowed as options
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
-error[E0277]: the trait bound `(): Bar` is not satisfied
+error[E0277]: the trait `Bar` is not implemented for `()`
   --> $DIR/do_not_accept_options_of_the_internal_rustc_attribute.rs:63:15
    |
 LL |     takes_bar(());

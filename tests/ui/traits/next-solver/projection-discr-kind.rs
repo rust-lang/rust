@@ -12,7 +12,7 @@ fn needs_bar(_: impl Bar) {}
 
 fn foo<T: Foo>(x: T::Assoc) {
     needs_bar(std::mem::discriminant(&x));
-    //~^ ERROR the trait bound `Discriminant<<T as Foo>::Assoc>: Bar` is not satisfied
+    //~^ ERROR trait `Bar` is not implemented for `Discriminant<<T as Foo>::Assoc>`
 }
 
 fn main() {}

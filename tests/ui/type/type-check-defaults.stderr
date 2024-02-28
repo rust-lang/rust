@@ -24,25 +24,25 @@ note: required by a bound in `Foo`
 LL | struct Foo<T, U: FromIterator<T>>(T, U);
    |                  ^^^^^^^^^^^^^^^ required by this bound in `Foo`
 
-error[E0277]: the trait bound `String: Copy` is not satisfied
+error[E0277]: the trait `Copy` is not implemented for `String`
   --> $DIR/type-check-defaults.rs:11:17
    |
 LL | struct Bounds<T:Copy=String>(T);
    |                 ^^^^ the trait `Copy` is not implemented for `String`
 
-error[E0277]: the trait bound `String: Copy` is not satisfied
+error[E0277]: the trait `Copy` is not implemented for `String`
   --> $DIR/type-check-defaults.rs:14:42
    |
 LL | struct WhereClause<T=String>(T) where T: Copy;
    |                                          ^^^^ the trait `Copy` is not implemented for `String`
 
-error[E0277]: the trait bound `String: Copy` is not satisfied
+error[E0277]: the trait `Copy` is not implemented for `String`
   --> $DIR/type-check-defaults.rs:17:20
    |
 LL | trait TraitBound<T:Copy=String> {}
    |                    ^^^^ the trait `Copy` is not implemented for `String`
 
-error[E0277]: the trait bound `T: Copy` is not satisfied
+error[E0277]: the trait `Copy` is not implemented for `T`
   --> $DIR/type-check-defaults.rs:21:25
    |
 LL | trait Base<T = String>: Super<T> { }

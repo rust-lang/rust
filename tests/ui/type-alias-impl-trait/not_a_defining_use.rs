@@ -23,7 +23,7 @@ impl Bar for u32 {
 
 fn four<T: Debug, U: Bar>(t: T) -> Two<T, U> {
     (t, <U as Bar>::FOO)
-    //~^ ERROR `U: Bar` is not satisfied
+    //~^ ERROR trait `Bar` is not implemented for `U`
     //~| ERROR `T` doesn't implement `Debug`
 }
 

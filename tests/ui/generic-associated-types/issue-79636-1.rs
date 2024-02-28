@@ -19,5 +19,5 @@ where
 
 fn main() {
     assert_eq!(join(Some(Some(true))), Some(true));
-    //~^ ERROR: `Option<Option<bool>>: Monad` is not satisfied
+    //~^ ERROR trait `Monad` is not implemented for `Option<Option<bool>>`
 }

@@ -1,4 +1,4 @@
-error[E0277]: the trait bound `MultipleCandidates: Trait` is not satisfied
+error[E0277]: the trait `Trait` is not implemented for `MultipleCandidates`
   --> $DIR/inductive-cycle-but-err.rs:46:19
    |
 LL |     impls_trait::<MultipleCandidates>();

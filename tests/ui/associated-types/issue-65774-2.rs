@@ -8,7 +8,7 @@ struct T;
 
 trait MPU {
     type MpuConfig: MyDisplay = T;
-    //~^ ERROR the trait bound `T: MyDisplay` is not satisfied
+    //~^ ERROR trait `MyDisplay` is not implemented for `T`
 }
 
 struct S;
@@ -37,7 +37,7 @@ impl ProcessType for Process {
         // // `Unimplemented` selecting `Binder(<T as MyDisplay>)` during codegen
         //
         writer.my_write(valref)
-        //~^ ERROR the trait bound `T: MyDisplay` is not satisfied
+        //~^ ERROR trait `MyDisplay` is not implemented for `T`
 
         // This one causes the ICE:
         // FulfillmentError(Obligation(predicate=Binder(TraitPredicate(<T as MyDisplay>)),

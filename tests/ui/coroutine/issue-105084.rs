@@ -29,7 +29,7 @@ fn main() {
     // As it is not taken into account for trait computation,
     // the coroutine is `Copy`.
     let mut h = copy(g);
-    //~^ ERROR the trait bound `Box<(i32, ())>: Copy` is not satisfied in
+    //~^ ERROR trait `Copy` is not implemented for `Box<(i32, ())>`
 
     // We now have 2 boxes with the same backing allocation:
     // one inside `g` and one inside `h`.

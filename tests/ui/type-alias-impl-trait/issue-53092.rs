@@ -11,7 +11,7 @@ union Moo {
 const CONST_BUG: Bug<u8, ()> = unsafe { Moo { y: () }.x };
 
 fn make_bug<T, U: From<T>>() -> Bug<T, U> {
-    |x| x.into() //~ ERROR the trait bound `U: From<T>` is not satisfied
+    |x| x.into() //~ ERROR trait `From<T>` is not implemented for `U`
 }
 
 fn main() {

@@ -1,4 +1,4 @@
-error[E0277]: the trait bound `cross_crate::NonConst: ~const cross_crate::MyTrait` is not satisfied
+error[E0277]: the trait `~const cross_crate::MyTrait` is not implemented for `cross_crate::NonConst`
   --> $DIR/cross-crate.rs:17:14
    |
 LL |     NonConst.func();

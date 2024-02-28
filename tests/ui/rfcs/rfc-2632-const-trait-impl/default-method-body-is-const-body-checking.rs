@@ -13,7 +13,7 @@ const fn foo<T>() where T: ~const Tr {}
 pub trait Foo {
     fn foo() {
         foo::<()>();
-        //FIXME ~^ ERROR the trait bound `(): Tr` is not satisfied
+        //FIXME ~^ ERROR trait `Tr` is not implemented for `()`
     }
 }
 

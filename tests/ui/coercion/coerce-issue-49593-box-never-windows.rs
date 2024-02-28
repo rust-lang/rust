@@ -16,12 +16,12 @@ fn raw_ptr_box<T>(t: T) -> *mut T {
 
 fn foo(x: !) -> Box<dyn Error> {
     /* *mut $0 is coerced to Box<dyn Error> here */ Box::<_ /* ! */>::new(x)
-    //[nofallback]~^ ERROR trait bound `(): std::error::Error` is not satisfied
+    //[nofallback]~^ ERROR trait `std::error::Error` is not implemented for `()`
 }
 
 fn foo_raw_ptr(x: !) -> *mut dyn Error {
     /* *mut $0 is coerced to *mut Error here */ raw_ptr_box::<_ /* ! */>(x)
-    //[nofallback]~^ ERROR trait bound `(): std::error::Error` is not satisfied
+    //[nofallback]~^ ERROR trait `std::error::Error` is not implemented for `()`
 }
 
 fn no_coercion(d: *mut dyn Error) -> *mut dyn Error {

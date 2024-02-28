@@ -24,14 +24,14 @@ fn test<'a,T,U:Copy>(_: &'a isize) {
     assert_copy::<&'a [isize]>();
 
     // ...unless they are mutable
-    assert_copy::<&'static mut isize>(); //~ ERROR : Copy` is not satisfied
-    assert_copy::<&'a mut isize>();  //~ ERROR : Copy` is not satisfied
+    assert_copy::<&'static mut isize>(); //~ ERROR the trait `Copy` is not implemented for
+    assert_copy::<&'a mut isize>();  //~ ERROR the trait `Copy` is not implemented for
 
     // boxes are not ok
-    assert_copy::<Box<isize>>();   //~ ERROR : Copy` is not satisfied
-    assert_copy::<String>();   //~ ERROR : Copy` is not satisfied
-    assert_copy::<Vec<isize> >(); //~ ERROR : Copy` is not satisfied
-    assert_copy::<Box<&'a mut isize>>(); //~ ERROR : Copy` is not satisfied
+    assert_copy::<Box<isize>>();   //~ ERROR the trait `Copy` is not implemented for
+    assert_copy::<String>();   //~ ERROR the trait `Copy` is not implemented for
+    assert_copy::<Vec<isize> >(); //~ ERROR the trait `Copy` is not implemented for
+    assert_copy::<Box<&'a mut isize>>(); //~ ERROR the trait `Copy` is not implemented for
 
     // borrowed object types are generally ok
     assert_copy::<&'a dyn Dummy>();
@@ -39,11 +39,11 @@ fn test<'a,T,U:Copy>(_: &'a isize) {
     assert_copy::<&'static (dyn Dummy + Send)>();
 
     // owned object types are not ok
-    assert_copy::<Box<dyn Dummy>>(); //~ ERROR : Copy` is not satisfied
-    assert_copy::<Box<dyn Dummy + Send>>(); //~ ERROR : Copy` is not satisfied
+    assert_copy::<Box<dyn Dummy>>(); //~ ERROR the trait `Copy` is not implemented for
+    assert_copy::<Box<dyn Dummy + Send>>(); //~ ERROR the trait `Copy` is not implemented for
 
     // mutable object types are not ok
-    assert_copy::<&'a mut (dyn Dummy + Send)>();  //~ ERROR : Copy` is not satisfied
+    assert_copy::<&'a mut (dyn Dummy + Send)>();  //~ ERROR the trait `Copy` is not implemented for
 
     // unsafe ptrs are ok
     assert_copy::<*const isize>();
@@ -61,10 +61,10 @@ fn test<'a,T,U:Copy>(_: &'a isize) {
     assert_copy::<MyStruct>();
 
     // structs containing non-POD are not ok
-    assert_copy::<MyNoncopyStruct>(); //~ ERROR : Copy` is not satisfied
+    assert_copy::<MyNoncopyStruct>(); //~ ERROR the trait `Copy` is not implemented for
 
     // ref counted types are not ok
-    assert_copy::<Rc<isize>>();   //~ ERROR : Copy` is not satisfied
+    assert_copy::<Rc<isize>>();   //~ ERROR the trait `Copy` is not implemented for
 }
 
 pub fn main() {

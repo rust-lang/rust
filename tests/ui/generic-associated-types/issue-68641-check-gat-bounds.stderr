@@ -1,4 +1,4 @@
-error[E0277]: the trait bound `T: Copy` is not satisfied
+error[E0277]: the trait `Copy` is not implemented for `T`
   --> $DIR/issue-68641-check-gat-bounds.rs:12:21
    |
 LL |     type Item<'a> = T;

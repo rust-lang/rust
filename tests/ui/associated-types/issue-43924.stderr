@@ -1,4 +1,4 @@
-error[E0277]: the trait bound `(dyn ToString + 'static): Default` is not satisfied
+error[E0277]: the trait `Default` is not implemented for `(dyn ToString + 'static)`
   --> $DIR/issue-43924.rs:7:45
    |
 LL |     type Out: Default + ToString + ?Sized = dyn ToString;
@@ -11,7 +11,7 @@ LL |     type Out: Default + ToString + ?Sized = dyn ToString;
    |               ^^^^^^^ required by this bound in `Foo::Out`
 
 error[E0599]: no function or associated item named `default` found for trait object `(dyn ToString + 'static)` in the current scope
-  --> $DIR/issue-43924.rs:14:39
+  --> $DIR/issue-43924.rs:15:39
    |
 LL |     assert_eq!(<() as Foo<u32>>::Out::default().to_string(), "false");
    |                                       ^^^^^^^ function or associated item not found in `dyn ToString`

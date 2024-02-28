@@ -16,7 +16,7 @@ pub trait TraitC<E> {
     type TypeC<'a>: TraitB;
 
     fn g<'a>(_: &<<Self::TypeC<'a> as TraitB>::TypeB as TraitA>::TypeA);
-    //~^ ERROR the trait bound `<<Self as TraitC<E>>::TypeC<'a> as TraitB>::TypeB: TraitA` is not satisfied
+    //~^ ERROR trait `TraitA` is not implemented for `<<Self as TraitC<E>>::TypeC<'a> as TraitB>::TypeB`
 }
 
 fn main() {}

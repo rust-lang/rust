@@ -1,4 +1,4 @@
-error[E0277]: the trait bound `bool: Foo` is not satisfied
+error[E0277]: the trait `Foo` is not implemented for `bool`
   --> $DIR/issue-82038.rs:8:6
    |
 LL |     <bool as Foo>::my_method();

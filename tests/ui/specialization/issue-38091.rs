@@ -10,7 +10,7 @@ where
     T: Check,
 {
     default type Ty = ();
-    //~^ ERROR the trait bound `(): Valid` is not satisfied
+    //~^ ERROR trait `Valid` is not implemented for `()`
     default fn iterate(self) {}
 }
 

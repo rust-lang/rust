@@ -11,7 +11,7 @@ trait Cake: std::fmt::Display {
 type Foo = impl T;
 
 fn foo() -> impl T {
-    //~^ ERROR `(): T` is not satisfied
+    //~^ ERROR trait `T` is not implemented for `()`
     panic!()
 }
 

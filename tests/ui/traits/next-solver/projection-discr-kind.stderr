@@ -1,4 +1,4 @@
-error[E0277]: the trait bound `Discriminant<<T as Foo>::Assoc>: Bar` is not satisfied
+error[E0277]: the trait `Bar` is not implemented for `Discriminant<<T as Foo>::Assoc>`
   --> $DIR/projection-discr-kind.rs:14:15
    |
 LL |     needs_bar(std::mem::discriminant(&x));

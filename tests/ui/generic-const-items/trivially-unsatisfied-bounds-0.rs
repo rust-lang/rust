@@ -8,5 +8,5 @@ where
     String: Copy;
 
 fn main() {
-    let _ = UNUSABLE; //~ ERROR the trait bound `String: Copy` is not satisfied
+    let _ = UNUSABLE; //~ ERROR trait `Copy` is not implemented for `String`
 }

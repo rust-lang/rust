@@ -4,7 +4,7 @@
 fn changer<'a>(mut things: Box<dyn Iterator<Item=&'a mut u8>>) {
     for item in *things { *item = 0 }
     //[current]~^ ERROR the size for values of type
-    //[next]~^^ ERROR the trait bound `dyn Iterator<Item = &'a mut u8>: IntoIterator` is not satisfied
+    //[next]~^^ ERROR the trait `IntoIterator` is not implemented for `dyn Iterator<Item = &'a mut u8>`
     //[next]~| ERROR the type `<dyn Iterator<Item = &'a mut u8> as IntoIterator>::IntoIter` is not well-formed
     //[next]~| ERROR the type `&mut <dyn Iterator<Item = &'a mut u8> as IntoIterator>::IntoIter` is not well-formed
     //[next]~| ERROR the type `Option<<<dyn Iterator<Item = &'a mut u8> as IntoIterator>::IntoIter as Iterator>::Item>` is not well-formed

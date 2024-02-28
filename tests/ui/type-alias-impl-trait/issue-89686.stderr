@@ -1,4 +1,4 @@
-error[E0277]: the trait bound `T: Trait` is not satisfied
+error[E0277]: the trait `Trait` is not implemented for `T`
   --> $DIR/issue-89686.rs:18:9
    |
 LL |         async move { self.f().await }

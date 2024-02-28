@@ -7,7 +7,7 @@ LL |     fn foo<T>() -> Self::E;
 LL |     fn foo<T: Default>() -> Self::E {
    |               ^^^^^^^ impl has extra requirement `T: Default`
 
-error[E0277]: the trait bound `S: Copy` is not satisfied in `(S, T)`
+error[E0277]: the trait `Copy` is not implemented for `S` in `(S, T)`
   --> $DIR/issue-55872-1.rs:12:29
    |
 LL |     fn foo<T: Default>() -> Self::E {
@@ -19,7 +19,7 @@ help: consider further restricting this bound
 LL | impl<S: Default + std::marker::Copy> Bar for S {
    |                 +++++++++++++++++++
 
-error[E0277]: the trait bound `T: Copy` is not satisfied in `(S, T)`
+error[E0277]: the trait `Copy` is not implemented for `T` in `(S, T)`
   --> $DIR/issue-55872-1.rs:12:29
    |
 LL |     fn foo<T: Default>() -> Self::E {

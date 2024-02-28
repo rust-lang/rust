@@ -1,4 +1,4 @@
-error[E0277]: the trait bound `dyn Iterator<Item = &'a mut u8>: IntoIterator` is not satisfied
+error[E0277]: the trait `IntoIterator` is not implemented for `dyn Iterator<Item = &'a mut u8>`
   --> $DIR/issue-20605.rs:5:17
    |
 LL |     for item in *things { *item = 0 }

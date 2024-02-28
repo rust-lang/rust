@@ -1,4 +1,4 @@
-error[E0277]: the trait bound `MyS2: MyTrait` is not satisfied in `(MyS2, MyS)`
+error[E0277]: the trait `MyTrait` is not implemented for `MyS2` in `(MyS2, MyS)`
   --> $DIR/typeck-default-trait-impl-constituent-types-2.rs:17:18
    |
 LL |     is_mytrait::<(MyS2, MyS)>();

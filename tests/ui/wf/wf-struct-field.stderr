@@ -1,4 +1,4 @@
-error[E0277]: the trait bound `A: Copy` is not satisfied
+error[E0277]: the trait `Copy` is not implemented for `A`
   --> $DIR/wf-struct-field.rs:12:11
    |
 LL |     data: IsCopy<A>

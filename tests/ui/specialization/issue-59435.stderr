@@ -1,4 +1,4 @@
-error[E0277]: the trait bound `MyStruct: Default` is not satisfied
+error[E0277]: the trait `Default` is not implemented for `MyStruct`
   --> $DIR/issue-59435.rs:11:27
    |
 LL |     default type MyType = MyStruct;

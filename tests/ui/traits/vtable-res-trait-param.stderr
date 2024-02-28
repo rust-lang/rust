@@ -1,4 +1,4 @@
-error[E0277]: the trait bound `{integer}: TraitA` is not satisfied
+error[E0277]: the trait `TraitA` is not implemented for `{integer}`
   --> $DIR/vtable-res-trait-param.rs:17:18
    |
 LL |     b.gimme_an_a(y)

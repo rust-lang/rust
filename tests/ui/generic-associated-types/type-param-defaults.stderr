@@ -36,7 +36,7 @@ LL | where
 LL |     T: Trait<Assoc = u32>,
    |              ^^^^^^^^^^^ required by this bound in `foo`
 
-error[E0277]: the trait bound `u64: Other` is not satisfied
+error[E0277]: the trait `Other` is not implemented for `u64`
   --> $DIR/type-param-defaults.rs:31:11
    |
 LL |     foo::<()>();

@@ -4,5 +4,5 @@ struct Struct;
 
 fn main() {
     drop(equal(&Struct, &Struct))
-    //~^ ERROR the trait bound `Struct: Eq` is not satisfied
+    //~^ ERROR trait `Eq` is not implemented for `Struct`
 }

@@ -1,4 +1,4 @@
-error[E0277]: the trait bound `Header<'_>: Copy` is not satisfied
+error[E0277]: the trait `Copy` is not implemented for `Header<'_>`
   --> $DIR/repeat_empty_ok.rs:8:20
    |
 LL |     let headers = [Header{value: &[]}; 128];
@@ -13,7 +13,7 @@ LL + #[derive(Copy)]
 LL | pub struct Header<'a> {
    |
 
-error[E0277]: the trait bound `Header<'_>: Copy` is not satisfied
+error[E0277]: the trait `Copy` is not implemented for `Header<'_>`
   --> $DIR/repeat_empty_ok.rs:13:20
    |
 LL |     let headers = [Header{value: &[0]}; 128];

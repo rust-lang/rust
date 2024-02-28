@@ -12,7 +12,7 @@ where
 
 fn bar() {
     foo::<_>();
-    //~^ ERROR the trait bound `T: Other<_>` is not satisfied
+    //~^ ERROR trait `Other<_>` is not implemented for `T`
 }
 
 fn main() {}

@@ -1,4 +1,4 @@
-error[E0277]: the trait bound `Option<&str>: AsRef<Path>` is not satisfied
+error[E0277]: the trait `AsRef<Path>` is not implemented for `Option<&str>`
   --> $DIR/issue-72442.rs:12:36
    |
 LL |             let mut f = File::open(path.to_str())?;

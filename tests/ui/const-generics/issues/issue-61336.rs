@@ -4,7 +4,7 @@ fn f<T: Copy, const N: usize>(x: T) -> [T; N] {
 
 fn g<T, const N: usize>(x: T) -> [T; N] {
     [x; N]
-    //~^ ERROR the trait bound `T: Copy` is not satisfied
+    //~^ ERROR trait `Copy` is not implemented for `T`
 }
 
 fn main() {

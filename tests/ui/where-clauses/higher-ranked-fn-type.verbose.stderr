@@ -1,4 +1,4 @@
-error[E0277]: the trait bound `for<Region(BrNamed(DefId(0:6 ~ higher_ranked_fn_type[9e51]::called::'b), 'b))> fn(&ReBound(DebruijnIndex(1), BoundRegion { var: 0, kind: BrNamed(DefId(0:6 ~ higher_ranked_fn_type[9e51]::called::'b), 'b) }) ()): Foo` is not satisfied
+error[E0277]: the trait `for<Region(BrNamed(DefId(0:6 ~ higher_ranked_fn_type[9e51]::called::'b), 'b))> Foo` is not implemented for `fn(&ReBound(DebruijnIndex(1), BoundRegion { var: 0, kind: BrNamed(DefId(0:6 ~ higher_ranked_fn_type[9e51]::called::'b), 'b) }) ())`
   --> $DIR/higher-ranked-fn-type.rs:20:5
    |
 LL |     called()

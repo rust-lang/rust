@@ -1,6 +1,6 @@
 use std::mem::ManuallyDrop;
 
-#[derive(Clone)] //~ ERROR the trait bound `U1: Copy` is not satisfied
+#[derive(Clone)] //~ ERROR trait `Copy` is not implemented for `U1`
 union U1 {
     a: u8,
 }

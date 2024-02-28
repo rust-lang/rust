@@ -1,4 +1,4 @@
-error[E0277]: the trait bound `K: Tr` is not satisfied
+error[E0277]: the trait `Tr` is not implemented for `K`
   --> $DIR/issue-96810.rs:8:8
    |
 LL |     s: S<K>,

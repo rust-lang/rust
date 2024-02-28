@@ -3,6 +3,6 @@ pub trait Foo {
 }
 
 pub struct Bar<T>(<Self as Foo>::Type) where Self: ;
-//~^ ERROR the trait bound `Bar<T>: Foo` is not satisfied
+//~^ ERROR trait `Foo` is not implemented for `Bar<T>`
 
 fn main() {}

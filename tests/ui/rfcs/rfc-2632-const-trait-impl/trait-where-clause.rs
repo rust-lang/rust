@@ -14,9 +14,9 @@ trait Foo {
 fn test1<T: Foo>() {
     T::a();
     T::b();
-    //~^ ERROR the trait bound
+    //~^ ERROR the trait
     T::c::<T>();
-    //~^ ERROR the trait bound
+    //~^ ERROR the trait
 }
 
 fn test2<T: Foo + Bar>() {

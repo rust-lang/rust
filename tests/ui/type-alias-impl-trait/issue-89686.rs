@@ -16,7 +16,7 @@ trait Trait {
         Self: Sized,
     {
         async move { self.f().await }
-        //~^ ERROR: the trait bound `T: Trait` is not satisfied
+        //~^ ERROR trait `Trait` is not implemented for `T`
     }
 }
 

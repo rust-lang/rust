@@ -1,4 +1,4 @@
-error[E0277]: the trait bound `{integer}: Foo` is not satisfied
+error[E0277]: the trait `Foo` is not implemented for `{integer}`
   --> $DIR/error.rs:10:27
    |
 LL |     let dyn_i: dyn* Foo = i;

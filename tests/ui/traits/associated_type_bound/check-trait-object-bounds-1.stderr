@@ -1,4 +1,4 @@
-error[E0277]: the trait bound `str: Clone` is not satisfied
+error[E0277]: the trait `Clone` is not implemented for `str`
   --> $DIR/check-trait-object-bounds-1.rs:12:9
    |
 LL |     f::<dyn X<Y = str>>();

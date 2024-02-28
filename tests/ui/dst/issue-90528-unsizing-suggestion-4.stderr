@@ -1,4 +1,4 @@
-error[E0277]: the trait bound `[u8; 1]: Write` is not satisfied
+error[E0277]: the trait `Write` is not implemented for `[u8; 1]`
   --> $DIR/issue-90528-unsizing-suggestion-4.rs:14:17
    |
 LL |     wants_write(x);
@@ -17,7 +17,7 @@ help: convert the array to a `&mut [u8]` slice instead
 LL |     wants_write(&mut x[..]);
    |                 ++++  ++++
 
-error[E0277]: the trait bound `&mut [u8; 1]: Write` is not satisfied
+error[E0277]: the trait `Write` is not implemented for `&mut [u8; 1]`
   --> $DIR/issue-90528-unsizing-suggestion-4.rs:16:17
    |
 LL |     wants_write(&mut x);
@@ -36,7 +36,7 @@ help: convert the array to a `&mut [u8]` slice instead
 LL |     wants_write(&mut x[..]);
    |                       ++++
 
-error[E0277]: the trait bound `&mut [u8; 1]: Write` is not satisfied
+error[E0277]: the trait `Write` is not implemented for `&mut [u8; 1]`
   --> $DIR/issue-90528-unsizing-suggestion-4.rs:21:17
    |
 LL |     wants_write(x);
@@ -55,7 +55,7 @@ help: convert the array to a `&mut [u8]` slice instead
 LL |     wants_write(&mut x[..]);
    |                 ++++  ++++
 
-error[E0277]: the trait bound `[u8; 1]: Write` is not satisfied
+error[E0277]: the trait `Write` is not implemented for `[u8; 1]`
   --> $DIR/issue-90528-unsizing-suggestion-4.rs:23:17
    |
 LL |     wants_write(*x);

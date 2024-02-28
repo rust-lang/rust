@@ -1,4 +1,4 @@
-error[E0277]: the trait bound `(): Bar` is not satisfied
+error[E0277]: the trait `Bar` is not implemented for `()`
   --> $DIR/impl-trait-return-trailing-semicolon.rs:9:13
    |
 LL | fn foo() -> impl Bar {
@@ -9,7 +9,7 @@ LL |     5;
    |     |
    |     this expression has type `{integer}`, which implements `Bar`
 
-error[E0277]: the trait bound `(): Bar` is not satisfied
+error[E0277]: the trait `Bar` is not implemented for `()`
   --> $DIR/impl-trait-return-trailing-semicolon.rs:15:13
    |
 LL | fn bar() -> impl Bar {

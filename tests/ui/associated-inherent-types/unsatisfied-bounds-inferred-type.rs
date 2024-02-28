@@ -8,5 +8,5 @@ impl<T: Copy> S<T> {
 }
 
 fn main() {
-    let _: S<_>::T = String::new(); //~ ERROR the trait bound `String: Copy` is not satisfied
+    let _: S<_>::T = String::new(); //~ ERROR trait `Copy` is not implemented for `String`
 }

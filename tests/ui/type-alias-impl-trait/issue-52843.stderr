@@ -1,4 +1,4 @@
-error[E0277]: the trait bound `T: Default` is not satisfied
+error[E0277]: the trait `Default` is not implemented for `T`
   --> $DIR/issue-52843.rs:7:5
    |
 LL |     t

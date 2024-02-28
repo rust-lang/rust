@@ -16,7 +16,7 @@ error[E0271]: type mismatch resolving `() == impl !Sized`
 LL | fn weird2() -> impl !Sized {}
    |                ^^^^^^^^^^^ types differ
 
-error[E0277]: the trait bound `impl !Trait: Trait` is not satisfied
+error[E0277]: the trait `Trait` is not implemented for `impl !Trait`
   --> $DIR/opaque-type-unsatisfied-bound.rs:12:13
    |
 LL |     consume(produce());

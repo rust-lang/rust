@@ -1,4 +1,4 @@
-error[E0277]: the trait bound `String: Copy` is not satisfied
+error[E0277]: the trait `Copy` is not implemented for `String`
   --> $DIR/multiple-type-params-with-unmet-bounds.rs:8:29
    |
 LL |     let _: <() as Trait>::P<String, String>;

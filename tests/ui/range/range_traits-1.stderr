@@ -70,7 +70,7 @@ LL |     f: RangeToInclusive<usize>,
    = help: the trait `PartialOrd` is not implemented for `std::ops::RangeToInclusive<usize>`
    = note: this error originates in the derive macro `PartialOrd` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error[E0277]: the trait bound `std::ops::Range<usize>: Ord` is not satisfied
+error[E0277]: the trait `Ord` is not implemented for `std::ops::Range<usize>`
   --> $DIR/range_traits-1.rs:5:5
    |
 LL | #[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
@@ -81,7 +81,7 @@ LL |     a: Range<usize>,
    |
    = note: this error originates in the derive macro `Ord` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error[E0277]: the trait bound `std::ops::RangeTo<usize>: Ord` is not satisfied
+error[E0277]: the trait `Ord` is not implemented for `std::ops::RangeTo<usize>`
   --> $DIR/range_traits-1.rs:8:5
    |
 LL | #[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
@@ -92,7 +92,7 @@ LL |     b: RangeTo<usize>,
    |
    = note: this error originates in the derive macro `Ord` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error[E0277]: the trait bound `std::ops::RangeFrom<usize>: Ord` is not satisfied
+error[E0277]: the trait `Ord` is not implemented for `std::ops::RangeFrom<usize>`
   --> $DIR/range_traits-1.rs:11:5
    |
 LL | #[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
@@ -103,7 +103,7 @@ LL |     c: RangeFrom<usize>,
    |
    = note: this error originates in the derive macro `Ord` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error[E0277]: the trait bound `std::ops::RangeFull: Ord` is not satisfied
+error[E0277]: the trait `Ord` is not implemented for `std::ops::RangeFull`
   --> $DIR/range_traits-1.rs:14:5
    |
 LL | #[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
@@ -114,7 +114,7 @@ LL |     d: RangeFull,
    |
    = note: this error originates in the derive macro `Ord` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error[E0277]: the trait bound `std::ops::RangeInclusive<usize>: Ord` is not satisfied
+error[E0277]: the trait `Ord` is not implemented for `std::ops::RangeInclusive<usize>`
   --> $DIR/range_traits-1.rs:17:5
    |
 LL | #[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
@@ -125,7 +125,7 @@ LL |     e: RangeInclusive<usize>,
    |
    = note: this error originates in the derive macro `Ord` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error[E0277]: the trait bound `std::ops::RangeToInclusive<usize>: Ord` is not satisfied
+error[E0277]: the trait `Ord` is not implemented for `std::ops::RangeToInclusive<usize>`
   --> $DIR/range_traits-1.rs:20:5
    |
 LL | #[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]

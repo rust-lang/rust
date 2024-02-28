@@ -1,4 +1,4 @@
-error[E0277]: the trait bound `Box<dyn Map<isize, isize>>: Map<usize, isize>` is not satisfied
+error[E0277]: the trait `Map<usize, isize>` is not implemented for `Box<dyn Map<isize, isize>>`
   --> $DIR/map-types.rs:17:41
    |
 LL |     let y: Box<dyn Map<usize, isize>> = Box::new(x);

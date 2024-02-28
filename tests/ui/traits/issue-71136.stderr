@@ -1,4 +1,4 @@
-error[E0277]: the trait bound `Foo: Clone` is not satisfied
+error[E0277]: the trait `Clone` is not implemented for `Foo`
   --> $DIR/issue-71136.rs:5:5
    |
 LL | #[derive(Clone)]

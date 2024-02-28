@@ -9,5 +9,5 @@ fn needs_auto_trait<T: AutoTrait + ?Sized>() {}
 
 fn main() {
   needs_auto_trait::<str>();
-  //~^ ERROR the trait bound `[u8]: AutoTrait` is not satisfied in `str`
+  //~^ ERROR the trait `AutoTrait` is not implemented for `[u8]` in `str`
 }

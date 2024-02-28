@@ -1,4 +1,4 @@
-error[E0277]: the trait bound `B: Bar` is not satisfied
+error[E0277]: the trait `Bar` is not implemented for `B`
   --> $DIR/wf_check_closures.rs:10:5
    |
 LL |     move || { bar.bar() }

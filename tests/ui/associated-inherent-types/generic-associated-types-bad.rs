@@ -13,12 +13,12 @@ impl Ty {
 }
 
 #[cfg(item)]
-const _: Ty::Pr<String> = String::new(); //[item]~ the trait bound `String: Copy` is not satisfied
-//[item]~^ the trait bound `String: Copy` is not satisfied
+const _: Ty::Pr<String> = String::new(); //[item]~ ERROR trait `Copy` is not implemented for `String`
+//[item]~^ ERROR trait `Copy` is not implemented for `String`
 
 fn main() {
     #[cfg(local)]
-    let _: Ty::Pr<Vec<()>>; //[local]~ ERROR the trait bound `Vec<()>: Copy` is not satisfied
+    let _: Ty::Pr<Vec<()>>; //[local]~ ERROR trait `Copy` is not implemented for `Vec<()>`
 }
 
 fn user<'a>() {

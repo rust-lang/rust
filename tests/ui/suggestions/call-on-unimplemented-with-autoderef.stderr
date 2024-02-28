@@ -1,4 +1,4 @@
-error[E0277]: the trait bound `&Box<dyn Fn() -> i32>: Foo` is not satisfied
+error[E0277]: the trait `Foo` is not implemented for `&Box<dyn Fn() -> i32>`
   --> $DIR/call-on-unimplemented-with-autoderef.rs:8:15
    |
 LL |     needs_foo(x);

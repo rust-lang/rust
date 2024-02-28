@@ -1,4 +1,4 @@
-error[E0277]: the trait bound `Something: Termination` is not satisfied
+error[E0277]: the trait `Termination` is not implemented for `Something`
   --> $DIR/issue-103052-2.rs:11:22
    |
 LL |         fn main() -> Something {

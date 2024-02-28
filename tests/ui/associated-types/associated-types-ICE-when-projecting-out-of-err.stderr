@@ -1,4 +1,4 @@
-error[E0277]: the trait bound `(): Add<A>` is not satisfied
+error[E0277]: the trait `Add<A>` is not implemented for `()`
   --> $DIR/associated-types-ICE-when-projecting-out-of-err.rs:23:11
    |
 LL |     r = r + a;

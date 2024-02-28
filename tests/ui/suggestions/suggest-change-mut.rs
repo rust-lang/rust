@@ -10,7 +10,7 @@ fn issue_81421<T: Read + Write>(mut stream: T) { //~ HELP consider introducing a
 
     loop {
         let mut stream_reader = BufReader::new(&stream);
-        //~^ ERROR the trait bound `&T: std::io::Read` is not satisfied [E0277]
+        //~^ ERROR trait `std::io::Read` is not implemented for `&T`
         //~| HELP consider removing the leading `&`-reference
         //~| HELP consider changing this borrow's mutability
         stream_reader.read_until(b'\n', &mut buffer).expect("Reading into buffer failed");

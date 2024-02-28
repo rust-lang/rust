@@ -12,7 +12,7 @@ impl GlUniformScalar for u32 {
 
 pub fn foo<T: UniformScalar>(value: T) {
     <T as GlUniformScalar>::FACTORY(1, value);
-    //~^ ERROR the trait bound `T: GlUniformScalar` is not satisfied
+    //~^ ERROR trait `GlUniformScalar` is not implemented for `T`
 }
 
 fn main() {}

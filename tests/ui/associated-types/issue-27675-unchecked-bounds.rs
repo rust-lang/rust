@@ -13,7 +13,7 @@ fn copy<U: Setup + ?Sized>(from: &U::From) -> U::From {
 
 pub fn copy_any<T>(t: &T) -> T {
     copy::<dyn Setup<From=T>>(t)
-    //~^ ERROR the trait bound `T: Copy` is not satisfied
+    //~^ ERROR trait `Copy` is not implemented for `T`
 }
 
 fn main() {}

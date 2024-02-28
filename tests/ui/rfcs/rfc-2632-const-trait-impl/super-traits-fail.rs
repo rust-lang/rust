@@ -16,6 +16,6 @@ impl Foo for S {
 }
 
 impl const Bar for S {}
-//FIXME ~^ ERROR the trait bound
+//FIXME ~^ ERROR the trait
 
 fn main() {}

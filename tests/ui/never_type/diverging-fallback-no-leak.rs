@@ -15,5 +15,5 @@ fn main() {
     // Here the type variable falls back to `!`,
     // and hence we get a type error.
     unconstrained_arg(return);
-    //[fallback]~^ ERROR trait bound `!: Test` is not satisfied
+    //[fallback]~^ ERROR trait `Test` is not implemented for `!`
 }

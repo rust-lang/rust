@@ -6,10 +6,10 @@ pub struct Header<'a> {
 
 pub fn test() {
     let headers = [Header{value: &[]}; 128];
-    //~^ ERROR the trait bound
+    //~^ ERROR the trait
 }
 
 pub fn test2() {
     let headers = [Header{value: &[0]}; 128];
-    //~^ ERROR the trait bound
+    //~^ ERROR the trait
 }

@@ -1,4 +1,4 @@
-error[E0277]: the trait bound `{coroutine@$DIR/coroutine.rs:18:21: 18:23}: Coroutine<A>` is not satisfied
+error[E0277]: the trait `Coroutine<A>` is not implemented for `{coroutine@$DIR/coroutine.rs:18:21: 18:23}`
   --> $DIR/coroutine.rs:18:21
    |
 LL |       needs_coroutine(|| {

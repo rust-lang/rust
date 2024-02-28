@@ -12,8 +12,8 @@ fn f_send<T: Send>(t: T) {}
 struct S;
 
 fn main() {
-    f_copy("".to_string()); //~ ERROR: the trait bound `String: Copy` is not satisfied [E0277]
-    f_clone(S); //~ ERROR: the trait bound `S: Clone` is not satisfied [E0277]
+    f_copy("".to_string()); //~ ERROR trait `Copy` is not implemented for `String`
+    f_clone(S); //~ ERROR trait `Clone` is not implemented for `S`
     f_unpin(static || { yield; });
     //~^ ERROR: cannot be unpinned [E0277]
 

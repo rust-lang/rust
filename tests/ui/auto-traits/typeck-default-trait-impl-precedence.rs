@@ -17,5 +17,5 @@ impl Signed for i32 { }
 fn main() {
     is_defaulted::<&'static i32>();
     is_defaulted::<&'static u32>();
-    //~^ ERROR `u32: Signed` is not satisfied
+    //~^ ERROR trait `Signed` is not implemented for `u32`
 }

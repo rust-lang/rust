@@ -46,7 +46,7 @@ fn icey_bounds<D: Dummy<EmptyMarker>>(p: &D) {}
 
 fn trigger_ice() {
     let p = Empty;
-    icey_bounds(&p); //~ERROR the trait bound
+    icey_bounds(&p); //~ERROR the trait
 }
 
 fn main() {}

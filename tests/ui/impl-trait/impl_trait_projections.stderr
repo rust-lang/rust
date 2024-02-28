@@ -28,7 +28,7 @@ error[E0667]: `impl Trait` is not allowed in path parameters
 LL | fn projection_is_disallowed(x: impl Iterator) -> <impl Iterator>::Item {
    |                                                   ^^^^^^^^^^^^^
 
-error[E0277]: the trait bound `impl Debug: Step` is not satisfied
+error[E0277]: the trait `Step` is not implemented for `impl Debug`
   --> $DIR/impl_trait_projections.rs:26:8
    |
 LL |     -> <::std::ops::Range<impl Debug> as Iterator>::Item
@@ -46,7 +46,7 @@ LL |     -> <::std::ops::Range<impl Debug> as Iterator>::Item
            and 8 others
    = note: required for `std::ops::Range<impl Debug>` to implement `Iterator`
 
-error[E0277]: the trait bound `impl Debug: Step` is not satisfied
+error[E0277]: the trait `Step` is not implemented for `impl Debug`
   --> $DIR/impl_trait_projections.rs:29:1
    |
 LL | / {

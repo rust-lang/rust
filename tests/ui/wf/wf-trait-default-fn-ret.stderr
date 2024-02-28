@@ -1,4 +1,4 @@
-error[E0277]: the trait bound `Self: Eq` is not satisfied
+error[E0277]: the trait `Eq` is not implemented for `Self`
   --> $DIR/wf-trait-default-fn-ret.rs:11:22
    |
 LL |     fn bar(&self) -> Bar<Self> {

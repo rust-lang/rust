@@ -1,4 +1,4 @@
-error[E0277]: the trait bound `T: Trait` is not satisfied
+error[E0277]: the trait `Trait` is not implemented for `T`
   --> $DIR/assoc-type-const-bound-usage-0.rs:21:6
    |
 LL |     <T as /* FIXME: ~const */ Trait>::Assoc::func()

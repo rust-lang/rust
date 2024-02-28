@@ -1,4 +1,4 @@
-error[E0277]: the trait bound `(): Foo<N>` is not satisfied
+error[E0277]: the trait `Foo<N>` is not implemented for `()`
   --> $DIR/exhaustive-value.rs:262:6
    |
 LL |     <() as Foo<N>>::test()

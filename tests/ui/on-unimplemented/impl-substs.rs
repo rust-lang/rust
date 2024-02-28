@@ -11,5 +11,5 @@ impl<A, B, C> Foo<A> for (A, B, C) {
 
 fn main() {
     Foo::<usize>::foo((1i32, 1i32, 1i32));
-    //~^ ERROR the trait bound `(i32, i32, i32): Foo<usize>` is not satisfied
+    //~^ ERROR trait `Foo<usize>` is not implemented for `(i32, i32, i32)`
 }

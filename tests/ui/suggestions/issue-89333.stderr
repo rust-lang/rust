@@ -1,4 +1,4 @@
-error[E0277]: the trait bound `for<'a> &'a _: Trait` is not satisfied
+error[E0277]: the trait `for<'a> Trait` is not implemented for `&'a _`
   --> $DIR/issue-89333.rs:6:5
    |
 LL |     test(&|| 0);

@@ -5,6 +5,6 @@ pub trait Complete: Partial {
 }
 
 impl<T> Partial for T where T: Complete {}
-impl<T> Complete for T {} //~ ERROR the trait bound `T: Copy` is not satisfied
+impl<T> Complete for T {} //~ ERROR trait `Copy` is not implemented for `T`
 
 fn main() {}

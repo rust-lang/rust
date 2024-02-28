@@ -7,7 +7,7 @@ trait Bar<const N: usize> {}
 impl<T, const N: usize> Foo<T, N> {
     fn trigger(self) {
         self.unsatisfied()
-        //~^ ERROR the trait bound `T: Bar<N>` is not satisfied
+        //~^ ERROR trait `Bar<N>` is not implemented for `T`
     }
 
     fn unsatisfied(self)

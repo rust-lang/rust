@@ -2941,7 +2941,18 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                 }
             })
             .unwrap_or_else(|| {
-                format!("the trait bound `{trait_predicate}` is not satisfied{post_message}")
+                if let ty::ImplPolarity::Positive = trait_predicate.polarity() {
+                    format!(
+                        "the trait `{}` is not implemented for `{}`{post_message}",
+                        trait_predicate.print_modifiers_and_trait_path(),
+                        self.tcx
+                            .short_ty_string(trait_predicate.skip_binder().self_ty(), &mut None),
+                    )
+                } else {
+                    // "the trait bound `!Send: T` is not satisfied" reads better than "`!Send` is
+                    // not implemented for `T`".
+                    format!("the trait bound `{trait_predicate}` is not satisfied{post_message}")
+                }
             })
     }
 

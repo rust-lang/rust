@@ -1,4 +1,4 @@
-error[E0277]: the trait bound `TestDescAndFn: Testable` is not satisfied
+error[E0277]: the trait `Testable` is not implemented for `TestDescAndFn`
   --> $DIR/mismatch.rs:9:1
    |
 LL | #[test]

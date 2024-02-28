@@ -1,4 +1,4 @@
-error[E0277]: the trait bound `&dyn MyTrait: MyTrait` is not satisfied
+error[E0277]: the trait `MyTrait` is not implemented for `&dyn MyTrait`
   --> $DIR/cycle-effective-visibilities-during-object-safety.rs:20:22
    |
 LL |         MyTrait::foo(&self)
@@ -24,7 +24,7 @@ LL |     fn foo(&self) -> impl Marker;
    = help: consider moving `foo` to another trait
    = help: only type `Outer` implements the trait, consider using it directly instead
 
-error[E0277]: the trait bound `&dyn MyTrait: MyTrait` is not satisfied
+error[E0277]: the trait `MyTrait` is not implemented for `&dyn MyTrait`
   --> $DIR/cycle-effective-visibilities-during-object-safety.rs:20:9
    |
 LL |         MyTrait::foo(&self)

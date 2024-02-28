@@ -12,17 +12,17 @@ fn wants_read(_: impl Read) {}
 fn main() {
     let x = [0u8];
     wants_read(x);
-    //~^ ERROR the trait bound `[u8; 1]: Read` is not satisfied
+    //~^ ERROR trait `Read` is not implemented for `[u8; 1]`
     wants_read(&x);
-    //~^ ERROR the trait bound `&[u8; 1]: Read` is not satisfied
+    //~^ ERROR trait `Read` is not implemented for `&[u8; 1]`
     wants_read(&x[..]);
 
     let x = &[0u8];
     wants_read(x);
-    //~^ ERROR the trait bound `&[u8; 1]: Read` is not satisfied
+    //~^ ERROR trait `Read` is not implemented for `&[u8; 1]`
     wants_read(&x);
-    //~^ ERROR the trait bound `&&[u8; 1]: Read` is not satisfied
+    //~^ ERROR trait `Read` is not implemented for `&&[u8; 1]`
     wants_read(*x);
-    //~^ ERROR the trait bound `[u8; 1]: Read` is not satisfied
+    //~^ ERROR trait `Read` is not implemented for `[u8; 1]`
     wants_read(&x[..]);
 }

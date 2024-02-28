@@ -11,5 +11,5 @@ fn take_param<T:Foo>(foo: &T) { }
 fn main() {
     let x: Box<_> = Box::new(3);
     take_param(&x);
-    //~^ ERROR the trait bound `Box<{integer}>: Copy` is not satisfied
+    //~^ ERROR trait `Copy` is not implemented for `Box<{integer}>`
 }

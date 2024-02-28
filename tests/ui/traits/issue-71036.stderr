@@ -1,4 +1,4 @@
-error[E0277]: the trait bound `&'a T: Unsize<&'a U>` is not satisfied
+error[E0277]: the trait `Unsize<&'a U>` is not implemented for `&'a T`
   --> $DIR/issue-71036.rs:11:1
    |
 LL | impl<'a, T: ?Sized + Unsize<U>, U: ?Sized> DispatchFromDyn<Foo<'a, U>> for Foo<'a, T> {}

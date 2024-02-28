@@ -1,4 +1,4 @@
-error[E0277]: the trait bound `Error: Ord` is not satisfied
+error[E0277]: the trait `Ord` is not implemented for `Error`
   --> $DIR/derives-span-Ord-struct.rs:8:5
    |
 LL | #[derive(Ord,Eq,PartialOrd,PartialEq)]

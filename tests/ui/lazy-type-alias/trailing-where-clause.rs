@@ -9,5 +9,5 @@ where
 
 fn main() {
     let _: Alias<&str>;
-    let _: Alias<()>; //~ ERROR the trait bound `String: From<()>` is not satisfied
+    let _: Alias<()>; //~ ERROR trait `From<()>` is not implemented for `String`
 }

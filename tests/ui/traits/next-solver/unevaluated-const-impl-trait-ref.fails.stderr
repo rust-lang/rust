@@ -1,4 +1,4 @@
-error[E0277]: the trait bound `(): Trait<1>` is not satisfied
+error[E0277]: the trait `Trait<1>` is not implemented for `()`
   --> $DIR/unevaluated-const-impl-trait-ref.rs:20:13
    |
 LL |     needs::<1>();

@@ -1,4 +1,4 @@
-error[E0277]: the trait bound `&u32: Foo` is not satisfied
+error[E0277]: the trait `Foo` is not implemented for `&u32`
   --> $DIR/issue-60218.rs:18:19
    |
 LL |     trigger_error(vec![], |x: &u32| x)

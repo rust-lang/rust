@@ -4,7 +4,7 @@ error[E0080]: evaluation of constant value failed
 LL | struct Ooopsies<const N: u8 = { u8::MAX + 1 }>;
    |                                 ^^^^^^^^^^^ attempt to compute `u8::MAX + 1_u8`, which would overflow
 
-error[E0277]: the trait bound `(): Trait<2>` is not satisfied
+error[E0277]: the trait `Trait<2>` is not implemented for `()`
   --> $DIR/wfness.rs:8:9
    |
 LL |     (): Trait<N>;
@@ -12,7 +12,7 @@ LL |     (): Trait<N>;
    |
    = help: the trait `Trait<3>` is implemented for `()`
 
-error[E0277]: the trait bound `(): Trait<1>` is not satisfied
+error[E0277]: the trait `Trait<1>` is not implemented for `()`
   --> $DIR/wfness.rs:18:13
    |
 LL | fn foo() -> DependentDefaultWfness {

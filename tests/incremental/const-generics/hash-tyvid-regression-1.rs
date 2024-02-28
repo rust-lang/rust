@@ -20,8 +20,8 @@ where
 {
     use std::convert::TryFrom;
     <[T; N.get()]>::try_from(())
-    //~^ error: the trait bound
-    //~| error: the trait bound
+    //~^ ERROR the trait `From<()>` is not implemented for `[T; N.get()]`
+    //~| ERROR the trait `From<()>` is not implemented for `[T; N.get()]`
     //~| error: mismatched types
 }
 

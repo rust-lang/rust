@@ -19,5 +19,5 @@ fn main() {
     is_mytrait::<MyS>();
 
     is_mytrait::<MyS2>();
-    //~^ ERROR `MyS2: MyTrait` is not satisfied
+    //~^ ERROR trait `MyTrait` is not implemented for `MyS2`
 }

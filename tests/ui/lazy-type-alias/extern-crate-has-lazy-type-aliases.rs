@@ -12,5 +12,5 @@
 )]
 
 fn main() {
-    let _: lazy::Alias<String>; //~ ERROR the trait bound `String: Copy` is not satisfied
+    let _: lazy::Alias<String>; //~ ERROR trait `Copy` is not implemented for `String`
 }

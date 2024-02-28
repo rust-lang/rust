@@ -1,4 +1,4 @@
-error[E0277]: the trait bound `Option<Vec<u8>>: MyFromIterator<&u8>` is not satisfied
+error[E0277]: the trait `MyFromIterator<&u8>` is not implemented for `Option<Vec<u8>>`
   --> $DIR/on-trait.rs:28:30
    |
 LL |     let y: Option<Vec<u8>> = collect(x.iter()); // this should give approximately the same error for x.iter().collect()
@@ -16,7 +16,7 @@ note: required by a bound in `collect`
 LL | fn collect<A, I: Iterator<Item=A>, B: MyFromIterator<A>>(it: I) -> B {
    |                                       ^^^^^^^^^^^^^^^^^ required by this bound in `collect`
 
-error[E0277]: the trait bound `String: Foo<u8, _, u32>` is not satisfied
+error[E0277]: the trait `Foo<u8, _, u32>` is not implemented for `String`
   --> $DIR/on-trait.rs:31:21
    |
 LL |     let x: String = foobar();

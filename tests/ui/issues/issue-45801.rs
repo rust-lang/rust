@@ -19,7 +19,7 @@ impl<T: Copy> Pluggable for T {}
 
 fn handle(req: &mut i32) {
     req.get_ref::<Params>();
-    //~^ ERROR the trait bound `Params: Plugin<i32>` is not satisfied
+    //~^ ERROR trait `Plugin<i32>` is not implemented for `Params`
 }
 
 fn main() {}

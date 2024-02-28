@@ -14,7 +14,7 @@ impl TraitB for isize {
 
 fn call_it<B:TraitB>(b: B)  -> isize {
     let y = 4;
-    b.gimme_an_a(y) //~ ERROR `{integer}: TraitA` is not satisfied
+    b.gimme_an_a(y) //~ ERROR trait `TraitA` is not implemented for `{integer}`
 }
 
 fn main() {

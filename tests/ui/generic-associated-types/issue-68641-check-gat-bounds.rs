@@ -10,7 +10,7 @@ trait UnsafeCopy {
 
 impl<T> UnsafeCopy for T {
     type Item<'a> = T;
-    //~^ ERROR the trait bound `T: Copy` is not satisfied
+    //~^ ERROR trait `Copy` is not implemented for `T`
 }
 
 fn main() {

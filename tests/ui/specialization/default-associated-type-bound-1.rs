@@ -16,7 +16,7 @@ trait X {
 // normalization.
 impl<T> X for T {
     default type U = str;
-    //~^ ERROR the trait bound `str: Clone` is not satisfied
+    //~^ ERROR trait `Clone` is not implemented for `str`
 }
 
 pub fn main() {

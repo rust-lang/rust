@@ -1,4 +1,4 @@
-error[E0277]: the trait bound `T: Copy` is not satisfied
+error[E0277]: the trait `Copy` is not implemented for `T`
   --> $DIR/wf-in-fn-type-arg.rs:9:11
    |
 LL |     x: fn(MustBeCopy<T>)

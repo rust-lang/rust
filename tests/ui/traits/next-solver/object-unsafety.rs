@@ -11,7 +11,7 @@ fn copy<U: Setup + ?Sized>(from: &U::From) -> U::From {
 pub fn copy_any<T>(t: &T) -> T {
     copy::<dyn Setup<From=T>>(t)
     //~^ ERROR the type `&<dyn Setup<From = T> as Setup>::From` is not well-formed
-    //~| ERROR the trait bound `dyn Setup<From = T>: Setup` is not satisfied
+    //~| ERROR trait `Setup` is not implemented for `dyn Setup<From = T>`
     //~| ERROR mismatched types
     //~| ERROR the type `<dyn Setup<From = T> as Setup>::From` is not well-formed
 

@@ -51,7 +51,7 @@ impl<A> T1 for ExampleActuallyTupleStruct<A> where A: T3 {}
 
 fn example<Q>(q: Q) {
     want(Wrapper { value: Burrito { filling: q } });
-    //~^ ERROR the trait bound `Q: T3` is not satisfied [E0277]
+    //~^ ERROR trait `T3` is not implemented for `Q`
 
     want(Some(()));
     //~^ ERROR `()` is not an iterator [E0277]
@@ -63,40 +63,40 @@ fn example<Q>(q: Q) {
     //~^ ERROR `Q` is not an iterator [E0277]
 
     want(&ExampleTuple::ExampleTupleVariant(q));
-    //~^ ERROR `Q: T3` is not satisfied [E0277]
+    //~^ ERROR trait `T3` is not implemented for `Q`
 
     want(&ExampleTupleVariant(q));
-    //~^ ERROR `Q: T3` is not satisfied [E0277]
+    //~^ ERROR trait `T3` is not implemented for `Q`
 
     want(&ExampleOtherTuple::ExampleTupleVariant(q));
-    //~^ ERROR `Q: T3` is not satisfied [E0277]
+    //~^ ERROR trait `T3` is not implemented for `Q`
 
     want(&ExampleDifferentTupleVariantName(q));
-    //~^ ERROR `Q: T3` is not satisfied [E0277]
+    //~^ ERROR trait `T3` is not implemented for `Q`
 
     want(&ExampleYetAnotherTupleVariantName(q));
-    //~^ ERROR `Q: T3` is not satisfied [E0277]
+    //~^ ERROR trait `T3` is not implemented for `Q`
 
     want(&ExampleStruct::ExampleStructVariant { field: q });
-    //~^ ERROR `Q: T3` is not satisfied [E0277]
+    //~^ ERROR trait `T3` is not implemented for `Q`
 
     want(&ExampleStructVariant { field: q });
-    //~^ ERROR `Q: T3` is not satisfied [E0277]
+    //~^ ERROR trait `T3` is not implemented for `Q`
 
     want(&ExampleOtherStruct::ExampleStructVariant { field: q });
-    //~^ ERROR `Q: T3` is not satisfied [E0277]
+    //~^ ERROR trait `T3` is not implemented for `Q`
 
     want(&ExampleDifferentStructVariantName { field: q });
-    //~^ ERROR `Q: T3` is not satisfied [E0277]
+    //~^ ERROR trait `T3` is not implemented for `Q`
 
     want(&ExampleYetAnotherStructVariantName { field: q });
-    //~^ ERROR `Q: T3` is not satisfied [E0277]
+    //~^ ERROR trait `T3` is not implemented for `Q`
 
     want(&ExampleActuallyTupleStruct(q, 0));
-    //~^ ERROR `Q: T3` is not satisfied [E0277]
+    //~^ ERROR trait `T3` is not implemented for `Q`
 
     want(&ExampleActuallyTupleStructOther(q, 0));
-    //~^ ERROR `Q: T3` is not satisfied [E0277]
+    //~^ ERROR trait `T3` is not implemented for `Q`
 }
 
 fn main() {}

@@ -13,7 +13,7 @@ help: function arguments must have a statically known size, borrowed types alway
 LL | fn f(p: &Path) { }
    |         +
 
-error[E0277]: the trait bound `i32: Foo` is not satisfied
+error[E0277]: the trait `Foo` is not implemented for `i32`
   --> $DIR/E0277.rs:15:15
    |
 LL |     some_func(5i32);

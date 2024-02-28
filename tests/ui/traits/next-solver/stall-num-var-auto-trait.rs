@@ -16,7 +16,7 @@ fn needs_foo(x: impl Foo) {}
 fn main() {
     let mut x = 0;
     needs_foo(x);
-    //[fallback]~^ ERROR the trait bound `i32: Foo` is not satisfied
+    //[fallback]~^ ERROR trait `Foo` is not implemented for `i32`
 
     #[cfg(constrain)]
     {

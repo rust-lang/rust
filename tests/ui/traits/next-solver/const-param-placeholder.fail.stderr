@@ -1,4 +1,4 @@
-error[E0277]: the trait bound `[T; N]: Foo` is not satisfied
+error[E0277]: the trait `Foo` is not implemented for `[T; N]`
   --> $DIR/const-param-placeholder.rs:17:17
    |
 LL |     needs_foo::<[T; N]>();

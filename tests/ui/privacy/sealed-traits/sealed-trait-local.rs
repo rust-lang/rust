@@ -49,7 +49,7 @@ pub mod e {
 }
 
 struct S;
-impl a::Sealed for S {} //~ ERROR the trait bound
-impl c::Sealed for S {} //~ ERROR the trait bound
-impl e::Sealed for S {} //~ ERROR the trait bound
+impl a::Sealed for S {} //~ ERROR the trait
+impl c::Sealed for S {} //~ ERROR the trait
+impl e::Sealed for S {} //~ ERROR the trait
 fn main() {}

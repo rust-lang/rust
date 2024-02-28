@@ -11,12 +11,12 @@ fn wants_write(_: impl Write) {}
 
 fn main() {
     wants_write([0u8]);
-    //~^ ERROR the trait bound `[u8; 1]: Write` is not satisfied
+    //~^ ERROR trait `Write` is not implemented for `[u8; 1]`
     wants_write(&mut [0u8]);
-    //~^ ERROR the trait bound `&mut [u8; 1]: Write` is not satisfied
+    //~^ ERROR trait `Write` is not implemented for `&mut [u8; 1]`
     wants_write(&mut [0u8][..]);
     wants_write(&[0u8]);
-    //~^ ERROR the trait bound `&[u8; 1]: Write` is not satisfied
+    //~^ ERROR trait `Write` is not implemented for `&[u8; 1]`
     wants_write(&[0u8][..]);
-    //~^ ERROR the trait bound `&[u8]: Write` is not satisfied
+    //~^ ERROR trait `Write` is not implemented for `&[u8]`
 }

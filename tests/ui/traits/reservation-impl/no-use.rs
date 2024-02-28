@@ -9,5 +9,5 @@ impl MyTrait for () { fn foo(&self) {} }
 
 fn main() {
     <() as MyTrait>::foo(&());
-    //~^ ERROR the trait bound `(): MyTrait` is not satisfied
+    //~^ ERROR trait `MyTrait` is not implemented for `()`
 }

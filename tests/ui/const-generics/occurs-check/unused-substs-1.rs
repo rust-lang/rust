@@ -9,5 +9,5 @@ where
     A<N>: Bar<N>;
 
 fn main() {
-    let _ = A; //~ERROR the trait bound
+    let _ = A; //~ERROR the trait
 }

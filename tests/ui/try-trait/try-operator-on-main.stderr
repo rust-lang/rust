@@ -28,7 +28,7 @@ LL |     ()?;
    |
    = help: the trait `FromResidual<_>` is not implemented for `()`
 
-error[E0277]: the trait bound `(): Try` is not satisfied
+error[E0277]: the trait `Try` is not implemented for `()`
   --> $DIR/try-operator-on-main.rs:14:25
    |
 LL |     try_trait_generic::<()>();

@@ -7,7 +7,7 @@ pub trait Yay { }
 impl Yay for Foo { }
 
 fn foo() {
-    is_yay::<u32>();   //~ ERROR: the trait bound `u32: Yay` is not satisfied
+    is_yay::<u32>();   //~ ERROR trait `Yay` is not implemented for `u32`
     is_debug::<u32>(); // OK
     is_yay::<Foo>();   // OK
     is_debug::<Foo>(); // OK

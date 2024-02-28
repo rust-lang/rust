@@ -1,4 +1,4 @@
-error[E0277]: the trait bound `T: Copy` is not satisfied
+error[E0277]: the trait `Copy` is not implemented for `T`
   --> $DIR/issue-27675-unchecked-bounds.rs:15:12
    |
 LL |     copy::<dyn Setup<From=T>>(t)

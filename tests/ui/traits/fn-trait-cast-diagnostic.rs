@@ -19,8 +19,8 @@ fn do_on_single_foo(v: impl NoOtherFoo) {}
 
 fn main() {
     do_on_foo(example);
-    //~^ ERROR the trait bound
+    //~^ ERROR the trait
 
     do_on_single_foo(example);
-    //~^ ERROR the trait bound
+    //~^ ERROR the trait
 }

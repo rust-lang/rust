@@ -1,4 +1,4 @@
-error[E0277]: the trait bound `String: Copy` is not satisfied
+error[E0277]: the trait `Copy` is not implemented for `String`
   --> $DIR/issue-119530-sugg-from-fn.rs:4:23
    |
 LL |     let string_arr = [foo(); 64];

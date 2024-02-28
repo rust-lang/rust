@@ -1,4 +1,4 @@
-error[E0277]: the trait bound `&dyn MyTrait: MyTrait` is not satisfied
+error[E0277]: the trait `MyTrait` is not implemented for `&dyn MyTrait`
   --> $DIR/issue-102140.rs:20:22
    |
 LL |         MyTrait::foo(&self)
@@ -12,7 +12,7 @@ LL -         MyTrait::foo(&self)
 LL +         MyTrait::foo(self)
    |
 
-error[E0277]: the trait bound `&dyn MyTrait: MyTrait` is not satisfied
+error[E0277]: the trait `MyTrait` is not implemented for `&dyn MyTrait`
   --> $DIR/issue-102140.rs:20:9
    |
 LL |         MyTrait::foo(&self)

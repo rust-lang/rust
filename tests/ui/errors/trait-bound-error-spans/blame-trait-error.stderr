@@ -1,4 +1,4 @@
-error[E0277]: the trait bound `Q: T3` is not satisfied
+error[E0277]: the trait `T3` is not implemented for `Q`
   --> $DIR/blame-trait-error.rs:53:46
    |
 LL |     want(Wrapper { value: Burrito { filling: q } });
@@ -105,7 +105,7 @@ help: consider restricting type parameter `Q`
 LL | fn example<Q: std::iter::Iterator>(q: Q) {
    |             +++++++++++++++++++++
 
-error[E0277]: the trait bound `Q: T3` is not satisfied
+error[E0277]: the trait `T3` is not implemented for `Q`
   --> $DIR/blame-trait-error.rs:65:45
    |
 LL |     want(&ExampleTuple::ExampleTupleVariant(q));
@@ -130,7 +130,7 @@ help: consider restricting type parameter `Q`
 LL | fn example<Q: T3>(q: Q) {
    |             ++++
 
-error[E0277]: the trait bound `Q: T3` is not satisfied
+error[E0277]: the trait `T3` is not implemented for `Q`
   --> $DIR/blame-trait-error.rs:68:31
    |
 LL |     want(&ExampleTupleVariant(q));
@@ -155,7 +155,7 @@ help: consider restricting type parameter `Q`
 LL | fn example<Q: T3>(q: Q) {
    |             ++++
 
-error[E0277]: the trait bound `Q: T3` is not satisfied
+error[E0277]: the trait `T3` is not implemented for `Q`
   --> $DIR/blame-trait-error.rs:71:50
    |
 LL |     want(&ExampleOtherTuple::ExampleTupleVariant(q));
@@ -180,7 +180,7 @@ help: consider restricting type parameter `Q`
 LL | fn example<Q: T3>(q: Q) {
    |             ++++
 
-error[E0277]: the trait bound `Q: T3` is not satisfied
+error[E0277]: the trait `T3` is not implemented for `Q`
   --> $DIR/blame-trait-error.rs:74:44
    |
 LL |     want(&ExampleDifferentTupleVariantName(q));
@@ -205,7 +205,7 @@ help: consider restricting type parameter `Q`
 LL | fn example<Q: T3>(q: Q) {
    |             ++++
 
-error[E0277]: the trait bound `Q: T3` is not satisfied
+error[E0277]: the trait `T3` is not implemented for `Q`
   --> $DIR/blame-trait-error.rs:77:45
    |
 LL |     want(&ExampleYetAnotherTupleVariantName(q));
@@ -230,7 +230,7 @@ help: consider restricting type parameter `Q`
 LL | fn example<Q: T3>(q: Q) {
    |             ++++
 
-error[E0277]: the trait bound `Q: T3` is not satisfied
+error[E0277]: the trait `T3` is not implemented for `Q`
   --> $DIR/blame-trait-error.rs:80:56
    |
 LL |     want(&ExampleStruct::ExampleStructVariant { field: q });
@@ -253,7 +253,7 @@ help: consider restricting type parameter `Q`
 LL | fn example<Q: T3>(q: Q) {
    |             ++++
 
-error[E0277]: the trait bound `Q: T3` is not satisfied
+error[E0277]: the trait `T3` is not implemented for `Q`
   --> $DIR/blame-trait-error.rs:83:41
    |
 LL |     want(&ExampleStructVariant { field: q });
@@ -278,7 +278,7 @@ help: consider restricting type parameter `Q`
 LL | fn example<Q: T3>(q: Q) {
    |             ++++
 
-error[E0277]: the trait bound `Q: T3` is not satisfied
+error[E0277]: the trait `T3` is not implemented for `Q`
   --> $DIR/blame-trait-error.rs:86:61
    |
 LL |     want(&ExampleOtherStruct::ExampleStructVariant { field: q });
@@ -301,7 +301,7 @@ help: consider restricting type parameter `Q`
 LL | fn example<Q: T3>(q: Q) {
    |             ++++
 
-error[E0277]: the trait bound `Q: T3` is not satisfied
+error[E0277]: the trait `T3` is not implemented for `Q`
   --> $DIR/blame-trait-error.rs:89:54
    |
 LL |     want(&ExampleDifferentStructVariantName { field: q });
@@ -324,7 +324,7 @@ help: consider restricting type parameter `Q`
 LL | fn example<Q: T3>(q: Q) {
    |             ++++
 
-error[E0277]: the trait bound `Q: T3` is not satisfied
+error[E0277]: the trait `T3` is not implemented for `Q`
   --> $DIR/blame-trait-error.rs:92:55
    |
 LL |     want(&ExampleYetAnotherStructVariantName { field: q });
@@ -347,7 +347,7 @@ help: consider restricting type parameter `Q`
 LL | fn example<Q: T3>(q: Q) {
    |             ++++
 
-error[E0277]: the trait bound `Q: T3` is not satisfied
+error[E0277]: the trait `T3` is not implemented for `Q`
   --> $DIR/blame-trait-error.rs:95:38
    |
 LL |     want(&ExampleActuallyTupleStruct(q, 0));
@@ -372,7 +372,7 @@ help: consider restricting type parameter `Q`
 LL | fn example<Q: T3>(q: Q) {
    |             ++++
 
-error[E0277]: the trait bound `Q: T3` is not satisfied
+error[E0277]: the trait `T3` is not implemented for `Q`
   --> $DIR/blame-trait-error.rs:98:43
    |
 LL |     want(&ExampleActuallyTupleStructOther(q, 0));

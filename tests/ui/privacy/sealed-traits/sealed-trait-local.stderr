@@ -1,4 +1,4 @@
-error[E0277]: the trait bound `S: b::Hidden` is not satisfied
+error[E0277]: the trait `b::Hidden` is not implemented for `S`
   --> $DIR/sealed-trait-local.rs:52:20
    |
 LL | impl a::Sealed for S {}
@@ -13,7 +13,7 @@ LL |     pub trait Sealed: self::b::Hidden {
    = help: the following type implements the trait:
              a::X
 
-error[E0277]: the trait bound `S: d::Hidden` is not satisfied
+error[E0277]: the trait `d::Hidden` is not implemented for `S`
   --> $DIR/sealed-trait-local.rs:53:20
    |
 LL | impl c::Sealed for S {}
@@ -29,7 +29,7 @@ LL |     pub trait Sealed: self::d::Hidden {
              c::X
              c::Y
 
-error[E0277]: the trait bound `S: f::Hidden` is not satisfied
+error[E0277]: the trait `f::Hidden` is not implemented for `S`
   --> $DIR/sealed-trait-local.rs:54:20
    |
 LL | impl e::Sealed for S {}

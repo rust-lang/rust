@@ -1,4 +1,4 @@
-error[E0277]: the trait bound `dyn CompareToInts: CompareTo<i32>` is not satisfied
+error[E0277]: the trait `CompareTo<i32>` is not implemented for `dyn CompareToInts`
   --> $DIR/repeated-supertrait-ambig.rs:26:15
    |
 LL |     c.same_as(22)
@@ -10,7 +10,7 @@ LL |     c.same_as(22)
              <i64 as CompareTo<i64>>
              <i64 as CompareTo<u64>>
 
-error[E0277]: the trait bound `C: CompareTo<i32>` is not satisfied
+error[E0277]: the trait `CompareTo<i32>` is not implemented for `C`
   --> $DIR/repeated-supertrait-ambig.rs:30:15
    |
 LL |     c.same_as(22)
@@ -23,7 +23,7 @@ help: consider further restricting this bound
 LL | fn with_trait<C:CompareToInts + CompareTo<i32>>(c: &C) -> bool {
    |                               ++++++++++++++++
 
-error[E0277]: the trait bound `dyn CompareToInts: CompareTo<i32>` is not satisfied
+error[E0277]: the trait `CompareTo<i32>` is not implemented for `dyn CompareToInts`
   --> $DIR/repeated-supertrait-ambig.rs:34:6
    |
 LL |     <dyn CompareToInts>::same_as(c, 22)
@@ -33,7 +33,7 @@ LL |     <dyn CompareToInts>::same_as(c, 22)
              <i64 as CompareTo<i64>>
              <i64 as CompareTo<u64>>
 
-error[E0277]: the trait bound `C: CompareTo<i32>` is not satisfied
+error[E0277]: the trait `CompareTo<i32>` is not implemented for `C`
   --> $DIR/repeated-supertrait-ambig.rs:38:27
    |
 LL |     CompareTo::same_as(c, 22)
@@ -46,7 +46,7 @@ help: consider further restricting this bound
 LL | fn with_ufcs2<C:CompareToInts + CompareTo<i32>>(c: &C) -> bool {
    |                               ++++++++++++++++
 
-error[E0277]: the trait bound `i64: CompareTo<i32>` is not satisfied
+error[E0277]: the trait `CompareTo<i32>` is not implemented for `i64`
   --> $DIR/repeated-supertrait-ambig.rs:42:31
    |
 LL |     assert_eq!(22_i64.same_as(22), true);

@@ -91,7 +91,7 @@ LL |     type W: Ord where Self: Eq;
 LL |     type W where Self: Eq;
    |     ^^^^^^ duplicate definitions for `W`
 
-error[E0277]: the trait bound `X: Eq` is not satisfied
+error[E0277]: the trait `Eq` is not implemented for `X`
   --> $DIR/impl-item-type-no-body-semantic-fail.rs:13:23
    |
 LL |     type W: Ord where Self: Eq;
@@ -105,7 +105,7 @@ LL + #[derive(Eq)]
 LL | struct X;
    |
 
-error[E0277]: the trait bound `X: Eq` is not satisfied
+error[E0277]: the trait `Eq` is not implemented for `X`
   --> $DIR/impl-item-type-no-body-semantic-fail.rs:18:18
    |
 LL |     type W where Self: Eq;

@@ -1,4 +1,4 @@
-error[E0277]: the trait bound `u8: Trait` is not satisfied
+error[E0277]: the trait `Trait` is not implemented for `u8`
   --> $DIR/issue-95665.rs:14:17
    |
 LL |     static VAR: Struct<u8>;

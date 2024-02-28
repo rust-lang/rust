@@ -8,9 +8,9 @@ fn main() {
         yield;
     };
     check_copy(&gen);
-    //~^ ERROR Copy` is not satisfied
+    //~^ ERROR the trait `Copy` is not implemented for
     check_clone(&gen);
-    //~^ ERROR Clone` is not satisfied
+    //~^ ERROR the trait `Clone` is not implemented for
 }
 
 fn check_copy<T: Copy>(_x: &T) {}

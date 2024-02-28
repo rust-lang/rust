@@ -1,4 +1,4 @@
-error[E0277]: the trait bound `K: Hash` is not satisfied
+error[E0277]: the trait `Hash` is not implemented for `K`
   --> $DIR/bad-index-due-to-nested.rs:20:5
    |
 LL |     map[k]
@@ -17,7 +17,7 @@ help: consider restricting type parameter `K`
 LL | fn index<'a, K: std::hash::Hash, V>(map: &'a HashMap<K, V>, k: K) -> &'a V {
    |               +++++++++++++++++
 
-error[E0277]: the trait bound `V: Copy` is not satisfied
+error[E0277]: the trait `Copy` is not implemented for `V`
   --> $DIR/bad-index-due-to-nested.rs:20:5
    |
 LL |     map[k]

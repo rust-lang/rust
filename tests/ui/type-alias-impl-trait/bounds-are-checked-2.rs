@@ -7,7 +7,7 @@ type X<T> = impl Clone;
 
 fn f<T: Clone>(t: T) -> X<T> {
     t
-    //~^ ERROR the trait bound `T: Clone` is not satisfied
+    //~^ ERROR trait `Clone` is not implemented for `T`
 }
 
 fn g<T>(o: Option<X<T>>) -> Option<X<T>> {

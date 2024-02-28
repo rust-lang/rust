@@ -1,4 +1,4 @@
-error[E0277]: the trait bound `A: Foo` is not satisfied
+error[E0277]: the trait `Foo` is not implemented for `A`
   --> $DIR/generic_duplicate_param_use9.rs:15:5
    |
 LL |     (t, u, T::BAR)

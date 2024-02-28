@@ -3,7 +3,7 @@
 // has late bound var
 
 fn main() {
-    test(&|| 0); //~ ERROR the trait bound
+    test(&|| 0); //~ ERROR the trait
 }
 
 trait Trait {}

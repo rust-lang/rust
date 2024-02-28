@@ -1,4 +1,4 @@
-error[E0277]: the trait bound `String: Copy` is not satisfied
+error[E0277]: the trait `Copy` is not implemented for `String`
   --> $DIR/issue-84973-blacklist.rs:15:12
    |
 LL |     f_copy("".to_string());
@@ -17,7 +17,7 @@ LL -     f_copy("".to_string());
 LL +     f_copy("");
    |
 
-error[E0277]: the trait bound `S: Clone` is not satisfied
+error[E0277]: the trait `Clone` is not implemented for `S`
   --> $DIR/issue-84973-blacklist.rs:16:13
    |
 LL |     f_clone(S);

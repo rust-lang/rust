@@ -14,6 +14,6 @@ impl Trait<&'static str> for Struct {
 
 fn main() {
     let s: Box<dyn Trait<isize>> = Box::new(Struct { person: "Fred" });
-    //~^ ERROR `Struct: Trait<isize>` is not satisfied
+    //~^ ERROR trait `Trait<isize>` is not implemented for `Struct`
     s.f(1);
 }

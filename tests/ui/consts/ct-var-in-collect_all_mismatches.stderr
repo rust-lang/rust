@@ -1,4 +1,4 @@
-error[E0277]: the trait bound `T: Bar<N>` is not satisfied
+error[E0277]: the trait `Bar<N>` is not implemented for `T`
   --> $DIR/ct-var-in-collect_all_mismatches.rs:9:14
    |
 LL |         self.unsatisfied()

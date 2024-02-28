@@ -28,7 +28,7 @@ fn foo<T: ImplementedForUnitButNotNever>(_t: T) {}
 fn smeg() {
     let _x = return;
     foo(_x);
-    //[fallback]~^ ERROR the trait bound
+    //[fallback]~^ ERROR the trait
     //[fallback]~| NOTE the trait `ImplementedForUnitButNotNever` is not implemented
     //[fallback]~| HELP trait `ImplementedForUnitButNotNever` is implemented for `()`
     //[fallback]~| NOTE this error might have been caused

@@ -11,8 +11,8 @@ impl<S: Default> Bar for S {
 
     fn foo<T: Default>() -> Self::E {
         //~^ ERROR impl has stricter requirements than trait
-        //~| ERROR the trait bound `S: Copy` is not satisfied in `(S, T)` [E0277]
-        //~| ERROR the trait bound `T: Copy` is not satisfied in `(S, T)` [E0277]
+        //~| ERROR the trait `Copy` is not implemented for `S` in `(S, T)`
+        //~| ERROR the trait `Copy` is not implemented for `T` in `(S, T)`
         (S::default(), T::default())
     }
 }

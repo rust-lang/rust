@@ -5,7 +5,7 @@ type Foo<T> = impl Default;
 #[allow(unused)]
 fn foo<T: Default>(t: T) -> Foo<T> {
     t
-    //~^ ERROR: the trait bound `T: Default` is not satisfied
+    //~^ ERROR trait `Default` is not implemented for `T`
 }
 
 struct NotDefault;

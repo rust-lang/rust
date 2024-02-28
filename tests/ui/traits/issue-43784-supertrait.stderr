@@ -1,4 +1,4 @@
-error[E0277]: the trait bound `T: Copy` is not satisfied
+error[E0277]: the trait `Copy` is not implemented for `T`
   --> $DIR/issue-43784-supertrait.rs:8:22
    |
 LL | impl<T> Complete for T {}

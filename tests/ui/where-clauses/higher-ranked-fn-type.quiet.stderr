@@ -1,4 +1,4 @@
-error[E0277]: the trait bound `for<'b> fn(&'b ()): Foo` is not satisfied
+error[E0277]: the trait `for<'b> Foo` is not implemented for `fn(&'b ())`
   --> $DIR/higher-ranked-fn-type.rs:20:5
    |
 LL |     called()

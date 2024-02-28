@@ -25,7 +25,7 @@ fn foo<T: Foo>() {
     //
     //     https://github.com/rust-lang/trait-system-refactor-initiative/issues/76
     require_bar::<T>();
-    //~^ ERROR the trait bound `T: Bar` is not satisfied
+    //~^ ERROR trait `Bar` is not implemented for `T`
 }
 
 fn main() {}

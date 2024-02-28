@@ -5,7 +5,7 @@ trait Tr {
 }
 
 struct Hoge<K> {
-    s: S<K>, //~ ERROR the trait bound `K: Tr` is not satisfied
+    s: S<K>, //~ ERROR trait `Tr` is not implemented for `K`
     a: u32,
 }
 

@@ -38,7 +38,7 @@ mod c {
     }
 
     #[derive(Debug)]
-    struct Outer<T>(Inner<T>); //~ ERROR the trait bound `T: c::Trait` is not satisfied
+    struct Outer<T>(Inner<T>); //~ ERROR trait `c::Trait` is not implemented for `T`
 }
 
 mod d {
@@ -53,7 +53,7 @@ mod d {
     }
 
     #[derive(Debug)]
-    struct Outer<T>(Inner<T>); //~ ERROR the trait bound `T: d::Trait` is not satisfied
+    struct Outer<T>(Inner<T>); //~ ERROR trait `d::Trait` is not implemented for `T`
 }
 
 mod e {
@@ -68,7 +68,7 @@ mod e {
     }
 
     #[derive(Debug)]
-    struct Outer<T>(Inner<T>); //~ ERROR the trait bound `T: e::Trait` is not satisfied
+    struct Outer<T>(Inner<T>); //~ ERROR trait `e::Trait` is not implemented for `T`
 }
 
 mod f {
@@ -83,7 +83,7 @@ mod f {
     }
 
     #[derive(Debug)]
-    struct Outer<T>(Inner<T>); //~ ERROR the trait bound `T: f::Trait` is not satisfied
+    struct Outer<T>(Inner<T>); //~ ERROR trait `f::Trait` is not implemented for `T`
 }
 
 fn main() {}

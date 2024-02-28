@@ -8,7 +8,7 @@ LL | #![feature(specialization)]
    = help: consider using `min_specialization` instead, which is more stable and complete
    = note: `#[warn(incomplete_features)]` on by default
 
-error[E0277]: the trait bound `str: Clone` is not satisfied
+error[E0277]: the trait `Clone` is not implemented for `str`
   --> $DIR/default-associated-type-bound-1.rs:18:22
    |
 LL |     default type U = str;

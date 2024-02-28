@@ -6,14 +6,14 @@ trait T {}
 impl T for i32 {}
 
 fn should_ret_unit() -> impl T {
-    //~^ ERROR `(): T` is not satisfied
+    //~^ ERROR trait `T` is not implemented for `()`
     panic!()
 }
 
 type Foo = impl T;
 
 fn a() -> Foo {
-    //~^ ERROR `(): T` is not satisfied
+    //~^ ERROR trait `T` is not implemented for `()`
     panic!()
 }
 

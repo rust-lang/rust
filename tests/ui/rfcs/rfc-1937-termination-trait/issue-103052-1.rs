@@ -7,5 +7,5 @@ fn receive(_: impl std::process::Termination) {}
 struct Something;
 
 fn main() {
-    receive(Something); //~ ERROR the trait bound `Something: Termination` is not satisfied
+    receive(Something); //~ ERROR trait `Termination` is not implemented for `Something`
 }

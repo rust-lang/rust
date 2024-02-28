@@ -1,4 +1,4 @@
-error[E0277]: the trait bound `T: Bound` is not satisfied
+error[E0277]: the trait `Bound` is not implemented for `T`
   --> $DIR/issue-21837.rs:8:20
    |
 LL | impl<T> Trait2 for Foo<T> {}

@@ -18,5 +18,5 @@ impl Bar<X> for isize {
 
 fn main() {
     1.method::<X>();
-    //~^ ERROR the trait bound `X: Foo<X>` is not satisfied
+    //~^ ERROR trait `Foo<X>` is not implemented for `X`
 }

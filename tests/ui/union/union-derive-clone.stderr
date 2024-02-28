@@ -1,4 +1,4 @@
-error[E0277]: the trait bound `U1: Copy` is not satisfied
+error[E0277]: the trait `Copy` is not implemented for `U1`
   --> $DIR/union-derive-clone.rs:3:10
    |
 LL | #[derive(Clone)]

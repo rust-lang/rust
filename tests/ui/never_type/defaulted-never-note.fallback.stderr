@@ -1,4 +1,4 @@
-error[E0277]: the trait bound `!: ImplementedForUnitButNotNever` is not satisfied
+error[E0277]: the trait `ImplementedForUnitButNotNever` is not implemented for `!`
   --> $DIR/defaulted-never-note.rs:30:9
    |
 LL |     foo(_x);

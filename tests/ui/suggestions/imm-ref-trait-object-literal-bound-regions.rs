@@ -14,5 +14,5 @@ where
 
 fn main() {
     let s = S;
-    foo::<S>(s); //~ ERROR the trait bound `for<'b> &'b S: Trait` is not satisfied
+    foo::<S>(s); //~ ERROR trait `for<'b> Trait` is not implemented for `&'b S`
 }

@@ -1,4 +1,4 @@
-error[E0277]: the trait bound `fn() -> impl T<O = ()> {foo}: T` is not satisfied
+error[E0277]: the trait `T` is not implemented for `fn() -> impl T<O = ()> {foo}`
   --> $DIR/fn-ctor-passed-as-arg-where-it-should-have-been-called.rs:17:9
    |
 LL |     bar(foo);
@@ -16,7 +16,7 @@ help: use parentheses to call this function
 LL |     bar(foo());
    |            ++
 
-error[E0277]: the trait bound `{closure@$DIR/fn-ctor-passed-as-arg-where-it-should-have-been-called.rs:18:19: 18:21}: T` is not satisfied
+error[E0277]: the trait `T` is not implemented for `{closure@$DIR/fn-ctor-passed-as-arg-where-it-should-have-been-called.rs:18:19: 18:21}`
   --> $DIR/fn-ctor-passed-as-arg-where-it-should-have-been-called.rs:19:9
    |
 LL |     bar(closure);

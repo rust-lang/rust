@@ -4,7 +4,7 @@ error[E0228]: the lifetime bound for this object type cannot be deduced from con
 LL | fn bar(x: &str) -> &dyn Foo<Item = dyn Bar> { &() }
    |                                    ^^^^^^^
 
-error[E0277]: the trait bound `(): Foo<'_>` is not satisfied
+error[E0277]: the trait `Foo<'_>` is not implemented for `()`
   --> $DIR/object-lifetime-default-dyn-binding-nonstatic3.rs:16:47
    |
 LL | fn bar(x: &str) -> &dyn Foo<Item = dyn Bar> { &() }

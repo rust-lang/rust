@@ -1,4 +1,4 @@
-error[E0277]: the trait bound `MyCall: Callback` is not satisfied
+error[E0277]: the trait `Callback` is not implemented for `MyCall`
   --> $DIR/issue-75707.rs:15:9
    |
 LL |     f::<dyn Processing<Call = MyCall>>();

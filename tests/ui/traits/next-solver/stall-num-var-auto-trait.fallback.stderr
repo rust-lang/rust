@@ -1,4 +1,4 @@
-error[E0277]: the trait bound `i32: Foo` is not satisfied
+error[E0277]: the trait `Foo` is not implemented for `i32`
   --> $DIR/stall-num-var-auto-trait.rs:18:15
    |
 LL |     needs_foo(x);

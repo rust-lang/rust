@@ -16,7 +16,7 @@ LL | const fn accept1<T: ~const Trait>(_: Container<{ T::make() }>) {}
    = note: expected constant `false`
               found constant `host`
 
-error[E0277]: the trait bound `Ty: const Trait` is not satisfied
+error[E0277]: the trait `const Trait` is not implemented for `Ty`
   --> $DIR/unsatisfied-const-trait-bound.rs:20:15
    |
 LL |     require::<Ty>();

@@ -1,4 +1,4 @@
-error[E0277]: the trait bound `T: ~const Bar` is not satisfied
+error[E0277]: the trait `~const Bar` is not implemented for `T`
   --> $DIR/trait-where-clause-const.rs:21:5
    |
 LL |     T::b();
@@ -14,7 +14,7 @@ help: consider further restricting this bound
 LL | const fn test1<T: ~const Foo + Bar + ~const Bar>() {
    |                                    ++++++++++++
 
-error[E0277]: the trait bound `T: ~const Bar` is not satisfied
+error[E0277]: the trait `~const Bar` is not implemented for `T`
   --> $DIR/trait-where-clause-const.rs:23:12
    |
 LL |     T::c::<T>();

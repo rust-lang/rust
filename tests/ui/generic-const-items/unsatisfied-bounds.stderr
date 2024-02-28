@@ -1,4 +1,4 @@
-error[E0277]: the trait bound `String: Copy` is not satisfied
+error[E0277]: the trait `Copy` is not implemented for `String`
   --> $DIR/unsatisfied-bounds.rs:30:18
    |
 LL |     let () = C::<String>;
@@ -10,7 +10,7 @@ note: required by a bound in `C`
 LL | const C<T: Copy>: () = ();
    |            ^^^^ required by this bound in `C`
 
-error[E0277]: the trait bound `Infallible: From<()>` is not satisfied
+error[E0277]: the trait `From<()>` is not implemented for `Infallible`
   --> $DIR/unsatisfied-bounds.rs:31:18
    |
 LL |     let () = K::<()>;
@@ -27,7 +27,7 @@ LL | where
 LL |     Infallible: From<T>;
    |                 ^^^^^^^ required by this bound in `K`
 
-error[E0277]: the trait bound `Vec<u8>: Copy` is not satisfied
+error[E0277]: the trait `Copy` is not implemented for `Vec<u8>`
   --> $DIR/unsatisfied-bounds.rs:32:26
    |
 LL |     let _ = <() as Trait<Vec<u8>>>::A;
@@ -42,7 +42,7 @@ LL |     where
 LL |         P: Copy;
    |            ^^^^ required by this bound in `Trait::A`
 
-error[E0277]: the trait bound `Infallible: From<()>` is not satisfied
+error[E0277]: the trait `From<()>` is not implemented for `Infallible`
   --> $DIR/unsatisfied-bounds.rs:33:46
    |
 LL |     let _ = <() as Trait<&'static str>>::B::<()>;

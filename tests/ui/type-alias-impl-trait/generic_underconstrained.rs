@@ -7,7 +7,7 @@ type Underconstrained<T: Trait> = impl Send;
 
 // no `Trait` bound
 fn underconstrain<T>(_: T) -> Underconstrained<T> {
-    //~^ ERROR the trait bound `T: Trait`
-    //~| ERROR the trait bound `T: Trait`
+    //~^ ERROR trait `Trait` is not implemented for `T`
+    //~| ERROR trait `Trait` is not implemented for `T`
     unimplemented!()
 }

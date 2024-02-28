@@ -1,4 +1,4 @@
-error[E0277]: the trait bound `A<_>: Bar<_>` is not satisfied
+error[E0277]: the trait `Bar<_>` is not implemented for `A<_>`
   --> $DIR/unused-substs-1.rs:12:13
    |
 LL |     let _ = A;

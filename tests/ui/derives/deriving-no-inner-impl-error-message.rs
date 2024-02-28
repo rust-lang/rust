@@ -7,7 +7,7 @@ struct E {
 #[derive(Clone)]
 struct C {
     x: NoCloneOrEq
-    //~^ ERROR `NoCloneOrEq: Clone` is not satisfied
+    //~^ ERROR trait `Clone` is not implemented for `NoCloneOrEq`
 }
 
 

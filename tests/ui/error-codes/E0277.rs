@@ -13,5 +13,5 @@ fn f(p: Path) { }
 
 fn main() {
     some_func(5i32);
-    //~^ ERROR the trait bound `i32: Foo` is not satisfied
+    //~^ ERROR trait `Foo` is not implemented for `i32`
 }

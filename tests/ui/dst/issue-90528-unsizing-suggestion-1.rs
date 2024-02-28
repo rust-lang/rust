@@ -11,10 +11,10 @@ fn wants_read(_: impl Read) {}
 
 fn main() {
     wants_read([0u8]);
-    //~^ ERROR the trait bound `[u8; 1]: Read` is not satisfied
+    //~^ ERROR trait `Read` is not implemented for `[u8; 1]`
     wants_read(&[0u8]);
-    //~^ ERROR the trait bound `&[u8; 1]: Read` is not satisfied
+    //~^ ERROR trait `Read` is not implemented for `&[u8; 1]`
     wants_read(&[0u8][..]);
     wants_read(&mut [0u8]);
-    //~^ ERROR the trait bound `&mut [u8; 1]: Read` is not satisfied
+    //~^ ERROR trait `Read` is not implemented for `&mut [u8; 1]`
 }

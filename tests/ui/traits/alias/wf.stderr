@@ -1,4 +1,4 @@
-error[E0277]: the trait bound `T: Foo` is not satisfied
+error[E0277]: the trait `Foo` is not implemented for `T`
   --> $DIR/wf.rs:5:14
    |
 LL | trait B<T> = A<T>;

@@ -1,4 +1,4 @@
-error[E0277]: the trait bound `Self: Get` is not satisfied
+error[E0277]: the trait `Get` is not implemented for `Self`
   --> $DIR/associated-types-for-unimpl-trait.rs:11:41
    |
 LL |     fn uhoh<U: Get>(&self, foo: U, bar: <Self as Get>::Value) where Self: Sized {}
@@ -9,7 +9,7 @@ help: consider further restricting `Self`
 LL |     fn uhoh<U: Get>(&self, foo: U, bar: <Self as Get>::Value) where Self: Sized, Self: Get {}
    |                                                                                +++++++++++
 
-error[E0277]: the trait bound `Self: Get` is not satisfied
+error[E0277]: the trait `Get` is not implemented for `Self`
   --> $DIR/associated-types-for-unimpl-trait.rs:11:81
    |
 LL |     fn uhoh<U: Get>(&self, foo: U, bar: <Self as Get>::Value) where Self: Sized {}

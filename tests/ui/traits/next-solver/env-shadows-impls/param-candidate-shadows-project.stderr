@@ -1,4 +1,4 @@
-error[E0277]: the trait bound `T: Bar` is not satisfied
+error[E0277]: the trait `Bar` is not implemented for `T`
   --> $DIR/param-candidate-shadows-project.rs:27:19
    |
 LL |     require_bar::<T>();

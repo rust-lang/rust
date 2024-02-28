@@ -1,4 +1,4 @@
-error[E0277]: the trait bound `Bar: Copy` is not satisfied
+error[E0277]: the trait `Copy` is not implemented for `Bar`
   --> $DIR/migrate-fail.rs:11:38
    |
 LL |         let arr: [Option<Bar>; 2] = [x; 2];
@@ -14,7 +14,7 @@ LL + #[derive(Copy)]
 LL | struct Bar;
    |
 
-error[E0277]: the trait bound `Bar: Copy` is not satisfied
+error[E0277]: the trait `Copy` is not implemented for `Bar`
   --> $DIR/migrate-fail.rs:17:38
    |
 LL |         let arr: [Option<Bar>; 2] = [x; 2];

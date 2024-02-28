@@ -12,7 +12,7 @@ error[E0229]: associated type bindings are not allowed here
 LL |     (): Test<{ 1 + (<() as Elide(&())>::call) }>,
    |                            ^^^^^^^^^^ associated type not allowed here
 
-error[E0277]: the trait bound `(): Elide<(&(),)>` is not satisfied
+error[E0277]: the trait `Elide<(&(),)>` is not implemented for `()`
   --> $DIR/escaping_bound_vars.rs:11:22
    |
 LL |     (): Test<{ 1 + (<() as Elide(&())>::call) }>,
@@ -42,7 +42,7 @@ LL |     (): Test<{ 1 + (<() as Elide(&())>::call) }>,
              <i32 as Add<&i32>>
            and 48 others
 
-error[E0277]: the trait bound `(): Elide<(&(),)>` is not satisfied
+error[E0277]: the trait `Elide<(&(),)>` is not implemented for `()`
   --> $DIR/escaping_bound_vars.rs:11:18
    |
 LL |     (): Test<{ 1 + (<() as Elide(&())>::call) }>,

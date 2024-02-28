@@ -6,7 +6,7 @@ fn needs_foo(_: impl Foo) {}
 
 fn test(x: &Box<dyn Fn() -> i32>) {
     needs_foo(x);
-    //~^ ERROR the trait bound
+    //~^ ERROR the trait
     //~| HELP use parentheses to call this trait object
 }
 

@@ -4,7 +4,8 @@
 // type-checked.
 
 trait Foo<T: Default + ToString> {
-    type Out: Default + ToString + ?Sized = dyn ToString;  //~ ERROR not satisfied
+    type Out: Default + ToString + ?Sized = dyn ToString;
+    //~^ ERROR the trait `Default` is not implemented for `(dyn ToString + 'static)`
 }
 
 impl Foo<u32> for () {}

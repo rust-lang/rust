@@ -7,7 +7,7 @@
 type X<A, B> = impl Into<&'static A>;
 
 fn f<A, B: 'static>(a: &'static A, b: B) -> (X<A, B>, X<B, A>) {
-    //~^ ERROR the trait bound `&'static B: From<&A>` is not satisfied
+    //~^ ERROR trait `From<&A>` is not implemented for `&'static B`
     (a, a)
 }
 

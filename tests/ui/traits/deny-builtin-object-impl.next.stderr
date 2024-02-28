@@ -1,4 +1,4 @@
-error[E0277]: the trait bound `dyn NotObject: NotObject` is not satisfied
+error[E0277]: the trait `NotObject` is not implemented for `dyn NotObject`
   --> $DIR/deny-builtin-object-impl.rs:18:23
    |
 LL |     test_not_object::<dyn NotObject>();

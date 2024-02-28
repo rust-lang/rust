@@ -1,4 +1,4 @@
-error[E0277]: the trait bound `(): Foo` is not satisfied
+error[E0277]: the trait `Foo` is not implemented for `()`
   --> $DIR/wf-foreign-fn-decl-ret.rs:11:25
    |
 LL |     pub fn lint_me() -> <() as Foo>::Assoc;
@@ -10,7 +10,7 @@ help: this trait has no implementations, consider adding one
 LL | pub trait Foo {
    | ^^^^^^^^^^^^^
 
-error[E0277]: the trait bound `u32: Unsatisfied` is not satisfied
+error[E0277]: the trait `Unsatisfied` is not implemented for `u32`
   --> $DIR/wf-foreign-fn-decl-ret.rs:14:32
    |
 LL |     pub fn lint_me_aswell() -> Bar<u32>;

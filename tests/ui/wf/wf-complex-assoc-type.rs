@@ -6,7 +6,7 @@ trait HelperTrait {
 }
 
 impl HelperTrait for () {
-    type MyItem = Option<((AssertMyTrait<bool>, u8))>; //~ ERROR the trait bound
+    type MyItem = Option<((AssertMyTrait<bool>, u8))>; //~ ERROR the trait
 }
 
 fn main() {}

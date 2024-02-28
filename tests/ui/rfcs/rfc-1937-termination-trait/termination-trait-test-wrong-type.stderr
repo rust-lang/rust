@@ -1,4 +1,4 @@
-error[E0277]: the trait bound `f32: Termination` is not satisfied
+error[E0277]: the trait `Termination` is not implemented for `f32`
   --> $DIR/termination-trait-test-wrong-type.rs:6:31
    |
 LL | #[test]

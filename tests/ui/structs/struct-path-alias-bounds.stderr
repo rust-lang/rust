@@ -1,4 +1,4 @@
-error[E0277]: the trait bound `NoClone: Clone` is not satisfied
+error[E0277]: the trait `Clone` is not implemented for `NoClone`
   --> $DIR/struct-path-alias-bounds.rs:9:13
    |
 LL |     let s = A { a: NoClone };

@@ -1,4 +1,4 @@
-error[E0277]: the trait bound `&str: From<String>` is not satisfied
+error[E0277]: the trait `From<String>` is not implemented for `&str`
   --> $DIR/into-str.rs:4:9
    |
 LL |     foo(String::new());

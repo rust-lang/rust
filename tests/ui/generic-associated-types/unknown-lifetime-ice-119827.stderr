@@ -80,7 +80,7 @@ LL |     type Context<'c>
    = help: consider moving `Context` to another trait
    = help: only type `{type error}` implements the trait, consider using it directly instead
 
-error[E0277]: the trait bound `Box<(dyn Foo + 'static)>: Foo` is not satisfied
+error[E0277]: the trait `Foo` is not implemented for `Box<(dyn Foo + 'static)>`
   --> $DIR/unknown-lifetime-ice-119827.rs:7:14
    |
 LL | impl Foo for Box<dyn Foo> {}

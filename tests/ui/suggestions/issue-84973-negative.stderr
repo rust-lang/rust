@@ -1,4 +1,4 @@
-error[E0277]: the trait bound `i32: Tr` is not satisfied
+error[E0277]: the trait `Tr` is not implemented for `i32`
   --> $DIR/issue-84973-negative.rs:10:9
    |
 LL |     bar(a);

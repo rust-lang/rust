@@ -1,4 +1,4 @@
-error[E0277]: the trait bound `&T: X` is not satisfied
+error[E0277]: the trait `X` is not implemented for `&T`
   --> $DIR/issue-106443-sugg-clone-for-bound.rs:10:9
    |
 LL |     foo(s);
@@ -13,7 +13,7 @@ help: consider using clone here
 LL |     foo(s.clone());
    |          ++++++++
 
-error[E0277]: the trait bound `&T: X` is not satisfied
+error[E0277]: the trait `X` is not implemented for `&T`
   --> $DIR/issue-106443-sugg-clone-for-bound.rs:14:9
    |
 LL |     foo(s);

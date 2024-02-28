@@ -1,4 +1,4 @@
-error[E0277]: the trait bound `Bug: Foo` is not satisfied
+error[E0277]: the trait `Foo` is not implemented for `Bug`
   --> $DIR/issue-59324.rs:11:1
    |
 LL | / pub trait ThriftService<Bug: NotFoo>:
@@ -12,7 +12,7 @@ help: consider further restricting this bound
 LL | pub trait ThriftService<Bug: NotFoo + Foo>:
    |                                     +++++
 
-error[E0277]: the trait bound `Bug: Foo` is not satisfied
+error[E0277]: the trait `Foo` is not implemented for `Bug`
   --> $DIR/issue-59324.rs:11:1
    |
 LL | / pub trait ThriftService<Bug: NotFoo>:
@@ -29,7 +29,7 @@ help: consider further restricting this bound
 LL | pub trait ThriftService<Bug: NotFoo + Foo>:
    |                                     +++++
 
-error[E0277]: the trait bound `Bug: Foo` is not satisfied
+error[E0277]: the trait `Foo` is not implemented for `Bug`
   --> $DIR/issue-59324.rs:16:5
    |
 LL | /     fn get_service(
@@ -43,7 +43,7 @@ help: consider further restricting this bound
 LL | pub trait ThriftService<Bug: NotFoo + Foo>:
    |                                     +++++
 
-error[E0277]: the trait bound `(): Foo` is not satisfied
+error[E0277]: the trait `Foo` is not implemented for `()`
   --> $DIR/issue-59324.rs:23:29
    |
 LL | fn with_factory<H>(factory: dyn ThriftService<()>) {}
@@ -55,7 +55,7 @@ help: this trait has no implementations, consider adding one
 LL | pub trait Foo: NotFoo {
    | ^^^^^^^^^^^^^^^^^^^^^
 
-error[E0277]: the trait bound `Bug: Foo` is not satisfied
+error[E0277]: the trait `Foo` is not implemented for `Bug`
   --> $DIR/issue-59324.rs:19:10
    |
 LL |     ) -> Self::AssocType;
@@ -66,7 +66,7 @@ help: consider further restricting this bound
 LL | pub trait ThriftService<Bug: NotFoo + Foo>:
    |                                     +++++
 
-error[E0277]: the trait bound `(): Foo` is not satisfied
+error[E0277]: the trait `Foo` is not implemented for `()`
   --> $DIR/issue-59324.rs:23:52
    |
 LL | fn with_factory<H>(factory: dyn ThriftService<()>) {}

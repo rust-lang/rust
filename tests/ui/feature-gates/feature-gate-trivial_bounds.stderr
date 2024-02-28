@@ -1,4 +1,4 @@
-error[E0277]: the trait bound `i32: Foo` is not satisfied
+error[E0277]: the trait `Foo` is not implemented for `i32`
   --> $DIR/feature-gate-trivial_bounds.rs:10:14
    |
 LL | enum E where i32: Foo { V }
@@ -8,7 +8,7 @@ LL | enum E where i32: Foo { V }
    = help: see issue #48214
    = help: add `#![feature(trivial_bounds)]` to the crate attributes to enable
 
-error[E0277]: the trait bound `i32: Foo` is not satisfied
+error[E0277]: the trait `Foo` is not implemented for `i32`
   --> $DIR/feature-gate-trivial_bounds.rs:12:16
    |
 LL | struct S where i32: Foo;
@@ -18,7 +18,7 @@ LL | struct S where i32: Foo;
    = help: see issue #48214
    = help: add `#![feature(trivial_bounds)]` to the crate attributes to enable
 
-error[E0277]: the trait bound `i32: Foo` is not satisfied
+error[E0277]: the trait `Foo` is not implemented for `i32`
   --> $DIR/feature-gate-trivial_bounds.rs:14:15
    |
 LL | trait T where i32: Foo {}
@@ -28,7 +28,7 @@ LL | trait T where i32: Foo {}
    = help: see issue #48214
    = help: add `#![feature(trivial_bounds)]` to the crate attributes to enable
 
-error[E0277]: the trait bound `i32: Foo` is not satisfied
+error[E0277]: the trait `Foo` is not implemented for `i32`
   --> $DIR/feature-gate-trivial_bounds.rs:16:15
    |
 LL | union U where i32: Foo { f: i32 }
@@ -38,7 +38,7 @@ LL | union U where i32: Foo { f: i32 }
    = help: see issue #48214
    = help: add `#![feature(trivial_bounds)]` to the crate attributes to enable
 
-error[E0277]: the trait bound `i32: Foo` is not satisfied
+error[E0277]: the trait `Foo` is not implemented for `i32`
   --> $DIR/feature-gate-trivial_bounds.rs:20:23
    |
 LL | impl Foo for () where i32: Foo {
@@ -48,7 +48,7 @@ LL | impl Foo for () where i32: Foo {
    = help: see issue #48214
    = help: add `#![feature(trivial_bounds)]` to the crate attributes to enable
 
-error[E0277]: the trait bound `i32: Foo` is not satisfied
+error[E0277]: the trait `Foo` is not implemented for `i32`
   --> $DIR/feature-gate-trivial_bounds.rs:28:14
    |
 LL | fn f() where i32: Foo
@@ -58,7 +58,7 @@ LL | fn f() where i32: Foo
    = help: see issue #48214
    = help: add `#![feature(trivial_bounds)]` to the crate attributes to enable
 
-error[E0277]: the trait bound `String: Neg` is not satisfied
+error[E0277]: the trait `Neg` is not implemented for `String`
   --> $DIR/feature-gate-trivial_bounds.rs:36:38
    |
 LL | fn use_op(s: String) -> String where String: ::std::ops::Neg<Output=String> {

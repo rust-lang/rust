@@ -1,4 +1,4 @@
-error[E0277]: the trait bound `[X; 35]: Default` is not satisfied
+error[E0277]: the trait `Default` is not implemented for `[X; 35]`
   --> $DIR/missing-larger-array-impl.rs:7:6
    |
 LL |     <[X; 35] as Default>::default();

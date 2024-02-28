@@ -1,4 +1,4 @@
-error[E0277]: the trait bound `T: Clone` is not satisfied
+error[E0277]: the trait `Clone` is not implemented for `T`
   --> $DIR/derive-clone-for-eq.rs:4:17
    |
 LL | #[derive(Clone, Eq)]

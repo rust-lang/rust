@@ -1,4 +1,4 @@
-error[E0277]: the trait bound `U: From<T>` is not satisfied
+error[E0277]: the trait `From<T>` is not implemented for `U`
   --> $DIR/issue-53092.rs:14:5
    |
 LL |     |x| x.into()

@@ -9,8 +9,8 @@ struct Struct {
 
 impl Struct {
     fn uhoh<T>(foo: <T as Get>::Value) {}
-    //~^ ERROR the trait bound `T: Get` is not satisfied
-    //~| ERROR the trait bound `T: Get` is not satisfied
+    //~^ ERROR trait `Get` is not implemented for `T`
+    //~| ERROR trait `Get` is not implemented for `T`
 }
 
 fn main() {}

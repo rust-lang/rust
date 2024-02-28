@@ -1,4 +1,4 @@
-error[E0277]: the trait bound `for<'a> &'a T: Bar` is not satisfied
+error[E0277]: the trait `for<'a> Bar` is not implemented for `&'a T`
   --> $DIR/correct-binder-for-arbitrary-bound-sugg.rs:13:11
    |
 LL | fn foo<T: Foo>() {}

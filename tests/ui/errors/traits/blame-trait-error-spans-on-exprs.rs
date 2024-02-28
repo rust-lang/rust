@@ -79,59 +79,59 @@ fn example<Q>(q: Q) {
 
     // Verifies for struct:
     want(Wrapper { value: Burrito { spicy: false, filling: q } });
-    //~^ ERROR the trait bound `Q: T3` is not satisfied [E0277]
+    //~^ ERROR trait `T3` is not implemented for `Q`
 
     // Verifies for enum with named fields in variant:
     want(Wrapper { value: BurritoKinds::SmallBurrito { spicy: true, small_filling: q } });
-    //~^ ERROR the trait bound `Q: T3` is not satisfied [E0277]
+    //~^ ERROR trait `T3` is not implemented for `Q`
 
     // Verifies for tuple struct:
     want(Wrapper { value: Taco(false, q) });
-    //~^ ERROR the trait bound `Q: T3` is not satisfied [E0277]
+    //~^ ERROR trait `T3` is not implemented for `Q`
 
     // Verifies for tuple enum variant:
     want(Wrapper { value: TacoKinds::OneTaco(false, q) });
-    //~^ ERROR the trait bound `Q: T3` is not satisfied [E0277]
+    //~^ ERROR trait `T3` is not implemented for `Q`
 
     // Verifies for generic type with multiple parameters:
     want(Wrapper { value: GenericBurrito { spiciness: NotSpicy, filling: q } });
-    //~^ ERROR the trait bound `Q: T3` is not satisfied [E0277]
+    //~^ ERROR trait `T3` is not implemented for `Q`
 
     // Verifies for tuple:
     want((3, q));
-    //~^ ERROR the trait bound `Q: T2` is not satisfied [E0277]
+    //~^ ERROR trait `T2` is not implemented for `Q`
 
     // Verifies for nested tuple:
     want(Wrapper { value: (3, q) });
-    //~^ ERROR the trait bound `Q: T3` is not satisfied [E0277]
+    //~^ ERROR trait `T3` is not implemented for `Q`
 
     // Verifies for nested tuple:
     want(((3, q), 5));
-    //~^ ERROR the trait bound `Q: T3` is not satisfied [E0277]
+    //~^ ERROR trait `T3` is not implemented for `Q`
 
     want(DoubleWrapper { item: Wrapper { value: q } });
-    //~^ ERROR the trait bound `Q: T1` is not satisfied [E0277]
+    //~^ ERROR trait `T1` is not implemented for `Q`
 
     want(DoubleWrapper { item: Wrapper { value: DoubleWrapper { item: Wrapper { value: q } } } });
-    //~^ ERROR the trait bound `Q: T1` is not satisfied [E0277]
+    //~^ ERROR trait `T1` is not implemented for `Q`
 
     // Verifies for type alias to struct:
     want(Wrapper { value: AliasBurrito { spiciness: q, filling: q } });
-    //~^ ERROR the trait bound `Q: T3` is not satisfied [E0277]
+    //~^ ERROR trait `T3` is not implemented for `Q`
 
     want(Two { a: Two { a: (), b: q }, b: () });
-    //~^ ERROR the trait bound `Q: T1` is not satisfied [E0277]
+    //~^ ERROR trait `T1` is not implemented for `Q`
 
     // We *should* blame the 'q'.
     // FIXME: Right now, the wrong field is blamed.
     want(
         Two { a: Two { a: (), b: Two { a: Two { a: (), b: q }, b: () } }, b: () },
-        //~^ ERROR the trait bound `Q: T1` is not satisfied [E0277]
+        //~^ ERROR trait `T1` is not implemented for `Q`
     );
 
     // Verifies for reference:
     want(&Burrito { spicy: false, filling: q });
-    //~^ ERROR the trait bound `Q: T3` is not satisfied [E0277]
+    //~^ ERROR trait `T3` is not implemented for `Q`
 }
 
 fn main() {}

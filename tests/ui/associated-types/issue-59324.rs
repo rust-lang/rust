@@ -9,20 +9,20 @@ pub trait Service {
 }
 
 pub trait ThriftService<Bug: NotFoo>:
-//~^ ERROR the trait bound `Bug: Foo` is not satisfied
-//~| ERROR the trait bound `Bug: Foo` is not satisfied
+//~^ ERROR trait `Foo` is not implemented for `Bug`
+//~| ERROR trait `Foo` is not implemented for `Bug`
     Service<AssocType = <Bug as Foo>::OnlyFoo>
 {
     fn get_service(
-    //~^ ERROR the trait bound `Bug: Foo` is not satisfied
+    //~^ ERROR trait `Foo` is not implemented for `Bug`
         &self,
     ) -> Self::AssocType;
-    //~^ ERROR the trait bound `Bug: Foo` is not satisfied
+    //~^ ERROR trait `Foo` is not implemented for `Bug`
 }
 
 fn with_factory<H>(factory: dyn ThriftService<()>) {}
-//~^ ERROR the trait bound `(): Foo` is not satisfied
-//~| ERROR the trait bound `(): Foo` is not satisfied
+//~^ ERROR trait `Foo` is not implemented for `()`
+//~| ERROR trait `Foo` is not implemented for `()`
 //~| ERROR cannot be known at compilation time
 
 fn main() {}

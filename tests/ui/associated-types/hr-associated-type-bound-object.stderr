@@ -1,4 +1,4 @@
-error[E0277]: the trait bound `for<'b> <T as X<'b>>::U: Clone` is not satisfied
+error[E0277]: the trait `for<'b> Clone` is not implemented for `<T as X<'b>>::U`
   --> $DIR/hr-associated-type-bound-object.rs:7:13
    |
 LL | fn f<'a, T: X<'a> + ?Sized>(x: &<T as X<'a>>::U) {
@@ -17,7 +17,7 @@ help: consider further restricting the associated type
 LL | fn f<'a, T: X<'a> + ?Sized>(x: &<T as X<'a>>::U) where for<'b> <T as X<'b>>::U: Clone {
    |                                                  ++++++++++++++++++++++++++++++++++++
 
-error[E0277]: the trait bound `for<'b> <T as X<'b>>::U: Clone` is not satisfied
+error[E0277]: the trait `for<'b> Clone` is not implemented for `<T as X<'b>>::U`
   --> $DIR/hr-associated-type-bound-object.rs:9:7
    |
 LL |     <<T as X<'_>>::U>::clone(x);
@@ -36,7 +36,7 @@ help: consider further restricting the associated type
 LL | fn f<'a, T: X<'a> + ?Sized>(x: &<T as X<'a>>::U) where for<'b> <T as X<'b>>::U: Clone {
    |                                                  ++++++++++++++++++++++++++++++++++++
 
-error[E0277]: the trait bound `<T as X<'_>>::U: Clone` is not satisfied
+error[E0277]: the trait `Clone` is not implemented for `<T as X<'_>>::U`
   --> $DIR/hr-associated-type-bound-object.rs:9:6
    |
 LL |     <<T as X<'_>>::U>::clone(x);
@@ -47,7 +47,7 @@ help: consider further restricting the associated type
 LL | fn f<'a, T: X<'a> + ?Sized>(x: &<T as X<'a>>::U) where <T as X<'_>>::U: Clone {
    |                                                  ++++++++++++++++++++++++++++
 
-error[E0277]: the trait bound `for<'b> <T as X<'b>>::U: Clone` is not satisfied
+error[E0277]: the trait `for<'b> Clone` is not implemented for `<T as X<'b>>::U`
   --> $DIR/hr-associated-type-bound-object.rs:9:5
    |
 LL |     <<T as X<'_>>::U>::clone(x);

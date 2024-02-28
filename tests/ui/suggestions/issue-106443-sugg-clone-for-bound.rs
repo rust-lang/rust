@@ -7,11 +7,11 @@ impl X for S {}
 
 fn foo<T: X>(_: T) {}
 fn bar<T: X>(s: &T) {
-    foo(s); //~ ERROR the trait bound `&T: X` is not satisfied
+    foo(s); //~ ERROR trait `X` is not implemented for `&T`
 }
 
 fn bar_with_clone<T: X + Clone>(s: &T) {
-    foo(s); //~ ERROR the trait bound `&T: X` is not satisfied
+    foo(s); //~ ERROR trait `X` is not implemented for `&T`
 }
 
 fn main() {
