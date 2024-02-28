@@ -95,7 +95,15 @@ pub enum InstanceDef<'tcx> {
     /// The body generated here differs significantly from the `ClosureOnceShim`,
     /// since we need to generate a distinct coroutine type that will move the
     /// closure's upvars *out* of the closure.
-    ConstructCoroutineInClosureShim { coroutine_closure_def_id: DefId },
+    ConstructCoroutineInClosureShim {
+        coroutine_closure_def_id: DefId,
+        // Whether the generated MIR body takes the coroutine by-ref. This is
+        // because the signature of `<{async fn} as FnMut>::call_mut` is:
+        // `fn(&mut self, args: A) -> <Self as FnOnce>::Output`, that is to say
+        // that it returns the `FnOnce`-flavored coroutine but takes the closure
+        // by ref (and similarly for `Fn::call`).
+        receiver_by_ref: bool,
+    },
 
     /// `<[coroutine] as Future>::poll`, but for coroutines produced when `AsyncFnOnce`
     /// is called on a coroutine-closure whose closure kind greater than `FnOnce`, or
@@ -188,6 +196,7 @@ impl<'tcx> InstanceDef<'tcx> {
             | InstanceDef::ClosureOnceShim { call_once: def_id, track_caller: _ }
             | ty::InstanceDef::ConstructCoroutineInClosureShim {
                 coroutine_closure_def_id: def_id,
+                receiver_by_ref: _,
             }
             | ty::InstanceDef::CoroutineKindShim { coroutine_def_id: def_id }
             | InstanceDef::DropGlue(def_id, _)

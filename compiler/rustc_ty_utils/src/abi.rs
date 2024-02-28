@@ -118,11 +118,18 @@ fn fn_sig_for_fn_abi<'tcx>(
             // a separate def-id for these bodies.
             let mut coroutine_kind = args.as_coroutine_closure().kind();
 
-            if let InstanceDef::ConstructCoroutineInClosureShim { .. } = instance.def {
-                coroutine_kind = ty::ClosureKind::FnOnce;
-            }
+            let env_ty =
+                if let InstanceDef::ConstructCoroutineInClosureShim { receiver_by_ref, .. } =
+                    instance.def
+                {
+                    coroutine_kind = ty::ClosureKind::FnOnce;
 
-            let env_ty = tcx.closure_env_ty(coroutine_ty, coroutine_kind, env_region);
+                    // Implementations of `FnMut` and `Fn` for coroutine-closures
+                    // still take their receiver by ref.
+                    if receiver_by_ref { Ty::new_mut_ptr(tcx, coroutine_ty) } else { coroutine_ty }
+                } else {
+                    tcx.closure_env_ty(coroutine_ty, coroutine_kind, env_region)
+                };
 
             let sig = sig.skip_binder();
             ty::Binder::bind_with_vars(

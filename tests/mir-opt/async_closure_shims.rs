@@ -29,8 +29,13 @@ async fn call_once(f: impl AsyncFnOnce(i32)) {
     f(1).await;
 }
 
+async fn call_normal<F: Future<Output = ()>>(f: &impl Fn(i32) -> F) {
+    f(1).await;
+}
+
 // EMIT_MIR async_closure_shims.main-{closure#0}-{closure#0}.coroutine_closure_by_move.0.mir
 // EMIT_MIR async_closure_shims.main-{closure#0}-{closure#0}-{closure#0}.coroutine_by_move.0.mir
+// EMIT_MIR async_closure_shims.main-{closure#0}-{closure#1}.coroutine_closure_by_ref.0.mir
 pub fn main() {
     block_on(async {
         let b = 2i32;
@@ -40,5 +45,10 @@ pub fn main() {
         };
         call_mut(&mut async_closure).await;
         call_once(async_closure).await;
+
+        let async_closure = async move |a: i32| {
+            let a = &a;
+        };
+        call_normal(&async_closure).await;
     });
 }

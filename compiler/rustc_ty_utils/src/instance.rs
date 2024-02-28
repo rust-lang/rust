@@ -282,6 +282,7 @@ fn resolve_associated_item<'tcx>(
                             Some(Instance {
                                 def: ty::InstanceDef::ConstructCoroutineInClosureShim {
                                     coroutine_closure_def_id,
+                                    receiver_by_ref: target_kind != ty::ClosureKind::FnOnce,
                                 },
                                 args,
                             })
@@ -304,6 +305,7 @@ fn resolve_associated_item<'tcx>(
                             Some(Instance {
                                 def: ty::InstanceDef::ConstructCoroutineInClosureShim {
                                     coroutine_closure_def_id,
+                                    receiver_by_ref: false,
                                 },
                                 args,
                             })

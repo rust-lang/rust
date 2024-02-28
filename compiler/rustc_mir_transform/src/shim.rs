@@ -70,9 +70,10 @@ fn make_shim<'tcx>(tcx: TyCtxt<'tcx>, instance: ty::InstanceDef<'tcx>) -> Body<'
             build_call_shim(tcx, instance, Some(Adjustment::RefMut), CallKind::Direct(call_mut))
         }
 
-        ty::InstanceDef::ConstructCoroutineInClosureShim { coroutine_closure_def_id } => {
-            build_construct_coroutine_by_move_shim(tcx, coroutine_closure_def_id)
-        }
+        ty::InstanceDef::ConstructCoroutineInClosureShim {
+            coroutine_closure_def_id,
+            receiver_by_ref,
+        } => build_construct_coroutine_by_move_shim(tcx, coroutine_closure_def_id, receiver_by_ref),
 
         ty::InstanceDef::CoroutineKindShim { coroutine_def_id } => {
             return tcx.optimized_mir(coroutine_def_id).coroutine_by_move_body().unwrap().clone();
@@ -1015,11 +1016,16 @@ fn build_fn_ptr_addr_shim<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId, self_ty: Ty<'t
 fn build_construct_coroutine_by_move_shim<'tcx>(
     tcx: TyCtxt<'tcx>,
     coroutine_closure_def_id: DefId,
+    receiver_by_ref: bool,
 ) -> Body<'tcx> {
-    let self_ty = tcx.type_of(coroutine_closure_def_id).instantiate_identity();
+    let mut self_ty = tcx.type_of(coroutine_closure_def_id).instantiate_identity();
     let ty::CoroutineClosure(_, args) = *self_ty.kind() else {
         bug!();
     };
+
+    if receiver_by_ref {
+        self_ty = Ty::new_mut_ptr(tcx, self_ty);
+    }
 
     let poly_sig = args.as_coroutine_closure().coroutine_closure_sig().map_bound(|sig| {
         tcx.mk_fn_sig(
@@ -1076,11 +1082,19 @@ fn build_construct_coroutine_by_move_shim<'tcx>(
 
     let source = MirSource::from_instance(ty::InstanceDef::ConstructCoroutineInClosureShim {
         coroutine_closure_def_id,
+        receiver_by_ref,
     });
 
     let body =
         new_body(source, IndexVec::from_elem_n(start_block, 1), locals, sig.inputs().len(), span);
-    dump_mir(tcx, false, "coroutine_closure_by_move", &0, &body, |_, _| Ok(()));
+    dump_mir(
+        tcx,
+        false,
+        if receiver_by_ref { "coroutine_closure_by_ref" } else { "coroutine_closure_by_move" },
+        &0,
+        &body,
+        |_, _| Ok(()),
+    );
 
     body
 }

@@ -347,6 +347,7 @@ macro_rules! make_mir_visitor {
                         ty::InstanceDef::ClosureOnceShim { call_once: _def_id, track_caller: _ } |
                         ty::InstanceDef::ConstructCoroutineInClosureShim {
                             coroutine_closure_def_id: _def_id,
+                            receiver_by_ref: _,
                         } |
                         ty::InstanceDef::CoroutineKindShim { coroutine_def_id: _def_id } |
                         ty::InstanceDef::DropGlue(_def_id, None) => {}
