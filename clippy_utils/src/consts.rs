@@ -778,8 +778,10 @@ pub fn mir_to_const<'tcx>(lcx: &LateContext<'tcx>, result: mir::Const<'tcx>) -> 
                 let range = alloc_range(offset + size * idx, size);
                 let val = alloc.read_scalar(&lcx.tcx, range, /* read_provenance */ false).ok()?;
                 res.push(match flt {
+                    FloatTy::F16 => unimplemented!("f16_f128"),
                     FloatTy::F32 => Constant::F32(f32::from_bits(val.to_u32().ok()?)),
                     FloatTy::F64 => Constant::F64(f64::from_bits(val.to_u64().ok()?)),
+                    FloatTy::F128 => unimplemented!("f16_f128"),
                 });
             }
             Some(Constant::Vec(res))
