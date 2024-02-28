@@ -160,8 +160,7 @@ impl<'me, 'bccx, 'tcx> NllTypeRelating<'me, 'bccx, 'tcx> {
             ),
         };
         let cause = ObligationCause::dummy_with_span(self.span());
-        let obligations =
-            infcx.handle_opaque_type(a, b, true, &cause, self.param_env())?.obligations;
+        let obligations = infcx.handle_opaque_type(a, b, &cause, self.param_env())?.obligations;
         self.register_obligations(obligations);
         Ok(())
     }
@@ -328,10 +327,6 @@ impl<'bccx, 'tcx> TypeRelation<'tcx> for NllTypeRelating<'_, 'bccx, 'tcx> {
 
     fn tag(&self) -> &'static str {
         "nll::subtype"
-    }
-
-    fn a_is_expected(&self) -> bool {
-        true
     }
 
     #[instrument(skip(self, info), level = "trace", ret)]

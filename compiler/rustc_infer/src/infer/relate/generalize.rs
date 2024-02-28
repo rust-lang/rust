@@ -130,7 +130,7 @@ impl<'tcx> InferCtxt<'tcx> {
             // instantiate_ty_var(?b, A) # expected and variance flipped
             // A rel A'
             // ```
-            if target_is_expected == relation.a_is_expected() {
+            if target_is_expected {
                 relation.relate(generalized_ty, source_ty)?;
             } else {
                 debug!("flip relation");
@@ -204,9 +204,9 @@ impl<'tcx> InferCtxt<'tcx> {
             .const_unification_table()
             .union_value(target_vid, ConstVariableValue::Known { value: generalized_ct });
 
-        // HACK: make sure that we `a_is_expected` continues to be
-        // correct when relating the generalized type with the source.
-        if target_is_expected == relation.a_is_expected() {
+        // Make sure that the order is correct when relating the
+        // generalized const and the source.
+        if target_is_expected {
             relation.relate_with_variance(
                 ty::Variance::Invariant,
                 ty::VarianceDiagInfo::default(),
@@ -396,10 +396,6 @@ impl<'tcx> TypeRelation<'tcx> for Generalizer<'_, 'tcx> {
 
     fn tag(&self) -> &'static str {
         "Generalizer"
-    }
-
-    fn a_is_expected(&self) -> bool {
-        true
     }
 
     fn relate_item_args(

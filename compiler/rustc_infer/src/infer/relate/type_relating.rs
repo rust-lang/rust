@@ -35,10 +35,6 @@ impl<'tcx> TypeRelation<'tcx> for TypeRelating<'_, '_, 'tcx> {
         self.fields.infcx.tcx
     }
 
-    fn a_is_expected(&self) -> bool {
-        true
-    }
-
     fn relate_with_variance<T: Relate<'tcx>>(
         &mut self,
         variance: ty::Variance,
@@ -139,7 +135,7 @@ impl<'tcx> TypeRelation<'tcx> for TypeRelating<'_, '_, 'tcx> {
             {
                 self.fields.obligations.extend(
                     infcx
-                        .handle_opaque_type(a, b, true, &self.fields.trace.cause, self.param_env())?
+                        .handle_opaque_type(a, b, &self.fields.trace.cause, self.param_env())?
                         .obligations,
                 );
             }
@@ -158,10 +154,6 @@ impl<'tcx> TypeRelation<'tcx> for TypeRelating<'_, '_, 'tcx> {
         b: ty::Region<'tcx>,
     ) -> RelateResult<'tcx, ty::Region<'tcx>> {
         debug!("{}.regions({:?}, {:?})", self.tag(), a, b);
-
-        // FIXME -- we have more fine-grained information available
-        // from the "cause" field, we could perhaps give more tailored
-        // error messages.
         let origin = SubregionOrigin::Subtype(Box::new(self.fields.trace.clone()));
 
         match self.ambient_variance {
@@ -184,7 +176,6 @@ impl<'tcx> TypeRelation<'tcx> for TypeRelating<'_, '_, 'tcx> {
                     .make_subregion(origin, a, b);
             }
             ty::Invariant => {
-                // The order of `make_eqregion` apparently matters.
                 self.fields
                     .infcx
                     .inner

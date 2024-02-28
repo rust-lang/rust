@@ -17,12 +17,6 @@
 //!
 //! On success, the  LUB/GLB operations return the appropriate bound. The
 //! return value of `Equate` or `Sub` shouldn't really be used.
-//!
-//! ## Contravariance
-//!
-//! We explicitly track which argument is expected using
-//! [TypeRelation::a_is_expected], so when dealing with contravariance
-//! this should be correctly updated.
 
 use super::glb::Glb;
 use super::lub::Lub;
@@ -57,7 +51,6 @@ impl<'tcx> InferCtxt<'tcx> {
     where
         R: ObligationEmittingRelation<'tcx>,
     {
-        let a_is_expected = relation.a_is_expected();
         debug_assert!(!a.has_escaping_bound_vars());
         debug_assert!(!b.has_escaping_bound_vars());
 
@@ -68,20 +61,20 @@ impl<'tcx> InferCtxt<'tcx> {
                     .borrow_mut()
                     .int_unification_table()
                     .unify_var_var(a_id, b_id)
-                    .map_err(|e| int_unification_error(a_is_expected, e))?;
+                    .map_err(|e| int_unification_error(true, e))?;
                 Ok(a)
             }
             (&ty::Infer(ty::IntVar(v_id)), &ty::Int(v)) => {
-                self.unify_integral_variable(a_is_expected, v_id, IntType(v))
+                self.unify_integral_variable(true, v_id, IntType(v))
             }
             (&ty::Int(v), &ty::Infer(ty::IntVar(v_id))) => {
-                self.unify_integral_variable(!a_is_expected, v_id, IntType(v))
+                self.unify_integral_variable(false, v_id, IntType(v))
             }
             (&ty::Infer(ty::IntVar(v_id)), &ty::Uint(v)) => {
-                self.unify_integral_variable(a_is_expected, v_id, UintType(v))
+                self.unify_integral_variable(true, v_id, UintType(v))
             }
             (&ty::Uint(v), &ty::Infer(ty::IntVar(v_id))) => {
-                self.unify_integral_variable(!a_is_expected, v_id, UintType(v))
+                self.unify_integral_variable(false, v_id, UintType(v))
             }
 
             // Relate floating-point variables to other types
@@ -90,14 +83,14 @@ impl<'tcx> InferCtxt<'tcx> {
                     .borrow_mut()
                     .float_unification_table()
                     .unify_var_var(a_id, b_id)
-                    .map_err(|e| float_unification_error(a_is_expected, e))?;
+                    .map_err(|e| float_unification_error(true, e))?;
                 Ok(a)
             }
             (&ty::Infer(ty::FloatVar(v_id)), &ty::Float(v)) => {
-                self.unify_float_variable(a_is_expected, v_id, v)
+                self.unify_float_variable(true, v_id, v)
             }
             (&ty::Float(v), &ty::Infer(ty::FloatVar(v_id))) => {
-                self.unify_float_variable(!a_is_expected, v_id, v)
+                self.unify_float_variable(false, v_id, v)
             }
 
             // We don't expect `TyVar` or `Fresh*` vars at this point with lazy norm.
@@ -130,7 +123,7 @@ impl<'tcx> InferCtxt<'tcx> {
 
             // All other cases of inference are errors
             (&ty::Infer(_), _) | (_, &ty::Infer(_)) => {
-                Err(TypeError::Sorts(ty::relate::expected_found(relation, a, b)))
+                Err(TypeError::Sorts(ty::relate::expected_found(a, b)))
             }
 
             // During coherence, opaque types should be treated as *possibly*
@@ -228,12 +221,12 @@ impl<'tcx> InferCtxt<'tcx> {
             }
 
             (ty::ConstKind::Infer(InferConst::Var(vid)), _) => {
-                self.instantiate_const_var(relation, relation.a_is_expected(), vid, b)?;
+                self.instantiate_const_var(relation, true, vid, b)?;
                 Ok(b)
             }
 
             (_, ty::ConstKind::Infer(InferConst::Var(vid))) => {
-                self.instantiate_const_var(relation, !relation.a_is_expected(), vid, a)?;
+                self.instantiate_const_var(relation, false, vid, a)?;
                 Ok(a)
             }
 
@@ -250,8 +243,6 @@ impl<'tcx> InferCtxt<'tcx> {
             {
                 match relation.structurally_relate_aliases() {
                     StructurallyRelateAliases::No => {
-                        let (a, b) = if relation.a_is_expected() { (a, b) } else { (b, a) };
-
                         relation.register_predicates([if self.next_trait_solver() {
                             ty::PredicateKind::AliasRelate(
                                 a.into(),

@@ -37,10 +37,6 @@ impl<'tcx> TypeRelation<'tcx> for MatchAgainstFreshVars<'tcx> {
         self.tcx
     }
 
-    fn a_is_expected(&self) -> bool {
-        true
-    } // irrelevant
-
     fn relate_with_variance<T: Relate<'tcx>>(
         &mut self,
         _: ty::Variance,
@@ -75,7 +71,7 @@ impl<'tcx> TypeRelation<'tcx> for MatchAgainstFreshVars<'tcx> {
             ) => Ok(a),
 
             (&ty::Infer(_), _) | (_, &ty::Infer(_)) => {
-                Err(TypeError::Sorts(relate::expected_found(self, a, b)))
+                Err(TypeError::Sorts(relate::expected_found(a, b)))
             }
 
             (&ty::Error(guar), _) | (_, &ty::Error(guar)) => Ok(Ty::new_error(self.tcx(), guar)),
@@ -100,7 +96,7 @@ impl<'tcx> TypeRelation<'tcx> for MatchAgainstFreshVars<'tcx> {
             }
 
             (ty::ConstKind::Infer(_), _) | (_, ty::ConstKind::Infer(_)) => {
-                return Err(TypeError::ConstMismatch(relate::expected_found(self, a, b)));
+                return Err(TypeError::ConstMismatch(relate::expected_found(a, b)));
             }
 
             _ => {}

@@ -15,20 +15,11 @@ use std::iter;
 
 pub type RelateResult<'tcx, T> = Result<T, TypeError<'tcx>>;
 
-#[derive(Clone, Debug)]
-pub enum Cause {
-    ExistentialRegionBound, // relating an existential region bound
-}
-
 pub trait TypeRelation<'tcx>: Sized {
     fn tcx(&self) -> TyCtxt<'tcx>;
 
     /// Returns a static string we can use for printouts.
     fn tag(&self) -> &'static str;
-
-    /// Returns `true` if the value `a` is the "expected" type in the
-    /// relation. Just affects error messages.
-    fn a_is_expected(&self) -> bool;
 
     /// Generic relation routine suitable for most anything.
     fn relate<T: Relate<'tcx>>(&mut self, a: T, b: T) -> RelateResult<'tcx, T> {
@@ -171,11 +162,7 @@ impl<'tcx> Relate<'tcx> for ty::FnSig<'tcx> {
         let tcx = relation.tcx();
 
         if a.c_variadic != b.c_variadic {
-            return Err(TypeError::VariadicMismatch(expected_found(
-                relation,
-                a.c_variadic,
-                b.c_variadic,
-            )));
+            return Err(TypeError::VariadicMismatch(expected_found(a.c_variadic, b.c_variadic)));
         }
         let unsafety = relation.relate(a.unsafety, b.unsafety)?;
         let abi = relation.relate(a.abi, b.abi)?;
@@ -220,39 +207,31 @@ impl<'tcx> Relate<'tcx> for ty::FnSig<'tcx> {
 
 impl<'tcx> Relate<'tcx> for ty::BoundConstness {
     fn relate<R: TypeRelation<'tcx>>(
-        relation: &mut R,
+        _relation: &mut R,
         a: ty::BoundConstness,
         b: ty::BoundConstness,
     ) -> RelateResult<'tcx, ty::BoundConstness> {
-        if a != b {
-            Err(TypeError::ConstnessMismatch(expected_found(relation, a, b)))
-        } else {
-            Ok(a)
-        }
+        if a != b { Err(TypeError::ConstnessMismatch(expected_found(a, b))) } else { Ok(a) }
     }
 }
 
 impl<'tcx> Relate<'tcx> for hir::Unsafety {
     fn relate<R: TypeRelation<'tcx>>(
-        relation: &mut R,
+        _relation: &mut R,
         a: hir::Unsafety,
         b: hir::Unsafety,
     ) -> RelateResult<'tcx, hir::Unsafety> {
-        if a != b {
-            Err(TypeError::UnsafetyMismatch(expected_found(relation, a, b)))
-        } else {
-            Ok(a)
-        }
+        if a != b { Err(TypeError::UnsafetyMismatch(expected_found(a, b))) } else { Ok(a) }
     }
 }
 
 impl<'tcx> Relate<'tcx> for abi::Abi {
     fn relate<R: TypeRelation<'tcx>>(
-        relation: &mut R,
+        _relation: &mut R,
         a: abi::Abi,
         b: abi::Abi,
     ) -> RelateResult<'tcx, abi::Abi> {
-        if a == b { Ok(a) } else { Err(TypeError::AbiMismatch(expected_found(relation, a, b))) }
+        if a == b { Ok(a) } else { Err(TypeError::AbiMismatch(expected_found(a, b))) }
     }
 }
 
@@ -263,7 +242,7 @@ impl<'tcx> Relate<'tcx> for ty::AliasTy<'tcx> {
         b: ty::AliasTy<'tcx>,
     ) -> RelateResult<'tcx, ty::AliasTy<'tcx>> {
         if a.def_id != b.def_id {
-            Err(TypeError::ProjectionMismatched(expected_found(relation, a.def_id, b.def_id)))
+            Err(TypeError::ProjectionMismatched(expected_found(a.def_id, b.def_id)))
         } else {
             let args = match relation.tcx().def_kind(a.def_id) {
                 DefKind::OpaqueTy => relate_args_with_variances(
@@ -291,7 +270,7 @@ impl<'tcx> Relate<'tcx> for ty::ExistentialProjection<'tcx> {
         b: ty::ExistentialProjection<'tcx>,
     ) -> RelateResult<'tcx, ty::ExistentialProjection<'tcx>> {
         if a.def_id != b.def_id {
-            Err(TypeError::ProjectionMismatched(expected_found(relation, a.def_id, b.def_id)))
+            Err(TypeError::ProjectionMismatched(expected_found(a.def_id, b.def_id)))
         } else {
             let term = relation.relate_with_variance(
                 ty::Invariant,
@@ -318,7 +297,7 @@ impl<'tcx> Relate<'tcx> for ty::TraitRef<'tcx> {
     ) -> RelateResult<'tcx, ty::TraitRef<'tcx>> {
         // Different traits cannot be related.
         if a.def_id != b.def_id {
-            Err(TypeError::Traits(expected_found(relation, a.def_id, b.def_id)))
+            Err(TypeError::Traits(expected_found(a.def_id, b.def_id)))
         } else {
             let args = relate_args_invariantly(relation, a.args, b.args)?;
             Ok(ty::TraitRef::new(relation.tcx(), a.def_id, args))
@@ -334,7 +313,7 @@ impl<'tcx> Relate<'tcx> for ty::ExistentialTraitRef<'tcx> {
     ) -> RelateResult<'tcx, ty::ExistentialTraitRef<'tcx>> {
         // Different traits cannot be related.
         if a.def_id != b.def_id {
-            Err(TypeError::Traits(expected_found(relation, a.def_id, b.def_id)))
+            Err(TypeError::Traits(expected_found(a.def_id, b.def_id)))
         } else {
             let args = relate_args_invariantly(relation, a.args, b.args)?;
             Ok(ty::ExistentialTraitRef { def_id: a.def_id, args })
@@ -510,9 +489,9 @@ pub fn structurally_relate_tys<'tcx, R: TypeRelation<'tcx>>(
                     let sz_b = sz_b.try_to_target_usize(tcx);
 
                     match (sz_a, sz_b) {
-                        (Some(sz_a_val), Some(sz_b_val)) if sz_a_val != sz_b_val => Err(
-                            TypeError::FixedArraySize(expected_found(relation, sz_a_val, sz_b_val)),
-                        ),
+                        (Some(sz_a_val), Some(sz_b_val)) if sz_a_val != sz_b_val => {
+                            Err(TypeError::FixedArraySize(expected_found(sz_a_val, sz_b_val)))
+                        }
                         _ => Err(err),
                     }
                 }
@@ -531,9 +510,9 @@ pub fn structurally_relate_tys<'tcx, R: TypeRelation<'tcx>>(
                     iter::zip(as_, bs).map(|(a, b)| relation.relate(a, b)),
                 )?)
             } else if !(as_.is_empty() || bs.is_empty()) {
-                Err(TypeError::TupleSize(expected_found(relation, as_.len(), bs.len())))
+                Err(TypeError::TupleSize(expected_found(as_.len(), bs.len())))
             } else {
-                Err(TypeError::Sorts(expected_found(relation, a, b)))
+                Err(TypeError::Sorts(expected_found(a, b)))
             }
         }
 
@@ -554,7 +533,7 @@ pub fn structurally_relate_tys<'tcx, R: TypeRelation<'tcx>>(
             Ok(Ty::new_alias(tcx, a_kind, alias_ty))
         }
 
-        _ => Err(TypeError::Sorts(expected_found(relation, a, b))),
+        _ => Err(TypeError::Sorts(expected_found(a, b))),
     }
 }
 
@@ -652,13 +631,13 @@ pub fn structurally_relate_consts<'tcx, R: TypeRelation<'tcx>>(
                     let related_args = tcx.mk_const_list(&related_args);
                     Expr::FunctionCall(func, related_args)
                 }
-                _ => return Err(TypeError::ConstMismatch(expected_found(r, a, b))),
+                _ => return Err(TypeError::ConstMismatch(expected_found(a, b))),
             };
             return Ok(ty::Const::new_expr(tcx, expr, a.ty()));
         }
         _ => false,
     };
-    if is_match { Ok(a) } else { Err(TypeError::ConstMismatch(expected_found(relation, a, b))) }
+    if is_match { Ok(a) } else { Err(TypeError::ConstMismatch(expected_found(a, b))) }
 }
 
 impl<'tcx> Relate<'tcx> for &'tcx ty::List<ty::PolyExistentialPredicate<'tcx>> {
@@ -680,7 +659,7 @@ impl<'tcx> Relate<'tcx> for &'tcx ty::List<ty::PolyExistentialPredicate<'tcx>> {
         b_v.sort_by(|a, b| a.skip_binder().stable_cmp(tcx, &b.skip_binder()));
         b_v.dedup();
         if a_v.len() != b_v.len() {
-            return Err(TypeError::ExistentialMismatch(expected_found(relation, a, b)));
+            return Err(TypeError::ExistentialMismatch(expected_found(a, b)));
         }
 
         let v = iter::zip(a_v, b_v).map(|(ep_a, ep_b)| {
@@ -692,7 +671,7 @@ impl<'tcx> Relate<'tcx> for &'tcx ty::List<ty::PolyExistentialPredicate<'tcx>> {
                     relation.relate(ep_a.rebind(a), ep_b.rebind(b))?.skip_binder(),
                 ))),
                 (AutoTrait(a), AutoTrait(b)) if a == b => Ok(ep_a.rebind(AutoTrait(a))),
-                _ => Err(TypeError::ExistentialMismatch(expected_found(relation, a, b))),
+                _ => Err(TypeError::ExistentialMismatch(expected_found(a, b))),
             }
         });
         tcx.mk_poly_existential_predicates_from_iter(v)
@@ -792,15 +771,11 @@ impl<'tcx> Relate<'tcx> for GenericArg<'tcx> {
 
 impl<'tcx> Relate<'tcx> for ty::ImplPolarity {
     fn relate<R: TypeRelation<'tcx>>(
-        relation: &mut R,
+        _relation: &mut R,
         a: ty::ImplPolarity,
         b: ty::ImplPolarity,
     ) -> RelateResult<'tcx, ty::ImplPolarity> {
-        if a != b {
-            Err(TypeError::PolarityMismatch(expected_found(relation, a, b)))
-        } else {
-            Ok(a)
-        }
+        if a != b { Err(TypeError::PolarityMismatch(expected_found(a, b))) } else { Ok(a) }
     }
 }
 
@@ -834,9 +809,6 @@ impl<'tcx> Relate<'tcx> for Term<'tcx> {
 ///////////////////////////////////////////////////////////////////////////
 // Error handling
 
-pub fn expected_found<'tcx, R, T>(relation: &mut R, a: T, b: T) -> ExpectedFound<T>
-where
-    R: TypeRelation<'tcx>,
-{
-    ExpectedFound::new(relation.a_is_expected(), a, b)
+pub fn expected_found<T>(a: T, b: T) -> ExpectedFound<T> {
+    ExpectedFound::new(true, a, b)
 }

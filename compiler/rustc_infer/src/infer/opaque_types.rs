@@ -78,9 +78,7 @@ impl<'tcx> InferCtxt<'tcx> {
                         span,
                     });
                     obligations.extend(
-                        self.handle_opaque_type(ty, ty_var, true, &cause, param_env)
-                            .unwrap()
-                            .obligations,
+                        self.handle_opaque_type(ty, ty_var, &cause, param_env).unwrap().obligations,
                     );
                     ty_var
                 }
@@ -94,14 +92,12 @@ impl<'tcx> InferCtxt<'tcx> {
         &self,
         a: Ty<'tcx>,
         b: Ty<'tcx>,
-        a_is_expected: bool,
         cause: &ObligationCause<'tcx>,
         param_env: ty::ParamEnv<'tcx>,
     ) -> InferResult<'tcx, ()> {
         if a.references_error() || b.references_error() {
             return Ok(InferOk { value: (), obligations: vec![] });
         }
-        let (a, b) = if a_is_expected { (a, b) } else { (b, a) };
         let process = |a: Ty<'tcx>, b: Ty<'tcx>| match *a.kind() {
             ty::Alias(ty::Opaque, ty::AliasTy { def_id, args, .. }) if def_id.is_local() => {
                 let def_id = def_id.expect_local();
