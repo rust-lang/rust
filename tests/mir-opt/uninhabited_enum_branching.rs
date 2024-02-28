@@ -63,8 +63,8 @@ fn simple() {
 fn custom_discriminant() {
     // CHECK-LABEL: fn custom_discriminant(
     // CHECK: [[discr:_.*]] = discriminant(
-    // CHECK: switchInt(move [[discr]]) -> [4: bb3, 5: bb2, otherwise: bb5];
-    // CHECK: bb5: {
+    // CHECK: switchInt(move [[discr]]) -> [4: bb3, 5: bb2, otherwise: [[unreachable:bb.*]]];
+    // CHECK: [[unreachable]]: {
     // CHECK-NEXT: unreachable;
     match Test2::D {
         Test2::D => "D",
@@ -76,8 +76,8 @@ fn custom_discriminant() {
 fn otherwise_t1() {
     // CHECK-LABEL: fn otherwise_t1(
     // CHECK: [[discr:_.*]] = discriminant(
-    // CHECK: switchInt(move [[discr]]) -> [0: bb5, 1: bb5, 2: bb1, otherwise: bb5];
-    // CHECK: bb5: {
+    // CHECK: switchInt(move [[discr]]) -> [0: bb5, 1: bb5, 2: bb1, otherwise: [[unreachable:bb.*]]];
+    // CHECK: [[unreachable]]: {
     // CHECK-NEXT: unreachable;
     match Test1::C {
         Test1::A(_) => "A(Empty)",
@@ -90,8 +90,8 @@ fn otherwise_t1() {
 fn otherwise_t2() {
     // CHECK-LABEL: fn otherwise_t2(
     // CHECK: [[discr:_.*]] = discriminant(
-    // CHECK: switchInt(move [[discr]]) -> [4: bb2, 5: bb1, otherwise: bb4];
-    // CHECK: bb4: {
+    // CHECK: switchInt(move [[discr]]) -> [4: bb2, 5: bb1, otherwise: [[unreachable:bb.*]]];
+    // CHECK: [[unreachable]]: {
     // CHECK-NEXT: unreachable;
     match Test2::D {
         Test2::D => "D",
@@ -120,8 +120,8 @@ fn otherwise_t3() {
 fn otherwise_t4_uninhabited_default() {
     // CHECK-LABEL: fn otherwise_t4_uninhabited_default(
     // CHECK: [[discr:_.*]] = discriminant(
-    // CHECK: switchInt(move [[discr]]) -> [0: bb2, 1: bb3, 2: bb4, 3: bb1, otherwise: bb6];
-    // CHECK: bb6: {
+    // CHECK: switchInt(move [[discr]]) -> [0: bb2, 1: bb3, 2: bb4, 3: bb1, otherwise: [[unreachable:bb.*]]];
+    // CHECK: [[unreachable]]: {
     // CHECK-NEXT: unreachable;
     match Test4::C {
         Test4::A(_) => "A(i32)",
@@ -135,8 +135,8 @@ fn otherwise_t4_uninhabited_default() {
 fn otherwise_t4_uninhabited_default_2() {
     // CHECK-LABEL: fn otherwise_t4_uninhabited_default_2(
     // CHECK: [[discr:_.*]] = discriminant(
-    // CHECK: switchInt(move [[discr]]) -> [0: bb2, 1: bb5, 2: bb6, 3: bb1, otherwise: bb8];
-    // CHECK: bb8: {
+    // CHECK: switchInt(move [[discr]]) -> [0: bb2, 1: bb5, 2: bb6, 3: bb1, otherwise: [[unreachable:bb.*]]];
+    // CHECK: [[unreachable]]: {
     // CHECK-NEXT: unreachable;
     match Test4::C {
         Test4::A(1) => "A(1)",
@@ -151,8 +151,8 @@ fn otherwise_t4_uninhabited_default_2() {
 fn otherwise_t4() {
     // CHECK-LABEL: fn otherwise_t4(
     // CHECK: [[discr:_.*]] = discriminant(
-    // CHECK: switchInt(move [[discr]]) -> [0: bb2, 1: bb3, otherwise: bb1];
-    // CHECK: bb1: {
+    // CHECK: switchInt(move [[discr]]) -> [0: bb2, 1: bb3, otherwise: [[unreachable:bb.*]]];
+    // CHECK: [[unreachable]]: {
     // CHECK-NOT: unreachable;
     // CHECK: }
     match Test4::C {
@@ -191,6 +191,9 @@ fn byref() {
         Test3::D => "D",
     };
 
+    // CHECK: [[unreachable]]: {
+    // CHECK-NEXT: unreachable;
+
     // CHECK: [[discr:_.*]] = discriminant(
     // CHECK: switchInt(move [[discr]]) -> [0: [[unreachable]], 1: [[unreachable]], 2: bb10, 3: bb7, otherwise: [[unreachable]]];
     match plop.test3 {
@@ -199,9 +202,6 @@ fn byref() {
         Test3::C => "C",
         Test3::D => "D",
     };
-
-    // CHECK: [[unreachable]]: {
-    // CHECK-NEXT: unreachable;
 }
 
 fn main() {
