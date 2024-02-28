@@ -7,15 +7,14 @@ mod topologic_sort;
 use std::time::Duration;
 
 use hir::db::DefDatabase;
-use ide_db::{
+
+use crate::{
     base_db::{
         salsa::{Database, ParallelDatabase, Snapshot},
         Cancelled, CrateGraph, CrateId, SourceDatabase, SourceDatabaseExt,
     },
-    FxHashSet, FxIndexMap,
+    FxHashSet, FxIndexMap, RootDatabase,
 };
-
-use crate::RootDatabase;
 
 /// We're indexing many crates.
 #[derive(Debug)]
@@ -28,7 +27,7 @@ pub struct ParallelPrimeCachesProgress {
     pub crates_done: usize,
 }
 
-pub(crate) fn parallel_prime_caches(
+pub fn parallel_prime_caches(
     db: &RootDatabase,
     num_worker_threads: u8,
     cb: &(dyn Fn(ParallelPrimeCachesProgress) + Sync),
