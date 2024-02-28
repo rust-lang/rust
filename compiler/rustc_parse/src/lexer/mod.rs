@@ -515,7 +515,9 @@ impl<'sess, 'src> StringReader<'sess, 'src> {
                 };
                 if let Some(base) = base {
                     let span = self.mk_sp(start, end);
-                    self.dcx().emit_err(errors::FloatLiteralUnsupportedBase { span, base });
+                    let guar =
+                        self.dcx().emit_err(errors::FloatLiteralUnsupportedBase { span, base });
+                    kind = token::Err(guar)
                 }
                 (kind, self.symbol_from_to(start, end))
             }
