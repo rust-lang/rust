@@ -39,7 +39,7 @@ pub use codes::*;
 pub use diagnostic::{
     AddToDiagnostic, BugAbort, DecorateLint, Diag, DiagArg, DiagArgMap, DiagArgName, DiagArgValue,
     DiagInner, DiagStyledString, EmissionGuarantee, FatalAbort, IntoDiagnostic, IntoDiagnosticArg,
-    StringPart, Subdiag, SubdiagnosticMessageOp,
+    StringPart, Subdiag, SubdiagMessageOp,
 };
 pub use diagnostic_impls::{
     DiagArgFromDisplay, DiagSymbolList, ExpectedLifetimeParameter, IndicateAnonymousLifetime,

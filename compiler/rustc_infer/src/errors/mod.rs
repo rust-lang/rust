@@ -1,7 +1,7 @@
 use hir::GenericParamKind;
 use rustc_errors::{
     codes::*, AddToDiagnostic, Applicability, Diag, DiagMessage, DiagStyledString,
-    EmissionGuarantee, IntoDiagnosticArg, MultiSpan, SubdiagnosticMessageOp,
+    EmissionGuarantee, IntoDiagnosticArg, MultiSpan, SubdiagMessageOp,
 };
 use rustc_hir as hir;
 use rustc_hir::FnRetTy;
@@ -225,7 +225,7 @@ pub enum RegionOriginNote<'a> {
 }
 
 impl AddToDiagnostic for RegionOriginNote<'_> {
-    fn add_to_diagnostic_with<G: EmissionGuarantee, F: SubdiagnosticMessageOp<G>>(
+    fn add_to_diagnostic_with<G: EmissionGuarantee, F: SubdiagMessageOp<G>>(
         self,
         diag: &mut Diag<'_, G>,
         _f: F,
@@ -290,7 +290,7 @@ pub enum LifetimeMismatchLabels {
 }
 
 impl AddToDiagnostic for LifetimeMismatchLabels {
-    fn add_to_diagnostic_with<G: EmissionGuarantee, F: SubdiagnosticMessageOp<G>>(
+    fn add_to_diagnostic_with<G: EmissionGuarantee, F: SubdiagMessageOp<G>>(
         self,
         diag: &mut Diag<'_, G>,
         _f: F,
@@ -338,7 +338,7 @@ pub struct AddLifetimeParamsSuggestion<'a> {
 }
 
 impl AddToDiagnostic for AddLifetimeParamsSuggestion<'_> {
-    fn add_to_diagnostic_with<G: EmissionGuarantee, F: SubdiagnosticMessageOp<G>>(
+    fn add_to_diagnostic_with<G: EmissionGuarantee, F: SubdiagMessageOp<G>>(
         self,
         diag: &mut Diag<'_, G>,
         _f: F,
@@ -440,7 +440,7 @@ pub struct IntroducesStaticBecauseUnmetLifetimeReq {
 }
 
 impl AddToDiagnostic for IntroducesStaticBecauseUnmetLifetimeReq {
-    fn add_to_diagnostic_with<G: EmissionGuarantee, F: SubdiagnosticMessageOp<G>>(
+    fn add_to_diagnostic_with<G: EmissionGuarantee, F: SubdiagMessageOp<G>>(
         mut self,
         diag: &mut Diag<'_, G>,
         _f: F,
@@ -759,7 +759,7 @@ pub struct ConsiderBorrowingParamHelp {
 }
 
 impl AddToDiagnostic for ConsiderBorrowingParamHelp {
-    fn add_to_diagnostic_with<G: EmissionGuarantee, F: SubdiagnosticMessageOp<G>>(
+    fn add_to_diagnostic_with<G: EmissionGuarantee, F: SubdiagMessageOp<G>>(
         self,
         diag: &mut Diag<'_, G>,
         f: F,
@@ -804,7 +804,7 @@ pub struct DynTraitConstraintSuggestion {
 }
 
 impl AddToDiagnostic for DynTraitConstraintSuggestion {
-    fn add_to_diagnostic_with<G: EmissionGuarantee, F: SubdiagnosticMessageOp<G>>(
+    fn add_to_diagnostic_with<G: EmissionGuarantee, F: SubdiagMessageOp<G>>(
         self,
         diag: &mut Diag<'_, G>,
         f: F,
@@ -851,7 +851,7 @@ pub struct ReqIntroducedLocations {
 }
 
 impl AddToDiagnostic for ReqIntroducedLocations {
-    fn add_to_diagnostic_with<G: EmissionGuarantee, F: SubdiagnosticMessageOp<G>>(
+    fn add_to_diagnostic_with<G: EmissionGuarantee, F: SubdiagMessageOp<G>>(
         mut self,
         diag: &mut Diag<'_, G>,
         f: F,
@@ -874,7 +874,7 @@ pub struct MoreTargeted {
 }
 
 impl AddToDiagnostic for MoreTargeted {
-    fn add_to_diagnostic_with<G: EmissionGuarantee, F: SubdiagnosticMessageOp<G>>(
+    fn add_to_diagnostic_with<G: EmissionGuarantee, F: SubdiagMessageOp<G>>(
         self,
         diag: &mut Diag<'_, G>,
         _f: F,
@@ -1297,7 +1297,7 @@ pub struct SuggestTuplePatternMany {
 }
 
 impl AddToDiagnostic for SuggestTuplePatternMany {
-    fn add_to_diagnostic_with<G: EmissionGuarantee, F: SubdiagnosticMessageOp<G>>(
+    fn add_to_diagnostic_with<G: EmissionGuarantee, F: SubdiagMessageOp<G>>(
         self,
         diag: &mut Diag<'_, G>,
         f: F,

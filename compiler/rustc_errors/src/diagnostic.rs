@@ -182,14 +182,14 @@ where
 
     /// Add a subdiagnostic to an existing diagnostic where `f` is invoked on every message used
     /// (to optionally perform eager translation).
-    fn add_to_diagnostic_with<G: EmissionGuarantee, F: SubdiagnosticMessageOp<G>>(
+    fn add_to_diagnostic_with<G: EmissionGuarantee, F: SubdiagMessageOp<G>>(
         self,
         diag: &mut Diag<'_, G>,
         f: F,
     );
 }
 
-pub trait SubdiagnosticMessageOp<G> = Fn(&mut Diag<'_, G>, SubdiagMessage) -> SubdiagMessage;
+pub trait SubdiagMessageOp<G> = Fn(&mut Diag<'_, G>, SubdiagMessage) -> SubdiagMessage;
 
 /// Trait implemented by lint types. This should not be implemented manually. Instead, use
 /// `#[derive(LintDiagnostic)]` -- see [rustc_macros::LintDiagnostic].
