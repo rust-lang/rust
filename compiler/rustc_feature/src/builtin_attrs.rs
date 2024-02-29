@@ -555,16 +555,19 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
     ),
     gated!(
         rustc_allow_const_fn_unstable, Normal,
-        template!(Word, List: "feat1, feat2, ..."), DuplicatesOk,
+        template!(Word, List: "feat1, feat2, ..."), DuplicatesOk, @only_local: true,
         "rustc_allow_const_fn_unstable side-steps feature gating and stability checks"
     ),
     gated!(
         allow_internal_unsafe, Normal, template!(Word), WarnFollowing,
-        "allow_internal_unsafe side-steps the unsafe_code lint",
+        @only_local: true, "allow_internal_unsafe side-steps the unsafe_code lint",
     ),
-    rustc_attr!(rustc_allowed_through_unstable_modules, Normal, template!(Word), WarnFollowing,
-    "rustc_allowed_through_unstable_modules special cases accidental stabilizations of stable items \
-    through unstable paths"),
+    rustc_attr!(
+        rustc_allowed_through_unstable_modules, Normal, template!(Word),
+        WarnFollowing, @only_local: true,
+        "rustc_allowed_through_unstable_modules special cases accidental stabilizations of stable items \
+        through unstable paths"
+    ),
 
     // ==========================================================================
     // Internal attributes: Type system related:
@@ -572,7 +575,8 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
 
     gated!(fundamental, Normal, template!(Word), WarnFollowing, experimental!(fundamental)),
     gated!(
-        may_dangle, Normal, template!(Word), WarnFollowing, dropck_eyepatch,
+        may_dangle, Normal, template!(Word), WarnFollowing,
+        @only_local: true, dropck_eyepatch,
         "`may_dangle` has unstable semantics and may be removed in the future",
     ),
 
@@ -580,31 +584,51 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
     // Internal attributes: Runtime related:
     // ==========================================================================
 
-    rustc_attr!(rustc_allocator, Normal, template!(Word), WarnFollowing, IMPL_DETAIL),
-    rustc_attr!(rustc_nounwind, Normal, template!(Word), WarnFollowing, IMPL_DETAIL),
-    rustc_attr!(rustc_reallocator, Normal, template!(Word), WarnFollowing, IMPL_DETAIL),
-    rustc_attr!(rustc_deallocator, Normal, template!(Word), WarnFollowing, IMPL_DETAIL),
-    rustc_attr!(rustc_allocator_zeroed, Normal, template!(Word), WarnFollowing, IMPL_DETAIL),
-    gated!(
-        default_lib_allocator, Normal, template!(Word), WarnFollowing, allocator_internals,
-        experimental!(default_lib_allocator),
+    rustc_attr!(
+        rustc_allocator, Normal, template!(Word), WarnFollowing,
+        @only_local: true, IMPL_DETAIL
+    ),
+    rustc_attr!(
+        rustc_nounwind, Normal, template!(Word), WarnFollowing,
+        @only_local: true, IMPL_DETAIL
+    ),
+    rustc_attr!(
+        rustc_reallocator, Normal, template!(Word), WarnFollowing,
+        @only_local: true, IMPL_DETAIL
+    ),
+    rustc_attr!(
+        rustc_deallocator, Normal, template!(Word), WarnFollowing,
+        @only_local: true, IMPL_DETAIL
+    ),
+    rustc_attr!(
+        rustc_allocator_zeroed, Normal, template!(Word), WarnFollowing,
+        @only_local: true, IMPL_DETAIL
     ),
     gated!(
-        needs_allocator, Normal, template!(Word), WarnFollowing, allocator_internals,
-        experimental!(needs_allocator),
+        default_lib_allocator, Normal, template!(Word), WarnFollowing,
+        @only_local: true, allocator_internals, experimental!(default_lib_allocator),
     ),
-    gated!(panic_runtime, Normal, template!(Word), WarnFollowing, experimental!(panic_runtime)),
+    gated!(
+        needs_allocator, Normal, template!(Word), WarnFollowing,
+        @only_local: true, allocator_internals, experimental!(needs_allocator),
+    ),
+    gated!(
+        panic_runtime, Normal, template!(Word), WarnFollowing,
+        @only_local: true, experimental!(panic_runtime)
+    ),
     gated!(
         needs_panic_runtime, Normal, template!(Word), WarnFollowing,
-        experimental!(needs_panic_runtime)
+        @only_local: true, experimental!(needs_panic_runtime)
     ),
     gated!(
         compiler_builtins, Normal, template!(Word), WarnFollowing,
+        @only_local: true,
         "the `#[compiler_builtins]` attribute is used to identify the `compiler_builtins` crate \
         which contains compiler-rt intrinsics and will never be stable",
     ),
     gated!(
         profiler_runtime, Normal, template!(Word), WarnFollowing,
+        @only_local: true,
         "the `#[profiler_runtime]` attribute is used to identify the `profiler_builtins` crate \
         which contains the profiler runtime and will never be stable",
     ),
@@ -630,7 +654,10 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
         template!(Word, List: "name, /*opt*/ attributes(name1, name2, ...)"), ErrorFollowing,
         IMPL_DETAIL,
     ),
-    rustc_attr!(rustc_proc_macro_decls, Normal, template!(Word), WarnFollowing, INTERNAL_UNSTABLE),
+    rustc_attr!(
+        rustc_proc_macro_decls, Normal, template!(Word), WarnFollowing,
+        @only_local: true, INTERNAL_UNSTABLE
+    ),
     rustc_attr!(
         rustc_macro_transparency, Normal,
         template!(NameValueStr: "transparent|semitransparent|opaque"), ErrorFollowing,
