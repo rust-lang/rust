@@ -13,9 +13,10 @@ use crate::Session;
 use rustc_ast::node_id::NodeId;
 use rustc_data_structures::fx::{FxHashMap, FxIndexMap, FxIndexSet};
 use rustc_data_structures::sync::{AppendOnlyVec, Lock, Lrc};
-use rustc_errors::{emitter::SilentEmitter, DiagCtxt};
+use rustc_errors::emitter::{HumanEmitter, SilentEmitter};
 use rustc_errors::{
-    fallback_fluent_bundle, Diag, DiagnosticMessage, EmissionGuarantee, MultiSpan, StashKey,
+    fallback_fluent_bundle, ColorConfig, Diag, DiagCtxt, DiagnosticMessage, EmissionGuarantee,
+    MultiSpan, StashKey,
 };
 use rustc_feature::{find_feature_issue, GateIssue, UnstableFeatures};
 use rustc_span::edition::Edition;
@@ -236,7 +237,9 @@ impl ParseSess {
     pub fn new(locale_resources: Vec<&'static str>, file_path_mapping: FilePathMapping) -> Self {
         let fallback_bundle = fallback_fluent_bundle(locale_resources, false);
         let sm = Lrc::new(SourceMap::new(file_path_mapping));
-        let dcx = DiagCtxt::with_tty_emitter(Some(sm.clone()), fallback_bundle);
+        let emitter =
+            Box::new(HumanEmitter::stderr(ColorConfig::Auto, fallback_bundle).sm(Some(sm.clone())));
+        let dcx = DiagCtxt::with_emitter(emitter);
         ParseSess::with_dcx(dcx, sm)
     }
 
@@ -265,7 +268,8 @@ impl ParseSess {
     pub fn with_silent_emitter(fatal_note: String) -> Self {
         let fallback_bundle = fallback_fluent_bundle(Vec::new(), false);
         let sm = Lrc::new(SourceMap::new(FilePathMapping::empty()));
-        let fatal_dcx = DiagCtxt::with_tty_emitter(None, fallback_bundle).disable_warnings();
+        let emitter = Box::new(HumanEmitter::stderr(ColorConfig::Auto, fallback_bundle));
+        let fatal_dcx = DiagCtxt::with_emitter(emitter);
         let dcx = DiagCtxt::with_emitter(Box::new(SilentEmitter { fatal_dcx, fatal_note }))
             .disable_warnings();
         ParseSess::with_dcx(dcx, sm)
