@@ -158,18 +158,15 @@ pub(crate) fn new_dcx(
             Box::new(
                 JsonEmitter::new(
                     Box::new(io::BufWriter::new(io::stderr())),
-                    None,
                     source_map,
-                    None,
                     fallback_bundle,
                     pretty,
                     json_rendered,
-                    diagnostic_width,
-                    false,
-                    unstable_opts.track_diagnostics,
-                    TerminalUrl::No,
                 )
-                .ui_testing(unstable_opts.ui_testing),
+                .ui_testing(unstable_opts.ui_testing)
+                .diagnostic_width(diagnostic_width)
+                .track_diagnostics(unstable_opts.track_diagnostics)
+                .terminal_url(TerminalUrl::No),
             )
         }
     };

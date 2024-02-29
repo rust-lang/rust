@@ -9,9 +9,6 @@
 
 // FIXME: spec the JSON output properly.
 
-use rustc_span::source_map::SourceMap;
-use termcolor::{ColorSpec, WriteColor};
-
 use crate::emitter::{
     should_show_source_code, ColorConfig, Destination, Emitter, HumanEmitter,
     HumanReadableErrorType,
@@ -22,32 +19,39 @@ use crate::{
     diagnostic::IsLint, CodeSuggestion, FluentBundle, LazyFallbackBundle, MultiSpan, SpanLabel,
     Subdiag, TerminalUrl,
 };
-use rustc_lint_defs::Applicability;
-
+use derive_setters::Setters;
 use rustc_data_structures::sync::{IntoDynSyncSend, Lrc};
 use rustc_error_messages::FluentArgs;
+use rustc_lint_defs::Applicability;
 use rustc_span::hygiene::ExpnData;
+use rustc_span::source_map::SourceMap;
 use rustc_span::Span;
+use serde::Serialize;
 use std::error::Report;
 use std::io::{self, Write};
 use std::path::Path;
 use std::sync::{Arc, Mutex};
 use std::vec;
-
-use serde::Serialize;
+use termcolor::{ColorSpec, WriteColor};
 
 #[cfg(test)]
 mod tests;
 
+#[derive(Setters)]
 pub struct JsonEmitter {
+    #[setters(skip)]
     dst: IntoDynSyncSend<Box<dyn Write + Send>>,
     registry: Option<Registry>,
+    #[setters(skip)]
     sm: Lrc<SourceMap>,
     fluent_bundle: Option<Lrc<FluentBundle>>,
+    #[setters(skip)]
     fallback_bundle: LazyFallbackBundle,
+    #[setters(skip)]
     pretty: bool,
     ui_testing: bool,
     ignored_directories_in_source_blocks: Vec<String>,
+    #[setters(skip)]
     json_rendered: HumanReadableErrorType,
     diagnostic_width: Option<usize>,
     macro_backtrace: bool,
@@ -58,40 +62,26 @@ pub struct JsonEmitter {
 impl JsonEmitter {
     pub fn new(
         dst: Box<dyn Write + Send>,
-        registry: Option<Registry>,
-        source_map: Lrc<SourceMap>,
-        fluent_bundle: Option<Lrc<FluentBundle>>,
+        sm: Lrc<SourceMap>,
         fallback_bundle: LazyFallbackBundle,
         pretty: bool,
         json_rendered: HumanReadableErrorType,
-        diagnostic_width: Option<usize>,
-        macro_backtrace: bool,
-        track_diagnostics: bool,
-        terminal_url: TerminalUrl,
     ) -> JsonEmitter {
         JsonEmitter {
             dst: IntoDynSyncSend(dst),
-            registry,
-            sm: source_map,
-            fluent_bundle,
+            registry: None,
+            sm,
+            fluent_bundle: None,
             fallback_bundle,
             pretty,
             ui_testing: false,
             ignored_directories_in_source_blocks: Vec::new(),
             json_rendered,
-            diagnostic_width,
-            macro_backtrace,
-            track_diagnostics,
-            terminal_url,
+            diagnostic_width: None,
+            macro_backtrace: false,
+            track_diagnostics: false,
+            terminal_url: TerminalUrl::No,
         }
-    }
-
-    pub fn ui_testing(self, ui_testing: bool) -> Self {
-        Self { ui_testing, ..self }
-    }
-
-    pub fn ignored_directories_in_source_blocks(self, value: Vec<String>) -> Self {
-        Self { ignored_directories_in_source_blocks: value, ..self }
     }
 
     fn emit(&mut self, val: EmitTyped<'_>) -> io::Result<()> {

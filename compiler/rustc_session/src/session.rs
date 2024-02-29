@@ -1001,21 +1001,21 @@ fn default_emitter(
         config::ErrorOutputType::Json { pretty, json_rendered } => Box::new(
             JsonEmitter::new(
                 Box::new(io::BufWriter::new(io::stderr())),
-                Some(registry),
                 source_map,
-                bundle,
                 fallback_bundle,
                 pretty,
                 json_rendered,
-                sopts.diagnostic_width,
-                macro_backtrace,
-                track_diagnostics,
-                terminal_url,
             )
+            .registry(Some(registry))
+            .fluent_bundle(bundle)
             .ui_testing(sopts.unstable_opts.ui_testing)
             .ignored_directories_in_source_blocks(
                 sopts.unstable_opts.ignore_directory_in_diagnostics_source_blocks.clone(),
-            ),
+            )
+            .diagnostic_width(sopts.diagnostic_width)
+            .macro_backtrace(macro_backtrace)
+            .track_diagnostics(track_diagnostics)
+            .terminal_url(terminal_url),
         ),
     }
 }
@@ -1482,16 +1482,10 @@ fn mk_emitter(output: ErrorOutputType) -> Box<DynEmitter> {
         }
         config::ErrorOutputType::Json { pretty, json_rendered } => Box::new(JsonEmitter::new(
             Box::new(io::BufWriter::new(io::stderr())),
-            None,
             Lrc::new(SourceMap::new(FilePathMapping::empty())),
-            None,
             fallback_bundle,
             pretty,
             json_rendered,
-            None,
-            false,
-            false,
-            TerminalUrl::No,
         )),
     };
     emitter
