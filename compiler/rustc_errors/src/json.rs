@@ -12,7 +12,10 @@
 use rustc_span::source_map::{FilePathMapping, SourceMap};
 use termcolor::{ColorSpec, WriteColor};
 
-use crate::emitter::{should_show_source_code, Emitter, HumanReadableErrorType};
+use crate::emitter::{
+    should_show_source_code, ColorConfig, Destination, Emitter, HumanEmitter,
+    HumanReadableErrorType,
+};
 use crate::registry::Registry;
 use crate::translation::{to_fluent_args, Translate};
 use crate::{
@@ -405,8 +408,17 @@ impl Diagnostic {
             .collect();
 
         let buf = BufWriter::default();
-        je.json_rendered
-            .new_emitter(Box::new(buf.clone()), je.fallback_bundle.clone())
+        let mut dst: Destination = Box::new(buf.clone());
+        let (short, color_config) = je.json_rendered.unzip();
+        let color = match color_config {
+            ColorConfig::Always | ColorConfig::Auto => true,
+            ColorConfig::Never => false,
+        };
+        if color {
+            dst = Box::new(termcolor::Ansi::new(dst));
+        }
+        HumanEmitter::new(dst, je.fallback_bundle.clone())
+            .short_message(short)
             .sm(Some(je.sm.clone()))
             .fluent_bundle(je.fluent_bundle.clone())
             .diagnostic_width(je.diagnostic_width)
