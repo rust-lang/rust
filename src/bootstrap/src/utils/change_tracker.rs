@@ -60,6 +60,20 @@ pub fn find_recent_config_change_ids(current_id: usize) -> Vec<ChangeInfo> {
         .collect()
 }
 
+pub fn human_readable_changes(changes: &[ChangeInfo]) -> String {
+    let mut message = String::new();
+
+    for change in changes {
+        message.push_str(&format!("  [{}] {}\n", change.severity, change.summary));
+        message.push_str(&format!(
+            "    - PR Link https://github.com/rust-lang/rust/pull/{}\n",
+            change.change_id
+        ));
+    }
+
+    message
+}
+
 /// Keeps track of major changes made to the bootstrap configuration.
 ///
 /// If you make any major changes (such as adding new values or changing default values),
