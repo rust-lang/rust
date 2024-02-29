@@ -7,7 +7,7 @@ LL | const Z: () = {
 LL |     impl Uto for &Test {}
    |     ^^^^^^^^^^^^^^^^^^^^^
    |
-   = help: move this `impl` block outside the of the current constant `Z`
+   = help: move this `impl` block outside the of the current constant item `Z`
    = note: an `impl` definition is non-local if it is nested inside an item and neither the type nor the trait are at the same nesting level as the `impl` block
    = note: one exception to the rule are anon-const (`const _: () = { ... }`) at top-level module and anon-const at the same nesting as the trait or type
    = note: this lint may become deny-by-default in the edition 2024 and higher, see the tracking issue <https://github.com/rust-lang/rust/issues/120363>
@@ -19,7 +19,7 @@ warning: non-local `impl` definition, they should be avoided as they go against 
 LL |     impl Uto for *mut Test {}
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = help: move this `impl` block outside the of the current constant expression `<unnameable>`
+   = help: move this `impl` block outside the of the current type alias `A`
    = note: an `impl` definition is non-local if it is nested inside an item and neither the type nor the trait are at the same nesting level as the `impl` block
    = note: one exception to the rule are anon-const (`const _: () = { ... }`) at top-level module and anon-const at the same nesting as the trait or type
    = note: this lint may become deny-by-default in the edition 2024 and higher, see the tracking issue <https://github.com/rust-lang/rust/issues/120363>
@@ -30,7 +30,7 @@ warning: non-local `impl` definition, they should be avoided as they go against 
 LL |         impl Uto for Test {}
    |         ^^^^^^^^^^^^^^^^^^^^
    |
-   = help: move this `impl` block outside the of the current constant expression `<unnameable>`
+   = help: move this `impl` block outside the of the current enum `Enum`
    = note: an `impl` definition is non-local if it is nested inside an item and neither the type nor the trait are at the same nesting level as the `impl` block
    = note: one exception to the rule are anon-const (`const _: () = { ... }`) at top-level module and anon-const at the same nesting as the trait or type
    = note: this lint may become deny-by-default in the edition 2024 and higher, see the tracking issue <https://github.com/rust-lang/rust/issues/120363>
@@ -41,7 +41,7 @@ warning: non-local `impl` definition, they should be avoided as they go against 
 LL |     impl Uto2 for Test {}
    |     ^^^^^^^^^^^^^^^^^^^^^
    |
-   = help: move this `impl` block outside the of the current static `A`
+   = help: move this `impl` block outside the of the current static item `A`
    = note: an `impl` definition is non-local if it is nested inside an item and neither the type nor the trait are at the same nesting level as the `impl` block
    = note: one exception to the rule are anon-const (`const _: () = { ... }`) at top-level module and anon-const at the same nesting as the trait or type
    = note: this lint may become deny-by-default in the edition 2024 and higher, see the tracking issue <https://github.com/rust-lang/rust/issues/120363>
@@ -52,7 +52,7 @@ warning: non-local `impl` definition, they should be avoided as they go against 
 LL |     impl Uto3 for Test {}
    |     ^^^^^^^^^^^^^^^^^^^^^
    |
-   = help: move this `impl` block outside the of the current constant `B`
+   = help: move this `impl` block outside the of the current constant item `B`
    = note: an `impl` definition is non-local if it is nested inside an item and neither the type nor the trait are at the same nesting level as the `impl` block
    = note: one exception to the rule are anon-const (`const _: () = { ... }`) at top-level module and anon-const at the same nesting as the trait or type
    = note: this lint may become deny-by-default in the edition 2024 and higher, see the tracking issue <https://github.com/rust-lang/rust/issues/120363>
@@ -63,7 +63,7 @@ warning: non-local `macro_rules!` definition, they should be avoided as they go 
 LL |     macro_rules! m0 { () => { } };
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = help: remove the `#[macro_export]` or move this `macro_rules!` outside the of the current constant `B`
+   = help: remove the `#[macro_export]` or move this `macro_rules!` outside the of the current constant item `B`
    = note: a `macro_rules!` definition is non-local if it is nested inside an item and has a `#[macro_export]` attribute
    = note: one exception to the rule are anon-const (`const _: () = { ... }`) at top-level module
    = note: this lint may become deny-by-default in the edition 2024 and higher, see the tracking issue <https://github.com/rust-lang/rust/issues/120363>
@@ -102,7 +102,7 @@ LL | |             fn bar() {}
 LL | |         }
    | |_________^
    |
-   = help: move this `impl` block outside the of the current constant expression `<unnameable>` and up 2 bodies
+   = help: move this `impl` block outside the of the current function `main` and up 2 bodies
    = note: an `impl` definition is non-local if it is nested inside an item and neither the type nor the trait are at the same nesting level as the `impl` block
    = note: one exception to the rule are anon-const (`const _: () = { ... }`) at top-level module and anon-const at the same nesting as the trait or type
    = note: this lint may become deny-by-default in the edition 2024 and higher, see the tracking issue <https://github.com/rust-lang/rust/issues/120363>
@@ -116,7 +116,7 @@ LL | |             fn hoo() {}
 LL | |         }
    | |_________^
    |
-   = help: move this `impl` block outside the of the current inline constant `<unnameable>` and up 2 bodies
+   = help: move this `impl` block outside the of the current function `main` and up 2 bodies
    = note: an `impl` definition is non-local if it is nested inside an item and neither the type nor the trait are at the same nesting level as the `impl` block
    = note: one exception to the rule are anon-const (`const _: () = { ... }`) at top-level module and anon-const at the same nesting as the trait or type
    = note: this lint may become deny-by-default in the edition 2024 and higher, see the tracking issue <https://github.com/rust-lang/rust/issues/120363>
@@ -130,7 +130,7 @@ LL | |             fn foo2() {}
 LL | |         }
    | |_________^
    |
-   = help: move this `impl` block outside the of the current constant `_` and up 2 bodies
+   = help: move this `impl` block outside the of the current constant item `_` and up 2 bodies
    = note: an `impl` definition is non-local if it is nested inside an item and neither the type nor the trait are at the same nesting level as the `impl` block
    = note: one exception to the rule are anon-const (`const _: () = { ... }`) at top-level module and anon-const at the same nesting as the trait or type
    = note: this lint may become deny-by-default in the edition 2024 and higher, see the tracking issue <https://github.com/rust-lang/rust/issues/120363>
@@ -256,7 +256,7 @@ warning: non-local `impl` definition, they should be avoided as they go against 
 LL |         impl Uto5 for Test {}
    |         ^^^^^^^^^^^^^^^^^^^^^
    |
-   = help: move this `impl` block outside the of the current closure `<unnameable>` and up 2 bodies
+   = help: move this `impl` block outside the of the current function `main` and up 2 bodies
    = note: an `impl` definition is non-local if it is nested inside an item and neither the type nor the trait are at the same nesting level as the `impl` block
    = note: one exception to the rule are anon-const (`const _: () = { ... }`) at top-level module and anon-const at the same nesting as the trait or type
    = note: this lint may become deny-by-default in the edition 2024 and higher, see the tracking issue <https://github.com/rust-lang/rust/issues/120363>
@@ -267,7 +267,7 @@ warning: non-local `impl` definition, they should be avoided as they go against 
 LL |         impl Uto5 for &Test {}
    |         ^^^^^^^^^^^^^^^^^^^^^^
    |
-   = help: move this `impl` block outside the of the current constant expression `<unnameable>` and up 2 bodies
+   = help: move this `impl` block outside the of the current type alias `A` and up 2 bodies
    = note: an `impl` definition is non-local if it is nested inside an item and neither the type nor the trait are at the same nesting level as the `impl` block
    = note: one exception to the rule are anon-const (`const _: () = { ... }`) at top-level module and anon-const at the same nesting as the trait or type
    = note: this lint may become deny-by-default in the edition 2024 and higher, see the tracking issue <https://github.com/rust-lang/rust/issues/120363>
@@ -278,7 +278,7 @@ warning: non-local `impl` definition, they should be avoided as they go against 
 LL |         impl Uto5 for &(Test,) {}
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = help: move this `impl` block outside the of the current constant expression `<unnameable>` and up 2 bodies
+   = help: move this `impl` block outside the of the current function `a` and up 2 bodies
    = note: an `impl` definition is non-local if it is nested inside an item and neither the type nor the trait are at the same nesting level as the `impl` block
    = note: one exception to the rule are anon-const (`const _: () = { ... }`) at top-level module and anon-const at the same nesting as the trait or type
    = note: this lint may become deny-by-default in the edition 2024 and higher, see the tracking issue <https://github.com/rust-lang/rust/issues/120363>
@@ -289,7 +289,7 @@ warning: non-local `impl` definition, they should be avoided as they go against 
 LL |         impl Uto5 for &(Test,Test) {}
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = help: move this `impl` block outside the of the current constant expression `<unnameable>` and up 2 bodies
+   = help: move this `impl` block outside the of the current function `b` and up 2 bodies
    = note: an `impl` definition is non-local if it is nested inside an item and neither the type nor the trait are at the same nesting level as the `impl` block
    = note: one exception to the rule are anon-const (`const _: () = { ... }`) at top-level module and anon-const at the same nesting as the trait or type
    = note: this lint may become deny-by-default in the edition 2024 and higher, see the tracking issue <https://github.com/rust-lang/rust/issues/120363>
@@ -399,7 +399,7 @@ warning: non-local `macro_rules!` definition, they should be avoided as they go 
 LL |                 macro_rules! m2 { () => { } };
    |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = help: remove the `#[macro_export]` or move this `macro_rules!` outside the of the current associated function `bar` and up 3 bodies
+   = help: remove the `#[macro_export]` or move this `macro_rules!` outside the of the current impl item `bar` and up 3 bodies
    = note: a `macro_rules!` definition is non-local if it is nested inside an item and has a `#[macro_export]` attribute
    = note: one exception to the rule are anon-const (`const _: () = { ... }`) at top-level module
    = note: this lint may become deny-by-default in the edition 2024 and higher, see the tracking issue <https://github.com/rust-lang/rust/issues/120363>
@@ -616,7 +616,7 @@ warning: non-local `impl` definition, they should be avoided as they go against 
 LL | non_local_macro::non_local_impl!(CargoUpdate);
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = help: move this `impl` block outside the of the current constant `_IMPL_DEBUG`
+   = help: move this `impl` block outside the of the current constant item `_IMPL_DEBUG`
    = note: an `impl` definition is non-local if it is nested inside an item and neither the type nor the trait are at the same nesting level as the `impl` block
    = note: one exception to the rule are anon-const (`const _: () = { ... }`) at top-level module and anon-const at the same nesting as the trait or type
    = note: this lint may become deny-by-default in the edition 2024 and higher, see the tracking issue <https://github.com/rust-lang/rust/issues/120363>
@@ -629,7 +629,7 @@ warning: non-local `macro_rules!` definition, they should be avoided as they go 
 LL | non_local_macro::non_local_macro_rules!(my_macro);
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = help: remove the `#[macro_export]` or move this `macro_rules!` outside the of the current constant `_MACRO_EXPORT`
+   = help: remove the `#[macro_export]` or move this `macro_rules!` outside the of the current constant item `_MACRO_EXPORT`
    = note: a `macro_rules!` definition is non-local if it is nested inside an item and has a `#[macro_export]` attribute
    = note: one exception to the rule are anon-const (`const _: () = { ... }`) at top-level module
    = note: this lint may become deny-by-default in the edition 2024 and higher, see the tracking issue <https://github.com/rust-lang/rust/issues/120363>
