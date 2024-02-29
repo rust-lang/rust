@@ -483,9 +483,7 @@ impl<'a, 'tcx> CastCheck<'tcx> {
                 err.emit();
             }
             CastError::SizedUnsizedCast => {
-                use rustc_hir_analysis::structured_errors::{
-                    SizedUnsizedCast, StructuredDiagnostic,
-                };
+                use rustc_hir_analysis::structured_errors::{SizedUnsizedCast, StructuredDiag};
 
                 SizedUnsizedCast {
                     sess: fcx.tcx.sess,

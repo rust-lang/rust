@@ -3,7 +3,7 @@ use crate::astconv::{
     errors::prohibit_assoc_ty_binding, CreateInstantiationsForGenericArgsCtxt, ExplicitLateBound,
     GenericArgCountMismatch, GenericArgCountResult, GenericArgPosition,
 };
-use crate::structured_errors::{GenericArgsInfo, StructuredDiagnostic, WrongNumberOfGenericArgs};
+use crate::structured_errors::{GenericArgsInfo, StructuredDiag, WrongNumberOfGenericArgs};
 use rustc_ast::ast::ParamKindOrd;
 use rustc_errors::{
     codes::*, struct_span_code_err, Applicability, Diag, ErrorGuaranteed, MultiSpan,
