@@ -515,17 +515,25 @@ pub struct WhereClauseBeforeTypeAlias {
 }
 
 #[derive(Subdiagnostic)]
-#[multipart_suggestion(
-    ast_passes_suggestion,
-    applicability = "machine-applicable",
-    style = "verbose"
-)]
-pub struct WhereClauseBeforeTypeAliasSugg {
-    #[suggestion_part(code = "")]
-    pub left: Span,
-    pub snippet: String,
-    #[suggestion_part(code = "{snippet}")]
-    pub right: Span,
+
+pub enum WhereClauseBeforeTypeAliasSugg {
+    #[suggestion(ast_passes_remove_suggestion, applicability = "machine-applicable", code = "")]
+    Remove {
+        #[primary_span]
+        span: Span,
+    },
+    #[multipart_suggestion(
+        ast_passes_move_suggestion,
+        applicability = "machine-applicable",
+        style = "verbose"
+    )]
+    Move {
+        #[suggestion_part(code = "")]
+        left: Span,
+        snippet: String,
+        #[suggestion_part(code = "{snippet}")]
+        right: Span,
+    },
 }
 
 #[derive(Diagnostic)]
