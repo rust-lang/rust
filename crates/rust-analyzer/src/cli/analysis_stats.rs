@@ -369,7 +369,7 @@ impl flags::AnalysisStats {
 
             let parse = sema.parse(file_id);
             let file_txt = db.file_text(file_id);
-            let path = vfs.file_path(file_id).as_path().unwrap().to_owned();
+            let path = vfs.file_path(file_id).as_path().unwrap();
 
             for node in parse.syntax().descendants() {
                 let expr = match syntax::ast::Expr::cast(node.clone()) {
@@ -444,7 +444,7 @@ impl flags::AnalysisStats {
                     edit.apply(&mut txt);
 
                     if self.validate_term_search {
-                        std::fs::write(&path, txt).unwrap();
+                        std::fs::write(path, txt).unwrap();
 
                         let res = ws.run_build_scripts(&cargo_config, &|_| ()).unwrap();
                         if let Some(err) = res.error() {
@@ -493,7 +493,7 @@ impl flags::AnalysisStats {
             }
             // Revert file back to original state
             if self.validate_term_search {
-                std::fs::write(&path, file_txt.to_string()).unwrap();
+                std::fs::write(path, file_txt.to_string()).unwrap();
             }
 
             bar.inc(1);
