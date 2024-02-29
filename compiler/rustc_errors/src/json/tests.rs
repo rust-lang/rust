@@ -1,6 +1,5 @@
 use super::*;
 
-use crate::emitter::ColorConfig;
 use crate::DiagCtxt;
 use rustc_span::BytePos;
 

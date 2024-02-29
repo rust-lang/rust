@@ -35,7 +35,7 @@ use std::io::prelude::*;
 use std::io::{self, IsTerminal};
 use std::iter;
 use std::path::Path;
-use termcolor::{Ansi, Buffer, BufferWriter, ColorChoice, ColorSpec, StandardStream};
+use termcolor::{Buffer, BufferWriter, ColorChoice, ColorSpec, StandardStream};
 use termcolor::{Color, WriteColor};
 
 /// Default column width, used in tests and when terminal dimensions cannot be determined.
@@ -57,18 +57,6 @@ impl HumanReadableErrorType {
             HumanReadableErrorType::Short(cc) => (true, cc),
             HumanReadableErrorType::AnnotateSnippet(cc) => (false, cc),
         }
-    }
-    pub fn new_emitter(
-        self,
-        mut dst: Destination,
-        fallback_bundle: LazyFallbackBundle,
-    ) -> HumanEmitter {
-        let (short, color_config) = self.unzip();
-        let color = color_config.suggests_using_colors();
-        if !dst.supports_color() && color {
-            dst = Box::new(Ansi::new(dst));
-        }
-        HumanEmitter::new(dst, fallback_bundle).short_message(short)
     }
 }
 
@@ -626,12 +614,6 @@ impl ColorConfig {
             ColorConfig::Never => ColorChoice::Never,
             ColorConfig::Auto if io::stderr().is_terminal() => ColorChoice::Auto,
             ColorConfig::Auto => ColorChoice::Never,
-        }
-    }
-    fn suggests_using_colors(self) -> bool {
-        match self {
-            ColorConfig::Always | ColorConfig::Auto => true,
-            ColorConfig::Never => false,
         }
     }
 }
