@@ -412,10 +412,10 @@ pub fn const_validate_mplace<'mir, 'tcx>(
             _ if cid.promoted.is_some() => CtfeValidationMode::Promoted,
             Some(mutbl) => CtfeValidationMode::Static { mutbl }, // a `static`
             None => {
-                // In normal `const` (not promoted), the outermost allocation is always only copied,
-                // so having `UnsafeCell` in there is okay despite them being in immutable memory.
-                let allow_immutable_unsafe_cell = cid.promoted.is_none() && !inner;
-                CtfeValidationMode::Const { allow_immutable_unsafe_cell }
+                // This is a normal `const` (not promoted).
+                // The outermost allocation is always only copied, so having `UnsafeCell` in there
+                // is okay despite them being in immutable memory.
+                CtfeValidationMode::Const { allow_immutable_unsafe_cell: !inner }
             }
         };
         ecx.const_validate_operand(&mplace.into(), path, &mut ref_tracking, mode)?;

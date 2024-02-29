@@ -30,7 +30,7 @@ type QualifResults<'mir, 'tcx, Q> =
     rustc_mir_dataflow::ResultsCursor<'mir, 'tcx, FlowSensitiveAnalysis<'mir, 'mir, 'tcx, Q>>;
 
 #[derive(Default)]
-pub struct Qualifs<'mir, 'tcx> {
+pub(crate) struct Qualifs<'mir, 'tcx> {
     has_mut_interior: Option<QualifResults<'mir, 'tcx, HasMutInterior>>,
     needs_drop: Option<QualifResults<'mir, 'tcx, NeedsDrop>>,
     needs_non_const_drop: Option<QualifResults<'mir, 'tcx, NeedsNonConstDrop>>,
@@ -484,11 +484,10 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
 
             Rvalue::Ref(_, BorrowKind::Shared | BorrowKind::Fake, place)
             | Rvalue::AddressOf(Mutability::Not, place) => {
-                let borrowed_place_has_mut_interior = qualifs::in_place::<HasMutInterior, _>(
-                    self.ccx,
-                    &mut |local| self.qualifs.has_mut_interior(self.ccx, local, location),
-                    place.as_ref(),
-                );
+                // We don't do value-based reasoning here, since the rules for interior mutability
+                // are not finalized yet and they seem likely to not be full value-based in the end.
+                let borrowed_place_has_mut_interior =
+                    !place.ty(self.body, self.tcx).ty.is_freeze(self.tcx, self.param_env);
 
                 // If the place is indirect, this is basically a reborrow. We have a reborrow
                 // special case above, but for raw pointers and pointers/references to `static` and
@@ -498,6 +497,17 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
                 // `TransientMutBorrow`), but such reborrows got accidentally stabilized already and
                 // it is too much of a breaking change to take back.
                 if borrowed_place_has_mut_interior && !place.is_indirect() {
+                    // We used to do a value-based check here, so when we changed to a purely
+                    // type-based check we started rejecting code that used to work on stable. So
+                    // for that reason we already stabilize "transient borrows of interior mutable
+                    // borrows where value-based reasoning says that there actually is no interior
+                    // mutability". We don't do anything like that for non-transient borrows since
+                    // those are and will remain hard errors.
+                    let allow_transient_on_stable = !qualifs::in_place::<HasMutInterior, _>(
+                        self.ccx,
+                        &mut |local| self.qualifs.has_mut_interior(self.ccx, local, location),
+                        place.as_ref(),
+                    );
                     match self.const_kind() {
                         // In a const fn all borrows are transient or point to the places given via
                         // references in the arguments (so we already checked them with
@@ -506,7 +516,11 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
                         // NOTE: Once we have heap allocations during CTFE we need to figure out
                         // how to prevent `const fn` to create long-lived allocations that point
                         // to (interior) mutable memory.
-                        hir::ConstContext::ConstFn => self.check_op(ops::TransientCellBorrow),
+                        hir::ConstContext::ConstFn => {
+                            if !allow_transient_on_stable {
+                                self.check_op(ops::TransientCellBorrow)
+                            }
+                        }
                         _ => {
                             // Locals with StorageDead are definitely not part of the final constant value, and
                             // it is thus inherently safe to permit such locals to have their
@@ -517,7 +531,9 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
                             // The good news is that interning will detect if any unexpected mutable
                             // pointer slips through.
                             if self.local_has_storage_dead(place.local) {
-                                self.check_op(ops::TransientCellBorrow);
+                                if !allow_transient_on_stable {
+                                    self.check_op(ops::TransientCellBorrow);
+                                }
                             } else {
                                 self.check_op(ops::CellBorrow);
                             }
