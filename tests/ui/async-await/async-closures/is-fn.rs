@@ -10,7 +10,7 @@ use std::future::Future;
 
 extern crate block_on;
 
-// Check that async closures always implement `FnOnce`
+// Check that closures that don't capture any state may implement `Fn`.
 
 fn main() {
     block_on::block_on(async {

@@ -37,7 +37,11 @@ fn make_shim<'tcx>(tcx: TyCtxt<'tcx>, instance: ty::InstanceDef<'tcx>) -> Body<'
         }
         ty::InstanceDef::FnPtrShim(def_id, ty) => {
             let trait_ = tcx.trait_of_item(def_id).unwrap();
-            let adjustment = match tcx.fn_trait_kind_from_def_id(trait_) {
+            // Supports `Fn` or `async Fn` traits.
+            let adjustment = match tcx
+                .fn_trait_kind_from_def_id(trait_)
+                .or_else(|| tcx.async_fn_trait_kind_from_def_id(trait_))
+            {
                 Some(ty::ClosureKind::FnOnce) => Adjustment::Identity,
                 Some(ty::ClosureKind::Fn) => Adjustment::Deref { source: DerefSource::ImmRef },
                 Some(ty::ClosureKind::FnMut) => Adjustment::Deref { source: DerefSource::MutRef },
