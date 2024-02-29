@@ -1,11 +1,11 @@
-error[E0277]: `B` cannot be safely transmuted into `A` in the defining scope of `assert::Context`
-  --> $DIR/transmute-padding-ice.rs:27:40
+error[E0277]: `B` cannot be safely transmuted into `A`
+  --> $DIR/transmute-padding-ice.rs:25:40
    |
 LL |     assert::is_maybe_transmutable::<B, A>();
    |                                        ^ The size of `B` is smaller than the size of `A`
    |
 note: required by a bound in `is_maybe_transmutable`
-  --> $DIR/transmute-padding-ice.rs:11:14
+  --> $DIR/transmute-padding-ice.rs:10:14
    |
 LL |       pub fn is_maybe_transmutable<Src, Dst>()
    |              --------------------- required by a bound in this function
@@ -13,7 +13,6 @@ LL |       where
 LL |           Dst: BikeshedIntrinsicFrom<
    |  ______________^
 LL | |             Src,
-LL | |             Context,
 LL | |             { Assume { alignment: true, lifetimes: true, safety: true, validity: true } },
 LL | |         >,
    | |_________^ required by this bound in `is_maybe_transmutable`

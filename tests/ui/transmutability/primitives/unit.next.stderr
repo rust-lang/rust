@@ -1,16 +1,16 @@
-error[E0277]: `()` cannot be safely transmuted into `u8` in the defining scope of `should_have_correct_size::Context`
-  --> $DIR/unit.rs:31:35
+error[E0277]: `()` cannot be safely transmuted into `u8`
+  --> $DIR/unit.rs:30:35
    |
-LL |     assert::is_transmutable::<(), u8, Context>();
+LL |     assert::is_transmutable::<(), u8>();
    |                                   ^^ The size of `()` is smaller than the size of `u8`
    |
 note: required by a bound in `is_transmutable`
   --> $DIR/unit.rs:15:14
    |
-LL |       pub fn is_transmutable<Src, Dst, Context>()
+LL |       pub fn is_transmutable<Src, Dst>()
    |              --------------- required by a bound in this function
 LL |       where
-LL |           Dst: BikeshedIntrinsicFrom<Src, Context, {
+LL |           Dst: BikeshedIntrinsicFrom<Src, {
    |  ______________^
 LL | |             Assume::ALIGNMENT
 LL | |                 .and(Assume::LIFETIMES)

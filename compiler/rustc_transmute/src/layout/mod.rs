@@ -29,14 +29,21 @@ impl fmt::Debug for Byte {
     }
 }
 
-pub(crate) trait Def: Debug + Hash + Eq + PartialEq + Copy + Clone {}
+pub(crate) trait Def: Debug + Hash + Eq + PartialEq + Copy + Clone {
+    fn has_safety_invariants(&self) -> bool;
+}
 pub trait Ref: Debug + Hash + Eq + PartialEq + Copy + Clone {
     fn min_align(&self) -> usize;
 
     fn is_mutable(&self) -> bool;
 }
 
-impl Def for ! {}
+impl Def for ! {
+    fn has_safety_invariants(&self) -> bool {
+        unreachable!()
+    }
+}
+
 impl Ref for ! {
     fn min_align(&self) -> usize {
         unreachable!()
@@ -83,5 +90,12 @@ pub mod rustc {
         Primitive,
     }
 
-    impl<'tcx> super::Def for Def<'tcx> {}
+    impl<'tcx> super::Def for Def<'tcx> {
+        fn has_safety_invariants(&self) -> bool {
+            // Rust presently has no notion of 'unsafe fields', so for now we
+            // make the conservative assumption that everything besides
+            // primitive types carry safety invariants.
+            self != &Self::Primitive
+        }
+    }
 }

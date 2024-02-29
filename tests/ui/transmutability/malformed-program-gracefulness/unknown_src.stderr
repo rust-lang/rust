@@ -1,7 +1,7 @@
 error[E0412]: cannot find type `Src` in this scope
-  --> $DIR/unknown_src.rs:20:31
+  --> $DIR/unknown_src.rs:18:31
    |
-LL |     assert::is_transmutable::<Src, Dst, Context>();
+LL |     assert::is_transmutable::<Src, Dst>();
    |                               ^^^ not found in this scope
    |
 help: you might be missing a type parameter

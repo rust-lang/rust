@@ -6,10 +6,10 @@ use crate::marker::ConstParamTy;
 /// any value of type `Self` are safely transmutable into a value of type `Dst`, in a given `Context`,
 /// notwithstanding whatever safety checks you have asked the compiler to [`Assume`] are satisfied.
 #[unstable(feature = "transmutability", issue = "99571")]
-#[lang = "transmute_trait"]
+#[cfg_attr(not(bootstrap), lang = "transmute_trait")]
 #[rustc_deny_explicit_impl(implement_via_object = false)]
 #[rustc_coinductive]
-pub unsafe trait BikeshedIntrinsicFrom<Src, Context, const ASSUME: Assume = { Assume::NOTHING }>
+pub unsafe trait BikeshedIntrinsicFrom<Src, const ASSUME: Assume = { Assume::NOTHING }>
 where
     Src: ?Sized,
 {
@@ -28,8 +28,9 @@ pub struct Assume {
     /// that violates Rust's memory model.
     pub lifetimes: bool,
 
-    /// When `true`, the compiler assumes that *you* have ensured that it is safe for you to violate the
-    /// type and field privacy of the destination type (and sometimes of the source type, too).
+    /// When `true`, the compiler assumes that *you* have ensured that no
+    /// unsoundness will arise from violating the safety invariants of the
+    /// destination type (and sometimes of the source type, too).
     pub safety: bool,
 
     /// When `true`, the compiler assumes that *you* are ensuring that the source type is actually a valid

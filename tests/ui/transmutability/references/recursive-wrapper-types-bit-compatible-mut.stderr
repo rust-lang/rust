@@ -1,16 +1,16 @@
-error[E0277]: `&A` cannot be safely transmuted into `&mut B` in the defining scope of `assert::Context`
-  --> $DIR/recursive-wrapper-types-bit-compatible-mut.rs:24:49
+error[E0277]: `&A` cannot be safely transmuted into `&mut B`
+  --> $DIR/recursive-wrapper-types-bit-compatible-mut.rs:23:49
    |
 LL |     assert::is_maybe_transmutable::<&'static A, &'static mut B>();
    |                                                 ^^^^^^^^^^^^^^ `&A` is a shared reference, but `&mut B` is a unique reference
    |
 note: required by a bound in `is_maybe_transmutable`
-  --> $DIR/recursive-wrapper-types-bit-compatible-mut.rs:10:14
+  --> $DIR/recursive-wrapper-types-bit-compatible-mut.rs:9:14
    |
 LL |       pub fn is_maybe_transmutable<Src, Dst>()
    |              --------------------- required by a bound in this function
 LL |       where
-LL |           Dst: BikeshedIntrinsicFrom<Src, Context, {
+LL |           Dst: BikeshedIntrinsicFrom<Src, {
    |  ______________^
 LL | |             Assume {
 LL | |                 alignment: true,

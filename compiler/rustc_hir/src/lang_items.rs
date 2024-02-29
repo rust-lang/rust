@@ -167,7 +167,7 @@ language_item_table! {
 
     // language items relating to transmutability
     TransmuteOpts,           sym::transmute_opts,      transmute_opts,             Target::Struct,         GenericRequirement::Exact(0);
-    TransmuteTrait,          sym::transmute_trait,     transmute_trait,            Target::Trait,          GenericRequirement::Exact(3);
+    TransmuteTrait,          sym::transmute_trait,     transmute_trait,            Target::Trait,          GenericRequirement::Exact(2);
 
     Add,                     sym::add,                 add_trait,                  Target::Trait,          GenericRequirement::Exact(1);
     Sub,                     sym::sub,                 sub_trait,                  Target::Trait,          GenericRequirement::Exact(1);

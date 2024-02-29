@@ -2960,11 +2960,10 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
             dst: trait_ref.args.type_at(0),
             src: trait_ref.args.type_at(1),
         };
-        let scope = trait_ref.args.type_at(2);
         let Some(assume) = rustc_transmute::Assume::from_const(
             self.infcx.tcx,
             obligation.param_env,
-            trait_ref.args.const_at(3),
+            trait_ref.args.const_at(2),
         ) else {
             self.dcx().span_delayed_bug(
                 span,
@@ -2976,15 +2975,12 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
         match rustc_transmute::TransmuteTypeEnv::new(self.infcx).is_transmutable(
             obligation.cause,
             src_and_dst,
-            scope,
             assume,
         ) {
             Answer::No(reason) => {
                 let dst = trait_ref.args.type_at(0);
                 let src = trait_ref.args.type_at(1);
-                let err_msg = format!(
-                    "`{src}` cannot be safely transmuted into `{dst}` in the defining scope of `{scope}`"
-                );
+                let err_msg = format!("`{src}` cannot be safely transmuted into `{dst}`");
                 let safe_transmute_explanation = match reason {
                     rustc_transmute::Reason::SrcIsUnspecified => {
                         format!("`{src}` does not have a well-specified layout")
@@ -2998,9 +2994,9 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                         format!("At least one value of `{src}` isn't a bit-valid value of `{dst}`")
                     }
 
-                    rustc_transmute::Reason::DstIsPrivate => format!(
-                        "`{dst}` is or contains a type or field that is not visible in that scope"
-                    ),
+                    rustc_transmute::Reason::DstMayHaveSafetyInvariants => {
+                        format!("`{dst}` may carry safety invariants")
+                    }
                     rustc_transmute::Reason::DstIsTooBig => {
                         format!("The size of `{src}` is smaller than the size of `{dst}`")
                     }

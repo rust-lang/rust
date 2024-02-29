@@ -4133,7 +4133,6 @@
 "ui/transmutability/issue-101739-2.rs",
 "ui/transmutability/issue-110467.rs",
 "ui/transmutability/issue-110892.rs",
-"ui/transmute/issue-115402-overflow-size.rs",
 "ui/trivial-bounds/issue-73021-impossible-inline.rs",
 "ui/try-block/issue-45124.rs",
 "ui/try-trait/issue-32709.rs",

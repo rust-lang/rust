@@ -7,12 +7,11 @@
 
 mod assert {
     use std::mem::{Assume, BikeshedIntrinsicFrom};
-    pub struct Context;
 
     pub fn array_like<T, E, const N: usize>()
     where
-        T: BikeshedIntrinsicFrom<[E; N], Context, { Assume::SAFETY }>,
-        [E; N]: BikeshedIntrinsicFrom<T, Context, { Assume::SAFETY }>
+        T: BikeshedIntrinsicFrom<[E; N], { Assume::SAFETY }>,
+        [E; N]: BikeshedIntrinsicFrom<T, { Assume::SAFETY }>
     {}
 }
 

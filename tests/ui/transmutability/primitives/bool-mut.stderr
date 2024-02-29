@@ -1,17 +1,17 @@
-error[E0277]: `u8` cannot be safely transmuted into `bool` in the defining scope of `assert::Context`
-  --> $DIR/bool-mut.rs:16:50
+error[E0277]: `u8` cannot be safely transmuted into `bool`
+  --> $DIR/bool-mut.rs:15:50
    |
 LL |     assert::is_transmutable::<&'static mut bool, &'static mut u8>()
    |                                                  ^^^^^^^^^^^^^^^ At least one value of `u8` isn't a bit-valid value of `bool`
    |
 note: required by a bound in `is_transmutable`
-  --> $DIR/bool-mut.rs:11:14
+  --> $DIR/bool-mut.rs:10:14
    |
 LL |     pub fn is_transmutable<Src, Dst>()
    |            --------------- required by a bound in this function
 LL |     where
-LL |         Dst: BikeshedIntrinsicFrom<Src, Context, { Assume::SAFETY }>
-   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `is_transmutable`
+LL |         Dst: BikeshedIntrinsicFrom<Src, { Assume::SAFETY }>
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `is_transmutable`
 
 error: aborting due to 1 previous error
 

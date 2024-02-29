@@ -8,7 +8,6 @@ mod assert {
     pub fn is_transmutable<
         Src,
         Dst,
-        Context,
         const ASSUME_ALIGNMENT: bool,
         const ASSUME_LIFETIMES: bool,
         const ASSUME_SAFETY: bool,
@@ -17,7 +16,6 @@ mod assert {
     where
         Dst: BikeshedIntrinsicFrom<
             Src,
-            Context,
             { from_options(ASSUME_ALIGNMENT, ASSUME_LIFETIMES, ASSUME_SAFETY, ASSUME_VALIDITY) }
         >,
     {}
@@ -32,9 +30,8 @@ mod assert {
 }
 
 fn main() {
-    struct Context;
     #[repr(C)] struct Src;
     #[repr(C)] struct Dst;
 
-    assert::is_transmutable::<Src, Dst, Context, false, false, { true }, false>();
+    assert::is_transmutable::<Src, Dst, false, false, { true }, false>();
 }
