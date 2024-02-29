@@ -420,7 +420,22 @@ impl SourceAnalyzer {
         let base_ty = self.ty_of_expr(db, &index_expr.base()?)?;
         let index_ty = self.ty_of_expr(db, &index_expr.index()?)?;
 
-        let (op_trait, op_fn) = self.lang_trait_fn(db, LangItem::Index, &name![index])?;
+        let (index_trait, index_fn) = self.lang_trait_fn(db, LangItem::Index, &name![index])?;
+        let (op_trait, op_fn) = self
+            .infer
+            .as_ref()
+            .and_then(|infer| {
+                let expr = self.expr_id(db, &index_expr.clone().into())?;
+                let (func, _) = infer.method_resolution(expr)?;
+                let (index_mut_trait, index_mut_fn) =
+                    self.lang_trait_fn(db, LangItem::IndexMut, &name![index_mut])?;
+                if func == index_mut_fn {
+                    Some((index_mut_trait, index_mut_fn))
+                } else {
+                    None
+                }
+            })
+            .unwrap_or((index_trait, index_fn));
         // HACK: subst for all methods coincides with that for their trait because the methods
         // don't have any generic parameters, so we skip building another subst for the methods.
         let substs = hir_ty::TyBuilder::subst_for_def(db, op_trait, None)

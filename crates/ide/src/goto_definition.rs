@@ -1956,6 +1956,34 @@ fn f() {
     }
 
     #[test]
+    fn goto_index_mut_op() {
+        check(
+            r#"
+//- minicore: index
+
+struct Foo;
+struct Bar;
+
+impl core::ops::Index<usize> for Foo {
+    type Output = Bar;
+
+    fn index(&self, index: usize) -> &Self::Output {}
+}
+
+impl core::ops::IndexMut<usize> for Foo {
+    fn index_mut(&mut self, index: usize) -> &mut Self::Output {}
+     //^^^^^^^^^
+}
+
+fn f() {
+    let mut foo = Foo;
+    foo[0]$0 = Bar;
+}
+"#,
+        );
+    }
+
+    #[test]
     fn goto_prefix_op() {
         check(
             r#"
