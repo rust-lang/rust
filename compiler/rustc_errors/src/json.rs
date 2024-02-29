@@ -405,9 +405,8 @@ impl Diagnostic {
             .collect();
 
         let buf = BufWriter::default();
-        let output = buf.clone();
         je.json_rendered
-            .new_emitter(Box::new(buf), je.fallback_bundle.clone())
+            .new_emitter(Box::new(buf.clone()), je.fallback_bundle.clone())
             .sm(Some(je.sm.clone()))
             .fluent_bundle(je.fluent_bundle.clone())
             .diagnostic_width(je.diagnostic_width)
@@ -417,8 +416,8 @@ impl Diagnostic {
             .ui_testing(je.ui_testing)
             .ignored_directories_in_source_blocks(je.ignored_directories_in_source_blocks.clone())
             .emit_diagnostic(diag);
-        let output = Arc::try_unwrap(output.0).unwrap().into_inner().unwrap();
-        let output = String::from_utf8(output).unwrap();
+        let buf = Arc::try_unwrap(buf.0).unwrap().into_inner().unwrap();
+        let buf = String::from_utf8(buf).unwrap();
 
         Diagnostic {
             message: translated_message.to_string(),
@@ -426,7 +425,7 @@ impl Diagnostic {
             level,
             spans,
             children,
-            rendered: Some(output),
+            rendered: Some(buf),
         }
     }
 
