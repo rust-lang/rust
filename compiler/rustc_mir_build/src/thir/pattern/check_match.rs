@@ -917,7 +917,9 @@ fn report_arm_reachability<'p, 'tcx>(
 fn pat_is_catchall(pat: &DeconstructedPat<'_, '_>) -> bool {
     match pat.ctor() {
         Constructor::Wildcard => true,
-        Constructor::Struct | Constructor::Ref => pat.iter_fields().all(|pat| pat_is_catchall(pat)),
+        Constructor::Struct | Constructor::Ref => {
+            pat.iter_fields().all(|ipat| pat_is_catchall(&ipat.pat))
+        }
         _ => false,
     }
 }

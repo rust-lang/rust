@@ -446,7 +446,7 @@ impl<'p, 'tcx: 'p> RustcMatchCheckCtxt<'p, 'tcx> {
         let ty = cx.reveal_opaque_ty(pat.ty);
         let ctor;
         let arity;
-        let mut fields: Vec<_>;
+        let fields: Vec<_>;
         match &pat.kind {
             PatKind::AscribeUserType { subpattern, .. }
             | PatKind::InlineConstant { subpattern, .. } => return self.lower_pat(subpattern),
@@ -457,7 +457,7 @@ impl<'p, 'tcx: 'p> RustcMatchCheckCtxt<'p, 'tcx> {
                 arity = 0;
             }
             PatKind::Deref { subpattern } => {
-                fields = vec![self.lower_pat(subpattern)];
+                fields = vec![self.lower_pat(subpattern).at_index(0)];
                 arity = 1;
                 ctor = match ty.kind() {
                     // This is a box pattern.
@@ -471,16 +471,12 @@ impl<'p, 'tcx: 'p> RustcMatchCheckCtxt<'p, 'tcx> {
                     ty::Tuple(fs) => {
                         ctor = Struct;
                         arity = fs.len();
-                        fields = fs
+                        fields = subpatterns
                             .iter()
-                            .map(|ty| cx.reveal_opaque_ty(ty))
-                            .map(|ty| DeconstructedPat::wildcard(ty))
+                            .map(|ipat| self.lower_pat(&ipat.pattern).at_index(ipat.field.index()))
                             .collect();
-                        for pat in subpatterns {
-                            fields[pat.field.index()] = self.lower_pat(&pat.pattern);
-                        }
                     }
-                    ty::Adt(adt, args) if adt.is_box() => {
+                    ty::Adt(adt, _) if adt.is_box() => {
                         // The only legal patterns of type `Box` (outside `std`) are `_` and box
                         // patterns. If we're here we can assume this is a box pattern.
                         // FIXME(Nadrieril): A `Box` can in theory be matched either with `Box(_,
@@ -494,13 +490,12 @@ impl<'p, 'tcx: 'p> RustcMatchCheckCtxt<'p, 'tcx> {
                         // solution when we introduce generalized deref patterns. Also need to
                         // prevent mixing of those two options.
                         let pattern = subpatterns.into_iter().find(|pat| pat.field.index() == 0);
-                        let pat = if let Some(pat) = pattern {
-                            self.lower_pat(&pat.pattern)
+                        if let Some(pat) = pattern {
+                            fields = vec![self.lower_pat(&pat.pattern).at_index(0)];
                         } else {
-                            DeconstructedPat::wildcard(self.reveal_opaque_ty(args.type_at(0)))
-                        };
+                            fields = vec![];
+                        }
                         ctor = Struct;
-                        fields = vec![pat];
                         arity = 1;
                     }
                     ty::Adt(adt, _) => {
@@ -513,13 +508,10 @@ impl<'p, 'tcx: 'p> RustcMatchCheckCtxt<'p, 'tcx> {
                         let variant =
                             &adt.variant(RustcMatchCheckCtxt::variant_index_for_adt(&ctor, *adt));
                         arity = variant.fields.len();
-                        fields = cx
-                            .variant_sub_tys(ty, variant)
-                            .map(|(_, ty)| DeconstructedPat::wildcard(ty))
+                        fields = subpatterns
+                            .iter()
+                            .map(|ipat| self.lower_pat(&ipat.pattern).at_index(ipat.field.index()))
                             .collect();
-                        for pat in subpatterns {
-                            fields[pat.field.index()] = self.lower_pat(&pat.pattern);
-                        }
                     }
                     _ => bug!("pattern has unexpected type: pat: {:?}, ty: {:?}", pat, ty),
                 }
@@ -586,7 +578,7 @@ impl<'p, 'tcx: 'p> RustcMatchCheckCtxt<'p, 'tcx> {
                         let ty = self.reveal_opaque_ty(*t);
                         let subpattern = DeconstructedPat::new(Str(*value), Vec::new(), 0, ty, pat);
                         ctor = Ref;
-                        fields = vec![subpattern];
+                        fields = vec![subpattern.at_index(0)];
                         arity = 1;
                     }
                     // All constants that can be structurally matched have already been expanded
@@ -651,13 +643,24 @@ impl<'p, 'tcx: 'p> RustcMatchCheckCtxt<'p, 'tcx> {
                     SliceKind::FixedLen(prefix.len() + suffix.len())
                 };
                 ctor = Slice(Slice::new(array_len, kind));
-                fields = prefix.iter().chain(suffix.iter()).map(|p| self.lower_pat(&*p)).collect();
+                fields = prefix
+                    .iter()
+                    .chain(suffix.iter())
+                    .map(|p| self.lower_pat(&*p))
+                    .enumerate()
+                    .map(|(i, p)| p.at_index(i))
+                    .collect();
                 arity = kind.arity();
             }
             PatKind::Or { .. } => {
                 ctor = Or;
                 let pats = expand_or_pat(pat);
-                fields = pats.into_iter().map(|p| self.lower_pat(p)).collect();
+                fields = pats
+                    .into_iter()
+                    .map(|p| self.lower_pat(p))
+                    .enumerate()
+                    .map(|(i, p)| p.at_index(i))
+                    .collect();
                 arity = fields.len();
             }
             PatKind::Never => {

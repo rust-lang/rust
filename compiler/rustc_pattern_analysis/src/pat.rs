@@ -20,12 +20,18 @@ impl PatId {
     }
 }
 
+/// A pattern with an index denoting which field it corresponds to.
+pub struct IndexedPat<Cx: TypeCx> {
+    pub idx: usize,
+    pub pat: DeconstructedPat<Cx>,
+}
+
 /// Values and patterns can be represented as a constructor applied to some fields. This represents
 /// a pattern in this form. A `DeconstructedPat` will almost always come from user input; the only
 /// exception are some `Wildcard`s introduced during pattern lowering.
 pub struct DeconstructedPat<Cx: TypeCx> {
     ctor: Constructor<Cx>,
-    fields: Vec<DeconstructedPat<Cx>>,
+    fields: Vec<IndexedPat<Cx>>,
     /// The number of fields in this pattern. E.g. if the pattern is `SomeStruct { field12: true, ..
     /// }` this would be the total number of fields of the struct.
     /// This is also the same as `self.ctor.arity(self.ty)`.
@@ -39,25 +45,18 @@ pub struct DeconstructedPat<Cx: TypeCx> {
 }
 
 impl<Cx: TypeCx> DeconstructedPat<Cx> {
-    pub fn wildcard(ty: Cx::Ty) -> Self {
-        DeconstructedPat {
-            ctor: Wildcard,
-            fields: Vec::new(),
-            arity: 0,
-            ty,
-            data: None,
-            uid: PatId::new(),
-        }
-    }
-
     pub fn new(
         ctor: Constructor<Cx>,
-        fields: Vec<DeconstructedPat<Cx>>,
+        fields: Vec<IndexedPat<Cx>>,
         arity: usize,
         ty: Cx::Ty,
         data: Cx::PatData,
     ) -> Self {
         DeconstructedPat { ctor, fields, arity, ty, data: Some(data), uid: PatId::new() }
+    }
+
+    pub fn at_index(self, idx: usize) -> IndexedPat<Cx> {
+        IndexedPat { idx, pat: self }
     }
 
     pub(crate) fn is_or_pat(&self) -> bool {
@@ -75,8 +74,11 @@ impl<Cx: TypeCx> DeconstructedPat<Cx> {
     pub fn data(&self) -> Option<&Cx::PatData> {
         self.data.as_ref()
     }
+    pub fn arity(&self) -> usize {
+        self.arity
+    }
 
-    pub fn iter_fields<'a>(&'a self) -> impl Iterator<Item = &'a DeconstructedPat<Cx>> {
+    pub fn iter_fields<'a>(&'a self) -> impl Iterator<Item = &'a IndexedPat<Cx>> {
         self.fields.iter()
     }
 
@@ -85,36 +87,40 @@ impl<Cx: TypeCx> DeconstructedPat<Cx> {
     pub(crate) fn specialize<'a>(
         &'a self,
         other_ctor: &Constructor<Cx>,
-        ctor_arity: usize,
+        other_ctor_arity: usize,
     ) -> SmallVec<[PatOrWild<'a, Cx>; 2]> {
-        let wildcard_sub_tys = || (0..ctor_arity).map(|_| PatOrWild::Wild).collect();
-        match (&self.ctor, other_ctor) {
-            // Return a wildcard for each field of `other_ctor`.
-            (Wildcard, _) => wildcard_sub_tys(),
+        if matches!(other_ctor, PrivateUninhabited) {
             // Skip this column.
-            (_, PrivateUninhabited) => smallvec![],
-            // The only non-trivial case: two slices of different arity. `other_slice` is
-            // guaranteed to have a larger arity, so we fill the middle part with enough
-            // wildcards to reach the length of the new, larger slice.
-            (
-                &Slice(self_slice @ Slice { kind: SliceKind::VarLen(prefix, suffix), .. }),
-                &Slice(other_slice),
-            ) if self_slice.arity() != other_slice.arity() => {
-                // Start with a slice of wildcards of the appropriate length.
-                let mut fields: SmallVec<[_; 2]> = wildcard_sub_tys();
-                // Fill in the fields from both ends.
-                let new_arity = fields.len();
-                for i in 0..prefix {
-                    fields[i] = PatOrWild::Pat(&self.fields[i]);
-                }
-                for i in 0..suffix {
-                    fields[new_arity - 1 - i] =
-                        PatOrWild::Pat(&self.fields[self.fields.len() - 1 - i]);
-                }
-                fields
-            }
-            _ => self.fields.iter().map(PatOrWild::Pat).collect(),
+            return smallvec![];
         }
+
+        // Start with a slice of wildcards of the appropriate length.
+        let mut fields: SmallVec<[_; 2]> = (0..other_ctor_arity).map(|_| PatOrWild::Wild).collect();
+        // Fill `fields` with our fields. The arities are known to be compatible.
+        match self.ctor {
+            // The only non-trivial case: two slices of different arity. `other_ctor` is guaranteed
+            // to have a larger arity, so we adjust the indices of the patterns in the suffix so
+            // that they are correctly positioned in the larger slice.
+            Slice(Slice { kind: SliceKind::VarLen(prefix, _), .. })
+                if self.arity != other_ctor_arity =>
+            {
+                for ipat in &self.fields {
+                    let new_idx = if ipat.idx < prefix {
+                        ipat.idx
+                    } else {
+                        // Adjust the indices in the suffix.
+                        ipat.idx + other_ctor_arity - self.arity
+                    };
+                    fields[new_idx] = PatOrWild::Pat(&ipat.pat);
+                }
+            }
+            _ => {
+                for ipat in &self.fields {
+                    fields[ipat.idx] = PatOrWild::Pat(&ipat.pat);
+                }
+            }
+        }
+        fields
     }
 
     /// Walk top-down and call `it` in each place where a pattern occurs
@@ -126,7 +132,7 @@ impl<Cx: TypeCx> DeconstructedPat<Cx> {
         }
 
         for p in self.iter_fields() {
-            p.walk(it)
+            p.pat.walk(it)
         }
     }
 }
@@ -146,6 +152,11 @@ impl<Cx: TypeCx> fmt::Debug for DeconstructedPat<Cx> {
         };
         let mut start_or_comma = || start_or_continue(", ");
 
+        let mut fields: Vec<_> = (0..self.arity).map(|_| PatOrWild::Wild).collect();
+        for ipat in self.iter_fields() {
+            fields[ipat.idx] = PatOrWild::Pat(&ipat.pat);
+        }
+
         match pat.ctor() {
             Struct | Variant(_) | UnionField => {
                 Cx::write_variant_name(f, pat)?;
@@ -153,7 +164,7 @@ impl<Cx: TypeCx> fmt::Debug for DeconstructedPat<Cx> {
                 // get the names of the fields. Instead we just display everything as a tuple
                 // struct, which should be good enough.
                 write!(f, "(")?;
-                for p in pat.iter_fields() {
+                for p in fields {
                     write!(f, "{}", start_or_comma())?;
                     write!(f, "{p:?}")?;
                 }
@@ -163,25 +174,23 @@ impl<Cx: TypeCx> fmt::Debug for DeconstructedPat<Cx> {
             // be careful to detect strings here. However a string literal pattern will never
             // be reported as a non-exhaustiveness witness, so we can ignore this issue.
             Ref => {
-                let subpattern = pat.iter_fields().next().unwrap();
-                write!(f, "&{:?}", subpattern)
+                write!(f, "&{:?}", &fields[0])
             }
             Slice(slice) => {
-                let mut subpatterns = pat.iter_fields();
                 write!(f, "[")?;
                 match slice.kind {
                     SliceKind::FixedLen(_) => {
-                        for p in subpatterns {
+                        for p in fields {
                             write!(f, "{}{:?}", start_or_comma(), p)?;
                         }
                     }
                     SliceKind::VarLen(prefix_len, _) => {
-                        for p in subpatterns.by_ref().take(prefix_len) {
+                        for p in &fields[..prefix_len] {
                             write!(f, "{}{:?}", start_or_comma(), p)?;
                         }
                         write!(f, "{}", start_or_comma())?;
                         write!(f, "..")?;
-                        for p in subpatterns {
+                        for p in &fields[prefix_len..] {
                             write!(f, "{}{:?}", start_or_comma(), p)?;
                         }
                     }
@@ -196,7 +205,7 @@ impl<Cx: TypeCx> fmt::Debug for DeconstructedPat<Cx> {
             Str(value) => write!(f, "{value:?}"),
             Opaque(..) => write!(f, "<constant pattern>"),
             Or => {
-                for pat in pat.iter_fields() {
+                for pat in fields {
                     write!(f, "{}{:?}", start_or_continue(" | "), pat)?;
                 }
                 Ok(())
@@ -254,9 +263,10 @@ impl<'p, Cx: TypeCx> PatOrWild<'p, Cx> {
     /// Expand this (possibly-nested) or-pattern into its alternatives.
     pub(crate) fn flatten_or_pat(self) -> SmallVec<[Self; 1]> {
         match self {
-            PatOrWild::Pat(pat) if pat.is_or_pat() => {
-                pat.iter_fields().flat_map(|p| PatOrWild::Pat(p).flatten_or_pat()).collect()
-            }
+            PatOrWild::Pat(pat) if pat.is_or_pat() => pat
+                .iter_fields()
+                .flat_map(|ipat| PatOrWild::Pat(&ipat.pat).flatten_or_pat())
+                .collect(),
             _ => smallvec![self],
         }
     }
