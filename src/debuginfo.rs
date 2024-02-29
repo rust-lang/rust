@@ -255,7 +255,6 @@ impl<'gcc, 'tcx> DebugInfoMethods<'tcx> for CodegenCx<'gcc, 'tcx> {
         _variable_kind: VariableKind,
         _span: Span,
     ) -> Self::DIVariable {
-        ()
     }
 
     fn dbg_scope_fn(

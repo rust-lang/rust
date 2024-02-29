@@ -187,7 +187,7 @@ impl CodegenBackend for GccCodegenBackend {
             // Get the second TargetInfo with the correct CPU features by setting the arch.
             let context = Context::default();
             if target_cpu != "generic" {
-                context.add_command_line_option(&format!("-march={}", target_cpu));
+                context.add_command_line_option(format!("-march={}", target_cpu));
             }
 
             **self.target_info.info.lock().expect("lock") = context.get_target_info();
@@ -224,9 +224,9 @@ impl CodegenBackend for GccCodegenBackend {
         providers.global_backend_features = |tcx, ()| gcc_util::global_gcc_features(tcx.sess, true)
     }
 
-    fn codegen_crate<'tcx>(
+    fn codegen_crate(
         &self,
-        tcx: TyCtxt<'tcx>,
+        tcx: TyCtxt<'_>,
         metadata: EncodedMetadata,
         need_metadata_module: bool,
     ) -> Box<dyn Any> {
@@ -292,9 +292,9 @@ fn new_context<'gcc, 'tcx>(tcx: TyCtxt<'tcx>) -> Context<'gcc> {
 }
 
 impl ExtraBackendMethods for GccCodegenBackend {
-    fn codegen_allocator<'tcx>(
+    fn codegen_allocator(
         &self,
-        tcx: TyCtxt<'tcx>,
+        tcx: TyCtxt<'_>,
         module_name: &str,
         kind: AllocatorKind,
         alloc_error_handler_kind: AllocatorKind,
@@ -486,6 +486,6 @@ pub fn target_features(
               sha, sse, sse2, sse3, sse4.1, sse4.2, sse4a, ssse3, tbm, vaes, vpclmulqdq, xsave, xsavec, xsaveopt, xsaves
             */
         })
-        .map(|feature| Symbol::intern(feature))
+        .map(Symbol::intern)
         .collect()
 }

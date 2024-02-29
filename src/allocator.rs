@@ -63,7 +63,7 @@ pub(crate) unsafe fn codegen(
         tcx,
         context,
         "__rust_alloc_error_handler",
-        &alloc_error_handler_name(alloc_error_handler_kind),
+        alloc_error_handler_name(alloc_error_handler_kind),
         &[usize, usize],
         None,
     );
@@ -93,7 +93,7 @@ fn create_wrapper_function(
     let args: Vec<_> = types
         .iter()
         .enumerate()
-        .map(|(index, typ)| context.new_parameter(None, *typ, &format!("param{}", index)))
+        .map(|(index, typ)| context.new_parameter(None, *typ, format!("param{}", index)))
         .collect();
     let func = context.new_function(
         None,
@@ -115,7 +115,7 @@ fn create_wrapper_function(
     let args: Vec<_> = types
         .iter()
         .enumerate()
-        .map(|(index, typ)| context.new_parameter(None, *typ, &format!("param{}", index)))
+        .map(|(index, typ)| context.new_parameter(None, *typ, format!("param{}", index)))
         .collect();
     let callee = context.new_function(
         None,

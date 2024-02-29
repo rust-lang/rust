@@ -133,13 +133,13 @@ impl<'gcc, 'tcx> BaseTypeMethods<'tcx> for CodegenCx<'gcc, 'tcx> {
     fn type_struct(&self, fields: &[Type<'gcc>], packed: bool) -> Type<'gcc> {
         let types = fields.to_vec();
         if let Some(typ) = self.struct_types.borrow().get(fields) {
-            return typ.clone();
+            return *typ;
         }
         let fields: Vec<_> = fields
             .iter()
             .enumerate()
             .map(|(index, field)| {
-                self.context.new_field(None, *field, &format!("field{}_TODO", index))
+                self.context.new_field(None, *field, format!("field{}_TODO", index))
             })
             .collect();
         let typ = self.context.new_struct_type(None, "struct", &fields).as_type();
@@ -240,7 +240,7 @@ impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
         let fields: Vec<_> = fields
             .iter()
             .enumerate()
-            .map(|(index, field)| self.context.new_field(None, *field, &format!("field_{}", index)))
+            .map(|(index, field)| self.context.new_field(None, *field, format!("field_{}", index)))
             .collect();
         typ.set_fields(None, &fields);
         if packed {
@@ -265,7 +265,7 @@ pub fn struct_fields<'gcc, 'tcx>(
     let mut prev_effective_align = layout.align.abi;
     let mut result: Vec<_> = Vec::with_capacity(1 + field_count * 2);
     for i in layout.fields.index_by_increasing_offset() {
-        let target_offset = layout.fields.offset(i as usize);
+        let target_offset = layout.fields.offset(i);
         let field = layout.field(cx, i);
         let effective_field_align =
             layout.align.abi.min(field.align.abi).restrict_for_offset(target_offset);

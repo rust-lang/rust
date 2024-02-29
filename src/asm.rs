@@ -96,7 +96,7 @@ impl AsmOutOperand<'_, '_, '_> {
             res.push('&');
         }
 
-        res.push_str(&self.constraint);
+        res.push_str(self.constraint);
         res
     }
 }
@@ -304,7 +304,7 @@ impl<'a, 'gcc, 'tcx> AsmBuilderMethods<'tcx> for Builder<'a, 'gcc, 'tcx> {
                         tmp_var.set_register_name(reg_name);
 
                         outputs.push(AsmOutOperand {
-                            constraint: "r".into(),
+                            constraint: "r",
                             rust_idx,
                             late,
                             readwrite: false,
@@ -343,7 +343,7 @@ impl<'a, 'gcc, 'tcx> AsmBuilderMethods<'tcx> for Builder<'a, 'gcc, 'tcx> {
                         tmp_var.set_register_name(reg_name);
 
                         outputs.push(AsmOutOperand {
-                            constraint: "r".into(),
+                            constraint: "r",
                             rust_idx,
                             late,
                             readwrite: false,
