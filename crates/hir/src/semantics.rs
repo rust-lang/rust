@@ -1120,6 +1120,10 @@ impl<'db> SemanticsImpl<'db> {
         self.analyze(pat.syntax())?.binding_mode_of_pat(self.db, pat)
     }
 
+    pub fn resolve_expr_as_callable(&self, call: &ast::Expr) -> Option<Callable> {
+        self.analyze(call.syntax())?.resolve_expr_as_callable(self.db, call)
+    }
+
     pub fn resolve_method_call(&self, call: &ast::MethodCallExpr) -> Option<Function> {
         self.analyze(call.syntax())?.resolve_method_call(self.db, call)
     }
