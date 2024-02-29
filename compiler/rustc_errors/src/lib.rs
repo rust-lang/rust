@@ -59,11 +59,11 @@ pub use snippet::Style;
 // See https://github.com/rust-lang/rust/pull/115393.
 pub use termcolor::{Color, ColorSpec, WriteColor};
 
-use emitter::{is_case_difference, DynEmitter, Emitter, HumanEmitter};
+use emitter::{is_case_difference, DynEmitter, Emitter};
 use registry::Registry;
 use rustc_data_structures::fx::{FxHashSet, FxIndexMap, FxIndexSet};
 use rustc_data_structures::stable_hasher::{Hash128, StableHasher};
-use rustc_data_structures::sync::{Lock, Lrc};
+use rustc_data_structures::sync::Lock;
 use rustc_data_structures::AtomicRef;
 use rustc_lint_defs::LintExpectationId;
 use rustc_span::source_map::SourceMap;
@@ -590,13 +590,6 @@ impl Drop for DiagCtxtInner {
 }
 
 impl DiagCtxt {
-    pub fn with_tty_emitter(
-        sm: Option<Lrc<SourceMap>>,
-        fallback_bundle: LazyFallbackBundle,
-    ) -> Self {
-        let emitter = Box::new(HumanEmitter::stderr(ColorConfig::Auto, fallback_bundle).sm(sm));
-        Self::with_emitter(emitter)
-    }
     pub fn disable_warnings(mut self) -> Self {
         self.inner.get_mut().flags.can_emit_warnings = false;
         self
