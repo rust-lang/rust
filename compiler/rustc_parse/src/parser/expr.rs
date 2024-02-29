@@ -1762,24 +1762,25 @@ impl<'a> Parser<'a> {
         err: impl FnOnce(&Self) -> Diag<'a>,
     ) -> L {
         assert!(could_be_unclosed_char_literal(ident));
-        if let Some(diag) = self.dcx().steal_diagnostic(ident.span, StashKey::LifetimeIsChar) {
-            diag.with_span_suggestion_verbose(
-                ident.span.shrink_to_hi(),
-                "add `'` to close the char literal",
-                "'",
-                Applicability::MaybeIncorrect,
-            )
-            .emit();
-        } else {
-            err(self)
-                .with_span_suggestion_verbose(
+        self.dcx()
+            .try_steal_modify_and_emit_err(ident.span, StashKey::LifetimeIsChar, |err| {
+                err.span_suggestion_verbose(
                     ident.span.shrink_to_hi(),
                     "add `'` to close the char literal",
                     "'",
                     Applicability::MaybeIncorrect,
-                )
-                .emit();
-        }
+                );
+            })
+            .unwrap_or_else(|| {
+                err(self)
+                    .with_span_suggestion_verbose(
+                        ident.span.shrink_to_hi(),
+                        "add `'` to close the char literal",
+                        "'",
+                        Applicability::MaybeIncorrect,
+                    )
+                    .emit()
+            });
         let name = ident.without_first_quote().name;
         mk_lit_char(name, ident.span)
     }

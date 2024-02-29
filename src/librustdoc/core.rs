@@ -1,7 +1,7 @@
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::sync::Lrc;
 use rustc_data_structures::unord::UnordSet;
-use rustc_errors::emitter::{DynEmitter, HumanEmitter};
+use rustc_errors::emitter::{stderr_destination, DynEmitter, HumanEmitter};
 use rustc_errors::json::JsonEmitter;
 use rustc_errors::{codes::*, ErrorGuaranteed, TerminalUrl};
 use rustc_feature::UnstableFeatures;
@@ -20,6 +20,7 @@ use rustc_span::symbol::sym;
 use rustc_span::{source_map, Span};
 
 use std::cell::RefCell;
+use std::io;
 use std::mem;
 use std::rc::Rc;
 use std::sync::LazyLock;
@@ -141,7 +142,7 @@ pub(crate) fn new_dcx(
         ErrorOutputType::HumanReadable(kind) => {
             let (short, color_config) = kind.unzip();
             Box::new(
-                HumanEmitter::stderr(color_config, fallback_bundle)
+                HumanEmitter::new(stderr_destination(color_config), fallback_bundle)
                     .sm(source_map.map(|sm| sm as _))
                     .short_message(short)
                     .teach(unstable_opts.teach)
@@ -155,24 +156,22 @@ pub(crate) fn new_dcx(
                 Lrc::new(source_map::SourceMap::new(source_map::FilePathMapping::empty()))
             });
             Box::new(
-                JsonEmitter::stderr(
-                    None,
+                JsonEmitter::new(
+                    Box::new(io::BufWriter::new(io::stderr())),
                     source_map,
-                    None,
                     fallback_bundle,
                     pretty,
                     json_rendered,
-                    diagnostic_width,
-                    false,
-                    unstable_opts.track_diagnostics,
-                    TerminalUrl::No,
                 )
-                .ui_testing(unstable_opts.ui_testing),
+                .ui_testing(unstable_opts.ui_testing)
+                .diagnostic_width(diagnostic_width)
+                .track_diagnostics(unstable_opts.track_diagnostics)
+                .terminal_url(TerminalUrl::No),
             )
         }
     };
 
-    rustc_errors::DiagCtxt::with_emitter(emitter).with_flags(unstable_opts.dcx_flags(true))
+    rustc_errors::DiagCtxt::new(emitter).with_flags(unstable_opts.dcx_flags(true))
 }
 
 /// Parse, resolve, and typecheck the given crate.

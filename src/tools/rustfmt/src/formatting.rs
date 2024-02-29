@@ -109,7 +109,7 @@ fn format_project<T: FormatHandler>(
     let main_file = input.file_name();
     let input_is_stdin = main_file == FileName::Stdin;
 
-    let mut parse_session = ParseSess::new(config)?;
+    let parse_session = ParseSess::new(config)?;
     if config.skip_children() && parse_session.ignore_file(&main_file) {
         return Ok(FormatReport::new());
     }
@@ -118,20 +118,11 @@ fn format_project<T: FormatHandler>(
     let mut report = FormatReport::new();
     let directory_ownership = input.to_directory_ownership();
 
-    // rustfmt doesn't use `run_compiler` like other tools, so it must emit any
-    // stashed diagnostics itself, otherwise the `DiagCtxt` will assert when
-    // dropped. The final result here combines the parsing result and the
-    // `emit_stashed_diagnostics` result.
-    let parse_res = Parser::parse_crate(input, &parse_session);
-    let stashed_res = parse_session.emit_stashed_diagnostics();
-    let krate = match (parse_res, stashed_res) {
-        (Ok(krate), None) => krate,
-        (parse_res, _) => {
-            // Surface parse error via Session (errors are merged there from report).
-            let forbid_verbose = match parse_res {
-                Err(e) if e != ParserError::ParsePanicError => true,
-                _ => input_is_stdin,
-            };
+    let krate = match Parser::parse_crate(input, &parse_session) {
+        Ok(krate) => krate,
+        // Surface parse error via Session (errors are merged there from report)
+        Err(e) => {
+            let forbid_verbose = input_is_stdin || e != ParserError::ParsePanicError;
             should_emit_verbose(forbid_verbose, config, || {
                 eprintln!("The Rust parser panicked");
             });

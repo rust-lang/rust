@@ -291,33 +291,41 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             }
 
             TestKind::Range(ref range) => {
-                let lower_bound_success = self.cfg.start_new_block();
-
-                // Test `val` by computing `lo <= val && val <= hi`, using primitive comparisons.
-                // FIXME: skip useless comparison when the range is half-open.
-                let lo = range.lo.to_const(range.ty, self.tcx);
-                let hi = range.hi.to_const(range.ty, self.tcx);
-                let lo = self.literal_operand(test.span, lo);
-                let hi = self.literal_operand(test.span, hi);
-                let val = Operand::Copy(place);
-
                 let [success, fail] = *target_blocks else {
                     bug!("`TestKind::Range` should have two target blocks");
                 };
-                self.compare(
-                    block,
-                    lower_bound_success,
-                    fail,
-                    source_info,
-                    BinOp::Le,
-                    lo,
-                    val.clone(),
-                );
-                let op = match range.end {
-                    RangeEnd::Included => BinOp::Le,
-                    RangeEnd::Excluded => BinOp::Lt,
+                // Test `val` by computing `lo <= val && val <= hi`, using primitive comparisons.
+                let val = Operand::Copy(place);
+
+                let intermediate_block = if !range.lo.is_finite() {
+                    block
+                } else if !range.hi.is_finite() {
+                    success
+                } else {
+                    self.cfg.start_new_block()
                 };
-                self.compare(lower_bound_success, success, fail, source_info, op, val, hi);
+
+                if let Some(lo) = range.lo.as_finite() {
+                    let lo = self.literal_operand(test.span, lo);
+                    self.compare(
+                        block,
+                        intermediate_block,
+                        fail,
+                        source_info,
+                        BinOp::Le,
+                        lo,
+                        val.clone(),
+                    );
+                };
+
+                if let Some(hi) = range.hi.as_finite() {
+                    let hi = self.literal_operand(test.span, hi);
+                    let op = match range.end {
+                        RangeEnd::Included => BinOp::Le,
+                        RangeEnd::Excluded => BinOp::Lt,
+                    };
+                    self.compare(intermediate_block, success, fail, source_info, op, val, hi);
+                }
             }
 
             TestKind::Len { len, op } => {

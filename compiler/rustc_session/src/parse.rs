@@ -13,9 +13,10 @@ use crate::Session;
 use rustc_ast::node_id::NodeId;
 use rustc_data_structures::fx::{FxHashMap, FxIndexMap, FxIndexSet};
 use rustc_data_structures::sync::{AppendOnlyVec, Lock, Lrc};
-use rustc_errors::{emitter::SilentEmitter, DiagCtxt};
+use rustc_errors::emitter::{stderr_destination, HumanEmitter, SilentEmitter};
 use rustc_errors::{
-    fallback_fluent_bundle, Diag, DiagnosticMessage, EmissionGuarantee, MultiSpan, StashKey,
+    fallback_fluent_bundle, ColorConfig, Diag, DiagCtxt, DiagnosticMessage, EmissionGuarantee,
+    MultiSpan, StashKey,
 };
 use rustc_feature::{find_feature_issue, GateIssue, UnstableFeatures};
 use rustc_span::edition::Edition;
@@ -105,8 +106,7 @@ pub fn feature_err_issue(
 
     // Cancel an earlier warning for this same error, if it exists.
     if let Some(span) = span.primary_span() {
-        if let Some(err) = sess.parse_sess.dcx.steal_diagnostic(span, StashKey::EarlySyntaxWarning)
-        {
+        if let Some(err) = sess.parse_sess.dcx.steal_non_err(span, StashKey::EarlySyntaxWarning) {
             err.cancel()
         }
     }
@@ -236,7 +236,11 @@ impl ParseSess {
     pub fn new(locale_resources: Vec<&'static str>, file_path_mapping: FilePathMapping) -> Self {
         let fallback_bundle = fallback_fluent_bundle(locale_resources, false);
         let sm = Lrc::new(SourceMap::new(file_path_mapping));
-        let dcx = DiagCtxt::with_tty_emitter(Some(sm.clone()), fallback_bundle);
+        let emitter = Box::new(
+            HumanEmitter::new(stderr_destination(ColorConfig::Auto), fallback_bundle)
+                .sm(Some(sm.clone())),
+        );
+        let dcx = DiagCtxt::new(emitter);
         ParseSess::with_dcx(dcx, sm)
     }
 
@@ -265,9 +269,11 @@ impl ParseSess {
     pub fn with_silent_emitter(fatal_note: String) -> Self {
         let fallback_bundle = fallback_fluent_bundle(Vec::new(), false);
         let sm = Lrc::new(SourceMap::new(FilePathMapping::empty()));
-        let fatal_dcx = DiagCtxt::with_tty_emitter(None, fallback_bundle).disable_warnings();
-        let dcx = DiagCtxt::with_emitter(Box::new(SilentEmitter { fatal_dcx, fatal_note }))
-            .disable_warnings();
+        let emitter =
+            Box::new(HumanEmitter::new(stderr_destination(ColorConfig::Auto), fallback_bundle));
+        let fatal_dcx = DiagCtxt::new(emitter);
+        let dcx =
+            DiagCtxt::new(Box::new(SilentEmitter { fatal_dcx, fatal_note })).disable_warnings();
         ParseSess::with_dcx(dcx, sm)
     }
 

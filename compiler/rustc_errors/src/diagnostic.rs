@@ -1308,11 +1308,9 @@ impl<'a, G: EmissionGuarantee> Diag<'a, G> {
         drop(self);
     }
 
-    /// Stashes diagnostic for possible later improvement in a different,
-    /// later stage of the compiler. The diagnostic can be accessed with
-    /// the provided `span` and `key` through [`DiagCtxt::steal_diagnostic()`].
-    pub fn stash(mut self, span: Span, key: StashKey) {
-        self.dcx.stash_diagnostic(span, key, self.take_diag());
+    /// See `DiagCtxt::stash_diagnostic` for details.
+    pub fn stash(mut self, span: Span, key: StashKey) -> Option<ErrorGuaranteed> {
+        self.dcx.stash_diagnostic(span, key, self.take_diag())
     }
 
     /// Delay emission of this diagnostic as a bug.

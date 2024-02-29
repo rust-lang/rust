@@ -889,7 +889,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                 }
             }
 
-            SelectionError::OpaqueTypeAutoTraitLeakageUnknown(def_id) => self.report_opaque_type_auto_trait_leakage(
+            SelectionError::OpaqueTypeAutoTraitLeakageUnknown(def_id) => return self.report_opaque_type_auto_trait_leakage(
                 &obligation,
                 def_id,
             ),
@@ -2252,8 +2252,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                                 ErrorCode::E0282,
                                 false,
                             );
-                            err.stash(span, StashKey::MaybeForgetReturn);
-                            return self.dcx().delayed_bug("stashed error never reported");
+                            return err.stash(span, StashKey::MaybeForgetReturn).unwrap();
                         }
                         Some(e) => return e,
                     }
@@ -2766,7 +2765,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
             self.suggest_unsized_bound_if_applicable(err, obligation);
             if let Some(span) = err.span.primary_span()
                 && let Some(mut diag) =
-                    self.tcx.dcx().steal_diagnostic(span, StashKey::AssociatedTypeSuggestion)
+                    self.tcx.dcx().steal_non_err(span, StashKey::AssociatedTypeSuggestion)
                 && let Ok(ref mut s1) = err.suggestions
                 && let Ok(ref mut s2) = diag.suggestions
             {
@@ -3291,7 +3290,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
         &self,
         obligation: &PredicateObligation<'tcx>,
         def_id: DefId,
-    ) -> Diag<'tcx> {
+    ) -> ErrorGuaranteed {
         let name = match self.tcx.opaque_type_origin(def_id.expect_local()) {
             hir::OpaqueTyOrigin::FnReturn(_) | hir::OpaqueTyOrigin::AsyncFn(_) => {
                 "opaque type".to_string()
@@ -3318,12 +3317,9 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
             }
         };
 
-        if let Some(diag) = self.dcx().steal_diagnostic(self.tcx.def_span(def_id), StashKey::Cycle)
-        {
-            diag.cancel();
-        }
-
-        err
+        self.note_obligation_cause(&mut err, &obligation);
+        self.point_at_returns_when_relevant(&mut err, &obligation);
+        self.dcx().try_steal_replace_and_emit_err(self.tcx.def_span(def_id), StashKey::Cycle, err)
     }
 
     fn report_signature_mismatch_error(

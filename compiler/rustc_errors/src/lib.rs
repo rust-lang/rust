@@ -59,11 +59,11 @@ pub use snippet::Style;
 // See https://github.com/rust-lang/rust/pull/115393.
 pub use termcolor::{Color, ColorSpec, WriteColor};
 
-use emitter::{is_case_difference, DynEmitter, Emitter, HumanEmitter};
+use emitter::{is_case_difference, DynEmitter, Emitter};
 use registry::Registry;
 use rustc_data_structures::fx::{FxHashSet, FxIndexMap, FxIndexSet};
 use rustc_data_structures::stable_hasher::{Hash128, StableHasher};
-use rustc_data_structures::sync::{Lock, Lrc};
+use rustc_data_structures::sync::Lock;
 use rustc_data_structures::AtomicRef;
 use rustc_lint_defs::LintExpectationId;
 use rustc_span::source_map::SourceMap;
@@ -217,10 +217,10 @@ impl CodeSuggestion {
 
         use rustc_span::{CharPos, Pos};
 
-        /// Extracts a substring from the provided `line_opt` based on the specified low and high indices,
-        /// appends it to the given buffer `buf`, and returns the count of newline characters in the substring
-        /// for accurate highlighting.
-        /// If `line_opt` is `None`, a newline character is appended to the buffer, and 0 is returned.
+        /// Extracts a substring from the provided `line_opt` based on the specified low and high
+        /// indices, appends it to the given buffer `buf`, and returns the count of newline
+        /// characters in the substring for accurate highlighting. If `line_opt` is `None`, a
+        /// newline character is appended to the buffer, and 0 is returned.
         ///
         /// ## Returns
         ///
@@ -434,10 +434,6 @@ struct DiagCtxtInner {
     /// The delayed bugs and their error guarantees.
     delayed_bugs: Vec<(DelayedDiagInner, ErrorGuaranteed)>,
 
-    /// The number of stashed errors. Unlike the other counts, this can go up
-    /// and down, so it doesn't guarantee anything.
-    stashed_err_count: usize,
-
     /// The error count shown to the user at the end.
     deduplicated_err_count: usize,
     /// The warning count shown to the user at the end.
@@ -475,7 +471,7 @@ struct DiagCtxtInner {
     /// add more information). All stashed diagnostics must be emitted with
     /// `emit_stashed_diagnostics` by the time the `DiagCtxtInner` is dropped,
     /// otherwise an assertion failure will occur.
-    stashed_diagnostics: FxIndexMap<(Span, StashKey), DiagInner>,
+    stashed_diagnostics: FxIndexMap<(Span, StashKey), (DiagInner, Option<ErrorGuaranteed>)>,
 
     future_breakage_diagnostics: Vec<DiagInner>,
 
@@ -486,8 +482,8 @@ struct DiagCtxtInner {
     /// have been converted.
     check_unstable_expect_diagnostics: bool,
 
-    /// Expected [`DiagInner`][struct@diagnostic::DiagInner]s store a [`LintExpectationId`] as part of
-    /// the lint level. [`LintExpectationId`]s created early during the compilation
+    /// Expected [`DiagInner`][struct@diagnostic::DiagInner]s store a [`LintExpectationId`] as part
+    /// of the lint level. [`LintExpectationId`]s created early during the compilation
     /// (before `HirId`s have been defined) are not stable and can therefore not be
     /// stored on disk. This buffer stores these diagnostics until the ID has been
     /// replaced by a stable [`LintExpectationId`]. The [`DiagInner`][struct@diagnostic::DiagInner]s
@@ -559,10 +555,18 @@ pub struct DiagCtxtFlags {
 
 impl Drop for DiagCtxtInner {
     fn drop(&mut self) {
-        // Any stashed diagnostics should have been handled by
-        // `emit_stashed_diagnostics` by now.
-        assert!(self.stashed_diagnostics.is_empty());
+        // For tools using `interface::run_compiler` (e.g. rustc, rustdoc)
+        // stashed diagnostics will have already been emitted. But for others
+        // that don't use `interface::run_compiler` (e.g. rustfmt, some clippy
+        // lints) this fallback is necessary.
+        //
+        // Important: it is sound to produce an `ErrorGuaranteed` when stashing
+        // errors because they are guaranteed to be emitted here or earlier.
+        self.emit_stashed_diagnostics();
 
+        // Important: it is sound to produce an `ErrorGuaranteed` when emitting
+        // delayed bugs because they are guaranteed to be emitted here if
+        // necessary.
         if self.err_guars.is_empty() {
             self.flush_delayed()
         }
@@ -586,13 +590,6 @@ impl Drop for DiagCtxtInner {
 }
 
 impl DiagCtxt {
-    pub fn with_tty_emitter(
-        sm: Option<Lrc<SourceMap>>,
-        fallback_bundle: LazyFallbackBundle,
-    ) -> Self {
-        let emitter = Box::new(HumanEmitter::stderr(ColorConfig::Auto, fallback_bundle).sm(sm));
-        Self::with_emitter(emitter)
-    }
     pub fn disable_warnings(mut self) -> Self {
         self.inner.get_mut().flags.can_emit_warnings = false;
         self
@@ -608,14 +605,13 @@ impl DiagCtxt {
         self
     }
 
-    pub fn with_emitter(emitter: Box<DynEmitter>) -> Self {
+    pub fn new(emitter: Box<DynEmitter>) -> Self {
         Self {
             inner: Lock::new(DiagCtxtInner {
                 flags: DiagCtxtFlags { can_emit_warnings: true, ..Default::default() },
                 err_guars: Vec::new(),
                 lint_err_guars: Vec::new(),
                 delayed_bugs: Vec::new(),
-                stashed_err_count: 0,
                 deduplicated_err_count: 0,
                 deduplicated_warn_count: 0,
                 emitter,
@@ -676,7 +672,6 @@ impl DiagCtxt {
             err_guars,
             lint_err_guars,
             delayed_bugs,
-            stashed_err_count,
             deduplicated_err_count,
             deduplicated_warn_count,
             emitter: _,
@@ -699,7 +694,6 @@ impl DiagCtxt {
         *err_guars = Default::default();
         *lint_err_guars = Default::default();
         *delayed_bugs = Default::default();
-        *stashed_err_count = 0;
         *deduplicated_err_count = 0;
         *deduplicated_warn_count = 0;
         *must_produce_diag = false;
@@ -715,37 +709,109 @@ impl DiagCtxt {
         *fulfilled_expectations = Default::default();
     }
 
-    /// Stash a given diagnostic with the given `Span` and [`StashKey`] as the key.
-    /// Retrieve a stashed diagnostic with `steal_diagnostic`.
-    pub fn stash_diagnostic(&self, span: Span, key: StashKey, diag: DiagInner) {
-        let mut inner = self.inner.borrow_mut();
-
-        let key = (span.with_parent(None), key);
-
-        if diag.is_error() {
-            if diag.is_lint.is_none() {
-                inner.stashed_err_count += 1;
-            }
-        }
+    /// Stashes a diagnostic for possible later improvement in a different,
+    /// later stage of the compiler. Possible actions depend on the diagnostic
+    /// level:
+    /// - Level::Error: immediately counted as an error that has occurred, because it
+    ///   is guaranteed to be emitted eventually. Can be later accessed with the
+    ///   provided `span` and `key` through
+    ///   [`DiagCtxt::try_steal_modify_and_emit_err`] or
+    ///   [`DiagCtxt::try_steal_replace_and_emit_err`]. These do not allow
+    ///   cancellation or downgrading of the error. Returns
+    ///   `Some(ErrorGuaranteed)`.
+    /// - Level::Warning and lower (i.e. !is_error()): can be accessed with the
+    ///   provided `span` and `key` through [`DiagCtxt::steal_non_err()`]. This
+    ///   allows cancelling and downgrading of the diagnostic. Returns `None`.
+    /// - Others: not allowed, will trigger a panic.
+    pub fn stash_diagnostic(
+        &self,
+        span: Span,
+        key: StashKey,
+        diag: DiagInner,
+    ) -> Option<ErrorGuaranteed> {
+        let guar = if diag.level() == Level::Error {
+            // This `unchecked_error_guaranteed` is valid. It is where the
+            // `ErrorGuaranteed` for stashed errors originates. See
+            // `DiagCtxtInner::drop`.
+            #[allow(deprecated)]
+            Some(ErrorGuaranteed::unchecked_error_guaranteed())
+        } else if !diag.is_error() {
+            None
+        } else {
+            self.span_bug(span, format!("invalid level in `stash_diagnostic`: {}", diag.level));
+        };
 
         // FIXME(Centril, #69537): Consider reintroducing panic on overwriting a stashed diagnostic
         // if/when we have a more robust macro-friendly replacement for `(span, key)` as a key.
         // See the PR for a discussion.
-        inner.stashed_diagnostics.insert(key, diag);
+        let key = (span.with_parent(None), key);
+        self.inner.borrow_mut().stashed_diagnostics.insert(key, (diag, guar));
+
+        guar
     }
 
-    /// Steal a previously stashed diagnostic with the given `Span` and [`StashKey`] as the key.
-    pub fn steal_diagnostic(&self, span: Span, key: StashKey) -> Option<Diag<'_, ()>> {
-        let mut inner = self.inner.borrow_mut();
+    /// Steal a previously stashed non-error diagnostic with the given `Span`
+    /// and [`StashKey`] as the key. Panics if the found diagnostic is an
+    /// error.
+    pub fn steal_non_err(&self, span: Span, key: StashKey) -> Option<Diag<'_, ()>> {
         let key = (span.with_parent(None), key);
         // FIXME(#120456) - is `swap_remove` correct?
-        let diag = inner.stashed_diagnostics.swap_remove(&key)?;
-        if diag.is_error() {
-            if diag.is_lint.is_none() {
-                inner.stashed_err_count -= 1;
-            }
-        }
+        let (diag, guar) = self.inner.borrow_mut().stashed_diagnostics.swap_remove(&key)?;
+        assert!(!diag.is_error());
+        assert!(guar.is_none());
         Some(Diag::new_diagnostic(self, diag))
+    }
+
+    /// Steals a previously stashed error with the given `Span` and
+    /// [`StashKey`] as the key, modifies it, and emits it. Returns `None` if
+    /// no matching diagnostic is found. Panics if the found diagnostic's level
+    /// isn't `Level::Error`.
+    pub fn try_steal_modify_and_emit_err<F>(
+        &self,
+        span: Span,
+        key: StashKey,
+        mut modify_err: F,
+    ) -> Option<ErrorGuaranteed>
+    where
+        F: FnMut(&mut Diag<'_>),
+    {
+        let key = (span.with_parent(None), key);
+        // FIXME(#120456) - is `swap_remove` correct?
+        let err = self.inner.borrow_mut().stashed_diagnostics.swap_remove(&key);
+        err.map(|(err, guar)| {
+            // The use of `::<ErrorGuaranteed>` is safe because level is `Level::Error`.
+            assert_eq!(err.level, Level::Error);
+            assert!(guar.is_some());
+            let mut err = Diag::<ErrorGuaranteed>::new_diagnostic(self, err);
+            modify_err(&mut err);
+            assert_eq!(err.level, Level::Error);
+            err.emit()
+        })
+    }
+
+    /// Steals a previously stashed error with the given `Span` and
+    /// [`StashKey`] as the key, cancels it if found, and emits `new_err`.
+    /// Panics if the found diagnostic's level isn't `Level::Error`.
+    pub fn try_steal_replace_and_emit_err(
+        &self,
+        span: Span,
+        key: StashKey,
+        new_err: Diag<'_>,
+    ) -> ErrorGuaranteed {
+        let key = (span.with_parent(None), key);
+        // FIXME(#120456) - is `swap_remove` correct?
+        let old_err = self.inner.borrow_mut().stashed_diagnostics.swap_remove(&key);
+        match old_err {
+            Some((old_err, guar)) => {
+                assert_eq!(old_err.level, Level::Error);
+                assert!(guar.is_some());
+                // Because `old_err` has already been counted, it can only be
+                // safely cancelled because the `new_err` supplants it.
+                Diag::<ErrorGuaranteed>::new_diagnostic(self, old_err).cancel();
+            }
+            None => {}
+        };
+        new_err.emit()
     }
 
     pub fn has_stashed_diagnostic(&self, span: Span, key: StashKey) -> bool {
@@ -757,41 +823,40 @@ impl DiagCtxt {
         self.inner.borrow_mut().emit_stashed_diagnostics()
     }
 
-    /// This excludes lint errors, delayed bugs and stashed errors.
+    /// This excludes lint errors, and delayed bugs.
     #[inline]
     pub fn err_count_excluding_lint_errs(&self) -> usize {
-        self.inner.borrow().err_guars.len()
+        let inner = self.inner.borrow();
+        inner.err_guars.len()
+            + inner
+                .stashed_diagnostics
+                .values()
+                .filter(|(diag, guar)| guar.is_some() && diag.is_lint.is_none())
+                .count()
     }
 
-    /// This excludes delayed bugs and stashed errors.
+    /// This excludes delayed bugs.
     #[inline]
     pub fn err_count(&self) -> usize {
         let inner = self.inner.borrow();
-        inner.err_guars.len() + inner.lint_err_guars.len()
+        inner.err_guars.len()
+            + inner.lint_err_guars.len()
+            + inner.stashed_diagnostics.values().filter(|(_diag, guar)| guar.is_some()).count()
     }
 
-    /// This excludes normal errors, lint errors, and delayed bugs. Unless
-    /// absolutely necessary, avoid using this. It's dubious because stashed
-    /// errors can later be cancelled, so the presence of a stashed error at
-    /// some point of time doesn't guarantee anything -- there are no
-    /// `ErrorGuaranteed`s here.
-    pub fn stashed_err_count(&self) -> usize {
-        self.inner.borrow().stashed_err_count
-    }
-
-    /// This excludes lint errors, delayed bugs, and stashed errors. Unless
-    /// absolutely necessary, prefer `has_errors` to this method.
+    /// This excludes lint errors and delayed bugs. Unless absolutely
+    /// necessary, prefer `has_errors` to this method.
     pub fn has_errors_excluding_lint_errors(&self) -> Option<ErrorGuaranteed> {
         self.inner.borrow().has_errors_excluding_lint_errors()
     }
 
-    /// This excludes delayed bugs and stashed errors.
+    /// This excludes delayed bugs.
     pub fn has_errors(&self) -> Option<ErrorGuaranteed> {
         self.inner.borrow().has_errors()
     }
 
-    /// This excludes stashed errors. Unless absolutely necessary, prefer
-    /// `has_errors` to this method.
+    /// This excludes nothing. Unless absolutely necessary, prefer `has_errors`
+    /// to this method.
     pub fn has_errors_or_delayed_bugs(&self) -> Option<ErrorGuaranteed> {
         self.inner.borrow().has_errors_or_delayed_bugs()
     }
@@ -876,10 +941,10 @@ impl DiagCtxt {
         }
     }
 
-    /// This excludes delayed bugs and stashed errors. Used for early aborts
-    /// after errors occurred -- e.g. because continuing in the face of errors is
-    /// likely to lead to bad results, such as spurious/uninteresting
-    /// additional errors -- when returning an error `Result` is difficult.
+    /// This excludes delayed bugs. Used for early aborts after errors occurred
+    /// -- e.g. because continuing in the face of errors is likely to lead to
+    /// bad results, such as spurious/uninteresting additional errors -- when
+    /// returning an error `Result` is difficult.
     pub fn abort_if_errors(&self) {
         if self.has_errors().is_some() {
             FatalError.raise();
@@ -963,7 +1028,7 @@ impl DiagCtxt {
         inner
             .stashed_diagnostics
             .values_mut()
-            .for_each(|diag| diag.update_unstable_expectation_id(unstable_to_stable));
+            .for_each(|(diag, _guar)| diag.update_unstable_expectation_id(unstable_to_stable));
         inner
             .future_breakage_diagnostics
             .iter_mut()
@@ -1270,12 +1335,8 @@ impl DiagCtxtInner {
     fn emit_stashed_diagnostics(&mut self) -> Option<ErrorGuaranteed> {
         let mut guar = None;
         let has_errors = !self.err_guars.is_empty();
-        for (_, diag) in std::mem::take(&mut self.stashed_diagnostics).into_iter() {
-            if diag.is_error() {
-                if diag.is_lint.is_none() {
-                    self.stashed_err_count -= 1;
-                }
-            } else {
+        for (_, (diag, _guar)) in std::mem::take(&mut self.stashed_diagnostics).into_iter() {
+            if !diag.is_error() {
                 // Unless they're forced, don't flush stashed warnings when
                 // there are errors, to avoid causing warning overload. The
                 // stash would've been stolen already if it were important.
@@ -1334,7 +1395,8 @@ impl DiagCtxtInner {
                 } else {
                     let backtrace = std::backtrace::Backtrace::capture();
                     // This `unchecked_error_guaranteed` is valid. It is where the
-                    // `ErrorGuaranteed` for delayed bugs originates.
+                    // `ErrorGuaranteed` for delayed bugs originates. See
+                    // `DiagCtxtInner::drop`.
                     #[allow(deprecated)]
                     let guar = ErrorGuaranteed::unchecked_error_guaranteed();
                     self.delayed_bugs
@@ -1446,11 +1508,31 @@ impl DiagCtxtInner {
     }
 
     fn has_errors_excluding_lint_errors(&self) -> Option<ErrorGuaranteed> {
-        self.err_guars.get(0).copied()
+        self.err_guars.get(0).copied().or_else(|| {
+            if let Some((_diag, guar)) = self
+                .stashed_diagnostics
+                .values()
+                .find(|(diag, guar)| guar.is_some() && diag.is_lint.is_none())
+            {
+                *guar
+            } else {
+                None
+            }
+        })
     }
 
     fn has_errors(&self) -> Option<ErrorGuaranteed> {
-        self.has_errors_excluding_lint_errors().or_else(|| self.lint_err_guars.get(0).copied())
+        self.err_guars.get(0).copied().or_else(|| self.lint_err_guars.get(0).copied()).or_else(
+            || {
+                if let Some((_diag, guar)) =
+                    self.stashed_diagnostics.values().find(|(_diag, guar)| guar.is_some())
+                {
+                    *guar
+                } else {
+                    None
+                }
+            },
+        )
     }
 
     fn has_errors_or_delayed_bugs(&self) -> Option<ErrorGuaranteed> {

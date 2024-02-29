@@ -373,7 +373,7 @@ pub struct CodegenContext<B: WriteBackendMethods> {
 
 impl<B: WriteBackendMethods> CodegenContext<B> {
     pub fn create_dcx(&self) -> DiagCtxt {
-        DiagCtxt::with_emitter(Box::new(self.diag_emitter.clone()))
+        DiagCtxt::new(Box::new(self.diag_emitter.clone()))
     }
 
     pub fn config(&self, kind: ModuleKind) -> &ModuleConfig {
