@@ -245,6 +245,26 @@ fn bad() {
     //~^ WARN non-local `impl` definition
 }
 
+trait Uto9 {}
+trait Uto10 {}
+const _: u32 = {
+    let _a = || {
+        impl Uto9 for Test {}
+        //~^ WARN non-local `impl` definition
+
+        1
+    };
+
+    type A = [u32; {
+        impl Uto10 for Test {}
+        //~^ WARN non-local `impl` definition
+
+        1
+    }];
+
+    1
+};
+
 struct UwU<T>(T);
 
 fn fun() {
