@@ -234,25 +234,25 @@ pub unsafe fn _mm_extract_epi32<const IMM8: i32>(a: __m128i) -> i32 {
     simd_extract!(a.as_i32x4(), IMM8 as u32, i32)
 }
 
-/// Select a single value in `a` to store at some position in `b`,
+/// Select a single value in `b` to store at some position in `a`,
 /// Then zero elements according to `IMM8`.
 ///
-/// `IMM8` specifies which bits from operand `a` will be copied, which bits in
+/// `IMM8` specifies which bits from operand `b` will be copied, which bits in
 /// the result they will be copied to, and which bits in the result will be
 /// cleared. The following assignments are made:
 ///
-/// * Bits `[7:6]` specify the bits to copy from operand `a`:
-///     - `00`: Selects bits `[31:0]` from operand `a`.
-///     - `01`: Selects bits `[63:32]` from operand `a`.
-///     - `10`: Selects bits `[95:64]` from operand `a`.
-///     - `11`: Selects bits `[127:96]` from operand `a`.
+/// * Bits `[7:6]` specify the bits to copy from operand `b`:
+///     - `00`: Selects bits `[31:0]` from operand `b`.
+///     - `01`: Selects bits `[63:32]` from operand `b`.
+///     - `10`: Selects bits `[95:64]` from operand `b`.
+///     - `11`: Selects bits `[127:96]` from operand `b`.
 ///
 /// * Bits `[5:4]` specify the bits in the result to which the selected bits
-/// from operand `a` are copied:
-///     - `00`: Copies the selected bits from `a` to result bits `[31:0]`.
-///     - `01`: Copies the selected bits from `a` to result bits `[63:32]`.
-///     - `10`: Copies the selected bits from `a` to result bits `[95:64]`.
-///     - `11`: Copies the selected bits from `a` to result bits `[127:96]`.
+/// from operand `b` are copied:
+///     - `00`: Copies the selected bits from `b` to result bits `[31:0]`.
+///     - `01`: Copies the selected bits from `b` to result bits `[63:32]`.
+///     - `10`: Copies the selected bits from `b` to result bits `[95:64]`.
+///     - `11`: Copies the selected bits from `b` to result bits `[127:96]`.
 ///
 /// * Bits `[3:0]`: If any of these bits are set, the corresponding result
 /// element is cleared.
