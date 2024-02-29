@@ -3,6 +3,7 @@
 use crate::ascii;
 use crate::num::NonZero;
 use crate::ops::Range;
+use crate::ptr;
 
 const HEX_DIGITS: [ascii::Char; 16] = *b"0123456789abcdef".as_ascii().unwrap();
 
@@ -82,7 +83,12 @@ impl<const N: usize> EscapeIterInner<N> {
         const { assert!(M <= N) };
 
         let mut data = [ascii::Char::Null; N];
-        data[..M].copy_from_slice(&array);
+
+        // SAFETY: `M` is smaller than or equal to `N`, and `data` does not overlap `array`.
+        unsafe {
+            ptr::copy_nonoverlapping(array.as_ptr(), data.as_mut_ptr(), M);
+        }
+
         Self::new(data, 0..M as u8)
     }
 
