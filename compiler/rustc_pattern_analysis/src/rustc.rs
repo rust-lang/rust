@@ -10,7 +10,7 @@ use rustc_middle::mir::interpret::Scalar;
 use rustc_middle::mir::{self, Const};
 use rustc_middle::thir::{FieldPat, Pat, PatKind, PatRange, PatRangeBoundary};
 use rustc_middle::ty::layout::IntegerExt;
-use rustc_middle::ty::{self, OpaqueTypeKey, Ty, TyCtxt, TypeVisitableExt, VariantDef};
+use rustc_middle::ty::{self, FieldDef, OpaqueTypeKey, Ty, TyCtxt, TypeVisitableExt, VariantDef};
 use rustc_session::lint;
 use rustc_span::{ErrorGuaranteed, Span, DUMMY_SP};
 use rustc_target::abi::{FieldIdx, Integer, VariantIdx, FIRST_VARIANT};
@@ -18,7 +18,7 @@ use rustc_target::abi::{FieldIdx, Integer, VariantIdx, FIRST_VARIANT};
 use crate::constructor::{
     IntRange, MaybeInfiniteInt, OpaqueId, RangeEnd, Slice, SliceKind, VariantVisibility,
 };
-use crate::{errors, Captures, TypeCx};
+use crate::{errors, Captures, PrivateUninhabitedField, TypeCx};
 
 use crate::constructor::Constructor::*;
 
@@ -158,34 +158,19 @@ impl<'p, 'tcx: 'p> RustcMatchCheckCtxt<'p, 'tcx> {
         }
     }
 
-    // In the cases of either a `#[non_exhaustive]` field list or a non-public field, we hide
-    // uninhabited fields in order not to reveal the uninhabitedness of the whole variant.
-    // This lists the fields we keep along with their types.
-    pub(crate) fn list_variant_nonhidden_fields(
+    pub(crate) fn variant_sub_tys(
         &self,
         ty: RevealedTy<'tcx>,
         variant: &'tcx VariantDef,
-    ) -> impl Iterator<Item = (FieldIdx, RevealedTy<'tcx>)> + Captures<'p> + Captures<'_> {
-        let cx = self;
-        let ty::Adt(adt, args) = ty.kind() else { bug!() };
-        // Whether we must not match the fields of this variant exhaustively.
-        let is_non_exhaustive = variant.is_field_list_non_exhaustive() && !adt.did().is_local();
-
-        variant.fields.iter().enumerate().filter_map(move |(i, field)| {
-            let ty = field.ty(cx.tcx, args);
+    ) -> impl Iterator<Item = (&'tcx FieldDef, RevealedTy<'tcx>)> + Captures<'p> + Captures<'_>
+    {
+        let ty::Adt(_, args) = ty.kind() else { bug!() };
+        variant.fields.iter().map(move |field| {
+            let ty = field.ty(self.tcx, args);
             // `field.ty()` doesn't normalize after instantiating.
-            let ty = cx.tcx.normalize_erasing_regions(cx.param_env, ty);
-            let is_visible = adt.is_enum() || field.vis.is_accessible_from(cx.module, cx.tcx);
-            let is_uninhabited = (cx.tcx.features().exhaustive_patterns
-                || cx.tcx.features().min_exhaustive_patterns)
-                && cx.is_uninhabited(ty);
-
-            if is_uninhabited && (!is_visible || is_non_exhaustive) {
-                None
-            } else {
-                let ty = cx.reveal_opaque_ty(ty);
-                Some((FieldIdx::new(i), ty))
-            }
+            let ty = self.tcx.normalize_erasing_regions(self.param_env, ty);
+            let ty = self.reveal_opaque_ty(ty);
+            (field, ty)
         })
     }
 
@@ -210,12 +195,17 @@ impl<'p, 'tcx: 'p> RustcMatchCheckCtxt<'p, 'tcx> {
         &'a self,
         ctor: &'a Constructor<'p, 'tcx>,
         ty: RevealedTy<'tcx>,
-    ) -> impl Iterator<Item = RevealedTy<'tcx>> + ExactSizeIterator + Captures<'a> {
+    ) -> impl Iterator<Item = (RevealedTy<'tcx>, PrivateUninhabitedField)>
+    + ExactSizeIterator
+    + Captures<'a> {
         fn reveal_and_alloc<'a, 'tcx>(
             cx: &'a RustcMatchCheckCtxt<'_, 'tcx>,
             iter: impl Iterator<Item = Ty<'tcx>>,
-        ) -> &'a [RevealedTy<'tcx>] {
-            cx.dropless_arena.alloc_from_iter(iter.map(|ty| cx.reveal_opaque_ty(ty)))
+        ) -> &'a [(RevealedTy<'tcx>, PrivateUninhabitedField)] {
+            cx.dropless_arena.alloc_from_iter(
+                iter.map(|ty| cx.reveal_opaque_ty(ty))
+                    .map(|ty| (ty, PrivateUninhabitedField(false))),
+            )
         }
         let cx = self;
         let slice = match ctor {
@@ -229,7 +219,21 @@ impl<'p, 'tcx: 'p> RustcMatchCheckCtxt<'p, 'tcx> {
                     } else {
                         let variant =
                             &adt.variant(RustcMatchCheckCtxt::variant_index_for_adt(&ctor, *adt));
-                        let tys = cx.list_variant_nonhidden_fields(ty, variant).map(|(_, ty)| ty);
+
+                        // In the cases of either a `#[non_exhaustive]` field list or a non-public
+                        // field, we skip uninhabited fields in order not to reveal the
+                        // uninhabitedness of the whole variant.
+                        let is_non_exhaustive =
+                            variant.is_field_list_non_exhaustive() && !adt.did().is_local();
+                        let tys = cx.variant_sub_tys(ty, variant).map(|(field, ty)| {
+                            let is_visible =
+                                adt.is_enum() || field.vis.is_accessible_from(cx.module, cx.tcx);
+                            let is_uninhabited = (cx.tcx.features().exhaustive_patterns
+                                || cx.tcx.features().min_exhaustive_patterns)
+                                && cx.is_uninhabited(*ty);
+                            let skip = is_uninhabited && (!is_visible || is_non_exhaustive);
+                            (ty, PrivateUninhabitedField(skip))
+                        });
                         cx.dropless_arena.alloc_from_iter(tys)
                     }
                 }
@@ -246,16 +250,8 @@ impl<'p, 'tcx: 'p> RustcMatchCheckCtxt<'p, 'tcx> {
                 }
                 _ => bug!("bad slice pattern {:?} {:?}", ctor, ty),
             },
-            Bool(..)
-            | IntRange(..)
-            | F32Range(..)
-            | F64Range(..)
-            | Str(..)
-            | Opaque(..)
-            | NonExhaustive
-            | Hidden
-            | Missing { .. }
-            | Wildcard => &[],
+            Bool(..) | IntRange(..) | F32Range(..) | F64Range(..) | Str(..) | Opaque(..)
+            | NonExhaustive | Hidden | Missing | PrivateUninhabited | Wildcard => &[],
             Or => {
                 bug!("called `Fields::wildcards` on an `Or` ctor")
             }
@@ -274,25 +270,16 @@ impl<'p, 'tcx: 'p> RustcMatchCheckCtxt<'p, 'tcx> {
                         // patterns. If we're here we can assume this is a box pattern.
                         1
                     } else {
-                        let variant =
-                            &adt.variant(RustcMatchCheckCtxt::variant_index_for_adt(&ctor, *adt));
-                        self.list_variant_nonhidden_fields(ty, variant).count()
+                        let variant_idx = RustcMatchCheckCtxt::variant_index_for_adt(&ctor, *adt);
+                        adt.variant(variant_idx).fields.len()
                     }
                 }
                 _ => bug!("Unexpected type for constructor `{ctor:?}`: {ty:?}"),
             },
             Ref => 1,
             Slice(slice) => slice.arity(),
-            Bool(..)
-            | IntRange(..)
-            | F32Range(..)
-            | F64Range(..)
-            | Str(..)
-            | Opaque(..)
-            | NonExhaustive
-            | Hidden
-            | Missing { .. }
-            | Wildcard => 0,
+            Bool(..) | IntRange(..) | F32Range(..) | F64Range(..) | Str(..) | Opaque(..)
+            | NonExhaustive | Hidden | Missing | PrivateUninhabited | Wildcard => 0,
             Or => bug!("The `Or` constructor doesn't have a fixed arity"),
         }
     }
@@ -520,20 +507,12 @@ impl<'p, 'tcx: 'p> RustcMatchCheckCtxt<'p, 'tcx> {
                         };
                         let variant =
                             &adt.variant(RustcMatchCheckCtxt::variant_index_for_adt(&ctor, *adt));
-                        // For each field in the variant, we store the relevant index into `self.fields` if any.
-                        let mut field_id_to_id: Vec<Option<usize>> =
-                            (0..variant.fields.len()).map(|_| None).collect();
-                        let tys = cx.list_variant_nonhidden_fields(ty, variant).enumerate().map(
-                            |(i, (field, ty))| {
-                                field_id_to_id[field.index()] = Some(i);
-                                ty
-                            },
-                        );
-                        fields = tys.map(|ty| DeconstructedPat::wildcard(ty)).collect();
+                        fields = cx
+                            .variant_sub_tys(ty, variant)
+                            .map(|(_, ty)| DeconstructedPat::wildcard(ty))
+                            .collect();
                         for pat in subpatterns {
-                            if let Some(i) = field_id_to_id[pat.field.index()] {
-                                fields[i] = self.lower_pat(&pat.pattern);
-                            }
+                            fields[pat.field.index()] = self.lower_pat(&pat.pattern);
                         }
                     }
                     _ => bug!("pattern has unexpected type: pat: {:?}, ty: {:?}", pat, ty),
@@ -775,11 +754,9 @@ impl<'p, 'tcx: 'p> RustcMatchCheckCtxt<'p, 'tcx> {
                 ty::Adt(adt_def, args) => {
                     let variant_index =
                         RustcMatchCheckCtxt::variant_index_for_adt(&pat.ctor(), *adt_def);
-                    let variant = &adt_def.variant(variant_index);
-                    let subpatterns = cx
-                        .list_variant_nonhidden_fields(*pat.ty(), variant)
-                        .zip(subpatterns)
-                        .map(|((field, _ty), pattern)| FieldPat { field, pattern })
+                    let subpatterns = subpatterns
+                        .enumerate()
+                        .map(|(i, pattern)| FieldPat { field: FieldIdx::new(i), pattern })
                         .collect();
 
                     if adt_def.is_enum() {
@@ -830,7 +807,7 @@ impl<'p, 'tcx: 'p> RustcMatchCheckCtxt<'p, 'tcx> {
                 }
             }
             &Str(value) => PatKind::Constant { value },
-            Wildcard | NonExhaustive | Hidden => PatKind::Wild,
+            Wildcard | NonExhaustive | Hidden | PrivateUninhabited => PatKind::Wild,
             Missing { .. } => bug!(
                 "trying to convert a `Missing` constructor into a `Pat`; this is probably a bug,
                 `Missing` should have been processed in `apply_constructors`"
@@ -866,7 +843,8 @@ impl<'p, 'tcx: 'p> TypeCx for RustcMatchCheckCtxt<'p, 'tcx> {
         &'a self,
         ctor: &'a crate::constructor::Constructor<Self>,
         ty: &'a Self::Ty,
-    ) -> impl Iterator<Item = Self::Ty> + ExactSizeIterator + Captures<'a> {
+    ) -> impl Iterator<Item = (Self::Ty, PrivateUninhabitedField)> + ExactSizeIterator + Captures<'a>
+    {
         self.ctor_sub_tys(ctor, *ty)
     }
     fn ctors_for_ty(

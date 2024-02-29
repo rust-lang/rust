@@ -1350,8 +1350,7 @@ fn check_type_alias_type_params_are_used<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalD
     let ty = tcx.type_of(def_id).instantiate_identity();
     if ty.references_error() {
         // If there is already another error, do not emit an error for not using a type parameter.
-        // Without the `stashed_err_count` part this can fail (#120856).
-        assert!(tcx.dcx().has_errors().is_some() || tcx.dcx().stashed_err_count() > 0);
+        assert!(tcx.dcx().has_errors().is_some());
         return;
     }
 

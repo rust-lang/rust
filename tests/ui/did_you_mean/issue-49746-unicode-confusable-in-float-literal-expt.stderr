@@ -15,24 +15,5 @@ help: Unicode character '−' (Minus Sign) looks like '-' (Minus/Hyphen), but it
 LL | const UNIVERSAL_GRAVITATIONAL_CONSTANT: f64 = 6.674e-11; // m³⋅kg⁻¹⋅s⁻²
    |                                                     ~
 
-error[E0277]: cannot subtract `{integer}` from `{float}`
-  --> $DIR/issue-49746-unicode-confusable-in-float-literal-expt.rs:1:53
-   |
-LL | const UNIVERSAL_GRAVITATIONAL_CONSTANT: f64 = 6.674e−11; // m³⋅kg⁻¹⋅s⁻²
-   |                                                     ^ no implementation for `{float} - {integer}`
-   |
-   = help: the trait `Sub<{integer}>` is not implemented for `{float}`
-   = help: the following other types implement trait `Sub<Rhs>`:
-             <isize as Sub>
-             <isize as Sub<&isize>>
-             <i8 as Sub>
-             <i8 as Sub<&i8>>
-             <i16 as Sub>
-             <i16 as Sub<&i16>>
-             <i32 as Sub>
-             <i32 as Sub<&i32>>
-           and 48 others
+error: aborting due to 2 previous errors
 
-error: aborting due to 3 previous errors
-
-For more information about this error, try `rustc --explain E0277`.

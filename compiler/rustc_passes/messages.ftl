@@ -187,7 +187,7 @@ passes_doc_attr_not_crate_level =
     `#![doc({$attr_name} = "...")]` isn't allowed as a crate-level attribute
 
 passes_doc_cfg_hide_takes_list =
-    `#[doc(cfg_hide(...)]` takes a list of attributes
+    `#[doc(cfg_hide(...))]` takes a list of attributes
 
 passes_doc_expect_str =
     doc {$attr_name} attribute expects a string: #[doc({$attr_name} = "a")]

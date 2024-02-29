@@ -923,14 +923,22 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                         [self_ty, Ty::new_tup(tcx, sig.inputs())],
                     )
                 });
+
                 // We must additionally check that the return type impls `Future`.
+
+                // FIXME(async_closures): Investigate this before stabilization.
+                // We instantiate this binder eagerly because the `confirm_future_candidate`
+                // method doesn't support higher-ranked futures, which the `AsyncFn`
+                // traits expressly allow the user to write. To fix this correctly,
+                // we'd need to instantiate trait bounds before we get to selection,
+                // like the new trait solver does.
                 let future_trait_def_id = tcx.require_lang_item(LangItem::Future, None);
+                let placeholder_output_ty = self.infcx.enter_forall_and_leak_universe(sig.output());
                 nested.push(obligation.with(
                     tcx,
-                    sig.map_bound(|sig| {
-                        ty::TraitRef::new(tcx, future_trait_def_id, [sig.output()])
-                    }),
+                    ty::TraitRef::new(tcx, future_trait_def_id, [placeholder_output_ty]),
                 ));
+
                 (trait_ref, Ty::from_closure_kind(tcx, ty::ClosureKind::Fn))
             }
             ty::Closure(_, args) => {
@@ -943,14 +951,16 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                         [self_ty, sig.inputs()[0]],
                     )
                 });
+
                 // We must additionally check that the return type impls `Future`.
+                // See FIXME in last branch for why we instantiate the binder eagerly.
                 let future_trait_def_id = tcx.require_lang_item(LangItem::Future, None);
+                let placeholder_output_ty = self.infcx.enter_forall_and_leak_universe(sig.output());
                 nested.push(obligation.with(
                     tcx,
-                    sig.map_bound(|sig| {
-                        ty::TraitRef::new(tcx, future_trait_def_id, [sig.output()])
-                    }),
+                    ty::TraitRef::new(tcx, future_trait_def_id, [placeholder_output_ty]),
                 ));
+
                 (trait_ref, args.kind_ty())
             }
             _ => bug!("expected callable type for AsyncFn candidate"),

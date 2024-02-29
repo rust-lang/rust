@@ -1,5 +1,6 @@
 use crate::traits::{check_args_compatible, specialization_graph};
 
+use super::assembly::structural_traits::AsyncCallableRelevantTypes;
 use super::assembly::{self, structural_traits, Candidate};
 use super::{EvalCtxt, GoalSource};
 use rustc_hir::def::DefKind;
@@ -392,46 +393,56 @@ impl<'tcx> assembly::GoalKind<'tcx> for NormalizesTo<'tcx> {
                 goal_kind,
                 env_region,
             )?;
-        let output_is_sized_pred =
-            tupled_inputs_and_output_and_coroutine.map_bound(|(_, output, _)| {
-                ty::TraitRef::from_lang_item(tcx, LangItem::Sized, DUMMY_SP, [output])
-            });
+        let output_is_sized_pred = tupled_inputs_and_output_and_coroutine.map_bound(
+            |AsyncCallableRelevantTypes { output_coroutine_ty: output_ty, .. }| {
+                ty::TraitRef::from_lang_item(tcx, LangItem::Sized, DUMMY_SP, [output_ty])
+            },
+        );
 
         let pred = tupled_inputs_and_output_and_coroutine
-            .map_bound(|(inputs, output, coroutine)| {
-                let (projection_ty, term) = match tcx.item_name(goal.predicate.def_id()) {
-                    sym::CallOnceFuture => (
-                        ty::AliasTy::new(
-                            tcx,
-                            goal.predicate.def_id(),
-                            [goal.predicate.self_ty(), inputs],
+            .map_bound(
+                |AsyncCallableRelevantTypes {
+                     tupled_inputs_ty,
+                     output_coroutine_ty,
+                     coroutine_return_ty,
+                 }| {
+                    let (projection_ty, term) = match tcx.item_name(goal.predicate.def_id()) {
+                        sym::CallOnceFuture => (
+                            ty::AliasTy::new(
+                                tcx,
+                                goal.predicate.def_id(),
+                                [goal.predicate.self_ty(), tupled_inputs_ty],
+                            ),
+                            output_coroutine_ty.into(),
                         ),
-                        coroutine.into(),
-                    ),
-                    sym::CallMutFuture | sym::CallFuture => (
-                        ty::AliasTy::new(
-                            tcx,
-                            goal.predicate.def_id(),
-                            [
-                                ty::GenericArg::from(goal.predicate.self_ty()),
-                                inputs.into(),
-                                env_region.into(),
-                            ],
+                        sym::CallMutFuture | sym::CallFuture => (
+                            ty::AliasTy::new(
+                                tcx,
+                                goal.predicate.def_id(),
+                                [
+                                    ty::GenericArg::from(goal.predicate.self_ty()),
+                                    tupled_inputs_ty.into(),
+                                    env_region.into(),
+                                ],
+                            ),
+                            output_coroutine_ty.into(),
                         ),
-                        coroutine.into(),
-                    ),
-                    sym::Output => (
-                        ty::AliasTy::new(
-                            tcx,
-                            goal.predicate.def_id(),
-                            [ty::GenericArg::from(goal.predicate.self_ty()), inputs.into()],
+                        sym::Output => (
+                            ty::AliasTy::new(
+                                tcx,
+                                goal.predicate.def_id(),
+                                [
+                                    ty::GenericArg::from(goal.predicate.self_ty()),
+                                    tupled_inputs_ty.into(),
+                                ],
+                            ),
+                            coroutine_return_ty.into(),
                         ),
-                        output.into(),
-                    ),
-                    name => bug!("no such associated type: {name}"),
-                };
-                ty::ProjectionPredicate { projection_ty, term }
-            })
+                        name => bug!("no such associated type: {name}"),
+                    };
+                    ty::ProjectionPredicate { projection_ty, term }
+                },
+            )
             .to_predicate(tcx);
 
         // A built-in `AsyncFn` impl only holds if the output is sized.

@@ -1528,8 +1528,8 @@ impl<'tcx> Ty<'tcx> {
     }
 
     /// Constructs a `TyKind::Error` type with current `ErrorGuaranteed`
-    pub fn new_error(tcx: TyCtxt<'tcx>, reported: ErrorGuaranteed) -> Ty<'tcx> {
-        Ty::new(tcx, Error(reported))
+    pub fn new_error(tcx: TyCtxt<'tcx>, guar: ErrorGuaranteed) -> Ty<'tcx> {
+        Ty::new(tcx, Error(guar))
     }
 
     /// Constructs a `TyKind::Error` type and registers a `span_delayed_bug` to ensure it gets used.

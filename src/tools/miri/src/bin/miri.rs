@@ -68,7 +68,7 @@ impl rustc_driver::Callbacks for MiriCompilerCalls {
         queries: &'tcx rustc_interface::Queries<'tcx>,
     ) -> Compilation {
         queries.global_ctxt().unwrap().enter(|tcx| {
-            if tcx.sess.dcx().has_errors().is_some() {
+            if tcx.sess.dcx().has_errors_or_delayed_bugs().is_some() {
                 tcx.dcx().fatal("miri cannot be run on programs that fail compilation");
             }
 

@@ -48,7 +48,7 @@ dlmalloc = { version = "0.2.4", features = ['rustc-dep-of-std'] }
 fortanix-sgx-abi = { version = "0.5.0", features = ['rustc-dep-of-std'], public = true }
 
 [target.'cfg(target_os = "hermit")'.dependencies]
-hermit-abi = { version = "0.3.2", features = ['rustc-dep-of-std'], public = true }
+hermit-abi = { version = "0.3.9", features = ['rustc-dep-of-std'], public = true }
 
 [target.'cfg(target_os = "wasi")'.dependencies]
 wasi = { version = "0.11.0", features = ['rustc-dep-of-std'], default-features = false }

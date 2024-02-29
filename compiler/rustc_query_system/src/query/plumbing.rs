@@ -149,8 +149,7 @@ where
             let guar = if let Some(root) = cycle_error.cycle.first()
                 && let Some(span) = root.query.span
             {
-                error.stash(span, StashKey::Cycle);
-                qcx.dep_context().sess().dcx().span_delayed_bug(span, "delayed cycle error")
+                error.stash(span, StashKey::Cycle).unwrap()
             } else {
                 error.emit()
             };

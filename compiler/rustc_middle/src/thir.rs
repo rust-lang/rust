@@ -815,7 +815,9 @@ pub enum PatKind<'tcx> {
 /// The boundaries must be of the same type and that type must be numeric.
 #[derive(Clone, Debug, PartialEq, HashStable, TypeVisitable)]
 pub struct PatRange<'tcx> {
+    /// Must not be `PosInfinity`.
     pub lo: PatRangeBoundary<'tcx>,
+    /// Must not be `NegInfinity`.
     pub hi: PatRangeBoundary<'tcx>,
     #[type_visitable(ignore)]
     pub end: RangeEnd,
@@ -956,22 +958,6 @@ impl<'tcx> PatRangeBoundary<'tcx> {
         match self {
             Self::Finite(value) => Some(value),
             Self::NegInfinity | Self::PosInfinity => None,
-        }
-    }
-    #[inline]
-    pub fn to_const(self, ty: Ty<'tcx>, tcx: TyCtxt<'tcx>) -> mir::Const<'tcx> {
-        match self {
-            Self::Finite(value) => value,
-            Self::NegInfinity => {
-                // Unwrap is ok because the type is known to be numeric.
-                let c = ty.numeric_min_val(tcx).unwrap();
-                mir::Const::from_ty_const(c, tcx)
-            }
-            Self::PosInfinity => {
-                // Unwrap is ok because the type is known to be numeric.
-                let c = ty.numeric_max_val(tcx).unwrap();
-                mir::Const::from_ty_const(c, tcx)
-            }
         }
     }
     pub fn eval_bits(self, ty: Ty<'tcx>, tcx: TyCtxt<'tcx>, param_env: ty::ParamEnv<'tcx>) -> u128 {

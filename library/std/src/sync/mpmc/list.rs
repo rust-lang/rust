@@ -547,6 +547,9 @@ impl<T> Channel<T> {
         }
 
         let mut head = self.head.index.load(Ordering::Acquire);
+        // The channel may be uninitialized, so we have to swap to avoid overwriting any sender's attempts
+        // to initalize the first block before noticing that the receivers disconnected. Late allocations
+        // will be deallocated by the sender in Drop.
         let mut block = self.head.block.swap(ptr::null_mut(), Ordering::AcqRel);
 
         // If we're going to be dropping messages we need to synchronize with initialization

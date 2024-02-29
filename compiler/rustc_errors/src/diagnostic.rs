@@ -108,6 +108,25 @@ impl EmissionGuarantee for rustc_span::fatal_error::FatalError {
 
 /// Trait implemented by error types. This is rarely implemented manually. Instead, use
 /// `#[derive(Diagnostic)]` -- see [rustc_macros::Diagnostic].
+///
+/// When implemented manually, it should be generic over the emission
+/// guarantee, i.e.:
+/// ```ignore (fragment)
+/// impl<'a, G: EmissionGuarantee> IntoDiagnostic<'a, G> for Foo { ... }
+/// ```
+/// rather than being specific:
+/// ```ignore (fragment)
+/// impl<'a> IntoDiagnostic<'a> for Bar { ... }  // the default type param is `ErrorGuaranteed`
+/// impl<'a> IntoDiagnostic<'a, ()> for Baz { ... }
+/// ```
+/// There are two reasons for this.
+/// - A diagnostic like `Foo` *could* be emitted at any level -- `level` is
+///   passed in to `into_diagnostic` from outside. Even if in practice it is
+///   always emitted at a single level, we let the diagnostic creation/emission
+///   site determine the level (by using `create_err`, `emit_warn`, etc.)
+///   rather than the `IntoDiagnostic` impl.
+/// - Derived impls are always generic, and it's good for the hand-written
+///   impls to be consistent with them.
 #[rustc_diagnostic_item = "IntoDiagnostic"]
 pub trait IntoDiagnostic<'a, G: EmissionGuarantee = ErrorGuaranteed> {
     /// Write out as a diagnostic out of `DiagCtxt`.
@@ -1289,11 +1308,9 @@ impl<'a, G: EmissionGuarantee> Diag<'a, G> {
         drop(self);
     }
 
-    /// Stashes diagnostic for possible later improvement in a different,
-    /// later stage of the compiler. The diagnostic can be accessed with
-    /// the provided `span` and `key` through [`DiagCtxt::steal_diagnostic()`].
-    pub fn stash(mut self, span: Span, key: StashKey) {
-        self.dcx.stash_diagnostic(span, key, self.take_diag());
+    /// See `DiagCtxt::stash_diagnostic` for details.
+    pub fn stash(mut self, span: Span, key: StashKey) -> Option<ErrorGuaranteed> {
+        self.dcx.stash_diagnostic(span, key, self.take_diag())
     }
 
     /// Delay emission of this diagnostic as a bug.
