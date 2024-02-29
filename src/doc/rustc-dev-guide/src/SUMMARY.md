@@ -120,6 +120,7 @@
         - [Interactions with turbofishing](./turbofishing-and-early-late-bound.md)
     - [Higher-ranked trait bounds](./traits/hrtb.md)
     - [Caching subtleties](./traits/caching.md)
+    - [Implied bounds](./traits/implied-bounds.md)
     - [Specialization](./traits/specialization.md)
     - [Chalk-based trait solving](./traits/chalk.md)
         - [Lowering to logic](./traits/lowering-to-logic.md)
