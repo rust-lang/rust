@@ -2097,7 +2097,7 @@ pub(crate) fn fetch_dependency_list(
         .into_iter()
         .filter_map(|it| {
             let root_file_path = state.file_id_to_file_path(it.root_file_id);
-            crate_path(root_file_path).and_then(to_url).map(|path| CrateInfoResult {
+            crate_path(&root_file_path).and_then(to_url).map(|path| CrateInfoResult {
                 name: it.name,
                 version: it.version,
                 path,
@@ -2118,7 +2118,7 @@ pub(crate) fn fetch_dependency_list(
 /// An `Option` value representing the path to the directory of the crate with the given
 /// name, if such a crate is found. If no crate with the given name is found, this function
 /// returns `None`.
-fn crate_path(root_file_path: VfsPath) -> Option<VfsPath> {
+fn crate_path(root_file_path: &VfsPath) -> Option<VfsPath> {
     let mut current_dir = root_file_path.parent();
     while let Some(path) = current_dir {
         let cargo_toml_path = path.join("../Cargo.toml")?;

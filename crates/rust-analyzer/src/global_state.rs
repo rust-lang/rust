@@ -297,7 +297,7 @@ impl GlobalState {
             let mut bytes = vec![];
             let mut modified_rust_files = vec![];
             for file in changed_files {
-                let vfs_path = &vfs.file_path(file.file_id);
+                let vfs_path = vfs.file_path(file.file_id);
                 if let Some(path) = vfs_path.as_path() {
                     let path = path.to_path_buf();
                     if reload::should_refresh_for_change(&path, file.kind()) {
@@ -481,7 +481,7 @@ impl GlobalStateSnapshot {
     }
 
     pub(crate) fn anchored_path(&self, path: &AnchoredPathBuf) -> Url {
-        let mut base = self.vfs_read().file_path(path.anchor);
+        let mut base = self.vfs_read().file_path(path.anchor).clone();
         base.pop();
         let path = base.join(&path.path).unwrap();
         let path = path.as_path().unwrap();
@@ -489,7 +489,7 @@ impl GlobalStateSnapshot {
     }
 
     pub(crate) fn file_id_to_file_path(&self, file_id: FileId) -> vfs::VfsPath {
-        self.vfs_read().file_path(file_id)
+        self.vfs_read().file_path(file_id).clone()
     }
 
     pub(crate) fn cargo_target_for_crate_root(
@@ -497,7 +497,7 @@ impl GlobalStateSnapshot {
         crate_id: CrateId,
     ) -> Option<(&CargoWorkspace, Target)> {
         let file_id = self.analysis.crate_root(crate_id).ok()?;
-        let path = self.vfs_read().file_path(file_id);
+        let path = self.vfs_read().file_path(file_id).clone();
         let path = path.as_path()?;
         self.workspaces.iter().find_map(|ws| match ws {
             ProjectWorkspace::Cargo { cargo, .. } => {

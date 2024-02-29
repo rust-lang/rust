@@ -1075,12 +1075,12 @@ fn location_csv_pat(db: &RootDatabase, vfs: &Vfs, sm: &BodySourceMap, pat_id: Pa
     format!("{path},{}:{},{}:{}", start.line + 1, start.col, end.line + 1, end.col)
 }
 
-fn expr_syntax_range(
+fn expr_syntax_range<'a>(
     db: &RootDatabase,
-    vfs: &Vfs,
+    vfs: &'a Vfs,
     sm: &BodySourceMap,
     expr_id: ExprId,
-) -> Option<(VfsPath, LineCol, LineCol)> {
+) -> Option<(&'a VfsPath, LineCol, LineCol)> {
     let src = sm.expr_syntax(expr_id);
     if let Ok(src) = src {
         let root = db.parse_or_expand(src.file_id);
@@ -1096,12 +1096,12 @@ fn expr_syntax_range(
         None
     }
 }
-fn pat_syntax_range(
+fn pat_syntax_range<'a>(
     db: &RootDatabase,
-    vfs: &Vfs,
+    vfs: &'a Vfs,
     sm: &BodySourceMap,
     pat_id: PatId,
-) -> Option<(VfsPath, LineCol, LineCol)> {
+) -> Option<(&'a VfsPath, LineCol, LineCol)> {
     let src = sm.pat_syntax(pat_id);
     if let Ok(src) = src {
         let root = db.parse_or_expand(src.file_id);
