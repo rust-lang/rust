@@ -460,8 +460,6 @@ impl Options {
             &matches.free[0]
         });
 
-        let libs =
-            matches.opt_strs("L").iter().map(|s| SearchPath::from_cli_opt(early_dcx, s)).collect();
         let externs = parse_externs(early_dcx, matches, &unstable_opts);
         let extern_html_root_urls = match parse_extern_html_roots(matches) {
             Ok(ex) => ex,
@@ -625,6 +623,12 @@ impl Options {
         }
 
         let target = parse_target_triple(early_dcx, matches);
+
+        let libs = matches
+            .opt_strs("L")
+            .iter()
+            .map(|s| SearchPath::from_cli_opt(None, &target, early_dcx, s))
+            .collect();
 
         let show_coverage = matches.opt_present("show-coverage");
 

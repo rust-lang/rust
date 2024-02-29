@@ -2795,11 +2795,6 @@ pub fn build_session_options(early_dcx: &mut EarlyDiagCtxt, matches: &getopts::M
     let debuginfo = select_debuginfo(matches, &cg);
     let debuginfo_compression = unstable_opts.debuginfo_compression;
 
-    let mut search_paths = vec![];
-    for s in &matches.opt_strs("L") {
-        search_paths.push(SearchPath::from_cli_opt(early_dcx, s));
-    }
-
     let libs = parse_libs(early_dcx, matches);
 
     let test = matches.opt_present("test");
@@ -2847,6 +2842,11 @@ pub fn build_session_options(early_dcx: &mut EarlyDiagCtxt, matches: &getopts::M
         // Only use this directory if it has a file we can expect to always find.
         candidate.join("library/std/src/lib.rs").is_file().then_some(candidate)
     };
+
+    let mut search_paths = vec![];
+    for s in &matches.opt_strs("L") {
+        search_paths.push(SearchPath::from_cli_opt(Some(&sysroot), &target_triple, early_dcx, s));
+    }
 
     let working_dir = std::env::current_dir().unwrap_or_else(|e| {
         early_dcx.early_fatal(format!("Current directory is invalid: {e}"));

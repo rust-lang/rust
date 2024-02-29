@@ -1,5 +1,6 @@
 use crate::filesearch::make_target_lib_path;
 use crate::EarlyDiagCtxt;
+use rustc_target::spec::TargetTriple;
 use std::path::{Path, PathBuf};
 
 #[derive(Clone, Debug)]
@@ -46,7 +47,12 @@ impl PathKind {
 }
 
 impl SearchPath {
-    pub fn from_cli_opt(early_dcx: &EarlyDiagCtxt, path: &str) -> Self {
+    pub fn from_cli_opt(
+        sysroot: Option<&Path>,
+        triple: &TargetTriple,
+        early_dcx: &EarlyDiagCtxt,
+        path: &str,
+    ) -> Self {
         let (kind, path) = if let Some(stripped) = path.strip_prefix("native=") {
             (PathKind::Native, stripped)
         } else if let Some(stripped) = path.strip_prefix("crate=") {
@@ -57,6 +63,27 @@ impl SearchPath {
             (PathKind::Framework, stripped)
         } else if let Some(stripped) = path.strip_prefix("all=") {
             (PathKind::All, stripped)
+        } else if let Some(stripped) = path.strip_prefix("builtin:") {
+            let Some(sysroot) = sysroot else {
+                early_dcx.early_fatal("`-L builtin:` is not supported without a sysroot present");
+            };
+            let triple = match triple {
+                TargetTriple::TargetTriple(triple) => triple,
+                TargetTriple::TargetJson { .. } => {
+                    early_dcx.early_fatal("`-L builtin:` is not supported with custom targets");
+                }
+            };
+
+            if stripped.contains(std::path::is_separator) {
+                early_dcx.early_fatal("`-L builtin:` does not accept paths");
+            }
+
+            let path = make_target_lib_path(sysroot, triple).join("builtin").join(stripped);
+            if !path.is_dir() {
+                early_dcx.early_fatal(format!("builtin:{stripped} does not exist"));
+            }
+
+            return Self::new(PathKind::All, path);
         } else {
             (PathKind::All, path)
         };

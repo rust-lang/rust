@@ -315,30 +315,39 @@ fn test_search_paths_tracking_hash_different_order() {
         json_rendered: HumanReadableErrorType::Default(ColorConfig::Never),
     };
 
+    let push = |opts: &mut Options, search_path| {
+        opts.search_paths.push(SearchPath::from_cli_opt(
+            None,
+            &opts.target_triple,
+            &early_dcx,
+            search_path,
+        ));
+    };
+
     // Reference
-    v1.search_paths.push(SearchPath::from_cli_opt(&early_dcx, "native=abc"));
-    v1.search_paths.push(SearchPath::from_cli_opt(&early_dcx, "crate=def"));
-    v1.search_paths.push(SearchPath::from_cli_opt(&early_dcx, "dependency=ghi"));
-    v1.search_paths.push(SearchPath::from_cli_opt(&early_dcx, "framework=jkl"));
-    v1.search_paths.push(SearchPath::from_cli_opt(&early_dcx, "all=mno"));
+    push(&mut v1, "native=abc");
+    push(&mut v1, "crate=def");
+    push(&mut v1, "dependency=ghi");
+    push(&mut v1, "framework=jkl");
+    push(&mut v1, "all=mno");
 
-    v2.search_paths.push(SearchPath::from_cli_opt(&early_dcx, "native=abc"));
-    v2.search_paths.push(SearchPath::from_cli_opt(&early_dcx, "dependency=ghi"));
-    v2.search_paths.push(SearchPath::from_cli_opt(&early_dcx, "crate=def"));
-    v2.search_paths.push(SearchPath::from_cli_opt(&early_dcx, "framework=jkl"));
-    v2.search_paths.push(SearchPath::from_cli_opt(&early_dcx, "all=mno"));
+    push(&mut v2, "native=abc");
+    push(&mut v2, "dependency=ghi");
+    push(&mut v2, "crate=def");
+    push(&mut v2, "framework=jkl");
+    push(&mut v2, "all=mno");
 
-    v3.search_paths.push(SearchPath::from_cli_opt(&early_dcx, "crate=def"));
-    v3.search_paths.push(SearchPath::from_cli_opt(&early_dcx, "framework=jkl"));
-    v3.search_paths.push(SearchPath::from_cli_opt(&early_dcx, "native=abc"));
-    v3.search_paths.push(SearchPath::from_cli_opt(&early_dcx, "dependency=ghi"));
-    v3.search_paths.push(SearchPath::from_cli_opt(&early_dcx, "all=mno"));
+    push(&mut v3, "crate=def");
+    push(&mut v3, "framework=jkl");
+    push(&mut v3, "native=abc");
+    push(&mut v3, "dependency=ghi");
+    push(&mut v3, "all=mno");
 
-    v4.search_paths.push(SearchPath::from_cli_opt(&early_dcx, "all=mno"));
-    v4.search_paths.push(SearchPath::from_cli_opt(&early_dcx, "native=abc"));
-    v4.search_paths.push(SearchPath::from_cli_opt(&early_dcx, "crate=def"));
-    v4.search_paths.push(SearchPath::from_cli_opt(&early_dcx, "dependency=ghi"));
-    v4.search_paths.push(SearchPath::from_cli_opt(&early_dcx, "framework=jkl"));
+    push(&mut v4, "all=mno");
+    push(&mut v4, "native=abc");
+    push(&mut v4, "crate=def");
+    push(&mut v4, "dependency=ghi");
+    push(&mut v4, "framework=jkl");
 
     assert_same_hash(&v1, &v2);
     assert_same_hash(&v1, &v3);
