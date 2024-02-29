@@ -1005,13 +1005,6 @@ pub(crate) struct StaticSpecialize {
 }
 
 #[derive(Diagnostic)]
-#[diag(hir_analysis_missing_tilde_const)]
-pub(crate) struct MissingTildeConst {
-    #[primary_span]
-    pub span: Span,
-}
-
-#[derive(Diagnostic)]
 pub(crate) enum DropImplPolarity {
     #[diag(hir_analysis_drop_impl_negative)]
     Negative {
