@@ -558,14 +558,6 @@ pub(crate) struct CatchAfterTry {
 }
 
 #[derive(Diagnostic)]
-#[diag(parse_gen_fn)]
-#[help]
-pub(crate) struct GenFn {
-    #[primary_span]
-    pub span: Span,
-}
-
-#[derive(Diagnostic)]
 #[diag(parse_comma_after_base_struct)]
 #[note]
 pub(crate) struct CommaAfterBaseStruct {

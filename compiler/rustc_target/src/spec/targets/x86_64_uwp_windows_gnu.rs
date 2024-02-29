@@ -3,6 +3,7 @@ use crate::spec::{base, Cc, LinkerFlavor, Lld, Target};
 pub fn target() -> Target {
     let mut base = base::windows_uwp_gnu::opts();
     base.cpu = "x86-64".into();
+    base.features = "+cx16,+sse3,+sahf".into();
     base.plt_by_default = false;
     // Use high-entropy 64 bit address space for ASLR
     base.add_pre_link_args(
@@ -10,7 +11,7 @@ pub fn target() -> Target {
         &["-m", "i386pep", "--high-entropy-va"],
     );
     base.add_pre_link_args(LinkerFlavor::Gnu(Cc::Yes, Lld::No), &["-m64", "-Wl,--high-entropy-va"]);
-    base.max_atomic_width = Some(64);
+    base.max_atomic_width = Some(128);
 
     Target {
         llvm_target: "x86_64-pc-windows-gnu".into(),

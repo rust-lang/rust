@@ -848,11 +848,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             .resolve_fully_qualified_call(span, item_name, ty.normalized, qself.span, hir_id)
             .map(|r| {
                 // lint bare trait if the method is found in the trait
-                if span.edition().at_least_rust_2021()
-                    && let Some(diag) =
-                        self.dcx().steal_diagnostic(qself.span, StashKey::TraitMissingMethod)
-                {
-                    diag.emit();
+                if span.edition().at_least_rust_2021() {
+                    self.dcx().try_steal_modify_and_emit_err(
+                        qself.span,
+                        StashKey::TraitMissingMethod,
+                        |_err| {},
+                    );
                 }
                 r
             })
@@ -879,17 +880,15 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     );
                 }
 
-                // emit or cancel the diagnostic for bare traits
-                if span.edition().at_least_rust_2021()
-                    && let Some(diag) =
-                        self.dcx().steal_diagnostic(qself.span, StashKey::TraitMissingMethod)
-                {
-                    if trait_missing_method {
-                        // cancel the diag for bare traits when meeting `MyTrait::missing_method`
-                        diag.cancel();
-                    } else {
-                        diag.emit();
-                    }
+                // Emit the diagnostic for bare traits. (We used to cancel for slightly better
+                // error messages, but cancelling stashed diagnostics is no longer allowed because
+                // it causes problems when tracking whether errors have actually occurred.)
+                if span.edition().at_least_rust_2021() {
+                    self.dcx().try_steal_modify_and_emit_err(
+                        qself.span,
+                        StashKey::TraitMissingMethod,
+                        |_err| {},
+                    );
                 }
 
                 if item_name.name != kw::Empty {

@@ -1,17 +1,17 @@
-use super::{ReentrantMutex, ReentrantMutexGuard};
+use super::{ReentrantLock, ReentrantLockGuard};
 use crate::cell::RefCell;
 use crate::sync::Arc;
 use crate::thread;
 
 #[test]
 fn smoke() {
-    let m = ReentrantMutex::new(());
+    let l = ReentrantLock::new(());
     {
-        let a = m.lock();
+        let a = l.lock();
         {
-            let b = m.lock();
+            let b = l.lock();
             {
-                let c = m.lock();
+                let c = l.lock();
                 assert_eq!(*c, ());
             }
             assert_eq!(*b, ());
@@ -22,15 +22,15 @@ fn smoke() {
 
 #[test]
 fn is_mutex() {
-    let m = Arc::new(ReentrantMutex::new(RefCell::new(0)));
-    let m2 = m.clone();
-    let lock = m.lock();
+    let l = Arc::new(ReentrantLock::new(RefCell::new(0)));
+    let l2 = l.clone();
+    let lock = l.lock();
     let child = thread::spawn(move || {
-        let lock = m2.lock();
+        let lock = l2.lock();
         assert_eq!(*lock.borrow(), 4950);
     });
     for i in 0..100 {
-        let lock = m.lock();
+        let lock = l.lock();
         *lock.borrow_mut() += i;
     }
     drop(lock);
@@ -39,20 +39,20 @@ fn is_mutex() {
 
 #[test]
 fn trylock_works() {
-    let m = Arc::new(ReentrantMutex::new(()));
-    let m2 = m.clone();
-    let _lock = m.try_lock();
-    let _lock2 = m.try_lock();
+    let l = Arc::new(ReentrantLock::new(()));
+    let l2 = l.clone();
+    let _lock = l.try_lock();
+    let _lock2 = l.try_lock();
     thread::spawn(move || {
-        let lock = m2.try_lock();
+        let lock = l2.try_lock();
         assert!(lock.is_none());
     })
     .join()
     .unwrap();
-    let _lock3 = m.try_lock();
+    let _lock3 = l.try_lock();
 }
 
-pub struct Answer<'a>(pub ReentrantMutexGuard<'a, RefCell<u32>>);
+pub struct Answer<'a>(pub ReentrantLockGuard<'a, RefCell<u32>>);
 impl Drop for Answer<'_> {
     fn drop(&mut self) {
         *self.0.borrow_mut() = 42;

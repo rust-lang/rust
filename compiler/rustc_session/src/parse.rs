@@ -106,8 +106,7 @@ pub fn feature_err_issue(
 
     // Cancel an earlier warning for this same error, if it exists.
     if let Some(span) = span.primary_span() {
-        if let Some(err) = sess.parse_sess.dcx.steal_diagnostic(span, StashKey::EarlySyntaxWarning)
-        {
+        if let Some(err) = sess.parse_sess.dcx.steal_non_err(span, StashKey::EarlySyntaxWarning) {
             err.cancel()
         }
     }

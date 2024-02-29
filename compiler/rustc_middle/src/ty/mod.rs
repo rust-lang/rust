@@ -847,13 +847,15 @@ impl<'tcx> OpaqueHiddenType<'tcx> {
         opaque_def_id: LocalDefId,
         tcx: TyCtxt<'tcx>,
     ) -> Result<Diag<'tcx>, ErrorGuaranteed> {
-        if let Some(diag) = tcx
-            .sess
-            .dcx()
-            .steal_diagnostic(tcx.def_span(opaque_def_id), StashKey::OpaqueHiddenTypeMismatch)
-        {
-            diag.cancel();
-        }
+        // We used to cancel here for slightly better error messages, but
+        // cancelling stashed diagnostics is no longer allowed because it
+        // causes problems when tracking whether errors have actually
+        // occurred.
+        tcx.sess.dcx().try_steal_modify_and_emit_err(
+            tcx.def_span(opaque_def_id),
+            StashKey::OpaqueHiddenTypeMismatch,
+            |_err| {},
+        );
         (self.ty, other.ty).error_reported()?;
         // Found different concrete types for the opaque type.
         let sub_diag = if self.span == other.span {

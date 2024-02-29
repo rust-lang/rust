@@ -716,7 +716,7 @@ use std::fmt;
 
 use crate::constructor::{Constructor, ConstructorSet, IntRange};
 use crate::pat::{DeconstructedPat, PatId, PatOrWild, WitnessPat};
-use crate::{Captures, MatchArm, TypeCx};
+use crate::{Captures, MatchArm, PrivateUninhabitedField, TypeCx};
 
 use self::ValidityConstraint::*;
 
@@ -817,6 +817,9 @@ impl fmt::Display for ValidityConstraint {
 struct PlaceInfo<Cx: TypeCx> {
     /// The type of the place.
     ty: Cx::Ty,
+    /// Whether the place is a private uninhabited field. If so we skip this field during analysis
+    /// so that we don't observe its emptiness.
+    private_uninhabited: bool,
     /// Whether the place is known to contain valid data.
     validity: ValidityConstraint,
     /// Whether the place is the scrutinee itself or a subplace of it.
@@ -833,8 +836,9 @@ impl<Cx: TypeCx> PlaceInfo<Cx> {
     ) -> impl Iterator<Item = Self> + ExactSizeIterator + Captures<'a> {
         let ctor_sub_tys = cx.ctor_sub_tys(ctor, &self.ty);
         let ctor_sub_validity = self.validity.specialize(ctor);
-        ctor_sub_tys.map(move |ty| PlaceInfo {
+        ctor_sub_tys.map(move |(ty, PrivateUninhabitedField(private_uninhabited))| PlaceInfo {
             ty,
+            private_uninhabited,
             validity: ctor_sub_validity,
             is_scrutinee: false,
         })
@@ -856,6 +860,11 @@ impl<Cx: TypeCx> PlaceInfo<Cx> {
     where
         Cx: 'a,
     {
+        if self.private_uninhabited {
+            // Skip the whole column
+            return Ok((smallvec![Constructor::PrivateUninhabited], vec![]));
+        }
+
         let ctors_for_ty = cx.ctors_for_ty(&self.ty)?;
 
         // We treat match scrutinees of type `!` or `EmptyEnum` differently.
@@ -914,7 +923,12 @@ impl<Cx: TypeCx> PlaceInfo<Cx> {
 
 impl<Cx: TypeCx> Clone for PlaceInfo<Cx> {
     fn clone(&self) -> Self {
-        Self { ty: self.ty.clone(), validity: self.validity, is_scrutinee: self.is_scrutinee }
+        Self {
+            ty: self.ty.clone(),
+            private_uninhabited: self.private_uninhabited,
+            validity: self.validity,
+            is_scrutinee: self.is_scrutinee,
+        }
     }
 }
 
@@ -1121,7 +1135,12 @@ impl<'p, Cx: TypeCx> Matrix<'p, Cx> {
         scrut_ty: Cx::Ty,
         scrut_validity: ValidityConstraint,
     ) -> Self {
-        let place_info = PlaceInfo { ty: scrut_ty, validity: scrut_validity, is_scrutinee: true };
+        let place_info = PlaceInfo {
+            ty: scrut_ty,
+            private_uninhabited: false,
+            validity: scrut_validity,
+            is_scrutinee: true,
+        };
         let mut matrix = Matrix {
             rows: Vec::with_capacity(arms.len()),
             place_info: smallvec![place_info],

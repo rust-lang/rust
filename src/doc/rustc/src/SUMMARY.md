@@ -39,6 +39,7 @@
     - [\*-unknown-fuchsia](platform-support/fuchsia.md)
     - [\*-kmc-solid_\*](platform-support/kmc-solid.md)
     - [csky-unknown-linux-gnuabiv2\*](platform-support/csky-unknown-linux-gnuabiv2.md)
+    - [hexagon-unknown-linux-musl](platform-support/hexagon-unknown-linux-musl.md)
     - [hexagon-unknown-none-elf](platform-support/hexagon-unknown-none-elf.md)
     - [loongarch\*-unknown-linux-\*](platform-support/loongarch-linux.md)
     - [loongarch\*-unknown-none\*](platform-support/loongarch-none.md)

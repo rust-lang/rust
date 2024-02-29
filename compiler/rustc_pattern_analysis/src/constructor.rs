@@ -688,6 +688,9 @@ pub enum Constructor<Cx: TypeCx> {
     /// Fake extra constructor for constructors that are not seen in the matrix, as explained at the
     /// top of the file.
     Missing,
+    /// Fake extra constructor that indicates and empty field that is private. When we encounter one
+    /// we skip the column entirely so we don't observe its emptiness. Only used for specialization.
+    PrivateUninhabited,
 }
 
 impl<Cx: TypeCx> Clone for Constructor<Cx> {
@@ -709,6 +712,7 @@ impl<Cx: TypeCx> Clone for Constructor<Cx> {
             Constructor::NonExhaustive => Constructor::NonExhaustive,
             Constructor::Hidden => Constructor::Hidden,
             Constructor::Missing => Constructor::Missing,
+            Constructor::PrivateUninhabited => Constructor::PrivateUninhabited,
         }
     }
 }
@@ -763,6 +767,8 @@ impl<Cx: TypeCx> Constructor<Cx> {
             }
             // Wildcards cover anything
             (_, Wildcard) => true,
+            // `PrivateUninhabited` skips everything.
+            (PrivateUninhabited, _) => true,
             // Only a wildcard pattern can match these special constructors.
             (Missing { .. } | NonExhaustive | Hidden, _) => false,
 
@@ -940,7 +946,7 @@ impl<Cx: TypeCx> ConstructorSet<Cx> {
             }
             ConstructorSet::Variants { variants, non_exhaustive } => {
                 let mut seen_set = index::IdxSet::new_empty(variants.len());
-                for idx in seen.iter().map(|c| c.as_variant().unwrap()) {
+                for idx in seen.iter().filter_map(|c| c.as_variant()) {
                     seen_set.insert(idx);
                 }
                 let mut skipped_a_hidden_variant = false;
@@ -969,7 +975,7 @@ impl<Cx: TypeCx> ConstructorSet<Cx> {
             ConstructorSet::Bool => {
                 let mut seen_false = false;
                 let mut seen_true = false;
-                for b in seen.iter().map(|ctor| ctor.as_bool().unwrap()) {
+                for b in seen.iter().filter_map(|ctor| ctor.as_bool()) {
                     if b {
                         seen_true = true;
                     } else {
@@ -989,7 +995,7 @@ impl<Cx: TypeCx> ConstructorSet<Cx> {
             }
             ConstructorSet::Integers { range_1, range_2 } => {
                 let seen_ranges: Vec<_> =
-                    seen.iter().map(|ctor| *ctor.as_int_range().unwrap()).collect();
+                    seen.iter().filter_map(|ctor| ctor.as_int_range()).copied().collect();
                 for (seen, splitted_range) in range_1.split(seen_ranges.iter().cloned()) {
                     match seen {
                         Presence::Unseen => missing.push(IntRange(splitted_range)),
@@ -1006,7 +1012,7 @@ impl<Cx: TypeCx> ConstructorSet<Cx> {
                 }
             }
             ConstructorSet::Slice { array_len, subtype_is_empty } => {
-                let seen_slices = seen.iter().map(|c| c.as_slice().unwrap());
+                let seen_slices = seen.iter().filter_map(|c| c.as_slice());
                 let base_slice = Slice::new(*array_len, VarLen(0, 0));
                 for (seen, splitted_slice) in base_slice.split(seen_slices) {
                     let ctor = Slice(splitted_slice);

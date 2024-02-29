@@ -137,27 +137,6 @@ pub(crate) struct BenchSig {
 }
 
 #[derive(Diagnostic)]
-#[diag(builtin_macros_test_arg_non_lifetime)]
-pub(crate) struct TestArgNonLifetime {
-    #[primary_span]
-    pub(crate) span: Span,
-}
-
-#[derive(Diagnostic)]
-#[diag(builtin_macros_should_panic)]
-pub(crate) struct ShouldPanic {
-    #[primary_span]
-    pub(crate) span: Span,
-}
-
-#[derive(Diagnostic)]
-#[diag(builtin_macros_test_args)]
-pub(crate) struct TestArgs {
-    #[primary_span]
-    pub(crate) span: Span,
-}
-
-#[derive(Diagnostic)]
 #[diag(builtin_macros_alloc_must_statics)]
 pub(crate) struct AllocMustStatics {
     #[primary_span]

@@ -306,12 +306,6 @@ pub struct InferCtxt<'tcx> {
     // FIXME(matthewjasper) Merge into `tainted_by_errors`
     err_count_on_creation: usize,
 
-    /// Track how many errors were stashed when this infcx is created.
-    /// Used for the same purpose as `err_count_on_creation`, even
-    /// though it's weaker because the count can go up and down.
-    // FIXME(matthewjasper) Merge into `tainted_by_errors`
-    stashed_err_count_on_creation: usize,
-
     /// What is the innermost universe we have created? Starts out as
     /// `UniverseIndex::root()` but grows from there as we enter
     /// universal quantifiers.
@@ -717,7 +711,6 @@ impl<'tcx> InferCtxtBuilder<'tcx> {
             reported_signature_mismatch: Default::default(),
             tainted_by_errors: Cell::new(None),
             err_count_on_creation: tcx.dcx().err_count_excluding_lint_errs(),
-            stashed_err_count_on_creation: tcx.dcx().stashed_err_count(),
             universe: Cell::new(ty::UniverseIndex::ROOT),
             intercrate,
             next_trait_solver,
@@ -1272,14 +1265,6 @@ impl<'tcx> InferCtxt<'tcx> {
             // non-lint errors. (It's arguable whether or not this exclusion is
             // important.)
             let guar = self.dcx().has_errors().unwrap();
-            self.set_tainted_by_errors(guar);
-            Some(guar)
-        } else if self.dcx().stashed_err_count() > self.stashed_err_count_on_creation {
-            // Errors stashed since this infcx was made. Not entirely reliable
-            // because the count of stashed errors can go down. But without
-            // this case we get a moderate number of uninteresting and
-            // extraneous "type annotations needed" errors.
-            let guar = self.dcx().delayed_bug("tainted_by_errors: stashed bug awaiting emission");
             self.set_tainted_by_errors(guar);
             Some(guar)
         } else {

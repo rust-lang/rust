@@ -62,6 +62,7 @@
 use crate::infer::outlives::components::{push_outlives_components, Component};
 use crate::infer::outlives::env::RegionBoundPairs;
 use crate::infer::outlives::verify::VerifyBoundCx;
+use crate::infer::resolve::OpportunisticRegionResolver;
 use crate::infer::{
     self, GenericKind, InferCtxt, RegionObligation, SubregionOrigin, UndoLog, VerifyBound,
 };
@@ -69,7 +70,9 @@ use crate::traits::{ObligationCause, ObligationCauseCode};
 use rustc_data_structures::undo_log::UndoLogs;
 use rustc_middle::mir::ConstraintCategory;
 use rustc_middle::traits::query::NoSolution;
-use rustc_middle::ty::{self, GenericArgsRef, Region, Ty, TyCtxt, TypeVisitableExt};
+use rustc_middle::ty::{
+    self, GenericArgsRef, Region, Ty, TyCtxt, TypeFoldable as _, TypeVisitableExt,
+};
 use rustc_middle::ty::{GenericArgKind, PolyTypeOutlivesPredicate};
 use rustc_span::DUMMY_SP;
 use smallvec::smallvec;
@@ -176,6 +179,11 @@ impl<'tcx> InferCtxt<'tcx> {
                         .map_err(|NoSolution| (outlives, origin.clone()))?
                         .no_bound_vars()
                         .expect("started with no bound vars, should end with no bound vars");
+                // `TypeOutlives` is structural, so we should try to opportunistically resolve all
+                // region vids before processing regions, so we have a better chance to match clauses
+                // in our param-env.
+                let (sup_type, sub_region) =
+                    (sup_type, sub_region).fold_with(&mut OpportunisticRegionResolver::new(self));
 
                 debug!(?sup_type, ?sub_region, ?origin);
 

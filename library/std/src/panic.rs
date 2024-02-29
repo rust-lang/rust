@@ -6,7 +6,7 @@ use crate::any::Any;
 use crate::collections;
 use crate::panicking;
 use crate::sync::atomic::{AtomicU8, Ordering};
-use crate::sync::{Mutex, RwLock};
+use crate::sync::{Condvar, Mutex, RwLock};
 use crate::thread::Result;
 
 #[doc(hidden)]
@@ -67,11 +67,15 @@ pub fn panic_any<M: 'static + Any + Send>(msg: M) -> ! {
 impl<T: ?Sized> UnwindSafe for Mutex<T> {}
 #[stable(feature = "catch_unwind", since = "1.9.0")]
 impl<T: ?Sized> UnwindSafe for RwLock<T> {}
+#[stable(feature = "catch_unwind", since = "1.9.0")]
+impl UnwindSafe for Condvar {}
 
 #[stable(feature = "unwind_safe_lock_refs", since = "1.12.0")]
 impl<T: ?Sized> RefUnwindSafe for Mutex<T> {}
 #[stable(feature = "unwind_safe_lock_refs", since = "1.12.0")]
 impl<T: ?Sized> RefUnwindSafe for RwLock<T> {}
+#[stable(feature = "unwind_safe_lock_refs", since = "1.12.0")]
+impl RefUnwindSafe for Condvar {}
 
 // https://github.com/rust-lang/rust/issues/62301
 #[stable(feature = "hashbrown", since = "1.36.0")]

@@ -1,17 +1,13 @@
 use crate::cell::UnsafeCell;
 use crate::ptr;
 use crate::sync::atomic::{
-    AtomicBool, AtomicPtr, AtomicU32,
+    AtomicPtr, AtomicU32,
     Ordering::{AcqRel, Acquire, Relaxed, Release},
 };
 use crate::sys::c;
 
 #[cfg(test)]
 mod tests;
-
-/// An optimization hint. The compiler is often smart enough to know if an atomic
-/// is never set and can remove dead code based on that fact.
-static HAS_DTORS: AtomicBool = AtomicBool::new(false);
 
 // Using a per-thread list avoids the problems in synchronizing global state.
 #[thread_local]
@@ -24,12 +20,11 @@ static DESTRUCTORS: crate::cell::RefCell<Vec<(*mut u8, unsafe extern "C" fn(*mut
 #[inline(never)]
 #[cfg(target_thread_local)]
 pub unsafe fn register_keyless_dtor(t: *mut u8, dtor: unsafe extern "C" fn(*mut u8)) {
+    dtors_used();
     match DESTRUCTORS.try_borrow_mut() {
         Ok(mut dtors) => dtors.push((t, dtor)),
         Err(_) => rtabort!("global allocator may not use TLS"),
     }
-
-    HAS_DTORS.store(true, Relaxed);
 }
 
 #[inline(never)] // See comment above
@@ -130,6 +125,7 @@ impl StaticKey {
     #[cold]
     unsafe fn init(&'static self) -> Key {
         if self.dtor.is_some() {
+            dtors_used();
             let mut pending = c::FALSE;
             let r = c::InitOnceBeginInitialize(self.once.get(), 0, &mut pending, ptr::null_mut());
             assert_eq!(r, c::TRUE);
@@ -215,7 +211,6 @@ unsafe fn register_dtor(key: &'static StaticKey) {
             Err(new) => head = new,
         }
     }
-    HAS_DTORS.store(true, Release);
 }
 
 // -------------------------------------------------------------------------
@@ -281,17 +276,16 @@ unsafe fn register_dtor(key: &'static StaticKey) {
 // the address of the symbol to ensure it sticks around.
 
 #[link_section = ".CRT$XLB"]
-#[allow(dead_code, unused_variables)]
-#[used] // we don't want LLVM eliminating this symbol for any reason, and
-// when the symbol makes it to the linker the linker will take over
 pub static p_thread_callback: unsafe extern "system" fn(c::LPVOID, c::DWORD, c::LPVOID) =
     on_tls_callback;
 
-#[allow(dead_code, unused_variables)]
-unsafe extern "system" fn on_tls_callback(h: c::LPVOID, dwReason: c::DWORD, pv: c::LPVOID) {
-    if !HAS_DTORS.load(Acquire) {
-        return;
-    }
+fn dtors_used() {
+    // we don't want LLVM eliminating p_thread_callback when destructors are used.
+    // when the symbol makes it to the linker the linker will take over
+    unsafe { crate::intrinsics::volatile_load(&p_thread_callback) };
+}
+
+unsafe extern "system" fn on_tls_callback(_h: c::LPVOID, dwReason: c::DWORD, _pv: c::LPVOID) {
     if dwReason == c::DLL_THREAD_DETACH || dwReason == c::DLL_PROCESS_DETACH {
         #[cfg(not(target_thread_local))]
         run_dtors();
@@ -301,19 +295,16 @@ unsafe extern "system" fn on_tls_callback(h: c::LPVOID, dwReason: c::DWORD, pv: 
 
     // See comments above for what this is doing. Note that we don't need this
     // trickery on GNU windows, just on MSVC.
-    reference_tls_used();
-    #[cfg(target_env = "msvc")]
-    unsafe fn reference_tls_used() {
+    #[cfg(all(target_env = "msvc", not(target_thread_local)))]
+    {
         extern "C" {
             static _tls_used: u8;
         }
         crate::intrinsics::volatile_load(&_tls_used);
     }
-    #[cfg(not(target_env = "msvc"))]
-    unsafe fn reference_tls_used() {}
 }
 
-#[allow(dead_code)] // actually called below
+#[cfg(not(target_thread_local))]
 unsafe fn run_dtors() {
     for _ in 0..5 {
         let mut any_run = false;
