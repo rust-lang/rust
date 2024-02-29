@@ -149,15 +149,15 @@ impl ChangeFixture {
         for entry in fixture {
             let text = if entry.text.contains(CURSOR_MARKER) {
                 if entry.text.contains(ESCAPED_CURSOR_MARKER) {
-                    entry.text.replace(ESCAPED_CURSOR_MARKER, CURSOR_MARKER)
+                    entry.text.replace(ESCAPED_CURSOR_MARKER, CURSOR_MARKER).into()
                 } else {
                     let (range_or_offset, text) = extract_range_or_offset(&entry.text);
                     assert!(file_position.is_none());
                     file_position = Some((file_id, range_or_offset));
-                    text
+                    text.into()
                 }
             } else {
-                entry.text.clone()
+                entry.text.as_str().into()
             };
 
             let meta = FileMeta::from_fixture(entry, current_source_root_kind);
@@ -206,7 +206,7 @@ impl ChangeFixture {
                 default_env.extend(meta.env.iter().map(|(x, y)| (x.to_owned(), y.to_owned())));
             }
 
-            source_change.change_file(file_id, Some(text.into()));
+            source_change.change_file(file_id, Some(text));
             let path = VfsPath::new_virtual_path(meta.path);
             file_set.insert(file_id, path);
             files.push(file_id);
