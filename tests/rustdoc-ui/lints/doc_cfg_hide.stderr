@@ -18,7 +18,7 @@ help: to apply to the crate, use an inner attribute
 LL | #![doc(cfg_hide(doc))]
    |  +
 
-error: `#[doc(cfg_hide(...)]` takes a list of attributes
+error: `#[doc(cfg_hide(...))]` takes a list of attributes
   --> $DIR/doc_cfg_hide.rs:4:8
    |
 LL | #![doc(cfg_hide = "test")]
@@ -27,7 +27,7 @@ LL | #![doc(cfg_hide = "test")]
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #82730 <https://github.com/rust-lang/rust/issues/82730>
 
-error: `#[doc(cfg_hide(...)]` takes a list of attributes
+error: `#[doc(cfg_hide(...))]` takes a list of attributes
   --> $DIR/doc_cfg_hide.rs:6:8
    |
 LL | #![doc(cfg_hide)]
