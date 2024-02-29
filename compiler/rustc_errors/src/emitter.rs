@@ -646,10 +646,6 @@ pub(crate) struct FileWithAnnotatedLines {
 }
 
 impl HumanEmitter {
-    pub fn stderr(color_config: ColorConfig, fallback_bundle: LazyFallbackBundle) -> HumanEmitter {
-        Self::new(from_stderr(color_config), fallback_bundle)
-    }
-
     pub fn new(dst: Destination, fallback_bundle: LazyFallbackBundle) -> HumanEmitter {
         HumanEmitter {
             dst: IntoDynSyncSend(dst),
@@ -2650,7 +2646,7 @@ impl WriteColor for Buffy {
     }
 }
 
-fn from_stderr(color: ColorConfig) -> Destination {
+pub fn stderr_destination(color: ColorConfig) -> Destination {
     let choice = color.to_color_choice();
     // On Windows we'll be performing global synchronization on the entire
     // system for emitting rustc errors, so there's no need to buffer

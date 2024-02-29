@@ -1,6 +1,7 @@
 use rustc_ast as ast;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::sync::Lrc;
+use rustc_errors::emitter::stderr_destination;
 use rustc_errors::{ColorConfig, ErrorGuaranteed, FatalError};
 use rustc_hir::def_id::{LocalDefId, CRATE_DEF_ID, LOCAL_CRATE};
 use rustc_hir::{self as hir, intravisit, CRATE_HIR_ID};
@@ -577,7 +578,8 @@ pub(crate) fn make_test(
                 false,
             );
             supports_color =
-                HumanEmitter::stderr(ColorConfig::Auto, fallback_bundle.clone()).supports_color();
+                HumanEmitter::new(stderr_destination(ColorConfig::Auto), fallback_bundle.clone())
+                    .supports_color();
 
             let emitter = HumanEmitter::new(Box::new(io::sink()), fallback_bundle);
 
