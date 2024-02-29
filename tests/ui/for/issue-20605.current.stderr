@@ -1,4 +1,4 @@
-error[E0277]: the size for values of type `dyn Iterator<Item = &'a mut u8>` cannot be known at compilation time
+error[E0277]: `dyn Iterator<Item = &'a mut u8>` is not an iterator
   --> $DIR/issue-20605.rs:5:17
    |
 LL |     for item in *things { *item = 0 }

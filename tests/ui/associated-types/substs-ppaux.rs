@@ -47,6 +47,6 @@ fn foo<'z>() where &'z (): Sized {
     //[normal]~| found fn item `fn() {foo::<'static>}`
 
     <str as Foo<u8>>::bar;
-    //[verbose]~^ ERROR the size for values of type
-    //[normal]~^^ ERROR the size for values of type
+    //[verbose]~^ ERROR the trait bound `str: Foo<'?0, '?1, u8>` is not satisfied
+    //[normal]~^^ ERROR the trait bound `str: Foo<'_, '_, u8>` is not satisfied
 }
