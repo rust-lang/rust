@@ -347,12 +347,9 @@ impl Diagnostic {
         let buf = BufWriter::default();
         let mut dst: Destination = Box::new(buf.clone());
         let (short, color_config) = je.json_rendered.unzip();
-        let color = match color_config {
-            ColorConfig::Always | ColorConfig::Auto => true,
-            ColorConfig::Never => false,
-        };
-        if color {
-            dst = Box::new(termcolor::Ansi::new(dst));
+        match color_config {
+            ColorConfig::Always | ColorConfig::Auto => dst = Box::new(termcolor::Ansi::new(dst)),
+            ColorConfig::Never => {}
         }
         HumanEmitter::new(dst, je.fallback_bundle.clone())
             .short_message(short)
