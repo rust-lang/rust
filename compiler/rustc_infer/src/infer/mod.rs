@@ -244,7 +244,7 @@ pub struct InferCtxt<'tcx> {
     ///
     /// Its default value is `DefiningAnchor::Error`, this way it is easier to catch errors that
     /// might come up during inference or typeck.
-    pub defining_use_anchor: DefiningAnchor,
+    pub defining_use_anchor: DefiningAnchor<'tcx>,
 
     /// Whether this inference context should care about region obligations in
     /// the root universe. Most notably, this is used during hir typeck as region
@@ -605,7 +605,7 @@ impl fmt::Display for FixupError {
 /// Used to configure inference contexts before their creation.
 pub struct InferCtxtBuilder<'tcx> {
     tcx: TyCtxt<'tcx>,
-    defining_use_anchor: DefiningAnchor,
+    defining_use_anchor: DefiningAnchor<'tcx>,
     considering_regions: bool,
     skip_leak_check: bool,
     /// Whether we are in coherence mode.
@@ -636,7 +636,7 @@ impl<'tcx> InferCtxtBuilder<'tcx> {
     /// It is only meant to be called in two places, for typeck
     /// (via `Inherited::build`) and for the inference context used
     /// in mir borrowck.
-    pub fn with_opaque_type_inference(mut self, defining_use_anchor: DefiningAnchor) -> Self {
+    pub fn with_opaque_type_inference(mut self, defining_use_anchor: DefiningAnchor<'tcx>) -> Self {
         self.defining_use_anchor = defining_use_anchor;
         self
     }

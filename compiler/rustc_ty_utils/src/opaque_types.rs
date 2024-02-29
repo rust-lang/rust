@@ -210,11 +210,23 @@ impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for OpaqueTypeCollector<'tcx> {
             ty::Alias(ty::Opaque, alias_ty) if alias_ty.def_id.is_local() => {
                 self.visit_opaque_ty(alias_ty);
             }
+            // Skips type aliases, as they are meant to be transparent.
             ty::Alias(ty::Weak, alias_ty) if alias_ty.def_id.is_local() => {
                 self.tcx
                     .type_of(alias_ty.def_id)
                     .instantiate(self.tcx, alias_ty.args)
                     .visit_with(self);
+            }
+            // RPITIT are encoded as projections, not opaque types, make sure to handle these special
+            // projections independently of the projection handling below.
+            ty::Alias(ty::Projection, alias_ty)
+                if let Some(ty::ImplTraitInTraitData::Trait { fn_def_id, .. }) =
+                    self.tcx.opt_rpitit_info(alias_ty.def_id)
+                    && fn_def_id == self.item.into() =>
+            {
+                let ty = self.tcx.type_of(alias_ty.def_id).instantiate(self.tcx, alias_ty.args);
+                let ty::Alias(ty::Opaque, alias_ty) = ty.kind() else { bug!("{ty:?}") };
+                self.visit_opaque_ty(alias_ty);
             }
             ty::Alias(ty::Projection, alias_ty) => {
                 // This avoids having to do normalization of `Self::AssocTy` by only

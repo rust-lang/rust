@@ -114,7 +114,7 @@ impl MaybeCause {
 #[derive(Debug, PartialEq, Eq, Clone, Copy, Hash, HashStable, TypeFoldable, TypeVisitable)]
 pub struct QueryInput<'tcx, T> {
     pub goal: Goal<'tcx, T>,
-    pub anchor: DefiningAnchor,
+    pub anchor: DefiningAnchor<'tcx>,
     pub predefined_opaques_in_body: PredefinedOpaques<'tcx>,
 }
 

@@ -23,8 +23,14 @@ pub fn walk_types<'tcx, V: SpannedTypeVisitor<'tcx>>(
     match kind {
         // Walk over the signature of the function
         DefKind::AssocFn | DefKind::Fn => {
-            let ty_sig = tcx.fn_sig(item).instantiate_identity();
             let hir_sig = tcx.hir_node_by_def_id(item).fn_decl().unwrap();
+            // If the type of the item uses `_`, we're gonna error out anyway, but
+            // typeck (which type_of invokes below), will call back into opaque_types_defined_by
+            // causing a cycle. So we just bail out in this case.
+            if hir_sig.output.get_infer_ret_ty().is_some() {
+                return V::Result::output();
+            }
+            let ty_sig = tcx.fn_sig(item).instantiate_identity();
             // Walk over the inputs and outputs manually in order to get good spans for them.
             try_visit!(visitor.visit(hir_sig.output.span(), ty_sig.output()));
             for (hir, ty) in hir_sig.inputs.iter().zip(ty_sig.inputs().iter()) {
@@ -39,6 +45,12 @@ pub fn walk_types<'tcx, V: SpannedTypeVisitor<'tcx>>(
         // Walk over the type of the item
         DefKind::Static(_) | DefKind::Const | DefKind::AssocConst | DefKind::AnonConst => {
             if let Some(ty) = tcx.hir_node_by_def_id(item).ty() {
+                // If the type of the item uses `_`, we're gonna error out anyway, but
+                // typeck (which type_of invokes below), will call back into opaque_types_defined_by
+                // causing a cycle. So we just bail out in this case.
+                if ty.is_suggestable_infer_ty() {
+                    return V::Result::output();
+                }
                 // Associated types in traits don't necessarily have a type that we can visit
                 try_visit!(visitor.visit(ty.span, tcx.type_of(item).instantiate_identity()));
             }

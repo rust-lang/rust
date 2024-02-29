@@ -32,7 +32,7 @@ use rustc_hir::{GenericParam, Item, Node};
 use rustc_infer::infer::error_reporting::TypeErrCtxt;
 use rustc_infer::infer::{InferOk, TypeTrace};
 use rustc_middle::traits::select::OverflowError;
-use rustc_middle::traits::{DefiningAnchor, SignatureMismatchData};
+use rustc_middle::traits::SignatureMismatchData;
 use rustc_middle::ty::abstract_const::NotConstEvaluatable;
 use rustc_middle::ty::error::{ExpectedFound, TypeError};
 use rustc_middle::ty::fold::{BottomUpFolder, TypeFolder, TypeSuperFoldable};
@@ -3390,19 +3390,12 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
             obligation.cause.span,
             format!("cannot check whether the hidden type of {name} satisfies auto traits"),
         );
+
+        err.note(
+            "fetching the hidden types of an opaque inside of the defining scope is not supported. \
+            You can try moving the opaque type and the item that actually registers a hidden type into a new submodule",
+        );
         err.span_note(self.tcx.def_span(def_id), "opaque type is declared here");
-        match self.defining_use_anchor {
-            DefiningAnchor::Bubble | DefiningAnchor::Error => {}
-            DefiningAnchor::Bind(bind) => {
-                err.span_note(
-                    self.tcx.def_ident_span(bind).unwrap_or_else(|| self.tcx.def_span(bind)),
-                    "this item depends on auto traits of the hidden type, \
-                    but may also be registering the hidden type. \
-                    This is not supported right now. \
-                    You can try moving the opaque type and the item that actually registers a hidden type into a new submodule".to_string(),
-                );
-            }
-        };
 
         self.note_obligation_cause(&mut err, &obligation);
         self.point_at_returns_when_relevant(&mut err, &obligation);

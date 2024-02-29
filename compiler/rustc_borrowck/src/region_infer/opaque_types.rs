@@ -317,7 +317,7 @@ fn check_opaque_type_well_formed<'tcx>(
     let infcx = tcx
         .infer_ctxt()
         .with_next_trait_solver(next_trait_solver)
-        .with_opaque_type_inference(DefiningAnchor::Bind(parent_def_id))
+        .with_opaque_type_inference(DefiningAnchor::bind(tcx, parent_def_id))
         .build();
     let ocx = ObligationCtxt::new(&infcx);
     let identity_args = GenericArgs::identity_for_item(tcx, def_id);
