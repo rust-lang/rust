@@ -1585,9 +1585,10 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         {
             // When the suggested binding change would be from `x` to `_x`, suggest changing the
             // original binding definition instead. (#60164)
-            (span, snippet, ", consider changing it")
+            let post = format!(", consider renaming `{}` into `{snippet}`", suggestion.candidate);
+            (span, snippet, post)
         } else {
-            (span, suggestion.candidate.to_string(), "")
+            (span, suggestion.candidate.to_string(), String::new())
         };
         let msg = match suggestion.target {
             SuggestionTarget::SimilarlyNamed => format!(

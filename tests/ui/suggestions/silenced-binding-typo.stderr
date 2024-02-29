@@ -4,7 +4,7 @@ error[E0425]: cannot find value `x` in this scope
 LL |     let _y = x;
    |              ^
    |
-help: a local variable with a similar name exists, consider changing it
+help: a local variable with a similar name exists, consider renaming `_x` into `x`
    |
 LL |     let x = 42;
    |         ~
