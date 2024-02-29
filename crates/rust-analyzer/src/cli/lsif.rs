@@ -4,8 +4,8 @@ use std::env;
 use std::time::Instant;
 
 use ide::{
-    Analysis, FileId, FileRange, MonikerKind, PackageInformation, RootDatabase, StaticIndex,
-    StaticIndexedFile, TokenId, TokenStaticData,
+    Analysis, AnalysisHost, FileId, FileRange, MonikerKind, PackageInformation, RootDatabase,
+    StaticIndex, StaticIndexedFile, TokenId, TokenStaticData,
 };
 use ide_db::{
     base_db::salsa::{self, ParallelDatabase},
@@ -300,8 +300,9 @@ impl flags::Lsif {
 
         let workspace = ProjectWorkspace::load(manifest, &cargo_config, no_progress)?;
 
-        let (host, vfs, _proc_macro) =
+        let (db, vfs, _proc_macro) =
             load_workspace(workspace, &cargo_config.extra_env, &load_cargo_config)?;
+        let host = AnalysisHost::with_database(db);
         let db = host.raw_database();
         let analysis = host.analysis();
 

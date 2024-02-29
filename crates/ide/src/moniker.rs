@@ -1,6 +1,8 @@
 //! This module generates [moniker](https://microsoft.github.io/language-server-protocol/specifications/lsif/0.6.0/specification/#exportsImports)
 //! for LSIF and LSP.
 
+use core::fmt;
+
 use hir::{Adt, AsAssocItem, AssocItemContainer, Crate, DescendPreference, MacroKind, Semantics};
 use ide_db::{
     base_db::{CrateOrigin, FilePosition, LangCrateOrigin},
@@ -93,9 +95,10 @@ pub struct MonikerIdentifier {
     pub description: Vec<MonikerDescriptor>,
 }
 
-impl ToString for MonikerIdentifier {
-    fn to_string(&self) -> String {
-        format!("{}::{}", self.crate_name, self.description.iter().map(|x| &x.name).join("::"))
+impl fmt::Display for MonikerIdentifier {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str(&self.crate_name)?;
+        f.write_fmt(format_args!("::{}", self.description.iter().map(|x| &x.name).join("::")))
     }
 }
 

@@ -20,9 +20,8 @@ impl flags::RunTests {
             with_proc_macro_server: ProcMacroServerChoice::Sysroot,
             prefill_caches: false,
         };
-        let (host, _vfs, _proc_macro) =
+        let (ref db, _vfs, _proc_macro) =
             load_workspace_at(&self.path, &cargo_config, &load_cargo_config, &|_| {})?;
-        let db = host.raw_database();
 
         let tests = all_modules(db)
             .into_iter()
