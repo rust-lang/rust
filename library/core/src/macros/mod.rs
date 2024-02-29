@@ -118,7 +118,7 @@ macro_rules! assert_ne {
 /// the debug representation, of the actual value shape that did not meet expectation. In contrast
 /// using [`assert!`] will only print that the expectation was not met, but not why.
 ///
-/// The pattern syntax is exactly the same as found in a match arm and the [`matches!`] macro. The
+/// The pattern syntax is exactly the same as found in a match arm and the `matches!` macro. The
 /// optional if guard can be used to add additional checks that must be true for the matched value,
 /// otherwise this macro will panic.
 ///
@@ -385,7 +385,7 @@ macro_rules! debug_assert_ne {
 /// print the debug representation, of the actual value shape that did not meet expectation. In
 /// contrast using [`debug_assert!`] will only print that the expectation was not met, but not why.
 ///
-/// The pattern syntax is exactly the same as found in a match arm and the [`matches!`] macro. The
+/// The pattern syntax is exactly the same as found in a match arm and the `matches!` macro. The
 /// optional if guard can be used to add additional checks that must be true for the matched value,
 /// otherwise this macro will panic.
 ///
@@ -430,10 +430,15 @@ pub macro debug_assert_matches($($arg:tt)*) {
     }
 }
 
-/// Returns whether the given expression matches any of the given patterns.
+/// Returns whether the given expression matches the provided pattern.
 ///
-/// Like in a `match` expression, the pattern can be optionally followed by `if`
-/// and a guard expression that has access to names bound by the pattern.
+/// The pattern syntax is exactly the same as found in a match arm. The optional if guard can be
+/// used to add additional checks that must be true for the matched value, otherwise this macro will
+/// return `false`.
+///
+/// When testing that a value matches a pattern, it's generally preferable to use
+/// [`assert_matches!`] as it will print the debug representation of the value if the assertion
+/// fails.
 ///
 /// # Examples
 ///
