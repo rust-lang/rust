@@ -642,22 +642,22 @@ impl<'a> ShouldRun<'a> {
 
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, ValueEnum)]
 pub enum Kind {
-    #[clap(alias = "b")]
+    #[value(alias = "b")]
     Build,
-    #[clap(alias = "c")]
+    #[value(alias = "c")]
     Check,
     Clippy,
     Fix,
     Format,
-    #[clap(alias = "t")]
+    #[value(alias = "t")]
     Test,
     Bench,
-    #[clap(alias = "d")]
+    #[value(alias = "d")]
     Doc,
     Clean,
     Dist,
     Install,
-    #[clap(alias = "r")]
+    #[value(alias = "r")]
     Run,
     Setup,
     Suggest,
