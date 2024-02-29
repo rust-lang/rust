@@ -1,9 +1,21 @@
+error[E0782]: trait objects must include the `dyn` keyword
+  --> $DIR/issue-111727.rs:4:5
+   |
+LL |     std::any::Any::create();
+   |     ^^^^^^^^^^^^^
+   |
+help: add `dyn` keyword before this trait
+   |
+LL |     <dyn std::any::Any>::create();
+   |     ++++              +
+
 error[E0599]: no function or associated item named `create` found for trait `Any`
   --> $DIR/issue-111727.rs:4:20
    |
 LL |     std::any::Any::create();
    |                    ^^^^^^ function or associated item not found in `Any`
 
-error: aborting due to 1 previous error
+error: aborting due to 2 previous errors
 
-For more information about this error, try `rustc --explain E0599`.
+Some errors have detailed explanations: E0599, E0782.
+For more information about an error, try `rustc --explain E0599`.
