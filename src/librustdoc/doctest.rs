@@ -576,9 +576,8 @@ pub(crate) fn make_test(
                 rustc_driver::DEFAULT_LOCALE_RESOURCES.to_vec(),
                 false,
             );
-            supports_color = HumanEmitter::stderr(ColorConfig::Auto, fallback_bundle.clone())
-                .diagnostic_width(Some(80))
-                .supports_color();
+            supports_color =
+                HumanEmitter::stderr(ColorConfig::Auto, fallback_bundle.clone()).supports_color();
 
             let emitter = HumanEmitter::new(Box::new(io::sink()), fallback_bundle);
 
