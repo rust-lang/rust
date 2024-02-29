@@ -10,7 +10,7 @@ pub trait MessageListenersInterface {
 
 impl<'a> MessageListenersInterface for MessageListeners<'a> {
     fn listeners<'b>(&'b self) -> &'a MessageListeners<'b> {
-        //~^ ERROR cannot infer an appropriate lifetime for lifetime parameter 'b in generic type due to conflicting requirements
+        //~^ ERROR in type `&'a MessageListeners<'_>`, reference has a longer lifetime than the data it references
         self
     }
 }
