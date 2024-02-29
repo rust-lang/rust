@@ -31,7 +31,7 @@ pub enum Warnings {
 
 /// Deserialized version of all flags for this compile.
 #[derive(Debug, Parser)]
-#[clap(
+#[command(
     override_usage = "x.py <subcommand> [options] [<paths>...]",
     disable_help_subcommand(true),
     about = "",
@@ -118,7 +118,7 @@ pub struct Flags {
     // This overrides the deny-warnings configuration option,
     // which passes -Dwarnings to the compiler invocations.
     #[arg(global(true), long)]
-    #[clap(value_enum, default_value_t=Warnings::Default, value_name = "deny|warn")]
+    #[arg(value_enum, default_value_t=Warnings::Default, value_name = "deny|warn")]
     /// if value is deny, will deny warnings
     /// if value is warn, will emit warnings
     /// otherwise, use the default configured behaviour
@@ -132,7 +132,7 @@ pub struct Flags {
     pub json_output: bool,
 
     #[arg(global(true), long, value_name = "STYLE")]
-    #[clap(value_enum, default_value_t = Color::Auto)]
+    #[arg(value_enum, default_value_t = Color::Auto)]
     /// whether to use color in cargo and rustc output
     pub color: Color,
 
@@ -188,7 +188,7 @@ impl Flags {
         let it = std::iter::once(&first).chain(args.iter());
         // We need to check for `<cmd> -h -v`, in which case we list the paths
         #[derive(Parser)]
-        #[clap(disable_help_flag(true))]
+        #[command(disable_help_flag(true))]
         struct HelpVerboseOnly {
             #[arg(short, long)]
             help: bool,
@@ -218,7 +218,7 @@ impl Flags {
 
 #[derive(Debug, Clone, Default, clap::Subcommand)]
 pub enum Subcommand {
-    #[clap(aliases = ["b"], long_about = "\n
+    #[command(aliases = ["b"], long_about = "\n
     Arguments:
         This subcommand accepts a number of paths to directories to the crates
         and/or artifacts to compile. For example, for a quick build of a usable
@@ -233,7 +233,7 @@ pub enum Subcommand {
     /// Compile either the compiler or libraries
     #[default]
     Build,
-    #[clap(aliases = ["c"], long_about = "\n
+    #[command(aliases = ["c"], long_about = "\n
     Arguments:
         This subcommand accepts a number of paths to directories to the crates
         and/or artifacts to compile. For example:
@@ -246,7 +246,7 @@ pub enum Subcommand {
         all_targets: bool,
     },
     /// Run Clippy (uses rustup/cargo-installed clippy binary)
-    #[clap(long_about = "\n
+    #[command(long_about = "\n
     Arguments:
         This subcommand accepts a number of paths to directories to the crates
         and/or artifacts to run clippy against. For example:
@@ -273,14 +273,14 @@ pub enum Subcommand {
         forbid: Vec<String>,
     },
     /// Run cargo fix
-    #[clap(long_about = "\n
+    #[command(long_about = "\n
     Arguments:
         This subcommand accepts a number of paths to directories to the crates
         and/or artifacts to run `cargo fix` against. For example:
             ./x.py fix library/core
             ./x.py fix library/core library/proc_macro")]
     Fix,
-    #[clap(
+    #[command(
         name = "fmt",
         long_about = "\n
     Arguments:
@@ -295,7 +295,7 @@ pub enum Subcommand {
         #[arg(long)]
         check: bool,
     },
-    #[clap(aliases = ["d"], long_about = "\n
+    #[command(aliases = ["d"], long_about = "\n
     Arguments:
         This subcommand accepts a number of paths to directories of documentation
         to build. For example:
@@ -316,7 +316,7 @@ pub enum Subcommand {
         /// render the documentation in JSON format in addition to the usual HTML format
         json: bool,
     },
-    #[clap(aliases = ["t"], long_about = "\n
+    #[command(aliases = ["t"], long_about = "\n
     Arguments:
         This subcommand accepts a number of paths to test directories that
         should be compiled and run. For example:
@@ -400,7 +400,7 @@ pub enum Subcommand {
     Dist,
     /// Install distribution artifacts
     Install,
-    #[clap(aliases = ["r"], long_about = "\n
+    #[command(aliases = ["r"], long_about = "\n
     Arguments:
         This subcommand accepts a number of paths to tools to build and run. For
         example:
@@ -413,7 +413,7 @@ pub enum Subcommand {
         args: Vec<String>,
     },
     /// Set up the environment for development
-    #[clap(long_about = format!(
+    #[command(long_about = format!(
         "\n
 x.py setup creates a `config.toml` which changes the defaults for x.py itself,
 as well as setting up a git pre-push hook, VS Code config and toolchain link.
@@ -434,7 +434,7 @@ Arguments:
         profile: Option<PathBuf>,
     },
     /// Suggest a subset of tests to run, based on modified files
-    #[clap(long_about = "\n")]
+    #[command(long_about = "\n")]
     Suggest {
         /// run suggested tests
         #[arg(long)]
