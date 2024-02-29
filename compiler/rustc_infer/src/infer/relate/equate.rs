@@ -1,12 +1,13 @@
 use super::combine::{CombineFields, ObligationEmittingRelation};
 use super::StructurallyRelateAliases;
+use crate::infer::BoundRegionConversionTime::HigherRankedType;
 use crate::infer::{DefineOpaqueTypes, SubregionOrigin};
 use crate::traits::PredicateObligations;
 
 use rustc_middle::ty::relate::{self, Relate, RelateResult, TypeRelation};
 use rustc_middle::ty::GenericArgsRef;
 use rustc_middle::ty::TyVar;
-use rustc_middle::ty::{self, Ty, TyCtxt, TypeVisitableExt};
+use rustc_middle::ty::{self, Ty, TyCtxt};
 
 use rustc_hir::def_id::DefId;
 use rustc_span::Span;
@@ -167,12 +168,34 @@ impl<'tcx> TypeRelation<'tcx> for Equate<'_, '_, 'tcx> {
             return Ok(a);
         }
 
-        if a.skip_binder().has_escaping_bound_vars() || b.skip_binder().has_escaping_bound_vars() {
-            self.fields.higher_ranked_sub(a, b, self.a_is_expected)?;
-            self.fields.higher_ranked_sub(b, a, self.a_is_expected)?;
-        } else {
+        if let (Some(a), Some(b)) = (a.no_bound_vars(), b.no_bound_vars()) {
             // Fast path for the common case.
-            self.relate(a.skip_binder(), b.skip_binder())?;
+            self.relate(a, b)?;
+        } else {
+            // When equating binders, we check that there is a 1-to-1
+            // correspondence between the bound vars in both types.
+            //
+            // We do so by separately instantiating one of the binders with
+            // placeholders and the other with inference variables and then
+            // equating the instantiated types.
+            //
+            // We want `for<..> A == for<..> B` -- therefore we want
+            // `exists<..> A == for<..> B` and `exists<..> B == for<..> A`.
+
+            let span = self.fields.trace.cause.span;
+            let infcx = self.fields.infcx;
+
+            // Check if `exists<..> A == for<..> B`
+            infcx.enter_forall(b, |b| {
+                let a = infcx.instantiate_binder_with_fresh_vars(span, HigherRankedType, a);
+                self.relate(a, b)
+            })?;
+
+            // Check if `exists<..> B == for<..> A`.
+            infcx.enter_forall(a, |a| {
+                let b = infcx.instantiate_binder_with_fresh_vars(span, HigherRankedType, b);
+                self.relate(a, b)
+            })?;
         }
         Ok(a)
     }
