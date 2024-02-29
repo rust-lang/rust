@@ -87,7 +87,7 @@ pub trait DerivedTypeMethods<'tcx>: BaseTypeMethods<'tcx> + MiscMethods<'tcx> {
 
     fn type_has_metadata(&self, ty: Ty<'tcx>) -> bool {
         let param_env = ty::ParamEnv::reveal_all();
-        if ty.is_sized(self.tcx(), param_env) {
+        if ty.is_sized(self.tcx(), param_env) || ty.is_scalable_simd() {
             return false;
         }
 

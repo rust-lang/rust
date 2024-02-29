@@ -201,6 +201,9 @@ fn layout_of_uncached<'tcx>(
             }
 
             let pointee = tcx.normalize_erasing_regions(param_env, pointee);
+            if pointee.is_scalable_simd() {
+                return Ok(tcx.mk_layout(LayoutS::scalar(cx, data_ptr)));
+            }
             if pointee.is_sized(tcx, param_env) {
                 return Ok(tcx.mk_layout(LayoutS::scalar(cx, data_ptr)));
             }

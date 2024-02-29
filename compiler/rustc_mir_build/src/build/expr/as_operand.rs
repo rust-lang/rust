@@ -166,11 +166,9 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             let ty = expr.ty;
             let param_env = this.param_env;
 
-            if !ty.is_sized(tcx, param_env) {
-                // !sized means !copy, so this is an unsized move unless it's a scalable SIMD type.
-                if !ty.is_scalable_simd() {
-                    assert!(!ty.is_copy_modulo_regions(tcx, param_env));
-                }
+            if !ty.is_sized(tcx, param_env) && !ty.is_scalable_simd() {
+                // !sized means !copy, so this is an unsized move.
+                assert!(!ty.is_copy_modulo_regions(tcx, param_env));
 
                 // As described above, detect the case where we are passing a value of unsized
                 // type, and that value is coming from the deref of a box.

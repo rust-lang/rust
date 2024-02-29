@@ -538,10 +538,9 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
             }
         }
 
-        assert_eq!(
-            place.val.llextra.is_some(),
-            place.layout.is_unsized() && !place.layout.is_runtime_sized()
-        );
+        if !place.layout.is_runtime_sized() {
+            assert_eq!(place.val.llextra.is_some(), place.layout.is_unsized());
+        }
 
         if place.layout.is_zst() {
             return OperandRef::zero_sized(place.layout);

@@ -1017,7 +1017,7 @@ fn find_vtable_types_for_unsizing<'tcx>(
     let ptr_vtable = |inner_source: Ty<'tcx>, inner_target: Ty<'tcx>| {
         let param_env = ty::ParamEnv::reveal_all();
         let type_has_metadata = |ty: Ty<'tcx>| -> bool {
-            if ty.is_sized(tcx.tcx, param_env) {
+            if ty.is_sized(tcx.tcx, param_env) || ty.is_scalable_simd() {
                 return false;
             }
             let tail = tcx.struct_tail_erasing_lifetimes(ty, param_env);

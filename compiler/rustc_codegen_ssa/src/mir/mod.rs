@@ -248,7 +248,7 @@ pub fn codegen_mir<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
 
             if memory_locals.contains(local) {
                 debug!("alloc: {:?} -> place", local);
-                if layout.is_unsized() {
+                if layout.is_unsized() && !layout.is_runtime_sized() {
                     LocalRef::UnsizedPlace(PlaceRef::alloca_unsized_indirect(&mut start_bx, layout))
                 } else {
                     LocalRef::Place(PlaceRef::alloca(&mut start_bx, layout))
