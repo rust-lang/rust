@@ -1,7 +1,7 @@
 //@ check-pass
 //@ edition:2021
 //@ aux-build:non_local_macro.rs
-//@ rustc-env:CARGO=/usr/bin/cargo
+//@ rustc-env:CARGO_CRATE_NAME=non_local_def
 
 #![feature(inline_const)]
 #![warn(non_local_definitions)]

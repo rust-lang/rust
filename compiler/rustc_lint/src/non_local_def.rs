@@ -83,7 +83,7 @@ impl<'tcx> LateLintPass<'tcx> for NonLocalDefinitions {
             if let Some(def_id) = oexpn.macro_def_id
                 && let ExpnKind::Macro(macro_kind, macro_name) = oexpn.kind
                 && def_id.krate != LOCAL_CRATE
-                && std::env::var_os("CARGO").is_some()
+                && rustc_session::utils::was_invoked_from_cargo()
             {
                 Some(NonLocalDefinitionsCargoUpdateNote {
                     macro_kind: macro_kind.descr(),
