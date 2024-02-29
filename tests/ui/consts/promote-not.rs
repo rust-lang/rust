@@ -3,6 +3,7 @@
 #![allow(unconditional_panic)]
 
 use std::cell::Cell;
+use std::mem::ManuallyDrop;
 
 // We do not promote mutable references.
 static mut TEST1: Option<&mut [i32]> = Some(&mut [1, 2, 3]); //~ ERROR temporary value dropped while borrowed
@@ -69,4 +70,12 @@ fn main() {
     let _val: &'static _ = &[&TEST_DROP; 1];
     //~^ ERROR temporary value dropped while borrowed
     //~| ERROR temporary value dropped while borrowed
+
+    // Make sure there is no value-based reasoning for unions.
+    union UnionWithCell {
+        f1: i32,
+        f2: ManuallyDrop<Cell<i32>>,
+    }
+    let x: &'static _ = &UnionWithCell { f1: 0 };
+    //~^ ERROR temporary value dropped while borrowed
 }
