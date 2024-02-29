@@ -9,7 +9,7 @@ use rustc_parse::validate_attr;
 use rustc_session as session;
 use rustc_session::config::{self, Cfg, CrateType, OutFileName, OutputFilenames, OutputTypes};
 use rustc_session::filesearch::sysroot_candidates;
-use rustc_session::lint::{self, BuiltinLintDiagnostics, LintBuffer};
+use rustc_session::lint::{self, BuiltinLintDiag, LintBuffer};
 use rustc_session::{filesearch, output, Session};
 use rustc_span::edit_distance::find_best_match_for_name;
 use rustc_span::edition::Edition;
@@ -345,7 +345,7 @@ pub(crate) fn check_attr_crate_type(
                             ast::CRATE_NODE_ID,
                             span,
                             "invalid `crate_type` value",
-                            BuiltinLintDiagnostics::UnknownCrateTypes(
+                            BuiltinLintDiag::UnknownCrateTypes(
                                 span,
                                 "did you mean".to_string(),
                                 format!("\"{candidate}\""),

@@ -21,7 +21,7 @@ use rustc_feature::Features;
 use rustc_lint_defs::builtin::{
     RUST_2021_INCOMPATIBLE_OR_PATTERNS, SEMICOLON_IN_EXPRESSIONS_FROM_MACROS,
 };
-use rustc_lint_defs::BuiltinLintDiagnostics;
+use rustc_lint_defs::BuiltinLintDiag;
 use rustc_parse::parser::{Parser, Recovery};
 use rustc_session::parse::ParseSess;
 use rustc_session::Session;
@@ -83,7 +83,7 @@ impl<'a> ParserAnyMacro<'a> {
                     parser.token.span,
                     lint_node_id,
                     "trailing semicolon in macro used in expression position",
-                    BuiltinLintDiagnostics::TrailingMacro(is_trailing_mac, macro_ident),
+                    BuiltinLintDiag::TrailingMacro(is_trailing_mac, macro_ident),
                 );
             }
             parser.bump();
@@ -1154,7 +1154,7 @@ fn check_matcher_core<'tt>(
                             span,
                             ast::CRATE_NODE_ID,
                             "the meaning of the `pat` fragment specifier is changing in Rust 2021, which may affect this macro",
-                            BuiltinLintDiagnostics::OrPatternsBackCompat(span, suggestion),
+                            BuiltinLintDiag::OrPatternsBackCompat(span, suggestion),
                         );
                     }
                     match is_in_follow(next_token, kind) {

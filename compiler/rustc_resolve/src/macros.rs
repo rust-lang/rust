@@ -27,7 +27,7 @@ use rustc_middle::ty::{TyCtxt, Visibility};
 use rustc_session::lint::builtin::UNKNOWN_OR_MALFORMED_DIAGNOSTIC_ATTRIBUTES;
 use rustc_session::lint::builtin::{LEGACY_DERIVE_HELPERS, SOFT_UNSTABLE};
 use rustc_session::lint::builtin::{UNUSED_MACROS, UNUSED_MACRO_RULES};
-use rustc_session::lint::BuiltinLintDiagnostics;
+use rustc_session::lint::BuiltinLintDiag;
 use rustc_session::parse::feature_err;
 use rustc_span::edition::Edition;
 use rustc_span::hygiene::{self, ExpnData, ExpnKind, LocalExpnId};
@@ -810,7 +810,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                             node_id,
                             ident.span,
                             "derive helper attribute is used before it is introduced",
-                            BuiltinLintDiagnostics::LegacyDeriveHelpers(binding.span),
+                            BuiltinLintDiag::LegacyDeriveHelpers(binding.span),
                         );
                     }
                 }

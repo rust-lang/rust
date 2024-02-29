@@ -7,7 +7,7 @@ use crate::errors::{
     SuggestUpgradeCompiler,
 };
 use crate::lint::{
-    builtin::UNSTABLE_SYNTAX_PRE_EXPANSION, BufferedEarlyLint, BuiltinLintDiagnostics, Lint, LintId,
+    builtin::UNSTABLE_SYNTAX_PRE_EXPANSION, BufferedEarlyLint, BuiltinLintDiag, Lint, LintId,
 };
 use crate::Session;
 use rustc_ast::node_id::NodeId;
@@ -298,7 +298,7 @@ impl ParseSess {
                 node_id,
                 msg: msg.into(),
                 lint_id: LintId::of(lint),
-                diagnostic: BuiltinLintDiagnostics::Normal,
+                diagnostic: BuiltinLintDiag::Normal,
             });
         });
     }
@@ -309,7 +309,7 @@ impl ParseSess {
         span: impl Into<MultiSpan>,
         node_id: NodeId,
         msg: impl Into<DiagMessage>,
-        diagnostic: BuiltinLintDiagnostics,
+        diagnostic: BuiltinLintDiag,
     ) {
         self.buffered_lints.with_lock(|buffered_lints| {
             buffered_lints.push(BufferedEarlyLint {

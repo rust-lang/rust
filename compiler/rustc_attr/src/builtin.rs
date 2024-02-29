@@ -8,7 +8,7 @@ use rustc_feature::{find_gated_cfg, is_builtin_attr_name, Features, GatedCfg};
 use rustc_macros::HashStable_Generic;
 use rustc_session::config::ExpectedValues;
 use rustc_session::lint::builtin::UNEXPECTED_CFGS;
-use rustc_session::lint::BuiltinLintDiagnostics;
+use rustc_session::lint::BuiltinLintDiag;
 use rustc_session::parse::feature_err;
 use rustc_session::{RustcVersion, Session};
 use rustc_span::hygiene::Transparency;
@@ -535,7 +535,7 @@ pub fn cfg_matches(
                     } else {
                         format!("unexpected `cfg` condition value: (none)")
                     },
-                    BuiltinLintDiagnostics::UnexpectedCfgValue(
+                    BuiltinLintDiag::UnexpectedCfgValue(
                         (cfg.name, cfg.name_span),
                         cfg.value.map(|v| (v, cfg.value_span.unwrap())),
                     ),
@@ -547,7 +547,7 @@ pub fn cfg_matches(
                     cfg.span,
                     lint_node_id,
                     format!("unexpected `cfg` condition name: `{}`", cfg.name),
-                    BuiltinLintDiagnostics::UnexpectedCfgName(
+                    BuiltinLintDiag::UnexpectedCfgName(
                         (cfg.name, cfg.name_span),
                         cfg.value.map(|v| (v, cfg.value_span.unwrap())),
                     ),

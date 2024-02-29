@@ -19,7 +19,7 @@ use rustc_middle::ty::TyCtxt;
 use rustc_session::lint::builtin::ABSOLUTE_PATHS_NOT_STARTING_WITH_CRATE;
 use rustc_session::lint::builtin::AMBIGUOUS_GLOB_IMPORTS;
 use rustc_session::lint::builtin::MACRO_EXPANDED_MACRO_EXPORTS_ACCESSED_BY_ABSOLUTE_PATHS;
-use rustc_session::lint::{AmbiguityErrorDiag, BuiltinLintDiagnostics};
+use rustc_session::lint::{AmbiguityErrorDiag, BuiltinLintDiag};
 use rustc_session::Session;
 use rustc_span::edit_distance::find_best_match_for_name;
 use rustc_span::edition::Edition;
@@ -138,7 +138,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                 CRATE_NODE_ID,
                 span_use,
                 msg,
-                BuiltinLintDiagnostics::MacroExpandedMacroExportsAccessedByAbsolutePaths(span_def),
+                BuiltinLintDiag::MacroExpandedMacroExportsAccessedByAbsolutePaths(span_def),
             );
         }
 
@@ -153,7 +153,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                     import.root_id,
                     ambiguity_error.ident.span,
                     diag.msg.to_string(),
-                    BuiltinLintDiagnostics::AmbiguousGlobImports { diag },
+                    BuiltinLintDiag::AmbiguousGlobImports { diag },
                 );
             } else {
                 let mut err = struct_span_code_err!(self.dcx(), diag.span, E0659, "{}", &diag.msg);
@@ -525,7 +525,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             }
         }
 
-        let diag = BuiltinLintDiagnostics::AbsPathWithModule(root_span);
+        let diag = BuiltinLintDiag::AbsPathWithModule(root_span);
         self.lint_buffer.buffer_lint_with_diagnostic(
             ABSOLUTE_PATHS_NOT_STARTING_WITH_CRATE,
             node_id,

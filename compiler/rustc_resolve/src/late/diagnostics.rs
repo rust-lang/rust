@@ -2658,7 +2658,7 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
                         param.id,
                         param.ident.span,
                         format!("lifetime parameter `{}` only used once", param.ident),
-                        lint::BuiltinLintDiagnostics::SingleUseLifetime {
+                        lint::BuiltinLintDiag::SingleUseLifetime {
                             param_span: param.ident.span,
                             use_span: Some((use_span, elidable)),
                             deletion_span,
@@ -2676,7 +2676,7 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
                             param.id,
                             param.ident.span,
                             format!("lifetime parameter `{}` never used", param.ident),
-                            lint::BuiltinLintDiagnostics::SingleUseLifetime {
+                            lint::BuiltinLintDiag::SingleUseLifetime {
                                 param_span: param.ident.span,
                                 use_span: None,
                                 deletion_span,

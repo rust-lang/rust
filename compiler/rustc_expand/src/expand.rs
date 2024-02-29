@@ -30,7 +30,7 @@ use rustc_parse::parser::{
 };
 use rustc_parse::validate_attr;
 use rustc_session::lint::builtin::{UNUSED_ATTRIBUTES, UNUSED_DOC_COMMENTS};
-use rustc_session::lint::BuiltinLintDiagnostics;
+use rustc_session::lint::BuiltinLintDiag;
 use rustc_session::parse::feature_err;
 use rustc_session::{Limit, Session};
 use rustc_span::symbol::{sym, Ident};
@@ -1711,7 +1711,7 @@ impl<'a, 'b> InvocationCollector<'a, 'b> {
                     current_span,
                     self.cx.current_expansion.lint_node_id,
                     "unused doc comment",
-                    BuiltinLintDiagnostics::UnusedDocComment(attr.span),
+                    BuiltinLintDiag::UnusedDocComment(attr.span),
                 );
             } else if rustc_attr::is_builtin_attr(attr) {
                 let attr_name = attr.ident().unwrap().name;
@@ -1723,7 +1723,7 @@ impl<'a, 'b> InvocationCollector<'a, 'b> {
                         attr.span,
                         self.cx.current_expansion.lint_node_id,
                         format!("unused attribute `{attr_name}`"),
-                        BuiltinLintDiagnostics::UnusedBuiltinAttribute {
+                        BuiltinLintDiag::UnusedBuiltinAttribute {
                             attr_name,
                             macro_name: pprust::path_to_string(&call.path),
                             invoc_span: call.path.span,

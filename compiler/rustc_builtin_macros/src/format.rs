@@ -16,7 +16,7 @@ use rustc_span::symbol::{Ident, Symbol};
 use rustc_span::{BytePos, ErrorGuaranteed, InnerSpan, Span};
 
 use rustc_lint_defs::builtin::NAMED_ARGUMENTS_USED_POSITIONALLY;
-use rustc_lint_defs::{BufferedEarlyLint, BuiltinLintDiagnostics, LintId};
+use rustc_lint_defs::{BufferedEarlyLint, BuiltinLintDiag, LintId};
 
 // The format_args!() macro is expanded in three steps:
 //  1. First, `parse_args` will parse the `(literal, arg, arg, name=arg, name=arg)` syntax,
@@ -553,7 +553,7 @@ fn make_format_args(
                 msg: format!("named argument `{}` is not used by name", arg_name.name).into(),
                 node_id: rustc_ast::CRATE_NODE_ID,
                 lint_id: LintId::of(NAMED_ARGUMENTS_USED_POSITIONALLY),
-                diagnostic: BuiltinLintDiagnostics::NamedArgumentUsedPositionally {
+                diagnostic: BuiltinLintDiag::NamedArgumentUsedPositionally {
                     position_sp_to_replace,
                     position_sp_for_msg,
                     named_arg_sp: arg_name.span,

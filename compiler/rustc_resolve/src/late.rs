@@ -1660,7 +1660,7 @@ impl<'a: 'ast, 'b, 'ast, 'tcx> LateResolutionVisitor<'a, 'b, 'ast, 'tcx> {
                         node_id,
                         lifetime.ident.span,
                         msg,
-                        lint::BuiltinLintDiagnostics::AssociatedConstElidedLifetime {
+                        lint::BuiltinLintDiag::AssociatedConstElidedLifetime {
                             elided,
                             span: lifetime.ident.span,
                         },
@@ -1950,7 +1950,7 @@ impl<'a: 'ast, 'b, 'ast, 'tcx> LateResolutionVisitor<'a, 'b, 'ast, 'tcx> {
                     segment_id,
                     elided_lifetime_span,
                     "hidden lifetime parameters in types are deprecated",
-                    lint::BuiltinLintDiagnostics::ElidedLifetimesInPaths(
+                    lint::BuiltinLintDiag::ElidedLifetimesInPaths(
                         expected_lifetimes,
                         path_span,
                         !segment.has_generic_args,
@@ -4176,7 +4176,7 @@ impl<'a: 'ast, 'b, 'ast, 'tcx> LateResolutionVisitor<'a, 'b, 'ast, 'tcx> {
                     finalize.node_id,
                     finalize.path_span,
                     "unnecessary qualification",
-                    lint::BuiltinLintDiagnostics::UnusedQualifications {
+                    lint::BuiltinLintDiag::UnusedQualifications {
                         removal_span: finalize.path_span.until(unqualified.ident.span),
                     },
                 );

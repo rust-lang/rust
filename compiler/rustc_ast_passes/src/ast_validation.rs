@@ -18,7 +18,7 @@ use rustc_parse::validate_attr;
 use rustc_session::lint::builtin::{
     DEPRECATED_WHERE_CLAUSE_LOCATION, MISSING_ABI, PATTERNS_IN_FNS_WITHOUT_BODY,
 };
-use rustc_session::lint::{BuiltinLintDiagnostics, LintBuffer};
+use rustc_session::lint::{BuiltinLintDiag, LintBuffer};
 use rustc_session::Session;
 use rustc_span::symbol::{kw, sym, Ident};
 use rustc_span::Span;
@@ -750,7 +750,7 @@ impl<'a> AstValidator<'a> {
                 id,
                 span,
                 fluent::ast_passes_extern_without_abi,
-                BuiltinLintDiagnostics::MissingAbi(span, abi::Abi::FALLBACK),
+                BuiltinLintDiag::MissingAbi(span, abi::Abi::FALLBACK),
             )
         }
     }
@@ -1408,7 +1408,7 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                             FnCtxt::Foreign => fluent::ast_passes_pattern_in_foreign,
                             _ => fluent::ast_passes_pattern_in_bodiless,
                         };
-                        let diag = BuiltinLintDiagnostics::PatternsInFnsWithoutBody(span, ident);
+                        let diag = BuiltinLintDiag::PatternsInFnsWithoutBody(span, ident);
                         self.lint_buffer.buffer_lint_with_diagnostic(
                             PATTERNS_IN_FNS_WITHOUT_BODY,
                             id,
@@ -1491,7 +1491,7 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                 item.id,
                 err.span,
                 fluent::ast_passes_deprecated_where_clause_location,
-                BuiltinLintDiagnostics::DeprecatedWhereclauseLocation(sugg),
+                BuiltinLintDiag::DeprecatedWhereclauseLocation(sugg),
             );
         }
 

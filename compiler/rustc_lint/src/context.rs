@@ -31,7 +31,7 @@ use rustc_middle::middle::privacy::EffectiveVisibilities;
 use rustc_middle::ty::layout::{LayoutError, LayoutOfHelpers, TyAndLayout};
 use rustc_middle::ty::print::{with_no_trimmed_paths, PrintError};
 use rustc_middle::ty::{self, print::Printer, GenericArg, RegisteredTools, Ty, TyCtxt};
-use rustc_session::lint::{BuiltinLintDiagnostics, LintExpectationId};
+use rustc_session::lint::{BuiltinLintDiag, LintExpectationId};
 use rustc_session::lint::{FutureIncompatibleInfo, Level, Lint, LintBuffer, LintId};
 use rustc_session::{LintStoreMarker, Session};
 use rustc_span::edit_distance::find_best_match_for_names;
@@ -538,7 +538,7 @@ pub trait LintContext {
         span: Option<impl Into<MultiSpan>>,
         msg: impl Into<DiagMessage>,
         decorate: impl for<'a, 'b> FnOnce(&'b mut Diag<'a, ()>),
-        diagnostic: BuiltinLintDiagnostics,
+        diagnostic: BuiltinLintDiag,
     ) {
         // We first generate a blank diagnostic.
         self.opt_span_lint(lint, span, msg, |db| {

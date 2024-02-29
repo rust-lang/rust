@@ -569,7 +569,7 @@ pub struct AmbiguityErrorDiag {
 // This could be a closure, but then implementing derive trait
 // becomes hacky (and it gets allocated).
 #[derive(Debug)]
-pub enum BuiltinLintDiagnostics {
+pub enum BuiltinLintDiag {
     Normal,
     AbsPathWithModule(Span),
     ProcMacroDeriveResolutionFallback(Span),
@@ -684,7 +684,7 @@ pub struct BufferedEarlyLint {
     pub lint_id: LintId,
 
     /// Customization of the `Diag<'_>` for the lint.
-    pub diagnostic: BuiltinLintDiagnostics,
+    pub diagnostic: BuiltinLintDiag,
 }
 
 #[derive(Default, Debug)]
@@ -704,7 +704,7 @@ impl LintBuffer {
         node_id: NodeId,
         span: MultiSpan,
         msg: impl Into<DiagMessage>,
-        diagnostic: BuiltinLintDiagnostics,
+        diagnostic: BuiltinLintDiag,
     ) {
         let lint_id = LintId::of(lint);
         let msg = msg.into();
@@ -723,7 +723,7 @@ impl LintBuffer {
         sp: impl Into<MultiSpan>,
         msg: impl Into<DiagMessage>,
     ) {
-        self.add_lint(lint, id, sp.into(), msg, BuiltinLintDiagnostics::Normal)
+        self.add_lint(lint, id, sp.into(), msg, BuiltinLintDiag::Normal)
     }
 
     pub fn buffer_lint_with_diagnostic(
@@ -732,7 +732,7 @@ impl LintBuffer {
         id: NodeId,
         sp: impl Into<MultiSpan>,
         msg: impl Into<DiagMessage>,
-        diagnostic: BuiltinLintDiagnostics,
+        diagnostic: BuiltinLintDiag,
     ) {
         self.add_lint(lint, id, sp.into(), msg, diagnostic)
     }
