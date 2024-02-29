@@ -2088,7 +2088,7 @@ impl From<hir_ty::Mutability> for Access {
     }
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, PartialEq, Eq, Hash, Debug)]
 pub struct Param {
     func: Function,
     /// The index in parameter list, including self parameter.
