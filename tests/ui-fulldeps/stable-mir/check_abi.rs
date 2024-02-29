@@ -19,8 +19,12 @@ extern crate rustc_interface;
 extern crate stable_mir;
 
 use rustc_smir::rustc_internal;
-use stable_mir::abi::{ArgAbi, CallConvention, FieldsShape, PassMode, VariantsShape};
+use stable_mir::abi::{
+    ArgAbi, CallConvention, FieldsShape, IntegerLength, PassMode, Primitive, Scalar, ValueAbi,
+    VariantsShape,
+};
 use stable_mir::mir::mono::Instance;
+use stable_mir::target::MachineInfo;
 use stable_mir::{CrateDef, CrateItem, CrateItems, ItemKind};
 use std::assert_matches::assert_matches;
 use std::convert::TryFrom;
@@ -39,11 +43,12 @@ fn test_stable_mir() -> ControlFlow<()> {
     let instance = Instance::try_from(target_fn).unwrap();
     let fn_abi = instance.fn_abi().unwrap();
     assert_eq!(fn_abi.conv, CallConvention::Rust);
-    assert_eq!(fn_abi.args.len(), 2);
+    assert_eq!(fn_abi.args.len(), 3);
 
     check_ignore(&fn_abi.args[0]);
     check_primitive(&fn_abi.args[1]);
-    check_result(fn_abi.ret);
+    check_niche(&fn_abi.args[2]);
+    check_result(&fn_abi.ret);
 
     // Test variadic function.
     let variadic_fn = *get_item(&items, (ItemKind::Fn, "variadic_fn")).unwrap();
@@ -85,13 +90,32 @@ fn check_primitive(abi: &ArgAbi) {
 }
 
 /// Check the return value: `Result<usize, &str>`.
-fn check_result(abi: ArgAbi) {
+fn check_result(abi: &ArgAbi) {
     assert!(abi.ty.kind().is_enum());
     assert_matches!(abi.mode, PassMode::Indirect { .. });
     let layout = abi.layout.shape();
     assert!(layout.is_sized());
     assert_matches!(layout.fields, FieldsShape::Arbitrary { .. });
     assert_matches!(layout.variants, VariantsShape::Multiple { .. })
+}
+
+/// Check the niche information about: `NonZeroU8`
+fn check_niche(abi: &ArgAbi) {
+    assert!(abi.ty.kind().is_struct());
+    assert_matches!(abi.mode, PassMode::Direct { .. });
+    let layout = abi.layout.shape();
+    assert!(layout.is_sized());
+    assert_eq!(layout.size.bytes(), 1);
+
+    let ValueAbi::Scalar(scalar) = layout.abi else { unreachable!() };
+    assert!(scalar.has_niche(&MachineInfo::target()), "Opps: {:?}", scalar);
+
+    let Scalar::Initialized { value, valid_range } = scalar else { unreachable!() };
+    assert_matches!(value, Primitive::Int { length: IntegerLength::I8, signed: false });
+    assert_eq!(valid_range.start, 1);
+    assert_eq!(valid_range.end, u8::MAX.into());
+    assert!(!valid_range.contains(0));
+    assert!(!valid_range.wraps_around());
 }
 
 fn get_item<'a>(
@@ -126,11 +150,16 @@ fn generate_input(path: &str) -> std::io::Result<()> {
         #![feature(c_variadic)]
         #![allow(unused_variables)]
 
-        pub fn fn_abi(ignore: [u8; 0], primitive: char) -> Result<usize, &'static str> {{
-            // We only care about the signature.
-            todo!()
-        }}
+        use std::num::NonZeroU8;
 
+        pub fn fn_abi(
+            ignore: [u8; 0],
+            primitive: char,
+            niche: NonZeroU8,
+        ) -> Result<usize, &'static str> {{
+                // We only care about the signature.
+                todo!()
+        }}
 
         pub unsafe extern "C" fn variadic_fn(n: usize, mut args: ...) -> usize {{
             0
