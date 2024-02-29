@@ -1,6 +1,7 @@
 use super::*;
 
 use crate::DiagCtxt;
+use rustc_span::source_map::FilePathMapping;
 use rustc_span::BytePos;
 
 use std::str;
