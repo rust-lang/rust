@@ -420,7 +420,6 @@ pub enum ValidationErrorKind<'tcx> {
     PartialPointer,
     PtrToUninhabited { ptr_kind: PointerKind, ty: Ty<'tcx> },
     PtrToStatic { ptr_kind: PointerKind },
-    MutableRefInConstOrStatic,
     ConstRefToMutable,
     ConstRefToExtern,
     MutableRefToImmutable,
