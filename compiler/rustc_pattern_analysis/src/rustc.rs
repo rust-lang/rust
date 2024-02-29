@@ -445,6 +445,7 @@ impl<'p, 'tcx: 'p> RustcMatchCheckCtxt<'p, 'tcx> {
         let cx = self;
         let ty = cx.reveal_opaque_ty(pat.ty);
         let ctor;
+        let arity;
         let mut fields: Vec<_>;
         match &pat.kind {
             PatKind::AscribeUserType { subpattern, .. }
@@ -453,9 +454,11 @@ impl<'p, 'tcx: 'p> RustcMatchCheckCtxt<'p, 'tcx> {
             PatKind::Binding { subpattern: None, .. } | PatKind::Wild => {
                 ctor = Wildcard;
                 fields = vec![];
+                arity = 0;
             }
             PatKind::Deref { subpattern } => {
                 fields = vec![self.lower_pat(subpattern)];
+                arity = 1;
                 ctor = match ty.kind() {
                     // This is a box pattern.
                     ty::Adt(adt, ..) if adt.is_box() => Struct,
@@ -467,6 +470,7 @@ impl<'p, 'tcx: 'p> RustcMatchCheckCtxt<'p, 'tcx> {
                 match ty.kind() {
                     ty::Tuple(fs) => {
                         ctor = Struct;
+                        arity = fs.len();
                         fields = fs
                             .iter()
                             .map(|ty| cx.reveal_opaque_ty(ty))
@@ -497,6 +501,7 @@ impl<'p, 'tcx: 'p> RustcMatchCheckCtxt<'p, 'tcx> {
                         };
                         ctor = Struct;
                         fields = vec![pat];
+                        arity = 1;
                     }
                     ty::Adt(adt, _) => {
                         ctor = match pat.kind {
@@ -507,6 +512,7 @@ impl<'p, 'tcx: 'p> RustcMatchCheckCtxt<'p, 'tcx> {
                         };
                         let variant =
                             &adt.variant(RustcMatchCheckCtxt::variant_index_for_adt(&ctor, *adt));
+                        arity = variant.fields.len();
                         fields = cx
                             .variant_sub_tys(ty, variant)
                             .map(|(_, ty)| DeconstructedPat::wildcard(ty))
@@ -526,6 +532,7 @@ impl<'p, 'tcx: 'p> RustcMatchCheckCtxt<'p, 'tcx> {
                             None => Opaque(OpaqueId::new()),
                         };
                         fields = vec![];
+                        arity = 0;
                     }
                     ty::Char | ty::Int(_) | ty::Uint(_) => {
                         ctor = match value.try_eval_bits(cx.tcx, cx.param_env) {
@@ -542,6 +549,7 @@ impl<'p, 'tcx: 'p> RustcMatchCheckCtxt<'p, 'tcx> {
                             None => Opaque(OpaqueId::new()),
                         };
                         fields = vec![];
+                        arity = 0;
                     }
                     ty::Float(ty::FloatTy::F32) => {
                         ctor = match value.try_eval_bits(cx.tcx, cx.param_env) {
@@ -553,6 +561,7 @@ impl<'p, 'tcx: 'p> RustcMatchCheckCtxt<'p, 'tcx> {
                             None => Opaque(OpaqueId::new()),
                         };
                         fields = vec![];
+                        arity = 0;
                     }
                     ty::Float(ty::FloatTy::F64) => {
                         ctor = match value.try_eval_bits(cx.tcx, cx.param_env) {
@@ -564,6 +573,7 @@ impl<'p, 'tcx: 'p> RustcMatchCheckCtxt<'p, 'tcx> {
                             None => Opaque(OpaqueId::new()),
                         };
                         fields = vec![];
+                        arity = 0;
                     }
                     ty::Ref(_, t, _) if t.is_str() => {
                         // We want a `&str` constant to behave like a `Deref` pattern, to be compatible
@@ -574,9 +584,10 @@ impl<'p, 'tcx: 'p> RustcMatchCheckCtxt<'p, 'tcx> {
                         // subfields.
                         // Note: `t` is `str`, not `&str`.
                         let ty = self.reveal_opaque_ty(*t);
-                        let subpattern = DeconstructedPat::new(Str(*value), Vec::new(), ty, pat);
+                        let subpattern = DeconstructedPat::new(Str(*value), Vec::new(), 0, ty, pat);
                         ctor = Ref;
-                        fields = vec![subpattern]
+                        fields = vec![subpattern];
+                        arity = 1;
                     }
                     // All constants that can be structurally matched have already been expanded
                     // into the corresponding `Pat`s by `const_to_pat`. Constants that remain are
@@ -584,6 +595,7 @@ impl<'p, 'tcx: 'p> RustcMatchCheckCtxt<'p, 'tcx> {
                     _ => {
                         ctor = Opaque(OpaqueId::new());
                         fields = vec![];
+                        arity = 0;
                     }
                 }
             }
@@ -623,6 +635,7 @@ impl<'p, 'tcx: 'p> RustcMatchCheckCtxt<'p, 'tcx> {
                     _ => bug!("invalid type for range pattern: {}", ty.inner()),
                 };
                 fields = vec![];
+                arity = 0;
             }
             PatKind::Array { prefix, slice, suffix } | PatKind::Slice { prefix, slice, suffix } => {
                 let array_len = match ty.kind() {
@@ -639,11 +652,13 @@ impl<'p, 'tcx: 'p> RustcMatchCheckCtxt<'p, 'tcx> {
                 };
                 ctor = Slice(Slice::new(array_len, kind));
                 fields = prefix.iter().chain(suffix.iter()).map(|p| self.lower_pat(&*p)).collect();
+                arity = kind.arity();
             }
             PatKind::Or { .. } => {
                 ctor = Or;
                 let pats = expand_or_pat(pat);
                 fields = pats.into_iter().map(|p| self.lower_pat(p)).collect();
+                arity = fields.len();
             }
             PatKind::Never => {
                 // A never pattern matches all the values of its type (namely none). Moreover it
@@ -651,13 +666,15 @@ impl<'p, 'tcx: 'p> RustcMatchCheckCtxt<'p, 'tcx> {
                 // `Result<!, !>` which has other constructors. Hence we lower it as a wildcard.
                 ctor = Wildcard;
                 fields = vec![];
+                arity = 0;
             }
             PatKind::Error(_) => {
                 ctor = Opaque(OpaqueId::new());
                 fields = vec![];
+                arity = 0;
             }
         }
-        DeconstructedPat::new(ctor, fields, ty, pat)
+        DeconstructedPat::new(ctor, fields, arity, ty, pat)
     }
 
     /// Convert back to a `thir::PatRangeBoundary` for diagnostic purposes.

@@ -26,6 +26,10 @@ impl PatId {
 pub struct DeconstructedPat<Cx: TypeCx> {
     ctor: Constructor<Cx>,
     fields: Vec<DeconstructedPat<Cx>>,
+    /// The number of fields in this pattern. E.g. if the pattern is `SomeStruct { field12: true, ..
+    /// }` this would be the total number of fields of the struct.
+    /// This is also the same as `self.ctor.arity(self.ty)`.
+    arity: usize,
     ty: Cx::Ty,
     /// Extra data to store in a pattern. `None` if the pattern is a wildcard that does not
     /// correspond to a user-supplied pattern.
@@ -36,16 +40,24 @@ pub struct DeconstructedPat<Cx: TypeCx> {
 
 impl<Cx: TypeCx> DeconstructedPat<Cx> {
     pub fn wildcard(ty: Cx::Ty) -> Self {
-        DeconstructedPat { ctor: Wildcard, fields: Vec::new(), ty, data: None, uid: PatId::new() }
+        DeconstructedPat {
+            ctor: Wildcard,
+            fields: Vec::new(),
+            arity: 0,
+            ty,
+            data: None,
+            uid: PatId::new(),
+        }
     }
 
     pub fn new(
         ctor: Constructor<Cx>,
         fields: Vec<DeconstructedPat<Cx>>,
+        arity: usize,
         ty: Cx::Ty,
         data: Cx::PatData,
     ) -> Self {
-        DeconstructedPat { ctor, fields, ty, data: Some(data), uid: PatId::new() }
+        DeconstructedPat { ctor, fields, arity, ty, data: Some(data), uid: PatId::new() }
     }
 
     pub(crate) fn is_or_pat(&self) -> bool {
