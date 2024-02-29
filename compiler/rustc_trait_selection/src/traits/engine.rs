@@ -107,6 +107,15 @@ impl<'a, 'tcx> ObligationCtxt<'a, 'tcx> {
         self.register_infer_ok_obligations(infer_ok)
     }
 
+    pub fn deeply_normalize<T: TypeFoldable<TyCtxt<'tcx>>>(
+        &self,
+        cause: &ObligationCause<'tcx>,
+        param_env: ty::ParamEnv<'tcx>,
+        value: T,
+    ) -> Result<T, Vec<FulfillmentError<'tcx>>> {
+        self.infcx.at(cause, param_env).deeply_normalize(value, &mut **self.engine.borrow_mut())
+    }
+
     /// Makes `expected <: actual`.
     pub fn eq_exp<T>(
         &self,
