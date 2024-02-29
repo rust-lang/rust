@@ -3347,6 +3347,20 @@ pub enum OwnerNode<'hir> {
 }
 
 impl<'hir> OwnerNode<'hir> {
+    pub fn descr(&self) -> &'static str {
+        match self {
+            OwnerNode::Item(item) => item.kind.descr(),
+            OwnerNode::ForeignItem(foreign_item) => match foreign_item.kind {
+                ForeignItemKind::Fn(_, _, _) => "function",
+                ForeignItemKind::Static(_, _) => "static",
+                ForeignItemKind::Type => "extern type",
+            },
+            OwnerNode::TraitItem(_) => "trait item",
+            OwnerNode::ImplItem(_) => "impl item",
+            OwnerNode::Crate(_) => "crate",
+        }
+    }
+
     pub fn ident(&self) -> Option<Ident> {
         match self {
             OwnerNode::Item(Item { ident, .. })
