@@ -23,9 +23,11 @@ impl<'args> TranslateError<'args> {
     pub fn message(id: &'args Cow<'args, str>, args: &'args FluentArgs<'args>) -> Self {
         Self::One { id, args, kind: TranslateErrorKind::MessageMissing }
     }
+
     pub fn primary(id: &'args Cow<'args, str>, args: &'args FluentArgs<'args>) -> Self {
         Self::One { id, args, kind: TranslateErrorKind::PrimaryBundleMissing }
     }
+
     pub fn attribute(
         id: &'args Cow<'args, str>,
         args: &'args FluentArgs<'args>,
@@ -33,6 +35,7 @@ impl<'args> TranslateError<'args> {
     ) -> Self {
         Self::One { id, args, kind: TranslateErrorKind::AttributeMissing { attr } }
     }
+
     pub fn value(id: &'args Cow<'args, str>, args: &'args FluentArgs<'args>) -> Self {
         Self::One { id, args, kind: TranslateErrorKind::ValueMissing }
     }

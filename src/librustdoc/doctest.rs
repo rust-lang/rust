@@ -1,6 +1,7 @@
 use rustc_ast as ast;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::sync::Lrc;
+use rustc_errors::emitter::stderr_destination;
 use rustc_errors::{ColorConfig, ErrorGuaranteed, FatalError};
 use rustc_hir::def_id::{LocalDefId, CRATE_DEF_ID, LOCAL_CRATE};
 use rustc_hir::{self as hir, intravisit, CRATE_HIR_ID};
@@ -576,14 +577,14 @@ pub(crate) fn make_test(
                 rustc_driver::DEFAULT_LOCALE_RESOURCES.to_vec(),
                 false,
             );
-            supports_color = HumanEmitter::stderr(ColorConfig::Auto, fallback_bundle.clone())
-                .diagnostic_width(Some(80))
-                .supports_color();
+            supports_color =
+                HumanEmitter::new(stderr_destination(ColorConfig::Auto), fallback_bundle.clone())
+                    .supports_color();
 
             let emitter = HumanEmitter::new(Box::new(io::sink()), fallback_bundle);
 
             // FIXME(misdreavus): pass `-Z treat-err-as-bug` to the doctest parser
-            let dcx = DiagCtxt::with_emitter(Box::new(emitter)).disable_warnings();
+            let dcx = DiagCtxt::new(Box::new(emitter)).disable_warnings();
             let sess = ParseSess::with_dcx(dcx, sm);
 
             let mut found_main = false;
@@ -768,7 +769,7 @@ fn check_if_attr_is_complete(source: &str, edition: Edition) -> bool {
 
             let emitter = HumanEmitter::new(Box::new(io::sink()), fallback_bundle);
 
-            let dcx = DiagCtxt::with_emitter(Box::new(emitter)).disable_warnings();
+            let dcx = DiagCtxt::new(Box::new(emitter)).disable_warnings();
             let sess = ParseSess::with_dcx(dcx, sm);
             let mut parser =
                 match maybe_new_parser_from_source_str(&sess, filename, source.to_owned()) {

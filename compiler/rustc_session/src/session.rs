@@ -18,7 +18,7 @@ use rustc_data_structures::sync::{
     AtomicU64, DynSend, DynSync, Lock, Lrc, MappedReadGuard, ReadGuard, RwLock,
 };
 use rustc_errors::annotate_snippet_emitter_writer::AnnotateSnippetEmitter;
-use rustc_errors::emitter::{DynEmitter, HumanEmitter, HumanReadableErrorType};
+use rustc_errors::emitter::{stderr_destination, DynEmitter, HumanEmitter, HumanReadableErrorType};
 use rustc_errors::json::JsonEmitter;
 use rustc_errors::registry::Registry;
 use rustc_errors::{
@@ -28,7 +28,7 @@ use rustc_errors::{
 use rustc_macros::HashStable_Generic;
 pub use rustc_span::def_id::StableCrateId;
 use rustc_span::edition::Edition;
-use rustc_span::source_map::{FileLoader, RealFileLoader, SourceMap};
+use rustc_span::source_map::{FileLoader, FilePathMapping, RealFileLoader, SourceMap};
 use rustc_span::{SourceFileHashAlgorithm, Span, Symbol};
 use rustc_target::asm::InlineAsmArch;
 use rustc_target::spec::{CodeModel, PanicStrategy, RelocModel, RelroLevel};
@@ -39,6 +39,7 @@ use rustc_target::spec::{
 use std::any::Any;
 use std::env;
 use std::fmt;
+use std::io;
 use std::ops::{Div, Mul};
 use std::path::{Path, PathBuf};
 use std::str::FromStr;
@@ -982,7 +983,7 @@ fn default_emitter(
                 );
                 Box::new(emitter.ui_testing(sopts.unstable_opts.ui_testing))
             } else {
-                let emitter = HumanEmitter::stderr(color_config, fallback_bundle)
+                let emitter = HumanEmitter::new(stderr_destination(color_config), fallback_bundle)
                     .fluent_bundle(bundle)
                     .sm(Some(source_map))
                     .short_message(short)
@@ -998,22 +999,23 @@ fn default_emitter(
             }
         }
         config::ErrorOutputType::Json { pretty, json_rendered } => Box::new(
-            JsonEmitter::stderr(
-                Some(registry),
+            JsonEmitter::new(
+                Box::new(io::BufWriter::new(io::stderr())),
                 source_map,
-                bundle,
                 fallback_bundle,
                 pretty,
                 json_rendered,
-                sopts.diagnostic_width,
-                macro_backtrace,
-                track_diagnostics,
-                terminal_url,
             )
+            .registry(Some(registry))
+            .fluent_bundle(bundle)
             .ui_testing(sopts.unstable_opts.ui_testing)
             .ignored_directories_in_source_blocks(
                 sopts.unstable_opts.ignore_directory_in_diagnostics_source_blocks.clone(),
-            ),
+            )
+            .diagnostic_width(sopts.diagnostic_width)
+            .macro_backtrace(macro_backtrace)
+            .track_diagnostics(track_diagnostics)
+            .terminal_url(terminal_url),
         ),
     }
 }
@@ -1080,8 +1082,8 @@ pub fn build_session(
     );
     let emitter = default_emitter(&sopts, registry, source_map.clone(), bundle, fallback_bundle);
 
-    let mut dcx = DiagCtxt::with_emitter(emitter)
-        .with_flags(sopts.unstable_opts.dcx_flags(can_emit_warnings));
+    let mut dcx =
+        DiagCtxt::new(emitter).with_flags(sopts.unstable_opts.dcx_flags(can_emit_warnings));
     if let Some(ice_file) = ice_file {
         dcx = dcx.with_ice_file(ice_file);
     }
@@ -1402,7 +1404,7 @@ pub struct EarlyDiagCtxt {
 impl EarlyDiagCtxt {
     pub fn new(output: ErrorOutputType) -> Self {
         let emitter = mk_emitter(output);
-        Self { dcx: DiagCtxt::with_emitter(emitter) }
+        Self { dcx: DiagCtxt::new(emitter) }
     }
 
     /// Swap out the underlying dcx once we acquire the user's preference on error emission
@@ -1412,7 +1414,7 @@ impl EarlyDiagCtxt {
         self.dcx.abort_if_errors();
 
         let emitter = mk_emitter(output);
-        self.dcx = DiagCtxt::with_emitter(emitter);
+        self.dcx = DiagCtxt::new(emitter);
     }
 
     #[allow(rustc::untranslatable_diagnostic)]
@@ -1473,17 +1475,17 @@ fn mk_emitter(output: ErrorOutputType) -> Box<DynEmitter> {
     let emitter: Box<DynEmitter> = match output {
         config::ErrorOutputType::HumanReadable(kind) => {
             let (short, color_config) = kind.unzip();
-            Box::new(HumanEmitter::stderr(color_config, fallback_bundle).short_message(short))
+            Box::new(
+                HumanEmitter::new(stderr_destination(color_config), fallback_bundle)
+                    .short_message(short),
+            )
         }
-        config::ErrorOutputType::Json { pretty, json_rendered } => Box::new(JsonEmitter::basic(
+        config::ErrorOutputType::Json { pretty, json_rendered } => Box::new(JsonEmitter::new(
+            Box::new(io::BufWriter::new(io::stderr())),
+            Lrc::new(SourceMap::new(FilePathMapping::empty())),
+            fallback_bundle,
             pretty,
             json_rendered,
-            None,
-            fallback_bundle,
-            None,
-            false,
-            false,
-            TerminalUrl::No,
         )),
     };
     emitter

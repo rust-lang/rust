@@ -21,12 +21,11 @@ use crate::{
     FluentBundle, LazyFallbackBundle, Level, MultiSpan, Subdiag, SubstitutionHighlight,
     SuggestionStyle, TerminalUrl,
 };
-use rustc_lint_defs::pluralize;
-
 use derive_setters::Setters;
 use rustc_data_structures::fx::{FxHashMap, FxIndexMap, FxIndexSet};
 use rustc_data_structures::sync::{DynSend, IntoDynSyncSend, Lrc};
 use rustc_error_messages::{FluentArgs, SpanLabel};
+use rustc_lint_defs::pluralize;
 use rustc_span::hygiene::{ExpnKind, MacroKind};
 use std::borrow::Cow;
 use std::cmp::{max, min, Reverse};
@@ -35,7 +34,7 @@ use std::io::prelude::*;
 use std::io::{self, IsTerminal};
 use std::iter;
 use std::path::Path;
-use termcolor::{Ansi, Buffer, BufferWriter, ColorChoice, ColorSpec, StandardStream};
+use termcolor::{Buffer, BufferWriter, ColorChoice, ColorSpec, StandardStream};
 use termcolor::{Color, WriteColor};
 
 /// Default column width, used in tests and when terminal dimensions cannot be determined.
@@ -57,18 +56,6 @@ impl HumanReadableErrorType {
             HumanReadableErrorType::Short(cc) => (true, cc),
             HumanReadableErrorType::AnnotateSnippet(cc) => (false, cc),
         }
-    }
-    pub fn new_emitter(
-        self,
-        mut dst: Box<dyn WriteColor + Send>,
-        fallback_bundle: LazyFallbackBundle,
-    ) -> HumanEmitter {
-        let (short, color_config) = self.unzip();
-        let color = color_config.suggests_using_colors();
-        if !dst.supports_color() && color {
-            dst = Box::new(Ansi::new(dst));
-        }
-        HumanEmitter::new(dst, fallback_bundle).short_message(short)
     }
 }
 
@@ -130,8 +117,8 @@ impl Margin {
     fn was_cut_right(&self, line_len: usize) -> bool {
         let right =
             if self.computed_right == self.span_right || self.computed_right == self.label_right {
-                // Account for the "..." padding given above. Otherwise we end up with code lines that
-                // do fit but end in "..." as if they were trimmed.
+                // Account for the "..." padding given above. Otherwise we end up with code lines
+                // that do fit but end in "..." as if they were trimmed.
                 self.computed_right - 6
             } else {
                 self.computed_right
@@ -628,12 +615,6 @@ impl ColorConfig {
             ColorConfig::Auto => ColorChoice::Never,
         }
     }
-    fn suggests_using_colors(self) -> bool {
-        match self {
-            ColorConfig::Always | ColorConfig::Auto => true,
-            ColorConfig::Never => false,
-        }
-    }
 }
 
 /// Handles the writing of `HumanReadableErrorType::Default` and `HumanReadableErrorType::Short`
@@ -657,19 +638,14 @@ pub struct HumanEmitter {
 }
 
 #[derive(Debug)]
-pub struct FileWithAnnotatedLines {
-    pub file: Lrc<SourceFile>,
-    pub lines: Vec<Line>,
+pub(crate) struct FileWithAnnotatedLines {
+    pub(crate) file: Lrc<SourceFile>,
+    pub(crate) lines: Vec<Line>,
     multiline_depth: usize,
 }
 
 impl HumanEmitter {
-    pub fn stderr(color_config: ColorConfig, fallback_bundle: LazyFallbackBundle) -> HumanEmitter {
-        let dst = from_stderr(color_config);
-        Self::create(dst, fallback_bundle)
-    }
-
-    fn create(dst: Destination, fallback_bundle: LazyFallbackBundle) -> HumanEmitter {
+    pub fn new(dst: Destination, fallback_bundle: LazyFallbackBundle) -> HumanEmitter {
         HumanEmitter {
             dst: IntoDynSyncSend(dst),
             sm: None,
@@ -684,13 +660,6 @@ impl HumanEmitter {
             track_diagnostics: false,
             terminal_url: TerminalUrl::No,
         }
-    }
-
-    pub fn new(
-        dst: Box<dyn WriteColor + Send>,
-        fallback_bundle: LazyFallbackBundle,
-    ) -> HumanEmitter {
-        Self::create(dst, fallback_bundle)
     }
 
     fn maybe_anonymized(&self, line_num: usize) -> Cow<'static, str> {
@@ -724,8 +693,9 @@ impl HumanEmitter {
             .skip(left)
             .take_while(|ch| {
                 // Make sure that the trimming on the right will fall within the terminal width.
-                // FIXME: `unicode_width` sometimes disagrees with terminals on how wide a `char` is.
-                // For now, just accept that sometimes the code line will be longer than desired.
+                // FIXME: `unicode_width` sometimes disagrees with terminals on how wide a `char`
+                // is. For now, just accept that sometimes the code line will be longer than
+                // desired.
                 let next = unicode_width::UnicodeWidthChar::width(*ch).unwrap_or(1);
                 if taken + next > right - left {
                     return false;
@@ -2228,8 +2198,8 @@ impl HumanEmitter {
                 buffer.puts(*row_num - 1, max_line_num_len + 3, &line, Style::NoStyle);
                 *row_num += 1;
             }
-            // If the last line is exactly equal to the line we need to add, we can skip both of them.
-            // This allows us to avoid output like the following:
+            // If the last line is exactly equal to the line we need to add, we can skip both of
+            // them. This allows us to avoid output like the following:
             // 2 - &
             // 2 + if true { true } else { false }
             // 3 - if true { true } else { false }
@@ -2586,6 +2556,7 @@ fn num_overlap(
     let extra = if inclusive { 1 } else { 0 };
     (b_start..b_end + extra).contains(&a_start) || (a_start..a_end + extra).contains(&b_start)
 }
+
 fn overlaps(a1: &Annotation, a2: &Annotation, padding: usize) -> bool {
     num_overlap(
         a1.start_col.display,
@@ -2632,7 +2603,7 @@ fn emit_to_destination(
     Ok(())
 }
 
-pub type Destination = Box<(dyn WriteColor + Send)>;
+pub type Destination = Box<dyn WriteColor + Send>;
 
 struct Buffy {
     buffer_writer: BufferWriter,
@@ -2674,7 +2645,7 @@ impl WriteColor for Buffy {
     }
 }
 
-fn from_stderr(color: ColorConfig) -> Destination {
+pub fn stderr_destination(color: ColorConfig) -> Destination {
     let choice = color.to_color_choice();
     // On Windows we'll be performing global synchronization on the entire
     // system for emitting rustc errors, so there's no need to buffer

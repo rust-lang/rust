@@ -3,7 +3,7 @@ use std::path::Path;
 use std::sync::atomic::{AtomicBool, Ordering};
 
 use rustc_data_structures::sync::{IntoDynSyncSend, Lrc};
-use rustc_errors::emitter::{DynEmitter, Emitter, HumanEmitter};
+use rustc_errors::emitter::{stderr_destination, DynEmitter, Emitter, HumanEmitter};
 use rustc_errors::translation::Translate;
 use rustc_errors::{ColorConfig, Diag, DiagCtxt, DiagInner, Level as DiagnosticLevel};
 use rustc_session::parse::ParseSess as RawParseSess;
@@ -150,9 +150,12 @@ fn default_dcx(
             rustc_driver::DEFAULT_LOCALE_RESOURCES.to_vec(),
             false,
         );
-        Box::new(HumanEmitter::stderr(emit_color, fallback_bundle).sm(Some(source_map.clone())))
+        Box::new(
+            HumanEmitter::new(stderr_destination(emit_color), fallback_bundle)
+                .sm(Some(source_map.clone())),
+        )
     };
-    DiagCtxt::with_emitter(Box::new(SilentOnIgnoredFilesEmitter {
+    DiagCtxt::new(Box::new(SilentOnIgnoredFilesEmitter {
         has_non_ignorable_parser_errors: false,
         source_map,
         emitter,
@@ -229,7 +232,7 @@ impl ParseSess {
     }
 
     pub(crate) fn set_silent_emitter(&mut self) {
-        self.parse_sess.dcx = DiagCtxt::with_emitter(silent_emitter());
+        self.parse_sess.dcx = DiagCtxt::new(silent_emitter());
     }
 
     pub(crate) fn span_to_filename(&self, span: Span) -> FileName {
