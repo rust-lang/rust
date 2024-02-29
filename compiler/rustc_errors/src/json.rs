@@ -279,6 +279,7 @@ struct UnusedExterns<'a> {
 }
 
 impl Diagnostic {
+    /// Converts from `rustc_errors::DiagInner` to `Diagnostic`.
     fn from_errors_diagnostic(diag: crate::DiagInner, je: &JsonEmitter) -> Diagnostic {
         let args = to_fluent_args(diag.args.iter());
         let sugg = diag.suggestions.iter().flatten().map(|sugg| {
