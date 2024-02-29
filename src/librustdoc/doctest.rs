@@ -582,7 +582,7 @@ pub(crate) fn make_test(
             let emitter = HumanEmitter::new(Box::new(io::sink()), fallback_bundle);
 
             // FIXME(misdreavus): pass `-Z treat-err-as-bug` to the doctest parser
-            let dcx = DiagCtxt::with_emitter(Box::new(emitter)).disable_warnings();
+            let dcx = DiagCtxt::new(Box::new(emitter)).disable_warnings();
             let sess = ParseSess::with_dcx(dcx, sm);
 
             let mut found_main = false;
@@ -767,7 +767,7 @@ fn check_if_attr_is_complete(source: &str, edition: Edition) -> bool {
 
             let emitter = HumanEmitter::new(Box::new(io::sink()), fallback_bundle);
 
-            let dcx = DiagCtxt::with_emitter(Box::new(emitter)).disable_warnings();
+            let dcx = DiagCtxt::new(Box::new(emitter)).disable_warnings();
             let sess = ParseSess::with_dcx(dcx, sm);
             let mut parser =
                 match maybe_new_parser_from_source_str(&sess, filename, source.to_owned()) {

@@ -33,7 +33,7 @@ fn create_test_handler() -> (DiagCtxt, Lrc<SourceMap>, Arc<Mutex<Vec<u8>>>) {
     let emitter = HumanEmitter::new(Box::new(Shared { data: output.clone() }), fallback_bundle)
         .sm(Some(source_map.clone()))
         .diagnostic_width(Some(140));
-    let dcx = DiagCtxt::with_emitter(Box::new(emitter));
+    let dcx = DiagCtxt::new(Box::new(emitter));
     (dcx, source_map, output)
 }
 

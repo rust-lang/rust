@@ -601,7 +601,7 @@ impl DiagCtxt {
         self
     }
 
-    pub fn with_emitter(emitter: Box<DynEmitter>) -> Self {
+    pub fn new(emitter: Box<DynEmitter>) -> Self {
         Self {
             inner: Lock::new(DiagCtxtInner {
                 flags: DiagCtxtFlags { can_emit_warnings: true, ..Default::default() },

@@ -1080,8 +1080,8 @@ pub fn build_session(
     );
     let emitter = default_emitter(&sopts, registry, source_map.clone(), bundle, fallback_bundle);
 
-    let mut dcx = DiagCtxt::with_emitter(emitter)
-        .with_flags(sopts.unstable_opts.dcx_flags(can_emit_warnings));
+    let mut dcx =
+        DiagCtxt::new(emitter).with_flags(sopts.unstable_opts.dcx_flags(can_emit_warnings));
     if let Some(ice_file) = ice_file {
         dcx = dcx.with_ice_file(ice_file);
     }
@@ -1402,7 +1402,7 @@ pub struct EarlyDiagCtxt {
 impl EarlyDiagCtxt {
     pub fn new(output: ErrorOutputType) -> Self {
         let emitter = mk_emitter(output);
-        Self { dcx: DiagCtxt::with_emitter(emitter) }
+        Self { dcx: DiagCtxt::new(emitter) }
     }
 
     /// Swap out the underlying dcx once we acquire the user's preference on error emission
@@ -1412,7 +1412,7 @@ impl EarlyDiagCtxt {
         self.dcx.abort_if_errors();
 
         let emitter = mk_emitter(output);
-        self.dcx = DiagCtxt::with_emitter(emitter);
+        self.dcx = DiagCtxt::new(emitter);
     }
 
     #[allow(rustc::untranslatable_diagnostic)]

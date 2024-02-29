@@ -239,7 +239,7 @@ impl ParseSess {
         let sm = Lrc::new(SourceMap::new(file_path_mapping));
         let emitter =
             Box::new(HumanEmitter::stderr(ColorConfig::Auto, fallback_bundle).sm(Some(sm.clone())));
-        let dcx = DiagCtxt::with_emitter(emitter);
+        let dcx = DiagCtxt::new(emitter);
         ParseSess::with_dcx(dcx, sm)
     }
 
@@ -269,9 +269,9 @@ impl ParseSess {
         let fallback_bundle = fallback_fluent_bundle(Vec::new(), false);
         let sm = Lrc::new(SourceMap::new(FilePathMapping::empty()));
         let emitter = Box::new(HumanEmitter::stderr(ColorConfig::Auto, fallback_bundle));
-        let fatal_dcx = DiagCtxt::with_emitter(emitter);
-        let dcx = DiagCtxt::with_emitter(Box::new(SilentEmitter { fatal_dcx, fatal_note }))
-            .disable_warnings();
+        let fatal_dcx = DiagCtxt::new(emitter);
+        let dcx =
+            DiagCtxt::new(Box::new(SilentEmitter { fatal_dcx, fatal_note })).disable_warnings();
         ParseSess::with_dcx(dcx, sm)
     }
 
