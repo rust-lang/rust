@@ -92,6 +92,7 @@ const EXCEPTIONS: ExceptionList = &[
     ("ryu", "Apache-2.0 OR BSL-1.0"), // BSL is not acceptble, but we use it under Apache-2.0                       // cargo/... (because of serde)
     ("self_cell", "Apache-2.0"),                             // rustc (fluent translations)
     ("snap", "BSD-3-Clause"),                                // rustc
+    ("wasm-encoder", "Apache-2.0 WITH LLVM-exception"),      // rustc
     ("wasmparser", "Apache-2.0 WITH LLVM-exception"),        // rustc
     // tidy-alphabetical-end
 ];
@@ -267,6 +268,7 @@ const PERMITTED_RUSTC_DEPENDENCIES: &[&str] = &[
     "jemalloc-sys",
     "jobserver",
     "lazy_static",
+    "leb128",
     "libc",
     "libloading",
     "linux-raw-sys",
@@ -380,6 +382,7 @@ const PERMITTED_RUSTC_DEPENDENCIES: &[&str] = &[
     "valuable",
     "version_check",
     "wasi",
+    "wasm-encoder",
     "wasmparser",
     "winapi",
     "winapi-i686-pc-windows-gnu",

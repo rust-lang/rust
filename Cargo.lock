@@ -3646,6 +3646,7 @@ dependencies = [
  "thin-vec",
  "thorin-dwp",
  "tracing",
+ "wasm-encoder",
  "windows",
 ]
 
@@ -6141,6 +6142,15 @@ name = "wasm-bindgen-shared"
 version = "0.2.91"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "4f186bd2dcf04330886ce82d6f33dd75a7bfcf69ecf5763b89fcde53b6ac9838"
+
+[[package]]
+name = "wasm-encoder"
+version = "0.200.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b9e3fb0c8fbddd78aa6095b850dfeedbc7506cf5f81e633f69cf8f2333ab84b9"
+dependencies = [
+ "leb128",
+]
 
 [[package]]
 name = "wasmparser"
