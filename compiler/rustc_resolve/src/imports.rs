@@ -1,6 +1,6 @@
 //! A bunch of methods and structures more or less related to resolving imports.
 
-use crate::diagnostics::{import_candidates, DiagnosticMode, Suggestion};
+use crate::diagnostics::{import_candidates, DiagMode, Suggestion};
 use crate::errors::{
     CannotBeReexportedCratePublic, CannotBeReexportedCratePublicNS, CannotBeReexportedPrivate,
     CannotBeReexportedPrivateNS, CannotDetermineImportResolution, CannotGlobImportAllCrates,
@@ -716,7 +716,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                         &mut diag,
                         Some(err.span),
                         candidates,
-                        DiagnosticMode::Import,
+                        DiagMode::Import,
                         (source != target)
                             .then(|| format!(" as {target}"))
                             .as_deref()
@@ -728,7 +728,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                             &mut diag,
                             None,
                             candidates,
-                            DiagnosticMode::Normal,
+                            DiagMode::Normal,
                             (source != target)
                                 .then(|| format!(" as {target}"))
                                 .as_deref()
