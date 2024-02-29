@@ -618,7 +618,7 @@ pub(crate) struct TomlConfig {
 #[derive(Deserialize, Default)]
 pub(crate) struct ChangeIdWrapper {
     #[serde(alias = "change-id")]
-    inner: Option<usize>,
+    pub(crate) inner: Option<usize>,
 }
 
 /// Describes how to handle conflicts in merging two [`TomlConfig`]
