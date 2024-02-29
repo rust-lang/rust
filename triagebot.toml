@@ -660,6 +660,7 @@ compiler-team-contributors = [
     "@TaKO8Ki",
     "@nnethercote",
     "@fmease",
+    "@fee1-dead",
 ]
 compiler = [
     "compiler-team",
