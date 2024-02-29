@@ -42,7 +42,6 @@
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
-use core::char::MAX_LEN_UTF8;
 use core::error::Error;
 use core::fmt;
 use core::hash;
