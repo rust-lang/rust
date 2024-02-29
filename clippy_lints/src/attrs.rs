@@ -485,6 +485,33 @@ declare_clippy_lint! {
     "usage of `cfg_attr(clippy, allow(clippy::lint))` instead of `allow(clippy::lint)`"
 }
 
+declare_clippy_lint! {
+    /// ### What it does
+    /// Checks that an item has only one kind of attributes.
+    ///
+    /// ### Why is this bad?
+    /// Having both kinds of attributes makes it more complicated to read code.
+    ///
+    /// ### Example
+    /// ```no_run
+    /// #[cfg(linux)]
+    /// pub fn foo() {
+    ///     #![cfg(windows)]
+    /// }
+    /// ```
+    /// Use instead:
+    /// ```no_run
+    /// #[cfg(linux)]
+    /// #[cfg(windows)]
+    /// pub fn foo() {
+    /// }
+    /// ```
+    #[clippy::version = "1.78.0"]
+    pub MIXED_ATTRIBUTES_STYLE,
+    suspicious,
+    "item has both inner and outer attributes"
+}
+
 declare_lint_pass!(Attributes => [
     ALLOW_ATTRIBUTES_WITHOUT_REASON,
     INLINE_ALWAYS,
@@ -849,11 +876,13 @@ impl_lint_pass!(EarlyAttributes => [
     MAYBE_MISUSED_CFG,
     DEPRECATED_CLIPPY_CFG_ATTR,
     UNNECESSARY_CLIPPY_CFG,
+    MIXED_ATTRIBUTES_STYLE,
 ]);
 
 impl EarlyLintPass for EarlyAttributes {
     fn check_item(&mut self, cx: &EarlyContext<'_>, item: &rustc_ast::Item) {
         check_empty_line_after_outer_attr(cx, item);
+        check_mixed_attributes(cx, item);
     }
 
     fn check_attribute(&mut self, cx: &EarlyContext<'_>, attr: &Attribute) {
@@ -865,6 +894,32 @@ impl EarlyLintPass for EarlyAttributes {
     }
 
     extract_msrv_attr!(EarlyContext);
+}
+
+fn check_mixed_attributes(cx: &EarlyContext<'_>, item: &rustc_ast::Item) {
+    let mut has_outer = false;
+    let mut has_inner = false;
+
+    for attr in &item.attrs {
+        if attr.span.from_expansion() {
+            continue;
+        }
+        match attr.style {
+            AttrStyle::Inner => has_inner = true,
+            AttrStyle::Outer => has_outer = true,
+        }
+    }
+    if !has_outer || !has_inner {
+        return;
+    }
+    let mut attrs_iter = item.attrs.iter().filter(|attr| !attr.span.from_expansion());
+    let span = attrs_iter.next().unwrap().span;
+    span_lint(
+        cx,
+        MIXED_ATTRIBUTES_STYLE,
+        span.with_hi(attrs_iter.last().unwrap().span.hi()),
+        "item has both inner and outer attributes",
+    );
 }
 
 /// Check for empty lines after outer attributes.

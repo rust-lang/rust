@@ -1,5 +1,5 @@
 error: empty doc comment
-  --> tests/ui/empty_docs.rs:4:5
+  --> tests/ui/empty_docs.rs:6:5
    |
 LL |     //!
    |     ^^^
@@ -9,7 +9,7 @@ LL |     //!
    = help: to override `-D warnings` add `#[allow(clippy::empty_docs)]`
 
 error: empty doc comment
-  --> tests/ui/empty_docs.rs:12:5
+  --> tests/ui/empty_docs.rs:14:5
    |
 LL |     ///
    |     ^^^
@@ -17,7 +17,7 @@ LL |     ///
    = help: consider removing or filling it
 
 error: empty doc comment
-  --> tests/ui/empty_docs.rs:14:9
+  --> tests/ui/empty_docs.rs:16:9
    |
 LL |         ///
    |         ^^^
@@ -25,7 +25,7 @@ LL |         ///
    = help: consider removing or filling it
 
 error: empty doc comment
-  --> tests/ui/empty_docs.rs:25:5
+  --> tests/ui/empty_docs.rs:27:5
    |
 LL |     #[doc = ""]
    |     ^^^^^^^^^^^
@@ -33,7 +33,7 @@ LL |     #[doc = ""]
    = help: consider removing or filling it
 
 error: empty doc comment
-  --> tests/ui/empty_docs.rs:28:5
+  --> tests/ui/empty_docs.rs:30:5
    |
 LL | /     #[doc = ""]
 LL | |     #[doc = ""]
@@ -42,7 +42,7 @@ LL | |     #[doc = ""]
    = help: consider removing or filling it
 
 error: empty doc comment
-  --> tests/ui/empty_docs.rs:35:5
+  --> tests/ui/empty_docs.rs:37:5
    |
 LL |     ///
    |     ^^^
@@ -50,7 +50,7 @@ LL |     ///
    = help: consider removing or filling it
 
 error: empty doc comment
-  --> tests/ui/empty_docs.rs:48:13
+  --> tests/ui/empty_docs.rs:50:13
    |
 LL |             /*! */
    |             ^^^^^^
@@ -58,7 +58,7 @@ LL |             /*! */
    = help: consider removing or filling it
 
 error: empty doc comment
-  --> tests/ui/empty_docs.rs:56:13
+  --> tests/ui/empty_docs.rs:58:13
    |
 LL |             ///
    |             ^^^
@@ -66,7 +66,7 @@ LL |             ///
    = help: consider removing or filling it
 
 error: empty doc comment
-  --> tests/ui/empty_docs.rs:64:9
+  --> tests/ui/empty_docs.rs:66:9
    |
 LL |         ///
    |         ^^^
