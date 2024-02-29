@@ -256,8 +256,8 @@ type FluentId = Cow<'static, str>;
 /// message so messages of this type must be combined with a `DiagMessage` (using
 /// `DiagMessage::with_subdiagnostic_message`) before rendering. However, subdiagnostics from
 /// the `Subdiagnostic` derive refer to Fluent identifiers directly.
-#[rustc_diagnostic_item = "SubdiagnosticMessage"]
-pub enum SubdiagnosticMessage {
+#[rustc_diagnostic_item = "SubdiagMessage"]
+pub enum SubdiagMessage {
     /// Non-translatable diagnostic message.
     Str(Cow<'static, str>),
     /// Translatable message which has already been translated eagerly.
@@ -278,19 +278,19 @@ pub enum SubdiagnosticMessage {
     FluentAttr(FluentId),
 }
 
-impl From<String> for SubdiagnosticMessage {
+impl From<String> for SubdiagMessage {
     fn from(s: String) -> Self {
-        SubdiagnosticMessage::Str(Cow::Owned(s))
+        SubdiagMessage::Str(Cow::Owned(s))
     }
 }
-impl From<&'static str> for SubdiagnosticMessage {
+impl From<&'static str> for SubdiagMessage {
     fn from(s: &'static str) -> Self {
-        SubdiagnosticMessage::Str(Cow::Borrowed(s))
+        SubdiagMessage::Str(Cow::Borrowed(s))
     }
 }
-impl From<Cow<'static, str>> for SubdiagnosticMessage {
+impl From<Cow<'static, str>> for SubdiagMessage {
     fn from(s: Cow<'static, str>) -> Self {
-        SubdiagnosticMessage::Str(s)
+        SubdiagMessage::Str(s)
     }
 }
 
@@ -319,20 +319,19 @@ pub enum DiagMessage {
 }
 
 impl DiagMessage {
-    /// Given a `SubdiagnosticMessage` which may contain a Fluent attribute, create a new
+    /// Given a `SubdiagMessage` which may contain a Fluent attribute, create a new
     /// `DiagMessage` that combines that attribute with the Fluent identifier of `self`.
     ///
-    /// - If the `SubdiagnosticMessage` is non-translatable then return the message as a
-    ///   `DiagMessage`.
+    /// - If the `SubdiagMessage` is non-translatable then return the message as a `DiagMessage`.
     /// - If `self` is non-translatable then return `self`'s message.
-    pub fn with_subdiagnostic_message(&self, sub: SubdiagnosticMessage) -> Self {
+    pub fn with_subdiagnostic_message(&self, sub: SubdiagMessage) -> Self {
         let attr = match sub {
-            SubdiagnosticMessage::Str(s) => return DiagMessage::Str(s),
-            SubdiagnosticMessage::Translated(s) => return DiagMessage::Translated(s),
-            SubdiagnosticMessage::FluentIdentifier(id) => {
+            SubdiagMessage::Str(s) => return DiagMessage::Str(s),
+            SubdiagMessage::Translated(s) => return DiagMessage::Translated(s),
+            SubdiagMessage::FluentIdentifier(id) => {
                 return DiagMessage::FluentIdentifier(id, None);
             }
-            SubdiagnosticMessage::FluentAttr(attr) => attr,
+            SubdiagMessage::FluentAttr(attr) => attr,
         };
 
         match self {
@@ -380,19 +379,19 @@ impl<F: FnOnce() -> String> From<DelayDm<F>> for DiagMessage {
 }
 
 /// Translating *into* a subdiagnostic message from a diagnostic message is a little strange - but
-/// the subdiagnostic functions (e.g. `span_label`) take a `SubdiagnosticMessage` and the
+/// the subdiagnostic functions (e.g. `span_label`) take a `SubdiagMessage` and the
 /// subdiagnostic derive refers to typed identifiers that are `DiagMessage`s, so need to be
 /// able to convert between these, as much as they'll be converted back into `DiagMessage`
 /// using `with_subdiagnostic_message` eventually. Don't use this other than for the derive.
-impl Into<SubdiagnosticMessage> for DiagMessage {
-    fn into(self) -> SubdiagnosticMessage {
+impl Into<SubdiagMessage> for DiagMessage {
+    fn into(self) -> SubdiagMessage {
         match self {
-            DiagMessage::Str(s) => SubdiagnosticMessage::Str(s),
-            DiagMessage::Translated(s) => SubdiagnosticMessage::Translated(s),
-            DiagMessage::FluentIdentifier(id, None) => SubdiagnosticMessage::FluentIdentifier(id),
+            DiagMessage::Str(s) => SubdiagMessage::Str(s),
+            DiagMessage::Translated(s) => SubdiagMessage::Translated(s),
+            DiagMessage::FluentIdentifier(id, None) => SubdiagMessage::FluentIdentifier(id),
             // There isn't really a sensible behaviour for this because it loses information but
             // this is the most sensible of the behaviours.
-            DiagMessage::FluentIdentifier(_, Some(attr)) => SubdiagnosticMessage::FluentAttr(attr),
+            DiagMessage::FluentIdentifier(_, Some(attr)) => SubdiagMessage::FluentAttr(attr),
         }
     }
 }

@@ -48,7 +48,7 @@ pub use diagnostic_impls::{
 pub use emitter::ColorConfig;
 pub use rustc_error_messages::{
     fallback_fluent_bundle, fluent_bundle, DelayDm, DiagMessage, FluentBundle, LanguageIdentifier,
-    LazyFallbackBundle, MultiSpan, SpanLabel, SubdiagnosticMessage,
+    LazyFallbackBundle, MultiSpan, SpanLabel, SubdiagMessage,
 };
 pub use rustc_lint_defs::{pluralize, Applicability};
 pub use rustc_span::fatal_error::{FatalError, FatalErrorMarker};
@@ -631,12 +631,12 @@ impl DiagCtxt {
         }
     }
 
-    /// Translate `message` eagerly with `args` to `SubdiagnosticMessage::Eager`.
+    /// Translate `message` eagerly with `args` to `SubdiagMessage::Eager`.
     pub fn eagerly_translate<'a>(
         &self,
         message: DiagMessage,
         args: impl Iterator<Item = DiagArg<'a>>,
-    ) -> SubdiagnosticMessage {
+    ) -> SubdiagMessage {
         let inner = self.inner.borrow();
         inner.eagerly_translate(message, args)
     }
@@ -1553,13 +1553,13 @@ impl DiagCtxtInner {
         self.has_errors().or_else(|| self.delayed_bugs.get(0).map(|(_, guar)| guar).copied())
     }
 
-    /// Translate `message` eagerly with `args` to `SubdiagnosticMessage::Eager`.
+    /// Translate `message` eagerly with `args` to `SubdiagMessage::Eager`.
     pub fn eagerly_translate<'a>(
         &self,
         message: DiagMessage,
         args: impl Iterator<Item = DiagArg<'a>>,
-    ) -> SubdiagnosticMessage {
-        SubdiagnosticMessage::Translated(Cow::from(self.eagerly_translate_to_string(message, args)))
+    ) -> SubdiagMessage {
+        SubdiagMessage::Translated(Cow::from(self.eagerly_translate_to_string(message, args)))
     }
 
     /// Translate `message` eagerly with `args` to `String`.
@@ -1575,8 +1575,8 @@ impl DiagCtxtInner {
     fn eagerly_translate_for_subdiag(
         &self,
         diag: &DiagInner,
-        msg: impl Into<SubdiagnosticMessage>,
-    ) -> SubdiagnosticMessage {
+        msg: impl Into<SubdiagMessage>,
+    ) -> SubdiagMessage {
         let msg = diag.subdiagnostic_message_to_diagnostic_message(msg);
         self.eagerly_translate(msg, diag.args.iter())
     }

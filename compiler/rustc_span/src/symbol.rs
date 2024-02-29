@@ -304,7 +304,7 @@ symbols! {
         SpanCtxt,
         String,
         StructuralPartialEq,
-        SubdiagnosticMessage,
+        SubdiagMessage,
         Sync,
         T,
         Target,

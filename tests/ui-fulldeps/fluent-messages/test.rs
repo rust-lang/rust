@@ -11,9 +11,9 @@ pub enum DiagMessage {
     FluentIdentifier(std::borrow::Cow<'static, str>, Option<std::borrow::Cow<'static, str>>),
 }
 
-/// Copy of the relevant `SubdiagnosticMessage` variant constructed by `fluent_messages` as it
-/// expects `crate::SubdiagnosticMessage` to exist.
-pub enum SubdiagnosticMessage {
+/// Copy of the relevant `SubdiagMessage` variant constructed by `fluent_messages` as it
+/// expects `crate::SubdiagMessage` to exist.
+pub enum SubdiagMessage {
     FluentAttr(std::borrow::Cow<'static, str>),
 }
 
