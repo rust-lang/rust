@@ -1603,7 +1603,9 @@ pub fn noop_visit_capture_by<T: MutVisitor>(capture_by: &mut CaptureBy, vis: &mu
     }
 }
 
-/// Some value for the AST node that is valid but possibly meaningless.
+/// Some value for the AST node that is valid but possibly meaningless. The
+/// value will never be used meaningfully, it exists just to support unwinding
+/// in `visit_clobber` in the case where its closure panics. 
 pub trait DummyAstNode {
     fn dummy() -> Self;
 }
