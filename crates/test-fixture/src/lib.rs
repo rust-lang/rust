@@ -195,7 +195,10 @@ impl ChangeFixture {
                 let prev = crates.insert(crate_name.clone(), crate_id);
                 assert!(prev.is_none(), "multiple crates with same name: {}", crate_name);
                 for dep in meta.deps {
-                    let prelude = meta.extern_prelude.contains(&dep);
+                    let prelude = match &meta.extern_prelude {
+                        Some(v) => v.contains(&dep),
+                        None => true,
+                    };
                     let dep = CrateName::normalize_dashes(&dep);
                     crate_deps.push((crate_name.clone(), dep, prelude))
                 }
@@ -443,7 +446,7 @@ struct FileMeta {
     path: String,
     krate: Option<(String, CrateOrigin, Option<String>)>,
     deps: Vec<String>,
-    extern_prelude: Vec<String>,
+    extern_prelude: Option<Vec<String>>,
     cfg: CfgOptions,
     edition: Edition,
     env: Env,
@@ -473,7 +476,7 @@ impl FileMeta {
         Self {
             path: f.path,
             krate: f.krate.map(|it| parse_crate(it, current_source_root_kind, f.library)),
-            extern_prelude: f.extern_prelude.unwrap_or_else(|| deps.clone()),
+            extern_prelude: f.extern_prelude,
             deps,
             cfg,
             edition: f.edition.map_or(Edition::CURRENT, |v| Edition::from_str(&v).unwrap()),
