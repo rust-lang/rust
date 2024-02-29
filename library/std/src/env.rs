@@ -469,7 +469,6 @@ pub struct SplitPaths<'a> {
 ///     None => println!("{key} is not defined in the environment.")
 /// }
 /// ```
-#[doc(alias = "PATH")]
 #[stable(feature = "env", since = "1.0.0")]
 pub fn split_paths<T: AsRef<OsStr> + ?Sized>(unparsed: &T) -> SplitPaths<'_> {
     SplitPaths { inner: os_imp::split_paths(unparsed.as_ref()) }
@@ -565,7 +564,6 @@ pub struct JoinPathsError {
 /// ```
 ///
 /// [`env::split_paths()`]: split_paths
-#[doc(alias = "PATH")]
 #[stable(feature = "env", since = "1.0.0")]
 pub fn join_paths<I, T>(paths: I) -> Result<OsString, JoinPathsError>
 where
