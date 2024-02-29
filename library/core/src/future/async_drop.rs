@@ -13,6 +13,7 @@ use crate::task::{ready, Context, Poll};
 #[unstable(feature = "async_drop", issue = "none")]
 pub async fn async_drop<'a, T: 'a>(value: T) {
     let mut value = MaybeUninit::new(value);
+    // SAFETY: value pointer stays valid when needed
     unsafe { async_drop_in_place(value.as_mut_ptr()) }.await;
 }
 
@@ -23,7 +24,7 @@ unsafe fn async_drop_in_place_raw<'a, T: ?Sized + 'a>(
     to_drop: *mut T,
 ) -> <T as AsyncDestruct<'a>>::AsyncDestructor {
     // Code here does not matter - this is replaced by the
-    // real async drop glue ctor by the compiler.
+    // real async drop glue constructor by the compiler.
 
     // SAFETY: see comment above
     unsafe { async_drop_in_place_raw(to_drop) }
@@ -61,6 +62,7 @@ unsafe fn async_drop_in_place_raw<'a, T: ?Sized + 'a>(
 ///
 #[unstable(feature = "async_drop", issue = "none")]
 pub unsafe fn async_drop_in_place<'a, T: ?Sized + 'a>(to_drop: *mut T) -> AsyncDropInPlace<'a, T> {
+    // SAFETY: `async_drop_in_place_raw` has the same safety requirements
     unsafe { AsyncDropInPlace(async_drop_in_place_raw(to_drop)) }
 }
 
@@ -81,6 +83,7 @@ impl<'a, T: ?Sized + 'a> Future for AsyncDropInPlace<'a, T> {
     type Output = ();
 
     fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
+        // SAFETY: This code simply forwards poll call to the inner future
         unsafe { self.map_unchecked_mut(|p| &mut p.0).poll(cx) }
     }
 }
@@ -91,6 +94,7 @@ impl<'a, T: ?Sized + 'a> Future for AsyncDropInPlace<'a, T> {
 pub trait AsyncDrop {
     /// A future returned by the [`AsyncDrop::async_drop`] to be part
     /// of the async destructor.
+    // FIXME: should this future be always be `!Unpin`?
     #[unstable(feature = "async_drop", issue = "none")]
     type Dropper<'a>: Future<Output = ()>
     where
@@ -113,6 +117,8 @@ trait AsyncDestruct<'a>: 'a {
 unsafe fn surface_async_drop_in_place<'a, T: AsyncDrop + 'a>(
     ptr: *mut T,
 ) -> <T as AsyncDrop>::Dropper<'a> {
+    // SAFETY: We call this from async drop `async_drop_in_place_raw`
+    //   which has the same safety requirements
     unsafe { <T as AsyncDrop>::async_drop(Pin::new_unchecked(&mut *ptr)) }
 }
 
@@ -127,6 +133,8 @@ struct SliceAsyncDestuctor<'a, T: 'a> {
 #[lang = "slice_async_destructor_ctor"]
 const unsafe fn slice_async_destructor<'a, T: 'a>(inner: *mut [T]) -> SliceAsyncDestuctor<'a, T> {
     SliceAsyncDestuctor {
+        // SAFETY: We call this funtion from async drop
+        //   `async_drop_in_place_raw` which has the same safety requirements
         left_slice: unsafe { ptr::NonNull::new_unchecked(inner) },
         elem_dtor: None,
         _pinned: PhantomPinned,
@@ -137,22 +145,29 @@ impl<'a, T: 'a> Future for SliceAsyncDestuctor<'a, T> {
     type Output = ();
 
     fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
-        unsafe {
-            let this = self.get_unchecked_mut();
-            loop {
-                if let Some(elem_dtor) = &mut this.elem_dtor {
-                    ready!(Pin::new_unchecked(elem_dtor).poll(cx));
-                    // Dropping the destructor
-                    this.elem_dtor = None;
-                }
-                let Some(new_len) = this.left_slice.len().checked_sub(1) else {
-                    return Poll::Ready(());
-                };
-                let cur_ptr = this.left_slice.as_non_null_ptr();
-                let new_ptr = cur_ptr.add(1);
-                this.left_slice = ptr::NonNull::slice_from_raw_parts(new_ptr, new_len);
-                this.elem_dtor = Some(async_drop_in_place(cur_ptr.as_ptr()));
+        // SAFETY: We never move any possibly immovable fields (elem_dtor)
+        let this = unsafe { self.get_unchecked_mut() };
+        loop {
+            if let Some(elem_dtor) = &mut this.elem_dtor {
+                // SAFETY: Projecting pin from `Self` down to the
+                //   current element's destructor.
+                ready!(unsafe { Pin::new_unchecked(elem_dtor) }.poll(cx));
+                // Dropping the destructor
+                this.elem_dtor = None;
             }
+            // Return if slice is empty
+            let Some(new_len) = this.left_slice.len().checked_sub(1) else {
+                return Poll::Ready(());
+            };
+            let cur_ptr = this.left_slice.as_non_null_ptr();
+            // SAFETY: current slice is not empty (see comment above),
+            //   thus it is guaranteed for new_ptr to be in bounds of our
+            //   slice or one after its end.
+            let new_ptr = unsafe { cur_ptr.add(1) };
+            this.left_slice = ptr::NonNull::slice_from_raw_parts(new_ptr, new_len);
+            // SAFETY: cur_ptr points to some element of our slice
+            //   because slice wasn't empty.
+            this.elem_dtor = Some(unsafe { async_drop_in_place(cur_ptr.as_ptr()) });
         }
     }
 }
@@ -169,22 +184,34 @@ impl<'a, T: 'a> Future for DeferredAsyncDrop<'a, T> {
     type Output = ();
 
     fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<()> {
-        unsafe {
-            let this = self.get_unchecked_mut();
-            if let DeferredAsyncDrop::Init { ptr, _pinned: _ } = *this {
-                *this = DeferredAsyncDrop::Running { dtor: async_drop_in_place(ptr.as_ptr()) };
-            }
-
-            let DeferredAsyncDrop::Running { dtor } = this else { unreachable!() };
-            return Pin::new_unchecked(dtor).poll(cx);
+        // SAFETY: We never move out possibly immovable objects (Running::dtor)
+        let this = unsafe { self.get_unchecked_mut() };
+        if let DeferredAsyncDrop::Init { ptr, _pinned: _ } = *this {
+            // SAFETY: Guaranteed to be safe by [`deferred_async_drop`]'s
+            //   safety requirements
+            let dtor = unsafe { async_drop_in_place(ptr.as_ptr()) };
+            *this = DeferredAsyncDrop::Running { dtor };
         }
+
+        let DeferredAsyncDrop::Running { dtor } = this else { unreachable!() };
+        // SAFETY: forwarding `poll` to the destructor
+        return unsafe { Pin::new_unchecked(dtor) }.poll(cx);
     }
 }
 
+/// Same as [`async_drop_in_place`] but with a deferred call to the
+/// `AsyncDrop::async_drop`.
+///
+/// # Safety
+///
+/// Same as [`async_drop_in_place`], but creation of the pinned mutable
+/// reference is deferred until first [`DeferredAsyncDrop::poll`] call.
 #[lang = "deferred_async_drop_ctor"]
 const unsafe fn deferred_async_drop<'a, T: 'a>(item: *mut T) -> DeferredAsyncDrop<'a, T> {
-    unsafe {
-        DeferredAsyncDrop::Init { ptr: ptr::NonNull::new_unchecked(item), _pinned: PhantomPinned }
+    DeferredAsyncDrop::Init {
+        // SAFETY: Guaranteed by current function's safety requirements
+        ptr: unsafe { ptr::NonNull::new_unchecked(item) },
+        _pinned: PhantomPinned,
     }
 }
 
@@ -203,10 +230,12 @@ where
     type Output = ();
 
     fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<()> {
+        // SAFETY: We do not move any possibly immovable object from self
         let this = unsafe { self.get_unchecked_mut() };
         loop {
             match &mut this.first {
                 Some(first) => {
+                    // SAFETY: Just forwarding poll call to the `self.first`
                     ready!(unsafe { Pin::new_unchecked(first) }.poll(cx));
                     // It might be important to destroy the first future
                     // so that it wouldn't possibly hold any mutable
@@ -214,6 +243,7 @@ where
                     this.first = None;
                 }
                 None => {
+                    // SAFETY: Just forwarding poll call to the `self.second`
                     return unsafe { Pin::new_unchecked(&mut this.second) }.poll(cx);
                 }
             }
