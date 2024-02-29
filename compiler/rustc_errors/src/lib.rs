@@ -780,11 +780,11 @@ impl DiagCtxt {
         let err = self.inner.borrow_mut().stashed_diagnostics.swap_remove(&key);
         err.map(|(err, guar)| {
             // The use of `::<ErrorGuaranteed>` is safe because level is `Level::Error`.
-            assert_eq!(err.level, Level::Error);
+            assert_eq!(err.level, Error);
             assert!(guar.is_some());
             let mut err = Diag::<ErrorGuaranteed>::new_diagnostic(self, err);
             modify_err(&mut err);
-            assert_eq!(err.level, Level::Error);
+            assert_eq!(err.level, Error);
             err.emit()
         })
     }
@@ -803,7 +803,7 @@ impl DiagCtxt {
         let old_err = self.inner.borrow_mut().stashed_diagnostics.swap_remove(&key);
         match old_err {
             Some((old_err, guar)) => {
-                assert_eq!(old_err.level, Level::Error);
+                assert_eq!(old_err.level, Error);
                 assert!(guar.is_some());
                 // Because `old_err` has already been counted, it can only be
                 // safely cancelled because the `new_err` supplants it.
@@ -1367,7 +1367,7 @@ impl DiagCtxtInner {
         }
 
         if diagnostic.has_future_breakage() {
-            // Future breakages aren't emitted if they're Level::Allow,
+            // Future breakages aren't emitted if they're `Level::Allow`,
             // but they still need to be constructed and stashed below,
             // so they'll trigger the must_produce_diag check.
             self.suppressed_expected_diag = true;
@@ -1453,7 +1453,7 @@ impl DiagCtxtInner {
                 diagnostic.children.extract_if(already_emitted_sub).for_each(|_| {});
                 if already_emitted {
                     let msg = "duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`";
-                    diagnostic.sub(Level::Note, msg, MultiSpan::new());
+                    diagnostic.sub(Note, msg, MultiSpan::new());
                 }
 
                 if is_error {
@@ -1623,7 +1623,7 @@ impl DiagCtxtInner {
                 bug.arg("level", bug.level);
                 let msg = crate::fluent_generated::errors_invalid_flushed_delayed_diagnostic_level;
                 let msg = self.eagerly_translate_for_subdiag(&bug, msg); // after the `arg` call
-                bug.sub(Level::Note, msg, bug.span.primary_span().unwrap().into());
+                bug.sub(Note, msg, bug.span.primary_span().unwrap().into());
             }
             bug.level = Bug;
 
@@ -1671,7 +1671,7 @@ impl DelayedDiagInner {
         diag.arg("emitted_at", diag.emitted_at.clone());
         diag.arg("note", self.note);
         let msg = dcx.eagerly_translate_for_subdiag(&diag, msg); // after the `arg` calls
-        diag.sub(Level::Note, msg, diag.span.primary_span().unwrap_or(DUMMY_SP).into());
+        diag.sub(Note, msg, diag.span.primary_span().unwrap_or(DUMMY_SP).into());
         diag
     }
 }
