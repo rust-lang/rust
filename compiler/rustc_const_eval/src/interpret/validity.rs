@@ -148,14 +148,6 @@ impl CtfeValidationMode {
             }
         }
     }
-
-    fn may_contain_mutable_ref(self) -> bool {
-        match self {
-            CtfeValidationMode::Static { mutbl } => mutbl == Mutability::Mut,
-            CtfeValidationMode::Promoted { .. } => false,
-            CtfeValidationMode::Const { .. } => false,
-        }
-    }
 }
 
 /// State for tracking recursive validation of references
@@ -511,20 +503,19 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValidityVisitor<'rt, 'mir, '
                 // If this allocation has size zero, there is no actual mutability here.
                 let (size, _align, _alloc_kind) = self.ecx.get_alloc_info(alloc_id);
                 if size != Size::ZERO {
+                    // Mutable pointer to immutable memory is no good.
                     if ptr_expected_mutbl == Mutability::Mut
                         && alloc_actual_mutbl == Mutability::Not
                     {
                         throw_validation_failure!(self.path, MutableRefToImmutable);
                     }
-                    if ptr_expected_mutbl == Mutability::Mut
-                        && self.ctfe_mode.is_some_and(|c| !c.may_contain_mutable_ref())
-                    {
-                        throw_validation_failure!(self.path, MutableRefInConstOrStatic);
-                    }
-                    if alloc_actual_mutbl == Mutability::Mut
-                        && matches!(self.ctfe_mode, Some(CtfeValidationMode::Const { .. }))
-                    {
-                        throw_validation_failure!(self.path, ConstRefToMutable);
+                    // In a const, everything must be completely immutable.
+                    if matches!(self.ctfe_mode, Some(CtfeValidationMode::Const { .. })) {
+                        if ptr_expected_mutbl == Mutability::Mut
+                            || alloc_actual_mutbl == Mutability::Mut
+                        {
+                            throw_validation_failure!(self.path, ConstRefToMutable);
+                        }
                     }
                 }
                 // Potentially skip recursive check.

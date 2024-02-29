@@ -1,5 +1,6 @@
-//@ stderr-per-bitwidth
 //@ compile-flags: -Zunleash-the-miri-inside-of-you
+//@ normalize-stderr-test "(the raw bytes of the constant) \(size: [0-9]*, align: [0-9]*\)" -> "$1 (size: $$SIZE, align: $$ALIGN)"
+//@ normalize-stderr-test "([0-9a-f][0-9a-f] |╾─*ALLOC[0-9]+(\+[a-z0-9]+)?(<imm>)?─*╼ )+ *│.*" -> "HEX_DUMP"
 #![allow(invalid_reference_casting, static_mut_refs)]
 
 use std::cell::UnsafeCell;

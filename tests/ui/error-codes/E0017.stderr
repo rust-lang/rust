@@ -1,18 +1,3 @@
-warning: creating a mutable reference to mutable static is discouraged
-  --> $DIR/E0017.rs:18:52
-   |
-LL | static STATIC_MUT_REF: &'static mut i32 = unsafe { &mut M };
-   |                                                    ^^^^^^ mutable reference to mutable static
-   |
-   = note: for more information, see issue #114447 <https://github.com/rust-lang/rust/issues/114447>
-   = note: this will be a hard error in the 2024 edition
-   = note: this mutable reference has lifetime `'static`, but if the static gets accessed (read or written) by any other means, or any other reference is created, then any further use of this mutable reference is Undefined Behavior
-   = note: `#[warn(static_mut_refs)]` on by default
-help: use `addr_of_mut!` instead to create a raw pointer
-   |
-LL | static STATIC_MUT_REF: &'static mut i32 = unsafe { addr_of_mut!(M) };
-   |                                                    ~~~~~~~~~~~~~~~
-
 warning: taking a mutable reference to a `const` item
   --> $DIR/E0017.rs:10:30
    |
@@ -60,18 +45,7 @@ error[E0764]: mutable references are not allowed in the final value of statics
 LL | static CONST_REF: &'static mut i32 = &mut C;
    |                                      ^^^^^^
 
-error[E0080]: it is undefined behavior to use this value
-  --> $DIR/E0017.rs:18:1
-   |
-LL | static STATIC_MUT_REF: &'static mut i32 = unsafe { &mut M };
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ constructing invalid value: encountered mutable reference in a `const` or `static`
-   |
-   = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
-   = note: the raw bytes of the constant  {
-               ╾ALLOC0╼
-           }
+error: aborting due to 3 previous errors; 2 warnings emitted
 
-error: aborting due to 4 previous errors; 3 warnings emitted
-
-Some errors have detailed explanations: E0080, E0596, E0764.
-For more information about an error, try `rustc --explain E0080`.
+Some errors have detailed explanations: E0596, E0764.
+For more information about an error, try `rustc --explain E0596`.
