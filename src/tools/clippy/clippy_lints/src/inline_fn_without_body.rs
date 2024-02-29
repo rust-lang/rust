@@ -1,7 +1,7 @@
 //! checks for `#[inline]` on trait methods without bodies
 
 use clippy_utils::diagnostics::span_lint_and_then;
-use clippy_utils::sugg::DiagnosticExt;
+use clippy_utils::sugg::DiagExt;
 use rustc_ast::ast::Attribute;
 use rustc_errors::Applicability;
 use rustc_hir::{TraitFn, TraitItem, TraitItemKind};
