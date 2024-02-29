@@ -172,7 +172,7 @@ pub(crate) fn new_dcx(
         }
     };
 
-    rustc_errors::DiagCtxt::with_emitter(emitter).with_flags(unstable_opts.dcx_flags(true))
+    rustc_errors::DiagCtxt::new(emitter).with_flags(unstable_opts.dcx_flags(true))
 }
 
 /// Parse, resolve, and typecheck the given crate.

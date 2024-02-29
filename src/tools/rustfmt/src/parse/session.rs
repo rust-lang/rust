@@ -152,7 +152,7 @@ fn default_dcx(
         );
         Box::new(HumanEmitter::stderr(emit_color, fallback_bundle).sm(Some(source_map.clone())))
     };
-    DiagCtxt::with_emitter(Box::new(SilentOnIgnoredFilesEmitter {
+    DiagCtxt::new(Box::new(SilentOnIgnoredFilesEmitter {
         has_non_ignorable_parser_errors: false,
         source_map,
         emitter,
@@ -229,7 +229,7 @@ impl ParseSess {
     }
 
     pub(crate) fn set_silent_emitter(&mut self) {
-        self.parse_sess.dcx = DiagCtxt::with_emitter(silent_emitter());
+        self.parse_sess.dcx = DiagCtxt::new(silent_emitter());
     }
 
     pub(crate) fn span_to_filename(&self, span: Span) -> FileName {

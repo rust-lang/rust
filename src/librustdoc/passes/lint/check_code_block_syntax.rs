@@ -42,7 +42,7 @@ fn check_rust_syntax(
     let emitter = BufferEmitter { buffer: Lrc::clone(&buffer), fallback_bundle };
 
     let sm = Lrc::new(SourceMap::new(FilePathMapping::empty()));
-    let dcx = DiagCtxt::with_emitter(Box::new(emitter)).disable_warnings();
+    let dcx = DiagCtxt::new(Box::new(emitter)).disable_warnings();
     let source = dox[code_block.code].to_owned();
     let sess = ParseSess::with_dcx(dcx, sm);
 

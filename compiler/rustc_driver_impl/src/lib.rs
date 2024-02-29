@@ -1388,7 +1388,7 @@ fn report_ice(
         rustc_errors::ColorConfig::Auto,
         fallback_bundle,
     ));
-    let dcx = rustc_errors::DiagCtxt::with_emitter(emitter);
+    let dcx = rustc_errors::DiagCtxt::new(emitter);
 
     // a .span_bug or .bug call has already printed what
     // it wants to print.
