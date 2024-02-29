@@ -324,7 +324,9 @@ impl TyKind {
 
     #[inline]
     pub fn is_cstr(&self) -> bool {
-        let TyKind::RigidTy(RigidTy::Adt(def, _)) = self else { return false };
+        let TyKind::RigidTy(RigidTy::Adt(def, _)) = self else {
+            return false;
+        };
         with(|cx| cx.adt_is_cstr(*def))
     }
 
@@ -1032,10 +1034,13 @@ pub struct BoundTy {
 }
 
 pub type Bytes = Vec<Option<u8>>;
+
+/// Size in bytes.
 pub type Size = usize;
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug, Hash)]
 pub struct Prov(pub AllocId);
+
 pub type Align = u64;
 pub type Promoted = u32;
 pub type InitMaskMaterialized = Vec<u64>;
