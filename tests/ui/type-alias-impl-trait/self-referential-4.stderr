@@ -6,7 +6,7 @@ LL | fn bar<'a, 'b>(i: &'a i32) -> Bar<'a, 'b> {
 LL |     i
    |     - return type was inferred to be `&i32` here
    |
-   = help: the trait `PartialEq<Bar<'b, 'static>>` is not implemented for `&i32`
+   = help: the trait `PartialEq<Bar<'_, '_>>` is not implemented for `&i32`
    = help: the trait `PartialEq` is implemented for `i32`
 
 error[E0277]: can't compare `&i32` with `Foo<'static, 'b>`
@@ -17,7 +17,7 @@ LL | fn foo<'a, 'b>(i: &'a i32) -> Foo<'a, 'b> {
 LL |     i
    |     - return type was inferred to be `&i32` here
    |
-   = help: the trait `PartialEq<Foo<'static, 'b>>` is not implemented for `&i32`
+   = help: the trait `PartialEq<Foo<'_, '_>>` is not implemented for `&i32`
    = help: the trait `PartialEq` is implemented for `i32`
 
 error[E0277]: can't compare `&i32` with `Moo<'static, 'a>`
@@ -28,7 +28,7 @@ LL | fn moo<'a, 'b>(i: &'a i32) -> Moo<'a, 'b> {
 LL |     i
    |     - return type was inferred to be `&i32` here
    |
-   = help: the trait `PartialEq<Moo<'static, 'a>>` is not implemented for `&i32`
+   = help: the trait `PartialEq<Moo<'_, '_>>` is not implemented for `&i32`
    = help: the trait `PartialEq` is implemented for `i32`
 
 error: aborting due to 3 previous errors

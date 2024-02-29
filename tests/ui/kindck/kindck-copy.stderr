@@ -2,7 +2,7 @@ error[E0277]: the trait `Copy` is not implemented for `&mut isize`
   --> $DIR/kindck-copy.rs:27:19
    |
 LL |     assert_copy::<&'static mut isize>();
-   |                   ^^^^^^^^^^^^^^^^^^ the trait `Copy` is not implemented for `&'static mut isize`
+   |                   ^^^^^^^^^^^^^^^^^^ the trait `Copy` is not implemented for `&mut isize`
    |
 note: required by a bound in `assert_copy`
   --> $DIR/kindck-copy.rs:5:18
@@ -19,7 +19,7 @@ error[E0277]: the trait `Copy` is not implemented for `&mut isize`
   --> $DIR/kindck-copy.rs:28:19
    |
 LL |     assert_copy::<&'a mut isize>();
-   |                   ^^^^^^^^^^^^^ the trait `Copy` is not implemented for `&'a mut isize`
+   |                   ^^^^^^^^^^^^^ the trait `Copy` is not implemented for `&mut isize`
    |
 note: required by a bound in `assert_copy`
   --> $DIR/kindck-copy.rs:5:18
@@ -72,7 +72,7 @@ error[E0277]: the trait `Copy` is not implemented for `Box<&mut isize>`
   --> $DIR/kindck-copy.rs:34:19
    |
 LL |     assert_copy::<Box<&'a mut isize>>();
-   |                   ^^^^^^^^^^^^^^^^^^ the trait `Copy` is not implemented for `Box<&'a mut isize>`
+   |                   ^^^^^^^^^^^^^^^^^^ the trait `Copy` is not implemented for `Box<&mut isize>`
    |
 note: required by a bound in `assert_copy`
   --> $DIR/kindck-copy.rs:5:18
@@ -108,7 +108,7 @@ error[E0277]: the trait `Copy` is not implemented for `&mut dyn Dummy + Send`
   --> $DIR/kindck-copy.rs:46:19
    |
 LL |     assert_copy::<&'a mut (dyn Dummy + Send)>();
-   |                   ^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `Copy` is not implemented for `&'a mut (dyn Dummy + Send + 'a)`
+   |                   ^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `Copy` is not implemented for `&mut dyn Dummy + Send`
    |
 note: required by a bound in `assert_copy`
   --> $DIR/kindck-copy.rs:5:18

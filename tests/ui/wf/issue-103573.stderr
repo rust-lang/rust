@@ -2,7 +2,7 @@ error[E0277]: the trait `TraitA` is not implemented for `<<Self as TraitC<E>>::T
   --> $DIR/issue-103573.rs:18:18
    |
 LL |     fn g<'a>(_: &<<Self::TypeC<'a> as TraitB>::TypeB as TraitA>::TypeA);
-   |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `TraitA` is not implemented for `<<Self as TraitC<E>>::TypeC<'a> as TraitB>::TypeB`
+   |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `TraitA` is not implemented for `<<Self as TraitC<E>>::TypeC<'_> as TraitB>::TypeB`
    |
 help: consider further restricting the associated type
    |

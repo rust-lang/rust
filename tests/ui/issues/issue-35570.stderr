@@ -2,7 +2,7 @@ error[E0277]: the trait `Trait2<'_>` is not implemented for `()`
   --> $DIR/issue-35570.rs:8:40
    |
 LL | fn _ice(param: Box<dyn for <'a> Trait1<<() as Trait2<'a>>::Ty>>) {
-   |                                        ^^^^^^^^^^^^^^^^^^^^^^ the trait `for<'a> Trait2<'a>` is not implemented for `()`
+   |                                        ^^^^^^^^^^^^^^^^^^^^^^ the trait `Trait2<'_>` is not implemented for `()`
    |
 help: this trait has no implementations, consider adding one
   --> $DIR/issue-35570.rs:4:1
@@ -19,7 +19,7 @@ LL | |
 LL | |
 LL | |     let _e: (usize, usize) = unsafe{mem::transmute(param)};
 LL | | }
-   | |_^ the trait `for<'a> Trait2<'a>` is not implemented for `()`
+   | |_^ the trait `Trait2<'_>` is not implemented for `()`
    |
 help: this trait has no implementations, consider adding one
   --> $DIR/issue-35570.rs:4:1

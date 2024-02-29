@@ -2,7 +2,7 @@ error[E0277]: the trait `IntoIterator` is not implemented for `dyn Iterator<Item
   --> $DIR/issue-20605.rs:5:17
    |
 LL |     for item in *things { *item = 0 }
-   |                 ^^^^^^^ the trait `IntoIterator` is not implemented for `dyn Iterator<Item = &'a mut u8>`
+   |                 ^^^^^^^ the trait `IntoIterator` is not implemented for `dyn Iterator<Item = &mut u8>`
 
 error: the type `<dyn Iterator<Item = &'a mut u8> as IntoIterator>::IntoIter` is not well-formed
   --> $DIR/issue-20605.rs:5:17

@@ -24,7 +24,7 @@ error[E0277]: the size for values of type `(dyn Copy + 'static)` cannot be known
 LL | fn id<F>(f: Copy) -> usize {
    |          ^ doesn't have a size known at compile-time
    |
-   = help: the trait `Sized` is not implemented for `(dyn Copy + 'static)`
+   = help: the trait `Sized` is not implemented for `dyn Copy`
    = help: unsized fn params are gated as an unstable feature
 help: you can use `impl Trait` as the argument type
    |

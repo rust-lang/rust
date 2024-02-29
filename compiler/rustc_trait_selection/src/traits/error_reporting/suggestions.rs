@@ -4773,16 +4773,23 @@ pub(super) fn get_explanation_based_on_obligation<'tcx>(
             Some(desc) => format!(" {desc}"),
             None => String::new(),
         };
+        let pred = tcx.erase_regions(if tcx.features().non_lifetime_binders {
+            // We can't erase the lifetime bounds on their own when this feature is enabled.
+            // `instantiate_bound_regions_with_erased` expects there to be no type bounds.
+            trait_predicate.skip_binder()
+        } else {
+            tcx.instantiate_bound_regions_with_erased(*trait_predicate)
+        });
         if let ty::ImplPolarity::Positive = trait_predicate.polarity() {
             format!(
                 "{pre_message}the trait `{}` is not implemented for{desc} `{}`{post}",
-                trait_predicate.print_modifiers_and_trait_path(),
-                tcx.short_ty_string(trait_ref.skip_binder().self_ty(), &mut None),
+                pred.print_modifiers_and_trait_path(),
+                tcx.short_ty_string(pred.self_ty(), &mut None),
             )
         } else {
             // "the trait bound `!Send: T` is not satisfied" reads better than "`!Send` is
             // not implemented for `T`".
-            format!("{pre_message}the trait bound `{trait_predicate}` is not satisfied{post}")
+            format!("{pre_message}the trait bound `{pred}` is not satisfied{post}")
         }
     }
 }

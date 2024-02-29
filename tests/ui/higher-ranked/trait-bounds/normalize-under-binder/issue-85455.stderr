@@ -2,7 +2,7 @@ error[E0277]: the trait `SomeTrait<'_>` is not implemented for `T`
   --> $DIR/issue-85455.rs:8:14
    |
 LL |     callee::<fn(&()) -> <T as SomeTrait<'_>>::Associated>();
-   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `for<'a> SomeTrait<'a>` is not implemented for `T`
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `SomeTrait<'_>` is not implemented for `T`
    |
 help: consider restricting type parameter `T`
    |
@@ -13,7 +13,7 @@ error[E0277]: the trait `SomeTrait<'_>` is not implemented for `T`
   --> $DIR/issue-85455.rs:8:5
    |
 LL |     callee::<fn(&()) -> <T as SomeTrait<'_>>::Associated>();
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `for<'a> SomeTrait<'a>` is not implemented for `T`
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `SomeTrait<'_>` is not implemented for `T`
    |
 help: consider restricting type parameter `T`
    |

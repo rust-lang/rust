@@ -2,7 +2,7 @@ error[E0277]: the trait `Foo` is not implemented for `fn(&ReErased ())`
   --> $DIR/higher-ranked-fn-type.rs:20:5
    |
 LL |     called()
-   |     ^^^^^^^^ the trait `for<Region(BrNamed(DefId(0:6 ~ higher_ranked_fn_type[9e51]::called::'b), 'b))> Foo` is not implemented for `fn(&ReBound(DebruijnIndex(1), BoundRegion { var: 0, kind: BrNamed(DefId(0:6 ~ higher_ranked_fn_type[9e51]::called::'b), 'b) }) ())`
+   |     ^^^^^^^^ the trait `Foo` is not implemented for `fn(&ReErased ())`
    |
 help: this trait has no implementations, consider adding one
   --> $DIR/higher-ranked-fn-type.rs:6:1

@@ -2,7 +2,7 @@ error[E0277]: the trait `Bar<'_>` is not implemented for `B`
   --> $DIR/hrtb-higher-ranker-supertraits-transitive.rs:47:26
    |
 LL |     want_bar_for_any_ccx(b);
-   |     -------------------- ^ the trait `for<'ccx> Bar<'ccx>` is not implemented for `B`
+   |     -------------------- ^ the trait `Bar<'_>` is not implemented for `B`
    |     |
    |     required by a bound introduced by this call
    |

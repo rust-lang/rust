@@ -90,7 +90,7 @@ error[E0277]: the trait `Qux<'_>` is not implemented for `&()`
   --> $DIR/nested-rpit-hrtb.rs:36:64
    |
 LL | fn one_hrtb_trait_param_uses() -> impl for<'a> Bar<'a, Assoc = impl Qux<'a>> {}
-   |                                                                ^^^^^^^^^^^^ the trait `for<'a> Qux<'_>` is not implemented for `&'a ()`
+   |                                                                ^^^^^^^^^^^^ the trait `Qux<'_>` is not implemented for `&()`
    |
    = help: the trait `Qux<'_>` is implemented for `()`
    = help: for that trait implementation, expected `()`, found `&'a ()`
@@ -99,7 +99,7 @@ error[E0277]: the trait `Qux<'_>` is not implemented for `&()`
   --> $DIR/nested-rpit-hrtb.rs:47:79
    |
 LL | fn one_hrtb_mention_fn_trait_param_uses<'b>() -> impl for<'a> Bar<'a, Assoc = impl Qux<'b>> {}
-   |                                                                               ^^^^^^^^^^^^ the trait `for<'a> Qux<'b>` is not implemented for `&'a ()`
+   |                                                                               ^^^^^^^^^^^^ the trait `Qux<'_>` is not implemented for `&()`
    |
    = help: the trait `Qux<'_>` is implemented for `()`
    = help: for that trait implementation, expected `()`, found `&'a ()`
@@ -117,7 +117,7 @@ error[E0277]: the trait `Qux<'_>` is not implemented for `&()`
   --> $DIR/nested-rpit-hrtb.rs:62:64
    |
 LL | fn two_htrb_trait_param_uses() -> impl for<'a> Bar<'a, Assoc = impl for<'b> Qux<'b>> {}
-   |                                                                ^^^^^^^^^^^^^^^^^^^^ the trait `for<'a, 'b> Qux<'b>` is not implemented for `&'a ()`
+   |                                                                ^^^^^^^^^^^^^^^^^^^^ the trait `Qux<'_>` is not implemented for `&()`
    |
    = help: the trait `Qux<'_>` is implemented for `()`
    = help: for that trait implementation, expected `()`, found `&'a ()`

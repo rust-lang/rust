@@ -2,7 +2,7 @@ error[E0277]: the trait `AsRef<dyn for<'a> Fn(&'a ())>` is not implemented for `
   --> $DIR/generic-with-implicit-hrtb-without-dyn.rs:6:13
    |
 LL | fn ice() -> impl AsRef<Fn(&())> {
-   |             ^^^^^^^^^^^^^^^^^^^ the trait `AsRef<(dyn for<'a> Fn(&'a ()) + 'static)>` is not implemented for `()`
+   |             ^^^^^^^^^^^^^^^^^^^ the trait `AsRef<dyn for<'a> Fn(&'a ())>` is not implemented for `()`
 
 error[E0782]: trait objects must include the `dyn` keyword
   --> $DIR/generic-with-implicit-hrtb-without-dyn.rs:6:24

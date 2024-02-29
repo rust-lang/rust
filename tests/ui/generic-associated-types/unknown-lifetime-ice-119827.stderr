@@ -84,7 +84,7 @@ error[E0277]: the trait `Foo` is not implemented for `Box<dyn Foo>`
   --> $DIR/unknown-lifetime-ice-119827.rs:7:14
    |
 LL | impl Foo for Box<dyn Foo> {}
-   |              ^^^^^^^^^^^^ the trait `Foo` is not implemented for `Box<(dyn Foo + 'static)>`
+   |              ^^^^^^^^^^^^ the trait `Foo` is not implemented for `Box<dyn Foo>`
    |
    = help: the trait `Foo` is implemented for `Box<(dyn Foo + 'static)>`
 

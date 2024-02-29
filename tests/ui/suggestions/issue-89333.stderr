@@ -2,7 +2,7 @@ error[E0277]: the trait `Trait` is not implemented for `&_`
   --> $DIR/issue-89333.rs:6:5
    |
 LL |     test(&|| 0);
-   |     ^^^^^^^^^^^ the trait `for<'a> Trait` is not implemented for `&'a _`
+   |     ^^^^^^^^^^^ the trait `Trait` is not implemented for `&_`
    |
 help: this trait has no implementations, consider adding one
   --> $DIR/issue-89333.rs:9:1

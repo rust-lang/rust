@@ -20,7 +20,7 @@ error[E0277]: can't compare `&u8` with `&u8`
 LL |                 assert_eq!(first, &b'f');
    |                 ^^^^^^^^^^^^^^^^^^^^^^^^ no implementation for `&u8 == &u8`
    |
-   = help: the trait `~const PartialEq<&u8>` is not implemented for `&u8`
+   = help: the trait `~const PartialEq` is not implemented for `&u8`
    = note: this error originates in the macro `assert_eq` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0391]: cycle detected when computing type of opaque `test::{opaque#0}`

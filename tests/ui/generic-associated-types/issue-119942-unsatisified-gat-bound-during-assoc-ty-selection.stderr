@@ -4,7 +4,7 @@ error[E0277]: the size for values of type `(dyn Deref<Target = T> + 'static)` ca
 LL |     type Pointer<T> = dyn Deref<Target = T>;
    |                       ^^^^^^^^^^^^^^^^^^^^^ doesn't have a size known at compile-time
    |
-   = help: the trait `Sized` is not implemented for `(dyn Deref<Target = T> + 'static)`
+   = help: the trait `Sized` is not implemented for `dyn Deref<Target = T>`
 note: required by a bound in `PointerFamily::Pointer`
   --> $DIR/issue-119942-unsatisified-gat-bound-during-assoc-ty-selection.rs:4:5
    |

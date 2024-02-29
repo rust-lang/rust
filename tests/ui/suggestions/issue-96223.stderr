@@ -2,7 +2,7 @@ error[E0277]: the trait `Foo<'_>` is not implemented for `EmptyBis<'_>`
   --> $DIR/issue-96223.rs:49:17
    |
 LL |     icey_bounds(&p);
-   |     ----------- ^^ the trait `for<'de> Foo<'_>` is not implemented for `EmptyBis<'de>`, which is required by `Empty: Dummy<EmptyMarker>`
+   |     ----------- ^^ the trait `Foo<'_>` is not implemented for `EmptyBis<'_>`, which is required by `Empty: Dummy<EmptyMarker>`
    |     |
    |     required by a bound introduced by this call
    |

@@ -2,7 +2,7 @@ error[E0277]: the trait `X<'_, T>` is not implemented for `T`
   --> $DIR/hr-associated-type-bound-param-6.rs:12:12
    |
 LL | impl<S, T> X<'_, T> for (S,) {
-   |            ^^^^^^^^ the trait `for<'b> X<'b, T>` is not implemented for `T`
+   |            ^^^^^^^^ the trait `X<'_, T>` is not implemented for `T`
    |
 help: consider restricting type parameter `T`
    |
@@ -13,7 +13,7 @@ error[E0277]: the trait `X<'_, i32>` is not implemented for `i32`
   --> $DIR/hr-associated-type-bound-param-6.rs:18:5
    |
 LL |     <(i32,) as X<i32>>::f("abc");
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `for<'b> X<'b, i32>` is not implemented for `i32`
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `X<'_, i32>` is not implemented for `i32`
    |
    = help: the trait `X<'_, T>` is implemented for `(S,)`
 

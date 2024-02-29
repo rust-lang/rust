@@ -2,7 +2,7 @@ error[E0277]: the trait `Bar` is not implemented for `&T`
   --> $DIR/correct-binder-for-arbitrary-bound-sugg.rs:13:11
    |
 LL | fn foo<T: Foo>() {}
-   |           ^^^ the trait `for<'a> Bar` is not implemented for `&'a T`
+   |           ^^^ the trait `Bar` is not implemented for `&T`
    |
 note: required by a bound in `Foo`
   --> $DIR/correct-binder-for-arbitrary-bound-sugg.rs:3:23

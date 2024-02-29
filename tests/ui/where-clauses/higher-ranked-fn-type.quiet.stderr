@@ -2,7 +2,7 @@ error[E0277]: the trait `Foo` is not implemented for `fn(&())`
   --> $DIR/higher-ranked-fn-type.rs:20:5
    |
 LL |     called()
-   |     ^^^^^^^^ the trait `for<'b> Foo` is not implemented for `fn(&'b ())`
+   |     ^^^^^^^^ the trait `Foo` is not implemented for `fn(&())`
    |
 help: this trait has no implementations, consider adding one
   --> $DIR/higher-ranked-fn-type.rs:6:1
