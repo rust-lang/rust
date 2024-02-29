@@ -223,7 +223,9 @@ fn path_has_local_parent(
     impl_parent_parent: Option<DefId>,
 ) -> bool {
     path.res.opt_def_id().is_some_and(|did| {
-        let res_parent = cx.tcx.parent(did);
-        res_parent == impl_parent || Some(res_parent) == impl_parent_parent
+        did.is_local() && {
+            let res_parent = cx.tcx.parent(did);
+            res_parent == impl_parent || Some(res_parent) == impl_parent_parent
+        }
     })
 }
