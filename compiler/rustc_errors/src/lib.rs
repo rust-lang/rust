@@ -712,6 +712,7 @@ impl DiagCtxt {
     /// Stashes a diagnostic for possible later improvement in a different,
     /// later stage of the compiler. Possible actions depend on the diagnostic
     /// level:
+    /// - Level::Bug, Level:Fatal: not allowed, will trigger a panic.
     /// - Level::Error: immediately counted as an error that has occurred, because it
     ///   is guaranteed to be emitted eventually. Can be later accessed with the
     ///   provided `span` and `key` through
@@ -719,26 +720,39 @@ impl DiagCtxt {
     ///   [`DiagCtxt::try_steal_replace_and_emit_err`]. These do not allow
     ///   cancellation or downgrading of the error. Returns
     ///   `Some(ErrorGuaranteed)`.
+    /// - Level::DelayedBug: this does happen occasionally with errors that are
+    ///   downgraded to delayed bugs. It is not stashed, but immediately
+    ///   emitted as a delayed bug. This is because stashing it would cause it
+    ///   to be counted by `err_count` which we don't want. It doesn't matter
+    ///   that we cannot steal and improve it later, because it's not a
+    ///   user-facing error. Returns `Some(ErrorGuaranteed)` as is normal for
+    ///   delayed bugs.
     /// - Level::Warning and lower (i.e. !is_error()): can be accessed with the
     ///   provided `span` and `key` through [`DiagCtxt::steal_non_err()`]. This
     ///   allows cancelling and downgrading of the diagnostic. Returns `None`.
-    /// - Others: not allowed, will trigger a panic.
     pub fn stash_diagnostic(
         &self,
         span: Span,
         key: StashKey,
         diag: DiagInner,
     ) -> Option<ErrorGuaranteed> {
-        let guar = if diag.level() == Level::Error {
-            // This `unchecked_error_guaranteed` is valid. It is where the
-            // `ErrorGuaranteed` for stashed errors originates. See
-            // `DiagCtxtInner::drop`.
-            #[allow(deprecated)]
-            Some(ErrorGuaranteed::unchecked_error_guaranteed())
-        } else if !diag.is_error() {
-            None
-        } else {
-            self.span_bug(span, format!("invalid level in `stash_diagnostic`: {}", diag.level));
+        let guar = match diag.level {
+            Bug | Fatal => {
+                self.span_bug(
+                    span,
+                    format!("invalid level in `stash_diagnostic`: {:?}", diag.level),
+                );
+            }
+            Error => {
+                // This `unchecked_error_guaranteed` is valid. It is where the
+                // `ErrorGuaranteed` for stashed errors originates. See
+                // `DiagCtxtInner::drop`.
+                #[allow(deprecated)]
+                Some(ErrorGuaranteed::unchecked_error_guaranteed())
+            }
+            DelayedBug => return self.inner.borrow_mut().emit_diagnostic(diag),
+            ForceWarning(_) | Warning | Note | OnceNote | Help | OnceHelp | FailureNote | Allow
+            | Expect(_) => None,
         };
 
         // FIXME(Centril, #69537): Consider reintroducing panic on overwriting a stashed diagnostic
