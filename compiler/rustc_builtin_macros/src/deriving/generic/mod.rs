@@ -603,7 +603,6 @@ impl<'a> TraitDef<'a> {
                     generics: Generics::default(),
                     where_clauses: (
                         ast::TyAliasWhereClause::default(),
-                        ast::TyAliasWhereClause::default(),
                     ),
                     where_predicates_split: 0,
                     bounds: Vec::new(),
