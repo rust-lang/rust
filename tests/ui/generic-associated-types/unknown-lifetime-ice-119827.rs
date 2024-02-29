@@ -10,7 +10,7 @@ impl Foo for Box<dyn Foo> {}
 //~| ERROR cycle detected
 //~| ERROR cycle detected
 //~| ERROR cycle detected
-//~| ERROR trait `Foo` is not implemented for `Box<(dyn Foo + 'static)>`
+//~| ERROR trait `Foo` is not implemented for `Box<dyn Foo>`
 //~| ERROR not all trait items implemented
 
 fn main() {}

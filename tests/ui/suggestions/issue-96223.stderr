@@ -1,4 +1,4 @@
-error[E0277]: the trait `for<'de> Foo<'_>` is not implemented for `EmptyBis<'de>`
+error[E0277]: the trait `Foo<'_>` is not implemented for `EmptyBis<'_>`
   --> $DIR/issue-96223.rs:49:17
    |
 LL |     icey_bounds(&p);

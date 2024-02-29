@@ -1,4 +1,4 @@
-error[E0277]: the trait `for<'tcx> Foo<'tcx>` is not implemented for `F`
+error[E0277]: the trait `Foo<'_>` is not implemented for `F`
   --> $DIR/hrtb-higher-ranker-supertraits.rs:18:26
    |
 LL |     want_foo_for_any_tcx(f);
@@ -18,7 +18,7 @@ help: consider further restricting this bound
 LL |     where F : Foo<'x> + for<'tcx> Foo<'tcx>
    |                       +++++++++++++++++++++
 
-error[E0277]: the trait `for<'ccx> Bar<'ccx>` is not implemented for `B`
+error[E0277]: the trait `Bar<'_>` is not implemented for `B`
   --> $DIR/hrtb-higher-ranker-supertraits.rs:35:26
    |
 LL |     want_bar_for_any_ccx(b);

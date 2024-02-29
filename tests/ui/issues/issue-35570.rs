@@ -6,8 +6,8 @@ trait Trait2<'a> {
 }
 
 fn _ice(param: Box<dyn for <'a> Trait1<<() as Trait2<'a>>::Ty>>) {
-    //~^ ERROR trait `for<'a> Trait2<'a>` is not implemented for `()`
-    //~| ERROR trait `for<'a> Trait2<'a>` is not implemented for `()`
+    //~^ ERROR trait `Trait2<'_>` is not implemented for `()`
+    //~| ERROR trait `Trait2<'_>` is not implemented for `()`
     let _e: (usize, usize) = unsafe{mem::transmute(param)};
 }
 

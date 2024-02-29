@@ -11,6 +11,6 @@ trait Bar {}
 impl Bar for &() {}
 
 fn foo<T: Foo>() {}
-//~^ ERROR the trait `for<'a> Bar` is not implemented for `&'a T`
+//~^ ERROR the trait `Bar` is not implemented for `&T`
 
 fn main() {}

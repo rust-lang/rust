@@ -10,12 +10,12 @@ where
 }
 
 impl<S, T> X<'_, T> for (S,) {
-    //~^ ERROR trait `for<'b> X<'b, T>` is not implemented for `T`
+    //~^ ERROR trait `X<'_, T>` is not implemented for `T`
     type U = str;
 }
 
 pub fn main() {
     <(i32,) as X<i32>>::f("abc");
     //~^ ERROR trait `X<'_, i32>` is not implemented for `i32`
-    //~| ERROR trait `for<'b> X<'b, i32>` is not implemented for `i32`
+    //~| ERROR trait `X<'_, i32>` is not implemented for `i32`
 }

@@ -1,4 +1,4 @@
-error[E0277]: the trait `for<'z> Trait2<'y, 'z>` is not implemented for `T`
+error[E0277]: the trait `Trait2<'_, '_>` is not implemented for `T`
   --> $DIR/regions-implied-bounds-projection-gap-hr-1.rs:21:49
    |
 LL | fn callee<'x, 'y, T>(t: &'x dyn for<'z> Trait1< <T as Trait2<'y, 'z>>::Foo >)
@@ -9,7 +9,7 @@ help: consider restricting type parameter `T`
 LL | fn callee<'x, 'y, T: for<'z> Trait2<'y, 'z>>(t: &'x dyn for<'z> Trait1< <T as Trait2<'y, 'z>>::Foo >)
    |                    ++++++++++++++++++++++++
 
-error[E0277]: the trait `for<'z> Trait2<'y, 'z>` is not implemented for `T`
+error[E0277]: the trait `Trait2<'_, '_>` is not implemented for `T`
   --> $DIR/regions-implied-bounds-projection-gap-hr-1.rs:23:1
    |
 LL | / {

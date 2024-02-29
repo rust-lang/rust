@@ -1,4 +1,4 @@
-error[E0277]: the trait `for<'b> Trait` is not implemented for `&'b S`
+error[E0277]: the trait `Trait` is not implemented for `&S`
   --> $DIR/imm-ref-trait-object-literal-bound-regions.rs:17:14
    |
 LL |     foo::<S>(s);

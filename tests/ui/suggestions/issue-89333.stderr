@@ -1,4 +1,4 @@
-error[E0277]: the trait `for<'a> Trait` is not implemented for `&'a _`
+error[E0277]: the trait `Trait` is not implemented for `&_`
   --> $DIR/issue-89333.rs:6:5
    |
 LL |     test(&|| 0);

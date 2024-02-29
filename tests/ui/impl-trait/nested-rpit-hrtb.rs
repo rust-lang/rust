@@ -35,7 +35,7 @@ fn one_hrtb_outlives_uses() -> impl for<'a> Bar<'a, Assoc = impl Sized + 'a> {}
 
 fn one_hrtb_trait_param_uses() -> impl for<'a> Bar<'a, Assoc = impl Qux<'a>> {}
 //~^ ERROR higher kinded lifetime bounds on nested opaque types are not supported yet
-//~| ERROR trait `for<'a> Qux<'_>` is not implemented for `&'a ()`
+//~| ERROR trait `Qux<'_>` is not implemented for `&()`
 
 // This should resolve.
 fn one_hrtb_mention_fn_trait_param<'b>() -> impl for<'a> Foo<'a, Assoc = impl Qux<'b>> {}
@@ -45,7 +45,7 @@ fn one_hrtb_mention_fn_outlives<'b>() -> impl for<'a> Foo<'a, Assoc = impl Sized
 
 // This should resolve.
 fn one_hrtb_mention_fn_trait_param_uses<'b>() -> impl for<'a> Bar<'a, Assoc = impl Qux<'b>> {}
-//~^ ERROR trait `for<'a> Qux<'b>` is not implemented for `&'a ()`
+//~^ ERROR trait `Qux<'_>` is not implemented for `&()`
 
 // This should resolve.
 fn one_hrtb_mention_fn_outlives_uses<'b>() -> impl for<'a> Bar<'a, Assoc = impl Sized + 'b> {}
@@ -60,7 +60,7 @@ fn two_htrb_outlives() -> impl for<'a> Foo<'a, Assoc = impl for<'b> Sized + 'b> 
 
 // This should resolve.
 fn two_htrb_trait_param_uses() -> impl for<'a> Bar<'a, Assoc = impl for<'b> Qux<'b>> {}
-//~^ ERROR trait `for<'a, 'b> Qux<'b>` is not implemented for `&'a ()`
+//~^ ERROR trait `Qux<'_>` is not implemented for `&()`
 
 // `'b` is not in scope for the outlives bound.
 fn two_htrb_outlives_uses() -> impl for<'a> Bar<'a, Assoc = impl for<'b> Sized + 'b> {}

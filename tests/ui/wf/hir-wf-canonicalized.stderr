@@ -1,4 +1,4 @@
-error[E0277]: the trait `Foo` is not implemented for `Bar<'a, T>`
+error[E0277]: the trait `Foo` is not implemented for `Bar<'_, T>`
   --> $DIR/hir-wf-canonicalized.rs:10:15
    |
 LL |     callback: Box<dyn Callback<dyn Callback<Bar<'a, T>>>>,
@@ -10,7 +10,7 @@ help: this trait has no implementations, consider adding one
 LL | trait Foo {
    | ^^^^^^^^^
 
-error[E0277]: the trait `Foo` is not implemented for `(dyn Callback<Bar<'a, T>, Output = ()> + 'static)`
+error[E0277]: the trait `Foo` is not implemented for `dyn Callback<Bar<'_, T>, Output = ()>`
   --> $DIR/hir-wf-canonicalized.rs:10:15
    |
 LL |     callback: Box<dyn Callback<dyn Callback<Bar<'a, T>>>>,

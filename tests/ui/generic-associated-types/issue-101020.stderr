@@ -1,4 +1,4 @@
-error[E0277]: the trait `for<'a> Foo<&'a mut ()>` is not implemented for `&'a mut ()`
+error[E0277]: the trait `Foo<&mut ()>` is not implemented for `&mut ()`
   --> $DIR/issue-101020.rs:31:22
    |
 LL |     (&mut EmptyIter).consume(());

@@ -18,8 +18,8 @@ where
     (for<'a> fn(&'a ())): Foo,
 {
     called()
-    //[quiet]~^ ERROR trait `for<'b> Foo` is not implemented for `fn(&'b ())`
-    //[verbose]~^^ ERROR the trait `for<Region
+    //[quiet]~^ ERROR trait `Foo` is not implemented for `fn(&())`
+    //[verbose]~^^ ERROR the trait `Foo` is not implemented for `fn(&ReErased ())`
 }
 
 fn main() {}

@@ -29,7 +29,7 @@ trait Foo<T> {}
 
 fn map_test() {
     (&mut EmptyIter).consume(());
-    //~^ ERROR trait `for<'a> Foo<&'a mut ()>` is not implemented for `&'a mut ()`
+    //~^ ERROR trait `Foo<&mut ()>` is not implemented for `&mut ()`
 }
 
 fn main() {}

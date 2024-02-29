@@ -1,4 +1,4 @@
-error[E0277]: the trait `Default` is not implemented for `(dyn ToString + 'static)`
+error[E0277]: the trait `Default` is not implemented for `dyn ToString`
   --> $DIR/issue-43924.rs:7:45
    |
 LL |     type Out: Default + ToString + ?Sized = dyn ToString;
