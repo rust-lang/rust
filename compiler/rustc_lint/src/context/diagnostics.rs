@@ -428,15 +428,22 @@ pub(super) fn builtin(sess: &Session, diagnostic: BuiltinLintDiagnostics, diag: 
                 diag.note("see <https://doc.rust-lang.org/nightly/unstable-book/compiler-flags/check-cfg.html> for more information about checking conditional configuration");
             }
         }
-        BuiltinLintDiagnostics::DeprecatedWhereclauseLocation(new_span, suggestion) => {
-            diag.multipart_suggestion(
-                "move it to the end of the type declaration",
-                vec![(diag.span.primary_span().unwrap(), "".to_string()), (new_span, suggestion)],
-                Applicability::MachineApplicable,
-            );
-            diag.note(
-                        "see issue #89122 <https://github.com/rust-lang/rust/issues/89122> for more information",
-                    );
+        BuiltinLintDiagnostics::DeprecatedWhereclauseLocation(sugg) => {
+            let left_sp = diag.span.primary_span().unwrap();
+            match sugg {
+                Some((right_sp, sugg)) => diag.multipart_suggestion(
+                    "move it to the end of the type declaration",
+                    vec![(left_sp, String::new()), (right_sp, sugg)],
+                    Applicability::MachineApplicable,
+                ),
+                None => diag.span_suggestion(
+                    left_sp,
+                    "remove this `where`",
+                    "",
+                    Applicability::MachineApplicable,
+                ),
+            };
+            diag.note("see issue #89122 <https://github.com/rust-lang/rust/issues/89122> for more information");
         }
         BuiltinLintDiagnostics::SingleUseLifetime {
             param_span,

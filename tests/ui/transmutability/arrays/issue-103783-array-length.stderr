@@ -1,5 +1,5 @@
 error[E0308]: mismatched types
-  --> $DIR/issue-103783-array-length.rs:21:34
+  --> $DIR/issue-103783-array-length.rs:19:34
    |
 LL |     type NaughtyLenArray = [u32; 3.14159];
    |                                  ^^^^^^^ expected `usize`, found floating-point number

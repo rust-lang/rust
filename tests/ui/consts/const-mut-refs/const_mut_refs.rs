@@ -33,6 +33,11 @@ const fn bazz(foo: &mut Foo) -> usize {
 // Empty slices get promoted so this passes the static checks.
 // Make sure it also passes the dynamic checks.
 static MUTABLE_REFERENCE_HOLDER: Mutex<&mut [u8]> = Mutex::new(&mut []);
+// This variant with a non-empty slice also seems entirely reasonable.
+static MUTABLE_REFERENCE_HOLDER2: Mutex<&mut [u8]> = unsafe {
+    static mut FOO: [u8; 1] = [42]; // a private static that we are sure nobody else will reference
+    Mutex::new(&mut *std::ptr::addr_of_mut!(FOO))
+};
 
 fn main() {
     let _: [(); foo().bar()] = [(); 1];

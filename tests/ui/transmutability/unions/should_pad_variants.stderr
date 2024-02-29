@@ -1,16 +1,16 @@
-error[E0277]: `Src` cannot be safely transmuted into `Dst` in the defining scope of `should_pad_variants::Context`
-  --> $DIR/should_pad_variants.rs:44:36
+error[E0277]: `Src` cannot be safely transmuted into `Dst`
+  --> $DIR/should_pad_variants.rs:43:36
    |
-LL |     assert::is_transmutable::<Src, Dst, Context>();
+LL |     assert::is_transmutable::<Src, Dst>();
    |                                    ^^^ The size of `Src` is smaller than the size of `Dst`
    |
 note: required by a bound in `is_transmutable`
   --> $DIR/should_pad_variants.rs:13:14
    |
-LL |       pub fn is_transmutable<Src, Dst, Context>()
+LL |       pub fn is_transmutable<Src, Dst>()
    |              --------------- required by a bound in this function
 LL |       where
-LL |           Dst: BikeshedIntrinsicFrom<Src, Context, {
+LL |           Dst: BikeshedIntrinsicFrom<Src, {
    |  ______________^
 LL | |             Assume::ALIGNMENT
 LL | |                 .and(Assume::LIFETIMES)

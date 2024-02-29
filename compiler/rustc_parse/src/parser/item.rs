@@ -971,11 +971,17 @@ impl<'a> Parser<'a> {
 
         let after_where_clause = self.parse_where_clause()?;
 
-        let where_clauses = (
-            TyAliasWhereClause(before_where_clause.has_where_token, before_where_clause.span),
-            TyAliasWhereClause(after_where_clause.has_where_token, after_where_clause.span),
-        );
-        let where_predicates_split = before_where_clause.predicates.len();
+        let where_clauses = TyAliasWhereClauses {
+            before: TyAliasWhereClause {
+                has_where_token: before_where_clause.has_where_token,
+                span: before_where_clause.span,
+            },
+            after: TyAliasWhereClause {
+                has_where_token: after_where_clause.has_where_token,
+                span: after_where_clause.span,
+            },
+            split: before_where_clause.predicates.len(),
+        };
         let mut predicates = before_where_clause.predicates;
         predicates.extend(after_where_clause.predicates);
         let where_clause = WhereClause {
@@ -994,7 +1000,6 @@ impl<'a> Parser<'a> {
                 defaultness,
                 generics,
                 where_clauses,
-                where_predicates_split,
                 bounds,
                 ty,
             })),

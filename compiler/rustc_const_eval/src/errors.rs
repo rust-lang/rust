@@ -613,7 +613,6 @@ impl<'tcx> ReportErrorExt for ValidationErrorInfo<'tcx> {
             PartialPointer => const_eval_validation_partial_pointer,
             ConstRefToMutable => const_eval_validation_const_ref_to_mutable,
             ConstRefToExtern => const_eval_validation_const_ref_to_extern,
-            MutableRefInConstOrStatic => const_eval_validation_mutable_ref_in_const_or_static,
             MutableRefToImmutable => const_eval_validation_mutable_ref_to_immutable,
             NullFnPtr => const_eval_validation_null_fn_ptr,
             NeverVal => const_eval_validation_never_val,
@@ -767,7 +766,6 @@ impl<'tcx> ReportErrorExt for ValidationErrorInfo<'tcx> {
             }
             NullPtr { .. }
             | PtrToStatic { .. }
-            | MutableRefInConstOrStatic
             | ConstRefToMutable
             | ConstRefToExtern
             | MutableRefToImmutable

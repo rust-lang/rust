@@ -10,9 +10,9 @@
 mod assert {
     use std::mem::{Assume, BikeshedIntrinsicFrom};
 
-    pub fn is_transmutable<Src, Dst, Context>()
+    pub fn is_transmutable<Src, Dst>()
     where
-        Dst: BikeshedIntrinsicFrom<Src, Context, {
+        Dst: BikeshedIntrinsicFrom<Src, {
             Assume::ALIGNMENT
                 .and(Assume::LIFETIMES)
                 .and(Assume::SAFETY)
@@ -25,8 +25,7 @@ mod assert {
 struct Zst;
 
 fn should_have_correct_size() {
-    struct Context;
-    assert::is_transmutable::<(), Zst, Context>();
-    assert::is_transmutable::<Zst, (), Context>();
-    assert::is_transmutable::<(), u8, Context>(); //~ ERROR cannot be safely transmuted
+    assert::is_transmutable::<(), Zst>();
+    assert::is_transmutable::<Zst, ()>();
+    assert::is_transmutable::<(), u8>(); //~ ERROR cannot be safely transmuted
 }

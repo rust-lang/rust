@@ -601,11 +601,7 @@ impl<'a> TraitDef<'a> {
                 kind: ast::AssocItemKind::Type(Box::new(ast::TyAlias {
                     defaultness: ast::Defaultness::Final,
                     generics: Generics::default(),
-                    where_clauses: (
-                        ast::TyAliasWhereClause::default(),
-                        ast::TyAliasWhereClause::default(),
-                    ),
-                    where_predicates_split: 0,
+                    where_clauses: ast::TyAliasWhereClauses::default(),
                     bounds: Vec::new(),
                     ty: Some(type_def.to_ty(cx, self.span, type_ident, generics)),
                 })),

@@ -315,8 +315,11 @@ fn link_rlib<'a>(
 
     let trailing_metadata = match flavor {
         RlibFlavor::Normal => {
-            let (metadata, metadata_position) =
-                create_wrapper_file(sess, b".rmeta".to_vec(), codegen_results.metadata.raw_data());
+            let (metadata, metadata_position) = create_wrapper_file(
+                sess,
+                ".rmeta".to_string(),
+                codegen_results.metadata.raw_data(),
+            );
             let metadata = emit_wrapper_file(sess, &metadata, tmpdir, METADATA_FILENAME);
             match metadata_position {
                 MetadataPosition::First => {
@@ -384,7 +387,7 @@ fn link_rlib<'a>(
             let path = find_native_static_library(filename.as_str(), true, &lib_search_paths, sess);
             let src = read(path)
                 .map_err(|e| sess.dcx().emit_fatal(errors::ReadFileError { message: e }))?;
-            let (data, _) = create_wrapper_file(sess, b".bundled_lib".to_vec(), &src);
+            let (data, _) = create_wrapper_file(sess, ".bundled_lib".to_string(), &src);
             let wrapper_file = emit_wrapper_file(sess, &data, tmpdir, filename.as_str());
             packed_bundled_libs.push(wrapper_file);
         } else {

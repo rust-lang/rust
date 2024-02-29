@@ -1,5 +1,6 @@
 //! Reading of the rustc metadata for rlibs and dylibs
 
+use std::borrow::Cow;
 use std::fs::File;
 use std::io::Write;
 use std::path::Path;
@@ -15,7 +16,6 @@ use rustc_data_structures::owned_slice::{try_slice_owned, OwnedSlice};
 use rustc_metadata::creader::MetadataLoader;
 use rustc_metadata::fs::METADATA_FILENAME;
 use rustc_metadata::EncodedMetadata;
-use rustc_serialize::leb128;
 use rustc_session::Session;
 use rustc_span::sym;
 use rustc_target::abi::Endian;
@@ -434,12 +434,15 @@ pub enum MetadataPosition {
 ///   automatically removed from the final output.
 pub fn create_wrapper_file(
     sess: &Session,
-    section_name: Vec<u8>,
+    section_name: String,
     data: &[u8],
 ) -> (Vec<u8>, MetadataPosition) {
     let Some(mut file) = create_object_file(sess) else {
         if sess.target.is_like_wasm {
-            return (create_metadata_file_for_wasm(data, &section_name), MetadataPosition::First);
+            return (
+                create_metadata_file_for_wasm(sess, data, &section_name),
+                MetadataPosition::First,
+            );
         }
 
         // Targets using this branch don't have support implemented here yet or
@@ -452,7 +455,7 @@ pub fn create_wrapper_file(
     } else {
         file.add_section(
             file.segment_name(StandardSegment::Debug).to_vec(),
-            section_name,
+            section_name.into_bytes(),
             SectionKind::Debug,
         )
     };
@@ -524,7 +527,7 @@ pub fn create_compressed_metadata_file(
 
     let Some(mut file) = create_object_file(sess) else {
         if sess.target.is_like_wasm {
-            return create_metadata_file_for_wasm(&packed_metadata, b".rustc");
+            return create_metadata_file_for_wasm(sess, &packed_metadata, ".rustc");
         }
         return packed_metadata.to_vec();
     };
@@ -624,51 +627,41 @@ pub fn create_compressed_metadata_file_for_xcoff(
 /// `data`.
 ///
 /// NB: the `object` crate does not yet have support for writing the wasm
-/// object file format. The format is simple enough that for now an extra crate
-/// from crates.io (such as `wasm-encoder`). The file format is:
+/// object file format. In lieu of that the `wasm-encoder` crate is used to
+/// build a wasm file by hand.
 ///
-/// * 4-byte header "\0asm"
-/// * 4-byte version number - 1u32 in little-endian format
-/// * concatenated sections, which for this object is always "custom sections"
-///
-/// Custom sections are then defined by:
-/// * 1-byte section identifier - 0 for a custom section
-/// * leb-encoded section length (size of the contents beneath this bullet)
-///   * leb-encoded custom section name length
-///   * custom section name
-///   * section contents
-///
-/// One custom section, `linking`, is added here in accordance with
+/// The wasm object file format is defined at
 /// <https://github.com/WebAssembly/tool-conventions/blob/main/Linking.md>
-/// which is required to inform LLD that this is an object file but it should
-/// otherwise basically ignore it if it otherwise looks at it. The linking
-/// section currently is defined by a single version byte (2) and then further
-/// sections, but we have no more sections, so it's just the byte "2".
+/// and mainly consists of a `linking` custom section. In this case the custom
+/// section there is empty except for a version marker indicating what format
+/// it's in.
 ///
-/// The next custom section is the one we're interested in.
-pub fn create_metadata_file_for_wasm(data: &[u8], section_name: &[u8]) -> Vec<u8> {
-    let mut bytes = b"\0asm\x01\0\0\0".to_vec();
+/// The main purpose of this is to contain a custom section with `section_name`,
+/// which is then appended after `linking`.
+///
+/// As a further detail the object needs to have a 64-bit memory if `wasm64` is
+/// the target or otherwise it's interpreted as a 32-bit object which is
+/// incompatible with 64-bit ones.
+pub fn create_metadata_file_for_wasm(sess: &Session, data: &[u8], section_name: &str) -> Vec<u8> {
+    assert!(sess.target.is_like_wasm);
+    let mut module = wasm_encoder::Module::new();
+    let mut imports = wasm_encoder::ImportSection::new();
 
-    let mut append_custom_section = |section_name: &[u8], data: &[u8]| {
-        let mut section_name_len = [0; leb128::max_leb128_len::<usize>()];
-        let off = leb128::write_usize_leb128(&mut section_name_len, section_name.len());
-        let section_name_len = &section_name_len[..off];
-
-        let mut section_len = [0; leb128::max_leb128_len::<usize>()];
-        let off = leb128::write_usize_leb128(
-            &mut section_len,
-            data.len() + section_name_len.len() + section_name.len(),
+    if sess.target.pointer_width == 64 {
+        imports.import(
+            "env",
+            "__linear_memory",
+            wasm_encoder::MemoryType { minimum: 0, maximum: None, memory64: true, shared: false },
         );
-        let section_len = &section_len[..off];
+    }
 
-        bytes.push(0u8);
-        bytes.extend_from_slice(section_len);
-        bytes.extend_from_slice(section_name_len);
-        bytes.extend_from_slice(section_name);
-        bytes.extend_from_slice(data);
-    };
-
-    append_custom_section(b"linking", &[2]);
-    append_custom_section(section_name, data);
-    bytes
+    if imports.len() > 0 {
+        module.section(&imports);
+    }
+    module.section(&wasm_encoder::CustomSection {
+        name: "linking".into(),
+        data: Cow::Borrowed(&[2]),
+    });
+    module.section(&wasm_encoder::CustomSection { name: section_name.into(), data: data.into() });
+    module.finish()
 }
