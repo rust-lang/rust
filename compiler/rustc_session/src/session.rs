@@ -22,8 +22,8 @@ use rustc_errors::emitter::{stderr_destination, DynEmitter, HumanEmitter, HumanR
 use rustc_errors::json::JsonEmitter;
 use rustc_errors::registry::Registry;
 use rustc_errors::{
-    codes::*, fallback_fluent_bundle, Diag, DiagCtxt, DiagnosticMessage, ErrorGuaranteed,
-    FatalAbort, FluentBundle, IntoDiagnostic, LazyFallbackBundle, TerminalUrl,
+    codes::*, fallback_fluent_bundle, Diag, DiagCtxt, DiagMessage, ErrorGuaranteed, FatalAbort,
+    FluentBundle, IntoDiagnostic, LazyFallbackBundle, TerminalUrl,
 };
 use rustc_macros::HashStable_Generic;
 pub use rustc_span::def_id::StableCrateId;
@@ -1419,38 +1419,38 @@ impl EarlyDiagCtxt {
 
     #[allow(rustc::untranslatable_diagnostic)]
     #[allow(rustc::diagnostic_outside_of_impl)]
-    pub fn early_note(&self, msg: impl Into<DiagnosticMessage>) {
+    pub fn early_note(&self, msg: impl Into<DiagMessage>) {
         self.dcx.note(msg)
     }
 
     #[allow(rustc::untranslatable_diagnostic)]
     #[allow(rustc::diagnostic_outside_of_impl)]
-    pub fn early_help(&self, msg: impl Into<DiagnosticMessage>) {
+    pub fn early_help(&self, msg: impl Into<DiagMessage>) {
         self.dcx.struct_help(msg).emit()
     }
 
     #[allow(rustc::untranslatable_diagnostic)]
     #[allow(rustc::diagnostic_outside_of_impl)]
     #[must_use = "ErrorGuaranteed must be returned from `run_compiler` in order to exit with a non-zero status code"]
-    pub fn early_err(&self, msg: impl Into<DiagnosticMessage>) -> ErrorGuaranteed {
+    pub fn early_err(&self, msg: impl Into<DiagMessage>) -> ErrorGuaranteed {
         self.dcx.err(msg)
     }
 
     #[allow(rustc::untranslatable_diagnostic)]
     #[allow(rustc::diagnostic_outside_of_impl)]
-    pub fn early_fatal(&self, msg: impl Into<DiagnosticMessage>) -> ! {
+    pub fn early_fatal(&self, msg: impl Into<DiagMessage>) -> ! {
         self.dcx.fatal(msg)
     }
 
     #[allow(rustc::untranslatable_diagnostic)]
     #[allow(rustc::diagnostic_outside_of_impl)]
-    pub fn early_struct_fatal(&self, msg: impl Into<DiagnosticMessage>) -> Diag<'_, FatalAbort> {
+    pub fn early_struct_fatal(&self, msg: impl Into<DiagMessage>) -> Diag<'_, FatalAbort> {
         self.dcx.struct_fatal(msg)
     }
 
     #[allow(rustc::untranslatable_diagnostic)]
     #[allow(rustc::diagnostic_outside_of_impl)]
-    pub fn early_warn(&self, msg: impl Into<DiagnosticMessage>) {
+    pub fn early_warn(&self, msg: impl Into<DiagMessage>) {
         self.dcx.warn(msg)
     }
 

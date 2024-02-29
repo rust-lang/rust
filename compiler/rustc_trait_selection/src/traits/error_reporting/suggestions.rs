@@ -1266,8 +1266,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                     if has_custom_message {
                         err.note(msg);
                     } else {
-                        err.messages =
-                            vec![(rustc_errors::DiagnosticMessage::from(msg), Style::NoStyle)];
+                        err.messages = vec![(rustc_errors::DiagMessage::from(msg), Style::NoStyle)];
                     }
                     let mut file = None;
                     err.span_label(

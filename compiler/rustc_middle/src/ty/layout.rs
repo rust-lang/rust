@@ -3,7 +3,7 @@ use crate::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use crate::query::TyCtxtAt;
 use crate::ty::normalize_erasing_regions::NormalizationError;
 use crate::ty::{self, ConstKind, Ty, TyCtxt, TypeVisitableExt};
-use rustc_error_messages::DiagnosticMessage;
+use rustc_error_messages::DiagMessage;
 use rustc_errors::{
     Diag, DiagArgValue, DiagCtxt, EmissionGuarantee, IntoDiagnostic, IntoDiagnosticArg, Level,
 };
@@ -205,7 +205,7 @@ pub enum LayoutError<'tcx> {
 }
 
 impl<'tcx> LayoutError<'tcx> {
-    pub fn diagnostic_message(&self) -> DiagnosticMessage {
+    pub fn diagnostic_message(&self) -> DiagMessage {
         use crate::fluent_generated::*;
         use LayoutError::*;
         match self {

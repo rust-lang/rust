@@ -251,7 +251,7 @@ impl<O> AssertKind<O> {
     /// `AssertKind::description` and the lang items mentioned in its docs).
     /// Note that we deliberately show more details here than we do at runtime, such as the actual
     /// numbers that overflowed -- it is much easier to do so here than at runtime.
-    pub fn diagnostic_message(&self) -> DiagnosticMessage {
+    pub fn diagnostic_message(&self) -> DiagMessage {
         use crate::fluent_generated::*;
         use AssertKind::*;
 

@@ -110,7 +110,7 @@ use crate::mbe::{KleeneToken, TokenTree};
 use rustc_ast::token::{Delimiter, IdentIsRaw, Token, TokenKind};
 use rustc_ast::{NodeId, DUMMY_NODE_ID};
 use rustc_data_structures::fx::FxHashMap;
-use rustc_errors::{DiagnosticMessage, MultiSpan};
+use rustc_errors::{DiagMessage, MultiSpan};
 use rustc_session::lint::builtin::{META_VARIABLE_MISUSE, MISSING_FRAGMENT_SPECIFIER};
 use rustc_session::parse::ParseSess;
 use rustc_span::symbol::kw;
@@ -648,7 +648,7 @@ fn buffer_lint(
     psess: &ParseSess,
     span: MultiSpan,
     node_id: NodeId,
-    message: impl Into<DiagnosticMessage>,
+    message: impl Into<DiagMessage>,
 ) {
     // Macros loaded from other crates have dummy node ids.
     if node_id != DUMMY_NODE_ID {

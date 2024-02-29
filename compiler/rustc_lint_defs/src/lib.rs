@@ -8,7 +8,7 @@ use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
 use rustc_data_structures::stable_hasher::{
     HashStable, StableCompare, StableHasher, ToStableHashKey,
 };
-use rustc_error_messages::{DiagnosticMessage, MultiSpan};
+use rustc_error_messages::{DiagMessage, MultiSpan};
 use rustc_hir::HashStableContext;
 use rustc_hir::HirId;
 use rustc_span::edition::Edition;
@@ -674,7 +674,7 @@ pub struct BufferedEarlyLint {
     pub span: MultiSpan,
 
     /// The lint message.
-    pub msg: DiagnosticMessage,
+    pub msg: DiagMessage,
 
     /// The `NodeId` of the AST node that generated the lint.
     pub node_id: NodeId,
@@ -703,7 +703,7 @@ impl LintBuffer {
         lint: &'static Lint,
         node_id: NodeId,
         span: MultiSpan,
-        msg: impl Into<DiagnosticMessage>,
+        msg: impl Into<DiagMessage>,
         diagnostic: BuiltinLintDiagnostics,
     ) {
         let lint_id = LintId::of(lint);
@@ -721,7 +721,7 @@ impl LintBuffer {
         lint: &'static Lint,
         id: NodeId,
         sp: impl Into<MultiSpan>,
-        msg: impl Into<DiagnosticMessage>,
+        msg: impl Into<DiagMessage>,
     ) {
         self.add_lint(lint, id, sp.into(), msg, BuiltinLintDiagnostics::Normal)
     }
@@ -731,7 +731,7 @@ impl LintBuffer {
         lint: &'static Lint,
         id: NodeId,
         sp: impl Into<MultiSpan>,
-        msg: impl Into<DiagnosticMessage>,
+        msg: impl Into<DiagMessage>,
         diagnostic: BuiltinLintDiagnostics,
     ) {
         self.add_lint(lint, id, sp.into(), msg, diagnostic)

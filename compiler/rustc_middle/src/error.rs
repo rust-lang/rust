@@ -1,6 +1,6 @@
 use std::fmt;
 
-use rustc_errors::{codes::*, DiagArgName, DiagArgValue, DiagnosticMessage};
+use rustc_errors::{codes::*, DiagArgName, DiagArgValue, DiagMessage};
 use rustc_macros::Diagnostic;
 use rustc_span::{Span, Symbol};
 
@@ -93,16 +93,16 @@ pub(super) struct ConstNotUsedTraitAlias {
 }
 
 pub struct CustomSubdiagnostic<'a> {
-    pub msg: fn() -> DiagnosticMessage,
+    pub msg: fn() -> DiagMessage,
     pub add_args: Box<dyn FnOnce(&mut dyn FnMut(DiagArgName, DiagArgValue)) + 'a>,
 }
 
 impl<'a> CustomSubdiagnostic<'a> {
-    pub fn label(x: fn() -> DiagnosticMessage) -> Self {
+    pub fn label(x: fn() -> DiagMessage) -> Self {
         Self::label_and_then(x, |_| {})
     }
     pub fn label_and_then<F: FnOnce(&mut dyn FnMut(DiagArgName, DiagArgValue)) + 'a>(
-        msg: fn() -> DiagnosticMessage,
+        msg: fn() -> DiagMessage,
         f: F,
     ) -> Self {
         Self { msg, add_args: Box::new(move |x| f(x)) }

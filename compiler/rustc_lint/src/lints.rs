@@ -5,8 +5,8 @@ use std::num::NonZero;
 use crate::errors::RequestedLevel;
 use crate::fluent_generated as fluent;
 use rustc_errors::{
-    codes::*, AddToDiagnostic, Applicability, DecorateLint, Diag, DiagStyledString,
-    DiagnosticMessage, EmissionGuarantee, SubdiagnosticMessageOp, SuggestionStyle,
+    codes::*, AddToDiagnostic, Applicability, DecorateLint, Diag, DiagMessage, DiagStyledString,
+    EmissionGuarantee, SubdiagnosticMessageOp, SuggestionStyle,
 };
 use rustc_hir::def_id::DefId;
 use rustc_macros::{LintDiagnostic, Subdiagnostic};
@@ -141,7 +141,7 @@ impl<'a> DecorateLint<'a, ()> for BuiltinMissingDebugImpl<'_> {
         diag.arg("debug", self.tcx.def_path_str(self.def_id));
     }
 
-    fn msg(&self) -> DiagnosticMessage {
+    fn msg(&self) -> DiagMessage {
         fluent::lint_builtin_missing_debug_impl
     }
 }
@@ -251,7 +251,7 @@ impl<'a> DecorateLint<'a, ()> for BuiltinUngatedAsyncFnTrackCaller<'_> {
         );
     }
 
-    fn msg(&self) -> DiagnosticMessage {
+    fn msg(&self) -> DiagMessage {
         fluent::lint_ungated_async_fn_track_caller
     }
 }
@@ -416,7 +416,7 @@ pub struct BuiltinFeatureIssueNote {
 }
 
 pub struct BuiltinUnpermittedTypeInit<'a> {
-    pub msg: DiagnosticMessage,
+    pub msg: DiagMessage,
     pub ty: Ty<'a>,
     pub label: Span,
     pub sub: BuiltinUnpermittedTypeInitSub,
@@ -437,7 +437,7 @@ impl<'a> DecorateLint<'a, ()> for BuiltinUnpermittedTypeInit<'_> {
         self.sub.add_to_diagnostic(diag);
     }
 
-    fn msg(&self) -> DiagnosticMessage {
+    fn msg(&self) -> DiagMessage {
         self.msg.clone()
     }
 }
@@ -1179,7 +1179,7 @@ impl<'a> DecorateLint<'a, ()> for NonFmtPanicUnused {
         }
     }
 
-    fn msg(&self) -> DiagnosticMessage {
+    fn msg(&self) -> DiagMessage {
         fluent::lint_non_fmt_panic_unused
     }
 }
@@ -1403,7 +1403,7 @@ impl<'a> DecorateLint<'a, ()> for DropTraitConstraintsDiag<'_> {
         diag.arg("needs_drop", self.tcx.def_path_str(self.def_id));
     }
 
-    fn msg(&self) -> DiagnosticMessage {
+    fn msg(&self) -> DiagMessage {
         fluent::lint_drop_trait_constraints
     }
 }
@@ -1419,7 +1419,7 @@ impl<'a> DecorateLint<'a, ()> for DropGlue<'_> {
         diag.arg("needs_drop", self.tcx.def_path_str(self.def_id));
     }
 
-    fn msg(&self) -> DiagnosticMessage {
+    fn msg(&self) -> DiagMessage {
         fluent::lint_drop_glue
     }
 }
@@ -1683,12 +1683,12 @@ pub struct ImproperCTypes<'a> {
     pub ty: Ty<'a>,
     pub desc: &'a str,
     pub label: Span,
-    pub help: Option<DiagnosticMessage>,
-    pub note: DiagnosticMessage,
+    pub help: Option<DiagMessage>,
+    pub note: DiagMessage,
     pub span_note: Option<Span>,
 }
 
-// Used because of the complexity of Option<DiagnosticMessage>, DiagnosticMessage, and Option<Span>
+// Used because of the complexity of Option<DiagMessage>, DiagMessage, and Option<Span>
 impl<'a> DecorateLint<'a, ()> for ImproperCTypes<'_> {
     fn decorate_lint<'b>(self, diag: &'b mut Diag<'a, ()>) {
         diag.arg("ty", self.ty);
@@ -1703,7 +1703,7 @@ impl<'a> DecorateLint<'a, ()> for ImproperCTypes<'_> {
         }
     }
 
-    fn msg(&self) -> DiagnosticMessage {
+    fn msg(&self) -> DiagMessage {
         fluent::lint_improper_ctypes
     }
 }
@@ -1846,7 +1846,7 @@ impl<'a> DecorateLint<'a, ()> for UnusedDef<'_, '_> {
         }
     }
 
-    fn msg(&self) -> DiagnosticMessage {
+    fn msg(&self) -> DiagMessage {
         fluent::lint_unused_def
     }
 }
@@ -1923,7 +1923,7 @@ impl<'a> DecorateLint<'a, ()> for AsyncFnInTraitDiag {
         }
     }
 
-    fn msg(&self) -> DiagnosticMessage {
+    fn msg(&self) -> DiagMessage {
         fluent::lint_async_fn_in_trait
     }
 }

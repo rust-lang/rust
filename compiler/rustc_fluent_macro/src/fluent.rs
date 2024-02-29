@@ -244,8 +244,11 @@ pub(crate) fn fluent_messages(input: proc_macro::TokenStream) -> proc_macro::Tok
                 format!("Constant referring to Fluent message `{name}` from `{crate_name}`");
             constants.extend(quote! {
                 #[doc = #docstr]
-                pub const #snake_name: rustc_errors::DiagnosticMessage =
-                    rustc_errors::DiagnosticMessage::FluentIdentifier(std::borrow::Cow::Borrowed(#name), None);
+                pub const #snake_name: rustc_errors::DiagMessage =
+                    rustc_errors::DiagMessage::FluentIdentifier(
+                        std::borrow::Cow::Borrowed(#name),
+                        None
+                    );
             });
 
             for Attribute { id: Identifier { name: attr_name }, .. } in attributes {

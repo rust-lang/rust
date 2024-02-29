@@ -44,7 +44,7 @@ impl Translate for SilentEmitter {
     // subdiagnostics result in a call to this.
     fn translate_message<'a>(
         &'a self,
-        message: &'a rustc_errors::DiagnosticMessage,
+        message: &'a rustc_errors::DiagMessage,
         _: &'a rustc_errors::translation::FluentArgs<'_>,
     ) -> Result<Cow<'_, str>, rustc_errors::error::TranslateError<'_>> {
         rustc_errors::emitter::silent_translate(message)

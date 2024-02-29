@@ -1,6 +1,6 @@
 use hir::GenericParamKind;
 use rustc_errors::{
-    codes::*, AddToDiagnostic, Applicability, Diag, DiagStyledString, DiagnosticMessage,
+    codes::*, AddToDiagnostic, Applicability, Diag, DiagMessage, DiagStyledString,
     EmissionGuarantee, IntoDiagnosticArg, MultiSpan, SubdiagnosticMessageOp,
 };
 use rustc_hir as hir;
@@ -209,11 +209,11 @@ impl<'a> SourceKindMultiSuggestion<'a> {
 pub enum RegionOriginNote<'a> {
     Plain {
         span: Span,
-        msg: DiagnosticMessage,
+        msg: DiagMessage,
     },
     WithName {
         span: Span,
-        msg: DiagnosticMessage,
+        msg: DiagMessage,
         name: &'a str,
         continues: bool,
     },
@@ -230,7 +230,7 @@ impl AddToDiagnostic for RegionOriginNote<'_> {
         diag: &mut Diag<'_, G>,
         _f: F,
     ) {
-        let mut label_or_note = |span, msg: DiagnosticMessage| {
+        let mut label_or_note = |span, msg: DiagMessage| {
             let sub_count = diag.children.iter().filter(|d| d.span.is_dummy()).count();
             let expanded_sub_count = diag.children.iter().filter(|d| !d.span.is_dummy()).count();
             let span_is_primary = diag.span.primary_spans().iter().all(|&sp| sp == span);
@@ -766,7 +766,7 @@ impl AddToDiagnostic for ConsiderBorrowingParamHelp {
     ) {
         let mut type_param_span: MultiSpan = self.spans.clone().into();
         for &span in &self.spans {
-            // Seems like we can't call f() here as Into<DiagnosticMessage> is required
+            // Seems like we can't call f() here as Into<DiagMessage> is required
             type_param_span.push_span_label(span, fluent::infer_tid_consider_borrowing);
         }
         let msg = f(diag, fluent::infer_tid_param_help.into());

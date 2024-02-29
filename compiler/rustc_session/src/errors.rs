@@ -3,8 +3,8 @@ use std::num::NonZero;
 use rustc_ast::token;
 use rustc_ast::util::literal::LitError;
 use rustc_errors::{
-    codes::*, Diag, DiagCtxt, DiagnosticMessage, EmissionGuarantee, ErrorGuaranteed,
-    IntoDiagnostic, Level, MultiSpan,
+    codes::*, Diag, DiagCtxt, DiagMessage, EmissionGuarantee, ErrorGuaranteed, IntoDiagnostic,
+    Level, MultiSpan,
 };
 use rustc_macros::Diagnostic;
 use rustc_span::{Span, Symbol};
@@ -14,7 +14,7 @@ use crate::parse::ParseSess;
 
 pub struct FeatureGateError {
     pub span: MultiSpan,
-    pub explain: DiagnosticMessage,
+    pub explain: DiagMessage,
 }
 
 impl<'a, G: EmissionGuarantee> IntoDiagnostic<'a, G> for FeatureGateError {

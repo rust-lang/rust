@@ -1,7 +1,7 @@
 use std::fmt::{self, Write};
 use std::num::NonZero;
 
-use rustc_errors::{Diag, DiagnosticMessage, Level};
+use rustc_errors::{Diag, DiagMessage, Level};
 use rustc_span::{SpanData, Symbol, DUMMY_SP};
 use rustc_target::abi::{Align, Size};
 
@@ -95,7 +95,7 @@ impl fmt::Debug for TerminationInfo {
 }
 
 impl MachineStopType for TerminationInfo {
-    fn diagnostic_message(&self) -> DiagnosticMessage {
+    fn diagnostic_message(&self) -> DiagMessage {
         self.to_string().into()
     }
     fn add_args(

@@ -1,7 +1,7 @@
 use std::borrow::Cow;
 
 use rustc_errors::{
-    codes::*, Applicability, DecorateLint, Diag, DiagArgValue, DiagCtxt, DiagnosticMessage,
+    codes::*, Applicability, DecorateLint, Diag, DiagArgValue, DiagCtxt, DiagMessage,
     EmissionGuarantee, IntoDiagnostic, Level,
 };
 use rustc_macros::{Diagnostic, LintDiagnostic, Subdiagnostic};
@@ -149,7 +149,7 @@ impl RequiresUnsafeDetail {
         }
     }
 
-    fn label(&self) -> DiagnosticMessage {
+    fn label(&self) -> DiagMessage {
         use UnsafetyViolationDetails::*;
         match self.violation {
             CallToUnsafeFunction => fluent::mir_transform_call_to_unsafe_label,
@@ -199,7 +199,7 @@ impl<'a> DecorateLint<'a, ()> for UnsafeOpInUnsafeFn {
         }
     }
 
-    fn msg(&self) -> DiagnosticMessage {
+    fn msg(&self) -> DiagMessage {
         fluent::mir_transform_unsafe_op_in_unsafe_fn
     }
 }
@@ -224,7 +224,7 @@ impl<'a, P: std::fmt::Debug> DecorateLint<'a, ()> for AssertLint<P> {
         diag.span_label(self.span, message);
     }
 
-    fn msg(&self) -> DiagnosticMessage {
+    fn msg(&self) -> DiagMessage {
         match self.lint_kind {
             AssertLintKind::ArithmeticOverflow => fluent::mir_transform_arithmetic_overflow,
             AssertLintKind::UnconditionalPanic => fluent::mir_transform_operation_will_panic,
@@ -281,7 +281,7 @@ impl<'a> DecorateLint<'a, ()> for MustNotSupend<'_, '_> {
         diag.arg("post", self.post);
     }
 
-    fn msg(&self) -> rustc_errors::DiagnosticMessage {
+    fn msg(&self) -> rustc_errors::DiagMessage {
         fluent::mir_transform_must_not_suspend
     }
 }

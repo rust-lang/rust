@@ -1,7 +1,7 @@
 use crate::snippet::Style;
 use crate::{
-    CodeSuggestion, DiagCtxt, DiagnosticMessage, ErrCode, ErrorGuaranteed, ExplicitBug, Level,
-    MultiSpan, StashKey, SubdiagnosticMessage, Substitution, SubstitutionPart, SuggestionStyle,
+    CodeSuggestion, DiagCtxt, DiagMessage, ErrCode, ErrorGuaranteed, ExplicitBug, Level, MultiSpan,
+    StashKey, SubdiagnosticMessage, Substitution, SubstitutionPart, SuggestionStyle,
 };
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_error_messages::fluent_value_from_str_list_sep_by_and;
@@ -199,7 +199,7 @@ pub trait DecorateLint<'a, G: EmissionGuarantee> {
     /// Decorate and emit a lint.
     fn decorate_lint<'b>(self, diag: &'b mut Diag<'a, G>);
 
-    fn msg(&self) -> DiagnosticMessage;
+    fn msg(&self) -> DiagMessage;
 }
 
 #[derive(Clone, Debug, Encodable, Decodable)]
@@ -291,7 +291,7 @@ pub struct DiagInner {
     // outside of what methods in this crate themselves allow.
     pub(crate) level: Level,
 
-    pub messages: Vec<(DiagnosticMessage, Style)>,
+    pub messages: Vec<(DiagMessage, Style)>,
     pub code: Option<ErrCode>,
     pub span: MultiSpan,
     pub children: Vec<Subdiag>,
@@ -312,12 +312,12 @@ pub struct DiagInner {
 
 impl DiagInner {
     #[track_caller]
-    pub fn new<M: Into<DiagnosticMessage>>(level: Level, message: M) -> Self {
+    pub fn new<M: Into<DiagMessage>>(level: Level, message: M) -> Self {
         DiagInner::new_with_messages(level, vec![(message.into(), Style::NoStyle)])
     }
 
     #[track_caller]
-    pub fn new_with_messages(level: Level, messages: Vec<(DiagnosticMessage, Style)>) -> Self {
+    pub fn new_with_messages(level: Level, messages: Vec<(DiagMessage, Style)>) -> Self {
         DiagInner {
             level,
             messages,
@@ -397,7 +397,7 @@ impl DiagInner {
     pub(crate) fn subdiagnostic_message_to_diagnostic_message(
         &self,
         attr: impl Into<SubdiagnosticMessage>,
-    ) -> DiagnosticMessage {
+    ) -> DiagMessage {
         let msg =
             self.messages.iter().map(|(msg, _)| msg).next().expect("diagnostic with no messages");
         msg.with_subdiagnostic_message(attr.into())
@@ -429,7 +429,7 @@ impl DiagInner {
         &self,
     ) -> (
         &Level,
-        &[(DiagnosticMessage, Style)],
+        &[(DiagMessage, Style)],
         &Option<ErrCode>,
         &MultiSpan,
         &[Subdiag],
@@ -472,7 +472,7 @@ impl PartialEq for DiagInner {
 #[derive(Clone, Debug, PartialEq, Hash, Encodable, Decodable)]
 pub struct Subdiag {
     pub level: Level,
-    pub messages: Vec<(DiagnosticMessage, Style)>,
+    pub messages: Vec<(DiagMessage, Style)>,
     pub span: MultiSpan,
 }
 
@@ -578,7 +578,7 @@ macro_rules! with_fn {
 impl<'a, G: EmissionGuarantee> Diag<'a, G> {
     #[rustc_lint_diagnostics]
     #[track_caller]
-    pub fn new<M: Into<DiagnosticMessage>>(dcx: &'a DiagCtxt, level: Level, message: M) -> Self {
+    pub fn new<M: Into<DiagMessage>>(dcx: &'a DiagCtxt, level: Level, message: M) -> Self {
         Self::new_diagnostic(dcx, DiagInner::new(level, message))
     }
 
@@ -1203,7 +1203,7 @@ impl<'a, G: EmissionGuarantee> Diag<'a, G> {
 
     with_fn! { with_primary_message,
     /// Add a primary message.
-    pub fn primary_message(&mut self, msg: impl Into<DiagnosticMessage>) -> &mut Self {
+    pub fn primary_message(&mut self, msg: impl Into<DiagMessage>) -> &mut Self {
         self.messages[0] = (msg.into(), Style::NoStyle);
         self
     } }
@@ -1219,13 +1219,13 @@ impl<'a, G: EmissionGuarantee> Diag<'a, G> {
         self
     } }
 
-    /// Helper function that takes a `SubdiagnosticMessage` and returns a `DiagnosticMessage` by
+    /// Helper function that takes a `SubdiagnosticMessage` and returns a `DiagMessage` by
     /// combining it with the primary message of the diagnostic (if translatable, otherwise it just
     /// passes the user's string along).
     pub(crate) fn subdiagnostic_message_to_diagnostic_message(
         &self,
         attr: impl Into<SubdiagnosticMessage>,
-    ) -> DiagnosticMessage {
+    ) -> DiagMessage {
         self.deref().subdiagnostic_message_to_diagnostic_message(attr)
     }
 
@@ -1338,7 +1338,7 @@ impl<G: EmissionGuarantee> Drop for Diag<'_, G> {
             Some(diag) if !panicking() => {
                 self.dcx.emit_diagnostic(DiagInner::new(
                     Level::Bug,
-                    DiagnosticMessage::from("the following error was constructed but not emitted"),
+                    DiagMessage::from("the following error was constructed but not emitted"),
                 ));
                 self.dcx.emit_diagnostic(*diag);
                 panic!("error was constructed but not emitted");

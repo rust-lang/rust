@@ -16,8 +16,8 @@ use rustc_data_structures::sync::Lrc;
 use rustc_errors::emitter::Emitter;
 use rustc_errors::translation::Translate;
 use rustc_errors::{
-    Diag, DiagArgMap, DiagCtxt, DiagnosticMessage, ErrCode, FatalError, FluentBundle, Level,
-    MultiSpan, Style,
+    Diag, DiagArgMap, DiagCtxt, DiagMessage, ErrCode, FatalError, FluentBundle, Level, MultiSpan,
+    Style,
 };
 use rustc_fs_util::link_or_copy;
 use rustc_hir::def_id::{CrateNum, LOCAL_CRATE};
@@ -1015,7 +1015,7 @@ pub struct CguMessage;
 // - `emitted_at`: not used for codegen diagnostics.
 struct Diagnostic {
     level: Level,
-    messages: Vec<(DiagnosticMessage, Style)>,
+    messages: Vec<(DiagMessage, Style)>,
     code: Option<ErrCode>,
     children: Vec<Subdiagnostic>,
     args: DiagArgMap,
@@ -1026,7 +1026,7 @@ struct Diagnostic {
 // - `span`: it doesn't impl `Send`.
 pub struct Subdiagnostic {
     level: Level,
-    messages: Vec<(DiagnosticMessage, Style)>,
+    messages: Vec<(DiagMessage, Style)>,
 }
 
 #[derive(PartialEq, Clone, Copy, Debug)]

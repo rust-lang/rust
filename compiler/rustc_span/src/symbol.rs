@@ -187,7 +187,7 @@ symbols! {
         DecorateLint,
         Default,
         Deref,
-        DiagnosticMessage,
+        DiagMessage,
         DirBuilder,
         Display,
         DoubleEndedIterator,
