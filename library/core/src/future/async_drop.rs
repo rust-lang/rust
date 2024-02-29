@@ -1,5 +1,4 @@
 #![unstable(feature = "async_drop", issue = "none")]
-#![allow(missing_docs)] // TODO: remove
 
 use crate::fmt;
 use crate::future::Future;
@@ -9,18 +8,17 @@ use crate::pin::Pin;
 use crate::ptr;
 use crate::task::{ready, Context, Poll};
 
+/// Asynchronously drops a value by running `AsyncDrop::async_drop`
+/// on a value and its fields recursively.
 #[unstable(feature = "async_drop", issue = "none")]
-pub fn async_drop<'a, T: 'a>(value: T) -> impl Future<Output = ()> + 'a {
-    async move {
-        let mut value = MaybeUninit::new(value);
-        unsafe { async_drop_in_place(value.as_mut_ptr()) }.await;
-    }
+pub async fn async_drop<'a, T: 'a>(value: T) {
+    let mut value = MaybeUninit::new(value);
+    unsafe { async_drop_in_place(value.as_mut_ptr()) }.await;
 }
 
-// TODO: Returned future should be `!Unpin`
 #[lang = "async_drop_in_place"]
 #[allow(unconditional_recursion)]
-// TODO: #[rustc_diagnostic_item = "ptr_drop_in_place"] is needed?
+// FIXME: Consider if `#[rustc_diagnostic_item = "ptr_drop_in_place"]` is needed?
 unsafe fn async_drop_in_place_raw<'a, T: ?Sized + 'a>(
     to_drop: *mut T,
 ) -> <T as AsyncDestruct<'a>>::AsyncDestructor {
@@ -31,12 +29,44 @@ unsafe fn async_drop_in_place_raw<'a, T: ?Sized + 'a>(
     unsafe { async_drop_in_place_raw(to_drop) }
 }
 
+/// Creates the asynchronous destructor of the pointed-to value.
+///
+/// # Safety
+///
+/// Behavior is undefined if any of the following conditions are violated:
+///
+/// * `to_drop` must be [valid] for both reads and writes.
+///
+/// * `to_drop` must be properly aligned, even if `T` has size 0.
+///
+/// * `to_drop` must be nonnull, even if `T` has size 0.
+///
+/// * The value `to_drop` points to must be valid for async dropping,
+///   which may mean it must uphold additional invariants. These
+///   invariants depend on the type of the value being dropped. For
+///   instance, when dropping a Box, the box's pointer to the heap must
+///   be valid.
+///
+/// * While `async_drop_in_place` is executing or the returned async
+///   destructor is alive, the only way to access parts of `to_drop`
+///   is through the `self: Pin<&mut Self>` references supplied to the
+///   `AsyncDrop::async_drop` methods that `async_drop_in_place` or
+///   `AsyncDropInPlace<T>::poll` invokes.
+///
+/// Additionally, if `T` is not [`Copy`], using the pointed-to value after
+/// calling `async_drop_in_place` can cause undefined behavior. Note that
+/// `*to_drop = foo` counts as a use because it will cause the value to
+/// be dropped again. [`write()`] can be used to overwrite data without
+/// causing it to be dropped.
+///
 #[unstable(feature = "async_drop", issue = "none")]
 pub unsafe fn async_drop_in_place<'a, T: ?Sized + 'a>(to_drop: *mut T) -> AsyncDropInPlace<'a, T> {
     unsafe { AsyncDropInPlace(async_drop_in_place_raw(to_drop)) }
 }
 
+/// A future returned by the [`async_drop_in_place`].
 #[unstable(feature = "async_drop", issue = "none")]
+// FIXME: Consider if it should be always `!Unpin`
 pub struct AsyncDropInPlace<'a, T: ?Sized + 'a>(<T as AsyncDestruct<'a>>::AsyncDestructor);
 
 #[unstable(feature = "async_drop", issue = "none")]
@@ -55,26 +85,30 @@ impl<'a, T: ?Sized + 'a> Future for AsyncDropInPlace<'a, T> {
     }
 }
 
+/// Custom code within the asynchronous destructor.
 #[unstable(feature = "async_drop", issue = "none")]
 #[lang = "async_drop"]
 pub trait AsyncDrop {
+    /// A future returned by the [`AsyncDrop::async_drop`] to be part
+    /// of the async destructor.
     #[unstable(feature = "async_drop", issue = "none")]
     type Dropper<'a>: Future<Output = ()>
     where
         Self: 'a;
 
+    /// Constructs the asynchronous destructor for this type.
     #[unstable(feature = "async_drop", issue = "none")]
     fn async_drop(self: Pin<&mut Self>) -> Self::Dropper<'_>;
 }
 
-#[unstable(feature = "async_drop", issue = "none")]
 #[lang = "async_destruct"]
 #[rustc_deny_explicit_impl(implement_via_object = false)]
-pub trait AsyncDestruct<'a>: 'a {
-    #[unstable(feature = "async_drop", issue = "none")]
+trait AsyncDestruct<'a>: 'a {
     type AsyncDestructor: Future<Output = ()>;
 }
 
+/// Basically calls `AsyncDrop::async_drop` with pointer. Used to simplify
+/// generation of the code for `async_drop_in_place_raw`
 #[lang = "surface_async_drop_in_place"]
 unsafe fn surface_async_drop_in_place<'a, T: AsyncDrop + 'a>(
     ptr: *mut T,
@@ -82,6 +116,7 @@ unsafe fn surface_async_drop_in_place<'a, T: AsyncDrop + 'a>(
     unsafe { <T as AsyncDrop>::async_drop(Pin::new_unchecked(&mut *ptr)) }
 }
 
+/// Async destructor for arrays and slices
 #[lang = "slice_async_destructor"]
 struct SliceAsyncDestuctor<'a, T: 'a> {
     left_slice: ptr::NonNull<[T]>,
@@ -107,6 +142,7 @@ impl<'a, T: 'a> Future for SliceAsyncDestuctor<'a, T> {
             loop {
                 if let Some(elem_dtor) = &mut this.elem_dtor {
                     ready!(Pin::new_unchecked(elem_dtor).poll(cx));
+                    // Dropping the destructor
                     this.elem_dtor = None;
                 }
                 let Some(new_len) = this.left_slice.len().checked_sub(1) else {
@@ -121,14 +157,14 @@ impl<'a, T: 'a> Future for SliceAsyncDestuctor<'a, T> {
     }
 }
 
-#[unstable(feature = "future_combinators", issue = "none")]
+/// Used to defer creation of mutable references to not cause any
+/// aliasing issues.
 #[lang = "deferred_async_drop"]
 enum DeferredAsyncDrop<'a, T: 'a> {
     Init { ptr: ptr::NonNull<T>, _pinned: PhantomPinned },
     Running { dtor: AsyncDropInPlace<'a, T> },
 }
 
-#[unstable(feature = "future_combinators", issue = "none")]
 impl<'a, T: 'a> Future for DeferredAsyncDrop<'a, T> {
     type Output = ();
 
@@ -145,7 +181,6 @@ impl<'a, T: 'a> Future for DeferredAsyncDrop<'a, T> {
     }
 }
 
-#[unstable(feature = "future_combinators", issue = "none")]
 #[lang = "deferred_async_drop_ctor"]
 const unsafe fn deferred_async_drop<'a, T: 'a>(item: *mut T) -> DeferredAsyncDrop<'a, T> {
     unsafe {
@@ -153,14 +188,13 @@ const unsafe fn deferred_async_drop<'a, T: 'a>(item: *mut T) -> DeferredAsyncDro
     }
 }
 
-#[unstable(feature = "future_combinators", issue = "none")]
+/// Awaits the `F1` future and then the `F2`.
 #[lang = "future_chain"]
 struct Chain<F1, F2> {
     first: Option<F1>,
     second: F2,
 }
 
-#[unstable(feature = "future_combinators", issue = "none")]
 impl<F1, F2> Future for Chain<F1, F2>
 where
     F1: Future<Output = ()>,
@@ -174,6 +208,9 @@ where
             match &mut this.first {
                 Some(first) => {
                     ready!(unsafe { Pin::new_unchecked(first) }.poll(cx));
+                    // It might be important to destroy the first future
+                    // so that it wouldn't possibly hold any mutable
+                    // reference long enough to cause aliasing problems.
                     this.first = None;
                 }
                 None => {
@@ -184,17 +221,16 @@ where
     }
 }
 
-#[unstable(feature = "future_combinators", issue = "none")]
 #[lang = "future_chain_ctor"]
 const fn chain<F1, F2>(first: F1, second: F2) -> Chain<F1, F2> {
     Chain { first: Some(first), second }
 }
 
-#[unstable(feature = "future_combinators", issue = "none")]
+/// Used for trivial cases like scalar types and to guarantee idempotency
+/// of awaiting some async destructor.
 #[lang = "future_ready_unit"]
 struct ReadyUnit;
 
-#[unstable(feature = "future_combinators", issue = "none")]
 impl Future for ReadyUnit {
     type Output = ();
 
@@ -203,7 +239,6 @@ impl Future for ReadyUnit {
     }
 }
 
-#[unstable(feature = "future_combinators", issue = "none")]
 #[lang = "future_ready_unit_ctor"]
 const fn ready_unit() -> ReadyUnit {
     ReadyUnit

@@ -1018,19 +1018,20 @@ fn build_fn_ptr_addr_shim<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId, self_ty: Ty<'t
     new_body(source, IndexVec::from_elem_n(start_block, 1), locals, sig.inputs().len(), span)
 }
 
-// TODO: StorageDead within unwind branches
 fn build_async_destructor_ctor_shim<'tcx>(
     tcx: TyCtxt<'tcx>,
     def_id: DefId,
     self_ty: Ty<'tcx>,
 ) -> Body<'tcx> {
+    // FIXME: implement cleanup branches
+
     let span = tcx.def_span(def_id);
     let Some(sig) = tcx
         .fn_sig(def_id)
         .instantiate(tcx, &[tcx.lifetimes.re_erased.into(), self_ty.into()])
         .no_bound_vars()
     else {
-        span_bug!(span, "AsyncDestruct::async_destruct with bound vars for `{self_ty}`");
+        span_bug!(span, "async_drop_in_place_raw with bound vars for `{self_ty}`");
     };
 
     let param_env = tcx.param_env_reveal_all_normalized(def_id);
@@ -1042,9 +1043,49 @@ fn build_async_destructor_ctor_shim<'tcx>(
 
     #[derive(Clone, Copy)]
     enum GlueStrategy<'tcx> {
+        /// Empty strategy should generate this:
+        ///
+        /// ```
+        /// ready_unit()
+        /// ```
         Empty,
+
+        /// AsyncDropProjection strategy should generate this:
+        ///
+        /// ```
+        /// surface_async_drop_in_place(to_drop)
+        /// ```
         AsyncDropProjection,
+
+        /// Slice strategy should generate this:
+        ///
+        /// ```
+        /// // unsizes array into a slice when needed
+        /// slice_async_destructor(to_drop)
+        /// ```
         Slice { elem_ty: Ty<'tcx>, is_array: bool },
+
+        /// Chain strategy should generate something like this:
+        ///
+        /// ```
+        /// chain(
+        ///     // Inserted only if surface AsyncDrop is implemented
+        ///     surface_async_drop_in_place(to_drop),
+        ///     chain(
+        ///         // We defer async drop of fields to defer creation of
+        ///         // mutable references not too early for the aliasing
+        ///         // model
+        ///         deferred_async_drop(addr_of_mut!((*to_drop).0)),
+        ///         chain(
+        ///             deferred_async_drop(addr_of_mut!((*to_drop).1)),
+        ///             chain(
+        ///                deferred_async_drop(addr_of_mut!((*to_drop).2)),
+        ///                ready_unit(), // for idempotency
+        ///             ),
+        ///         ),
+        ///     ),
+        /// )
+        /// ```
         Chain { elem_tys: &'tcx ty::List<Ty<'tcx>>, has_surface_async_drop: bool },
     }
 
@@ -1066,7 +1107,6 @@ fn build_async_destructor_ctor_shim<'tcx>(
             }
         }
 
-        // TODO: Reject bad ones
         ty::Foreign(_)
         | ty::Adt(_, _)
         | ty::Dynamic(_, _, _)
@@ -1241,6 +1281,7 @@ fn build_async_destructor_ctor_shim<'tcx>(
 
             let locals_base = locals.len();
             let mut last_chain_ty = ready_unit_ty;
+            // Creating temproraries to store intermediate futuresh
             locals.extend(
                 elem_tys
                     .iter()
@@ -1262,7 +1303,9 @@ fn build_async_destructor_ctor_shim<'tcx>(
                 IndexVec::from_elem_n(BasicBlockData::new(None), 4 + BBS_PER_ELEM * elem_count);
             let ready_unit_bb = BasicBlock::new(0);
             let bbs_base = 1;
-            // this basic block is right after element basic blocks
+            // this basic block is right after element basic blocks,
+            // thus is targeted by the last basic block of the chain
+            // construction
             let maybe_async_dropper_bb = BasicBlock::new(blocks.len() - 3);
             let maybe_surface_chain_bb = BasicBlock::new(blocks.len() - 2);
             return_bb = BasicBlock::new(blocks.len() - 1);

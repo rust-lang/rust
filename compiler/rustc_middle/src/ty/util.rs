@@ -1266,13 +1266,11 @@ impl<'tcx> Ty<'tcx> {
         }
     }
 
-    // TODO: needs_async_drop
     /// Checks whether values of this type `T` implement the `AsyncDrop` trait.
     pub fn is_async_drop(self, tcx: TyCtxt<'tcx>, param_env: ty::ParamEnv<'tcx>) -> bool {
         self.is_trivially_async_drop() || tcx.is_async_drop_raw(param_env.and(self))
     }
 
-    // TODO: needs_async_drop
     /// Fast path helper for testing if a type is `AsyncDrop`.
     ///
     /// Returning true means the type is known to be `AsyncDrop`. Returning

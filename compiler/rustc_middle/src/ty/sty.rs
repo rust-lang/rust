@@ -2375,6 +2375,7 @@ impl<'tcx> Ty<'tcx> {
                 // `Drop` impl must not contain any new bounds that
                 // don't exist for struct definition, thus it is not
                 // ambiguous with any parameters.
+                // FIXME: Add same restrictions on AsyncDrop impls as with Drop impls
                 if self_ty.is_async_drop(tcx, param_env) {
                     let assoc_items = tcx.associated_item_def_ids(
                         tcx.require_lang_item(hir::LangItem::AsyncDrop, None),
