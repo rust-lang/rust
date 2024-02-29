@@ -5,7 +5,7 @@ use crate::errors::{
 use crate::infer::error_reporting::TypeErrCtxt;
 use crate::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
 use crate::infer::InferCtxt;
-use rustc_errors::{codes::*, DiagnosticBuilder, IntoDiagnosticArg};
+use rustc_errors::{codes::*, Diag, IntoDiagnosticArg};
 use rustc_hir as hir;
 use rustc_hir::def::Res;
 use rustc_hir::def::{CtorOf, DefKind, Namespace};
@@ -134,13 +134,13 @@ impl InferenceDiagnosticsParentData {
 }
 
 impl IntoDiagnosticArg for UnderspecifiedArgKind {
-    fn into_diagnostic_arg(self) -> rustc_errors::DiagnosticArgValue {
+    fn into_diagnostic_arg(self) -> rustc_errors::DiagArgValue {
         let kind = match self {
             Self::Type { .. } => "type",
             Self::Const { is_parameter: true } => "const_with_param",
             Self::Const { is_parameter: false } => "const",
         };
-        rustc_errors::DiagnosticArgValue::Str(kind.into())
+        rustc_errors::DiagArgValue::Str(kind.into())
     }
 }
 
@@ -371,7 +371,7 @@ impl<'tcx> InferCtxt<'tcx> {
         span: Span,
         arg_data: InferenceDiagnosticsData,
         error_code: TypeAnnotationNeeded,
-    ) -> DiagnosticBuilder<'tcx> {
+    ) -> Diag<'tcx> {
         let source_kind = "other";
         let source_name = "";
         let failure_span = None;
@@ -419,7 +419,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
         arg: GenericArg<'tcx>,
         error_code: TypeAnnotationNeeded,
         should_label_span: bool,
-    ) -> DiagnosticBuilder<'tcx> {
+    ) -> Diag<'tcx> {
         let arg = self.resolve_vars_if_possible(arg);
         let arg_data = self.extract_inference_diagnostics_data(arg, None);
 

@@ -1,5 +1,5 @@
 error: found an empty line after an outer attribute. Perhaps you forgot to add a `!` to make it an inner attribute?
-  --> $DIR/empty_line_after_outer_attribute.rs:11:1
+  --> tests/ui/empty_line_after_outer_attribute.rs:11:1
    |
 LL | / #[crate_type = "lib"]
 LL | |
@@ -11,7 +11,7 @@ LL | | fn with_one_newline_and_comment() { assert!(true) }
    = help: to override `-D warnings` add `#[allow(clippy::empty_line_after_outer_attr)]`
 
 error: found an empty line after an outer attribute. Perhaps you forgot to add a `!` to make it an inner attribute?
-  --> $DIR/empty_line_after_outer_attribute.rs:23:1
+  --> tests/ui/empty_line_after_outer_attribute.rs:23:1
    |
 LL | / #[crate_type = "lib"]
 LL | |
@@ -19,7 +19,7 @@ LL | | fn with_one_newline() { assert!(true) }
    | |_
 
 error: found an empty line after an outer attribute. Perhaps you forgot to add a `!` to make it an inner attribute?
-  --> $DIR/empty_line_after_outer_attribute.rs:28:1
+  --> tests/ui/empty_line_after_outer_attribute.rs:28:1
    |
 LL | / #[crate_type = "lib"]
 LL | |
@@ -28,7 +28,7 @@ LL | | fn with_two_newlines() { assert!(true) }
    | |_
 
 error: found an empty line after an outer attribute. Perhaps you forgot to add a `!` to make it an inner attribute?
-  --> $DIR/empty_line_after_outer_attribute.rs:35:1
+  --> tests/ui/empty_line_after_outer_attribute.rs:35:1
    |
 LL | / #[crate_type = "lib"]
 LL | |
@@ -36,7 +36,7 @@ LL | | enum Baz {
    | |_
 
 error: found an empty line after an outer attribute. Perhaps you forgot to add a `!` to make it an inner attribute?
-  --> $DIR/empty_line_after_outer_attribute.rs:43:1
+  --> tests/ui/empty_line_after_outer_attribute.rs:43:1
    |
 LL | / #[crate_type = "lib"]
 LL | |
@@ -44,7 +44,7 @@ LL | | struct Foo {
    | |_
 
 error: found an empty line after an outer attribute. Perhaps you forgot to add a `!` to make it an inner attribute?
-  --> $DIR/empty_line_after_outer_attribute.rs:51:1
+  --> tests/ui/empty_line_after_outer_attribute.rs:51:1
    |
 LL | / #[crate_type = "lib"]
 LL | |

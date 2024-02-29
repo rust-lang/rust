@@ -1,5 +1,5 @@
 error: redundant else block
-  --> $DIR/redundant_else.rs:10:16
+  --> tests/ui/redundant_else.rs:10:16
    |
 LL |           } else {
    |  ________________^
@@ -13,7 +13,7 @@ LL | |         }
    = help: to override `-D warnings` add `#[allow(clippy::redundant_else)]`
 
 error: redundant else block
-  --> $DIR/redundant_else.rs:18:16
+  --> tests/ui/redundant_else.rs:18:16
    |
 LL |           } else {
    |  ________________^
@@ -25,7 +25,7 @@ LL | |         }
    = help: remove the `else` block and move the contents out
 
 error: redundant else block
-  --> $DIR/redundant_else.rs:28:16
+  --> tests/ui/redundant_else.rs:28:16
    |
 LL |           } else {
    |  ________________^
@@ -37,7 +37,7 @@ LL | |         }
    = help: remove the `else` block and move the contents out
 
 error: redundant else block
-  --> $DIR/redundant_else.rs:38:12
+  --> tests/ui/redundant_else.rs:38:12
    |
 LL |       } else {
    |  ____________^
@@ -49,7 +49,7 @@ LL | |     }
    = help: remove the `else` block and move the contents out
 
 error: redundant else block
-  --> $DIR/redundant_else.rs:46:16
+  --> tests/ui/redundant_else.rs:46:16
    |
 LL |           } else {
    |  ________________^
@@ -61,7 +61,7 @@ LL | |         }
    = help: remove the `else` block and move the contents out
 
 error: redundant else block
-  --> $DIR/redundant_else.rs:57:16
+  --> tests/ui/redundant_else.rs:57:16
    |
 LL |           } else {
    |  ________________^
@@ -73,7 +73,7 @@ LL | |         }
    = help: remove the `else` block and move the contents out
 
 error: redundant else block
-  --> $DIR/redundant_else.rs:67:16
+  --> tests/ui/redundant_else.rs:67:16
    |
 LL |           } else {
    |  ________________^

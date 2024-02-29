@@ -311,17 +311,14 @@ impl<'tcx> UniversalRegionRelationsBuilder<'_, 'tcx> {
         // Add implied bounds from impl header.
         if matches!(tcx.def_kind(defining_ty_def_id), DefKind::AssocFn | DefKind::AssocConst) {
             for &(ty, _) in tcx.assumed_wf_types(tcx.local_parent(defining_ty_def_id)) {
-                let Ok(TypeOpOutput { output: norm_ty, constraints: c, .. }) = self
+                let result: Result<_, ErrorGuaranteed> = self
                     .param_env
                     .and(type_op::normalize::Normalize::new(ty))
-                    .fully_perform(self.infcx, span)
-                else {
-                    // Note: this path is currently not reached in any test, so
-                    // any example that triggers this would be worth minimizing
-                    // and converting into a test.
-                    tcx.dcx().span_delayed_bug(span, format!("failed to normalize {ty:?}"));
+                    .fully_perform(self.infcx, span);
+                let Ok(TypeOpOutput { output: norm_ty, constraints: c, .. }) = result else {
                     continue;
                 };
+
                 constraints.extend(c);
 
                 // We currently add implied bounds from the normalized ty only.

@@ -1,5 +1,5 @@
 error: repeating `Vec::with_capacity` using `vec![x; n]`, which does not retain capacity
-  --> $DIR/repeat_vec_with_capacity.rs:5:9
+  --> tests/ui/repeat_vec_with_capacity.rs:5:9
    |
 LL |         vec![Vec::<()>::with_capacity(42); 123];
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -13,7 +13,7 @@ LL |         (0..123).map(|_| Vec::<()>::with_capacity(42)).collect::<Vec<_>>();
    |         ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 error: repeating `Vec::with_capacity` using `vec![x; n]`, which does not retain capacity
-  --> $DIR/repeat_vec_with_capacity.rs:11:9
+  --> tests/ui/repeat_vec_with_capacity.rs:11:9
    |
 LL |         vec![Vec::<()>::with_capacity(42); n];
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -25,7 +25,7 @@ LL |         (0..n).map(|_| Vec::<()>::with_capacity(42)).collect::<Vec<_>>();
    |         ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 error: repeating `Vec::with_capacity` using `iter::repeat`, which does not retain capacity
-  --> $DIR/repeat_vec_with_capacity.rs:26:9
+  --> tests/ui/repeat_vec_with_capacity.rs:26:9
    |
 LL |         std::iter::repeat(Vec::<()>::with_capacity(42));
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

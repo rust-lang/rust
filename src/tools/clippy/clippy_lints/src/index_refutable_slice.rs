@@ -255,7 +255,9 @@ impl<'a, 'tcx> Visitor<'tcx> for SliceIndexLintingVisitor<'a, 'tcx> {
                 && let hir::Node::Expr(maybe_addrof_expr) = cx.tcx.parent_hir_node(parent_id)
                 && let hir::ExprKind::AddrOf(_kind, hir::Mutability::Not, _inner_expr) = maybe_addrof_expr.kind
             {
-                use_info.index_use.push((index_value, cx.tcx.hir().span(parent_expr.hir_id)));
+                use_info
+                    .index_use
+                    .push((index_value, cx.tcx.hir().span(parent_expr.hir_id)));
                 return;
             }
 

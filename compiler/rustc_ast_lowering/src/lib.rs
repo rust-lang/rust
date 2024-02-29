@@ -51,7 +51,7 @@ use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::sorted_map::SortedMap;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_data_structures::sync::Lrc;
-use rustc_errors::{DiagCtxt, DiagnosticArgFromDisplay, StashKey};
+use rustc_errors::{DiagArgFromDisplay, DiagCtxt, StashKey};
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, LifetimeRes, Namespace, PartialRes, PerNS, Res};
 use rustc_hir::def_id::{LocalDefId, LocalDefIdMap, CRATE_DEF_ID, LOCAL_CRATE};
@@ -1473,7 +1473,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                             .create_feature_err(
                                 MisplacedImplTrait {
                                     span: t.span,
-                                    position: DiagnosticArgFromDisplay(&position),
+                                    position: DiagArgFromDisplay(&position),
                                 },
                                 feature,
                             )
@@ -1483,7 +1483,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                     ImplTraitContext::Disallowed(position) => {
                         let guar = self.dcx().emit_err(MisplacedImplTrait {
                             span: t.span,
-                            position: DiagnosticArgFromDisplay(&position),
+                            position: DiagArgFromDisplay(&position),
                         });
                         hir::TyKind::Err(guar)
                     }

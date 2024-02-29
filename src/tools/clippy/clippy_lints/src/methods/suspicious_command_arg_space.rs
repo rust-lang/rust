@@ -1,6 +1,6 @@
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::ty::is_type_diagnostic_item;
-use rustc_errors::{Applicability, DiagnosticBuilder};
+use rustc_errors::{Applicability, Diag};
 use rustc_lint::LateContext;
 use rustc_span::{sym, Span};
 use {rustc_ast as ast, rustc_hir as hir};
@@ -22,7 +22,7 @@ pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, recv: &'tcx hir::Expr<'_>, arg
             SUSPICIOUS_COMMAND_ARG_SPACE,
             arg.span,
             "single argument that looks like it should be multiple arguments",
-            |diag: &mut DiagnosticBuilder<'_, ()>| {
+            |diag: &mut Diag<'_, ()>| {
                 diag.multipart_suggestion_verbose(
                     "consider splitting the argument",
                     vec![(span, "args".to_string()), (arg.span, format!("[{arg1:?}, {arg2:?}]"))],

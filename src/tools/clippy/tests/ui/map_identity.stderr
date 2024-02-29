@@ -1,5 +1,5 @@
 error: unnecessary map of the identity function
-  --> $DIR/map_identity.rs:7:47
+  --> tests/ui/map_identity.rs:7:47
    |
 LL |     let _: Vec<_> = x.iter().map(not_identity).map(|x| return x).collect();
    |                                               ^^^^^^^^^^^^^^^^^^ help: remove the call to `map`
@@ -8,25 +8,25 @@ LL |     let _: Vec<_> = x.iter().map(not_identity).map(|x| return x).collect();
    = help: to override `-D warnings` add `#[allow(clippy::map_identity)]`
 
 error: unnecessary map of the identity function
-  --> $DIR/map_identity.rs:8:57
+  --> tests/ui/map_identity.rs:8:57
    |
 LL |     let _: Vec<_> = x.iter().map(std::convert::identity).map(|y| y).collect();
    |                                                         ^^^^^^^^^^^ help: remove the call to `map`
 
 error: unnecessary map of the identity function
-  --> $DIR/map_identity.rs:8:29
+  --> tests/ui/map_identity.rs:8:29
    |
 LL |     let _: Vec<_> = x.iter().map(std::convert::identity).map(|y| y).collect();
    |                             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: remove the call to `map`
 
 error: unnecessary map of the identity function
-  --> $DIR/map_identity.rs:9:32
+  --> tests/ui/map_identity.rs:9:32
    |
 LL |     let _: Option<u8> = Some(3).map(|x| x);
    |                                ^^^^^^^^^^^ help: remove the call to `map`
 
 error: unnecessary map of the identity function
-  --> $DIR/map_identity.rs:10:36
+  --> tests/ui/map_identity.rs:10:36
    |
 LL |       let _: Result<i8, f32> = Ok(-3).map(|x| {
    |  ____________________________________^
@@ -35,19 +35,19 @@ LL | |     });
    | |______^ help: remove the call to `map`
 
 error: unnecessary map of the identity function
-  --> $DIR/map_identity.rs:20:36
+  --> tests/ui/map_identity.rs:20:36
    |
 LL |     let _: Result<u32, u32> = Ok(1).map_err(|a| a);
    |                                    ^^^^^^^^^^^^^^^ help: remove the call to `map_err`
 
 error: unnecessary map of the identity function
-  --> $DIR/map_identity.rs:30:22
+  --> tests/ui/map_identity.rs:30:22
    |
 LL |     let _ = x.clone().map(|(x, y)| (x, y));
    |                      ^^^^^^^^^^^^^^^^^^^^^ help: remove the call to `map`
 
 error: unnecessary map of the identity function
-  --> $DIR/map_identity.rs:31:22
+  --> tests/ui/map_identity.rs:31:22
    |
 LL |       let _ = x.clone().map(|(x, y)| {
    |  ______________________^
@@ -56,19 +56,19 @@ LL | |     });
    | |______^ help: remove the call to `map`
 
 error: unnecessary map of the identity function
-  --> $DIR/map_identity.rs:34:22
+  --> tests/ui/map_identity.rs:34:22
    |
 LL |     let _ = x.clone().map(|(x, y)| return (x, y));
    |                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: remove the call to `map`
 
 error: unnecessary map of the identity function
-  --> $DIR/map_identity.rs:37:22
+  --> tests/ui/map_identity.rs:37:22
    |
 LL |     let _ = y.clone().map(|(x, y, (z, (w,)))| (x, y, (z, (w,))));
    |                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: remove the call to `map`
 
 error: unnecessary map of the identity function
-  --> $DIR/map_identity.rs:66:30
+  --> tests/ui/map_identity.rs:66:30
    |
 LL |     let _ = x.iter().copied().map(|(x, y)| (x, y));
    |                              ^^^^^^^^^^^^^^^^^^^^^ help: remove the call to `map`

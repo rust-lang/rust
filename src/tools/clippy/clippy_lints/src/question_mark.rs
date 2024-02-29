@@ -6,9 +6,9 @@ use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::source::snippet_with_applicability;
 use clippy_utils::ty::is_type_diagnostic_item;
 use clippy_utils::{
-    eq_expr_value, get_parent_node, higher, in_constant, is_else_clause, is_lint_allowed, is_path_lang_item,
-    is_res_lang_ctor, pat_and_expr_can_be_question_mark, path_to_local, path_to_local_id, peel_blocks,
-    peel_blocks_with_stmt, span_contains_comment,
+    eq_expr_value, higher, in_constant, is_else_clause, is_lint_allowed, is_path_lang_item, is_res_lang_ctor,
+    pat_and_expr_can_be_question_mark, path_to_local, path_to_local_id, peel_blocks, peel_blocks_with_stmt,
+    span_contains_comment,
 };
 use rustc_errors::Applicability;
 use rustc_hir::def::Res;
@@ -74,12 +74,12 @@ impl QuestionMark {
 enum IfBlockType<'hir> {
     /// An `if x.is_xxx() { a } else { b } ` expression.
     ///
-    /// Contains: caller (x), caller_type, call_sym (is_xxx), if_then (a), if_else (b)
+    /// Contains: `caller (x), caller_type, call_sym (is_xxx), if_then (a), if_else (b)`
     IfIs(&'hir Expr<'hir>, Ty<'hir>, Symbol, &'hir Expr<'hir>),
     /// An `if let Xxx(a) = b { c } else { d }` expression.
     ///
-    /// Contains: let_pat_qpath (Xxx), let_pat_type, let_pat_sym (a), let_expr (b), if_then (c),
-    /// if_else (d)
+    /// Contains: `let_pat_qpath (Xxx), let_pat_type, let_pat_sym (a), let_expr (b), if_then (c),
+    /// if_else (d)`
     IfLet(
         Res,
         Ty<'hir>,
@@ -289,7 +289,7 @@ impl QuestionMark {
         {
             let mut applicability = Applicability::MachineApplicable;
             let receiver_str = snippet_with_applicability(cx, let_expr.span, "..", &mut applicability);
-            let requires_semi = matches!(get_parent_node(cx.tcx, expr.hir_id), Some(Node::Stmt(_)));
+            let requires_semi = matches!(cx.tcx.parent_hir_node(expr.hir_id), Node::Stmt(_));
             let sugg = format!(
                 "{receiver_str}{}?{}",
                 if by_ref == ByRef::Yes { ".as_ref()" } else { "" },

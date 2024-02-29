@@ -18,8 +18,8 @@ use rustc_ast::{
 use rustc_ast_pretty::pprust::where_bound_predicate_to_string;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::{
-    codes::*, pluralize, struct_span_code_err, Applicability, DiagnosticBuilder, ErrorGuaranteed,
-    MultiSpan, SuggestionStyle,
+    codes::*, pluralize, struct_span_code_err, Applicability, Diag, ErrorGuaranteed, MultiSpan,
+    SuggestionStyle,
 };
 use rustc_hir as hir;
 use rustc_hir::def::{self, CtorKind, CtorOf, DefKind};
@@ -426,7 +426,7 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
         span: Span,
         source: PathSource<'_>,
         res: Option<Res>,
-    ) -> (DiagnosticBuilder<'tcx>, Vec<ImportSuggestion>) {
+    ) -> (Diag<'tcx>, Vec<ImportSuggestion>) {
         debug!(?res, ?source);
         let base_error = self.make_base_error(path, span, source, res);
 
@@ -498,7 +498,7 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
 
     fn detect_assoc_type_constraint_meant_as_path(
         &self,
-        err: &mut DiagnosticBuilder<'_>,
+        err: &mut Diag<'_>,
         base_error: &BaseError,
     ) {
         let Some(ty) = self.diagnostic_metadata.current_type_path else {
@@ -539,12 +539,7 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
         }
     }
 
-    fn suggest_self_or_self_ref(
-        &mut self,
-        err: &mut DiagnosticBuilder<'_>,
-        path: &[Segment],
-        span: Span,
-    ) {
+    fn suggest_self_or_self_ref(&mut self, err: &mut Diag<'_>, path: &[Segment], span: Span) {
         if !self.self_type_is_available() {
             return;
         }
@@ -589,7 +584,7 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
 
     fn try_lookup_name_relaxed(
         &mut self,
-        err: &mut DiagnosticBuilder<'_>,
+        err: &mut Diag<'_>,
         source: PathSource<'_>,
         path: &[Segment],
         following_seg: Option<&Segment>,
@@ -793,7 +788,7 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
 
     fn suggest_trait_and_bounds(
         &mut self,
-        err: &mut DiagnosticBuilder<'_>,
+        err: &mut Diag<'_>,
         source: PathSource<'_>,
         res: Option<Res>,
         span: Span,
@@ -870,7 +865,7 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
 
     fn suggest_typo(
         &mut self,
-        err: &mut DiagnosticBuilder<'_>,
+        err: &mut Diag<'_>,
         source: PathSource<'_>,
         path: &[Segment],
         following_seg: Option<&Segment>,
@@ -910,7 +905,7 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
 
     fn suggest_shadowed(
         &mut self,
-        err: &mut DiagnosticBuilder<'_>,
+        err: &mut Diag<'_>,
         source: PathSource<'_>,
         path: &[Segment],
         following_seg: Option<&Segment>,
@@ -943,7 +938,7 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
 
     fn err_code_special_cases(
         &mut self,
-        err: &mut DiagnosticBuilder<'_>,
+        err: &mut Diag<'_>,
         source: PathSource<'_>,
         path: &[Segment],
         span: Span,
@@ -988,7 +983,7 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
     /// Emit special messages for unresolved `Self` and `self`.
     fn suggest_self_ty(
         &mut self,
-        err: &mut DiagnosticBuilder<'_>,
+        err: &mut Diag<'_>,
         source: PathSource<'_>,
         path: &[Segment],
         span: Span,
@@ -1015,7 +1010,7 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
 
     fn suggest_self_value(
         &mut self,
-        err: &mut DiagnosticBuilder<'_>,
+        err: &mut Diag<'_>,
         source: PathSource<'_>,
         path: &[Segment],
         span: Span,
@@ -1097,7 +1092,7 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
 
     fn suggest_at_operator_in_slice_pat_with_range(
         &mut self,
-        err: &mut DiagnosticBuilder<'_>,
+        err: &mut Diag<'_>,
         path: &[Segment],
     ) {
         let Some(pat) = self.diagnostic_metadata.current_pat else { return };
@@ -1136,7 +1131,7 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
 
     fn suggest_swapping_misplaced_self_ty_and_trait(
         &mut self,
-        err: &mut DiagnosticBuilder<'_>,
+        err: &mut Diag<'_>,
         source: PathSource<'_>,
         res: Option<Res>,
         span: Span,
@@ -1162,7 +1157,7 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
         }
     }
 
-    fn suggest_bare_struct_literal(&mut self, err: &mut DiagnosticBuilder<'_>) {
+    fn suggest_bare_struct_literal(&mut self, err: &mut Diag<'_>) {
         if let Some(span) = self.diagnostic_metadata.current_block_could_be_bare_struct_literal {
             err.multipart_suggestion(
                 "you might have meant to write a `struct` literal",
@@ -1177,7 +1172,7 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
 
     fn suggest_changing_type_to_const_param(
         &mut self,
-        err: &mut DiagnosticBuilder<'_>,
+        err: &mut Diag<'_>,
         res: Option<Res>,
         source: PathSource<'_>,
         span: Span,
@@ -1229,7 +1224,7 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
 
     fn suggest_pattern_match_with_let(
         &mut self,
-        err: &mut DiagnosticBuilder<'_>,
+        err: &mut Diag<'_>,
         source: PathSource<'_>,
         span: Span,
     ) -> bool {
@@ -1284,11 +1279,7 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
     }
 
     /// Given `where <T as Bar>::Baz: String`, suggest `where T: Bar<Baz = String>`.
-    fn restrict_assoc_type_in_where_clause(
-        &mut self,
-        span: Span,
-        err: &mut DiagnosticBuilder<'_>,
-    ) -> bool {
+    fn restrict_assoc_type_in_where_clause(&mut self, span: Span, err: &mut Diag<'_>) -> bool {
         // Detect that we are actually in a `where` predicate.
         let (bounded_ty, bounds, where_span) =
             if let Some(ast::WherePredicate::BoundPredicate(ast::WhereBoundPredicate {
@@ -1421,7 +1412,7 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
     /// Returns `true` if able to provide context-dependent help.
     fn smart_resolve_context_dependent_help(
         &mut self,
-        err: &mut DiagnosticBuilder<'_>,
+        err: &mut Diag<'_>,
         span: Span,
         source: PathSource<'_>,
         path: &[Segment],
@@ -1432,52 +1423,50 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
         let ns = source.namespace();
         let is_expected = &|res| source.is_expected(res);
 
-        let path_sep =
-            |this: &mut Self, err: &mut DiagnosticBuilder<'_>, expr: &Expr, kind: DefKind| {
-                const MESSAGE: &str = "use the path separator to refer to an item";
+        let path_sep = |this: &mut Self, err: &mut Diag<'_>, expr: &Expr, kind: DefKind| {
+            const MESSAGE: &str = "use the path separator to refer to an item";
 
-                let (lhs_span, rhs_span) = match &expr.kind {
-                    ExprKind::Field(base, ident) => (base.span, ident.span),
-                    ExprKind::MethodCall(box MethodCall { receiver, span, .. }) => {
-                        (receiver.span, *span)
-                    }
-                    _ => return false,
-                };
-
-                if lhs_span.eq_ctxt(rhs_span) {
-                    err.span_suggestion(
-                        lhs_span.between(rhs_span),
-                        MESSAGE,
-                        "::",
-                        Applicability::MaybeIncorrect,
-                    );
-                    true
-                } else if kind == DefKind::Struct
-                    && let Some(lhs_source_span) = lhs_span.find_ancestor_inside(expr.span)
-                    && let Ok(snippet) =
-                        this.r.tcx.sess.source_map().span_to_snippet(lhs_source_span)
-                {
-                    // The LHS is a type that originates from a macro call.
-                    // We have to add angle brackets around it.
-
-                    err.span_suggestion_verbose(
-                        lhs_source_span.until(rhs_span),
-                        MESSAGE,
-                        format!("<{snippet}>::"),
-                        Applicability::MaybeIncorrect,
-                    );
-                    true
-                } else {
-                    // Either we were unable to obtain the source span / the snippet or
-                    // the LHS originates from a macro call and it is not a type and thus
-                    // there is no way to replace `.` with `::` and still somehow suggest
-                    // valid Rust code.
-
-                    false
+            let (lhs_span, rhs_span) = match &expr.kind {
+                ExprKind::Field(base, ident) => (base.span, ident.span),
+                ExprKind::MethodCall(box MethodCall { receiver, span, .. }) => {
+                    (receiver.span, *span)
                 }
+                _ => return false,
             };
 
-        let find_span = |source: &PathSource<'_>, err: &mut DiagnosticBuilder<'_>| {
+            if lhs_span.eq_ctxt(rhs_span) {
+                err.span_suggestion(
+                    lhs_span.between(rhs_span),
+                    MESSAGE,
+                    "::",
+                    Applicability::MaybeIncorrect,
+                );
+                true
+            } else if kind == DefKind::Struct
+                && let Some(lhs_source_span) = lhs_span.find_ancestor_inside(expr.span)
+                && let Ok(snippet) = this.r.tcx.sess.source_map().span_to_snippet(lhs_source_span)
+            {
+                // The LHS is a type that originates from a macro call.
+                // We have to add angle brackets around it.
+
+                err.span_suggestion_verbose(
+                    lhs_source_span.until(rhs_span),
+                    MESSAGE,
+                    format!("<{snippet}>::"),
+                    Applicability::MaybeIncorrect,
+                );
+                true
+            } else {
+                // Either we were unable to obtain the source span / the snippet or
+                // the LHS originates from a macro call and it is not a type and thus
+                // there is no way to replace `.` with `::` and still somehow suggest
+                // valid Rust code.
+
+                false
+            }
+        };
+
+        let find_span = |source: &PathSource<'_>, err: &mut Diag<'_>| {
             match source {
                 PathSource::Expr(Some(Expr { span, kind: ExprKind::Call(_, _), .. }))
                 | PathSource::TupleStruct(span, _) => {
@@ -1833,7 +1822,7 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
     fn suggest_alternative_construction_methods(
         &mut self,
         def_id: DefId,
-        err: &mut DiagnosticBuilder<'_>,
+        err: &mut Diag<'_>,
         path_span: Span,
         call_span: Span,
         args: &[P<Expr>],
@@ -2263,11 +2252,7 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
 
     // try to give a suggestion for this pattern: `name = blah`, which is common in other languages
     // suggest `let name = blah` to introduce a new binding
-    fn let_binding_suggestion(
-        &mut self,
-        err: &mut DiagnosticBuilder<'_>,
-        ident_span: Span,
-    ) -> bool {
+    fn let_binding_suggestion(&mut self, err: &mut Diag<'_>, ident_span: Span) -> bool {
         if let Some(Expr { kind: ExprKind::Assign(lhs, ..), .. }) =
             self.diagnostic_metadata.in_assignment
             && let ast::ExprKind::Path(None, ref path) = lhs.kind
@@ -2368,7 +2353,7 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
     /// Adds a suggestion for using an enum's variant when an enum is used instead.
     fn suggest_using_enum_variant(
         &mut self,
-        err: &mut DiagnosticBuilder<'_>,
+        err: &mut Diag<'_>,
         source: PathSource<'_>,
         def_id: DefId,
         span: Span,
@@ -2744,9 +2729,9 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
 
     fn suggest_introducing_lifetime(
         &self,
-        err: &mut DiagnosticBuilder<'_>,
+        err: &mut Diag<'_>,
         name: Option<&str>,
-        suggest: impl Fn(&mut DiagnosticBuilder<'_>, bool, Span, Cow<'static, str>, String) -> bool,
+        suggest: impl Fn(&mut Diag<'_>, bool, Span, Cow<'static, str>, String) -> bool,
     ) {
         let mut suggest_note = true;
         for rib in self.lifetime_ribs.iter().rev() {
@@ -2904,7 +2889,7 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
 
     fn add_missing_lifetime_specifiers_label(
         &mut self,
-        err: &mut DiagnosticBuilder<'_>,
+        err: &mut Diag<'_>,
         lifetime_refs: Vec<MissingLifetime>,
         function_param_lifetimes: Option<(Vec<MissingLifetime>, Vec<ElisionFnParameter>)>,
     ) {

@@ -18,8 +18,7 @@ use crate::require_c_abi_if_c_variadic;
 use rustc_ast::TraitObjectSyntax;
 use rustc_data_structures::fx::{FxHashSet, FxIndexMap};
 use rustc_errors::{
-    codes::*, struct_span_code_err, Applicability, DiagnosticBuilder, ErrorGuaranteed, FatalError,
-    MultiSpan,
+    codes::*, struct_span_code_err, Applicability, Diag, ErrorGuaranteed, FatalError, MultiSpan,
 };
 use rustc_hir as hir;
 use rustc_hir::def::{CtorOf, DefKind, Namespace, Res};
@@ -1723,7 +1722,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
     pub fn prohibit_generics<'a>(
         &self,
         segments: impl Iterator<Item = &'a hir::PathSegment<'a>> + Clone,
-        extend: impl Fn(&mut DiagnosticBuilder<'_>),
+        extend: impl Fn(&mut Diag<'_>),
     ) -> bool {
         let args = segments.clone().flat_map(|segment| segment.args().args);
 
@@ -2739,7 +2738,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         &self,
         constrained_regions: FxHashSet<ty::BoundRegionKind>,
         referenced_regions: FxHashSet<ty::BoundRegionKind>,
-        generate_err: impl Fn(&str) -> DiagnosticBuilder<'tcx>,
+        generate_err: impl Fn(&str) -> Diag<'tcx>,
     ) {
         for br in referenced_regions.difference(&constrained_regions) {
             let br_name = match *br {

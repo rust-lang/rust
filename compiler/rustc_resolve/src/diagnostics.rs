@@ -6,8 +6,8 @@ use rustc_ast::{MetaItemKind, NestedMetaItem};
 use rustc_ast_pretty::pprust;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::{
-    codes::*, pluralize, report_ambiguity_error, struct_span_code_err, Applicability, DiagCtxt,
-    DiagnosticBuilder, ErrorGuaranteed, MultiSpan, SuggestionStyle,
+    codes::*, pluralize, report_ambiguity_error, struct_span_code_err, Applicability, Diag,
+    DiagCtxt, ErrorGuaranteed, MultiSpan, SuggestionStyle,
 };
 use rustc_feature::BUILTIN_ATTRIBUTES;
 use rustc_hir::def::Namespace::{self, *};
@@ -360,7 +360,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
     /// ```
     fn add_suggestion_for_rename_of_use(
         &self,
-        err: &mut DiagnosticBuilder<'_>,
+        err: &mut Diag<'_>,
         name: Symbol,
         import: Import<'_>,
         binding_span: Span,
@@ -436,7 +436,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
     /// as characters expected by span manipulations won't be present.
     fn add_suggestion_for_duplicate_nested_use(
         &self,
-        err: &mut DiagnosticBuilder<'_>,
+        err: &mut Diag<'_>,
         import: Import<'_>,
         binding_span: Span,
     ) {
@@ -554,15 +554,19 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
     ///
     /// This takes the error provided, combines it with the span and any additional spans inside the
     /// error and emits it.
-    pub(crate) fn report_error(&mut self, span: Span, resolution_error: ResolutionError<'a>) {
-        self.into_struct_error(span, resolution_error).emit();
+    pub(crate) fn report_error(
+        &mut self,
+        span: Span,
+        resolution_error: ResolutionError<'a>,
+    ) -> ErrorGuaranteed {
+        self.into_struct_error(span, resolution_error).emit()
     }
 
     pub(crate) fn into_struct_error(
         &mut self,
         span: Span,
         resolution_error: ResolutionError<'a>,
-    ) -> DiagnosticBuilder<'_> {
+    ) -> Diag<'_> {
         match resolution_error {
             ResolutionError::GenericParamsFromOuterItem(outer_res, has_generic_params, def_kind) => {
                 use errs::GenericParamsFromOuterItemLabel as Label;
@@ -1290,10 +1294,20 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                     let mut path_segments = path_segments.clone();
                     path_segments.push(ast::PathSegment::from_ident(ident));
 
+                    let alias_import = if let NameBindingKind::Import { import, .. } =
+                        name_binding.kind
+                        && let ImportKind::ExternCrate { source: Some(_), .. } = import.kind
+                        && import.parent_scope.expansion == parent_scope.expansion
+                    {
+                        true
+                    } else {
+                        false
+                    };
+
                     let is_extern_crate_that_also_appears_in_prelude =
                         name_binding.is_extern_crate() && lookup_ident.span.at_least_rust_2018();
 
-                    if !is_extern_crate_that_also_appears_in_prelude {
+                    if !is_extern_crate_that_also_appears_in_prelude || alias_import {
                         // add the module to the lookup
                         if seen_modules.insert(module.def_id()) {
                             if via_import { &mut worklist_via_import } else { &mut worklist }
@@ -1399,7 +1413,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
 
     pub(crate) fn unresolved_macro_suggestions(
         &mut self,
-        err: &mut DiagnosticBuilder<'_>,
+        err: &mut Diag<'_>,
         macro_kind: MacroKind,
         parent_scope: &ParentScope<'a>,
         ident: Ident,
@@ -1515,7 +1529,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
 
     pub(crate) fn add_typo_suggestion(
         &self,
-        err: &mut DiagnosticBuilder<'_>,
+        err: &mut Diag<'_>,
         suggestion: Option<TypoSuggestion>,
         span: Span,
     ) -> bool {
@@ -2461,7 +2475,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
     /// Finds a cfg-ed out item inside `module` with the matching name.
     pub(crate) fn find_cfg_stripped(
         &mut self,
-        err: &mut DiagnosticBuilder<'_>,
+        err: &mut Diag<'_>,
         segment: &Symbol,
         module: DefId,
     ) {
@@ -2670,7 +2684,7 @@ pub(crate) enum DiagnosticMode {
 
 pub(crate) fn import_candidates(
     tcx: TyCtxt<'_>,
-    err: &mut DiagnosticBuilder<'_>,
+    err: &mut Diag<'_>,
     // This is `None` if all placement locations are inside expansions
     use_placement_span: Option<Span>,
     candidates: &[ImportSuggestion],
@@ -2696,7 +2710,7 @@ pub(crate) fn import_candidates(
 /// found and suggested, returns `true`, otherwise returns `false`.
 fn show_candidates(
     tcx: TyCtxt<'_>,
-    err: &mut DiagnosticBuilder<'_>,
+    err: &mut Diag<'_>,
     // This is `None` if all placement locations are inside expansions
     use_placement_span: Option<Span>,
     candidates: &[ImportSuggestion],

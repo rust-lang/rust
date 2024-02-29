@@ -1,5 +1,5 @@
 error: `if` chain can be rewritten with `match`
-  --> $DIR/comparison_chain.rs:14:5
+  --> tests/ui/comparison_chain.rs:14:5
    |
 LL | /     if x > y {
 LL | |
@@ -14,7 +14,7 @@ LL | |     }
    = help: to override `-D warnings` add `#[allow(clippy::comparison_chain)]`
 
 error: `if` chain can be rewritten with `match`
-  --> $DIR/comparison_chain.rs:28:5
+  --> tests/ui/comparison_chain.rs:28:5
    |
 LL | /     if x > y {
 LL | |
@@ -28,7 +28,7 @@ LL | |     }
    = help: consider rewriting the `if` chain to use `cmp` and `match`
 
 error: `if` chain can be rewritten with `match`
-  --> $DIR/comparison_chain.rs:37:5
+  --> tests/ui/comparison_chain.rs:37:5
    |
 LL | /     if x > y {
 LL | |
@@ -42,7 +42,7 @@ LL | |     }
    = help: consider rewriting the `if` chain to use `cmp` and `match`
 
 error: `if` chain can be rewritten with `match`
-  --> $DIR/comparison_chain.rs:46:5
+  --> tests/ui/comparison_chain.rs:46:5
    |
 LL | /     if x > 1 {
 LL | |
@@ -56,7 +56,7 @@ LL | |     }
    = help: consider rewriting the `if` chain to use `cmp` and `match`
 
 error: `if` chain can be rewritten with `match`
-  --> $DIR/comparison_chain.rs:121:5
+  --> tests/ui/comparison_chain.rs:121:5
    |
 LL | /     if x > y {
 LL | |
@@ -69,7 +69,7 @@ LL | |     }
    = help: consider rewriting the `if` chain to use `cmp` and `match`
 
 error: `if` chain can be rewritten with `match`
-  --> $DIR/comparison_chain.rs:128:5
+  --> tests/ui/comparison_chain.rs:128:5
    |
 LL | /     if x > y {
 LL | |
@@ -83,7 +83,7 @@ LL | |     }
    = help: consider rewriting the `if` chain to use `cmp` and `match`
 
 error: `if` chain can be rewritten with `match`
-  --> $DIR/comparison_chain.rs:137:5
+  --> tests/ui/comparison_chain.rs:137:5
    |
 LL | /     if x > y {
 LL | |

@@ -1,7 +1,7 @@
 use super::*;
 
-use crate::emitter::ColorConfig;
 use crate::DiagCtxt;
+use rustc_span::source_map::FilePathMapping;
 use rustc_span::BytePos;
 
 use std::str;
@@ -48,20 +48,14 @@ fn test_positions(code: &str, span: (u32, u32), expected_output: SpanTestData) {
         let output = Arc::new(Mutex::new(Vec::new()));
         let je = JsonEmitter::new(
             Box::new(Shared { data: output.clone() }),
-            None,
             sm,
-            None,
             fallback_bundle,
-            true,
+            true, // pretty
             HumanReadableErrorType::Short(ColorConfig::Never),
-            None,
-            false,
-            false,
-            TerminalUrl::No,
         );
 
         let span = Span::with_root_ctxt(BytePos(span.0), BytePos(span.1));
-        let dcx = DiagCtxt::with_emitter(Box::new(je));
+        let dcx = DiagCtxt::new(Box::new(je));
         dcx.span_err(span, "foo");
 
         let bytes = output.lock().unwrap();

@@ -4,7 +4,7 @@ use clippy_utils::expr_or_init;
 use clippy_utils::source::snippet;
 use clippy_utils::sugg::Sugg;
 use clippy_utils::ty::{get_discriminant_value, is_isize_or_usize};
-use rustc_errors::{Applicability, DiagnosticBuilder, SuggestionStyle};
+use rustc_errors::{Applicability, Diag, SuggestionStyle};
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::{BinOpKind, Expr, ExprKind};
 use rustc_lint::LateContext;
@@ -131,8 +131,7 @@ pub(super) fn check(
 
             let cast_from_ptr_size = def.repr().int.map_or(true, |ty| matches!(ty, IntegerType::Pointer(_),));
             let suffix = match (cast_from_ptr_size, is_isize_or_usize(cast_to)) {
-                (false, false) if from_nbits > to_nbits => "",
-                (true, false) if from_nbits > to_nbits => "",
+                (_, false) if from_nbits > to_nbits => "",
                 (false, true) if from_nbits > 64 => "",
                 (false, true) if from_nbits > 32 => " on targets with 32-bit wide pointers",
                 _ => return,
@@ -177,7 +176,7 @@ fn offer_suggestion(
     expr: &Expr<'_>,
     cast_expr: &Expr<'_>,
     cast_to_span: Span,
-    diag: &mut DiagnosticBuilder<'_, ()>,
+    diag: &mut Diag<'_, ()>,
 ) {
     let cast_to_snip = snippet(cx, cast_to_span, "..");
     let suggestion = if cast_to_snip == "_" {

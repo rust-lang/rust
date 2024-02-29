@@ -1,5 +1,5 @@
 error: usage of wildcard import
-  --> $DIR/wildcard_imports.rs:18:5
+  --> tests/ui-toml/wildcard_imports/wildcard_imports.rs:18:5
    |
 LL | use utils::*;
    |     ^^^^^^^^ help: try: `utils::{BAR, print}`
@@ -8,13 +8,13 @@ LL | use utils::*;
    = help: to override `-D warnings` add `#[allow(clippy::wildcard_imports)]`
 
 error: usage of wildcard import
-  --> $DIR/wildcard_imports.rs:20:5
+  --> tests/ui-toml/wildcard_imports/wildcard_imports.rs:20:5
    |
 LL | use my_crate::utils::*;
    |     ^^^^^^^^^^^^^^^^^^ help: try: `my_crate::utils::my_util_fn`
 
 error: usage of wildcard import
-  --> $DIR/wildcard_imports.rs:22:5
+  --> tests/ui-toml/wildcard_imports/wildcard_imports.rs:22:5
    |
 LL | use prelude::*;
    |     ^^^^^^^^^^ help: try: `prelude::FOO`

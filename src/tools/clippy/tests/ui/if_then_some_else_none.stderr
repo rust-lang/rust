@@ -1,5 +1,5 @@
 error: this could be simplified with `bool::then`
-  --> $DIR/if_then_some_else_none.rs:6:13
+  --> tests/ui/if_then_some_else_none.rs:6:13
    |
 LL |       let _ = if foo() {
    |  _____________^
@@ -16,7 +16,7 @@ LL | |     };
    = help: to override `-D warnings` add `#[allow(clippy::if_then_some_else_none)]`
 
 error: this could be simplified with `bool::then`
-  --> $DIR/if_then_some_else_none.rs:15:13
+  --> tests/ui/if_then_some_else_none.rs:15:13
    |
 LL |       let _ = if matches!(true, true) {
    |  _____________^
@@ -31,7 +31,7 @@ LL | |     };
    = help: consider using `bool::then` like: `matches!(true, true).then(|| { /* snippet */ matches!(true, false) })`
 
 error: this could be simplified with `bool::then_some`
-  --> $DIR/if_then_some_else_none.rs:25:28
+  --> tests/ui/if_then_some_else_none.rs:25:28
    |
 LL |     let _ = x.and_then(|o| if o < 32 { Some(o) } else { None });
    |                            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -39,7 +39,7 @@ LL |     let _ = x.and_then(|o| if o < 32 { Some(o) } else { None });
    = help: consider using `bool::then_some` like: `(o < 32).then_some(o)`
 
 error: this could be simplified with `bool::then_some`
-  --> $DIR/if_then_some_else_none.rs:30:13
+  --> tests/ui/if_then_some_else_none.rs:30:13
    |
 LL |     let _ = if !x { Some(0) } else { None };
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -47,7 +47,7 @@ LL |     let _ = if !x { Some(0) } else { None };
    = help: consider using `bool::then_some` like: `(!x).then_some(0)`
 
 error: this could be simplified with `bool::then`
-  --> $DIR/if_then_some_else_none.rs:86:13
+  --> tests/ui/if_then_some_else_none.rs:86:13
    |
 LL |       let _ = if foo() {
    |  _____________^

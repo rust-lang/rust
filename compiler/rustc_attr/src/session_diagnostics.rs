@@ -2,7 +2,7 @@ use std::num::IntErrorKind;
 
 use rustc_ast as ast;
 use rustc_errors::{
-    codes::*, Applicability, DiagCtxt, DiagnosticBuilder, EmissionGuarantee, IntoDiagnostic, Level,
+    codes::*, Applicability, Diag, DiagCtxt, EmissionGuarantee, IntoDiagnostic, Level,
 };
 use rustc_macros::Diagnostic;
 use rustc_span::{Span, Symbol};
@@ -51,9 +51,9 @@ pub(crate) struct UnknownMetaItem<'a> {
 
 // Manual implementation to be able to format `expected` items correctly.
 impl<'a, G: EmissionGuarantee> IntoDiagnostic<'a, G> for UnknownMetaItem<'_> {
-    fn into_diagnostic(self, dcx: &'a DiagCtxt, level: Level) -> DiagnosticBuilder<'a, G> {
+    fn into_diagnostic(self, dcx: &'a DiagCtxt, level: Level) -> Diag<'a, G> {
         let expected = self.expected.iter().map(|name| format!("`{name}`")).collect::<Vec<_>>();
-        DiagnosticBuilder::new(dcx, level, fluent::attr_unknown_meta_item)
+        Diag::new(dcx, level, fluent::attr_unknown_meta_item)
             .with_span(self.span)
             .with_code(E0541)
             .with_arg("item", self.item)
@@ -198,8 +198,8 @@ pub(crate) struct UnsupportedLiteral {
 }
 
 impl<'a, G: EmissionGuarantee> IntoDiagnostic<'a, G> for UnsupportedLiteral {
-    fn into_diagnostic(self, dcx: &'a DiagCtxt, level: Level) -> DiagnosticBuilder<'a, G> {
-        let mut diag = DiagnosticBuilder::new(
+    fn into_diagnostic(self, dcx: &'a DiagCtxt, level: Level) -> Diag<'a, G> {
+        let mut diag = Diag::new(
             dcx,
             level,
             match self.reason {

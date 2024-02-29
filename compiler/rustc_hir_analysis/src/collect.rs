@@ -17,7 +17,7 @@
 use rustc_data_structures::captures::Captures;
 use rustc_data_structures::fx::{FxHashSet, FxIndexMap};
 use rustc_data_structures::unord::UnordMap;
-use rustc_errors::{Applicability, DiagnosticBuilder, ErrorGuaranteed, StashKey};
+use rustc_errors::{Applicability, Diag, ErrorGuaranteed, StashKey};
 use rustc_hir as hir;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{DefId, LocalDefId, LocalModDefId};
@@ -186,7 +186,7 @@ pub(crate) fn placeholder_type_error_diag<'tcx>(
     suggest: bool,
     hir_ty: Option<&hir::Ty<'_>>,
     kind: &'static str,
-) -> DiagnosticBuilder<'tcx> {
+) -> Diag<'tcx> {
     if placeholder_types.is_empty() {
         return bad_placeholder(tcx, additional_spans, kind);
     }
@@ -335,7 +335,7 @@ fn bad_placeholder<'tcx>(
     tcx: TyCtxt<'tcx>,
     mut spans: Vec<Span>,
     kind: &'static str,
-) -> DiagnosticBuilder<'tcx> {
+) -> Diag<'tcx> {
     let kind = if kind.ends_with('s') { format!("{kind}es") } else { format!("{kind}s") };
 
     spans.sort();
@@ -760,7 +760,7 @@ fn convert_enum_variant_types(tcx: TyCtxt<'_>, def_id: DefId) {
         let wrapped_discr = prev_discr.map_or(initial, |d| d.wrap_incr(tcx));
         prev_discr = Some(
             if let ty::VariantDiscr::Explicit(const_def_id) = variant.discr {
-                def.eval_explicit_discr(tcx, const_def_id)
+                def.eval_explicit_discr(tcx, const_def_id).ok()
             } else if let Some(discr) = repr_type.disr_incr(tcx, prev_discr) {
                 Some(discr)
             } else {

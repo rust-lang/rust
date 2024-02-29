@@ -80,7 +80,7 @@ pub(crate) enum ProcMacroKind {
 }
 
 impl IntoDiagnosticArg for ProcMacroKind {
-    fn into_diagnostic_arg(self) -> rustc_errors::DiagnosticArgValue {
+    fn into_diagnostic_arg(self) -> rustc_errors::DiagArgValue {
         match self {
             ProcMacroKind::Attribute => "attribute proc macro",
             ProcMacroKind::Derive => "derive proc macro",

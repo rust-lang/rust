@@ -27,7 +27,7 @@
 //! ```
 
 use rustc_data_structures::fx::FxHashMap;
-use rustc_errors::{DiagnosticBuilder, DiagnosticMessage};
+use rustc_errors::{Diag, DiagnosticMessage};
 use rustc_hir::def_id::DefId;
 use rustc_middle::ty::TyCtxt;
 pub(crate) use rustc_resolve::rustdoc::main_body_opts;
@@ -843,7 +843,7 @@ impl<'tcx> ExtraInfo<'tcx> {
     fn error_invalid_codeblock_attr_with_help(
         &self,
         msg: impl Into<DiagnosticMessage>,
-        f: impl for<'a, 'b> FnOnce(&'b mut DiagnosticBuilder<'a, ()>),
+        f: impl for<'a, 'b> FnOnce(&'b mut Diag<'a, ()>),
     ) {
         if let Some(def_id) = self.def_id.as_local() {
             self.tcx.node_span_lint(

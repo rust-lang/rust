@@ -1,16 +1,16 @@
 error: use of `format!` to build up a string from an iterator
-  --> $DIR/format_collect.rs:5:5
+  --> tests/ui/format_collect.rs:5:5
    |
 LL |     bytes.iter().map(|b| format!("{b:02X}")).collect()
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
 help: call `fold` instead
-  --> $DIR/format_collect.rs:5:18
+  --> tests/ui/format_collect.rs:5:18
    |
 LL |     bytes.iter().map(|b| format!("{b:02X}")).collect()
    |                  ^^^
 help: ... and use the `write!` macro here
-  --> $DIR/format_collect.rs:5:26
+  --> tests/ui/format_collect.rs:5:26
    |
 LL |     bytes.iter().map(|b| format!("{b:02X}")).collect()
    |                          ^^^^^^^^^^^^^^^^^^
@@ -19,25 +19,25 @@ LL |     bytes.iter().map(|b| format!("{b:02X}")).collect()
    = help: to override `-D warnings` add `#[allow(clippy::format_collect)]`
 
 error: use of `format!` to build up a string from an iterator
-  --> $DIR/format_collect.rs:11:5
+  --> tests/ui/format_collect.rs:11:5
    |
 LL |     bytes.iter().map(|b| {{{{{ format!("{b:02X}") }}}}}).collect()
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
 help: call `fold` instead
-  --> $DIR/format_collect.rs:11:18
+  --> tests/ui/format_collect.rs:11:18
    |
 LL |     bytes.iter().map(|b| {{{{{ format!("{b:02X}") }}}}}).collect()
    |                  ^^^
 help: ... and use the `write!` macro here
-  --> $DIR/format_collect.rs:11:32
+  --> tests/ui/format_collect.rs:11:32
    |
 LL |     bytes.iter().map(|b| {{{{{ format!("{b:02X}") }}}}}).collect()
    |                                ^^^^^^^^^^^^^^^^^^
    = note: this can be written more efficiently by appending to a `String` directly
 
 error: use of `format!` to build up a string from an iterator
-  --> $DIR/format_collect.rs:26:5
+  --> tests/ui/format_collect.rs:26:5
    |
 LL | /     (1..10)
 LL | |
@@ -49,12 +49,12 @@ LL | |         .collect()
    | |__________________^
    |
 help: call `fold` instead
-  --> $DIR/format_collect.rs:28:10
+  --> tests/ui/format_collect.rs:28:10
    |
 LL |         .map(|s| {
    |          ^^^
 help: ... and use the `write!` macro here
-  --> $DIR/format_collect.rs:30:13
+  --> tests/ui/format_collect.rs:30:13
    |
 LL |             format!("{s} {y}")
    |             ^^^^^^^^^^^^^^^^^^

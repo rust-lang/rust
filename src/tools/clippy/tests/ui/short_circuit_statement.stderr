@@ -1,5 +1,5 @@
 error: boolean short circuit operator in statement may be clearer using an explicit test
-  --> $DIR/short_circuit_statement.rs:5:5
+  --> tests/ui/short_circuit_statement.rs:5:5
    |
 LL |     f() && g();
    |     ^^^^^^^^^^^ help: replace it with: `if f() { g(); }`
@@ -8,13 +8,13 @@ LL |     f() && g();
    = help: to override `-D warnings` add `#[allow(clippy::short_circuit_statement)]`
 
 error: boolean short circuit operator in statement may be clearer using an explicit test
-  --> $DIR/short_circuit_statement.rs:6:5
+  --> tests/ui/short_circuit_statement.rs:6:5
    |
 LL |     f() || g();
    |     ^^^^^^^^^^^ help: replace it with: `if !f() { g(); }`
 
 error: boolean short circuit operator in statement may be clearer using an explicit test
-  --> $DIR/short_circuit_statement.rs:7:5
+  --> tests/ui/short_circuit_statement.rs:7:5
    |
 LL |     1 == 2 || g();
    |     ^^^^^^^^^^^^^^ help: replace it with: `if 1 != 2 { g(); }`

@@ -17,7 +17,7 @@ use rustc_ast::visit::{AssocCtxt, BoundKind, FnCtxt, FnKind, Visitor};
 use rustc_ast::*;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexMap};
 use rustc_errors::{
-    codes::*, struct_span_code_err, Applicability, DiagnosticArgValue, IntoDiagnosticArg, StashKey,
+    codes::*, struct_span_code_err, Applicability, DiagArgValue, IntoDiagnosticArg, StashKey,
 };
 use rustc_hir::def::Namespace::{self, *};
 use rustc_hir::def::{self, CtorKind, DefKind, LifetimeRes, NonMacroAttrKind, PartialRes, PerNS};
@@ -90,8 +90,8 @@ impl PatternSource {
 }
 
 impl IntoDiagnosticArg for PatternSource {
-    fn into_diagnostic_arg(self) -> DiagnosticArgValue {
-        DiagnosticArgValue::Str(Cow::Borrowed(self.descr()))
+    fn into_diagnostic_arg(self) -> DiagArgValue {
+        DiagArgValue::Str(Cow::Borrowed(self.descr()))
     }
 }
 

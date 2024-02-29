@@ -1,5 +1,5 @@
 error: `format!` in `println!` args
-  --> $DIR/format_args_unfixable.rs:26:5
+  --> tests/ui/format_args_unfixable.rs:26:5
    |
 LL |     println!("error: {}", format!("something failed at {}", Location::caller()));
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -10,7 +10,7 @@ LL |     println!("error: {}", format!("something failed at {}", Location::calle
    = help: to override `-D warnings` add `#[allow(clippy::format_in_format_args)]`
 
 error: `format!` in `println!` args
-  --> $DIR/format_args_unfixable.rs:28:5
+  --> tests/ui/format_args_unfixable.rs:28:5
    |
 LL |     println!("{}: {}", error, format!("something failed at {}", Location::caller()));
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -19,7 +19,7 @@ LL |     println!("{}: {}", error, format!("something failed at {}", Location::c
    = help: or consider changing `format!` to `format_args!`
 
 error: `format!` in `println!` args
-  --> $DIR/format_args_unfixable.rs:30:5
+  --> tests/ui/format_args_unfixable.rs:30:5
    |
 LL |     println!("{:?}: {}", error, format!("something failed at {}", Location::caller()));
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -28,7 +28,7 @@ LL |     println!("{:?}: {}", error, format!("something failed at {}", Location:
    = help: or consider changing `format!` to `format_args!`
 
 error: `format!` in `println!` args
-  --> $DIR/format_args_unfixable.rs:32:5
+  --> tests/ui/format_args_unfixable.rs:32:5
    |
 LL |     println!("{{}}: {}", format!("something failed at {}", Location::caller()));
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -37,7 +37,7 @@ LL |     println!("{{}}: {}", format!("something failed at {}", Location::caller
    = help: or consider changing `format!` to `format_args!`
 
 error: `format!` in `println!` args
-  --> $DIR/format_args_unfixable.rs:34:5
+  --> tests/ui/format_args_unfixable.rs:34:5
    |
 LL |     println!(r#"error: "{}""#, format!("something failed at {}", Location::caller()));
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -46,7 +46,7 @@ LL |     println!(r#"error: "{}""#, format!("something failed at {}", Location::
    = help: or consider changing `format!` to `format_args!`
 
 error: `format!` in `println!` args
-  --> $DIR/format_args_unfixable.rs:36:5
+  --> tests/ui/format_args_unfixable.rs:36:5
    |
 LL |     println!("error: {}", format!(r#"something failed at "{}""#, Location::caller()));
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -55,7 +55,7 @@ LL |     println!("error: {}", format!(r#"something failed at "{}""#, Location::
    = help: or consider changing `format!` to `format_args!`
 
 error: `format!` in `println!` args
-  --> $DIR/format_args_unfixable.rs:38:5
+  --> tests/ui/format_args_unfixable.rs:38:5
    |
 LL |     println!("error: {}", format!("something failed at {} {0}", Location::caller()));
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -64,7 +64,7 @@ LL |     println!("error: {}", format!("something failed at {} {0}", Location::c
    = help: or consider changing `format!` to `format_args!`
 
 error: `format!` in `format!` args
-  --> $DIR/format_args_unfixable.rs:40:13
+  --> tests/ui/format_args_unfixable.rs:40:13
    |
 LL |     let _ = format!("error: {}", format!("something failed at {}", Location::caller()));
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -73,7 +73,7 @@ LL |     let _ = format!("error: {}", format!("something failed at {}", Location
    = help: or consider changing `format!` to `format_args!`
 
 error: `format!` in `write!` args
-  --> $DIR/format_args_unfixable.rs:42:13
+  --> tests/ui/format_args_unfixable.rs:42:13
    |
 LL |       let _ = write!(
    |  _____________^
@@ -88,7 +88,7 @@ LL | |     );
    = help: or consider changing `format!` to `format_args!`
 
 error: `format!` in `writeln!` args
-  --> $DIR/format_args_unfixable.rs:48:13
+  --> tests/ui/format_args_unfixable.rs:48:13
    |
 LL |       let _ = writeln!(
    |  _____________^
@@ -103,7 +103,7 @@ LL | |     );
    = help: or consider changing `format!` to `format_args!`
 
 error: `format!` in `print!` args
-  --> $DIR/format_args_unfixable.rs:54:5
+  --> tests/ui/format_args_unfixable.rs:54:5
    |
 LL |     print!("error: {}", format!("something failed at {}", Location::caller()));
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -112,7 +112,7 @@ LL |     print!("error: {}", format!("something failed at {}", Location::caller(
    = help: or consider changing `format!` to `format_args!`
 
 error: `format!` in `eprint!` args
-  --> $DIR/format_args_unfixable.rs:56:5
+  --> tests/ui/format_args_unfixable.rs:56:5
    |
 LL |     eprint!("error: {}", format!("something failed at {}", Location::caller()));
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -121,7 +121,7 @@ LL |     eprint!("error: {}", format!("something failed at {}", Location::caller
    = help: or consider changing `format!` to `format_args!`
 
 error: `format!` in `eprintln!` args
-  --> $DIR/format_args_unfixable.rs:58:5
+  --> tests/ui/format_args_unfixable.rs:58:5
    |
 LL |     eprintln!("error: {}", format!("something failed at {}", Location::caller()));
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -130,7 +130,7 @@ LL |     eprintln!("error: {}", format!("something failed at {}", Location::call
    = help: or consider changing `format!` to `format_args!`
 
 error: `format!` in `format_args!` args
-  --> $DIR/format_args_unfixable.rs:60:13
+  --> tests/ui/format_args_unfixable.rs:60:13
    |
 LL |     let _ = format_args!("error: {}", format!("something failed at {}", Location::caller()));
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -139,7 +139,7 @@ LL |     let _ = format_args!("error: {}", format!("something failed at {}", Loc
    = help: or consider changing `format!` to `format_args!`
 
 error: `format!` in `assert!` args
-  --> $DIR/format_args_unfixable.rs:62:5
+  --> tests/ui/format_args_unfixable.rs:62:5
    |
 LL |     assert!(true, "error: {}", format!("something failed at {}", Location::caller()));
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -148,7 +148,7 @@ LL |     assert!(true, "error: {}", format!("something failed at {}", Location::
    = help: or consider changing `format!` to `format_args!`
 
 error: `format!` in `assert_eq!` args
-  --> $DIR/format_args_unfixable.rs:64:5
+  --> tests/ui/format_args_unfixable.rs:64:5
    |
 LL |     assert_eq!(0, 0, "error: {}", format!("something failed at {}", Location::caller()));
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -157,7 +157,7 @@ LL |     assert_eq!(0, 0, "error: {}", format!("something failed at {}", Locatio
    = help: or consider changing `format!` to `format_args!`
 
 error: `format!` in `assert_ne!` args
-  --> $DIR/format_args_unfixable.rs:66:5
+  --> tests/ui/format_args_unfixable.rs:66:5
    |
 LL |     assert_ne!(0, 0, "error: {}", format!("something failed at {}", Location::caller()));
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -166,7 +166,7 @@ LL |     assert_ne!(0, 0, "error: {}", format!("something failed at {}", Locatio
    = help: or consider changing `format!` to `format_args!`
 
 error: `format!` in `panic!` args
-  --> $DIR/format_args_unfixable.rs:68:5
+  --> tests/ui/format_args_unfixable.rs:68:5
    |
 LL |     panic!("error: {}", format!("something failed at {}", Location::caller()));
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

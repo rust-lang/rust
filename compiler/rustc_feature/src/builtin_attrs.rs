@@ -390,20 +390,21 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
 
     // Entry point:
     gated!(unix_sigpipe, Normal, template!(Word, NameValueStr: "inherit|sig_ign|sig_dfl"), ErrorFollowing, experimental!(unix_sigpipe)),
-    ungated!(start, Normal, template!(Word), WarnFollowing),
-    ungated!(no_start, CrateLevel, template!(Word), WarnFollowing),
-    ungated!(no_main, CrateLevel, template!(Word), WarnFollowing),
+    ungated!(start, Normal, template!(Word), WarnFollowing, @only_local: true),
+    ungated!(no_start, CrateLevel, template!(Word), WarnFollowing, @only_local: true),
+    ungated!(no_main, CrateLevel, template!(Word), WarnFollowing, @only_local: true),
 
     // Modules, prelude, and resolution:
-    ungated!(path, Normal, template!(NameValueStr: "file"), FutureWarnFollowing),
-    ungated!(no_std, CrateLevel, template!(Word), WarnFollowing),
-    ungated!(no_implicit_prelude, Normal, template!(Word), WarnFollowing),
+    ungated!(path, Normal, template!(NameValueStr: "file"), FutureWarnFollowing, @only_local: true),
+    ungated!(no_std, CrateLevel, template!(Word), WarnFollowing, @only_local: true),
+    ungated!(no_implicit_prelude, Normal, template!(Word), WarnFollowing, @only_local: true),
     ungated!(non_exhaustive, Normal, template!(Word), WarnFollowing),
 
     // Runtime
     ungated!(
         windows_subsystem, CrateLevel,
-        template!(NameValueStr: "windows|console"), FutureWarnFollowing
+        template!(NameValueStr: "windows|console"), FutureWarnFollowing,
+        @only_local: true
     ),
     ungated!(panic_handler, Normal, template!(Word), WarnFollowing), // RFC 2070
 
@@ -416,13 +417,17 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
         DuplicatesOk, @only_local: true,
     ),
     ungated!(track_caller, Normal, template!(Word), WarnFollowing),
-    ungated!(instruction_set, Normal, template!(List: "set"), ErrorPreceding),
+    ungated!(instruction_set, Normal, template!(List: "set"), ErrorPreceding, @only_local: true),
     gated!(
         no_sanitize, Normal,
         template!(List: "address, kcfi, memory, thread"), DuplicatesOk,
-        experimental!(no_sanitize)
+        @only_local: true, experimental!(no_sanitize)
     ),
-    gated!(coverage, Normal, template!(Word, List: "on|off"), WarnFollowing, coverage_attribute, experimental!(coverage)),
+    gated!(
+        coverage, Normal, template!(Word, List: "on|off"),
+        WarnFollowing, @only_local: true,
+        coverage_attribute, experimental!(coverage)
+    ),
 
     ungated!(
         doc, Normal, template!(List: "hidden|inline|...", NameValueStr: "string"), DuplicatesOk
@@ -431,7 +436,8 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
     // Debugging
     ungated!(
         debugger_visualizer, Normal,
-        template!(List: r#"natvis_file = "...", gdb_script_file = "...""#), DuplicatesOk
+        template!(List: r#"natvis_file = "...", gdb_script_file = "...""#),
+        DuplicatesOk, @only_local: true
     ),
 
     // ==========================================================================
@@ -455,26 +461,35 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
         marker_trait_attr, experimental!(marker)
     ),
     gated!(
-        thread_local, Normal, template!(Word), WarnFollowing,
+        thread_local, Normal, template!(Word), WarnFollowing, @only_local: true,
         "`#[thread_local]` is an experimental feature, and does not currently handle destructors",
     ),
-    gated!(no_core, CrateLevel, template!(Word), WarnFollowing, experimental!(no_core)),
+    gated!(
+        no_core, CrateLevel, template!(Word), WarnFollowing,
+        @only_local: true, experimental!(no_core)
+    ),
     // RFC 2412
     gated!(
-        optimize, Normal, template!(List: "size|speed"), ErrorPreceding, optimize_attribute,
-        experimental!(optimize),
+        optimize, Normal, template!(List: "size|speed"), ErrorPreceding,
+        @only_local: true, optimize_attribute, experimental!(optimize)
     ),
 
-    gated!(ffi_pure, Normal, template!(Word), WarnFollowing, experimental!(ffi_pure)),
-    gated!(ffi_const, Normal, template!(Word), WarnFollowing, experimental!(ffi_const)),
+    gated!(
+        ffi_pure, Normal, template!(Word), WarnFollowing,
+        @only_local: true, experimental!(ffi_pure)
+    ),
+    gated!(
+        ffi_const, Normal, template!(Word), WarnFollowing,
+        @only_local: true, experimental!(ffi_const)
+    ),
     gated!(
         register_tool, CrateLevel, template!(List: "tool1, tool2, ..."), DuplicatesOk,
-        experimental!(register_tool),
+        @only_local: true, experimental!(register_tool),
     ),
 
     gated!(
         cmse_nonsecure_entry, Normal, template!(Word), WarnFollowing,
-        experimental!(cmse_nonsecure_entry)
+        @only_local: true, experimental!(cmse_nonsecure_entry)
     ),
     // RFC 2632
     gated!(
@@ -492,11 +507,14 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
     // `#[collapse_debuginfo]`
     gated!(
         collapse_debuginfo, Normal, template!(Word, List: "no|external|yes"), ErrorFollowing,
-        experimental!(collapse_debuginfo)
+        @only_local: true, experimental!(collapse_debuginfo)
     ),
 
     // RFC 2397
-    gated!(do_not_recommend, Normal, template!(Word), WarnFollowing, experimental!(do_not_recommend)),
+    gated!(
+        do_not_recommend, Normal, template!(Word), WarnFollowing,
+        @only_local: true, experimental!(do_not_recommend)
+    ),
 
     // `#[cfi_encoding = ""]`
     gated!(
@@ -528,7 +546,8 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
     ),
     ungated!(
         rustc_default_body_unstable, Normal,
-        template!(List: r#"feature = "name", reason = "...", issue = "N""#), DuplicatesOk
+        template!(List: r#"feature = "name", reason = "...", issue = "N""#),
+        DuplicatesOk, @only_local: true
     ),
     gated!(
         allow_internal_unstable, Normal, template!(Word, List: "feat1, feat2, ..."), DuplicatesOk,

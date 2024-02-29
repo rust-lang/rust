@@ -278,7 +278,7 @@ The minimum number of struct fields for the lints about field names to trigger
 
 ---
 **Affected lints:**
-* [`struct_variant_names`](https://rust-lang.github.io/rust-clippy/master/index.html#struct_variant_names)
+* [`struct_field_names`](https://rust-lang.github.io/rust-clippy/master/index.html#struct_field_names)
 
 
 ## `enum-variant-size-threshold`

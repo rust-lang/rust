@@ -1,5 +1,5 @@
 error: use of a fallible conversion when an infallible one could be used
-  --> $DIR/unnecessary_fallible_conversions_unfixable.rs:27:34
+  --> tests/ui/unnecessary_fallible_conversions_unfixable.rs:27:34
    |
 LL |     let _: Result<Foo, _> = 0i64.try_into();
    |                                  ^^^^^^^^ help: use: `into`
@@ -9,7 +9,7 @@ LL |     let _: Result<Foo, _> = 0i64.try_into();
    = help: to override `-D warnings` add `#[allow(clippy::unnecessary_fallible_conversions)]`
 
 error: use of a fallible conversion when an infallible one could be used
-  --> $DIR/unnecessary_fallible_conversions_unfixable.rs:29:29
+  --> tests/ui/unnecessary_fallible_conversions_unfixable.rs:29:29
    |
 LL |     let _: Result<Foo, _> = i64::try_into(0i64);
    |                             ^^^^^^^^^^^^^ help: use: `Into::into`
@@ -17,7 +17,7 @@ LL |     let _: Result<Foo, _> = i64::try_into(0i64);
    = note: converting `i64` to `Foo` cannot fail
 
 error: use of a fallible conversion when an infallible one could be used
-  --> $DIR/unnecessary_fallible_conversions_unfixable.rs:31:29
+  --> tests/ui/unnecessary_fallible_conversions_unfixable.rs:31:29
    |
 LL |     let _: Result<Foo, _> = Foo::try_from(0i64);
    |                             ^^^^^^^^^^^^^ help: use: `From::from`
@@ -25,7 +25,7 @@ LL |     let _: Result<Foo, _> = Foo::try_from(0i64);
    = note: converting `i64` to `Foo` cannot fail
 
 error: use of a fallible conversion when an infallible one could be used
-  --> $DIR/unnecessary_fallible_conversions_unfixable.rs:34:34
+  --> tests/ui/unnecessary_fallible_conversions_unfixable.rs:34:34
    |
 LL |     let _: Result<i64, _> = 0i32.try_into();
    |                                  ^^^^^^^^ help: use: `into`
@@ -33,7 +33,7 @@ LL |     let _: Result<i64, _> = 0i32.try_into();
    = note: converting `i32` to `i64` cannot fail
 
 error: use of a fallible conversion when an infallible one could be used
-  --> $DIR/unnecessary_fallible_conversions_unfixable.rs:36:29
+  --> tests/ui/unnecessary_fallible_conversions_unfixable.rs:36:29
    |
 LL |     let _: Result<i64, _> = i32::try_into(0i32);
    |                             ^^^^^^^^^^^^^ help: use: `Into::into`
@@ -41,7 +41,7 @@ LL |     let _: Result<i64, _> = i32::try_into(0i32);
    = note: converting `i32` to `i64` cannot fail
 
 error: use of a fallible conversion when an infallible one could be used
-  --> $DIR/unnecessary_fallible_conversions_unfixable.rs:38:29
+  --> tests/ui/unnecessary_fallible_conversions_unfixable.rs:38:29
    |
 LL |     let _: Result<i64, _> = <_>::try_from(0i32);
    |                             ^^^^^^^^^^^^^ help: use: `From::from`

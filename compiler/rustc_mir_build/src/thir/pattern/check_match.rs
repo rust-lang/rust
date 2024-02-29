@@ -11,7 +11,7 @@ use rustc_ast::Mutability;
 use rustc_data_structures::fx::FxIndexSet;
 use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_errors::{
-    codes::*, struct_span_code_err, Applicability, DiagnosticBuilder, ErrorGuaranteed, MultiSpan,
+    codes::*, struct_span_code_err, Applicability, Diag, ErrorGuaranteed, MultiSpan,
 };
 use rustc_hir as hir;
 use rustc_hir::def::*;
@@ -64,7 +64,7 @@ pub(crate) fn check_match(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Result<(), Err
     visitor.error
 }
 
-fn create_e0004(sess: &Session, sp: Span, error_message: String) -> DiagnosticBuilder<'_> {
+fn create_e0004(sess: &Session, sp: Span, error_message: String) -> Diag<'_> {
     struct_span_code_err!(sess.dcx(), sp, E0004, "{}", &error_message)
 }
 

@@ -1,5 +1,4 @@
 #[warn(clippy::approx_constant)]
-#[allow(clippy::similar_names)]
 fn main() {
     let my_e = 2.7182;
     //~^ ERROR: approximate value of `f{32, 64}::consts::E` found

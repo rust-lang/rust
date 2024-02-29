@@ -4,7 +4,7 @@ use crate::errors::{
 };
 use rustc_ast::ptr::P;
 use rustc_ast::{token, AttrVec, Attribute, Inline, Item, ModSpans};
-use rustc_errors::{DiagnosticBuilder, ErrorGuaranteed};
+use rustc_errors::{Diag, ErrorGuaranteed};
 use rustc_parse::new_parser_from_file;
 use rustc_parse::validate_attr;
 use rustc_session::parse::ParseSess;
@@ -43,7 +43,7 @@ pub enum ModError<'a> {
     ModInBlock(Option<Ident>),
     FileNotFound(Ident, PathBuf, PathBuf),
     MultipleCandidates(Ident, PathBuf, PathBuf),
-    ParserError(DiagnosticBuilder<'a>),
+    ParserError(Diag<'a>),
 }
 
 pub(crate) fn parse_external_mod(

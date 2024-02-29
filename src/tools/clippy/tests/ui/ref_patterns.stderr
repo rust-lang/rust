@@ -1,5 +1,5 @@
 error: usage of ref pattern
-  --> $DIR/ref_patterns.rs:8:14
+  --> tests/ui/ref_patterns.rs:8:14
    |
 LL |         Some(ref opt) => {},
    |              ^^^^^^^
@@ -9,7 +9,7 @@ LL |         Some(ref opt) => {},
    = help: to override `-D warnings` add `#[allow(clippy::ref_patterns)]`
 
 error: usage of ref pattern
-  --> $DIR/ref_patterns.rs:15:9
+  --> tests/ui/ref_patterns.rs:15:9
    |
 LL |     let ref y = x;
    |         ^^^^^
@@ -17,7 +17,7 @@ LL |     let ref y = x;
    = help: consider using `&` for clarity instead
 
 error: usage of ref pattern
-  --> $DIR/ref_patterns.rs:19:21
+  --> tests/ui/ref_patterns.rs:19:21
    |
 LL | fn use_in_parameter(ref x: i32) {}
    |                     ^^^^^

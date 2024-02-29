@@ -1,5 +1,5 @@
 error: this operation will panic at runtime
-  --> $DIR/ice-5497.rs:11:22
+  --> tests/ui/crashes/ice-5497.rs:11:22
    |
 LL |     const OOB: i32 = [1][1] + T::OOB;
    |                      ^^^^^^ index out of bounds: the length is 1 but the index is 1

@@ -3,8 +3,8 @@ use std::borrow::Cow;
 
 use crate::fluent_generated as fluent;
 use rustc_errors::{
-    codes::*, AddToDiagnostic, Applicability, DiagnosticArgValue, DiagnosticBuilder,
-    EmissionGuarantee, IntoDiagnosticArg, MultiSpan, SubdiagnosticMessageOp,
+    codes::*, AddToDiagnostic, Applicability, Diag, DiagArgValue, EmissionGuarantee,
+    IntoDiagnosticArg, MultiSpan, SubdiagnosticMessageOp,
 };
 use rustc_macros::{Diagnostic, LintDiagnostic, Subdiagnostic};
 use rustc_middle::ty::Ty;
@@ -43,14 +43,14 @@ pub enum ReturnLikeStatementKind {
 }
 
 impl IntoDiagnosticArg for ReturnLikeStatementKind {
-    fn into_diagnostic_arg(self) -> DiagnosticArgValue {
+    fn into_diagnostic_arg(self) -> DiagArgValue {
         let kind = match self {
             Self::Return => "return",
             Self::Become => "become",
         }
         .into();
 
-        DiagnosticArgValue::Str(kind)
+        DiagArgValue::Str(kind)
     }
 }
 
@@ -197,7 +197,7 @@ pub struct TypeMismatchFruTypo {
 impl AddToDiagnostic for TypeMismatchFruTypo {
     fn add_to_diagnostic_with<G: EmissionGuarantee, F: SubdiagnosticMessageOp<G>>(
         self,
-        diag: &mut DiagnosticBuilder<'_, G>,
+        diag: &mut Diag<'_, G>,
         _f: F,
     ) {
         diag.arg("expr", self.expr.as_deref().unwrap_or("NONE"));
@@ -376,7 +376,7 @@ pub struct RemoveSemiForCoerce {
 impl AddToDiagnostic for RemoveSemiForCoerce {
     fn add_to_diagnostic_with<G: EmissionGuarantee, F: SubdiagnosticMessageOp<G>>(
         self,
-        diag: &mut DiagnosticBuilder<'_, G>,
+        diag: &mut Diag<'_, G>,
         _f: F,
     ) {
         let mut multispan: MultiSpan = self.semi.into();
@@ -552,7 +552,7 @@ pub enum CastUnknownPointerSub {
 impl rustc_errors::AddToDiagnostic for CastUnknownPointerSub {
     fn add_to_diagnostic_with<G: EmissionGuarantee, F: SubdiagnosticMessageOp<G>>(
         self,
-        diag: &mut DiagnosticBuilder<'_, G>,
+        diag: &mut Diag<'_, G>,
         f: F,
     ) {
         match self {

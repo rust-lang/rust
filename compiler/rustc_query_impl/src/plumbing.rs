@@ -7,7 +7,7 @@ use crate::rustc_middle::ty::TyEncoder;
 use crate::QueryConfigRestored;
 use rustc_data_structures::stable_hasher::{Hash64, HashStable, StableHasher};
 use rustc_data_structures::sync::Lock;
-use rustc_errors::Diagnostic;
+use rustc_errors::DiagInner;
 
 use rustc_index::Idx;
 use rustc_middle::dep_graph::dep_kinds;
@@ -125,7 +125,7 @@ impl QueryContext for QueryCtxt<'_> {
         self,
         token: QueryJobId,
         depth_limit: bool,
-        diagnostics: Option<&Lock<ThinVec<Diagnostic>>>,
+        diagnostics: Option<&Lock<ThinVec<DiagInner>>>,
         compute: impl FnOnce() -> R,
     ) -> R {
         // The `TyCtxt` stored in TLS has the same global interner lifetime

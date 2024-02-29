@@ -1,5 +1,5 @@
 error: variant name ends with the enum's name
-  --> $DIR/enum_variants.rs:16:5
+  --> tests/ui/enum_variants.rs:16:5
    |
 LL |     cFoo,
    |     ^^^^
@@ -8,7 +8,7 @@ LL |     cFoo,
    = help: to override `-D warnings` add `#[allow(clippy::enum_variant_names)]`
 
 error: all variants have the same prefix: `c`
-  --> $DIR/enum_variants.rs:14:1
+  --> tests/ui/enum_variants.rs:14:1
    |
 LL | / enum Foo {
 LL | |
@@ -22,25 +22,25 @@ LL | | }
    = help: remove the prefixes and use full paths to the variants instead of glob imports
 
 error: variant name starts with the enum's name
-  --> $DIR/enum_variants.rs:30:5
+  --> tests/ui/enum_variants.rs:30:5
    |
 LL |     FoodGood,
    |     ^^^^^^^^
 
 error: variant name starts with the enum's name
-  --> $DIR/enum_variants.rs:32:5
+  --> tests/ui/enum_variants.rs:32:5
    |
 LL |     FoodMiddle,
    |     ^^^^^^^^^^
 
 error: variant name starts with the enum's name
-  --> $DIR/enum_variants.rs:34:5
+  --> tests/ui/enum_variants.rs:34:5
    |
 LL |     FoodBad,
    |     ^^^^^^^
 
 error: all variants have the same prefix: `Food`
-  --> $DIR/enum_variants.rs:28:1
+  --> tests/ui/enum_variants.rs:28:1
    |
 LL | / enum Food {
 LL | |
@@ -54,7 +54,7 @@ LL | | }
    = help: remove the prefixes and use full paths to the variants instead of glob imports
 
 error: all variants have the same prefix: `CallType`
-  --> $DIR/enum_variants.rs:42:1
+  --> tests/ui/enum_variants.rs:42:1
    |
 LL | / enum BadCallType {
 LL | |
@@ -67,7 +67,7 @@ LL | | }
    = help: remove the prefixes and use full paths to the variants instead of glob imports
 
 error: all variants have the same prefix: `Constant`
-  --> $DIR/enum_variants.rs:55:1
+  --> tests/ui/enum_variants.rs:55:1
    |
 LL | / enum Consts {
 LL | |
@@ -80,7 +80,7 @@ LL | | }
    = help: remove the prefixes and use full paths to the variants instead of glob imports
 
 error: all variants have the same prefix: `C`
-  --> $DIR/enum_variants.rs:68:1
+  --> tests/ui/enum_variants.rs:68:1
    |
 LL | / enum Something {
 LL | |
@@ -93,7 +93,7 @@ LL | | }
    = help: remove the prefixes and use full paths to the variants instead of glob imports
 
 error: all variants have the same prefix: `WithOut`
-  --> $DIR/enum_variants.rs:91:1
+  --> tests/ui/enum_variants.rs:91:1
    |
 LL | / enum Seallll {
 LL | |
@@ -106,7 +106,7 @@ LL | | }
    = help: remove the prefixes and use full paths to the variants instead of glob imports
 
 error: all variants have the same postfix: `IData`
-  --> $DIR/enum_variants.rs:147:1
+  --> tests/ui/enum_variants.rs:147:1
    |
 LL | / enum IDataRequest {
 LL | |
@@ -119,7 +119,7 @@ LL | | }
    = help: remove the postfixes and use full paths to the variants instead of glob imports
 
 error: all variants have the same postfix: `HIData`
-  --> $DIR/enum_variants.rs:154:1
+  --> tests/ui/enum_variants.rs:154:1
    |
 LL | / enum HIDataRequest {
 LL | |
@@ -132,7 +132,7 @@ LL | | }
    = help: remove the postfixes and use full paths to the variants instead of glob imports
 
 error: all variants have the same prefix: `_Type`
-  --> $DIR/enum_variants.rs:175:5
+  --> tests/ui/enum_variants.rs:175:5
    |
 LL | /     enum DoLint {
 LL | |
@@ -146,7 +146,7 @@ LL | |     }
    = help: remove the prefixes and use full paths to the variants instead of glob imports
 
 error: all variants have the same postfix: `Type`
-  --> $DIR/enum_variants.rs:183:5
+  --> tests/ui/enum_variants.rs:183:5
    |
 LL | /     enum DoLintToo {
 LL | |
@@ -159,13 +159,13 @@ LL | |     }
    = help: remove the postfixes and use full paths to the variants instead of glob imports
 
 error: variant name starts with the enum's name
-  --> $DIR/enum_variants.rs:212:9
+  --> tests/ui/enum_variants.rs:212:9
    |
 LL |         DataDependent,
    |         ^^^^^^^^^^^^^
 
 error: variant name starts with the enum's name
-  --> $DIR/enum_variants.rs:217:9
+  --> tests/ui/enum_variants.rs:217:9
    |
 LL |         DatasDependent,
    |         ^^^^^^^^^^^^^^

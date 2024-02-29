@@ -1,5 +1,5 @@
 error: this creates an owned instance just for comparison
-  --> $DIR/asymmetric_partial_eq.rs:46:12
+  --> tests/ui/cmp_owned/asymmetric_partial_eq.rs:46:12
    |
 LL |         if borrowed.to_owned() == owned {}
    |            ^^^^^^^^^^^^^^^^^^^ help: try: `borrowed`
@@ -8,7 +8,7 @@ LL |         if borrowed.to_owned() == owned {}
    = help: to override `-D warnings` add `#[allow(clippy::cmp_owned)]`
 
 error: this creates an owned instance just for comparison
-  --> $DIR/asymmetric_partial_eq.rs:47:21
+  --> tests/ui/cmp_owned/asymmetric_partial_eq.rs:47:21
    |
 LL |         if owned == borrowed.to_owned() {}
    |            ---------^^^^^^^^^^^^^^^^^^^
@@ -16,13 +16,13 @@ LL |         if owned == borrowed.to_owned() {}
    |            help: try: `borrowed == owned`
 
 error: this creates an owned instance just for comparison
-  --> $DIR/asymmetric_partial_eq.rs:65:21
+  --> tests/ui/cmp_owned/asymmetric_partial_eq.rs:65:21
    |
 LL |         if owned == borrowed.to_owned() {}
    |                     ^^^^^^^^^^^^^^^^^^^ help: try: `borrowed`
 
 error: this creates an owned instance just for comparison
-  --> $DIR/asymmetric_partial_eq.rs:66:12
+  --> tests/ui/cmp_owned/asymmetric_partial_eq.rs:66:12
    |
 LL |         if borrowed.to_owned() == owned {}
    |            ^^^^^^^^^^^^^^^^^^^---------
@@ -30,7 +30,7 @@ LL |         if borrowed.to_owned() == owned {}
    |            help: try: `owned == borrowed`
 
 error: this creates an owned instance just for comparison
-  --> $DIR/asymmetric_partial_eq.rs:92:20
+  --> tests/ui/cmp_owned/asymmetric_partial_eq.rs:92:20
    |
 LL |         if "Hi" == borrowed.to_string() {}
    |            --------^^^^^^^^^^^^^^^^^^^^
@@ -38,7 +38,7 @@ LL |         if "Hi" == borrowed.to_string() {}
    |            help: try: `borrowed == "Hi"`
 
 error: this creates an owned instance just for comparison
-  --> $DIR/asymmetric_partial_eq.rs:93:12
+  --> tests/ui/cmp_owned/asymmetric_partial_eq.rs:93:12
    |
 LL |         if borrowed.to_string() == "Hi" {}
    |            ^^^^^^^^^^^^^^^^^^^^ help: try: `borrowed`

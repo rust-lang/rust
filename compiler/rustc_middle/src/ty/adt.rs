@@ -7,6 +7,7 @@ use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::intern::Interned;
 use rustc_data_structures::stable_hasher::HashingControls;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
+use rustc_errors::ErrorGuaranteed;
 use rustc_hir as hir;
 use rustc_hir::def::{CtorKind, DefKind, Res};
 use rustc_hir::def_id::DefId;
@@ -475,7 +476,11 @@ impl<'tcx> AdtDef<'tcx> {
     }
 
     #[inline]
-    pub fn eval_explicit_discr(self, tcx: TyCtxt<'tcx>, expr_did: DefId) -> Option<Discr<'tcx>> {
+    pub fn eval_explicit_discr(
+        self,
+        tcx: TyCtxt<'tcx>,
+        expr_did: DefId,
+    ) -> Result<Discr<'tcx>, ErrorGuaranteed> {
         assert!(self.is_enum());
         let param_env = tcx.param_env(expr_did);
         let repr_type = self.repr().discr_type();
@@ -484,22 +489,24 @@ impl<'tcx> AdtDef<'tcx> {
                 let ty = repr_type.to_ty(tcx);
                 if let Some(b) = val.try_to_bits_for_ty(tcx, param_env, ty) {
                     trace!("discriminants: {} ({:?})", b, repr_type);
-                    Some(Discr { val: b, ty })
+                    Ok(Discr { val: b, ty })
                 } else {
                     info!("invalid enum discriminant: {:#?}", val);
-                    tcx.dcx().emit_err(crate::error::ConstEvalNonIntError {
+                    let guar = tcx.dcx().emit_err(crate::error::ConstEvalNonIntError {
                         span: tcx.def_span(expr_did),
                     });
-                    None
+                    Err(guar)
                 }
             }
             Err(err) => {
-                let msg = match err {
-                    ErrorHandled::Reported(..) => "enum discriminant evaluation failed",
-                    ErrorHandled::TooGeneric(..) => "enum discriminant depends on generics",
+                let guar = match err {
+                    ErrorHandled::Reported(info, _) => info.into(),
+                    ErrorHandled::TooGeneric(..) => tcx.dcx().span_delayed_bug(
+                        tcx.def_span(expr_did),
+                        "enum discriminant depends on generics",
+                    ),
                 };
-                tcx.dcx().span_delayed_bug(tcx.def_span(expr_did), msg);
-                None
+                Err(guar)
             }
         }
     }
@@ -516,7 +523,7 @@ impl<'tcx> AdtDef<'tcx> {
         self.variants().iter_enumerated().map(move |(i, v)| {
             let mut discr = prev_discr.map_or(initial, |d| d.wrap_incr(tcx));
             if let VariantDiscr::Explicit(expr_did) = v.discr {
-                if let Some(new_discr) = self.eval_explicit_discr(tcx, expr_did) {
+                if let Ok(new_discr) = self.eval_explicit_discr(tcx, expr_did) {
                     discr = new_discr;
                 }
             }
@@ -544,9 +551,13 @@ impl<'tcx> AdtDef<'tcx> {
     ) -> Discr<'tcx> {
         assert!(self.is_enum());
         let (val, offset) = self.discriminant_def_for_variant(variant_index);
-        let explicit_value = val
-            .and_then(|expr_did| self.eval_explicit_discr(tcx, expr_did))
-            .unwrap_or_else(|| self.repr().discr_type().initial_discriminant(tcx));
+        let explicit_value = if let Some(expr_did) = val
+            && let Ok(val) = self.eval_explicit_discr(tcx, expr_did)
+        {
+            val
+        } else {
+            self.repr().discr_type().initial_discriminant(tcx)
+        };
         explicit_value.checked_add(tcx, offset as u128).0
     }
 

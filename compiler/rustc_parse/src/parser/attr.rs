@@ -8,7 +8,7 @@ use super::{AttrWrapper, Capturing, FnParseMode, ForceCollect, Parser, PathStyle
 use rustc_ast as ast;
 use rustc_ast::attr;
 use rustc_ast::token::{self, Delimiter, Nonterminal};
-use rustc_errors::{codes::*, DiagnosticBuilder, PResult};
+use rustc_errors::{codes::*, Diag, PResult};
 use rustc_span::{sym, BytePos, Span};
 use thin_vec::ThinVec;
 use tracing::debug;
@@ -141,7 +141,7 @@ impl<'a> Parser<'a> {
 
     fn annotate_following_item_if_applicable(
         &self,
-        err: &mut DiagnosticBuilder<'_>,
+        err: &mut Diag<'_>,
         span: Span,
         attr_type: OuterAttributeType,
     ) -> Option<Span> {

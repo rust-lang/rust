@@ -1,4 +1,5 @@
 use rustc_ast::{self as ast, NodeId};
+use rustc_errors::ErrorGuaranteed;
 use rustc_hir::def::{DefKind, Namespace, NonMacroAttrKind, PartialRes, PerNS};
 use rustc_middle::bug;
 use rustc_middle::ty;
@@ -1066,7 +1067,6 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         original_rib_ident_def: Ident,
         all_ribs: &[Rib<'a>],
     ) -> Res {
-        const CG_BUG_STR: &str = "min_const_generics resolve check didn't stop compilation";
         debug!("validate_res_from_ribs({:?})", res);
         let ribs = &all_ribs[rib_index + 1..];
 
@@ -1209,8 +1209,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                                                 }
                                             }
                                         };
-                                        self.report_error(span, error);
-                                        self.dcx().span_delayed_bug(span, CG_BUG_STR);
+                                        let _: ErrorGuaranteed = self.report_error(span, error);
                                     }
 
                                     return Res::Err;

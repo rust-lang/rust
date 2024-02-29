@@ -97,19 +97,19 @@ failures:
 ---- compile_test stdout ----
 normalized stderr:
 error: function called "foo"
-  --> $DIR/foo_functions.rs:6:12
+  --> tests/ui/foo_functions.rs:6:12
    |
 LL |     pub fn foo(&self) {}
    |            ^^^
    |
    = note: `-D clippy::foo-functions` implied by `-D warnings`
 error: function called "foo"
-  --> $DIR/foo_functions.rs:13:8
+  --> tests/ui/foo_functions.rs:13:8
    |
 LL |     fn foo(&self) {}
    |        ^^^
 error: function called "foo"
-  --> $DIR/foo_functions.rs:19:4
+  --> tests/ui/foo_functions.rs:19:4
    |
 LL | fn foo() {}
    |    ^^^

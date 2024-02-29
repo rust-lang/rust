@@ -3,7 +3,7 @@ use std::path::{Path, PathBuf};
 
 use rustc_ast::token::TokenKind;
 use rustc_ast::{ast, attr, ptr};
-use rustc_errors::DiagnosticBuilder;
+use rustc_errors::Diag;
 use rustc_parse::{new_parser_from_file, parser::Parser as RawParser};
 use rustc_span::{sym, Span};
 use thin_vec::ThinVec;
@@ -65,7 +65,7 @@ impl<'a> ParserBuilder<'a> {
     fn parser(
         sess: &'a rustc_session::parse::ParseSess,
         input: Input,
-    ) -> Result<rustc_parse::parser::Parser<'a>, Option<Vec<DiagnosticBuilder<'a>>>> {
+    ) -> Result<rustc_parse::parser::Parser<'a>, Option<Vec<Diag<'a>>>> {
         match input {
             Input::File(ref file) => catch_unwind(AssertUnwindSafe(move || {
                 new_parser_from_file(sess, file, None)

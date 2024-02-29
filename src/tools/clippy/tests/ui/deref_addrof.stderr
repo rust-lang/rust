@@ -1,5 +1,5 @@
 error: immediately dereferencing a reference
-  --> $DIR/deref_addrof.rs:23:13
+  --> tests/ui/deref_addrof.rs:23:13
    |
 LL |     let b = *&a;
    |             ^^^ help: try: `a`
@@ -8,49 +8,49 @@ LL |     let b = *&a;
    = help: to override `-D warnings` add `#[allow(clippy::deref_addrof)]`
 
 error: immediately dereferencing a reference
-  --> $DIR/deref_addrof.rs:25:13
+  --> tests/ui/deref_addrof.rs:25:13
    |
 LL |     let b = *&get_number();
    |             ^^^^^^^^^^^^^^ help: try: `get_number()`
 
 error: immediately dereferencing a reference
-  --> $DIR/deref_addrof.rs:30:13
+  --> tests/ui/deref_addrof.rs:30:13
    |
 LL |     let b = *&bytes[1..2][0];
    |             ^^^^^^^^^^^^^^^^ help: try: `bytes[1..2][0]`
 
 error: immediately dereferencing a reference
-  --> $DIR/deref_addrof.rs:34:13
+  --> tests/ui/deref_addrof.rs:34:13
    |
 LL |     let b = *&(a);
    |             ^^^^^ help: try: `(a)`
 
 error: immediately dereferencing a reference
-  --> $DIR/deref_addrof.rs:36:13
+  --> tests/ui/deref_addrof.rs:36:13
    |
 LL |     let b = *(&a);
    |             ^^^^^ help: try: `a`
 
 error: immediately dereferencing a reference
-  --> $DIR/deref_addrof.rs:39:13
+  --> tests/ui/deref_addrof.rs:39:13
    |
 LL |     let b = *((&a));
    |             ^^^^^^^ help: try: `a`
 
 error: immediately dereferencing a reference
-  --> $DIR/deref_addrof.rs:41:13
+  --> tests/ui/deref_addrof.rs:41:13
    |
 LL |     let b = *&&a;
    |             ^^^^ help: try: `&a`
 
 error: immediately dereferencing a reference
-  --> $DIR/deref_addrof.rs:43:14
+  --> tests/ui/deref_addrof.rs:43:14
    |
 LL |     let b = **&aref;
    |              ^^^^^^ help: try: `aref`
 
 error: immediately dereferencing a reference
-  --> $DIR/deref_addrof.rs:53:17
+  --> tests/ui/deref_addrof.rs:53:17
    |
 LL |         inline!(*& $(@expr self))
    |                 ^^^^^^^^^^^^^^^^ help: try: `$(@expr self)`
@@ -58,7 +58,7 @@ LL |         inline!(*& $(@expr self))
    = note: this error originates in the macro `__inline_mac_impl` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: immediately dereferencing a reference
-  --> $DIR/deref_addrof.rs:57:17
+  --> tests/ui/deref_addrof.rs:57:17
    |
 LL |         inline!(*&mut $(@expr self))
    |                 ^^^^^^^^^^^^^^^^^^^ help: try: `$(@expr self)`

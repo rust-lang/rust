@@ -1,59 +1,59 @@
 error: these bounds contain repeated elements
-  --> $DIR/trait_duplication_in_bounds.rs:6:15
+  --> tests/ui/trait_duplication_in_bounds.rs:6:15
    |
 LL | fn bad_foo<T: Clone + Clone + Clone + Copy, U: Clone + Copy>(arg0: T, argo1: U) {
    |               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `Clone + Copy`
    |
 note: the lint level is defined here
-  --> $DIR/trait_duplication_in_bounds.rs:1:9
+  --> tests/ui/trait_duplication_in_bounds.rs:1:9
    |
 LL | #![deny(clippy::trait_duplication_in_bounds)]
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: these where clauses contain repeated elements
-  --> $DIR/trait_duplication_in_bounds.rs:12:8
+  --> tests/ui/trait_duplication_in_bounds.rs:12:8
    |
 LL |     T: Clone + Clone + Clone + Copy,
    |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `Clone + Copy`
 
 error: these bounds contain repeated elements
-  --> $DIR/trait_duplication_in_bounds.rs:40:26
+  --> tests/ui/trait_duplication_in_bounds.rs:40:26
    |
 LL | trait BadSelfTraitBound: Clone + Clone + Clone {
    |                          ^^^^^^^^^^^^^^^^^^^^^ help: try: `Clone`
 
 error: these where clauses contain repeated elements
-  --> $DIR/trait_duplication_in_bounds.rs:47:15
+  --> tests/ui/trait_duplication_in_bounds.rs:47:15
    |
 LL |         Self: Clone + Clone + Clone;
    |               ^^^^^^^^^^^^^^^^^^^^^ help: try: `Clone`
 
 error: these bounds contain repeated elements
-  --> $DIR/trait_duplication_in_bounds.rs:61:24
+  --> tests/ui/trait_duplication_in_bounds.rs:61:24
    |
 LL | trait BadTraitBound<T: Clone + Clone + Clone + Copy, U: Clone + Copy> {
    |                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `Clone + Copy`
 
 error: these where clauses contain repeated elements
-  --> $DIR/trait_duplication_in_bounds.rs:68:12
+  --> tests/ui/trait_duplication_in_bounds.rs:68:12
    |
 LL |         T: Clone + Clone + Clone + Copy,
    |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `Clone + Copy`
 
 error: these bounds contain repeated elements
-  --> $DIR/trait_duplication_in_bounds.rs:101:19
+  --> tests/ui/trait_duplication_in_bounds.rs:101:19
    |
 LL | fn bad_generic<T: GenericTrait<u64> + GenericTrait<u32> + GenericTrait<u64>>(arg0: T) {
    |                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `GenericTrait<u64> + GenericTrait<u32>`
 
 error: these bounds contain repeated elements
-  --> $DIR/trait_duplication_in_bounds.rs:109:22
+  --> tests/ui/trait_duplication_in_bounds.rs:109:22
    |
 LL | fn qualified_path<T: std::clone::Clone + Clone + foo::Clone>(arg0: T) {
    |                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `std::clone::Clone + foo::Clone`
 
 error: this trait bound is already specified in trait declaration
-  --> $DIR/trait_duplication_in_bounds.rs:117:33
+  --> tests/ui/trait_duplication_in_bounds.rs:117:33
    |
 LL | fn bad_trait_object(arg0: &(dyn Any + Send + Send)) {
    |                                 ^^^^^^^^^^^^^^^^^ help: try: `Any + Send`

@@ -3,7 +3,7 @@
 #![allow(rustc::diagnostic_outside_of_impl)]
 #![allow(rustc::untranslatable_diagnostic)]
 
-use rustc_errors::{Applicability, DiagnosticBuilder};
+use rustc_errors::{Applicability, Diag};
 use rustc_hir as hir;
 use rustc_hir::intravisit::Visitor;
 use rustc_index::IndexSlice;
@@ -65,7 +65,7 @@ impl<'tcx> BorrowExplanation<'tcx> {
         tcx: TyCtxt<'tcx>,
         body: &Body<'tcx>,
         local_names: &IndexSlice<Local, Option<Symbol>>,
-        err: &mut DiagnosticBuilder<'_>,
+        err: &mut Diag<'_>,
         borrow_desc: &str,
         borrow_span: Option<Span>,
         multiple_borrow_span: Option<(Span, Span)>,
@@ -306,7 +306,7 @@ impl<'tcx> BorrowExplanation<'tcx> {
     fn add_object_lifetime_default_note(
         &self,
         tcx: TyCtxt<'tcx>,
-        err: &mut DiagnosticBuilder<'_>,
+        err: &mut Diag<'_>,
         unsize_ty: Ty<'tcx>,
     ) {
         if let ty::Adt(def, args) = unsize_ty.kind() {
@@ -359,7 +359,7 @@ impl<'tcx> BorrowExplanation<'tcx> {
 
     fn add_lifetime_bound_suggestion_to_diagnostic(
         &self,
-        err: &mut DiagnosticBuilder<'_>,
+        err: &mut Diag<'_>,
         category: &ConstraintCategory<'tcx>,
         span: Span,
         region_name: &RegionName,
