@@ -1,6 +1,6 @@
 //! The current rustc diagnostics emitter.
 //!
-//! An `Emitter` takes care of generating the output from a `DiagnosticBuilder` struct.
+//! An `Emitter` takes care of generating the output from a `Diag` struct.
 //!
 //! There are various `Emitter` implementations that generate different output formats such as
 //! JSON and human readable output.
@@ -17,16 +17,15 @@ use crate::snippet::{
 use crate::styled_buffer::StyledBuffer;
 use crate::translation::{to_fluent_args, Translate};
 use crate::{
-    diagnostic::DiagnosticLocation, CodeSuggestion, DiagCtxt, Diagnostic, DiagnosticMessage,
-    ErrCode, FluentBundle, LazyFallbackBundle, Level, MultiSpan, SubDiagnostic,
-    SubstitutionHighlight, SuggestionStyle, TerminalUrl,
+    diagnostic::DiagLocation, CodeSuggestion, DiagCtxt, DiagInner, DiagnosticMessage, ErrCode,
+    FluentBundle, LazyFallbackBundle, Level, MultiSpan, Subdiag, SubstitutionHighlight,
+    SuggestionStyle, TerminalUrl,
 };
-use rustc_lint_defs::pluralize;
-
 use derive_setters::Setters;
 use rustc_data_structures::fx::{FxHashMap, FxIndexMap, FxIndexSet};
 use rustc_data_structures::sync::{DynSend, IntoDynSyncSend, Lrc};
 use rustc_error_messages::{FluentArgs, SpanLabel};
+use rustc_lint_defs::pluralize;
 use rustc_span::hygiene::{ExpnKind, MacroKind};
 use std::borrow::Cow;
 use std::cmp::{max, min, Reverse};
@@ -35,7 +34,7 @@ use std::io::prelude::*;
 use std::io::{self, IsTerminal};
 use std::iter;
 use std::path::Path;
-use termcolor::{Ansi, Buffer, BufferWriter, ColorChoice, ColorSpec, StandardStream};
+use termcolor::{Buffer, BufferWriter, ColorChoice, ColorSpec, StandardStream};
 use termcolor::{Color, WriteColor};
 
 /// Default column width, used in tests and when terminal dimensions cannot be determined.
@@ -57,18 +56,6 @@ impl HumanReadableErrorType {
             HumanReadableErrorType::Short(cc) => (true, cc),
             HumanReadableErrorType::AnnotateSnippet(cc) => (false, cc),
         }
-    }
-    pub fn new_emitter(
-        self,
-        mut dst: Box<dyn WriteColor + Send>,
-        fallback_bundle: LazyFallbackBundle,
-    ) -> HumanEmitter {
-        let (short, color_config) = self.unzip();
-        let color = color_config.suggests_using_colors();
-        if !dst.supports_color() && color {
-            dst = Box::new(Ansi::new(dst));
-        }
-        HumanEmitter::new(dst, fallback_bundle).short_message(short)
     }
 }
 
@@ -130,8 +117,8 @@ impl Margin {
     fn was_cut_right(&self, line_len: usize) -> bool {
         let right =
             if self.computed_right == self.span_right || self.computed_right == self.label_right {
-                // Account for the "..." padding given above. Otherwise we end up with code lines that
-                // do fit but end in "..." as if they were trimmed.
+                // Account for the "..." padding given above. Otherwise we end up with code lines
+                // that do fit but end in "..." as if they were trimmed.
                 self.computed_right - 6
             } else {
                 self.computed_right
@@ -194,7 +181,7 @@ pub type DynEmitter = dyn Emitter + DynSend;
 /// Emitter trait for emitting errors.
 pub trait Emitter: Translate {
     /// Emit a structured diagnostic.
-    fn emit_diagnostic(&mut self, diag: Diagnostic);
+    fn emit_diagnostic(&mut self, diag: DiagInner);
 
     /// Emit a notification that an artifact has been output.
     /// Currently only supported for the JSON format.
@@ -202,7 +189,7 @@ pub trait Emitter: Translate {
 
     /// Emit a report about future breakage.
     /// Currently only supported for the JSON format.
-    fn emit_future_breakage_report(&mut self, _diags: Vec<Diagnostic>) {}
+    fn emit_future_breakage_report(&mut self, _diags: Vec<DiagInner>) {}
 
     /// Emit list of unused externs.
     /// Currently only supported for the JSON format.
@@ -229,12 +216,12 @@ pub trait Emitter: Translate {
     ///
     /// There are a lot of conditions to this method, but in short:
     ///
-    /// * If the current `Diagnostic` has only one visible `CodeSuggestion`,
+    /// * If the current `DiagInner` has only one visible `CodeSuggestion`,
     ///   we format the `help` suggestion depending on the content of the
     ///   substitutions. In that case, we modify the span and clear the
     ///   suggestions.
     ///
-    /// * If the current `Diagnostic` has multiple suggestions,
+    /// * If the current `DiagInner` has multiple suggestions,
     ///   we leave `primary_span` and the suggestions untouched.
     fn primary_span_formatted(
         &mut self,
@@ -303,7 +290,7 @@ pub trait Emitter: Translate {
     fn fix_multispans_in_extern_macros_and_render_macro_backtrace(
         &self,
         span: &mut MultiSpan,
-        children: &mut Vec<SubDiagnostic>,
+        children: &mut Vec<Subdiag>,
         level: &Level,
         backtrace: bool,
     ) {
@@ -350,7 +337,7 @@ pub trait Emitter: Translate {
                     (in Nightly builds, run with -Z macro-backtrace for more info)",
                 );
 
-                children.push(SubDiagnostic {
+                children.push(Subdiag {
                     level: Level::Note,
                     messages: vec![(DiagnosticMessage::from(msg), Style::NoStyle)],
                     span: MultiSpan::new(),
@@ -362,7 +349,7 @@ pub trait Emitter: Translate {
     fn render_multispans_macro_backtrace(
         &self,
         span: &mut MultiSpan,
-        children: &mut Vec<SubDiagnostic>,
+        children: &mut Vec<Subdiag>,
         backtrace: bool,
     ) {
         for span in iter::once(span).chain(children.iter_mut().map(|child| &mut child.span)) {
@@ -461,11 +448,7 @@ pub trait Emitter: Translate {
     // This does a small "fix" for multispans by looking to see if it can find any that
     // point directly at external macros. Since these are often difficult to read,
     // this will change the span to point at the use site.
-    fn fix_multispans_in_extern_macros(
-        &self,
-        span: &mut MultiSpan,
-        children: &mut Vec<SubDiagnostic>,
-    ) {
+    fn fix_multispans_in_extern_macros(&self, span: &mut MultiSpan, children: &mut Vec<Subdiag>) {
         debug!("fix_multispans_in_extern_macros: before: span={:?} children={:?}", span, children);
         self.fix_multispan_in_extern_macros(span);
         for child in children.iter_mut() {
@@ -518,7 +501,7 @@ impl Emitter for HumanEmitter {
         self.sm.as_ref()
     }
 
-    fn emit_diagnostic(&mut self, mut diag: Diagnostic) {
+    fn emit_diagnostic(&mut self, mut diag: DiagInner) {
         let fluent_args = to_fluent_args(diag.args.iter());
 
         let mut suggestions = diag.suggestions.unwrap_or(vec![]);
@@ -597,7 +580,7 @@ impl Emitter for SilentEmitter {
         None
     }
 
-    fn emit_diagnostic(&mut self, mut diag: Diagnostic) {
+    fn emit_diagnostic(&mut self, mut diag: DiagInner) {
         if diag.level == Level::Fatal {
             diag.sub(Level::Note, self.fatal_note.clone(), MultiSpan::new());
             self.fatal_dcx.emit_diagnostic(diag);
@@ -632,12 +615,6 @@ impl ColorConfig {
             ColorConfig::Auto => ColorChoice::Never,
         }
     }
-    fn suggests_using_colors(self) -> bool {
-        match self {
-            ColorConfig::Always | ColorConfig::Auto => true,
-            ColorConfig::Never => false,
-        }
-    }
 }
 
 /// Handles the writing of `HumanReadableErrorType::Default` and `HumanReadableErrorType::Short`
@@ -661,19 +638,14 @@ pub struct HumanEmitter {
 }
 
 #[derive(Debug)]
-pub struct FileWithAnnotatedLines {
-    pub file: Lrc<SourceFile>,
-    pub lines: Vec<Line>,
+pub(crate) struct FileWithAnnotatedLines {
+    pub(crate) file: Lrc<SourceFile>,
+    pub(crate) lines: Vec<Line>,
     multiline_depth: usize,
 }
 
 impl HumanEmitter {
-    pub fn stderr(color_config: ColorConfig, fallback_bundle: LazyFallbackBundle) -> HumanEmitter {
-        let dst = from_stderr(color_config);
-        Self::create(dst, fallback_bundle)
-    }
-
-    fn create(dst: Destination, fallback_bundle: LazyFallbackBundle) -> HumanEmitter {
+    pub fn new(dst: Destination, fallback_bundle: LazyFallbackBundle) -> HumanEmitter {
         HumanEmitter {
             dst: IntoDynSyncSend(dst),
             sm: None,
@@ -688,13 +660,6 @@ impl HumanEmitter {
             track_diagnostics: false,
             terminal_url: TerminalUrl::No,
         }
-    }
-
-    pub fn new(
-        dst: Box<dyn WriteColor + Send>,
-        fallback_bundle: LazyFallbackBundle,
-    ) -> HumanEmitter {
-        Self::create(dst, fallback_bundle)
     }
 
     fn maybe_anonymized(&self, line_num: usize) -> Cow<'static, str> {
@@ -728,8 +693,9 @@ impl HumanEmitter {
             .skip(left)
             .take_while(|ch| {
                 // Make sure that the trimming on the right will fall within the terminal width.
-                // FIXME: `unicode_width` sometimes disagrees with terminals on how wide a `char` is.
-                // For now, just accept that sometimes the code line will be longer than desired.
+                // FIXME: `unicode_width` sometimes disagrees with terminals on how wide a `char`
+                // is. For now, just accept that sometimes the code line will be longer than
+                // desired.
                 let next = unicode_width::UnicodeWidthChar::width(*ch).unwrap_or(1);
                 if taken + next > right - left {
                     return false;
@@ -1235,7 +1201,7 @@ impl HumanEmitter {
         max
     }
 
-    fn get_max_line_num(&mut self, span: &MultiSpan, children: &[SubDiagnostic]) -> usize {
+    fn get_max_line_num(&mut self, span: &MultiSpan, children: &[Subdiag]) -> usize {
         let primary = self.get_multispan_max_line_num(span);
         children
             .iter()
@@ -1331,7 +1297,7 @@ impl HumanEmitter {
         level: &Level,
         max_line_num_len: usize,
         is_secondary: bool,
-        emitted_at: Option<&DiagnosticLocation>,
+        emitted_at: Option<&DiagLocation>,
     ) -> io::Result<()> {
         let mut buffer = StyledBuffer::new();
 
@@ -2098,9 +2064,9 @@ impl HumanEmitter {
         args: &FluentArgs<'_>,
         code: &Option<ErrCode>,
         span: &MultiSpan,
-        children: &[SubDiagnostic],
+        children: &[Subdiag],
         suggestions: &[CodeSuggestion],
-        emitted_at: Option<&DiagnosticLocation>,
+        emitted_at: Option<&DiagLocation>,
     ) {
         let max_line_num_len = if self.ui_testing {
             ANONYMIZED_LINE_NUM.len()
@@ -2232,8 +2198,8 @@ impl HumanEmitter {
                 buffer.puts(*row_num - 1, max_line_num_len + 3, &line, Style::NoStyle);
                 *row_num += 1;
             }
-            // If the last line is exactly equal to the line we need to add, we can skip both of them.
-            // This allows us to avoid output like the following:
+            // If the last line is exactly equal to the line we need to add, we can skip both of
+            // them. This allows us to avoid output like the following:
             // 2 - &
             // 2 + if true { true } else { false }
             // 3 - if true { true } else { false }
@@ -2590,6 +2556,7 @@ fn num_overlap(
     let extra = if inclusive { 1 } else { 0 };
     (b_start..b_end + extra).contains(&a_start) || (a_start..a_end + extra).contains(&b_start)
 }
+
 fn overlaps(a1: &Annotation, a2: &Annotation, padding: usize) -> bool {
     num_overlap(
         a1.start_col.display,
@@ -2636,7 +2603,7 @@ fn emit_to_destination(
     Ok(())
 }
 
-pub type Destination = Box<(dyn WriteColor + Send)>;
+pub type Destination = Box<dyn WriteColor + Send>;
 
 struct Buffy {
     buffer_writer: BufferWriter,
@@ -2678,7 +2645,7 @@ impl WriteColor for Buffy {
     }
 }
 
-fn from_stderr(color: ColorConfig) -> Destination {
+pub fn stderr_destination(color: ColorConfig) -> Destination {
     let choice = color.to_color_choice();
     // On Windows we'll be performing global synchronization on the entire
     // system for emitting rustc errors, so there's no need to buffer

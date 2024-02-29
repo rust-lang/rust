@@ -1,6 +1,5 @@
 use rustc_errors::{
-    codes::*, AddToDiagnostic, DiagnosticArgFromDisplay, DiagnosticBuilder, EmissionGuarantee,
-    SubdiagnosticMessageOp,
+    codes::*, AddToDiagnostic, Diag, DiagArgFromDisplay, EmissionGuarantee, SubdiagnosticMessageOp,
 };
 use rustc_macros::{Diagnostic, Subdiagnostic};
 use rustc_span::{symbol::Ident, Span, Symbol};
@@ -44,7 +43,7 @@ pub struct InvalidAbiReason(pub &'static str);
 impl AddToDiagnostic for InvalidAbiReason {
     fn add_to_diagnostic_with<G: EmissionGuarantee, F: SubdiagnosticMessageOp<G>>(
         self,
-        diag: &mut DiagnosticBuilder<'_, G>,
+        diag: &mut Diag<'_, G>,
         _: F,
     ) {
         #[allow(rustc::untranslatable_diagnostic)]
@@ -95,7 +94,7 @@ pub enum AssocTyParenthesesSub {
 pub struct MisplacedImplTrait<'a> {
     #[primary_span]
     pub span: Span,
-    pub position: DiagnosticArgFromDisplay<'a>,
+    pub position: DiagArgFromDisplay<'a>,
 }
 
 #[derive(Diagnostic)]

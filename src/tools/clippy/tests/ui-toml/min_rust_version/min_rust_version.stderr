@@ -1,5 +1,5 @@
 error: you are using an explicit closure for cloning elements
-  --> $DIR/min_rust_version.rs:74:26
+  --> tests/ui-toml/min_rust_version/min_rust_version.rs:74:26
    |
 LL |     let _: Option<u64> = Some(&16).map(|b| *b);
    |                          ^^^^^^^^^^^^^^^^^^^^^ help: consider calling the dedicated `cloned` method: `Some(&16).cloned()`

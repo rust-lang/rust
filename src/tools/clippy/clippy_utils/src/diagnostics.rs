@@ -8,13 +8,13 @@
 //! Thank you!
 //! ~The `INTERNAL_METADATA_COLLECTOR` lint
 
-use rustc_errors::{Applicability, DiagnosticBuilder, MultiSpan};
+use rustc_errors::{Applicability, Diag, MultiSpan};
 use rustc_hir::HirId;
 use rustc_lint::{LateContext, Lint, LintContext};
 use rustc_span::Span;
 use std::env;
 
-fn docs_link(diag: &mut DiagnosticBuilder<'_, ()>, lint: &'static Lint) {
+fn docs_link(diag: &mut Diag<'_, ()>, lint: &'static Lint) {
     if env::var("CLIPPY_DISABLE_DOCS_LINKS").is_err() {
         if let Some(lint) = lint.name_lower().strip_prefix("clippy::") {
             diag.help(format!(
@@ -40,7 +40,7 @@ fn docs_link(diag: &mut DiagnosticBuilder<'_, ()>, lint: &'static Lint) {
 ///
 /// ```ignore
 /// error: usage of mem::forget on Drop type
-///   --> $DIR/mem_forget.rs:17:5
+///   --> tests/ui/mem_forget.rs:17:5
 ///    |
 /// 17 |     std::mem::forget(seven);
 ///    |     ^^^^^^^^^^^^^^^^^^^^^^^
@@ -65,7 +65,7 @@ pub fn span_lint<T: LintContext>(cx: &T, lint: &'static Lint, sp: impl Into<Mult
 ///
 /// ```text
 /// error: constant division of 0.0 with 0.0 will always result in NaN
-///   --> $DIR/zero_div_zero.rs:6:25
+///   --> tests/ui/zero_div_zero.rs:6:25
 ///    |
 /// 6  |     let other_f64_nan = 0.0f64 / 0.0;
 ///    |                         ^^^^^^^^^^^^
@@ -103,14 +103,14 @@ pub fn span_lint_and_help<T: LintContext>(
 ///
 /// ```text
 /// error: calls to `std::mem::forget` with a reference instead of an owned value. Forgetting a reference does nothing.
-///   --> $DIR/drop_forget_ref.rs:10:5
+///   --> tests/ui/drop_forget_ref.rs:10:5
 ///    |
 /// 10 |     forget(&SomeStruct);
 ///    |     ^^^^^^^^^^^^^^^^^^^
 ///    |
 ///    = note: `-D clippy::forget-ref` implied by `-D warnings`
 /// note: argument has type &SomeStruct
-///   --> $DIR/drop_forget_ref.rs:10:12
+///   --> tests/ui/drop_forget_ref.rs:10:12
 ///    |
 /// 10 |     forget(&SomeStruct);
 ///    |            ^^^^^^^^^^^
@@ -143,7 +143,7 @@ pub fn span_lint_and_then<C, S, F>(cx: &C, lint: &'static Lint, sp: S, msg: &str
 where
     C: LintContext,
     S: Into<MultiSpan>,
-    F: FnOnce(&mut DiagnosticBuilder<'_, ()>),
+    F: FnOnce(&mut Diag<'_, ()>),
 {
     #[expect(clippy::disallowed_methods)]
     cx.span_lint(lint, sp, msg.to_string(), |diag| {
@@ -165,7 +165,7 @@ pub fn span_lint_hir_and_then(
     hir_id: HirId,
     sp: impl Into<MultiSpan>,
     msg: &str,
-    f: impl FnOnce(&mut DiagnosticBuilder<'_, ()>),
+    f: impl FnOnce(&mut Diag<'_, ()>),
 ) {
     #[expect(clippy::disallowed_methods)]
     cx.tcx.node_span_lint(lint, hir_id, sp, msg.to_string(), |diag| {
@@ -186,7 +186,7 @@ pub fn span_lint_hir_and_then(
 ///
 /// ```text
 /// error: This `.fold` can be more succinctly expressed as `.any`
-/// --> $DIR/methods.rs:390:13
+/// --> tests/ui/methods.rs:390:13
 ///     |
 /// 390 |     let _ = (0..3).fold(false, |acc, x| acc || x > 2);
 ///     |                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `.any(|x| x > 2)`
@@ -214,7 +214,7 @@ pub fn span_lint_and_sugg<T: LintContext>(
 /// appear once per
 /// replacement. In human-readable format though, it only appears once before
 /// the whole suggestion.
-pub fn multispan_sugg<I>(diag: &mut DiagnosticBuilder<'_, ()>, help_msg: &str, sugg: I)
+pub fn multispan_sugg<I>(diag: &mut Diag<'_, ()>, help_msg: &str, sugg: I)
 where
     I: IntoIterator<Item = (Span, String)>,
 {
@@ -227,7 +227,7 @@ where
 /// multiple spans. This is tracked in issue [rustfix#141](https://github.com/rust-lang/rustfix/issues/141).
 /// Suggestions with multiple spans will be silently ignored.
 pub fn multispan_sugg_with_applicability<I>(
-    diag: &mut DiagnosticBuilder<'_, ()>,
+    diag: &mut Diag<'_, ()>,
     help_msg: &str,
     applicability: Applicability,
     sugg: I,

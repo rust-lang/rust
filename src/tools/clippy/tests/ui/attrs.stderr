@@ -1,5 +1,5 @@
 error: you have declared `#[inline(always)]` on `test_attr_lint`. This is usually a bad idea
-  --> $DIR/attrs.rs:5:1
+  --> tests/ui/attrs.rs:5:1
    |
 LL | #[inline(always)]
    | ^^^^^^^^^^^^^^^^^
@@ -8,7 +8,7 @@ LL | #[inline(always)]
    = help: to override `-D warnings` add `#[allow(clippy::inline_always)]`
 
 error: the since field must contain a semver-compliant version
-  --> $DIR/attrs.rs:27:14
+  --> tests/ui/attrs.rs:27:14
    |
 LL | #[deprecated(since = "forever")]
    |              ^^^^^^^^^^^^^^^^^
@@ -17,7 +17,7 @@ LL | #[deprecated(since = "forever")]
    = help: to override `-D warnings` add `#[allow(clippy::deprecated_semver)]`
 
 error: the since field must contain a semver-compliant version
-  --> $DIR/attrs.rs:32:14
+  --> tests/ui/attrs.rs:32:14
    |
 LL | #[deprecated(since = "1")]
    |              ^^^^^^^^^^^

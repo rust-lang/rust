@@ -1,3 +1,5 @@
+//! The [`OsStr`] and [`OsString`] types and associated utilities.
+
 #[cfg(test)]
 mod tests;
 
@@ -1147,6 +1149,32 @@ impl OsStr {
     pub fn eq_ignore_ascii_case<S: AsRef<OsStr>>(&self, other: S) -> bool {
         self.inner.eq_ignore_ascii_case(&other.as_ref().inner)
     }
+
+    /// Returns an object that implements [`Display`] for safely printing an
+    /// [`OsStr`] that may contain non-Unicode data. This may perform lossy
+    /// conversion, depending on the platform.  If you would like an
+    /// implementation which escapes the [`OsStr`] please use [`Debug`]
+    /// instead.
+    ///
+    /// [`Display`]: fmt::Display
+    /// [`Debug`]: fmt::Debug
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(os_str_display)]
+    /// use std::ffi::OsStr;
+    ///
+    /// let s = OsStr::new("Hello, world!");
+    /// println!("{}", s.display());
+    /// ```
+    #[unstable(feature = "os_str_display", issue = "120048")]
+    #[must_use = "this does not display the `OsStr`; \
+                  it returns an object that can be displayed"]
+    #[inline]
+    pub fn display(&self) -> Display<'_> {
+        Display { os_str: self }
+    }
 }
 
 #[stable(feature = "box_from_os_str", since = "1.17.0")]
@@ -1441,9 +1469,42 @@ impl fmt::Debug for OsStr {
     }
 }
 
-impl OsStr {
-    pub(crate) fn display(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
-        fmt::Display::fmt(&self.inner, formatter)
+/// Helper struct for safely printing an [`OsStr`] with [`format!`] and `{}`.
+///
+/// An [`OsStr`] might contain non-Unicode data. This `struct` implements the
+/// [`Display`] trait in a way that mitigates that. It is created by the
+/// [`display`](OsStr::display) method on [`OsStr`]. This may perform lossy
+/// conversion, depending on the platform. If you would like an implementation
+/// which escapes the [`OsStr`] please use [`Debug`] instead.
+///
+/// # Examples
+///
+/// ```
+/// #![feature(os_str_display)]
+/// use std::ffi::OsStr;
+///
+/// let s = OsStr::new("Hello, world!");
+/// println!("{}", s.display());
+/// ```
+///
+/// [`Display`]: fmt::Display
+/// [`format!`]: crate::format
+#[unstable(feature = "os_str_display", issue = "120048")]
+pub struct Display<'a> {
+    os_str: &'a OsStr,
+}
+
+#[unstable(feature = "os_str_display", issue = "120048")]
+impl fmt::Debug for Display<'_> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        fmt::Debug::fmt(&self.os_str, f)
+    }
+}
+
+#[unstable(feature = "os_str_display", issue = "120048")]
+impl fmt::Display for Display<'_> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        fmt::Display::fmt(&self.os_str.inner, f)
     }
 }
 

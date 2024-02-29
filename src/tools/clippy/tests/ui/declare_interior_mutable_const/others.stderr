@@ -1,5 +1,5 @@
 error: a `const` item should never be interior mutable
-  --> $DIR/others.rs:9:1
+  --> tests/ui/declare_interior_mutable_const/others.rs:9:1
    |
 LL | const ATOMIC: AtomicUsize = AtomicUsize::new(5);
    | -----^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -10,7 +10,7 @@ LL | const ATOMIC: AtomicUsize = AtomicUsize::new(5);
    = help: to override `-D warnings` add `#[allow(clippy::declare_interior_mutable_const)]`
 
 error: a `const` item should never be interior mutable
-  --> $DIR/others.rs:10:1
+  --> tests/ui/declare_interior_mutable_const/others.rs:10:1
    |
 LL | const CELL: Cell<usize> = Cell::new(6);
    | -----^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -18,7 +18,7 @@ LL | const CELL: Cell<usize> = Cell::new(6);
    | make this a static item (maybe with lazy_static)
 
 error: a `const` item should never be interior mutable
-  --> $DIR/others.rs:11:1
+  --> tests/ui/declare_interior_mutable_const/others.rs:11:1
    |
 LL | const ATOMIC_TUPLE: ([AtomicUsize; 1], Vec<AtomicUsize>, u8) = ([ATOMIC], Vec::new(), 7);
    | -----^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -26,7 +26,7 @@ LL | const ATOMIC_TUPLE: ([AtomicUsize; 1], Vec<AtomicUsize>, u8) = ([ATOMIC], V
    | make this a static item (maybe with lazy_static)
 
 error: a `const` item should never be interior mutable
-  --> $DIR/others.rs:16:9
+  --> tests/ui/declare_interior_mutable_const/others.rs:16:9
    |
 LL |         const $name: $ty = $e;
    |         ^^^^^^^^^^^^^^^^^^^^^^
@@ -37,7 +37,7 @@ LL | declare_const!(_ONCE: Once = Once::new());
    = note: this error originates in the macro `declare_const` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: a `const` item should never be interior mutable
-  --> $DIR/others.rs:43:13
+  --> tests/ui/declare_interior_mutable_const/others.rs:44:13
    |
 LL |             const _BAZ: Cell<usize> = Cell::new(0);
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

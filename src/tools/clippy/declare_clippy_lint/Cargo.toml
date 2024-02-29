@@ -8,7 +8,7 @@ publish = false
 proc-macro = true
 
 [dependencies]
-itertools = "0.11"
+itertools = "0.12"
 quote = "1.0.21"
 syn = "2.0"
 

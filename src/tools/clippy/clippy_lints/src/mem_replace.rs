@@ -3,7 +3,9 @@ use clippy_utils::diagnostics::{span_lint_and_help, span_lint_and_sugg, span_lin
 use clippy_utils::source::{snippet, snippet_with_applicability};
 use clippy_utils::sugg::Sugg;
 use clippy_utils::ty::is_non_aggregate_primitive_type;
-use clippy_utils::{is_default_equivalent, is_res_lang_ctor, path_res, peel_ref_operators, std_or_core};
+use clippy_utils::{
+    is_default_equivalent, is_expr_used_or_unified, is_res_lang_ctor, path_res, peel_ref_operators, std_or_core,
+};
 use rustc_errors::Applicability;
 use rustc_hir::LangItem::OptionNone;
 use rustc_hir::{Expr, ExprKind};
@@ -232,7 +234,7 @@ impl<'tcx> LateLintPass<'tcx> for MemReplace {
             // Check that second argument is `Option::None`
             if is_res_lang_ctor(cx, path_res(cx, src), OptionNone) {
                 check_replace_option_with_none(cx, dest, expr.span);
-            } else if self.msrv.meets(msrvs::MEM_TAKE) {
+            } else if self.msrv.meets(msrvs::MEM_TAKE) && is_expr_used_or_unified(cx.tcx, expr) {
                 check_replace_with_default(cx, src, dest, expr.span);
             }
             check_replace_with_uninit(cx, src, dest, expr.span);

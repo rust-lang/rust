@@ -1,5 +1,5 @@
 error: field name ends with the struct's name
-  --> $DIR/struct_fields.rs:10:5
+  --> tests/ui/struct_fields.rs:10:5
    |
 LL |     field_data1: u8,
    |     ^^^^^^^^^^^^^^^
@@ -8,13 +8,13 @@ LL |     field_data1: u8,
    = help: to override `-D warnings` add `#[allow(clippy::struct_field_names)]`
 
 error: field name starts with the struct's name
-  --> $DIR/struct_fields.rs:20:5
+  --> tests/ui/struct_fields.rs:20:5
    |
 LL |     data2_field: u8,
    |     ^^^^^^^^^^^^^^^
 
 error: all fields have the same postfix: `data`
-  --> $DIR/struct_fields.rs:25:1
+  --> tests/ui/struct_fields.rs:25:1
    |
 LL | / struct StructData {
 LL | |
@@ -27,7 +27,7 @@ LL | | }
    = help: remove the postfixes
 
 error: all fields have the same prefix: `data`
-  --> $DIR/struct_fields.rs:32:1
+  --> tests/ui/struct_fields.rs:32:1
    |
 LL | / struct DataStruct {
 LL | |
@@ -40,7 +40,7 @@ LL | | }
    = help: remove the prefixes
 
 error: all fields have the same prefix: `some_data`
-  --> $DIR/struct_fields.rs:39:1
+  --> tests/ui/struct_fields.rs:39:1
    |
 LL | / struct DoublePrefix {
 LL | |
@@ -53,7 +53,7 @@ LL | | }
    = help: remove the prefixes
 
 error: all fields have the same postfix: `some_data`
-  --> $DIR/struct_fields.rs:46:1
+  --> tests/ui/struct_fields.rs:46:1
    |
 LL | / struct DoublePostfix {
 LL | |
@@ -66,7 +66,7 @@ LL | | }
    = help: remove the postfixes
 
 error: all fields have the same postfix: `someData`
-  --> $DIR/struct_fields.rs:54:1
+  --> tests/ui/struct_fields.rs:54:1
    |
 LL | / struct NotSnakeCase {
 LL | |
@@ -79,7 +79,7 @@ LL | | }
    = help: remove the postfixes
 
 error: all fields have the same prefix: `someData`
-  --> $DIR/struct_fields.rs:61:1
+  --> tests/ui/struct_fields.rs:61:1
    |
 LL | / struct NotSnakeCase2 {
 LL | |
@@ -92,7 +92,7 @@ LL | | }
    = help: remove the prefixes
 
 error: all fields have the same prefix: `prefix`
-  --> $DIR/struct_fields.rs:74:1
+  --> tests/ui/struct_fields.rs:74:1
    |
 LL | / struct NonCaps {
 LL | |
@@ -105,7 +105,7 @@ LL | | }
    = help: remove the prefixes
 
 error: all fields have the same prefix: `_type`
-  --> $DIR/struct_fields.rs:124:5
+  --> tests/ui/struct_fields.rs:124:5
    |
 LL | /     struct DoLint {
 LL | |
@@ -119,7 +119,7 @@ LL | |     }
    = help: remove the prefixes
 
 error: all fields have the same prefix: `__type`
-  --> $DIR/struct_fields.rs:132:5
+  --> tests/ui/struct_fields.rs:132:5
    |
 LL | /     struct DoLint2 {
 LL | |
@@ -133,7 +133,7 @@ LL | |     }
    = help: remove the prefixes
 
 error: all fields have the same prefix: `___type`
-  --> $DIR/struct_fields.rs:140:5
+  --> tests/ui/struct_fields.rs:140:5
    |
 LL | /     struct DoLint3 {
 LL | |
@@ -147,7 +147,7 @@ LL | |     }
    = help: remove the prefixes
 
 error: all fields have the same postfix: `_`
-  --> $DIR/struct_fields.rs:148:5
+  --> tests/ui/struct_fields.rs:148:5
    |
 LL | /     struct DoLint4 {
 LL | |
@@ -161,7 +161,7 @@ LL | |     }
    = help: remove the postfixes
 
 error: all fields have the same postfix: `__`
-  --> $DIR/struct_fields.rs:156:5
+  --> tests/ui/struct_fields.rs:156:5
    |
 LL | /     struct DoLint5 {
 LL | |
@@ -175,7 +175,7 @@ LL | |     }
    = help: remove the postfixes
 
 error: all fields have the same postfix: `___`
-  --> $DIR/struct_fields.rs:164:5
+  --> tests/ui/struct_fields.rs:164:5
    |
 LL | /     struct DoLint6 {
 LL | |
@@ -189,7 +189,7 @@ LL | |     }
    = help: remove the postfixes
 
 error: all fields have the same postfix: `type`
-  --> $DIR/struct_fields.rs:172:5
+  --> tests/ui/struct_fields.rs:172:5
    |
 LL | /     struct DoLintToo {
 LL | |
@@ -202,15 +202,16 @@ LL | |     }
    = help: remove the postfixes
 
 error: field name starts with the struct's name
-  --> $DIR/struct_fields.rs:210:5
+  --> tests/ui/struct_fields.rs:210:5
    |
 LL |     proxy: i32,
    |     ^^^^^^^^^^
 
 error: all fields have the same prefix: `some`
-  --> $DIR/struct_fields.rs:226:13
+  --> tests/ui/struct_fields.rs:226:13
    |
 LL | /             struct MacroStruct {
+LL | |
 LL | |                 some_a: i32,
 LL | |                 some_b: i32,
 LL | |                 some_c: i32,
@@ -224,7 +225,7 @@ LL |       mk_struct!();
    = note: this error originates in the macro `mk_struct` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: field name starts with the struct's name
-  --> $DIR/struct_fields.rs:239:17
+  --> tests/ui/struct_fields.rs:239:17
    |
 LL |                 macrobaz_a: i32,
    |                 ^^^^^^^^^^^^^^^
@@ -235,7 +236,7 @@ LL |     mk_struct2!();
    = note: this error originates in the macro `mk_struct2` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: field name starts with the struct's name
-  --> $DIR/struct_fields.rs:251:17
+  --> tests/ui/struct_fields.rs:251:17
    |
 LL |                 $field: i32,
    |                 ^^^^^^^^^^^
@@ -246,9 +247,10 @@ LL |     mk_struct_with_names!(Foo, foo);
    = note: this error originates in the macro `mk_struct_with_names` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: all fields have the same prefix: `some`
-  --> $DIR/struct_fields.rs:291:13
+  --> tests/ui/struct_fields.rs:291:13
    |
 LL | /             struct $struct_name {
+LL | |
 LL | |                 $field1: i32,
 LL | |                 $field2: i32,
 LL | |                 $field3: i32,
@@ -262,19 +264,19 @@ LL |       mk_struct_full_def!(PrefixData, some_data, some_meta, some_other);
    = note: this error originates in the macro `mk_struct_full_def` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: field name starts with the struct's name
-  --> $DIR/struct_fields.rs:339:5
+  --> tests/ui/struct_fields.rs:339:5
    |
 LL |     use_foo: bool,
    |     ^^^^^^^^^^^^^
 
 error: field name starts with the struct's name
-  --> $DIR/struct_fields.rs:341:5
+  --> tests/ui/struct_fields.rs:341:5
    |
 LL |     use_bar: bool,
    |     ^^^^^^^^^^^^^
 
 error: field name starts with the struct's name
-  --> $DIR/struct_fields.rs:342:5
+  --> tests/ui/struct_fields.rs:342:5
    |
 LL |     use_baz: bool,
    |     ^^^^^^^^^^^^^

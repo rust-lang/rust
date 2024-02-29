@@ -89,7 +89,7 @@ impl SubdiagnosticDeriveBuilder {
             gen impl rustc_errors::AddToDiagnostic for @Self {
                 fn add_to_diagnostic_with<__G, __F>(
                     self,
-                    #diag: &mut rustc_errors::DiagnosticBuilder<'_, __G>,
+                    #diag: &mut rustc_errors::Diag<'_, __G>,
                     #f: __F
                 ) where
                     __G: rustc_errors::EmissionGuarantee,
@@ -108,7 +108,7 @@ impl SubdiagnosticDeriveBuilder {
 /// only to be able to destructure and split `self.builder` and the `self.structure` up to avoid a
 /// double mut borrow later on.
 struct SubdiagnosticDeriveVariantBuilder<'parent, 'a> {
-    /// The identifier to use for the generated `DiagnosticBuilder` instance.
+    /// The identifier to use for the generated `Diag` instance.
     parent: &'parent SubdiagnosticDeriveBuilder,
 
     /// Info for the current variant (or the type if not an enum).

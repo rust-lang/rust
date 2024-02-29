@@ -3,8 +3,7 @@ use crate::{errors, FnCtxt, LoweredTy};
 use rustc_ast as ast;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::{
-    codes::*, pluralize, struct_span_code_err, Applicability, DiagnosticBuilder, ErrorGuaranteed,
-    MultiSpan,
+    codes::*, pluralize, struct_span_code_err, Applicability, Diag, ErrorGuaranteed, MultiSpan,
 };
 use rustc_hir as hir;
 use rustc_hir::def::{CtorKind, DefKind, Res};
@@ -99,7 +98,7 @@ impl<'tcx> FnCtxt<'_, 'tcx> {
         expected: Ty<'tcx>,
         actual: Ty<'tcx>,
         ti: TopInfo<'tcx>,
-    ) -> Option<DiagnosticBuilder<'tcx>> {
+    ) -> Option<Diag<'tcx>> {
         let mut diag =
             self.demand_eqtype_with_origin(&self.pattern_cause(ti, cause_span), expected, actual)?;
         if let Some(expr) = ti.origin_expr {
@@ -529,7 +528,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         ty
     }
 
-    fn endpoint_has_type(&self, err: &mut DiagnosticBuilder<'_>, span: Span, ty: Ty<'_>) {
+    fn endpoint_has_type(&self, err: &mut Diag<'_>, span: Span, ty: Ty<'_>) {
         if !ty.references_error() {
             err.span_label(span, format!("this is of type `{ty}`"));
         }
@@ -683,7 +682,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
     fn suggest_adding_missing_ref_or_removing_ref(
         &self,
-        err: &mut DiagnosticBuilder<'_>,
+        err: &mut Diag<'_>,
         span: Span,
         expected: Ty<'tcx>,
         actual: Ty<'tcx>,
@@ -715,7 +714,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     }
 
     // Precondition: pat is a Ref(_) pattern
-    fn borrow_pat_suggestion(&self, err: &mut DiagnosticBuilder<'_>, pat: &Pat<'_>) {
+    fn borrow_pat_suggestion(&self, err: &mut Diag<'_>, pat: &Pat<'_>) {
         let tcx = self.tcx;
         if let PatKind::Ref(inner, mutbl) = pat.kind
             && let PatKind::Binding(_, _, binding, ..) = inner.kind
@@ -933,7 +932,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
     fn maybe_suggest_range_literal(
         &self,
-        e: &mut DiagnosticBuilder<'_>,
+        e: &mut Diag<'_>,
         opt_def_id: Option<hir::def_id::DefId>,
         ident: Ident,
     ) -> bool {
@@ -968,7 +967,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
     fn emit_bad_pat_path(
         &self,
-        mut e: DiagnosticBuilder<'_>,
+        mut e: Diag<'_>,
         pat: &hir::Pat<'tcx>,
         res: Res,
         pat_res: Res,
@@ -1505,7 +1504,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         variant: &VariantDef,
         pat: &'_ Pat<'_>,
         fields: &[hir::PatField<'_>],
-    ) -> Option<DiagnosticBuilder<'_>> {
+    ) -> Option<Diag<'_>> {
         // if this is a tuple struct, then all field names will be numbers
         // so if any fields in a struct pattern use shorthand syntax, they will
         // be invalid identifiers (for example, Foo { 0, 1 }).
@@ -1581,7 +1580,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         pat: &'tcx Pat<'tcx>,
         variant: &ty::VariantDef,
         args: &'tcx ty::List<ty::GenericArg<'tcx>>,
-    ) -> DiagnosticBuilder<'tcx> {
+    ) -> Diag<'tcx> {
         let tcx = self.tcx;
         let (field_names, t, plural) = if let [field] = inexistent_fields {
             (format!("a field named `{}`", field.ident), "this", "")
@@ -1686,7 +1685,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         pat: &Pat<'_>,
         fields: &'tcx [hir::PatField<'tcx>],
         variant: &ty::VariantDef,
-    ) -> Option<DiagnosticBuilder<'tcx>> {
+    ) -> Option<Diag<'tcx>> {
         if let (Some(CtorKind::Fn), PatKind::Struct(qpath, pattern_fields, ..)) =
             (variant.ctor_kind(), &pat.kind)
         {
@@ -1772,7 +1771,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         &self,
         pat: &Pat<'_>,
         fields: &'tcx [hir::PatField<'tcx>],
-    ) -> DiagnosticBuilder<'tcx> {
+    ) -> Diag<'tcx> {
         let mut err = self
             .dcx()
             .struct_span_err(pat.span, "pattern requires `..` due to inaccessible fields");
@@ -1863,7 +1862,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         unmentioned_fields: &[(&ty::FieldDef, Ident)],
         have_inaccessible_fields: bool,
         fields: &'tcx [hir::PatField<'tcx>],
-    ) -> DiagnosticBuilder<'tcx> {
+    ) -> Diag<'tcx> {
         let inaccessible = if have_inaccessible_fields { " and inaccessible fields" } else { "" };
         let field_names = if let [(_, field)] = unmentioned_fields {
             format!("field `{field}`{inaccessible}")

@@ -1,5 +1,5 @@
 error: used unwrap or expect in a function that returns result or option
-  --> $DIR/unwrap_in_result.rs:22:5
+  --> tests/ui/unwrap_in_result.rs:22:5
    |
 LL | /     fn bad_divisible_by_3(i_str: String) -> Result<bool, String> {
 LL | |
@@ -12,7 +12,7 @@ LL | |     }
    |
    = help: unwrap and expect should not be used in a function that returns result or option
 note: potential non-recoverable error(s)
-  --> $DIR/unwrap_in_result.rs:25:17
+  --> tests/ui/unwrap_in_result.rs:25:17
    |
 LL |         let i = i_str.parse::<i32>().unwrap();
    |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -20,7 +20,7 @@ LL |         let i = i_str.parse::<i32>().unwrap();
    = help: to override `-D warnings` add `#[allow(clippy::unwrap_in_result)]`
 
 error: used unwrap or expect in a function that returns result or option
-  --> $DIR/unwrap_in_result.rs:33:5
+  --> tests/ui/unwrap_in_result.rs:33:5
    |
 LL | /     fn example_option_expect(i_str: String) -> Option<bool> {
 LL | |
@@ -33,7 +33,7 @@ LL | |     }
    |
    = help: unwrap and expect should not be used in a function that returns result or option
 note: potential non-recoverable error(s)
-  --> $DIR/unwrap_in_result.rs:35:17
+  --> tests/ui/unwrap_in_result.rs:35:17
    |
 LL |         let i = i_str.parse::<i32>().expect("not a number");
    |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

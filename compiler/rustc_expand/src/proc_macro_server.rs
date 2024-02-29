@@ -11,7 +11,7 @@ use rustc_ast::util::literal::escape_byte_str_symbol;
 use rustc_ast_pretty::pprust;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::sync::Lrc;
-use rustc_errors::{DiagnosticBuilder, ErrorGuaranteed, MultiSpan, PResult};
+use rustc_errors::{Diag, ErrorGuaranteed, MultiSpan, PResult};
 use rustc_parse::lexer::nfc_normalize;
 use rustc_parse::parse_stream_from_source_str;
 use rustc_session::parse::ParseSess;
@@ -513,8 +513,8 @@ impl server::FreeFunctions for Rustc<'_, '_> {
 
     fn emit_diagnostic(&mut self, diagnostic: Diagnostic<Self::Span>) {
         let message = rustc_errors::DiagnosticMessage::from(diagnostic.message);
-        let mut diag: DiagnosticBuilder<'_, ()> =
-            DiagnosticBuilder::new(&self.sess().dcx, diagnostic.level.to_internal(), message);
+        let mut diag: Diag<'_, ()> =
+            Diag::new(&self.sess().dcx, diagnostic.level.to_internal(), message);
         diag.span(MultiSpan::from_spans(diagnostic.spans));
         for child in diagnostic.children {
             diag.sub(child.level.to_internal(), child.message, MultiSpan::from_spans(child.spans));

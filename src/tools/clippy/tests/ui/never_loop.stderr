@@ -1,5 +1,5 @@
 error: this loop never actually loops
-  --> $DIR/never_loop.rs:12:5
+  --> tests/ui/never_loop.rs:12:5
    |
 LL | /     loop {
 LL | |
@@ -13,7 +13,7 @@ LL | |     }
    = note: `#[deny(clippy::never_loop)]` on by default
 
 error: this loop never actually loops
-  --> $DIR/never_loop.rs:36:5
+  --> tests/ui/never_loop.rs:36:5
    |
 LL | /     loop {
 LL | |
@@ -24,7 +24,7 @@ LL | |     }
    | |_____^
 
 error: this loop never actually loops
-  --> $DIR/never_loop.rs:57:5
+  --> tests/ui/never_loop.rs:57:5
    |
 LL | /     loop {
 LL | |
@@ -36,7 +36,7 @@ LL | |     }
    | |_____^
 
 error: this loop never actually loops
-  --> $DIR/never_loop.rs:60:9
+  --> tests/ui/never_loop.rs:60:9
    |
 LL | /         while i == 0 {
 LL | |
@@ -46,7 +46,7 @@ LL | |         }
    | |_________^
 
 error: this loop never actually loops
-  --> $DIR/never_loop.rs:73:9
+  --> tests/ui/never_loop.rs:73:9
    |
 LL | /         loop {
 LL | |
@@ -58,7 +58,7 @@ LL | |         }
    | |_________^
 
 error: this loop never actually loops
-  --> $DIR/never_loop.rs:110:5
+  --> tests/ui/never_loop.rs:110:5
    |
 LL | /     while let Some(y) = x {
 LL | |
@@ -68,7 +68,7 @@ LL | |     }
    | |_____^
 
 error: this loop never actually loops
-  --> $DIR/never_loop.rs:118:5
+  --> tests/ui/never_loop.rs:118:5
    |
 LL | /     for x in 0..10 {
 LL | |
@@ -85,7 +85,7 @@ LL |     if let Some(x) = (0..10).next() {
    |     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 error: this loop never actually loops
-  --> $DIR/never_loop.rs:167:5
+  --> tests/ui/never_loop.rs:167:5
    |
 LL | /     'outer: while a {
 LL | |
@@ -97,7 +97,7 @@ LL | |     }
    | |_____^
 
 error: this loop never actually loops
-  --> $DIR/never_loop.rs:183:9
+  --> tests/ui/never_loop.rs:183:9
    |
 LL | /         while false {
 LL | |
@@ -106,7 +106,7 @@ LL | |         }
    | |_________^
 
 error: this loop never actually loops
-  --> $DIR/never_loop.rs:235:13
+  --> tests/ui/never_loop.rs:235:13
    |
 LL |       let _ = loop {
    |  _____________^
@@ -119,7 +119,7 @@ LL | |     };
    | |_____^
 
 error: this loop never actually loops
-  --> $DIR/never_loop.rs:257:5
+  --> tests/ui/never_loop.rs:257:5
    |
 LL | /     'a: loop {
 LL | |
@@ -131,7 +131,7 @@ LL | |     }
    | |_____^
 
 error: sub-expression diverges
-  --> $DIR/never_loop.rs:261:17
+  --> tests/ui/never_loop.rs:261:17
    |
 LL |                 break 'a;
    |                 ^^^^^^^^
@@ -140,7 +140,7 @@ LL |                 break 'a;
    = help: to override `-D warnings` add `#[allow(clippy::diverging_sub_expression)]`
 
 error: this loop never actually loops
-  --> $DIR/never_loop.rs:294:13
+  --> tests/ui/never_loop.rs:294:13
    |
 LL | /             for _ in 0..20 {
 LL | |
@@ -154,7 +154,7 @@ LL |             if let Some(_) = (0..20).next() {
    |             ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 error: this loop never actually loops
-  --> $DIR/never_loop.rs:378:13
+  --> tests/ui/never_loop.rs:378:13
    |
 LL | /             'c: loop {
 LL | |
@@ -163,7 +163,7 @@ LL | |             }
    | |_____________^
 
 error: this loop never actually loops
-  --> $DIR/never_loop.rs:389:5
+  --> tests/ui/never_loop.rs:389:5
    |
 LL | /     loop {
 LL | |
@@ -172,7 +172,7 @@ LL | |     }
    | |_____^
 
 error: this loop never actually loops
-  --> $DIR/never_loop.rs:393:5
+  --> tests/ui/never_loop.rs:393:5
    |
 LL | /     loop {
 LL | |

@@ -1,5 +1,5 @@
 error: this let-binding has unit value
-  --> $DIR/let_unit.rs:12:5
+  --> tests/ui/let_unit.rs:12:5
    |
 LL |     let _x = println!("x");
    |     ^^^^^^^^^^^^^^^^^^^^^^^ help: omit the `let` binding: `println!("x");`
@@ -8,7 +8,7 @@ LL |     let _x = println!("x");
    = help: to override `-D warnings` add `#[allow(clippy::let_unit_value)]`
 
 error: this let-binding has unit value
-  --> $DIR/let_unit.rs:60:5
+  --> tests/ui/let_unit.rs:60:5
    |
 LL | /     let _ = v
 LL | |         .into_iter()
@@ -31,7 +31,7 @@ LL +         .unwrap();
    |
 
 error: this let-binding has unit value
-  --> $DIR/let_unit.rs:109:5
+  --> tests/ui/let_unit.rs:109:5
    |
 LL | /     let x = match Some(0) {
 LL | |         None => f2(1),

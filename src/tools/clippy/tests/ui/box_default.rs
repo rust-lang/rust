@@ -104,3 +104,19 @@ fn issue_11868() {
     foo(bar!(vec![]));
     foo(bar!(vec![1]));
 }
+
+// Issue #11927: The quickfix for the `Box::new` suggests replacing with `Box::<Inner>::default()`,
+// removing the `outer::` segment.
+fn issue_11927() {
+    mod outer {
+        #[derive(Default)]
+        pub struct Inner {
+            _i: usize,
+        }
+    }
+
+    fn foo() {
+        let _b = Box::new(outer::Inner::default());
+        let _b = Box::new(std::collections::HashSet::<i32>::new());
+    }
+}

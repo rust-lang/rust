@@ -20,7 +20,7 @@ use crate::traits::{
     self, coherence, FutureCompatOverlapErrorKind, ObligationCause, ObligationCtxt,
 };
 use rustc_data_structures::fx::FxIndexSet;
-use rustc_errors::{codes::*, DelayDm, DiagnosticBuilder, EmissionGuarantee};
+use rustc_errors::{codes::*, DelayDm, Diag, EmissionGuarantee};
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_middle::ty::{self, ImplSubject, Ty, TyCtxt, TypeVisitableExt};
 use rustc_middle::ty::{GenericArgs, GenericArgsRef};
@@ -392,14 +392,14 @@ fn report_conflicting_impls<'tcx>(
 ) -> Result<(), ErrorGuaranteed> {
     let impl_span = tcx.def_span(impl_def_id);
 
-    // Work to be done after we've built the DiagnosticBuilder. We have to define it
-    // now because the lint emit methods don't return back the DiagnosticBuilder
-    // that's passed in.
+    // Work to be done after we've built the Diag. We have to define it now
+    // because the lint emit methods don't return back the Diag that's passed
+    // in.
     fn decorate<'tcx, G: EmissionGuarantee>(
         tcx: TyCtxt<'tcx>,
         overlap: &OverlapError<'tcx>,
         impl_span: Span,
-        err: &mut DiagnosticBuilder<'_, G>,
+        err: &mut Diag<'_, G>,
     ) {
         if (overlap.trait_ref, overlap.self_ty).references_error() {
             err.downgrade_to_delayed_bug();

@@ -9,7 +9,7 @@ trait Erased {
 impl<T: Original> Erased for T {
     fn f(&self) -> Box<dyn Fn()> {
         Box::new(<T as Original>::f())
-        //~^ ERROR the associated type `<T as Original>::{opaque#0}` may not live long enough
+        //~^ ERROR the associated type `impl Fn()` may not live long enough
     }
 }
 

@@ -27,17 +27,17 @@ rustc_tools_util = "0.3.0"
 tempfile = { version = "3.2", optional = true }
 termize = "0.1"
 color-print = "0.3.4"
-anstream = "0.5.0"
+anstream = "0.6.0"
 
 [dev-dependencies]
-ui_test = "0.21.2"
+ui_test = "0.22.2"
 tester = "0.9"
 regex = "1.5"
 toml = "0.7.3"
 walkdir = "2.3"
 # This is used by the `collect-metadata` alias.
 filetime = "0.2"
-itertools = "0.11"
+itertools = "0.12"
 
 # UI test dependencies
 clippy_utils = { path = "clippy_utils" }

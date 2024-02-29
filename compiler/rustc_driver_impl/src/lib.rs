@@ -21,6 +21,7 @@ use rustc_codegen_ssa::{traits::CodegenBackend, CodegenErrors, CodegenResults};
 use rustc_data_structures::profiling::{
     get_resident_set_size, print_time_passes_entry, TimePassesFormat,
 };
+use rustc_errors::emitter::stderr_destination;
 use rustc_errors::registry::Registry;
 use rustc_errors::{
     markdown, ColorConfig, DiagCtxt, ErrCode, ErrorGuaranteed, FatalError, PResult,
@@ -1384,11 +1385,11 @@ fn report_ice(
 ) {
     let fallback_bundle =
         rustc_errors::fallback_fluent_bundle(crate::DEFAULT_LOCALE_RESOURCES.to_vec(), false);
-    let emitter = Box::new(rustc_errors::emitter::HumanEmitter::stderr(
-        rustc_errors::ColorConfig::Auto,
+    let emitter = Box::new(rustc_errors::emitter::HumanEmitter::new(
+        stderr_destination(rustc_errors::ColorConfig::Auto),
         fallback_bundle,
     ));
-    let dcx = rustc_errors::DiagCtxt::with_emitter(emitter);
+    let dcx = rustc_errors::DiagCtxt::new(emitter);
 
     // a .span_bug or .bug call has already printed what
     // it wants to print.

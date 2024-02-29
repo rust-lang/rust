@@ -3,7 +3,7 @@ use rustc_data_structures::sync::{Lock, Lrc};
 use rustc_errors::{
     emitter::Emitter,
     translation::{to_fluent_args, Translate},
-    Applicability, DiagCtxt, Diagnostic, LazyFallbackBundle,
+    Applicability, DiagCtxt, DiagInner, LazyFallbackBundle,
 };
 use rustc_parse::parse_stream_from_source_str;
 use rustc_resolve::rustdoc::source_span_for_markdown_range;
@@ -42,7 +42,7 @@ fn check_rust_syntax(
     let emitter = BufferEmitter { buffer: Lrc::clone(&buffer), fallback_bundle };
 
     let sm = Lrc::new(SourceMap::new(FilePathMapping::empty()));
-    let dcx = DiagCtxt::with_emitter(Box::new(emitter)).disable_warnings();
+    let dcx = DiagCtxt::new(Box::new(emitter)).disable_warnings();
     let source = dox[code_block.code].to_owned();
     let sess = ParseSess::with_dcx(dcx, sm);
 
@@ -156,7 +156,7 @@ impl Translate for BufferEmitter {
 }
 
 impl Emitter for BufferEmitter {
-    fn emit_diagnostic(&mut self, diag: Diagnostic) {
+    fn emit_diagnostic(&mut self, diag: DiagInner) {
         let mut buffer = self.buffer.borrow_mut();
 
         let fluent_args = to_fluent_args(diag.args.iter());

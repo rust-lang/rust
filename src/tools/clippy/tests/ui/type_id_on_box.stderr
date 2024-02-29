@@ -1,5 +1,5 @@
 error: calling `.type_id()` on a `Box<dyn Any>`
-  --> $DIR/type_id_on_box.rs:24:13
+  --> tests/ui/type_id_on_box.rs:24:13
    |
 LL |     let _ = any_box.type_id();
    |             -------^^^^^^^^^^
@@ -12,7 +12,7 @@ LL |     let _ = any_box.type_id();
    = help: to override `-D warnings` add `#[allow(clippy::type_id_on_box)]`
 
 error: calling `.type_id()` on a `Box<dyn Any>`
-  --> $DIR/type_id_on_box.rs:28:13
+  --> tests/ui/type_id_on_box.rs:28:13
    |
 LL |     let _ = any_box.type_id(); // 2 derefs are needed here to get to the `dyn Any`
    |             -------^^^^^^^^^^
@@ -23,7 +23,7 @@ LL |     let _ = any_box.type_id(); // 2 derefs are needed here to get to the `d
    = note: if this is intentional, use `TypeId::of::<Box<dyn Any>>()` instead, which makes it more clear
 
 error: calling `.type_id()` on a `Box<dyn Any>`
-  --> $DIR/type_id_on_box.rs:34:13
+  --> tests/ui/type_id_on_box.rs:34:13
    |
 LL |     let _ = b.type_id();
    |             -^^^^^^^^^^

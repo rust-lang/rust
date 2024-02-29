@@ -3,7 +3,7 @@ use std::num::NonZero;
 use rustc_ast::token;
 use rustc_ast::util::literal::LitError;
 use rustc_errors::{
-    codes::*, DiagCtxt, DiagnosticBuilder, DiagnosticMessage, EmissionGuarantee, ErrorGuaranteed,
+    codes::*, Diag, DiagCtxt, DiagnosticMessage, EmissionGuarantee, ErrorGuaranteed,
     IntoDiagnostic, Level, MultiSpan,
 };
 use rustc_macros::Diagnostic;
@@ -19,8 +19,8 @@ pub struct FeatureGateError {
 
 impl<'a, G: EmissionGuarantee> IntoDiagnostic<'a, G> for FeatureGateError {
     #[track_caller]
-    fn into_diagnostic(self, dcx: &'a DiagCtxt, level: Level) -> DiagnosticBuilder<'a, G> {
-        DiagnosticBuilder::new(dcx, level, self.explain).with_span(self.span).with_code(E0658)
+    fn into_diagnostic(self, dcx: &'a DiagCtxt, level: Level) -> Diag<'a, G> {
+        Diag::new(dcx, level, self.explain).with_span(self.span).with_code(E0658)
     }
 }
 

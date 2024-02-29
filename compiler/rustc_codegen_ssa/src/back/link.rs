@@ -308,7 +308,7 @@ fn link_rlib<'a>(
     codegen_results: &CodegenResults,
     flavor: RlibFlavor,
     tmpdir: &MaybeTempDir,
-) -> Result<Box<dyn ArchiveBuilder<'a> + 'a>, ErrorGuaranteed> {
+) -> Result<Box<dyn ArchiveBuilder + 'a>, ErrorGuaranteed> {
     let lib_search_paths = archive_search_paths(sess);
 
     let mut ab = archive_builder_builder.new_archive_builder(sess);

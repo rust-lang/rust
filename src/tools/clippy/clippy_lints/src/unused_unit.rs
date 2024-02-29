@@ -58,6 +58,7 @@ impl EarlyLintPass for UnusedUnit {
             && let ctxt = block.span.ctxt()
             && stmt.span.ctxt() == ctxt
             && expr.span.ctxt() == ctxt
+            && expr.attrs.is_empty()
         {
             let sp = expr.span;
             span_lint_and_sugg(

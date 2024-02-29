@@ -1,5 +1,5 @@
 error: called `map_or(Err(_), Ok)` on an `Option` value
-  --> $DIR/option_map_or_err_ok.rs:5:13
+  --> tests/ui/option_map_or_err_ok.rs:5:13
    |
 LL |     let _ = x.map_or(Err("a"), Ok);
    |             ^^^^^^^^^^^^^^^^^^^^^^ help: consider using `ok_or`: `x.ok_or("a")`

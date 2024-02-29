@@ -12,7 +12,7 @@ use crate::infer::SubregionOrigin;
 use crate::infer::TyCtxt;
 
 use rustc_errors::AddToDiagnostic;
-use rustc_errors::{DiagnosticBuilder, ErrorGuaranteed};
+use rustc_errors::{Diag, ErrorGuaranteed};
 use rustc_hir::Ty;
 use rustc_middle::ty::Region;
 
@@ -142,7 +142,7 @@ pub fn suggest_adding_lifetime_params<'tcx>(
     sub: Region<'tcx>,
     ty_sup: &'tcx Ty<'_>,
     ty_sub: &'tcx Ty<'_>,
-    err: &mut DiagnosticBuilder<'_>,
+    err: &mut Diag<'_>,
 ) {
     let suggestion = AddLifetimeParamsSuggestion { tcx, sub, ty_sup, ty_sub, add_note: false };
     suggestion.add_to_diagnostic(err);

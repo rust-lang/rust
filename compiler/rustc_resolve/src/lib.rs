@@ -37,7 +37,7 @@ use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexMap, FxIndexSet};
 use rustc_data_structures::intern::Interned;
 use rustc_data_structures::steal::Steal;
 use rustc_data_structures::sync::{FreezeReadGuard, Lrc};
-use rustc_errors::{Applicability, DiagnosticBuilder, ErrCode};
+use rustc_errors::{Applicability, Diag, ErrCode};
 use rustc_expand::base::{DeriveResolutions, SyntaxExtension, SyntaxExtensionKind};
 use rustc_feature::BUILTIN_ATTRIBUTES;
 use rustc_hir::def::Namespace::{self, *};
@@ -733,7 +733,7 @@ struct PrivacyError<'a> {
 
 #[derive(Debug)]
 struct UseError<'a> {
-    err: DiagnosticBuilder<'a>,
+    err: Diag<'a>,
     /// Candidates which user could `use` to access the missing type.
     candidates: Vec<ImportSuggestion>,
     /// The `DefId` of the module to place the use-statements in.

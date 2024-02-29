@@ -9,7 +9,7 @@ use rustc_attr::{
     self as attr, ConstStability, DefaultBodyStability, DeprecatedSince, Deprecation, Stability,
 };
 use rustc_data_structures::unord::UnordMap;
-use rustc_errors::{Applicability, DiagnosticBuilder};
+use rustc_errors::{Applicability, Diag};
 use rustc_feature::GateIssue;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{DefId, LocalDefId, LocalDefIdMap};
@@ -125,7 +125,7 @@ pub fn report_unstable(
 }
 
 pub fn deprecation_suggestion(
-    diag: &mut DiagnosticBuilder<'_, ()>,
+    diag: &mut Diag<'_, ()>,
     kind: &str,
     suggestion: Option<Symbol>,
     span: Span,

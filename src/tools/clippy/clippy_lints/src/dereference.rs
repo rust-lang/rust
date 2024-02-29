@@ -2,9 +2,7 @@ use clippy_utils::diagnostics::{span_lint_and_sugg, span_lint_hir_and_then};
 use clippy_utils::source::{snippet_with_applicability, snippet_with_context};
 use clippy_utils::sugg::has_enclosing_paren;
 use clippy_utils::ty::{implements_trait, is_manually_drop, peel_mid_ty_refs};
-use clippy_utils::{
-    expr_use_ctxt, get_parent_expr, get_parent_node, is_lint_allowed, path_to_local, DefinedTy, ExprUseNode,
-};
+use clippy_utils::{expr_use_ctxt, get_parent_expr, is_lint_allowed, path_to_local, DefinedTy, ExprUseNode};
 use core::mem;
 use rustc_ast::util::parser::{PREC_POSTFIX, PREC_PREFIX};
 use rustc_data_structures::fx::FxIndexMap;
@@ -1008,8 +1006,8 @@ fn report<'tcx>(
                 data.first_expr.span,
                 state.msg,
                 |diag| {
-                    let (precedence, calls_field) = match get_parent_node(cx.tcx, data.first_expr.hir_id) {
-                        Some(Node::Expr(e)) => match e.kind {
+                    let (precedence, calls_field) = match cx.tcx.parent_hir_node(data.first_expr.hir_id) {
+                        Node::Expr(e) => match e.kind {
                             ExprKind::Call(callee, _) if callee.hir_id != data.first_expr.hir_id => (0, false),
                             ExprKind::Call(..) => (PREC_POSTFIX, matches!(expr.kind, ExprKind::Field(..))),
                             _ => (e.precedence().order(), false),

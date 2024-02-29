@@ -1,5 +1,5 @@
 error: usage of unknown attribute
-  --> $DIR/unknown_attribute.rs:1:11
+  --> tests/ui/unknown_attribute.rs:1:11
    |
 LL | #[clippy::unknown]
    |           ^^^^^^^

@@ -1,5 +1,5 @@
 error: this `else` branch is empty
-  --> $DIR/needless_else.rs:23:7
+  --> tests/ui/needless_else.rs:23:7
    |
 LL |       } else {
    |  _______^

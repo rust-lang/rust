@@ -1,11 +1,10 @@
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::source::snippet;
 use rustc_errors::{Applicability, SuggestionStyle};
-use rustc_hir::def_id::{DefId, LocalDefId};
-use rustc_hir::intravisit::FnKind;
+use rustc_hir::def_id::DefId;
 use rustc_hir::{
-    Body, FnDecl, FnRetTy, GenericArg, GenericBound, ImplItem, ImplItemKind, ItemKind, TraitBoundModifier, TraitItem,
-    TraitItemKind, TyKind,
+    GenericArg, GenericBound, GenericBounds, ItemKind, PredicateOrigin, TraitBoundModifier, TyKind, TypeBinding,
+    WherePredicate,
 };
 use rustc_hir_analysis::hir_ty_to_ty;
 use rustc_lint::{LateContext, LateLintPass};
@@ -50,20 +49,17 @@ declare_clippy_lint! {
 }
 declare_lint_pass!(ImpliedBoundsInImpls => [IMPLIED_BOUNDS_IN_IMPLS]);
 
-#[allow(clippy::too_many_arguments)]
 fn emit_lint(
     cx: &LateContext<'_>,
     poly_trait: &rustc_hir::PolyTraitRef<'_>,
-    opaque_ty: &rustc_hir::OpaqueTy<'_>,
+    bounds: GenericBounds<'_>,
     index: usize,
-    // The bindings that were implied
+    // The bindings that were implied, used for suggestion purposes since removing a bound with associated types
+    // means we might need to then move it to a different bound
     implied_bindings: &[rustc_hir::TypeBinding<'_>],
-    // The original bindings that `implied_bindings` are implied from
-    implied_by_bindings: &[rustc_hir::TypeBinding<'_>],
-    implied_by_args: &[GenericArg<'_>],
-    implied_by_span: Span,
+    bound: &ImplTraitBound<'_>,
 ) {
-    let implied_by = snippet(cx, implied_by_span, "..");
+    let implied_by = snippet(cx, bound.span, "..");
 
     span_lint_and_then(
         cx,
@@ -75,10 +71,10 @@ fn emit_lint(
             // to include the `+` token that is ahead or behind,
             // so we don't end up with something like `impl + B` or `impl A + `
 
-            let implied_span_extended = if let Some(next_bound) = opaque_ty.bounds.get(index + 1) {
+            let implied_span_extended = if let Some(next_bound) = bounds.get(index + 1) {
                 poly_trait.span.to(next_bound.span().shrink_to_lo())
             } else if index > 0
-                && let Some(prev_bound) = opaque_ty.bounds.get(index - 1)
+                && let Some(prev_bound) = bounds.get(index - 1)
             {
                 prev_bound.span().shrink_to_hi().to(poly_trait.span.shrink_to_hi())
             } else {
@@ -93,17 +89,17 @@ fn emit_lint(
             // If we're going to suggest removing `Deref<..>`, we'll need to put `<Target = u8>` on `DerefMut`
             let omitted_assoc_tys: Vec<_> = implied_bindings
                 .iter()
-                .filter(|binding| !implied_by_bindings.iter().any(|b| b.ident == binding.ident))
+                .filter(|binding| !bound.bindings.iter().any(|b| b.ident == binding.ident))
                 .collect();
 
             if !omitted_assoc_tys.is_empty() {
                 // `<>` needs to be added if there aren't yet any generic arguments or bindings
-                let needs_angle_brackets = implied_by_args.is_empty() && implied_by_bindings.is_empty();
-                let insert_span = match (implied_by_args, implied_by_bindings) {
+                let needs_angle_brackets = bound.args.is_empty() && bound.bindings.is_empty();
+                let insert_span = match (bound.args, bound.bindings) {
                     ([.., arg], [.., binding]) => arg.span().max(binding.span).shrink_to_hi(),
                     ([.., arg], []) => arg.span().shrink_to_hi(),
                     ([], [.., binding]) => binding.span.shrink_to_hi(),
-                    ([], []) => implied_by_span.shrink_to_hi(),
+                    ([], []) => bound.span.shrink_to_hi(),
                 };
 
                 let mut associated_tys_sugg = if needs_angle_brackets {
@@ -223,111 +219,135 @@ fn is_same_generics<'tcx>(
         })
 }
 
-fn check(cx: &LateContext<'_>, decl: &FnDecl<'_>) {
-    if let FnRetTy::Return(ty) = decl.output
-        &&let TyKind::OpaqueDef(item_id, ..) = ty.kind
-        && let item = cx.tcx.hir().item(item_id)
-        && let ItemKind::OpaqueTy(opaque_ty) = item.kind
-        // Very often there is only a single bound, e.g. `impl Deref<..>`, in which case
-        // we can avoid doing a bunch of stuff unnecessarily.
-        && opaque_ty.bounds.len() > 1
-    {
-        // Get all the (implied) trait predicates in the bounds.
-        // For `impl Deref + DerefMut` this will contain [`Deref`].
-        // The implied `Deref` comes from `DerefMut` because `trait DerefMut: Deref {}`.
-        // N.B. (G)ATs are fine to disregard, because they must be the same for all of its supertraits.
-        // Example:
-        // `impl Deref<Target = i32> + DerefMut<Target = u32>` is not allowed.
-        // `DerefMut::Target` needs to match `Deref::Target`.
-        let implied_bounds: Vec<_> = opaque_ty
-            .bounds
-            .iter()
-            .filter_map(|bound| {
-                if let GenericBound::Trait(poly_trait, TraitBoundModifier::None) = bound
-                    && let [.., path] = poly_trait.trait_ref.path.segments
-                    && poly_trait.bound_generic_params.is_empty()
-                    && let Some(trait_def_id) = path.res.opt_def_id()
-                    && let predicates = cx.tcx.super_predicates_of(trait_def_id).predicates
-                    && !predicates.is_empty()
-                // If the trait has no supertrait, there is nothing to add.
-                {
-                    Some((bound.span(), path, predicates, trait_def_id))
-                } else {
-                    None
-                }
-            })
-            .collect();
+struct ImplTraitBound<'tcx> {
+    /// The span of the bound in the `impl Trait` type
+    span: Span,
+    /// The predicates defined in the trait referenced by this bound. This also contains the actual
+    /// supertrait bounds
+    predicates: &'tcx [(ty::Clause<'tcx>, Span)],
+    /// The `DefId` of the trait being referenced by this bound
+    trait_def_id: DefId,
+    /// The generic arguments on the `impl Trait` bound
+    args: &'tcx [GenericArg<'tcx>],
+    /// The associated types on this bound
+    bindings: &'tcx [TypeBinding<'tcx>],
+}
 
-        // Lint all bounds in the `impl Trait` type that are also in the `implied_bounds` vec.
-        // This involves some extra logic when generic arguments are present, since
-        // simply comparing trait `DefId`s won't be enough. We also need to compare the generics.
-        for (index, bound) in opaque_ty.bounds.iter().enumerate() {
+/// Given an `impl Trait` type, gets all the supertraits from each bound ("implied bounds").
+///
+/// For `impl Deref + DerefMut + Eq` this returns `[Deref, PartialEq]`.
+/// The `Deref` comes from `DerefMut` because `trait DerefMut: Deref {}`, and `PartialEq` comes from
+/// `Eq`.
+fn collect_supertrait_bounds<'tcx>(cx: &LateContext<'tcx>, bounds: GenericBounds<'tcx>) -> Vec<ImplTraitBound<'tcx>> {
+    bounds
+        .iter()
+        .filter_map(|bound| {
             if let GenericBound::Trait(poly_trait, TraitBoundModifier::None) = bound
                 && let [.., path] = poly_trait.trait_ref.path.segments
-                && let implied_args = path.args.map_or([].as_slice(), |a| a.args)
-                && let implied_bindings = path.args.map_or([].as_slice(), |a| a.bindings)
-                && let Some(def_id) = poly_trait.trait_ref.path.res.opt_def_id()
-                && let Some((implied_by_span, implied_by_args, implied_by_bindings)) =
-                    implied_bounds
-                        .iter()
-                        .find_map(|&(span, implied_by_path, preds, implied_by_def_id)| {
-                            let implied_by_args = implied_by_path.args.map_or([].as_slice(), |a| a.args);
-                            let implied_by_bindings = implied_by_path.args.map_or([].as_slice(), |a| a.bindings);
-
-                            preds.iter().find_map(|(clause, _)| {
-                                if let ClauseKind::Trait(tr) = clause.kind().skip_binder()
-                                    && tr.def_id() == def_id
-                                    && is_same_generics(
-                                        cx.tcx,
-                                        tr.trait_ref.args,
-                                        implied_by_args,
-                                        implied_args,
-                                        implied_by_def_id,
-                                        def_id,
-                                    )
-                                {
-                                    Some((span, implied_by_args, implied_by_bindings))
-                                } else {
-                                    None
-                                }
-                            })
-                        })
+                && poly_trait.bound_generic_params.is_empty()
+                && let Some(trait_def_id) = path.res.opt_def_id()
+                && let predicates = cx.tcx.super_predicates_of(trait_def_id).predicates
+                // If the trait has no supertrait, there is no need to collect anything from that bound
+                && !predicates.is_empty()
             {
-                emit_lint(
-                    cx,
-                    poly_trait,
-                    opaque_ty,
-                    index,
-                    implied_bindings,
-                    implied_by_bindings,
-                    implied_by_args,
-                    implied_by_span,
-                );
+                Some(ImplTraitBound {
+                    predicates,
+                    args: path.args.map_or([].as_slice(), |p| p.args),
+                    bindings: path.args.map_or([].as_slice(), |p| p.bindings),
+                    trait_def_id,
+                    span: bound.span(),
+                })
+            } else {
+                None
             }
+        })
+        .collect()
+}
+
+/// Given a bound in an `impl Trait` type, looks for a trait in the set of supertraits (previously
+/// collected in [`collect_supertrait_bounds`]) that matches (same trait and generic arguments).
+fn find_bound_in_supertraits<'a, 'tcx>(
+    cx: &LateContext<'tcx>,
+    trait_def_id: DefId,
+    args: &'tcx [GenericArg<'tcx>],
+    bounds: &'a [ImplTraitBound<'tcx>],
+) -> Option<&'a ImplTraitBound<'tcx>> {
+    bounds.iter().find(|bound| {
+        bound.predicates.iter().any(|(clause, _)| {
+            if let ClauseKind::Trait(tr) = clause.kind().skip_binder()
+                && tr.def_id() == trait_def_id
+            {
+                is_same_generics(
+                    cx.tcx,
+                    tr.trait_ref.args,
+                    bound.args,
+                    args,
+                    bound.trait_def_id,
+                    trait_def_id,
+                )
+            } else {
+                false
+            }
+        })
+    })
+}
+
+fn check<'tcx>(cx: &LateContext<'tcx>, bounds: GenericBounds<'tcx>) {
+    if bounds.len() == 1 {
+        // Very often there is only a single bound, e.g. `impl Deref<..>`, in which case
+        // we can avoid doing a bunch of stuff unnecessarily; there will trivially be
+        // no duplicate bounds
+        return;
+    }
+
+    let supertraits = collect_supertrait_bounds(cx, bounds);
+
+    // Lint all bounds in the `impl Trait` type that we've previously also seen in the set of
+    // supertraits of each of the bounds.
+    // This involves some extra logic when generic arguments are present, since
+    // simply comparing trait `DefId`s won't be enough. We also need to compare the generics.
+    for (index, bound) in bounds.iter().enumerate() {
+        if let GenericBound::Trait(poly_trait, TraitBoundModifier::None) = bound
+            && let [.., path] = poly_trait.trait_ref.path.segments
+            && let implied_args = path.args.map_or([].as_slice(), |a| a.args)
+            && let implied_bindings = path.args.map_or([].as_slice(), |a| a.bindings)
+            && let Some(def_id) = poly_trait.trait_ref.path.res.opt_def_id()
+            && let Some(bound) = find_bound_in_supertraits(cx, def_id, implied_args, &supertraits)
+            // If the implied bound has a type binding that also exists in the implied-by trait,
+            // then we shouldn't lint. See #11880 for an example.
+            && let assocs = cx.tcx.associated_items(bound.trait_def_id)
+            && !implied_bindings.iter().any(|binding| {
+                assocs
+                    .filter_by_name_unhygienic(binding.ident.name)
+                    .next()
+                    .is_some_and(|assoc| assoc.kind == ty::AssocKind::Type)
+                })
+        {
+            emit_lint(cx, poly_trait, bounds, index, implied_bindings, bound);
         }
     }
 }
 
-impl LateLintPass<'_> for ImpliedBoundsInImpls {
-    fn check_fn(
-        &mut self,
-        cx: &LateContext<'_>,
-        _: FnKind<'_>,
-        decl: &FnDecl<'_>,
-        _: &Body<'_>,
-        _: Span,
-        _: LocalDefId,
-    ) {
-        check(cx, decl);
-    }
-    fn check_trait_item(&mut self, cx: &LateContext<'_>, item: &TraitItem<'_>) {
-        if let TraitItemKind::Fn(sig, ..) = &item.kind {
-            check(cx, sig.decl);
+impl<'tcx> LateLintPass<'tcx> for ImpliedBoundsInImpls {
+    fn check_generics(&mut self, cx: &LateContext<'tcx>, generics: &rustc_hir::Generics<'tcx>) {
+        for predicate in generics.predicates {
+            if let WherePredicate::BoundPredicate(predicate) = predicate
+                // In theory, the origin doesn't really matter,
+                // we *could* also lint on explicit where clauses written out by the user,
+                // not just impl trait desugared ones, but that contradicts with the lint name...
+                && let PredicateOrigin::ImplTrait = predicate.origin
+            {
+                check(cx, predicate.bounds);
+            }
         }
     }
-    fn check_impl_item(&mut self, cx: &LateContext<'_>, item: &ImplItem<'_>) {
-        if let ImplItemKind::Fn(sig, ..) = &item.kind {
-            check(cx, sig.decl);
+
+    fn check_ty(&mut self, cx: &LateContext<'_>, ty: &rustc_hir::Ty<'_>) {
+        if let TyKind::OpaqueDef(item_id, ..) = ty.kind
+            && let item = cx.tcx.hir().item(item_id)
+            && let ItemKind::OpaqueTy(opaque_ty) = item.kind
+        {
+            check(cx, opaque_ty.bounds);
         }
     }
 }

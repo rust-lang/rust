@@ -1,5 +1,5 @@
 error: unnecessary `>= y + 1` or `x - 1 >=`
-  --> $DIR/int_plus_one.rs:7:13
+  --> tests/ui/int_plus_one.rs:7:13
    |
 LL |     let _ = x >= y + 1;
    |             ^^^^^^^^^^ help: change it to: `x > y`
@@ -8,19 +8,19 @@ LL |     let _ = x >= y + 1;
    = help: to override `-D warnings` add `#[allow(clippy::int_plus_one)]`
 
 error: unnecessary `>= y + 1` or `x - 1 >=`
-  --> $DIR/int_plus_one.rs:8:13
+  --> tests/ui/int_plus_one.rs:8:13
    |
 LL |     let _ = y + 1 <= x;
    |             ^^^^^^^^^^ help: change it to: `y < x`
 
 error: unnecessary `>= y + 1` or `x - 1 >=`
-  --> $DIR/int_plus_one.rs:10:13
+  --> tests/ui/int_plus_one.rs:10:13
    |
 LL |     let _ = x - 1 >= y;
    |             ^^^^^^^^^^ help: change it to: `x > y`
 
 error: unnecessary `>= y + 1` or `x - 1 >=`
-  --> $DIR/int_plus_one.rs:11:13
+  --> tests/ui/int_plus_one.rs:11:13
    |
 LL |     let _ = y <= x - 1;
    |             ^^^^^^^^^^ help: change it to: `y < x`

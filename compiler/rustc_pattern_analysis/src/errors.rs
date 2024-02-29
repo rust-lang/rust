@@ -1,4 +1,4 @@
-use rustc_errors::{AddToDiagnostic, DiagnosticBuilder, EmissionGuarantee, SubdiagnosticMessageOp};
+use rustc_errors::{AddToDiagnostic, Diag, EmissionGuarantee, SubdiagnosticMessageOp};
 use rustc_macros::{LintDiagnostic, Subdiagnostic};
 use rustc_middle::thir::Pat;
 use rustc_middle::ty::Ty;
@@ -64,7 +64,7 @@ pub struct Overlap<'tcx> {
 impl<'tcx> AddToDiagnostic for Overlap<'tcx> {
     fn add_to_diagnostic_with<G: EmissionGuarantee, F: SubdiagnosticMessageOp<G>>(
         self,
-        diag: &mut DiagnosticBuilder<'_, G>,
+        diag: &mut Diag<'_, G>,
         _: F,
     ) {
         let Overlap { span, range } = self;

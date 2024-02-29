@@ -1,6 +1,6 @@
 use rustc_data_structures::captures::Captures;
 use rustc_data_structures::intern::Interned;
-use rustc_errors::{DiagnosticArgValue, IntoDiagnosticArg};
+use rustc_errors::{DiagArgValue, IntoDiagnosticArg};
 use rustc_hir::def_id::DefId;
 use rustc_hir::LangItem;
 use rustc_span::Span;
@@ -121,14 +121,14 @@ impl<'tcx> Predicate<'tcx> {
 }
 
 impl rustc_errors::IntoDiagnosticArg for Predicate<'_> {
-    fn into_diagnostic_arg(self) -> rustc_errors::DiagnosticArgValue {
-        rustc_errors::DiagnosticArgValue::Str(std::borrow::Cow::Owned(self.to_string()))
+    fn into_diagnostic_arg(self) -> rustc_errors::DiagArgValue {
+        rustc_errors::DiagArgValue::Str(std::borrow::Cow::Owned(self.to_string()))
     }
 }
 
 impl rustc_errors::IntoDiagnosticArg for Clause<'_> {
-    fn into_diagnostic_arg(self) -> rustc_errors::DiagnosticArgValue {
-        rustc_errors::DiagnosticArgValue::Str(std::borrow::Cow::Owned(self.to_string()))
+    fn into_diagnostic_arg(self) -> rustc_errors::DiagArgValue {
+        rustc_errors::DiagArgValue::Str(std::borrow::Cow::Owned(self.to_string()))
     }
 }
 
@@ -408,7 +408,7 @@ impl<'tcx> PolyTraitRef<'tcx> {
 }
 
 impl<'tcx> IntoDiagnosticArg for TraitRef<'tcx> {
-    fn into_diagnostic_arg(self) -> DiagnosticArgValue {
+    fn into_diagnostic_arg(self) -> DiagArgValue {
         self.to_string().into_diagnostic_arg()
     }
 }
@@ -454,7 +454,7 @@ impl<'tcx> ExistentialTraitRef<'tcx> {
 }
 
 impl<'tcx> IntoDiagnosticArg for ExistentialTraitRef<'tcx> {
-    fn into_diagnostic_arg(self) -> DiagnosticArgValue {
+    fn into_diagnostic_arg(self) -> DiagArgValue {
         self.to_string().into_diagnostic_arg()
     }
 }

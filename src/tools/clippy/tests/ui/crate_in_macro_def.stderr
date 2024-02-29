@@ -1,5 +1,5 @@
 error: `crate` references the macro call's crate
-  --> $DIR/crate_in_macro_def.rs:18:28
+  --> tests/ui/crate_in_macro_def.rs:18:28
    |
 LL |             println!("{}", crate::unhygienic::MESSAGE);
    |                            ^^^^^ help: to reference the macro definition's crate, use: `$crate`

@@ -1,7 +1,7 @@
 use std::fmt::{self, Write};
 use std::num::NonZero;
 
-use rustc_errors::{DiagnosticBuilder, DiagnosticMessage, Level};
+use rustc_errors::{Diag, DiagnosticMessage, Level};
 use rustc_span::{SpanData, Symbol, DUMMY_SP};
 use rustc_target::abi::{Align, Size};
 
@@ -100,7 +100,7 @@ impl MachineStopType for TerminationInfo {
     }
     fn add_args(
         self: Box<Self>,
-        _: &mut dyn FnMut(std::borrow::Cow<'static, str>, rustc_errors::DiagnosticArgValue),
+        _: &mut dyn FnMut(std::borrow::Cow<'static, str>, rustc_errors::DiagArgValue),
     ) {
     }
 }
@@ -459,7 +459,7 @@ pub fn report_msg<'tcx>(
         DiagLevel::Warning => Level::Warning,
         DiagLevel::Note => Level::Note,
     };
-    let mut err = DiagnosticBuilder::<()>::new(sess.dcx(), level, title);
+    let mut err = Diag::<()>::new(sess.dcx(), level, title);
     err.span(span);
 
     // Show main message.

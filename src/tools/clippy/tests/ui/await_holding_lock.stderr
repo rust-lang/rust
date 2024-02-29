@@ -1,12 +1,12 @@
 error: this `MutexGuard` is held across an `await` point
-  --> $DIR/await_holding_lock.rs:9:13
+  --> tests/ui/await_holding_lock.rs:9:13
    |
 LL |         let guard = x.lock().unwrap();
    |             ^^^^^
    |
    = help: consider using an async-aware `Mutex` type or ensuring the `MutexGuard` is dropped before calling await
 note: these are all the `await` points this lock is held through
-  --> $DIR/await_holding_lock.rs:11:15
+  --> tests/ui/await_holding_lock.rs:11:15
    |
 LL |         baz().await
    |               ^^^^^
@@ -14,40 +14,40 @@ LL |         baz().await
    = help: to override `-D warnings` add `#[allow(clippy::await_holding_lock)]`
 
 error: this `MutexGuard` is held across an `await` point
-  --> $DIR/await_holding_lock.rs:25:13
+  --> tests/ui/await_holding_lock.rs:25:13
    |
 LL |         let guard = x.read().unwrap();
    |             ^^^^^
    |
    = help: consider using an async-aware `Mutex` type or ensuring the `MutexGuard` is dropped before calling await
 note: these are all the `await` points this lock is held through
-  --> $DIR/await_holding_lock.rs:27:15
+  --> tests/ui/await_holding_lock.rs:27:15
    |
 LL |         baz().await
    |               ^^^^^
 
 error: this `MutexGuard` is held across an `await` point
-  --> $DIR/await_holding_lock.rs:31:13
+  --> tests/ui/await_holding_lock.rs:31:13
    |
 LL |         let mut guard = x.write().unwrap();
    |             ^^^^^^^^^
    |
    = help: consider using an async-aware `Mutex` type or ensuring the `MutexGuard` is dropped before calling await
 note: these are all the `await` points this lock is held through
-  --> $DIR/await_holding_lock.rs:33:15
+  --> tests/ui/await_holding_lock.rs:33:15
    |
 LL |         baz().await
    |               ^^^^^
 
 error: this `MutexGuard` is held across an `await` point
-  --> $DIR/await_holding_lock.rs:53:13
+  --> tests/ui/await_holding_lock.rs:53:13
    |
 LL |         let guard = x.lock().unwrap();
    |             ^^^^^
    |
    = help: consider using an async-aware `Mutex` type or ensuring the `MutexGuard` is dropped before calling await
 note: these are all the `await` points this lock is held through
-  --> $DIR/await_holding_lock.rs:56:28
+  --> tests/ui/await_holding_lock.rs:56:28
    |
 LL |         let second = baz().await;
    |                            ^^^^^
@@ -56,79 +56,79 @@ LL |         let third = baz().await;
    |                           ^^^^^
 
 error: this `MutexGuard` is held across an `await` point
-  --> $DIR/await_holding_lock.rs:67:17
+  --> tests/ui/await_holding_lock.rs:67:17
    |
 LL |             let guard = x.lock().unwrap();
    |                 ^^^^^
    |
    = help: consider using an async-aware `Mutex` type or ensuring the `MutexGuard` is dropped before calling await
 note: these are all the `await` points this lock is held through
-  --> $DIR/await_holding_lock.rs:69:19
+  --> tests/ui/await_holding_lock.rs:69:19
    |
 LL |             baz().await
    |                   ^^^^^
 
 error: this `MutexGuard` is held across an `await` point
-  --> $DIR/await_holding_lock.rs:80:17
+  --> tests/ui/await_holding_lock.rs:80:17
    |
 LL |             let guard = x.lock().unwrap();
    |                 ^^^^^
    |
    = help: consider using an async-aware `Mutex` type or ensuring the `MutexGuard` is dropped before calling await
 note: these are all the `await` points this lock is held through
-  --> $DIR/await_holding_lock.rs:82:19
+  --> tests/ui/await_holding_lock.rs:82:19
    |
 LL |             baz().await
    |                   ^^^^^
 
 error: this `MutexGuard` is held across an `await` point
-  --> $DIR/await_holding_lock.rs:93:13
+  --> tests/ui/await_holding_lock.rs:93:13
    |
 LL |         let guard = x.lock();
    |             ^^^^^
    |
    = help: consider using an async-aware `Mutex` type or ensuring the `MutexGuard` is dropped before calling await
 note: these are all the `await` points this lock is held through
-  --> $DIR/await_holding_lock.rs:95:15
+  --> tests/ui/await_holding_lock.rs:95:15
    |
 LL |         baz().await
    |               ^^^^^
 
 error: this `MutexGuard` is held across an `await` point
-  --> $DIR/await_holding_lock.rs:109:13
+  --> tests/ui/await_holding_lock.rs:109:13
    |
 LL |         let guard = x.read();
    |             ^^^^^
    |
    = help: consider using an async-aware `Mutex` type or ensuring the `MutexGuard` is dropped before calling await
 note: these are all the `await` points this lock is held through
-  --> $DIR/await_holding_lock.rs:111:15
+  --> tests/ui/await_holding_lock.rs:111:15
    |
 LL |         baz().await
    |               ^^^^^
 
 error: this `MutexGuard` is held across an `await` point
-  --> $DIR/await_holding_lock.rs:115:13
+  --> tests/ui/await_holding_lock.rs:115:13
    |
 LL |         let mut guard = x.write();
    |             ^^^^^^^^^
    |
    = help: consider using an async-aware `Mutex` type or ensuring the `MutexGuard` is dropped before calling await
 note: these are all the `await` points this lock is held through
-  --> $DIR/await_holding_lock.rs:117:15
+  --> tests/ui/await_holding_lock.rs:117:15
    |
 LL |         baz().await
    |               ^^^^^
 
 error: this `MutexGuard` is held across an `await` point
-  --> $DIR/await_holding_lock.rs:137:13
+  --> tests/ui/await_holding_lock.rs:137:13
    |
 LL |         let guard = x.lock();
    |             ^^^^^
    |
    = help: consider using an async-aware `Mutex` type or ensuring the `MutexGuard` is dropped before calling await
 note: these are all the `await` points this lock is held through
-  --> $DIR/await_holding_lock.rs:140:28
+  --> tests/ui/await_holding_lock.rs:140:28
    |
 LL |         let second = baz().await;
    |                            ^^^^^
@@ -137,40 +137,40 @@ LL |         let third = baz().await;
    |                           ^^^^^
 
 error: this `MutexGuard` is held across an `await` point
-  --> $DIR/await_holding_lock.rs:151:17
+  --> tests/ui/await_holding_lock.rs:151:17
    |
 LL |             let guard = x.lock();
    |                 ^^^^^
    |
    = help: consider using an async-aware `Mutex` type or ensuring the `MutexGuard` is dropped before calling await
 note: these are all the `await` points this lock is held through
-  --> $DIR/await_holding_lock.rs:153:19
+  --> tests/ui/await_holding_lock.rs:153:19
    |
 LL |             baz().await
    |                   ^^^^^
 
 error: this `MutexGuard` is held across an `await` point
-  --> $DIR/await_holding_lock.rs:164:17
+  --> tests/ui/await_holding_lock.rs:164:17
    |
 LL |             let guard = x.lock();
    |                 ^^^^^
    |
    = help: consider using an async-aware `Mutex` type or ensuring the `MutexGuard` is dropped before calling await
 note: these are all the `await` points this lock is held through
-  --> $DIR/await_holding_lock.rs:166:19
+  --> tests/ui/await_holding_lock.rs:166:19
    |
 LL |             baz().await
    |                   ^^^^^
 
 error: this `MutexGuard` is held across an `await` point
-  --> $DIR/await_holding_lock.rs:185:9
+  --> tests/ui/await_holding_lock.rs:185:9
    |
 LL |     let mut guard = x.lock().unwrap();
    |         ^^^^^^^^^
    |
    = help: consider using an async-aware `Mutex` type or ensuring the `MutexGuard` is dropped before calling await
 note: these are all the `await` points this lock is held through
-  --> $DIR/await_holding_lock.rs:189:11
+  --> tests/ui/await_holding_lock.rs:189:11
    |
 LL |     baz().await;
    |           ^^^^^

@@ -20,7 +20,7 @@ use rustc_ast::util::classify;
 use rustc_ast::{AttrStyle, AttrVec, LocalKind, MacCall, MacCallStmt, MacStmtStyle};
 use rustc_ast::{Block, BlockCheckMode, Expr, ExprKind, HasAttrs, Local, Stmt};
 use rustc_ast::{StmtKind, DUMMY_NODE_ID};
-use rustc_errors::{Applicability, DiagnosticBuilder, PResult};
+use rustc_errors::{Applicability, Diag, PResult};
 use rustc_span::symbol::{kw, sym, Ident};
 use rustc_span::{BytePos, ErrorGuaranteed, Span};
 
@@ -230,8 +230,7 @@ impl<'a> Parser<'a> {
     /// Also error if the previous token was a doc comment.
     fn error_outer_attrs(&self, attrs: AttrWrapper) {
         if !attrs.is_empty()
-            && let attrs = attrs.take_for_recovery(self.sess)
-            && let attrs @ [.., last] = &*attrs
+            && let attrs @ [.., last] = &*attrs.take_for_recovery(self.sess)
         {
             if last.is_doc_comment() {
                 self.dcx().emit_err(errors::DocCommentDoesNotDocumentAnything {
@@ -448,10 +447,7 @@ impl<'a> Parser<'a> {
         Ok(block)
     }
 
-    fn error_block_no_opening_brace_msg(
-        &mut self,
-        msg: Cow<'static, str>,
-    ) -> DiagnosticBuilder<'a> {
+    fn error_block_no_opening_brace_msg(&mut self, msg: Cow<'static, str>) -> Diag<'a> {
         let sp = self.token.span;
         let mut e = self.dcx().struct_span_err(sp, msg);
         let do_not_suggest_help = self.token.is_keyword(kw::In) || self.token == token::Colon;

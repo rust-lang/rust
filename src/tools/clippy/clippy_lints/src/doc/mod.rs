@@ -19,7 +19,8 @@ use rustc_middle::hir::nested_filter;
 use rustc_middle::lint::in_external_macro;
 use rustc_middle::ty;
 use rustc_resolve::rustdoc::{
-    add_doc_fragment, attrs_to_doc_fragments, main_body_opts, source_span_for_markdown_range, DocFragment,
+    add_doc_fragment, attrs_to_doc_fragments, main_body_opts, source_span_for_markdown_range, span_of_fragments,
+    DocFragment,
 };
 use rustc_session::impl_lint_pass;
 use rustc_span::edition::Edition;
@@ -338,6 +339,30 @@ declare_clippy_lint! {
     "suspicious usage of (outer) doc comments"
 }
 
+declare_clippy_lint! {
+    /// ### What it does
+    /// Detects documentation that is empty.
+    /// ### Why is this bad?
+    /// Empty docs clutter code without adding value, reducing readability and maintainability.
+    /// ### Example
+    /// ```no_run
+    /// ///
+    /// fn returns_true() -> bool {
+    ///     true
+    /// }
+    /// ```
+    /// Use instead:
+    /// ```no_run
+    /// fn returns_true() -> bool {
+    ///     true
+    /// }
+    /// ```
+    #[clippy::version = "1.78.0"]
+    pub EMPTY_DOCS,
+    suspicious,
+    "docstrings exist but documentation is empty"
+}
+
 #[derive(Clone)]
 pub struct Documentation {
     valid_idents: FxHashSet<String>,
@@ -364,7 +389,8 @@ impl_lint_pass!(Documentation => [
     NEEDLESS_DOCTEST_MAIN,
     TEST_ATTR_IN_DOCTEST,
     UNNECESSARY_SAFETY_DOC,
-    SUSPICIOUS_DOC_COMMENTS
+    SUSPICIOUS_DOC_COMMENTS,
+    EMPTY_DOCS,
 ]);
 
 impl<'tcx> LateLintPass<'tcx> for Documentation {
@@ -373,11 +399,22 @@ impl<'tcx> LateLintPass<'tcx> for Documentation {
         check_attrs(cx, &self.valid_idents, attrs);
     }
 
+    fn check_variant(&mut self, cx: &LateContext<'tcx>, variant: &'tcx hir::Variant<'tcx>) {
+        let attrs = cx.tcx.hir().attrs(variant.hir_id);
+        check_attrs(cx, &self.valid_idents, attrs);
+    }
+
+    fn check_field_def(&mut self, cx: &LateContext<'tcx>, variant: &'tcx hir::FieldDef<'tcx>) {
+        let attrs = cx.tcx.hir().attrs(variant.hir_id);
+        check_attrs(cx, &self.valid_idents, attrs);
+    }
+
     fn check_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx hir::Item<'_>) {
         let attrs = cx.tcx.hir().attrs(item.hir_id());
         let Some(headers) = check_attrs(cx, &self.valid_idents, attrs) else {
             return;
         };
+
         match item.kind {
             hir::ItemKind::Fn(ref sig, _, body_id) => {
                 if !(is_entrypoint_fn(cx, item.owner_id.to_def_id()) || in_external_macro(cx.tcx.sess, item.span)) {
@@ -502,13 +539,23 @@ fn check_attrs(cx: &LateContext<'_>, valid_idents: &FxHashSet<String>, attrs: &[
     suspicious_doc_comments::check(cx, attrs);
 
     let (fragments, _) = attrs_to_doc_fragments(attrs.iter().map(|attr| (attr, None)), true);
-    let mut doc = String::new();
-    for fragment in &fragments {
-        add_doc_fragment(&mut doc, fragment);
-    }
+    let mut doc = fragments.iter().fold(String::new(), |mut acc, fragment| {
+        add_doc_fragment(&mut acc, fragment);
+        acc
+    });
     doc.pop();
 
-    if doc.is_empty() {
+    if doc.trim().is_empty() {
+        if let Some(span) = span_of_fragments(&fragments) {
+            span_lint_and_help(
+                cx,
+                EMPTY_DOCS,
+                span,
+                "empty doc comment",
+                None,
+                "consider removing or filling it",
+            );
+        }
         return Some(DocHeaders::default());
     }
 

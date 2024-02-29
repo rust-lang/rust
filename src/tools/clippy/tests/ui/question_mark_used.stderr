@@ -1,5 +1,5 @@
 error: question mark operator was used
-  --> $DIR/question_mark_used.rs:11:5
+  --> tests/ui/question_mark_used.rs:11:5
    |
 LL |     other_function()?;
    |     ^^^^^^^^^^^^^^^^^

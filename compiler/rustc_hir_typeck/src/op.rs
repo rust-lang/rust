@@ -5,7 +5,7 @@ use super::FnCtxt;
 use crate::Expectation;
 use rustc_ast as ast;
 use rustc_data_structures::packed::Pu128;
-use rustc_errors::{codes::*, struct_span_code_err, Applicability, DiagnosticBuilder};
+use rustc_errors::{codes::*, struct_span_code_err, Applicability, Diag};
 use rustc_hir as hir;
 use rustc_infer::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
 use rustc_infer::traits::ObligationCauseCode;
@@ -390,37 +390,36 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     err.downgrade_to_delayed_bug();
                 }
 
-                let suggest_deref_binop =
-                    |err: &mut DiagnosticBuilder<'_, _>, lhs_deref_ty: Ty<'tcx>| {
-                        if self
-                            .lookup_op_method(
-                                (lhs_expr, lhs_deref_ty),
-                                Some((rhs_expr, rhs_ty)),
-                                Op::Binary(op, is_assign),
-                                expected,
-                            )
-                            .is_ok()
-                        {
-                            let msg = format!(
-                                "`{}{}` can be used on `{}` if you dereference the left-hand side",
-                                op.node.as_str(),
-                                match is_assign {
-                                    IsAssign::Yes => "=",
-                                    IsAssign::No => "",
-                                },
-                                lhs_deref_ty,
-                            );
-                            err.span_suggestion_verbose(
-                                lhs_expr.span.shrink_to_lo(),
-                                msg,
-                                "*",
-                                rustc_errors::Applicability::MachineApplicable,
-                            );
-                        }
-                    };
+                let suggest_deref_binop = |err: &mut Diag<'_, _>, lhs_deref_ty: Ty<'tcx>| {
+                    if self
+                        .lookup_op_method(
+                            (lhs_expr, lhs_deref_ty),
+                            Some((rhs_expr, rhs_ty)),
+                            Op::Binary(op, is_assign),
+                            expected,
+                        )
+                        .is_ok()
+                    {
+                        let msg = format!(
+                            "`{}{}` can be used on `{}` if you dereference the left-hand side",
+                            op.node.as_str(),
+                            match is_assign {
+                                IsAssign::Yes => "=",
+                                IsAssign::No => "",
+                            },
+                            lhs_deref_ty,
+                        );
+                        err.span_suggestion_verbose(
+                            lhs_expr.span.shrink_to_lo(),
+                            msg,
+                            "*",
+                            rustc_errors::Applicability::MachineApplicable,
+                        );
+                    }
+                };
 
                 let suggest_different_borrow =
-                    |err: &mut DiagnosticBuilder<'_, _>,
+                    |err: &mut Diag<'_, _>,
                      lhs_adjusted_ty,
                      lhs_new_mutbl: Option<ast::Mutability>,
                      rhs_adjusted_ty,
@@ -695,7 +694,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         rhs_expr: &'tcx hir::Expr<'tcx>,
         lhs_ty: Ty<'tcx>,
         rhs_ty: Ty<'tcx>,
-        err: &mut DiagnosticBuilder<'_>,
+        err: &mut Diag<'_>,
         is_assign: IsAssign,
         op: hir::BinOp,
     ) -> bool {

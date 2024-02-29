@@ -4,7 +4,7 @@ pub fn target() -> Target {
     let mut base = base::netbsd::opts();
     base.cpu = "pentium".into();
     base.max_atomic_width = Some(64);
-    base.stack_probes = StackProbeType::Call;
+    base.stack_probes = StackProbeType::Inline;
 
     Target {
         llvm_target: "i586-unknown-netbsdelf".into(),

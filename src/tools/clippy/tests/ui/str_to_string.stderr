@@ -1,5 +1,5 @@
 error: `to_string()` called on a `&str`
-  --> $DIR/str_to_string.rs:4:17
+  --> tests/ui/str_to_string.rs:4:17
    |
 LL |     let hello = "hello world".to_string();
    |                 ^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -9,7 +9,7 @@ LL |     let hello = "hello world".to_string();
    = help: to override `-D warnings` add `#[allow(clippy::str_to_string)]`
 
 error: `to_string()` called on a `&str`
-  --> $DIR/str_to_string.rs:7:5
+  --> tests/ui/str_to_string.rs:7:5
    |
 LL |     msg.to_string();
    |     ^^^^^^^^^^^^^^^

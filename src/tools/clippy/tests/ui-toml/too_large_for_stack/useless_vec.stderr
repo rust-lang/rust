@@ -1,5 +1,5 @@
 error: useless use of `vec!`
-  --> $DIR/useless_vec.rs:4:13
+  --> tests/ui-toml/too_large_for_stack/useless_vec.rs:4:13
    |
 LL |     let x = vec![0u8; 500];
    |             ^^^^^^^^^^^^^^ help: you can use an array directly: `[0u8; 500]`

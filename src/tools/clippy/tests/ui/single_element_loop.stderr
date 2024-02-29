@@ -1,5 +1,5 @@
 error: for loop over a single element
-  --> $DIR/single_element_loop.rs:8:5
+  --> tests/ui/single_element_loop.rs:8:5
    |
 LL | /     for item in &[item1] {
 LL | |         dbg!(item);
@@ -17,7 +17,7 @@ LL +     }
    |
 
 error: for loop over a single element
-  --> $DIR/single_element_loop.rs:12:5
+  --> tests/ui/single_element_loop.rs:12:5
    |
 LL | /     for item in [item1].iter() {
 LL | |         dbg!(item);
@@ -33,31 +33,31 @@ LL +     }
    |
 
 error: this loops only once with `item` being `0..5`
-  --> $DIR/single_element_loop.rs:16:17
+  --> tests/ui/single_element_loop.rs:16:17
    |
 LL |     for item in &[0..5] {
    |                 ^^^^^^^ help: did you mean to iterate over the range instead?: `0..5`
 
 error: this loops only once with `item` being `0..5`
-  --> $DIR/single_element_loop.rs:20:17
+  --> tests/ui/single_element_loop.rs:20:17
    |
 LL |     for item in [0..5].iter_mut() {
    |                 ^^^^^^^^^^^^^^^^^ help: did you mean to iterate over the range instead?: `0..5`
 
 error: this loops only once with `item` being `0..5`
-  --> $DIR/single_element_loop.rs:24:17
+  --> tests/ui/single_element_loop.rs:24:17
    |
 LL |     for item in [0..5] {
    |                 ^^^^^^ help: did you mean to iterate over the range instead?: `0..5`
 
 error: this loops only once with `item` being `0..5`
-  --> $DIR/single_element_loop.rs:28:17
+  --> tests/ui/single_element_loop.rs:28:17
    |
 LL |     for item in [0..5].into_iter() {
    |                 ^^^^^^^^^^^^^^^^^^ help: did you mean to iterate over the range instead?: `0..5`
 
 error: for loop over a single element
-  --> $DIR/single_element_loop.rs:47:5
+  --> tests/ui/single_element_loop.rs:47:5
    |
 LL | /     for _ in [42] {
 LL | |         let _f = |n: u32| {

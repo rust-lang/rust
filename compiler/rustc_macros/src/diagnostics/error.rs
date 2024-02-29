@@ -14,7 +14,7 @@ impl DiagnosticDeriveError {
         match self {
             DiagnosticDeriveError::SynError(e) => e.to_compile_error(),
             DiagnosticDeriveError::ErrorHandled => {
-                // Return ! to avoid having to create a blank DiagnosticBuilder to return when an
+                // Return ! to avoid having to create a blank Diag to return when an
                 // error has already been emitted to the compiler.
                 quote! {
                     { unreachable!(); }

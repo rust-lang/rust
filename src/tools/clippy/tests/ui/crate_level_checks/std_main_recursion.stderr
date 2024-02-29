@@ -1,5 +1,5 @@
 error: recursing into entrypoint `main`
-  --> $DIR/std_main_recursion.rs:5:5
+  --> tests/ui/crate_level_checks/std_main_recursion.rs:5:5
    |
 LL |     main();
    |     ^^^^

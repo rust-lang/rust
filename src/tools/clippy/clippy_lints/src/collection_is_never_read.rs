@@ -1,7 +1,7 @@
 use clippy_utils::diagnostics::span_lint;
 use clippy_utils::ty::{is_type_diagnostic_item, is_type_lang_item};
 use clippy_utils::visitors::for_each_expr_with_closures;
-use clippy_utils::{get_enclosing_block, get_parent_node, path_to_local_id};
+use clippy_utils::{get_enclosing_block, path_to_local_id};
 use core::ops::ControlFlow;
 use rustc_hir::{Block, ExprKind, HirId, LangItem, Local, Node, PatKind};
 use rustc_lint::{LateContext, LateLintPass};
@@ -94,7 +94,7 @@ fn has_no_read_access<'tcx>(cx: &LateContext<'tcx>, id: HirId, block: &'tcx Bloc
         // `id` appearing in the left-hand side of an assignment is not a read access:
         //
         // id = ...; // Not reading `id`.
-        if let Some(Node::Expr(parent)) = get_parent_node(cx.tcx, expr.hir_id)
+        if let Node::Expr(parent) = cx.tcx.parent_hir_node(expr.hir_id)
             && let ExprKind::Assign(lhs, ..) = parent.kind
             && path_to_local_id(lhs, id)
         {
@@ -108,7 +108,7 @@ fn has_no_read_access<'tcx>(cx: &LateContext<'tcx>, id: HirId, block: &'tcx Bloc
         // Only assuming this for "official" methods defined on the type. For methods defined in extension
         // traits (identified as local, based on the orphan rule), pessimistically assume that they might
         // have side effects, so consider them a read.
-        if let Some(Node::Expr(parent)) = get_parent_node(cx.tcx, expr.hir_id)
+        if let Node::Expr(parent) = cx.tcx.parent_hir_node(expr.hir_id)
             && let ExprKind::MethodCall(_, receiver, _, _) = parent.kind
             && path_to_local_id(receiver, id)
             && let Some(method_def_id) = cx.typeck_results().type_dependent_def_id(parent.hir_id)
@@ -117,7 +117,7 @@ fn has_no_read_access<'tcx>(cx: &LateContext<'tcx>, id: HirId, block: &'tcx Bloc
             // The method call is a statement, so the return value is not used. That's not a read access:
             //
             // id.foo(args);
-            if let Some(Node::Stmt(..)) = get_parent_node(cx.tcx, parent.hir_id) {
+            if let Node::Stmt(..) = cx.tcx.parent_hir_node(parent.hir_id) {
                 return ControlFlow::Continue(());
             }
 

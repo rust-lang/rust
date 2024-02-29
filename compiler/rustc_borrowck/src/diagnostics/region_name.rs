@@ -5,7 +5,7 @@ use std::fmt::{self, Display};
 use std::iter;
 
 use rustc_data_structures::fx::IndexEntry;
-use rustc_errors::DiagnosticBuilder;
+use rustc_errors::Diag;
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
 use rustc_middle::ty::print::RegionHighlightMode;
@@ -106,7 +106,7 @@ impl RegionName {
         }
     }
 
-    pub(crate) fn highlight_region_name(&self, diag: &mut DiagnosticBuilder<'_>) {
+    pub(crate) fn highlight_region_name(&self, diag: &mut Diag<'_>) {
         match &self.source {
             RegionNameSource::NamedLateParamRegion(span)
             | RegionNameSource::NamedEarlyParamRegion(span) => {
@@ -192,7 +192,7 @@ impl Display for RegionName {
 }
 
 impl rustc_errors::IntoDiagnosticArg for RegionName {
-    fn into_diagnostic_arg(self) -> rustc_errors::DiagnosticArgValue {
+    fn into_diagnostic_arg(self) -> rustc_errors::DiagArgValue {
         self.to_string().into_diagnostic_arg()
     }
 }

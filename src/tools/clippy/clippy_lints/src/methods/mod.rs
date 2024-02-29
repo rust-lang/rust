@@ -110,6 +110,7 @@ mod unit_hash;
 mod unnecessary_fallible_conversions;
 mod unnecessary_filter_map;
 mod unnecessary_fold;
+mod unnecessary_get_then_check;
 mod unnecessary_iter_cloned;
 mod unnecessary_join;
 mod unnecessary_lazy_eval;
@@ -3419,11 +3420,12 @@ declare_clippy_lint! {
 declare_clippy_lint! {
     /// ### What it does
     /// Looks for calls to [`Stdin::read_line`] to read a line from the standard input
-    /// into a string, then later attempting to parse this string into a type without first trimming it, which will
-    /// always fail because the string has a trailing newline in it.
+    /// into a string, then later attempting to use that string for an operation that will never
+    /// work for strings with a trailing newline character in it (e.g. parsing into a `i32`).
     ///
     /// ### Why is this bad?
-    /// The `.parse()` call will always fail.
+    /// The operation will always fail at runtime no matter what the user enters, thus
+    /// making it a useless operation.
     ///
     /// ### Example
     /// ```rust,ignore
@@ -4011,6 +4013,35 @@ declare_clippy_lint! {
     r#"creating a `CStr` through functions when `c""` literals can be used"#
 }
 
+declare_clippy_lint! {
+    /// ### What it does
+    /// Checks the usage of `.get().is_some()` or `.get().is_none()` on std map types.
+    ///
+    /// ### Why is this bad?
+    /// It can be done in one call with `.contains()`/`.contains_keys()`.
+    ///
+    /// ### Example
+    /// ```no_run
+    /// # use std::collections::HashSet;
+    /// let s: HashSet<String> = HashSet::new();
+    /// if s.get("a").is_some() {
+    ///     // code
+    /// }
+    /// ```
+    /// Use instead:
+    /// ```no_run
+    /// # use std::collections::HashSet;
+    /// let s: HashSet<String> = HashSet::new();
+    /// if s.contains("a") {
+    ///     // code
+    /// }
+    /// ```
+    #[clippy::version = "1.78.0"]
+    pub UNNECESSARY_GET_THEN_CHECK,
+    suspicious,
+    "calling `.get().is_some()` or `.get().is_none()` instead of `.contains()` or `.contains_key()`"
+}
+
 pub struct Methods {
     avoid_breaking_exported_api: bool,
     msrv: Msrv,
@@ -4171,6 +4202,7 @@ impl_lint_pass!(Methods => [
     OPTION_AS_REF_CLONED,
     UNNECESSARY_RESULT_MAP_OR_ELSE,
     MANUAL_C_STR_LITERALS,
+    UNNECESSARY_GET_THEN_CHECK,
 ]);
 
 /// Extracts a method call name, args, and `Span` of the method name.
@@ -4587,8 +4619,8 @@ impl Methods {
                 },
                 ("is_file", []) => filetype_is_file::check(cx, expr, recv),
                 ("is_digit", [radix]) => is_digit_ascii_radix::check(cx, expr, recv, radix, &self.msrv),
-                ("is_none", []) => check_is_some_is_none(cx, expr, recv, false),
-                ("is_some", []) => check_is_some_is_none(cx, expr, recv, true),
+                ("is_none", []) => check_is_some_is_none(cx, expr, recv, call_span, false),
+                ("is_some", []) => check_is_some_is_none(cx, expr, recv, call_span, true),
                 ("iter" | "iter_mut" | "into_iter", []) => {
                     iter_on_single_or_empty_collections::check(cx, expr, name, recv);
                 },
@@ -4899,9 +4931,15 @@ impl Methods {
     }
 }
 
-fn check_is_some_is_none(cx: &LateContext<'_>, expr: &Expr<'_>, recv: &Expr<'_>, is_some: bool) {
-    if let Some((name @ ("find" | "position" | "rposition"), f_recv, [arg], span, _)) = method_call(recv) {
-        search_is_some::check(cx, expr, name, is_some, f_recv, arg, recv, span);
+fn check_is_some_is_none(cx: &LateContext<'_>, expr: &Expr<'_>, recv: &Expr<'_>, call_span: Span, is_some: bool) {
+    match method_call(recv) {
+        Some((name @ ("find" | "position" | "rposition"), f_recv, [arg], span, _)) => {
+            search_is_some::check(cx, expr, name, is_some, f_recv, arg, recv, span);
+        },
+        Some(("get", f_recv, [arg], _, _)) => {
+            unnecessary_get_then_check::check(cx, call_span, recv, f_recv, arg, is_some);
+        },
+        _ => {},
     }
 }
 

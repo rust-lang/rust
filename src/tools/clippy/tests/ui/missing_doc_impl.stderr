@@ -1,5 +1,5 @@
 error: missing documentation for a struct
-  --> $DIR/missing_doc_impl.rs:13:1
+  --> tests/ui/missing_doc_impl.rs:13:1
    |
 LL | / struct Foo {
 LL | |     a: isize,
@@ -11,25 +11,25 @@ LL | | }
    = help: to override `-D warnings` add `#[allow(clippy::missing_docs_in_private_items)]`
 
 error: missing documentation for a struct field
-  --> $DIR/missing_doc_impl.rs:14:5
+  --> tests/ui/missing_doc_impl.rs:14:5
    |
 LL |     a: isize,
    |     ^^^^^^^^
 
 error: missing documentation for a struct field
-  --> $DIR/missing_doc_impl.rs:15:5
+  --> tests/ui/missing_doc_impl.rs:15:5
    |
 LL |     b: isize,
    |     ^^^^^^^^
 
 error: missing documentation for a struct field
-  --> $DIR/missing_doc_impl.rs:20:5
+  --> tests/ui/missing_doc_impl.rs:20:5
    |
 LL |     b: isize,
    |     ^^^^^^^^
 
 error: missing documentation for an associated function
-  --> $DIR/missing_doc_impl.rs:67:5
+  --> tests/ui/missing_doc_impl.rs:67:5
    |
 LL | /     pub fn new() -> Self {
 LL | |         Foo { a: 0, b: 0 }
@@ -37,13 +37,13 @@ LL | |     }
    | |_____^
 
 error: missing documentation for an associated function
-  --> $DIR/missing_doc_impl.rs:70:5
+  --> tests/ui/missing_doc_impl.rs:70:5
    |
 LL |     fn bar() {}
    |     ^^^^^^^^^^^
 
 error: missing documentation for an associated function
-  --> $DIR/missing_doc_impl.rs:78:5
+  --> tests/ui/missing_doc_impl.rs:78:5
    |
 LL | /     fn foo2() -> u32 {
 LL | |         1

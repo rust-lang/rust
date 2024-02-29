@@ -3,7 +3,9 @@ use super::unnecessary_iter_cloned::{self, is_into_iter};
 use clippy_config::msrvs::{self, Msrv};
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::source::snippet_opt;
-use clippy_utils::ty::{get_iterator_item_ty, implements_trait, is_copy, is_type_lang_item, peel_mid_ty_refs};
+use clippy_utils::ty::{
+    get_iterator_item_ty, implements_trait, is_copy, is_type_diagnostic_item, is_type_lang_item, peel_mid_ty_refs,
+};
 use clippy_utils::visitors::find_all_ret_expressions;
 use clippy_utils::{fn_def_id, get_parent_expr, is_diag_item_method, is_diag_trait_item, return_ty};
 use rustc_errors::Applicability;
@@ -16,7 +18,8 @@ use rustc_lint::LateContext;
 use rustc_middle::mir::Mutability;
 use rustc_middle::ty::adjustment::{Adjust, Adjustment, OverloadedDeref};
 use rustc_middle::ty::{
-    self, ClauseKind, GenericArg, GenericArgKind, GenericArgsRef, ParamTy, ProjectionPredicate, TraitPredicate, Ty,
+    self, ClauseKind, GenericArg, GenericArgKind, GenericArgsRef, ImplPolarity, ParamTy, ProjectionPredicate,
+    TraitPredicate, Ty,
 };
 use rustc_span::{sym, Symbol};
 use rustc_trait_selection::traits::query::evaluate_obligation::InferCtxtExt as _;
@@ -53,6 +56,8 @@ pub fn check<'tcx>(
             }
             check_other_call_arg(cx, expr, method_name, receiver);
         }
+    } else {
+        check_borrow_predicate(cx, expr);
     }
 }
 
@@ -588,5 +593,94 @@ fn is_to_string_on_string_like<'a>(
         true
     } else {
         false
+    }
+}
+
+fn is_a_std_map_type(cx: &LateContext<'_>, ty: Ty<'_>) -> bool {
+    is_type_diagnostic_item(cx, ty, sym::HashSet)
+        || is_type_diagnostic_item(cx, ty, sym::HashMap)
+        || is_type_diagnostic_item(cx, ty, sym::BTreeMap)
+        || is_type_diagnostic_item(cx, ty, sym::BTreeSet)
+}
+
+fn is_str_and_string(cx: &LateContext<'_>, arg_ty: Ty<'_>, original_arg_ty: Ty<'_>) -> bool {
+    original_arg_ty.is_str() && is_type_lang_item(cx, arg_ty, LangItem::String)
+}
+
+fn is_slice_and_vec(cx: &LateContext<'_>, arg_ty: Ty<'_>, original_arg_ty: Ty<'_>) -> bool {
+    (original_arg_ty.is_slice() || original_arg_ty.is_array() || original_arg_ty.is_array_slice())
+        && is_type_diagnostic_item(cx, arg_ty, sym::Vec)
+}
+
+// This function will check the following:
+// 1. The argument is a non-mutable reference.
+// 2. It calls `to_owned()`, `to_string()` or `to_vec()`.
+// 3. That the method is called on `String` or on `Vec` (only types supported for the moment).
+fn check_if_applicable_to_argument<'tcx>(cx: &LateContext<'tcx>, arg: &Expr<'tcx>) {
+    if let ExprKind::AddrOf(BorrowKind::Ref, Mutability::Not, expr) = arg.kind
+        && let ExprKind::MethodCall(method_path, caller, &[], _) = expr.kind
+        && let Some(method_def_id) = cx.typeck_results().type_dependent_def_id(expr.hir_id)
+        && let method_name = method_path.ident.name.as_str()
+        && match method_name {
+            "to_owned" => cx.tcx.is_diagnostic_item(sym::to_owned_method, method_def_id),
+            "to_string" => cx.tcx.is_diagnostic_item(sym::to_string_method, method_def_id),
+            "to_vec" => cx
+                .tcx
+                .impl_of_method(method_def_id)
+                .filter(|&impl_did| cx.tcx.type_of(impl_did).instantiate_identity().is_slice())
+                .is_some(),
+            _ => false,
+        }
+        && let original_arg_ty = cx.typeck_results().node_type(caller.hir_id).peel_refs()
+        && let arg_ty = cx.typeck_results().expr_ty(arg)
+        && let ty::Ref(_, arg_ty, Mutability::Not) = arg_ty.kind()
+        // FIXME: try to fix `can_change_type` to make it work in this case.
+        // && can_change_type(cx, caller, *arg_ty)
+        && let arg_ty = arg_ty.peel_refs()
+        // For now we limit this lint to `String` and `Vec`.
+        && (is_str_and_string(cx, arg_ty, original_arg_ty) || is_slice_and_vec(cx, arg_ty, original_arg_ty))
+        && let Some(snippet) = snippet_opt(cx, caller.span)
+    {
+        span_lint_and_sugg(
+            cx,
+            UNNECESSARY_TO_OWNED,
+            arg.span,
+            &format!("unnecessary use of `{method_name}`"),
+            "replace it with",
+            if original_arg_ty.is_array() {
+                format!("{snippet}.as_slice()")
+            } else {
+                snippet
+            },
+            Applicability::MaybeIncorrect,
+        );
+    }
+}
+
+// In std "map types", the getters all expect a `Borrow<Key>` generic argument. So in here, we
+// check that:
+// 1. This is a method with only one argument that doesn't come from a trait.
+// 2. That it has `Borrow` in its generic predicates.
+// 3. `Self` is a std "map type" (ie `HashSet`, `HashMap`, BTreeSet`, `BTreeMap`).
+fn check_borrow_predicate<'tcx>(cx: &LateContext<'tcx>, expr: &Expr<'tcx>) {
+    if let ExprKind::MethodCall(_, caller, &[arg], _) = expr.kind
+        && let Some(method_def_id) = cx.typeck_results().type_dependent_def_id(expr.hir_id)
+        && cx.tcx.trait_of_item(method_def_id).is_none()
+        && let Some(borrow_id) = cx.tcx.get_diagnostic_item(sym::Borrow)
+        && cx.tcx.predicates_of(method_def_id).predicates.iter().any(|(pred, _)| {
+            if let ClauseKind::Trait(trait_pred) = pred.kind().skip_binder()
+                && trait_pred.polarity == ImplPolarity::Positive
+                && trait_pred.trait_ref.def_id == borrow_id
+            {
+                true
+            } else {
+                false
+            }
+        })
+        && let caller_ty = cx.typeck_results().expr_ty(caller)
+        // For now we limit it to "map types".
+        && is_a_std_map_type(cx, caller_ty)
+    {
+        check_if_applicable_to_argument(cx, &arg);
     }
 }

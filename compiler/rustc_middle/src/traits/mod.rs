@@ -16,7 +16,7 @@ use crate::ty::GenericArgsRef;
 use crate::ty::{self, AdtKind, Ty};
 
 use rustc_data_structures::sync::Lrc;
-use rustc_errors::{Applicability, DiagnosticBuilder, EmissionGuarantee};
+use rustc_errors::{Applicability, Diag, EmissionGuarantee};
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
 use rustc_span::def_id::{LocalDefId, CRATE_DEF_ID};
@@ -908,7 +908,7 @@ pub enum ObjectSafetyViolationSolution {
 }
 
 impl ObjectSafetyViolationSolution {
-    pub fn add_to<G: EmissionGuarantee>(self, err: &mut DiagnosticBuilder<'_, G>) {
+    pub fn add_to<G: EmissionGuarantee>(self, err: &mut Diag<'_, G>) {
         match self {
             ObjectSafetyViolationSolution::None => {}
             ObjectSafetyViolationSolution::AddSelfOrMakeSized {

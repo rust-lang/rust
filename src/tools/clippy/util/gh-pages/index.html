@@ -594,19 +594,9 @@ Otherwise, have a great day =^.^=
             ></path>
         </svg>
         <style>
-            :root {
-                --theme-background-color: black;
-                --theme-foreground-color: white;
-            }
-            @media (prefers-color-scheme: dark) {
-                :root {
-                    --theme-background-color: white;
-                    --theme-foreground-color: black;
-                }
-            }
             .github-corner svg {
-                fill: var(--theme-background-color);
-                color: var(--theme-foreground-color);
+                fill: var(--fg);
+                color: var(--bg);
             }
             .github-corner:hover .octo-arm {
                 animation: octocat-wave 560ms ease-in-out;

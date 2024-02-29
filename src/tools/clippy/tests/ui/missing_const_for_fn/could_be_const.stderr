@@ -1,5 +1,5 @@
 error: this could be a `const fn`
-  --> $DIR/could_be_const.rs:14:5
+  --> tests/ui/missing_const_for_fn/could_be_const.rs:14:5
    |
 LL | /     pub fn new() -> Self {
 LL | |
@@ -12,7 +12,7 @@ LL | |     }
    = help: to override `-D warnings` add `#[allow(clippy::missing_const_for_fn)]`
 
 error: this could be a `const fn`
-  --> $DIR/could_be_const.rs:20:5
+  --> tests/ui/missing_const_for_fn/could_be_const.rs:20:5
    |
 LL | /     fn const_generic_params<'a, T, const N: usize>(&self, b: &'a [T; N]) -> &'a [T; N] {
 LL | |
@@ -21,7 +21,7 @@ LL | |     }
    | |_____^
 
 error: this could be a `const fn`
-  --> $DIR/could_be_const.rs:27:1
+  --> tests/ui/missing_const_for_fn/could_be_const.rs:27:1
    |
 LL | / fn one() -> i32 {
 LL | |
@@ -30,7 +30,7 @@ LL | | }
    | |_^
 
 error: this could be a `const fn`
-  --> $DIR/could_be_const.rs:33:1
+  --> tests/ui/missing_const_for_fn/could_be_const.rs:33:1
    |
 LL | / fn two() -> i32 {
 LL | |
@@ -40,7 +40,7 @@ LL | | }
    | |_^
 
 error: this could be a `const fn`
-  --> $DIR/could_be_const.rs:40:1
+  --> tests/ui/missing_const_for_fn/could_be_const.rs:40:1
    |
 LL | / fn string() -> String {
 LL | |
@@ -49,7 +49,7 @@ LL | | }
    | |_^
 
 error: this could be a `const fn`
-  --> $DIR/could_be_const.rs:46:1
+  --> tests/ui/missing_const_for_fn/could_be_const.rs:46:1
    |
 LL | / unsafe fn four() -> i32 {
 LL | |
@@ -58,7 +58,7 @@ LL | | }
    | |_^
 
 error: this could be a `const fn`
-  --> $DIR/could_be_const.rs:52:1
+  --> tests/ui/missing_const_for_fn/could_be_const.rs:52:1
    |
 LL | / fn generic<T>(t: T) -> T {
 LL | |
@@ -67,7 +67,7 @@ LL | | }
    | |_^
 
 error: this could be a `const fn`
-  --> $DIR/could_be_const.rs:61:1
+  --> tests/ui/missing_const_for_fn/could_be_const.rs:61:1
    |
 LL | / fn generic_arr<T: Copy>(t: [T; 1]) -> T {
 LL | |
@@ -76,7 +76,7 @@ LL | | }
    | |_^
 
 error: this could be a `const fn`
-  --> $DIR/could_be_const.rs:75:9
+  --> tests/ui/missing_const_for_fn/could_be_const.rs:75:9
    |
 LL | /         pub fn b(self, a: &A) -> B {
 LL | |
@@ -85,7 +85,7 @@ LL | |         }
    | |_________^
 
 error: this could be a `const fn`
-  --> $DIR/could_be_const.rs:85:5
+  --> tests/ui/missing_const_for_fn/could_be_const.rs:85:5
    |
 LL | /     fn const_fn_stabilized_before_msrv(byte: u8) {
 LL | |
@@ -94,7 +94,7 @@ LL | |     }
    | |_____^
 
 error: this could be a `const fn`
-  --> $DIR/could_be_const.rs:97:1
+  --> tests/ui/missing_const_for_fn/could_be_const.rs:97:1
    |
 LL | / fn msrv_1_46() -> i32 {
 LL | |

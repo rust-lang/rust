@@ -20,7 +20,7 @@ extern crate tracing;
 
 use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
 use rustc_data_structures::graph::dominators::Dominators;
-use rustc_errors::DiagnosticBuilder;
+use rustc_errors::Diag;
 use rustc_hir as hir;
 use rustc_hir::def_id::LocalDefId;
 use rustc_index::bit_set::{BitSet, ChunkedBitSet};
@@ -2395,8 +2395,8 @@ mod diags {
     use super::*;
 
     enum BufferedDiag<'tcx> {
-        Error(DiagnosticBuilder<'tcx>),
-        NonError(DiagnosticBuilder<'tcx, ()>),
+        Error(Diag<'tcx>),
+        NonError(Diag<'tcx, ()>),
     }
 
     impl<'tcx> BufferedDiag<'tcx> {
@@ -2423,10 +2423,9 @@ mod diags {
         /// `BTreeMap` is used to preserve the order of insertions when iterating. This is necessary
         /// when errors in the map are being re-added to the error buffer so that errors with the
         /// same primary span come out in a consistent order.
-        buffered_move_errors:
-            BTreeMap<Vec<MoveOutIndex>, (PlaceRef<'tcx>, DiagnosticBuilder<'tcx>)>,
+        buffered_move_errors: BTreeMap<Vec<MoveOutIndex>, (PlaceRef<'tcx>, Diag<'tcx>)>,
 
-        buffered_mut_errors: FxIndexMap<Span, (DiagnosticBuilder<'tcx>, usize)>,
+        buffered_mut_errors: FxIndexMap<Span, (Diag<'tcx>, usize)>,
 
         /// Buffer of diagnostics to be reported. A mixture of error and non-error diagnostics.
         buffered_diags: Vec<BufferedDiag<'tcx>>,
@@ -2441,28 +2440,28 @@ mod diags {
             }
         }
 
-        pub fn buffer_error(&mut self, t: DiagnosticBuilder<'tcx>) {
-            self.buffered_diags.push(BufferedDiag::Error(t));
+        pub fn buffer_error(&mut self, diag: Diag<'tcx>) {
+            self.buffered_diags.push(BufferedDiag::Error(diag));
         }
 
-        pub fn buffer_non_error(&mut self, t: DiagnosticBuilder<'tcx, ()>) {
-            self.buffered_diags.push(BufferedDiag::NonError(t));
+        pub fn buffer_non_error(&mut self, diag: Diag<'tcx, ()>) {
+            self.buffered_diags.push(BufferedDiag::NonError(diag));
         }
     }
 
     impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
-        pub fn buffer_error(&mut self, t: DiagnosticBuilder<'tcx>) {
-            self.diags.buffer_error(t);
+        pub fn buffer_error(&mut self, diag: Diag<'tcx>) {
+            self.diags.buffer_error(diag);
         }
 
-        pub fn buffer_non_error(&mut self, t: DiagnosticBuilder<'tcx, ()>) {
-            self.diags.buffer_non_error(t);
+        pub fn buffer_non_error(&mut self, diag: Diag<'tcx, ()>) {
+            self.diags.buffer_non_error(diag);
         }
 
         pub fn buffer_move_error(
             &mut self,
             move_out_indices: Vec<MoveOutIndex>,
-            place_and_err: (PlaceRef<'tcx>, DiagnosticBuilder<'tcx>),
+            place_and_err: (PlaceRef<'tcx>, Diag<'tcx>),
         ) -> bool {
             if let Some((_, diag)) =
                 self.diags.buffered_move_errors.insert(move_out_indices, place_and_err)
@@ -2475,16 +2474,13 @@ mod diags {
             }
         }
 
-        pub fn get_buffered_mut_error(
-            &mut self,
-            span: Span,
-        ) -> Option<(DiagnosticBuilder<'tcx>, usize)> {
+        pub fn get_buffered_mut_error(&mut self, span: Span) -> Option<(Diag<'tcx>, usize)> {
             // FIXME(#120456) - is `swap_remove` correct?
             self.diags.buffered_mut_errors.swap_remove(&span)
         }
 
-        pub fn buffer_mut_error(&mut self, span: Span, t: DiagnosticBuilder<'tcx>, count: usize) {
-            self.diags.buffered_mut_errors.insert(span, (t, count));
+        pub fn buffer_mut_error(&mut self, span: Span, diag: Diag<'tcx>, count: usize) {
+            self.diags.buffered_mut_errors.insert(span, (diag, count));
         }
 
         pub fn emit_errors(&mut self) -> Option<ErrorGuaranteed> {
@@ -2524,7 +2520,7 @@ mod diags {
         pub fn has_move_error(
             &self,
             move_out_indices: &[MoveOutIndex],
-        ) -> Option<&(PlaceRef<'tcx>, DiagnosticBuilder<'tcx>)> {
+        ) -> Option<&(PlaceRef<'tcx>, Diag<'tcx>)> {
             self.diags.buffered_move_errors.get(move_out_indices)
         }
     }
