@@ -688,6 +688,9 @@ pub enum Constructor<Cx: TypeCx> {
     /// Fake extra constructor for constructors that are not seen in the matrix, as explained at the
     /// top of the file.
     Missing,
+    /// Fake extra constructor that indicates and empty field that is private. When we encounter one
+    /// we skip the column entirely so we don't observe its emptiness. Only used for specialization.
+    PrivateUninhabited,
 }
 
 impl<Cx: TypeCx> Clone for Constructor<Cx> {
@@ -709,6 +712,7 @@ impl<Cx: TypeCx> Clone for Constructor<Cx> {
             Constructor::NonExhaustive => Constructor::NonExhaustive,
             Constructor::Hidden => Constructor::Hidden,
             Constructor::Missing => Constructor::Missing,
+            Constructor::PrivateUninhabited => Constructor::PrivateUninhabited,
         }
     }
 }
@@ -763,6 +767,8 @@ impl<Cx: TypeCx> Constructor<Cx> {
             }
             // Wildcards cover anything
             (_, Wildcard) => true,
+            // `PrivateUninhabited` skips everything.
+            (PrivateUninhabited, _) => true,
             // Only a wildcard pattern can match these special constructors.
             (Missing { .. } | NonExhaustive | Hidden, _) => false,
 

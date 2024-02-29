@@ -5,7 +5,7 @@ use std::fmt;
 use smallvec::{smallvec, SmallVec};
 
 use crate::constructor::{Constructor, Slice, SliceKind};
-use crate::TypeCx;
+use crate::{PrivateUninhabitedField, TypeCx};
 
 use self::Constructor::*;
 
@@ -23,11 +23,6 @@ impl PatId {
 /// Values and patterns can be represented as a constructor applied to some fields. This represents
 /// a pattern in this form. A `DeconstructedPat` will almost always come from user input; the only
 /// exception are some `Wildcard`s introduced during pattern lowering.
-///
-/// Note that the number of fields may not match the fields declared in the original struct/variant.
-/// This happens if a private or `non_exhaustive` field is uninhabited, because the code mustn't
-/// observe that it is uninhabited. In that case that field is not included in `fields`. Care must
-/// be taken when converting to/from `thir::Pat`.
 pub struct DeconstructedPat<Cx: TypeCx> {
     ctor: Constructor<Cx>,
     fields: Vec<DeconstructedPat<Cx>>,
@@ -84,6 +79,8 @@ impl<Cx: TypeCx> DeconstructedPat<Cx> {
         match (&self.ctor, other_ctor) {
             // Return a wildcard for each field of `other_ctor`.
             (Wildcard, _) => wildcard_sub_tys(),
+            // Skip this column.
+            (_, PrivateUninhabited) => smallvec![],
             // The only non-trivial case: two slices of different arity. `other_slice` is
             // guaranteed to have a larger arity, so we fill the middle part with enough
             // wildcards to reach the length of the new, larger slice.
@@ -192,7 +189,9 @@ impl<Cx: TypeCx> fmt::Debug for DeconstructedPat<Cx> {
                 }
                 Ok(())
             }
-            Wildcard | Missing { .. } | NonExhaustive | Hidden => write!(f, "_ : {:?}", pat.ty()),
+            Wildcard | Missing | NonExhaustive | Hidden | PrivateUninhabited => {
+                write!(f, "_ : {:?}", pat.ty())
+            }
         }
     }
 }
@@ -300,7 +299,11 @@ impl<Cx: TypeCx> WitnessPat<Cx> {
     /// For example, if `ctor` is a `Constructor::Variant` for `Option::Some`, we get the pattern
     /// `Some(_)`.
     pub(crate) fn wild_from_ctor(cx: &Cx, ctor: Constructor<Cx>, ty: Cx::Ty) -> Self {
-        let fields = cx.ctor_sub_tys(&ctor, &ty).map(|ty| Self::wildcard(ty)).collect();
+        let fields = cx
+            .ctor_sub_tys(&ctor, &ty)
+            .filter(|(_, PrivateUninhabitedField(skip))| !skip)
+            .map(|(ty, _)| Self::wildcard(ty))
+            .collect();
         Self::new(ctor, fields, ty)
     }
 
