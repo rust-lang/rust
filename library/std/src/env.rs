@@ -258,6 +258,9 @@ fn _var(key: &OsStr) -> Result<String, VarError> {
 ///     None => println!("{key} is not defined in the environment.")
 /// }
 /// ```
+///
+/// If expecting a delimited variable (such as `PATH`), [`split_paths`]
+/// can be used to separate items.
 #[must_use]
 #[stable(feature = "env", since = "1.0.0")]
 pub fn var_os<K: AsRef<OsStr>>(key: K) -> Option<OsString> {
@@ -441,6 +444,16 @@ pub struct SplitPaths<'a> {
 /// Returns an iterator over the paths contained in `unparsed`. The iterator
 /// element type is [`PathBuf`].
 ///
+/// On most Unix platforms, the separator is `:` and on Windows it is `;`. This
+/// also performs unquoting on Windows.
+///
+/// [`join_paths`] can be used to recombine elements.
+///
+/// # Panics
+///
+/// This will panic on systems where there is no delimited `PATH` variable,
+/// such as UEFI.
+///
 /// # Examples
 ///
 /// ```
@@ -456,6 +469,7 @@ pub struct SplitPaths<'a> {
 ///     None => println!("{key} is not defined in the environment.")
 /// }
 /// ```
+#[doc(alias = "PATH")]
 #[stable(feature = "env", since = "1.0.0")]
 pub fn split_paths<T: AsRef<OsStr> + ?Sized>(unparsed: &T) -> SplitPaths<'_> {
     SplitPaths { inner: os_imp::split_paths(unparsed.as_ref()) }
@@ -496,7 +510,8 @@ pub struct JoinPathsError {
 ///
 /// Returns an [`Err`] (containing an error message) if one of the input
 /// [`Path`]s contains an invalid character for constructing the `PATH`
-/// variable (a double quote on Windows or a colon on Unix).
+/// variable (a double quote on Windows or a colon on Unix), or if the system
+/// does not have a `PATH`-like variable (e.g. UEFI or WASI).
 ///
 /// # Examples
 ///
@@ -550,6 +565,7 @@ pub struct JoinPathsError {
 /// ```
 ///
 /// [`env::split_paths()`]: split_paths
+#[doc(alias = "PATH")]
 #[stable(feature = "env", since = "1.0.0")]
 pub fn join_paths<I, T>(paths: I) -> Result<OsString, JoinPathsError>
 where

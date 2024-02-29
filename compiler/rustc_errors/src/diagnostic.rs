@@ -108,6 +108,25 @@ impl EmissionGuarantee for rustc_span::fatal_error::FatalError {
 
 /// Trait implemented by error types. This is rarely implemented manually. Instead, use
 /// `#[derive(Diagnostic)]` -- see [rustc_macros::Diagnostic].
+///
+/// When implemented manually, it should be generic over the emission
+/// guarantee, i.e.:
+/// ```ignore (fragment)
+/// impl<'a, G: EmissionGuarantee> IntoDiagnostic<'a, G> for Foo { ... }
+/// ```
+/// rather than being specific:
+/// ```ignore (fragment)
+/// impl<'a> IntoDiagnostic<'a> for Bar { ... }  // the default type param is `ErrorGuaranteed`
+/// impl<'a> IntoDiagnostic<'a, ()> for Baz { ... }
+/// ```
+/// There are two reasons for this.
+/// - A diagnostic like `Foo` *could* be emitted at any level -- `level` is
+///   passed in to `into_diagnostic` from outside. Even if in practice it is
+///   always emitted at a single level, we let the diagnostic creation/emission
+///   site determine the level (by using `create_err`, `emit_warn`, etc.)
+///   rather than the `IntoDiagnostic` impl.
+/// - Derived impls are always generic, and it's good for the hand-written
+///   impls to be consistent with them.
 #[rustc_diagnostic_item = "IntoDiagnostic"]
 pub trait IntoDiagnostic<'a, G: EmissionGuarantee = ErrorGuaranteed> {
     /// Write out as a diagnostic out of `DiagCtxt`.

@@ -1498,14 +1498,26 @@ impl DiagCtxtInner {
         let bugs: Vec<_> =
             std::mem::take(&mut self.delayed_bugs).into_iter().map(|(b, _)| b).collect();
 
-        // If backtraces are enabled, also print the query stack
         let backtrace = std::env::var_os("RUST_BACKTRACE").map_or(true, |x| &x != "0");
-        for (i, bug) in bugs.into_iter().enumerate() {
-            if let Some(file) = self.ice_file.as_ref()
-                && let Ok(mut out) = std::fs::File::options().create(true).append(true).open(file)
-            {
-                let _ = write!(
-                    &mut out,
+        let decorate = backtrace || self.ice_file.is_none();
+        let mut out = self
+            .ice_file
+            .as_ref()
+            .and_then(|file| std::fs::File::options().create(true).append(true).open(file).ok());
+
+        // Put the overall explanation before the `DelayedBug`s, to frame them
+        // better (e.g. separate warnings from them). Also, use notes, which
+        // don't count as errors, to avoid possibly triggering
+        // `-Ztreat-err-as-bug`, which we don't want.
+        let note1 = "no errors encountered even though delayed bugs were created";
+        let note2 = "those delayed bugs will now be shown as internal compiler errors";
+        self.emit_diagnostic(DiagInner::new(Note, note1));
+        self.emit_diagnostic(DiagInner::new(Note, note2));
+
+        for bug in bugs {
+            if let Some(out) = &mut out {
+                _ = write!(
+                    out,
                     "delayed bug: {}\n{}\n",
                     bug.inner
                         .messages
@@ -1516,21 +1528,9 @@ impl DiagCtxtInner {
                 );
             }
 
-            if i == 0 {
-                // Put the overall explanation before the `DelayedBug`s, to
-                // frame them better (e.g. separate warnings from them). Also,
-                // make it a note so it doesn't count as an error, because that
-                // could trigger `-Ztreat-err-as-bug`, which we don't want.
-                let note1 = "no errors encountered even though delayed bugs were created";
-                let note2 = "those delayed bugs will now be shown as internal compiler errors";
-                self.emit_diagnostic(DiagInner::new(Note, note1));
-                self.emit_diagnostic(DiagInner::new(Note, note2));
-            }
+            let mut bug = if decorate { bug.decorate(self) } else { bug.inner };
 
-            let mut bug =
-                if backtrace || self.ice_file.is_none() { bug.decorate(self) } else { bug.inner };
-
-            // "Undelay" the delayed bugs (into plain `Bug`s).
+            // "Undelay" the delayed bugs into plain bugs.
             if bug.level != DelayedBug {
                 // NOTE(eddyb) not panicking here because we're already producing
                 // an ICE, and the more information the merrier.
