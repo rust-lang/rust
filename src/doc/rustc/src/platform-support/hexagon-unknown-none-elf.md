@@ -41,6 +41,8 @@ target = ["<target for your host>", "hexagon-unknown-none-elf"]
 cc = "hexagon-unknown-none-elf-clang"
 cxx = "hexagon-unknown-none-elf-clang++"
 linker = "hexagon-unknown-none-elf-clang"
+ranlib = "hexagon-unknown-none-elf-ranlib"
+ar = "hexagon-unknown-none-elf-ar"
 llvm-libunwind = 'in-tree'
 ```
 
@@ -142,7 +144,7 @@ ${cc} --target=hexagon-unknown-none-elf -o testit \
     ${g0_lib_path}/init.o \
     -L${sdk_libs}/${q6_arch}/ \
     -L${sdk_libs}/ \
-    testit.c \
+    wrap.c \
     target/hexagon-unknown-none-elf/${build_cfg}/libdemo1_hexagon.rlib \
     target/hexagon-unknown-none-elf/${build_cfg}/deps/libcore-*.rlib \
     target/hexagon-unknown-none-elf/${build_cfg}/deps/libcompiler_builtins-*.rlib \
@@ -217,7 +219,18 @@ fn rust_eh_personality() {}
 
 ```
 
-Next, save the script below as `build.sh` and edit it to suit your
+Next, create a C program as an entry point, save the content below as
+`wrap.c`:
+
+```C
+int hello();
+
+int main() {
+    hello();
+}
+```
+
+Then, save the script below as `build.sh` and edit it to suit your
 environment.  The script below will build a shared object against the QuRT
 RTOS which is suitable for emulation or on-device testing when loaded via
 the fastrpc-shell.
@@ -248,7 +261,7 @@ ${cc} --target=hexagon-unknown-none-elf -o testit.so \
       -Wl,--wrap=realloc \
       -Wl,--wrap=memalign \
     -m${q6_arch} \
-    testit.c \
+    wrap.c \
     target/hexagon-unknown-none-elf/${build_cfg}/libdemo2_hexagon.rlib \
     target/hexagon-unknown-none-elf/${build_cfg}/deps/libcore-*.rlib \
     target/hexagon-unknown-none-elf/${build_cfg}/deps/libcompiler_builtins-*.rlib \

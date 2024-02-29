@@ -279,8 +279,8 @@ pub fn format(build: &Builder<'_>, check: bool, paths: &[PathBuf]) {
     let thread = std::thread::spawn(move || {
         let mut children = VecDeque::new();
         while let Ok(path) = rx.recv() {
-            // try getting a few more paths from the channel to amortize the overhead of spawning processes
-            let paths: Vec<_> = rx.try_iter().take(7).chain(std::iter::once(path)).collect();
+            // try getting more paths from the channel to amortize the overhead of spawning processes
+            let paths: Vec<_> = rx.try_iter().take(63).chain(std::iter::once(path)).collect();
 
             let child = rustfmt(&src, &rustfmt_path, paths.as_slice(), check);
             children.push_back(child);
