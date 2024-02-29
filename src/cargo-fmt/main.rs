@@ -61,7 +61,7 @@ pub struct Opts {
 
     /// Options passed to rustfmt
     // 'raw = true' to make `--` explicit.
-    #[arg(name = "rustfmt_options", raw = true)]
+    #[arg(id = "rustfmt_options", raw = true)]
     rustfmt_options: Vec<String>,
 
     /// Format all packages, and also their local path-based dependencies
@@ -209,9 +209,8 @@ fn convert_message_format_to_rustfmt_args(
 fn print_usage_to_stderr(reason: &str) {
     eprintln!("{reason}");
     let app = Opts::command();
-    app.after_help("")
-        .write_help(&mut io::stderr())
-        .expect("failed to write to stderr");
+    let help = app.after_help("").render_help();
+    eprintln!("{help}");
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
