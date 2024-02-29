@@ -1,0 +1,188 @@
+error[E0277]: the trait bound `(): Sub` is not satisfied
+  --> $DIR/super-assoc-mismatch.rs:10:22
+   |
+LL | impl BoundOnSelf for () {}
+   |                      ^^ the trait `Sub` is not implemented for `()`
+   |
+help: this trait has no implementations, consider adding one
+  --> $DIR/super-assoc-mismatch.rs:7:1
+   |
+LL | trait Sub: Super<Assoc = u16> {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+note: required by a bound in `BoundOnSelf`
+  --> $DIR/super-assoc-mismatch.rs:9:20
+   |
+LL | trait BoundOnSelf: Sub {}
+   |                    ^^^ required by this bound in `BoundOnSelf`
+
+error[E0271]: type mismatch resolving `<() as Super>::Assoc == u16`
+  --> $DIR/super-assoc-mismatch.rs:10:6
+   |
+LL | impl BoundOnSelf for () {}
+   |      ^^^^^^^^^^^ type mismatch resolving `<() as Super>::Assoc == u16`
+   |
+note: expected this to be `u16`
+  --> $DIR/super-assoc-mismatch.rs:5:18
+   |
+LL |     type Assoc = u8;
+   |                  ^^
+note: required for `()` to implement `Sub`
+  --> $DIR/super-assoc-mismatch.rs:7:7
+   |
+LL | trait Sub: Super<Assoc = u16> {}
+   |       ^^^
+note: required by a bound in `BoundOnSelf`
+  --> $DIR/super-assoc-mismatch.rs:9:20
+   |
+LL | trait BoundOnSelf: Sub {}
+   |                    ^^^ required by this bound in `BoundOnSelf`
+
+error[E0277]: the trait bound `(): Sub` is not satisfied
+  --> $DIR/super-assoc-mismatch.rs:15:27
+   |
+LL | impl BoundOnParam<()> for () {}
+   |                           ^^ the trait `Sub` is not implemented for `()`
+   |
+help: this trait has no implementations, consider adding one
+  --> $DIR/super-assoc-mismatch.rs:7:1
+   |
+LL | trait Sub: Super<Assoc = u16> {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+note: required by a bound in `BoundOnParam`
+  --> $DIR/super-assoc-mismatch.rs:14:23
+   |
+LL | trait BoundOnParam<T: Sub> {}
+   |                       ^^^ required by this bound in `BoundOnParam`
+
+error[E0271]: type mismatch resolving `<() as Super>::Assoc == u16`
+  --> $DIR/super-assoc-mismatch.rs:15:6
+   |
+LL | impl BoundOnParam<()> for () {}
+   |      ^^^^^^^^^^^^^^^^ type mismatch resolving `<() as Super>::Assoc == u16`
+   |
+note: expected this to be `u16`
+  --> $DIR/super-assoc-mismatch.rs:5:18
+   |
+LL |     type Assoc = u8;
+   |                  ^^
+note: required for `()` to implement `Sub`
+  --> $DIR/super-assoc-mismatch.rs:7:7
+   |
+LL | trait Sub: Super<Assoc = u16> {}
+   |       ^^^
+note: required by a bound in `BoundOnParam`
+  --> $DIR/super-assoc-mismatch.rs:14:23
+   |
+LL | trait BoundOnParam<T: Sub> {}
+   |                       ^^^ required by this bound in `BoundOnParam`
+
+error[E0277]: the trait bound `(): Sub` is not satisfied
+  --> $DIR/super-assoc-mismatch.rs:23:18
+   |
+LL |     type Assoc = ();
+   |                  ^^ the trait `Sub` is not implemented for `()`
+   |
+help: this trait has no implementations, consider adding one
+  --> $DIR/super-assoc-mismatch.rs:7:1
+   |
+LL | trait Sub: Super<Assoc = u16> {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+note: required by a bound in `BoundOnAssoc::Assoc`
+  --> $DIR/super-assoc-mismatch.rs:20:17
+   |
+LL |     type Assoc: Sub;
+   |                 ^^^ required by this bound in `BoundOnAssoc::Assoc`
+
+error[E0271]: type mismatch resolving `<() as Super>::Assoc == u16`
+  --> $DIR/super-assoc-mismatch.rs:23:18
+   |
+LL |     type Assoc = ();
+   |                  ^^ type mismatch resolving `<() as Super>::Assoc == u16`
+   |
+note: expected this to be `u16`
+  --> $DIR/super-assoc-mismatch.rs:5:18
+   |
+LL |     type Assoc = u8;
+   |                  ^^
+note: required for `<() as BoundOnAssoc>::Assoc` to implement `Sub`
+  --> $DIR/super-assoc-mismatch.rs:7:7
+   |
+LL | trait Sub: Super<Assoc = u16> {}
+   |       ^^^
+note: required by a bound in `BoundOnAssoc::Assoc`
+  --> $DIR/super-assoc-mismatch.rs:20:17
+   |
+LL |     type Assoc: Sub;
+   |                 ^^^ required by this bound in `BoundOnAssoc::Assoc`
+
+error[E0277]: the trait bound `(): Sub` is not satisfied
+  --> $DIR/super-assoc-mismatch.rs:33:21
+   |
+LL |     type Assoc<T> = ();
+   |                     ^^ the trait `Sub` is not implemented for `()`, which is required by `<u8 as BoundOnGat>::Assoc<u8>: Sub`
+   |
+help: this trait has no implementations, consider adding one
+  --> $DIR/super-assoc-mismatch.rs:7:1
+   |
+LL | trait Sub: Super<Assoc = u16> {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+note: required by a bound in `BoundOnGat`
+  --> $DIR/super-assoc-mismatch.rs:28:41
+   |
+LL | trait BoundOnGat where Self::Assoc<u8>: Sub {
+   |                                         ^^^ required by this bound in `BoundOnGat`
+
+error[E0271]: type mismatch resolving `<() as Super>::Assoc == u16`
+  --> $DIR/super-assoc-mismatch.rs:31:6
+   |
+LL | impl BoundOnGat for u8 {
+   |      ^^^^^^^^^^ type mismatch resolving `<() as Super>::Assoc == u16`
+   |
+note: expected this to be `u16`
+  --> $DIR/super-assoc-mismatch.rs:5:18
+   |
+LL |     type Assoc = u8;
+   |                  ^^
+note: required for `<u8 as BoundOnGat>::Assoc<u8>` to implement `Sub`
+  --> $DIR/super-assoc-mismatch.rs:7:7
+   |
+LL | trait Sub: Super<Assoc = u16> {}
+   |       ^^^
+note: required by a bound in `BoundOnGat`
+  --> $DIR/super-assoc-mismatch.rs:28:41
+   |
+LL | trait BoundOnGat where Self::Assoc<u8>: Sub {
+   |                                         ^^^ required by this bound in `BoundOnGat`
+
+error[E0277]: the trait bound `(): Sub` is not satisfied
+  --> $DIR/super-assoc-mismatch.rs:37:26
+   |
+LL | fn trivial_bound() where (): Sub {}
+   |                          ^^^^^^^ the trait `Sub` is not implemented for `()`
+   |
+help: this trait has no implementations, consider adding one
+  --> $DIR/super-assoc-mismatch.rs:7:1
+   |
+LL | trait Sub: Super<Assoc = u16> {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   = help: see issue #48214
+   = help: add `#![feature(trivial_bounds)]` to the crate attributes to enable
+
+error[E0271]: type mismatch resolving `<() as Super>::Assoc == u16`
+  --> $DIR/super-assoc-mismatch.rs:37:26
+   |
+LL | fn trivial_bound() where (): Sub {}
+   |                          ^^^^^^^ type mismatch resolving `<() as Super>::Assoc == u16`
+   |
+note: expected this to be `u8`
+  --> $DIR/super-assoc-mismatch.rs:5:18
+   |
+LL |     type Assoc = u8;
+   |                  ^^
+   = help: see issue #48214
+   = help: add `#![feature(trivial_bounds)]` to the crate attributes to enable
+
+error: aborting due to 10 previous errors
+
+Some errors have detailed explanations: E0271, E0277.
+For more information about an error, try `rustc --explain E0271`.
