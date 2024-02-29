@@ -1,6 +1,4 @@
-use rustc_errors::{
-    DiagCtxt, DiagnosticBuilder, EmissionGuarantee, IntoDiagnostic, Level,
-};
+use rustc_errors::{DiagCtxt, DiagnosticBuilder, EmissionGuarantee, IntoDiagnostic, Level};
 use rustc_macros::{Diagnostic, Subdiagnostic};
 use rustc_span::Span;
 
