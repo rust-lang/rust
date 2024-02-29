@@ -9,7 +9,6 @@
 mod sus {
     use super::*;
     pub type Sep = impl Sized + std::fmt::Display;
-    //~^ ERROR: concrete type differs from previous defining opaque type use
     pub fn mk_sep() -> Sep {
         String::from("hello")
     }
@@ -42,6 +41,7 @@ mod sus {
         (): Proj<Assoc = i32>,
     {
         Bar { inner: 1i32, _marker: () }
+        //~^ ERROR type mismatch
     }
 }
 

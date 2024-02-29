@@ -2014,6 +2014,14 @@ impl<'tcx> TyCtxt<'tcx> {
         self.intern_local_def_ids(clauses)
     }
 
+    pub fn mk_local_def_ids_from_iter<I, T>(self, iter: I) -> T::Output
+    where
+        I: Iterator<Item = T>,
+        T: CollectAndApply<LocalDefId, &'tcx List<LocalDefId>>,
+    {
+        T::collect_and_apply(iter, |xs| self.mk_local_def_ids(xs))
+    }
+
     pub fn mk_const_list_from_iter<I, T>(self, iter: I) -> T::Output
     where
         I: Iterator<Item = T>,
