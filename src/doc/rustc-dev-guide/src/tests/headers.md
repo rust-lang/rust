@@ -5,7 +5,8 @@
 Header commands are special comments that tell compiletest how to build and
 interpret a test.
 They must appear before the Rust source in the test.
-They may also appear in Makefiles for [run-make tests](compiletest.md#run-make-tests).
+They may also appear in legacy Makefiles for
+[run-make tests](compiletest.md#run-make-tests).
 
 They are normally put after the short comment that explains the point of this test.
 Compiletest test suites use `//@` to signal that a comment is a header.

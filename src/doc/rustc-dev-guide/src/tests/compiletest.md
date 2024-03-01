@@ -63,7 +63,8 @@ The following test suites are available, with links for more information:
 - [`codegen-units`](#codegen-units-tests) — tests for codegen unit partitioning
 - [`assembly`](#assembly-tests) — verifies assembly output
 - [`mir-opt`](#mir-opt-tests) — tests for MIR generation
-- [`run-make`](#run-make-tests) — general purpose tests using a Makefile
+- [`run-make`](#run-make-tests) — general purpose tests using Rust programs (or
+  Makefiles (legacy))
 - `run-make-fulldeps` — `run-make` tests which require a linkable build of `rustc`,
   or the rust demangler
 - [`run-pass-valgrind`](#valgrind-tests) — tests run with Valgrind
@@ -368,14 +369,42 @@ your test, causing separate files to be generated for 32bit and 64bit systems.
 
 ### `run-make` tests
 
-The tests in [`tests/run-make`] are general-purpose tests using Makefiles
-which provide the ultimate in flexibility.
-These should be used as a last resort.
-If possible, you should use one of the other test suites.
+> NOTE:
+> We are planning to migrate all existing Makefile-based `run-make` tests
+> to Rust recipes. You should not be adding new Makefile-based `run-make`
+> tests.
+
+The tests in [`tests/run-make`] are general-purpose tests using Rust *recipes*,
+which are small programs allowing arbitrary Rust code such as `rustc`
+invocations, and is supported by a [`run_make_support`] library. Using Rust
+recipes provide the ultimate in flexibility.
+
+*These should be used as a last resort*. If possible, you should use one of the
+other test suites.
+
 If there is some minor feature missing which you need for your test,
 consider extending compiletest to add a header command for what you need.
 However, if running a bunch of commands is really what you need,
 `run-make` is here to the rescue!
+
+#### Using Rust recipes
+
+Each test should be in a separate directory with a `rmake.rs` Rust program,
+called the *recipe*. A recipe will be compiled and executed by compiletest
+with the `run_make_support` library linked in.
+
+If you need new utilities or functionality, consider extending and improving
+the [`run_make_support`] library.
+
+Two `run-make` tests are ported over to Rust recipes as examples:
+
+- <https://github.com/rust-lang/rust/tree/master/tests/run-make/CURRENT_RUSTC_VERSION>
+- <https://github.com/rust-lang/rust/tree/master/tests/run-make/a-b-a-linker-guard>
+
+#### Using Makefiles (legacy)
+
+> NOTE:
+> You should avoid writing new Makefile-based `run-make` tests.
 
 Each test should be in a separate directory with a `Makefile` indicating the
 commands to run.
@@ -385,6 +414,7 @@ Take a look at some of the other tests for some examples on how to get started.
 
 [`tools.mk`]: https://github.com/rust-lang/rust/blob/master/tests/run-make/tools.mk
 [`tests/run-make`]: https://github.com/rust-lang/rust/tree/master/tests/run-make
+[`run_make_support`]: https://github.com/rust-lang/rust/tree/master/src/tools/run-make-support
 
 
 ### Valgrind tests
