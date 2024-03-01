@@ -598,6 +598,21 @@ fn test_foo() {
 }
 ```
 
+In test suites that use the LLVM [FileCheck] tool, the current revision name is
+also registered as an additional prefix for FileCheck directives:
+
+```rust,ignore
+//@ revisions: NORMAL COVERAGE
+//@ [COVERAGE] compile-flags: -Cinstrument-coverage
+//@ [COVERAGE] needs-profiler-support
+
+// COVERAGE:   @__llvm_coverage_mapping
+// NORMAL-NOT: @__llvm_coverage_mapping
+
+// CHECK: main
+fn main() {}
+```
+
 Note that not all headers have meaning when customized to a revision.
 For example, the `ignore-test` header (and all "ignore" headers)
 currently only apply to the test as a whole, not to particular
@@ -609,6 +624,7 @@ Following is classes of tests that support revisions:
 - UI
 - assembly
 - codegen
+- coverage
 - debuginfo
 - rustdoc UI tests
 - incremental (these are special in that they inherently cannot be run in parallel)

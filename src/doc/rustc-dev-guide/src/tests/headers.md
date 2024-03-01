@@ -95,6 +95,9 @@ found in [`header.rs`] from the compiletest source.
       for a known bug that has not yet been fixed
 * [Assembly](compiletest.md#assembly-tests) headers
     * `assembly-output` — the type of assembly output to check
+* [Tool-specific headers](#tool-specific-headers)
+    * `filecheck-flags` - passes extra flags to the `FileCheck` tool
+    * `llvm-cov-flags` - passes extra flags to the `llvm-cov` tool
 
 
 ### Ignoring tests
@@ -229,6 +232,19 @@ test suites.
 * `force-host` will force the test to build for the host platform instead of
   the target. This is useful primarily for auxiliary proc-macros, which need
   to be loaded by the host compiler.
+
+
+### Tool-specific headers
+
+The following headers affect how certain command-line tools are invoked,
+in test suites that use those tools:
+
+* `filecheck-flags` adds extra flags when running LLVM's `FileCheck` tool.
+  - Used by [codegen tests](compiletest.md#codegen-tests),
+  [assembly tests](compiletest.md#assembly-tests), and
+  [MIR-opt tests](compiletest.md#mir-opt-tests).
+* `llvm-cov-flags` adds extra flags when running LLVM's `llvm-cov` tool.
+  - Used by [coverage tests](compiletest.md#coverage-tests) in `coverage-run` mode.
 
 
 ## Substitutions
