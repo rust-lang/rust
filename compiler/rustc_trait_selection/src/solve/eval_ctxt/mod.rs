@@ -7,6 +7,7 @@ use rustc_infer::infer::{
     BoundRegionConversionTime, DefineOpaqueTypes, InferCtxt, InferOk, TyCtxtInferExt,
 };
 use rustc_infer::traits::query::NoSolution;
+use rustc_infer::traits::solve::MaybeCause;
 use rustc_infer::traits::ObligationCause;
 use rustc_middle::infer::canonical::CanonicalVarInfos;
 use rustc_middle::infer::unify_key::{ConstVariableOrigin, ConstVariableOriginKind};
@@ -29,7 +30,7 @@ use std::ops::ControlFlow;
 use crate::traits::vtable::{count_own_vtable_entries, prepare_vtable_segments, VtblSegment};
 
 use super::inspect::ProofTreeBuilder;
-use super::{search_graph, GoalEvaluationKind};
+use super::{search_graph, GoalEvaluationKind, FIXPOINT_STEP_LIMIT};
 use super::{search_graph::SearchGraph, Goal};
 use super::{GoalSource, SolverMode};
 pub use select::InferCtxtSelectExt;
@@ -154,10 +155,6 @@ impl<'a, 'tcx> EvalCtxt<'a, 'tcx> {
         self.search_graph.solver_mode()
     }
 
-    pub(super) fn local_overflow_limit(&self) -> usize {
-        self.search_graph.local_overflow_limit()
-    }
-
     /// Creates a root evaluation context and search graph. This should only be
     /// used from outside of any evaluation, and other methods should be preferred
     /// over using this manually (such as [`InferCtxtEvalExt::evaluate_root_goal`]).
@@ -167,7 +164,7 @@ impl<'a, 'tcx> EvalCtxt<'a, 'tcx> {
         f: impl FnOnce(&mut EvalCtxt<'_, 'tcx>) -> R,
     ) -> (R, Option<inspect::GoalEvaluation<'tcx>>) {
         let mode = if infcx.intercrate { SolverMode::Coherence } else { SolverMode::Normal };
-        let mut search_graph = search_graph::SearchGraph::new(infcx.tcx, mode);
+        let mut search_graph = search_graph::SearchGraph::new(mode);
 
         let mut ecx = EvalCtxt {
             search_graph: &mut search_graph,
@@ -388,16 +385,18 @@ impl<'a, 'tcx> EvalCtxt<'a, 'tcx> {
                 && source != GoalSource::ImplWhereBound
         };
 
-        if response.value.certainty == Certainty::OVERFLOW && !keep_overflow_constraints() {
-            (Certainty::OVERFLOW, false)
-        } else {
-            let has_changed = !response.value.var_values.is_identity_modulo_regions()
-                || !response.value.external_constraints.opaque_types.is_empty();
-
-            let certainty =
-                self.instantiate_and_apply_query_response(param_env, original_values, response);
-            (certainty, has_changed)
+        if let Certainty::Maybe(MaybeCause::Overflow { .. }) = response.value.certainty
+            && !keep_overflow_constraints()
+        {
+            return (response.value.certainty, false);
         }
+
+        let has_changed = !response.value.var_values.is_identity_modulo_regions()
+            || !response.value.external_constraints.opaque_types.is_empty();
+
+        let certainty =
+            self.instantiate_and_apply_query_response(param_env, original_values, response);
+        (certainty, has_changed)
     }
 
     fn compute_goal(&mut self, goal: Goal<'tcx, ty::Predicate<'tcx>>) -> QueryResult<'tcx> {
@@ -466,8 +465,8 @@ impl<'a, 'tcx> EvalCtxt<'a, 'tcx> {
         let inspect = self.inspect.new_evaluate_added_goals();
         let inspect = core::mem::replace(&mut self.inspect, inspect);
 
-        let mut response = Ok(Certainty::OVERFLOW);
-        for _ in 0..self.local_overflow_limit() {
+        let mut response = Ok(Certainty::overflow(false));
+        for _ in 0..FIXPOINT_STEP_LIMIT {
             // FIXME: This match is a bit ugly, it might be nice to change the inspect
             // stuff to use a closure instead. which should hopefully simplify this a bit.
             match self.evaluate_added_goals_step() {

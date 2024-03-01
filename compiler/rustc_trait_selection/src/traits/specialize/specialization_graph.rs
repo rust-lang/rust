@@ -103,6 +103,7 @@ impl<'tcx> Children {
                     self_ty: self_ty.has_concrete_skeleton().then_some(self_ty),
                     intercrate_ambiguity_causes: overlap.intercrate_ambiguity_causes,
                     involves_placeholder: overlap.involves_placeholder,
+                    overflowing_predicates: overlap.overflowing_predicates,
                 }
             };
 

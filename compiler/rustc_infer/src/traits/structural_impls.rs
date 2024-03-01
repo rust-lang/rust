@@ -47,8 +47,10 @@ impl<'tcx> fmt::Debug for traits::FulfillmentErrorCode<'tcx> {
             ConstEquateError(ref a, ref b) => {
                 write!(f, "CodeConstEquateError({a:?}, {b:?})")
             }
-            Ambiguity { overflow: false } => write!(f, "Ambiguity"),
-            Ambiguity { overflow: true } => write!(f, "Overflow"),
+            Ambiguity { overflow: None } => write!(f, "Ambiguity"),
+            Ambiguity { overflow: Some(suggest_increasing_limit) } => {
+                write!(f, "Overflow({suggest_increasing_limit})")
+            }
             Cycle(ref cycle) => write!(f, "Cycle({cycle:?})"),
         }
     }

@@ -60,7 +60,6 @@ pub enum Certainty {
 
 impl Certainty {
     pub const AMBIGUOUS: Certainty = Certainty::Maybe(MaybeCause::Ambiguity);
-    pub const OVERFLOW: Certainty = Certainty::Maybe(MaybeCause::Overflow);
 
     /// Use this function to merge the certainty of multiple nested subgoals.
     ///
@@ -79,15 +78,12 @@ impl Certainty {
             (Certainty::Yes, Certainty::Yes) => Certainty::Yes,
             (Certainty::Yes, Certainty::Maybe(_)) => other,
             (Certainty::Maybe(_), Certainty::Yes) => self,
-            (Certainty::Maybe(MaybeCause::Ambiguity), Certainty::Maybe(MaybeCause::Ambiguity)) => {
-                Certainty::Maybe(MaybeCause::Ambiguity)
-            }
-            (Certainty::Maybe(MaybeCause::Ambiguity), Certainty::Maybe(MaybeCause::Overflow))
-            | (Certainty::Maybe(MaybeCause::Overflow), Certainty::Maybe(MaybeCause::Ambiguity))
-            | (Certainty::Maybe(MaybeCause::Overflow), Certainty::Maybe(MaybeCause::Overflow)) => {
-                Certainty::Maybe(MaybeCause::Overflow)
-            }
+            (Certainty::Maybe(a), Certainty::Maybe(b)) => Certainty::Maybe(a.unify_with(b)),
         }
+    }
+
+    pub const fn overflow(suggest_increasing_limit: bool) -> Certainty {
+        Certainty::Maybe(MaybeCause::Overflow { suggest_increasing_limit })
     }
 }
 
@@ -99,7 +95,21 @@ pub enum MaybeCause {
     /// or we hit a case where we just don't bother, e.g. `?x: Trait` goals.
     Ambiguity,
     /// We gave up due to an overflow, most often by hitting the recursion limit.
-    Overflow,
+    Overflow { suggest_increasing_limit: bool },
+}
+
+impl MaybeCause {
+    fn unify_with(self, other: MaybeCause) -> MaybeCause {
+        match (self, other) {
+            (MaybeCause::Ambiguity, MaybeCause::Ambiguity) => MaybeCause::Ambiguity,
+            (MaybeCause::Ambiguity, MaybeCause::Overflow { .. }) => other,
+            (MaybeCause::Overflow { .. }, MaybeCause::Ambiguity) => self,
+            (
+                MaybeCause::Overflow { suggest_increasing_limit: a },
+                MaybeCause::Overflow { suggest_increasing_limit: b },
+            ) => MaybeCause::Overflow { suggest_increasing_limit: a || b },
+        }
+    }
 }
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy, Hash, HashStable, TypeFoldable, TypeVisitable)]
