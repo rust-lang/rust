@@ -56,6 +56,7 @@ pub enum LLVMMachineType {
     AMD64 = 0x8664,
     I386 = 0x14c,
     ARM64 = 0xaa64,
+    ARM64EC = 0xa641,
     ARM = 0x01c0,
 }
 
