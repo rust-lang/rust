@@ -1045,21 +1045,21 @@ fn build_async_destructor_ctor_shim<'tcx>(
     enum GlueStrategy<'tcx> {
         /// Empty strategy should generate this:
         ///
-        /// ```
+        /// ```ignore
         /// ready_unit()
         /// ```
         Empty,
 
         /// AsyncDropProjection strategy should generate this:
         ///
-        /// ```
+        /// ```ignore
         /// surface_async_drop_in_place(to_drop)
         /// ```
         AsyncDropProjection,
 
         /// Slice strategy should generate this:
         ///
-        /// ```
+        /// ```ignore
         /// // unsizes array into a slice when needed
         /// slice_async_destructor(to_drop)
         /// ```
@@ -1067,7 +1067,7 @@ fn build_async_destructor_ctor_shim<'tcx>(
 
         /// Chain strategy should generate something like this:
         ///
-        /// ```
+        /// ```ignore
         /// chain(
         ///     // Inserted only if surface AsyncDrop is implemented
         ///     surface_async_drop_in_place(to_drop),
