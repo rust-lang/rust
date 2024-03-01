@@ -5,7 +5,9 @@ use crate::infer::{
 };
 use crate::traits::{Obligation, PredicateObligations};
 
-use rustc_middle::ty::relate::{Relate, RelateResult, TypeRelation};
+use rustc_middle::ty::relate::{
+    relate_args_invariantly, relate_args_with_variances, Relate, RelateResult, TypeRelation,
+};
 use rustc_middle::ty::TyVar;
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_span::Span;
@@ -34,6 +36,24 @@ impl<'tcx> TypeRelation<'tcx> for TypeRelating<'_, '_, 'tcx> {
 
     fn tcx(&self) -> TyCtxt<'tcx> {
         self.fields.infcx.tcx
+    }
+
+    fn relate_item_args(
+        &mut self,
+        item_def_id: rustc_hir::def_id::DefId,
+        a_arg: ty::GenericArgsRef<'tcx>,
+        b_arg: ty::GenericArgsRef<'tcx>,
+    ) -> RelateResult<'tcx, ty::GenericArgsRef<'tcx>> {
+        if self.ambient_variance == ty::Variance::Invariant {
+            // Avoid fetching the variance if we are in an invariant
+            // context; no need, and it can induce dependency cycles
+            // (e.g., #41849).
+            relate_args_invariantly(self, a_arg, b_arg)
+        } else {
+            let tcx = self.tcx();
+            let opt_variances = tcx.variances_of(item_def_id);
+            relate_args_with_variances(self, item_def_id, opt_variances, a_arg, b_arg, false)
+        }
     }
 
     fn relate_with_variance<T: Relate<'tcx>>(
