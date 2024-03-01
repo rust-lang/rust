@@ -907,7 +907,7 @@ impl Session {
                 | CrateType::Rlib
                 | CrateType::Staticlib
                 | CrateType::Cdylib => continue,
-                CrateType::ProcMacro => return false,
+                CrateType::ProcMacro => return true,
             }
         }
 
