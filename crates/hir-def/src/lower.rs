@@ -2,10 +2,10 @@
 use std::cell::OnceCell;
 
 use hir_expand::{
-    ast_id_map::{AstIdMap, AstIdNode},
     span_map::{SpanMap, SpanMapRef},
     AstId, HirFileId, InFile,
 };
+use span::{AstIdMap, AstIdNode};
 use syntax::ast;
 use triomphe::Arc;
 

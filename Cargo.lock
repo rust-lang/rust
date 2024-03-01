@@ -1855,7 +1855,9 @@ dependencies = [
 name = "span"
 version = "0.0.0"
 dependencies = [
+ "hashbrown",
  "la-arena 0.3.1 (registry+https://github.com/rust-lang/crates.io-index)",
+ "rustc-hash",
  "salsa",
  "stdx",
  "syntax",
