@@ -373,6 +373,21 @@ impl<'mir, 'tcx> Checker<'mir, 'tcx> {
             }
         }
     }
+
+    fn has_interior_mut(&self, ty: Ty<'tcx>) -> bool {
+        match ty.kind() {
+            // Empty arrays have no interior mutability no matter their element type.
+            ty::Array(_elem, count)
+                if count
+                    .try_eval_target_usize(self.tcx, self.param_env)
+                    .is_some_and(|v| v == 0) =>
+            {
+                false
+            }
+            // Fallback to checking `Freeze`.
+            _ => !ty.is_freeze(self.tcx, self.param_env),
+        }
+    }
 }
 
 impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
@@ -487,7 +502,7 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
                 // We don't do value-based reasoning here, since the rules for interior mutability
                 // are not finalized yet and they seem likely to not be full value-based in the end.
                 let borrowed_place_has_mut_interior =
-                    !place.ty(self.body, self.tcx).ty.is_freeze(self.tcx, self.param_env);
+                    self.has_interior_mut(place.ty(self.body, self.tcx).ty);
 
                 // If the place is indirect, this is basically a reborrow. We have a reborrow
                 // special case above, but for raw pointers and pointers/references to `static` and
