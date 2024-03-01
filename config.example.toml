@@ -820,9 +820,9 @@
 # The full path to the musl libdir.
 #musl-libdir = musl-root/lib
 
-# The root location of the `wasm32-wasi` sysroot. Only used for the
-# `wasm32-wasi` target. If you are building wasm32-wasi target, make sure to
-# create a `[target.wasm32-wasi]` section and move this field there.
+# The root location of the `wasm32-wasip1` sysroot. Only used for WASI
+# related targets. Make sure to create a `[target.wasm32-wasip1]`
+# section and move this field there (or equivalent for the target being built).
 #wasi-root = <none> (path)
 
 # Used in testing for configuring where the QEMU images are located, you

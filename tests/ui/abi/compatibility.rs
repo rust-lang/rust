@@ -43,9 +43,9 @@
 //@ revisions: wasm
 //@[wasm] compile-flags: --target wasm32-unknown-unknown
 //@[wasm] needs-llvm-components: webassembly
-//@ revisions: wasi
-//@[wasi] compile-flags: --target wasm32-wasi
-//@[wasi] needs-llvm-components: webassembly
+//@ revisions: wasip1
+//@[wasip1] compile-flags: --target wasm32-wasip1
+//@[wasip1] needs-llvm-components: webassembly
 //@ revisions: bpf
 //@[bpf] compile-flags: --target bpfeb-unknown-none
 //@[bpf] needs-llvm-components: bpf
