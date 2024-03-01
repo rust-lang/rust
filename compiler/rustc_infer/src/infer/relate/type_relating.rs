@@ -1,4 +1,5 @@
 use super::combine::CombineFields;
+use crate::infer::BoundRegionConversionTime::HigherRankedType;
 use crate::infer::{
     DefineOpaqueTypes, ObligationEmittingRelation, StructurallyRelateAliases, SubregionOrigin,
 };
@@ -214,16 +215,59 @@ impl<'tcx> TypeRelation<'tcx> for TypeRelating<'_, '_, 'tcx> {
         {
             self.relate(a, b)?;
         } else {
+            let span = self.fields.trace.cause.span;
+            let infcx = self.fields.infcx;
+
             match self.ambient_variance {
+                // Checks whether `for<..> sub <: for<..> sup` holds.
+                //
+                // For this to hold, **all** instantiations of the super type
+                // have to be a super type of **at least one** instantiation of
+                // the subtype.
+                //
+                // This is implemented by first entering a new universe.
+                // We then replace all bound variables in `sup` with placeholders,
+                // and all bound variables in `sub` with inference vars.
+                // We can then just relate the two resulting types as normal.
+                //
+                // Note: this is a subtle algorithm. For a full explanation, please see
+                // the [rustc dev guide][rd]
+                //
+                // [rd]: https://rustc-dev-guide.rust-lang.org/borrow_check/region_inference/placeholders_and_universes.html
                 ty::Covariant => {
-                    self.fields.higher_ranked_sub(a, b, true)?;
+                    infcx.enter_forall(b, |b| {
+                        let a = infcx.instantiate_binder_with_fresh_vars(span, HigherRankedType, a);
+                        self.relate(a, b)
+                    })?;
                 }
                 ty::Contravariant => {
-                    self.fields.higher_ranked_sub(b, a, false)?;
+                    infcx.enter_forall(a, |a| {
+                        let b = infcx.instantiate_binder_with_fresh_vars(span, HigherRankedType, b);
+                        self.relate(a, b)
+                    })?;
                 }
+
+                // When **equating** binders, we check that there is a 1-to-1
+                // correspondence between the bound vars in both types.
+                //
+                // We do so by separately instantiating one of the binders with
+                // placeholders and the other with inference variables and then
+                // equating the instantiated types.
+                //
+                // We want `for<..> A == for<..> B` -- therefore we want
+                // `exists<..> A == for<..> B` and `exists<..> B == for<..> A`.
+                // Check if `exists<..> A == for<..> B`
                 ty::Invariant => {
-                    self.fields.higher_ranked_sub(a, b, true)?;
-                    self.fields.higher_ranked_sub(b, a, false)?;
+                    infcx.enter_forall(b, |b| {
+                        let a = infcx.instantiate_binder_with_fresh_vars(span, HigherRankedType, a);
+                        self.relate(a, b)
+                    })?;
+
+                    // Check if `exists<..> B == for<..> A`.
+                    infcx.enter_forall(a, |a| {
+                        let b = infcx.instantiate_binder_with_fresh_vars(span, HigherRankedType, b);
+                        self.relate(a, b)
+                    })?;
                 }
                 ty::Bivariant => {
                     unreachable!("Expected bivariance to be handled in relate_with_variance")
