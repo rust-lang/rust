@@ -351,17 +351,8 @@ jobs:
     strategy:
       matrix:
         include:
-          - name: mingw-check
-            <<: *job-linux-4c
-
-          - name: mingw-check-tidy
-            <<: *job-linux-4c
-
           - name: arm-android
             <<: *job-linux-8c
-
-          - name: x86_64-gnu-tools
-            <<: *job-linux-16c
 
   auto:
     <<: *base-ci-job
