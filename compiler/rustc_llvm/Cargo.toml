@@ -15,5 +15,5 @@ libc = "0.2.73"
 # 1.0.{84, 85} fix this but have been yanked
 [build-dependencies]
 # tidy-alphabetical-start
-cc = "1.0.86"
+cc = "1.0.83"
 # tidy-alphabetical-end
