@@ -13,6 +13,9 @@ use crate::os::android::net::SocketAddrExt;
 #[cfg(target_os = "linux")]
 use crate::os::linux::net::SocketAddrExt;
 
+#[cfg(any(target_os = "android", target_os = "linux"))]
+use crate::os::linux::net::UnixSocketExt;
+
 macro_rules! or_panic {
     ($e:expr) => {
         match $e {
