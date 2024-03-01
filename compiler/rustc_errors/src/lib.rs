@@ -1354,8 +1354,6 @@ impl DiagCtxtInner {
 
     // Return value is only `Some` if the level is `Error` or `DelayedBug`.
     fn emit_diagnostic(&mut self, mut diagnostic: DiagInner) -> Option<ErrorGuaranteed> {
-        assert!(diagnostic.level.can_be_top_or_sub().0);
-
         if diagnostic.has_future_breakage() {
             // Future breakages aren't emitted if they're Level::Allow,
             // but they still need to be constructed and stashed below,
@@ -1368,9 +1366,12 @@ impl DiagCtxtInner {
         // return early *and* have some kind of side-effect, except where
         // noted.
         match diagnostic.level {
-            Fatal | Error if self.treat_next_err_as_bug() => {
-                // `Fatal` and `Error` can be promoted to `Bug`.
-                diagnostic.level = Bug;
+            Bug => {}
+            Fatal | Error => {
+                if self.treat_next_err_as_bug() {
+                    // `Fatal` and `Error` can be promoted to `Bug`.
+                    diagnostic.level = Bug;
+                }
             }
             DelayedBug => {
                 // Note that because we check these conditions first,
@@ -1405,14 +1406,21 @@ impl DiagCtxtInner {
                     };
                 }
             }
-            Warning if !self.flags.can_emit_warnings => {
-                if diagnostic.has_future_breakage() {
-                    // The side-effect is at the top of this method.
-                    TRACK_DIAGNOSTIC(diagnostic, &mut |_| None);
+            ForceWarning(None) => {} // `ForceWarning(Some(...))` is below, with `Expect`
+            Warning => {
+                if !self.flags.can_emit_warnings {
+                    // We are not emitting warnings.
+                    if diagnostic.has_future_breakage() {
+                        // The side-effect is at the top of this method.
+                        TRACK_DIAGNOSTIC(diagnostic, &mut |_| None);
+                    }
+                    return None;
                 }
-                return None;
             }
+            Note | Help | FailureNote => {}
+            OnceNote | OnceHelp => panic!("bad level: {:?}", diagnostic.level),
             Allow => {
+                // Nothing emitted for allowed lints.
                 if diagnostic.has_future_breakage() {
                     // The side-effect is at the top of this method.
                     TRACK_DIAGNOSTIC(diagnostic, &mut |_| None);
@@ -1434,12 +1442,12 @@ impl DiagCtxtInner {
                 }
                 self.fulfilled_expectations.insert(expect_id.normalize());
                 if let Expect(_) = diagnostic.level {
+                    // Nothing emitted here for expected lints.
                     TRACK_DIAGNOSTIC(diagnostic, &mut |_| None);
                     self.suppressed_expected_diag = true;
                     return None;
                 }
             }
-            _ => {}
         }
 
         TRACK_DIAGNOSTIC(diagnostic, &mut |mut diagnostic| {
@@ -1816,16 +1824,13 @@ impl Level {
         matches!(*self, FailureNote)
     }
 
-    // Can this level be used in a top-level diagnostic message and/or a
-    // subdiagnostic message?
-    fn can_be_top_or_sub(&self) -> (bool, bool) {
+    // Can this level be used in a subdiagnostic message?
+    fn can_be_subdiag(&self) -> bool {
         match self {
             Bug | DelayedBug | Fatal | Error | ForceWarning(_) | FailureNote | Allow
-            | Expect(_) => (true, false),
+            | Expect(_) => false,
 
-            Warning | Note | Help => (true, true),
-
-            OnceNote | OnceHelp => (false, true),
+            Warning | Note | Help | OnceNote | OnceHelp => true,
         }
     }
 }
