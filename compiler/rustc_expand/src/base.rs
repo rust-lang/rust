@@ -1341,6 +1341,15 @@ pub fn get_single_str_from_tts(
     tts: TokenStream,
     name: &str,
 ) -> Result<Symbol, ErrorGuaranteed> {
+    get_single_str_spanned_from_tts(cx, span, tts, name).map(|(s, _)| s)
+}
+
+pub fn get_single_str_spanned_from_tts(
+    cx: &mut ExtCtxt<'_>,
+    span: Span,
+    tts: TokenStream,
+    name: &str,
+) -> Result<(Symbol, Span), ErrorGuaranteed> {
     let mut p = cx.new_parser_from_tts(tts);
     if p.token == token::Eof {
         let guar = cx.dcx().emit_err(errors::OnlyOneArgument { span, name });
@@ -1352,7 +1361,12 @@ pub fn get_single_str_from_tts(
     if p.token != token::Eof {
         cx.dcx().emit_err(errors::OnlyOneArgument { span, name });
     }
-    expr_to_string(cx, ret, "argument must be a string literal").map(|(s, _)| s)
+    expr_to_spanned_string(cx, ret, "argument must be a string literal")
+        .map_err(|err| match err {
+            Ok((err, _)) => err.emit(),
+            Err(guar) => guar,
+        })
+        .map(|(symbol, _style, span)| (symbol, span))
 }
 
 /// Extracts comma-separated expressions from `tts`.
