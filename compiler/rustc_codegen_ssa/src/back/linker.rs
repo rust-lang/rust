@@ -1631,7 +1631,9 @@ impl<'a> Linker for AixLinker<'a> {
 
     fn optimize(&mut self) {}
 
-    fn pgo_gen(&mut self) {}
+    fn pgo_gen(&mut self) {
+        self.cmd.arg("-bdbg:namedsects:ss");
+    }
 
     fn control_flow_guard(&mut self) {}
 
