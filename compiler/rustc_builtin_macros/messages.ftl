@@ -221,12 +221,6 @@ builtin_macros_requires_cfg_pattern =
     macro requires a cfg-pattern as an argument
     .label = cfg-pattern required
 
-builtin_macros_should_panic = functions using `#[should_panic]` must return `()`
-
-builtin_macros_test_arg_non_lifetime = functions used as tests can not have any non-lifetime generic parameters
-
-builtin_macros_test_args = functions used as tests can not have any arguments
-
 builtin_macros_test_bad_fn = {$kind} functions cannot be used for tests
     .label = `{$kind}` because of this
 

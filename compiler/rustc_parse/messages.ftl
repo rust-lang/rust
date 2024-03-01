@@ -284,9 +284,6 @@ parse_found_expr_would_be_stmt = expected expression, found `{$token}`
 parse_function_body_equals_expr = function body cannot be `= expression;`
     .suggestion = surround the expression with `{"{"}` and `{"}"}` instead of `=` and `;`
 
-parse_gen_fn = `gen` functions are not yet implemented
-    .help = for now you can use `gen {"{}"}` blocks and return `impl Iterator` instead
-
 parse_generic_args_in_pat_require_turbofish_syntax = generic args in patterns require the turbofish syntax
 
 parse_generic_parameters_without_angle_brackets = generic parameters without surrounding angle brackets
