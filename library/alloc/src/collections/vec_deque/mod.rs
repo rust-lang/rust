@@ -559,6 +559,21 @@ impl<T> VecDeque<T> {
     pub fn with_capacity(capacity: usize) -> VecDeque<T> {
         Self::with_capacity_in(capacity, Global)
     }
+
+    /// Creates an empty deque with space for at least `capacity` elements.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::collections::VecDeque;
+    ///
+    /// let deque: VecDeque<u32> = VecDeque::with_capacity(10);
+    /// ```
+    #[inline]
+    #[unstable(feature = "try_with_capacity", issue = "91913")]
+    pub fn try_with_capacity(capacity: usize) -> Result<VecDeque<T>, TryReserveError> {
+        Ok(VecDeque { head: 0, len: 0, buf: RawVec::try_with_capacity_in(capacity, Global)? })
+    }
 }
 
 impl<T, A: Allocator> VecDeque<T, A> {
