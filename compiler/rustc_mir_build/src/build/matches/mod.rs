@@ -93,8 +93,14 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     variable_source_info,
                     true,
                 ));
-                this.cfg.goto(lhs_success_block, variable_source_info, rhs_success_block);
-                rhs_success_block.unit()
+
+                // Make the LHS and RHS success arms converge to a common block.
+                // (We can't just make LHS goto RHS, because `rhs_success_block`
+                // might contain statements that we don't want on the LHS path.)
+                let success_block = this.cfg.start_new_block();
+                this.cfg.goto(lhs_success_block, variable_source_info, success_block);
+                this.cfg.goto(rhs_success_block, variable_source_info, success_block);
+                success_block.unit()
             }
             ExprKind::Unary { op: UnOp::Not, arg } => {
                 let local_scope = this.local_scope();
