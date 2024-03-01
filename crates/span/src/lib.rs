@@ -26,9 +26,14 @@ pub struct FileRange {
     pub range: TextRange,
 }
 
+/// See crates\hir-expand\src\ast_id_map.rs
+/// This is a type erased FileAstId.
 pub type ErasedFileAstId = la_arena::Idx<syntax::SyntaxNodePtr>;
 
 // The first index is always the root node's AstId
+/// The root ast id always points to the encompassing file, using this in spans is discouraged as
+/// any range relative to it will be effectively absolute, ruining the entire point of anchored
+/// relative text ranges.
 pub const ROOT_ERASED_FILE_AST_ID: ErasedFileAstId =
     la_arena::Idx::from_raw(la_arena::RawIdx::from_u32(0));
 
@@ -47,6 +52,7 @@ pub struct SpanData<Ctx> {
     /// We need the anchor for incrementality, as storing absolute ranges will require
     /// recomputation on every change in a file at all times.
     pub range: TextRange,
+    /// The anchor this span is relative to.
     pub anchor: SpanAnchor,
     /// The syntax context of the span.
     pub ctx: Ctx,
