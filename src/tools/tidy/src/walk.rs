@@ -86,3 +86,20 @@ pub(crate) fn walk_no_read(
         }
     }
 }
+
+// Walk through directories and skip symlinks.
+pub(crate) fn walk_dir(
+    path: &Path,
+    skip: impl Send + Sync + 'static + Fn(&Path) -> bool,
+    f: &mut dyn FnMut(&DirEntry),
+) {
+    let mut walker = ignore::WalkBuilder::new(path);
+    let walker = walker.filter_entry(move |e| !skip(e.path()));
+    for entry in walker.build() {
+        if let Ok(entry) = entry {
+            if entry.path().is_dir() {
+                f(&entry);
+            }
+        }
+    }
+}

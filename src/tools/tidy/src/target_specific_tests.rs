@@ -4,31 +4,11 @@
 use std::collections::BTreeMap;
 use std::path::Path;
 
+use crate::iter_header::{iter_header, HeaderLine};
 use crate::walk::filter_not_rust;
 
-const COMMENT: &str = "//@";
 const LLVM_COMPONENTS_HEADER: &str = "needs-llvm-components:";
 const COMPILE_FLAGS_HEADER: &str = "compile-flags:";
-
-/// Iterate through compiletest headers in a test contents.
-///
-/// Adjusted from compiletest/src/header.rs.
-fn iter_header<'a>(contents: &'a str, it: &mut dyn FnMut(Option<&'a str>, &'a str)) {
-    for ln in contents.lines() {
-        let ln = ln.trim();
-        if ln.starts_with(COMMENT) && ln[COMMENT.len()..].trim_start().starts_with('[') {
-            if let Some(close_brace) = ln.find(']') {
-                let open_brace = ln.find('[').unwrap();
-                let lncfg = &ln[open_brace + 1..close_brace];
-                it(Some(lncfg), ln[(close_brace + 1)..].trim_start());
-            } else {
-                panic!("malformed condition directive: expected `//[foo]`, found `{ln}`")
-            }
-        } else if ln.starts_with(COMMENT) {
-            it(None, ln[COMMENT.len()..].trim_start());
-        }
-    }
-}
 
 #[derive(Default, Debug)]
 struct RevisionInfo<'a> {
@@ -40,9 +20,9 @@ pub fn check(path: &Path, bad: &mut bool) {
     crate::walk::walk(path, |path, _is_dir| filter_not_rust(path), &mut |entry, content| {
         let file = entry.path().display();
         let mut header_map = BTreeMap::new();
-        iter_header(content, &mut |cfg, directive| {
+        iter_header(content, &mut |HeaderLine { revision, directive }| {
             if let Some(value) = directive.strip_prefix(LLVM_COMPONENTS_HEADER) {
-                let info = header_map.entry(cfg).or_insert(RevisionInfo::default());
+                let info = header_map.entry(revision).or_insert(RevisionInfo::default());
                 let comp_vec = info.llvm_components.get_or_insert(Vec::new());
                 for component in value.split(' ') {
                     let component = component.trim();
@@ -56,7 +36,7 @@ pub fn check(path: &Path, bad: &mut bool) {
                     if let Some((arch, _)) =
                         v.trim_start_matches(|c| c == ' ' || c == '=').split_once("-")
                     {
-                        let info = header_map.entry(cfg).or_insert(RevisionInfo::default());
+                        let info = header_map.entry(revision).or_insert(RevisionInfo::default());
                         info.target_arch.replace(arch);
                     } else {
                         eprintln!("{file}: seems to have a malformed --target value");
