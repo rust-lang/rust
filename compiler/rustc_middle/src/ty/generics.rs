@@ -360,6 +360,30 @@ impl<'tcx> Generics {
         let own = &args[self.parent_count..][..self.params.len()];
         if self.has_self && self.parent.is_none() { &own[1..] } else { own }
     }
+
+    /// Returns true if a concrete type is specified after a default type.
+    /// For example, consider `struct T<W = usize, X = Vec<W>>(W, X)`
+    /// `T<usize, String>` will return true
+    /// `T<usize>` will return false
+    pub fn check_concrete_type_after_default(
+        &'tcx self,
+        tcx: TyCtxt<'tcx>,
+        args: &'tcx [ty::GenericArg<'tcx>],
+    ) -> bool {
+        let mut default_param_seen = false;
+        for param in self.params.iter() {
+            if let Some(inst) =
+                param.default_value(tcx).map(|default| default.instantiate(tcx, args))
+            {
+                if inst == args[param.index as usize] {
+                    default_param_seen = true;
+                } else if default_param_seen {
+                    return true;
+                }
+            }
+        }
+        false
+    }
 }
 
 /// Bounds on generics.

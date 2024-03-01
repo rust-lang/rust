@@ -11,6 +11,41 @@ help: consider assigning a value
 LL |     let x: isize = 0;
    |                  +++
 
-error: aborting due to 1 previous error
+error[E0381]: used binding `a` isn't initialized
+  --> $DIR/borrowck-uninit.rs:14:32
+   |
+LL |     let (a, );
+   |          - binding declared here but left uninitialized
+...
+LL |     let _: (u8, u8, u8, u8) = (a, b, c, d);
+   |                                ^ `a` used here but it isn't initialized
+
+error[E0381]: used binding `b` isn't initialized
+  --> $DIR/borrowck-uninit.rs:14:35
+   |
+LL |     let [b, ];
+   |          - binding declared here but left uninitialized
+...
+LL |     let _: (u8, u8, u8, u8) = (a, b, c, d);
+   |                                   ^ `b` used here but it isn't initialized
+
+error[E0381]: used binding `c` isn't initialized
+  --> $DIR/borrowck-uninit.rs:14:38
+   |
+LL |     let A(c);
+   |           - binding declared here but left uninitialized
+LL |     let B { d };
+LL |     let _: (u8, u8, u8, u8) = (a, b, c, d);
+   |                                      ^ `c` used here but it isn't initialized
+
+error[E0381]: used binding `d` isn't initialized
+  --> $DIR/borrowck-uninit.rs:14:41
+   |
+LL |     let B { d };
+   |             - binding declared here but left uninitialized
+LL |     let _: (u8, u8, u8, u8) = (a, b, c, d);
+   |                                         ^ `d` used here but it isn't initialized
+
+error: aborting due to 5 previous errors
 
 For more information about this error, try `rustc --explain E0381`.

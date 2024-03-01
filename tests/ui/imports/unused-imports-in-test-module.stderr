@@ -16,7 +16,7 @@ error: unused import: `super::a`
 LL |     use super::a;
    |         ^^^^^^^^
    |
-help: consider adding a `#[cfg(test)]` to the containing module
+help: if this is a test module, consider adding a `#[cfg(test)]` to the containing module
   --> $DIR/unused-imports-in-test-module.rs:8:1
    |
 LL | mod test {
@@ -28,7 +28,7 @@ error: unused import: `super::a`
 LL |     use super::a;
    |         ^^^^^^^^
    |
-help: consider adding a `#[cfg(test)]` to the containing module
+help: if this is a test module, consider adding a `#[cfg(test)]` to the containing module
   --> $DIR/unused-imports-in-test-module.rs:18:1
    |
 LL | mod tests {
@@ -40,7 +40,7 @@ error: unused import: `super::a`
 LL |     use super::a;
    |         ^^^^^^^^
    |
-help: consider adding a `#[cfg(test)]` to the containing module
+help: if this is a test module, consider adding a `#[cfg(test)]` to the containing module
   --> $DIR/unused-imports-in-test-module.rs:28:1
    |
 LL | mod test_a {
@@ -52,7 +52,7 @@ error: unused import: `super::a`
 LL |     use super::a;
    |         ^^^^^^^^
    |
-help: consider adding a `#[cfg(test)]` to the containing module
+help: if this is a test module, consider adding a `#[cfg(test)]` to the containing module
   --> $DIR/unused-imports-in-test-module.rs:38:1
    |
 LL | mod a_test {
@@ -64,7 +64,7 @@ error: unused import: `super::a`
 LL |     use super::a;
    |         ^^^^^^^^
    |
-help: consider adding a `#[cfg(test)]` to the containing module
+help: if this is a test module, consider adding a `#[cfg(test)]` to the containing module
   --> $DIR/unused-imports-in-test-module.rs:48:1
    |
 LL | mod tests_a {
@@ -76,7 +76,7 @@ error: unused import: `super::a`
 LL |     use super::a;
    |         ^^^^^^^^
    |
-help: consider adding a `#[cfg(test)]` to the containing module
+help: if this is a test module, consider adding a `#[cfg(test)]` to the containing module
   --> $DIR/unused-imports-in-test-module.rs:58:1
    |
 LL | mod a_tests {

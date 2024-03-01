@@ -613,7 +613,12 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                     if self.sugg_span.is_some() {
                         return;
                     }
-                    if let hir::StmtKind::Local(hir::Local { span, ty, init: None, .. }) = &ex.kind
+
+                    // FIXME: We make sure that this is a normal top-level binding,
+                    // but we could suggest `todo!()` for all uninitalized bindings in the pattern pattern
+                    if let hir::StmtKind::Local(hir::Local { span, ty, init: None, pat, .. }) =
+                        &ex.kind
+                        && let hir::PatKind::Binding(..) = pat.kind
                         && span.contains(self.decl_span)
                     {
                         self.sugg_span = ty.map_or(Some(self.decl_span), |ty| Some(ty.span));
