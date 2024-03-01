@@ -281,7 +281,7 @@ modules choose to import a larger or smaller set of names explicitly.
 Let's consider the example of a type like `MyStruct<u32>`, where `MyStruct` is defined like so:
 
 ```rust,ignore
-struct MyStruct<T> { x: u32, y: T }
+struct MyStruct<T> { x: u8, y: T }
 ```
 
 The type `MyStruct<u32>` would be an instance of `TyKind::Adt`:
