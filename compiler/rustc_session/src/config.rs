@@ -790,6 +790,16 @@ pub struct NextSolverConfig {
     pub dump_tree: DumpSolverProofTree,
 }
 
+impl Default for NextSolverConfig {
+    fn default() -> Self {
+        NextSolverConfig {
+            coherence: true,
+            globally: false,
+            dump_tree: DumpSolverProofTree::default(),
+        }
+    }
+}
+
 #[derive(Default, Debug, Copy, Clone, Hash, PartialEq, Eq)]
 pub enum DumpSolverProofTree {
     Always,

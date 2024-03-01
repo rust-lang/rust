@@ -1,5 +1,5 @@
 error[E0726]: implicit elided lifetime not allowed here
-  --> $DIR/skip-reporting-if-references-err.rs:10:9
+  --> $DIR/skip-reporting-if-references-err.rs:7:9
    |
 LL | impl<T> ToUnit for T {}
    |         ^^^^^^ expected lifetime parameter

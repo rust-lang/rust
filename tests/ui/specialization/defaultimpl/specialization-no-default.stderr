@@ -52,17 +52,6 @@ LL |     fn baz(&self) {}
    |
    = note: to specialize, `baz` in the parent `impl` must be marked `default`
 
-error[E0520]: `redundant` specializes an item from a parent `impl`, but that item is not marked `default`
-  --> $DIR/specialization-no-default.rs:74:5
-   |
-LL | impl<T: Clone> Redundant for T {
-   | ------------------------------ parent `impl` is here
-...
-LL |     fn redundant(&self) {}
-   |     ^^^^^^^^^^^^^^^^^^^ cannot specialize default item `redundant`
-   |
-   = note: to specialize, `redundant` in the parent `impl` must be marked `default`
-
-error: aborting due to 5 previous errors; 1 warning emitted
+error: aborting due to 4 previous errors; 1 warning emitted
 
 For more information about this error, try `rustc --explain E0520`.
