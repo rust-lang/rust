@@ -533,6 +533,16 @@ fn wasm_special() {
         ("wasm32-wasi", "wasm32", true),
         ("wasm32-wasi", "wasm32-bare", false),
         ("wasm32-wasi", "wasi", true),
+        // NB: the wasm32-wasip1 target is new so this isn't tested for
+        // the bootstrap compiler.
+        #[cfg(not(bootstrap))]
+        ("wasm32-wasip1", "emscripten", false),
+        #[cfg(not(bootstrap))]
+        ("wasm32-wasip1", "wasm32", true),
+        #[cfg(not(bootstrap))]
+        ("wasm32-wasip1", "wasm32-bare", false),
+        #[cfg(not(bootstrap))]
+        ("wasm32-wasip1", "wasi", true),
         ("wasm64-unknown-unknown", "emscripten", false),
         ("wasm64-unknown-unknown", "wasm32", false),
         ("wasm64-unknown-unknown", "wasm32-bare", false),
