@@ -577,7 +577,7 @@ macro_rules! with_fn {
 impl<'a, G: EmissionGuarantee> Diag<'a, G> {
     #[rustc_lint_diagnostics]
     #[track_caller]
-    pub fn new<M: Into<DiagMessage>>(dcx: &'a DiagCtxt, level: Level, message: M) -> Self {
+    pub fn new(dcx: &'a DiagCtxt, level: Level, message: impl Into<DiagMessage>) -> Self {
         Self::new_diagnostic(dcx, DiagInner::new(level, message))
     }
 
