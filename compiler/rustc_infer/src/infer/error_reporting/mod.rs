@@ -1247,10 +1247,23 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
             (&ty::Adt(def1, sub1), &ty::Adt(def2, sub2)) => {
                 let did1 = def1.did();
                 let did2 = def2.did();
-                let sub_no_defaults_1 =
-                    self.tcx.generics_of(did1).own_args_no_defaults(self.tcx, sub1);
-                let sub_no_defaults_2 =
-                    self.tcx.generics_of(did2).own_args_no_defaults(self.tcx, sub2);
+
+                let generics1 = self.tcx.generics_of(did1);
+                let generics2 = self.tcx.generics_of(did2);
+
+                let non_default_after_default = generics1
+                    .check_concrete_type_after_default(self.tcx, sub1)
+                    || generics2.check_concrete_type_after_default(self.tcx, sub2);
+                let sub_no_defaults_1 = if non_default_after_default {
+                    generics1.own_args(sub1)
+                } else {
+                    generics1.own_args_no_defaults(self.tcx, sub1)
+                };
+                let sub_no_defaults_2 = if non_default_after_default {
+                    generics2.own_args(sub2)
+                } else {
+                    generics2.own_args_no_defaults(self.tcx, sub2)
+                };
                 let mut values = (DiagStyledString::new(), DiagStyledString::new());
                 let path1 = self.tcx.def_path_str(did1);
                 let path2 = self.tcx.def_path_str(did2);
