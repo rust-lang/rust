@@ -32,7 +32,7 @@ use std::{fmt, hash::Hash};
 
 use base_db::{salsa::impl_intern_value_trivial, CrateId, Edition, FileId};
 use either::Either;
-use span::{FileRange, HirFileIdRepr, Span, SyntaxContextId};
+use span::{FileRange, HirFileIdRepr, Span, SyntaxContextData, SyntaxContextId};
 use syntax::{
     ast::{self, AstNode},
     SyntaxNode, SyntaxToken, TextRange, TextSize,
@@ -44,7 +44,6 @@ use crate::{
     builtin_derive_macro::BuiltinDeriveExpander,
     builtin_fn_macro::{BuiltinFnLikeExpander, EagerExpander},
     db::{ExpandDatabase, TokenExpander},
-    hygiene::SyntaxContextData,
     mod_path::ModPath,
     proc_macro::{CustomProcMacroExpander, ProcMacroKind},
     span_map::{ExpansionSpanMap, SpanMap},

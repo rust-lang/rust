@@ -3,9 +3,14 @@ use std::fmt::{self, Write};
 
 use salsa::InternId;
 
+mod hygiene;
 mod map;
 
-pub use crate::map::{RealSpanMap, SpanMap};
+pub use self::{
+    hygiene::{SyntaxContextData, SyntaxContextId, Transparency},
+    map::{RealSpanMap, SpanMap},
+};
+
 pub use syntax::{TextRange, TextSize};
 pub use vfs::FileId;
 
@@ -23,7 +28,7 @@ pub struct FileRange {
 
 pub type ErasedFileAstId = la_arena::Idx<syntax::SyntaxNodePtr>;
 
-// The first inde is always the root node's AstId
+// The first index is always the root node's AstId
 pub const ROOT_ERASED_FILE_AST_ID: ErasedFileAstId =
     la_arena::Idx::from_raw(la_arena::RawIdx::from_u32(0));
 
@@ -65,41 +70,6 @@ impl fmt::Display for Span {
         fmt::Debug::fmt(&self.range, f)?;
         f.write_char('#')?;
         self.ctx.fmt(f)
-    }
-}
-
-#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub struct SyntaxContextId(InternId);
-
-impl salsa::InternKey for SyntaxContextId {
-    fn from_intern_id(v: salsa::InternId) -> Self {
-        SyntaxContextId(v)
-    }
-    fn as_intern_id(&self) -> salsa::InternId {
-        self.0
-    }
-}
-
-impl fmt::Display for SyntaxContextId {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", self.0.as_u32())
-    }
-}
-
-// inherent trait impls please tyvm
-impl SyntaxContextId {
-    pub const ROOT: Self = SyntaxContextId(unsafe { InternId::new_unchecked(0) });
-
-    pub fn is_root(self) -> bool {
-        self == Self::ROOT
-    }
-
-    pub fn into_u32(self) -> u32 {
-        self.0.as_u32()
-    }
-
-    pub fn from_u32(u32: u32) -> Self {
-        Self(InternId::from(u32))
     }
 }
 

@@ -5,7 +5,7 @@ use either::Either;
 use limit::Limit;
 use mbe::{syntax_node_to_token_tree, ValueResult};
 use rustc_hash::FxHashSet;
-use span::SyntaxContextId;
+use span::{SyntaxContextData, SyntaxContextId};
 use syntax::{
     ast::{self, HasAttrs},
     AstNode, Parse, SyntaxError, SyntaxNode, SyntaxToken, T,
@@ -19,10 +19,7 @@ use crate::{
     builtin_fn_macro::EagerExpander,
     declarative::DeclarativeMacroExpander,
     fixup::{self, reverse_fixups, SyntaxFixupUndoInfo},
-    hygiene::{
-        span_with_call_site_ctxt, span_with_def_site_ctxt, span_with_mixed_site_ctxt,
-        SyntaxContextData,
-    },
+    hygiene::{span_with_call_site_ctxt, span_with_def_site_ctxt, span_with_mixed_site_ctxt},
     proc_macro::ProcMacros,
     span_map::{RealSpanMap, SpanMap, SpanMapRef},
     tt, AstId, BuiltinAttrExpander, BuiltinDeriveExpander, BuiltinFnLikeExpander,
