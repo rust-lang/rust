@@ -83,7 +83,6 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                                     block,
                                     cond,
                                     Some(condition_scope), // Temp scope
-                                    condition_scope,
                                     source_info,
                                     true, // Declare `let` bindings normally
                                 ));
@@ -156,7 +155,6 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                             block,
                             lhs,
                             Some(condition_scope), // Temp scope
-                            condition_scope,
                             source_info,
                             // This flag controls how inner `let` expressions are lowered,
                             // but either way there shouldn't be any of those in here.
