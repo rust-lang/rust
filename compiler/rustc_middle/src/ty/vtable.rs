@@ -53,11 +53,11 @@ pub(super) fn vtable_allocation_provider<'tcx>(
 ) -> AllocId {
     let (ty, poly_trait_ref) = key;
 
-    let vtable_entries = if let Some(poly_trait_ref) = poly_trait_ref {
-        let trait_ref = poly_trait_ref.with_self_ty(tcx, ty);
-        let trait_ref = tcx.erase_regions(trait_ref);
+    let invoke_trait = poly_trait_ref
+        .map(|poly_trait_ref| tcx.erase_regions(poly_trait_ref.with_self_ty(tcx, ty)));
 
-        tcx.vtable_entries(trait_ref)
+    let vtable_entries = if let Some(invoke_trait) = invoke_trait {
+        tcx.vtable_entries(invoke_trait)
     } else {
         TyCtxt::COMMON_VTABLE_ENTRIES
     };
@@ -83,7 +83,8 @@ pub(super) fn vtable_allocation_provider<'tcx>(
         let idx: u64 = u64::try_from(idx).unwrap();
         let scalar = match entry {
             VtblEntry::MetadataDropInPlace => {
-                let instance = ty::Instance::resolve_drop_in_place(tcx, ty);
+                let instance =
+                    ty::Instance::resolve_drop_in_place(tcx, ty).cfi_shim(tcx, invoke_trait);
                 let fn_alloc_id = tcx.reserve_and_set_fn_alloc(instance);
                 let fn_ptr = Pointer::from(fn_alloc_id);
                 Scalar::from_pointer(fn_ptr, &tcx)

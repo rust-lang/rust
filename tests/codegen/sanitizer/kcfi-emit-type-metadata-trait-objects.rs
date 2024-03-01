@@ -12,7 +12,7 @@
 #![no_core]
 
 #[lang="sized"]
-trait Sized { }
+pub trait Sized { }
 #[lang="copy"]
 trait Copy { }
 #[lang="receiver"]
@@ -28,7 +28,9 @@ impl<'a, 'b: 'a, T: ?Sized + Unsize<U>, U: ?Sized> CoerceUnsized<&'a U> for &'b 
 #[lang="freeze"]
 trait Freeze { }
 #[lang="drop_in_place"]
-fn drop_in_place_fn<T>() { }
+fn drop_in_place_fn<T: ?Sized>(_to_drop: *mut T) { }
+#[lang="unpin"]
+pub trait Unpin { }
 
 pub trait Trait1 {
     fn foo(&self);
