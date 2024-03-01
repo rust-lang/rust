@@ -200,7 +200,7 @@ error: argument must be a string literal
 LL |     include_str!(invalid);
    |                  ^^^^^^^
 
-error: couldn't read $DIR/i'd be quite surprised if a file with this name existed: $FILE_NOT_FOUND_MSG (os error 2)
+error: couldn't read `$DIR/i'd be quite surprised if a file with this name existed`: No such file or directory (os error 2)
   --> $DIR/macros-nonfatal-errors.rs:113:5
    |
 LL |     include_str!("i'd be quite surprised if a file with this name existed");
@@ -214,7 +214,7 @@ error: argument must be a string literal
 LL |     include_bytes!(invalid);
    |                    ^^^^^^^
 
-error: couldn't read $DIR/i'd be quite surprised if a file with this name existed: $FILE_NOT_FOUND_MSG (os error 2)
+error: couldn't read `$DIR/i'd be quite surprised if a file with this name existed`: No such file or directory (os error 2)
   --> $DIR/macros-nonfatal-errors.rs:115:5
    |
 LL |     include_bytes!("i'd be quite surprised if a file with this name existed");
