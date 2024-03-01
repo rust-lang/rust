@@ -34,15 +34,6 @@ fn _assert_is_object_safe(_: &dyn Iterator<Item = ()>) {}
         _Self = "core::ops::range::RangeToInclusive<Idx>",
         note = "you might have meant to use a bounded `RangeInclusive`"
     ),
-    on(
-        _Self = "[]",
-        label = "`{Self}` is not an iterator; try calling `.into_iter()` or `.iter()`"
-    ),
-    on(_Self = "&[]", label = "`{Self}` is not an iterator; try calling `.iter()`"),
-    on(
-        _Self = "alloc::vec::Vec<T, A>",
-        label = "`{Self}` is not an iterator; try calling `.into_iter()` or `.iter()`"
-    ),
     label = "`{Self}` is not an iterator",
     message = "`{Self}` is not an iterator"
 )]
