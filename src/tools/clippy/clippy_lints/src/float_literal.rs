@@ -76,8 +76,10 @@ impl<'tcx> LateLintPass<'tcx> for FloatLiteral {
             let digits = count_digits(sym_str);
             let max = max_digits(fty);
             let type_suffix = match lit_float_ty {
+                LitFloatType::Suffixed(ast::FloatTy::F16) => Some("f16"),
                 LitFloatType::Suffixed(ast::FloatTy::F32) => Some("f32"),
                 LitFloatType::Suffixed(ast::FloatTy::F64) => Some("f64"),
+                LitFloatType::Suffixed(ast::FloatTy::F128) => Some("f128"),
                 LitFloatType::Unsuffixed => None,
             };
             let (is_whole, is_inf, mut float_str) = match fty {
