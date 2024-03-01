@@ -1,9 +1,5 @@
 warning: the feature `specialization` is incomplete and may not be safe to use and/or cause compiler crashes
-<<<<<<< HEAD:tests/ui/specialization/specialization-overlap-projection.current.stderr
-  --> $DIR/specialization-overlap-projection.rs:10:12
-=======
-  --> $DIR/specialization-overlap-projection.rs:9:12
->>>>>>> acb48a636d9 (stabilize `-Znext-solver=coherence`):tests/ui/specialization/specialization-overlap-projection.stderr
+  --> $DIR/specialization-overlap-projection.rs:8:12
    |
 LL | #![feature(specialization)]
    |            ^^^^^^^^^^^^^^
@@ -13,7 +9,7 @@ LL | #![feature(specialization)]
    = note: `#[warn(incomplete_features)]` on by default
 
 error[E0119]: conflicting implementations of trait `Foo` for type `u32`
-  --> $DIR/specialization-overlap-projection.rs:24:1
+  --> $DIR/specialization-overlap-projection.rs:23:1
    |
 LL | impl Foo for u32 {}
    | ---------------- first implementation here
@@ -25,7 +21,7 @@ error[E0119]: conflicting implementations of trait `Foo` for type `u32`
    |
 LL | impl Foo for u32 {}
    | ---------------- first implementation here
-LL | impl Foo for <u8 as Assoc>::Output {}
+...
 LL | impl Foo for <u16 as Assoc>::Output {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ conflicting implementation for `u32`
 

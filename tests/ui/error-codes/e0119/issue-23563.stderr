@@ -1,4 +1,4 @@
-error[E0119]: conflicting implementations of trait `LolFrom<&[_]>` for type `LocalType<_>`
+error[E0119]: conflicting implementations of trait `LolFrom<&[u8]>` for type `LocalType<u8>`
   --> $DIR/issue-23563.rs:13:1
    |
 LL | impl<'a, T> LolFrom<&'a [T]> for LocalType<T> {

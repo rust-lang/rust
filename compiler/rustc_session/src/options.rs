@@ -398,7 +398,7 @@ mod desc {
     pub const parse_instrument_xray: &str = "either a boolean (`yes`, `no`, `on`, `off`, etc), or a comma separated list of settings: `always` or `never` (mutually exclusive), `ignore-loops`, `instruction-threshold=N`, `skip-entry`, `skip-exit`";
     pub const parse_unpretty: &str = "`string` or `string=string`";
     pub const parse_treat_err_as_bug: &str = "either no value or a non-negative number";
-    pub const parse_next_solver_config: &str = "a comma separated list of solver configurations: `globally` (default), `coherence`, `dump-tree`, `dump-tree-on-error";
+    pub const parse_next_solver_config: &str = "a comma separated list of solver configurations: `globally` (default), `no`, `dump-tree`, `dump-tree-on-error";
     pub const parse_lto: &str =
         "either a boolean (`yes`, `no`, `on`, `off`, etc), `thin`, `fat`, or omitted";
     pub const parse_linker_plugin_lto: &str =
@@ -1049,6 +1049,10 @@ mod parse {
             let mut dump_tree = None;
             for c in config.split(',') {
                 match c {
+                    "no" => {
+                        *slot = None;
+                        return true;
+                    }
                     "globally" => globally = true,
                     "coherence" => {
                         globally = false;
@@ -1803,7 +1807,7 @@ options! {
         "the size at which the `large_assignments` lint starts to be emitted"),
     mutable_noalias: bool = (true, parse_bool, [TRACKED],
         "emit noalias metadata for mutable references (default: yes)"),
-    next_solver: Option<NextSolverConfig> = (None, parse_next_solver_config, [TRACKED],
+    next_solver: Option<NextSolverConfig> = (Some(NextSolverConfig::default()), parse_next_solver_config, [TRACKED],
         "enable and configure the next generation trait solver used by rustc"),
     nll_facts: bool = (false, parse_bool, [UNTRACKED],
         "dump facts from NLL analysis into side files (default: no)"),
