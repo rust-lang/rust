@@ -954,6 +954,9 @@ struct FlatPat<'pat, 'tcx> {
 
     /// ...and these types asserted.
     ascriptions: Vec<Ascription<'tcx>>,
+
+    /// Whether this recursively contains no bindings or ascriptions.
+    simple: bool,
 }
 
 impl<'tcx, 'pat> FlatPat<'pat, 'tcx> {
@@ -968,7 +971,11 @@ impl<'tcx, 'pat> FlatPat<'pat, 'tcx> {
 
         cx.simplify_match_pairs(&mut match_pairs, &mut bindings, &mut ascriptions);
 
-        FlatPat { span: pattern.span, match_pairs, bindings, ascriptions }
+        let simple = bindings.is_empty()
+            && ascriptions.is_empty()
+            && match_pairs.iter().all(|mp| mp.is_simple());
+
+        FlatPat { span: pattern.span, match_pairs, bindings, ascriptions, simple }
     }
 }
 
@@ -1084,12 +1091,27 @@ struct Ascription<'tcx> {
 
 #[derive(Debug, Clone)]
 enum TestCase<'pat, 'tcx> {
-    Irrefutable { binding: Option<Binding<'tcx>>, ascription: Option<Ascription<'tcx>> },
-    Variant { adt_def: ty::AdtDef<'tcx>, variant_index: VariantIdx },
-    Constant { value: mir::Const<'tcx> },
+    Irrefutable {
+        binding: Option<Binding<'tcx>>,
+        ascription: Option<Ascription<'tcx>>,
+    },
+    Variant {
+        adt_def: ty::AdtDef<'tcx>,
+        variant_index: VariantIdx,
+    },
+    Constant {
+        value: mir::Const<'tcx>,
+    },
     Range(&'pat PatRange<'tcx>),
-    Slice { len: usize, variable_length: bool },
-    Or { pats: Box<[FlatPat<'pat, 'tcx>]> },
+    Slice {
+        len: usize,
+        variable_length: bool,
+    },
+    Or {
+        pats: Box<[FlatPat<'pat, 'tcx>]>,
+        /// Whether this recursively contains no bindings or ascriptions.
+        simple: bool,
+    },
 }
 
 #[derive(Debug, Clone)]
@@ -1443,7 +1465,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
         let first_match_pair = first_candidate.match_pairs.remove(0);
         let or_span = first_match_pair.pattern.span;
-        let TestCase::Or { pats } = first_match_pair.test_case else { unreachable!() };
+        let TestCase::Or { pats, .. } = first_match_pair.test_case else { unreachable!() };
 
         let remainder_start = self.cfg.start_new_block();
         // Test the alternatives of this or-pattern.

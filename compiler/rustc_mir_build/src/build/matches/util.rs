@@ -122,9 +122,12 @@ impl<'pat, 'tcx> MatchPair<'pat, 'tcx> {
         let mut subpairs = Vec::new();
         let test_case = match pattern.kind {
             PatKind::Never | PatKind::Wild | PatKind::Error(_) => default_irrefutable(),
-            PatKind::Or { ref pats } => TestCase::Or {
-                pats: pats.iter().map(|pat| FlatPat::new(place.clone(), pat, cx)).collect(),
-            },
+            PatKind::Or { ref pats } => {
+                let pats: Box<[_]> =
+                    pats.iter().map(|pat| FlatPat::new(place.clone(), pat, cx)).collect();
+                let simple = pats.iter().all(|fpat| fpat.simple);
+                TestCase::Or { pats, simple }
+            }
 
             PatKind::Range(ref range) => {
                 if range.is_full_range(cx.tcx) == Some(true) {
@@ -259,6 +262,12 @@ impl<'pat, 'tcx> MatchPair<'pat, 'tcx> {
         };
 
         MatchPair { place, test_case, subpairs, pattern }
+    }
+
+    /// Whether this recursively contains no bindings or ascriptions.
+    pub(super) fn is_simple(&self) -> bool {
+        !matches!(self.test_case, TestCase::Or { simple: false, .. })
+            && self.subpairs.iter().all(|p| p.is_simple())
     }
 }
 
