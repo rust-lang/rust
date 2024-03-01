@@ -36,7 +36,7 @@ smallvec = { version = "1.6.1", features = ["union", "may_dangle"] }
 tempfile = "3.7.1"
 
 [dev-dependencies]
-lang_tester = "0.3.9"
+lang_tester = "0.8.0"
 tempfile = "3.1.0"
 boml = "0.3.1"
 
