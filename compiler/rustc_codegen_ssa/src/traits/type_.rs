@@ -19,8 +19,10 @@ pub trait BaseTypeMethods<'tcx>: Backend<'tcx> {
     fn type_i128(&self) -> Self::Type;
     fn type_isize(&self) -> Self::Type;
 
+    fn type_f16(&self) -> Self::Type;
     fn type_f32(&self) -> Self::Type;
     fn type_f64(&self) -> Self::Type;
+    fn type_f128(&self) -> Self::Type;
 
     fn type_array(&self, ty: Self::Type, len: u64) -> Self::Type;
     fn type_func(&self, args: &[Self::Type], ret: Self::Type) -> Self::Type;

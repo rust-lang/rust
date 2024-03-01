@@ -604,6 +604,7 @@ impl<'p, 'tcx: 'p> RustcMatchCheckCtxt<'p, 'tcx> {
                         let lo = lo.as_finite().map(|c| c.eval_bits(cx.tcx, cx.param_env));
                         let hi = hi.as_finite().map(|c| c.eval_bits(cx.tcx, cx.param_env));
                         match fty {
+                            ty::FloatTy::F16 => unimplemented!("f16_f128"),
                             ty::FloatTy::F32 => {
                                 use rustc_apfloat::ieee::Single;
                                 let lo = lo.map(Single::from_bits).unwrap_or(-Single::INFINITY);
@@ -616,6 +617,7 @@ impl<'p, 'tcx: 'p> RustcMatchCheckCtxt<'p, 'tcx> {
                                 let hi = hi.map(Double::from_bits).unwrap_or(Double::INFINITY);
                                 F64Range(lo, hi, end)
                             }
+                            ty::FloatTy::F128 => unimplemented!("f16_f128"),
                         }
                     }
                     _ => bug!("invalid type for range pattern: {}", ty.inner()),

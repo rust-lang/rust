@@ -59,7 +59,7 @@ where
                     _ => return Err(CannotUseFpConv),
                 }
             }
-            abi::F32 | abi::F64 => {
+            abi::F16 | abi::F32 | abi::F64 | abi::F128 => {
                 if arg_layout.size.bits() > flen {
                     return Err(CannotUseFpConv);
                 }

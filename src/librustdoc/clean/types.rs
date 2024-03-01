@@ -1743,8 +1743,10 @@ pub(crate) enum PrimitiveType {
     U32,
     U64,
     U128,
+    F16,
     F32,
     F64,
+    F128,
     Char,
     Bool,
     Str,
@@ -1890,8 +1892,10 @@ impl PrimitiveType {
             U32 => sym::u32,
             U64 => sym::u64,
             U128 => sym::u128,
+            F16 => sym::f16,
             F32 => sym::f32,
             F64 => sym::f64,
+            F128 => sym::f128,
             Str => sym::str,
             Bool => sym::bool,
             Char => sym::char,
@@ -2008,8 +2012,10 @@ impl From<ty::UintTy> for PrimitiveType {
 impl From<ty::FloatTy> for PrimitiveType {
     fn from(float_ty: ty::FloatTy) -> PrimitiveType {
         match float_ty {
+            ty::FloatTy::F16 => PrimitiveType::F16,
             ty::FloatTy::F32 => PrimitiveType::F32,
             ty::FloatTy::F64 => PrimitiveType::F64,
+            ty::FloatTy::F128 => PrimitiveType::F128,
         }
     }
 }

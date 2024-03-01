@@ -858,8 +858,10 @@ extern "C" {
     pub fn LLVMGetIntTypeWidth(IntegerTy: &Type) -> c_uint;
 
     // Operations on real types
+    pub fn LLVMHalfTypeInContext(C: &Context) -> &Type;
     pub fn LLVMFloatTypeInContext(C: &Context) -> &Type;
     pub fn LLVMDoubleTypeInContext(C: &Context) -> &Type;
+    pub fn LLVMFP128TypeInContext(C: &Context) -> &Type;
 
     // Operations on function types
     pub fn LLVMFunctionType<'a>(

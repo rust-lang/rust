@@ -1053,6 +1053,7 @@ pub(crate) fn parse_float_into_scalar(
 ) -> Option<Scalar> {
     let num = num.as_str();
     match float_ty {
+        ty::FloatTy::F16 => unimplemented!("f16_f128"),
         ty::FloatTy::F32 => {
             let Ok(rust_f) = num.parse::<f32>() else { return None };
             let mut f = num
@@ -1099,6 +1100,7 @@ pub(crate) fn parse_float_into_scalar(
 
             Some(Scalar::from_f64(f))
         }
+        ty::FloatTy::F128 => unimplemented!("f16_f128"),
     }
 }
 
