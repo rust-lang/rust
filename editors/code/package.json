@@ -696,16 +696,6 @@
                         }
                     ]
                 },
-                "rust-analyzer.cargo.unsetTest": {
-                    "markdownDescription": "Unsets the implicit `#[cfg(test)]` for the specified crates.",
-                    "default": [
-                        "core"
-                    ],
-                    "type": "array",
-                    "items": {
-                        "type": "string"
-                    }
-                },
                 "rust-analyzer.checkOnSave": {
                     "markdownDescription": "Run the check command for diagnostics on save.",
                     "default": true,

@@ -159,18 +159,6 @@ building from locking the `Cargo.lock` at the expense of duplicating build artif
 Set to `true` to use a subdirectory of the existing target directory or
 set to a path relative to the workspace to use that path.
 --
-[[rust-analyzer.cargo.unsetTest]]rust-analyzer.cargo.unsetTest::
-+
---
-Default:
-----
-[
-  "core"
-]
-----
-Unsets the implicit `#[cfg(test)]` for the specified crates.
-
---
 [[rust-analyzer.checkOnSave]]rust-analyzer.checkOnSave (default: `true`)::
 +
 --
