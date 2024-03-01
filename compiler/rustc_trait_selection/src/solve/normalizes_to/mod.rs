@@ -162,15 +162,28 @@ impl<'tcx> assembly::GoalKind<'tcx> for NormalizesTo<'tcx> {
         let tcx = ecx.tcx();
 
         let goal_trait_ref = goal.predicate.alias.trait_ref(tcx);
-        let impl_trait_ref = tcx.impl_trait_ref(impl_def_id).unwrap();
+        let impl_trait_header = tcx.impl_trait_header(impl_def_id).unwrap();
         let drcx = DeepRejectCtxt { treat_obligation_params: TreatParams::ForLookup };
-        if !drcx.args_may_unify(goal_trait_ref.args, impl_trait_ref.skip_binder().args) {
+        if !drcx.args_may_unify(
+            goal.predicate.trait_ref(tcx).args,
+            impl_trait_header.skip_binder().trait_ref.args,
+        ) {
             return Err(NoSolution);
         }
 
+        // We have to ignore negative impls when projecting.
+        let impl_polarity = impl_trait_header.skip_binder().polarity;
+        match impl_polarity {
+            ty::ImplPolarity::Negative => return Err(NoSolution),
+            ty::ImplPolarity::Reservation => {
+                unimplemented!("reservation impl for trait with assoc item: {:?}", goal)
+            }
+            ty::ImplPolarity::Positive => {}
+        };
+
         ecx.probe_trait_candidate(CandidateSource::Impl(impl_def_id)).enter(|ecx| {
             let impl_args = ecx.fresh_args_for_item(impl_def_id);
-            let impl_trait_ref = impl_trait_ref.instantiate(tcx, impl_args);
+            let impl_trait_ref = impl_trait_header.instantiate(tcx, impl_args).trait_ref;
 
             ecx.eq(goal.param_env, goal_trait_ref, impl_trait_ref)?;
 
