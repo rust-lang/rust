@@ -6,6 +6,8 @@ LL | impl<T> Bar for T where T: Foo {}
 ...
 LL | impl<T> Bar for &T {}
    | ^^^^^^^^^^^^^^^^^^ conflicting implementation for `&_`
+   |
+   = note: downstream crates may implement trait `Foo` for type `&_`
 
 error: aborting due to 1 previous error
 

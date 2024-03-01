@@ -15,8 +15,6 @@ LL | impl Bop for Bar<()> {}
 ...
 LL | impl Bop for Barr {}
    | ^^^^^^^^^^^^^^^^^ conflicting implementation for `Bar<()>`
-   |
-   = note: upstream crates may add a new impl of trait `std::marker::FnPtr` for type `Barr` in future versions
 
 error[E0119]: conflicting implementations of trait `Bop` for type `Bar<()>`
   --> $DIR/impl_trait_for_same_tait.rs:30:1

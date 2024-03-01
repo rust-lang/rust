@@ -3128,11 +3128,11 @@ impl<'tcx> TyCtxt<'tcx> {
     }
 
     pub fn next_trait_solver_globally(self) -> bool {
-        self.sess.opts.unstable_opts.next_solver.map_or(false, |c| c.globally)
+        self.sess.opts.unstable_opts.next_solver.globally
     }
 
     pub fn next_trait_solver_in_coherence(self) -> bool {
-        self.sess.opts.unstable_opts.next_solver.map_or(false, |c| c.coherence)
+        self.sess.opts.unstable_opts.next_solver.coherence
     }
 
     pub fn is_impl_trait_in_trait(self, def_id: DefId) -> bool {
