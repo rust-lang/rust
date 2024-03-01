@@ -134,6 +134,7 @@
         - [Coinduction](./solve/coinduction.md)
         - [Proof trees](./solve/proof-trees.md)
         - [Normalization](./solve/normalization.md)
+        - [Opaque types](./solve/opaque-types.md)
     - [`Unsize` and `CoerceUnsized` traits](./traits/unsize.md)
 - [Type checking](./type-checking.md)
     - [Method Lookup](./method-lookup.md)
