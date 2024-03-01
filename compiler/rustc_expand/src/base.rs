@@ -1223,21 +1223,18 @@ pub fn resolve_path(sess: &Session, path: impl Into<PathBuf>, span: Span) -> PRe
     // after macro expansion (that is, they are unhygienic).
     if !path.is_absolute() {
         let callsite = span.source_callsite();
-        let mut result = match sess.source_map().span_to_filename(callsite) {
-            FileName::Real(name) => name
-                .into_local_path()
-                .expect("attempting to resolve a file path in an external file"),
-            FileName::DocTest(path, _) => path,
-            other => {
-                return Err(sess.dcx().create_err(errors::ResolveRelativePath {
-                    span,
-                    path: sess.source_map().filename_for_diagnostics(&other).to_string(),
-                }));
-            }
+        let source_map = sess.source_map();
+        let Some(mut base_path) = source_map.span_to_filename(callsite).into_local_path() else {
+            return Err(sess.dcx().create_err(errors::ResolveRelativePath {
+                span,
+                path: source_map
+                    .filename_for_diagnostics(&source_map.span_to_filename(callsite))
+                    .to_string(),
+            }));
         };
-        result.pop();
-        result.push(path);
-        Ok(result)
+        base_path.pop();
+        base_path.push(path);
+        Ok(base_path)
     } else {
         Ok(path)
     }
