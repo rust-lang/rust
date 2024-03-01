@@ -447,8 +447,8 @@ version = "0.1.0"
 
 [[package]]
 name = "cc"
-version = "1.0.88"
-source = "git+https://github.com/mariotaku/cc-rs?branch=feature/android-llvm-ar#98dd8bd0ed9749453f1d754779d571e77951b5db"
+version = "1.0.83"
+source = "git+https://github.com/dpaoliello/cc-rs?branch=experiment#60f707c0d2955c35f9f229ac4a32011fa277014b"
 
 [[package]]
 name = "cfg-if"
