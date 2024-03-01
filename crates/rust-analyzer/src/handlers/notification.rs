@@ -16,7 +16,7 @@ use crate::{
     config::Config,
     global_state::GlobalState,
     lsp::{from_proto, utils::apply_document_changes},
-    lsp_ext::RunFlycheckParams,
+    lsp_ext::{self, RunFlycheckParams},
     mem_docs::DocumentData,
     reload,
 };
@@ -370,6 +370,13 @@ pub(crate) fn handle_run_flycheck(
     // No specific flycheck was triggered, so let's trigger all of them.
     for flycheck in state.flycheck.iter() {
         flycheck.restart_workspace(None);
+    }
+    Ok(())
+}
+
+pub(crate) fn handle_abort_run_test(state: &mut GlobalState, _: ()) -> anyhow::Result<()> {
+    if state.test_run_session.take().is_some() {
+        state.send_notification::<lsp_ext::EndRunTest>(());
     }
     Ok(())
 }

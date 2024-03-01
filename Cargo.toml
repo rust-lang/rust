@@ -158,6 +158,7 @@ dashmap = { version = "=5.5.3", features = ["raw-api"] }
 [workspace.lints.rust]
 rust_2018_idioms = "warn"
 unused_lifetimes = "warn"
+unreachable_pub = "warn"
 semicolon_in_expressions_from_macros = "warn"
 
 [workspace.lints.clippy]
