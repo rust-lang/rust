@@ -1,5 +1,5 @@
 use rustc_ast::TraitObjectSyntax;
-use rustc_errors::{codes::*, Diag, EmissionGuarantee, Level, StashKey};
+use rustc_errors::{codes::*, Diag, EmissionGuarantee, StashKey};
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
 use rustc_lint_defs::{builtin::BARE_TRAIT_OBJECTS, Applicability};
@@ -237,15 +237,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 }
                 // check if the impl trait that we are considering is a impl of a local trait
                 self.maybe_lint_blanket_trait_impl(self_ty, &mut diag);
-                match diag.level() {
-                    Level::Error => {
-                        diag.stash(self_ty.span, StashKey::TraitMissingMethod);
-                    }
-                    Level::DelayedBug => {
-                        diag.emit();
-                    }
-                    _ => unreachable!(),
-                }
+                diag.stash(self_ty.span, StashKey::TraitMissingMethod);
             } else {
                 let msg = "trait objects without an explicit `dyn` are deprecated";
                 tcx.node_span_lint(BARE_TRAIT_OBJECTS, self_ty.hir_id, self_ty.span, msg, |lint| {
