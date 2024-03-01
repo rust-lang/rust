@@ -1074,41 +1074,6 @@ pub fn typeid_for_fnabi<'tcx>(
     typeid
 }
 
-/// Returns a type metadata identifier for the specified FnSig using the Itanium C++ ABI with vendor
-/// extended type qualifiers and types for Rust types that are not used at the FFI boundary.
-pub fn typeid_for_fnsig<'tcx>(
-    tcx: TyCtxt<'tcx>,
-    fn_sig: &FnSig<'tcx>,
-    options: TypeIdOptions,
-) -> String {
-    // A name is mangled by prefixing "_Z" to an encoding of its name, and in the case of functions
-    // its type.
-    let mut typeid = String::from("_Z");
-
-    // Clang uses the Itanium C++ ABI's virtual tables and RTTI typeinfo structure name as type
-    // metadata identifiers for function pointers. The typeinfo name encoding is a two-character
-    // code (i.e., 'TS') prefixed to the type encoding for the function.
-    typeid.push_str("TS");
-
-    // A dictionary of substitution candidates used for compression (see
-    // https://itanium-cxx-abi.github.io/cxx-abi/abi.html#mangling-compression).
-    let mut dict: FxHashMap<DictKey<'tcx>, usize> = FxHashMap::default();
-
-    // Encode the function signature
-    typeid.push_str(&encode_fnsig(tcx, fn_sig, &mut dict, options));
-
-    // Add encoding suffixes
-    if options.contains(EncodeTyOptions::NORMALIZE_INTEGERS) {
-        typeid.push_str(".normalized");
-    }
-
-    if options.contains(EncodeTyOptions::GENERALIZE_POINTERS) {
-        typeid.push_str(".generalized");
-    }
-
-    typeid
-}
-
 /// Returns a type metadata identifier for the specified Instance using the Itanium C++ ABI with
 /// vendor extended type qualifiers and types for Rust types that are not used at the FFI boundary.
 pub fn typeid_for_instance<'tcx>(
