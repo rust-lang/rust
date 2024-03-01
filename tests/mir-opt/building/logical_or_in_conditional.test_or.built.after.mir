@@ -20,7 +20,7 @@ fn test_or() -> () {
     }
 
     bb1: {
-        drop(_3) -> [return: bb3, unwind: bb12];
+        drop(_3) -> [return: bb3, unwind: bb13];
     }
 
     bb2: {
@@ -30,11 +30,11 @@ fn test_or() -> () {
     bb3: {
         StorageDead(_3);
         StorageDead(_2);
-        goto -> bb8;
+        goto -> bb9;
     }
 
     bb4: {
-        drop(_3) -> [return: bb5, unwind: bb12];
+        drop(_3) -> [return: bb5, unwind: bb13];
     }
 
     bb5: {
@@ -50,38 +50,42 @@ fn test_or() -> () {
     }
 
     bb6: {
-        drop(_6) -> [return: bb8, unwind: bb12];
+        drop(_6) -> [return: bb8, unwind: bb13];
     }
 
     bb7: {
-        goto -> bb9;
+        goto -> bb10;
     }
 
     bb8: {
         StorageDead(_6);
         StorageDead(_5);
-        _0 = const ();
-        goto -> bb11;
+        goto -> bb9;
     }
 
     bb9: {
-        drop(_6) -> [return: bb10, unwind: bb12];
+        _0 = const ();
+        goto -> bb12;
     }
 
     bb10: {
-        StorageDead(_6);
-        StorageDead(_5);
-        _0 = const ();
-        goto -> bb11;
+        drop(_6) -> [return: bb11, unwind: bb13];
     }
 
     bb11: {
+        StorageDead(_6);
+        StorageDead(_5);
+        _0 = const ();
+        goto -> bb12;
+    }
+
+    bb12: {
         StorageDead(_4);
         StorageDead(_1);
         return;
     }
 
-    bb12 (cleanup): {
+    bb13 (cleanup): {
         resume;
     }
 }
