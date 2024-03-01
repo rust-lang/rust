@@ -7,11 +7,9 @@
 // Check that we *reject* leading where-clauses on lazy type aliases.
 
 pub type Leading0<T>
-
 = T where String: From<T>;
 
 pub type Leading1<T, U>
-
 = (T, U)
 where
     U: Copy, String: From<T>;
