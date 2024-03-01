@@ -447,12 +447,8 @@ version = "0.1.0"
 
 [[package]]
 name = "cc"
-version = "1.0.80"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "51f1226cd9da55587234753d1245dd5b132343ea240f26b6a9003d68706141ba"
-dependencies = [
- "libc",
-]
+version = "1.0.88"
+source = "git+https://github.com/mariotaku/cc-rs?branch=feature/android-llvm-ar#98dd8bd0ed9749453f1d754779d571e77951b5db"
 
 [[package]]
 name = "cfg-if"
