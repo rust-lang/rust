@@ -1,5 +1,5 @@
 use super::unsupported;
-use crate::ffi::CStr;
+use crate::ffi::{CStr, CString};
 use crate::io;
 use crate::num::NonZero;
 use crate::ptr::NonNull;
@@ -21,6 +21,10 @@ impl Thread {
 
     pub fn set_name(_name: &CStr) {
         // nope
+    }
+
+    pub fn get_name() -> Option<CString> {
+        None
     }
 
     pub fn sleep(dur: Duration) {
