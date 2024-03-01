@@ -2,13 +2,12 @@
 //! (except for some relations used for diagnostics and heuristics in the compiler).
 
 pub(super) mod combine;
-mod equate;
 mod generalize;
 mod glb;
 mod higher_ranked;
 mod lattice;
 mod lub;
-mod sub;
+mod type_relating;
 
 /// Whether aliases should be related structurally or not. Used
 /// to adjust the behavior of generalization and combine.

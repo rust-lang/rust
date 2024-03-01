@@ -2654,10 +2654,6 @@ impl<'tcx> TypeRelation<'tcx> for SameTypeModuloInfer<'_, 'tcx> {
         "SameTypeModuloInfer"
     }
 
-    fn a_is_expected(&self) -> bool {
-        true
-    }
-
     fn relate_with_variance<T: relate::Relate<'tcx>>(
         &mut self,
         _variance: ty::Variance,

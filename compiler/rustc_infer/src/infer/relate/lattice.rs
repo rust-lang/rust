@@ -116,9 +116,7 @@ where
                 && !this.infcx().next_trait_solver() =>
         {
             this.register_obligations(
-                infcx
-                    .handle_opaque_type(a, b, this.a_is_expected(), this.cause(), this.param_env())?
-                    .obligations,
+                infcx.handle_opaque_type(a, b, this.cause(), this.param_env())?.obligations,
             );
             Ok(a)
         }

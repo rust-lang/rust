@@ -144,10 +144,6 @@ impl<'tcx> TypeRelation<'tcx> for MatchAgainstHigherRankedOutlives<'tcx> {
         self.tcx
     }
 
-    fn a_is_expected(&self) -> bool {
-        true
-    } // irrelevant
-
     #[instrument(level = "trace", skip(self))]
     fn relate_with_variance<T: Relate<'tcx>>(
         &mut self,

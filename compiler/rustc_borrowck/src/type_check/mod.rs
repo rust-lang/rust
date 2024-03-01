@@ -1066,7 +1066,6 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                             &cause,
                             param_env,
                             hidden_ty.ty,
-                            true,
                             &mut obligations,
                         )?;
 

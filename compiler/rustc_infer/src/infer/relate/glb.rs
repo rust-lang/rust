@@ -13,15 +13,11 @@ use crate::traits::{ObligationCause, PredicateObligations};
 /// "Greatest lower bound" (common subtype)
 pub struct Glb<'combine, 'infcx, 'tcx> {
     fields: &'combine mut CombineFields<'infcx, 'tcx>,
-    a_is_expected: bool,
 }
 
 impl<'combine, 'infcx, 'tcx> Glb<'combine, 'infcx, 'tcx> {
-    pub fn new(
-        fields: &'combine mut CombineFields<'infcx, 'tcx>,
-        a_is_expected: bool,
-    ) -> Glb<'combine, 'infcx, 'tcx> {
-        Glb { fields, a_is_expected }
+    pub fn new(fields: &'combine mut CombineFields<'infcx, 'tcx>) -> Glb<'combine, 'infcx, 'tcx> {
+        Glb { fields }
     }
 }
 
@@ -34,10 +30,6 @@ impl<'tcx> TypeRelation<'tcx> for Glb<'_, '_, 'tcx> {
         self.fields.tcx()
     }
 
-    fn a_is_expected(&self) -> bool {
-        self.a_is_expected
-    }
-
     fn relate_with_variance<T: Relate<'tcx>>(
         &mut self,
         variance: ty::Variance,
@@ -46,13 +38,11 @@ impl<'tcx> TypeRelation<'tcx> for Glb<'_, '_, 'tcx> {
         b: T,
     ) -> RelateResult<'tcx, T> {
         match variance {
-            ty::Invariant => {
-                self.fields.equate(StructurallyRelateAliases::No, self.a_is_expected).relate(a, b)
-            }
+            ty::Invariant => self.fields.equate(StructurallyRelateAliases::No).relate(a, b),
             ty::Covariant => self.relate(a, b),
             // FIXME(#41044) -- not correct, need test
             ty::Bivariant => Ok(a),
-            ty::Contravariant => self.fields.lub(self.a_is_expected).relate(a, b),
+            ty::Contravariant => self.fields.lub().relate(a, b),
         }
     }
 
@@ -126,7 +116,7 @@ impl<'combine, 'infcx, 'tcx> LatticeDir<'infcx, 'tcx> for Glb<'combine, 'infcx, 
     }
 
     fn relate_bound(&mut self, v: Ty<'tcx>, a: Ty<'tcx>, b: Ty<'tcx>) -> RelateResult<'tcx, ()> {
-        let mut sub = self.fields.sub(self.a_is_expected);
+        let mut sub = self.fields.sub();
         sub.relate(v, a)?;
         sub.relate(v, b)?;
         Ok(())
@@ -158,8 +148,12 @@ impl<'tcx> ObligationEmittingRelation<'tcx> for Glb<'_, '_, 'tcx> {
         self.fields.register_obligations(obligations);
     }
 
-    fn alias_relate_direction(&self) -> ty::AliasRelationDirection {
-        // FIXME(deferred_projection_equality): This isn't right, I think?
-        ty::AliasRelationDirection::Equate
+    fn register_type_relate_obligation(&mut self, a: Ty<'tcx>, b: Ty<'tcx>) {
+        self.register_predicates([ty::Binder::dummy(ty::PredicateKind::AliasRelate(
+            a.into(),
+            b.into(),
+            // FIXME(deferred_projection_equality): This isn't right, I think?
+            ty::AliasRelationDirection::Equate,
+        ))]);
     }
 }

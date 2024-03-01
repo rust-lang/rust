@@ -1528,6 +1528,12 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                         | ObligationCauseCode::Coercion { .. }
                 );
 
+                let (expected, actual) = if is_normalized_term_expected {
+                    (normalized_term, data.term)
+                } else {
+                    (data.term, normalized_term)
+                };
+
                 // constrain inference variables a bit more to nested obligations from normalize so
                 // we can have more helpful errors.
                 //
@@ -1535,13 +1541,9 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                 // since the normalization is just done to improve the error message.
                 let _ = ocx.select_where_possible();
 
-                if let Err(new_err) = ocx.eq_exp(
-                    &obligation.cause,
-                    obligation.param_env,
-                    is_normalized_term_expected,
-                    normalized_term,
-                    data.term,
-                ) {
+                if let Err(new_err) =
+                    ocx.eq(&obligation.cause, obligation.param_env, expected, actual)
+                {
                     (Some((data, is_normalized_term_expected, normalized_term, data.term)), new_err)
                 } else {
                     (None, error.err)

@@ -120,7 +120,6 @@ impl<'me, 'bccx, 'tcx> NllTypeRelating<'me, 'bccx, 'tcx> {
     fn relate_opaques(&mut self, a: Ty<'tcx>, b: Ty<'tcx>) -> RelateResult<'tcx, ()> {
         let infcx = self.type_checker.infcx;
         debug_assert!(!infcx.next_trait_solver());
-        let (a, b) = if self.a_is_expected() { (a, b) } else { (b, a) };
         // `handle_opaque_type` cannot handle subtyping, so to support subtyping
         // we instead eagerly generalize here. This is a bit of a mess but will go
         // away once we're using the new solver.
@@ -161,8 +160,7 @@ impl<'me, 'bccx, 'tcx> NllTypeRelating<'me, 'bccx, 'tcx> {
             ),
         };
         let cause = ObligationCause::dummy_with_span(self.span());
-        let obligations =
-            infcx.handle_opaque_type(a, b, true, &cause, self.param_env())?.obligations;
+        let obligations = infcx.handle_opaque_type(a, b, &cause, self.param_env())?.obligations;
         self.register_obligations(obligations);
         Ok(())
     }
@@ -331,10 +329,6 @@ impl<'bccx, 'tcx> TypeRelation<'tcx> for NllTypeRelating<'_, 'bccx, 'tcx> {
         "nll::subtype"
     }
 
-    fn a_is_expected(&self) -> bool {
-        true
-    }
-
     #[instrument(skip(self, info), level = "trace", ret)]
     fn relate_with_variance<T: Relate<'tcx>>(
         &mut self,
@@ -349,12 +343,15 @@ impl<'bccx, 'tcx> TypeRelation<'tcx> for NllTypeRelating<'_, 'bccx, 'tcx> {
 
         debug!(?self.ambient_variance);
         // In a bivariant context this always succeeds.
-        let r =
-            if self.ambient_variance == ty::Variance::Bivariant { a } else { self.relate(a, b)? };
+        let r = if self.ambient_variance == ty::Variance::Bivariant {
+            Ok(a)
+        } else {
+            self.relate(a, b)
+        };
 
         self.ambient_variance = old_ambient_variance;
 
-        Ok(r)
+        r
     }
 
     #[instrument(skip(self), level = "debug")]
@@ -577,10 +574,6 @@ impl<'bccx, 'tcx> ObligationEmittingRelation<'tcx> for NllTypeRelating<'_, 'bccx
                 region_constraints: None,
             },
         );
-    }
-
-    fn alias_relate_direction(&self) -> ty::AliasRelationDirection {
-        unreachable!("manually overridden to handle ty::Variance::Contravariant ambient variance")
     }
 
     fn register_type_relate_obligation(&mut self, a: Ty<'tcx>, b: Ty<'tcx>) {
