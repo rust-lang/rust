@@ -3,10 +3,12 @@ use std::fmt::{self, Write};
 
 use salsa::InternId;
 
+mod ast_id;
 mod hygiene;
 mod map;
 
 pub use self::{
+    ast_id::{AstIdMap, AstIdNode, ErasedFileAstId, FileAstId},
     hygiene::{SyntaxContextData, SyntaxContextId, Transparency},
     map::{RealSpanMap, SpanMap},
 };
@@ -25,10 +27,6 @@ pub struct FileRange {
     pub file_id: FileId,
     pub range: TextRange,
 }
-
-/// See crates\hir-expand\src\ast_id_map.rs
-/// This is a type erased FileAstId.
-pub type ErasedFileAstId = la_arena::Idx<syntax::SyntaxNodePtr>;
 
 // The first index is always the root node's AstId
 /// The root ast id always points to the encompassing file, using this in spans is discouraged as

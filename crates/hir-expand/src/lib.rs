@@ -6,7 +6,6 @@
 
 #![warn(rust_2018_idioms, unused_lifetimes)]
 
-pub mod ast_id_map;
 pub mod attrs;
 pub mod builtin_attr_macro;
 pub mod builtin_derive_macro;
@@ -32,7 +31,7 @@ use std::{fmt, hash::Hash};
 
 use base_db::{salsa::impl_intern_value_trivial, CrateId, Edition, FileId};
 use either::Either;
-use span::{FileRange, HirFileIdRepr, Span, SyntaxContextData, SyntaxContextId};
+use span::{ErasedFileAstId, FileRange, HirFileIdRepr, Span, SyntaxContextData, SyntaxContextId};
 use syntax::{
     ast::{self, AstNode},
     SyntaxNode, SyntaxToken, TextRange, TextSize,
@@ -49,8 +48,7 @@ use crate::{
     span_map::{ExpansionSpanMap, SpanMap},
 };
 
-pub use crate::ast_id_map::{AstId, ErasedAstId, ErasedFileAstId};
-pub use crate::files::{InFile, InMacroFile, InRealFile};
+pub use crate::files::{AstId, ErasedAstId, InFile, InMacroFile, InRealFile};
 
 pub use mbe::ValueResult;
 pub use span::{HirFileId, MacroCallId, MacroFileId};
