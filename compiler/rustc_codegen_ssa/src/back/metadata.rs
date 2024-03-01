@@ -8,7 +8,7 @@ use std::path::Path;
 use object::write::{self, StandardSegment, Symbol, SymbolSection};
 use object::{
     elf, pe, xcoff, Architecture, BinaryFormat, Endianness, FileFlags, Object, ObjectSection,
-    ObjectSymbol, SectionFlags, SectionKind, SymbolFlags, SymbolKind, SymbolScope,
+    ObjectSymbol, SectionFlags, SectionKind, SubArchitecture, SymbolFlags, SymbolKind, SymbolScope,
 };
 
 use rustc_data_structures::memmap::Mmap;
@@ -182,37 +182,40 @@ pub(crate) fn create_object_file(sess: &Session) -> Option<write::Object<'static
         Endian::Little => Endianness::Little,
         Endian::Big => Endianness::Big,
     };
-    let architecture = match &sess.target.arch[..] {
-        "arm" => Architecture::Arm,
-        "aarch64" => {
+    let (architecture, sub_architecture) = match &sess.target.arch[..] {
+        "arm" => (Architecture::Arm, None),
+        "aarch64" => (
             if sess.target.pointer_width == 32 {
                 Architecture::Aarch64_Ilp32
             } else {
                 Architecture::Aarch64
-            }
-        }
-        "x86" => Architecture::I386,
-        "s390x" => Architecture::S390x,
-        "mips" | "mips32r6" => Architecture::Mips,
-        "mips64" | "mips64r6" => Architecture::Mips64,
-        "x86_64" => {
+            },
+            None,
+        ),
+        "x86" => (Architecture::I386, None),
+        "s390x" => (Architecture::S390x, None),
+        "mips" | "mips32r6" => (Architecture::Mips, None),
+        "mips64" | "mips64r6" => (Architecture::Mips64, None),
+        "x86_64" => (
             if sess.target.pointer_width == 32 {
                 Architecture::X86_64_X32
             } else {
                 Architecture::X86_64
-            }
-        }
-        "powerpc" => Architecture::PowerPc,
-        "powerpc64" => Architecture::PowerPc64,
-        "riscv32" => Architecture::Riscv32,
-        "riscv64" => Architecture::Riscv64,
-        "sparc64" => Architecture::Sparc64,
-        "avr" => Architecture::Avr,
-        "msp430" => Architecture::Msp430,
-        "hexagon" => Architecture::Hexagon,
-        "bpf" => Architecture::Bpf,
-        "loongarch64" => Architecture::LoongArch64,
-        "csky" => Architecture::Csky,
+            },
+            None,
+        ),
+        "powerpc" => (Architecture::PowerPc, None),
+        "powerpc64" => (Architecture::PowerPc64, None),
+        "riscv32" => (Architecture::Riscv32, None),
+        "riscv64" => (Architecture::Riscv64, None),
+        "sparc64" => (Architecture::Sparc64, None),
+        "avr" => (Architecture::Avr, None),
+        "msp430" => (Architecture::Msp430, None),
+        "hexagon" => (Architecture::Hexagon, None),
+        "bpf" => (Architecture::Bpf, None),
+        "loongarch64" => (Architecture::LoongArch64, None),
+        "csky" => (Architecture::Csky, None),
+        "arm64ec" => (Architecture::Aarch64, Some(SubArchitecture::Arm64EC)),
         // Unsupported architecture.
         _ => return None,
     };
@@ -227,6 +230,7 @@ pub(crate) fn create_object_file(sess: &Session) -> Option<write::Object<'static
     };
 
     let mut file = write::Object::new(binary_format, architecture, endianness);
+    file.set_sub_architecture(sub_architecture);
     if sess.target.is_like_osx {
         if macho_is_arm64e(&sess.target) {
             file.set_macho_cpu_subtype(object::macho::CPU_SUBTYPE_ARM64E);
