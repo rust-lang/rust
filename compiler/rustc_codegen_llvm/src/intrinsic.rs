@@ -28,51 +28,118 @@ fn get_simple_intrinsic<'ll>(
     name: Symbol,
 ) -> Option<(&'ll Type, &'ll Value)> {
     let llvm_name = match name {
+        sym::sqrtf16 => "llvm.sqrt.f16",
         sym::sqrtf32 => "llvm.sqrt.f32",
         sym::sqrtf64 => "llvm.sqrt.f64",
+        sym::sqrtf128 => "llvm.sqrt.f128",
+
+        sym::powif16 => "llvm.powi.f16",
         sym::powif32 => "llvm.powi.f32",
         sym::powif64 => "llvm.powi.f64",
+        sym::powif128 => "llvm.powi.f128",
+
+        sym::sinf16 => "llvm.sin.f16",
         sym::sinf32 => "llvm.sin.f32",
         sym::sinf64 => "llvm.sin.f64",
+        sym::sinf128 => "llvm.sin.f128",
+
+        sym::cosf16 => "llvm.cos.f16",
         sym::cosf32 => "llvm.cos.f32",
         sym::cosf64 => "llvm.cos.f64",
+        sym::cosf128 => "llvm.cos.f128",
+
+        sym::powf16 => "llvm.pow.f16",
         sym::powf32 => "llvm.pow.f32",
         sym::powf64 => "llvm.pow.f64",
+        sym::powf128 => "llvm.pow.f128",
+
+        sym::expf16 => "llvm.exp.f16",
         sym::expf32 => "llvm.exp.f32",
         sym::expf64 => "llvm.exp.f64",
+        sym::expf128 => "llvm.exp.f128",
+
+        sym::exp2f16 => "llvm.exp2.f16",
         sym::exp2f32 => "llvm.exp2.f32",
         sym::exp2f64 => "llvm.exp2.f64",
+        sym::exp2f128 => "llvm.exp2.f128",
+
+        sym::logf16 => "llvm.log.f16",
         sym::logf32 => "llvm.log.f32",
         sym::logf64 => "llvm.log.f64",
+        sym::logf128 => "llvm.log.f128",
+
+        sym::log10f16 => "llvm.log10.f16",
         sym::log10f32 => "llvm.log10.f32",
         sym::log10f64 => "llvm.log10.f64",
+        sym::log10f128 => "llvm.log10.f128",
+
+        sym::log2f16 => "llvm.log2.f16",
         sym::log2f32 => "llvm.log2.f32",
         sym::log2f64 => "llvm.log2.f64",
+        sym::log2f128 => "llvm.log2.f128",
+
+        sym::fmaf16 => "llvm.fma.f16",
         sym::fmaf32 => "llvm.fma.f32",
         sym::fmaf64 => "llvm.fma.f64",
+        sym::fmaf128 => "llvm.fma.f128",
+
+        sym::fabsf16 => "llvm.fabs.f16",
         sym::fabsf32 => "llvm.fabs.f32",
         sym::fabsf64 => "llvm.fabs.f64",
+        sym::fabsf128 => "llvm.fabs.f128",
+
+        sym::minnumf16 => "llvm.minnum.f16",
         sym::minnumf32 => "llvm.minnum.f32",
         sym::minnumf64 => "llvm.minnum.f64",
+        sym::minnumf128 => "llvm.minnum.f128",
+
+        sym::maxnumf16 => "llvm.maxnum.f16",
         sym::maxnumf32 => "llvm.maxnum.f32",
         sym::maxnumf64 => "llvm.maxnum.f64",
+        sym::maxnumf128 => "llvm.maxnum.f128",
+
+        sym::copysignf16 => "llvm.copysign.f16",
         sym::copysignf32 => "llvm.copysign.f32",
         sym::copysignf64 => "llvm.copysign.f64",
+        sym::copysignf128 => "llvm.copysign.f128",
+
+        sym::floorf16 => "llvm.floor.f16",
         sym::floorf32 => "llvm.floor.f32",
         sym::floorf64 => "llvm.floor.f64",
+        sym::floorf128 => "llvm.floor.f128",
+
+        sym::ceilf16 => "llvm.ceil.f16",
         sym::ceilf32 => "llvm.ceil.f32",
         sym::ceilf64 => "llvm.ceil.f64",
+        sym::ceilf128 => "llvm.ceil.f128",
+
+        sym::truncf16 => "llvm.trunc.f16",
         sym::truncf32 => "llvm.trunc.f32",
         sym::truncf64 => "llvm.trunc.f64",
+        sym::truncf128 => "llvm.trunc.f128",
+
+        sym::rintf16 => "llvm.rint.f16",
         sym::rintf32 => "llvm.rint.f32",
         sym::rintf64 => "llvm.rint.f64",
+        sym::rintf128 => "llvm.rint.f128",
+
+        sym::nearbyintf16 => "llvm.nearbyint.f16",
         sym::nearbyintf32 => "llvm.nearbyint.f32",
         sym::nearbyintf64 => "llvm.nearbyint.f64",
+        sym::nearbyintf128 => "llvm.nearbyint.f128",
+
+        sym::roundf16 => "llvm.round.f16",
         sym::roundf32 => "llvm.round.f32",
         sym::roundf64 => "llvm.round.f64",
+        sym::roundf128 => "llvm.round.f128",
+
         sym::ptr_mask => "llvm.ptrmask",
+
+        sym::roundevenf16 => "llvm.roundeven.f16",
         sym::roundevenf32 => "llvm.roundeven.f32",
         sym::roundevenf64 => "llvm.roundeven.f64",
+        sym::roundevenf128 => "llvm.roundeven.f128",
+
         _ => return None,
     };
     Some(cx.get_intrinsic(llvm_name))
