@@ -42,15 +42,11 @@
       }
   
       bb2: {
--         switchInt((_2.0: bool)) -> [0: bb4, otherwise: bb3];
+-         switchInt((_2.0: bool)) -> [0: bb3, otherwise: bb4];
 +         switchInt((_2.0: bool)) -> [0: bb3, otherwise: bb17];
       }
   
       bb3: {
--         falseEdge -> [real: bb20, imaginary: bb4];
--     }
-- 
--     bb4: {
           StorageLive(_15);
           _15 = (_2.1: bool);
           StorageLive(_16);
@@ -59,8 +55,12 @@
 +         goto -> bb16;
       }
   
+      bb4: {
+-         falseEdge -> [real: bb20, imaginary: bb3];
+-     }
+- 
 -     bb5: {
--         falseEdge -> [real: bb13, imaginary: bb3];
+-         falseEdge -> [real: bb13, imaginary: bb4];
 -     }
 - 
 -     bb6: {
@@ -68,7 +68,6 @@
 -     }
 - 
 -     bb7: {
-+     bb4: {
           _0 = const 1_i32;
 -         drop(_7) -> [return: bb18, unwind: bb25];
 +         drop(_7) -> [return: bb15, unwind: bb22];
@@ -184,7 +183,7 @@
           StorageDead(_12);
           StorageDead(_8);
           StorageDead(_6);
--         falseEdge -> [real: bb2, imaginary: bb3];
+-         falseEdge -> [real: bb2, imaginary: bb4];
 +         goto -> bb2;
       }
   
