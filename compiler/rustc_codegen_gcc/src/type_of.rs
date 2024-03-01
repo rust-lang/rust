@@ -8,8 +8,7 @@ use rustc_middle::ty::print::with_no_trimmed_paths;
 use rustc_middle::ty::{self, Ty, TypeVisitableExt};
 use rustc_target::abi::call::{CastTarget, FnAbi, Reg};
 use rustc_target::abi::{
-    self, Abi, Align, FieldsShape, Int, Integer, PointeeInfo, Pointer, Size, TyAbiInterface,
-    Variants, F32, F64,
+    self, Abi, Align, FieldsShape, Integer, Primitive, PointeeInfo, Size, TyAbiInterface, Variants,
 };
 
 use crate::abi::{FnAbiGcc, FnAbiGccExt, GccType};
@@ -282,13 +281,13 @@ impl<'tcx> LayoutGccExt<'tcx> for TyAndLayout<'tcx> {
         offset: Size,
     ) -> Type<'gcc> {
         match scalar.primitive() {
-            Int(i, true) => cx.type_from_integer(i),
-            Int(i, false) => cx.type_from_unsigned_integer(i),
-            F16 => cx.type_f16(),
-            F32 => cx.type_f32(),
-            F64 => cx.type_f64(),
-            F128 => cx.type_f128(),
-            Pointer(address_space) => {
+            Primitive::Int(i, true) => cx.type_from_integer(i),
+            Primitive::Int(i, false) => cx.type_from_unsigned_integer(i),
+            Primitive::F16 => cx.type_f16(),
+            Primitive::F32 => cx.type_f32(),
+            Primitive::F64 => cx.type_f64(),
+            Primitive::F128 => cx.type_f128(),
+            Primitive::Pointer(address_space) => {
                 // If we know the alignment, pick something better than i8.
                 let pointee = if let Some(pointee) = self.pointee_info_at(cx, offset) {
                     cx.type_pointee_for_align(pointee.align)
