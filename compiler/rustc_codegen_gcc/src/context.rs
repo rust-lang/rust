@@ -1,22 +1,25 @@
 use std::cell::{Cell, RefCell};
 
-use gccjit::{Block, CType, Context, Function, FunctionPtrType, FunctionType, LValue, RValue, Type};
-use rustc_codegen_ssa::base::wants_msvc_seh;
-use rustc_codegen_ssa::traits::{
-    BackendTypes,
-    BaseTypeMethods,
-    MiscMethods,
+use gccjit::{
+    Block, CType, Context, Function, FunctionPtrType, FunctionType, LValue, Location, RValue, Type,
 };
+use rustc_codegen_ssa::base::wants_msvc_seh;
 use rustc_codegen_ssa::errors as ssa_errors;
+use rustc_codegen_ssa::traits::{BackendTypes, BaseTypeMethods, MiscMethods};
 use rustc_data_structures::base_n;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
-use rustc_middle::span_bug;
 use rustc_middle::mir::mono::CodegenUnit;
+use rustc_middle::span_bug;
+use rustc_middle::ty::layout::{
+    FnAbiError, FnAbiOf, FnAbiOfHelpers, FnAbiRequest, HasParamEnv, HasTyCtxt, LayoutError,
+    LayoutOfHelpers, TyAndLayout,
+};
 use rustc_middle::ty::{self, Instance, ParamEnv, PolyExistentialTraitRef, Ty, TyCtxt};
-use rustc_middle::ty::layout::{FnAbiError, FnAbiOf, FnAbiOfHelpers, FnAbiRequest, HasParamEnv, HasTyCtxt, LayoutError, TyAndLayout, LayoutOfHelpers};
 use rustc_session::Session;
-use rustc_span::{Span, source_map::respan};
-use rustc_target::abi::{call::FnAbi, HasDataLayout, PointeeInfo, Size, TargetDataLayout, VariantIdx};
+use rustc_span::{source_map::respan, Span};
+use rustc_target::abi::{
+    call::FnAbi, HasDataLayout, PointeeInfo, Size, TargetDataLayout, VariantIdx,
+};
 use rustc_target::spec::{HasTargetSpec, Target, TlsModel};
 
 use crate::callee::get_fn;
@@ -81,7 +84,8 @@ pub struct CodegenCx<'gcc, 'tcx> {
     /// Cache function instances of monomorphic and polymorphic items
     pub function_instances: RefCell<FxHashMap<Instance<'tcx>, Function<'gcc>>>,
     /// Cache generated vtables
-    pub vtables: RefCell<FxHashMap<(Ty<'tcx>, Option<ty::PolyExistentialTraitRef<'tcx>>), RValue<'gcc>>>,
+    pub vtables:
+        RefCell<FxHashMap<(Ty<'tcx>, Option<ty::PolyExistentialTraitRef<'tcx>>), RValue<'gcc>>>,
 
     // TODO(antoyo): improve the SSA API to not require those.
     /// Mapping from function pointer type to indexes of on stack parameters.
@@ -121,24 +125,28 @@ pub struct CodegenCx<'gcc, 'tcx> {
 }
 
 impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
-    pub fn new(context: &'gcc Context<'gcc>, codegen_unit: &'tcx CodegenUnit<'tcx>, tcx: TyCtxt<'tcx>, supports_128bit_integers: bool) -> Self {
+    pub fn new(
+        context: &'gcc Context<'gcc>,
+        codegen_unit: &'tcx CodegenUnit<'tcx>,
+        tcx: TyCtxt<'tcx>,
+        supports_128bit_integers: bool,
+    ) -> Self {
         let check_overflow = tcx.sess.overflow_checks();
 
         let create_type = |ctype, rust_type| {
             let layout = tcx.layout_of(ParamEnv::reveal_all().and(rust_type)).unwrap();
             let align = layout.align.abi.bytes();
-            #[cfg(feature="master")]
+            #[cfg(feature = "master")]
             {
                 context.new_c_type(ctype).get_aligned(align)
             }
-            #[cfg(not(feature="master"))]
+            #[cfg(not(feature = "master"))]
             {
                 // Since libgccjit 12 doesn't contain the fix to compare aligned integer types,
                 // only align u128 and i128.
                 if layout.ty.int_size_and_signed(tcx).0.bytes() == 16 {
                     context.new_c_type(ctype).get_aligned(align)
-                }
-                else {
+                } else {
                     context.new_c_type(ctype)
                 }
             }
@@ -153,24 +161,22 @@ impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
         let u32_type = create_type(CType::UInt32t, tcx.types.u32);
         let u64_type = create_type(CType::UInt64t, tcx.types.u64);
 
-        let (i128_type, u128_type) =
-            if supports_128bit_integers {
-                let i128_type = create_type(CType::Int128t, tcx.types.i128);
-                let u128_type = create_type(CType::UInt128t, tcx.types.u128);
-                (i128_type, u128_type)
-            }
-            else {
-                /*let layout = tcx.layout_of(ParamEnv::reveal_all().and(tcx.types.i128)).unwrap();
-                let i128_align = layout.align.abi.bytes();
-                let layout = tcx.layout_of(ParamEnv::reveal_all().and(tcx.types.u128)).unwrap();
-                let u128_align = layout.align.abi.bytes();*/
+        let (i128_type, u128_type) = if supports_128bit_integers {
+            let i128_type = create_type(CType::Int128t, tcx.types.i128);
+            let u128_type = create_type(CType::UInt128t, tcx.types.u128);
+            (i128_type, u128_type)
+        } else {
+            /*let layout = tcx.layout_of(ParamEnv::reveal_all().and(tcx.types.i128)).unwrap();
+            let i128_align = layout.align.abi.bytes();
+            let layout = tcx.layout_of(ParamEnv::reveal_all().and(tcx.types.u128)).unwrap();
+            let u128_align = layout.align.abi.bytes();*/
 
-                // TODO(antoyo): re-enable the alignment when libgccjit fixed the issue in
-                // gcc_jit_context_new_array_constructor (it should not use reinterpret_cast).
-                let i128_type = context.new_array_type(None, i64_type, 2)/*.get_aligned(i128_align)*/;
-                let u128_type = context.new_array_type(None, u64_type, 2)/*.get_aligned(u128_align)*/;
-                (i128_type, u128_type)
-            };
+            // TODO(antoyo): re-enable the alignment when libgccjit fixed the issue in
+            // gcc_jit_context_new_array_constructor (it should not use reinterpret_cast).
+            let i128_type = context.new_array_type(None, i64_type, 2)/*.get_aligned(i128_align)*/;
+            let u128_type = context.new_array_type(None, u64_type, 2)/*.get_aligned(u128_align)*/;
+            (i128_type, u128_type)
+        };
 
         let tls_model = to_gcc_tls_mode(tcx.sess.tls_model());
 
@@ -196,16 +202,65 @@ impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
 
         let mut functions = FxHashMap::default();
         let builtins = [
-            "__builtin_unreachable", "abort", "__builtin_expect", /*"__builtin_expect_with_probability",*/
-            "__builtin_constant_p", "__builtin_add_overflow", "__builtin_mul_overflow", "__builtin_saddll_overflow",
-            /*"__builtin_sadd_overflow",*/ "__builtin_smulll_overflow", /*"__builtin_smul_overflow",*/
-            "__builtin_ssubll_overflow", /*"__builtin_ssub_overflow",*/ "__builtin_sub_overflow", "__builtin_uaddll_overflow",
-            "__builtin_uadd_overflow", "__builtin_umulll_overflow", "__builtin_umul_overflow", "__builtin_usubll_overflow",
-            "__builtin_usub_overflow", "sqrtf", "sqrt", "__builtin_powif", "__builtin_powi", "sinf", "sin", "cosf", "cos",
-            "powf", "pow", "expf", "exp", "exp2f", "exp2", "logf", "log", "log10f", "log10", "log2f", "log2", "fmaf",
-            "fma", "fabsf", "fabs", "fminf", "fmin", "fmaxf", "fmax", "copysignf", "copysign", "floorf", "floor", "ceilf",
-            "ceil", "truncf", "trunc", "rintf", "rint", "nearbyintf", "nearbyint", "roundf", "round",
-           
+            "__builtin_unreachable",
+            "abort",
+            "__builtin_expect", /*"__builtin_expect_with_probability",*/
+            "__builtin_constant_p",
+            "__builtin_add_overflow",
+            "__builtin_mul_overflow",
+            "__builtin_saddll_overflow",
+            /*"__builtin_sadd_overflow",*/
+            "__builtin_smulll_overflow", /*"__builtin_smul_overflow",*/
+            "__builtin_ssubll_overflow",
+            /*"__builtin_ssub_overflow",*/ "__builtin_sub_overflow",
+            "__builtin_uaddll_overflow",
+            "__builtin_uadd_overflow",
+            "__builtin_umulll_overflow",
+            "__builtin_umul_overflow",
+            "__builtin_usubll_overflow",
+            "__builtin_usub_overflow",
+            "sqrtf",
+            "sqrt",
+            "__builtin_powif",
+            "__builtin_powi",
+            "sinf",
+            "sin",
+            "cosf",
+            "cos",
+            "powf",
+            "pow",
+            "expf",
+            "exp",
+            "exp2f",
+            "exp2",
+            "logf",
+            "log",
+            "log10f",
+            "log10",
+            "log2f",
+            "log2",
+            "fmaf",
+            "fma",
+            "fabsf",
+            "fabs",
+            "fminf",
+            "fmin",
+            "fmaxf",
+            "fmax",
+            "copysignf",
+            "copysign",
+            "floorf",
+            "floor",
+            "ceilf",
+            "ceil",
+            "truncf",
+            "trunc",
+            "rintf",
+            "rint",
+            "nearbyintf",
+            "nearbyint",
+            "roundf",
+            "round",
         ];
 
         for builtin in builtins.iter() {
@@ -282,8 +337,12 @@ impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
 
     pub fn rvalue_as_function(&self, value: RValue<'gcc>) -> Function<'gcc> {
         let function: Function<'gcc> = unsafe { std::mem::transmute(value) };
-        debug_assert!(self.functions.borrow().values().any(|value| *value == function),
-            "{:?} ({:?}) is not a function", value, value.get_type());
+        debug_assert!(
+            self.functions.borrow().values().any(|value| *value == function),
+            "{:?} ({:?}) is not a function",
+            value,
+            value.get_type()
+        );
         function
     }
 
@@ -305,13 +364,13 @@ impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
             }
         }
 
-        self.supports_128bit_integers &&
-            (self.u128_type.is_compatible_with(typ) || self.i128_type.is_compatible_with(typ))
+        self.supports_128bit_integers
+            && (self.u128_type.is_compatible_with(typ) || self.i128_type.is_compatible_with(typ))
     }
 
     pub fn is_non_native_int_type(&self, typ: Type<'gcc>) -> bool {
-        !self.supports_128bit_integers &&
-            (self.u128_type.is_compatible_with(typ) || self.i128_type.is_compatible_with(typ))
+        !self.supports_128bit_integers
+            && (self.u128_type.is_compatible_with(typ) || self.i128_type.is_compatible_with(typ))
     }
 
     pub fn is_native_int_type_or_bool(&self, typ: Type<'gcc>) -> bool {
@@ -319,18 +378,23 @@ impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
     }
 
     pub fn is_int_type_or_bool(&self, typ: Type<'gcc>) -> bool {
-        self.is_native_int_type(typ) || self.is_non_native_int_type(typ) || typ.is_compatible_with(self.bool_type)
+        self.is_native_int_type(typ)
+            || self.is_non_native_int_type(typ)
+            || typ.is_compatible_with(self.bool_type)
     }
 
     pub fn sess(&self) -> &'tcx Session {
         &self.tcx.sess
     }
 
-    pub fn bitcast_if_needed(&self, value: RValue<'gcc>, expected_type: Type<'gcc>) -> RValue<'gcc> {
+    pub fn bitcast_if_needed(
+        &self,
+        value: RValue<'gcc>,
+        expected_type: Type<'gcc>,
+    ) -> RValue<'gcc> {
         if value.get_type() != expected_type {
             self.context.new_bitcast(None, value, expected_type)
-        }
-        else {
+        } else {
             value
         }
     }
@@ -345,12 +409,14 @@ impl<'gcc, 'tcx> BackendTypes for CodegenCx<'gcc, 'tcx> {
     type Funclet = (); // TODO(antoyo)
 
     type DIScope = (); // TODO(antoyo)
-    type DILocation = (); // TODO(antoyo)
+    type DILocation = Location<'gcc>;
     type DIVariable = (); // TODO(antoyo)
 }
 
 impl<'gcc, 'tcx> MiscMethods<'tcx> for CodegenCx<'gcc, 'tcx> {
-    fn vtables(&self) -> &RefCell<FxHashMap<(Ty<'tcx>, Option<PolyExistentialTraitRef<'tcx>>), RValue<'gcc>>> {
+    fn vtables(
+        &self,
+    ) -> &RefCell<FxHashMap<(Ty<'tcx>, Option<PolyExistentialTraitRef<'tcx>>), RValue<'gcc>>> {
         &self.vtables
     }
 
@@ -364,13 +430,11 @@ impl<'gcc, 'tcx> MiscMethods<'tcx> for CodegenCx<'gcc, 'tcx> {
     fn get_fn_addr(&self, instance: Instance<'tcx>) -> RValue<'gcc> {
         let func_name = self.tcx.symbol_name(instance).name;
 
-        let func =
-            if self.intrinsics.borrow().contains_key(func_name) {
-                self.intrinsics.borrow()[func_name].clone()
-            }
-            else {
-                get_fn(self, instance)
-            };
+        let func = if self.intrinsics.borrow().contains_key(func_name) {
+            self.intrinsics.borrow()[func_name].clone()
+        } else {
+            get_fn(self, instance)
+        };
         let ptr = func.get_address(None);
 
         // TODO(antoyo): don't do this twice: i.e. in declare_fn and here.
@@ -407,37 +471,34 @@ impl<'gcc, 'tcx> MiscMethods<'tcx> for CodegenCx<'gcc, 'tcx> {
             return llpersonality;
         }
         let tcx = self.tcx;
-        let func =
-            match tcx.lang_items().eh_personality() {
-                Some(def_id) if !wants_msvc_seh(self.sess()) => {
-                    let instance =
-                        ty::Instance::resolve(
-                            tcx,
-                            ty::ParamEnv::reveal_all(),
-                            def_id,
-                            ty::List::empty(),
-                        )
-                        .unwrap().unwrap();
+        let func = match tcx.lang_items().eh_personality() {
+            Some(def_id) if !wants_msvc_seh(self.sess()) => {
+                let instance = ty::Instance::resolve(
+                    tcx,
+                    ty::ParamEnv::reveal_all(),
+                    def_id,
+                    ty::List::empty(),
+                )
+                .unwrap()
+                .unwrap();
 
-                    let symbol_name = tcx.symbol_name(instance).name;
-                    let fn_abi = self.fn_abi_of_instance(instance, ty::List::empty());
-                    self.linkage.set(FunctionType::Extern);
-                    let func = self.declare_fn(symbol_name, &fn_abi);
-                    let func: RValue<'gcc> = unsafe { std::mem::transmute(func) };
-                    func
-                },
-                _ => {
-                    let name =
-                        if wants_msvc_seh(self.sess()) {
-                            "__CxxFrameHandler3"
-                        }
-                        else {
-                            "rust_eh_personality"
-                        };
-                    let func = self.declare_func(name, self.type_i32(), &[], true);
-                    unsafe { std::mem::transmute(func) }
-                }
-            };
+                let symbol_name = tcx.symbol_name(instance).name;
+                let fn_abi = self.fn_abi_of_instance(instance, ty::List::empty());
+                self.linkage.set(FunctionType::Extern);
+                let func = self.declare_fn(symbol_name, &fn_abi);
+                let func: RValue<'gcc> = unsafe { std::mem::transmute(func) };
+                func
+            }
+            _ => {
+                let name = if wants_msvc_seh(self.sess()) {
+                    "__CxxFrameHandler3"
+                } else {
+                    "rust_eh_personality"
+                };
+                let func = self.declare_func(name, self.type_i32(), &[], true);
+                unsafe { std::mem::transmute(func) }
+            }
+        };
         // TODO(antoyo): apply target cpu attributes.
         self.eh_personality.set(Some(func));
         func
@@ -467,8 +528,7 @@ impl<'gcc, 'tcx> MiscMethods<'tcx> for CodegenCx<'gcc, 'tcx> {
         let entry_name = self.sess().target.entry_name.as_ref();
         if self.get_declared_value(entry_name).is_none() {
             Some(self.declare_entry_fn(entry_name, fn_type, ()))
-        }
-        else {
+        } else {
             // If the symbol already exists, it is an error: for example, the user wrote
             // #[no_mangle] extern "C" fn main(..) {..}
             // instead of #[start]

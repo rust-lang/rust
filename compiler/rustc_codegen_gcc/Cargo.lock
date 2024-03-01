@@ -24,6 +24,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b4682ae6287fcf752ecaabbfcc7b6f9b72aa33933dc23a554d853aea8eea8635"
 
 [[package]]
+name = "boml"
+version = "0.3.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "85fdb93f04c73bff54305fa437ffea5449c41edcaadfe882f35836206b166ac5"
+
+[[package]]
 name = "cc"
 version = "1.0.79"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -74,7 +80,7 @@ dependencies = [
 [[package]]
 name = "gccjit"
 version = "1.0.0"
-source = "git+https://github.com/antoyo/gccjit.rs#6e290f25b1d1edab5ae9ace486fd2dc8c08d6421"
+source = "git+https://github.com/antoyo/gccjit.rs#af31863f5f2a32f1c805444bfb6e8c174d6da8f4"
 dependencies = [
  "gccjit_sys",
 ]
@@ -82,7 +88,7 @@ dependencies = [
 [[package]]
 name = "gccjit_sys"
 version = "0.0.1"
-source = "git+https://github.com/antoyo/gccjit.rs#6e290f25b1d1edab5ae9ace486fd2dc8c08d6421"
+source = "git+https://github.com/antoyo/gccjit.rs#af31863f5f2a32f1c805444bfb6e8c174d6da8f4"
 dependencies = [
  "libc",
 ]
@@ -185,6 +191,7 @@ checksum = "436b050e76ed2903236f032a59761c1eb99e1b0aead2c257922771dab1fc8c78"
 name = "rustc_codegen_gcc"
 version = "0.1.0"
 dependencies = [
+ "boml",
  "gccjit",
  "lang_tester",
  "object",
