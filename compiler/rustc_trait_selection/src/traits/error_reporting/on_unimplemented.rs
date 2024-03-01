@@ -111,9 +111,8 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
         &self,
         trait_ref: ty::PolyTraitRef<'tcx>,
         obligation: &PredicateObligation<'tcx>,
+        long_ty_file: &mut Option<PathBuf>,
     ) -> OnUnimplementedNote {
-        let mut long_ty_file = None;
-
         let (def_id, args) = self
             .impl_similar_to(trait_ref, obligation)
             .unwrap_or_else(|| (trait_ref.def_id(), trait_ref.skip_binder().args));
@@ -268,7 +267,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
         }));
 
         if let Ok(Some(command)) = OnUnimplementedDirective::of_item(self.tcx, def_id) {
-            command.evaluate(self.tcx, trait_ref, &flags, &mut long_ty_file)
+            command.evaluate(self.tcx, trait_ref, &flags, long_ty_file)
         } else {
             OnUnimplementedNote::default()
         }
