@@ -11,8 +11,7 @@ trait Tr {
 pub mod submodule {
     // Error since this is a `future_incompatible` lint
     #![doc(test(some_test))]
-        //~^ ERROR this attribute can only be applied at the crate level
-        //~| WARN this was previously accepted by the compiler
+    //~^ ERROR this attribute can only be applied at the crate level
 }
 
 fn main() {}
