@@ -332,6 +332,10 @@ impl<'tcx> LateLintPass<'tcx> for NonSnakeCase {
             return;
         }
 
+        if cx.tcx.crate_types().iter().all(|&crate_type| crate_type == CrateType::Executable) {
+            return;
+        }
+
         let crate_ident = if let Some(name) = &cx.tcx.sess.opts.crate_name {
             Some(Ident::from_str(name))
         } else {
@@ -367,9 +371,7 @@ impl<'tcx> LateLintPass<'tcx> for NonSnakeCase {
                 })
         };
 
-        if let Some(ident) = &crate_ident
-            && cx.tcx.crate_types().iter().all(|&crate_type| crate_type != CrateType::Executable)
-        {
+        if let Some(ident) = &crate_ident {
             self.check_snake_case(cx, "crate", ident);
         }
     }
