@@ -1,10 +1,12 @@
-//@ check-pass
+//@ known-bug: unknown
+
+// FIXME(specialization): default associated types cause an ambiguous candidate
+// even if there is a leaf impl which always applies.
 
 // Test that impls on projected self types can resolve overlap, even when the
 // projections involve specialization, so long as the associated type is
 // provided by the most specialized impl.
-
-#![feature(specialization)] //~ WARN the feature `specialization` is incomplete
+#![feature(specialization)]
 
 trait Assoc {
     type Output;

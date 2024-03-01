@@ -1,11 +1,11 @@
-error[E0119]: conflicting implementations of trait `AnotherTrait` for type `D<OpaqueType>`
+error[E0119]: conflicting implementations of trait `AnotherTrait` for type `D<_>`
   --> $DIR/auto-trait-coherence.rs:24:1
    |
 LL | impl<T: Send> AnotherTrait for T {}
    | -------------------------------- first implementation here
 ...
 LL | impl AnotherTrait for D<OpaqueType> {
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ conflicting implementation for `D<OpaqueType>`
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ conflicting implementation for `D<_>`
 
 error: aborting due to 1 previous error
 
