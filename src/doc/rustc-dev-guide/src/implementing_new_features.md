@@ -123,6 +123,8 @@ a new unstable feature:
 
 1. Add the feature name to `rustc_span/src/symbol.rs` in the `Symbols {...}` block.
 
+   Note that this block must be in alphbetical order.
+
 1. Add a feature gate declaration to `rustc_feature/src/unstable.rs` in the unstable
    `declare_features` block.
 
@@ -171,9 +173,13 @@ a new unstable feature:
     For an example of adding an error, see [#81015].
 
    For features introducing new syntax, pre-expansion gating should be used instead.
-   To do so, extend the [`GatedSpans`] struct, add spans to it during parsing,
-   and then finally feature-gate all the spans in
-   [`rustc_ast_passes::feature_gate::check_crate`].
+   During parsing, when the new syntax is parsed, the symbol must be inserted to the
+   current crate's [`GatedSpans`] via `self.sess.gated_span.gate(sym::my_feature, span)`. 
+   
+   After being inserted to the gated spans, the span must be checked in the 
+   [`rustc_ast_passes::feature_gate::check_crate`] function, which actually denies
+   features. Exactly how it is gated depends on the exact type of feature, but most 
+   likely will use the `gate_all!()` macro. 
 
 1. Add a test to ensure the feature cannot be used without
    a feature gate, by creating `tests/ui/feature-gates/feature-gate-$feature_name.rs`.
