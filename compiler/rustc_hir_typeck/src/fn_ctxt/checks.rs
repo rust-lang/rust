@@ -1744,7 +1744,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                         Ty::new_unit(self.tcx),
                                     );
                                 }
-                                if !self.consider_removing_semicolon(blk, expected_ty, err) {
+                                if !self.err_ctxt().consider_removing_semicolon(
+                                    blk,
+                                    expected_ty,
+                                    err,
+                                ) {
                                     self.err_ctxt().consider_returning_binding(
                                         blk,
                                         expected_ty,
