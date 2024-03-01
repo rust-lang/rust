@@ -239,8 +239,6 @@ hir_analysis_missing_one_of_trait_item = not all trait items implemented, missin
     .label = missing one of `{$missing_items_msg}` in implementation
     .note = required because of this annotation
 
-hir_analysis_missing_tilde_const = missing `~const` qualifier for specialization
-
 hir_analysis_missing_trait_item = not all trait items implemented, missing: `{$missing_items_msg}`
     .label = missing `{$missing_items_msg}` in implementation
 

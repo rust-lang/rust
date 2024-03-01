@@ -8,10 +8,6 @@ resolve_add_as_non_derive =
 resolve_added_macro_use =
     have you added the `#[macro_use]` on the module/import?
 
-resolve_ampersand_used_without_explicit_lifetime_name =
-    `&` without an explicit lifetime name cannot be used here
-    .note = explicit lifetime name needed here
-
 resolve_ancestor_only =
     visibilities can only be restricted to ancestor modules
 
@@ -99,12 +95,6 @@ resolve_const_param_in_non_trivial_anon_const =
 
 resolve_const_param_in_ty_of_const_param =
     const parameters may not be used in the type of const parameters
-
-resolve_crate_may_not_be_imported =
-    `$crate` may not be imported
-
-resolve_crate_root_imports_must_be_named_explicitly =
-    crate root imports need to be explicitly named: `use crate as name;`
 
 resolve_expected_found =
     expected module, found {$res} `{$path_str}`
@@ -220,9 +210,6 @@ resolve_param_in_ty_of_const_param =
     the type of const parameters must not depend on other generic parameters
     .label = the type must not depend on the parameter `{$name}`
 
-resolve_parent_module_reset_for_binding =
-    parent module is reset for binding
-
 resolve_proc_macro_same_crate = can't use a procedural macro from the same crate that defines it
     .help = you can define integration tests in a directory named `tests`
 
@@ -270,11 +257,6 @@ resolve_trait_impl_duplicate =
     .old_span_label = previous definition here
     .trait_item_span = item in trait
 
-resolve_trait_impl_mismatch =
-    item `{$name}` is an associated {$kind}, which doesn't match its trait `{$trait_path}`
-    .label = does not match trait
-    .label_trait_item = item in trait
-
 resolve_try_using_similarly_named_label =
     try using similarly named label
 
@@ -294,10 +276,6 @@ resolve_type_param_in_ty_of_const_param =
 resolve_undeclared_label =
     use of undeclared label `{$name}`
     .label = undeclared label `{$name}`
-
-resolve_underscore_lifetime_name_cannot_be_used_here =
-    `'_` cannot be used here
-    .note = `'_` is a reserved lifetime name
 
 resolve_unexpected_res_change_ty_to_const_param_sugg =
     you might have meant to write a const parameter here
