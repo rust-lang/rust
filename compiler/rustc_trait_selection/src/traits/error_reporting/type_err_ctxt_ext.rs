@@ -1389,38 +1389,45 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
             return true;
         }
 
-        // FIXME: It should be possible to deal with `ForAll` in a cleaner way.
-        let bound_error = error.kind();
-        let (cond, error) = match (cond.kind().skip_binder(), bound_error.skip_binder()) {
-            (
-                ty::PredicateKind::Clause(ty::ClauseKind::Trait(..)),
-                ty::PredicateKind::Clause(ty::ClauseKind::Trait(error)),
-            ) => (cond, bound_error.rebind(error)),
-            _ => {
-                // FIXME: make this work in other cases too.
-                return false;
-            }
-        };
-
-        for pred in elaborate(self.tcx, std::iter::once(cond)) {
-            let bound_predicate = pred.kind();
-            if let ty::PredicateKind::Clause(ty::ClauseKind::Trait(implication)) =
-                bound_predicate.skip_binder()
-            {
-                let error = error.to_poly_trait_ref();
-                let implication = bound_predicate.rebind(implication.trait_ref);
-                // FIXME: I'm just not taking associated types at all here.
-                // Eventually I'll need to implement param-env-aware
-                // `Γ₁ ⊦ φ₁ => Γ₂ ⊦ φ₂` logic.
-                let param_env = ty::ParamEnv::empty();
-                if self.can_sub(param_env, error, implication) {
-                    debug!("error_implies: {:?} -> {:?} -> {:?}", cond, error, implication);
-                    return true;
-                }
-            }
+        if let Some(error) = error.to_opt_poly_trait_pred() {
+            elaborate(self.tcx, std::iter::once(cond))
+                .filter_map(|implied| implied.to_opt_poly_trait_pred())
+                .any(|implied| {
+                    if error.polarity() != implied.polarity() {
+                        return false;
+                    }
+                    let error = error.to_poly_trait_ref();
+                    let implied = implied.to_poly_trait_ref();
+                    // FIXME: I'm just not taking associated types at all here.
+                    // Eventually I'll need to implement param-env-aware
+                    // `Γ₁ ⊦ φ₁ => Γ₂ ⊦ φ₂` logic.
+                    let param_env = ty::ParamEnv::empty();
+                    let is_implied = self.can_sub(param_env, error, implied);
+                    if is_implied {
+                        debug!("error_implies: {:?} -> {:?} -> {:?}", cond, error, implied);
+                    }
+                    is_implied
+                })
+        } else if let Some(error) = error.to_opt_poly_projection_pred() {
+            self.enter_forall(error, |error| {
+                elaborate(self.tcx, std::iter::once(cond))
+                    .filter_map(|implied| implied.to_opt_poly_projection_pred())
+                    .any(|implied| {
+                        self.enter_forall(implied, |implied| {
+                            let param_env = ty::ParamEnv::empty();
+                            let is_implied =
+                                self.can_eq(param_env, error.projection_ty, implied.projection_ty)
+                                    && self.can_eq(param_env, error.term, implied.term);
+                            if is_implied {
+                                debug!("error_implies: {:?} -> {:?} -> {:?}", cond, error, implied);
+                            }
+                            is_implied
+                        })
+                    })
+            })
+        } else {
+            false
         }
-
-        false
     }
 
     #[instrument(skip(self), level = "debug")]
