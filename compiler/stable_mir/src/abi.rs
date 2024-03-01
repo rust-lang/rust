@@ -293,8 +293,9 @@ pub enum Primitive {
         length: IntegerLength,
         signed: bool,
     },
-    F32,
-    F64,
+    Float {
+        length: FloatLength,
+    },
     Pointer(AddressSpace),
 }
 
@@ -302,8 +303,7 @@ impl Primitive {
     pub fn size(self, target: &MachineInfo) -> Size {
         match self {
             Primitive::Int { length, .. } => Size::from_bits(length.bits()),
-            Primitive::F32 => Size::from_bits(32),
-            Primitive::F64 => Size::from_bits(64),
+            Primitive::Float { length } => Size::from_bits(length.bits()),
             Primitive::Pointer(_) => target.pointer_width,
         }
     }
@@ -319,6 +319,15 @@ pub enum IntegerLength {
     I128,
 }
 
+/// Enum representing the existing float lengths.
+#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
+pub enum FloatLength {
+    F16,
+    F32,
+    F64,
+    F128,
+}
+
 impl IntegerLength {
     pub fn bits(self) -> usize {
         match self {
@@ -327,6 +336,17 @@ impl IntegerLength {
             IntegerLength::I32 => 32,
             IntegerLength::I64 => 64,
             IntegerLength::I128 => 128,
+        }
+    }
+}
+
+impl FloatLength {
+    pub fn bits(self) -> usize {
+        match self {
+            FloatLength::F16 => 16,
+            FloatLength::F32 => 32,
+            FloatLength::F64 => 64,
+            FloatLength::F128 => 128,
         }
     }
 }

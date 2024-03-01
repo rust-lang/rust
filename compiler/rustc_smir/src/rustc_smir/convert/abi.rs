@@ -6,8 +6,9 @@ use crate::rustc_smir::{Stable, Tables};
 use rustc_middle::ty;
 use rustc_target::abi::call::Conv;
 use stable_mir::abi::{
-    AddressSpace, ArgAbi, CallConvention, FieldsShape, FnAbi, IntegerLength, Layout, LayoutShape,
-    PassMode, Primitive, Scalar, TagEncoding, TyAndLayout, ValueAbi, VariantsShape, WrappingRange,
+    AddressSpace, ArgAbi, CallConvention, FieldsShape, FloatLength, FnAbi, IntegerLength, Layout,
+    LayoutShape, PassMode, Primitive, Scalar, TagEncoding, TyAndLayout, ValueAbi, VariantsShape,
+    WrappingRange,
 };
 use stable_mir::opaque;
 use stable_mir::target::MachineSize as Size;
@@ -255,8 +256,10 @@ impl<'tcx> Stable<'tcx> for rustc_abi::Primitive {
             rustc_abi::Primitive::Int(length, signed) => {
                 Primitive::Int { length: length.stable(tables), signed: *signed }
             }
-            rustc_abi::Primitive::F32 => Primitive::F32,
-            rustc_abi::Primitive::F64 => Primitive::F64,
+            rustc_abi::Primitive::F16 => Primitive::Float { length: FloatLength::F16 },
+            rustc_abi::Primitive::F32 => Primitive::Float { length: FloatLength::F32 },
+            rustc_abi::Primitive::F64 => Primitive::Float { length: FloatLength::F64 },
+            rustc_abi::Primitive::F128 => Primitive::Float { length: FloatLength::F128 },
             rustc_abi::Primitive::Pointer(space) => Primitive::Pointer(space.stable(tables)),
         }
     }
