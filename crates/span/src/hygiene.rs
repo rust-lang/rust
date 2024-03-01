@@ -68,6 +68,7 @@ impl SyntaxContextId {
 /// A syntax context describes a hierarchy tracking order of macro definitions.
 #[derive(Copy, Clone, Hash, PartialEq, Eq)]
 pub struct SyntaxContextData {
+    /// Invariant: Only [`SyntaxContextId::ROOT`] has a [`None`] outer expansion.
     pub outer_expn: Option<MacroCallId>,
     pub outer_transparency: Transparency,
     pub parent: SyntaxContextId,

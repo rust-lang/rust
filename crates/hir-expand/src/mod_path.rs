@@ -358,7 +358,7 @@ pub fn resolve_crate_root(db: &dyn ExpandDatabase, mut ctxt: SyntaxContextId) ->
         result_mark = Some(mark);
     }
 
-    result_mark.flatten().map(|call| db.lookup_intern_macro_call(call).def.krate)
+    result_mark.map(|call| db.lookup_intern_macro_call(call).def.krate)
 }
 
 pub use crate::name as __name;

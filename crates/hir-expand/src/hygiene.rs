@@ -62,7 +62,7 @@ pub(super) fn apply_mark(
     transparency: Transparency,
 ) -> SyntaxContextId {
     if transparency == Transparency::Opaque {
-        return apply_mark_internal(db, ctxt, Some(call_id), transparency);
+        return apply_mark_internal(db, ctxt, call_id, transparency);
     }
 
     let call_site_ctxt = db.lookup_intern_macro_call(call_id).call_site.ctx;
@@ -73,7 +73,7 @@ pub(super) fn apply_mark(
     };
 
     if call_site_ctxt.is_root() {
-        return apply_mark_internal(db, ctxt, Some(call_id), transparency);
+        return apply_mark_internal(db, ctxt, call_id, transparency);
     }
 
     // Otherwise, `expn_id` is a macros 1.0 definition and the call site is in a
@@ -88,16 +88,18 @@ pub(super) fn apply_mark(
     for (call_id, transparency) in ctxt.marks(db) {
         call_site_ctxt = apply_mark_internal(db, call_site_ctxt, call_id, transparency);
     }
-    apply_mark_internal(db, call_site_ctxt, Some(call_id), transparency)
+    apply_mark_internal(db, call_site_ctxt, call_id, transparency)
 }
 
 fn apply_mark_internal(
     db: &dyn ExpandDatabase,
     ctxt: SyntaxContextId,
-    call_id: Option<MacroCallId>,
+    call_id: MacroCallId,
     transparency: Transparency,
 ) -> SyntaxContextId {
     use base_db::salsa;
+
+    let call_id = Some(call_id);
 
     let syntax_context_data = db.lookup_intern_syntax_context(ctxt);
     let mut opaque = syntax_context_data.opaque;
@@ -148,7 +150,7 @@ pub trait SyntaxContextExt {
     fn parent_ctxt(self, db: &dyn ExpandDatabase) -> Self;
     fn remove_mark(&mut self, db: &dyn ExpandDatabase) -> (Option<MacroCallId>, Transparency);
     fn outer_mark(self, db: &dyn ExpandDatabase) -> (Option<MacroCallId>, Transparency);
-    fn marks(self, db: &dyn ExpandDatabase) -> Vec<(Option<MacroCallId>, Transparency)>;
+    fn marks(self, db: &dyn ExpandDatabase) -> Vec<(MacroCallId, Transparency)>;
 }
 
 impl SyntaxContextExt for SyntaxContextId {
@@ -170,7 +172,7 @@ impl SyntaxContextExt for SyntaxContextId {
         *self = data.parent;
         (data.outer_expn, data.outer_transparency)
     }
-    fn marks(self, db: &dyn ExpandDatabase) -> Vec<(Option<MacroCallId>, Transparency)> {
+    fn marks(self, db: &dyn ExpandDatabase) -> Vec<(MacroCallId, Transparency)> {
         let mut marks = marks_rev(self, db).collect::<Vec<_>>();
         marks.reverse();
         marks
@@ -181,11 +183,15 @@ impl SyntaxContextExt for SyntaxContextId {
 pub fn marks_rev(
     ctxt: SyntaxContextId,
     db: &dyn ExpandDatabase,
-) -> impl Iterator<Item = (Option<MacroCallId>, Transparency)> + '_ {
-    iter::successors(Some(ctxt), move |&mark| {
-        Some(mark.parent_ctxt(db)).filter(|&it| it != SyntaxContextId::ROOT)
-    })
-    .map(|ctx| ctx.outer_mark(db))
+) -> impl Iterator<Item = (MacroCallId, Transparency)> + '_ {
+    iter::successors(Some(ctxt), move |&mark| Some(mark.parent_ctxt(db)))
+        .take_while(|&it| !it.is_root())
+        .map(|ctx| {
+            let mark = ctx.outer_mark(db);
+            // We stop before taking the root expansion, as such we cannot encounter a `None` outer
+            // expansion, as only the ROOT has it.
+            (mark.0.unwrap(), mark.1)
+        })
 }
 
 pub(crate) fn dump_syntax_contexts(db: &dyn ExpandDatabase) -> String {
@@ -224,7 +230,7 @@ pub(crate) fn dump_syntax_contexts(db: &dyn ExpandDatabase) -> String {
             }
         }
 
-        pub fn fancy_debug(
+        fn fancy_debug(
             this: &SyntaxContextData,
             self_id: SyntaxContextId,
             db: &dyn ExpandDatabase,
