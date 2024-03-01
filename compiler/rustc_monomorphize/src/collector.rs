@@ -381,7 +381,7 @@ fn collect_items_rec<'tcx>(
             debug_assert!(should_codegen_locally(tcx, &instance));
 
             let ty = instance.ty(tcx, ty::ParamEnv::reveal_all());
-            visit_drop_use(tcx, ty, true, starting_item.span, &mut used_items);
+            visit_drop_use(tcx, ty, None, true, starting_item.span, &mut used_items);
 
             recursion_depth_reset = None;
 
@@ -855,7 +855,7 @@ impl<'a, 'tcx> MirVisitor<'tcx> for MirUsedCollector<'a, 'tcx> {
             mir::TerminatorKind::Drop { ref place, .. } => {
                 let ty = place.ty(self.body, self.tcx).ty;
                 let ty = self.monomorphize(ty);
-                visit_drop_use(self.tcx, ty, true, source, self.output);
+                visit_drop_use(self.tcx, ty, None, true, source, self.output);
             }
             mir::TerminatorKind::InlineAsm { ref operands, .. } => {
                 for op in operands {
@@ -917,11 +917,17 @@ impl<'a, 'tcx> MirVisitor<'tcx> for MirUsedCollector<'a, 'tcx> {
 fn visit_drop_use<'tcx>(
     tcx: TyCtxt<'tcx>,
     ty: Ty<'tcx>,
+    invoke_trait: Option<ty::PolyTraitRef<'tcx>>,
     is_direct_call: bool,
     source: Span,
     output: &mut MonoItems<'tcx>,
 ) {
-    let instance = Instance::resolve_drop_in_place(tcx, ty);
+    let mut instance = Instance::resolve_drop_in_place(tcx, ty);
+    if tcx.sess.cfi_shims() && !is_direct_call {
+        // The CFI shim may generate a direct call to the unshimmed drop
+        visit_drop_use(tcx, ty, None, true, source, output);
+        instance = instance.cfi_shim(tcx, invoke_trait);
+    }
     visit_instance_use(tcx, instance, is_direct_call, source, output);
 }
 
@@ -1193,8 +1199,10 @@ fn create_mono_items_for_vtable_methods<'tcx>(
     assert!(!trait_ty.has_escaping_bound_vars() && !impl_ty.has_escaping_bound_vars());
 
     if let ty::Dynamic(trait_ty, ..) = trait_ty.kind() {
-        if let Some(principal) = trait_ty.principal() {
-            let poly_trait_ref = principal.with_self_ty(tcx, impl_ty);
+        let invoke_trait =
+            trait_ty.principal().map(|principal| principal.with_self_ty(tcx, impl_ty));
+
+        if let Some(poly_trait_ref) = invoke_trait {
             assert!(!poly_trait_ref.has_escaping_bound_vars());
 
             // Walk all methods of the trait, including those of its supertraits
@@ -1216,10 +1224,10 @@ fn create_mono_items_for_vtable_methods<'tcx>(
                 })
                 .map(|item| create_fn_mono_item(tcx, item, source));
             output.extend(methods);
-        }
+        };
 
         // Also add the destructor.
-        visit_drop_use(tcx, impl_ty, false, source, output);
+        visit_drop_use(tcx, impl_ty, invoke_trait, false, source, output);
     }
 }
 
@@ -1244,7 +1252,7 @@ impl<'v> RootCollector<'_, 'v> {
                     debug!("RootCollector: ADT drop-glue for `{id:?}`",);
 
                     let ty = self.tcx.type_of(id.owner_id.to_def_id()).no_bound_vars().unwrap();
-                    visit_drop_use(self.tcx, ty, true, DUMMY_SP, self.output);
+                    visit_drop_use(self.tcx, ty, None, true, DUMMY_SP, self.output);
                 }
             }
             DefKind::GlobalAsm => {
