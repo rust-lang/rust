@@ -14,7 +14,6 @@ use rustc_data_structures::{
     fx::{FxHashSet, FxIndexMap, FxIndexSet},
     stack::ensure_sufficient_stack,
 };
-use rustc_index::bit_set::BitSet;
 use rustc_middle::middle::region;
 use rustc_middle::mir::{self, *};
 use rustc_middle::thir::{self, *};
@@ -1138,19 +1137,10 @@ enum TestKind<'tcx> {
     Switch {
         /// The enum type being tested.
         adt_def: ty::AdtDef<'tcx>,
-        /// The set of variants that we should create a branch for. We also
-        /// create an additional "otherwise" case.
-        variants: BitSet<VariantIdx>,
     },
 
     /// Test what value an integer or `char` has.
-    SwitchInt {
-        /// The (ordered) set of values that we test for.
-        ///
-        /// We create a branch to each of the values in `options`, as well as an "otherwise" branch
-        /// for all other values, even in the (rare) case that `options` is exhaustive.
-        options: FxIndexMap<Const<'tcx>, u128>,
-    },
+    SwitchInt,
 
     /// Test what value a `bool` has.
     If,
@@ -1193,6 +1183,12 @@ enum TestBranch<'tcx> {
     Variant(VariantIdx),
     /// Failure branch for tests with two possible outcomes, and "otherwise" branch for other tests.
     Failure,
+}
+
+impl<'tcx> TestBranch<'tcx> {
+    fn as_constant(&self) -> Option<&Const<'tcx>> {
+        if let Self::Constant(v, _) = self { Some(v) } else { None }
+    }
 }
 
 /// `ArmHasGuard` is a wrapper around a boolean flag. It indicates whether
@@ -1606,30 +1602,9 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     ) -> (PlaceBuilder<'tcx>, Test<'tcx>) {
         // Extract the match-pair from the highest priority candidate
         let match_pair = &candidates.first().unwrap().match_pairs[0];
-        let mut test = self.test(match_pair);
+        let test = self.test(match_pair);
         let match_place = match_pair.place.clone();
-
         debug!(?test, ?match_pair);
-        // Most of the time, the test to perform is simply a function of the main candidate; but for
-        // a test like SwitchInt, we may want to add cases based on the candidates that are
-        // available
-        match test.kind {
-            TestKind::SwitchInt { ref mut options } => {
-                for candidate in candidates.iter() {
-                    if !self.add_cases_to_switch(&match_place, candidate, options) {
-                        break;
-                    }
-                }
-            }
-            TestKind::Switch { adt_def: _, ref mut variants } => {
-                for candidate in candidates.iter() {
-                    if !self.add_variants_to_switch(&match_place, candidate, variants) {
-                        break;
-                    }
-                }
-            }
-            _ => {}
-        }
 
         (match_place, test)
     }
@@ -1686,7 +1661,9 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         // point we may encounter a candidate where the test is not relevant; at that point, we stop
         // sorting.
         while let Some(candidate) = candidates.first_mut() {
-            let Some(branch) = self.sort_candidate(&match_place, &test, candidate) else {
+            let Some(branch) =
+                self.sort_candidate(&match_place, test, candidate, &target_candidates)
+            else {
                 break;
             };
             let (candidate, rest) = candidates.split_first_mut().unwrap();

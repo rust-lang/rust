@@ -10,9 +10,7 @@ use crate::build::matches::{Candidate, MatchPair, Test, TestBranch, TestCase, Te
 use crate::build::Builder;
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_hir::{LangItem, RangeEnd};
-use rustc_index::bit_set::BitSet;
 use rustc_middle::mir::*;
-use rustc_middle::thir::*;
 use rustc_middle::ty::util::IntTypeExt;
 use rustc_middle::ty::GenericArg;
 use rustc_middle::ty::{self, adjustment::PointerCoercion, Ty, TyCtxt};
@@ -20,7 +18,6 @@ use rustc_span::def_id::DefId;
 use rustc_span::source_map::Spanned;
 use rustc_span::symbol::{sym, Symbol};
 use rustc_span::{Span, DUMMY_SP};
-use rustc_target::abi::VariantIdx;
 
 use std::cmp::Ordering;
 
@@ -30,22 +27,10 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     /// It is a bug to call this with a not-fully-simplified pattern.
     pub(super) fn test<'pat>(&mut self, match_pair: &MatchPair<'pat, 'tcx>) -> Test<'tcx> {
         let kind = match match_pair.test_case {
-            TestCase::Variant { adt_def, variant_index: _ } => {
-                TestKind::Switch { adt_def, variants: BitSet::new_empty(adt_def.variants().len()) }
-            }
+            TestCase::Variant { adt_def, variant_index: _ } => TestKind::Switch { adt_def },
 
             TestCase::Constant { .. } if match_pair.pattern.ty.is_bool() => TestKind::If,
-
-            TestCase::Constant { .. } if is_switch_ty(match_pair.pattern.ty) => {
-                // For integers, we use a `SwitchInt` match, which allows
-                // us to handle more cases.
-                TestKind::SwitchInt {
-                    // these maps are empty to start; cases are
-                    // added below in add_cases_to_switch
-                    options: Default::default(),
-                }
-            }
-
+            TestCase::Constant { .. } if is_switch_ty(match_pair.pattern.ty) => TestKind::SwitchInt,
             TestCase::Constant { value } => TestKind::Eq { value, ty: match_pair.pattern.ty },
 
             TestCase::Range(range) => {
@@ -70,57 +55,6 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         Test { span: match_pair.pattern.span, kind }
     }
 
-    pub(super) fn add_cases_to_switch<'pat>(
-        &mut self,
-        test_place: &PlaceBuilder<'tcx>,
-        candidate: &Candidate<'pat, 'tcx>,
-        options: &mut FxIndexMap<Const<'tcx>, u128>,
-    ) -> bool {
-        let Some(match_pair) = candidate.match_pairs.iter().find(|mp| mp.place == *test_place)
-        else {
-            return false;
-        };
-
-        match match_pair.test_case {
-            TestCase::Constant { value } => {
-                options.entry(value).or_insert_with(|| value.eval_bits(self.tcx, self.param_env));
-                true
-            }
-            TestCase::Variant { .. } => {
-                panic!("you should have called add_variants_to_switch instead!");
-            }
-            TestCase::Range(ref range) => {
-                // Check that none of the switch values are in the range.
-                self.values_not_contained_in_range(&*range, options).unwrap_or(false)
-            }
-            // don't know how to add these patterns to a switch
-            _ => false,
-        }
-    }
-
-    pub(super) fn add_variants_to_switch<'pat>(
-        &mut self,
-        test_place: &PlaceBuilder<'tcx>,
-        candidate: &Candidate<'pat, 'tcx>,
-        variants: &mut BitSet<VariantIdx>,
-    ) -> bool {
-        let Some(match_pair) = candidate.match_pairs.iter().find(|mp| mp.place == *test_place)
-        else {
-            return false;
-        };
-
-        match match_pair.test_case {
-            TestCase::Variant { variant_index, .. } => {
-                // We have a pattern testing for variant `variant_index`
-                // set the corresponding index to true
-                variants.insert(variant_index);
-                true
-            }
-            // don't know how to add these patterns to a switch
-            _ => false,
-        }
-    }
-
     #[instrument(skip(self, target_blocks, place_builder), level = "debug")]
     pub(super) fn perform_test(
         &mut self,
@@ -139,33 +73,20 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
         let source_info = self.source_info(test.span);
         match test.kind {
-            TestKind::Switch { adt_def, ref variants } => {
-                // Variants is a BitVec of indexes into adt_def.variants.
-                let num_enum_variants = adt_def.variants().len();
+            TestKind::Switch { adt_def } => {
                 let otherwise_block = target_block(TestBranch::Failure);
-                let tcx = self.tcx;
                 let switch_targets = SwitchTargets::new(
-                    adt_def.discriminants(tcx).filter_map(|(idx, discr)| {
-                        if variants.contains(idx) {
-                            debug_assert_ne!(
-                                target_block(TestBranch::Variant(idx)),
-                                otherwise_block,
-                                "no candidates for tested discriminant: {discr:?}",
-                            );
-                            Some((discr.val, target_block(TestBranch::Variant(idx))))
+                    adt_def.discriminants(self.tcx).filter_map(|(idx, discr)| {
+                        if let Some(&block) = target_blocks.get(&TestBranch::Variant(idx)) {
+                            Some((discr.val, block))
                         } else {
-                            debug_assert_eq!(
-                                target_block(TestBranch::Variant(idx)),
-                                otherwise_block,
-                                "found candidates for untested discriminant: {discr:?}",
-                            );
                             None
                         }
                     }),
                     otherwise_block,
                 );
-                debug!("num_enum_variants: {}, variants: {:?}", num_enum_variants, variants);
-                let discr_ty = adt_def.repr().discr_type().to_ty(tcx);
+                debug!("num_enum_variants: {}", adt_def.variants().len());
+                let discr_ty = adt_def.repr().discr_type().to_ty(self.tcx);
                 let discr = self.temp(discr_ty, test.span);
                 self.cfg.push_assign(
                     block,
@@ -183,13 +104,17 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 );
             }
 
-            TestKind::SwitchInt { ref options } => {
+            TestKind::SwitchInt => {
                 // The switch may be inexhaustive so we have a catch-all block
                 let otherwise_block = target_block(TestBranch::Failure);
                 let switch_targets = SwitchTargets::new(
-                    options
-                        .iter()
-                        .map(|(&val, &bits)| (bits, target_block(TestBranch::Constant(val, bits)))),
+                    target_blocks.iter().filter_map(|(&branch, &block)| {
+                        if let TestBranch::Constant(_, bits) = branch {
+                            Some((bits, block))
+                        } else {
+                            None
+                        }
+                    }),
                     otherwise_block,
                 );
                 let terminator = TerminatorKind::SwitchInt {
@@ -548,11 +473,12 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     /// that it *doesn't* apply. For now, we return false, indicate that the
     /// test does not apply to this candidate, but it might be we can get
     /// tighter match code if we do something a bit different.
-    pub(super) fn sort_candidate<'pat>(
+    pub(super) fn sort_candidate(
         &mut self,
         test_place: &PlaceBuilder<'tcx>,
         test: &Test<'tcx>,
-        candidate: &mut Candidate<'pat, 'tcx>,
+        candidate: &mut Candidate<'_, 'tcx>,
+        sorted_candidates: &FxIndexMap<TestBranch<'tcx>, Vec<&mut Candidate<'_, 'tcx>>>,
     ) -> Option<TestBranch<'tcx>> {
         // Find the match_pair for this place (if any). At present,
         // afaik, there can be at most one. (In the future, if we
@@ -568,7 +494,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             // If we are performing a variant switch, then this
             // informs variant patterns, but nothing else.
             (
-                &TestKind::Switch { adt_def: tested_adt_def, .. },
+                &TestKind::Switch { adt_def: tested_adt_def },
                 &TestCase::Variant { adt_def, variant_index },
             ) => {
                 assert_eq!(adt_def, tested_adt_def);
@@ -581,17 +507,19 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             //
             // FIXME(#29623) we could use PatKind::Range to rule
             // things out here, in some cases.
-            (TestKind::SwitchInt { options }, &TestCase::Constant { value })
+            (TestKind::SwitchInt, &TestCase::Constant { value })
                 if is_switch_ty(match_pair.pattern.ty) =>
             {
                 fully_matched = true;
-                let bits = options.get(&value).unwrap();
-                Some(TestBranch::Constant(value, *bits))
+                let bits = value.eval_bits(self.tcx, self.param_env);
+                Some(TestBranch::Constant(value, bits))
             }
-            (TestKind::SwitchInt { options }, TestCase::Range(range)) => {
+            (TestKind::SwitchInt, TestCase::Range(range)) => {
                 fully_matched = false;
                 let not_contained =
-                    self.values_not_contained_in_range(&*range, options).unwrap_or(false);
+                    sorted_candidates.keys().filter_map(|br| br.as_constant()).copied().all(
+                        |val| matches!(range.contains(val, self.tcx, self.param_env), Some(false)),
+                    );
 
                 not_contained.then(|| {
                     // No switch values are contained in the pattern range,
@@ -731,20 +659,6 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         }
 
         ret
-    }
-
-    fn values_not_contained_in_range(
-        &self,
-        range: &PatRange<'tcx>,
-        options: &FxIndexMap<Const<'tcx>, u128>,
-    ) -> Option<bool> {
-        for &val in options.keys() {
-            if range.contains(val, self.tcx, self.param_env)? {
-                return Some(false);
-            }
-        }
-
-        Some(true)
     }
 }
 
