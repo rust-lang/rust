@@ -2,6 +2,7 @@
 
 #![feature(rustc_private)]
 #![deny(warnings)]
+#![recursion_limit = "256"]
 
 extern crate rustc_codegen_ssa;
 extern crate rustc_data_structures;
@@ -20,6 +21,7 @@ use std::any::Any;
 use rustc_codegen_ssa::traits::CodegenBackend;
 use rustc_codegen_ssa::{CodegenResults, CrateInfo};
 use rustc_data_structures::fx::FxIndexMap;
+use rustc_data_structures::sync::{DynSend, downcast_box_any_dyn_send};
 use rustc_metadata::EncodedMetadata;
 use rustc_middle::dep_graph::{WorkProduct, WorkProductId};
 use rustc_middle::ty::TyCtxt;
@@ -38,7 +40,7 @@ impl CodegenBackend for TheBackend {
         tcx: TyCtxt<'tcx>,
         metadata: EncodedMetadata,
         _need_metadata_module: bool,
-    ) -> Box<dyn Any> {
+    ) -> Box<dyn Any + DynSend> {
         Box::new(CodegenResults {
             modules: vec![],
             allocator_module: None,
@@ -50,12 +52,11 @@ impl CodegenBackend for TheBackend {
 
     fn join_codegen(
         &self,
-        ongoing_codegen: Box<dyn Any>,
+        ongoing_codegen: Box<dyn Any + DynSend>,
         _sess: &Session,
         _outputs: &OutputFilenames,
     ) -> (CodegenResults, FxIndexMap<WorkProductId, WorkProduct>) {
-        let codegen_results = ongoing_codegen
-            .downcast::<CodegenResults>()
+        let codegen_results = downcast_box_any_dyn_send::<CodegenResults>(ongoing_codegen)
             .expect("in join_codegen: ongoing_codegen is not a CodegenResults");
         (*codegen_results, FxIndexMap::default())
     }
