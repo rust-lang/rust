@@ -603,16 +603,12 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 })
             }
 
-            (&TestKind::If, TestCase::Constant { value }) => {
+            (TestKind::If, TestCase::Constant { value }) => {
                 fully_matched = true;
                 let value = value.try_eval_bool(self.tcx, self.param_env).unwrap_or_else(|| {
                     span_bug!(test.span, "expected boolean value but got {value:?}")
                 });
                 Some(value as usize)
-            }
-            (&TestKind::If, _) => {
-                fully_matched = false;
-                None
             }
 
             (
@@ -714,6 +710,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             (
                 TestKind::Switch { .. }
                 | TestKind::SwitchInt { .. }
+                | TestKind::If
                 | TestKind::Len { .. }
                 | TestKind::Range { .. }
                 | TestKind::Eq { .. },
