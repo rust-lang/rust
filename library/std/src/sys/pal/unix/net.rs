@@ -465,25 +465,31 @@ impl Socket {
     }
 
     #[cfg(target_os = "netbsd")]
-    pub fn set_passcred(&self, passcred: bool) -> io::Result<()> {
-        setsockopt(self, 0 as libc::c_int, libc::LOCAL_CREDS, passcred as libc::c_int)
+    pub fn set_local_creds(&self, local_creds: bool) -> io::Result<()> {
+        setsockopt(self, 0 as libc::c_int, libc::LOCAL_CREDS, local_creds as libc::c_int)
     }
 
     #[cfg(target_os = "netbsd")]
-    pub fn passcred(&self) -> io::Result<bool> {
-        let passcred: libc::c_int = getsockopt(self, 0 as libc::c_int, libc::LOCAL_CREDS)?;
-        Ok(passcred != 0)
+    pub fn local_creds(&self) -> io::Result<bool> {
+        let local_creds: libc::c_int = getsockopt(self, 0 as libc::c_int, libc::LOCAL_CREDS)?;
+        Ok(local_creds != 0)
     }
 
     #[cfg(target_os = "freebsd")]
-    pub fn set_passcred(&self, passcred: bool) -> io::Result<()> {
-        setsockopt(self, libc::AF_LOCAL, libc::LOCAL_CREDS_PERSISTENT, passcred as libc::c_int)
+    pub fn set_local_creds_persistent(&self, local_creds_persistent: bool) -> io::Result<()> {
+        setsockopt(
+            self,
+            libc::AF_LOCAL,
+            libc::LOCAL_CREDS_PERSISTENT,
+            local_creds_persistent as libc::c_int,
+        )
     }
 
     #[cfg(target_os = "freebsd")]
-    pub fn passcred(&self) -> io::Result<bool> {
-        let passcred: libc::c_int = getsockopt(self, libc::AF_LOCAL, libc::LOCAL_CREDS_PERSISTENT)?;
-        Ok(passcred != 0)
+    pub fn local_creds_persistent(&self) -> io::Result<bool> {
+        let local_creds_persistent: libc::c_int =
+            getsockopt(self, libc::AF_LOCAL, libc::LOCAL_CREDS_PERSISTENT)?;
+        Ok(local_creds_persistent != 0)
     }
 
     #[cfg(not(any(target_os = "solaris", target_os = "illumos", target_os = "vita")))]
