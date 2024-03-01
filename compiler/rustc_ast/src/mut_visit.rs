@@ -1682,19 +1682,6 @@ impl DummyAstNode for Stmt {
     }
 }
 
-impl DummyAstNode for Block {
-    fn dummy() -> Self {
-        Block {
-            stmts: Default::default(),
-            id: DUMMY_NODE_ID,
-            rules: BlockCheckMode::Default,
-            span: Default::default(),
-            tokens: Default::default(),
-            could_be_bare_literal: Default::default(),
-        }
-    }
-}
-
 impl DummyAstNode for Crate {
     fn dummy() -> Self {
         Crate {
