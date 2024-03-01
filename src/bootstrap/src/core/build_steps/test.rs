@@ -3394,7 +3394,6 @@ impl Step for CodegenGCC {
             .arg("--out-dir")
             .arg(builder.stage_out(compiler, Mode::ToolRustc).join("cg_gcc"))
             .arg("--release")
-            .arg("--no-default-features")
             .arg("--mini-tests")
             .arg("--std-tests");
         cargo.args(builder.config.test_args());
