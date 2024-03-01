@@ -1289,8 +1289,8 @@ impl<'tcx> Ty<'tcx> {
             | ty::FnDef(..)
             | ty::Error(_)
             | ty::FnPtr(_) => true,
-            ty::Tuple(fields) => fields.iter().all(Self::is_trivially_unpin),
-            ty::Slice(elem_ty) | ty::Array(elem_ty, _) => elem_ty.is_trivially_unpin(),
+            ty::Tuple(fields) => fields.iter().all(Self::is_trivially_async_drop),
+            ty::Slice(elem_ty) | ty::Array(elem_ty, _) => elem_ty.is_trivially_async_drop(),
             ty::Adt(..)
             | ty::Bound(..)
             | ty::Closure(..)
