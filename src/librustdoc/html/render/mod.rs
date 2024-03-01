@@ -1680,7 +1680,7 @@ fn render_impl(
                 write!(
                     &mut doc_buffer,
                     "{}",
-                    document_short(item, cx, link, parent, rendering_params.show_def_docs,)
+                    document_short(item, cx, link, parent, rendering_params.show_def_docs)
                 );
             }
         }
@@ -2043,15 +2043,13 @@ pub(crate) fn render_impl_summary(
     w.write_str("</h3>");
 
     let is_trait = inner_impl.trait_.is_some();
-    if is_trait {
-        if let Some(portability) = portability(&i.impl_item, Some(parent)) {
-            write!(
-                w,
-                "<span class=\"item-info\">\
-                     <div class=\"stab portability\">{portability}</div>\
-                 </span>",
-            );
-        }
+    if is_trait && let Some(portability) = portability(&i.impl_item, Some(parent)) {
+        write!(
+            w,
+            "<span class=\"item-info\">\
+                 <div class=\"stab portability\">{portability}</div>\
+             </span>",
+        );
     }
 
     w.write_str("</section>");
