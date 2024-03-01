@@ -23,7 +23,8 @@ use stable_mir::mir::Body;
 use stable_mir::target::{MachineInfo, MachineSize};
 use stable_mir::ty::{
     AdtDef, AdtKind, Allocation, ClosureDef, ClosureKind, Const, FieldDef, FnDef, ForeignDef,
-    ForeignItemKind, GenericArgs, LineInfo, PolyFnSig, RigidTy, Span, Ty, TyKind, VariantDef,
+    ForeignItemKind, GenericArgs, LineInfo, PolyFnSig, RigidTy, Span, Ty, TyKind, UintTy,
+    VariantDef,
 };
 use stable_mir::{Crate, CrateDef, CrateItem, CrateNum, DefId, Error, Filename, ItemKind, Symbol};
 use std::cell::RefCell;
@@ -341,15 +342,56 @@ impl<'tcx> Context for TablesWrapper<'tcx> {
             .ok_or_else(|| Error::new(format!("Const `{cnst:?}` cannot be encoded as u64")))
     }
 
-    fn usize_to_const(&self, val: u64) -> Result<Const, Error> {
+    fn try_new_const_zst(&self, ty: Ty) -> Result<Const, Error> {
         let mut tables = self.0.borrow_mut();
-        let ty = tables.tcx.types.usize;
+        let tcx = tables.tcx;
+        let ty_internal = ty.internal(&mut *tables, tcx);
+        let size = tables
+            .tcx
+            .layout_of(ParamEnv::empty().and(ty_internal))
+            .map_err(|err| {
+                Error::new(format!(
+                    "Cannot create a zero-sized constant for type `{ty_internal}`: {err}"
+                ))
+            })?
+            .size;
+        if size.bytes() != 0 {
+            return Err(Error::new(format!(
+                "Cannot create a zero-sized constant for type `{ty_internal}`: \
+                 Type `{ty_internal}` has {} bytes",
+                size.bytes()
+            )));
+        }
+
+        Ok(ty::Const::zero_sized(tables.tcx, ty_internal).stable(&mut *tables))
+    }
+
+    fn new_const_str(&self, value: &str) -> Const {
+        let mut tables = self.0.borrow_mut();
+        let tcx = tables.tcx;
+        let ty = ty::Ty::new_static_str(tcx);
+        let bytes = value.as_bytes();
+        let val_tree = ty::ValTree::from_raw_bytes(tcx, bytes);
+
+        ty::Const::new_value(tcx, val_tree, ty).stable(&mut *tables)
+    }
+
+    fn new_const_bool(&self, value: bool) -> Const {
+        let mut tables = self.0.borrow_mut();
+        ty::Const::from_bool(tables.tcx, value).stable(&mut *tables)
+    }
+
+    fn try_new_const_uint(&self, value: u128, uint_ty: UintTy) -> Result<Const, Error> {
+        let mut tables = self.0.borrow_mut();
+        let tcx = tables.tcx;
+        let ty = ty::Ty::new_uint(tcx, uint_ty.internal(&mut *tables, tcx));
         let size = tables.tcx.layout_of(ParamEnv::empty().and(ty)).unwrap().size;
 
-        let scalar = ScalarInt::try_from_uint(val, size).ok_or_else(|| {
-            Error::new(format!("Value overflow: cannot convert `{val}` to usize."))
+        // We don't use Const::from_bits since it doesn't have any error checking.
+        let scalar = ScalarInt::try_from_uint(value, size).ok_or_else(|| {
+            Error::new(format!("Value overflow: cannot convert `{value}` to `{ty}`."))
         })?;
-        Ok(rustc_middle::ty::Const::new_value(tables.tcx, ValTree::from_scalar_int(scalar), ty)
+        Ok(ty::Const::new_value(tables.tcx, ValTree::from_scalar_int(scalar), ty)
             .stable(&mut *tables))
     }
 
@@ -556,7 +598,9 @@ impl<'tcx> Context for TablesWrapper<'tcx> {
         global_alloc: &GlobalAlloc,
     ) -> Option<stable_mir::mir::alloc::AllocId> {
         let mut tables = self.0.borrow_mut();
-        let GlobalAlloc::VTable(ty, trait_ref) = global_alloc else { return None };
+        let GlobalAlloc::VTable(ty, trait_ref) = global_alloc else {
+            return None;
+        };
         let tcx = tables.tcx;
         let alloc_id = tables.tcx.vtable_allocation((
             ty.internal(&mut *tables, tcx),
