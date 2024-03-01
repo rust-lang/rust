@@ -268,7 +268,7 @@ impl Uniform {
 /// `rest.unit` register type gets repeated often enough to cover `rest.size`. This describes the
 /// actual type used for the call; the Rust type of the argument is then transmuted to this ABI type
 /// (and all data in the padding between the registers is dropped).
-#[derive(Clone, PartialEq, Eq, Hash, Debug, HashStable_Generic)]
+#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug, HashStable_Generic)]
 pub struct CastTarget {
     pub prefix: [Option<Reg>; 8],
     pub rest: Uniform,

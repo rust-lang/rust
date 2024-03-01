@@ -67,14 +67,13 @@ pub fn get_fn<'ll, 'tcx>(cx: &CodegenCx<'ll, 'tcx>, instance: Instance<'tcx>) ->
                     true,
                 ),
                 fn_abi,
-                Some(instance),
             );
             unsafe {
                 llvm::LLVMSetDLLStorageClass(llfn, llvm::DLLStorageClass::DllImport);
             }
             llfn
         } else {
-            cx.declare_fn(sym, fn_abi, Some(instance))
+            cx.declare_fn(sym, fn_abi)
         };
         debug!("get_fn: not casting pointer!");
 
