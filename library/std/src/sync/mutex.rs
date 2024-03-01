@@ -369,26 +369,6 @@ impl<T: ?Sized> Mutex<T> {
         }
     }
 
-    /// Immediately drops the guard, and consequently unlocks the mutex.
-    ///
-    /// This function is equivalent to calling [`drop`] on the guard but is more self-documenting.
-    /// Alternately, the guard will be automatically dropped when it goes out of scope.
-    ///
-    /// ```
-    /// #![feature(mutex_unlock)]
-    ///
-    /// use std::sync::Mutex;
-    /// let mutex = Mutex::new(0);
-    ///
-    /// let mut guard = mutex.lock().unwrap();
-    /// *guard += 20;
-    /// Mutex::unlock(guard);
-    /// ```
-    #[unstable(feature = "mutex_unlock", issue = "81872")]
-    pub fn unlock(guard: MutexGuard<'_, T>) {
-        drop(guard);
-    }
-
     /// Determines whether the mutex is poisoned.
     ///
     /// If another thread is active, the mutex can still become poisoned at any
