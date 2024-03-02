@@ -1,6 +1,7 @@
 #![allow(dead_code)] // stack_guard isn't used right now on all platforms
 
 use crate::cell::OnceCell;
+use crate::sys;
 use crate::sys::thread::guard::Guard;
 use crate::thread::Thread;
 
@@ -23,7 +24,8 @@ impl ThreadInfo {
     {
         THREAD_INFO
             .try_with(move |thread_info| {
-                let thread = thread_info.thread.get_or_init(|| Thread::new(None));
+                let thread =
+                    thread_info.thread.get_or_init(|| Thread::new(sys::thread::Thread::get_name()));
                 f(thread, &thread_info.stack_guard)
             })
             .ok()

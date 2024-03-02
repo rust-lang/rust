@@ -8,7 +8,7 @@ use super::{
 };
 use crate::{
     cell::UnsafeCell,
-    ffi::CStr,
+    ffi::{CStr, CString},
     hint, io,
     mem::ManuallyDrop,
     num::NonZero,
@@ -202,6 +202,10 @@ impl Thread {
 
     pub fn set_name(_name: &CStr) {
         // nope
+    }
+
+    pub fn get_name() -> Option<CString> {
+        None
     }
 
     pub fn sleep(dur: Duration) {

@@ -380,6 +380,10 @@ extern "system" {
 }
 #[link(name = "kernel32")]
 extern "system" {
+    pub fn LocalFree(hmem: HLOCAL) -> HLOCAL;
+}
+#[link(name = "kernel32")]
+extern "system" {
     pub fn MoveFileExW(
         lpexistingfilename: PCWSTR,
         lpnewfilename: PCWSTR,
@@ -3441,6 +3445,7 @@ pub type HANDLE_FLAGS = u32;
 pub const HANDLE_FLAG_INHERIT: HANDLE_FLAGS = 1u32;
 pub const HANDLE_FLAG_PROTECT_FROM_CLOSE: HANDLE_FLAGS = 2u32;
 pub const HIGH_PRIORITY_CLASS: PROCESS_CREATION_FLAGS = 128u32;
+pub type HLOCAL = *mut ::core::ffi::c_void;
 pub type HMODULE = *mut ::core::ffi::c_void;
 pub type HRESULT = i32;
 pub const IDLE_PRIORITY_CLASS: PROCESS_CREATION_FLAGS = 64u32;
