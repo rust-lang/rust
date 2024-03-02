@@ -395,6 +395,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                     kind: _,
                 } = *obligation.cause.code()
                 {
+                    debug!("ObligationCauseCode::CompareImplItemObligation");
                     return self.report_extra_impl_obligation(
                         span,
                         impl_item_def_id,
@@ -445,10 +446,12 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                                 )
                             })
                             .unwrap_or_default();
-                        let file_note = file.map(|file| format!(
+                        let file_note = file.as_ref().map(|file| format!(
                             "the full trait has been written to '{}'",
                             file.display(),
                         ));
+
+                        let mut long_ty_file = None;
 
                         let OnUnimplementedNote {
                             message,
@@ -456,7 +459,8 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                             notes,
                             parent_label,
                             append_const_msg,
-                        } = self.on_unimplemented_note(trait_ref, &obligation);
+                        } = self.on_unimplemented_note(trait_ref, &obligation, &mut long_ty_file);
+
                         let have_alt_message = message.is_some() || label.is_some();
                         let is_try_conversion = self.is_try_conversion(span, trait_ref.def_id());
                         let is_unsize =
@@ -511,6 +515,13 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
 
                         let mut err = struct_span_code_err!(self.dcx(), span, E0277, "{}", err_msg);
 
+                        if let Some(long_ty_file) = long_ty_file {
+                            err.note(format!(
+                                "the full name for the type has been written to '{}'",
+                                long_ty_file.display(),
+                            ));
+                            err.note("consider using `--verbose` to print the full type name to the console");
+                        }
                         let mut suggested = false;
                         if is_try_conversion {
                             suggested = self.try_conversion_context(&obligation, trait_ref.skip_binder(), &mut err);
@@ -757,6 +768,8 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                         {
                             return err.emit();
                         }
+
+
 
                         err
                     }
