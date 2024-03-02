@@ -8,6 +8,11 @@
     rustc::untranslatable_diagnostic
 )]
 
+// Some "regular" crates we want to share with rustc
+#[macro_use]
+extern crate tracing;
+
+// The rustc crates we need
 extern crate rustc_data_structures;
 extern crate rustc_driver;
 extern crate rustc_hir;
@@ -16,8 +21,6 @@ extern crate rustc_log;
 extern crate rustc_metadata;
 extern crate rustc_middle;
 extern crate rustc_session;
-#[macro_use]
-extern crate tracing;
 
 use std::env::{self, VarError};
 use std::num::NonZero;
