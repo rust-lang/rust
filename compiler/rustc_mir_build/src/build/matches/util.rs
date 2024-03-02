@@ -95,27 +95,28 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
 impl<'pat, 'tcx> MatchPair<'pat, 'tcx> {
     pub(in crate::build) fn new(
-        mut place: PlaceBuilder<'tcx>,
+        mut place_builder: PlaceBuilder<'tcx>,
         pattern: &'pat Pat<'tcx>,
         cx: &mut Builder<'_, 'tcx>,
     ) -> MatchPair<'pat, 'tcx> {
         // Force the place type to the pattern's type.
         // FIXME(oli-obk): can we use this to simplify slice/array pattern hacks?
-        if let Some(resolved) = place.resolve_upvar(cx) {
-            place = resolved;
+        if let Some(resolved) = place_builder.resolve_upvar(cx) {
+            place_builder = resolved;
         }
 
         // Only add the OpaqueCast projection if the given place is an opaque type and the
         // expected type from the pattern is not.
-        let may_need_cast = match place.base() {
+        let may_need_cast = match place_builder.base() {
             PlaceBase::Local(local) => {
-                let ty = Place::ty_from(local, place.projection(), &cx.local_decls, cx.tcx).ty;
+                let ty =
+                    Place::ty_from(local, place_builder.projection(), &cx.local_decls, cx.tcx).ty;
                 ty != pattern.ty && ty.has_opaque_types()
             }
             _ => true,
         };
         if may_need_cast {
-            place = place.project(ProjectionElem::OpaqueCast(pattern.ty));
+            place_builder = place_builder.project(ProjectionElem::OpaqueCast(pattern.ty));
         }
 
         let default_irrefutable = || TestCase::Irrefutable { binding: None, ascription: None };
@@ -123,7 +124,7 @@ impl<'pat, 'tcx> MatchPair<'pat, 'tcx> {
         let test_case = match pattern.kind {
             PatKind::Never | PatKind::Wild | PatKind::Error(_) => default_irrefutable(),
             PatKind::Or { ref pats } => TestCase::Or {
-                pats: pats.iter().map(|pat| FlatPat::new(place.clone(), pat, cx)).collect(),
+                pats: pats.iter().map(|pat| FlatPat::new(place_builder.clone(), pat, cx)).collect(),
             },
 
             PatKind::Range(ref range) => {
@@ -142,13 +143,13 @@ impl<'pat, 'tcx> MatchPair<'pat, 'tcx> {
                 ..
             } => {
                 // Apply the type ascription to the value at `match_pair.place`
-                let ascription = place.try_to_place(cx).map(|source| super::Ascription {
+                let ascription = place_builder.try_to_place(cx).map(|source| super::Ascription {
                     annotation: annotation.clone(),
                     source,
                     variance,
                 });
 
-                subpairs.push(MatchPair::new(place.clone(), subpattern, cx));
+                subpairs.push(MatchPair::new(place_builder.clone(), subpattern, cx));
                 TestCase::Irrefutable { ascription, binding: None }
             }
 
@@ -161,7 +162,7 @@ impl<'pat, 'tcx> MatchPair<'pat, 'tcx> {
                 ref subpattern,
                 is_primary: _,
             } => {
-                let binding = place.try_to_place(cx).map(|source| super::Binding {
+                let binding = place_builder.try_to_place(cx).map(|source| super::Binding {
                     span: pattern.span,
                     source,
                     var_id: var,
@@ -170,14 +171,14 @@ impl<'pat, 'tcx> MatchPair<'pat, 'tcx> {
 
                 if let Some(subpattern) = subpattern.as_ref() {
                     // this is the `x @ P` case; have to keep matching against `P` now
-                    subpairs.push(MatchPair::new(place.clone(), subpattern, cx));
+                    subpairs.push(MatchPair::new(place_builder.clone(), subpattern, cx));
                 }
                 TestCase::Irrefutable { ascription: None, binding }
             }
 
             PatKind::InlineConstant { subpattern: ref pattern, def, .. } => {
                 // Apply a type ascription for the inline constant to the value at `match_pair.place`
-                let ascription = place.try_to_place(cx).map(|source| {
+                let ascription = place_builder.try_to_place(cx).map(|source| {
                     let span = pattern.span;
                     let parent_id = cx.tcx.typeck_root_def_id(cx.def_id.to_def_id());
                     let args = ty::InlineConstArgs::new(
@@ -203,16 +204,16 @@ impl<'pat, 'tcx> MatchPair<'pat, 'tcx> {
                     super::Ascription { annotation, source, variance: ty::Contravariant }
                 });
 
-                subpairs.push(MatchPair::new(place.clone(), pattern, cx));
+                subpairs.push(MatchPair::new(place_builder.clone(), pattern, cx));
                 TestCase::Irrefutable { ascription, binding: None }
             }
 
             PatKind::Array { ref prefix, ref slice, ref suffix } => {
-                cx.prefix_slice_suffix(&mut subpairs, &place, prefix, slice, suffix);
+                cx.prefix_slice_suffix(&mut subpairs, &place_builder, prefix, slice, suffix);
                 default_irrefutable()
             }
             PatKind::Slice { ref prefix, ref slice, ref suffix } => {
-                cx.prefix_slice_suffix(&mut subpairs, &place, prefix, slice, suffix);
+                cx.prefix_slice_suffix(&mut subpairs, &place_builder, prefix, slice, suffix);
 
                 if prefix.is_empty() && slice.is_some() && suffix.is_empty() {
                     default_irrefutable()
@@ -225,7 +226,7 @@ impl<'pat, 'tcx> MatchPair<'pat, 'tcx> {
             }
 
             PatKind::Variant { adt_def, variant_index, args, ref subpatterns } => {
-                let downcast_place = place.clone().downcast(adt_def, variant_index); // `(x as Variant)`
+                let downcast_place = place_builder.clone().downcast(adt_def, variant_index); // `(x as Variant)`
                 subpairs = cx.field_match_pairs(downcast_place, subpatterns);
 
                 let irrefutable = adt_def.variants().iter_enumerated().all(|(i, v)| {
@@ -247,12 +248,12 @@ impl<'pat, 'tcx> MatchPair<'pat, 'tcx> {
             }
 
             PatKind::Leaf { ref subpatterns } => {
-                subpairs = cx.field_match_pairs(place.clone(), subpatterns);
+                subpairs = cx.field_match_pairs(place_builder.clone(), subpatterns);
                 default_irrefutable()
             }
 
             PatKind::Deref { ref subpattern } => {
-                let place_builder = place.clone().deref();
+                let place_builder = place_builder.clone().deref();
                 subpairs.push(MatchPair::new(place_builder, subpattern, cx));
                 default_irrefutable()
             }
@@ -264,7 +265,7 @@ impl<'pat, 'tcx> MatchPair<'pat, 'tcx> {
             }
         };
 
-        MatchPair { place, test_case, subpairs, pattern }
+        MatchPair { place: place_builder, test_case, subpairs, pattern }
     }
 }
 
