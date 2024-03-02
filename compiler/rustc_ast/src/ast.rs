@@ -671,6 +671,16 @@ impl Pat {
         });
         contains_never_pattern
     }
+
+    /// Return a name suitable for diagnostics.
+    pub fn descr(&self) -> Option<String> {
+        match &self.kind {
+            PatKind::Wild => Some("_".to_string()),
+            PatKind::Ident(BindingAnnotation::NONE, ident, None) => Some(format!("{ident}")),
+            PatKind::Ref(pat, mutbl) => pat.descr().map(|d| format!("&{}{d}", mutbl.prefix_str())),
+            _ => None,
+        }
+    }
 }
 
 /// A single field in a struct pattern.
@@ -1053,6 +1063,7 @@ pub struct Local {
     pub ty: Option<P<Ty>>,
     pub kind: LocalKind,
     pub span: Span,
+    pub colon_sp: Option<Span>,
     pub attrs: AttrVec,
     pub tokens: Option<LazyAttrTokenStream>,
 }
@@ -3337,7 +3348,7 @@ mod size_asserts {
     static_assert_size!(Item, 136);
     static_assert_size!(ItemKind, 64);
     static_assert_size!(LitKind, 24);
-    static_assert_size!(Local, 72);
+    static_assert_size!(Local, 80);
     static_assert_size!(MetaItemLit, 40);
     static_assert_size!(Param, 40);
     static_assert_size!(Pat, 72);

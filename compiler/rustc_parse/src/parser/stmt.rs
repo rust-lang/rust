@@ -294,17 +294,22 @@ impl<'a> Parser<'a> {
         let (pat, colon) =
             self.parse_pat_before_ty(None, RecoverComma::Yes, PatternLocation::LetBinding)?;
 
-        let (err, ty) = if colon {
+        let (err, ty, colon_sp) = if colon {
             // Save the state of the parser before parsing type normally, in case there is a `:`
             // instead of an `=` typo.
             let parser_snapshot_before_type = self.clone();
             let colon_sp = self.prev_token.span;
             match self.parse_ty() {
-                Ok(ty) => (None, Some(ty)),
+                Ok(ty) => (None, Some(ty), Some(colon_sp)),
                 Err(mut err) => {
-                    if let Ok(snip) = self.span_to_snippet(pat.span) {
-                        err.span_label(pat.span, format!("while parsing the type for `{snip}`"));
-                    }
+                    err.span_label(
+                        colon_sp,
+                        format!(
+                            "while parsing the type for {}",
+                            pat.descr()
+                                .map_or_else(|| "the binding".to_string(), |n| format!("`{n}`"))
+                        ),
+                    );
                     // we use noexpect here because we don't actually expect Eq to be here
                     // but we are still checking for it in order to be able to handle it if
                     // it is there
@@ -317,11 +322,11 @@ impl<'a> Parser<'a> {
                             mem::replace(self, parser_snapshot_before_type);
                         Some((parser_snapshot_after_type, colon_sp, err))
                     };
-                    (err, None)
+                    (err, None, Some(colon_sp))
                 }
             }
         } else {
-            (None, None)
+            (None, None, None)
         };
         let init = match (self.parse_initializer(err.is_some()), err) {
             (Ok(init), None) => {
@@ -380,7 +385,16 @@ impl<'a> Parser<'a> {
             }
         };
         let hi = if self.token == token::Semi { self.token.span } else { self.prev_token.span };
-        Ok(P(ast::Local { ty, pat, kind, id: DUMMY_NODE_ID, span: lo.to(hi), attrs, tokens: None }))
+        Ok(P(ast::Local {
+            ty,
+            pat,
+            kind,
+            id: DUMMY_NODE_ID,
+            span: lo.to(hi),
+            colon_sp,
+            attrs,
+            tokens: None,
+        }))
     }
 
     fn check_let_else_init_bool_expr(&self, init: &ast::Expr) {
@@ -750,7 +764,7 @@ impl<'a> Parser<'a> {
                 }
             }
             StmtKind::Expr(_) | StmtKind::MacCall(_) => {}
-            StmtKind::Local(local) if let Err(e) = self.expect_semi() => {
+            StmtKind::Local(local) if let Err(mut e) = self.expect_semi() => {
                 // We might be at the `,` in `let x = foo<bar, baz>;`. Try to recover.
                 match &mut local.kind {
                     LocalKind::Init(expr) | LocalKind::InitElse(expr, _) => {
@@ -758,7 +772,47 @@ impl<'a> Parser<'a> {
                         // We found `foo<bar, baz>`, have we fully recovered?
                         self.expect_semi()?;
                     }
-                    LocalKind::Decl => return Err(e),
+                    LocalKind::Decl => {
+                        if let Some(colon_sp) = local.colon_sp {
+                            e.span_label(
+                                colon_sp,
+                                format!(
+                                    "while parsing the type for {}",
+                                    local.pat.descr().map_or_else(
+                                        || "the binding".to_string(),
+                                        |n| format!("`{n}`")
+                                    )
+                                ),
+                            );
+                            let suggest_eq = if self.token.kind == token::Dot
+                                && let _ = self.bump()
+                                && let mut snapshot = self.create_snapshot_for_diagnostic()
+                                && let Ok(_) = snapshot.parse_dot_suffix_expr(
+                                    colon_sp,
+                                    self.mk_expr_err(
+                                        colon_sp,
+                                        self.dcx().delayed_bug("error during `:` -> `=` recovery"),
+                                    ),
+                                ) {
+                                true
+                            } else if let Some(op) = self.check_assoc_op()
+                                && op.node.can_continue_expr_unambiguously()
+                            {
+                                true
+                            } else {
+                                false
+                            };
+                            if suggest_eq {
+                                e.span_suggestion_short(
+                                    colon_sp,
+                                    "use `=` if you meant to assign",
+                                    "=",
+                                    Applicability::MaybeIncorrect,
+                                );
+                            }
+                        }
+                        return Err(e);
+                    }
                 }
                 eat_semi = false;
             }

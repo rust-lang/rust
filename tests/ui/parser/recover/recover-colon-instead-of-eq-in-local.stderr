@@ -1,0 +1,11 @@
+error: expected one of `!`, `+`, `->`, `::`, `;`, or `=`, found `.`
+  --> $DIR/recover-colon-instead-of-eq-in-local.rs:2:32
+   |
+LL |     let _: std::env::temp_dir().join("foo");
+   |          -                     ^ expected one of `!`, `+`, `->`, `::`, `;`, or `=`
+   |          |
+   |          while parsing the type for `_`
+   |          help: use `=` if you meant to assign
+
+error: aborting due to 1 previous error
+

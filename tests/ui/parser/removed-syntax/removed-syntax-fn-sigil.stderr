@@ -8,7 +8,9 @@ error: expected one of `->`, `;`, or `=`, found `~`
   --> $DIR/removed-syntax-fn-sigil.rs:2:14
    |
 LL |     let x: fn~() = || ();
-   |              ^ expected one of `->`, `;`, or `=`
+   |          -   ^ expected one of `->`, `;`, or `=`
+   |          |
+   |          while parsing the type for `x`
 
 error: aborting due to 2 previous errors
 

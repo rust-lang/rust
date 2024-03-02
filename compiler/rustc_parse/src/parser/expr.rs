@@ -430,7 +430,7 @@ impl<'a> Parser<'a> {
     /// The method does not advance the current token.
     ///
     /// Also performs recovery for `and` / `or` which are mistaken for `&&` and `||` respectively.
-    fn check_assoc_op(&self) -> Option<Spanned<AssocOp>> {
+    pub fn check_assoc_op(&self) -> Option<Spanned<AssocOp>> {
         let (op, span) = match (AssocOp::from_token(&self.token), self.token.ident()) {
             // When parsing const expressions, stop parsing when encountering `>`.
             (
@@ -994,7 +994,7 @@ impl<'a> Parser<'a> {
         }
     }
 
-    fn parse_dot_suffix_expr(&mut self, lo: Span, base: P<Expr>) -> PResult<'a, P<Expr>> {
+    pub fn parse_dot_suffix_expr(&mut self, lo: Span, base: P<Expr>) -> PResult<'a, P<Expr>> {
         match self.token.uninterpolate().kind {
             token::Ident(..) => self.parse_dot_suffix(base, lo),
             token::Literal(token::Lit { kind: token::Integer, symbol, suffix }) => {
