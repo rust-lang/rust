@@ -103,6 +103,7 @@ impl_zeroable_primitive!(
 /// ```
 #[unstable(feature = "generic_nonzero", issue = "120257")]
 #[repr(transparent)]
+#[rustc_nonnull_optimization_guaranteed]
 #[rustc_diagnostic_item = "NonZero"]
 pub struct NonZero<T: ZeroablePrimitive>(T::NonZeroInner);
 
