@@ -37,8 +37,8 @@ pub fn main_inner(profile: Profile) {
         .to_string();
     env::set_var("LD_LIBRARY_PATH", gcc_path);
 
-    fn rust_filter(filename: &Path) -> bool {
-        filename.extension().expect("extension").to_str().expect("to_str") == "rs"
+    fn rust_filter(path: &Path) -> bool {
+        path.is_file() && path.extension().expect("extension").to_str().expect("to_str") == "rs"
     }
 
     #[cfg(feature = "master")]
@@ -58,16 +58,17 @@ pub fn main_inner(profile: Profile) {
 
     LangTester::new()
         .test_dir("tests/run")
-        .test_file_filter(filter)
-        .test_extract(|source| {
-            let lines = source
+        .test_path_filter(filter)
+        .test_extract(|path| {
+            let lines = std::fs::read_to_string(path)
+                .expect("read file")
                 .lines()
                 .skip_while(|l| !l.starts_with("//"))
                 .take_while(|l| l.starts_with("//"))
                 .map(|l| &l[2..])
                 .collect::<Vec<_>>()
                 .join("\n");
-            Some(lines)
+            lines
         })
         .test_cmds(move |path| {
             // Test command 1: Compile `x.rs` into `tempdir/x`.
