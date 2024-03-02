@@ -7,6 +7,7 @@ edition = "2021"
 # tidy-alphabetical-start
 itertools = "0.11"
 rustc_ast = { path = "../rustc_ast" }
+rustc_lexer = { path = "../rustc_lexer" }
 rustc_span = { path = "../rustc_span" }
 thin-vec = "0.2.12"
 # tidy-alphabetical-end
