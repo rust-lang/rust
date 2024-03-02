@@ -192,7 +192,7 @@ pub(super) fn build_enum_type_di_node<'ll, 'tcx>(
 
     assert!(!wants_c_like_enum_debuginfo(cx.tcx, enum_type_and_layout));
 
-    let def_location = if cx.sess().opts.unstable_opts.more_source_locations_in_debuginfo {
+    let def_location = if cx.sess().opts.unstable_opts.debug_info_type_line_numbers {
         Some(file_metadata_from_def_id(cx, Some(enum_adt_def.did())))
     } else {
         None
@@ -269,7 +269,7 @@ pub(super) fn build_coroutine_di_node<'ll, 'tcx>(
     unique_type_id: UniqueTypeId<'tcx>,
 ) -> DINodeCreationResult<'ll> {
     let coroutine_type = unique_type_id.expect_ty();
-    let def_location = if cx.sess().opts.unstable_opts.more_source_locations_in_debuginfo {
+    let def_location = if cx.sess().opts.unstable_opts.debug_info_type_line_numbers {
         let &ty::Coroutine(coroutine_def_id, _) = coroutine_type.kind() else {
             bug!("build_coroutine_di_node() called with non-coroutine type: `{:?}`", coroutine_type)
         };
@@ -337,7 +337,7 @@ fn build_single_variant_union_fields<'ll, 'tcx>(
     let tag_base_type_di_node = type_di_node(cx, tag_base_type);
     let tag_base_type_align = cx.align_of(tag_base_type);
 
-    let enum_adt_def_id = if cx.sess().opts.unstable_opts.more_source_locations_in_debuginfo {
+    let enum_adt_def_id = if cx.sess().opts.unstable_opts.debug_info_type_line_numbers {
         Some(enum_adt_def.did())
     } else {
         None
@@ -408,7 +408,7 @@ fn build_union_fields_for_enum<'ll, 'tcx>(
 ) -> SmallVec<&'ll DIType> {
     let tag_base_type = tag_base_type(cx.tcx, enum_type_and_layout);
 
-    let enum_adt_def_id = if cx.sess().opts.unstable_opts.more_source_locations_in_debuginfo {
+    let enum_adt_def_id = if cx.sess().opts.unstable_opts.debug_info_type_line_numbers {
         Some(enum_adt_def.did())
     } else {
         None
@@ -721,7 +721,7 @@ fn build_union_fields_for_direct_tag_coroutine<'ll, 'tcx>(
         variant_range
             .clone()
             .map(|variant_index| (variant_index, CoroutineArgs::variant_name(variant_index))),
-        if cx.sess().opts.unstable_opts.more_source_locations_in_debuginfo {
+        if cx.sess().opts.unstable_opts.debug_info_type_line_numbers {
             Some(coroutine_def_id)
         } else {
             None
@@ -818,7 +818,7 @@ fn build_union_fields_for_direct_tag_enum_or_coroutine<'ll, 'tcx>(
             tag_base_type_di_node,
             tag_base_type,
             variant_member_info.discr,
-            if cx.sess().opts.unstable_opts.more_source_locations_in_debuginfo {
+            if cx.sess().opts.unstable_opts.debug_info_type_line_numbers {
                 variant_member_info.source_info
             } else {
                 None

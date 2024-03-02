@@ -2,7 +2,7 @@
 // async functions.
 //
 // edition: 2021
-// compile-flags: -C debuginfo=2 -Z more-source-locations-in-debuginfo=true
+// compile-flags: -C debuginfo=2 -Z debug-info-type-line-numbers=true
 #![crate_type = "lib"]
 
 // ignore-tidy-linelength

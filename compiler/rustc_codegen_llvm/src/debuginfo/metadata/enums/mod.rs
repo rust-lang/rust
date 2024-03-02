@@ -68,7 +68,7 @@ fn build_c_style_enum_di_node<'ll, 'tcx>(
     enum_type_and_layout: TyAndLayout<'tcx>,
 ) -> DINodeCreationResult<'ll> {
     let containing_scope = get_namespace_for_item(cx, enum_adt_def.did());
-    let enum_adt_def_id = if cx.sess().opts.unstable_opts.more_source_locations_in_debuginfo {
+    let enum_adt_def_id = if cx.sess().opts.unstable_opts.debug_info_type_line_numbers {
         Some(enum_adt_def.did())
     } else {
         None
@@ -122,12 +122,12 @@ fn build_enumeration_type_di_node<'ll, 'tcx>(
         })
         .collect();
 
-    let (file_metadata, line_number) =
-        if cx.sess().opts.unstable_opts.more_source_locations_in_debuginfo {
-            file_metadata_from_def_id(cx, def_id)
-        } else {
-            (unknown_file_metadata(cx), UNKNOWN_LINE_NUMBER)
-        };
+    let (file_metadata, line_number) = if cx.sess().opts.unstable_opts.debug_info_type_line_numbers
+    {
+        file_metadata_from_def_id(cx, def_id)
+    } else {
+        (unknown_file_metadata(cx), UNKNOWN_LINE_NUMBER)
+    };
 
     unsafe {
         llvm::LLVMRustDIBuilderCreateEnumerationType(
@@ -207,7 +207,7 @@ fn build_enum_variant_struct_type_di_node<'ll, 'tcx>(
 ) -> &'ll DIType {
     assert_eq!(variant_layout.ty, enum_type_and_layout.ty);
 
-    let def_location = if cx.sess().opts.unstable_opts.more_source_locations_in_debuginfo {
+    let def_location = if cx.sess().opts.unstable_opts.debug_info_type_line_numbers {
         Some(file_metadata_from_def_id(cx, Some(variant_def.def_id)))
     } else {
         None
