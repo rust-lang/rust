@@ -16,6 +16,7 @@ use rustc_session::lint::builtin::UNKNOWN_OR_MALFORMED_DIAGNOSTIC_ATTRIBUTES;
 use rustc_span::symbol::{kw, sym, Symbol};
 use rustc_span::Span;
 use std::iter;
+use std::path::PathBuf;
 
 use crate::errors::{
     EmptyOnClauseInOnUnimplemented, InvalidOnClauseInOnUnimplemented, NoValueInOnUnimplemented,
@@ -110,6 +111,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
         &self,
         trait_ref: ty::PolyTraitRef<'tcx>,
         obligation: &PredicateObligation<'tcx>,
+        long_ty_file: &mut Option<PathBuf>,
     ) -> OnUnimplementedNote {
         let (def_id, args) = self
             .impl_similar_to(trait_ref, obligation)
@@ -265,7 +267,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
         }));
 
         if let Ok(Some(command)) = OnUnimplementedDirective::of_item(self.tcx, def_id) {
-            command.evaluate(self.tcx, trait_ref, &flags)
+            command.evaluate(self.tcx, trait_ref, &flags, long_ty_file)
         } else {
             OnUnimplementedNote::default()
         }
@@ -657,6 +659,7 @@ impl<'tcx> OnUnimplementedDirective {
         tcx: TyCtxt<'tcx>,
         trait_ref: ty::TraitRef<'tcx>,
         options: &[(Symbol, Option<String>)],
+        long_ty_file: &mut Option<PathBuf>,
     ) -> OnUnimplementedNote {
         let mut message = None;
         let mut label = None;
@@ -669,6 +672,7 @@ impl<'tcx> OnUnimplementedDirective {
             options.iter().filter_map(|(k, v)| v.clone().map(|v| (*k, v))).collect();
 
         for command in self.subcommands.iter().chain(Some(self)).rev() {
+            debug!(?command);
             if let Some(ref condition) = command.condition
                 && !attr::eval_condition(condition, &tcx.sess, Some(tcx.features()), &mut |cfg| {
                     let value = cfg.value.map(|v| {
@@ -680,7 +684,12 @@ impl<'tcx> OnUnimplementedDirective {
                                 span: cfg.span,
                                 is_diagnostic_namespace_variant: false
                             }
-                            .format(tcx, trait_ref, &options_map)
+                            .format(
+                                tcx,
+                                trait_ref,
+                                &options_map,
+                                long_ty_file
+                            )
                         )
                     });
 
@@ -709,10 +718,14 @@ impl<'tcx> OnUnimplementedDirective {
         }
 
         OnUnimplementedNote {
-            label: label.map(|l| l.format(tcx, trait_ref, &options_map)),
-            message: message.map(|m| m.format(tcx, trait_ref, &options_map)),
-            notes: notes.into_iter().map(|n| n.format(tcx, trait_ref, &options_map)).collect(),
-            parent_label: parent_label.map(|e_s| e_s.format(tcx, trait_ref, &options_map)),
+            label: label.map(|l| l.format(tcx, trait_ref, &options_map, long_ty_file)),
+            message: message.map(|m| m.format(tcx, trait_ref, &options_map, long_ty_file)),
+            notes: notes
+                .into_iter()
+                .map(|n| n.format(tcx, trait_ref, &options_map, long_ty_file))
+                .collect(),
+            parent_label: parent_label
+                .map(|e_s| e_s.format(tcx, trait_ref, &options_map, long_ty_file)),
             append_const_msg,
         }
     }
@@ -814,6 +827,7 @@ impl<'tcx> OnUnimplementedFormatString {
         tcx: TyCtxt<'tcx>,
         trait_ref: ty::TraitRef<'tcx>,
         options: &FxHashMap<Symbol, String>,
+        long_ty_file: &mut Option<PathBuf>,
     ) -> String {
         let name = tcx.item_name(trait_ref.def_id);
         let trait_str = tcx.def_path_str(trait_ref.def_id);
@@ -824,7 +838,11 @@ impl<'tcx> OnUnimplementedFormatString {
             .filter_map(|param| {
                 let value = match param.kind {
                     GenericParamDefKind::Type { .. } | GenericParamDefKind::Const { .. } => {
-                        trait_ref.args[param.index as usize].to_string()
+                        if let Some(ty) = trait_ref.args[param.index as usize].as_type() {
+                            tcx.short_ty_string(ty, long_ty_file)
+                        } else {
+                            trait_ref.args[param.index as usize].to_string()
+                        }
                     }
                     GenericParamDefKind::Lifetime => return None,
                 };
