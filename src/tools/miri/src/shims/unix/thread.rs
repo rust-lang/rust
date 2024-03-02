@@ -104,7 +104,8 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         let name_out = name_out.to_pointer(this)?;
         let len = len.to_target_usize(this)?;
 
-        let name = this.get_thread_name(thread).to_owned();
+        // FIXME: we should use the program name if the thread name is not set
+        let name = this.get_thread_name(thread).unwrap_or(b"<unnamed>").to_owned();
         let (success, _written) = this.write_c_str(&name, name_out, len)?;
 
         Ok(if success { Scalar::from_u32(0) } else { this.eval_libc("ERANGE") })

@@ -120,7 +120,7 @@ pub use crate::diagnostics::{
 pub use crate::eval::{
     create_ecx, eval_entry, AlignmentCheck, BacktraceStyle, IsolatedOp, MiriConfig, RejectOpWith,
 };
-pub use crate::helpers::EvalContextExt as _;
+pub use crate::helpers::{AccessKind, EvalContextExt as _};
 pub use crate::intptrcast::{EvalContextExt as _, ProvenanceMode};
 pub use crate::machine::{
     AllocExtra, FrameExtra, MiriInterpCx, MiriInterpCxExt, MiriMachine, MiriMemoryKind,

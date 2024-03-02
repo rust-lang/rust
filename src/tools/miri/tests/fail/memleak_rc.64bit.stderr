@@ -4,6 +4,7 @@ error: memory leaked: ALLOC (Rust heap, size: 32, align: 8), allocated here:
 LL |         __rust_alloc(layout.size(), layout.align())
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
+   = note: BACKTRACE:
    = note: inside `std::alloc::alloc` at RUSTLIB/alloc/src/alloc.rs:LL:CC
    = note: inside `std::alloc::Global::alloc_impl` at RUSTLIB/alloc/src/alloc.rs:LL:CC
    = note: inside `<std::alloc::Global as std::alloc::Allocator>::allocate` at RUSTLIB/alloc/src/alloc.rs:LL:CC

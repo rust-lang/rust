@@ -1673,8 +1673,8 @@ impl GlobalState {
         vector: VectorIdx,
     ) -> String {
         let thread = self.vector_info.borrow()[vector];
-        let thread_name = thread_mgr.get_thread_name(thread);
-        format!("thread `{}`", String::from_utf8_lossy(thread_name))
+        let thread_name = thread_mgr.get_thread_display_name(thread);
+        format!("thread `{thread_name}`")
     }
 
     /// Acquire a lock, express that the previous call of

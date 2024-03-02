@@ -4,6 +4,7 @@ error: deadlock: the evaluated program deadlocked
 LL |             assert_eq!(WaitForSingleObject(native, INFINITE), WAIT_OBJECT_0);
    |                                                            ^ the evaluated program deadlocked
    |
+   = note: BACKTRACE on thread `unnamed-ID`:
    = note: inside closure at $DIR/windows_join_self.rs:LL:CC
 
 note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace

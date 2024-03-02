@@ -21,7 +21,7 @@ fn main() {
 
             let ptr = &a as *const AtomicU16 as *mut u16;
             unsafe { ptr.read() };
-            //~^ ERROR: Data race detected between (1) atomic load on thread `<unnamed>` and (2) non-atomic read on thread `<unnamed>`
+            //~^ ERROR: Data race detected between (1) atomic load on thread `unnamed-1` and (2) non-atomic read on thread `unnamed-2`
         });
     });
 }

@@ -30,7 +30,7 @@ help: the accessed tag <TAG> later transitioned to Reserved (conflicted) due to 
 LL |         }
    |          ^
    = help: this transition corresponds to a temporary loss of write permissions until function exit
-   = note: BACKTRACE (of the first span):
+   = note: BACKTRACE (of the first span) on thread `unnamed-ID`:
    = note: inside `retagx_retagy_retx_writey_rety::{closure#1}::as_mut` at $DIR/spurious_read.rs:LL:CC
 note: inside closure
   --> $DIR/spurious_read.rs:LL:CC

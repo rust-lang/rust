@@ -1,6 +1,6 @@
 use rustc_target::abi::{Abi, Size};
 
-use crate::borrow_tracker::{AccessKind, GlobalState, GlobalStateInner, ProtectorKind};
+use crate::borrow_tracker::{GlobalState, GlobalStateInner, ProtectorKind};
 use rustc_middle::{
     mir::{Mutability, RetagKind},
     ty::{

@@ -13,7 +13,7 @@ fn main() {
         let ptr = ptr;
         // We do a protected mutable retag (but no write!) in this thread.
         fn retag(_x: &mut i32) {}
-        retag(unsafe { &mut *ptr.0 }); //~ERROR: Data race detected between (1) non-atomic read on thread `main` and (2) non-atomic write on thread `<unnamed>`
+        retag(unsafe { &mut *ptr.0 }); //~ERROR: Data race detected between (1) non-atomic read on thread `main` and (2) non-atomic write on thread `unnamed-1`
     });
 
     // We do a read in the main thread.
