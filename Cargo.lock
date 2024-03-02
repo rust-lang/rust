@@ -447,8 +447,8 @@ version = "0.1.0"
 
 [[package]]
 name = "cc"
-version = "1.0.83"
-source = "git+https://github.com/dpaoliello/cc-rs?branch=experiment#bb5da6b5948efe3557304b5ab9594adc703a24c5"
+version = "1.0.84"
+source = "git+https://github.com/dpaoliello/cc-rs?branch=experiment#879fe28a3801b024135fe70ed7b7ad19a47824e7"
 
 [[package]]
 name = "cfg-if"
