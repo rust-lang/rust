@@ -186,11 +186,8 @@ impl f64 {
     /// let x = 3.5_f64;
     /// let y = -3.5_f64;
     ///
-    /// let abs_difference_x = (x.abs() - x).abs();
-    /// let abs_difference_y = (y.abs() - (-y)).abs();
-    ///
-    /// assert!(abs_difference_x < 1e-10);
-    /// assert!(abs_difference_y < 1e-10);
+    /// assert_eq!(x.abs(), x);
+    /// assert_eq!(y.abs(), -y);
     ///
     /// assert!(f64::NAN.abs().is_nan());
     /// ```
@@ -276,10 +273,17 @@ impl f64 {
     /// let x = 4.0_f64;
     /// let b = 60.0_f64;
     ///
-    /// // 100.0
-    /// let abs_difference = (m.mul_add(x, b) - ((m * x) + b)).abs();
+    /// assert_eq!(m.mul_add(x, b), 100.0);
+    /// assert_eq!(m * x + b, 100.0);
     ///
-    /// assert!(abs_difference < 1e-10);
+    /// let one_plus_eps = 1.0_f64 + f64::EPSILON;
+    /// let one_minus_eps = 1.0_f64 - f64::EPSILON;
+    /// let minus_one = -1.0_f64;
+    ///
+    /// // The exact result (1 + eps) * (1 - eps) = 1 - eps * eps.
+    /// assert_eq!(one_plus_eps.mul_add(one_minus_eps, minus_one), -f64::EPSILON * f64::EPSILON);
+    /// // Different rounding with the non-fused multiply and add.
+    /// assert_eq!(one_plus_eps * one_minus_eps + minus_one, 0.0);
     /// ```
     #[rustc_allow_incoherent_impl]
     #[must_use = "method returns a new number and does not mutate the original value"]
@@ -426,9 +430,7 @@ impl f64 {
     /// let negative = -4.0_f64;
     /// let negative_zero = -0.0_f64;
     ///
-    /// let abs_difference = (positive.sqrt() - 2.0).abs();
-    ///
-    /// assert!(abs_difference < 1e-10);
+    /// assert_eq!(positive.sqrt(), 2.0);
     /// assert!(negative.sqrt().is_nan());
     /// assert!(negative_zero.sqrt() == negative_zero);
     /// ```
