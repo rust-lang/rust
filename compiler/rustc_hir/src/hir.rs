@@ -2460,6 +2460,7 @@ impl PrimTy {
         Self::Uint(UintTy::Usize),
         Self::Float(FloatTy::F32),
         Self::Float(FloatTy::F64),
+        // FIXME(f16_f128): add these when enabled below
         Self::Bool,
         Self::Char,
         Self::Str,
@@ -2509,6 +2510,10 @@ impl PrimTy {
             sym::usize => Self::Uint(UintTy::Usize),
             sym::f32 => Self::Float(FloatTy::F32),
             sym::f64 => Self::Float(FloatTy::F64),
+            // FIXME(f16_f128): enabling these will open the gates of f16 and f128 being
+            // understood by rustc.
+            // sym::f16 => Self::Float(FloatTy::F16),
+            // sym::f128 => Self::Float(FloatTy::F128),
             sym::bool => Self::Bool,
             sym::char => Self::Char,
             sym::str => Self::Str,
