@@ -15,6 +15,6 @@ macro_rules! n {
 }
 
 pass_nonterminal!(n!());
-//~^ ERROR incorrect `repr(align)` attribute format: `align` expect a literal integer as argument [E0693]
+//~^ ERROR incorrect `repr(align)` attribute format: `align` expects a literal integer as argument [E0693]
 
 fn main() {}

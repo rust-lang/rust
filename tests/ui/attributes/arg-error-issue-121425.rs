@@ -19,7 +19,7 @@ struct X;
 
 const P: usize = 8;
 #[repr(packed(P))]
-//~^ ERROR: attribute format: `packed` expect a literal integer as argument
+//~^ ERROR: attribute format: `packed` expects a literal integer as argument
 struct A;
 
 #[repr(packed())]

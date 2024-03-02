@@ -9,7 +9,7 @@ LL | pass_nonterminal!(n!());
    |
    = note: this error originates in the macro `pass_nonterminal` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error[E0693]: incorrect `repr(align)` attribute format: `align` expect a literal integer as argument
+error[E0693]: incorrect `repr(align)` attribute format: `align` expects a literal integer as argument
   --> $DIR/nonterminal-expansion.rs:17:19
    |
 LL | pass_nonterminal!(n!());
