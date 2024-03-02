@@ -510,9 +510,30 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             (TestKind::SwitchInt, &TestCase::Constant { value })
                 if is_switch_ty(match_pair.pattern.ty) =>
             {
-                fully_matched = true;
-                let bits = value.eval_bits(self.tcx, self.param_env);
-                Some(TestBranch::Constant(value, bits))
+                // Beware: there might be some ranges sorted into the failure case; we must not add
+                // a success case that could be matched by one of these ranges.
+                let is_covering_range = |test_case: &TestCase<'_, 'tcx>| {
+                    test_case.as_range().is_some_and(|range| {
+                        matches!(range.contains(value, self.tcx, self.param_env), None | Some(true))
+                    })
+                };
+                let is_conflicting_candidate = |candidate: &&mut Candidate<'_, 'tcx>| {
+                    candidate
+                        .match_pairs
+                        .iter()
+                        .any(|mp| mp.place == *test_place && is_covering_range(&mp.test_case))
+                };
+                if sorted_candidates
+                    .get(&TestBranch::Failure)
+                    .is_some_and(|candidates| candidates.iter().any(is_conflicting_candidate))
+                {
+                    fully_matched = false;
+                    None
+                } else {
+                    fully_matched = true;
+                    let bits = value.eval_bits(self.tcx, self.param_env);
+                    Some(TestBranch::Constant(value, bits))
+                }
             }
             (TestKind::SwitchInt, TestCase::Range(range)) => {
                 fully_matched = false;
