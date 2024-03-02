@@ -357,31 +357,27 @@ fn add_unused_functions(cx: &CodegenCx<'_, '_>) {
 
     let ignore_unused_generics = tcx.sess.instrument_coverage_except_unused_generics();
 
-    let eligible_def_ids: Vec<DefId> = tcx
-        .mir_keys(())
-        .iter()
-        .filter_map(|local_def_id| {
-            let def_id = local_def_id.to_def_id();
-            let kind = tcx.def_kind(def_id);
-            // `mir_keys` will give us `DefId`s for all kinds of things, not
-            // just "functions", like consts, statics, etc. Filter those out.
-            // If `ignore_unused_generics` was specified, filter out any
-            // generic functions from consideration as well.
-            if !matches!(kind, DefKind::Fn | DefKind::AssocFn | DefKind::Closure) {
-                return None;
-            }
-            if ignore_unused_generics && tcx.generics_of(def_id).requires_monomorphization(tcx) {
-                return None;
-            }
-            Some(local_def_id.to_def_id())
-        })
-        .collect();
+    let eligible_def_ids = tcx.mir_keys(()).iter().filter_map(|local_def_id| {
+        let def_id = local_def_id.to_def_id();
+        let kind = tcx.def_kind(def_id);
+        // `mir_keys` will give us `DefId`s for all kinds of things, not
+        // just "functions", like consts, statics, etc. Filter those out.
+        // If `ignore_unused_generics` was specified, filter out any
+        // generic functions from consideration as well.
+        if !matches!(kind, DefKind::Fn | DefKind::AssocFn | DefKind::Closure) {
+            return None;
+        }
+        if ignore_unused_generics && tcx.generics_of(def_id).requires_monomorphization(tcx) {
+            return None;
+        }
+        Some(local_def_id.to_def_id())
+    });
 
     let codegenned_def_ids = codegenned_and_inlined_items(tcx);
 
     // For each `DefId` that should have coverage instrumentation but wasn't
     // codegenned, add it to the function coverage map as an unused function.
-    for def_id in eligible_def_ids.into_iter().filter(|id| !codegenned_def_ids.contains(id)) {
+    for def_id in eligible_def_ids.filter(|id| !codegenned_def_ids.contains(id)) {
         // Skip any function that didn't have coverage data added to it by the
         // coverage instrumentor.
         let body = tcx.instance_mir(ty::InstanceDef::Item(def_id));

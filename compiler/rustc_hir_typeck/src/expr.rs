@@ -2156,10 +2156,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     err.span_suggestions(
                         span.shrink_to_hi().with_hi(expr_span.hi()),
                         "you might have meant to use an associated function to build this type",
-                        items
-                            .iter()
-                            .map(|(_, name, args)| suggestion(name, *args))
-                            .collect::<Vec<String>>(),
+                        items.iter().map(|(_, name, args)| suggestion(name, *args)),
                         Applicability::MaybeIncorrect,
                     );
                 }

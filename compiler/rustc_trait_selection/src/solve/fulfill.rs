@@ -57,7 +57,7 @@ impl<'tcx> ObligationStorage<'tcx> {
 
     fn take_pending(&mut self) -> Vec<PredicateObligation<'tcx>> {
         let mut obligations = mem::take(&mut self.pending);
-        obligations.extend(self.overflowed.drain(..));
+        obligations.append(&mut self.overflowed);
         obligations
     }
 
