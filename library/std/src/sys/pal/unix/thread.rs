@@ -264,6 +264,79 @@ impl Thread {
         }
     }
 
+    #[cfg(not(any(
+        target_os = "freebsd",
+        target_os = "netbsd",
+        target_os = "linux",
+        target_os = "android",
+        target_os = "solaris",
+        target_os = "illumos",
+        target_os = "macos",
+        target_os = "ios",
+        target_os = "tvos",
+        target_os = "watchos"
+    )))]
+    pub fn sleep_until(deadline: Instant) {
+        let now = Instant::now();
+
+        if let Some(delay) = deadline.checked_duration_since(now) {
+            sleep(delay);
+        }
+    }
+
+    // Note depends on clock_nanosleep (not supported on macos/ios/watchos/tvos)
+    #[cfg(any(
+        target_os = "freebsd",
+        target_os = "netbsd",
+        target_os = "linux",
+        target_os = "android",
+        target_os = "solaris",
+        target_os = "illumos",
+    ))]
+    pub fn sleep_until(deadline: crate::time::Instant) {
+        let mut ts = deadline
+            .into_inner()
+            .into_timespec()
+            .to_timespec()
+            .expect("Timespec is narrower then libc::timespec thus conversion can't fail");
+        let ts_ptr = &mut ts as *mut _;
+
+        // If we're awoken with a signal and the return value is -1
+        // clock_nanosleep needs to be called again.
+        unsafe {
+            while libc::clock_nanosleep(libc::CLOCK_MONOTONIC, libc::TIMER_ABSTIME, ts_ptr, ts_ptr)
+                == -1
+            {
+                assert_eq!(
+                    os::errno(),
+                    libc::EINTR,
+                    "clock nanosleep should only return an error if interrupted"
+                );
+            }
+        }
+    }
+
+    #[cfg(any(target_os = "macos", target_os = "ios", target_os = "tvos", target_os = "watchos"))]
+    pub fn sleep_until(deadline: crate::time::Instant) {
+        use super::time::Timespec;
+        use core::mem::MaybeUninit;
+
+        let Timespec { tv_sec, tv_nsec } = deadline.into_inner().into_timespec();
+        let nanos = (tv_sec as u64).saturating_mul(1_000_000_000).saturating_add(tv_nsec.0 as u64);
+
+        let mut info = MaybeUninit::uninit();
+        unsafe {
+            let ret = mach_timebase_info(info.as_mut_ptr());
+            assert_eq!(ret, KERN_SUCCESS);
+
+            let info = info.assume_init();
+            let ticks = nanos * (info.denom as u64) / (info.numer as u64);
+
+            mach_wait_until(ticks);
+            assert_eq!(ret, KERN_SUCCESS);
+        }
+    }
+
     pub fn join(self) {
         unsafe {
             let ret = libc::pthread_join(self.id, ptr::null_mut());
@@ -281,6 +354,23 @@ impl Thread {
         mem::forget(self);
         id
     }
+}
+
+#[cfg(any(target_os = "macos", target_os = "ios", target_os = "tvos", target_os = "watchos"))]
+const KERN_SUCCESS: libc::c_int = 0;
+
+#[cfg(any(target_os = "macos", target_os = "ios", target_os = "tvos", target_os = "watchos"))]
+#[repr(C)]
+struct mach_timebase_info_type {
+    numer: u32,
+    denom: u32,
+}
+
+#[cfg(any(target_os = "macos", target_os = "ios", target_os = "tvos", target_os = "watchos"))]
+extern "C" {
+    fn mach_wait_until(deadline: u64) -> libc::c_int;
+    fn mach_timebase_info(info: *mut mach_timebase_info_type) -> libc::c_int;
+
 }
 
 impl Drop for Thread {

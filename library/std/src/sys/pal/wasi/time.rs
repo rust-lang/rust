@@ -36,6 +36,10 @@ impl Instant {
     pub fn checked_sub_duration(&self, other: &Duration) -> Option<Instant> {
         Some(Instant(self.0.checked_sub(*other)?))
     }
+
+    pub(crate) fn into_inner(self) -> Duration {
+        self.0
+    }
 }
 
 impl SystemTime {
