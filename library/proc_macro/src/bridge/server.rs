@@ -5,8 +5,79 @@ use super::*;
 use std::cell::Cell;
 use std::marker::PhantomData;
 
-// FIXME(eddyb) generate the definition of `HandleStore` in `server.rs`.
-use super::client::HandleStore;
+macro_rules! define_server_handles {
+    (
+        'owned: $($oty:ident,)*
+        'interned: $($ity:ident,)*
+    ) => {
+        #[allow(non_snake_case)]
+        pub(super) struct HandleStore<S: Types> {
+            $($oty: handle::OwnedStore<S::$oty>,)*
+            $($ity: handle::InternedStore<S::$ity>,)*
+        }
+
+        impl<S: Types> HandleStore<S> {
+            fn new(handle_counters: &'static client::HandleCounters) -> Self {
+                HandleStore {
+                    $($oty: handle::OwnedStore::new(&handle_counters.$oty),)*
+                    $($ity: handle::InternedStore::new(&handle_counters.$ity),)*
+                }
+            }
+        }
+
+        $(
+            impl<S: Types> Encode<HandleStore<MarkedTypes<S>>> for Marked<S::$oty, client::$oty> {
+                fn encode(self, w: &mut Writer, s: &mut HandleStore<MarkedTypes<S>>) {
+                    s.$oty.alloc(self).encode(w, s);
+                }
+            }
+
+            impl<S: Types> DecodeMut<'_, '_, HandleStore<MarkedTypes<S>>>
+                for Marked<S::$oty, client::$oty>
+            {
+                fn decode(r: &mut Reader<'_>, s: &mut HandleStore<MarkedTypes<S>>) -> Self {
+                    s.$oty.take(handle::Handle::decode(r, &mut ()))
+                }
+            }
+
+            impl<'s, S: Types> Decode<'_, 's, HandleStore<MarkedTypes<S>>>
+                for &'s Marked<S::$oty, client::$oty>
+            {
+                fn decode(r: &mut Reader<'_>, s: &'s HandleStore<MarkedTypes<S>>) -> Self {
+                    &s.$oty[handle::Handle::decode(r, &mut ())]
+                }
+            }
+
+            impl<'s, S: Types> DecodeMut<'_, 's, HandleStore<MarkedTypes<S>>>
+                for &'s mut Marked<S::$oty, client::$oty>
+            {
+                fn decode(
+                    r: &mut Reader<'_>,
+                    s: &'s mut HandleStore<MarkedTypes<S>>
+                ) -> Self {
+                    &mut s.$oty[handle::Handle::decode(r, &mut ())]
+                }
+            }
+        )*
+
+        $(
+            impl<S: Types> Encode<HandleStore<MarkedTypes<S>>> for Marked<S::$ity, client::$ity> {
+                fn encode(self, w: &mut Writer, s: &mut HandleStore<MarkedTypes<S>>) {
+                    s.$ity.alloc(self).encode(w, s);
+                }
+            }
+
+            impl<S: Types> DecodeMut<'_, '_, HandleStore<MarkedTypes<S>>>
+                for Marked<S::$ity, client::$ity>
+            {
+                fn decode(r: &mut Reader<'_>, s: &mut HandleStore<MarkedTypes<S>>) -> Self {
+                    s.$ity.copy(handle::Handle::decode(r, &mut ()))
+                }
+            }
+        )*
+    }
+}
+with_api_handle_types!(define_server_handles);
 
 pub trait Types {
     type FreeFunctions: 'static;

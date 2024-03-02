@@ -1,6 +1,7 @@
 use crate::build::expr::as_place::{PlaceBase, PlaceBuilder};
-use crate::build::matches::{MatchPair, TestCase};
+use crate::build::matches::{Binding, Candidate, FlatPat, MatchPair, TestCase};
 use crate::build::Builder;
+use rustc_data_structures::fx::FxIndexSet;
 use rustc_infer::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
 use rustc_middle::mir::*;
 use rustc_middle::thir::{self, *};
@@ -121,7 +122,9 @@ impl<'pat, 'tcx> MatchPair<'pat, 'tcx> {
         let mut subpairs = Vec::new();
         let test_case = match pattern.kind {
             PatKind::Never | PatKind::Wild | PatKind::Error(_) => default_irrefutable(),
-            PatKind::Or { .. } => TestCase::Or,
+            PatKind::Or { ref pats } => TestCase::Or {
+                pats: pats.iter().map(|pat| FlatPat::new(place.clone(), pat, cx)).collect(),
+            },
 
             PatKind::Range(ref range) => {
                 if range.is_full_range(cx.tcx) == Some(true) {
@@ -256,5 +259,84 @@ impl<'pat, 'tcx> MatchPair<'pat, 'tcx> {
         };
 
         MatchPair { place, test_case, subpairs, pattern }
+    }
+}
+
+pub(super) struct FakeBorrowCollector<'a, 'b, 'tcx> {
+    cx: &'a mut Builder<'b, 'tcx>,
+    fake_borrows: FxIndexSet<Place<'tcx>>,
+}
+
+impl<'a, 'b, 'tcx> FakeBorrowCollector<'a, 'b, 'tcx> {
+    pub(super) fn collect_fake_borrows(
+        cx: &'a mut Builder<'b, 'tcx>,
+        candidates: &[&mut Candidate<'_, 'tcx>],
+    ) -> FxIndexSet<Place<'tcx>> {
+        let mut collector = Self { cx, fake_borrows: FxIndexSet::default() };
+        for candidate in candidates.iter() {
+            collector.visit_candidate(candidate);
+        }
+        collector.fake_borrows
+    }
+
+    fn visit_candidate(&mut self, candidate: &Candidate<'_, 'tcx>) {
+        for binding in &candidate.bindings {
+            self.visit_binding(binding);
+        }
+        for match_pair in &candidate.match_pairs {
+            self.visit_match_pair(match_pair);
+        }
+    }
+
+    fn visit_flat_pat(&mut self, flat_pat: &FlatPat<'_, 'tcx>) {
+        for binding in &flat_pat.bindings {
+            self.visit_binding(binding);
+        }
+        for match_pair in &flat_pat.match_pairs {
+            self.visit_match_pair(match_pair);
+        }
+    }
+
+    fn visit_match_pair(&mut self, match_pair: &MatchPair<'_, 'tcx>) {
+        if let TestCase::Or { pats, .. } = &match_pair.test_case {
+            for flat_pat in pats.iter() {
+                self.visit_flat_pat(flat_pat)
+            }
+        } else {
+            // Insert a Shallow borrow of any place that is switched on.
+            if let Some(resolved_place) = match_pair.place.try_to_place(self.cx) {
+                self.fake_borrows.insert(resolved_place);
+            }
+
+            for subpair in &match_pair.subpairs {
+                self.visit_match_pair(subpair);
+            }
+        }
+    }
+
+    fn visit_binding(&mut self, Binding { source, .. }: &Binding<'tcx>) {
+        // Insert a borrows of prefixes of places that are bound and are
+        // behind a dereference projection.
+        //
+        // These borrows are taken to avoid situations like the following:
+        //
+        // match x[10] {
+        //     _ if { x = &[0]; false } => (),
+        //     y => (), // Out of bounds array access!
+        // }
+        //
+        // match *x {
+        //     // y is bound by reference in the guard and then by copy in the
+        //     // arm, so y is 2 in the arm!
+        //     y if { y == 1 && (x = &2) == () } => y,
+        //     _ => 3,
+        // }
+        if let Some(i) = source.projection.iter().rposition(|elem| elem == ProjectionElem::Deref) {
+            let proj_base = &source.projection[..i];
+            self.fake_borrows.insert(Place {
+                local: source.local,
+                projection: self.cx.tcx.mk_place_elems(proj_base),
+            });
+        }
     }
 }

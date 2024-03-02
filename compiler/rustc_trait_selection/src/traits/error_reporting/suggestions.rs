@@ -2671,6 +2671,8 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
     ) where
         T: ToPredicate<'tcx>,
     {
+        let mut long_ty_file = None;
+
         let tcx = self.tcx;
         let predicate = predicate.to_predicate(tcx);
         match *cause_code {
@@ -2853,21 +2855,13 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                 }
             }
             ObligationCauseCode::Coercion { source, target } => {
-                let mut file = None;
-                let source = tcx.short_ty_string(self.resolve_vars_if_possible(source), &mut file);
-                let target = tcx.short_ty_string(self.resolve_vars_if_possible(target), &mut file);
+                let source =
+                    tcx.short_ty_string(self.resolve_vars_if_possible(source), &mut long_ty_file);
+                let target =
+                    tcx.short_ty_string(self.resolve_vars_if_possible(target), &mut long_ty_file);
                 err.note(with_forced_trimmed_paths!(format!(
                     "required for the cast from `{source}` to `{target}`",
                 )));
-                if let Some(file) = file {
-                    err.note(format!(
-                        "the full name for the type has been written to '{}'",
-                        file.display(),
-                    ));
-                    err.note(
-                        "consider using `--verbose` to print the full type name to the console",
-                    );
-                }
             }
             ObligationCauseCode::RepeatElementCopy {
                 is_constable,
@@ -3170,8 +3164,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                 // Don't print the tuple of capture types
                 'print: {
                     if !is_upvar_tys_infer_tuple {
-                        let mut file = None;
-                        let ty_str = tcx.short_ty_string(ty, &mut file);
+                        let ty_str = tcx.short_ty_string(ty, &mut long_ty_file);
                         let msg = format!("required because it appears within the type `{ty_str}`");
                         match ty.kind() {
                             ty::Adt(def, _) => match tcx.opt_item_ident(def.did()) {
@@ -3269,9 +3262,8 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                 let mut parent_trait_pred =
                     self.resolve_vars_if_possible(data.derived.parent_trait_pred);
                 let parent_def_id = parent_trait_pred.def_id();
-                let mut file = None;
-                let self_ty_str =
-                    tcx.short_ty_string(parent_trait_pred.skip_binder().self_ty(), &mut file);
+                let self_ty_str = tcx
+                    .short_ty_string(parent_trait_pred.skip_binder().self_ty(), &mut long_ty_file);
                 let trait_name = parent_trait_pred.print_modifiers_and_trait_path().to_string();
                 let msg = format!("required for `{self_ty_str}` to implement `{trait_name}`");
                 let mut is_auto_trait = false;
@@ -3329,15 +3321,6 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                     }
                 };
 
-                if let Some(file) = file {
-                    err.note(format!(
-                        "the full type name has been written to '{}'",
-                        file.display(),
-                    ));
-                    err.note(
-                        "consider using `--verbose` to print the full type name to the console",
-                    );
-                }
                 let mut parent_predicate = parent_trait_pred;
                 let mut data = &data.derived;
                 let mut count = 0;
@@ -3378,22 +3361,14 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                         count,
                         pluralize!(count)
                     ));
-                    let mut file = None;
-                    let self_ty =
-                        tcx.short_ty_string(parent_trait_pred.skip_binder().self_ty(), &mut file);
+                    let self_ty = tcx.short_ty_string(
+                        parent_trait_pred.skip_binder().self_ty(),
+                        &mut long_ty_file,
+                    );
                     err.note(format!(
                         "required for `{self_ty}` to implement `{}`",
                         parent_trait_pred.print_modifiers_and_trait_path()
                     ));
-                    if let Some(file) = file {
-                        err.note(format!(
-                            "the full type name has been written to '{}'",
-                            file.display(),
-                        ));
-                        err.note(
-                            "consider using `--verbose` to print the full type name to the console",
-                        );
-                    }
                 }
                 // #74711: avoid a stack overflow
                 ensure_sufficient_stack(|| {
@@ -3502,7 +3477,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
             }
             ObligationCauseCode::OpaqueReturnType(expr_info) => {
                 if let Some((expr_ty, expr_span)) = expr_info {
-                    let expr_ty = with_forced_trimmed_paths!(self.ty_to_string(expr_ty));
+                    let expr_ty = self.tcx.short_ty_string(expr_ty, &mut long_ty_file);
                     err.span_label(
                         expr_span,
                         with_forced_trimmed_paths!(format!(
@@ -3511,6 +3486,14 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                     );
                 }
             }
+        }
+
+        if let Some(file) = long_ty_file {
+            err.note(format!(
+                "the full name for the type has been written to '{}'",
+                file.display(),
+            ));
+            err.note("consider using `--verbose` to print the full type name to the console");
         }
     }
 
@@ -4769,20 +4752,21 @@ pub(super) fn get_explanation_based_on_obligation<'tcx>(
         } else {
             String::new()
         };
-        match ty_desc {
-            Some(desc) => format!(
-                "{}the trait `{}` is not implemented for {} `{}`{post}",
-                pre_message,
-                trait_predicate.print_modifiers_and_trait_path(),
-                desc,
-                tcx.short_ty_string(trait_ref.skip_binder().self_ty(), &mut None),
-            ),
-            None => format!(
-                "{}the trait `{}` is not implemented for `{}`{post}",
-                pre_message,
+        let desc = match ty_desc {
+            Some(desc) => format!(" {desc}"),
+            None => String::new(),
+        };
+        if let ty::ImplPolarity::Positive = trait_predicate.polarity() {
+            format!(
+                "{pre_message}the trait `{}` is not implemented for{desc} `{}`{post}",
                 trait_predicate.print_modifiers_and_trait_path(),
                 tcx.short_ty_string(trait_ref.skip_binder().self_ty(), &mut None),
-            ),
+            )
+        } else {
+            // "the trait bound `T: !Send` is not satisfied" reads better than "`!Send` is
+            // not implemented for `T`".
+            // FIXME: add note explaining explicit negative trait bounds.
+            format!("{pre_message}the trait bound `{trait_predicate}` is not satisfied{post}")
         }
     }
 }
