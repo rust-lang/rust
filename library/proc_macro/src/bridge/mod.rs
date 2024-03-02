@@ -113,6 +113,23 @@ macro_rules! with_api {
     };
 }
 
+// Similar to `with_api`, but only lists the types requiring handles, and they
+// are divided into the two storage categories.
+macro_rules! with_api_handle_types {
+    ($m:ident) => {
+        $m! {
+            'owned:
+            FreeFunctions,
+            TokenStream,
+            SourceFile,
+
+            'interned:
+            Span,
+            // Symbol is handled manually
+        }
+    };
+}
+
 // FIXME(eddyb) this calls `encode` for each argument, but in reverse,
 // to match the ordering in `reverse_decode`.
 macro_rules! reverse_encode {
