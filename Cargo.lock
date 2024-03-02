@@ -3491,6 +3491,7 @@ version = "0.0.0"
 dependencies = [
  "itertools 0.11.0",
  "rustc_ast",
+ "rustc_lexer",
  "rustc_span",
  "thin-vec",
 ]
