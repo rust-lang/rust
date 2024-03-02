@@ -5,12 +5,14 @@
 //! - [Error]: Generic error that represents the reason why a request that could not be fulfilled.
 
 use std::fmt::{Debug, Display, Formatter};
-use std::{error, fmt, io};
+use std::{fmt, io};
 
 macro_rules! error {
      ($fmt: literal $(,)?) => { Error(format!($fmt)) };
      ($fmt: literal, $($arg:tt)*) => { Error(format!($fmt, $($arg)*)) };
- }
+}
+
+pub(crate) use error;
 
 /// An error type used to represent an error that has already been reported by the compiler.
 #[derive(Clone, Copy, PartialEq, Eq)]
@@ -72,8 +74,9 @@ where
     }
 }
 
-impl error::Error for Error {}
-impl<T> error::Error for CompilerError<T> where T: Display + Debug {}
+impl std::error::Error for Error {}
+
+impl<T> std::error::Error for CompilerError<T> where T: Display + Debug {}
 
 impl From<io::Error> for Error {
     fn from(value: io::Error) -> Self {

@@ -7,7 +7,6 @@
 //~^ ERROR const items should never be `#[no_mangle]`
 //~| HELP try a static value
 
-
 //~^ HELP remove this attribute
 pub fn defiant<T>(_t: T) {}
 //~^ WARN functions generic over types or consts must be mangled

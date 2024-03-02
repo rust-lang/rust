@@ -19,10 +19,8 @@ struct FooDefault<'a> {
 }
 
 
-
 #[derive(Default)]
 struct TupleDefault(bool, i32, u64);
-
 
 
 struct FooND1 {
@@ -73,7 +71,6 @@ impl Default for FooNDVec {
 struct StrDefault<'a>(&'a str);
 
 
-
 #[derive(Default)]
 struct AlreadyDerived(i32, bool);
 
@@ -95,7 +92,6 @@ mac!(0);
 
 #[derive(Default)]
 struct Y(u32);
-
 
 struct RustIssue26925<T> {
     a: Option<T>,
@@ -132,10 +128,8 @@ struct WithoutSelfCurly {
 }
 
 
-
 #[derive(Default)]
 struct WithoutSelfParan(bool);
-
 
 
 // https://github.com/rust-lang/rust-clippy/issues/7655
@@ -184,7 +178,6 @@ pub struct RepeatDefault1 {
 }
 
 
-
 pub struct RepeatDefault2 {
     a: [i8; 33],
 }
@@ -214,7 +207,6 @@ pub enum SimpleEnum {
     #[default]
     Bar,
 }
-
 
 
 pub enum NonExhaustiveEnum {

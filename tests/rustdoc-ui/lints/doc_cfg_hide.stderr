@@ -1,40 +1,27 @@
 error: this attribute can only be applied at the crate level
-  --> $DIR/doc_cfg_hide.rs:9:7
+  --> $DIR/doc_cfg_hide.rs:6:7
    |
 LL | #[doc(cfg_hide(doc))]
    |       ^^^^^^^^^^^^^
    |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = note: for more information, see issue #82730 <https://github.com/rust-lang/rust/issues/82730>
    = note: read <https://doc.rust-lang.org/nightly/rustdoc/the-doc-attribute.html#at-the-crate-level> for more information
-note: the lint level is defined here
-  --> $DIR/doc_cfg_hide.rs:2:9
-   |
-LL | #![deny(warnings)]
-   |         ^^^^^^^^
-   = note: `#[deny(invalid_doc_attributes)]` implied by `#[deny(warnings)]`
+   = note: `#[deny(invalid_doc_attributes)]` on by default
 help: to apply to the crate, use an inner attribute
    |
 LL | #![doc(cfg_hide(doc))]
    |  +
 
 error: `#[doc(cfg_hide(...))]` takes a list of attributes
-  --> $DIR/doc_cfg_hide.rs:4:8
+  --> $DIR/doc_cfg_hide.rs:3:8
    |
 LL | #![doc(cfg_hide = "test")]
    |        ^^^^^^^^^^^^^^^^^
-   |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = note: for more information, see issue #82730 <https://github.com/rust-lang/rust/issues/82730>
 
 error: `#[doc(cfg_hide(...))]` takes a list of attributes
-  --> $DIR/doc_cfg_hide.rs:6:8
+  --> $DIR/doc_cfg_hide.rs:4:8
    |
 LL | #![doc(cfg_hide)]
    |        ^^^^^^^^
-   |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = note: for more information, see issue #82730 <https://github.com/rust-lang/rust/issues/82730>
 
 error: aborting due to 3 previous errors
 

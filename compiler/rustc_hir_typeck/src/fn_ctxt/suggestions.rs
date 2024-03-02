@@ -22,7 +22,7 @@ use rustc_hir::{
     Path, QPath, Stmt, StmtKind, TyKind, WherePredicate,
 };
 use rustc_hir_analysis::astconv::AstConv;
-use rustc_infer::traits::{self, StatementAsExpression};
+use rustc_infer::traits::{self};
 use rustc_middle::lint::in_external_macro;
 use rustc_middle::middle::stability::EvalResult;
 use rustc_middle::ty::print::with_no_trimmed_paths;
@@ -1788,45 +1788,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 }
             }
             _ => expr,
-        }
-    }
-
-    /// A common error is to add an extra semicolon:
-    ///
-    /// ```compile_fail,E0308
-    /// fn foo() -> usize {
-    ///     22;
-    /// }
-    /// ```
-    ///
-    /// This routine checks if the final statement in a block is an
-    /// expression with an explicit semicolon whose type is compatible
-    /// with `expected_ty`. If so, it suggests removing the semicolon.
-    pub(crate) fn consider_removing_semicolon(
-        &self,
-        blk: &'tcx hir::Block<'tcx>,
-        expected_ty: Ty<'tcx>,
-        err: &mut Diag<'_>,
-    ) -> bool {
-        if let Some((span_semi, boxed)) = self.err_ctxt().could_remove_semicolon(blk, expected_ty) {
-            if let StatementAsExpression::NeedsBoxing = boxed {
-                err.span_suggestion_verbose(
-                    span_semi,
-                    "consider removing this semicolon and boxing the expression",
-                    "",
-                    Applicability::HasPlaceholders,
-                );
-            } else {
-                err.span_suggestion_short(
-                    span_semi,
-                    "remove this semicolon to return this value",
-                    "",
-                    Applicability::MachineApplicable,
-                );
-            }
-            true
-        } else {
-            false
         }
     }
 

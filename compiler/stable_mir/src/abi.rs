@@ -1,7 +1,11 @@
 use crate::compiler_interface::with;
+use crate::error;
 use crate::mir::FieldIdx;
-use crate::ty::{Align, IndexedVal, Size, Ty, VariantIdx};
+use crate::target::{MachineInfo, MachineSize as Size};
+use crate::ty::{Align, IndexedVal, Ty, VariantIdx};
+use crate::Error;
 use crate::Opaque;
+use std::fmt::{self, Debug};
 use std::num::NonZeroUsize;
 use std::ops::RangeInclusive;
 
@@ -100,7 +104,7 @@ impl LayoutShape {
 
     /// Returns `true` if the type is sized and a 1-ZST (meaning it has size 0 and alignment 1).
     pub fn is_1zst(&self) -> bool {
-        self.is_sized() && self.size == 0 && self.abi_align == 1
+        self.is_sized() && self.size.bits() == 0 && self.abi_align == 1
     }
 }
 
@@ -245,8 +249,175 @@ impl ValueAbi {
     }
 }
 
-/// We currently do not support `Scalar`, and use opaque instead.
-type Scalar = Opaque;
+/// Information about one scalar component of a Rust type.
+#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
+pub enum Scalar {
+    Initialized {
+        /// The primitive type used to represent this value.
+        value: Primitive,
+        /// The range that represents valid values.
+        /// The range must be valid for the `primitive` size.
+        valid_range: WrappingRange,
+    },
+    Union {
+        /// Unions never have niches, so there is no `valid_range`.
+        /// Even for unions, we need to use the correct registers for the kind of
+        /// values inside the union, so we keep the `Primitive` type around.
+        /// It is also used to compute the size of the scalar.
+        value: Primitive,
+    },
+}
+
+impl Scalar {
+    pub fn has_niche(&self, target: &MachineInfo) -> bool {
+        match self {
+            Scalar::Initialized { value, valid_range } => {
+                !valid_range.is_full(value.size(target)).unwrap()
+            }
+            Scalar::Union { .. } => false,
+        }
+    }
+}
+
+/// Fundamental unit of memory access and layout.
+#[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
+pub enum Primitive {
+    /// The `bool` is the signedness of the `Integer` type.
+    ///
+    /// One would think we would not care about such details this low down,
+    /// but some ABIs are described in terms of C types and ISAs where the
+    /// integer arithmetic is done on {sign,zero}-extended registers, e.g.
+    /// a negative integer passed by zero-extension will appear positive in
+    /// the callee, and most operations on it will produce the wrong values.
+    Int {
+        length: IntegerLength,
+        signed: bool,
+    },
+    Float {
+        length: FloatLength,
+    },
+    Pointer(AddressSpace),
+}
+
+impl Primitive {
+    pub fn size(self, target: &MachineInfo) -> Size {
+        match self {
+            Primitive::Int { length, .. } => Size::from_bits(length.bits()),
+            Primitive::Float { length } => Size::from_bits(length.bits()),
+            Primitive::Pointer(_) => target.pointer_width,
+        }
+    }
+}
+
+/// Enum representing the existing integer lengths.
+#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
+pub enum IntegerLength {
+    I8,
+    I16,
+    I32,
+    I64,
+    I128,
+}
+
+/// Enum representing the existing float lengths.
+#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
+pub enum FloatLength {
+    F16,
+    F32,
+    F64,
+    F128,
+}
+
+impl IntegerLength {
+    pub fn bits(self) -> usize {
+        match self {
+            IntegerLength::I8 => 8,
+            IntegerLength::I16 => 16,
+            IntegerLength::I32 => 32,
+            IntegerLength::I64 => 64,
+            IntegerLength::I128 => 128,
+        }
+    }
+}
+
+impl FloatLength {
+    pub fn bits(self) -> usize {
+        match self {
+            FloatLength::F16 => 16,
+            FloatLength::F32 => 32,
+            FloatLength::F64 => 64,
+            FloatLength::F128 => 128,
+        }
+    }
+}
+
+/// An identifier that specifies the address space that some operation
+/// should operate on. Special address spaces have an effect on code generation,
+/// depending on the target and the address spaces it implements.
+#[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub struct AddressSpace(pub u32);
+
+impl AddressSpace {
+    /// The default address space, corresponding to data space.
+    pub const DATA: Self = AddressSpace(0);
+}
+
+/// Inclusive wrap-around range of valid values (bitwise representation), that is, if
+/// start > end, it represents `start..=MAX`, followed by `0..=end`.
+///
+/// That is, for an i8 primitive, a range of `254..=2` means following
+/// sequence:
+///
+///    254 (-2), 255 (-1), 0, 1, 2
+#[derive(Clone, Copy, PartialEq, Eq, Hash)]
+pub struct WrappingRange {
+    pub start: u128,
+    pub end: u128,
+}
+
+impl WrappingRange {
+    /// Returns `true` if `size` completely fills the range.
+    #[inline]
+    pub fn is_full(&self, size: Size) -> Result<bool, Error> {
+        let Some(max_value) = size.unsigned_int_max() else {
+            return Err(error!("Expected size <= 128 bits, but found {} instead", size.bits()));
+        };
+        if self.start <= max_value && self.end <= max_value {
+            Ok(self.start == 0 && max_value == self.end)
+        } else {
+            Err(error!("Range `{self:?}` out of bounds for size `{}` bits.", size.bits()))
+        }
+    }
+
+    /// Returns `true` if `v` is contained in the range.
+    #[inline(always)]
+    pub fn contains(&self, v: u128) -> bool {
+        if self.wraps_around() {
+            self.start <= v || v <= self.end
+        } else {
+            self.start <= v && v <= self.end
+        }
+    }
+
+    /// Returns `true` if the range wraps around.
+    /// I.e., the range represents the union of `self.start..=MAX` and `0..=self.end`.
+    /// Returns `false` if this is a non-wrapping range, i.e.: `self.start..=self.end`.
+    #[inline]
+    pub fn wraps_around(&self) -> bool {
+        self.start > self.end
+    }
+}
+
+impl Debug for WrappingRange {
+    fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
+        if self.start > self.end {
+            write!(fmt, "(..={}) | ({}..)", self.end, self.start)?;
+        } else {
+            write!(fmt, "{}..={}", self.start, self.end)?;
+        }
+        Ok(())
+    }
+}
 
 /// General language calling conventions.
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
