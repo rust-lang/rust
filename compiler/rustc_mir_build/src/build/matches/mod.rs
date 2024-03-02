@@ -1441,20 +1441,20 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             return;
         }
 
-        let match_pairs = mem::take(&mut first_candidate.match_pairs);
-        let (first_match_pair, remaining_match_pairs) = match_pairs.split_first().unwrap();
-        let TestCase::Or { ref pats } = &first_match_pair.test_case else { unreachable!() };
+        let first_match_pair = first_candidate.match_pairs.remove(0);
+        let or_span = first_match_pair.pattern.span;
+        let TestCase::Or { pats } = first_match_pair.test_case else { unreachable!() };
 
         let remainder_start = self.cfg.start_new_block();
-        let or_span = first_match_pair.pattern.span;
         // Test the alternatives of this or-pattern.
         self.test_or_pattern(first_candidate, start_block, remainder_start, pats, or_span);
 
-        if !remaining_match_pairs.is_empty() {
+        if !first_candidate.match_pairs.is_empty() {
             // If more match pairs remain, test them after each subcandidate.
             // We could add them to the or-candidates before the call to `test_or_pattern` but this
             // would make it impossible to detect simplifiable or-patterns. That would guarantee
             // exponentially large CFGs for cases like `(1 | 2, 3 | 4, ...)`.
+            let remaining_match_pairs = mem::take(&mut first_candidate.match_pairs);
             first_candidate.visit_leaves(|leaf_candidate| {
                 assert!(leaf_candidate.match_pairs.is_empty());
                 leaf_candidate.match_pairs.extend(remaining_match_pairs.iter().cloned());
@@ -1492,13 +1492,13 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         candidate: &mut Candidate<'pat, 'tcx>,
         start_block: BasicBlock,
         otherwise_block: BasicBlock,
-        pats: &[FlatPat<'pat, 'tcx>],
+        pats: Box<[FlatPat<'pat, 'tcx>]>,
         or_span: Span,
     ) {
         debug!("candidate={:#?}\npats={:#?}", candidate, pats);
         let mut or_candidates: Vec<_> = pats
-            .iter()
-            .cloned()
+            .into_vec()
+            .into_iter()
             .map(|flat_pat| Candidate::from_flat_pat(flat_pat, candidate.has_guard))
             .collect();
         let mut or_candidate_refs: Vec<_> = or_candidates.iter_mut().collect();
