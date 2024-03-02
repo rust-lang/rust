@@ -12,27 +12,33 @@ use crate::Message;
 /// Creates an LSP connection via stdio.
 pub(crate) fn stdio_transport() -> (Sender<Message>, Receiver<Message>, IoThreads) {
     let (writer_sender, writer_receiver) = bounded::<Message>(0);
-    let writer = thread::spawn(move || {
-        let stdout = stdout();
-        let mut stdout = stdout.lock();
-        writer_receiver.into_iter().try_for_each(|it| it.write(&mut stdout))
-    });
+    let writer = thread::Builder::new()
+        .name("LspServerWriter".to_owned())
+        .spawn(move || {
+            let stdout = stdout();
+            let mut stdout = stdout.lock();
+            writer_receiver.into_iter().try_for_each(|it| it.write(&mut stdout))
+        })
+        .unwrap();
     let (reader_sender, reader_receiver) = bounded::<Message>(0);
-    let reader = thread::spawn(move || {
-        let stdin = stdin();
-        let mut stdin = stdin.lock();
-        while let Some(msg) = Message::read(&mut stdin)? {
-            let is_exit = matches!(&msg, Message::Notification(n) if n.is_exit());
+    let reader = thread::Builder::new()
+        .name("LspServerReader".to_owned())
+        .spawn(move || {
+            let stdin = stdin();
+            let mut stdin = stdin.lock();
+            while let Some(msg) = Message::read(&mut stdin)? {
+                let is_exit = matches!(&msg, Message::Notification(n) if n.is_exit());
 
-            debug!("sending message {:#?}", msg);
-            reader_sender.send(msg).expect("receiver was dropped, failed to send a message");
+                debug!("sending message {:#?}", msg);
+                reader_sender.send(msg).expect("receiver was dropped, failed to send a message");
 
-            if is_exit {
-                break;
+                if is_exit {
+                    break;
+                }
             }
-        }
-        Ok(())
-    });
+            Ok(())
+        })
+        .unwrap();
     let threads = IoThreads { reader, writer };
     (writer_sender, reader_receiver, threads)
 }

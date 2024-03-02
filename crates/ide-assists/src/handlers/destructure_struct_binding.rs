@@ -1,4 +1,4 @@
-use hir::{self, HasVisibility};
+use hir::HasVisibility;
 use ide_db::{
     assists::{AssistId, AssistKind},
     defs::Definition,
