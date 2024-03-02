@@ -598,7 +598,7 @@ impl HirDisplay for Trait {
 
         let assoc_items = self.items(f.db);
         let assoc_items_size = assoc_items.len();
-        let max_display_size = f.max_size.unwrap_or(assoc_items_size);
+        let limited_size = f.limited_size.unwrap_or(assoc_items_size);
         if assoc_items.is_empty() {
             f.write_str(" {}")?;
         } else {
@@ -617,7 +617,7 @@ impl HirDisplay for Trait {
                     }
                 };
                 f.write_str(",\n")?;
-                if index + 1 == max_display_size && index + 1 != assoc_items_size {
+                if index + 1 == limited_size && index + 1 != assoc_items_size {
                     f.write_str("    ...\n")?;
                     break;
                 }

@@ -4,7 +4,7 @@
 use hir::{db::HirDatabase, Crate, HirFileIdExt, Module, Semantics};
 use ide_db::{
     base_db::{FileId, FileRange, SourceDatabaseExt},
-    defs::{Definition, HoverDisplayConfig},
+    defs::Definition,
     documentation::Documentation,
     famous_defs::FamousDefs,
     helpers::get_definition,
@@ -166,7 +166,7 @@ impl StaticIndex<'_> {
             documentation: true,
             keywords: true,
             format: crate::HoverDocFormat::Markdown,
-            trait_item_display_num: None,
+            trait_assoc_items_size: None,
         };
         let tokens = tokens.filter(|token| {
             matches!(
@@ -197,7 +197,7 @@ impl StaticIndex<'_> {
                     enclosing_moniker: current_crate
                         .zip(def.enclosing_definition(self.db))
                         .and_then(|(cc, enclosing_def)| def_to_moniker(self.db, enclosing_def, cc)),
-                    signature: Some(def.label(self.db, HoverDisplayConfig::default())),
+                    signature: Some(def.label(self.db)),
                     kind: def_to_kind(self.db, def),
                 });
                 self.def_map.insert(def, it);

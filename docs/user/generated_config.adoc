@@ -505,6 +505,11 @@ How to render the offset information in a memory layout hover.
 --
 How to render the size information in a memory layout hover.
 --
+[[rust-analyzer.hover.show.traitAssocItems]]rust-analyzer.hover.show.traitAssocItems (default: `null`)::
++
+--
+How many associated items of a trait to display when hovering a trait.
+--
 [[rust-analyzer.imports.granularity.enforce]]rust-analyzer.imports.granularity.enforce (default: `false`)::
 +
 --
@@ -926,11 +931,6 @@ Show full signature of the callable. Only shows parameters if disabled.
 +
 --
 Show documentation.
---
-[[rust-analyzer.traitItemDisplayNum]]rust-analyzer.traitItemDisplayNum (default: `7`)::
-+
---
-How many trait item display on hover.
 --
 [[rust-analyzer.typing.autoClosingAngleBrackets.enable]]rust-analyzer.typing.autoClosingAngleBrackets.enable (default: `false`)::
 +

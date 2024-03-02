@@ -17,7 +17,7 @@ const HOVER_BASE_CONFIG: HoverConfig = HoverConfig {
     documentation: true,
     format: HoverDocFormat::Markdown,
     keywords: true,
-    trait_item_display_num: Some(7),
+    trait_assoc_items_size: None,
 };
 
 fn check_hover_no_result(ra_fixture: &str) {

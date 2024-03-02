@@ -1119,6 +1119,15 @@
                         }
                     ]
                 },
+                "rust-analyzer.hover.show.traitAssocItems": {
+                    "markdownDescription": "How many associated items of a trait to display when hovering a trait.",
+                    "default": null,
+                    "type": [
+                        "null",
+                        "integer"
+                    ],
+                    "minimum": 0
+                },
                 "rust-analyzer.imports.granularity.enforce": {
                     "markdownDescription": "Whether to enforce the import granularity setting for all files. If set to false rust-analyzer will try to keep import styles consistent per file.",
                     "default": false,
@@ -1647,15 +1656,6 @@
                     "markdownDescription": "Show documentation.",
                     "default": true,
                     "type": "boolean"
-                },
-                "rust-analyzer.traitItemDisplayNum": {
-                    "markdownDescription": "How many trait item display on hover.",
-                    "default": 7,
-                    "type": [
-                        "null",
-                        "integer"
-                    ],
-                    "minimum": 0
                 },
                 "rust-analyzer.typing.autoClosingAngleBrackets.enable": {
                     "markdownDescription": "Whether to insert closing angle brackets when typing an opening angle bracket of a generic argument list.",

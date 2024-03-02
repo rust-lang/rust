@@ -368,6 +368,9 @@ config_data! {
         /// How to render the size information in a memory layout hover.
         hover_memoryLayout_size: Option<MemoryLayoutHoverRenderKindDef> = "\"both\"",
 
+        /// How many associated items of a trait to display when hovering a trait.
+        hover_show_traitAssocItems: Option<usize> = "null",
+
         /// Whether to enforce the import granularity setting for all files. If set to false rust-analyzer will try to keep import styles consistent per file.
         imports_granularity_enforce: bool              = "false",
         /// How imports should be grouped into use statements.
@@ -589,9 +592,6 @@ config_data! {
         signatureInfo_detail: SignatureDetail                           = "\"full\"",
         /// Show documentation.
         signatureInfo_documentation_enable: bool                       = "true",
-
-        /// How many trait item display on hover.
-        traitItemDisplayNum: Option<usize> = "7",
 
         /// Whether to insert closing angle brackets when typing an opening angle bracket of a generic argument list.
         typing_autoClosingAngleBrackets_enable: bool = "false",
@@ -1685,7 +1685,7 @@ impl Config {
                 }
             },
             keywords: self.data.hover_documentation_keywords_enable,
-            trait_item_display_num: self.data.traitItemDisplayNum,
+            trait_assoc_items_size: self.data.hover_show_traitAssocItems,
         }
     }
 

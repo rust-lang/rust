@@ -62,7 +62,8 @@ pub struct HirFormatter<'a> {
     fmt: &'a mut dyn HirWrite,
     buf: String,
     curr_size: usize,
-    pub max_size: Option<usize>,
+    pub(crate) max_size: Option<usize>,
+    pub limited_size: Option<usize>,
     omit_verbose_types: bool,
     closure_style: ClosureStyle,
     display_target: DisplayTarget,
@@ -86,6 +87,7 @@ pub trait HirDisplay {
         &'a self,
         db: &'a dyn HirDatabase,
         max_size: Option<usize>,
+        limited_size: Option<usize>,
         omit_verbose_types: bool,
         display_target: DisplayTarget,
         closure_style: ClosureStyle,
@@ -101,6 +103,7 @@ pub trait HirDisplay {
             db,
             t: self,
             max_size,
+            limited_size,
             omit_verbose_types,
             display_target,
             closure_style,
@@ -117,6 +120,7 @@ pub trait HirDisplay {
             db,
             t: self,
             max_size: None,
+            limited_size: None,
             omit_verbose_types: false,
             closure_style: ClosureStyle::ImplFn,
             display_target: DisplayTarget::Diagnostics,
@@ -137,6 +141,28 @@ pub trait HirDisplay {
             db,
             t: self,
             max_size,
+            limited_size: None,
+            omit_verbose_types: true,
+            closure_style: ClosureStyle::ImplFn,
+            display_target: DisplayTarget::Diagnostics,
+        }
+    }
+
+    ///  Returns a `Display`able type that is human-readable and tries to limit the item inside this type.
+    /// Use this for showing types which may contain two many item when user hover on, like `trait`, `struct`, `enum`
+    fn display_limited<'a>(
+        &'a self,
+        db: &'a dyn HirDatabase,
+        limited_size: Option<usize>,
+    ) -> HirDisplayWrapper<'a, Self>
+    where
+        Self: Sized,
+    {
+        HirDisplayWrapper {
+            db,
+            t: self,
+            max_size: None,
+            limited_size,
             omit_verbose_types: true,
             closure_style: ClosureStyle::ImplFn,
             display_target: DisplayTarget::Diagnostics,
@@ -158,6 +184,7 @@ pub trait HirDisplay {
             buf: String::with_capacity(20),
             curr_size: 0,
             max_size: None,
+            limited_size: None,
             omit_verbose_types: false,
             closure_style: ClosureStyle::ImplFn,
             display_target: DisplayTarget::SourceCode { module_id, allow_opaque },
@@ -178,6 +205,7 @@ pub trait HirDisplay {
             db,
             t: self,
             max_size: None,
+            limited_size: None,
             omit_verbose_types: false,
             closure_style: ClosureStyle::ImplFn,
             display_target: DisplayTarget::Test,
@@ -295,6 +323,7 @@ pub struct HirDisplayWrapper<'a, T> {
     db: &'a dyn HirDatabase,
     t: &'a T,
     max_size: Option<usize>,
+    limited_size: Option<usize>,
     omit_verbose_types: bool,
     closure_style: ClosureStyle,
     display_target: DisplayTarget,
@@ -323,6 +352,7 @@ impl<T: HirDisplay> HirDisplayWrapper<'_, T> {
             buf: String::with_capacity(20),
             curr_size: 0,
             max_size: self.max_size,
+            limited_size: self.limited_size,
             omit_verbose_types: self.omit_verbose_types,
             display_target: self.display_target,
             closure_style: self.closure_style,
