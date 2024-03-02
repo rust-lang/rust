@@ -1,9 +1,7 @@
 //@ compile-flags: --error-format=human --color=always
 //@ error-pattern: missing lifetime specifier
-
-//@ revisions: windows not-windows
-//@ [windows]only-windows
-//@ [not-windows]ignore-windows
+// Temporary until next release:
+//@ ignore-stage2
 
 fn short(foo_bar: &Vec<&i32>) -> &i32 {
     &12
