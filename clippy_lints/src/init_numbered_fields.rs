@@ -1,5 +1,5 @@
 use clippy_utils::diagnostics::span_lint_and_sugg;
-use clippy_utils::source::snippet_with_applicability;
+use clippy_utils::source::{snippet_with_applicability, snippet_with_context};
 use rustc_errors::Applicability;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::{Expr, ExprKind};
@@ -62,7 +62,7 @@ impl<'tcx> LateLintPass<'tcx> for NumberedFields {
                     snippet_with_applicability(cx, path.span(), "..", &mut appl),
                     expr_spans
                         .into_iter_sorted()
-                        .map(|(_, span)| snippet_with_applicability(cx, span, "..", &mut appl))
+                        .map(|(_, span)| snippet_with_context(cx, span, path.span().ctxt(), "..", &mut appl).0)
                         .intersperse(Cow::Borrowed(", "))
                         .collect::<String>()
                 );
