@@ -6,20 +6,11 @@ use crate::hash::{Hash, Hasher};
 use crate::intrinsics;
 use crate::marker::StructuralPartialEq;
 use crate::ops::{BitOr, BitOrAssign, Div, Neg, Rem};
+use crate::ptr;
 use crate::str::FromStr;
 
 use super::from_str_radix;
 use super::{IntErrorKind, ParseIntError};
-
-mod private {
-    #[unstable(
-        feature = "nonzero_internals",
-        reason = "implementation detail which may disappear or be replaced at any time",
-        issue = "none"
-    )]
-    #[const_trait]
-    pub trait Sealed {}
-}
 
 /// A marker trait for primitive types which can be zero.
 ///
@@ -34,38 +25,70 @@ mod private {
     issue = "none"
 )]
 #[const_trait]
-pub unsafe trait ZeroablePrimitive: Sized + Copy + private::Sealed {}
+pub unsafe trait ZeroablePrimitive: Sized + Copy + private::Sealed {
+    #[doc(hidden)]
+    type NonZeroInner: Sized + Copy;
+}
 
 macro_rules! impl_zeroable_primitive {
-    ($primitive:ty) => {
-        #[unstable(
-            feature = "nonzero_internals",
-            reason = "implementation detail which may disappear or be replaced at any time",
-            issue = "none"
-        )]
-        impl const private::Sealed for $primitive {}
+    ($($NonZeroInner:ident ( $primitive:ty )),+ $(,)?) => {
+        mod private {
+            #[unstable(
+                feature = "nonzero_internals",
+                reason = "implementation detail which may disappear or be replaced at any time",
+                issue = "none"
+            )]
+            #[const_trait]
+            pub trait Sealed {}
 
-        #[unstable(
-            feature = "nonzero_internals",
-            reason = "implementation detail which may disappear or be replaced at any time",
-            issue = "none"
-        )]
-        unsafe impl const ZeroablePrimitive for $primitive {}
+            $(
+                #[derive(Debug, Clone, Copy, PartialEq)]
+                #[repr(transparent)]
+                #[rustc_layout_scalar_valid_range_start(1)]
+                #[rustc_nonnull_optimization_guaranteed]
+                #[unstable(
+                    feature = "nonzero_internals",
+                    reason = "implementation detail which may disappear or be replaced at any time",
+                    issue = "none"
+                )]
+                pub struct $NonZeroInner($primitive);
+            )+
+        }
+
+        $(
+            #[unstable(
+                feature = "nonzero_internals",
+                reason = "implementation detail which may disappear or be replaced at any time",
+                issue = "none"
+            )]
+            impl const private::Sealed for $primitive {}
+
+            #[unstable(
+                feature = "nonzero_internals",
+                reason = "implementation detail which may disappear or be replaced at any time",
+                issue = "none"
+            )]
+            unsafe impl const ZeroablePrimitive for $primitive {
+                type NonZeroInner = private::$NonZeroInner;
+            }
+        )+
     };
 }
 
-impl_zeroable_primitive!(u8);
-impl_zeroable_primitive!(u16);
-impl_zeroable_primitive!(u32);
-impl_zeroable_primitive!(u64);
-impl_zeroable_primitive!(u128);
-impl_zeroable_primitive!(usize);
-impl_zeroable_primitive!(i8);
-impl_zeroable_primitive!(i16);
-impl_zeroable_primitive!(i32);
-impl_zeroable_primitive!(i64);
-impl_zeroable_primitive!(i128);
-impl_zeroable_primitive!(isize);
+impl_zeroable_primitive!(
+    NonZeroU8Inner(u8),
+    NonZeroU16Inner(u16),
+    NonZeroU32Inner(u32),
+    NonZeroU64Inner(u64),
+    NonZeroU128Inner(u128),
+    NonZeroUsizeInner(usize),
+    NonZeroI8Inner(i8),
+    NonZeroI16Inner(i16),
+    NonZeroI32Inner(i32),
+    NonZeroI64Inner(i64),
+    NonZeroI128Inner(i128),
+    NonZeroIsizeInner(isize),
+);
 
 /// A value that is known not to equal zero.
 ///
@@ -80,10 +103,8 @@ impl_zeroable_primitive!(isize);
 /// ```
 #[unstable(feature = "generic_nonzero", issue = "120257")]
 #[repr(transparent)]
-#[rustc_layout_scalar_valid_range_start(1)]
-#[rustc_nonnull_optimization_guaranteed]
 #[rustc_diagnostic_item = "NonZero"]
-pub struct NonZero<T: ZeroablePrimitive>(T);
+pub struct NonZero<T: ZeroablePrimitive>(T::NonZeroInner);
 
 macro_rules! impl_nonzero_fmt {
     ($Trait:ident) => {
@@ -114,8 +135,7 @@ where
 {
     #[inline]
     fn clone(&self) -> Self {
-        // SAFETY: The contained value is non-zero.
-        unsafe { Self(self.0) }
+        Self(self.0)
     }
 }
 
@@ -188,19 +208,19 @@ where
     #[inline]
     fn max(self, other: Self) -> Self {
         // SAFETY: The maximum of two non-zero values is still non-zero.
-        unsafe { Self(self.get().max(other.get())) }
+        unsafe { Self::new_unchecked(self.get().max(other.get())) }
     }
 
     #[inline]
     fn min(self, other: Self) -> Self {
         // SAFETY: The minimum of two non-zero values is still non-zero.
-        unsafe { Self(self.get().min(other.get())) }
+        unsafe { Self::new_unchecked(self.get().min(other.get())) }
     }
 
     #[inline]
     fn clamp(self, min: Self, max: Self) -> Self {
         // SAFETY: A non-zero value clamped between two non-zero values is still non-zero.
-        unsafe { Self(self.get().clamp(min.get(), max.get())) }
+        unsafe { Self::new_unchecked(self.get().clamp(min.get(), max.get())) }
     }
 }
 
@@ -240,7 +260,7 @@ where
     #[inline]
     fn bitor(self, rhs: Self) -> Self::Output {
         // SAFETY: Bitwise OR of two non-zero values is still non-zero.
-        unsafe { Self(self.get() | rhs.get()) }
+        unsafe { Self::new_unchecked(self.get() | rhs.get()) }
     }
 }
 
@@ -254,7 +274,7 @@ where
     #[inline]
     fn bitor(self, rhs: T) -> Self::Output {
         // SAFETY: Bitwise OR of a non-zero value with anything is still non-zero.
-        unsafe { Self(self.get() | rhs) }
+        unsafe { Self::new_unchecked(self.get() | rhs) }
     }
 }
 
@@ -268,7 +288,7 @@ where
     #[inline]
     fn bitor(self, rhs: NonZero<T>) -> Self::Output {
         // SAFETY: Bitwise OR of anything with a non-zero value is still non-zero.
-        unsafe { NonZero(self | rhs.get()) }
+        unsafe { NonZero::new_unchecked(self | rhs.get()) }
     }
 }
 
@@ -345,7 +365,7 @@ where
     pub fn from_mut(n: &mut T) -> Option<&mut Self> {
         // SAFETY: Memory layout optimization guarantees that `Option<NonZero<T>>` has
         //         the same layout and size as `T`, with `0` representing `None`.
-        let opt_n = unsafe { &mut *(n as *mut T as *mut Option<Self>) };
+        let opt_n = unsafe { &mut *(ptr::from_mut(n).cast::<Option<Self>>()) };
 
         opt_n.as_mut()
     }
@@ -388,11 +408,16 @@ where
         // memory somewhere. If the value of `self` was from by-value argument
         // of some not-inlined function, LLVM don't have range metadata
         // to understand that the value cannot be zero.
-        match Self::new(self.0) {
-            Some(Self(n)) => n,
+        //
+        // SAFETY: `Self` is guaranteed to have the same layout as `Option<Self>`.
+        match unsafe { intrinsics::transmute_unchecked(self) } {
             None => {
                 // SAFETY: `NonZero` is guaranteed to only contain non-zero values, so this is unreachable.
                 unsafe { intrinsics::unreachable() }
+            }
+            Some(Self(inner)) => {
+                // SAFETY: `T::NonZeroInner` is guaranteed to have the same layout as `T`.
+                unsafe { intrinsics::transmute_unchecked(inner) }
             }
         }
     }
