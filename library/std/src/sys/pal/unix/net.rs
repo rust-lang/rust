@@ -453,6 +453,37 @@ impl Socket {
         Ok(raw as u32)
     }
 
+    #[cfg(any(target_os = "freebsd", target_os = "netbsd"))]
+    pub fn set_acceptfilter(&self, name: &CStr) -> io::Result<()> {
+        if !name.to_bytes().is_empty() {
+            const AF_NAME_MAX: usize = 16;
+            let mut buf = [0; AF_NAME_MAX];
+            for (src, dst) in name.to_bytes().iter().zip(&mut buf[..AF_NAME_MAX - 1]) {
+                *dst = *src as i8;
+            }
+            let mut arg: libc::accept_filter_arg = unsafe { mem::zeroed() };
+            arg.af_name = buf;
+            setsockopt(self, libc::SOL_SOCKET, libc::SO_ACCEPTFILTER, &mut arg)
+        } else {
+            setsockopt(
+                self,
+                libc::SOL_SOCKET,
+                libc::SO_ACCEPTFILTER,
+                core::ptr::null_mut() as *mut c_void,
+            )
+        }
+    }
+
+    #[cfg(any(target_os = "freebsd", target_os = "netbsd"))]
+    pub fn acceptfilter(&self) -> io::Result<&CStr> {
+        let arg: libc::accept_filter_arg =
+            getsockopt(self, libc::SOL_SOCKET, libc::SO_ACCEPTFILTER)?;
+        let s: &[u8] =
+            unsafe { core::slice::from_raw_parts(arg.af_name.as_ptr() as *const u8, 16) };
+        let name = CStr::from_bytes_with_nul(s).unwrap();
+        Ok(name)
+    }
+
     #[cfg(any(target_os = "android", target_os = "linux",))]
     pub fn set_passcred(&self, passcred: bool) -> io::Result<()> {
         setsockopt(self, libc::SOL_SOCKET, libc::SO_PASSCRED, passcred as libc::c_int)
