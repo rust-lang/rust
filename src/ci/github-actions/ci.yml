@@ -352,7 +352,7 @@ jobs:
       matrix:
         include:
           - name: arm-android
-            <<: *job-linux-8c
+            <<: *job-linux-16c
 
   auto:
     <<: *base-ci-job

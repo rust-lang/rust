@@ -53,7 +53,7 @@ jobs:
       matrix:
         include:
           - name: arm-android
-            os: ubuntu-20.04-8core-32gb
+            os: ubuntu-20.04-16core-64gb
             env: {}
     defaults:
       run:
