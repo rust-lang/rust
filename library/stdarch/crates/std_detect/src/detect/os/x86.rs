@@ -69,13 +69,19 @@ pub(crate) fn detect_features() -> cache::Initializer {
 
     // EAX = 7, ECX = 0: Queries "Extended Features";
     // Contains information about bmi,bmi2, and avx2 support.
-    let (extended_features_ebx, extended_features_ecx, extended_features_edx) =
-        if max_basic_leaf >= 7 {
-            let CpuidResult { ebx, ecx, edx, .. } = unsafe { __cpuid(0x0000_0007_u32) };
-            (ebx, ecx, edx)
-        } else {
-            (0, 0, 0) // CPUID does not support "Extended Features"
-        };
+    let (
+        extended_features_eax,
+        extended_features_ebx,
+        extended_features_ecx,
+        extended_features_edx,
+    ) = if max_basic_leaf >= 7 {
+        let CpuidResult {
+            eax, ebx, ecx, edx, ..
+        } = unsafe { __cpuid(0x0000_0007_u32) };
+        (eax, ebx, ecx, edx)
+    } else {
+        (0, 0, 0, 0) // CPUID does not support "Extended Features"
+    };
 
     // EAX = 0x8000_0000, ECX = 0: Get Highest Extended Function Supported
     // - EAX returns the max leaf value for extended information, that is,
@@ -200,6 +206,7 @@ pub(crate) fn detect_features() -> cache::Initializer {
                     // For AVX-512 the OS also needs to support saving/restoring
                     // the extended state, only then we enable AVX-512 support:
                     if os_avx512_support {
+                        enable(extended_features_eax, 5, Feature::avx512bf16);
                         enable(extended_features_ebx, 16, Feature::avx512f);
                         enable(extended_features_ebx, 17, Feature::avx512dq);
                         enable(extended_features_ebx, 21, Feature::avx512ifma);
@@ -209,15 +216,14 @@ pub(crate) fn detect_features() -> cache::Initializer {
                         enable(extended_features_ebx, 30, Feature::avx512bw);
                         enable(extended_features_ebx, 31, Feature::avx512vl);
                         enable(extended_features_ecx, 1, Feature::avx512vbmi);
-                        enable(extended_features_ecx, 5, Feature::avx512bf16);
                         enable(extended_features_ecx, 6, Feature::avx512vbmi2);
                         enable(extended_features_ecx, 8, Feature::gfni);
-                        enable(extended_features_ecx, 8, Feature::avx512vp2intersect);
                         enable(extended_features_ecx, 9, Feature::vaes);
                         enable(extended_features_ecx, 10, Feature::vpclmulqdq);
                         enable(extended_features_ecx, 11, Feature::avx512vnni);
                         enable(extended_features_ecx, 12, Feature::avx512bitalg);
                         enable(extended_features_ecx, 14, Feature::avx512vpopcntdq);
+                        enable(extended_features_edx, 8, Feature::avx512vp2intersect);
                         enable(extended_features_edx, 23, Feature::avx512fp16);
                     }
                 }
