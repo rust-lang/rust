@@ -205,7 +205,7 @@ cfg_if::cfg_if! {
         #[doc(hidden)]
         #[unstable(feature = "thread_local_internals", issue = "none")]
         pub mod local_impl {
-            pub use crate::sys::common::thread_local::{thread_local_inner, Key, abort_on_dtor_unwind};
+            pub use crate::sys::thread_local::{thread_local_inner, Key, abort_on_dtor_unwind};
         }
     }
 }
