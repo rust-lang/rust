@@ -1,4 +1,5 @@
 use crate::errors::DumpVTableEntries;
+use crate::traits;
 use crate::traits::{impossible_predicates, is_vtable_safe_method};
 use rustc_hir::def_id::DefId;
 use rustc_hir::lang_items::LangItem;
@@ -13,6 +14,7 @@ use rustc_span::{sym, Span};
 use smallvec::SmallVec;
 
 use std::fmt::Debug;
+use std::iter;
 use std::ops::ControlFlow;
 
 #[derive(Clone, Debug)]
@@ -232,6 +234,32 @@ fn own_existential_vtable_entries_iter(
     own_entries
 }
 
+fn trait_object_ty<'tcx>(tcx: TyCtxt<'tcx>, poly_trait_ref: ty::PolyTraitRef<'tcx>) -> Ty<'tcx> {
+    let principal_pred = poly_trait_ref.map_bound(|trait_ref| {
+        ty::ExistentialPredicate::Trait(ty::ExistentialTraitRef::erase_self_ty(tcx, trait_ref))
+    });
+    let assoc_preds = traits::supertraits(tcx, poly_trait_ref).flat_map(|super_poly_trait_ref| {
+        tcx.associated_items(super_poly_trait_ref.def_id())
+            .in_definition_order()
+            .filter(|item| item.kind == ty::AssocKind::Type)
+            .map(move |assoc_ty| {
+                super_poly_trait_ref.map_bound(|super_trait_ref| {
+                    let alias_ty = ty::AliasTy::new(tcx, assoc_ty.def_id, super_trait_ref.args);
+                    let resolved = tcx
+                        .normalize_erasing_regions(ty::ParamEnv::reveal_all(), alias_ty.to_ty(tcx));
+                    ty::ExistentialPredicate::Projection(ty::ExistentialProjection {
+                        def_id: assoc_ty.def_id,
+                        args: ty::ExistentialTraitRef::erase_self_ty(tcx, super_trait_ref).args,
+                        term: resolved.into(),
+                    })
+                })
+            })
+    });
+    let preds =
+        tcx.mk_poly_existential_predicates_from_iter(iter::once(principal_pred).chain(assoc_preds));
+    Ty::new_dynamic(tcx, preds, tcx.lifetimes.re_erased, ty::Dyn)
+}
+
 /// Given a trait `trait_ref`, iterates the vtable entries
 /// that come from `trait_ref`, including its supertraits.
 fn vtable_entries<'tcx>(
@@ -403,6 +431,7 @@ pub(super) fn provide(providers: &mut Providers) {
         own_existential_vtable_entries,
         vtable_entries,
         vtable_trait_upcasting_coercion_new_vptr_slot,
+        trait_object_ty,
         ..*providers
     };
 }

@@ -2247,6 +2247,15 @@ rustc_queries! {
     query find_field((def_id, ident): (DefId, rustc_span::symbol::Ident)) -> Option<rustc_target::abi::FieldIdx> {
         desc { |tcx| "find the index of maybe nested field `{ident}` in `{}`", tcx.def_path_str(def_id) }
     }
+
+    /// Construct a type for a trait object corresponding to `trait_ref`. This type will have all
+    /// associated types for it and its supertraits expanded and resolved as additional predicates.
+    ///
+    /// The provided `trait_ref` must be sufficiently instantiated that all associated types can be
+    /// successfully resolved.
+    query trait_object_ty(trait_ref: ty::PolyTraitRef<'tcx>) -> Ty<'tcx> {
+        desc { "Compute the trait object type for calling a method on a trait" }
+    }
 }
 
 rustc_query_append! { define_callbacks! }
