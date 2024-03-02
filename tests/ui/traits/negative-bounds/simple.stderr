@@ -2,7 +2,7 @@ error[E0277]: the trait bound `T: !Copy` is not satisfied
   --> $DIR/simple.rs:10:16
    |
 LL |     not_copy::<T>();
-   |                ^ the trait `!Copy` is not implemented for `T`
+   |                ^ the trait bound `T: !Copy` is not satisfied
    |
 note: required by a bound in `not_copy`
   --> $DIR/simple.rs:3:16
@@ -14,7 +14,7 @@ error[E0277]: the trait bound `T: !Copy` is not satisfied
   --> $DIR/simple.rs:15:16
    |
 LL |     not_copy::<T>();
-   |                ^ the trait `!Copy` is not implemented for `T`
+   |                ^ the trait bound `T: !Copy` is not satisfied
    |
 note: required by a bound in `not_copy`
   --> $DIR/simple.rs:3:16
@@ -26,7 +26,7 @@ error[E0277]: the trait bound `Copyable: !Copy` is not satisfied
   --> $DIR/simple.rs:30:16
    |
 LL |     not_copy::<Copyable>();
-   |                ^^^^^^^^ the trait `!Copy` is not implemented for `Copyable`
+   |                ^^^^^^^^ the trait bound `Copyable: !Copy` is not satisfied
    |
    = help: the trait `Copy` is implemented for `Copyable`
 note: required by a bound in `not_copy`
@@ -44,7 +44,7 @@ error[E0277]: the trait bound `NotNecessarilyCopyable: !Copy` is not satisfied
   --> $DIR/simple.rs:37:16
    |
 LL |     not_copy::<NotNecessarilyCopyable>();
-   |                ^^^^^^^^^^^^^^^^^^^^^^ the trait `!Copy` is not implemented for `NotNecessarilyCopyable`
+   |                ^^^^^^^^^^^^^^^^^^^^^^ the trait bound `NotNecessarilyCopyable: !Copy` is not satisfied
    |
 note: required by a bound in `not_copy`
   --> $DIR/simple.rs:3:16

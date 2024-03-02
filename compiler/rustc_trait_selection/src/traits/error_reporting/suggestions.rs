@@ -4752,20 +4752,21 @@ pub(super) fn get_explanation_based_on_obligation<'tcx>(
         } else {
             String::new()
         };
-        match ty_desc {
-            Some(desc) => format!(
-                "{}the trait `{}` is not implemented for {} `{}`{post}",
-                pre_message,
-                trait_predicate.print_modifiers_and_trait_path(),
-                desc,
-                tcx.short_ty_string(trait_ref.skip_binder().self_ty(), &mut None),
-            ),
-            None => format!(
-                "{}the trait `{}` is not implemented for `{}`{post}",
-                pre_message,
+        let desc = match ty_desc {
+            Some(desc) => format!(" {desc}"),
+            None => String::new(),
+        };
+        if let ty::ImplPolarity::Positive = trait_predicate.polarity() {
+            format!(
+                "{pre_message}the trait `{}` is not implemented for{desc} `{}`{post}",
                 trait_predicate.print_modifiers_and_trait_path(),
                 tcx.short_ty_string(trait_ref.skip_binder().self_ty(), &mut None),
-            ),
+            )
+        } else {
+            // "the trait bound `T: !Send` is not satisfied" reads better than "`!Send` is
+            // not implemented for `T`".
+            // FIXME: add note explaining explicit negative trait bounds.
+            format!("{pre_message}the trait bound `{trait_predicate}` is not satisfied{post}")
         }
     }
 }
