@@ -29,7 +29,7 @@ pub fn main() {
         let x_split = split_u32_ptr(x_ptr);
         unsafe {
             let hi = x_split as *const u16 as *const AtomicU16;
-            (*hi).load(Relaxed); //~ ERROR: (1) 4-byte atomic load on thread `<unnamed>` and (2) 2-byte atomic load
+            (*hi).load(Relaxed); //~ ERROR: (1) 4-byte atomic load on thread `unnamed-1` and (2) 2-byte atomic load
         }
     });
 

@@ -37,7 +37,7 @@ pub fn main() {
         let j2 = spawn(move || {
             let ptr = ptr; // avoid field capturing
             let pointer = &*ptr.0;
-            *pointer.load(Ordering::Relaxed) = 2; //~ ERROR: Data race detected between (1) creating a new allocation on thread `<unnamed>` and (2) non-atomic write on thread `<unnamed>`
+            *pointer.load(Ordering::Relaxed) = 2; //~ ERROR: Data race detected between (1) creating a new allocation on thread `unnamed-1` and (2) non-atomic write on thread `unnamed-2`
         });
 
         j1.join().unwrap();

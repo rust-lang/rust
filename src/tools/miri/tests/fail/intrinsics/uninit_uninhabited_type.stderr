@@ -8,6 +8,7 @@ error: abnormal termination: the program aborted execution
 LL |     ABORT();
    | ^ the program aborted execution
    |
+   = note: BACKTRACE:
    = note: inside `std::sys::pal::PLATFORM::abort_internal` at RUSTLIB/std/src/sys/pal/PLATFORM/mod.rs:LL:CC
    = note: inside `std::panicking::rust_panic_with_hook` at RUSTLIB/std/src/panicking.rs:LL:CC
    = note: inside closure at RUSTLIB/std/src/panicking.rs:LL:CC

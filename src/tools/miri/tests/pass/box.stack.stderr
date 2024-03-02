@@ -24,6 +24,7 @@ warning: integer-to-pointer cast
 LL |         let r = ((u.as_ptr() as usize) + 0) as *mut i32;
    |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ integer-to-pointer cast
    |
+   = note: BACKTRACE:
    = note: inside `into_unique` at $DIR/box.rs:LL:CC
 note: inside `main`
   --> $DIR/box.rs:LL:CC
