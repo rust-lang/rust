@@ -1091,6 +1091,12 @@ enum TestCase<'pat, 'tcx> {
     Or { pats: Box<[FlatPat<'pat, 'tcx>]> },
 }
 
+impl<'pat, 'tcx> TestCase<'pat, 'tcx> {
+    fn as_range(&self) -> Option<&'pat PatRange<'tcx>> {
+        if let Self::Range(v) = self { Some(*v) } else { None }
+    }
+}
+
 #[derive(Debug, Clone)]
 pub(crate) struct MatchPair<'pat, 'tcx> {
     /// This place...
