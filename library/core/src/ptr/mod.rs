@@ -2071,11 +2071,16 @@ impl<F: FnPtr> fmt::Debug for F {
 /// as all other references. This macro can create a raw pointer *without* creating
 /// a reference first.
 ///
-/// The `expr` in `addr_of!(expr)` is evaluated as a place expression, but never loads
-/// from the place or requires the place to be dereferenceable. This means that
-/// `addr_of!(*ptr)` is defined behavior even if `ptr` is null, dangling, or misaligned.
-/// Note however that `addr_of!((*ptr).field)` still requires the projection to
-/// `field` to be in-bounds, using the same rules as [`offset`].
+/// See [`addr_of_mut`] for how to create a pointer to uninitialized data.
+/// Doing that with `addr_of` would not make much sense since one could only
+/// read the data, and that would be Undefined Behavior.
+///
+/// # Safety
+///
+/// The `expr` in `addr_of!(expr)` is evaluated as a place expression, but never loads from the
+/// place or requires the place to be dereferenceable. This means that `addr_of!((*ptr).field)`
+/// still requires the projection to `field` to be in-bounds, using the same rules as [`offset`].
+/// However, `addr_of!(*ptr)` is defined behavior even if `ptr` is null, dangling, or misaligned.
 ///
 /// Note that `Deref`/`Index` coercions (and their mutable counterparts) are applied inside
 /// `addr_of!` like everywhere else, in which case a reference is created to call `Deref::deref` or
@@ -2085,6 +2090,8 @@ impl<F: FnPtr> fmt::Debug for F {
 /// [`offset`]: pointer::offset
 ///
 /// # Example
+///
+/// **Correct usage: Creating a pointer to unaligned data**
 ///
 /// ```
 /// use std::ptr;
@@ -2101,9 +2108,27 @@ impl<F: FnPtr> fmt::Debug for F {
 /// assert_eq!(unsafe { raw_f2.read_unaligned() }, 2);
 /// ```
 ///
-/// See [`addr_of_mut`] for how to create a pointer to uninitialized data.
-/// Doing that with `addr_of` would not make much sense since one could only
-/// read the data, and that would be Undefined Behavior.
+/// **Incorrect usage: Out-of-bounds fields projection**
+///
+/// ```rust,no_run
+/// use std::ptr;
+///
+/// #[repr(C)]
+/// struct MyStruct {
+///     field1: i32,
+///     field2: i32,
+/// }
+///
+/// let ptr: *const MyStruct = ptr::null();
+/// let fieldptr = unsafe { ptr::addr_of!((*ptr).field2) }; // Undefined Behavior ⚠️
+/// ```
+///
+/// The field projection `.field2` would offset the pointer by 4 bytes,
+/// but the pointer is not in-bounds of an allocation for 4 bytes,
+/// so this offset is Undefined Behavior.
+/// See the [`offset`] docs for a full list of requirements for inbounds pointer arithmetic; the
+/// same requirements apply to field projections, even inside `addr_of!`. (In particular, it makes
+/// no difference whether the pointer is null or dangling.)
 #[stable(feature = "raw_ref_macros", since = "1.51.0")]
 #[rustc_macro_transparency = "semitransparent"]
 #[allow_internal_unstable(raw_ref_op)]
@@ -2120,11 +2145,12 @@ pub macro addr_of($place:expr) {
 /// as all other references. This macro can create a raw pointer *without* creating
 /// a reference first.
 ///
-/// The `expr` in `addr_of_mut!(expr)` is evaluated as a place expression, but never loads
-/// from the place or requires the place to be dereferenceable. This means that
-/// `addr_of_mut!(*ptr)` is defined behavior even if `ptr` is null, dangling, or misaligned.
-/// Note however that `addr_of_mut!((*ptr).field)` still requires the projection to
-/// `field` to be in-bounds, using the same rules as [`offset`].
+/// # Safety
+///
+/// The `expr` in `addr_of_mut!(expr)` is evaluated as a place expression, but never loads from the
+/// place or requires the place to be dereferenceable. This means that `addr_of_mut!((*ptr).field)`
+/// still requires the projection to `field` to be in-bounds, using the same rules as [`offset`].
+/// However, `addr_of_mut!(*ptr)` is defined behavior even if `ptr` is null, dangling, or misaligned.
 ///
 /// Note that `Deref`/`Index` coercions (and their mutable counterparts) are applied inside
 /// `addr_of_mut!` like everywhere else, in which case a reference is created to call `Deref::deref`
@@ -2135,7 +2161,7 @@ pub macro addr_of($place:expr) {
 ///
 /// # Examples
 ///
-/// **Creating a pointer to unaligned data:**
+/// **Correct usage: Creating a pointer to unaligned data**
 ///
 /// ```
 /// use std::ptr;
@@ -2153,7 +2179,7 @@ pub macro addr_of($place:expr) {
 /// assert_eq!({packed.f2}, 42); // `{...}` forces copying the field instead of creating a reference.
 /// ```
 ///
-/// **Creating a pointer to uninitialized data:**
+/// **Correct usage: Creating a pointer to uninitialized data**
 ///
 /// ```rust
 /// use std::{ptr, mem::MaybeUninit};
@@ -2169,6 +2195,28 @@ pub macro addr_of($place:expr) {
 /// unsafe { f1_ptr.write(true); }
 /// let init = unsafe { uninit.assume_init() };
 /// ```
+///
+/// **Incorrect usage: Out-of-bounds fields projection**
+///
+/// ```rust,no_run
+/// use std::ptr;
+///
+/// #[repr(C)]
+/// struct MyStruct {
+///     field1: i32,
+///     field2: i32,
+/// }
+///
+/// let ptr: *mut MyStruct = ptr::null_mut();
+/// let fieldptr = unsafe { ptr::addr_of_mut!((*ptr).field2) }; // Undefined Behavior ⚠️
+/// ```
+///
+/// The field projection `.field2` would offset the pointer by 4 bytes,
+/// but the pointer is not in-bounds of an allocation for 4 bytes,
+/// so this offset is Undefined Behavior.
+/// See the [`offset`] docs for a full list of requirements for inbounds pointer arithmetic; the
+/// same requirements apply to field projections, even inside `addr_of_mut!`. (In particular, it
+/// makes no difference whether the pointer is null or dangling.)
 #[stable(feature = "raw_ref_macros", since = "1.51.0")]
 #[rustc_macro_transparency = "semitransparent"]
 #[allow_internal_unstable(raw_ref_op)]
