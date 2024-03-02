@@ -426,17 +426,25 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                         let (main_trait_predicate, o) = if let ty::PredicateKind::Clause(
                             ty::ClauseKind::Trait(root_pred)
                         ) = root_obligation.predicate.kind().skip_binder()
+                            && !trait_predicate.self_ty().skip_binder().has_escaping_bound_vars()
+                            && !root_pred.self_ty().has_escaping_bound_vars()
                             // The type of the leaf predicate is (roughly) the same as the type
                             // from the root predicate, as a proxy for "we care about the root"
                             // FIXME: this doesn't account for trivial derefs, but works as a first
                             // approximation.
                             && (
                                 // `T: Trait` && `&&T: OtherTrait`, we want `OtherTrait`
-                                trait_predicate.self_ty().skip_binder()
-                                    == root_pred.self_ty().peel_refs()
+                                self.can_eq(
+                                    obligation.param_env,
+                                    trait_predicate.self_ty().skip_binder(),
+                                    root_pred.self_ty().peel_refs(),
+                                )
                                 // `&str: Iterator` && `&str: IntoIterator`, we want `IntoIterator`
-                                || trait_predicate.self_ty().skip_binder()
-                                    == root_pred.self_ty()
+                                || self.can_eq(
+                                    obligation.param_env,
+                                    trait_predicate.self_ty().skip_binder(),
+                                    root_pred.self_ty(),
+                                )
                             )
                             // The leaf trait and the root trait are different, so as to avoid
                             // talking about `&mut T: Trait` and instead remain talking about
