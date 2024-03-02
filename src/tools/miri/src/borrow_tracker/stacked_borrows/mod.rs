@@ -16,7 +16,7 @@ use rustc_target::abi::{Abi, Size};
 
 use crate::borrow_tracker::{
     stacked_borrows::diagnostics::{AllocHistory, DiagnosticCx, DiagnosticCxBuilder},
-    AccessKind, GlobalStateInner, ProtectorKind,
+    GlobalStateInner, ProtectorKind,
 };
 use crate::*;
 

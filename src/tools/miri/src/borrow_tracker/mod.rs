@@ -122,13 +122,6 @@ impl VisitProvenance for GlobalStateInner {
 /// We need interior mutable access to the global state.
 pub type GlobalState = RefCell<GlobalStateInner>;
 
-/// Indicates which kind of access is being performed.
-#[derive(Copy, Clone, Hash, PartialEq, Eq, Debug)]
-pub enum AccessKind {
-    Read,
-    Write,
-}
-
 impl fmt::Display for AccessKind {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {

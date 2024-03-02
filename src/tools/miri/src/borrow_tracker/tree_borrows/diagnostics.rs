@@ -9,7 +9,7 @@ use crate::borrow_tracker::tree_borrows::{
     tree::LocationState,
     unimap::UniIndex,
 };
-use crate::borrow_tracker::{AccessKind, ProtectorKind};
+use crate::borrow_tracker::ProtectorKind;
 use crate::*;
 
 /// Cause of an access: either a real access or one

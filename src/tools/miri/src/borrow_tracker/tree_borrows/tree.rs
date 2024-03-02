@@ -24,7 +24,7 @@ use crate::borrow_tracker::tree_borrows::{
     unimap::{UniEntry, UniIndex, UniKeyMap, UniValMap},
     Permission,
 };
-use crate::borrow_tracker::{AccessKind, GlobalState, ProtectorKind};
+use crate::borrow_tracker::{GlobalState, ProtectorKind};
 use crate::*;
 
 mod tests;

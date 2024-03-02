@@ -116,6 +116,7 @@ pub enum NonHaltingDiagnostic {
     CreatedCallId(CallId),
     CreatedAlloc(AllocId, Size, Align, MemoryKind<MiriMemoryKind>),
     FreedAlloc(AllocId),
+    AccessedAlloc(AllocId, AccessKind),
     RejectedIsolatedOp(String),
     ProgressReport {
         block_count: u64, // how many basic blocks have been run so far
@@ -538,6 +539,7 @@ impl<'mir, 'tcx> MiriMachine<'mir, 'tcx> {
             | PoppedPointerTag(..)
             | CreatedCallId(..)
             | CreatedAlloc(..)
+            | AccessedAlloc(..)
             | FreedAlloc(..)
             | ProgressReport { .. }
             | WeakMemoryOutdatedLoad => ("tracking was triggered".to_string(), DiagLevel::Note),
@@ -559,6 +561,8 @@ impl<'mir, 'tcx> MiriMachine<'mir, 'tcx> {
                     size = size.bytes(),
                     align = align.bytes(),
                 ),
+            AccessedAlloc(AllocId(id), access_kind) =>
+                format!("{access_kind} access to allocation with id {id}"),
             FreedAlloc(AllocId(id)) => format!("freed allocation with id {id}"),
             RejectedIsolatedOp(ref op) =>
                 format!("{op} was made to return an error due to isolation"),

@@ -5,7 +5,7 @@ use rustc_data_structures::fx::FxHashSet;
 use rustc_span::{Span, SpanData};
 use rustc_target::abi::Size;
 
-use crate::borrow_tracker::{AccessKind, GlobalStateInner, ProtectorKind};
+use crate::borrow_tracker::{GlobalStateInner, ProtectorKind};
 use crate::*;
 
 /// Error reporting
