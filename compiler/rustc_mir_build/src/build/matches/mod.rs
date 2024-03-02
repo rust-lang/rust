@@ -1676,10 +1676,9 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         &'b mut [&'c mut Candidate<'pat, 'tcx>],
         FxIndexMap<TestBranch<'tcx>, Vec<&'b mut Candidate<'pat, 'tcx>>>,
     ) {
-        // For each of the N possible outcomes, create a (initially empty) vector of candidates.
-        // Those are the candidates that apply if the test has that particular outcome.
-        let mut target_candidates: FxIndexMap<_, Vec<&mut Candidate<'pat, 'tcx>>> =
-            test.targets().into_iter().map(|branch| (branch, Vec::new())).collect();
+        // For each of the possible outcomes, collect vector of candidates that apply if the test
+        // has that particular outcome.
+        let mut target_candidates: FxIndexMap<_, Vec<&mut Candidate<'_, '_>>> = Default::default();
 
         let total_candidate_count = candidates.len();
 
@@ -1691,7 +1690,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 break;
             };
             let (candidate, rest) = candidates.split_first_mut().unwrap();
-            target_candidates[&branch].push(candidate);
+            target_candidates.entry(branch).or_insert_with(Vec::new).push(candidate);
             candidates = rest;
         }
 
@@ -1832,31 +1831,32 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             otherwise_block
         };
 
-        // For each outcome of test, process the candidates that still
-        // apply. Collect a list of blocks where control flow will
-        // branch if one of the `target_candidate` sets is not
-        // exhaustive.
+        // For each outcome of test, process the candidates that still apply.
         let target_blocks: FxIndexMap<_, _> = target_candidates
             .into_iter()
             .map(|(branch, mut candidates)| {
-                if !candidates.is_empty() {
-                    let candidate_start = self.cfg.start_new_block();
-                    self.match_candidates(
-                        span,
-                        scrutinee_span,
-                        candidate_start,
-                        remainder_start,
-                        &mut *candidates,
-                    );
-                    (branch, candidate_start)
-                } else {
-                    (branch, remainder_start)
-                }
+                let candidate_start = self.cfg.start_new_block();
+                self.match_candidates(
+                    span,
+                    scrutinee_span,
+                    candidate_start,
+                    remainder_start,
+                    &mut *candidates,
+                );
+                (branch, candidate_start)
             })
             .collect();
 
         // Perform the test, branching to one of N blocks.
-        self.perform_test(span, scrutinee_span, start_block, &match_place, &test, target_blocks);
+        self.perform_test(
+            span,
+            scrutinee_span,
+            start_block,
+            remainder_start,
+            &match_place,
+            &test,
+            target_blocks,
+        );
     }
 
     /// Determine the fake borrows that are needed from a set of places that

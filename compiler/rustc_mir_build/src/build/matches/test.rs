@@ -127,6 +127,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         match_start_span: Span,
         scrutinee_span: Span,
         block: BasicBlock,
+        otherwise_block: BasicBlock,
         place_builder: &PlaceBuilder<'tcx>,
         test: &Test<'tcx>,
         target_blocks: FxIndexMap<TestBranch<'tcx>, BasicBlock>,
@@ -134,14 +135,13 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         let place = place_builder.to_place(self);
         let place_ty = place.ty(&self.local_decls, self.tcx);
         debug!(?place, ?place_ty);
-        let target_block = |branch| target_blocks[&branch];
+        let target_block = |branch| target_blocks.get(&branch).copied().unwrap_or(otherwise_block);
 
         let source_info = self.source_info(test.span);
         match test.kind {
             TestKind::Switch { adt_def, ref variants } => {
                 // Variants is a BitVec of indexes into adt_def.variants.
                 let num_enum_variants = adt_def.variants().len();
-                debug_assert_eq!(target_blocks.len(), num_enum_variants + 1);
                 let otherwise_block = target_block(TestBranch::Failure);
                 let tcx = self.tcx;
                 let switch_targets = SwitchTargets::new(
@@ -185,7 +185,6 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
             TestKind::SwitchInt { ref options } => {
                 // The switch may be inexhaustive so we have a catch-all block
-                debug_assert_eq!(options.len() + 1, target_blocks.len());
                 let otherwise_block = target_block(TestBranch::Failure);
                 let switch_targets = SwitchTargets::new(
                     options
@@ -201,7 +200,6 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             }
 
             TestKind::If => {
-                debug_assert_eq!(target_blocks.len(), 2);
                 let success_block = target_block(TestBranch::Success);
                 let fail_block = target_block(TestBranch::Failure);
                 let terminator =
@@ -211,7 +209,6 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
             TestKind::Eq { value, ty } => {
                 let tcx = self.tcx;
-                debug_assert_eq!(target_blocks.len(), 2);
                 let success_block = target_block(TestBranch::Success);
                 let fail_block = target_block(TestBranch::Failure);
                 if let ty::Adt(def, _) = ty.kind()
@@ -290,7 +287,6 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             }
 
             TestKind::Range(ref range) => {
-                debug_assert_eq!(target_blocks.len(), 2);
                 let success = target_block(TestBranch::Success);
                 let fail = target_block(TestBranch::Failure);
                 // Test `val` by computing `lo <= val && val <= hi`, using primitive comparisons.
@@ -337,7 +333,6 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 // expected = <N>
                 let expected = self.push_usize(block, source_info, len);
 
-                debug_assert_eq!(target_blocks.len(), 2);
                 let success_block = target_block(TestBranch::Success);
                 let fail_block = target_block(TestBranch::Failure);
                 // result = actual == expected OR result = actual < expected
@@ -750,33 +745,6 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         }
 
         Some(true)
-    }
-}
-
-impl<'tcx> Test<'tcx> {
-    pub(super) fn targets(&self) -> Vec<TestBranch<'tcx>> {
-        match self.kind {
-            TestKind::Eq { .. } | TestKind::Range(_) | TestKind::Len { .. } | TestKind::If => {
-                vec![TestBranch::Success, TestBranch::Failure]
-            }
-            TestKind::Switch { adt_def, .. } => {
-                // While the switch that we generate doesn't test for all
-                // variants, we have a target for each variant and the
-                // otherwise case, and we make sure that all of the cases not
-                // specified have the same block.
-                adt_def
-                    .variants()
-                    .indices()
-                    .map(|idx| TestBranch::Variant(idx))
-                    .chain([TestBranch::Failure])
-                    .collect()
-            }
-            TestKind::SwitchInt { ref options } => options
-                .iter()
-                .map(|(val, bits)| TestBranch::Constant(*val, *bits))
-                .chain([TestBranch::Failure])
-                .collect(),
-        }
     }
 }
 

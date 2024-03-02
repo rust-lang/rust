@@ -25,7 +25,7 @@ fn main() -> () {
         StorageLive(_3);
         _3 = const true;
         PlaceMention(_3);
-        switchInt(_3) -> [0: bb6, otherwise: bb4];
+        switchInt(_3) -> [0: bb4, otherwise: bb6];
     }
 
     bb3: {
@@ -34,8 +34,7 @@ fn main() -> () {
     }
 
     bb4: {
-        _0 = const ();
-        goto -> bb13;
+        falseEdge -> [real: bb8, imaginary: bb6];
     }
 
     bb5: {
@@ -43,7 +42,8 @@ fn main() -> () {
     }
 
     bb6: {
-        falseEdge -> [real: bb8, imaginary: bb4];
+        _0 = const ();
+        goto -> bb13;
     }
 
     bb7: {
