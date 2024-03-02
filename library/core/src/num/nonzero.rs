@@ -4,8 +4,9 @@ use crate::cmp::Ordering;
 use crate::fmt;
 use crate::hash::{Hash, Hasher};
 use crate::intrinsics;
-use crate::marker::StructuralPartialEq;
+use crate::marker::{Freeze, StructuralPartialEq};
 use crate::ops::{BitOr, BitOrAssign, Div, Neg, Rem};
+use crate::panic::{RefUnwindSafe, UnwindSafe};
 use crate::ptr;
 use crate::str::FromStr;
 
@@ -128,6 +129,26 @@ impl_nonzero_fmt!(Binary);
 impl_nonzero_fmt!(Octal);
 impl_nonzero_fmt!(LowerHex);
 impl_nonzero_fmt!(UpperHex);
+
+macro_rules! impl_nonzero_auto_trait {
+    (unsafe $Trait:ident) => {
+        #[stable(feature = "nonzero", since = "1.28.0")]
+        unsafe impl<T> $Trait for NonZero<T> where T: ZeroablePrimitive + $Trait {}
+    };
+    ($Trait:ident) => {
+        #[stable(feature = "nonzero", since = "1.28.0")]
+        impl<T> $Trait for NonZero<T> where T: ZeroablePrimitive + $Trait {}
+    };
+}
+
+// Implement auto-traits manually based on `T` to avoid docs exposing
+// the `ZeroablePrimitive::NonZeroInner` implementation detail.
+impl_nonzero_auto_trait!(unsafe Freeze);
+impl_nonzero_auto_trait!(RefUnwindSafe);
+impl_nonzero_auto_trait!(unsafe Send);
+impl_nonzero_auto_trait!(unsafe Sync);
+impl_nonzero_auto_trait!(Unpin);
+impl_nonzero_auto_trait!(UnwindSafe);
 
 #[stable(feature = "nonzero", since = "1.28.0")]
 impl<T> Clone for NonZero<T>
