@@ -1,4 +1,4 @@
-error[E0277]: the trait bound `NotCopy: Copy` is not satisfied
+error[E0277]: the trait `Copy` is not implemented for `NotCopy`
   --> $DIR/wf-const-type.rs:10:12
    |
 LL | const FOO: IsCopy<Option<NotCopy>> = IsCopy { t: None };
@@ -16,7 +16,7 @@ LL + #[derive(Copy)]
 LL | struct NotCopy;
    |
 
-error[E0277]: the trait bound `NotCopy: Copy` is not satisfied
+error[E0277]: the trait `Copy` is not implemented for `NotCopy`
   --> $DIR/wf-const-type.rs:10:50
    |
 LL | const FOO: IsCopy<Option<NotCopy>> = IsCopy { t: None };

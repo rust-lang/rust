@@ -15,42 +15,42 @@ fn main() {
         drop(non_clone);
     };
     check_copy(&inner_non_clone);
-    //~^ ERROR : Copy` is not satisfied
+    //~^ ERROR the trait `Copy` is not implemented for
     check_clone(&inner_non_clone);
-    //~^ ERROR : Clone` is not satisfied
+    //~^ ERROR the trait `Clone` is not implemented for
 
     let non_clone = NonClone;
     let outer_non_clone = async move {
         drop(non_clone);
     };
     check_copy(&outer_non_clone);
-    //~^ ERROR : Copy` is not satisfied
+    //~^ ERROR the trait `Copy` is not implemented for
     check_clone(&outer_non_clone);
-    //~^ ERROR : Clone` is not satisfied
+    //~^ ERROR the trait `Clone` is not implemented for
 
     let maybe_copy_clone = async move {};
     check_copy(&maybe_copy_clone);
-    //~^ ERROR : Copy` is not satisfied
+    //~^ ERROR the trait `Copy` is not implemented for
     check_clone(&maybe_copy_clone);
-    //~^ ERROR : Clone` is not satisfied
+    //~^ ERROR the trait `Clone` is not implemented for
 
     let inner_non_clone_fn = the_inner_non_clone_fn();
     check_copy(&inner_non_clone_fn);
-    //~^ ERROR : Copy` is not satisfied
+    //~^ ERROR the trait `Copy` is not implemented for
     check_clone(&inner_non_clone_fn);
-    //~^ ERROR : Clone` is not satisfied
+    //~^ ERROR the trait `Clone` is not implemented for
 
     let outer_non_clone_fn = the_outer_non_clone_fn(NonClone);
     check_copy(&outer_non_clone_fn);
-    //~^ ERROR : Copy` is not satisfied
+    //~^ ERROR the trait `Copy` is not implemented for
     check_clone(&outer_non_clone_fn);
-    //~^ ERROR : Clone` is not satisfied
+    //~^ ERROR the trait `Clone` is not implemented for
 
     let maybe_copy_clone_fn = the_maybe_copy_clone_fn();
     check_copy(&maybe_copy_clone_fn);
-    //~^ ERROR : Copy` is not satisfied
+    //~^ ERROR the trait `Copy` is not implemented for
     check_clone(&maybe_copy_clone_fn);
-    //~^ ERROR : Clone` is not satisfied
+    //~^ ERROR the trait `Clone` is not implemented for
 }
 
 async fn the_inner_non_clone_fn() {

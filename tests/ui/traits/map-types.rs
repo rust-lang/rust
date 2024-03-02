@@ -15,5 +15,5 @@ fn main() {
     let x: Box<HashMap<isize, isize>> = HashMap::new().into();
     let x: Box<dyn Map<isize, isize>> = x;
     let y: Box<dyn Map<usize, isize>> = Box::new(x);
-    //~^ ERROR `Box<dyn Map<isize, isize>>: Map<usize, isize>` is not satisfied
+    //~^ ERROR trait `Map<usize, isize>` is not implemented for `Box<dyn Map<isize, isize>>`
 }

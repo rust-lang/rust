@@ -20,6 +20,6 @@ where
 }
 
 impl<T> Copy for Foo<T> {}
-//~^ ERROR the trait bound `T: TraitFoo` is not satisfied
+//~^ ERROR trait `TraitFoo` is not implemented for `T`
 
 fn main() {}

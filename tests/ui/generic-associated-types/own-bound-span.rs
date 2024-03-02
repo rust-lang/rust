@@ -12,6 +12,6 @@ impl D for S {
 
 fn main() {
     let _: <S as D>::P<String>;
-    //~^ ERROR the trait bound `String: Copy` is not satisfied
+    //~^ ERROR trait `Copy` is not implemented for `String`
     //~| NOTE the trait `Copy` is not implemented for `String`
 }

@@ -6,5 +6,5 @@ impl Trait for () {
 }
 fn main() {
     let _: <() as Trait>::P<String, String>;
-    //~^ ERROR the trait bound `String: Copy` is not satisfied
+    //~^ ERROR trait `Copy` is not implemented for `String`
 }

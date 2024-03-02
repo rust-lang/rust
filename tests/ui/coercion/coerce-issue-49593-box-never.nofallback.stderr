@@ -1,4 +1,4 @@
-error[E0277]: the trait bound `(): std::error::Error` is not satisfied
+error[E0277]: the trait `std::error::Error` is not implemented for `()`
   --> $DIR/coerce-issue-49593-box-never.rs:18:53
    |
 LL |     /* *mut $0 is coerced to Box<dyn Error> here */ Box::<_ /* ! */>::new(x)
@@ -6,7 +6,7 @@ LL |     /* *mut $0 is coerced to Box<dyn Error> here */ Box::<_ /* ! */>::new(x
    |
    = note: required for the cast from `Box<()>` to `Box<(dyn std::error::Error + 'static)>`
 
-error[E0277]: the trait bound `(): std::error::Error` is not satisfied
+error[E0277]: the trait `std::error::Error` is not implemented for `()`
   --> $DIR/coerce-issue-49593-box-never.rs:23:49
    |
 LL |     /* *mut $0 is coerced to *mut Error here */ raw_ptr_box::<_ /* ! */>(x)

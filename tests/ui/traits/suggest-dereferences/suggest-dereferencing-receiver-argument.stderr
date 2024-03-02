@@ -1,4 +1,4 @@
-error[E0277]: the trait bound `TargetStruct: From<&{integer}>` is not satisfied
+error[E0277]: the trait `From<&{integer}>` is not implemented for `TargetStruct`
   --> $DIR/suggest-dereferencing-receiver-argument.rs:13:30
    |
 LL |     let _b: TargetStruct = a.into();

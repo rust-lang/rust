@@ -1,4 +1,4 @@
-error[E0277]: the trait bound `X: Foo<X>` is not satisfied
+error[E0277]: the trait `Foo<X>` is not implemented for `X`
   --> $DIR/where-clause-method-substituion.rs:20:16
    |
 LL |     1.method::<X>();

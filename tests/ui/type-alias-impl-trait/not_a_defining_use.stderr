@@ -10,7 +10,7 @@ help: consider restricting type parameter `T`
 LL | type Two<T: std::fmt::Debug, U> = impl Debug;
    |           +++++++++++++++++
 
-error[E0277]: the trait bound `U: Bar` is not satisfied
+error[E0277]: the trait `Bar` is not implemented for `U`
   --> $DIR/not_a_defining_use.rs:25:5
    |
 LL |     (t, <U as Bar>::FOO)

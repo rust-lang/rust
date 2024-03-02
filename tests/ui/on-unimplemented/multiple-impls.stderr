@@ -1,4 +1,4 @@
-error[E0277]: the trait bound `[i32]: Index<u32>` is not satisfied
+error[E0277]: the trait `Index<u32>` is not implemented for `[i32]`
   --> $DIR/multiple-impls.rs:33:33
    |
 LL |     Index::index(&[] as &[i32], 2u32);
@@ -11,7 +11,7 @@ LL |     Index::index(&[] as &[i32], 2u32);
              <[i32] as Index<Foo<usize>>>
              <[i32] as Index<Bar<usize>>>
 
-error[E0277]: the trait bound `[i32]: Index<Foo<u32>>` is not satisfied
+error[E0277]: the trait `Index<Foo<u32>>` is not implemented for `[i32]`
   --> $DIR/multiple-impls.rs:36:33
    |
 LL |     Index::index(&[] as &[i32], Foo(2u32));
@@ -24,7 +24,7 @@ LL |     Index::index(&[] as &[i32], Foo(2u32));
              <[i32] as Index<Foo<usize>>>
              <[i32] as Index<Bar<usize>>>
 
-error[E0277]: the trait bound `[i32]: Index<Bar<u32>>` is not satisfied
+error[E0277]: the trait `Index<Bar<u32>>` is not implemented for `[i32]`
   --> $DIR/multiple-impls.rs:39:33
    |
 LL |     Index::index(&[] as &[i32], Bar(2u32));
@@ -37,7 +37,7 @@ LL |     Index::index(&[] as &[i32], Bar(2u32));
              <[i32] as Index<Foo<usize>>>
              <[i32] as Index<Bar<usize>>>
 
-error[E0277]: the trait bound `[i32]: Index<u32>` is not satisfied
+error[E0277]: the trait `Index<u32>` is not implemented for `[i32]`
   --> $DIR/multiple-impls.rs:33:5
    |
 LL |     Index::index(&[] as &[i32], 2u32);
@@ -48,7 +48,7 @@ LL |     Index::index(&[] as &[i32], 2u32);
              <[i32] as Index<Foo<usize>>>
              <[i32] as Index<Bar<usize>>>
 
-error[E0277]: the trait bound `[i32]: Index<Foo<u32>>` is not satisfied
+error[E0277]: the trait `Index<Foo<u32>>` is not implemented for `[i32]`
   --> $DIR/multiple-impls.rs:36:5
    |
 LL |     Index::index(&[] as &[i32], Foo(2u32));
@@ -59,7 +59,7 @@ LL |     Index::index(&[] as &[i32], Foo(2u32));
              <[i32] as Index<Foo<usize>>>
              <[i32] as Index<Bar<usize>>>
 
-error[E0277]: the trait bound `[i32]: Index<Bar<u32>>` is not satisfied
+error[E0277]: the trait `Index<Bar<u32>>` is not implemented for `[i32]`
   --> $DIR/multiple-impls.rs:39:5
    |
 LL |     Index::index(&[] as &[i32], Bar(2u32));

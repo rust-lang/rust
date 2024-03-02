@@ -1,4 +1,4 @@
-error[E0277]: the trait bound `[u8; 1]: Read` is not satisfied
+error[E0277]: the trait `Read` is not implemented for `[u8; 1]`
   --> $DIR/issue-90528-unsizing-suggestion-2.rs:14:16
    |
 LL |     wants_read(x);
@@ -17,7 +17,7 @@ help: convert the array to a `&[u8]` slice instead
 LL |     wants_read(&x[..]);
    |                + ++++
 
-error[E0277]: the trait bound `&[u8; 1]: Read` is not satisfied
+error[E0277]: the trait `Read` is not implemented for `&[u8; 1]`
   --> $DIR/issue-90528-unsizing-suggestion-2.rs:16:16
    |
 LL |     wants_read(&x);
@@ -36,7 +36,7 @@ help: convert the array to a `&[u8]` slice instead
 LL |     wants_read(&x[..]);
    |                  ++++
 
-error[E0277]: the trait bound `&[u8; 1]: Read` is not satisfied
+error[E0277]: the trait `Read` is not implemented for `&[u8; 1]`
   --> $DIR/issue-90528-unsizing-suggestion-2.rs:21:16
    |
 LL |     wants_read(x);
@@ -55,7 +55,7 @@ help: convert the array to a `&[u8]` slice instead
 LL |     wants_read(&x[..]);
    |                + ++++
 
-error[E0277]: the trait bound `&&[u8; 1]: Read` is not satisfied
+error[E0277]: the trait `Read` is not implemented for `&&[u8; 1]`
   --> $DIR/issue-90528-unsizing-suggestion-2.rs:23:16
    |
 LL |     wants_read(&x);
@@ -70,7 +70,7 @@ note: required by a bound in `wants_read`
 LL | fn wants_read(_: impl Read) {}
    |                       ^^^^ required by this bound in `wants_read`
 
-error[E0277]: the trait bound `[u8; 1]: Read` is not satisfied
+error[E0277]: the trait `Read` is not implemented for `[u8; 1]`
   --> $DIR/issue-90528-unsizing-suggestion-2.rs:25:16
    |
 LL |     wants_read(*x);

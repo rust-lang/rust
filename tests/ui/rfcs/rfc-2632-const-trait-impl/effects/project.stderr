@@ -1,4 +1,4 @@
-error[E0277]: the trait bound `Self: Uwu` is not satisfied
+error[E0277]: the trait `Uwu` is not implemented for `Self`
   --> $DIR/project.rs:12:1
    |
 LL | pub trait Uwu: Owo {
@@ -9,7 +9,7 @@ help: consider further restricting `Self`
 LL | pub trait Uwu: Owo + Uwu {
    |                    +++++
 
-error[E0277]: the trait bound `Self: Uwu` is not satisfied
+error[E0277]: the trait `Uwu` is not implemented for `Self`
   --> $DIR/project.rs:12:1
    |
 LL | / pub trait Uwu: Owo {
@@ -22,7 +22,7 @@ help: consider further restricting `Self`
 LL | pub trait Uwu: Owo + Uwu {
    |                    +++++
 
-error[E0277]: the trait bound `Self: Uwu` is not satisfied
+error[E0277]: the trait `Uwu` is not implemented for `Self`
   --> $DIR/project.rs:12:16
    |
 LL | pub trait Uwu: Owo {
@@ -38,7 +38,7 @@ help: consider further restricting `Self`
 LL | pub trait Uwu: Owo + Uwu {
    |                    +++++
 
-error[E0277]: the trait bound `Self: Uwu` is not satisfied
+error[E0277]: the trait `Uwu` is not implemented for `Self`
   --> $DIR/project.rs:13:5
    |
 LL |     type T;
@@ -49,7 +49,7 @@ help: consider further restricting `Self`
 LL | pub trait Uwu: Owo + Uwu {
    |                    +++++
 
-error[E0277]: the trait bound `Self: Uwu` is not satisfied
+error[E0277]: the trait `Uwu` is not implemented for `Self`
   --> $DIR/project.rs:13:5
    |
 LL |     type T;

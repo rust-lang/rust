@@ -2,6 +2,6 @@
 
 trait Foo {}
 trait A<T: Foo> {}
-trait B<T> = A<T>; //~ ERROR `T: Foo` is not satisfied
+trait B<T> = A<T>; //~ ERROR trait `Foo` is not implemented for `T`
 
 fn main() {}

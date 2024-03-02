@@ -32,5 +32,5 @@ fn foo<T>(_: T) where T: Happy {}
 fn main() {
     let baz = Baz(Bar(Foo(LDM)));
     foo(&***baz);
-    //~^ ERROR the trait bound `&Baz: Happy` is not satisfied
+    //~^ ERROR trait `Happy` is not implemented for `&Baz`
 }

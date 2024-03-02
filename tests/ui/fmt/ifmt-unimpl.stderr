@@ -1,4 +1,4 @@
-error[E0277]: the trait bound `str: UpperHex` is not satisfied
+error[E0277]: the trait `UpperHex` is not implemented for `str`
   --> $DIR/ifmt-unimpl.rs:2:21
    |
 LL |     format!("{:X}", "3");

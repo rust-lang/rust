@@ -17,7 +17,7 @@ error[E0277]: `*mut &'a isize` cannot be sent between threads safely
 LL |     assert_send::<*mut &'a isize>();
    |                   ^^^^^^^^^^^^^^ `*mut &'a isize` cannot be sent between threads safely
    |
-   = help: the trait `Send` is not implemented for `*mut &'a isize`
+   = help: the trait `Send` is not implemented for `*mut &isize`
 note: required by a bound in `assert_send`
   --> $DIR/kindck-send-unsafe.rs:3:19
    |

@@ -10,7 +10,7 @@ fn takes(_: impl Trait) {}
 
 fn main() {
     takes(function);
-    //~^ ERROR the trait bound
+    //~^ ERROR the trait
     takes(|_: Argument| -> Return { todo!() });
-    //~^ ERROR the trait bound
+    //~^ ERROR the trait
 }

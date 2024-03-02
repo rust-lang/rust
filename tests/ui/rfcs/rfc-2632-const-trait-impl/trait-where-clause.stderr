@@ -22,7 +22,7 @@ note: this function is not `const`, so it cannot have `~const` trait bounds
 LL |     fn c<T: ~const Bar>();
    |        ^
 
-error[E0277]: the trait bound `T: Bar` is not satisfied
+error[E0277]: the trait `Bar` is not implemented for `T`
   --> $DIR/trait-where-clause.rs:16:5
    |
 LL |     T::b();
@@ -38,7 +38,7 @@ help: consider further restricting this bound
 LL | fn test1<T: Foo + Bar>() {
    |                 +++++
 
-error[E0277]: the trait bound `T: Bar` is not satisfied
+error[E0277]: the trait `Bar` is not implemented for `T`
   --> $DIR/trait-where-clause.rs:18:12
    |
 LL |     T::c::<T>();

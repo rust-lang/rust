@@ -17,5 +17,5 @@ fn stuff<T: Bar>(_: T) {}
 
 fn main() {
     stuff(1u8);
-    //~^ the trait bound `u8: Foo` is not satisfied
+    //~^ ERROR trait `Foo` is not implemented for `u8`
 }

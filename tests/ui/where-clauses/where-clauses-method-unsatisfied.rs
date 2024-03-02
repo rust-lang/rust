@@ -16,5 +16,5 @@ impl<T> Foo<T> {
 fn main() {
     let x = Foo { value: Bar };
     x.equals(&x);
-    //~^ ERROR `Bar: Eq` is not satisfied
+    //~^ ERROR trait `Eq` is not implemented for `Bar`
 }

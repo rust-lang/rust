@@ -31,7 +31,7 @@ help: consider further restricting `Self`
 LL | trait UncheckedCopy: Sized + AddAssign<&'static str> {
    |                            +++++++++++++++++++++++++
 
-error[E0277]: the trait bound `Self: Deref` is not satisfied
+error[E0277]: the trait `Deref` is not implemented for `Self`
   --> $DIR/defaults-unsound-62211-2.rs:20:96
    |
 LL |     type Output: Copy + Deref<Target = str> + AddAssign<&'static str> + From<Self> + Display = Self;
@@ -47,7 +47,7 @@ help: consider further restricting `Self`
 LL | trait UncheckedCopy: Sized + Deref {
    |                            +++++++
 
-error[E0277]: the trait bound `Self: Copy` is not satisfied
+error[E0277]: the trait `Copy` is not implemented for `Self`
   --> $DIR/defaults-unsound-62211-2.rs:20:96
    |
 LL |     type Output: Copy + Deref<Target = str> + AddAssign<&'static str> + From<Self> + Display = Self;

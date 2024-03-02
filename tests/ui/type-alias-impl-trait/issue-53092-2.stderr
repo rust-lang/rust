@@ -24,7 +24,7 @@ LL | type Bug<T, U> = impl Fn(T) -> U + Copy;
    |                  ^^^^^^^^^^^^^^^^^^^^^^
    = note: see https://rustc-dev-guide.rust-lang.org/overview.html#queries and https://rustc-dev-guide.rust-lang.org/query.html for more information
 
-error[E0277]: the trait bound `U: From<T>` is not satisfied
+error[E0277]: the trait `From<T>` is not implemented for `U`
   --> $DIR/issue-53092-2.rs:9:5
    |
 LL |     |x| x.into()

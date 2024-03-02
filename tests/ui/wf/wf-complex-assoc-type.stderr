@@ -1,4 +1,4 @@
-error[E0277]: the trait bound `bool: MyTrait` is not satisfied
+error[E0277]: the trait `MyTrait` is not implemented for `bool`
   --> $DIR/wf-complex-assoc-type.rs:9:28
    |
 LL |     type MyItem = Option<((AssertMyTrait<bool>, u8))>;

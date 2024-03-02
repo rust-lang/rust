@@ -1,4 +1,4 @@
-error[E0277]: the trait bound `String: Copy` is not satisfied
+error[E0277]: the trait `Copy` is not implemented for `String`
   --> $DIR/unsatisfied-bounds-inferred-type.rs:11:12
    |
 LL |     let _: S<_>::T = String::new();

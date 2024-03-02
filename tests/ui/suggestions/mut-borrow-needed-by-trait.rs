@@ -15,8 +15,8 @@ fn main() {
     };
 
     let fp = BufWriter::new(fp);
-    //~^ ERROR the trait bound `&dyn std::io::Write: std::io::Write` is not satisfied
-    //~| ERROR the trait bound `&dyn std::io::Write: std::io::Write` is not satisfied
+    //~^ ERROR trait `std::io::Write` is not implemented for `&dyn std::io::Write`
+    //~| ERROR trait `std::io::Write` is not implemented for `&dyn std::io::Write`
 
     writeln!(fp, "hello world").unwrap(); //~ ERROR the method
 }

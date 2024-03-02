@@ -11,7 +11,7 @@ impl<'a> Foo<'a> {
         self.bar[0] = baz.len();
         //FIXME ~^ ERROR: cannot call
         //FIXME ~| ERROR: cannot call
-        //FIXME ~| ERROR: the trait bound
+        //FIXME ~| ERROR: the trait
     }
 }
 

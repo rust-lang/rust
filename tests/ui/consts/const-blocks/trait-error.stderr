@@ -1,4 +1,4 @@
-error[E0277]: the trait bound `String: Copy` is not satisfied
+error[E0277]: the trait `Copy` is not implemented for `String`
   --> $DIR/trait-error.rs:5:6
    |
 LL |     [Foo(String::new()); 4];

@@ -13,15 +13,15 @@ fn check<T: Iterator, U: ?Sized>() {
     // ... even if T occurs as a type parameter
 
     <u64 as From<T>>::from;
-    //~^ ERROR `u64: From<T>` is not satisfied
+    //~^ ERROR trait `From<T>` is not implemented for `u64`
 
     <u64 as From<<T as Iterator>::Item>>::from;
-    //~^ ERROR `u64: From<<T as Iterator>::Item>` is not satisfied
+    //~^ ERROR trait `From<<T as Iterator>::Item>` is not implemented for `u64`
 
     // ... but not if there are inference variables
 
     <Misc<_> as From<T>>::from;
-    //~^ ERROR `Misc<_>: From<T>` is not satisfied
+    //~^ ERROR trait `From<T>` is not implemented for `Misc<_>`
 
     // ... and also not if the error is not related to the type
 

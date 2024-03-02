@@ -14,7 +14,7 @@ error[E0277]: can't compare `&'static B` with `B`
 LL |     default type U = &'static B;
    |                      ^^^^^^^^^^ no implementation for `&'static B == B`
    |
-   = help: the trait `PartialEq<B>` is not implemented for `&'static B`
+   = help: the trait `PartialEq<B>` is not implemented for `&B`
 note: required by a bound in `X::U`
   --> $DIR/default-associated-type-bound-2.rs:6:13
    |

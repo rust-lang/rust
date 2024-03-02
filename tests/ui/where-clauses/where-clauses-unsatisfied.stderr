@@ -1,4 +1,4 @@
-error[E0277]: the trait bound `Struct: Eq` is not satisfied
+error[E0277]: the trait `Eq` is not implemented for `Struct`
   --> $DIR/where-clauses-unsatisfied.rs:6:10
    |
 LL |     drop(equal(&Struct, &Struct))

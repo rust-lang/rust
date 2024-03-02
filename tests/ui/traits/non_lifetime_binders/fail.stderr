@@ -7,7 +7,7 @@ LL | #![feature(non_lifetime_binders)]
    = note: see issue #108185 <https://github.com/rust-lang/rust/issues/108185> for more information
    = note: `#[warn(incomplete_features)]` on by default
 
-error[E0277]: the trait bound `T: Trait` is not satisfied
+error[E0277]: the trait `Trait` is not implemented for `T`
   --> $DIR/fail.rs:19:5
    |
 LL |     fail();

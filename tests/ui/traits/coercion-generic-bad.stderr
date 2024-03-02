@@ -1,4 +1,4 @@
-error[E0277]: the trait bound `Struct: Trait<isize>` is not satisfied
+error[E0277]: the trait `Trait<isize>` is not implemented for `Struct`
   --> $DIR/coercion-generic-bad.rs:16:36
    |
 LL |     let s: Box<dyn Trait<isize>> = Box::new(Struct { person: "Fred" });

@@ -34,7 +34,7 @@ struct Test {
     span: Span,
     /// A doc comment
     arg: NotIntoDiagnosticArg,
-    //~^ ERROR the trait bound `NotIntoDiagnosticArg: IntoDiagnosticArg` is not satisfied
+    //~^ ERROR trait `IntoDiagnosticArg` is not implemented for `NotIntoDiagnosticArg`
 }
 
 #[derive(Subdiagnostic)]
@@ -44,5 +44,5 @@ struct SubTest {
     span: Span,
     /// A doc comment
     arg: NotIntoDiagnosticArg,
-    //~^ ERROR the trait bound `NotIntoDiagnosticArg: IntoDiagnosticArg` is not satisfied
+    //~^ ERROR trait `IntoDiagnosticArg` is not implemented for `NotIntoDiagnosticArg`
 }

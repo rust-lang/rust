@@ -1,4 +1,4 @@
-error[E0277]: the trait bound `[u8]: AutoTrait` is not satisfied in `str`
+error[E0277]: the trait `AutoTrait` is not implemented for `[u8]` in `str`
   --> $DIR/str-contains-slice-conceptually.rs:11:22
    |
 LL |   needs_auto_trait::<str>();

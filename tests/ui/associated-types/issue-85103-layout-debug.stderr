@@ -1,4 +1,4 @@
-error[E0277]: the trait bound `[E]: ToOwned` is not satisfied
+error[E0277]: the trait `ToOwned` is not implemented for `[E]`
   --> $DIR/issue-85103-layout-debug.rs:6:21
    |
 LL | type Edges<'a, E> = Cow<'a, [E]>;

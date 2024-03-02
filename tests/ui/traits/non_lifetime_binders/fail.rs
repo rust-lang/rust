@@ -17,7 +17,7 @@ where
 
 fn main() {
     fail();
-    //~^ ERROR the trait bound `T: Trait` is not satisfied
+    //~^ ERROR trait `Trait` is not implemented for `T`
     auto_trait();
     //~^ ERROR `T` cannot be sent between threads safely
 }

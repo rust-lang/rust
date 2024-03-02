@@ -41,13 +41,13 @@ fn take_test(_: impl Test) {}
 
 fn main() {
     take_foo(1_i32);
-    //~^ERROR the trait bound `i32: Foo` is not satisfied
+    //~^ERROR the trait `Foo` is not implemented for `i32`
     take_baz(1_i32);
     //~^ERROR Boom
     take_boom(1_i32);
     //~^ERROR Boom
     take_whatever(1_i32);
-    //~^ERROR the trait bound `i32: Whatever` is not satisfied
+    //~^ERROR the trait `Whatever` is not implemented for `i32`
     take_test(());
     //~^ERROR {DoesNotExist}
 }

@@ -50,5 +50,5 @@ fn main() {
     // generate incorrect help message.
     let mut baz = Baz(Bar(Foo(LDM)));
     foo(&mut baz);
-    //~^ ERROR the trait bound `&mut Baz: Happy` is not satisfied
+    //~^ ERROR trait `Happy` is not implemented for `&mut Baz`
 }

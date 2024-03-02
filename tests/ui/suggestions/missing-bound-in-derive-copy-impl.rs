@@ -10,13 +10,13 @@ pub struct Vector2<T: Debug + Copy + Clone> {
 pub struct AABB<K> {
     pub loc: Vector2<K>,
     //~^ ERROR doesn't implement `Debug`
-    //~| ERROR `K: Copy` is not satisfied
+    //~| ERROR trait `Copy` is not implemented for `K`
     //~| ERROR doesn't implement `Debug`
-    //~| ERROR `K: Copy` is not satisfied
-    //~| ERROR `K: Copy` is not satisfied
+    //~| ERROR trait `Copy` is not implemented for `K`
+    //~| ERROR trait `Copy` is not implemented for `K`
     pub size: Vector2<K>,
     //~^ ERROR doesn't implement `Debug`
-    //~| ERROR `K: Copy` is not satisfied
+    //~| ERROR trait `Copy` is not implemented for `K`
 }
 
 fn main() {}

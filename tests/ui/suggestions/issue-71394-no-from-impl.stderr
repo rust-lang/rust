@@ -1,4 +1,4 @@
-error[E0277]: the trait bound `&[i8]: From<&[u8]>` is not satisfied
+error[E0277]: the trait `From<&[u8]>` is not implemented for `&[i8]`
   --> $DIR/issue-71394-no-from-impl.rs:8:25
    |
 LL |     let _: &[i8] = data.into();

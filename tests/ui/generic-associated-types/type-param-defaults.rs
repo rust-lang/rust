@@ -30,7 +30,7 @@ fn main() {
     // errors
     foo::<()>();
     //~^ ERROR type mismatch
-    //~| ERROR `u64: Other` is not satisfied
+    //~| ERROR trait `Other` is not implemented for `u64`
     // works
     foo::<u32>();
 }

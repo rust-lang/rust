@@ -9,7 +9,7 @@ mod child {
 
     impl Main for () {
         fn main() -> Something {
-            //~^ ERROR the trait bound `Something: Termination` is not satisfied
+            //~^ ERROR trait `Termination` is not implemented for `Something`
             Something
         }
     }

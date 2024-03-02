@@ -1,4 +1,4 @@
-error[E0277]: the trait bound `String: Copy` is not satisfied
+error[E0277]: the trait `Copy` is not implemented for `String`
   --> $DIR/own-bound-span.rs:14:24
    |
 LL |     let _: <S as D>::P<String>;

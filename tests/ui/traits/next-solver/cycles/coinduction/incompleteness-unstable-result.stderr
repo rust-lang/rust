@@ -1,4 +1,4 @@
-error[E0277]: the trait bound `A<X>: Trait<_, _, _>` is not satisfied
+error[E0277]: the trait `Trait<_, _, _>` is not implemented for `A<X>`
   --> $DIR/incompleteness-unstable-result.rs:63:19
    |
 LL |     impls_trait::<A<X>, _, _, _>();

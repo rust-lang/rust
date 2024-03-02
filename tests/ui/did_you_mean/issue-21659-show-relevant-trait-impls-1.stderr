@@ -1,4 +1,4 @@
-error[E0277]: the trait bound `Bar: Foo<usize>` is not satisfied
+error[E0277]: the trait `Foo<usize>` is not implemented for `Bar`
   --> $DIR/issue-21659-show-relevant-trait-impls-1.rs:24:12
    |
 LL |     f1.foo(1usize);

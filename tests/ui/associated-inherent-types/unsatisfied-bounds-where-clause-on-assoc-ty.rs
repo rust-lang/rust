@@ -10,5 +10,5 @@ impl<T> S<T> {
 }
 
 fn main() {
-    let _: S::<String>::X; //~ ERROR the trait bound `String: Copy` is not satisfied
+    let _: S::<String>::X; //~ ERROR trait `Copy` is not implemented for `String`
 }

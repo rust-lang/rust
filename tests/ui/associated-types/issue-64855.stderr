@@ -1,4 +1,4 @@
-error[E0277]: the trait bound `Bar<T>: Foo` is not satisfied
+error[E0277]: the trait `Foo` is not implemented for `Bar<T>`
   --> $DIR/issue-64855.rs:5:19
    |
 LL | pub struct Bar<T>(<Self as Foo>::Type) where Self: ;

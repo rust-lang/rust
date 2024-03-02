@@ -1,4 +1,4 @@
-error[E0277]: the trait bound `&[u8]: std::io::Write` is not satisfied
+error[E0277]: the trait `std::io::Write` is not implemented for `&[u8]`
   --> $DIR/issue-105645.rs:4:9
    |
 LL |     foo(&mut bref);

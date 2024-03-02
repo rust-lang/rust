@@ -1,4 +1,4 @@
-error[E0277]: the trait bound `T: Copy` is not satisfied
+error[E0277]: the trait `Copy` is not implemented for `T`
   --> $DIR/explicit-drop-bounds.rs:37:18
    |
 LL | impl<T> Drop for DropMe<T>
@@ -14,7 +14,7 @@ help: consider restricting type parameter `T`
 LL | impl<T: std::marker::Copy> Drop for DropMe<T>
    |       +++++++++++++++++++
 
-error[E0277]: the trait bound `T: Copy` is not satisfied
+error[E0277]: the trait `Copy` is not implemented for `T`
   --> $DIR/explicit-drop-bounds.rs:40:18
    |
 LL |     fn drop(&mut self) {}

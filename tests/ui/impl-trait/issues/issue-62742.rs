@@ -2,10 +2,10 @@ use std::marker::PhantomData;
 
 fn _alias_check() {
     WrongImpl::foo(0i32);
-    //~^ ERROR the trait bound `RawImpl<_>: Raw<_>` is not satisfied
-    //~| ERROR the trait bound `RawImpl<_>: Raw<_>` is not satisfied
+    //~^ ERROR trait `Raw<_>` is not implemented for `RawImpl<_>`
+    //~| ERROR trait `Raw<_>` is not implemented for `RawImpl<_>`
     WrongImpl::<()>::foo(0i32);
-    //~^ ERROR the trait bound `RawImpl<()>: Raw<()>` is not satisfied
+    //~^ ERROR trait `Raw<()>` is not implemented for `RawImpl<()>`
     //~| ERROR trait bounds were not satisfied
     CorrectImpl::foo(0i32);
 }

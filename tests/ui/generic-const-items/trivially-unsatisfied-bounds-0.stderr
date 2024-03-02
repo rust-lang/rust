@@ -6,7 +6,7 @@ LL | | where
 LL | |     String: Copy;
    | |_________________^ entering unreachable code
 
-error[E0277]: the trait bound `String: Copy` is not satisfied
+error[E0277]: the trait `Copy` is not implemented for `String`
   --> $DIR/trivially-unsatisfied-bounds-0.rs:11:13
    |
 LL |     let _ = UNUSABLE;

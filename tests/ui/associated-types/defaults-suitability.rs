@@ -11,7 +11,7 @@ struct NotClone;
 // Assoc. type bounds must hold for the default type
 trait Tr {
     type Ty: Clone = NotClone;
-    //~^ ERROR the trait bound `NotClone: Clone` is not satisfied
+    //~^ ERROR trait `Clone` is not implemented for `NotClone`
 }
 
 // Where-clauses defined on the trait must also be considered
@@ -20,19 +20,19 @@ where
     Self::Ty: Clone,
 {
     type Ty = NotClone;
-    //~^ ERROR the trait bound `NotClone: Clone` is not satisfied
+    //~^ ERROR trait `Clone` is not implemented for `NotClone`
 }
 
 // Involved type parameters must fulfill all bounds required by defaults that mention them
 trait Foo<T> {
     type Bar: Clone = Vec<T>;
-    //~^ ERROR the trait bound `T: Clone` is not satisfied
+    //~^ ERROR trait `Clone` is not implemented for `T`
 }
 
 trait Bar: Sized {
     // `(): Foo<Self>` might hold for some possible impls but not all.
     type Assoc: Foo<Self> = ();
-    //~^ ERROR the trait bound `(): Foo<Self>` is not satisfied
+    //~^ ERROR trait `Foo<Self>` is not implemented for `()`
 }
 
 trait IsU8<T> {}
@@ -54,7 +54,7 @@ trait D where
     bool: IsU8<Self::Assoc>,
 {
     type Assoc = NotClone;
-    //~^ ERROR the trait bound `NotClone: IsU8<NotClone>` is not satisfied
+    //~^ ERROR trait `IsU8<NotClone>` is not implemented for `NotClone`
 }
 
 // Test behavior of the check when defaults refer to other defaults:
@@ -63,7 +63,7 @@ trait D where
 // `Clone`.
 trait Foo2<T> {
     type Bar: Clone = Vec<Self::Baz>;
-    //~^ ERROR the trait bound `<Self as Foo2<T>>::Baz: Clone` is not satisfied
+    //~^ ERROR trait `Clone` is not implemented for `<Self as Foo2<T>>::Baz`
     type Baz = T;
 }
 
@@ -72,7 +72,7 @@ trait Foo2<T> {
 // this would be accepted.
 trait Foo25<T: Clone> {
     type Bar: Clone = Vec<Self::Baz>;
-    //~^ ERROR the trait bound `<Self as Foo25<T>>::Baz: Clone` is not satisfied
+    //~^ ERROR trait `Clone` is not implemented for `<Self as Foo25<T>>::Baz`
     type Baz = T;
 }
 
@@ -85,7 +85,7 @@ where
 {
     type Bar = Vec<Self::Baz>;
     type Baz = T;
-    //~^ ERROR the trait bound `T: Clone` is not satisfied
+    //~^ ERROR trait `Clone` is not implemented for `T`
 }
 
 // This one finally works, with `Clone` bounds on all assoc. types and the type

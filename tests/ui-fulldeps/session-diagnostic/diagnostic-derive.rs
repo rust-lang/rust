@@ -347,7 +347,7 @@ struct ArgFieldWithoutSkip {
     #[primary_span]
     span: Span,
     other: Hello,
-    //~^ ERROR the trait bound `Hello: IntoDiagnosticArg` is not satisfied
+    //~^ ERROR trait `IntoDiagnosticArg` is not implemented for `Hello`
 }
 
 #[derive(Diagnostic)]

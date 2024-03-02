@@ -1,4 +1,4 @@
-error[E0277]: the trait bound `fn() -> Foo: Bar` is not satisfied
+error[E0277]: the trait `Bar` is not implemented for `fn() -> Foo`
   --> $DIR/call-on-unimplemented-fn-ptr.rs:10:15
    |
 LL |     needs_bar(f);

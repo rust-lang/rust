@@ -1,4 +1,4 @@
-error[E0277]: the trait bound `[i32]: Index<u32>` is not satisfied
+error[E0277]: the trait `Index<u32>` is not implemented for `[i32]`
   --> $DIR/on-impl.rs:22:47
    |
 LL |     Index::<u32>::index(&[1, 2, 3] as &[i32], 2u32);
@@ -10,7 +10,7 @@ LL |     Index::<u32>::index(&[1, 2, 3] as &[i32], 2u32);
    = help: the trait `Index<usize>` is implemented for `[i32]`
    = help: for that trait implementation, expected `usize`, found `u32`
 
-error[E0277]: the trait bound `[i32]: Index<u32>` is not satisfied
+error[E0277]: the trait `Index<u32>` is not implemented for `[i32]`
   --> $DIR/on-impl.rs:22:5
    |
 LL |     Index::<u32>::index(&[1, 2, 3] as &[i32], 2u32);

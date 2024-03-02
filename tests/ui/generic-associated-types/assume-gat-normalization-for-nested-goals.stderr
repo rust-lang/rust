@@ -1,4 +1,4 @@
-error[E0277]: the trait bound `<Self as Foo>::Bar<()>: Eq<i32>` is not satisfied
+error[E0277]: the trait `Eq<i32>` is not implemented for `<Self as Foo>::Bar<()>`
   --> $DIR/assume-gat-normalization-for-nested-goals.rs:6:30
    |
 LL |     type Bar<T>: Baz<Self> = i32;

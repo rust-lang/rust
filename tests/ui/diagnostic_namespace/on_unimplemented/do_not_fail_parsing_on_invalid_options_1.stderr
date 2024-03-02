@@ -63,7 +63,7 @@ LL | #[diagnostic::on_unimplemented(unsupported = "foo")]
    = help: only `message`, `note` and `label` are allowed as options
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
-error[E0277]: the trait bound `i32: Foo` is not satisfied
+error[E0277]: the trait `Foo` is not implemented for `i32`
   --> $DIR/do_not_fail_parsing_on_invalid_options_1.rs:43:14
    |
 LL |     take_foo(1_i32);
@@ -147,7 +147,7 @@ LL | #[diagnostic::on_unimplemented]
    = help: at least one of the `message`, `note` and `label` options are expected
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
-error[E0277]: the trait bound `i32: Whatever` is not satisfied
+error[E0277]: the trait `Whatever` is not implemented for `i32`
   --> $DIR/do_not_fail_parsing_on_invalid_options_1.rs:49:19
    |
 LL |     take_whatever(1_i32);

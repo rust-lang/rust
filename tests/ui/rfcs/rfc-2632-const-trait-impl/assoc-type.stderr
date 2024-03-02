@@ -1,4 +1,4 @@
-error[E0277]: the trait bound `NonConstAdd: ~const Add` is not satisfied
+error[E0277]: the trait `~const Add` is not implemented for `NonConstAdd`
   --> $DIR/assoc-type.rs:35:16
    |
 LL |     type Bar = NonConstAdd;

@@ -5,7 +5,7 @@ trait Foo {
 }
 
 impl Foo for () {
-    type Assoc = bool; //~ ERROR the trait bound `bool: Bar` is not satisfied
+    type Assoc = bool; //~ ERROR trait `Bar` is not implemented for `bool`
 }
 
 trait Baz
@@ -16,7 +16,7 @@ where
 }
 
 impl Baz for () {
-    type Assoc = bool; //~ ERROR the trait bound `bool: Bar` is not satisfied
+    type Assoc = bool; //~ ERROR trait `Bar` is not implemented for `bool`
 }
 
 trait Bat
@@ -27,7 +27,7 @@ where
 }
 
 impl Bat for () {
-    type Assoc = bool; //~ ERROR the trait bound `bool: Bar` is not satisfied
+    type Assoc = bool; //~ ERROR trait `Bar` is not implemented for `bool`
 }
 
 fn main() {}

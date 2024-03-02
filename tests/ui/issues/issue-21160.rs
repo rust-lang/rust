@@ -6,6 +6,6 @@ impl Bar {
 
 #[derive(Hash)]
 struct Foo(Bar);
-//~^ error: `Bar: Hash` is not satisfied
+//~^ ERROR trait `Hash` is not implemented for `Bar`
 
 fn main() {}

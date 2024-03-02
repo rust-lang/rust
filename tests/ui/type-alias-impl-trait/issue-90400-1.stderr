@@ -1,4 +1,4 @@
-error[E0277]: the trait bound `B: Bar` is not satisfied
+error[E0277]: the trait `Bar` is not implemented for `B`
   --> $DIR/issue-90400-1.rs:22:9
    |
 LL |         move || bar.bar()

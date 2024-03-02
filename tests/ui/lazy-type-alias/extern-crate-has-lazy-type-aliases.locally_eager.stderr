@@ -1,4 +1,4 @@
-error[E0277]: the trait bound `String: Copy` is not satisfied
+error[E0277]: the trait `Copy` is not implemented for `String`
   --> $DIR/extern-crate-has-lazy-type-aliases.rs:15:24
    |
 LL |     let _: lazy::Alias<String>;

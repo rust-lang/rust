@@ -1,4 +1,4 @@
-error[E0277]: the trait bound `usize: Meow` is not satisfied
+error[E0277]: the trait `Meow` is not implemented for `usize`
   --> $DIR/issue-99080.rs:10:16
    |
 LL |     needs_meow(1usize);

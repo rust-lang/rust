@@ -1,4 +1,4 @@
-error[E0277]: the trait bound `(): T` is not satisfied
+error[E0277]: the trait `T` is not implemented for `()`
   --> $DIR/impl_trait_fallback3.rs:11:11
    |
 LL | fn a() -> Foo {

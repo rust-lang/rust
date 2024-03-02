@@ -40,8 +40,8 @@ fn main() {
         drop(clonable_0);
     };
     check_copy(&gen_clone_0);
-    //~^ ERROR the trait bound `Vec<u32>: Copy` is not satisfied
-    //~| ERROR the trait bound `Vec<char>: Copy` is not satisfied
+    //~^ ERROR trait `Copy` is not implemented for `Vec<u32>`
+    //~| ERROR trait `Copy` is not implemented for `Vec<char>`
     check_clone(&gen_clone_0);
     let gen_clone_1 = move || {
         let v = vec!['a'];
@@ -56,17 +56,17 @@ fn main() {
         drop(clonable_1);
     };
     check_copy(&gen_clone_1);
-    //~^ ERROR the trait bound `Vec<u32>: Copy` is not satisfied
-    //~| ERROR the trait bound `Vec<char>: Copy` is not satisfied
+    //~^ ERROR trait `Copy` is not implemented for `Vec<u32>`
+    //~| ERROR trait `Copy` is not implemented for `Vec<char>`
     check_clone(&gen_clone_1);
     let gen_non_clone = move || {
         yield;
         drop(non_clonable);
     };
     check_copy(&gen_non_clone);
-    //~^ ERROR the trait bound `NonClone: Copy` is not satisfied
+    //~^ ERROR trait `Copy` is not implemented for `NonClone`
     check_clone(&gen_non_clone);
-    //~^ ERROR the trait bound `NonClone: Clone` is not satisfied
+    //~^ ERROR trait `Clone` is not implemented for `NonClone`
 }
 
 fn check_copy<T: Copy>(_x: &T) {}

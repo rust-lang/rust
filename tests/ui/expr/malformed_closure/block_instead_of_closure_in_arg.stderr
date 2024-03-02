@@ -14,7 +14,7 @@ LL | ||         }
 LL | |      });
    | |______^ expected an `FnOnce(&bool)` closure, found `bool`
    |
-   = help: the trait `for<'a> FnOnce<(&'a bool,)>` is not implemented for `bool`
+   = help: the trait `FnOnce<(&bool,)>` is not implemented for `bool`
 note: required by a bound in `Option::<T>::filter`
   --> $SRC_DIR/core/src/option.rs:LL:COL
 help: you might have meant to create the closure instead of a block

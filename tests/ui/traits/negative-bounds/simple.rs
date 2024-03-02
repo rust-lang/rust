@@ -8,12 +8,12 @@ fn neg_param_env<T: !Copy>() {
 
 fn pos_param_env<T: Copy>() {
     not_copy::<T>();
-    //~^ ERROR the trait bound `T: !Copy` is not satisfied
+    //~^ ERROR : !Copy` is not satisfied
 }
 
 fn unknown<T>() {
     not_copy::<T>();
-    //~^ ERROR the trait bound `T: !Copy` is not satisfied
+    //~^ ERROR : !Copy` is not satisfied
 }
 
 struct NotCopyable;
@@ -28,14 +28,14 @@ struct Copyable;
 
 fn pos_impl() {
     not_copy::<Copyable>();
-    //~^ ERROR the trait bound `Copyable: !Copy` is not satisfied
+    //~^ ERROR : !Copy` is not satisfied
 }
 
 struct NotNecessarilyCopyable;
 
 fn unknown_impl() {
     not_copy::<NotNecessarilyCopyable>();
-    //~^ ERROR the trait bound `NotNecessarilyCopyable: !Copy` is not satisfied
+    //~^ ERROR : !Copy` is not satisfied
 }
 
 fn main() {}

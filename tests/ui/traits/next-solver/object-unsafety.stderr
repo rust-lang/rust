@@ -1,4 +1,4 @@
-error[E0277]: the trait bound `dyn Setup<From = T>: Setup` is not satisfied
+error[E0277]: the trait `Setup` is not implemented for `dyn Setup<From = T>`
   --> $DIR/object-unsafety.rs:12:12
    |
 LL |     copy::<dyn Setup<From=T>>(t)

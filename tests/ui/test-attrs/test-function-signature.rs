@@ -6,7 +6,7 @@ fn foo() -> Result<(), ()> {
 }
 
 #[test]
-fn bar() -> i32 { //~ ERROR the trait bound `i32: Termination` is not satisfied
+fn bar() -> i32 { //~ ERROR trait `Termination` is not implemented for `i32`
     0
 }
 

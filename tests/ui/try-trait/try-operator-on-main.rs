@@ -11,7 +11,7 @@ fn main() {
     //~^ ERROR the `?` operator can only be used in a function that
 
     // an unrelated use of `Try`
-    try_trait_generic::<()>(); //~ ERROR the trait bound
+    try_trait_generic::<()>(); //~ ERROR the trait
 }
 
 fn try_trait_generic<T: Try>() -> T {

@@ -19,7 +19,7 @@ LL + #[derive(PartialEq)]
 LL | struct NoCloneOrEq;
    |
 
-error[E0277]: the trait bound `NoCloneOrEq: Clone` is not satisfied
+error[E0277]: the trait `Clone` is not implemented for `NoCloneOrEq`
   --> $DIR/deriving-no-inner-impl-error-message.rs:9:5
    |
 LL | #[derive(Clone)]

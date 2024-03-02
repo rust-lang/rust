@@ -1,4 +1,4 @@
-error[E0277]: the trait bound `S: Clone` is not satisfied
+error[E0277]: the trait `Clone` is not implemented for `S`
   --> $DIR/issue-1920-2.rs:10:20
    |
 LL |     assert_clone::<bar::S>();

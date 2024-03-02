@@ -1,4 +1,4 @@
-error[E0277]: the trait bound `B: Bar` is not satisfied
+error[E0277]: the trait `Bar` is not implemented for `B`
   --> $DIR/issue-90400-2.rs:25:9
    |
 LL |         MyBaz(bar)

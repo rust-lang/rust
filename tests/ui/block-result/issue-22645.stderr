@@ -1,4 +1,4 @@
-error[E0277]: the trait bound `{integer}: Scalar` is not satisfied
+error[E0277]: the trait `Scalar` is not implemented for `{integer}`
   --> $DIR/issue-22645.rs:15:5
    |
 LL |   b + 3

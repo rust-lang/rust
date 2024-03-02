@@ -1,4 +1,4 @@
-error[E0277]: the trait bound `str: Clone` is not satisfied
+error[E0277]: the trait `Clone` is not implemented for `str`
   --> $DIR/hr-associated-type-bound-param-5.rs:26:14
    |
 LL |     type U = str;
@@ -14,7 +14,7 @@ LL | trait X<'a, T: Cycle + for<'b> X<'b, T>>
 LL |     for<'b> <T::Next as X<'b, T::Next>>::U: Clone,
    |                                             ^^^^^ required by this bound in `X`
 
-error[E0277]: the trait bound `str: Clone` is not satisfied
+error[E0277]: the trait `Clone` is not implemented for `str`
   --> $DIR/hr-associated-type-bound-param-5.rs:31:14
    |
 LL |     type U = str;
@@ -30,7 +30,7 @@ LL | trait X<'a, T: Cycle + for<'b> X<'b, T>>
 LL |     for<'b> <T::Next as X<'b, T::Next>>::U: Clone,
    |                                             ^^^^^ required by this bound in `X`
 
-error[E0277]: the trait bound `str: Clone` is not satisfied
+error[E0277]: the trait `Clone` is not implemented for `str`
   --> $DIR/hr-associated-type-bound-param-5.rs:36:5
    |
 LL |     <i32 as X<Box<i32>>>::f("abc");

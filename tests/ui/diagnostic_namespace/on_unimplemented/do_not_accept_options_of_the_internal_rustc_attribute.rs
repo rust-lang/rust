@@ -61,7 +61,7 @@ fn main() {
     takes_foo(());
     //~^ERROR trait has `()` and `i32` as params
     takes_bar(());
-    //~^ERROR the trait bound `(): Bar` is not satisfied
+    //~^ERROR the trait `Bar` is not implemented for `()`
     takes_baz(());
     //~^ERROR {from_desugaring}{direct}{cause}{integral}{integer}
 }

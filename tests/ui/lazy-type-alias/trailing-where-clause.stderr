@@ -1,4 +1,4 @@
-error[E0277]: the trait bound `String: From<()>` is not satisfied
+error[E0277]: the trait `From<()>` is not implemented for `String`
   --> $DIR/trailing-where-clause.rs:12:18
    |
 LL |     let _: Alias<()>;

@@ -1,7 +1,7 @@
 fn main() {
     insert_resource(Marker);
     insert_resource(Time);
-    //~^ ERROR the trait bound `fn(u32) -> Time {Time}: Resource` is not satisfied
+    //~^ ERROR trait `Resource` is not implemented for `fn(u32) -> Time {Time}`
     //~| HELP use parentheses to construct this tuple struct
 }
 

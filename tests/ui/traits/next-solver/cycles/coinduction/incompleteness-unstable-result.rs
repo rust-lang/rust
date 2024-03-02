@@ -61,7 +61,7 @@ where
     // entering the cycle from `A` fails, but would work if we were to use the cache
     // result of `B<X>`.
     impls_trait::<A<X>, _, _, _>();
-    //~^ ERROR the trait bound `A<X>: Trait<_, _, _>` is not satisfied
+    //~^ ERROR trait `Trait<_, _, _>` is not implemented for `A<X>`
 }
 
 fn main() {

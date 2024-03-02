@@ -16,9 +16,9 @@ impl<T> Foo for Fooy<T> {
     type B<'a, 'b> = (&'a(), &'b ()) where 'b: 'a;
     //~^ ERROR impl has stricter requirements than trait
     type C = String where Self: Copy;
-    //~^ ERROR the trait bound `T: Copy` is not satisfied
+    //~^ ERROR trait `Copy` is not implemented for `T`
     fn d() where Self: Copy {}
-    //~^ ERROR the trait bound `T: Copy` is not satisfied
+    //~^ ERROR trait `Copy` is not implemented for `T`
 }
 
 fn main() {}

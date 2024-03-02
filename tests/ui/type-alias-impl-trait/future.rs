@@ -13,7 +13,7 @@ type FooFuture<B> = impl Future<Output = ()>;
 
 fn foo<B: Bar>(bar: B) -> FooFuture<B> {
     async move { bar.bar() }
-    //~^ ERROR: the trait bound `B: Bar` is not satisfied
+    //~^ ERROR trait `Bar` is not implemented for `B`
 }
 
 pub fn mainish(ctx: &mut std::task::Context) {

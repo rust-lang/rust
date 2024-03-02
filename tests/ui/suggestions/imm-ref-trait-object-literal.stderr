@@ -1,4 +1,4 @@
-error[E0277]: the trait bound `&S: Trait` is not satisfied
+error[E0277]: the trait `Trait` is not implemented for `&S`
   --> $DIR/imm-ref-trait-object-literal.rs:12:7
    |
 LL |   foo(&s);

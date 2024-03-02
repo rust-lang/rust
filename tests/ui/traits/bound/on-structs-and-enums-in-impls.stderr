@@ -1,4 +1,4 @@
-error[E0277]: the trait bound `u16: Trait` is not satisfied
+error[E0277]: the trait `Trait` is not implemented for `u16`
   --> $DIR/on-structs-and-enums-in-impls.rs:20:6
    |
 LL | impl PolyTrait<Foo<u16>> for Struct {

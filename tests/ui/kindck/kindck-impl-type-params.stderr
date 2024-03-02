@@ -17,7 +17,7 @@ help: consider restricting type parameter `T`
 LL | fn f<T: std::marker::Send>(val: T) {
    |       +++++++++++++++++++
 
-error[E0277]: the trait bound `T: Copy` is not satisfied
+error[E0277]: the trait `Copy` is not implemented for `T`
   --> $DIR/kindck-impl-type-params.rs:16:13
    |
 LL |     let a = &t as &dyn Gettable<T>;
@@ -55,7 +55,7 @@ help: consider restricting type parameter `T`
 LL | fn g<T: std::marker::Send>(val: T) {
    |       +++++++++++++++++++
 
-error[E0277]: the trait bound `T: Copy` is not satisfied
+error[E0277]: the trait `Copy` is not implemented for `T`
   --> $DIR/kindck-impl-type-params.rs:23:31
    |
 LL |     let a: &dyn Gettable<T> = &t;
@@ -74,7 +74,7 @@ help: consider restricting type parameter `T`
 LL | fn g<T: std::marker::Copy>(val: T) {
    |       +++++++++++++++++++
 
-error[E0277]: the trait bound `String: Copy` is not satisfied
+error[E0277]: the trait `Copy` is not implemented for `String`
   --> $DIR/kindck-impl-type-params.rs:36:13
    |
 LL |     let a = t as Box<dyn Gettable<String>>;
@@ -90,7 +90,7 @@ LL | impl<T: Send + Copy + 'static> Gettable<T> for S<T> {}
    |                unsatisfied trait bound introduced here
    = note: required for the cast from `Box<S<String>>` to `Box<dyn Gettable<String>>`
 
-error[E0277]: the trait bound `Foo: Copy` is not satisfied
+error[E0277]: the trait `Copy` is not implemented for `Foo`
   --> $DIR/kindck-impl-type-params.rs:44:37
    |
 LL |     let a: Box<dyn Gettable<Foo>> = t;

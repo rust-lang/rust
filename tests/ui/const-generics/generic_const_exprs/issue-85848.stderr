@@ -1,4 +1,4 @@
-error[E0277]: the trait bound `(): _Contains<&C>` is not satisfied
+error[E0277]: the trait `_Contains<&C>` is not implemented for `()`
   --> $DIR/issue-85848.rs:24:29
    |
 LL |     writes_to_specific_path(&cap);

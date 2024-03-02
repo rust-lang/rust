@@ -12,5 +12,5 @@ fn assert_clone<T>() where T : Clone { }
 
 fn main() {
     assert_clone::<foo::issue_1920::S>();
-    //~^ ERROR `S: Clone` is not satisfied
+    //~^ ERROR trait `Clone` is not implemented for `S`
 }

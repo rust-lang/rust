@@ -1,4 +1,4 @@
-error[E0277]: the trait bound `Error: Clone` is not satisfied
+error[E0277]: the trait `Clone` is not implemented for `Error`
   --> $DIR/derives-span-Clone-enum.rs:9:6
    |
 LL | #[derive(Clone)]

@@ -17,7 +17,7 @@ impl Trait for Ty {
 }
 
 fn main() {
-    require::<Ty>(); //~ ERROR the trait bound `Ty: const Trait` is not satisfied
+    require::<Ty>(); //~ ERROR trait `const Trait` is not implemented for `Ty`
 }
 
 struct Container<const N: u32>;

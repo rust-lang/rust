@@ -13,7 +13,7 @@ error[E0277]: the size for values of type `(dyn Future<Output = T> + Unpin + 'st
 LL | async fn bug<T>(mut f: dyn Future<Output = T> + Unpin) -> T {
    |                 ^^^^^ doesn't have a size known at compile-time
    |
-   = help: the trait `Sized` is not implemented for `(dyn Future<Output = T> + Unpin + 'static)`
+   = help: the trait `Sized` is not implemented for `dyn Future<Output = T> + Unpin`
    = note: all values captured by value by a closure must have a statically known size
 
 error: aborting due to 1 previous error; 1 warning emitted

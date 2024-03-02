@@ -11,7 +11,7 @@ where
     C: Delegates<FileCap<{ false }>>,
 {
     writes_to_specific_path(&cap);
-    //~^ error: the trait bound
+    //~^ ERROR the trait `Delegates<FileCap<false>>` is not implemented for `&C`
 }
 
 fn writes_to_specific_path<C>(cap: &C)

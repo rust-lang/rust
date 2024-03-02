@@ -26,6 +26,6 @@ pub trait Allocator { type Buffer; }
 
 #[repr(packed)]
 struct Foo(Matrix<<DefaultAllocator as Allocator>::Buffer>);
-//~^ ERROR the trait bound `DefaultAllocator: Allocator` is not satisfied
+//~^ ERROR trait `Allocator` is not implemented for `DefaultAllocator`
 
 fn main() { }

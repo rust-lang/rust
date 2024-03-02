@@ -20,7 +20,7 @@ LL | fn baz<I>(x: &<I as Foo<A=Bar>>::A) {}
    |
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
-error[E0277]: the trait bound `I: Foo` is not satisfied
+error[E0277]: the trait `Foo` is not implemented for `I`
   --> $DIR/E0229.rs:13:15
    |
 LL | fn baz<I>(x: &<I as Foo<A=Bar>>::A) {}
@@ -31,7 +31,7 @@ help: consider restricting type parameter `I`
 LL | fn baz<I: Foo>(x: &<I as Foo<A=Bar>>::A) {}
    |         +++++
 
-error[E0277]: the trait bound `I: Foo` is not satisfied
+error[E0277]: the trait `Foo` is not implemented for `I`
   --> $DIR/E0229.rs:13:37
    |
 LL | fn baz<I>(x: &<I as Foo<A=Bar>>::A) {}

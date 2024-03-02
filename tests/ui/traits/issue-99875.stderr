@@ -1,4 +1,4 @@
-error[E0277]: the trait bound `fn(Argument) -> Return {function}: Trait` is not satisfied
+error[E0277]: the trait `Trait` is not implemented for `fn(Argument) -> Return {function}`
   --> $DIR/issue-99875.rs:12:11
    |
 LL |     takes(function);
@@ -16,7 +16,7 @@ help: the trait `Trait` is implemented for fn pointer `fn(Argument) -> Return`, 
 LL |     takes(function as fn(Argument) -> Return);
    |                    +++++++++++++++++++++++++
 
-error[E0277]: the trait bound `{closure@$DIR/issue-99875.rs:14:11: 14:34}: Trait` is not satisfied
+error[E0277]: the trait `Trait` is not implemented for `{closure@$DIR/issue-99875.rs:14:11: 14:34}`
   --> $DIR/issue-99875.rs:14:11
    |
 LL |     takes(|_: Argument| -> Return { todo!() });

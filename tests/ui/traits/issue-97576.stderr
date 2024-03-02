@@ -1,4 +1,4 @@
-error[E0277]: the trait bound `String: From<impl ToString>` is not satisfied
+error[E0277]: the trait `From<impl ToString>` is not implemented for `String`
   --> $DIR/issue-97576.rs:8:22
    |
 LL |             bar: bar.into(),

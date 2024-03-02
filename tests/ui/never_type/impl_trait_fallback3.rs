@@ -9,7 +9,7 @@ trait T {
 type Foo = impl T;
 
 fn a() -> Foo {
-    //~^ ERROR the trait bound `(): T` is not satisfied
+    //~^ ERROR trait `T` is not implemented for `()`
     // This is not a defining use, it doesn't actually constrain the opaque type.
     panic!()
 }

@@ -16,5 +16,5 @@ fn test_not_object<T: NotObject + ?Sized>() {}
 fn main() {
     test_yes_object::<dyn YesObject>();
     test_not_object::<dyn NotObject>();
-    //~^ ERROR the trait bound `dyn NotObject: NotObject` is not satisfied
+    //~^ ERROR trait `NotObject` is not implemented for `dyn NotObject`
 }

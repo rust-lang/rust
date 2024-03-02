@@ -10,7 +10,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         {
             let path = std::path::Path::new(".");
             let mut f = File::open(path.to_str())?;
-            //~^ ERROR the trait bound
+            //~^ ERROR the trait
             let mut src = String::new();
             f.read_to_string(&mut src)?;
             Ok(())

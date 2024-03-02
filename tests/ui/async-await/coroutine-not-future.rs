@@ -29,11 +29,11 @@ fn main() {
 
     // async futures are not coroutines:
     takes_coroutine(async_fn());
-    //~^ ERROR the trait bound
+    //~^ ERROR the trait
     takes_coroutine(returns_async_block());
-    //~^ ERROR the trait bound
+    //~^ ERROR the trait
     takes_coroutine(async {});
-    //~^ ERROR the trait bound
+    //~^ ERROR the trait
 
     // coroutines are not futures:
     takes_future(returns_coroutine());

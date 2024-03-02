@@ -1,4 +1,4 @@
-error[E0277]: the trait bound `Error: Default` is not satisfied
+error[E0277]: the trait `Default` is not implemented for `Error`
   --> $DIR/derives-span-Default-struct.rs:8:5
    |
 LL | #[derive(Default)]

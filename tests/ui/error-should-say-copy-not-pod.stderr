@@ -1,4 +1,4 @@
-error[E0277]: the trait bound `String: Copy` is not satisfied
+error[E0277]: the trait `Copy` is not implemented for `String`
   --> $DIR/error-should-say-copy-not-pod.rs:6:17
    |
 LL |     check_bound("nocopy".to_string());

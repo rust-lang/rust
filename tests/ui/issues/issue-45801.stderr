@@ -1,4 +1,4 @@
-error[E0277]: the trait bound `Params: Plugin<i32>` is not satisfied
+error[E0277]: the trait `Plugin<i32>` is not implemented for `Params`
   --> $DIR/issue-45801.rs:21:9
    |
 LL |     req.get_ref::<Params>();

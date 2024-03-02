@@ -19,7 +19,7 @@ help: consider introducing a `where` clause, but there might be an alternative b
 LL |     struct Outer<T>(Inner<T>) where a::Inner<T>: Debug;
    |                               ++++++++++++++++++++++++
 
-error[E0277]: the trait bound `T: c::Trait` is not satisfied
+error[E0277]: the trait `c::Trait` is not implemented for `T`
   --> $DIR/derive-macro-missing-bounds.rs:41:21
    |
 LL |     #[derive(Debug)]
@@ -43,7 +43,7 @@ help: consider restricting type parameter `T`
 LL |     struct Outer<T: c::Trait>(Inner<T>);
    |                   ++++++++++
 
-error[E0277]: the trait bound `T: d::Trait` is not satisfied
+error[E0277]: the trait `d::Trait` is not implemented for `T`
   --> $DIR/derive-macro-missing-bounds.rs:56:21
    |
 LL |     #[derive(Debug)]
@@ -65,7 +65,7 @@ help: consider restricting type parameter `T`
 LL |     struct Outer<T: d::Trait>(Inner<T>);
    |                   ++++++++++
 
-error[E0277]: the trait bound `T: e::Trait` is not satisfied
+error[E0277]: the trait `e::Trait` is not implemented for `T`
   --> $DIR/derive-macro-missing-bounds.rs:71:21
    |
 LL |     #[derive(Debug)]
@@ -87,7 +87,7 @@ help: consider restricting type parameter `T`
 LL |     struct Outer<T: e::Trait>(Inner<T>);
    |                   ++++++++++
 
-error[E0277]: the trait bound `T: f::Trait` is not satisfied
+error[E0277]: the trait `f::Trait` is not implemented for `T`
   --> $DIR/derive-macro-missing-bounds.rs:86:21
    |
 LL |     #[derive(Debug)]

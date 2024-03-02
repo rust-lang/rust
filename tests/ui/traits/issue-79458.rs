@@ -4,7 +4,7 @@
 #[derive(Clone)]
 struct Foo<'a, T> {
     bar: &'a mut T
-    //~^ ERROR the trait bound `&mut T: Clone` is not satisfied
+    //~^ ERROR trait `Clone` is not implemented for `&mut T`
 }
 
 fn main() {}

@@ -1,4 +1,4 @@
-error[E0277]: the trait bound `Self: Tr<U>` is not satisfied
+error[E0277]: the trait `Tr<U>` is not implemented for `Self`
   --> $DIR/type-params-in-different-spaces-2.rs:10:16
    |
 LL |         Tr::op(u)
@@ -11,7 +11,7 @@ help: consider further restricting `Self`
 LL |     fn test<U>(u: U) -> Self where Self: Tr<U> {
    |                              +++++++++++++++++
 
-error[E0277]: the trait bound `Self: Tr<U>` is not satisfied
+error[E0277]: the trait `Tr<U>` is not implemented for `Self`
   --> $DIR/type-params-in-different-spaces-2.rs:16:16
    |
 LL |         Tr::op(u)

@@ -1,4 +1,4 @@
-error[E0277]: the trait bound `ThisImplsUnsafeTrait: MyTrait` is not satisfied
+error[E0277]: the trait `MyTrait` is not implemented for `ThisImplsUnsafeTrait`
   --> $DIR/typeck-default-trait-impl-negation.rs:22:19
    |
 LL |     is_my_trait::<ThisImplsUnsafeTrait>();
@@ -10,7 +10,7 @@ note: required by a bound in `is_my_trait`
 LL | fn is_my_trait<T: MyTrait>() {}
    |                   ^^^^^^^ required by this bound in `is_my_trait`
 
-error[E0277]: the trait bound `ThisImplsTrait: MyUnsafeTrait` is not satisfied
+error[E0277]: the trait `MyUnsafeTrait` is not implemented for `ThisImplsTrait`
   --> $DIR/typeck-default-trait-impl-negation.rs:25:26
    |
 LL |     is_my_unsafe_trait::<ThisImplsTrait>();

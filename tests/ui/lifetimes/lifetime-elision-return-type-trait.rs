@@ -6,7 +6,7 @@ trait Future {
 use std::error::Error;
 
 fn foo() -> impl Future<Item=(), Error=Box<dyn Error>> {
-    //~^ ERROR not satisfied
+    //~^ ERROR the trait `Future` is not implemented for `Result<(), _>`
     Ok(())
 }
 

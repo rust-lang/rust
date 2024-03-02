@@ -20,10 +20,10 @@ fn is_my_unsafe_trait<T: MyUnsafeTrait>() {}
 fn main() {
     is_my_trait::<ThisImplsTrait>();
     is_my_trait::<ThisImplsUnsafeTrait>();
-    //~^ ERROR `ThisImplsUnsafeTrait: MyTrait` is not satisfied
+    //~^ ERROR trait `MyTrait` is not implemented for `ThisImplsUnsafeTrait`
 
     is_my_unsafe_trait::<ThisImplsTrait>();
-    //~^ ERROR `ThisImplsTrait: MyUnsafeTrait` is not satisfied
+    //~^ ERROR trait `MyUnsafeTrait` is not implemented for `ThisImplsTrait`
 
     is_my_unsafe_trait::<ThisImplsUnsafeTrait>();
 }

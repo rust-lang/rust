@@ -13,5 +13,5 @@ fn f<P: Processing + ?Sized>() {
 fn main() {
     struct MyCall;
     f::<dyn Processing<Call = MyCall>>();
-    //~^ ERROR: the trait bound `MyCall: Callback` is not satisfied
+    //~^ ERROR trait `Callback` is not implemented for `MyCall`
 }

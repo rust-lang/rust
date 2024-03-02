@@ -44,5 +44,5 @@ fn impls_trait<T: Trait>() {}
 
 fn main() {
     impls_trait::<MultipleCandidates>();
-    //~^ ERROR the trait bound `MultipleCandidates: Trait` is not satisfied
+    //~^ ERROR trait `Trait` is not implemented for `MultipleCandidates`
 }

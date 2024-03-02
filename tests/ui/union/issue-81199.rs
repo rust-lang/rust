@@ -3,7 +3,7 @@ union PtrRepr<T: ?Sized> {
     const_ptr: *const T,
     mut_ptr: *mut T,
     components: PtrComponents<T>,
-    //~^ ERROR the trait bound
+    //~^ ERROR the trait
     //~| ERROR field must implement `Copy`
 }
 

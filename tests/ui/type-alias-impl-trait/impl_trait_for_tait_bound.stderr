@@ -1,4 +1,4 @@
-error[E0277]: the trait bound `u32: Yay` is not satisfied
+error[E0277]: the trait `Yay` is not implemented for `u32`
   --> $DIR/impl_trait_for_tait_bound.rs:10:14
    |
 LL |     is_yay::<u32>();

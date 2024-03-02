@@ -7,7 +7,7 @@ LL |
 LL |     i
    |     - return type was inferred to be `&i32` here
    |
-   = help: the trait `PartialEq<Bar<'b, 'a>>` is not implemented for `&i32`
+   = help: the trait `PartialEq<Bar<'_, '_>>` is not implemented for `&i32`
    = help: the trait `PartialEq` is implemented for `i32`
 
 error[E0277]: can't compare `&i32` with `(i32, Foo<'a, 'b>::{opaque#0})`
@@ -19,7 +19,7 @@ LL |
 LL |     (42, i)
    |     ------- return type was inferred to be `(i32, &i32)` here
    |
-   = help: the trait `PartialEq<(i32, Foo<'a, 'b>::{opaque#0})>` is not implemented for `&i32`
+   = help: the trait `PartialEq<(i32, Foo<'_, '_>::{opaque#0})>` is not implemented for `&i32`
    = help: the trait `PartialEq` is implemented for `i32`
 
 error[E0277]: can't compare `&i32` with `(i32, Moo<'b, 'a>::{opaque#0})`
@@ -31,7 +31,7 @@ LL |
 LL |     (42, i)
    |     ------- return type was inferred to be `(i32, &i32)` here
    |
-   = help: the trait `PartialEq<(i32, Moo<'b, 'a>::{opaque#0})>` is not implemented for `&i32`
+   = help: the trait `PartialEq<(i32, Moo<'_, '_>::{opaque#0})>` is not implemented for `&i32`
    = help: the trait `PartialEq` is implemented for `i32`
 
 error: aborting due to 3 previous errors

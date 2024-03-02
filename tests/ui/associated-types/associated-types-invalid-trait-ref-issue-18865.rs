@@ -8,7 +8,7 @@ trait Foo<T> {
 
 fn f<T:Foo<isize>>(t: &T) {
     let u: <T as Foo<usize>>::Bar = t.get_bar();
-    //~^ ERROR the trait bound `T: Foo<usize>` is not satisfied
+    //~^ ERROR trait `Foo<usize>` is not implemented for `T`
 }
 
 fn main() { }

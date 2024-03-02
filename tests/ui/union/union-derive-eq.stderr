@@ -1,4 +1,4 @@
-error[E0277]: the trait bound `PartialEqNotEq: Eq` is not satisfied
+error[E0277]: the trait `Eq` is not implemented for `PartialEqNotEq`
   --> $DIR/union-derive-eq.rs:13:5
    |
 LL | #[derive(Eq)]

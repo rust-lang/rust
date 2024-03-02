@@ -1,4 +1,4 @@
-error[E0277]: the trait bound `(): T` is not satisfied
+error[E0277]: the trait `T` is not implemented for `()`
   --> $DIR/feature-gate-never_type_fallback.rs:10:9
    |
 LL |     foo(panic!())

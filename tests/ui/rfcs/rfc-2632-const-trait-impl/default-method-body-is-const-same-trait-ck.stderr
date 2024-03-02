@@ -1,4 +1,4 @@
-error[E0277]: the trait bound `(): ~const Tr` is not satisfied
+error[E0277]: the trait `~const Tr` is not implemented for `()`
   --> $DIR/default-method-body-is-const-same-trait-ck.rs:8:12
    |
 LL |         ().a()

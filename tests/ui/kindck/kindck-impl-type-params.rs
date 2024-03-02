@@ -15,14 +15,14 @@ fn f<T>(val: T) {
     let t: S<T> = S(marker::PhantomData);
     let a = &t as &dyn Gettable<T>;
     //~^ ERROR `T` cannot be sent between threads safely
-    //~| ERROR : Copy` is not satisfied
+    //~| ERROR the trait `Copy` is not implemented for
 }
 
 fn g<T>(val: T) {
     let t: S<T> = S(marker::PhantomData);
     let a: &dyn Gettable<T> = &t;
     //~^ ERROR `T` cannot be sent between threads safely
-    //~| ERROR : Copy` is not satisfied
+    //~| ERROR the trait `Copy` is not implemented for
 }
 
 fn foo<'a>() {
@@ -34,7 +34,7 @@ fn foo<'a>() {
 fn foo2<'a>() {
     let t: Box<S<String>> = Box::new(S(marker::PhantomData));
     let a = t as Box<dyn Gettable<String>>;
-    //~^ ERROR : Copy` is not satisfied
+    //~^ ERROR the trait `Copy` is not implemented for
 }
 
 fn foo3<'a>() {
@@ -42,7 +42,7 @@ fn foo3<'a>() {
 
     let t: Box<S<Foo>> = Box::new(S(marker::PhantomData));
     let a: Box<dyn Gettable<Foo>> = t;
-    //~^ ERROR : Copy` is not satisfied
+    //~^ ERROR the trait `Copy` is not implemented for
 }
 
 fn main() { }

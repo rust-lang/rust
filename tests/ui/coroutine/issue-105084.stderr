@@ -22,7 +22,7 @@ help: consider cloning the value if the performance cost is acceptable
 LL |     let mut h = copy(g.clone());
    |                       ++++++++
 
-error[E0277]: the trait bound `Box<(i32, ())>: Copy` is not satisfied in `{coroutine@$DIR/issue-105084.rs:14:17: 14:19}`
+error[E0277]: the trait `Copy` is not implemented for `Box<(i32, ())>` in `{coroutine@$DIR/issue-105084.rs:14:17: 14:19}`
   --> $DIR/issue-105084.rs:31:17
    |
 LL |     let mut g = || {

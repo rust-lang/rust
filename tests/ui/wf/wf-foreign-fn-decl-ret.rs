@@ -9,10 +9,10 @@ pub trait Foo {
 
 extern "C" {
     pub fn lint_me() -> <() as Foo>::Assoc;
-    //~^ ERROR: the trait bound `(): Foo` is not satisfied [E0277]
+    //~^ ERROR trait `Foo` is not implemented for `()`
 
     pub fn lint_me_aswell() -> Bar<u32>;
-    //~^ ERROR: the trait bound `u32: Unsatisfied` is not satisfied [E0277]
+    //~^ ERROR trait `Unsatisfied` is not implemented for `u32`
 }
 
 fn main() {}

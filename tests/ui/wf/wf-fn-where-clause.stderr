@@ -1,4 +1,4 @@
-error[E0277]: the trait bound `U: Copy` is not satisfied
+error[E0277]: the trait `Copy` is not implemented for `U`
   --> $DIR/wf-fn-where-clause.rs:8:24
    |
 LL | fn foo<T,U>() where T: ExtraCopy<U>
@@ -29,7 +29,7 @@ error[E0277]: the size for values of type `(dyn Copy + 'static)` cannot be known
 LL | fn bar() where Vec<dyn Copy>:, {}
    |                ^^^^^^^^^^^^^ doesn't have a size known at compile-time
    |
-   = help: the trait `Sized` is not implemented for `(dyn Copy + 'static)`
+   = help: the trait `Sized` is not implemented for `dyn Copy`
 note: required by an implicit `Sized` bound in `Vec`
   --> $DIR/wf-fn-where-clause.rs:16:12
    |

@@ -1,4 +1,4 @@
-error[E0277]: the trait bound `fn(u32) -> Time {Time}: Resource` is not satisfied
+error[E0277]: the trait `Resource` is not implemented for `fn(u32) -> Time {Time}`
   --> $DIR/call-on-unimplemented-ctor.rs:3:21
    |
 LL |     insert_resource(Time);

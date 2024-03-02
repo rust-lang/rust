@@ -14,7 +14,7 @@ where
 
 fn unit_literals() {
     z(" ");
-    //~^ ERROR: the trait bound `&str: X` is not satisfied
+    //~^ ERROR trait `X` is not implemented for `&str`
 }
 
 fn main() {}

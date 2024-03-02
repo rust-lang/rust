@@ -3,5 +3,5 @@ struct Foo<T>(T);
 
 fn main() {
     [Foo(String::new()); 4];
-    //~^ ERROR the trait bound `String: Copy` is not satisfied [E0277]
+    //~^ ERROR trait `Copy` is not implemented for `String`
 }

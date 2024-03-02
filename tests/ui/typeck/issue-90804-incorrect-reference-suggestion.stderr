@@ -1,4 +1,4 @@
-error[E0277]: the trait bound `(): Marker<u32>` is not satisfied
+error[E0277]: the trait `Marker<u32>` is not implemented for `()`
   --> $DIR/issue-90804-incorrect-reference-suggestion.rs:10:13
    |
 LL |     check::<()>(());

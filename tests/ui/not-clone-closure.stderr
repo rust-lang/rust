@@ -1,4 +1,4 @@
-error[E0277]: the trait bound `S: Clone` is not satisfied in `{closure@$DIR/not-clone-closure.rs:7:17: 7:24}`
+error[E0277]: the trait `Clone` is not implemented for `S` in `{closure@$DIR/not-clone-closure.rs:7:17: 7:24}`
   --> $DIR/not-clone-closure.rs:11:23
    |
 LL |     let hello = move || {

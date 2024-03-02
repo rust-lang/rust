@@ -1,8 +1,8 @@
-error[E0277]: the trait bound `for<'a> &'a (): BufferMut` is not satisfied
+error[E0277]: the trait `BufferMut` is not implemented for `&()`
   --> $DIR/issue-89118.rs:19:8
    |
 LL |     C: StackContext,
-   |        ^^^^^^^^^^^^ the trait `for<'a> BufferMut` is not implemented for `&'a ()`, which is required by `for<'a> Ctx<()>: BufferUdpStateContext<&'a ()>`
+   |        ^^^^^^^^^^^^ the trait `BufferMut` is not implemented for `&()`, which is required by `for<'a> Ctx<()>: BufferUdpStateContext<&'a ()>`
    |
 help: this trait has no implementations, consider adding one
   --> $DIR/issue-89118.rs:1:1
@@ -25,11 +25,11 @@ LL | where
 LL |     Ctx<()>: for<'a> BufferUdpStateContext<&'a ()>,
    |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `StackContext`
 
-error[E0277]: the trait bound `for<'a> &'a (): BufferMut` is not satisfied
+error[E0277]: the trait `BufferMut` is not implemented for `&()`
   --> $DIR/issue-89118.rs:29:9
    |
 LL | impl<C> EthernetWorker<C> {}
-   |         ^^^^^^^^^^^^^^^^^ the trait `for<'a> BufferMut` is not implemented for `&'a ()`, which is required by `for<'a> Ctx<()>: BufferUdpStateContext<&'a ()>`
+   |         ^^^^^^^^^^^^^^^^^ the trait `BufferMut` is not implemented for `&()`, which is required by `for<'a> Ctx<()>: BufferUdpStateContext<&'a ()>`
    |
 help: this trait has no implementations, consider adding one
   --> $DIR/issue-89118.rs:1:1
@@ -52,11 +52,11 @@ LL | where
 LL |     Ctx<()>: for<'a> BufferUdpStateContext<&'a ()>;
    |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `EthernetWorker`
 
-error[E0277]: the trait bound `for<'a> &'a (): BufferMut` is not satisfied
+error[E0277]: the trait `BufferMut` is not implemented for `&()`
   --> $DIR/issue-89118.rs:22:20
    |
 LL |     type Handler = Ctx<C::Dispatcher>;
-   |                    ^^^^^^^^^^^^^^^^^^ the trait `for<'a> BufferMut` is not implemented for `&'a ()`, which is required by `for<'a> Ctx<()>: BufferUdpStateContext<&'a ()>`
+   |                    ^^^^^^^^^^^^^^^^^^ the trait `BufferMut` is not implemented for `&()`, which is required by `for<'a> Ctx<()>: BufferUdpStateContext<&'a ()>`
    |
 help: this trait has no implementations, consider adding one
   --> $DIR/issue-89118.rs:1:1

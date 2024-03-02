@@ -1,4 +1,4 @@
-error[E0277]: the trait bound `fn() -> bool {example}: Foo` is not satisfied
+error[E0277]: the trait `Foo` is not implemented for `fn() -> bool {example}`
   --> $DIR/fn-trait-cast-diagnostic.rs:21:15
    |
 LL |     do_on_foo(example);
@@ -20,7 +20,7 @@ help: the trait `Foo` is implemented for fn pointer `fn() -> bool`, try casting 
 LL |     do_on_foo(example as fn() -> bool);
    |                       +++++++++++++++
 
-error[E0277]: the trait bound `fn() -> bool {example}: NoOtherFoo` is not satisfied
+error[E0277]: the trait `NoOtherFoo` is not implemented for `fn() -> bool {example}`
   --> $DIR/fn-trait-cast-diagnostic.rs:24:22
    |
 LL |     do_on_single_foo(example);

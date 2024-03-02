@@ -1,4 +1,4 @@
-error[E0277]: the trait bound `T: Copy` is not satisfied
+error[E0277]: the trait `Copy` is not implemented for `T`
   --> $DIR/issue-33017.rs:12:27
    |
 LL |     default type Output = Self;

@@ -10,5 +10,5 @@ impl From<usize> for TargetStruct {
 
 fn main() {
     let a = &3;
-    let _b: TargetStruct = (*a).into(); //~ ERROR the trait bound `TargetStruct: From<&{integer}>` is not satisfied
+    let _b: TargetStruct = (*a).into(); //~ ERROR trait `From<&{integer}>` is not implemented for `TargetStruct`
 }

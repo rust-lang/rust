@@ -16,11 +16,11 @@ impl ToString for Cow<'_, str> {
 }
 
 impl<B: ?Sized> Display for Cow<'_, B> {
-    //~^ ERROR: the trait bound `B: Clone` is not satisfied [E0277]
+    //~^ ERROR trait `Clone` is not implemented for `B`
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        //~^ ERROR: the trait bound `B: Clone` is not satisfied [E0277]
-        //~| ERROR: the trait bound `B: Clone` is not satisfied [E0277]
-        //~| ERROR: the trait bound `B: Clone` is not satisfied [E0277]
+        //~^ ERROR trait `Clone` is not implemented for `B`
+        //~| ERROR trait `Clone` is not implemented for `B`
+        //~| ERROR trait `Clone` is not implemented for `B`
         write!(f, "foo")
     }
 }

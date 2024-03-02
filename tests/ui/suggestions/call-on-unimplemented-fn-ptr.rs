@@ -8,7 +8,7 @@ fn needs_bar<T: Bar>(_: T) {}
 
 fn blah(f: fn() -> Foo) {
     needs_bar(f);
-    //~^ ERROR the trait bound `fn() -> Foo: Bar` is not satisfied
+    //~^ ERROR trait `Bar` is not implemented for `fn() -> Foo`
     //~| HELP use parentheses to call this function pointer
 }
 

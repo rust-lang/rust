@@ -6,7 +6,7 @@ LL |     let k2 = move || {
 LL |         k.to_string();
    |         ^ doesn't have a size known at compile-time
    |
-   = help: the trait `Sized` is not implemented for `(dyn std::fmt::Display + 'static)`
+   = help: the trait `Sized` is not implemented for `dyn std::fmt::Display`
    = note: all values captured by value by a closure must have a statically known size
 
 error: aborting due to 1 previous error

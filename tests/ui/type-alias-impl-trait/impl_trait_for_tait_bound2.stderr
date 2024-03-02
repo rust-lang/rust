@@ -1,4 +1,4 @@
-error[E0277]: the trait bound `Foo: Yay` is not satisfied
+error[E0277]: the trait `Yay` is not implemented for `Foo`
   --> $DIR/impl_trait_for_tait_bound2.rs:11:14
    |
 LL |     is_yay::<Foo>();

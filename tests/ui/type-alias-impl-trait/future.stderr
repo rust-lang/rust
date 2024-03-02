@@ -1,4 +1,4 @@
-error[E0277]: the trait bound `B: Bar` is not satisfied
+error[E0277]: the trait `Bar` is not implemented for `B`
   --> $DIR/future.rs:15:5
    |
 LL |     async move { bar.bar() }

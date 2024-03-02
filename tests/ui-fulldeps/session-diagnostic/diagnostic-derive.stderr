@@ -618,7 +618,7 @@ LL | #[derive(Diagnostic)]
    |
    = note: this error originates in the derive macro `Diagnostic` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error[E0277]: the trait bound `Hello: IntoDiagnosticArg` is not satisfied
+error[E0277]: the trait `IntoDiagnosticArg` is not implemented for `Hello`
   --> $DIR/diagnostic-derive.rs:349:12
    |
 LL | #[derive(Diagnostic)]

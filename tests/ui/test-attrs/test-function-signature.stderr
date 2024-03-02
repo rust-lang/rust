@@ -22,7 +22,7 @@ error: functions used as tests can not have any arguments
 LL |     fn foo(arg: ()) {}
    |     ^^^^^^^^^^^^^^^^^^
 
-error[E0277]: the trait bound `i32: Termination` is not satisfied
+error[E0277]: the trait `Termination` is not implemented for `i32`
   --> $DIR/test-function-signature.rs:9:13
    |
 LL | #[test]

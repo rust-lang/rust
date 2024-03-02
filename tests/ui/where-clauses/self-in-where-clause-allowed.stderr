@@ -1,4 +1,4 @@
-error[E0277]: the trait bound `dyn Trait: AutoTrait` is not satisfied
+error[E0277]: the trait `AutoTrait` is not implemented for `dyn Trait`
   --> $DIR/self-in-where-clause-allowed.rs:22:18
    |
 LL |     trait_object.autotrait_bound();

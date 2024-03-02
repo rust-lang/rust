@@ -1,4 +1,4 @@
-error[E0277]: the trait bound `u8: NotImplemented` is not satisfied
+error[E0277]: the trait `NotImplemented` is not implemented for `u8`
   --> $DIR/projection-as-union-type-error-2.rs:18:8
    |
 LL |     a: <Foo as Identity>::Identity,

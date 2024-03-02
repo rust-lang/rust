@@ -15,7 +15,7 @@ fn is_static<T>(_: T) where T: 'static { }
 // code forces us into a conservative, hacky path.
 fn bar(x: &str) -> &dyn Foo<Item = dyn Bar> { &() }
 //~^ ERROR please supply an explicit bound
-//~| ERROR `(): Foo<'_>` is not satisfied
+//~| ERROR trait `Foo<'_>` is not implemented for `()`
 
 fn main() {
     let s = format!("foo");

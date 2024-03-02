@@ -25,20 +25,20 @@ where
 
 #[cfg(bad1)]
 impl<T> Drop for DropMe<T>
-//[bad1]~^ ERROR the trait bound `T: Copy` is not satisfied
+//[bad1]~^ ERROR trait `Copy` is not implemented for `T`
 where
     [T; 1]: Copy, // But `[T; 1]: Copy` does not imply `T: Copy`
 {
     fn drop(&mut self) {}
-    //[bad1]~^ ERROR the trait bound `T: Copy` is not satisfied
+    //[bad1]~^ ERROR trait `Copy` is not implemented for `T`
 }
 
 #[cfg(bad2)]
 impl<T> Drop for DropMe<T>
-//[bad2]~^ ERROR the trait bound `T: Copy` is not satisfied
+//[bad2]~^ ERROR trait `Copy` is not implemented for `T`
 {
     fn drop(&mut self) {}
-    //[bad2]~^ ERROR the trait bound `T: Copy` is not satisfied
+    //[bad2]~^ ERROR trait `Copy` is not implemented for `T`
 }
 
 fn main() {}

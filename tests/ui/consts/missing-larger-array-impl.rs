@@ -5,5 +5,5 @@ struct X;
 
 fn main() {
     <[X; 35] as Default>::default();
-    //~^ ERROR the trait bound `[X; 35]: Default` is not satisfied
+    //~^ ERROR trait `Default` is not implemented for `[X; 35]`
 }

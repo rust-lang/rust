@@ -15,7 +15,7 @@ impl<T, const N: usize> Foo for [T; N] {}
 
 fn test<T, const N: usize>() {
     needs_foo::<[T; N]>();
-    //[fail]~^ ERROR the trait bound `[T; N]: Foo` is not satisfied
+    //[fail]~^ ERROR trait `Foo` is not implemented for `[T; N]`
 }
 
 fn main() {}

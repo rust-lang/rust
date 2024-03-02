@@ -7,4 +7,4 @@ extern crate example_runner;
 
 #[test]
 fn wrong_kind(){}
-//~^ ERROR trait bound `TestDescAndFn: Testable` is not satisfied
+//~^ ERROR trait `Testable` is not implemented for `TestDescAndFn`

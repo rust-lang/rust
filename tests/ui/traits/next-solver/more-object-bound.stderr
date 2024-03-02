@@ -1,4 +1,4 @@
-error[E0277]: the trait bound `dyn Trait<A = A, B = B>: Trait` is not satisfied
+error[E0277]: the trait `Trait` is not implemented for `dyn Trait<A = A, B = B>`
   --> $DIR/more-object-bound.rs:12:5
    |
 LL |     foo::<A, B, dyn Trait<A = A, B = B>>(x)

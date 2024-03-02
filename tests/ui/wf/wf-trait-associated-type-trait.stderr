@@ -1,4 +1,4 @@
-error[E0277]: the trait bound `<Self as SomeTrait>::Type1: Copy` is not satisfied
+error[E0277]: the trait `Copy` is not implemented for `<Self as SomeTrait>::Type1`
   --> $DIR/wf-trait-associated-type-trait.rs:11:19
    |
 LL |     type Type2 = (IsCopy<Self::Type1>, bool);

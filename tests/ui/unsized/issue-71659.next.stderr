@@ -1,4 +1,4 @@
-error[E0277]: the trait bound `dyn Foo: CastTo<[i32]>` is not satisfied
+error[E0277]: the trait `CastTo<[i32]>` is not implemented for `dyn Foo`
   --> $DIR/issue-71659.rs:33:15
    |
 LL |     let x = x.cast::<[i32]>();

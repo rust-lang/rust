@@ -15,7 +15,7 @@ pub trait Foo {
 
 impl<T> Foo for T {
     type Bar = MySet<T>;
-    //~^ ERROR the trait bound `T: MyHash` is not satisfied
+    //~^ ERROR trait `MyHash` is not implemented for `T`
 }
 
 

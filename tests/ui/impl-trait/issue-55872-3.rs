@@ -11,7 +11,7 @@ pub trait Bar {
 impl<S> Bar for S {
     type E = impl std::marker::Copy;
     fn foo<T>() -> Self::E {
-        //~^ ERROR : Copy` is not satisfied [E0277]
+        //~^ ERROR the trait `Copy` is not implemented for
         async {}
     }
 }

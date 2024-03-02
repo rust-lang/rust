@@ -1,4 +1,4 @@
-error[E0277]: the trait bound `Self: Trait1` is not satisfied
+error[E0277]: the trait `Trait1` is not implemented for `Self`
   --> $DIR/issue-74816.rs:8:31
    |
 LL |     type Associated: Trait1 = Self;

@@ -18,8 +18,8 @@ where
 
 fn index<'a, K, V>(map: &'a HashMap<K, V>, k: K) -> &'a V {
     map[k]
-    //~^ ERROR the trait bound `K: Hash` is not satisfied
-    //~| ERROR the trait bound `V: Copy` is not satisfied
+    //~^ ERROR trait `Hash` is not implemented for `K`
+    //~| ERROR trait `Copy` is not implemented for `V`
     //~| ERROR mismatched types
     //~| ERROR mismatched types
 }

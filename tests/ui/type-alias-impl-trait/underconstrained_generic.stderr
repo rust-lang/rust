@@ -1,4 +1,4 @@
-error[E0277]: the trait bound `T: Trait` is not satisfied
+error[E0277]: the trait `Trait` is not implemented for `T`
   --> $DIR/underconstrained_generic.rs:22:5
    |
 LL |     ()

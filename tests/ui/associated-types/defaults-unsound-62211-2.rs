@@ -18,8 +18,8 @@ trait UncheckedCopy: Sized {
     // This Output is said to be Copy. Yet we default to Self
     // and it's accepted, not knowing if Self ineed is Copy
     type Output: Copy + Deref<Target = str> + AddAssign<&'static str> + From<Self> + Display = Self;
-    //~^ ERROR the trait bound `Self: Copy` is not satisfied
-    //~| ERROR the trait bound `Self: Deref` is not satisfied
+    //~^ ERROR trait `Copy` is not implemented for `Self`
+    //~| ERROR trait `Deref` is not implemented for `Self`
     //~| ERROR cannot add-assign `&'static str` to `Self`
     //~| ERROR `Self` doesn't implement `std::fmt::Display`
 

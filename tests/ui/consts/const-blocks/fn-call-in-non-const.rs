@@ -12,5 +12,5 @@ const fn copy() -> u32 {
 fn main() {
     let _: [u32; 2] = [copy(); 2];
     let _: [Option<Bar>; 2] = [no_copy(); 2];
-    //~^ ERROR the trait bound `Bar: Copy` is not satisfied
+    //~^ ERROR trait `Copy` is not implemented for `Bar`
 }

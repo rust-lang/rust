@@ -10,7 +10,7 @@ trait UncheckedCopy: Sized {
 
 impl<T> UncheckedCopy for T {
     default type Output = Self;
-    //~^ ERROR: the trait bound `T: Copy` is not satisfied
+    //~^ ERROR trait `Copy` is not implemented for `T`
 }
 
 fn unchecked_copy<T: UncheckedCopy>(other: &T::Output) -> T {

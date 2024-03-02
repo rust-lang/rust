@@ -5,6 +5,6 @@
 trait Foo<'a, T: Eq + 'a> { }
 
 default impl<U> Foo<'static, U> for () {}
-//~^ ERROR the trait bound `U: Eq` is not satisfied
+//~^ ERROR trait `Eq` is not implemented for `U`
 
 fn main(){}

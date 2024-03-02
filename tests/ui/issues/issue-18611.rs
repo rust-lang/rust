@@ -1,6 +1,6 @@
 fn add_state(op: <isize as HasState>::State) {
-//~^ ERROR `isize: HasState` is not satisfied
-//~| ERROR `isize: HasState` is not satisfied
+//~^ ERROR trait `HasState` is not implemented for `isize`
+//~| ERROR trait `HasState` is not implemented for `isize`
 }
 
 trait HasState {

@@ -20,7 +20,7 @@ type Converter<T> = impl ProofForConversion<T>;
 
 fn _defining_use<T: Trait>() -> Converter<T> {
     ()
-    //~^ ERROR the trait bound `T: Trait` is not satisfied
+    //~^ ERROR trait `Trait` is not implemented for `T`
 }
 
 

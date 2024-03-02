@@ -8,7 +8,7 @@ trait HasComponent<I> {}
 struct Foo;
 
 impl HasComponent<<Foo as Component<Foo>>::Interface> for Foo {}
-//~^ ERROR the trait bound `Foo: HasComponent<()>` is not satisfied
+//~^ ERROR trait `HasComponent<()>` is not implemented for `Foo`
 
 impl<M: HasComponent<()>> Component<M> for Foo {
     type Interface = u8;

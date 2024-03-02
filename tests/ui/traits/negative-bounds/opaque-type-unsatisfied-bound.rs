@@ -9,7 +9,7 @@ fn produce() -> impl !Trait {}
 fn consume(_: impl Trait) {}
 
 fn main() {
-    consume(produce()); //~ ERROR the trait bound `impl !Trait: Trait` is not satisfied
+    consume(produce()); //~ ERROR trait `Trait` is not implemented for `impl !Trait`
 }
 
 fn weird0() -> impl Sized + !Sized {}

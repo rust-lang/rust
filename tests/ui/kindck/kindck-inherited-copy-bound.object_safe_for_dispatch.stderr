@@ -1,4 +1,4 @@
-error[E0277]: the trait bound `Box<{integer}>: Copy` is not satisfied
+error[E0277]: the trait `Copy` is not implemented for `Box<{integer}>`
   --> $DIR/kindck-inherited-copy-bound.rs:21:16
    |
 LL |     take_param(&x);

@@ -25,7 +25,7 @@ impl<T: Default + ~const Sup> const A for T {
 
 const fn generic<T: Default>() {
     <T as A>::a();
-    //FIXME ~^ ERROR: the trait bound `T: ~const Sup` is not satisfied
+    //FIXME ~^ ERROR trait `~const Sup` is not implemented for `T`
 }
 
 fn main() {}

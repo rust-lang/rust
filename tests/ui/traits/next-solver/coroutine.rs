@@ -16,7 +16,7 @@ fn needs_coroutine(_: impl Coroutine<A, Yield = B, Return = C>) {}
 #[cfg(fail)]
 fn main() {
     needs_coroutine(|| {
-        //[fail]~^ ERROR Coroutine<A>` is not satisfied
+        //[fail]~^ ERROR the trait `Coroutine<A>` is not implemented
         //[fail]~| ERROR as Coroutine<A>>::Yield == B`
         //[fail]~| ERROR as Coroutine<A>>::Return == C`
         yield ();

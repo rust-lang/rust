@@ -1,4 +1,4 @@
-error[E0277]: the trait bound `Vec<()>: Copy` is not satisfied
+error[E0277]: the trait `Copy` is not implemented for `Vec<()>`
   --> $DIR/generic-associated-types-bad.rs:21:12
    |
 LL |     let _: Ty::Pr<Vec<()>>;

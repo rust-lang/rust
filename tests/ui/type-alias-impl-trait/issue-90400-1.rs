@@ -19,7 +19,7 @@ impl Foo for MyFoo {
     type FooFn<B> = impl FnOnce();
 
     fn foo<B: Bar>(&self, bar: B) -> Self::FooFn<B> {
-        move || bar.bar() //~ ERROR: the trait bound `B: Bar` is not satisfied
+        move || bar.bar() //~ ERROR trait `Bar` is not implemented for `B`
     }
 }
 

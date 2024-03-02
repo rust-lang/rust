@@ -1,4 +1,4 @@
-error[E0277]: the trait bound `[Adt; std::mem::size_of::<Self::Assoc>()]: Foo` is not satisfied
+error[E0277]: the trait `Foo` is not implemented for `[Adt; std::mem::size_of::<Self::Assoc>()]`
   --> $DIR/dont-evaluate-array-len-on-err-1.rs:15:10
    |
 LL |         <[Adt; std::mem::size_of::<Self::Assoc>()] as Foo>::bar()

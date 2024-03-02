@@ -9,10 +9,10 @@ pub struct Vector2<T: Debug + Copy + Clone> {
 
 #[derive(Debug, Copy, Clone)]
 pub struct AABB<K: Debug> {
-    pub loc: Vector2<K>, //~ ERROR the trait bound `K: Copy` is not satisfied
-    //~^ ERROR the trait bound `K: Copy` is not satisfied
-    //~| ERROR the trait bound `K: Copy` is not satisfied
-    pub size: Vector2<K>, //~ ERROR the trait bound `K: Copy` is not satisfied
+    pub loc: Vector2<K>, //~ ERROR trait `Copy` is not implemented for `K`
+    //~^ ERROR trait `Copy` is not implemented for `K`
+    //~| ERROR trait `Copy` is not implemented for `K`
+    pub size: Vector2<K>, //~ ERROR trait `Copy` is not implemented for `K`
 }
 
 fn main() {}

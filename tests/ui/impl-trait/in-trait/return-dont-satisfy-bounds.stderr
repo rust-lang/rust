@@ -1,4 +1,4 @@
-error[E0277]: the trait bound `impl Foo<u8>: Foo<char>` is not satisfied
+error[E0277]: the trait `Foo<char>` is not implemented for `impl Foo<u8>`
   --> $DIR/return-dont-satisfy-bounds.rs:8:34
    |
 LL |     fn foo<F2: Foo<u8>>(self) -> impl Foo<u8> {
@@ -20,7 +20,7 @@ LL |     fn foo<F2>(self) -> impl Foo<T>;
 LL |     fn foo<F2: Foo<u8>>(self) -> impl Foo<u8> {
    |                ^^^^^^^ impl has extra requirement `F2: Foo<u8>`
 
-error[E0277]: the trait bound `Bar: Foo<u8>` is not satisfied
+error[E0277]: the trait `Foo<u8>` is not implemented for `Bar`
   --> $DIR/return-dont-satisfy-bounds.rs:8:34
    |
 LL |     fn foo<F2: Foo<u8>>(self) -> impl Foo<u8> {

@@ -10,10 +10,10 @@ where
 
 impl X<'_> for i32 {
     type U = str;
-    //~^ ERROR the trait bound `str: Clone`
+    //~^ ERROR trait `Clone` is not implemented for `str`
 }
 
 fn main() {
     1i32.f("abc");
-    //~^ ERROR the trait bound `str: Clone`
+    //~^ ERROR trait `Clone` is not implemented for `str`
 }

@@ -8,7 +8,7 @@ fn needs_meow<T: Meow>(t: T) {}
 
 fn main() {
     needs_meow(1usize);
-    //~^ ERROR the trait bound `usize: Meow` is not satisfied
+    //~^ ERROR trait `Meow` is not implemented for `usize`
 }
 
 struct LocalMeow;

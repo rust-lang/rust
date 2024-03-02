@@ -7,7 +7,7 @@ fn needs_test<T: Test>() -> T {
 
 fn main() {
     needs_test::<[u8; 1]>();
-    //~^ ERROR the trait bound
+    //~^ ERROR the trait
     let x: [u8; 1] = needs_test();
-    //~^ ERROR the trait bound
+    //~^ ERROR the trait
 }

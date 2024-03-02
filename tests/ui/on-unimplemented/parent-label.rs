@@ -11,17 +11,17 @@ fn f<T: Trait>(x: T) {}
 
 fn main() {
     let x = || {
-        f(Foo {}); //~ ERROR the trait bound `Foo: Trait` is not satisfied
+        f(Foo {}); //~ ERROR trait `Trait` is not implemented for `Foo`
         let y = || {
-            f(Foo {}); //~ ERROR the trait bound `Foo: Trait` is not satisfied
+            f(Foo {}); //~ ERROR trait `Trait` is not implemented for `Foo`
         };
     };
 
     {
         {
-            f(Foo {}); //~ ERROR the trait bound `Foo: Trait` is not satisfied
+            f(Foo {}); //~ ERROR trait `Trait` is not implemented for `Foo`
         }
     }
 
-    f(Foo {}); //~ ERROR the trait bound `Foo: Trait` is not satisfied
+    f(Foo {}); //~ ERROR trait `Trait` is not implemented for `Foo`
 }

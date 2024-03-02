@@ -1,4 +1,4 @@
-error[E0277]: the trait bound `u32: Trait` is not satisfied
+error[E0277]: the trait `Trait` is not implemented for `u32`
   --> $DIR/trait_objects_fail.rs:26:9
    |
 LL |     foo(&10_u32);
@@ -7,7 +7,7 @@ LL |     foo(&10_u32);
    = help: the trait `Trait<2>` is implemented for `u32`
    = note: required for the cast from `&u32` to `&dyn Trait`
 
-error[E0277]: the trait bound `bool: Traitor<_>` is not satisfied
+error[E0277]: the trait `Traitor<_>` is not implemented for `bool`
   --> $DIR/trait_objects_fail.rs:28:9
    |
 LL |     bar(&true);

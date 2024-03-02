@@ -1,4 +1,4 @@
-error[E0277]: the trait bound `T: Copy` is not satisfied
+error[E0277]: the trait `Copy` is not implemented for `T`
   --> $DIR/where-clause-constraints-are-local-for-trait-impl.rs:18:22
    |
 LL |         require_copy(self.x);

@@ -1,4 +1,4 @@
-error[E0277]: the trait bound `T: Pointee` is not satisfied
+error[E0277]: the trait `Pointee` is not implemented for `T`
   --> $DIR/issue-81199.rs:5:17
    |
 LL |     components: PtrComponents<T>,

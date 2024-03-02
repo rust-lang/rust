@@ -4,8 +4,8 @@
 struct Bug {
     inner: [(); match || 1 {
         n => n(),
-        //FIXME ~^ ERROR the trait bound
-        //FIXME ~| ERROR the trait bound
+        //FIXME ~^ ERROR the trait
+        //FIXME ~| ERROR the trait
         //FIXME ~| ERROR cannot call non-const closure in constants
     }],
 }

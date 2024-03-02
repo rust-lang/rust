@@ -11,10 +11,10 @@ where
 
 impl<S, T> X<'_, T> for (S,) {
     type U = str;
-    //~^ ERROR the trait bound `str: Clone` is not satisfied
+    //~^ ERROR trait `Clone` is not implemented for `str`
 }
 
 pub fn main() {
     <(i32,) as X<i32>>::f("abc");
-    //~^ ERROR the trait bound `str: Clone` is not satisfied
+    //~^ ERROR trait `Clone` is not implemented for `str`
 }

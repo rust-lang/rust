@@ -24,15 +24,15 @@ where
 
 impl<S, T> X<'_, Vec<T>> for S {
     type U = str;
-    //~^ ERROR the trait bound `str: Clone` is not satisfied
+    //~^ ERROR trait `Clone` is not implemented for `str`
 }
 
 impl<S, T> X<'_, Box<T>> for S {
     type U = str;
-    //~^ ERROR the trait bound `str: Clone` is not satisfied
+    //~^ ERROR trait `Clone` is not implemented for `str`
 }
 
 pub fn main() {
     <i32 as X<Box<i32>>>::f("abc");
-    //~^ ERROR the trait bound `str: Clone` is not satisfied
+    //~^ ERROR trait `Clone` is not implemented for `str`
 }

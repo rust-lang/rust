@@ -1,4 +1,4 @@
-error[E0277]: the trait bound `T: MyHash` is not satisfied
+error[E0277]: the trait `MyHash` is not implemented for `T`
   --> $DIR/wf-impl-associated-type-trait.rs:17:16
    |
 LL |     type Bar = MySet<T>;

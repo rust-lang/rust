@@ -1,4 +1,4 @@
-error[E0277]: the trait bound `u16: Bar<N>` is not satisfied
+error[E0277]: the trait `Bar<N>` is not implemented for `u16`
   --> $DIR/associated-type-bound-fail.rs:9:18
    |
 LL |     type Assoc = u16;

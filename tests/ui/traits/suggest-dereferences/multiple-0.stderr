@@ -1,4 +1,4 @@
-error[E0277]: the trait bound `&Baz: Happy` is not satisfied
+error[E0277]: the trait `Happy` is not implemented for `&Baz`
   --> $DIR/multiple-0.rs:34:9
    |
 LL |     foo(&baz);

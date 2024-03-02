@@ -32,7 +32,7 @@ trait Foo {
 }
 
 impl const Foo for NonConstAdd {
-    type Bar = NonConstAdd; //~ ERROR the trait bound `NonConstAdd: ~const Add` is not satisfied
+    type Bar = NonConstAdd; //~ ERROR trait `~const Add` is not implemented for `NonConstAdd`
 }
 
 #[const_trait]

@@ -1,4 +1,4 @@
-error[E0277]: the trait bound `Error: Hash` is not satisfied
+error[E0277]: the trait `Hash` is not implemented for `Error`
   --> $DIR/derives-span-Hash-enum.rs:8:6
    |
 LL | #[derive(Hash)]

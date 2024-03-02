@@ -12,10 +12,10 @@ where
 
 impl<'a> Y<'a, u8> for u8 {
     type V = str;
-    //~^ ERROR the trait bound `str: Clone` is not satisfied
+    //~^ ERROR trait `Clone` is not implemented for `str`
 }
 
 fn main() {
     1u8.g("abc");
-    //~^ ERROR the trait bound `str: Clone` is not satisfied
+    //~^ ERROR trait `Clone` is not implemented for `str`
 }

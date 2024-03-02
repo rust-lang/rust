@@ -4,7 +4,7 @@ error[E0277]: the size for values of type `(dyn Foo + 'static)` cannot be known 
 LL | fn foo(x: dyn Foo) {
    |        ^ doesn't have a size known at compile-time
    |
-   = help: the trait `Sized` is not implemented for `(dyn Foo + 'static)`
+   = help: the trait `Sized` is not implemented for `dyn Foo`
    = help: unsized fn params are gated as an unstable feature
 help: you can use `impl Trait` as the argument type
    |
@@ -21,7 +21,7 @@ error[E0277]: the size for values of type `(dyn Foo + 'static)` cannot be known 
 LL | fn bar(x: Foo) {
    |        ^ doesn't have a size known at compile-time
    |
-   = help: the trait `Sized` is not implemented for `(dyn Foo + 'static)`
+   = help: the trait `Sized` is not implemented for `dyn Foo`
    = help: unsized fn params are gated as an unstable feature
 help: you can use `impl Trait` as the argument type
    |
@@ -51,7 +51,7 @@ error[E0277]: the size for values of type `(dyn Foo + 'static)` cannot be known 
 LL |     foo(*x);
    |         ^^ doesn't have a size known at compile-time
    |
-   = help: the trait `Sized` is not implemented for `(dyn Foo + 'static)`
+   = help: the trait `Sized` is not implemented for `dyn Foo`
    = note: all function arguments must have a statically known size
    = help: unsized fn params are gated as an unstable feature
 

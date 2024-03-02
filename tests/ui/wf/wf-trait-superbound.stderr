@@ -1,4 +1,4 @@
-error[E0277]: the trait bound `T: Copy` is not satisfied
+error[E0277]: the trait `Copy` is not implemented for `T`
   --> $DIR/wf-trait-superbound.rs:9:21
    |
 LL | trait SomeTrait<T>: ExtraCopy<T> {
