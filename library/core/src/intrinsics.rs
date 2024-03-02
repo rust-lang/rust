@@ -2532,7 +2532,7 @@ extern "rust-intrinsic" {
     /// they run at compile-time or at runtime. Therefore, when using this
     /// intrinsic anywhere that can be reached from stable, it is crucial that
     /// the end-to-end behavior of the stable `const fn` is the same for both
-    /// modes of execution. (Here, Undefined Behavior is considerd "the same"
+    /// modes of execution. (Here, Undefined Behavior is considered "the same"
     /// as any other behavior, so if the function exhibits UB at runtime then
     /// it may do whatever it wants at compile-time.)
     ///
