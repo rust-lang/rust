@@ -1884,10 +1884,7 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
                 err.span_suggestions_with_style(
                     path_span.shrink_to_hi().with_hi(call_span.hi()),
                     "you might have meant to use an associated function to build this type",
-                    items
-                        .iter()
-                        .map(|(_, name, len)| suggestion(name, *len))
-                        .collect::<Vec<String>>(),
+                    items.iter().map(|(_, name, len)| suggestion(name, *len)),
                     Applicability::MaybeIncorrect,
                     SuggestionStyle::ShowAlways,
                 );
