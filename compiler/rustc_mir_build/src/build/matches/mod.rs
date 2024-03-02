@@ -1398,8 +1398,30 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     /// Tests a candidate where there are only or-patterns left to test, or
     /// forwards to [Builder::test_candidates].
     ///
-    /// Given a pattern `(P | Q, R | S)` we (in principle) generate a CFG like
-    /// so:
+    /// Given a pattern `(P | Q, R | S)` we would like to generate a CFG like so:
+    ///
+    /// ```text
+    ///     ...
+    ///      +---------------+------------+
+    ///      |               |            |
+    /// [ P matches ] [ Q matches ] [ otherwise ]
+    ///      |               |            |
+    ///      +---------------+            |
+    ///      |                           ...
+    /// [ match R, S ]
+    ///      |
+    ///     ...
+    /// ```
+    ///
+    /// In practice there are some complications:
+    ///
+    /// * If `P` or `Q` has bindings or type ascriptions, we must generate separate branches for
+    ///   each case.
+    /// * If there's a guard, we must also keep branches separate as this changes how many times
+    ///   the guard is run.
+    /// * If `P` succeeds and `R | S` fails, we know `(Q, R | S)` will fail too. So we could skip
+    ///   testing of `Q` in that case. Because we can't distinguish pattern failure from guard
+    ///   failure, we only do this optimization when there is no guard. We then get this:
     ///
     /// ```text
     /// [ start ]
@@ -1427,27 +1449,36 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     /// [ Success ]                 [ Failure ]
     /// ```
     ///
-    /// In practice there are some complications:
-    ///
-    /// * If there's a guard, then the otherwise branch of the first match on
-    ///   `R | S` goes to a test for whether `Q` matches, and the control flow
-    ///   doesn't merge into a single success block until after the guard is
-    ///   tested.
-    /// * If neither `P` or `Q` has any bindings or type ascriptions and there
-    ///   isn't a match guard, then we create a smaller CFG like:
+    /// * If there's a guard, then the otherwise branch of the first match on `R | S` goes to a test
+    ///   for whether `Q` matches, and the control flow doesn't merge into a single success block
+    ///   until after the guard is tested. In other words, the branches are kept entirely separate:
     ///
     /// ```text
-    ///     ...
-    ///      +---------------+------------+
-    ///      |               |            |
-    /// [ P matches ] [ Q matches ] [ otherwise ]
-    ///      |               |            |
-    ///      +---------------+            |
-    ///      |                           ...
-    /// [ match R, S ]
+    /// [ start ]
     ///      |
-    ///     ...
+    /// [ match P, Q ]
+    ///      |
+    ///      +---------------------------+-------------+------------------------------------+
+    ///      |                           |             |                                    |
+    ///      V                           |             V                                    V
+    /// [ P matches ]                    |       [ Q matches ]                        [ otherwise ]
+    ///      |                           |             |                                    |
+    ///      V                     [ otherwise ]       V                                    |
+    /// [ match R, S ]                   ^       [ match R, S ]                             |
+    ///      |                           |             |                                    |
+    ///      +--------------+------------+             +--------------+------------+        |
+    ///      |              |                          |              |            |        |
+    ///      V              V                          V              V            V        |
+    /// [ R matches ] [ S matches ]               [ R matches ] [ S matches ] [otherwise ]  |
+    ///      |              |                          |              |            |        |
+    ///      +--------------+--------------------------+--------------+            |        |
+    ///      |                                                                     |        |
+    ///      |                                                                     +--------+
+    ///      |                                                                     |
+    ///      V                                                                     V
+    /// [ Success ]                                                           [ Failure ]
     /// ```
+    ///
     fn test_candidates_with_or(
         &mut self,
         span: Span,
@@ -1465,25 +1496,43 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
         let first_match_pair = first_candidate.match_pairs.remove(0);
         let or_span = first_match_pair.pattern.span;
-        let TestCase::Or { pats, .. } = first_match_pair.test_case else { unreachable!() };
+        let TestCase::Or { pats, simple } = first_match_pair.test_case else { unreachable!() };
+        debug!("candidate={:#?}\npats={:#?}", first_candidate, pats);
 
-        let remainder_start = self.cfg.start_new_block();
         // Test the alternatives of this or-pattern.
-        self.test_or_pattern(first_candidate, start_block, remainder_start, pats, or_span);
+        let remainder_start = self.cfg.start_new_block();
+        first_candidate.subcandidates = pats
+            .into_vec()
+            .into_iter()
+            .map(|flat_pat| Candidate::from_flat_pat(flat_pat, first_candidate.has_guard))
+            .collect();
+        let mut or_candidate_refs: Vec<_> = first_candidate.subcandidates.iter_mut().collect();
+        self.match_candidates(
+            or_span,
+            or_span,
+            start_block,
+            remainder_start,
+            &mut or_candidate_refs,
+        );
+
+        // Whether we need to keep the or-pattern branches separate.
+        let keep_branches_separate = first_candidate.has_guard || !simple;
+        if !keep_branches_separate {
+            self.merge_subcandidates(first_candidate, self.source_info(or_span));
+        }
 
         if !first_candidate.match_pairs.is_empty() {
-            // If more match pairs remain, test them after each subcandidate.
-            // We could add them to the or-candidates before the call to `test_or_pattern` but this
-            // would make it impossible to detect simplifiable or-patterns. That would guarantee
-            // exponentially large CFGs for cases like `(1 | 2, 3 | 4, ...)`.
+            // If more match pairs remain, test them after each subcandidate. If we merged them,
+            // then this will only test `first_candidate`.
             let remaining_match_pairs = mem::take(&mut first_candidate.match_pairs);
             first_candidate.visit_leaves(|leaf_candidate| {
                 assert!(leaf_candidate.match_pairs.is_empty());
                 leaf_candidate.match_pairs.extend(remaining_match_pairs.iter().cloned());
                 let or_start = leaf_candidate.pre_binding_block.unwrap();
-                // In a case like `(a | b, c | d)`, if `a` succeeds and `c | d` fails, we know `(b,
-                // c | d)` will fail too. If there is no guard, we skip testing of `b` by branching
-                // directly to `remainder_start`. If there is a guard, we have to try `(b, c | d)`.
+                // In a case like `(P | Q, R | S)`, if `P` succeeds and `R | S` fails, we know `(Q,
+                // R | S)` will fail too. If there is no guard, we skip testing of `Q` by branching
+                // directly to `remainder_start`. If there is a guard, `or_otherwise` can be reached
+                // by guard failure as well, so we can't skip `Q`.
                 let or_otherwise = leaf_candidate.otherwise_block.unwrap_or(remainder_start);
                 self.test_candidates_with_or(
                     span,
@@ -1505,68 +1554,20 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         );
     }
 
-    #[instrument(
-        skip(self, start_block, otherwise_block, or_span, candidate, pats),
-        level = "debug"
-    )]
-    fn test_or_pattern<'pat>(
-        &mut self,
-        candidate: &mut Candidate<'pat, 'tcx>,
-        start_block: BasicBlock,
-        otherwise_block: BasicBlock,
-        pats: Box<[FlatPat<'pat, 'tcx>]>,
-        or_span: Span,
-    ) {
-        debug!("candidate={:#?}\npats={:#?}", candidate, pats);
-        let mut or_candidates: Vec<_> = pats
-            .into_vec()
-            .into_iter()
-            .map(|flat_pat| Candidate::from_flat_pat(flat_pat, candidate.has_guard))
-            .collect();
-        let mut or_candidate_refs: Vec<_> = or_candidates.iter_mut().collect();
-        self.match_candidates(
-            or_span,
-            or_span,
-            start_block,
-            otherwise_block,
-            &mut or_candidate_refs,
-        );
-        candidate.subcandidates = or_candidates;
-        self.merge_trivial_subcandidates(candidate, self.source_info(or_span));
-    }
-
-    /// Try to merge all of the subcandidates of the given candidate into one.
+    /// Merge all of the subcandidates of the given candidate into one.
     /// This avoids exponentially large CFGs in cases like `(1 | 2, 3 | 4, ...)`.
-    fn merge_trivial_subcandidates(
+    fn merge_subcandidates(
         &mut self,
         candidate: &mut Candidate<'_, 'tcx>,
         source_info: SourceInfo,
     ) {
-        if candidate.subcandidates.is_empty() || candidate.has_guard {
-            // FIXME(or_patterns; matthewjasper) Don't give up if we have a guard.
-            return;
-        }
-
-        let mut can_merge = true;
-
-        // Not `Iterator::all` because we don't want to short-circuit.
-        for subcandidate in &mut candidate.subcandidates {
-            self.merge_trivial_subcandidates(subcandidate, source_info);
-
-            // FIXME(or_patterns; matthewjasper) Try to be more aggressive here.
-            can_merge &= subcandidate.subcandidates.is_empty()
-                && subcandidate.bindings.is_empty()
-                && subcandidate.ascriptions.is_empty();
-        }
-
-        if can_merge {
-            let any_matches = self.cfg.start_new_block();
-            for subcandidate in mem::take(&mut candidate.subcandidates) {
-                let or_block = subcandidate.pre_binding_block.unwrap();
-                self.cfg.goto(or_block, source_info, any_matches);
-            }
-            candidate.pre_binding_block = Some(any_matches);
-        }
+        let any_matches = self.cfg.start_new_block();
+        candidate.visit_leaves(|leaf_candidate| {
+            let or_block = leaf_candidate.pre_binding_block.unwrap();
+            self.cfg.goto(or_block, source_info, any_matches);
+        });
+        candidate.subcandidates.clear();
+        candidate.pre_binding_block = Some(any_matches);
     }
 
     /// Pick a test to run. Which test doesn't matter as long as it is guaranteed to fully match at
