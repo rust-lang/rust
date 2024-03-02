@@ -1153,8 +1153,11 @@ impl f32 {
             // Stability concerns.
             unsafe { mem::transmute(x) }
         }
+        #[cfg_attr(not(bootstrap), allow(unused_unsafe))] // on bootstrap bump, remove unsafe block
         // SAFETY: We use internal implementations that either always work or fail at compile time.
-        unsafe { intrinsics::const_eval_select((self,), ct_f32_to_u32, rt_f32_to_u32) }
+        unsafe {
+            intrinsics::const_eval_select((self,), ct_f32_to_u32, rt_f32_to_u32)
+        }
     }
 
     /// Raw transmutation from `u32`.
@@ -1245,8 +1248,11 @@ impl f32 {
             // Stability concerns.
             unsafe { mem::transmute(x) }
         }
+        #[cfg_attr(not(bootstrap), allow(unused_unsafe))] // on bootstrap bump, remove unsafe block
         // SAFETY: We use internal implementations that either always work or fail at compile time.
-        unsafe { intrinsics::const_eval_select((v,), ct_u32_to_f32, rt_u32_to_f32) }
+        unsafe {
+            intrinsics::const_eval_select((v,), ct_u32_to_f32, rt_u32_to_f32)
+        }
     }
 
     /// Return the memory representation of this floating point number as a byte array in
