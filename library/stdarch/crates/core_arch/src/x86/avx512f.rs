@@ -15950,7 +15950,7 @@ pub unsafe fn _mm512_setzero_pd() -> __m512d {
     mem::zeroed()
 }
 
-/// Returns vector of type `__m512d` with all elements set to zero.
+/// Returns vector of type `__m512` with all elements set to zero.
 ///
 /// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm512_setzero_ps&expand=5021)
 #[inline]
@@ -15962,7 +15962,7 @@ pub unsafe fn _mm512_setzero_ps() -> __m512 {
     mem::zeroed()
 }
 
-/// Return vector of type __m512 with all elements set to zero.
+/// Return vector of type `__m512` with all elements set to zero.
 ///
 /// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm512_setzero&expand=5014)
 #[inline]
@@ -15986,7 +15986,7 @@ pub unsafe fn _mm512_setzero_si512() -> __m512i {
     mem::zeroed()
 }
 
-/// Return vector of type __m512i with all elements set to zero.
+/// Return vector of type `__m512i` with all elements set to zero.
 ///
 /// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm512_setzero_epi32&expand=5015)
 #[inline]
