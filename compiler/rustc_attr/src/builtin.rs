@@ -1039,21 +1039,37 @@ pub fn parse_repr_attr(sess: &Session, attr: &Attribute) -> Vec<ReprAttr> {
                             });
                         }
                     }
-                    MetaItemKind::List(_) => {
+                    MetaItemKind::List(nested_items) => {
                         if meta_item.has_name(sym::align) {
                             recognised = true;
-                            sess.dcx().emit_err(
-                                session_diagnostics::IncorrectReprFormatAlignOneArg {
-                                    span: meta_item.span,
-                                },
-                            );
+                            if nested_items.len() == 1 {
+                                sess.dcx().emit_err(
+                                    session_diagnostics::IncorrectReprFormatExpectInteger {
+                                        span: nested_items[0].span(),
+                                    },
+                                );
+                            } else {
+                                sess.dcx().emit_err(
+                                    session_diagnostics::IncorrectReprFormatAlignOneArg {
+                                        span: meta_item.span,
+                                    },
+                                );
+                            }
                         } else if meta_item.has_name(sym::packed) {
                             recognised = true;
-                            sess.dcx().emit_err(
-                                session_diagnostics::IncorrectReprFormatPackedOneOrZeroArg {
-                                    span: meta_item.span,
-                                },
-                            );
+                            if nested_items.len() == 1 {
+                                sess.dcx().emit_err(
+                                    session_diagnostics::IncorrectReprFormatPackedExpectInteger {
+                                        span: nested_items[0].span(),
+                                    },
+                                );
+                            } else {
+                                sess.dcx().emit_err(
+                                    session_diagnostics::IncorrectReprFormatPackedOneOrZeroArg {
+                                        span: meta_item.span,
+                                    },
+                                );
+                            }
                         } else if matches!(
                             meta_item.name_or_empty(),
                             sym::Rust | sym::C | sym::simd | sym::transparent
