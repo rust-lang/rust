@@ -1,3 +1,4 @@
+//@ ignore-wasm
 #![crate_type = "proc-macro"]
 #![crate_name = "NonSnakeCase"]
 //~^ ERROR crate `NonSnakeCase` should have a snake case name
