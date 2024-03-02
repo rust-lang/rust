@@ -156,6 +156,7 @@ impl PanicStrategy {
 pub enum Sanitizer {
     Address,
     Cfi,
+    Dataflow,
     Kcfi,
     KernelAddress,
     Leak,
