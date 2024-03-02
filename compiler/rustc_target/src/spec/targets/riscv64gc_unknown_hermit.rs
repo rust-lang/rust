@@ -3,6 +3,7 @@ use crate::spec::{base, CodeModel, RelocModel, Target, TargetOptions, TlsModel};
 pub fn target() -> Target {
     Target {
         llvm_target: "riscv64-unknown-hermit".into(),
+        description: None,
         pointer_width: 64,
         arch: "riscv64".into(),
         data_layout: "e-m:e-p:64:64-i64:64-i128:128-n32:64-S128".into(),

@@ -8,6 +8,7 @@ pub fn target() -> Target {
 
     Target {
         llvm_target: "m68k-unknown-linux-gnu".into(),
+        description: None,
         pointer_width: 32,
         data_layout: "E-m:e-p:32:16:32-i8:8:8-i16:16:16-i32:16:32-n8:16:32-a:0:16-S16".into(),
         arch: "m68k".into(),
