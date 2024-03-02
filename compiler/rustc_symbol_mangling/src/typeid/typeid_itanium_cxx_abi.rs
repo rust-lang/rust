@@ -464,16 +464,17 @@ fn encode_ty<'tcx>(
             typeid.push_str(&s);
         }
 
-        // Rust's f32 and f64 single (32-bit) and double (64-bit) precision floating-point types
-        // have IEEE-754 binary32 and binary64 floating-point layouts, respectively.
+        // Rust's f16, f32, f64, and f126 half (16-bit), single (32-bit), double (64-bit), and
+        // quad (128-bit)  precision floating-point types have IEEE-754 binary16, binary32,
+        // binary64, and binary128 floating-point layouts, respectively.
         //
         // (See https://rust-lang.github.io/unsafe-code-guidelines/layout/scalars.html#fixed-width-floating-point-types.)
         ty::Float(float_ty) => {
-            typeid.push(match float_ty {
-                FloatTy::F16 => unimplemented!("f16_f128"),
-                FloatTy::F32 => 'f',
-                FloatTy::F64 => 'd',
-                FloatTy::F128 => unimplemented!("f16_f128"),
+            typeid.push_str(match float_ty {
+                FloatTy::F16 => "Dh",
+                FloatTy::F32 => "f",
+                FloatTy::F64 => "d",
+                FloatTy::F128 => "g",
             });
         }
 
@@ -557,7 +558,7 @@ fn encode_ty<'tcx>(
                         // https://itanium-cxx-abi.github.io/cxx-abi/abi.html#mangling-compression).
                         let builtin_types = [
                             "v", "w", "b", "c", "a", "h", "s", "t", "i", "j", "l", "m", "x", "y",
-                            "n", "o", "f", "d", "e", "g", "z",
+                            "n", "o", "f", "d", "e", "g", "z", "Dh",
                         ];
                         if !builtin_types.contains(&str) {
                             compress(dict, DictKey::Ty(ty, TyQ::None), &mut s);

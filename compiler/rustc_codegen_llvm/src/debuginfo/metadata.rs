@@ -695,7 +695,7 @@ impl MsvcBasicName for ty::UintTy {
 
 impl MsvcBasicName for ty::FloatTy {
     fn msvc_basic_name(self) -> &'static str {
-        // FIXME: f16 and f128 have no MSVE representation. We could improve the debuginfo.
+        // FIXME: f16 and f128 have no MSVC representation. We could improve the debuginfo.
         // See: <https://github.com/rust-lang/rust/pull/114607/files#r1454683264>
         match self {
             ty::FloatTy::F16 => "half",
