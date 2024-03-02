@@ -1112,6 +1112,7 @@ where
 /// * For an opaque type, there is no explicit syntax.
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, TyEncodable, TyDecodable)]
 #[derive(HashStable, TypeFoldable, TypeVisitable, Lift)]
+#[non_exhaustive]
 pub struct AliasTy<'tcx> {
     /// The parameters of the associated or opaque item.
     ///
@@ -1136,10 +1137,6 @@ pub struct AliasTy<'tcx> {
     /// `TraitRef` containing this associated type, which is in `tcx.associated_item(def_id).container`,
     /// aka. `tcx.parent(def_id)`.
     pub def_id: DefId,
-
-    /// This field exists to prevent the creation of `AliasTy` without using
-    /// [AliasTy::new].
-    _use_alias_ty_new_instead: (),
 }
 
 impl<'tcx> AliasTy<'tcx> {
@@ -1149,7 +1146,7 @@ impl<'tcx> AliasTy<'tcx> {
         args: impl IntoIterator<Item: Into<GenericArg<'tcx>>>,
     ) -> ty::AliasTy<'tcx> {
         let args = tcx.check_and_mk_args(def_id, args);
-        ty::AliasTy { def_id, args, _use_alias_ty_new_instead: () }
+        ty::AliasTy { def_id, args }
     }
 
     pub fn kind(self, tcx: TyCtxt<'tcx>) -> ty::AliasKind {
