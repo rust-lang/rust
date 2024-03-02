@@ -1,7 +1,7 @@
 // This test verifies the accuracy of emitted file and line debuginfo metadata for structs and
 // unions.
 //
-// compile-flags: -C debuginfo=2 -Z debug-info-type-line-numbers=true
+//@ compile-flags: -C debuginfo=2 -Z debug-info-type-line-numbers=true
 #![crate_type = "lib"]
 
 // ignore-tidy-linelength

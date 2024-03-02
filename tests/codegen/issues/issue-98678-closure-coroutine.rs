@@ -1,7 +1,7 @@
 // This test verifies the accuracy of emitted file and line debuginfo metadata for closures and
 // coroutines.
 //
-// compile-flags: -C debuginfo=2 -Z debug-info-type-line-numbers=true
+//@ compile-flags: -C debuginfo=2 -Z debug-info-type-line-numbers=true
 #![crate_type = "lib"]
 #![feature(coroutines, stmt_expr_attributes)]
 
