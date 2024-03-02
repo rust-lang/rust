@@ -19,7 +19,6 @@ fn main() {
         after_call = {
             Return()
         }
-
     }
 }
 

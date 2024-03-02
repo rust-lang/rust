@@ -359,8 +359,6 @@ The remaining flags are for advanced use only, and more likely to change or be r
 Some of these are **unsound**, which means they can lead
 to Miri failing to detect cases of undefined behavior in a program.
 
-* `-Zmiri-disable-abi-check` disables checking [function ABI]. Using this flag
-  is **unsound**. This flag is **deprecated**.
 * `-Zmiri-disable-alignment-check` disables checking pointer alignment, so you
   can focus on other failures, but it means Miri can miss bugs in your program.
   Using this flag is **unsound**.

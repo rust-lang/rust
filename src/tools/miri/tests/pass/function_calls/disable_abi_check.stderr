@@ -1,2 +1,0 @@
-WARNING: the flag `-Zmiri-disable-abi-check` is deprecated and planned to be removed.
-If you have a use-case for it, please file an issue.

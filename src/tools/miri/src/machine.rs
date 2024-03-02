@@ -460,9 +460,6 @@ pub struct MiriMachine<'mir, 'tcx> {
     /// Whether to enforce the validity invariant.
     pub(crate) validate: bool,
 
-    /// Whether to enforce [ABI](Abi) of function calls.
-    pub(crate) enforce_abi: bool,
-
     /// The table of file descriptors.
     pub(crate) file_handler: shims::unix::FileHandler,
     /// The table of directory descriptors.
@@ -641,7 +638,6 @@ impl<'mir, 'tcx> MiriMachine<'mir, 'tcx> {
             tls: TlsData::default(),
             isolated_op: config.isolated_op,
             validate: config.validate,
-            enforce_abi: config.check_abi,
             file_handler: FileHandler::new(config.mute_stdout_stderr),
             dir_handler: Default::default(),
             layouts,
@@ -784,7 +780,6 @@ impl VisitProvenance for MiriMachine<'_, '_> {
             tcx: _,
             isolated_op: _,
             validate: _,
-            enforce_abi: _,
             clock: _,
             layouts: _,
             static_roots: _,
@@ -932,8 +927,8 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for MiriMachine<'mir, 'tcx> {
     }
 
     #[inline(always)]
-    fn enforce_abi(ecx: &MiriInterpCx<'mir, 'tcx>) -> bool {
-        ecx.machine.enforce_abi
+    fn enforce_abi(_ecx: &MiriInterpCx<'mir, 'tcx>) -> bool {
+        true
     }
 
     #[inline(always)]
