@@ -1,6 +1,6 @@
 #![cfg_attr(test, allow(dead_code))] // why is this necessary?
 use super::unsupported;
-use crate::ffi::CStr;
+use crate::ffi::{CStr, CString};
 use crate::io;
 use crate::num::NonZero;
 use crate::time::Duration;
@@ -131,6 +131,10 @@ impl Thread {
         // by the platform-agnostic (target-agnostic) Rust thread code.
         // This can be observed in the [`std::thread::tests::test_named_thread`] test,
         // which succeeds as-is with the SGX target.
+    }
+
+    pub fn get_name() -> Option<CString> {
+        None
     }
 
     pub fn sleep(dur: Duration) {
