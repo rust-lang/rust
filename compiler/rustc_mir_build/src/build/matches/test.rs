@@ -5,7 +5,6 @@
 // identify what tests are needed, perform the tests, and then filter
 // the candidates based on the result.
 
-use crate::build::expr::as_place::PlaceBuilder;
 use crate::build::matches::{Candidate, MatchPair, Test, TestBranch, TestCase, TestKind};
 use crate::build::Builder;
 use rustc_data_structures::fx::FxIndexMap;
@@ -55,18 +54,17 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         Test { span: match_pair.pattern.span, kind }
     }
 
-    #[instrument(skip(self, target_blocks, place_builder), level = "debug")]
+    #[instrument(skip(self, target_blocks, place), level = "debug")]
     pub(super) fn perform_test(
         &mut self,
         match_start_span: Span,
         scrutinee_span: Span,
         block: BasicBlock,
         otherwise_block: BasicBlock,
-        place_builder: &PlaceBuilder<'tcx>,
+        place: Place<'tcx>,
         test: &Test<'tcx>,
         target_blocks: FxIndexMap<TestBranch<'tcx>, BasicBlock>,
     ) {
-        let place = place_builder.to_place(self);
         let place_ty = place.ty(&self.local_decls, self.tcx);
         debug!(?place, ?place_ty);
         let target_block = |branch| target_blocks.get(&branch).copied().unwrap_or(otherwise_block);
@@ -475,7 +473,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     /// tighter match code if we do something a bit different.
     pub(super) fn sort_candidate(
         &mut self,
-        test_place: &PlaceBuilder<'tcx>,
+        test_place: Place<'tcx>,
         test: &Test<'tcx>,
         candidate: &mut Candidate<'_, 'tcx>,
         sorted_candidates: &FxIndexMap<TestBranch<'tcx>, Vec<&mut Candidate<'_, 'tcx>>>,
@@ -486,8 +484,11 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         // than one, but it'd be very unusual to have two sides that
         // both require tests; you'd expect one side to be simplified
         // away.)
-        let (match_pair_index, match_pair) =
-            candidate.match_pairs.iter().enumerate().find(|&(_, mp)| mp.place == *test_place)?;
+        let (match_pair_index, match_pair) = candidate
+            .match_pairs
+            .iter()
+            .enumerate()
+            .find(|&(_, mp)| mp.place == Some(test_place))?;
 
         let fully_matched;
         let ret = match (&test.kind, &match_pair.test_case) {
@@ -521,7 +522,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     candidate
                         .match_pairs
                         .iter()
-                        .any(|mp| mp.place == *test_place && is_covering_range(&mp.test_case))
+                        .any(|mp| mp.place == Some(test_place) && is_covering_range(&mp.test_case))
                 };
                 if sorted_candidates
                     .get(&TestBranch::Failure)

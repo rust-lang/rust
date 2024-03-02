@@ -1106,7 +1106,10 @@ impl<'pat, 'tcx> TestCase<'pat, 'tcx> {
 #[derive(Debug, Clone)]
 pub(crate) struct MatchPair<'pat, 'tcx> {
     /// This place...
-    place: PlaceBuilder<'tcx>,
+    // This can be `None` if it referred to a non-captured place in a closure.
+    // Invariant: place.is_none() => test_case is Irrefutable
+    // In other words this must be `Some(_)` after simplification.
+    place: Option<Place<'tcx>>,
 
     /// ... must pass this test...
     // Invariant: after creation and simplification in `Candidate::new()`, this must not be
@@ -1587,11 +1590,12 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     fn pick_test(
         &mut self,
         candidates: &mut [&mut Candidate<'_, 'tcx>],
-    ) -> (PlaceBuilder<'tcx>, Test<'tcx>) {
+    ) -> (Place<'tcx>, Test<'tcx>) {
         // Extract the match-pair from the highest priority candidate
         let match_pair = &candidates.first().unwrap().match_pairs[0];
         let test = self.test(match_pair);
-        let match_place = match_pair.place.clone();
+        // Unwrap is ok after simplification.
+        let match_place = match_pair.place.unwrap();
         debug!(?test, ?match_pair);
 
         (match_place, test)
@@ -1632,7 +1636,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     /// - candidate 1 becomes `[y @ false]` since we know that `x` was `false`.
     fn sort_candidates<'b, 'c, 'pat>(
         &mut self,
-        match_place: &PlaceBuilder<'tcx>,
+        match_place: Place<'tcx>,
         test: &Test<'tcx>,
         mut candidates: &'b mut [&'c mut Candidate<'pat, 'tcx>],
     ) -> (
@@ -1650,7 +1654,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         // sorting.
         while let Some(candidate) = candidates.first_mut() {
             let Some(branch) =
-                self.sort_candidate(&match_place, test, candidate, &target_candidates)
+                self.sort_candidate(match_place, test, candidate, &target_candidates)
             else {
                 break;
             };
@@ -1778,7 +1782,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         // For each of the N possible test outcomes, build the vector of candidates that applies if
         // the test has that particular outcome.
         let (remaining_candidates, target_candidates) =
-            self.sort_candidates(&match_place, &test, candidates);
+            self.sort_candidates(match_place, &test, candidates);
 
         // The block that we should branch to if none of the
         // `target_candidates` match.
@@ -1818,7 +1822,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             scrutinee_span,
             start_block,
             remainder_start,
-            &match_place,
+            match_place,
             &test,
             target_blocks,
         );
