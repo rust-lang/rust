@@ -10,6 +10,7 @@ use crate::sys::os;
 use crate::time::Duration;
 
 pub const DEFAULT_MIN_STACK_SIZE: usize = 8 * 1024;
+pub const LAZY_INIT_MAIN_THREAD_INFO: bool = false;
 
 pub struct Thread {
     id: libc::pthread_t,

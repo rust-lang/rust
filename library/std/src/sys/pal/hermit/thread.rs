@@ -19,6 +19,7 @@ unsafe impl Send for Thread {}
 unsafe impl Sync for Thread {}
 
 pub const DEFAULT_MIN_STACK_SIZE: usize = 1 << 20;
+pub const LAZY_INIT_MAIN_THREAD_INFO: bool = false;
 
 impl Thread {
     pub unsafe fn new_with_coreid(

@@ -19,6 +19,7 @@ pub const DEFAULT_MIN_STACK_SIZE: usize = 1024 * 1024;
 pub const DEFAULT_MIN_STACK_SIZE: usize = 256 * 1024;
 #[cfg(target_os = "espidf")]
 pub const DEFAULT_MIN_STACK_SIZE: usize = 0; // 0 indicates that the stack size configured in the ESP-IDF menuconfig system should be used
+pub const LAZY_INIT_MAIN_THREAD_INFO: bool = false;
 
 #[cfg(target_os = "fuchsia")]
 mod zircon {

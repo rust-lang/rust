@@ -86,6 +86,7 @@ const LIFECYCLE_EXITED_OR_FINISHED_OR_JOIN_FINALIZE: usize = usize::MAX;
 
 // 64KiB for 32-bit ISAs, 128KiB for 64-bit ISAs.
 pub const DEFAULT_MIN_STACK_SIZE: usize = 0x4000 * crate::mem::size_of::<usize>();
+pub const LAZY_INIT_MAIN_THREAD_INFO: bool = false;
 
 impl Thread {
     /// # Safety

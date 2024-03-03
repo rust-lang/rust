@@ -10,6 +10,7 @@ use super::abi::usercalls;
 pub struct Thread(task_queue::JoinHandle);
 
 pub const DEFAULT_MIN_STACK_SIZE: usize = 4096;
+pub const LAZY_INIT_MAIN_THREAD_INFO: bool = false;
 
 pub use self::task_queue::JoinNotifier;
 

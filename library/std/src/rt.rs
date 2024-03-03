@@ -97,12 +97,15 @@ unsafe fn init(argc: isize, argv: *const *const u8, sigpipe: u8) {
         sys::init(argc, argv, sigpipe);
 
         let main_guard = sys::thread::guard::init();
-        // Next, set up the current Thread with the guard information we just
-        // created. Note that this isn't necessary in general for new threads,
-        // but we just do this to name the main thread and to give it correct
-        // info about the stack bounds.
-        let thread = Thread::new(Some(rtunwrap!(Ok, CString::new("main"))));
-        thread_info::set(main_guard, thread);
+        // Setting thread_info from main is unnecessary on some platforms (i.e. Windows)
+        if !sys::thread::LAZY_INIT_MAIN_THREAD_INFO || main_guard.is_some() {
+            // Next, set up the current Thread with the guard information we just
+            // created. Note that this isn't necessary in general for new threads,
+            // but we just do this to name the main thread and to give it correct
+            // info about the stack bounds.
+            let thread = Thread::new(Some(rtunwrap!(Ok, CString::new("main"))));
+            thread_info::set(main_guard, thread);
+        }
     }
 }
 

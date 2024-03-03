@@ -16,6 +16,7 @@ pub struct Thread {
 pub const DEFAULT_MIN_STACK_SIZE: usize = 131072;
 const MIN_STACK_SIZE: usize = 4096;
 pub const GUARD_PAGE_SIZE: usize = 4096;
+pub const LAZY_INIT_MAIN_THREAD_INFO: bool = false;
 
 impl Thread {
     // unsafe: see thread::Builder::spawn_unchecked for safety requirements
