@@ -9,10 +9,9 @@ use hir_expand::proc_macro::{
     ProcMacro, ProcMacroExpander, ProcMacroExpansionError, ProcMacroKind, ProcMacroLoadResult,
     ProcMacros,
 };
-use ide::{AnalysisHost, SourceRoot};
 use ide_db::{
-    base_db::{CrateGraph, Env},
-    Change, FxHashMap,
+    base_db::{CrateGraph, Env, SourceRoot},
+    prime_caches, Change, FxHashMap, RootDatabase,
 };
 use itertools::Itertools;
 use proc_macro_api::{MacroDylib, ProcMacroServer};
@@ -38,7 +37,7 @@ pub fn load_workspace_at(
     cargo_config: &CargoConfig,
     load_config: &LoadCargoConfig,
     progress: &dyn Fn(String),
-) -> anyhow::Result<(AnalysisHost, vfs::Vfs, Option<ProcMacroServer>)> {
+) -> anyhow::Result<(RootDatabase, vfs::Vfs, Option<ProcMacroServer>)> {
     let root = AbsPathBuf::assert(std::env::current_dir()?.join(root));
     let root = ProjectManifest::discover_single(&root)?;
     let mut workspace = ProjectWorkspace::load(root, cargo_config, progress)?;
@@ -55,7 +54,7 @@ pub fn load_workspace(
     ws: ProjectWorkspace,
     extra_env: &FxHashMap<String, String>,
     load_config: &LoadCargoConfig,
-) -> anyhow::Result<(AnalysisHost, vfs::Vfs, Option<ProcMacroServer>)> {
+) -> anyhow::Result<(RootDatabase, vfs::Vfs, Option<ProcMacroServer>)> {
     let (sender, receiver) = unbounded();
     let mut vfs = vfs::Vfs::default();
     let mut loader = {
@@ -113,7 +112,7 @@ pub fn load_workspace(
         version: 0,
     });
 
-    let host = load_crate_graph(
+    let db = load_crate_graph(
         &ws,
         crate_graph,
         proc_macros,
@@ -123,9 +122,9 @@ pub fn load_workspace(
     );
 
     if load_config.prefill_caches {
-        host.analysis().parallel_prime_caches(1, |_| {})?;
+        prime_caches::parallel_prime_caches(&db, 1, &|_| ());
     }
-    Ok((host, vfs, proc_macro_server.ok()))
+    Ok((db, vfs, proc_macro_server.ok()))
 }
 
 #[derive(Default)]
@@ -308,16 +307,16 @@ fn load_crate_graph(
     source_root_config: SourceRootConfig,
     vfs: &mut vfs::Vfs,
     receiver: &Receiver<vfs::loader::Message>,
-) -> AnalysisHost {
+) -> RootDatabase {
     let (ProjectWorkspace::Cargo { toolchain, target_layout, .. }
     | ProjectWorkspace::Json { toolchain, target_layout, .. }
     | ProjectWorkspace::DetachedFiles { toolchain, target_layout, .. }) = ws;
 
     let lru_cap = std::env::var("RA_LRU_CAP").ok().and_then(|it| it.parse::<usize>().ok());
-    let mut host = AnalysisHost::new(lru_cap);
+    let mut db = RootDatabase::new(lru_cap);
     let mut analysis_change = Change::new();
 
-    host.raw_database_mut().enable_proc_attr_macros();
+    db.enable_proc_attr_macros();
 
     // wait until Vfs has loaded all roots
     for task in receiver {
@@ -352,8 +351,8 @@ fn load_crate_graph(
         .set_target_data_layouts(iter::repeat(target_layout.clone()).take(num_crates).collect());
     analysis_change.set_toolchains(iter::repeat(toolchain.clone()).take(num_crates).collect());
 
-    host.apply_change(analysis_change);
-    host
+    db.apply_change(analysis_change);
+    db
 }
 
 fn expander_to_proc_macro(
@@ -407,10 +406,10 @@ mod tests {
             with_proc_macro_server: ProcMacroServerChoice::None,
             prefill_caches: false,
         };
-        let (host, _vfs, _proc_macro) =
+        let (db, _vfs, _proc_macro) =
             load_workspace_at(path, &cargo_config, &load_cargo_config, &|_| {}).unwrap();
 
-        let n_crates = host.raw_database().crate_graph().iter().count();
+        let n_crates = db.crate_graph().iter().count();
         // RA has quite a few crates, but the exact count doesn't matter
         assert!(n_crates > 20);
     }

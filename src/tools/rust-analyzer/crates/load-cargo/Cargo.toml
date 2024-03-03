@@ -16,16 +16,16 @@ crossbeam-channel.workspace = true
 itertools.workspace = true
 tracing.workspace = true
 
-ide.workspace = true
+# workspace deps
+
+hir-expand.workspace = true
 ide-db.workspace = true
 proc-macro-api.workspace = true
 project-model.workspace = true
-tt.workspace = true
-vfs.workspace = true
-vfs-notify.workspace = true
 span.workspace = true
-
-hir-expand.workspace = true
+tt.workspace = true
+vfs-notify.workspace = true
+vfs.workspace = true
 
 [lints]
 workspace = true

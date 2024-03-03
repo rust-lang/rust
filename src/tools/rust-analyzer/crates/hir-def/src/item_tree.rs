@@ -47,18 +47,13 @@ use std::{
 use ast::{AstNode, StructKind};
 use base_db::CrateId;
 use either::Either;
-use hir_expand::{
-    ast_id_map::{AstIdNode, FileAstId},
-    attrs::RawAttrs,
-    name::Name,
-    ExpandTo, HirFileId, InFile,
-};
+use hir_expand::{attrs::RawAttrs, name::Name, ExpandTo, HirFileId, InFile};
 use intern::Interned;
 use la_arena::{Arena, Idx, IdxRange, RawIdx};
 use profile::Count;
 use rustc_hash::FxHashMap;
 use smallvec::SmallVec;
-use span::Span;
+use span::{AstIdNode, FileAstId, Span};
 use stdx::never;
 use syntax::{ast, match_ast, SyntaxKind};
 use triomphe::Arc;

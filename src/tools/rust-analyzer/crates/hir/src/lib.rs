@@ -68,7 +68,7 @@ use hir_ty::{
     known_const_to_ast,
     layout::{Layout as TyLayout, RustcEnumVariantIdx, RustcFieldIdx, TagEncoding},
     method_resolution::{self, TyFingerprint},
-    mir::interpret_mir,
+    mir::{interpret_mir, MutBorrowKind},
     primitive::UintTy,
     traits::FnTrait,
     AliasTy, CallableDefId, CallableSig, Canonical, CanonicalVarKinds, Cast, ClosureId, GenericArg,
@@ -93,7 +93,8 @@ pub use crate::{
     diagnostics::*,
     has_source::HasSource,
     semantics::{
-        DescendPreference, PathResolution, Semantics, SemanticsScope, TypeInfo, VisibleTraits,
+        DescendPreference, PathResolution, Semantics, SemanticsImpl, SemanticsScope, TypeInfo,
+        VisibleTraits,
     },
 };
 
@@ -2088,7 +2089,7 @@ impl From<hir_ty::Mutability> for Access {
     }
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, PartialEq, Eq, Hash, Debug)]
 pub struct Param {
     func: Function,
     /// The index in parameter list, including self parameter.
@@ -3754,12 +3755,12 @@ impl ClosureCapture {
             hir_ty::CaptureKind::ByRef(
                 hir_ty::mir::BorrowKind::Shallow | hir_ty::mir::BorrowKind::Shared,
             ) => CaptureKind::SharedRef,
-            hir_ty::CaptureKind::ByRef(hir_ty::mir::BorrowKind::Unique) => {
-                CaptureKind::UniqueSharedRef
-            }
-            hir_ty::CaptureKind::ByRef(hir_ty::mir::BorrowKind::Mut { .. }) => {
-                CaptureKind::MutableRef
-            }
+            hir_ty::CaptureKind::ByRef(hir_ty::mir::BorrowKind::Mut {
+                kind: MutBorrowKind::ClosureCapture,
+            }) => CaptureKind::UniqueSharedRef,
+            hir_ty::CaptureKind::ByRef(hir_ty::mir::BorrowKind::Mut {
+                kind: MutBorrowKind::Default | MutBorrowKind::TwoPhasedBorrow,
+            }) => CaptureKind::MutableRef,
             hir_ty::CaptureKind::ByValue => CaptureKind::Move,
         }
     }
@@ -3854,6 +3855,11 @@ impl Type {
 
     pub fn new_slice(ty: Type) -> Type {
         Type { env: ty.env, ty: TyBuilder::slice(ty.ty) }
+    }
+
+    pub fn new_tuple(krate: CrateId, tys: &[Type]) -> Type {
+        let tys = tys.iter().map(|it| it.ty.clone());
+        Type { env: TraitEnvironment::empty(krate), ty: TyBuilder::tuple_with(tys) }
     }
 
     pub fn is_unit(&self) -> bool {
@@ -4239,6 +4245,10 @@ impl Type {
         }
     }
 
+    pub fn fingerprint_for_trait_impl(&self) -> Option<TyFingerprint> {
+        TyFingerprint::for_trait_impl(&self.ty)
+    }
+
     pub(crate) fn canonical(&self) -> Canonical<Ty> {
         hir_ty::replace_errors_with_variables(&self.ty)
     }
@@ -4316,8 +4326,10 @@ impl Type {
         self.ty
             .strip_references()
             .as_adt()
+            .map(|(_, substs)| substs)
+            .or_else(|| self.ty.strip_references().as_tuple())
             .into_iter()
-            .flat_map(|(_, substs)| substs.iter(Interner))
+            .flat_map(|substs| substs.iter(Interner))
             .filter_map(|arg| arg.ty(Interner).cloned())
             .map(move |ty| self.derived(ty))
     }

@@ -68,7 +68,7 @@ impl Name {
         Self::new_text(lt.text().into())
     }
 
-    /// Shortcut to create inline plain text name. Panics if `text.len() > 22`
+    /// Shortcut to create a name from a string literal.
     const fn new_static(text: &'static str) -> Name {
         Name::new_text(SmolStr::new_static(text))
     }

@@ -145,7 +145,7 @@ fn edit_struct_references(
                                         pat,
                                     )
                                 },
-                            )),
+                            ), None),
                         )
                         .to_string(),
                     );

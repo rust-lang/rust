@@ -303,6 +303,14 @@ impl SourceAnalyzer {
         }
     }
 
+    pub(crate) fn resolve_expr_as_callable(
+        &self,
+        db: &dyn HirDatabase,
+        call: &ast::Expr,
+    ) -> Option<Callable> {
+        self.type_of_expr(db, &call.clone())?.0.as_callable(db)
+    }
+
     pub(crate) fn resolve_field(
         &self,
         db: &dyn HirDatabase,
@@ -377,14 +385,34 @@ impl SourceAnalyzer {
         db: &dyn HirDatabase,
         prefix_expr: &ast::PrefixExpr,
     ) -> Option<FunctionId> {
-        let (lang_item, fn_name) = match prefix_expr.op_kind()? {
-            ast::UnaryOp::Deref => (LangItem::Deref, name![deref]),
-            ast::UnaryOp::Not => (LangItem::Not, name![not]),
-            ast::UnaryOp::Neg => (LangItem::Neg, name![neg]),
+        let (op_trait, op_fn) = match prefix_expr.op_kind()? {
+            ast::UnaryOp::Deref => {
+                // This can be either `Deref::deref` or `DerefMut::deref_mut`.
+                // Since deref kind is inferenced and stored in `InferenceResult.method_resolution`,
+                // use that result to find out which one it is.
+                let (deref_trait, deref) =
+                    self.lang_trait_fn(db, LangItem::Deref, &name![deref])?;
+                self.infer
+                    .as_ref()
+                    .and_then(|infer| {
+                        let expr = self.expr_id(db, &prefix_expr.clone().into())?;
+                        let (func, _) = infer.method_resolution(expr)?;
+                        let (deref_mut_trait, deref_mut) =
+                            self.lang_trait_fn(db, LangItem::DerefMut, &name![deref_mut])?;
+                        if func == deref_mut {
+                            Some((deref_mut_trait, deref_mut))
+                        } else {
+                            None
+                        }
+                    })
+                    .unwrap_or((deref_trait, deref))
+            }
+            ast::UnaryOp::Not => self.lang_trait_fn(db, LangItem::Not, &name![not])?,
+            ast::UnaryOp::Neg => self.lang_trait_fn(db, LangItem::Neg, &name![neg])?,
         };
+
         let ty = self.ty_of_expr(db, &prefix_expr.expr()?)?;
 
-        let (op_trait, op_fn) = self.lang_trait_fn(db, lang_item, &fn_name)?;
         // HACK: subst for all methods coincides with that for their trait because the methods
         // don't have any generic parameters, so we skip building another subst for the methods.
         let substs = hir_ty::TyBuilder::subst_for_def(db, op_trait, None).push(ty.clone()).build();
@@ -400,7 +428,22 @@ impl SourceAnalyzer {
         let base_ty = self.ty_of_expr(db, &index_expr.base()?)?;
         let index_ty = self.ty_of_expr(db, &index_expr.index()?)?;
 
-        let (op_trait, op_fn) = self.lang_trait_fn(db, LangItem::Index, &name![index])?;
+        let (index_trait, index_fn) = self.lang_trait_fn(db, LangItem::Index, &name![index])?;
+        let (op_trait, op_fn) = self
+            .infer
+            .as_ref()
+            .and_then(|infer| {
+                let expr = self.expr_id(db, &index_expr.clone().into())?;
+                let (func, _) = infer.method_resolution(expr)?;
+                let (index_mut_trait, index_mut_fn) =
+                    self.lang_trait_fn(db, LangItem::IndexMut, &name![index_mut])?;
+                if func == index_mut_fn {
+                    Some((index_mut_trait, index_mut_fn))
+                } else {
+                    None
+                }
+            })
+            .unwrap_or((index_trait, index_fn));
         // HACK: subst for all methods coincides with that for their trait because the methods
         // don't have any generic parameters, so we skip building another subst for the methods.
         let substs = hir_ty::TyBuilder::subst_for_def(db, op_trait, None)

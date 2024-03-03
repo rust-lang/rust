@@ -12,7 +12,8 @@ authors.workspace = true
 [dependencies]
 la-arena.workspace = true
 salsa.workspace = true
-
+rustc-hash.workspace = true
+hashbrown.workspace = true
 
 # local deps
 vfs.workspace = true

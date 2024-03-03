@@ -23,6 +23,8 @@ xflags::xflags! {
             optional --mimalloc
             /// Use jemalloc allocator for server
             optional --jemalloc
+            /// build in release with debug info set to 2
+            optional --dev-rel
         }
 
         cmd fuzz-tests {}
@@ -80,6 +82,7 @@ pub struct Install {
     pub server: bool,
     pub mimalloc: bool,
     pub jemalloc: bool,
+    pub dev_rel: bool,
 }
 
 #[derive(Debug)]
@@ -187,7 +190,7 @@ impl Install {
         } else {
             Malloc::System
         };
-        Some(ServerOpt { malloc })
+        Some(ServerOpt { malloc, dev_rel: self.dev_rel })
     }
     pub(crate) fn client(&self) -> Option<ClientOpt> {
         if !self.client && self.server {

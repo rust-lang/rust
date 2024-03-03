@@ -656,6 +656,10 @@ pub fn wildcard_pat() -> ast::WildcardPat {
     }
 }
 
+pub fn rest_pat() -> ast::RestPat {
+    ast_from_text("fn f(..)")
+}
+
 pub fn literal_pat(lit: &str) -> ast::LiteralPat {
     return from_text(lit);
 
@@ -716,8 +720,12 @@ pub fn record_pat_with_fields(path: ast::Path, fields: ast::RecordPatFieldList) 
 
 pub fn record_pat_field_list(
     fields: impl IntoIterator<Item = ast::RecordPatField>,
+    rest_pat: Option<ast::RestPat>,
 ) -> ast::RecordPatFieldList {
-    let fields = fields.into_iter().join(", ");
+    let mut fields = fields.into_iter().join(", ");
+    if let Some(rest_pat) = rest_pat {
+        format_to!(fields, ", {rest_pat}");
+    }
     ast_from_text(&format!("fn f(S {{ {fields} }}: ()))"))
 }
 

@@ -501,8 +501,7 @@ fn rustc_discover_host_triple(
     extra_env: &FxHashMap<String, String>,
     sysroot: Option<&Sysroot>,
 ) -> Option<String> {
-    let mut rustc = Command::new(Tool::Rustc.path());
-    Sysroot::set_rustup_toolchain_env(&mut rustc, sysroot);
+    let mut rustc = Sysroot::rustc(sysroot);
     rustc.envs(extra_env);
     rustc.current_dir(cargo_toml.parent()).arg("-vV");
     tracing::debug!("Discovering host platform by {:?}", rustc);

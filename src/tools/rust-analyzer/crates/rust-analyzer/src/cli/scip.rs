@@ -3,7 +3,7 @@
 use std::{path::PathBuf, time::Instant};
 
 use ide::{
-    LineCol, MonikerDescriptorKind, MonikerResult, StaticIndex, StaticIndexedFile,
+    AnalysisHost, LineCol, MonikerDescriptorKind, MonikerResult, StaticIndex, StaticIndexedFile,
     SymbolInformationKind, TextRange, TokenId,
 };
 use ide_db::LineIndexDatabase;
@@ -42,12 +42,13 @@ impl flags::Scip {
             config.update(json)?;
         }
         let cargo_config = config.cargo();
-        let (host, vfs, _) = load_workspace_at(
+        let (db, vfs, _) = load_workspace_at(
             root.as_path().as_ref(),
             &cargo_config,
             &load_cargo_config,
             &no_progress,
         )?;
+        let host = AnalysisHost::with_database(db);
         let db = host.raw_database();
         let analysis = host.analysis();
 
@@ -324,7 +325,7 @@ fn moniker_to_symbol(moniker: &MonikerResult) -> scip_types::Symbol {
 #[cfg(test)]
 mod test {
     use super::*;
-    use ide::{AnalysisHost, FilePosition, TextSize};
+    use ide::{FilePosition, TextSize};
     use scip::symbol::format_symbol;
     use test_fixture::ChangeFixture;
 

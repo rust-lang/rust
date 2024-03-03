@@ -109,7 +109,6 @@ pub(super) fn type_constructor<'a, DB: HirDatabase>(
         lookup: &mut LookupTable,
         parent_enum: Enum,
         variant: Variant,
-        goal: &Type,
         config: &TermSearchConfig,
     ) -> Vec<(Type, Vec<Expr>)> {
         // Ignore unstable
@@ -143,11 +142,14 @@ pub(super) fn type_constructor<'a, DB: HirDatabase>(
         let non_default_type_params_len =
             type_params.iter().filter(|it| it.default(db).is_none()).count();
 
+        let enum_ty_shallow = Adt::from(parent_enum).ty(db);
         let generic_params = lookup
-            .iter_types()
-            .collect::<Vec<_>>() // Force take ownership
+            .types_wishlist()
+            .clone()
             .into_iter()
-            .permutations(non_default_type_params_len);
+            .filter(|ty| ty.could_unify_with(db, &enum_ty_shallow))
+            .map(|it| it.type_arguments().collect::<Vec<Type>>())
+            .chain((non_default_type_params_len == 0).then_some(Vec::new()));
 
         generic_params
             .filter_map(move |generics| {
@@ -155,16 +157,10 @@ pub(super) fn type_constructor<'a, DB: HirDatabase>(
                 let mut g = generics.into_iter();
                 let generics: Vec<_> = type_params
                     .iter()
-                    .map(|it| it.default(db).unwrap_or_else(|| g.next().expect("No generic")))
-                    .collect();
+                    .map(|it| it.default(db).or_else(|| g.next()))
+                    .collect::<Option<_>>()?;
 
                 let enum_ty = Adt::from(parent_enum).ty_with_args(db, generics.iter().cloned());
-
-                // Allow types with generics only if they take us straight to goal for
-                // performance reasons
-                if !generics.is_empty() && !enum_ty.could_unify_with_deeply(db, goal) {
-                    return None;
-                }
 
                 // Ignore types that have something to do with lifetimes
                 if config.enable_borrowcheck && enum_ty.contains_reference(db) {
@@ -199,21 +195,37 @@ pub(super) fn type_constructor<'a, DB: HirDatabase>(
         .filter_map(move |def| match def {
             ScopeDef::ModuleDef(ModuleDef::Variant(it)) => {
                 let variant_exprs =
-                    variant_helper(db, lookup, it.parent_enum(db), *it, &ctx.goal, &ctx.config);
+                    variant_helper(db, lookup, it.parent_enum(db), *it, &ctx.config);
                 if variant_exprs.is_empty() {
                     return None;
                 }
-                lookup.mark_fulfilled(ScopeDef::ModuleDef(ModuleDef::Variant(*it)));
+                if GenericDef::from(it.parent_enum(db))
+                    .type_or_const_params(db)
+                    .into_iter()
+                    .filter_map(|it| it.as_type_param(db))
+                    .all(|it| it.default(db).is_some())
+                {
+                    lookup.mark_fulfilled(ScopeDef::ModuleDef(ModuleDef::Variant(*it)));
+                }
                 Some(variant_exprs)
             }
             ScopeDef::ModuleDef(ModuleDef::Adt(Adt::Enum(enum_))) => {
                 let exprs: Vec<(Type, Vec<Expr>)> = enum_
                     .variants(db)
                     .into_iter()
-                    .flat_map(|it| variant_helper(db, lookup, *enum_, it, &ctx.goal, &ctx.config))
+                    .flat_map(|it| variant_helper(db, lookup, *enum_, it, &ctx.config))
                     .collect();
 
-                if !exprs.is_empty() {
+                if exprs.is_empty() {
+                    return None;
+                }
+
+                if GenericDef::from(*enum_)
+                    .type_or_const_params(db)
+                    .into_iter()
+                    .filter_map(|it| it.as_type_param(db))
+                    .all(|it| it.default(db).is_some())
+                {
                     lookup.mark_fulfilled(ScopeDef::ModuleDef(ModuleDef::Adt(Adt::Enum(*enum_))));
                 }
 
@@ -249,11 +261,14 @@ pub(super) fn type_constructor<'a, DB: HirDatabase>(
                 let non_default_type_params_len =
                     type_params.iter().filter(|it| it.default(db).is_none()).count();
 
+                let struct_ty_shallow = Adt::from(*it).ty(db);
                 let generic_params = lookup
-                    .iter_types()
-                    .collect::<Vec<_>>() // Force take ownership
+                    .types_wishlist()
+                    .clone()
                     .into_iter()
-                    .permutations(non_default_type_params_len);
+                    .filter(|ty| ty.could_unify_with(db, &struct_ty_shallow))
+                    .map(|it| it.type_arguments().collect::<Vec<Type>>())
+                    .chain((non_default_type_params_len == 0).then_some(Vec::new()));
 
                 let exprs = generic_params
                     .filter_map(|generics| {
@@ -261,21 +276,10 @@ pub(super) fn type_constructor<'a, DB: HirDatabase>(
                         let mut g = generics.into_iter();
                         let generics: Vec<_> = type_params
                             .iter()
-                            .map(|it| {
-                                it.default(db)
-                                    .unwrap_or_else(|| g.next().expect("Missing type param"))
-                            })
-                            .collect();
+                            .map(|it| it.default(db).or_else(|| g.next()))
+                            .collect::<Option<_>>()?;
 
                         let struct_ty = Adt::from(*it).ty_with_args(db, generics.iter().cloned());
-
-                        // Allow types with generics only if they take us straight to goal for
-                        // performance reasons
-                        if non_default_type_params_len != 0
-                            && struct_ty.could_unify_with_deeply(db, &ctx.goal)
-                        {
-                            return None;
-                        }
 
                         // Ignore types that have something to do with lifetimes
                         if ctx.config.enable_borrowcheck && struct_ty.contains_reference(db) {
@@ -309,8 +313,12 @@ pub(super) fn type_constructor<'a, DB: HirDatabase>(
                                 .collect()
                         };
 
-                        lookup
-                            .mark_fulfilled(ScopeDef::ModuleDef(ModuleDef::Adt(Adt::Struct(*it))));
+                        if non_default_type_params_len == 0 {
+                            // Fulfilled only if there are no generic parameters
+                            lookup.mark_fulfilled(ScopeDef::ModuleDef(ModuleDef::Adt(
+                                Adt::Struct(*it),
+                            )));
+                        }
                         lookup.insert(struct_ty.clone(), struct_exprs.iter().cloned());
 
                         Some((struct_ty, struct_exprs))
@@ -525,14 +533,17 @@ pub(super) fn impl_method<'a, DB: HirDatabase>(
                 return None;
             }
 
-            let non_default_type_params_len = imp_type_params
-                .iter()
-                .chain(fn_type_params.iter())
-                .filter(|it| it.default(db).is_none())
-                .count();
+            // Double check that we have fully known type
+            if ty.type_arguments().any(|it| it.contains_unknown()) {
+                return None;
+            }
 
-            // Ignore bigger number of generics for now as they kill the performance
-            if non_default_type_params_len > 0 {
+            let non_default_fn_type_params_len =
+                fn_type_params.iter().filter(|it| it.default(db).is_none()).count();
+
+            // Ignore functions with generics for now as they kill the performance
+            // Also checking bounds for generics is problematic
+            if non_default_fn_type_params_len > 0 {
                 return None;
             }
 
@@ -540,23 +551,23 @@ pub(super) fn impl_method<'a, DB: HirDatabase>(
                 .iter_types()
                 .collect::<Vec<_>>() // Force take ownership
                 .into_iter()
-                .permutations(non_default_type_params_len);
+                .permutations(non_default_fn_type_params_len);
 
             let exprs: Vec<_> = generic_params
                 .filter_map(|generics| {
                     // Insert default type params
                     let mut g = generics.into_iter();
-                    let generics: Vec<_> = imp_type_params
-                        .iter()
-                        .chain(fn_type_params.iter())
-                        .map(|it| match it.default(db) {
+                    let generics: Vec<_> = ty
+                        .type_arguments()
+                        .map(Some)
+                        .chain(fn_type_params.iter().map(|it| match it.default(db) {
                             Some(ty) => Some(ty),
                             None => {
                                 let generic = g.next().expect("Missing type param");
                                 // Filter out generics that do not unify due to trait bounds
                                 it.ty(db).could_unify_with(db, &generic).then_some(generic)
                             }
-                        })
+                        }))
                         .collect::<Option<_>>()?;
 
                     let ret_ty = it.ret_type_with_args(
@@ -713,7 +724,8 @@ pub(super) fn impl_static_method<'a, DB: HirDatabase>(
     let db = ctx.sema.db;
     let module = ctx.scope.module();
     lookup
-        .take_types_wishlist()
+        .types_wishlist()
+        .clone()
         .into_iter()
         .chain(iter::once(ctx.goal.clone()))
         .flat_map(|ty| {
@@ -768,14 +780,17 @@ pub(super) fn impl_static_method<'a, DB: HirDatabase>(
                 return None;
             }
 
-            let non_default_type_params_len = imp_type_params
-                .iter()
-                .chain(fn_type_params.iter())
-                .filter(|it| it.default(db).is_none())
-                .count();
+            // Double check that we have fully known type
+            if ty.type_arguments().any(|it| it.contains_unknown()) {
+                return None;
+            }
 
-            // Ignore bigger number of generics for now as they kill the performance
-            if non_default_type_params_len > 1 {
+            let non_default_fn_type_params_len =
+                fn_type_params.iter().filter(|it| it.default(db).is_none()).count();
+
+            // Ignore functions with generics for now as they kill the performance
+            // Also checking bounds for generics is problematic
+            if non_default_fn_type_params_len > 0 {
                 return None;
             }
 
@@ -783,16 +798,16 @@ pub(super) fn impl_static_method<'a, DB: HirDatabase>(
                 .iter_types()
                 .collect::<Vec<_>>() // Force take ownership
                 .into_iter()
-                .permutations(non_default_type_params_len);
+                .permutations(non_default_fn_type_params_len);
 
             let exprs: Vec<_> = generic_params
                 .filter_map(|generics| {
                     // Insert default type params
                     let mut g = generics.into_iter();
-                    let generics: Vec<_> = imp_type_params
-                        .iter()
-                        .chain(fn_type_params.iter())
-                        .map(|it| match it.default(db) {
+                    let generics: Vec<_> = ty
+                        .type_arguments()
+                        .map(Some)
+                        .chain(fn_type_params.iter().map(|it| match it.default(db) {
                             Some(ty) => Some(ty),
                             None => {
                                 let generic = g.next().expect("Missing type param");
@@ -802,7 +817,7 @@ pub(super) fn impl_static_method<'a, DB: HirDatabase>(
                                 // Filter out generics that do not unify due to trait bounds
                                 it.ty(db).could_unify_with(db, &generic).then_some(generic)
                             }
-                        })
+                        }))
                         .collect::<Option<_>>()?;
 
                     let ret_ty = it.ret_type_with_args(
@@ -856,4 +871,62 @@ pub(super) fn impl_static_method<'a, DB: HirDatabase>(
         .flatten()
         .filter_map(|(ty, exprs)| ty.could_unify_with_deeply(db, &ctx.goal).then_some(exprs))
         .flatten()
+}
+
+/// # Make tuple tactic
+///
+/// Attempts to create tuple types if any are listed in types wishlist
+///
+/// Updates lookup by new types reached and returns iterator that yields
+/// elements that unify with `goal`.
+///
+/// # Arguments
+/// * `ctx` - Context for the term search
+/// * `defs` - Set of items in scope at term search target location
+/// * `lookup` - Lookup table for types
+pub(super) fn make_tuple<'a, DB: HirDatabase>(
+    ctx: &'a TermSearchCtx<'a, DB>,
+    _defs: &'a FxHashSet<ScopeDef>,
+    lookup: &'a mut LookupTable,
+) -> impl Iterator<Item = Expr> + 'a {
+    let db = ctx.sema.db;
+    let module = ctx.scope.module();
+
+    lookup
+        .types_wishlist()
+        .clone()
+        .into_iter()
+        .filter(|ty| ty.is_tuple())
+        .filter_map(move |ty| {
+            // Double check to not contain unknown
+            if ty.contains_unknown() {
+                return None;
+            }
+
+            // Ignore types that have something to do with lifetimes
+            if ctx.config.enable_borrowcheck && ty.contains_reference(db) {
+                return None;
+            }
+
+            // Early exit if some param cannot be filled from lookup
+            let param_exprs: Vec<Vec<Expr>> =
+                ty.type_arguments().map(|field| lookup.find(db, &field)).collect::<Option<_>>()?;
+
+            let exprs: Vec<Expr> = param_exprs
+                .into_iter()
+                .multi_cartesian_product()
+                .map(|params| {
+                    let tys: Vec<Type> = params.iter().map(|it| it.ty(db)).collect();
+                    let tuple_ty = Type::new_tuple(module.krate().into(), &tys);
+
+                    let expr = Expr::Tuple { ty: tuple_ty.clone(), params };
+                    lookup.insert(tuple_ty, iter::once(expr.clone()));
+                    expr
+                })
+                .collect();
+
+            Some(exprs)
+        })
+        .flatten()
+        .filter_map(|expr| expr.ty(db).could_unify_with_deeply(db, &ctx.goal).then_some(expr))
 }
