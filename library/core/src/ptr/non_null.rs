@@ -284,17 +284,17 @@ impl<T: ?Sized> NonNull<T> {
 
     /// Gets the "address" portion of the pointer.
     ///
-    /// For more details see the equivalent method on a raw pointer, [`pointer::addr`].
+    /// For more details see the equivalent method on a raw pointer, [`pointer::bare_addr`].
     ///
     /// This API and its claimed semantics are part of the Strict Provenance experiment,
     /// see the [`ptr` module documentation][crate::ptr].
     #[must_use]
     #[inline]
     #[unstable(feature = "strict_provenance", issue = "95228")]
-    pub fn addr(self) -> NonZero<usize> {
+    pub fn bare_addr(self) -> NonZero<usize> {
         // SAFETY: The pointer is guaranteed by the type to be non-null,
         // meaning that the address will be non-zero.
-        unsafe { NonZero::new_unchecked(self.pointer.addr()) }
+        unsafe { NonZero::new_unchecked(self.pointer.bare_addr()) }
     }
 
     /// Creates a new pointer with the given address.
@@ -321,7 +321,7 @@ impl<T: ?Sized> NonNull<T> {
     #[inline]
     #[unstable(feature = "strict_provenance", issue = "95228")]
     pub fn map_addr(self, f: impl FnOnce(NonZero<usize>) -> NonZero<usize>) -> Self {
-        self.with_addr(f(self.addr()))
+        self.with_addr(f(self.bare_addr()))
     }
 
     /// Acquires the underlying `*mut` pointer.
@@ -803,7 +803,7 @@ impl<T: ?Sized> NonNull<T> {
     /// runtime and may be exploited by optimizations. If you wish to compute the difference between
     /// pointers that are not guaranteed to be from the same allocation, use `(self as isize -
     /// origin as isize) / mem::size_of::<T>()`.
-    // FIXME: recommend `addr()` instead of `as usize` once that is stable.
+    // FIXME: recommend `bare_addr()` instead of `as usize` once that is stable.
     ///
     /// [`add`]: #method.add
     /// [allocated object]: crate::ptr#allocated-object
@@ -839,10 +839,10 @@ impl<T: ?Sized> NonNull<T> {
     ///
     /// let ptr1 = NonNull::new(Box::into_raw(Box::new(0u8))).unwrap();
     /// let ptr2 = NonNull::new(Box::into_raw(Box::new(1u8))).unwrap();
-    /// let diff = (ptr2.addr().get() as isize).wrapping_sub(ptr1.addr().get() as isize);
+    /// let diff = (ptr2.bare_addr().get() as isize).wrapping_sub(ptr1.bare_addr().get() as isize);
     /// // Make ptr2_other an "alias" of ptr2, but derived from ptr1.
     /// let ptr2_other = NonNull::new(ptr1.as_ptr().wrapping_byte_offset(diff)).unwrap();
-    /// assert_eq!(ptr2.addr(), ptr2_other.addr());
+    /// assert_eq!(ptr2.bare_addr(), ptr2_other.bare_addr());
     /// // Since ptr2_other and ptr2 are derived from pointers to different objects,
     /// // computing their offset is undefined behavior, even though
     /// // they point to the same address!

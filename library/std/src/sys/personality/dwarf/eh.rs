@@ -111,12 +111,12 @@ pub unsafe fn find_eh_action(lsda: *const u8, context: &EHContext<'_>) -> Result
         // SjLj version:
         // The "IP" is an index into the call-site table, with two exceptions:
         // -1 means 'no-action', and 0 means 'terminate'.
-        match ip.addr() as isize {
+        match ip.bare_addr() as isize {
             -1 => return Ok(EHAction::None),
             0 => return Ok(EHAction::Terminate),
             _ => (),
         }
-        let mut idx = ip.addr();
+        let mut idx = ip.bare_addr();
         loop {
             let cs_lpad = reader.read_uleb128();
             let cs_action_entry = reader.read_uleb128();
@@ -230,8 +230,9 @@ unsafe fn read_encoded_pointer(
         DW_EH_PE_datarel => (*context.get_data_start)(),
         // aligned means the value is aligned to the size of a pointer
         DW_EH_PE_aligned => {
-            reader.ptr =
-                reader.ptr.with_addr(round_up(reader.ptr.addr(), mem::size_of::<*const u8>())?);
+            reader.ptr = reader
+                .ptr
+                .with_addr(round_up(reader.ptr.bare_addr(), mem::size_of::<*const u8>())?);
             core::ptr::null()
         }
         _ => return Err(()),

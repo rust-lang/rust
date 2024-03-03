@@ -104,7 +104,7 @@ where
     #[inline]
     pub fn tag(&self) -> T {
         // Unpack the tag, according to the `self.packed` encoding scheme
-        let tag = self.packed.addr().get() >> Self::TAG_BIT_SHIFT;
+        let tag = self.packed.bare_addr().get() >> Self::TAG_BIT_SHIFT;
 
         // Safety:
         // The shift retrieves the original value from `T::into_usize`,

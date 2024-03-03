@@ -222,7 +222,7 @@ impl<T, A: Allocator> Iterator for IntoIter<T, A> {
     #[inline]
     fn size_hint(&self) -> (usize, Option<usize>) {
         let exact = if T::IS_ZST {
-            self.end.addr().wrapping_sub(self.ptr.as_ptr().addr())
+            self.end.bare_addr().wrapping_sub(self.ptr.as_ptr().bare_addr())
         } else {
             unsafe { non_null!(self.end, T).sub_ptr(self.ptr) }
         };

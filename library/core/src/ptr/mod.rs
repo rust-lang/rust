@@ -202,7 +202,7 @@
 //! we provide the [`map_addr`][] method.
 //!
 //! To help make it clear that code is "following" Strict Provenance semantics, we also provide an
-//! [`addr`][] method which promises that the returned address is not part of a
+//! [`bare_addr`][] method which promises that the returned address is not part of a
 //! pointer-usize-pointer roundtrip. In the future we may provide a lint for pointer<->integer
 //! casts to help you audit if your code conforms to strict provenance.
 //!
@@ -239,7 +239,7 @@
 //!     let tagged = ptr.map_addr(|addr| addr | HAS_DATA);
 //!
 //!     // Check the flag:
-//!     if tagged.addr() & HAS_DATA != 0 {
+//!     if tagged.bare_addr() & HAS_DATA != 0 {
 //!         // Untag and read the pointer
 //!         let data = *tagged.map_addr(|addr| addr & FLAG_MASK);
 //!         assert_eq!(data, 17);
@@ -294,7 +294,7 @@
 //!   particular platform, and it's an open question as to how to specify this (if at all).
 //!   Notably, [CHERI][] relies on a compression scheme that can't handle a
 //!   pointer getting offset "too far" out of bounds. If this happens, the address
-//!   returned by `addr` will be the value you expect, but the provenance will get invalidated
+//!   returned by `bare_addr` will be the value you expect, but the provenance will get invalidated
 //!   and using it to read/write will fault. The details of this are architecture-specific
 //!   and based on alignment, but the buffer on either side of the pointer's range is pretty
 //!   generous (think kilobytes, not bytes).
@@ -342,7 +342,7 @@
 //!
 //! Exposed Provenance is provided by the [`expose_addr`] and [`from_exposed_addr`] methods, which
 //! are meant to replace `as` casts between pointers and integers. [`expose_addr`] is a lot like
-//! [`addr`], but additionally adds the provenance of the pointer to a global list of 'exposed'
+//! [`bare_addr`], but additionally adds the provenance of the pointer to a global list of 'exposed'
 //! provenances. (This list is purely conceptual, it exists for the purpose of specifying Rust but
 //! is not materialized in actual executions, except in tools like [Miri].) [`from_exposed_addr`]
 //! can be used to construct a pointer with one of these previously 'exposed' provenances.
@@ -372,7 +372,7 @@
 //! [`wrapping_offset`]: pointer::wrapping_offset
 //! [`with_addr`]: pointer::with_addr
 //! [`map_addr`]: pointer::map_addr
-//! [`addr`]: pointer::addr
+//! [`bare_addr`]: pointer::bare_addr
 //! [`ptr::dangling`]: core::ptr::dangling
 //! [`expose_addr`]: pointer::expose_addr
 //! [`from_exposed_addr`]: from_exposed_addr

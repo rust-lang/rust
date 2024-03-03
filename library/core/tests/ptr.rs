@@ -1056,7 +1056,7 @@ fn nonnull_tagged_pointer_with_provenance() {
 
         /// Consume this tagged pointer and produce the data it carries.
         pub fn tag(&self) -> usize {
-            self.0.addr().get() & Self::DATA_MASK
+            self.0.bare_addr().get() & Self::DATA_MASK
         }
 
         /// Update the data this tagged pointer carries to a new value.

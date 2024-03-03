@@ -29,7 +29,7 @@ impl Mutex {
     }
 
     fn index(&self) -> usize {
-        core::ptr::from_ref(self).addr()
+        core::ptr::from_ref(self).bare_addr()
     }
 
     #[inline]

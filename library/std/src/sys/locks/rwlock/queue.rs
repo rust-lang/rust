@@ -137,14 +137,14 @@ const MASK: usize = !(QUEUE_LOCKED | QUEUED | LOCKED);
 #[inline]
 fn write_lock(state: State) -> Option<State> {
     let state = state.wrapping_byte_add(LOCKED);
-    if state.addr() & LOCKED == LOCKED { Some(state) } else { None }
+    if state.bare_addr() & LOCKED == LOCKED { Some(state) } else { None }
 }
 
 /// Marks the state as read-locked, if possible.
 #[inline]
 fn read_lock(state: State) -> Option<State> {
-    if state.addr() & QUEUED == 0 && state.addr() != LOCKED {
-        Some(without_provenance_mut(state.addr().checked_add(SINGLE)? | LOCKED))
+    if state.bare_addr() & QUEUED == 0 && state.bare_addr() != LOCKED {
+        Some(without_provenance_mut(state.bare_addr().checked_add(SINGLE)? | LOCKED))
     } else {
         None
     }
@@ -303,7 +303,7 @@ impl RwLock {
         // "ldseta" on modern AArch64), and therefore is more efficient than
         // `fetch_update(lock(true))`, which can spuriously fail if a new node
         // is appended to the queue.
-        self.state.fetch_or(LOCKED, Acquire).addr() & LOCKED == 0
+        self.state.fetch_or(LOCKED, Acquire).bare_addr() & LOCKED == 0
     }
 
     #[inline]
@@ -326,7 +326,7 @@ impl RwLock {
                     Ok(_) => return,
                     Err(new) => state = new,
                 }
-            } else if state.addr() & QUEUED == 0 && count < SPIN_COUNT {
+            } else if state.bare_addr() & QUEUED == 0 && count < SPIN_COUNT {
                 // If the lock is not available and no threads are queued, spin
                 // for a while, using exponential backoff to decrease cache
                 // contention.
@@ -346,10 +346,10 @@ impl RwLock {
                 node.next.0 = AtomicPtr::new(state.mask(MASK).cast());
                 node.prev = AtomicLink::new(None);
                 let mut next = ptr::from_ref(&node)
-                    .map_addr(|addr| addr | QUEUED | (state.addr() & LOCKED))
+                    .map_addr(|addr| addr | QUEUED | (state.bare_addr() & LOCKED))
                     as State;
 
-                if state.addr() & QUEUED == 0 {
+                if state.bare_addr() & QUEUED == 0 {
                     // If this is the first node in the queue, set the tail field to
                     // the node itself to ensure there is a current `tail` field in
                     // the queue (invariants 1 and 2). This needs to use `set` to
@@ -378,7 +378,7 @@ impl RwLock {
 
                 // If the current thread locked the queue, unlock it again,
                 // linking it in the process.
-                if state.addr() & (QUEUE_LOCKED | QUEUED) == QUEUED {
+                if state.bare_addr() & (QUEUE_LOCKED | QUEUED) == QUEUED {
                     unsafe {
                         self.unlock_queue(next);
                     }
@@ -403,8 +403,8 @@ impl RwLock {
     #[inline]
     pub unsafe fn read_unlock(&self) {
         match self.state.fetch_update(Release, Acquire, |state| {
-            if state.addr() & QUEUED == 0 {
-                let count = state.addr() - (SINGLE | LOCKED);
+            if state.bare_addr() & QUEUED == 0 {
+                let count = state.bare_addr() - (SINGLE | LOCKED);
                 Some(if count > 0 { without_provenance_mut(count | LOCKED) } else { UNLOCKED })
             } else {
                 None
@@ -431,7 +431,7 @@ impl RwLock {
         // The lock count is stored in the `next` field of `tail`.
         // Decrement it, making sure to observe all changes made to the queue
         // by the other lock owners by using acquire-release ordering.
-        let was_last = tail.next.0.fetch_byte_sub(SINGLE, AcqRel).addr() - SINGLE == 0;
+        let was_last = tail.next.0.fetch_byte_sub(SINGLE, AcqRel).bare_addr() - SINGLE == 0;
         if was_last {
             // SAFETY:
             // Other threads cannot read-lock while threads are queued. Also,
@@ -464,7 +464,7 @@ impl RwLock {
             match self.state.compare_exchange_weak(state, next, AcqRel, Relaxed) {
                 // The queue lock was acquired. Release it, waking up the next
                 // waiter in the process.
-                Ok(_) if state.addr() & QUEUE_LOCKED == 0 => unsafe {
+                Ok(_) if state.bare_addr() & QUEUE_LOCKED == 0 => unsafe {
                     return self.unlock_queue(next);
                 },
                 // Another thread already holds the queue lock, leave waking up
@@ -481,12 +481,12 @@ impl RwLock {
     /// # Safety
     /// The queue lock must be held by the current thread.
     unsafe fn unlock_queue(&self, mut state: State) {
-        debug_assert_eq!(state.addr() & (QUEUED | QUEUE_LOCKED), QUEUED | QUEUE_LOCKED);
+        debug_assert_eq!(state.bare_addr() & (QUEUED | QUEUE_LOCKED), QUEUED | QUEUE_LOCKED);
 
         loop {
             let tail = unsafe { add_backlinks_and_find_tail(to_node(state)) };
 
-            if state.addr() & LOCKED == LOCKED {
+            if state.bare_addr() & LOCKED == LOCKED {
                 // Another thread has locked the lock. Leave waking up waiters
                 // to them by releasing the queue lock.
                 match self.state.compare_exchange_weak(

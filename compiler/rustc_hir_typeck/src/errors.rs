@@ -256,7 +256,7 @@ pub enum LossyProvenancePtr2IntSuggestion<'tcx> {
     NeedsParensCast {
         #[suggestion_part(code = "(")]
         expr_span: Span,
-        #[suggestion_part(code = ").addr() as {cast_ty}")]
+        #[suggestion_part(code = ").bare_addr() as {cast_ty}")]
         cast_span: Span,
         cast_ty: Ty<'tcx>,
     },
@@ -264,12 +264,12 @@ pub enum LossyProvenancePtr2IntSuggestion<'tcx> {
     NeedsParens {
         #[suggestion_part(code = "(")]
         expr_span: Span,
-        #[suggestion_part(code = ").addr()")]
+        #[suggestion_part(code = ").bare_addr()")]
         cast_span: Span,
     },
     #[suggestion(
         hir_typeck_suggestion,
-        code = ".addr() as {cast_ty}",
+        code = ".bare_addr() as {cast_ty}",
         applicability = "maybe-incorrect"
     )]
     NeedsCast {
@@ -277,7 +277,7 @@ pub enum LossyProvenancePtr2IntSuggestion<'tcx> {
         cast_span: Span,
         cast_ty: Ty<'tcx>,
     },
-    #[suggestion(hir_typeck_suggestion, code = ".addr()", applicability = "maybe-incorrect")]
+    #[suggestion(hir_typeck_suggestion, code = ".bare_addr()", applicability = "maybe-incorrect")]
     Other {
         #[primary_span]
         cast_span: Span,

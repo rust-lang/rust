@@ -560,10 +560,22 @@ fn offset_of_addr() {
 
     let base = Foo { x: 0, y: 0, z: Bar(0, 0) };
 
-    assert_eq!(ptr::addr_of!(base).addr() + offset_of!(Foo, x), ptr::addr_of!(base.x).addr());
-    assert_eq!(ptr::addr_of!(base).addr() + offset_of!(Foo, y), ptr::addr_of!(base.y).addr());
-    assert_eq!(ptr::addr_of!(base).addr() + offset_of!(Foo, z.0), ptr::addr_of!(base.z.0).addr());
-    assert_eq!(ptr::addr_of!(base).addr() + offset_of!(Foo, z.1), ptr::addr_of!(base.z.1).addr());
+    assert_eq!(
+        ptr::addr_of!(base).bare_addr() + offset_of!(Foo, x),
+        ptr::addr_of!(base.x).bare_addr()
+    );
+    assert_eq!(
+        ptr::addr_of!(base).bare_addr() + offset_of!(Foo, y),
+        ptr::addr_of!(base.y).bare_addr()
+    );
+    assert_eq!(
+        ptr::addr_of!(base).bare_addr() + offset_of!(Foo, z.0),
+        ptr::addr_of!(base.z.0).bare_addr()
+    );
+    assert_eq!(
+        ptr::addr_of!(base).bare_addr() + offset_of!(Foo, z.1),
+        ptr::addr_of!(base.z.1).bare_addr()
+    );
 }
 
 #[test]

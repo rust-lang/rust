@@ -238,7 +238,7 @@ if #[cfg(any(target_os = "ios", target_os = "tvos", target_os = "watchos", targe
     pub unsafe fn _Unwind_SetIP(ctx: *mut _Unwind_Context,
                                 value: _Unwind_Word) {
         // Propagate thumb bit to instruction pointer
-        let thumb_state = _Unwind_GetGR(ctx, UNWIND_IP_REG).addr() & 1;
+        let thumb_state = _Unwind_GetGR(ctx, UNWIND_IP_REG).bare_addr() & 1;
         let value = value.map_addr(|v| v | thumb_state);
         _Unwind_SetGR(ctx, UNWIND_IP_REG, value);
     }

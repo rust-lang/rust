@@ -72,9 +72,9 @@ impl Arena {
     /// chunk. Returns `None` if there is no free space left to satisfy the
     /// request.
     fn alloc_raw_without_grow(&self, bytes: usize) -> Option<&mut [MaybeUninit<u8>]> {
-        let start = self.start.get().addr();
+        let start = self.start.get().bare_addr();
         let old_end = self.end.get();
-        let end = old_end.addr();
+        let end = old_end.bare_addr();
 
         let new_end = end.checked_sub(bytes)?;
         if start <= new_end {

@@ -149,7 +149,7 @@ impl<'tcx> GenericArg<'tcx> {
         // pointers were originally created from `Interned` types in `pack()`,
         // and this is just going in the other direction.
         unsafe {
-            match self.ptr.addr().get() & TAG_MASK {
+            match self.ptr.bare_addr().get() & TAG_MASK {
                 REGION_TAG => GenericArgKind::Lifetime(ty::Region(Interned::new_unchecked(
                     ptr.cast::<ty::RegionKind<'tcx>>().as_ref(),
                 ))),

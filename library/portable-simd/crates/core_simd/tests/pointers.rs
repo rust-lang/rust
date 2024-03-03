@@ -16,10 +16,10 @@ macro_rules! common_tests {
                 );
             }
 
-            fn addr<const LANES: usize>() {
+            fn bare_addr<const LANES: usize>() {
                 test_helpers::test_unary_elementwise(
-                    &Simd::<*$constness u32, LANES>::addr,
-                    &<*$constness u32>::addr,
+                    &Simd::<*$constness u32, LANES>::bare_addr,
+                    &<*$constness u32>::bare_addr,
                     &|_| true,
                 );
             }

@@ -206,5 +206,5 @@ pub fn current_thread_id() -> usize {
     // `u8` is not drop so this variable will be available during thread destruction,
     // whereas `thread::current()` would not be
     thread_local! { static DUMMY: u8 = 0 }
-    DUMMY.with(|x| (x as *const u8).addr())
+    DUMMY.with(|x| (x as *const u8).bare_addr())
 }

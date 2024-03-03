@@ -172,7 +172,7 @@ impl<T> TypedArena<T> {
     fn can_allocate(&self, additional: usize) -> bool {
         // FIXME: this should *likely* use `offset_from`, but more
         // investigation is needed (including running tests in miri).
-        let available_bytes = self.end.get().addr() - self.ptr.get().addr();
+        let available_bytes = self.end.get().bare_addr() - self.ptr.get().bare_addr();
         let additional_bytes = additional.checked_mul(mem::size_of::<T>()).unwrap();
         available_bytes >= additional_bytes
     }
@@ -245,7 +245,7 @@ impl<T> TypedArena<T> {
                 if mem::needs_drop::<T>() {
                     // FIXME: this should *likely* use `offset_from`, but more
                     // investigation is needed (including running tests in miri).
-                    let used_bytes = self.ptr.get().addr() - last_chunk.start().addr();
+                    let used_bytes = self.ptr.get().bare_addr() - last_chunk.start().bare_addr();
                     last_chunk.entries = used_bytes / mem::size_of::<T>();
                 }
 
@@ -271,9 +271,9 @@ impl<T> TypedArena<T> {
     // chunks.
     fn clear_last_chunk(&self, last_chunk: &mut ArenaChunk<T>) {
         // Determine how much was filled.
-        let start = last_chunk.start().addr();
+        let start = last_chunk.start().bare_addr();
         // We obtain the value of the pointer to the first uninitialized element.
-        let end = self.ptr.get().addr();
+        let end = self.ptr.get().bare_addr();
         // We then calculate the number of elements to be dropped in the last chunk,
         // which is the filled area's length.
         let diff = if mem::size_of::<T>() == 0 {
@@ -396,11 +396,11 @@ impl DroplessArena {
             self.start.set(chunk.start());
 
             // Align the end to DROPLESS_ALIGNMENT.
-            let end = align_down(chunk.end().addr(), DROPLESS_ALIGNMENT);
+            let end = align_down(chunk.end().bare_addr(), DROPLESS_ALIGNMENT);
 
             // Make sure we don't go past `start`. This should not happen since the allocation
             // should be at least DROPLESS_ALIGNMENT - 1 bytes.
-            debug_assert!(chunk.start().addr() <= end);
+            debug_assert!(chunk.start().bare_addr() <= end);
 
             self.end.set(chunk.end().with_addr(end));
 
@@ -415,9 +415,9 @@ impl DroplessArena {
         // This loop executes once or twice: if allocation fails the first
         // time, the `grow` ensures it will succeed the second time.
         loop {
-            let start = self.start.get().addr();
+            let start = self.start.get().bare_addr();
             let old_end = self.end.get();
-            let end = old_end.addr();
+            let end = old_end.bare_addr();
 
             // Align allocated bytes so that `self.end` stays aligned to
             // DROPLESS_ALIGNMENT.

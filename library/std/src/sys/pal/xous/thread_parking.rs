@@ -22,7 +22,7 @@ impl Parker {
     }
 
     fn index(&self) -> usize {
-        ptr::from_ref(self).addr()
+        ptr::from_ref(self).bare_addr()
     }
 
     pub unsafe fn park(self: Pin<&Self>) {

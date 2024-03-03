@@ -65,7 +65,7 @@ fn main() {
         // The pointer is not modified on failure, posix_memalign(3) says:
         // > On Linux (and other systems), posix_memalign() does  not  modify  memptr  on failure.
         // > A requirement standardizing this behavior was added in POSIX.1-2008 TC2.
-        assert_eq!(ptr.addr(), 0x1234567);
+        assert_eq!(ptr.bare_addr(), 0x1234567);
     }
 
     // Too small align (smaller than ptr)
@@ -77,6 +77,6 @@ fn main() {
         // The pointer is not modified on failure, posix_memalign(3) says:
         // > On Linux (and other systems), posix_memalign() does  not  modify  memptr  on failure.
         // > A requirement standardizing this behavior was added in POSIX.1-2008 TC2.
-        assert_eq!(ptr.addr(), 0x1234567);
+        assert_eq!(ptr.bare_addr(), 0x1234567);
     }
 }

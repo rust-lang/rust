@@ -624,7 +624,7 @@ impl<'tcx> Term<'tcx> {
         // pointers were originally created from `Interned` types in `pack()`,
         // and this is just going in the other direction.
         unsafe {
-            match self.ptr.addr().get() & TAG_MASK {
+            match self.ptr.bare_addr().get() & TAG_MASK {
                 TYPE_TAG => TermKind::Ty(Ty(Interned::new_unchecked(
                     ptr.cast::<WithCachedTypeInfo<ty::TyKind<'tcx>>>().as_ref(),
                 ))),

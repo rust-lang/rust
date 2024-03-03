@@ -342,7 +342,7 @@ where
         assert!(mem::size_of::<T>() > 0);
         // FIXME: this should *likely* use `offset_from`, but more
         // investigation is needed (including running tests in miri).
-        (r.addr() - l.addr()) / mem::size_of::<T>()
+        (r.bare_addr() - l.bare_addr()) / mem::size_of::<T>()
     }
 
     loop {

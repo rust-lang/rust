@@ -795,10 +795,10 @@ pub mod guard {
         let stack_ptr = current_stack.ss_sp;
         let stackaddr = if libc::pthread_main_np() == 1 {
             // main thread
-            stack_ptr.addr() - current_stack.ss_size + PAGE_SIZE.load(Ordering::Relaxed)
+            stack_ptr.bare_addr() - current_stack.ss_size + PAGE_SIZE.load(Ordering::Relaxed)
         } else {
             // new thread
-            stack_ptr.addr() - current_stack.ss_size
+            stack_ptr.bare_addr() - current_stack.ss_size
         };
         Some(stack_ptr.with_addr(stackaddr))
     }
@@ -837,7 +837,7 @@ pub mod guard {
         let page_size = PAGE_SIZE.load(Ordering::Relaxed);
         assert!(page_size != 0);
         let stackptr = get_stack_start()?;
-        let stackaddr = stackptr.addr();
+        let stackaddr = stackptr.bare_addr();
 
         // Ensure stackaddr is page aligned! A parent process might
         // have reset RLIMIT_STACK to be non-page aligned. The
@@ -869,7 +869,7 @@ pub mod guard {
             // faulting, so our handler can report "stack overflow", and
             // trust that the kernel's own stack guard will work.
             let stackptr = get_stack_start_aligned()?;
-            let stackaddr = stackptr.addr();
+            let stackaddr = stackptr.bare_addr();
             Some(stackaddr - page_size..stackaddr)
         } else if cfg!(all(target_os = "linux", target_env = "musl")) {
             // For the main thread, the musl's pthread_attr_getstack
@@ -883,7 +883,7 @@ pub mod guard {
             // ourselves, FreeBSD's guard page moves upwards. So we'll just use
             // the builtin guard page.
             let stackptr = get_stack_start_aligned()?;
-            let guardaddr = stackptr.addr();
+            let guardaddr = stackptr.bare_addr();
             // Technically the number of guard pages is tunable and controlled
             // by the security.bsd.stack_guard_page sysctl.
             // By default it is 1, checking once is enough since it is
@@ -919,7 +919,7 @@ pub mod guard {
             // faulting, so our handler can report "stack overflow", and
             // trust that the kernel's own stack guard will work.
             let stackptr = get_stack_start_aligned()?;
-            let stackaddr = stackptr.addr();
+            let stackaddr = stackptr.bare_addr();
             Some(stackaddr - page_size..stackaddr)
         } else {
             // Reallocate the last page of the stack.
@@ -948,7 +948,7 @@ pub mod guard {
                 panic!("failed to protect the guard page: {}", io::Error::last_os_error());
             }
 
-            let guardaddr = stackptr.addr();
+            let guardaddr = stackptr.bare_addr();
 
             Some(guardaddr..guardaddr + page_size)
         }
@@ -957,7 +957,7 @@ pub mod guard {
     #[cfg(any(target_os = "macos", target_os = "openbsd", target_os = "solaris"))]
     pub unsafe fn current() -> Option<Guard> {
         let stackptr = get_stack_start()?;
-        let stackaddr = stackptr.addr();
+        let stackaddr = stackptr.bare_addr();
         Some(stackaddr - PAGE_SIZE.load(Ordering::Relaxed)..stackaddr)
     }
 
@@ -995,7 +995,7 @@ pub mod guard {
             let mut size = 0;
             assert_eq!(libc::pthread_attr_getstack(&attr, &mut stackptr, &mut size), 0);
 
-            let stackaddr = stackptr.addr();
+            let stackaddr = stackptr.bare_addr();
             ret = if cfg!(any(target_os = "freebsd", target_os = "netbsd", target_os = "hurd")) {
                 Some(stackaddr - guardsize..stackaddr)
             } else if cfg!(all(target_os = "linux", target_env = "musl")) {

@@ -11,8 +11,8 @@ LL |         let _val = *left_ptr;
 note: inside `main`
   --> $DIR/provenance_transmute.rs:LL:CC
    |
-LL |         deref(ptr1, ptr2.with_addr(ptr1.addr()));
-   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |         deref(ptr1, ptr2.with_addr(ptr1.bare_addr()));
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace
 

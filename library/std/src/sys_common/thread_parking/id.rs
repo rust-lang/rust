@@ -62,7 +62,7 @@ impl Parker {
             // The state must be reset with acquire ordering to ensure that all
             // calls to `unpark` synchronize with this thread.
             while self.state.compare_exchange(NOTIFIED, EMPTY, Acquire, Relaxed).is_err() {
-                park(self.state.as_ptr().addr());
+                park(self.state.as_ptr().bare_addr());
             }
         }
     }
@@ -72,7 +72,7 @@ impl Parker {
 
         let state = self.state.fetch_sub(1, Acquire).wrapping_sub(1);
         if state == PARKED {
-            park_timeout(dur, self.state.as_ptr().addr());
+            park_timeout(dur, self.state.as_ptr().bare_addr());
             // Swap to ensure that we observe all state changes with acquire
             // ordering.
             self.state.swap(EMPTY, Acquire);
@@ -94,7 +94,7 @@ impl Parker {
             // and terminated before this call is made. This call then returns an
             // error or wakes up an unrelated thread. The platform API and
             // environment does allow this, however.
-            unpark(tid, self.state.as_ptr().addr());
+            unpark(tid, self.state.as_ptr().bare_addr());
         }
     }
 }

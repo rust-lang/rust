@@ -14,8 +14,8 @@ fn main() {
     let ptr = x.as_mut_ptr();
     unsafe {
         let misaligned = ptr.byte_add(4);
-        assert!(misaligned.addr() % 8 != 0);
-        assert!(misaligned.addr() % 4 == 0);
+        assert!(misaligned.bare_addr() % 8 != 0);
+        assert!(misaligned.bare_addr() % 4 == 0);
         *misaligned = 42;
     }
 }

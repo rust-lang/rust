@@ -333,7 +333,7 @@ impl Backtrace {
                     frame: RawFrame::Actual(frame.clone()),
                     symbols: Vec::new(),
                 });
-                if frame.symbol_address().addr() == ip && actual_start.is_none() {
+                if frame.symbol_address().bare_addr() == ip && actual_start.is_none() {
                     actual_start = Some(frames.len());
                 }
                 true

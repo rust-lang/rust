@@ -406,8 +406,8 @@ pub(crate) unsafe fn copy_to_userspace(src: *const u8, dst: *mut u8, len: usize)
     assert!(is_enclave_range(src, len));
     assert!(is_user_range(dst, len));
     assert!(len < isize::MAX as usize);
-    assert!(!src.addr().overflowing_add(len).1);
-    assert!(!dst.addr().overflowing_add(len).1);
+    assert!(!src.bare_addr().overflowing_add(len).1);
+    assert!(!dst.bare_addr().overflowing_add(len).1);
 
     unsafe {
         let (len1, len2, len3) = u64_align_to_guaranteed(dst, len);

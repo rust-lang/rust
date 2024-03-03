@@ -42,7 +42,7 @@ fn ptr_in_two_halves() {
         // Now target_arr[1] is a mix of the two `ptr` we had stored in `arr`.
         let strange_ptr = target_arr[1];
         // Check that the provenance works out.
-        assert_eq!(*strange_ptr.with_addr(ptr.addr()), 0);
+        assert_eq!(*strange_ptr.with_addr(ptr.bare_addr()), 0);
     }
 }
 

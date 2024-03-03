@@ -7,8 +7,8 @@
 pub fn test(src: *const u8, dst: *const u8) -> usize {
     // CHECK-LABEL: @test(
     // CHECK-NOT: panic
-    let src_usize = src.addr();
-    let dst_usize = dst.addr();
+    let src_usize = src.bare_addr();
+    let dst_usize = dst.bare_addr();
     if src_usize > dst_usize {
         return src_usize - dst_usize;
     }

@@ -162,7 +162,7 @@ unsafe fn allocate(layout: Layout, zeroed: bool) -> *mut u8 {
         // Create a correctly aligned pointer offset from the start of the allocated block,
         // and write a header before it.
 
-        let offset = layout.align() - (ptr.addr() & (layout.align() - 1));
+        let offset = layout.align() - (ptr.bare_addr() & (layout.align() - 1));
         // SAFETY: `MIN_ALIGN` <= `offset` <= `layout.align()` and the size of the allocated
         // block is `layout.align() + layout.size()`. `aligned` will thus be a correctly aligned
         // pointer inside the allocated block with at least `layout.size()` bytes after it and at

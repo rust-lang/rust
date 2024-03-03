@@ -39,8 +39,8 @@ pub trait SimdConstPtr: Copy + Sealed {
     /// This method semantically discards *provenance* and
     /// *address-space* information. To properly restore that information, use [`Self::with_addr`].
     ///
-    /// Equivalent to calling [`pointer::addr`] on each element.
-    fn addr(self) -> Self::Usize;
+    /// Equivalent to calling [`pointer::bare_addr`] on each element.
+    fn bare_addr(self) -> Self::Usize;
 
     /// Creates a new pointer with the given address.
     ///
@@ -111,7 +111,7 @@ where
     }
 
     #[inline]
-    fn addr(self) -> Self::Usize {
+    fn bare_addr(self) -> Self::Usize {
         // FIXME(strict_provenance_magic): I am magic and should be a compiler intrinsic.
         // SAFETY: Pointer-to-integer transmutes are valid (if you are okay with losing the
         // provenance).
@@ -126,7 +126,7 @@ where
         // a wrapping_offset, so we can emulate it as such. This should properly
         // restore pointer provenance even under today's compiler.
         self.cast::<u8>()
-            .wrapping_offset(addr.cast::<isize>() - self.addr().cast::<isize>())
+            .wrapping_offset(addr.cast::<isize>() - self.bare_addr().cast::<isize>())
             .cast()
     }
 

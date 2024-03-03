@@ -20,8 +20,8 @@ mod libc {
 
 fn sun_path_offset(addr: &libc::sockaddr_un) -> usize {
     // Work with an actual instance of the type since using a null pointer is UB
-    let base = (addr as *const libc::sockaddr_un).addr();
-    let path = core::ptr::addr_of!(addr.sun_path).addr();
+    let base = (addr as *const libc::sockaddr_un).bare_addr();
+    let path = core::ptr::addr_of!(addr.sun_path).bare_addr();
     path - base
 }
 

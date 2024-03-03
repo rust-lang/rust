@@ -85,7 +85,7 @@ impl Condvar {
     }
 
     fn index(&self) -> usize {
-        core::ptr::from_ref(self).addr()
+        core::ptr::from_ref(self).bare_addr()
     }
 
     /// Unlock the given Mutex and wait for the notification. Wait at most

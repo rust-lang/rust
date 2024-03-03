@@ -136,45 +136,45 @@ fn atomic_ptr() {
     let x = array.as_ptr() as *mut i32;
 
     let ptr = AtomicPtr::<i32>::new(ptr::null_mut());
-    assert!(ptr.load(Relaxed).addr() == 0);
+    assert!(ptr.load(Relaxed).bare_addr() == 0);
     ptr.store(ptr::without_provenance_mut(13), SeqCst);
-    assert!(ptr.swap(x, Relaxed).addr() == 13);
+    assert!(ptr.swap(x, Relaxed).bare_addr() == 13);
     unsafe { assert!(*ptr.load(Acquire) == 0) };
 
     // comparison ignores provenance
     assert_eq!(
         ptr.compare_exchange(
-            (&mut 0 as *mut i32).with_addr(x.addr()),
+            (&mut 0 as *mut i32).with_addr(x.bare_addr()),
             ptr::without_provenance_mut(0),
             SeqCst,
             SeqCst
         )
         .unwrap()
-        .addr(),
-        x.addr(),
+        .bare_addr(),
+        x.bare_addr(),
     );
     assert_eq!(
         ptr.compare_exchange(
-            (&mut 0 as *mut i32).with_addr(x.addr()),
+            (&mut 0 as *mut i32).with_addr(x.bare_addr()),
             ptr::without_provenance_mut(0),
             SeqCst,
             SeqCst
         )
         .unwrap_err()
-        .addr(),
+        .bare_addr(),
         0,
     );
     ptr.store(x, Relaxed);
 
-    assert_eq!(ptr.fetch_ptr_add(13, AcqRel).addr(), x.addr());
+    assert_eq!(ptr.fetch_ptr_add(13, AcqRel).bare_addr(), x.bare_addr());
     unsafe { assert_eq!(*ptr.load(SeqCst), 13) }; // points to index 13 now
-    assert_eq!(ptr.fetch_ptr_sub(4, AcqRel).addr(), x.addr() + 13 * 4);
+    assert_eq!(ptr.fetch_ptr_sub(4, AcqRel).bare_addr(), x.bare_addr() + 13 * 4);
     unsafe { assert_eq!(*ptr.load(SeqCst), 9) };
-    assert_eq!(ptr.fetch_or(3, AcqRel).addr(), x.addr() + 9 * 4); // ptr is 4-aligned, so set the last 2 bits
-    assert_eq!(ptr.fetch_and(!3, AcqRel).addr(), (x.addr() + 9 * 4) | 3); // and unset them again
+    assert_eq!(ptr.fetch_or(3, AcqRel).bare_addr(), x.bare_addr() + 9 * 4); // ptr is 4-aligned, so set the last 2 bits
+    assert_eq!(ptr.fetch_and(!3, AcqRel).bare_addr(), (x.bare_addr() + 9 * 4) | 3); // and unset them again
     unsafe { assert_eq!(*ptr.load(SeqCst), 9) };
-    assert_eq!(ptr.fetch_xor(0xdeadbeef, AcqRel).addr(), x.addr() + 9 * 4);
-    assert_eq!(ptr.fetch_xor(0xdeadbeef, AcqRel).addr(), (x.addr() + 9 * 4) ^ 0xdeadbeef);
+    assert_eq!(ptr.fetch_xor(0xdeadbeef, AcqRel).bare_addr(), x.bare_addr() + 9 * 4);
+    assert_eq!(ptr.fetch_xor(0xdeadbeef, AcqRel).bare_addr(), (x.bare_addr() + 9 * 4) ^ 0xdeadbeef);
     unsafe { assert_eq!(*ptr.load(SeqCst), 9) }; // after XORing twice with the same thing, we get our ptr back
 }
 

@@ -35,7 +35,7 @@ impl<T: ?Sized> *const T {
     pub const fn is_null(self) -> bool {
         #[inline]
         fn runtime_impl(ptr: *const u8) -> bool {
-            ptr.addr() == 0
+            ptr.bare_addr() == 0
         }
 
         #[inline]
@@ -203,7 +203,7 @@ impl<T: ?Sized> *const T {
     #[must_use]
     #[inline(always)]
     #[unstable(feature = "strict_provenance", issue = "95228")]
-    pub fn addr(self) -> usize {
+    pub fn bare_addr(self) -> usize {
         // FIXME(strict_provenance_magic): I am magic and should be a compiler intrinsic.
         // SAFETY: Pointer-to-integer transmutes are valid (if you are okay with losing the
         // provenance).
@@ -223,7 +223,7 @@ impl<T: ?Sized> *const T {
     /// Provenance][super#strict-provenance] rules. Supporting
     /// [`from_exposed_addr`][] complicates specification and reasoning and may not be supported by
     /// tools that help you to stay conformant with the Rust memory model, so it is recommended to
-    /// use [`addr`][pointer::addr] wherever possible.
+    /// use [`bare_addr`][pointer::bare_addr] wherever possible.
     ///
     /// On most platforms this will produce a value with the same bytes as the original pointer,
     /// because all the bytes are dedicated to describing the address. Platforms which need to store
@@ -264,7 +264,7 @@ impl<T: ?Sized> *const T {
         // In the mean-time, this operation is defined to be "as if" it was
         // a wrapping_offset, so we can emulate it as such. This should properly
         // restore pointer provenance even under today's compiler.
-        let self_addr = self.addr() as isize;
+        let self_addr = self.bare_addr() as isize;
         let dest_addr = addr as isize;
         let offset = dest_addr.wrapping_sub(self_addr);
 
@@ -282,7 +282,7 @@ impl<T: ?Sized> *const T {
     #[inline]
     #[unstable(feature = "strict_provenance", issue = "95228")]
     pub fn map_addr(self, f: impl FnOnce(usize) -> usize) -> Self {
-        self.with_addr(f(self.addr()))
+        self.with_addr(f(self.bare_addr()))
     }
 
     /// Decompose a (possibly wide) pointer into its data pointer and metadata components.
@@ -592,7 +592,7 @@ impl<T: ?Sized> *const T {
     /// let tagged_ptr = ptr.map_addr(|a| a | 0b10);
     ///
     /// // Get the "tag" back
-    /// let tag = tagged_ptr.addr() & tag_mask;
+    /// let tag = tagged_ptr.bare_addr() & tag_mask;
     /// assert_eq!(tag, 0b10);
     ///
     /// // Note that `tagged_ptr` is unaligned, it's UB to read from it.
@@ -664,7 +664,7 @@ impl<T: ?Sized> *const T {
     /// runtime and may be exploited by optimizations. If you wish to compute the difference between
     /// pointers that are not guaranteed to be from the same allocation, use `(self as isize -
     /// origin as isize) / mem::size_of::<T>()`.
-    // FIXME: recommend `addr()` instead of `as usize` once that is stable.
+    // FIXME: recommend `bare_addr()` instead of `as usize` once that is stable.
     ///
     /// [`add`]: #method.add
     /// [allocated object]: crate::ptr#allocated-object
@@ -1611,7 +1611,7 @@ impl<T: ?Sized> *const T {
 
         #[inline]
         fn runtime_impl(ptr: *const (), align: usize) -> bool {
-            ptr.addr() & (align - 1) == 0
+            ptr.bare_addr() & (align - 1) == 0
         }
 
         #[inline]

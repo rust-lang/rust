@@ -319,7 +319,7 @@ pub fn main() {
     // Currently the layout algorithm will choose the latter because it doesn't attempt
     // to aggregate multiple smaller fields to move a niche before a higher-alignment one.
     let b = BoolInTheMiddle(NonZero::new(1).unwrap(), true, 0);
-    assert!(ptr::from_ref(&b.1).addr() > ptr::from_ref(&b.2).addr());
+    assert!(ptr::from_ref(&b.1).bare_addr() > ptr::from_ref(&b.2).bare_addr());
 
     assert_eq!(size_of::<Cow<'static, str>>(), size_of::<String>());
 
@@ -332,7 +332,8 @@ pub fn main() {
     // Neither field has a niche at the beginning so the layout algorithm should try move niches to
     // the end which means the 8-sized field shouldn't be alignment-promoted before the 4-sized one.
     let v = ReorderEndNiche { a: EndNiche8([0; 7], false), b: MiddleNiche4(0, 0, false, 0) };
-    assert!(ptr::from_ref(&v.a).addr() > ptr::from_ref(&v.b).addr());
-
-
+    assert!(
+        ptr::from_ref(&v.a).bare_addr()
+            > ptr::from_ref(&v.b).bare_addr()
+    );
 }

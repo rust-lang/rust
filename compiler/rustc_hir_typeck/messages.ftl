@@ -90,8 +90,8 @@ hir_typeck_lossy_provenance_int2ptr =
 
 hir_typeck_lossy_provenance_ptr2int =
     under strict provenance it is considered bad style to cast pointer `{$expr_ty}` to integer `{$cast_ty}`
-    .suggestion = use `.addr()` to obtain the address of a pointer
-    .help = if you can't comply with strict provenance and need to expose the pointer provenance you can use `.expose_addr()` instead
+    .suggestion = use `.bare_addr()` to obtain the address of a pointer without its provenance -- but note that this cannot be cast back to a pointer later; you need to use `with_addr` instead
+    .help = if you need to cast the address back to a pointer later, use `.expose_addr()` instead
 
 hir_typeck_method_call_on_unknown_raw_pointee =
     cannot call a method on a raw pointer with an unknown pointee type

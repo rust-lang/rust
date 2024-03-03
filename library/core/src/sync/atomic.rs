@@ -1752,9 +1752,9 @@ impl<T> AtomicPtr<T> {
     /// use core::sync::atomic::{AtomicPtr, Ordering};
     ///
     /// let atom = AtomicPtr::<i64>::new(core::ptr::null_mut());
-    /// assert_eq!(atom.fetch_ptr_add(1, Ordering::Relaxed).addr(), 0);
+    /// assert_eq!(atom.fetch_ptr_add(1, Ordering::Relaxed).bare_addr(), 0);
     /// // Note: units of `size_of::<i64>()`.
-    /// assert_eq!(atom.load(Ordering::Relaxed).addr(), 8);
+    /// assert_eq!(atom.load(Ordering::Relaxed).bare_addr(), 8);
     /// ```
     #[inline]
     #[cfg(target_has_atomic = "ptr")]
@@ -1832,9 +1832,9 @@ impl<T> AtomicPtr<T> {
     /// use core::sync::atomic::{AtomicPtr, Ordering};
     ///
     /// let atom = AtomicPtr::<i64>::new(core::ptr::null_mut());
-    /// assert_eq!(atom.fetch_byte_add(1, Ordering::Relaxed).addr(), 0);
+    /// assert_eq!(atom.fetch_byte_add(1, Ordering::Relaxed).bare_addr(), 0);
     /// // Note: in units of bytes, not `size_of::<i64>()`.
-    /// assert_eq!(atom.load(Ordering::Relaxed).addr(), 1);
+    /// assert_eq!(atom.load(Ordering::Relaxed).bare_addr(), 1);
     /// ```
     #[inline]
     #[cfg(target_has_atomic = "ptr")]
@@ -1868,8 +1868,8 @@ impl<T> AtomicPtr<T> {
     /// use core::sync::atomic::{AtomicPtr, Ordering};
     ///
     /// let atom = AtomicPtr::<i64>::new(core::ptr::without_provenance_mut(1));
-    /// assert_eq!(atom.fetch_byte_sub(1, Ordering::Relaxed).addr(), 1);
-    /// assert_eq!(atom.load(Ordering::Relaxed).addr(), 0);
+    /// assert_eq!(atom.fetch_byte_sub(1, Ordering::Relaxed).bare_addr(), 1);
+    /// assert_eq!(atom.load(Ordering::Relaxed).bare_addr(), 0);
     /// ```
     #[inline]
     #[cfg(target_has_atomic = "ptr")]
@@ -1916,10 +1916,10 @@ impl<T> AtomicPtr<T> {
     ///
     /// let atom = AtomicPtr::<i64>::new(pointer);
     /// // Tag the bottom bit of the pointer.
-    /// assert_eq!(atom.fetch_or(1, Ordering::Relaxed).addr() & 1, 0);
+    /// assert_eq!(atom.fetch_or(1, Ordering::Relaxed).bare_addr() & 1, 0);
     /// // Extract and untag.
     /// let tagged = atom.load(Ordering::Relaxed);
-    /// assert_eq!(tagged.addr() & 1, 1);
+    /// assert_eq!(tagged.bare_addr() & 1, 1);
     /// assert_eq!(tagged.map_addr(|p| p & !1), pointer);
     /// ```
     #[inline]
@@ -1966,7 +1966,7 @@ impl<T> AtomicPtr<T> {
     /// let pointer = &mut 3i64 as *mut i64;
     /// // A tagged pointer
     /// let atom = AtomicPtr::<i64>::new(pointer.map_addr(|a| a | 1));
-    /// assert_eq!(atom.fetch_or(1, Ordering::Relaxed).addr() & 1, 1);
+    /// assert_eq!(atom.fetch_or(1, Ordering::Relaxed).bare_addr() & 1, 1);
     /// // Untag, and extract the previously tagged pointer.
     /// let untagged = atom.fetch_and(!1, Ordering::Relaxed)
     ///     .map_addr(|a| a & !1);
@@ -2018,7 +2018,7 @@ impl<T> AtomicPtr<T> {
     ///
     /// // Toggle a tag bit on the pointer.
     /// atom.fetch_xor(1, Ordering::Relaxed);
-    /// assert_eq!(atom.load(Ordering::Relaxed).addr() & 1, 1);
+    /// assert_eq!(atom.load(Ordering::Relaxed).bare_addr() & 1, 1);
     /// ```
     #[inline]
     #[cfg(target_has_atomic = "ptr")]

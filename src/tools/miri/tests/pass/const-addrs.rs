@@ -25,7 +25,7 @@ fn main() {
     // Check that within a call we always produce the same address
     let mut prev = 0;
     for iter in 0..EVALS {
-        let addr = "test".as_bytes().as_ptr().addr();
+        let addr = "test".as_bytes().as_ptr().bare_addr();
         if iter > 0 {
             assert_eq!(prev, addr);
         }
@@ -34,5 +34,5 @@ fn main() {
 }
 
 fn const_addr() -> usize {
-    "test".as_bytes().as_ptr().addr()
+    "test".as_bytes().as_ptr().bare_addr()
 }

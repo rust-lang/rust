@@ -52,7 +52,7 @@ fn ptr_roundtrip_null() {
     assert_eq!(null, 0);
 
     let x_null_ptr_copy = ptr::from_exposed_addr::<i32>(null); // just a roundtrip, so has provenance of x (angelically)
-    let x_ptr_copy = x_null_ptr_copy.with_addr(x_ptr.addr()); // addr of x and provenance of x
+    let x_ptr_copy = x_null_ptr_copy.with_addr(x_ptr.bare_addr()); // addr of x and provenance of x
     assert_eq!(unsafe { *x_ptr_copy }, 42);
 }
 

@@ -26,7 +26,7 @@ macro_rules! if_zst {
         #![allow(unused_unsafe)] // we're sometimes used within an unsafe block
 
         if T::IS_ZST {
-            let $len = $this.end_or_len.addr();
+            let $len = $this.end_or_len.bare_addr();
             $zst_body
         } else {
             // SAFETY: for non-ZSTs, the type invariant ensures it cannot be null

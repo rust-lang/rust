@@ -1267,7 +1267,7 @@ extern "rust-intrinsic" {
     /// - If the code just wants to store data of arbitrary type in some buffer and needs to pick a
     ///   type for that buffer, it can use [`MaybeUninit`][crate::mem::MaybeUninit].
     /// - If the code actually wants to work on the address the pointer points to, it can use `as`
-    ///   casts or [`ptr.addr()`][pointer::addr].
+    ///   casts or [`ptr.bare_addr()`][pointer::bare_addr].
     ///
     /// Turning a `*mut T` into an `&mut T`:
     ///
@@ -2781,8 +2781,8 @@ pub(crate) fn is_valid_allocation_size(size: usize, len: usize) -> bool {
 /// `count * size` do *not* overlap.
 #[inline]
 pub(crate) fn is_nonoverlapping(src: *const (), dst: *const (), size: usize, count: usize) -> bool {
-    let src_usize = src.addr();
-    let dst_usize = dst.addr();
+    let src_usize = src.bare_addr();
+    let dst_usize = dst.bare_addr();
     let Some(size) = size.checked_mul(count) else {
         crate::panicking::panic_nounwind(
             "is_nonoverlapping: `size_of::<T>() * count` overflows a usize",

@@ -17,8 +17,8 @@ fn main() {
     let _val = unsafe { buffer.read() };
 
     // Let's find a place to promise alignment 8.
-    let align8 = if buffer.addr() % 8 == 0 { buffer } else { buffer.wrapping_add(1) };
-    assert!(align8.addr() % 8 == 0);
+    let align8 = if buffer.bare_addr() % 8 == 0 { buffer } else { buffer.wrapping_add(1) };
+    assert!(align8.bare_addr() % 8 == 0);
     unsafe { utils::miri_promise_symbolic_alignment(align8.cast(), 8) };
     // Promising the alignment down to 1 *again* still must not hurt.
     unsafe { utils::miri_promise_symbolic_alignment(buffer.cast(), 1) };
@@ -37,8 +37,8 @@ fn main() {
         #[derive(Copy, Clone)]
         struct Align16(#[allow(dead_code)] u128);
 
-        let align16 = if align8.addr() % 16 == 0 { align8 } else { align8.wrapping_add(2) };
-        assert!(align16.addr() % 16 == 0);
+        let align16 = if align8.bare_addr() % 16 == 0 { align8 } else { align8.wrapping_add(2) };
+        assert!(align16.bare_addr() % 16 == 0);
 
         let _val = unsafe { align8.cast::<Align16>().read() };
         //~[read_unaligned_ptr]^ ERROR: accessing memory based on pointer with alignment 8, but alignment 16 is required

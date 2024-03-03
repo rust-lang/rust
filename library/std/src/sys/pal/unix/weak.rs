@@ -93,7 +93,7 @@ impl<F> DlsymWeak<F> {
             // Relaxed is fine here because we fence before reading through the
             // pointer (see the comment below).
             match self.func.load(Ordering::Relaxed) {
-                func if func.addr() == 1 => self.initialize(),
+                func if func.bare_addr() == 1 => self.initialize(),
                 func if func.is_null() => None,
                 func => {
                     let func = mem::transmute_copy::<*mut libc::c_void, F>(&func);

@@ -119,12 +119,12 @@ impl Once {
         // operations visible to us, and, this being a fast path, weaker
         // ordering helps with performance. This `Acquire` synchronizes with
         // `Release` operations on the slow path.
-        self.state_and_queue.load(Ordering::Acquire).addr() == COMPLETE
+        self.state_and_queue.load(Ordering::Acquire).bare_addr() == COMPLETE
     }
 
     #[inline]
     pub(crate) fn state(&mut self) -> ExclusiveState {
-        match self.state_and_queue.get_mut().addr() {
+        match self.state_and_queue.get_mut().bare_addr() {
             INCOMPLETE => ExclusiveState::Incomplete,
             POISONED => ExclusiveState::Poisoned,
             COMPLETE => ExclusiveState::Complete,
@@ -148,7 +148,7 @@ impl Once {
     pub fn call(&self, ignore_poisoning: bool, init: &mut dyn FnMut(&public::OnceState)) {
         let mut state_and_queue = self.state_and_queue.load(Ordering::Acquire);
         loop {
-            match state_and_queue.addr() {
+            match state_and_queue.bare_addr() {
                 COMPLETE => break,
                 POISONED if !ignore_poisoning => {
                     // Panic to propagate the poison.
@@ -176,7 +176,7 @@ impl Once {
                     // poisoned or not.
                     let init_state = public::OnceState {
                         inner: OnceState {
-                            poisoned: state_and_queue.addr() == POISONED,
+                            poisoned: state_and_queue.bare_addr() == POISONED,
                             set_state_on_drop_to: Cell::new(ptr::without_provenance_mut(COMPLETE)),
                         },
                     };
@@ -187,7 +187,7 @@ impl Once {
                 _ => {
                     // All other values must be RUNNING with possibly a
                     // pointer to the waiter queue in the more significant bits.
-                    assert!(state_and_queue.addr() & STATE_MASK == RUNNING);
+                    assert!(state_and_queue.bare_addr() & STATE_MASK == RUNNING);
                     wait(&self.state_and_queue, state_and_queue);
                     state_and_queue = self.state_and_queue.load(Ordering::Acquire);
                 }
@@ -202,7 +202,7 @@ fn wait(state_and_queue: &AtomicPtr<Masked>, mut current_state: *mut Masked) {
     loop {
         // Don't queue this thread if the status is no longer running,
         // otherwise we will not be woken up.
-        if current_state.addr() & STATE_MASK != RUNNING {
+        if current_state.bare_addr() & STATE_MASK != RUNNING {
             return;
         }
 
@@ -210,7 +210,7 @@ fn wait(state_and_queue: &AtomicPtr<Masked>, mut current_state: *mut Masked) {
         let node = Waiter {
             thread: Cell::new(Some(thread::current())),
             signaled: AtomicBool::new(false),
-            next: current_state.with_addr(current_state.addr() & !STATE_MASK) as *const Waiter,
+            next: current_state.with_addr(current_state.bare_addr() & !STATE_MASK) as *const Waiter,
         };
         let me = core::ptr::addr_of!(node) as *const Masked as *mut Masked;
 
@@ -218,7 +218,7 @@ fn wait(state_and_queue: &AtomicPtr<Masked>, mut current_state: *mut Masked) {
         // that another thread didn't just replace the head of the linked list.
         let exchange_result = state_and_queue.compare_exchange(
             current_state,
-            me.with_addr(me.addr() | RUNNING),
+            me.with_addr(me.bare_addr() | RUNNING),
             Ordering::Release,
             Ordering::Relaxed,
         );
@@ -257,7 +257,7 @@ impl Drop for WaiterQueue<'_> {
             self.state_and_queue.swap(self.set_state_on_drop_to, Ordering::AcqRel);
 
         // We should only ever see an old state which was RUNNING.
-        assert_eq!(state_and_queue.addr() & STATE_MASK, RUNNING);
+        assert_eq!(state_and_queue.bare_addr() & STATE_MASK, RUNNING);
 
         // Walk the entire linked list of waiters and wake them up (in lifo
         // order, last to register is first to wake up).
@@ -266,8 +266,8 @@ impl Drop for WaiterQueue<'_> {
             // free `node` if there happens to be has a spurious wakeup.
             // So we have to take out the `thread` field and copy the pointer to
             // `next` first.
-            let mut queue =
-                state_and_queue.with_addr(state_and_queue.addr() & !STATE_MASK) as *const Waiter;
+            let mut queue = state_and_queue.with_addr(state_and_queue.bare_addr() & !STATE_MASK)
+                as *const Waiter;
             while !queue.is_null() {
                 let next = (*queue).next;
                 let thread = (*queue).thread.take().unwrap();

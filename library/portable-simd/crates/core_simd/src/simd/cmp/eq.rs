@@ -83,12 +83,12 @@ where
 
     #[inline]
     fn simd_eq(self, other: Self) -> Self::Mask {
-        self.addr().simd_eq(other.addr())
+        self.bare_addr().simd_eq(other.bare_addr())
     }
 
     #[inline]
     fn simd_ne(self, other: Self) -> Self::Mask {
-        self.addr().simd_ne(other.addr())
+        self.bare_addr().simd_ne(other.bare_addr())
     }
 }
 
@@ -100,11 +100,11 @@ where
 
     #[inline]
     fn simd_eq(self, other: Self) -> Self::Mask {
-        self.addr().simd_eq(other.addr())
+        self.bare_addr().simd_eq(other.bare_addr())
     }
 
     #[inline]
     fn simd_ne(self, other: Self) -> Self::Mask {
-        self.addr().simd_ne(other.addr())
+        self.bare_addr().simd_ne(other.bare_addr())
     }
 }

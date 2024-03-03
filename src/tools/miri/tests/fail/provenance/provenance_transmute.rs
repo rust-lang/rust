@@ -22,6 +22,6 @@ fn main() {
     let ptr2 = &1u8 as *const u8;
     unsafe {
         // Two pointers with the same address but different provenance.
-        deref(ptr1, ptr2.with_addr(ptr1.addr()));
+        deref(ptr1, ptr2.with_addr(ptr1.bare_addr()));
     }
 }

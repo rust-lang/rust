@@ -131,17 +131,17 @@ fn int_max() {
 #[cfg(any(not(target_arch = "arm"), target_os = "linux"))] // Missing intrinsic in compiler-builtins
 fn ptr_add_null() {
     let atom = AtomicPtr::<i64>::new(core::ptr::null_mut());
-    assert_eq!(atom.fetch_ptr_add(1, SeqCst).addr(), 0);
-    assert_eq!(atom.load(SeqCst).addr(), 8);
+    assert_eq!(atom.fetch_ptr_add(1, SeqCst).bare_addr(), 0);
+    assert_eq!(atom.load(SeqCst).bare_addr(), 8);
 
-    assert_eq!(atom.fetch_byte_add(1, SeqCst).addr(), 8);
-    assert_eq!(atom.load(SeqCst).addr(), 9);
+    assert_eq!(atom.fetch_byte_add(1, SeqCst).bare_addr(), 8);
+    assert_eq!(atom.load(SeqCst).bare_addr(), 9);
 
-    assert_eq!(atom.fetch_ptr_sub(1, SeqCst).addr(), 9);
-    assert_eq!(atom.load(SeqCst).addr(), 1);
+    assert_eq!(atom.fetch_ptr_sub(1, SeqCst).bare_addr(), 9);
+    assert_eq!(atom.load(SeqCst).bare_addr(), 1);
 
-    assert_eq!(atom.fetch_byte_sub(1, SeqCst).addr(), 1);
-    assert_eq!(atom.load(SeqCst).addr(), 0);
+    assert_eq!(atom.fetch_byte_sub(1, SeqCst).bare_addr(), 1);
+    assert_eq!(atom.load(SeqCst).bare_addr(), 0);
 }
 
 #[test]
@@ -174,14 +174,14 @@ fn ptr_add_data() {
 #[cfg(any(not(target_arch = "arm"), target_os = "linux"))] // Missing intrinsic in compiler-builtins
 fn ptr_bitops() {
     let atom = AtomicPtr::<i64>::new(core::ptr::null_mut());
-    assert_eq!(atom.fetch_or(0b0111, SeqCst).addr(), 0);
-    assert_eq!(atom.load(SeqCst).addr(), 0b0111);
+    assert_eq!(atom.fetch_or(0b0111, SeqCst).bare_addr(), 0);
+    assert_eq!(atom.load(SeqCst).bare_addr(), 0b0111);
 
-    assert_eq!(atom.fetch_and(0b1101, SeqCst).addr(), 0b0111);
-    assert_eq!(atom.load(SeqCst).addr(), 0b0101);
+    assert_eq!(atom.fetch_and(0b1101, SeqCst).bare_addr(), 0b0111);
+    assert_eq!(atom.load(SeqCst).bare_addr(), 0b0101);
 
-    assert_eq!(atom.fetch_xor(0b1111, SeqCst).addr(), 0b0101);
-    assert_eq!(atom.load(SeqCst).addr(), 0b1010);
+    assert_eq!(atom.fetch_xor(0b1111, SeqCst).bare_addr(), 0b0101);
+    assert_eq!(atom.load(SeqCst).bare_addr(), 0b1010);
 }
 
 #[test]
@@ -197,7 +197,7 @@ fn ptr_bitops_tagging() {
     const MASK_TAG: usize = 0b1111;
     const MASK_PTR: usize = !MASK_TAG;
 
-    assert_eq!(ptr.addr() & MASK_TAG, 0);
+    assert_eq!(ptr.bare_addr() & MASK_TAG, 0);
 
     assert_eq!(atom.fetch_or(0b0111, SeqCst), ptr);
     assert_eq!(atom.load(SeqCst), ptr.map_addr(|a| a | 0b111));

@@ -144,7 +144,7 @@ impl Repr {
         let p = Box::into_raw(b).cast::<u8>();
         // Should only be possible if an allocator handed out a pointer with
         // wrong alignment.
-        debug_assert_eq!(p.addr() & TAG_MASK, 0);
+        debug_assert_eq!(p.bare_addr() & TAG_MASK, 0);
         // Note: We know `TAG_CUSTOM <= size_of::<Custom>()` (static_assert at
         // end of file), and both the start and end of the expression must be
         // valid without address space wraparound due to `Box`'s semantics.
@@ -252,7 +252,7 @@ unsafe fn decode_repr<C, F>(ptr: NonNull<()>, make_custom: F) -> ErrorData<C>
 where
     F: FnOnce(*mut Custom) -> C,
 {
-    let bits = ptr.as_ptr().addr();
+    let bits = ptr.as_ptr().bare_addr();
     match bits & TAG_MASK {
         TAG_OS => {
             let code = ((bits as i64) >> 32) as RawOsError;
