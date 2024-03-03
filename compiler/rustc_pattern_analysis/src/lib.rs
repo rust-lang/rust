@@ -142,6 +142,9 @@ pub trait TypeCx: Sized + fmt::Debug {
         _overlaps_with: &[&DeconstructedPat<Self>],
     ) {
     }
+
+    /// The maximum pattern complexity limit was reached.
+    fn complexity_exceeded(&self) -> Result<(), Self::Error>;
 }
 
 /// The arm of a match expression.
@@ -167,10 +170,12 @@ pub fn analyze_match<'p, 'tcx>(
     tycx: &RustcMatchCheckCtxt<'p, 'tcx>,
     arms: &[rustc::MatchArm<'p, 'tcx>],
     scrut_ty: Ty<'tcx>,
+    pattern_complexity_limit: Option<usize>,
 ) -> Result<rustc::UsefulnessReport<'p, 'tcx>, ErrorGuaranteed> {
     let scrut_ty = tycx.reveal_opaque_ty(scrut_ty);
     let scrut_validity = ValidityConstraint::from_bool(tycx.known_valid_scrutinee);
-    let report = compute_match_usefulness(tycx, arms, scrut_ty, scrut_validity)?;
+    let report =
+        compute_match_usefulness(tycx, arms, scrut_ty, scrut_validity, pattern_complexity_limit)?;
 
     // Run the non_exhaustive_omitted_patterns lint. Only run on refutable patterns to avoid hitting
     // `if let`s. Only run if the match is exhaustive otherwise the error is redundant.

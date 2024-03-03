@@ -929,6 +929,10 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
         omit_gdb_pretty_printer_section, Normal, template!(Word), WarnFollowing,
         "the `#[omit_gdb_pretty_printer_section]` attribute is just used for the Rust test suite",
     ),
+    rustc_attr!(
+        TEST, pattern_complexity, CrateLevel, template!(NameValueStr: "N"),
+        ErrorFollowing, @only_local: true,
+    ),
 ];
 
 pub fn deprecated_attributes() -> Vec<&'static BuiltinAttribute> {

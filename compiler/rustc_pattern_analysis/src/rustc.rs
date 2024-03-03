@@ -895,6 +895,11 @@ impl<'p, 'tcx: 'p> TypeCx for RustcMatchCheckCtxt<'p, 'tcx> {
             errors::OverlappingRangeEndpoints { overlap: overlaps, range: pat_span },
         );
     }
+
+    fn complexity_exceeded(&self) -> Result<(), Self::Error> {
+        let span = self.whole_match_span.unwrap_or(self.scrut_span);
+        Err(self.tcx.dcx().span_err(span, "reached pattern complexity limit"))
+    }
 }
 
 /// Recursively expand this pattern into its subpatterns. Only useful for or-patterns.
