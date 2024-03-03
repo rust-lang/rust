@@ -53,9 +53,19 @@ macro_rules! impl_tests {
         mod $scalar {
             use std_float::StdFloat;
 
-            unary_test! { $scalar, sqrt, sin, cos, exp, exp2, ln, log2, log10, ceil, floor, round, trunc, fract }
+            unary_test! { $scalar, sqrt, sin, cos, exp, exp2, ln, log2, log10, ceil, floor, round, trunc }
             binary_test! { $scalar, log }
             ternary_test! { $scalar, mul_add }
+
+            test_helpers::test_lanes! {
+                fn fract<const LANES: usize>() {
+                    test_helpers::test_unary_elementwise_flush_subnormals(
+                        &core_simd::simd::Simd::<$scalar, LANES>::fract,
+                        &$scalar::fract,
+                        &|_| true,
+                    )
+                }
+            }
         }
     }
 }

@@ -178,6 +178,8 @@ version = "0.1.0"
 dependencies = [
  "core_simd",
  "test_helpers",
+ "wasm-bindgen",
+ "wasm-bindgen-test",
 ]
 
 [[package]]
