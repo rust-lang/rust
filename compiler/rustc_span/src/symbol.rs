@@ -1303,6 +1303,7 @@ symbols! {
         pat,
         pat_param,
         path,
+        pattern_complexity,
         pattern_parentheses,
         phantom_data,
         pic,

@@ -734,6 +734,21 @@ struct UsefulnessCtxt<'a, Cx: TypeCx> {
     /// Collect the patterns found useful during usefulness checking. This is used to lint
     /// unreachable (sub)patterns.
     useful_subpatterns: FxHashSet<PatId>,
+    complexity_limit: Option<usize>,
+    complexity_level: usize,
+}
+
+impl<'a, Cx: TypeCx> UsefulnessCtxt<'a, Cx> {
+    fn increase_complexity_level(&mut self, complexity_add: usize) -> Result<(), Cx::Error> {
+        self.complexity_level += complexity_add;
+        if self
+            .complexity_limit
+            .is_some_and(|complexity_limit| complexity_limit < self.complexity_level)
+        {
+            return self.tycx.complexity_exceeded();
+        }
+        Ok(())
+    }
 }
 
 /// Context that provides information local to a place under investigation.
@@ -1552,6 +1567,7 @@ fn compute_exhaustiveness_and_usefulness<'a, 'p, Cx: TypeCx>(
     }
 
     let Some(place) = matrix.head_place() else {
+        mcx.increase_complexity_level(matrix.rows().len())?;
         // The base case: there are no columns in the matrix. We are morally pattern-matching on ().
         // A row is useful iff it has no (unguarded) rows above it.
         let mut useful = true; // Whether the next row is useful.
@@ -1690,8 +1706,14 @@ pub fn compute_match_usefulness<'p, Cx: TypeCx>(
     arms: &[MatchArm<'p, Cx>],
     scrut_ty: Cx::Ty,
     scrut_validity: ValidityConstraint,
+    complexity_limit: Option<usize>,
 ) -> Result<UsefulnessReport<'p, Cx>, Cx::Error> {
-    let mut cx = UsefulnessCtxt { tycx, useful_subpatterns: FxHashSet::default() };
+    let mut cx = UsefulnessCtxt {
+        tycx,
+        useful_subpatterns: FxHashSet::default(),
+        complexity_limit,
+        complexity_level: 0,
+    };
     let mut matrix = Matrix::new(arms, scrut_ty, scrut_validity);
     let non_exhaustiveness_witnesses = compute_exhaustiveness_and_usefulness(&mut cx, &mut matrix)?;
 

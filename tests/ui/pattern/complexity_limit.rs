@@ -1,7 +1,7 @@
 #![feature(rustc_attrs)]
-#![pattern_complexity = "61"]
+#![pattern_complexity = "10000"]
 
-//@ check-pass
+#[derive(Default)]
 struct BaseCommand {
     field01: bool,
     field02: bool,
@@ -36,7 +36,7 @@ struct BaseCommand {
 }
 
 fn request_key(command: BaseCommand) {
-    match command {
+    match command { //~ ERROR: reached pattern complexity limit
         BaseCommand { field01: true, .. } => {}
         BaseCommand { field02: true, .. } => {}
         BaseCommand { field03: true, .. } => {}
@@ -68,8 +68,39 @@ fn request_key(command: BaseCommand) {
         BaseCommand { field29: true, .. } => {}
         BaseCommand { field30: true, .. } => {}
 
-        _ => {}
+        BaseCommand { field01: false, .. } => {}
+        BaseCommand { field02: false, .. } => {}
+        BaseCommand { field03: false, .. } => {}
+        BaseCommand { field04: false, .. } => {}
+        BaseCommand { field05: false, .. } => {}
+        BaseCommand { field06: false, .. } => {}
+        BaseCommand { field07: false, .. } => {}
+        BaseCommand { field08: false, .. } => {}
+        BaseCommand { field09: false, .. } => {}
+        BaseCommand { field10: false, .. } => {}
+        BaseCommand { field11: false, .. } => {}
+        BaseCommand { field12: false, .. } => {}
+        BaseCommand { field13: false, .. } => {}
+        BaseCommand { field14: false, .. } => {}
+        BaseCommand { field15: false, .. } => {}
+        BaseCommand { field16: false, .. } => {}
+        BaseCommand { field17: false, .. } => {}
+        BaseCommand { field18: false, .. } => {}
+        BaseCommand { field19: false, .. } => {}
+        BaseCommand { field20: false, .. } => {}
+        BaseCommand { field21: false, .. } => {}
+        BaseCommand { field22: false, .. } => {}
+        BaseCommand { field23: false, .. } => {}
+        BaseCommand { field24: false, .. } => {}
+        BaseCommand { field25: false, .. } => {}
+        BaseCommand { field26: false, .. } => {}
+        BaseCommand { field27: false, .. } => {}
+        BaseCommand { field28: false, .. } => {}
+        BaseCommand { field29: false, .. } => {}
+        BaseCommand { field30: false, .. } => {}
     }
 }
 
-fn main() {}
+fn main() {
+    request_key(BaseCommand::default());
+}
