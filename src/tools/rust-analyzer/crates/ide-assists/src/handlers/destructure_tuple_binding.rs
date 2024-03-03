@@ -5,12 +5,15 @@ use ide_db::{
 };
 use itertools::Itertools;
 use syntax::{
-    ast::{self, make, AstNode, FieldExpr, HasName, IdentPat, MethodCallExpr},
-    ted, T,
+    ast::{self, make, AstNode, FieldExpr, HasName, IdentPat},
+    ted,
 };
 use text_edit::TextRange;
 
-use crate::assist_context::{AssistContext, Assists, SourceChangeBuilder};
+use crate::{
+    assist_context::{AssistContext, Assists, SourceChangeBuilder},
+    utils::ref_field_expr::determine_ref_and_parens,
+};
 
 // Assist: destructure_tuple_binding
 //
@@ -274,7 +277,7 @@ fn edit_tuple_field_usage(
     let field_name = make::expr_path(make::ext::ident_path(field_name));
 
     if data.ref_type.is_some() {
-        let (replace_expr, ref_data) = handle_ref_field_usage(ctx, &index.field_expr);
+        let (replace_expr, ref_data) = determine_ref_and_parens(ctx, &index.field_expr);
         let replace_expr = builder.make_mut(replace_expr);
         EditTupleUsage::ReplaceExpr(replace_expr, ref_data.wrap_expr(field_name))
     } else {
@@ -359,119 +362,6 @@ fn detect_tuple_index(usage: &FileReference, data: &TupleData) -> Option<TupleIn
     } else {
         None
     }
-}
-
-struct RefData {
-    needs_deref: bool,
-    needs_parentheses: bool,
-}
-impl RefData {
-    fn wrap_expr(&self, mut expr: ast::Expr) -> ast::Expr {
-        if self.needs_deref {
-            expr = make::expr_prefix(T![*], expr);
-        }
-
-        if self.needs_parentheses {
-            expr = make::expr_paren(expr);
-        }
-
-        expr
-    }
-}
-fn handle_ref_field_usage(ctx: &AssistContext<'_>, field_expr: &FieldExpr) -> (ast::Expr, RefData) {
-    let s = field_expr.syntax();
-    let mut ref_data = RefData { needs_deref: true, needs_parentheses: true };
-    let mut target_node = field_expr.clone().into();
-
-    let parent = match s.parent().map(ast::Expr::cast) {
-        Some(Some(parent)) => parent,
-        Some(None) => {
-            ref_data.needs_parentheses = false;
-            return (target_node, ref_data);
-        }
-        None => return (target_node, ref_data),
-    };
-
-    match parent {
-        ast::Expr::ParenExpr(it) => {
-            // already parens in place -> don't replace
-            ref_data.needs_parentheses = false;
-            // there might be a ref outside: `&(t.0)` -> can be removed
-            if let Some(it) = it.syntax().parent().and_then(ast::RefExpr::cast) {
-                ref_data.needs_deref = false;
-                target_node = it.into();
-            }
-        }
-        ast::Expr::RefExpr(it) => {
-            // `&*` -> cancel each other out
-            ref_data.needs_deref = false;
-            ref_data.needs_parentheses = false;
-            // might be surrounded by parens -> can be removed too
-            match it.syntax().parent().and_then(ast::ParenExpr::cast) {
-                Some(parent) => target_node = parent.into(),
-                None => target_node = it.into(),
-            };
-        }
-        // higher precedence than deref `*`
-        // https://doc.rust-lang.org/reference/expressions.html#expression-precedence
-        // -> requires parentheses
-        ast::Expr::PathExpr(_it) => {}
-        ast::Expr::MethodCallExpr(it) => {
-            // `field_expr` is `self_param` (otherwise it would be in `ArgList`)
-
-            // test if there's already auto-ref in place (`value` -> `&value`)
-            // -> no method accepting `self`, but `&self` -> no need for deref
-            //
-            // other combinations (`&value` -> `value`, `&&value` -> `&value`, `&value` -> `&&value`) might or might not be able to auto-ref/deref,
-            // but there might be trait implementations an added `&` might resolve to
-            // -> ONLY handle auto-ref from `value` to `&value`
-            fn is_auto_ref(ctx: &AssistContext<'_>, call_expr: &MethodCallExpr) -> bool {
-                fn impl_(ctx: &AssistContext<'_>, call_expr: &MethodCallExpr) -> Option<bool> {
-                    let rec = call_expr.receiver()?;
-                    let rec_ty = ctx.sema.type_of_expr(&rec)?.original();
-                    // input must be actual value
-                    if rec_ty.is_reference() {
-                        return Some(false);
-                    }
-
-                    // doesn't resolve trait impl
-                    let f = ctx.sema.resolve_method_call(call_expr)?;
-                    let self_param = f.self_param(ctx.db())?;
-                    // self must be ref
-                    match self_param.access(ctx.db()) {
-                        hir::Access::Shared | hir::Access::Exclusive => Some(true),
-                        hir::Access::Owned => Some(false),
-                    }
-                }
-                impl_(ctx, call_expr).unwrap_or(false)
-            }
-
-            if is_auto_ref(ctx, &it) {
-                ref_data.needs_deref = false;
-                ref_data.needs_parentheses = false;
-            }
-        }
-        ast::Expr::FieldExpr(_it) => {
-            // `t.0.my_field`
-            ref_data.needs_deref = false;
-            ref_data.needs_parentheses = false;
-        }
-        ast::Expr::IndexExpr(_it) => {
-            // `t.0[1]`
-            ref_data.needs_deref = false;
-            ref_data.needs_parentheses = false;
-        }
-        ast::Expr::TryExpr(_it) => {
-            // `t.0?`
-            // requires deref and parens: `(*_0)`
-        }
-        // lower precedence than deref `*` -> no parens
-        _ => {
-            ref_data.needs_parentheses = false;
-        }
-    };
-
-    (target_node, ref_data)
 }
 
 #[cfg(test)]

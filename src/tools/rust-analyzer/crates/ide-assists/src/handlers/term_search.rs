@@ -57,11 +57,14 @@ pub(crate) fn term_search(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<
         })
         .unique();
 
+    let macro_name = macro_call.name(ctx.sema.db);
+    let macro_name = macro_name.display(ctx.sema.db);
+
     for code in paths {
         acc.add_group(
             &GroupLabel(String::from("Term search")),
             AssistId("term_search", AssistKind::Generate),
-            format!("Replace todo!() with {code}"),
+            format!("Replace {macro_name}!() with {code}"),
             goal_range,
             |builder| {
                 builder.replace(goal_range, code);
@@ -248,6 +251,26 @@ fn g() { let a = &1; let b: f32 = f(a); }"#,
             r#"//- minicore: todo, unimplemented
             fn f(a: &i32) -> f32 { a as f32 }
             fn g() { let a = &mut 1; let b: f32 = todo$0!(); }"#,
+        )
+    }
+
+    #[test]
+    fn test_tuple_simple() {
+        check_assist(
+            term_search,
+            r#"//- minicore: todo, unimplemented
+fn f() { let a = 1; let b = 0.0; let c: (i32, f64) = todo$0!(); }"#,
+            r#"fn f() { let a = 1; let b = 0.0; let c: (i32, f64) = (a, b); }"#,
+        )
+    }
+
+    #[test]
+    fn test_tuple_nested() {
+        check_assist(
+            term_search,
+            r#"//- minicore: todo, unimplemented
+fn f() { let a = 1; let b = 0.0; let c: (i32, (i32, f64)) = todo$0!(); }"#,
+            r#"fn f() { let a = 1; let b = 0.0; let c: (i32, (i32, f64)) = (a, (a, b)); }"#,
         )
     }
 }

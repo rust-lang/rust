@@ -17,7 +17,6 @@ mod fixture;
 
 mod markup;
 mod navigation_target;
-mod prime_caches;
 
 mod annotations;
 mod call_hierarchy;
@@ -68,7 +67,7 @@ use ide_db::{
         salsa::{self, ParallelDatabase},
         CrateOrigin, Env, FileLoader, FileSet, SourceDatabase, VfsPath,
     },
-    symbol_index, FxHashMap, FxIndexSet, LineIndexDatabase,
+    prime_caches, symbol_index, FxHashMap, FxIndexSet, LineIndexDatabase,
 };
 use syntax::SourceFile;
 use triomphe::Arc;
@@ -100,7 +99,6 @@ pub use crate::{
     },
     move_item::Direction,
     navigation_target::{NavigationTarget, TryToNav, UpmappingResult},
-    prime_caches::ParallelPrimeCachesProgress,
     references::ReferenceSearchResult,
     rename::RenameError,
     runnables::{Runnable, RunnableKind, TestId},
@@ -127,6 +125,7 @@ pub use ide_db::{
     documentation::Documentation,
     label::Label,
     line_index::{LineCol, LineIndex},
+    prime_caches::ParallelPrimeCachesProgress,
     search::{ReferenceCategory, SearchScope},
     source_change::{FileSystemEdit, SnippetEdit, SourceChange},
     symbol_index::Query,
@@ -163,6 +162,10 @@ pub struct AnalysisHost {
 impl AnalysisHost {
     pub fn new(lru_capacity: Option<usize>) -> AnalysisHost {
         AnalysisHost { db: RootDatabase::new(lru_capacity) }
+    }
+
+    pub fn with_database(db: RootDatabase) -> AnalysisHost {
+        AnalysisHost { db }
     }
 
     pub fn update_lru_capacity(&mut self, lru_capacity: Option<usize>) {

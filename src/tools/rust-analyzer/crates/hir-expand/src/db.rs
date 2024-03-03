@@ -5,7 +5,7 @@ use either::Either;
 use limit::Limit;
 use mbe::{syntax_node_to_token_tree, ValueResult};
 use rustc_hash::FxHashSet;
-use span::SyntaxContextId;
+use span::{AstIdMap, SyntaxContextData, SyntaxContextId};
 use syntax::{
     ast::{self, HasAttrs},
     AstNode, Parse, SyntaxError, SyntaxNode, SyntaxToken, T,
@@ -13,16 +13,12 @@ use syntax::{
 use triomphe::Arc;
 
 use crate::{
-    ast_id_map::AstIdMap,
     attrs::collect_attrs,
     builtin_attr_macro::pseudo_derive_attr_expansion,
     builtin_fn_macro::EagerExpander,
     declarative::DeclarativeMacroExpander,
     fixup::{self, reverse_fixups, SyntaxFixupUndoInfo},
-    hygiene::{
-        span_with_call_site_ctxt, span_with_def_site_ctxt, span_with_mixed_site_ctxt,
-        SyntaxContextData,
-    },
+    hygiene::{span_with_call_site_ctxt, span_with_def_site_ctxt, span_with_mixed_site_ctxt},
     proc_macro::ProcMacros,
     span_map::{RealSpanMap, SpanMap, SpanMapRef},
     tt, AstId, BuiltinAttrExpander, BuiltinDeriveExpander, BuiltinFnLikeExpander,
@@ -61,7 +57,6 @@ pub trait ExpandDatabase: SourceDatabase {
     #[salsa::input]
     fn proc_macros(&self) -> Arc<ProcMacros>;
 
-    #[salsa::invoke(AstIdMap::new)]
     fn ast_id_map(&self, file_id: HirFileId) -> Arc<AstIdMap>;
 
     /// Main public API -- parses a hir file, not caring whether it's a real
@@ -254,6 +249,10 @@ pub fn expand_speculative(
             (t.kind() != token_to_map.kind()) as u8 + (t.text() != token_to_map.text()) as u8
         })?;
     Some((node.syntax_node(), token))
+}
+
+fn ast_id_map(db: &dyn ExpandDatabase, file_id: span::HirFileId) -> triomphe::Arc<AstIdMap> {
+    triomphe::Arc::new(AstIdMap::from_source(&db.parse_or_expand(file_id)))
 }
 
 fn parse_or_expand(db: &dyn ExpandDatabase, file_id: HirFileId) -> SyntaxNode {

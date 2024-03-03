@@ -6104,6 +6104,31 @@ pub struct Foo(i32);
 }
 
 #[test]
+fn hover_intra_generics() {
+    check(
+        r#"
+/// Doc comment for [`Foo$0<T>`]
+pub struct Foo<T>(T);
+"#,
+        expect![[r#"
+            *[`Foo<T>`]*
+
+            ```rust
+            test
+            ```
+
+            ```rust
+            pub struct Foo<T>(T);
+            ```
+
+            ---
+
+            Doc comment for [`Foo<T>`](https://docs.rs/test/*/test/struct.Foo.html)
+        "#]],
+    );
+}
+
+#[test]
 fn hover_inert_attr() {
     check(
         r#"

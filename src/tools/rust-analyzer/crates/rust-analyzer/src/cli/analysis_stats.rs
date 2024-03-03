@@ -16,8 +16,8 @@ use hir_def::{
 };
 use hir_ty::{Interner, Substitution, TyExt, TypeFlags};
 use ide::{
-    Analysis, AnnotationConfig, DiagnosticsConfig, InlayFieldsToResolve, InlayHintsConfig, LineCol,
-    RootDatabase,
+    Analysis, AnalysisHost, AnnotationConfig, DiagnosticsConfig, InlayFieldsToResolve,
+    InlayHintsConfig, LineCol, RootDatabase,
 };
 use ide_db::{
     base_db::{
@@ -90,15 +90,17 @@ impl flags::AnalysisStats {
             Some(build_scripts_sw.elapsed())
         };
 
-        let (host, vfs, _proc_macro) =
+        let (db, vfs, _proc_macro) =
             load_workspace(workspace.clone(), &cargo_config.extra_env, &load_cargo_config)?;
-        let db = host.raw_database();
         eprint!("{:<20} {}", "Database loaded:", db_load_sw.elapsed());
         eprint!(" (metadata {metadata_time}");
         if let Some(build_scripts_time) = build_scripts_time {
             eprint!("; build {build_scripts_time}");
         }
         eprintln!(")");
+
+        let host = AnalysisHost::with_database(db);
+        let db = host.raw_database();
 
         let mut analysis_sw = self.stop_watch();
 
@@ -453,8 +455,11 @@ impl flags::AnalysisStats {
                                     err_idx += 7;
                                     let err_code = &err[err_idx..err_idx + 4];
                                     match err_code {
-                                        "0282" => continue,                              // Byproduct of testing method
-                                        "0277" if generated.contains(&todo) => continue, // See https://github.com/rust-lang/rust/issues/69882
+                                        "0282" | "0283" => continue, // Byproduct of testing method
+                                        "0277" | "0308" if generated.contains(&todo) => continue, // See https://github.com/rust-lang/rust/issues/69882
+                                        // FIXME: In some rare cases `AssocItem::container_or_implemented_trait` returns `None` for trait methods.
+                                        // Generated code is valid in case traits are imported
+                                        "0599" if err.contains("the following trait is implemented but not in scope") => continue,
                                         _ => (),
                                     }
                                     bar.println(err);

@@ -15,6 +15,7 @@ pub mod helpers;
 pub mod items_locator;
 pub mod label;
 pub mod path_transform;
+pub mod prime_caches;
 pub mod rename;
 pub mod rust_doc;
 pub mod search;

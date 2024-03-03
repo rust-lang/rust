@@ -90,8 +90,7 @@ fn get_rust_cfgs(
         RustcCfgConfig::Rustc(sysroot) => sysroot,
     };
 
-    let mut cmd = Command::new(toolchain::Tool::Rustc.path());
-    Sysroot::set_rustup_toolchain_env(&mut cmd, sysroot);
+    let mut cmd = Sysroot::rustc(sysroot);
     cmd.envs(extra_env);
     cmd.args(["--print", "cfg", "-O"]);
     if let Some(target) = target {

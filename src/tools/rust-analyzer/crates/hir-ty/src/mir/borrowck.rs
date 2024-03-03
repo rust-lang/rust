@@ -19,8 +19,8 @@ use crate::{
 };
 
 use super::{
-    BasicBlockId, BorrowKind, LocalId, MirBody, MirLowerError, MirSpan, Place, ProjectionElem,
-    Rvalue, StatementKind, TerminatorKind,
+    BasicBlockId, BorrowKind, LocalId, MirBody, MirLowerError, MirSpan, MutBorrowKind, Place,
+    ProjectionElem, Rvalue, StatementKind, TerminatorKind,
 };
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -540,7 +540,13 @@ fn mutability_of_locals(
                         }
                         Rvalue::ShallowInitBox(_, _) | Rvalue::ShallowInitBoxWithAlloc(_) => (),
                     }
-                    if let Rvalue::Ref(BorrowKind::Mut { .. }, p) = value {
+                    if let Rvalue::Ref(
+                        BorrowKind::Mut {
+                            kind: MutBorrowKind::Default | MutBorrowKind::TwoPhasedBorrow,
+                        },
+                        p,
+                    ) = value
+                    {
                         if place_case(db, body, p) != ProjectionCase::Indirect {
                             push_mut_span(p.local, statement.span, &mut result);
                         }
