@@ -834,10 +834,13 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
             }
             else if let abi::Abi::ScalarPair(ref a, ref b) = place.layout.abi {
                 let b_offset = a.size(self).align_to(b.align(self).abi);
-                let pair_type = place.layout.gcc_type(self);
 
                 let mut load = |i, scalar: &abi::Scalar, align| {
-                    let llptr = self.struct_gep(pair_type, place.llval, i as u64);
+                    let llptr = if i == 0 {
+                        place.llval
+                    } else {
+                        self.inbounds_ptradd(place.llval, self.const_usize(b_offset.bytes()))
+                    };
                     let llty = place.layout.scalar_pair_element_gcc_type(self, i);
                     let load = self.load(llty, llptr, align);
                     scalar_load_metadata(self, load, scalar);
@@ -969,33 +972,6 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
             result = self.context.new_array_access(None, result, *index);
         }
         result.get_address(None)
-    }
-
-    fn struct_gep(&mut self, value_type: Type<'gcc>, ptr: RValue<'gcc>, idx: u64) -> RValue<'gcc> {
-        // FIXME(antoyo): it would be better if the API only called this on struct, not on arrays.
-        assert_eq!(idx as usize as u64, idx);
-        let value = ptr.dereference(None).to_rvalue();
-
-        if value_type.dyncast_array().is_some() {
-            let index = self.context.new_rvalue_from_long(self.u64_type, i64::try_from(idx).expect("i64::try_from"));
-            let element = self.context.new_array_access(None, value, index);
-            element.get_address(None)
-        }
-        else if let Some(vector_type) = value_type.dyncast_vector() {
-            let array_type = vector_type.get_element_type().make_pointer();
-            let array = self.bitcast(ptr, array_type);
-            let index = self.context.new_rvalue_from_long(self.u64_type, i64::try_from(idx).expect("i64::try_from"));
-            let element = self.context.new_array_access(None, array, index);
-            element.get_address(None)
-        }
-        else if let Some(struct_type) = value_type.is_struct() {
-            // NOTE: due to opaque pointers now being used, we need to bitcast here.
-            let ptr = self.bitcast_if_needed(ptr, value_type.make_pointer());
-            ptr.dereference_field(None, struct_type.get_field(idx as i32)).get_address(None)
-        }
-        else {
-            panic!("Unexpected type {:?}", value_type);
-        }
     }
 
     /* Casts */

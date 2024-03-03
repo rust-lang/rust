@@ -174,7 +174,6 @@ pub trait LayoutLlvmExt<'tcx> {
         index: usize,
         immediate: bool,
     ) -> &'a Type;
-    fn llvm_field_index<'a>(&self, cx: &CodegenCx<'a, 'tcx>, index: usize) -> u64;
     fn scalar_copy_llvm_type<'a>(&self, cx: &CodegenCx<'a, 'tcx>) -> Option<&'a Type>;
 }
 
@@ -324,42 +323,6 @@ impl<'tcx> LayoutLlvmExt<'tcx> for TyAndLayout<'tcx> {
         }
 
         self.scalar_llvm_type_at(cx, scalar)
-    }
-
-    fn llvm_field_index<'a>(&self, cx: &CodegenCx<'a, 'tcx>, index: usize) -> u64 {
-        match self.abi {
-            Abi::Scalar(_) | Abi::ScalarPair(..) => {
-                bug!("TyAndLayout::llvm_field_index({:?}): not applicable", self)
-            }
-            _ => {}
-        }
-        match self.fields {
-            FieldsShape::Primitive | FieldsShape::Union(_) => {
-                bug!("TyAndLayout::llvm_field_index({:?}): not applicable", self)
-            }
-
-            FieldsShape::Array { .. } => index as u64,
-
-            FieldsShape::Arbitrary { .. } => {
-                let variant_index = match self.variants {
-                    Variants::Single { index } => Some(index),
-                    _ => None,
-                };
-
-                // Look up llvm field if indexes do not match memory order due to padding. If
-                // `field_remapping` is `None` no padding was used and the llvm field index
-                // matches the memory index.
-                match cx.type_lowering.borrow().get(&(self.ty, variant_index)) {
-                    Some(TypeLowering { field_remapping: Some(ref remap), .. }) => {
-                        remap[index] as u64
-                    }
-                    Some(_) => self.fields.memory_index(index) as u64,
-                    None => {
-                        bug!("TyAndLayout::llvm_field_index({:?}): type info not found", self)
-                    }
-                }
-            }
-        }
     }
 
     fn scalar_copy_llvm_type<'a>(&self, cx: &CodegenCx<'a, 'tcx>) -> Option<&'a Type> {

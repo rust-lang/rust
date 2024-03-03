@@ -151,7 +151,6 @@ pub trait LayoutGccExt<'tcx> {
     fn immediate_gcc_type<'gcc>(&self, cx: &CodegenCx<'gcc, 'tcx>) -> Type<'gcc>;
     fn scalar_gcc_type_at<'gcc>(&self, cx: &CodegenCx<'gcc, 'tcx>, scalar: &abi::Scalar, offset: Size) -> Type<'gcc>;
     fn scalar_pair_element_gcc_type<'gcc>(&self, cx: &CodegenCx<'gcc, 'tcx>, index: usize) -> Type<'gcc>;
-    fn gcc_field_index(&self, index: usize) -> u64;
     fn pointee_info_at<'gcc>(&self, cx: &CodegenCx<'gcc, 'tcx>, offset: Size) -> Option<PointeeInfo>;
 }
 
@@ -306,24 +305,6 @@ impl<'tcx> LayoutGccExt<'tcx> for TyAndLayout<'tcx> {
         self.scalar_gcc_type_at(cx, scalar, offset)
     }
 
-    fn gcc_field_index(&self, index: usize) -> u64 {
-        match self.abi {
-            Abi::Scalar(_) | Abi::ScalarPair(..) => {
-                bug!("TyAndLayout::gcc_field_index({:?}): not applicable", self)
-            }
-            _ => {}
-        }
-        match self.fields {
-            FieldsShape::Primitive | FieldsShape::Union(_) => {
-                bug!("TyAndLayout::gcc_field_index({:?}): not applicable", self)
-            }
-
-            FieldsShape::Array { .. } => index as u64,
-
-            FieldsShape::Arbitrary { .. } => 1 + (self.fields.memory_index(index) as u64) * 2,
-        }
-    }
-
     fn pointee_info_at<'a>(&self, cx: &CodegenCx<'a, 'tcx>, offset: Size) -> Option<PointeeInfo> {
         if let Some(&pointee) = cx.pointee_infos.borrow().get(&(self.ty, offset)) {
             return pointee;
@@ -351,10 +332,6 @@ impl<'gcc, 'tcx> LayoutTypeMethods<'tcx> for CodegenCx<'gcc, 'tcx> {
 
     fn is_backend_scalar_pair(&self, layout: TyAndLayout<'tcx>) -> bool {
         layout.is_gcc_scalar_pair()
-    }
-
-    fn backend_field_index(&self, layout: TyAndLayout<'tcx>, index: usize) -> u64 {
-        layout.gcc_field_index(index)
     }
 
     fn scalar_pair_element_backend_type(&self, layout: TyAndLayout<'tcx>, index: usize, _immediate: bool) -> Type<'gcc> {

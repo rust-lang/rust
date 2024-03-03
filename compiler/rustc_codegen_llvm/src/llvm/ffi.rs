@@ -1306,13 +1306,6 @@ extern "C" {
         NumIndices: c_uint,
         Name: *const c_char,
     ) -> &'a Value;
-    pub fn LLVMBuildStructGEP2<'a>(
-        B: &Builder<'a>,
-        Ty: &'a Type,
-        Pointer: &'a Value,
-        Idx: c_uint,
-        Name: *const c_char,
-    ) -> &'a Value;
 
     // Casts
     pub fn LLVMBuildTrunc<'a>(

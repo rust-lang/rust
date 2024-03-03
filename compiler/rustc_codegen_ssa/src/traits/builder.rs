@@ -190,7 +190,12 @@ pub trait BuilderMethods<'a, 'tcx>:
         ptr: Self::Value,
         indices: &[Self::Value],
     ) -> Self::Value;
-    fn struct_gep(&mut self, ty: Self::Type, ptr: Self::Value, idx: u64) -> Self::Value;
+    fn ptradd(&mut self, ptr: Self::Value, offset: Self::Value) -> Self::Value {
+        self.gep(self.cx().type_i8(), ptr, &[offset])
+    }
+    fn inbounds_ptradd(&mut self, ptr: Self::Value, offset: Self::Value) -> Self::Value {
+        self.inbounds_gep(self.cx().type_i8(), ptr, &[offset])
+    }
 
     fn trunc(&mut self, val: Self::Value, dest_ty: Self::Type) -> Self::Value;
     fn sext(&mut self, val: Self::Value, dest_ty: Self::Type) -> Self::Value;

@@ -113,7 +113,6 @@ pub trait LayoutTypeMethods<'tcx>: Backend<'tcx> {
     fn immediate_backend_type(&self, layout: TyAndLayout<'tcx>) -> Self::Type;
     fn is_backend_immediate(&self, layout: TyAndLayout<'tcx>) -> bool;
     fn is_backend_scalar_pair(&self, layout: TyAndLayout<'tcx>) -> bool;
-    fn backend_field_index(&self, layout: TyAndLayout<'tcx>, index: usize) -> u64;
     fn scalar_pair_element_backend_type(
         &self,
         layout: TyAndLayout<'tcx>,

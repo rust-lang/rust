@@ -603,11 +603,7 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
                 let llptr = if i == 0 {
                     place.llval
                 } else {
-                    self.inbounds_gep(
-                        self.type_i8(),
-                        place.llval,
-                        &[self.const_usize(b_offset.bytes())],
-                    )
+                    self.inbounds_ptradd(place.llval, self.const_usize(b_offset.bytes()))
                 };
                 let llty = place.layout.scalar_pair_element_llvm_type(self, i, false);
                 let load = self.load(llty, llptr, align);
@@ -776,11 +772,6 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
                 UNNAMED,
             )
         }
-    }
-
-    fn struct_gep(&mut self, ty: &'ll Type, ptr: &'ll Value, idx: u64) -> &'ll Value {
-        assert_eq!(idx as c_uint as u64, idx);
-        unsafe { llvm::LLVMBuildStructGEP2(self.llbuilder, ty, ptr, idx as c_uint, UNNAMED) }
     }
 
     /* Casts */
