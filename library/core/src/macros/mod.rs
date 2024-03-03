@@ -115,8 +115,8 @@ macro_rules! assert_ne {
 /// Asserts that an expression matches the provided pattern.
 ///
 /// This macro is generally preferable to `assert!(matches!(value, pattern))`, because it can print
-/// the debug representation, of the actual value shape that did not meet expectation. In contrast,
-/// using [`assert!`] will only print that the expectation was not met, but not why.
+/// the debug representation of the actual value shape that did not meet expectations. In contrast,
+/// using [`assert!`] will only print that expectations were not met, but not why.
 ///
 /// The pattern syntax is exactly the same as found in a match arm and the `matches!` macro. The
 /// optional if guard can be used to add additional checks that must be true for the matched value,
@@ -382,8 +382,8 @@ macro_rules! debug_assert_ne {
 /// Asserts that an expression matches the provided pattern.
 ///
 /// This macro is generally preferable to `debug_assert!(matches!(value, pattern))`, because it can
-/// print the debug representation, of the actual value shape that did not meet expectation. In
-/// contrast, using [`debug_assert!`] will only print that the expectation was not met, but not why.
+/// print the debug representation of the actual value shape that did not meet expectations. In
+/// contrast, using [`debug_assert!`] will only print that expectations were not met, but not why.
 ///
 /// The pattern syntax is exactly the same as found in a match arm and the `matches!` macro. The
 /// optional if guard can be used to add additional checks that must be true for the matched value,
