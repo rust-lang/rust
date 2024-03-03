@@ -248,14 +248,15 @@ impl Command {
         self.cwd.as_ref().map(Path::new)
     }
 
-    pub unsafe fn raw_attribute<T: Copy + Send + Sync + 'static>(
+    pub unsafe fn raw_attribute<T: 'static>(
         &mut self,
         attribute: usize,
-        value: T,
+        ptr: *const T,
+        size: usize,
     ) {
         self.proc_thread_attributes.insert(
             attribute,
-            ProcThreadAttributeValue { size: mem::size_of::<T>(), data: Box::new(value) },
+            ProcThreadAttributeValue { ptr: mem::transmute::<*const T, *const c_void>(ptr), size },
         );
     }
 
@@ -890,9 +891,12 @@ impl Drop for ProcThreadAttributeList {
 
 /// Wrapper around the value data to be used as a Process Thread Attribute.
 struct ProcThreadAttributeValue {
-    data: Box<dyn Send + Sync>,
+    ptr: *const c_void,
     size: usize,
 }
+
+unsafe impl Send for ProcThreadAttributeValue {}
+unsafe impl Sync for ProcThreadAttributeValue {}
 
 fn make_proc_thread_attribute_list(
     attributes: &BTreeMap<usize, ProcThreadAttributeValue>,
@@ -935,13 +939,12 @@ fn make_proc_thread_attribute_list(
     // It's theoretically possible for the attribute count to exceed a u32 value.
     // Therefore, we ensure that we don't add more attributes than the buffer was initialized for.
     for (&attribute, value) in attributes.iter().take(attribute_count as usize) {
-        let value_ptr = core::ptr::addr_of!(*value.data) as _;
         cvt(unsafe {
             c::UpdateProcThreadAttribute(
                 proc_thread_attribute_list.0.as_mut_ptr() as _,
                 0,
                 attribute,
-                value_ptr,
+                value.ptr,
                 value.size,
                 ptr::null_mut(),
                 ptr::null_mut(),
