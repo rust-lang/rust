@@ -20,6 +20,8 @@ env:
   PR_MESSAGE: |
     Automation to keep dependencies in `Cargo.lock` current.
 
+    @bors p=1
+
     The following is the output from `cargo update`:
   COMMIT_MESSAGE: "cargo update \n\n"
 
