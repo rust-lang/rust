@@ -342,9 +342,11 @@ fn highlight_name(
 
 fn calc_binding_hash(name: &hir::Name, shadow_count: u32) -> u64 {
     fn hash<T: std::hash::Hash + std::fmt::Debug>(x: T) -> u64 {
-        use std::{collections::hash_map::DefaultHasher, hash::Hasher};
+        use ide_db::FxHasher;
 
-        let mut hasher = DefaultHasher::new();
+        use std::hash::Hasher;
+
+        let mut hasher = FxHasher::default();
         x.hash(&mut hasher);
         hasher.finish()
     }

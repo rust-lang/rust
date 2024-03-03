@@ -2,10 +2,16 @@
 use std::iter;
 
 use either::Either;
-use span::{FileId, FileRange, HirFileId, HirFileIdRepr, MacroFileId, SyntaxContextId};
-use syntax::{AstNode, SyntaxNode, SyntaxToken, TextRange, TextSize};
+use span::{
+    AstIdNode, ErasedFileAstId, FileAstId, FileId, FileRange, HirFileId, HirFileIdRepr,
+    MacroFileId, SyntaxContextId,
+};
+use syntax::{AstNode, AstPtr, SyntaxNode, SyntaxNodePtr, SyntaxToken, TextRange, TextSize};
 
-use crate::{db, map_node_range_up, span_for_offset, MacroFileIdExt};
+use crate::{
+    db::{self, ExpandDatabase},
+    map_node_range_up, span_for_offset, MacroFileIdExt,
+};
 
 /// `InFile<T>` stores a value of `T` inside a particular file/syntax tree.
 ///
@@ -22,6 +28,31 @@ pub struct InFileWrapper<FileKind, T> {
 pub type InFile<T> = InFileWrapper<HirFileId, T>;
 pub type InMacroFile<T> = InFileWrapper<MacroFileId, T>;
 pub type InRealFile<T> = InFileWrapper<FileId, T>;
+
+/// `AstId` points to an AST node in any file.
+///
+/// It is stable across reparses, and can be used as salsa key/value.
+pub type AstId<N> = crate::InFile<FileAstId<N>>;
+
+impl<N: AstIdNode> AstId<N> {
+    pub fn to_node(&self, db: &dyn ExpandDatabase) -> N {
+        self.to_ptr(db).to_node(&db.parse_or_expand(self.file_id))
+    }
+    pub fn to_in_file_node(&self, db: &dyn ExpandDatabase) -> crate::InFile<N> {
+        crate::InFile::new(self.file_id, self.to_ptr(db).to_node(&db.parse_or_expand(self.file_id)))
+    }
+    pub fn to_ptr(&self, db: &dyn ExpandDatabase) -> AstPtr<N> {
+        db.ast_id_map(self.file_id).get(self.value)
+    }
+}
+
+pub type ErasedAstId = crate::InFile<ErasedFileAstId>;
+
+impl ErasedAstId {
+    pub fn to_ptr(&self, db: &dyn ExpandDatabase) -> SyntaxNodePtr {
+        db.ast_id_map(self.file_id).get_erased(self.value)
+    }
+}
 
 impl<FileKind, T> InFileWrapper<FileKind, T> {
     pub fn new(file_id: FileKind, value: T) -> Self {

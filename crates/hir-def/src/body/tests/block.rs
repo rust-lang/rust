@@ -299,6 +299,40 @@ pub mod cov_mark {
 }
 
 #[test]
+fn macro_exported_in_block_mod() {
+    check_at(
+        r#"
+#[macro_export]
+macro_rules! foo {
+    () => { pub struct FooWorks; };
+}
+macro_rules! bar {
+    () => { pub struct BarWorks; };
+}
+fn main() {
+    mod module {
+        foo!();
+        bar!();
+        $0
+    }
+}
+"#,
+        expect![[r#"
+            block scope
+            module: t
+
+            block scope::module
+            BarWorks: t v
+            FooWorks: t v
+
+            crate
+            foo: m
+            main: v
+        "#]],
+    );
+}
+
+#[test]
 fn macro_resolve_legacy() {
     check_at(
         r#"

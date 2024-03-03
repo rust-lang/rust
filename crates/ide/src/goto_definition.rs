@@ -1956,6 +1956,34 @@ fn f() {
     }
 
     #[test]
+    fn goto_index_mut_op() {
+        check(
+            r#"
+//- minicore: index
+
+struct Foo;
+struct Bar;
+
+impl core::ops::Index<usize> for Foo {
+    type Output = Bar;
+
+    fn index(&self, index: usize) -> &Self::Output {}
+}
+
+impl core::ops::IndexMut<usize> for Foo {
+    fn index_mut(&mut self, index: usize) -> &mut Self::Output {}
+     //^^^^^^^^^
+}
+
+fn f() {
+    let mut foo = Foo;
+    foo[0]$0 = Bar;
+}
+"#,
+        );
+    }
+
+    #[test]
     fn goto_prefix_op() {
         check(
             r#"
@@ -1972,6 +2000,33 @@ impl core::ops::Deref for Struct {
 
 fn f() {
     $0*Struct;
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn goto_deref_mut() {
+        check(
+            r#"
+//- minicore: deref, deref_mut
+
+struct Foo;
+struct Bar;
+
+impl core::ops::Deref for Foo {
+    type Target = Bar;
+    fn deref(&self) -> &Self::Target {}
+}
+
+impl core::ops::DerefMut for Foo {
+    fn deref_mut(&mut self) -> &mut Self::Target {}
+     //^^^^^^^^^
+}
+
+fn f() {
+    let a = Foo;
+    $0*a = Bar;
 }
 "#,
         );

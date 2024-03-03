@@ -636,7 +636,6 @@ dependencies = [
  "arrayvec",
  "cfg",
  "cov-mark",
- "crossbeam-channel",
  "dot",
  "either",
  "expect-test",
@@ -713,6 +712,7 @@ dependencies = [
  "arrayvec",
  "base-db",
  "cov-mark",
+ "crossbeam-channel",
  "either",
  "expect-test",
  "fst",
@@ -951,7 +951,6 @@ dependencies = [
  "anyhow",
  "crossbeam-channel",
  "hir-expand",
- "ide",
  "ide-db",
  "itertools",
  "proc-macro-api",
@@ -1856,7 +1855,9 @@ dependencies = [
 name = "span"
 version = "0.0.0"
 dependencies = [
+ "hashbrown",
  "la-arena 0.3.1 (registry+https://github.com/rust-lang/crates.io-index)",
+ "rustc-hash",
  "salsa",
  "stdx",
  "syntax",

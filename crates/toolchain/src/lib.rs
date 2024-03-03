@@ -63,19 +63,15 @@ fn get_path_for_executable(executable_name: &'static str) -> PathBuf {
     // The current implementation checks three places for an executable to use:
     // 1) Appropriate environment variable (erroring if this is set but not a usable executable)
     //      example: for cargo, this checks $CARGO environment variable; for rustc, $RUSTC; etc
-    // 2) `<executable_name>`
-    //      example: for cargo, this tries just `cargo`, which will succeed if `cargo` is on the $PATH
-    // 3) `$CARGO_HOME/bin/<executable_name>`
+    // 2) `$CARGO_HOME/bin/<executable_name>`
     //      where $CARGO_HOME defaults to ~/.cargo (see https://doc.rust-lang.org/cargo/guide/cargo-home.html)
     //      example: for cargo, this tries $CARGO_HOME/bin/cargo, or ~/.cargo/bin/cargo if $CARGO_HOME is unset.
     //      It seems that this is a reasonable place to try for cargo, rustc, and rustup
+    // 3) `<executable_name>`
+    //      example: for cargo, this tries just `cargo`, which will succeed if `cargo` is on the $PATH
     let env_var = executable_name.to_ascii_uppercase();
     if let Some(path) = env::var_os(env_var) {
         return path.into();
-    }
-
-    if lookup_in_path(executable_name) {
-        return executable_name.into();
     }
 
     if let Some(mut path) = get_cargo_home() {
@@ -84,6 +80,10 @@ fn get_path_for_executable(executable_name: &'static str) -> PathBuf {
         if let Some(path) = probe_for_binary(path) {
             return path;
         }
+    }
+
+    if lookup_in_path(executable_name) {
+        return executable_name.into();
     }
 
     executable_name.into()

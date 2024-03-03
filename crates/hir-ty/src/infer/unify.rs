@@ -10,15 +10,16 @@ use chalk_solve::infer::ParameterEnaVariableExt;
 use either::Either;
 use ena::unify::UnifyKey;
 use hir_expand::name;
+use smallvec::SmallVec;
 use triomphe::Arc;
 
 use super::{InferOk, InferResult, InferenceContext, TypeError};
 use crate::{
     consteval::unknown_const, db::HirDatabase, fold_tys_and_consts, static_lifetime,
     to_chalk_trait_id, traits::FnTrait, AliasEq, AliasTy, BoundVar, Canonical, Const, ConstValue,
-    DebruijnIndex, GenericArg, GenericArgData, Goal, Guidance, InEnvironment, InferenceVar,
-    Interner, Lifetime, ParamKind, ProjectionTy, ProjectionTyExt, Scalar, Solution, Substitution,
-    TraitEnvironment, Ty, TyBuilder, TyExt, TyKind, VariableKind,
+    DebruijnIndex, DomainGoal, GenericArg, GenericArgData, Goal, GoalData, Guidance, InEnvironment,
+    InferenceVar, Interner, Lifetime, ParamKind, ProjectionTy, ProjectionTyExt, Scalar, Solution,
+    Substitution, TraitEnvironment, Ty, TyBuilder, TyExt, TyKind, VariableKind, WhereClause,
 };
 
 impl InferenceContext<'_> {
@@ -30,6 +31,72 @@ impl InferenceContext<'_> {
         T: HasInterner<Interner = Interner>,
     {
         self.table.canonicalize(t)
+    }
+
+    pub(super) fn clauses_for_self_ty(
+        &mut self,
+        self_ty: InferenceVar,
+    ) -> SmallVec<[WhereClause; 4]> {
+        self.table.resolve_obligations_as_possible();
+
+        let root = self.table.var_unification_table.inference_var_root(self_ty);
+        let pending_obligations = mem::take(&mut self.table.pending_obligations);
+        let obligations = pending_obligations
+            .iter()
+            .filter_map(|obligation| match obligation.value.value.goal.data(Interner) {
+                GoalData::DomainGoal(DomainGoal::Holds(
+                    clause @ WhereClause::AliasEq(AliasEq {
+                        alias: AliasTy::Projection(projection),
+                        ..
+                    }),
+                )) => {
+                    let projection_self = projection.self_type_parameter(self.db);
+                    let uncanonical = chalk_ir::Substitute::apply(
+                        &obligation.free_vars,
+                        projection_self,
+                        Interner,
+                    );
+                    if matches!(
+                        self.resolve_ty_shallow(&uncanonical).kind(Interner),
+                        TyKind::InferenceVar(iv, TyVariableKind::General) if *iv == root,
+                    ) {
+                        Some(chalk_ir::Substitute::apply(
+                            &obligation.free_vars,
+                            clause.clone(),
+                            Interner,
+                        ))
+                    } else {
+                        None
+                    }
+                }
+                GoalData::DomainGoal(DomainGoal::Holds(
+                    clause @ WhereClause::Implemented(trait_ref),
+                )) => {
+                    let trait_ref_self = trait_ref.self_type_parameter(Interner);
+                    let uncanonical = chalk_ir::Substitute::apply(
+                        &obligation.free_vars,
+                        trait_ref_self,
+                        Interner,
+                    );
+                    if matches!(
+                        self.resolve_ty_shallow(&uncanonical).kind(Interner),
+                        TyKind::InferenceVar(iv, TyVariableKind::General) if *iv == root,
+                    ) {
+                        Some(chalk_ir::Substitute::apply(
+                            &obligation.free_vars,
+                            clause.clone(),
+                            Interner,
+                        ))
+                    } else {
+                        None
+                    }
+                }
+                _ => None,
+            })
+            .collect();
+        self.table.pending_obligations = pending_obligations;
+
+        obligations
     }
 }
 
@@ -457,6 +524,7 @@ impl<'a> InferenceTable<'a> {
     }
 
     /// Unify two relatable values (e.g. `Ty`) and register new trait goals that arise from that.
+    #[tracing::instrument(skip_all)]
     pub(crate) fn unify<T: ?Sized + Zip<Interner>>(&mut self, ty1: &T, ty2: &T) -> bool {
         let result = match self.try_unify(ty1, ty2) {
             Ok(r) => r,

@@ -671,6 +671,21 @@
                         "string"
                     ]
                 },
+                "rust-analyzer.cargo.targetDir": {
+                    "markdownDescription": "Optional path to a rust-analyzer specific target directory.\nThis prevents rust-analyzer's `cargo check` and initial build-script and proc-macro\nbuilding from locking the `Cargo.lock` at the expense of duplicating build artifacts.\n\nSet to `true` to use a subdirectory of the existing target directory or\nset to a path relative to the workspace to use that path.",
+                    "default": null,
+                    "anyOf": [
+                        {
+                            "type": "null"
+                        },
+                        {
+                            "type": "boolean"
+                        },
+                        {
+                            "type": "string"
+                        }
+                    ]
+                },
                 "rust-analyzer.cargo.unsetTest": {
                     "markdownDescription": "Unsets the implicit `#[cfg(test)]` for the specified crates.",
                     "default": [
@@ -1543,21 +1558,6 @@
                         "type": "string"
                     }
                 },
-                "rust-analyzer.rust.analyzerTargetDir": {
-                    "markdownDescription": "Optional path to a rust-analyzer specific target directory.\nThis prevents rust-analyzer's `cargo check` from locking the `Cargo.lock`\nat the expense of duplicating build artifacts.\n\nSet to `true` to use a subdirectory of the existing target directory or\nset to a path relative to the workspace to use that path.",
-                    "default": null,
-                    "anyOf": [
-                        {
-                            "type": "null"
-                        },
-                        {
-                            "type": "boolean"
-                        },
-                        {
-                            "type": "string"
-                        }
-                    ]
-                },
                 "rust-analyzer.rustc.source": {
                     "markdownDescription": "Path to the Cargo.toml of the rust compiler workspace, for usage in rustc_private\nprojects, or \"discover\" to try to automatically find it if the `rustc-dev` component\nis installed.\n\nAny project which uses rust-analyzer with the rustcPrivate\ncrates must set `[package.metadata.rust-analyzer] rustc_private=true` to use it.\n\nThis option does not take effect until rust-analyzer is restarted.",
                     "default": null,
@@ -1758,13 +1758,6 @@
                     "rs"
                 ],
                 "configuration": "language-configuration.json"
-            },
-            {
-                "id": "rustdoc",
-                "extensions": [
-                    ".rustdoc"
-                ],
-                "configuration": "./language-configuration-rustdoc.json"
             }
         ],
         "grammars": [
@@ -1772,27 +1765,6 @@
                 "language": "ra_syntax_tree",
                 "scopeName": "source.ra_syntax_tree",
                 "path": "ra_syntax_tree.tmGrammar.json"
-            },
-            {
-                "language": "rustdoc",
-                "scopeName": "text.html.markdown.rustdoc",
-                "path": "rustdoc.json",
-                "embeddedLanguages": {
-                    "meta.embedded.block.html": "html",
-                    "meta.embedded.block.markdown": "markdown",
-                    "meta.embedded.block.rust": "rust"
-                }
-            },
-            {
-                "injectTo": [
-                    "source.rust"
-                ],
-                "scopeName": "comment.markdown-cell-inject.rustdoc",
-                "path": "rustdoc-inject.json",
-                "embeddedLanguages": {
-                    "meta.embedded.block.rustdoc": "rustdoc",
-                    "meta.embedded.block.rust": "rust"
-                }
             }
         ],
         "problemMatchers": [

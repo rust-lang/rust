@@ -76,7 +76,6 @@ use base_db::{
     CrateId, Edition,
 };
 use hir_expand::{
-    ast_id_map::{AstIdNode, FileAstId},
     builtin_attr_macro::BuiltinAttrExpander,
     builtin_derive_macro::BuiltinDeriveExpander,
     builtin_fn_macro::{BuiltinFnLikeExpander, EagerExpander},
@@ -91,7 +90,7 @@ use hir_expand::{
 use item_tree::ExternBlock;
 use la_arena::Idx;
 use nameres::DefMap;
-use span::{FileId, Span};
+use span::{AstIdNode, FileAstId, FileId, Span};
 use stdx::impl_from;
 use syntax::{ast, AstNode};
 

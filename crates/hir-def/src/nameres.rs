@@ -61,13 +61,13 @@ use std::ops::Deref;
 
 use base_db::{CrateId, Edition, FileId};
 use hir_expand::{
-    ast_id_map::FileAstId, name::Name, proc_macro::ProcMacroKind, HirFileId, InFile, MacroCallId,
-    MacroDefId,
+    name::Name, proc_macro::ProcMacroKind, HirFileId, InFile, MacroCallId, MacroDefId,
 };
 use itertools::Itertools;
 use la_arena::Arena;
 use profile::Count;
 use rustc_hash::{FxHashMap, FxHashSet};
+use span::FileAstId;
 use stdx::format_to;
 use syntax::{ast, SmolStr};
 use triomphe::Arc;
@@ -467,6 +467,12 @@ impl DefMap {
 
     pub fn crate_root(&self) -> CrateRootModuleId {
         CrateRootModuleId { krate: self.krate }
+    }
+
+    /// This is the same as [`Self::crate_root`] for crate def maps, but for block def maps, it
+    /// returns the root block module.
+    pub fn root_module_id(&self) -> ModuleId {
+        self.module_id(Self::ROOT)
     }
 
     pub(crate) fn resolve_path(
