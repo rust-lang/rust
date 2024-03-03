@@ -1,6 +1,6 @@
 use rustc_middle::mir::patch::MirPatch;
 use rustc_middle::mir::*;
-use rustc_middle::ty::{self, Ty, TyCtxt};
+use rustc_middle::ty::{Ty, TyCtxt};
 use std::fmt::Debug;
 
 use super::simplify::simplify_cfg;
@@ -88,10 +88,6 @@ use super::simplify::simplify_cfg;
 ///     |      ...      |
 ///     =================
 /// ```
-///
-/// This is only correct for some `P`, since `P` is now computed outside the original `switchInt`.
-/// The filter on which `P` are allowed (together with discussion of its correctness) is found in
-/// `may_hoist`.
 pub struct EarlyOtherwiseBranch;
 
 impl<'tcx> MirPass<'tcx> for EarlyOtherwiseBranch {
@@ -258,54 +254,6 @@ impl<'tcx> MirPass<'tcx> for EarlyOtherwiseBranch {
     }
 }
 
-/// Returns true if computing the discriminant of `place` may be hoisted out of the branch
-fn may_hoist<'tcx>(tcx: TyCtxt<'tcx>, body: &Body<'tcx>, place: Place<'tcx>) -> bool {
-    for (place, proj) in place.iter_projections() {
-        match proj {
-            // Dereferencing in the computation of `place` might cause issues from one of two
-            // categories. First, the referent might be invalid. We protect against this by
-            // dereferencing references only (not pointers). Second, the use of a reference may
-            // invalidate other references that are used later (for aliasing reasons). Consider
-            // where such an invalidated reference may appear:
-            //  - In `Q`: Not possible since `Q` is used as the operand of a `SwitchInt` and so
-            //    cannot contain referenced data.
-            //  - In `BBU`: Not possible since that block contains only the `unreachable` terminator
-            //  - In `BBC.2, BBD.2`: Not possible, since `discriminant(P)` was computed prior to
-            //    reaching that block in the input to our transformation, and so any data
-            //    invalidated by that computation could not have been used there.
-            //  - In `BB9`: Not possible since control flow might have reached `BB9` via the
-            //    `otherwise` branch in `BBC, BBD` in the input to our transformation, which would
-            //    have invalidated the data when computing `discriminant(P)`
-            // So dereferencing here is correct.
-            ProjectionElem::Deref => match place.ty(body.local_decls(), tcx).ty.kind() {
-                ty::Ref(..) => {}
-                _ => return false,
-            },
-            // Field projections are always valid
-            ProjectionElem::Field(..) => {}
-            // We cannot allow
-            // downcasts either, since the correctness of the downcast may depend on the parent
-            // branch being taken. An easy example of this is
-            // ```
-            // Q = discriminant(_3)
-            // P = (_3 as Variant)
-            // ```
-            // However, checking if the child and parent place are the same and only erroring then
-            // is not sufficient either, since the `discriminant(_3) == 1` (or whatever) check may
-            // be replaced by another optimization pass with any other condition that can be proven
-            // equivalent.
-            ProjectionElem::Downcast(..) => {
-                return false;
-            }
-            // We cannot allow indexing since the index may be out of bounds.
-            _ => {
-                return false;
-            }
-        }
-    }
-    true
-}
-
 #[derive(Debug)]
 struct OptimizationData<'tcx> {
     destination: BasicBlock,
@@ -379,11 +327,6 @@ fn evaluate_candidate<'tcx>(
         let (_, Rvalue::Discriminant(child_place)) = &**boxed else {
             return None;
         };
-        // Verify that the optimization is legal in general
-        // We can hoist evaluating the child discriminant out of the branch
-        if !may_hoist(tcx, body, *child_place) {
-            return None;
-        }
         *child_place
     } else {
         let TerminatorKind::SwitchInt { discr, .. } = &bbs[child].terminator().kind else {
