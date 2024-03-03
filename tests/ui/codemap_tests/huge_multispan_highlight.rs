@@ -1,5 +1,6 @@
 fn main() {
-    let x = "foo";
+    let _ = match true {
+        true => (
 
 
 
@@ -87,5 +88,30 @@ fn main() {
 
 
 
-    let y = &mut x; //~ ERROR cannot borrow
+
+        ),
+        false => "
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        ", //~^^^^^^^^^^^^^^^^^^^^^^ ERROR `match` arms have incompatible types
+    };
 }
