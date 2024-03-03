@@ -1074,11 +1074,8 @@ struct Candidate<'pat, 'tcx> {
     // because that would break binding consistency.
     subcandidates: Vec<Candidate<'pat, 'tcx>>,
 
-    /// ...and the guard must be evaluated if there is one.
+    /// ...and if there is a guard it must be evaluated; if it's `false` then branch to `otherwise_block`.
     has_guard: bool,
-
-    /// If the guard is `false` then branch to `otherwise_block`.
-    otherwise_block: Option<BasicBlock>,
 
     /// If the candidate matches, bindings and ascriptions must be established.
     extra_data: PatternExtraData<'tcx>,
@@ -1089,6 +1086,9 @@ struct Candidate<'pat, 'tcx> {
 
     /// The block before the `bindings` have been established.
     pre_binding_block: Option<BasicBlock>,
+
+    /// The block to branch to if the guard or a nested candidate fails to match.
+    otherwise_block: Option<BasicBlock>,
 
     /// The earliest block that has only candidates >= this one as descendents. Used for false
     /// edges, see the doc for [`Builder::match_expr`].
@@ -1500,11 +1500,9 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
         candidate.pre_binding_block = Some(start_block);
         let otherwise_block = self.cfg.start_new_block();
-        if candidate.has_guard {
-            // Create the otherwise block for this candidate, which is the
-            // pre-binding block for the next candidate.
-            candidate.otherwise_block = Some(otherwise_block);
-        }
+        // Create the otherwise block for this candidate, which is the
+        // pre-binding block for the next candidate.
+        candidate.otherwise_block = Some(otherwise_block);
         otherwise_block
     }
 
@@ -1591,10 +1589,15 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 assert!(leaf_candidate.match_pairs.is_empty());
                 leaf_candidate.match_pairs.extend(remaining_match_pairs.iter().cloned());
                 let or_start = leaf_candidate.pre_binding_block.unwrap();
-                // In a case like `(a | b, c | d)`, if `a` succeeds and `c | d` fails, we know `(b,
-                // c | d)` will fail too. If there is no guard, we skip testing of `b` by branching
-                // directly to `remainder_start`. If there is a guard, we have to try `(b, c | d)`.
-                let or_otherwise = leaf_candidate.otherwise_block.unwrap_or(remainder_start);
+                // In a case like `(P | Q, R | S)`, if `P` succeeds and `R | S` fails, we know `(Q,
+                // R | S)` will fail too. If there is no guard, we skip testing of `Q` by branching
+                // directly to `remainder_start`. If there is a guard, `or_otherwise` can be reached
+                // by guard failure as well, so we can't skip `Q`.
+                let or_otherwise = if leaf_candidate.has_guard {
+                    leaf_candidate.otherwise_block.unwrap()
+                } else {
+                    remainder_start
+                };
                 self.test_candidates_with_or(
                     span,
                     scrutinee_span,
@@ -1669,6 +1672,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             subcandidate.subcandidates.is_empty() && subcandidate.extra_data.is_empty()
         });
         if can_merge {
+            let mut last_otherwise = None;
             let any_matches = self.cfg.start_new_block();
             let or_span = candidate.or_span.take().unwrap();
             let source_info = self.source_info(or_span);
@@ -1679,8 +1683,11 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             for subcandidate in mem::take(&mut candidate.subcandidates) {
                 let or_block = subcandidate.pre_binding_block.unwrap();
                 self.cfg.goto(or_block, source_info, any_matches);
+                last_otherwise = subcandidate.otherwise_block;
             }
             candidate.pre_binding_block = Some(any_matches);
+            assert!(last_otherwise.is_some());
+            candidate.otherwise_block = last_otherwise;
         } else {
             // Never subcandidates may have a set of bindings inconsistent with their siblings,
             // which would break later code. So we filter them out. Note that we can't filter out
