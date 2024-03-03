@@ -272,7 +272,7 @@ unsafe impl Sync for AtomicBool {}
 
 /// A raw pointer type which can be safely shared between threads.
 ///
-/// This type has the same in-memory representation as a `*mut T`.
+/// This type has the same memory layout and bit validity as a `*mut T`.
 ///
 /// **Note**: This type is only available on platforms that support atomic
 /// loads and stores of pointers. Its size depends on the target pointer's size.
