@@ -1,4 +1,4 @@
-use clippy_config::msrvs::Msrv;
+use clippy_config::msrvs::{self, Msrv};
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::qualify_min_const_fn::is_min_const_fn;
 use clippy_utils::source::snippet;
@@ -92,7 +92,8 @@ impl<'tcx> LateLintPass<'tcx> for ThreadLocalInitializerCanBeMadeConst {
         local_defid: rustc_span::def_id::LocalDefId,
     ) {
         let defid = local_defid.to_def_id();
-        if is_thread_local_initializer(cx, fn_kind, span).unwrap_or(false)
+        if self.msrv.meets(msrvs::THREAD_LOCAL_INITIALIZER_CAN_BE_MADE_CONST)
+            && is_thread_local_initializer(cx, fn_kind, span).unwrap_or(false)
             // Some implementations of `thread_local!` include an initializer fn.
             // In the case of a const initializer, the init fn is also const,
             // so we can skip the lint in that case. This occurs only on some
