@@ -1,0 +1,5 @@
+thread '<unnamed>' panicked at $DIR/thread_panic.rs:LL:CC:
+Hello!
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+thread 'childthread' panicked at $DIR/thread_panic.rs:LL:CC:
+Hello, world!

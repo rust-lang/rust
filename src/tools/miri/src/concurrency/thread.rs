@@ -982,17 +982,6 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
     }
 
     #[inline]
-    fn set_thread_name_wide(&mut self, thread: ThreadId, new_thread_name: &[u16]) {
-        let this = self.eval_context_mut();
-
-        // The Windows `GetThreadDescription` shim to get the thread name isn't implemented, so being lossy is okay.
-        // This is only read by diagnostics, which already use `from_utf8_lossy`.
-        this.machine
-            .threads
-            .set_thread_name(thread, String::from_utf16_lossy(new_thread_name).into_bytes());
-    }
-
-    #[inline]
     fn get_thread_name<'c>(&'c self, thread: ThreadId) -> Option<&[u8]>
     where
         'mir: 'c,

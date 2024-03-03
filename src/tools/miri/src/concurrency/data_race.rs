@@ -812,6 +812,7 @@ impl VClockAlloc {
                 | MiriMemoryKind::Miri
                 | MiriMemoryKind::C
                 | MiriMemoryKind::WinHeap
+                | MiriMemoryKind::WinLocal
                 | MiriMemoryKind::Mmap,
             )
             | MemoryKind::Stack => {
@@ -820,7 +821,8 @@ impl VClockAlloc {
                 alloc_timestamp.span = current_span;
                 (alloc_timestamp, alloc_index)
             }
-            // Other global memory should trace races but be allocated at the 0 timestamp.
+            // Other global memory should trace races but be allocated at the 0 timestamp
+            // (conceptually they are allocated before everything).
             MemoryKind::Machine(
                 MiriMemoryKind::Global
                 | MiriMemoryKind::Machine

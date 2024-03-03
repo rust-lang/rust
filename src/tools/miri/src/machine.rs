@@ -113,6 +113,8 @@ pub enum MiriMemoryKind {
     C,
     /// Windows `HeapAlloc` memory.
     WinHeap,
+    /// Windows "local" memory (to be freed with `LocalFree`)
+    WinLocal,
     /// Memory for args, errno, and other parts of the machine-managed environment.
     /// This memory may leak.
     Machine,
@@ -144,7 +146,7 @@ impl MayLeak for MiriMemoryKind {
     fn may_leak(self) -> bool {
         use self::MiriMemoryKind::*;
         match self {
-            Rust | Miri | C | WinHeap | Runtime => false,
+            Rust | Miri | C | WinHeap | WinLocal | Runtime => false,
             Machine | Global | ExternStatic | Tls | Mmap => true,
         }
     }
@@ -156,7 +158,7 @@ impl MiriMemoryKind {
         use self::MiriMemoryKind::*;
         match self {
             // Heap allocations are fine since the `Allocation` is created immediately.
-            Rust | Miri | C | WinHeap | Mmap => true,
+            Rust | Miri | C | WinHeap | WinLocal | Mmap => true,
             // Everything else is unclear, let's not show potentially confusing spans.
             Machine | Global | ExternStatic | Tls | Runtime => false,
         }
@@ -171,6 +173,7 @@ impl fmt::Display for MiriMemoryKind {
             Miri => write!(f, "Miri bare-metal heap"),
             C => write!(f, "C heap"),
             WinHeap => write!(f, "Windows heap"),
+            WinLocal => write!(f, "Windows local memory"),
             Machine => write!(f, "machine-managed memory"),
             Runtime => write!(f, "language runtime memory"),
             Global => write!(f, "global (static or const)"),
