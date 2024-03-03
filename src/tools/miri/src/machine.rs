@@ -1454,13 +1454,17 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for MiriMachine<'mir, 'tcx> {
         if ecx.machine.borrow_tracker.is_some() {
             ecx.on_stack_pop(frame)?;
         }
+        // tracing-tree can autoamtically annotate scope changes, but it gets very confused by our
+        // concurrency and what it prints is just plain wrong. So we print our own information
+        // instead. (Cc https://github.com/rust-lang/miri/issues/2266)
+        info!("Leaving {}", ecx.frame().instance);
         Ok(())
     }
 
     #[inline(always)]
     fn after_stack_pop(
         ecx: &mut InterpCx<'mir, 'tcx, Self>,
-        mut frame: Frame<'mir, 'tcx, Provenance, FrameExtra<'tcx>>,
+        frame: Frame<'mir, 'tcx, Provenance, FrameExtra<'tcx>>,
         unwinding: bool,
     ) -> InterpResult<'tcx, StackPopJump> {
         if frame.extra.is_user_relevant {
@@ -1470,10 +1474,20 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for MiriMachine<'mir, 'tcx> {
             // user-relevant frame and restore that here.)
             ecx.active_thread_mut().recompute_top_user_relevant_frame();
         }
-        let timing = frame.extra.timing.take();
-        let res = ecx.handle_stack_pop_unwind(frame.extra, unwinding);
-        if let Some(profiler) = ecx.machine.profiler.as_ref() {
-            profiler.finish_recording_interval_event(timing.unwrap());
+        let res = {
+            // Move `frame`` into a sub-scope so we control when it will be dropped.
+            let mut frame = frame;
+            let timing = frame.extra.timing.take();
+            let res = ecx.handle_stack_pop_unwind(frame.extra, unwinding);
+            if let Some(profiler) = ecx.machine.profiler.as_ref() {
+                profiler.finish_recording_interval_event(timing.unwrap());
+            }
+            res
+        };
+        // Needs to be done after dropping frame to show up on the right nesting level.
+        // (Cc https://github.com/rust-lang/miri/issues/2266)
+        if !ecx.active_thread_stack().is_empty() {
+            info!("Continuing in {}", ecx.frame().instance);
         }
         res
     }

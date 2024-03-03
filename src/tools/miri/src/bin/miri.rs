@@ -202,15 +202,11 @@ fn rustc_logger_config() -> rustc_log::LoggerConfig {
             // rustc traced, but you can also do `MIRI_LOG=miri=trace,rustc_const_eval::interpret=debug`.
             if tracing::Level::from_str(&var).is_ok() {
                 cfg.filter = Ok(format!(
-                    "rustc_middle::mir::interpret={var},rustc_const_eval::interpret={var}"
+                    "rustc_middle::mir::interpret={var},rustc_const_eval::interpret={var},miri={var}"
                 ));
             } else {
                 cfg.filter = Ok(var);
             }
-        }
-        // Enable verbose entry/exit logging by default if MIRI_LOG is set.
-        if matches!(cfg.verbose_entry_exit, Err(VarError::NotPresent)) {
-            cfg.verbose_entry_exit = Ok(format!("1"));
         }
     }
 
