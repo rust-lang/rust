@@ -6,7 +6,9 @@ use rustc_session::lint;
 use rustc_span::def_id::LocalDefId;
 use rustc_span::Symbol;
 use rustc_target::abi::FieldIdx;
-use rustc_target::asm::{InlineAsmReg, InlineAsmRegClass, InlineAsmRegOrRegClass, InlineAsmType};
+use rustc_target::asm::{
+    InlineAsmReg, InlineAsmRegClass, InlineAsmRegOrRegClass, InlineAsmType, ModifierInfo,
+};
 
 pub struct InlineAsmCtxt<'a, 'tcx> {
     tcx: TyCtxt<'tcx>,
@@ -253,8 +255,11 @@ impl<'a, 'tcx> InlineAsmCtxt<'a, 'tcx> {
         }
 
         // Check whether a modifier is suggested for using this type.
-        if let Some((suggested_modifier, suggested_result)) =
-            reg_class.suggest_modifier(asm_arch, asm_ty)
+        if let Some(ModifierInfo {
+            modifier: suggested_modifier,
+            result: suggested_result,
+            size: suggested_size,
+        }) = reg_class.suggest_modifier(asm_arch, asm_ty)
         {
             // Search for any use of this operand without a modifier and emit
             // the suggestion for them.
@@ -268,8 +273,11 @@ impl<'a, 'tcx> InlineAsmCtxt<'a, 'tcx> {
                 }
             }
             if !spans.is_empty() {
-                let (default_modifier, default_result) =
-                    reg_class.default_modifier(asm_arch).unwrap();
+                let ModifierInfo {
+                    modifier: default_modifier,
+                    result: default_result,
+                    size: default_size,
+                } = reg_class.default_modifier(asm_arch).unwrap();
                 self.tcx.node_span_lint(
                     lint::builtin::ASM_SUB_REGISTER,
                     expr.hir_id,
@@ -278,10 +286,10 @@ impl<'a, 'tcx> InlineAsmCtxt<'a, 'tcx> {
                     |lint| {
                         lint.span_label(expr.span, "for this argument");
                         lint.help(format!(
-                            "use `{{{idx}:{suggested_modifier}}}` to have the register formatted as `{suggested_result}`",
+                            "use `{{{idx}:{suggested_modifier}}}` to have the register formatted as `{suggested_result}` (for {suggested_size}-bit values)",
                         ));
                         lint.help(format!(
-                            "or use `{{{idx}:{default_modifier}}}` to keep the default formatting of `{default_result}`",
+                            "or use `{{{idx}:{default_modifier}}}` to keep the default formatting of `{default_result}` (for {default_size}-bit values)",
                         ));
                     },
                 );
