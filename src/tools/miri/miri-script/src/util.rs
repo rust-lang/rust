@@ -148,7 +148,7 @@ impl MiriEnv {
 
     /// Receives an iterator of files.
     /// Will format each file with the miri rustfmt config.
-    /// Does not follow module relationships.
+    /// Does not recursively format modules.
     pub fn format_files(
         &self,
         files: impl Iterator<Item = Result<PathBuf, walkdir::Error>>,
@@ -160,7 +160,7 @@ impl MiriEnv {
 
         let mut first = true;
 
-        // Format in batches as not all out files fit into Windows' command argument limit.
+        // Format in batches as not all our files fit into Windows' command argument limit.
         for batch in &files.chunks(256) {
             // Build base command.
             let mut cmd = cmd!(
@@ -168,6 +168,7 @@ impl MiriEnv {
                 "rustfmt +{toolchain} --edition=2021 --config-path {config_path} --unstable-features --skip-children {flags...}"
             );
             if first {
+                // Log an abbreviating command, and only once.
                 eprintln!("$ {cmd} ...");
                 first = false;
             }
@@ -181,7 +182,7 @@ impl MiriEnv {
                 cmd = cmd.arg(file);
             }
 
-            // Run commands.
+            // Run rustfmt.
             // We want our own error message, repeating the command is too much.
             cmd.quiet().run().map_err(|_| anyhow!("`rustfmt` failed"))?;
         }
