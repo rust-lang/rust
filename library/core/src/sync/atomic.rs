@@ -2121,7 +2121,7 @@ macro_rules! atomic_int {
      $int_type:ident $atomic_type:ident) => {
         /// An integer type which can be safely shared between threads.
         ///
-        /// This type has the same in-memory representation as the underlying
+        /// This type has the same in-memory size and bit validity as the underlying
         /// integer type, [`
         #[doc = $s_int_type]
         /// `].
