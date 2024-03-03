@@ -17,7 +17,7 @@ fn std_instead_of_core() {
     use ::core::hash::Hash;
     //~^ ERROR: used import from `std` instead of `core`
     // Don't lint on `env` macro
-    use std::env;
+    use core::env;
 
     // Multiple imports
     use core::fmt::{Debug, Result};
@@ -27,9 +27,13 @@ fn std_instead_of_core() {
     #[rustfmt::skip]
     use core::{
         //~^ ERROR: used import from `std` instead of `core`
-        fmt::Write,
+        fmt::Write as _,
         ptr::read_unaligned,
     };
+
+    // Multiline mixed imports
+    use core::{io::Write, fmt::Display};
+    //~^ ERROR: used import from `std` instead of `core`
 
     // Function calls
     let ptr = core::ptr::null::<u32>();

@@ -27,9 +27,13 @@ fn std_instead_of_core() {
     #[rustfmt::skip]
     use std::{
         //~^ ERROR: used import from `std` instead of `core`
-        fmt::Write,
+        fmt::Write as _,
         ptr::read_unaligned,
     };
+
+    // Multiline mixed imports
+    use std::{io::Write, fmt::Display};
+    //~^ ERROR: used import from `std` instead of `core`
 
     // Function calls
     let ptr = std::ptr::null::<u32>();
