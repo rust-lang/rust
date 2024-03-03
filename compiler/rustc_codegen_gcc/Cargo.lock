@@ -421,3 +421,27 @@ name = "windows_x86_64_msvc"
 version = "0.52.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "32b752e52a2da0ddfbdbcc6fceadfeede4c939ed16d13e648833a61dfb611ed8"
+fn main() -> Result<(), Box<dyn std::error::Error>> {
+    // create a directory, get a FD to it, then unlink the directory but keep the FD
+    std::fs::create_dir("tmp_dir")?;
+    let dir_fd = rustix::fs::openat(
+        rustix::fs::CWD,
+        rustix::cstr!("tmp_dir"),
+        rustix::fs::OFlags::RDONLY | rustix::fs::OFlags::CLOEXEC,
+        rustix::fs::Mode::empty(),
+    )?;
+    std::fs::remove_dir("tmp_dir")?;
+
+    // iterator gets stuck in infinite loop and memory explodes
+    rustix::fs::Dir::read_from(dir_fd)?
+        // the iterator keeps returning `Some(Err(_))`, but never halts by returning `None`
+        // therefore if the implementation ignores the error (or otherwise continues
+        // after seeing the error instead of breaking), the loop will not halt
+        .filter_map(|dirent_maybe_error| dirent_maybe_error.ok())
+        .for_each(|dirent| {
+            // your happy path
+            println!("{dirent:?}");
+        });
+
+    Ok(())
+}
