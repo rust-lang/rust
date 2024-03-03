@@ -44,7 +44,7 @@ use crate::sealed::Sealed;
 /// For now this trait is available to permit experimentation with SIMD float
 /// operations that may lack hardware support, such as `mul_add`.
 pub trait StdFloat: Sealed + Sized {
-    /// Fused multiply-add.  Computes `(self * a) + b` with only one rounding error,
+    /// Elementwise fused multiply-add. Computes `(self * a) + b` with only one rounding error,
     /// yielding a more accurate result than an unfused multiply-add.
     ///
     /// Using `mul_add` *may* be more performant than an unfused multiply-add if the target
@@ -57,56 +57,56 @@ pub trait StdFloat: Sealed + Sized {
         unsafe { intrinsics::simd_fma(self, a, b) }
     }
 
-    /// Produces a vector where every lane has the square root value
-    /// of the equivalently-indexed lane in `self`
+    /// Produces a vector where every element has the square root value
+    /// of the equivalently-indexed element in `self`
     #[inline]
     #[must_use = "method returns a new vector and does not mutate the original value"]
     fn sqrt(self) -> Self {
         unsafe { intrinsics::simd_fsqrt(self) }
     }
 
-    /// Produces a vector where every lane has the sine of the value
-    /// in the equivalently-indexed lane in `self`.
+    /// Produces a vector where every element has the sine of the value
+    /// in the equivalently-indexed element in `self`.
     #[inline]
     #[must_use = "method returns a new vector and does not mutate the original value"]
     fn sin(self) -> Self {
         unsafe { intrinsics::simd_fsin(self) }
     }
 
-    /// Produces a vector where every lane has the cosine of the value
-    /// in the equivalently-indexed lane in `self`.
+    /// Produces a vector where every element has the cosine of the value
+    /// in the equivalently-indexed element in `self`.
     #[inline]
     #[must_use = "method returns a new vector and does not mutate the original value"]
     fn cos(self) -> Self {
         unsafe { intrinsics::simd_fcos(self) }
     }
 
-    /// Produces a vector where every lane has the exponential (base e) of the value
-    /// in the equivalently-indexed lane in `self`.
+    /// Produces a vector where every element has the exponential (base e) of the value
+    /// in the equivalently-indexed element in `self`.
     #[inline]
     #[must_use = "method returns a new vector and does not mutate the original value"]
     fn exp(self) -> Self {
         unsafe { intrinsics::simd_fexp(self) }
     }
 
-    /// Produces a vector where every lane has the exponential (base 2) of the value
-    /// in the equivalently-indexed lane in `self`.
+    /// Produces a vector where every element has the exponential (base 2) of the value
+    /// in the equivalently-indexed element in `self`.
     #[inline]
     #[must_use = "method returns a new vector and does not mutate the original value"]
     fn exp2(self) -> Self {
         unsafe { intrinsics::simd_fexp2(self) }
     }
 
-    /// Produces a vector where every lane has the natural logarithm of the value
-    /// in the equivalently-indexed lane in `self`.
+    /// Produces a vector where every element has the natural logarithm of the value
+    /// in the equivalently-indexed element in `self`.
     #[inline]
     #[must_use = "method returns a new vector and does not mutate the original value"]
     fn ln(self) -> Self {
         unsafe { intrinsics::simd_flog(self) }
     }
 
-    /// Produces a vector where every lane has the logarithm with respect to an arbitrary
-    /// in the equivalently-indexed lanes in `self` and `base`.
+    /// Produces a vector where every element has the logarithm with respect to an arbitrary
+    /// in the equivalently-indexed elements in `self` and `base`.
     #[inline]
     #[must_use = "method returns a new vector and does not mutate the original value"]
     fn log(self, base: Self) -> Self {
@@ -114,30 +114,30 @@ pub trait StdFloat: Sealed + Sized {
     }
 
 
-    /// Produces a vector where every lane has the base-2 logarithm of the value
-    /// in the equivalently-indexed lane in `self`.
+    /// Produces a vector where every element has the base-2 logarithm of the value
+    /// in the equivalently-indexed element in `self`.
     #[inline]
     #[must_use = "method returns a new vector and does not mutate the original value"]
     fn log2(self) -> Self {
         unsafe { intrinsics::simd_flog2(self) }
     }
 
-    /// Produces a vector where every lane has the base-10 logarithm of the value
-    /// in the equivalently-indexed lane in `self`.
+    /// Produces a vector where every element has the base-10 logarithm of the value
+    /// in the equivalently-indexed element in `self`.
     #[inline]
     #[must_use = "method returns a new vector and does not mutate the original value"]
     fn log10(self) -> Self {
         unsafe { intrinsics::simd_flog10(self) }
     }
 
-    /// Returns the smallest integer greater than or equal to each lane.
+    /// Returns the smallest integer greater than or equal to each element.
     #[must_use = "method returns a new vector and does not mutate the original value"]
     #[inline]
     fn ceil(self) -> Self {
         unsafe { intrinsics::simd_ceil(self) }
     }
 
-    /// Returns the largest integer value less than or equal to each lane.
+    /// Returns the largest integer value less than or equal to each element.
     #[must_use = "method returns a new vector and does not mutate the original value"]
     #[inline]
     fn floor(self) -> Self {
