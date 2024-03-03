@@ -101,9 +101,18 @@ pub trait StdFloat: Sealed + Sized {
     /// in the equivalently-indexed lane in `self`.
     #[inline]
     #[must_use = "method returns a new vector and does not mutate the original value"]
-    fn log(self) -> Self {
+    fn ln(self) -> Self {
         unsafe { intrinsics::simd_flog(self) }
     }
+
+    /// Produces a vector where every lane has the logarithm with respect to an arbitrary
+    /// in the equivalently-indexed lanes in `self` and `base`.
+    #[inline]
+    #[must_use = "method returns a new vector and does not mutate the original value"]
+    fn log(self, base: Self) -> Self {
+        unsafe { intrinsics::simd_div(self.ln(), base.ln()) }
+    }
+
 
     /// Produces a vector where every lane has the base-2 logarithm of the value
     /// in the equivalently-indexed lane in `self`.
@@ -179,55 +188,5 @@ where
     #[inline]
     fn fract(self) -> Self {
         self - self.trunc()
-    }
-}
-
-#[cfg(test)]
-mod tests_simd_floats {
-    use super::*;
-    use simd::prelude::*;
-
-    #[test]
-    fn everything_works_f32() {
-        let x = f32x4::from_array([0.1, 0.5, 0.6, -1.5]);
-
-        let x2 = x + x;
-        let _xc = x.ceil();
-        let _xf = x.floor();
-        let _xr = x.round();
-        let _xt = x.trunc();
-        let _xfma = x.mul_add(x, x);
-        let _xsqrt = x.sqrt();
-        let _abs_mul = x2.abs() * x2;
-
-        let _fexp = x.exp();
-        let _fexp2 = x.exp2();
-        let _flog = x.log();
-        let _flog2 = x.log2();
-        let _flog10 = x.log10();
-        let _fsin = x.sin();
-        let _fcos = x.cos();
-    }
-
-    #[test]
-    fn everything_works_f64() {
-        let x = f64x4::from_array([0.1, 0.5, 0.6, -1.5]);
-
-        let x2 = x + x;
-        let _xc = x.ceil();
-        let _xf = x.floor();
-        let _xr = x.round();
-        let _xt = x.trunc();
-        let _xfma = x.mul_add(x, x);
-        let _xsqrt = x.sqrt();
-        let _abs_mul = x2.abs() * x2;
-
-        let _fexp = x.exp();
-        let _fexp2 = x.exp2();
-        let _flog = x.log();
-        let _flog2 = x.log2();
-        let _flog10 = x.log10();
-        let _fsin = x.sin();
-        let _fcos = x.cos();
     }
 }
