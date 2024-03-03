@@ -48,7 +48,7 @@ impl NonConstExpr {
             Self::Match(TryDesugar(_)) => &[sym::const_try],
 
             // All other expressions are allowed.
-            Self::Loop(Loop | While) | Self::Match(Normal | FormatArgs) => &[],
+            Self::Loop(Loop | While) | Self::Match(Normal | Postfix | FormatArgs) => &[],
         };
 
         Some(gates)
