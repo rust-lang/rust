@@ -984,6 +984,25 @@ impl<T: ?Sized> *mut T {
         unsafe { (self as *const T).sub_ptr(origin) }
     }
 
+    /// Calculates the distance between two pointers, *where it's known that
+    /// `self` is equal to or greater than `origin`*. The returned value is in
+    /// units of **bytes**.
+    ///
+    /// This is purely a convenience for casting to a `u8` pointer and
+    /// using [`sub_ptr`][pointer::sub_ptr] on it. See that method for
+    /// documentation and safety requirements.
+    ///
+    /// For non-`Sized` pointees this operation considers only the data pointers,
+    /// ignoring the metadata.
+    #[unstable(feature = "ptr_sub_ptr", issue = "95892")]
+    #[rustc_const_unstable(feature = "const_ptr_sub_ptr", issue = "95892")]
+    #[inline]
+    #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
+    pub const unsafe fn byte_sub_ptr<U: ?Sized>(self, origin: *mut U) -> usize {
+        // SAFETY: the caller must uphold the safety contract for `byte_sub_ptr`.
+        unsafe { (self as *const T).byte_sub_ptr(origin) }
+    }
+
     /// Calculates the offset from a pointer (convenience for `.offset(count as isize)`).
     ///
     /// `count` is in units of T; e.g., a `count` of 3 represents a pointer
