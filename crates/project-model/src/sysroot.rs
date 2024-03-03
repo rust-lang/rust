@@ -199,6 +199,19 @@ impl Sysroot {
         }
     }
 
+    /// Returns a `Command` that is configured to run `rustc` from the sysroot if it exists,
+    /// otherwise returns what [toolchain::Tool::Rustc] returns.
+    pub fn rustc(sysroot: Option<&Self>) -> Command {
+        let mut cmd = Command::new(match sysroot {
+            Some(sysroot) => {
+                toolchain::Tool::Rustc.path_in_or_discover(sysroot.root.join("bin").as_ref())
+            }
+            None => toolchain::Tool::Rustc.path(),
+        });
+        Self::set_rustup_toolchain_env(&mut cmd, sysroot);
+        cmd
+    }
+
     pub fn discover_proc_macro_srv(&self) -> anyhow::Result<AbsPathBuf> {
         ["libexec", "lib"]
             .into_iter()

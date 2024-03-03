@@ -8,8 +8,8 @@ use std::{
 use proc_macro::bridge::{self, server};
 
 use crate::server::{
-    delim_to_external, delim_to_internal, token_stream::TokenStreamBuilder, LiteralFormatter,
-    Symbol, SymbolInternerRef, SYMBOL_INTERNER,
+    delim_to_external, delim_to_internal, literal_with_stringify_parts,
+    token_stream::TokenStreamBuilder, Symbol, SymbolInternerRef, SYMBOL_INTERNER,
 };
 mod tt {
     pub use proc_macro_api::msg::TokenId;
@@ -171,12 +171,12 @@ impl server::TokenStream for TokenIdServer {
             }
 
             bridge::TokenTree::Literal(literal) => {
-                let literal = LiteralFormatter(literal);
-                let text = literal.with_stringify_parts(self.interner, |parts| {
+                let text = literal_with_stringify_parts(&literal, self.interner, |parts| {
                     ::tt::SmolStr::from_iter(parts.iter().copied())
                 });
 
-                let literal = tt::Literal { text, span: literal.0.span };
+                let literal = tt::Literal { text, span: literal.span };
+
                 let leaf = tt::Leaf::from(literal);
                 let tree = TokenTree::from(leaf);
                 Self::TokenStream::from_iter(iter::once(tree))

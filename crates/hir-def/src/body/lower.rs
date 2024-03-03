@@ -6,7 +6,6 @@ use std::mem;
 use base_db::CrateId;
 use either::Either;
 use hir_expand::{
-    ast_id_map::AstIdMap,
     name::{name, AsName, Name},
     ExpandError, InFile,
 };
@@ -14,6 +13,7 @@ use intern::Interned;
 use profile::Count;
 use rustc_hash::FxHashMap;
 use smallvec::SmallVec;
+use span::AstIdMap;
 use syntax::{
     ast::{
         self, ArrayExprKind, AstChildren, BlockExpr, HasArgList, HasAttrs, HasLoopBody, HasName,

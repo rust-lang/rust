@@ -305,6 +305,11 @@ impl RelPath {
     pub fn new_unchecked(path: &Path) -> &RelPath {
         unsafe { &*(path as *const Path as *const RelPath) }
     }
+
+    /// Equivalent of [`Path::to_path_buf`] for `RelPath`.
+    pub fn to_path_buf(&self) -> RelPathBuf {
+        RelPathBuf::try_from(self.0.to_path_buf()).unwrap()
+    }
 }
 
 /// Taken from <https://github.com/rust-lang/cargo/blob/79c769c3d7b4c2cf6a93781575b7f592ef974255/src/cargo/util/paths.rs#L60-L85>

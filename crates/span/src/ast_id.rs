@@ -5,8 +5,6 @@
 //! item as an ID. That way, id's don't change unless the set of items itself
 //! changes.
 
-// FIXME: Consider moving this into the span crate
-
 use std::{
     any::type_name,
     fmt,
@@ -15,38 +13,12 @@ use std::{
 };
 
 use la_arena::{Arena, Idx, RawIdx};
-use profile::Count;
 use rustc_hash::FxHasher;
 use syntax::{ast, AstNode, AstPtr, SyntaxNode, SyntaxNodePtr};
 
-use crate::db::ExpandDatabase;
-
-pub use span::ErasedFileAstId;
-
-/// `AstId` points to an AST node in any file.
-///
-/// It is stable across reparses, and can be used as salsa key/value.
-pub type AstId<N> = crate::InFile<FileAstId<N>>;
-
-impl<N: AstIdNode> AstId<N> {
-    pub fn to_node(&self, db: &dyn ExpandDatabase) -> N {
-        self.to_ptr(db).to_node(&db.parse_or_expand(self.file_id))
-    }
-    pub fn to_in_file_node(&self, db: &dyn ExpandDatabase) -> crate::InFile<N> {
-        crate::InFile::new(self.file_id, self.to_ptr(db).to_node(&db.parse_or_expand(self.file_id)))
-    }
-    pub fn to_ptr(&self, db: &dyn ExpandDatabase) -> AstPtr<N> {
-        db.ast_id_map(self.file_id).get(self.value)
-    }
-}
-
-pub type ErasedAstId = crate::InFile<ErasedFileAstId>;
-
-impl ErasedAstId {
-    pub fn to_ptr(&self, db: &dyn ExpandDatabase) -> SyntaxNodePtr {
-        db.ast_id_map(self.file_id).get_erased(self.value)
-    }
-}
+/// See crates\hir-expand\src\ast_id_map.rs
+/// This is a type erased FileAstId.
+pub type ErasedFileAstId = la_arena::Idx<syntax::SyntaxNodePtr>;
 
 /// `AstId` points to an AST node in a specific file.
 pub struct FileAstId<N: AstIdNode> {
@@ -138,7 +110,6 @@ pub struct AstIdMap {
     arena: Arena<SyntaxNodePtr>,
     /// Reverse: map ptr to id.
     map: hashbrown::HashMap<Idx<SyntaxNodePtr>, (), ()>,
-    _c: Count<Self>,
 }
 
 impl fmt::Debug for AstIdMap {
@@ -155,14 +126,7 @@ impl PartialEq for AstIdMap {
 impl Eq for AstIdMap {}
 
 impl AstIdMap {
-    pub(crate) fn new(
-        db: &dyn ExpandDatabase,
-        file_id: span::HirFileId,
-    ) -> triomphe::Arc<AstIdMap> {
-        triomphe::Arc::new(AstIdMap::from_source(&db.parse_or_expand(file_id)))
-    }
-
-    fn from_source(node: &SyntaxNode) -> AstIdMap {
+    pub fn from_source(node: &SyntaxNode) -> AstIdMap {
         assert!(node.parent().is_none());
         let mut res = AstIdMap::default();
 

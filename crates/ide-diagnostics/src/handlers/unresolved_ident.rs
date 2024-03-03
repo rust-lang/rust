@@ -20,6 +20,19 @@ pub(crate) fn unresolved_ident(
 mod tests {
     use crate::tests::check_diagnostics;
 
+    // FIXME: This should show a diagnostic
+    #[test]
+    fn feature() {
+        check_diagnostics(
+            r#"
+//- minicore: fmt
+fn main() {
+    format_args!("{unresolved}");
+}
+"#,
+        )
+    }
+
     #[test]
     fn missing() {
         check_diagnostics(

@@ -17,6 +17,7 @@ use tracing::debug;
 use triomphe::Arc;
 use typed_arena::Arena;
 
+use crate::Interner;
 use crate::{
     db::HirDatabase,
     diagnostics::match_check::{
@@ -149,17 +150,18 @@ impl ExprValidator {
                 None => return,
             };
 
-            if filter_map_next_checker
-                .get_or_insert_with(|| {
-                    FilterMapNextChecker::new(&self.owner.resolver(db.upcast()), db)
-                })
-                .check(call_id, receiver, &callee)
-                .is_some()
-            {
+            let checker = filter_map_next_checker.get_or_insert_with(|| {
+                FilterMapNextChecker::new(&self.owner.resolver(db.upcast()), db)
+            });
+
+            if checker.check(call_id, receiver, &callee).is_some() {
                 self.diagnostics.push(BodyValidationDiagnostic::ReplaceFilterMapNextWithFindMap {
                     method_call_expr: call_id,
                 });
             }
+
+            let receiver_ty = self.infer[*receiver].clone();
+            checker.prev_receiver_ty = Some(receiver_ty);
         }
     }
 
@@ -393,6 +395,7 @@ struct FilterMapNextChecker {
     filter_map_function_id: Option<hir_def::FunctionId>,
     next_function_id: Option<hir_def::FunctionId>,
     prev_filter_map_expr_id: Option<ExprId>,
+    prev_receiver_ty: Option<chalk_ir::Ty<Interner>>,
 }
 
 impl FilterMapNextChecker {
@@ -417,7 +420,12 @@ impl FilterMapNextChecker {
             ),
             None => (None, None),
         };
-        Self { filter_map_function_id, next_function_id, prev_filter_map_expr_id: None }
+        Self {
+            filter_map_function_id,
+            next_function_id,
+            prev_filter_map_expr_id: None,
+            prev_receiver_ty: None,
+        }
     }
 
     // check for instances of .filter_map(..).next()
@@ -434,7 +442,11 @@ impl FilterMapNextChecker {
 
         if *function_id == self.next_function_id? {
             if let Some(prev_filter_map_expr_id) = self.prev_filter_map_expr_id {
-                if *receiver_expr_id == prev_filter_map_expr_id {
+                let is_dyn_trait = self
+                    .prev_receiver_ty
+                    .as_ref()
+                    .map_or(false, |it| it.strip_references().dyn_trait().is_some());
+                if *receiver_expr_id == prev_filter_map_expr_id && !is_dyn_trait {
                     return Some(());
                 }
             }

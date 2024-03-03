@@ -375,6 +375,135 @@ fn main() {
 }
 
 #[test]
+fn trait_method_fuzzy_completion_aware_of_fundamental_boxes() {
+    let fixture = r#"
+//- /fundamental.rs crate:fundamental
+#[lang = "owned_box"]
+#[fundamental]
+pub struct Box<T>(T);
+//- /foo.rs crate:foo
+pub trait TestTrait {
+    fn some_method(&self);
+}
+//- /main.rs crate:main deps:foo,fundamental
+struct TestStruct;
+
+impl foo::TestTrait for fundamental::Box<TestStruct> {
+    fn some_method(&self) {}
+}
+
+fn main() {
+    let t = fundamental::Box(TestStruct);
+    t.$0
+}
+"#;
+
+    check(
+        fixture,
+        expect![[r#"
+        me some_method() (use foo::TestTrait) fn(&self)
+    "#]],
+    );
+
+    check_edit(
+        "some_method",
+        fixture,
+        r#"
+use foo::TestTrait;
+
+struct TestStruct;
+
+impl foo::TestTrait for fundamental::Box<TestStruct> {
+    fn some_method(&self) {}
+}
+
+fn main() {
+    let t = fundamental::Box(TestStruct);
+    t.some_method()$0
+}
+"#,
+    );
+}
+
+#[test]
+fn trait_method_fuzzy_completion_aware_of_fundamental_references() {
+    let fixture = r#"
+//- /foo.rs crate:foo
+pub trait TestTrait {
+    fn some_method(&self);
+}
+//- /main.rs crate:main deps:foo
+struct TestStruct;
+
+impl foo::TestTrait for &TestStruct {
+    fn some_method(&self) {}
+}
+
+fn main() {
+    let t = &TestStruct;
+    t.$0
+}
+"#;
+
+    check(
+        fixture,
+        expect![[r#"
+        me some_method() (use foo::TestTrait) fn(&self)
+    "#]],
+    );
+
+    check_edit(
+        "some_method",
+        fixture,
+        r#"
+use foo::TestTrait;
+
+struct TestStruct;
+
+impl foo::TestTrait for &TestStruct {
+    fn some_method(&self) {}
+}
+
+fn main() {
+    let t = &TestStruct;
+    t.some_method()$0
+}
+"#,
+    );
+}
+
+#[test]
+fn trait_method_fuzzy_completion_aware_of_unit_type() {
+    let fixture = r#"
+//- /test_trait.rs crate:test_trait
+pub trait TestInto<T> {
+    fn into(self) -> T;
+}
+
+//- /main.rs crate:main deps:test_trait
+struct A;
+
+impl test_trait::TestInto<A> for () {
+    fn into(self) -> A {
+        A
+    }
+}
+
+fn main() {
+    let a = ();
+    a.$0
+}
+"#;
+
+    check(
+        fixture,
+        expect![[r#"
+    me into() (use test_trait::TestInto) fn(self) -> T
+    "#]],
+    );
+}
+
+#[test]
 fn trait_method_from_alias() {
     let fixture = r#"
 //- /lib.rs crate:dep

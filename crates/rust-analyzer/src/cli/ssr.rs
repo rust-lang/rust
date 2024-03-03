@@ -17,13 +17,12 @@ impl flags::Ssr {
             with_proc_macro_server: ProcMacroServerChoice::Sysroot,
             prefill_caches: false,
         };
-        let (host, vfs, _proc_macro) = load_workspace_at(
+        let (ref db, vfs, _proc_macro) = load_workspace_at(
             &std::env::current_dir()?,
             &cargo_config,
             &load_cargo_config,
             &|_| {},
         )?;
-        let db = host.raw_database();
         let mut match_finder = MatchFinder::at_first_file(db)?;
         for rule in self.rule {
             match_finder.add_rule(rule)?;
@@ -54,13 +53,12 @@ impl flags::Search {
             with_proc_macro_server: ProcMacroServerChoice::Sysroot,
             prefill_caches: false,
         };
-        let (host, _vfs, _proc_macro) = load_workspace_at(
+        let (ref db, _vfs, _proc_macro) = load_workspace_at(
             &std::env::current_dir()?,
             &cargo_config,
             &load_cargo_config,
             &|_| {},
         )?;
-        let db = host.raw_database();
         let mut match_finder = MatchFinder::at_first_file(db)?;
         for pattern in self.pattern {
             match_finder.add_search_pattern(pattern)?;

@@ -963,6 +963,7 @@ fn classify_name_ref(
 
             match find_node_in_file_compensated(sema, original_file, &expr) {
                 Some(it) => {
+                    // buggy
                     let innermost_ret_ty = sema
                         .ancestors_with_macros(it.syntax().clone())
                         .find_map(find_ret_ty)

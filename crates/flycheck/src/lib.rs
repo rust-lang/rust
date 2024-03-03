@@ -494,7 +494,7 @@ impl CommandHandle {
         let (sender, receiver) = unbounded();
         let actor = CargoActor::new(sender, stdout, stderr);
         let thread = stdx::thread::Builder::new(stdx::thread::ThreadIntent::Worker)
-            .name("CargoHandle".to_owned())
+            .name("CommandHandle".to_owned())
             .spawn(move || actor.run())
             .expect("failed to spawn thread");
         Ok(CommandHandle { program, arguments, current_dir, child, thread, receiver })

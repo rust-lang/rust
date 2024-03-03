@@ -969,8 +969,10 @@ impl<'db> SemanticsImpl<'db> {
             match value.parent() {
                 Some(parent) => Some(InFile::new(file_id, parent)),
                 None => {
-                    self.cache(value.clone(), file_id);
-                    Some(file_id.macro_file()?.call_node(db))
+                    let call_node = file_id.macro_file()?.call_node(db);
+                    // cache the node
+                    self.parse_or_expand(call_node.file_id);
+                    Some(call_node)
                 }
             }
         })
@@ -1116,6 +1118,10 @@ impl<'db> SemanticsImpl<'db> {
 
     pub fn binding_mode_of_pat(&self, pat: &ast::IdentPat) -> Option<BindingMode> {
         self.analyze(pat.syntax())?.binding_mode_of_pat(self.db, pat)
+    }
+
+    pub fn resolve_expr_as_callable(&self, call: &ast::Expr) -> Option<Callable> {
+        self.analyze(call.syntax())?.resolve_expr_as_callable(self.db, call)
     }
 
     pub fn resolve_method_call(&self, call: &ast::MethodCallExpr) -> Option<Function> {

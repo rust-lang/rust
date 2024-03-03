@@ -93,29 +93,8 @@ mod query_group;
 /// ## Attribute combinations
 ///
 /// Some attributes are mutually exclusive. For example, it is an error to add
-/// multiple storage specifiers:
-///
-/// ```compile_fail
-/// # use salsa_macros as salsa;
-/// #[salsa::query_group]
-/// trait CodegenDatabase {
-///     #[salsa::input]
-///     #[salsa::memoized]
-///     fn my_query(&self, input: u32) -> u64;
-/// }
-/// ```
-///
-/// It is also an error to annotate a function to `invoke` on an `input` query:
-///
-/// ```compile_fail
-/// # use salsa_macros as salsa;
-/// #[salsa::query_group]
-/// trait CodegenDatabase {
-///     #[salsa::input]
-///     #[salsa::invoke(typeck::my_query)]
-///     fn my_query(&self, input: u32) -> u64;
-/// }
-/// ```
+/// multiple storage specifiers or to annotate a function to `invoke` on an
+/// `input` query.
 #[proc_macro_attribute]
 pub fn query_group(args: TokenStream, input: TokenStream) -> TokenStream {
     query_group::query_group(args, input)
