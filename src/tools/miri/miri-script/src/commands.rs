@@ -526,37 +526,27 @@ impl Command {
     }
 
     fn fmt(flags: Vec<OsString>) -> Result<()> {
+        use itertools::Itertools;
+
         let e = MiriEnv::new()?;
-        let toolchain = &e.toolchain;
         let config_path = path!(e.miri_dir / "rustfmt.toml");
 
-        let mut cmd = cmd!(
-            e.sh,
-            "rustfmt +{toolchain} --edition=2021 --config-path {config_path} --unstable-features --skip-children {flags...}"
-        );
-        eprintln!("$ {cmd} ...");
+        // Collect each rust file in the miri repo.
+        let files = WalkDir::new(&e.miri_dir)
+            .into_iter()
+            .filter_entry(|entry| {
+                let name = entry.file_name().to_string_lossy();
+                let ty = entry.file_type();
+                if ty.is_file() {
+                    name.ends_with(".rs")
+                } else {
+                    // dir or symlink. skip `target` and `.git`.
+                    &name != "target" && &name != ".git"
+                }
+            })
+            .filter_ok(|item| item.file_type().is_file())
+            .map_ok(|item| item.into_path());
 
-        // Add all the filenames to the command.
-        // FIXME: `rustfmt` will follow the `mod` statements in these files, so we get a bunch of
-        // duplicate diffs.
-        for item in WalkDir::new(&e.miri_dir).into_iter().filter_entry(|entry| {
-            let name = entry.file_name().to_string_lossy();
-            let ty = entry.file_type();
-            if ty.is_file() {
-                name.ends_with(".rs")
-            } else {
-                // dir or symlink. skip `target` and `.git`.
-                &name != "target" && &name != ".git"
-            }
-        }) {
-            let item = item?;
-            if item.file_type().is_file() {
-                cmd = cmd.arg(item.into_path());
-            }
-        }
-
-        // We want our own error message, repeating the command is too much.
-        cmd.quiet().run().map_err(|_| anyhow!("`rustfmt` failed"))?;
-        Ok(())
+        e.format_files(files, &e.toolchain[..], &config_path, &flags[..])
     }
 }
