@@ -128,6 +128,7 @@ pub struct ConfigInfo {
     // just to set the `gcc_path` field to display it.
     pub no_download: bool,
     pub no_default_features: bool,
+    pub backend: Option<String>,
 }
 
 impl ConfigInfo {
@@ -176,6 +177,14 @@ impl ConfigInfo {
                 }
                 _ => {
                     return Err("Expected a value after `--cg_gcc-path`, found nothing".to_string())
+                }
+            },
+            "--use-backend" => match args.next() {
+                Some(backend) if !backend.is_empty() => self.backend = Some(backend),
+                _ => {
+                    return Err(
+                        "Expected an argument after `--use-backend`, found nothing".into()
+                    )
                 }
             },
             "--no-default-features" => self.no_default_features = true,
@@ -377,39 +386,25 @@ impl ConfigInfo {
             "debug"
         };
 
-        let has_builtin_backend = env
-            .get("BUILTIN_BACKEND")
-            .map(|backend| !backend.is_empty())
-            .unwrap_or(false);
-
         let mut rustflags = Vec::new();
-        if has_builtin_backend {
-            // It means we're building inside the rustc testsuite, so some options need to be handled
-            // a bit differently.
-            self.cg_backend_path = "gcc".to_string();
-
-            match env.get("RUSTC_SYSROOT") {
-                Some(rustc_sysroot) if !rustc_sysroot.is_empty() => {
-                    rustflags.extend_from_slice(&["--sysroot".to_string(), rustc_sysroot.clone()]);
-                }
-                _ => {}
-            }
-            // This should not be needed, but is necessary for the CI in the rust repository.
-            // FIXME: Remove when the rust CI switches to the master version of libgccjit.
-            rustflags.push("-Cpanic=abort".to_string());
+        self.cg_backend_path = current_dir
+            .join("target")
+            .join(channel)
+            .join(&format!("librustc_codegen_gcc.{}", self.dylib_ext))
+            .display()
+            .to_string();
+        self.sysroot_path = current_dir
+            .join("build_sysroot/sysroot")
+            .display()
+            .to_string();
+        if let Some(backend) = &self.backend {
+            rustflags.push(format!("-Zcodegen-backend={}", backend));
         } else {
-            self.cg_backend_path = current_dir
-                .join("target")
-                .join(channel)
-                .join(&format!("librustc_codegen_gcc.{}", self.dylib_ext))
-                .display()
-                .to_string();
-            self.sysroot_path = current_dir
-                .join("build_sysroot/sysroot")
-                .display()
-                .to_string();
-            rustflags.extend_from_slice(&["--sysroot".to_string(), self.sysroot_path.clone()]);
-        };
+            rustflags.extend_from_slice(&[
+                "--sysroot".to_string(), self.sysroot_path.clone(),
+                format!("-Zcodegen-backend={}", self.cg_backend_path),
+            ]);
+        }
 
         // This environment variable is useful in case we want to change options of rustc commands.
         if let Some(cg_rustflags) = env.get("CG_RUSTFLAGS") {
@@ -427,10 +422,7 @@ impl ConfigInfo {
             rustflags.push("-Csymbol-mangling-version=v0".to_string());
         }
 
-        rustflags.extend_from_slice(&[
-            "-Cdebuginfo=2".to_string(),
-            format!("-Zcodegen-backend={}", self.cg_backend_path),
-        ]);
+        rustflags.push("-Cdebuginfo=2".to_string());
 
         // Since we don't support ThinLTO, disable LTO completely when not trying to do LTO.
         // TODO(antoyo): remove when we can handle ThinLTO.
@@ -504,7 +496,8 @@ impl ConfigInfo {
     --config-file          : Location of the config file to be used
     --cg_gcc-path          : Location of the rustc_codegen_gcc root folder (used
                              when ran from another directory)
-    --no-default-features  : Add `--no-default-features` flag to cargo commands"
+    --no-default-features  : Add `--no-default-features` flag to cargo commands
+    --use-backend          : Useful only for rustc testsuite"
         );
     }
 }
