@@ -520,6 +520,7 @@ impl SpanData {
     pub fn with_hi(&self, hi: BytePos) -> Span {
         Span::new(self.lo, hi, self.ctxt, self.parent)
     }
+    /// Avoid if possible, `Span::update_ctxt` should be preferred.
     #[inline]
     fn with_ctxt(&self, ctxt: SyntaxContext) -> Span {
         Span::new(self.lo, self.hi, ctxt, self.parent)
