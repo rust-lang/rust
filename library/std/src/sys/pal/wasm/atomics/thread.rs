@@ -1,4 +1,5 @@
 use crate::ffi::CStr;
+use crate::ffi::CString;
 use crate::io;
 use crate::num::NonZero;
 use crate::sys::unsupported;
@@ -17,6 +18,9 @@ impl Thread {
     pub fn yield_now() {}
 
     pub fn set_name(_name: &CStr) {}
+    pub fn get_name() -> Option<CString> {
+        None
+    }
 
     pub fn sleep(dur: Duration) {
         use crate::arch::wasm32;
