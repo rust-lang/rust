@@ -1,3 +1,4 @@
+//@ only-x86_64-unknown-linux-gnu
 //@ check-pass
 #![crate_type = "bin"]
 #![crate_name = "NonSnakeCase"]
