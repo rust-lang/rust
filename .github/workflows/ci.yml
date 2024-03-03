@@ -65,6 +65,9 @@ jobs:
           - name: x86_64-gnu-tools
             os: ubuntu-20.04-16core-64gb
             env: {}
+          - name: test-various
+            os: ubuntu-20.04-8core-32gb
+            env: {}
     defaults:
       run:
         shell: "${{ contains(matrix.os, 'windows') && 'msys2 {0}' || 'bash' }}"
