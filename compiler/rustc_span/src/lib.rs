@@ -521,7 +521,7 @@ impl SpanData {
         Span::new(self.lo, hi, self.ctxt, self.parent)
     }
     #[inline]
-    pub fn with_ctxt(&self, ctxt: SyntaxContext) -> Span {
+    fn with_ctxt(&self, ctxt: SyntaxContext) -> Span {
         Span::new(self.lo, self.hi, ctxt, self.parent)
     }
     #[inline]
@@ -576,8 +576,9 @@ impl Span {
         self.data().with_hi(hi)
     }
     #[inline]
-    pub fn with_ctxt(self, ctxt: SyntaxContext) -> Span {
-        self.data_untracked().with_ctxt(ctxt)
+    pub fn with_ctxt(mut self, ctxt: SyntaxContext) -> Span {
+        self.update_ctxt(|_| ctxt);
+        self
     }
     #[inline]
     pub fn parent(self) -> Option<LocalDefId> {
@@ -1058,9 +1059,9 @@ impl Span {
     }
 
     #[inline]
-    pub fn apply_mark(self, expn_id: ExpnId, transparency: Transparency) -> Span {
-        let span = self.data();
-        span.with_ctxt(span.ctxt.apply_mark(expn_id, transparency))
+    pub fn apply_mark(mut self, expn_id: ExpnId, transparency: Transparency) -> Span {
+        self.update_ctxt(|ctxt| ctxt.apply_mark(expn_id, transparency));
+        self
     }
 
     #[inline]
@@ -1108,15 +1109,15 @@ impl Span {
     }
 
     #[inline]
-    pub fn normalize_to_macros_2_0(self) -> Span {
-        let span = self.data();
-        span.with_ctxt(span.ctxt.normalize_to_macros_2_0())
+    pub fn normalize_to_macros_2_0(mut self) -> Span {
+        self.update_ctxt(|ctxt| ctxt.normalize_to_macros_2_0());
+        self
     }
 
     #[inline]
-    pub fn normalize_to_macro_rules(self) -> Span {
-        let span = self.data();
-        span.with_ctxt(span.ctxt.normalize_to_macro_rules())
+    pub fn normalize_to_macro_rules(mut self) -> Span {
+        self.update_ctxt(|ctxt| ctxt.normalize_to_macro_rules());
+        self
     }
 }
 
