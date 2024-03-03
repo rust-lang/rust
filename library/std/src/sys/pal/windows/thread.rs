@@ -16,7 +16,9 @@ use super::time::WaitableTimer;
 use super::to_u16s;
 
 pub const DEFAULT_MIN_STACK_SIZE: usize = 2 * 1024 * 1024;
-pub const LAZY_INIT_MAIN_THREAD_INFO: bool = true;
+// Miri doesn't currently implement the GetThreadDescription function,
+// which is necessary for its test suite unless main's thread_info is initialized.
+pub const LAZY_INIT_MAIN_THREAD_INFO: bool = if cfg!(miri) { false } else { true };
 
 pub struct Thread {
     handle: Handle,
