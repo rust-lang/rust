@@ -95,7 +95,7 @@
 #![feature(const_waker)]
 #![feature(never_type)]
 #![feature(unwrap_infallible)]
-#![feature(pointer_is_aligned)]
+#![feature(pointer_is_aligned_to)]
 #![feature(portable_simd)]
 #![feature(ptr_metadata)]
 #![feature(lazy_cell)]

@@ -418,14 +418,12 @@ impl AtomicBool {
     /// # Examples
     ///
     /// ```
-    /// #![feature(pointer_is_aligned)]
     /// use std::sync::atomic::{self, AtomicBool};
-    /// use std::mem::align_of;
     ///
     /// // Get a pointer to an allocated value
     /// let ptr: *mut bool = Box::into_raw(Box::new(false));
     ///
-    /// assert!(ptr.is_aligned_to(align_of::<AtomicBool>()));
+    /// assert!(ptr.cast::<AtomicBool>().is_aligned());
     ///
     /// {
     ///     // Create an atomic view of the allocated value
@@ -1216,14 +1214,12 @@ impl<T> AtomicPtr<T> {
     /// # Examples
     ///
     /// ```
-    /// #![feature(pointer_is_aligned)]
     /// use std::sync::atomic::{self, AtomicPtr};
-    /// use std::mem::align_of;
     ///
     /// // Get a pointer to an allocated value
     /// let ptr: *mut *mut u8 = Box::into_raw(Box::new(std::ptr::null_mut()));
     ///
-    /// assert!(ptr.is_aligned_to(align_of::<AtomicPtr<u8>>()));
+    /// assert!(ptr.cast::<AtomicPtr<u8>>().is_aligned());
     ///
     /// {
     ///     // Create an atomic view of the allocated value
@@ -2199,14 +2195,12 @@ macro_rules! atomic_int {
             /// # Examples
             ///
             /// ```
-            /// #![feature(pointer_is_aligned)]
             #[doc = concat!($extra_feature, "use std::sync::atomic::{self, ", stringify!($atomic_type), "};")]
-            /// use std::mem::align_of;
             ///
             /// // Get a pointer to an allocated value
             #[doc = concat!("let ptr: *mut ", stringify!($int_type), " = Box::into_raw(Box::new(0));")]
             ///
-            #[doc = concat!("assert!(ptr.is_aligned_to(align_of::<", stringify!($atomic_type), ">()));")]
+            #[doc = concat!("assert!(ptr.cast::<", stringify!($atomic_type), ">().is_aligned());")]
             ///
             /// {
             ///     // Create an atomic view of the allocated value
