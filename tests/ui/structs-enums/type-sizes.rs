@@ -306,10 +306,10 @@ pub fn main() {
 
     let v = Reorder4 {a: 0, b: 0, ary: [0; 4]};
     assert_eq!(size_of::<Reorder4>(), 12);
-    assert!((&v.ary).as_ptr().is_aligned_to(4), "[u8; 4] should group with align-4 fields");
+    assert_eq!((&v.ary).as_ptr().addr() % 4, 0, "[u8; 4] should group with align-4 fields");
     let v = Reorder2 {a: 0, b: 0, ary: [0; 6]};
     assert_eq!(size_of::<Reorder2>(), 10);
-    assert!((&v.ary).as_ptr().is_aligned_to(2), "[u8; 6] should group with align-2 fields");
+    assert_eq!((&v.ary).as_ptr().addr() % 2, 0, "[u8; 6] should group with align-2 fields");
 
     let v = VecDummy { r: RawVecDummy { ptr: NonNull::dangling(), cap: 0 }, len: 1 };
     assert_eq!(ptr::from_ref(&v), ptr::from_ref(&v.r.ptr).cast(),
@@ -324,7 +324,7 @@ pub fn main() {
     assert_eq!(size_of::<Cow<'static, str>>(), size_of::<String>());
 
     let v = ReorderWithNiche {a: 0, b: ' ', c: 0, ary: [0; 8]};
-    assert!((&v.ary).as_ptr().is_aligned_to(4),
+    assert_eq!((&v.ary).as_ptr().addr() % 4, 0,
             "here [u8; 8] should group with _at least_ align-4 fields");
     assert_eq!(ptr::from_ref(&v), ptr::from_ref(&v.b).cast(),
                "sort niches to the front where possible");

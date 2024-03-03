@@ -1501,116 +1501,25 @@ impl<T: ?Sized> *const T {
     /// For non-`Sized` pointees this operation considers only the data pointer,
     /// ignoring the metadata.
     ///
-    /// # Panics
+    /// This is an internal implementation detail of the stdlib, for implementing
+    /// low-level things like assert_unsafe_precondition.
     ///
-    /// The function panics if `align` is not a power-of-two (this includes 0).
+    /// # Safety
     ///
-    /// # Examples
-    ///
-    /// ```
-    /// #![feature(pointer_is_aligned)]
-    ///
-    /// // On some platforms, the alignment of i32 is less than 4.
-    /// #[repr(align(4))]
-    /// struct AlignedI32(i32);
-    ///
-    /// let data = AlignedI32(42);
-    /// let ptr = &data as *const AlignedI32;
-    ///
-    /// assert!(ptr.is_aligned_to(1));
-    /// assert!(ptr.is_aligned_to(2));
-    /// assert!(ptr.is_aligned_to(4));
-    ///
-    /// assert!(ptr.wrapping_byte_add(2).is_aligned_to(2));
-    /// assert!(!ptr.wrapping_byte_add(2).is_aligned_to(4));
-    ///
-    /// assert_ne!(ptr.is_aligned_to(8), ptr.wrapping_add(1).is_aligned_to(8));
-    /// ```
-    ///
-    /// # At compiletime
-    /// **Note: Alignment at compiletime is experimental and subject to change. See the
-    /// [tracking issue] for details.**
-    ///
-    /// At compiletime, the compiler may not know where a value will end up in memory.
-    /// Calling this function on a pointer created from a reference at compiletime will only
-    /// return `true` if the pointer is guaranteed to be aligned. This means that the pointer
-    /// cannot be stricter aligned than the reference's underlying allocation.
-    ///
-    /// ```
-    /// #![feature(pointer_is_aligned)]
-    /// #![feature(const_pointer_is_aligned)]
-    ///
-    /// // On some platforms, the alignment of i32 is less than 4.
-    /// #[repr(align(4))]
-    /// struct AlignedI32(i32);
-    ///
-    /// const _: () = {
-    ///     let data = AlignedI32(42);
-    ///     let ptr = &data as *const AlignedI32;
-    ///
-    ///     assert!(ptr.is_aligned_to(1));
-    ///     assert!(ptr.is_aligned_to(2));
-    ///     assert!(ptr.is_aligned_to(4));
-    ///
-    ///     // At compiletime, we know for sure that the pointer isn't aligned to 8.
-    ///     assert!(!ptr.is_aligned_to(8));
-    ///     assert!(!ptr.wrapping_add(1).is_aligned_to(8));
-    /// };
-    /// ```
-    ///
-    /// Due to this behavior, it is possible that a runtime pointer derived from a compiletime
-    /// pointer is aligned, even if the compiletime pointer wasn't aligned.
-    ///
-    /// ```
-    /// #![feature(pointer_is_aligned)]
-    /// #![feature(const_pointer_is_aligned)]
-    ///
-    /// // On some platforms, the alignment of i32 is less than 4.
-    /// #[repr(align(4))]
-    /// struct AlignedI32(i32);
-    ///
-    /// // At compiletime, neither `COMPTIME_PTR` nor `COMPTIME_PTR + 1` is aligned.
-    /// const COMPTIME_PTR: *const AlignedI32 = &AlignedI32(42);
-    /// const _: () = assert!(!COMPTIME_PTR.is_aligned_to(8));
-    /// const _: () = assert!(!COMPTIME_PTR.wrapping_add(1).is_aligned_to(8));
-    ///
-    /// // At runtime, either `runtime_ptr` or `runtime_ptr + 1` is aligned.
-    /// let runtime_ptr = COMPTIME_PTR;
-    /// assert_ne!(
-    ///     runtime_ptr.is_aligned_to(8),
-    ///     runtime_ptr.wrapping_add(1).is_aligned_to(8),
-    /// );
-    /// ```
-    ///
-    /// If a pointer is created from a fixed address, this function behaves the same during
-    /// runtime and compiletime.
-    ///
-    /// ```
-    /// #![feature(pointer_is_aligned)]
-    /// #![feature(const_pointer_is_aligned)]
-    ///
-    /// const _: () = {
-    ///     let ptr = 40 as *const u8;
-    ///     assert!(ptr.is_aligned_to(1));
-    ///     assert!(ptr.is_aligned_to(2));
-    ///     assert!(ptr.is_aligned_to(4));
-    ///     assert!(ptr.is_aligned_to(8));
-    ///     assert!(!ptr.is_aligned_to(16));
-    /// };
-    /// ```
-    ///
-    /// [tracking issue]: https://github.com/rust-lang/rust/issues/104203
+    /// The return value is unspecified if `align` isn't a power of two.
     #[must_use]
     #[inline]
-    #[unstable(feature = "pointer_is_aligned", issue = "96284")]
-    #[rustc_const_unstable(feature = "const_pointer_is_aligned", issue = "104203")]
-    pub const fn is_aligned_to(self, align: usize) -> bool {
-        if !align.is_power_of_two() {
-            panic!("is_aligned_to: align is not a power-of-two");
-        }
-
+    pub(crate) const fn is_aligned_to(self, align: usize) -> bool {
         #[inline]
         fn runtime_impl(ptr: *const (), align: usize) -> bool {
+            // classic bitmath magic trick:
+            //
+            // * a power of two is a single bit set like 00001000
+            // * multiples of that must have all those low 0's also clear
+            // * subtracting one from the power gets you 00000111
+            // * so if we AND that with a multiple, we should get 0
+            //
+            // Note we get to assume align is a power of two
             ptr.addr() & (align - 1) == 0
         }
 

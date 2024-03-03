@@ -714,15 +714,15 @@ fn is_aligned() {
     let data = 42;
     let ptr: *const i32 = &data;
     assert!(ptr.is_aligned());
-    assert!(ptr.is_aligned_to(1));
-    assert!(ptr.is_aligned_to(2));
-    assert!(ptr.is_aligned_to(4));
-    assert!(ptr.wrapping_byte_add(2).is_aligned_to(1));
-    assert!(ptr.wrapping_byte_add(2).is_aligned_to(2));
-    assert!(!ptr.wrapping_byte_add(2).is_aligned_to(4));
+    assert!(ptr.wrapping_add(1).is_aligned());
+    assert!(ptr.wrapping_byte_add(4).is_aligned());
+
+    assert!(!ptr.wrapping_byte_add(1).is_aligned());
+    assert!(!ptr.wrapping_byte_add(2).is_aligned());
+    assert!(!ptr.wrapping_byte_add(3).is_aligned());
 
     // At runtime either `ptr` or `ptr+1` is aligned to 8.
-    assert_ne!(ptr.is_aligned_to(8), ptr.wrapping_add(1).is_aligned_to(8));
+    assert_ne!(ptr.cast::<u64>().is_aligned(), ptr.wrapping_add(1).cast::<u64>().is_aligned());
 }
 
 #[test]
@@ -731,16 +731,16 @@ fn is_aligned_const() {
         let data = 42;
         let ptr: *const i32 = &data;
         assert!(ptr.is_aligned());
-        assert!(ptr.is_aligned_to(1));
-        assert!(ptr.is_aligned_to(2));
-        assert!(ptr.is_aligned_to(4));
-        assert!(ptr.wrapping_byte_add(2).is_aligned_to(1));
-        assert!(ptr.wrapping_byte_add(2).is_aligned_to(2));
-        assert!(!ptr.wrapping_byte_add(2).is_aligned_to(4));
+        assert!(ptr.wrapping_add(1).is_aligned());
+        assert!(ptr.wrapping_byte_add(4).is_aligned());
+
+        assert!(!ptr.wrapping_byte_add(1).is_aligned());
+        assert!(!ptr.wrapping_byte_add(2).is_aligned());
+        assert!(!ptr.wrapping_byte_add(3).is_aligned());
 
         // At comptime neither `ptr` nor `ptr+1` is aligned to 8.
-        assert!(!ptr.is_aligned_to(8));
-        assert!(!ptr.wrapping_add(1).is_aligned_to(8));
+        assert!(!ptr.cast::<u64>().is_aligned());
+        assert!(!ptr.wrapping_add(1).cast::<u64>().is_aligned());
     }
 }
 
