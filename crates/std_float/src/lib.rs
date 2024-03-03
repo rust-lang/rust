@@ -65,6 +65,62 @@ pub trait StdFloat: Sealed + Sized {
         unsafe { intrinsics::simd_fsqrt(self) }
     }
 
+    /// Produces a vector where every lane has the sine of the value
+    /// in the equivalently-indexed lane in `self`.
+    #[inline]
+    #[must_use = "method returns a new vector and does not mutate the original value"]
+    fn sin(self) -> Self {
+        unsafe { intrinsics::simd_fsin(self) }
+    }
+
+    /// Produces a vector where every lane has the cosine of the value
+    /// in the equivalently-indexed lane in `self`.
+    #[inline]
+    #[must_use = "method returns a new vector and does not mutate the original value"]
+    fn cos(self) -> Self {
+        unsafe { intrinsics::simd_fcos(self) }
+    }
+
+    /// Produces a vector where every lane has the exponential (base e) of the value
+    /// in the equivalently-indexed lane in `self`.
+    #[inline]
+    #[must_use = "method returns a new vector and does not mutate the original value"]
+    fn exp(self) -> Self {
+        unsafe { intrinsics::simd_fexp(self) }
+    }
+
+    /// Produces a vector where every lane has the exponential (base 2) of the value
+    /// in the equivalently-indexed lane in `self`.
+    #[inline]
+    #[must_use = "method returns a new vector and does not mutate the original value"]
+    fn exp2(self) -> Self {
+        unsafe { intrinsics::simd_fexp2(self) }
+    }
+
+    /// Produces a vector where every lane has the natural logarithm of the value
+    /// in the equivalently-indexed lane in `self`.
+    #[inline]
+    #[must_use = "method returns a new vector and does not mutate the original value"]
+    fn log(self) -> Self {
+        unsafe { intrinsics::simd_flog(self) }
+    }
+
+    /// Produces a vector where every lane has the base-2 logarithm of the value
+    /// in the equivalently-indexed lane in `self`.
+    #[inline]
+    #[must_use = "method returns a new vector and does not mutate the original value"]
+    fn log2(self) -> Self {
+        unsafe { intrinsics::simd_flog2(self) }
+    }
+
+    /// Produces a vector where every lane has the base-10 logarithm of the value
+    /// in the equivalently-indexed lane in `self`.
+    #[inline]
+    #[must_use = "method returns a new vector and does not mutate the original value"]
+    fn log10(self) -> Self {
+        unsafe { intrinsics::simd_flog10(self) }
+    }
+
     /// Returns the smallest integer greater than or equal to each lane.
     #[must_use = "method returns a new vector and does not mutate the original value"]
     #[inline]
@@ -127,13 +183,14 @@ where
 }
 
 #[cfg(test)]
-mod tests {
+mod tests_simd_floats {
     use super::*;
     use simd::prelude::*;
 
     #[test]
-    fn everything_works() {
+    fn everything_works_f32() {
         let x = f32x4::from_array([0.1, 0.5, 0.6, -1.5]);
+
         let x2 = x + x;
         let _xc = x.ceil();
         let _xf = x.floor();
@@ -141,6 +198,36 @@ mod tests {
         let _xt = x.trunc();
         let _xfma = x.mul_add(x, x);
         let _xsqrt = x.sqrt();
-        let _ = x2.abs() * x2;
+        let _abs_mul = x2.abs() * x2;
+
+        let _fexp = x.exp();
+        let _fexp2 = x.exp2();
+        let _flog = x.log();
+        let _flog2 = x.log2();
+        let _flog10 = x.log10();
+        let _fsin = x.sin();
+        let _fcos = x.cos();
+    }
+
+    #[test]
+    fn everything_works_f64() {
+        let x = f64x4::from_array([0.1, 0.5, 0.6, -1.5]);
+
+        let x2 = x + x;
+        let _xc = x.ceil();
+        let _xf = x.floor();
+        let _xr = x.round();
+        let _xt = x.trunc();
+        let _xfma = x.mul_add(x, x);
+        let _xsqrt = x.sqrt();
+        let _abs_mul = x2.abs() * x2;
+
+        let _fexp = x.exp();
+        let _fexp2 = x.exp2();
+        let _flog = x.log();
+        let _flog2 = x.log2();
+        let _flog10 = x.log10();
+        let _fsin = x.sin();
+        let _fcos = x.cos();
     }
 }
