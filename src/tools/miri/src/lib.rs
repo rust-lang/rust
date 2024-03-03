@@ -143,4 +143,7 @@ pub const MIRI_DEFAULT_ARGS: &[&str] = &[
     "-Zmir-keep-place-mention",
     "-Zmir-opt-level=0",
     "-Zmir-enable-passes=-CheckAlignment",
+    // Deduplicating diagnostics means we miss events when tracking what happens during an
+    // execution. Let's not do that.
+    "-Zdeduplicate-diagnostics=no",
 ];
