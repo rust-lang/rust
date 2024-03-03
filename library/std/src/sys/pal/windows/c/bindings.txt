@@ -2482,6 +2482,7 @@ Windows.Win32.System.SystemInformation.SYSTEM_INFO
 Windows.Win32.System.SystemServices.DLL_PROCESS_DETACH
 Windows.Win32.System.SystemServices.DLL_THREAD_DETACH
 Windows.Win32.System.SystemServices.EXCEPTION_MAXIMUM_PARAMETERS
+Windows.Win32.System.SystemServices.FAST_FAIL_FATAL_APP_EXIT
 Windows.Win32.System.SystemServices.IO_REPARSE_TAG_MOUNT_POINT
 Windows.Win32.System.SystemServices.IO_REPARSE_TAG_SYMLINK
 Windows.Win32.System.Threading.ABOVE_NORMAL_PRIORITY_CLASS
