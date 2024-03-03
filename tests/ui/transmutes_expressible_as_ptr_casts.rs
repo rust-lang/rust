@@ -82,3 +82,10 @@ fn issue_10449() {
 
     let _x: u8 = unsafe { *std::mem::transmute::<fn(), *const u8>(f) };
 }
+
+// Pointers cannot be cast to integers in const contexts
+const fn issue_12402<P>(ptr: *const P) {
+    unsafe { transmute::<*const i32, usize>(&42i32) };
+    unsafe { transmute::<fn(*const P), usize>(issue_12402) };
+    let _ = unsafe { transmute::<_, usize>(ptr) };
+}
