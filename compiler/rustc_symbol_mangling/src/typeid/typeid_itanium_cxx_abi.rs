@@ -178,14 +178,14 @@ fn encode_fnsig<'tcx>(
     // Encode the return type
     let transform_ty_options = TransformTyOptions::from_bits(options.bits())
         .unwrap_or_else(|| bug!("encode_fnsig: invalid option(s) `{:?}`", options.bits()));
-    let ty = transform_ty(tcx, fn_sig.output(), transform_ty_options);
+    let ty = transform_ty(tcx, fn_sig.output(), &[], transform_ty_options);
     s.push_str(&encode_ty(tcx, ty, dict, encode_ty_options));
 
     // Encode the parameter types
     let tys = fn_sig.inputs();
     if !tys.is_empty() {
         for ty in tys {
-            let ty = transform_ty(tcx, *ty, transform_ty_options);
+            let ty = transform_ty(tcx, *ty, &[], transform_ty_options);
             s.push_str(&encode_ty(tcx, ty, dict, encode_ty_options));
         }
 
@@ -770,11 +770,12 @@ fn transform_predicates<'tcx>(
 fn transform_args<'tcx>(
     tcx: TyCtxt<'tcx>,
     args: GenericArgsRef<'tcx>,
+    parents: &[Ty<'tcx>],
     options: TransformTyOptions,
 ) -> GenericArgsRef<'tcx> {
     let args = args.iter().map(|arg| match arg.unpack() {
         GenericArgKind::Type(ty) if ty.is_c_void(tcx) => Ty::new_unit(tcx).into(),
-        GenericArgKind::Type(ty) => transform_ty(tcx, ty, options).into(),
+        GenericArgKind::Type(ty) => transform_ty(tcx, ty, parents, options).into(),
         _ => arg,
     });
     tcx.mk_args_from_iter(args)
@@ -784,9 +785,12 @@ fn transform_args<'tcx>(
 // c_void types into unit types unconditionally, generalizes pointers if
 // TransformTyOptions::GENERALIZE_POINTERS option is set, and normalizes integers if
 // TransformTyOptions::NORMALIZE_INTEGERS option is set.
-fn transform_ty<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>, options: TransformTyOptions) -> Ty<'tcx> {
-    let mut ty = ty;
-
+fn transform_ty<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    mut ty: Ty<'tcx>,
+    parents: &[Ty<'tcx>],
+    options: TransformTyOptions,
+) -> Ty<'tcx> {
     match ty.kind() {
         ty::Float(..) | ty::Str | ty::Never | ty::Foreign(..) | ty::CoroutineWitness(..) => {}
 
@@ -846,17 +850,20 @@ fn transform_ty<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>, options: TransformTyOptio
         _ if ty.is_unit() => {}
 
         ty::Tuple(tys) => {
-            ty = Ty::new_tup_from_iter(tcx, tys.iter().map(|ty| transform_ty(tcx, ty, options)));
+            ty = Ty::new_tup_from_iter(
+                tcx,
+                tys.iter().map(|ty| transform_ty(tcx, ty, &parents, options)),
+            );
         }
 
         ty::Array(ty0, len) => {
             let len = len.eval_target_usize(tcx, ty::ParamEnv::reveal_all());
 
-            ty = Ty::new_array(tcx, transform_ty(tcx, *ty0, options), len);
+            ty = Ty::new_array(tcx, transform_ty(tcx, *ty0, &parents, options), len);
         }
 
         ty::Slice(ty0) => {
-            ty = Ty::new_slice(tcx, transform_ty(tcx, *ty0, options));
+            ty = Ty::new_slice(tcx, transform_ty(tcx, *ty0, &parents, options));
         }
 
         ty::Adt(adt_def, args) => {
@@ -865,7 +872,8 @@ fn transform_ty<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>, options: TransformTyOptio
             } else if options.contains(TransformTyOptions::GENERALIZE_REPR_C) && adt_def.repr().c()
             {
                 ty = Ty::new_adt(tcx, *adt_def, ty::List::empty());
-            } else if adt_def.repr().transparent() && adt_def.is_struct() {
+            } else if adt_def.repr().transparent() && adt_def.is_struct() && !parents.contains(&ty)
+            {
                 // Don't transform repr(transparent) types with an user-defined CFI encoding to
                 // preserve the user-defined CFI encoding.
                 if let Some(_) = tcx.get_attr(adt_def.did(), sym::cfi_encoding) {
@@ -884,38 +892,48 @@ fn transform_ty<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>, options: TransformTyOptio
                     // Generalize any repr(transparent) user-defined type that is either a pointer
                     // or reference, and either references itself or any other type that contains or
                     // references itself, to avoid a reference cycle.
+
+                    // If the self reference is not through a pointer, for example, due
+                    // to using `PhantomData`, need to skip normalizing it if we hit it again.
+                    let mut parents = parents.to_vec();
+                    parents.push(ty);
                     if ty0.is_any_ptr() && ty0.contains(ty) {
                         ty = transform_ty(
                             tcx,
                             ty0,
+                            &parents,
                             options | TransformTyOptions::GENERALIZE_POINTERS,
                         );
                     } else {
-                        ty = transform_ty(tcx, ty0, options);
+                        ty = transform_ty(tcx, ty0, &parents, options);
                     }
                 } else {
                     // Transform repr(transparent) types without non-ZST field into ()
                     ty = Ty::new_unit(tcx);
                 }
             } else {
-                ty = Ty::new_adt(tcx, *adt_def, transform_args(tcx, args, options));
+                ty = Ty::new_adt(tcx, *adt_def, transform_args(tcx, args, &parents, options));
             }
         }
 
         ty::FnDef(def_id, args) => {
-            ty = Ty::new_fn_def(tcx, *def_id, transform_args(tcx, args, options));
+            ty = Ty::new_fn_def(tcx, *def_id, transform_args(tcx, args, &parents, options));
         }
 
         ty::Closure(def_id, args) => {
-            ty = Ty::new_closure(tcx, *def_id, transform_args(tcx, args, options));
+            ty = Ty::new_closure(tcx, *def_id, transform_args(tcx, args, &parents, options));
         }
 
         ty::CoroutineClosure(def_id, args) => {
-            ty = Ty::new_coroutine_closure(tcx, *def_id, transform_args(tcx, args, options));
+            ty = Ty::new_coroutine_closure(
+                tcx,
+                *def_id,
+                transform_args(tcx, args, &parents, options),
+            );
         }
 
         ty::Coroutine(def_id, args) => {
-            ty = Ty::new_coroutine(tcx, *def_id, transform_args(tcx, args, options));
+            ty = Ty::new_coroutine(tcx, *def_id, transform_args(tcx, args, &parents, options));
         }
 
         ty::Ref(region, ty0, ..) => {
@@ -927,9 +945,9 @@ fn transform_ty<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>, options: TransformTyOptio
                 }
             } else {
                 if ty.is_mutable_ptr() {
-                    ty = Ty::new_mut_ref(tcx, *region, transform_ty(tcx, *ty0, options));
+                    ty = Ty::new_mut_ref(tcx, *region, transform_ty(tcx, *ty0, &parents, options));
                 } else {
-                    ty = Ty::new_imm_ref(tcx, *region, transform_ty(tcx, *ty0, options));
+                    ty = Ty::new_imm_ref(tcx, *region, transform_ty(tcx, *ty0, &parents, options));
                 }
             }
         }
@@ -943,9 +961,9 @@ fn transform_ty<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>, options: TransformTyOptio
                 }
             } else {
                 if ty.is_mutable_ptr() {
-                    ty = Ty::new_mut_ptr(tcx, transform_ty(tcx, tm.ty, options));
+                    ty = Ty::new_mut_ptr(tcx, transform_ty(tcx, tm.ty, &parents, options));
                 } else {
-                    ty = Ty::new_imm_ptr(tcx, transform_ty(tcx, tm.ty, options));
+                    ty = Ty::new_imm_ptr(tcx, transform_ty(tcx, tm.ty, &parents, options));
                 }
             }
         }
@@ -958,9 +976,9 @@ fn transform_ty<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>, options: TransformTyOptio
                     .skip_binder()
                     .inputs()
                     .iter()
-                    .map(|ty| transform_ty(tcx, *ty, options))
+                    .map(|ty| transform_ty(tcx, *ty, &parents, options))
                     .collect();
-                let output = transform_ty(tcx, fn_sig.skip_binder().output(), options);
+                let output = transform_ty(tcx, fn_sig.skip_binder().output(), &parents, options);
                 ty = Ty::new_fn_ptr(
                     tcx,
                     ty::Binder::bind_with_vars(
@@ -990,6 +1008,7 @@ fn transform_ty<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>, options: TransformTyOptio
             ty = transform_ty(
                 tcx,
                 tcx.normalize_erasing_regions(ty::ParamEnv::reveal_all(), ty),
+                &parents,
                 options,
             );
         }
@@ -1040,7 +1059,7 @@ pub fn typeid_for_fnabi<'tcx>(
     // Encode the return type
     let transform_ty_options = TransformTyOptions::from_bits(options.bits())
         .unwrap_or_else(|| bug!("typeid_for_fnabi: invalid option(s) `{:?}`", options.bits()));
-    let ty = transform_ty(tcx, fn_abi.ret.layout.ty, transform_ty_options);
+    let ty = transform_ty(tcx, fn_abi.ret.layout.ty, &[], transform_ty_options);
     typeid.push_str(&encode_ty(tcx, ty, &mut dict, encode_ty_options));
 
     // Encode the parameter types
@@ -1048,7 +1067,7 @@ pub fn typeid_for_fnabi<'tcx>(
         let mut pushed_arg = false;
         for arg in fn_abi.args.iter().filter(|arg| arg.mode != PassMode::Ignore) {
             pushed_arg = true;
-            let ty = transform_ty(tcx, arg.layout.ty, transform_ty_options);
+            let ty = transform_ty(tcx, arg.layout.ty, &[], transform_ty_options);
             typeid.push_str(&encode_ty(tcx, ty, &mut dict, encode_ty_options));
         }
         if !pushed_arg {
@@ -1061,7 +1080,7 @@ pub fn typeid_for_fnabi<'tcx>(
             if fn_abi.args[n].mode == PassMode::Ignore {
                 continue;
             }
-            let ty = transform_ty(tcx, fn_abi.args[n].layout.ty, transform_ty_options);
+            let ty = transform_ty(tcx, fn_abi.args[n].layout.ty, &[], transform_ty_options);
             typeid.push_str(&encode_ty(tcx, ty, &mut dict, encode_ty_options));
         }
 
