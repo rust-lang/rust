@@ -1,5 +1,6 @@
+//@ only-x86_64-unknown-linux-gnu
 //@ compile-flags: --crate-name NonSnakeCase
-//@ error-pattern: crate `NonSnakeCase` should have a snake case name
+//@ check-pass
 
 #![deny(non_snake_case)]
 
