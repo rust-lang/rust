@@ -562,7 +562,7 @@ impl<'mir, 'tcx> MiriMachine<'mir, 'tcx> {
                     align = align.bytes(),
                 ),
             AccessedAlloc(AllocId(id), access_kind) =>
-                format!("{access_kind} access to allocation with id {id}"),
+                format!("{access_kind} to allocation with id {id}"),
             FreedAlloc(AllocId(id)) => format!("freed allocation with id {id}"),
             RejectedIsolatedOp(ref op) =>
                 format!("{op} was made to return an error due to isolation"),
