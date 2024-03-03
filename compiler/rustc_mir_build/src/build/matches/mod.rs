@@ -701,7 +701,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         self.bind_pattern(
             self.source_info(irrefutable_pat.span),
             candidate,
-            &fake_borrow_temps,
+            fake_borrow_temps.as_slice(),
             irrefutable_pat.span,
             None,
             false,
@@ -1938,7 +1938,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         let post_guard_block = self.bind_pattern(
             self.source_info(pat.span),
             guard_candidate,
-            &fake_borrow_temps,
+            fake_borrow_temps.as_slice(),
             expr_span,
             None,
             false,
@@ -2425,7 +2425,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             let matching = this.bind_pattern(
                 this.source_info(pattern.span),
                 candidate,
-                &fake_borrow_temps,
+                fake_borrow_temps.as_slice(),
                 initializer_span,
                 None,
                 true,
@@ -2434,7 +2434,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             let failure = this.bind_pattern(
                 this.source_info(else_block_span),
                 wildcard,
-                &fake_borrow_temps,
+                fake_borrow_temps.as_slice(),
                 initializer_span,
                 None,
                 true,

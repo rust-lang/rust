@@ -320,8 +320,11 @@ impl<'tcx> Printer<'tcx> for SymbolMangler<'tcx> {
             ty::Uint(UintTy::U64) => "y",
             ty::Uint(UintTy::U128) => "o",
             ty::Uint(UintTy::Usize) => "j",
+            // FIXME(f16_f128): update these once `rustc-demangle` supports the new types
+            ty::Float(FloatTy::F16) => unimplemented!("f16_f128"),
             ty::Float(FloatTy::F32) => "f",
             ty::Float(FloatTy::F64) => "d",
+            ty::Float(FloatTy::F128) => unimplemented!("f16_f128"),
             ty::Never => "z",
 
             // Placeholders (should be demangled as `_`).

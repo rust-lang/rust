@@ -10,6 +10,7 @@ pub fn target() -> Target {
     base.static_position_independent_executables = true;
     base.supported_sanitizers = SanitizerSet::ADDRESS
         | SanitizerSet::CFI
+        | SanitizerSet::DATAFLOW
         | SanitizerSet::LEAK
         | SanitizerSet::MEMORY
         | SanitizerSet::SAFESTACK

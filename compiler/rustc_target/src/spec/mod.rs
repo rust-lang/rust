@@ -1221,6 +1221,7 @@ bitflags::bitflags! {
         const KCFI    = 1 << 8;
         const KERNELADDRESS = 1 << 9;
         const SAFESTACK = 1 << 10;
+        const DATAFLOW = 1 << 11;
     }
 }
 rustc_data_structures::external_bitflags_debug! { SanitizerSet }
@@ -1233,6 +1234,7 @@ impl SanitizerSet {
         Some(match self {
             SanitizerSet::ADDRESS => "address",
             SanitizerSet::CFI => "cfi",
+            SanitizerSet::DATAFLOW => "dataflow",
             SanitizerSet::KCFI => "kcfi",
             SanitizerSet::KERNELADDRESS => "kernel-address",
             SanitizerSet::LEAK => "leak",
@@ -2790,6 +2792,7 @@ impl Target {
                             base.$key_name |= match s.as_str() {
                                 Some("address") => SanitizerSet::ADDRESS,
                                 Some("cfi") => SanitizerSet::CFI,
+                                Some("dataflow") => SanitizerSet::DATAFLOW,
                                 Some("kcfi") => SanitizerSet::KCFI,
                                 Some("kernel-address") => SanitizerSet::KERNELADDRESS,
                                 Some("leak") => SanitizerSet::LEAK,
