@@ -6,14 +6,14 @@ use crate::errors::{
 use crate::mbe::macro_parser::{MatchedNonterminal, MatchedSeq, MatchedTokenTree, NamedMatch};
 use crate::mbe::{self, KleeneOp, MetaVarExpr};
 use rustc_ast::mut_visit::{self, MutVisitor};
-use rustc_ast::token::{self, Delimiter, Token, TokenKind};
+use rustc_ast::token::{self, Delimiter, Nonterminal, Token, TokenKind};
 use rustc_ast::tokenstream::{DelimSpacing, DelimSpan, Spacing, TokenStream, TokenTree};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::Diag;
 use rustc_errors::{pluralize, PResult};
 use rustc_span::hygiene::{LocalExpnId, Transparency};
 use rustc_span::symbol::{sym, Ident, MacroRulesNormalizedIdent};
-use rustc_span::{with_metavar_spans, Span, SyntaxContext};
+use rustc_span::{with_metavar_spans, Span, Symbol, SyntaxContext};
 
 use smallvec::{smallvec, SmallVec};
 use std::mem;
@@ -652,6 +652,34 @@ fn transcribe_metavar_expr<'a>(
         span
     };
     match *expr {
+        MetaVarExpr::Concat(ref elements) => {
+            let mut concatenated = String::new();
+            for element in elements.into_iter() {
+                let string = match element.is_var {
+                    false => element.ident.to_string(),
+                    true => {
+                        let span = element.ident.span;
+                        let mrni = MacroRulesNormalizedIdent::new(element.ident);
+                        if let Some(nm) = lookup_cur_matched(mrni, interp, &repeats)
+                            && let MatchedNonterminal(nt) = nm
+                            && let Nonterminal::NtIdent(nt_ident, _) = &nt.0
+                        {
+                            nt_ident.to_string()
+                        } else {
+                            return Err(cx.dcx().struct_span_err(
+                                span,
+                                "`${concat(..)}` currently only accepts identifiers or meta-variables as parameters",
+                            ));
+                        }
+                    }
+                };
+                concatenated.push_str(&string);
+            }
+            result.push(TokenTree::Token(
+                Token::from_ast_ident(Ident::new(Symbol::intern(&concatenated), visited_span())),
+                Spacing::Alone,
+            ));
+        }
         MetaVarExpr::Count(original_ident, depth) => {
             let matched = matched_from_ident(cx, original_ident, interp)?;
             let count = count_repetitions(cx, depth, matched, repeats, sp)?;

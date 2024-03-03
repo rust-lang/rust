@@ -8,8 +8,11 @@ use rustc_span::symbol::Ident;
 use rustc_span::Span;
 
 /// A meta-variable expression, for expansions based on properties of meta-variables.
-#[derive(Debug, Clone, PartialEq, Encodable, Decodable)]
+#[derive(Debug, Decodable, Encodable, PartialEq)]
 pub(crate) enum MetaVarExpr {
+    /// Unification of two or more identifiers.
+    Concat(Box<[MetaVarExprConcatElem]>),
+
     /// The number of repetitions of an identifier.
     Count(Ident, usize),
 
@@ -41,6 +44,33 @@ impl MetaVarExpr {
         check_trailing_token(&mut tts, sess)?;
         let mut iter = args.trees();
         let rslt = match ident.as_str() {
+            "concat" => {
+                fn element<'sess>(
+                    iter: &mut RefTokenTreeCursor<'_>,
+                    sess: &'sess ParseSess,
+                    span: Span,
+                ) -> PResult<'sess, MetaVarExprConcatElem> {
+                    let is_var = try_eat_dollar(iter);
+                    let ident = parse_ident(iter, sess, span)?;
+                    Ok(MetaVarExprConcatElem { ident, is_var })
+                }
+
+                let mut result = Vec::new();
+                result.push(element(&mut iter, sess, ident.span)?);
+                if !try_eat_comma(&mut iter) {
+                    return Err(sess.dcx.struct_span_err(ident.span, "expected comma"));
+                }
+                loop {
+                    result.push(element(&mut iter, sess, ident.span)?);
+                    if iter.look_ahead(0).is_none() {
+                        break;
+                    }
+                    if !try_eat_comma(&mut iter) {
+                        return Err(sess.dcx.struct_span_err(ident.span, "expected comma"));
+                    }
+                }
+                MetaVarExpr::Concat(result.into())
+            }
             "count" => parse_count(&mut iter, sess, ident.span)?,
             "ignore" => {
                 eat_dollar(&mut iter, sess, ident.span)?;
@@ -67,9 +97,17 @@ impl MetaVarExpr {
     pub(crate) fn ident(&self) -> Option<Ident> {
         match *self {
             MetaVarExpr::Count(ident, _) | MetaVarExpr::Ignore(ident) => Some(ident),
-            MetaVarExpr::Index(..) | MetaVarExpr::Length(..) => None,
+            MetaVarExpr::Concat { .. } | MetaVarExpr::Index(..) | MetaVarExpr::Length(..) => None,
         }
     }
+}
+
+#[derive(Debug, Decodable, Encodable, PartialEq)]
+pub(crate) struct MetaVarExprConcatElem {
+    pub(crate) ident: Ident,
+    /// `true` if there is a preceding dollar sign. i.e. if this ident should be expanded as
+    /// a `$ident` and not interpreted literally as `ident`.
+    pub(crate) is_var: bool,
 }
 
 // Checks if there are any remaining tokens. For example, `${ignore(ident ... a b c ...)}`
@@ -163,6 +201,17 @@ fn parse_ident<'sess>(
 /// iterator is not modified and the result is `false`.
 fn try_eat_comma(iter: &mut RefTokenTreeCursor<'_>) -> bool {
     if let Some(TokenTree::Token(token::Token { kind: token::Comma, .. }, _)) = iter.look_ahead(0) {
+        let _ = iter.next();
+        return true;
+    }
+    false
+}
+
+/// Tries to move the iterator forward returning `true` if there is a dollar sign. If not, then the
+/// iterator is not modified and the result is `false`.
+fn try_eat_dollar(iter: &mut RefTokenTreeCursor<'_>) -> bool {
+    if let Some(TokenTree::Token(token::Token { kind: token::Dollar, .. }, _)) = iter.look_ahead(0)
+    {
         let _ = iter.next();
         return true;
     }
