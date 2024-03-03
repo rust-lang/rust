@@ -54,9 +54,9 @@
 //@ revisions: aarch64_unknown_none_softfloat
 //@ [aarch64_unknown_none_softfloat] compile-flags: --target aarch64-unknown-none-softfloat
 //@ [aarch64_unknown_none_softfloat] needs-llvm-components: aarch64
-//@ revisions: aarch64_unknown_nto_qnx_710
-//@ [aarch64_unknown_nto_qnx_710] compile-flags: --target aarch64-unknown-nto-qnx710
-//@ [aarch64_unknown_nto_qnx_710] needs-llvm-components: aarch64
+//@ revisions: aarch64_unknown_nto_qnx710
+//@ [aarch64_unknown_nto_qnx710] compile-flags: --target aarch64-unknown-nto-qnx710
+//@ [aarch64_unknown_nto_qnx710] needs-llvm-components: aarch64
 //@ revisions: aarch64_unknown_openbsd
 //@ [aarch64_unknown_openbsd] compile-flags: --target aarch64-unknown-openbsd
 //@ [aarch64_unknown_openbsd] needs-llvm-components: aarch64

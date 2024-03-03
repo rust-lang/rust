@@ -1676,7 +1676,7 @@ supported_targets! {
 
     ("mips64-openwrt-linux-musl", mips64_openwrt_linux_musl),
 
-    ("aarch64-unknown-nto-qnx710", aarch64_unknown_nto_qnx_710),
+    ("aarch64-unknown-nto-qnx710", aarch64_unknown_nto_qnx710),
     ("x86_64-pc-nto-qnx710", x86_64_pc_nto_qnx710),
     ("i586-pc-nto-qnx700", i586_pc_nto_qnx700),
 
