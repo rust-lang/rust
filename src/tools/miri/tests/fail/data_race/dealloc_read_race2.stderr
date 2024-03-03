@@ -20,7 +20,7 @@ LL | |                 std::mem::size_of::<usize>(),
 LL | |                 std::mem::align_of::<usize>(),
 LL | |             )
    | |_____________^
-   = note: BACKTRACE (of the first span):
+   = note: BACKTRACE (of the first span) on thread `unnamed-ID`:
    = note: inside closure at $DIR/dealloc_read_race2.rs:LL:CC
 
 note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace

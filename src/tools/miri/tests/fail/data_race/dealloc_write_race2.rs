@@ -29,7 +29,7 @@ pub fn main() {
 
         let j2 = spawn(move || {
             let ptr = ptr; // avoid field capturing
-            // Also an error of the form: Data race detected between (1) deallocation on thread `<unnamed>` and (2) non-atomic write on thread `<unnamed>`
+            // Also an error of the form: Data race detected between (1) deallocation on thread `unnamed-ID` and (2) non-atomic write on thread `unnamed-ID`
             // but the invalid allocation is detected first.
             *ptr.0 = 2; //~ ERROR: has been freed
         });

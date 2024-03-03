@@ -356,11 +356,17 @@ impl Command {
             .unwrap_or_else(|_| "0".into())
             .parse()
             .context("failed to parse MIRI_SEED_START")?;
-        let seed_count: u64 = env::var("MIRI_SEEDS")
-            .unwrap_or_else(|_| "256".into())
-            .parse()
-            .context("failed to parse MIRI_SEEDS")?;
-        let seed_end = seed_start + seed_count;
+        let seed_end: u64 = match (env::var("MIRI_SEEDS"), env::var("MIRI_SEED_END")) {
+            (Ok(_), Ok(_)) => bail!("Only one of MIRI_SEEDS and MIRI_SEED_END may be set"),
+            (Ok(seeds), Err(_)) =>
+                seed_start + seeds.parse::<u64>().context("failed to parse MIRI_SEEDS")?,
+            (Err(_), Ok(seed_end)) => seed_end.parse().context("failed to parse MIRI_SEED_END")?,
+            (Err(_), Err(_)) => seed_start + 256,
+        };
+        if seed_end <= seed_start {
+            bail!("the end of the seed range must be larger than the start.");
+        }
+
         let Some((command_name, trailing_args)) = command.split_first() else {
             bail!("expected many-seeds command to be non-empty");
         };

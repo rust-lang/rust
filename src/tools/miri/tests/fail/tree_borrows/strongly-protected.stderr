@@ -1,8 +1,8 @@
-error: Undefined Behavior: deallocation through <TAG> is forbidden
+error: Undefined Behavior: deallocation through <TAG> at ALLOC[0x0] is forbidden
   --> RUSTLIB/alloc/src/alloc.rs:LL:CC
    |
 LL |     unsafe { __rust_dealloc(ptr, layout.size(), layout.align()) }
-   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ deallocation through <TAG> is forbidden
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ deallocation through <TAG> at ALLOC[0x0] is forbidden
    |
    = help: this indicates a potential bug in the program: it performed an invalid operation, but the Tree Borrows rules it violated are still experimental
    = help: the allocation of the accessed tag <TAG> also contains the strongly protected tag <TAG>

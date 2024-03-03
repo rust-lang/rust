@@ -7,6 +7,7 @@ error: abnormal termination: the program aborted execution
 LL |                 ABORT();
    | ^ the program aborted execution
    |
+   = note: BACKTRACE:
    = note: inside `panic_abort::__rust_start_panic::abort` at RUSTLIB/panic_abort/src/lib.rs:LL:CC
    = note: inside `panic_abort::__rust_start_panic` at RUSTLIB/panic_abort/src/lib.rs:LL:CC
    = note: inside `std::panicking::rust_panic` at RUSTLIB/std/src/panicking.rs:LL:CC

@@ -812,6 +812,7 @@ impl VClockAlloc {
                 | MiriMemoryKind::Miri
                 | MiriMemoryKind::C
                 | MiriMemoryKind::WinHeap
+                | MiriMemoryKind::WinLocal
                 | MiriMemoryKind::Mmap,
             )
             | MemoryKind::Stack => {
@@ -820,7 +821,8 @@ impl VClockAlloc {
                 alloc_timestamp.span = current_span;
                 (alloc_timestamp, alloc_index)
             }
-            // Other global memory should trace races but be allocated at the 0 timestamp.
+            // Other global memory should trace races but be allocated at the 0 timestamp
+            // (conceptually they are allocated before everything).
             MemoryKind::Machine(
                 MiriMemoryKind::Global
                 | MiriMemoryKind::Machine
@@ -1673,8 +1675,8 @@ impl GlobalState {
         vector: VectorIdx,
     ) -> String {
         let thread = self.vector_info.borrow()[vector];
-        let thread_name = thread_mgr.get_thread_name(thread);
-        format!("thread `{}`", String::from_utf8_lossy(thread_name))
+        let thread_name = thread_mgr.get_thread_display_name(thread);
+        format!("thread `{thread_name}`")
     }
 
     /// Acquire a lock, express that the previous call of

@@ -34,6 +34,6 @@ fn main() {
     spawn(|| ()).join().unwrap();
 
     unsafe {
-        *c.0 = 64; //~ ERROR: Data race detected between (1) non-atomic write on thread `<unnamed>` and (2) non-atomic write on thread `main`
+        *c.0 = 64; //~ ERROR: Data race detected between (1) non-atomic write on thread `unnamed-1` and (2) non-atomic write on thread `main`
     }
 }

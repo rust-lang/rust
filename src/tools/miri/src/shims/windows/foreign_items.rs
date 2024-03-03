@@ -5,6 +5,7 @@ use rustc_span::Symbol;
 use rustc_target::abi::Size;
 use rustc_target::spec::abi::Abi;
 
+use crate::shims::os_str::bytes_to_os_str;
 use crate::*;
 use shims::foreign_items::EmulateForeignItemResult;
 use shims::windows::handle::{EvalContextExt as _, Handle, PseudoHandle};
@@ -12,7 +13,11 @@ use shims::windows::sync::EvalContextExt as _;
 use shims::windows::thread::EvalContextExt as _;
 
 fn is_dyn_sym(name: &str) -> bool {
-    matches!(name, "SetThreadDescription" | "WaitOnAddress" | "WakeByAddressSingle")
+    // std does dynamic detection for these symbols
+    matches!(
+        name,
+        "SetThreadDescription" | "GetThreadDescription" | "WaitOnAddress" | "WakeByAddressSingle"
+    )
 }
 
 impl<'mir, 'tcx: 'mir> EvalContextExt<'mir, 'tcx> for crate::MiriInterpCx<'mir, 'tcx> {}
@@ -171,6 +176,12 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                 let size = this.read_target_usize(size)?;
                 let res = this.realloc(ptr, size, MiriMemoryKind::WinHeap)?;
                 this.write_pointer(res, dest)?;
+            }
+            "LocalFree" => {
+                let [ptr] = this.check_shim(abi, Abi::System { unwind: false }, link_name, args)?;
+                let ptr = this.read_pointer(ptr)?;
+                this.free(ptr, MiriMemoryKind::WinLocal)?;
+                this.write_null(dest)?;
             }
 
             // errno
@@ -403,7 +414,6 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                     this.check_shim(abi, Abi::System { unwind: false }, link_name, args)?;
 
                 let handle = this.read_scalar(handle)?;
-
                 let name = this.read_wide_str(this.read_pointer(name)?)?;
 
                 let thread = match Handle::from_scalar(handle, this)? {
@@ -412,7 +422,31 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                     _ => this.invalid_handle("SetThreadDescription")?,
                 };
 
-                this.set_thread_name_wide(thread, &name);
+                // FIXME: use non-lossy conversion
+                this.set_thread_name(thread, String::from_utf16_lossy(&name).into_bytes());
+
+                this.write_null(dest)?;
+            }
+            "GetThreadDescription" => {
+                let [handle, name_ptr] =
+                    this.check_shim(abi, Abi::System { unwind: false }, link_name, args)?;
+
+                let handle = this.read_scalar(handle)?;
+                let name_ptr = this.deref_pointer(name_ptr)?; // the pointer where we should store the ptr to the name
+
+                let thread = match Handle::from_scalar(handle, this)? {
+                    Some(Handle::Thread(thread)) => thread,
+                    Some(Handle::Pseudo(PseudoHandle::CurrentThread)) => this.get_active_thread(),
+                    _ => this.invalid_handle("SetThreadDescription")?,
+                };
+                // Looks like the default thread name is empty.
+                let name = this.get_thread_name(thread).unwrap_or(b"").to_owned();
+                let name = this.alloc_os_str_as_wide_str(
+                    bytes_to_os_str(&name)?,
+                    MiriMemoryKind::WinLocal.into(),
+                )?;
+
+                this.write_scalar(Scalar::from_maybe_pointer(name, this), &name_ptr)?;
 
                 this.write_null(dest)?;
             }
@@ -432,7 +466,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                     this.check_shim(abi, Abi::System { unwind: false }, link_name, args)?;
                 let ptr = this.read_pointer(ptr)?;
                 let len = this.read_target_usize(len)?;
-                this.gen_random(ptr, len.into())?;
+                this.gen_random(ptr, len)?;
                 this.write_scalar(Scalar::from_i32(1), dest)?;
             }
             "BCryptGenRandom" => {

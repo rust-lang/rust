@@ -11,11 +11,11 @@ Thread 2 executing: ret x
 Thread 2 executing: write y
 Thread 1 executing: write y
 Thread 1 executing: ret y
-error: Undefined Behavior: write access through <TAG> is forbidden
+error: Undefined Behavior: write access through <TAG> at ALLOC[0x0] is forbidden
   --> $DIR/spurious_read.rs:LL:CC
    |
 LL |                 *y = 2;
-   |                 ^^^^^^ write access through <TAG> is forbidden
+   |                 ^^^^^^ write access through <TAG> at ALLOC[0x0] is forbidden
    |
    = help: this indicates a potential bug in the program: it performed an invalid operation, but the Tree Borrows rules it violated are still experimental
    = help: the accessed tag <TAG> has state Reserved (conflicted) which forbids this child write access
@@ -30,7 +30,7 @@ help: the accessed tag <TAG> later transitioned to Reserved (conflicted) due to 
 LL |         }
    |          ^
    = help: this transition corresponds to a temporary loss of write permissions until function exit
-   = note: BACKTRACE (of the first span):
+   = note: BACKTRACE (of the first span) on thread `unnamed-ID`:
    = note: inside `retagx_retagy_retx_writey_rety::{closure#1}::as_mut` at $DIR/spurious_read.rs:LL:CC
 note: inside closure
   --> $DIR/spurious_read.rs:LL:CC

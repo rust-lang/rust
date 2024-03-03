@@ -9,7 +9,7 @@ use crate::borrow_tracker::tree_borrows::{
     tree::LocationState,
     unimap::UniIndex,
 };
-use crate::borrow_tracker::{AccessKind, ProtectorKind};
+use crate::borrow_tracker::ProtectorKind;
 use crate::*;
 
 /// Cause of an access: either a real access or one
@@ -278,6 +278,8 @@ impl History {
 pub(super) struct TbError<'node> {
     /// What failure occurred.
     pub error_kind: TransitionError,
+    /// The allocation in which the error is happening.
+    pub alloc_id: AllocId,
     /// The offset (into the allocation) at which the conflict occurred.
     pub error_offset: u64,
     /// The tag on which the error was triggered.
@@ -300,7 +302,11 @@ impl TbError<'_> {
         let accessed = self.accessed_info;
         let conflicting = self.conflicting_info;
         let accessed_is_conflicting = accessed.tag == conflicting.tag;
-        let title = format!("{cause} through {accessed} is forbidden");
+        let title = format!(
+            "{cause} through {accessed} at {alloc_id:?}[{offset:#x}] is forbidden",
+            alloc_id = self.alloc_id,
+            offset = self.error_offset
+        );
         let (title, details, conflicting_tag_name) = match self.error_kind {
             ChildAccessForbidden(perm) => {
                 let conflicting_tag_name =

@@ -43,7 +43,7 @@ pub fn main() {
             let c = c; // avoid field capturing
             sleep(Duration::from_millis(500));
             if SYNC.load(Ordering::Acquire) == 3 {
-                *c.0 //~ ERROR: Data race detected between (1) non-atomic write on thread `<unnamed>` and (2) non-atomic read on thread `<unnamed>`
+                *c.0 //~ ERROR: Data race detected between (1) non-atomic write on thread `unnamed-1` and (2) non-atomic read on thread `unnamed-3`
             } else {
                 0
             }

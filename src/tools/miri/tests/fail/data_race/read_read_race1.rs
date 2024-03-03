@@ -21,7 +21,7 @@ fn main() {
             unsafe { ptr.read() };
             // Then do the atomic access.
             a.load(Ordering::SeqCst);
-            //~^ ERROR: Data race detected between (1) non-atomic read on thread `<unnamed>` and (2) atomic load on thread `<unnamed>`
+            //~^ ERROR: Data race detected between (1) non-atomic read on thread `unnamed-1` and (2) atomic load on thread `unnamed-2`
         });
     });
 }

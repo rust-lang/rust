@@ -113,8 +113,9 @@ sysroot, to prevent conflicts with other toolchains.
 ./miri many-seeds <command>:
 Runs <command> over and over again with different seeds for Miri. The MIRIFLAGS
 variable is set to its original value appended with ` -Zmiri-seed=$SEED` for
-many different seeds. The MIRI_SEEDS variable controls how many seeds are being
-tried; MIRI_SEED_START controls the first seed to try.
+many different seeds. MIRI_SEED_START controls the first seed to try (default: 0).
+MIRI_SEEDS controls how many seeds are being tried (default: 256);
+alternatively, MIRI_SEED_END controls the end of the (exclusive) seed range to try.
 
 ./miri bench <benches>:
 Runs the benchmarks from bench-cargo-miri in hyperfine. hyperfine needs to be installed.

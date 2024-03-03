@@ -5,7 +5,7 @@ use std::time::{Duration, Instant, SystemTime};
 fn duration_sanity(diff: Duration) {
     // On my laptop, I observed times around 15-40ms. Add 10x lee-way both ways.
     assert!(diff.as_millis() > 1);
-    assert!(diff.as_millis() < 500);
+    assert!(diff.as_millis() < 1000); // macOS is very slow sometimes
 }
 
 fn test_sleep() {

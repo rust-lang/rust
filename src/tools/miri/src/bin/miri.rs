@@ -534,6 +534,8 @@ fn main() {
                     ),
             };
             miri_config.tracked_alloc_ids.extend(ids);
+        } else if arg == "-Zmiri-track-alloc-accesses" {
+            miri_config.track_alloc_accesses = true;
         } else if let Some(param) = arg.strip_prefix("-Zmiri-compare-exchange-weak-failure-rate=") {
             let rate = match param.parse::<f64>() {
                 Ok(rate) if rate >= 0.0 && rate <= 1.0 => rate,

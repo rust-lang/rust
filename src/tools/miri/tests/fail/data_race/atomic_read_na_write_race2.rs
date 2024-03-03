@@ -25,7 +25,7 @@ pub fn main() {
         let j2 = spawn(move || {
             let c = c; // avoid field capturing
             let atomic_ref = &mut *c.0;
-            *atomic_ref.get_mut() = 32; //~ ERROR: Data race detected between (1) atomic load on thread `<unnamed>` and (2) non-atomic write on thread `<unnamed>`
+            *atomic_ref.get_mut() = 32; //~ ERROR: Data race detected between (1) atomic load on thread `unnamed-1` and (2) non-atomic write on thread `unnamed-2`
         });
 
         j1.join().unwrap();

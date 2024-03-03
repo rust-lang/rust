@@ -1,6 +1,3 @@
-use rustc_target::abi::{Abi, Size};
-
-use crate::borrow_tracker::{AccessKind, GlobalState, GlobalStateInner, ProtectorKind};
 use rustc_middle::{
     mir::{Mutability, RetagKind},
     ty::{
@@ -10,7 +7,9 @@ use rustc_middle::{
     },
 };
 use rustc_span::def_id::DefId;
+use rustc_target::abi::{Abi, Size};
 
+use crate::borrow_tracker::{GlobalState, GlobalStateInner, ProtectorKind};
 use crate::*;
 
 pub mod diagnostics;
@@ -70,6 +69,7 @@ impl<'tcx> Tree {
             tag,
             Some(range),
             global,
+            alloc_id,
             span,
             diagnostics::AccessCause::Explicit(access_kind),
         )
@@ -78,7 +78,7 @@ impl<'tcx> Tree {
     /// Check that this pointer has permission to deallocate this range.
     pub fn before_memory_deallocation(
         &mut self,
-        _alloc_id: AllocId,
+        alloc_id: AllocId,
         prov: ProvenanceExtra,
         range: AllocRange,
         machine: &MiriMachine<'_, 'tcx>,
@@ -91,7 +91,7 @@ impl<'tcx> Tree {
         };
         let global = machine.borrow_tracker.as_ref().unwrap();
         let span = machine.current_span();
-        self.dealloc(tag, range, global, span)
+        self.dealloc(tag, range, global, alloc_id, span)
     }
 
     pub fn expose_tag(&mut self, _tag: BorTag) {
@@ -109,6 +109,7 @@ impl<'tcx> Tree {
         machine: &MiriMachine<'_, 'tcx>,
         global: &GlobalState,
         tag: BorTag,
+        alloc_id: AllocId, // diagnostics
     ) -> InterpResult<'tcx> {
         let span = machine.current_span();
         self.perform_access(
@@ -116,6 +117,7 @@ impl<'tcx> Tree {
             tag,
             None, // no specified range because it occurs on the entire allocation
             global,
+            alloc_id,
             span,
             diagnostics::AccessCause::FnExit,
         )
@@ -211,7 +213,7 @@ trait EvalContextPrivExt<'mir: 'ecx, 'tcx: 'mir, 'ecx>: crate::MiriInterpCxExt<'
             let global = this.machine.borrow_tracker.as_ref().unwrap().borrow();
             let ty = place.layout.ty;
             if global.tracked_pointer_tags.contains(&new_tag) {
-                let kind_str = format!("{new_perm:?} (pointee type {ty})");
+                let kind_str = format!("initial state {} (pointee type {ty})", new_perm.initial_state);
                 this.emit_diagnostic(NonHaltingDiagnostic::CreatedPointerTag(
                     new_tag.inner(),
                     Some(kind_str),
@@ -299,6 +301,7 @@ trait EvalContextPrivExt<'mir: 'ecx, 'tcx: 'mir, 'ecx>: crate::MiriInterpCxExt<'
             orig_tag,
             Some(range),
             this.machine.borrow_tracker.as_ref().unwrap(),
+            alloc_id,
             this.machine.current_span(),
             diagnostics::AccessCause::Reborrow,
         )?;

@@ -32,7 +32,7 @@ pub fn main() {
 
         let j2 = spawn(move || {
             let c = c; // avoid field capturing
-            *c.0 = 64; //~ ERROR: Data race detected between (1) non-atomic write on thread `<unnamed>` and (2) non-atomic write on thread `<unnamed>`
+            *c.0 = 64; //~ ERROR: Data race detected between (1) non-atomic write on thread `unnamed-5` and (2) non-atomic write on thread `unnamed-6`
         });
 
         j1.join().unwrap();

@@ -160,9 +160,18 @@ pub type StackEmptyCallback<'mir, 'tcx> =
     Box<dyn FnMut(&mut MiriInterpCx<'mir, 'tcx>) -> InterpResult<'tcx, Poll<()>>>;
 
 impl<'mir, 'tcx> Thread<'mir, 'tcx> {
-    /// Get the name of the current thread, or `<unnamed>` if it was not set.
-    fn thread_name(&self) -> &[u8] {
-        if let Some(ref thread_name) = self.thread_name { thread_name } else { b"<unnamed>" }
+    /// Get the name of the current thread if it was set.
+    fn thread_name(&self) -> Option<&[u8]> {
+        self.thread_name.as_deref()
+    }
+
+    /// Get the name of the current thread for display purposes; will include thread ID if not set.
+    fn thread_display_name(&self, id: ThreadId) -> String {
+        if let Some(ref thread_name) = self.thread_name {
+            String::from_utf8_lossy(thread_name).into_owned()
+        } else {
+            format!("unnamed-{}", id.index())
+        }
     }
 
     /// Return the top user-relevant frame, if there is one.
@@ -205,7 +214,7 @@ impl<'mir, 'tcx> std::fmt::Debug for Thread<'mir, 'tcx> {
         write!(
             f,
             "{}({:?}, {:?})",
-            String::from_utf8_lossy(self.thread_name()),
+            String::from_utf8_lossy(self.thread_name().unwrap_or(b"<unnamed>")),
             self.state,
             self.join_status
         )
@@ -572,8 +581,12 @@ impl<'mir, 'tcx: 'mir> ThreadManager<'mir, 'tcx> {
     }
 
     /// Get the name of the given thread.
-    pub fn get_thread_name(&self, thread: ThreadId) -> &[u8] {
+    pub fn get_thread_name(&self, thread: ThreadId) -> Option<&[u8]> {
         self.threads[thread].thread_name()
+    }
+
+    pub fn get_thread_display_name(&self, thread: ThreadId) -> String {
+        self.threads[thread].thread_display_name(thread)
     }
 
     /// Put the thread into the blocked state.
@@ -969,18 +982,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
     }
 
     #[inline]
-    fn set_thread_name_wide(&mut self, thread: ThreadId, new_thread_name: &[u16]) {
-        let this = self.eval_context_mut();
-
-        // The Windows `GetThreadDescription` shim to get the thread name isn't implemented, so being lossy is okay.
-        // This is only read by diagnostics, which already use `from_utf8_lossy`.
-        this.machine
-            .threads
-            .set_thread_name(thread, String::from_utf16_lossy(new_thread_name).into_bytes());
-    }
-
-    #[inline]
-    fn get_thread_name<'c>(&'c self, thread: ThreadId) -> &'c [u8]
+    fn get_thread_name<'c>(&'c self, thread: ThreadId) -> Option<&[u8]>
     where
         'mir: 'c,
     {
