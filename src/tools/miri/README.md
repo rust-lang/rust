@@ -412,6 +412,8 @@ to Miri failing to detect cases of undefined behavior in a program.
   The default is to search for and remove unreachable provenance once every `10000` basic blocks. Setting
   this to `0` disables the garbage collector, which causes some programs to have explosive memory
   usage and/or super-linear runtime.
+* `-Zmiri-track-alloc-accesses` show not only allocation and free events for tracked allocations,
+  but also reads and writes.
 * `-Zmiri-track-alloc-id=<id1>,<id2>,...` shows a backtrace when the given allocations are
   being allocated or freed.  This helps in debugging memory leaks and
   use after free bugs. Specifying this argument multiple times does not overwrite the previous
