@@ -208,10 +208,6 @@ fn rustc_logger_config() -> rustc_log::LoggerConfig {
                 cfg.filter = Ok(var);
             }
         }
-        // Enable verbose entry/exit logging by default if MIRI_LOG is set.
-        if matches!(cfg.verbose_entry_exit, Err(VarError::NotPresent)) {
-            cfg.verbose_entry_exit = Ok(format!("1"));
-        }
     }
 
     cfg
