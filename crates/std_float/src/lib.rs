@@ -113,7 +113,6 @@ pub trait StdFloat: Sealed + Sized {
         unsafe { intrinsics::simd_div(self.ln(), base.ln()) }
     }
 
-
     /// Produces a vector where every element has the base-2 logarithm of the value
     /// in the equivalently-indexed element in `self`.
     #[inline]
