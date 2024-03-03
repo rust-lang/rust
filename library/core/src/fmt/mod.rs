@@ -484,13 +484,21 @@ impl FormattingOptions {
     }
 
     #[doc(hidden)]
-    #[unstable(feature = "fmt_internals", reason = "internal to standard library", issue = "none")]
+    #[unstable(
+        feature = "fmt_internals",
+        reason = "internal routines only exposed for testing",
+        issue = "none"
+    )]
     /// Flags for formatting
     pub fn flags(&mut self, flags: u32) {
         self.flags = flags
     }
     #[doc(hidden)]
-    #[unstable(feature = "fmt_internals", reason = "internal to standard library", issue = "none")]
+    #[unstable(
+        feature = "fmt_internals",
+        reason = "internal routines only exposed for testing",
+        issue = "none"
+    )]
     /// Flags for formatting
     pub fn get_flags(&self) -> u32 {
         self.flags
