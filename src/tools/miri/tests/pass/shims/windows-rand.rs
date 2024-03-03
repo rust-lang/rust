@@ -1,4 +1,4 @@
-//@only-target-windows: this directly tests windows only random functions
+//@only-target-windows: this directly tests windows-only functions
 use core::ffi::c_void;
 use core::mem::size_of_val;
 use core::ptr::null_mut;
@@ -26,12 +26,12 @@ extern "system" {
 #[cfg(target_arch = "x86")]
 #[link(name = "bcryptprimitives", kind = "raw-dylib", import_name_type = "undecorated")]
 extern "system" {
-    pub fn ProcessPrng(pbdata: *mut u8, cbdata: usize) -> BOOL;
+    fn ProcessPrng(pbdata: *mut u8, cbdata: usize) -> BOOL;
 }
 #[cfg(not(target_arch = "x86"))]
 #[link(name = "bcryptprimitives", kind = "raw-dylib")]
 extern "system" {
-    pub fn ProcessPrng(pbdata: *mut u8, cbdata: usize) -> BOOL;
+    fn ProcessPrng(pbdata: *mut u8, cbdata: usize) -> BOOL;
 }
 
 fn main() {
