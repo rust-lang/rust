@@ -320,7 +320,7 @@ impl FormattingOptions {
     /// always be printed.
     /// - `-`: Currently not used
     #[unstable(feature = "formatting_options", issue = "118117")]
-    pub const fn sign(&mut self, sign: Option<Sign>) -> &mut Self {
+    pub fn sign(&mut self, sign: Option<Sign>) -> &mut Self {
         self.flags =
             self.flags & !(1 << rt::Flag::SignMinus as u32 | 1 << rt::Flag::SignPlus as u32);
         match sign {
@@ -334,7 +334,7 @@ impl FormattingOptions {
     ///
     /// This is used to indicate for integer formats that the padding to width should both be done with a 0 character as well as be sign-aware
     #[unstable(feature = "formatting_options", issue = "118117")]
-    pub const fn sign_aware_zero_pad(&mut self, sign_aware_zero_pad: bool) -> &mut Self {
+    pub fn sign_aware_zero_pad(&mut self, sign_aware_zero_pad: bool) -> &mut Self {
         if sign_aware_zero_pad {
             self.flags |= 1 << rt::Flag::SignAwareZeroPad as u32
         } else {
@@ -351,7 +351,7 @@ impl FormattingOptions {
     /// - [`Octal`] - precedes the argument with a `0b`
     /// - [`Binary`] - precedes the argument with a `0o`
     #[unstable(feature = "formatting_options", issue = "118117")]
-    pub const fn alternate(&mut self, alternate: bool) -> &mut Self {
+    pub fn alternate(&mut self, alternate: bool) -> &mut Self {
         if alternate {
             self.flags |= 1 << rt::Flag::Alternate as u32
         } else {
@@ -366,7 +366,7 @@ impl FormattingOptions {
     /// being formatted is smaller than width some extra characters will be
     /// printed around it.
     #[unstable(feature = "formatting_options", issue = "118117")]
-    pub const fn fill(&mut self, fill: char) -> &mut Self {
+    pub fn fill(&mut self, fill: char) -> &mut Self {
         self.fill = fill;
         self
     }
@@ -375,7 +375,7 @@ impl FormattingOptions {
     /// The alignment specifies how the value being formatted should be
     /// positioned if it is smaller than the width of the formatter.
     #[unstable(feature = "formatting_options", issue = "118117")]
-    pub const fn align(&mut self, align: Option<Alignment>) -> &mut Self {
+    pub fn align(&mut self, align: Option<Alignment>) -> &mut Self {
         self.align = align;
         self
     }
@@ -386,7 +386,7 @@ impl FormattingOptions {
     /// the padding specified by [`FormattingOptions::fill`]/[`FormattingOptions::align`]
     /// will be used to take up the required space.
     #[unstable(feature = "formatting_options", issue = "118117")]
-    pub const fn width(&mut self, width: Option<usize>) -> &mut Self {
+    pub fn width(&mut self, width: Option<usize>) -> &mut Self {
         self.width = width;
         self
     }
@@ -400,14 +400,14 @@ impl FormattingOptions {
     /// - For floating-point types, this indicates how many digits after the
     /// decimal point should be printed.
     #[unstable(feature = "formatting_options", issue = "118117")]
-    pub const fn precision(&mut self, precision: Option<usize>) -> &mut Self {
+    pub fn precision(&mut self, precision: Option<usize>) -> &mut Self {
         self.precision = precision;
         self
     }
     /// Specifies whether the [`Debug`] trait should use lower-/upper-case
     /// hexadecimal or normal integers
     #[unstable(feature = "formatting_options", issue = "118117")]
-    pub const fn debug_as_hex(&mut self, debug_as_hex: Option<DebugAsHex>) -> &mut Self {
+    pub fn debug_as_hex(&mut self, debug_as_hex: Option<DebugAsHex>) -> &mut Self {
         self.flags = self.flags
             & !(1 << rt::Flag::DebugUpperHex as u32 | 1 << rt::Flag::DebugLowerHex as u32);
         match debug_as_hex {
@@ -479,7 +479,7 @@ impl FormattingOptions {
     ///
     /// You may alternatively use [`Formatter::new()`].
     #[unstable(feature = "formatting_options", issue = "118117")]
-    pub const fn create_formatter<'a>(self, write: &'a mut (dyn Write + 'a)) -> Formatter<'a> {
+    pub fn create_formatter<'a>(self, write: &'a mut (dyn Write + 'a)) -> Formatter<'a> {
         Formatter { options: self, buf: write }
     }
 
@@ -532,13 +532,13 @@ impl<'a> Formatter<'a> {
     ///
     /// You may alternatively use [`FormattingOptions::create_formatter()`].
     #[unstable(feature = "formatting_options", issue = "118117")]
-    pub const fn new(write: &'a mut (dyn Write + 'a), options: FormattingOptions) -> Self {
+    pub fn new(write: &'a mut (dyn Write + 'a), options: FormattingOptions) -> Self {
         Formatter { options, buf: write }
     }
 
     /// Creates a new formatter based on this one with given [`FormattingOptions`].
     #[unstable(feature = "formatting_options", issue = "118117")]
-    pub const fn with_options<'b>(&'b mut self, options: FormattingOptions) -> Formatter<'b> {
+    pub fn with_options<'b>(&'b mut self, options: FormattingOptions) -> Formatter<'b> {
         Formatter { options, buf: self.buf }
     }
 }
