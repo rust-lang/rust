@@ -384,6 +384,21 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
 
         Ok(())
     }
+    fn WakeByAddressAll(&mut self, ptr_op: &OpTy<'tcx, Provenance>) -> InterpResult<'tcx> {
+        let this = self.eval_context_mut();
+
+        let ptr = this.read_pointer(ptr_op)?;
+
+        // See the Linux futex implementation for why this fence exists.
+        this.atomic_fence(AtomicFenceOrd::SeqCst)?;
+
+        while let Some(thread) = this.futex_wake(ptr.addr().bytes(), u32::MAX) {
+            this.unblock_thread(thread);
+            this.unregister_timeout_callback_if_exists(thread);
+        }
+
+        Ok(())
+    }
 
     fn SleepConditionVariableSRW(
         &mut self,

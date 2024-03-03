@@ -366,6 +366,12 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
 
                 this.WakeByAddressSingle(ptr_op)?;
             }
+            "WakeByAddressAll" => {
+                let [ptr_op] =
+                    this.check_shim(abi, Abi::System { unwind: false }, link_name, args)?;
+
+                this.WakeByAddressAll(ptr_op)?;
+            }
 
             // Dynamic symbol loading
             "GetProcAddress" => {
