@@ -2256,6 +2256,13 @@ rustc_queries! {
     query trait_object_ty(trait_ref: ty::PolyTraitRef<'tcx>) -> Ty<'tcx> {
         desc { "Compute the trait object type for calling a method on a trait" }
     }
+
+    /// Strip auto traits off the first parameter in the parametr list. Intended for use when
+    /// constructing `InstanceDef::Virtual`, as auto traits won't be part of the vtable's `Self`
+    /// types.
+    query strip_receiver_auto(args: ty::GenericArgsRef<'tcx>) -> ty::GenericArgsRef<'tcx> {
+        desc { "Strip auto traits off the first type arg" }
+    }
 }
 
 rustc_query_append! { define_callbacks! }

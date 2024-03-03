@@ -4,7 +4,7 @@ use rustc_infer::infer::TyCtxtInferExt;
 use rustc_middle::query::Providers;
 use rustc_middle::traits::{BuiltinImplSource, CodegenObligationError};
 use rustc_middle::ty::GenericArgsRef;
-use rustc_middle::ty::{self, Instance, TyCtxt, TypeVisitableExt};
+use rustc_middle::ty::{self, Instance, Ty, TyCtxt, TypeVisitableExt};
 use rustc_span::sym;
 use rustc_trait_selection::traits;
 use traits::{translate_args, Reveal};
@@ -197,7 +197,7 @@ fn resolve_associated_item<'tcx>(
             traits::get_vtable_index_of_object_method(tcx, *vtable_base, trait_item_id).map(
                 |index| Instance {
                     def: ty::InstanceDef::Virtual(trait_item_id, index),
-                    args: rcvr_args,
+                    args: tcx.strip_receiver_auto(rcvr_args),
                 },
             )
         }
@@ -337,6 +337,26 @@ fn resolve_associated_item<'tcx>(
     })
 }
 
+fn strip_receiver_auto<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    args: ty::GenericArgsRef<'tcx>,
+) -> ty::GenericArgsRef<'tcx> {
+    let ty = args.type_at(0);
+    let ty::Dynamic(preds, lifetime, kind) = ty.kind() else {
+        bug!("Tried to strip auto traits from non-dynamic type {ty}");
+    };
+    let filtered_preds =
+        if preds.principal().is_some() {
+            tcx.mk_poly_existential_predicates_from_iter(preds.into_iter().filter(|pred| {
+                !matches!(pred.skip_binder(), ty::ExistentialPredicate::AutoTrait(..))
+            }))
+        } else {
+            ty::List::empty()
+        };
+    let new_rcvr = Ty::new_dynamic(tcx, filtered_preds, *lifetime, *kind);
+    tcx.mk_args_trait(new_rcvr, args.into_iter().skip(1))
+}
+
 pub(crate) fn provide(providers: &mut Providers) {
-    *providers = Providers { resolve_instance, ..*providers };
+    *providers = Providers { resolve_instance, strip_receiver_auto, ..*providers };
 }
