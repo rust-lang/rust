@@ -1,6 +1,8 @@
 // ignore-tidy-filelength
 
-use crate::common::{expected_output_path, UI_EXTENSIONS, UI_FIXED, UI_STDERR, UI_STDOUT};
+use crate::common::{
+    expected_output_path, UI_EXTENSIONS, UI_FIXED, UI_STDERR, UI_STDOUT, UI_SVG, UI_WINDOWS_SVG,
+};
 use crate::common::{incremental_dir, output_base_dir, output_base_name, output_testname_unique};
 use crate::common::{Assembly, Incremental, JsDocTest, MirOpt, RunMake, RustdocJson, Ui};
 use crate::common::{Codegen, CodegenUnits, DebugInfo, Debugger, Rustdoc};
@@ -4014,9 +4016,22 @@ impl<'test> TestCx<'test> {
         explicit_format: bool,
     ) -> usize {
         let stderr_bits = format!("{}bit.stderr", self.config.get_pointer_width());
+        let force_color_svg = self.props.compile_flags.iter().any(|s| s.contains("--color=always"));
         let (stderr_kind, stdout_kind) = match output_kind {
             TestOutput::Compile => (
-                { if self.props.stderr_per_bitwidth { &stderr_bits } else { UI_STDERR } },
+                if force_color_svg {
+                    if self.config.target.contains("windows") {
+                        // We single out Windows here because some of the CLI coloring is
+                        // specifically changed for Windows.
+                        UI_WINDOWS_SVG
+                    } else {
+                        UI_SVG
+                    }
+                } else if self.props.stderr_per_bitwidth {
+                    &stderr_bits
+                } else {
+                    UI_STDERR
+                },
                 UI_STDOUT,
             ),
             TestOutput::Run => (UI_RUN_STDERR, UI_RUN_STDOUT),
@@ -4051,7 +4066,9 @@ impl<'test> TestCx<'test> {
             _ => {}
         };
 
-        let stderr = if explicit_format {
+        let stderr = if force_color_svg {
+            anstyle_svg::Term::new().render_svg(&proc_res.stderr)
+        } else if explicit_format {
             proc_res.stderr.clone()
         } else {
             json::extract_rendered(&proc_res.stderr)

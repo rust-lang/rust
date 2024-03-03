@@ -23,6 +23,7 @@ const ROOT_ENTRY_LIMIT: usize = 872;
 const EXPECTED_TEST_FILE_EXTENSIONS: &[&str] = &[
     "rs",     // test source files
     "stderr", // expected stderr file, corresponds to a rs file
+    "svg",    // expected svg file, corresponds to a rs file, equivalent to stderr
     "stdout", // expected stdout file, corresponds to a rs file
     "fixed",  // expected source file after applying fixes
     "md",     // test directory descriptions

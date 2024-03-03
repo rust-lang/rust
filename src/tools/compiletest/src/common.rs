@@ -705,6 +705,8 @@ pub fn expected_output_path(
 
 pub const UI_EXTENSIONS: &[&str] = &[
     UI_STDERR,
+    UI_SVG,
+    UI_WINDOWS_SVG,
     UI_STDOUT,
     UI_FIXED,
     UI_RUN_STDERR,
@@ -716,6 +718,8 @@ pub const UI_EXTENSIONS: &[&str] = &[
     UI_COVERAGE_MAP,
 ];
 pub const UI_STDERR: &str = "stderr";
+pub const UI_SVG: &str = "svg";
+pub const UI_WINDOWS_SVG: &str = "windows.svg";
 pub const UI_STDOUT: &str = "stdout";
 pub const UI_FIXED: &str = "fixed";
 pub const UI_RUN_STDERR: &str = "run.stderr";
