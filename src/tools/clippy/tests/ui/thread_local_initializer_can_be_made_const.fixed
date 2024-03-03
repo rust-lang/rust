@@ -35,3 +35,10 @@ fn main() {
         //~^ ERROR: initializer for `thread_local` value can be made `const`
     }
 }
+
+#[clippy::msrv = "1.58"]
+fn f() {
+    thread_local! {
+        static TLS: i32 = 1;
+    }
+}
