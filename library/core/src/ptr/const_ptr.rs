@@ -790,6 +790,25 @@ impl<T: ?Sized> *const T {
         unsafe { intrinsics::ptr_offset_from_unsigned(self, origin) }
     }
 
+    /// Calculates the distance between two pointers, *where it's known that
+    /// `self` is equal to or greater than `origin`*. The returned value is in
+    /// units of **bytes**.
+    ///
+    /// This is purely a convenience for casting to a `u8` pointer and
+    /// using [`sub_ptr`][pointer::sub_ptr] on it. See that method for
+    /// documentation and safety requirements.
+    ///
+    /// For non-`Sized` pointees this operation considers only the data pointers,
+    /// ignoring the metadata.
+    #[unstable(feature = "ptr_sub_ptr", issue = "95892")]
+    #[rustc_const_unstable(feature = "const_ptr_sub_ptr", issue = "95892")]
+    #[inline]
+    #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
+    pub const unsafe fn byte_sub_ptr<U: ?Sized>(self, origin: *const U) -> usize {
+        // SAFETY: the caller must uphold the safety contract for `sub_ptr`.
+        unsafe { self.cast::<u8>().sub_ptr(origin.cast::<u8>()) }
+    }
+
     /// Returns whether two pointers are guaranteed to be equal.
     ///
     /// At runtime this function behaves like `Some(self == other)`.
