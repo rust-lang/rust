@@ -243,7 +243,7 @@ const EMULATE_ATOMIC_BOOL: bool =
 
 /// A boolean type which can be safely shared between threads.
 ///
-/// This type has the same in-memory representation as a [`bool`].
+/// This type has the same memory layout and bit validity as a [`bool`].
 ///
 /// **Note**: This type is only available on platforms that support atomic
 /// loads and stores of `u8`.
