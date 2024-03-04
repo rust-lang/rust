@@ -17,7 +17,7 @@ impl Trait for Bar {
     type Assoc = impl Iterator<Item = Foo>;
     fn foo() -> Self::Assoc {
         vec![Foo { field: () }].into_iter()
-        //~^ ERROR item constrains opaque type that is not in its signature
+        //~^ ERROR mismatched types
     }
 }
 
