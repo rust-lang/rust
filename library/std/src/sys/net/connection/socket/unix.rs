@@ -424,10 +424,21 @@ impl Socket {
         Ok(())
     }
 
+    #[cfg(not(target_os = "cygwin"))]
     pub fn set_linger(&self, linger: Option<Duration>) -> io::Result<()> {
         let linger = libc::linger {
             l_onoff: linger.is_some() as libc::c_int,
             l_linger: linger.unwrap_or_default().as_secs() as libc::c_int,
+        };
+
+        setsockopt(self, libc::SOL_SOCKET, SO_LINGER, linger)
+    }
+
+    #[cfg(target_os = "cygwin")]
+    pub fn set_linger(&self, linger: Option<Duration>) -> io::Result<()> {
+        let linger = libc::linger {
+            l_onoff: linger.is_some() as libc::c_ushort,
+            l_linger: linger.unwrap_or_default().as_secs() as libc::c_ushort,
         };
 
         setsockopt(self, libc::SOL_SOCKET, SO_LINGER, linger)
