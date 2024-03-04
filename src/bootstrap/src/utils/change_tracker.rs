@@ -136,4 +136,9 @@ pub const CONFIG_CHANGE_HISTORY: &[ChangeInfo] = &[
         severity: ChangeSeverity::Info,
         summary: "`x install` now skips providing tarball sources (under 'build/dist' path) to speed up the installation process.",
     },
+    ChangeInfo {
+        change_id: 121976,
+        severity: ChangeSeverity::Info,
+        summary: "A new `boostrap-cache-path` option has been introduced. Set it in your config.toml to use a different path for the download cache.",
+    },
 ];
