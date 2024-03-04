@@ -71,6 +71,8 @@ impl<'tcx> MonoItem<'tcx> {
                     // statements, plus one for the terminator.
                     InstanceKind::Item(..)
                     | InstanceKind::DropGlue(..)
+                    | InstanceKind::FutureDropPollShim(..)
+                    | InstanceKind::AsyncDropGlue(..)
                     | InstanceKind::AsyncDropGlueCtorShim(..) => {
                         let mir = tcx.instance_mir(instance.def);
                         mir.basic_blocks.iter().map(|bb| bb.statements.len() + 1).sum()
@@ -420,6 +422,8 @@ impl<'tcx> CodegenUnit<'tcx> {
                             | InstanceKind::CloneShim(..)
                             | InstanceKind::ThreadLocalShim(..)
                             | InstanceKind::FnPtrAddrShim(..)
+                            | InstanceKind::AsyncDropGlue(..)
+                            | InstanceKind::FutureDropPollShim(..)
                             | InstanceKind::AsyncDropGlueCtorShim(..) => None,
                         }
                     }

@@ -473,6 +473,9 @@ impl<'tcx> Stable<'tcx> for mir::AssertMessage<'tcx> {
             AssertKind::ResumedAfterPanic(coroutine) => {
                 stable_mir::mir::AssertMessage::ResumedAfterPanic(coroutine.stable(tables))
             }
+            AssertKind::ResumedAfterDrop(coroutine) => {
+                stable_mir::mir::AssertMessage::ResumedAfterDrop(coroutine.stable(tables))
+            }
             AssertKind::MisalignedPointerDereference { required, found } => {
                 stable_mir::mir::AssertMessage::MisalignedPointerDereference {
                     required: required.stable(tables),
@@ -621,13 +624,18 @@ impl<'tcx> Stable<'tcx> for mir::TerminatorKind<'tcx> {
             mir::TerminatorKind::UnwindTerminate(_) => TerminatorKind::Abort,
             mir::TerminatorKind::Return => TerminatorKind::Return,
             mir::TerminatorKind::Unreachable => TerminatorKind::Unreachable,
-            mir::TerminatorKind::Drop { place, target, unwind, replace: _ } => {
-                TerminatorKind::Drop {
-                    place: place.stable(tables),
-                    target: target.as_usize(),
-                    unwind: unwind.stable(tables),
-                }
-            }
+            mir::TerminatorKind::Drop {
+                place,
+                target,
+                unwind,
+                replace: _,
+                drop: _,
+                async_fut: _,
+            } => TerminatorKind::Drop {
+                place: place.stable(tables),
+                target: target.as_usize(),
+                unwind: unwind.stable(tables),
+            },
             mir::TerminatorKind::Call {
                 func,
                 args,

@@ -70,6 +70,8 @@ impl<'tcx, 'body> ParseCtxt<'tcx, 'body> {
                     target: self.parse_return_to(args[1])?,
                     unwind: self.parse_unwind_action(args[2])?,
                     replace: false,
+                    drop: None,
+                    async_fut: None,
                 })
             },
             @call(mir_call, args) => {

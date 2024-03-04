@@ -568,6 +568,7 @@ impl<'tcx> interpret::Machine<'tcx> for CompileTimeMachine<'tcx> {
             RemainderByZero(op) => RemainderByZero(eval_to_int(op)?),
             ResumedAfterReturn(coroutine_kind) => ResumedAfterReturn(*coroutine_kind),
             ResumedAfterPanic(coroutine_kind) => ResumedAfterPanic(*coroutine_kind),
+            ResumedAfterDrop(coroutine_kind) => ResumedAfterDrop(*coroutine_kind),
             MisalignedPointerDereference { ref required, ref found } => {
                 MisalignedPointerDereference {
                     required: eval_to_int(required)?,

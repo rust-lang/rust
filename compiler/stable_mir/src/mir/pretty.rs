@@ -295,7 +295,9 @@ fn pretty_assert_message<W: Write>(writer: &mut W, msg: &AssertMessage) -> io::R
                 "\"misaligned pointer dereference: address must be a multiple of {{}} but is {{}}\",{pretty_required}, {pretty_found}"
             )
         }
-        AssertMessage::ResumedAfterReturn(_) | AssertMessage::ResumedAfterPanic(_) => {
+        AssertMessage::ResumedAfterReturn(_)
+        | AssertMessage::ResumedAfterPanic(_)
+        | AssertMessage::ResumedAfterDrop(_) => {
             write!(writer, "{}", msg.description().unwrap())
         }
     }

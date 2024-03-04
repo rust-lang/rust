@@ -20,8 +20,9 @@ mod pending;
 mod poll_fn;
 mod ready;
 
+#[cfg(not(bootstrap))]
 #[unstable(feature = "async_drop", issue = "126482")]
-pub use async_drop::{async_drop, async_drop_in_place, AsyncDrop, AsyncDropInPlace};
+pub use async_drop::{async_drop_in_place, AsyncDrop};
 #[stable(feature = "into_future", since = "1.64.0")]
 pub use into_future::IntoFuture;
 #[stable(feature = "future_readiness_fns", since = "1.48.0")]

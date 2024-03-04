@@ -250,6 +250,7 @@ pub enum AssertMessage {
     RemainderByZero(Operand),
     ResumedAfterReturn(CoroutineKind),
     ResumedAfterPanic(CoroutineKind),
+    ResumedAfterDrop(CoroutineKind),
     MisalignedPointerDereference { required: Operand, found: Operand },
 }
 
@@ -301,6 +302,22 @@ impl AssertMessage {
                 CoroutineDesugaring::AsyncGen,
                 _,
             )) => Ok("`gen fn` should just keep returning `AssertMessage::None` after panicking"),
+
+            AssertMessage::ResumedAfterDrop(CoroutineKind::Coroutine(_)) => {
+                Ok("coroutine resumed after async drop")
+            }
+            AssertMessage::ResumedAfterDrop(CoroutineKind::Desugared(
+                CoroutineDesugaring::Async,
+                _,
+            )) => Ok("`async fn` resumed after async drop"),
+            AssertMessage::ResumedAfterDrop(CoroutineKind::Desugared(
+                CoroutineDesugaring::Gen,
+                _,
+            )) => Ok("`async gen fn` resumed after async drop"),
+            AssertMessage::ResumedAfterDrop(CoroutineKind::Desugared(
+                CoroutineDesugaring::AsyncGen,
+                _,
+            )) => Ok("`gen fn` should just keep returning `AssertMessage::None` after async drop"),
 
             AssertMessage::BoundsCheck { .. } => Ok("index out of bounds"),
             AssertMessage::MisalignedPointerDereference { .. } => {

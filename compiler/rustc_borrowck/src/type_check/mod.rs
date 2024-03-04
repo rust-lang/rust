@@ -1699,8 +1699,14 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                 }
             }
             TerminatorKind::Unreachable => {}
-            TerminatorKind::Drop { target, unwind, .. }
-            | TerminatorKind::Assert { target, unwind, .. } => {
+            TerminatorKind::Drop { target, unwind, drop, .. } => {
+                self.assert_iscleanup(body, block_data, target, is_cleanup);
+                self.assert_iscleanup_unwind(body, block_data, unwind, is_cleanup);
+                if let Some(drop) = drop {
+                    self.assert_iscleanup(body, block_data, drop, is_cleanup);
+                }
+            }
+            TerminatorKind::Assert { target, unwind, .. } => {
                 self.assert_iscleanup(body, block_data, target, is_cleanup);
                 self.assert_iscleanup_unwind(body, block_data, unwind, is_cleanup);
             }

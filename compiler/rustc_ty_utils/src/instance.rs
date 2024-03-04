@@ -5,7 +5,6 @@ use rustc_infer::infer::TyCtxtInferExt;
 use rustc_middle::bug;
 use rustc_middle::query::Providers;
 use rustc_middle::traits::{BuiltinImplSource, CodegenObligationError};
-use rustc_middle::ty::util::AsyncDropGlueMorphology;
 use rustc_middle::ty::{self, GenericArgsRef, Instance, TyCtxt, TypeVisitableExt};
 use rustc_span::sym;
 use rustc_trait_selection::traits;
@@ -40,19 +39,25 @@ fn resolve_instance_raw<'tcx>(
             if ty.needs_drop(tcx, param_env) {
                 debug!(" => nontrivial drop glue");
                 match *ty.kind() {
+                    ty::Coroutine(coroutine_def_id, ..) => {
+                        // FIXME: sync drop of coroutine with async drop (generate both versions?)
+                        // Currently just ignored
+                        if tcx.optimized_mir(coroutine_def_id).coroutine_drop_async().is_some() {
+                            ty::InstanceKind::DropGlue(def_id, None)
+                        } else {
+                            ty::InstanceKind::DropGlue(def_id, Some(ty))
+                        }
+                    }
                     ty::Closure(..)
                     | ty::CoroutineClosure(..)
-                    | ty::Coroutine(..)
                     | ty::Tuple(..)
                     | ty::Adt(..)
                     | ty::Dynamic(..)
                     | ty::Array(..)
-                    | ty::Slice(..) => {}
+                    | ty::Slice(..) => ty::InstanceKind::DropGlue(def_id, Some(ty)),
                     // Drop shims can only be built from ADTs.
                     _ => return Ok(None),
                 }
-
-                ty::InstanceKind::DropGlue(def_id, Some(ty))
             } else {
                 debug!(" => trivial drop glue");
                 ty::InstanceKind::DropGlue(def_id, None)
@@ -60,7 +65,7 @@ fn resolve_instance_raw<'tcx>(
         } else if tcx.is_lang_item(def_id, LangItem::AsyncDropInPlace) {
             let ty = args.type_at(0);
 
-            if ty.async_drop_glue_morphology(tcx) != AsyncDropGlueMorphology::Noop {
+            if ty.needs_async_drop(tcx, param_env) {
                 match *ty.kind() {
                     ty::Closure(..)
                     | ty::CoroutineClosure(..)
@@ -74,11 +79,14 @@ fn resolve_instance_raw<'tcx>(
                     _ => return Ok(None),
                 }
                 debug!(" => nontrivial async drop glue ctor");
-                ty::InstanceKind::AsyncDropGlueCtorShim(def_id, Some(ty))
+                ty::InstanceKind::AsyncDropGlueCtorShim(def_id, ty)
             } else {
                 debug!(" => trivial async drop glue ctor");
-                ty::InstanceKind::AsyncDropGlueCtorShim(def_id, None)
+                ty::InstanceKind::AsyncDropGlueCtorShim(def_id, ty)
             }
+        } else if tcx.is_lang_item(def_id, LangItem::AsyncDropInPlacePoll) {
+            let ty = args.type_at(0);
+            ty::InstanceKind::AsyncDropGlue(def_id, ty)
         } else {
             debug!(" => free item");
             // FIXME(effects): we may want to erase the effect param if that is present on this item.
