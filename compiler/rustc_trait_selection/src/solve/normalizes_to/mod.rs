@@ -812,9 +812,7 @@ impl<'tcx> assembly::GoalKind<'tcx> for NormalizesTo<'tcx> {
             | ty::Slice(_)
             | ty::Dynamic(_, _, _)
             | ty::Tuple(_)
-            | ty::Error(_) => {
-                Ty::async_destructor_ty(ecx.tcx(), goal.predicate.alias.args, goal.param_env)
-            }
+            | ty::Error(_) => self_ty.async_destructor_ty(ecx.tcx(), goal.param_env),
 
             // We do not call `Ty::discriminant_ty` on alias, param, or placeholder
             // types, which return `<self_ty as DiscriminantKind>::Discriminant`

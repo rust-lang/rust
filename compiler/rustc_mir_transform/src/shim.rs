@@ -1026,11 +1026,7 @@ fn build_async_destructor_ctor_shim<'tcx>(
     // FIXME: implement cleanup branches
 
     let span = tcx.def_span(def_id);
-    let Some(sig) = tcx
-        .fn_sig(def_id)
-        .instantiate(tcx, &[tcx.lifetimes.re_erased.into(), self_ty.into()])
-        .no_bound_vars()
-    else {
+    let Some(sig) = tcx.fn_sig(def_id).instantiate(tcx, &[self_ty.into()]).no_bound_vars() else {
         span_bug!(span, "async_drop_in_place_raw with bound vars for `{self_ty}`");
     };
 
@@ -1184,7 +1180,7 @@ fn build_async_destructor_ctor_shim<'tcx>(
                     func: Operand::function_handle(
                         tcx,
                         surface_async_drop_in_place_fn,
-                        [tcx.lifetimes.re_erased.into(), self_ty.into()],
+                        [self_ty.into()],
                         span,
                     ),
                     args: vec![respan(span, Operand::Move(self_ptr.into()))],
@@ -1234,11 +1230,7 @@ fn build_async_destructor_ctor_shim<'tcx>(
                     func: Operand::function_handle(
                         tcx,
                         slice_async_destructor_fn,
-                        [
-                            tcx.lifetimes.re_erased.into(),
-                            elem_ty.into(),
-                            /* HOST */ tcx.consts.false_.into(),
-                        ],
+                        [elem_ty.into(), /* HOST */ tcx.consts.false_.into()],
                         span,
                     ),
                     args: vec![respan(span, Operand::Move(slice_ptr.into()))],
@@ -1288,8 +1280,8 @@ fn build_async_destructor_ctor_shim<'tcx>(
                     .rev()
                     .flat_map(|elem_ty| -> [Ty<'tcx>; LOCALS_PER_ELEM] {
                         let elem_ptr_ty = Ty::new_mut_ptr(tcx, elem_ty);
-                        let deferred_async_drop_ty = deferred_async_drop_ty
-                            .instantiate(tcx, &[tcx.lifetimes.re_erased.into(), elem_ty.into()]);
+                        let deferred_async_drop_ty =
+                            deferred_async_drop_ty.instantiate(tcx, &[elem_ty.into()]);
                         last_chain_ty = future_chain_ty.instantiate(
                             tcx,
                             &[deferred_async_drop_ty.into(), last_chain_ty.into()],
@@ -1398,11 +1390,7 @@ fn build_async_destructor_ctor_shim<'tcx>(
                         func: Operand::function_handle(
                             tcx,
                             deferred_async_drop_fn,
-                            [
-                                tcx.lifetimes.re_erased.into(),
-                                node.elem_ty.into(),
-                                /* HOST */ tcx.consts.false_.into(),
-                            ],
+                            [node.elem_ty.into(), /* HOST */ tcx.consts.false_.into()],
                             span,
                         ),
                         args: vec![respan(span, Operand::Move(node.elem_ptr_local.into()))],
@@ -1493,7 +1481,7 @@ fn build_async_destructor_ctor_shim<'tcx>(
                         func: Operand::function_handle(
                             tcx,
                             surface_async_drop_fn,
-                            [tcx.lifetimes.re_erased.into(), self_ty.into()],
+                            [self_ty.into()],
                             span,
                         ),
                         args: vec![respan(span, Operand::Move(self_ptr.into()))],

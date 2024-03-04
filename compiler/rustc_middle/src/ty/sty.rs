@@ -2315,36 +2315,25 @@ impl<'tcx> Ty<'tcx> {
     }
 
     /// Returns the type of the async destructor of this type.
-    pub fn async_destructor_ty(
-        tcx: TyCtxt<'tcx>,
-        args: ty::GenericArgsRef<'tcx>,
-        param_env: ParamEnv<'tcx>,
-    ) -> Ty<'tcx> {
-        let self_ty = args.type_at(0);
-        let existential_lifetime = args.region_at(1);
-        debug_assert_eq!(args.len(), 2);
-
-        match *self_ty.kind() {
+    pub fn async_destructor_ty(self, tcx: TyCtxt<'tcx>, param_env: ParamEnv<'tcx>) -> Ty<'tcx> {
+        match *self.kind() {
             ty::Array(elem_ty, _) | ty::Slice(elem_ty) => tcx
                 .type_of(tcx.require_lang_item(hir::LangItem::SliceAsyncDestructor, None))
-                .instantiate(tcx, tcx.mk_args(&[existential_lifetime.into(), elem_ty.into()])),
+                .instantiate(tcx, &[elem_ty.into()]),
 
             ty::Param(_) | ty::Alias(..) | ty::Infer(ty::TyVar(_)) => {
                 let assoc_items = tcx.associated_item_def_ids(
                     tcx.require_lang_item(hir::LangItem::AsyncDestruct, None),
                 );
-                Ty::new_projection(tcx, assoc_items[0], args)
+                Ty::new_projection(tcx, assoc_items[0], [self])
             }
-            ty::Tuple(tys) => {
-                Self::chain_async_destructor_ty(tcx, tys.iter(), existential_lifetime, None)
-            }
+            ty::Tuple(tys) => Self::chain_async_destructor_ty(tcx, tys.iter(), None),
             ty::Adt(adt_def, args) if adt_def.is_struct() => {
                 debug_assert_eq!(adt_def.variants().len(), 1);
                 Self::chain_async_destructor_ty(
                     tcx,
                     adt_def.variant(VariantIdx::from_u32(0)).fields.iter().map(|f| f.ty(tcx, args)),
-                    existential_lifetime,
-                    self_ty.is_async_drop(tcx, param_env).then_some(self_ty),
+                    self.is_async_drop(tcx, param_env).then_some(self),
                 )
             }
 
@@ -2376,11 +2365,11 @@ impl<'tcx> Ty<'tcx> {
                 // don't exist for struct definition, thus it is not
                 // ambiguous with any parameters.
                 // FIXME: Add same restrictions on AsyncDrop impls as with Drop impls
-                if self_ty.is_async_drop(tcx, param_env) {
+                if self.is_async_drop(tcx, param_env) {
                     let assoc_items = tcx.associated_item_def_ids(
                         tcx.require_lang_item(hir::LangItem::AsyncDrop, None),
                     );
-                    Ty::new_projection(tcx, assoc_items[0], args)
+                    Ty::new_projection(tcx, assoc_items[0], [tcx.lifetimes.re_static])
                 } else {
                     tcx.type_of(tcx.require_lang_item(LangItem::FutureReadyUnit, None))
                         .instantiate_identity()
@@ -2391,7 +2380,7 @@ impl<'tcx> Ty<'tcx> {
             | ty::Foreign(_)
             | ty::Placeholder(_)
             | ty::Infer(FreshTy(_) | ty::FreshIntTy(_) | ty::FreshFloatTy(_)) => {
-                bug!("`async_destructor_ty` applied to unexpected type: {:?}", self_ty)
+                bug!("`async_destructor_ty` applied to unexpected type: {:?}", self)
             }
         }
     }
@@ -2399,7 +2388,6 @@ impl<'tcx> Ty<'tcx> {
     fn chain_async_destructor_ty<I>(
         tcx: TyCtxt<'tcx>,
         tys: I,
-        existential_lifetime: Region<'tcx>,
         surface_drop: Option<Ty<'tcx>>,
     ) -> Ty<'tcx>
     where
@@ -2410,16 +2398,14 @@ impl<'tcx> Ty<'tcx> {
         let future_chain = tcx.type_of(tcx.require_lang_item(hir::LangItem::FutureChain, None));
 
         tys.rev()
-            .map(|ty| {
-                deferred_async_drop.instantiate(tcx, &[existential_lifetime.into(), ty.into()])
-            })
+            .map(|ty| deferred_async_drop.instantiate(tcx, &[ty.into()]))
             .chain(surface_drop.map(|self_ty| {
                 let assoc_items = tcx
                     .associated_item_def_ids(tcx.require_lang_item(hir::LangItem::AsyncDrop, None));
                 Ty::new_projection(
                     tcx,
                     assoc_items[0],
-                    [GenericArg::from(self_ty), existential_lifetime.into()],
+                    [ty::GenericArg::from(self_ty), tcx.lifetimes.re_static.into()],
                 )
             }))
             .fold(

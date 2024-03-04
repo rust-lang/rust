@@ -55,7 +55,7 @@ fn resolve_instance<'tcx>(
                 ty::InstanceDef::DropGlue(def_id, None)
             }
         } else if Some(def_id) == tcx.lang_items().async_drop_in_place_fn() {
-            let ty = args.type_at(1);
+            let ty = args.type_at(0);
 
             match *ty.kind() {
                 ty::Array(..)

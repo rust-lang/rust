@@ -1521,20 +1521,17 @@ fn confirm_builtin_candidate<'cx, 'tcx>(
     let lang_items = tcx.lang_items();
     let item_def_id = obligation.predicate.def_id;
     let trait_def_id = tcx.trait_of_item(item_def_id).unwrap();
-    let (term, obligations, args) = if lang_items.discriminant_kind_trait() == Some(trait_def_id) {
+    let args = tcx.mk_args(&[self_ty.into()]);
+    let (term, obligations) = if lang_items.discriminant_kind_trait() == Some(trait_def_id) {
         let discriminant_def_id = tcx.require_lang_item(LangItem::Discriminant, None);
         assert_eq!(discriminant_def_id, item_def_id);
 
-        (self_ty.discriminant_ty(tcx).into(), Vec::new(), tcx.mk_args(&[self_ty.into()]))
+        (self_ty.discriminant_ty(tcx).into(), Vec::new())
     } else if lang_items.async_destruct_trait() == Some(trait_def_id) {
         let destructor_def_id = tcx.associated_item_def_ids(trait_def_id)[0];
         assert_eq!(destructor_def_id, item_def_id);
 
-        (
-            Ty::async_destructor_ty(tcx, obligation.predicate.args, obligation.param_env).into(),
-            Vec::new(),
-            obligation.predicate.args,
-        )
+        (self_ty.async_destructor_ty(tcx, obligation.param_env).into(), Vec::new())
     } else if lang_items.pointee_trait() == Some(trait_def_id) {
         let metadata_def_id = tcx.require_lang_item(LangItem::Metadata, None);
         assert_eq!(metadata_def_id, item_def_id);
@@ -1570,7 +1567,7 @@ fn confirm_builtin_candidate<'cx, 'tcx>(
                 Ty::new_projection(tcx, metadata_def_id, [tail])
             }
         });
-        (metadata_ty.into(), obligations, tcx.mk_args(&[self_ty.into()]))
+        (metadata_ty.into(), obligations)
     } else {
         bug!("unexpected builtin trait with associated type: {:?}", obligation.predicate);
     };
