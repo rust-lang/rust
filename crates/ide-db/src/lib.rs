@@ -412,9 +412,3 @@ impl SnippetCap {
         }
     }
 }
-
-#[cfg(test)]
-mod tests {
-    mod line_index;
-    mod sourcegen_lints;
-}

@@ -717,12 +717,10 @@ dependencies = [
  "memchr",
  "nohash-hasher",
  "once_cell",
- "oorandom",
  "parser",
  "profile",
  "rayon",
  "rustc-hash",
- "sourcegen",
  "span",
  "stdx",
  "syntax",
@@ -731,7 +729,6 @@ dependencies = [
  "text-edit",
  "tracing",
  "triomphe",
- "xshell",
 ]
 
 [[package]]
@@ -916,6 +913,7 @@ name = "line-index"
 version = "0.1.1"
 dependencies = [
  "nohash-hasher",
+ "oorandom",
  "text-size",
 ]
 

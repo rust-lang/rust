@@ -7,7 +7,7 @@ use crate::{
     project_root,
 };
 
-fn generate(check: bool) {
+pub(crate) fn generate(check: bool) {
     let diagnostics = Diagnostic::collect().unwrap();
     if !check {
         let contents =

@@ -23,7 +23,7 @@ impl flags::Release {
         }
 
         // Generates bits of manual.adoc.
-        cmd!(sh, "cargo test -p ide-diagnostics -p rust-analyzer -- sourcegen_").run()?;
+        codegen::diagnostics_docs::generate(false);
         codegen::assists_doc_tests::generate(false);
 
         let website_root = project_root().join("../rust-analyzer.github.io");
