@@ -39,7 +39,7 @@ fn benchmark_parser() {
     let tree = {
         let _b = bench("parsing");
         let p = SourceFile::parse(&data);
-        assert!(p.errors.is_none());
+        assert!(p.errors().is_empty());
         assert_eq!(p.tree().syntax.text_range().len(), 352474.into());
         p.tree()
     };
@@ -57,7 +57,7 @@ fn validation_tests() {
     dir_tests(&test_data_dir(), &["parser/validation"], "rast", |text, path| {
         let parse = SourceFile::parse(text);
         let errors = parse.errors();
-        assert_errors_are_present(errors, path);
+        assert_errors_are_present(&errors, path);
         parse.debug_dump()
     });
 }

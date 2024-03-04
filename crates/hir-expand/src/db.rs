@@ -303,7 +303,7 @@ fn parse_macro_expansion_error(
     macro_call_id: MacroCallId,
 ) -> ExpandResult<Box<[SyntaxError]>> {
     db.parse_macro_expansion(MacroFileId { macro_call_id })
-        .map(|it| it.0.errors().to_vec().into_boxed_slice())
+        .map(|it| it.0.errors().into_boxed_slice())
 }
 
 pub(crate) fn parse_with_map(
@@ -445,7 +445,7 @@ fn macro_arg(
 
         if matches!(loc.def.kind, MacroDefKind::BuiltInEager(..)) {
             match parse.errors() {
-                [] => ValueResult::ok((Arc::new(tt), undo_info)),
+                errors if errors.is_empty() => ValueResult::ok((Arc::new(tt), undo_info)),
                 errors => ValueResult::new(
                     (Arc::new(tt), undo_info),
                     // Box::<[_]>::from(res.errors()), not stable yet

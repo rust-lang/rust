@@ -788,11 +788,12 @@ impl<'a> AssocItemCollector<'a> {
             };
             self.diagnostics.push(diag);
         }
-        if let errors @ [_, ..] = parse.errors() {
+        let errors = parse.errors();
+        if !errors.is_empty() {
             self.diagnostics.push(DefDiagnostic::macro_expansion_parse_error(
                 self.module_id.local_id,
                 error_call_kind(),
-                errors,
+                errors.into_boxed_slice(),
             ));
         }
 

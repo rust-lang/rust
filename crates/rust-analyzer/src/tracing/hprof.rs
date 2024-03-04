@@ -52,7 +52,7 @@ use tracing_subscriber::{
 
 use crate::tracing::hprof;
 
-pub fn init(spec: &str) {
+pub fn init(spec: &str) -> tracing::subscriber::DefaultGuard {
     let (write_filter, allowed_names) = WriteFilter::from_spec(spec);
 
     // this filter the first pass for `tracing`: these are all the "profiling" spans, but things like
@@ -76,7 +76,7 @@ pub fn init(spec: &str) {
         .with_filter(profile_filter);
 
     let subscriber = Registry::default().with(layer);
-    tracing::subscriber::set_global_default(subscriber).unwrap();
+    tracing::subscriber::set_default(subscriber)
 }
 
 #[derive(Default, Debug)]
