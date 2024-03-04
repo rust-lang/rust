@@ -1,5 +1,6 @@
 use crate::tests::{
-    matches_codepattern, string_to_stream, with_error_checking_parse, with_expected_parse_error,
+    matches_codepattern, sess, string_to_stream, with_error_checking_parse,
+    with_expected_parse_error,
 };
 
 use ast::token::IdentIsRaw;
@@ -16,12 +17,7 @@ use rustc_session::parse::ParseSess;
 use rustc_span::create_default_session_globals_then;
 use rustc_span::symbol::{kw, sym, Symbol};
 use rustc_span::{BytePos, FileName, Pos, Span};
-
 use std::path::PathBuf;
-
-fn sess() -> ParseSess {
-    ParseSess::new(vec![crate::DEFAULT_LOCALE_RESOURCE, rustc_parse::DEFAULT_LOCALE_RESOURCE])
-}
 
 /// Parses an item.
 ///
