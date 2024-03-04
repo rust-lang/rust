@@ -1217,7 +1217,7 @@ impl<'a> ExtCtxt<'a> {
 ///
 /// This unifies the logic used for resolving `include_X!`.
 pub fn resolve_path(
-    parse_sess: &Session,
+    sess: &Session,
     path: impl Into<PathBuf>,
     span: Span,
 ) -> PResult<'_, PathBuf> {
@@ -1227,15 +1227,15 @@ pub fn resolve_path(
     // after macro expansion (that is, they are unhygienic).
     if !path.is_absolute() {
         let callsite = span.source_callsite();
-        let mut result = match parse_sess.source_map().span_to_filename(callsite) {
+        let mut result = match sess.source_map().span_to_filename(callsite) {
             FileName::Real(name) => name
                 .into_local_path()
                 .expect("attempting to resolve a file path in an external file"),
             FileName::DocTest(path, _) => path,
             other => {
-                return Err(parse_sess.dcx().create_err(errors::ResolveRelativePath {
+                return Err(sess.dcx().create_err(errors::ResolveRelativePath {
                     span,
-                    path: parse_sess.source_map().filename_for_diagnostics(&other).to_string(),
+                    path: sess.source_map().filename_for_diagnostics(&other).to_string(),
                 }));
             }
         };
