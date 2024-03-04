@@ -34,8 +34,9 @@ function check {
       ${enclave} > ${asm}
     ${filecheck} --input-file ${asm} ${checks}
 
-    if [ "${func_re}" != "rust_plus_one_global_asm" &&
-         "${func_re}" != "cmake_plus_one_c_global_asm" ]; then
+    if [ "${func_re}" != "rust_plus_one_global_asm" ] &&
+         [ "${func_re}" != "cmake_plus_one_c_global_asm" ] &&
+         [ "${func_re}" != "cmake_plus_one_cxx_global_asm" ]; then
         # The assembler cannot avoid explicit `ret` instructions. Sequences
         # of `shlq $0x0, (%rsp); lfence; retq` are used instead.
         # https://www.intel.com/content/www/us/en/developer/articles/technical/
@@ -48,7 +49,8 @@ build
 
 check "unw_getcontext" unw_getcontext.checks
 check "__libunwind_Registers_x86_64_jumpto" jumpto.checks
-check 'std::io::stdio::_print::[[:alnum:]]+' print.checks
+check 'std::io::stdio::_print::[[:alnum:]]+' print.with_frame_pointers.checks ||
+    check 'std::io::stdio::_print::[[:alnum:]]+' print.without_frame_pointers.checks
 check rust_plus_one_global_asm rust_plus_one_global_asm.checks
 
 check cc_plus_one_c cc_plus_one_c.checks
