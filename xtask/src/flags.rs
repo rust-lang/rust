@@ -92,6 +92,8 @@ pub enum CodegenType {
     #[default]
     All,
     AssistsDocTests,
+    DiagnosticsDocs,
+    LintDefinitions,
 }
 
 impl FromStr for CodegenType {
@@ -100,6 +102,8 @@ impl FromStr for CodegenType {
         match s {
             "all" => Ok(Self::All),
             "assists-doc-tests" => Ok(Self::AssistsDocTests),
+            "diagnostics-docs" => Ok(Self::DiagnosticsDocs),
+            "lints-definitions" => Ok(Self::LintDefinitions),
             _ => Err("Invalid option".to_owned()),
         }
     }

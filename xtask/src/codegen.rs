@@ -8,14 +8,21 @@ use xshell::{cmd, Shell};
 use crate::{flags, project_root};
 
 pub(crate) mod assists_doc_tests;
+pub(crate) mod diagnostics_docs;
+mod lints;
 
 impl flags::Codegen {
     pub(crate) fn run(self, _sh: &Shell) -> anyhow::Result<()> {
         match self.codegen_type.unwrap_or_default() {
             flags::CodegenType::All => {
+                diagnostics_docs::generate(self.check);
                 assists_doc_tests::generate(self.check);
+                // lints::generate(self.check) Updating clones the rust repo, so don't run it unless
+                // explicitly asked for
             }
             flags::CodegenType::AssistsDocTests => assists_doc_tests::generate(self.check),
+            flags::CodegenType::DiagnosticsDocs => diagnostics_docs::generate(self.check),
+            flags::CodegenType::LintDefinitions => lints::generate(self.check),
         }
         Ok(())
     }
