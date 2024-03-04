@@ -50,7 +50,6 @@ use either::Either;
 use hir_expand::{attrs::RawAttrs, name::Name, ExpandTo, HirFileId, InFile};
 use intern::Interned;
 use la_arena::{Arena, Idx, IdxRange, RawIdx};
-use profile::Count;
 use rustc_hash::FxHashMap;
 use smallvec::SmallVec;
 use span::{AstIdNode, FileAstId, Span};
@@ -94,8 +93,6 @@ impl fmt::Debug for RawVisibilityId {
 /// The item tree of a source file.
 #[derive(Debug, Default, Eq, PartialEq)]
 pub struct ItemTree {
-    _c: Count<Self>,
-
     top_level: SmallVec<[ModItem; 1]>,
     attrs: FxHashMap<AttrOwner, RawAttrs>,
 
@@ -262,14 +259,6 @@ impl ItemVisibilities {
         }
     }
 }
-
-static VIS_PUB: RawVisibility = RawVisibility::Public;
-static VIS_PRIV_IMPLICIT: RawVisibility =
-    RawVisibility::Module(ModPath::from_kind(PathKind::Super(0)), VisibilityExplicitness::Implicit);
-static VIS_PRIV_EXPLICIT: RawVisibility =
-    RawVisibility::Module(ModPath::from_kind(PathKind::Super(0)), VisibilityExplicitness::Explicit);
-static VIS_PUB_CRATE: RawVisibility =
-    RawVisibility::Module(ModPath::from_kind(PathKind::Crate), VisibilityExplicitness::Explicit);
 
 #[derive(Default, Debug, Eq, PartialEq)]
 struct ItemTreeData {
@@ -562,6 +551,20 @@ impl_index!(fields: Field, variants: Variant, params: Param);
 impl Index<RawVisibilityId> for ItemTree {
     type Output = RawVisibility;
     fn index(&self, index: RawVisibilityId) -> &Self::Output {
+        static VIS_PUB: RawVisibility = RawVisibility::Public;
+        static VIS_PRIV_IMPLICIT: RawVisibility = RawVisibility::Module(
+            ModPath::from_kind(PathKind::Super(0)),
+            VisibilityExplicitness::Implicit,
+        );
+        static VIS_PRIV_EXPLICIT: RawVisibility = RawVisibility::Module(
+            ModPath::from_kind(PathKind::Super(0)),
+            VisibilityExplicitness::Explicit,
+        );
+        static VIS_PUB_CRATE: RawVisibility = RawVisibility::Module(
+            ModPath::from_kind(PathKind::Crate),
+            VisibilityExplicitness::Explicit,
+        );
+
         match index {
             RawVisibilityId::PRIV_IMPLICIT => &VIS_PRIV_IMPLICIT,
             RawVisibilityId::PRIV_EXPLICIT => &VIS_PRIV_EXPLICIT,
@@ -871,25 +874,19 @@ impl UseTree {
             prefix: Option<ModPath>,
             path: &ModPath,
         ) -> Option<(ModPath, ImportKind)> {
-            match (prefix, &path.kind) {
+            match (prefix, path.kind) {
                 (None, _) => Some((path.clone(), ImportKind::Plain)),
                 (Some(mut prefix), PathKind::Plain) => {
-                    for segment in path.segments() {
-                        prefix.push_segment(segment.clone());
-                    }
+                    prefix.extend(path.segments().iter().cloned());
                     Some((prefix, ImportKind::Plain))
                 }
-                (Some(mut prefix), PathKind::Super(n))
-                    if *n > 0 && prefix.segments().is_empty() =>
-                {
+                (Some(mut prefix), PathKind::Super(n)) if n > 0 && prefix.segments().is_empty() => {
                     // `super::super` + `super::rest`
                     match &mut prefix.kind {
                         PathKind::Super(m) => {
                             cov_mark::hit!(concat_super_mod_paths);
-                            *m += *n;
-                            for segment in path.segments() {
-                                prefix.push_segment(segment.clone());
-                            }
+                            *m += n;
+                            prefix.extend(path.segments().iter().cloned());
                             Some((prefix, ImportKind::Plain))
                         }
                         _ => None,
@@ -963,10 +960,10 @@ impl ModItem {
             | ModItem::Mod(_)
             | ModItem::MacroRules(_)
             | ModItem::Macro2(_) => None,
-            ModItem::MacroCall(call) => Some(AssocItem::MacroCall(*call)),
-            ModItem::Const(konst) => Some(AssocItem::Const(*konst)),
-            ModItem::TypeAlias(alias) => Some(AssocItem::TypeAlias(*alias)),
-            ModItem::Function(func) => Some(AssocItem::Function(*func)),
+            &ModItem::MacroCall(call) => Some(AssocItem::MacroCall(call)),
+            &ModItem::Const(konst) => Some(AssocItem::Const(konst)),
+            &ModItem::TypeAlias(alias) => Some(AssocItem::TypeAlias(alias)),
+            &ModItem::Function(func) => Some(AssocItem::Function(func)),
         }
     }
 

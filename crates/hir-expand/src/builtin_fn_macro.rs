@@ -31,36 +31,18 @@ macro_rules! register_builtin {
         }
 
         impl BuiltinFnLikeExpander {
-            pub fn expand(
-                &self,
-                db: &dyn ExpandDatabase,
-                id: MacroCallId,
-                tt: &tt::Subtree,
-            ) -> ExpandResult<tt::Subtree> {
-                let expander = match *self {
+            pub fn expander(&self) -> fn (&dyn ExpandDatabase, MacroCallId, &tt::Subtree, Span) -> ExpandResult<tt::Subtree>  {
+                match *self {
                     $( BuiltinFnLikeExpander::$kind => $expand, )*
-                };
-
-                let span = db.lookup_intern_macro_call(id).call_site;
-                let span = span_with_def_site_ctxt(db, span, id);
-                expander(db, id, tt, span)
+                }
             }
         }
 
         impl EagerExpander {
-            pub fn expand(
-                &self,
-                db: &dyn ExpandDatabase,
-                id: MacroCallId,
-                tt: &tt::Subtree,
-            ) -> ExpandResult<tt::Subtree> {
-                let expander = match *self {
+            pub fn expander(&self) -> fn (&dyn ExpandDatabase, MacroCallId, &tt::Subtree, Span) -> ExpandResult<tt::Subtree>  {
+                match *self {
                     $( EagerExpander::$e_kind => $e_expand, )*
-                };
-
-                let span = db.lookup_intern_macro_call(id).call_site;
-                let span = span_with_def_site_ctxt(db, span, id);
-                expander(db, id, tt, span)
+                }
             }
         }
 
@@ -74,7 +56,31 @@ macro_rules! register_builtin {
     };
 }
 
+impl BuiltinFnLikeExpander {
+    pub fn expand(
+        &self,
+        db: &dyn ExpandDatabase,
+        id: MacroCallId,
+        tt: &tt::Subtree,
+    ) -> ExpandResult<tt::Subtree> {
+        let span = db.lookup_intern_macro_call(id).call_site;
+        let span = span_with_def_site_ctxt(db, span, id);
+        self.expander()(db, id, tt, span)
+    }
+}
+
 impl EagerExpander {
+    pub fn expand(
+        &self,
+        db: &dyn ExpandDatabase,
+        id: MacroCallId,
+        tt: &tt::Subtree,
+    ) -> ExpandResult<tt::Subtree> {
+        let span = db.lookup_intern_macro_call(id).call_site;
+        let span = span_with_def_site_ctxt(db, span, id);
+        self.expander()(db, id, tt, span)
+    }
+
     pub fn is_include(&self) -> bool {
         matches!(self, EagerExpander::Include)
     }

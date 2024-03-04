@@ -27,7 +27,6 @@ itertools.workspace = true
 base-db.workspace = true
 cfg.workspace = true
 paths.workspace = true
-profile.workspace = true
 stdx.workspace = true
 toolchain.workspace = true
 

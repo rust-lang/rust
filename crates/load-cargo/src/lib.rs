@@ -11,7 +11,7 @@ use hir_expand::proc_macro::{
 };
 use ide_db::{
     base_db::{CrateGraph, Env, SourceRoot},
-    prime_caches, Change, FxHashMap, RootDatabase,
+    prime_caches, ChangeWithProcMacros, FxHashMap, RootDatabase,
 };
 use itertools::Itertools;
 use proc_macro_api::{MacroDylib, ProcMacroServer};
@@ -314,7 +314,7 @@ fn load_crate_graph(
 
     let lru_cap = std::env::var("RA_LRU_CAP").ok().and_then(|it| it.parse::<usize>().ok());
     let mut db = RootDatabase::new(lru_cap);
-    let mut analysis_change = Change::new();
+    let mut analysis_change = ChangeWithProcMacros::new();
 
     db.enable_proc_attr_macros();
 

@@ -7,7 +7,7 @@ use std::{collections::hash_map::Entry, time::Instant};
 
 use crossbeam_channel::{unbounded, Receiver, Sender};
 use flycheck::FlycheckHandle;
-use hir::Change;
+use hir::ChangeWithProcMacros;
 use ide::{Analysis, AnalysisHost, Cancellable, FileId};
 use ide_db::base_db::{CrateId, ProcMacroPaths};
 use load_cargo::SourceRootConfig;
@@ -238,7 +238,7 @@ impl GlobalState {
 
         let mut file_changes = FxHashMap::<_, (bool, ChangedFile)>::default();
         let (change, modified_rust_files, workspace_structure_change) = {
-            let mut change = Change::new();
+            let mut change = ChangeWithProcMacros::new();
             let mut guard = self.vfs.write();
             let changed_files = guard.0.take_changes();
             if changed_files.is_empty() {

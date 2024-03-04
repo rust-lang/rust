@@ -144,6 +144,12 @@ impl ModPath {
     }
 }
 
+impl Extend<Name> for ModPath {
+    fn extend<T: IntoIterator<Item = Name>>(&mut self, iter: T) {
+        self.segments.extend(iter);
+    }
+}
+
 struct Display<'a> {
     db: &'a dyn ExpandDatabase,
     path: &'a ModPath,
