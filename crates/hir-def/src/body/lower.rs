@@ -10,7 +10,6 @@ use hir_expand::{
     ExpandError, InFile,
 };
 use intern::Interned;
-use profile::Count;
 use rustc_hash::FxHashMap;
 use smallvec::SmallVec;
 use span::AstIdMap;
@@ -76,7 +75,6 @@ pub(super) fn lower(
             params: Vec::new(),
             body_expr: dummy_expr_id(),
             block_scopes: Vec::new(),
-            _c: Count::new(),
         },
         expander,
         current_try_block_label: None,

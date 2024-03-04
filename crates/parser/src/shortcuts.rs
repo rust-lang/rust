@@ -26,6 +26,7 @@ pub enum StrStep<'a> {
 
 impl LexedStr<'_> {
     pub fn to_input(&self) -> crate::Input {
+        let _p = tracing::span!(tracing::Level::INFO, "LexedStr::to_input").entered();
         let mut res = crate::Input::default();
         let mut was_joint = false;
         for i in 0..self.len() {

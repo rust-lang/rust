@@ -10,6 +10,7 @@ use crate::{syntax_node::GreenNode, SyntaxError, SyntaxTreeBuilder};
 pub(crate) use crate::parsing::reparsing::incremental_reparse;
 
 pub(crate) fn parse_text(text: &str) -> (GreenNode, Vec<SyntaxError>) {
+    let _p = tracing::span!(tracing::Level::INFO, "parse_text").entered();
     let lexed = parser::LexedStr::new(text);
     let parser_input = lexed.to_input();
     let parser_output = parser::TopEntryPoint::SourceFile.parse(&parser_input);
@@ -21,6 +22,7 @@ pub(crate) fn build_tree(
     lexed: parser::LexedStr<'_>,
     parser_output: parser::Output,
 ) -> (GreenNode, Vec<SyntaxError>, bool) {
+    let _p = tracing::span!(tracing::Level::INFO, "build_tree").entered();
     let mut builder = SyntaxTreeBuilder::default();
 
     let is_eof = lexed.intersperse_trivia(&parser_output, &mut |step| match step {

@@ -7,7 +7,7 @@ use base_db::{
 };
 use cfg::CfgOptions;
 use hir_expand::{
-    change::Change,
+    change::ChangeWithProcMacros,
     db::ExpandDatabase,
     proc_macro::{
         ProcMacro, ProcMacroExpander, ProcMacroExpansionError, ProcMacroKind, ProcMacros,
@@ -103,7 +103,7 @@ impl<DB: ExpandDatabase + SourceDatabaseExt + Default + 'static> WithFixture for
 pub struct ChangeFixture {
     pub file_position: Option<(FileId, RangeOrOffset)>,
     pub files: Vec<FileId>,
-    pub change: Change,
+    pub change: ChangeWithProcMacros,
 }
 
 const SOURCE_ROOT_PREFIX: &str = "/";
@@ -320,7 +320,7 @@ impl ChangeFixture {
         };
         roots.push(root);
 
-        let mut change = Change {
+        let mut change = ChangeWithProcMacros {
             source_change,
             proc_macros: proc_macros.is_empty().not().then_some(proc_macros),
             toolchains: Some(iter::repeat(toolchain).take(crate_graph.len()).collect()),

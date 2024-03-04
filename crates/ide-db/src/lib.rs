@@ -44,7 +44,7 @@ pub mod syntax_helpers {
     pub use parser::LexedStr;
 }
 
-pub use hir::Change;
+pub use hir::ChangeWithProcMacros;
 
 use std::{fmt, mem::ManuallyDrop};
 

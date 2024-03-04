@@ -25,20 +25,10 @@ macro_rules! register_builtin {
         }
 
         impl BuiltinDeriveExpander {
-            pub fn expand(
-                &self,
-                db: &dyn ExpandDatabase,
-                id: MacroCallId,
-                tt: &ast::Adt,
-                token_map: SpanMapRef<'_>,
-            ) -> ExpandResult<tt::Subtree> {
-                let expander = match *self {
+            pub fn expander(&self) -> fn(Span, &ast::Adt, SpanMapRef<'_>) -> ExpandResult<tt::Subtree>  {
+                match *self {
                     $( BuiltinDeriveExpander::$trait => $expand, )*
-                };
-
-                let span = db.lookup_intern_macro_call(id).call_site;
-                let span = span_with_def_site_ctxt(db, span, id);
-                expander(span, tt, token_map)
+                }
             }
 
             fn find_by_name(name: &name::Name) -> Option<Self> {
@@ -50,6 +40,20 @@ macro_rules! register_builtin {
         }
 
     };
+}
+
+impl BuiltinDeriveExpander {
+    pub fn expand(
+        &self,
+        db: &dyn ExpandDatabase,
+        id: MacroCallId,
+        tt: &ast::Adt,
+        token_map: SpanMapRef<'_>,
+    ) -> ExpandResult<tt::Subtree> {
+        let span = db.lookup_intern_macro_call(id).call_site;
+        let span = span_with_def_site_ctxt(db, span, id);
+        self.expander()(span, tt, token_map)
+    }
 }
 
 register_builtin! {

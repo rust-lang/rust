@@ -23,7 +23,6 @@ tracing.workspace = true
 stdx.workspace = true
 syntax.workspace = true
 text-edit.workspace = true
-profile.workspace = true
 ide-db.workspace = true
 hir.workspace = true
 

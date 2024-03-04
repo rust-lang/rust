@@ -16,7 +16,7 @@
 use std::{iter, mem};
 
 use flycheck::{FlycheckConfig, FlycheckHandle};
-use hir::{db::DefDatabase, Change, ProcMacros};
+use hir::{db::DefDatabase, ChangeWithProcMacros, ProcMacros};
 use ide::CrateId;
 use ide_db::{
     base_db::{salsa::Durability, CrateGraph, ProcMacroPaths, Version},
@@ -357,7 +357,7 @@ impl GlobalState {
     }
 
     pub(crate) fn set_proc_macros(&mut self, proc_macros: ProcMacros) {
-        let mut change = Change::new();
+        let mut change = ChangeWithProcMacros::new();
         change.set_proc_macros(proc_macros);
         self.analysis_host.apply_change(change);
     }
@@ -548,7 +548,7 @@ impl GlobalState {
 
             ws_to_crate_graph(&self.workspaces, self.config.extra_env(), load)
         };
-        let mut change = Change::new();
+        let mut change = ChangeWithProcMacros::new();
         if self.config.expand_proc_macros() {
             change.set_proc_macros(
                 crate_graph

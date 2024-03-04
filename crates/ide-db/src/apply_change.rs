@@ -11,7 +11,7 @@ use profile::{memory_usage, Bytes};
 use rustc_hash::FxHashSet;
 use triomphe::Arc;
 
-use crate::{symbol_index::SymbolsDatabase, Change, RootDatabase};
+use crate::{symbol_index::SymbolsDatabase, ChangeWithProcMacros, RootDatabase};
 
 impl RootDatabase {
     pub fn request_cancellation(&mut self) {
@@ -20,7 +20,7 @@ impl RootDatabase {
         self.synthetic_write(Durability::LOW);
     }
 
-    pub fn apply_change(&mut self, change: Change) {
+    pub fn apply_change(&mut self, change: ChangeWithProcMacros) {
         let _p = tracing::span!(tracing::Level::INFO, "RootDatabase::apply_change").entered();
         self.request_cancellation();
         tracing::trace!("apply_change {:?}", change);

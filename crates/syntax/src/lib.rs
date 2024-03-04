@@ -168,6 +168,7 @@ pub use crate::ast::SourceFile;
 
 impl SourceFile {
     pub fn parse(text: &str) -> Parse<SourceFile> {
+        let _p = tracing::span!(tracing::Level::INFO, "SourceFile::parse").entered();
         let (green, mut errors) = parsing::parse_text(text);
         let root = SyntaxNode::new_root(green.clone());
 

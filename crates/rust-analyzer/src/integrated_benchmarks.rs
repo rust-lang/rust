@@ -10,7 +10,7 @@
 //! in release mode in VS Code. There's however "rust-analyzer: Copy Run Command Line"
 //! which you can use to paste the command in terminal and add `--release` manually.
 
-use hir::Change;
+use hir::ChangeWithProcMacros;
 use ide::{AnalysisHost, CallableSnippets, CompletionConfig, FilePosition, TextSize};
 use ide_db::{
     imports::insert_use::{ImportGranularity, InsertUseConfig},
@@ -55,19 +55,19 @@ fn integrated_highlighting_benchmark() {
         vfs.file_id(&path).unwrap_or_else(|| panic!("can't find virtual file for {path}"))
     };
 
+    crate::tracing::hprof::init("*>100");
+
     {
         let _it = stdx::timeit("initial");
         let analysis = host.analysis();
         analysis.highlight_as_html(file_id, false).unwrap();
     }
 
-    crate::tracing::hprof::init("*>100");
-
     {
         let _it = stdx::timeit("change");
         let mut text = host.analysis().file_text(file_id).unwrap().to_string();
         text.push_str("\npub fn _dummy() {}\n");
-        let mut change = Change::new();
+        let mut change = ChangeWithProcMacros::new();
         change.change_file(file_id, Some(Arc::from(text)));
         host.apply_change(change);
     }
@@ -120,7 +120,7 @@ fn integrated_completion_benchmark() {
         let completion_offset =
             patch(&mut text, "db.struct_data(self.id)", "sel;\ndb.struct_data(self.id)")
                 + "sel".len();
-        let mut change = Change::new();
+        let mut change = ChangeWithProcMacros::new();
         change.change_file(file_id, Some(Arc::from(text)));
         host.apply_change(change);
         completion_offset
@@ -163,7 +163,7 @@ fn integrated_completion_benchmark() {
         let completion_offset =
             patch(&mut text, "sel;\ndb.struct_data(self.id)", ";sel;\ndb.struct_data(self.id)")
                 + ";sel".len();
-        let mut change = Change::new();
+        let mut change = ChangeWithProcMacros::new();
         change.change_file(file_id, Some(Arc::from(text)));
         host.apply_change(change);
         completion_offset
@@ -205,7 +205,7 @@ fn integrated_completion_benchmark() {
         let completion_offset =
             patch(&mut text, "sel;\ndb.struct_data(self.id)", "self.;\ndb.struct_data(self.id)")
                 + "self.".len();
-        let mut change = Change::new();
+        let mut change = ChangeWithProcMacros::new();
         change.change_file(file_id, Some(Arc::from(text)));
         host.apply_change(change);
         completion_offset
