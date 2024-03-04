@@ -235,8 +235,8 @@ enum Elaborate {
 ///
 /// And a super predicate of `TargetTrait` that has any of the following forms:
 ///
-/// 1. `<OtherType as OtherTrait>::Assoc = <TargetType as TargetTrait>::Assoc`
-/// 2. `<<TargetType as TargetTrait>::Assoc as OtherTrait>::Assoc = OtherType`
+/// 1. `<OtherType as OtherTrait>::Assoc == <TargetType as TargetTrait>::Assoc`
+/// 2. `<<TargetType as TargetTrait>::Assoc as OtherTrait>::Assoc == OtherType`
 /// 3. `<TargetType as TargetTrait>::Assoc: OtherTrait`
 ///
 /// Replace the span of the cause with the span of the associated item:
@@ -292,6 +292,9 @@ fn extend_cause_with_original_assoc_item_obligation<'tcx>(
             }
 
             // Form 2: A projection obligation for an associated item failed to be met.
+            // We overwrite the span from above to ensure that a bound like
+            // `Self::Assoc1: Trait<OtherAssoc = Self::Assoc2>` gets the same
+            // span for both obligations that it is lowered to.
             if let Some(impl_item_span) = ty_to_impl_span(proj.self_ty()) {
                 cause.span = impl_item_span;
             }

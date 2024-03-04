@@ -80,6 +80,26 @@ LL | trait Sub: Super<Assoc = u16> {}
    = help: see issue #48214
    = help: add `#![feature(trivial_bounds)]` to the crate attributes to enable
 
-error: aborting due to 5 previous errors
+error[E0277]: the trait bound `(): SubGeneric<u16>` is not satisfied
+  --> $DIR/super-assoc-mismatch.rs:55:22
+   |
+LL |     type Assoc1<T> = ();
+   |                      ^^ the trait `SubGeneric<u16>` is not implemented for `()`, which is required by `<u8 as MultiAssoc>::Assoc1<()>: SubGeneric<<u8 as MultiAssoc>::Assoc2>`
+   |
+help: this trait has no implementations, consider adding one
+  --> $DIR/super-assoc-mismatch.rs:43:1
+   |
+LL | trait SubGeneric<T>: SuperGeneric<T, Assoc = T> {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+note: required by a bound in `MultiAssoc`
+  --> $DIR/super-assoc-mismatch.rs:46:23
+   |
+LL | trait MultiAssoc
+   |       ---------- required by a bound in this trait
+LL | where
+LL |     Self::Assoc1<()>: SubGeneric<Self::Assoc2>
+   |                       ^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `MultiAssoc`
+
+error: aborting due to 6 previous errors
 
 For more information about this error, try `rustc --explain E0277`.

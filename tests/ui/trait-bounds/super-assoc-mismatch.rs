@@ -33,4 +33,28 @@ impl BoundOnGat for u8 {
 fn trivial_bound() where (): Sub {}
 //~^ ERROR the trait bound `(): Sub` is not satisfied
 
+// The following is an edge case where the unsatisfied projection predicate
+// `<<u8 as MultiAssoc>::Assoc1<()> as SuperGeneric<u16>>::Assoc == <u8 as MultiAssoc>::Assoc2`
+// contains both associated types of `MultiAssoc`. To suppress the error about the unsatisfied
+// super projection, the error's span must be equal to the span of the unsatisfied trait error.
+trait SuperGeneric<T> {
+    type Assoc;
+}
+trait SubGeneric<T>: SuperGeneric<T, Assoc = T> {}
+trait MultiAssoc
+where
+    Self::Assoc1<()>: SubGeneric<Self::Assoc2>
+{
+    type Assoc1<T>;
+    type Assoc2;
+}
+impl SuperGeneric<u16> for () {
+    type Assoc = u8;
+}
+impl MultiAssoc for u8 {
+    type Assoc1<T> = ();
+    //~^ ERROR the trait bound `(): SubGeneric<u16>` is not satisfied
+    type Assoc2 = u16;
+}
+
 fn main() {}
