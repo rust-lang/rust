@@ -49,6 +49,12 @@ pub mod index {
         }
     }
 
+    impl<V> FromIterator<V> for IdxContainer<usize, V> {
+        fn from_iter<T: IntoIterator<Item = V>>(iter: T) -> Self {
+            Self(iter.into_iter().enumerate().collect())
+        }
+    }
+
     #[derive(Debug)]
     pub struct IdxSet<T>(pub rustc_hash::FxHashSet<T>);
     impl<T: Idx> IdxSet<T> {
