@@ -137,6 +137,58 @@ macro_rules! unknown_metavar {
     //~| ERROR expected expression
 }
 
+macro_rules! wrong_concat_declarations {
+    ($ex:expr) => {
+        ${concat()}
+        //~^ ERROR expected identifier
+
+        ${concat(aaaa)}
+        //~^ ERROR expected comma
+
+        ${concat(aaaa,)}
+        //~^ ERROR expected identifier
+
+        ${concat(aaaa, 1)}
+        //~^ ERROR expected identifier
+
+        ${concat(_, aaaa)}
+
+        ${concat(aaaa aaaa)}
+        //~^ ERROR expected comma
+
+        ${concat($ex)}
+        //~^ ERROR expected comma
+
+        ${concat($ex, aaaa)}
+        //~^ `${concat(..)}` currently only accepts identifiers
+
+        ${concat($ex, aaaa 123)}
+        //~^ ERROR expected comma
+
+        ${concat($ex, aaaa,)}
+        //~^ ERROR expected identifier
+
+        ${concat($ex, aaaa, 123)}
+        //~^ ERROR expected identifier
+    };
+}
+
+macro_rules! tt_that_is_dollar_sign_with_concat {
+    ($sign:tt, $name:ident) => {
+        const ${concat($sign name, _123)}: () = ();
+        //~^ expected comma
+        //~| expected identifier, found `$`
+    }
+}
+
+macro_rules! dollar_sign_without_referenced_ident {
+    ($ident:ident) => {
+        const ${concat(FOO, $foo)}: i32 = 2;
+        //~^ ${concat(..)}` currently only accepts identifiers
+    };
+}
+
+
 fn main() {
     curly__no_rhs_dollar__round!(a, b, c);
     curly__no_rhs_dollar__no_round!(a);
@@ -156,4 +208,10 @@ fn main() {
     unknown_count_ident!(a);
     unknown_ignore_ident!(a);
     unknown_metavar!(a);
+
+    wrong_concat_declarations!(1);
+
+    tt_that_is_dollar_sign_with_concat!($, FOO);
+
+    dollar_sign_without_referenced_ident!(VAR);
 }
