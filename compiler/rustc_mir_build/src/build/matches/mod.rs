@@ -1299,7 +1299,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 for candidate in candidates.iter_mut() {
                     candidate.visit_leaves(|leaf_candidate| new_candidates.push(leaf_candidate));
                 }
-                self.match_simplified_candidates(
+                self.match_candidates(
                     span,
                     scrutinee_span,
                     start_block,
@@ -1556,11 +1556,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         }
 
         let mut can_merge = true;
-
-        // Not `Iterator::all` because we don't want to short-circuit.
         for subcandidate in &mut candidate.subcandidates {
-            self.merge_trivial_subcandidates(subcandidate);
-
             // FIXME(or_patterns; matthewjasper) Try to be more aggressive here.
             can_merge &=
                 subcandidate.subcandidates.is_empty() && subcandidate.extra_data.is_empty();
