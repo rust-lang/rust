@@ -5434,12 +5434,61 @@ fn hover_feature() {
 
             The tracking issue for this feature is: None.
 
-            Intrinsics are never intended to be stable directly, but intrinsics are often
+            Intrinsics are rarely intended to be stable directly, but are usually
             exported in some sort of stable manner. Prefer using the stable interfaces to
             the intrinsic directly when you can.
 
             ------------------------
 
+
+            ## Intrinsics with fallback logic
+
+            Many intrinsics can be written in pure rust, albeit inefficiently or without supporting
+            some features that only exist on some backends. Backends can simply not implement those
+            intrinsics without causing any code miscompilations or failures to compile.
+            All intrinsic fallback bodies are automatically made cross-crate inlineable (like `#[inline]`)
+            by the codegen backend, but not the MIR inliner.
+
+            ```rust
+            #![feature(rustc_attrs, effects)]
+            #![allow(internal_features)]
+
+            #[rustc_intrinsic]
+            const unsafe fn const_deallocate(_ptr: *mut u8, _size: usize, _align: usize) {}
+            ```
+
+            Since these are just regular functions, it is perfectly ok to create the intrinsic twice:
+
+            ```rust
+            #![feature(rustc_attrs, effects)]
+            #![allow(internal_features)]
+
+            #[rustc_intrinsic]
+            const unsafe fn const_deallocate(_ptr: *mut u8, _size: usize, _align: usize) {}
+
+            mod foo {
+                #[rustc_intrinsic]
+                const unsafe fn const_deallocate(_ptr: *mut u8, _size: usize, _align: usize) {
+                    panic!("noisy const dealloc")
+                }
+            }
+
+            ```
+
+            The behaviour on backends that override the intrinsic is exactly the same. On other
+            backends, the intrinsic behaviour depends on which implementation is called, just like
+            with any regular function.
+
+            ## Intrinsics lowered to MIR instructions
+
+            Various intrinsics have native MIR operations that they correspond to. Instead of requiring
+            backends to implement both the intrinsic and the MIR operation, the `lower_intrinsics` pass
+            will convert the calls to the MIR operation. Backends do not need to know about these intrinsics
+            at all.
+
+            ## Intrinsics without fallback logic
+
+            These must be implemented by all backends.
 
             These are imported as if they were FFI functions, with the special
             `rust-intrinsic` ABI. For example, if one was in a freestanding
@@ -5459,7 +5508,8 @@ fn hover_feature() {
             }
             ```
 
-            As with any other FFI functions, these are always `unsafe` to call.
+            As with any other FFI functions, these are by default always `unsafe` to call.
+            You can add `#[rustc_safe_intrinsic]` to the intrinsic to make it safe to call.
 
         "#]],
     )
