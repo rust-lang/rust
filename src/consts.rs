@@ -77,10 +77,8 @@ impl<'gcc, 'tcx> StaticMethods for CodegenCx<'gcc, 'tcx> {
         // boolean SSA values are i1, but they have to be stored in i8 slots,
         // otherwise some LLVM optimization passes don't work as expected
         let val_llty = self.val_ty(value);
-        let value = if val_llty == self.type_i1() {
+        if val_llty == self.type_i1() {
             unimplemented!();
-        } else {
-            value
         };
 
         let instance = Instance::mono(self.tcx, def_id);
@@ -94,11 +92,9 @@ impl<'gcc, 'tcx> StaticMethods for CodegenCx<'gcc, 'tcx> {
 
         // As an optimization, all shared statics which do not have interior
         // mutability are placed into read-only memory.
-        if !is_mutable {
-            if self.type_is_freeze(ty) {
-                #[cfg(feature = "master")]
-                global.global_set_readonly();
-            }
+        if !is_mutable && self.type_is_freeze(ty) {
+            #[cfg(feature = "master")]
+            global.global_set_readonly();
         }
 
         if attrs.flags.contains(CodegenFnAttrFlags::THREAD_LOCAL) {

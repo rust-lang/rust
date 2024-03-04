@@ -1065,7 +1065,7 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
 
             // Return `result_type`'s maximum or minimum value on overflow
             // NOTE: convert the type to unsigned to have an unsigned shift.
-            let unsigned_type = result_type.to_unsigned(&self.cx);
+            let unsigned_type = result_type.to_unsigned(self.cx);
             let shifted = self.gcc_lshr(
                 self.gcc_int_cast(lhs, unsigned_type),
                 self.gcc_int(unsigned_type, width as i64 - 1),
@@ -1108,9 +1108,10 @@ fn try_intrinsic<'a, 'b, 'gcc, 'tcx>(
         // we can never unwind.
         let ret_align = bx.tcx.data_layout.i32_align.abi;
         bx.store(bx.const_i32(0), dest, ret_align);
-    } else if wants_msvc_seh(bx.sess()) {
-        unimplemented!();
     } else {
+        if wants_msvc_seh(bx.sess()) {
+            unimplemented!();
+        }
         #[cfg(feature = "master")]
         codegen_gnu_try(bx, try_func, data, _catch_func, dest);
         #[cfg(not(feature = "master"))]
@@ -1160,7 +1161,7 @@ fn codegen_gnu_try<'gcc>(
         let catch_func = func.get_param(2).to_rvalue();
         let try_func_ty = bx.type_func(&[bx.type_i8p()], bx.type_void());
 
-        let current_block = bx.block.clone();
+        let current_block = bx.block;
 
         bx.switch_to_block(then);
         bx.ret(bx.const_i32(0));
