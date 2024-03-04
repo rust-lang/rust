@@ -192,7 +192,8 @@ target | std | notes
 [`thumbv8m.main-none-eabihf`](platform-support/arm-none-eabi.md) | * | Bare ARMv8-M Mainline, hardfloat
 `wasm32-unknown-emscripten` | ✓ | WebAssembly via Emscripten
 `wasm32-unknown-unknown` | ✓ | WebAssembly
-`wasm32-wasi` | ✓ | WebAssembly with WASI
+`wasm32-wasi` | ✓ | WebAssembly with WASI (undergoing a [rename to `wasm32-wasip1`][wasi-rename])
+[`wasm32-wasip1`](platform-support/wasm32-wasip1.md) | ✓ | WebAssembly with WASI
 [`wasm32-wasi-preview1-threads`](platform-support/wasm32-wasi-preview1-threads.md) | ✓ |  | WebAssembly with WASI Preview 1 and threads
 `x86_64-apple-ios` | ✓ | 64-bit x86 iOS
 [`x86_64-fortanix-unknown-sgx`](platform-support/x86_64-fortanix-unknown-sgx.md) | ✓ | [Fortanix ABI] for 64-bit Intel SGX
@@ -207,6 +208,7 @@ target | std | notes
 [`x86_64-unknown-uefi`](platform-support/unknown-uefi.md) | * | 64-bit UEFI
 
 [^x86_32-floats-x87]: Floating-point support on `i586` targets is non-compliant: the `x87` registers and instructions used for these targets do not provide IEEE-754-compliant behavior, in particular when it comes to rounding and NaN payload bits. See [issue #114479][x86-32-float-issue].
+[wasi-rename]: https://github.com/rust-lang/compiler-team/issues/607
 
 [Fortanix ABI]: https://edp.fortanix.com/
 
