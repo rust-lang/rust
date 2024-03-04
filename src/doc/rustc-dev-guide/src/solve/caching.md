@@ -101,6 +101,7 @@ TODO: write this :3
 [^1]: This is overly restrictive: if all nested goal return the overflow response with some
 availabledepth `n`, then their result should be the same for any depths smaller than `n`.
 We can implement this optimization in the future.
+
 [chapter on coinduction]: ./coinduction.md
 [`provisional_result`]: https://github.com/rust-lang/rust/blob/7606c13961ddc1174b70638e934df0439b7dc515/compiler/rustc_trait_selection/src/solve/search_graph.rs#L57
 [initial-prov-result]: https://github.com/rust-lang/rust/blob/7606c13961ddc1174b70638e934df0439b7dc515/compiler/rustc_trait_selection/src/solve/search_graph.rs#L366-L370
