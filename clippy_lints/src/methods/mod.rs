@@ -3981,6 +3981,7 @@ declare_clippy_lint! {
 }
 
 declare_clippy_lint! {
+    /// ### What it does
     /// Checks for the manual creation of C strings (a string with a `NUL` byte at the end), either
     /// through one of the `CStr` constructor functions, or more plainly by calling `.as_ptr()`
     /// on a (byte) string literal with a hardcoded `\0` byte at the end.
