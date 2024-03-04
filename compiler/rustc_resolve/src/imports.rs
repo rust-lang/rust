@@ -1336,7 +1336,6 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         let mut is_redundant = true;
 
         let mut redundant_span = PerNS { value_ns: None, type_ns: None, macro_ns: None };
-
         self.per_ns(|this, ns| {
             if is_redundant && let Ok(binding) = source_bindings[ns].get() {
                 if binding.res() == Res::Err {
@@ -1368,12 +1367,24 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             let mut redundant_spans: Vec<_> = redundant_span.present_items().collect();
             redundant_spans.sort();
             redundant_spans.dedup();
+            let is_preload = self.extern_prelude_get(target, false).is_some();
+            let (msg, diag) = if is_preload {
+                (
+                    "already exists in the extern prelude",
+                    BuiltinLintDiagnostics::RedundantImportRemove(import.use_span),
+                )
+            } else {
+                (
+                    "imported redundantly",
+                    BuiltinLintDiagnostics::RedundantImport(redundant_spans, source),
+                )
+            };
             self.lint_buffer.buffer_lint_with_diagnostic(
                 UNUSED_IMPORTS,
                 id,
                 import.span,
-                format!("the item `{source}` is imported redundantly"),
-                BuiltinLintDiagnostics::RedundantImport(redundant_spans, source),
+                format!("the item `{source}` is {msg}"),
+                diag,
             );
         }
     }
