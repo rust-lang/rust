@@ -1,7 +1,6 @@
 //! This test demonstrates a bug where we accidentally
 //! detected opaque types in struct fields, but only if nested
 //! in projections of another opaque type.
-//@ check-pass
 
 #![feature(impl_trait_in_assoc_type)]
 
@@ -18,6 +17,7 @@ impl Trait for Bar {
     type Assoc = impl Iterator<Item = Foo>;
     fn foo() -> Self::Assoc {
         vec![Foo { field: () }].into_iter()
+        //~^ ERROR item constrains opaque type that is not in its signature
     }
 }
 
