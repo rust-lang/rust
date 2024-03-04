@@ -114,6 +114,9 @@ pub(super) fn builtin(sess: &Session, diagnostic: BuiltinLintDiagnostics, diag: 
                 diag.span_label(span, format!("the item `{ident}` is already {introduced} here"));
             }
         }
+        BuiltinLintDiagnostics::RedundantImportRemove(span) => {
+            diag.span_suggestion(span, "remove this import", "", Applicability::MachineApplicable);
+        }
         BuiltinLintDiagnostics::DeprecatedMacro(suggestion, span) => {
             stability::deprecation_suggestion(diag, "macro", suggestion, span)
         }

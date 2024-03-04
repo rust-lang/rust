@@ -578,6 +578,7 @@ pub enum BuiltinLintDiagnostics {
     UnknownCrateTypes(Span, String, String),
     UnusedImports(String, Vec<(Span, String)>, Option<Span>),
     RedundantImport(Vec<(Span, bool)>, Ident),
+    RedundantImportRemove(Span),
     DeprecatedMacro(Option<Symbol>, Span),
     MissingAbi(Span, Abi),
     UnusedDocComment(Span),

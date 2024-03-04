@@ -1,0 +1,9 @@
+error[E0432]: unresolved import `aux_issue_121915`
+  --> $DIR/redundant-import-issue-121915.rs:10:9
+   |
+LL |     use aux_issue_121915;
+   |         ^^^^^^^^^^^^^^^^ no `aux_issue_121915` in the root
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0432`.
