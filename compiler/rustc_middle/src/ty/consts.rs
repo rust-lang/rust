@@ -175,7 +175,20 @@ impl<'tcx> Const<'tcx> {
         let reported = tcx.dcx().span_delayed_bug(span, msg);
         Const::new_error(tcx, reported, ty)
     }
+}
 
+impl<'tcx> rustc_type_ir::new::Const<TyCtxt<'tcx>> for Const<'tcx> {
+    fn new_anon_bound(
+        tcx: TyCtxt<'tcx>,
+        debruijn: ty::DebruijnIndex,
+        var: ty::BoundVar,
+        ty: Ty<'tcx>,
+    ) -> Self {
+        Const::new_bound(tcx, debruijn, var, ty)
+    }
+}
+
+impl<'tcx> Const<'tcx> {
     /// Literals and const generic parameters are eagerly converted to a constant, everything else
     /// becomes `Unevaluated`.
     #[instrument(skip(tcx), level = "debug")]

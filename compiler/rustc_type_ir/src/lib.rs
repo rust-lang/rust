@@ -24,6 +24,7 @@ use std::sync::Arc as Lrc;
 #[cfg(feature = "nightly")]
 pub mod codec;
 pub mod fold;
+pub mod new;
 pub mod ty_info;
 pub mod ty_kind;
 pub mod visit;
