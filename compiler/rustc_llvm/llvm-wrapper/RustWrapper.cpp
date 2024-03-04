@@ -10,6 +10,7 @@
 #include "llvm/IR/IntrinsicsARM.h"
 #include "llvm/IR/LLVMRemarkStreamer.h"
 #include "llvm/IR/Mangler.h"
+#include "llvm/IR/Value.h"
 #include "llvm/Remarks/RemarkStreamer.h"
 #include "llvm/Remarks/RemarkSerializer.h"
 #include "llvm/Remarks/RemarkFormat.h"
@@ -1223,14 +1224,6 @@ extern "C" void LLVMRustWriteValueToString(LLVMValueRef V,
   }
 }
 
-// LLVMArrayType function does not support 64-bit ElementCount
-// FIXME: replace with LLVMArrayType2 when bumped minimal version to llvm-17
-// https://github.com/llvm/llvm-project/commit/35276f16e5a2cae0dfb49c0fbf874d4d2f177acc
-extern "C" LLVMTypeRef LLVMRustArrayType(LLVMTypeRef ElementTy,
-                                         uint64_t ElementCount) {
-  return wrap(ArrayType::get(unwrap(ElementTy), ElementCount));
-}
-
 DEFINE_SIMPLE_CONVERSION_FUNCTIONS(Twine, LLVMTwineRef)
 
 extern "C" void LLVMRustWriteTwineToString(LLVMTwineRef T, RustStringRef Str) {
@@ -2114,3 +2107,36 @@ extern "C" bool LLVMRustLLVMHasZlibCompressionForDebugSymbols() {
 extern "C" bool LLVMRustLLVMHasZstdCompressionForDebugSymbols() {
   return llvm::compression::zstd::isAvailable();
 }
+
+// Operations on composite constants.
+// These are clones of LLVM api functions that will become available in future releases.
+// They can be removed once Rust's minimum supported LLVM version supports them.
+// See https://github.com/rust-lang/rust/issues/121868
+// See https://llvm.org/doxygen/group__LLVMCCoreValueConstantComposite.html
+
+// FIXME: Remove when Rust's minimum supported LLVM version reaches 19.
+// https://github.com/llvm/llvm-project/commit/e1405e4f71c899420ebf8262d5e9745598419df8
+#if LLVM_VERSION_LT(19, 0)
+extern "C" LLVMValueRef LLVMConstStringInContext2(LLVMContextRef C,
+                                                  const char *Str,
+                                                  size_t Length,
+                                                  bool DontNullTerminate) {
+  return wrap(ConstantDataArray::getString(*unwrap(C), StringRef(Str, Length), !DontNullTerminate));
+}
+#endif
+
+// FIXME: Remove when Rust's minimum supported LLVM version reaches 17.
+// https://github.com/llvm/llvm-project/commit/35276f16e5a2cae0dfb49c0fbf874d4d2f177acc
+#if LLVM_VERSION_LT(17, 0)
+extern "C" LLVMValueRef LLVMConstArray2(LLVMTypeRef ElementTy,
+                                        LLVMValueRef *ConstantVals,
+                                        uint64_t Length) {
+  ArrayRef<Constant *> V(unwrap<Constant>(ConstantVals, Length), Length);
+  return wrap(ConstantArray::get(ArrayType::get(unwrap(ElementTy), Length), V));
+}
+
+extern "C" LLVMTypeRef LLVMArrayType2(LLVMTypeRef ElementTy,
+                                      uint64_t ElementCount) {
+  return wrap(ArrayType::get(unwrap(ElementTy), ElementCount));
+}
+#endif
