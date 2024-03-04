@@ -66,6 +66,8 @@ pub fn bolt_optimize(path: &Utf8Path, profile: &BoltProfile) -> anyhow::Result<(
         // Split function code into hot and code regions
         .arg("-split-functions")
         // Split as many basic blocks as possible
+        .arg("-split-all-cold")
+        // Move jump tables to a separate section
         .arg("-jump-tables=move")
         // Fold functions with identical code
         .arg("-icf=1")
@@ -76,8 +78,6 @@ pub fn bolt_optimize(path: &Utf8Path, profile: &BoltProfile) -> anyhow::Result<(
         // Inline functions smaller than 32 bytes
         .arg("-inline-small-functions")
         .arg("-inline-small-functions-bytes=32")
-        // Perform peephole optimizations
-        .arg("-peepholes=all")
         // The following flag saves about 50 MiB of libLLVM.so size.
         // However, it succeeds very non-deterministically. To avoid frequent artifact size swings,
         // it is kept disabled for now.
