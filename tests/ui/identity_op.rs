@@ -1,5 +1,3 @@
-//@compile-flags: -Zdeduplicate-diagnostics=yes
-
 #![warn(clippy::identity_op)]
 #![allow(unused)]
 #![allow(
