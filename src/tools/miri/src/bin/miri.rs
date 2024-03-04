@@ -402,11 +402,6 @@ fn main() {
             miri_config.check_alignment = miri::AlignmentCheck::None;
         } else if arg == "-Zmiri-symbolic-alignment-check" {
             miri_config.check_alignment = miri::AlignmentCheck::Symbolic;
-        } else if arg == "-Zmiri-check-number-validity" {
-            eprintln!(
-                "WARNING: the flag `-Zmiri-check-number-validity` no longer has any effect \
-                        since it is now enabled by default"
-            );
         } else if arg == "-Zmiri-disable-abi-check" {
             eprintln!(
                 "WARNING: the flag `-Zmiri-disable-abi-check` is deprecated and planned to be removed.\n\
@@ -453,8 +448,6 @@ fn main() {
             miri_config.collect_leak_backtraces = false;
         } else if arg == "-Zmiri-panic-on-unsupported" {
             miri_config.panic_on_unsupported = true;
-        } else if arg == "-Zmiri-tag-raw-pointers" {
-            eprintln!("WARNING: `-Zmiri-tag-raw-pointers` has no effect; it is enabled by default");
         } else if arg == "-Zmiri-strict-provenance" {
             miri_config.provenance_mode = ProvenanceMode::Strict;
         } else if arg == "-Zmiri-permissive-provenance" {
@@ -470,10 +463,6 @@ fn main() {
                 "scalar" => RetagFields::OnlyScalar,
                 _ => show_error!("`-Zmiri-retag-fields` can only be `all`, `none`, or `scalar`"),
             };
-        } else if arg == "-Zmiri-track-raw-pointers" {
-            eprintln!(
-                "WARNING: `-Zmiri-track-raw-pointers` has no effect; it is enabled by default"
-            );
         } else if let Some(param) = arg.strip_prefix("-Zmiri-seed=") {
             if miri_config.seed.is_some() {
                 show_error!("Cannot specify -Zmiri-seed multiple times!");
