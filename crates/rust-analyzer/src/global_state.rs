@@ -67,7 +67,7 @@ pub(crate) struct GlobalState {
     pub(crate) mem_docs: MemDocs,
     pub(crate) source_root_config: SourceRootConfig,
     /// A mapping that maps a local source root's `SourceRootId` to it parent's `SourceRootId`, if it has one.
-    pub(crate) local_roots_parent_map: FxHashMap<SourceRootId, Option<SourceRootId>>,
+    pub(crate) local_roots_parent_map: FxHashMap<SourceRootId, SourceRootId>,
     pub(crate) semantic_tokens_cache: Arc<Mutex<FxHashMap<Url, SemanticTokens>>>,
 
     // status
