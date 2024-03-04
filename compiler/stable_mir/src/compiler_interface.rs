@@ -41,6 +41,8 @@ pub trait Context {
     fn all_trait_impls(&self) -> ImplTraitDecls;
     fn trait_impls(&self, crate_num: CrateNum) -> ImplTraitDecls;
     fn trait_impl(&self, trait_impl: &ImplDef) -> ImplTrait;
+    fn crate_fn_defs(&self, crate_num: CrateNum) -> Vec<FnDef>;
+    fn crate_statics(&self, crate_num: CrateNum) -> Vec<StaticDef>;
     fn generics_of(&self, def_id: DefId) -> Generics;
     fn predicates_of(&self, def_id: DefId) -> GenericPredicates;
     fn explicit_predicates_of(&self, def_id: DefId) -> GenericPredicates;
@@ -199,7 +201,7 @@ pub trait Context {
 
 // A thread local variable that stores a pointer to the tables mapping between TyCtxt
 // datastructures and stable MIR datastructures
-scoped_thread_local! (static TLV: Cell<*const ()>);
+scoped_thread_local!(static TLV: Cell<*const ()>);
 
 pub fn run<F, T>(context: &dyn Context, f: F) -> Result<T, Error>
 where

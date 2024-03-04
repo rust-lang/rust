@@ -800,6 +800,12 @@ impl std::ops::Index<ParamTy> for GenericArgs {
     }
 }
 
+impl GenericArgs {
+    pub fn empty() -> GenericArgs {
+        GenericArgs(vec![])
+    }
+}
+
 impl std::ops::Index<ParamConst> for GenericArgs {
     type Output = Const;
 

@@ -27,10 +27,11 @@ use crate::compiler_interface::with;
 pub use crate::crate_def::CrateDef;
 pub use crate::crate_def::DefId;
 pub use crate::error::*;
+use crate::mir::mono::StaticDef;
 use crate::mir::pretty::function_name;
 use crate::mir::Body;
 use crate::mir::Mutability;
-use crate::ty::{ForeignModuleDef, ImplDef, IndexedVal, Span, TraitDef, Ty};
+use crate::ty::{FnDef, ForeignModuleDef, ImplDef, IndexedVal, Span, TraitDef, Ty};
 
 pub mod abi;
 #[macro_use]
@@ -99,6 +100,20 @@ impl Crate {
     /// The list of trait implementations in this crate.
     pub fn trait_impls(&self) -> ImplTraitDecls {
         with(|cx| cx.trait_impls(self.id))
+    }
+
+    /// Get all functions defined in this crate.
+    ///
+    /// This will not include function definitions re-exported by this crate.
+    pub fn fn_defs(&self) -> Vec<FnDef> {
+        with(|cx| cx.crate_fn_defs(self.id))
+    }
+
+    /// Get all public static variables defined in this crate.
+    ///
+    /// This will not include static variables re-exported by this crate.
+    pub fn statics(&self) -> Vec<StaticDef> {
+        with(|cx| cx.crate_statics(self.id))
     }
 }
 

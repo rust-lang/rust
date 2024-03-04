@@ -6,6 +6,9 @@
 #![allow(rustc::usage_of_qualified_ty)]
 
 use rustc_abi::HasDataLayout;
+use rustc_data_structures::fx::FxHashSet;
+use rustc_hir::def;
+use rustc_hir::def::DefKind;
 use rustc_middle::ty;
 use rustc_middle::ty::layout::{
     FnAbiOf, FnAbiOfHelpers, HasParamEnv, HasTyCtxt, LayoutOf, LayoutOfHelpers,
@@ -14,7 +17,7 @@ use rustc_middle::ty::print::{with_forced_trimmed_paths, with_no_trimmed_paths};
 use rustc_middle::ty::{
     GenericPredicates, Instance, List, ParamEnv, ScalarInt, TyCtxt, TypeVisitableExt, ValTree,
 };
-use rustc_span::def_id::LOCAL_CRATE;
+use rustc_span::def_id::{CRATE_DEF_INDEX, LOCAL_CRATE};
 use stable_mir::abi::{FnAbi, Layout, LayoutShape};
 use stable_mir::compiler_interface::Context;
 use stable_mir::mir::alloc::GlobalAlloc;
@@ -147,6 +150,26 @@ impl<'tcx> Context for TablesWrapper<'tcx> {
         impl_trait.stable(&mut *tables)
     }
 
+    fn crate_fn_defs(&self, crate_num: CrateNum) -> Vec<FnDef> {
+        let mut tables = self.0.borrow_mut();
+        let tcx = tables.tcx;
+        let krate = crate_num.internal(&mut *tables, tcx);
+        crate_items(tcx, krate, |def_id| {
+            (new_item_kind(tcx.def_kind(def_id)) == Some(ItemKind::Fn))
+                .then(|| FnDef(tables.create_def_id(def_id)))
+        })
+    }
+
+    fn crate_statics(&self, crate_num: CrateNum) -> Vec<StaticDef> {
+        let mut tables = self.0.borrow_mut();
+        let tcx = tables.tcx;
+        let krate = crate_num.internal(&mut *tables, tcx);
+        crate_items(tcx, krate, |def_id| {
+            (new_item_kind(tcx.def_kind(def_id)) == Some(ItemKind::Static))
+                .then(|| StaticDef(tables.create_def_id(def_id)))
+        })
+    }
+
     fn generics_of(&self, def_id: stable_mir::DefId) -> stable_mir::ty::Generics {
         let mut tables = self.0.borrow_mut();
         let def_id = tables[def_id];
@@ -249,7 +272,7 @@ impl<'tcx> Context for TablesWrapper<'tcx> {
 
     fn item_kind(&self, item: CrateItem) -> ItemKind {
         let tables = self.0.borrow();
-        new_item_kind(tables.tcx.def_kind(tables[item.0]))
+        new_item_kind(tables.tcx.def_kind(tables[item.0])).unwrap()
     }
 
     fn is_foreign_item(&self, item: DefId) -> bool {
@@ -261,7 +284,6 @@ impl<'tcx> Context for TablesWrapper<'tcx> {
         let mut tables = self.0.borrow_mut();
         let def_id = tables[def.def_id()];
         let tcx = tables.tcx;
-        use rustc_hir::def::DefKind;
         match tcx.def_kind(def_id) {
             DefKind::Fn => ForeignItemKind::Fn(tables.fn_def(def_id)),
             DefKind::Static(..) => ForeignItemKind::Static(tables.static_def(def_id)),
@@ -556,7 +578,9 @@ impl<'tcx> Context for TablesWrapper<'tcx> {
         global_alloc: &GlobalAlloc,
     ) -> Option<stable_mir::mir::alloc::AllocId> {
         let mut tables = self.0.borrow_mut();
-        let GlobalAlloc::VTable(ty, trait_ref) = global_alloc else { return None };
+        let GlobalAlloc::VTable(ty, trait_ref) = global_alloc else {
+            return None;
+        };
         let tcx = tables.tcx;
         let alloc_id = tables.tcx.vtable_allocation((
             ty.internal(&mut *tables, tcx),
@@ -600,6 +624,89 @@ impl<'tcx> Context for TablesWrapper<'tcx> {
         let tcx = tables.tcx;
         id.internal(&mut *tables, tcx).0.stable(&mut *tables)
     }
+}
+
+/// Retrieve all items of given kind defined in this crate.
+///
+/// This will not include re-exported items or filter private definitions.
+fn crate_items<'tcx, T, F>(
+    tcx: TyCtxt<'tcx>,
+    krate: rustc_span::def_id::CrateNum,
+    closure: F,
+) -> Vec<T>
+where
+    F: FnMut(rustc_span::def_id::DefId) -> Option<T>,
+{
+    if krate == LOCAL_CRATE {
+        local_crate_items(tcx, closure)
+    } else {
+        external_crate_items(tcx, krate, closure)
+    }
+}
+
+fn local_crate_items<'tcx, T, F>(tcx: TyCtxt<'tcx>, mut closure: F) -> Vec<T>
+where
+    F: FnMut(rustc_span::def_id::DefId) -> Option<T>,
+{
+    tcx.hir_crate_items(()).definitions().filter_map(|item| closure(item.to_def_id())).collect()
+}
+
+fn external_crate_items<'tcx, T, F>(
+    tcx: TyCtxt<'tcx>,
+    krate: rustc_span::def_id::CrateNum,
+    mut closure: F,
+) -> Vec<T>
+where
+    F: FnMut(rustc_span::def_id::DefId) -> Option<T>,
+{
+    let mut queue =
+        vec![(DefKind::Mod, rustc_span::def_id::DefId { index: CRATE_DEF_INDEX, krate })];
+    let mut visited = FxHashSet::default();
+    let mut result = vec![];
+    while let Some((kind, item)) = queue.pop() {
+        if !visited.contains(&item) {
+            visited.insert(item);
+            if matches!(kind, DefKind::Mod) {
+                for child in tcx.module_children(item) {
+                    match child.res {
+                        def::Res::Def(child_kind, child_id)
+                            if matches!(
+                                child_kind,
+                                DefKind::Mod
+                                    | DefKind::Enum
+                                    | DefKind::Trait
+                                    | DefKind::Struct
+                                    | DefKind::Union
+                            ) =>
+                        {
+                            if child_id.krate == krate {
+                                // Skip re-exported.
+                                queue.push((child_kind, child_id));
+                                result.extend(closure(child_id).into_iter())
+                            }
+                        }
+                        def::Res::Def(_, def_id) => {
+                            if def_id.krate == krate {
+                                result.extend(closure(def_id).into_iter())
+                            }
+                        }
+                        _ => { /* Do nothing */ }
+                    }
+                }
+            } else {
+                // Get associated items
+                result.extend(
+                    tcx.inherent_impls(item)
+                        .unwrap()
+                        .iter()
+                        .flat_map(|imp| tcx.associated_item_def_ids(imp))
+                        .copied()
+                        .filter_map(&mut closure),
+                )
+            }
+        }
+    }
+    result
 }
 
 pub struct TablesWrapper<'tcx>(pub RefCell<Tables<'tcx>>);

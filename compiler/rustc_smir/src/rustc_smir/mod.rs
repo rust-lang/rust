@@ -66,7 +66,7 @@ pub(crate) fn smir_crate(tcx: TyCtxt<'_>, crate_num: CrateNum) -> stable_mir::Cr
     stable_mir::Crate { id: crate_num.into(), name: crate_name, is_local }
 }
 
-pub(crate) fn new_item_kind(kind: DefKind) -> ItemKind {
+pub(crate) fn new_item_kind(kind: DefKind) -> Option<ItemKind> {
     match kind {
         DefKind::Mod
         | DefKind::Struct
@@ -88,16 +88,14 @@ pub(crate) fn new_item_kind(kind: DefKind) -> ItemKind {
         | DefKind::Field
         | DefKind::LifetimeParam
         | DefKind::Impl { .. }
-        | DefKind::GlobalAsm => {
-            unreachable!("Not a valid item kind: {kind:?}");
-        }
-        DefKind::Closure | DefKind::AssocFn | DefKind::Fn => ItemKind::Fn,
+        | DefKind::GlobalAsm => None,
+        DefKind::Closure | DefKind::AssocFn | DefKind::Fn => Some(ItemKind::Fn),
         DefKind::Const | DefKind::InlineConst | DefKind::AssocConst | DefKind::AnonConst => {
-            ItemKind::Const
+            Some(ItemKind::Const)
         }
-        DefKind::Static(_) => ItemKind::Static,
-        DefKind::Ctor(_, rustc_hir::def::CtorKind::Const) => ItemKind::Ctor(CtorKind::Const),
-        DefKind::Ctor(_, rustc_hir::def::CtorKind::Fn) => ItemKind::Ctor(CtorKind::Fn),
+        DefKind::Static(_) => Some(ItemKind::Static),
+        DefKind::Ctor(_, rustc_hir::def::CtorKind::Const) => Some(ItemKind::Ctor(CtorKind::Const)),
+        DefKind::Ctor(_, rustc_hir::def::CtorKind::Fn) => Some(ItemKind::Ctor(CtorKind::Fn)),
     }
 }
 
