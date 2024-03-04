@@ -4,8 +4,8 @@ use std::hash::Hash;
 
 use crate::visit::{Flags, TypeSuperVisitable, TypeVisitable};
 use crate::{
-    BoundVar, BoundVars, CanonicalVarInfo, ConstKind, DebruijnIndex, DebugWithInfcx, RegionKind,
-    TyKind, UniverseIndex,
+    new, BoundVar, BoundVars, CanonicalVarInfo, ConstKind, DebugWithInfcx, RegionKind, TyKind,
+    UniverseIndex,
 };
 
 pub trait Interner: Sized {
@@ -34,7 +34,8 @@ pub trait Interner: Sized {
         + Into<Self::GenericArg>
         + IntoKind<Kind = TyKind<Self>>
         + TypeSuperVisitable<Self>
-        + Flags;
+        + Flags
+        + new::Ty<Self>;
     type Tys: Copy + Debug + Hash + Ord + IntoIterator<Item = Self::Ty>;
     type AliasTy: Copy + DebugWithInfcx<Self> + Hash + Ord;
     type ParamTy: Copy + Debug + Hash + Ord;
@@ -56,7 +57,8 @@ pub trait Interner: Sized {
         + IntoKind<Kind = ConstKind<Self>>
         + ConstTy<Self>
         + TypeSuperVisitable<Self>
-        + Flags;
+        + Flags
+        + new::Const<Self>;
     type AliasConst: Copy + DebugWithInfcx<Self> + Hash + Ord;
     type PlaceholderConst: Copy + Debug + Hash + Ord + PlaceholderLike;
     type ParamConst: Copy + Debug + Hash + Ord;
@@ -71,7 +73,8 @@ pub trait Interner: Sized {
         + Ord
         + Into<Self::GenericArg>
         + IntoKind<Kind = RegionKind<Self>>
-        + Flags;
+        + Flags
+        + new::Region<Self>;
     type EarlyParamRegion: Copy + Debug + Hash + Ord;
     type LateParamRegion: Copy + Debug + Hash + Ord;
     type BoundRegion: Copy + Debug + Hash + Ord;
@@ -90,11 +93,6 @@ pub trait Interner: Sized {
     type ClosureKind: Copy + Debug + Hash + Eq;
 
     fn mk_canonical_var_infos(self, infos: &[CanonicalVarInfo<Self>]) -> Self::CanonicalVars;
-
-    // FIXME: We should not have all these constructors on `Interner`, but as functions on some trait.
-    fn mk_bound_ty(self, debruijn: DebruijnIndex, var: BoundVar) -> Self::Ty;
-    fn mk_bound_region(self, debruijn: DebruijnIndex, var: BoundVar) -> Self::Region;
-    fn mk_bound_const(self, debruijn: DebruijnIndex, var: BoundVar, ty: Self::Ty) -> Self::Const;
 }
 
 /// Common capabilities of placeholder kinds
