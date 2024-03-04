@@ -23,7 +23,7 @@ use crate::{Config, ErrorKind, FileName};
 
 /// ParseSess holds structs necessary for constructing a parser.
 pub(crate) struct ParseSess {
-    parse_sess: RawParseSess,
+    raw_psess: RawParseSess,
     ignore_path_set: Lrc<IgnorePathSet>,
     can_reset_errors: Lrc<AtomicBool>,
 }
@@ -180,10 +180,10 @@ impl ParseSess {
             config.hide_parse_errors(),
             config.color(),
         );
-        let parse_sess = RawParseSess::with_dcx(dcx, source_map);
+        let raw_psess = RawParseSess::with_dcx(dcx, source_map);
 
         Ok(ParseSess {
-            parse_sess,
+            raw_psess,
             ignore_path_set,
             can_reset_errors,
         })
@@ -202,14 +202,14 @@ impl ParseSess {
         relative: Option<symbol::Ident>,
         dir_path: &Path,
     ) -> Result<ModulePathSuccess, ModError<'_>> {
-        rustc_expand::module::default_submod_path(&self.parse_sess, id, relative, dir_path).or_else(
+        rustc_expand::module::default_submod_path(&self.raw_psess, id, relative, dir_path).or_else(
             |e| {
                 // If resloving a module relative to {dir_path}/{symbol} fails because a file
                 // could not be found, then try to resolve the module relative to {dir_path}.
                 // If we still can't find the module after searching for it in {dir_path},
                 // surface the original error.
                 if matches!(e, ModError::FileNotFound(..)) && relative.is_some() {
-                    rustc_expand::module::default_submod_path(&self.parse_sess, id, None, dir_path)
+                    rustc_expand::module::default_submod_path(&self.raw_psess, id, None, dir_path)
                         .map_err(|_| e)
                 } else {
                     Err(e)
@@ -219,7 +219,7 @@ impl ParseSess {
     }
 
     pub(crate) fn is_file_parsed(&self, path: &Path) -> bool {
-        self.parse_sess
+        self.raw_psess
             .source_map()
             .get_source_file(&rustc_span::FileName::Real(
                 rustc_span::RealFileName::LocalPath(path.to_path_buf()),
@@ -232,21 +232,21 @@ impl ParseSess {
     }
 
     pub(crate) fn set_silent_emitter(&mut self) {
-        self.parse_sess.dcx = DiagCtxt::new(silent_emitter());
+        self.raw_psess.dcx = DiagCtxt::new(silent_emitter());
     }
 
     pub(crate) fn span_to_filename(&self, span: Span) -> FileName {
-        self.parse_sess.source_map().span_to_filename(span).into()
+        self.raw_psess.source_map().span_to_filename(span).into()
     }
 
     pub(crate) fn span_to_file_contents(&self, span: Span) -> Lrc<rustc_span::SourceFile> {
-        self.parse_sess
+        self.raw_psess
             .source_map()
             .lookup_source_file(span.data().lo)
     }
 
     pub(crate) fn span_to_first_line_string(&self, span: Span) -> String {
-        let file_lines = self.parse_sess.source_map().span_to_lines(span).ok();
+        let file_lines = self.raw_psess.source_map().span_to_lines(span).ok();
 
         match file_lines {
             Some(fl) => fl
@@ -258,7 +258,7 @@ impl ParseSess {
     }
 
     pub(crate) fn line_of_byte_pos(&self, pos: BytePos) -> usize {
-        self.parse_sess.source_map().lookup_char_pos(pos).line
+        self.raw_psess.source_map().lookup_char_pos(pos).line
     }
 
     // TODO(calebcartwright): Preemptive, currently unused addition
@@ -271,15 +271,15 @@ impl ParseSess {
     }
 
     pub(crate) fn span_to_debug_info(&self, span: Span) -> String {
-        self.parse_sess.source_map().span_to_diagnostic_string(span)
+        self.raw_psess.source_map().span_to_diagnostic_string(span)
     }
 
     pub(crate) fn inner(&self) -> &RawParseSess {
-        &self.parse_sess
+        &self.raw_psess
     }
 
     pub(crate) fn snippet_provider(&self, span: Span) -> SnippetProvider {
-        let source_file = self.parse_sess.source_map().lookup_char_pos(span.lo()).file;
+        let source_file = self.raw_psess.source_map().lookup_char_pos(span.lo()).file;
         SnippetProvider::new(
             source_file.start_pos,
             source_file.end_position(),
@@ -288,7 +288,7 @@ impl ParseSess {
     }
 
     pub(crate) fn get_original_snippet(&self, file_name: &FileName) -> Option<Lrc<String>> {
-        self.parse_sess
+        self.raw_psess
             .source_map()
             .get_source_file(&file_name.into())
             .and_then(|source_file| source_file.src.clone())
@@ -308,23 +308,23 @@ impl ParseSess {
     }
 
     pub(super) fn has_errors(&self) -> bool {
-        self.parse_sess.dcx.has_errors().is_some()
+        self.raw_psess.dcx.has_errors().is_some()
     }
 
     pub(super) fn reset_errors(&self) {
-        self.parse_sess.dcx.reset_err_count();
+        self.raw_psess.dcx.reset_err_count();
     }
 }
 
 impl LineRangeUtils for ParseSess {
     fn lookup_line_range(&self, span: Span) -> LineRange {
         let snippet = self
-            .parse_sess
+            .raw_psess
             .source_map()
             .span_to_snippet(span)
             .unwrap_or_default();
-        let lo = self.parse_sess.source_map().lookup_line(span.lo()).unwrap();
-        let hi = self.parse_sess.source_map().lookup_line(span.hi()).unwrap();
+        let lo = self.raw_psess.source_map().lookup_line(span.lo()).unwrap();
+        let hi = self.raw_psess.source_map().lookup_line(span.hi()).unwrap();
 
         debug_assert_eq!(
             lo.sf.name, hi.sf.name,
