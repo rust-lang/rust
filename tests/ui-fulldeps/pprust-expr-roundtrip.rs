@@ -38,7 +38,7 @@ use rustc_ast::*;
 use rustc_ast_pretty::pprust;
 use rustc_parse::new_parser_from_source_str;
 use rustc_session::parse::ParseSess;
-use rustc_span::source_map::{FilePathMapping, Spanned};
+use rustc_span::source_map::Spanned;
 use rustc_span::symbol::Ident;
 use rustc_span::{FileName, DUMMY_SP};
 use thin_vec::{thin_vec, ThinVec};
@@ -225,7 +225,7 @@ fn main() {
 }
 
 fn run() {
-    let ps = ParseSess::new(vec![rustc_parse::DEFAULT_LOCALE_RESOURCE], FilePathMapping::empty());
+    let ps = ParseSess::new(vec![rustc_parse::DEFAULT_LOCALE_RESOURCE]);
 
     iter_exprs(2, &mut |mut e| {
         // If the pretty printer is correct, then `parse(print(e))` should be identical to `e`,

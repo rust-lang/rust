@@ -72,10 +72,8 @@ where
 
 /// Maps a string to tts, using a made-up filename.
 pub(crate) fn string_to_stream(source_str: String) -> TokenStream {
-    let ps = ParseSess::new(
-        vec![crate::DEFAULT_LOCALE_RESOURCE, rustc_parse::DEFAULT_LOCALE_RESOURCE],
-        FilePathMapping::empty(),
-    );
+    let ps =
+        ParseSess::new(vec![crate::DEFAULT_LOCALE_RESOURCE, rustc_parse::DEFAULT_LOCALE_RESOURCE]);
     source_file_to_stream(
         &ps,
         ps.source_map().new_source_file(PathBuf::from("bogofile").into(), source_str),
@@ -85,10 +83,8 @@ pub(crate) fn string_to_stream(source_str: String) -> TokenStream {
 
 /// Parses a string, returns a crate.
 pub(crate) fn string_to_crate(source_str: String) -> ast::Crate {
-    let ps = ParseSess::new(
-        vec![crate::DEFAULT_LOCALE_RESOURCE, rustc_parse::DEFAULT_LOCALE_RESOURCE],
-        FilePathMapping::empty(),
-    );
+    let ps =
+        ParseSess::new(vec![crate::DEFAULT_LOCALE_RESOURCE, rustc_parse::DEFAULT_LOCALE_RESOURCE]);
     with_error_checking_parse(source_str, &ps, |p| p.parse_crate_mod())
 }
 

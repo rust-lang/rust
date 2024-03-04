@@ -14,17 +14,13 @@ use rustc_parse::new_parser_from_source_str;
 use rustc_parse::parser::ForceCollect;
 use rustc_session::parse::ParseSess;
 use rustc_span::create_default_session_globals_then;
-use rustc_span::source_map::FilePathMapping;
 use rustc_span::symbol::{kw, sym, Symbol};
 use rustc_span::{BytePos, FileName, Pos, Span};
 
 use std::path::PathBuf;
 
 fn sess() -> ParseSess {
-    ParseSess::new(
-        vec![crate::DEFAULT_LOCALE_RESOURCE, rustc_parse::DEFAULT_LOCALE_RESOURCE],
-        FilePathMapping::empty(),
-    )
+    ParseSess::new(vec![crate::DEFAULT_LOCALE_RESOURCE, rustc_parse::DEFAULT_LOCALE_RESOURCE])
 }
 
 /// Parses an item.

@@ -233,9 +233,9 @@ pub struct ParseSess {
 
 impl ParseSess {
     /// Used for testing.
-    pub fn new(locale_resources: Vec<&'static str>, file_path_mapping: FilePathMapping) -> Self {
+    pub fn new(locale_resources: Vec<&'static str>) -> Self {
         let fallback_bundle = fallback_fluent_bundle(locale_resources, false);
-        let sm = Lrc::new(SourceMap::new(file_path_mapping));
+        let sm = Lrc::new(SourceMap::new(FilePathMapping::empty()));
         let emitter = Box::new(
             HumanEmitter::new(stderr_destination(ColorConfig::Auto), fallback_bundle)
                 .sm(Some(sm.clone())),
