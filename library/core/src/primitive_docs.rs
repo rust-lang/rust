@@ -1387,9 +1387,19 @@ mod prim_usize {}
 /// returning values from safe functions; such violations may result in undefined behavior. Where
 /// exceptions to this latter requirement exist, they will be called out explicitly in documentation.
 ///
+/// For references to [slices](primitive.slice.html) and [`str`s](primitive.str.html),
+/// a consequence of the above is that their lengths must always be short enough that
+/// `size_of_val(t) <= isize::MAX`. Said otherwise, for an element type `E` where
+/// `size_of::<E>() > 0` (a non-ZST), the length of the slice must never exceed
+/// `isize::MAX / size_of::<E>()`. (Raw pointers may have longer lengths, but
+/// references must not.  For example, compare the documentation of
+/// [`ptr::slice_from_raw_parts`](ptr/fn.slice_from_raw_parts.html) and
+/// [`slice::from_raw_parts`](slice/fn.from_raw_parts.html).)
+///
 /// It is not decided yet whether unsafe code may violate these invariants temporarily on internal
 /// data. As a consequence, unsafe code which violates these invariants temporarily on internal data
-/// may become unsound in future versions of Rust depending on how this question is decided.
+/// may already be unsound in current versions of Rust, and additional violations may become unsound
+/// in future versions of Rust depending on how this question is decided.
 ///
 /// [allocated object]: ptr#allocated-object
 #[stable(feature = "rust1", since = "1.0.0")]
