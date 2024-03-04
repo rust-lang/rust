@@ -1,5 +1,6 @@
+use rustc_ast_ir::try_visit;
+use rustc_ast_ir::visit::VisitorResult;
 use std::fmt;
-use std::ops::ControlFlow;
 
 use crate::fold::{FallibleTypeFolder, TypeFoldable};
 use crate::visit::{TypeVisitable, TypeVisitor};
@@ -91,14 +92,14 @@ where
     I::TypeOutlivesPredicate: TypeVisitable<I>,
     I::RegionOutlivesPredicate: TypeVisitable<I>,
 {
-    fn visit_with<V: TypeVisitor<I>>(&self, visitor: &mut V) -> ControlFlow<V::BreakTy> {
+    fn visit_with<V: TypeVisitor<I>>(&self, visitor: &mut V) -> V::Result {
         match self {
             ClauseKind::Trait(p) => p.visit_with(visitor),
             ClauseKind::RegionOutlives(p) => p.visit_with(visitor),
             ClauseKind::TypeOutlives(p) => p.visit_with(visitor),
             ClauseKind::Projection(p) => p.visit_with(visitor),
             ClauseKind::ConstArgHasType(c, t) => {
-                c.visit_with(visitor)?;
+                try_visit!(c.visit_with(visitor));
                 t.visit_with(visitor)
             }
             ClauseKind::WellFormed(p) => p.visit_with(visitor),
@@ -205,21 +206,21 @@ where
     I::NormalizesTo: TypeVisitable<I>,
     ClauseKind<I>: TypeVisitable<I>,
 {
-    fn visit_with<V: TypeVisitor<I>>(&self, visitor: &mut V) -> ControlFlow<V::BreakTy> {
+    fn visit_with<V: TypeVisitor<I>>(&self, visitor: &mut V) -> V::Result {
         match self {
             PredicateKind::Clause(p) => p.visit_with(visitor),
             PredicateKind::ObjectSafe(d) => d.visit_with(visitor),
             PredicateKind::Subtype(s) => s.visit_with(visitor),
             PredicateKind::Coerce(s) => s.visit_with(visitor),
             PredicateKind::ConstEquate(a, b) => {
-                a.visit_with(visitor)?;
+                try_visit!(a.visit_with(visitor));
                 b.visit_with(visitor)
             }
-            PredicateKind::Ambiguous => ControlFlow::Continue(()),
+            PredicateKind::Ambiguous => V::Result::output(),
             PredicateKind::NormalizesTo(p) => p.visit_with(visitor),
             PredicateKind::AliasRelate(a, b, d) => {
-                a.visit_with(visitor)?;
-                b.visit_with(visitor)?;
+                try_visit!(a.visit_with(visitor));
+                try_visit!(b.visit_with(visitor));
                 d.visit_with(visitor)
             }
         }

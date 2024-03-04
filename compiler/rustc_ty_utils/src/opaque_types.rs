@@ -8,7 +8,6 @@ use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_middle::ty::{TypeSuperVisitable, TypeVisitable, TypeVisitor};
 use rustc_span::Span;
 use rustc_trait_selection::traits::check_args_compatible;
-use std::ops::ControlFlow;
 
 use crate::errors::{DuplicateArg, NotParam};
 
@@ -185,16 +184,15 @@ impl<'tcx> OpaqueTypeCollector<'tcx> {
 
 impl<'tcx> super::sig_types::SpannedTypeVisitor<'tcx> for OpaqueTypeCollector<'tcx> {
     #[instrument(skip(self), ret, level = "trace")]
-    fn visit(&mut self, span: Span, value: impl TypeVisitable<TyCtxt<'tcx>>) -> ControlFlow<!> {
+    fn visit(&mut self, span: Span, value: impl TypeVisitable<TyCtxt<'tcx>>) {
         self.visit_spanned(span, value);
-        ControlFlow::Continue(())
     }
 }
 
 impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for OpaqueTypeCollector<'tcx> {
     #[instrument(skip(self), ret, level = "trace")]
-    fn visit_ty(&mut self, t: Ty<'tcx>) -> ControlFlow<!> {
-        t.super_visit_with(self)?;
+    fn visit_ty(&mut self, t: Ty<'tcx>) {
+        t.super_visit_with(self);
         match t.kind() {
             ty::Alias(ty::Opaque, alias_ty) if alias_ty.def_id.is_local() => {
                 self.visit_opaque_ty(alias_ty);
@@ -203,7 +201,7 @@ impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for OpaqueTypeCollector<'tcx> {
                 self.tcx
                     .type_of(alias_ty.def_id)
                     .instantiate(self.tcx, alias_ty.args)
-                    .visit_with(self)?;
+                    .visit_with(self);
             }
             ty::Alias(ty::Projection, alias_ty) => {
                 // This avoids having to do normalization of `Self::AssocTy` by only
@@ -235,11 +233,11 @@ impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for OpaqueTypeCollector<'tcx> {
                             );
 
                             if check_args_compatible(self.tcx, assoc, impl_args) {
-                                return self
-                                    .tcx
+                                self.tcx
                                     .type_of(assoc.def_id)
                                     .instantiate(self.tcx, impl_args)
                                     .visit_with(self);
+                                return;
                             } else {
                                 self.tcx.dcx().span_delayed_bug(
                                     self.tcx.def_span(assoc.def_id),
@@ -252,7 +250,7 @@ impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for OpaqueTypeCollector<'tcx> {
             }
             ty::Adt(def, _) if def.did().is_local() => {
                 if !self.seen.insert(def.did().expect_local()) {
-                    return ControlFlow::Continue(());
+                    return;
                 }
                 for variant in def.variants().iter() {
                     for field in variant.fields.iter() {
@@ -271,7 +269,6 @@ impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for OpaqueTypeCollector<'tcx> {
             }
             _ => trace!(kind=?t.kind()),
         }
-        ControlFlow::Continue(())
     }
 }
 
@@ -279,20 +276,18 @@ struct ImplTraitInAssocTypeCollector<'tcx>(OpaqueTypeCollector<'tcx>);
 
 impl<'tcx> super::sig_types::SpannedTypeVisitor<'tcx> for ImplTraitInAssocTypeCollector<'tcx> {
     #[instrument(skip(self), ret, level = "trace")]
-    fn visit(&mut self, span: Span, value: impl TypeVisitable<TyCtxt<'tcx>>) -> ControlFlow<!> {
+    fn visit(&mut self, span: Span, value: impl TypeVisitable<TyCtxt<'tcx>>) {
         let old = self.0.span;
         self.0.span = Some(span);
         value.visit_with(self);
         self.0.span = old;
-
-        ControlFlow::Continue(())
     }
 }
 
 impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for ImplTraitInAssocTypeCollector<'tcx> {
     #[instrument(skip(self), ret, level = "trace")]
-    fn visit_ty(&mut self, t: Ty<'tcx>) -> ControlFlow<!> {
-        t.super_visit_with(self)?;
+    fn visit_ty(&mut self, t: Ty<'tcx>) {
+        t.super_visit_with(self);
         match t.kind() {
             ty::Alias(ty::Opaque, alias_ty) if alias_ty.def_id.is_local() => {
                 self.0.visit_opaque_ty(alias_ty);
@@ -347,7 +342,6 @@ impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for ImplTraitInAssocTypeCollector<'tcx> {
             }
             _ => trace!(kind=?t.kind()),
         }
-        ControlFlow::Continue(())
     }
 }
 

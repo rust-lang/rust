@@ -10,7 +10,6 @@ use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_middle::query::Providers;
 use rustc_middle::ty::{self, CrateVariancesMap, GenericArgsRef, Ty, TyCtxt};
 use rustc_middle::ty::{TypeSuperVisitable, TypeVisitable};
-use std::ops::ControlFlow;
 
 /// Defines the `TermsContext` basically houses an arena where we can
 /// allocate terms.
@@ -89,15 +88,14 @@ fn variance_of_opaque(tcx: TyCtxt<'_>, item_def_id: LocalDefId) -> &[ty::Varianc
 
     impl<'tcx> OpaqueTypeLifetimeCollector<'tcx> {
         #[instrument(level = "trace", skip(self), ret)]
-        fn visit_opaque(&mut self, def_id: DefId, args: GenericArgsRef<'tcx>) -> ControlFlow<!> {
+        fn visit_opaque(&mut self, def_id: DefId, args: GenericArgsRef<'tcx>) {
             if def_id != self.root_def_id && self.tcx.is_descendant_of(def_id, self.root_def_id) {
                 let child_variances = self.tcx.variances_of(def_id);
                 for (a, v) in args.iter().zip_eq(child_variances) {
                     if *v != ty::Bivariant {
-                        a.visit_with(self)?;
+                        a.visit_with(self);
                     }
                 }
-                ControlFlow::Continue(())
             } else {
                 args.visit_with(self)
             }
@@ -106,20 +104,19 @@ fn variance_of_opaque(tcx: TyCtxt<'_>, item_def_id: LocalDefId) -> &[ty::Varianc
 
     impl<'tcx> ty::TypeVisitor<TyCtxt<'tcx>> for OpaqueTypeLifetimeCollector<'tcx> {
         #[instrument(level = "trace", skip(self), ret)]
-        fn visit_region(&mut self, r: ty::Region<'tcx>) -> ControlFlow<Self::BreakTy> {
+        fn visit_region(&mut self, r: ty::Region<'tcx>) {
             if let ty::RegionKind::ReEarlyParam(ebr) = r.kind() {
                 self.variances[ebr.index as usize] = ty::Invariant;
             }
-            ControlFlow::Continue(())
         }
 
         #[instrument(level = "trace", skip(self), ret)]
-        fn visit_ty(&mut self, t: Ty<'tcx>) -> ControlFlow<Self::BreakTy> {
+        fn visit_ty(&mut self, t: Ty<'tcx>) {
             match t.kind() {
                 ty::Alias(_, ty::AliasTy { def_id, args, .. })
                     if matches!(self.tcx.def_kind(*def_id), DefKind::OpaqueTy) =>
                 {
-                    self.visit_opaque(*def_id, args)
+                    self.visit_opaque(*def_id, args);
                 }
                 _ => t.super_visit_with(self),
             }

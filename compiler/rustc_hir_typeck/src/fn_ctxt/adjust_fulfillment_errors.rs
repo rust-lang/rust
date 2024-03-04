@@ -337,8 +337,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     ) -> Option<ty::GenericArg<'tcx>> {
         struct FindAmbiguousParameter<'a, 'tcx>(&'a FnCtxt<'a, 'tcx>, DefId);
         impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for FindAmbiguousParameter<'_, 'tcx> {
-            type BreakTy = ty::GenericArg<'tcx>;
-            fn visit_ty(&mut self, ty: Ty<'tcx>) -> std::ops::ControlFlow<Self::BreakTy> {
+            type Result = ControlFlow<ty::GenericArg<'tcx>>;
+            fn visit_ty(&mut self, ty: Ty<'tcx>) -> Self::Result {
                 if let Some(origin) = self.0.type_var_origin(ty)
                     && let TypeVariableOriginKind::TypeParameterDefinition(_, def_id) = origin.kind
                     && let generics = self.0.tcx.generics_of(self.1)

@@ -1474,9 +1474,9 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
     fn check_for_opaque_ty(&mut self, sp: Span, ty: Ty<'tcx>) -> bool {
         struct ProhibitOpaqueTypes;
         impl<'tcx> ty::visit::TypeVisitor<TyCtxt<'tcx>> for ProhibitOpaqueTypes {
-            type BreakTy = Ty<'tcx>;
+            type Result = ControlFlow<Ty<'tcx>>;
 
-            fn visit_ty(&mut self, ty: Ty<'tcx>) -> ControlFlow<Self::BreakTy> {
+            fn visit_ty(&mut self, ty: Ty<'tcx>) -> Self::Result {
                 if !ty.has_opaque_types() {
                     return ControlFlow::Continue(());
                 }
@@ -1620,9 +1620,9 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
         }
 
         impl<'vis, 'a, 'tcx> ty::visit::TypeVisitor<TyCtxt<'tcx>> for FnPtrFinder<'vis, 'a, 'tcx> {
-            type BreakTy = Ty<'tcx>;
+            type Result = ControlFlow<Ty<'tcx>>;
 
-            fn visit_ty(&mut self, ty: Ty<'tcx>) -> ControlFlow<Self::BreakTy> {
+            fn visit_ty(&mut self, ty: Ty<'tcx>) -> Self::Result {
                 if let ty::FnPtr(sig) = ty.kind()
                     && !self.visitor.is_internal_abi(sig.abi())
                 {

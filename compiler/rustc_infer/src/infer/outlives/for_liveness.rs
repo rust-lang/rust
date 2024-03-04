@@ -2,8 +2,6 @@ use rustc_middle::ty::{
     self, Ty, TyCtxt, TypeSuperVisitable, TypeVisitable, TypeVisitableExt, TypeVisitor,
 };
 
-use std::ops::ControlFlow;
-
 use crate::infer::outlives::test_type_match;
 use crate::infer::region_constraints::VerifyIfEq;
 
@@ -26,29 +24,22 @@ impl<'tcx, OP> TypeVisitor<TyCtxt<'tcx>> for FreeRegionsVisitor<'tcx, OP>
 where
     OP: FnMut(ty::Region<'tcx>),
 {
-    fn visit_binder<T: TypeVisitable<TyCtxt<'tcx>>>(
-        &mut self,
-        t: &ty::Binder<'tcx, T>,
-    ) -> ControlFlow<Self::BreakTy> {
+    fn visit_binder<T: TypeVisitable<TyCtxt<'tcx>>>(&mut self, t: &ty::Binder<'tcx, T>) {
         t.super_visit_with(self);
-        ControlFlow::Continue(())
     }
 
-    fn visit_region(&mut self, r: ty::Region<'tcx>) -> ControlFlow<Self::BreakTy> {
+    fn visit_region(&mut self, r: ty::Region<'tcx>) {
         match *r {
             // ignore bound regions, keep visiting
-            ty::ReBound(_, _) => ControlFlow::Continue(()),
-            _ => {
-                (self.op)(r);
-                ControlFlow::Continue(())
-            }
+            ty::ReBound(_, _) => {}
+            _ => (self.op)(r),
         }
     }
 
-    fn visit_ty(&mut self, ty: Ty<'tcx>) -> ControlFlow<Self::BreakTy> {
+    fn visit_ty(&mut self, ty: Ty<'tcx>) {
         // We're only interested in types involving regions
         if !ty.flags().intersects(ty::TypeFlags::HAS_FREE_REGIONS) {
-            return ControlFlow::Continue(());
+            return;
         }
 
         // FIXME: Don't consider alias bounds on types that have escaping bound
@@ -102,7 +93,7 @@ where
                     && outlives_bounds[1..].iter().all(|other_r| other_r == r)
                 {
                     assert!(r.type_flags().intersects(ty::TypeFlags::HAS_FREE_REGIONS));
-                    r.visit_with(self)?;
+                    r.visit_with(self);
                 } else {
                     // Skip lifetime parameters that are not captures.
                     let variances = match kind {
@@ -114,17 +105,13 @@ where
                         if variances.map(|variances| variances[idx])
                             != Some(ty::Variance::Bivariant)
                         {
-                            s.visit_with(self)?;
+                            s.visit_with(self);
                         }
                     }
                 }
             }
 
-            _ => {
-                ty.super_visit_with(self)?;
-            }
+            _ => ty.super_visit_with(self),
         }
-
-        ControlFlow::Continue(())
     }
 }

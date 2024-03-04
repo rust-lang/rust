@@ -1474,15 +1474,14 @@ fn opaque_type_cycle_error(
                     closures: Vec<DefId>,
                 }
                 impl<'tcx> ty::visit::TypeVisitor<TyCtxt<'tcx>> for OpaqueTypeCollector {
-                    fn visit_ty(&mut self, t: Ty<'tcx>) -> ControlFlow<Self::BreakTy> {
+                    fn visit_ty(&mut self, t: Ty<'tcx>) {
                         match *t.kind() {
                             ty::Alias(ty::Opaque, ty::AliasTy { def_id: def, .. }) => {
                                 self.opaques.push(def);
-                                ControlFlow::Continue(())
                             }
                             ty::Closure(def_id, ..) | ty::Coroutine(def_id, ..) => {
                                 self.closures.push(def_id);
-                                t.super_visit_with(self)
+                                t.super_visit_with(self);
                             }
                             _ => t.super_visit_with(self),
                         }

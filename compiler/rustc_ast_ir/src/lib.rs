@@ -1,9 +1,12 @@
+#![cfg_attr(feature = "nightly", feature(never_type))]
 #![cfg_attr(feature = "nightly", feature(rustc_attrs))]
 #![cfg_attr(feature = "nightly", allow(internal_features))]
 
 #[cfg(feature = "nightly")]
 #[macro_use]
 extern crate rustc_macros;
+
+pub mod visit;
 
 /// The movability of a coroutine / closure literal:
 /// whether a coroutine contains self-references, causing it to be `!Unpin`.

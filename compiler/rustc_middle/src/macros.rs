@@ -85,9 +85,9 @@ macro_rules! TrivialTypeTraversalImpls {
                 fn visit_with<F: $crate::ty::visit::TypeVisitor<$crate::ty::TyCtxt<'tcx>>>(
                     &self,
                     _: &mut F)
-                    -> ::std::ops::ControlFlow<F::BreakTy>
+                    -> F::Result
                 {
-                    ::std::ops::ControlFlow::Continue(())
+                    <F::Result as ::rustc_ast_ir::visit::VisitorResult>::output()
                 }
             }
         )+
