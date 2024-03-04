@@ -12,7 +12,7 @@ PLATFORM_SUPPORT_FILE=$(rustc +miri --print sysroot)/share/doc/rust/html/rustc/p
 
 for target in $(python3 ci/scrape-targets.py $PLATFORM_SUPPORT_FILE); do
     # Wipe the cache before every build to minimize disk usage
-    rm -rf ~/.cache/miri
+    cargo +miri miri clean
     if cargo +miri miri setup --target $target 2>&1 | tee failures/$target; then
         # If the build succeeds, delete its output. If we have output, a build failed.
         rm $FAILS_DIR/$target
