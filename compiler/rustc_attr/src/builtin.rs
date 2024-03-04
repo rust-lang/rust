@@ -524,9 +524,9 @@ pub fn cfg_matches(
 ) -> bool {
     eval_condition(cfg, sess, features, &mut |cfg| {
         try_gate_cfg(cfg.name, cfg.span, sess, features);
-        match sess.parse_sess.check_config.expecteds.get(&cfg.name) {
+        match sess.psess.check_config.expecteds.get(&cfg.name) {
             Some(ExpectedValues::Some(values)) if !values.contains(&cfg.value) => {
-                sess.parse_sess.buffer_lint_with_diagnostic(
+                sess.psess.buffer_lint_with_diagnostic(
                     UNEXPECTED_CFGS,
                     cfg.span,
                     lint_node_id,
@@ -541,8 +541,8 @@ pub fn cfg_matches(
                     ),
                 );
             }
-            None if sess.parse_sess.check_config.exhaustive_names => {
-                sess.parse_sess.buffer_lint_with_diagnostic(
+            None if sess.psess.check_config.exhaustive_names => {
+                sess.psess.buffer_lint_with_diagnostic(
                     UNEXPECTED_CFGS,
                     cfg.span,
                     lint_node_id,
@@ -555,7 +555,7 @@ pub fn cfg_matches(
             }
             _ => { /* not unexpected */ }
         }
-        sess.parse_sess.config.contains(&(cfg.name, cfg.value))
+        sess.psess.config.contains(&(cfg.name, cfg.value))
     })
 }
 
@@ -598,7 +598,7 @@ pub fn eval_condition(
     features: Option<&Features>,
     eval: &mut impl FnMut(Condition) -> bool,
 ) -> bool {
-    let dcx = &sess.parse_sess.dcx;
+    let dcx = &sess.psess.dcx;
     match &cfg.kind {
         ast::MetaItemKind::List(mis) if cfg.name_or_empty() == sym::version => {
             try_gate_cfg(sym::version, cfg.span, sess, features);
@@ -626,7 +626,7 @@ pub fn eval_condition(
             };
 
             // See https://github.com/rust-lang/rust/issues/64796#issuecomment-640851454 for details
-            if sess.parse_sess.assume_incomplete_release {
+            if sess.psess.assume_incomplete_release {
                 RustcVersion::CURRENT > min_version
             } else {
                 RustcVersion::CURRENT >= min_version

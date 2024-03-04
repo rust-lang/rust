@@ -346,7 +346,7 @@ pub(crate) struct BinaryFloatLiteralNotSupported {
 }
 
 pub fn report_lit_error(
-    sess: &ParseSess,
+    psess: &ParseSess,
     err: LitError,
     lit: token::Lit,
     span: Span,
@@ -378,7 +378,7 @@ pub fn report_lit_error(
         valid.then(|| format!("0{}{}", base_char.to_ascii_lowercase(), &suffix[1..]))
     }
 
-    let dcx = &sess.dcx;
+    let dcx = &psess.dcx;
     match err {
         LitError::InvalidSuffix(suffix) => {
             dcx.emit_err(InvalidLiteralSuffix { span, kind: lit.kind.descr(), suffix })

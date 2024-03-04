@@ -44,9 +44,9 @@ use std::{env, fs, iter};
 
 pub fn parse<'a>(sess: &'a Session) -> PResult<'a, ast::Crate> {
     let krate = sess.time("parse_crate", || match &sess.io.input {
-        Input::File(file) => parse_crate_from_file(file, &sess.parse_sess),
+        Input::File(file) => parse_crate_from_file(file, &sess.psess),
         Input::Str { input, name } => {
-            parse_crate_from_source_str(name.clone(), input.clone(), &sess.parse_sess)
+            parse_crate_from_source_str(name.clone(), input.clone(), &sess.psess)
         }
     })?;
 
@@ -205,7 +205,7 @@ fn configure_and_expand(
 
         // The rest is error reporting
 
-        sess.parse_sess.buffered_lints.with_lock(|buffered_lints: &mut Vec<BufferedEarlyLint>| {
+        sess.psess.buffered_lints.with_lock(|buffered_lints: &mut Vec<BufferedEarlyLint>| {
             buffered_lints.append(&mut ecx.buffered_early_lint);
         });
 
@@ -297,7 +297,7 @@ fn early_lint_checks(tcx: TyCtxt<'_>, (): ()) {
     });
 
     // Add all buffered lints from the `ParseSess` to the `Session`.
-    sess.parse_sess.buffered_lints.with_lock(|buffered_lints| {
+    sess.psess.buffered_lints.with_lock(|buffered_lints| {
         info!("{} parse sess buffered_lints", buffered_lints.len());
         for early_lint in buffered_lints.drain(..) {
             lint_buffer.add_early_lint(early_lint);
@@ -305,7 +305,7 @@ fn early_lint_checks(tcx: TyCtxt<'_>, (): ()) {
     });
 
     // Gate identifiers containing invalid Unicode codepoints that were recovered during lexing.
-    sess.parse_sess.bad_unicode_identifiers.with_lock(|identifiers| {
+    sess.psess.bad_unicode_identifiers.with_lock(|identifiers| {
         for (ident, mut spans) in identifiers.drain(..) {
             spans.sort();
             if ident == sym::ferris {
@@ -422,7 +422,7 @@ fn write_out_deps(tcx: TyCtxt<'_>, outputs: &OutputFilenames, out_filenames: &[P
 
         // Account for explicitly marked-to-track files
         // (e.g. accessed in proc macros).
-        let file_depinfo = sess.parse_sess.file_depinfo.borrow();
+        let file_depinfo = sess.psess.file_depinfo.borrow();
 
         let normalize_path = |path: PathBuf| {
             let file = FileName::from(path);
@@ -485,7 +485,7 @@ fn write_out_deps(tcx: TyCtxt<'_>, outputs: &OutputFilenames, out_filenames: &[P
             }
 
             // Emit special comments with information about accessed environment variables.
-            let env_depinfo = sess.parse_sess.env_depinfo.borrow();
+            let env_depinfo = sess.psess.env_depinfo.borrow();
             if !env_depinfo.is_empty() {
                 // We will soon sort, so the initial order does not matter.
                 #[allow(rustc::potential_query_instability)]
@@ -956,7 +956,7 @@ fn get_recursion_limit(krate_attrs: &[ast::Attribute], sess: &Session) -> Limit 
         // `check_builtin_attribute`), but by the time that runs the macro
         // is expanded, and it doesn't give an error.
         validate_attr::emit_fatal_malformed_builtin_attribute(
-            &sess.parse_sess,
+            &sess.psess,
             attr,
             sym::recursion_limit,
         );

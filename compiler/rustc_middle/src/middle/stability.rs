@@ -269,7 +269,7 @@ fn suggestion_for_allocator_api(
     if feature == sym::allocator_api {
         if let Some(trait_) = tcx.opt_parent(def_id) {
             if tcx.is_diagnostic_item(sym::Vec, trait_) {
-                let sm = tcx.sess.parse_sess.source_map();
+                let sm = tcx.sess.psess.source_map();
                 let inner_types = sm.span_extend_to_prev_char(span, '<', true);
                 if let Ok(snippet) = sm.span_to_snippet(inner_types) {
                     return Some((

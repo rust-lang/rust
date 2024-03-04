@@ -1135,13 +1135,13 @@ impl<'a> ExtCtxt<'a> {
         expand::MacroExpander::new(self, true)
     }
     pub fn new_parser_from_tts(&self, stream: TokenStream) -> parser::Parser<'a> {
-        rustc_parse::stream_to_parser(&self.sess.parse_sess, stream, MACRO_ARGUMENTS)
+        rustc_parse::stream_to_parser(&self.sess.psess, stream, MACRO_ARGUMENTS)
     }
     pub fn source_map(&self) -> &'a SourceMap {
-        self.sess.parse_sess.source_map()
+        self.sess.psess.source_map()
     }
-    pub fn parse_sess(&self) -> &'a ParseSess {
-        &self.sess.parse_sess
+    pub fn psess(&self) -> &'a ParseSess {
+        &self.sess.psess
     }
     pub fn call_site(&self) -> Span {
         self.current_expansion.id.expn_data().call_site
@@ -1216,26 +1216,22 @@ impl<'a> ExtCtxt<'a> {
 /// Resolves a `path` mentioned inside Rust code, returning an absolute path.
 ///
 /// This unifies the logic used for resolving `include_X!`.
-pub fn resolve_path(
-    parse_sess: &Session,
-    path: impl Into<PathBuf>,
-    span: Span,
-) -> PResult<'_, PathBuf> {
+pub fn resolve_path(sess: &Session, path: impl Into<PathBuf>, span: Span) -> PResult<'_, PathBuf> {
     let path = path.into();
 
     // Relative paths are resolved relative to the file in which they are found
     // after macro expansion (that is, they are unhygienic).
     if !path.is_absolute() {
         let callsite = span.source_callsite();
-        let mut result = match parse_sess.source_map().span_to_filename(callsite) {
+        let mut result = match sess.source_map().span_to_filename(callsite) {
             FileName::Real(name) => name
                 .into_local_path()
                 .expect("attempting to resolve a file path in an external file"),
             FileName::DocTest(path, _) => path,
             other => {
-                return Err(parse_sess.dcx().create_err(errors::ResolveRelativePath {
+                return Err(sess.dcx().create_err(errors::ResolveRelativePath {
                     span,
-                    path: parse_sess.source_map().filename_for_diagnostics(&other).to_string(),
+                    path: sess.source_map().filename_for_diagnostics(&other).to_string(),
                 }));
             }
         };
@@ -1281,7 +1277,7 @@ pub fn expr_to_spanned_string<'a>(
                 Ok((err, true))
             }
             Ok(ast::LitKind::Err(guar)) => Err(guar),
-            Err(err) => Err(report_lit_error(&cx.sess.parse_sess, err, token_lit, expr.span)),
+            Err(err) => Err(report_lit_error(&cx.sess.psess, err, token_lit, expr.span)),
             _ => Ok((cx.dcx().struct_span_err(expr.span, err_msg), false)),
         },
         ast::ExprKind::Err(guar) => Err(guar),
@@ -1487,7 +1483,7 @@ fn pretty_printing_compatibility_hack(item: &Item, sess: &Session) -> bool {
                             };
 
                             if crate_matches {
-                                sess.parse_sess.buffer_lint_with_diagnostic(
+                                sess.psess.buffer_lint_with_diagnostic(
                                         PROC_MACRO_BACK_COMPAT,
                                         item.ident.span,
                                         ast::CRATE_NODE_ID,

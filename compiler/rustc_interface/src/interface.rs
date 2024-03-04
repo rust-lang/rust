@@ -45,7 +45,7 @@ pub struct Compiler {
 pub(crate) fn parse_cfg(dcx: &DiagCtxt, cfgs: Vec<String>) -> Cfg {
     cfgs.into_iter()
         .map(|s| {
-            let sess = ParseSess::with_silent_emitter(format!(
+            let psess = ParseSess::with_silent_emitter(format!(
                 "this error occurred on the command line: `--cfg={s}`"
             ));
             let filename = FileName::cfg_spec_source_code(&s);
@@ -61,7 +61,7 @@ pub(crate) fn parse_cfg(dcx: &DiagCtxt, cfgs: Vec<String>) -> Cfg {
                 };
             }
 
-            match maybe_new_parser_from_source_str(&sess, filename, s.to_string()) {
+            match maybe_new_parser_from_source_str(&psess, filename, s.to_string()) {
                 Ok(mut parser) => match parser.parse_meta_item() {
                     Ok(meta_item) if parser.token == token::Eof => {
                         if meta_item.path.segments.len() != 1 {
@@ -107,7 +107,7 @@ pub(crate) fn parse_check_cfg(dcx: &DiagCtxt, specs: Vec<String>) -> CheckCfg {
     let mut check_cfg = CheckCfg { exhaustive_names, exhaustive_values, ..CheckCfg::default() };
 
     for s in specs {
-        let sess = ParseSess::with_silent_emitter(format!(
+        let psess = ParseSess::with_silent_emitter(format!(
             "this error occurred on the command line: `--check-cfg={s}`"
         ));
         let filename = FileName::cfg_spec_source_code(&s);
@@ -127,7 +127,7 @@ pub(crate) fn parse_check_cfg(dcx: &DiagCtxt, specs: Vec<String>) -> CheckCfg {
             error!("expected `cfg(name, values(\"value1\", \"value2\", ... \"valueN\"))`")
         };
 
-        let mut parser = match maybe_new_parser_from_source_str(&sess, filename, s.to_string()) {
+        let mut parser = match maybe_new_parser_from_source_str(&psess, filename, s.to_string()) {
             Ok(parser) => parser,
             Err(errs) => {
                 errs.into_iter().for_each(|err| err.cancel());
@@ -277,7 +277,7 @@ pub struct Config {
     pub lint_caps: FxHashMap<lint::LintId, lint::Level>,
 
     /// This is a callback from the driver that is called when [`ParseSess`] is created.
-    pub parse_sess_created: Option<Box<dyn FnOnce(&mut ParseSess) + Send>>,
+    pub psess_created: Option<Box<dyn FnOnce(&mut ParseSess) + Send>>,
 
     /// This is a callback to hash otherwise untracked state used by the caller, if the
     /// hash changes between runs the incremental cache will be cleared.
@@ -393,14 +393,14 @@ pub fn run_compiler<R: Send>(config: Config, f: impl FnOnce(&Compiler) -> R + Se
             let cfg = parse_cfg(&sess.dcx(), config.crate_cfg);
             let mut cfg = config::build_configuration(&sess, cfg);
             util::add_configuration(&mut cfg, &mut sess, &*codegen_backend);
-            sess.parse_sess.config = cfg;
+            sess.psess.config = cfg;
 
             let mut check_cfg = parse_check_cfg(&sess.dcx(), config.crate_check_cfg);
             check_cfg.fill_well_known(&sess.target);
-            sess.parse_sess.check_config = check_cfg;
+            sess.psess.check_config = check_cfg;
 
-            if let Some(parse_sess_created) = config.parse_sess_created {
-                parse_sess_created(&mut sess.parse_sess);
+            if let Some(psess_created) = config.psess_created {
+                psess_created(&mut sess.psess);
             }
 
             if let Some(hash_untracked_state) = config.hash_untracked_state {
@@ -422,7 +422,7 @@ pub fn run_compiler<R: Send>(config: Config, f: impl FnOnce(&Compiler) -> R + Se
             let compiler =
                 Compiler { sess, codegen_backend, override_queries: config.override_queries };
 
-            rustc_span::set_source_map(compiler.sess.parse_sess.clone_source_map(), move || {
+            rustc_span::set_source_map(compiler.sess.psess.clone_source_map(), move || {
                 // There are two paths out of `f`.
                 // - Normal exit.
                 // - Panic, e.g. triggered by `abort_if_errors`.

@@ -39,7 +39,7 @@ pub fn expand_option_env<'cx>(
 
     let sp = cx.with_def_site_ctxt(sp);
     let value = lookup_env(cx, var);
-    cx.sess.parse_sess.env_depinfo.borrow_mut().insert((var, value));
+    cx.sess.psess.env_depinfo.borrow_mut().insert((var, value));
     let e = match value {
         None => {
             let lt = cx.lifetime(sp, Ident::new(kw::StaticLifetime, sp));
@@ -94,7 +94,7 @@ pub fn expand_env<'cx>(
 
     let span = cx.with_def_site_ctxt(sp);
     let value = lookup_env(cx, var);
-    cx.sess.parse_sess.env_depinfo.borrow_mut().insert((var, value));
+    cx.sess.psess.env_depinfo.borrow_mut().insert((var, value));
     let e = match value {
         None => {
             let ExprKind::Lit(token::Lit {

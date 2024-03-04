@@ -55,7 +55,7 @@ fn invalid_type_err(
         Ok(LitKind::Int(_, _)) => dcx.emit_err(ConcatBytesNonU8 { span }),
         Ok(LitKind::ByteStr(..) | LitKind::Byte(_)) => unreachable!(),
         Ok(LitKind::Err(guar)) => guar,
-        Err(err) => report_lit_error(&cx.sess.parse_sess, err, token_lit, span),
+        Err(err) => report_lit_error(&cx.sess.psess, err, token_lit, span),
     }
 }
 

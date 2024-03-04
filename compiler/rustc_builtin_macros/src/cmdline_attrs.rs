@@ -7,10 +7,10 @@ use rustc_ast::{self as ast, AttrItem, AttrStyle};
 use rustc_session::parse::ParseSess;
 use rustc_span::FileName;
 
-pub fn inject(krate: &mut ast::Crate, parse_sess: &ParseSess, attrs: &[String]) {
+pub fn inject(krate: &mut ast::Crate, psess: &ParseSess, attrs: &[String]) {
     for raw_attr in attrs {
         let mut parser = rustc_parse::new_parser_from_source_str(
-            parse_sess,
+            psess,
             FileName::cli_crate_attr_source_code(raw_attr),
             raw_attr.clone(),
         );
@@ -25,12 +25,12 @@ pub fn inject(krate: &mut ast::Crate, parse_sess: &ParseSess, attrs: &[String]) 
         };
         let end_span = parser.token.span;
         if parser.token != token::Eof {
-            parse_sess.dcx.emit_err(errors::InvalidCrateAttr { span: start_span.to(end_span) });
+            psess.dcx.emit_err(errors::InvalidCrateAttr { span: start_span.to(end_span) });
             continue;
         }
 
         krate.attrs.push(mk_attr(
-            &parse_sess.attr_id_generator,
+            &psess.attr_id_generator,
             AttrStyle::Inner,
             path,
             args,

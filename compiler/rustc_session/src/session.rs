@@ -146,7 +146,7 @@ pub struct Session {
     pub opts: config::Options,
     pub host_tlib_path: Lrc<SearchPath>,
     pub target_tlib_path: Lrc<SearchPath>,
-    pub parse_sess: ParseSess,
+    pub psess: ParseSess,
     pub sysroot: PathBuf,
     /// Input, input file path and output file path to this compilation process.
     pub io: CompilerIO,
@@ -336,12 +336,12 @@ impl Session {
 
     #[inline]
     pub fn dcx(&self) -> &DiagCtxt {
-        &self.parse_sess.dcx
+        &self.psess.dcx
     }
 
     #[inline]
     pub fn source_map(&self) -> &SourceMap {
-        self.parse_sess.source_map()
+        self.psess.source_map()
     }
 
     /// Returns `true` if internal lints should be added to the lint store - i.e. if
@@ -1114,8 +1114,8 @@ pub fn build_session(
         None
     };
 
-    let mut parse_sess = ParseSess::with_dcx(dcx, source_map);
-    parse_sess.assume_incomplete_release = sopts.unstable_opts.assume_incomplete_release;
+    let mut psess = ParseSess::with_dcx(dcx, source_map);
+    psess.assume_incomplete_release = sopts.unstable_opts.assume_incomplete_release;
 
     let host_triple = config::host_triple();
     let target_triple = sopts.target_triple.triple();
@@ -1154,7 +1154,7 @@ pub fn build_session(
         opts: sopts,
         host_tlib_path,
         target_tlib_path,
-        parse_sess,
+        psess,
         sysroot,
         io,
         incr_comp_session: RwLock::new(IncrCompSession::NotInitialized),

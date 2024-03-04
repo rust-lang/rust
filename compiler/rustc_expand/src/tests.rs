@@ -18,9 +18,13 @@ use std::path::{Path, PathBuf};
 use std::str;
 use std::sync::{Arc, Mutex};
 
+pub(crate) fn psess() -> ParseSess {
+    ParseSess::new(vec![crate::DEFAULT_LOCALE_RESOURCE, rustc_parse::DEFAULT_LOCALE_RESOURCE])
+}
+
 /// Map string to parser (via tts).
-fn string_to_parser(ps: &ParseSess, source_str: String) -> Parser<'_> {
-    new_parser_from_source_str(ps, PathBuf::from("bogofile").into(), source_str)
+fn string_to_parser(psess: &ParseSess, source_str: String) -> Parser<'_> {
+    new_parser_from_source_str(psess, PathBuf::from("bogofile").into(), source_str)
 }
 
 fn create_test_handler() -> (DiagCtxt, Lrc<SourceMap>, Arc<Mutex<Vec<u8>>>) {
@@ -40,13 +44,13 @@ fn create_test_handler() -> (DiagCtxt, Lrc<SourceMap>, Arc<Mutex<Vec<u8>>>) {
 /// Returns the result of parsing the given string via the given callback.
 ///
 /// If there are any errors, this will panic.
-pub(crate) fn with_error_checking_parse<'a, T, F>(s: String, ps: &'a ParseSess, f: F) -> T
+pub(crate) fn with_error_checking_parse<'a, T, F>(s: String, psess: &'a ParseSess, f: F) -> T
 where
     F: FnOnce(&mut Parser<'a>) -> PResult<'a, T>,
 {
-    let mut p = string_to_parser(&ps, s);
+    let mut p = string_to_parser(&psess, s);
     let x = f(&mut p).unwrap();
-    p.sess.dcx.abort_if_errors();
+    p.psess.dcx.abort_if_errors();
     x
 }
 
@@ -57,8 +61,8 @@ where
     F: for<'a> FnOnce(&mut Parser<'a>) -> PResult<'a, T>,
 {
     let (handler, source_map, output) = create_test_handler();
-    let ps = ParseSess::with_dcx(handler, source_map);
-    let mut p = string_to_parser(&ps, source_str.to_string());
+    let psess = ParseSess::with_dcx(handler, source_map);
+    let mut p = string_to_parser(&psess, source_str.to_string());
     let result = f(&mut p);
     assert!(result.is_ok());
 
@@ -72,24 +76,18 @@ where
 
 /// Maps a string to tts, using a made-up filename.
 pub(crate) fn string_to_stream(source_str: String) -> TokenStream {
-    let ps = ParseSess::new(
-        vec![crate::DEFAULT_LOCALE_RESOURCE, rustc_parse::DEFAULT_LOCALE_RESOURCE],
-        FilePathMapping::empty(),
-    );
+    let psess = psess();
     source_file_to_stream(
-        &ps,
-        ps.source_map().new_source_file(PathBuf::from("bogofile").into(), source_str),
+        &psess,
+        psess.source_map().new_source_file(PathBuf::from("bogofile").into(), source_str),
         None,
     )
 }
 
 /// Parses a string, returns a crate.
 pub(crate) fn string_to_crate(source_str: String) -> ast::Crate {
-    let ps = ParseSess::new(
-        vec![crate::DEFAULT_LOCALE_RESOURCE, rustc_parse::DEFAULT_LOCALE_RESOURCE],
-        FilePathMapping::empty(),
-    );
-    with_error_checking_parse(source_str, &ps, |p| p.parse_crate_mod())
+    let psess = psess();
+    with_error_checking_parse(source_str, &psess, |p| p.parse_crate_mod())
 }
 
 /// Does the given string match the pattern? whitespace in the first string

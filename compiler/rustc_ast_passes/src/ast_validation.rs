@@ -835,7 +835,7 @@ fn validate_generic_param_order(
 
 impl<'a> Visitor<'a> for AstValidator<'a> {
     fn visit_attribute(&mut self, attr: &Attribute) {
-        validate_attr::check_attr(&self.session.parse_sess, attr);
+        validate_attr::check_attr(&self.session.psess, attr);
     }
 
     fn visit_ty(&mut self, ty: &'a Ty) {
