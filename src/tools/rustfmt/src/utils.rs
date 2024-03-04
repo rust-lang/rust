@@ -362,7 +362,7 @@ macro_rules! out_of_file_lines_range {
             && !$self
                 .config
                 .file_lines()
-                .intersects(&$self.parse_sess.lookup_line_range($span))
+                .intersects(&$self.psess.lookup_line_range($span))
     };
 }
 

@@ -159,7 +159,7 @@ struct InnerItemLinter<'a> {
 impl<'a> Visitor<'a> for InnerItemLinter<'_> {
     fn visit_item(&mut self, i: &'a ast::Item) {
         if let Some(attr) = attr::find_by_name(&i.attrs, sym::rustc_test_marker) {
-            self.sess.parse_sess.buffer_lint(
+            self.sess.psess.buffer_lint(
                 UNNAMEABLE_TEST_ITEMS,
                 attr.span,
                 i.id,
@@ -200,7 +200,7 @@ impl<'a> MutVisitor for EntryPointCleaner<'a> {
             EntryPointType::MainNamed | EntryPointType::RustcMainAttr | EntryPointType::Start => {
                 item.map(|ast::Item { id, ident, attrs, kind, vis, span, tokens }| {
                     let allow_dead_code = attr::mk_attr_nested_word(
-                        &self.sess.parse_sess.attr_id_generator,
+                        &self.sess.psess.attr_id_generator,
                         ast::AttrStyle::Outer,
                         sym::allow,
                         sym::dead_code,

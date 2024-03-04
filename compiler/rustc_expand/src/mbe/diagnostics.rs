@@ -24,12 +24,12 @@ pub(super) fn failed_to_match_macro<'cx>(
     arg: TokenStream,
     lhses: &[Vec<MatcherLoc>],
 ) -> Box<dyn MacResult + 'cx> {
-    let sess = &cx.sess.parse_sess;
+    let psess = &cx.sess.psess;
 
     // An error occurred, try the expansion again, tracking the expansion closely for better diagnostics.
     let mut tracker = CollectTrackerAndEmitter::new(cx, sp);
 
-    let try_success_result = try_match_macro(sess, name, &arg, lhses, &mut tracker);
+    let try_success_result = try_match_macro(psess, name, &arg, lhses, &mut tracker);
 
     if try_success_result.is_ok() {
         // Nonterminal parser recovery might turn failed matches into successful ones,
@@ -58,7 +58,7 @@ pub(super) fn failed_to_match_macro<'cx>(
         err.span_label(cx.source_map().guess_head_span(def_span), "when calling this macro");
     }
 
-    annotate_doc_comment(cx.sess.dcx(), &mut err, sess.source_map(), span);
+    annotate_doc_comment(cx.sess.dcx(), &mut err, psess.source_map(), span);
 
     if let Some(span) = remaining_matcher.span() {
         err.span_note(span, format!("while trying to match {remaining_matcher}"));
@@ -87,7 +87,7 @@ pub(super) fn failed_to_match_macro<'cx>(
     // Check whether there's a missing comma in this macro call, like `println!("{}" a);`
     if let Some((arg, comma_span)) = arg.add_comma() {
         for lhs in lhses {
-            let parser = parser_from_cx(sess, arg.clone(), Recovery::Allowed);
+            let parser = parser_from_cx(psess, arg.clone(), Recovery::Allowed);
             let mut tt_parser = TtParser::new(name);
 
             if let Success(_) =
@@ -246,10 +246,10 @@ pub(super) fn emit_frag_parse_err(
     if e.span.is_dummy() {
         // Get around lack of span in error (#30128)
         e.replace_span_with(site_span, true);
-        if !parser.sess.source_map().is_imported(arm_span) {
+        if !parser.psess.source_map().is_imported(arm_span) {
             e.span_label(arm_span, "in this macro arm");
         }
-    } else if parser.sess.source_map().is_imported(parser.token.span) {
+    } else if parser.psess.source_map().is_imported(parser.token.span) {
         e.span_label(site_span, "in this macro invocation");
     }
     match kind {
@@ -262,7 +262,7 @@ pub(super) fn emit_frag_parse_err(
                 );
 
                 if parser.token == token::Semi {
-                    if let Ok(snippet) = parser.sess.source_map().span_to_snippet(site_span) {
+                    if let Ok(snippet) = parser.psess.source_map().span_to_snippet(site_span) {
                         e.span_suggestion_verbose(
                             site_span,
                             "surround the macro invocation with `{}` to interpret the expansion as a statement",

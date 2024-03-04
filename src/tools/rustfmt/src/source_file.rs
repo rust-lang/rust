@@ -49,7 +49,7 @@ where
 }
 
 pub(crate) fn write_file<T>(
-    parse_sess: Option<&ParseSess>,
+    psess: Option<&ParseSess>,
     filename: &FileName,
     formatted_text: &str,
     out: &mut T,
@@ -90,7 +90,7 @@ where
     let original_text = if newline_style != NewlineStyle::Auto && *filename != FileName::Stdin {
         Lrc::new(fs::read_to_string(ensure_real_path(filename))?)
     } else {
-        match parse_sess.and_then(|sess| sess.get_original_snippet(filename)) {
+        match psess.and_then(|psess| psess.get_original_snippet(filename)) {
             Some(ori) => ori,
             None => Lrc::new(fs::read_to_string(ensure_real_path(filename))?),
         }

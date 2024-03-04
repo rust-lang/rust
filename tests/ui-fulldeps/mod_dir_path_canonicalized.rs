@@ -30,10 +30,10 @@ pub fn main() {
 }
 
 fn parse() {
-    let parse_session = ParseSess::new(vec![rustc_parse::DEFAULT_LOCALE_RESOURCE]);
+    let psess = ParseSess::new(vec![rustc_parse::DEFAULT_LOCALE_RESOURCE]);
 
     let path = Path::new(file!());
     let path = path.canonicalize().unwrap();
-    let mut parser = new_parser_from_file(&parse_session, &path, None);
+    let mut parser = new_parser_from_file(&psess, &path, None);
     let _ = parser.parse_crate_mod();
 }

@@ -1624,7 +1624,7 @@ impl<'a> TraitDef<'a> {
                         };
 
                         if let Some(ty) = exception {
-                            cx.sess.parse_sess.buffer_lint_with_diagnostic(
+                            cx.sess.psess.buffer_lint_with_diagnostic(
                                 BYTE_SLICE_IN_PACKED_STRUCT_WITH_DERIVE,
                                 sp,
                                 ast::CRATE_NODE_ID,

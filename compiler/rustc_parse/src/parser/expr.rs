@@ -403,8 +403,8 @@ impl<'a> Parser<'a> {
                 // suggestions based on the assumption that double-refs are rarely intentional,
                 // and closures are distinct enough that they don't get mixed up with their
                 // return value.
-                let sp = self.sess.source_map().start_point(self.token.span);
-                self.sess.ambiguous_block_expr_parse.borrow_mut().insert(sp, lhs.span);
+                let sp = self.psess.source_map().start_point(self.token.span);
+                self.psess.ambiguous_block_expr_parse.borrow_mut().insert(sp, lhs.span);
                 false
             }
             (true, Some(op)) if !op.can_continue_expr_unambiguously() => false,
@@ -608,7 +608,7 @@ impl<'a> Parser<'a> {
                 };
 
                 // a block on the LHS might have been intended to be an expression instead
-                if let Some(sp) = this.sess.ambiguous_block_expr_parse.borrow().get(&lo) {
+                if let Some(sp) = this.psess.ambiguous_block_expr_parse.borrow().get(&lo) {
                     err.add_parentheses = Some(ExprParenthesesNeeded::surrounding(*sp));
                 } else {
                     err.remove_plus = Some(lo);
@@ -666,7 +666,7 @@ impl<'a> Parser<'a> {
     fn parse_expr_box(&mut self, box_kw: Span) -> PResult<'a, (Span, ExprKind)> {
         let (span, _) = self.parse_expr_prefix_common(box_kw)?;
         let inner_span = span.with_lo(box_kw.hi());
-        let code = self.sess.source_map().span_to_snippet(inner_span).unwrap();
+        let code = self.psess.source_map().span_to_snippet(inner_span).unwrap();
         let guar = self.dcx().emit_err(errors::BoxSyntaxRemoved { span: span, code: code.trim() });
         Ok((span, ExprKind::Err(guar)))
     }
@@ -700,7 +700,7 @@ impl<'a> Parser<'a> {
             // Span the `not` plus trailing whitespace to avoid
             // trailing whitespace after the `!` in our suggestion
             sub: sub_diag(
-                self.sess.source_map().span_until_non_whitespace(lo.to(negated_token.span)),
+                self.psess.source_map().span_until_non_whitespace(lo.to(negated_token.span)),
             ),
         });
 
@@ -915,7 +915,7 @@ impl<'a> Parser<'a> {
             let found_raw = self.eat_keyword(kw::Raw);
             assert!(found_raw);
             let mutability = self.parse_const_or_mut().unwrap();
-            self.sess.gated_spans.gate(sym::raw_ref_op, lo.to(self.prev_token.span));
+            self.psess.gated_spans.gate(sym::raw_ref_op, lo.to(self.prev_token.span));
             (ast::BorrowKind::Raw, mutability)
         } else {
             // `mut?`
@@ -1013,7 +1013,7 @@ impl<'a> Parser<'a> {
     fn error_unexpected_after_dot(&self) {
         let actual = pprust::token_to_string(&self.token);
         let span = self.token.span;
-        let sm = self.sess.source_map();
+        let sm = self.psess.source_map();
         let (span, actual) = match (&self.token.kind, self.subparser_name) {
             (token::Eof, Some(_)) if let Ok(actual) = sm.span_to_snippet(sm.next_point(span)) => {
                 (span.shrink_to_hi(), actual.into())
@@ -1434,7 +1434,7 @@ impl<'a> Parser<'a> {
                 this.parse_expr_closure().map_err(|mut err| {
                     // If the input is something like `if a { 1 } else { 2 } | if a { 3 } else { 4 }`
                     // then suggest parens around the lhs.
-                    if let Some(sp) = this.sess.ambiguous_block_expr_parse.borrow().get(&lo) {
+                    if let Some(sp) = this.psess.ambiguous_block_expr_parse.borrow().get(&lo) {
                         err.subdiagnostic(this.dcx(), ExprParenthesesNeeded::surrounding(*sp));
                     }
                     err
@@ -1634,7 +1634,7 @@ impl<'a> Parser<'a> {
             && let Some(expr) = self.maybe_parse_struct_expr(&qself, &path)
         {
             if qself.is_some() {
-                self.sess.gated_spans.gate(sym::more_qualified_paths, path.span);
+                self.psess.gated_spans.gate(sym::more_qualified_paths, path.span);
             }
             return expr;
         } else {
@@ -1821,7 +1821,7 @@ impl<'a> Parser<'a> {
         let kind = ExprKind::Yeet(self.parse_expr_opt()?);
 
         let span = lo.to(self.prev_token.span);
-        self.sess.gated_spans.gate(sym::yeet_expr, span);
+        self.psess.gated_spans.gate(sym::yeet_expr, span);
         let expr = self.mk_expr(span, kind);
         self.maybe_recover_from_bad_qpath(expr)
     }
@@ -1831,7 +1831,7 @@ impl<'a> Parser<'a> {
         let lo = self.prev_token.span;
         let kind = ExprKind::Become(self.parse_expr()?);
         let span = lo.to(self.prev_token.span);
-        self.sess.gated_spans.gate(sym::explicit_tail_calls, span);
+        self.psess.gated_spans.gate(sym::explicit_tail_calls, span);
         let expr = self.mk_expr(span, kind);
         self.maybe_recover_from_bad_qpath(expr)
     }
@@ -1875,7 +1875,7 @@ impl<'a> Parser<'a> {
                             | ExprKind::Block(_, None)
                     )
                 {
-                    self.sess.buffer_lint_with_diagnostic(
+                    self.psess.buffer_lint_with_diagnostic(
                         BREAK_WITH_LABEL_AND_LOOP,
                         lo.to(expr.span),
                         ast::CRATE_NODE_ID,
@@ -1926,7 +1926,7 @@ impl<'a> Parser<'a> {
         let lo = self.prev_token.span;
         let kind = ExprKind::Yield(self.parse_expr_opt()?);
         let span = lo.to(self.prev_token.span);
-        self.sess.gated_spans.gate(sym::yield_expr, span);
+        self.psess.gated_spans.gate(sym::yield_expr, span);
         let expr = self.mk_expr(span, kind);
         self.maybe_recover_from_bad_qpath(expr)
     }
@@ -1955,7 +1955,7 @@ impl<'a> Parser<'a> {
             let err = self.dcx().create_err(errors::ExpectedBuiltinIdent { span: self.token.span });
             return Err(err);
         };
-        self.sess.gated_spans.gate(sym::builtin_syntax, ident.span);
+        self.psess.gated_spans.gate(sym::builtin_syntax, ident.span);
         self.bump();
 
         self.expect(&TokenKind::OpenDelim(Delimiter::Parenthesis))?;
@@ -2143,7 +2143,7 @@ impl<'a> Parser<'a> {
                     Err(err) => {
                         let span = token.uninterpolated_span();
                         self.bump();
-                        let guar = report_lit_error(self.sess, err, lit, span);
+                        let guar = report_lit_error(self.psess, err, lit, span);
                         // Pack possible quotes and prefixes from the original literal into
                         // the error literal's symbol so they can be pretty-printed faithfully.
                         let suffixless_lit = token::Lit::new(lit.kind, lit.symbol, None);
@@ -2236,7 +2236,7 @@ impl<'a> Parser<'a> {
         }
 
         if self.token.kind == token::Comma {
-            if !self.sess.source_map().is_multiline(prev_span.until(self.token.span)) {
+            if !self.psess.source_map().is_multiline(prev_span.until(self.token.span)) {
                 return Ok(());
             }
             let mut snapshot = self.create_snapshot_for_diagnostic();
@@ -2312,7 +2312,7 @@ impl<'a> Parser<'a> {
             let lifetime_defs = self.parse_late_bound_lifetime_defs()?;
             let span = lo.to(self.prev_token.span);
 
-            self.sess.gated_spans.gate(sym::closure_lifetime_binder, span);
+            self.psess.gated_spans.gate(sym::closure_lifetime_binder, span);
 
             ClosureBinder::For { span, generic_params: lifetime_defs }
         } else {
@@ -2354,12 +2354,12 @@ impl<'a> Parser<'a> {
         match coroutine_kind {
             Some(CoroutineKind::Async { span, .. }) => {
                 // Feature-gate `async ||` closures.
-                self.sess.gated_spans.gate(sym::async_closure, span);
+                self.psess.gated_spans.gate(sym::async_closure, span);
             }
             Some(CoroutineKind::Gen { span, .. }) | Some(CoroutineKind::AsyncGen { span, .. }) => {
                 // Feature-gate `gen ||` and `async gen ||` closures.
                 // FIXME(gen_blocks): This perhaps should be a different gate.
-                self.sess.gated_spans.gate(sym::gen_blocks, span);
+                self.psess.gated_spans.gate(sym::gen_blocks, span);
             }
             None => {}
         }
@@ -2502,7 +2502,7 @@ impl<'a> Parser<'a> {
                 ExprKind::Block(_, None) => {
                     let guar = this.dcx().emit_err(errors::IfExpressionMissingCondition {
                         if_span: lo.with_neighbor(cond.span).shrink_to_hi(),
-                        block_span: self.sess.source_map().start_point(cond_span),
+                        block_span: self.psess.source_map().start_point(cond_span),
                     });
                     std::mem::replace(&mut cond, this.mk_expr_err(cond_span.shrink_to_hi(), guar))
                 }
@@ -2594,7 +2594,7 @@ impl<'a> Parser<'a> {
 
         if let ExprKind::Let(_, _, _, None) = cond.kind {
             // Remove the last feature gating of a `let` expression since it's stable.
-            self.sess.gated_spans.ungate_last(sym::let_chains, cond.span);
+            self.psess.gated_spans.ungate_last(sym::let_chains, cond.span);
         }
 
         Ok(cond)
@@ -2690,7 +2690,7 @@ impl<'a> Parser<'a> {
         attrs: AttrWrapper,
     ) {
         if !attrs.is_empty()
-            && let [x0 @ xn] | [x0, .., xn] = &*attrs.take_for_recovery(self.sess)
+            && let [x0 @ xn] | [x0, .., xn] = &*attrs.take_for_recovery(self.psess)
         {
             let attributes = x0.span.to(xn.span);
             let last = xn.span;
@@ -2787,7 +2787,7 @@ impl<'a> Parser<'a> {
             self.token.uninterpolated_span().at_least_rust_2018() && self.eat_keyword(kw::Await);
 
         if is_await {
-            self.sess.gated_spans.gate(sym::async_for_loop, self.prev_token.span);
+            self.psess.gated_spans.gate(sym::async_for_loop, self.prev_token.span);
         }
 
         let kind = if is_await { ForLoopKind::ForAwait } else { ForLoopKind::For };
@@ -3048,7 +3048,7 @@ impl<'a> Parser<'a> {
                     |x| {
                         // Don't gate twice
                         if !pat.contains_never_pattern() {
-                            this.sess.gated_spans.gate(sym::never_patterns, pat.span);
+                            this.psess.gated_spans.gate(sym::never_patterns, pat.span);
                         }
                         x
                     },
@@ -3103,7 +3103,7 @@ impl<'a> Parser<'a> {
                     this.expect_one_of(&[token::Comma], &[token::CloseDelim(Delimiter::Brace)])
                         .map_err(|mut err| {
                             if this.token == token::FatArrow {
-                                let sm = this.sess.source_map();
+                                let sm = this.psess.source_map();
                                 if let Ok(expr_lines) = sm.span_to_lines(expr_span)
                                     && let Ok(arm_start_lines) = sm.span_to_lines(arm_start_span)
                                     && arm_start_lines.lines[0].end_col
@@ -3227,10 +3227,10 @@ impl<'a> Parser<'a> {
         if has_let_expr {
             if does_not_have_bin_op {
                 // Remove the last feature gating of a `let` expression since it's stable.
-                self.sess.gated_spans.ungate_last(sym::let_chains, cond.span);
+                self.psess.gated_spans.ungate_last(sym::let_chains, cond.span);
             }
             let span = if_span.to(cond.span);
-            self.sess.gated_spans.gate(sym::if_let_guard, span);
+            self.psess.gated_spans.gate(sym::if_let_guard, span);
         }
         Ok(Some(cond))
     }
@@ -3321,7 +3321,7 @@ impl<'a> Parser<'a> {
             Err(self.dcx().create_err(errors::CatchAfterTry { span: self.prev_token.span }))
         } else {
             let span = span_lo.to(body.span);
-            self.sess.gated_spans.gate(sym::try_blocks, span);
+            self.psess.gated_spans.gate(sym::try_blocks, span);
             Ok(self.mk_expr_with_attrs(span, ExprKind::TryBlock(body), attrs))
         }
     }
@@ -3359,7 +3359,7 @@ impl<'a> Parser<'a> {
                 // `async` blocks are stable
             }
             GenBlockKind::Gen | GenBlockKind::AsyncGen => {
-                self.sess.gated_spans.gate(sym::gen_blocks, lo.to(self.prev_token.span));
+                self.psess.gated_spans.gate(sym::gen_blocks, lo.to(self.prev_token.span));
             }
         }
         let capture_clause = self.parse_capture_clause()?;
@@ -3876,7 +3876,7 @@ impl MutVisitor for CondChecker<'_> {
                             comparison: self.comparison,
                         }));
                 } else {
-                    self.parser.sess.gated_spans.gate(sym::let_chains, span);
+                    self.parser.psess.gated_spans.gate(sym::let_chains, span);
                 }
             }
             ExprKind::Binary(Spanned { node: BinOpKind::And, .. }, _, _) => {

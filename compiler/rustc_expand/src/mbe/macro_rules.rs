@@ -78,7 +78,7 @@ impl<'a> ParserAnyMacro<'a> {
         // but `m!()` is allowed in expression positions (cf. issue #34706).
         if kind == AstFragmentKind::Expr && parser.token == token::Semi {
             if is_local {
-                parser.sess.buffer_lint_with_diagnostic(
+                parser.psess.buffer_lint_with_diagnostic(
                     SEMICOLON_IN_EXPRESSIONS_FROM_MACROS,
                     parser.token.span,
                     lint_node_id,
@@ -195,7 +195,7 @@ fn expand_macro<'cx>(
     lhses: &[Vec<MatcherLoc>],
     rhses: &[mbe::TokenTree],
 ) -> Box<dyn MacResult + 'cx> {
-    let sess = &cx.sess.parse_sess;
+    let psess = &cx.sess.psess;
     // Macros defined in the current crate have a real node id,
     // whereas macros from an external crate have a dummy id.
     let is_local = node_id != DUMMY_NODE_ID;
@@ -206,7 +206,7 @@ fn expand_macro<'cx>(
     }
 
     // Track nothing for the best performance.
-    let try_success_result = try_match_macro(sess, name, &arg, lhses, &mut NoopTracker);
+    let try_success_result = try_match_macro(psess, name, &arg, lhses, &mut NoopTracker);
 
     match try_success_result {
         Ok((i, named_matches)) => {
@@ -230,7 +230,7 @@ fn expand_macro<'cx>(
                 trace_macros_note(&mut cx.expansions, sp, msg);
             }
 
-            let p = Parser::new(sess, tts, None);
+            let p = Parser::new(psess, tts, None);
 
             if is_local {
                 cx.resolver.record_macro_rule_usage(node_id, i);
@@ -272,9 +272,9 @@ pub(super) enum CanRetry {
 /// Try expanding the macro. Returns the index of the successful arm and its named_matches if it was successful,
 /// and nothing if it failed. On failure, it's the callers job to use `track` accordingly to record all errors
 /// correctly.
-#[instrument(level = "debug", skip(sess, arg, lhses, track), fields(tracking = %T::description()))]
+#[instrument(level = "debug", skip(psess, arg, lhses, track), fields(tracking = %T::description()))]
 pub(super) fn try_match_macro<'matcher, T: Tracker<'matcher>>(
-    sess: &ParseSess,
+    psess: &ParseSess,
     name: Ident,
     arg: &TokenStream,
     lhses: &'matcher [Vec<MatcherLoc>],
@@ -299,7 +299,7 @@ pub(super) fn try_match_macro<'matcher, T: Tracker<'matcher>>(
     // hacky, but speeds up the `html5ever` benchmark significantly. (Issue
     // 68836 suggests a more comprehensive but more complex change to deal with
     // this situation.)
-    let parser = parser_from_cx(sess, arg.clone(), T::recovery());
+    let parser = parser_from_cx(psess, arg.clone(), T::recovery());
     // Try each arm's matchers.
     let mut tt_parser = TtParser::new(name);
     for (i, lhs) in lhses.iter().enumerate() {
@@ -309,7 +309,7 @@ pub(super) fn try_match_macro<'matcher, T: Tracker<'matcher>>(
         // This is used so that if a matcher is not `Success(..)`ful,
         // then the spans which became gated when parsing the unsuccessful matcher
         // are not recorded. On the first `Success(..)`ful matcher, the spans are merged.
-        let mut gated_spans_snapshot = mem::take(&mut *sess.gated_spans.spans.borrow_mut());
+        let mut gated_spans_snapshot = mem::take(&mut *psess.gated_spans.spans.borrow_mut());
 
         let result = tt_parser.parse_tt(&mut Cow::Borrowed(&parser), lhs, track);
 
@@ -320,7 +320,7 @@ pub(super) fn try_match_macro<'matcher, T: Tracker<'matcher>>(
                 debug!("Parsed arm successfully");
                 // The matcher was `Success(..)`ful.
                 // Merge the gated spans from parsing the matcher with the preexisting ones.
-                sess.gated_spans.merge(gated_spans_snapshot);
+                psess.gated_spans.merge(gated_spans_snapshot);
 
                 return Ok((i, named_matches));
             }
@@ -342,7 +342,7 @@ pub(super) fn try_match_macro<'matcher, T: Tracker<'matcher>>(
 
         // The matcher was not `Success(..)`ful.
         // Restore to the state before snapshotting and maybe try again.
-        mem::swap(&mut gated_spans_snapshot, &mut sess.gated_spans.spans.borrow_mut());
+        mem::swap(&mut gated_spans_snapshot, &mut psess.gated_spans.spans.borrow_mut());
     }
 
     Err(CanRetry::Yes)
@@ -376,7 +376,7 @@ pub fn compile_declarative_macro(
     };
     let dummy_syn_ext = |guar| (mk_syn_ext(Box::new(DummyExpander(guar))), Vec::new());
 
-    let dcx = &sess.parse_sess.dcx;
+    let dcx = &sess.psess.dcx;
     let lhs_nm = Ident::new(sym::lhs, def.span);
     let rhs_nm = Ident::new(sym::rhs, def.span);
     let tt_spec = Some(NonterminalKind::TT);
@@ -430,7 +430,7 @@ pub fn compile_declarative_macro(
 
     let create_parser = || {
         let body = macro_def.body.tokens.clone();
-        Parser::new(&sess.parse_sess, body, rustc_parse::MACRO_ARGUMENTS)
+        Parser::new(&sess.psess, body, rustc_parse::MACRO_ARGUMENTS)
     };
 
     let parser = create_parser();
@@ -533,7 +533,7 @@ pub fn compile_declarative_macro(
     }
 
     check_emission(macro_check::check_meta_variables(
-        &sess.parse_sess,
+        &sess.psess,
         def.id,
         def.span,
         &lhses,
@@ -1149,7 +1149,7 @@ fn check_matcher_core<'tt>(
                             name,
                             Some(NonterminalKind::PatParam { inferred: false }),
                         ));
-                        sess.parse_sess.buffer_lint_with_diagnostic(
+                        sess.psess.buffer_lint_with_diagnostic(
                             RUST_2021_INCOMPATIBLE_OR_PATTERNS,
                             span,
                             ast::CRATE_NODE_ID,
@@ -1182,7 +1182,7 @@ fn check_matcher_core<'tt>(
                             err.span_label(sp, format!("not allowed after `{kind}` fragments"));
 
                             if kind == NonterminalKind::PatWithOr
-                                && sess.parse_sess.edition.at_least_rust_2021()
+                                && sess.psess.edition.at_least_rust_2021()
                                 && next_token.is_token(&BinOp(token::BinOpToken::Or))
                             {
                                 let suggestion = quoted_tt_to_string(&TokenTree::MetaVarDecl(
@@ -1406,10 +1406,10 @@ fn quoted_tt_to_string(tt: &mbe::TokenTree) -> String {
 }
 
 pub(super) fn parser_from_cx(
-    sess: &ParseSess,
+    psess: &ParseSess,
     mut tts: TokenStream,
     recovery: Recovery,
 ) -> Parser<'_> {
     tts.desugar_doc_comments();
-    Parser::new(sess, tts, rustc_parse::MACRO_ARGUMENTS).recovery(recovery)
+    Parser::new(psess, tts, rustc_parse::MACRO_ARGUMENTS).recovery(recovery)
 }
