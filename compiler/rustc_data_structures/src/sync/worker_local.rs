@@ -42,7 +42,7 @@ pub struct Registry(Arc<RegistryData>);
 thread_local! {
     /// The registry associated with the thread.
     /// This allows the `WorkerLocal` type to clone the registry in its constructor.
-    static REGISTRY: OnceCell<Registry> = OnceCell::new();
+    static REGISTRY: OnceCell<Registry> = const { OnceCell::new() };
 }
 
 struct ThreadData {

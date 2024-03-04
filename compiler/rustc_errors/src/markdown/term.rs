@@ -9,9 +9,9 @@ const DEFAULT_COLUMN_WIDTH: usize = 140;
 
 thread_local! {
     /// Track the position of viewable characters in our buffer
-    static CURSOR: Cell<usize> = Cell::new(0);
+    static CURSOR: Cell<usize> = const { Cell::new(0) };
     /// Width of the terminal
-    static WIDTH: Cell<usize> = Cell::new(DEFAULT_COLUMN_WIDTH);
+    static WIDTH: Cell<usize> = const { Cell::new(DEFAULT_COLUMN_WIDTH) };
 }
 
 /// Print to terminal output to a buffer
