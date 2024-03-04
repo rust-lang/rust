@@ -219,6 +219,7 @@ fn wait_wake_bitset() {
     t.join().unwrap();
 }
 
+// Crucial test which relies on the SeqCst fences in futex wait/wake.
 fn concurrent_wait_wake() {
     const FREE: i32 = 0;
     const HELD: i32 = 1;

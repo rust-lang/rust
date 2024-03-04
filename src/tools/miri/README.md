@@ -318,8 +318,8 @@ environment variable. We first document the most relevant and most commonly used
   and `warn-nobacktrace` are the supported actions. The default is to `abort`,
   which halts the machine. Some (but not all) operations also support continuing
   execution with a "permission denied" error being returned to the program.
-  `warn` prints a full backtrace when that happens; `warn-nobacktrace` is less
-  verbose. `hide` hides the warning entirely.
+  `warn` prints a full backtrace each time that happens; `warn-nobacktrace` is less
+  verbose and shown at most once per operation. `hide` hides the warning entirely.
 * `-Zmiri-num-cpus` states the number of available CPUs to be reported by miri. By default, the
   number of available CPUs is `1`. Note that this flag does not affect how miri handles threads in
   any way.
