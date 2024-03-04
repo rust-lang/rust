@@ -64,7 +64,7 @@ thread_local! {
     static SHOULD_PREFIX_WITH_CRATE: Cell<bool> = const { Cell::new(false) };
     static NO_TRIMMED_PATH: Cell<bool> = const { Cell::new(false) };
     static FORCE_TRIMMED_PATH: Cell<bool> = const { Cell::new(false) };
-    static NO_QUERIES: Cell<bool> = const { Cell::new(false) };
+    static REDUCED_QUERIES: Cell<bool> = const { Cell::new(false) };
     static NO_VISIBLE_PATH: Cell<bool> = const { Cell::new(false) };
 }
 
@@ -102,14 +102,14 @@ macro_rules! define_helper {
 }
 
 define_helper!(
-    /// Avoids running any queries during any prints that occur
+    /// Avoids running select queries during any prints that occur
     /// during the closure. This may alter the appearance of some
     /// types (e.g. forcing verbose printing for opaque types).
     /// This method is used during some queries (e.g. `explicit_item_bounds`
     /// for opaque types), to ensure that any debug printing that
     /// occurs during the query computation does not end up recursively
     /// calling the same query.
-    fn with_no_queries(NoQueriesGuard, NO_QUERIES);
+    fn with_reduced_queries(ReducedQueriesGuard, REDUCED_QUERIES);
     /// Force us to name impls with just the filename/line number. We
     /// normally try to use types. But at some points, notably while printing
     /// cycle errors, this can result in extra or suboptimal error output,
@@ -126,6 +126,15 @@ define_helper!(
     /// visible (public) reexports of types as paths.
     fn with_no_visible_paths(NoVisibleGuard, NO_VISIBLE_PATH);
 );
+
+/// Avoids running any queries during prints.
+pub macro with_no_queries($e:expr) {{
+    $crate::ty::print::with_reduced_queries!($crate::ty::print::with_forced_impl_filename_line!(
+        $crate::ty::print::with_no_trimmed_paths!($crate::ty::print::with_no_visible_paths!(
+            $crate::ty::print::with_forced_impl_filename_line!($e)
+        ))
+    ))
+}}
 
 /// The "region highlights" are used to control region printing during
 /// specific error messages. When a "region highlight" is enabled, it
@@ -659,7 +668,7 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
                 p!(")")
             }
             ty::FnDef(def_id, args) => {
-                if with_no_queries() {
+                if with_reduced_queries() {
                     p!(print_def_path(def_id, args));
                 } else {
                     let sig = self.tcx().fn_sig(def_id).instantiate(self.tcx(), args);
@@ -759,7 +768,7 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
                         return Ok(());
                     }
                     _ => {
-                        if with_no_queries() {
+                        if with_reduced_queries() {
                             p!(print_def_path(def_id, &[]));
                             return Ok(());
                         } else {
@@ -1876,7 +1885,8 @@ impl DerefMut for FmtPrinter<'_, '_> {
 
 impl<'a, 'tcx> FmtPrinter<'a, 'tcx> {
     pub fn new(tcx: TyCtxt<'tcx>, ns: Namespace) -> Self {
-        let limit = if with_no_queries() { Limit::new(1048576) } else { tcx.type_length_limit() };
+        let limit =
+            if with_reduced_queries() { Limit::new(1048576) } else { tcx.type_length_limit() };
         Self::new_with_limit(tcx, ns, limit)
     }
 
@@ -2962,7 +2972,7 @@ define_print_and_forward_display! {
     }
 
     TraitRefPrintSugared<'tcx> {
-        if !with_no_queries()
+        if !with_reduced_queries()
             && let Some(kind) = cx.tcx().fn_trait_kind_from_def_id(self.0.def_id)
             && let ty::Tuple(args) = self.0.args.type_at(1).kind()
         {
@@ -3050,7 +3060,7 @@ define_print_and_forward_display! {
             // If we're printing verbosely, or don't want to invoke queries
             // (`is_impl_trait_in_trait`), then fall back to printing the def path.
             // This is likely what you want if you're debugging the compiler anyways.
-            if !(cx.should_print_verbose() || with_no_queries())
+            if !(cx.should_print_verbose() || with_reduced_queries())
                 && cx.tcx().is_impl_trait_in_trait(self.def_id)
             {
                 return cx.pretty_print_opaque_impl_type(self.def_id, self.args);

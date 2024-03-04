@@ -83,6 +83,10 @@ resolve_consider_declaring_with_pub =
 resolve_consider_marking_as_pub =
     consider marking `{$ident}` as `pub` in the imported module
 
+resolve_consider_move_macro_position =
+    consider moving the definition of `{$ident}` before this call
+
+
 resolve_const_not_member_of_trait =
     const `{$const_}` is not a member of trait `{$trait_}`
     .label = not a member of trait `{$trait_}`
@@ -175,6 +179,9 @@ resolve_lifetime_param_in_ty_of_const_param =
 resolve_lowercase_self =
     attempt to use a non-constant value in a constant
     .suggestion = try using `Self`
+
+resolve_macro_defined_later =
+    a macro with the same name exists, but it appears later at here
 
 resolve_macro_expected_found =
     expected {$expected}, found {$found} `{$macro_path}`

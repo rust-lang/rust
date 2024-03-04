@@ -38,6 +38,7 @@ use rustc_span::def_id::LocalDefId;
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
 use rustc_span::{BytePos, DesugaringKind, ExpnKind, MacroKind, Span, DUMMY_SP};
 use rustc_target::spec::abi;
+use std::assert_matches::debug_assert_matches;
 use std::borrow::Cow;
 use std::iter;
 
@@ -4219,30 +4220,25 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
             };
 
             let origin = TypeVariableOrigin { kind: TypeVariableOriginKind::TypeInference, span };
-            let trait_def_id = proj.trait_def_id(self.tcx);
             // Make `Self` be equivalent to the type of the call chain
             // expression we're looking at now, so that we can tell what
             // for example `Iterator::Item` is at this point in the chain.
-            let args = GenericArgs::for_item(self.tcx, trait_def_id, |param, _| {
-                match param.kind {
-                    ty::GenericParamDefKind::Type { .. } => {
-                        if param.index == 0 {
-                            return prev_ty.into();
-                        }
-                    }
-                    ty::GenericParamDefKind::Lifetime | ty::GenericParamDefKind::Const { .. } => {}
+            let args = GenericArgs::for_item(self.tcx, proj.def_id, |param, _| {
+                if param.index == 0 {
+                    debug_assert_matches!(param.kind, ty::GenericParamDefKind::Type { .. });
+                    return prev_ty.into();
                 }
                 self.var_for_def(span, param)
             });
             // This will hold the resolved type of the associated type, if the
             // current expression implements the trait that associated type is
             // in. For example, this would be what `Iterator::Item` is here.
-            let ty_var = self.infcx.next_ty_var(origin);
+            let ty = self.infcx.next_ty_var(origin);
             // This corresponds to `<ExprTy as Iterator>::Item = _`.
             let projection = ty::Binder::dummy(ty::PredicateKind::Clause(
                 ty::ClauseKind::Projection(ty::ProjectionPredicate {
                     projection_ty: ty::AliasTy::new(self.tcx, proj.def_id, args),
-                    term: ty_var.into(),
+                    term: ty.into(),
                 }),
             ));
             let body_def_id = self.tcx.hir().enclosing_body_owner(body_id);
@@ -4254,14 +4250,15 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                 param_env,
                 projection,
             ));
-            if ocx.select_where_possible().is_empty() {
-                // `ty_var` now holds the type that `Item` is for `ExprTy`.
-                let ty_var = self.resolve_vars_if_possible(ty_var);
-                assocs_in_this_method.push(Some((span, (proj.def_id, ty_var))));
+            if ocx.select_where_possible().is_empty()
+                && let ty = self.resolve_vars_if_possible(ty)
+                && !ty.is_ty_var()
+            {
+                assocs_in_this_method.push(Some((span, (proj.def_id, ty))));
             } else {
                 // `<ExprTy as Iterator>` didn't select, so likely we've
                 // reached the end of the iterator chain, like the originating
-                // `Vec<_>`.
+                // `Vec<_>` or the `ty` couldn't be determined.
                 // Keep the space consistent for later zipping.
                 assocs_in_this_method.push(None);
             }

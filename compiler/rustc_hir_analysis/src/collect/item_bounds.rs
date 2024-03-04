@@ -64,7 +64,7 @@ fn opaque_type_bounds<'tcx>(
     item_ty: Ty<'tcx>,
     span: Span,
 ) -> &'tcx [(ty::Clause<'tcx>, Span)] {
-    ty::print::with_no_queries!({
+    ty::print::with_reduced_queries!({
         let icx = ItemCtxt::new(tcx, opaque_def_id);
         let mut bounds = icx.astconv().compute_bounds(item_ty, ast_bounds, PredicateFilter::All);
         // Opaque types are implicitly sized unless a `?Sized` bound is found
