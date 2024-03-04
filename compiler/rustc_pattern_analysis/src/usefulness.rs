@@ -747,6 +747,10 @@ impl<'a, Cx: TypeCx> UsefulnessCtxt<'a, Cx> {
         {
             return self.tycx.complexity_exceeded();
         }
+        // FIXME: Will be turned into a warning once we have a somewhat useable threeshold.
+        if self.complexity_level > 10_000_000 {
+            self.tycx.too_complex_match();
+        }
         Ok(())
     }
 }

@@ -145,6 +145,8 @@ pub trait TypeCx: Sized + fmt::Debug {
 
     /// The maximum pattern complexity limit was reached.
     fn complexity_exceeded(&self) -> Result<(), Self::Error>;
+
+    fn too_complex_match(&self);
 }
 
 /// The arm of a match expression.

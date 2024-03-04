@@ -900,6 +900,10 @@ impl<'p, 'tcx: 'p> TypeCx for RustcMatchCheckCtxt<'p, 'tcx> {
         let span = self.whole_match_span.unwrap_or(self.scrut_span);
         Err(self.tcx.dcx().span_err(span, "reached pattern complexity limit"))
     }
+
+    fn too_complex_match(&self) {
+        panic!("match too complex!");
+    }
 }
 
 /// Recursively expand this pattern into its subpatterns. Only useful for or-patterns.
