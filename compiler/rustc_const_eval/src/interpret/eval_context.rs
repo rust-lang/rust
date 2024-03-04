@@ -108,7 +108,7 @@ pub struct Frame<'mir, 'tcx, Prov: Provenance = CtfeProvenance, Extra = ()> {
 
     /// The location where the result of the current stack frame should be written to,
     /// and its layout in the caller.
-    pub return_place: PlaceTy<'tcx, Prov>,
+    pub return_place: MPlaceTy<'tcx, Prov>,
 
     /// The list of locals for this stack frame, stored in order as
     /// `[return_ptr, arguments..., variables..., temporaries...]`.
@@ -777,12 +777,13 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         trace!("body: {:#?}", body);
         let dead_local = LocalState { value: LocalValue::Dead, layout: Cell::new(None) };
         let locals = IndexVec::from_elem(dead_local, &body.local_decls);
+        let return_place = self.force_allocation(return_place)?; // avoid a long-lived `PlaceTy`
         // First push a stack frame so we have access to the local args
         let pre_frame = Frame {
             body,
             loc: Right(body.span), // Span used for errors caused during preamble.
             return_to_block,
-            return_place: return_place.clone(),
+            return_place,
             locals,
             instance,
             tracing_span: SpanGuard::new(),
@@ -912,7 +913,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             } else {
                 self.copy_op_allow_transmute(&op, &dest)
             };
-            trace!("return value: {:?}", self.dump_place(&dest));
+            trace!("return value: {:?}", self.dump_place(&dest.into()));
             // We delay actually short-circuiting on this error until *after* the stack frame is
             // popped, since we want this error to be attributed to the caller, whose type defines
             // this transmute.

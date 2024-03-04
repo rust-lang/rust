@@ -194,6 +194,12 @@ pub(super) enum Place<Prov: Provenance = CtfeProvenance> {
     Local { frame: usize, local: mir::Local, offset: Option<Size> },
 }
 
+/// An evaluated place, together with its type.
+///
+/// This may reference a stack frame by its index, so `PlaceTy` should generally not be kept around
+/// for longer than a single operation. Popping and then pushing a stack frame can make `PlaceTy`
+/// point to the wrong destination. If the interpreter has multiple stacks, stack switching will
+/// also invalidate a `PlaceTy`.
 #[derive(Clone)]
 pub struct PlaceTy<'tcx, Prov: Provenance = CtfeProvenance> {
     place: Place<Prov>, // Keep this private; it helps enforce invariants.
