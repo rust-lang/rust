@@ -1,6 +1,8 @@
 use std::cmp;
+use std::collections::BTreeSet;
 use std::iter;
 use std::num::NonZero;
+use std::sync::Mutex;
 use std::time::Duration;
 
 use rustc_apfloat::ieee::{Double, Single};
@@ -603,9 +605,18 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         match reject_with {
             RejectOpWith::Abort => isolation_abort_error(op_name),
             RejectOpWith::WarningWithoutBacktrace => {
-                this.tcx
-                    .dcx()
-                    .warn(format!("{op_name} was made to return an error due to isolation"));
+                // This exists to reduce verbosity; make sure we emit the warning at most once per
+                // operation.
+                static EMITTED_WARNINGS: Mutex<BTreeSet<String>> = Mutex::new(BTreeSet::new());
+
+                let mut emitted_warnings = EMITTED_WARNINGS.lock().unwrap();
+                if !emitted_warnings.contains(op_name) {
+                    // First time we are seeing this.
+                    emitted_warnings.insert(op_name.to_owned());
+                    this.tcx
+                        .dcx()
+                        .warn(format!("{op_name} was made to return an error due to isolation"));
+                }
                 Ok(())
             }
             RejectOpWith::Warning => {
