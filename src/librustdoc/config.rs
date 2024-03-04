@@ -623,11 +623,12 @@ impl Options {
         }
 
         let target = parse_target_triple(early_dcx, matches);
+        let maybe_sysroot = matches.opt_str("sysroot").map(PathBuf::from);
 
         let libs = matches
             .opt_strs("L")
             .iter()
-            .map(|s| SearchPath::from_cli_opt(None, &target, early_dcx, s))
+            .map(|s| SearchPath::from_cli_opt(maybe_sysroot.as_deref(), &target, early_dcx, s))
             .collect();
 
         let show_coverage = matches.opt_present("show-coverage");
@@ -657,7 +658,6 @@ impl Options {
         let bin_crate = crate_types.contains(&CrateType::Executable);
         let proc_macro_crate = crate_types.contains(&CrateType::ProcMacro);
         let playground_url = matches.opt_str("playground-url");
-        let maybe_sysroot = matches.opt_str("sysroot").map(PathBuf::from);
         let module_sorting = if matches.opt_present("sort-modules-by-appearance") {
             ModuleSorting::DeclarationOrder
         } else {
