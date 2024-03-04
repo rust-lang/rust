@@ -48,7 +48,7 @@ pub(crate) fn parent_module(db: &RootDatabase, position: FilePosition) -> Vec<Na
             .flat_map(|module| NavigationTarget::from_module_to_decl(db, module))
             .collect(),
         None => sema
-            .to_module_defs(position.file_id)
+            .file_to_module_defs(position.file_id)
             .flat_map(|module| NavigationTarget::from_module_to_decl(db, module))
             .collect(),
     }

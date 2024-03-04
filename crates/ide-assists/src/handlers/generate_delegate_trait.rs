@@ -116,7 +116,7 @@ impl Field {
     ) -> Option<Field> {
         let db = ctx.sema.db;
 
-        let module = ctx.sema.to_module_def(ctx.file_id())?;
+        let module = ctx.sema.file_to_module_def(ctx.file_id())?;
 
         let (name, range, ty) = match f {
             Either::Left(f) => {
