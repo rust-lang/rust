@@ -972,10 +972,9 @@ pub fn iterate_method_candidates_dyn(
 
             deref_chain.into_iter().try_for_each(|(receiver_ty, adj)| {
                 iterate_method_candidates_with_autoref(
+                    &mut table,
                     &receiver_ty,
                     adj,
-                    db,
-                    env.clone(),
                     traits_in_scope,
                     visible_from_module,
                     name,
@@ -1000,10 +999,9 @@ pub fn iterate_method_candidates_dyn(
 
 #[tracing::instrument(skip_all, fields(name = ?name))]
 fn iterate_method_candidates_with_autoref(
+    table: &mut InferenceTable<'_>,
     receiver_ty: &Canonical<Ty>,
     first_adjustment: ReceiverAdjustments,
-    db: &dyn HirDatabase,
-    env: Arc<TraitEnvironment>,
     traits_in_scope: &FxHashSet<TraitId>,
     visible_from_module: VisibleFromModule,
     name: Option<&Name>,
@@ -1016,10 +1014,9 @@ fn iterate_method_candidates_with_autoref(
 
     let mut iterate_method_candidates_by_receiver = move |receiver_ty, first_adjustment| {
         iterate_method_candidates_by_receiver(
+            table,
             receiver_ty,
             first_adjustment,
-            db,
-            env.clone(),
             traits_in_scope,
             visible_from_module,
             name,
@@ -1058,50 +1055,49 @@ fn iterate_method_candidates_with_autoref(
 
 #[tracing::instrument(skip_all, fields(name = ?name))]
 fn iterate_method_candidates_by_receiver(
+    table: &mut InferenceTable<'_>,
     receiver_ty: &Canonical<Ty>,
     receiver_adjustments: ReceiverAdjustments,
-    db: &dyn HirDatabase,
-    env: Arc<TraitEnvironment>,
     traits_in_scope: &FxHashSet<TraitId>,
     visible_from_module: VisibleFromModule,
     name: Option<&Name>,
     mut callback: &mut dyn FnMut(ReceiverAdjustments, AssocItemId, bool) -> ControlFlow<()>,
 ) -> ControlFlow<()> {
-    let mut table = InferenceTable::new(db, env);
-    let receiver_ty = table.instantiate_canonical(receiver_ty.clone());
-    let snapshot = table.snapshot();
-    // We're looking for methods with *receiver* type receiver_ty. These could
-    // be found in any of the derefs of receiver_ty, so we have to go through
-    // that, including raw derefs.
-    let mut autoderef = autoderef::Autoderef::new(&mut table, receiver_ty.clone(), true);
-    while let Some((self_ty, _)) = autoderef.next() {
-        iterate_inherent_methods(
-            &self_ty,
-            autoderef.table,
-            name,
-            Some(&receiver_ty),
-            Some(receiver_adjustments.clone()),
-            visible_from_module,
-            &mut callback,
-        )?
-    }
+    table.run_in_snapshot(|table| {
+        let receiver_ty = table.instantiate_canonical(receiver_ty.clone());
+        // We're looking for methods with *receiver* type receiver_ty. These could
+        // be found in any of the derefs of receiver_ty, so we have to go through
+        // that, including raw derefs.
+        table.run_in_snapshot(|table| {
+            let mut autoderef = autoderef::Autoderef::new(table, receiver_ty.clone(), true);
+            while let Some((self_ty, _)) = autoderef.next() {
+                iterate_inherent_methods(
+                    &self_ty,
+                    autoderef.table,
+                    name,
+                    Some(&receiver_ty),
+                    Some(receiver_adjustments.clone()),
+                    visible_from_module,
+                    &mut callback,
+                )?
+            }
+            ControlFlow::Continue(())
+        })?;
 
-    table.rollback_to(snapshot);
-
-    let mut autoderef = autoderef::Autoderef::new(&mut table, receiver_ty.clone(), true);
-    while let Some((self_ty, _)) = autoderef.next() {
-        iterate_trait_method_candidates(
-            &self_ty,
-            autoderef.table,
-            traits_in_scope,
-            name,
-            Some(&receiver_ty),
-            Some(receiver_adjustments.clone()),
-            &mut callback,
-        )?
-    }
-
-    ControlFlow::Continue(())
+        let mut autoderef = autoderef::Autoderef::new(table, receiver_ty.clone(), true);
+        while let Some((self_ty, _)) = autoderef.next() {
+            iterate_trait_method_candidates(
+                &self_ty,
+                autoderef.table,
+                traits_in_scope,
+                name,
+                Some(&receiver_ty),
+                Some(receiver_adjustments.clone()),
+                &mut callback,
+            )?
+        }
+        ControlFlow::Continue(())
+    })
 }
 
 #[tracing::instrument(skip_all, fields(name = ?name))]

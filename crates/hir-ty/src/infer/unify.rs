@@ -243,7 +243,7 @@ pub(crate) struct InferenceTable<'a> {
     pub(crate) db: &'a dyn HirDatabase,
     pub(crate) trait_env: Arc<TraitEnvironment>,
     var_unification_table: ChalkInferenceTable,
-    type_variable_table: Vec<TypeVariableFlags>,
+    type_variable_table: SmallVec<[TypeVariableFlags; 16]>,
     pending_obligations: Vec<Canonicalized<InEnvironment<Goal>>>,
     /// Double buffer used in [`Self::resolve_obligations_as_possible`] to cut down on
     /// temporary allocations.
@@ -252,8 +252,8 @@ pub(crate) struct InferenceTable<'a> {
 
 pub(crate) struct InferenceTableSnapshot {
     var_table_snapshot: chalk_solve::infer::InferenceSnapshot<Interner>,
+    type_variable_table: SmallVec<[TypeVariableFlags; 16]>,
     pending_obligations: Vec<Canonicalized<InEnvironment<Goal>>>,
-    type_variable_table_snapshot: Vec<TypeVariableFlags>,
 }
 
 impl<'a> InferenceTable<'a> {
@@ -262,7 +262,7 @@ impl<'a> InferenceTable<'a> {
             db,
             trait_env,
             var_unification_table: ChalkInferenceTable::new(),
-            type_variable_table: Vec::new(),
+            type_variable_table: SmallVec::new(),
             pending_obligations: Vec::new(),
             resolve_obligations_buffer: Vec::new(),
         }
@@ -575,19 +575,15 @@ impl<'a> InferenceTable<'a> {
 
     pub(crate) fn snapshot(&mut self) -> InferenceTableSnapshot {
         let var_table_snapshot = self.var_unification_table.snapshot();
-        let type_variable_table_snapshot = self.type_variable_table.clone();
+        let type_variable_table = self.type_variable_table.clone();
         let pending_obligations = self.pending_obligations.clone();
-        InferenceTableSnapshot {
-            var_table_snapshot,
-            pending_obligations,
-            type_variable_table_snapshot,
-        }
+        InferenceTableSnapshot { var_table_snapshot, pending_obligations, type_variable_table }
     }
 
     #[tracing::instrument(skip_all)]
     pub(crate) fn rollback_to(&mut self, snapshot: InferenceTableSnapshot) {
         self.var_unification_table.rollback_to(snapshot.var_table_snapshot);
-        self.type_variable_table = snapshot.type_variable_table_snapshot;
+        self.type_variable_table = snapshot.type_variable_table;
         self.pending_obligations = snapshot.pending_obligations;
     }
 

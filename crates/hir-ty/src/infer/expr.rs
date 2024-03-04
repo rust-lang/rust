@@ -657,7 +657,7 @@ impl InferenceContext<'_> {
                                 );
                             }
                         }
-                        if let Some(derefed) = builtin_deref(&mut self.table, &inner_ty, true) {
+                        if let Some(derefed) = builtin_deref(self.table.db, &inner_ty, true) {
                             self.resolve_ty_shallow(derefed)
                         } else {
                             deref_by_trait(&mut self.table, inner_ty)
