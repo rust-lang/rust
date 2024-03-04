@@ -297,7 +297,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                     FloatTy::F128 => unimplemented!("f16_f128"),
                 }
             }
-            // unsiged int -> float
+            // unsigned int -> float
             Float(fty) => match fty {
                 FloatTy::F16 => unimplemented!("f16_f128"),
                 FloatTy::F32 => Scalar::from_f32(Single::from_u128(v).value),
