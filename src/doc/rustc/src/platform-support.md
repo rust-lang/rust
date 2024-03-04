@@ -143,6 +143,7 @@ target | std | notes
 `aarch64-fuchsia` | ✓ | Alias for `aarch64-unknown-fuchsia`
 [`aarch64-unknown-fuchsia`](platform-support/fuchsia.md) | ✓ | ARM64 Fuchsia
 [`aarch64-linux-android`](platform-support/android.md) | ✓ | ARM64 Android
+[`aarch64-unknown-linux-ohos`](platform-support/openharmony.md) | ✓ | ARM64 OpenHarmony
 `aarch64-unknown-none-softfloat` | * | Bare ARM64, softfloat
 `aarch64-unknown-none` | * | Bare ARM64, hardfloat
 [`aarch64-unknown-uefi`](platform-support/unknown-uefi.md) | * | ARM64 UEFI
@@ -157,6 +158,7 @@ target | std | notes
 `armv7-unknown-linux-gnueabi` | ✓ | ARMv7-A Linux (kernel 4.15, glibc 2.27)
 `armv7-unknown-linux-musleabi` | ✓ | ARMv7-A Linux with MUSL
 `armv7-unknown-linux-musleabihf` | ✓ | ARMv7-A Linux with MUSL, hardfloat
+[`armv7-unknown-linux-ohos`](platform-support/openharmony.md) | ✓ | ARMv7-A OpenHarmony
 [`armv7a-none-eabi`](platform-support/arm-none-eabi.md) | * | Bare ARMv7-A
 [`armv7r-none-eabi`](platform-support/armv7r-none-eabi.md) | * | Bare ARMv7-R
 [`armv7r-none-eabihf`](platform-support/armv7r-none-eabi.md) | * | Bare ARMv7-R, hardfloat
@@ -199,6 +201,7 @@ target | std | notes
 [`x86_64-linux-android`](platform-support/android.md) | ✓ | 64-bit x86 Android
 `x86_64-pc-solaris` | ✓ | 64-bit Solaris 11, illumos
 `x86_64-unknown-linux-gnux32` | ✓ | 64-bit Linux (x32 ABI) (kernel 4.15, glibc 2.27)
+[`x86_64-unknown-linux-ohos`](platform-support/openharmony.md) | ✓ | x86_64 OpenHarmony
 [`x86_64-unknown-none`](platform-support/x86_64-unknown-none.md) | * | Freestanding/bare-metal x86_64, softfloat
 `x86_64-unknown-redox` | ✓ | Redox OS
 [`x86_64-unknown-uefi`](platform-support/unknown-uefi.md) | * | 64-bit UEFI
@@ -244,7 +247,6 @@ target | std | host | notes
 [`aarch64-kmc-solid_asp3`](platform-support/kmc-solid.md) | ✓ |  | ARM64 SOLID with TOPPERS/ASP3
 [`aarch64-nintendo-switch-freestanding`](platform-support/aarch64-nintendo-switch-freestanding.md) | * |  | ARM64 Nintendo Switch, Horizon
 [`aarch64-pc-windows-gnullvm`](platform-support/pc-windows-gnullvm.md) | ✓ | ✓ |
-[`aarch64-unknown-linux-ohos`](platform-support/openharmony.md) | ✓ |  | ARM64 OpenHarmony |
 [`aarch64-unknown-teeos`](platform-support/aarch64-unknown-teeos.md) | ? |  | ARM64 TEEOS |
 [`aarch64-unknown-nto-qnx710`](platform-support/nto-qnx.md) | ✓ |  | ARM64 QNX Neutrino 7.1 RTOS |
 `aarch64-unknown-freebsd` | ✓ | ✓ | ARM64 FreeBSD
@@ -269,7 +271,6 @@ target | std | host | notes
 [`armv6-unknown-netbsd-eabihf`](platform-support/netbsd.md) | ✓ | ✓ | ARMv6 NetBSD w/hard-float
 [`armv6k-nintendo-3ds`](platform-support/armv6k-nintendo-3ds.md) | ? |  | ARMv6K Nintendo 3DS, Horizon (Requires devkitARM toolchain)
 [`armv7-sony-vita-newlibeabihf`](platform-support/armv7-sony-vita-newlibeabihf.md) | ✓ |  | ARMv7-A Cortex-A9 Sony PlayStation Vita (requires VITASDK toolchain)
-[`armv7-unknown-linux-ohos`](platform-support/openharmony.md) | ✓ |  | ARMv7-A OpenHarmony |
 [`armv7-unknown-linux-uclibceabi`](platform-support/armv7-unknown-linux-uclibceabi.md) | ✓ | ✓ | ARMv7-A Linux with uClibc, softfloat
 [`armv7-unknown-linux-uclibceabihf`](platform-support/armv7-unknown-linux-uclibceabihf.md) | ✓ | ? | ARMv7-A Linux with uClibc, hardfloat
 `armv7-unknown-freebsd` | ✓ | ✓ | ARMv7-A FreeBSD
@@ -374,7 +375,6 @@ target | std | host | notes
 `x86_64-unknown-haiku` | ✓ | ✓ | 64-bit Haiku
 [`x86_64-unknown-hermit`](platform-support/hermit.md) | ✓ |  | x86_64 Hermit
 `x86_64-unknown-l4re-uclibc` | ? |  |
-[`x86_64-unknown-linux-ohos`](platform-support/openharmony.md) | ✓ |  | x86_64 OpenHarmony |
 [`x86_64-unknown-openbsd`](platform-support/openbsd.md) | ✓ | ✓ | 64-bit OpenBSD
 `x86_64-uwp-windows-gnu` | ✓ |  |
 `x86_64-uwp-windows-msvc` | ✓ |  |

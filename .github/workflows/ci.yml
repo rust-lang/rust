@@ -235,6 +235,9 @@ jobs:
           - name: dist-loongarch64-linux
             os: ubuntu-20.04-8core-32gb
             env: {}
+          - name: dist-ohos
+            os: ubuntu-20.04-8core-32gb
+            env: {}
           - name: dist-powerpc-linux
             os: ubuntu-20.04-8core-32gb
             env: {}
