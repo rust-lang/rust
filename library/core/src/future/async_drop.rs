@@ -36,7 +36,7 @@ unsafe fn async_drop_in_place_raw<'a, T: ?Sized + 'a>(
 ///
 /// Behavior is undefined if any of the following conditions are violated:
 ///
-/// * `to_drop` must be [valid] for both reads and writes.
+/// * `to_drop` must be [valid](crate::ptr#safety) for both reads and writes.
 ///
 /// * `to_drop` must be properly aligned, even if `T` has size 0.
 ///
@@ -53,12 +53,6 @@ unsafe fn async_drop_in_place_raw<'a, T: ?Sized + 'a>(
 ///   is through the `self: Pin<&mut Self>` references supplied to the
 ///   `AsyncDrop::async_drop` methods that `async_drop_in_place` or
 ///   `AsyncDropInPlace<T>::poll` invokes.
-///
-/// Additionally, if `T` is not [`Copy`], using the pointed-to value after
-/// calling `async_drop_in_place` can cause undefined behavior. Note that
-/// `*to_drop = foo` counts as a use because it will cause the value to
-/// be dropped again. [`write()`] can be used to overwrite data without
-/// causing it to be dropped.
 ///
 #[unstable(feature = "async_drop", issue = "none")]
 pub unsafe fn async_drop_in_place<'a, T: ?Sized + 'a>(to_drop: *mut T) -> AsyncDropInPlace<'a, T> {
