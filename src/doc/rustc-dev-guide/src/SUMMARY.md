@@ -132,6 +132,7 @@
         - [The solver](./solve/the-solver.md)
         - [Canonicalization](./solve/canonicalization.md)
         - [Coinduction](./solve/coinduction.md)
+        - [Caching](./solve/caching.md)
         - [Proof trees](./solve/proof-trees.md)
         - [Normalization](./solve/normalization.md)
         - [Opaque types](./solve/opaque-types.md)
