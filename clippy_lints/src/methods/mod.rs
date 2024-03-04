@@ -3875,6 +3875,7 @@ declare_clippy_lint! {
 }
 
 declare_clippy_lint! {
+    /// ### What it does
     /// Checks for usage of `option.map(f).unwrap_or_default()` and `result.map(f).unwrap_or_default()` where f is a function or closure that returns the `bool` type.
     ///
     /// ### Why is this bad?
