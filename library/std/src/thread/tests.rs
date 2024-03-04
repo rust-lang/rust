@@ -70,7 +70,7 @@ fn test_named_thread_truncation() {
 }
 
 #[cfg(any(
-    target_os = "windows",
+    all(target_os = "windows", not(target_vendor = "win7")),
     target_os = "linux",
     target_os = "macos",
     target_os = "ios",
