@@ -124,7 +124,7 @@ pub(super) fn builtin(sess: &Session, diagnostic: BuiltinLintDiag, diag: &mut Di
         BuiltinLintDiag::UnknownCrateTypes(span, note, sugg) => {
             diag.span_suggestion(span, note, sugg, Applicability::MaybeIncorrect);
         }
-        BuiltinLintDiag::UnusedImports(message, replaces, in_test_module) => {
+        BuiltinLintDiag::UnusedImports(message, replaces, in_test_module, redundant_sources) => {
             if !replaces.is_empty() {
                 diag.tool_only_multipart_suggestion(
                     message,
@@ -139,15 +139,15 @@ pub(super) fn builtin(sess: &Session, diagnostic: BuiltinLintDiag, diag: &mut Di
                     "if this is a test module, consider adding a `#[cfg(test)]` to the containing module",
                 );
             }
-        }
-        BuiltinLintDiag::RedundantImport(spans, ident) => {
-            for (span, is_imported) in spans {
-                let introduced = if is_imported { "imported" } else { "defined" };
-                let span_msg = if span.is_dummy() { "by prelude" } else { "here" };
-                diag.span_label(
-                    span,
-                    format!("the item `{ident}` is already {introduced} {span_msg}"),
-                );
+            for (ident, spans) in redundant_sources {
+                for (span, is_imported) in spans {
+                    let introduced = if is_imported { "imported" } else { "defined" };
+                    let span_msg = if span.is_dummy() { "by prelude" } else { "here" };
+                    diag.span_label(
+                        span,
+                        format!("the item `{ident}` is already {introduced} {span_msg}"),
+                    );
+                }
             }
         }
         BuiltinLintDiag::DeprecatedMacro(suggestion, span) => {

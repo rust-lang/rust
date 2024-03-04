@@ -11,14 +11,18 @@ fn baz() -> Bar {
     3
 }
 
-mod m1 { pub struct S {} }
-mod m2 { pub struct S {} }
+mod m1 {
+    pub struct S {}
+}
+mod m2 {
+    pub struct S {}
+}
 
 use m1::*; //~ WARNING unused import
 use m2::*; //~ WARNING unused import
 
 fn main() {
-    use crate::foo::Bar; //~ WARNING imported redundantly
+    use crate::foo::Bar; //~ WARNING redundant import
     let _a: Bar = 3;
     baz();
 

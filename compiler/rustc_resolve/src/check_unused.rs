@@ -31,7 +31,6 @@ use crate::NameBindingKind;
 use rustc_ast as ast;
 use rustc_ast::visit::{self, Visitor};
 use rustc_data_structures::fx::{FxHashMap, FxIndexMap, FxIndexSet};
-use rustc_data_structures::unord::UnordSet;
 use rustc_errors::{pluralize, MultiSpan};
 use rustc_hir::def::{DefKind, Res};
 use rustc_session::lint::builtin::{MACRO_USE_EXTERN_CRATE, UNUSED_EXTERN_CRATES, UNUSED_IMPORTS};
@@ -43,7 +42,7 @@ struct UnusedImport {
     use_tree: ast::UseTree,
     use_tree_id: ast::NodeId,
     item_span: Span,
-    unused: UnordSet<ast::NodeId>,
+    unused: FxIndexSet<ast::NodeId>,
 }
 
 impl UnusedImport {
@@ -96,7 +95,7 @@ impl<'a, 'b, 'tcx> UnusedImportCheckVisitor<'a, 'b, 'tcx> {
             // FIXME(#120456) - is `swap_remove` correct?
             self.r.maybe_unused_trait_imports.swap_remove(&def_id);
             if let Some(i) = self.unused_imports.get_mut(&self.base_id) {
-                i.unused.remove(&id);
+                i.unused.swap_remove(&id);
             }
         }
     }
@@ -135,6 +134,16 @@ impl<'a, 'b, 'tcx> UnusedImportCheckVisitor<'a, 'b, 'tcx> {
     fn check_imports_as_underscore(&mut self, items: &[(ast::UseTree, ast::NodeId)]) {
         for (item, id) in items {
             self.check_import_as_underscore(item, *id);
+        }
+    }
+
+    fn merge_unused_import(&mut self, unused_import: UnusedImport) {
+        if let Some(import) = self.unused_imports.get_mut(&unused_import.use_tree_id) {
+            for id in unused_import.unused {
+                import.unused.insert(id);
+            }
+        } else {
+            self.unused_imports.entry(unused_import.use_tree_id).or_insert(unused_import);
         }
     }
 
@@ -265,6 +274,40 @@ impl<'a, 'b, 'tcx> Visitor<'a> for UnusedImportCheckVisitor<'a, 'b, 'tcx> {
     }
 }
 
+struct ImportFinderVisitor {
+    unused_import: Option<UnusedImport>,
+    root_node_id: ast::NodeId,
+    node_id: ast::NodeId,
+    item_span: Span,
+}
+
+impl Visitor<'_> for ImportFinderVisitor {
+    fn visit_item(&mut self, item: &ast::Item) {
+        match item.kind {
+            ast::ItemKind::Use(..) if item.span.is_dummy() => return,
+            _ => {}
+        }
+
+        self.item_span = item.span_with_attributes();
+        visit::walk_item(self, item);
+    }
+
+    fn visit_use_tree(&mut self, use_tree: &ast::UseTree, id: ast::NodeId, _nested: bool) {
+        if id == self.root_node_id {
+            let mut unused_import = UnusedImport {
+                use_tree: use_tree.clone(),
+                use_tree_id: id,
+                item_span: self.item_span,
+                unused: Default::default(),
+            };
+            unused_import.unused.insert(self.node_id);
+            self.unused_import = Some(unused_import);
+        }
+        visit::walk_use_tree(self, use_tree, id);
+    }
+}
+
+#[derive(Debug)]
 enum UnusedSpanResult {
     Used,
     FlatUnused(Span, Span),
@@ -412,6 +455,46 @@ impl Resolver<'_, '_> {
 
         visitor.report_unused_extern_crate_items(maybe_unused_extern_crates);
 
+        let unused_imports = &visitor.unused_imports;
+        let mut check_redundant_imports = FxIndexSet::default();
+        for module in visitor.r.arenas.local_modules().iter() {
+            for (_key, resolution) in visitor.r.resolutions(*module).borrow().iter() {
+                let resolution = resolution.borrow();
+
+                if let Some(binding) = resolution.binding
+                    && let NameBindingKind::Import { import, .. } = binding.kind
+                    && let ImportKind::Single { id, .. } = import.kind
+                {
+                    if let Some(unused_import) = unused_imports.get(&import.root_id)
+                        && unused_import.unused.contains(&id)
+                    {
+                        continue;
+                    }
+
+                    check_redundant_imports.insert(import);
+                }
+            }
+        }
+
+        let mut redundant_source_spans = FxHashMap::default();
+        for import in check_redundant_imports {
+            if let Some(redundant_spans) = visitor.r.check_for_redundant_imports(import)
+                && let ImportKind::Single { source, id, .. } = import.kind
+            {
+                let mut finder = ImportFinderVisitor {
+                    node_id: id,
+                    root_node_id: import.root_id,
+                    unused_import: None,
+                    item_span: Span::default(),
+                };
+                visit::walk_crate(&mut finder, krate);
+                if let Some(unused) = finder.unused_import {
+                    visitor.merge_unused_import(unused);
+                    redundant_source_spans.insert(id, (source, redundant_spans));
+                }
+            }
+        }
+
         for unused in visitor.unused_imports.values() {
             let mut fixes = Vec::new();
             let spans = match calc_unused_spans(unused, &unused.use_tree, unused.use_tree_id) {
@@ -432,9 +515,16 @@ impl Resolver<'_, '_> {
                 }
             };
 
-            let ms = MultiSpan::from_spans(spans);
+            let redundant_sources = unused
+                .unused
+                .clone()
+                .into_iter()
+                .filter_map(|id| redundant_source_spans.get(&id))
+                .cloned()
+                .collect();
 
-            let mut span_snippets = ms
+            let multi_span = MultiSpan::from_spans(spans);
+            let mut span_snippets = multi_span
                 .primary_spans()
                 .iter()
                 .filter_map(|span| tcx.sess.source_map().span_to_snippet(*span).ok())
@@ -442,9 +532,18 @@ impl Resolver<'_, '_> {
                 .collect::<Vec<String>>();
             span_snippets.sort();
 
+            let remove_type =
+                if unused.unused.iter().all(|i| redundant_source_spans.get(i).is_none()) {
+                    "unused import"
+                } else if unused.unused.iter().all(|i| redundant_source_spans.get(i).is_some()) {
+                    "redundant import"
+                } else {
+                    "unused or redundant import"
+                };
             let msg = format!(
-                "unused import{}{}",
-                pluralize!(ms.primary_spans().len()),
+                "{}{}{}",
+                remove_type,
+                pluralize!(multi_span.primary_spans().len()),
                 if !span_snippets.is_empty() {
                     format!(": {}", span_snippets.join(", "))
                 } else {
@@ -453,11 +552,11 @@ impl Resolver<'_, '_> {
             );
 
             let fix_msg = if fixes.len() == 1 && fixes[0].0 == unused.item_span {
-                "remove the whole `use` item"
-            } else if ms.primary_spans().len() > 1 {
-                "remove the unused imports"
+                "remove the whole `use` item".to_owned()
+            } else if multi_span.primary_spans().len() > 1 {
+                format!("remove the {}s", remove_type)
             } else {
-                "remove the unused import"
+                format!("remove the {}", remove_type)
             };
 
             // If we are in the `--test` mode, suppress a help that adds the `#[cfg(test)]`
@@ -487,35 +586,15 @@ impl Resolver<'_, '_> {
             visitor.r.lint_buffer.buffer_lint_with_diagnostic(
                 UNUSED_IMPORTS,
                 unused.use_tree_id,
-                ms,
+                multi_span,
                 msg,
-                BuiltinLintDiag::UnusedImports(fix_msg.into(), fixes, test_module_span),
+                BuiltinLintDiag::UnusedImports(
+                    fix_msg.into(),
+                    fixes,
+                    test_module_span,
+                    redundant_sources,
+                ),
             );
-        }
-
-        let unused_imports = visitor.unused_imports;
-        let mut check_redundant_imports = FxIndexSet::default();
-        for module in self.arenas.local_modules().iter() {
-            for (_key, resolution) in self.resolutions(*module).borrow().iter() {
-                let resolution = resolution.borrow();
-
-                if let Some(binding) = resolution.binding
-                    && let NameBindingKind::Import { import, .. } = binding.kind
-                    && let ImportKind::Single { id, .. } = import.kind
-                {
-                    if let Some(unused_import) = unused_imports.get(&import.root_id)
-                        && unused_import.unused.contains(&id)
-                    {
-                        continue;
-                    }
-
-                    check_redundant_imports.insert(import);
-                }
-            }
-        }
-
-        for import in check_redundant_imports {
-            self.check_for_redundant_imports(import);
         }
     }
 }

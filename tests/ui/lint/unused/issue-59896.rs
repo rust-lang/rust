@@ -3,7 +3,7 @@
 struct S;
 
 fn main() {
-    use S;  //~ ERROR the item `S` is imported redundantly
+    use S; //~ ERROR redundant import
 
     let _s = S;
 }

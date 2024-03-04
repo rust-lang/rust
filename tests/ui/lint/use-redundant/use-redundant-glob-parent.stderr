@@ -1,4 +1,4 @@
-warning: the item `Foo` is imported redundantly
+warning: redundant import: `bar::Foo`
   --> $DIR/use-redundant-glob-parent.rs:12:9
    |
 LL | use bar::*;

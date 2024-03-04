@@ -1,5 +1,5 @@
 warning: unused import: `m1::*`
-  --> $DIR/use-redundant.rs:17:5
+  --> $DIR/use-redundant.rs:21:5
    |
 LL | use m1::*;
    |     ^^^^^
@@ -11,13 +11,13 @@ LL | #![warn(unused_imports)]
    |         ^^^^^^^^^^^^^^
 
 warning: unused import: `m2::*`
-  --> $DIR/use-redundant.rs:18:5
+  --> $DIR/use-redundant.rs:22:5
    |
 LL | use m2::*;
    |     ^^^^^
 
-warning: the item `Bar` is imported redundantly
-  --> $DIR/use-redundant.rs:21:9
+warning: redundant import: `crate::foo::Bar`
+  --> $DIR/use-redundant.rs:25:9
    |
 LL | use crate::foo::Bar;
    |     --------------- the item `Bar` is already imported here

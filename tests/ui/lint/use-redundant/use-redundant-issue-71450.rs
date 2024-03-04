@@ -9,7 +9,7 @@ mod foo {
 
     impl String {
         pub fn new() -> String {
-            String{}
+            String {}
         }
     }
 
@@ -21,9 +21,8 @@ mod foo {
 }
 
 fn main() {
-
     {
-        use std::string::String; //~ WARNING the item `String` is imported redundantly
+        use std::string::String; //~ WARNING redundant import
         // 'String' from 'std::string::String'.
         let s = String::new();
         println!("{}", s);
@@ -41,5 +40,4 @@ fn main() {
         let s = String::new();
         println!("{}", s);
     }
-
 }
