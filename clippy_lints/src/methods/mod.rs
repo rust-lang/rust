@@ -1235,12 +1235,11 @@ declare_clippy_lint! {
 
 declare_clippy_lint! {
     /// ### What it does
-    /// Checks for usage of `.iter().nth()` (and the related
-    /// `.iter_mut().nth()`) on standard library types with *O*(1) element access.
+    /// Checks for usage of `.iter().nth()`/`.iter_mut().nth()` on standard library types that have
+    /// equivalent `.get()`/`.get_mut()` methods.
     ///
     /// ### Why is this bad?
-    /// `.get()` and `.get_mut()` are more efficient and more
-    /// readable.
+    /// `.get()` and `.get_mut()` are equivalent but more concise.
     ///
     /// ### Example
     /// ```no_run
@@ -1256,7 +1255,7 @@ declare_clippy_lint! {
     /// ```
     #[clippy::version = "pre 1.29.0"]
     pub ITER_NTH,
-    perf,
+    style,
     "using `.iter().nth()` on a standard library type with O(1) element access"
 }
 
@@ -4723,8 +4722,11 @@ impl Methods {
                         iter_overeager_cloned::Op::LaterCloned,
                         false,
                     ),
-                    Some(("iter", recv2, [], _, _)) => iter_nth::check(cx, expr, recv2, recv, n_arg, false),
-                    Some(("iter_mut", recv2, [], _, _)) => iter_nth::check(cx, expr, recv2, recv, n_arg, true),
+                    Some((iter_method @ ("iter" | "iter_mut"), iter_recv, [], iter_span, _)) => {
+                        if !iter_nth::check(cx, expr, iter_recv, iter_method, iter_span, span) {
+                            iter_nth_zero::check(cx, expr, recv, n_arg);
+                        }
+                    },
                     _ => iter_nth_zero::check(cx, expr, recv, n_arg),
                 },
                 ("ok_or_else", [arg]) => unnecessary_lazy_eval::check(cx, expr, recv, arg, "ok_or"),
