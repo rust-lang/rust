@@ -984,17 +984,24 @@ pub fn parse_repr_attr(sess: &Session, attr: &Attribute) -> Vec<ReprAttr> {
                 }
             } else if let Some((name, value)) = item.name_value_literal() {
                 let mut literal_error = None;
+                let mut err_span = item.span();
                 if name == sym::align {
                     recognised = true;
                     match parse_alignment(&value.kind) {
                         Ok(literal) => acc.push(ReprAlign(literal)),
-                        Err(message) => literal_error = Some(message),
+                        Err(message) => {
+                            err_span = value.span;
+                            literal_error = Some(message)
+                        }
                     };
                 } else if name == sym::packed {
                     recognised = true;
                     match parse_alignment(&value.kind) {
                         Ok(literal) => acc.push(ReprPacked(literal)),
-                        Err(message) => literal_error = Some(message),
+                        Err(message) => {
+                            err_span = value.span;
+                            literal_error = Some(message)
+                        }
                     };
                 } else if matches!(name, sym::Rust | sym::C | sym::simd | sym::transparent)
                     || int_type_of_word(name).is_some()
@@ -1007,7 +1014,7 @@ pub fn parse_repr_attr(sess: &Session, attr: &Attribute) -> Vec<ReprAttr> {
                 }
                 if let Some(literal_error) = literal_error {
                     sess.dcx().emit_err(session_diagnostics::InvalidReprGeneric {
-                        span: item.span(),
+                        span: err_span,
                         repr_arg: name.to_ident_string(),
                         error_part: literal_error,
                     });
@@ -1039,21 +1046,37 @@ pub fn parse_repr_attr(sess: &Session, attr: &Attribute) -> Vec<ReprAttr> {
                             });
                         }
                     }
-                    MetaItemKind::List(_) => {
+                    MetaItemKind::List(nested_items) => {
                         if meta_item.has_name(sym::align) {
                             recognised = true;
-                            sess.dcx().emit_err(
-                                session_diagnostics::IncorrectReprFormatAlignOneArg {
-                                    span: meta_item.span,
-                                },
-                            );
+                            if nested_items.len() == 1 {
+                                sess.dcx().emit_err(
+                                    session_diagnostics::IncorrectReprFormatExpectInteger {
+                                        span: nested_items[0].span(),
+                                    },
+                                );
+                            } else {
+                                sess.dcx().emit_err(
+                                    session_diagnostics::IncorrectReprFormatAlignOneArg {
+                                        span: meta_item.span,
+                                    },
+                                );
+                            }
                         } else if meta_item.has_name(sym::packed) {
                             recognised = true;
-                            sess.dcx().emit_err(
-                                session_diagnostics::IncorrectReprFormatPackedOneOrZeroArg {
-                                    span: meta_item.span,
-                                },
-                            );
+                            if nested_items.len() == 1 {
+                                sess.dcx().emit_err(
+                                    session_diagnostics::IncorrectReprFormatPackedExpectInteger {
+                                        span: nested_items[0].span(),
+                                    },
+                                );
+                            } else {
+                                sess.dcx().emit_err(
+                                    session_diagnostics::IncorrectReprFormatPackedOneOrZeroArg {
+                                        span: meta_item.span,
+                                    },
+                                );
+                            }
                         } else if matches!(
                             meta_item.name_or_empty(),
                             sym::Rust | sym::C | sym::simd | sym::transparent
