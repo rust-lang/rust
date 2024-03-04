@@ -1585,18 +1585,23 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             // We could add them to the or-candidates before the call to `test_or_pattern` but this
             // would make it impossible to detect simplifiable or-patterns. That would guarantee
             // exponentially large CFGs for cases like `(1 | 2, 3 | 4, ...)`.
+            let mut last_otherwise = None;
+            first_candidate.visit_leaves(|leaf_candidate| {
+                last_otherwise = leaf_candidate.otherwise_block;
+            });
             first_candidate.visit_leaves(|leaf_candidate| {
                 assert!(leaf_candidate.match_pairs.is_empty());
                 leaf_candidate.match_pairs.extend(remaining_match_pairs.iter().cloned());
                 let or_start = leaf_candidate.pre_binding_block.unwrap();
                 // In a case like `(P | Q, R | S)`, if `P` succeeds and `R | S` fails, we know `(Q,
                 // R | S)` will fail too. If there is no guard, we skip testing of `Q` by branching
-                // directly to `remainder_start`. If there is a guard, `or_otherwise` can be reached
-                // by guard failure as well, so we can't skip `Q`.
+                // directly to `last_otherwise`. If there is a guard,
+                // `leaf_candidate.otherwise_block` can be reached by guard failure as well, so we
+                // can't skip `Q`.
                 let or_otherwise = if leaf_candidate.has_guard {
                     leaf_candidate.otherwise_block.unwrap()
                 } else {
-                    remainder_start
+                    last_otherwise.unwrap()
                 };
                 self.test_candidates_with_or(
                     span,
