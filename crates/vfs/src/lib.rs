@@ -163,8 +163,8 @@ impl Vfs {
     /// # Panics
     ///
     /// Panics if the id is not present in the `Vfs`.
-    pub fn file_path(&self, file_id: FileId) -> VfsPath {
-        self.interner.lookup(file_id).clone()
+    pub fn file_path(&self, file_id: FileId) -> &VfsPath {
+        self.interner.lookup(file_id)
     }
 
     /// Returns an iterator over the stored ids and their corresponding paths.
