@@ -1384,7 +1384,9 @@ impl DefCollector<'_> {
         // First, fetch the raw expansion result for purposes of error reporting. This goes through
         // `parse_macro_expansion_error` to avoid depending on the full expansion result (to improve
         // incrementality).
-        let ExpandResult { value, err } = self.db.parse_macro_expansion_error(macro_call_id);
+        // FIXME: This kind of error fetching feels a bit odd?
+        let ExpandResult { value: errors, err } =
+            self.db.parse_macro_expansion_error(macro_call_id);
         if let Some(err) = err {
             let loc: MacroCallLoc = self.db.lookup_intern_macro_call(macro_call_id);
             let diag = match err {
@@ -1398,7 +1400,7 @@ impl DefCollector<'_> {
 
             self.def_map.diagnostics.push(diag);
         }
-        if let errors @ [_, ..] = &*value {
+        if !errors.is_empty() {
             let loc: MacroCallLoc = self.db.lookup_intern_macro_call(macro_call_id);
             let diag = DefDiagnostic::macro_expansion_parse_error(module_id, loc.kind, errors);
             self.def_map.diagnostics.push(diag);

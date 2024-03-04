@@ -117,14 +117,11 @@ impl DefDiagnostic {
     pub(crate) fn macro_expansion_parse_error(
         container: LocalModuleId,
         ast: MacroCallKind,
-        errors: &[SyntaxError],
+        errors: Box<[SyntaxError]>,
     ) -> Self {
         Self {
             in_module: container,
-            kind: DefDiagnosticKind::MacroExpansionParseError {
-                ast,
-                errors: errors.to_vec().into_boxed_slice(),
-            },
+            kind: DefDiagnosticKind::MacroExpansionParseError { ast, errors },
         }
     }
 

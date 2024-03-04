@@ -55,7 +55,7 @@ fn integrated_highlighting_benchmark() {
         vfs.file_id(&path).unwrap_or_else(|| panic!("can't find virtual file for {path}"))
     };
 
-    crate::tracing::hprof::init("*>100");
+    let _g = crate::tracing::hprof::init("*>150");
 
     {
         let _it = stdx::timeit("initial");
@@ -71,6 +71,8 @@ fn integrated_highlighting_benchmark() {
         change.change_file(file_id, Some(Arc::from(text)));
         host.apply_change(change);
     }
+
+    let _g = crate::tracing::hprof::init("*>50");
 
     {
         let _it = stdx::timeit("after change");
