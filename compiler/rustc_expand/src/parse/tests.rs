@@ -1,5 +1,6 @@
 use crate::tests::{
-    matches_codepattern, string_to_stream, with_error_checking_parse, with_expected_parse_error,
+    matches_codepattern, psess, string_to_stream, with_error_checking_parse,
+    with_expected_parse_error,
 };
 
 use ast::token::IdentIsRaw;
@@ -14,18 +15,9 @@ use rustc_parse::new_parser_from_source_str;
 use rustc_parse::parser::ForceCollect;
 use rustc_session::parse::ParseSess;
 use rustc_span::create_default_session_globals_then;
-use rustc_span::source_map::FilePathMapping;
 use rustc_span::symbol::{kw, sym, Symbol};
 use rustc_span::{BytePos, FileName, Pos, Span};
-
 use std::path::PathBuf;
-
-fn sess() -> ParseSess {
-    ParseSess::new(
-        vec![crate::DEFAULT_LOCALE_RESOURCE, rustc_parse::DEFAULT_LOCALE_RESOURCE],
-        FilePathMapping::empty(),
-    )
-}
 
 /// Parses an item.
 ///
@@ -34,9 +26,9 @@ fn sess() -> ParseSess {
 fn parse_item_from_source_str(
     name: FileName,
     source: String,
-    sess: &ParseSess,
+    psess: &ParseSess,
 ) -> PResult<'_, Option<P<ast::Item>>> {
-    new_parser_from_source_str(sess, name, source).parse_item(ForceCollect::No)
+    new_parser_from_source_str(psess, name, source).parse_item(ForceCollect::No)
 }
 
 // Produces a `rustc_span::span`.
@@ -46,12 +38,12 @@ fn sp(a: u32, b: u32) -> Span {
 
 /// Parses a string, return an expression.
 fn string_to_expr(source_str: String) -> P<ast::Expr> {
-    with_error_checking_parse(source_str, &sess(), |p| p.parse_expr())
+    with_error_checking_parse(source_str, &psess(), |p| p.parse_expr())
 }
 
 /// Parses a string, returns an item.
 fn string_to_item(source_str: String) -> Option<P<ast::Item>> {
-    with_error_checking_parse(source_str, &sess(), |p| p.parse_item(ForceCollect::No))
+    with_error_checking_parse(source_str, &psess(), |p| p.parse_item(ForceCollect::No))
 }
 
 #[test]
@@ -287,24 +279,24 @@ let mut fflags: c_int = wb();
 #[test]
 fn crlf_doc_comments() {
     create_default_session_globals_then(|| {
-        let sess = sess();
+        let psess = psess();
 
         let name_1 = FileName::Custom("crlf_source_1".to_string());
         let source = "/// doc comment\r\nfn foo() {}".to_string();
-        let item = parse_item_from_source_str(name_1, source, &sess).unwrap().unwrap();
+        let item = parse_item_from_source_str(name_1, source, &psess).unwrap().unwrap();
         let doc = item.attrs.iter().filter_map(|at| at.doc_str()).next().unwrap();
         assert_eq!(doc.as_str(), " doc comment");
 
         let name_2 = FileName::Custom("crlf_source_2".to_string());
         let source = "/// doc comment\r\n/// line 2\r\nfn foo() {}".to_string();
-        let item = parse_item_from_source_str(name_2, source, &sess).unwrap().unwrap();
+        let item = parse_item_from_source_str(name_2, source, &psess).unwrap().unwrap();
         let docs = item.attrs.iter().filter_map(|at| at.doc_str()).collect::<Vec<_>>();
         let b: &[_] = &[Symbol::intern(" doc comment"), Symbol::intern(" line 2")];
         assert_eq!(&docs[..], b);
 
         let name_3 = FileName::Custom("clrf_source_3".to_string());
         let source = "/** doc comment\r\n *  with CRLF */\r\nfn foo() {}".to_string();
-        let item = parse_item_from_source_str(name_3, source, &sess).unwrap().unwrap();
+        let item = parse_item_from_source_str(name_3, source, &psess).unwrap().unwrap();
         let doc = item.attrs.iter().filter_map(|at| at.doc_str()).next().unwrap();
         assert_eq!(doc.as_str(), " doc comment\n *  with CRLF ");
     });
@@ -315,24 +307,24 @@ fn ttdelim_span() {
     fn parse_expr_from_source_str(
         name: FileName,
         source: String,
-        sess: &ParseSess,
+        psess: &ParseSess,
     ) -> PResult<'_, P<ast::Expr>> {
-        new_parser_from_source_str(sess, name, source).parse_expr()
+        new_parser_from_source_str(psess, name, source).parse_expr()
     }
 
     create_default_session_globals_then(|| {
-        let sess = sess();
+        let psess = psess();
         let expr = parse_expr_from_source_str(
             PathBuf::from("foo").into(),
             "foo!( fn main() { body } )".to_string(),
-            &sess,
+            &psess,
         )
         .unwrap();
 
         let ast::ExprKind::MacCall(mac) = &expr.kind else { panic!("not a macro") };
         let span = mac.args.tokens.trees().last().unwrap().span();
 
-        match sess.source_map().span_to_snippet(span) {
+        match psess.source_map().span_to_snippet(span) {
             Ok(s) => assert_eq!(&s[..], "{ body }"),
             Err(_) => panic!("could not get snippet"),
         }
@@ -348,7 +340,7 @@ fn out_of_line_mod() {
         let item = parse_item_from_source_str(
             PathBuf::from("foo").into(),
             "mod foo { struct S; mod this_does_not_exist; }".to_owned(),
-            &sess(),
+            &psess(),
         )
         .unwrap()
         .unwrap();

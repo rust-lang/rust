@@ -175,8 +175,7 @@ fn parse_tree<'a>(
                                 // The delimiter is `{`. This indicates the beginning
                                 // of a meta-variable expression (e.g. `${count(ident)}`).
                                 // Try to parse the meta-variable expression.
-                                match MetaVarExpr::parse(tts, delim_span.entire(), &sess.parse_sess)
-                                {
+                                match MetaVarExpr::parse(tts, delim_span.entire(), &sess.psess) {
                                     Err(err) => {
                                         err.emit();
                                         // Returns early the same read `$` to avoid spanning

@@ -44,7 +44,7 @@ fn check_rust_syntax(
     let sm = Lrc::new(SourceMap::new(FilePathMapping::empty()));
     let dcx = DiagCtxt::new(Box::new(emitter)).disable_warnings();
     let source = dox[code_block.code].to_owned();
-    let sess = ParseSess::with_dcx(dcx, sm);
+    let psess = ParseSess::with_dcx(dcx, sm);
 
     let edition = code_block.lang_string.edition.unwrap_or_else(|| cx.tcx.sess.edition());
     let expn_data =
@@ -56,7 +56,7 @@ fn check_rust_syntax(
         parse_stream_from_source_str(
             FileName::Custom(String::from("doctest")),
             source,
-            &sess,
+            &psess,
             Some(span),
         )
         .is_empty()

@@ -390,7 +390,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         );
                         let sp = tcx.sess.source_map().start_point(expr.span).with_parent(None);
                         if let Some(sp) =
-                            tcx.sess.parse_sess.ambiguous_block_expr_parse.borrow().get(&sp)
+                            tcx.sess.psess.ambiguous_block_expr_parse.borrow().get(&sp)
                         {
                             err.subdiagnostic(self.dcx(), ExprParenthesesNeeded::surrounding(*sp));
                         }

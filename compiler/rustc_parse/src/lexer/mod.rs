@@ -42,12 +42,12 @@ pub struct UnmatchedDelim {
     pub candidate_span: Option<Span>,
 }
 
-pub(crate) fn parse_token_trees<'sess, 'src>(
-    sess: &'sess ParseSess,
+pub(crate) fn parse_token_trees<'psess, 'src>(
+    psess: &'psess ParseSess,
     mut src: &'src str,
     mut start_pos: BytePos,
     override_span: Option<Span>,
-) -> Result<TokenStream, Vec<Diag<'sess>>> {
+) -> Result<TokenStream, Vec<Diag<'psess>>> {
     // Skip `#!`, if present.
     if let Some(shebang_len) = rustc_lexer::strip_shebang(src) {
         src = &src[shebang_len..];
@@ -56,7 +56,7 @@ pub(crate) fn parse_token_trees<'sess, 'src>(
 
     let cursor = Cursor::new(src);
     let string_reader = StringReader {
-        sess,
+        psess,
         start_pos,
         pos: start_pos,
         src,
@@ -75,7 +75,7 @@ pub(crate) fn parse_token_trees<'sess, 'src>(
 
             let mut buffer = Vec::with_capacity(1);
             for unmatched in unmatched_delims {
-                if let Some(err) = make_unclosed_delims_error(unmatched, sess) {
+                if let Some(err) = make_unclosed_delims_error(unmatched, psess) {
                     buffer.push(err);
                 }
             }
@@ -90,8 +90,8 @@ pub(crate) fn parse_token_trees<'sess, 'src>(
     }
 }
 
-struct StringReader<'sess, 'src> {
-    sess: &'sess ParseSess,
+struct StringReader<'psess, 'src> {
+    psess: &'psess ParseSess,
     /// Initial position, read-only.
     start_pos: BytePos,
     /// The absolute offset within the source_map of the current character.
@@ -107,9 +107,9 @@ struct StringReader<'sess, 'src> {
     nbsp_is_whitespace: bool,
 }
 
-impl<'sess, 'src> StringReader<'sess, 'src> {
-    pub fn dcx(&self) -> &'sess DiagCtxt {
-        &self.sess.dcx
+impl<'psess, 'src> StringReader<'psess, 'src> {
+    pub fn dcx(&self) -> &'psess DiagCtxt {
+        &self.psess.dcx
     }
 
     fn mk_sp(&self, lo: BytePos, hi: BytePos) -> Span {
@@ -176,11 +176,11 @@ impl<'sess, 'src> StringReader<'sess, 'src> {
                 rustc_lexer::TokenKind::RawIdent => {
                     let sym = nfc_normalize(self.str_from(start + BytePos(2)));
                     let span = self.mk_sp(start, self.pos);
-                    self.sess.symbol_gallery.insert(sym, span);
+                    self.psess.symbol_gallery.insert(sym, span);
                     if !sym.can_be_raw() {
                         self.dcx().emit_err(errors::CannotBeRawIdent { span, ident: sym });
                     }
-                    self.sess.raw_identifier_spans.push(span);
+                    self.psess.raw_identifier_spans.push(span);
                     token::Ident(sym, IdentIsRaw::Yes)
                 }
                 rustc_lexer::TokenKind::UnknownPrefix => {
@@ -199,7 +199,7 @@ impl<'sess, 'src> StringReader<'sess, 'src> {
                 {
                     let sym = nfc_normalize(self.str_from(start));
                     let span = self.mk_sp(start, self.pos);
-                    self.sess.bad_unicode_identifiers.borrow_mut().entry(sym).or_default()
+                    self.psess.bad_unicode_identifiers.borrow_mut().entry(sym).or_default()
                         .push(span);
                     token::Ident(sym, IdentIsRaw::No)
                 }
@@ -230,7 +230,7 @@ impl<'sess, 'src> StringReader<'sess, 'src> {
                     let suffix = if suffix_start < self.pos {
                         let string = self.str_from(suffix_start);
                         if string == "_" {
-                            self.sess
+                            self.psess
                                 .dcx
                                 .emit_err(errors::UnderscoreLiteralSuffix { span: self.mk_sp(suffix_start, self.pos) });
                             None
@@ -338,7 +338,7 @@ impl<'sess, 'src> StringReader<'sess, 'src> {
     fn ident(&self, start: BytePos) -> TokenKind {
         let sym = nfc_normalize(self.str_from(start));
         let span = self.mk_sp(start, self.pos);
-        self.sess.symbol_gallery.insert(sym, span);
+        self.psess.symbol_gallery.insert(sym, span);
         token::Ident(sym, IdentIsRaw::No)
     }
 
@@ -350,7 +350,7 @@ impl<'sess, 'src> StringReader<'sess, 'src> {
         let content = self.str_from(content_start);
         if contains_text_flow_control_chars(content) {
             let span = self.mk_sp(start, self.pos);
-            self.sess.buffer_lint_with_diagnostic(
+            self.psess.buffer_lint_with_diagnostic(
                 TEXT_DIRECTION_CODEPOINT_IN_COMMENT,
                 span,
                 ast::CRATE_NODE_ID,
@@ -566,7 +566,7 @@ impl<'sess, 'src> StringReader<'sess, 'src> {
     }
 
     fn report_non_started_raw_string(&self, start: BytePos, bad_char: char) -> ! {
-        self.sess
+        self.psess
             .dcx
             .struct_span_fatal(
                 self.mk_sp(start, self.pos),
@@ -680,7 +680,7 @@ impl<'sess, 'src> StringReader<'sess, 'src> {
             self.dcx().emit_err(errors::UnknownPrefix { span: prefix_span, prefix, sugg });
         } else {
             // Before Rust 2021, only emit a lint for migration.
-            self.sess.buffer_lint_with_diagnostic(
+            self.psess.buffer_lint_with_diagnostic(
                 RUST_2021_PREFIXES_INCOMPATIBLE_SYNTAX,
                 prefix_span,
                 ast::CRATE_NODE_ID,

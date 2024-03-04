@@ -971,7 +971,7 @@ impl<'a, 'tcx> CrateLoader<'a, 'tcx> {
                 continue;
             }
 
-            self.sess.parse_sess.buffer_lint(
+            self.sess.psess.buffer_lint(
                     lint::builtin::UNUSED_CRATE_DEPENDENCIES,
                     span,
                     ast::CRATE_NODE_ID,

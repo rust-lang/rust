@@ -125,12 +125,8 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     let lit_kind = match LitKind::from_token_lit(*token_lit) {
                         Ok(lit_kind) => lit_kind,
                         Err(err) => {
-                            let guar = report_lit_error(
-                                &self.tcx.sess.parse_sess,
-                                err,
-                                *token_lit,
-                                e.span,
-                            );
+                            let guar =
+                                report_lit_error(&self.tcx.sess.psess, err, *token_lit, e.span);
                             LitKind::Err(guar)
                         }
                     };
@@ -721,7 +717,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                         sym::track_caller,
                         span,
                     )))),
-                    id: self.tcx.sess.parse_sess.attr_id_generator.mk_attr_id(),
+                    id: self.tcx.sess.psess.attr_id_generator.mk_attr_id(),
                     style: AttrStyle::Outer,
                     span: unstable_span,
                 }],
@@ -1756,7 +1752,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
 
         // `#[allow(unreachable_code)]`
         let attr = attr::mk_attr_nested_word(
-            &self.tcx.sess.parse_sess.attr_id_generator,
+            &self.tcx.sess.psess.attr_id_generator,
             AttrStyle::Outer,
             sym::allow,
             sym::unreachable_code,

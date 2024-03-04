@@ -691,10 +691,9 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                         // fixed prior to stabilization
                         // Fake tokens when we are invoking an inner attribute, and
                         // we are invoking it on an out-of-line module or crate.
-                        Annotatable::Crate(krate) => rustc_parse::fake_token_stream_for_crate(
-                            &self.cx.sess.parse_sess,
-                            krate,
-                        ),
+                        Annotatable::Crate(krate) => {
+                            rustc_parse::fake_token_stream_for_crate(&self.cx.sess.psess, krate)
+                        }
                         Annotatable::Item(item_inner)
                             if matches!(attr.style, AttrStyle::Inner)
                                 && matches!(
@@ -705,10 +704,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                                     )
                                 ) =>
                         {
-                            rustc_parse::fake_token_stream_for_item(
-                                &self.cx.sess.parse_sess,
-                                item_inner,
-                            )
+                            rustc_parse::fake_token_stream_for_item(&self.cx.sess.psess, item_inner)
                         }
                         _ => item.to_tokens(),
                     };
@@ -728,7 +724,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                     }
                 }
                 SyntaxExtensionKind::LegacyAttr(expander) => {
-                    match validate_attr::parse_meta(&self.cx.sess.parse_sess, &attr) {
+                    match validate_attr::parse_meta(&self.cx.sess.psess, &attr) {
                         Ok(meta) => {
                             let items = match expander.expand(self.cx, span, &meta, item, false) {
                                 ExpandResult::Ready(items) => items,
@@ -962,8 +958,8 @@ pub fn ensure_complete_parse<'a>(
         // Avoid emitting backtrace info twice.
         let def_site_span = parser.token.span.with_ctxt(SyntaxContext::root());
 
-        let semi_span = parser.sess.source_map().next_point(span);
-        let add_semicolon = match &parser.sess.source_map().span_to_snippet(semi_span) {
+        let semi_span = parser.psess.source_map().next_point(span);
+        let add_semicolon = match &parser.psess.source_map().span_to_snippet(semi_span) {
             Ok(snippet) if &snippet[..] != ";" && kind_name == "expression" => {
                 Some(span.shrink_to_hi())
             }
@@ -1700,7 +1696,7 @@ impl<'a, 'b> InvocationCollector<'a, 'b> {
         let mut span: Option<Span> = None;
         while let Some(attr) = attrs.next() {
             rustc_ast_passes::feature_gate::check_attribute(attr, self.cx.sess, features);
-            validate_attr::check_attr(&self.cx.sess.parse_sess, attr);
+            validate_attr::check_attr(&self.cx.sess.psess, attr);
 
             let current_span = if let Some(sp) = span { sp.to(attr.span) } else { attr.span };
             span = Some(current_span);
@@ -1710,7 +1706,7 @@ impl<'a, 'b> InvocationCollector<'a, 'b> {
             }
 
             if attr.is_doc_comment() {
-                self.cx.sess.parse_sess.buffer_lint_with_diagnostic(
+                self.cx.sess.psess.buffer_lint_with_diagnostic(
                     UNUSED_DOC_COMMENTS,
                     current_span,
                     self.cx.current_expansion.lint_node_id,
@@ -1722,7 +1718,7 @@ impl<'a, 'b> InvocationCollector<'a, 'b> {
                 // `#[cfg]` and `#[cfg_attr]` are special - they are
                 // eagerly evaluated.
                 if attr_name != sym::cfg && attr_name != sym::cfg_attr {
-                    self.cx.sess.parse_sess.buffer_lint_with_diagnostic(
+                    self.cx.sess.psess.buffer_lint_with_diagnostic(
                         UNUSED_ATTRIBUTES,
                         attr.span,
                         self.cx.current_expansion.lint_node_id,

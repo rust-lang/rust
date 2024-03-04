@@ -241,14 +241,14 @@ impl<'a> StripUnconfigured<'a> {
     /// the attribute is incorrect.
     pub(crate) fn expand_cfg_attr(&self, attr: &Attribute, recursive: bool) -> Vec<Attribute> {
         let Some((cfg_predicate, expanded_attrs)) =
-            rustc_parse::parse_cfg_attr(attr, &self.sess.parse_sess)
+            rustc_parse::parse_cfg_attr(attr, &self.sess.psess)
         else {
             return vec![];
         };
 
         // Lint on zero attributes in source.
         if expanded_attrs.is_empty() {
-            self.sess.parse_sess.buffer_lint(
+            self.sess.psess.buffer_lint(
                 rustc_lint_defs::builtin::UNUSED_ATTRIBUTES,
                 attr.span,
                 ast::CRATE_NODE_ID,
@@ -324,14 +324,14 @@ impl<'a> StripUnconfigured<'a> {
         };
         let tokens = Some(LazyAttrTokenStream::new(AttrTokenStream::new(trees)));
         let attr = attr::mk_attr_from_item(
-            &self.sess.parse_sess.attr_id_generator,
+            &self.sess.psess.attr_id_generator,
             item,
             tokens,
             attr.style,
             item_span,
         );
         if attr.has_name(sym::crate_type) {
-            self.sess.parse_sess.buffer_lint(
+            self.sess.psess.buffer_lint(
                 rustc_lint_defs::builtin::DEPRECATED_CFG_ATTR_CRATE_TYPE_NAME,
                 attr.span,
                 ast::CRATE_NODE_ID,
@@ -339,7 +339,7 @@ impl<'a> StripUnconfigured<'a> {
             );
         }
         if attr.has_name(sym::crate_name) {
-            self.sess.parse_sess.buffer_lint(
+            self.sess.psess.buffer_lint(
                 rustc_lint_defs::builtin::DEPRECATED_CFG_ATTR_CRATE_TYPE_NAME,
                 attr.span,
                 ast::CRATE_NODE_ID,
@@ -355,7 +355,7 @@ impl<'a> StripUnconfigured<'a> {
     }
 
     pub(crate) fn cfg_true(&self, attr: &Attribute) -> (bool, Option<MetaItem>) {
-        let meta_item = match validate_attr::parse_meta(&self.sess.parse_sess, attr) {
+        let meta_item = match validate_attr::parse_meta(&self.sess.psess, attr) {
             Ok(meta_item) => meta_item,
             Err(err) => {
                 err.emit();

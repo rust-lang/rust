@@ -263,7 +263,7 @@ pub(crate) fn create_config(
         file_loader: None,
         locale_resources: rustc_driver::DEFAULT_LOCALE_RESOURCES,
         lint_caps,
-        parse_sess_created: None,
+        psess_created: None,
         hash_untracked_state: None,
         register_lints: Some(Box::new(crate::lint::register_lints)),
         override_queries: Some(|_sess, providers| {
