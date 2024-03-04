@@ -84,9 +84,7 @@ pub fn check(tests_path: impl AsRef<Path>, bad: &mut bool) {
                 }
             });
 
-            let Some((test_name, _)) =
-                test.file_name().map(OsStr::to_str).flatten().map(|n| n.split_once('.')).flatten()
-            else {
+            let Some(test_name) = test.file_stem().map(OsStr::to_str).flatten() else {
                 continue;
             };
 
