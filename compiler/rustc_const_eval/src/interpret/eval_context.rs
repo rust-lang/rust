@@ -771,19 +771,18 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         &mut self,
         instance: ty::Instance<'tcx>,
         body: &'mir mir::Body<'tcx>,
-        return_place: &PlaceTy<'tcx, M::Provenance>,
+        return_place: &MPlaceTy<'tcx, M::Provenance>,
         return_to_block: StackPopCleanup,
     ) -> InterpResult<'tcx> {
         trace!("body: {:#?}", body);
         let dead_local = LocalState { value: LocalValue::Dead, layout: Cell::new(None) };
         let locals = IndexVec::from_elem(dead_local, &body.local_decls);
-        let return_place = self.force_allocation(return_place)?; // avoid a long-lived `PlaceTy`
         // First push a stack frame so we have access to the local args
         let pre_frame = Frame {
             body,
             loc: Right(body.span), // Span used for errors caused during preamble.
             return_to_block,
-            return_place,
+            return_place: return_place.clone(),
             locals,
             instance,
             tracing_span: SpanGuard::new(),

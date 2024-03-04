@@ -15,7 +15,7 @@ pub(super) trait EvalContextExt<'mir, 'tcx: 'mir>:
         link_name: Symbol,
         abi: Abi,
         args: &[OpTy<'tcx, Provenance>],
-        dest: &PlaceTy<'tcx, Provenance>,
+        dest: &MPlaceTy<'tcx, Provenance>,
     ) -> InterpResult<'tcx, EmulateForeignItemResult> {
         let this = self.eval_context_mut();
         this.expect_target_feature_for_intrinsic(link_name, "aes")?;
@@ -138,7 +138,7 @@ fn aes_round<'tcx>(
     this: &mut crate::MiriInterpCx<'_, 'tcx>,
     state: &OpTy<'tcx, Provenance>,
     key: &OpTy<'tcx, Provenance>,
-    dest: &PlaceTy<'tcx, Provenance>,
+    dest: &MPlaceTy<'tcx, Provenance>,
     f: impl Fn(u128, u128) -> u128,
 ) -> InterpResult<'tcx, ()> {
     assert_eq!(dest.layout.size, state.layout.size);

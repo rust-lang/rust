@@ -929,7 +929,7 @@ impl<'mir, 'tcx: 'mir> rustc_const_eval::interpret::Machine<'mir, 'tcx> for Dumm
         _instance: ty::Instance<'tcx>,
         _abi: rustc_target::spec::abi::Abi,
         _args: &[rustc_const_eval::interpret::FnArg<'tcx, Self::Provenance>],
-        _destination: &rustc_const_eval::interpret::PlaceTy<'tcx, Self::Provenance>,
+        _destination: &rustc_const_eval::interpret::MPlaceTy<'tcx, Self::Provenance>,
         _target: Option<BasicBlock>,
         _unwind: UnwindAction,
     ) -> interpret::InterpResult<'tcx, Option<(&'mir Body<'tcx>, ty::Instance<'tcx>)>> {
@@ -947,7 +947,7 @@ impl<'mir, 'tcx: 'mir> rustc_const_eval::interpret::Machine<'mir, 'tcx> for Dumm
         _ecx: &mut InterpCx<'mir, 'tcx, Self>,
         _instance: ty::Instance<'tcx>,
         _args: &[rustc_const_eval::interpret::OpTy<'tcx, Self::Provenance>],
-        _destination: &rustc_const_eval::interpret::PlaceTy<'tcx, Self::Provenance>,
+        _destination: &rustc_const_eval::interpret::MPlaceTy<'tcx, Self::Provenance>,
         _target: Option<BasicBlock>,
         _unwind: UnwindAction,
     ) -> interpret::InterpResult<'tcx> {

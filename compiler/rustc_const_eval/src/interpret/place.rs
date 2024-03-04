@@ -500,16 +500,6 @@ where
         Ok((mplace, len))
     }
 
-    /// Converts a repr(simd) place into a place where `place_index` accesses the SIMD elements.
-    /// Also returns the number of elements.
-    pub fn place_to_simd(
-        &mut self,
-        place: &PlaceTy<'tcx, M::Provenance>,
-    ) -> InterpResult<'tcx, (MPlaceTy<'tcx, M::Provenance>, u64)> {
-        let mplace = self.force_allocation(place)?;
-        self.mplace_to_simd(&mplace)
-    }
-
     pub fn local_to_place(
         &self,
         frame: usize,
