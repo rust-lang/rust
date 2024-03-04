@@ -2116,9 +2116,7 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
 
             ty::Str | ty::Slice(_) | ty::Dynamic(..) | ty::Foreign(..) => None,
 
-            ty::Tuple(tys) => Where(
-                obligation.predicate.rebind(tys.last().map_or_else(Vec::new, |&last| vec![last])),
-            ),
+            ty::Tuple(tys) => Where(obligation.predicate.rebind(tys.to_vec())),
 
             ty::Adt(def, args) => {
                 let sized_crit = def.sized_constraint(self.tcx());
