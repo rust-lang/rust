@@ -819,6 +819,81 @@ impl<Cx: PatCx> Constructor<Cx> {
             }
         })
     }
+
+    pub(crate) fn fmt_fields(
+        &self,
+        f: &mut fmt::Formatter<'_>,
+        ty: &Cx::Ty,
+        mut fields: impl Iterator<Item = impl fmt::Debug>,
+    ) -> fmt::Result {
+        let mut first = true;
+        let mut start_or_continue = |s| {
+            if first {
+                first = false;
+                ""
+            } else {
+                s
+            }
+        };
+        let mut start_or_comma = || start_or_continue(", ");
+
+        match self {
+            Struct | Variant(_) | UnionField => {
+                Cx::write_variant_name(f, self, ty)?;
+                // Without `cx`, we can't know which field corresponds to which, so we can't
+                // get the names of the fields. Instead we just display everything as a tuple
+                // struct, which should be good enough.
+                write!(f, "(")?;
+                for p in fields {
+                    write!(f, "{}{:?}", start_or_comma(), p)?;
+                }
+                write!(f, ")")?;
+            }
+            // Note: given the expansion of `&str` patterns done in `expand_pattern`, we should
+            // be careful to detect strings here. However a string literal pattern will never
+            // be reported as a non-exhaustiveness witness, so we can ignore this issue.
+            Ref => {
+                write!(f, "&{:?}", &fields.next().unwrap())?;
+            }
+            Slice(slice) => {
+                write!(f, "[")?;
+                match slice.kind {
+                    SliceKind::FixedLen(_) => {
+                        for p in fields {
+                            write!(f, "{}{:?}", start_or_comma(), p)?;
+                        }
+                    }
+                    SliceKind::VarLen(prefix_len, _) => {
+                        for p in fields.by_ref().take(prefix_len) {
+                            write!(f, "{}{:?}", start_or_comma(), p)?;
+                        }
+                        write!(f, "{}..", start_or_comma())?;
+                        for p in fields {
+                            write!(f, "{}{:?}", start_or_comma(), p)?;
+                        }
+                    }
+                }
+                write!(f, "]")?;
+            }
+            Bool(b) => write!(f, "{b}")?,
+            // Best-effort, will render signed ranges incorrectly
+            IntRange(range) => write!(f, "{range:?}")?,
+            F32Range(lo, hi, end) => write!(f, "{lo}{end}{hi}")?,
+            F64Range(lo, hi, end) => write!(f, "{lo}{end}{hi}")?,
+            Str(value) => write!(f, "{value:?}")?,
+            Opaque(..) => write!(f, "<constant pattern>")?,
+            Or => {
+                for pat in fields {
+                    write!(f, "{}{:?}", start_or_continue(" | "), pat)?;
+                }
+            }
+            Never => write!(f, "!")?,
+            Wildcard | Missing | NonExhaustive | Hidden | PrivateUninhabited => {
+                write!(f, "_ : {:?}", ty)?
+            }
+        }
+        Ok(())
+    }
 }
 
 #[derive(Debug, Clone, Copy)]
