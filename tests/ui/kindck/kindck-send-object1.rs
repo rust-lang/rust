@@ -8,7 +8,7 @@ trait Dummy { }
 // careful with object types, who knows what they close over...
 fn test51<'a>() {
     assert_send::<&'a dyn Dummy>();
-    //~^ ERROR `(dyn Dummy + 'a)` cannot be shared between threads safely [E0277]
+    //~^ ERROR `&'a (dyn Dummy + 'a)` cannot be sent between threads safely [E0277]
 }
 fn test52<'a>() {
     assert_send::<&'a (dyn Dummy + Sync)>();

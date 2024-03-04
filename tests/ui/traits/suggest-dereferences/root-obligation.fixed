@@ -4,7 +4,7 @@ fn get_vowel_count(string: &str) -> usize {
     string
         .chars()
         .filter(|c| "aeiou".contains(*c))
-        //~^ ERROR expected a `Fn(char)` closure, found `char`
+        //~^ ERROR the trait bound `&char: Pattern<'_>` is not satisfied
         .count()
 }
 

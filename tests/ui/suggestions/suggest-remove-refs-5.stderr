@@ -1,10 +1,10 @@
-error[E0277]: `Vec<i32>` is not an iterator
+error[E0277]: `&mut &mut &mut &mut Vec<i32>` is not an iterator
   --> $DIR/suggest-remove-refs-5.rs:4:14
    |
 LL |     for _ in &mut &mut v {}
-   |              ^^^^^^^^^^^ `Vec<i32>` is not an iterator; try calling `.into_iter()` or `.iter()`
+   |              ^^^^^^^^^^^ `&mut &mut &mut &mut Vec<i32>` is not an iterator
    |
-   = help: the trait `Iterator` is not implemented for `Vec<i32>`, which is required by `&mut &mut &mut &mut Vec<i32>: IntoIterator`
+   = help: the trait `Iterator` is not implemented for `&mut &mut &mut &mut Vec<i32>`, which is required by `&mut &mut &mut &mut Vec<i32>: IntoIterator`
    = note: required for `&mut Vec<i32>` to implement `Iterator`
    = note: 3 redundant requirements hidden
    = note: required for `&mut &mut &mut &mut Vec<i32>` to implement `Iterator`
@@ -15,13 +15,13 @@ LL ~     let v = &mut Vec::<i32>::new();
 LL ~     for _ in v {}
    |
 
-error[E0277]: `[u8; 1]` is not an iterator
+error[E0277]: `&mut &mut &mut [u8; 1]` is not an iterator
   --> $DIR/suggest-remove-refs-5.rs:7:14
    |
 LL |     for _ in &mut v {}
-   |              ^^^^^^ `[u8; 1]` is not an iterator; try calling `.into_iter()` or `.iter()`
+   |              ^^^^^^ `&mut &mut &mut [u8; 1]` is not an iterator
    |
-   = help: the trait `Iterator` is not implemented for `[u8; 1]`, which is required by `&mut &mut &mut [u8; 1]: IntoIterator`
+   = help: the trait `Iterator` is not implemented for `&mut &mut &mut [u8; 1]`, which is required by `&mut &mut &mut [u8; 1]: IntoIterator`
    = note: required for `&mut [u8; 1]` to implement `Iterator`
    = note: 2 redundant requirements hidden
    = note: required for `&mut &mut &mut [u8; 1]` to implement `Iterator`

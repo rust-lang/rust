@@ -1,8 +1,8 @@
-error[E0277]: the trait bound `u32: Signed` is not satisfied
+error[E0277]: the trait bound `&'static u32: Defaulted` is not satisfied
   --> $DIR/typeck-default-trait-impl-precedence.rs:19:20
    |
 LL |     is_defaulted::<&'static u32>();
-   |                    ^^^^^^^^^^^^ the trait `Signed` is not implemented for `u32`, which is required by `&'static u32: Defaulted`
+   |                    ^^^^^^^^^^^^ the trait `Signed` is not implemented for `&'static u32`, which is required by `&'static u32: Defaulted`
    |
 note: required for `&'static u32` to implement `Defaulted`
   --> $DIR/typeck-default-trait-impl-precedence.rs:10:19

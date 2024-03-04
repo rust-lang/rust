@@ -17,5 +17,5 @@ fn stuff<T: Bar>(_: T) {}
 
 fn main() {
     stuff(1u8);
-    //~^ the trait bound `u8: Foo` is not satisfied
+    //~^ the trait bound `u8: Bar` is not satisfied
 }
