@@ -120,7 +120,7 @@ impl<'tcx> Queries<'tcx> {
 
             rustc_builtin_macros::cmdline_attrs::inject(
                 &mut krate,
-                &sess.parse_sess,
+                &sess.psess,
                 &sess.opts.unstable_opts.crate_attr,
             );
 

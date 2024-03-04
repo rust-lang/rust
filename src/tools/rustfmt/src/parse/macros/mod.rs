@@ -14,12 +14,12 @@ pub(crate) mod asm;
 pub(crate) mod cfg_if;
 pub(crate) mod lazy_static;
 
-fn build_stream_parser<'a>(sess: &'a ParseSess, tokens: TokenStream) -> Parser<'a> {
-    stream_to_parser(sess, tokens, MACRO_ARGUMENTS).recovery(Recovery::Forbidden)
+fn build_stream_parser<'a>(psess: &'a ParseSess, tokens: TokenStream) -> Parser<'a> {
+    stream_to_parser(psess, tokens, MACRO_ARGUMENTS).recovery(Recovery::Forbidden)
 }
 
 fn build_parser<'a>(context: &RewriteContext<'a>, tokens: TokenStream) -> Parser<'a> {
-    build_stream_parser(context.parse_sess.inner(), tokens)
+    build_stream_parser(context.psess.inner(), tokens)
 }
 
 fn parse_macro_arg<'a, 'b: 'a>(parser: &'a mut Parser<'b>) -> Option<MacroArg> {
@@ -29,8 +29,8 @@ fn parse_macro_arg<'a, 'b: 'a>(parser: &'a mut Parser<'b>) -> Option<MacroArg> {
             if Parser::nonterminal_may_begin_with($nt_kind, &cloned_parser.token) {
                 match $try_parse(&mut cloned_parser) {
                     Ok(x) => {
-                        if parser.sess.dcx.has_errors().is_some() {
-                            parser.sess.dcx.reset_err_count();
+                        if parser.psess.dcx.has_errors().is_some() {
+                            parser.psess.dcx.reset_err_count();
                         } else {
                             // Parsing succeeded.
                             *parser = cloned_parser;
@@ -39,7 +39,7 @@ fn parse_macro_arg<'a, 'b: 'a>(parser: &'a mut Parser<'b>) -> Option<MacroArg> {
                     }
                     Err(e) => {
                         e.cancel();
-                        parser.sess.dcx.reset_err_count();
+                        parser.psess.dcx.reset_err_count();
                     }
                 }
             }

@@ -186,12 +186,12 @@ pub(super) fn builtin(sess: &Session, diagnostic: BuiltinLintDiagnostics, diag: 
         BuiltinLintDiagnostics::UnexpectedCfgName((name, name_span), value) => {
             #[allow(rustc::potential_query_instability)]
             let possibilities: Vec<Symbol> =
-                sess.parse_sess.check_config.expecteds.keys().copied().collect();
+                sess.psess.check_config.expecteds.keys().copied().collect();
 
             let mut names_possibilities: Vec<_> = if value.is_none() {
                 // We later sort and display all the possibilities, so the order here does not matter.
                 #[allow(rustc::potential_query_instability)]
-                sess.parse_sess
+                sess.psess
                     .check_config
                     .expecteds
                     .iter()
@@ -212,7 +212,7 @@ pub(super) fn builtin(sess: &Session, diagnostic: BuiltinLintDiagnostics, diag: 
             // Suggest the most probable if we found one
             } else if let Some(best_match) = find_best_match_for_name(&possibilities, name, None) {
                 if let Some(ExpectedValues::Some(best_match_values)) =
-                    sess.parse_sess.check_config.expecteds.get(&best_match)
+                    sess.psess.check_config.expecteds.get(&best_match)
                 {
                     // We will soon sort, so the initial order does not matter.
                     #[allow(rustc::potential_query_instability)]
@@ -322,8 +322,7 @@ pub(super) fn builtin(sess: &Session, diagnostic: BuiltinLintDiagnostics, diag: 
             }
         }
         BuiltinLintDiagnostics::UnexpectedCfgValue((name, name_span), value) => {
-            let Some(ExpectedValues::Some(values)) =
-                &sess.parse_sess.check_config.expecteds.get(&name)
+            let Some(ExpectedValues::Some(values)) = &sess.psess.check_config.expecteds.get(&name)
             else {
                 bug!(
                     "it shouldn't be possible to have a diagnostic on a value whose name is not in values"
@@ -398,8 +397,7 @@ pub(super) fn builtin(sess: &Session, diagnostic: BuiltinLintDiagnostics, diag: 
             // We don't want to suggest adding values to well known names
             // since those are defined by rustc it-self. Users can still
             // do it if they want, but should not encourage them.
-            let is_cfg_a_well_know_name =
-                sess.parse_sess.check_config.well_known_names.contains(&name);
+            let is_cfg_a_well_know_name = sess.psess.check_config.well_known_names.contains(&name);
 
             let inst = if let Some((value, _value_span)) = value {
                 let pre = if is_from_cargo { "\\" } else { "" };

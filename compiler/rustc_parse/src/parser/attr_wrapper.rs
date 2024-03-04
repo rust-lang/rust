@@ -40,8 +40,8 @@ impl AttrWrapper {
         AttrWrapper { attrs: AttrVec::new(), start_pos: usize::MAX }
     }
 
-    pub(crate) fn take_for_recovery(self, sess: &ParseSess) -> AttrVec {
-        sess.dcx.span_delayed_bug(
+    pub(crate) fn take_for_recovery(self, psess: &ParseSess) -> AttrVec {
+        psess.dcx.span_delayed_bug(
             self.attrs.get(0).map(|attr| attr.span).unwrap_or(DUMMY_SP),
             "AttrVec is taken for recovery but no error is produced",
         );

@@ -369,7 +369,7 @@ pub(crate) fn check_attr_crate_type(
                 // by the time that runs the macro is expanded, and it doesn't
                 // give an error.
                 validate_attr::emit_fatal_malformed_builtin_attribute(
-                    &sess.parse_sess,
+                    &sess.psess,
                     a,
                     sym::crate_type,
                 );

@@ -45,7 +45,7 @@ pub fn parse_asm_args<'a>(
     sp: Span,
     is_global_asm: bool,
 ) -> PResult<'a, AsmArgs> {
-    let dcx = &p.sess.dcx;
+    let dcx = &p.psess.dcx;
 
     if p.token == token::Eof {
         return Err(dcx.create_err(errors::AsmRequiresTemplate { span: sp }));
@@ -296,7 +296,7 @@ pub fn parse_asm_args<'a>(
 fn err_duplicate_option(p: &mut Parser<'_>, symbol: Symbol, span: Span) {
     // Tool-only output
     let full_span = if p.token.kind == token::Comma { span.to(p.token.span) } else { span };
-    p.sess.dcx.emit_err(errors::AsmOptAlreadyprovided { span, symbol, full_span });
+    p.psess.dcx.emit_err(errors::AsmOptAlreadyprovided { span, symbol, full_span });
 }
 
 /// Try to set the provided option in the provided `AsmArgs`.
@@ -368,7 +368,7 @@ fn parse_clobber_abi<'a>(p: &mut Parser<'a>, args: &mut AsmArgs) -> PResult<'a, 
     p.expect(&token::OpenDelim(Delimiter::Parenthesis))?;
 
     if p.eat(&token::CloseDelim(Delimiter::Parenthesis)) {
-        return Err(p.sess.dcx.create_err(errors::NonABI { span: p.token.span }));
+        return Err(p.psess.dcx.create_err(errors::NonABI { span: p.token.span }));
     }
 
     let mut new_abis = Vec::new();
@@ -379,7 +379,7 @@ fn parse_clobber_abi<'a>(p: &mut Parser<'a>, args: &mut AsmArgs) -> PResult<'a, 
             }
             Err(opt_lit) => {
                 let span = opt_lit.map_or(p.token.span, |lit| lit.span);
-                let mut err = p.sess.dcx.struct_span_err(span, "expected string literal");
+                let mut err = p.psess.dcx.struct_span_err(span, "expected string literal");
                 err.span_label(span, "not a string literal");
                 return Err(err);
             }
@@ -495,7 +495,7 @@ fn expand_preparsed_asm(
             };
 
             if template_str.contains(".intel_syntax") {
-                ecx.parse_sess().buffer_lint(
+                ecx.psess().buffer_lint(
                     lint::builtin::BAD_ASM_STYLE,
                     find_span(".intel_syntax"),
                     ecx.current_expansion.lint_node_id,
@@ -503,7 +503,7 @@ fn expand_preparsed_asm(
                 );
             }
             if template_str.contains(".att_syntax") {
-                ecx.parse_sess().buffer_lint(
+                ecx.psess().buffer_lint(
                     lint::builtin::BAD_ASM_STYLE,
                     find_span(".att_syntax"),
                     ecx.current_expansion.lint_node_id,

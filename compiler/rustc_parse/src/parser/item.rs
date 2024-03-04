@@ -563,7 +563,7 @@ impl<'a> Parser<'a> {
 
         let constness = self.parse_constness(Case::Sensitive);
         if let Const::Yes(span) = constness {
-            self.sess.gated_spans.gate(sym::const_trait_impl, span);
+            self.psess.gated_spans.gate(sym::const_trait_impl, span);
         }
 
         // Parse stray `impl async Trait`
@@ -699,7 +699,7 @@ impl<'a> Parser<'a> {
             None
         };
         let span = span.to(self.prev_token.span);
-        self.sess.gated_spans.gate(sym::fn_delegation, span);
+        self.psess.gated_spans.gate(sym::fn_delegation, span);
 
         let ident = path.segments.last().map(|seg| seg.ident).unwrap_or(Ident::empty());
         Ok((
@@ -859,7 +859,7 @@ impl<'a> Parser<'a> {
         let unsafety = self.parse_unsafety(Case::Sensitive);
         // Parse optional `auto` prefix.
         let is_auto = if self.eat_keyword(kw::Auto) {
-            self.sess.gated_spans.gate(sym::auto_traits, self.prev_token.span);
+            self.psess.gated_spans.gate(sym::auto_traits, self.prev_token.span);
             IsAuto::Yes
         } else {
             IsAuto::No
@@ -894,7 +894,7 @@ impl<'a> Parser<'a> {
                 self.dcx().emit_err(errors::TraitAliasCannotBeUnsafe { span: whole_span });
             }
 
-            self.sess.gated_spans.gate(sym::trait_alias, whole_span);
+            self.psess.gated_spans.gate(sym::trait_alias, whole_span);
 
             Ok((ident, ItemKind::TraitAlias(generics, bounds)))
         } else {
@@ -1209,7 +1209,7 @@ impl<'a> Parser<'a> {
 
     fn error_bad_item_kind<T>(&self, span: Span, kind: &ItemKind, ctx: &'static str) -> Option<T> {
         // FIXME(#100717): needs variant for each `ItemKind` (instead of using `ItemKind::descr()`)
-        let span = self.sess.source_map().guess_head_span(span);
+        let span = self.psess.source_map().guess_head_span(span);
         let descr = kind.descr();
         self.dcx().emit_err(errors::BadItemKind { span, descr, ctx });
         None
@@ -1332,7 +1332,7 @@ impl<'a> Parser<'a> {
         // Check the span for emptiness instead of the list of parameters in order to correctly
         // recognize and subsequently flag empty parameter lists (`<>`) as unstable.
         if !generics.span.is_empty() {
-            self.sess.gated_spans.gate(sym::generic_const_items, generics.span);
+            self.psess.gated_spans.gate(sym::generic_const_items, generics.span);
         }
 
         // Parse the type of a constant item. That is, the `":" $ty` fragment.
@@ -1366,7 +1366,7 @@ impl<'a> Parser<'a> {
                 name: ident.span,
                 body: expr.span,
                 sugg: if !after_where_clause.has_where_token {
-                    self.sess.source_map().span_to_snippet(expr.span).ok().map(|body| {
+                    self.psess.source_map().span_to_snippet(expr.span).ok().map(|body| {
                         errors::WhereClauseBeforeConstBodySugg {
                             left: before_where_clause.span.shrink_to_lo(),
                             snippet: body,
@@ -1401,7 +1401,7 @@ impl<'a> Parser<'a> {
         };
 
         if where_clause.has_where_token {
-            self.sess.gated_spans.gate(sym::generic_const_items, where_clause.span);
+            self.psess.gated_spans.gate(sym::generic_const_items, where_clause.span);
         }
 
         generics.where_clause = where_clause;
@@ -1898,7 +1898,7 @@ impl<'a> Parser<'a> {
 
     fn expect_field_ty_separator(&mut self) -> PResult<'a, ()> {
         if let Err(err) = self.expect(&token::Colon) {
-            let sm = self.sess.source_map();
+            let sm = self.psess.source_map();
             let eq_typo = self.token.kind == token::Eq && self.look_ahead(1, |t| t.is_path_start());
             let semi_typo = self.token.kind == token::Semi
                 && self.look_ahead(1, |t| {
@@ -1970,7 +1970,7 @@ impl<'a> Parser<'a> {
     fn parse_field_ident(&mut self, adt_ty: &str, lo: Span) -> PResult<'a, Ident> {
         let (ident, is_raw) = self.ident_or_err(true)?;
         if ident.name == kw::Underscore {
-            self.sess.gated_spans.gate(sym::unnamed_fields, lo);
+            self.psess.gated_spans.gate(sym::unnamed_fields, lo);
         } else if matches!(is_raw, IdentIsRaw::No) && ident.is_reserved() {
             let snapshot = self.create_snapshot_for_diagnostic();
             let err = if self.check_fn_front_matter(false, Case::Sensitive) {
@@ -2080,7 +2080,7 @@ impl<'a> Parser<'a> {
             return self.unexpected();
         };
 
-        self.sess.gated_spans.gate(sym::decl_macro, lo.to(self.prev_token.span));
+        self.psess.gated_spans.gate(sym::decl_macro, lo.to(self.prev_token.span));
         Ok((ident, ItemKind::MacroDef(ast::MacroDef { body, macro_rules: false })))
     }
 
@@ -2460,7 +2460,7 @@ impl<'a> Parser<'a> {
 
         match coroutine_kind {
             Some(CoroutineKind::Gen { span, .. }) | Some(CoroutineKind::AsyncGen { span, .. }) => {
-                self.sess.gated_spans.gate(sym::gen_blocks, span);
+                self.psess.gated_spans.gate(sym::gen_blocks, span);
             }
             Some(CoroutineKind::Async { .. }) | None => {}
         }

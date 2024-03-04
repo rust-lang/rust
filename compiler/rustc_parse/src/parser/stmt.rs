@@ -230,7 +230,7 @@ impl<'a> Parser<'a> {
     /// Also error if the previous token was a doc comment.
     fn error_outer_attrs(&self, attrs: AttrWrapper) {
         if !attrs.is_empty()
-            && let attrs @ [.., last] = &*attrs.take_for_recovery(self.sess)
+            && let attrs @ [.., last] = &*attrs.take_for_recovery(self.psess)
         {
             if last.is_doc_comment() {
                 self.dcx().emit_err(errors::DocCommentDoesNotDocumentAnything {
@@ -494,7 +494,7 @@ impl<'a> Parser<'a> {
             // Do not suggest `if foo println!("") {;}` (as would be seen in test for #46836).
             Ok(Some(Stmt { kind: StmtKind::Empty, .. })) => {}
             Ok(Some(stmt)) => {
-                let stmt_own_line = self.sess.source_map().is_line_before_span_empty(sp);
+                let stmt_own_line = self.psess.source_map().is_line_before_span_empty(sp);
                 let stmt_span = if stmt_own_line && self.eat(&token::Semi) {
                     // Expand the span to include the semicolon.
                     stmt.span.with_hi(self.prev_token.span.hi())
@@ -613,7 +613,7 @@ impl<'a> Parser<'a> {
                                     Applicability::MaybeIncorrect,
                                 );
                             }
-                            if self.sess.unstable_features.is_nightly_build() {
+                            if self.psess.unstable_features.is_nightly_build() {
                                 // FIXME(Nilstrieb): Remove this again after a few months.
                                 err.note("type ascription syntax has been removed, see issue #101728 <https://github.com/rust-lang/rust/issues/101728>");
                             }
