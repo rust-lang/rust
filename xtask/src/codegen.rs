@@ -8,6 +8,7 @@ use xshell::{cmd, Shell};
 use crate::{flags, project_root};
 
 pub(crate) mod assists_doc_tests;
+pub(crate) mod diagnostics_docs;
 
 impl flags::Codegen {
     pub(crate) fn run(self, _sh: &Shell) -> anyhow::Result<()> {

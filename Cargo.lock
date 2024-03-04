@@ -747,7 +747,6 @@ dependencies = [
  "itertools",
  "once_cell",
  "serde_json",
- "sourcegen",
  "stdx",
  "syntax",
  "test-fixture",
