@@ -12,7 +12,19 @@ use std::vec;
 use crate::{Idx, IndexSlice};
 
 /// An owned contiguous collection of `T`s, indexed by `I` rather than by `usize`.
-/// Its purpose is to avoid mixing indexes.
+///
+/// Why use this instead of a `Vec`?
+/// This enforces the user to index a given IndexVec only with the associated index thus making it
+/// impossible to use the wrong index for a given `IndexVec`.
+///
+/// ```compile_fail
+/// use rustc_index::{Idx, IndexVec};
+///
+/// fn f<I1: Idx, I2: Idx>(vec1: IndexVec<I1, u8>, idx1: I1, idx2: I2) {
+///   &vec1[idx1]; // Ok
+///   &vec1[idx2]; // Error!
+/// }
+/// ```
 ///
 /// While it's possible to use `u32` or `usize` directly for `I`,
 /// you almost certainly want to use a [`newtype_index!`]-generated type instead.
