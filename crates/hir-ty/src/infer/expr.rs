@@ -774,7 +774,7 @@ impl InferenceContext<'_> {
                     let receiver_adjustments = method_resolution::resolve_indexing_op(
                         self.db,
                         self.table.trait_env.clone(),
-                        canonicalized.value,
+                        canonicalized,
                         index_trait,
                     );
                     let (self_ty, mut adj) = receiver_adjustments
@@ -1559,7 +1559,7 @@ impl InferenceContext<'_> {
                 let canonicalized_receiver = self.canonicalize(receiver_ty.clone());
                 let resolved = method_resolution::lookup_method(
                     self.db,
-                    &canonicalized_receiver.value,
+                    &canonicalized_receiver,
                     self.table.trait_env.clone(),
                     self.get_traits_in_scope().as_ref().left_or_else(|&it| it),
                     VisibleFromModule::Filter(self.resolver.module()),
@@ -1608,7 +1608,7 @@ impl InferenceContext<'_> {
 
         let resolved = method_resolution::lookup_method(
             self.db,
-            &canonicalized_receiver.value,
+            &canonicalized_receiver,
             self.table.trait_env.clone(),
             self.get_traits_in_scope().as_ref().left_or_else(|&it| it),
             VisibleFromModule::Filter(self.resolver.module()),
@@ -1641,7 +1641,7 @@ impl InferenceContext<'_> {
                 };
 
                 let assoc_func_with_same_name = method_resolution::iterate_method_candidates(
-                    &canonicalized_receiver.value,
+                    &canonicalized_receiver,
                     self.db,
                     self.table.trait_env.clone(),
                     self.get_traits_in_scope().as_ref().left_or_else(|&it| it),
