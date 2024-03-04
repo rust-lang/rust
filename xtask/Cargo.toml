@@ -14,6 +14,7 @@ xshell.workspace = true
 xflags = "0.3.0"
 time = { version = "0.3", default-features = false }
 zip = { version = "0.6", default-features = false, features = ["deflate", "time"] }
+stdx.workspace = true
 # Avoid adding more dependencies to this crate
 
 [lints]
