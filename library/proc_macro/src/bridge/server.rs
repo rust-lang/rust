@@ -223,7 +223,7 @@ thread_local! {
     /// This is required as the thread-local state in the proc_macro client does
     /// not handle being re-entered, and will invalidate all `Symbol`s when
     /// entering a nested macro.
-    static ALREADY_RUNNING_SAME_THREAD: Cell<bool> = Cell::new(false);
+    static ALREADY_RUNNING_SAME_THREAD: Cell<bool> = const { Cell::new(false) };
 }
 
 /// Keep `ALREADY_RUNNING_SAME_THREAD` (see also its documentation)

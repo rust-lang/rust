@@ -231,7 +231,7 @@ fn check_panic_str<'tcx>(
 
     let fmt_span = arg.span.source_callsite();
 
-    let (snippet, style) = match cx.sess().parse_sess.source_map().span_to_snippet(fmt_span) {
+    let (snippet, style) = match cx.sess().psess.source_map().span_to_snippet(fmt_span) {
         Ok(snippet) => {
             // Count the number of `#`s between the `r` and `"`.
             let style = snippet.strip_prefix('r').and_then(|s| s.find('"'));
@@ -282,7 +282,7 @@ fn check_panic_str<'tcx>(
 /// Given the span of `some_macro!(args);`, gives the span of `(` and `)`,
 /// and the type of (opening) delimiter used.
 fn find_delimiters(cx: &LateContext<'_>, span: Span) -> Option<(Span, Span, char)> {
-    let snippet = cx.sess().parse_sess.source_map().span_to_snippet(span).ok()?;
+    let snippet = cx.sess().psess.source_map().span_to_snippet(span).ok()?;
     let (open, open_ch) = snippet.char_indices().find(|&(_, c)| "([{".contains(c))?;
     let close = snippet.rfind(|c| ")]}".contains(c))?;
     Some((

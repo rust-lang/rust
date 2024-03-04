@@ -128,7 +128,7 @@ pub enum Recovery {
 
 #[derive(Clone)]
 pub struct Parser<'a> {
-    pub sess: &'a ParseSess,
+    pub psess: &'a ParseSess,
     /// The current token.
     pub token: Token,
     /// The spacing for the current token.
@@ -414,12 +414,12 @@ pub(super) fn token_descr(token: &Token) -> String {
 
 impl<'a> Parser<'a> {
     pub fn new(
-        sess: &'a ParseSess,
+        psess: &'a ParseSess,
         stream: TokenStream,
         subparser_name: Option<&'static str>,
     ) -> Self {
         let mut parser = Parser {
-            sess,
+            psess,
             token: Token::dummy(),
             token_spacing: Spacing::Alone,
             prev_token: Token::dummy(),
@@ -714,7 +714,7 @@ impl<'a> Parser<'a> {
         }
         match self.token.kind.break_two_token_op() {
             Some((first, second)) if first == expected => {
-                let first_span = self.sess.source_map().start_point(self.token.span);
+                let first_span = self.psess.source_map().start_point(self.token.span);
                 let second_span = self.token.span.with_lo(first_span.hi());
                 self.token = Token::new(first, first_span);
                 // Keep track of this token - if we end token capturing now,
@@ -1213,7 +1213,7 @@ impl<'a> Parser<'a> {
     fn parse_closure_constness(&mut self) -> Const {
         let constness = self.parse_constness_(Case::Sensitive, true);
         if let Const::Yes(span) = constness {
-            self.sess.gated_spans.gate(sym::const_closures, span);
+            self.psess.gated_spans.gate(sym::const_closures, span);
         }
         constness
     }
@@ -1234,9 +1234,9 @@ impl<'a> Parser<'a> {
     /// Parses inline const expressions.
     fn parse_const_block(&mut self, span: Span, pat: bool) -> PResult<'a, P<Expr>> {
         if pat {
-            self.sess.gated_spans.gate(sym::inline_const_pat, span);
+            self.psess.gated_spans.gate(sym::inline_const_pat, span);
         } else {
-            self.sess.gated_spans.gate(sym::inline_const, span);
+            self.psess.gated_spans.gate(sym::inline_const, span);
         }
         self.eat_keyword(kw::Const);
         let (attrs, blk) = self.parse_inner_attrs_and_block()?;
@@ -1521,7 +1521,7 @@ impl<'a> Parser<'a> {
 
 pub(crate) fn make_unclosed_delims_error(
     unmatched: UnmatchedDelim,
-    sess: &ParseSess,
+    psess: &ParseSess,
 ) -> Option<Diag<'_>> {
     // `None` here means an `Eof` was found. We already emit those errors elsewhere, we add them to
     // `unmatched_delims` only for error recovery in the `Parser`.
@@ -1530,7 +1530,7 @@ pub(crate) fn make_unclosed_delims_error(
     if let Some(sp) = unmatched.unclosed_span {
         spans.push(sp);
     };
-    let err = sess.dcx.create_err(MismatchedClosingDelimiter {
+    let err = psess.dcx.create_err(MismatchedClosingDelimiter {
         spans,
         delimiter: pprust::token_kind_to_string(&token::CloseDelim(found_delim)).to_string(),
         unmatched: unmatched.found_span,

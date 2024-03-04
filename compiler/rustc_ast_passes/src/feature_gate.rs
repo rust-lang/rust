@@ -507,7 +507,7 @@ pub fn check_crate(krate: &ast::Crate, sess: &Session, features: &Features) {
     check_incompatible_features(sess, features);
     let mut visitor = PostExpansionVisitor { sess, features };
 
-    let spans = sess.parse_sess.gated_spans.spans.borrow();
+    let spans = sess.psess.gated_spans.spans.borrow();
     macro_rules! gate_all {
         ($gate:ident, $msg:literal) => {
             if let Some(spans) = spans.get(&sym::$gate) {

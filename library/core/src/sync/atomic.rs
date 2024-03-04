@@ -1092,7 +1092,7 @@ impl AtomicBool {
 
     /// Returns a mutable pointer to the underlying [`bool`].
     ///
-    /// Doing non-atomic reads and writes on the resulting integer can be a data race.
+    /// Doing non-atomic reads and writes on the resulting boolean can be a data race.
     /// This method is mostly useful for FFI, where the function signature may use
     /// `*mut bool` instead of `&AtomicBool`.
     ///
@@ -2031,7 +2031,7 @@ impl<T> AtomicPtr<T> {
 
     /// Returns a mutable pointer to the underlying pointer.
     ///
-    /// Doing non-atomic reads and writes on the resulting integer can be a data race.
+    /// Doing non-atomic reads and writes on the resulting pointer can be a data race.
     /// This method is mostly useful for FFI, where the function signature may use
     /// `*mut *mut T` instead of `&AtomicPtr<T>`.
     ///

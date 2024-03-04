@@ -106,13 +106,12 @@ pub fn feature_err_issue(
 
     // Cancel an earlier warning for this same error, if it exists.
     if let Some(span) = span.primary_span() {
-        if let Some(err) = sess.parse_sess.dcx.steal_non_err(span, StashKey::EarlySyntaxWarning) {
+        if let Some(err) = sess.psess.dcx.steal_non_err(span, StashKey::EarlySyntaxWarning) {
             err.cancel()
         }
     }
 
-    let mut err =
-        sess.parse_sess.dcx.create_err(FeatureGateError { span, explain: explain.into() });
+    let mut err = sess.psess.dcx.create_err(FeatureGateError { span, explain: explain.into() });
     add_feature_diagnostics_for_issue(&mut err, sess, feature, issue, false);
     err
 }
@@ -141,7 +140,7 @@ pub fn feature_warn_issue(
     issue: GateIssue,
     explain: &'static str,
 ) {
-    let mut err = sess.parse_sess.dcx.struct_span_warn(span, explain);
+    let mut err = sess.psess.dcx.struct_span_warn(span, explain);
     add_feature_diagnostics_for_issue(&mut err, sess, feature, issue, false);
 
     // Decorate this as a future-incompatibility lint as in rustc_middle::lint::lint_level
@@ -181,7 +180,7 @@ pub fn add_feature_diagnostics_for_issue<G: EmissionGuarantee>(
     }
 
     // #23973: do not suggest `#![feature(...)]` if we are in beta/stable
-    if sess.parse_sess.unstable_features.is_nightly_build() {
+    if sess.psess.unstable_features.is_nightly_build() {
         if feature_from_cli {
             err.subdiagnostic(sess.dcx(), CliFeatureDiagnosticHelp { feature });
         } else {
@@ -233,9 +232,9 @@ pub struct ParseSess {
 
 impl ParseSess {
     /// Used for testing.
-    pub fn new(locale_resources: Vec<&'static str>, file_path_mapping: FilePathMapping) -> Self {
+    pub fn new(locale_resources: Vec<&'static str>) -> Self {
         let fallback_bundle = fallback_fluent_bundle(locale_resources, false);
-        let sm = Lrc::new(SourceMap::new(file_path_mapping));
+        let sm = Lrc::new(SourceMap::new(FilePathMapping::empty()));
         let emitter = Box::new(
             HumanEmitter::new(stderr_destination(ColorConfig::Auto), fallback_bundle)
                 .sm(Some(sm.clone())),

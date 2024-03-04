@@ -209,7 +209,7 @@ impl<'a> scoped_cell::ApplyL<'a> for BridgeStateL {
 
 thread_local! {
     static BRIDGE_STATE: scoped_cell::ScopedCell<BridgeStateL> =
-        scoped_cell::ScopedCell::new(BridgeState::NotConnected);
+        const { scoped_cell::ScopedCell::new(BridgeState::NotConnected) };
 }
 
 impl BridgeState<'_> {

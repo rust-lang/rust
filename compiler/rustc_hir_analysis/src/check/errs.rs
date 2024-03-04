@@ -70,7 +70,7 @@ fn handle_static_mut_ref(
         } else {
             (errors::StaticMutRefSugg::Shared { span, var }, "shared")
         };
-        tcx.sess.parse_sess.dcx.emit_err(errors::StaticMutRef { span, sugg, shared });
+        tcx.sess.psess.dcx.emit_err(errors::StaticMutRef { span, sugg, shared });
         return;
     }
 

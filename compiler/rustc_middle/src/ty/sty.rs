@@ -1426,7 +1426,8 @@ impl From<BoundVar> for BoundTy {
 
 /// Constructors for `Ty`
 impl<'tcx> Ty<'tcx> {
-    // Avoid this in favour of more specific `new_*` methods, where possible.
+    /// Avoid using this in favour of more specific `new_*` methods, where possible.
+    /// The more specific methods will often optimize their creation.
     #[allow(rustc::usage_of_ty_tykind)]
     #[inline]
     pub fn new(tcx: TyCtxt<'tcx>, st: TyKind<'tcx>) -> Ty<'tcx> {
@@ -1810,6 +1811,12 @@ impl<'tcx> Ty<'tcx> {
         let context_args = tcx.mk_args(&[tcx.lifetimes.re_erased.into()]);
         let context_ty = Ty::new_adt(tcx, context_adt_ref, context_args);
         Ty::new_mut_ref(tcx, tcx.lifetimes.re_erased, context_ty)
+    }
+}
+
+impl<'tcx> rustc_type_ir::new::Ty<TyCtxt<'tcx>> for Ty<'tcx> {
+    fn new_anon_bound(tcx: TyCtxt<'tcx>, debruijn: ty::DebruijnIndex, var: ty::BoundVar) -> Self {
+        Ty::new_bound(tcx, debruijn, ty::BoundTy { var, kind: ty::BoundTyKind::Anon })
     }
 }
 

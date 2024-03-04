@@ -26,7 +26,7 @@ impl<T: Rewrite> Rewrite for ptr::P<T> {
 
 #[derive(Clone)]
 pub(crate) struct RewriteContext<'a> {
-    pub(crate) parse_sess: &'a ParseSess,
+    pub(crate) psess: &'a ParseSess,
     pub(crate) config: &'a Config,
     pub(crate) inside_macro: Rc<Cell<bool>>,
     // Force block indent style even if we are using visual indent style.

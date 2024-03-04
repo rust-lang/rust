@@ -314,7 +314,7 @@ fn run_compiler(
         file_loader,
         locale_resources: DEFAULT_LOCALE_RESOURCES,
         lint_caps: Default::default(),
-        parse_sess_created: None,
+        psess_created: None,
         hash_untracked_state: None,
         register_lints: None,
         override_queries: None,
@@ -768,7 +768,7 @@ fn print_crate_info(
             }
             Cfg => {
                 let mut cfgs = sess
-                    .parse_sess
+                    .psess
                     .config
                     .iter()
                     .filter_map(|&(name, value)| {
@@ -1215,12 +1215,10 @@ pub fn handle_options(early_dcx: &EarlyDiagCtxt, args: &[String]) -> Option<geto
 
 fn parse_crate_attrs<'a>(sess: &'a Session) -> PResult<'a, ast::AttrVec> {
     match &sess.io.input {
-        Input::File(ifile) => rustc_parse::parse_crate_attrs_from_file(ifile, &sess.parse_sess),
-        Input::Str { name, input } => rustc_parse::parse_crate_attrs_from_source_str(
-            name.clone(),
-            input.clone(),
-            &sess.parse_sess,
-        ),
+        Input::File(ifile) => rustc_parse::parse_crate_attrs_from_file(ifile, &sess.psess),
+        Input::Str { name, input } => {
+            rustc_parse::parse_crate_attrs_from_source_str(name.clone(), input.clone(), &sess.psess)
+        }
     }
 }
 

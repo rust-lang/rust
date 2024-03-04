@@ -818,7 +818,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
                     let sp = self.tcx.sess.source_map().start_point(ex.span).with_parent(None);
                     if let Some(sp) =
-                        self.tcx.sess.parse_sess.ambiguous_block_expr_parse.borrow().get(&sp)
+                        self.tcx.sess.psess.ambiguous_block_expr_parse.borrow().get(&sp)
                     {
                         // If the previous expression was a block expression, suggest parentheses
                         // (turning this into a binary subtraction operation instead.)
