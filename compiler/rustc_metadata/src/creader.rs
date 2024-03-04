@@ -1132,7 +1132,13 @@ fn load_dylib(path: &Path, max_attempts: usize) -> Result<libloading::Library, S
             Err(err) => {
                 // Only try to recover from this specific error.
                 if !matches!(err, libloading::Error::LoadLibraryExW { .. }) {
-                    return Err(err.to_string());
+                    let err = format_dlopen_err(&err);
+                    // We include the path of the dylib in the error ourselves, so
+                    // if it's in the error, we strip it.
+                    if let Some(err) = err.strip_prefix(&format!(": {}", path.display())) {
+                        return Err(err.to_string());
+                    }
+                    return Err(err);
                 }
 
                 last_error = Some(err);
