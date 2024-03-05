@@ -24,6 +24,7 @@ use rustc_span::symbol::sym;
 use rustc_span::FileName;
 use std::path::PathBuf;
 use std::result;
+use std::sync::atomic::AtomicPtr;
 use std::sync::Arc;
 
 pub type Result<T> = result::Result<T, ErrorGuaranteed>;
@@ -39,6 +40,7 @@ pub struct Compiler {
     pub sess: Session,
     pub codegen_backend: Box<dyn CodegenBackend>,
     pub(crate) override_queries: Option<fn(&Session, &mut Providers)>,
+    pub compiler_for_deadlock_handler: Arc<AtomicPtr<()>>,
 }
 
 /// Converts strings provided as `--cfg [cfgspec]` into a `Cfg`.
@@ -331,9 +333,12 @@ pub fn run_compiler<R: Send>(config: Config, f: impl FnOnce(&Compiler) -> R + Se
     let early_dcx = EarlyDiagCtxt::new(config.opts.error_format);
     early_dcx.initialize_checked_jobserver();
 
+    let compiler_for_deadlock_handler = Arc::<AtomicPtr<_>>::default();
+
     util::run_in_thread_pool_with_globals(
         config.opts.edition,
         config.opts.unstable_opts.threads,
+        compiler_for_deadlock_handler.clone(),
         || {
             crate::callbacks::setup_callbacks();
 
@@ -422,8 +427,12 @@ pub fn run_compiler<R: Send>(config: Config, f: impl FnOnce(&Compiler) -> R + Se
             }
             sess.lint_store = Some(Lrc::new(lint_store));
 
-            let compiler =
-                Compiler { sess, codegen_backend, override_queries: config.override_queries };
+            let compiler = Arc::new(Compiler {
+                sess,
+                codegen_backend,
+                override_queries: config.override_queries,
+                compiler_for_deadlock_handler,
+            });
 
             rustc_span::set_source_map(compiler.sess.psess.clone_source_map(), move || {
                 // There are two paths out of `f`.

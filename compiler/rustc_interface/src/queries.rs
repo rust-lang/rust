@@ -24,6 +24,7 @@ use rustc_session::Session;
 use rustc_span::symbol::sym;
 use std::any::Any;
 use std::cell::{RefCell, RefMut};
+use std::sync::atomic::Ordering;
 use std::sync::Arc;
 
 /// Represent the result of a query.
@@ -159,6 +160,10 @@ impl<'tcx> Queries<'tcx> {
                 &self.arena,
                 &self.hir_arena,
             );
+
+            self.compiler
+                .compiler_for_deadlock_handler
+                .store(qcx as *const _ as *mut _, Ordering::Relaxed);
 
             qcx.enter(|tcx| {
                 let feed = tcx.feed_local_crate();
@@ -311,6 +316,11 @@ impl Compiler {
     {
         // Must declare `_timer` first so that it is dropped after `queries`.
         let mut _timer = None;
+        let _guard = rustc_data_structures::defer(|| {
+            // If we got here, there was no deadlock, so we can't be in a situation where a deadlock handler
+            // is accessing the `GlobalCtxt`.
+            self.compiler_for_deadlock_handler.store(std::ptr::null_mut(), Ordering::Relaxed);
+        });
         let queries = Queries::new(self);
         let ret = f(&queries);
 

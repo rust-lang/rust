@@ -18,8 +18,8 @@ use session::EarlyDiagCtxt;
 use std::env;
 use std::env::consts::{DLL_PREFIX, DLL_SUFFIX};
 use std::path::{Path, PathBuf};
-use std::sync::atomic::{AtomicBool, Ordering};
-use std::sync::OnceLock;
+use std::sync::atomic::{AtomicBool, AtomicPtr, Ordering};
+use std::sync::{Arc, OnceLock};
 use std::thread;
 
 /// Function pointer type that constructs a new CodegenBackend.
@@ -90,6 +90,7 @@ pub(crate) fn run_in_thread_with_globals<F: FnOnce() -> R + Send, R: Send>(
 pub(crate) fn run_in_thread_pool_with_globals<F: FnOnce() -> R + Send, R: Send>(
     edition: Edition,
     _threads: usize,
+    _compiler: Arc<AtomicPtr<()>>,
     f: F,
 ) -> R {
     run_in_thread_with_globals(edition, f)
@@ -99,10 +100,11 @@ pub(crate) fn run_in_thread_pool_with_globals<F: FnOnce() -> R + Send, R: Send>(
 pub(crate) fn run_in_thread_pool_with_globals<F: FnOnce() -> R + Send, R: Send>(
     edition: Edition,
     threads: usize,
+    compiler: Arc<AtomicPtr<()>>,
     f: F,
 ) -> R {
     use rustc_data_structures::{jobserver, sync::FromDyn};
-    use rustc_middle::ty::tls;
+    use rustc_middle::ty::GlobalCtxt;
     use rustc_query_impl::QueryCtxt;
     use rustc_query_system::query::{deadlock, QueryContext};
 
@@ -122,11 +124,15 @@ pub(crate) fn run_in_thread_pool_with_globals<F: FnOnce() -> R + Send, R: Send>(
         .acquire_thread_handler(jobserver::acquire_thread)
         .release_thread_handler(jobserver::release_thread)
         .num_threads(threads)
-        .deadlock_handler(|| {
+        .deadlock_handler(move || {
+            let compiler = compiler.load(Ordering::Relaxed);
+            assert!(!compiler.is_null());
+            let compiler = compiler as *const GlobalCtxt<'_>;
             // On deadlock, creates a new thread and forwards information in thread
             // locals to it. The new thread runs the deadlock handler.
-            let query_map =
-                FromDyn::from(tls::with(|tcx| QueryCtxt::new(tcx).collect_active_jobs()));
+            let query_map = FromDyn::from(unsafe {
+                (*compiler).enter(|tcx| QueryCtxt::new(tcx).collect_active_jobs())
+            });
             let registry = rayon_core::Registry::current();
             thread::spawn(move || deadlock(query_map.into_inner(), &registry));
         });
