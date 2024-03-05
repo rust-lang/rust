@@ -81,7 +81,7 @@ jobs:
         #- mips64el-unknown-linux-gnuabi64
         #- mipsel-unknown-linux-musl
         - s390x-unknown-linux-gnu
-        - wasm32-wasi
+        - wasm32-wasip1
         - i586-unknown-linux-gnu
         - nvptx64-nvidia-cuda
         - thumbv6m-none-eabi
@@ -135,7 +135,7 @@ jobs:
           disable_assert_instr: true
         - target: s390x-unknown-linux-gnu
           os: ubuntu-latest
-        - target: wasm32-wasi
+        - target: wasm32-wasip1
           os: ubuntu-latest
         - target: aarch64-apple-darwin
           os: macos-latest
