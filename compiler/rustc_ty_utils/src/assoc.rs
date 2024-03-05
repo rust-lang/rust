@@ -4,7 +4,7 @@ use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{DefId, DefIdMap, LocalDefId};
 use rustc_hir::intravisit::{self, Visitor};
 use rustc_middle::query::Providers;
-use rustc_middle::ty::{self, GenericArgs, ImplTraitInTraitData, Ty, TyCtxt};
+use rustc_middle::ty::{self, ImplTraitInTraitData, TyCtxt};
 use rustc_span::symbol::kw;
 
 pub(crate) fn provide(providers: &mut Providers) {
@@ -284,47 +284,7 @@ fn associated_type_for_impl_trait_in_trait(
     // Copy defaultness of the containing function.
     trait_assoc_ty.defaultness(tcx.defaultness(fn_def_id));
 
-    // Copy type_of of the opaque.
-    trait_assoc_ty.type_of(ty::EarlyBinder::bind(Ty::new_opaque(
-        tcx,
-        opaque_ty_def_id.to_def_id(),
-        GenericArgs::identity_for_item(tcx, opaque_ty_def_id),
-    )));
-
     trait_assoc_ty.is_type_alias_impl_trait(false);
-
-    // Copy generics_of of the opaque type item but the trait is the parent.
-    trait_assoc_ty.generics_of({
-        let opaque_ty_generics = tcx.generics_of(opaque_ty_def_id);
-        let opaque_ty_parent_count = opaque_ty_generics.parent_count;
-        let mut params = opaque_ty_generics.params.clone();
-
-        let parent_generics = tcx.generics_of(trait_def_id);
-        let parent_count = parent_generics.parent_count + parent_generics.params.len();
-
-        let mut trait_fn_params = tcx.generics_of(fn_def_id).params.clone();
-
-        for param in &mut params {
-            param.index = param.index + parent_count as u32 + trait_fn_params.len() as u32
-                - opaque_ty_parent_count as u32;
-        }
-
-        trait_fn_params.extend(params);
-        params = trait_fn_params;
-
-        let param_def_id_to_index =
-            params.iter().map(|param| (param.def_id, param.index)).collect();
-
-        ty::Generics {
-            parent: Some(trait_def_id.to_def_id()),
-            parent_count,
-            params,
-            param_def_id_to_index,
-            has_self: opaque_ty_generics.has_self,
-            has_late_bound_regions: opaque_ty_generics.has_late_bound_regions,
-            host_effect_index: parent_generics.host_effect_index,
-        }
-    });
 
     // There are no inferred outlives for the synthesized associated type.
     trait_assoc_ty.inferred_outlives_of(&[]);
@@ -382,8 +342,9 @@ fn associated_type_for_impl_trait_in_impl(
     impl_assoc_ty.defaultness(tcx.defaultness(impl_fn_def_id));
 
     // Copy generics_of the trait's associated item but the impl as the parent.
-    // FIXME(-Zlower-impl-trait-in-trait-to-assoc-ty) resolves to the trait instead of the impl
-    // generics.
+    // FIXME: This may be detrimental to diagnostics, as we resolve the early-bound vars
+    // here to paramswhose parent are items in the trait. We could synthesize new params
+    // here, but it seems overkill.
     impl_assoc_ty.generics_of({
         let trait_assoc_generics = tcx.generics_of(trait_assoc_def_id);
         let trait_assoc_parent_count = trait_assoc_generics.parent_count;

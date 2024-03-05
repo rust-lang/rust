@@ -5,7 +5,7 @@ use rustc_hir::HirId;
 use rustc_middle::query::plumbing::CyclePlaceholder;
 use rustc_middle::ty::print::with_forced_trimmed_paths;
 use rustc_middle::ty::util::IntTypeExt;
-use rustc_middle::ty::{self, ImplTraitInTraitData, IsSuggestable, Ty, TyCtxt, TypeVisitableExt};
+use rustc_middle::ty::{self, IsSuggestable, Ty, TyCtxt, TypeVisitableExt};
 use rustc_span::symbol::Ident;
 use rustc_span::{Span, DUMMY_SP};
 
@@ -350,22 +350,31 @@ pub(super) fn type_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::EarlyBinder<Ty
     // If we are computing `type_of` the synthesized associated type for an RPITIT in the impl
     // side, use `collect_return_position_impl_trait_in_trait_tys` to infer the value of the
     // associated type in the impl.
-    if let Some(ImplTraitInTraitData::Impl { fn_def_id, .. }) =
-        tcx.opt_rpitit_info(def_id.to_def_id())
-    {
-        match tcx.collect_return_position_impl_trait_in_trait_tys(fn_def_id) {
-            Ok(map) => {
-                let assoc_item = tcx.associated_item(def_id);
-                return map[&assoc_item.trait_item_def_id.unwrap()];
-            }
-            Err(_) => {
-                return ty::EarlyBinder::bind(Ty::new_error_with_message(
-                    tcx,
-                    DUMMY_SP,
-                    "Could not collect return position impl trait in trait tys",
-                ));
+    match tcx.opt_rpitit_info(def_id.to_def_id()) {
+        Some(ty::ImplTraitInTraitData::Impl { fn_def_id }) => {
+            match tcx.collect_return_position_impl_trait_in_trait_tys(fn_def_id) {
+                Ok(map) => {
+                    let assoc_item = tcx.associated_item(def_id);
+                    return map[&assoc_item.trait_item_def_id.unwrap()];
+                }
+                Err(_) => {
+                    return ty::EarlyBinder::bind(Ty::new_error_with_message(
+                        tcx,
+                        DUMMY_SP,
+                        "Could not collect return position impl trait in trait tys",
+                    ));
+                }
             }
         }
+        // For an RPITIT in a trait, just return the corresponding opaque.
+        Some(ty::ImplTraitInTraitData::Trait { opaque_def_id, .. }) => {
+            return ty::EarlyBinder::bind(Ty::new_opaque(
+                tcx,
+                opaque_def_id,
+                ty::GenericArgs::identity_for_item(tcx, opaque_def_id),
+            ));
+        }
+        None => {}
     }
 
     let hir_id = tcx.local_def_id_to_hir_id(def_id);
