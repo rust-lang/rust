@@ -4,7 +4,6 @@ use crate::expand::{self, AstFragment, Invocation};
 use crate::module::DirOwnership;
 
 use rustc_ast::attr::MarkedAttrs;
-use rustc_ast::mut_visit::DummyAstNode;
 use rustc_ast::ptr::P;
 use rustc_ast::token::{self, Nonterminal};
 use rustc_ast::tokenstream::TokenStream;
@@ -582,6 +581,17 @@ impl DummyResult {
             tokens: None,
         })
     }
+
+    /// A plain dummy crate.
+    pub fn raw_crate() -> ast::Crate {
+        ast::Crate {
+            attrs: Default::default(),
+            items: Default::default(),
+            spans: Default::default(),
+            id: ast::DUMMY_NODE_ID,
+            is_placeholder: Default::default(),
+        }
+    }
 }
 
 impl MacResult for DummyResult {
@@ -650,7 +660,7 @@ impl MacResult for DummyResult {
     }
 
     fn make_crate(self: Box<DummyResult>) -> Option<ast::Crate> {
-        Some(DummyAstNode::dummy())
+        Some(DummyResult::raw_crate())
     }
 }
 
