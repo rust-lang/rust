@@ -377,10 +377,12 @@ const LOONGARCH_ALLOWED_FEATURES: &[(&str, Stability)] = &[
     // tidy-alphabetical-start
     ("d", Unstable(sym::loongarch_target_feature)),
     ("f", Unstable(sym::loongarch_target_feature)),
+    ("frecipe", Unstable(sym::loongarch_target_feature)),
     ("lasx", Unstable(sym::loongarch_target_feature)),
     ("lbt", Unstable(sym::loongarch_target_feature)),
     ("lsx", Unstable(sym::loongarch_target_feature)),
     ("lvz", Unstable(sym::loongarch_target_feature)),
+    ("relax", Unstable(sym::loongarch_target_feature)),
     ("ual", Unstable(sym::loongarch_target_feature)),
     // tidy-alphabetical-end
 ];
