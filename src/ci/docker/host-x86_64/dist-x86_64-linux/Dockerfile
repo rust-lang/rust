@@ -56,7 +56,7 @@ RUN ./cmake.sh
 # Now build LLVM+Clang, afterwards configuring further compilations to use the
 # clang/clang++ compilers.
 COPY host-x86_64/dist-x86_64-linux/build-clang.sh /tmp/
-RUN LD_PRELOAD=`jemalloc-config --libdir`/libjemalloc.so.`jemalloc-config --revision` ./build-clang.sh
+RUN ./build-clang.sh
 ENV CC=clang CXX=clang++
 
 # rustc-perf version from 2023-10-22
@@ -89,7 +89,7 @@ ENV RUST_CONFIGURE_ARGS \
       --set rust.lto=thin \
       --set rust.codegen-units=1
 
-ENV SCRIPT python3 ../x.py build --set rust.debug=true opt-dist && \
+ENV SCRIPT LD_PRELOAD=`jemalloc-config --libdir`/libjemalloc.so.`jemalloc-config --revision` python3 ../x.py build --set rust.debug=true opt-dist && \
     ./build/$HOSTS/stage0-tools-bin/opt-dist linux-ci -- python3 ../x.py dist \
     --host $HOSTS --target $HOSTS \
     --include-default-paths \
