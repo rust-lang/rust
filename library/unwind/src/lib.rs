@@ -6,6 +6,10 @@
 #![cfg_attr(bootstrap, feature(cfg_target_abi))]
 #![feature(strict_provenance)]
 #![cfg_attr(not(target_env = "msvc"), feature(libc))]
+#![cfg_attr(
+    all(target_family = "wasm", not(target_os = "emscripten")),
+    feature(link_llvm_intrinsics)
+)]
 #![allow(internal_features)]
 
 cfg_if::cfg_if! {
@@ -29,9 +33,11 @@ cfg_if::cfg_if! {
     } else if #[cfg(target_os = "xous")] {
         mod unwinding;
         pub use unwinding::*;
+    } else if #[cfg(target_family = "wasm")] {
+        mod wasm;
+        pub use wasm::*;
     } else {
         // no unwinder on the system!
-        // - wasm32 (not emscripten, which is "unix" family)
         // - os=none ("bare metal" targets)
         // - os=hermit
         // - os=uefi
