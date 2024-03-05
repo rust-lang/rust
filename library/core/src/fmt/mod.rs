@@ -1102,8 +1102,14 @@ pub trait UpperExp {
 /// ```
 ///
 /// [`write!`]: crate::write!
+#[inline]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub fn write(output: &mut dyn Write, args: Arguments<'_>) -> Result {
+    if let Some(s) = args.as_str() { output.write_str(s) } else { write_internal(output, args) }
+}
+
+/// Actual implementation of the [`write()`], but without the simple string optimization.
+fn write_internal(output: &mut dyn Write, args: Arguments<'_>) -> Result {
     let mut formatter = Formatter::new(output);
     let mut idx = 0;
 
