@@ -392,9 +392,6 @@ parse_invalid_identifier_with_leading_number = identifiers cannot start with a n
 
 parse_invalid_interpolated_expression = invalid interpolated expression
 
-parse_invalid_literal_suffix = suffixes on {$kind} literals are invalid
-    .label = invalid suffix `{$suffix}`
-
 parse_invalid_literal_suffix_on_tuple_index = suffixes on a tuple index are invalid
     .label = invalid suffix `{$suffix}`
     .tuple_exception_line_1 = `{$suffix}` is *temporarily* accepted on tuple index fields as it was incorrectly accepted on stable for a few releases
@@ -609,7 +606,6 @@ parse_nonterminal_expected_item_keyword = expected an item keyword
 parse_nonterminal_expected_lifetime = expected a lifetime, found `{$token}`
 
 parse_nonterminal_expected_statement = expected a statement
-parse_not_supported = not supported
 
 parse_note_edition_guide = for more on editions, read https://doc.rust-lang.org/edition-guide
 
