@@ -2366,9 +2366,14 @@ impl<'tcx> Ty<'tcx> {
                 // ambiguous with any parameters.
                 // FIXME: Add same restrictions on AsyncDrop impls as with Drop impls
                 if self.is_async_drop(tcx, param_env) {
+                    // TODO: this is problematic as it may not guarantee
+                    //   that this future is fused (`Future::poll` returns
+                    //   `Poll::Ready(())` after the first return of
+                    //   `Poll::Ready`)
                     let assoc_items = tcx.associated_item_def_ids(
                         tcx.require_lang_item(hir::LangItem::AsyncDrop, None),
                     );
+                    // FIXME: Should this lifetime be `'static` or erased?
                     Ty::new_projection(tcx, assoc_items[0], [tcx.lifetimes.re_static])
                 } else {
                     tcx.type_of(tcx.require_lang_item(LangItem::FutureReadyUnit, None))
