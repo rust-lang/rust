@@ -54,6 +54,7 @@
 #![feature(slice_from_ptr_range)]
 #![feature(slice_split_once)]
 #![feature(split_as_slice)]
+#![feature(maybe_uninit_fill)]
 #![feature(maybe_uninit_uninit_array)]
 #![feature(maybe_uninit_write_slice)]
 #![feature(maybe_uninit_uninit_array_transpose)]
