@@ -182,13 +182,14 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     ) -> InterpResult<'tcx, ImmTy<'tcx, M::Provenance>> {
         use rustc_type_ir::TyKind::*;
 
-        let val = match src.layout.ty.kind() {
-            // Floating point
-            Float(FloatTy::F32) => self.cast_from_float(src.to_scalar().to_f32()?, cast_to.ty),
-            Float(FloatTy::F64) => self.cast_from_float(src.to_scalar().to_f64()?, cast_to.ty),
-            _ => {
-                bug!("Can't cast 'Float' type into {}", cast_to.ty);
-            }
+        let Float(fty) = src.layout.ty.kind() else {
+            bug!("FloatToFloat/FloatToInt cast: source type {} is not a float type", src.layout.ty)
+        };
+        let val = match fty {
+            FloatTy::F16 => unimplemented!("f16_f128"),
+            FloatTy::F32 => self.cast_from_float(src.to_scalar().to_f32()?, cast_to.ty),
+            FloatTy::F64 => self.cast_from_float(src.to_scalar().to_f64()?, cast_to.ty),
+            FloatTy::F128 => unimplemented!("f16_f128"),
         };
         Ok(ImmTy::from_scalar(val, cast_to))
     }
@@ -275,6 +276,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         trace!("cast_from_scalar: {}, {} -> {}", v, src_layout.ty, cast_ty);
 
         Ok(match *cast_ty.kind() {
+            // int -> int
             Int(_) | Uint(_) => {
                 let size = match *cast_ty.kind() {
                     Int(t) => Integer::from_int_ty(self, t).size(),
@@ -285,15 +287,26 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 Scalar::from_uint(v, size)
             }
 
-            Float(FloatTy::F32) if signed => Scalar::from_f32(Single::from_i128(v as i128).value),
-            Float(FloatTy::F64) if signed => Scalar::from_f64(Double::from_i128(v as i128).value),
-            Float(FloatTy::F32) => Scalar::from_f32(Single::from_u128(v).value),
-            Float(FloatTy::F64) => Scalar::from_f64(Double::from_u128(v).value),
-
-            Char => {
-                // `u8` to `char` cast
-                Scalar::from_u32(u8::try_from(v).unwrap().into())
+            // signed int -> float
+            Float(fty) if signed => {
+                let v = v as i128;
+                match fty {
+                    FloatTy::F16 => unimplemented!("f16_f128"),
+                    FloatTy::F32 => Scalar::from_f32(Single::from_i128(v).value),
+                    FloatTy::F64 => Scalar::from_f64(Double::from_i128(v).value),
+                    FloatTy::F128 => unimplemented!("f16_f128"),
+                }
             }
+            // unsigned int -> float
+            Float(fty) => match fty {
+                FloatTy::F16 => unimplemented!("f16_f128"),
+                FloatTy::F32 => Scalar::from_f32(Single::from_u128(v).value),
+                FloatTy::F64 => Scalar::from_f64(Double::from_u128(v).value),
+                FloatTy::F128 => unimplemented!("f16_f128"),
+            },
+
+            // u8 -> char
+            Char => Scalar::from_u32(u8::try_from(v).unwrap().into()),
 
             // Casts to bool are not permitted by rustc, no need to handle them here.
             _ => span_bug!(self.cur_span(), "invalid int to {} cast", cast_ty),
@@ -339,14 +352,13 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 let v = f.to_i128(size.bits_usize()).value;
                 Scalar::from_int(v, size)
             }
-            // float -> f32
-            Float(FloatTy::F32) => {
-                Scalar::from_f32(adjust_nan(self, f, f.convert(&mut false).value))
-            }
-            // float -> f64
-            Float(FloatTy::F64) => {
-                Scalar::from_f64(adjust_nan(self, f, f.convert(&mut false).value))
-            }
+            // float -> float
+            Float(fty) => match fty {
+                FloatTy::F16 => unimplemented!("f16_f128"),
+                FloatTy::F32 => Scalar::from_f32(adjust_nan(self, f, f.convert(&mut false).value)),
+                FloatTy::F64 => Scalar::from_f64(adjust_nan(self, f, f.convert(&mut false).value)),
+                FloatTy::F128 => unimplemented!("f16_f128"),
+            },
             // That's it.
             _ => span_bug!(self.cur_span(), "invalid float to {} cast", dest_ty),
         }
