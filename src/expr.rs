@@ -282,6 +282,9 @@ pub(crate) fn format_expr(
                 match lhs.kind {
                     ast::ExprKind::Lit(token_lit) => lit_ends_in_dot(&token_lit),
                     ast::ExprKind::Unary(_, ref expr) => needs_space_before_range(context, expr),
+                    ast::ExprKind::Binary(_, _, ref rhs_expr) => {
+                        needs_space_before_range(context, rhs_expr)
+                    }
                     _ => false,
                 }
             }
