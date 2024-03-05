@@ -1006,6 +1006,10 @@ struct Candidate<'pat, 'tcx> {
     /// If the candidate matches, bindings and ascriptions must be established.
     extra_data: PatternExtraData<'tcx>,
 
+    /// If we filled `self.subcandidate`, we store here the span of the or-pattern they came from.
+    // Invariant: it is `None` iff `subcandidates.is_empty()`.
+    or_span: Option<Span>,
+
     /// The block before the `bindings` have been established.
     pre_binding_block: Option<BasicBlock>,
     /// The pre-binding block of the next candidate.
@@ -1028,6 +1032,7 @@ impl<'tcx, 'pat> Candidate<'pat, 'tcx> {
             extra_data: flat_pat.extra_data,
             has_guard,
             subcandidates: Vec::new(),
+            or_span: None,
             otherwise_block: None,
             pre_binding_block: None,
             next_candidate_pre_binding_block: None,
@@ -1277,7 +1282,8 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 //
                 // only generates a single switch.
                 candidate.subcandidates = self.create_or_subcandidates(pats, candidate.has_guard);
-                candidate.match_pairs.pop();
+                let first_match_pair = candidate.match_pairs.pop().unwrap();
+                candidate.or_span = Some(first_match_pair.pattern.span);
                 split_or_candidate = true;
             }
         }
@@ -1531,16 +1537,13 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             &mut or_candidate_refs,
         );
         candidate.subcandidates = or_candidates;
-        self.merge_trivial_subcandidates(candidate, self.source_info(or_span));
+        candidate.or_span = Some(or_span);
+        self.merge_trivial_subcandidates(candidate);
     }
 
     /// Try to merge all of the subcandidates of the given candidate into one.
     /// This avoids exponentially large CFGs in cases like `(1 | 2, 3 | 4, ...)`.
-    fn merge_trivial_subcandidates(
-        &mut self,
-        candidate: &mut Candidate<'_, 'tcx>,
-        source_info: SourceInfo,
-    ) {
+    fn merge_trivial_subcandidates(&mut self, candidate: &mut Candidate<'_, 'tcx>) {
         if candidate.subcandidates.is_empty() || candidate.has_guard {
             // FIXME(or_patterns; matthewjasper) Don't give up if we have a guard.
             return;
@@ -1550,7 +1553,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
         // Not `Iterator::all` because we don't want to short-circuit.
         for subcandidate in &mut candidate.subcandidates {
-            self.merge_trivial_subcandidates(subcandidate, source_info);
+            self.merge_trivial_subcandidates(subcandidate);
 
             // FIXME(or_patterns; matthewjasper) Try to be more aggressive here.
             can_merge &=
@@ -1559,6 +1562,8 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
         if can_merge {
             let any_matches = self.cfg.start_new_block();
+            let or_span = candidate.or_span.take().unwrap();
+            let source_info = self.source_info(or_span);
             for subcandidate in mem::take(&mut candidate.subcandidates) {
                 let or_block = subcandidate.pre_binding_block.unwrap();
                 self.cfg.goto(or_block, source_info, any_matches);
