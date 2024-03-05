@@ -2112,6 +2112,10 @@ impl Param {
         self.func
     }
 
+    pub fn index(&self) -> usize {
+        self.idx
+    }
+
     pub fn ty(&self) -> &Type {
         &self.ty
     }
