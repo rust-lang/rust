@@ -1638,6 +1638,27 @@ impl HumanEmitter {
                                     *style,
                                 );
                             }
+                            if let Some(line) = annotated_file.lines.get(line_idx) {
+                                for ann in &line.annotations {
+                                    if let AnnotationType::MultilineStart(pos) = ann.annotation_type
+                                    {
+                                        // In the case where we have elided the entire start of the
+                                        // multispan because those lines were empty, we still need
+                                        // to draw the `|`s across the `...`.
+                                        draw_multiline_line(
+                                            &mut buffer,
+                                            last_buffer_line_num,
+                                            width_offset,
+                                            pos,
+                                            if ann.is_primary {
+                                                Style::UnderlinePrimary
+                                            } else {
+                                                Style::UnderlineSecondary
+                                            },
+                                        );
+                                    }
+                                }
+                            }
                         } else if line_idx_delta == 2 {
                             let unannotated_line = annotated_file
                                 .file
@@ -1664,6 +1685,24 @@ impl HumanEmitter {
                                     *depth,
                                     *style,
                                 );
+                            }
+                            if let Some(line) = annotated_file.lines.get(line_idx) {
+                                for ann in &line.annotations {
+                                    if let AnnotationType::MultilineStart(pos) = ann.annotation_type
+                                    {
+                                        draw_multiline_line(
+                                            &mut buffer,
+                                            last_buffer_line_num,
+                                            width_offset,
+                                            pos,
+                                            if ann.is_primary {
+                                                Style::UnderlinePrimary
+                                            } else {
+                                                Style::UnderlineSecondary
+                                            },
+                                        );
+                                    }
+                                }
                             }
                         }
                     }
@@ -2417,7 +2456,15 @@ impl FileWithAnnotatedLines {
                 // the beginning doesn't have an underline, but the current logic seems to be
                 // working correctly.
                 let middle = min(ann.line_start + 4, ann.line_end);
-                for line in ann.line_start + 1..middle {
+                // We'll show up to 4 lines past the beginning of the multispan start.
+                // We will *not* include the tail of lines that are only whitespace.
+                let until = (ann.line_start..middle)
+                    .rev()
+                    .filter_map(|line| file.get_line(line - 1).map(|s| (line + 1, s)))
+                    .find(|(_, s)| !s.trim().is_empty())
+                    .map(|(line, _)| line)
+                    .unwrap_or(ann.line_start);
+                for line in ann.line_start + 1..until {
                     // Every `|` that joins the beginning of the span (`___^`) to the end (`|__^`).
                     add_annotation_to_file(&mut output, file.clone(), line, ann.as_line());
                 }
