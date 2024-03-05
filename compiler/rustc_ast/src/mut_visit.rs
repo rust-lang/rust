@@ -1604,7 +1604,10 @@ pub fn noop_visit_capture_by<T: MutVisitor>(capture_by: &mut CaptureBy, vis: &mu
     }
 }
 
-/// Some value for the AST node that is valid but possibly meaningless.
+/// Some value for the AST node that is valid but possibly meaningless. Similar
+/// to `Default` but not intended for wide use. The value will never be used
+/// meaningfully, it exists just to support unwinding in `visit_clobber` in the
+/// case where its closure panics.
 pub trait DummyAstNode {
     fn dummy() -> Self;
 }
@@ -1676,19 +1679,6 @@ impl DummyAstNode for Pat {
 impl DummyAstNode for Stmt {
     fn dummy() -> Self {
         Stmt { id: DUMMY_NODE_ID, kind: StmtKind::Empty, span: Default::default() }
-    }
-}
-
-impl DummyAstNode for Block {
-    fn dummy() -> Self {
-        Block {
-            stmts: Default::default(),
-            id: DUMMY_NODE_ID,
-            rules: BlockCheckMode::Default,
-            span: Default::default(),
-            tokens: Default::default(),
-            could_be_bare_literal: Default::default(),
-        }
     }
 }
 
