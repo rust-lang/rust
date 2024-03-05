@@ -472,6 +472,7 @@ pub trait Allocator {
 
 impl Allocator for () {}
 
+#[lang = "global_alloc_ty"]
 pub struct Global;
 
 impl Allocator for Global {}
