@@ -35,6 +35,7 @@ where
 #[track_caller]
 #[rustc_const_unstable(feature = "const_slice_index", issue = "none")]
 const fn slice_start_index_len_fail(index: usize, len: usize) -> ! {
+    #[cfg_attr(not(bootstrap), allow(unused_unsafe))] // on bootstrap bump, remove unsafe block
     // SAFETY: we are just panicking here
     unsafe {
         const_eval_select(
@@ -63,6 +64,7 @@ const fn slice_start_index_len_fail_ct(_: usize, _: usize) -> ! {
 #[track_caller]
 #[rustc_const_unstable(feature = "const_slice_index", issue = "none")]
 const fn slice_end_index_len_fail(index: usize, len: usize) -> ! {
+    #[cfg_attr(not(bootstrap), allow(unused_unsafe))] // on bootstrap bump, remove unsafe block
     // SAFETY: we are just panicking here
     unsafe {
         const_eval_select((index, len), slice_end_index_len_fail_ct, slice_end_index_len_fail_rt)
@@ -87,8 +89,11 @@ const fn slice_end_index_len_fail_ct(_: usize, _: usize) -> ! {
 #[track_caller]
 #[rustc_const_unstable(feature = "const_slice_index", issue = "none")]
 const fn slice_index_order_fail(index: usize, end: usize) -> ! {
+    #[cfg_attr(not(bootstrap), allow(unused_unsafe))] // on bootstrap bump, remove unsafe block
     // SAFETY: we are just panicking here
-    unsafe { const_eval_select((index, end), slice_index_order_fail_ct, slice_index_order_fail_rt) }
+    unsafe {
+        const_eval_select((index, end), slice_index_order_fail_ct, slice_index_order_fail_rt)
+    }
 }
 
 // FIXME const-hack

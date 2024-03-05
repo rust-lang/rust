@@ -511,6 +511,7 @@ const fn drop<T: ~const Destruct>(_: T) {}
 
 extern "rust-intrinsic" {
     #[rustc_const_stable(feature = "const_eval_select", since = "1.0.0")]
+    #[rustc_safe_intrinsic]
     fn const_eval_select<ARG: Tuple, F, G, RET>(
         arg: ARG,
         called_in_const: F,
@@ -525,5 +526,5 @@ fn test_const_eval_select() {
     const fn const_fn() {}
     fn rt_fn() {}
 
-    unsafe { const_eval_select((), const_fn, rt_fn); }
+    const_eval_select((), const_fn, rt_fn);
 }

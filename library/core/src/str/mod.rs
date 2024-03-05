@@ -86,6 +86,7 @@ use iter::{MatchesInternal, SplitNInternal};
 #[rustc_allow_const_fn_unstable(const_eval_select)]
 #[cfg(not(feature = "panic_immediate_abort"))]
 const fn slice_error_fail(s: &str, begin: usize, end: usize) -> ! {
+    #[cfg_attr(not(bootstrap), allow(unused_unsafe))] // on bootstrap bump, remove unsafe block
     // SAFETY: panics for both branches
     unsafe {
         crate::intrinsics::const_eval_select(
