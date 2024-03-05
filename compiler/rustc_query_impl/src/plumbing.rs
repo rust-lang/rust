@@ -17,6 +17,7 @@ use rustc_middle::dep_graph::{
 use rustc_middle::query::on_disk_cache::AbsoluteBytePos;
 use rustc_middle::query::on_disk_cache::{CacheDecoder, CacheEncoder, EncodedDepNodeIndex};
 use rustc_middle::query::Key;
+use rustc_middle::ty::print::with_reduced_queries;
 use rustc_middle::ty::tls::{self, ImplicitCtxt};
 use rustc_middle::ty::{self, TyCtxt};
 use rustc_query_system::dep_graph::{DepNodeParams, HasDepContext};
@@ -304,6 +305,10 @@ pub(crate) fn create_query_frame<
     kind: DepKind,
     name: &'static str,
 ) -> QueryStackFrame {
+    // If reduced queries are requested, we may be printing a query stack due
+    // to a panic. Avoid using `default_span` and `def_kind` in that case.
+    let reduce_queries = with_reduced_queries();
+
     // Avoid calling queries while formatting the description
     let description = ty::print::with_no_queries!(do_describe(tcx, key));
     let description = if tcx.sess.verbose_internals() {
@@ -311,7 +316,7 @@ pub(crate) fn create_query_frame<
     } else {
         description
     };
-    let span = if kind == dep_graph::dep_kinds::def_span {
+    let span = if kind == dep_graph::dep_kinds::def_span || reduce_queries {
         // The `def_span` query is used to calculate `default_span`,
         // so exit to avoid infinite recursion.
         None
@@ -319,7 +324,7 @@ pub(crate) fn create_query_frame<
         Some(key.default_span(tcx))
     };
     let def_id = key.key_as_def_id();
-    let def_kind = if kind == dep_graph::dep_kinds::def_kind {
+    let def_kind = if kind == dep_graph::dep_kinds::def_kind || reduce_queries {
         // Try to avoid infinite recursion.
         None
     } else {
