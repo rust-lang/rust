@@ -174,17 +174,13 @@ struct ImplTraitInTraitFinder<'a, 'tcx> {
 }
 
 impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for ImplTraitInTraitFinder<'_, 'tcx> {
-    fn visit_binder<T: TypeVisitable<TyCtxt<'tcx>>>(
-        &mut self,
-        binder: &ty::Binder<'tcx, T>,
-    ) -> std::ops::ControlFlow<Self::BreakTy> {
+    fn visit_binder<T: TypeVisitable<TyCtxt<'tcx>>>(&mut self, binder: &ty::Binder<'tcx, T>) {
         self.depth.shift_in(1);
-        let binder = binder.super_visit_with(self);
+        binder.super_visit_with(self);
         self.depth.shift_out(1);
-        binder
     }
 
-    fn visit_ty(&mut self, ty: Ty<'tcx>) -> std::ops::ControlFlow<Self::BreakTy> {
+    fn visit_ty(&mut self, ty: Ty<'tcx>) {
         if let ty::Alias(ty::Projection, unshifted_alias_ty) = *ty.kind()
             && let Some(
                 ty::ImplTraitInTraitData::Trait { fn_def_id, .. }

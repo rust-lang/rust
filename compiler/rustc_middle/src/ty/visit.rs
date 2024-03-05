@@ -64,19 +64,19 @@ impl<'tcx> TyCtxt<'tcx> {
         where
             F: FnMut(ty::Region<'tcx>) -> bool,
         {
-            type BreakTy = ();
+            type Result = ControlFlow<()>;
 
             fn visit_binder<T: TypeVisitable<TyCtxt<'tcx>>>(
                 &mut self,
                 t: &Binder<'tcx, T>,
-            ) -> ControlFlow<Self::BreakTy> {
+            ) -> Self::Result {
                 self.outer_index.shift_in(1);
                 let result = t.super_visit_with(self);
                 self.outer_index.shift_out(1);
                 result
             }
 
-            fn visit_region(&mut self, r: ty::Region<'tcx>) -> ControlFlow<Self::BreakTy> {
+            fn visit_region(&mut self, r: ty::Region<'tcx>) -> Self::Result {
                 match *r {
                     ty::ReBound(debruijn, _) if debruijn < self.outer_index => {
                         ControlFlow::Continue(())
@@ -91,7 +91,7 @@ impl<'tcx> TyCtxt<'tcx> {
                 }
             }
 
-            fn visit_ty(&mut self, ty: Ty<'tcx>) -> ControlFlow<Self::BreakTy> {
+            fn visit_ty(&mut self, ty: Ty<'tcx>) -> Self::Result {
                 // We're only interested in types involving regions
                 if ty.flags().intersects(TypeFlags::HAS_FREE_REGIONS) {
                     ty.super_visit_with(self)
@@ -140,8 +140,7 @@ impl<'tcx> TyCtxt<'tcx> {
         let mut collector = LateBoundRegionsCollector::new(just_constrained);
         let value = value.skip_binder();
         let value = if just_constrained { self.expand_weak_alias_tys(value) } else { value };
-        let result = value.visit_with(&mut collector);
-        assert!(result.is_continue()); // should never have stopped early
+        value.visit_with(&mut collector);
         collector.regions
     }
 }
@@ -165,19 +164,19 @@ impl<'tcx> ValidateBoundVars<'tcx> {
 }
 
 impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for ValidateBoundVars<'tcx> {
-    type BreakTy = ();
+    type Result = ControlFlow<()>;
 
     fn visit_binder<T: TypeVisitable<TyCtxt<'tcx>>>(
         &mut self,
         t: &Binder<'tcx, T>,
-    ) -> ControlFlow<Self::BreakTy> {
+    ) -> Self::Result {
         self.binder_index.shift_in(1);
         let result = t.super_visit_with(self);
         self.binder_index.shift_out(1);
         result
     }
 
-    fn visit_ty(&mut self, t: Ty<'tcx>) -> ControlFlow<Self::BreakTy> {
+    fn visit_ty(&mut self, t: Ty<'tcx>) -> Self::Result {
         if t.outer_exclusive_binder() < self.binder_index
             || !self.visited.insert((self.binder_index, t))
         {
@@ -211,7 +210,7 @@ impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for ValidateBoundVars<'tcx> {
         t.super_visit_with(self)
     }
 
-    fn visit_region(&mut self, r: ty::Region<'tcx>) -> ControlFlow<Self::BreakTy> {
+    fn visit_region(&mut self, r: ty::Region<'tcx>) -> Self::Result {
         match *r {
             ty::ReBound(index, br) if index == self.binder_index => {
                 if self.bound_vars.len() <= br.var.as_usize() {
@@ -266,23 +265,19 @@ impl LateBoundRegionsCollector {
 }
 
 impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for LateBoundRegionsCollector {
-    fn visit_binder<T: TypeVisitable<TyCtxt<'tcx>>>(
-        &mut self,
-        t: &Binder<'tcx, T>,
-    ) -> ControlFlow<Self::BreakTy> {
+    fn visit_binder<T: TypeVisitable<TyCtxt<'tcx>>>(&mut self, t: &Binder<'tcx, T>) {
         self.current_index.shift_in(1);
-        let result = t.super_visit_with(self);
+        t.super_visit_with(self);
         self.current_index.shift_out(1);
-        result
     }
 
-    fn visit_ty(&mut self, t: Ty<'tcx>) -> ControlFlow<Self::BreakTy> {
+    fn visit_ty(&mut self, t: Ty<'tcx>) {
         if self.just_constrained {
             match t.kind() {
                 // If we are only looking for "constrained" regions, we have to ignore the
                 // inputs to a projection as they may not appear in the normalized form.
                 ty::Alias(ty::Projection | ty::Inherent | ty::Opaque, _) => {
-                    return ControlFlow::Continue(());
+                    return;
                 }
                 // All weak alias types should've been expanded beforehand.
                 ty::Alias(ty::Weak, _) => bug!("unexpected weak alias type"),
@@ -293,26 +288,25 @@ impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for LateBoundRegionsCollector {
         t.super_visit_with(self)
     }
 
-    fn visit_const(&mut self, c: ty::Const<'tcx>) -> ControlFlow<Self::BreakTy> {
+    fn visit_const(&mut self, c: ty::Const<'tcx>) {
         // if we are only looking for "constrained" region, we have to
         // ignore the inputs of an unevaluated const, as they may not appear
         // in the normalized form
         if self.just_constrained {
             if let ty::ConstKind::Unevaluated(..) = c.kind() {
-                return ControlFlow::Continue(());
+                return;
             }
         }
 
         c.super_visit_with(self)
     }
 
-    fn visit_region(&mut self, r: ty::Region<'tcx>) -> ControlFlow<Self::BreakTy> {
+    fn visit_region(&mut self, r: ty::Region<'tcx>) {
         if let ty::ReBound(debruijn, br) = *r {
             if debruijn == self.current_index {
                 self.regions.insert(br.kind);
             }
         }
-        ControlFlow::Continue(())
     }
 }
 
@@ -332,7 +326,7 @@ impl MaxUniverse {
 }
 
 impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for MaxUniverse {
-    fn visit_ty(&mut self, t: Ty<'tcx>) -> ControlFlow<Self::BreakTy> {
+    fn visit_ty(&mut self, t: Ty<'tcx>) {
         if let ty::Placeholder(placeholder) = t.kind() {
             self.max_universe = ty::UniverseIndex::from_u32(
                 self.max_universe.as_u32().max(placeholder.universe.as_u32()),
@@ -342,7 +336,7 @@ impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for MaxUniverse {
         t.super_visit_with(self)
     }
 
-    fn visit_const(&mut self, c: ty::consts::Const<'tcx>) -> ControlFlow<Self::BreakTy> {
+    fn visit_const(&mut self, c: ty::consts::Const<'tcx>) {
         if let ty::ConstKind::Placeholder(placeholder) = c.kind() {
             self.max_universe = ty::UniverseIndex::from_u32(
                 self.max_universe.as_u32().max(placeholder.universe.as_u32()),
@@ -352,13 +346,11 @@ impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for MaxUniverse {
         c.super_visit_with(self)
     }
 
-    fn visit_region(&mut self, r: ty::Region<'tcx>) -> ControlFlow<Self::BreakTy> {
+    fn visit_region(&mut self, r: ty::Region<'tcx>) {
         if let ty::RePlaceholder(placeholder) = *r {
             self.max_universe = ty::UniverseIndex::from_u32(
                 self.max_universe.as_u32().max(placeholder.universe.as_u32()),
             );
         }
-
-        ControlFlow::Continue(())
     }
 }

@@ -5,13 +5,14 @@ edition = "2021"
 
 [dependencies]
 # tidy-alphabetical-start
-rustc_data_structures = { path = "../rustc_data_structures"}
-rustc_hir = { path = "../rustc_hir", optional = true}
-rustc_infer = { path = "../rustc_infer", optional = true}
-rustc_macros = { path = "../rustc_macros", optional = true}
-rustc_middle = { path = "../rustc_middle", optional = true}
-rustc_span = { path = "../rustc_span", optional = true}
-rustc_target = { path = "../rustc_target", optional = true}
+rustc_ast_ir = { path = "../rustc_ast_ir", optional = true }
+rustc_data_structures = { path = "../rustc_data_structures" }
+rustc_hir = { path = "../rustc_hir", optional = true }
+rustc_infer = { path = "../rustc_infer", optional = true }
+rustc_macros = { path = "../rustc_macros", optional = true }
+rustc_middle = { path = "../rustc_middle", optional = true }
+rustc_span = { path = "../rustc_span", optional = true }
+rustc_target = { path = "../rustc_target", optional = true }
 tracing = "0.1"
 # tidy-alphabetical-end
 
@@ -23,6 +24,7 @@ rustc = [
     "rustc_middle",
     "rustc_span",
     "rustc_target",
+    "rustc_ast_ir",
 ]
 
 [dev-dependencies]

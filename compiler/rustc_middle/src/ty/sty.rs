@@ -2113,9 +2113,9 @@ impl<'tcx> Ty<'tcx> {
         struct ContainsTyVisitor<'tcx>(Ty<'tcx>);
 
         impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for ContainsTyVisitor<'tcx> {
-            type BreakTy = ();
+            type Result = ControlFlow<()>;
 
-            fn visit_ty(&mut self, t: Ty<'tcx>) -> ControlFlow<Self::BreakTy> {
+            fn visit_ty(&mut self, t: Ty<'tcx>) -> Self::Result {
                 if self.0 == t { ControlFlow::Break(()) } else { t.super_visit_with(self) }
             }
         }
@@ -2131,9 +2131,9 @@ impl<'tcx> Ty<'tcx> {
         struct ContainsClosureVisitor;
 
         impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for ContainsClosureVisitor {
-            type BreakTy = ();
+            type Result = ControlFlow<()>;
 
-            fn visit_ty(&mut self, t: Ty<'tcx>) -> ControlFlow<Self::BreakTy> {
+            fn visit_ty(&mut self, t: Ty<'tcx>) -> Self::Result {
                 if let ty::Closure(..) = t.kind() {
                     ControlFlow::Break(())
                 } else {

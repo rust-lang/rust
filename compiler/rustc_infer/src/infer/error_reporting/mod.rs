@@ -79,7 +79,7 @@ use rustc_middle::ty::{
 use rustc_span::{sym, symbol::kw, BytePos, DesugaringKind, Pos, Span};
 use rustc_target::spec::abi;
 use std::borrow::Cow;
-use std::ops::{ControlFlow, Deref};
+use std::ops::Deref;
 use std::path::PathBuf;
 use std::{cmp, fmt, iter};
 
@@ -1623,7 +1623,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
         }
 
         impl<'tcx> ty::visit::TypeVisitor<TyCtxt<'tcx>> for OpaqueTypesVisitor<'tcx> {
-            fn visit_ty(&mut self, t: Ty<'tcx>) -> ControlFlow<Self::BreakTy> {
+            fn visit_ty(&mut self, t: Ty<'tcx>) {
                 if let Some((kind, def_id)) = TyCategory::from_ty(self.tcx, t) {
                     let span = self.tcx.def_span(def_id);
                     // Avoid cluttering the output when the "found" and error span overlap:

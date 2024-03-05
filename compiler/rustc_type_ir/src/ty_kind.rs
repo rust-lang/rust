@@ -1,3 +1,4 @@
+use rustc_ast_ir::try_visit;
 #[cfg(feature = "nightly")]
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 #[cfg(feature = "nightly")]
@@ -831,8 +832,8 @@ impl<I: Interner> TypeVisitable<I> for TypeAndMut<I>
 where
     I::Ty: TypeVisitable<I>,
 {
-    fn visit_with<V: TypeVisitor<I>>(&self, visitor: &mut V) -> std::ops::ControlFlow<V::BreakTy> {
-        self.ty.visit_with(visitor)?;
+    fn visit_with<V: TypeVisitor<I>>(&self, visitor: &mut V) -> V::Result {
+        try_visit!(self.ty.visit_with(visitor));
         self.mutbl.visit_with(visitor)
     }
 }

@@ -6,6 +6,8 @@ use crate::ty::sty::{ClosureArgs, CoroutineArgs, CoroutineClosureArgs, InlineCon
 use crate::ty::visit::{TypeVisitable, TypeVisitableExt, TypeVisitor};
 use crate::ty::{self, Lift, List, ParamConst, Ty, TyCtxt};
 
+use rustc_ast_ir::visit::VisitorResult;
+use rustc_ast_ir::walk_visitable_list;
 use rustc_data_structures::intern::Interned;
 use rustc_errors::{DiagArgValue, IntoDiagnosticArg};
 use rustc_hir::def_id::DefId;
@@ -19,7 +21,7 @@ use std::cmp::Ordering;
 use std::marker::PhantomData;
 use std::mem;
 use std::num::NonZero;
-use std::ops::{ControlFlow, Deref};
+use std::ops::Deref;
 use std::ptr::NonNull;
 
 /// An entity in the Rust type system, which can be one of
@@ -240,7 +242,7 @@ impl<'tcx> TypeFoldable<TyCtxt<'tcx>> for GenericArg<'tcx> {
 }
 
 impl<'tcx> TypeVisitable<TyCtxt<'tcx>> for GenericArg<'tcx> {
-    fn visit_with<V: TypeVisitor<TyCtxt<'tcx>>>(&self, visitor: &mut V) -> ControlFlow<V::BreakTy> {
+    fn visit_with<V: TypeVisitor<TyCtxt<'tcx>>>(&self, visitor: &mut V) -> V::Result {
         match self.unpack() {
             GenericArgKind::Lifetime(lt) => lt.visit_with(visitor),
             GenericArgKind::Type(ty) => ty.visit_with(visitor),
@@ -554,8 +556,9 @@ impl<'tcx> TypeFoldable<TyCtxt<'tcx>> for &'tcx ty::List<Ty<'tcx>> {
 
 impl<'tcx, T: TypeVisitable<TyCtxt<'tcx>>> TypeVisitable<TyCtxt<'tcx>> for &'tcx ty::List<T> {
     #[inline]
-    fn visit_with<V: TypeVisitor<TyCtxt<'tcx>>>(&self, visitor: &mut V) -> ControlFlow<V::BreakTy> {
-        self.iter().try_for_each(|t| t.visit_with(visitor))
+    fn visit_with<V: TypeVisitor<TyCtxt<'tcx>>>(&self, visitor: &mut V) -> V::Result {
+        walk_visitable_list!(visitor, self.iter());
+        V::Result::output()
     }
 }
 

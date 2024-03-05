@@ -809,9 +809,7 @@ impl<'tcx> GATArgsCollector<'tcx> {
 }
 
 impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for GATArgsCollector<'tcx> {
-    type BreakTy = !;
-
-    fn visit_ty(&mut self, t: Ty<'tcx>) -> ControlFlow<Self::BreakTy> {
+    fn visit_ty(&mut self, t: Ty<'tcx>) {
         match t.kind() {
             ty::Alias(ty::Projection, p) if p.def_id == self.gat => {
                 for (idx, arg) in p.args.iter().enumerate() {
@@ -1456,20 +1454,19 @@ fn check_where_clauses<'tcx>(wfcx: &WfCheckingCtxt<'_, 'tcx>, span: Span, def_id
                 params: FxHashSet<u32>,
             }
             impl<'tcx> ty::visit::TypeVisitor<TyCtxt<'tcx>> for CountParams {
-                type BreakTy = ();
-
-                fn visit_ty(&mut self, t: Ty<'tcx>) -> ControlFlow<Self::BreakTy> {
+                type Result = ControlFlow<()>;
+                fn visit_ty(&mut self, t: Ty<'tcx>) -> Self::Result {
                     if let ty::Param(param) = t.kind() {
                         self.params.insert(param.index);
                     }
                     t.super_visit_with(self)
                 }
 
-                fn visit_region(&mut self, _: ty::Region<'tcx>) -> ControlFlow<Self::BreakTy> {
+                fn visit_region(&mut self, _: ty::Region<'tcx>) -> Self::Result {
                     ControlFlow::Break(())
                 }
 
-                fn visit_const(&mut self, c: ty::Const<'tcx>) -> ControlFlow<Self::BreakTy> {
+                fn visit_const(&mut self, c: ty::Const<'tcx>) -> Self::Result {
                     if let ty::ConstKind::Param(param) = c.kind() {
                         self.params.insert(param.index);
                     }

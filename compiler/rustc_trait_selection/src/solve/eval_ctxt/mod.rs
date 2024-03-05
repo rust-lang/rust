@@ -648,8 +648,8 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
         }
 
         impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for ContainsTermOrNotNameable<'_, 'tcx> {
-            type BreakTy = ();
-            fn visit_ty(&mut self, t: Ty<'tcx>) -> ControlFlow<Self::BreakTy> {
+            type Result = ControlFlow<()>;
+            fn visit_ty(&mut self, t: Ty<'tcx>) -> Self::Result {
                 match *t.kind() {
                     ty::Infer(ty::TyVar(vid)) => {
                         if let ty::TermKind::Ty(term) = self.term.unpack()
@@ -672,7 +672,7 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
                 }
             }
 
-            fn visit_const(&mut self, c: ty::Const<'tcx>) -> ControlFlow<Self::BreakTy> {
+            fn visit_const(&mut self, c: ty::Const<'tcx>) -> Self::Result {
                 match c.kind() {
                     ty::ConstKind::Infer(ty::InferConst::Var(vid)) => {
                         if let ty::TermKind::Const(term) = self.term.unpack()

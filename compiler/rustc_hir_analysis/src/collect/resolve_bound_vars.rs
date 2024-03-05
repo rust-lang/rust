@@ -6,7 +6,7 @@
 //! the types in HIR to identify late-bound lifetimes and assign their Debruijn indices. This file
 //! is also responsible for assigning their semantics to implicit lifetimes in trait objects.
 
-use rustc_ast::walk_list;
+use rustc_ast::visit::walk_list;
 use rustc_data_structures::fx::{FxHashSet, FxIndexMap, FxIndexSet};
 use rustc_errors::{codes::*, struct_span_code_err};
 use rustc_hir as hir;
@@ -1964,31 +1964,26 @@ fn is_late_bound_map(
         arg_is_constrained: Box<[bool]>,
     }
 
-    use std::ops::ControlFlow;
     use ty::Ty;
     impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for ConstrainedCollectorPostAstConv {
-        fn visit_ty(&mut self, t: Ty<'tcx>) -> ControlFlow<!> {
+        fn visit_ty(&mut self, t: Ty<'tcx>) {
             match t.kind() {
                 ty::Param(param_ty) => {
                     self.arg_is_constrained[param_ty.index as usize] = true;
                 }
-                ty::Alias(ty::Projection | ty::Inherent, _) => return ControlFlow::Continue(()),
+                ty::Alias(ty::Projection | ty::Inherent, _) => return,
                 _ => (),
             }
             t.super_visit_with(self)
         }
 
-        fn visit_const(&mut self, _: ty::Const<'tcx>) -> ControlFlow<!> {
-            ControlFlow::Continue(())
-        }
+        fn visit_const(&mut self, _: ty::Const<'tcx>) {}
 
-        fn visit_region(&mut self, r: ty::Region<'tcx>) -> ControlFlow<!> {
+        fn visit_region(&mut self, r: ty::Region<'tcx>) {
             debug!("r={:?}", r.kind());
             if let ty::RegionKind::ReEarlyParam(region) = r.kind() {
                 self.arg_is_constrained[region.index as usize] = true;
             }
-
-            ControlFlow::Continue(())
         }
     }
 

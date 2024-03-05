@@ -27,7 +27,7 @@ use std::cell::Cell;
 use std::collections::BTreeMap;
 use std::fmt::{self, Write as _};
 use std::iter;
-use std::ops::{ControlFlow, Deref, DerefMut};
+use std::ops::{Deref, DerefMut};
 
 // `pretty` is a separate module only for organization.
 use super::*;
@@ -2667,9 +2667,7 @@ impl<'tcx> FmtPrinter<'_, 'tcx> {
         }
 
         impl<'tcx> ty::visit::TypeVisitor<TyCtxt<'tcx>> for RegionNameCollector<'tcx> {
-            type BreakTy = ();
-
-            fn visit_region(&mut self, r: ty::Region<'tcx>) -> ControlFlow<Self::BreakTy> {
+            fn visit_region(&mut self, r: ty::Region<'tcx>) {
                 trace!("address: {:p}", r.0.0);
 
                 // Collect all named lifetimes. These allow us to prevent duplication
@@ -2678,18 +2676,14 @@ impl<'tcx> FmtPrinter<'_, 'tcx> {
                 if let Some(name) = r.get_name() {
                     self.used_region_names.insert(name);
                 }
-
-                ControlFlow::Continue(())
             }
 
             // We collect types in order to prevent really large types from compiling for
             // a really long time. See issue #83150 for why this is necessary.
-            fn visit_ty(&mut self, ty: Ty<'tcx>) -> ControlFlow<Self::BreakTy> {
+            fn visit_ty(&mut self, ty: Ty<'tcx>) {
                 let not_previously_inserted = self.type_collector.insert(ty);
                 if not_previously_inserted {
                     ty.super_visit_with(self)
-                } else {
-                    ControlFlow::Continue(())
                 }
             }
         }
