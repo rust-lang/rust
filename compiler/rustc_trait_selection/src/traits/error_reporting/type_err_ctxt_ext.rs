@@ -416,9 +416,59 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                     ty::PredicateKind::Clause(ty::ClauseKind::Trait(trait_predicate)) => {
                         let trait_predicate = bound_predicate.rebind(trait_predicate);
                         let trait_predicate = self.resolve_vars_if_possible(trait_predicate);
-                        let trait_ref = trait_predicate.to_poly_trait_ref();
 
-                        if let Some(guar) = self.emit_specialized_closure_kind_error(&obligation, trait_ref) {
+                        // Let's use the root obligation as the main message, when we care about the
+                        // most general case ("X doesn't implement Pattern<'_>") over the case that
+                        // happened to fail ("char doesn't implement Fn(&mut char)").
+                        //
+                        // We rely on a few heuristics to identify cases where this root
+                        // obligation is more important than the leaf obligation:
+                        let (main_trait_predicate, o) = if let ty::PredicateKind::Clause(
+                            ty::ClauseKind::Trait(root_pred)
+                        ) = root_obligation.predicate.kind().skip_binder()
+                            && !trait_predicate.self_ty().skip_binder().has_escaping_bound_vars()
+                            && !root_pred.self_ty().has_escaping_bound_vars()
+                            // The type of the leaf predicate is (roughly) the same as the type
+                            // from the root predicate, as a proxy for "we care about the root"
+                            // FIXME: this doesn't account for trivial derefs, but works as a first
+                            // approximation.
+                            && (
+                                // `T: Trait` && `&&T: OtherTrait`, we want `OtherTrait`
+                                self.can_eq(
+                                    obligation.param_env,
+                                    trait_predicate.self_ty().skip_binder(),
+                                    root_pred.self_ty().peel_refs(),
+                                )
+                                // `&str: Iterator` && `&str: IntoIterator`, we want `IntoIterator`
+                                || self.can_eq(
+                                    obligation.param_env,
+                                    trait_predicate.self_ty().skip_binder(),
+                                    root_pred.self_ty(),
+                                )
+                            )
+                            // The leaf trait and the root trait are different, so as to avoid
+                            // talking about `&mut T: Trait` and instead remain talking about
+                            // `T: Trait` instead
+                            && trait_predicate.def_id() != root_pred.def_id()
+                            // The root trait is not `Unsize`, as to avoid talking about it in
+                            // `tests/ui/coercion/coerce-issue-49593-box-never.rs`.
+                            && Some(root_pred.def_id()) != self.tcx.lang_items().unsize_trait()
+                        {
+                            (
+                                self.resolve_vars_if_possible(
+                                    root_obligation.predicate.kind().rebind(root_pred),
+                                ),
+                                root_obligation,
+                            )
+                        } else {
+                            (trait_predicate, &obligation)
+                        };
+                        let trait_ref = main_trait_predicate.to_poly_trait_ref();
+
+                        if let Some(guar) = self.emit_specialized_closure_kind_error(
+                            &obligation,
+                            trait_ref,
+                        ) {
                             return guar;
                         }
 
@@ -459,8 +509,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                             notes,
                             parent_label,
                             append_const_msg,
-                        } = self.on_unimplemented_note(trait_ref, &obligation, &mut long_ty_file);
-
+                        } = self.on_unimplemented_note(trait_ref, o, &mut long_ty_file);
                         let have_alt_message = message.is_some() || label.is_some();
                         let is_try_conversion = self.is_try_conversion(span, trait_ref.def_id());
                         let is_unsize =
@@ -483,7 +532,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                         };
 
                         let err_msg = self.get_standard_error_message(
-                            &trait_predicate,
+                            &main_trait_predicate,
                             message,
                             predicate_is_const,
                             append_const_msg,

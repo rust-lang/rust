@@ -10,7 +10,7 @@ trait Message : Send { }
 
 fn object_ref_with_static_bound_not_ok() {
     assert_send::<&'static (dyn Dummy + 'static)>();
-    //~^ ERROR `(dyn Dummy + 'static)` cannot be shared between threads safely [E0277]
+    //~^ ERROR `&'static (dyn Dummy + 'static)` cannot be sent between threads safely [E0277]
 }
 
 fn box_object_with_no_bound_not_ok<'a>() {

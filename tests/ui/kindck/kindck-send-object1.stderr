@@ -1,10 +1,10 @@
-error[E0277]: `(dyn Dummy + 'a)` cannot be shared between threads safely
+error[E0277]: `&'a (dyn Dummy + 'a)` cannot be sent between threads safely
   --> $DIR/kindck-send-object1.rs:10:19
    |
 LL |     assert_send::<&'a dyn Dummy>();
-   |                   ^^^^^^^^^^^^^ `(dyn Dummy + 'a)` cannot be shared between threads safely
+   |                   ^^^^^^^^^^^^^ `&'a (dyn Dummy + 'a)` cannot be sent between threads safely
    |
-   = help: the trait `Sync` is not implemented for `(dyn Dummy + 'a)`, which is required by `&'a (dyn Dummy + 'a): Send`
+   = help: the trait `Sync` is not implemented for `&'a (dyn Dummy + 'a)`, which is required by `&'a (dyn Dummy + 'a): Send`
    = note: required for `&'a (dyn Dummy + 'a)` to implement `Send`
 note: required by a bound in `assert_send`
   --> $DIR/kindck-send-object1.rs:5:18
