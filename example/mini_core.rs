@@ -525,8 +525,11 @@ pub struct Unique<T: ?Sized> {
 impl<T: ?Sized, U: ?Sized> CoerceUnsized<Unique<U>> for Unique<T> where T: Unsize<U> {}
 impl<T: ?Sized, U: ?Sized> DispatchFromDyn<Unique<U>> for Unique<T> where T: Unsize<U> {}
 
+#[lang = "global_alloc_ty"]
+pub struct Global;
+
 #[lang = "owned_box"]
-pub struct Box<T: ?Sized, A = ()>(Unique<T>, A);
+pub struct Box<T: ?Sized, A = Global>(Unique<T>, A);
 
 impl<T: ?Sized + Unsize<U>, U: ?Sized> CoerceUnsized<Box<U>> for Box<T> {}
 
@@ -536,7 +539,7 @@ impl<T> Box<T> {
             let size = intrinsics::size_of::<T>();
             let ptr = libc::malloc(size);
             intrinsics::copy(&val as *const T as *const u8, ptr, size);
-            Box(Unique { pointer: NonNull(ptr as *const T), _marker: PhantomData }, ())
+            Box(Unique { pointer: NonNull(ptr as *const T), _marker: PhantomData }, Global)
         }
     }
 }
