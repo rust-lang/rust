@@ -359,14 +359,8 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             Ok(Some(match ty.kind() {
                 ty::Ref(_, ty, _) => *ty,
                 ty::RawPtr(mt) => mt.ty,
-                // We should only accept `Box` with the default allocator.
-                // It's hard to test for that though so we accept every 1-ZST allocator.
-                ty::Adt(def, args)
-                    if def.is_box()
-                        && self.layout_of(args[1].expect_ty()).is_ok_and(|l| l.is_1zst()) =>
-                {
-                    args[0].expect_ty()
-                }
+                // We only accept `Box` with the default allocator.
+                _ if ty.is_box_global(*self.tcx) => ty.boxed_ty(),
                 _ => return Ok(None),
             }))
         };
