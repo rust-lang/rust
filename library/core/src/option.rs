@@ -557,8 +557,7 @@ use crate::iter::{self, FromIterator, FusedIterator, TrustedLen};
 use crate::panicking::{panic, panic_str};
 use crate::pin::Pin;
 use crate::{
-    cmp, convert, hint, mem,
-    num::NonZero,
+    convert, hint, mem,
     ops::{self, ControlFlow, Deref, DerefMut},
     slice,
 };
@@ -568,7 +567,7 @@ use crate::{
 #[rustc_diagnostic_item = "Option"]
 #[lang = "Option"]
 #[stable(feature = "rust1", since = "1.0.0")]
-#[allow(clippy::derived_hash_with_manual_eq)] // PartialEq is specialized
+#[allow(clippy::derived_hash_with_manual_eq)] // PartialEq is manually implemented equivalently
 pub enum Option<T> {
     /// No value.
     #[lang = "None"]
@@ -2146,83 +2145,23 @@ impl<'a, T> From<&'a mut Option<T>> for Option<&'a mut T> {
     }
 }
 
+// Ideally, LLVM should be able to optimize our derive code to this.
+// Once https://github.com/llvm/llvm-project/issues/52622 is fixed, we can
+// go back to deriving `PartialEq`.
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T> crate::marker::StructuralPartialEq for Option<T> {}
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: PartialEq> PartialEq for Option<T> {
     #[inline]
     fn eq(&self, other: &Self) -> bool {
-        SpecOptionPartialEq::eq(self, other)
-    }
-}
-
-/// This specialization trait is a workaround for LLVM not currently (2023-01)
-/// being able to optimize this itself, even though Alive confirms that it would
-/// be legal to do so: <https://github.com/llvm/llvm-project/issues/52622>
-///
-/// Once that's fixed, `Option` should go back to deriving `PartialEq`, as
-/// it used to do before <https://github.com/rust-lang/rust/pull/103556>.
-#[unstable(feature = "spec_option_partial_eq", issue = "none", reason = "exposed only for rustc")]
-#[doc(hidden)]
-pub trait SpecOptionPartialEq: Sized {
-    fn eq(l: &Option<Self>, other: &Option<Self>) -> bool;
-}
-
-#[unstable(feature = "spec_option_partial_eq", issue = "none", reason = "exposed only for rustc")]
-impl<T: PartialEq> SpecOptionPartialEq for T {
-    #[inline]
-    default fn eq(l: &Option<T>, r: &Option<T>) -> bool {
-        match (l, r) {
+        // Spelling out the cases explicitly optimizes better than
+        // `_ => false`
+        match (self, other) {
             (Some(l), Some(r)) => *l == *r,
+            (Some(_), None) => false,
+            (None, Some(_)) => false,
             (None, None) => true,
-            _ => false,
         }
-    }
-}
-
-macro_rules! non_zero_option {
-    ( $( #[$stability: meta] $NZ:ty; )+ ) => {
-        $(
-            #[$stability]
-            impl SpecOptionPartialEq for $NZ {
-                #[inline]
-                fn eq(l: &Option<Self>, r: &Option<Self>) -> bool {
-                    l.map(Self::get).unwrap_or(0) == r.map(Self::get).unwrap_or(0)
-                }
-            }
-        )+
-    };
-}
-
-non_zero_option! {
-    #[stable(feature = "nonzero", since = "1.28.0")] NonZero<u8>;
-    #[stable(feature = "nonzero", since = "1.28.0")] NonZero<u16>;
-    #[stable(feature = "nonzero", since = "1.28.0")] NonZero<u32>;
-    #[stable(feature = "nonzero", since = "1.28.0")] NonZero<u64>;
-    #[stable(feature = "nonzero", since = "1.28.0")] NonZero<u128>;
-    #[stable(feature = "nonzero", since = "1.28.0")] NonZero<usize>;
-    #[stable(feature = "signed_nonzero", since = "1.34.0")] NonZero<i8>;
-    #[stable(feature = "signed_nonzero", since = "1.34.0")] NonZero<i16>;
-    #[stable(feature = "signed_nonzero", since = "1.34.0")] NonZero<i32>;
-    #[stable(feature = "signed_nonzero", since = "1.34.0")] NonZero<i64>;
-    #[stable(feature = "signed_nonzero", since = "1.34.0")] NonZero<i128>;
-    #[stable(feature = "signed_nonzero", since = "1.34.0")] NonZero<isize>;
-}
-
-#[stable(feature = "nonnull", since = "1.25.0")]
-impl<T> SpecOptionPartialEq for crate::ptr::NonNull<T> {
-    #[inline]
-    fn eq(l: &Option<Self>, r: &Option<Self>) -> bool {
-        l.map(Self::as_ptr).unwrap_or_else(|| crate::ptr::null_mut())
-            == r.map(Self::as_ptr).unwrap_or_else(|| crate::ptr::null_mut())
-    }
-}
-
-#[stable(feature = "rust1", since = "1.0.0")]
-impl SpecOptionPartialEq for cmp::Ordering {
-    #[inline]
-    fn eq(l: &Option<Self>, r: &Option<Self>) -> bool {
-        l.map_or(2, |x| x as i8) == r.map_or(2, |x| x as i8)
     }
 }
 
