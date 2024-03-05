@@ -38,7 +38,7 @@ pub enum DiagArgValue {
     Str(Cow<'static, str>),
     // This gets converted to a `FluentNumber`, which is an `f64`. An `i32`
     // safely fits in an `f64`. Any integers bigger than that will be converted
-    // to strings in `into_diagnostic_arg` and stored using the `Str` variant.
+    // to strings in `into_diag_arg` and stored using the `Str` variant.
     Number(i32),
     StrListSepByAnd(Vec<Cow<'static, str>>),
 }
@@ -148,12 +148,12 @@ where
 /// Implemented as a custom trait rather than `From` so that it is implemented on the type being
 /// converted rather than on `DiagArgValue`, which enables types from other `rustc_*` crates to
 /// implement this.
-pub trait IntoDiagnosticArg {
-    fn into_diagnostic_arg(self) -> DiagArgValue;
+pub trait IntoDiagArg {
+    fn into_diag_arg(self) -> DiagArgValue;
 }
 
-impl IntoDiagnosticArg for DiagArgValue {
-    fn into_diagnostic_arg(self) -> DiagArgValue {
+impl IntoDiagArg for DiagArgValue {
+    fn into_diag_arg(self) -> DiagArgValue {
         self
     }
 }
@@ -419,8 +419,8 @@ impl DiagInner {
         self.children.push(sub);
     }
 
-    pub(crate) fn arg(&mut self, name: impl Into<DiagArgName>, arg: impl IntoDiagnosticArg) {
-        self.args.insert(name.into(), arg.into_diagnostic_arg());
+    pub(crate) fn arg(&mut self, name: impl Into<DiagArgName>, arg: impl IntoDiagArg) {
+        self.args.insert(name.into(), arg.into_diag_arg());
     }
 
     /// Fields used for Hash, and PartialEq trait.
@@ -1243,7 +1243,7 @@ impl<'a, G: EmissionGuarantee> Diag<'a, G> {
     pub fn arg(
         &mut self,
         name: impl Into<DiagArgName>,
-        arg: impl IntoDiagnosticArg,
+        arg: impl IntoDiagArg,
     ) -> &mut Self {
         self.deref_mut().arg(name, arg);
         self

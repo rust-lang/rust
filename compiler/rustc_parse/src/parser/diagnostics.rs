@@ -298,7 +298,7 @@ impl<'a> Parser<'a> {
         {
             recovered_ident = Some((ident, IdentIsRaw::Yes));
 
-            // `Symbol::to_string()` is different from `Symbol::into_diagnostic_arg()`,
+            // `Symbol::to_string()` is different from `Symbol::into_diag_arg()`,
             // which uses `Symbol::to_ident_string()` and "helpfully" adds an implicit `r#`
             let ident_name = ident.name.to_string();
 

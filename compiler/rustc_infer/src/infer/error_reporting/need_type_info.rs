@@ -5,7 +5,7 @@ use crate::errors::{
 use crate::infer::error_reporting::TypeErrCtxt;
 use crate::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
 use crate::infer::InferCtxt;
-use rustc_errors::{codes::*, Diag, IntoDiagnosticArg};
+use rustc_errors::{codes::*, Diag, IntoDiagArg};
 use rustc_hir as hir;
 use rustc_hir::def::Res;
 use rustc_hir::def::{CtorOf, DefKind, Namespace};
@@ -133,8 +133,8 @@ impl InferenceDiagnosticsParentData {
     }
 }
 
-impl IntoDiagnosticArg for UnderspecifiedArgKind {
-    fn into_diagnostic_arg(self) -> rustc_errors::DiagArgValue {
+impl IntoDiagArg for UnderspecifiedArgKind {
+    fn into_diag_arg(self) -> rustc_errors::DiagArgValue {
         let kind = match self {
             Self::Type { .. } => "type",
             Self::Const { is_parameter: true } => "const_with_param",

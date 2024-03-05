@@ -887,8 +887,8 @@ impl ReportErrorExt for ResourceExhaustionInfo {
     fn add_args<G: EmissionGuarantee>(self, _: &mut Diag<'_, G>) {}
 }
 
-impl rustc_errors::IntoDiagnosticArg for InternKind {
-    fn into_diagnostic_arg(self) -> DiagArgValue {
+impl rustc_errors::IntoDiagArg for InternKind {
+    fn into_diag_arg(self) -> DiagArgValue {
         DiagArgValue::Str(Cow::Borrowed(match self {
             InternKind::Static(Mutability::Not) => "static",
             InternKind::Static(Mutability::Mut) => "static_mut",

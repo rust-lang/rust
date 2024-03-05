@@ -1,6 +1,6 @@
 use std::mem;
 
-use rustc_errors::{DiagArgName, DiagArgValue, DiagMessage, IntoDiagnostic, IntoDiagnosticArg};
+use rustc_errors::{DiagArgName, DiagArgValue, DiagMessage, IntoDiagArg, IntoDiagnostic};
 use rustc_hir::CRATE_HIR_ID;
 use rustc_middle::mir::AssertKind;
 use rustc_middle::query::TyCtxtAt;
@@ -40,10 +40,10 @@ impl MachineStopType for ConstEvalErrKind {
             RecursiveStatic | ConstAccessesMutGlobal | ModifiedGlobal => {}
             AssertFailure(kind) => kind.add_args(adder),
             Panic { msg, line, col, file } => {
-                adder("msg".into(), msg.into_diagnostic_arg());
-                adder("file".into(), file.into_diagnostic_arg());
-                adder("line".into(), line.into_diagnostic_arg());
-                adder("col".into(), col.into_diagnostic_arg());
+                adder("msg".into(), msg.into_diag_arg());
+                adder("file".into(), file.into_diag_arg());
+                adder("line".into(), line.into_diag_arg());
+                adder("col".into(), col.into_diag_arg());
             }
         }
     }

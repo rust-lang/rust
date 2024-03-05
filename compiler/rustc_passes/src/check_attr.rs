@@ -9,7 +9,7 @@ use rustc_ast::{ast, AttrKind, AttrStyle, Attribute, LitKind};
 use rustc_ast::{MetaItemKind, MetaItemLit, NestedMetaItem};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::StashKey;
-use rustc_errors::{Applicability, DiagCtxt, IntoDiagnosticArg, MultiSpan};
+use rustc_errors::{Applicability, DiagCtxt, IntoDiagArg, MultiSpan};
 use rustc_feature::{AttributeDuplicates, AttributeType, BuiltinAttribute, BUILTIN_ATTRIBUTE_MAP};
 use rustc_hir as hir;
 use rustc_hir::def_id::LocalModDefId;
@@ -79,14 +79,14 @@ pub(crate) enum ProcMacroKind {
     Attribute,
 }
 
-impl IntoDiagnosticArg for ProcMacroKind {
-    fn into_diagnostic_arg(self) -> rustc_errors::DiagArgValue {
+impl IntoDiagArg for ProcMacroKind {
+    fn into_diag_arg(self) -> rustc_errors::DiagArgValue {
         match self {
             ProcMacroKind::Attribute => "attribute proc macro",
             ProcMacroKind::Derive => "derive proc macro",
             ProcMacroKind::FunctionLike => "function-like proc macro",
         }
-        .into_diagnostic_arg()
+        .into_diag_arg()
     }
 }
 

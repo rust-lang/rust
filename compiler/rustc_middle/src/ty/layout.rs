@@ -5,7 +5,7 @@ use crate::ty::normalize_erasing_regions::NormalizationError;
 use crate::ty::{self, ConstKind, Ty, TyCtxt, TypeVisitableExt};
 use rustc_error_messages::DiagMessage;
 use rustc_errors::{
-    Diag, DiagArgValue, DiagCtxt, EmissionGuarantee, IntoDiagnostic, IntoDiagnosticArg, Level,
+    Diag, DiagArgValue, DiagCtxt, EmissionGuarantee, IntoDiagArg, IntoDiagnostic, Level,
 };
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
@@ -254,9 +254,9 @@ impl<'tcx> fmt::Display for LayoutError<'tcx> {
     }
 }
 
-impl<'tcx> IntoDiagnosticArg for LayoutError<'tcx> {
-    fn into_diagnostic_arg(self) -> DiagArgValue {
-        self.to_string().into_diagnostic_arg()
+impl<'tcx> IntoDiagArg for LayoutError<'tcx> {
+    fn into_diag_arg(self) -> DiagArgValue {
+        self.to_string().into_diag_arg()
     }
 }
 

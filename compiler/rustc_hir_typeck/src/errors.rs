@@ -3,8 +3,8 @@ use std::borrow::Cow;
 
 use crate::fluent_generated as fluent;
 use rustc_errors::{
-    codes::*, AddToDiagnostic, Applicability, Diag, DiagArgValue, EmissionGuarantee,
-    IntoDiagnosticArg, MultiSpan, SubdiagMessageOp,
+    codes::*, AddToDiagnostic, Applicability, Diag, DiagArgValue, EmissionGuarantee, IntoDiagArg,
+    MultiSpan, SubdiagMessageOp,
 };
 use rustc_macros::{Diagnostic, LintDiagnostic, Subdiagnostic};
 use rustc_middle::ty::Ty;
@@ -42,8 +42,8 @@ pub enum ReturnLikeStatementKind {
     Become,
 }
 
-impl IntoDiagnosticArg for ReturnLikeStatementKind {
-    fn into_diagnostic_arg(self) -> DiagArgValue {
+impl IntoDiagArg for ReturnLikeStatementKind {
+    fn into_diag_arg(self) -> DiagArgValue {
         let kind = match self {
             Self::Return => "return",
             Self::Become => "become",

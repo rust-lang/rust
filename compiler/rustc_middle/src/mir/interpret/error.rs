@@ -6,7 +6,7 @@ use crate::ty::{layout, tls, Ty, TyCtxt, ValTree};
 
 use rustc_ast_ir::Mutability;
 use rustc_data_structures::sync::Lock;
-use rustc_errors::{DiagArgName, DiagArgValue, DiagMessage, ErrorGuaranteed, IntoDiagnosticArg};
+use rustc_errors::{DiagArgName, DiagArgValue, DiagMessage, ErrorGuaranteed, IntoDiagArg};
 use rustc_macros::HashStable;
 use rustc_session::CtfeBacktrace;
 use rustc_span::{def_id::DefId, Span, DUMMY_SP};
@@ -234,8 +234,8 @@ pub enum InvalidMetaKind {
     TooBig,
 }
 
-impl IntoDiagnosticArg for InvalidMetaKind {
-    fn into_diagnostic_arg(self) -> DiagArgValue {
+impl IntoDiagArg for InvalidMetaKind {
+    fn into_diag_arg(self) -> DiagArgValue {
         DiagArgValue::Str(Cow::Borrowed(match self {
             InvalidMetaKind::SliceTooBig => "slice_too_big",
             InvalidMetaKind::TooBig => "too_big",
@@ -266,10 +266,10 @@ pub struct Misalignment {
     pub required: Align,
 }
 
-macro_rules! impl_into_diagnostic_arg_through_debug {
+macro_rules! impl_into_diag_arg_through_debug {
     ($($ty:ty),*$(,)?) => {$(
-        impl IntoDiagnosticArg for $ty {
-            fn into_diagnostic_arg(self) -> DiagArgValue {
+        impl IntoDiagArg for $ty {
+            fn into_diag_arg(self) -> DiagArgValue {
                 DiagArgValue::Str(Cow::Owned(format!("{self:?}")))
             }
         }
@@ -277,7 +277,7 @@ macro_rules! impl_into_diagnostic_arg_through_debug {
 }
 
 // These types have nice `Debug` output so we can just use them in diagnostics.
-impl_into_diagnostic_arg_through_debug! {
+impl_into_diag_arg_through_debug! {
     AllocId,
     Pointer<AllocId>,
     AllocRange,
@@ -370,8 +370,8 @@ pub enum PointerKind {
     Box,
 }
 
-impl IntoDiagnosticArg for PointerKind {
-    fn into_diagnostic_arg(self) -> DiagArgValue {
+impl IntoDiagArg for PointerKind {
+    fn into_diag_arg(self) -> DiagArgValue {
         DiagArgValue::Str(
             match self {
                 Self::Ref(_) => "ref",

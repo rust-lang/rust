@@ -61,7 +61,7 @@ use crate::traits::{
 use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
 use rustc_errors::{
     codes::*, pluralize, struct_span_code_err, Applicability, Diag, DiagCtxt, DiagStyledString,
-    ErrorGuaranteed, IntoDiagnosticArg,
+    ErrorGuaranteed, IntoDiagArg,
 };
 use rustc_hir as hir;
 use rustc_hir::def::DefKind;
@@ -2895,11 +2895,11 @@ impl<'tcx> ObligationCause<'tcx> {
     }
 }
 
-/// Newtype to allow implementing IntoDiagnosticArg
+/// Newtype to allow implementing IntoDiagArg
 pub struct ObligationCauseAsDiagArg<'tcx>(pub ObligationCause<'tcx>);
 
-impl IntoDiagnosticArg for ObligationCauseAsDiagArg<'_> {
-    fn into_diagnostic_arg(self) -> rustc_errors::DiagArgValue {
+impl IntoDiagArg for ObligationCauseAsDiagArg<'_> {
+    fn into_diag_arg(self) -> rustc_errors::DiagArgValue {
         use crate::traits::ObligationCauseCode::*;
         let kind = match self.0.code() {
             CompareImplItemObligation { kind: ty::AssocKind::Fn, .. } => "method_compat",

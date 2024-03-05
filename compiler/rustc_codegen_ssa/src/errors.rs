@@ -4,8 +4,7 @@ use crate::assert_module_sources::CguReuse;
 use crate::back::command::Command;
 use crate::fluent_generated as fluent;
 use rustc_errors::{
-    codes::*, Diag, DiagArgValue, DiagCtxt, EmissionGuarantee, IntoDiagnostic, IntoDiagnosticArg,
-    Level,
+    codes::*, Diag, DiagArgValue, DiagCtxt, EmissionGuarantee, IntoDiagArg, IntoDiagnostic, Level,
 };
 use rustc_macros::Diagnostic;
 use rustc_middle::ty::layout::LayoutError;
@@ -152,8 +151,8 @@ impl<'a> CopyPath<'a> {
 
 struct DebugArgPath<'a>(pub &'a Path);
 
-impl IntoDiagnosticArg for DebugArgPath<'_> {
-    fn into_diagnostic_arg(self) -> rustc_errors::DiagArgValue {
+impl IntoDiagArg for DebugArgPath<'_> {
+    fn into_diag_arg(self) -> rustc_errors::DiagArgValue {
         DiagArgValue::Str(Cow::Owned(format!("{:?}", self.0)))
     }
 }
@@ -974,8 +973,8 @@ pub enum ExpectedPointerMutability {
     Not,
 }
 
-impl IntoDiagnosticArg for ExpectedPointerMutability {
-    fn into_diagnostic_arg(self) -> DiagArgValue {
+impl IntoDiagArg for ExpectedPointerMutability {
+    fn into_diag_arg(self) -> DiagArgValue {
         match self {
             ExpectedPointerMutability::Mut => DiagArgValue::Str(Cow::Borrowed("*mut")),
             ExpectedPointerMutability::Not => DiagArgValue::Str(Cow::Borrowed("*_")),

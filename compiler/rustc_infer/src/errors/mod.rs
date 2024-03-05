@@ -1,7 +1,7 @@
 use hir::GenericParamKind;
 use rustc_errors::{
     codes::*, AddToDiagnostic, Applicability, Diag, DiagMessage, DiagStyledString,
-    EmissionGuarantee, IntoDiagnosticArg, MultiSpan, SubdiagMessageOp,
+    EmissionGuarantee, IntoDiagArg, MultiSpan, SubdiagMessageOp,
 };
 use rustc_hir as hir;
 use rustc_hir::FnRetTy;
@@ -537,11 +537,11 @@ pub enum TyOrSig<'tcx> {
     ClosureSig(Highlighted<'tcx, Binder<'tcx, FnSig<'tcx>>>),
 }
 
-impl IntoDiagnosticArg for TyOrSig<'_> {
-    fn into_diagnostic_arg(self) -> rustc_errors::DiagArgValue {
+impl IntoDiagArg for TyOrSig<'_> {
+    fn into_diag_arg(self) -> rustc_errors::DiagArgValue {
         match self {
-            TyOrSig::Ty(ty) => ty.into_diagnostic_arg(),
-            TyOrSig::ClosureSig(sig) => sig.into_diagnostic_arg(),
+            TyOrSig::Ty(ty) => ty.into_diag_arg(),
+            TyOrSig::ClosureSig(sig) => sig.into_diag_arg(),
         }
     }
 }
