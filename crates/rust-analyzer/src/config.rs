@@ -1682,7 +1682,7 @@ impl Config {
                 }
             },
             keywords: self.data.hover_documentation_keywords_enable,
-            trait_assoc_items_size: self.data.hover_show_traitAssocItems,
+            max_trait_assoc_items_count: self.data.hover_show_traitAssocItems,
         }
     }
 

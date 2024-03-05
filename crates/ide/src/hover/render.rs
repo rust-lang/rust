@@ -408,7 +408,7 @@ pub(super) fn definition(
     let mod_path = definition_mod_path(db, &def);
     let label = match def {
         Definition::Trait(trait_) => {
-            trait_.display_limited(db, config.trait_assoc_items_size).to_string()
+            trait_.display_limited(db, config.max_trait_assoc_items_count).to_string()
         }
         _ => def.label(db),
     };
