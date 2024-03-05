@@ -1667,7 +1667,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
             // (Eventually this should use const-generics, but those are not up for the task yet:
             // https://github.com/rust-lang/rust/issues/85229.)
             if let Some(name @ (sym::simd_shuffle | sym::simd_insert | sym::simd_extract)) =
-                self.tcx().intrinsic(def_id)
+                self.tcx().intrinsic(def_id).map(|i| i.name)
             {
                 let idx = match name {
                     sym::simd_shuffle => 2,

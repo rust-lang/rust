@@ -1255,7 +1255,17 @@ fn codegen_regular_intrinsic_call<'tcx>(
 
         // Unimplemented intrinsics must have a fallback body. The fallback body is obtained
         // by converting the `InstanceDef::Intrinsic` to an `InstanceDef::Item`.
-        _ => return Err(Instance::new(instance.def_id(), instance.args)),
+        _ => {
+            let intrinsic = fx.tcx.intrinsic(instance.def_id()).unwrap();
+            if intrinsic.must_be_overridden {
+                span_bug!(
+                    source_info.span,
+                    "intrinsic {} must be overridden by codegen_cranelift, but isn't",
+                    intrinsic.name,
+                );
+            }
+            return Err(Instance::new(instance.def_id(), instance.args));
+        }
     }
 
     let ret_block = fx.get_block(destination.unwrap());

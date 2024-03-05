@@ -12,12 +12,12 @@ use crate::MemFlags;
 use rustc_ast as ast;
 use rustc_ast::{InlineAsmOptions, InlineAsmTemplatePiece};
 use rustc_hir::lang_items::LangItem;
-use rustc_middle::mir::{self, AssertKind, SwitchTargets, UnwindTerminateReason};
+use rustc_middle::mir::{self, AssertKind, BasicBlock, SwitchTargets, UnwindTerminateReason};
 use rustc_middle::ty::layout::{HasTyCtxt, LayoutOf, ValidityRequirement};
 use rustc_middle::ty::print::{with_no_trimmed_paths, with_no_visible_paths};
 use rustc_middle::ty::{self, Instance, Ty};
 use rustc_session::config::OptLevel;
-use rustc_span::{source_map::Spanned, sym, Span, Symbol};
+use rustc_span::{source_map::Spanned, sym, Span};
 use rustc_target::abi::call::{ArgAbi, FnAbi, PassMode, Reg};
 use rustc_target::abi::{self, HasDataLayout, WrappingRange};
 use rustc_target::spec::abi::Abi;
@@ -680,7 +680,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         &mut self,
         helper: &TerminatorCodegenHelper<'tcx>,
         bx: &mut Bx,
-        intrinsic: Option<Symbol>,
+        intrinsic: Option<ty::IntrinsicDef>,
         instance: Option<Instance<'tcx>>,
         source_info: mir::SourceInfo,
         target: Option<mir::BasicBlock>,
@@ -690,7 +690,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         // Emit a panic or a no-op for `assert_*` intrinsics.
         // These are intrinsics that compile to panics so that we can get a message
         // which mentions the offending type, even from a const context.
-        let panic_intrinsic = intrinsic.and_then(|s| ValidityRequirement::from_intrinsic(s));
+        let panic_intrinsic = intrinsic.and_then(|i| ValidityRequirement::from_intrinsic(i.name));
         if let Some(requirement) = panic_intrinsic {
             let ty = instance.unwrap().args.type_at(0);
 
@@ -826,14 +826,20 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         // The arguments we'll be passing. Plus one to account for outptr, if used.
         let arg_count = fn_abi.args.len() + fn_abi.ret.is_indirect() as usize;
 
-        if intrinsic == Some(sym::caller_location) {
+        if matches!(intrinsic, Some(ty::IntrinsicDef { name: sym::caller_location, .. })) {
             return if let Some(target) = target {
                 let location =
                     self.get_caller_location(bx, mir::SourceInfo { span: fn_span, ..source_info });
 
                 let mut llargs = Vec::with_capacity(arg_count);
-                let ret_dest =
-                    self.make_return_dest(bx, destination, &fn_abi.ret, &mut llargs, true, true);
+                let ret_dest = self.make_return_dest(
+                    bx,
+                    destination,
+                    &fn_abi.ret,
+                    &mut llargs,
+                    intrinsic,
+                    Some(target),
+                );
                 assert_eq!(llargs, []);
                 if let ReturnDest::IndirectOperand(tmp, _) = ret_dest {
                     location.val.store(bx, tmp);
@@ -846,7 +852,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         }
 
         let instance = match intrinsic {
-            None | Some(sym::drop_in_place) => instance,
+            None | Some(ty::IntrinsicDef { name: sym::drop_in_place, .. }) => instance,
             Some(intrinsic) => {
                 let mut llargs = Vec::with_capacity(1);
                 let ret_dest = self.make_return_dest(
@@ -854,8 +860,8 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     destination,
                     &fn_abi.ret,
                     &mut llargs,
-                    true,
-                    target.is_some(),
+                    Some(intrinsic),
+                    target,
                 );
                 let dest = match ret_dest {
                     _ if fn_abi.ret.is_indirect() => llargs[0],
@@ -873,7 +879,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                         // The indices passed to simd_shuffle in the
                         // third argument must be constant. This is
                         // checked by the type-checker.
-                        if i == 2 && intrinsic == sym::simd_shuffle {
+                        if i == 2 && intrinsic.name == sym::simd_shuffle {
                             if let mir::Operand::Constant(constant) = &arg.node {
                                 let (llval, ty) = self.simd_shuffle_indices(bx, constant);
                                 return OperandRef {
@@ -903,14 +909,33 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                             MergingSucc::False
                         };
                     }
-                    Err(instance) => Some(instance),
+                    Err(instance) => {
+                        if intrinsic.must_be_overridden {
+                            span_bug!(
+                                span,
+                                "intrinsic {} must be overridden by codegen backend, but isn't",
+                                intrinsic.name,
+                            );
+                        }
+                        Some(instance)
+                    }
                 }
             }
         };
 
         let mut llargs = Vec::with_capacity(arg_count);
         let destination = target.as_ref().map(|&target| {
-            (self.make_return_dest(bx, destination, &fn_abi.ret, &mut llargs, false, true), target)
+            (
+                self.make_return_dest(
+                    bx,
+                    destination,
+                    &fn_abi.ret,
+                    &mut llargs,
+                    None,
+                    Some(target),
+                ),
+                target,
+            )
         });
 
         // Split the rust-call tupled arguments off.
@@ -1643,10 +1668,10 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         dest: mir::Place<'tcx>,
         fn_ret: &ArgAbi<'tcx, Ty<'tcx>>,
         llargs: &mut Vec<Bx::Value>,
-        is_intrinsic: bool,
-        has_target: bool,
+        intrinsic: Option<ty::IntrinsicDef>,
+        target: Option<BasicBlock>,
     ) -> ReturnDest<'tcx, Bx::Value> {
-        if !has_target {
+        if target.is_none() {
             return ReturnDest::Nothing;
         }
         // If the return is ignored, we can just return a do-nothing `ReturnDest`.
@@ -1667,7 +1692,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                         tmp.storage_live(bx);
                         llargs.push(tmp.llval);
                         ReturnDest::IndirectOperand(tmp, index)
-                    } else if is_intrinsic {
+                    } else if intrinsic.is_some() {
                         // Currently, intrinsics always need a location to store
                         // the result, so we create a temporary `alloca` for the
                         // result.

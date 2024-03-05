@@ -375,7 +375,7 @@ macro_rules! define_tables {
 
 define_tables! {
 - defaulted:
-    intrinsic: Table<DefIndex, Option<LazyValue<Symbol>>>,
+    intrinsic: Table<DefIndex, Option<LazyValue<ty::IntrinsicDef>>>,
     is_macro_rules: Table<DefIndex, bool>,
     is_type_alias_impl_trait: Table<DefIndex, bool>,
     type_alias_is_lazy: Table<DefIndex, bool>,

@@ -1053,11 +1053,14 @@ fn should_encode_mir(
         // Full-fledged functions + closures
         DefKind::AssocFn | DefKind::Fn | DefKind::Closure => {
             let generics = tcx.generics_of(def_id);
-            let opt = tcx.sess.opts.unstable_opts.always_encode_mir
+            let mut opt = tcx.sess.opts.unstable_opts.always_encode_mir
                 || (tcx.sess.opts.output_types.should_codegen()
                     && reachable_set.contains(&def_id)
                     && (generics.requires_monomorphization(tcx)
                         || tcx.cross_crate_inlinable(def_id)));
+            if let Some(intrinsic) = tcx.intrinsic(def_id) {
+                opt &= !intrinsic.must_be_overridden;
+            }
             // The function has a `const` modifier or is in a `#[const_trait]`.
             let is_const_fn = tcx.is_const_fn_raw(def_id.to_def_id())
                 || tcx.is_const_default_method(def_id.to_def_id());
@@ -1409,9 +1412,9 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             if let DefKind::Fn | DefKind::AssocFn = def_kind {
                 self.tables.asyncness.set_some(def_id.index, tcx.asyncness(def_id));
                 record_array!(self.tables.fn_arg_names[def_id] <- tcx.fn_arg_names(def_id));
-                if let Some(name) = tcx.intrinsic(def_id) {
-                    record!(self.tables.intrinsic[def_id] <- name);
-                }
+            }
+            if let Some(name) = tcx.intrinsic(def_id) {
+                record!(self.tables.intrinsic[def_id] <- name);
             }
             if let DefKind::TyParam = def_kind {
                 let default = self.tcx.object_lifetime_default(def_id);
