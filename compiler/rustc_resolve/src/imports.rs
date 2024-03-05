@@ -8,8 +8,8 @@ use crate::errors::{
     ItemsInTraitsAreNotImportable,
 };
 use crate::Determinacy::{self, *};
-use crate::Namespace::*;
 use crate::{module_to_string, names_to_string, ImportSuggestion};
+use crate::{AmbiguityError, Namespace::*};
 use crate::{AmbiguityKind, BindingKey, ResolutionError, Resolver, Segment};
 use crate::{Finalize, Module, ModuleOrUniformRoot, ParentScope, PerNS, ScopeSet};
 use crate::{NameBinding, NameBindingData, NameBindingKind, PathResult, Used};
@@ -538,7 +538,6 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             .chain(indeterminate_imports.iter().map(|i| (true, i)))
         {
             let unresolved_import_error = self.finalize_import(*import);
-
             // If this import is unresolved then create a dummy import
             // resolution for it so that later resolve stages won't complain.
             self.import_dummy_binding(*import, is_indeterminate);
@@ -856,7 +855,9 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             ImportKind::Single { target_bindings, .. } => target_bindings[TypeNS].get(),
             _ => None,
         };
-        let prev_ambiguity_errors_len = self.ambiguity_errors.len();
+        let ambiguity_errors_len =
+            |errors: &Vec<AmbiguityError<'_>>| errors.iter().filter(|error| !error.warning).count();
+        let prev_ambiguity_errors_len = ambiguity_errors_len(&self.ambiguity_errors);
         let finalize = Finalize::with_root_span(import.root_id, import.span, import.root_span);
 
         // We'll provide more context to the privacy errors later, up to `len`.
@@ -870,7 +871,8 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             ignore_binding,
         );
 
-        let no_ambiguity = self.ambiguity_errors.len() == prev_ambiguity_errors_len;
+        let no_ambiguity =
+            ambiguity_errors_len(&self.ambiguity_errors) == prev_ambiguity_errors_len;
         import.vis.set(orig_vis);
         let module = match path_res {
             PathResult::Module(module) => {
