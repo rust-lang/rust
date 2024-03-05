@@ -88,6 +88,12 @@ pub fn check(tests_path: impl AsRef<Path>, bad: &mut bool) {
                 continue;
             };
 
+            assert!(
+                !test_name.contains('.'),
+                "test name cannot contain dots '.': `{}`",
+                test.display()
+            );
+
             test_info.insert(test_name.to_string(), (test, expected_revisions));
         }
 
