@@ -1366,7 +1366,9 @@ impl<'ctx> MirLowerCtx<'ctx> {
             LiteralOrConst::Const(c) => {
                 let c = match &self.body.pats[*c] {
                     Pat::Path(p) => p,
-                    _ => not_supported!("only `char` and numeric types are allowed in range patterns"),
+                    _ => not_supported!(
+                        "only `char` and numeric types are allowed in range patterns"
+                    ),
                 };
                 let unresolved_name = || MirLowerError::unresolved_path(self.db, c.as_ref());
                 let resolver = self.owner.resolver(self.db.upcast());

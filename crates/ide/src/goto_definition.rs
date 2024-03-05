@@ -536,7 +536,7 @@ fn bar() {
         );
     }
 
-        #[test]
+    #[test]
     fn goto_definition_works_for_consts_inside_range_pattern() {
         check(
             r#"
