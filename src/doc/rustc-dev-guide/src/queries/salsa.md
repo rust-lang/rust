@@ -11,11 +11,10 @@ Matsakis.
 
 > As of <!-- date-check --> November 2022, although `Salsa` is inspired by (among
 > other things) `rustc`'s query system, it is not used directly in `rustc`. It
-> _is_ used in [chalk], an implementation of  Rust's trait system, and
+> _is_ used in [chalk], an implementation of  Rust's `trait` system, and
 > extensively in [`rust-analyzer`], the official implementation of the language
 > server protocol for Rust, but there are no  medium or long-term concrete
 > plans to integrate it into the compiler.
-
 
 [`rust-analyzer`]: https://rust-analyzer.github.io/
 [chalk]: https://rust-lang.github.io/chalk/book/what_is_chalk.html
@@ -33,12 +32,11 @@ The objectives of `Salsa` are:
    results as if it had been done from scratch.
 
 `Salsa`'s actual model is much richer, allowing many kinds of inputs and many
-different outputs.
-For example, integrating `Salsa` with an IDE could mean that the inputs could be
-the manifest (`Cargo.toml`), entire source files (`foo.rs`), snippets and so
-on; the outputs of such an integration could range from a binary executable, to
-lints, types (for example, if a user selects a certain variable and wishes to
-see its type), completions, etc.
+different outputs. For example, integrating `Salsa` with an IDE could mean that
+the inputs could be manifests (`Cargo.toml`, `rust-toolchain.toml`), entire
+source files (`foo.rs`), snippets and so on. The outputs of such an integration
+could range from a binary executable, to lints, types (for example, if a user
+selects a certain variable and wishes to see its type), completions, etc.
 
 ## How does it work?
 
@@ -50,8 +48,8 @@ something that the library produces, but, for each derived value there's a
 "pure" function that computes the derived value.
 
 For example, there might be a function `ast(x: Path) -> AST`. The produced
-`AST` isn't a final value, it's an intermediate value that the library would
-use for the computation.
+Abstract Syntax Tree (`AST`) isn't a final value, it's an intermediate value
+that the library would use for the computation.
 
 This means that when you try to compute with the library, `Salsa` is going to
 compute various derived values, and eventually read the input and produce the
@@ -120,13 +118,13 @@ A query group is a set of queries which have been defined together as a unit.
 The database is formed by combining query groups. Query groups are akin to
 "`Salsa` modules".
 
-A set of queries in a query group are just a set of methods in a trait.
+A set of queries in a query group are just a set of methods in a `trait`.
 
-To create a query group a trait annotated with a specific attribute
+To create a query group a `trait` annotated with a specific attribute
 (`#[salsa::query_group(...)]`) has to be created.
 
-An argument must also be provided to said attribute as it will be used by Salsa
-to create a struct to be used later when the database is created.
+An argument must also be provided to said attribute as it will be used by `Salsa`
+to create a `struct` to be used later when the database is created.
 
 Example input query group:
 
@@ -188,11 +186,11 @@ fn ast(db: &impl Parser, name: String) -> String {
 ```
 
 Eventually, after all the query groups have been defined, the database can be
-created by declaring a struct.
+created by declaring a `struct`.
 
-To specify which query groups are going to be part of the database an attribute
-(`#[salsa::database(...)]`) must be added. The argument of said attribute is a
-list of identifiers, specifying the query groups **storages**.
+To specify which query groups are going to be part of the database an `attribute`
+(`#[salsa::database(...)]`) must be added. The argument of said `attribute` is a
+list of `identifiers`, specifying the query groups **storages**.
 
 ```rust,ignore
 ///This attribute specifies which query groups are going to be in the database
