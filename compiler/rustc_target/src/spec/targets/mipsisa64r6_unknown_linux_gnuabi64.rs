@@ -4,6 +4,7 @@ use crate::spec::{base, Target, TargetOptions};
 pub fn target() -> Target {
     Target {
         llvm_target: "mipsisa64r6-unknown-linux-gnuabi64".into(),
+        description: None,
         pointer_width: 64,
         data_layout: "E-m:e-i8:8:32-i16:16:32-i64:64-n32:64-S128".into(),
         arch: "mips64r6".into(),

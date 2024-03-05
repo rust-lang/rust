@@ -5,6 +5,7 @@ use crate::spec::{base, cvs, FramePointer, Target, TargetOptions};
 pub fn target() -> Target {
     Target {
         llvm_target: "thumbv5te-none-eabi".into(),
+        description: None,
         pointer_width: 32,
         arch: "arm".into(),
         /* Data layout args are '-' separated:

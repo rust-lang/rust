@@ -1741,6 +1741,11 @@ impl TargetWarnings {
 pub struct Target {
     /// Target triple to pass to LLVM.
     pub llvm_target: StaticCow<str>,
+    /// A short description of the target including platform requirements,
+    /// for example "64-bit Linux (kernel 3.2+, glibc 2.17+)".
+    /// Optional for now, intended to be required in the future.
+    /// Part of #120745.
+    pub description: Option<StaticCow<str>>,
     /// Number of bits in a pointer. Influences the `target_pointer_width` `cfg` variable.
     pub pointer_width: u32,
     /// Architecture to use for ABI considerations. Valid options include: "x86",
@@ -2542,6 +2547,7 @@ impl Target {
 
         let mut base = Target {
             llvm_target: get_req_field("llvm-target")?.into(),
+            description: get_req_field("description").ok().map(Into::into),
             pointer_width: get_req_field("target-pointer-width")?
                 .parse::<u32>()
                 .map_err(|_| "target-pointer-width must be an integer".to_string())?,
