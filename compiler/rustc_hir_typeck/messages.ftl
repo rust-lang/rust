@@ -138,6 +138,11 @@ hir_typeck_trivial_cast = trivial {$numeric ->
     }: `{$expr_ty}` as `{$cast_ty}`
     .help = cast can be replaced by coercion; this might require a temporary variable
 
+hir_typeck_union_pat_absent = there are no fields from this union
+    .label = union defined here
+
+hir_typeck_union_pat_conflict = there are multiple fields from this union
+
 hir_typeck_union_pat_dotdot = `..` cannot be used in union patterns
 
 hir_typeck_union_pat_multiple_fields = union patterns should have exactly one field

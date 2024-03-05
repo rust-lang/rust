@@ -4,7 +4,7 @@ use crate::{
     traits::ObligationCause,
     ty::{
         self, tls, BindingMode, BoundVar, CanonicalPolyFnSig, ClosureSizeProfileData,
-        GenericArgKind, GenericArgs, GenericArgsRef, Ty, UserArgs,
+        GenericArgKind, GenericArgs, GenericArgsRef, Ty, TyCtxt, UserArgs,
     },
 };
 use rustc_data_structures::{
@@ -23,7 +23,7 @@ use rustc_index::{Idx, IndexVec};
 use rustc_macros::HashStable;
 use rustc_middle::mir::FakeReadCause;
 use rustc_session::Session;
-use rustc_span::Span;
+use rustc_span::{def_id::DefIdMap, symbol::Ident, Span};
 use rustc_target::abi::{FieldIdx, VariantIdx};
 use std::{collections::hash_map::Entry, hash::Hash, iter};
 
@@ -49,6 +49,11 @@ pub struct TypeckResults<'tcx> {
     /// of `obj._(1)` and index of `_(1)._(2)`, and the type of `_(1)._(2)`, and the index of
     /// `_(2).field`.
     nested_fields: ItemLocalMap<Vec<(Ty<'tcx>, FieldIdx)>>,
+
+    /// Field map of variants. For ADTs with unnamed fields, the map contains all fields
+    /// including nested fields recursively, where the `FieldIdx` indicates the field of
+    /// the outer most (unnamed) field.
+    field_maps: DefIdMap<FxIndexMap<Ident, FieldIdx>>,
 
     /// Stores the types for various nodes in the AST. Note that this table
     /// is not guaranteed to be populated outside inference. See
@@ -221,6 +226,7 @@ impl<'tcx> TypeckResults<'tcx> {
             type_dependent_defs: Default::default(),
             field_indices: Default::default(),
             nested_fields: Default::default(),
+            field_maps: Default::default(),
             user_provided_types: Default::default(),
             user_provided_sigs: Default::default(),
             node_types: Default::default(),
@@ -302,6 +308,40 @@ impl<'tcx> TypeckResults<'tcx> {
 
     pub fn nested_field_tys_and_indices(&self, id: hir::HirId) -> &[(Ty<'tcx>, FieldIdx)] {
         self.nested_fields().get(id).map_or(&[], Vec::as_slice)
+    }
+
+    pub fn get_or_eval_field_map(
+        &mut self,
+        tcx: TyCtxt<'tcx>,
+        variant: &'tcx ty::VariantDef,
+    ) -> &FxIndexMap<Ident, FieldIdx> {
+        if self.field_maps.contains_key(&variant.def_id) {
+            return self.field_maps.get(&variant.def_id).unwrap();
+        }
+        let mut field_map = FxIndexMap::default();
+        for (idx, f) in variant.fields.iter_enumerated() {
+            if f.is_unnamed() {
+                let field_ty = tcx.type_of(f.did).instantiate_identity();
+                let ty::Adt(field_adt, _) = &field_ty.kind() else {
+                    bug!("expect Adt but found {field_ty:?}")
+                };
+                let nested_field_map =
+                    self.get_or_eval_field_map(tcx, field_adt.non_enum_variant());
+                field_map.extend(nested_field_map.keys().map(|&ident| (ident, idx)));
+            } else {
+                field_map.insert(f.ident(tcx).normalize_to_macros_2_0(), idx);
+            }
+        }
+        self.field_maps.entry(variant.def_id).or_insert(field_map)
+    }
+
+    pub fn lookup_field(
+        &mut self,
+        tcx: TyCtxt<'tcx>,
+        variant: &'tcx ty::VariantDef,
+        ident: Ident,
+    ) -> LookupField<'tcx, '_> {
+        LookupField::new(self, tcx, variant, ident)
     }
 
     pub fn user_provided_types(&self) -> LocalTableInContext<'_, CanonicalUserType<'tcx>> {
@@ -690,3 +730,74 @@ impl<'tcx> std::fmt::Display for UserType<'tcx> {
         }
     }
 }
+
+/// An iterator for looking up a nested field in an ADT.
+///
+/// Take the following code for example,
+/// ```
+/// # #![feature(unnamed_fields)]
+///
+/// #[repr(C)]
+/// struct Foo {
+///     a: i32,
+///     _ /* _0 */: union /* {anon_adt#0} */ {
+///         _ /* _1 */: struct /* {anon_adt#1} */ {
+///             b: i64,
+///             c: u8,
+///             d: [u16; 2],
+///         }
+///     },
+/// }
+/// ```
+/// If we would like to lookup the field `d` in `Foo`, this iterator will yield:
+/// - `(1, {anon_adt#0})`, where `_` represents `_0`;
+/// - `(0, {anon_adt#1})`, where `_` represents `_1`;
+/// - `(2, [u16; 2])`.
+///
+/// Note it also works for enums since the field maps is indxed by variant's `def_id`.
+pub struct LookupField<'tcx, 'a> {
+    typeck_results: Option<&'a mut TypeckResults<'tcx>>,
+    tcx: TyCtxt<'tcx>,
+    variant: &'tcx ty::VariantDef,
+    ident: Ident,
+}
+
+impl<'tcx, 'a> LookupField<'tcx, 'a> {
+    fn new(
+        typeck_results: &'a mut TypeckResults<'tcx>,
+        tcx: TyCtxt<'tcx>,
+        variant: &'tcx ty::VariantDef,
+        ident: Ident,
+    ) -> Self {
+        let typeck_results = Some(typeck_results);
+        Self { typeck_results, tcx, variant, ident }
+    }
+}
+
+impl<'tcx> Iterator for LookupField<'tcx, '_> {
+    type Item = (FieldIdx, &'tcx ty::FieldDef);
+
+    fn next(&mut self) -> Option<Self::Item> {
+        let typeck_results = self.typeck_results.as_deref_mut()?;
+        let field_map = typeck_results.get_or_eval_field_map(self.tcx, self.variant);
+        let &idx = field_map.get(&self.ident)?;
+        let field = &self.variant.fields[idx];
+        if field.ident(self.tcx).normalize_to_macros_2_0() == self.ident {
+            // Find the expected ident, stop the iteration.
+            self.typeck_results.take();
+            return Some((idx, field));
+        }
+        // Prepare for the next iteration.
+        //
+        // Note it is unreachable here for enums, since unnamed field can
+        // only have type of either struct or union.
+        self.variant = field.nested_adt_def(self.tcx).non_enum_variant();
+        Some((idx, field))
+    }
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        if self.typeck_results.is_some() { (0, None) } else { (0, Some(0)) }
+    }
+}
+
+impl std::iter::FusedIterator for LookupField<'_, '_> {}

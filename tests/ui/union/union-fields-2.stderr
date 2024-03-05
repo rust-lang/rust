@@ -41,18 +41,38 @@ error: union patterns should have exactly one field
    |
 LL |     let U {} = u;
    |         ^^^^
+   |
+note: there are no fields from this union
 
 error: union patterns should have exactly one field
   --> $DIR/union-fields-2.rs:17:9
    |
 LL |     let U { a, b } = u;
    |         ^^^^^^^^^^
+   |
+note: there are multiple fields from this union
+  --> $DIR/union-fields-2.rs:17:13
+   |
+LL | union U {
+   | ------- union defined here
+...
+LL |     let U { a, b } = u;
+   |             ^  ^
 
 error: union patterns should have exactly one field
   --> $DIR/union-fields-2.rs:18:9
    |
 LL |     let U { a, b, c } = u;
    |         ^^^^^^^^^^^^^
+   |
+note: there are multiple fields from this union
+  --> $DIR/union-fields-2.rs:18:13
+   |
+LL | union U {
+   | ------- union defined here
+...
+LL |     let U { a, b, c } = u;
+   |             ^  ^
 
 error[E0026]: union `U` does not have a field named `c`
   --> $DIR/union-fields-2.rs:18:19
@@ -65,6 +85,8 @@ error: union patterns should have exactly one field
    |
 LL |     let U { .. } = u;
    |         ^^^^^^^^
+   |
+note: there are no fields from this union
 
 error: `..` cannot be used in union patterns
   --> $DIR/union-fields-2.rs:20:9

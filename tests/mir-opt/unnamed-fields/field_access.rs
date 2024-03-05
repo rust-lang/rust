@@ -6,6 +6,12 @@
 #![feature(unnamed_fields)]
 
 #[repr(C)]
+#[derive(Clone, Copy)]
+struct Nested {
+    d: [u8; 1],
+}
+
+#[repr(C)]
 struct Foo {
     a: u8,
     _: struct {
@@ -13,9 +19,7 @@ struct Foo {
         c: bool,
     },
     _: struct {
-        _: struct {
-            d: [u8; 1],
-        }
+        _: Nested,
     }
 }
 
@@ -27,9 +31,7 @@ union Bar {
         c: bool,
     },
     _: union {
-        _: union {
-            d: [u8; 1],
-        }
+        _: Nested,
     }
 }
 

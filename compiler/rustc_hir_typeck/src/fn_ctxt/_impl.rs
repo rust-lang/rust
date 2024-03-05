@@ -157,6 +157,39 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
     }
 
+    pub fn lookup_ident(
+        &self,
+        variant: &'tcx ty::VariantDef,
+        ident: Ident,
+        args: GenericArgsRef<'tcx>,
+        span: Span,
+    ) -> Option<(
+        // The outer-most field index
+        FieldIdx,
+        // The nested fields, see `TypeckResults::nested_fields`
+        Vec<(Ty<'tcx>, FieldIdx)>,
+        // The inner-most field def
+        &'tcx ty::FieldDef,
+        // The inner-most field type
+        Ty<'tcx>,
+    )> {
+        let path = self
+            .typeck_results
+            .borrow_mut()
+            .lookup_field(self.tcx, variant, ident)
+            .map(|(idx, field)| (idx, field, self.field_ty(span, field, args)))
+            .collect::<Vec<_>>();
+        match &path[..] {
+            [] => None,
+            &[(idx, field, ty)] => Some((idx, Vec::new(), field, ty)),
+            &[(idx, ..), .., (_, field, ty)] => {
+                let nested_fields =
+                    path.array_windows().map(|&[(.., ty), (idx, ..)]| (ty, idx)).collect();
+                Some((idx, nested_fields, field, ty))
+            }
+        }
+    }
+
     #[instrument(level = "debug", skip(self))]
     pub(in super::super) fn write_resolution(
         &self,

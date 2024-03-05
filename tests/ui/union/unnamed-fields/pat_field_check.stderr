@@ -1,0 +1,71 @@
+error: union patterns should have exactly one field
+  --> $DIR/pat_field_check.rs:71:9
+   |
+LL |     let U { a, b, c, d, e, f, g, i, j, x, y, w, z } = u;
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: there are multiple fields from this union
+  --> $DIR/pat_field_check.rs:71:22
+   |
+LL |           _: union {
+   |  ____________-
+LL | |             d: (),
+LL | |             e: (),
+LL | |         },
+   | |_________- union defined here
+...
+LL |       let U { a, b, c, d, e, f, g, i, j, x, y, w, z } = u;
+   |                        ^  ^
+note: there are multiple fields from this union
+  --> $DIR/pat_field_check.rs:71:28
+   |
+LL |       _: union {
+   |  ________-
+LL | |         f: (),
+LL | |         g: (),
+LL | |         _: struct {
+...  |
+LL | |         _: struct {},
+LL | |     },
+   | |_____- union defined here
+...
+LL |       let U { a, b, c, d, e, f, g, i, j, x, y, w, z } = u;
+   |                              ^  ^  ^  ^
+note: there are multiple fields from this union
+  --> $DIR/pat_field_check.rs:71:46
+   |
+LL | union Bar {
+   | --------- union defined here
+...
+LL |     let U { a, b, c, d, e, f, g, i, j, x, y, w, z } = u;
+   |                                              ^  ^
+
+error: union patterns should have exactly one field
+  --> $DIR/pat_field_check.rs:75:9
+   |
+LL |     let V { a, b, c, d, e, f, g, i, j, x, y, w, z } = v;
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: there are multiple fields from this union
+  --> $DIR/pat_field_check.rs:75:22
+   |
+LL |           _: union {
+   |  ____________-
+LL | |             d: (),
+LL | |             e: (),
+LL | |         },
+   | |_________- union defined here
+...
+LL |       let V { a, b, c, d, e, f, g, i, j, x, y, w, z } = v;
+   |                        ^  ^
+note: there are multiple fields from this union
+  --> $DIR/pat_field_check.rs:75:13
+   |
+LL | union V {
+   | ------- union defined here
+...
+LL |     let V { a, b, c, d, e, f, g, i, j, x, y, w, z } = v;
+   |             ^  ^  ^  ^  ^  ^  ^  ^  ^  ^  ^  ^  ^
+
+error: aborting due to 2 previous errors
+
