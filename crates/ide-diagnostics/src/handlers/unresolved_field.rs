@@ -50,13 +50,11 @@ pub(crate) fn unresolved_field(
 }
 
 fn fixes(ctx: &DiagnosticsContext<'_>, d: &hir::UnresolvedField) -> Option<Vec<Assist>> {
-    if d.method_with_same_name_exists {
-        let mut method_fix = method_fix(ctx, &d.expr).unwrap_or_default();
-        method_fix.push(add_field_fix(ctx, d)?);
-        Some(method_fix)
-    } else {
-        Some(vec![add_field_fix(ctx, d)?])
+    let mut fixes = if d.method_with_same_name_exists { method_fix(ctx, &d.expr) } else { None };
+    if let Some(fix) = add_field_fix(ctx, d) {
+        fixes.get_or_insert_with(Vec::new).push(fix);
     }
+    fixes
 }
 
 fn add_field_fix(ctx: &DiagnosticsContext<'_>, d: &hir::UnresolvedField) -> Option<Assist> {
@@ -77,7 +75,7 @@ fn add_field_fix(ctx: &DiagnosticsContext<'_>, d: &hir::UnresolvedField) -> Opti
         if let Some(new_field_type) = ctx.sema.type_of_expr(&expr).map(|v| v.adjusted()) {
             let display =
                 new_field_type.display_source_code(ctx.sema.db, target_module.into(), true).ok();
-            make::ty(display.as_deref().unwrap_or_else(|| "()"))
+            make::ty(display.as_deref().unwrap_or("()"))
         } else {
             make::ty("()")
         };
@@ -106,7 +104,7 @@ fn add_field_fix(ctx: &DiagnosticsContext<'_>, d: &hir::UnresolvedField) -> Opti
         }
         None => {
             // Empty Struct. Add a field right before the closing brace
-            let indent = IndentLevel::from_node(&adt_syntax.value) + 1;
+            let indent = IndentLevel::from_node(adt_syntax.value) + 1;
             let record_field_list =
                 adt_syntax.value.children().find(|v| v.kind() == SyntaxKind::RECORD_FIELD_LIST)?;
             let offset = record_field_list.first_token().map(|f| f.text_range().end())?;
