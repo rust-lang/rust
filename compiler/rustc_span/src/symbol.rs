@@ -896,6 +896,7 @@ symbols! {
         generic_const_items,
         generic_param_attrs,
         get_context,
+        global_alloc_ty,
         global_allocator,
         global_asm,
         globs,

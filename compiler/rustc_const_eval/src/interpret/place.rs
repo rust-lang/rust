@@ -437,6 +437,7 @@ where
         trace!("deref to {} on {:?}", val.layout.ty, *val);
 
         if val.layout.ty.is_box() {
+            // Derefer should have removed all Box derefs
             bug!("dereferencing {}", val.layout.ty);
         }
 
