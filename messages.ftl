@@ -20,8 +20,6 @@ codegen_gcc_dynamic_linking_with_lto =
     cannot prefer dynamic linking when performing LTO
     .note = only 'staticlib', 'bin', and 'cdylib' outputs are supported with LTO
 
-codegen_gcc_load_bitcode = failed to load bitcode of module "{$name}"
-
 codegen_gcc_lto_disallowed = lto can only be run for executables, cdylibs and static library outputs
 
 codegen_gcc_lto_dylib = lto cannot be used for `dylib` crate type without `-Zdylib-lto`
