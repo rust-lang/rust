@@ -1293,7 +1293,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 //
                 // only generates a single switch.
                 let match_pair = candidate.match_pairs.pop().unwrap();
-                self.create_or_subcandidates(candidate, &match_pair);
+                self.create_or_subcandidates(candidate, match_pair);
                 split_or_candidate = true;
             }
         }
@@ -1481,9 +1481,8 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             return;
         }
 
-        let match_pairs = mem::take(&mut first_candidate.match_pairs);
-        let (first_match_pair, remaining_match_pairs) = match_pairs.split_first().unwrap();
-
+        let first_match_pair = first_candidate.match_pairs.remove(0);
+        let remaining_match_pairs = mem::take(&mut first_candidate.match_pairs);
         let remainder_start = self.cfg.start_new_block();
         // Test the alternatives of this or-pattern.
         self.test_or_pattern(first_candidate, start_block, remainder_start, first_match_pair);
@@ -1527,11 +1526,11 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         candidate: &mut Candidate<'pat, 'tcx>,
         start_block: BasicBlock,
         otherwise_block: BasicBlock,
-        match_pair: &MatchPair<'pat, 'tcx>,
+        match_pair: MatchPair<'pat, 'tcx>,
     ) {
+        let or_span = match_pair.pattern.span;
         self.create_or_subcandidates(candidate, match_pair);
         let mut or_candidate_refs: Vec<_> = candidate.subcandidates.iter_mut().collect();
-        let or_span = match_pair.pattern.span;
         self.match_candidates(
             or_span,
             or_span,
@@ -1548,14 +1547,14 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     fn create_or_subcandidates<'pat>(
         &mut self,
         candidate: &mut Candidate<'pat, 'tcx>,
-        match_pair: &MatchPair<'pat, 'tcx>,
+        match_pair: MatchPair<'pat, 'tcx>,
     ) {
-        let TestCase::Or { ref pats } = &match_pair.test_case else { bug!() };
+        let TestCase::Or { pats } = match_pair.test_case else { bug!() };
         debug!("expanding or-pattern: candidate={:#?}\npats={:#?}", candidate, pats);
         candidate.or_span = Some(match_pair.pattern.span);
         candidate.subcandidates = pats
-            .iter()
-            .cloned()
+            .into_vec()
+            .into_iter()
             .map(|flat_pat| Candidate::from_flat_pat(flat_pat, candidate.has_guard))
             .collect();
     }
@@ -1569,13 +1568,10 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             return;
         }
 
-        let mut can_merge = true;
-        for subcandidate in &mut candidate.subcandidates {
-            // FIXME(or_patterns; matthewjasper) Try to be more aggressive here.
-            can_merge &=
-                subcandidate.subcandidates.is_empty() && subcandidate.extra_data.is_empty();
-        }
-
+        // FIXME(or_patterns; matthewjasper) Try to be more aggressive here.
+        let can_merge = candidate.subcandidates.iter().all(|subcandidate| {
+            subcandidate.subcandidates.is_empty() && subcandidate.extra_data.is_empty()
+        });
         if can_merge {
             let any_matches = self.cfg.start_new_block();
             let source_info = self.source_info(candidate.or_span.unwrap());
