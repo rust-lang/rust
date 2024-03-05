@@ -771,11 +771,19 @@ fn extended_rand_tests(env: &Env, args: &TestArg) -> Result<(), String> {
         println!("Not using GCC master branch. Skipping `extended_rand_tests`.");
         return Ok(());
     }
+    let mut env = env.clone();
+    // newer aho_corasick versions throw a deprecation warning
+    let rustflags = format!(
+        "{} --cap-lints warn",
+        env.get("RUSTFLAGS").cloned().unwrap_or_default()
+    );
+    env.insert("RUSTFLAGS".to_string(), rustflags);
+
     let path = Path::new(crate::BUILD_DIR).join("rand");
-    run_cargo_command(&[&"clean"], Some(&path), env, args)?;
+    run_cargo_command(&[&"clean"], Some(&path), &env, args)?;
     // FIXME: create a function "display_if_not_quiet" or something along the line.
     println!("[TEST] rust-random/rand");
-    run_cargo_command(&[&"test", &"--workspace"], Some(&path), env, args)?;
+    run_cargo_command(&[&"test", &"--workspace"], Some(&path), &env, args)?;
     Ok(())
 }
 
