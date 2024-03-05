@@ -84,9 +84,15 @@ pub fn check(tests_path: impl AsRef<Path>, bad: &mut bool) {
                 }
             });
 
-            let Some((test_name, _)) = test.to_str().map(|s| s.split_once('.')).flatten() else {
+            let Some(test_name) = test.file_stem().map(OsStr::to_str).flatten() else {
                 continue;
             };
+
+            assert!(
+                !test_name.contains('.'),
+                "test name cannot contain dots '.': `{}`",
+                test.display()
+            );
 
             test_info.insert(test_name.to_string(), (test, expected_revisions));
         }
@@ -98,14 +104,20 @@ pub fn check(tests_path: impl AsRef<Path>, bad: &mut bool) {
         for sibling in files_under_inspection.iter().filter(|f| {
             f.extension().map(OsStr::to_str).flatten().is_some_and(|ext| EXTENSIONS.contains(&ext))
         }) {
-            let filename_components = sibling.to_str().unwrap().split('.').collect::<Vec<_>>();
-            let file_prefix = filename_components[0];
-
-            let Some((test_path, expected_revisions)) = test_info.get(file_prefix) else {
+            let Some(filename) = sibling.file_name().map(OsStr::to_str).flatten() else {
                 continue;
             };
 
-            match filename_components[..] {
+            let filename_components = filename.split('.').collect::<Vec<_>>();
+            let [file_prefix, ..] = &filename_components[..] else {
+                continue;
+            };
+
+            let Some((test_path, expected_revisions)) = test_info.get(*file_prefix) else {
+                continue;
+            };
+
+            match &filename_components[..] {
                 // Cannot have a revision component, skip.
                 [] | [_] => return,
                 [_, _] if !expected_revisions.is_empty() => {
@@ -120,9 +132,9 @@ pub fn check(tests_path: impl AsRef<Path>, bad: &mut bool) {
                 [_, _] => return,
                 [_, found_revision, .., extension] => {
                     if !IGNORES.contains(&found_revision)
-                        && !expected_revisions.contains(found_revision)
+                        && !expected_revisions.contains(*found_revision)
                         // This is from `//@ stderr-per-bitwidth`
-                        && !(extension == "stderr" && ["32bit", "64bit"].contains(&found_revision))
+                        && !(*extension == "stderr" && ["32bit", "64bit"].contains(&found_revision))
                     {
                         // Found some unexpected revision-esque component that is not a known
                         // compare-mode or expected revision.
