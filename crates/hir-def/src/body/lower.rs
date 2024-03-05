@@ -1413,16 +1413,10 @@ impl ExprCollector<'_> {
                         ast::Pat::LiteralPat(it) => {
                             Some(Box::new(LiteralOrConst::Literal(pat_literal_to_hir(it)?.0)))
                         }
-                        ast::Pat::IdentPat(p) => {
-                            let name =
-                                p.name().map(|nr| nr.as_name()).unwrap_or_else(Name::missing);
-                            Some(Box::new(LiteralOrConst::Const(name.into())))
+                        pat @ (ast::Pat::IdentPat(_) | ast::Pat::PathPat(_)) => {
+                            let subpat = self.collect_pat(pat.clone(), binding_list);
+                            Some(Box::new(LiteralOrConst::Const(subpat)))
                         }
-                        ast::Pat::PathPat(p) => p
-                            .path()
-                            .and_then(|path| self.expander.parse_path(self.db, path))
-                            .map(LiteralOrConst::Const)
-                            .map(Box::new),
                         _ => None,
                     })
                 };
