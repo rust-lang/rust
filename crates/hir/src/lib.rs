@@ -2108,6 +2108,10 @@ pub struct Param {
 }
 
 impl Param {
+    pub fn parent_fn(&self) -> Function {
+        self.func
+    }
+
     pub fn ty(&self) -> &Type {
         &self.ty
     }
@@ -2170,6 +2174,10 @@ impl SelfParam {
             .param_list()
             .and_then(|params| params.self_param())
             .map(|value| InFile { file_id, value })
+    }
+
+    pub fn parent_fn(&self) -> Function {
+        Function::from(self.func)
     }
 
     pub fn ty(&self, db: &dyn HirDatabase) -> Type {
