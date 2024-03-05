@@ -245,5 +245,14 @@ LL |     cfg!(all(feature = "zebra", feature = "zebra", feature = "zebra"));
    = help: to expect this configuration use `--check-cfg=cfg(feature, values("zebra"))`
    = note: see <https://doc.rust-lang.org/nightly/unstable-book/compiler-flags/check-cfg.html> for more information about checking conditional configuration
 
-warning: 26 warnings emitted
+warning: unexpected `cfg` condition value: `zebra`
+  --> $DIR/mix.rs:77:10
+   |
+LL |     cfg!(target_feature = "zebra");
+   |          ^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: expected values for `target_feature` are: `10e60`, `2e3`, `3e3r1`, `3e3r2`, `3e3r3`, `3e7`, `7e10`, `a`, `aclass`, `adx`, `aes`, `altivec`, `alu32`, `atomics`, `avx`, `avx2`, `avx512bf16`, `avx512bitalg`, `avx512bw`, `avx512cd`, `avx512dq`, `avx512er`, `avx512f`, `avx512fp16`, `avx512ifma`, `avx512pf`, `avx512vbmi`, `avx512vbmi2`, `avx512vl`, `avx512vnni`, `avx512vp2intersect`, `avx512vpopcntdq`, `bf16`, `bmi1`, `bmi2` and 186 more
+   = note: see <https://doc.rust-lang.org/nightly/unstable-book/compiler-flags/check-cfg.html> for more information about checking conditional configuration
+
+warning: 27 warnings emitted
 
