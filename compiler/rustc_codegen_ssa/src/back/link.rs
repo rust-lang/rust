@@ -1088,7 +1088,7 @@ fn link_natively<'a>(
                 strip_symbols_with_external_utility(sess, stripcmd, out_filename, Some("-l"))
             }
             Strip::Symbols => {
-                // Must be noted this option removes symbol __aix_rust_metadata and thus removes .info section which contains metadata.
+                // Must be noted this option might remove symbol __aix_rust_metadata and thus removes .info section which contains metadata.
                 strip_symbols_with_external_utility(sess, stripcmd, out_filename, Some("-r"))
             }
             Strip::None => {}
