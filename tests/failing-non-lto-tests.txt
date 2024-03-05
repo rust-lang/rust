@@ -5,7 +5,7 @@ tests/ui/lto/lto-many-codegen-units.rs
 tests/ui/lto/issue-100772.rs
 tests/ui/lto/lto-rustc-loads-linker-plugin.rs
 tests/ui/panic-runtime/lto-unwind.rs
-tests/ui/sanitize/issue-111184-coroutine-witness.rs
+tests/ui/sanitizer/issue-111184-cfi-coroutine-witness.rs
 tests/ui/sepcomp/sepcomp-lib-lto.rs
 tests/ui/lto/lto-opt-level-s.rs
 tests/ui/lto/lto-opt-level-z.rs

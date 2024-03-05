@@ -9,7 +9,7 @@ use rustc_middle::ty::{self, Ty, TypeVisitableExt};
 use rustc_target::abi::call::{CastTarget, FnAbi, Reg};
 use rustc_target::abi::{
     self, Abi, Align, FieldsShape, Int, Integer, PointeeInfo, Pointer, Size, TyAbiInterface,
-    Variants, F32, F64,
+    Variants, F128, F16, F32, F64,
 };
 
 use crate::abi::{FnAbiGcc, FnAbiGccExt, GccType};
@@ -171,7 +171,6 @@ pub trait LayoutGccExt<'tcx> {
         cx: &CodegenCx<'gcc, 'tcx>,
         index: usize,
     ) -> Type<'gcc>;
-    fn gcc_field_index(&self, index: usize) -> u64;
     fn pointee_info_at<'gcc>(
         &self,
         cx: &CodegenCx<'gcc, 'tcx>,
@@ -284,8 +283,10 @@ impl<'tcx> LayoutGccExt<'tcx> for TyAndLayout<'tcx> {
         match scalar.primitive() {
             Int(i, true) => cx.type_from_integer(i),
             Int(i, false) => cx.type_from_unsigned_integer(i),
+            F16 => cx.type_f16(),
             F32 => cx.type_f32(),
             F64 => cx.type_f64(),
+            F128 => cx.type_f128(),
             Pointer(address_space) => {
                 // If we know the alignment, pick something better than i8.
                 let pointee = if let Some(pointee) = self.pointee_info_at(cx, offset) {
@@ -327,24 +328,6 @@ impl<'tcx> LayoutGccExt<'tcx> for TyAndLayout<'tcx> {
         self.scalar_gcc_type_at(cx, scalar, offset)
     }
 
-    fn gcc_field_index(&self, index: usize) -> u64 {
-        match self.abi {
-            Abi::Scalar(_) | Abi::ScalarPair(..) => {
-                bug!("TyAndLayout::gcc_field_index({:?}): not applicable", self)
-            }
-            _ => {}
-        }
-        match self.fields {
-            FieldsShape::Primitive | FieldsShape::Union(_) => {
-                bug!("TyAndLayout::gcc_field_index({:?}): not applicable", self)
-            }
-
-            FieldsShape::Array { .. } => index as u64,
-
-            FieldsShape::Arbitrary { .. } => 1 + (self.fields.memory_index(index) as u64) * 2,
-        }
-    }
-
     fn pointee_info_at<'a>(&self, cx: &CodegenCx<'a, 'tcx>, offset: Size) -> Option<PointeeInfo> {
         if let Some(&pointee) = cx.pointee_infos.borrow().get(&(self.ty, offset)) {
             return pointee;
@@ -372,10 +355,6 @@ impl<'gcc, 'tcx> LayoutTypeMethods<'tcx> for CodegenCx<'gcc, 'tcx> {
 
     fn is_backend_scalar_pair(&self, layout: TyAndLayout<'tcx>) -> bool {
         layout.is_gcc_scalar_pair()
-    }
-
-    fn backend_field_index(&self, layout: TyAndLayout<'tcx>, index: usize) -> u64 {
-        layout.gcc_field_index(index)
     }
 
     fn scalar_pair_element_backend_type(

@@ -21,7 +21,6 @@ tests/ui/fmt/format-args-capture-issue-106408.rs
 tests/ui/fmt/indoc-issue-106408.rs
 tests/ui/hygiene/issue-77523-def-site-async-await.rs
 tests/ui/inherent-impls-overlap-check/no-overlap.rs
-tests/ui/annotate-snippet/multispan.rs
 tests/ui/enum-discriminant/issue-46519.rs
 tests/ui/issues/issue-45731.rs
 tests/ui/lint/test-allow-dead-extern-static-no-warning.rs
@@ -29,9 +28,5 @@ tests/ui/macros/macro-comma-behavior-rpass.rs
 tests/ui/macros/rfc-2011-nicer-assert-messages/assert-with-custom-errors-does-not-create-unnecessary-code.rs
 tests/ui/macros/rfc-2011-nicer-assert-messages/feature-gate-generic_assert.rs
 tests/ui/macros/stringify.rs
-tests/ui/panics/test-panic.rs
-tests/ui/panics/test-should-fail-bad-message.rs
-tests/ui/panics/test-should-panic-bad-message.rs
-tests/ui/panics/test-should-panic-no-message.rs
 tests/ui/reexport-test-harness-main.rs
 tests/ui/rfcs/rfc-1937-termination-trait/termination-trait-in-test.rs

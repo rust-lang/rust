@@ -771,11 +771,19 @@ fn extended_rand_tests(env: &Env, args: &TestArg) -> Result<(), String> {
         println!("Not using GCC master branch. Skipping `extended_rand_tests`.");
         return Ok(());
     }
+    let mut env = env.clone();
+    // newer aho_corasick versions throw a deprecation warning
+    let rustflags = format!(
+        "{} --cap-lints warn",
+        env.get("RUSTFLAGS").cloned().unwrap_or_default()
+    );
+    env.insert("RUSTFLAGS".to_string(), rustflags);
+
     let path = Path::new(crate::BUILD_DIR).join("rand");
-    run_cargo_command(&[&"clean"], Some(&path), env, args)?;
+    run_cargo_command(&[&"clean"], Some(&path), &env, args)?;
     // FIXME: create a function "display_if_not_quiet" or something along the line.
     println!("[TEST] rust-random/rand");
-    run_cargo_command(&[&"test", &"--workspace"], Some(&path), env, args)?;
+    run_cargo_command(&[&"test", &"--workspace"], Some(&path), &env, args)?;
     Ok(())
 }
 
@@ -911,9 +919,9 @@ fn should_remove_test(file_path: &Path) -> Result<bool, String> {
             continue;
         }
         if [
-            "// error-pattern:",
-            "// build-fail",
-            "// run-fail",
+            "//@ error-pattern:",
+            "//@ build-fail",
+            "//@ run-fail",
             "-Cllvm-args",
             "//~",
             "thread",
@@ -1007,6 +1015,8 @@ where
     // Tests generating errors.
     remove_file(&rust_path.join("tests/ui/consts/issue-94675.rs"))?;
     remove_file(&rust_path.join("tests/ui/mir/mir_heavy_promoted.rs"))?;
+    remove_file(&rust_path.join("tests/ui/rfcs/rfc-2632-const-trait-impl/const-drop-fail.rs"))?;
+    remove_file(&rust_path.join("tests/ui/rfcs/rfc-2632-const-trait-impl/const-drop.rs"))?;
 
     walk_dir(rust_path.join("tests/ui"), dir_handling, file_handling)?;
 
