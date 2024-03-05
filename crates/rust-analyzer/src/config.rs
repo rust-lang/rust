@@ -375,6 +375,9 @@ config_data! {
         /// How to render the size information in a memory layout hover.
         hover_memoryLayout_size: Option<MemoryLayoutHoverRenderKindDef> = "\"both\"",
 
+        /// How many associated items of a trait to display when hovering a trait.
+        hover_show_traitAssocItems: Option<usize> = "null",
+
         /// Whether to enforce the import granularity setting for all files. If set to false rust-analyzer will try to keep import styles consistent per file.
         imports_granularity_enforce: bool              = "false",
         /// How imports should be grouped into use statements.
@@ -517,7 +520,6 @@ config_data! {
 
         /// Exclude tests from find-all-references.
         references_excludeTests: bool = "false",
-
 
         /// Command to be executed instead of 'cargo' for runnables.
         runnables_command: Option<String> = "null",
@@ -1680,6 +1682,7 @@ impl Config {
                 }
             },
             keywords: self.data.hover_documentation_keywords_enable,
+            trait_assoc_items_size: self.data.hover_show_traitAssocItems,
         }
     }
 

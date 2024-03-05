@@ -17,10 +17,10 @@ use hir_ty::{
 };
 
 use crate::{
-    Adt, AsAssocItem, AssocItemContainer, Const, ConstParam, Enum, ExternCrateDecl, Field,
-    Function, GenericParam, HasCrate, HasVisibility, LifetimeParam, Macro, Module, SelfParam,
-    Static, Struct, Trait, TraitAlias, TupleField, TyBuilder, Type, TypeAlias, TypeOrConstParam,
-    TypeParam, Union, Variant,
+    Adt, AsAssocItem, AssocItem, AssocItemContainer, Const, ConstParam, Enum, ExternCrateDecl,
+    Field, Function, GenericParam, HasCrate, HasVisibility, LifetimeParam, Macro, Module,
+    SelfParam, Static, Struct, Trait, TraitAlias, TupleField, TyBuilder, Type, TypeAlias,
+    TypeOrConstParam, TypeParam, Union, Variant,
 };
 
 impl HirDisplay for Function {
@@ -595,6 +595,36 @@ impl HirDisplay for Trait {
         let def_id = GenericDefId::TraitId(self.id);
         write_generic_params(def_id, f)?;
         write_where_clause(def_id, f)?;
+
+        let assoc_items = self.items(f.db);
+        let assoc_items_size = assoc_items.len();
+        let limited_size = f.limited_size.unwrap_or(assoc_items_size);
+        if assoc_items.is_empty() {
+            f.write_str(" {}")?;
+        } else {
+            f.write_str(" {\n")?;
+            for (index, item) in assoc_items.iter().enumerate() {
+                f.write_str("    ")?;
+                match item {
+                    AssocItem::Function(func) => {
+                        func.hir_fmt(f)?;
+                    }
+                    AssocItem::Const(cst) => {
+                        cst.hir_fmt(f)?;
+                    }
+                    AssocItem::TypeAlias(type_alias) => {
+                        type_alias.hir_fmt(f)?;
+                    }
+                };
+                f.write_str(",\n")?;
+                if index + 1 == limited_size && index + 1 != assoc_items_size {
+                    f.write_str("    ...\n")?;
+                    break;
+                }
+            }
+            f.write_str("}")?;
+        }
+
         Ok(())
     }
 }

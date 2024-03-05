@@ -32,6 +32,7 @@ pub struct HoverConfig {
     pub documentation: bool,
     pub keywords: bool,
     pub format: HoverDocFormat,
+    pub trait_assoc_items_size: Option<usize>,
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
