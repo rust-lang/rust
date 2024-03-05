@@ -919,10 +919,9 @@ fn should_remove_test(file_path: &Path) -> Result<bool, String> {
             continue;
         }
         if [
-            "// error-pattern:",
-            "// @error-pattern:",
-            "// build-fail",
-            "// run-fail",
+            "//@ error-pattern:",
+            "//@ build-fail",
+            "//@ run-fail",
             "-Cllvm-args",
             "//~",
             "thread",
@@ -1016,6 +1015,8 @@ where
     // Tests generating errors.
     remove_file(&rust_path.join("tests/ui/consts/issue-94675.rs"))?;
     remove_file(&rust_path.join("tests/ui/mir/mir_heavy_promoted.rs"))?;
+    remove_file(&rust_path.join("tests/ui/rfcs/rfc-2632-const-trait-impl/const-drop-fail.rs"))?;
+    remove_file(&rust_path.join("tests/ui/rfcs/rfc-2632-const-trait-impl/const-drop.rs"))?;
 
     walk_dir(rust_path.join("tests/ui"), dir_handling, file_handling)?;
 
