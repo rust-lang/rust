@@ -312,15 +312,13 @@ impl InferenceContext<'_> {
             Expr::Call { callee, args, .. } => {
                 let callee_ty = self.infer_expr(*callee, &Expectation::none());
                 let mut derefs = Autoderef::new(&mut self.table, callee_ty.clone(), false);
-                let (res, derefed_callee) = 'b: {
-                    // manual loop to be able to access `derefs.table`
-                    while let Some((callee_deref_ty, _)) = derefs.next() {
-                        let res = derefs.table.callable_sig(&callee_deref_ty, args.len());
-                        if res.is_some() {
-                            break 'b (res, callee_deref_ty);
-                        }
+                let (res, derefed_callee) = loop {
+                    let Some((callee_deref_ty, _)) = derefs.next() else {
+                        break (None, callee_ty.clone());
+                    };
+                    if let Some(res) = derefs.table.callable_sig(&callee_deref_ty, args.len()) {
+                        break (Some(res), callee_deref_ty);
                     }
-                    (None, callee_ty.clone())
                 };
                 // if the function is unresolved, we use is_varargs=true to
                 // suppress the arg count diagnostic here

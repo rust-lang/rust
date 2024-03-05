@@ -289,14 +289,14 @@ impl<'a> InferenceTable<'a> {
     }
 
     fn fallback_value(&self, iv: InferenceVar, kind: TyVariableKind) -> Ty {
+        let is_diverging = self
+            .type_variable_table
+            .get(iv.index() as usize)
+            .map_or(false, |data| data.contains(TypeVariableFlags::DIVERGING));
+        if is_diverging {
+            return TyKind::Never.intern(Interner);
+        }
         match kind {
-            _ if self
-                .type_variable_table
-                .get(iv.index() as usize)
-                .map_or(false, |data| data.contains(TypeVariableFlags::DIVERGING)) =>
-            {
-                TyKind::Never
-            }
             TyVariableKind::General => TyKind::Error,
             TyVariableKind::Integer => TyKind::Scalar(Scalar::Int(IntTy::I32)),
             TyVariableKind::Float => TyKind::Scalar(Scalar::Float(FloatTy::F64)),
@@ -438,6 +438,7 @@ impl<'a> InferenceTable<'a> {
     where
         T: HasInterner<Interner = Interner> + TypeFoldable<Interner>,
     {
+        // TODO check this vec here
         self.resolve_with_fallback_inner(&mut Vec::new(), t, &fallback)
     }
 
@@ -798,7 +799,7 @@ impl<'a> InferenceTable<'a> {
         let trait_data = self.db.trait_data(fn_once_trait);
         let output_assoc_type = trait_data.associated_type_by_name(&name![Output])?;
 
-        let mut arg_tys = vec![];
+        let mut arg_tys = Vec::with_capacity(num_args);
         let arg_ty = TyBuilder::tuple(num_args)
             .fill(|it| {
                 let arg = match it {
