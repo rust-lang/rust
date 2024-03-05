@@ -169,7 +169,7 @@ pub(super) fn specializes(tcx: TyCtxt<'_>, (impl1_def_id, impl2_def_id): (DefId,
         }
     }
 
-    let impl1_trait_header = tcx.impl_trait_header(impl1_def_id).unwrap().instantiate_identity();
+    let impl1_trait_header = tcx.impl_trait_header(impl1_def_id).unwrap();
 
     // We determine whether there's a subset relationship by:
     //
@@ -198,7 +198,7 @@ pub(super) fn specializes(tcx: TyCtxt<'_>, (impl1_def_id, impl2_def_id): (DefId,
     fulfill_implication(
         &infcx,
         penv,
-        impl1_trait_header.trait_ref,
+        impl1_trait_header.trait_ref.instantiate_identity(),
         impl1_def_id,
         impl2_def_id,
         |_, _| ObligationCause::dummy(),

@@ -1888,13 +1888,13 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
             .tcx
             .all_impls(trait_pred.def_id())
             .filter_map(|def_id| {
-                let imp = self.tcx.impl_trait_header(def_id).unwrap().skip_binder();
+                let imp = self.tcx.impl_trait_header(def_id).unwrap();
                 if imp.polarity == ty::ImplPolarity::Negative
                     || !self.tcx.is_user_visible_dep(def_id.krate)
                 {
                     return None;
                 }
-                let imp = imp.trait_ref;
+                let imp = imp.trait_ref.skip_binder();
 
                 self.fuzzy_match_tys(trait_pred.skip_binder().self_ty(), imp.self_ty(), false).map(
                     |similarity| ImplCandidate { trait_ref: imp, similarity, impl_def_id: def_id },
@@ -2078,12 +2078,11 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                 .all_impls(def_id)
                 // Ignore automatically derived impls and `!Trait` impls.
                 .filter_map(|def_id| self.tcx.impl_trait_header(def_id))
-                .map(ty::EarlyBinder::instantiate_identity)
-                .filter(|header| {
-                    header.polarity != ty::ImplPolarity::Negative
-                        || self.tcx.is_automatically_derived(def_id)
+                .filter_map(|header| {
+                    (header.polarity != ty::ImplPolarity::Negative
+                        || self.tcx.is_automatically_derived(def_id))
+                    .then(|| header.trait_ref.instantiate_identity())
                 })
-                .map(|header| header.trait_ref)
                 .filter(|trait_ref| {
                     let self_ty = trait_ref.self_ty();
                     // Avoid mentioning type parameters.

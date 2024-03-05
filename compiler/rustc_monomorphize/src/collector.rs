@@ -1361,7 +1361,7 @@ fn create_mono_items_for_default_impls<'tcx>(
         return;
     };
 
-    if matches!(impl_.skip_binder().polarity, ty::ImplPolarity::Negative) {
+    if matches!(impl_.polarity, ty::ImplPolarity::Negative) {
         return;
     }
 
@@ -1385,7 +1385,7 @@ fn create_mono_items_for_default_impls<'tcx>(
         }
     };
     let impl_args = GenericArgs::for_item(tcx, item.owner_id.to_def_id(), only_region_params);
-    let trait_ref = impl_.instantiate(tcx, impl_args).trait_ref;
+    let trait_ref = impl_.trait_ref.instantiate(tcx, impl_args);
 
     // Unlike 'lazy' monomorphization that begins by collecting items transitively
     // called by `main` or other global items, when eagerly monomorphizing impl

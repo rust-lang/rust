@@ -13,9 +13,10 @@ pub(super) fn check_item(
     trait_header: ImplTraitHeader<'_>,
     trait_def: &TraitDef,
 ) -> Result<(), ErrorGuaranteed> {
-    let trait_ref = trait_header.trait_ref;
     let unsafe_attr =
         tcx.generics_of(def_id).params.iter().find(|p| p.pure_wrt_drop).map(|_| "may_dangle");
+    let trait_ref = trait_header.trait_ref.instantiate_identity();
+
     match (trait_def.unsafety, unsafe_attr, trait_header.unsafety, trait_header.polarity) {
         (Unsafety::Normal, None, Unsafety::Unsafe, Positive | Reservation) => {
             let span = tcx.def_span(def_id);

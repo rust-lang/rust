@@ -423,7 +423,7 @@ define_tables! {
     variances_of: Table<DefIndex, LazyArray<ty::Variance>>,
     fn_sig: Table<DefIndex, LazyValue<ty::EarlyBinder<ty::PolyFnSig<'static>>>>,
     codegen_fn_attrs: Table<DefIndex, LazyValue<CodegenFnAttrs>>,
-    impl_trait_header: Table<DefIndex, LazyValue<ty::EarlyBinder<ty::ImplTraitHeader<'static>>>>,
+    impl_trait_header: Table<DefIndex, LazyValue<ty::ImplTraitHeader<'static>>>,
     const_param_default: Table<DefIndex, LazyValue<ty::EarlyBinder<rustc_middle::ty::Const<'static>>>>,
     object_lifetime_default: Table<DefIndex, LazyValue<ObjectLifetimeDefault>>,
     optimized_mir: Table<DefIndex, LazyValue<mir::Body<'static>>>,
