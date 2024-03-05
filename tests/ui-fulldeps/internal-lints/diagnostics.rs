@@ -1,4 +1,5 @@
 //@ compile-flags: -Z unstable-options
+//@ ignore-stage1
 
 #![crate_type = "lib"]
 #![feature(rustc_attrs)]
