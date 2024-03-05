@@ -1,7 +1,6 @@
 use super::operand::{OperandRef, OperandValue};
 use super::place::PlaceRef;
 use super::FunctionCx;
-use crate::common::IntPredicate;
 use crate::errors;
 use crate::errors::InvalidMonomorphization;
 use crate::meth;
@@ -454,12 +453,6 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 let dst = args[0].deref(bx.cx());
                 args[1].val.nontemporal_store(bx, dst);
                 return Ok(());
-            }
-
-            sym::ptr_guaranteed_cmp => {
-                let a = args[0].immediate();
-                let b = args[1].immediate();
-                bx.icmp(IntPredicate::IntEQ, a, b)
             }
 
             sym::ptr_offset_from | sym::ptr_offset_from_unsigned => {

@@ -2434,20 +2434,29 @@ extern "rust-intrinsic" {
     #[rustc_nounwind]
     pub fn ptr_offset_from_unsigned<T>(ptr: *const T, base: *const T) -> usize;
 
-    /// See documentation of `<*const T>::guaranteed_eq` for details.
-    /// Returns `2` if the result is unknown.
-    /// Returns `1` if the pointers are guaranteed equal
-    /// Returns `0` if the pointers are guaranteed inequal
-    ///
-    /// Note that, unlike most intrinsics, this is safe to call;
-    /// it does not require an `unsafe` block.
-    /// Therefore, implementations must not require the user to uphold
-    /// any safety invariants.
     #[rustc_const_unstable(feature = "const_raw_ptr_comparison", issue = "53020")]
     #[rustc_safe_intrinsic]
     #[rustc_nounwind]
+    #[cfg(bootstrap)]
     pub fn ptr_guaranteed_cmp<T>(ptr: *const T, other: *const T) -> u8;
+}
 
+/// See documentation of `<*const T>::guaranteed_eq` for details.
+/// Returns `2` if the result is unknown.
+/// Returns `1` if the pointers are guaranteed equal
+/// Returns `0` if the pointers are guaranteed inequal
+#[rustc_const_unstable(feature = "const_raw_ptr_comparison", issue = "53020")]
+#[unstable(feature = "core_intrinsics", issue = "none")]
+#[rustc_intrinsic]
+#[cfg(not(bootstrap))]
+#[rustc_nounwind]
+#[rustc_do_not_const_check]
+#[inline]
+pub const fn ptr_guaranteed_cmp<T>(ptr: *const T, other: *const T) -> u8 {
+    (ptr == other) as u8
+}
+
+extern "rust-intrinsic" {
     /// Determines whether the raw bytes of the two values are equal.
     ///
     /// This is particularly handy for arrays, since it allows things like just

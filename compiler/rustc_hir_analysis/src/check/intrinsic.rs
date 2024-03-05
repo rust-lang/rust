@@ -441,7 +441,7 @@ pub fn check_intrinsic_type(
 
             sym::ptr_guaranteed_cmp => (
                 1,
-                0,
+                1,
                 vec![Ty::new_imm_ptr(tcx, param(0)), Ty::new_imm_ptr(tcx, param(0))],
                 tcx.types.u8,
             ),
