@@ -58,10 +58,6 @@ impl Tool {
         probe_for_binary(path.join(self.name()))
     }
 
-    pub fn path_in_or_discover(self, path: &Path) -> PathBuf {
-        probe_for_binary(path.join(self.name())).unwrap_or_else(|| self.path())
-    }
-
     pub fn name(self) -> &'static str {
         match self {
             Tool::Cargo => "cargo",

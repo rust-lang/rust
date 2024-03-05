@@ -193,23 +193,26 @@ impl Sysroot {
         Ok(Sysroot::load(sysroot_dir, Some(sysroot_src_dir), metadata))
     }
 
-    pub fn set_rustup_toolchain_env(cmd: &mut Command, sysroot: Option<&Self>) {
-        if let Some(sysroot) = sysroot {
-            cmd.env("RUSTUP_TOOLCHAIN", AsRef::<std::path::Path>::as_ref(&sysroot.root));
-        }
-    }
-
-    /// Returns a `Command` that is configured to run `rustc` from the sysroot if it exists,
-    /// otherwise returns what [toolchain::Tool::Rustc] returns.
-    pub fn rustc(sysroot: Option<&Self>) -> Command {
-        let mut cmd = Command::new(match sysroot {
+    /// Returns a command to run a tool preferring the cargo proxies if the sysroot exists.
+    pub fn tool(sysroot: Option<&Self>, tool: Tool) -> Command {
+        match sysroot {
             Some(sysroot) => {
-                toolchain::Tool::Rustc.path_in_or_discover(sysroot.root.join("bin").as_ref())
+                // special case rustc, we can look that up directly in the sysroot's bin folder
+                // as it should never invoke another cargo binary
+                if let Tool::Rustc = tool {
+                    if let Some(path) =
+                        probe_for_binary(sysroot.root.join("bin").join(Tool::Rustc.name()).into())
+                    {
+                        return Command::new(path);
+                    }
+                }
+
+                let mut cmd = Command::new(tool.prefer_proxy());
+                cmd.env("RUSTUP_TOOLCHAIN", AsRef::<std::path::Path>::as_ref(&sysroot.root));
+                cmd
             }
-            None => toolchain::Tool::Rustc.path(),
-        });
-        Self::set_rustup_toolchain_env(&mut cmd, sysroot);
-        cmd
+            _ => Command::new(tool.path()),
+        }
     }
 
     pub fn discover_proc_macro_srv(&self) -> anyhow::Result<AbsPathBuf> {
