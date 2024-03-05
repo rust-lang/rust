@@ -1336,7 +1336,6 @@ name = "proc-macro-test"
 version = "0.0.0"
 dependencies = [
  "cargo_metadata",
- "toolchain",
 ]
 
 [[package]]

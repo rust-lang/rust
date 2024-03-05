@@ -18,12 +18,12 @@ use cargo_metadata::Message;
 fn main() {
     println!("cargo:rerun-if-changed=imp");
 
+    let cargo = env::var_os("CARGO").unwrap_or_else(|| "cargo".into());
+
     let has_features = env::var_os("RUSTC_BOOTSTRAP").is_some()
-        || String::from_utf8(
-            Command::new(toolchain::cargo()).arg("--version").output().unwrap().stdout,
-        )
-        .unwrap()
-        .contains("nightly");
+        || String::from_utf8(Command::new(&cargo).arg("--version").output().unwrap().stdout)
+            .unwrap()
+            .contains("nightly");
 
     let out_dir = env::var_os("OUT_DIR").unwrap();
     let out_dir = Path::new(&out_dir);
@@ -66,7 +66,7 @@ fn main() {
 
     let target_dir = out_dir.join("target");
 
-    let mut cmd = Command::new(toolchain::cargo());
+    let mut cmd = Command::new(&cargo);
     cmd.current_dir(&staging_dir)
         .args(["build", "-p", "proc-macro-test-impl", "--message-format", "json"])
         // Explicit override the target directory to avoid using the same one which the parent
@@ -96,7 +96,7 @@ fn main() {
     let repr = format!("{name} {version}");
     // New Package Id Spec since rust-lang/cargo#13311
     let pkgid = String::from_utf8(
-        Command::new(toolchain::cargo())
+        Command::new(cargo)
             .current_dir(&staging_dir)
             .args(["pkgid", name])
             .output()
