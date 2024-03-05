@@ -1293,8 +1293,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 // At least one of the candidates has been split into subcandidates.
                 // We need to change the candidate list to include those.
                 let mut new_candidates = Vec::new();
-
-                for candidate in candidates {
+                for candidate in candidates.iter_mut() {
                     candidate.visit_leaves(|leaf_candidate| new_candidates.push(leaf_candidate));
                 }
                 self.match_simplified_candidates(
@@ -1304,6 +1303,10 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     otherwise_block,
                     &mut *new_candidates,
                 );
+
+                for candidate in candidates {
+                    self.merge_trivial_subcandidates(candidate);
+                }
             } else {
                 self.match_simplified_candidates(
                     span,
