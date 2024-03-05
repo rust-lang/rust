@@ -757,13 +757,6 @@ fn codegen_regular_intrinsic_call<'tcx>(
             ret.write_cvalue(fx, val);
         }
 
-        sym::ptr_guaranteed_cmp => {
-            intrinsic_args!(fx, args => (a, b); intrinsic);
-
-            let val = crate::num::codegen_ptr_binop(fx, BinOp::Eq, a, b).load_scalar(fx);
-            ret.write_cvalue(fx, CValue::by_val(val, fx.layout_of(fx.tcx.types.u8)));
-        }
-
         sym::caller_location => {
             intrinsic_args!(fx, args => (); intrinsic);
 
