@@ -16,6 +16,7 @@ pub fn target() -> Target {
         //
         // While ld64 doesn't understand i686, LLVM does.
         llvm_target: macos_llvm_target(Arch::I686).into(),
+        description: None,
         pointer_width: 32,
         data_layout: "e-m:o-p:32:32-p270:32:32-p271:32:32-p272:64:64-\
             i128:128-f64:32:64-f80:128-n8:16:32-S128"

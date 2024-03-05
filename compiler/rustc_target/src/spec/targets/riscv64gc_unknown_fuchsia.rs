@@ -3,6 +3,7 @@ use crate::spec::{base, CodeModel, SanitizerSet, Target, TargetOptions};
 pub fn target() -> Target {
     Target {
         llvm_target: "riscv64-unknown-fuchsia".into(),
+        description: None,
         pointer_width: 64,
         data_layout: "e-m:e-p:64:64-i64:64-i128:128-n32:64-S128".into(),
         arch: "riscv64".into(),

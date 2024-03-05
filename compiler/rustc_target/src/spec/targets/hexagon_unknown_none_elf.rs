@@ -3,6 +3,7 @@ use crate::spec::{PanicStrategy, Target, TargetOptions};
 pub fn target() -> Target {
     Target {
         llvm_target: "hexagon-unknown-none-elf".into(),
+        description: None,
         pointer_width: 32,
         data_layout: concat!(
             "e-m:e-p:32:32:32-a:0-n16:32-i64:64:64-i32:32",
