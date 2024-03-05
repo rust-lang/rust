@@ -117,6 +117,7 @@ pub const fn panic_nounwind_fmt(fmt: fmt::Arguments<'_>, force_no_backtrace: boo
         panic_fmt(fmt);
     }
 
+    #[cfg_attr(not(bootstrap), allow(unused_unsafe))] // on bootstrap bump, remove unsafe block
     // SAFETY: const panic does not care about unwinding
     unsafe {
         super::intrinsics::const_eval_select((fmt, force_no_backtrace), comptime, runtime);

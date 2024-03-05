@@ -385,6 +385,7 @@ pub const fn handle_alloc_error(layout: Layout) -> ! {
     }
 
     #[cfg(not(feature = "panic_immediate_abort"))]
+    #[cfg_attr(not(bootstrap), allow(unused_unsafe))] // on bootstrap bump, remove unsafe block
     unsafe {
         core::intrinsics::const_eval_select((layout,), ct_error, rt_error)
     }

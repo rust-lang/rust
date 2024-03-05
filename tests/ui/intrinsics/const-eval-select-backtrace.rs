@@ -12,8 +12,5 @@ fn uhoh() {
 const fn c() {}
 
 fn main() {
-    // safety: this is unsound and just used to test
-    unsafe {
-        std::intrinsics::const_eval_select((), c, uhoh);
-    }
+    std::intrinsics::const_eval_select((), c, uhoh);
 }

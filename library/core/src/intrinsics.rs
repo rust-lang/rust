@@ -2514,6 +2514,8 @@ extern "rust-intrinsic" {
     /// intrinsic will be replaced with a call to `called_in_const`. It gets
     /// replaced with a call to `called_at_rt` otherwise.
     ///
+    /// This function is safe to call, but note the stability concerns below.
+    ///
     /// # Type Requirements
     ///
     /// The two functions must be both function items. They cannot be function
@@ -2523,45 +2525,47 @@ extern "rust-intrinsic" {
     /// the two functions, therefore, both functions must accept the same type of
     /// arguments. Both functions must return RET.
     ///
-    /// # Safety
+    /// # Stability concerns
     ///
-    /// The two functions must behave observably equivalent. Safe code in other
-    /// crates may assume that calling a `const fn` at compile-time and at run-time
-    /// produces the same result. A function that produces a different result when
-    /// evaluated at run-time, or has any other observable side-effects, is
-    /// *unsound*.
+    /// Rust has not yet decided that `const fn` are allowed to tell whether
+    /// they run at compile-time or at runtime. Therefore, when using this
+    /// intrinsic anywhere that can be reached from stable, it is crucial that
+    /// the end-to-end behavior of the stable `const fn` is the same for both
+    /// modes of execution. (Here, Undefined Behavior is considered "the same"
+    /// as any other behavior, so if the function exhibits UB at runtime then
+    /// it may do whatever it wants at compile-time.)
     ///
     /// Here is an example of how this could cause a problem:
     /// ```no_run
     /// #![feature(const_eval_select)]
     /// #![feature(core_intrinsics)]
     /// # #![allow(internal_features)]
-    /// use std::hint::unreachable_unchecked;
+    /// # #![cfg_attr(bootstrap, allow(unused))]
     /// use std::intrinsics::const_eval_select;
     ///
-    /// // Crate A
+    /// // Standard library
+    /// # #[cfg(not(bootstrap))]
     /// pub const fn inconsistent() -> i32 {
     ///     fn runtime() -> i32 { 1 }
     ///     const fn compiletime() -> i32 { 2 }
     ///
-    ///     unsafe {
-    //          // ⚠ This code violates the required equivalence of `compiletime`
-    ///         // and `runtime`.
-    ///         const_eval_select((), compiletime, runtime)
-    ///     }
+    //      // ⚠ This code violates the required equivalence of `compiletime`
+    ///     // and `runtime`.
+    ///     const_eval_select((), compiletime, runtime)
     /// }
+    /// # #[cfg(bootstrap)]
+    /// # pub const fn inconsistent() -> i32 { 0 }
     ///
-    /// // Crate B
+    /// // User Crate
     /// const X: i32 = inconsistent();
     /// let x = inconsistent();
-    /// if x != X { unsafe { unreachable_unchecked(); }}
+    /// assert_eq!(x, X);
     /// ```
     ///
-    /// This code causes Undefined Behavior when being run, since the
-    /// `unreachable_unchecked` is actually being reached. The bug is in *crate A*,
-    /// which violates the principle that a `const fn` must behave the same at
-    /// compile-time and at run-time. The unsafe code in crate B is fine.
+    /// Currently such an assertion would always succeed; until Rust decides
+    /// otherwise, that principle should not be violated.
     #[rustc_const_unstable(feature = "const_eval_select", issue = "none")]
+    #[cfg_attr(not(bootstrap), rustc_safe_intrinsic)]
     pub fn const_eval_select<ARG: Tuple, F, G, RET>(
         arg: ARG,
         called_in_const: F,
