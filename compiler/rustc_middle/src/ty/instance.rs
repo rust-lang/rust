@@ -125,13 +125,6 @@ pub enum InstanceDef<'tcx> {
     /// glue.
     DropGlue(DefId, Option<Ty<'tcx>>),
 
-    // /// Compiler-generated `<T as AsyncDroppable>::AsyncInPlaceDropper::poll` implementation.
-    // ///
-    // /// The `DefId` is for `core::ptr::drop_in_place`.
-    // /// The `Option<Ty<'tcx>>` is either `Some(T)`, or `None` for empty drop
-    // /// glue.
-    // AsyncDropGlue(DefId, Option<Ty<'tcx>>),
-    //
     /// Compiler-generated `<T as Clone>::clone` implementation.
     ///
     /// For all types that automatically implement `Copy`, a trivial `Clone` impl is provided too.
