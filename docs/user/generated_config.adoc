@@ -386,6 +386,11 @@ have more false positives than usual.
 Map of prefixes to be substituted when parsing diagnostic file paths.
 This should be the reverse mapping of what is passed to `rustc` as `--remap-path-prefix`.
 --
+[[rust-analyzer.diagnostics.styleLints.enable]]rust-analyzer.diagnostics.styleLints.enable (default: `false`)::
++
+--
+Whether to run additional style lints.
+--
 [[rust-analyzer.diagnostics.warningsAsHint]]rust-analyzer.diagnostics.warningsAsHint (default: `[]`)::
 +
 --

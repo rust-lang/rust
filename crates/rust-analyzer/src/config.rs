@@ -311,6 +311,8 @@ config_data! {
         /// Map of prefixes to be substituted when parsing diagnostic file paths.
         /// This should be the reverse mapping of what is passed to `rustc` as `--remap-path-prefix`.
         diagnostics_remapPrefix: FxHashMap<String, String> = "{}",
+        /// Whether to run additional style lints.
+        diagnostics_styleLints_enable: bool =    "false",
         /// List of warnings that should be displayed with hint severity.
         ///
         /// The warnings will be indicated by faded text or three dots in code
@@ -1162,6 +1164,7 @@ impl Config {
             insert_use: self.insert_use_config(),
             prefer_no_std: self.data.imports_preferNoStd,
             prefer_prelude: self.data.imports_preferPrelude,
+            style_lints: self.data.diagnostics_styleLints_enable,
         }
     }
 

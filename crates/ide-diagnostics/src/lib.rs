@@ -227,6 +227,7 @@ pub struct DiagnosticsConfig {
     pub disable_experimental: bool,
     pub disabled: FxHashSet<String>,
     pub expr_fill_default: ExprFillDefaultMode,
+    pub style_lints: bool,
     // FIXME: We may want to include a whole `AssistConfig` here
     pub insert_use: InsertUseConfig,
     pub prefer_no_std: bool,
@@ -245,6 +246,7 @@ impl DiagnosticsConfig {
             disable_experimental: Default::default(),
             disabled: Default::default(),
             expr_fill_default: Default::default(),
+            style_lints: true,
             insert_use: InsertUseConfig {
                 granularity: ImportGranularity::Preserve,
                 enforce_granularity: false,
@@ -324,7 +326,7 @@ pub fn diagnostics(
 
     let mut diags = Vec::new();
     if let Some(m) = module {
-        m.diagnostics(db, &mut diags);
+        m.diagnostics(db, &mut diags, config.style_lints);
     }
 
     for diag in diags {
