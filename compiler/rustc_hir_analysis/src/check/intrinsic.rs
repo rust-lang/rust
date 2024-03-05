@@ -579,7 +579,7 @@ pub fn check_intrinsic_type(
 
             sym::is_val_statically_known => (1, 1, vec![param(0)], tcx.types.bool),
 
-            sym::const_eval_select => (4, 0, vec![param(0), param(1), param(2)], param(3)),
+            sym::const_eval_select => (4, 1, vec![param(0), param(1), param(2)], param(3)),
 
             sym::vtable_size | sym::vtable_align => {
                 (0, 0, vec![Ty::new_imm_ptr(tcx, Ty::new_unit(tcx))], tcx.types.usize)

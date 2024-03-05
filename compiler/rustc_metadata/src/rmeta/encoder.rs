@@ -1704,8 +1704,10 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         {
             for &local_def_id in tcx.mir_keys(()) {
                 if let DefKind::AssocFn | DefKind::Fn = tcx.def_kind(local_def_id) {
-                    record_array!(self.tables.deduced_param_attrs[local_def_id.to_def_id()] <-
-                        self.tcx.deduced_param_attrs(local_def_id.to_def_id()));
+                    if tcx.intrinsic(local_def_id).map_or(true, |i| !i.must_be_overridden) {
+                        record_array!(self.tables.deduced_param_attrs[local_def_id.to_def_id()] <-
+                            self.tcx.deduced_param_attrs(local_def_id.to_def_id()));
+                    }
                 }
             }
         }

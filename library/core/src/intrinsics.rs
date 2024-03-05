@@ -2508,62 +2508,7 @@ extern "rust-intrinsic" {
     #[rustc_nounwind]
     pub fn vtable_align(ptr: *const ()) -> usize;
 
-    /// Selects which function to call depending on the context.
-    ///
-    /// If this function is evaluated at compile-time, then a call to this
-    /// intrinsic will be replaced with a call to `called_in_const`. It gets
-    /// replaced with a call to `called_at_rt` otherwise.
-    ///
-    /// This function is safe to call, but note the stability concerns below.
-    ///
-    /// # Type Requirements
-    ///
-    /// The two functions must be both function items. They cannot be function
-    /// pointers or closures. The first function must be a `const fn`.
-    ///
-    /// `arg` will be the tupled arguments that will be passed to either one of
-    /// the two functions, therefore, both functions must accept the same type of
-    /// arguments. Both functions must return RET.
-    ///
-    /// # Stability concerns
-    ///
-    /// Rust has not yet decided that `const fn` are allowed to tell whether
-    /// they run at compile-time or at runtime. Therefore, when using this
-    /// intrinsic anywhere that can be reached from stable, it is crucial that
-    /// the end-to-end behavior of the stable `const fn` is the same for both
-    /// modes of execution. (Here, Undefined Behavior is considered "the same"
-    /// as any other behavior, so if the function exhibits UB at runtime then
-    /// it may do whatever it wants at compile-time.)
-    ///
-    /// Here is an example of how this could cause a problem:
-    /// ```no_run
-    /// #![feature(const_eval_select)]
-    /// #![feature(core_intrinsics)]
-    /// # #![allow(internal_features)]
-    /// # #![cfg_attr(bootstrap, allow(unused))]
-    /// use std::intrinsics::const_eval_select;
-    ///
-    /// // Standard library
-    /// # #[cfg(not(bootstrap))]
-    /// pub const fn inconsistent() -> i32 {
-    ///     fn runtime() -> i32 { 1 }
-    ///     const fn compiletime() -> i32 { 2 }
-    ///
-    //      // ⚠ This code violates the required equivalence of `compiletime`
-    ///     // and `runtime`.
-    ///     const_eval_select((), compiletime, runtime)
-    /// }
-    /// # #[cfg(bootstrap)]
-    /// # pub const fn inconsistent() -> i32 { 0 }
-    ///
-    /// // User Crate
-    /// const X: i32 = inconsistent();
-    /// let x = inconsistent();
-    /// assert_eq!(x, X);
-    /// ```
-    ///
-    /// Currently such an assertion would always succeed; until Rust decides
-    /// otherwise, that principle should not be violated.
+    #[cfg(bootstrap)]
     #[rustc_const_unstable(feature = "const_eval_select", issue = "none")]
     #[cfg_attr(not(bootstrap), rustc_safe_intrinsic)]
     pub fn const_eval_select<ARG: Tuple, F, G, RET>(
@@ -2574,6 +2519,79 @@ extern "rust-intrinsic" {
     where
         G: FnOnce<ARG, Output = RET>,
         F: FnOnce<ARG, Output = RET>;
+}
+
+/// Selects which function to call depending on the context.
+///
+/// If this function is evaluated at compile-time, then a call to this
+/// intrinsic will be replaced with a call to `called_in_const`. It gets
+/// replaced with a call to `called_at_rt` otherwise.
+///
+/// This function is safe to call, but note the stability concerns below.
+///
+/// # Type Requirements
+///
+/// The two functions must be both function items. They cannot be function
+/// pointers or closures. The first function must be a `const fn`.
+///
+/// `arg` will be the tupled arguments that will be passed to either one of
+/// the two functions, therefore, both functions must accept the same type of
+/// arguments. Both functions must return RET.
+///
+/// # Stability concerns
+///
+/// Rust has not yet decided that `const fn` are allowed to tell whether
+/// they run at compile-time or at runtime. Therefore, when using this
+/// intrinsic anywhere that can be reached from stable, it is crucial that
+/// the end-to-end behavior of the stable `const fn` is the same for both
+/// modes of execution. (Here, Undefined Behavior is considered "the same"
+/// as any other behavior, so if the function exhibits UB at runtime then
+/// it may do whatever it wants at compile-time.)
+///
+/// Here is an example of how this could cause a problem:
+/// ```no_run
+/// #![feature(const_eval_select)]
+/// #![feature(core_intrinsics)]
+/// # #![allow(internal_features)]
+/// # #![cfg_attr(bootstrap, allow(unused))]
+/// use std::intrinsics::const_eval_select;
+///
+/// // Standard library
+/// # #[cfg(not(bootstrap))]
+/// pub const fn inconsistent() -> i32 {
+///     fn runtime() -> i32 { 1 }
+///     const fn compiletime() -> i32 { 2 }
+///
+//      // ⚠ This code violates the required equivalence of `compiletime`
+///     // and `runtime`.
+///     const_eval_select((), compiletime, runtime)
+/// }
+/// # #[cfg(bootstrap)]
+/// # pub const fn inconsistent() -> i32 { 0 }
+///
+/// // User Crate
+/// const X: i32 = inconsistent();
+/// let x = inconsistent();
+/// assert_eq!(x, X);
+/// ```
+///
+/// Currently such an assertion would always succeed; until Rust decides
+/// otherwise, that principle should not be violated.
+#[rustc_const_unstable(feature = "const_eval_select", issue = "none")]
+#[unstable(feature = "core_intrinsics", issue = "none")]
+#[cfg(not(bootstrap))]
+#[rustc_intrinsic]
+#[rustc_intrinsic_must_be_overridden]
+pub const fn const_eval_select<ARG: Tuple, F, G, RET>(
+    _arg: ARG,
+    _called_in_const: F,
+    _called_at_rt: G,
+) -> RET
+where
+    G: FnOnce<ARG, Output = RET>,
+    F: FnOnce<ARG, Output = RET>,
+{
+    unreachable!()
 }
 
 /// Returns whether the argument's value is statically known at
