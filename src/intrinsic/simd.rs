@@ -1,3 +1,5 @@
+use std::iter::FromIterator;
+
 use gccjit::ToRValue;
 use gccjit::{BinaryOp, RValue, Type};
 #[cfg(feature = "master")]
@@ -19,6 +21,8 @@ use rustc_span::{sym, Span, Symbol};
 use rustc_target::abi::Align;
 
 use crate::builder::Builder;
+#[cfg(not(feature = "master"))]
+use crate::common::SignType;
 #[cfg(feature = "master")]
 use crate::context::CodegenCx;
 
@@ -154,6 +158,197 @@ pub fn generic_simd_intrinsic<'a, 'gcc, 'tcx>(
         // FIXME(antoyo): allow comparing vector types as equal in libgccjit.
         let arg2 = bx.context.new_bitcast(None, args[1].immediate(), arg1.get_type());
         return Ok(compare_simd_types(bx, arg1, arg2, in_elem, llret_ty, cmp_op));
+    }
+
+    let simd_bswap = |bx: &mut Builder<'a, 'gcc, 'tcx>, vector: RValue<'gcc>| -> RValue<'gcc> {
+        let v_type = vector.get_type();
+        let vector_type = v_type.unqualified().dyncast_vector().expect("vector type");
+        let elem_type = vector_type.get_element_type();
+        let elem_size_bytes = elem_type.get_size();
+        if elem_size_bytes == 1 {
+            return vector;
+        }
+
+        let type_size_bytes = elem_size_bytes as u64 * in_len;
+        let shuffle_indices = Vec::from_iter(0..type_size_bytes);
+        let byte_vector_type = bx.context.new_vector_type(bx.type_u8(), type_size_bytes);
+        let byte_vector = bx.context.new_bitcast(None, args[0].immediate(), byte_vector_type);
+
+        #[cfg(not(feature = "master"))]
+        let shuffled = {
+            let new_elements: Vec<_> = shuffle_indices
+                .chunks_exact(elem_size_bytes as _)
+                .flat_map(|x| x.iter().rev())
+                .map(|&i| {
+                    let index = bx.context.new_rvalue_from_long(bx.u64_type, i as _);
+                    bx.extract_element(byte_vector, index)
+                })
+                .collect();
+
+            bx.context.new_rvalue_from_vector(None, byte_vector_type, &new_elements)
+        };
+        #[cfg(feature = "master")]
+        let shuffled = {
+            let indices: Vec<_> = shuffle_indices
+                .chunks_exact(elem_size_bytes as _)
+                .flat_map(|x| x.iter().rev())
+                .map(|&i| bx.context.new_rvalue_from_int(bx.u8_type, i as _))
+                .collect();
+
+            let mask = bx.context.new_rvalue_from_vector(None, byte_vector_type, &indices);
+            bx.context.new_rvalue_vector_perm(None, byte_vector, byte_vector, mask)
+        };
+        bx.context.new_bitcast(None, shuffled, v_type)
+    };
+
+    if name == sym::simd_bswap || name == sym::simd_bitreverse {
+        require!(
+            bx.type_kind(bx.element_type(llret_ty)) == TypeKind::Integer,
+            InvalidMonomorphization::UnsupportedOperation { span, name, in_ty, in_elem }
+        );
+    }
+
+    if name == sym::simd_bswap {
+        return Ok(simd_bswap(bx, args[0].immediate()));
+    }
+
+    // We use a different algorithm from non-vector bitreverse to take advantage of most
+    // processors' vector shuffle units.  It works like this:
+    // 1. Generate pre-reversed low and high nibbles as a vector.
+    // 2. Byte-swap the input.
+    // 3. Mask off the low and high nibbles of each byte in the byte-swapped input.
+    // 4. Shuffle the pre-reversed low and high-nibbles using the masked nibbles as a shuffle mask.
+    // 5. Combine the results of the shuffle back together and cast back to the original type.
+    #[cfg(feature = "master")]
+    if name == sym::simd_bitreverse {
+        let vector = args[0].immediate();
+        let v_type = vector.get_type();
+        let vector_type = v_type.unqualified().dyncast_vector().expect("vector type");
+        let elem_type = vector_type.get_element_type();
+        let elem_size_bytes = elem_type.get_size();
+
+        let type_size_bytes = elem_size_bytes as u64 * in_len;
+        // We need to ensure at least 16 entries in our vector type, since the pre-reversed vectors
+        // we generate below have 16 entries in them.  `new_rvalue_vector_perm` requires the mask
+        // vector to be of the same length as the source vectors.
+        let byte_vector_type_size = type_size_bytes.max(16);
+
+        let byte_vector_type = bx.context.new_vector_type(bx.u8_type, type_size_bytes);
+        let long_byte_vector_type = bx.context.new_vector_type(bx.u8_type, byte_vector_type_size);
+
+        // Step 1: Generate pre-reversed low and high nibbles as a vector.
+        let zero_byte = bx.context.new_rvalue_zero(bx.u8_type);
+        let hi_nibble_elements: Vec<_> = (0u8..16)
+            .map(|x| bx.context.new_rvalue_from_int(bx.u8_type, x.reverse_bits() as _))
+            .chain((16..byte_vector_type_size).map(|_| zero_byte))
+            .collect();
+        let hi_nibble =
+            bx.context.new_rvalue_from_vector(None, long_byte_vector_type, &hi_nibble_elements);
+
+        let lo_nibble_elements: Vec<_> = (0u8..16)
+            .map(|x| bx.context.new_rvalue_from_int(bx.u8_type, (x.reverse_bits() >> 4) as _))
+            .chain((16..byte_vector_type_size).map(|_| zero_byte))
+            .collect();
+        let lo_nibble =
+            bx.context.new_rvalue_from_vector(None, long_byte_vector_type, &lo_nibble_elements);
+
+        let mask = bx.context.new_rvalue_from_vector(
+            None,
+            long_byte_vector_type,
+            &vec![bx.context.new_rvalue_from_int(bx.u8_type, 0x0f); byte_vector_type_size as _],
+        );
+
+        let four_vec = bx.context.new_rvalue_from_vector(
+            None,
+            long_byte_vector_type,
+            &vec![bx.context.new_rvalue_from_int(bx.u8_type, 4); byte_vector_type_size as _],
+        );
+
+        // Step 2: Byte-swap the input.
+        let swapped = simd_bswap(bx, args[0].immediate());
+        let byte_vector = bx.context.new_bitcast(None, swapped, byte_vector_type);
+
+        // We're going to need to extend the vector with zeros to make sure that the types are the
+        // same, since that's what new_rvalue_vector_perm expects.
+        let byte_vector = if byte_vector_type_size > type_size_bytes {
+            let mut byte_vector_elements = Vec::with_capacity(byte_vector_type_size as _);
+            for i in 0..type_size_bytes {
+                let idx = bx.context.new_rvalue_from_int(bx.u32_type, i as _);
+                let val = bx.extract_element(byte_vector, idx);
+                byte_vector_elements.push(val);
+            }
+            for _ in type_size_bytes..byte_vector_type_size {
+                byte_vector_elements.push(zero_byte);
+            }
+            bx.context.new_rvalue_from_vector(None, long_byte_vector_type, &byte_vector_elements)
+        } else {
+            bx.context.new_bitcast(None, byte_vector, long_byte_vector_type)
+        };
+
+        // Step 3: Mask off the low and high nibbles of each byte in the byte-swapped input.
+        let masked_hi = (byte_vector >> four_vec) & mask;
+        let masked_lo = byte_vector & mask;
+
+        // Step 4: Shuffle the pre-reversed low and high-nibbles using the masked nibbles as a shuffle mask.
+        let hi = bx.context.new_rvalue_vector_perm(None, hi_nibble, hi_nibble, masked_lo);
+        let lo = bx.context.new_rvalue_vector_perm(None, lo_nibble, lo_nibble, masked_hi);
+
+        // Step 5: Combine the results of the shuffle back together and cast back to the original type.
+        let result = hi | lo;
+        let cast_ty =
+            bx.context.new_vector_type(elem_type, byte_vector_type_size / (elem_size_bytes as u64));
+
+        // we might need to truncate if sizeof(v_type) < sizeof(cast_type)
+        if type_size_bytes < byte_vector_type_size {
+            let cast_result = bx.context.new_bitcast(None, result, cast_ty);
+            let elems: Vec<_> = (0..in_len)
+                .map(|i| {
+                    let idx = bx.context.new_rvalue_from_int(bx.u32_type, i as _);
+                    bx.extract_element(cast_result, idx)
+                })
+                .collect();
+            return Ok(bx.context.new_rvalue_from_vector(None, v_type, &elems));
+        } else {
+            // avoid the unnecessary truncation as an optimization.
+            return Ok(bx.context.new_bitcast(None, result, v_type));
+        }
+    }
+    // since gcc doesn't have vector shuffle methods available in non-patched builds, fallback to
+    // component-wise bitreverses if they're not available.
+    #[cfg(not(feature = "master"))]
+    if name == sym::simd_bitreverse {
+        let vector = args[0].immediate();
+        let vector_ty = vector.get_type();
+        let vector_type = vector_ty.unqualified().dyncast_vector().expect("vector type");
+        let num_elements = vector_type.get_num_units();
+
+        let elem_type = vector_type.get_element_type();
+        let elem_size_bytes = elem_type.get_size();
+        let num_type = elem_type.to_unsigned(bx.cx);
+        let new_elements: Vec<_> = (0..num_elements)
+            .map(|idx| {
+                let index = bx.context.new_rvalue_from_long(num_type, idx as _);
+                let extracted_value = bx.extract_element(vector, index).to_rvalue();
+                bx.bit_reverse(elem_size_bytes as u64 * 8, extracted_value)
+            })
+            .collect();
+        return Ok(bx.context.new_rvalue_from_vector(None, vector_ty, &new_elements));
+    }
+
+    if name == sym::simd_ctlz || name == sym::simd_cttz {
+        let vector = args[0].immediate();
+        let elements: Vec<_> = (0..in_len)
+            .map(|i| {
+                let index = bx.context.new_rvalue_from_long(bx.i32_type, i as i64);
+                let value = bx.extract_element(vector, index).to_rvalue();
+                if name == sym::simd_ctlz {
+                    bx.count_leading_zeroes(value.get_type().get_size() as u64 * 8, value)
+                } else {
+                    bx.count_trailing_zeroes(value.get_type().get_size() as u64 * 8, value)
+                }
+            })
+            .collect();
+        return Ok(bx.context.new_rvalue_from_vector(None, vector.get_type(), &elements));
     }
 
     if name == sym::simd_shuffle {
@@ -504,20 +699,15 @@ pub fn generic_simd_intrinsic<'a, 'gcc, 'tcx>(
         default: RValue<'gcc>,
         pointers: RValue<'gcc>,
         mask: RValue<'gcc>,
-        pointer_count: usize,
         bx: &mut Builder<'a, 'gcc, 'tcx>,
         in_len: u64,
-        underlying_ty: Ty<'tcx>,
         invert: bool,
     ) -> RValue<'gcc> {
-        let vector_type = if pointer_count > 1 {
-            bx.context.new_vector_type(bx.usize_type, in_len)
-        } else {
-            vector_ty(bx, underlying_ty, in_len)
-        };
-        let elem_type = vector_type.dyncast_vector().expect("vector type").get_element_type();
+        let vector_type = default.get_type();
+        let elem_type =
+            vector_type.unqualified().dyncast_vector().expect("vector type").get_element_type();
 
-        let mut values = vec![];
+        let mut values = Vec::with_capacity(in_len as usize);
         for i in 0..in_len {
             let index = bx.context.new_rvalue_from_long(bx.i32_type, i as i64);
             let int = bx.context.new_vector_access(None, pointers, index).to_rvalue();
@@ -530,13 +720,15 @@ pub fn generic_simd_intrinsic<'a, 'gcc, 'tcx>(
 
         let vector = bx.context.new_rvalue_from_vector(None, vector_type, &values);
 
-        let mut mask_types = vec![];
-        let mut mask_values = vec![];
+        let mut mask_types = Vec::with_capacity(in_len as usize);
+        let mut mask_values = Vec::with_capacity(in_len as usize);
         for i in 0..in_len {
             let index = bx.context.new_rvalue_from_long(bx.i32_type, i as i64);
             mask_types.push(bx.context.new_field(None, bx.i32_type, "m"));
             let mask_value = bx.context.new_vector_access(None, mask, index).to_rvalue();
-            let masked = bx.context.new_rvalue_from_int(bx.i32_type, in_len as i32) & mask_value;
+            let mask_value_cast = bx.context.new_cast(None, mask_value, bx.i32_type);
+            let masked =
+                bx.context.new_rvalue_from_int(bx.i32_type, in_len as i32) & mask_value_cast;
             let value = index + masked;
             mask_values.push(value);
         }
@@ -665,10 +857,8 @@ pub fn generic_simd_intrinsic<'a, 'gcc, 'tcx>(
             args[0].immediate(),
             args[1].immediate(),
             args[2].immediate(),
-            pointer_count,
             bx,
             in_len,
-            underlying_ty,
             false,
         ));
     }
@@ -779,16 +969,8 @@ pub fn generic_simd_intrinsic<'a, 'gcc, 'tcx>(
             }
         }
 
-        let result = gather(
-            args[0].immediate(),
-            args[1].immediate(),
-            args[2].immediate(),
-            pointer_count,
-            bx,
-            in_len,
-            underlying_ty,
-            true,
-        );
+        let result =
+            gather(args[0].immediate(), args[1].immediate(), args[2].immediate(), bx, in_len, true);
 
         let pointers = args[1].immediate();
 

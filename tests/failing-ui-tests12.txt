@@ -9,6 +9,7 @@ tests/ui/packed/packed-struct-vec.rs
 tests/ui/packed/packed-tuple-struct-layout.rs
 tests/ui/simd/array-type.rs
 tests/ui/simd/intrinsic/float-minmax-pass.rs
+tests/ui/simd/intrinsic/generic-arithmetic-pass.rs
 tests/ui/simd/intrinsic/generic-arithmetic-saturating-pass.rs
 tests/ui/simd/intrinsic/generic-as.rs
 tests/ui/simd/intrinsic/generic-cast-pass.rs
@@ -32,11 +33,16 @@ tests/ui/coroutine/size-moved-locals.rs
 tests/ui/macros/rfc-2011-nicer-assert-messages/all-not-available-cases.rs
 tests/ui/simd/intrinsic/generic-gather-pass.rs
 tests/ui/simd/issue-85915-simd-ptrs.rs
+tests/ui/simd/issue-89193.rs
 tests/ui/issues/issue-68010-large-zst-consts.rs
 tests/ui/rust-2018/proc-macro-crate-in-paths.rs
 tests/ui/target-feature/missing-plusminus.rs
 tests/ui/sse2.rs
 tests/ui/codegen/issue-79865-llvm-miscompile.rs
-tests/ui/intrinsics/intrinsics-integer.rs
 tests/ui/std-backtrace.rs
 tests/ui/mir/alignment/packed.rs
+tests/ui/intrinsics/intrinsics-integer.rs
+tests/ui/asm/x86_64/evex512-implicit-feature.rs
+tests/ui/packed/dyn-trait.rs
+tests/ui/packed/issue-118537-field-offset-ice.rs
+tests/ui/stable-mir-print/basic_function.rs

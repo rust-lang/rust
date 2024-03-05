@@ -1,6 +1,6 @@
 tests/ui/lint/unsafe_code/forge_unsafe_block.rs
 tests/ui/lint/unused-qualification-in-derive-expansion.rs
-tests/ui/macro-quote-test.rs
+tests/ui/macros/macro-quote-test.rs
 tests/ui/macros/proc_macro.rs
 tests/ui/panic-runtime/lto-unwind.rs
 tests/ui/resolve/derive-macro-1.rs
@@ -21,3 +21,12 @@ tests/ui/fmt/format-args-capture-issue-106408.rs
 tests/ui/fmt/indoc-issue-106408.rs
 tests/ui/hygiene/issue-77523-def-site-async-await.rs
 tests/ui/inherent-impls-overlap-check/no-overlap.rs
+tests/ui/enum-discriminant/issue-46519.rs
+tests/ui/issues/issue-45731.rs
+tests/ui/lint/test-allow-dead-extern-static-no-warning.rs
+tests/ui/macros/macro-comma-behavior-rpass.rs
+tests/ui/macros/rfc-2011-nicer-assert-messages/assert-with-custom-errors-does-not-create-unnecessary-code.rs
+tests/ui/macros/rfc-2011-nicer-assert-messages/feature-gate-generic_assert.rs
+tests/ui/macros/stringify.rs
+tests/ui/reexport-test-harness-main.rs
+tests/ui/rfcs/rfc-1937-termination-trait/termination-trait-in-test.rs

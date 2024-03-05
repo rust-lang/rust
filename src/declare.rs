@@ -1,6 +1,6 @@
-use gccjit::{Function, FunctionType, GlobalKind, LValue, RValue, Type};
-#[cfg(feature="master")]
+#[cfg(feature = "master")]
 use gccjit::{FnAttribute, ToRValue};
+use gccjit::{Function, FunctionType, GlobalKind, LValue, RValue, Type};
 use rustc_codegen_ssa::traits::BaseTypeMethods;
 use rustc_middle::ty::Ty;
 use rustc_span::Symbol;
@@ -11,7 +11,13 @@ use crate::context::CodegenCx;
 use crate::intrinsic::llvm;
 
 impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
-    pub fn get_or_insert_global(&self, name: &str, ty: Type<'gcc>, is_tls: bool, link_section: Option<Symbol>) -> LValue<'gcc> {
+    pub fn get_or_insert_global(
+        &self,
+        name: &str,
+        ty: Type<'gcc>,
+        is_tls: bool,
+        link_section: Option<Symbol>,
+    ) -> LValue<'gcc> {
         if self.globals.borrow().contains_key(name) {
             let typ = self.globals.borrow()[name].get_type();
             let global = self.context.new_global(None, GlobalKind::Imported, typ, name);
@@ -22,8 +28,7 @@ impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
                 global.set_link_section(link_section.as_str());
             }
             global
-        }
-        else {
+        } else {
             self.declare_global(name, ty, GlobalKind::Exported, is_tls, link_section)
         }
     }
@@ -33,19 +38,37 @@ impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
         self.context.new_global(None, GlobalKind::Internal, ty, &name)
     }
 
-    pub fn declare_global_with_linkage(&self, name: &str, ty: Type<'gcc>, linkage: GlobalKind) -> LValue<'gcc> {
+    pub fn declare_global_with_linkage(
+        &self,
+        name: &str,
+        ty: Type<'gcc>,
+        linkage: GlobalKind,
+    ) -> LValue<'gcc> {
         let global = self.context.new_global(None, linkage, ty, name);
         let global_address = global.get_address(None);
         self.globals.borrow_mut().insert(name.to_string(), global_address);
         global
     }
 
-    pub fn declare_func(&self, name: &str, return_type: Type<'gcc>, params: &[Type<'gcc>], variadic: bool) -> Function<'gcc> {
+    pub fn declare_func(
+        &self,
+        name: &str,
+        return_type: Type<'gcc>,
+        params: &[Type<'gcc>],
+        variadic: bool,
+    ) -> Function<'gcc> {
         self.linkage.set(FunctionType::Extern);
         declare_raw_fn(self, name, () /*llvm::CCallConv*/, return_type, params, variadic)
     }
 
-    pub fn declare_global(&self, name: &str, ty: Type<'gcc>, global_kind: GlobalKind, is_tls: bool, link_section: Option<Symbol>) -> LValue<'gcc> {
+    pub fn declare_global(
+        &self,
+        name: &str,
+        ty: Type<'gcc>,
+        global_kind: GlobalKind,
+        is_tls: bool,
+        link_section: Option<Symbol>,
+    ) -> LValue<'gcc> {
         let global = self.context.new_global(None, global_kind, ty, name);
         if is_tls {
             global.set_tls_model(self.tls_model);
@@ -65,13 +88,25 @@ impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
         global
     }
 
-    pub fn declare_entry_fn(&self, name: &str, _fn_type: Type<'gcc>, callconv: () /*llvm::CCallConv*/) -> RValue<'gcc> {
+    pub fn declare_entry_fn(
+        &self,
+        name: &str,
+        _fn_type: Type<'gcc>,
+        callconv: (), /*llvm::CCallConv*/
+    ) -> RValue<'gcc> {
         // TODO(antoyo): use the fn_type parameter.
         let const_string = self.context.new_type::<u8>().make_pointer().make_pointer();
         let return_type = self.type_i32();
         let variadic = false;
         self.linkage.set(FunctionType::Exported);
-        let func = declare_raw_fn(self, name, callconv, return_type, &[self.type_i32(), const_string], variadic);
+        let func = declare_raw_fn(
+            self,
+            name,
+            callconv,
+            return_type,
+            &[self.type_i32(), const_string],
+            variadic,
+        );
         // NOTE: it is needed to set the current_func here as well, because get_fn() is not called
         // for the main function.
         *self.current_func.borrow_mut() = Some(func);
@@ -85,19 +120,32 @@ impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
             arguments_type,
             is_c_variadic,
             on_stack_param_indices,
-            #[cfg(feature="master")]
+            #[cfg(feature = "master")]
             fn_attributes,
         } = fn_abi.gcc_type(self);
-        let func = declare_raw_fn(self, name, () /*fn_abi.llvm_cconv()*/, return_type, &arguments_type, is_c_variadic);
+        let func = declare_raw_fn(
+            self,
+            name,
+            (), /*fn_abi.llvm_cconv()*/
+            return_type,
+            &arguments_type,
+            is_c_variadic,
+        );
         self.on_stack_function_params.borrow_mut().insert(func, on_stack_param_indices);
-        #[cfg(feature="master")]
+        #[cfg(feature = "master")]
         for fn_attr in fn_attributes {
             func.add_attribute(fn_attr);
         }
         func
     }
 
-    pub fn define_global(&self, name: &str, ty: Type<'gcc>, is_tls: bool, link_section: Option<Symbol>) -> LValue<'gcc> {
+    pub fn define_global(
+        &self,
+        name: &str,
+        ty: Type<'gcc>,
+        is_tls: bool,
+        link_section: Option<Symbol>,
+    ) -> LValue<'gcc> {
         self.get_or_insert_global(name, ty, is_tls, link_section)
     }
 
@@ -111,62 +159,84 @@ impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
 ///
 /// If there’s a value with the same name already declared, the function will
 /// update the declaration and return existing Value instead.
-fn declare_raw_fn<'gcc>(cx: &CodegenCx<'gcc, '_>, name: &str, _callconv: () /*llvm::CallConv*/, return_type: Type<'gcc>, param_types: &[Type<'gcc>], variadic: bool) -> Function<'gcc> {
+fn declare_raw_fn<'gcc>(
+    cx: &CodegenCx<'gcc, '_>,
+    name: &str,
+    _callconv: (), /*llvm::CallConv*/
+    return_type: Type<'gcc>,
+    param_types: &[Type<'gcc>],
+    variadic: bool,
+) -> Function<'gcc> {
     if name.starts_with("llvm.") {
         let intrinsic = llvm::intrinsic(name, cx);
         cx.intrinsics.borrow_mut().insert(name.to_string(), intrinsic);
         return intrinsic;
     }
-    let func =
-        if cx.functions.borrow().contains_key(name) {
-            cx.functions.borrow()[name]
-        }
-        else {
-            let params: Vec<_> = param_types.into_iter().enumerate()
-                .map(|(index, param)| cx.context.new_parameter(None, *param, &format!("param{}", index))) // TODO(antoyo): set name.
+    let func = if cx.functions.borrow().contains_key(name) {
+        cx.functions.borrow()[name]
+    } else {
+        let params: Vec<_> = param_types
+            .into_iter()
+            .enumerate()
+            .map(|(index, param)| {
+                cx.context.new_parameter(None, *param, &format!("param{}", index))
+            }) // TODO(antoyo): set name.
+            .collect();
+        #[cfg(not(feature = "master"))]
+        let name = mangle_name(name);
+        let func =
+            cx.context.new_function(None, cx.linkage.get(), return_type, &params, &name, variadic);
+        cx.functions.borrow_mut().insert(name.to_string(), func);
+
+        #[cfg(feature = "master")]
+        if name == "rust_eh_personality" {
+            // NOTE: GCC will sometimes change the personality function set on a function from
+            // rust_eh_personality to __gcc_personality_v0 as an optimization.
+            // As such, we need to create a weak alias from __gcc_personality_v0 to
+            // rust_eh_personality in order to avoid a linker error.
+            // This needs to be weak in order to still allow using the standard
+            // __gcc_personality_v0 when the linking to it.
+            // Since aliases don't work (maybe because of a bug in LTO partitioning?), we
+            // create a wrapper function that calls rust_eh_personality.
+
+            let params: Vec<_> = param_types
+                .into_iter()
+                .enumerate()
+                .map(|(index, param)| {
+                    cx.context.new_parameter(None, *param, &format!("param{}", index))
+                }) // TODO(antoyo): set name.
                 .collect();
-            let func = cx.context.new_function(None, cx.linkage.get(), return_type, &params, mangle_name(name), variadic);
-            cx.functions.borrow_mut().insert(name.to_string(), func);
+            let gcc_func = cx.context.new_function(
+                None,
+                FunctionType::Exported,
+                return_type,
+                &params,
+                "__gcc_personality_v0",
+                variadic,
+            );
 
-            #[cfg(feature="master")]
-            if name == "rust_eh_personality" {
-                // NOTE: GCC will sometimes change the personality function set on a function from
-                // rust_eh_personality to __gcc_personality_v0 as an optimization.
-                // As such, we need to create a weak alias from __gcc_personality_v0 to
-                // rust_eh_personality in order to avoid a linker error.
-                // This needs to be weak in order to still allow using the standard
-                // __gcc_personality_v0 when the linking to it.
-                // Since aliases don't work (maybe because of a bug in LTO partitioning?), we
-                // create a wrapper function that calls rust_eh_personality.
+            // We need a normal extern function for the crates that access rust_eh_personality
+            // without defining it, otherwise we'll get a compiler error.
+            //
+            // For the crate defining it, that needs to be a weak alias instead.
+            gcc_func.add_attribute(FnAttribute::Weak);
 
-                let params: Vec<_> = param_types.into_iter().enumerate()
-                    .map(|(index, param)| cx.context.new_parameter(None, *param, &format!("param{}", index))) // TODO(antoyo): set name.
-                    .collect();
-                let gcc_func = cx.context.new_function(None, FunctionType::Exported, return_type, &params, "__gcc_personality_v0", variadic);
-
-                // We need a normal extern function for the crates that access rust_eh_personality
-                // without defining it, otherwise we'll get a compiler error.
-                //
-                // For the crate defining it, that needs to be a weak alias instead.
-                gcc_func.add_attribute(FnAttribute::Weak);
-
-                let block = gcc_func.new_block("start");
-                let mut args = vec![];
-                for param in &params {
-                    args.push(param.to_rvalue());
-                }
-                let call = cx.context.new_call(None, func, &args);
-                if return_type == cx.type_void() {
-                    block.add_eval(None, call);
-                    block.end_with_void_return(None);
-                }
-                else {
-                    block.end_with_return(None, call);
-                }
+            let block = gcc_func.new_block("start");
+            let mut args = vec![];
+            for param in &params {
+                args.push(param.to_rvalue());
             }
+            let call = cx.context.new_call(None, func, &args);
+            if return_type == cx.type_void() {
+                block.add_eval(None, call);
+                block.end_with_void_return(None);
+            } else {
+                block.end_with_return(None, call);
+            }
+        }
 
-            func
-        };
+        func
+    };
 
     // TODO(antoyo): set function calling convention.
     // TODO(antoyo): set unnamed address.
@@ -179,15 +249,24 @@ fn declare_raw_fn<'gcc>(cx: &CodegenCx<'gcc, '_>, name: &str, _callconv: () /*ll
 }
 
 // FIXME(antoyo): this is a hack because libgccjit currently only supports alpha, num and _.
-// Unsupported characters: `$` and `.`.
-pub fn mangle_name(name: &str) -> String {
-    name.replace(|char: char| {
-        if !char.is_alphanumeric() && char != '_' {
-            debug_assert!("$.*".contains(char), "Unsupported char in function name {}: {}", name, char);
-            true
-        }
-        else {
-            false
-        }
-    }, "_")
+// Unsupported characters: `$`, `.` and `*`.
+// FIXME(antoyo): `*` might not be expected: https://github.com/rust-lang/rust/issues/116979#issuecomment-1840926865
+#[cfg(not(feature = "master"))]
+fn mangle_name(name: &str) -> String {
+    name.replace(
+        |char: char| {
+            if !char.is_alphanumeric() && char != '_' {
+                debug_assert!(
+                    "$.*".contains(char),
+                    "Unsupported char in function name {}: {}",
+                    name,
+                    char
+                );
+                true
+            } else {
+                false
+            }
+        },
+        "_",
+    )
 }

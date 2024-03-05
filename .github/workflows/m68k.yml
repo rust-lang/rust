@@ -36,21 +36,22 @@ jobs:
         ]
 
     steps:
+    - uses: actions/checkout@v3
+
+    # `rustup show` installs from rust-toolchain.toml
+    - name: Setup rust toolchain
+      run: rustup show
+
+    - name: Setup rust cache
+      uses: Swatinem/rust-cache@v2
+
     - name: Install packages
       run: |
         sudo apt-get update
         sudo apt-get install qemu qemu-user-static
 
-    - uses: actions/checkout@v3
-
-    - name: Download GCC artifact
-      uses: dawidd6/action-download-artifact@v2
-      with:
-          workflow: m68k.yml
-          name: gcc-m68k-13
-          repo: cross-cg-gcc-tools/cross-gcc
-          branch: master
-          event: push
+    - name: Download artifact
+      run: curl -LO https://github.com/cross-cg-gcc-tools/cross-gcc/releases/latest/download/gcc-m68k-13.deb
 
     - name: Download VM artifact
       uses: dawidd6/action-download-artifact@v2
@@ -64,37 +65,13 @@ jobs:
     - name: Setup path to libgccjit
       run: |
           sudo dpkg -i gcc-m68k-13.deb
-          echo /usr/lib/ > gcc_path
+          echo 'gcc-path = "/usr/lib/"' > config.toml
 
     - name: Set env
       run: |
-        echo "LIBRARY_PATH=$(cat gcc_path)" >> $GITHUB_ENV
-        echo "LD_LIBRARY_PATH=$(cat gcc_path)" >> $GITHUB_ENV
         echo "workspace="$GITHUB_WORKSPACE >> $GITHUB_ENV
-
-    - name: Cache cargo installed crates
-      uses: actions/cache@v3
-      with:
-        path: ~/.cargo/bin
-        key: cargo-installed-crates2-ubuntu-latest
-
-    #- name: Cache cargo registry
-      #uses: actions/cache@v3
-      #with:
-        #path: ~/.cargo/registry
-        #key: ${{ runner.os }}-cargo-registry2-${{ hashFiles('**/Cargo.lock') }}
-
-    #- name: Cache cargo index
-      #uses: actions/cache@v3
-      #with:
-        #path: ~/.cargo/git
-        #key: ${{ runner.os }}-cargo-index-${{ hashFiles('**/Cargo.lock') }}
-
-    - name: Cache cargo target dir
-      uses: actions/cache@v3
-      with:
-        path: target
-        key: ${{ runner.os }}-cargo-build-target-${{ hashFiles('rust-toolchain') }}
+        echo "LIBRARY_PATH=/usr/lib" >> $GITHUB_ENV
+        echo "LD_LIBRARY_PATH=/usr/lib" >> $GITHUB_ENV
 
     #- name: Cache rust repository
       ## We only clone the rust repository for rustc tests
@@ -114,11 +91,9 @@ jobs:
     - name: Build
       run: |
         ./y.sh prepare --only-libcore --cross
-        # TODO: remove --features master when it is back to the default.
-        ./y.sh build --target-triple m68k-unknown-linux-gnu --features master
-        # TODO: remove --features master when it is back to the default.
-        CG_GCC_TEST_TARGET=m68k-unknown-linux-gnu cargo test --features master
-        ./clean_all.sh
+        ./y.sh build --target-triple m68k-unknown-linux-gnu
+        CG_GCC_TEST_TARGET=m68k-unknown-linux-gnu cargo test
+        ./y.sh clean all
 
     - name: Prepare dependencies
       run: |
@@ -126,17 +101,9 @@ jobs:
         git config --global user.name "User"
         ./y.sh prepare --cross
 
-    # Compile is a separate step, as the actions-rs/cargo action supports error annotations
-    - name: Compile
-      uses: actions-rs/cargo@v1.0.3
-      with:
-        command: build
-        args: --release
-
     - name: Add more failing tests because the sysroot is not compiled with LTO
-      run: cat failing-non-lto-tests.txt >> failing-ui-tests.txt
+      run: cat tests/failing-non-lto-tests.txt >> tests/failing-ui-tests.txt
 
     - name: Run tests
       run: |
-        # TODO: remove --features master when it is back to the default.
-        ./test.sh --release --features master --clean --build-sysroot ${{ matrix.commands }}
+        ./y.sh test --release --clean --build-sysroot ${{ matrix.commands }}

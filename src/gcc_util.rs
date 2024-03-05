@@ -1,4 +1,4 @@
-#[cfg(feature="master")]
+#[cfg(feature = "master")]
 use gccjit::Context;
 use smallvec::{smallvec, SmallVec};
 
@@ -7,7 +7,10 @@ use rustc_middle::bug;
 use rustc_session::Session;
 use rustc_target::target_features::RUSTC_SPECIFIC_FEATURES;
 
-use crate::errors::{PossibleFeature, TargetFeatureDisableOrEnable, UnknownCTargetFeature, UnknownCTargetFeaturePrefix};
+use crate::errors::{
+    PossibleFeature, TargetFeatureDisableOrEnable, UnknownCTargetFeature,
+    UnknownCTargetFeaturePrefix,
+};
 
 /// The list of GCC features computed from CLI flags (`-Ctarget-cpu`, `-Ctarget-feature`,
 /// `--target` and similar).
@@ -44,7 +47,10 @@ pub(crate) fn global_gcc_features(sess: &Session, diagnostics: bool) -> Vec<Stri
     // -Ctarget-features
     let supported_features = sess.target.supported_target_features();
     let mut featsmap = FxHashMap::default();
-    let feats = sess.opts.cg.target_feature
+    let feats = sess
+        .opts
+        .cg
+        .target_feature
         .split(',')
         .filter_map(|s| {
             let enable_disable = match s.chars().next() {
@@ -69,16 +75,14 @@ pub(crate) fn global_gcc_features(sess: &Session, diagnostics: bool) -> Vec<Stri
                         None
                     }
                 });
-                let unknown_feature =
-                    if let Some(rust_feature) = rust_feature {
-                        UnknownCTargetFeature {
-                            feature,
-                            rust_feature: PossibleFeature::Some { rust_feature },
-                        }
+                let unknown_feature = if let Some(rust_feature) = rust_feature {
+                    UnknownCTargetFeature {
+                        feature,
+                        rust_feature: PossibleFeature::Some { rust_feature },
                     }
-                    else {
-                        UnknownCTargetFeature { feature, rust_feature: PossibleFeature::None }
-                    };
+                } else {
+                    UnknownCTargetFeature { feature, rust_feature: PossibleFeature::None }
+                };
                 sess.dcx().emit_warn(unknown_feature);
             }
 
@@ -95,18 +99,18 @@ pub(crate) fn global_gcc_features(sess: &Session, diagnostics: bool) -> Vec<Stri
             // passing requests down to GCC. This means that all in-language
             // features also work on the command line instead of having two
             // different names when the GCC name and the Rust name differ.
-            Some(to_gcc_features(sess, feature)
-                .iter()
-                .flat_map(|feat| to_gcc_features(sess, feat).into_iter())
-                .map(|feature| {
-                    if enable_disable == '-' {
-                        format!("-{}", feature)
-                    }
-                    else {
-                        feature.to_string()
-                    }
-                })
-                .collect::<Vec<_>>(),
+            Some(
+                to_gcc_features(sess, feature)
+                    .iter()
+                    .flat_map(|feat| to_gcc_features(sess, feat).into_iter())
+                    .map(|feature| {
+                        if enable_disable == '-' {
+                            format!("-{}", feature)
+                        } else {
+                            feature.to_string()
+                        }
+                    })
+                    .collect::<Vec<_>>(),
             )
         })
         .flatten();
@@ -184,7 +188,10 @@ pub fn to_gcc_features<'a>(sess: &Session, s: &'a str) -> SmallVec<[&'a str; 2]>
 
 // Given a map from target_features to whether they are enabled or disabled,
 // ensure only valid combinations are allowed.
-pub fn check_tied_features(sess: &Session, features: &FxHashMap<&str, bool>) -> Option<&'static [&'static str]> {
+pub fn check_tied_features(
+    sess: &Session,
+    features: &FxHashMap<&str, bool>,
+) -> Option<&'static [&'static str]> {
     for tied in sess.target.tied_target_features() {
         // Tied features must be set to the same value, or not set at all
         let mut tied_iter = tied.iter();
@@ -199,7 +206,7 @@ pub fn check_tied_features(sess: &Session, features: &FxHashMap<&str, bool>) -> 
 fn arch_to_gcc(name: &str) -> &str {
     match name {
         "M68020" => "68020",
-         _ => name,
+        _ => name,
     }
 }
 
@@ -208,15 +215,13 @@ fn handle_native(name: &str) -> &str {
         return arch_to_gcc(name);
     }
 
-    #[cfg(feature="master")]
+    #[cfg(feature = "master")]
     {
         // Get the native arch.
         let context = Context::default();
-        context.get_target_info().arch().unwrap()
-            .to_str()
-            .unwrap()
+        context.get_target_info().arch().unwrap().to_str().unwrap()
     }
-    #[cfg(not(feature="master"))]
+    #[cfg(not(feature = "master"))]
     unimplemented!();
 }
 
