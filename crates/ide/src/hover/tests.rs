@@ -17,7 +17,7 @@ const HOVER_BASE_CONFIG: HoverConfig = HoverConfig {
     documentation: true,
     format: HoverDocFormat::Markdown,
     keywords: true,
-    trait_assoc_items_size: None,
+    max_trait_assoc_items_count: None,
 };
 
 fn check_hover_no_result(ra_fixture: &str) {
@@ -37,6 +37,28 @@ fn check(ra_fixture: &str, expect: Expect) {
     let hover = analysis
         .hover(
             &HoverConfig { links_in_hover: true, ..HOVER_BASE_CONFIG },
+            FileRange { file_id: position.file_id, range: TextRange::empty(position.offset) },
+        )
+        .unwrap()
+        .unwrap();
+
+    let content = analysis.db.file_text(position.file_id);
+    let hovered_element = &content[hover.range];
+
+    let actual = format!("*{hovered_element}*\n{}\n", hover.info.markup);
+    expect.assert_eq(&actual)
+}
+
+#[track_caller]
+fn check_assoc_count(count: usize, ra_fixture: &str, expect: Expect) {
+    let (analysis, position) = fixture::position(ra_fixture);
+    let hover = analysis
+        .hover(
+            &HoverConfig {
+                links_in_hover: true,
+                max_trait_assoc_items_count: Some(count),
+                ..HOVER_BASE_CONFIG
+            },
             FileRange { file_id: position.file_id, range: TextRange::empty(position.offset) },
         )
         .unwrap()
@@ -412,7 +434,7 @@ fn main() {
                                 name: "FnOnce",
                                 kind: Trait,
                                 container_name: "function",
-                                description: "pub trait FnOnce<Args>\nwhere\n    Args: Tuple, {\n    pub type Output,\n    pub extern \"rust-call\" fn call_once(self, args: Args) -> Self::Output,\n}",
+                                description: "pub trait FnOnce<Args>\nwhere\n    Args: Tuple,",
                             },
                         },
                     ],
@@ -2673,26 +2695,26 @@ fn foo() -> impl Foo {}
 fn main() { let s$0t = foo(); }
 "#,
         expect![[r#"
-                [
-                    GoToType(
-                        [
-                            HoverGotoTypeData {
-                                mod_path: "test::Foo",
-                                nav: NavigationTarget {
-                                    file_id: FileId(
-                                        0,
-                                    ),
-                                    full_range: 0..12,
-                                    focus_range: 6..9,
-                                    name: "Foo",
-                                    kind: Trait,
-                                    description: "trait Foo {}",
-                                },
+            [
+                GoToType(
+                    [
+                        HoverGotoTypeData {
+                            mod_path: "test::Foo",
+                            nav: NavigationTarget {
+                                file_id: FileId(
+                                    0,
+                                ),
+                                full_range: 0..12,
+                                focus_range: 6..9,
+                                name: "Foo",
+                                kind: Trait,
+                                description: "trait Foo",
                             },
-                        ],
-                    ),
-                ]
-            "#]],
+                        },
+                    ],
+                ),
+            ]
+        "#]],
     );
 }
 
@@ -2707,39 +2729,39 @@ fn foo() -> impl Foo<S> {}
 fn main() { let s$0t = foo(); }
 "#,
         expect![[r#"
-                [
-                    GoToType(
-                        [
-                            HoverGotoTypeData {
-                                mod_path: "test::Foo",
-                                nav: NavigationTarget {
-                                    file_id: FileId(
-                                        0,
-                                    ),
-                                    full_range: 0..15,
-                                    focus_range: 6..9,
-                                    name: "Foo",
-                                    kind: Trait,
-                                    description: "trait Foo<T> {}",
-                                },
+            [
+                GoToType(
+                    [
+                        HoverGotoTypeData {
+                            mod_path: "test::Foo",
+                            nav: NavigationTarget {
+                                file_id: FileId(
+                                    0,
+                                ),
+                                full_range: 0..15,
+                                focus_range: 6..9,
+                                name: "Foo",
+                                kind: Trait,
+                                description: "trait Foo<T>",
                             },
-                            HoverGotoTypeData {
-                                mod_path: "test::S",
-                                nav: NavigationTarget {
-                                    file_id: FileId(
-                                        0,
-                                    ),
-                                    full_range: 16..25,
-                                    focus_range: 23..24,
-                                    name: "S",
-                                    kind: Struct,
-                                    description: "struct S",
-                                },
+                        },
+                        HoverGotoTypeData {
+                            mod_path: "test::S",
+                            nav: NavigationTarget {
+                                file_id: FileId(
+                                    0,
+                                ),
+                                full_range: 16..25,
+                                focus_range: 23..24,
+                                name: "S",
+                                kind: Struct,
+                                description: "struct S",
                             },
-                        ],
-                    ),
-                ]
-            "#]],
+                        },
+                    ],
+                ),
+            ]
+        "#]],
     );
 }
 
@@ -2767,7 +2789,7 @@ fn main() { let s$0t = foo(); }
                                 focus_range: 19..22,
                                 name: "Bar",
                                 kind: Trait,
-                                description: "trait Bar {}",
+                                description: "trait Bar",
                             },
                         },
                         HoverGotoTypeData {
@@ -2780,7 +2802,7 @@ fn main() { let s$0t = foo(); }
                                 focus_range: 6..9,
                                 name: "Foo",
                                 kind: Trait,
-                                description: "trait Foo {}",
+                                description: "trait Foo",
                             },
                         },
                     ],
@@ -2817,7 +2839,7 @@ fn main() { let s$0t = foo(); }
                                 focus_range: 22..25,
                                 name: "Bar",
                                 kind: Trait,
-                                description: "trait Bar<T> {}",
+                                description: "trait Bar<T>",
                             },
                         },
                         HoverGotoTypeData {
@@ -2830,7 +2852,7 @@ fn main() { let s$0t = foo(); }
                                 focus_range: 6..9,
                                 name: "Foo",
                                 kind: Trait,
-                                description: "trait Foo<T> {}",
+                                description: "trait Foo<T>",
                             },
                         },
                         HoverGotoTypeData {
@@ -2874,26 +2896,26 @@ trait Foo {}
 fn foo(ar$0g: &impl Foo) {}
 "#,
         expect![[r#"
-                [
-                    GoToType(
-                        [
-                            HoverGotoTypeData {
-                                mod_path: "test::Foo",
-                                nav: NavigationTarget {
-                                    file_id: FileId(
-                                        0,
-                                    ),
-                                    full_range: 0..12,
-                                    focus_range: 6..9,
-                                    name: "Foo",
-                                    kind: Trait,
-                                    description: "trait Foo {}",
-                                },
+            [
+                GoToType(
+                    [
+                        HoverGotoTypeData {
+                            mod_path: "test::Foo",
+                            nav: NavigationTarget {
+                                file_id: FileId(
+                                    0,
+                                ),
+                                full_range: 0..12,
+                                focus_range: 6..9,
+                                name: "Foo",
+                                kind: Trait,
+                                description: "trait Foo",
                             },
-                        ],
-                    ),
-                ]
-            "#]],
+                        },
+                    ],
+                ),
+            ]
+        "#]],
     );
 }
 
@@ -2921,7 +2943,7 @@ fn foo(ar$0g: &impl Foo + Bar<S>) {}
                                 focus_range: 19..22,
                                 name: "Bar",
                                 kind: Trait,
-                                description: "trait Bar<T> {}",
+                                description: "trait Bar<T>",
                             },
                         },
                         HoverGotoTypeData {
@@ -2934,7 +2956,7 @@ fn foo(ar$0g: &impl Foo + Bar<S>) {}
                                 focus_range: 6..9,
                                 name: "Foo",
                                 kind: Trait,
-                                description: "trait Foo {}",
+                                description: "trait Foo",
                             },
                         },
                         HoverGotoTypeData {
@@ -2989,7 +3011,7 @@ pub mod future {
                                 name: "Future",
                                 kind: Trait,
                                 container_name: "future",
-                                description: "pub trait Future {}",
+                                description: "pub trait Future",
                             },
                         },
                         HoverGotoTypeData {
@@ -3021,39 +3043,39 @@ struct S {}
 fn foo(ar$0g: &impl Foo<S>) {}
 "#,
         expect![[r#"
-                [
-                    GoToType(
-                        [
-                            HoverGotoTypeData {
-                                mod_path: "test::Foo",
-                                nav: NavigationTarget {
-                                    file_id: FileId(
-                                        0,
-                                    ),
-                                    full_range: 0..15,
-                                    focus_range: 6..9,
-                                    name: "Foo",
-                                    kind: Trait,
-                                    description: "trait Foo<T> {}",
-                                },
+            [
+                GoToType(
+                    [
+                        HoverGotoTypeData {
+                            mod_path: "test::Foo",
+                            nav: NavigationTarget {
+                                file_id: FileId(
+                                    0,
+                                ),
+                                full_range: 0..15,
+                                focus_range: 6..9,
+                                name: "Foo",
+                                kind: Trait,
+                                description: "trait Foo<T>",
                             },
-                            HoverGotoTypeData {
-                                mod_path: "test::S",
-                                nav: NavigationTarget {
-                                    file_id: FileId(
-                                        0,
-                                    ),
-                                    full_range: 16..27,
-                                    focus_range: 23..24,
-                                    name: "S",
-                                    kind: Struct,
-                                    description: "struct S {}",
-                                },
+                        },
+                        HoverGotoTypeData {
+                            mod_path: "test::S",
+                            nav: NavigationTarget {
+                                file_id: FileId(
+                                    0,
+                                ),
+                                full_range: 16..27,
+                                focus_range: 23..24,
+                                name: "S",
+                                kind: Struct,
+                                description: "struct S {}",
                             },
-                        ],
-                    ),
-                ]
-            "#]],
+                        },
+                    ],
+                ),
+            ]
+        "#]],
     );
 }
 
@@ -3071,39 +3093,39 @@ fn foo() -> B<dyn Foo> {}
 fn main() { let s$0t = foo(); }
 "#,
         expect![[r#"
-                [
-                    GoToType(
-                        [
-                            HoverGotoTypeData {
-                                mod_path: "test::B",
-                                nav: NavigationTarget {
-                                    file_id: FileId(
-                                        0,
-                                    ),
-                                    full_range: 42..55,
-                                    focus_range: 49..50,
-                                    name: "B",
-                                    kind: Struct,
-                                    description: "struct B<T> {}",
-                                },
+            [
+                GoToType(
+                    [
+                        HoverGotoTypeData {
+                            mod_path: "test::B",
+                            nav: NavigationTarget {
+                                file_id: FileId(
+                                    0,
+                                ),
+                                full_range: 42..55,
+                                focus_range: 49..50,
+                                name: "B",
+                                kind: Struct,
+                                description: "struct B<T> {}",
                             },
-                            HoverGotoTypeData {
-                                mod_path: "test::Foo",
-                                nav: NavigationTarget {
-                                    file_id: FileId(
-                                        0,
-                                    ),
-                                    full_range: 0..12,
-                                    focus_range: 6..9,
-                                    name: "Foo",
-                                    kind: Trait,
-                                    description: "trait Foo {}",
-                                },
+                        },
+                        HoverGotoTypeData {
+                            mod_path: "test::Foo",
+                            nav: NavigationTarget {
+                                file_id: FileId(
+                                    0,
+                                ),
+                                full_range: 0..12,
+                                focus_range: 6..9,
+                                name: "Foo",
+                                kind: Trait,
+                                description: "trait Foo",
                             },
-                        ],
-                    ),
-                ]
-            "#]],
+                        },
+                    ],
+                ),
+            ]
+        "#]],
     );
 }
 
@@ -3115,26 +3137,26 @@ trait Foo {}
 fn foo(ar$0g: &dyn Foo) {}
 "#,
         expect![[r#"
-                [
-                    GoToType(
-                        [
-                            HoverGotoTypeData {
-                                mod_path: "test::Foo",
-                                nav: NavigationTarget {
-                                    file_id: FileId(
-                                        0,
-                                    ),
-                                    full_range: 0..12,
-                                    focus_range: 6..9,
-                                    name: "Foo",
-                                    kind: Trait,
-                                    description: "trait Foo {}",
-                                },
+            [
+                GoToType(
+                    [
+                        HoverGotoTypeData {
+                            mod_path: "test::Foo",
+                            nav: NavigationTarget {
+                                file_id: FileId(
+                                    0,
+                                ),
+                                full_range: 0..12,
+                                focus_range: 6..9,
+                                name: "Foo",
+                                kind: Trait,
+                                description: "trait Foo",
                             },
-                        ],
-                    ),
-                ]
-            "#]],
+                        },
+                    ],
+                ),
+            ]
+        "#]],
     );
 }
 
@@ -3147,39 +3169,39 @@ struct S {}
 fn foo(ar$0g: &dyn Foo<S>) {}
 "#,
         expect![[r#"
-                [
-                    GoToType(
-                        [
-                            HoverGotoTypeData {
-                                mod_path: "test::Foo",
-                                nav: NavigationTarget {
-                                    file_id: FileId(
-                                        0,
-                                    ),
-                                    full_range: 0..15,
-                                    focus_range: 6..9,
-                                    name: "Foo",
-                                    kind: Trait,
-                                    description: "trait Foo<T> {}",
-                                },
+            [
+                GoToType(
+                    [
+                        HoverGotoTypeData {
+                            mod_path: "test::Foo",
+                            nav: NavigationTarget {
+                                file_id: FileId(
+                                    0,
+                                ),
+                                full_range: 0..15,
+                                focus_range: 6..9,
+                                name: "Foo",
+                                kind: Trait,
+                                description: "trait Foo<T>",
                             },
-                            HoverGotoTypeData {
-                                mod_path: "test::S",
-                                nav: NavigationTarget {
-                                    file_id: FileId(
-                                        0,
-                                    ),
-                                    full_range: 16..27,
-                                    focus_range: 23..24,
-                                    name: "S",
-                                    kind: Struct,
-                                    description: "struct S {}",
-                                },
+                        },
+                        HoverGotoTypeData {
+                            mod_path: "test::S",
+                            nav: NavigationTarget {
+                                file_id: FileId(
+                                    0,
+                                ),
+                                full_range: 16..27,
+                                focus_range: 23..24,
+                                name: "S",
+                                kind: Struct,
+                                description: "struct S {}",
                             },
-                        ],
-                    ),
-                ]
-            "#]],
+                        },
+                    ],
+                ),
+            ]
+        "#]],
     );
 }
 
@@ -3221,7 +3243,7 @@ fn foo(a$0rg: &impl ImplTrait<B<dyn DynTrait<B<S>>>>) {}
                                 focus_range: 28..36,
                                 name: "DynTrait",
                                 kind: Trait,
-                                description: "trait DynTrait<T> {}",
+                                description: "trait DynTrait<T>",
                             },
                         },
                         HoverGotoTypeData {
@@ -3234,7 +3256,7 @@ fn foo(a$0rg: &impl ImplTrait<B<dyn DynTrait<B<S>>>>) {}
                                 focus_range: 6..15,
                                 name: "ImplTrait",
                                 kind: Trait,
-                                description: "trait ImplTrait<T> {}",
+                                description: "trait ImplTrait<T>",
                             },
                         },
                         HoverGotoTypeData {
@@ -3276,26 +3298,26 @@ fn test() -> impl Foo { S {} }
 fn main() { let s$0t = test().get(); }
 "#,
         expect![[r#"
-                [
-                    GoToType(
-                        [
-                            HoverGotoTypeData {
-                                mod_path: "test::Foo",
-                                nav: NavigationTarget {
-                                    file_id: FileId(
-                                        0,
-                                    ),
-                                    full_range: 0..62,
-                                    focus_range: 6..9,
-                                    name: "Foo",
-                                    kind: Trait,
-                                    description: "trait Foo {\n    type Item,\n    fn get(self) -> Self::Item,\n}",
-                                },
+            [
+                GoToType(
+                    [
+                        HoverGotoTypeData {
+                            mod_path: "test::Foo",
+                            nav: NavigationTarget {
+                                file_id: FileId(
+                                    0,
+                                ),
+                                full_range: 0..62,
+                                focus_range: 6..9,
+                                name: "Foo",
+                                kind: Trait,
+                                description: "trait Foo",
                             },
-                        ],
-                    ),
-                ]
-            "#]],
+                        },
+                    ],
+                ),
+            ]
+        "#]],
     );
 }
 
@@ -3341,26 +3363,26 @@ trait Foo {}
 fn foo<T: Foo>(t: T$0){}
 "#,
         expect![[r#"
-                [
-                    GoToType(
-                        [
-                            HoverGotoTypeData {
-                                mod_path: "test::Foo",
-                                nav: NavigationTarget {
-                                    file_id: FileId(
-                                        0,
-                                    ),
-                                    full_range: 0..12,
-                                    focus_range: 6..9,
-                                    name: "Foo",
-                                    kind: Trait,
-                                    description: "trait Foo {}",
-                                },
+            [
+                GoToType(
+                    [
+                        HoverGotoTypeData {
+                            mod_path: "test::Foo",
+                            nav: NavigationTarget {
+                                file_id: FileId(
+                                    0,
+                                ),
+                                full_range: 0..12,
+                                focus_range: 6..9,
+                                name: "Foo",
+                                kind: Trait,
+                                description: "trait Foo",
                             },
-                        ],
-                    ),
-                ]
-            "#]],
+                        },
+                    ],
+                ),
+            ]
+        "#]],
     );
 }
 
@@ -6330,71 +6352,46 @@ impl T for () {
 
 #[test]
 fn hover_trait_show_assoc_items() {
-    check(
+    check_assoc_count(
+        0,
         r#"
 trait T {}
 impl T$0 for () {}
 "#,
         expect![[r#"
-        *T*
+            *T*
 
-        ```rust
-        test
-        ```
+            ```rust
+            test
+            ```
 
-        ```rust
-        trait T {}
-        ```
+            ```rust
+            trait T {}
+            ```
         "#]],
     );
 
-    check(
+    check_assoc_count(
+        1,
         r#"
-trait T {
-    fn func() {}
-}
+trait T {}
 impl T$0 for () {}
 "#,
         expect![[r#"
-        *T*
+            *T*
 
-        ```rust
-        test
-        ```
+            ```rust
+            test
+            ```
 
-        ```rust
-        trait T {
-            fn func(),
-        }
-        ```
+            ```rust
+            trait T {}
+            ```
         "#]],
     );
 
-    check(
-        r#"
-trait T {
-    fn func() {}
-    const FLAG: i32 = 34;
-}
-impl T$0 for () {}
-"#,
-        expect![[r#"
-        *T*
-
-        ```rust
-        test
-        ```
-
-        ```rust
-        trait T {
-            fn func(),
-            const FLAG: i32,
-        }
-        ```
-        "#]],
-    );
-
-    check(
+    check_assoc_count(
+        0,
         r#"
 trait T {
     fn func() {}
@@ -6404,19 +6401,96 @@ trait T {
 impl T$0 for () {}
 "#,
         expect![[r#"
-        *T*
+            *T*
 
-        ```rust
-        test
-        ```
+            ```rust
+            test
+            ```
 
-        ```rust
-        trait T {
-            fn func(),
-            const FLAG: i32,
-            type Bar,
-        }
-        ```
+            ```rust
+            trait T { /* … */ }
+            ```
+        "#]],
+    );
+
+    check_assoc_count(
+        2,
+        r#"
+trait T {
+    fn func() {}
+    const FLAG: i32 = 34;
+    type Bar;
+}
+impl T$0 for () {}
+"#,
+        expect![[r#"
+            *T*
+
+            ```rust
+            test
+            ```
+
+            ```rust
+            trait T {
+                fn func();
+                const FLAG: i32;
+                /* … */
+            }
+            ```
+        "#]],
+    );
+
+    check_assoc_count(
+        3,
+        r#"
+trait T {
+    fn func() {}
+    const FLAG: i32 = 34;
+    type Bar;
+}
+impl T$0 for () {}
+"#,
+        expect![[r#"
+            *T*
+
+            ```rust
+            test
+            ```
+
+            ```rust
+            trait T {
+                fn func();
+                const FLAG: i32;
+                type Bar;
+            }
+            ```
+        "#]],
+    );
+
+    check_assoc_count(
+        4,
+        r#"
+trait T {
+    fn func() {}
+    const FLAG: i32 = 34;
+    type Bar;
+}
+impl T$0 for () {}
+"#,
+        expect![[r#"
+            *T*
+
+            ```rust
+            test
+            ```
+
+            ```rust
+            trait T {
+                fn func();
+                const FLAG: i32;
+                type Bar;
+            }
+            ```
         "#]],
     );
 }
@@ -7532,7 +7606,7 @@ impl Iterator for S {
                                 name: "Future",
                                 kind: Trait,
                                 container_name: "future",
-                                description: "pub trait Future {\n    pub type Output,\n    pub fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output>,\n}",
+                                description: "pub trait Future",
                             },
                         },
                         HoverGotoTypeData {
@@ -7546,7 +7620,7 @@ impl Iterator for S {
                                 name: "Iterator",
                                 kind: Trait,
                                 container_name: "iterator",
-                                description: "pub trait Iterator {\n    pub type Item,\n    pub fn next(&mut self) -> Option<Self::Item>,\n    pub fn nth(&mut self, n: usize) -> Option<Self::Item>,\n    pub fn by_ref(&mut self) -> &mut Self\nwhere\n    Self: Sized,,\n}",
+                                description: "pub trait Iterator",
                             },
                         },
                         HoverGotoTypeData {
@@ -7559,7 +7633,7 @@ impl Iterator for S {
                                 focus_range: 49..56,
                                 name: "Notable",
                                 kind: Trait,
-                                description: "trait Notable {}",
+                                description: "trait Notable",
                             },
                         },
                         HoverGotoTypeData {

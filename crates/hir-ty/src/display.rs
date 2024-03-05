@@ -63,7 +63,7 @@ pub struct HirFormatter<'a> {
     buf: String,
     curr_size: usize,
     pub(crate) max_size: Option<usize>,
-    pub limited_size: Option<usize>,
+    pub entity_limit: Option<usize>,
     omit_verbose_types: bool,
     closure_style: ClosureStyle,
     display_target: DisplayTarget,
@@ -148,8 +148,8 @@ pub trait HirDisplay {
         }
     }
 
-    ///  Returns a `Display`able type that is human-readable and tries to limit the item inside this type.
-    /// Use this for showing types which may contain two many item when user hover on, like `trait`, `struct`, `enum`
+    /// Returns a `Display`able type that is human-readable and tries to limit the number of items inside.
+    /// Use this for showing definitions which may contain too many items, like `trait`, `struct`, `enum`
     fn display_limited<'a>(
         &'a self,
         db: &'a dyn HirDatabase,
@@ -184,7 +184,7 @@ pub trait HirDisplay {
             buf: String::with_capacity(20),
             curr_size: 0,
             max_size: None,
-            limited_size: None,
+            entity_limit: None,
             omit_verbose_types: false,
             closure_style: ClosureStyle::ImplFn,
             display_target: DisplayTarget::SourceCode { module_id, allow_opaque },
@@ -352,7 +352,7 @@ impl<T: HirDisplay> HirDisplayWrapper<'_, T> {
             buf: String::with_capacity(20),
             curr_size: 0,
             max_size: self.max_size,
-            limited_size: self.limited_size,
+            entity_limit: self.limited_size,
             omit_verbose_types: self.omit_verbose_types,
             display_target: self.display_target,
             closure_style: self.closure_style,
