@@ -50,6 +50,7 @@ mod static_index;
 mod status;
 mod syntax_highlighting;
 mod syntax_tree;
+mod test_explorer;
 mod typing;
 mod view_crate_graph;
 mod view_hir;
@@ -108,6 +109,7 @@ pub use crate::{
         tags::{Highlight, HlMod, HlMods, HlOperator, HlPunct, HlTag},
         HighlightConfig, HlRange,
     },
+    test_explorer::{TestItem, TestItemKind},
 };
 pub use hir::Semantics;
 pub use ide_assists::{
@@ -338,6 +340,18 @@ impl Analysis {
 
     pub fn view_item_tree(&self, file_id: FileId) -> Cancellable<String> {
         self.with_db(|db| view_item_tree::view_item_tree(db, file_id))
+    }
+
+    pub fn discover_test_roots(&self) -> Cancellable<Vec<TestItem>> {
+        self.with_db(test_explorer::discover_test_roots)
+    }
+
+    pub fn discover_tests_in_crate_by_test_id(&self, crate_id: &str) -> Cancellable<Vec<TestItem>> {
+        self.with_db(|db| test_explorer::discover_tests_in_crate_by_test_id(db, crate_id))
+    }
+
+    pub fn discover_tests_in_crate(&self, crate_id: CrateId) -> Cancellable<Vec<TestItem>> {
+        self.with_db(|db| test_explorer::discover_tests_in_crate(db, crate_id))
     }
 
     /// Renders the crate graph to GraphViz "dot" syntax.

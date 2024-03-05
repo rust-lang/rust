@@ -1,5 +1,5 @@
 <!---
-lsp/ext.rs hash: 8be79cc3b7f10ad7
+lsp/ext.rs hash: 4b06686d086b7d9b
 
 If you need to change the above hash to make the test pass, please check if you
 need to adjust this doc as well and ping this issue:
@@ -382,6 +382,106 @@ rust-analyzer supports only one `kind`, `"cargo"`. The `args` for `"cargo"` look
     executableArgs: string[];
     expectTest?: boolean;
     overrideCargo?: string;
+}
+```
+
+## Test explorer
+
+**Method:** `experimental/discoverTest`
+
+**Request:** `DiscoverTestParams`
+
+```typescript
+interface DiscoverTestParams {
+    // The test that we need to resolve its children. If not present,
+    // the response should return top level tests.
+    testId?: string | undefined;
+}
+```
+
+**Response:** `DiscoverTestResults`
+
+```typescript
+interface TestItem {
+    // A unique identifier for the test
+    id: string;
+    // The file containing this test
+    textDocument?: lc.TextDocumentIdentifier | undefined;
+    // The range in the file containing this test
+    range?: lc.Range | undefined;
+    // A human readable name for this test
+    label: string;
+    icon: "package" | "module" | "test";
+    // True if this test may have children not available eagerly
+    canResolveChildren: boolean;
+    // The id of the parent test in the test tree. If not present, this test
+    // is a top level test.
+    parent?: string | undefined;
+    // The information useful for running the test. The client can use `runTest`
+    // request for simple execution, but for more complex execution forms
+    // like debugging, this field is useful.
+    runnable?: Runnable | undefined;
+};
+
+interface DiscoverTestResults {
+    // The discovered tests.
+    tests: TestItem[];
+    // For each test which its id is in this list, the response
+    // contains all tests that are children of this test, and
+    // client should remove old tests not included in the response.
+    scope: string[];
+}
+```
+
+**Method:** `experimental/discoveredTests`
+
+**Notification:** `DiscoverTestResults`
+
+This notification is sent from the server to the client when the
+server detect changes in the existing tests. The `DiscoverTestResults` is
+the same as the one in `experimental/discoverTest` response.
+
+**Method:** `experimental/runTest`
+
+**Request:** `RunTestParams`
+
+```typescript
+interface DiscoverTestParams {
+    include?: string[] | undefined;
+    exclude?: string[] | undefined;
+}
+```
+
+**Response:** `void`
+
+**Method:** `experimental/endRunTest`
+
+**Notification:**
+
+This notification is sent from the server to the client when the current running
+session is finished. The server should not send any run notification
+after this.
+
+**Method:** `experimental/abortRunTest`
+
+**Notification:**
+
+This notification is sent from the client to the server when the user is no longer
+interested in the test results. The server should clean up its resources and send
+a `experimental/endRunTest` when is done.
+
+**Method:** `experimental/changeTestState`
+
+**Notification:** `ChangeTestStateParams`
+
+```typescript
+type TestState = { tag: "failed"; message: string }
+    | { tag: "passed" }
+    | { tag: "started" };
+
+interface ChangeTestStateParams {
+    testId: string;
+    state: TestState;
 }
 ```
 

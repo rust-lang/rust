@@ -39,6 +39,7 @@ use crate::{
     config::{Config, RustfmtConfig, WorkspaceSymbolConfig},
     diff::diff,
     global_state::{GlobalState, GlobalStateSnapshot},
+    hack_recover_crate_name,
     line_index::LineEndings,
     lsp::{
         from_proto, to_proto,
@@ -190,6 +191,70 @@ pub(crate) fn handle_view_item_tree(
     let file_id = from_proto::file_id(&snap, &params.text_document.uri)?;
     let res = snap.analysis.view_item_tree(file_id)?;
     Ok(res)
+}
+
+pub(crate) fn handle_run_test(
+    state: &mut GlobalState,
+    params: lsp_ext::RunTestParams,
+) -> anyhow::Result<()> {
+    if let Some(_session) = state.test_run_session.take() {
+        state.send_notification::<lsp_ext::EndRunTest>(());
+    }
+    // We detect the lowest common ansector of all included tests, and
+    // run it. We ignore excluded tests for now, the client will handle
+    // it for us.
+    let lca = match params.include {
+        Some(tests) => tests
+            .into_iter()
+            .reduce(|x, y| {
+                let mut common_prefix = "".to_owned();
+                for (xc, yc) in x.chars().zip(y.chars()) {
+                    if xc != yc {
+                        break;
+                    }
+                    common_prefix.push(xc);
+                }
+                common_prefix
+            })
+            .unwrap_or_default(),
+        None => "".to_owned(),
+    };
+    let handle = if lca.is_empty() {
+        flycheck::CargoTestHandle::new(None)
+    } else if let Some((_, path)) = lca.split_once("::") {
+        flycheck::CargoTestHandle::new(Some(path))
+    } else {
+        flycheck::CargoTestHandle::new(None)
+    };
+    state.test_run_session = Some(handle?);
+    Ok(())
+}
+
+pub(crate) fn handle_discover_test(
+    snap: GlobalStateSnapshot,
+    params: lsp_ext::DiscoverTestParams,
+) -> anyhow::Result<lsp_ext::DiscoverTestResults> {
+    let _p = tracing::span!(tracing::Level::INFO, "handle_discover_test").entered();
+    let (tests, scope) = match params.test_id {
+        Some(id) => {
+            let crate_id = id.split_once("::").map(|it| it.0).unwrap_or(&id);
+            (snap.analysis.discover_tests_in_crate_by_test_id(crate_id)?, vec![crate_id.to_owned()])
+        }
+        None => (snap.analysis.discover_test_roots()?, vec![]),
+    };
+    for t in &tests {
+        hack_recover_crate_name::insert_name(t.id.clone());
+    }
+    Ok(lsp_ext::DiscoverTestResults {
+        tests: tests
+            .into_iter()
+            .map(|t| {
+                let line_index = t.file.and_then(|f| snap.file_line_index(f).ok());
+                to_proto::test_item(&snap, t, line_index.as_ref())
+            })
+            .collect(),
+        scope,
+    })
 }
 
 pub(crate) fn handle_view_crate_graph(
