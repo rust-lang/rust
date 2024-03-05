@@ -1001,19 +1001,26 @@ impl<'p, Cx: TypeCx> PatStack<'p, Cx> {
     /// Only call if `ctor.is_covered_by(self.head().ctor())` is true.
     fn pop_head_constructor(
         &self,
+        cx: &Cx,
         ctor: &Constructor<Cx>,
         ctor_arity: usize,
         ctor_is_relevant: bool,
-    ) -> PatStack<'p, Cx> {
+    ) -> Result<PatStack<'p, Cx>, Cx::Error> {
         // We pop the head pattern and push the new fields extracted from the arguments of
         // `self.head()`.
         let mut new_pats = self.head().specialize(ctor, ctor_arity);
+        if new_pats.len() != ctor_arity {
+            return Err(cx.bug(format_args!(
+                "uncaught type error: pattern {:?} has inconsistent arity (expected arity {ctor_arity})",
+                self.head().as_pat().unwrap()
+            )));
+        }
         new_pats.extend_from_slice(&self.pats[1..]);
         // `ctor` is relevant for this row if it is the actual constructor of this row, or if the
         // row has a wildcard and `ctor` is relevant for wildcards.
         let ctor_is_relevant =
             !matches!(self.head().ctor(), Constructor::Wildcard) || ctor_is_relevant;
-        PatStack { pats: new_pats, relevant: self.relevant && ctor_is_relevant }
+        Ok(PatStack { pats: new_pats, relevant: self.relevant && ctor_is_relevant })
     }
 }
 
@@ -1083,18 +1090,19 @@ impl<'p, Cx: TypeCx> MatrixRow<'p, Cx> {
     /// Only call if `ctor.is_covered_by(self.head().ctor())` is true.
     fn pop_head_constructor(
         &self,
+        cx: &Cx,
         ctor: &Constructor<Cx>,
         ctor_arity: usize,
         ctor_is_relevant: bool,
         parent_row: usize,
-    ) -> MatrixRow<'p, Cx> {
-        MatrixRow {
-            pats: self.pats.pop_head_constructor(ctor, ctor_arity, ctor_is_relevant),
+    ) -> Result<MatrixRow<'p, Cx>, Cx::Error> {
+        Ok(MatrixRow {
+            pats: self.pats.pop_head_constructor(cx, ctor, ctor_arity, ctor_is_relevant)?,
             parent_row,
             is_under_guard: self.is_under_guard,
             useful: false,
             intersects: BitSet::new_empty(0), // Initialized in `Matrix::expand_and_push`.
-        }
+        })
     }
 }
 
@@ -1217,7 +1225,7 @@ impl<'p, Cx: TypeCx> Matrix<'p, Cx> {
         };
         for (i, row) in self.rows().enumerate() {
             if ctor.is_covered_by(pcx.cx, row.head().ctor())? {
-                let new_row = row.pop_head_constructor(ctor, arity, ctor_is_relevant, i);
+                let new_row = row.pop_head_constructor(pcx.cx, ctor, arity, ctor_is_relevant, i)?;
                 matrix.expand_and_push(new_row);
             }
         }
