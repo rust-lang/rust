@@ -1,9 +1,8 @@
-use std::borrow::Cow;
 use std::path::Path;
 use std::sync::atomic::{AtomicBool, Ordering};
 
 use rustc_data_structures::sync::{IntoDynSyncSend, Lrc};
-use rustc_errors::emitter::{stderr_destination, DynEmitter, Emitter, HumanEmitter};
+use rustc_errors::emitter::{stderr_destination, DynEmitter, Emitter, HumanEmitter, SilentEmitter};
 use rustc_errors::translation::Translate;
 use rustc_errors::{ColorConfig, Diag, DiagCtxt, DiagInner, Level as DiagnosticLevel};
 use rustc_session::parse::ParseSess as RawParseSess;
@@ -26,41 +25,6 @@ pub(crate) struct ParseSess {
     raw_psess: RawParseSess,
     ignore_path_set: Lrc<IgnorePathSet>,
     can_reset_errors: Lrc<AtomicBool>,
-}
-
-/// Emitter which discards every error.
-struct SilentEmitter;
-
-impl Translate for SilentEmitter {
-    fn fluent_bundle(&self) -> Option<&Lrc<rustc_errors::FluentBundle>> {
-        None
-    }
-
-    fn fallback_fluent_bundle(&self) -> &rustc_errors::FluentBundle {
-        panic!("silent emitter attempted to translate a diagnostic");
-    }
-
-    // Override `translate_message` for the silent emitter because eager translation of
-    // subdiagnostics result in a call to this.
-    fn translate_message<'a>(
-        &'a self,
-        message: &'a rustc_errors::DiagMessage,
-        _: &'a rustc_errors::translation::FluentArgs<'_>,
-    ) -> Result<Cow<'_, str>, rustc_errors::error::TranslateError<'_>> {
-        rustc_errors::emitter::silent_translate(message)
-    }
-}
-
-impl Emitter for SilentEmitter {
-    fn source_map(&self) -> Option<&Lrc<SourceMap>> {
-        None
-    }
-
-    fn emit_diagnostic(&mut self, _diag: DiagInner) {}
-}
-
-fn silent_emitter() -> Box<DynEmitter> {
-    Box::new(SilentEmitter {})
 }
 
 /// Emit errors against every files expect ones specified in the `ignore_path_set`.
@@ -143,17 +107,23 @@ fn default_dcx(
         ColorConfig::Never
     };
 
-    let emitter = if hide_parse_errors {
-        silent_emitter()
+    let fallback_bundle = rustc_errors::fallback_fluent_bundle(
+        rustc_driver::DEFAULT_LOCALE_RESOURCES.to_vec(),
+        false,
+    );
+    let emitter = Box::new(
+        HumanEmitter::new(stderr_destination(emit_color), fallback_bundle.clone())
+            .sm(Some(source_map.clone())),
+    );
+
+    let emitter: Box<DynEmitter> = if hide_parse_errors {
+        Box::new(SilentEmitter {
+            fallback_bundle,
+            fatal_dcx: DiagCtxt::new(emitter),
+            fatal_note: None,
+        })
     } else {
-        let fallback_bundle = rustc_errors::fallback_fluent_bundle(
-            rustc_driver::DEFAULT_LOCALE_RESOURCES.to_vec(),
-            false,
-        );
-        Box::new(
-            HumanEmitter::new(stderr_destination(emit_color), fallback_bundle)
-                .sm(Some(source_map.clone())),
-        )
+        emitter
     };
     DiagCtxt::new(Box::new(SilentOnIgnoredFilesEmitter {
         has_non_ignorable_parser_errors: false,
@@ -232,7 +202,14 @@ impl ParseSess {
     }
 
     pub(crate) fn set_silent_emitter(&mut self) {
-        self.raw_psess.dcx = DiagCtxt::new(silent_emitter());
+        // Ideally this invocation wouldn't be necessary and the fallback bundle in
+        // `self.parse_sess.dcx` could be used, but the lock in `DiagCtxt` prevents this.
+        // See `<rustc_errors::SilentEmitter as Translate>::fallback_fluent_bundle`.
+        let fallback_bundle = rustc_errors::fallback_fluent_bundle(
+            rustc_driver::DEFAULT_LOCALE_RESOURCES.to_vec(),
+            false,
+        );
+        self.raw_psess.dcx.make_silent(fallback_bundle, None);
     }
 
     pub(crate) fn span_to_filename(&self, span: Span) -> FileName {

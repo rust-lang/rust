@@ -10,7 +10,6 @@
 use rustc_span::source_map::SourceMap;
 use rustc_span::{FileLines, FileName, SourceFile, Span};
 
-use crate::error::TranslateError;
 use crate::snippet::{
     Annotation, AnnotationColumn, AnnotationType, Line, MultilineAnnotation, Style, StyledString,
 };
@@ -539,18 +538,9 @@ impl Emitter for HumanEmitter {
 /// Fatal diagnostics are forwarded to `fatal_dcx` to avoid silent
 /// failures of rustc, as witnessed e.g. in issue #89358.
 pub struct SilentEmitter {
+    pub fallback_bundle: LazyFallbackBundle,
     pub fatal_dcx: DiagCtxt,
-    pub fatal_note: String,
-}
-
-pub fn silent_translate<'a>(message: &'a DiagMessage) -> Result<Cow<'_, str>, TranslateError<'_>> {
-    match message {
-        DiagMessage::Str(msg) | DiagMessage::Translated(msg) => Ok(Cow::Borrowed(msg)),
-        DiagMessage::FluentIdentifier(identifier, _) => {
-            // Any value works here.
-            Ok(identifier.clone())
-        }
-    }
+    pub fatal_note: Option<String>,
 }
 
 impl Translate for SilentEmitter {
@@ -559,17 +549,9 @@ impl Translate for SilentEmitter {
     }
 
     fn fallback_fluent_bundle(&self) -> &FluentBundle {
-        panic!("silent emitter attempted to translate message")
-    }
-
-    // Override `translate_message` for the silent emitter because eager translation of
-    // subdiagnostics result in a call to this.
-    fn translate_message<'a>(
-        &'a self,
-        message: &'a DiagMessage,
-        _: &'a FluentArgs<'_>,
-    ) -> Result<Cow<'_, str>, TranslateError<'_>> {
-        silent_translate(message)
+        // Ideally this field wouldn't be necessary and the fallback bundle in `fatal_dcx` would be
+        // used but the lock prevents this.
+        &self.fallback_bundle
     }
 }
 
@@ -580,7 +562,9 @@ impl Emitter for SilentEmitter {
 
     fn emit_diagnostic(&mut self, mut diag: DiagInner) {
         if diag.level == Level::Fatal {
-            diag.sub(Level::Note, self.fatal_note.clone(), MultiSpan::new());
+            if let Some(fatal_note) = &self.fatal_note {
+                diag.sub(Level::Note, fatal_note.clone(), MultiSpan::new());
+            }
             self.fatal_dcx.emit_diagnostic(diag);
         }
     }
