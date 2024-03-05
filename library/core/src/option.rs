@@ -557,13 +557,13 @@ use crate::iter::{self, FromIterator, FusedIterator, TrustedLen};
 use crate::panicking::{panic, panic_str};
 use crate::pin::Pin;
 use crate::{
-    convert, hint, mem,
+    cmp, convert, hint, mem,
     ops::{self, ControlFlow, Deref, DerefMut},
     slice,
 };
 
 /// The `Option` type. See [the module level documentation](self) for more.
-#[derive(Copy, PartialOrd, Eq, Ord, Debug, Hash)]
+#[derive(Copy, Eq, Debug, Hash)]
 #[rustc_diagnostic_item = "Option"]
 #[lang = "Option"]
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -2161,6 +2161,35 @@ impl<T: PartialEq> PartialEq for Option<T> {
             (Some(_), None) => false,
             (None, Some(_)) => false,
             (None, None) => true,
+        }
+    }
+}
+
+// Manually implementing here somewhat improves codegen for
+// https://github.com/rust-lang/rust/issues/49892, although still
+// not optimal.
+#[stable(feature = "rust1", since = "1.0.0")]
+impl<T: PartialOrd> PartialOrd for Option<T> {
+    #[inline]
+    fn partial_cmp(&self, other: &Self) -> Option<cmp::Ordering> {
+        match (self, other) {
+            (Some(l), Some(r)) => l.partial_cmp(r),
+            (Some(_), None) => Some(cmp::Ordering::Greater),
+            (None, Some(_)) => Some(cmp::Ordering::Less),
+            (None, None) => Some(cmp::Ordering::Equal),
+        }
+    }
+}
+
+#[stable(feature = "rust1", since = "1.0.0")]
+impl<T: Ord> Ord for Option<T> {
+    #[inline]
+    fn cmp(&self, other: &Self) -> cmp::Ordering {
+        match (self, other) {
+            (Some(l), Some(r)) => l.cmp(r),
+            (Some(_), None) => cmp::Ordering::Greater,
+            (None, Some(_)) => cmp::Ordering::Less,
+            (None, None) => cmp::Ordering::Equal,
         }
     }
 }
