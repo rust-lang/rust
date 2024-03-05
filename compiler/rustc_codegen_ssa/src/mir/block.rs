@@ -852,7 +852,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         }
 
         let instance = match intrinsic {
-            None | Some(ty::IntrinsicDef { name: sym::drop_in_place, .. }) => instance,
+            None => instance,
             Some(intrinsic) => {
                 let mut llargs = Vec::with_capacity(1);
                 let ret_dest = self.make_return_dest(
