@@ -344,15 +344,6 @@ rustc_queries! {
         }
     }
 
-    query impl_trait_in_assoc_types_defined_by(
-        key: LocalDefId
-    ) -> &'tcx ty::List<LocalDefId> {
-        desc {
-            |tcx| "computing the opaque types defined by `{}`",
-            tcx.def_path_str(key.to_def_id())
-        }
-    }
-
     /// Returns the list of bounds that can be used for
     /// `SelectionCandidate::ProjectionCandidate(_)` and
     /// `ProjectionTyCandidate::TraitDef`.
