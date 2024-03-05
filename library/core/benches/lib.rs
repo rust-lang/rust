@@ -16,6 +16,7 @@ mod char;
 mod fmt;
 mod hash;
 mod iter;
+mod net;
 mod num;
 mod ops;
 mod pattern;
