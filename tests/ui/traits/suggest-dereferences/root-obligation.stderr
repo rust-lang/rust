@@ -1,12 +1,11 @@
-error[E0277]: expected a `Fn(char)` closure, found `char`
+error[E0277]: the trait bound `&char: Pattern<'_>` is not satisfied
   --> $DIR/root-obligation.rs:6:38
    |
 LL |         .filter(|c| "aeiou".contains(c))
-   |                             -------- ^ expected an `Fn(char)` closure, found `char`
+   |                             -------- ^ the trait `Fn<(char,)>` is not implemented for `&char`, which is required by `&char: Pattern<'_>`
    |                             |
    |                             required by a bound introduced by this call
    |
-   = help: the trait `Fn<(char,)>` is not implemented for `char`, which is required by `&char: Pattern<'_>`
    = note: required for `&char` to implement `FnOnce<(char,)>`
    = note: required for `&char` to implement `Pattern<'_>`
 note: required by a bound in `core::str::<impl str>::contains`

@@ -166,7 +166,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             return false;
         }
 
-        match ty.kind() {
+        match ty.peel_refs().kind() {
             ty::Param(param) => {
                 let generics = self.tcx.generics_of(self.body_id);
                 let generic_param = generics.type_param(&param, self.tcx);
@@ -184,7 +184,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     }
                 }
             }
-            ty::Alias(ty::AliasKind::Opaque, _) => {
+            ty::Slice(..) | ty::Adt(..) | ty::Alias(ty::AliasKind::Opaque, _) => {
                 for unsatisfied in unsatisfied_predicates.iter() {
                     if is_iterator_predicate(unsatisfied.0, self.tcx) {
                         return true;

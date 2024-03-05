@@ -46,15 +46,12 @@ LL | struct PriorityQueue<T>(BinaryHeap<PriorityQueueEntry<T>>);
    = help: the trait `PartialOrd<_>` is not implemented for `BinaryHeap<PriorityQueueEntry<T>>`
    = note: this error originates in the derive macro `PartialOrd` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error[E0599]: `BinaryHeap<PriorityQueueEntry<T>>` is not an iterator
+error[E0599]: no method named `cmp` found for struct `BinaryHeap<PriorityQueueEntry<T>>` in the current scope
   --> $DIR/issue-104884-trait-impl-sugg-err.rs:13:22
    |
 LL | #[derive(PartialOrd, AddImpl)]
    |                      ^^^^^^^ `BinaryHeap<PriorityQueueEntry<T>>` is not an iterator
    |
-   = note: the following trait bounds were not satisfied:
-           `BinaryHeap<PriorityQueueEntry<T>>: Iterator`
-           which is required by `&mut BinaryHeap<PriorityQueueEntry<T>>: Iterator`
    = note: this error originates in the derive macro `AddImpl` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0609]: no field `height` on type `&PriorityQueue<T>`
