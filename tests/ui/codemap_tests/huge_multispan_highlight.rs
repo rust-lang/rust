@@ -5,6 +5,7 @@
 fn main() {
     let _ = match true {
         true => (
+            // last line shown in multispan header
 
 
 
@@ -95,27 +96,145 @@ fn main() {
 
         ),
         false => "
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+        ",
+    };
+    let _ = match true {
+        true => (
+
+        1 // last line shown in multispan header
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+        ),
+        false => "
+
+
+        1 last line shown in multispan
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
         ",
     };
 }

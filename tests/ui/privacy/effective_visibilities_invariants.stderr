@@ -15,7 +15,6 @@ error: module has missing stability attribute
 LL | / #![feature(staged_api)]
 LL | |
 LL | | pub mod m {}
-LL | |
 ...  |
 LL | |
 LL | | fn main() {}
