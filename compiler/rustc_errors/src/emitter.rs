@@ -17,7 +17,7 @@ use crate::snippet::{
 use crate::styled_buffer::StyledBuffer;
 use crate::translation::{to_fluent_args, Translate};
 use crate::{
-    diagnostic::DiagLocation, CodeSuggestion, DiagCtxt, DiagInner, DiagnosticMessage, ErrCode,
+    diagnostic::DiagLocation, CodeSuggestion, DiagCtxt, DiagInner, DiagMessage, ErrCode,
     FluentBundle, LazyFallbackBundle, Level, MultiSpan, Subdiag, SubstitutionHighlight,
     SuggestionStyle, TerminalUrl,
 };
@@ -339,7 +339,7 @@ pub trait Emitter: Translate {
 
                 children.push(Subdiag {
                     level: Level::Note,
-                    messages: vec![(DiagnosticMessage::from(msg), Style::NoStyle)],
+                    messages: vec![(DiagMessage::from(msg), Style::NoStyle)],
                     span: MultiSpan::new(),
                 });
             }
@@ -543,12 +543,10 @@ pub struct SilentEmitter {
     pub fatal_note: String,
 }
 
-pub fn silent_translate<'a>(
-    message: &'a DiagnosticMessage,
-) -> Result<Cow<'_, str>, TranslateError<'_>> {
+pub fn silent_translate<'a>(message: &'a DiagMessage) -> Result<Cow<'_, str>, TranslateError<'_>> {
     match message {
-        DiagnosticMessage::Str(msg) | DiagnosticMessage::Translated(msg) => Ok(Cow::Borrowed(msg)),
-        DiagnosticMessage::FluentIdentifier(identifier, _) => {
+        DiagMessage::Str(msg) | DiagMessage::Translated(msg) => Ok(Cow::Borrowed(msg)),
+        DiagMessage::FluentIdentifier(identifier, _) => {
             // Any value works here.
             Ok(identifier.clone())
         }
@@ -568,7 +566,7 @@ impl Translate for SilentEmitter {
     // subdiagnostics result in a call to this.
     fn translate_message<'a>(
         &'a self,
-        message: &'a DiagnosticMessage,
+        message: &'a DiagMessage,
         _: &'a FluentArgs<'_>,
     ) -> Result<Cow<'_, str>, TranslateError<'_>> {
         silent_translate(message)
@@ -1216,7 +1214,7 @@ impl HumanEmitter {
     fn msgs_to_buffer(
         &self,
         buffer: &mut StyledBuffer,
-        msgs: &[(DiagnosticMessage, Style)],
+        msgs: &[(DiagMessage, Style)],
         args: &FluentArgs<'_>,
         padding: usize,
         label: &str,
@@ -1291,7 +1289,7 @@ impl HumanEmitter {
     fn emit_messages_default_inner(
         &mut self,
         msp: &MultiSpan,
-        msgs: &[(DiagnosticMessage, Style)],
+        msgs: &[(DiagMessage, Style)],
         args: &FluentArgs<'_>,
         code: &Option<ErrCode>,
         level: &Level,
@@ -2060,7 +2058,7 @@ impl HumanEmitter {
     fn emit_messages_default(
         &mut self,
         level: &Level,
-        messages: &[(DiagnosticMessage, Style)],
+        messages: &[(DiagMessage, Style)],
         args: &FluentArgs<'_>,
         code: &Option<ErrCode>,
         span: &MultiSpan,

@@ -1,7 +1,7 @@
 use crate::snippet::Style;
 use crate::{
-    CodeSuggestion, DiagCtxt, DiagnosticMessage, ErrCode, ErrorGuaranteed, ExplicitBug, Level,
-    MultiSpan, StashKey, SubdiagnosticMessage, Substitution, SubstitutionPart, SuggestionStyle,
+    CodeSuggestion, DiagCtxt, DiagMessage, ErrCode, ErrorGuaranteed, ExplicitBug, Level, MultiSpan,
+    StashKey, SubdiagMessage, Substitution, SubstitutionPart, SuggestionStyle,
 };
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_error_messages::fluent_value_from_str_list_sep_by_and;
@@ -182,15 +182,14 @@ where
 
     /// Add a subdiagnostic to an existing diagnostic where `f` is invoked on every message used
     /// (to optionally perform eager translation).
-    fn add_to_diagnostic_with<G: EmissionGuarantee, F: SubdiagnosticMessageOp<G>>(
+    fn add_to_diagnostic_with<G: EmissionGuarantee, F: SubdiagMessageOp<G>>(
         self,
         diag: &mut Diag<'_, G>,
         f: F,
     );
 }
 
-pub trait SubdiagnosticMessageOp<G> =
-    Fn(&mut Diag<'_, G>, SubdiagnosticMessage) -> SubdiagnosticMessage;
+pub trait SubdiagMessageOp<G> = Fn(&mut Diag<'_, G>, SubdiagMessage) -> SubdiagMessage;
 
 /// Trait implemented by lint types. This should not be implemented manually. Instead, use
 /// `#[derive(LintDiagnostic)]` -- see [rustc_macros::LintDiagnostic].
@@ -199,7 +198,7 @@ pub trait DecorateLint<'a, G: EmissionGuarantee> {
     /// Decorate and emit a lint.
     fn decorate_lint<'b>(self, diag: &'b mut Diag<'a, G>);
 
-    fn msg(&self) -> DiagnosticMessage;
+    fn msg(&self) -> DiagMessage;
 }
 
 #[derive(Clone, Debug, Encodable, Decodable)]
@@ -291,7 +290,7 @@ pub struct DiagInner {
     // outside of what methods in this crate themselves allow.
     pub(crate) level: Level,
 
-    pub messages: Vec<(DiagnosticMessage, Style)>,
+    pub messages: Vec<(DiagMessage, Style)>,
     pub code: Option<ErrCode>,
     pub span: MultiSpan,
     pub children: Vec<Subdiag>,
@@ -312,12 +311,12 @@ pub struct DiagInner {
 
 impl DiagInner {
     #[track_caller]
-    pub fn new<M: Into<DiagnosticMessage>>(level: Level, message: M) -> Self {
+    pub fn new<M: Into<DiagMessage>>(level: Level, message: M) -> Self {
         DiagInner::new_with_messages(level, vec![(message.into(), Style::NoStyle)])
     }
 
     #[track_caller]
-    pub fn new_with_messages(level: Level, messages: Vec<(DiagnosticMessage, Style)>) -> Self {
+    pub fn new_with_messages(level: Level, messages: Vec<(DiagMessage, Style)>) -> Self {
         DiagInner {
             level,
             messages,
@@ -396,8 +395,8 @@ impl DiagInner {
     // See comment on `Diag::subdiagnostic_message_to_diagnostic_message`.
     pub(crate) fn subdiagnostic_message_to_diagnostic_message(
         &self,
-        attr: impl Into<SubdiagnosticMessage>,
-    ) -> DiagnosticMessage {
+        attr: impl Into<SubdiagMessage>,
+    ) -> DiagMessage {
         let msg =
             self.messages.iter().map(|(msg, _)| msg).next().expect("diagnostic with no messages");
         msg.with_subdiagnostic_message(attr.into())
@@ -406,7 +405,7 @@ impl DiagInner {
     pub(crate) fn sub(
         &mut self,
         level: Level,
-        message: impl Into<SubdiagnosticMessage>,
+        message: impl Into<SubdiagMessage>,
         span: MultiSpan,
     ) {
         let sub = Subdiag {
@@ -429,7 +428,7 @@ impl DiagInner {
         &self,
     ) -> (
         &Level,
-        &[(DiagnosticMessage, Style)],
+        &[(DiagMessage, Style)],
         &Option<ErrCode>,
         &MultiSpan,
         &[Subdiag],
@@ -472,7 +471,7 @@ impl PartialEq for DiagInner {
 #[derive(Clone, Debug, PartialEq, Hash, Encodable, Decodable)]
 pub struct Subdiag {
     pub level: Level,
-    pub messages: Vec<(DiagnosticMessage, Style)>,
+    pub messages: Vec<(DiagMessage, Style)>,
     pub span: MultiSpan,
 }
 
@@ -578,7 +577,7 @@ macro_rules! with_fn {
 impl<'a, G: EmissionGuarantee> Diag<'a, G> {
     #[rustc_lint_diagnostics]
     #[track_caller]
-    pub fn new<M: Into<DiagnosticMessage>>(dcx: &'a DiagCtxt, level: Level, message: M) -> Self {
+    pub fn new(dcx: &'a DiagCtxt, level: Level, message: impl Into<DiagMessage>) -> Self {
         Self::new_diagnostic(dcx, DiagInner::new(level, message))
     }
 
@@ -623,7 +622,7 @@ impl<'a, G: EmissionGuarantee> Diag<'a, G> {
     /// ["primary span"][`MultiSpan`]; only the `Span` supplied when creating the diagnostic is
     /// primary.
     #[rustc_lint_diagnostics]
-    pub fn span_label(&mut self, span: Span, label: impl Into<SubdiagnosticMessage>) -> &mut Self {
+    pub fn span_label(&mut self, span: Span, label: impl Into<SubdiagMessage>) -> &mut Self {
         let msg = self.subdiagnostic_message_to_diagnostic_message(label);
         self.span.push_span_label(span, msg);
         self
@@ -718,7 +717,7 @@ impl<'a, G: EmissionGuarantee> Diag<'a, G> {
     with_fn! { with_note,
     /// Add a note attached to this diagnostic.
     #[rustc_lint_diagnostics]
-    pub fn note(&mut self, msg: impl Into<SubdiagnosticMessage>) -> &mut Self {
+    pub fn note(&mut self, msg: impl Into<SubdiagMessage>) -> &mut Self {
         self.sub(Level::Note, msg, MultiSpan::new());
         self
     } }
@@ -729,7 +728,7 @@ impl<'a, G: EmissionGuarantee> Diag<'a, G> {
     }
 
     /// This is like [`Diag::note()`], but it's only printed once.
-    pub fn note_once(&mut self, msg: impl Into<SubdiagnosticMessage>) -> &mut Self {
+    pub fn note_once(&mut self, msg: impl Into<SubdiagMessage>) -> &mut Self {
         self.sub(Level::OnceNote, msg, MultiSpan::new());
         self
     }
@@ -741,7 +740,7 @@ impl<'a, G: EmissionGuarantee> Diag<'a, G> {
     pub fn span_note(
         &mut self,
         sp: impl Into<MultiSpan>,
-        msg: impl Into<SubdiagnosticMessage>,
+        msg: impl Into<SubdiagMessage>,
     ) -> &mut Self {
         self.sub(Level::Note, msg, sp.into());
         self
@@ -752,7 +751,7 @@ impl<'a, G: EmissionGuarantee> Diag<'a, G> {
     pub fn span_note_once<S: Into<MultiSpan>>(
         &mut self,
         sp: S,
-        msg: impl Into<SubdiagnosticMessage>,
+        msg: impl Into<SubdiagMessage>,
     ) -> &mut Self {
         self.sub(Level::OnceNote, msg, sp.into());
         self
@@ -761,7 +760,7 @@ impl<'a, G: EmissionGuarantee> Diag<'a, G> {
     with_fn! { with_warn,
     /// Add a warning attached to this diagnostic.
     #[rustc_lint_diagnostics]
-    pub fn warn(&mut self, msg: impl Into<SubdiagnosticMessage>) -> &mut Self {
+    pub fn warn(&mut self, msg: impl Into<SubdiagMessage>) -> &mut Self {
         self.sub(Level::Warning, msg, MultiSpan::new());
         self
     } }
@@ -772,7 +771,7 @@ impl<'a, G: EmissionGuarantee> Diag<'a, G> {
     pub fn span_warn<S: Into<MultiSpan>>(
         &mut self,
         sp: S,
-        msg: impl Into<SubdiagnosticMessage>,
+        msg: impl Into<SubdiagMessage>,
     ) -> &mut Self {
         self.sub(Level::Warning, msg, sp.into());
         self
@@ -781,13 +780,13 @@ impl<'a, G: EmissionGuarantee> Diag<'a, G> {
     with_fn! { with_help,
     /// Add a help message attached to this diagnostic.
     #[rustc_lint_diagnostics]
-    pub fn help(&mut self, msg: impl Into<SubdiagnosticMessage>) -> &mut Self {
+    pub fn help(&mut self, msg: impl Into<SubdiagMessage>) -> &mut Self {
         self.sub(Level::Help, msg, MultiSpan::new());
         self
     } }
 
     /// This is like [`Diag::help()`], but it's only printed once.
-    pub fn help_once(&mut self, msg: impl Into<SubdiagnosticMessage>) -> &mut Self {
+    pub fn help_once(&mut self, msg: impl Into<SubdiagMessage>) -> &mut Self {
         self.sub(Level::OnceHelp, msg, MultiSpan::new());
         self
     }
@@ -804,7 +803,7 @@ impl<'a, G: EmissionGuarantee> Diag<'a, G> {
     pub fn span_help<S: Into<MultiSpan>>(
         &mut self,
         sp: S,
-        msg: impl Into<SubdiagnosticMessage>,
+        msg: impl Into<SubdiagMessage>,
     ) -> &mut Self {
         self.sub(Level::Help, msg, sp.into());
         self
@@ -841,7 +840,7 @@ impl<'a, G: EmissionGuarantee> Diag<'a, G> {
     /// In other words, multiple changes need to be applied as part of this suggestion.
     pub fn multipart_suggestion(
         &mut self,
-        msg: impl Into<SubdiagnosticMessage>,
+        msg: impl Into<SubdiagMessage>,
         suggestion: Vec<(Span, String)>,
         applicability: Applicability,
     ) -> &mut Self {
@@ -857,7 +856,7 @@ impl<'a, G: EmissionGuarantee> Diag<'a, G> {
     /// In other words, multiple changes need to be applied as part of this suggestion.
     pub fn multipart_suggestion_verbose(
         &mut self,
-        msg: impl Into<SubdiagnosticMessage>,
+        msg: impl Into<SubdiagMessage>,
         suggestion: Vec<(Span, String)>,
         applicability: Applicability,
     ) -> &mut Self {
@@ -872,7 +871,7 @@ impl<'a, G: EmissionGuarantee> Diag<'a, G> {
     /// [`Diag::multipart_suggestion()`] but you can set the [`SuggestionStyle`].
     pub fn multipart_suggestion_with_style(
         &mut self,
-        msg: impl Into<SubdiagnosticMessage>,
+        msg: impl Into<SubdiagMessage>,
         mut suggestion: Vec<(Span, String)>,
         applicability: Applicability,
         style: SuggestionStyle,
@@ -914,7 +913,7 @@ impl<'a, G: EmissionGuarantee> Diag<'a, G> {
     /// improve understandability.
     pub fn tool_only_multipart_suggestion(
         &mut self,
-        msg: impl Into<SubdiagnosticMessage>,
+        msg: impl Into<SubdiagMessage>,
         suggestion: Vec<(Span, String)>,
         applicability: Applicability,
     ) -> &mut Self {
@@ -947,7 +946,7 @@ impl<'a, G: EmissionGuarantee> Diag<'a, G> {
     pub fn span_suggestion(
         &mut self,
         sp: Span,
-        msg: impl Into<SubdiagnosticMessage>,
+        msg: impl Into<SubdiagMessage>,
         suggestion: impl ToString,
         applicability: Applicability,
     ) -> &mut Self {
@@ -965,7 +964,7 @@ impl<'a, G: EmissionGuarantee> Diag<'a, G> {
     pub fn span_suggestion_with_style(
         &mut self,
         sp: Span,
-        msg: impl Into<SubdiagnosticMessage>,
+        msg: impl Into<SubdiagMessage>,
         suggestion: impl ToString,
         applicability: Applicability,
         style: SuggestionStyle,
@@ -990,7 +989,7 @@ impl<'a, G: EmissionGuarantee> Diag<'a, G> {
     pub fn span_suggestion_verbose(
         &mut self,
         sp: Span,
-        msg: impl Into<SubdiagnosticMessage>,
+        msg: impl Into<SubdiagMessage>,
         suggestion: impl ToString,
         applicability: Applicability,
     ) -> &mut Self {
@@ -1010,7 +1009,7 @@ impl<'a, G: EmissionGuarantee> Diag<'a, G> {
     pub fn span_suggestions(
         &mut self,
         sp: Span,
-        msg: impl Into<SubdiagnosticMessage>,
+        msg: impl Into<SubdiagMessage>,
         suggestions: impl IntoIterator<Item = String>,
         applicability: Applicability,
     ) -> &mut Self {
@@ -1026,7 +1025,7 @@ impl<'a, G: EmissionGuarantee> Diag<'a, G> {
     pub fn span_suggestions_with_style(
         &mut self,
         sp: Span,
-        msg: impl Into<SubdiagnosticMessage>,
+        msg: impl Into<SubdiagMessage>,
         suggestions: impl IntoIterator<Item = String>,
         applicability: Applicability,
         style: SuggestionStyle,
@@ -1055,7 +1054,7 @@ impl<'a, G: EmissionGuarantee> Diag<'a, G> {
     /// See also [`Diag::multipart_suggestion()`].
     pub fn multipart_suggestions(
         &mut self,
-        msg: impl Into<SubdiagnosticMessage>,
+        msg: impl Into<SubdiagMessage>,
         suggestions: impl IntoIterator<Item = Vec<(Span, String)>>,
         applicability: Applicability,
     ) -> &mut Self {
@@ -1102,7 +1101,7 @@ impl<'a, G: EmissionGuarantee> Diag<'a, G> {
     pub fn span_suggestion_short(
         &mut self,
         sp: Span,
-        msg: impl Into<SubdiagnosticMessage>,
+        msg: impl Into<SubdiagMessage>,
         suggestion: impl ToString,
         applicability: Applicability,
     ) -> &mut Self {
@@ -1125,7 +1124,7 @@ impl<'a, G: EmissionGuarantee> Diag<'a, G> {
     pub fn span_suggestion_hidden(
         &mut self,
         sp: Span,
-        msg: impl Into<SubdiagnosticMessage>,
+        msg: impl Into<SubdiagMessage>,
         suggestion: impl ToString,
         applicability: Applicability,
     ) -> &mut Self {
@@ -1148,7 +1147,7 @@ impl<'a, G: EmissionGuarantee> Diag<'a, G> {
     pub fn tool_only_span_suggestion(
         &mut self,
         sp: Span,
-        msg: impl Into<SubdiagnosticMessage>,
+        msg: impl Into<SubdiagMessage>,
         suggestion: impl ToString,
         applicability: Applicability,
     ) -> &mut Self {
@@ -1203,7 +1202,7 @@ impl<'a, G: EmissionGuarantee> Diag<'a, G> {
 
     with_fn! { with_primary_message,
     /// Add a primary message.
-    pub fn primary_message(&mut self, msg: impl Into<DiagnosticMessage>) -> &mut Self {
+    pub fn primary_message(&mut self, msg: impl Into<DiagMessage>) -> &mut Self {
         self.messages[0] = (msg.into(), Style::NoStyle);
         self
     } }
@@ -1219,13 +1218,13 @@ impl<'a, G: EmissionGuarantee> Diag<'a, G> {
         self
     } }
 
-    /// Helper function that takes a `SubdiagnosticMessage` and returns a `DiagnosticMessage` by
+    /// Helper function that takes a `SubdiagMessage` and returns a `DiagMessage` by
     /// combining it with the primary message of the diagnostic (if translatable, otherwise it just
     /// passes the user's string along).
     pub(crate) fn subdiagnostic_message_to_diagnostic_message(
         &self,
-        attr: impl Into<SubdiagnosticMessage>,
-    ) -> DiagnosticMessage {
+        attr: impl Into<SubdiagMessage>,
+    ) -> DiagMessage {
         self.deref().subdiagnostic_message_to_diagnostic_message(attr)
     }
 
@@ -1233,7 +1232,7 @@ impl<'a, G: EmissionGuarantee> Diag<'a, G> {
     /// public methods above.
     ///
     /// Used by `proc_macro_server` for implementing `server::Diagnostic`.
-    pub fn sub(&mut self, level: Level, message: impl Into<SubdiagnosticMessage>, span: MultiSpan) {
+    pub fn sub(&mut self, level: Level, message: impl Into<SubdiagMessage>, span: MultiSpan) {
         self.deref_mut().sub(level, message, span);
     }
 
@@ -1338,7 +1337,7 @@ impl<G: EmissionGuarantee> Drop for Diag<'_, G> {
             Some(diag) if !panicking() => {
                 self.dcx.emit_diagnostic(DiagInner::new(
                     Level::Bug,
-                    DiagnosticMessage::from("the following error was constructed but not emitted"),
+                    DiagMessage::from("the following error was constructed but not emitted"),
                 ));
                 self.dcx.emit_diagnostic(*diag);
                 panic!("error was constructed but not emitted");

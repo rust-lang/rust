@@ -14,7 +14,7 @@ use rustc_lexer::{Cursor, LiteralKind};
 use rustc_session::lint::builtin::{
     RUST_2021_PREFIXES_INCOMPATIBLE_SYNTAX, TEXT_DIRECTION_CODEPOINT_IN_COMMENT,
 };
-use rustc_session::lint::BuiltinLintDiagnostics;
+use rustc_session::lint::BuiltinLintDiag;
 use rustc_session::parse::ParseSess;
 use rustc_span::symbol::Symbol;
 use rustc_span::{edition::Edition, BytePos, Pos, Span};
@@ -355,7 +355,7 @@ impl<'psess, 'src> StringReader<'psess, 'src> {
                 span,
                 ast::CRATE_NODE_ID,
                 "unicode codepoint changing visible direction of text present in comment",
-                BuiltinLintDiagnostics::UnicodeTextFlow(span, content.to_string()),
+                BuiltinLintDiag::UnicodeTextFlow(span, content.to_string()),
             );
         }
     }
@@ -685,7 +685,7 @@ impl<'psess, 'src> StringReader<'psess, 'src> {
                 prefix_span,
                 ast::CRATE_NODE_ID,
                 format!("prefix `{prefix}` is unknown"),
-                BuiltinLintDiagnostics::ReservedPrefix(prefix_span),
+                BuiltinLintDiag::ReservedPrefix(prefix_span),
             );
         }
     }

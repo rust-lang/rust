@@ -14,9 +14,7 @@ use crate::ty::{AdtDef, InstanceDef, UserTypeAnnotationIndex};
 use crate::ty::{GenericArg, GenericArgsRef};
 
 use rustc_data_structures::captures::Captures;
-use rustc_errors::{
-    DiagArgName, DiagArgValue, DiagnosticMessage, ErrorGuaranteed, IntoDiagnosticArg,
-};
+use rustc_errors::{DiagArgName, DiagArgValue, DiagMessage, ErrorGuaranteed, IntoDiagnosticArg};
 use rustc_hir::def::{CtorKind, Namespace};
 use rustc_hir::def_id::{DefId, CRATE_DEF_ID};
 use rustc_hir::{self, CoroutineDesugaring, CoroutineKind, ImplicitSelfKind};

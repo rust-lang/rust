@@ -13,9 +13,7 @@ use crate::ty::{GenericArg, GenericArgs, GenericArgsRef};
 use crate::ty::{List, ParamEnv};
 use hir::def::DefKind;
 use rustc_data_structures::captures::Captures;
-use rustc_errors::{
-    DiagArgValue, DiagnosticMessage, ErrorGuaranteed, IntoDiagnosticArg, MultiSpan,
-};
+use rustc_errors::{DiagArgValue, DiagMessage, ErrorGuaranteed, IntoDiagnosticArg, MultiSpan};
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
 use rustc_hir::LangItem;
@@ -1545,7 +1543,7 @@ impl<'tcx> Ty<'tcx> {
     pub fn new_error_with_message<S: Into<MultiSpan>>(
         tcx: TyCtxt<'tcx>,
         span: S,
-        msg: impl Into<DiagnosticMessage>,
+        msg: impl Into<DiagMessage>,
     ) -> Ty<'tcx> {
         let reported = tcx.dcx().span_delayed_bug(span, msg);
         Ty::new(tcx, Error(reported))

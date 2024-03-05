@@ -7,7 +7,7 @@ use crate::errors::{
     SuggestUpgradeCompiler,
 };
 use crate::lint::{
-    builtin::UNSTABLE_SYNTAX_PRE_EXPANSION, BufferedEarlyLint, BuiltinLintDiagnostics, Lint, LintId,
+    builtin::UNSTABLE_SYNTAX_PRE_EXPANSION, BufferedEarlyLint, BuiltinLintDiag, Lint, LintId,
 };
 use crate::Session;
 use rustc_ast::node_id::NodeId;
@@ -15,8 +15,8 @@ use rustc_data_structures::fx::{FxHashMap, FxIndexMap, FxIndexSet};
 use rustc_data_structures::sync::{AppendOnlyVec, Lock, Lrc};
 use rustc_errors::emitter::{stderr_destination, HumanEmitter, SilentEmitter};
 use rustc_errors::{
-    fallback_fluent_bundle, ColorConfig, Diag, DiagCtxt, DiagnosticMessage, EmissionGuarantee,
-    MultiSpan, StashKey,
+    fallback_fluent_bundle, ColorConfig, Diag, DiagCtxt, DiagMessage, EmissionGuarantee, MultiSpan,
+    StashKey,
 };
 use rustc_feature::{find_feature_issue, GateIssue, UnstableFeatures};
 use rustc_span::edition::Edition;
@@ -85,7 +85,7 @@ pub fn feature_err(
     sess: &Session,
     feature: Symbol,
     span: impl Into<MultiSpan>,
-    explain: impl Into<DiagnosticMessage>,
+    explain: impl Into<DiagMessage>,
 ) -> Diag<'_> {
     feature_err_issue(sess, feature, span, GateIssue::Language, explain)
 }
@@ -100,7 +100,7 @@ pub fn feature_err_issue(
     feature: Symbol,
     span: impl Into<MultiSpan>,
     issue: GateIssue,
-    explain: impl Into<DiagnosticMessage>,
+    explain: impl Into<DiagMessage>,
 ) -> Diag<'_> {
     let span = span.into();
 
@@ -290,7 +290,7 @@ impl ParseSess {
         lint: &'static Lint,
         span: impl Into<MultiSpan>,
         node_id: NodeId,
-        msg: impl Into<DiagnosticMessage>,
+        msg: impl Into<DiagMessage>,
     ) {
         self.buffered_lints.with_lock(|buffered_lints| {
             buffered_lints.push(BufferedEarlyLint {
@@ -298,7 +298,7 @@ impl ParseSess {
                 node_id,
                 msg: msg.into(),
                 lint_id: LintId::of(lint),
-                diagnostic: BuiltinLintDiagnostics::Normal,
+                diagnostic: BuiltinLintDiag::Normal,
             });
         });
     }
@@ -308,8 +308,8 @@ impl ParseSess {
         lint: &'static Lint,
         span: impl Into<MultiSpan>,
         node_id: NodeId,
-        msg: impl Into<DiagnosticMessage>,
-        diagnostic: BuiltinLintDiagnostics,
+        msg: impl Into<DiagMessage>,
+        diagnostic: BuiltinLintDiag,
     ) {
         self.buffered_lints.with_lock(|buffered_lints| {
             buffered_lints.push(BufferedEarlyLint {

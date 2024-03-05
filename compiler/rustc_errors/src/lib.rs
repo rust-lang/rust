@@ -39,7 +39,7 @@ pub use codes::*;
 pub use diagnostic::{
     AddToDiagnostic, BugAbort, DecorateLint, Diag, DiagArg, DiagArgMap, DiagArgName, DiagArgValue,
     DiagInner, DiagStyledString, EmissionGuarantee, FatalAbort, IntoDiagnostic, IntoDiagnosticArg,
-    StringPart, Subdiag, SubdiagnosticMessageOp,
+    StringPart, Subdiag, SubdiagMessageOp,
 };
 pub use diagnostic_impls::{
     DiagArgFromDisplay, DiagSymbolList, ExpectedLifetimeParameter, IndicateAnonymousLifetime,
@@ -47,8 +47,8 @@ pub use diagnostic_impls::{
 };
 pub use emitter::ColorConfig;
 pub use rustc_error_messages::{
-    fallback_fluent_bundle, fluent_bundle, DelayDm, DiagnosticMessage, FluentBundle,
-    LanguageIdentifier, LazyFallbackBundle, MultiSpan, SpanLabel, SubdiagnosticMessage,
+    fallback_fluent_bundle, fluent_bundle, DelayDm, DiagMessage, FluentBundle, LanguageIdentifier,
+    LazyFallbackBundle, MultiSpan, SpanLabel, SubdiagMessage,
 };
 pub use rustc_lint_defs::{pluralize, Applicability};
 pub use rustc_span::fatal_error::{FatalError, FatalErrorMarker};
@@ -154,7 +154,7 @@ pub struct CodeSuggestion {
     /// ]
     /// ```
     pub substitutions: Vec<Substitution>,
-    pub msg: DiagnosticMessage,
+    pub msg: DiagMessage,
     /// Visual representation of this suggestion.
     pub style: SuggestionStyle,
     /// Whether or not the suggestion is approximate
@@ -631,12 +631,12 @@ impl DiagCtxt {
         }
     }
 
-    /// Translate `message` eagerly with `args` to `SubdiagnosticMessage::Eager`.
+    /// Translate `message` eagerly with `args` to `SubdiagMessage::Eager`.
     pub fn eagerly_translate<'a>(
         &self,
-        message: DiagnosticMessage,
+        message: DiagMessage,
         args: impl Iterator<Item = DiagArg<'a>>,
-    ) -> SubdiagnosticMessage {
+    ) -> SubdiagMessage {
         let inner = self.inner.borrow();
         inner.eagerly_translate(message, args)
     }
@@ -644,7 +644,7 @@ impl DiagCtxt {
     /// Translate `message` eagerly with `args` to `String`.
     pub fn eagerly_translate_to_string<'a>(
         &self,
-        message: DiagnosticMessage,
+        message: DiagMessage,
         args: impl Iterator<Item = DiagArg<'a>>,
     ) -> String {
         let inner = self.inner.borrow();
@@ -904,7 +904,7 @@ impl DiagCtxt {
                 // configuration like `--cap-lints allow --force-warn bare_trait_objects`.
                 inner.emit_diagnostic(DiagInner::new(
                     ForceWarning(None),
-                    DiagnosticMessage::Str(warnings),
+                    DiagMessage::Str(warnings),
                 ));
             }
             (_, 0) => {
@@ -1078,13 +1078,13 @@ impl DiagCtxt {
 impl DiagCtxt {
     // No `#[rustc_lint_diagnostics]` because bug messages aren't user-facing.
     #[track_caller]
-    pub fn struct_bug(&self, msg: impl Into<DiagnosticMessage>) -> Diag<'_, BugAbort> {
+    pub fn struct_bug(&self, msg: impl Into<DiagMessage>) -> Diag<'_, BugAbort> {
         Diag::new(self, Bug, msg)
     }
 
     // No `#[rustc_lint_diagnostics]` because bug messages aren't user-facing.
     #[track_caller]
-    pub fn bug(&self, msg: impl Into<DiagnosticMessage>) -> ! {
+    pub fn bug(&self, msg: impl Into<DiagMessage>) -> ! {
         self.struct_bug(msg).emit()
     }
 
@@ -1093,14 +1093,14 @@ impl DiagCtxt {
     pub fn struct_span_bug(
         &self,
         span: impl Into<MultiSpan>,
-        msg: impl Into<DiagnosticMessage>,
+        msg: impl Into<DiagMessage>,
     ) -> Diag<'_, BugAbort> {
         self.struct_bug(msg).with_span(span)
     }
 
     // No `#[rustc_lint_diagnostics]` because bug messages aren't user-facing.
     #[track_caller]
-    pub fn span_bug(&self, span: impl Into<MultiSpan>, msg: impl Into<DiagnosticMessage>) -> ! {
+    pub fn span_bug(&self, span: impl Into<MultiSpan>, msg: impl Into<DiagMessage>) -> ! {
         self.struct_span_bug(span, msg).emit()
     }
 
@@ -1116,13 +1116,13 @@ impl DiagCtxt {
 
     #[rustc_lint_diagnostics]
     #[track_caller]
-    pub fn struct_fatal(&self, msg: impl Into<DiagnosticMessage>) -> Diag<'_, FatalAbort> {
+    pub fn struct_fatal(&self, msg: impl Into<DiagMessage>) -> Diag<'_, FatalAbort> {
         Diag::new(self, Fatal, msg)
     }
 
     #[rustc_lint_diagnostics]
     #[track_caller]
-    pub fn fatal(&self, msg: impl Into<DiagnosticMessage>) -> ! {
+    pub fn fatal(&self, msg: impl Into<DiagMessage>) -> ! {
         self.struct_fatal(msg).emit()
     }
 
@@ -1131,14 +1131,14 @@ impl DiagCtxt {
     pub fn struct_span_fatal(
         &self,
         span: impl Into<MultiSpan>,
-        msg: impl Into<DiagnosticMessage>,
+        msg: impl Into<DiagMessage>,
     ) -> Diag<'_, FatalAbort> {
         self.struct_fatal(msg).with_span(span)
     }
 
     #[rustc_lint_diagnostics]
     #[track_caller]
-    pub fn span_fatal(&self, span: impl Into<MultiSpan>, msg: impl Into<DiagnosticMessage>) -> ! {
+    pub fn span_fatal(&self, span: impl Into<MultiSpan>, msg: impl Into<DiagMessage>) -> ! {
         self.struct_span_fatal(span, msg).emit()
     }
 
@@ -1174,13 +1174,13 @@ impl DiagCtxt {
     // FIXME: This method should be removed (every error should have an associated error code).
     #[rustc_lint_diagnostics]
     #[track_caller]
-    pub fn struct_err(&self, msg: impl Into<DiagnosticMessage>) -> Diag<'_> {
+    pub fn struct_err(&self, msg: impl Into<DiagMessage>) -> Diag<'_> {
         Diag::new(self, Error, msg)
     }
 
     #[rustc_lint_diagnostics]
     #[track_caller]
-    pub fn err(&self, msg: impl Into<DiagnosticMessage>) -> ErrorGuaranteed {
+    pub fn err(&self, msg: impl Into<DiagMessage>) -> ErrorGuaranteed {
         self.struct_err(msg).emit()
     }
 
@@ -1189,7 +1189,7 @@ impl DiagCtxt {
     pub fn struct_span_err(
         &self,
         span: impl Into<MultiSpan>,
-        msg: impl Into<DiagnosticMessage>,
+        msg: impl Into<DiagMessage>,
     ) -> Diag<'_> {
         self.struct_err(msg).with_span(span)
     }
@@ -1199,7 +1199,7 @@ impl DiagCtxt {
     pub fn span_err(
         &self,
         span: impl Into<MultiSpan>,
-        msg: impl Into<DiagnosticMessage>,
+        msg: impl Into<DiagMessage>,
     ) -> ErrorGuaranteed {
         self.struct_span_err(span, msg).emit()
     }
@@ -1217,7 +1217,7 @@ impl DiagCtxt {
     /// Ensures that an error is printed. See `Level::DelayedBug`.
     // No `#[rustc_lint_diagnostics]` because bug messages aren't user-facing.
     #[track_caller]
-    pub fn delayed_bug(&self, msg: impl Into<DiagnosticMessage>) -> ErrorGuaranteed {
+    pub fn delayed_bug(&self, msg: impl Into<DiagMessage>) -> ErrorGuaranteed {
         Diag::<ErrorGuaranteed>::new(self, DelayedBug, msg).emit()
     }
 
@@ -1230,20 +1230,20 @@ impl DiagCtxt {
     pub fn span_delayed_bug(
         &self,
         sp: impl Into<MultiSpan>,
-        msg: impl Into<DiagnosticMessage>,
+        msg: impl Into<DiagMessage>,
     ) -> ErrorGuaranteed {
         Diag::<ErrorGuaranteed>::new(self, DelayedBug, msg).with_span(sp).emit()
     }
 
     #[rustc_lint_diagnostics]
     #[track_caller]
-    pub fn struct_warn(&self, msg: impl Into<DiagnosticMessage>) -> Diag<'_, ()> {
+    pub fn struct_warn(&self, msg: impl Into<DiagMessage>) -> Diag<'_, ()> {
         Diag::new(self, Warning, msg)
     }
 
     #[rustc_lint_diagnostics]
     #[track_caller]
-    pub fn warn(&self, msg: impl Into<DiagnosticMessage>) {
+    pub fn warn(&self, msg: impl Into<DiagMessage>) {
         self.struct_warn(msg).emit()
     }
 
@@ -1252,14 +1252,14 @@ impl DiagCtxt {
     pub fn struct_span_warn(
         &self,
         span: impl Into<MultiSpan>,
-        msg: impl Into<DiagnosticMessage>,
+        msg: impl Into<DiagMessage>,
     ) -> Diag<'_, ()> {
         self.struct_warn(msg).with_span(span)
     }
 
     #[rustc_lint_diagnostics]
     #[track_caller]
-    pub fn span_warn(&self, span: impl Into<MultiSpan>, msg: impl Into<DiagnosticMessage>) {
+    pub fn span_warn(&self, span: impl Into<MultiSpan>, msg: impl Into<DiagMessage>) {
         self.struct_span_warn(span, msg).emit()
     }
 
@@ -1275,13 +1275,13 @@ impl DiagCtxt {
 
     #[rustc_lint_diagnostics]
     #[track_caller]
-    pub fn struct_note(&self, msg: impl Into<DiagnosticMessage>) -> Diag<'_, ()> {
+    pub fn struct_note(&self, msg: impl Into<DiagMessage>) -> Diag<'_, ()> {
         Diag::new(self, Note, msg)
     }
 
     #[rustc_lint_diagnostics]
     #[track_caller]
-    pub fn note(&self, msg: impl Into<DiagnosticMessage>) {
+    pub fn note(&self, msg: impl Into<DiagMessage>) {
         self.struct_note(msg).emit()
     }
 
@@ -1290,14 +1290,14 @@ impl DiagCtxt {
     pub fn struct_span_note(
         &self,
         span: impl Into<MultiSpan>,
-        msg: impl Into<DiagnosticMessage>,
+        msg: impl Into<DiagMessage>,
     ) -> Diag<'_, ()> {
         self.struct_note(msg).with_span(span)
     }
 
     #[rustc_lint_diagnostics]
     #[track_caller]
-    pub fn span_note(&self, span: impl Into<MultiSpan>, msg: impl Into<DiagnosticMessage>) {
+    pub fn span_note(&self, span: impl Into<MultiSpan>, msg: impl Into<DiagMessage>) {
         self.struct_span_note(span, msg).emit()
     }
 
@@ -1313,19 +1313,19 @@ impl DiagCtxt {
 
     #[rustc_lint_diagnostics]
     #[track_caller]
-    pub fn struct_help(&self, msg: impl Into<DiagnosticMessage>) -> Diag<'_, ()> {
+    pub fn struct_help(&self, msg: impl Into<DiagMessage>) -> Diag<'_, ()> {
         Diag::new(self, Help, msg)
     }
 
     #[rustc_lint_diagnostics]
     #[track_caller]
-    pub fn struct_failure_note(&self, msg: impl Into<DiagnosticMessage>) -> Diag<'_, ()> {
+    pub fn struct_failure_note(&self, msg: impl Into<DiagMessage>) -> Diag<'_, ()> {
         Diag::new(self, FailureNote, msg)
     }
 
     #[rustc_lint_diagnostics]
     #[track_caller]
-    pub fn struct_allow(&self, msg: impl Into<DiagnosticMessage>) -> Diag<'_, ()> {
+    pub fn struct_allow(&self, msg: impl Into<DiagMessage>) -> Diag<'_, ()> {
         Diag::new(self, Allow, msg)
     }
 
@@ -1333,7 +1333,7 @@ impl DiagCtxt {
     #[track_caller]
     pub fn struct_expect(
         &self,
-        msg: impl Into<DiagnosticMessage>,
+        msg: impl Into<DiagMessage>,
         id: LintExpectationId,
     ) -> Diag<'_, ()> {
         Diag::new(self, Expect(id), msg)
@@ -1553,19 +1553,19 @@ impl DiagCtxtInner {
         self.has_errors().or_else(|| self.delayed_bugs.get(0).map(|(_, guar)| guar).copied())
     }
 
-    /// Translate `message` eagerly with `args` to `SubdiagnosticMessage::Eager`.
+    /// Translate `message` eagerly with `args` to `SubdiagMessage::Eager`.
     pub fn eagerly_translate<'a>(
         &self,
-        message: DiagnosticMessage,
+        message: DiagMessage,
         args: impl Iterator<Item = DiagArg<'a>>,
-    ) -> SubdiagnosticMessage {
-        SubdiagnosticMessage::Translated(Cow::from(self.eagerly_translate_to_string(message, args)))
+    ) -> SubdiagMessage {
+        SubdiagMessage::Translated(Cow::from(self.eagerly_translate_to_string(message, args)))
     }
 
     /// Translate `message` eagerly with `args` to `String`.
     pub fn eagerly_translate_to_string<'a>(
         &self,
-        message: DiagnosticMessage,
+        message: DiagMessage,
         args: impl Iterator<Item = DiagArg<'a>>,
     ) -> String {
         let args = crate::translation::to_fluent_args(args);
@@ -1575,8 +1575,8 @@ impl DiagCtxtInner {
     fn eagerly_translate_for_subdiag(
         &self,
         diag: &DiagInner,
-        msg: impl Into<SubdiagnosticMessage>,
-    ) -> SubdiagnosticMessage {
+        msg: impl Into<SubdiagMessage>,
+    ) -> SubdiagMessage {
         let msg = diag.subdiagnostic_message_to_diagnostic_message(msg);
         self.eagerly_translate(msg, diag.args.iter())
     }

@@ -19,7 +19,7 @@ use rustc_middle::ty::TyCtxt;
 use rustc_session::lint::builtin::ABSOLUTE_PATHS_NOT_STARTING_WITH_CRATE;
 use rustc_session::lint::builtin::AMBIGUOUS_GLOB_IMPORTS;
 use rustc_session::lint::builtin::MACRO_EXPANDED_MACRO_EXPORTS_ACCESSED_BY_ABSOLUTE_PATHS;
-use rustc_session::lint::{AmbiguityErrorDiag, BuiltinLintDiagnostics};
+use rustc_session::lint::{AmbiguityErrorDiag, BuiltinLintDiag};
 use rustc_session::Session;
 use rustc_span::edit_distance::find_best_match_for_name;
 use rustc_span::edition::Edition;
@@ -138,7 +138,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                 CRATE_NODE_ID,
                 span_use,
                 msg,
-                BuiltinLintDiagnostics::MacroExpandedMacroExportsAccessedByAbsolutePaths(span_def),
+                BuiltinLintDiag::MacroExpandedMacroExportsAccessedByAbsolutePaths(span_def),
             );
         }
 
@@ -153,7 +153,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                     import.root_id,
                     ambiguity_error.ident.span,
                     diag.msg.to_string(),
-                    BuiltinLintDiagnostics::AmbiguousGlobImports { diag },
+                    BuiltinLintDiag::AmbiguousGlobImports { diag },
                 );
             } else {
                 let mut err = struct_span_code_err!(self.dcx(), diag.span, E0659, "{}", &diag.msg);
@@ -188,7 +188,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                     &candidates,
                     if instead { Instead::Yes } else { Instead::No },
                     found_use,
-                    DiagnosticMode::Normal,
+                    DiagMode::Normal,
                     path,
                     "",
                 );
@@ -525,7 +525,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             }
         }
 
-        let diag = BuiltinLintDiagnostics::AbsPathWithModule(root_span);
+        let diag = BuiltinLintDiag::AbsPathWithModule(root_span);
         self.lint_buffer.buffer_lint_with_diagnostic(
             ABSOLUTE_PATHS_NOT_STARTING_WITH_CRATE,
             node_id,
@@ -723,7 +723,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                         &import_suggestions,
                         Instead::No,
                         FoundUse::Yes,
-                        DiagnosticMode::Pattern,
+                        DiagMode::Pattern,
                         vec![],
                         "",
                     );
@@ -1444,7 +1444,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             &import_suggestions,
             Instead::No,
             found_use,
-            DiagnosticMode::Normal,
+            DiagMode::Normal,
             vec![],
             "",
         );
@@ -1775,7 +1775,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                 &import_suggestions,
                 Instead::Yes,
                 FoundUse::Yes,
-                DiagnosticMode::Import,
+                DiagMode::Import,
                 vec![],
                 "",
             );
@@ -2696,7 +2696,7 @@ enum FoundUse {
 }
 
 /// Whether a binding is part of a pattern or a use statement. Used for diagnostics.
-pub(crate) enum DiagnosticMode {
+pub(crate) enum DiagMode {
     Normal,
     /// The binding is part of a pattern
     Pattern,
@@ -2710,7 +2710,7 @@ pub(crate) fn import_candidates(
     // This is `None` if all placement locations are inside expansions
     use_placement_span: Option<Span>,
     candidates: &[ImportSuggestion],
-    mode: DiagnosticMode,
+    mode: DiagMode,
     append: &str,
 ) {
     show_candidates(
@@ -2738,7 +2738,7 @@ fn show_candidates(
     candidates: &[ImportSuggestion],
     instead: Instead,
     found_use: FoundUse,
-    mode: DiagnosticMode,
+    mode: DiagMode,
     path: Vec<Segment>,
     append: &str,
 ) -> bool {
@@ -2799,7 +2799,7 @@ fn show_candidates(
             };
 
         let instead = if let Instead::Yes = instead { " instead" } else { "" };
-        let mut msg = if let DiagnosticMode::Pattern = mode {
+        let mut msg = if let DiagMode::Pattern = mode {
             format!(
                 "if you meant to match on {kind}{instead}{name}, use the full path in the pattern",
             )
@@ -2813,7 +2813,7 @@ fn show_candidates(
 
         if let Some(span) = use_placement_span {
             let (add_use, trailing) = match mode {
-                DiagnosticMode::Pattern => {
+                DiagMode::Pattern => {
                     err.span_suggestions(
                         span,
                         msg,
@@ -2822,14 +2822,14 @@ fn show_candidates(
                     );
                     return true;
                 }
-                DiagnosticMode::Import => ("", ""),
-                DiagnosticMode::Normal => ("use ", ";\n"),
+                DiagMode::Import => ("", ""),
+                DiagMode::Normal => ("use ", ";\n"),
             };
             for candidate in &mut accessible_path_strings {
                 // produce an additional newline to separate the new use statement
                 // from the directly following item.
                 let additional_newline = if let FoundUse::No = found_use
-                    && let DiagnosticMode::Normal = mode
+                    && let DiagMode::Normal = mode
                 {
                     "\n"
                 } else {
@@ -2870,16 +2870,13 @@ fn show_candidates(
             err.help(msg);
         }
         true
-    } else if !(inaccessible_path_strings.is_empty() || matches!(mode, DiagnosticMode::Import)) {
-        let prefix = if let DiagnosticMode::Pattern = mode {
-            "you might have meant to match on "
-        } else {
-            ""
-        };
+    } else if !(inaccessible_path_strings.is_empty() || matches!(mode, DiagMode::Import)) {
+        let prefix =
+            if let DiagMode::Pattern = mode { "you might have meant to match on " } else { "" };
         if let [(name, descr, def_id, note, _)] = &inaccessible_path_strings[..] {
             let msg = format!(
                 "{prefix}{descr} `{name}`{} exists but is inaccessible",
-                if let DiagnosticMode::Pattern = mode { ", which" } else { "" }
+                if let DiagMode::Pattern = mode { ", which" } else { "" }
             );
 
             if let Some(local_def_id) = def_id.and_then(|did| did.as_local()) {

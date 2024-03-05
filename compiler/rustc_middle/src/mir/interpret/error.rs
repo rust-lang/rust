@@ -6,9 +6,7 @@ use crate::ty::{layout, tls, Ty, TyCtxt, ValTree};
 
 use rustc_ast_ir::Mutability;
 use rustc_data_structures::sync::Lock;
-use rustc_errors::{
-    DiagArgName, DiagArgValue, DiagnosticMessage, ErrorGuaranteed, IntoDiagnosticArg,
-};
+use rustc_errors::{DiagArgName, DiagArgValue, DiagMessage, ErrorGuaranteed, IntoDiagnosticArg};
 use rustc_macros::HashStable;
 use rustc_session::CtfeBacktrace;
 use rustc_span::{def_id::DefId, Span, DUMMY_SP};
@@ -489,7 +487,7 @@ pub enum ResourceExhaustionInfo {
 /// A trait for machine-specific errors (or other "machine stop" conditions).
 pub trait MachineStopType: Any + fmt::Debug + Send {
     /// The diagnostic message for this error
-    fn diagnostic_message(&self) -> DiagnosticMessage;
+    fn diagnostic_message(&self) -> DiagMessage;
     /// Add diagnostic arguments by passing name and value pairs to `adder`, which are passed to
     /// fluent for formatting the translated diagnostic message.
     fn add_args(self: Box<Self>, adder: &mut dyn FnMut(DiagArgName, DiagArgValue));

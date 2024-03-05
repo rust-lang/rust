@@ -1,4 +1,5 @@
 //@ compile-flags: -Z unstable-options
+//@ ignore-stage1
 
 #![crate_type = "lib"]
 #![feature(rustc_attrs)]
@@ -14,7 +15,7 @@ extern crate rustc_span;
 
 use rustc_errors::{
     AddToDiagnostic, Diag, EmissionGuarantee, DiagCtxt, IntoDiagnostic, Level,
-    SubdiagnosticMessageOp,
+    SubdiagMessageOp,
 };
 use rustc_macros::{Diagnostic, Subdiagnostic};
 use rustc_span::Span;
@@ -55,7 +56,7 @@ impl<'a, G: EmissionGuarantee> IntoDiagnostic<'a, G> for TranslatableInIntoDiagn
 pub struct UntranslatableInAddToDiagnostic;
 
 impl AddToDiagnostic for UntranslatableInAddToDiagnostic {
-    fn add_to_diagnostic_with<G: EmissionGuarantee, F: SubdiagnosticMessageOp<G>>(
+    fn add_to_diagnostic_with<G: EmissionGuarantee, F: SubdiagMessageOp<G>>(
         self,
         diag: &mut Diag<'_, G>,
         f: F,
@@ -68,7 +69,7 @@ impl AddToDiagnostic for UntranslatableInAddToDiagnostic {
 pub struct TranslatableInAddToDiagnostic;
 
 impl AddToDiagnostic for TranslatableInAddToDiagnostic {
-    fn add_to_diagnostic_with<G: EmissionGuarantee, F: SubdiagnosticMessageOp<G>>(
+    fn add_to_diagnostic_with<G: EmissionGuarantee, F: SubdiagMessageOp<G>>(
         self,
         diag: &mut Diag<'_, G>,
         f: F,

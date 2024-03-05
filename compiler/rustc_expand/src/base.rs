@@ -16,7 +16,7 @@ use rustc_data_structures::sync::{self, Lrc};
 use rustc_errors::{Applicability, Diag, DiagCtxt, ErrorGuaranteed, PResult};
 use rustc_feature::Features;
 use rustc_lint_defs::builtin::PROC_MACRO_BACK_COMPAT;
-use rustc_lint_defs::{BufferedEarlyLint, BuiltinLintDiagnostics, RegisteredTools};
+use rustc_lint_defs::{BufferedEarlyLint, BuiltinLintDiag, RegisteredTools};
 use rustc_parse::{parser, MACRO_ARGUMENTS};
 use rustc_session::config::CollapseMacroDebuginfo;
 use rustc_session::errors::report_lit_error;
@@ -1488,7 +1488,7 @@ fn pretty_printing_compatibility_hack(item: &Item, sess: &Session) -> bool {
                                         item.ident.span,
                                         ast::CRATE_NODE_ID,
                                         "using an old version of `rental`",
-                                        BuiltinLintDiagnostics::ProcMacroBackCompat(
+                                        BuiltinLintDiag::ProcMacroBackCompat(
                                         "older versions of the `rental` crate will stop compiling in future versions of Rust; \
                                         please update to `rental` v0.5.6, or switch to one of the `rental` alternatives".to_string()
                                         )

@@ -7,7 +7,7 @@ use crate::mbe::{
 use rustc_ast::token::{self, Token, TokenKind};
 use rustc_ast::tokenstream::TokenStream;
 use rustc_ast_pretty::pprust;
-use rustc_errors::{Applicability, Diag, DiagCtxt, DiagnosticMessage};
+use rustc_errors::{Applicability, Diag, DiagCtxt, DiagMessage};
 use rustc_parse::parser::{Parser, Recovery};
 use rustc_span::source_map::SourceMap;
 use rustc_span::symbol::Ident;
@@ -227,12 +227,12 @@ pub(super) fn emit_frag_parse_err(
 ) -> ErrorGuaranteed {
     // FIXME(davidtwco): avoid depending on the error message text
     if parser.token == token::Eof
-        && let DiagnosticMessage::Str(message) = &e.messages[0].0
+        && let DiagMessage::Str(message) = &e.messages[0].0
         && message.ends_with(", found `<eof>`")
     {
         let msg = &e.messages[0];
         e.messages[0] = (
-            DiagnosticMessage::from(format!(
+            DiagMessage::from(format!(
                 "macro expansion ends with an incomplete expression: {}",
                 message.replace(", found `<eof>`", ""),
             )),

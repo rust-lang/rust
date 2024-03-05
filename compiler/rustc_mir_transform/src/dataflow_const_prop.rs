@@ -36,7 +36,7 @@ pub(crate) macro throw_machine_stop_str($($tt:tt)*) {{
     }
 
     impl rustc_middle::mir::interpret::MachineStopType for Zst {
-        fn diagnostic_message(&self) -> rustc_errors::DiagnosticMessage {
+        fn diagnostic_message(&self) -> rustc_errors::DiagMessage {
             self.to_string().into()
         }
 

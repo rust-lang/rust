@@ -7,7 +7,7 @@ use crate::errors::{
     WrongNumberOfGenericArgumentsToIntrinsic,
 };
 
-use rustc_errors::{codes::*, struct_span_code_err, DiagnosticMessage};
+use rustc_errors::{codes::*, struct_span_code_err, DiagMessage};
 use rustc_hir as hir;
 use rustc_middle::traits::{ObligationCause, ObligationCauseCode};
 use rustc_middle::ty::{self, Ty, TyCtxt};
@@ -139,7 +139,7 @@ pub fn intrinsic_operation_unsafety(tcx: TyCtxt<'_>, intrinsic_id: LocalDefId) -
     if has_safe_attr != is_in_list {
         tcx.dcx().struct_span_err(
             tcx.def_span(intrinsic_id),
-            DiagnosticMessage::from(format!(
+            DiagMessage::from(format!(
                 "intrinsic safety mismatch between list of intrinsics within the compiler and core library intrinsics for intrinsic `{}`",
                 tcx.item_name(intrinsic_id.into())
             )

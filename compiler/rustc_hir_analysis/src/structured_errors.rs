@@ -9,7 +9,7 @@ pub use self::{
 use rustc_errors::{Diag, ErrCode};
 use rustc_session::Session;
 
-pub trait StructuredDiagnostic<'tcx> {
+pub trait StructuredDiag<'tcx> {
     fn session(&self) -> &Session;
 
     fn code(&self) -> ErrCode;

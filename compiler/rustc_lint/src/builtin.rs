@@ -58,7 +58,7 @@ use rustc_middle::ty::GenericArgKind;
 use rustc_middle::ty::ToPredicate;
 use rustc_middle::ty::TypeVisitableExt;
 use rustc_middle::ty::{self, Ty, TyCtxt, VariantDef};
-use rustc_session::lint::{BuiltinLintDiagnostics, FutureIncompatibilityReason};
+use rustc_session::lint::{BuiltinLintDiag, FutureIncompatibilityReason};
 use rustc_span::edition::Edition;
 use rustc_span::source_map::Spanned;
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
@@ -2831,7 +2831,7 @@ impl<'tcx> LateLintPass<'tcx> for NamedAsmLabels {
                             Some(target_spans),
                             fluent::lint_builtin_asm_labels,
                             |_| {},
-                            BuiltinLintDiagnostics::NamedAsmLabel(
+                            BuiltinLintDiag::NamedAsmLabel(
                                 "only local labels of the form `<number>:` should be used in inline asm"
                                     .to_string(),
                             ),

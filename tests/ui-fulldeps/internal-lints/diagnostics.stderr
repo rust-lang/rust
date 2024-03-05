@@ -1,41 +1,41 @@
 error: diagnostics should be created using translatable messages
-  --> $DIR/diagnostics.rs:42:9
+  --> $DIR/diagnostics.rs:43:9
    |
 LL |         Diag::new(dcx, level, "untranslatable diagnostic")
    |         ^^^^^^^^^
    |
 note: the lint level is defined here
-  --> $DIR/diagnostics.rs:6:9
+  --> $DIR/diagnostics.rs:7:9
    |
 LL | #![deny(rustc::untranslatable_diagnostic)]
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: diagnostics should be created using translatable messages
-  --> $DIR/diagnostics.rs:63:14
+  --> $DIR/diagnostics.rs:64:14
    |
 LL |         diag.note("untranslatable diagnostic");
    |              ^^^^
 
 error: diagnostics should only be created in `IntoDiagnostic`/`AddToDiagnostic` impls
-  --> $DIR/diagnostics.rs:81:21
+  --> $DIR/diagnostics.rs:82:21
    |
 LL |     let _diag = dcx.struct_err(crate::fluent_generated::no_crate_example);
    |                     ^^^^^^^^^^
    |
 note: the lint level is defined here
-  --> $DIR/diagnostics.rs:7:9
+  --> $DIR/diagnostics.rs:8:9
    |
 LL | #![deny(rustc::diagnostic_outside_of_impl)]
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: diagnostics should only be created in `IntoDiagnostic`/`AddToDiagnostic` impls
-  --> $DIR/diagnostics.rs:84:21
+  --> $DIR/diagnostics.rs:85:21
    |
 LL |     let _diag = dcx.struct_err("untranslatable diagnostic");
    |                     ^^^^^^^^^^
 
 error: diagnostics should be created using translatable messages
-  --> $DIR/diagnostics.rs:84:21
+  --> $DIR/diagnostics.rs:85:21
    |
 LL |     let _diag = dcx.struct_err("untranslatable diagnostic");
    |                     ^^^^^^^^^^

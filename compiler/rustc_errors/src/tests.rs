@@ -5,7 +5,7 @@ use crate::FluentBundle;
 use rustc_data_structures::sync::{IntoDynSyncSend, Lrc};
 use rustc_error_messages::fluent_bundle::resolver::errors::{ReferenceKind, ResolverError};
 use rustc_error_messages::langid;
-use rustc_error_messages::DiagnosticMessage;
+use rustc_error_messages::DiagMessage;
 
 struct Dummy {
     bundle: FluentBundle,
@@ -53,7 +53,7 @@ fn wellformed_fluent() {
     args.set("name", "Foo");
     args.set("ty", "std::string::String");
     {
-        let message = DiagnosticMessage::FluentIdentifier(
+        let message = DiagMessage::FluentIdentifier(
             "mir_build_borrow_of_moved_value".into(),
             Some("suggestion".into()),
         );
@@ -65,7 +65,7 @@ fn wellformed_fluent() {
     }
 
     {
-        let message = DiagnosticMessage::FluentIdentifier(
+        let message = DiagMessage::FluentIdentifier(
             "mir_build_borrow_of_moved_value".into(),
             Some("value_borrowed_label".into()),
         );
@@ -77,7 +77,7 @@ fn wellformed_fluent() {
     }
 
     {
-        let message = DiagnosticMessage::FluentIdentifier(
+        let message = DiagMessage::FluentIdentifier(
             "mir_build_borrow_of_moved_value".into(),
             Some("occurs_because_label".into()),
         );
@@ -88,7 +88,7 @@ fn wellformed_fluent() {
         );
 
         {
-            let message = DiagnosticMessage::FluentIdentifier(
+            let message = DiagMessage::FluentIdentifier(
                 "mir_build_borrow_of_moved_value".into(),
                 Some("label".into()),
             );
@@ -112,7 +112,7 @@ fn misformed_fluent() {
     args.set("name", "Foo");
     args.set("ty", "std::string::String");
     {
-        let message = DiagnosticMessage::FluentIdentifier(
+        let message = DiagMessage::FluentIdentifier(
             "mir_build_borrow_of_moved_value".into(),
             Some("value_borrowed_label".into()),
         );
@@ -141,7 +141,7 @@ fn misformed_fluent() {
     }
 
     {
-        let message = DiagnosticMessage::FluentIdentifier(
+        let message = DiagMessage::FluentIdentifier(
             "mir_build_borrow_of_moved_value".into(),
             Some("label".into()),
         );
@@ -168,7 +168,7 @@ fn misformed_fluent() {
     }
 
     {
-        let message = DiagnosticMessage::FluentIdentifier(
+        let message = DiagMessage::FluentIdentifier(
             "mir_build_borrow_of_moved_value".into(),
             Some("occurs_because_label".into()),
         );

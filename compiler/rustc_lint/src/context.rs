@@ -21,7 +21,7 @@ use crate::passes::{EarlyLintPassObject, LateLintPassObject};
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_data_structures::sync;
 use rustc_data_structures::unord::UnordMap;
-use rustc_errors::{DecorateLint, Diag, DiagnosticMessage, MultiSpan};
+use rustc_errors::{DecorateLint, Diag, DiagMessage, MultiSpan};
 use rustc_feature::Features;
 use rustc_hir as hir;
 use rustc_hir::def::Res;
@@ -31,7 +31,7 @@ use rustc_middle::middle::privacy::EffectiveVisibilities;
 use rustc_middle::ty::layout::{LayoutError, LayoutOfHelpers, TyAndLayout};
 use rustc_middle::ty::print::{with_no_trimmed_paths, PrintError};
 use rustc_middle::ty::{self, print::Printer, GenericArg, RegisteredTools, Ty, TyCtxt};
-use rustc_session::lint::{BuiltinLintDiagnostics, LintExpectationId};
+use rustc_session::lint::{BuiltinLintDiag, LintExpectationId};
 use rustc_session::lint::{FutureIncompatibleInfo, Level, Lint, LintBuffer, LintId};
 use rustc_session::{LintStoreMarker, Session};
 use rustc_span::edit_distance::find_best_match_for_names;
@@ -536,9 +536,9 @@ pub trait LintContext {
         &self,
         lint: &'static Lint,
         span: Option<impl Into<MultiSpan>>,
-        msg: impl Into<DiagnosticMessage>,
+        msg: impl Into<DiagMessage>,
         decorate: impl for<'a, 'b> FnOnce(&'b mut Diag<'a, ()>),
-        diagnostic: BuiltinLintDiagnostics,
+        diagnostic: BuiltinLintDiag,
     ) {
         // We first generate a blank diagnostic.
         self.opt_span_lint(lint, span, msg, |db| {
@@ -559,7 +559,7 @@ pub trait LintContext {
         &self,
         lint: &'static Lint,
         span: Option<S>,
-        msg: impl Into<DiagnosticMessage>,
+        msg: impl Into<DiagMessage>,
         decorate: impl for<'a, 'b> FnOnce(&'b mut Diag<'a, ()>),
     );
 
@@ -584,7 +584,7 @@ pub trait LintContext {
         &self,
         lint: &'static Lint,
         span: S,
-        msg: impl Into<DiagnosticMessage>,
+        msg: impl Into<DiagMessage>,
         decorate: impl for<'a, 'b> FnOnce(&'b mut Diag<'a, ()>),
     ) {
         self.opt_span_lint(lint, Some(span), msg, decorate);
@@ -605,7 +605,7 @@ pub trait LintContext {
     fn lint(
         &self,
         lint: &'static Lint,
-        msg: impl Into<DiagnosticMessage>,
+        msg: impl Into<DiagMessage>,
         decorate: impl for<'a, 'b> FnOnce(&'b mut Diag<'a, ()>),
     ) {
         self.opt_span_lint(lint, None as Option<Span>, msg, decorate);
@@ -670,7 +670,7 @@ impl<'tcx> LintContext for LateContext<'tcx> {
         &self,
         lint: &'static Lint,
         span: Option<S>,
-        msg: impl Into<DiagnosticMessage>,
+        msg: impl Into<DiagMessage>,
         decorate: impl for<'a, 'b> FnOnce(&'b mut Diag<'a, ()>),
     ) {
         let hir_id = self.last_node_with_lint_attrs;
@@ -697,7 +697,7 @@ impl LintContext for EarlyContext<'_> {
         &self,
         lint: &'static Lint,
         span: Option<S>,
-        msg: impl Into<DiagnosticMessage>,
+        msg: impl Into<DiagMessage>,
         decorate: impl for<'a, 'b> FnOnce(&'b mut Diag<'a, ()>),
     ) {
         self.builder.opt_span_lint(lint, span.map(|s| s.into()), msg, decorate)

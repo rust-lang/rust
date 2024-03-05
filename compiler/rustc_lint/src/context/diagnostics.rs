@@ -6,15 +6,15 @@ use rustc_errors::{add_elided_lifetime_in_path_suggestion, Diag};
 use rustc_errors::{Applicability, SuggestionStyle};
 use rustc_middle::middle::stability;
 use rustc_session::config::ExpectedValues;
-use rustc_session::lint::BuiltinLintDiagnostics;
+use rustc_session::lint::BuiltinLintDiag;
 use rustc_session::Session;
 use rustc_span::edit_distance::find_best_match_for_name;
 use rustc_span::symbol::{sym, Symbol};
 use rustc_span::BytePos;
 
-pub(super) fn builtin(sess: &Session, diagnostic: BuiltinLintDiagnostics, diag: &mut Diag<'_, ()>) {
+pub(super) fn builtin(sess: &Session, diagnostic: BuiltinLintDiag, diag: &mut Diag<'_, ()>) {
     match diagnostic {
-        BuiltinLintDiagnostics::UnicodeTextFlow(span, content) => {
+        BuiltinLintDiag::UnicodeTextFlow(span, content) => {
             let spans: Vec<_> = content
                 .char_indices()
                 .filter_map(|(i, c)| {
@@ -51,8 +51,8 @@ pub(super) fn builtin(sess: &Session, diagnostic: BuiltinLintDiagnostics, diag: 
                 );
             }
         }
-        BuiltinLintDiagnostics::Normal => (),
-        BuiltinLintDiagnostics::AbsPathWithModule(span) => {
+        BuiltinLintDiag::Normal => (),
+        BuiltinLintDiag::AbsPathWithModule(span) => {
             let (sugg, app) = match sess.source_map().span_to_snippet(span) {
                 Ok(ref s) => {
                     // FIXME(Manishearth) ideally the emitting code
@@ -65,21 +65,16 @@ pub(super) fn builtin(sess: &Session, diagnostic: BuiltinLintDiagnostics, diag: 
             };
             diag.span_suggestion(span, "use `crate`", sugg, app);
         }
-        BuiltinLintDiagnostics::ProcMacroDeriveResolutionFallback(span) => {
+        BuiltinLintDiag::ProcMacroDeriveResolutionFallback(span) => {
             diag.span_label(
                 span,
                 "names from parent modules are not accessible without an explicit import",
             );
         }
-        BuiltinLintDiagnostics::MacroExpandedMacroExportsAccessedByAbsolutePaths(span_def) => {
+        BuiltinLintDiag::MacroExpandedMacroExportsAccessedByAbsolutePaths(span_def) => {
             diag.span_note(span_def, "the macro is defined here");
         }
-        BuiltinLintDiagnostics::ElidedLifetimesInPaths(
-            n,
-            path_span,
-            incl_angl_brckt,
-            insertion_span,
-        ) => {
+        BuiltinLintDiag::ElidedLifetimesInPaths(n, path_span, incl_angl_brckt, insertion_span) => {
             add_elided_lifetime_in_path_suggestion(
                 sess.source_map(),
                 diag,
@@ -89,10 +84,10 @@ pub(super) fn builtin(sess: &Session, diagnostic: BuiltinLintDiagnostics, diag: 
                 insertion_span,
             );
         }
-        BuiltinLintDiagnostics::UnknownCrateTypes(span, note, sugg) => {
+        BuiltinLintDiag::UnknownCrateTypes(span, note, sugg) => {
             diag.span_suggestion(span, note, sugg, Applicability::MaybeIncorrect);
         }
-        BuiltinLintDiagnostics::UnusedImports(message, replaces, in_test_module) => {
+        BuiltinLintDiag::UnusedImports(message, replaces, in_test_module) => {
             if !replaces.is_empty() {
                 diag.tool_only_multipart_suggestion(
                     message,
@@ -108,21 +103,21 @@ pub(super) fn builtin(sess: &Session, diagnostic: BuiltinLintDiagnostics, diag: 
                 );
             }
         }
-        BuiltinLintDiagnostics::RedundantImport(spans, ident) => {
+        BuiltinLintDiag::RedundantImport(spans, ident) => {
             for (span, is_imported) in spans {
                 let introduced = if is_imported { "imported" } else { "defined" };
                 diag.span_label(span, format!("the item `{ident}` is already {introduced} here"));
             }
         }
-        BuiltinLintDiagnostics::DeprecatedMacro(suggestion, span) => {
+        BuiltinLintDiag::DeprecatedMacro(suggestion, span) => {
             stability::deprecation_suggestion(diag, "macro", suggestion, span)
         }
-        BuiltinLintDiagnostics::UnusedDocComment(span) => {
+        BuiltinLintDiag::UnusedDocComment(span) => {
             diag.span_label(span, "rustdoc does not generate documentation for macro invocations");
             diag.help("to document an item produced by a macro, \
                                   the macro must produce the documentation as part of its expansion");
         }
-        BuiltinLintDiagnostics::PatternsInFnsWithoutBody(span, ident) => {
+        BuiltinLintDiag::PatternsInFnsWithoutBody(span, ident) => {
             diag.span_suggestion(
                 span,
                 "remove `mut` from the parameter",
@@ -130,17 +125,17 @@ pub(super) fn builtin(sess: &Session, diagnostic: BuiltinLintDiagnostics, diag: 
                 Applicability::MachineApplicable,
             );
         }
-        BuiltinLintDiagnostics::MissingAbi(span, default_abi) => {
+        BuiltinLintDiag::MissingAbi(span, default_abi) => {
             diag.span_label(span, "ABI should be specified here");
             diag.help(format!("the default ABI is {}", default_abi.name()));
         }
-        BuiltinLintDiagnostics::LegacyDeriveHelpers(span) => {
+        BuiltinLintDiag::LegacyDeriveHelpers(span) => {
             diag.span_label(span, "the attribute is introduced here");
         }
-        BuiltinLintDiagnostics::ProcMacroBackCompat(note) => {
+        BuiltinLintDiag::ProcMacroBackCompat(note) => {
             diag.note(note);
         }
-        BuiltinLintDiagnostics::OrPatternsBackCompat(span, suggestion) => {
+        BuiltinLintDiag::OrPatternsBackCompat(span, suggestion) => {
             diag.span_suggestion(
                 span,
                 "use pat_param to preserve semantics",
@@ -148,7 +143,7 @@ pub(super) fn builtin(sess: &Session, diagnostic: BuiltinLintDiagnostics, diag: 
                 Applicability::MachineApplicable,
             );
         }
-        BuiltinLintDiagnostics::ReservedPrefix(span) => {
+        BuiltinLintDiag::ReservedPrefix(span) => {
             diag.span_label(span, "unknown prefix");
             diag.span_suggestion_verbose(
                 span.shrink_to_hi(),
@@ -157,19 +152,19 @@ pub(super) fn builtin(sess: &Session, diagnostic: BuiltinLintDiagnostics, diag: 
                 Applicability::MachineApplicable,
             );
         }
-        BuiltinLintDiagnostics::UnusedBuiltinAttribute { attr_name, macro_name, invoc_span } => {
+        BuiltinLintDiag::UnusedBuiltinAttribute { attr_name, macro_name, invoc_span } => {
             diag.span_note(
                         invoc_span,
                         format!("the built-in attribute `{attr_name}` will be ignored, since it's applied to the macro invocation `{macro_name}`")
                     );
         }
-        BuiltinLintDiagnostics::TrailingMacro(is_trailing, name) => {
+        BuiltinLintDiag::TrailingMacro(is_trailing, name) => {
             if is_trailing {
                 diag.note("macro invocations at the end of a block are treated as expressions");
                 diag.note(format!("to ignore the value produced by the macro, add a semicolon after the invocation of `{name}`"));
             }
         }
-        BuiltinLintDiagnostics::BreakWithLabelAndLoop(span) => {
+        BuiltinLintDiag::BreakWithLabelAndLoop(span) => {
             diag.multipart_suggestion(
                 "wrap this expression in parentheses",
                 vec![
@@ -179,11 +174,11 @@ pub(super) fn builtin(sess: &Session, diagnostic: BuiltinLintDiagnostics, diag: 
                 Applicability::MachineApplicable,
             );
         }
-        BuiltinLintDiagnostics::NamedAsmLabel(help) => {
+        BuiltinLintDiag::NamedAsmLabel(help) => {
             diag.help(help);
             diag.note("see the asm section of Rust By Example <https://doc.rust-lang.org/nightly/rust-by-example/unsafe/asm.html#labels> for more information");
         }
-        BuiltinLintDiagnostics::UnexpectedCfgName((name, name_span), value) => {
+        BuiltinLintDiag::UnexpectedCfgName((name, name_span), value) => {
             #[allow(rustc::potential_query_instability)]
             let possibilities: Vec<Symbol> =
                 sess.psess.check_config.expecteds.keys().copied().collect();
@@ -321,7 +316,7 @@ pub(super) fn builtin(sess: &Session, diagnostic: BuiltinLintDiagnostics, diag: 
                 diag.note("see <https://doc.rust-lang.org/nightly/unstable-book/compiler-flags/check-cfg.html> for more information about checking conditional configuration");
             }
         }
-        BuiltinLintDiagnostics::UnexpectedCfgValue((name, name_span), value) => {
+        BuiltinLintDiag::UnexpectedCfgValue((name, name_span), value) => {
             let Some(ExpectedValues::Some(values)) = &sess.psess.check_config.expecteds.get(&name)
             else {
                 bug!(
@@ -426,7 +421,7 @@ pub(super) fn builtin(sess: &Session, diagnostic: BuiltinLintDiagnostics, diag: 
                 diag.note("see <https://doc.rust-lang.org/nightly/unstable-book/compiler-flags/check-cfg.html> for more information about checking conditional configuration");
             }
         }
-        BuiltinLintDiagnostics::DeprecatedWhereclauseLocation(sugg) => {
+        BuiltinLintDiag::DeprecatedWhereclauseLocation(sugg) => {
             let left_sp = diag.span.primary_span().unwrap();
             match sugg {
                 Some((right_sp, sugg)) => diag.multipart_suggestion(
@@ -443,7 +438,7 @@ pub(super) fn builtin(sess: &Session, diagnostic: BuiltinLintDiagnostics, diag: 
             };
             diag.note("see issue #89122 <https://github.com/rust-lang/rust/issues/89122> for more information");
         }
-        BuiltinLintDiagnostics::SingleUseLifetime {
+        BuiltinLintDiag::SingleUseLifetime {
             param_span,
             use_span: Some((use_span, elide)),
             deletion_span,
@@ -474,11 +469,7 @@ pub(super) fn builtin(sess: &Session, diagnostic: BuiltinLintDiagnostics, diag: 
                 diag.multipart_suggestion(msg, suggestions, Applicability::MachineApplicable);
             }
         }
-        BuiltinLintDiagnostics::SingleUseLifetime {
-            param_span: _,
-            use_span: None,
-            deletion_span,
-        } => {
+        BuiltinLintDiag::SingleUseLifetime { param_span: _, use_span: None, deletion_span } => {
             debug!(?deletion_span);
             if let Some(deletion_span) = deletion_span {
                 diag.span_suggestion(
@@ -489,7 +480,7 @@ pub(super) fn builtin(sess: &Session, diagnostic: BuiltinLintDiagnostics, diag: 
                 );
             }
         }
-        BuiltinLintDiagnostics::NamedArgumentUsedPositionally {
+        BuiltinLintDiag::NamedArgumentUsedPositionally {
             position_sp_to_replace,
             position_sp_for_msg,
             named_arg_sp,
@@ -525,13 +516,13 @@ pub(super) fn builtin(sess: &Session, diagnostic: BuiltinLintDiagnostics, diag: 
                 );
             }
         }
-        BuiltinLintDiagnostics::ByteSliceInPackedStructWithDerive => {
+        BuiltinLintDiag::ByteSliceInPackedStructWithDerive => {
             diag.help("consider implementing the trait by hand, or remove the `packed` attribute");
         }
-        BuiltinLintDiagnostics::UnusedExternCrate { removal_span } => {
+        BuiltinLintDiag::UnusedExternCrate { removal_span } => {
             diag.span_suggestion(removal_span, "remove it", "", Applicability::MachineApplicable);
         }
-        BuiltinLintDiagnostics::ExternCrateNotIdiomatic { vis_span, ident_span } => {
+        BuiltinLintDiag::ExternCrateNotIdiomatic { vis_span, ident_span } => {
             let suggestion_span = vis_span.between(ident_span);
             diag.span_suggestion_verbose(
                 suggestion_span,
@@ -540,10 +531,10 @@ pub(super) fn builtin(sess: &Session, diagnostic: BuiltinLintDiagnostics, diag: 
                 Applicability::MachineApplicable,
             );
         }
-        BuiltinLintDiagnostics::AmbiguousGlobImports { diag: ambiguity } => {
+        BuiltinLintDiag::AmbiguousGlobImports { diag: ambiguity } => {
             rustc_errors::report_ambiguity_error(diag, ambiguity);
         }
-        BuiltinLintDiagnostics::AmbiguousGlobReexports {
+        BuiltinLintDiag::AmbiguousGlobReexports {
             name,
             namespace,
             first_reexport_span,
@@ -560,7 +551,7 @@ pub(super) fn builtin(sess: &Session, diagnostic: BuiltinLintDiagnostics, diag: 
                 ),
             );
         }
-        BuiltinLintDiagnostics::HiddenGlobReexports {
+        BuiltinLintDiag::HiddenGlobReexports {
             name,
             namespace,
             glob_reexport_span,
@@ -569,7 +560,7 @@ pub(super) fn builtin(sess: &Session, diagnostic: BuiltinLintDiagnostics, diag: 
             diag.span_note(glob_reexport_span, format!("the name `{name}` in the {namespace} namespace is supposed to be publicly re-exported here"));
             diag.span_note(private_item_span, "but the private item here shadows it".to_owned());
         }
-        BuiltinLintDiagnostics::UnusedQualifications { removal_span } => {
+        BuiltinLintDiag::UnusedQualifications { removal_span } => {
             diag.span_suggestion_verbose(
                 removal_span,
                 "remove the unnecessary path segments",
@@ -577,7 +568,7 @@ pub(super) fn builtin(sess: &Session, diagnostic: BuiltinLintDiagnostics, diag: 
                 Applicability::MachineApplicable,
             );
         }
-        BuiltinLintDiagnostics::AssociatedConstElidedLifetime { elided, span } => {
+        BuiltinLintDiag::AssociatedConstElidedLifetime { elided, span } => {
             diag.span_suggestion_verbose(
                 if elided { span.shrink_to_hi() } else { span },
                 "use the `'static` lifetime",
@@ -585,7 +576,7 @@ pub(super) fn builtin(sess: &Session, diagnostic: BuiltinLintDiagnostics, diag: 
                 Applicability::MachineApplicable,
             );
         }
-        BuiltinLintDiagnostics::RedundantImportVisibility { max_vis, span } => {
+        BuiltinLintDiag::RedundantImportVisibility { max_vis, span } => {
             diag.span_note(span, format!("the most public imported item is `{max_vis}`"));
             diag.help(
                 "reduce the glob import's visibility or increase visibility of imported items",

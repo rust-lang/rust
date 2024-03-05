@@ -4,7 +4,7 @@ use std::borrow::Cow;
 use crate::fluent_generated as fluent;
 use rustc_errors::{
     codes::*, AddToDiagnostic, Applicability, Diag, DiagArgValue, EmissionGuarantee,
-    IntoDiagnosticArg, MultiSpan, SubdiagnosticMessageOp,
+    IntoDiagnosticArg, MultiSpan, SubdiagMessageOp,
 };
 use rustc_macros::{Diagnostic, LintDiagnostic, Subdiagnostic};
 use rustc_middle::ty::Ty;
@@ -195,7 +195,7 @@ pub struct TypeMismatchFruTypo {
 }
 
 impl AddToDiagnostic for TypeMismatchFruTypo {
-    fn add_to_diagnostic_with<G: EmissionGuarantee, F: SubdiagnosticMessageOp<G>>(
+    fn add_to_diagnostic_with<G: EmissionGuarantee, F: SubdiagMessageOp<G>>(
         self,
         diag: &mut Diag<'_, G>,
         _f: F,
@@ -374,7 +374,7 @@ pub struct RemoveSemiForCoerce {
 }
 
 impl AddToDiagnostic for RemoveSemiForCoerce {
-    fn add_to_diagnostic_with<G: EmissionGuarantee, F: SubdiagnosticMessageOp<G>>(
+    fn add_to_diagnostic_with<G: EmissionGuarantee, F: SubdiagMessageOp<G>>(
         self,
         diag: &mut Diag<'_, G>,
         _f: F,
@@ -550,7 +550,7 @@ pub enum CastUnknownPointerSub {
 }
 
 impl rustc_errors::AddToDiagnostic for CastUnknownPointerSub {
-    fn add_to_diagnostic_with<G: EmissionGuarantee, F: SubdiagnosticMessageOp<G>>(
+    fn add_to_diagnostic_with<G: EmissionGuarantee, F: SubdiagMessageOp<G>>(
         self,
         diag: &mut Diag<'_, G>,
         f: F,

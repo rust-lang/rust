@@ -9,8 +9,8 @@ use crate::emitter::FileWithAnnotatedLines;
 use crate::snippet::Line;
 use crate::translation::{to_fluent_args, Translate};
 use crate::{
-    CodeSuggestion, DiagInner, DiagnosticMessage, Emitter, ErrCode, FluentBundle,
-    LazyFallbackBundle, Level, MultiSpan, Style, Subdiag,
+    CodeSuggestion, DiagInner, DiagMessage, Emitter, ErrCode, FluentBundle, LazyFallbackBundle,
+    Level, MultiSpan, Style, Subdiag,
 };
 use annotate_snippets::{Annotation, AnnotationType, Renderer, Slice, Snippet, SourceAnnotation};
 use rustc_data_structures::sync::Lrc;
@@ -125,7 +125,7 @@ impl AnnotateSnippetEmitter {
     fn emit_messages_default(
         &mut self,
         level: &Level,
-        messages: &[(DiagnosticMessage, Style)],
+        messages: &[(DiagMessage, Style)],
         args: &FluentArgs<'_>,
         code: &Option<ErrCode>,
         msp: &MultiSpan,

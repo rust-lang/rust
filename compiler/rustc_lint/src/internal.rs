@@ -403,7 +403,7 @@ impl LateLintPass<'_> for Diagnostics {
             debug!(?ty);
             if let Some(adt_def) = ty.ty_adt_def()
                 && let Some(name) = cx.tcx.get_diagnostic_name(adt_def.did())
-                && matches!(name, sym::DiagnosticMessage | sym::SubdiagnosticMessage)
+                && matches!(name, sym::DiagMessage | sym::SubdiagMessage)
             {
                 found_diagnostic_message = true;
                 break;

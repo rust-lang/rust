@@ -2,7 +2,7 @@ use crate::diagnostic::DiagLocation;
 use crate::{fluent_generated as fluent, AddToDiagnostic};
 use crate::{
     Diag, DiagArgValue, DiagCtxt, EmissionGuarantee, ErrCode, IntoDiagnostic, IntoDiagnosticArg,
-    Level, SubdiagnosticMessageOp,
+    Level, SubdiagMessageOp,
 };
 use rustc_ast as ast;
 use rustc_ast_pretty::pprust;
@@ -298,7 +298,7 @@ pub struct SingleLabelManySpans {
     pub label: &'static str,
 }
 impl AddToDiagnostic for SingleLabelManySpans {
-    fn add_to_diagnostic_with<G: EmissionGuarantee, F: SubdiagnosticMessageOp<G>>(
+    fn add_to_diagnostic_with<G: EmissionGuarantee, F: SubdiagMessageOp<G>>(
         self,
         diag: &mut Diag<'_, G>,
         _: F,

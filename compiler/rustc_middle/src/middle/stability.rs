@@ -16,7 +16,7 @@ use rustc_hir::def_id::{DefId, LocalDefId, LocalDefIdMap};
 use rustc_hir::{self as hir, HirId};
 use rustc_middle::ty::print::with_no_trimmed_paths;
 use rustc_session::lint::builtin::{DEPRECATED, DEPRECATED_IN_FUTURE, SOFT_UNSTABLE};
-use rustc_session::lint::{BuiltinLintDiagnostics, Level, Lint, LintBuffer};
+use rustc_session::lint::{BuiltinLintDiag, Level, Lint, LintBuffer};
 use rustc_session::parse::feature_err_issue;
 use rustc_session::Session;
 use rustc_span::symbol::{sym, Symbol};
@@ -199,7 +199,7 @@ pub fn early_report_deprecation(
         return;
     }
 
-    let diag = BuiltinLintDiagnostics::DeprecatedMacro(suggestion, span);
+    let diag = BuiltinLintDiag::DeprecatedMacro(suggestion, span);
     lint_buffer.buffer_lint_with_diagnostic(lint, node_id, span, message, diag);
 }
 

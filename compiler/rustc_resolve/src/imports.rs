@@ -1,6 +1,6 @@
 //! A bunch of methods and structures more or less related to resolving imports.
 
-use crate::diagnostics::{import_candidates, DiagnosticMode, Suggestion};
+use crate::diagnostics::{import_candidates, DiagMode, Suggestion};
 use crate::errors::{
     CannotBeReexportedCratePublic, CannotBeReexportedCratePublicNS, CannotBeReexportedPrivate,
     CannotBeReexportedPrivateNS, CannotDetermineImportResolution, CannotGlobImportAllCrates,
@@ -27,7 +27,7 @@ use rustc_session::lint::builtin::{
     AMBIGUOUS_GLOB_REEXPORTS, HIDDEN_GLOB_REEXPORTS, PUB_USE_OF_PRIVATE_EXTERN_CRATE,
     UNUSED_IMPORTS,
 };
-use rustc_session::lint::BuiltinLintDiagnostics;
+use rustc_session::lint::BuiltinLintDiag;
 use rustc_span::edit_distance::find_best_match_for_name;
 use rustc_span::hygiene::LocalExpnId;
 use rustc_span::symbol::{kw, Ident, Symbol};
@@ -618,7 +618,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                             import.root_id,
                             import.root_span,
                             "ambiguous glob re-exports",
-                            BuiltinLintDiagnostics::AmbiguousGlobReexports {
+                            BuiltinLintDiag::AmbiguousGlobReexports {
                                 name: key.ident.to_string(),
                                 namespace: key.ns.descr().to_string(),
                                 first_reexport_span: import.root_span,
@@ -654,7 +654,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                                 binding_id,
                                 binding.span,
                                 "private item shadows public glob re-export",
-                                BuiltinLintDiagnostics::HiddenGlobReexports {
+                                BuiltinLintDiag::HiddenGlobReexports {
                                     name: key.ident.name.to_string(),
                                     namespace: key.ns.descr().to_owned(),
                                     glob_reexport_span: glob_binding.span,
@@ -716,7 +716,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                         &mut diag,
                         Some(err.span),
                         candidates,
-                        DiagnosticMode::Import,
+                        DiagMode::Import,
                         (source != target)
                             .then(|| format!(" as {target}"))
                             .as_deref()
@@ -728,7 +728,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                             &mut diag,
                             None,
                             candidates,
-                            DiagnosticMode::Normal,
+                            DiagMode::Normal,
                             (source != target)
                                 .then(|| format!(" as {target}"))
                                 .as_deref()
@@ -1006,7 +1006,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                             id,
                             import.span,
                             msg,
-                            BuiltinLintDiagnostics::RedundantImportVisibility {
+                            BuiltinLintDiag::RedundantImportVisibility {
                                 max_vis: max_vis.to_string(def_id, self.tcx),
                                 span: import.span,
                             },
@@ -1373,7 +1373,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                 id,
                 import.span,
                 format!("the item `{source}` is imported redundantly"),
-                BuiltinLintDiagnostics::RedundantImport(redundant_spans, source),
+                BuiltinLintDiag::RedundantImport(redundant_spans, source),
             );
         }
     }

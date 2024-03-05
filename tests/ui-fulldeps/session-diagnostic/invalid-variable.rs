@@ -10,7 +10,7 @@ extern crate rustc_fluent_macro;
 extern crate rustc_macros;
 extern crate rustc_errors;
 use rustc_macros::Diagnostic;
-use rustc_errors::{SubdiagnosticMessage, DiagnosticMessage};
+use rustc_errors::{DiagMessage, SubdiagMessage};
 extern crate rustc_session;
 
 rustc_fluent_macro::fluent_messages! { "./example.ftl" }
