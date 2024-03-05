@@ -1090,7 +1090,8 @@ fn build_async_destructor_ctor_shim<'tcx>(
             GlueStrategy::Slice { is_array: matches!(kind, ty::Array(..)), elem_ty }
         }
 
-        ty::Tuple(elem_tys) if !elem_tys.is_empty() => {
+        ty::Tuple(elem_tys) if elem_tys.is_empty() => GlueStrategy::Empty,
+        ty::Tuple(elem_tys) => {
             GlueStrategy::Chain { elem_tys, has_surface_async_drop: false }
         }
         ty::Adt(adt_def, args) if adt_def.is_struct() => {
@@ -1104,6 +1105,7 @@ fn build_async_destructor_ctor_shim<'tcx>(
         }
 
         ty::Foreign(_)
+        // TODO: implement enums, disallow unions
         | ty::Adt(_, _)
         | ty::Dynamic(_, _, _)
         | ty::Closure(_, _)
@@ -1134,7 +1136,6 @@ fn build_async_destructor_ctor_shim<'tcx>(
         | ty::FnDef(_, _)
         | ty::FnPtr(_)
         | ty::Never
-        | ty::Tuple(_) => GlueStrategy::Empty,
     };
 
     let return_bb;
