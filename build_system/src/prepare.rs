@@ -131,6 +131,30 @@ fn prepare_libcore(
         )?;
     }
     println!("Successfully prepared libcore for building");
+
+    Ok(())
+}
+
+// TODO: remove when we can ignore warnings in rustdoc tests.
+fn prepare_rand() -> Result<(), String> {
+    // Apply patch for the rand crate.
+    let file_path = "patches/crates/0001-Remove-deny-warnings.patch";
+    let rand_dir = Path::new("build/rand");
+    println!("[GIT] apply `{}`", file_path);
+    let path = Path::new("../..").join(file_path);
+    run_command_with_output(&[&"git", &"apply", &path], Some(rand_dir))?;
+    run_command_with_output(&[&"git", &"add", &"-A"], Some(rand_dir))?;
+    run_command_with_output(
+        &[
+            &"git",
+            &"commit",
+            &"--no-gpg-sign",
+            &"-m",
+            &format!("Patch {}", path.display()),
+        ],
+        Some(rand_dir),
+    )?;
+
     Ok(())
 }
 
@@ -241,6 +265,8 @@ pub fn run() -> Result<(), String> {
         for (repo_url, checkout_commit, cb) in to_clone {
             clone_and_setup(repo_url, checkout_commit, *cb)?;
         }
+
+        prepare_rand()?;
     }
 
     println!("Successfully ran `prepare`");
