@@ -40,8 +40,6 @@ RUN mkdir -p /rustroot/bin
 
 ENV PATH=/rustroot/bin:$PATH
 ENV LD_LIBRARY_PATH=/rustroot/lib64:/rustroot/lib32:/rustroot/lib
-# This is a RUN command because we need to do some command interpolation
-RUN export LD_PRELOAD=`jemalloc-config --libdir`/libjemalloc.so.`jemalloc-config --revision`
 ENV PKG_CONFIG_PATH=/rustroot/lib/pkgconfig
 WORKDIR /tmp
 RUN mkdir /home/user
@@ -58,7 +56,7 @@ RUN ./cmake.sh
 # Now build LLVM+Clang, afterwards configuring further compilations to use the
 # clang/clang++ compilers.
 COPY host-x86_64/dist-x86_64-linux/build-clang.sh /tmp/
-RUN ./build-clang.sh
+RUN LD_PRELOAD=`jemalloc-config --libdir`/libjemalloc.so.`jemalloc-config --revision` ./build-clang.sh
 ENV CC=clang CXX=clang++
 
 # rustc-perf version from 2023-10-22
