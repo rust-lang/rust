@@ -893,7 +893,6 @@ symbols! {
         future,
         future_chain,
         future_chain_ctor,
-        future_combinators,
         future_ready_unit,
         future_ready_unit_ctor,
         future_trait,
