@@ -1,11 +1,15 @@
-use hir::{db::ExpandDatabase, HirDisplay, InFile};
+use hir::{db::ExpandDatabase, Adt, HasSource, HirDisplay, InFile};
 use ide_db::{
     assists::{Assist, AssistId, AssistKind},
     base_db::FileRange,
+    helpers::is_editable_crate,
     label::Label,
-    source_change::SourceChange,
+    source_change::{SourceChange, SourceChangeBuilder},
 };
-use syntax::{ast, AstNode, AstPtr};
+use syntax::{
+    ast::{self, edit::IndentLevel, make},
+    AstNode, AstPtr, SyntaxKind,
+};
 use text_edit::TextEdit;
 
 use crate::{adjusted_display_range, Diagnostic, DiagnosticCode, DiagnosticsContext};
@@ -47,14 +51,89 @@ pub(crate) fn unresolved_field(
 
 fn fixes(ctx: &DiagnosticsContext<'_>, d: &hir::UnresolvedField) -> Option<Vec<Assist>> {
     if d.method_with_same_name_exists {
-        method_fix(ctx, &d.expr)
+        let mut method_fix = method_fix(ctx, &d.expr).unwrap_or_default();
+        method_fix.push(add_field_fix(ctx, d)?);
+        Some(method_fix)
     } else {
-        // FIXME: add quickfix
-
-        None
+        Some(vec![add_field_fix(ctx, d)?])
     }
 }
 
+fn add_field_fix(ctx: &DiagnosticsContext<'_>, d: &hir::UnresolvedField) -> Option<Assist> {
+    // Get the FileRange of the invalid field access
+    let root = ctx.sema.db.parse_or_expand(d.expr.file_id);
+    let expr = d.expr.value.to_node(&root);
+
+    let error_range = ctx.sema.original_range_opt(expr.syntax())?;
+    // Convert the receiver to an ADT
+    let adt = d.receiver.as_adt()?;
+    let Adt::Struct(adt) = adt else {
+        return None;
+    };
+
+    let target_module = adt.module(ctx.sema.db);
+
+    let suggested_type =
+        if let Some(new_field_type) = ctx.sema.type_of_expr(&expr).map(|v| v.adjusted()) {
+            let display =
+                new_field_type.display_source_code(ctx.sema.db, target_module.into(), true).ok();
+            make::ty(display.as_deref().unwrap_or_else(|| "()"))
+        } else {
+            make::ty("()")
+        };
+
+    if !is_editable_crate(target_module.krate(), ctx.sema.db) {
+        return None;
+    }
+    let adt_source = adt.source(ctx.sema.db)?;
+    let adt_syntax = adt_source.syntax();
+    let range = adt_syntax.original_file_range(ctx.sema.db);
+
+    // Get range of final field in the struct
+    let (offset, needs_comma, indent) = match adt.fields(ctx.sema.db).last() {
+        Some(field) => {
+            let last_field = field.source(ctx.sema.db)?.value;
+            let hir::FieldSource::Named(record_field) = last_field else {
+                return None;
+            };
+            let last_field_syntax = record_field.syntax();
+            let last_field_imdent = IndentLevel::from_node(last_field_syntax);
+            (
+                last_field_syntax.text_range().end(),
+                !last_field_syntax.to_string().ends_with(','),
+                last_field_imdent,
+            )
+        }
+        None => {
+            // Empty Struct. Add a field right before the closing brace
+            let indent = IndentLevel::from_node(&adt_syntax.value) + 1;
+            let record_field_list =
+                adt_syntax.value.children().find(|v| v.kind() == SyntaxKind::RECORD_FIELD_LIST)?;
+            let offset = record_field_list.first_token().map(|f| f.text_range().end())?;
+            (offset, false, indent)
+        }
+    };
+
+    let field_name = make::name(d.name.as_str()?);
+
+    // If the Type is in the same file. We don't need to add a visibility modifier. Otherwise make it pub(crate)
+    let visibility = if error_range.file_id == range.file_id { "" } else { "pub(crate)" };
+    let mut src_change_builder = SourceChangeBuilder::new(range.file_id);
+    let comma = if needs_comma { "," } else { "" };
+    src_change_builder
+        .insert(offset, format!("{comma}\n{indent}{visibility}{field_name}: {suggested_type}\n"));
+
+    // FIXME: Add a Snippet for the new field type
+    let source_change = src_change_builder.finish();
+    Some(Assist {
+        id: AssistId("add-field-to-type", AssistKind::QuickFix),
+        label: Label::new("Add field to type".to_owned()),
+        group: None,
+        target: error_range.range,
+        source_change: Some(source_change),
+        trigger_signature_help: false,
+    })
+}
 // FIXME: We should fill out the call here, move the cursor and trigger signature help
 fn method_fix(
     ctx: &DiagnosticsContext<'_>,
