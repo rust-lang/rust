@@ -891,9 +891,8 @@ mod prim_array {}
 /// assert_eq!(2 * pointer_size, std::mem::size_of::<&SliceDst>());
 /// ```
 ///
-/// Rust guarantees that, if a slice DST compiles successfully, then the instance
-/// of that type with 0 elements in its trailing slice is no more than `isize::MAX`
-/// bytes in size.
+/// Rust guarantees that, for all slice DSTs, the instance of that type with 0
+/// elements in its trailing slice is no more than `isize::MAX` bytes in size.
 ///
 /// [`Hash`]: core::hash::Hash
 /// [`.iter`]: slice::iter
