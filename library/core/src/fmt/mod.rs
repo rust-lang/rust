@@ -635,7 +635,7 @@ pub use macros::Debug;
 ///
 /// # Internationalization
 ///
-/// Because a type only has one `Display` implementation, it is often preferable
+/// Because a type can only have one `Display` implementation, it is often preferable
 /// to only implement `Display` when there is a single most "obvious" way that
 /// values can be formatted as text. This could mean formatting according to the
 /// "invariant" culture and "undefined" locale, or it could mean that the type
