@@ -1,9 +1,6 @@
-use rustc_errors::{
-    DiagCtxt, DiagArgValue, Diag, EmissionGuarantee, IntoDiagnostic, IntoDiagnosticArg, Level,
-};
+use rustc_errors::{Diag, DiagCtxt, EmissionGuarantee, IntoDiagnostic, Level};
 use rustc_macros::{Diagnostic, Subdiagnostic};
 use rustc_span::Span;
-use std::borrow::Cow;
 
 use crate::fluent_generated as fluent;
 
@@ -29,18 +26,6 @@ pub(crate) enum PossibleFeature<'a> {
     Some { rust_feature: &'a str },
     #[help(codegen_gcc_consider_filing_feature_request)]
     None,
-}
-
-struct ExitCode(Option<i32>);
-
-impl IntoDiagnosticArg for ExitCode {
-    fn into_diagnostic_arg(self) -> DiagArgValue {
-        let ExitCode(exit_code) = self;
-        match exit_code {
-            Some(t) => t.into_diagnostic_arg(),
-            None => DiagArgValue::Str(Cow::Borrowed("<signal>")),
-        }
-    }
 }
 
 #[derive(Diagnostic)]
@@ -79,12 +64,6 @@ pub(crate) struct CopyBitcode {
 #[diag(codegen_gcc_dynamic_linking_with_lto)]
 #[note]
 pub(crate) struct DynamicLinkingWithLTO;
-
-#[derive(Diagnostic)]
-#[diag(codegen_gcc_load_bitcode)]
-pub(crate) struct LoadBitcode {
-    name: String,
-}
 
 #[derive(Diagnostic)]
 #[diag(codegen_gcc_lto_disallowed)]

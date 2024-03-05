@@ -21,19 +21,3 @@ index 5b21355..cb0c49b 100644
  
  [dependencies]
  alloc = { path = "../alloc", public = true }
-diff --git a/library/test/Cargo.toml b/library/test/Cargo.toml
-index 91a1abd..a58c160 100644
---- a/library/test/Cargo.toml
-+++ b/library/test/Cargo.toml
-@@ -4,7 +4,7 @@ version = "0.0.0"
- edition = "2021"
- 
- [lib]
--crate-type = ["dylib", "rlib"]
-+crate-type = ["rlib"]
- 
- [dependencies]
- getopts = { version = "0.2.21", features = ['rustc-dep-of-std'] }
--- 
-2.42.0
-
