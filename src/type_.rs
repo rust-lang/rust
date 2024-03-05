@@ -136,10 +136,6 @@ impl<'gcc, 'tcx> BaseTypeMethods<'tcx> for CodegenCx<'gcc, 'tcx> {
         unimplemented!("f16_f128")
     }
 
-    fn type_f128(&self) -> Type<'gcc> {
-        unimplemented!("f16_f128")
-    }
-
     fn type_func(&self, params: &[Type<'gcc>], return_type: Type<'gcc>) -> Type<'gcc> {
         self.context.new_function_pointer_type(None, return_type, params, false)
     }
