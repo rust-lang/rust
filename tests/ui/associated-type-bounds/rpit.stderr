@@ -1,5 +1,5 @@
 warning: method `tr2` is never used
-  --> $DIR/rpit.rs:8:20
+  --> $DIR/rpit.rs:6:20
    |
 LL | trait Tr2<'a> { fn tr2(self) -> &'a Self; }
    |       ---          ^^^

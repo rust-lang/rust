@@ -351,8 +351,6 @@ declare_features! (
     (unstable, asm_unwind, "1.58.0", Some(93334)),
     /// Allows users to enforce equality of associated constants `TraitImpl<AssocConst=3>`.
     (unstable, associated_const_equality, "1.58.0", Some(92827)),
-    /// Allows the user of associated type bounds.
-    (unstable, associated_type_bounds, "1.34.0", Some(52662)),
     /// Allows associated type defaults.
     (unstable, associated_type_defaults, "1.2.0", Some(29661)),
     /// Allows `async || body` closures.

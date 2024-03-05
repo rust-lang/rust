@@ -1,12 +1,12 @@
 error[E0391]: cycle detected when computing the implied predicates of `B`
-  --> $DIR/implied-bounds-cycle.rs:7:15
+  --> $DIR/implied-bounds-cycle.rs:5:15
    |
 LL | trait B: A<T: B> {}
    |               ^
    |
    = note: ...which immediately requires computing the implied predicates of `B` again
 note: cycle used when computing normalized predicates of `B`
-  --> $DIR/implied-bounds-cycle.rs:7:1
+  --> $DIR/implied-bounds-cycle.rs:5:1
    |
 LL | trait B: A<T: B> {}
    | ^^^^^^^^^^^^^^^^

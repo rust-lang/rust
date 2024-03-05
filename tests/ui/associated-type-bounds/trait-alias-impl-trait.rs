@@ -1,7 +1,6 @@
 //@ run-pass
 
 #![allow(dead_code)]
-#![feature(associated_type_bounds)]
 #![feature(type_alias_impl_trait)]
 
 use std::ops::Add;
