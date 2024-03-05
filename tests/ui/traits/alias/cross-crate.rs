@@ -12,6 +12,6 @@ fn use_alias<T: SendSync>() {}
 fn main() {
     use_alias::<u32>();
     use_alias::<Rc<u32>>();
-    //~^ ERROR `Rc<u32>` cannot be sent between threads safely [E0277]
-    //~^^ ERROR `Rc<u32>` cannot be shared between threads safely [E0277]
+    //~^ ERROR the trait bound `Rc<u32>: SendSync` is not satisfied [E0277]
+    //~| ERROR the trait bound `Rc<u32>: SendSync` is not satisfied [E0277]
 }

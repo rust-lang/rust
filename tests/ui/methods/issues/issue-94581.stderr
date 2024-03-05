@@ -1,14 +1,13 @@
-error[E0599]: `&'static [i32]` is not an iterator
-  --> $DIR/issue-94581.rs:6:29
+error[E0599]: no method named `map` found for reference `&'static [i32]` in the current scope
+  --> $DIR/issue-94581.rs:7:35
    |
-LL |     let sqsum = get_slice().map(|i| i * i).sum();
-   |                             ^^^ `&'static [i32]` is not an iterator; try calling `.iter()`
+LL |     let _sqsum: i32 = get_slice().map(|i| i * i).sum();
+   |                                   ^^^ `&'static [i32]` is not an iterator
    |
-   = note: the following trait bounds were not satisfied:
-           `&'static [i32]: Iterator`
-           which is required by `&mut &'static [i32]: Iterator`
-           `[i32]: Iterator`
-           which is required by `&mut [i32]: Iterator`
+help: call `.into_iter()` first
+   |
+LL |     let _sqsum: i32 = get_slice().into_iter().map(|i| i * i).sum();
+   |                                   ++++++++++++
 
 error: aborting due to 1 previous error
 

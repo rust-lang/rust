@@ -22,11 +22,20 @@ struct OpaqueTypeCollector<'tcx> {
     seen: FxHashSet<LocalDefId>,
 
     span: Option<Span>,
+
+    mode: CollectionMode,
+}
+
+enum CollectionMode {
+    /// For impl trait in assoc types we only permit collecting them from
+    /// associated types of the same impl block.
+    ImplTraitInAssocTypes,
+    TypeAliasImplTraitTransition,
 }
 
 impl<'tcx> OpaqueTypeCollector<'tcx> {
-    fn new(tcx: TyCtxt<'tcx>, item: LocalDefId) -> Self {
-        Self { tcx, opaques: Vec::new(), item, seen: Default::default(), span: None }
+    fn new(tcx: TyCtxt<'tcx>, item: LocalDefId, mode: CollectionMode) -> Self {
+        Self { tcx, opaques: Vec::new(), item, seen: Default::default(), span: None, mode }
     }
 
     fn span(&self) -> Span {
@@ -251,6 +260,9 @@ impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for OpaqueTypeCollector<'tcx> {
                 }
             }
             ty::Adt(def, _) if def.did().is_local() => {
+                if let CollectionMode::ImplTraitInAssocTypes = self.mode {
+                    return ControlFlow::Continue(());
+                }
                 if !self.seen.insert(def.did().expect_local()) {
                     return ControlFlow::Continue(());
                 }
@@ -275,89 +287,13 @@ impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for OpaqueTypeCollector<'tcx> {
     }
 }
 
-struct ImplTraitInAssocTypeCollector<'tcx>(OpaqueTypeCollector<'tcx>);
-
-impl<'tcx> super::sig_types::SpannedTypeVisitor<'tcx> for ImplTraitInAssocTypeCollector<'tcx> {
-    #[instrument(skip(self), ret, level = "trace")]
-    fn visit(&mut self, span: Span, value: impl TypeVisitable<TyCtxt<'tcx>>) -> ControlFlow<!> {
-        let old = self.0.span;
-        self.0.span = Some(span);
-        value.visit_with(self);
-        self.0.span = old;
-
-        ControlFlow::Continue(())
-    }
-}
-
-impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for ImplTraitInAssocTypeCollector<'tcx> {
-    #[instrument(skip(self), ret, level = "trace")]
-    fn visit_ty(&mut self, t: Ty<'tcx>) -> ControlFlow<!> {
-        t.super_visit_with(self)?;
-        match t.kind() {
-            ty::Alias(ty::Opaque, alias_ty) if alias_ty.def_id.is_local() => {
-                self.0.visit_opaque_ty(alias_ty);
-            }
-            ty::Alias(ty::Projection, alias_ty) => {
-                // This avoids having to do normalization of `Self::AssocTy` by only
-                // supporting the case of a method defining opaque types from assoc types
-                // in the same impl block.
-                let parent_trait_ref = self
-                    .0
-                    .parent_trait_ref()
-                    .expect("impl trait in assoc type collector used on non-assoc item");
-                // If the trait ref of the associated item and the impl differs,
-                // then we can't use the impl's identity args below, so
-                // just skip.
-                if alias_ty.trait_ref(self.0.tcx) == parent_trait_ref {
-                    let parent = self.0.parent().expect("we should have a parent here");
-
-                    for &assoc in self.0.tcx.associated_items(parent).in_definition_order() {
-                        trace!(?assoc);
-                        if assoc.trait_item_def_id != Some(alias_ty.def_id) {
-                            continue;
-                        }
-
-                        // If the type is further specializable, then the type_of
-                        // is not actually correct below.
-                        if !assoc.defaultness(self.0.tcx).is_final() {
-                            continue;
-                        }
-
-                        let impl_args = alias_ty.args.rebase_onto(
-                            self.0.tcx,
-                            parent_trait_ref.def_id,
-                            ty::GenericArgs::identity_for_item(self.0.tcx, parent),
-                        );
-
-                        if check_args_compatible(self.0.tcx, assoc, impl_args) {
-                            return self
-                                .0
-                                .tcx
-                                .type_of(assoc.def_id)
-                                .instantiate(self.0.tcx, impl_args)
-                                .visit_with(self);
-                        } else {
-                            self.0.tcx.dcx().span_bug(
-                                self.0.tcx.def_span(assoc.def_id),
-                                "item had incorrect args",
-                            );
-                        }
-                    }
-                }
-            }
-            _ => trace!(kind=?t.kind()),
-        }
-        ControlFlow::Continue(())
-    }
-}
-
 fn impl_trait_in_assoc_types_defined_by<'tcx>(
     tcx: TyCtxt<'tcx>,
     item: LocalDefId,
 ) -> &'tcx ty::List<LocalDefId> {
-    let mut collector = ImplTraitInAssocTypeCollector(OpaqueTypeCollector::new(tcx, item));
+    let mut collector = OpaqueTypeCollector::new(tcx, item, CollectionMode::ImplTraitInAssocTypes);
     super::sig_types::walk_types(tcx, item, &mut collector);
-    tcx.mk_local_def_ids(&collector.0.opaques)
+    tcx.mk_local_def_ids(&collector.opaques)
 }
 
 fn opaque_types_defined_by<'tcx>(
@@ -366,7 +302,8 @@ fn opaque_types_defined_by<'tcx>(
 ) -> &'tcx ty::List<LocalDefId> {
     let kind = tcx.def_kind(item);
     trace!(?kind);
-    let mut collector = OpaqueTypeCollector::new(tcx, item);
+    let mut collector =
+        OpaqueTypeCollector::new(tcx, item, CollectionMode::TypeAliasImplTraitTransition);
     super::sig_types::walk_types(tcx, item, &mut collector);
     match kind {
         DefKind::AssocFn

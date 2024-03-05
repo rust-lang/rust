@@ -30,8 +30,7 @@ use crate::task::{Context, Poll};
 #[lang = "future_trait"]
 #[diagnostic::on_unimplemented(
     label = "`{Self}` is not a future",
-    message = "`{Self}` is not a future",
-    note = "{Self} must be a future or must implement `IntoFuture` to be awaited"
+    message = "`{Self}` is not a future"
 )]
 pub trait Future {
     /// The type of value produced on completion.

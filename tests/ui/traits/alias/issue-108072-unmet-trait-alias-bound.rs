@@ -7,5 +7,5 @@ trait IteratorAlias = Iterator;
 fn f(_: impl IteratorAlias) {}
 
 fn main() {
-    f(()) //~ `()` is not an iterator
+    f(()) //~ ERROR the trait bound `(): IteratorAlias` is not satisfied
 }
