@@ -60,7 +60,14 @@ fn check_word(cx: &LateContext<'_>, word: &str, span: Span) {
             return false;
         }
 
-        let s = s.strip_suffix('s').unwrap_or(s);
+        let s = if let Some(prefix) = s.strip_suffix("es")
+            && prefix.chars().all(|c| c.is_ascii_uppercase())
+            && matches!(prefix.chars().last(), Some('S' | 'X'))
+        {
+            prefix
+        } else {
+            s.strip_suffix('s').unwrap_or(s)
+        };
 
         s.chars().all(char::is_alphanumeric)
             && s.chars().filter(|&c| c.is_uppercase()).take(2).count() > 1
