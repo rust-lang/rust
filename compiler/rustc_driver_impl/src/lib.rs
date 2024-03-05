@@ -58,7 +58,7 @@ use std::str;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, OnceLock};
 use std::time::{Instant, SystemTime};
-use time::OffsetDateTime;
+use time::{Date, OffsetDateTime, Time};
 
 #[allow(unused_macros)]
 macro do_not_use_print($($t:tt)*) {
@@ -1369,6 +1369,9 @@ pub fn install_ice_hook(
     using_internal_features
 }
 
+const DATE_FORMAT: &[time::format_description::FormatItem<'static>] =
+    &time::macros::format_description!("[year]-[month]-[day]");
+
 /// Prints the ICE message, including query stack, but without backtrace.
 ///
 /// The message will point the user at `bug_report_url` to report the ICE.
@@ -1397,10 +1400,34 @@ fn report_ice(
         dcx.emit_err(session_diagnostics::Ice);
     }
 
-    if using_internal_features.load(std::sync::atomic::Ordering::Relaxed) {
-        dcx.emit_note(session_diagnostics::IceBugReportInternalFeature);
+    use time::ext::NumericalDuration;
+
+    // Try to hint user to update nightly if applicable when reporting an ICE.
+    // Attempt to calculate when current version was released, and add 12 hours
+    // as buffer. If the current version's release timestamp is older than
+    // the system's current time + 24 hours + 12 hours buffer if we're on
+    // nightly.
+    if let Some("nightly") = option_env!("CFG_RELEASE_CHANNEL")
+        && let Some(version) = option_env!("CFG_VERSION")
+        && let Some(ver_date_str) = option_env!("CFG_VER_DATE")
+        && let Ok(ver_date) = Date::parse(&ver_date_str, DATE_FORMAT)
+        && let ver_datetime = OffsetDateTime::new_utc(ver_date, Time::MIDNIGHT)
+        && let system_datetime = OffsetDateTime::from(SystemTime::now())
+        && system_datetime.checked_sub(36.hours()).is_some_and(|d| d > ver_datetime)
+        && !using_internal_features.load(std::sync::atomic::Ordering::Relaxed)
+    {
+        dcx.emit_note(session_diagnostics::IceBugReportOutdated {
+            version,
+            bug_report_url,
+            note_update: (),
+            note_url: (),
+        });
     } else {
-        dcx.emit_note(session_diagnostics::IceBugReport { bug_report_url });
+        if using_internal_features.load(std::sync::atomic::Ordering::Relaxed) {
+            dcx.emit_note(session_diagnostics::IceBugReportInternalFeature);
+        } else {
+            dcx.emit_note(session_diagnostics::IceBugReport { bug_report_url });
+        }
     }
 
     let version = util::version_str!().unwrap_or("unknown_version");
