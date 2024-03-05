@@ -2506,6 +2506,7 @@ extern "rust-intrinsic" {
     /// `ptr` must point to a vtable.
     /// The intrinsic will return the alignment stored in that vtable.
     #[rustc_nounwind]
+    #[cfg(bootstrap)]
     pub fn vtable_align(ptr: *const ()) -> usize;
 
     #[cfg(bootstrap)]
@@ -2720,10 +2721,21 @@ pub const unsafe fn const_deallocate(_ptr: *mut u8, _size: usize, _align: usize)
 /// The intrinsic will return the size stored in that vtable.
 #[rustc_nounwind]
 #[unstable(feature = "core_intrinsics", issue = "none")]
-#[cfg_attr(not(bootstrap), rustc_intrinsic)]
-#[cfg_attr(not(bootstrap), rustc_intrinsic_must_be_overridden)]
+#[rustc_intrinsic]
+#[rustc_intrinsic_must_be_overridden]
 #[cfg(not(bootstrap))]
 pub unsafe fn vtable_size(_ptr: *const ()) -> usize {
+    unreachable!()
+}
+
+/// `ptr` must point to a vtable.
+/// The intrinsic will return the alignment stored in that vtable.
+#[rustc_nounwind]
+#[unstable(feature = "core_intrinsics", issue = "none")]
+#[rustc_intrinsic]
+#[rustc_intrinsic_must_be_overridden]
+#[cfg(not(bootstrap))]
+pub unsafe fn vtable_align(_ptr: *const ()) -> usize {
     unreachable!()
 }
 
