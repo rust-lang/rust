@@ -1612,8 +1612,9 @@ pub enum PointerKind {
     SharedRef { frozen: bool },
     /// Mutable reference. `unpin` indicates the absence of any pinned data.
     MutableRef { unpin: bool },
-    /// Box. `unpin` indicates the absence of any pinned data.
-    Box { unpin: bool },
+    /// Box. `unpin` indicates the absence of any pinned data. `global` indicates whether this box
+    /// uses the global allocator or a custom one.
+    Box { unpin: bool, global: bool },
 }
 
 /// Note that this information is advisory only, and backends are free to ignore it.
@@ -1622,6 +1623,8 @@ pub enum PointerKind {
 pub struct PointeeInfo {
     pub size: Size,
     pub align: Align,
+    /// If this is `None`, then this is a raw pointer, so size and alignment are not guaranteed to
+    /// be reliable.
     pub safe: Option<PointerKind>,
 }
 

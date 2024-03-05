@@ -50,6 +50,8 @@ extern "Rust" {
 #[unstable(feature = "allocator_api", issue = "32838")]
 #[derive(Copy, Clone, Default, Debug)]
 #[cfg(not(test))]
+// the compiler needs to know when a Box uses the global allocator vs a custom one
+#[cfg_attr(not(bootstrap), lang = "global_alloc_ty")]
 pub struct Global;
 
 #[cfg(test)]
