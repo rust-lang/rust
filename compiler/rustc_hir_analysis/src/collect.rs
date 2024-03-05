@@ -791,7 +791,12 @@ fn convert_enum_variant_types(tcx: TyCtxt<'_>, def_id: DefId) {
 }
 
 fn find_field(tcx: TyCtxt<'_>, (def_id, ident): (DefId, Ident)) -> Option<FieldIdx> {
-    tcx.adt_def(def_id).non_enum_variant().fields.iter_enumerated().find_map(|(idx, field)| {
+    let adt = tcx.adt_def(def_id);
+    if adt.is_enum() {
+        return None;
+    }
+
+    adt.non_enum_variant().fields.iter_enumerated().find_map(|(idx, field)| {
         if field.is_unnamed() {
             let field_ty = tcx.type_of(field.did).instantiate_identity();
             let adt_def = field_ty.ty_adt_def().expect("expect Adt for unnamed field");
