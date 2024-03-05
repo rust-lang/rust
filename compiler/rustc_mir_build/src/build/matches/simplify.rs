@@ -12,7 +12,7 @@
 //! sort of test: for example, testing which variant an enum is, or
 //! testing a value against a constant.
 
-use crate::build::matches::{Candidate, FlatPat, MatchPair, PatternExtraData, TestCase};
+use crate::build::matches::{MatchPair, PatternExtraData, TestCase};
 use crate::build::Builder;
 
 use std::mem;
@@ -65,14 +65,5 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         // late as possible.
         match_pairs.sort_by_key(|pair| matches!(pair.test_case, TestCase::Or { .. }));
         debug!(simplified = ?match_pairs, "simplify_match_pairs");
-    }
-
-    /// Create a new candidate for each pattern in `pats`.
-    pub(super) fn create_or_subcandidates<'pat>(
-        &mut self,
-        pats: &[FlatPat<'pat, 'tcx>],
-        has_guard: bool,
-    ) -> Vec<Candidate<'pat, 'tcx>> {
-        pats.iter().cloned().map(|flat_pat| Candidate::from_flat_pat(flat_pat, has_guard)).collect()
     }
 }
