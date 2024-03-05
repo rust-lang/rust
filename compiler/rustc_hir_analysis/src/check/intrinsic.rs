@@ -248,7 +248,6 @@ pub fn check_intrinsic_type(
                 ],
                 Ty::new_unit(tcx),
             ),
-            sym::drop_in_place => (1, 0, vec![Ty::new_mut_ptr(tcx, param(0))], Ty::new_unit(tcx)),
             sym::needs_drop => (1, 0, vec![], tcx.types.bool),
 
             sym::type_name => (1, 0, vec![], Ty::new_static_str(tcx)),
