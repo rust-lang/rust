@@ -76,7 +76,6 @@ tests/ui/linkage-attr/linkage-detect-extern-generated-name-collision.rs
 tests/ui/numbers-arithmetic/divide-by-zero.rs
 tests/ui/numbers-arithmetic/mod-zero.rs
 tests/ui/numbers-arithmetic/overflowing-neg-nonzero.rs
-tests/ui/numbers-arithmetic/overflowing-neg.rs
 tests/ui/optimization-remark.rs
 tests/ui/panic-handler/panic-handler-std.rs
 tests/ui/panic-runtime/abort-link-to-unwind-dylib.rs

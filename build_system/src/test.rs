@@ -912,6 +912,7 @@ fn should_remove_test(file_path: &Path) -> Result<bool, String> {
         }
         if [
             "// error-pattern:",
+            "// @error-pattern:",
             "// build-fail",
             "// run-fail",
             "-Cllvm-args",
