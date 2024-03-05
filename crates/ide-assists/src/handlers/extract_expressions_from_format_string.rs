@@ -274,4 +274,22 @@ fn main() {
 "#,
         );
     }
+
+    #[test]
+    fn escaped_literals() {
+        check_assist(
+            extract_expressions_from_format_string,
+            r#"
+//- minicore: fmt
+fn main() {
+    print!("\n$ {x + 1}$0");
+}
+            "#,
+            r#"
+fn main() {
+    print!("\n$ {}"$0, x + 1);
+}
+            "#,
+        );
+    }
 }
