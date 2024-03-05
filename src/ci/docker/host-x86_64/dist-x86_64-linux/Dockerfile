@@ -33,12 +33,15 @@ RUN yum upgrade -y && \
       xz \
       zlib-devel.i686 \
       zlib-devel.x86_64 \
+      jemalloc-devel
       && yum clean all
 
 RUN mkdir -p /rustroot/bin
 
 ENV PATH=/rustroot/bin:$PATH
 ENV LD_LIBRARY_PATH=/rustroot/lib64:/rustroot/lib32:/rustroot/lib
+# This is a RUN command because we need to do some command interpolation
+RUN export LD_PRELOAD=`jemalloc-config --libdir`/libjemalloc.so.`jemalloc-config --revision`
 ENV PKG_CONFIG_PATH=/rustroot/lib/pkgconfig
 WORKDIR /tmp
 RUN mkdir /home/user
