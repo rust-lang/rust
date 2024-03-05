@@ -22,10 +22,10 @@ use rustc_middle::bug;
 use rustc_middle::ty::layout::LayoutOf;
 #[cfg(feature = "master")]
 use rustc_middle::ty::layout::{FnAbiOf, HasTyCtxt};
-use rustc_span::{Span, Symbol, sym};
-use rustc_target::abi::HasDataLayout;
 use rustc_middle::ty::{self, Instance, Ty};
+use rustc_span::{sym, Span, Symbol};
 use rustc_target::abi::call::{ArgAbi, FnAbi, PassMode};
+use rustc_target::abi::HasDataLayout;
 #[cfg(feature = "master")]
 use rustc_target::spec::abi::Abi;
 use rustc_target::spec::PanicStrategy;
@@ -122,44 +122,46 @@ impl<'a, 'gcc, 'tcx> IntrinsicCallMethods<'tcx> for Builder<'a, 'gcc, 'tcx> {
         let result = PlaceRef::new_sized(llresult, fn_abi.ret.layout);
 
         let simple = get_simple_intrinsic(self, name);
-        let llval =
-            match name {
-                _ if simple.is_some() => {
-                    // FIXME(antoyo): remove this cast when the API supports function.
-                    let func = unsafe { std::mem::transmute(simple.expect("simple")) };
-                    self.call(self.type_void(), None, None, func, &args.iter().map(|arg| arg.immediate()).collect::<Vec<_>>(), None)
-                },
-                sym::likely => {
-                    self.expect(args[0].immediate(), true)
-                }
-                sym::unlikely => {
-                    self.expect(args[0].immediate(), false)
-                }
-                sym::is_val_statically_known => {
-                    let a = args[0].immediate();
-                    let builtin = self.context.get_builtin_function("__builtin_constant_p");
-                    let res = self.context.new_call(None, builtin, &[a]);
-                    self.icmp(IntPredicate::IntEQ, res, self.const_i32(0))
-                }
-                sym::catch_unwind => {
-                    try_intrinsic(
-                        self,
-                        args[0].immediate(),
-                        args[1].immediate(),
-                        args[2].immediate(),
-                        llresult,
-                    );
-                    return Ok(());
-                }
-                sym::breakpoint => {
-                    unimplemented!();
-                }
-                sym::va_copy => {
-                    unimplemented!();
-                }
-                sym::va_arg => {
-                    unimplemented!();
-                }
+        let llval = match name {
+            _ if simple.is_some() => {
+                // FIXME(antoyo): remove this cast when the API supports function.
+                let func = unsafe { std::mem::transmute(simple.expect("simple")) };
+                self.call(
+                    self.type_void(),
+                    None,
+                    None,
+                    func,
+                    &args.iter().map(|arg| arg.immediate()).collect::<Vec<_>>(),
+                    None,
+                )
+            }
+            sym::likely => self.expect(args[0].immediate(), true),
+            sym::unlikely => self.expect(args[0].immediate(), false),
+            sym::is_val_statically_known => {
+                let a = args[0].immediate();
+                let builtin = self.context.get_builtin_function("__builtin_constant_p");
+                let res = self.context.new_call(None, builtin, &[a]);
+                self.icmp(IntPredicate::IntEQ, res, self.const_i32(0))
+            }
+            sym::catch_unwind => {
+                try_intrinsic(
+                    self,
+                    args[0].immediate(),
+                    args[1].immediate(),
+                    args[2].immediate(),
+                    llresult,
+                );
+                return Ok(());
+            }
+            sym::breakpoint => {
+                unimplemented!();
+            }
+            sym::va_copy => {
+                unimplemented!();
+            }
+            sym::va_arg => {
+                unimplemented!();
+            }
 
             sym::volatile_load | sym::unaligned_volatile_load => {
                 let tp_ty = fn_args.type_at(0);

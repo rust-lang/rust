@@ -1018,18 +1018,20 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
                 let llty = place.layout.scalar_pair_element_gcc_type(self, i);
                 let load = self.load(llty, llptr, align);
                 scalar_load_metadata(self, load, scalar);
-                if scalar.is_bool() { self.trunc(load, self.type_i1()) } else { load }
+                if scalar.is_bool() {
+                    self.trunc(load, self.type_i1())
+                } else {
+                    load
+                }
             };
 
             OperandValue::Pair(
                 load(0, a, place.align),
                 load(1, b, place.align.restrict_for_offset(b_offset)),
             )
-        }
-        else {
+        } else {
             OperandValue::Ref(place.llval, None, place.align)
         };
-
 
         OperandRef { val, layout: place.layout }
     }
@@ -2075,7 +2077,11 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
         self.vector_reduce(src, |a, b, context| context.new_binary_op(loc, op, a.get_type(), a, b))
     }
 
-    pub fn vector_reduce_fadd_reassoc(&mut self, _acc: RValue<'gcc>, _src: RValue<'gcc>) -> RValue<'gcc> {
+    pub fn vector_reduce_fadd_reassoc(
+        &mut self,
+        _acc: RValue<'gcc>,
+        _src: RValue<'gcc>,
+    ) -> RValue<'gcc> {
         unimplemented!();
     }
 
@@ -2102,7 +2108,11 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
         unimplemented!();
     }
 
-    pub fn vector_reduce_fmul_reassoc(&mut self, _acc: RValue<'gcc>, _src: RValue<'gcc>) -> RValue<'gcc> {
+    pub fn vector_reduce_fmul_reassoc(
+        &mut self,
+        _acc: RValue<'gcc>,
+        _src: RValue<'gcc>,
+    ) -> RValue<'gcc> {
         unimplemented!();
     }
 

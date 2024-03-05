@@ -5,9 +5,12 @@ use gccjit::{Struct, Type};
 use rustc_middle::bug;
 use rustc_middle::ty::layout::{LayoutOf, TyAndLayout};
 use rustc_middle::ty::print::with_no_trimmed_paths;
-use rustc_target::abi::{self, Abi, Align, F16, F128, F32, F64, FieldsShape, Int, Integer, Pointer, PointeeInfo, Size, TyAbiInterface, Variants};
 use rustc_middle::ty::{self, Ty, TypeVisitableExt};
 use rustc_target::abi::call::{CastTarget, FnAbi, Reg};
+use rustc_target::abi::{
+    self, Abi, Align, FieldsShape, Int, Integer, PointeeInfo, Pointer, Size, TyAbiInterface,
+    Variants, F128, F16, F32, F64,
+};
 
 use crate::abi::{FnAbiGcc, FnAbiGccExt, GccType};
 use crate::context::CodegenCx;
@@ -157,9 +160,22 @@ pub trait LayoutGccExt<'tcx> {
     fn is_gcc_scalar_pair(&self) -> bool;
     fn gcc_type<'gcc>(&self, cx: &CodegenCx<'gcc, 'tcx>) -> Type<'gcc>;
     fn immediate_gcc_type<'gcc>(&self, cx: &CodegenCx<'gcc, 'tcx>) -> Type<'gcc>;
-    fn scalar_gcc_type_at<'gcc>(&self, cx: &CodegenCx<'gcc, 'tcx>, scalar: &abi::Scalar, offset: Size) -> Type<'gcc>;
-    fn scalar_pair_element_gcc_type<'gcc>(&self, cx: &CodegenCx<'gcc, 'tcx>, index: usize) -> Type<'gcc>;
-    fn pointee_info_at<'gcc>(&self, cx: &CodegenCx<'gcc, 'tcx>, offset: Size) -> Option<PointeeInfo>;
+    fn scalar_gcc_type_at<'gcc>(
+        &self,
+        cx: &CodegenCx<'gcc, 'tcx>,
+        scalar: &abi::Scalar,
+        offset: Size,
+    ) -> Type<'gcc>;
+    fn scalar_pair_element_gcc_type<'gcc>(
+        &self,
+        cx: &CodegenCx<'gcc, 'tcx>,
+        index: usize,
+    ) -> Type<'gcc>;
+    fn pointee_info_at<'gcc>(
+        &self,
+        cx: &CodegenCx<'gcc, 'tcx>,
+        offset: Size,
+    ) -> Option<PointeeInfo>;
 }
 
 impl<'tcx> LayoutGccExt<'tcx> for TyAndLayout<'tcx> {
@@ -341,7 +357,12 @@ impl<'gcc, 'tcx> LayoutTypeMethods<'tcx> for CodegenCx<'gcc, 'tcx> {
         layout.is_gcc_scalar_pair()
     }
 
-    fn scalar_pair_element_backend_type(&self, layout: TyAndLayout<'tcx>, index: usize, _immediate: bool) -> Type<'gcc> {
+    fn scalar_pair_element_backend_type(
+        &self,
+        layout: TyAndLayout<'tcx>,
+        index: usize,
+        _immediate: bool,
+    ) -> Type<'gcc> {
         layout.scalar_pair_element_gcc_type(self, index)
     }
 

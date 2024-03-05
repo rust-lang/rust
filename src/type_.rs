@@ -123,7 +123,7 @@ impl<'gcc, 'tcx> BaseTypeMethods<'tcx> for CodegenCx<'gcc, 'tcx> {
     fn type_f16(&self) -> Type<'gcc> {
         unimplemented!("f16_f128")
     }
-    
+
     fn type_f32(&self) -> Type<'gcc> {
         self.float_type
     }
@@ -131,7 +131,7 @@ impl<'gcc, 'tcx> BaseTypeMethods<'tcx> for CodegenCx<'gcc, 'tcx> {
     fn type_f64(&self) -> Type<'gcc> {
         self.double_type
     }
-    
+
     fn type_f128(&self) -> Type<'gcc> {
         unimplemented!("f16_f128")
     }
