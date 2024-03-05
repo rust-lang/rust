@@ -5,7 +5,6 @@
 use crate::setup::{Knobs, ParDatabaseImpl};
 use expect_test::expect;
 use salsa::ParallelDatabase;
-use test_log::test;
 
 #[test]
 fn parallel_cycle_none_recover() {

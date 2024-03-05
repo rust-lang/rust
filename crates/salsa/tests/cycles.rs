@@ -2,7 +2,6 @@ use std::panic::UnwindSafe;
 
 use expect_test::expect;
 use salsa::{Durability, ParallelDatabase, Snapshot};
-use test_log::test;
 
 // Axes:
 //
