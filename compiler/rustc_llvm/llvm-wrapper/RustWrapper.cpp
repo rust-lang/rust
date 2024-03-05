@@ -66,12 +66,22 @@ static LLVM_THREAD_LOCAL char *LastError;
 static void FatalErrorHandler(void *UserData,
                               const char* Reason,
                               bool GenCrashDiag) {
-  // Do the same thing that the default error handler does.
-  std::cerr << "LLVM ERROR: " << Reason << std::endl;
+  // Once upon a time we emitted "LLVM ERROR:" specifically to mimic LLVM. Then,
+  // we developed crater and other tools which only expose logs, not error codes.
+  // Use a more greppable prefix that will still match the "LLVM ERROR:" prefix.
+  std::cerr << "rustc-LLVM ERROR: " << Reason << std::endl;
 
   // Since this error handler exits the process, we have to run any cleanup that
   // LLVM would run after handling the error. This might change with an LLVM
   // upgrade.
+  //
+  // In practice, this will do nothing, because the only cleanup LLVM does is
+  // to remove all files that were registered with it via a frontend calling
+  // one of the `createOutputFile` family of functions in LLVM and passing true
+  // to RemoveFileOnSignal, something that rustc does not do. However, it would
+  // be... inadvisable to suddenly stop running these handlers, if LLVM gets
+  // "interesting" ideas in the future about what cleanup should be done.
+  // We might even find it useful for generating less artifacts.
   sys::RunInterruptHandlers();
 
   exit(101);
