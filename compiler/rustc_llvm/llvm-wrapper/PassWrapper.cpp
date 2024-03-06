@@ -77,9 +77,9 @@ extern "C" void LLVMRustTimeTraceProfilerFinishThread() {
 }
 
 extern "C" void LLVMRustTimeTraceProfilerFinish(const char* FileName) {
-  StringRef FN(FileName);
+  auto FN = StringRef(FileName);
   std::error_code EC;
-  raw_fd_ostream OS(FN, EC, sys::fs::CD_CreateAlways);
+  auto OS = raw_fd_ostream(FN, EC, sys::fs::CD_CreateAlways);
 
   timeTraceProfilerWrite(OS);
   timeTraceProfilerCleanup();
@@ -424,7 +424,7 @@ extern "C" LLVMTargetMachineRef LLVMRustCreateTargetMachine(
   auto CM = fromRust(RustCM);
 
   std::string Error;
-  Triple Trip(Triple::normalize(TripleStr));
+  auto Trip = Triple(Triple::normalize(TripleStr));
   const llvm::Target *TheTarget =
       TargetRegistry::lookupTarget(Trip.getTriple(), Error);
   if (TheTarget == nullptr) {
@@ -537,8 +537,8 @@ extern "C" void LLVMRustDisposeTargetMachine(LLVMTargetMachineRef TM) {
 // TargetLibraryInfo pass, so we use this method to do so.
 extern "C" void LLVMRustAddLibraryInfo(LLVMPassManagerRef PMR, LLVMModuleRef M,
                                        bool DisableSimplifyLibCalls) {
-  Triple TargetTriple(unwrap(M)->getTargetTriple());
-  TargetLibraryInfoImpl TLII(TargetTriple);
+  auto TargetTriple = Triple(unwrap(M)->getTargetTriple());
+  auto TLII = TargetLibraryInfoImpl(TargetTriple);
   if (DisableSimplifyLibCalls)
     TLII.disableAllFunctions();
   unwrap(PMR)->add(new TargetLibraryInfoWrapperPass(TLII));
@@ -589,7 +589,7 @@ LLVMRustWriteOutputFile(LLVMTargetMachineRef Target, LLVMPassManagerRef PMR,
 
   std::string ErrorInfo;
   std::error_code EC;
-  raw_fd_ostream OS(Path, EC, sys::fs::OF_None);
+  auto OS = raw_fd_ostream(Path, EC, sys::fs::OF_None);
   if (EC)
     ErrorInfo = EC.message();
   if (ErrorInfo != "") {
@@ -597,9 +597,9 @@ LLVMRustWriteOutputFile(LLVMTargetMachineRef Target, LLVMPassManagerRef PMR,
     return LLVMRustResult::Failure;
   }
 
-  buffer_ostream BOS(OS);
+  auto BOS = buffer_ostream(OS);
   if (DwoPath) {
-    raw_fd_ostream DOS(DwoPath, EC, sys::fs::OF_None);
+    auto DOS = raw_fd_ostream(DwoPath, EC, sys::fs::OF_None);
     EC.clear();
     if (EC)
         ErrorInfo = EC.message();
@@ -607,7 +607,7 @@ LLVMRustWriteOutputFile(LLVMTargetMachineRef Target, LLVMPassManagerRef PMR,
       LLVMRustSetLastError(ErrorInfo.c_str());
       return LLVMRustResult::Failure;
     }
-    buffer_ostream DBOS(DOS);
+    auto DBOS = buffer_ostream(DOS);
     unwrap(Target)->addPassesToEmitFile(*PM, BOS, &DBOS, FileType, false);
     PM->run(*unwrap(M));
   } else {
@@ -796,7 +796,7 @@ LLVMRustOptimize(
                         DebugInfoForProfiling);
   }
 
-  PassBuilder PB(TM, PTO, PGOOpt, &PIC);
+  auto PB = PassBuilder(TM, PTO, PGOOpt, &PIC);
   LoopAnalysisManager LAM;
   FunctionAnalysisManager FAM;
   CGSCCAnalysisManager CGAM;
@@ -1112,7 +1112,7 @@ extern "C" LLVMRustResult
 LLVMRustPrintModule(LLVMModuleRef M, const char *Path, DemangleFn Demangle) {
   std::string ErrorInfo;
   std::error_code EC;
-  raw_fd_ostream OS(Path, EC, sys::fs::OF_None);
+  auto OS = raw_fd_ostream(Path, EC, sys::fs::OF_None);
   if (EC)
     ErrorInfo = EC.message();
   if (ErrorInfo != "") {
@@ -1120,8 +1120,8 @@ LLVMRustPrintModule(LLVMModuleRef M, const char *Path, DemangleFn Demangle) {
     return LLVMRustResult::Failure;
   }
 
-  RustAssemblyAnnotationWriter AAW(Demangle);
-  formatted_raw_ostream FOS(OS);
+  auto AAW = RustAssemblyAnnotationWriter(Demangle);
+  auto FOS = formatted_raw_ostream(OS);
   unwrap(M)->print(FOS, &AAW);
 
   return LLVMRustResult::Success;
@@ -1281,8 +1281,8 @@ LLVMRustCreateThinLTOData(LLVMRustThinLTOModule *modules,
   // Load each module's summary and merge it into one combined index
   for (int i = 0; i < num_modules; i++) {
     auto module = &modules[i];
-    StringRef buffer(module->data, module->len);
-    MemoryBufferRef mem_buffer(buffer, module->identifier);
+    auto buffer = StringRef(module->data, module->len);
+    auto mem_buffer = MemoryBufferRef(buffer, module->identifier);
 
     Ret->ModuleMap[module->identifier] = mem_buffer;
 
@@ -1485,7 +1485,7 @@ LLVMRustPrepareThinLTOImport(const LLVMRustThinLTOData *Data, LLVMModuleRef M,
     return MOrErr;
   };
   bool ClearDSOLocal = clearDSOLocalOnDeclarations(Mod, Target);
-  FunctionImporter Importer(Data->Index, Loader, ClearDSOLocal);
+  auto Importer = FunctionImporter(Data->Index, Loader, ClearDSOLocal);
   Expected<bool> Result = Importer.importFunctions(Mod, ImportList);
   if (!Result) {
     LLVMRustSetLastError(toString(Result.takeError()).c_str());
@@ -1510,7 +1510,7 @@ extern "C" LLVMRustThinLTOBuffer*
 LLVMRustThinLTOBufferCreate(LLVMModuleRef M, bool is_thin) {
   auto Ret = std::make_unique<LLVMRustThinLTOBuffer>();
   {
-    raw_string_ostream OS(Ret->data);
+    auto OS = raw_string_ostream(Ret->data);
     {
       if (is_thin) {
         PassBuilder PB;
@@ -1557,8 +1557,8 @@ LLVMRustParseBitcodeForLTO(LLVMContextRef Context,
                            const char *data,
                            size_t len,
                            const char *identifier) {
-  StringRef Data(data, len);
-  MemoryBufferRef Buffer(Data, identifier);
+  auto Data = StringRef(data, len);
+  auto Buffer = MemoryBufferRef(Data, identifier);
   unwrap(Context)->enableDebugTypeODRUniquing();
   Expected<std::unique_ptr<Module>> SrcOrError =
       parseBitcodeFile(Buffer, *unwrap(Context));
@@ -1576,8 +1576,8 @@ extern "C" const char *LLVMRustGetSliceFromObjectDataByName(const char *data,
                                                             const char *name,
                                                             size_t *out_len) {
   *out_len = 0;
-  StringRef Data(data, len);
-  MemoryBufferRef Buffer(Data, ""); // The id is unused.
+  auto Data = StringRef(data, len);
+  auto Buffer = MemoryBufferRef(Data, ""); // The id is unused.
   file_magic Type = identify_magic(Buffer.getBuffer());
   Expected<std::unique_ptr<object::ObjectFile>> ObjFileOrError =
       object::ObjectFile::createObjectFile(Buffer, Type);

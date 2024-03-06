@@ -120,7 +120,7 @@ extern "C" void LLVMRustCoverageWriteFilenamesSectionToBuffer(
   }
   auto FilenamesWriter =
       coverage::CoverageFilenamesSectionWriter(ArrayRef<std::string>(FilenameRefs));
-  RawRustStringOstream OS(BufferOut);
+  auto OS = RawRustStringOstream(BufferOut);
   FilenamesWriter.write(OS);
 }
 
@@ -160,7 +160,7 @@ extern "C" void LLVMRustCoverageWriteMappingToBuffer(
       ArrayRef<unsigned>(VirtualFileMappingIDs, NumVirtualFileMappingIDs),
       Expressions,
       MappingRegions);
-  RawRustStringOstream OS(BufferOut);
+  auto OS = RawRustStringOstream(BufferOut);
   CoverageMappingWriter.write(OS);
 }
 
@@ -168,23 +168,23 @@ extern "C" LLVMValueRef LLVMRustCoverageCreatePGOFuncNameVar(
     LLVMValueRef F,
     const char *FuncName,
     size_t FuncNameLen) {
-  StringRef FuncNameRef(FuncName, FuncNameLen);
+  auto FuncNameRef = StringRef(FuncName, FuncNameLen);
   return wrap(createPGOFuncNameVar(*cast<Function>(unwrap(F)), FuncNameRef));
 }
 
 extern "C" uint64_t LLVMRustCoverageHashByteArray(
     const char *Bytes,
     size_t NumBytes) {
-  StringRef StrRef(Bytes, NumBytes);
+  auto StrRef = StringRef(Bytes, NumBytes);
   return IndexedInstrProf::ComputeHash(StrRef);
 }
 
 static void WriteSectionNameToString(LLVMModuleRef M,
                                      InstrProfSectKind SK,
                                      RustStringRef Str) {
-  Triple TargetTriple(unwrap(M)->getTargetTriple());
+  auto TargetTriple = Triple(unwrap(M)->getTargetTriple());
   auto name = getInstrProfSectionName(SK, TargetTriple.getObjectFormat());
-  RawRustStringOstream OS(Str);
+  auto OS = RawRustStringOstream(Str);
   OS << name;
 }
 
@@ -200,7 +200,7 @@ extern "C" void LLVMRustCoverageWriteFuncSectionNameToString(LLVMModuleRef M,
 
 extern "C" void LLVMRustCoverageWriteMappingVarNameToString(RustStringRef Str) {
   auto name = getCoverageMappingVarName();
-  RawRustStringOstream OS(Str);
+  auto OS = RawRustStringOstream(Str);
   OS << name;
 }
 
