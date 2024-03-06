@@ -446,9 +446,7 @@ impl ConfigInfo {
         ));
         let ld_library_path = format!(
             "{target}:{sysroot}:{gcc_path}",
-            // FIXME: It's possible to pick another out directory. Would be nice to have a command
-            // line option to change it.
-            target = current_dir.join("target/out").display(),
+            target = self.cargo_target_dir,
             sysroot = sysroot.display(),
             gcc_path = self.gcc_path,
         );
@@ -473,7 +471,7 @@ impl ConfigInfo {
         self.rustc_command.extend_from_slice(&rustflags);
         self.rustc_command.extend_from_slice(&[
             "-L".to_string(),
-            "crate=target/out".to_string(),
+            format!("crate={}", self.cargo_target_dir),
             "--out-dir".to_string(),
             self.cargo_target_dir.clone(),
         ]);
