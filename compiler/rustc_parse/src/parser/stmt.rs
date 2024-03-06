@@ -787,13 +787,17 @@ impl<'a> Parser<'a> {
                             let suggest_eq = if self.token.kind == token::Dot
                                 && let _ = self.bump()
                                 && let mut snapshot = self.create_snapshot_for_diagnostic()
-                                && let Ok(_) = snapshot.parse_dot_suffix_expr(
-                                    colon_sp,
-                                    self.mk_expr_err(
+                                && let Ok(_) = snapshot
+                                    .parse_dot_suffix_expr(
                                         colon_sp,
-                                        self.dcx().delayed_bug("error during `:` -> `=` recovery"),
-                                    ),
-                                ) {
+                                        self.mk_expr_err(
+                                            colon_sp,
+                                            self.dcx()
+                                                .delayed_bug("error during `:` -> `=` recovery"),
+                                        ),
+                                    )
+                                    .map_err(Diag::cancel)
+                            {
                                 true
                             } else if let Some(op) = self.check_assoc_op()
                                 && op.node.can_continue_expr_unambiguously()
