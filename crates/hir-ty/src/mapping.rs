@@ -151,6 +151,14 @@ pub fn lt_from_placeholder_idx(db: &dyn HirDatabase, idx: PlaceholderIndex) -> L
     db.lookup_intern_lifetime_param_id(interned_id)
 }
 
+pub(crate) fn lt_to_placeholder_idx(db: &dyn HirDatabase, id: LifetimeParamId) -> PlaceholderIndex {
+    let interned_id = db.intern_lifetime_param_id(id);
+    PlaceholderIndex {
+        ui: chalk_ir::UniverseIndex::ROOT,
+        idx: salsa::InternKey::as_intern_id(&interned_id).as_usize(),
+    }
+}
+
 pub fn to_chalk_trait_id(id: TraitId) -> ChalkTraitId {
     chalk_ir::TraitId(salsa::InternKey::as_intern_id(&id))
 }

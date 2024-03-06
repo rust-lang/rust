@@ -22,8 +22,8 @@ use crate::{
     lower::LowerCtx,
     nameres::{DefMap, MacroSubNs},
     type_ref::{ConstRef, LifetimeRef, TypeBound, TypeRef},
-    AdtId, ConstParamId, GenericDefId, HasModule, ItemTreeLoc, LocalTypeOrConstParamId, Lookup,
-    TypeOrConstParamId, TypeParamId,
+    AdtId, ConstParamId, GenericDefId, HasModule, ItemTreeLoc, LifetimeParamId,
+    LocalTypeOrConstParamId, Lookup, TypeOrConstParamId, TypeParamId,
 };
 
 /// Data about a generic type parameter (to a function, struct, impl, ...).
@@ -365,6 +365,13 @@ impl GenericParams {
         self.type_or_consts.iter()
     }
 
+    /// Iterator of lifetimes field
+    pub fn iter_lt(
+        &self,
+    ) -> impl DoubleEndedIterator<Item = (Idx<LifetimeParamData>, &LifetimeParamData)> {
+        self.lifetimes.iter()
+    }
+
     pub(crate) fn generic_params_query(
         db: &dyn DefDatabase,
         def: GenericDefId,
@@ -505,6 +512,20 @@ impl GenericParams {
                 })
             )
             .then(|| id)
+        })
+    }
+
+    pub fn find_lifetime_by_name(
+        &self,
+        name: &Name,
+        parent: GenericDefId,
+    ) -> Option<LifetimeParamId> {
+        self.lifetimes.iter().find_map(|(id, p)| {
+            if &p.name == name {
+                Some(LifetimeParamId { local_id: id, parent })
+            } else {
+                None
+            }
         })
     }
 }

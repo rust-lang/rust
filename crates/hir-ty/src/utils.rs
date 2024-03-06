@@ -13,14 +13,15 @@ use either::Either;
 use hir_def::{
     db::DefDatabase,
     generics::{
-        GenericParams, TypeOrConstParamData, TypeParamProvenance, WherePredicate,
-        WherePredicateTypeTarget,
+        GenericParams, LifetimeParamData, TypeOrConstParamData, TypeParamProvenance,
+        WherePredicate, WherePredicateTypeTarget,
     },
     lang_item::LangItem,
     resolver::{HasResolver, TypeNs},
     type_ref::{TraitBoundModifier, TypeRef},
-    ConstParamId, EnumId, EnumVariantId, FunctionId, GenericDefId, ItemContainerId, Lookup,
-    OpaqueInternableThing, TraitId, TypeAliasId, TypeOrConstParamId, TypeParamId,
+    ConstParamId, EnumId, EnumVariantId, FunctionId, GenericDefId, ItemContainerId,
+    LifetimeParamId, Lookup, OpaqueInternableThing, TraitId, TypeAliasId, TypeOrConstParamId,
+    TypeParamId,
 };
 use hir_expand::name::Name;
 use intern::Interned;
@@ -322,6 +323,11 @@ impl Generics {
         self.params.type_or_consts.len()
     }
 
+    /// Returns number of generic lifetime excluding those from parent.
+    pub(crate) fn len_lt_self(&self) -> usize {
+        self.params.lifetimes.len()
+    }
+
     /// (parent total, self param, type param list, const param list, impl trait)
     pub(crate) fn provenance_split(&self) -> (usize, usize, usize, usize, usize) {
         let mut self_params = 0;
@@ -355,6 +361,26 @@ impl Generics {
                 .and_then(|g| g.find_param(param))
                 // Remember that parent parameters come after parameters for self.
                 .map(|(idx, data)| (self.len_self() + idx, data))
+        }
+    }
+
+    pub(crate) fn lifetime_idx(&self, lifetime: LifetimeParamId) -> Option<usize> {
+        Some(self.find_lifetime(lifetime)?.0)
+    }
+
+    fn find_lifetime(&self, lifetime: LifetimeParamId) -> Option<(usize, &LifetimeParamData)> {
+        if lifetime.parent == self.def {
+            let (idx, (_local_id, data)) = self
+                .params
+                .iter_lt()
+                .enumerate()
+                .find(|(_, (idx, _))| *idx == lifetime.local_id)?;
+
+            Some((idx, data))
+        } else {
+            self.parent_generics()
+                .and_then(|g| g.find_lifetime(lifetime))
+                .map(|(idx, data)| (self.len_lt_self() + idx, data))
         }
     }
 

@@ -29,8 +29,10 @@ use hir_def::{
     lang_item::LangItem,
     nameres::MacroSubNs,
     path::{GenericArg, GenericArgs, ModPath, Path, PathKind, PathSegment, PathSegments},
-    resolver::{HasResolver, Resolver, TypeNs},
-    type_ref::{ConstRef, TraitBoundModifier, TraitRef as HirTraitRef, TypeBound, TypeRef},
+    resolver::{HasResolver, LifetimeNs, Resolver, TypeNs},
+    type_ref::{
+        ConstRef, LifetimeRef, TraitBoundModifier, TraitRef as HirTraitRef, TypeBound, TypeRef,
+    },
     AdtId, AssocItemId, ConstId, ConstParamId, DefWithBodyId, EnumId, EnumVariantId, FunctionId,
     GenericDefId, HasModule, ImplId, InTypeConstLoc, ItemContainerId, LocalFieldId, Lookup,
     ModuleDefId, StaticId, StructId, TraitId, TypeAliasId, TypeOrConstParamId, TypeOwnerId,
@@ -53,17 +55,17 @@ use crate::{
     },
     db::HirDatabase,
     make_binders,
-    mapping::{from_chalk_trait_id, ToChalk},
+    mapping::{from_chalk_trait_id, lt_to_placeholder_idx, ToChalk},
     static_lifetime, to_assoc_type_id, to_chalk_trait_id, to_placeholder_idx,
-    utils::Generics,
     utils::{
-        all_super_trait_refs, associated_type_by_name_including_super_traits, generics,
+        all_super_trait_refs, associated_type_by_name_including_super_traits, generics, Generics,
         InTypeConstIdMetadata,
     },
     AliasEq, AliasTy, Binders, BoundVar, CallableSig, Const, ConstScalar, DebruijnIndex, DynTy,
-    FnAbi, FnPointer, FnSig, FnSubst, ImplTrait, ImplTraitId, ImplTraits, Interner, ParamKind,
-    PolyFnSig, ProjectionTy, QuantifiedWhereClause, QuantifiedWhereClauses, Substitution,
-    TraitEnvironment, TraitRef, TraitRefExt, Ty, TyBuilder, TyKind, WhereClause,
+    FnAbi, FnPointer, FnSig, FnSubst, ImplTrait, ImplTraitId, ImplTraits, Interner, Lifetime,
+    LifetimeData, ParamKind, PolyFnSig, ProjectionTy, QuantifiedWhereClause,
+    QuantifiedWhereClauses, Substitution, TraitEnvironment, TraitRef, TraitRefExt, Ty, TyBuilder,
+    TyKind, WhereClause,
 };
 
 #[derive(Debug)]
@@ -275,9 +277,10 @@ impl<'a> TyLoweringContext<'a> {
                 let inner_ty = self.lower_ty(inner);
                 TyKind::Slice(inner_ty).intern(Interner)
             }
-            TypeRef::Reference(inner, _, mutability) => {
+            TypeRef::Reference(inner, lifetime, mutability) => {
                 let inner_ty = self.lower_ty(inner);
-                let lifetime = static_lifetime();
+                let lifetime =
+                    lifetime.as_ref().map_or_else(static_lifetime, |lr| self.lower_lifetime(lr));
                 TyKind::Ref(lower_to_chalk_mutability(*mutability), lifetime, inner_ty)
                     .intern(Interner)
             }
@@ -1308,6 +1311,33 @@ impl<'a> TyLoweringContext<'a> {
             predicates
         });
         ImplTrait { bounds: crate::make_single_type_binders(predicates) }
+    }
+
+    fn lower_lifetime(&self, lifetime: &LifetimeRef) -> Lifetime {
+        match self.resolver.resolve_lifetime(lifetime) {
+            Some(resolution) => match resolution {
+                LifetimeNs::Static => static_lifetime(),
+                LifetimeNs::LifetimeParam(id) => match self.type_param_mode {
+                    ParamLoweringMode::Placeholder => {
+                        LifetimeData::Placeholder(lt_to_placeholder_idx(self.db, id))
+                    }
+                    ParamLoweringMode::Variable => {
+                        let generics = generics(
+                            self.db.upcast(),
+                            self.resolver.generic_def().expect("generics in scope"),
+                        );
+                        let idx = match generics.lifetime_idx(id) {
+                            None => return static_lifetime(),
+                            Some(idx) => idx,
+                        };
+
+                        LifetimeData::BoundVar(BoundVar::new(self.in_binders, idx))
+                    }
+                }
+                .intern(Interner),
+            },
+            None => static_lifetime(),
+        }
     }
 }
 
