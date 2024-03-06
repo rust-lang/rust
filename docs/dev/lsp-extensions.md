@@ -387,6 +387,11 @@ rust-analyzer supports only one `kind`, `"cargo"`. The `args` for `"cargo"` look
 
 ## Test explorer
 
+**Experimental Client Capability:** `{ "testExplorer": boolean }`
+
+If this capability is set, the `experimental/discoveredTests` notification will be sent from the
+server to the client.
+
 **Method:** `experimental/discoverTest`
 
 **Request:** `DiscoverTestParams`

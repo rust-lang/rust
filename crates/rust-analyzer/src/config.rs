@@ -1146,6 +1146,10 @@ impl Config {
         self.experimental("colorDiagnosticOutput")
     }
 
+    pub fn test_explorer(&self) -> bool {
+        self.experimental("testExplorer")
+    }
+
     pub fn publish_diagnostics(&self) -> bool {
         self.data.diagnostics_enable
     }

@@ -510,6 +510,11 @@
                     "default": true,
                     "type": "boolean"
                 },
+                "rust-analyzer.testExplorer": {
+                    "markdownDescription": "Whether to show the test explorer.",
+                    "default": false,
+                    "type": "boolean"
+                },
                 "$generated-start": {},
                 "rust-analyzer.assist.emitMustUse": {
                     "markdownDescription": "Whether to insert #[must_use] when generating `as_` methods\nfor enum variants.",

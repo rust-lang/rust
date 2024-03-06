@@ -372,13 +372,18 @@ export async function createClient(
     );
 
     // To turn on all proposed features use: client.registerProposedFeatures();
-    client.registerFeature(new ExperimentalFeatures());
+    client.registerFeature(new ExperimentalFeatures(config));
     client.registerFeature(new OverrideFeatures());
 
     return client;
 }
 
 class ExperimentalFeatures implements lc.StaticFeature {
+    private readonly testExplorer: boolean;
+
+    constructor(config: Config) {
+        this.testExplorer = config.testExplorer || false;
+    }
     getState(): lc.FeatureState {
         return { kind: "static" };
     }
@@ -391,6 +396,7 @@ class ExperimentalFeatures implements lc.StaticFeature {
             colorDiagnosticOutput: true,
             openServerLogs: true,
             localDocs: true,
+            testExplorer: this.testExplorer,
             commands: {
                 commands: [
                     "rust-analyzer.runSingle",
