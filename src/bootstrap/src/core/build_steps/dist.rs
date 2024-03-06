@@ -2035,10 +2035,18 @@ fn install_llvm_file(
         // If we have a symlink like libLLVM-18.so -> libLLVM.so.18.1, install the target of the
         // symlink, which is what will actually get loaded at runtime.
         builder.install(&t!(fs::canonicalize(source)), destination, 0o644);
+
+        let full_dest = destination.join(source.file_name().unwrap());
         if install_symlink {
-            // If requested, also install the symlink. This is used by download-ci-llvm.
-            let full_dest = destination.join(source.file_name().unwrap());
+            // For download-ci-llvm, also install the symlink, to match what LLVM does. Using a
+            // symlink is fine here, as this is not a rustup component.
             builder.copy(&source, &full_dest);
+        } else {
+            // Otherwise, replace the symlink with an equivalent linker script. This is used when
+            // projects like miri link against librustc_driver.so. We don't use a symlink, as
+            // these are not allowed inside rustup components.
+            let link = t!(fs::read_link(source));
+            t!(std::fs::write(full_dest, format!("INPUT({})\n", link.display())));
         }
     } else {
         builder.install(&source, destination, 0o644);
