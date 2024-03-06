@@ -43,6 +43,10 @@ impl<I: Interner> InferCtxtLike for NoInfcx<I> {
     fn probe_ct_var(&self, _vid: ConstVid) -> Option<I::Const> {
         None
     }
+
+    fn defining_anchor(&self) -> <Self::Interner as Interner>::DefiningAnchor {
+        Default::default()
+    }
 }
 
 pub trait DebugWithInfcx<I: Interner>: fmt::Debug {
