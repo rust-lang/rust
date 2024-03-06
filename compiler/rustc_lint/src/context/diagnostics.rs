@@ -143,7 +143,11 @@ pub(super) fn builtin(sess: &Session, diagnostic: BuiltinLintDiag, diag: &mut Di
         BuiltinLintDiag::RedundantImport(spans, ident) => {
             for (span, is_imported) in spans {
                 let introduced = if is_imported { "imported" } else { "defined" };
-                diag.span_label(span, format!("the item `{ident}` is already {introduced} here"));
+                let span_msg = if span.is_dummy() { "by prelude" } else { "here" };
+                diag.span_label(
+                    span,
+                    format!("the item `{ident}` is already {introduced} {span_msg}"),
+                );
             }
         }
         BuiltinLintDiag::DeprecatedMacro(suggestion, span) => {
