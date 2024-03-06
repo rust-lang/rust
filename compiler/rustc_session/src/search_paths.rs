@@ -63,27 +63,20 @@ impl SearchPath {
             (PathKind::Framework, stripped)
         } else if let Some(stripped) = path.strip_prefix("all=") {
             (PathKind::All, stripped)
-        } else if let Some(stripped) = path.strip_prefix("builtin:") {
-            if stripped.contains(std::path::is_separator) {
-                early_dcx.early_fatal("`-L builtin:` does not accept paths");
-            }
-
-            let path =
-                make_target_lib_path(sysroot, triple.triple()).join("builtin").join(stripped);
-            if !path.is_dir() {
-                early_dcx.early_fatal(format!("builtin:{stripped} does not exist"));
-            }
-
-            return Self::new(PathKind::All, path);
         } else {
             (PathKind::All, path)
         };
-        if path.is_empty() {
+        let dir = match path.strip_prefix("@RUSTC_BUILTIN") {
+            Some(stripped) => {
+                make_target_lib_path(sysroot, triple.triple()).join("builtin").join(stripped)
+            }
+            None => PathBuf::from(path),
+        };
+        if dir.as_os_str().is_empty() {
             #[allow(rustc::untranslatable_diagnostic)] // FIXME: make this translatable
             early_dcx.early_fatal("empty search path given via `-L`");
         }
 
-        let dir = PathBuf::from(path);
         Self::new(kind, dir)
     }
 
