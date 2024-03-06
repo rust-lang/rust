@@ -358,7 +358,7 @@ fn check_opaque_meets_bounds<'tcx>(
             tcx, parent,
         )
         .extend_to(tcx, def_id.to_def_id(), |param, _| {
-            tcx.map_rpit_lifetime_to_fn_lifetime(param.def_id.expect_local()).into()
+            tcx.map_opaque_lifetime_to_parent_lifetime(param.def_id.expect_local()).into()
         }),
     };
 
