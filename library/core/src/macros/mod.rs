@@ -1481,7 +1481,7 @@ pub(crate) mod builtin {
     /// script](https://doc.rust-lang.org/cargo/reference/build-scripts.html#outputs-of-the-build-script).
     ///
     /// When using the `include` macro to include stretches of documentation, remember that the
-    /// included file still needs to be a valid rust syntax. It is also possible to
+    /// included file still needs to be a valid Rust syntax. It is also possible to
     /// use the [`include_str`] macro as `#![doc = include_str!("...")]` (at the module level) or
     /// `#[doc = include_str!("...")]` (at the item level) to include documentation from a plain
     /// text or markdown file.
