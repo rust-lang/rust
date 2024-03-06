@@ -2824,7 +2824,6 @@ pub fn build_session_options(early_dcx: &mut EarlyDiagCtxt, matches: &getopts::M
     let logical_env = parse_logical_env(early_dcx, matches);
 
     let sysroot = filesearch::materialize_sysroot(sysroot_opt);
-
     let real_rust_source_base_dir = {
         // This is the location used by the `rust-src` `rustup` component.
         let mut candidate = sysroot.join("lib/rustlib/src/rust");
@@ -2845,7 +2844,7 @@ pub fn build_session_options(early_dcx: &mut EarlyDiagCtxt, matches: &getopts::M
 
     let mut search_paths = vec![];
     for s in &matches.opt_strs("L") {
-        search_paths.push(SearchPath::from_cli_opt(Some(&sysroot), &target_triple, early_dcx, s));
+        search_paths.push(SearchPath::from_cli_opt(&sysroot, &target_triple, early_dcx, s));
     }
 
     let working_dir = std::env::current_dir().unwrap_or_else(|e| {

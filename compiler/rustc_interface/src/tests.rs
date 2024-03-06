@@ -317,7 +317,7 @@ fn test_search_paths_tracking_hash_different_order() {
 
     let push = |opts: &mut Options, search_path| {
         opts.search_paths.push(SearchPath::from_cli_opt(
-            None,
+            "not-a-sysroot".as_ref(),
             &opts.target_triple,
             &early_dcx,
             search_path,
