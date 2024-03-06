@@ -1,0 +1,30 @@
+error[E0308]: `if` and `else` have incompatible types
+  --> $DIR/expr-type-error-plus-sized-obligation.rs:7:9
+   |
+LL |       let (a, _) = if true {
+   |  __________________-
+LL | |         produce()
+   | |         --------- expected because of this
+LL | |     } else {
+LL | |         (Vec::new(), &[])
+   | |         ^^^^^^^^^^^^^^^^^ expected `(Vec<Foo>, &[Bar])`, found `(Vec<_>, &[_; 0])`
+LL | |     };
+   | |_____- `if` and `else` have incompatible types
+   |
+   = note: expected tuple `(Vec<Foo>, &[Bar])`
+              found tuple `(Vec<_>, &[_; 0])`
+
+error[E0277]: the size for values of type `[Foo]` cannot be known at compilation time
+  --> $DIR/expr-type-error-plus-sized-obligation.rs:4:10
+   |
+LL |     let (a, _) = if true {
+   |          ^ doesn't have a size known at compile-time
+   |
+   = help: the trait `Sized` is not implemented for `[Foo]`
+   = note: all local variables must have a statically known size
+   = help: unsized locals are gated as an unstable feature
+
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0277, E0308.
+For more information about an error, try `rustc --explain E0277`.
