@@ -229,6 +229,8 @@
 #![feature(doc_notable_trait)]
 #![feature(effects)]
 #![feature(extern_types)]
+#![feature(f128)]
+#![feature(f16)]
 #![feature(freeze_impls)]
 #![feature(fundamental)]
 #![feature(generic_arg_infer)]

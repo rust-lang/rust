@@ -14,7 +14,7 @@ LL |     1 +
              <i16 as Add<&i16>>
              <i32 as Add>
              <i32 as Add<&i32>>
-           and 48 others
+           and 56 others
 
 error[E0277]: cannot add `()` to `{integer}`
   --> $DIR/issue-11771.rs:8:7
@@ -32,7 +32,7 @@ LL |     1 +
              <i16 as Add<&i16>>
              <i32 as Add>
              <i32 as Add<&i32>>
-           and 48 others
+           and 56 others
 
 error: aborting due to 2 previous errors
 
