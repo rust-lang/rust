@@ -80,6 +80,7 @@ fn test_named_thread_truncation() {
 #[test]
 fn test_get_os_named_thread() {
     use crate::sys::thread::Thread;
+    // Spawn a new thread to avoid interfering with other tests running on this thread.
     let handler = thread::spawn(|| {
         let name = c"test me please";
         Thread::set_name(name);
