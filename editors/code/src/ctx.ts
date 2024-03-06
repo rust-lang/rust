@@ -75,7 +75,7 @@ export class Ctx implements RustAnalyzerExtensionApi {
     private _client: lc.LanguageClient | undefined;
     private _serverPath: string | undefined;
     private traceOutputChannel: vscode.OutputChannel | undefined;
-    private testController: vscode.TestController;
+    private testController: vscode.TestController | undefined;
     private outputChannel: vscode.OutputChannel | undefined;
     private clientSubscriptions: Disposable[];
     private state: PersistentState;
@@ -104,18 +104,20 @@ export class Ctx implements RustAnalyzerExtensionApi {
         workspace: Workspace,
     ) {
         extCtx.subscriptions.push(this);
+        this.config = new Config(extCtx);
         this.statusBar = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left);
-        this.testController = vscode.tests.createTestController(
-            "rustAnalyzerTestController",
-            "Rust Analyzer test controller",
-        );
+        if (this.config.testExplorer) {
+            this.testController = vscode.tests.createTestController(
+                "rustAnalyzerTestController",
+                "Rust Analyzer test controller",
+            );
+        }
         this.workspace = workspace;
         this.clientSubscriptions = [];
         this.commandDisposables = [];
         this.commandFactories = commandFactories;
         this.unlinkedFiles = [];
         this.state = new PersistentState(extCtx.globalState);
-        this.config = new Config(extCtx);
 
         this.updateCommands("disable");
         this.setServerStatus({
@@ -126,7 +128,7 @@ export class Ctx implements RustAnalyzerExtensionApi {
     dispose() {
         this.config.dispose();
         this.statusBar.dispose();
-        this.testController.dispose();
+        this.testController?.dispose();
         void this.disposeClient();
         this.commandDisposables.forEach((disposable) => disposable.dispose());
     }
@@ -271,7 +273,9 @@ export class Ctx implements RustAnalyzerExtensionApi {
         await client.start();
         this.updateCommands();
 
-        prepareTestExplorer(this, this.testController, client);
+        if (this.testController) {
+            prepareTestExplorer(this, this.testController, client);
+        }
         if (this.config.showDependenciesExplorer) {
             this.prepareTreeDependenciesView(client);
         }

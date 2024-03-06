@@ -386,10 +386,11 @@ impl GlobalState {
                 }
             }
 
-            let update_diagnostics = (!was_quiescent || state_changed || memdocs_added_or_removed)
-                && self.config.publish_diagnostics();
-            if update_diagnostics {
+            let things_changed = !was_quiescent || state_changed || memdocs_added_or_removed;
+            if things_changed && self.config.publish_diagnostics() {
                 self.update_diagnostics();
+            }
+            if things_changed && self.config.test_explorer() {
                 self.update_tests();
             }
         }

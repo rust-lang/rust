@@ -266,6 +266,10 @@ export class Config {
         return this.get<string | undefined>("cargoRunner");
     }
 
+    get testExplorer() {
+        return this.get<boolean | undefined>("testExplorer");
+    }
+
     get runnablesExtraEnv() {
         const item = this.get<any>("runnables.extraEnv") ?? this.get<any>("runnableEnv");
         if (!item) return item;
