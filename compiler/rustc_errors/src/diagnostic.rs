@@ -112,39 +112,39 @@ impl EmissionGuarantee for rustc_span::fatal_error::FatalError {
 /// When implemented manually, it should be generic over the emission
 /// guarantee, i.e.:
 /// ```ignore (fragment)
-/// impl<'a, G: EmissionGuarantee> IntoDiagnostic<'a, G> for Foo { ... }
+/// impl<'a, G: EmissionGuarantee> Diagnostic<'a, G> for Foo { ... }
 /// ```
 /// rather than being specific:
 /// ```ignore (fragment)
-/// impl<'a> IntoDiagnostic<'a> for Bar { ... }  // the default type param is `ErrorGuaranteed`
-/// impl<'a> IntoDiagnostic<'a, ()> for Baz { ... }
+/// impl<'a> Diagnostic<'a> for Bar { ... }  // the default type param is `ErrorGuaranteed`
+/// impl<'a> Diagnostic<'a, ()> for Baz { ... }
 /// ```
 /// There are two reasons for this.
 /// - A diagnostic like `Foo` *could* be emitted at any level -- `level` is
-///   passed in to `into_diagnostic` from outside. Even if in practice it is
+///   passed in to `into_diag` from outside. Even if in practice it is
 ///   always emitted at a single level, we let the diagnostic creation/emission
 ///   site determine the level (by using `create_err`, `emit_warn`, etc.)
-///   rather than the `IntoDiagnostic` impl.
+///   rather than the `Diagnostic` impl.
 /// - Derived impls are always generic, and it's good for the hand-written
 ///   impls to be consistent with them.
-#[rustc_diagnostic_item = "IntoDiagnostic"]
-pub trait IntoDiagnostic<'a, G: EmissionGuarantee = ErrorGuaranteed> {
+#[rustc_diagnostic_item = "Diagnostic"]
+pub trait Diagnostic<'a, G: EmissionGuarantee = ErrorGuaranteed> {
     /// Write out as a diagnostic out of `DiagCtxt`.
     #[must_use]
-    fn into_diagnostic(self, dcx: &'a DiagCtxt, level: Level) -> Diag<'a, G>;
+    fn into_diag(self, dcx: &'a DiagCtxt, level: Level) -> Diag<'a, G>;
 }
 
-impl<'a, T, G> IntoDiagnostic<'a, G> for Spanned<T>
+impl<'a, T, G> Diagnostic<'a, G> for Spanned<T>
 where
-    T: IntoDiagnostic<'a, G>,
+    T: Diagnostic<'a, G>,
     G: EmissionGuarantee,
 {
-    fn into_diagnostic(self, dcx: &'a DiagCtxt, level: Level) -> Diag<'a, G> {
-        self.node.into_diagnostic(dcx, level).with_span(self.span)
+    fn into_diag(self, dcx: &'a DiagCtxt, level: Level) -> Diag<'a, G> {
+        self.node.into_diag(dcx, level).with_span(self.span)
     }
 }
 
-/// Converts a value of a type into a `DiagArg` (typically a field of an `IntoDiagnostic` struct).
+/// Converts a value of a type into a `DiagArg` (typically a field of an `Diag` struct).
 /// Implemented as a custom trait rather than `From` so that it is implemented on the type being
 /// converted rather than on `DiagArgValue`, which enables types from other `rustc_*` crates to
 /// implement this.
@@ -482,7 +482,7 @@ pub struct Subdiag {
 /// - The `EmissionGuarantee`, which determines the type returned from `emit`.
 ///
 /// Each constructed `Diag` must be consumed by a function such as `emit`,
-/// `cancel`, `delay_as_bug`, or `into_diagnostic`. A panic occurrs if a `Diag`
+/// `cancel`, `delay_as_bug`, or `into_diag`. A panic occurrs if a `Diag`
 /// is dropped without being consumed by one of these functions.
 ///
 /// If there is some state in a downstream crate you would like to access in

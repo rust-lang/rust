@@ -22,8 +22,8 @@ use rustc_errors::emitter::{stderr_destination, DynEmitter, HumanEmitter, HumanR
 use rustc_errors::json::JsonEmitter;
 use rustc_errors::registry::Registry;
 use rustc_errors::{
-    codes::*, fallback_fluent_bundle, Diag, DiagCtxt, DiagMessage, ErrorGuaranteed, FatalAbort,
-    FluentBundle, IntoDiagnostic, LazyFallbackBundle, TerminalUrl,
+    codes::*, fallback_fluent_bundle, Diag, DiagCtxt, DiagMessage, Diagnostic, ErrorGuaranteed,
+    FatalAbort, FluentBundle, LazyFallbackBundle, TerminalUrl,
 };
 use rustc_macros::HashStable_Generic;
 pub use rustc_span::def_id::StableCrateId;
@@ -305,11 +305,7 @@ impl Session {
     }
 
     #[track_caller]
-    pub fn create_feature_err<'a>(
-        &'a self,
-        err: impl IntoDiagnostic<'a>,
-        feature: Symbol,
-    ) -> Diag<'a> {
+    pub fn create_feature_err<'a>(&'a self, err: impl Diagnostic<'a>, feature: Symbol) -> Diag<'a> {
         let mut err = self.dcx().create_err(err);
         if err.code.is_none() {
             #[allow(rustc::diagnostic_outside_of_impl)]

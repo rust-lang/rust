@@ -1,7 +1,7 @@
 use std::borrow::Cow;
 
 use rustc_errors::{
-    codes::*, Diag, DiagArgValue, DiagCtxt, DiagMessage, EmissionGuarantee, IntoDiagnostic, Level,
+    codes::*, Diag, DiagArgValue, DiagCtxt, DiagMessage, Diagnostic, EmissionGuarantee, Level,
 };
 use rustc_hir::ConstContext;
 use rustc_macros::{Diagnostic, LintDiagnostic, Subdiagnostic};
@@ -858,8 +858,7 @@ impl<'tcx> ReportErrorExt for InvalidProgramInfo<'tcx> {
             InvalidProgramInfo::Layout(e) => {
                 // The level doesn't matter, `dummy_diag` is consumed without it being used.
                 let dummy_level = Level::Bug;
-                let dummy_diag: Diag<'_, ()> =
-                    e.into_diagnostic().into_diagnostic(diag.dcx, dummy_level);
+                let dummy_diag: Diag<'_, ()> = e.into_diagnostic().into_diag(diag.dcx, dummy_level);
                 for (name, val) in dummy_diag.args.iter() {
                     diag.arg(name.clone(), val.clone());
                 }

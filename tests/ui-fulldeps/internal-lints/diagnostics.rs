@@ -15,7 +15,7 @@ extern crate rustc_span;
 
 use rustc_errors::{
     AddToDiagnostic, DecorateLint, Diag, DiagCtxt, DiagInner, DiagMessage, EmissionGuarantee,
-    IntoDiagnostic, Level, SubdiagMessageOp,
+    Diagnostic, Level, SubdiagMessageOp,
 };
 use rustc_macros::{Diagnostic, Subdiagnostic};
 use rustc_span::Span;
@@ -36,19 +36,19 @@ struct Note {
     span: Span,
 }
 
-pub struct UntranslatableInIntoDiagnostic;
+pub struct UntranslatableInDiagnostic;
 
-impl<'a, G: EmissionGuarantee> IntoDiagnostic<'a, G> for UntranslatableInIntoDiagnostic {
-    fn into_diagnostic(self, dcx: &'a DiagCtxt, level: Level) -> Diag<'a, G> {
+impl<'a, G: EmissionGuarantee> Diagnostic<'a, G> for UntranslatableInDiagnostic {
+    fn into_diag(self, dcx: &'a DiagCtxt, level: Level) -> Diag<'a, G> {
         Diag::new(dcx, level, "untranslatable diagnostic")
         //~^ ERROR diagnostics should be created using translatable messages
     }
 }
 
-pub struct TranslatableInIntoDiagnostic;
+pub struct TranslatableInDiagnostic;
 
-impl<'a, G: EmissionGuarantee> IntoDiagnostic<'a, G> for TranslatableInIntoDiagnostic {
-    fn into_diagnostic(self, dcx: &'a DiagCtxt, level: Level) -> Diag<'a, G> {
+impl<'a, G: EmissionGuarantee> Diagnostic<'a, G> for TranslatableInDiagnostic {
+    fn into_diag(self, dcx: &'a DiagCtxt, level: Level) -> Diag<'a, G> {
         Diag::new(dcx, level, crate::fluent_generated::no_crate_example)
     }
 }
@@ -105,10 +105,10 @@ impl<'a> DecorateLint<'a, ()> for TranslatableInDecorateLint {
 
 pub fn make_diagnostics<'a>(dcx: &'a DiagCtxt) {
     let _diag = dcx.struct_err(crate::fluent_generated::no_crate_example);
-    //~^ ERROR diagnostics should only be created in `IntoDiagnostic`/`AddToDiagnostic` impls
+    //~^ ERROR diagnostics should only be created in `Diagnostic`/`AddToDiagnostic` impls
 
     let _diag = dcx.struct_err("untranslatable diagnostic");
-    //~^ ERROR diagnostics should only be created in `IntoDiagnostic`/`AddToDiagnostic` impls
+    //~^ ERROR diagnostics should only be created in `Diagnostic`/`AddToDiagnostic` impls
     //~^^ ERROR diagnostics should be created using translatable messages
 }
 

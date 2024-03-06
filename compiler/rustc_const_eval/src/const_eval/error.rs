@@ -1,6 +1,6 @@
 use std::mem;
 
-use rustc_errors::{DiagArgName, DiagArgValue, DiagMessage, IntoDiagArg, IntoDiagnostic};
+use rustc_errors::{DiagArgName, DiagArgValue, DiagMessage, Diagnostic, IntoDiagArg};
 use rustc_hir::CRATE_HIR_ID;
 use rustc_middle::mir::AssertKind;
 use rustc_middle::query::TyCtxtAt;
@@ -130,7 +130,7 @@ pub(super) fn report<'tcx, C, F, E>(
 where
     C: FnOnce() -> (Span, Vec<FrameNote>),
     F: FnOnce(Span, Vec<FrameNote>) -> E,
-    E: IntoDiagnostic<'tcx>,
+    E: Diagnostic<'tcx>,
 {
     // Special handling for certain errors
     match error {

@@ -1,5 +1,5 @@
 use rustc_errors::{
-    codes::*, AddToDiagnostic, Diag, DiagCtxt, EmissionGuarantee, IntoDiagnostic, Level, MultiSpan,
+    codes::*, AddToDiagnostic, Diag, DiagCtxt, Diagnostic, EmissionGuarantee, Level, MultiSpan,
     SingleLabelManySpans, SubdiagMessageOp,
 };
 use rustc_macros::{Diagnostic, Subdiagnostic};
@@ -425,9 +425,9 @@ pub(crate) struct EnvNotDefinedWithUserMessage {
 }
 
 // Hand-written implementation to support custom user messages.
-impl<'a, G: EmissionGuarantee> IntoDiagnostic<'a, G> for EnvNotDefinedWithUserMessage {
+impl<'a, G: EmissionGuarantee> Diagnostic<'a, G> for EnvNotDefinedWithUserMessage {
     #[track_caller]
-    fn into_diagnostic(self, dcx: &'a DiagCtxt, level: Level) -> Diag<'a, G> {
+    fn into_diag(self, dcx: &'a DiagCtxt, level: Level) -> Diag<'a, G> {
         #[expect(
             rustc::untranslatable_diagnostic,
             reason = "cannot translate user-provided messages"
@@ -785,8 +785,8 @@ pub(crate) struct AsmClobberNoReg {
     pub(crate) clobbers: Vec<Span>,
 }
 
-impl<'a, G: EmissionGuarantee> IntoDiagnostic<'a, G> for AsmClobberNoReg {
-    fn into_diagnostic(self, dcx: &'a DiagCtxt, level: Level) -> Diag<'a, G> {
+impl<'a, G: EmissionGuarantee> Diagnostic<'a, G> for AsmClobberNoReg {
+    fn into_diag(self, dcx: &'a DiagCtxt, level: Level) -> Diag<'a, G> {
         // eager translation as `span_labels` takes `AsRef<str>`
         let lbl1 = dcx.eagerly_translate_to_string(
             crate::fluent_generated::builtin_macros_asm_clobber_abi,

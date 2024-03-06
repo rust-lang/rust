@@ -1,8 +1,8 @@
 use std::borrow::Cow;
 
 use rustc_errors::{
-    codes::*, Applicability, DecorateLint, Diag, DiagArgValue, DiagCtxt, DiagMessage,
-    EmissionGuarantee, IntoDiagnostic, Level,
+    codes::*, Applicability, DecorateLint, Diag, DiagArgValue, DiagCtxt, DiagMessage, Diagnostic,
+    EmissionGuarantee, Level,
 };
 use rustc_macros::{Diagnostic, LintDiagnostic, Subdiagnostic};
 use rustc_middle::mir::{AssertKind, UnsafetyViolationDetails};
@@ -62,9 +62,9 @@ pub(crate) struct RequiresUnsafe {
 // so we need to eagerly translate the label here, which isn't supported by the derive API
 // We could also exhaustively list out the primary messages for all unsafe violations,
 // but this would result in a lot of duplication.
-impl<'a, G: EmissionGuarantee> IntoDiagnostic<'a, G> for RequiresUnsafe {
+impl<'a, G: EmissionGuarantee> Diagnostic<'a, G> for RequiresUnsafe {
     #[track_caller]
-    fn into_diagnostic(self, dcx: &'a DiagCtxt, level: Level) -> Diag<'a, G> {
+    fn into_diag(self, dcx: &'a DiagCtxt, level: Level) -> Diag<'a, G> {
         let mut diag = Diag::new(dcx, level, fluent::mir_transform_requires_unsafe);
         diag.code(E0133);
         diag.span(self.span);
