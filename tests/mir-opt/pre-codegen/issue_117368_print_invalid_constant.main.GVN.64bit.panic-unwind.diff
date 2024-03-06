@@ -73,7 +73,7 @@
   
       bb3: {
 -         _1 = move ((_2 as Some).0: std::alloc::Layout);
-+         _1 = const Layout {{ size: Indirect { alloc_id: ALLOC0, offset: Size(8 bytes) }: usize, align: std::ptr::Alignment(Scalar(0x0000000000000000): std::ptr::alignment::AlignmentEnum64) }};
++         _1 = const Layout {{ size: Indirect { alloc_id: ALLOC0, offset: Size(8 bytes) }: usize, align: std::ptr::Alignment(Scalar(0x0000000000000000): std::ptr::alignment::AlignmentEnum) }};
           StorageDead(_10);
           StorageDead(_2);
           StorageLive(_3);
@@ -87,8 +87,8 @@
           StorageLive(_8);
 -         _8 = _1;
 -         _6 = std::alloc::Global::alloc_impl(move _7, move _8, const false) -> [return: bb4, unwind continue];
-+         _8 = const Layout {{ size: Indirect { alloc_id: ALLOC0, offset: Size(8 bytes) }: usize, align: std::ptr::Alignment(Scalar(0x0000000000000000): std::ptr::alignment::AlignmentEnum64) }};
-+         _6 = std::alloc::Global::alloc_impl(const {ALLOC1<imm>: &std::alloc::Global}, const Layout {{ size: Indirect { alloc_id: ALLOC0, offset: Size(8 bytes) }: usize, align: std::ptr::Alignment(Scalar(0x0000000000000000): std::ptr::alignment::AlignmentEnum64) }}, const false) -> [return: bb4, unwind continue];
++         _8 = const Layout {{ size: Indirect { alloc_id: ALLOC0, offset: Size(8 bytes) }: usize, align: std::ptr::Alignment(Scalar(0x0000000000000000): std::ptr::alignment::AlignmentEnum) }};
++         _6 = std::alloc::Global::alloc_impl(const {ALLOC1<imm>: &std::alloc::Global}, const Layout {{ size: Indirect { alloc_id: ALLOC0, offset: Size(8 bytes) }: usize, align: std::ptr::Alignment(Scalar(0x0000000000000000): std::ptr::alignment::AlignmentEnum) }}, const false) -> [return: bb4, unwind continue];
       }
   
       bb4: {

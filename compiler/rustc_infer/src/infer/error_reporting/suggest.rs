@@ -1,8 +1,13 @@
+use crate::infer::error_reporting::hir::Path;
 use hir::def::CtorKind;
 use hir::intravisit::{walk_expr, walk_stmt, Visitor};
+use hir::{Local, QPath};
 use rustc_data_structures::fx::FxIndexSet;
 use rustc_errors::{Applicability, Diag};
 use rustc_hir as hir;
+use rustc_hir::def::Res;
+use rustc_hir::MatchSource;
+use rustc_hir::Node;
 use rustc_middle::traits::{
     IfExpressionCause, MatchExpressionArmCause, ObligationCause, ObligationCauseCode,
     StatementAsExpression,
@@ -290,6 +295,97 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                     }
                 }
             }
+        }
+    }
+
+    pub(super) fn suggest_turning_stmt_into_expr(
+        &self,
+        cause: &ObligationCause<'tcx>,
+        exp_found: &ty::error::ExpectedFound<Ty<'tcx>>,
+        diag: &mut Diag<'_>,
+    ) {
+        let ty::error::ExpectedFound { expected, found } = exp_found;
+        if !found.peel_refs().is_unit() {
+            return;
+        }
+
+        let ObligationCauseCode::BlockTailExpression(hir_id, MatchSource::Normal) = cause.code()
+        else {
+            return;
+        };
+
+        let node = self.tcx.hir_node(*hir_id);
+        let mut blocks = vec![];
+        if let hir::Node::Block(block) = node
+            && let Some(expr) = block.expr
+            && let hir::ExprKind::Path(QPath::Resolved(_, Path { res, .. })) = expr.kind
+            && let Res::Local(local) = res
+            && let Node::Local(Local { init: Some(init), .. }) = self.tcx.parent_hir_node(*local)
+        {
+            fn collect_blocks<'hir>(expr: &hir::Expr<'hir>, blocks: &mut Vec<&hir::Block<'hir>>) {
+                match expr.kind {
+                    // `blk1` and `blk2` must be have the same types, it will be reported before reaching here
+                    hir::ExprKind::If(_, blk1, Some(blk2)) => {
+                        collect_blocks(blk1, blocks);
+                        collect_blocks(blk2, blocks);
+                    }
+                    hir::ExprKind::Match(_, arms, _) => {
+                        // all arms must have same types
+                        for arm in arms.iter() {
+                            collect_blocks(arm.body, blocks);
+                        }
+                    }
+                    hir::ExprKind::Block(blk, _) => {
+                        blocks.push(blk);
+                    }
+                    _ => {}
+                }
+            }
+            collect_blocks(init, &mut blocks);
+        }
+
+        let expected_inner: Ty<'_> = expected.peel_refs();
+        for block in blocks.iter() {
+            self.consider_removing_semicolon(block, expected_inner, diag);
+        }
+    }
+
+    /// A common error is to add an extra semicolon:
+    ///
+    /// ```compile_fail,E0308
+    /// fn foo() -> usize {
+    ///     22;
+    /// }
+    /// ```
+    ///
+    /// This routine checks if the final statement in a block is an
+    /// expression with an explicit semicolon whose type is compatible
+    /// with `expected_ty`. If so, it suggests removing the semicolon.
+    pub fn consider_removing_semicolon(
+        &self,
+        blk: &'tcx hir::Block<'tcx>,
+        expected_ty: Ty<'tcx>,
+        diag: &mut Diag<'_>,
+    ) -> bool {
+        if let Some((span_semi, boxed)) = self.could_remove_semicolon(blk, expected_ty) {
+            if let StatementAsExpression::NeedsBoxing = boxed {
+                diag.span_suggestion_verbose(
+                    span_semi,
+                    "consider removing this semicolon and boxing the expression",
+                    "",
+                    Applicability::HasPlaceholders,
+                );
+            } else {
+                diag.span_suggestion_short(
+                    span_semi,
+                    "remove this semicolon to return this value",
+                    "",
+                    Applicability::MachineApplicable,
+                );
+            }
+            true
+        } else {
+            false
         }
     }
 

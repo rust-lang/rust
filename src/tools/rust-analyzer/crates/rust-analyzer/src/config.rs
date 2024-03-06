@@ -152,6 +152,13 @@ config_data! {
         // FIXME(@poliorcetics): move to multiple targets here too, but this will need more work
         // than `checkOnSave_target`
         cargo_target: Option<String>     = "null",
+        /// Optional path to a rust-analyzer specific target directory.
+        /// This prevents rust-analyzer's `cargo check` and initial build-script and proc-macro
+        /// building from locking the `Cargo.lock` at the expense of duplicating build artifacts.
+        ///
+        /// Set to `true` to use a subdirectory of the existing target directory or
+        /// set to a path relative to the workspace to use that path.
+        cargo_targetDir | rust_analyzerTargetDir: Option<TargetDirectory> = "null",
         /// Unsets the implicit `#[cfg(test)]` for the specified crates.
         cargo_unsetTest: Vec<String>     = "[\"core\"]",
 
@@ -517,14 +524,6 @@ config_data! {
         /// Additional arguments to be passed to cargo for runnables such as
         /// tests or binaries. For example, it may be `--release`.
         runnables_extraArgs: Vec<String>   = "[]",
-
-        /// Optional path to a rust-analyzer specific target directory.
-        /// This prevents rust-analyzer's `cargo check` from locking the `Cargo.lock`
-        /// at the expense of duplicating build artifacts.
-        ///
-        /// Set to `true` to use a subdirectory of the existing target directory or
-        /// set to a path relative to the workspace to use that path.
-        rust_analyzerTargetDir: Option<TargetDirectory> = "null",
 
         /// Path to the Cargo.toml of the rust compiler workspace, for usage in rustc_private
         /// projects, or "discover" to try to automatically find it if the `rustc-dev` component
@@ -1401,14 +1400,12 @@ impl Config {
         }
     }
 
-    // FIXME: This should be an AbsolutePathBuf
     fn target_dir_from_config(&self) -> Option<PathBuf> {
-        self.data.rust_analyzerTargetDir.as_ref().and_then(|target_dir| match target_dir {
-            TargetDirectory::UseSubdirectory(yes) if *yes => {
-                Some(PathBuf::from("target/rust-analyzer"))
-            }
-            TargetDirectory::UseSubdirectory(_) => None,
-            TargetDirectory::Directory(dir) => Some(dir.clone()),
+        self.data.cargo_targetDir.as_ref().and_then(|target_dir| match target_dir {
+            TargetDirectory::UseSubdirectory(true) => Some(PathBuf::from("target/rust-analyzer")),
+            TargetDirectory::UseSubdirectory(false) => None,
+            TargetDirectory::Directory(dir) if dir.is_relative() => Some(dir.clone()),
+            TargetDirectory::Directory(_) => None,
         })
     }
 
@@ -2745,7 +2742,7 @@ mod tests {
                 "rust": { "analyzerTargetDir": null }
             }))
             .unwrap();
-        assert_eq!(config.data.rust_analyzerTargetDir, None);
+        assert_eq!(config.data.cargo_targetDir, None);
         assert!(
             matches!(config.flycheck(), FlycheckConfig::CargoCommand { target_dir, .. } if target_dir.is_none())
         );
@@ -2764,10 +2761,7 @@ mod tests {
                 "rust": { "analyzerTargetDir": true }
             }))
             .unwrap();
-        assert_eq!(
-            config.data.rust_analyzerTargetDir,
-            Some(TargetDirectory::UseSubdirectory(true))
-        );
+        assert_eq!(config.data.cargo_targetDir, Some(TargetDirectory::UseSubdirectory(true)));
         assert!(
             matches!(config.flycheck(), FlycheckConfig::CargoCommand { target_dir, .. } if target_dir == Some(PathBuf::from("target/rust-analyzer")))
         );
@@ -2787,7 +2781,7 @@ mod tests {
             }))
             .unwrap();
         assert_eq!(
-            config.data.rust_analyzerTargetDir,
+            config.data.cargo_targetDir,
             Some(TargetDirectory::Directory(PathBuf::from("other_folder")))
         );
         assert!(

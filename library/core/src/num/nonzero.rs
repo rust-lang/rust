@@ -24,13 +24,17 @@ mod private {
 /// A marker trait for primitive types which can be zero.
 ///
 /// This is an implementation detail for <code>[NonZero]\<T></code> which may disappear or be replaced at any time.
+///
+/// # Safety
+///
+/// Types implementing this trait must be primitves that are valid when zeroed.
 #[unstable(
     feature = "nonzero_internals",
     reason = "implementation detail which may disappear or be replaced at any time",
     issue = "none"
 )]
 #[const_trait]
-pub trait ZeroablePrimitive: Sized + Copy + private::Sealed {}
+pub unsafe trait ZeroablePrimitive: Sized + Copy + private::Sealed {}
 
 macro_rules! impl_zeroable_primitive {
     ($primitive:ty) => {
@@ -46,7 +50,7 @@ macro_rules! impl_zeroable_primitive {
             reason = "implementation detail which may disappear or be replaced at any time",
             issue = "none"
         )]
-        impl const ZeroablePrimitive for $primitive {}
+        unsafe impl const ZeroablePrimitive for $primitive {}
     };
 }
 

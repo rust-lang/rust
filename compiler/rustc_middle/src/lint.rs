@@ -2,7 +2,7 @@ use std::cmp;
 
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_data_structures::sorted_map::SortedMap;
-use rustc_errors::{Diag, DiagnosticMessage, MultiSpan};
+use rustc_errors::{Diag, DiagMessage, MultiSpan};
 use rustc_hir::{HirId, ItemLocalId};
 use rustc_session::lint::{
     builtin::{self, FORBIDDEN_LINT_GROUPS},
@@ -268,7 +268,7 @@ pub fn lint_level(
     level: Level,
     src: LintLevelSource,
     span: Option<MultiSpan>,
-    msg: impl Into<DiagnosticMessage>,
+    msg: impl Into<DiagMessage>,
     decorate: impl for<'a, 'b> FnOnce(&'b mut Diag<'a, ()>),
 ) {
     // Avoid codegen bloat from monomorphization by immediately doing dyn dispatch of `decorate` to
@@ -280,7 +280,7 @@ pub fn lint_level(
         level: Level,
         src: LintLevelSource,
         span: Option<MultiSpan>,
-        msg: impl Into<DiagnosticMessage>,
+        msg: impl Into<DiagMessage>,
         decorate: Box<dyn '_ + for<'a, 'b> FnOnce(&'b mut Diag<'a, ()>)>,
     ) {
         // Check for future incompatibility lints and issue a stronger warning.

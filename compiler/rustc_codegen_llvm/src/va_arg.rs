@@ -44,12 +44,12 @@ fn emit_direct_ptr_va_arg<'ll, 'tcx>(
 
     let aligned_size = size.align_to(slot_size).bytes() as i32;
     let full_direct_size = bx.cx().const_i32(aligned_size);
-    let next = bx.inbounds_gep(bx.type_i8(), addr, &[full_direct_size]);
+    let next = bx.inbounds_ptradd(addr, full_direct_size);
     bx.store(next, va_list_addr, bx.tcx().data_layout.pointer_align.abi);
 
     if size.bytes() < slot_size.bytes() && bx.tcx().sess.target.endian == Endian::Big {
         let adjusted_size = bx.cx().const_i32((slot_size.bytes() - size.bytes()) as i32);
-        let adjusted = bx.inbounds_gep(bx.type_i8(), addr, &[adjusted_size]);
+        let adjusted = bx.inbounds_ptradd(addr, adjusted_size);
         (adjusted, addr_align)
     } else {
         (addr, addr_align)
@@ -89,11 +89,31 @@ fn emit_aapcs_va_arg<'ll, 'tcx>(
     list: OperandRef<'tcx, &'ll Value>,
     target_ty: Ty<'tcx>,
 ) -> &'ll Value {
+    let dl = bx.cx.data_layout();
+
     // Implementation of the AAPCS64 calling convention for va_args see
     // https://github.com/ARM-software/abi-aa/blob/master/aapcs64/aapcs64.rst
+    //
+    // typedef struct  va_list {
+    //     void * stack; // next stack param
+    //     void * gr_top; // end of GP arg reg save area
+    //     void * vr_top; // end of FP/SIMD arg reg save area
+    //     int gr_offs; // offset from  gr_top to next GP register arg
+    //     int vr_offs; // offset from  vr_top to next FP/SIMD register arg
+    // } va_list;
     let va_list_addr = list.immediate();
-    let va_list_layout = list.deref(bx.cx).layout;
-    let va_list_ty = va_list_layout.llvm_type(bx);
+
+    // There is no padding between fields since `void*` is size=8 align=8, `int` is size=4 align=4.
+    // See https://github.com/ARM-software/abi-aa/blob/master/aapcs64/aapcs64.rst
+    // Table 1, Byte size and byte alignment of fundamental data types
+    // Table 3, Mapping of C & C++ built-in data types
+    let ptr_offset = 8;
+    let i32_offset = 4;
+    let gr_top = bx.inbounds_ptradd(va_list_addr, bx.cx.const_usize(ptr_offset));
+    let vr_top = bx.inbounds_ptradd(va_list_addr, bx.cx.const_usize(2 * ptr_offset));
+    let gr_offs = bx.inbounds_ptradd(va_list_addr, bx.cx.const_usize(3 * ptr_offset));
+    let vr_offs = bx.inbounds_ptradd(va_list_addr, bx.cx.const_usize(3 * ptr_offset + i32_offset));
+
     let layout = bx.cx.layout_of(target_ty);
 
     let maybe_reg = bx.append_sibling_block("va_arg.maybe_reg");
@@ -104,16 +124,12 @@ fn emit_aapcs_va_arg<'ll, 'tcx>(
     let offset_align = Align::from_bytes(4).unwrap();
 
     let gr_type = target_ty.is_any_ptr() || target_ty.is_integral();
-    let (reg_off, reg_top_index, slot_size) = if gr_type {
-        let gr_offs =
-            bx.struct_gep(va_list_ty, va_list_addr, va_list_layout.llvm_field_index(bx.cx, 3));
+    let (reg_off, reg_top, slot_size) = if gr_type {
         let nreg = (layout.size.bytes() + 7) / 8;
-        (gr_offs, va_list_layout.llvm_field_index(bx.cx, 1), nreg * 8)
+        (gr_offs, gr_top, nreg * 8)
     } else {
-        let vr_off =
-            bx.struct_gep(va_list_ty, va_list_addr, va_list_layout.llvm_field_index(bx.cx, 4));
         let nreg = (layout.size.bytes() + 15) / 16;
-        (vr_off, va_list_layout.llvm_field_index(bx.cx, 2), nreg * 16)
+        (vr_offs, vr_top, nreg * 16)
     };
 
     // if the offset >= 0 then the value will be on the stack
@@ -141,15 +157,14 @@ fn emit_aapcs_va_arg<'ll, 'tcx>(
 
     bx.switch_to_block(in_reg);
     let top_type = bx.type_ptr();
-    let top = bx.struct_gep(va_list_ty, va_list_addr, reg_top_index);
-    let top = bx.load(top_type, top, bx.tcx().data_layout.pointer_align.abi);
+    let top = bx.load(top_type, reg_top, dl.pointer_align.abi);
 
     // reg_value = *(@top + reg_off_v);
-    let mut reg_addr = bx.gep(bx.type_i8(), top, &[reg_off_v]);
+    let mut reg_addr = bx.ptradd(top, reg_off_v);
     if bx.tcx().sess.target.endian == Endian::Big && layout.size.bytes() != slot_size {
         // On big-endian systems the value is right-aligned in its slot.
         let offset = bx.const_i32((slot_size - layout.size.bytes()) as i32);
-        reg_addr = bx.gep(bx.type_i8(), reg_addr, &[offset]);
+        reg_addr = bx.ptradd(reg_addr, offset);
     }
     let reg_type = layout.llvm_type(bx);
     let reg_value = bx.load(reg_type, reg_addr, layout.align.abi);
@@ -173,11 +188,29 @@ fn emit_s390x_va_arg<'ll, 'tcx>(
     list: OperandRef<'tcx, &'ll Value>,
     target_ty: Ty<'tcx>,
 ) -> &'ll Value {
+    let dl = bx.cx.data_layout();
+
     // Implementation of the s390x ELF ABI calling convention for va_args see
     // https://github.com/IBM/s390x-abi (chapter 1.2.4)
+    //
+    // typedef struct __va_list_tag {
+    //     long __gpr;
+    //     long __fpr;
+    //     void *__overflow_arg_area;
+    //     void *__reg_save_area;
+    // } va_list[1];
     let va_list_addr = list.immediate();
-    let va_list_layout = list.deref(bx.cx).layout;
-    let va_list_ty = va_list_layout.llvm_type(bx);
+
+    // There is no padding between fields since `long` and `void*` both have size=8 align=8.
+    // https://github.com/IBM/s390x-abi (Table 1.1.: Scalar types)
+    let i64_offset = 8;
+    let ptr_offset = 8;
+    let gpr = va_list_addr;
+    let fpr = bx.inbounds_ptradd(va_list_addr, bx.cx.const_usize(i64_offset));
+    let overflow_arg_area = bx.inbounds_ptradd(va_list_addr, bx.cx.const_usize(2 * i64_offset));
+    let reg_save_area =
+        bx.inbounds_ptradd(va_list_addr, bx.cx.const_usize(2 * i64_offset + ptr_offset));
+
     let layout = bx.cx.layout_of(target_ty);
 
     let in_reg = bx.append_sibling_block("va_arg.in_reg");
@@ -192,15 +225,10 @@ fn emit_s390x_va_arg<'ll, 'tcx>(
     let padding = padded_size - unpadded_size;
 
     let gpr_type = indirect || !layout.is_single_fp_element(bx.cx);
-    let (max_regs, reg_count_field, reg_save_index, reg_padding) =
-        if gpr_type { (5, 0, 2, padding) } else { (4, 1, 16, 0) };
+    let (max_regs, reg_count, reg_save_index, reg_padding) =
+        if gpr_type { (5, gpr, 2, padding) } else { (4, fpr, 16, 0) };
 
     // Check whether the value was passed in a register or in memory.
-    let reg_count = bx.struct_gep(
-        va_list_ty,
-        va_list_addr,
-        va_list_layout.llvm_field_index(bx.cx, reg_count_field),
-    );
     let reg_count_v = bx.load(bx.type_i64(), reg_count, Align::from_bytes(8).unwrap());
     let use_regs = bx.icmp(IntPredicate::IntULT, reg_count_v, bx.const_u64(max_regs));
     bx.cond_br(use_regs, in_reg, in_mem);
@@ -209,12 +237,10 @@ fn emit_s390x_va_arg<'ll, 'tcx>(
     bx.switch_to_block(in_reg);
 
     // Work out the address of the value in the register save area.
-    let reg_ptr =
-        bx.struct_gep(va_list_ty, va_list_addr, va_list_layout.llvm_field_index(bx.cx, 3));
-    let reg_ptr_v = bx.load(bx.type_ptr(), reg_ptr, bx.tcx().data_layout.pointer_align.abi);
+    let reg_ptr_v = bx.load(bx.type_ptr(), reg_save_area, dl.pointer_align.abi);
     let scaled_reg_count = bx.mul(reg_count_v, bx.const_u64(8));
     let reg_off = bx.add(scaled_reg_count, bx.const_u64(reg_save_index * 8 + reg_padding));
-    let reg_addr = bx.gep(bx.type_i8(), reg_ptr_v, &[reg_off]);
+    let reg_addr = bx.ptradd(reg_ptr_v, reg_off);
 
     // Update the register count.
     let new_reg_count_v = bx.add(reg_count_v, bx.const_u64(1));
@@ -225,27 +251,23 @@ fn emit_s390x_va_arg<'ll, 'tcx>(
     bx.switch_to_block(in_mem);
 
     // Work out the address of the value in the argument overflow area.
-    let arg_ptr =
-        bx.struct_gep(va_list_ty, va_list_addr, va_list_layout.llvm_field_index(bx.cx, 2));
-    let arg_ptr_v = bx.load(bx.type_ptr(), arg_ptr, bx.tcx().data_layout.pointer_align.abi);
+    let arg_ptr_v =
+        bx.load(bx.type_ptr(), overflow_arg_area, bx.tcx().data_layout.pointer_align.abi);
     let arg_off = bx.const_u64(padding);
-    let mem_addr = bx.gep(bx.type_i8(), arg_ptr_v, &[arg_off]);
+    let mem_addr = bx.ptradd(arg_ptr_v, arg_off);
 
     // Update the argument overflow area pointer.
     let arg_size = bx.cx().const_u64(padded_size);
-    let new_arg_ptr_v = bx.inbounds_gep(bx.type_i8(), arg_ptr_v, &[arg_size]);
-    bx.store(new_arg_ptr_v, arg_ptr, bx.tcx().data_layout.pointer_align.abi);
+    let new_arg_ptr_v = bx.inbounds_ptradd(arg_ptr_v, arg_size);
+    bx.store(new_arg_ptr_v, overflow_arg_area, dl.pointer_align.abi);
     bx.br(end);
 
     // Return the appropriate result.
     bx.switch_to_block(end);
     let val_addr = bx.phi(bx.type_ptr(), &[reg_addr, mem_addr], &[in_reg, in_mem]);
     let val_type = layout.llvm_type(bx);
-    let val_addr = if indirect {
-        bx.load(bx.cx.type_ptr(), val_addr, bx.tcx().data_layout.pointer_align.abi)
-    } else {
-        val_addr
-    };
+    let val_addr =
+        if indirect { bx.load(bx.cx.type_ptr(), val_addr, dl.pointer_align.abi) } else { val_addr };
     bx.load(val_type, val_addr, layout.align.abi)
 }
 

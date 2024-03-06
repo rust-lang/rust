@@ -6,10 +6,10 @@
 use std::ops::{Coroutine, CoroutineState};
 
 fn foo() -> impl Coroutine<Yield = (), Return = ()> {
+    //[next]~^ ERROR type annotations needed
     || {
         let mut gen = Box::pin(foo());
         //[next]~^ ERROR type annotations needed
-        //[next]~| ERROR type annotations needed
         let mut r = gen.as_mut().resume(());
         while let CoroutineState::Yielded(v) = r {
             yield v;

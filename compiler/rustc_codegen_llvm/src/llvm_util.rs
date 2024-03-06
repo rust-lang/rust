@@ -192,14 +192,11 @@ impl<'a> IntoIterator for LLVMFeature<'a> {
 // to LLVM or the feature detection code will walk past the end of the feature
 // array, leading to crashes.
 //
-// To find a list of LLVM's names, check llvm-project/llvm/include/llvm/Support/*TargetParser.def
-// where the * matches the architecture's name
-//
-// For targets not present in the above location, see llvm-project/llvm/lib/Target/{ARCH}/*.td
+// To find a list of LLVM's names, see llvm-project/llvm/lib/Target/{ARCH}/*.td
 // where `{ARCH}` is the architecture name. Look for instances of `SubtargetFeature`.
 //
-// Beware to not use the llvm github project for this, but check the git submodule
-// found in src/llvm-project
+// Check the current rustc fork of LLVM in the repo at https://github.com/rust-lang/llvm-project/.
+// The commit in use can be found via the `llvm-project` submodule in https://github.com/rust-lang/rust/tree/master/src
 // Though note that Rust can also be build with an external precompiled version of LLVM
 // which might lead to failures if the oldest tested / supported LLVM version
 // doesn't yet support the relevant intrinsics

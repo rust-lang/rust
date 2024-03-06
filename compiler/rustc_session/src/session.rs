@@ -22,8 +22,8 @@ use rustc_errors::emitter::{stderr_destination, DynEmitter, HumanEmitter, HumanR
 use rustc_errors::json::JsonEmitter;
 use rustc_errors::registry::Registry;
 use rustc_errors::{
-    codes::*, fallback_fluent_bundle, Diag, DiagCtxt, DiagnosticMessage, ErrorGuaranteed,
-    FatalAbort, FluentBundle, IntoDiagnostic, LazyFallbackBundle, TerminalUrl,
+    codes::*, fallback_fluent_bundle, Diag, DiagCtxt, DiagMessage, ErrorGuaranteed, FatalAbort,
+    FluentBundle, IntoDiagnostic, LazyFallbackBundle, TerminalUrl,
 };
 use rustc_macros::HashStable_Generic;
 pub use rustc_span::def_id::StableCrateId;
@@ -146,7 +146,7 @@ pub struct Session {
     pub opts: config::Options,
     pub host_tlib_path: Lrc<SearchPath>,
     pub target_tlib_path: Lrc<SearchPath>,
-    pub parse_sess: ParseSess,
+    pub psess: ParseSess,
     pub sysroot: PathBuf,
     /// Input, input file path and output file path to this compilation process.
     pub io: CompilerIO,
@@ -312,6 +312,7 @@ impl Session {
     ) -> Diag<'a> {
         let mut err = self.dcx().create_err(err);
         if err.code.is_none() {
+            #[allow(rustc::diagnostic_outside_of_impl)]
             err.code(E0658);
         }
         add_feature_diagnostics(&mut err, self, feature);
@@ -336,12 +337,12 @@ impl Session {
 
     #[inline]
     pub fn dcx(&self) -> &DiagCtxt {
-        &self.parse_sess.dcx
+        &self.psess.dcx
     }
 
     #[inline]
     pub fn source_map(&self) -> &SourceMap {
-        self.parse_sess.source_map()
+        self.psess.source_map()
     }
 
     /// Returns `true` if internal lints should be added to the lint store - i.e. if
@@ -352,7 +353,7 @@ impl Session {
     }
 
     pub fn instrument_coverage(&self) -> bool {
-        self.opts.cg.instrument_coverage() != InstrumentCoverage::Off
+        self.opts.cg.instrument_coverage() != InstrumentCoverage::No
     }
 
     pub fn instrument_coverage_branch(&self) -> bool {
@@ -898,19 +899,6 @@ impl Session {
     }
 
     pub fn should_prefer_remapped_for_codegen(&self) -> bool {
-        // bail out, if any of the requested crate types aren't:
-        // "compiled executables or libraries"
-        for crate_type in &self.opts.crate_types {
-            match crate_type {
-                CrateType::Executable
-                | CrateType::Dylib
-                | CrateType::Rlib
-                | CrateType::Staticlib
-                | CrateType::Cdylib => continue,
-                CrateType::ProcMacro => return false,
-            }
-        }
-
         let has_split_debuginfo = match self.split_debuginfo() {
             SplitDebuginfo::Off => false,
             SplitDebuginfo::Packed => true,
@@ -1022,6 +1010,7 @@ fn default_emitter(
 
 // JUSTIFICATION: literally session construction
 #[allow(rustc::bad_opt_access)]
+#[allow(rustc::untranslatable_diagnostic)] // FIXME: make this translatable
 pub fn build_session(
     early_dcx: EarlyDiagCtxt,
     sopts: config::Options,
@@ -1114,8 +1103,8 @@ pub fn build_session(
         None
     };
 
-    let mut parse_sess = ParseSess::with_dcx(dcx, source_map);
-    parse_sess.assume_incomplete_release = sopts.unstable_opts.assume_incomplete_release;
+    let mut psess = ParseSess::with_dcx(dcx, source_map);
+    psess.assume_incomplete_release = sopts.unstable_opts.assume_incomplete_release;
 
     let host_triple = config::host_triple();
     let target_triple = sopts.target_triple.triple();
@@ -1154,7 +1143,7 @@ pub fn build_session(
         opts: sopts,
         host_tlib_path,
         target_tlib_path,
-        parse_sess,
+        psess,
         sysroot,
         io,
         incr_comp_session: RwLock::new(IncrCompSession::NotInitialized),
@@ -1419,38 +1408,38 @@ impl EarlyDiagCtxt {
 
     #[allow(rustc::untranslatable_diagnostic)]
     #[allow(rustc::diagnostic_outside_of_impl)]
-    pub fn early_note(&self, msg: impl Into<DiagnosticMessage>) {
+    pub fn early_note(&self, msg: impl Into<DiagMessage>) {
         self.dcx.note(msg)
     }
 
     #[allow(rustc::untranslatable_diagnostic)]
     #[allow(rustc::diagnostic_outside_of_impl)]
-    pub fn early_help(&self, msg: impl Into<DiagnosticMessage>) {
+    pub fn early_help(&self, msg: impl Into<DiagMessage>) {
         self.dcx.struct_help(msg).emit()
     }
 
     #[allow(rustc::untranslatable_diagnostic)]
     #[allow(rustc::diagnostic_outside_of_impl)]
     #[must_use = "ErrorGuaranteed must be returned from `run_compiler` in order to exit with a non-zero status code"]
-    pub fn early_err(&self, msg: impl Into<DiagnosticMessage>) -> ErrorGuaranteed {
+    pub fn early_err(&self, msg: impl Into<DiagMessage>) -> ErrorGuaranteed {
         self.dcx.err(msg)
     }
 
     #[allow(rustc::untranslatable_diagnostic)]
     #[allow(rustc::diagnostic_outside_of_impl)]
-    pub fn early_fatal(&self, msg: impl Into<DiagnosticMessage>) -> ! {
+    pub fn early_fatal(&self, msg: impl Into<DiagMessage>) -> ! {
         self.dcx.fatal(msg)
     }
 
     #[allow(rustc::untranslatable_diagnostic)]
     #[allow(rustc::diagnostic_outside_of_impl)]
-    pub fn early_struct_fatal(&self, msg: impl Into<DiagnosticMessage>) -> Diag<'_, FatalAbort> {
+    pub fn early_struct_fatal(&self, msg: impl Into<DiagMessage>) -> Diag<'_, FatalAbort> {
         self.dcx.struct_fatal(msg)
     }
 
     #[allow(rustc::untranslatable_diagnostic)]
     #[allow(rustc::diagnostic_outside_of_impl)]
-    pub fn early_warn(&self, msg: impl Into<DiagnosticMessage>) {
+    pub fn early_warn(&self, msg: impl Into<DiagMessage>) {
         self.dcx.warn(msg)
     }
 

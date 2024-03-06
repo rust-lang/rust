@@ -81,6 +81,21 @@ fn foo() {
     }
 
     #[test]
+    fn replace_filter_map_next_dont_work_for_not_sized_issues_16596() {
+        check_diagnostics(
+            r#"
+//- minicore: iterators
+fn foo() {
+    let mut j = [0].into_iter();
+    let i: &mut dyn Iterator<Item = i32>  = &mut j;
+    let dummy_fn = |v| (v > 0).then_some(v + 1);
+    let _res = i.filter_map(dummy_fn).next();
+}
+"#,
+        );
+    }
+
+    #[test]
     fn replace_filter_map_next_with_find_map_no_diagnostic_without_next() {
         check_diagnostics(
             r#"

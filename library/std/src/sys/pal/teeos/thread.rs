@@ -1,7 +1,7 @@
 use core::convert::TryInto;
 
 use crate::cmp;
-use crate::ffi::CStr;
+use crate::ffi::{CStr, CString};
 use crate::io;
 use crate::mem;
 use crate::num::NonZero;
@@ -99,6 +99,10 @@ impl Thread {
         // Both pthread_setname_np and prctl are not available to the TA,
         // so we can't implement this currently. If the need arises please
         // contact the teeos rustzone team.
+    }
+
+    pub fn get_name() -> Option<CString> {
+        None
     }
 
     /// only main thread could wait for sometime in teeos

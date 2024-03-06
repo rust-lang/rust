@@ -1,11 +1,13 @@
 error: unconstrained opaque type
-  --> $DIR/issue-86800.rs:31:34
+  --> $DIR/issue-86800.rs:25:34
    |
 LL | type TransactionFuture<'__, O> = impl '__ + Future<Output = TransactionResult<O>>;
    |                                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-error: internal compiler error[E0792]: expected generic lifetime parameter, found `'_`
-  --> $DIR/issue-86800.rs:39:5
+   = note: `TransactionFuture` must be used in combination with a concrete type within the same module
+
+error[E0792]: expected generic lifetime parameter, found `'_`
+  --> $DIR/issue-86800.rs:34:5
    |
 LL | type TransactionFuture<'__, O> = impl '__ + Future<Output = TransactionResult<O>>;
    |                        --- this generic parameter must be used with a generic lifetime parameter
@@ -13,9 +15,20 @@ LL | type TransactionFuture<'__, O> = impl '__ + Future<Output = TransactionResu
 LL |     f
    |     ^
 
-error: the compiler unexpectedly panicked. this is a bug.
+error[E0792]: expected generic lifetime parameter, found `'_`
+  --> $DIR/issue-86800.rs:42:5
+   |
+LL |   type TransactionFuture<'__, O> = impl '__ + Future<Output = TransactionResult<O>>;
+   |                          --- this generic parameter must be used with a generic lifetime parameter
+...
+LL | /     {
+LL | |
+LL | |         let mut conn = Connection {};
+LL | |         let mut transaction = TestTransaction { conn: &mut conn };
+LL | |         f(&mut transaction).await
+LL | |     }
+   | |_____^
 
-query stack during panic:
-#0 [mir_borrowck] borrow-checking `execute_transaction_fut`
-#1 [type_of_opaque] computing type of opaque `execute_transaction_fut::{opaque#0}`
-end of query stack
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0792`.

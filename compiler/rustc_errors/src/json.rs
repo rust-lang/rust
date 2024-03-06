@@ -428,7 +428,7 @@ impl DiagnosticSpan {
     }
 
     fn from_span_full(
-        span: Span,
+        mut span: Span,
         is_primary: bool,
         label: Option<String>,
         suggestion: Option<(&String, Applicability)>,
@@ -436,6 +436,16 @@ impl DiagnosticSpan {
         je: &JsonEmitter,
     ) -> DiagnosticSpan {
         let start = je.sm.lookup_char_pos(span.lo());
+        // If this goes from the start of a line to the end and the replacement
+        // is an empty string, increase the length to include the newline so we don't
+        // leave an empty line
+        if start.col.0 == 0
+            && suggestion.map_or(false, |(s, _)| s.is_empty())
+            && let Ok(after) = je.sm.span_to_next_source(span)
+            && after.starts_with('\n')
+        {
+            span = span.with_hi(span.hi() + rustc_span::BytePos(1));
+        }
         let end = je.sm.lookup_char_pos(span.hi());
         let backtrace_step = backtrace.next().map(|bt| {
             let call_site = Self::from_span_full(bt.call_site, false, None, None, backtrace, je);

@@ -1,6 +1,6 @@
-use std::ops::ControlFlow;
-
+use rustc_ast_ir::try_visit;
 use rustc_data_structures::intern::Interned;
+use rustc_span::def_id::DefId;
 
 use crate::infer::canonical::{CanonicalVarValues, QueryRegionConstraints};
 use crate::traits::query::NoSolution;
@@ -9,7 +9,6 @@ use crate::ty::{
     self, FallibleTypeFolder, ToPredicate, Ty, TyCtxt, TypeFoldable, TypeFolder, TypeVisitable,
     TypeVisitor,
 };
-use rustc_span::def_id::DefId;
 
 use super::BuiltinImplSource;
 
@@ -60,7 +59,6 @@ pub enum Certainty {
 
 impl Certainty {
     pub const AMBIGUOUS: Certainty = Certainty::Maybe(MaybeCause::Ambiguity);
-    pub const OVERFLOW: Certainty = Certainty::Maybe(MaybeCause::Overflow);
 
     /// Use this function to merge the certainty of multiple nested subgoals.
     ///
@@ -79,15 +77,12 @@ impl Certainty {
             (Certainty::Yes, Certainty::Yes) => Certainty::Yes,
             (Certainty::Yes, Certainty::Maybe(_)) => other,
             (Certainty::Maybe(_), Certainty::Yes) => self,
-            (Certainty::Maybe(MaybeCause::Ambiguity), Certainty::Maybe(MaybeCause::Ambiguity)) => {
-                Certainty::Maybe(MaybeCause::Ambiguity)
-            }
-            (Certainty::Maybe(MaybeCause::Ambiguity), Certainty::Maybe(MaybeCause::Overflow))
-            | (Certainty::Maybe(MaybeCause::Overflow), Certainty::Maybe(MaybeCause::Ambiguity))
-            | (Certainty::Maybe(MaybeCause::Overflow), Certainty::Maybe(MaybeCause::Overflow)) => {
-                Certainty::Maybe(MaybeCause::Overflow)
-            }
+            (Certainty::Maybe(a), Certainty::Maybe(b)) => Certainty::Maybe(a.unify_with(b)),
         }
+    }
+
+    pub const fn overflow(suggest_increasing_limit: bool) -> Certainty {
+        Certainty::Maybe(MaybeCause::Overflow { suggest_increasing_limit })
     }
 }
 
@@ -99,7 +94,21 @@ pub enum MaybeCause {
     /// or we hit a case where we just don't bother, e.g. `?x: Trait` goals.
     Ambiguity,
     /// We gave up due to an overflow, most often by hitting the recursion limit.
-    Overflow,
+    Overflow { suggest_increasing_limit: bool },
+}
+
+impl MaybeCause {
+    fn unify_with(self, other: MaybeCause) -> MaybeCause {
+        match (self, other) {
+            (MaybeCause::Ambiguity, MaybeCause::Ambiguity) => MaybeCause::Ambiguity,
+            (MaybeCause::Ambiguity, MaybeCause::Overflow { .. }) => other,
+            (MaybeCause::Overflow { .. }, MaybeCause::Ambiguity) => self,
+            (
+                MaybeCause::Overflow { suggest_increasing_limit: a },
+                MaybeCause::Overflow { suggest_increasing_limit: b },
+            ) => MaybeCause::Overflow { suggest_increasing_limit: a || b },
+        }
+    }
 }
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy, Hash, HashStable, TypeFoldable, TypeVisitable)]
@@ -186,13 +195,9 @@ impl<'tcx> TypeFoldable<TyCtxt<'tcx>> for ExternalConstraints<'tcx> {
 }
 
 impl<'tcx> TypeVisitable<TyCtxt<'tcx>> for ExternalConstraints<'tcx> {
-    fn visit_with<V: TypeVisitor<TyCtxt<'tcx>>>(
-        &self,
-        visitor: &mut V,
-    ) -> std::ops::ControlFlow<V::BreakTy> {
-        self.region_constraints.visit_with(visitor)?;
-        self.opaque_types.visit_with(visitor)?;
-        ControlFlow::Continue(())
+    fn visit_with<V: TypeVisitor<TyCtxt<'tcx>>>(&self, visitor: &mut V) -> V::Result {
+        try_visit!(self.region_constraints.visit_with(visitor));
+        self.opaque_types.visit_with(visitor)
     }
 }
 
@@ -225,10 +230,7 @@ impl<'tcx> TypeFoldable<TyCtxt<'tcx>> for PredefinedOpaques<'tcx> {
 }
 
 impl<'tcx> TypeVisitable<TyCtxt<'tcx>> for PredefinedOpaques<'tcx> {
-    fn visit_with<V: TypeVisitor<TyCtxt<'tcx>>>(
-        &self,
-        visitor: &mut V,
-    ) -> std::ops::ControlFlow<V::BreakTy> {
+    fn visit_with<V: TypeVisitor<TyCtxt<'tcx>>>(&self, visitor: &mut V) -> V::Result {
         self.opaque_types.visit_with(visitor)
     }
 }

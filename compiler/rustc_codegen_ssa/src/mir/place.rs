@@ -9,7 +9,7 @@ use rustc_middle::mir;
 use rustc_middle::mir::tcx::PlaceTy;
 use rustc_middle::ty::layout::{HasTyCtxt, LayoutOf, TyAndLayout};
 use rustc_middle::ty::{self, Ty};
-use rustc_target::abi::{Abi, Align, FieldsShape, Int, Pointer, TagEncoding};
+use rustc_target::abi::{Align, FieldsShape, Int, Pointer, TagEncoding};
 use rustc_target::abi::{VariantIdx, Variants};
 
 #[derive(Copy, Clone, Debug)]
@@ -102,34 +102,14 @@ impl<'a, 'tcx, V: CodegenObject> PlaceRef<'tcx, V> {
         // `simple` is called when we don't need to adjust the offset to
         // the dynamic alignment of the field.
         let mut simple = || {
-            let llval = match self.layout.abi {
-                _ if offset.bytes() == 0 => {
-                    // Unions and newtypes only use an offset of 0.
-                    // Also handles the first field of Scalar, ScalarPair, and Vector layouts.
-                    self.llval
-                }
-                Abi::ScalarPair(..) => {
-                    // FIXME(nikic): Generate this for all ABIs.
-                    bx.inbounds_gep(bx.type_i8(), self.llval, &[bx.const_usize(offset.bytes())])
-                }
-                Abi::Scalar(_) | Abi::Vector { .. } if field.is_zst() => {
-                    // ZST fields (even some that require alignment) are not included in Scalar,
-                    // ScalarPair, and Vector layouts, so manually offset the pointer.
-                    bx.gep(bx.cx().type_i8(), self.llval, &[bx.const_usize(offset.bytes())])
-                }
-                Abi::Scalar(_) => {
-                    // All fields of Scalar layouts must have been handled by this point.
-                    // Vector layouts have additional fields for each element of the vector, so don't panic in that case.
-                    bug!(
-                        "offset of non-ZST field `{:?}` does not match layout `{:#?}`",
-                        field,
-                        self.layout
-                    );
-                }
-                _ => {
-                    let ty = bx.backend_type(self.layout);
-                    bx.struct_gep(ty, self.llval, bx.cx().backend_field_index(self.layout, ix))
-                }
+            let llval = if offset.bytes() == 0 {
+                self.llval
+            } else if field.is_zst() {
+                // FIXME(erikdesjardins): it should be fine to use inbounds for ZSTs too;
+                // keeping this logic for now to preserve previous behavior.
+                bx.ptradd(self.llval, bx.const_usize(offset.bytes()))
+            } else {
+                bx.inbounds_ptradd(self.llval, bx.const_usize(offset.bytes()))
             };
             PlaceRef {
                 llval,
@@ -188,7 +168,8 @@ impl<'a, 'tcx, V: CodegenObject> PlaceRef<'tcx, V> {
         debug!("struct_field_ptr: DST field offset: {:?}", offset);
 
         // Adjust pointer.
-        let ptr = bx.gep(bx.cx().type_i8(), self.llval, &[offset]);
+        // FIXME(erikdesjardins): should be able to use inbounds here too.
+        let ptr = bx.ptradd(self.llval, offset);
 
         PlaceRef { llval: ptr, llextra: self.llextra, layout: field, align: effective_field_align }
     }

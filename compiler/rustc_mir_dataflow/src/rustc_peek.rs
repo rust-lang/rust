@@ -202,7 +202,7 @@ impl PeekCall {
             &terminator.kind
         {
             if let ty::FnDef(def_id, fn_args) = *func.const_.ty().kind() {
-                if tcx.intrinsic(def_id)? != sym::rustc_peek {
+                if tcx.intrinsic(def_id)?.name != sym::rustc_peek {
                     return None;
                 }
 

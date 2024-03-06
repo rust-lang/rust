@@ -9,9 +9,9 @@ use crate::os::hermit::ffi::OsStringExt;
 use crate::path::{self, PathBuf};
 use crate::str;
 use crate::sync::Mutex;
-use crate::sys::memchr;
 use crate::sys::unsupported;
 use crate::vec;
+use core::slice::memchr;
 
 pub fn errno() -> i32 {
     unsafe { abi::get_errno() }

@@ -27,7 +27,7 @@ use rustc_hir::{ExprKind, Node, QPath};
 use rustc_hir_analysis::astconv::AstConv;
 use rustc_hir_analysis::check::intrinsicck::InlineAsmCtxt;
 use rustc_hir_analysis::check::potentially_plural_count;
-use rustc_hir_analysis::structured_errors::StructuredDiagnostic;
+use rustc_hir_analysis::structured_errors::StructuredDiag;
 use rustc_index::IndexVec;
 use rustc_infer::infer::error_reporting::{FailureCode, ObligationCauseExt};
 use rustc_infer::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
@@ -1744,7 +1744,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                         Ty::new_unit(self.tcx),
                                     );
                                 }
-                                if !self.consider_removing_semicolon(blk, expected_ty, err) {
+                                if !self.err_ctxt().consider_removing_semicolon(
+                                    blk,
+                                    expected_ty,
+                                    err,
+                                ) {
                                     self.err_ctxt().consider_returning_binding(
                                         blk,
                                         expected_ty,

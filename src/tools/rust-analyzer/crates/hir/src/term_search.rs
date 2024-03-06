@@ -72,6 +72,10 @@ impl AlternativeExprs {
             AlternativeExprs::Many => (),
         }
     }
+
+    fn is_many(&self) -> bool {
+        matches!(self, AlternativeExprs::Many)
+    }
 }
 
 /// # Lookup table for term search
@@ -103,27 +107,36 @@ struct LookupTable {
 
 impl LookupTable {
     /// Initialize lookup table
-    fn new(many_threshold: usize) -> Self {
+    fn new(many_threshold: usize, goal: Type) -> Self {
         let mut res = Self { many_threshold, ..Default::default() };
         res.new_types.insert(NewTypesKey::ImplMethod, Vec::new());
         res.new_types.insert(NewTypesKey::StructProjection, Vec::new());
+        res.types_wishlist.insert(goal);
         res
     }
 
     /// Find all `Expr`s that unify with the `ty`
-    fn find(&self, db: &dyn HirDatabase, ty: &Type) -> Option<Vec<Expr>> {
-        self.data
+    fn find(&mut self, db: &dyn HirDatabase, ty: &Type) -> Option<Vec<Expr>> {
+        let res = self
+            .data
             .iter()
             .find(|(t, _)| t.could_unify_with_deeply(db, ty))
-            .map(|(t, tts)| tts.exprs(t))
+            .map(|(t, tts)| tts.exprs(t));
+
+        if res.is_none() {
+            self.types_wishlist.insert(ty.clone());
+        }
+
+        res
     }
 
     /// Same as find but automatically creates shared reference of types in the lookup
     ///
     /// For example if we have type `i32` in data and we query for `&i32` it map all the type
     /// trees we have for `i32` with `Expr::Reference` and returns them.
-    fn find_autoref(&self, db: &dyn HirDatabase, ty: &Type) -> Option<Vec<Expr>> {
-        self.data
+    fn find_autoref(&mut self, db: &dyn HirDatabase, ty: &Type) -> Option<Vec<Expr>> {
+        let res = self
+            .data
             .iter()
             .find(|(t, _)| t.could_unify_with_deeply(db, ty))
             .map(|(t, it)| it.exprs(t))
@@ -139,7 +152,13 @@ impl LookupTable {
                             .map(|expr| Expr::Reference(Box::new(expr)))
                             .collect()
                     })
-            })
+            });
+
+        if res.is_none() {
+            self.types_wishlist.insert(ty.clone());
+        }
+
+        res
     }
 
     /// Insert new type trees for type
@@ -149,7 +168,12 @@ impl LookupTable {
     /// but they clearly do not unify themselves.
     fn insert(&mut self, ty: Type, exprs: impl Iterator<Item = Expr>) {
         match self.data.get_mut(&ty) {
-            Some(it) => it.extend_with_threshold(self.many_threshold, exprs),
+            Some(it) => {
+                it.extend_with_threshold(self.many_threshold, exprs);
+                if it.is_many() {
+                    self.types_wishlist.remove(&ty);
+                }
+            }
             None => {
                 self.data.insert(ty.clone(), AlternativeExprs::new(self.many_threshold, exprs));
                 for it in self.new_types.values_mut() {
@@ -206,8 +230,8 @@ impl LookupTable {
     }
 
     /// Types queried but not found
-    fn take_types_wishlist(&mut self) -> FxHashSet<Type> {
-        std::mem::take(&mut self.types_wishlist)
+    fn types_wishlist(&mut self) -> &FxHashSet<Type> {
+        &self.types_wishlist
     }
 }
 
@@ -272,7 +296,7 @@ pub fn term_search<DB: HirDatabase>(ctx: &TermSearchCtx<'_, DB>) -> Vec<Expr> {
         defs.insert(def);
     });
 
-    let mut lookup = LookupTable::new(ctx.config.many_alternatives_threshold);
+    let mut lookup = LookupTable::new(ctx.config.many_alternatives_threshold, ctx.goal.clone());
 
     // Try trivial tactic first, also populates lookup table
     let mut solutions: Vec<Expr> = tactics::trivial(ctx, &defs, &mut lookup).collect();
@@ -287,6 +311,7 @@ pub fn term_search<DB: HirDatabase>(ctx: &TermSearchCtx<'_, DB>) -> Vec<Expr> {
         solutions.extend(tactics::impl_method(ctx, &defs, &mut lookup));
         solutions.extend(tactics::struct_projection(ctx, &defs, &mut lookup));
         solutions.extend(tactics::impl_static_method(ctx, &defs, &mut lookup));
+        solutions.extend(tactics::make_tuple(ctx, &defs, &mut lookup));
 
         // Discard not interesting `ScopeDef`s for speedup
         for def in lookup.exhausted_scopedefs() {

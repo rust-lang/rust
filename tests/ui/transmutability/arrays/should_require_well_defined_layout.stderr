@@ -1,16 +1,16 @@
-error[E0277]: `[String; 0]` cannot be safely transmuted into `()` in the defining scope of `assert::Context`
-  --> $DIR/should_require_well_defined_layout.rs:26:52
+error[E0277]: `[String; 0]` cannot be safely transmuted into `()`
+  --> $DIR/should_require_well_defined_layout.rs:25:52
    |
 LL |         assert::is_maybe_transmutable::<repr_rust, ()>();
    |                                                    ^^ `[String; 0]` does not have a well-specified layout
    |
 note: required by a bound in `is_maybe_transmutable`
-  --> $DIR/should_require_well_defined_layout.rs:13:14
+  --> $DIR/should_require_well_defined_layout.rs:12:14
    |
 LL |       pub fn is_maybe_transmutable<Src, Dst>()
    |              --------------------- required by a bound in this function
 LL |       where
-LL |           Dst: BikeshedIntrinsicFrom<Src, Context, {
+LL |           Dst: BikeshedIntrinsicFrom<Src, {
    |  ______________^
 LL | |             Assume::ALIGNMENT
 LL | |                 .and(Assume::LIFETIMES)
@@ -19,19 +19,19 @@ LL | |                 .and(Assume::VALIDITY)
 LL | |         }>
    | |__________^ required by this bound in `is_maybe_transmutable`
 
-error[E0277]: `u128` cannot be safely transmuted into `[String; 0]` in the defining scope of `assert::Context`
-  --> $DIR/should_require_well_defined_layout.rs:27:47
+error[E0277]: `u128` cannot be safely transmuted into `[String; 0]`
+  --> $DIR/should_require_well_defined_layout.rs:26:47
    |
 LL |         assert::is_maybe_transmutable::<u128, repr_rust>();
    |                                               ^^^^^^^^^ `[String; 0]` does not have a well-specified layout
    |
 note: required by a bound in `is_maybe_transmutable`
-  --> $DIR/should_require_well_defined_layout.rs:13:14
+  --> $DIR/should_require_well_defined_layout.rs:12:14
    |
 LL |       pub fn is_maybe_transmutable<Src, Dst>()
    |              --------------------- required by a bound in this function
 LL |       where
-LL |           Dst: BikeshedIntrinsicFrom<Src, Context, {
+LL |           Dst: BikeshedIntrinsicFrom<Src, {
    |  ______________^
 LL | |             Assume::ALIGNMENT
 LL | |                 .and(Assume::LIFETIMES)
@@ -40,19 +40,19 @@ LL | |                 .and(Assume::VALIDITY)
 LL | |         }>
    | |__________^ required by this bound in `is_maybe_transmutable`
 
-error[E0277]: `[String; 1]` cannot be safely transmuted into `()` in the defining scope of `assert::Context`
-  --> $DIR/should_require_well_defined_layout.rs:32:52
+error[E0277]: `[String; 1]` cannot be safely transmuted into `()`
+  --> $DIR/should_require_well_defined_layout.rs:31:52
    |
 LL |         assert::is_maybe_transmutable::<repr_rust, ()>();
    |                                                    ^^ `[String; 1]` does not have a well-specified layout
    |
 note: required by a bound in `is_maybe_transmutable`
-  --> $DIR/should_require_well_defined_layout.rs:13:14
+  --> $DIR/should_require_well_defined_layout.rs:12:14
    |
 LL |       pub fn is_maybe_transmutable<Src, Dst>()
    |              --------------------- required by a bound in this function
 LL |       where
-LL |           Dst: BikeshedIntrinsicFrom<Src, Context, {
+LL |           Dst: BikeshedIntrinsicFrom<Src, {
    |  ______________^
 LL | |             Assume::ALIGNMENT
 LL | |                 .and(Assume::LIFETIMES)
@@ -61,19 +61,19 @@ LL | |                 .and(Assume::VALIDITY)
 LL | |         }>
    | |__________^ required by this bound in `is_maybe_transmutable`
 
-error[E0277]: `u128` cannot be safely transmuted into `[String; 1]` in the defining scope of `assert::Context`
-  --> $DIR/should_require_well_defined_layout.rs:33:47
+error[E0277]: `u128` cannot be safely transmuted into `[String; 1]`
+  --> $DIR/should_require_well_defined_layout.rs:32:47
    |
 LL |         assert::is_maybe_transmutable::<u128, repr_rust>();
    |                                               ^^^^^^^^^ `[String; 1]` does not have a well-specified layout
    |
 note: required by a bound in `is_maybe_transmutable`
-  --> $DIR/should_require_well_defined_layout.rs:13:14
+  --> $DIR/should_require_well_defined_layout.rs:12:14
    |
 LL |       pub fn is_maybe_transmutable<Src, Dst>()
    |              --------------------- required by a bound in this function
 LL |       where
-LL |           Dst: BikeshedIntrinsicFrom<Src, Context, {
+LL |           Dst: BikeshedIntrinsicFrom<Src, {
    |  ______________^
 LL | |             Assume::ALIGNMENT
 LL | |                 .and(Assume::LIFETIMES)
@@ -82,19 +82,19 @@ LL | |                 .and(Assume::VALIDITY)
 LL | |         }>
    | |__________^ required by this bound in `is_maybe_transmutable`
 
-error[E0277]: `[String; 2]` cannot be safely transmuted into `()` in the defining scope of `assert::Context`
-  --> $DIR/should_require_well_defined_layout.rs:38:52
+error[E0277]: `[String; 2]` cannot be safely transmuted into `()`
+  --> $DIR/should_require_well_defined_layout.rs:37:52
    |
 LL |         assert::is_maybe_transmutable::<repr_rust, ()>();
    |                                                    ^^ `[String; 2]` does not have a well-specified layout
    |
 note: required by a bound in `is_maybe_transmutable`
-  --> $DIR/should_require_well_defined_layout.rs:13:14
+  --> $DIR/should_require_well_defined_layout.rs:12:14
    |
 LL |       pub fn is_maybe_transmutable<Src, Dst>()
    |              --------------------- required by a bound in this function
 LL |       where
-LL |           Dst: BikeshedIntrinsicFrom<Src, Context, {
+LL |           Dst: BikeshedIntrinsicFrom<Src, {
    |  ______________^
 LL | |             Assume::ALIGNMENT
 LL | |                 .and(Assume::LIFETIMES)
@@ -103,19 +103,19 @@ LL | |                 .and(Assume::VALIDITY)
 LL | |         }>
    | |__________^ required by this bound in `is_maybe_transmutable`
 
-error[E0277]: `u128` cannot be safely transmuted into `[String; 2]` in the defining scope of `assert::Context`
-  --> $DIR/should_require_well_defined_layout.rs:39:47
+error[E0277]: `u128` cannot be safely transmuted into `[String; 2]`
+  --> $DIR/should_require_well_defined_layout.rs:38:47
    |
 LL |         assert::is_maybe_transmutable::<u128, repr_rust>();
    |                                               ^^^^^^^^^ `[String; 2]` does not have a well-specified layout
    |
 note: required by a bound in `is_maybe_transmutable`
-  --> $DIR/should_require_well_defined_layout.rs:13:14
+  --> $DIR/should_require_well_defined_layout.rs:12:14
    |
 LL |       pub fn is_maybe_transmutable<Src, Dst>()
    |              --------------------- required by a bound in this function
 LL |       where
-LL |           Dst: BikeshedIntrinsicFrom<Src, Context, {
+LL |           Dst: BikeshedIntrinsicFrom<Src, {
    |  ______________^
 LL | |             Assume::ALIGNMENT
 LL | |                 .and(Assume::LIFETIMES)

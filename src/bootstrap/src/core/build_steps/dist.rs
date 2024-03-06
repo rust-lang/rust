@@ -2021,18 +2021,47 @@ fn add_env(builder: &Builder<'_>, cmd: &mut Command, target: TargetSelection) {
     }
 }
 
-fn install_llvm_file(builder: &Builder<'_>, source: &Path, destination: &Path) {
+fn install_llvm_file(
+    builder: &Builder<'_>,
+    source: &Path,
+    destination: &Path,
+    install_symlink: bool,
+) {
     if builder.config.dry_run() {
         return;
     }
 
-    builder.install(source, destination, 0o644);
+    if source.is_symlink() {
+        // If we have a symlink like libLLVM-18.so -> libLLVM.so.18.1, install the target of the
+        // symlink, which is what will actually get loaded at runtime.
+        builder.install(&t!(fs::canonicalize(source)), destination, 0o644);
+
+        let full_dest = destination.join(source.file_name().unwrap());
+        if install_symlink {
+            // For download-ci-llvm, also install the symlink, to match what LLVM does. Using a
+            // symlink is fine here, as this is not a rustup component.
+            builder.copy(&source, &full_dest);
+        } else {
+            // Otherwise, replace the symlink with an equivalent linker script. This is used when
+            // projects like miri link against librustc_driver.so. We don't use a symlink, as
+            // these are not allowed inside rustup components.
+            let link = t!(fs::read_link(source));
+            t!(std::fs::write(full_dest, format!("INPUT({})\n", link.display())));
+        }
+    } else {
+        builder.install(&source, destination, 0o644);
+    }
 }
 
 /// Maybe add LLVM object files to the given destination lib-dir. Allows either static or dynamic linking.
 ///
 /// Returns whether the files were actually copied.
-fn maybe_install_llvm(builder: &Builder<'_>, target: TargetSelection, dst_libdir: &Path) -> bool {
+fn maybe_install_llvm(
+    builder: &Builder<'_>,
+    target: TargetSelection,
+    dst_libdir: &Path,
+    install_symlink: bool,
+) -> bool {
     // If the LLVM was externally provided, then we don't currently copy
     // artifacts into the sysroot. This is not necessarily the right
     // choice (in particular, it will require the LLVM dylib to be in
@@ -2081,7 +2110,7 @@ fn maybe_install_llvm(builder: &Builder<'_>, target: TargetSelection, dst_libdir
             } else {
                 PathBuf::from(file)
             };
-            install_llvm_file(builder, &file, dst_libdir);
+            install_llvm_file(builder, &file, dst_libdir, install_symlink);
         }
         !builder.config.dry_run()
     } else {
@@ -2096,7 +2125,7 @@ pub fn maybe_install_llvm_target(builder: &Builder<'_>, target: TargetSelection,
     // dynamically linked; it is already included into librustc_llvm
     // statically.
     if builder.llvm_link_shared() {
-        maybe_install_llvm(builder, target, &dst_libdir);
+        maybe_install_llvm(builder, target, &dst_libdir, false);
     }
 }
 
@@ -2108,7 +2137,7 @@ pub fn maybe_install_llvm_runtime(builder: &Builder<'_>, target: TargetSelection
     // dynamically linked; it is already included into librustc_llvm
     // statically.
     if builder.llvm_link_shared() {
-        maybe_install_llvm(builder, target, &dst_libdir);
+        maybe_install_llvm(builder, target, &dst_libdir, false);
     }
 }
 
@@ -2203,6 +2232,8 @@ impl Step for RustDev {
 
         let mut tarball = Tarball::new(builder, "rust-dev", &target.triple);
         tarball.set_overlay(OverlayKind::LLVM);
+        // LLVM requires a shared object symlink to exist on some platforms.
+        tarball.permit_symlinks(true);
 
         builder.ensure(crate::core::build_steps::llvm::Llvm { target });
 
@@ -2243,7 +2274,7 @@ impl Step for RustDev {
         // of `rustc-dev` to support the inherited `-lLLVM` when using the
         // compiler libraries.
         let dst_libdir = tarball.image_dir().join("lib");
-        maybe_install_llvm(builder, target, &dst_libdir);
+        maybe_install_llvm(builder, target, &dst_libdir, true);
         let link_type = if builder.llvm_link_shared() { "dynamic" } else { "static" };
         t!(std::fs::write(tarball.image_dir().join("link-type.txt"), link_type), dst_libdir);
 

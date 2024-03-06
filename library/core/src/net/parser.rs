@@ -3,7 +3,7 @@
 //! This module is "publicly exported" through the `FromStr` implementations
 //! below.
 
-use crate::convert::TryInto;
+use crate::convert::{TryFrom, TryInto};
 use crate::error::Error;
 use crate::fmt;
 use crate::net::{IpAddr, Ipv4Addr, Ipv6Addr, SocketAddr, SocketAddrV4, SocketAddrV6};
@@ -104,36 +104,66 @@ impl<'a> Parser<'a> {
     // Read a number off the front of the input in the given radix, stopping
     // at the first non-digit character or eof. Fails if the number has more
     // digits than max_digits or if there is no number.
-    fn read_number<T: ReadNumberHelper>(
+    //
+    // INVARIANT: `max_digits` must be less than the number of digits that `u32`
+    // can represent.
+    fn read_number<T: ReadNumberHelper + TryFrom<u32>>(
         &mut self,
         radix: u32,
         max_digits: Option<usize>,
         allow_zero_prefix: bool,
     ) -> Option<T> {
-        self.read_atomically(move |p| {
-            let mut result = T::ZERO;
-            let mut digit_count = 0;
-            let has_leading_zero = p.peek_char() == Some('0');
+        // If max_digits.is_some(), then we are parsing a `u8` or `u16` and
+        // don't need to use checked arithmetic since it fits within a `u32`.
+        if let Some(max_digits) = max_digits {
+            // u32::MAX = 4_294_967_295u32, which is 10 digits long.
+            // `max_digits` must be less than 10 to not overflow a `u32`.
+            debug_assert!(max_digits < 10);
 
-            while let Some(digit) = p.read_atomically(|p| p.read_char()?.to_digit(radix)) {
-                result = result.checked_mul(radix)?;
-                result = result.checked_add(digit)?;
-                digit_count += 1;
-                if let Some(max_digits) = max_digits {
+            self.read_atomically(move |p| {
+                let mut result = 0_u32;
+                let mut digit_count = 0;
+                let has_leading_zero = p.peek_char() == Some('0');
+
+                while let Some(digit) = p.read_atomically(|p| p.read_char()?.to_digit(radix)) {
+                    result *= radix;
+                    result += digit;
+                    digit_count += 1;
+
                     if digit_count > max_digits {
                         return None;
                     }
                 }
-            }
 
-            if digit_count == 0 {
-                None
-            } else if !allow_zero_prefix && has_leading_zero && digit_count > 1 {
-                None
-            } else {
-                Some(result)
-            }
-        })
+                if digit_count == 0 {
+                    None
+                } else if !allow_zero_prefix && has_leading_zero && digit_count > 1 {
+                    None
+                } else {
+                    result.try_into().ok()
+                }
+            })
+        } else {
+            self.read_atomically(move |p| {
+                let mut result = T::ZERO;
+                let mut digit_count = 0;
+                let has_leading_zero = p.peek_char() == Some('0');
+
+                while let Some(digit) = p.read_atomically(|p| p.read_char()?.to_digit(radix)) {
+                    result = result.checked_mul(radix)?;
+                    result = result.checked_add(digit)?;
+                    digit_count += 1;
+                }
+
+                if digit_count == 0 {
+                    None
+                } else if !allow_zero_prefix && has_leading_zero && digit_count > 1 {
+                    None
+                } else {
+                    Some(result)
+                }
+            })
+        }
     }
 
     /// Read an IPv4 address.

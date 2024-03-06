@@ -83,8 +83,10 @@ impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
 
     pub fn type_float_from_ty(&self, t: ty::FloatTy) -> Type<'gcc> {
         match t {
+            ty::FloatTy::F16 => self.type_f16(),
             ty::FloatTy::F32 => self.type_f32(),
             ty::FloatTy::F64 => self.type_f64(),
+            ty::FloatTy::F128 => self.type_f128(),
         }
     }
 }
@@ -118,12 +120,20 @@ impl<'gcc, 'tcx> BaseTypeMethods<'tcx> for CodegenCx<'gcc, 'tcx> {
         self.isize_type
     }
 
+    fn type_f16(&self) -> Type<'gcc> {
+        unimplemented!("f16_f128")
+    }
+    
     fn type_f32(&self) -> Type<'gcc> {
         self.float_type
     }
 
     fn type_f64(&self) -> Type<'gcc> {
         self.double_type
+    }
+    
+    fn type_f128(&self) -> Type<'gcc> {
+        unimplemented!("f16_f128")
     }
 
     fn type_func(&self, params: &[Type<'gcc>], return_type: Type<'gcc>) -> Type<'gcc> {

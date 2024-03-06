@@ -183,6 +183,7 @@ pub trait Error: Debug + Display {
     #[allow(unused_variables)]
     fn provide<'a>(&'a self, request: &mut Request<'a>) {}
 }
+
 mod private {
     // This is a hack to prevent `type_id` from being overridden by `Error`
     // implementations, since that can enable unsound downcasting.

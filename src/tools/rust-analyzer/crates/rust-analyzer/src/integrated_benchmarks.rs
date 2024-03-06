@@ -11,7 +11,7 @@
 //! which you can use to paste the command in terminal and add `--release` manually.
 
 use hir::Change;
-use ide::{CallableSnippets, CompletionConfig, FilePosition, TextSize};
+use ide::{AnalysisHost, CallableSnippets, CompletionConfig, FilePosition, TextSize};
 use ide_db::{
     imports::insert_use::{ImportGranularity, InsertUseConfig},
     SnippetCap,
@@ -43,10 +43,11 @@ fn integrated_highlighting_benchmark() {
         prefill_caches: false,
     };
 
-    let (mut host, vfs, _proc_macro) = {
+    let (db, vfs, _proc_macro) = {
         let _it = stdx::timeit("workspace loading");
         load_workspace_at(&workspace_to_load, &cargo_config, &load_cargo_config, &|_| {}).unwrap()
     };
+    let mut host = AnalysisHost::with_database(db);
 
     let file_id = {
         let file = workspace_to_load.join(file);
@@ -99,10 +100,11 @@ fn integrated_completion_benchmark() {
         prefill_caches: true,
     };
 
-    let (mut host, vfs, _proc_macro) = {
+    let (db, vfs, _proc_macro) = {
         let _it = stdx::timeit("workspace loading");
         load_workspace_at(&workspace_to_load, &cargo_config, &load_cargo_config, &|_| {}).unwrap()
     };
+    let mut host = AnalysisHost::with_database(db);
 
     let file_id = {
         let file = workspace_to_load.join(file);

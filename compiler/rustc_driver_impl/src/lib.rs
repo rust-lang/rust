@@ -4,6 +4,7 @@
 //!
 //! This API is completely unstable and subject to change.
 
+#![allow(rustc::untranslatable_diagnostic)] // FIXME: make this translatable
 #![doc(html_root_url = "https://doc.rust-lang.org/nightly/nightly-rustc/")]
 #![doc(rust_logo)]
 #![feature(rustdoc_internals)]
@@ -58,7 +59,7 @@ use std::str;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, OnceLock};
 use std::time::{Instant, SystemTime};
-use time::OffsetDateTime;
+use time::{Date, OffsetDateTime, Time};
 
 #[allow(unused_macros)]
 macro do_not_use_print($($t:tt)*) {
@@ -291,7 +292,7 @@ fn run_compiler(
     // the compiler with @empty_file as argv[0] and no more arguments.
     let at_args = at_args.get(1..).unwrap_or_default();
 
-    let args = args::arg_expand_all(&default_early_dcx, at_args);
+    let args = args::arg_expand_all(&default_early_dcx, at_args)?;
 
     let Some(matches) = handle_options(&default_early_dcx, &args) else { return Ok(()) };
 
@@ -314,7 +315,7 @@ fn run_compiler(
         file_loader,
         locale_resources: DEFAULT_LOCALE_RESOURCES,
         lint_caps: Default::default(),
-        parse_sess_created: None,
+        psess_created: None,
         hash_untracked_state: None,
         register_lints: None,
         override_queries: None,
@@ -768,7 +769,7 @@ fn print_crate_info(
             }
             Cfg => {
                 let mut cfgs = sess
-                    .parse_sess
+                    .psess
                     .config
                     .iter()
                     .filter_map(|&(name, value)| {
@@ -1215,12 +1216,10 @@ pub fn handle_options(early_dcx: &EarlyDiagCtxt, args: &[String]) -> Option<geto
 
 fn parse_crate_attrs<'a>(sess: &'a Session) -> PResult<'a, ast::AttrVec> {
     match &sess.io.input {
-        Input::File(ifile) => rustc_parse::parse_crate_attrs_from_file(ifile, &sess.parse_sess),
-        Input::Str { name, input } => rustc_parse::parse_crate_attrs_from_source_str(
-            name.clone(),
-            input.clone(),
-            &sess.parse_sess,
-        ),
+        Input::File(ifile) => rustc_parse::parse_crate_attrs_from_file(ifile, &sess.psess),
+        Input::Str { name, input } => {
+            rustc_parse::parse_crate_attrs_from_source_str(name.clone(), input.clone(), &sess.psess)
+        }
     }
 }
 
@@ -1371,6 +1370,9 @@ pub fn install_ice_hook(
     using_internal_features
 }
 
+const DATE_FORMAT: &[time::format_description::FormatItem<'static>] =
+    &time::macros::format_description!("[year]-[month]-[day]");
+
 /// Prints the ICE message, including query stack, but without backtrace.
 ///
 /// The message will point the user at `bug_report_url` to report the ICE.
@@ -1399,10 +1401,34 @@ fn report_ice(
         dcx.emit_err(session_diagnostics::Ice);
     }
 
-    if using_internal_features.load(std::sync::atomic::Ordering::Relaxed) {
-        dcx.emit_note(session_diagnostics::IceBugReportInternalFeature);
+    use time::ext::NumericalDuration;
+
+    // Try to hint user to update nightly if applicable when reporting an ICE.
+    // Attempt to calculate when current version was released, and add 12 hours
+    // as buffer. If the current version's release timestamp is older than
+    // the system's current time + 24 hours + 12 hours buffer if we're on
+    // nightly.
+    if let Some("nightly") = option_env!("CFG_RELEASE_CHANNEL")
+        && let Some(version) = option_env!("CFG_VERSION")
+        && let Some(ver_date_str) = option_env!("CFG_VER_DATE")
+        && let Ok(ver_date) = Date::parse(&ver_date_str, DATE_FORMAT)
+        && let ver_datetime = OffsetDateTime::new_utc(ver_date, Time::MIDNIGHT)
+        && let system_datetime = OffsetDateTime::from(SystemTime::now())
+        && system_datetime.checked_sub(36.hours()).is_some_and(|d| d > ver_datetime)
+        && !using_internal_features.load(std::sync::atomic::Ordering::Relaxed)
+    {
+        dcx.emit_note(session_diagnostics::IceBugReportOutdated {
+            version,
+            bug_report_url,
+            note_update: (),
+            note_url: (),
+        });
     } else {
-        dcx.emit_note(session_diagnostics::IceBugReport { bug_report_url });
+        if using_internal_features.load(std::sync::atomic::Ordering::Relaxed) {
+            dcx.emit_note(session_diagnostics::IceBugReportInternalFeature);
+        } else {
+            dcx.emit_note(session_diagnostics::IceBugReport { bug_report_url });
+        }
     }
 
     let version = util::version_str!().unwrap_or("unknown_version");
@@ -1489,15 +1515,7 @@ pub fn main() -> ! {
     let mut callbacks = TimePassesCallbacks::default();
     let using_internal_features = install_ice_hook(DEFAULT_BUG_REPORT_URL, |_| ());
     let exit_code = catch_with_exit_code(|| {
-        let args = env::args_os()
-            .enumerate()
-            .map(|(i, arg)| {
-                arg.into_string().unwrap_or_else(|arg| {
-                    early_dcx.early_fatal(format!("argument {i} is not valid Unicode: {arg:?}"))
-                })
-            })
-            .collect::<Vec<_>>();
-        RunCompiler::new(&args, &mut callbacks)
+        RunCompiler::new(&args::raw_args(&early_dcx)?, &mut callbacks)
             .set_using_internal_features(using_internal_features)
             .run()
     });

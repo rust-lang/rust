@@ -10,6 +10,7 @@ use rustc_hir::def::{DefKind, Res};
 use rustc_hir::intravisit::FnKind;
 use rustc_hir::{GenericParamKind, PatKind};
 use rustc_middle::ty;
+use rustc_session::config::CrateType;
 use rustc_span::def_id::LocalDefId;
 use rustc_span::symbol::{sym, Ident};
 use rustc_span::{BytePos, Span};
@@ -328,6 +329,10 @@ impl NonSnakeCase {
 impl<'tcx> LateLintPass<'tcx> for NonSnakeCase {
     fn check_mod(&mut self, cx: &LateContext<'_>, _: &'tcx hir::Mod<'tcx>, id: hir::HirId) {
         if id != hir::CRATE_HIR_ID {
+            return;
+        }
+
+        if cx.tcx.crate_types().iter().all(|&crate_type| crate_type == CrateType::Executable) {
             return;
         }
 

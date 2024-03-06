@@ -1,10 +1,15 @@
-// Test that impls for these two types are considered ovelapping:
+//@ check-pass
+
+// These types were previously considered equal as they are subtypes of each other.
+// This has been changed in #118247 and we now consider them to be disjoint.
+//
+// In our test:
 //
 // * `for<'r> fn(fn(&'r u32))`
 // * `fn(fn(&'a u32)` where `'a` is free
 //
-// This is because, for `'a = 'static`, the two types overlap.
-// Effectively for them to be equal to you get:
+// These were considered equal as for `'a = 'static` subtyping succeeds in both
+// directions:
 //
 // * `for<'r> fn(fn(&'r u32)) <: fn(fn(&'static u32))`
 //   * true if `exists<'r> { 'r: 'static }` (obviously true)
@@ -15,12 +20,7 @@ trait Trait {}
 
 impl Trait for for<'r> fn(fn(&'r ())) {}
 impl<'a> Trait for fn(fn(&'a ())) {}
-//~^ ERROR conflicting implementations
-//
-// Note in particular that we do NOT get a future-compatibility warning
-// here. This is because the new leak-check proposed in [MCP 295] does not
-// "error" when these two types are equated.
-//
-// [MCP 295]: https://github.com/rust-lang/compiler-team/issues/295
+//~^ WARN conflicting implementations of trait `Trait` for type `for<'r> fn(fn(&'r ()))` [coherence_leak_check]
+//~| WARN the behavior may change in a future release
 
 fn main() {}

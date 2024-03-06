@@ -402,39 +402,29 @@ fn check_opaque_meets_bounds<'tcx>(
         let guar = infcx.err_ctxt().report_fulfillment_errors(errors);
         return Err(guar);
     }
-    match origin {
-        // Checked when type checking the function containing them.
-        hir::OpaqueTyOrigin::FnReturn(..) | hir::OpaqueTyOrigin::AsyncFn(..) => {
-            // HACK: this should also fall through to the hidden type check below, but the original
-            // implementation had a bug where equivalent lifetimes are not identical. This caused us
-            // to reject existing stable code that is otherwise completely fine. The real fix is to
-            // compare the hidden types via our type equivalence/relation infra instead of doing an
-            // identity check.
-            let _ = infcx.take_opaque_types();
-            return Ok(());
+
+    let wf_tys = ocx.assumed_wf_types_and_report_errors(param_env, defining_use_anchor)?;
+    let implied_bounds = infcx.implied_bounds_tys(param_env, def_id, &wf_tys);
+    let outlives_env = OutlivesEnvironment::with_bounds(param_env, implied_bounds);
+    ocx.resolve_regions_and_report_errors(defining_use_anchor, &outlives_env)?;
+
+    if let hir::OpaqueTyOrigin::FnReturn(..) | hir::OpaqueTyOrigin::AsyncFn(..) = origin {
+        // HACK: this should also fall through to the hidden type check below, but the original
+        // implementation had a bug where equivalent lifetimes are not identical. This caused us
+        // to reject existing stable code that is otherwise completely fine. The real fix is to
+        // compare the hidden types via our type equivalence/relation infra instead of doing an
+        // identity check.
+        let _ = infcx.take_opaque_types();
+        Ok(())
+    } else {
+        // Check that any hidden types found during wf checking match the hidden types that `type_of` sees.
+        for (mut key, mut ty) in infcx.take_opaque_types() {
+            ty.hidden_type.ty = infcx.resolve_vars_if_possible(ty.hidden_type.ty);
+            key = infcx.resolve_vars_if_possible(key);
+            sanity_check_found_hidden_type(tcx, key, ty.hidden_type)?;
         }
-        // Nested opaque types occur only in associated types:
-        // ` type Opaque<T> = impl Trait<&'static T, AssocTy = impl Nested>; `
-        // They can only be referenced as `<Opaque<T> as Trait<&'static T>>::AssocTy`.
-        // We don't have to check them here because their well-formedness follows from the WF of
-        // the projection input types in the defining- and use-sites.
-        hir::OpaqueTyOrigin::TyAlias { .. }
-            if tcx.def_kind(tcx.parent(def_id.to_def_id())) == DefKind::OpaqueTy => {}
-        // Can have different predicates to their defining use
-        hir::OpaqueTyOrigin::TyAlias { .. } => {
-            let wf_tys = ocx.assumed_wf_types_and_report_errors(param_env, def_id)?;
-            let implied_bounds = infcx.implied_bounds_tys(param_env, def_id, &wf_tys);
-            let outlives_env = OutlivesEnvironment::with_bounds(param_env, implied_bounds);
-            ocx.resolve_regions_and_report_errors(defining_use_anchor, &outlives_env)?;
-        }
+        Ok(())
     }
-    // Check that any hidden types found during wf checking match the hidden types that `type_of` sees.
-    for (mut key, mut ty) in infcx.take_opaque_types() {
-        ty.hidden_type.ty = infcx.resolve_vars_if_possible(ty.hidden_type.ty);
-        key = infcx.resolve_vars_if_possible(key);
-        sanity_check_found_hidden_type(tcx, key, ty.hidden_type)?;
-    }
-    Ok(())
 }
 
 fn sanity_check_found_hidden_type<'tcx>(
@@ -527,12 +517,12 @@ pub(crate) fn check_item_type(tcx: TyCtxt<'_>, def_id: LocalDefId) {
             check_enum(tcx, def_id);
         }
         DefKind::Fn => {
-            if let Some(name) = tcx.intrinsic(def_id) {
+            if let Some(i) = tcx.intrinsic(def_id) {
                 intrinsic::check_intrinsic_type(
                     tcx,
                     def_id,
                     tcx.def_ident_span(def_id).unwrap(),
-                    name,
+                    i.name,
                     Abi::Rust,
                 )
             }
@@ -1474,15 +1464,14 @@ fn opaque_type_cycle_error(
                     closures: Vec<DefId>,
                 }
                 impl<'tcx> ty::visit::TypeVisitor<TyCtxt<'tcx>> for OpaqueTypeCollector {
-                    fn visit_ty(&mut self, t: Ty<'tcx>) -> ControlFlow<Self::BreakTy> {
+                    fn visit_ty(&mut self, t: Ty<'tcx>) {
                         match *t.kind() {
                             ty::Alias(ty::Opaque, ty::AliasTy { def_id: def, .. }) => {
                                 self.opaques.push(def);
-                                ControlFlow::Continue(())
                             }
                             ty::Closure(def_id, ..) | ty::Coroutine(def_id, ..) => {
                                 self.closures.push(def_id);
-                                t.super_visit_with(self)
+                                t.super_visit_with(self);
                             }
                             _ => t.super_visit_with(self),
                         }
@@ -1550,6 +1539,8 @@ fn opaque_type_cycle_error(
     err.emit()
 }
 
+// FIXME(@lcnr): This should not be computed per coroutine, but instead once for
+// each typeck root.
 pub(super) fn check_coroutine_obligations(
     tcx: TyCtxt<'_>,
     def_id: LocalDefId,
@@ -1557,7 +1548,7 @@ pub(super) fn check_coroutine_obligations(
     debug_assert!(tcx.is_coroutine(def_id.to_def_id()));
 
     let typeck = tcx.typeck(def_id);
-    let param_env = tcx.param_env(def_id);
+    let param_env = tcx.param_env(typeck.hir_owner.def_id);
 
     let coroutine_interior_predicates = &typeck.coroutine_interior_predicates[&def_id];
     debug!(?coroutine_interior_predicates);

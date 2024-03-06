@@ -87,8 +87,9 @@ impl Tester {
             with_proc_macro_server: ProcMacroServerChoice::Sysroot,
             prefill_caches: false,
         };
-        let (host, _vfs, _proc_macro) =
+        let (db, _vfs, _proc_macro) =
             load_workspace(workspace, &cargo_config.extra_env, &load_cargo_config)?;
+        let host = AnalysisHost::with_database(db);
         let db = host.raw_database();
         let krates = Crate::all(db);
         let root_crate = krates.iter().cloned().find(|krate| krate.origin(db).is_local()).unwrap();

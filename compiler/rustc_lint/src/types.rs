@@ -14,7 +14,7 @@ use crate::{LateContext, LateLintPass, LintContext};
 use rustc_ast as ast;
 use rustc_attr as attr;
 use rustc_data_structures::fx::FxHashSet;
-use rustc_errors::DiagnosticMessage;
+use rustc_errors::DiagMessage;
 use rustc_hir as hir;
 use rustc_hir::{is_range_literal, Expr, ExprKind, Node};
 use rustc_middle::ty::layout::{IntegerExt, LayoutOf, SizeSkeleton};
@@ -561,8 +561,10 @@ fn lint_literal<'tcx>(
         ty::Float(t) => {
             let is_infinite = match lit.node {
                 ast::LitKind::Float(v, _) => match t {
+                    ty::FloatTy::F16 => unimplemented!("f16_f128"),
                     ty::FloatTy::F32 => v.as_str().parse().map(f32::is_infinite),
                     ty::FloatTy::F64 => v.as_str().parse().map(f64::is_infinite),
+                    ty::FloatTy::F128 => unimplemented!("f16_f128"),
                 },
                 _ => bug!(),
             };
@@ -957,7 +959,7 @@ struct ImproperCTypesVisitor<'a, 'tcx> {
 enum FfiResult<'tcx> {
     FfiSafe,
     FfiPhantom(Ty<'tcx>),
-    FfiUnsafe { ty: Ty<'tcx>, reason: DiagnosticMessage, help: Option<DiagnosticMessage> },
+    FfiUnsafe { ty: Ty<'tcx>, reason: DiagMessage, help: Option<DiagMessage> },
 }
 
 pub(crate) fn nonnull_optimization_guaranteed<'tcx>(
@@ -1444,8 +1446,8 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
         &mut self,
         ty: Ty<'tcx>,
         sp: Span,
-        note: DiagnosticMessage,
-        help: Option<DiagnosticMessage>,
+        note: DiagMessage,
+        help: Option<DiagMessage>,
     ) {
         let lint = match self.mode {
             CItemKind::Declaration => IMPROPER_CTYPES,
@@ -1472,9 +1474,9 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
     fn check_for_opaque_ty(&mut self, sp: Span, ty: Ty<'tcx>) -> bool {
         struct ProhibitOpaqueTypes;
         impl<'tcx> ty::visit::TypeVisitor<TyCtxt<'tcx>> for ProhibitOpaqueTypes {
-            type BreakTy = Ty<'tcx>;
+            type Result = ControlFlow<Ty<'tcx>>;
 
-            fn visit_ty(&mut self, ty: Ty<'tcx>) -> ControlFlow<Self::BreakTy> {
+            fn visit_ty(&mut self, ty: Ty<'tcx>) -> Self::Result {
                 if !ty.has_opaque_types() {
                     return ControlFlow::Continue(());
                 }
@@ -1618,9 +1620,9 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
         }
 
         impl<'vis, 'a, 'tcx> ty::visit::TypeVisitor<TyCtxt<'tcx>> for FnPtrFinder<'vis, 'a, 'tcx> {
-            type BreakTy = Ty<'tcx>;
+            type Result = ControlFlow<Ty<'tcx>>;
 
-            fn visit_ty(&mut self, ty: Ty<'tcx>) -> ControlFlow<Self::BreakTy> {
+            fn visit_ty(&mut self, ty: Ty<'tcx>) -> Self::Result {
                 if let ty::FnPtr(sig) = ty.kind()
                     && !self.visitor.is_internal_abi(sig.abi())
                 {

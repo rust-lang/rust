@@ -7,12 +7,11 @@
 
 mod assert {
     use std::mem::{Assume, BikeshedIntrinsicFrom};
-    pub struct Context;
 
     pub fn is_transmutable<Src, Dst>()
     where
-        Dst: BikeshedIntrinsicFrom<Src, Context, { Assume::SAFETY }>
-        // validity is NOT assumed --------------^^^^^^^^^^^^^^^^^^
+        Dst: BikeshedIntrinsicFrom<Src, { Assume::SAFETY }>
+        // validity is NOT assumed -----^^^^^^^^^^^^^^^^^^
     {}
 }
 

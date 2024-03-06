@@ -441,7 +441,7 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, did: LocalDefId) -> CodegenFnAttrs {
                         .map_err(|msg| {
                             struct_span_code_err!(
                                 tcx.dcx(),
-                                attr.span,
+                                literal.span,
                                 E0589,
                                 "invalid `repr(align)` attribute: {}",
                                 msg

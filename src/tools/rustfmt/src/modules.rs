@@ -57,8 +57,8 @@ impl<'a> Module<'a> {
 }
 
 /// Maps each module to the corresponding file.
-pub(crate) struct ModResolver<'ast, 'sess> {
-    parse_sess: &'sess ParseSess,
+pub(crate) struct ModResolver<'ast, 'psess> {
+    psess: &'psess ParseSess,
     directory: Directory,
     file_map: FileModMap<'ast>,
     recursive: bool,
@@ -99,10 +99,10 @@ enum SubModKind<'a, 'ast> {
     Internal(&'a ast::Item),
 }
 
-impl<'ast, 'sess, 'c> ModResolver<'ast, 'sess> {
+impl<'ast, 'psess, 'c> ModResolver<'ast, 'psess> {
     /// Creates a new `ModResolver`.
     pub(crate) fn new(
-        parse_sess: &'sess ParseSess,
+        psess: &'psess ParseSess,
         directory_ownership: DirectoryOwnership,
         recursive: bool,
     ) -> Self {
@@ -112,7 +112,7 @@ impl<'ast, 'sess, 'c> ModResolver<'ast, 'sess> {
                 ownership: directory_ownership,
             },
             file_map: BTreeMap::new(),
-            parse_sess,
+            psess,
             recursive,
         }
     }
@@ -122,7 +122,7 @@ impl<'ast, 'sess, 'c> ModResolver<'ast, 'sess> {
         mut self,
         krate: &'ast ast::Crate,
     ) -> Result<FileModMap<'ast>, ModuleResolutionError> {
-        let root_filename = self.parse_sess.span_to_filename(krate.spans.inner_span);
+        let root_filename = self.psess.span_to_filename(krate.spans.inner_span);
         self.directory.path = match root_filename {
             FileName::Real(ref p) => p.parent().unwrap_or(Path::new("")).to_path_buf(),
             _ => PathBuf::new(),
@@ -133,7 +133,7 @@ impl<'ast, 'sess, 'c> ModResolver<'ast, 'sess> {
             self.visit_mod_from_ast(&krate.items)?;
         }
 
-        let snippet_provider = self.parse_sess.snippet_provider(krate.spans.inner_span);
+        let snippet_provider = self.psess.snippet_provider(krate.spans.inner_span);
 
         self.file_map.insert(
             root_filename,
@@ -149,7 +149,7 @@ impl<'ast, 'sess, 'c> ModResolver<'ast, 'sess> {
 
     /// Visit `cfg_if` macro and look for module declarations.
     fn visit_cfg_if(&mut self, item: Cow<'ast, ast::Item>) -> Result<(), ModuleResolutionError> {
-        let mut visitor = visitor::CfgIfVisitor::new(self.parse_sess);
+        let mut visitor = visitor::CfgIfVisitor::new(self.psess);
         visitor.visit_item(&item);
         for module_item in visitor.mods() {
             if let ast::ItemKind::Mod(_, ref sub_mod_kind) = module_item.item.kind {
@@ -338,10 +338,10 @@ impl<'ast, 'sess, 'c> ModResolver<'ast, 'sess> {
             DirectoryOwnership::UnownedViaBlock => None,
         };
         if let Some(path) = Parser::submod_path_from_attr(attrs, &self.directory.path) {
-            if self.parse_sess.is_file_parsed(&path) {
+            if self.psess.is_file_parsed(&path) {
                 return Ok(None);
             }
-            return match Parser::parse_file_as_module(self.parse_sess, &path, sub_mod.span) {
+            return match Parser::parse_file_as_module(self.psess, &path, sub_mod.span) {
                 Ok((ref attrs, _, _)) if contains_skip(attrs) => Ok(None),
                 Ok((attrs, items, span)) => Ok(Some(SubModKind::External(
                     path,
@@ -368,7 +368,7 @@ impl<'ast, 'sess, 'c> ModResolver<'ast, 'sess> {
         let mut mods_outside_ast = self.find_mods_outside_of_ast(attrs, sub_mod);
 
         match self
-            .parse_sess
+            .psess
             .default_submod_path(mod_name, relative, &self.directory.path)
         {
             Ok(ModulePathSuccess {
@@ -380,7 +380,7 @@ impl<'ast, 'sess, 'c> ModResolver<'ast, 'sess> {
                 let should_insert = !mods_outside_ast
                     .iter()
                     .any(|(outside_path, _, _)| outside_path == &file_path);
-                if self.parse_sess.is_file_parsed(&file_path) {
+                if self.psess.is_file_parsed(&file_path) {
                     if outside_mods_empty {
                         return Ok(None);
                     } else {
@@ -390,7 +390,7 @@ impl<'ast, 'sess, 'c> ModResolver<'ast, 'sess> {
                         return Ok(Some(SubModKind::MultiExternal(mods_outside_ast)));
                     }
                 }
-                match Parser::parse_file_as_module(self.parse_sess, &file_path, sub_mod.span) {
+                match Parser::parse_file_as_module(self.psess, &file_path, sub_mod.span) {
                     Ok((ref attrs, _, _)) if contains_skip(attrs) => Ok(None),
                     Ok((attrs, items, span)) if outside_mods_empty => {
                         Ok(Some(SubModKind::External(
@@ -517,7 +517,7 @@ impl<'ast, 'sess, 'c> ModResolver<'ast, 'sess> {
             if !actual_path.exists() {
                 continue;
             }
-            if self.parse_sess.is_file_parsed(&actual_path) {
+            if self.psess.is_file_parsed(&actual_path) {
                 // If the specified file is already parsed, then we just use that.
                 result.push((
                     actual_path,
@@ -527,7 +527,7 @@ impl<'ast, 'sess, 'c> ModResolver<'ast, 'sess> {
                 continue;
             }
             let (attrs, items, span) =
-                match Parser::parse_file_as_module(self.parse_sess, &actual_path, sub_mod.span) {
+                match Parser::parse_file_as_module(self.psess, &actual_path, sub_mod.span) {
                     Ok((ref attrs, _, _)) if contains_skip(attrs) => continue,
                     Ok(m) => m,
                     Err(..) => continue,

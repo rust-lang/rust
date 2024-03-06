@@ -93,7 +93,7 @@ impl SubdiagnosticDeriveBuilder {
                     #f: __F
                 ) where
                     __G: rustc_errors::EmissionGuarantee,
-                    __F: rustc_errors::SubdiagnosticMessageOp<__G>,
+                    __F: rustc_errors::SubdiagMessageOp<__G>,
                 {
                     #implementation
                 }

@@ -35,7 +35,7 @@ use rustc_data_structures::unord::UnordSet;
 use rustc_errors::{pluralize, MultiSpan};
 use rustc_hir::def::{DefKind, Res};
 use rustc_session::lint::builtin::{MACRO_USE_EXTERN_CRATE, UNUSED_EXTERN_CRATES, UNUSED_IMPORTS};
-use rustc_session::lint::BuiltinLintDiagnostics;
+use rustc_session::lint::BuiltinLintDiag;
 use rustc_span::symbol::{kw, Ident};
 use rustc_span::{Span, DUMMY_SP};
 
@@ -412,7 +412,7 @@ impl Resolver<'_, '_> {
                 unused.use_tree_id,
                 ms,
                 msg,
-                BuiltinLintDiagnostics::UnusedImports(fix_msg.into(), fixes, test_module_span),
+                BuiltinLintDiag::UnusedImports(fix_msg.into(), fixes, test_module_span),
             );
         }
 
@@ -428,7 +428,7 @@ impl Resolver<'_, '_> {
                         extern_crate.id,
                         span,
                         "unused extern crate",
-                        BuiltinLintDiagnostics::UnusedExternCrate {
+                        BuiltinLintDiag::UnusedExternCrate {
                             removal_span: extern_crate.span_with_attributes,
                         },
                     );
@@ -481,7 +481,7 @@ impl Resolver<'_, '_> {
                 extern_crate.id,
                 extern_crate.span,
                 "`extern crate` is not idiomatic in the new edition",
-                BuiltinLintDiagnostics::ExternCrateNotIdiomatic { vis_span, ident_span },
+                BuiltinLintDiag::ExternCrateNotIdiomatic { vis_span, ident_span },
             );
         }
 

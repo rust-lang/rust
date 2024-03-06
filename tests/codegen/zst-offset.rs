@@ -22,7 +22,7 @@ pub fn scalar_layout(s: &(u64, ())) {
 // CHECK-LABEL: @scalarpair_layout
 #[no_mangle]
 pub fn scalarpair_layout(s: &(u64, u32, ())) {
-// CHECK: getelementptr inbounds i8, {{.+}}, [[USIZE]] 12
+// CHECK: getelementptr i8, {{.+}}, [[USIZE]] 12
     let x = &s.2;
     witness(&x); // keep variable in an alloca
 }

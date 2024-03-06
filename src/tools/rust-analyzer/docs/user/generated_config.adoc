@@ -144,6 +144,16 @@ This option does not take effect until rust-analyzer is restarted.
 --
 Compilation target override (target triple).
 --
+[[rust-analyzer.cargo.targetDir]]rust-analyzer.cargo.targetDir (default: `null`)::
++
+--
+Optional path to a rust-analyzer specific target directory.
+This prevents rust-analyzer's `cargo check` and initial build-script and proc-macro
+building from locking the `Cargo.lock` at the expense of duplicating build artifacts.
+
+Set to `true` to use a subdirectory of the existing target directory or
+set to a path relative to the workspace to use that path.
+--
 [[rust-analyzer.cargo.unsetTest]]rust-analyzer.cargo.unsetTest (default: `["core"]`)::
 +
 --
@@ -813,16 +823,6 @@ Command to be executed instead of 'cargo' for runnables.
 --
 Additional arguments to be passed to cargo for runnables such as
 tests or binaries. For example, it may be `--release`.
---
-[[rust-analyzer.rust.analyzerTargetDir]]rust-analyzer.rust.analyzerTargetDir (default: `null`)::
-+
---
-Optional path to a rust-analyzer specific target directory.
-This prevents rust-analyzer's `cargo check` from locking the `Cargo.lock`
-at the expense of duplicating build artifacts.
-
-Set to `true` to use a subdirectory of the existing target directory or
-set to a path relative to the workspace to use that path.
 --
 [[rust-analyzer.rustc.source]]rust-analyzer.rustc.source (default: `null`)::
 +

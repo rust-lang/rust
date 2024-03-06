@@ -2,9 +2,9 @@ error: expected one of `,`, `:`, or `>`, found `=`
   --> $DIR/issue-34334.rs:2:29
    |
 LL |     let sr: Vec<(u32, _, _) = vec![];
-   |         --                  ^ expected one of `,`, `:`, or `>`
-   |         |
-   |         while parsing the type for `sr`
+   |           -                 ^ expected one of `,`, `:`, or `>`
+   |           |
+   |           while parsing the type for `sr`
    |
 help: you might have meant to end the type parameters here
    |

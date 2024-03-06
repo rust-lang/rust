@@ -1327,6 +1327,52 @@ macro_rules! coverage_test_alias {
     };
 }
 
+#[derive(Debug, Copy, Clone, Hash, PartialEq, Eq, Ord, PartialOrd)]
+pub struct RunMakeSupport {
+    pub compiler: Compiler,
+    pub target: TargetSelection,
+}
+
+impl Step for RunMakeSupport {
+    type Output = PathBuf;
+    const DEFAULT: bool = true;
+
+    fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
+        run.never()
+    }
+
+    fn make_run(run: RunConfig<'_>) {
+        let compiler = run.builder.compiler(run.builder.top_stage, run.build_triple());
+        run.builder.ensure(RunMakeSupport { compiler, target: run.build_triple() });
+    }
+
+    fn run(self, builder: &Builder<'_>) -> PathBuf {
+        builder.ensure(compile::Std::new(self.compiler, self.target));
+
+        let cargo = tool::prepare_tool_cargo(
+            builder,
+            self.compiler,
+            Mode::ToolStd,
+            self.target,
+            "build",
+            "src/tools/run-make-support",
+            SourceType::InTree,
+            &[],
+        );
+
+        let mut cargo = Command::from(cargo);
+        builder.run(&mut cargo);
+
+        let lib_name = "librun_make_support.rlib";
+        let lib = builder.tools_dir(self.compiler).join(&lib_name);
+
+        let cargo_out =
+            builder.cargo_out(self.compiler, Mode::ToolStd, self.target).join(&lib_name);
+        builder.copy(&cargo_out, &lib);
+        lib
+    }
+}
+
 default_test!(Ui { path: "tests/ui", mode: "ui", suite: "ui" });
 
 default_test!(RunPassValgrind {
@@ -1361,7 +1407,40 @@ host_test!(RustdocJson { path: "tests/rustdoc-json", mode: "rustdoc-json", suite
 
 host_test!(Pretty { path: "tests/pretty", mode: "pretty", suite: "pretty" });
 
-default_test!(RunMake { path: "tests/run-make", mode: "run-make", suite: "run-make" });
+// Special-handling is needed for `run-make`, so don't use `default_test` for defining `RunMake`
+// tests.
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+pub struct RunMake {
+    pub compiler: Compiler,
+    pub target: TargetSelection,
+}
+
+impl Step for RunMake {
+    type Output = ();
+    const DEFAULT: bool = true;
+    const ONLY_HOSTS: bool = false;
+
+    fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
+        run.suite_path("tests/run-make")
+    }
+
+    fn make_run(run: RunConfig<'_>) {
+        let compiler = run.builder.compiler(run.builder.top_stage, run.build_triple());
+        run.builder.ensure(RunMakeSupport { compiler, target: run.build_triple() });
+        run.builder.ensure(RunMake { compiler, target: run.target });
+    }
+
+    fn run(self, builder: &Builder<'_>) {
+        builder.ensure(Compiletest {
+            compiler: self.compiler,
+            target: self.target,
+            mode: "run-make",
+            suite: "run-make",
+            path: "tests/run-make",
+            compare_mode: None,
+        });
+    }
+}
 
 host_test!(RunMakeFullDeps {
     path: "tests/run-make-fulldeps",

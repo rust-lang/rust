@@ -81,10 +81,10 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                                     let then_blk = unpack!(this.then_else_break(
                                         block,
                                         cond,
-                                        Some(condition_scope),
+                                        Some(condition_scope), // Temp scope
                                         condition_scope,
                                         source_info,
-                                        true,
+                                        true, // Declare `let` bindings normally
                                     ));
 
                                     this.expr_into_dest(destination, then_blk, then)
@@ -109,38 +109,12 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 this.cfg.goto(else_blk, source_info, join_block);
                 join_block.unit()
             }
-            ExprKind::Let { expr, ref pat } => {
-                let scope = this.local_scope();
-                let (true_block, false_block) = this.in_if_then_scope(scope, expr_span, |this| {
-                    this.lower_let_expr(block, expr, pat, scope, None, expr_span, true)
-                });
-
-                this.cfg.push_assign_constant(
-                    true_block,
-                    source_info,
-                    destination,
-                    ConstOperand {
-                        span: expr_span,
-                        user_ty: None,
-                        const_: Const::from_bool(this.tcx, true),
-                    },
-                );
-
-                this.cfg.push_assign_constant(
-                    false_block,
-                    source_info,
-                    destination,
-                    ConstOperand {
-                        span: expr_span,
-                        user_ty: None,
-                        const_: Const::from_bool(this.tcx, false),
-                    },
-                );
-
-                let join_block = this.cfg.start_new_block();
-                this.cfg.goto(true_block, source_info, join_block);
-                this.cfg.goto(false_block, source_info, join_block);
-                join_block.unit()
+            ExprKind::Let { .. } => {
+                // After desugaring, `let` expressions should only appear inside `if`
+                // expressions or `match` guards, possibly nested within a let-chain.
+                // In both cases they are specifically handled by the lowerings of
+                // those expressions, so this case is currently unreachable.
+                span_bug!(expr_span, "unexpected let expression outside of if or match-guard");
             }
             ExprKind::NeverToAny { source } => {
                 let source_expr = &this.thir[source];
@@ -172,9 +146,11 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                         this.then_else_break(
                             block,
                             lhs,
-                            Some(condition_scope),
+                            Some(condition_scope), // Temp scope
                             condition_scope,
                             source_info,
+                            // This flag controls how inner `let` expressions are lowered,
+                            // but either way there shouldn't be any of those in here.
                             true,
                         )
                     });

@@ -58,7 +58,7 @@ use rustc_middle::ty::GenericArgKind;
 use rustc_middle::ty::ToPredicate;
 use rustc_middle::ty::TypeVisitableExt;
 use rustc_middle::ty::{self, Ty, TyCtxt, VariantDef};
-use rustc_session::lint::{BuiltinLintDiagnostics, FutureIncompatibilityReason};
+use rustc_session::lint::{BuiltinLintDiag, FutureIncompatibilityReason};
 use rustc_span::edition::Edition;
 use rustc_span::source_map::Spanned;
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
@@ -1231,7 +1231,7 @@ impl<'tcx> LateLintPass<'tcx> for MutableTransmutes {
         }
 
         fn def_id_is_transmute(cx: &LateContext<'_>, def_id: DefId) -> bool {
-            matches!(cx.tcx.intrinsic(def_id), Some(sym::transmute))
+            cx.tcx.is_intrinsic(def_id, sym::transmute)
         }
     }
 }
@@ -1868,7 +1868,7 @@ impl KeywordIdents {
         };
 
         // Don't lint `r#foo`.
-        if cx.sess().parse_sess.raw_identifier_spans.contains(ident.span) {
+        if cx.sess().psess.raw_identifier_spans.contains(ident.span) {
             return;
         }
 
@@ -2831,7 +2831,7 @@ impl<'tcx> LateLintPass<'tcx> for NamedAsmLabels {
                             Some(target_spans),
                             fluent::lint_builtin_asm_labels,
                             |_| {},
-                            BuiltinLintDiagnostics::NamedAsmLabel(
+                            BuiltinLintDiag::NamedAsmLabel(
                                 "only local labels of the form `<number>:` should be used in inline asm"
                                     .to_string(),
                             ),

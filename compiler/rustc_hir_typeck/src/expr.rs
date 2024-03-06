@@ -390,7 +390,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         );
                         let sp = tcx.sess.source_map().start_point(expr.span).with_parent(None);
                         if let Some(sp) =
-                            tcx.sess.parse_sess.ambiguous_block_expr_parse.borrow().get(&sp)
+                            tcx.sess.psess.ambiguous_block_expr_parse.borrow().get(&sp)
                         {
                             err.subdiagnostic(self.dcx(), ExprParenthesesNeeded::surrounding(*sp));
                         }
@@ -2156,10 +2156,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     err.span_suggestions(
                         span.shrink_to_hi().with_hi(expr_span.hi()),
                         "you might have meant to use an associated function to build this type",
-                        items
-                            .iter()
-                            .map(|(_, name, args)| suggestion(name, *args))
-                            .collect::<Vec<String>>(),
+                        items.iter().map(|(_, name, args)| suggestion(name, *args)),
                         Applicability::MaybeIncorrect,
                     );
                 }

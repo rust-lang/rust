@@ -6,15 +6,52 @@ use rustc_errors::{add_elided_lifetime_in_path_suggestion, Diag};
 use rustc_errors::{Applicability, SuggestionStyle};
 use rustc_middle::middle::stability;
 use rustc_session::config::ExpectedValues;
-use rustc_session::lint::BuiltinLintDiagnostics;
+use rustc_session::lint::BuiltinLintDiag;
 use rustc_session::Session;
 use rustc_span::edit_distance::find_best_match_for_name;
 use rustc_span::symbol::{sym, Symbol};
 use rustc_span::BytePos;
 
-pub(super) fn builtin(sess: &Session, diagnostic: BuiltinLintDiagnostics, diag: &mut Diag<'_, ()>) {
+const MAX_CHECK_CFG_NAMES_OR_VALUES: usize = 35;
+
+fn check_cfg_expected_note(
+    sess: &Session,
+    possibilities: &[Symbol],
+    type_: &str,
+    name: Option<Symbol>,
+    suffix: &str,
+) -> String {
+    use std::fmt::Write;
+
+    let n_possibilities = if sess.opts.unstable_opts.check_cfg_all_expected {
+        possibilities.len()
+    } else {
+        std::cmp::min(possibilities.len(), MAX_CHECK_CFG_NAMES_OR_VALUES)
+    };
+
+    let mut possibilities = possibilities.iter().map(Symbol::as_str).collect::<Vec<_>>();
+    possibilities.sort();
+
+    let and_more = possibilities.len().saturating_sub(n_possibilities);
+    let possibilities = possibilities[..n_possibilities].join("`, `");
+
+    let mut note = String::with_capacity(50 + possibilities.len());
+
+    write!(&mut note, "expected {type_}").unwrap();
+    if let Some(name) = name {
+        write!(&mut note, " for `{name}`").unwrap();
+    }
+    write!(&mut note, " are: {suffix}`{possibilities}`").unwrap();
+    if and_more > 0 {
+        write!(&mut note, " and {and_more} more").unwrap();
+    }
+
+    note
+}
+
+pub(super) fn builtin(sess: &Session, diagnostic: BuiltinLintDiag, diag: &mut Diag<'_, ()>) {
     match diagnostic {
-        BuiltinLintDiagnostics::UnicodeTextFlow(span, content) => {
+        BuiltinLintDiag::UnicodeTextFlow(span, content) => {
             let spans: Vec<_> = content
                 .char_indices()
                 .filter_map(|(i, c)| {
@@ -51,8 +88,8 @@ pub(super) fn builtin(sess: &Session, diagnostic: BuiltinLintDiagnostics, diag: 
                 );
             }
         }
-        BuiltinLintDiagnostics::Normal => (),
-        BuiltinLintDiagnostics::AbsPathWithModule(span) => {
+        BuiltinLintDiag::Normal => (),
+        BuiltinLintDiag::AbsPathWithModule(span) => {
             let (sugg, app) = match sess.source_map().span_to_snippet(span) {
                 Ok(ref s) => {
                     // FIXME(Manishearth) ideally the emitting code
@@ -65,21 +102,16 @@ pub(super) fn builtin(sess: &Session, diagnostic: BuiltinLintDiagnostics, diag: 
             };
             diag.span_suggestion(span, "use `crate`", sugg, app);
         }
-        BuiltinLintDiagnostics::ProcMacroDeriveResolutionFallback(span) => {
+        BuiltinLintDiag::ProcMacroDeriveResolutionFallback(span) => {
             diag.span_label(
                 span,
                 "names from parent modules are not accessible without an explicit import",
             );
         }
-        BuiltinLintDiagnostics::MacroExpandedMacroExportsAccessedByAbsolutePaths(span_def) => {
+        BuiltinLintDiag::MacroExpandedMacroExportsAccessedByAbsolutePaths(span_def) => {
             diag.span_note(span_def, "the macro is defined here");
         }
-        BuiltinLintDiagnostics::ElidedLifetimesInPaths(
-            n,
-            path_span,
-            incl_angl_brckt,
-            insertion_span,
-        ) => {
+        BuiltinLintDiag::ElidedLifetimesInPaths(n, path_span, incl_angl_brckt, insertion_span) => {
             add_elided_lifetime_in_path_suggestion(
                 sess.source_map(),
                 diag,
@@ -89,10 +121,10 @@ pub(super) fn builtin(sess: &Session, diagnostic: BuiltinLintDiagnostics, diag: 
                 insertion_span,
             );
         }
-        BuiltinLintDiagnostics::UnknownCrateTypes(span, note, sugg) => {
+        BuiltinLintDiag::UnknownCrateTypes(span, note, sugg) => {
             diag.span_suggestion(span, note, sugg, Applicability::MaybeIncorrect);
         }
-        BuiltinLintDiagnostics::UnusedImports(message, replaces, in_test_module) => {
+        BuiltinLintDiag::UnusedImports(message, replaces, in_test_module) => {
             if !replaces.is_empty() {
                 diag.tool_only_multipart_suggestion(
                     message,
@@ -104,25 +136,25 @@ pub(super) fn builtin(sess: &Session, diagnostic: BuiltinLintDiagnostics, diag: 
             if let Some(span) = in_test_module {
                 diag.span_help(
                     sess.source_map().guess_head_span(span),
-                    "consider adding a `#[cfg(test)]` to the containing module",
+                    "if this is a test module, consider adding a `#[cfg(test)]` to the containing module",
                 );
             }
         }
-        BuiltinLintDiagnostics::RedundantImport(spans, ident) => {
+        BuiltinLintDiag::RedundantImport(spans, ident) => {
             for (span, is_imported) in spans {
                 let introduced = if is_imported { "imported" } else { "defined" };
                 diag.span_label(span, format!("the item `{ident}` is already {introduced} here"));
             }
         }
-        BuiltinLintDiagnostics::DeprecatedMacro(suggestion, span) => {
+        BuiltinLintDiag::DeprecatedMacro(suggestion, span) => {
             stability::deprecation_suggestion(diag, "macro", suggestion, span)
         }
-        BuiltinLintDiagnostics::UnusedDocComment(span) => {
+        BuiltinLintDiag::UnusedDocComment(span) => {
             diag.span_label(span, "rustdoc does not generate documentation for macro invocations");
             diag.help("to document an item produced by a macro, \
                                   the macro must produce the documentation as part of its expansion");
         }
-        BuiltinLintDiagnostics::PatternsInFnsWithoutBody(span, ident) => {
+        BuiltinLintDiag::PatternsInFnsWithoutBody(span, ident) => {
             diag.span_suggestion(
                 span,
                 "remove `mut` from the parameter",
@@ -130,17 +162,17 @@ pub(super) fn builtin(sess: &Session, diagnostic: BuiltinLintDiagnostics, diag: 
                 Applicability::MachineApplicable,
             );
         }
-        BuiltinLintDiagnostics::MissingAbi(span, default_abi) => {
+        BuiltinLintDiag::MissingAbi(span, default_abi) => {
             diag.span_label(span, "ABI should be specified here");
             diag.help(format!("the default ABI is {}", default_abi.name()));
         }
-        BuiltinLintDiagnostics::LegacyDeriveHelpers(span) => {
+        BuiltinLintDiag::LegacyDeriveHelpers(span) => {
             diag.span_label(span, "the attribute is introduced here");
         }
-        BuiltinLintDiagnostics::ProcMacroBackCompat(note) => {
+        BuiltinLintDiag::ProcMacroBackCompat(note) => {
             diag.note(note);
         }
-        BuiltinLintDiagnostics::OrPatternsBackCompat(span, suggestion) => {
+        BuiltinLintDiag::OrPatternsBackCompat(span, suggestion) => {
             diag.span_suggestion(
                 span,
                 "use pat_param to preserve semantics",
@@ -148,7 +180,7 @@ pub(super) fn builtin(sess: &Session, diagnostic: BuiltinLintDiagnostics, diag: 
                 Applicability::MachineApplicable,
             );
         }
-        BuiltinLintDiagnostics::ReservedPrefix(span) => {
+        BuiltinLintDiag::ReservedPrefix(span) => {
             diag.span_label(span, "unknown prefix");
             diag.span_suggestion_verbose(
                 span.shrink_to_hi(),
@@ -157,19 +189,19 @@ pub(super) fn builtin(sess: &Session, diagnostic: BuiltinLintDiagnostics, diag: 
                 Applicability::MachineApplicable,
             );
         }
-        BuiltinLintDiagnostics::UnusedBuiltinAttribute { attr_name, macro_name, invoc_span } => {
+        BuiltinLintDiag::UnusedBuiltinAttribute { attr_name, macro_name, invoc_span } => {
             diag.span_note(
                         invoc_span,
                         format!("the built-in attribute `{attr_name}` will be ignored, since it's applied to the macro invocation `{macro_name}`")
                     );
         }
-        BuiltinLintDiagnostics::TrailingMacro(is_trailing, name) => {
+        BuiltinLintDiag::TrailingMacro(is_trailing, name) => {
             if is_trailing {
                 diag.note("macro invocations at the end of a block are treated as expressions");
                 diag.note(format!("to ignore the value produced by the macro, add a semicolon after the invocation of `{name}`"));
             }
         }
-        BuiltinLintDiagnostics::BreakWithLabelAndLoop(span) => {
+        BuiltinLintDiag::BreakWithLabelAndLoop(span) => {
             diag.multipart_suggestion(
                 "wrap this expression in parentheses",
                 vec![
@@ -179,19 +211,19 @@ pub(super) fn builtin(sess: &Session, diagnostic: BuiltinLintDiagnostics, diag: 
                 Applicability::MachineApplicable,
             );
         }
-        BuiltinLintDiagnostics::NamedAsmLabel(help) => {
+        BuiltinLintDiag::NamedAsmLabel(help) => {
             diag.help(help);
             diag.note("see the asm section of Rust By Example <https://doc.rust-lang.org/nightly/rust-by-example/unsafe/asm.html#labels> for more information");
         }
-        BuiltinLintDiagnostics::UnexpectedCfgName((name, name_span), value) => {
+        BuiltinLintDiag::UnexpectedCfgName((name, name_span), value) => {
             #[allow(rustc::potential_query_instability)]
             let possibilities: Vec<Symbol> =
-                sess.parse_sess.check_config.expecteds.keys().copied().collect();
+                sess.psess.check_config.expecteds.keys().copied().collect();
 
             let mut names_possibilities: Vec<_> = if value.is_none() {
                 // We later sort and display all the possibilities, so the order here does not matter.
                 #[allow(rustc::potential_query_instability)]
-                sess.parse_sess
+                sess.psess
                     .check_config
                     .expecteds
                     .iter()
@@ -212,7 +244,7 @@ pub(super) fn builtin(sess: &Session, diagnostic: BuiltinLintDiagnostics, diag: 
             // Suggest the most probable if we found one
             } else if let Some(best_match) = find_best_match_for_name(&possibilities, name, None) {
                 if let Some(ExpectedValues::Some(best_match_values)) =
-                    sess.parse_sess.check_config.expecteds.get(&best_match)
+                    sess.psess.check_config.expecteds.get(&best_match)
                 {
                     // We will soon sort, so the initial order does not matter.
                     #[allow(rustc::potential_query_instability)]
@@ -291,16 +323,13 @@ pub(super) fn builtin(sess: &Session, diagnostic: BuiltinLintDiagnostics, diag: 
                     }
                 }
                 if !possibilities.is_empty() {
-                    let mut possibilities =
-                        possibilities.iter().map(Symbol::as_str).collect::<Vec<_>>();
-                    possibilities.sort();
-                    let possibilities = possibilities.join("`, `");
-
-                    // The list of expected names can be long (even by default) and
-                    // so the diagnostic produced can take a lot of space. To avoid
-                    // cloging the user output we only want to print that diagnostic
-                    // once.
-                    diag.help_once(format!("expected names are: `{possibilities}`"));
+                    diag.help_once(check_cfg_expected_note(
+                        sess,
+                        &possibilities,
+                        "names",
+                        None,
+                        "",
+                    ));
                 }
             }
 
@@ -321,9 +350,8 @@ pub(super) fn builtin(sess: &Session, diagnostic: BuiltinLintDiagnostics, diag: 
                 diag.note("see <https://doc.rust-lang.org/nightly/unstable-book/compiler-flags/check-cfg.html> for more information about checking conditional configuration");
             }
         }
-        BuiltinLintDiagnostics::UnexpectedCfgValue((name, name_span), value) => {
-            let Some(ExpectedValues::Some(values)) =
-                &sess.parse_sess.check_config.expecteds.get(&name)
+        BuiltinLintDiag::UnexpectedCfgValue((name, name_span), value) => {
+            let Some(ExpectedValues::Some(values)) = &sess.psess.check_config.expecteds.get(&name)
             else {
                 bug!(
                     "it shouldn't be possible to have a diagnostic on a value whose name is not in values"
@@ -344,16 +372,13 @@ pub(super) fn builtin(sess: &Session, diagnostic: BuiltinLintDiagnostics, diag: 
             // Show the full list if all possible values for a given name, but don't do it
             // for names as the possibilities could be very long
             if !possibilities.is_empty() {
-                {
-                    let mut possibilities =
-                        possibilities.iter().map(Symbol::as_str).collect::<Vec<_>>();
-                    possibilities.sort();
-
-                    let possibilities = possibilities.join("`, `");
-                    let none = if have_none_possibility { "(none), " } else { "" };
-
-                    diag.note(format!("expected values for `{name}` are: {none}`{possibilities}`"));
-                }
+                diag.note(check_cfg_expected_note(
+                    sess,
+                    &possibilities,
+                    "values",
+                    Some(name),
+                    if have_none_possibility { "(none), " } else { "" },
+                ));
 
                 if let Some((value, value_span)) = value {
                     // Suggest the most probable if we found one
@@ -398,8 +423,7 @@ pub(super) fn builtin(sess: &Session, diagnostic: BuiltinLintDiagnostics, diag: 
             // We don't want to suggest adding values to well known names
             // since those are defined by rustc it-self. Users can still
             // do it if they want, but should not encourage them.
-            let is_cfg_a_well_know_name =
-                sess.parse_sess.check_config.well_known_names.contains(&name);
+            let is_cfg_a_well_know_name = sess.psess.check_config.well_known_names.contains(&name);
 
             let inst = if let Some((value, _value_span)) = value {
                 let pre = if is_from_cargo { "\\" } else { "" };
@@ -428,17 +452,24 @@ pub(super) fn builtin(sess: &Session, diagnostic: BuiltinLintDiagnostics, diag: 
                 diag.note("see <https://doc.rust-lang.org/nightly/unstable-book/compiler-flags/check-cfg.html> for more information about checking conditional configuration");
             }
         }
-        BuiltinLintDiagnostics::DeprecatedWhereclauseLocation(new_span, suggestion) => {
-            diag.multipart_suggestion(
-                "move it to the end of the type declaration",
-                vec![(diag.span.primary_span().unwrap(), "".to_string()), (new_span, suggestion)],
-                Applicability::MachineApplicable,
-            );
-            diag.note(
-                        "see issue #89122 <https://github.com/rust-lang/rust/issues/89122> for more information",
-                    );
+        BuiltinLintDiag::DeprecatedWhereclauseLocation(sugg) => {
+            let left_sp = diag.span.primary_span().unwrap();
+            match sugg {
+                Some((right_sp, sugg)) => diag.multipart_suggestion(
+                    "move it to the end of the type declaration",
+                    vec![(left_sp, String::new()), (right_sp, sugg)],
+                    Applicability::MachineApplicable,
+                ),
+                None => diag.span_suggestion(
+                    left_sp,
+                    "remove this `where`",
+                    "",
+                    Applicability::MachineApplicable,
+                ),
+            };
+            diag.note("see issue #89122 <https://github.com/rust-lang/rust/issues/89122> for more information");
         }
-        BuiltinLintDiagnostics::SingleUseLifetime {
+        BuiltinLintDiag::SingleUseLifetime {
             param_span,
             use_span: Some((use_span, elide)),
             deletion_span,
@@ -469,11 +500,7 @@ pub(super) fn builtin(sess: &Session, diagnostic: BuiltinLintDiagnostics, diag: 
                 diag.multipart_suggestion(msg, suggestions, Applicability::MachineApplicable);
             }
         }
-        BuiltinLintDiagnostics::SingleUseLifetime {
-            param_span: _,
-            use_span: None,
-            deletion_span,
-        } => {
+        BuiltinLintDiag::SingleUseLifetime { param_span: _, use_span: None, deletion_span } => {
             debug!(?deletion_span);
             if let Some(deletion_span) = deletion_span {
                 diag.span_suggestion(
@@ -484,7 +511,7 @@ pub(super) fn builtin(sess: &Session, diagnostic: BuiltinLintDiagnostics, diag: 
                 );
             }
         }
-        BuiltinLintDiagnostics::NamedArgumentUsedPositionally {
+        BuiltinLintDiag::NamedArgumentUsedPositionally {
             position_sp_to_replace,
             position_sp_for_msg,
             named_arg_sp,
@@ -520,13 +547,13 @@ pub(super) fn builtin(sess: &Session, diagnostic: BuiltinLintDiagnostics, diag: 
                 );
             }
         }
-        BuiltinLintDiagnostics::ByteSliceInPackedStructWithDerive => {
+        BuiltinLintDiag::ByteSliceInPackedStructWithDerive => {
             diag.help("consider implementing the trait by hand, or remove the `packed` attribute");
         }
-        BuiltinLintDiagnostics::UnusedExternCrate { removal_span } => {
+        BuiltinLintDiag::UnusedExternCrate { removal_span } => {
             diag.span_suggestion(removal_span, "remove it", "", Applicability::MachineApplicable);
         }
-        BuiltinLintDiagnostics::ExternCrateNotIdiomatic { vis_span, ident_span } => {
+        BuiltinLintDiag::ExternCrateNotIdiomatic { vis_span, ident_span } => {
             let suggestion_span = vis_span.between(ident_span);
             diag.span_suggestion_verbose(
                 suggestion_span,
@@ -535,10 +562,10 @@ pub(super) fn builtin(sess: &Session, diagnostic: BuiltinLintDiagnostics, diag: 
                 Applicability::MachineApplicable,
             );
         }
-        BuiltinLintDiagnostics::AmbiguousGlobImports { diag: ambiguity } => {
+        BuiltinLintDiag::AmbiguousGlobImports { diag: ambiguity } => {
             rustc_errors::report_ambiguity_error(diag, ambiguity);
         }
-        BuiltinLintDiagnostics::AmbiguousGlobReexports {
+        BuiltinLintDiag::AmbiguousGlobReexports {
             name,
             namespace,
             first_reexport_span,
@@ -555,7 +582,7 @@ pub(super) fn builtin(sess: &Session, diagnostic: BuiltinLintDiagnostics, diag: 
                 ),
             );
         }
-        BuiltinLintDiagnostics::HiddenGlobReexports {
+        BuiltinLintDiag::HiddenGlobReexports {
             name,
             namespace,
             glob_reexport_span,
@@ -564,7 +591,7 @@ pub(super) fn builtin(sess: &Session, diagnostic: BuiltinLintDiagnostics, diag: 
             diag.span_note(glob_reexport_span, format!("the name `{name}` in the {namespace} namespace is supposed to be publicly re-exported here"));
             diag.span_note(private_item_span, "but the private item here shadows it".to_owned());
         }
-        BuiltinLintDiagnostics::UnusedQualifications { removal_span } => {
+        BuiltinLintDiag::UnusedQualifications { removal_span } => {
             diag.span_suggestion_verbose(
                 removal_span,
                 "remove the unnecessary path segments",
@@ -572,7 +599,7 @@ pub(super) fn builtin(sess: &Session, diagnostic: BuiltinLintDiagnostics, diag: 
                 Applicability::MachineApplicable,
             );
         }
-        BuiltinLintDiagnostics::AssociatedConstElidedLifetime { elided, span } => {
+        BuiltinLintDiag::AssociatedConstElidedLifetime { elided, span } => {
             diag.span_suggestion_verbose(
                 if elided { span.shrink_to_hi() } else { span },
                 "use the `'static` lifetime",
@@ -580,7 +607,7 @@ pub(super) fn builtin(sess: &Session, diagnostic: BuiltinLintDiagnostics, diag: 
                 Applicability::MachineApplicable,
             );
         }
-        BuiltinLintDiagnostics::RedundantImportVisibility { max_vis, span } => {
+        BuiltinLintDiag::RedundantImportVisibility { max_vis, span } => {
             diag.span_note(span, format!("the most public imported item is `{max_vis}`"));
             diag.help(
                 "reduce the glob import's visibility or increase visibility of imported items",

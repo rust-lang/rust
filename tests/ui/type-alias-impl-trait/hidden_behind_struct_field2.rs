@@ -15,7 +15,7 @@ impl Trait for Bar {
     type Assoc = impl std::fmt::Debug;
     fn foo() -> Foo {
         Foo { field: () }
-        //~^ ERROR: item constrains opaque type that is not in its signature
+        //~^ ERROR: mismatched types
     }
 }
 

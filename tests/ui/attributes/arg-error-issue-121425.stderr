@@ -1,0 +1,40 @@
+error[E0693]: incorrect `repr(align)` attribute format: `align` expects a literal integer as argument
+  --> $DIR/arg-error-issue-121425.rs:4:14
+   |
+LL | #[repr(align(N))]
+   |              ^
+
+error[E0589]: invalid `repr(align)` attribute: not an unsuffixed integer
+  --> $DIR/arg-error-issue-121425.rs:8:14
+   |
+LL | #[repr(align('a'))]
+   |              ^^^
+
+error[E0589]: invalid `repr(align)` attribute: not an unsuffixed integer
+  --> $DIR/arg-error-issue-121425.rs:12:14
+   |
+LL | #[repr(align("str"))]
+   |              ^^^^^
+
+error[E0693]: incorrect `repr(align)` attribute format: `align` takes exactly one argument in parentheses
+  --> $DIR/arg-error-issue-121425.rs:16:8
+   |
+LL | #[repr(align())]
+   |        ^^^^^^^
+
+error[E0552]: incorrect `repr(packed)` attribute format: `packed` expects a literal integer as argument
+  --> $DIR/arg-error-issue-121425.rs:21:15
+   |
+LL | #[repr(packed(P))]
+   |               ^
+
+error[E0552]: incorrect `repr(packed)` attribute format: `packed` takes exactly one parenthesized argument, or no parentheses at all
+  --> $DIR/arg-error-issue-121425.rs:25:8
+   |
+LL | #[repr(packed())]
+   |        ^^^^^^^^
+
+error: aborting due to 6 previous errors
+
+Some errors have detailed explanations: E0552, E0589, E0693.
+For more information about an error, try `rustc --explain E0552`.

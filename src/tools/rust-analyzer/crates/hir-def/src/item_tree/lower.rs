@@ -2,10 +2,9 @@
 
 use std::collections::hash_map::Entry;
 
-use hir_expand::{
-    ast_id_map::AstIdMap, mod_path::path, name, name::AsName, span_map::SpanMapRef, HirFileId,
-};
+use hir_expand::{mod_path::path, name, name::AsName, span_map::SpanMapRef, HirFileId};
 use la_arena::Arena;
+use span::AstIdMap;
 use syntax::{
     ast::{self, HasModuleItem, HasName, HasTypeBounds, IsString},
     AstNode,

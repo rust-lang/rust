@@ -146,9 +146,9 @@ error: expected one of `,` or `>`, found `0`
   --> $DIR/bad-const-generic-exprs.rs:43:17
    |
 LL |     let _: Wow<!0>;
-   |         -       ^ expected one of `,` or `>`
-   |         |
-   |         while parsing the type for `_`
+   |          -      ^ expected one of `,` or `>`
+   |          |
+   |          while parsing the type for `_`
    |
 help: you might have meant to end the type parameters here
    |

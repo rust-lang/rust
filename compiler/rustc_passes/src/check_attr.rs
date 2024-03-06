@@ -1074,6 +1074,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
     /// of one item. Read the documentation of [`check_doc_inline`] for more information.
     ///
     /// [`check_doc_inline`]: Self::check_doc_inline
+    #[allow(rustc::untranslatable_diagnostic)] // FIXME: make this translatable
     fn check_doc_attrs(
         &self,
         attr: &Attribute,
@@ -1756,6 +1757,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
     }
 
     /// Checks if the `#[repr]` attributes on `item` are valid.
+    #[allow(rustc::untranslatable_diagnostic)] // FIXME: make this translatable
     fn check_repr(
         &self,
         attrs: &[Attribute],
@@ -2328,6 +2330,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
 
             let hir_sig = tcx.hir().fn_sig_by_hir_id(hir_id);
             if let Some(hir_sig) = hir_sig {
+                #[allow(rustc::diagnostic_outside_of_impl)] // FIXME
                 match terr {
                     TypeError::ArgumentMutability(idx) | TypeError::ArgumentSorts(_, idx) => {
                         if let Some(ty) = hir_sig.decl.inputs.get(idx) {

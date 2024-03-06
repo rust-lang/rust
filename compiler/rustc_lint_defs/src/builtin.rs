@@ -3586,18 +3586,9 @@ declare_lint! {
     /// being validated. Usually these should be rejected as a hard error,
     /// but this lint was introduced to avoid breaking any existing
     /// crates which included them.
-    ///
-    /// This is a [future-incompatible] lint to transition this to a hard
-    /// error in the future. See [issue #82730] for more details.
-    ///
-    /// [issue #82730]: https://github.com/rust-lang/rust/issues/82730
     pub INVALID_DOC_ATTRIBUTES,
-    Warn,
+    Deny,
     "detects invalid `#[doc(...)]` attributes",
-    @future_incompatible = FutureIncompatibleInfo {
-        reason: FutureIncompatibilityReason::FutureReleaseErrorDontReportInDeps,
-        reference: "issue #82730 <https://github.com/rust-lang/rust/issues/82730>",
-    };
 }
 
 declare_lint! {

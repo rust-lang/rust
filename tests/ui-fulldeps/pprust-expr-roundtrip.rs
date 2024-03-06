@@ -38,16 +38,16 @@ use rustc_ast::*;
 use rustc_ast_pretty::pprust;
 use rustc_parse::new_parser_from_source_str;
 use rustc_session::parse::ParseSess;
-use rustc_span::source_map::{FilePathMapping, Spanned};
+use rustc_span::source_map::Spanned;
 use rustc_span::symbol::Ident;
 use rustc_span::{FileName, DUMMY_SP};
 use thin_vec::{thin_vec, ThinVec};
 
-fn parse_expr(ps: &ParseSess, src: &str) -> Option<P<Expr>> {
+fn parse_expr(psess: &ParseSess, src: &str) -> Option<P<Expr>> {
     let src_as_string = src.to_string();
 
     let mut p =
-        new_parser_from_source_str(ps, FileName::Custom(src_as_string.clone()), src_as_string);
+        new_parser_from_source_str(psess, FileName::Custom(src_as_string.clone()), src_as_string);
     p.parse_expr().map_err(|e| e.cancel()).ok()
 }
 
@@ -225,7 +225,7 @@ fn main() {
 }
 
 fn run() {
-    let ps = ParseSess::new(vec![rustc_parse::DEFAULT_LOCALE_RESOURCE], FilePathMapping::empty());
+    let psess = ParseSess::new(vec![rustc_parse::DEFAULT_LOCALE_RESOURCE]);
 
     iter_exprs(2, &mut |mut e| {
         // If the pretty printer is correct, then `parse(print(e))` should be identical to `e`,
@@ -234,7 +234,7 @@ fn run() {
         println!("printed: {}", printed);
 
         // Ignore expressions with chained comparisons that fail to parse
-        if let Some(mut parsed) = parse_expr(&ps, &printed) {
+        if let Some(mut parsed) = parse_expr(&psess, &printed) {
             // We want to know if `parsed` is structurally identical to `e`, ignoring trivial
             // differences like placement of `Paren`s or the exact ranges of node spans.
             // Unfortunately, there is no easy way to make this comparison. Instead, we add `Paren`s

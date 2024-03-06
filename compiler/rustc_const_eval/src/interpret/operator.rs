@@ -389,12 +389,14 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 let left = left.to_scalar();
                 let right = right.to_scalar();
                 Ok(match fty {
+                    FloatTy::F16 => unimplemented!("f16_f128"),
                     FloatTy::F32 => {
                         self.binary_float_op(bin_op, layout, left.to_f32()?, right.to_f32()?)
                     }
                     FloatTy::F64 => {
                         self.binary_float_op(bin_op, layout, left.to_f64()?, right.to_f64()?)
                     }
+                    FloatTy::F128 => unimplemented!("f16_f128"),
                 })
             }
             _ if left.layout.ty.is_integral() => {

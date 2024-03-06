@@ -160,7 +160,7 @@ fn remap_mir_for_const_eval_select<'tcx>(
                 fn_span,
                 ..
             } if let ty::FnDef(def_id, _) = *const_.ty().kind()
-                && matches!(tcx.intrinsic(def_id), Some(sym::const_eval_select)) =>
+                && tcx.is_intrinsic(def_id, sym::const_eval_select) =>
             {
                 let [tupled_args, called_in_const, called_at_rt]: [_; 3] =
                     std::mem::take(args).try_into().unwrap();
@@ -632,6 +632,12 @@ fn optimized_mir(tcx: TyCtxt<'_>, did: LocalDefId) -> &Body<'_> {
 }
 
 fn inner_optimized_mir(tcx: TyCtxt<'_>, did: LocalDefId) -> Body<'_> {
+    if tcx.intrinsic(did).is_some_and(|i| i.must_be_overridden) {
+        span_bug!(
+            tcx.def_span(did),
+            "this intrinsic must be overridden by the codegen backend, it has no meaningful body",
+        )
+    }
     if tcx.is_constructor(did.to_def_id()) {
         // There's no reason to run all of the MIR passes on constructors when
         // we can just output the MIR we want directly. This also saves const

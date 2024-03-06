@@ -1,11 +1,12 @@
-// Test that we consider these two types completely equal:
+//@ check-pass
+
+// These types were previously considered equal as they are subtypes of each other.
+// This has been changed in #118247 and we now consider them to be disjoint.
 //
 // * `for<'a, 'b> fn(&'a u32, &'b u32)`
 // * `for<'c> fn(&'c u32, &'c u32)`
 //
-// For a long time we considered these to be distinct types. But in fact they
-// are equivalent, if you work through the implications of subtyping -- this is
-// because:
+// These types are subtypes of each other as:
 //
 // * `'c` can be the intersection of `'a` and `'b` (and there is always an intersection)
 // * `'a` and `'b` can both be equal to `'c`
@@ -13,7 +14,8 @@
 trait Trait {}
 impl Trait for for<'a, 'b> fn(&'a u32, &'b u32) {}
 impl Trait for for<'c> fn(&'c u32, &'c u32) {
-    //~^ ERROR conflicting implementations
+    //~^ WARN conflicting implementations of trait `Trait` for type `for<'a, 'b> fn(&'a u32, &'b u32)` [coherence_leak_check]
+    //~| WARN the behavior may change in a future release
     //
     // Note in particular that we do NOT get a future-compatibility warning
     // here. This is because the new leak-check proposed in [MCP 295] does not

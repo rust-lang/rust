@@ -320,6 +320,7 @@ macro_rules! redirect_field {
 type OptionSetter<O> = fn(&mut O, v: Option<&str>) -> bool;
 type OptionDescrs<O> = &'static [(&'static str, OptionSetter<O>, &'static str, &'static str)];
 
+#[allow(rustc::untranslatable_diagnostic)] // FIXME: make this translatable
 fn build_options<O: Default>(
     early_dcx: &EarlyDiagCtxt,
     matches: &getopts::Matches,
@@ -371,7 +372,8 @@ mod desc {
     pub const parse_list: &str = "a space-separated list of strings";
     pub const parse_list_with_polarity: &str =
         "a comma-separated list of strings, with elements beginning with + or -";
-    pub const parse_opt_comma_list: &str = "a comma-separated list of strings";
+    pub const parse_comma_list: &str = "a comma-separated list of strings";
+    pub const parse_opt_comma_list: &str = parse_comma_list;
     pub const parse_number: &str = "a number";
     pub const parse_opt_number: &str = parse_number;
     pub const parse_threads: &str = parse_number;
@@ -381,7 +383,7 @@ mod desc {
     pub const parse_opt_panic_strategy: &str = parse_panic_strategy;
     pub const parse_oom_strategy: &str = "either `panic` or `abort`";
     pub const parse_relro_level: &str = "one of: `full`, `partial`, or `off`";
-    pub const parse_sanitizers: &str = "comma separated list of sanitizers: `address`, `cfi`, `hwaddress`, `kcfi`, `kernel-address`, `leak`, `memory`, `memtag`, `safestack`, `shadow-call-stack`, or `thread`";
+    pub const parse_sanitizers: &str = "comma separated list of sanitizers: `address`, `cfi`, `dataflow`, `hwaddress`, `kcfi`, `kernel-address`, `leak`, `memory`, `memtag`, `safestack`, `shadow-call-stack`, or `thread`";
     pub const parse_sanitizer_memory_track_origins: &str = "0, 1, or 2";
     pub const parse_cfguard: &str =
         "either a boolean (`yes`, `no`, `on`, `off`, etc), `checks`, or `nochecks`";
@@ -393,8 +395,7 @@ mod desc {
     pub const parse_linker_flavor: &str = ::rustc_target::spec::LinkerFlavorCli::one_of();
     pub const parse_optimization_fuel: &str = "crate=integer";
     pub const parse_dump_mono_stats: &str = "`markdown` (default) or `json`";
-    pub const parse_instrument_coverage: &str =
-        "`all` (default), `branch`, `except-unused-generics`, `except-unused-functions`, or `off`";
+    pub const parse_instrument_coverage: &str = "either a boolean (`yes`, `no`, `on`, `off`, etc) or (unstable) one of `branch`, `except-unused-generics`, `except-unused-functions`";
     pub const parse_instrument_xray: &str = "either a boolean (`yes`, `no`, `on`, `off`, etc), or a comma separated list of settings: `always` or `never` (mutually exclusive), `ignore-loops`, `instruction-threshold=N`, `skip-entry`, `skip-exit`";
     pub const parse_unpretty: &str = "`string` or `string=string`";
     pub const parse_treat_err_as_bug: &str = "either no value or a non-negative number";
@@ -602,6 +603,18 @@ mod parse {
         }
     }
 
+    pub(crate) fn parse_comma_list(slot: &mut Vec<String>, v: Option<&str>) -> bool {
+        match v {
+            Some(s) => {
+                let mut v: Vec<_> = s.split(',').map(|s| s.to_string()).collect();
+                v.sort_unstable();
+                *slot = v;
+                true
+            }
+            None => false,
+        }
+    }
+
     pub(crate) fn parse_opt_comma_list(slot: &mut Option<Vec<String>>, v: Option<&str>) -> bool {
         match v {
             Some(s) => {
@@ -718,6 +731,7 @@ mod parse {
                 *slot |= match s {
                     "address" => SanitizerSet::ADDRESS,
                     "cfi" => SanitizerSet::CFI,
+                    "dataflow" => SanitizerSet::DATAFLOW,
                     "kcfi" => SanitizerSet::KCFI,
                     "kernel-address" => SanitizerSet::KERNELADDRESS,
                     "leak" => SanitizerSet::LEAK,
@@ -904,18 +918,18 @@ mod parse {
         if v.is_some() {
             let mut bool_arg = false;
             if parse_bool(&mut bool_arg, v) {
-                *slot = if bool_arg { InstrumentCoverage::All } else { InstrumentCoverage::Off };
+                *slot = if bool_arg { InstrumentCoverage::Yes } else { InstrumentCoverage::No };
                 return true;
             }
         }
 
         let Some(v) = v else {
-            *slot = InstrumentCoverage::All;
+            *slot = InstrumentCoverage::Yes;
             return true;
         };
 
         *slot = match v {
-            "all" => InstrumentCoverage::All,
+            "all" => InstrumentCoverage::Yes,
             "branch" => InstrumentCoverage::Branch,
             "except-unused-generics" | "except_unused_generics" => {
                 InstrumentCoverage::ExceptUnusedGenerics
@@ -923,7 +937,7 @@ mod parse {
             "except-unused-functions" | "except_unused_functions" => {
                 InstrumentCoverage::ExceptUnusedFunctions
             }
-            "off" | "no" | "n" | "false" | "0" => InstrumentCoverage::Off,
+            "0" => InstrumentCoverage::No,
             _ => return false,
         };
         true
@@ -1430,15 +1444,15 @@ options! {
     inline_threshold: Option<u32> = (None, parse_opt_number, [TRACKED],
         "set the threshold for inlining a function"),
     #[rustc_lint_opt_deny_field_access("use `Session::instrument_coverage` instead of this field")]
-    instrument_coverage: InstrumentCoverage = (InstrumentCoverage::Off, parse_instrument_coverage, [TRACKED],
+    instrument_coverage: InstrumentCoverage = (InstrumentCoverage::No, parse_instrument_coverage, [TRACKED],
         "instrument the generated code to support LLVM source-based code coverage \
         reports (note, the compiler build config must include `profiler = true`); \
         implies `-C symbol-mangling-version=v0`. Optional values are:
-        `=all` (implicit value)
-        `=branch`
-        `=except-unused-generics`
-        `=except-unused-functions`
-        `=off` (default)"),
+        `=no` `=n` `=off` `=false` (default)
+        `=yes` `=y` `=on` `=true` (implicit value)
+        `=branch` (unstable)
+        `=except-unused-generics` (unstable)
+        `=except-unused-functions` (unstable)"),
     link_arg: (/* redirected to link_args */) = ((), parse_string_push, [UNTRACKED],
         "a single extra argument to append to the linker invocation (can be used several times)"),
     link_args: Vec<String> = (Vec::new(), parse_list, [UNTRACKED],
@@ -1551,6 +1565,8 @@ options! {
         "set options for branch target identification and pointer authentication on AArch64"),
     cf_protection: CFProtection = (CFProtection::None, parse_cfprotection, [TRACKED],
         "instrument control-flow architecture protection"),
+    check_cfg_all_expected: bool = (false, parse_bool, [UNTRACKED],
+        "show all expected values in check-cfg diagnostics (default: no)"),
     codegen_backend: Option<String> = (None, parse_opt_string, [TRACKED],
         "the backend to use"),
     collapse_macro_debuginfo: CollapseMacroDebuginfo = (CollapseMacroDebuginfo::Unspecified,
@@ -1846,6 +1862,8 @@ written to standard error output)"),
         "enable generalizing pointer types (default: no)"),
     sanitizer_cfi_normalize_integers: Option<bool> = (None, parse_opt_bool, [TRACKED],
         "enable normalizing integer types (default: no)"),
+    sanitizer_dataflow_abilist: Vec<String> = (Vec::new(), parse_comma_list, [TRACKED],
+        "additional ABI list files that control how shadow parameters are passed (comma separated)"),
     sanitizer_memory_track_origins: usize = (0, parse_sanitizer_memory_track_origins, [TRACKED],
         "enable origins tracking in MemorySanitizer"),
     sanitizer_recover: SanitizerSet = (SanitizerSet::empty(), parse_sanitizers, [TRACKED],

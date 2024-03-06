@@ -7,7 +7,7 @@ use crate::fluent_generated as fluent;
 use rustc_ast::Label;
 use rustc_errors::{
     codes::*, AddToDiagnostic, Applicability, Diag, DiagCtxt, DiagSymbolList, EmissionGuarantee,
-    IntoDiagnostic, Level, MultiSpan, SubdiagnosticMessageOp,
+    IntoDiagnostic, Level, MultiSpan, SubdiagMessageOp,
 };
 use rustc_hir::{self as hir, ExprKind, Target};
 use rustc_macros::{Diagnostic, LintDiagnostic, Subdiagnostic};
@@ -1752,7 +1752,7 @@ pub struct UnusedVariableStringInterp {
 }
 
 impl AddToDiagnostic for UnusedVariableStringInterp {
-    fn add_to_diagnostic_with<G: EmissionGuarantee, F: SubdiagnosticMessageOp<G>>(
+    fn add_to_diagnostic_with<G: EmissionGuarantee, F: SubdiagMessageOp<G>>(
         self,
         diag: &mut Diag<'_, G>,
         _f: F,

@@ -170,6 +170,12 @@ pub(crate) struct IncorrectReprFormatPackedOneOrZeroArg {
     #[primary_span]
     pub span: Span,
 }
+#[derive(Diagnostic)]
+#[diag(attr_incorrect_repr_format_packed_expect_integer, code = E0552)]
+pub(crate) struct IncorrectReprFormatPackedExpectInteger {
+    #[primary_span]
+    pub span: Span,
+}
 
 #[derive(Diagnostic)]
 #[diag(attr_invalid_repr_hint_no_paren, code = E0552)]
@@ -248,6 +254,13 @@ pub(crate) struct InvalidReprGeneric<'a> {
 #[derive(Diagnostic)]
 #[diag(attr_incorrect_repr_format_align_one_arg, code = E0693)]
 pub(crate) struct IncorrectReprFormatAlignOneArg {
+    #[primary_span]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(attr_incorrect_repr_format_expect_literal_integer, code = E0693)]
+pub(crate) struct IncorrectReprFormatExpectInteger {
     #[primary_span]
     pub span: Span,
 }

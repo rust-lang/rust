@@ -4,7 +4,7 @@ use rustc_hir::def::{DefKind, Namespace, NonMacroAttrKind, PartialRes, PerNS};
 use rustc_middle::bug;
 use rustc_middle::ty;
 use rustc_session::lint::builtin::PROC_MACRO_DERIVE_RESOLUTION_FALLBACK;
-use rustc_session::lint::BuiltinLintDiagnostics;
+use rustc_session::lint::BuiltinLintDiag;
 use rustc_span::def_id::LocalDefId;
 use rustc_span::hygiene::{ExpnId, ExpnKind, LocalExpnId, MacroKind, SyntaxContext};
 use rustc_span::symbol::{kw, Ident};
@@ -530,7 +530,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                                             ns.descr(),
                                             ident
                                         ),
-                                        BuiltinLintDiagnostics::ProcMacroDeriveResolutionFallback(
+                                        BuiltinLintDiag::ProcMacroDeriveResolutionFallback(
                                             orig_ident.span,
                                         ),
                                     );
@@ -868,7 +868,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             .into_iter()
             .find_map(|binding| if binding == ignore_binding { None } else { binding });
 
-        if let Some(Finalize { path_span, report_private, used, .. }) = finalize {
+        if let Some(Finalize { path_span, report_private, used, root_span, .. }) = finalize {
             let Some(binding) = binding else {
                 return Err((Determined, Weak::No));
             };
@@ -881,6 +881,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                         dedup_span: path_span,
                         outermost_res: None,
                         parent_scope: *parent_scope,
+                        single_nested: path_span != root_span,
                     });
                 } else {
                     return Err((Determined, Weak::No));

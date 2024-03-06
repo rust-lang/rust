@@ -297,8 +297,10 @@ impl<'tcx> Stable<'tcx> for ty::FloatTy {
 
     fn stable(&self, _: &mut Tables<'_>) -> Self::T {
         match self {
+            ty::FloatTy::F16 => unimplemented!("f16_f128"),
             ty::FloatTy::F32 => FloatTy::F32,
             ty::FloatTy::F64 => FloatTy::F64,
+            ty::FloatTy::F128 => unimplemented!("f16_f128"),
         }
     }
 }

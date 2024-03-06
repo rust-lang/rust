@@ -23,6 +23,10 @@ fn cross_crate_inlinable(tcx: TyCtxt<'_>, def_id: LocalDefId) -> bool {
         return false;
     }
 
+    if tcx.intrinsic(def_id).is_some_and(|i| i.must_be_overridden) {
+        return false;
+    }
+
     // This just reproduces the logic from Instance::requires_inline.
     match tcx.def_kind(def_id) {
         DefKind::Ctor(..) | DefKind::Closure => return true,

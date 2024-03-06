@@ -141,8 +141,10 @@ fn layout_of_uncached<'tcx>(
         ty::Int(ity) => scalar(Int(Integer::from_int_ty(dl, ity), true)),
         ty::Uint(ity) => scalar(Int(Integer::from_uint_ty(dl, ity), false)),
         ty::Float(fty) => scalar(match fty {
+            ty::FloatTy::F16 => F16,
             ty::FloatTy::F32 => F32,
             ty::FloatTy::F64 => F64,
+            ty::FloatTy::F128 => F128,
         }),
         ty::FnPtr(_) => {
             let mut ptr = scalar_unit(Pointer(dl.instruction_address_space));

@@ -1,9 +1,8 @@
 use rustc_data_structures::fx::FxHashSet;
-use rustc_middle::ty::visit::{TypeSuperVisitable, TypeVisitable, TypeVisitor};
+use rustc_middle::ty::visit::{TypeSuperVisitable, TypeVisitor};
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_span::Span;
 use rustc_type_ir::fold::TypeFoldable;
-use std::ops::ControlFlow;
 
 #[derive(Clone, PartialEq, Eq, Hash, Debug)]
 pub struct Parameter(pub u32);
@@ -61,13 +60,13 @@ struct ParameterCollector {
 }
 
 impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for ParameterCollector {
-    fn visit_ty(&mut self, t: Ty<'tcx>) -> ControlFlow<Self::BreakTy> {
+    fn visit_ty(&mut self, t: Ty<'tcx>) {
         match *t.kind() {
             // Projections are not injective in general.
             ty::Alias(ty::Projection | ty::Inherent | ty::Opaque, _)
                 if !self.include_nonconstraining =>
             {
-                return ControlFlow::Continue(());
+                return;
             }
             // All weak alias types should've been expanded beforehand.
             ty::Alias(ty::Weak, _) if !self.include_nonconstraining => {
@@ -80,18 +79,17 @@ impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for ParameterCollector {
         t.super_visit_with(self)
     }
 
-    fn visit_region(&mut self, r: ty::Region<'tcx>) -> ControlFlow<Self::BreakTy> {
+    fn visit_region(&mut self, r: ty::Region<'tcx>) {
         if let ty::ReEarlyParam(data) = *r {
             self.parameters.push(Parameter::from(data));
         }
-        ControlFlow::Continue(())
     }
 
-    fn visit_const(&mut self, c: ty::Const<'tcx>) -> ControlFlow<Self::BreakTy> {
+    fn visit_const(&mut self, c: ty::Const<'tcx>) {
         match c.kind() {
             ty::ConstKind::Unevaluated(..) if !self.include_nonconstraining => {
                 // Constant expressions are not injective in general.
-                return c.ty().visit_with(self);
+                return;
             }
             ty::ConstKind::Param(data) => {
                 self.parameters.push(Parameter::from(data));

@@ -5,7 +5,6 @@
 struct Foo;
 
 
-
 // shouldn't cause an error
 struct Bar;
 
@@ -17,7 +16,6 @@ impl Drop for Bar {
 
 // should error
 struct Baz;
-
 
 
 fn main() {}

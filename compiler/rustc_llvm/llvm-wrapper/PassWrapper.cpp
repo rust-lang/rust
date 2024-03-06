@@ -42,6 +42,7 @@
 #endif
 #include "llvm/Transforms/Instrumentation.h"
 #include "llvm/Transforms/Instrumentation/AddressSanitizer.h"
+#include "llvm/Transforms/Instrumentation/DataFlowSanitizer.h"
 #include "llvm/Support/TimeProfiler.h"
 #if LLVM_VERSION_GE(19, 0)
 #include "llvm/Support/PGOOptions.h"
@@ -686,6 +687,9 @@ struct LLVMRustSanitizerOptions {
   bool SanitizeAddress;
   bool SanitizeAddressRecover;
   bool SanitizeCFI;
+  bool SanitizeDataFlow;
+  char **SanitizeDataFlowABIList;
+  size_t SanitizeDataFlowABIListLen;
   bool SanitizeKCFI;
   bool SanitizeMemory;
   bool SanitizeMemoryRecover;
@@ -883,6 +887,18 @@ LLVMRustOptimize(
   }
 
   if (SanitizerOptions) {
+    if (SanitizerOptions->SanitizeDataFlow) {
+      std::vector<std::string> ABIListFiles(
+          SanitizerOptions->SanitizeDataFlowABIList,
+          SanitizerOptions->SanitizeDataFlowABIList +
+              SanitizerOptions->SanitizeDataFlowABIListLen);
+      OptimizerLastEPCallbacks.push_back(
+        [ABIListFiles](ModulePassManager &MPM, OptimizationLevel Level) {
+          MPM.addPass(DataFlowSanitizerPass(ABIListFiles));
+        }
+      );
+    }
+
     if (SanitizerOptions->SanitizeMemory) {
       MemorySanitizerOptions Options(
           SanitizerOptions->SanitizeMemoryTrackOrigins,

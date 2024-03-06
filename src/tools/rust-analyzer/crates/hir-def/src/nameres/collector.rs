@@ -9,7 +9,6 @@ use base_db::{CrateId, Dependency, Edition, FileId};
 use cfg::{CfgExpr, CfgOptions};
 use either::Either;
 use hir_expand::{
-    ast_id_map::FileAstId,
     attrs::{Attr, AttrId},
     builtin_attr_macro::{find_builtin_attr, BuiltinAttrExpander},
     builtin_derive_macro::find_builtin_derive,
@@ -23,7 +22,7 @@ use itertools::{izip, Itertools};
 use la_arena::Idx;
 use limit::Limit;
 use rustc_hash::{FxHashMap, FxHashSet};
-use span::{ErasedFileAstId, Span, SyntaxContextId};
+use span::{ErasedFileAstId, FileAstId, Span, SyntaxContextId};
 use stdx::always;
 use syntax::{ast, SmolStr};
 use triomphe::Arc;

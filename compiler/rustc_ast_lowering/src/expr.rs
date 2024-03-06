@@ -125,12 +125,8 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     let lit_kind = match LitKind::from_token_lit(*token_lit) {
                         Ok(lit_kind) => lit_kind,
                         Err(err) => {
-                            let guar = report_lit_error(
-                                &self.tcx.sess.parse_sess,
-                                err,
-                                *token_lit,
-                                e.span,
-                            );
+                            let guar =
+                                report_lit_error(&self.tcx.sess.psess, err, *token_lit, e.span);
                             LitKind::Err(guar)
                         }
                     };
@@ -721,7 +717,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                         sym::track_caller,
                         span,
                     )))),
-                    id: self.tcx.sess.parse_sess.attr_id_generator.mk_attr_id(),
+                    id: self.tcx.sess.psess.attr_id_generator.mk_attr_id(),
                     style: AttrStyle::Outer,
                     span: unstable_span,
                 }],
@@ -764,10 +760,28 @@ impl<'hir> LoweringContext<'_, 'hir> {
             Some(hir::CoroutineKind::Coroutine(_))
             | Some(hir::CoroutineKind::Desugared(hir::CoroutineDesugaring::Gen, _))
             | None => {
-                return hir::ExprKind::Err(self.dcx().emit_err(AwaitOnlyInAsyncFnAndBlocks {
-                    await_kw_span,
-                    item_span: self.current_item,
-                }));
+                // Lower to a block `{ EXPR; <error> }` so that the awaited expr
+                // is not accidentally orphaned.
+                let stmt_id = self.next_id();
+                let expr_err = self.expr(
+                    expr.span,
+                    hir::ExprKind::Err(self.dcx().emit_err(AwaitOnlyInAsyncFnAndBlocks {
+                        await_kw_span,
+                        item_span: self.current_item,
+                    })),
+                );
+                return hir::ExprKind::Block(
+                    self.block_all(
+                        expr.span,
+                        arena_vec![self; hir::Stmt {
+                            hir_id: stmt_id,
+                            kind: hir::StmtKind::Semi(expr),
+                            span: expr.span,
+                        }],
+                        Some(self.arena.alloc(expr_err)),
+                    ),
+                    None,
+                );
             }
         };
 
@@ -1499,13 +1513,33 @@ impl<'hir> LoweringContext<'_, 'hir> {
         }
     }
 
+    #[allow(rustc::untranslatable_diagnostic)] // FIXME: make this translatable
     fn lower_expr_yield(&mut self, span: Span, opt_expr: Option<&Expr>) -> hir::ExprKind<'hir> {
+        let yielded =
+            opt_expr.as_ref().map(|x| self.lower_expr(x)).unwrap_or_else(|| self.expr_unit(span));
+
         let is_async_gen = match self.coroutine_kind {
             Some(hir::CoroutineKind::Desugared(hir::CoroutineDesugaring::Gen, _)) => false,
             Some(hir::CoroutineKind::Desugared(hir::CoroutineDesugaring::AsyncGen, _)) => true,
             Some(hir::CoroutineKind::Desugared(hir::CoroutineDesugaring::Async, _)) => {
-                return hir::ExprKind::Err(
-                    self.dcx().emit_err(AsyncCoroutinesNotSupported { span }),
+                // Lower to a block `{ EXPR; <error> }` so that the awaited expr
+                // is not accidentally orphaned.
+                let stmt_id = self.next_id();
+                let expr_err = self.expr(
+                    yielded.span,
+                    hir::ExprKind::Err(self.dcx().emit_err(AsyncCoroutinesNotSupported { span })),
+                );
+                return hir::ExprKind::Block(
+                    self.block_all(
+                        yielded.span,
+                        arena_vec![self; hir::Stmt {
+                            hir_id: stmt_id,
+                            kind: hir::StmtKind::Semi(yielded),
+                            span: yielded.span,
+                        }],
+                        Some(self.arena.alloc(expr_err)),
+                    ),
+                    None,
                 );
             }
             Some(hir::CoroutineKind::Coroutine(_)) => {
@@ -1534,9 +1568,6 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 false
             }
         };
-
-        let yielded =
-            opt_expr.as_ref().map(|x| self.lower_expr(x)).unwrap_or_else(|| self.expr_unit(span));
 
         if is_async_gen {
             // `yield $expr` is transformed into `task_context = yield async_gen_ready($expr)`.
@@ -1756,7 +1787,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
 
         // `#[allow(unreachable_code)]`
         let attr = attr::mk_attr_nested_word(
-            &self.tcx.sess.parse_sess.attr_id_generator,
+            &self.tcx.sess.psess.attr_id_generator,
             AttrStyle::Outer,
             sym::allow,
             sym::unreachable_code,

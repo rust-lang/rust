@@ -2,9 +2,9 @@ error: expected one of `,`, `:`, or `>`, found `=`
   --> $DIR/missing-closing-angle-bracket-eq-constraint.rs:7:23
    |
 LL |   let v : Vec<(u32,_) = vec![];
-   |       -               ^ expected one of `,`, `:`, or `>`
-   |       |
-   |       while parsing the type for `v`
+   |         -             ^ expected one of `,`, `:`, or `>`
+   |         |
+   |         while parsing the type for `v`
    |
 help: you might have meant to end the type parameters here
    |
@@ -15,9 +15,9 @@ error: expected one of `!`, `(`, `+`, `,`, `::`, `<`, or `>`, found `{`
   --> $DIR/missing-closing-angle-bracket-eq-constraint.rs:13:32
    |
 LL |   let foo : Foo::<T1, T2 = Foo {_a : arg1, _b : arg2};
-   |       ---                      ^ expected one of 7 possible tokens
-   |       |
-   |       while parsing the type for `foo`
+   |           -                    ^ expected one of 7 possible tokens
+   |           |
+   |           while parsing the type for `foo`
    |
 help: you might have meant to end the type parameters here
    |
@@ -28,9 +28,9 @@ error: expected one of `,`, `:`, or `>`, found `=`
   --> $DIR/missing-closing-angle-bracket-eq-constraint.rs:18:18
    |
 LL |   let v : Vec<'a = vec![];
-   |       -          ^ expected one of `,`, `:`, or `>`
-   |       |
-   |       while parsing the type for `v`
+   |         -        ^ expected one of `,`, `:`, or `>`
+   |         |
+   |         while parsing the type for `v`
    |
 help: you might have meant to end the type parameters here
    |

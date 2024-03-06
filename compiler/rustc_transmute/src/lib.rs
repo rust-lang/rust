@@ -49,8 +49,8 @@ pub enum Reason {
     DstIsUnspecified,
     /// The layout of the destination type is bit-incompatible with the source type.
     DstIsBitIncompatible,
-    /// There aren't any public constructors for `Dst`.
-    DstIsPrivate,
+    /// The destination type may carry safety invariants.
+    DstMayHaveSafetyInvariants,
     /// `Dst` is larger than `Src`, and the excess bytes were not exclusively uninitialized.
     DstIsTooBig,
     /// Src should have a stricter alignment than Dst, but it does not.
@@ -106,13 +106,11 @@ mod rustc {
             &mut self,
             cause: ObligationCause<'tcx>,
             types: Types<'tcx>,
-            scope: Ty<'tcx>,
             assume: crate::Assume,
         ) -> crate::Answer<crate::layout::rustc::Ref<'tcx>> {
             crate::maybe_transmutable::MaybeTransmutableQuery::new(
                 types.src,
                 types.dst,
-                scope,
                 assume,
                 self.infcx.tcx,
             )

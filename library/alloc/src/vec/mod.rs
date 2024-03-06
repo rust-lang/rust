@@ -1490,6 +1490,12 @@ impl<T, A: Allocator> Vec<T, A> {
     /// vec.insert(4, 5);
     /// assert_eq!(vec, [1, 4, 2, 3, 5]);
     /// ```
+    ///
+    /// # Time complexity
+    ///
+    /// Takes *O*([`Vec::len`]) time. All items after the insertion index must be
+    /// shifted to the right. In the worst case, all elements are shifted when
+    /// the insertion index is 0.
     #[cfg(not(no_global_oom_handling))]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn insert(&mut self, index: usize, element: T) {
@@ -1913,6 +1919,13 @@ impl<T, A: Allocator> Vec<T, A> {
     /// vec.push(3);
     /// assert_eq!(vec, [1, 2, 3]);
     /// ```
+    ///
+    /// # Time complexity
+    ///
+    /// Takes amortized *O*(1) time. If the vector's length would exceed its
+    /// capacity after the push, *O*(*capacity*) time is taken to copy the
+    /// vector's elements to a larger allocation. This expensive operation is
+    /// offset by the *capacity* *O*(1) insertions it allows.
     #[cfg(not(no_global_oom_handling))]
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
@@ -1961,6 +1974,10 @@ impl<T, A: Allocator> Vec<T, A> {
     /// }
     /// assert_eq!(from_iter_fallible(0..100), Ok(Vec::from_iter(0..100)));
     /// ```
+    ///
+    /// # Time complexity
+    ///
+    /// Takes *O*(1) time.
     #[inline]
     #[unstable(feature = "vec_push_within_capacity", issue = "100486")]
     pub fn push_within_capacity(&mut self, value: T) -> Result<(), T> {
@@ -1990,6 +2007,10 @@ impl<T, A: Allocator> Vec<T, A> {
     /// assert_eq!(vec.pop(), Some(3));
     /// assert_eq!(vec, [1, 2]);
     /// ```
+    ///
+    /// # Time complexity
+    ///
+    /// Takes *O*(1) time.
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn pop(&mut self) -> Option<T> {

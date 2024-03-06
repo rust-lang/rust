@@ -17,12 +17,13 @@ use std::path::{Path, PathBuf};
 const ENTRY_LIMIT: usize = 900;
 // FIXME: The following limits should be reduced eventually.
 
-const ISSUES_ENTRY_LIMIT: usize = 1781;
-const ROOT_ENTRY_LIMIT: usize = 872;
+const ISSUES_ENTRY_LIMIT: usize = 1750;
+const ROOT_ENTRY_LIMIT: usize = 866;
 
 const EXPECTED_TEST_FILE_EXTENSIONS: &[&str] = &[
     "rs",     // test source files
     "stderr", // expected stderr file, corresponds to a rs file
+    "svg",    // expected svg file, corresponds to a rs file, equivalent to stderr
     "stdout", // expected stdout file, corresponds to a rs file
     "fixed",  // expected source file after applying fixes
     "md",     // test directory descriptions
@@ -33,8 +34,8 @@ const EXTENSION_EXCEPTION_PATHS: &[&str] = &[
     "tests/ui/asm/named-asm-labels.s", // loading an external asm file to test named labels lint
     "tests/ui/codegen/mismatched-data-layout.json", // testing mismatched data layout w/ custom targets
     "tests/ui/check-cfg/my-awesome-platform.json",  // testing custom targets with cfgs
-    "tests/ui/commandline-argfile-badutf8.args",    // passing args via a file
-    "tests/ui/commandline-argfile.args",            // passing args via a file
+    "tests/ui/argfile/commandline-argfile-badutf8.args", // passing args via a file
+    "tests/ui/argfile/commandline-argfile.args",    // passing args via a file
     "tests/ui/crate-loading/auxiliary/libfoo.rlib", // testing loading a manually created rlib
     "tests/ui/include-macros/data.bin", // testing including data with the include macros
     "tests/ui/include-macros/file.txt", // testing including data with the include macros
@@ -43,6 +44,7 @@ const EXTENSION_EXCEPTION_PATHS: &[&str] = &[
     "tests/ui/macros/syntax-extension-source-utils-files/includeme.fragment", // more include
     "tests/ui/proc-macro/auxiliary/included-file.txt", // more include
     "tests/ui/invalid/foo.natvis.xml", // sample debugger visualizer
+    "tests/ui/sanitizer/dataflow-abilist.txt", // dataflow sanitizer ABI list file
     "tests/ui/shell-argfiles/shell-argfiles.args", // passing args via a file
     "tests/ui/shell-argfiles/shell-argfiles-badquotes.args", // passing args via a file
     "tests/ui/shell-argfiles/shell-argfiles-via-argfile-shell.args", // passing args via a file

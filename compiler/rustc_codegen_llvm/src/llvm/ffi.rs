@@ -480,6 +480,9 @@ pub struct SanitizerOptions {
     pub sanitize_address: bool,
     pub sanitize_address_recover: bool,
     pub sanitize_cfi: bool,
+    pub sanitize_dataflow: bool,
+    pub sanitize_dataflow_abilist: *const *const c_char,
+    pub sanitize_dataflow_abilist_len: size_t,
     pub sanitize_kcfi: bool,
     pub sanitize_memory: bool,
     pub sanitize_memory_recover: bool,
@@ -858,8 +861,10 @@ extern "C" {
     pub fn LLVMGetIntTypeWidth(IntegerTy: &Type) -> c_uint;
 
     // Operations on real types
+    pub fn LLVMHalfTypeInContext(C: &Context) -> &Type;
     pub fn LLVMFloatTypeInContext(C: &Context) -> &Type;
     pub fn LLVMDoubleTypeInContext(C: &Context) -> &Type;
+    pub fn LLVMFP128TypeInContext(C: &Context) -> &Type;
 
     // Operations on function types
     pub fn LLVMFunctionType<'a>(
@@ -1299,13 +1304,6 @@ extern "C" {
         Pointer: &'a Value,
         Indices: *const &'a Value,
         NumIndices: c_uint,
-        Name: *const c_char,
-    ) -> &'a Value;
-    pub fn LLVMBuildStructGEP2<'a>(
-        B: &Builder<'a>,
-        Ty: &'a Type,
-        Pointer: &'a Value,
-        Idx: c_uint,
         Name: *const c_char,
     ) -> &'a Value;
 

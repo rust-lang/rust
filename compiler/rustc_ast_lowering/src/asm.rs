@@ -22,6 +22,7 @@ use std::collections::hash_map::Entry;
 use std::fmt::Write;
 
 impl<'a, 'hir> LoweringContext<'a, 'hir> {
+    #[allow(rustc::untranslatable_diagnostic)] // FIXME: make this translatable
     pub(crate) fn lower_inline_asm(
         &mut self,
         sp: Span,

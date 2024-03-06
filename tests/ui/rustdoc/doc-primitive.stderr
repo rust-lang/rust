@@ -4,8 +4,6 @@ error: unknown `doc` attribute `primitive`
 LL | #[doc(primitive = "foo")]
    |       ^^^^^^^^^^^^^^^^^
    |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = note: for more information, see issue #82730 <https://github.com/rust-lang/rust/issues/82730>
 note: the lint level is defined here
   --> $DIR/doc-primitive.rs:1:9
    |

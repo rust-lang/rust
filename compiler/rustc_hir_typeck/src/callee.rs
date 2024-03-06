@@ -545,7 +545,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         if let Some(def_id) = def_id
             && self.tcx.def_kind(def_id) == hir::def::DefKind::Fn
-            && matches!(self.tcx.intrinsic(def_id), Some(sym::const_eval_select))
+            && self.tcx.is_intrinsic(def_id, sym::const_eval_select)
         {
             let fn_sig = self.resolve_vars_if_possible(fn_sig);
             for idx in 0..=1 {

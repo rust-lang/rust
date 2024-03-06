@@ -1,8 +1,7 @@
 use std::borrow::Cow;
 
 use rustc_errors::{
-    codes::*, Diag, DiagArgValue, DiagCtxt, DiagnosticMessage, EmissionGuarantee, IntoDiagnostic,
-    Level,
+    codes::*, Diag, DiagArgValue, DiagCtxt, DiagMessage, EmissionGuarantee, IntoDiagnostic, Level,
 };
 use rustc_hir::ConstContext;
 use rustc_macros::{Diagnostic, LintDiagnostic, Subdiagnostic};
@@ -424,7 +423,7 @@ pub struct UndefinedBehavior {
 
 pub trait ReportErrorExt {
     /// Returns the diagnostic message for this error.
-    fn diagnostic_message(&self) -> DiagnosticMessage;
+    fn diagnostic_message(&self) -> DiagMessage;
     fn add_args<G: EmissionGuarantee>(self, diag: &mut Diag<'_, G>);
 
     fn debug(self) -> String
@@ -433,7 +432,7 @@ pub trait ReportErrorExt {
     {
         ty::tls::with(move |tcx| {
             let dcx = tcx.dcx();
-            let mut diag = dcx.struct_allow(DiagnosticMessage::Str(String::new().into()));
+            let mut diag = dcx.struct_allow(DiagMessage::Str(String::new().into()));
             let message = self.diagnostic_message();
             self.add_args(&mut diag);
             let s = dcx.eagerly_translate_to_string(message, diag.args.iter());
@@ -457,7 +456,7 @@ fn bad_pointer_message(msg: CheckInAllocMsg, dcx: &DiagCtxt) -> String {
 }
 
 impl<'a> ReportErrorExt for UndefinedBehaviorInfo<'a> {
-    fn diagnostic_message(&self) -> DiagnosticMessage {
+    fn diagnostic_message(&self) -> DiagMessage {
         use crate::fluent_generated::*;
         use UndefinedBehaviorInfo::*;
         match self {
@@ -595,7 +594,7 @@ impl<'a> ReportErrorExt for UndefinedBehaviorInfo<'a> {
 }
 
 impl<'tcx> ReportErrorExt for ValidationErrorInfo<'tcx> {
-    fn diagnostic_message(&self) -> DiagnosticMessage {
+    fn diagnostic_message(&self) -> DiagMessage {
         use crate::fluent_generated::*;
         use rustc_middle::mir::interpret::ValidationErrorKind::*;
         match self.kind {
@@ -613,7 +612,6 @@ impl<'tcx> ReportErrorExt for ValidationErrorInfo<'tcx> {
             PartialPointer => const_eval_validation_partial_pointer,
             ConstRefToMutable => const_eval_validation_const_ref_to_mutable,
             ConstRefToExtern => const_eval_validation_const_ref_to_extern,
-            MutableRefInConstOrStatic => const_eval_validation_mutable_ref_in_const_or_static,
             MutableRefToImmutable => const_eval_validation_mutable_ref_to_immutable,
             NullFnPtr => const_eval_validation_null_fn_ptr,
             NeverVal => const_eval_validation_never_val,
@@ -767,7 +765,6 @@ impl<'tcx> ReportErrorExt for ValidationErrorInfo<'tcx> {
             }
             NullPtr { .. }
             | PtrToStatic { .. }
-            | MutableRefInConstOrStatic
             | ConstRefToMutable
             | ConstRefToExtern
             | MutableRefToImmutable
@@ -785,7 +782,7 @@ impl<'tcx> ReportErrorExt for ValidationErrorInfo<'tcx> {
 }
 
 impl ReportErrorExt for UnsupportedOpInfo {
-    fn diagnostic_message(&self) -> DiagnosticMessage {
+    fn diagnostic_message(&self) -> DiagMessage {
         use crate::fluent_generated::*;
         match self {
             UnsupportedOpInfo::Unsupported(s) => s.clone().into(),
@@ -821,7 +818,7 @@ impl ReportErrorExt for UnsupportedOpInfo {
 }
 
 impl<'tcx> ReportErrorExt for InterpError<'tcx> {
-    fn diagnostic_message(&self) -> DiagnosticMessage {
+    fn diagnostic_message(&self) -> DiagMessage {
         match self {
             InterpError::UndefinedBehavior(ub) => ub.diagnostic_message(),
             InterpError::Unsupported(e) => e.diagnostic_message(),
@@ -844,7 +841,7 @@ impl<'tcx> ReportErrorExt for InterpError<'tcx> {
 }
 
 impl<'tcx> ReportErrorExt for InvalidProgramInfo<'tcx> {
-    fn diagnostic_message(&self) -> DiagnosticMessage {
+    fn diagnostic_message(&self) -> DiagMessage {
         use crate::fluent_generated::*;
         match self {
             InvalidProgramInfo::TooGeneric => const_eval_too_generic,
@@ -879,7 +876,7 @@ impl<'tcx> ReportErrorExt for InvalidProgramInfo<'tcx> {
 }
 
 impl ReportErrorExt for ResourceExhaustionInfo {
-    fn diagnostic_message(&self) -> DiagnosticMessage {
+    fn diagnostic_message(&self) -> DiagMessage {
         use crate::fluent_generated::*;
         match self {
             ResourceExhaustionInfo::StackFrameLimitReached => const_eval_stack_frame_limit_reached,

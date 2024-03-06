@@ -48,8 +48,11 @@ impl<T: ?Sized> *mut T {
             }
         }
 
+        #[cfg_attr(not(bootstrap), allow(unused_unsafe))] // on bootstrap bump, remove unsafe block
         // SAFETY: The two versions are equivalent at runtime.
-        unsafe { const_eval_select((self as *mut u8,), const_impl, runtime_impl) }
+        unsafe {
+            const_eval_select((self as *mut u8,), const_impl, runtime_impl)
+        }
     }
 
     /// Casts to a pointer of another type.
@@ -1896,8 +1899,11 @@ impl<T: ?Sized> *mut T {
             ptr.align_offset(align) == 0
         }
 
+        #[cfg_attr(not(bootstrap), allow(unused_unsafe))] // on bootstrap bump, remove unsafe block
         // SAFETY: The two versions are equivalent at runtime.
-        unsafe { const_eval_select((self.cast::<()>(), align), const_impl, runtime_impl) }
+        unsafe {
+            const_eval_select((self.cast::<()>(), align), const_impl, runtime_impl)
+        }
     }
 }
 

@@ -18,9 +18,7 @@ const fn helper() -> Option<&'static mut i32> { unsafe {
     Some(&mut *std::ptr::addr_of_mut!(BUFFER))
 } }
 const MUT: Option<&mut i32> = helper(); //~ ERROR it is undefined behavior to use this value
-//~^ encountered mutable reference
-static MUT_STATIC: Option<&mut i32> = helper(); //~ ERROR it is undefined behavior to use this value
-//~^ encountered mutable reference
+//~^ encountered reference to mutable
 
 const fn helper_int2ptr() -> Option<&'static mut i32> { unsafe {
     // Undefined behaviour (integer as pointer), who doesn't love tests like this.
@@ -38,11 +36,9 @@ const fn helper_dangling() -> Option<&'static mut i32> { unsafe {
 const DANGLING: Option<&mut i32> = helper_dangling(); //~ ERROR encountered dangling pointer
 static DANGLING_STATIC: Option<&mut i32> = helper_dangling(); //~ ERROR encountered dangling pointer
 
-// Variant of the real-world case in <https://github.com/rust-lang/rust/issues/120450>.
-// Maybe we should allow this in the future (then the rest should move to `const_mut_refs.rs`),
-// but for now we reject it.
+// These are fine! Just statics pointing to mutable statics, nothing fundamentally wrong with this.
+static MUT_STATIC: Option<&mut i32> = helper();
 static mut MUT_ARRAY: &mut [u8] = &mut [42];
-static MUTEX: Mutex<&mut [u8]> = Mutex::new(unsafe { &mut *MUT_ARRAY }); //~ ERROR it is undefined behavior to use this value
-//~^ encountered mutable reference
+static MUTEX: Mutex<&mut [u8]> = Mutex::new(unsafe { &mut *MUT_ARRAY });
 
 fn main() {}

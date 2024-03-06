@@ -30,9 +30,9 @@ where
     }
 
     impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for UsedParamsNeedInstantiationVisitor<'tcx> {
-        type BreakTy = FoundParam;
+        type Result = ControlFlow<FoundParam>;
 
-        fn visit_ty(&mut self, ty: Ty<'tcx>) -> ControlFlow<Self::BreakTy> {
+        fn visit_ty(&mut self, ty: Ty<'tcx>) -> Self::Result {
             if !ty.has_param() {
                 return ControlFlow::Continue(());
             }
@@ -64,7 +64,7 @@ where
             }
         }
 
-        fn visit_const(&mut self, c: ty::Const<'tcx>) -> ControlFlow<Self::BreakTy> {
+        fn visit_const(&mut self, c: ty::Const<'tcx>) -> Self::Result {
             match c.kind() {
                 ty::ConstKind::Param(..) => ControlFlow::Break(FoundParam),
                 _ => c.super_visit_with(self),

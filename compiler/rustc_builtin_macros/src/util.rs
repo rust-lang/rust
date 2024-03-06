@@ -9,7 +9,7 @@ pub fn check_builtin_macro_attribute(ecx: &ExtCtxt<'_>, meta_item: &MetaItem, na
     // All the built-in macro attributes are "words" at the moment.
     let template = AttributeTemplate { word: true, ..Default::default() };
     validate_attr::check_builtin_meta_item(
-        &ecx.sess.parse_sess,
+        &ecx.sess.psess,
         meta_item,
         AttrStyle::Outer,
         name,
@@ -37,7 +37,7 @@ pub fn warn_on_duplicate_attribute(ecx: &ExtCtxt<'_>, item: &Annotatable, name: 
     };
     if let Some(attrs) = attrs {
         if let Some(attr) = attr::find_by_name(attrs, name) {
-            ecx.parse_sess().buffer_lint(
+            ecx.psess().buffer_lint(
                 DUPLICATE_MACRO_ATTRIBUTES,
                 attr.span,
                 ecx.current_expansion.lint_node_id,

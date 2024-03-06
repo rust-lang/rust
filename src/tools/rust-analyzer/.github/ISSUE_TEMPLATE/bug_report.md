@@ -23,3 +23,11 @@ Otherwise please try to provide information which will help us to fix the issue 
 **rustc version**: (eg. output of `rustc -V`)
 
 **relevant settings**: (eg. client settings, or environment variables like `CARGO`, `RUSTC`, `RUSTUP_HOME` or `CARGO_HOME`)
+
+**repository link (if public, optional)**: (eg. [rust-analyzer](https://github.com/rust-lang/rust-analyzer))
+
+**code snippet to reproduce**: 
+```rust
+// add your code here
+
+```

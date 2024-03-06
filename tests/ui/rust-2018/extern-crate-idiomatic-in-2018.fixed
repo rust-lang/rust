@@ -9,7 +9,6 @@
 #![deny(rust_2018_idioms)]
 #![allow(dead_code)]
 
-
 //~^ ERROR unused extern crate
 
 // Shouldn't suggest changing to `use`, as `bar`

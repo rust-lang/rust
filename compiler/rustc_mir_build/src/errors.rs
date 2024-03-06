@@ -2,7 +2,7 @@ use crate::fluent_generated as fluent;
 use rustc_errors::DiagArgValue;
 use rustc_errors::{
     codes::*, AddToDiagnostic, Applicability, Diag, DiagCtxt, EmissionGuarantee, IntoDiagnostic,
-    Level, MultiSpan, SubdiagnosticMessageOp,
+    Level, MultiSpan, SubdiagMessageOp,
 };
 use rustc_macros::{Diagnostic, LintDiagnostic, Subdiagnostic};
 use rustc_middle::ty::{self, Ty};
@@ -420,7 +420,7 @@ pub struct UnsafeNotInheritedLintNote {
 }
 
 impl AddToDiagnostic for UnsafeNotInheritedLintNote {
-    fn add_to_diagnostic_with<G: EmissionGuarantee, F: SubdiagnosticMessageOp<G>>(
+    fn add_to_diagnostic_with<G: EmissionGuarantee, F: SubdiagMessageOp<G>>(
         self,
         diag: &mut Diag<'_, G>,
         _f: F,
@@ -868,7 +868,7 @@ pub struct Variant {
 }
 
 impl<'tcx> AddToDiagnostic for AdtDefinedHere<'tcx> {
-    fn add_to_diagnostic_with<G: EmissionGuarantee, F: SubdiagnosticMessageOp<G>>(
+    fn add_to_diagnostic_with<G: EmissionGuarantee, F: SubdiagMessageOp<G>>(
         self,
         diag: &mut Diag<'_, G>,
         _f: F,
