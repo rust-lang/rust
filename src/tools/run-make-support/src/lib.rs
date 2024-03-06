@@ -2,13 +2,16 @@ use std::env;
 use std::path::{Path, PathBuf};
 use std::process::{Command, Output};
 
+pub use wasmparser;
+
+pub fn out_dir() -> PathBuf {
+    env::var_os("TMPDIR").unwrap().into()
+}
+
 fn setup_common_build_cmd() -> Command {
     let rustc = env::var("RUSTC").unwrap();
     let mut cmd = Command::new(rustc);
-    cmd.arg("--out-dir")
-        .arg(env::var("TMPDIR").unwrap())
-        .arg("-L")
-        .arg(env::var("TMPDIR").unwrap());
+    cmd.arg("--out-dir").arg(out_dir()).arg("-L").arg(out_dir());
     cmd
 }
 
@@ -42,6 +45,11 @@ impl RustcInvocationBuilder {
 
     pub fn arg(&mut self, arg: &str) -> &mut RustcInvocationBuilder {
         self.cmd.arg(arg);
+        self
+    }
+
+    pub fn args(&mut self, args: &[&str]) -> &mut RustcInvocationBuilder {
+        self.cmd.args(args);
         self
     }
 
