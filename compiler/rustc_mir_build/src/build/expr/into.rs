@@ -95,15 +95,15 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 let (then_blk, mut else_blk);
                 else_blk = unpack!(then_blk = then_and_else_blocks);
 
-                else_blk = if let Some(else_opt) = else_opt {
-                    unpack!(this.expr_into_dest(destination, else_blk, else_opt))
+                // If there is an `else` arm, lower it into `else_blk`.
+                if let Some(else_expr) = else_opt {
+                    unpack!(else_blk = this.expr_into_dest(destination, else_blk, else_expr));
                 } else {
-                    // Body of the `if` expression without an `else` clause must return `()`, thus
-                    // we implicitly generate an `else {}` if it is not specified.
+                    // There is no `else` arm, so we know both arms have type `()`.
+                    // Generate the implicit `else {}` by assigning unit.
                     let correct_si = this.source_info(expr_span.shrink_to_hi());
                     this.cfg.push_assign_unit(else_blk, correct_si, destination, this.tcx);
-                    else_blk
-                };
+                }
 
                 let join_block = this.cfg.start_new_block();
                 this.cfg.goto(then_blk, source_info, join_block);
