@@ -416,14 +416,12 @@ fn delimited(
         if !parser(p) {
             break;
         }
-        if !p.at(delim) {
+        if !p.eat(delim) {
             if p.at_ts(first_set) {
                 p.error(format!("expected {:?}", delim));
             } else {
                 break;
             }
-        } else {
-            p.bump(delim);
         }
     }
     p.expect(ket);
