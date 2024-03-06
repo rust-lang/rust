@@ -300,6 +300,10 @@
 # This is only useful for verifying that rustc generates reproducible builds.
 #full-bootstrap = false
 
+# Set the bootstrap/download cache path. It is useful when building rust
+# repeatedly in a CI invironment.
+# bootstrap-cache-path = /shared/cache
+
 # Enable a build of the extended Rust tool set which is not only the compiler
 # but also tools such as Cargo. This will also produce "combined installers"
 # which are used to install Rust and Cargo together.

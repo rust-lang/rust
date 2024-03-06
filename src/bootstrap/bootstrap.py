@@ -557,7 +557,9 @@ class RustBuild(object):
                 shutil.rmtree(bin_root)
 
             key = self.stage0_compiler.date
-            cache_dst = os.path.join(self.build_dir, "cache")
+            cache_dst = (self.get_toml('bootstrap-cache-path', 'build') or
+                os.path.join(self.build_dir, "cache"))
+
             rustc_cache = os.path.join(cache_dst, key)
             if not os.path.exists(rustc_cache):
                 os.makedirs(rustc_cache)
