@@ -678,6 +678,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         // `build_drop_trees` doesn't have access to our source_info, so we
         // create a dummy terminator now. `TerminatorKind::UnwindResume` is used
         // because MIR type checking will panic if it hasn't been overwritten.
+        // (See `<ExitScopes as DropTreeBuilder>::link_entry_point`.)
         self.cfg.terminate(block, source_info, TerminatorKind::UnwindResume);
 
         self.cfg.start_new_block().unit()
@@ -710,6 +711,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         // `build_drop_trees` doesn't have access to our source_info, so we
         // create a dummy terminator now. `TerminatorKind::UnwindResume` is used
         // because MIR type checking will panic if it hasn't been overwritten.
+        // (See `<ExitScopes as DropTreeBuilder>::link_entry_point`.)
         self.cfg.terminate(block, source_info, TerminatorKind::UnwindResume);
     }
 
@@ -1440,7 +1442,15 @@ impl<'tcx> DropTreeBuilder<'tcx> for ExitScopes {
         cfg.start_new_block()
     }
     fn link_entry_point(cfg: &mut CFG<'tcx>, from: BasicBlock, to: BasicBlock) {
-        cfg.block_data_mut(from).terminator_mut().kind = TerminatorKind::Goto { target: to };
+        // There should be an existing terminator with real source info and a
+        // dummy TerminatorKind. Replace it with a proper goto.
+        // (The dummy is added by `break_scope` and `break_for_else`.)
+        let term = cfg.block_data_mut(from).terminator_mut();
+        if let TerminatorKind::UnwindResume = term.kind {
+            term.kind = TerminatorKind::Goto { target: to };
+        } else {
+            span_bug!(term.source_info.span, "unexpected dummy terminator kind: {:?}", term.kind);
+        }
     }
 }
 
