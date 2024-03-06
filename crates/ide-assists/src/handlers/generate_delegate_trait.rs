@@ -16,7 +16,8 @@ use syntax::{
     ast::{
         self,
         edit::{self, AstNodeEdit},
-        make, AssocItem, GenericArgList, GenericParamList, HasGenericParams, HasName,
+        edit_in_place::AttrsOwnerEdit,
+        make, AssocItem, GenericArgList, GenericParamList, HasAttrs, HasGenericParams, HasName,
         HasTypeBounds, HasVisibility as astHasVisibility, Path, WherePred,
     },
     ted::{self, Position},
@@ -619,7 +620,8 @@ fn process_assoc_item(
     qual_path_ty: ast::Path,
     base_name: &str,
 ) -> Option<ast::AssocItem> {
-    match item {
+    let attrs = item.attrs();
+    let assoc = match item {
         AssocItem::Const(c) => const_assoc_item(c, qual_path_ty),
         AssocItem::Fn(f) => func_assoc_item(f, qual_path_ty, base_name),
         AssocItem::MacroCall(_) => {
@@ -628,7 +630,18 @@ fn process_assoc_item(
             None
         }
         AssocItem::TypeAlias(ta) => ty_assoc_item(ta, qual_path_ty),
+    };
+    if let Some(assoc) = &assoc {
+        attrs.for_each(|attr| {
+            assoc.add_attr(attr.clone());
+            // fix indentations
+            if let Some(tok) = attr.syntax().next_sibling_or_token() {
+                let pos = Position::after(tok);
+                ted::insert(pos, make::tokens::whitespace("    "));
+            }
+        })
     }
+    assoc
 }
 
 fn const_assoc_item(item: syntax::ast::Const, qual_path_ty: ast::Path) -> Option<AssocItem> {
