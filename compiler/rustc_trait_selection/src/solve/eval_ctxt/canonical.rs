@@ -65,7 +65,6 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
             &mut orig_values,
             QueryInput {
                 goal,
-                anchor: self.infcx.defining_use_anchor,
                 predefined_opaques_in_body: self
                     .tcx()
                     .mk_predefined_opaques_in_body(PredefinedOpaquesData { opaque_types }),

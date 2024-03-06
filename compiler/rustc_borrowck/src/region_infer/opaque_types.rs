@@ -146,6 +146,17 @@ impl<'tcx> RegionInferenceContext<'tcx> {
                 opaque_type_key,
                 universal_concrete_type,
             );
+
+            // Sometimes, when the hidden type is an inference variable, it can happen that
+            // the hidden type becomes the opaque type itself. In this case, this was an opaque
+            // usage of the opaque type and we can ignore it. This check is mirrored in typeck's
+            // writeback.
+            if let ty::Alias(ty::Opaque, alias_ty) = universal_concrete_type.ty.kind()
+                && alias_ty.def_id == opaque_type_key.def_id.to_def_id()
+                && alias_ty.args == opaque_type_key.args
+            {
+                continue;
+            }
             // Sometimes two opaque types are the same only after we remap the generic parameters
             // back to the opaque type definition. E.g. we may have `OpaqueType<X, Y>` mapped to `(X, Y)`
             // and `OpaqueType<Y, X>` mapped to `(Y, X)`, and those are the same, but we only know that

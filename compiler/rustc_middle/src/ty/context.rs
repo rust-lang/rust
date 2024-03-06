@@ -81,6 +81,7 @@ use std::ops::{Bound, Deref};
 #[allow(rustc::usage_of_ty_tykind)]
 impl<'tcx> Interner for TyCtxt<'tcx> {
     type DefId = DefId;
+    type DefiningAnchor = traits::DefiningAnchor<'tcx>;
     type AdtDef = ty::AdtDef<'tcx>;
     type GenericArgs = ty::GenericArgsRef<'tcx>;
     type GenericArg = ty::GenericArg<'tcx>;

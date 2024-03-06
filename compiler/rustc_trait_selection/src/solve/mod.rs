@@ -320,5 +320,6 @@ fn response_no_constraints_raw<'tcx>(
             external_constraints: tcx.mk_external_constraints(ExternalConstraintsData::default()),
             certainty,
         },
+        defining_anchor: Default::default(),
     }
 }
