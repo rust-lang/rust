@@ -32,7 +32,7 @@ All tier 1 targets with host tools support the full standard library.
 
 target | notes
 -------|-------
-`aarch64-unknown-linux-gnu` | ARM64 Linux (kernel 4.1, glibc 2.17+) [^missing-stack-probes]
+`aarch64-unknown-linux-gnu` | ARM64 Linux (kernel 4.1, glibc 2.17+)
 `i686-pc-windows-gnu` | 32-bit MinGW (Windows 7+) [^windows-support] [^x86_32-floats-return-ABI]
 `i686-pc-windows-msvc` | 32-bit MSVC (Windows 7+) [^windows-support] [^x86_32-floats-return-ABI]
 `i686-unknown-linux-gnu` | 32-bit Linux (kernel 3.2+, glibc 2.17+) [^x86_32-floats-return-ABI]
@@ -40,10 +40,6 @@ target | notes
 `x86_64-pc-windows-gnu` | 64-bit MinGW (Windows 7+) [^windows-support]
 `x86_64-pc-windows-msvc` | 64-bit MSVC (Windows 7+) [^windows-support]
 `x86_64-unknown-linux-gnu` | 64-bit Linux (kernel 3.2+, glibc 2.17+)
-
-[^missing-stack-probes]: Stack probes support is missing on
-  `aarch64-unknown-linux-gnu`, but it's planned to be implemented in the near
-  future. The implementation is tracked on [issue #77071][77071].
 
 [^windows-support]: Only Windows 10 currently undergoes automated testing. Earlier versions of Windows rely on testing and support from the community.
 
