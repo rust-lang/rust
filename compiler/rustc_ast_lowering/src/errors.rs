@@ -14,7 +14,7 @@ pub struct GenericTypeWithParentheses {
     pub sub: Option<UseAngleBrackets>,
 }
 
-#[derive(Clone, Copy, Subdiagnostic)]
+#[derive(Subdiagnostic)]
 #[multipart_suggestion(ast_lowering_use_angle_brackets, applicability = "maybe-incorrect")]
 pub struct UseAngleBrackets {
     #[suggestion_part(code = "<")]
@@ -72,7 +72,7 @@ pub struct AssocTyParentheses {
     pub sub: AssocTyParenthesesSub,
 }
 
-#[derive(Clone, Copy, Subdiagnostic)]
+#[derive(Subdiagnostic)]
 pub enum AssocTyParenthesesSub {
     #[multipart_suggestion(ast_lowering_remove_parentheses)]
     Empty {
