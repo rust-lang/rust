@@ -718,7 +718,11 @@ impl<'a> Parser<'a> {
                         let bounds = self.parse_generic_bounds()?;
                         AssocConstraintKind::Bound { bounds }
                     } else if self.eat(&token::Eq) {
-                        self.parse_assoc_equality_term(ident, self.prev_token.span)?
+                        self.parse_assoc_equality_term(
+                            ident,
+                            gen_args.as_ref(),
+                            self.prev_token.span,
+                        )?
                     } else {
                         unreachable!();
                     };
@@ -753,11 +757,13 @@ impl<'a> Parser<'a> {
     }
 
     /// Parse the term to the right of an associated item equality constraint.
-    /// That is, parse `<term>` in `Item = <term>`.
-    /// Right now, this only admits types in `<term>`.
+    ///
+    /// That is, parse `$term` in `Item = $term` where `$term` is a type or
+    /// a const expression (wrapped in curly braces if complex).
     fn parse_assoc_equality_term(
         &mut self,
         ident: Ident,
+        gen_args: Option<&GenericArgs>,
         eq: Span,
     ) -> PResult<'a, AssocConstraintKind> {
         let arg = self.parse_generic_arg(None)?;
@@ -769,9 +775,15 @@ impl<'a> Parser<'a> {
                 c.into()
             }
             Some(GenericArg::Lifetime(lt)) => {
-                let guar =
-                    self.dcx().emit_err(errors::AssocLifetime { span, lifetime: lt.ident.span });
-                self.mk_ty(span, ast::TyKind::Err(guar)).into()
+                let guar = self.dcx().emit_err(errors::LifetimeInEqConstraint {
+                    span: lt.ident.span,
+                    lifetime: lt.ident,
+                    binding_label: span,
+                    colon_sugg: gen_args
+                        .map_or(ident.span, |args| args.span())
+                        .between(lt.ident.span),
+                });
+                self.mk_ty(lt.ident.span, ast::TyKind::Err(guar)).into()
             }
             None => {
                 let after_eq = eq.shrink_to_hi();
