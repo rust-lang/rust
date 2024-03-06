@@ -560,6 +560,12 @@ pub(super) fn copy_regular_files(reader: RawFd, writer: RawFd, max_len: u64) -> 
     // We store the availability in a global to avoid unnecessary syscalls
     static HAS_COPY_FILE_RANGE: AtomicU8 = AtomicU8::new(NOT_PROBED);
 
+    let mut have_probed = match HAS_COPY_FILE_RANGE.load(Ordering::Relaxed) {
+        NOT_PROBED => false,
+        UNAVAILABLE => return CopyResult::Fallback(0),
+        _ => true,
+    };
+
     syscall! {
         fn copy_file_range(
             fd_in: libc::c_int,
@@ -570,26 +576,6 @@ pub(super) fn copy_regular_files(reader: RawFd, writer: RawFd, max_len: u64) -> 
             flags: libc::c_uint
         ) -> libc::ssize_t
     }
-
-    match HAS_COPY_FILE_RANGE.load(Ordering::Relaxed) {
-        NOT_PROBED => {
-            // EPERM can indicate seccomp filters or an immutable file.
-            // To distinguish these cases we probe with invalid file descriptors which should result in EBADF if the syscall is supported
-            // and some other error (ENOSYS or EPERM) if it's not available
-            let result = unsafe {
-                cvt(copy_file_range(INVALID_FD, ptr::null_mut(), INVALID_FD, ptr::null_mut(), 1, 0))
-            };
-
-            if matches!(result.map_err(|e| e.raw_os_error()), Err(Some(EBADF))) {
-                HAS_COPY_FILE_RANGE.store(AVAILABLE, Ordering::Relaxed);
-            } else {
-                HAS_COPY_FILE_RANGE.store(UNAVAILABLE, Ordering::Relaxed);
-                return CopyResult::Fallback(0);
-            }
-        }
-        UNAVAILABLE => return CopyResult::Fallback(0),
-        _ => {}
-    };
 
     let mut written = 0u64;
     while written < max_len {
@@ -604,6 +590,11 @@ pub(super) fn copy_regular_files(reader: RawFd, writer: RawFd, max_len: u64) -> 
             cvt(copy_file_range(reader, ptr::null_mut(), writer, ptr::null_mut(), bytes_to_copy, 0))
         };
 
+        if !have_probed && copy_result.is_ok() {
+            have_probed = true;
+            HAS_COPY_FILE_RANGE.store(AVAILABLE, Ordering::Relaxed);
+        }
+
         match copy_result {
             Ok(0) if written == 0 => {
                 // fallback to work around several kernel bugs where copy_file_range will fail to
@@ -616,10 +607,44 @@ pub(super) fn copy_regular_files(reader: RawFd, writer: RawFd, max_len: u64) -> 
             Ok(0) => return CopyResult::Ended(written), // reached EOF
             Ok(ret) => written += ret as u64,
             Err(err) => {
-                return match err.raw_os_error() {
+                let raw_os_error = match err.raw_os_error() {
+                    Some(raw) => raw,
+                    _ => return CopyResult::Error(err, written),
+                };
+                return match raw_os_error {
                     // when file offset + max_length > u64::MAX
-                    Some(EOVERFLOW) => CopyResult::Fallback(written),
-                    Some(ENOSYS | EXDEV | EINVAL | EPERM | EOPNOTSUPP | EBADF) if written == 0 => {
+                    EOVERFLOW => CopyResult::Fallback(written),
+                    ENOSYS | EXDEV | EINVAL | EPERM | EOPNOTSUPP | EBADF if written == 0 => {
+                        if !have_probed {
+                            if raw_os_error == ENOSYS {
+                                HAS_COPY_FILE_RANGE.store(UNAVAILABLE, Ordering::Relaxed);
+                            } else {
+                                // EPERM can indicate seccomp filters or an
+                                // immutable file.  To distinguish these cases
+                                // we probe with invalid file descriptors which
+                                // should result in EBADF if the syscall is
+                                // supported and some other error (ENOSYS or
+                                // EPERM) if it's not available.
+                                let result = unsafe {
+                                    cvt(copy_file_range(
+                                        INVALID_FD,
+                                        ptr::null_mut(),
+                                        INVALID_FD,
+                                        ptr::null_mut(),
+                                        1,
+                                        0,
+                                    ))
+                                };
+
+                                if matches!(result.map_err(|e| e.raw_os_error()), Err(Some(EBADF)))
+                                {
+                                    HAS_COPY_FILE_RANGE.store(AVAILABLE, Ordering::Relaxed);
+                                } else {
+                                    HAS_COPY_FILE_RANGE.store(UNAVAILABLE, Ordering::Relaxed);
+                                }
+                            }
+                        }
+
                         // Try fallback io::copy if either:
                         // - Kernel version is < 4.5 (ENOSYS¹)
                         // - Files are mounted on different fs (EXDEV)
