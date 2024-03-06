@@ -87,5 +87,17 @@ LL -     let _: std::fmt::Result = Ok(());
 LL +     let _: fmt::Result = Ok(());
    |
 
-error: aborting due to 7 previous errors
+error: unnecessary qualification
+  --> $DIR/lint-qualification.rs:27:13
+   |
+LL |     let _ = <bool as ::std::default::Default>::default(); // issue #121999
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: remove the unnecessary path segments
+   |
+LL -     let _ = <bool as ::std::default::Default>::default(); // issue #121999
+LL +     let _ = <bool as Default>::default(); // issue #121999
+   |
+
+error: aborting due to 8 previous errors
 
