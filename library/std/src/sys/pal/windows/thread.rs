@@ -26,11 +26,6 @@ impl Thread {
     pub unsafe fn new(stack: usize, p: Box<dyn FnOnce()>) -> io::Result<Thread> {
         let p = Box::into_raw(Box::new(p));
 
-        // FIXME On UNIX, we guard against stack sizes that are too small but
-        // that's because pthreads enforces that stacks are at least
-        // PTHREAD_STACK_MIN bytes big. Windows has no such lower limit, it's
-        // just that below a certain threshold you can't do anything useful.
-        // That threshold is application and architecture-specific, however.
         let ret = c::CreateThread(
             ptr::null_mut(),
             stack,
