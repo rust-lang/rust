@@ -562,7 +562,8 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                 expected,
                 found: res.descr(),
                 macro_path: &path_str,
-                ..Default::default() // Subdiagnostics default to None
+                remove_surrounding_derive: None,
+                add_as_non_derive: None,
             };
 
             // Suggest moving the macro out of the derive() if the macro isn't Derive

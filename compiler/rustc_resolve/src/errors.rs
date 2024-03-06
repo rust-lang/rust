@@ -521,7 +521,7 @@ pub(crate) struct ToolModuleImported {
 #[diag(resolve_module_only)]
 pub(crate) struct ModuleOnly(#[primary_span] pub(crate) Span);
 
-#[derive(Diagnostic, Default)]
+#[derive(Diagnostic)]
 #[diag(resolve_macro_expected_found)]
 pub(crate) struct MacroExpectedFound<'a> {
     #[primary_span]
