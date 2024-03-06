@@ -26,6 +26,8 @@ impl Thread {
     pub unsafe fn new(stack: usize, p: Box<dyn FnOnce()>) -> io::Result<Thread> {
         let p = Box::into_raw(Box::new(p));
 
+        // CreateThread rounds up values for the stack size to the nearest page size (at least 4kb).
+        // If a value of zero is given then the default stack size is used instead.
         let ret = c::CreateThread(
             ptr::null_mut(),
             stack,
