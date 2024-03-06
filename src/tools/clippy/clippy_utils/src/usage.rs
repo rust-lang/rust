@@ -87,11 +87,11 @@ impl<'tcx> Delegate<'tcx> for MutVarsDelegate {
 }
 
 pub struct ParamBindingIdCollector {
-    pub binding_hir_ids: Vec<hir::HirId>,
+    pub binding_hir_ids: Vec<HirId>,
 }
 impl<'tcx> ParamBindingIdCollector {
-    fn collect_binding_hir_ids(body: &'tcx hir::Body<'tcx>) -> Vec<hir::HirId> {
-        let mut hir_ids: Vec<hir::HirId> = Vec::new();
+    fn collect_binding_hir_ids(body: &'tcx hir::Body<'tcx>) -> Vec<HirId> {
+        let mut hir_ids: Vec<HirId> = Vec::new();
         for param in body.params {
             let mut finder = ParamBindingIdCollector {
                 binding_hir_ids: Vec::new(),
@@ -115,7 +115,7 @@ impl<'tcx> intravisit::Visitor<'tcx> for ParamBindingIdCollector {
 
 pub struct BindingUsageFinder<'a, 'tcx> {
     cx: &'a LateContext<'tcx>,
-    binding_ids: Vec<hir::HirId>,
+    binding_ids: Vec<HirId>,
     usage_found: bool,
 }
 impl<'a, 'tcx> BindingUsageFinder<'a, 'tcx> {
@@ -138,7 +138,7 @@ impl<'a, 'tcx> intravisit::Visitor<'tcx> for BindingUsageFinder<'a, 'tcx> {
         }
     }
 
-    fn visit_path(&mut self, path: &hir::Path<'tcx>, _: hir::HirId) {
+    fn visit_path(&mut self, path: &hir::Path<'tcx>, _: HirId) {
         if let Res::Local(id) = path.res {
             if self.binding_ids.contains(&id) {
                 self.usage_found = true;

@@ -70,7 +70,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         expr: &'tcx hir::Expr<'tcx>,
         expected: Ty<'tcx>,
         found: Ty<'tcx>,
-        blk_id: hir::HirId,
+        blk_id: HirId,
     ) -> bool {
         let expr = expr.peel_drop_temps();
         let mut pointing_at_return_type = false;
@@ -796,7 +796,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         expected: Ty<'tcx>,
         found: Ty<'tcx>,
         can_suggest: bool,
-        fn_id: hir::HirId,
+        fn_id: HirId,
     ) -> bool {
         let found =
             self.resolve_numeric_literals_with_default(self.resolve_vars_if_possible(found));
@@ -912,7 +912,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         err: &mut Diag<'_>,
         expected: Ty<'tcx>,
         found: Ty<'tcx>,
-        fn_id: hir::HirId,
+        fn_id: HirId,
     ) {
         // Only apply the suggestion if:
         //  - the return type is a generic parameter
@@ -1019,8 +1019,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         fn_decl: &hir::FnDecl<'tcx>,
         expected: Ty<'tcx>,
         found: Ty<'tcx>,
-        id: hir::HirId,
-        fn_id: hir::HirId,
+        id: HirId,
+        fn_id: HirId,
     ) {
         if !expected.is_unit() {
             return;
@@ -1592,12 +1592,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
     }
 
-    fn is_loop(&self, id: hir::HirId) -> bool {
+    fn is_loop(&self, id: HirId) -> bool {
         let node = self.tcx.hir_node(id);
         matches!(node, Node::Expr(Expr { kind: ExprKind::Loop(..), .. }))
     }
 
-    fn is_local_statement(&self, id: hir::HirId) -> bool {
+    fn is_local_statement(&self, id: HirId) -> bool {
         let node = self.tcx.hir_node(id);
         matches!(node, Node::Stmt(Stmt { kind: StmtKind::Let(..), .. }))
     }

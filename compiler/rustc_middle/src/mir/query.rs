@@ -5,8 +5,8 @@ use crate::ty::{self, OpaqueHiddenType, Ty, TyCtxt};
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_data_structures::unord::UnordSet;
 use rustc_errors::ErrorGuaranteed;
-use rustc_hir as hir;
 use rustc_hir::def_id::LocalDefId;
+use rustc_hir::HirId;
 use rustc_index::bit_set::BitMatrix;
 use rustc_index::{Idx, IndexVec};
 use rustc_span::symbol::Symbol;
@@ -52,7 +52,7 @@ pub enum UnsafetyViolationDetails {
 #[derive(Clone, PartialEq, TyEncodable, TyDecodable, HashStable, Debug)]
 pub struct UnsafetyViolation {
     pub source_info: SourceInfo,
-    pub lint_root: hir::HirId,
+    pub lint_root: HirId,
     pub kind: UnsafetyViolationKind,
     pub details: UnsafetyViolationDetails,
 }
@@ -64,7 +64,7 @@ pub enum UnusedUnsafe {
     Unused,
     /// `unsafe` block nested under another (used) `unsafe` block
     /// > ``… because it's nested under this `unsafe` block``
-    InUnsafeBlock(hir::HirId),
+    InUnsafeBlock(HirId),
 }
 
 #[derive(TyEncodable, TyDecodable, HashStable, Debug)]
@@ -73,10 +73,10 @@ pub struct UnsafetyCheckResult {
     pub violations: Vec<UnsafetyViolation>,
 
     /// Used `unsafe` blocks in this function. This is used for the "unused_unsafe" lint.
-    pub used_unsafe_blocks: UnordSet<hir::HirId>,
+    pub used_unsafe_blocks: UnordSet<HirId>,
 
     /// This is `Some` iff the item is not a closure.
-    pub unused_unsafes: Option<Vec<(hir::HirId, UnusedUnsafe)>>,
+    pub unused_unsafes: Option<Vec<(HirId, UnusedUnsafe)>>,
 }
 
 rustc_index::newtype_index! {
