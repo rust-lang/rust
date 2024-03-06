@@ -33,7 +33,11 @@ enum CollectionMode {
 }
 
 impl<'tcx> OpaqueTypeCollector<'tcx> {
-    fn new(tcx: TyCtxt<'tcx>, item: LocalDefId, mode: CollectionMode) -> Self {
+    fn new(tcx: TyCtxt<'tcx>, item: LocalDefId) -> Self {
+        let mode = match tcx.def_kind(tcx.local_parent(item)) {
+            DefKind::Impl { of_trait: true } => CollectionMode::ImplTraitInAssocTypes,
+            _ => CollectionMode::TypeAliasImplTraitTransition,
+        };
         Self { tcx, opaques: Vec::new(), item, seen: Default::default(), span: None, mode }
     }
 
@@ -284,23 +288,13 @@ impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for OpaqueTypeCollector<'tcx> {
     }
 }
 
-fn impl_trait_in_assoc_types_defined_by<'tcx>(
-    tcx: TyCtxt<'tcx>,
-    item: LocalDefId,
-) -> &'tcx ty::List<LocalDefId> {
-    let mut collector = OpaqueTypeCollector::new(tcx, item, CollectionMode::ImplTraitInAssocTypes);
-    super::sig_types::walk_types(tcx, item, &mut collector);
-    tcx.mk_local_def_ids(&collector.opaques)
-}
-
 fn opaque_types_defined_by<'tcx>(
     tcx: TyCtxt<'tcx>,
     item: LocalDefId,
 ) -> &'tcx ty::List<LocalDefId> {
     let kind = tcx.def_kind(item);
     trace!(?kind);
-    let mut collector =
-        OpaqueTypeCollector::new(tcx, item, CollectionMode::TypeAliasImplTraitTransition);
+    let mut collector = OpaqueTypeCollector::new(tcx, item);
     super::sig_types::walk_types(tcx, item, &mut collector);
     match kind {
         DefKind::AssocFn
@@ -343,6 +337,5 @@ fn opaque_types_defined_by<'tcx>(
 }
 
 pub(super) fn provide(providers: &mut Providers) {
-    *providers =
-        Providers { opaque_types_defined_by, impl_trait_in_assoc_types_defined_by, ..*providers };
+    *providers = Providers { opaque_types_defined_by, ..*providers };
 }

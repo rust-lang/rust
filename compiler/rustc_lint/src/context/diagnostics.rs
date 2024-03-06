@@ -12,6 +12,43 @@ use rustc_span::edit_distance::find_best_match_for_name;
 use rustc_span::symbol::{sym, Symbol};
 use rustc_span::BytePos;
 
+const MAX_CHECK_CFG_NAMES_OR_VALUES: usize = 35;
+
+fn check_cfg_expected_note(
+    sess: &Session,
+    possibilities: &[Symbol],
+    type_: &str,
+    name: Option<Symbol>,
+    suffix: &str,
+) -> String {
+    use std::fmt::Write;
+
+    let n_possibilities = if sess.opts.unstable_opts.check_cfg_all_expected {
+        possibilities.len()
+    } else {
+        std::cmp::min(possibilities.len(), MAX_CHECK_CFG_NAMES_OR_VALUES)
+    };
+
+    let mut possibilities = possibilities.iter().map(Symbol::as_str).collect::<Vec<_>>();
+    possibilities.sort();
+
+    let and_more = possibilities.len().saturating_sub(n_possibilities);
+    let possibilities = possibilities[..n_possibilities].join("`, `");
+
+    let mut note = String::with_capacity(50 + possibilities.len());
+
+    write!(&mut note, "expected {type_}").unwrap();
+    if let Some(name) = name {
+        write!(&mut note, " for `{name}`").unwrap();
+    }
+    write!(&mut note, " are: {suffix}`{possibilities}`").unwrap();
+    if and_more > 0 {
+        write!(&mut note, " and {and_more} more").unwrap();
+    }
+
+    note
+}
+
 pub(super) fn builtin(sess: &Session, diagnostic: BuiltinLintDiag, diag: &mut Diag<'_, ()>) {
     match diagnostic {
         BuiltinLintDiag::UnicodeTextFlow(span, content) => {
@@ -286,16 +323,13 @@ pub(super) fn builtin(sess: &Session, diagnostic: BuiltinLintDiag, diag: &mut Di
                     }
                 }
                 if !possibilities.is_empty() {
-                    let mut possibilities =
-                        possibilities.iter().map(Symbol::as_str).collect::<Vec<_>>();
-                    possibilities.sort();
-                    let possibilities = possibilities.join("`, `");
-
-                    // The list of expected names can be long (even by default) and
-                    // so the diagnostic produced can take a lot of space. To avoid
-                    // cloging the user output we only want to print that diagnostic
-                    // once.
-                    diag.help_once(format!("expected names are: `{possibilities}`"));
+                    diag.help_once(check_cfg_expected_note(
+                        sess,
+                        &possibilities,
+                        "names",
+                        None,
+                        "",
+                    ));
                 }
             }
 
@@ -338,16 +372,13 @@ pub(super) fn builtin(sess: &Session, diagnostic: BuiltinLintDiag, diag: &mut Di
             // Show the full list if all possible values for a given name, but don't do it
             // for names as the possibilities could be very long
             if !possibilities.is_empty() {
-                {
-                    let mut possibilities =
-                        possibilities.iter().map(Symbol::as_str).collect::<Vec<_>>();
-                    possibilities.sort();
-
-                    let possibilities = possibilities.join("`, `");
-                    let none = if have_none_possibility { "(none), " } else { "" };
-
-                    diag.note(format!("expected values for `{name}` are: {none}`{possibilities}`"));
-                }
+                diag.note(check_cfg_expected_note(
+                    sess,
+                    &possibilities,
+                    "values",
+                    Some(name),
+                    if have_none_possibility { "(none), " } else { "" },
+                ));
 
                 if let Some((value, value_span)) = value {
                     // Suggest the most probable if we found one
