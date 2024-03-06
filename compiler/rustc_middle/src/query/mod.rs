@@ -826,7 +826,7 @@ rustc_queries! {
     /// creates and returns the associated items that correspond to each impl trait in return position
     /// of the implemented trait.
     query associated_types_for_impl_traits_in_associated_fn(fn_def_id: DefId) -> &'tcx [DefId] {
-        desc { |tcx| "creating associated items for impl trait in trait returned by `{}`", tcx.def_path_str(fn_def_id) }
+        desc { |tcx| "creating associated items for opaque types returned by `{}`", tcx.def_path_str(fn_def_id) }
         cache_on_disk_if { fn_def_id.is_local() }
         separate_provide_extern
     }
@@ -834,7 +834,7 @@ rustc_queries! {
     /// Given an impl trait in trait `opaque_ty_def_id`, create and return the corresponding
     /// associated item.
     query associated_type_for_impl_trait_in_trait(opaque_ty_def_id: LocalDefId) -> LocalDefId {
-        desc { |tcx| "creates the associated item corresponding to the opaque type `{}`", tcx.def_path_str(opaque_ty_def_id.to_def_id()) }
+        desc { |tcx| "creating the associated item corresponding to the opaque type `{}`", tcx.def_path_str(opaque_ty_def_id.to_def_id()) }
         cache_on_disk_if { true }
     }
 
