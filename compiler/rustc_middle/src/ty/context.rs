@@ -39,7 +39,7 @@ use rustc_data_structures::profiling::SelfProfilerRef;
 use rustc_data_structures::sharded::{IntoPointer, ShardedHashMap};
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_data_structures::steal::Steal;
-use rustc_data_structures::sync::{self, FreezeReadGuard, Lock, WorkerLocal};
+use rustc_data_structures::sync::{self, FreezeReadGuard, Lock, Lrc, WorkerLocal};
 #[cfg(parallel_compiler)]
 use rustc_data_structures::sync::{DynSend, DynSync};
 use rustc_data_structures::unord::UnordSet;
@@ -60,7 +60,7 @@ use rustc_session::config::CrateType;
 use rustc_session::cstore::{CrateStoreDyn, Untracked};
 use rustc_session::lint::Lint;
 use rustc_session::{Limit, MetadataKind, Session};
-use rustc_span::def_id::{DefPathHash, StableCrateId};
+use rustc_span::def_id::{DefPathHash, StableCrateId, CRATE_DEF_ID};
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
 use rustc_span::{Span, DUMMY_SP};
 use rustc_target::abi::{FieldIdx, Layout, LayoutS, TargetDataLayout, VariantIdx};
@@ -74,6 +74,7 @@ use std::cmp::Ordering;
 use std::fmt;
 use std::hash::{Hash, Hasher};
 use std::iter;
+use std::marker::PhantomData;
 use std::mem;
 use std::ops::{Bound, Deref};
 
@@ -498,14 +499,55 @@ pub struct TyCtxtFeed<'tcx, KEY: Copy> {
     key: KEY,
 }
 
+/// Never return a `Feed` from a query. Only queries that create a `DefId` are
+/// allowed to feed queries for that `DefId`.
+impl<KEY: Copy, CTX> !HashStable<CTX> for TyCtxtFeed<'_, KEY> {}
+
+/// The same as `TyCtxtFeed`, but does not contain a `TyCtxt`.
+/// Use this to pass around when you have a `TyCtxt` elsewhere.
+/// Just an optimization to save space and not store hundreds of
+/// `TyCtxtFeed` in the resolver.
+#[derive(Copy, Clone)]
+pub struct Feed<'tcx, KEY: Copy> {
+    _tcx: PhantomData<TyCtxt<'tcx>>,
+    // Do not allow direct access, as downstream code must not mutate this field.
+    key: KEY,
+}
+
+/// Never return a `Feed` from a query. Only queries that create a `DefId` are
+/// allowed to feed queries for that `DefId`.
+impl<KEY: Copy, CTX> !HashStable<CTX> for Feed<'_, KEY> {}
+
+impl<T: fmt::Debug + Copy> fmt::Debug for Feed<'_, T> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        self.key.fmt(f)
+    }
+}
+
+/// Some workarounds to use cases that cannot use `create_def`.
+/// Do not add new ways to create `TyCtxtFeed` without consulting
+/// with T-compiler and making an analysis about why your addition
+/// does not cause incremental compilation issues.
 impl<'tcx> TyCtxt<'tcx> {
+    /// Can only be fed before queries are run, and is thus exempt from any
+    /// incremental issues. Do not use except for the initial query feeding.
     pub fn feed_unit_query(self) -> TyCtxtFeed<'tcx, ()> {
+        self.dep_graph.assert_ignored();
         TyCtxtFeed { tcx: self, key: () }
     }
+
+    /// Can only be fed before queries are run, and is thus exempt from any
+    /// incremental issues. Do not use except for the initial query feeding.
     pub fn feed_local_crate(self) -> TyCtxtFeed<'tcx, CrateNum> {
+        self.dep_graph.assert_ignored();
         TyCtxtFeed { tcx: self, key: LOCAL_CRATE }
     }
-    pub fn feed_local_def_id(self, key: LocalDefId) -> TyCtxtFeed<'tcx, LocalDefId> {
+
+    /// Only used in the resolver to register the `CRATE_DEF_ID` `DefId` and feed
+    /// some queries for it. It will panic if used twice.
+    pub fn create_local_crate_def_id(self, span: Span) -> TyCtxtFeed<'tcx, LocalDefId> {
+        let key = self.untracked().source_span.push(span);
+        assert_eq!(key, CRATE_DEF_ID);
         TyCtxtFeed { tcx: self, key }
     }
 
@@ -522,6 +564,23 @@ impl<'tcx, KEY: Copy> TyCtxtFeed<'tcx, KEY> {
     #[inline(always)]
     pub fn key(&self) -> KEY {
         self.key
+    }
+
+    #[inline(always)]
+    pub fn downgrade(self) -> Feed<'tcx, KEY> {
+        Feed { _tcx: PhantomData, key: self.key }
+    }
+}
+
+impl<'tcx, KEY: Copy> Feed<'tcx, KEY> {
+    #[inline(always)]
+    pub fn key(&self) -> KEY {
+        self.key
+    }
+
+    #[inline(always)]
+    pub fn upgrade(self, tcx: TyCtxt<'tcx>) -> TyCtxtFeed<'tcx, KEY> {
+        TyCtxtFeed { tcx, key: self.key }
     }
 }
 
@@ -1067,7 +1126,7 @@ impl<'tcx> TyCtxt<'tcx> {
         // needs to be re-evaluated.
         self.dep_graph.read_index(DepNodeIndex::FOREVER_RED_NODE);
 
-        let feed = self.feed_local_def_id(def_id);
+        let feed = TyCtxtFeed { tcx: self, key: def_id };
         feed.def_kind(def_kind);
         // Unique types created for closures participate in type privacy checking.
         // They have visibilities inherited from the module they are defined in.
@@ -2302,6 +2361,10 @@ impl<'tcx> TyCtxt<'tcx> {
     /// (probably due to hashing spans in `ModChild`ren).
     pub fn module_children_local(self, def_id: LocalDefId) -> &'tcx [ModChild] {
         self.resolutions(()).module_children.get(&def_id).map_or(&[], |v| &v[..])
+    }
+
+    pub fn resolver_for_lowering(self) -> &'tcx Steal<(ty::ResolverAstLowering, Lrc<ast::Crate>)> {
+        self.resolver_for_lowering_raw(()).0
     }
 
     /// Given an `impl_id`, return the trait it implements.
