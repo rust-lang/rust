@@ -16,7 +16,7 @@ use synstructure::{BindingInfo, Structure, VariantInfo};
 
 use super::utils::SubdiagnosticVariant;
 
-/// The central struct for constructing the `add_to_diagnostic` method from an annotated struct.
+/// The central struct for constructing the `add_to_diag` method from an annotated struct.
 pub(crate) struct SubdiagnosticDeriveBuilder {
     diag: syn::Ident,
     f: syn::Ident,
@@ -86,8 +86,8 @@ impl SubdiagnosticDeriveBuilder {
         let diag = &self.diag;
         let f = &self.f;
         let ret = structure.gen_impl(quote! {
-            gen impl rustc_errors::AddToDiagnostic for @Self {
-                fn add_to_diagnostic_with<__G, __F>(
+            gen impl rustc_errors::Subdiagnostic for @Self {
+                fn add_to_diag_with<__G, __F>(
                     self,
                     #diag: &mut rustc_errors::Diag<'_, __G>,
                     #f: __F

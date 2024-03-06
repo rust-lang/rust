@@ -1,5 +1,5 @@
 use rustc_errors::{
-    codes::*, AddToDiagnostic, Diag, DiagArgFromDisplay, EmissionGuarantee, SubdiagMessageOp,
+    codes::*, Diag, DiagArgFromDisplay, EmissionGuarantee, SubdiagMessageOp, Subdiagnostic,
 };
 use rustc_macros::{Diagnostic, Subdiagnostic};
 use rustc_span::{symbol::Ident, Span, Symbol};
@@ -40,8 +40,8 @@ pub struct InvalidAbi {
 
 pub struct InvalidAbiReason(pub &'static str);
 
-impl AddToDiagnostic for InvalidAbiReason {
-    fn add_to_diagnostic_with<G: EmissionGuarantee, F: SubdiagMessageOp<G>>(
+impl Subdiagnostic for InvalidAbiReason {
+    fn add_to_diag_with<G: EmissionGuarantee, F: SubdiagMessageOp<G>>(
         self,
         diag: &mut Diag<'_, G>,
         _: F,

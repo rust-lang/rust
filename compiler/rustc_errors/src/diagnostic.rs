@@ -170,19 +170,19 @@ impl Into<FluentValue<'static>> for DiagArgValue {
 
 /// Trait implemented by error types. This should not be implemented manually. Instead, use
 /// `#[derive(Subdiagnostic)]` -- see [rustc_macros::Subdiagnostic].
-#[rustc_diagnostic_item = "AddToDiagnostic"]
-pub trait AddToDiagnostic
+#[rustc_diagnostic_item = "Subdiagnostic"]
+pub trait Subdiagnostic
 where
     Self: Sized,
 {
     /// Add a subdiagnostic to an existing diagnostic.
-    fn add_to_diagnostic<G: EmissionGuarantee>(self, diag: &mut Diag<'_, G>) {
-        self.add_to_diagnostic_with(diag, |_, m| m);
+    fn add_to_diag<G: EmissionGuarantee>(self, diag: &mut Diag<'_, G>) {
+        self.add_to_diag_with(diag, |_, m| m);
     }
 
     /// Add a subdiagnostic to an existing diagnostic where `f` is invoked on every message used
     /// (to optionally perform eager translation).
-    fn add_to_diagnostic_with<G: EmissionGuarantee, F: SubdiagMessageOp<G>>(
+    fn add_to_diag_with<G: EmissionGuarantee, F: SubdiagMessageOp<G>>(
         self,
         diag: &mut Diag<'_, G>,
         f: F,
@@ -1194,9 +1194,9 @@ impl<'a, G: EmissionGuarantee> Diag<'a, G> {
     pub fn subdiagnostic(
         &mut self,
         dcx: &crate::DiagCtxt,
-        subdiagnostic: impl AddToDiagnostic,
+        subdiagnostic: impl Subdiagnostic,
     ) -> &mut Self {
-        subdiagnostic.add_to_diagnostic_with(self, |diag, msg| {
+        subdiagnostic.add_to_diag_with(self, |diag, msg| {
             let args = diag.args.iter();
             let msg = diag.subdiagnostic_message_to_diagnostic_message(msg);
             dcx.eagerly_translate(msg, args)

@@ -5,8 +5,8 @@ use std::num::NonZero;
 use crate::errors::RequestedLevel;
 use crate::fluent_generated as fluent;
 use rustc_errors::{
-    codes::*, AddToDiagnostic, Applicability, DecorateLint, Diag, DiagMessage, DiagStyledString,
-    EmissionGuarantee, SubdiagMessageOp, SuggestionStyle,
+    codes::*, Applicability, DecorateLint, Diag, DiagMessage, DiagStyledString, EmissionGuarantee,
+    SubdiagMessageOp, Subdiagnostic, SuggestionStyle,
 };
 use rustc_hir::def_id::DefId;
 use rustc_macros::{LintDiagnostic, Subdiagnostic};
@@ -270,8 +270,8 @@ pub struct SuggestChangingAssocTypes<'a, 'b> {
     pub ty: &'a rustc_hir::Ty<'b>,
 }
 
-impl<'a, 'b> AddToDiagnostic for SuggestChangingAssocTypes<'a, 'b> {
-    fn add_to_diagnostic_with<G: EmissionGuarantee, F: SubdiagMessageOp<G>>(
+impl<'a, 'b> Subdiagnostic for SuggestChangingAssocTypes<'a, 'b> {
+    fn add_to_diag_with<G: EmissionGuarantee, F: SubdiagMessageOp<G>>(
         self,
         diag: &mut Diag<'_, G>,
         _f: F,
@@ -326,8 +326,8 @@ pub struct BuiltinTypeAliasGenericBoundsSuggestion {
     pub suggestions: Vec<(Span, String)>,
 }
 
-impl AddToDiagnostic for BuiltinTypeAliasGenericBoundsSuggestion {
-    fn add_to_diagnostic_with<G: EmissionGuarantee, F: SubdiagMessageOp<G>>(
+impl Subdiagnostic for BuiltinTypeAliasGenericBoundsSuggestion {
+    fn add_to_diag_with<G: EmissionGuarantee, F: SubdiagMessageOp<G>>(
         self,
         diag: &mut Diag<'_, G>,
         _f: F,
@@ -434,7 +434,7 @@ impl<'a> DecorateLint<'a, ()> for BuiltinUnpermittedTypeInit<'_> {
                 fluent::lint_builtin_unpermitted_type_init_label_suggestion,
             );
         }
-        self.sub.add_to_diagnostic(diag);
+        self.sub.add_to_diag(diag);
     }
 
     fn msg(&self) -> DiagMessage {
@@ -447,8 +447,8 @@ pub struct BuiltinUnpermittedTypeInitSub {
     pub err: InitError,
 }
 
-impl AddToDiagnostic for BuiltinUnpermittedTypeInitSub {
-    fn add_to_diagnostic_with<G: EmissionGuarantee, F: SubdiagMessageOp<G>>(
+impl Subdiagnostic for BuiltinUnpermittedTypeInitSub {
+    fn add_to_diag_with<G: EmissionGuarantee, F: SubdiagMessageOp<G>>(
         self,
         diag: &mut Diag<'_, G>,
         _f: F,
@@ -502,8 +502,8 @@ pub struct BuiltinClashingExternSub<'a> {
     pub found: Ty<'a>,
 }
 
-impl AddToDiagnostic for BuiltinClashingExternSub<'_> {
-    fn add_to_diagnostic_with<G: EmissionGuarantee, F: SubdiagMessageOp<G>>(
+impl Subdiagnostic for BuiltinClashingExternSub<'_> {
+    fn add_to_diag_with<G: EmissionGuarantee, F: SubdiagMessageOp<G>>(
         self,
         diag: &mut Diag<'_, G>,
         _f: F,
@@ -784,8 +784,8 @@ pub struct HiddenUnicodeCodepointsDiagLabels {
     pub spans: Vec<(char, Span)>,
 }
 
-impl AddToDiagnostic for HiddenUnicodeCodepointsDiagLabels {
-    fn add_to_diagnostic_with<G: EmissionGuarantee, F: SubdiagMessageOp<G>>(
+impl Subdiagnostic for HiddenUnicodeCodepointsDiagLabels {
+    fn add_to_diag_with<G: EmissionGuarantee, F: SubdiagMessageOp<G>>(
         self,
         diag: &mut Diag<'_, G>,
         _f: F,
@@ -802,8 +802,8 @@ pub enum HiddenUnicodeCodepointsDiagSub {
 }
 
 // Used because of multiple multipart_suggestion and note
-impl AddToDiagnostic for HiddenUnicodeCodepointsDiagSub {
-    fn add_to_diagnostic_with<G: EmissionGuarantee, F: SubdiagMessageOp<G>>(
+impl Subdiagnostic for HiddenUnicodeCodepointsDiagSub {
+    fn add_to_diag_with<G: EmissionGuarantee, F: SubdiagMessageOp<G>>(
         self,
         diag: &mut Diag<'_, G>,
         _f: F,
@@ -950,8 +950,8 @@ pub struct NonBindingLetSub {
     pub is_assign_desugar: bool,
 }
 
-impl AddToDiagnostic for NonBindingLetSub {
-    fn add_to_diagnostic_with<G: EmissionGuarantee, F: SubdiagMessageOp<G>>(
+impl Subdiagnostic for NonBindingLetSub {
+    fn add_to_diag_with<G: EmissionGuarantee, F: SubdiagMessageOp<G>>(
         self,
         diag: &mut Diag<'_, G>,
         _f: F,
@@ -1236,8 +1236,8 @@ pub enum NonSnakeCaseDiagSub {
     SuggestionAndNote { span: Span },
 }
 
-impl AddToDiagnostic for NonSnakeCaseDiagSub {
-    fn add_to_diagnostic_with<G: EmissionGuarantee, F: SubdiagMessageOp<G>>(
+impl Subdiagnostic for NonSnakeCaseDiagSub {
+    fn add_to_diag_with<G: EmissionGuarantee, F: SubdiagMessageOp<G>>(
         self,
         diag: &mut Diag<'_, G>,
         _f: F,
@@ -1478,8 +1478,8 @@ pub enum OverflowingBinHexSign {
     Negative,
 }
 
-impl AddToDiagnostic for OverflowingBinHexSign {
-    fn add_to_diagnostic_with<G: EmissionGuarantee, F: SubdiagMessageOp<G>>(
+impl Subdiagnostic for OverflowingBinHexSign {
+    fn add_to_diag_with<G: EmissionGuarantee, F: SubdiagMessageOp<G>>(
         self,
         diag: &mut Diag<'_, G>,
         _f: F,

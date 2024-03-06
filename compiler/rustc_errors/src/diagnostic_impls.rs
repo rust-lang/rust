@@ -1,5 +1,5 @@
 use crate::diagnostic::DiagLocation;
-use crate::{fluent_generated as fluent, AddToDiagnostic};
+use crate::{fluent_generated as fluent, Subdiagnostic};
 use crate::{
     Diag, DiagArgValue, DiagCtxt, Diagnostic, EmissionGuarantee, ErrCode, IntoDiagArg, Level,
     SubdiagMessageOp,
@@ -297,8 +297,8 @@ pub struct SingleLabelManySpans {
     pub spans: Vec<Span>,
     pub label: &'static str,
 }
-impl AddToDiagnostic for SingleLabelManySpans {
-    fn add_to_diagnostic_with<G: EmissionGuarantee, F: SubdiagMessageOp<G>>(
+impl Subdiagnostic for SingleLabelManySpans {
+    fn add_to_diag_with<G: EmissionGuarantee, F: SubdiagMessageOp<G>>(
         self,
         diag: &mut Diag<'_, G>,
         _: F,

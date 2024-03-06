@@ -36,8 +36,8 @@ use rustc_ast::{
 use rustc_ast_pretty::pprust;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::{
-    pluralize, AddToDiagnostic, Applicability, Diag, DiagCtxt, ErrorGuaranteed, FatalError, PErr,
-    PResult,
+    pluralize, Applicability, Diag, DiagCtxt, ErrorGuaranteed, FatalError, PErr, PResult,
+    Subdiagnostic,
 };
 use rustc_session::errors::ExprParenthesesNeeded;
 use rustc_span::source_map::Spanned;
@@ -1271,7 +1271,7 @@ impl<'a> Parser<'a> {
                 Ok(_) => {
                     if self.token == token::Eq {
                         let sugg = SuggAddMissingLetStmt { span: prev_span };
-                        sugg.add_to_diagnostic(err);
+                        sugg.add_to_diag(err);
                     }
                 }
                 Err(e) => {

@@ -14,8 +14,8 @@ extern crate rustc_session;
 extern crate rustc_span;
 
 use rustc_errors::{
-    AddToDiagnostic, DecorateLint, Diag, DiagCtxt, DiagInner, DiagMessage, EmissionGuarantee,
-    Diagnostic, Level, SubdiagMessageOp,
+    DecorateLint, Diag, DiagCtxt, DiagInner, DiagMessage, Diagnostic, EmissionGuarantee, Level,
+    SubdiagMessageOp, Subdiagnostic,
 };
 use rustc_macros::{Diagnostic, Subdiagnostic};
 use rustc_span::Span;
@@ -53,10 +53,10 @@ impl<'a, G: EmissionGuarantee> Diagnostic<'a, G> for TranslatableInDiagnostic {
     }
 }
 
-pub struct UntranslatableInAddToDiagnostic;
+pub struct UntranslatableInAddtoDiag;
 
-impl AddToDiagnostic for UntranslatableInAddToDiagnostic {
-    fn add_to_diagnostic_with<G: EmissionGuarantee, F: SubdiagMessageOp<G>>(
+impl Subdiagnostic for UntranslatableInAddtoDiag {
+    fn add_to_diag_with<G: EmissionGuarantee, F: SubdiagMessageOp<G>>(
         self,
         diag: &mut Diag<'_, G>,
         f: F,
@@ -66,10 +66,10 @@ impl AddToDiagnostic for UntranslatableInAddToDiagnostic {
     }
 }
 
-pub struct TranslatableInAddToDiagnostic;
+pub struct TranslatableInAddtoDiag;
 
-impl AddToDiagnostic for TranslatableInAddToDiagnostic {
-    fn add_to_diagnostic_with<G: EmissionGuarantee, F: SubdiagMessageOp<G>>(
+impl Subdiagnostic for TranslatableInAddtoDiag {
+    fn add_to_diag_with<G: EmissionGuarantee, F: SubdiagMessageOp<G>>(
         self,
         diag: &mut Diag<'_, G>,
         f: F,
@@ -105,10 +105,10 @@ impl<'a> DecorateLint<'a, ()> for TranslatableInDecorateLint {
 
 pub fn make_diagnostics<'a>(dcx: &'a DiagCtxt) {
     let _diag = dcx.struct_err(crate::fluent_generated::no_crate_example);
-    //~^ ERROR diagnostics should only be created in `Diagnostic`/`AddToDiagnostic` impls
+    //~^ ERROR diagnostics should only be created in `Diagnostic`/`Subdiagnostic` impls
 
     let _diag = dcx.struct_err("untranslatable diagnostic");
-    //~^ ERROR diagnostics should only be created in `Diagnostic`/`AddToDiagnostic` impls
+    //~^ ERROR diagnostics should only be created in `Diagnostic`/`Subdiagnostic` impls
     //~^^ ERROR diagnostics should be created using translatable messages
 }
 
