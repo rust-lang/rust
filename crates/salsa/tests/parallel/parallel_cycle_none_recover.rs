@@ -27,8 +27,8 @@ fn parallel_cycle_none_recover() {
     if let Some(c) = err_b.downcast_ref::<salsa::Cycle>() {
         expect![[r#"
             [
-                "a(-1)",
-                "b(-1)",
+                "parallel::parallel_cycle_none_recover::AQuery::a(-1)",
+                "parallel::parallel_cycle_none_recover::BQuery::b(-1)",
             ]
         "#]]
         .assert_debug_eq(&c.unexpected_participants(&db));

@@ -91,7 +91,6 @@ impl RootDatabase {
             crate::symbol_index::LocalRootsQuery
             crate::symbol_index::LibraryRootsQuery
             // HirDatabase
-            hir::db::InferQueryQuery
             hir::db::MirBodyQuery
             hir::db::BorrowckQuery
             hir::db::TyQuery
@@ -130,12 +129,10 @@ impl RootDatabase {
             hir::db::FnDefVarianceQuery
             hir::db::AdtVarianceQuery
             hir::db::AssociatedTyValueQuery
-            hir::db::TraitSolveQueryQuery
             hir::db::ProgramClausesForChalkEnvQuery
 
             // DefDatabase
             hir::db::FileItemTreeQuery
-            hir::db::CrateDefMapQueryQuery
             hir::db::BlockDefMapQuery
             hir::db::StructDataWithDiagnosticsQuery
             hir::db::UnionDataWithDiagnosticsQuery
@@ -165,7 +162,6 @@ impl RootDatabase {
             hir::db::FunctionVisibilityQuery
             hir::db::ConstVisibilityQuery
             hir::db::CrateSupportsNoStdQuery
-            hir::db::BlockItemTreeQueryQuery
             hir::db::ExternCrateDeclDataQuery
             hir::db::InternAnonymousConstQuery
             hir::db::InternExternCrateQuery
