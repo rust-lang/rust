@@ -1,6 +1,6 @@
 use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
-use rustc_data_structures::profiling::{EventId, QueryInvocationId, SelfProfilerRef};
+use rustc_data_structures::profiling::{QueryInvocationId, SelfProfilerRef};
 use rustc_data_structures::sharded::{self, Sharded};
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_data_structures::steal::Steal;
@@ -142,7 +142,6 @@ impl<D: Deps> DepGraph<D> {
 
         // Instantiate a dependy-less red node only once for anonymous queries.
         let (red_node_index, red_node_prev_index_and_color) = current.intern_node(
-            profiler,
             &prev_graph,
             DepNode { kind: D::DEP_KIND_RED, hash: Fingerprint::ZERO.into() },
             EdgesVec::new(),
@@ -371,13 +370,8 @@ impl<D: Deps> DepGraphData<D> {
             hash_result.map(|f| dcx.with_stable_hashing_context(|mut hcx| f(&mut hcx, &result)));
 
         // Intern the new `DepNode`.
-        let (dep_node_index, prev_and_color) = self.current.intern_node(
-            dcx.profiler(),
-            &self.previous,
-            key,
-            edges,
-            current_fingerprint,
-        );
+        let (dep_node_index, prev_and_color) =
+            self.current.intern_node(&self.previous, key, edges, current_fingerprint);
 
         hashing_timer.finish_with_query_invocation_id(dep_node_index.into());
 
@@ -579,13 +573,8 @@ impl<D: Deps> DepGraph<D> {
             });
 
             // Intern the new `DepNode` with the dependencies up-to-now.
-            let (dep_node_index, prev_and_color) = data.current.intern_node(
-                cx.profiler(),
-                &data.previous,
-                node,
-                edges,
-                current_fingerprint,
-            );
+            let (dep_node_index, prev_and_color) =
+                data.current.intern_node(&data.previous, node, edges, current_fingerprint);
 
             hashing_timer.finish_with_query_invocation_id(dep_node_index.into());
 
@@ -1087,12 +1076,6 @@ pub(super) struct CurrentDepGraph<D: Deps> {
     /// debugging and only active with `debug_assertions`.
     total_read_count: AtomicU64,
     total_duplicate_read_count: AtomicU64,
-
-    /// The cached event id for profiling node interning. This saves us
-    /// from having to look up the event id every time we intern a node
-    /// which may incur too much overhead.
-    /// This will be None if self-profiling is disabled.
-    node_intern_event_id: Option<EventId>,
 }
 
 impl<D: Deps> CurrentDepGraph<D> {
@@ -1127,10 +1110,6 @@ impl<D: Deps> CurrentDepGraph<D> {
 
         let new_node_count_estimate = 102 * prev_graph_node_count / 100 + 200;
 
-        let node_intern_event_id = profiler
-            .get_or_alloc_cached_string("incr_comp_intern_dep_graph_node")
-            .map(EventId::from_label);
-
         CurrentDepGraph {
             encoder: Steal::new(GraphEncoder::new(
                 encoder,
@@ -1153,7 +1132,6 @@ impl<D: Deps> CurrentDepGraph<D> {
             fingerprints: Lock::new(IndexVec::from_elem_n(None, new_node_count_estimate)),
             total_read_count: AtomicU64::new(0),
             total_duplicate_read_count: AtomicU64::new(0),
-            node_intern_event_id,
         }
     }
 
@@ -1192,16 +1170,11 @@ impl<D: Deps> CurrentDepGraph<D> {
 
     fn intern_node(
         &self,
-        profiler: &SelfProfilerRef,
         prev_graph: &SerializedDepGraph,
         key: DepNode,
         edges: EdgesVec,
         fingerprint: Option<Fingerprint>,
     ) -> (DepNodeIndex, Option<(SerializedDepNodeIndex, DepNodeColor)>) {
-        // Get timer for profiling `DepNode` interning
-        let _node_intern_timer =
-            self.node_intern_event_id.map(|eid| profiler.generic_activity_with_event_id(eid));
-
         if let Some(prev_index) = prev_graph.node_to_index_opt(&key) {
             let get_dep_node_index = |fingerprint| {
                 let mut prev_index_to_index = self.prev_index_to_index.lock();
