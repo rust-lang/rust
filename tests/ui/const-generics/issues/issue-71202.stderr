@@ -29,5 +29,30 @@ LL | |     } as usize] = [];
                    <IsCopy<T>>::VALUE
                } as usize]:`
 
-error: aborting due to 1 previous error
+error: unconstrained generic constant
+  --> $DIR/issue-71202.rs:28:19
+   |
+LL |     } as usize] = [];
+   |                   ^^
+   |
+   = help: try adding a `where` bound using this expression: `where [(); 1 - {
+                   trait NotCopy {
+                       const VALUE: bool = false;
+                   }
+           
+                   impl<__Type: ?Sized> NotCopy for __Type {}
+           
+                   struct IsCopy<__Type: ?Sized>(PhantomData<__Type>);
+           
+                   impl<__Type> IsCopy<__Type>
+                   where
+                       __Type: Sized + Copy,
+                   {
+                       const VALUE: bool = true;
+                   }
+           
+                   <IsCopy<T>>::VALUE
+               } as usize]:`
+
+error: aborting due to 2 previous errors
 
