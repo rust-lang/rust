@@ -2632,9 +2632,7 @@ impl<'test> TestCx<'test> {
         // double the length.
         let mut f = self.output_base_dir().join("a");
         // FIXME: This is using the host architecture exe suffix, not target!
-        if self.config.target.contains("emscripten") {
-            f = f.with_extra_extension("js");
-        } else if self.config.target.contains("wasm32") {
+        if self.config.target.starts_with("wasm") {
             f = f.with_extra_extension("wasm");
         } else if self.config.target.contains("spirv") {
             f = f.with_extra_extension("spv");
@@ -2648,32 +2646,6 @@ impl<'test> TestCx<'test> {
         // If we've got another tool to run under (valgrind),
         // then split apart its command
         let mut args = self.split_maybe_args(&self.config.runner);
-
-        // If this is emscripten, then run tests under nodejs
-        if self.config.target.contains("emscripten") {
-            if let Some(ref p) = self.config.nodejs {
-                args.push(p.into());
-            } else {
-                self.fatal("emscripten target requested and no NodeJS binary found (--nodejs)");
-            }
-        // If this is otherwise wasm, then run tests under nodejs with our
-        // shim
-        } else if self.config.target.contains("wasm32") {
-            if let Some(ref p) = self.config.nodejs {
-                args.push(p.into());
-            } else {
-                self.fatal("wasm32 target requested and no NodeJS binary found (--nodejs)");
-            }
-
-            let src = self
-                .config
-                .src_base
-                .parent()
-                .unwrap() // chop off `ui`
-                .parent()
-                .unwrap(); // chop off `tests`
-            args.push(src.join("src/etc/wasm32-shim.js").into_os_string());
-        }
 
         let exe_file = self.make_exe_name();
 
