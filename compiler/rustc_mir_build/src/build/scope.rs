@@ -271,7 +271,11 @@ impl DropTree {
             .or_insert_with(|| drops.push((drop, next)))
     }
 
-    fn add_entry(&mut self, from: BasicBlock, to: DropIdx) {
+    /// Registers `from` as an entry point to this drop tree, at `to`.
+    ///
+    /// During [`Self::build_mir`], `from` will be linked to the corresponding
+    /// block within the drop tree.
+    fn add_entry_point(&mut self, from: BasicBlock, to: DropIdx) {
         debug_assert!(to < self.drops.next_index());
         self.entry_points.push((to, from));
     }
@@ -673,7 +677,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             .flat_map(|scope| &scope.drops)
             .fold(ROOT_NODE, |drop_idx, &drop| drops.add_drop(drop, drop_idx));
 
-        drops.add_entry(block, drop_idx);
+        drops.add_entry_point(block, drop_idx);
 
         // `build_drop_trees` doesn't have access to our source_info, so we
         // create a dummy terminator now. `TerminatorKind::UnwindResume` is used
@@ -706,7 +710,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 drop_idx = drops.add_drop(*drop, drop_idx);
             }
         }
-        drops.add_entry(block, drop_idx);
+        drops.add_entry_point(block, drop_idx);
 
         // `build_drop_trees` doesn't have access to our source_info, so we
         // create a dummy terminator now. `TerminatorKind::UnwindResume` is used
@@ -1118,7 +1122,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         );
 
         let next_drop = self.diverge_cleanup();
-        self.scopes.unwind_drops.add_entry(start, next_drop);
+        self.scopes.unwind_drops.add_entry_point(start, next_drop);
     }
 
     /// Sets up a path that performs all required cleanup for dropping a
@@ -1152,7 +1156,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             scope.cached_coroutine_drop_block = Some(cached_drop);
         }
 
-        self.scopes.coroutine_drops.add_entry(yield_block, cached_drop);
+        self.scopes.coroutine_drops.add_entry_point(yield_block, cached_drop);
     }
 
     /// Utility function for *non*-scope code to build their own drops
@@ -1285,7 +1289,7 @@ fn build_scope_drops<'tcx>(
                     continue;
                 }
 
-                unwind_drops.add_entry(block, unwind_to);
+                unwind_drops.add_entry_point(block, unwind_to);
 
                 let next = cfg.start_new_block();
                 cfg.terminate(
@@ -1355,9 +1359,10 @@ impl<'a, 'tcx: 'a> Builder<'a, 'tcx> {
                             .scopes
                             .unwind_drops
                             .add_drop(drop_data.0, unwind_indices[drop_data.1]);
-                        self.scopes
-                            .unwind_drops
-                            .add_entry(blocks[drop_idx].unwrap(), unwind_indices[drop_data.1]);
+                        self.scopes.unwind_drops.add_entry_point(
+                            blocks[drop_idx].unwrap(),
+                            unwind_indices[drop_data.1],
+                        );
                         unwind_indices.push(unwind_drop);
                     }
                 }
