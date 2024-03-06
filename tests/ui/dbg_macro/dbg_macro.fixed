@@ -40,7 +40,8 @@ fn issue9914() {
     }
     macro_rules! expand_to_dbg {
         () => {
-            dbg!();
+            
+            //~^ ERROR: the `dbg!` macro is intended as a debugging tool
         };
     }
 
