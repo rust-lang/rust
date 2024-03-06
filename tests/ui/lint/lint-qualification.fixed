@@ -24,6 +24,9 @@ fn main() {
     use std::fmt;
     let _: fmt::Result = Ok(()); //~ ERROR: unnecessary qualification
 
+    let _ = <bool as Default>::default(); // issue #121999
+    //~^ ERROR: unnecessary qualification
+
     macro_rules! m { ($a:ident, $b:ident) => {
         $crate::foo::bar(); // issue #37357
         ::foo::bar(); // issue #38682

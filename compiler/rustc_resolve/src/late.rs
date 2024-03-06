@@ -3953,6 +3953,7 @@ impl<'a: 'ast, 'b, 'ast, 'tcx> LateResolutionVisitor<'a, 'b, 'ast, 'tcx> {
             // Avoid recording definition of `A::B` in `<T as A>::B::C`.
             self.r.record_partial_res(node_id, partial_res);
             self.resolve_elided_lifetimes_in_path(partial_res, path, source, path_span);
+            self.lint_unused_qualifications(path, ns, finalize);
         }
 
         partial_res
@@ -4144,39 +4145,6 @@ impl<'a: 'ast, 'b, 'ast, 'tcx> LateResolutionVisitor<'a, 'b, 'ast, 'tcx> {
             PathResult::Module(..) | PathResult::Failed { .. } => return Ok(None),
             PathResult::Indeterminate => bug!("indeterminate path result in resolve_qpath"),
         };
-
-        if path.iter().all(|seg| !seg.ident.span.from_expansion()) {
-            let end_pos =
-                path.iter().position(|seg| seg.has_generic_args).map_or(path.len(), |pos| pos + 1);
-            let unqualified =
-                path[..end_pos].iter().enumerate().skip(1).rev().find_map(|(i, seg)| {
-                    // Preserve the current namespace for the final path segment, but use the type
-                    // namespace for all preceding segments
-                    //
-                    // e.g. for `std::env::args` check the `ValueNS` for `args` but the `TypeNS` for
-                    // `std` and `env`
-                    //
-                    // If the final path segment is beyond `end_pos` all the segments to check will
-                    // use the type namespace
-                    let ns = if i + 1 == path.len() { ns } else { TypeNS };
-                    let res = self.r.partial_res_map.get(&seg.id?)?.full_res()?;
-                    let binding = self.resolve_ident_in_lexical_scope(seg.ident, ns, None, None)?;
-
-                    (res == binding.res()).then_some(seg)
-                });
-
-            if let Some(unqualified) = unqualified {
-                self.r.lint_buffer.buffer_lint_with_diagnostic(
-                    lint::builtin::UNUSED_QUALIFICATIONS,
-                    finalize.node_id,
-                    finalize.path_span,
-                    "unnecessary qualification",
-                    lint::BuiltinLintDiag::UnusedQualifications {
-                        removal_span: finalize.path_span.until(unqualified.ident.span),
-                    },
-                );
-            }
-        }
 
         Ok(Some(result))
     }
@@ -4654,6 +4622,42 @@ impl<'a: 'ast, 'b, 'ast, 'tcx> LateResolutionVisitor<'a, 'b, 'ast, 'tcx> {
                         .collect()
                 });
             self.r.doc_link_traits_in_scope = doc_link_traits_in_scope;
+        }
+    }
+
+    fn lint_unused_qualifications(&mut self, path: &[Segment], ns: Namespace, finalize: Finalize) {
+        if path.iter().any(|seg| seg.ident.span.from_expansion()) {
+            return;
+        }
+
+        let end_pos =
+            path.iter().position(|seg| seg.has_generic_args).map_or(path.len(), |pos| pos + 1);
+        let unqualified = path[..end_pos].iter().enumerate().skip(1).rev().find_map(|(i, seg)| {
+            // Preserve the current namespace for the final path segment, but use the type
+            // namespace for all preceding segments
+            //
+            // e.g. for `std::env::args` check the `ValueNS` for `args` but the `TypeNS` for
+            // `std` and `env`
+            //
+            // If the final path segment is beyond `end_pos` all the segments to check will
+            // use the type namespace
+            let ns = if i + 1 == path.len() { ns } else { TypeNS };
+            let res = self.r.partial_res_map.get(&seg.id?)?.full_res()?;
+            let binding = self.resolve_ident_in_lexical_scope(seg.ident, ns, None, None)?;
+
+            (res == binding.res()).then_some(seg)
+        });
+
+        if let Some(unqualified) = unqualified {
+            self.r.lint_buffer.buffer_lint_with_diagnostic(
+                lint::builtin::UNUSED_QUALIFICATIONS,
+                finalize.node_id,
+                finalize.path_span,
+                "unnecessary qualification",
+                lint::BuiltinLintDiag::UnusedQualifications {
+                    removal_span: path[0].ident.span.until(unqualified.ident.span),
+                },
+            );
         }
     }
 }
