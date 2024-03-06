@@ -2,7 +2,7 @@
 // https://github.com/fortanix/rust-sgx/issues/109
 
 //@ run-pass
-//@ ignore-emscripten no threads support
+//@ needs-threads
 
 use std::{net::TcpListener, sync::mpsc, thread};
 

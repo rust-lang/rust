@@ -1,7 +1,7 @@
 //@ run-pass
 //@ compile-flags: -C lto
 //@ no-prefer-dynamic
-//@ ignore-emscripten no threads support
+//@ needs-threads
 
 use std::thread;
 

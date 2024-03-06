@@ -2,7 +2,7 @@
 //@ needs-unwind
 
 #![allow(non_camel_case_types)]
-//@ ignore-emscripten no threads support
+//@ needs-threads
 
 use std::sync::mpsc::{channel, Sender};
 use std::thread;
