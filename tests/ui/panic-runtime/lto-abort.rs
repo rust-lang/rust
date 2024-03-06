@@ -2,7 +2,7 @@
 #![allow(unused_variables)]
 //@ compile-flags:-C lto -C panic=abort
 //@ no-prefer-dynamic
-//@ ignore-emscripten no processes
+//@ ignore-wasm32 no processes
 //@ ignore-sgx no processes
 
 use std::process::Command;

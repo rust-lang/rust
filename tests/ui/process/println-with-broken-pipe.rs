@@ -1,7 +1,7 @@
 //@ run-pass
 //@ check-run-results
 //@ ignore-windows
-//@ ignore-emscripten
+//@ ignore-wasm32
 //@ ignore-fuchsia
 //@ ignore-horizon
 //@ ignore-android

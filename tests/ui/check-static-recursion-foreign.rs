@@ -3,7 +3,6 @@
 // Static recursion check shouldn't fail when given a foreign item (#18279)
 
 //@ aux-build:check_static_recursion_foreign_helper.rs
-//@ ignore-wasm32-bare no libc to test ffi with
 
 //@ pretty-expanded FIXME #23616
 

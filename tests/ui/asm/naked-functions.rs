@@ -1,7 +1,6 @@
 //@ needs-asm-support
 //@ ignore-nvptx64
 //@ ignore-spirv
-//@ ignore-wasm32
 
 #![feature(naked_functions)]
 #![feature(asm_const, asm_unwind)]
