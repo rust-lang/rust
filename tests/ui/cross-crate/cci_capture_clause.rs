@@ -5,7 +5,7 @@
 // that use capture clauses.
 
 //@ pretty-expanded FIXME #23616
-//@ ignore-emscripten no threads support
+//@ needs-threads
 
 extern crate cci_capture_clause;
 

@@ -1,4 +1,4 @@
-//@ ignore-wasm32-bare compiled with panic=abort by default
+//@ needs-unwind
 //@ compile-flags: -C no-prepopulate-passes -Copt-level=0
 //
 
