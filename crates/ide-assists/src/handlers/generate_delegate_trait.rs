@@ -1716,4 +1716,65 @@ impl some_module::SomeTrait for B {
 }"#,
         )
     }
+
+    #[test]
+    fn test_fn_with_attrs() {
+        check_assist(
+            generate_delegate_trait,
+            r#"
+struct A;
+
+trait T {
+    #[cfg(test)]
+    fn f(&self, a: u32);
+    #[cfg(not(test))]
+    fn f(&self, a: bool);
+}
+
+impl T for A {
+    #[cfg(test)]
+    fn f(&self, a: u32) {}
+    #[cfg(not(test))]
+    fn f(&self, a: bool) {}
+}
+
+struct B {
+    a$0: A,
+}
+"#,
+            r#"
+struct A;
+
+trait T {
+    #[cfg(test)]
+    fn f(&self, a: u32);
+    #[cfg(not(test))]
+    fn f(&self, a: bool);
+}
+
+impl T for A {
+    #[cfg(test)]
+    fn f(&self, a: u32) {}
+    #[cfg(not(test))]
+    fn f(&self, a: bool) {}
+}
+
+struct B {
+    a: A,
+}
+
+impl T for B {
+    #[cfg(test)]
+    fn f(&self, a: u32) {
+        <A as T>::f(&self.a, a)
+    }
+
+    #[cfg(not(test))]
+    fn f(&self, a: bool) {
+        <A as T>::f(&self.a, a)
+    }
+}
+"#,
+        );
+    }
 }
