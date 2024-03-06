@@ -868,7 +868,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             .into_iter()
             .find_map(|binding| if binding == ignore_binding { None } else { binding });
 
-        if let Some(Finalize { path_span, report_private, used, .. }) = finalize {
+        if let Some(Finalize { path_span, report_private, used, root_span, .. }) = finalize {
             let Some(binding) = binding else {
                 return Err((Determined, Weak::No));
             };
@@ -881,6 +881,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                         dedup_span: path_span,
                         outermost_res: None,
                         parent_scope: *parent_scope,
+                        single_nested: path_span != root_span,
                     });
                 } else {
                     return Err((Determined, Weak::No));

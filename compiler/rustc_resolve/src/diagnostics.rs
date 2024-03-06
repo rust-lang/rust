@@ -1736,7 +1736,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
     }
 
     fn report_privacy_error(&mut self, privacy_error: &PrivacyError<'a>) {
-        let PrivacyError { ident, binding, outermost_res, parent_scope, dedup_span } =
+        let PrivacyError { ident, binding, outermost_res, parent_scope, single_nested, dedup_span } =
             *privacy_error;
 
         let res = binding.res();
@@ -1775,7 +1775,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                 &import_suggestions,
                 Instead::Yes,
                 FoundUse::Yes,
-                DiagMode::Import,
+                DiagMode::Import { append: single_nested },
                 vec![],
                 "",
             );
@@ -2701,7 +2701,11 @@ pub(crate) enum DiagMode {
     /// The binding is part of a pattern
     Pattern,
     /// The binding is part of a use statement
-    Import,
+    Import {
+        /// `true` mean add the tips afterward for case `use a::{b,c}`,
+        /// rather than replacing within.
+        append: bool,
+    },
 }
 
 pub(crate) fn import_candidates(
@@ -2726,6 +2730,8 @@ pub(crate) fn import_candidates(
     );
 }
 
+type PathString<'a> = (String, &'a str, Option<DefId>, &'a Option<String>, bool);
+
 /// When an entity with a given name is not available in scope, we search for
 /// entities with that name in all crates. This method allows outputting the
 /// results of this search in a programmer-friendly way. If any entities are
@@ -2746,10 +2752,8 @@ fn show_candidates(
         return false;
     }
 
-    let mut accessible_path_strings: Vec<(String, &str, Option<DefId>, &Option<String>, bool)> =
-        Vec::new();
-    let mut inaccessible_path_strings: Vec<(String, &str, Option<DefId>, &Option<String>, bool)> =
-        Vec::new();
+    let mut accessible_path_strings: Vec<PathString<'_>> = Vec::new();
+    let mut inaccessible_path_strings: Vec<PathString<'_>> = Vec::new();
 
     candidates.iter().for_each(|c| {
         if c.accessible {
@@ -2811,6 +2815,15 @@ fn show_candidates(
             err.note(note.clone());
         }
 
+        let append_candidates = |msg: &mut String, accessible_path_strings: Vec<PathString<'_>>| {
+            msg.push(':');
+
+            for candidate in accessible_path_strings {
+                msg.push('\n');
+                msg.push_str(&candidate.0);
+            }
+        };
+
         if let Some(span) = use_placement_span {
             let (add_use, trailing) = match mode {
                 DiagMode::Pattern => {
@@ -2822,7 +2835,7 @@ fn show_candidates(
                     );
                     return true;
                 }
-                DiagMode::Import => ("", ""),
+                DiagMode::Import { .. } => ("", ""),
                 DiagMode::Normal => ("use ", ";\n"),
             };
             for candidate in &mut accessible_path_strings {
@@ -2839,13 +2852,22 @@ fn show_candidates(
                     format!("{add_use}{}{append}{trailing}{additional_newline}", &candidate.0);
             }
 
-            err.span_suggestions_with_style(
-                span,
-                msg,
-                accessible_path_strings.into_iter().map(|a| a.0),
-                Applicability::MaybeIncorrect,
-                SuggestionStyle::ShowAlways,
-            );
+            match mode {
+                DiagMode::Import { append: true, .. } => {
+                    append_candidates(&mut msg, accessible_path_strings);
+                    err.span_help(span, msg);
+                }
+                _ => {
+                    err.span_suggestions_with_style(
+                        span,
+                        msg,
+                        accessible_path_strings.into_iter().map(|a| a.0),
+                        Applicability::MaybeIncorrect,
+                        SuggestionStyle::ShowAlways,
+                    );
+                }
+            }
+
             if let [first, .., last] = &path[..] {
                 let sp = first.ident.span.until(last.ident.span);
                 // Our suggestion is empty, so make sure the span is not empty (or we'd ICE).
@@ -2860,17 +2882,11 @@ fn show_candidates(
                 }
             }
         } else {
-            msg.push(':');
-
-            for candidate in accessible_path_strings {
-                msg.push('\n');
-                msg.push_str(&candidate.0);
-            }
-
+            append_candidates(&mut msg, accessible_path_strings);
             err.help(msg);
         }
         true
-    } else if !(inaccessible_path_strings.is_empty() || matches!(mode, DiagMode::Import)) {
+    } else if !(inaccessible_path_strings.is_empty() || matches!(mode, DiagMode::Import { .. })) {
         let prefix =
             if let DiagMode::Pattern = mode { "you might have meant to match on " } else { "" };
         if let [(name, descr, def_id, note, _)] = &inaccessible_path_strings[..] {

@@ -320,6 +320,7 @@ pub struct Config {
 
 // JUSTIFICATION: before session exists, only config
 #[allow(rustc::bad_opt_access)]
+#[allow(rustc::untranslatable_diagnostic)] // FIXME: make this translatable
 pub fn run_compiler<R: Send>(config: Config, f: impl FnOnce(&Compiler) -> R + Send) -> R {
     trace!("run_compiler");
 

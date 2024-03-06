@@ -61,6 +61,7 @@ impl SearchPath {
             (PathKind::All, path)
         };
         if path.is_empty() {
+            #[allow(rustc::untranslatable_diagnostic)] // FIXME: make this translatable
             early_dcx.early_fatal("empty search path given via `-L`");
         }
 

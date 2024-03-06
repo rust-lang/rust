@@ -320,6 +320,7 @@ macro_rules! redirect_field {
 type OptionSetter<O> = fn(&mut O, v: Option<&str>) -> bool;
 type OptionDescrs<O> = &'static [(&'static str, OptionSetter<O>, &'static str, &'static str)];
 
+#[allow(rustc::untranslatable_diagnostic)] // FIXME: make this translatable
 fn build_options<O: Default>(
     early_dcx: &EarlyDiagCtxt,
     matches: &getopts::Matches,
@@ -394,8 +395,7 @@ mod desc {
     pub const parse_linker_flavor: &str = ::rustc_target::spec::LinkerFlavorCli::one_of();
     pub const parse_optimization_fuel: &str = "crate=integer";
     pub const parse_dump_mono_stats: &str = "`markdown` (default) or `json`";
-    pub const parse_instrument_coverage: &str =
-        "`all` (default), `branch`, `except-unused-generics`, `except-unused-functions`, or `off`";
+    pub const parse_instrument_coverage: &str = "either a boolean (`yes`, `no`, `on`, `off`, etc) or (unstable) one of `branch`, `except-unused-generics`, `except-unused-functions`";
     pub const parse_instrument_xray: &str = "either a boolean (`yes`, `no`, `on`, `off`, etc), or a comma separated list of settings: `always` or `never` (mutually exclusive), `ignore-loops`, `instruction-threshold=N`, `skip-entry`, `skip-exit`";
     pub const parse_unpretty: &str = "`string` or `string=string`";
     pub const parse_treat_err_as_bug: &str = "either no value or a non-negative number";
@@ -918,18 +918,18 @@ mod parse {
         if v.is_some() {
             let mut bool_arg = false;
             if parse_bool(&mut bool_arg, v) {
-                *slot = if bool_arg { InstrumentCoverage::All } else { InstrumentCoverage::Off };
+                *slot = if bool_arg { InstrumentCoverage::Yes } else { InstrumentCoverage::No };
                 return true;
             }
         }
 
         let Some(v) = v else {
-            *slot = InstrumentCoverage::All;
+            *slot = InstrumentCoverage::Yes;
             return true;
         };
 
         *slot = match v {
-            "all" => InstrumentCoverage::All,
+            "all" => InstrumentCoverage::Yes,
             "branch" => InstrumentCoverage::Branch,
             "except-unused-generics" | "except_unused_generics" => {
                 InstrumentCoverage::ExceptUnusedGenerics
@@ -937,7 +937,7 @@ mod parse {
             "except-unused-functions" | "except_unused_functions" => {
                 InstrumentCoverage::ExceptUnusedFunctions
             }
-            "off" | "no" | "n" | "false" | "0" => InstrumentCoverage::Off,
+            "0" => InstrumentCoverage::No,
             _ => return false,
         };
         true
@@ -1444,15 +1444,15 @@ options! {
     inline_threshold: Option<u32> = (None, parse_opt_number, [TRACKED],
         "set the threshold for inlining a function"),
     #[rustc_lint_opt_deny_field_access("use `Session::instrument_coverage` instead of this field")]
-    instrument_coverage: InstrumentCoverage = (InstrumentCoverage::Off, parse_instrument_coverage, [TRACKED],
+    instrument_coverage: InstrumentCoverage = (InstrumentCoverage::No, parse_instrument_coverage, [TRACKED],
         "instrument the generated code to support LLVM source-based code coverage \
         reports (note, the compiler build config must include `profiler = true`); \
         implies `-C symbol-mangling-version=v0`. Optional values are:
-        `=all` (implicit value)
-        `=branch`
-        `=except-unused-generics`
-        `=except-unused-functions`
-        `=off` (default)"),
+        `=no` `=n` `=off` `=false` (default)
+        `=yes` `=y` `=on` `=true` (implicit value)
+        `=branch` (unstable)
+        `=except-unused-generics` (unstable)
+        `=except-unused-functions` (unstable)"),
     link_arg: (/* redirected to link_args */) = ((), parse_string_push, [UNTRACKED],
         "a single extra argument to append to the linker invocation (can be used several times)"),
     link_args: Vec<String> = (Vec::new(), parse_list, [UNTRACKED],

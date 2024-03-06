@@ -1101,32 +1101,36 @@ impl DiagCtxt {
 // Functions beginning with `struct_`/`create_` create a diagnostic. Other
 // functions create and emit a diagnostic all in one go.
 impl DiagCtxt {
-    // No `#[rustc_lint_diagnostics]` because bug messages aren't user-facing.
+    // No `#[rustc_lint_diagnostics]` and no `impl Into<DiagMessage>` because bug messages aren't
+    // user-facing.
     #[track_caller]
-    pub fn struct_bug(&self, msg: impl Into<DiagMessage>) -> Diag<'_, BugAbort> {
-        Diag::new(self, Bug, msg)
+    pub fn struct_bug(&self, msg: impl Into<Cow<'static, str>>) -> Diag<'_, BugAbort> {
+        Diag::new(self, Bug, msg.into())
     }
 
-    // No `#[rustc_lint_diagnostics]` because bug messages aren't user-facing.
+    // No `#[rustc_lint_diagnostics]` and no `impl Into<DiagMessage>` because bug messages aren't
+    // user-facing.
     #[track_caller]
-    pub fn bug(&self, msg: impl Into<DiagMessage>) -> ! {
+    pub fn bug(&self, msg: impl Into<Cow<'static, str>>) -> ! {
         self.struct_bug(msg).emit()
     }
 
-    // No `#[rustc_lint_diagnostics]` because bug messages aren't user-facing.
+    // No `#[rustc_lint_diagnostics]` and no `impl Into<DiagMessage>` because bug messages aren't
+    // user-facing.
     #[track_caller]
     pub fn struct_span_bug(
         &self,
         span: impl Into<MultiSpan>,
-        msg: impl Into<DiagMessage>,
+        msg: impl Into<Cow<'static, str>>,
     ) -> Diag<'_, BugAbort> {
         self.struct_bug(msg).with_span(span)
     }
 
-    // No `#[rustc_lint_diagnostics]` because bug messages aren't user-facing.
+    // No `#[rustc_lint_diagnostics]` and no `impl Into<DiagMessage>` because bug messages aren't
+    // user-facing.
     #[track_caller]
-    pub fn span_bug(&self, span: impl Into<MultiSpan>, msg: impl Into<DiagMessage>) -> ! {
-        self.struct_span_bug(span, msg).emit()
+    pub fn span_bug(&self, span: impl Into<MultiSpan>, msg: impl Into<Cow<'static, str>>) -> ! {
+        self.struct_span_bug(span, msg.into()).emit()
     }
 
     #[track_caller]
@@ -1240,24 +1244,28 @@ impl DiagCtxt {
     }
 
     /// Ensures that an error is printed. See `Level::DelayedBug`.
-    // No `#[rustc_lint_diagnostics]` because bug messages aren't user-facing.
+    //
+    // No `#[rustc_lint_diagnostics]` and no `impl Into<DiagMessage>` because bug messages aren't
+    // user-facing.
     #[track_caller]
-    pub fn delayed_bug(&self, msg: impl Into<DiagMessage>) -> ErrorGuaranteed {
-        Diag::<ErrorGuaranteed>::new(self, DelayedBug, msg).emit()
+    pub fn delayed_bug(&self, msg: impl Into<Cow<'static, str>>) -> ErrorGuaranteed {
+        Diag::<ErrorGuaranteed>::new(self, DelayedBug, msg.into()).emit()
     }
 
     /// Ensures that an error is printed. See `Level::DelayedBug`.
     ///
     /// Note: this function used to be called `delay_span_bug`. It was renamed
     /// to match similar functions like `span_err`, `span_warn`, etc.
-    // No `#[rustc_lint_diagnostics]` because bug messages aren't user-facing.
+    //
+    // No `#[rustc_lint_diagnostics]` and no `impl Into<DiagMessage>` because bug messages aren't
+    // user-facing.
     #[track_caller]
     pub fn span_delayed_bug(
         &self,
         sp: impl Into<MultiSpan>,
-        msg: impl Into<DiagMessage>,
+        msg: impl Into<Cow<'static, str>>,
     ) -> ErrorGuaranteed {
-        Diag::<ErrorGuaranteed>::new(self, DelayedBug, msg).with_span(sp).emit()
+        Diag::<ErrorGuaranteed>::new(self, DelayedBug, msg.into()).with_span(sp).emit()
     }
 
     #[rustc_lint_diagnostics]

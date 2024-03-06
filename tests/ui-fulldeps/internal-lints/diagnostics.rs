@@ -14,8 +14,8 @@ extern crate rustc_session;
 extern crate rustc_span;
 
 use rustc_errors::{
-    AddToDiagnostic, Diag, EmissionGuarantee, DiagCtxt, IntoDiagnostic, Level,
-    SubdiagMessageOp,
+    AddToDiagnostic, DecorateLint, Diag, DiagCtxt, DiagInner, DiagMessage, EmissionGuarantee,
+    IntoDiagnostic, Level, SubdiagMessageOp,
 };
 use rustc_macros::{Diagnostic, Subdiagnostic};
 use rustc_span::Span;
@@ -78,6 +78,31 @@ impl AddToDiagnostic for TranslatableInAddToDiagnostic {
     }
 }
 
+pub struct UntranslatableInDecorateLint;
+
+impl<'a> DecorateLint<'a, ()> for UntranslatableInDecorateLint {
+    fn decorate_lint<'b, >(self, diag: &'b mut Diag<'a, ()>) {
+        diag.note("untranslatable diagnostic");
+        //~^ ERROR diagnostics should be created using translatable messages
+    }
+
+    fn msg(&self) -> DiagMessage {
+        unreachable!();
+    }
+}
+
+pub struct TranslatableInDecorateLint;
+
+impl<'a> DecorateLint<'a, ()> for TranslatableInDecorateLint {
+    fn decorate_lint<'b>(self, diag: &'b mut Diag<'a, ()>) {
+        diag.note(crate::fluent_generated::no_crate_note);
+    }
+
+    fn msg(&self) -> DiagMessage {
+        unreachable!();
+    }
+}
+
 pub fn make_diagnostics<'a>(dcx: &'a DiagCtxt) {
     let _diag = dcx.struct_err(crate::fluent_generated::no_crate_example);
     //~^ ERROR diagnostics should only be created in `IntoDiagnostic`/`AddToDiagnostic` impls
@@ -87,9 +112,11 @@ pub fn make_diagnostics<'a>(dcx: &'a DiagCtxt) {
     //~^^ ERROR diagnostics should be created using translatable messages
 }
 
-// Check that `rustc_lint_diagnostics`-annotated functions aren't themselves linted.
+// Check that `rustc_lint_diagnostics`-annotated functions aren't themselves linted for
+// `diagnostic_outside_of_impl`.
 
 #[rustc_lint_diagnostics]
 pub fn skipped_because_of_annotation<'a>(dcx: &'a DiagCtxt) {
+    #[allow(rustc::untranslatable_diagnostic)]
     let _diag = dcx.struct_err("untranslatable diagnostic"); // okay!
 }

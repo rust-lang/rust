@@ -516,6 +516,7 @@ pub struct Condition {
 }
 
 /// Tests if a cfg-pattern matches the cfg set
+#[allow(rustc::untranslatable_diagnostic)] // FIXME: make this translatable
 pub fn cfg_matches(
     cfg: &ast::MetaItem,
     sess: &Session,
@@ -566,6 +567,7 @@ fn try_gate_cfg(name: Symbol, span: Span, sess: &Session, features: Option<&Feat
     }
 }
 
+#[allow(rustc::untranslatable_diagnostic)] // FIXME: make this translatable
 fn gate_cfg(gated_cfg: &GatedCfg, cfg_span: Span, sess: &Session, features: &Features) {
     let (cfg, feature, has_feature) = gated_cfg;
     if !has_feature(features) && !cfg_span.allows_unstable(*feature) {
@@ -592,6 +594,7 @@ fn parse_version(s: Symbol) -> Option<RustcVersion> {
 
 /// Evaluate a cfg-like condition (with `any` and `all`), using `eval` to
 /// evaluate individual items.
+#[allow(rustc::untranslatable_diagnostic)] // FIXME: make this translatable
 pub fn eval_condition(
     cfg: &ast::MetaItem,
     sess: &Session,

@@ -1,2 +1,2 @@
-error: incorrect value `bad-value` for codegen option `instrument-coverage` - `all` (default), `branch`, `except-unused-generics`, `except-unused-functions`, or `off` was expected
+error: incorrect value `bad-value` for codegen option `instrument-coverage` - either a boolean (`yes`, `no`, `on`, `off`, etc) or (unstable) one of `branch`, `except-unused-generics`, `except-unused-functions` was expected
 

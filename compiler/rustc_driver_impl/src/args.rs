@@ -97,6 +97,7 @@ impl Expander {
 /// **Note:** This function doesn't interpret argument 0 in any special way.
 /// If this function is intended to be used with command line arguments,
 /// `argv[0]` must be removed prior to calling it manually.
+#[allow(rustc::untranslatable_diagnostic)] // FIXME: make this translatable
 pub fn arg_expand_all(early_dcx: &EarlyDiagCtxt, at_args: &[String]) -> Vec<String> {
     let mut expander = Expander::default();
     for arg in at_args {

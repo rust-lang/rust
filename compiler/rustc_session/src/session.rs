@@ -312,6 +312,7 @@ impl Session {
     ) -> Diag<'a> {
         let mut err = self.dcx().create_err(err);
         if err.code.is_none() {
+            #[allow(rustc::diagnostic_outside_of_impl)]
             err.code(E0658);
         }
         add_feature_diagnostics(&mut err, self, feature);
@@ -352,7 +353,7 @@ impl Session {
     }
 
     pub fn instrument_coverage(&self) -> bool {
-        self.opts.cg.instrument_coverage() != InstrumentCoverage::Off
+        self.opts.cg.instrument_coverage() != InstrumentCoverage::No
     }
 
     pub fn instrument_coverage_branch(&self) -> bool {
@@ -898,19 +899,6 @@ impl Session {
     }
 
     pub fn should_prefer_remapped_for_codegen(&self) -> bool {
-        // bail out, if any of the requested crate types aren't:
-        // "compiled executables or libraries"
-        for crate_type in &self.opts.crate_types {
-            match crate_type {
-                CrateType::Executable
-                | CrateType::Dylib
-                | CrateType::Rlib
-                | CrateType::Staticlib
-                | CrateType::Cdylib => continue,
-                CrateType::ProcMacro => return false,
-            }
-        }
-
         let has_split_debuginfo = match self.split_debuginfo() {
             SplitDebuginfo::Off => false,
             SplitDebuginfo::Packed => true,
@@ -1022,6 +1010,7 @@ fn default_emitter(
 
 // JUSTIFICATION: literally session construction
 #[allow(rustc::bad_opt_access)]
+#[allow(rustc::untranslatable_diagnostic)] // FIXME: make this translatable
 pub fn build_session(
     early_dcx: EarlyDiagCtxt,
     sopts: config::Options,
