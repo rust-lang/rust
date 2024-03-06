@@ -1203,7 +1203,7 @@ impl<'tcx> VnState<'_, 'tcx> {
             // not give the same value as the former mention.
             && value.is_deterministic()
         {
-            return Some(ConstOperand { span: rustc_span::DUMMY_SP, user_ty: None, const_: value });
+            return Some(ConstOperand { span: DUMMY_SP, user_ty: None, const_: value });
         }
 
         let op = self.evaluated[index].as_ref()?;
@@ -1220,7 +1220,7 @@ impl<'tcx> VnState<'_, 'tcx> {
         assert!(!value.may_have_provenance(self.tcx, op.layout.size));
 
         let const_ = Const::Val(value, op.layout.ty);
-        Some(ConstOperand { span: rustc_span::DUMMY_SP, user_ty: None, const_ })
+        Some(ConstOperand { span: DUMMY_SP, user_ty: None, const_ })
     }
 
     /// If there is a local which is assigned `index`, and its assignment strictly dominates `loc`,

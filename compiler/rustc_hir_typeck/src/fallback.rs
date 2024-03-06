@@ -7,7 +7,7 @@ use rustc_data_structures::{
 use rustc_hir::def_id::CRATE_DEF_ID;
 use rustc_infer::infer::{DefineOpaqueTypes, InferOk};
 use rustc_middle::ty::{self, Ty};
-use rustc_span::sym;
+use rustc_span::{sym, DUMMY_SP};
 
 enum DivergingFallbackBehavior {
     /// Always fallback to `()` (aka "always spontaneous decay")
@@ -131,7 +131,7 @@ impl<'tcx> FnCtxt<'_, 'tcx> {
         // that field is only used for type fallback diagnostics.
         for effect in unsolved_effects {
             let expected = self.tcx.consts.true_;
-            let cause = self.misc(rustc_span::DUMMY_SP);
+            let cause = self.misc(DUMMY_SP);
             match self.at(&cause, self.param_env).eq(DefineOpaqueTypes::Yes, expected, effect) {
                 Ok(InferOk { obligations, value: () }) => {
                     self.register_predicates(obligations);
@@ -194,11 +194,7 @@ impl<'tcx> FnCtxt<'_, 'tcx> {
         };
         debug!("fallback_if_possible(ty={:?}): defaulting to `{:?}`", ty, fallback);
 
-        let span = self
-            .infcx
-            .type_var_origin(ty)
-            .map(|origin| origin.span)
-            .unwrap_or(rustc_span::DUMMY_SP);
+        let span = self.infcx.type_var_origin(ty).map(|origin| origin.span).unwrap_or(DUMMY_SP);
         self.demand_eqtype(span, ty, fallback);
         self.fallback_has_occurred.set(true);
         true
