@@ -221,17 +221,13 @@ impl Builder<'_, '_> {
                 // we should emit an error node here
                 (self.sink)(StrStep::Error { msg: "illegal float literal", pos: self.pos });
                 (self.sink)(StrStep::Enter { kind: SyntaxKind::ERROR });
-                (self.sink)(StrStep::Token { kind: SyntaxKind::FLOAT_NUMBER, text: text });
+                (self.sink)(StrStep::Token { kind: SyntaxKind::FLOAT_NUMBER, text });
                 (self.sink)(StrStep::Exit);
 
                 // move up
                 (self.sink)(StrStep::Exit);
 
-                self.state = if has_pseudo_dot {
-                    State::Normal
-                } else {
-                    State::PendingExit
-                };
+                self.state = if has_pseudo_dot { State::Normal } else { State::PendingExit };
             }
         }
 
