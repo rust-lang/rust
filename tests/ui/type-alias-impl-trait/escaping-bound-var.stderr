@@ -1,8 +1,14 @@
-error: cannot capture late-bound lifetime in type alias impl trait
-  --> $DIR/escaping-bound-var.rs:9:57
+error: higher kinded lifetime bounds on nested opaque types are not supported yet
+  --> $DIR/escaping-bound-var.rs:9:25
    |
 LL | pub type Foo = impl for<'a> Trait<'a, Assoc = impl Test<'a>>;
-   |                         -- lifetime defined here        ^^
+   |                         ^^
+   |
+note: lifetime declared here
+  --> $DIR/escaping-bound-var.rs:9:25
+   |
+LL | pub type Foo = impl for<'a> Trait<'a, Assoc = impl Test<'a>>;
+   |                         ^^
 
 error: aborting due to 1 previous error
 

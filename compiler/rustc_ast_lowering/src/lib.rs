@@ -271,7 +271,10 @@ enum ImplTraitContext {
         fn_kind: FnDeclKind,
     },
     /// Impl trait in type aliases.
-    TypeAliasesOpaqueTy { in_assoc_ty: bool },
+    TypeAliasesOpaqueTy {
+        /// Origin: Always OpaqueTyOrigin::TypeAliasImplTrait
+        origin: hir::OpaqueTyOrigin,
+    },
     /// `impl Trait` is unstably accepted in this position.
     FeatureGated(ImplTraitPosition, Symbol),
     /// `impl Trait` is not accepted in this position.
@@ -1426,15 +1429,8 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                             Some(fn_kind),
                             itctx,
                         ),
-                    ImplTraitContext::TypeAliasesOpaqueTy { in_assoc_ty } => self
-                        .lower_opaque_impl_trait(
-                            span,
-                            hir::OpaqueTyOrigin::TyAlias { in_assoc_ty },
-                            *def_node_id,
-                            bounds,
-                            None,
-                            itctx,
-                        ),
+                    ImplTraitContext::TypeAliasesOpaqueTy { origin } => self
+                        .lower_opaque_impl_trait(span, origin, *def_node_id, bounds, None, itctx),
                     ImplTraitContext::Universal => {
                         let span = t.span;
 
@@ -1553,9 +1549,14 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
 
         let captured_lifetimes_to_duplicate = match origin {
             hir::OpaqueTyOrigin::TyAlias { .. } => {
-                // in a TAIT like `type Foo<'a> = impl Foo<'a>`, we don't duplicate any
-                // lifetimes, since we don't have the issue that any are late-bound.
-                Vec::new()
+                // type alias impl trait and associated type position impl trait were
+                // decided to capture all in-scope lifetimes, which we collect for
+                // all opaques during resolution.
+                self.resolver
+                    .take_extra_lifetime_params(opaque_ty_node_id)
+                    .into_iter()
+                    .map(|(ident, id, _)| Lifetime { id, ident })
+                    .collect()
             }
             hir::OpaqueTyOrigin::FnReturn(..) => {
                 if matches!(

@@ -391,7 +391,7 @@ impl<'tcx> InferCtxt<'tcx> {
             // Anonymous `impl Trait`
             hir::OpaqueTyOrigin::FnReturn(parent) => parent == parent_def_id,
             // Named `type Foo = impl Bar;`
-            hir::OpaqueTyOrigin::TyAlias { in_assoc_ty } => {
+            hir::OpaqueTyOrigin::TyAlias { in_assoc_ty, .. } => {
                 if in_assoc_ty {
                     self.tcx.opaque_types_defined_by(parent_def_id).contains(&def_id)
                 } else {

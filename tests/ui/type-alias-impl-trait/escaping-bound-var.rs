@@ -7,7 +7,7 @@ pub trait Trait<'a> {
 trait Test<'a> {}
 
 pub type Foo = impl for<'a> Trait<'a, Assoc = impl Test<'a>>;
-//~^ ERROR cannot capture late-bound lifetime in type alias impl trait
+//~^ ERROR higher kinded lifetime bounds on nested opaque types are not supported yet
 
 impl Trait<'_> for () {
     type Assoc = ();

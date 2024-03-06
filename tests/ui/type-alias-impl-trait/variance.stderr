@@ -1,3 +1,15 @@
+error[E0657]: `impl Trait` can only capture lifetimes bound at the fn or impl level
+  --> $DIR/variance.rs:14:36
+   |
+LL | type NotCapturedLate<'a> = dyn for<'b> Iterator<Item = impl Sized>;
+   |                                    ^^
+
+error[E0657]: `impl Trait` can only capture lifetimes bound at the fn or impl level
+  --> $DIR/variance.rs:18:29
+   |
+LL | type Captured<'a> = dyn for<'b> Iterator<Item = impl Sized + Captures<'a>>;
+   |                             ^^
+
 error: unconstrained opaque type
   --> $DIR/variance.rs:8:29
    |
@@ -15,7 +27,7 @@ LL | type CapturedEarly<'a> = impl Sized + Captures<'a>;
    = note: `CapturedEarly` must be used in combination with a concrete type within the same module
 
 error: unconstrained opaque type
-  --> $DIR/variance.rs:15:56
+  --> $DIR/variance.rs:14:56
    |
 LL | type NotCapturedLate<'a> = dyn for<'b> Iterator<Item = impl Sized>;
    |                                                        ^^^^^^^^^^
@@ -23,7 +35,7 @@ LL | type NotCapturedLate<'a> = dyn for<'b> Iterator<Item = impl Sized>;
    = note: `NotCapturedLate` must be used in combination with a concrete type within the same module
 
 error: unconstrained opaque type
-  --> $DIR/variance.rs:19:49
+  --> $DIR/variance.rs:18:49
    |
 LL | type Captured<'a> = dyn for<'b> Iterator<Item = impl Sized + Captures<'a>>;
    |                                                 ^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -86,71 +98,72 @@ LL |     type ExplicitCaptureFromGat<'a> = impl Sized + Captures<'a>;
    |
    = note: `ExplicitCaptureFromGat` must be used in combination with a concrete type within the same impl
 
-error: [o]
+error: [*, o]
   --> $DIR/variance.rs:8:29
    |
 LL | type NotCapturedEarly<'a> = impl Sized;
    |                             ^^^^^^^^^^
 
-error: [o]
+error: [*, o]
   --> $DIR/variance.rs:11:26
    |
 LL | type CapturedEarly<'a> = impl Sized + Captures<'a>;
    |                          ^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: [o]
-  --> $DIR/variance.rs:15:56
+error: [*, o, o]
+  --> $DIR/variance.rs:14:56
    |
 LL | type NotCapturedLate<'a> = dyn for<'b> Iterator<Item = impl Sized>;
    |                                                        ^^^^^^^^^^
 
-error: [o]
-  --> $DIR/variance.rs:19:49
+error: [*, o, o]
+  --> $DIR/variance.rs:18:49
    |
 LL | type Captured<'a> = dyn for<'b> Iterator<Item = impl Sized + Captures<'a>>;
    |                                                 ^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: [o, o, o]
+error: [*, *, o, o, o]
   --> $DIR/variance.rs:22:27
    |
 LL | type Bar<'a, 'b: 'b, T> = impl Sized;
    |                           ^^^^^^^^^^
 
-error: [o, o]
+error: [*, *, o, o]
   --> $DIR/variance.rs:34:32
    |
 LL |     type ImplicitCapture<'a> = impl Sized;
    |                                ^^^^^^^^^^
 
-error: [o, o]
+error: [*, *, o, o]
   --> $DIR/variance.rs:37:42
    |
 LL |     type ExplicitCaptureFromHeader<'a> = impl Sized + Captures<'i>;
    |                                          ^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: [o, o]
+error: [*, *, o, o]
   --> $DIR/variance.rs:40:39
    |
 LL |     type ExplicitCaptureFromGat<'a> = impl Sized + Captures<'a>;
    |                                       ^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: [o, o]
+error: [*, *, o, o]
   --> $DIR/variance.rs:45:32
    |
 LL |     type ImplicitCapture<'a> = impl Sized;
    |                                ^^^^^^^^^^
 
-error: [o, o]
+error: [*, *, o, o]
   --> $DIR/variance.rs:48:42
    |
 LL |     type ExplicitCaptureFromHeader<'a> = impl Sized + Captures<'i>;
    |                                          ^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: [o, o]
+error: [*, *, o, o]
   --> $DIR/variance.rs:51:39
    |
 LL |     type ExplicitCaptureFromGat<'a> = impl Sized + Captures<'a>;
    |                                       ^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: aborting due to 22 previous errors
+error: aborting due to 24 previous errors
 
+For more information about this error, try `rustc --explain E0657`.

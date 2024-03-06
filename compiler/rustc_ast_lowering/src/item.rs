@@ -275,7 +275,12 @@ impl<'hir> LoweringContext<'_, 'hir> {
                         }
                         Some(ty) => this.lower_ty(
                             ty,
-                            ImplTraitContext::TypeAliasesOpaqueTy { in_assoc_ty: false },
+                            ImplTraitContext::TypeAliasesOpaqueTy {
+                                origin: hir::OpaqueTyOrigin::TyAlias {
+                                    parent: this.local_def_id(id),
+                                    in_assoc_ty: false,
+                                },
+                            },
                         ),
                     },
                 );
@@ -936,7 +941,12 @@ impl<'hir> LoweringContext<'_, 'hir> {
                         Some(ty) => {
                             let ty = this.lower_ty(
                                 ty,
-                                ImplTraitContext::TypeAliasesOpaqueTy { in_assoc_ty: true },
+                                ImplTraitContext::TypeAliasesOpaqueTy {
+                                    origin: hir::OpaqueTyOrigin::TyAlias {
+                                        parent: this.local_def_id(i.id),
+                                        in_assoc_ty: true,
+                                    },
+                                },
                             );
                             hir::ImplItemKind::Type(ty)
                         }
