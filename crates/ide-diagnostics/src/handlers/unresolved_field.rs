@@ -95,12 +95,12 @@ fn add_field_fix(ctx: &DiagnosticsContext<'_>, d: &hir::UnresolvedField) -> Opti
             add_field_to_struct_fix(ctx, adt_struct, field_name, suggested_type, error_range)
         }
         Adt::Union(adt_union) => {
-            add_varient_to_union(ctx, adt_union, field_name, suggested_type, error_range)
+            add_variant_to_union(ctx, adt_union, field_name, suggested_type, error_range)
         }
         _ => None,
     }
 }
-fn add_varient_to_union(
+fn add_variant_to_union(
     ctx: &DiagnosticsContext<'_>,
     adt_union: Union,
     field_name: &str,
@@ -121,7 +121,7 @@ fn add_varient_to_union(
     let mut src_change_builder = SourceChangeBuilder::new(range.file_id);
     src_change_builder.insert(offset, record_field);
     Some(vec![Assist {
-        id: AssistId("add-varient-to-union", AssistKind::QuickFix),
+        id: AssistId("add-variant-to-union", AssistKind::QuickFix),
         label: Label::new("Add field to union".to_owned()),
         group: None,
         target: error_range.range,
