@@ -149,6 +149,7 @@ v("default-linker", "rust.default-linker", "the default linker")
 # (others are conditionally saved).
 o("manage-submodules", "build.submodules", "let the build manage the git submodules")
 o("full-bootstrap", "build.full-bootstrap", "build three compilers instead of two (not recommended except for testing reproducible builds)")
+o("bootstrap-cache-path", "build.bootstrap-cache-path", "use provided path for the bootstrap cache")
 o("extended", "build.extended", "build an extended rust tool set")
 
 v("tools", None, "List of extended tools will be installed")
