@@ -436,8 +436,6 @@ declare_features! (
     (unstable, deprecated_safe, "1.61.0", Some(94978)),
     /// Allows having using `suggestion` in the `#[deprecated]` attribute.
     (unstable, deprecated_suggestion, "1.61.0", Some(94785)),
-    /// Allows using the `#[diagnostic]` attribute tool namespace
-    (unstable, diagnostic_namespace, "1.73.0", Some(111996)),
     /// Controls errors in trait implementations.
     (unstable, do_not_recommend, "1.67.0", Some(51992)),
     /// Tells rustdoc to automatically generate `#[doc(cfg(...))]`.

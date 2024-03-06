@@ -146,6 +146,8 @@ declare_features! (
     (accepted, derive_default_enum, "1.62.0", Some(86985)),
     /// Allows the use of destructuring assignments.
     (accepted, destructuring_assignment, "1.59.0", Some(71126)),
+    /// Allows using the `#[diagnostic]` attribute tool namespace
+    (accepted, diagnostic_namespace, "CURRENT_RUSTC_VERSION", Some(111996)),
     /// Allows `#[doc(alias = "...")]`.
     (accepted, doc_alias, "1.48.0", Some(50146)),
     /// Allows `..` in tuple (struct) patterns.

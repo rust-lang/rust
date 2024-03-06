@@ -1,4 +1,3 @@
-#![feature(diagnostic_namespace)]
 //@ check-pass
 //@ aux-build:proc-macro-helper.rs
 
