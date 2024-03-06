@@ -5,6 +5,8 @@
 //@ edition:2018
 
 #![no_std] // Don't load unnecessary hygiene information from std
+#![warn(non_local_definitions)]
+
 extern crate std;
 
 extern crate nested_macro_rules;

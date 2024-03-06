@@ -25,7 +25,7 @@ PRINT-BANG INPUT (DISPLAY): SecondStruct
 PRINT-BANG INPUT (DEBUG): TokenStream [
     Ident {
         ident: "SecondStruct",
-        span: $DIR/nested-macro-rules.rs:21:38: 21:50 (#15),
+        span: $DIR/nested-macro-rules.rs:23:38: 23:50 (#15),
     },
 ]
 PRINT-ATTR INPUT (DISPLAY): struct SecondAttrStruct {}
@@ -36,7 +36,7 @@ PRINT-ATTR INPUT (DEBUG): TokenStream [
     },
     Ident {
         ident: "SecondAttrStruct",
-        span: $DIR/nested-macro-rules.rs:21:52: 21:68 (#15),
+        span: $DIR/nested-macro-rules.rs:23:52: 23:68 (#15),
     },
     Group {
         delimiter: Brace,
