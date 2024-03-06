@@ -504,7 +504,11 @@ impl<'a, 'tcx> SpanDecoder for DecodeContext<'a, 'tcx> {
         let data = if tag.kind() == SpanKind::Indirect {
             // Skip past the tag we just peek'd.
             self.read_u8();
-            let offset_or_position = self.read_usize();
+            // indirect tag lengths are safe to access, since they're (0, 8)
+            let bytes_needed = tag.length().unwrap().0 as usize;
+            let mut total = [0u8; usize::BITS as usize / 8];
+            total[..bytes_needed].copy_from_slice(self.read_raw_bytes(bytes_needed));
+            let offset_or_position = usize::from_le_bytes(total);
             let position = if tag.is_relative_offset() {
                 start - offset_or_position
             } else {

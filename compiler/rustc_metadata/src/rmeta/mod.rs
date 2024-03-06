@@ -530,11 +530,13 @@ impl SpanTag {
         SpanTag(data)
     }
 
-    fn indirect(relative: bool) -> SpanTag {
+    fn indirect(relative: bool, length_bytes: u8) -> SpanTag {
         let mut tag = SpanTag(SpanKind::Indirect as u8);
         if relative {
             tag.0 |= 0b100;
         }
+        assert!(length_bytes <= 8);
+        tag.0 |= length_bytes << 3;
         tag
     }
 
