@@ -2341,12 +2341,12 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 )
             }
             hir::TyKind::TraitObject(bounds, lifetime, repr) => {
-                self.maybe_lint_bare_trait(hir_ty, in_path);
+                self.prohibit_or_lint_bare_trait_object_ty(hir_ty, in_path);
+
                 let repr = match repr {
                     TraitObjectSyntax::Dyn | TraitObjectSyntax::None => ty::Dyn,
                     TraitObjectSyntax::DynStar => ty::DynStar,
                 };
-
                 self.lower_trait_object_ty(
                     hir_ty.span,
                     hir_ty.hir_id,
