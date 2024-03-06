@@ -403,9 +403,10 @@ impl Default for Generics {
 /// A where-clause in a definition.
 #[derive(Clone, Encodable, Decodable, Debug)]
 pub struct WhereClause {
-    /// `true` if we ate a `where` token: this can happen
-    /// if we parsed no predicates (e.g. `struct Foo where {}`).
-    /// This allows us to pretty-print accurately.
+    /// `true` if we ate a `where` token.
+    ///
+    /// This can happen if we parsed no predicates, e.g., `struct Foo where {}`.
+    /// This allows us to pretty-print accurately and provide correct suggestion diagnostics.
     pub has_where_token: bool,
     pub predicates: ThinVec<WherePredicate>,
     pub span: Span,
@@ -669,6 +670,16 @@ impl Pat {
             true
         });
         contains_never_pattern
+    }
+
+    /// Return a name suitable for diagnostics.
+    pub fn descr(&self) -> Option<String> {
+        match &self.kind {
+            PatKind::Wild => Some("_".to_string()),
+            PatKind::Ident(BindingAnnotation::NONE, ident, None) => Some(format!("{ident}")),
+            PatKind::Ref(pat, mutbl) => pat.descr().map(|d| format!("&{}{d}", mutbl.prefix_str())),
+            _ => None,
+        }
     }
 }
 
@@ -1052,6 +1063,7 @@ pub struct Local {
     pub ty: Option<P<Ty>>,
     pub kind: LocalKind,
     pub span: Span,
+    pub colon_sp: Option<Span>,
     pub attrs: AttrVec,
     pub tokens: Option<LazyAttrTokenStream>,
 }
@@ -1908,22 +1920,28 @@ pub struct FnSig {
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
 #[derive(Encodable, Decodable, HashStable_Generic)]
 pub enum FloatTy {
+    F16,
     F32,
     F64,
+    F128,
 }
 
 impl FloatTy {
     pub fn name_str(self) -> &'static str {
         match self {
+            FloatTy::F16 => "f16",
             FloatTy::F32 => "f32",
             FloatTy::F64 => "f64",
+            FloatTy::F128 => "f128",
         }
     }
 
     pub fn name(self) -> Symbol {
         match self {
+            FloatTy::F16 => sym::f16,
             FloatTy::F32 => sym::f32,
             FloatTy::F64 => sym::f64,
+            FloatTy::F128 => sym::f128,
         }
     }
 }
@@ -3007,18 +3025,29 @@ pub struct Trait {
 ///
 /// If there is no where clause, then this is `false` with `DUMMY_SP`.
 #[derive(Copy, Clone, Encodable, Decodable, Debug, Default)]
-pub struct TyAliasWhereClause(pub bool, pub Span);
+pub struct TyAliasWhereClause {
+    pub has_where_token: bool,
+    pub span: Span,
+}
+
+/// The span information for the two where clauses on a `TyAlias`.
+#[derive(Copy, Clone, Encodable, Decodable, Debug, Default)]
+pub struct TyAliasWhereClauses {
+    /// Before the equals sign.
+    pub before: TyAliasWhereClause,
+    /// After the equals sign.
+    pub after: TyAliasWhereClause,
+    /// The index in `TyAlias.generics.where_clause.predicates` that would split
+    /// into predicates from the where clause before the equals sign and the ones
+    /// from the where clause after the equals sign.
+    pub split: usize,
+}
 
 #[derive(Clone, Encodable, Decodable, Debug)]
 pub struct TyAlias {
     pub defaultness: Defaultness,
     pub generics: Generics,
-    /// The span information for the two where clauses (before equals, after equals)
-    pub where_clauses: (TyAliasWhereClause, TyAliasWhereClause),
-    /// The index in `generics.where_clause.predicates` that would split into
-    /// predicates from the where clause before the equals and the predicates
-    /// from the where clause after the equals
-    pub where_predicates_split: usize,
+    pub where_clauses: TyAliasWhereClauses,
     pub bounds: GenericBounds,
     pub ty: Option<P<Ty>>,
 }
@@ -3325,7 +3354,7 @@ mod size_asserts {
     static_assert_size!(Item, 136);
     static_assert_size!(ItemKind, 64);
     static_assert_size!(LitKind, 24);
-    static_assert_size!(Local, 72);
+    static_assert_size!(Local, 80);
     static_assert_size!(MetaItemLit, 40);
     static_assert_size!(Param, 40);
     static_assert_size!(Pat, 72);

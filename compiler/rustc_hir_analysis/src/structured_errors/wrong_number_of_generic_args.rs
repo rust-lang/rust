@@ -1,4 +1,4 @@
-use crate::structured_errors::StructuredDiagnostic;
+use crate::structured_errors::StructuredDiag;
 use rustc_errors::{codes::*, pluralize, Applicability, Diag, MultiSpan};
 use rustc_hir as hir;
 use rustc_middle::ty::{self as ty, AssocItems, AssocKind, TyCtxt};
@@ -1097,7 +1097,7 @@ impl<'a, 'tcx> WrongNumberOfGenericArgs<'a, 'tcx> {
     }
 }
 
-impl<'tcx> StructuredDiagnostic<'tcx> for WrongNumberOfGenericArgs<'_, 'tcx> {
+impl<'tcx> StructuredDiag<'tcx> for WrongNumberOfGenericArgs<'_, 'tcx> {
     fn session(&self) -> &Session {
         self.tcx.sess
     }

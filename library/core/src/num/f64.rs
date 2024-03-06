@@ -1146,8 +1146,11 @@ impl f64 {
             // Stability concerns.
             unsafe { mem::transmute::<f64, u64>(rt) }
         }
+        #[cfg_attr(not(bootstrap), allow(unused_unsafe))] // on bootstrap bump, remove unsafe block
         // SAFETY: We use internal implementations that either always work or fail at compile time.
-        unsafe { intrinsics::const_eval_select((self,), ct_f64_to_u64, rt_f64_to_u64) }
+        unsafe {
+            intrinsics::const_eval_select((self,), ct_f64_to_u64, rt_f64_to_u64)
+        }
     }
 
     /// Raw transmutation from `u64`.
@@ -1243,8 +1246,11 @@ impl f64 {
             // Stability concerns.
             unsafe { mem::transmute::<u64, f64>(rt) }
         }
+        #[cfg_attr(not(bootstrap), allow(unused_unsafe))] // on bootstrap bump, remove unsafe block
         // SAFETY: We use internal implementations that either always work or fail at compile time.
-        unsafe { intrinsics::const_eval_select((v,), ct_u64_to_f64, rt_u64_to_f64) }
+        unsafe {
+            intrinsics::const_eval_select((v,), ct_u64_to_f64, rt_u64_to_f64)
+        }
     }
 
     /// Return the memory representation of this floating point number as a byte array in

@@ -122,8 +122,10 @@ fn tag_base_type<'ll, 'tcx>(
             // Niche tags are always normalized to unsized integers of the correct size.
             match tag.primitive() {
                 Primitive::Int(t, _) => t,
+                Primitive::F16 => Integer::I16,
                 Primitive::F32 => Integer::I32,
                 Primitive::F64 => Integer::I64,
+                Primitive::F128 => Integer::I128,
                 // FIXME(erikdesjardins): handle non-default addrspace ptr sizes
                 Primitive::Pointer(_) => {
                     // If the niche is the NULL value of a reference, then `discr_enum_ty` will be

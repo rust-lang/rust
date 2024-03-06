@@ -420,7 +420,7 @@ impl<'a, 'tcx> Decodable<DecodeContext<'a, 'tcx>> for ExpnIndex {
 impl<'a, 'tcx> SpanDecoder for DecodeContext<'a, 'tcx> {
     fn decode_attr_id(&mut self) -> rustc_span::AttrId {
         let sess = self.sess.expect("can't decode AttrId without Session");
-        sess.parse_sess.attr_id_generator.mk_attr_id()
+        sess.psess.attr_id_generator.mk_attr_id()
     }
 
     fn decode_crate_num(&mut self) -> CrateNum {
@@ -504,7 +504,11 @@ impl<'a, 'tcx> SpanDecoder for DecodeContext<'a, 'tcx> {
         let data = if tag.kind() == SpanKind::Indirect {
             // Skip past the tag we just peek'd.
             self.read_u8();
-            let offset_or_position = self.read_usize();
+            // indirect tag lengths are safe to access, since they're (0, 8)
+            let bytes_needed = tag.length().unwrap().0 as usize;
+            let mut total = [0u8; usize::BITS as usize / 8];
+            total[..bytes_needed].copy_from_slice(self.read_raw_bytes(bytes_needed));
+            let offset_or_position = usize::from_le_bytes(total);
             let position = if tag.is_relative_offset() {
                 start - offset_or_position
             } else {
@@ -1749,7 +1753,7 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
         self.root.tables.attr_flags.get(self, index)
     }
 
-    fn get_intrinsic(self, index: DefIndex) -> Option<Symbol> {
+    fn get_intrinsic(self, index: DefIndex) -> Option<ty::IntrinsicDef> {
         self.root.tables.intrinsic.get(self, index).map(|d| d.decode(self))
     }
 

@@ -3,8 +3,6 @@
 // error. However, now that we handle subtyping correctly, we no
 // longer get an error, because we recognize these two types as
 // equivalent!
-//
-//@ check-pass
 
 fn foo(x: fn(&u8, &u8), y: for<'a> fn(&'a u8, &'a u8)) {
     // The two types above are actually equivalent. With the older
@@ -13,6 +11,7 @@ fn foo(x: fn(&u8, &u8), y: for<'a> fn(&'a u8, &'a u8)) {
     let z = match 22 {
         0 => x,
         _ => y,
+        //~^ ERROR `match` arms have incompatible types [E0308]
     };
 }
 

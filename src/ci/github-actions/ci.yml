@@ -413,6 +413,9 @@ jobs:
           - name: dist-loongarch64-linux
             <<: *job-linux-8c
 
+          - name: dist-ohos
+            <<: *job-linux-8c
+
           - name: dist-powerpc-linux
             <<: *job-linux-8c
 

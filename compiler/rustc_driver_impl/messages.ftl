@@ -1,6 +1,10 @@
 driver_impl_ice = the compiler unexpectedly panicked. this is a bug.
 driver_impl_ice_bug_report = we would appreciate a bug report: {$bug_report_url}
 driver_impl_ice_bug_report_internal_feature = using internal features is not supported and expected to cause internal compiler errors when used incorrectly
+driver_impl_ice_bug_report_outdated =
+    it seems that this compiler `{$version}` is outdated, a newer nightly should have been released in the mean time
+    .update = please consider running `rustup update nightly` to update the nightly channel and check if this problem still persists
+    .url = if the problem still persists, we would appreciate a bug report: {$bug_report_url}
 driver_impl_ice_exclude_cargo_defaults = some of the compiler flags provided by cargo are hidden
 
 driver_impl_ice_flags = compiler flags: {$flags}

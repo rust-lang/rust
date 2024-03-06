@@ -48,8 +48,11 @@ impl<T: ?Sized> *const T {
             }
         }
 
+        #[cfg_attr(not(bootstrap), allow(unused_unsafe))] // on bootstrap bump, remove unsafe block
         // SAFETY: The two versions are equivalent at runtime.
-        unsafe { const_eval_select((self as *const u8,), const_impl, runtime_impl) }
+        unsafe {
+            const_eval_select((self as *const u8,), const_impl, runtime_impl)
+        }
     }
 
     /// Casts to a pointer of another type.
@@ -806,6 +809,7 @@ impl<T: ?Sized> *const T {
     where
         T: Sized,
     {
+        #[cfg_attr(not(bootstrap), allow(unused_unsafe))] // on bootstrap bump, remove unsafe block
         // SAFETY: The comparison has no side-effects, and the intrinsic
         // does this check internally in the CTFE implementation.
         unsafe {
@@ -1623,8 +1627,11 @@ impl<T: ?Sized> *const T {
             ptr.align_offset(align) == 0
         }
 
+        #[cfg_attr(not(bootstrap), allow(unused_unsafe))] // on bootstrap bump, remove unsafe block
         // SAFETY: The two versions are equivalent at runtime.
-        unsafe { const_eval_select((self.cast::<()>(), align), const_impl, runtime_impl) }
+        unsafe {
+            const_eval_select((self.cast::<()>(), align), const_impl, runtime_impl)
+        }
     }
 }
 

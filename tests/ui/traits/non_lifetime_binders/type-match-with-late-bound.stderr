@@ -21,6 +21,20 @@ help: consider adding an explicit lifetime bound
 LL |     for<F> F: 'a, !1_"F": 'a
    |                 ~~~~~~~~~~~~
 
-error: aborting due to 1 previous error; 1 warning emitted
+error[E0309]: the placeholder type `!2_"F"` may not live long enough
+  --> $DIR/type-match-with-late-bound.rs:11:1
+   |
+LL | async fn walk2<'a, T: 'a>(_: T)
+   |                -- the placeholder type `!2_"F"` must be valid for the lifetime `'a` as defined here...
+...
+LL | {}
+   | ^^ ...so that the type `F` will meet its required lifetime bounds
+   |
+help: consider adding an explicit lifetime bound
+   |
+LL |     for<F> F: 'a, !2_"F": 'a
+   |                 ~~~~~~~~~~~~
+
+error: aborting due to 2 previous errors; 1 warning emitted
 
 For more information about this error, try `rustc --explain E0309`.

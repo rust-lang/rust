@@ -165,7 +165,7 @@ impl<'a> LintDiagnosticDerive<'a> {
                     #implementation;
                 }
 
-                fn msg(&self) -> rustc_errors::DiagnosticMessage {
+                fn msg(&self) -> rustc_errors::DiagMessage {
                     #msg
                 }
             }

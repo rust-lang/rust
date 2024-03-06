@@ -1,5 +1,5 @@
 use crate::cmp;
-use crate::ffi::CStr;
+use crate::ffi::{CStr, CString};
 use crate::io;
 use crate::mem;
 use crate::num::NonZero;
@@ -223,6 +223,44 @@ impl Thread {
     ))]
     pub fn set_name(_name: &CStr) {
         // Newlib, Emscripten, and VxWorks have no way to set a thread name.
+    }
+
+    #[cfg(target_os = "linux")]
+    pub fn get_name() -> Option<CString> {
+        const TASK_COMM_LEN: usize = 16;
+        let mut name = vec![0u8; TASK_COMM_LEN];
+        let res = unsafe {
+            libc::pthread_getname_np(libc::pthread_self(), name.as_mut_ptr().cast(), name.len())
+        };
+        if res != 0 {
+            return None;
+        }
+        name.truncate(name.iter().position(|&c| c == 0)?);
+        CString::new(name).ok()
+    }
+
+    #[cfg(any(target_os = "macos", target_os = "ios", target_os = "tvos", target_os = "watchos"))]
+    pub fn get_name() -> Option<CString> {
+        let mut name = vec![0u8; libc::MAXTHREADNAMESIZE];
+        let res = unsafe {
+            libc::pthread_getname_np(libc::pthread_self(), name.as_mut_ptr().cast(), name.len())
+        };
+        if res != 0 {
+            return None;
+        }
+        name.truncate(name.iter().position(|&c| c == 0)?);
+        CString::new(name).ok()
+    }
+
+    #[cfg(not(any(
+        target_os = "linux",
+        target_os = "macos",
+        target_os = "ios",
+        target_os = "tvos",
+        target_os = "watchos"
+    )))]
+    pub fn get_name() -> Option<CString> {
+        None
     }
 
     #[cfg(not(target_os = "espidf"))]

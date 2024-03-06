@@ -1,0 +1,8 @@
+error: the type `<for<'a, 'b> fn(&'a u8, &'b u8) as Trait>::Ty` is not well-formed
+  --> $DIR/member-constraints-in-root-universe.rs:12:16
+   |
+LL | fn test<'a>(_: <fn(&u8, &u8) as Trait>::Ty) -> impl Sized {
+   |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 1 previous error
+

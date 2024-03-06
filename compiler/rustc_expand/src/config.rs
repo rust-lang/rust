@@ -239,16 +239,17 @@ impl<'a> StripUnconfigured<'a> {
     /// Gives a compiler warning when the `cfg_attr` contains no attributes and
     /// is in the original source file. Gives a compiler error if the syntax of
     /// the attribute is incorrect.
+    #[allow(rustc::untranslatable_diagnostic)] // FIXME: make this translatable
     pub(crate) fn expand_cfg_attr(&self, attr: &Attribute, recursive: bool) -> Vec<Attribute> {
         let Some((cfg_predicate, expanded_attrs)) =
-            rustc_parse::parse_cfg_attr(attr, &self.sess.parse_sess)
+            rustc_parse::parse_cfg_attr(attr, &self.sess.psess)
         else {
             return vec![];
         };
 
         // Lint on zero attributes in source.
         if expanded_attrs.is_empty() {
-            self.sess.parse_sess.buffer_lint(
+            self.sess.psess.buffer_lint(
                 rustc_lint_defs::builtin::UNUSED_ATTRIBUTES,
                 attr.span,
                 ast::CRATE_NODE_ID,
@@ -273,6 +274,7 @@ impl<'a> StripUnconfigured<'a> {
         }
     }
 
+    #[allow(rustc::untranslatable_diagnostic)] // FIXME: make this translatable
     fn expand_cfg_attr_item(
         &self,
         attr: &Attribute,
@@ -324,14 +326,14 @@ impl<'a> StripUnconfigured<'a> {
         };
         let tokens = Some(LazyAttrTokenStream::new(AttrTokenStream::new(trees)));
         let attr = attr::mk_attr_from_item(
-            &self.sess.parse_sess.attr_id_generator,
+            &self.sess.psess.attr_id_generator,
             item,
             tokens,
             attr.style,
             item_span,
         );
         if attr.has_name(sym::crate_type) {
-            self.sess.parse_sess.buffer_lint(
+            self.sess.psess.buffer_lint(
                 rustc_lint_defs::builtin::DEPRECATED_CFG_ATTR_CRATE_TYPE_NAME,
                 attr.span,
                 ast::CRATE_NODE_ID,
@@ -339,7 +341,7 @@ impl<'a> StripUnconfigured<'a> {
             );
         }
         if attr.has_name(sym::crate_name) {
-            self.sess.parse_sess.buffer_lint(
+            self.sess.psess.buffer_lint(
                 rustc_lint_defs::builtin::DEPRECATED_CFG_ATTR_CRATE_TYPE_NAME,
                 attr.span,
                 ast::CRATE_NODE_ID,
@@ -355,7 +357,7 @@ impl<'a> StripUnconfigured<'a> {
     }
 
     pub(crate) fn cfg_true(&self, attr: &Attribute) -> (bool, Option<MetaItem>) {
-        let meta_item = match validate_attr::parse_meta(&self.sess.parse_sess, attr) {
+        let meta_item = match validate_attr::parse_meta(&self.sess.psess, attr) {
             Ok(meta_item) => meta_item,
             Err(err) => {
                 err.emit();
@@ -371,6 +373,7 @@ impl<'a> StripUnconfigured<'a> {
     }
 
     /// If attributes are not allowed on expressions, emit an error for `attr`
+    #[allow(rustc::untranslatable_diagnostic)] // FIXME: make this translatable
     #[instrument(level = "trace", skip(self))]
     pub(crate) fn maybe_emit_expr_attr_err(&self, attr: &Attribute) {
         if self.features.is_some_and(|features| !features.stmt_expr_attributes)
@@ -384,7 +387,6 @@ impl<'a> StripUnconfigured<'a> {
             );
 
             if attr.is_doc_comment() {
-                #[allow(rustc::untranslatable_diagnostic)]
                 err.help("`///` is for documentation comments. For a plain comment, use `//`.");
             }
 

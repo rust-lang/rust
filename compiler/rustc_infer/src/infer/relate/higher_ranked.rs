@@ -1,64 +1,11 @@
 //! Helper routines for higher-ranked things. See the `doc` module at
 //! the end of the file for details.
 
-use super::combine::CombineFields;
 use crate::infer::CombinedSnapshot;
-use crate::infer::{HigherRankedType, InferCtxt};
+use crate::infer::InferCtxt;
 use rustc_middle::ty::fold::FnMutDelegate;
-use rustc_middle::ty::relate::{Relate, RelateResult, TypeRelation};
-use rustc_middle::ty::{self, Binder, Ty, TyCtxt, TypeFoldable};
-
-impl<'a, 'tcx> CombineFields<'a, 'tcx> {
-    /// Checks whether `for<..> sub <: for<..> sup` holds.
-    ///
-    /// For this to hold, **all** instantiations of the super type
-    /// have to be a super type of **at least one** instantiation of
-    /// the subtype.
-    ///
-    /// This is implemented by first entering a new universe.
-    /// We then replace all bound variables in `sup` with placeholders,
-    /// and all bound variables in `sub` with inference vars.
-    /// We can then just relate the two resulting types as normal.
-    ///
-    /// Note: this is a subtle algorithm. For a full explanation, please see
-    /// the [rustc dev guide][rd]
-    ///
-    /// [rd]: https://rustc-dev-guide.rust-lang.org/borrow_check/region_inference/placeholders_and_universes.html
-    #[instrument(skip(self), level = "debug")]
-    pub fn higher_ranked_sub<T>(
-        &mut self,
-        sub: Binder<'tcx, T>,
-        sup: Binder<'tcx, T>,
-        sub_is_expected: bool,
-    ) -> RelateResult<'tcx, ()>
-    where
-        T: Relate<'tcx>,
-    {
-        let span = self.trace.cause.span;
-        // First, we instantiate each bound region in the supertype with a
-        // fresh placeholder region. Note that this automatically creates
-        // a new universe if needed.
-        self.infcx.enter_forall(sup, |sup_prime| {
-            // Next, we instantiate each bound region in the subtype
-            // with a fresh region variable. These region variables --
-            // but no other preexisting region variables -- can name
-            // the placeholders.
-            let sub_prime =
-                self.infcx.instantiate_binder_with_fresh_vars(span, HigherRankedType, sub);
-            debug!("a_prime={:?}", sub_prime);
-            debug!("b_prime={:?}", sup_prime);
-
-            // Compare types now that bound regions have been replaced.
-            let result = self.sub(sub_is_expected).relate(sub_prime, sup_prime);
-            if result.is_ok() {
-                debug!("OK result={result:?}");
-            }
-            // NOTE: returning the result here would be dangerous as it contains
-            // placeholders which **must not** be named afterwards.
-            result.map(|_| ())
-        })
-    }
-}
+use rustc_middle::ty::relate::RelateResult;
+use rustc_middle::ty::{self, Ty, TyCtxt, TypeFoldable};
 
 impl<'tcx> InferCtxt<'tcx> {
     /// Replaces all bound variables (lifetimes, types, and constants) bound by

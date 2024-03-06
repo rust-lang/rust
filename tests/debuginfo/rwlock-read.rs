@@ -16,7 +16,7 @@
 // cdb-command:dx r
 // cdb-check:r                [Type: std::sync::rwlock::RwLockReadGuard<i32>]
 // cdb-check:    [...] data             : NonNull([...]: 0) [Type: core::ptr::non_null::NonNull<i32>]
-// cdb-check:    [...] inner_lock       : [...] [Type: std::sys::locks::rwlock::windows::RwLock *]
+// cdb-check:    [...] inner_lock       : [...] [Type: std::sys::locks::rwlock::futex::RwLock *]
 
 #[allow(unused_variables)]
 

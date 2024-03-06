@@ -1,8 +1,21 @@
-[default.extend-identifiers]
-AnserStyle = "AnserStyle"
-datas = "datas"
-impl_froms = "impl_froms"
-selfs = "selfs"
+[files]
+extend-exclude = [
+    "*.rast",
+    "bench_data/",
+    "crates/parser/test_data/lexer/err/",
+    "crates/project-model/test_data/",
+]
+ignore-hidden = false
+
+[default]
+extend-ignore-re = [
+    # ignore string which contains $0, which is used widely in tests
+    ".*\\$0.*",
+    # ignore generated content like `boxed....nner()`, `Defaul...efault`
+    "\\w*\\.{3,4}\\w*",
+    '"flate2"',
+    "raison d'être",
+]
 
 [default.extend-words]
 anser = "anser"
@@ -10,22 +23,9 @@ ba = "ba"
 fo = "fo"
 ket = "ket"
 makro = "makro"
-raison = "raison"
 trivias = "trivias"
-TOOD = "TOOD"
 
-[default]
-extend-ignore-re = [
-    # ignore string which contains $x (x is a num), which use widely in test
-    ".*\\$\\d.*",
-    # ignore generated content like `boxed....nner()`, `Defaul...efault`
-    "\\w*\\.{3,4}\\w*",
-]
-
-[files]
-extend-exclude = [
-  "*.json",
-  "*.rast",
-  "crates/parser/test_data/lexer/err/*",
-  "bench_data/*",
-]
+[default.extend-identifiers]
+datas = "datas"
+impl_froms = "impl_froms"
+selfs = "selfs"

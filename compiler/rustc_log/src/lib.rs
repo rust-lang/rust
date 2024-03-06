@@ -57,6 +57,7 @@ pub struct LoggerConfig {
     pub verbose_entry_exit: Result<String, VarError>,
     pub verbose_thread_ids: Result<String, VarError>,
     pub backtrace: Result<String, VarError>,
+    pub wraptree: Result<String, VarError>,
 }
 
 impl LoggerConfig {
@@ -67,6 +68,7 @@ impl LoggerConfig {
             verbose_entry_exit: env::var(format!("{env}_ENTRY_EXIT")),
             verbose_thread_ids: env::var(format!("{env}_THREAD_IDS")),
             backtrace: env::var(format!("{env}_BACKTRACE")),
+            wraptree: env::var(format!("{env}_WRAPTREE")),
         }
     }
 }
@@ -99,7 +101,7 @@ pub fn init_logger(cfg: LoggerConfig) -> Result<(), Error> {
         Err(_) => false,
     };
 
-    let layer = tracing_tree::HierarchicalLayer::default()
+    let mut layer = tracing_tree::HierarchicalLayer::default()
         .with_writer(io::stderr)
         .with_indent_lines(true)
         .with_ansi(color_logs)
@@ -109,6 +111,16 @@ pub fn init_logger(cfg: LoggerConfig) -> Result<(), Error> {
         .with_indent_amount(2)
         .with_thread_ids(verbose_thread_ids)
         .with_thread_names(verbose_thread_ids);
+
+    match cfg.wraptree {
+        Ok(v) => match v.parse::<usize>() {
+            Ok(v) => {
+                layer = layer.with_wraparound(v);
+            }
+            Err(_) => return Err(Error::InvalidWraptree(v)),
+        },
+        Err(_) => {} // no wraptree
+    }
 
     let subscriber = tracing_subscriber::Registry::default().with(filter).with(layer);
     match cfg.backtrace {
@@ -164,6 +176,7 @@ pub fn stderr_isatty() -> bool {
 pub enum Error {
     InvalidColorValue(String),
     NonUnicodeColorValue,
+    InvalidWraptree(String),
 }
 
 impl std::error::Error for Error {}
@@ -178,6 +191,10 @@ impl Display for Error {
             Error::NonUnicodeColorValue => write!(
                 formatter,
                 "non-Unicode log color value: expected one of always, never, or auto",
+            ),
+            Error::InvalidWraptree(value) => write!(
+                formatter,
+                "invalid log WRAPTREE value '{value}': expected a non-negative integer",
             ),
         }
     }

@@ -1019,6 +1019,11 @@ fn should_codegen_locally<'tcx>(tcx: TyCtxt<'tcx>, instance: &Instance<'tcx>) ->
         return false;
     }
 
+    if tcx.intrinsic(def_id).is_some_and(|i| i.must_be_overridden) {
+        // These are implemented by backends directly and have no meaningful body.
+        return false;
+    }
+
     if def_id.is_local() {
         // Local items cannot be referred to locally without monomorphizing them locally.
         return true;

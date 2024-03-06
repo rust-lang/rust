@@ -27,9 +27,7 @@ use issue_52891::{l,
 use issue_52891::a::inner;
 use issue_52891::b::inner as other_inner; //~ ERROR `inner` is defined multiple times
 
-
 //~^ ERROR `issue_52891` is defined multiple times
-
 
 #[macro_use]
 use issue_52891::n; //~ ERROR `n` is defined multiple times

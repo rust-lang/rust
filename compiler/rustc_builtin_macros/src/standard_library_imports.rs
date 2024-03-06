@@ -17,7 +17,7 @@ pub fn inject(
     features: &Features,
 ) -> usize {
     let orig_num_items = krate.items.len();
-    let edition = sess.parse_sess.edition;
+    let edition = sess.psess.edition;
 
     // the first name in this list is the crate name of the crate with the prelude
     let names: &[Symbol] = if attr::contains_name(pre_configured_attrs, sym::no_core) {

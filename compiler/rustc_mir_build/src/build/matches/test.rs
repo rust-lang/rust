@@ -34,12 +34,12 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 TestKind::Switch { adt_def, variants: BitSet::new_empty(adt_def.variants().len()) }
             }
 
+            TestCase::Constant { .. } if match_pair.pattern.ty.is_bool() => TestKind::If,
+
             TestCase::Constant { .. } if is_switch_ty(match_pair.pattern.ty) => {
                 // For integers, we use a `SwitchInt` match, which allows
                 // us to handle more cases.
                 TestKind::SwitchInt {
-                    switch_ty: match_pair.pattern.ty,
-
                     // these maps are empty to start; cases are
                     // added below in add_cases_to_switch
                     options: Default::default(),
@@ -182,31 +182,26 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 );
             }
 
-            TestKind::SwitchInt { switch_ty, ref options } => {
-                let terminator = if *switch_ty.kind() == ty::Bool {
-                    assert!(!options.is_empty() && options.len() <= 2);
-                    let [first_bb, second_bb] = *target_blocks else {
-                        bug!("`TestKind::SwitchInt` on `bool` should have two targets")
-                    };
-                    let (true_bb, false_bb) = match options[0] {
-                        1 => (first_bb, second_bb),
-                        0 => (second_bb, first_bb),
-                        v => span_bug!(test.span, "expected boolean value but got {:?}", v),
-                    };
-                    TerminatorKind::if_(Operand::Copy(place), true_bb, false_bb)
-                } else {
-                    // The switch may be inexhaustive so we have a catch all block
-                    debug_assert_eq!(options.len() + 1, target_blocks.len());
-                    let otherwise_block = *target_blocks.last().unwrap();
-                    let switch_targets = SwitchTargets::new(
-                        options.values().copied().zip(target_blocks),
-                        otherwise_block,
-                    );
-                    TerminatorKind::SwitchInt {
-                        discr: Operand::Copy(place),
-                        targets: switch_targets,
-                    }
+            TestKind::SwitchInt { ref options } => {
+                // The switch may be inexhaustive so we have a catch-all block
+                debug_assert_eq!(options.len() + 1, target_blocks.len());
+                let otherwise_block = *target_blocks.last().unwrap();
+                let switch_targets = SwitchTargets::new(
+                    options.values().copied().zip(target_blocks),
+                    otherwise_block,
+                );
+                let terminator = TerminatorKind::SwitchInt {
+                    discr: Operand::Copy(place),
+                    targets: switch_targets,
                 };
+                self.cfg.terminate(block, self.source_info(match_start_span), terminator);
+            }
+
+            TestKind::If => {
+                let [false_bb, true_bb] = *target_blocks else {
+                    bug!("`TestKind::If` should have two targets")
+                };
+                let terminator = TerminatorKind::if_(Operand::Copy(place), true_bb, false_bb);
                 self.cfg.terminate(block, self.source_info(match_start_span), terminator);
             }
 
@@ -583,24 +578,20 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 fully_matched = true;
                 Some(variant_index.as_usize())
             }
-            (&TestKind::Switch { .. }, _) => {
-                fully_matched = false;
-                None
-            }
 
             // If we are performing a switch over integers, then this informs integer
             // equality, but nothing else.
             //
             // FIXME(#29623) we could use PatKind::Range to rule
             // things out here, in some cases.
-            (TestKind::SwitchInt { switch_ty: _, options }, TestCase::Constant { value })
+            (TestKind::SwitchInt { options }, TestCase::Constant { value })
                 if is_switch_ty(match_pair.pattern.ty) =>
             {
                 fully_matched = true;
                 let index = options.get_index_of(value).unwrap();
                 Some(index)
             }
-            (TestKind::SwitchInt { switch_ty: _, options }, TestCase::Range(range)) => {
+            (TestKind::SwitchInt { options }, TestCase::Range(range)) => {
                 fully_matched = false;
                 let not_contained =
                     self.values_not_contained_in_range(&*range, options).unwrap_or(false);
@@ -611,7 +602,15 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     options.len()
                 })
             }
-            (&TestKind::SwitchInt { .. }, _) => {
+
+            (&TestKind::If, TestCase::Constant { value }) => {
+                fully_matched = true;
+                let value = value.try_eval_bool(self.tcx, self.param_env).unwrap_or_else(|| {
+                    span_bug!(test.span, "expected boolean value but got {value:?}")
+                });
+                Some(value as usize)
+            }
+            (&TestKind::If, _) => {
                 fully_matched = false;
                 None
             }
@@ -703,34 +702,25 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     None
                 }
             }
-            (&TestKind::Range { .. }, _) => {
-                fully_matched = false;
-                None
+
+            // FIXME(#29623): return `Some(1)` when the values are different.
+            (TestKind::Eq { value: test_val, .. }, TestCase::Constant { value: case_val })
+                if test_val == case_val =>
+            {
+                fully_matched = true;
+                Some(0)
             }
 
-            (&TestKind::Eq { .. } | &TestKind::Len { .. }, _) => {
-                // The call to `self.test(&match_pair)` below is not actually used to generate any
-                // MIR. Instead, we just want to compare with `test` (the parameter of the method)
-                // to see if it is the same.
-                //
-                // However, at this point we can still encounter or-patterns that were extracted
-                // from previous calls to `sort_candidate`, so we need to manually address that
-                // case to avoid panicking in `self.test()`.
-                if let TestCase::Or { .. } = &match_pair.test_case {
-                    return None;
-                }
-
-                // These are all binary tests.
-                //
-                // FIXME(#29623) we can be more clever here
-                let pattern_test = self.test(match_pair);
-                if pattern_test.kind == test.kind {
-                    fully_matched = true;
-                    Some(0)
-                } else {
-                    fully_matched = false;
-                    None
-                }
+            (
+                TestKind::Switch { .. }
+                | TestKind::SwitchInt { .. }
+                | TestKind::Len { .. }
+                | TestKind::Range { .. }
+                | TestKind::Eq { .. },
+                _,
+            ) => {
+                fully_matched = false;
+                None
             }
         };
 
@@ -763,7 +753,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 impl Test<'_> {
     pub(super) fn targets(&self) -> usize {
         match self.kind {
-            TestKind::Eq { .. } | TestKind::Range(_) | TestKind::Len { .. } => 2,
+            TestKind::Eq { .. } | TestKind::Range(_) | TestKind::Len { .. } | TestKind::If => 2,
             TestKind::Switch { adt_def, .. } => {
                 // While the switch that we generate doesn't test for all
                 // variants, we have a target for each variant and the
@@ -771,21 +761,13 @@ impl Test<'_> {
                 // specified have the same block.
                 adt_def.variants().len() + 1
             }
-            TestKind::SwitchInt { switch_ty, ref options, .. } => {
-                if switch_ty.is_bool() {
-                    // `bool` is special cased in `perform_test` to always
-                    // branch to two blocks.
-                    2
-                } else {
-                    options.len() + 1
-                }
-            }
+            TestKind::SwitchInt { ref options } => options.len() + 1,
         }
     }
 }
 
 fn is_switch_ty(ty: Ty<'_>) -> bool {
-    ty.is_integral() || ty.is_char() || ty.is_bool()
+    ty.is_integral() || ty.is_char()
 }
 
 fn trait_method<'tcx>(

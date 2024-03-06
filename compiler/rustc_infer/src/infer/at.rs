@@ -49,7 +49,6 @@ pub struct At<'a, 'tcx> {
 
 pub struct Trace<'a, 'tcx> {
     at: At<'a, 'tcx>,
-    a_is_expected: bool,
     trace: TypeTrace<'tcx>,
 }
 
@@ -105,23 +104,6 @@ pub trait ToTrace<'tcx>: Relate<'tcx> + Copy {
 }
 
 impl<'a, 'tcx> At<'a, 'tcx> {
-    /// Makes `a <: b`, where `a` may or may not be expected.
-    ///
-    /// See [`At::trace_exp`] and [`Trace::sub`] for a version of
-    /// this method that only requires `T: Relate<'tcx>`
-    pub fn sub_exp<T>(
-        self,
-        define_opaque_types: DefineOpaqueTypes,
-        a_is_expected: bool,
-        a: T,
-        b: T,
-    ) -> InferResult<'tcx, ()>
-    where
-        T: ToTrace<'tcx>,
-    {
-        self.trace_exp(a_is_expected, a, b).sub(define_opaque_types, a, b)
-    }
-
     /// Makes `actual <: expected`. For example, if type-checking a
     /// call like `foo(x)`, where `foo: fn(i32)`, you might have
     /// `sup(i32, x)`, since the "expected" type is the type that
@@ -138,7 +120,7 @@ impl<'a, 'tcx> At<'a, 'tcx> {
     where
         T: ToTrace<'tcx>,
     {
-        self.sub_exp(define_opaque_types, false, actual, expected)
+        self.trace(expected, actual).sup(define_opaque_types, expected, actual)
     }
 
     /// Makes `expected <: actual`.
@@ -154,24 +136,7 @@ impl<'a, 'tcx> At<'a, 'tcx> {
     where
         T: ToTrace<'tcx>,
     {
-        self.sub_exp(define_opaque_types, true, expected, actual)
-    }
-
-    /// Makes `expected <: actual`.
-    ///
-    /// See [`At::trace_exp`] and [`Trace::eq`] for a version of
-    /// this method that only requires `T: Relate<'tcx>`
-    pub fn eq_exp<T>(
-        self,
-        define_opaque_types: DefineOpaqueTypes,
-        a_is_expected: bool,
-        a: T,
-        b: T,
-    ) -> InferResult<'tcx, ()>
-    where
-        T: ToTrace<'tcx>,
-    {
-        self.trace_exp(a_is_expected, a, b).eq(define_opaque_types, a, b)
+        self.trace(expected, actual).sub(define_opaque_types, expected, actual)
     }
 
     /// Makes `expected <: actual`.
@@ -260,48 +225,50 @@ impl<'a, 'tcx> At<'a, 'tcx> {
     where
         T: ToTrace<'tcx>,
     {
-        self.trace_exp(true, expected, actual)
-    }
-
-    /// Like `trace`, but the expected value is determined by the
-    /// boolean argument (if true, then the first argument `a` is the
-    /// "expected" value).
-    pub fn trace_exp<T>(self, a_is_expected: bool, a: T, b: T) -> Trace<'a, 'tcx>
-    where
-        T: ToTrace<'tcx>,
-    {
-        let trace = ToTrace::to_trace(self.cause, a_is_expected, a, b);
-        Trace { at: self, trace, a_is_expected }
+        let trace = ToTrace::to_trace(self.cause, true, expected, actual);
+        Trace { at: self, trace }
     }
 }
 
 impl<'a, 'tcx> Trace<'a, 'tcx> {
-    /// Makes `a <: b` where `a` may or may not be expected (if
-    /// `a_is_expected` is true, then `a` is expected).
+    /// Makes `a <: b`.
     #[instrument(skip(self), level = "debug")]
     pub fn sub<T>(self, define_opaque_types: DefineOpaqueTypes, a: T, b: T) -> InferResult<'tcx, ()>
     where
         T: Relate<'tcx>,
     {
-        let Trace { at, trace, a_is_expected } = self;
+        let Trace { at, trace } = self;
         let mut fields = at.infcx.combine_fields(trace, at.param_env, define_opaque_types);
         fields
-            .sub(a_is_expected)
+            .sub()
             .relate(a, b)
             .map(move |_| InferOk { value: (), obligations: fields.obligations })
     }
 
-    /// Makes `a == b`; the expectation is set by the call to
-    /// `trace()`.
+    /// Makes `a :> b`.
+    #[instrument(skip(self), level = "debug")]
+    pub fn sup<T>(self, define_opaque_types: DefineOpaqueTypes, a: T, b: T) -> InferResult<'tcx, ()>
+    where
+        T: Relate<'tcx>,
+    {
+        let Trace { at, trace } = self;
+        let mut fields = at.infcx.combine_fields(trace, at.param_env, define_opaque_types);
+        fields
+            .sup()
+            .relate(a, b)
+            .map(move |_| InferOk { value: (), obligations: fields.obligations })
+    }
+
+    /// Makes `a == b`.
     #[instrument(skip(self), level = "debug")]
     pub fn eq<T>(self, define_opaque_types: DefineOpaqueTypes, a: T, b: T) -> InferResult<'tcx, ()>
     where
         T: Relate<'tcx>,
     {
-        let Trace { at, trace, a_is_expected } = self;
+        let Trace { at, trace } = self;
         let mut fields = at.infcx.combine_fields(trace, at.param_env, define_opaque_types);
         fields
-            .equate(StructurallyRelateAliases::No, a_is_expected)
+            .equate(StructurallyRelateAliases::No)
             .relate(a, b)
             .map(move |_| InferOk { value: (), obligations: fields.obligations })
     }
@@ -313,11 +280,11 @@ impl<'a, 'tcx> Trace<'a, 'tcx> {
     where
         T: Relate<'tcx>,
     {
-        let Trace { at, trace, a_is_expected } = self;
+        let Trace { at, trace } = self;
         debug_assert!(at.infcx.next_trait_solver());
         let mut fields = at.infcx.combine_fields(trace, at.param_env, DefineOpaqueTypes::No);
         fields
-            .equate(StructurallyRelateAliases::Yes, a_is_expected)
+            .equate(StructurallyRelateAliases::Yes)
             .relate(a, b)
             .map(move |_| InferOk { value: (), obligations: fields.obligations })
     }
@@ -327,10 +294,10 @@ impl<'a, 'tcx> Trace<'a, 'tcx> {
     where
         T: Relate<'tcx>,
     {
-        let Trace { at, trace, a_is_expected } = self;
+        let Trace { at, trace } = self;
         let mut fields = at.infcx.combine_fields(trace, at.param_env, define_opaque_types);
         fields
-            .lub(a_is_expected)
+            .lub()
             .relate(a, b)
             .map(move |t| InferOk { value: t, obligations: fields.obligations })
     }
@@ -340,10 +307,10 @@ impl<'a, 'tcx> Trace<'a, 'tcx> {
     where
         T: Relate<'tcx>,
     {
-        let Trace { at, trace, a_is_expected } = self;
+        let Trace { at, trace } = self;
         let mut fields = at.infcx.combine_fields(trace, at.param_env, define_opaque_types);
         fields
-            .glb(a_is_expected)
+            .glb()
             .relate(a, b)
             .map(move |t| InferOk { value: t, obligations: fields.obligations })
     }

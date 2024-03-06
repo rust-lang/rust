@@ -734,6 +734,21 @@ struct UsefulnessCtxt<'a, Cx: TypeCx> {
     /// Collect the patterns found useful during usefulness checking. This is used to lint
     /// unreachable (sub)patterns.
     useful_subpatterns: FxHashSet<PatId>,
+    complexity_limit: Option<usize>,
+    complexity_level: usize,
+}
+
+impl<'a, Cx: TypeCx> UsefulnessCtxt<'a, Cx> {
+    fn increase_complexity_level(&mut self, complexity_add: usize) -> Result<(), Cx::Error> {
+        self.complexity_level += complexity_add;
+        if self
+            .complexity_limit
+            .is_some_and(|complexity_limit| complexity_limit < self.complexity_level)
+        {
+            return self.tycx.complexity_exceeded();
+        }
+        Ok(())
+    }
 }
 
 /// Context that provides information local to a place under investigation.
@@ -986,19 +1001,26 @@ impl<'p, Cx: TypeCx> PatStack<'p, Cx> {
     /// Only call if `ctor.is_covered_by(self.head().ctor())` is true.
     fn pop_head_constructor(
         &self,
+        cx: &Cx,
         ctor: &Constructor<Cx>,
         ctor_arity: usize,
         ctor_is_relevant: bool,
-    ) -> PatStack<'p, Cx> {
+    ) -> Result<PatStack<'p, Cx>, Cx::Error> {
         // We pop the head pattern and push the new fields extracted from the arguments of
         // `self.head()`.
         let mut new_pats = self.head().specialize(ctor, ctor_arity);
+        if new_pats.len() != ctor_arity {
+            return Err(cx.bug(format_args!(
+                "uncaught type error: pattern {:?} has inconsistent arity (expected arity {ctor_arity})",
+                self.head().as_pat().unwrap()
+            )));
+        }
         new_pats.extend_from_slice(&self.pats[1..]);
         // `ctor` is relevant for this row if it is the actual constructor of this row, or if the
         // row has a wildcard and `ctor` is relevant for wildcards.
         let ctor_is_relevant =
             !matches!(self.head().ctor(), Constructor::Wildcard) || ctor_is_relevant;
-        PatStack { pats: new_pats, relevant: self.relevant && ctor_is_relevant }
+        Ok(PatStack { pats: new_pats, relevant: self.relevant && ctor_is_relevant })
     }
 }
 
@@ -1068,18 +1090,19 @@ impl<'p, Cx: TypeCx> MatrixRow<'p, Cx> {
     /// Only call if `ctor.is_covered_by(self.head().ctor())` is true.
     fn pop_head_constructor(
         &self,
+        cx: &Cx,
         ctor: &Constructor<Cx>,
         ctor_arity: usize,
         ctor_is_relevant: bool,
         parent_row: usize,
-    ) -> MatrixRow<'p, Cx> {
-        MatrixRow {
-            pats: self.pats.pop_head_constructor(ctor, ctor_arity, ctor_is_relevant),
+    ) -> Result<MatrixRow<'p, Cx>, Cx::Error> {
+        Ok(MatrixRow {
+            pats: self.pats.pop_head_constructor(cx, ctor, ctor_arity, ctor_is_relevant)?,
             parent_row,
             is_under_guard: self.is_under_guard,
             useful: false,
             intersects: BitSet::new_empty(0), // Initialized in `Matrix::expand_and_push`.
-        }
+        })
     }
 }
 
@@ -1202,7 +1225,7 @@ impl<'p, Cx: TypeCx> Matrix<'p, Cx> {
         };
         for (i, row) in self.rows().enumerate() {
             if ctor.is_covered_by(pcx.cx, row.head().ctor())? {
-                let new_row = row.pop_head_constructor(ctor, arity, ctor_is_relevant, i);
+                let new_row = row.pop_head_constructor(pcx.cx, ctor, arity, ctor_is_relevant, i)?;
                 matrix.expand_and_push(new_row);
             }
         }
@@ -1552,6 +1575,7 @@ fn compute_exhaustiveness_and_usefulness<'a, 'p, Cx: TypeCx>(
     }
 
     let Some(place) = matrix.head_place() else {
+        mcx.increase_complexity_level(matrix.rows().len())?;
         // The base case: there are no columns in the matrix. We are morally pattern-matching on ().
         // A row is useful iff it has no (unguarded) rows above it.
         let mut useful = true; // Whether the next row is useful.
@@ -1690,8 +1714,14 @@ pub fn compute_match_usefulness<'p, Cx: TypeCx>(
     arms: &[MatchArm<'p, Cx>],
     scrut_ty: Cx::Ty,
     scrut_validity: ValidityConstraint,
+    complexity_limit: Option<usize>,
 ) -> Result<UsefulnessReport<'p, Cx>, Cx::Error> {
-    let mut cx = UsefulnessCtxt { tycx, useful_subpatterns: FxHashSet::default() };
+    let mut cx = UsefulnessCtxt {
+        tycx,
+        useful_subpatterns: FxHashSet::default(),
+        complexity_limit,
+        complexity_level: 0,
+    };
     let mut matrix = Matrix::new(arms, scrut_ty, scrut_validity);
     let non_exhaustiveness_witnesses = compute_exhaustiveness_and_usefulness(&mut cx, &mut matrix)?;
 

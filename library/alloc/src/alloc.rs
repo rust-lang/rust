@@ -50,6 +50,8 @@ extern "Rust" {
 #[unstable(feature = "allocator_api", issue = "32838")]
 #[derive(Copy, Clone, Default, Debug)]
 #[cfg(not(test))]
+// the compiler needs to know when a Box uses the global allocator vs a custom one
+#[cfg_attr(not(bootstrap), lang = "global_alloc_ty")]
 pub struct Global;
 
 #[cfg(test)]
@@ -385,6 +387,7 @@ pub const fn handle_alloc_error(layout: Layout) -> ! {
     }
 
     #[cfg(not(feature = "panic_immediate_abort"))]
+    #[cfg_attr(not(bootstrap), allow(unused_unsafe))] // on bootstrap bump, remove unsafe block
     unsafe {
         core::intrinsics::const_eval_select((layout,), ct_error, rt_error)
     }

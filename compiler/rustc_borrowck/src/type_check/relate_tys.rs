@@ -120,7 +120,6 @@ impl<'me, 'bccx, 'tcx> NllTypeRelating<'me, 'bccx, 'tcx> {
     fn relate_opaques(&mut self, a: Ty<'tcx>, b: Ty<'tcx>) -> RelateResult<'tcx, ()> {
         let infcx = self.type_checker.infcx;
         debug_assert!(!infcx.next_trait_solver());
-        let (a, b) = if self.a_is_expected() { (a, b) } else { (b, a) };
         // `handle_opaque_type` cannot handle subtyping, so to support subtyping
         // we instead eagerly generalize here. This is a bit of a mess but will go
         // away once we're using the new solver.
@@ -161,8 +160,7 @@ impl<'me, 'bccx, 'tcx> NllTypeRelating<'me, 'bccx, 'tcx> {
             ),
         };
         let cause = ObligationCause::dummy_with_span(self.span());
-        let obligations =
-            infcx.handle_opaque_type(a, b, true, &cause, self.param_env())?.obligations;
+        let obligations = infcx.handle_opaque_type(a, b, &cause, self.param_env())?.obligations;
         self.register_obligations(obligations);
         Ok(())
     }
@@ -331,10 +329,6 @@ impl<'bccx, 'tcx> TypeRelation<'tcx> for NllTypeRelating<'_, 'bccx, 'tcx> {
         "nll::subtype"
     }
 
-    fn a_is_expected(&self) -> bool {
-        true
-    }
-
     #[instrument(skip(self, info), level = "trace", ret)]
     fn relate_with_variance<T: Relate<'tcx>>(
         &mut self,
@@ -349,12 +343,15 @@ impl<'bccx, 'tcx> TypeRelation<'tcx> for NllTypeRelating<'_, 'bccx, 'tcx> {
 
         debug!(?self.ambient_variance);
         // In a bivariant context this always succeeds.
-        let r =
-            if self.ambient_variance == ty::Variance::Bivariant { a } else { self.relate(a, b)? };
+        let r = if self.ambient_variance == ty::Variance::Bivariant {
+            Ok(a)
+        } else {
+            self.relate(a, b)
+        };
 
         self.ambient_variance = old_ambient_variance;
 
-        Ok(r)
+        r
     }
 
     #[instrument(skip(self), level = "debug")]
@@ -483,61 +480,59 @@ impl<'bccx, 'tcx> TypeRelation<'tcx> for NllTypeRelating<'_, 'bccx, 'tcx> {
             return Ok(ty::Binder::dummy(a));
         }
 
-        if self.ambient_covariance() {
-            // Covariance, so we want `for<..> A <: for<..> B` --
-            // therefore we compare any instantiation of A (i.e., A
-            // instantiated with existentials) against every
-            // instantiation of B (i.e., B instantiated with
-            // universals).
+        match self.ambient_variance {
+            ty::Variance::Covariant => {
+                // Covariance, so we want `for<..> A <: for<..> B` --
+                // therefore we compare any instantiation of A (i.e., A
+                // instantiated with existentials) against every
+                // instantiation of B (i.e., B instantiated with
+                // universals).
 
-            // Reset the ambient variance to covariant. This is needed
-            // to correctly handle cases like
-            //
-            //     for<'a> fn(&'a u32, &'a u32) == for<'b, 'c> fn(&'b u32, &'c u32)
-            //
-            // Somewhat surprisingly, these two types are actually
-            // **equal**, even though the one on the right looks more
-            // polymorphic. The reason is due to subtyping. To see it,
-            // consider that each function can call the other:
-            //
-            // - The left function can call the right with `'b` and
-            //   `'c` both equal to `'a`
-            //
-            // - The right function can call the left with `'a` set to
-            //   `{P}`, where P is the point in the CFG where the call
-            //   itself occurs. Note that `'b` and `'c` must both
-            //   include P. At the point, the call works because of
-            //   subtyping (i.e., `&'b u32 <: &{P} u32`).
-            let variance = std::mem::replace(&mut self.ambient_variance, ty::Variance::Covariant);
+                // Note: the order here is important. Create the placeholders first, otherwise
+                // we assign the wrong universe to the existential!
+                self.enter_forall(b, |this, b| {
+                    let a = this.instantiate_binder_with_existentials(a);
+                    this.relate(a, b)
+                })?;
+            }
 
-            // Note: the order here is important. Create the placeholders first, otherwise
-            // we assign the wrong universe to the existential!
-            self.enter_forall(b, |this, b| {
-                let a = this.instantiate_binder_with_existentials(a);
-                this.relate(a, b)
-            })?;
+            ty::Variance::Contravariant => {
+                // Contravariance, so we want `for<..> A :> for<..> B` --
+                // therefore we compare every instantiation of A (i.e., A
+                // instantiated with universals) against any
+                // instantiation of B (i.e., B instantiated with
+                // existentials). Opposite of above.
 
-            self.ambient_variance = variance;
-        }
+                // Note: the order here is important. Create the placeholders first, otherwise
+                // we assign the wrong universe to the existential!
+                self.enter_forall(a, |this, a| {
+                    let b = this.instantiate_binder_with_existentials(b);
+                    this.relate(a, b)
+                })?;
+            }
 
-        if self.ambient_contravariance() {
-            // Contravariance, so we want `for<..> A :> for<..> B`
-            // -- therefore we compare every instantiation of A (i.e.,
-            // A instantiated with universals) against any
-            // instantiation of B (i.e., B instantiated with
-            // existentials). Opposite of above.
+            ty::Variance::Invariant => {
+                // Invariant, so we want `for<..> A == for<..> B` --
+                // therefore we want `exists<..> A == for<..> B` and
+                // `exists<..> B == for<..> A`.
+                //
+                // See the comment in `fn Equate::binders` for more details.
 
-            // Reset ambient variance to contravariance. See the
-            // covariant case above for an explanation.
-            let variance =
-                std::mem::replace(&mut self.ambient_variance, ty::Variance::Contravariant);
+                // Note: the order here is important. Create the placeholders first, otherwise
+                // we assign the wrong universe to the existential!
+                self.enter_forall(b, |this, b| {
+                    let a = this.instantiate_binder_with_existentials(a);
+                    this.relate(a, b)
+                })?;
+                // Note: the order here is important. Create the placeholders first, otherwise
+                // we assign the wrong universe to the existential!
+                self.enter_forall(a, |this, a| {
+                    let b = this.instantiate_binder_with_existentials(b);
+                    this.relate(a, b)
+                })?;
+            }
 
-            self.enter_forall(a, |this, a| {
-                let b = this.instantiate_binder_with_existentials(b);
-                this.relate(a, b)
-            })?;
-
-            self.ambient_variance = variance;
+            ty::Variance::Bivariant => {}
         }
 
         Ok(a)
@@ -579,10 +574,6 @@ impl<'bccx, 'tcx> ObligationEmittingRelation<'tcx> for NllTypeRelating<'_, 'bccx
                 region_constraints: None,
             },
         );
-    }
-
-    fn alias_relate_direction(&self) -> ty::AliasRelationDirection {
-        unreachable!("manually overridden to handle ty::Variance::Contravariant ambient variance")
     }
 
     fn register_type_relate_obligation(&mut self, a: Ty<'tcx>, b: Ty<'tcx>) {

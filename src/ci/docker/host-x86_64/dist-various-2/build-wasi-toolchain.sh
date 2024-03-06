@@ -15,7 +15,7 @@ make -j$(nproc) \
     CC="$bin/clang" \
     NM="$bin/llvm-nm" \
     AR="$bin/llvm-ar" \
-    INSTALL_DIR=/wasm32-wasi \
+    INSTALL_DIR=/wasm32-wasip1 \
     install
 
 cd ..

@@ -56,7 +56,7 @@ fn compile(code: String, output: PathBuf, sysroot: PathBuf) {
         file_loader: None,
         locale_resources: &[],
         lint_caps: Default::default(),
-        parse_sess_created: None,
+        psess_created: None,
         hash_untracked_state: None,
         register_lints: None,
         override_queries: None,

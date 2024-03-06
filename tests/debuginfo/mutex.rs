@@ -10,7 +10,7 @@
 //
 // cdb-command:dx m,d
 // cdb-check:m,d              [Type: std::sync::mutex::Mutex<i32>]
-// cdb-check:    [...] inner            [Type: std::sys::locks::mutex::windows::Mutex]
+// cdb-check:    [...] inner            [Type: std::sys::locks::mutex::futex::Mutex]
 // cdb-check:    [...] poison           [Type: std::sync::poison::Flag]
 // cdb-check:    [...] data             : 0 [Type: core::cell::UnsafeCell<i32>]
 

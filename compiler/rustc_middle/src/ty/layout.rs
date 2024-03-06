@@ -3,7 +3,7 @@ use crate::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use crate::query::TyCtxtAt;
 use crate::ty::normalize_erasing_regions::NormalizationError;
 use crate::ty::{self, ConstKind, Ty, TyCtxt, TypeVisitableExt};
-use rustc_error_messages::DiagnosticMessage;
+use rustc_error_messages::DiagMessage;
 use rustc_errors::{
     Diag, DiagArgValue, DiagCtxt, EmissionGuarantee, IntoDiagnostic, IntoDiagnosticArg, Level,
 };
@@ -17,6 +17,7 @@ use rustc_target::abi::call::FnAbi;
 use rustc_target::abi::*;
 use rustc_target::spec::{abi::Abi as SpecAbi, HasTargetSpec, PanicStrategy, Target};
 
+use std::borrow::Cow;
 use std::cmp;
 use std::fmt;
 use std::num::NonZero;
@@ -116,8 +117,10 @@ impl Primitive {
     fn to_ty<'tcx>(&self, tcx: TyCtxt<'tcx>) -> Ty<'tcx> {
         match *self {
             Int(i, signed) => i.to_ty(tcx, signed),
+            F16 => tcx.types.f16,
             F32 => tcx.types.f32,
             F64 => tcx.types.f64,
+            F128 => tcx.types.f128,
             // FIXME(erikdesjardins): handle non-default addrspace ptr sizes
             Pointer(_) => Ty::new_mut_ptr(tcx, Ty::new_unit(tcx)),
         }
@@ -134,7 +137,7 @@ impl Primitive {
                 let signed = false;
                 tcx.data_layout().ptr_sized_integer().to_ty(tcx, signed)
             }
-            F32 | F64 => bug!("floats do not have an int type"),
+            F16 | F32 | F64 | F128 => bug!("floats do not have an int type"),
         }
     }
 }
@@ -203,7 +206,7 @@ pub enum LayoutError<'tcx> {
 }
 
 impl<'tcx> LayoutError<'tcx> {
-    pub fn diagnostic_message(&self) -> DiagnosticMessage {
+    pub fn diagnostic_message(&self) -> DiagMessage {
         use crate::fluent_generated::*;
         use LayoutError::*;
         match self {
@@ -266,7 +269,7 @@ pub struct LayoutCx<'tcx, C> {
 impl<'tcx> LayoutCalculator for LayoutCx<'tcx, TyCtxt<'tcx>> {
     type TargetDataLayoutRef = &'tcx TargetDataLayout;
 
-    fn delayed_bug(&self, txt: String) {
+    fn delayed_bug(&self, txt: impl Into<Cow<'static, str>>) {
         self.tcx.dcx().delayed_bug(txt);
     }
 
@@ -967,6 +970,8 @@ where
         }
     }
 
+    /// Compute the information for the pointer stored at the given offset inside this type.
+    /// This will recurse into fields of ADTs to find the inner pointer.
     fn ty_and_layout_pointee_info_at(
         this: TyAndLayout<'tcx>,
         cx: &C,
@@ -1066,15 +1071,17 @@ where
                     }
                 }
 
-                // FIXME(eddyb) This should be for `ptr::Unique<T>`, not `Box<T>`.
+                // Fixup info for the first field of a `Box`. Recursive traversal will have found
+                // the raw pointer, so size and align are set to the boxed type, but `pointee.safe`
+                // will still be `None`.
                 if let Some(ref mut pointee) = result {
-                    if let ty::Adt(def, _) = this.ty.kind() {
-                        if def.is_box() && offset.bytes() == 0 {
-                            let optimize = tcx.sess.opts.optimize != OptLevel::No;
-                            pointee.safe = Some(PointerKind::Box {
-                                unpin: optimize && this.ty.boxed_ty().is_unpin(tcx, cx.param_env()),
-                            });
-                        }
+                    if offset.bytes() == 0 && this.ty.is_box() {
+                        debug_assert!(pointee.safe.is_none());
+                        let optimize = tcx.sess.opts.optimize != OptLevel::No;
+                        pointee.safe = Some(PointerKind::Box {
+                            unpin: optimize && this.ty.boxed_ty().is_unpin(tcx, cx.param_env()),
+                            global: this.ty.is_box_global(tcx),
+                        });
                     }
                 }
 

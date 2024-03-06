@@ -213,6 +213,8 @@ declare_features! (
     (internal, negative_bounds, "1.71.0", None),
     /// Allows using `#[omit_gdb_pretty_printer_section]`.
     (internal, omit_gdb_pretty_printer_section, "1.5.0", None),
+    /// Set the maximum pattern complexity allowed (not limited by default).
+    (internal, pattern_complexity, "CURRENT_RUSTC_VERSION", None),
     /// Allows using `#[prelude_import]` on glob `use` items.
     (internal, prelude_import, "1.2.0", None),
     /// Used to identify crates that contain the profiler runtime.

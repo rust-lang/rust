@@ -35,10 +35,10 @@ mod fluent;
 ///
 /// mod fluent_generated {
 ///     mod typeck {
-///         pub const field_multiply_specified_in_initializer: DiagnosticMessage =
-///             DiagnosticMessage::fluent("typeck_field_multiply_specified_in_initializer");
-///         pub const field_multiply_specified_in_initializer_label_previous_use: DiagnosticMessage =
-///             DiagnosticMessage::fluent_attr(
+///         pub const field_multiply_specified_in_initializer: DiagMessage =
+///             DiagMessage::fluent("typeck_field_multiply_specified_in_initializer");
+///         pub const field_multiply_specified_in_initializer_label_previous_use: DiagMessage =
+///             DiagMessage::fluent_attr(
 ///                 "typeck_field_multiply_specified_in_initializer",
 ///                 "previous_use_label"
 ///             );

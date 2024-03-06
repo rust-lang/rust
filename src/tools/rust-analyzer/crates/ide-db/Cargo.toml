@@ -13,6 +13,7 @@ doctest = false
 
 [dependencies]
 cov-mark = "2.0.0-pre.1"
+crossbeam-channel = "0.5.5"
 tracing.workspace = true
 rayon.workspace = true
 fst = { version = "0.4.7", default-features = false }

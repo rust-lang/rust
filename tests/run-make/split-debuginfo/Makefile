@@ -234,28 +234,28 @@ unpacked-single:
 	ls $(TMPDIR)/*.dwp && exit 1 || exit 0
 	rm $(TMPDIR)/$(call BIN,foo)
 
-unpacked-lto: packed-lto-split packed-lto-single
+unpacked-lto: unpacked-lto-split unpacked-lto-single
 
 # - rmeta file added to rlib, no object files are generated and thus no debuginfo is generated
-# - `.o` never created
+# - `.o` present (bitcode)
 # - `.dwo` never created
 # - `.dwp` never created
 unpacked-lto-split:
 	$(RUSTC) baz.rs -g $(UNSTABLEOPTS) -Csplit-debuginfo=unpacked -Zsplit-dwarf-kind=split \
 		--crate-type=rlib -Clinker-plugin-lto
-	ls $(TMPDIR)/*.o && exit 1 || exit 0
+	rm $(TMPDIR)/*.o
 	ls $(TMPDIR)/*.dwo && exit 1 || exit 0
 	ls $(TMPDIR)/*.dwp && exit 1 || exit 0
 	rm $(TMPDIR)/libbaz.rlib
 
 # - rmeta file added to rlib, no object files are generated and thus no debuginfo is generated
-# - `.o` never created
+# - `.o` present (bitcode)
 # - `.dwo` never created
 # - `.dwp` never created
 unpacked-lto-single:
 	$(RUSTC) baz.rs -g $(UNSTABLEOPTS) -Csplit-debuginfo=unpacked -Zsplit-dwarf-kind=single \
 		--crate-type=rlib -Clinker-plugin-lto
-	ls $(TMPDIR)/*.o && exit 1 || exit 0
+	rm $(TMPDIR)/*.o
 	ls $(TMPDIR)/*.dwo && exit 1 || exit 0
 	ls $(TMPDIR)/*.dwp && exit 1 || exit 0
 	rm $(TMPDIR)/libbaz.rlib

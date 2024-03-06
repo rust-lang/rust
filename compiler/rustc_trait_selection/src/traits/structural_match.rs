@@ -53,9 +53,9 @@ impl<'tcx> Search<'tcx> {
 }
 
 impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for Search<'tcx> {
-    type BreakTy = Ty<'tcx>;
+    type Result = ControlFlow<Ty<'tcx>>;
 
-    fn visit_ty(&mut self, ty: Ty<'tcx>) -> ControlFlow<Self::BreakTy> {
+    fn visit_ty(&mut self, ty: Ty<'tcx>) -> Self::Result {
         debug!("Search visiting ty: {:?}", ty);
 
         let (adt_def, args) = match *ty.kind() {

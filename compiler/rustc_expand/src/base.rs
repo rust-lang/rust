@@ -4,7 +4,6 @@ use crate::expand::{self, AstFragment, Invocation};
 use crate::module::DirOwnership;
 
 use rustc_ast::attr::MarkedAttrs;
-use rustc_ast::mut_visit::DummyAstNode;
 use rustc_ast::ptr::P;
 use rustc_ast::token::{self, Nonterminal};
 use rustc_ast::tokenstream::TokenStream;
@@ -16,7 +15,7 @@ use rustc_data_structures::sync::{self, Lrc};
 use rustc_errors::{Applicability, Diag, DiagCtxt, ErrorGuaranteed, PResult};
 use rustc_feature::Features;
 use rustc_lint_defs::builtin::PROC_MACRO_BACK_COMPAT;
-use rustc_lint_defs::{BufferedEarlyLint, BuiltinLintDiagnostics, RegisteredTools};
+use rustc_lint_defs::{BufferedEarlyLint, BuiltinLintDiag, RegisteredTools};
 use rustc_parse::{parser, MACRO_ARGUMENTS};
 use rustc_session::config::CollapseMacroDebuginfo;
 use rustc_session::errors::report_lit_error;
@@ -582,6 +581,17 @@ impl DummyResult {
             tokens: None,
         })
     }
+
+    /// A plain dummy crate.
+    pub fn raw_crate() -> ast::Crate {
+        ast::Crate {
+            attrs: Default::default(),
+            items: Default::default(),
+            spans: Default::default(),
+            id: ast::DUMMY_NODE_ID,
+            is_placeholder: Default::default(),
+        }
+    }
 }
 
 impl MacResult for DummyResult {
@@ -650,7 +660,7 @@ impl MacResult for DummyResult {
     }
 
     fn make_crate(self: Box<DummyResult>) -> Option<ast::Crate> {
-        Some(DummyAstNode::dummy())
+        Some(DummyResult::raw_crate())
     }
 }
 
@@ -1135,13 +1145,13 @@ impl<'a> ExtCtxt<'a> {
         expand::MacroExpander::new(self, true)
     }
     pub fn new_parser_from_tts(&self, stream: TokenStream) -> parser::Parser<'a> {
-        rustc_parse::stream_to_parser(&self.sess.parse_sess, stream, MACRO_ARGUMENTS)
+        rustc_parse::stream_to_parser(&self.sess.psess, stream, MACRO_ARGUMENTS)
     }
     pub fn source_map(&self) -> &'a SourceMap {
-        self.sess.parse_sess.source_map()
+        self.sess.psess.source_map()
     }
-    pub fn parse_sess(&self) -> &'a ParseSess {
-        &self.sess.parse_sess
+    pub fn psess(&self) -> &'a ParseSess {
+        &self.sess.psess
     }
     pub fn call_site(&self) -> Span {
         self.current_expansion.id.expn_data().call_site
@@ -1216,26 +1226,22 @@ impl<'a> ExtCtxt<'a> {
 /// Resolves a `path` mentioned inside Rust code, returning an absolute path.
 ///
 /// This unifies the logic used for resolving `include_X!`.
-pub fn resolve_path(
-    parse_sess: &Session,
-    path: impl Into<PathBuf>,
-    span: Span,
-) -> PResult<'_, PathBuf> {
+pub fn resolve_path(sess: &Session, path: impl Into<PathBuf>, span: Span) -> PResult<'_, PathBuf> {
     let path = path.into();
 
     // Relative paths are resolved relative to the file in which they are found
     // after macro expansion (that is, they are unhygienic).
     if !path.is_absolute() {
         let callsite = span.source_callsite();
-        let mut result = match parse_sess.source_map().span_to_filename(callsite) {
+        let mut result = match sess.source_map().span_to_filename(callsite) {
             FileName::Real(name) => name
                 .into_local_path()
                 .expect("attempting to resolve a file path in an external file"),
             FileName::DocTest(path, _) => path,
             other => {
-                return Err(parse_sess.dcx().create_err(errors::ResolveRelativePath {
+                return Err(sess.dcx().create_err(errors::ResolveRelativePath {
                     span,
-                    path: parse_sess.source_map().filename_for_diagnostics(&other).to_string(),
+                    path: sess.source_map().filename_for_diagnostics(&other).to_string(),
                 }));
             }
         };
@@ -1281,7 +1287,7 @@ pub fn expr_to_spanned_string<'a>(
                 Ok((err, true))
             }
             Ok(ast::LitKind::Err(guar)) => Err(guar),
-            Err(err) => Err(report_lit_error(&cx.sess.parse_sess, err, token_lit, expr.span)),
+            Err(err) => Err(report_lit_error(&cx.sess.psess, err, token_lit, expr.span)),
             _ => Ok((cx.dcx().struct_span_err(expr.span, err_msg), false)),
         },
         ast::ExprKind::Err(guar) => Err(guar),
@@ -1487,12 +1493,14 @@ fn pretty_printing_compatibility_hack(item: &Item, sess: &Session) -> bool {
                             };
 
                             if crate_matches {
-                                sess.parse_sess.buffer_lint_with_diagnostic(
+                                // FIXME: make this translatable
+                                #[allow(rustc::untranslatable_diagnostic)]
+                                sess.psess.buffer_lint_with_diagnostic(
                                         PROC_MACRO_BACK_COMPAT,
                                         item.ident.span,
                                         ast::CRATE_NODE_ID,
                                         "using an old version of `rental`",
-                                        BuiltinLintDiagnostics::ProcMacroBackCompat(
+                                        BuiltinLintDiag::ProcMacroBackCompat(
                                         "older versions of the `rental` crate will stop compiling in future versions of Rust; \
                                         please update to `rental` v0.5.6, or switch to one of the `rental` alternatives".to_string()
                                         )

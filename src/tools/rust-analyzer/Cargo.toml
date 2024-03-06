@@ -4,7 +4,7 @@ exclude = ["crates/proc-macro-srv/proc-macro-test/imp"]
 resolver = "2"
 
 [workspace.package]
-rust-version = "1.74"
+rust-version = "1.76"
 edition = "2021"
 license = "MIT OR Apache-2.0"
 authors = ["rust-analyzer team"]
@@ -27,6 +27,10 @@ miniz_oxide.opt-level = 3
 incremental = true
 # Set this to 1 or 2 to get more useful backtraces in debugger.
 debug = 0
+
+[profile.dev-rel]
+inherits = "release"
+debug = 2
 
 [patch.'crates-io']
 # rowan = { path = "../rowan" }

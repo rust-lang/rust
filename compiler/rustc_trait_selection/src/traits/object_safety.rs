@@ -834,9 +834,9 @@ fn contains_illegal_self_type_reference<'tcx, T: TypeVisitable<TyCtxt<'tcx>>>(
     }
 
     impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for IllegalSelfTypeVisitor<'tcx> {
-        type BreakTy = ();
+        type Result = ControlFlow<()>;
 
-        fn visit_ty(&mut self, t: Ty<'tcx>) -> ControlFlow<Self::BreakTy> {
+        fn visit_ty(&mut self, t: Ty<'tcx>) -> Self::Result {
             match t.kind() {
                 ty::Param(_) => {
                     if t == self.tcx.types.self_param {
@@ -887,7 +887,7 @@ fn contains_illegal_self_type_reference<'tcx, T: TypeVisitable<TyCtxt<'tcx>>>(
             }
         }
 
-        fn visit_const(&mut self, ct: ty::Const<'tcx>) -> ControlFlow<Self::BreakTy> {
+        fn visit_const(&mut self, ct: ty::Const<'tcx>) -> Self::Result {
             // Constants can only influence object safety if they are generic and reference `Self`.
             // This is only possible for unevaluated constants, so we walk these here.
             self.tcx.expand_abstract_consts(ct).super_visit_with(self)

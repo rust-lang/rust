@@ -947,6 +947,7 @@ impl<'a, 'tcx> CrateLoader<'a, 'tcx> {
         }
     }
 
+    #[allow(rustc::untranslatable_diagnostic)] // FIXME: make this translatable
     fn report_unused_deps(&mut self, krate: &ast::Crate) {
         // Make a point span rather than covering the whole file
         let span = krate.spans.inner_span.shrink_to_lo();
@@ -971,7 +972,7 @@ impl<'a, 'tcx> CrateLoader<'a, 'tcx> {
                 continue;
             }
 
-            self.sess.parse_sess.buffer_lint(
+            self.sess.psess.buffer_lint(
                     lint::builtin::UNUSED_CRATE_DEPENDENCIES,
                     span,
                     ast::CRATE_NODE_ID,
@@ -1132,7 +1133,13 @@ fn load_dylib(path: &Path, max_attempts: usize) -> Result<libloading::Library, S
             Err(err) => {
                 // Only try to recover from this specific error.
                 if !matches!(err, libloading::Error::LoadLibraryExW { .. }) {
-                    return Err(err.to_string());
+                    let err = format_dlopen_err(&err);
+                    // We include the path of the dylib in the error ourselves, so
+                    // if it's in the error, we strip it.
+                    if let Some(err) = err.strip_prefix(&format!(": {}", path.display())) {
+                        return Err(err.to_string());
+                    }
+                    return Err(err);
                 }
 
                 last_error = Some(err);

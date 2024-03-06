@@ -1,6 +1,6 @@
 //! A bunch of methods and structures more or less related to resolving imports.
 
-use crate::diagnostics::{import_candidates, DiagnosticMode, Suggestion};
+use crate::diagnostics::{import_candidates, DiagMode, Suggestion};
 use crate::errors::{
     CannotBeReexportedCratePublic, CannotBeReexportedCratePublicNS, CannotBeReexportedPrivate,
     CannotBeReexportedPrivateNS, CannotDetermineImportResolution, CannotGlobImportAllCrates,
@@ -8,8 +8,8 @@ use crate::errors::{
     ItemsInTraitsAreNotImportable,
 };
 use crate::Determinacy::{self, *};
-use crate::Namespace::*;
 use crate::{module_to_string, names_to_string, ImportSuggestion};
+use crate::{AmbiguityError, Namespace::*};
 use crate::{AmbiguityKind, BindingKey, ResolutionError, Resolver, Segment};
 use crate::{Finalize, Module, ModuleOrUniformRoot, ParentScope, PerNS, ScopeSet};
 use crate::{NameBinding, NameBindingData, NameBindingKind, PathResult, Used};
@@ -27,7 +27,7 @@ use rustc_session::lint::builtin::{
     AMBIGUOUS_GLOB_REEXPORTS, HIDDEN_GLOB_REEXPORTS, PUB_USE_OF_PRIVATE_EXTERN_CRATE,
     UNUSED_IMPORTS,
 };
-use rustc_session::lint::BuiltinLintDiagnostics;
+use rustc_session::lint::BuiltinLintDiag;
 use rustc_span::edit_distance::find_best_match_for_name;
 use rustc_span::hygiene::LocalExpnId;
 use rustc_span::symbol::{kw, Ident, Symbol};
@@ -538,7 +538,6 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             .chain(indeterminate_imports.iter().map(|i| (true, i)))
         {
             let unresolved_import_error = self.finalize_import(*import);
-
             // If this import is unresolved then create a dummy import
             // resolution for it so that later resolve stages won't complain.
             self.import_dummy_binding(*import, is_indeterminate);
@@ -618,7 +617,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                             import.root_id,
                             import.root_span,
                             "ambiguous glob re-exports",
-                            BuiltinLintDiagnostics::AmbiguousGlobReexports {
+                            BuiltinLintDiag::AmbiguousGlobReexports {
                                 name: key.ident.to_string(),
                                 namespace: key.ns.descr().to_string(),
                                 first_reexport_span: import.root_span,
@@ -654,7 +653,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                                 binding_id,
                                 binding.span,
                                 "private item shadows public glob re-export",
-                                BuiltinLintDiagnostics::HiddenGlobReexports {
+                                BuiltinLintDiag::HiddenGlobReexports {
                                     name: key.ident.name.to_string(),
                                     namespace: key.ns.descr().to_owned(),
                                     glob_reexport_span: glob_binding.span,
@@ -716,7 +715,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                         &mut diag,
                         Some(err.span),
                         candidates,
-                        DiagnosticMode::Import,
+                        DiagMode::Import { append: false },
                         (source != target)
                             .then(|| format!(" as {target}"))
                             .as_deref()
@@ -728,7 +727,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                             &mut diag,
                             None,
                             candidates,
-                            DiagnosticMode::Normal,
+                            DiagMode::Normal,
                             (source != target)
                                 .then(|| format!(" as {target}"))
                                 .as_deref()
@@ -856,7 +855,9 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             ImportKind::Single { target_bindings, .. } => target_bindings[TypeNS].get(),
             _ => None,
         };
-        let prev_ambiguity_errors_len = self.ambiguity_errors.len();
+        let ambiguity_errors_len =
+            |errors: &Vec<AmbiguityError<'_>>| errors.iter().filter(|error| !error.warning).count();
+        let prev_ambiguity_errors_len = ambiguity_errors_len(&self.ambiguity_errors);
         let finalize = Finalize::with_root_span(import.root_id, import.span, import.root_span);
 
         // We'll provide more context to the privacy errors later, up to `len`.
@@ -870,7 +871,8 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             ignore_binding,
         );
 
-        let no_ambiguity = self.ambiguity_errors.len() == prev_ambiguity_errors_len;
+        let no_ambiguity =
+            ambiguity_errors_len(&self.ambiguity_errors) == prev_ambiguity_errors_len;
         import.vis.set(orig_vis);
         let module = match path_res {
             PathResult::Module(module) => {
@@ -1006,7 +1008,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                             id,
                             import.span,
                             msg,
-                            BuiltinLintDiagnostics::RedundantImportVisibility {
+                            BuiltinLintDiag::RedundantImportVisibility {
                                 max_vis: max_vis.to_string(def_id, self.tcx),
                                 span: import.span,
                             },
@@ -1373,7 +1375,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                 id,
                 import.span,
                 format!("the item `{source}` is imported redundantly"),
-                BuiltinLintDiagnostics::RedundantImport(redundant_spans, source),
+                BuiltinLintDiag::RedundantImport(redundant_spans, source),
             );
         }
     }

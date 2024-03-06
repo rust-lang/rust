@@ -10,14 +10,13 @@
 use rustc_span::source_map::SourceMap;
 use rustc_span::{FileLines, FileName, SourceFile, Span};
 
-use crate::error::TranslateError;
 use crate::snippet::{
     Annotation, AnnotationColumn, AnnotationType, Line, MultilineAnnotation, Style, StyledString,
 };
 use crate::styled_buffer::StyledBuffer;
 use crate::translation::{to_fluent_args, Translate};
 use crate::{
-    diagnostic::DiagLocation, CodeSuggestion, DiagCtxt, DiagInner, DiagnosticMessage, ErrCode,
+    diagnostic::DiagLocation, CodeSuggestion, DiagCtxt, DiagInner, DiagMessage, ErrCode,
     FluentBundle, LazyFallbackBundle, Level, MultiSpan, Subdiag, SubstitutionHighlight,
     SuggestionStyle, TerminalUrl,
 };
@@ -339,7 +338,7 @@ pub trait Emitter: Translate {
 
                 children.push(Subdiag {
                     level: Level::Note,
-                    messages: vec![(DiagnosticMessage::from(msg), Style::NoStyle)],
+                    messages: vec![(DiagMessage::from(msg), Style::NoStyle)],
                     span: MultiSpan::new(),
                 });
             }
@@ -539,20 +538,9 @@ impl Emitter for HumanEmitter {
 /// Fatal diagnostics are forwarded to `fatal_dcx` to avoid silent
 /// failures of rustc, as witnessed e.g. in issue #89358.
 pub struct SilentEmitter {
+    pub fallback_bundle: LazyFallbackBundle,
     pub fatal_dcx: DiagCtxt,
-    pub fatal_note: String,
-}
-
-pub fn silent_translate<'a>(
-    message: &'a DiagnosticMessage,
-) -> Result<Cow<'_, str>, TranslateError<'_>> {
-    match message {
-        DiagnosticMessage::Str(msg) | DiagnosticMessage::Translated(msg) => Ok(Cow::Borrowed(msg)),
-        DiagnosticMessage::FluentIdentifier(identifier, _) => {
-            // Any value works here.
-            Ok(identifier.clone())
-        }
-    }
+    pub fatal_note: Option<String>,
 }
 
 impl Translate for SilentEmitter {
@@ -561,17 +549,9 @@ impl Translate for SilentEmitter {
     }
 
     fn fallback_fluent_bundle(&self) -> &FluentBundle {
-        panic!("silent emitter attempted to translate message")
-    }
-
-    // Override `translate_message` for the silent emitter because eager translation of
-    // subdiagnostics result in a call to this.
-    fn translate_message<'a>(
-        &'a self,
-        message: &'a DiagnosticMessage,
-        _: &'a FluentArgs<'_>,
-    ) -> Result<Cow<'_, str>, TranslateError<'_>> {
-        silent_translate(message)
+        // Ideally this field wouldn't be necessary and the fallback bundle in `fatal_dcx` would be
+        // used but the lock prevents this.
+        &self.fallback_bundle
     }
 }
 
@@ -582,7 +562,9 @@ impl Emitter for SilentEmitter {
 
     fn emit_diagnostic(&mut self, mut diag: DiagInner) {
         if diag.level == Level::Fatal {
-            diag.sub(Level::Note, self.fatal_note.clone(), MultiSpan::new());
+            if let Some(fatal_note) = &self.fatal_note {
+                diag.sub(Level::Note, fatal_note.clone(), MultiSpan::new());
+            }
             self.fatal_dcx.emit_diagnostic(diag);
         }
     }
@@ -1216,7 +1198,7 @@ impl HumanEmitter {
     fn msgs_to_buffer(
         &self,
         buffer: &mut StyledBuffer,
-        msgs: &[(DiagnosticMessage, Style)],
+        msgs: &[(DiagMessage, Style)],
         args: &FluentArgs<'_>,
         padding: usize,
         label: &str,
@@ -1291,7 +1273,7 @@ impl HumanEmitter {
     fn emit_messages_default_inner(
         &mut self,
         msp: &MultiSpan,
-        msgs: &[(DiagnosticMessage, Style)],
+        msgs: &[(DiagMessage, Style)],
         args: &FluentArgs<'_>,
         code: &Option<ErrCode>,
         level: &Level,
@@ -2060,7 +2042,7 @@ impl HumanEmitter {
     fn emit_messages_default(
         &mut self,
         level: &Level,
-        messages: &[(DiagnosticMessage, Style)],
+        messages: &[(DiagMessage, Style)],
         args: &FluentArgs<'_>,
         code: &Option<ErrCode>,
         span: &MultiSpan,

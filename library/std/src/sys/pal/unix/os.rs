@@ -21,8 +21,8 @@ use crate::sync::{PoisonError, RwLock};
 use crate::sys::common::small_c_string::{run_path_with_cstr, run_with_cstr};
 use crate::sys::cvt;
 use crate::sys::fd;
-use crate::sys::memchr;
 use crate::vec;
+use core::slice::memchr;
 
 #[cfg(all(target_env = "gnu", not(target_os = "vxworks")))]
 use crate::sys::weak::weak;

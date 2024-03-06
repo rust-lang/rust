@@ -86,6 +86,7 @@
 //! syntax nodes against this specific crate.
 
 use base_db::FileId;
+use either::Either;
 use hir_def::{
     child_by_source::ChildBySource,
     dyn_map::{
@@ -93,9 +94,9 @@ use hir_def::{
         DynMap,
     },
     hir::{BindingId, LabelId},
-    AdtId, ConstId, ConstParamId, DefWithBodyId, EnumId, EnumVariantId, ExternCrateId, FieldId,
-    FunctionId, GenericDefId, GenericParamId, ImplId, LifetimeParamId, MacroId, ModuleId, StaticId,
-    StructId, TraitAliasId, TraitId, TypeAliasId, TypeParamId, UnionId, UseId, VariantId,
+    AdtId, BlockId, ConstId, ConstParamId, DefWithBodyId, EnumId, EnumVariantId, ExternCrateId,
+    FieldId, FunctionId, GenericDefId, GenericParamId, ImplId, LifetimeParamId, MacroId, ModuleId,
+    StaticId, StructId, TraitAliasId, TraitId, TypeAliasId, TypeParamId, UnionId, UseId, VariantId,
 };
 use hir_expand::{attrs::AttrId, name::AsName, HirFileId, HirFileIdExt, MacroCallId};
 use rustc_hash::FxHashMap;
@@ -131,15 +132,19 @@ impl SourceToDefCtx<'_, '_> {
         mods
     }
 
-    pub(super) fn module_to_def(&self, src: InFile<ast::Module>) -> Option<ModuleId> {
+    pub(super) fn module_to_def(&mut self, src: InFile<ast::Module>) -> Option<ModuleId> {
         let _p = tracing::span!(tracing::Level::INFO, "module_to_def");
         let parent_declaration = src
             .syntax()
             .ancestors_with_macros_skip_attr_item(self.db.upcast())
-            .find_map(|it| it.map(ast::Module::cast).transpose());
+            .find_map(|it| it.map(Either::<ast::Module, ast::BlockExpr>::cast).transpose())
+            .map(|it| it.transpose());
 
         let parent_module = match parent_declaration {
-            Some(parent_declaration) => self.module_to_def(parent_declaration),
+            Some(Either::Right(parent_block)) => self
+                .block_to_def(parent_block)
+                .map(|block| self.db.block_def_map(block).root_module_id()),
+            Some(Either::Left(parent_declaration)) => self.module_to_def(parent_declaration),
             None => {
                 let file_id = src.file_id.original_file(self.db.upcast());
                 self.file_to_def(file_id).first().copied()
@@ -196,6 +201,9 @@ impl SourceToDefCtx<'_, '_> {
     }
     pub(super) fn tuple_field_to_def(&mut self, src: InFile<ast::TupleField>) -> Option<FieldId> {
         self.to_def(src, keys::TUPLE_FIELD)
+    }
+    pub(super) fn block_to_def(&mut self, src: InFile<ast::BlockExpr>) -> Option<BlockId> {
+        self.to_def(src, keys::BLOCK)
     }
     pub(super) fn enum_variant_to_def(
         &mut self,

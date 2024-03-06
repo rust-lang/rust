@@ -91,7 +91,7 @@ impl<'a> FmtVisitor<'a> {
         assert!(
             start < end,
             "Request to format inverted span: {}",
-            self.parse_sess.span_to_debug_info(mk_sp(start, end)),
+            self.psess.span_to_debug_info(mk_sp(start, end)),
         );
 
         self.last_pos = end;
@@ -166,8 +166,8 @@ impl<'a> FmtVisitor<'a> {
         // Trim whitespace from the right hand side of each line.
         // Annoyingly, the library functions for splitting by lines etc. are not
         // quite right, so we must do it ourselves.
-        let line = self.parse_sess.line_of_byte_pos(span.lo());
-        let file_name = &self.parse_sess.span_to_filename(span);
+        let line = self.psess.line_of_byte_pos(span.lo());
+        let file_name = &self.psess.span_to_filename(span);
         let mut status = SnippetStatus::new(line);
 
         let snippet = &*transform_missing_snippet(self.config, old_snippet);

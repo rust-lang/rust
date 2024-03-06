@@ -1,0 +1,11 @@
+//@ run-rustfix
+//@ check-pass
+
+#![crate_type = "lib"]
+#![warn(unused_imports)]
+
+//~^ WARN unused imports
+//~^ WARN unused import
+
+//~^ WARN unused import
+//~| WARN unused import

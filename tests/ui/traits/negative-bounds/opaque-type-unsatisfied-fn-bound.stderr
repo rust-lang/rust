@@ -1,4 +1,4 @@
-error[E0271]: type mismatch resolving `() == impl !Fn<(u32,)>`
+error[E0271]: type mismatch resolving `impl !Fn<(u32,)> == ()`
   --> $DIR/opaque-type-unsatisfied-fn-bound.rs:5:17
    |
 LL | fn produce() -> impl !Fn<(u32,)> {}

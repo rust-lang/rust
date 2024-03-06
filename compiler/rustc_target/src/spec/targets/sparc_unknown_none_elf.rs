@@ -20,6 +20,7 @@ pub fn target() -> Target {
     Target {
         data_layout: "E-m:e-p:32:32-i64:64-f128:64-n32-S64".into(),
         llvm_target: "sparc-unknown-none-elf".into(),
+        description: None,
         pointer_width: 32,
         arch: "sparc".into(),
         options,

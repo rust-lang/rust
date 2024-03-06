@@ -12,7 +12,6 @@ use rustc_trait_selection::regions::InferCtxtRegionExt;
 use rustc_trait_selection::traits::{
     elaborate, normalize_param_env_or_error, outlives_bounds::InferCtxtExt, ObligationCtxt,
 };
-use std::ops::ControlFlow;
 
 /// Check that an implementation does not refine an RPITIT from a trait method signature.
 pub(super) fn check_refining_return_position_impl_trait_in_trait<'tcx>(
@@ -211,9 +210,7 @@ struct ImplTraitInTraitCollector<'tcx> {
 }
 
 impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for ImplTraitInTraitCollector<'tcx> {
-    type BreakTy = !;
-
-    fn visit_ty(&mut self, ty: Ty<'tcx>) -> std::ops::ControlFlow<Self::BreakTy> {
+    fn visit_ty(&mut self, ty: Ty<'tcx>) {
         if let ty::Alias(ty::Projection, proj) = *ty.kind()
             && self.tcx.is_impl_trait_in_trait(proj.def_id)
         {
@@ -223,12 +220,11 @@ impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for ImplTraitInTraitCollector<'tcx> {
                     .explicit_item_bounds(proj.def_id)
                     .iter_instantiated_copied(self.tcx, proj.args)
                 {
-                    pred.visit_with(self)?;
+                    pred.visit_with(self);
                 }
             }
-            ControlFlow::Continue(())
         } else {
-            ty.super_visit_with(self)
+            ty.super_visit_with(self);
         }
     }
 }

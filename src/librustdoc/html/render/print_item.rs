@@ -33,6 +33,7 @@ use crate::html::format::{
 };
 use crate::html::layout::Page;
 use crate::html::markdown::{HeadingOffset, MarkdownSummaryLine};
+use crate::html::render::{document_full, document_item_info};
 use crate::html::url_parts_builder::UrlPartsBuilder;
 use crate::html::{highlight, static_files};
 
@@ -818,8 +819,10 @@ fn item_trait(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, t: &clean:
         info!("Documenting {name} on {ty_name:?}", ty_name = t.name);
         let item_type = m.type_();
         let id = cx.derive_id(format!("{item_type}.{name}"));
+
         let mut content = Buffer::empty_from(w);
-        write!(&mut content, "{}", document(cx, m, Some(t), HeadingOffset::H5));
+        write!(content, "{}", document_full(m, cx, HeadingOffset::H5));
+
         let toggled = !content.is_empty();
         if toggled {
             let method_toggle_class = if item_type.is_method() { " method-toggle" } else { "" };
@@ -836,8 +839,8 @@ fn item_trait(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, t: &clean:
             cx,
             RenderMode::Normal,
         );
-        w.write_str("</h4>");
-        w.write_str("</section>");
+        w.write_str("</h4></section>");
+        document_item_info(cx, m, Some(t)).render_into(w).unwrap();
         if toggled {
             write!(w, "</summary>");
             w.push_buffer(content);

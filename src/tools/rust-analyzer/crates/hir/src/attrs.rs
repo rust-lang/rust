@@ -124,7 +124,7 @@ fn resolve_doc_path_on_(
         AttrDefId::GenericParamId(_) => return None,
     };
 
-    let mut modpath = modpath_from_str(link)?;
+    let mut modpath = doc_modpath_from_str(link)?;
 
     let resolved = resolver.resolve_module_path_in_items(db.upcast(), &modpath);
     if resolved.is_none() {
@@ -299,7 +299,7 @@ fn as_module_def_if_namespace_matches(
     (ns.unwrap_or(expected_ns) == expected_ns).then_some(DocLinkDef::ModuleDef(def))
 }
 
-fn modpath_from_str(link: &str) -> Option<ModPath> {
+fn doc_modpath_from_str(link: &str) -> Option<ModPath> {
     // FIXME: this is not how we should get a mod path here.
     let try_get_modpath = |link: &str| {
         let mut parts = link.split("::");
@@ -327,7 +327,9 @@ fn modpath_from_str(link: &str) -> Option<ModPath> {
         };
         let parts = first_segment.into_iter().chain(parts).map(|segment| match segment.parse() {
             Ok(idx) => Name::new_tuple_field(idx),
-            Err(_) => Name::new_text_dont_use(segment.into()),
+            Err(_) => {
+                Name::new_text_dont_use(segment.split_once('<').map_or(segment, |it| it.0).into())
+            }
         });
         Some(ModPath::from_segments(kind, parts))
     };

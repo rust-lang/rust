@@ -4,7 +4,7 @@ use rustc_ast::token::Token;
 use rustc_ast::{Path, Visibility};
 use rustc_errors::{
     codes::*, AddToDiagnostic, Applicability, Diag, DiagCtxt, EmissionGuarantee, IntoDiagnostic,
-    Level, SubdiagnosticMessageOp,
+    Level, SubdiagMessageOp,
 };
 use rustc_macros::{Diagnostic, Subdiagnostic};
 use rustc_session::errors::ExprParenthesesNeeded;
@@ -1467,7 +1467,7 @@ pub(crate) struct FnTraitMissingParen {
 }
 
 impl AddToDiagnostic for FnTraitMissingParen {
-    fn add_to_diagnostic_with<G: EmissionGuarantee, F: SubdiagnosticMessageOp<G>>(
+    fn add_to_diagnostic_with<G: EmissionGuarantee, F: SubdiagMessageOp<G>>(
         self,
         diag: &mut Diag<'_, G>,
         _: F,

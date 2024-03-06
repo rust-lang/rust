@@ -1476,11 +1476,10 @@ impl Permissions {
     /// On Unix-based platforms this checks if *any* of the owner, group or others
     /// write permission bits are set. It does not check if the current
     /// user is in the file's assigned group. It also does not check ACLs.
-    /// Therefore even if this returns true you may not be able to write to the
-    /// file, and vice versa. The [`PermissionsExt`] trait gives direct access
-    /// to the permission bits but also does not read ACLs. If you need to
-    /// accurately know whether or not a file is writable use the `access()`
-    /// function from libc.
+    /// Therefore the return value of this function cannot be relied upon
+    /// to predict whether attempts to read or write the file will actually succeed.
+    /// The [`PermissionsExt`] trait gives direct access to the permission bits but
+    /// also does not read ACLs.
     ///
     /// [`PermissionsExt`]: crate::os::unix::fs::PermissionsExt
     ///

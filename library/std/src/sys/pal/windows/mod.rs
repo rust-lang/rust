@@ -17,9 +17,10 @@ pub mod args;
 pub mod c;
 pub mod env;
 pub mod fs;
+#[cfg(not(target_vendor = "win7"))]
+pub mod futex;
 pub mod handle;
 pub mod io;
-pub mod memchr;
 pub mod net;
 pub mod os;
 pub mod pipe;
@@ -322,25 +323,26 @@ pub fn dur2timeout(dur: Duration) -> c::DWORD {
 ///
 /// This is the same implementation as in libpanic_abort's `__rust_start_panic`. See
 /// that function for more information on `__fastfail`
-#[allow(unreachable_code)]
+#[cfg(not(miri))] // inline assembly does not work in Miri
 pub fn abort_internal() -> ! {
-    #[allow(unused)]
-    const FAST_FAIL_FATAL_APP_EXIT: usize = 7;
-    #[cfg(not(miri))] // inline assembly does not work in Miri
     unsafe {
         cfg_if::cfg_if! {
             if #[cfg(any(target_arch = "x86", target_arch = "x86_64"))] {
-                core::arch::asm!("int $$0x29", in("ecx") FAST_FAIL_FATAL_APP_EXIT);
-                crate::intrinsics::unreachable();
+                core::arch::asm!("int $$0x29", in("ecx") c::FAST_FAIL_FATAL_APP_EXIT, options(noreturn, nostack));
             } else if #[cfg(all(target_arch = "arm", target_feature = "thumb-mode"))] {
-                core::arch::asm!(".inst 0xDEFB", in("r0") FAST_FAIL_FATAL_APP_EXIT);
-                crate::intrinsics::unreachable();
+                core::arch::asm!(".inst 0xDEFB", in("r0") c::FAST_FAIL_FATAL_APP_EXIT, options(noreturn, nostack));
             } else if #[cfg(target_arch = "aarch64")] {
-                core::arch::asm!("brk 0xF003", in("x0") FAST_FAIL_FATAL_APP_EXIT);
-                crate::intrinsics::unreachable();
+                core::arch::asm!("brk 0xF003", in("x0") c::FAST_FAIL_FATAL_APP_EXIT, options(noreturn, nostack));
+            } else {
+                core::intrinsics::abort();
             }
         }
     }
+}
+
+// miri is sensitive to changes here so check that miri is happy if touching this
+#[cfg(miri)]
+pub fn abort_internal() -> ! {
     crate::intrinsics::abort();
 }
 

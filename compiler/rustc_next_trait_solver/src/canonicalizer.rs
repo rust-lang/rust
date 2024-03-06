@@ -1,6 +1,7 @@
 use std::cmp::Ordering;
 
 use rustc_type_ir::fold::{TypeFoldable, TypeFolder, TypeSuperFoldable};
+use rustc_type_ir::new::{Const, Region, Ty};
 use rustc_type_ir::visit::TypeVisitableExt;
 use rustc_type_ir::{
     self as ty, Canonical, CanonicalTyVarKind, CanonicalVarInfo, CanonicalVarKind, ConstTy,
@@ -293,7 +294,7 @@ impl<Infcx: InferCtxtLike<Interner = I>, I: Interner> TypeFolder<I>
             var
         });
 
-        self.interner().mk_bound_region(self.binder_index, var)
+        Region::new_anon_bound(self.interner(), self.binder_index, var)
     }
 
     fn fold_ty(&mut self, t: I::Ty) -> I::Ty
@@ -375,7 +376,7 @@ impl<Infcx: InferCtxtLike<Interner = I>, I: Interner> TypeFolder<I>
             }),
         );
 
-        self.interner().mk_bound_ty(self.binder_index, var)
+        Ty::new_anon_bound(self.interner(), self.binder_index, var)
     }
 
     fn fold_const(&mut self, c: I::Const) -> I::Const
@@ -435,6 +436,6 @@ impl<Infcx: InferCtxtLike<Interner = I>, I: Interner> TypeFolder<I>
             }),
         );
 
-        self.interner().mk_bound_const(self.binder_index, var, c.ty())
+        Const::new_anon_bound(self.interner(), self.binder_index, var, c.ty())
     }
 }

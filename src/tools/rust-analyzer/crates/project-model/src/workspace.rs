@@ -172,14 +172,11 @@ impl fmt::Debug for ProjectWorkspace {
 
 fn get_toolchain_version(
     current_dir: &AbsPath,
-    sysroot: Option<&Sysroot>,
-    tool: Tool,
+    mut cmd: Command,
     extra_env: &FxHashMap<String, String>,
     prefix: &str,
 ) -> Result<Option<Version>, anyhow::Error> {
     let cargo_version = utf8_stdout({
-        let mut cmd = Command::new(tool.path());
-        Sysroot::set_rustup_toolchain_env(&mut cmd, sysroot);
         cmd.envs(extra_env);
         cmd.arg("--version").current_dir(current_dir);
         cmd
@@ -300,8 +297,11 @@ impl ProjectWorkspace {
 
                 let toolchain = get_toolchain_version(
                     cargo_toml.parent(),
-                    sysroot_ref,
-                    toolchain::Tool::Cargo,
+                    {
+                        let mut cmd = Command::new(toolchain::Tool::Cargo.path());
+                        Sysroot::set_rustup_toolchain_env(&mut cmd, sysroot_ref);
+                        cmd
+                    },
                     &config.extra_env,
                     "cargo ",
                 )?;
@@ -386,8 +386,7 @@ impl ProjectWorkspace {
         let data_layout_config = RustcDataLayoutConfig::Rustc(sysroot_ref);
         let toolchain = match get_toolchain_version(
             project_json.path(),
-            sysroot_ref,
-            toolchain::Tool::Rustc,
+            Sysroot::rustc(sysroot_ref),
             extra_env,
             "rustc ",
         ) {
@@ -436,8 +435,7 @@ impl ProjectWorkspace {
         let sysroot_ref = sysroot.as_ref().ok();
         let toolchain = match get_toolchain_version(
             dir,
-            sysroot_ref,
-            toolchain::Tool::Rustc,
+            Sysroot::rustc(sysroot_ref),
             &config.extra_env,
             "rustc ",
         ) {

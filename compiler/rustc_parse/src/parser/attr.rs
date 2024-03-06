@@ -85,7 +85,7 @@ impl<'a> Parser<'a> {
                 // Always make an outer attribute - this allows us to recover from a misplaced
                 // inner attribute.
                 Some(attr::mk_doc_comment(
-                    &self.sess.attr_id_generator,
+                    &self.psess.attr_id_generator,
                     comment_kind,
                     ast::AttrStyle::Outer,
                     data,
@@ -135,7 +135,7 @@ impl<'a> Parser<'a> {
                 this.error_on_forbidden_inner_attr(attr_sp, inner_parse_policy);
             }
 
-            Ok(attr::mk_attr_from_item(&self.sess.attr_id_generator, item, None, style, attr_sp))
+            Ok(attr::mk_attr_from_item(&self.psess.attr_id_generator, item, None, style, attr_sp))
         })
     }
 
@@ -288,7 +288,7 @@ impl<'a> Parser<'a> {
                 if attr_style == ast::AttrStyle::Inner {
                     self.bump();
                     Some(attr::mk_doc_comment(
-                        &self.sess.attr_id_generator,
+                        &self.psess.attr_id_generator,
                         comment_kind,
                         attr_style,
                         data,

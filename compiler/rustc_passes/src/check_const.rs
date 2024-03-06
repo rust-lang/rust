@@ -77,6 +77,7 @@ impl<'tcx> CheckConstVisitor<'tcx> {
     }
 
     /// Emits an error when an unsupported expression is found in a const context.
+    #[allow(rustc::untranslatable_diagnostic)] // FIXME: make this translatable
     fn const_check_violated(&self, expr: NonConstExpr, span: Span) {
         let Self { tcx, def_id, const_kind } = *self;
 

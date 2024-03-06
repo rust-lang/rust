@@ -43,7 +43,7 @@ use rustc_data_structures::sync::{self, FreezeReadGuard, Lock, WorkerLocal};
 #[cfg(parallel_compiler)]
 use rustc_data_structures::sync::{DynSend, DynSync};
 use rustc_data_structures::unord::UnordSet;
-use rustc_errors::{DecorateLint, Diag, DiagCtxt, DiagnosticMessage, ErrorGuaranteed, MultiSpan};
+use rustc_errors::{DecorateLint, Diag, DiagCtxt, DiagMessage, ErrorGuaranteed, MultiSpan};
 use rustc_hir as hir;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{CrateNum, DefId, LocalDefId, LOCAL_CRATE};
@@ -129,27 +129,6 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
 
     fn mk_canonical_var_infos(self, infos: &[ty::CanonicalVarInfo<Self>]) -> Self::CanonicalVars {
         self.mk_canonical_var_infos(infos)
-    }
-
-    fn mk_bound_ty(self, debruijn: ty::DebruijnIndex, var: ty::BoundVar) -> Self::Ty {
-        Ty::new_bound(self, debruijn, ty::BoundTy { var, kind: ty::BoundTyKind::Anon })
-    }
-
-    fn mk_bound_region(self, debruijn: ty::DebruijnIndex, var: ty::BoundVar) -> Self::Region {
-        Region::new_bound(
-            self,
-            debruijn,
-            ty::BoundRegion { var, kind: ty::BoundRegionKind::BrAnon },
-        )
-    }
-
-    fn mk_bound_const(
-        self,
-        debruijn: ty::DebruijnIndex,
-        var: ty::BoundVar,
-        ty: Self::Ty,
-    ) -> Self::Const {
-        Const::new_bound(self, debruijn, var, ty)
     }
 }
 
@@ -335,8 +314,10 @@ pub struct CommonTypes<'tcx> {
     pub u32: Ty<'tcx>,
     pub u64: Ty<'tcx>,
     pub u128: Ty<'tcx>,
+    pub f16: Ty<'tcx>,
     pub f32: Ty<'tcx>,
     pub f64: Ty<'tcx>,
+    pub f128: Ty<'tcx>,
     pub str_: Ty<'tcx>,
     pub never: Ty<'tcx>,
     pub self_param: Ty<'tcx>,
@@ -416,8 +397,10 @@ impl<'tcx> CommonTypes<'tcx> {
             u32: mk(Uint(ty::UintTy::U32)),
             u64: mk(Uint(ty::UintTy::U64)),
             u128: mk(Uint(ty::UintTy::U128)),
+            f16: mk(Float(ty::FloatTy::F16)),
             f32: mk(Float(ty::FloatTy::F32)),
             f64: mk(Float(ty::FloatTy::F64)),
+            f128: mk(Float(ty::FloatTy::F128)),
             str_: mk(Str),
             self_param: mk(ty::Param(ty::ParamTy { index: 0, name: kw::SelfUpper })),
 
@@ -2114,7 +2097,7 @@ impl<'tcx> TyCtxt<'tcx> {
         lint: &'static Lint,
         hir_id: HirId,
         span: impl Into<MultiSpan>,
-        msg: impl Into<DiagnosticMessage>,
+        msg: impl Into<DiagMessage>,
         decorate: impl for<'a, 'b> FnOnce(&'b mut Diag<'a, ()>),
     ) {
         let (level, src) = self.lint_level_at_node(lint, hir_id);
@@ -2144,7 +2127,7 @@ impl<'tcx> TyCtxt<'tcx> {
         self,
         lint: &'static Lint,
         id: HirId,
-        msg: impl Into<DiagnosticMessage>,
+        msg: impl Into<DiagMessage>,
         decorate: impl for<'a, 'b> FnOnce(&'b mut Diag<'a, ()>),
     ) {
         let (level, src) = self.lint_level_at_node(lint, id);

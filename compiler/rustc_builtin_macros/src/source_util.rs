@@ -118,7 +118,7 @@ pub fn expand_include<'cx>(
             return DummyResult::any(sp, guar);
         }
     };
-    let p = new_parser_from_file(cx.parse_sess(), &file, Some(sp));
+    let p = new_parser_from_file(cx.psess(), &file, Some(sp));
 
     // If in the included file we have e.g., `mod bar;`,
     // then the path of `bar.rs` should be relative to the directory of `file`.
@@ -136,7 +136,7 @@ pub fn expand_include<'cx>(
         fn make_expr(mut self: Box<ExpandResult<'a>>) -> Option<P<ast::Expr>> {
             let expr = parse_expr(&mut self.p).ok()?;
             if self.p.token != token::Eof {
-                self.p.sess.buffer_lint(
+                self.p.psess.buffer_lint(
                     INCOMPLETE_INCLUDE,
                     self.p.token.span,
                     self.node_id,

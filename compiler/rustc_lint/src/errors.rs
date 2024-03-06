@@ -1,5 +1,5 @@
 use crate::fluent_generated as fluent;
-use rustc_errors::{codes::*, AddToDiagnostic, Diag, EmissionGuarantee, SubdiagnosticMessageOp};
+use rustc_errors::{codes::*, AddToDiagnostic, Diag, EmissionGuarantee, SubdiagMessageOp};
 use rustc_macros::{Diagnostic, Subdiagnostic};
 use rustc_session::lint::Level;
 use rustc_span::{Span, Symbol};
@@ -24,7 +24,7 @@ pub enum OverruledAttributeSub {
 }
 
 impl AddToDiagnostic for OverruledAttributeSub {
-    fn add_to_diagnostic_with<G: EmissionGuarantee, F: SubdiagnosticMessageOp<G>>(
+    fn add_to_diagnostic_with<G: EmissionGuarantee, F: SubdiagMessageOp<G>>(
         self,
         diag: &mut Diag<'_, G>,
         _f: F,

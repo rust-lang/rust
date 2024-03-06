@@ -19,7 +19,7 @@ use rustc_hir::def_id::{CrateNum, DefId, LocalDefId};
 use rustc_index::bit_set::GrowableBitSet;
 use rustc_macros::HashStable;
 use rustc_session::Limit;
-use rustc_span::{sym, Symbol};
+use rustc_span::sym;
 use rustc_target::abi::{Integer, IntegerType, Primitive, Size};
 use rustc_target::spec::abi::Abi;
 use smallvec::SmallVec;
@@ -1641,12 +1641,19 @@ pub fn is_doc_notable_trait(tcx: TyCtxt<'_>, def_id: DefId) -> bool {
         .any(|items| items.iter().any(|item| item.has_name(sym::notable_trait)))
 }
 
-/// Determines whether an item is an intrinsic by Abi. or by whether it has a `rustc_intrinsic` attribute
-pub fn intrinsic(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Option<Symbol> {
+/// Determines whether an item is an intrinsic (which may be via Abi or via the `rustc_intrinsic` attribute)
+pub fn intrinsic(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Option<ty::IntrinsicDef> {
+    match tcx.def_kind(def_id) {
+        DefKind::Fn | DefKind::AssocFn => {}
+        _ => return None,
+    }
     if matches!(tcx.fn_sig(def_id).skip_binder().abi(), Abi::RustIntrinsic)
         || tcx.has_attr(def_id, sym::rustc_intrinsic)
     {
-        Some(tcx.item_name(def_id.into()))
+        Some(ty::IntrinsicDef {
+            name: tcx.item_name(def_id.into()),
+            must_be_overridden: tcx.has_attr(def_id, sym::rustc_intrinsic_must_be_overridden),
+        })
     } else {
         None
     }

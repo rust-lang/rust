@@ -1,6 +1,6 @@
 # `*-unknown-linux-ohos`
 
-**Tier: 3**
+**Tier: 2**
 
 Targets for the [OpenHarmony](https://gitee.com/openharmony/docs/) operating
 system.
@@ -8,6 +8,7 @@ system.
 ## Target maintainers
 
 - Amanieu d'Antras ([@Amanieu](https://github.com/Amanieu))
+- Lu Binglun ([@lubinglun](https://github.com/lubinglun))
 
 ## Setup
 

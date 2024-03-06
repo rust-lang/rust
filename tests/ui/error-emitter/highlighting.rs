@@ -3,10 +3,8 @@
 //@ compile-flags: --error-format=human --color=always
 //@ error-pattern:[35mfor<'a> [0m
 //@ edition:2018
-
-//@ revisions: windows not-windows
-//@ [windows]only-windows
-//@ [not-windows]ignore-windows
+// Temporary until next release:
+//@ ignore-stage2
 
 use core::pin::Pin;
 use core::future::Future;

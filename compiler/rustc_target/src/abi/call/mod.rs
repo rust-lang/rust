@@ -412,7 +412,7 @@ impl<'a, Ty> TyAndLayout<'a, Ty> {
             Abi::Scalar(scalar) => {
                 let kind = match scalar.primitive() {
                     abi::Int(..) | abi::Pointer(_) => RegKind::Integer,
-                    abi::F32 | abi::F64 => RegKind::Float,
+                    abi::F16 | abi::F32 | abi::F64 | abi::F128 => RegKind::Float,
                 };
                 Ok(HomogeneousAggregate::Homogeneous(Reg { kind, size: self.size }))
             }

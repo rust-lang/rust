@@ -162,7 +162,7 @@ impl MultiItemModifier for DeriveProcMacro {
 
         let error_count_before = ecx.dcx().err_count();
         let mut parser =
-            rustc_parse::stream_to_parser(&ecx.sess.parse_sess, stream, Some("proc-macro derive"));
+            rustc_parse::stream_to_parser(&ecx.sess.psess, stream, Some("proc-macro derive"));
         let mut items = vec![];
 
         loop {

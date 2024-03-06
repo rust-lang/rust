@@ -6,11 +6,13 @@ use crate::rustc_smir::{Stable, Tables};
 use rustc_middle::ty;
 use rustc_target::abi::call::Conv;
 use stable_mir::abi::{
-    ArgAbi, CallConvention, FieldsShape, FnAbi, Layout, LayoutShape, PassMode, TagEncoding,
-    TyAndLayout, ValueAbi, VariantsShape,
+    AddressSpace, ArgAbi, CallConvention, FieldsShape, FloatLength, FnAbi, IntegerLength, Layout,
+    LayoutShape, PassMode, Primitive, Scalar, TagEncoding, TyAndLayout, ValueAbi, VariantsShape,
+    WrappingRange,
 };
-use stable_mir::ty::{Align, IndexedVal, Size, VariantIdx};
-use stable_mir::{opaque, Opaque};
+use stable_mir::opaque;
+use stable_mir::target::MachineSize as Size;
+use stable_mir::ty::{Align, IndexedVal, VariantIdx};
 
 impl<'tcx> Stable<'tcx> for rustc_target::abi::VariantIdx {
     type T = VariantIdx;
@@ -220,7 +222,7 @@ impl<'tcx> Stable<'tcx> for rustc_abi::Size {
     type T = Size;
 
     fn stable(&self, _tables: &mut Tables<'_>) -> Self::T {
-        self.bytes_usize()
+        Size::from_bits(self.bits_usize())
     }
 }
 
@@ -233,9 +235,62 @@ impl<'tcx> Stable<'tcx> for rustc_abi::Align {
 }
 
 impl<'tcx> Stable<'tcx> for rustc_abi::Scalar {
-    type T = Opaque;
+    type T = Scalar;
+
+    fn stable(&self, tables: &mut Tables<'_>) -> Self::T {
+        match self {
+            rustc_abi::Scalar::Initialized { value, valid_range } => Scalar::Initialized {
+                value: value.stable(tables),
+                valid_range: valid_range.stable(tables),
+            },
+            rustc_abi::Scalar::Union { value } => Scalar::Union { value: value.stable(tables) },
+        }
+    }
+}
+
+impl<'tcx> Stable<'tcx> for rustc_abi::Primitive {
+    type T = Primitive;
+
+    fn stable(&self, tables: &mut Tables<'_>) -> Self::T {
+        match self {
+            rustc_abi::Primitive::Int(length, signed) => {
+                Primitive::Int { length: length.stable(tables), signed: *signed }
+            }
+            rustc_abi::Primitive::F16 => Primitive::Float { length: FloatLength::F16 },
+            rustc_abi::Primitive::F32 => Primitive::Float { length: FloatLength::F32 },
+            rustc_abi::Primitive::F64 => Primitive::Float { length: FloatLength::F64 },
+            rustc_abi::Primitive::F128 => Primitive::Float { length: FloatLength::F128 },
+            rustc_abi::Primitive::Pointer(space) => Primitive::Pointer(space.stable(tables)),
+        }
+    }
+}
+
+impl<'tcx> Stable<'tcx> for rustc_abi::AddressSpace {
+    type T = AddressSpace;
 
     fn stable(&self, _tables: &mut Tables<'_>) -> Self::T {
-        opaque(self)
+        AddressSpace(self.0)
+    }
+}
+
+impl<'tcx> Stable<'tcx> for rustc_abi::Integer {
+    type T = IntegerLength;
+
+    fn stable(&self, _tables: &mut Tables<'_>) -> Self::T {
+        match self {
+            rustc_abi::Integer::I8 => IntegerLength::I8,
+            rustc_abi::Integer::I16 => IntegerLength::I16,
+            rustc_abi::Integer::I32 => IntegerLength::I32,
+            rustc_abi::Integer::I64 => IntegerLength::I64,
+            rustc_abi::Integer::I128 => IntegerLength::I128,
+        }
+    }
+}
+
+impl<'tcx> Stable<'tcx> for rustc_abi::WrappingRange {
+    type T = WrappingRange;
+
+    fn stable(&self, _tables: &mut Tables<'_>) -> Self::T {
+        WrappingRange { start: self.start, end: self.end }
     }
 }

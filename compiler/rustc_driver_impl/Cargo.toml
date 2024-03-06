@@ -50,7 +50,7 @@ rustc_trait_selection = { path = "../rustc_trait_selection" }
 rustc_ty_utils = { path = "../rustc_ty_utils" }
 serde_json = "1.0.59"
 shlex = "1.0"
-time = { version = "0.3", default-features = false, features = ["alloc", "formatting"] }
+time = { version = "0.3", default-features = false, features = ["alloc", "formatting", "parsing", "macros"] }
 tracing = { version = "0.1.35" }
 # tidy-alphabetical-end
 

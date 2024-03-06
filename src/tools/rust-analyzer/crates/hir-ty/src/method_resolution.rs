@@ -254,6 +254,11 @@ impl TraitImpls {
             .flat_map(|v| v.iter().copied())
     }
 
+    /// Queries whether `self_ty` has potentially applicable implementations of `trait_`.
+    pub fn has_impls_for_trait_and_self_ty(&self, trait_: TraitId, self_ty: TyFingerprint) -> bool {
+        self.for_trait_and_self_ty(trait_, self_ty).next().is_some()
+    }
+
     pub fn all_impls(&self) -> impl Iterator<Item = ImplId> + '_ {
         self.map.values().flat_map(|map| map.values().flat_map(|v| v.iter().copied()))
     }
@@ -1143,7 +1148,6 @@ fn iterate_trait_method_candidates(
 ) -> ControlFlow<()> {
     let db = table.db;
     let env = table.trait_env.clone();
-    let self_is_array = matches!(self_ty.kind(Interner), chalk_ir::TyKind::Array(..));
 
     let canonical_self_ty = table.canonicalize(self_ty.clone()).value;
 
@@ -1155,7 +1159,9 @@ fn iterate_trait_method_candidates(
         // 2021.
         // This is to make `[a].into_iter()` not break code with the new `IntoIterator` impl for
         // arrays.
-        if data.skip_array_during_method_dispatch && self_is_array {
+        if data.skip_array_during_method_dispatch
+            && matches!(self_ty.kind(Interner), chalk_ir::TyKind::Array(..))
+        {
             // FIXME: this should really be using the edition of the method name's span, in case it
             // comes from a macro
             if db.crate_graph()[env.krate].edition < Edition::Edition2021 {
@@ -1170,11 +1176,12 @@ fn iterate_trait_method_candidates(
         for &(_, item) in data.items.iter() {
             // Don't pass a `visible_from_module` down to `is_valid_candidate`,
             // since only inherent methods should be included into visibility checking.
-            let visible = match is_valid_candidate(table, name, receiver_ty, item, self_ty, None) {
-                IsValidCandidate::Yes => true,
-                IsValidCandidate::NotVisible => false,
-                IsValidCandidate::No => continue,
-            };
+            let visible =
+                match is_valid_trait_method_candidate(table, t, name, receiver_ty, item, self_ty) {
+                    IsValidCandidate::Yes => true,
+                    IsValidCandidate::NotVisible => false,
+                    IsValidCandidate::No => continue,
+                };
             if !known_implemented {
                 let goal = generic_implements_goal(db, env.clone(), t, &canonical_self_ty);
                 if db.trait_solve(env.krate, env.block, goal.cast(Interner)).is_none() {
@@ -1296,12 +1303,18 @@ fn iterate_inherent_methods(
             let data = db.trait_data(t);
             for &(_, item) in data.items.iter() {
                 // We don't pass `visible_from_module` as all trait items should be visible.
-                let visible =
-                    match is_valid_candidate(table, name, receiver_ty, item, self_ty, None) {
-                        IsValidCandidate::Yes => true,
-                        IsValidCandidate::NotVisible => false,
-                        IsValidCandidate::No => continue,
-                    };
+                let visible = match is_valid_trait_method_candidate(
+                    table,
+                    t,
+                    name,
+                    receiver_ty,
+                    item,
+                    self_ty,
+                ) {
+                    IsValidCandidate::Yes => true,
+                    IsValidCandidate::NotVisible => false,
+                    IsValidCandidate::No => continue,
+                };
                 callback(receiver_adjustments.clone().unwrap_or_default(), item, visible)?;
             }
         }
@@ -1319,17 +1332,16 @@ fn iterate_inherent_methods(
         visible_from_module: Option<ModuleId>,
         callback: &mut dyn FnMut(ReceiverAdjustments, AssocItemId, bool) -> ControlFlow<()>,
     ) -> ControlFlow<()> {
-        let db = table.db;
-        let impls_for_self_ty = impls.for_self_ty(self_ty);
-        for &impl_def in impls_for_self_ty {
-            for &item in &db.impl_data(impl_def).items {
-                let visible = match is_valid_candidate(
+        for &impl_id in impls.for_self_ty(self_ty) {
+            for &item in &table.db.impl_data(impl_id).items {
+                let visible = match is_valid_impl_method_candidate(
                     table,
-                    name,
-                    receiver_ty,
-                    item,
                     self_ty,
+                    receiver_ty,
                     visible_from_module,
+                    name,
+                    impl_id,
+                    item,
                 ) {
                     IsValidCandidate::Yes => true,
                     IsValidCandidate::NotVisible => false,
@@ -1372,21 +1384,34 @@ macro_rules! check_that {
     };
 }
 
+enum IsValidCandidate {
+    Yes,
+    No,
+    NotVisible,
+}
+
 #[tracing::instrument(skip_all, fields(name))]
-fn is_valid_candidate(
+fn is_valid_impl_method_candidate(
     table: &mut InferenceTable<'_>,
-    name: Option<&Name>,
-    receiver_ty: Option<&Ty>,
-    item: AssocItemId,
     self_ty: &Ty,
+    receiver_ty: Option<&Ty>,
     visible_from_module: Option<ModuleId>,
+    name: Option<&Name>,
+    impl_id: ImplId,
+    item: AssocItemId,
 ) -> IsValidCandidate {
-    let db = table.db;
     match item {
-        AssocItemId::FunctionId(f) => {
-            is_valid_fn_candidate(table, f, name, receiver_ty, self_ty, visible_from_module)
-        }
+        AssocItemId::FunctionId(f) => is_valid_impl_fn_candidate(
+            table,
+            impl_id,
+            f,
+            name,
+            receiver_ty,
+            self_ty,
+            visible_from_module,
+        ),
         AssocItemId::ConstId(c) => {
+            let db = table.db;
             check_that!(receiver_ty.is_none());
             check_that!(name.map_or(true, |n| db.const_data(c).name.as_ref() == Some(n)));
 
@@ -1396,17 +1421,14 @@ fn is_valid_candidate(
                     return IsValidCandidate::NotVisible;
                 }
             }
-            if let ItemContainerId::ImplId(impl_id) = c.lookup(db.upcast()).container {
-                let self_ty_matches = table.run_in_snapshot(|table| {
-                    let expected_self_ty = TyBuilder::impl_self_ty(db, impl_id)
-                        .fill_with_inference_vars(table)
-                        .build();
-                    table.unify(&expected_self_ty, self_ty)
-                });
-                if !self_ty_matches {
-                    cov_mark::hit!(const_candidate_self_type_mismatch);
-                    return IsValidCandidate::No;
-                }
+            let self_ty_matches = table.run_in_snapshot(|table| {
+                let expected_self_ty =
+                    TyBuilder::impl_self_ty(db, impl_id).fill_with_inference_vars(table).build();
+                table.unify(&expected_self_ty, self_ty)
+            });
+            if !self_ty_matches {
+                cov_mark::hit!(const_candidate_self_type_mismatch);
+                return IsValidCandidate::No;
             }
             IsValidCandidate::Yes
         }
@@ -1414,15 +1436,62 @@ fn is_valid_candidate(
     }
 }
 
-enum IsValidCandidate {
-    Yes,
-    No,
-    NotVisible,
+/// Checks whether a given `AssocItemId` is applicable for `receiver_ty`.
+#[tracing::instrument(skip_all, fields(name))]
+fn is_valid_trait_method_candidate(
+    table: &mut InferenceTable<'_>,
+    trait_id: TraitId,
+    name: Option<&Name>,
+    receiver_ty: Option<&Ty>,
+    item: AssocItemId,
+    self_ty: &Ty,
+) -> IsValidCandidate {
+    let db = table.db;
+    match item {
+        AssocItemId::FunctionId(fn_id) => {
+            let data = db.function_data(fn_id);
+
+            check_that!(name.map_or(true, |n| n == &data.name));
+
+            table.run_in_snapshot(|table| {
+                let impl_subst = TyBuilder::subst_for_def(db, trait_id, None)
+                    .fill_with_inference_vars(table)
+                    .build();
+                let expect_self_ty = impl_subst.at(Interner, 0).assert_ty_ref(Interner).clone();
+
+                check_that!(table.unify(&expect_self_ty, self_ty));
+
+                if let Some(receiver_ty) = receiver_ty {
+                    check_that!(data.has_self_param());
+
+                    let fn_subst = TyBuilder::subst_for_def(db, fn_id, Some(impl_subst.clone()))
+                        .fill_with_inference_vars(table)
+                        .build();
+
+                    let sig = db.callable_item_signature(fn_id.into());
+                    let expected_receiver =
+                        sig.map(|s| s.params()[0].clone()).substitute(Interner, &fn_subst);
+
+                    check_that!(table.unify(receiver_ty, &expected_receiver));
+                }
+
+                IsValidCandidate::Yes
+            })
+        }
+        AssocItemId::ConstId(c) => {
+            check_that!(receiver_ty.is_none());
+            check_that!(name.map_or(true, |n| db.const_data(c).name.as_ref() == Some(n)));
+
+            IsValidCandidate::Yes
+        }
+        _ => IsValidCandidate::No,
+    }
 }
 
 #[tracing::instrument(skip_all, fields(name))]
-fn is_valid_fn_candidate(
+fn is_valid_impl_fn_candidate(
     table: &mut InferenceTable<'_>,
+    impl_id: ImplId,
     fn_id: FunctionId,
     name: Option<&Name>,
     receiver_ty: Option<&Ty>,
@@ -1440,26 +1509,15 @@ fn is_valid_fn_candidate(
         }
     }
     table.run_in_snapshot(|table| {
-        let container = fn_id.lookup(db.upcast()).container;
-        let (impl_subst, expect_self_ty) = match container {
-            ItemContainerId::ImplId(it) => {
-                let subst =
-                    TyBuilder::subst_for_def(db, it, None).fill_with_inference_vars(table).build();
-                let self_ty = db.impl_self_ty(it).substitute(Interner, &subst);
-                (subst, self_ty)
-            }
-            ItemContainerId::TraitId(it) => {
-                let subst =
-                    TyBuilder::subst_for_def(db, it, None).fill_with_inference_vars(table).build();
-                let self_ty = subst.at(Interner, 0).assert_ty_ref(Interner).clone();
-                (subst, self_ty)
-            }
-            _ => unreachable!(),
-        };
+        let _p = tracing::span!(tracing::Level::INFO, "subst_for_def").entered();
+        let impl_subst =
+            TyBuilder::subst_for_def(db, impl_id, None).fill_with_inference_vars(table).build();
+        let expect_self_ty = db.impl_self_ty(impl_id).substitute(Interner, &impl_subst);
 
         check_that!(table.unify(&expect_self_ty, self_ty));
 
         if let Some(receiver_ty) = receiver_ty {
+            let _p = tracing::span!(tracing::Level::INFO, "check_receiver_ty").entered();
             check_that!(data.has_self_param());
 
             let fn_subst = TyBuilder::subst_for_def(db, fn_id, Some(impl_subst.clone()))
@@ -1473,62 +1531,55 @@ fn is_valid_fn_candidate(
             check_that!(table.unify(receiver_ty, &expected_receiver));
         }
 
-        if let ItemContainerId::ImplId(impl_id) = container {
-            // We need to consider the bounds on the impl to distinguish functions of the same name
-            // for a type.
-            let predicates = db.generic_predicates(impl_id.into());
-            let goals = predicates.iter().map(|p| {
-                let (p, b) = p
-                    .clone()
-                    .substitute(Interner, &impl_subst)
-                    // Skipping the inner binders is ok, as we don't handle quantified where
-                    // clauses yet.
-                    .into_value_and_skipped_binders();
-                stdx::always!(b.len(Interner) == 0);
+        // We need to consider the bounds on the impl to distinguish functions of the same name
+        // for a type.
+        let predicates = db.generic_predicates(impl_id.into());
+        let goals = predicates.iter().map(|p| {
+            let (p, b) = p
+                .clone()
+                .substitute(Interner, &impl_subst)
+                // Skipping the inner binders is ok, as we don't handle quantified where
+                // clauses yet.
+                .into_value_and_skipped_binders();
+            stdx::always!(b.len(Interner) == 0);
 
-                p.cast::<Goal>(Interner)
-            });
+            p.cast::<Goal>(Interner)
+        });
 
-            for goal in goals.clone() {
-                let in_env = InEnvironment::new(&table.trait_env.env, goal);
-                let canonicalized = table.canonicalize(in_env);
-                let solution = table.db.trait_solve(
-                    table.trait_env.krate,
-                    table.trait_env.block,
-                    canonicalized.value.clone(),
-                );
+        for goal in goals.clone() {
+            let in_env = InEnvironment::new(&table.trait_env.env, goal);
+            let canonicalized = table.canonicalize(in_env);
+            let solution = table.db.trait_solve(
+                table.trait_env.krate,
+                table.trait_env.block,
+                canonicalized.value.clone(),
+            );
 
-                match solution {
-                    Some(Solution::Unique(canonical_subst)) => {
-                        canonicalized.apply_solution(
-                            table,
-                            Canonical {
-                                binders: canonical_subst.binders,
-                                value: canonical_subst.value.subst,
-                            },
-                        );
-                    }
-                    Some(Solution::Ambig(Guidance::Definite(substs))) => {
-                        canonicalized.apply_solution(table, substs);
-                    }
-                    Some(_) => (),
-                    None => return IsValidCandidate::No,
+            match solution {
+                Some(Solution::Unique(canonical_subst)) => {
+                    canonicalized.apply_solution(
+                        table,
+                        Canonical {
+                            binders: canonical_subst.binders,
+                            value: canonical_subst.value.subst,
+                        },
+                    );
                 }
-            }
-
-            for goal in goals {
-                if table.try_obligation(goal).is_none() {
-                    return IsValidCandidate::No;
+                Some(Solution::Ambig(Guidance::Definite(substs))) => {
+                    canonicalized.apply_solution(table, substs);
                 }
+                Some(_) => (),
+                None => return IsValidCandidate::No,
             }
-
-            IsValidCandidate::Yes
-        } else {
-            // For `ItemContainerId::TraitId`, we check if `self_ty` implements the trait in
-            // `iterate_trait_method_candidates()`.
-            // For others, this function shouldn't be called.
-            IsValidCandidate::Yes
         }
+
+        for goal in goals {
+            if table.try_obligation(goal).is_none() {
+                return IsValidCandidate::No;
+            }
+        }
+
+        IsValidCandidate::Yes
     })
 }
 

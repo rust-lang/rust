@@ -337,14 +337,14 @@ You can also pass LSP settings to the server:
 [source,vim]
 ----
 lua << EOF
-local nvim_lsp = require'lspconfig'
+local lspconfig = require'lspconfig'
 
 local on_attach = function(client)
     require'completion'.on_attach(client)
 end
 
-nvim_lsp.rust_analyzer.setup({
-    on_attach=on_attach,
+lspconfig.rust_analyzer.setup({
+    on_attach = on_attach,
     settings = {
         ["rust-analyzer"] = {
             imports = {
@@ -366,6 +366,19 @@ nvim_lsp.rust_analyzer.setup({
 })
 EOF
 ----
+
+If you're running Neovim 0.10 or later, you can enable inlay hints via `on_attach`:
+
+[source,vim]
+----
+lspconfig.rust_analyzer.setup({
+    on_attach = function(client, bufnr)
+        vim.lsp.inlay_hint.enable(bufnr)
+    end
+})
+----
+
+Note that the hints are only visible after `rust-analyzer` has finished loading **and** you have to edit the file to trigger a re-render.
 
 See https://sharksforarms.dev/posts/neovim-rust/ for more tips on getting started.
 

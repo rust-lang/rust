@@ -586,7 +586,7 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
             }
 
             Aggregate(ref kind, ref fields) => {
-                // Do not const pop union fields as they can be
+                // Do not const prop union fields as they can be
                 // made to produce values that don't match their
                 // underlying layout's type (see ICE #121534).
                 // If the last element of the `Adt` tuple

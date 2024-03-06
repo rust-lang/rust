@@ -93,6 +93,7 @@ struct Collector<'tcx> {
 }
 
 impl<'tcx> Collector<'tcx> {
+    #[allow(rustc::untranslatable_diagnostic)] // FIXME: make this translatable
     fn process_module(&mut self, module: &ForeignModule) {
         let ForeignModule { def_id, abi, ref foreign_items } = *module;
         let def_id = def_id.expect_local();

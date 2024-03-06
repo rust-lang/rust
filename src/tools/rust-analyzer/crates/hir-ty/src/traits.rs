@@ -139,6 +139,7 @@ fn solve(
     block: Option<BlockId>,
     goal: &chalk_ir::UCanonical<chalk_ir::InEnvironment<chalk_ir::Goal<Interner>>>,
 ) -> Option<chalk_solve::Solution<Interner>> {
+    let _p = tracing::span!(tracing::Level::INFO, "solve", ?krate, ?block).entered();
     let context = ChalkContext { db, krate, block };
     tracing::debug!("solve goal: {:?}", goal);
     let mut solver = create_chalk_solver();
@@ -214,6 +215,15 @@ impl FnTrait {
             FnTrait::FnOnce => LangItem::FnOnce,
             FnTrait::FnMut => LangItem::FnMut,
             FnTrait::Fn => LangItem::Fn,
+        }
+    }
+
+    pub const fn from_lang_item(lang_item: LangItem) -> Option<Self> {
+        match lang_item {
+            LangItem::FnOnce => Some(FnTrait::FnOnce),
+            LangItem::FnMut => Some(FnTrait::FnMut),
+            LangItem::Fn => Some(FnTrait::Fn),
+            _ => None,
         }
     }
 

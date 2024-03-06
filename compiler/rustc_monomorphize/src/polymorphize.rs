@@ -18,7 +18,6 @@ use rustc_middle::ty::{
     GenericArgsRef, Ty, TyCtxt, UnusedGenericParams,
 };
 use rustc_span::symbol::sym;
-use std::ops::ControlFlow;
 
 use crate::errors::UnusedGenericParamsHint;
 
@@ -291,31 +290,29 @@ impl<'a, 'tcx> Visitor<'tcx> for MarkUsedGenericParams<'a, 'tcx> {
 
 impl<'a, 'tcx> TypeVisitor<TyCtxt<'tcx>> for MarkUsedGenericParams<'a, 'tcx> {
     #[instrument(level = "debug", skip(self))]
-    fn visit_const(&mut self, c: ty::Const<'tcx>) -> ControlFlow<Self::BreakTy> {
+    fn visit_const(&mut self, c: ty::Const<'tcx>) {
         if !c.has_non_region_param() {
-            return ControlFlow::Continue(());
+            return;
         }
 
         match c.kind() {
             ty::ConstKind::Param(param) => {
                 debug!(?param);
                 self.unused_parameters.mark_used(param.index);
-                ControlFlow::Continue(())
             }
             ty::ConstKind::Unevaluated(ty::UnevaluatedConst { def, args })
                 if matches!(self.tcx.def_kind(def), DefKind::AnonConst) =>
             {
                 self.visit_child_body(def, args);
-                ControlFlow::Continue(())
             }
             _ => c.super_visit_with(self),
         }
     }
 
     #[instrument(level = "debug", skip(self))]
-    fn visit_ty(&mut self, ty: Ty<'tcx>) -> ControlFlow<Self::BreakTy> {
+    fn visit_ty(&mut self, ty: Ty<'tcx>) {
         if !ty.has_non_region_param() {
-            return ControlFlow::Continue(());
+            return;
         }
 
         match *ty.kind() {
@@ -323,18 +320,16 @@ impl<'a, 'tcx> TypeVisitor<TyCtxt<'tcx>> for MarkUsedGenericParams<'a, 'tcx> {
                 debug!(?def_id);
                 // Avoid cycle errors with coroutines.
                 if def_id == self.def_id {
-                    return ControlFlow::Continue(());
+                    return;
                 }
 
                 // Consider any generic parameters used by any closures/coroutines as used in the
                 // parent.
                 self.visit_child_body(def_id, args);
-                ControlFlow::Continue(())
             }
             ty::Param(param) => {
                 debug!(?param);
                 self.unused_parameters.mark_used(param.index);
-                ControlFlow::Continue(())
             }
             _ => ty.super_visit_with(self),
         }

@@ -601,11 +601,7 @@ impl<'a> TraitDef<'a> {
                 kind: ast::AssocItemKind::Type(Box::new(ast::TyAlias {
                     defaultness: ast::Defaultness::Final,
                     generics: Generics::default(),
-                    where_clauses: (
-                        ast::TyAliasWhereClause::default(),
-                        ast::TyAliasWhereClause::default(),
-                    ),
-                    where_predicates_split: 0,
+                    where_clauses: ast::TyAliasWhereClauses::default(),
                     bounds: Vec::new(),
                     ty: Some(type_def.to_ty(cx, self.span, type_ident, generics)),
                 })),
@@ -1607,9 +1603,10 @@ impl<'a> TraitDef<'a> {
                         // Once use of `icu4x-0.9.0` has dropped sufficiently, this
                         // exception should be removed.
                         let is_simple_path = |ty: &P<ast::Ty>, sym| {
-                            if let TyKind::Path(None, ast::Path { segments, .. }) = &ty.kind &&
-                                let [seg] = segments.as_slice() &&
-                                seg.ident.name == sym && seg.args.is_none()
+                            if let TyKind::Path(None, ast::Path { segments, .. }) = &ty.kind
+                                && let [seg] = segments.as_slice()
+                                && seg.ident.name == sym
+                                && seg.args.is_none()
                             {
                                 true
                             } else {
@@ -1617,8 +1614,8 @@ impl<'a> TraitDef<'a> {
                             }
                         };
 
-                        let exception = if let TyKind::Slice(ty) = &struct_field.ty.kind &&
-                            is_simple_path(ty, sym::u8)
+                        let exception = if let TyKind::Slice(ty) = &struct_field.ty.kind
+                            && is_simple_path(ty, sym::u8)
                         {
                             Some("byte")
                         } else if is_simple_path(&struct_field.ty, sym::str) {
@@ -1628,14 +1625,14 @@ impl<'a> TraitDef<'a> {
                         };
 
                         if let Some(ty) = exception {
-                            cx.sess.parse_sess.buffer_lint_with_diagnostic(
+                            cx.sess.psess.buffer_lint_with_diagnostic(
                                 BYTE_SLICE_IN_PACKED_STRUCT_WITH_DERIVE,
                                 sp,
                                 ast::CRATE_NODE_ID,
                                 format!(
                                     "{ty} slice in a packed struct that derives a built-in trait"
                                 ),
-                                rustc_lint_defs::BuiltinLintDiagnostics::ByteSliceInPackedStructWithDerive
+                                rustc_lint_defs::BuiltinLintDiag::ByteSliceInPackedStructWithDerive,
                             );
                         } else {
                             // Wrap the expression in `{...}`, causing a copy.

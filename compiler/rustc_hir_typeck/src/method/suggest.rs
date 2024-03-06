@@ -166,7 +166,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             return false;
         }
 
-        match ty.kind() {
+        match ty.peel_refs().kind() {
             ty::Param(param) => {
                 let generics = self.tcx.generics_of(self.body_id);
                 let generic_param = generics.type_param(&param, self.tcx);
@@ -184,7 +184,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     }
                 }
             }
-            ty::Alias(ty::AliasKind::Opaque, _) => {
+            ty::Slice(..) | ty::Adt(..) | ty::Alias(ty::AliasKind::Opaque, _) => {
                 for unsatisfied in unsatisfied_predicates.iter() {
                     if is_iterator_predicate(unsatisfied.0, self.tcx) {
                         return true;
@@ -1049,6 +1049,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     bound_list.into_iter().map(|(_, path)| path).collect::<Vec<_>>().join("\n");
                 let actual_prefix = rcvr_ty.prefix_string(self.tcx);
                 info!("unimplemented_traits.len() == {}", unimplemented_traits.len());
+                let mut long_ty_file = None;
                 let (primary_message, label) = if unimplemented_traits.len() == 1
                     && unimplemented_traits_only
                 {
@@ -1061,8 +1062,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                 // Avoid crashing.
                                 return (None, None);
                             }
-                            let OnUnimplementedNote { message, label, .. } =
-                                self.err_ctxt().on_unimplemented_note(trait_ref, &obligation);
+                            let OnUnimplementedNote { message, label, .. } = self
+                                .err_ctxt()
+                                .on_unimplemented_note(trait_ref, &obligation, &mut long_ty_file);
                             (message, label)
                         })
                         .unwrap()
@@ -1076,6 +1078,15 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     )
                 });
                 err.primary_message(primary_message);
+                if let Some(file) = long_ty_file {
+                    err.note(format!(
+                        "the full name for the type has been written to '{}'",
+                        file.display(),
+                    ));
+                    err.note(
+                        "consider using `--verbose` to print the full type name to the console",
+                    );
+                }
                 if let Some(label) = label {
                     custom_span_label = true;
                     err.span_label(span, label);

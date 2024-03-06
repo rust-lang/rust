@@ -62,6 +62,7 @@ impl<'tcx> NonConstOp<'tcx> for FloatingPointOp {
         }
     }
 
+    #[allow(rustc::untranslatable_diagnostic)] // FIXME: make this translatable
     fn build_error(&self, ccx: &ConstCx<'_, 'tcx>, span: Span) -> Diag<'tcx> {
         feature_err(
             &ccx.tcx.sess,
@@ -556,6 +557,7 @@ impl<'tcx> NonConstOp<'tcx> for RawMutPtrDeref {
         Status::Unstable(sym::const_mut_refs)
     }
 
+    #[allow(rustc::untranslatable_diagnostic)] // FIXME: make this translatable
     fn build_error(&self, ccx: &ConstCx<'_, 'tcx>, span: Span) -> Diag<'tcx> {
         feature_err(
             &ccx.tcx.sess,
@@ -589,6 +591,7 @@ impl<'tcx> NonConstOp<'tcx> for StaticAccess {
         }
     }
 
+    #[allow(rustc::untranslatable_diagnostic)] // FIXME: make this translatable
     fn build_error(&self, ccx: &ConstCx<'_, 'tcx>, span: Span) -> Diag<'tcx> {
         let mut err = feature_err(
             &ccx.tcx.sess,
@@ -632,6 +635,7 @@ pub mod ty {
             }
         }
 
+        #[allow(rustc::untranslatable_diagnostic)] // FIXME: make this translatable
         fn build_error(&self, ccx: &ConstCx<'_, 'tcx>, span: Span) -> Diag<'tcx> {
             feature_err(
                 &ccx.tcx.sess,

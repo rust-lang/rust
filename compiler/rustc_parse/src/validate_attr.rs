@@ -13,7 +13,7 @@ use rustc_session::lint::builtin::ILL_FORMED_ATTRIBUTE_INPUT;
 use rustc_session::parse::ParseSess;
 use rustc_span::{sym, Span, Symbol};
 
-pub fn check_attr(sess: &ParseSess, attr: &Attribute) {
+pub fn check_attr(psess: &ParseSess, attr: &Attribute) {
     if attr.is_doc_comment() {
         return;
     }
@@ -24,11 +24,11 @@ pub fn check_attr(sess: &ParseSess, attr: &Attribute) {
     match attr_info {
         // `rustc_dummy` doesn't have any restrictions specific to built-in attributes.
         Some(BuiltinAttribute { name, template, .. }) if *name != sym::rustc_dummy => {
-            check_builtin_attribute(sess, attr, *name, *template)
+            check_builtin_attribute(psess, attr, *name, *template)
         }
         _ if let AttrArgs::Eq(..) = attr.get_normal_item().args => {
             // All key-value attributes are restricted to meta-item syntax.
-            parse_meta(sess, attr)
+            parse_meta(psess, attr)
                 .map_err(|err| {
                     err.emit();
                 })
@@ -38,7 +38,7 @@ pub fn check_attr(sess: &ParseSess, attr: &Attribute) {
     }
 }
 
-pub fn parse_meta<'a>(sess: &'a ParseSess, attr: &Attribute) -> PResult<'a, MetaItem> {
+pub fn parse_meta<'a>(psess: &'a ParseSess, attr: &Attribute) -> PResult<'a, MetaItem> {
     let item = attr.get_normal_item();
     Ok(MetaItem {
         span: attr.span,
@@ -46,8 +46,9 @@ pub fn parse_meta<'a>(sess: &'a ParseSess, attr: &Attribute) -> PResult<'a, Meta
         kind: match &item.args {
             AttrArgs::Empty => MetaItemKind::Word,
             AttrArgs::Delimited(DelimArgs { dspan, delim, tokens }) => {
-                check_meta_bad_delim(sess, *dspan, *delim);
-                let nmis = parse_in(sess, tokens.clone(), "meta list", |p| p.parse_meta_seq_top())?;
+                check_meta_bad_delim(psess, *dspan, *delim);
+                let nmis =
+                    parse_in(psess, tokens.clone(), "meta list", |p| p.parse_meta_seq_top())?;
                 MetaItemKind::List(nmis)
             }
             AttrArgs::Eq(_, AttrArgsEq::Ast(expr)) => {
@@ -56,7 +57,7 @@ pub fn parse_meta<'a>(sess: &'a ParseSess, attr: &Attribute) -> PResult<'a, Meta
                     let res = match res {
                         Ok(lit) => {
                             if token_lit.suffix.is_some() {
-                                let mut err = sess.dcx.struct_span_err(
+                                let mut err = psess.dcx.struct_span_err(
                                     expr.span,
                                     "suffixed literals are not allowed in attributes",
                                 );
@@ -70,7 +71,7 @@ pub fn parse_meta<'a>(sess: &'a ParseSess, attr: &Attribute) -> PResult<'a, Meta
                             }
                         }
                         Err(err) => {
-                            let guar = report_lit_error(sess, err, token_lit, expr.span);
+                            let guar = report_lit_error(psess, err, token_lit, expr.span);
                             let lit = ast::MetaItemLit {
                                 symbol: token_lit.symbol,
                                 suffix: token_lit.suffix,
@@ -89,7 +90,7 @@ pub fn parse_meta<'a>(sess: &'a ParseSess, attr: &Attribute) -> PResult<'a, Meta
                     //   the error because an earlier error will have already
                     //   been reported.
                     let msg = "attribute value must be a literal";
-                    let mut err = sess.dcx.struct_span_err(expr.span, msg);
+                    let mut err = psess.dcx.struct_span_err(expr.span, msg);
                     if let ast::ExprKind::Err(_) = expr.kind {
                         err.downgrade_to_delayed_bug();
                     }
@@ -101,21 +102,21 @@ pub fn parse_meta<'a>(sess: &'a ParseSess, attr: &Attribute) -> PResult<'a, Meta
     })
 }
 
-pub fn check_meta_bad_delim(sess: &ParseSess, span: DelimSpan, delim: Delimiter) {
+pub fn check_meta_bad_delim(psess: &ParseSess, span: DelimSpan, delim: Delimiter) {
     if let Delimiter::Parenthesis = delim {
         return;
     }
-    sess.dcx.emit_err(errors::MetaBadDelim {
+    psess.dcx.emit_err(errors::MetaBadDelim {
         span: span.entire(),
         sugg: errors::MetaBadDelimSugg { open: span.open, close: span.close },
     });
 }
 
-pub fn check_cfg_attr_bad_delim(sess: &ParseSess, span: DelimSpan, delim: Delimiter) {
+pub fn check_cfg_attr_bad_delim(psess: &ParseSess, span: DelimSpan, delim: Delimiter) {
     if let Delimiter::Parenthesis = delim {
         return;
     }
-    sess.dcx.emit_err(errors::CfgAttrBadDelim {
+    psess.dcx.emit_err(errors::CfgAttrBadDelim {
         span: span.entire(),
         sugg: errors::MetaBadDelimSugg { open: span.open, close: span.close },
     });
@@ -132,13 +133,13 @@ fn is_attr_template_compatible(template: &AttributeTemplate, meta: &ast::MetaIte
 }
 
 pub fn check_builtin_attribute(
-    sess: &ParseSess,
+    psess: &ParseSess,
     attr: &Attribute,
     name: Symbol,
     template: AttributeTemplate,
 ) {
-    match parse_meta(sess, attr) {
-        Ok(meta) => check_builtin_meta_item(sess, &meta, attr.style, name, template),
+    match parse_meta(psess, attr) {
+        Ok(meta) => check_builtin_meta_item(psess, &meta, attr.style, name, template),
         Err(err) => {
             err.emit();
         }
@@ -146,7 +147,7 @@ pub fn check_builtin_attribute(
 }
 
 pub fn check_builtin_meta_item(
-    sess: &ParseSess,
+    psess: &ParseSess,
     meta: &MetaItem,
     style: ast::AttrStyle,
     name: Symbol,
@@ -157,12 +158,12 @@ pub fn check_builtin_meta_item(
     let should_skip = |name| name == sym::cfg;
 
     if !should_skip(name) && !is_attr_template_compatible(&template, &meta.kind) {
-        emit_malformed_attribute(sess, style, meta.span, name, template);
+        emit_malformed_attribute(psess, style, meta.span, name, template);
     }
 }
 
 fn emit_malformed_attribute(
-    sess: &ParseSess,
+    psess: &ParseSess,
     style: ast::AttrStyle,
     span: Span,
     name: Symbol,
@@ -204,9 +205,10 @@ fn emit_malformed_attribute(
     }
     suggestions.sort();
     if should_warn(name) {
-        sess.buffer_lint(ILL_FORMED_ATTRIBUTE_INPUT, span, ast::CRATE_NODE_ID, msg);
+        psess.buffer_lint(ILL_FORMED_ATTRIBUTE_INPUT, span, ast::CRATE_NODE_ID, msg);
     } else {
-        sess.dcx
+        psess
+            .dcx
             .struct_span_err(span, error_msg)
             .with_span_suggestions(
                 span,
@@ -223,12 +225,12 @@ fn emit_malformed_attribute(
 }
 
 pub fn emit_fatal_malformed_builtin_attribute(
-    sess: &ParseSess,
+    psess: &ParseSess,
     attr: &Attribute,
     name: Symbol,
 ) -> ! {
     let template = BUILTIN_ATTRIBUTE_MAP.get(&name).expect("builtin attr defined").template;
-    emit_malformed_attribute(sess, attr.style, attr.span, name, template);
+    emit_malformed_attribute(psess, attr.style, attr.span, name, template);
     // This is fatal, otherwise it will likely cause a cascade of other errors
     // (and an error here is expected to be very rare).
     FatalError.raise()

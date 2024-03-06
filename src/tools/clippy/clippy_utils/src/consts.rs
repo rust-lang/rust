@@ -277,12 +277,16 @@ pub fn lit_to_mir_constant<'tcx>(lit: &LitKind, ty: Option<Ty<'tcx>>) -> Constan
         LitKind::Char(c) => Constant::Char(c),
         LitKind::Int(n, _) => Constant::Int(n.get()),
         LitKind::Float(ref is, LitFloatType::Suffixed(fty)) => match fty {
+            ast::FloatTy::F16 => unimplemented!("f16_f128"),
             ast::FloatTy::F32 => Constant::F32(is.as_str().parse().unwrap()),
             ast::FloatTy::F64 => Constant::F64(is.as_str().parse().unwrap()),
+            ast::FloatTy::F128 => unimplemented!("f16_f128"),
         },
         LitKind::Float(ref is, LitFloatType::Unsuffixed) => match ty.expect("type of float is known").kind() {
+            ty::Float(FloatTy::F16) => unimplemented!("f16_f128"),
             ty::Float(FloatTy::F32) => Constant::F32(is.as_str().parse().unwrap()),
             ty::Float(FloatTy::F64) => Constant::F64(is.as_str().parse().unwrap()),
+            ty::Float(FloatTy::F128) => unimplemented!("f16_f128"),
             _ => bug!(),
         },
         LitKind::Bool(b) => Constant::Bool(b),
@@ -778,8 +782,10 @@ pub fn mir_to_const<'tcx>(lcx: &LateContext<'tcx>, result: mir::Const<'tcx>) -> 
                 let range = alloc_range(offset + size * idx, size);
                 let val = alloc.read_scalar(&lcx.tcx, range, /* read_provenance */ false).ok()?;
                 res.push(match flt {
+                    FloatTy::F16 => unimplemented!("f16_f128"),
                     FloatTy::F32 => Constant::F32(f32::from_bits(val.to_u32().ok()?)),
                     FloatTy::F64 => Constant::F64(f64::from_bits(val.to_u64().ok()?)),
+                    FloatTy::F128 => unimplemented!("f16_f128"),
                 });
             }
             Some(Constant::Vec(res))

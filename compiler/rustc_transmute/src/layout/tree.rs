@@ -81,7 +81,8 @@ where
         Self::Seq(vec![Self::uninit(); width_in_bytes])
     }
 
-    /// Remove all `Def` nodes, and all branches of the layout for which `f` produces false.
+    /// Remove all `Def` nodes, and all branches of the layout for which `f`
+    /// produces `true`.
     pub(crate) fn prune<F>(self, f: &F) -> Tree<!, R>
     where
         F: Fn(D) -> bool,
@@ -106,7 +107,7 @@ where
             Self::Byte(b) => Tree::Byte(b),
             Self::Ref(r) => Tree::Ref(r),
             Self::Def(d) => {
-                if !f(d) {
+                if f(d) {
                     Tree::uninhabited()
                 } else {
                     Tree::unit()

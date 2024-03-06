@@ -234,15 +234,9 @@ impl Default for Alignment {
 }
 
 #[cfg(target_pointer_width = "16")]
-type AlignmentEnum = AlignmentEnum16;
-#[cfg(target_pointer_width = "32")]
-type AlignmentEnum = AlignmentEnum32;
-#[cfg(target_pointer_width = "64")]
-type AlignmentEnum = AlignmentEnum64;
-
 #[derive(Copy, Clone, PartialEq, Eq)]
 #[repr(u16)]
-enum AlignmentEnum16 {
+enum AlignmentEnum {
     _Align1Shl0 = 1 << 0,
     _Align1Shl1 = 1 << 1,
     _Align1Shl2 = 1 << 2,
@@ -261,9 +255,10 @@ enum AlignmentEnum16 {
     _Align1Shl15 = 1 << 15,
 }
 
+#[cfg(target_pointer_width = "32")]
 #[derive(Copy, Clone, PartialEq, Eq)]
 #[repr(u32)]
-enum AlignmentEnum32 {
+enum AlignmentEnum {
     _Align1Shl0 = 1 << 0,
     _Align1Shl1 = 1 << 1,
     _Align1Shl2 = 1 << 2,
@@ -298,9 +293,10 @@ enum AlignmentEnum32 {
     _Align1Shl31 = 1 << 31,
 }
 
+#[cfg(target_pointer_width = "64")]
 #[derive(Copy, Clone, PartialEq, Eq)]
 #[repr(u64)]
-enum AlignmentEnum64 {
+enum AlignmentEnum {
     _Align1Shl0 = 1 << 0,
     _Align1Shl1 = 1 << 1,
     _Align1Shl2 = 1 << 2,

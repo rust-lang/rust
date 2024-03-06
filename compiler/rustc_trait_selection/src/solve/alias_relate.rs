@@ -36,11 +36,13 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
         let Goal { param_env, predicate: (lhs, rhs, direction) } = goal;
 
         let Some(lhs) = self.try_normalize_term(param_env, lhs)? else {
-            return self.evaluate_added_goals_and_make_canonical_response(Certainty::OVERFLOW);
+            return self
+                .evaluate_added_goals_and_make_canonical_response(Certainty::overflow(true));
         };
 
         let Some(rhs) = self.try_normalize_term(param_env, rhs)? else {
-            return self.evaluate_added_goals_and_make_canonical_response(Certainty::OVERFLOW);
+            return self
+                .evaluate_added_goals_and_make_canonical_response(Certainty::overflow(true));
         };
 
         let variance = match direction {

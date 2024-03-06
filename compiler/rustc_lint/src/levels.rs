@@ -16,7 +16,7 @@ use crate::{
 use rustc_ast as ast;
 use rustc_ast_pretty::pprust;
 use rustc_data_structures::fx::FxIndexMap;
-use rustc_errors::{DecorateLint, Diag, DiagnosticMessage, MultiSpan};
+use rustc_errors::{DecorateLint, Diag, DiagMessage, MultiSpan};
 use rustc_feature::{Features, GateIssue};
 use rustc_hir as hir;
 use rustc_hir::intravisit::{self, Visitor};
@@ -724,6 +724,7 @@ impl<'s, P: LintLevelsProvider> LintLevelsBuilder<'s, P> {
         };
     }
 
+    #[allow(rustc::untranslatable_diagnostic)] // FIXME: make this translatable
     fn add(&mut self, attrs: &[ast::Attribute], is_crate_node: bool, source_hir_id: Option<HirId>) {
         let sess = self.sess;
         for (attr_index, attr) in attrs.iter().enumerate() {
@@ -1106,7 +1107,7 @@ impl<'s, P: LintLevelsProvider> LintLevelsBuilder<'s, P> {
         &self,
         lint: &'static Lint,
         span: Option<MultiSpan>,
-        msg: impl Into<DiagnosticMessage>,
+        msg: impl Into<DiagMessage>,
         decorate: impl for<'a, 'b> FnOnce(&'b mut Diag<'a, ()>),
     ) {
         let (level, src) = self.lint_level(lint);

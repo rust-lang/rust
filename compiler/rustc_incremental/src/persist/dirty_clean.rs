@@ -395,7 +395,7 @@ impl<'tcx> DirtyCleanVisitor<'tcx> {
 /// a cfg flag called `foo`.
 fn check_config(tcx: TyCtxt<'_>, attr: &Attribute) -> bool {
     debug!("check_config(attr={:?})", attr);
-    let config = &tcx.sess.parse_sess.config;
+    let config = &tcx.sess.psess.config;
     debug!("check_config: config={:?}", config);
     let mut cfg = None;
     for item in attr.meta_item_list().unwrap_or_else(ThinVec::new) {

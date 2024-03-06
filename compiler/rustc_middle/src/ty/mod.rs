@@ -30,9 +30,10 @@ pub use adt::*;
 pub use assoc::*;
 pub use generic_args::*;
 pub use generics::*;
+pub use intrinsic::IntrinsicDef;
 use rustc_ast as ast;
 use rustc_ast::node_id::NodeMap;
-pub use rustc_ast_ir::{Movability, Mutability};
+pub use rustc_ast_ir::{try_visit, Movability, Mutability};
 use rustc_attr as attr;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexMap, FxIndexSet};
 use rustc_data_structures::intern::Interned;
@@ -63,7 +64,6 @@ use std::hash::{Hash, Hasher};
 use std::marker::PhantomData;
 use std::mem;
 use std::num::NonZero;
-use std::ops::ControlFlow;
 use std::ptr::NonNull;
 use std::{fmt, str};
 
@@ -149,6 +149,7 @@ mod generic_args;
 mod generics;
 mod impls_ty;
 mod instance;
+mod intrinsic;
 mod list;
 mod opaque_types;
 mod parameterized;
@@ -597,7 +598,7 @@ impl<'tcx> TypeFoldable<TyCtxt<'tcx>> for Term<'tcx> {
 }
 
 impl<'tcx> TypeVisitable<TyCtxt<'tcx>> for Term<'tcx> {
-    fn visit_with<V: TypeVisitor<TyCtxt<'tcx>>>(&self, visitor: &mut V) -> ControlFlow<V::BreakTy> {
+    fn visit_with<V: TypeVisitor<TyCtxt<'tcx>>>(&self, visitor: &mut V) -> V::Result {
         self.unpack().visit_with(visitor)
     }
 }
@@ -1041,8 +1042,8 @@ impl<'tcx> TypeFoldable<TyCtxt<'tcx>> for ParamEnv<'tcx> {
 }
 
 impl<'tcx> TypeVisitable<TyCtxt<'tcx>> for ParamEnv<'tcx> {
-    fn visit_with<V: TypeVisitor<TyCtxt<'tcx>>>(&self, visitor: &mut V) -> ControlFlow<V::BreakTy> {
-        self.caller_bounds().visit_with(visitor)?;
+    fn visit_with<V: TypeVisitor<TyCtxt<'tcx>>>(&self, visitor: &mut V) -> V::Result {
+        try_visit!(self.caller_bounds().visit_with(visitor));
         self.reveal().visit_with(visitor)
     }
 }
@@ -1991,8 +1992,10 @@ pub fn uint_ty(uty: ast::UintTy) -> UintTy {
 
 pub fn float_ty(fty: ast::FloatTy) -> FloatTy {
     match fty {
+        ast::FloatTy::F16 => FloatTy::F16,
         ast::FloatTy::F32 => FloatTy::F32,
         ast::FloatTy::F64 => FloatTy::F64,
+        ast::FloatTy::F128 => FloatTy::F128,
     }
 }
 

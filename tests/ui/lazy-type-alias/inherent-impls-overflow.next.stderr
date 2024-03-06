@@ -3,8 +3,6 @@ error[E0275]: overflow evaluating the requirement `Loop == _`
    |
 LL | impl Loop {}
    |      ^^^^
-   |
-   = help: consider increasing the recursion limit by adding a `#![recursion_limit = "256"]` attribute to your crate (`inherent_impls_overflow`)
 
 error[E0392]: type parameter `T` is never used
   --> $DIR/inherent-impls-overflow.rs:13:12

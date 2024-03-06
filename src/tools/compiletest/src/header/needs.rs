@@ -30,6 +30,11 @@ pub(super) fn handle_needs(
             ignore_reason: "ignored on targets without CFI sanitizer",
         },
         Need {
+            name: "needs-sanitizer-dataflow",
+            condition: cache.sanitizer_dataflow,
+            ignore_reason: "ignored on targets without dataflow sanitizer",
+        },
+        Need {
             name: "needs-sanitizer-kcfi",
             condition: cache.sanitizer_kcfi,
             ignore_reason: "ignored on targets without kernel CFI sanitizer",
@@ -190,6 +195,7 @@ pub(super) struct CachedNeedsConditions {
     sanitizer_support: bool,
     sanitizer_address: bool,
     sanitizer_cfi: bool,
+    sanitizer_dataflow: bool,
     sanitizer_kcfi: bool,
     sanitizer_kasan: bool,
     sanitizer_leak: bool,
@@ -229,6 +235,7 @@ impl CachedNeedsConditions {
             sanitizer_support: std::env::var_os("RUSTC_SANITIZER_SUPPORT").is_some(),
             sanitizer_address: sanitizers.contains(&Sanitizer::Address),
             sanitizer_cfi: sanitizers.contains(&Sanitizer::Cfi),
+            sanitizer_dataflow: sanitizers.contains(&Sanitizer::Dataflow),
             sanitizer_kcfi: sanitizers.contains(&Sanitizer::Kcfi),
             sanitizer_kasan: sanitizers.contains(&Sanitizer::KernelAddress),
             sanitizer_leak: sanitizers.contains(&Sanitizer::Leak),

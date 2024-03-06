@@ -2272,6 +2272,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         self.expr_block(block)
     }
 
+    #[allow(rustc::untranslatable_diagnostic)] // FIXME: make this translatable
     fn lower_array_length(&mut self, c: &AnonConst) -> hir::ArrayLen {
         match c.value.kind {
             ExprKind::Underscore => {
