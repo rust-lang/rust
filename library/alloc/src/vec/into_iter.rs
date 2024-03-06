@@ -224,7 +224,8 @@ impl<T, A: Allocator> Iterator for IntoIter<T, A> {
         let exact = if T::IS_ZST {
             self.end.addr().wrapping_sub(self.ptr.as_ptr().addr())
         } else {
-            unsafe { non_null!(self.end, T).sub_ptr(self.ptr) }
+            // FIXME(#121239): this should use sub_ptr but llvm == 18 doesn't optimize as it should
+            unsafe { non_null!(self.end, T).offset_from(self.ptr) as usize }
         };
         (exact, Some(exact))
     }

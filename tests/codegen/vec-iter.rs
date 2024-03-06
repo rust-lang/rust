@@ -13,7 +13,7 @@ pub fn vec_iter_len_nonnull(it: &vec::IntoIter<u8>) -> usize {
     // CHECK: load ptr
     // CHECK-SAME: !nonnull
     // CHECK-SAME: !noundef
-    // CHECK: sub nuw
+    // CHECK: sub
     // CHECK: ret
     it.len()
 }
