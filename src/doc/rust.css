@@ -5,12 +5,13 @@ body {
 	margin: 0 auto;
 	padding: 0 15px;
 	font-size: 18px;
-	color: #333;
+	color: #000;
 	line-height: 1.428571429;
 
 	-webkit-box-sizing: unset;
 	-moz-box-sizing: unset;
 	box-sizing: unset;
+	background: #fff;
 }
 @media (min-width: 768px) {
 	body {
@@ -39,7 +40,6 @@ h4, h5, h6 {
 	padding: 5px 10px;
 }
 h5, h6 {
-	color: black;
 	text-decoration: underline;
 }
 
