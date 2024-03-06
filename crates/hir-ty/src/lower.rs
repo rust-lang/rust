@@ -54,7 +54,7 @@ use crate::{
         unknown_const_as_generic,
     },
     db::HirDatabase,
-    make_binders,
+    error_lifetime, make_binders,
     mapping::{from_chalk_trait_id, lt_to_placeholder_idx, ToChalk},
     static_lifetime, to_assoc_type_id, to_chalk_trait_id, to_placeholder_idx,
     utils::{
@@ -1327,7 +1327,7 @@ impl<'a> TyLoweringContext<'a> {
                             self.resolver.generic_def().expect("generics in scope"),
                         );
                         let idx = match generics.lifetime_idx(id) {
-                            None => return static_lifetime(),
+                            None => return error_lifetime(),
                             Some(idx) => idx,
                         };
 
@@ -1336,7 +1336,7 @@ impl<'a> TyLoweringContext<'a> {
                 }
                 .intern(Interner),
             },
-            None => static_lifetime(),
+            None => error_lifetime(),
         }
     }
 }

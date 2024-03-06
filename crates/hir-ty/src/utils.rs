@@ -318,14 +318,14 @@ impl Generics {
         parent + child
     }
 
-    /// Returns numbers of generic parameters excluding those from parent.
+    /// Returns numbers of generic parameters and lifetimes excluding those from parent.
     pub(crate) fn len_self(&self) -> usize {
-        self.params.type_or_consts.len()
+        self.params.type_or_consts.len() + self.params.lifetimes.len()
     }
 
-    /// Returns number of generic lifetime excluding those from parent.
-    pub(crate) fn len_lt_self(&self) -> usize {
-        self.params.lifetimes.len()
+    /// Returns number of generic parameter excluding those from parent
+    fn len_params(&self) -> usize {
+        self.params.type_or_consts.len()
     }
 
     /// (parent total, self param, type param list, const param list, impl trait)
@@ -376,11 +376,11 @@ impl Generics {
                 .enumerate()
                 .find(|(_, (idx, _))| *idx == lifetime.local_id)?;
 
-            Some((idx, data))
+            Some((self.len_params() + idx, data))
         } else {
             self.parent_generics()
                 .and_then(|g| g.find_lifetime(lifetime))
-                .map(|(idx, data)| (self.len_lt_self() + idx, data))
+                .map(|(idx, data)| (self.len_self() + idx, data))
         }
     }
 

@@ -611,6 +611,10 @@ pub fn static_lifetime() -> Lifetime {
     LifetimeData::Static.intern(Interner)
 }
 
+pub fn error_lifetime() -> Lifetime {
+    static_lifetime()
+}
+
 pub(crate) fn fold_free_vars<T: HasInterner<Interner = Interner> + TypeFoldable<Interner>>(
     t: T,
     for_ty: impl FnMut(BoundVar, DebruijnIndex) -> Ty,
