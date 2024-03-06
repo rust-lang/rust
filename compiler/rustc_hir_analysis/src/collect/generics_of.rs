@@ -14,6 +14,43 @@ use rustc_span::Span;
 pub(super) fn generics_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Generics {
     use rustc_hir::*;
 
+    // For an RPITIT, synthesize generics which are equal to the opaque's generics
+    // and parent fn's generics compressed into one list.
+    if let Some(ty::ImplTraitInTraitData::Trait { fn_def_id, opaque_def_id }) =
+        tcx.opt_rpitit_info(def_id.to_def_id())
+    {
+        let trait_def_id = tcx.parent(fn_def_id);
+        let opaque_ty_generics = tcx.generics_of(opaque_def_id);
+        let opaque_ty_parent_count = opaque_ty_generics.parent_count;
+        let mut params = opaque_ty_generics.params.clone();
+
+        let parent_generics = tcx.generics_of(trait_def_id);
+        let parent_count = parent_generics.parent_count + parent_generics.params.len();
+
+        let mut trait_fn_params = tcx.generics_of(fn_def_id).params.clone();
+
+        for param in &mut params {
+            param.index = param.index + parent_count as u32 + trait_fn_params.len() as u32
+                - opaque_ty_parent_count as u32;
+        }
+
+        trait_fn_params.extend(params);
+        params = trait_fn_params;
+
+        let param_def_id_to_index =
+            params.iter().map(|param| (param.def_id, param.index)).collect();
+
+        return ty::Generics {
+            parent: Some(trait_def_id),
+            parent_count,
+            params,
+            param_def_id_to_index,
+            has_self: opaque_ty_generics.has_self,
+            has_late_bound_regions: opaque_ty_generics.has_late_bound_regions,
+            host_effect_index: parent_generics.host_effect_index,
+        };
+    }
+
     let hir_id = tcx.local_def_id_to_hir_id(def_id);
 
     let node = tcx.hir_node(hir_id);
