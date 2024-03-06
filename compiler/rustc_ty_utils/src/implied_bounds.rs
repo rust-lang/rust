@@ -121,18 +121,7 @@ fn assumed_wf_types<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalDefId) -> &'tcx [(Ty<'
             }
         }
         DefKind::AssocConst | DefKind::AssocTy => tcx.assumed_wf_types(tcx.local_parent(def_id)),
-        DefKind::OpaqueTy => match tcx.def_kind(tcx.local_parent(def_id)) {
-            DefKind::TyAlias => ty::List::empty(),
-            DefKind::AssocTy => tcx.assumed_wf_types(tcx.local_parent(def_id)),
-            // Nested opaque types only occur in associated types:
-            // ` type Opaque<T> = impl Trait<&'static T, AssocTy = impl Nested>; `
-            // assumed_wf_types should include those of `Opaque<T>`, `Opaque<T>` itself
-            // and `&'static T`.
-            DefKind::OpaqueTy => bug!("unimplemented implied bounds for nested opaque types"),
-            def_kind => {
-                bug!("unimplemented implied bounds for opaque types with parent {def_kind:?}")
-            }
-        },
+        DefKind::OpaqueTy => bug!("implied bounds are not defined for opaques"),
         DefKind::Mod
         | DefKind::Struct
         | DefKind::Union

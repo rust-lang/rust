@@ -1,9 +1,9 @@
 error[E0282]: type annotations needed
-  --> $DIR/recursive-coroutine-boxed.rs:10:23
+  --> $DIR/recursive-coroutine-boxed.rs:11:23
    |
 LL |         let mut gen = Box::pin(foo());
    |                       ^^^^^^^^ cannot infer type of the type parameter `T` declared on the struct `Box`
-...
+LL |
 LL |         let mut r = gen.as_mut().resume(());
    |                         ------ type must be known at this point
    |
@@ -13,10 +13,10 @@ LL |         let mut gen = Box::<T>::pin(foo());
    |                          +++++
 
 error[E0282]: type annotations needed
-  --> $DIR/recursive-coroutine-boxed.rs:10:32
+  --> $DIR/recursive-coroutine-boxed.rs:8:13
    |
-LL |         let mut gen = Box::pin(foo());
-   |                                ^^^^^ cannot infer type for opaque type `impl Coroutine<Yield = (), Return = ()>`
+LL | fn foo() -> impl Coroutine<Yield = (), Return = ()> {
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ cannot infer type for opaque type `impl Coroutine<Yield = (), Return = ()>`
 
 error: aborting due to 2 previous errors
 

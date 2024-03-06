@@ -592,8 +592,25 @@ impl<'tcx> InferCtxt<'tcx> {
         obligations: &mut Vec<PredicateObligation<'tcx>>,
     ) {
         let tcx = self.tcx;
-        let item_bounds = tcx.explicit_item_bounds(def_id);
+        // Require that the hidden type is well-formed. We have to
+        // make sure we wf-check the hidden type to fix #114728.
+        //
+        // However, we don't check that all types are well-formed.
+        // We only do so for types provided by the user or if they are
+        // "used", e.g. for method selection.
+        //
+        // This means we never check the wf requirements of the hidden
+        // type during MIR borrowck, causing us to infer the wrong
+        // lifetime for its member constraints which then results in
+        // unexpected region errors.
+        obligations.push(traits::Obligation::new(
+            tcx,
+            cause.clone(),
+            param_env,
+            ty::ClauseKind::WellFormed(hidden_ty.into()),
+        ));
 
+        let item_bounds = tcx.explicit_item_bounds(def_id);
         for (predicate, _) in item_bounds.iter_instantiated_copied(tcx, args) {
             let predicate = predicate.fold_with(&mut BottomUpFolder {
                 tcx,
