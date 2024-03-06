@@ -94,7 +94,7 @@ impl<'a, 'tcx> Deref for Coerce<'a, 'tcx> {
 type CoerceResult<'tcx> = InferResult<'tcx, (Vec<Adjustment<'tcx>>, Ty<'tcx>)>;
 
 struct CollectRetsVisitor<'tcx> {
-    ret_exprs: Vec<&'tcx hir::Expr<'tcx>>,
+    ret_exprs: Vec<&'tcx Expr<'tcx>>,
 }
 
 impl<'tcx> Visitor<'tcx> for CollectRetsVisitor<'tcx> {
@@ -333,7 +333,7 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
 
         let (r_a, mt_a) = match *a.kind() {
             ty::Ref(r_a, ty, mutbl) => {
-                let mt_a = ty::TypeAndMut { ty, mutbl };
+                let mt_a = TypeAndMut { ty, mutbl };
                 coerce_mutbls(mt_a.mutbl, mutbl_b)?;
                 (r_a, mt_a)
             }
@@ -561,19 +561,19 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
                         target: Ty::new_ref(
                             self.tcx,
                             r_borrow,
-                            ty::TypeAndMut { mutbl: mutbl_b, ty: ty_a },
+                            TypeAndMut { mutbl: mutbl_b, ty: ty_a },
                         ),
                     },
                 ))
             }
-            (&ty::Ref(_, ty_a, mt_a), &ty::RawPtr(ty::TypeAndMut { mutbl: mt_b, .. })) => {
+            (&ty::Ref(_, ty_a, mt_a), &ty::RawPtr(TypeAndMut { mutbl: mt_b, .. })) => {
                 coerce_mutbls(mt_a, mt_b)?;
 
                 Some((
                     Adjustment { kind: Adjust::Deref(None), target: ty_a },
                     Adjustment {
                         kind: Adjust::Borrow(AutoBorrow::RawPtr(mt_b)),
-                        target: Ty::new_ptr(self.tcx, ty::TypeAndMut { mutbl: mt_b, ty: ty_a }),
+                        target: Ty::new_ptr(self.tcx, TypeAndMut { mutbl: mt_b, ty: ty_a }),
                     },
                 ))
             }
@@ -983,14 +983,14 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
         debug!("coerce_unsafe_ptr(a={:?}, b={:?})", a, b);
 
         let (is_ref, mt_a) = match *a.kind() {
-            ty::Ref(_, ty, mutbl) => (true, ty::TypeAndMut { ty, mutbl }),
+            ty::Ref(_, ty, mutbl) => (true, TypeAndMut { ty, mutbl }),
             ty::RawPtr(mt) => (false, mt),
             _ => return self.unify_and(a, b, identity),
         };
         coerce_mutbls(mt_a.mutbl, mutbl_b)?;
 
         // Check that the types which they point at are compatible.
-        let a_unsafe = Ty::new_ptr(self.tcx, ty::TypeAndMut { mutbl: mutbl_b, ty: mt_a.ty });
+        let a_unsafe = Ty::new_ptr(self.tcx, TypeAndMut { mutbl: mutbl_b, ty: mt_a.ty });
         // Although references and unsafe ptrs have the same
         // representation, we still register an Adjust::DerefRef so that
         // regionck knows that the region for `a` must be valid here.
@@ -1016,7 +1016,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     /// The expressions *must not* have any preexisting adjustments.
     pub fn coerce(
         &self,
-        expr: &hir::Expr<'_>,
+        expr: &Expr<'_>,
         expr_ty: Ty<'tcx>,
         mut target: Ty<'tcx>,
         allow_two_phase: AllowTwoPhase,
@@ -1109,7 +1109,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         cause: &ObligationCause<'tcx>,
         exprs: &[E],
         prev_ty: Ty<'tcx>,
-        new: &hir::Expr<'_>,
+        new: &Expr<'_>,
         new_ty: Ty<'tcx>,
     ) -> RelateResult<'tcx, Ty<'tcx>>
     where
@@ -1372,10 +1372,10 @@ pub struct CoerceMany<'tcx, 'exprs, E: AsCoercionSite> {
 
 /// The type of a `CoerceMany` that is storing up the expressions into
 /// a buffer. We use this in `check/mod.rs` for things like `break`.
-pub type DynamicCoerceMany<'tcx> = CoerceMany<'tcx, 'tcx, &'tcx hir::Expr<'tcx>>;
+pub type DynamicCoerceMany<'tcx> = CoerceMany<'tcx, 'tcx, &'tcx Expr<'tcx>>;
 
 enum Expressions<'tcx, 'exprs, E: AsCoercionSite> {
-    Dynamic(Vec<&'tcx hir::Expr<'tcx>>),
+    Dynamic(Vec<&'tcx Expr<'tcx>>),
     UpFront(&'exprs [E]),
 }
 
@@ -1429,7 +1429,7 @@ impl<'tcx, 'exprs, E: AsCoercionSite> CoerceMany<'tcx, 'exprs, E> {
         &mut self,
         fcx: &FnCtxt<'a, 'tcx>,
         cause: &ObligationCause<'tcx>,
-        expression: &'tcx hir::Expr<'tcx>,
+        expression: &'tcx Expr<'tcx>,
         expression_ty: Ty<'tcx>,
     ) {
         self.coerce_inner(fcx, cause, Some(expression), expression_ty, |_| {}, false)
@@ -1472,7 +1472,7 @@ impl<'tcx, 'exprs, E: AsCoercionSite> CoerceMany<'tcx, 'exprs, E> {
         &mut self,
         fcx: &FnCtxt<'a, 'tcx>,
         cause: &ObligationCause<'tcx>,
-        expression: Option<&'tcx hir::Expr<'tcx>>,
+        expression: Option<&'tcx Expr<'tcx>>,
         mut expression_ty: Ty<'tcx>,
         augment_error: impl FnOnce(&mut Diag<'_>),
         label_expression_as_expected: bool,
@@ -1687,8 +1687,8 @@ impl<'tcx, 'exprs, E: AsCoercionSite> CoerceMany<'tcx, 'exprs, E> {
         &self,
         err: &mut Diag<'_>,
         tcx: TyCtxt<'tcx>,
-        expr: &hir::Expr<'tcx>,
-        ret_exprs: &Vec<&'tcx hir::Expr<'tcx>>,
+        expr: &Expr<'tcx>,
+        ret_exprs: &Vec<&'tcx Expr<'tcx>>,
         ty: Ty<'tcx>,
     ) {
         let hir::ExprKind::Loop(_, _, _, loop_span) = expr.kind else {
@@ -1795,7 +1795,7 @@ impl<'tcx, 'exprs, E: AsCoercionSite> CoerceMany<'tcx, 'exprs, E> {
         ty_err: TypeError<'tcx>,
         fcx: &FnCtxt<'a, 'tcx>,
         id: hir::HirId,
-        expression: Option<&'tcx hir::Expr<'tcx>>,
+        expression: Option<&'tcx Expr<'tcx>>,
         blk_id: Option<hir::HirId>,
     ) -> Diag<'a> {
         let mut err = fcx.err_ctxt().report_mismatched_types(cause, expected, found, ty_err);
@@ -1803,7 +1803,7 @@ impl<'tcx, 'exprs, E: AsCoercionSite> CoerceMany<'tcx, 'exprs, E> {
         let parent_id = fcx.tcx.parent_hir_id(id);
         let parent = fcx.tcx.hir_node(parent_id);
         if let Some(expr) = expression
-            && let hir::Node::Expr(hir::Expr {
+            && let hir::Node::Expr(Expr {
                 kind: hir::ExprKind::Closure(&hir::Closure { body, .. }),
                 ..
             }) = parent
@@ -1864,7 +1864,7 @@ impl<'tcx, 'exprs, E: AsCoercionSite> CoerceMany<'tcx, 'exprs, E> {
         // When suggesting return, we need to account for closures and async blocks, not just items.
         for (_, node) in fcx.tcx.hir().parent_iter(id) {
             match node {
-                hir::Node::Expr(&hir::Expr {
+                hir::Node::Expr(&Expr {
                     kind: hir::ExprKind::Closure(hir::Closure { .. }),
                     ..
                 }) => {
@@ -1941,11 +1941,11 @@ impl<'tcx, 'exprs, E: AsCoercionSite> CoerceMany<'tcx, 'exprs, E> {
 /// Something that can be converted into an expression to which we can
 /// apply a coercion.
 pub trait AsCoercionSite {
-    fn as_coercion_site(&self) -> &hir::Expr<'_>;
+    fn as_coercion_site(&self) -> &Expr<'_>;
 }
 
-impl AsCoercionSite for hir::Expr<'_> {
-    fn as_coercion_site(&self) -> &hir::Expr<'_> {
+impl AsCoercionSite for Expr<'_> {
+    fn as_coercion_site(&self) -> &Expr<'_> {
         self
     }
 }
@@ -1954,19 +1954,19 @@ impl<'a, T> AsCoercionSite for &'a T
 where
     T: AsCoercionSite,
 {
-    fn as_coercion_site(&self) -> &hir::Expr<'_> {
+    fn as_coercion_site(&self) -> &Expr<'_> {
         (**self).as_coercion_site()
     }
 }
 
 impl AsCoercionSite for ! {
-    fn as_coercion_site(&self) -> &hir::Expr<'_> {
+    fn as_coercion_site(&self) -> &Expr<'_> {
         *self
     }
 }
 
 impl AsCoercionSite for hir::Arm<'_> {
-    fn as_coercion_site(&self) -> &hir::Expr<'_> {
+    fn as_coercion_site(&self) -> &Expr<'_> {
         self.body
     }
 }

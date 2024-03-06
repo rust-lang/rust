@@ -55,7 +55,7 @@ pub trait Delegate<'tcx> {
     fn copy(&mut self, place_with_id: &PlaceWithHirId<'tcx>, diag_expr_id: hir::HirId) {
         // In most cases, copying data from `x` is equivalent to doing `*&x`, so by default
         // we treat a copy of `x` as a borrow of `x`.
-        self.borrow(place_with_id, diag_expr_id, ty::BorrowKind::ImmBorrow)
+        self.borrow(place_with_id, diag_expr_id, ImmBorrow)
     }
 
     /// The path at `assignee_place` is being assigned to.
@@ -158,13 +158,13 @@ impl<'a, 'tcx> ExprUseVisitor<'a, 'tcx> {
         delegate_consume(&self.mc, self.delegate, place_with_id, diag_expr_id)
     }
 
-    fn consume_exprs(&mut self, exprs: &[hir::Expr<'_>]) {
+    fn consume_exprs(&mut self, exprs: &[Expr<'_>]) {
         for expr in exprs {
             self.consume_expr(expr);
         }
     }
 
-    pub fn consume_expr(&mut self, expr: &hir::Expr<'_>) {
+    pub fn consume_expr(&mut self, expr: &Expr<'_>) {
         debug!("consume_expr(expr={:?})", expr);
 
         let place_with_id = return_if_err!(self.mc.cat_expr(expr));
@@ -172,13 +172,13 @@ impl<'a, 'tcx> ExprUseVisitor<'a, 'tcx> {
         self.walk_expr(expr);
     }
 
-    fn mutate_expr(&mut self, expr: &hir::Expr<'_>) {
+    fn mutate_expr(&mut self, expr: &Expr<'_>) {
         let place_with_id = return_if_err!(self.mc.cat_expr(expr));
         self.delegate.mutate(&place_with_id, place_with_id.hir_id);
         self.walk_expr(expr);
     }
 
-    fn borrow_expr(&mut self, expr: &hir::Expr<'_>, bk: ty::BorrowKind) {
+    fn borrow_expr(&mut self, expr: &Expr<'_>, bk: ty::BorrowKind) {
         debug!("borrow_expr(expr={:?}, bk={:?})", expr, bk);
 
         let place_with_id = return_if_err!(self.mc.cat_expr(expr));
@@ -187,11 +187,11 @@ impl<'a, 'tcx> ExprUseVisitor<'a, 'tcx> {
         self.walk_expr(expr)
     }
 
-    fn select_from_expr(&mut self, expr: &hir::Expr<'_>) {
+    fn select_from_expr(&mut self, expr: &Expr<'_>) {
         self.walk_expr(expr)
     }
 
-    pub fn walk_expr(&mut self, expr: &hir::Expr<'_>) {
+    pub fn walk_expr(&mut self, expr: &Expr<'_>) {
         debug!("walk_expr(expr={:?})", expr);
 
         self.walk_adjustment(expr);
@@ -246,7 +246,7 @@ impl<'a, 'tcx> ExprUseVisitor<'a, 'tcx> {
             }
 
             hir::ExprKind::Let(hir::Let { pat, init, .. }) => {
-                self.walk_local(init, pat, None, |t| t.borrow_expr(init, ty::ImmBorrow))
+                self.walk_local(init, pat, None, |t| t.borrow_expr(init, ImmBorrow))
             }
 
             hir::ExprKind::Match(discr, arms, _) => {
@@ -473,7 +473,7 @@ impl<'a, 'tcx> ExprUseVisitor<'a, 'tcx> {
         }
 
         if needs_to_be_read {
-            self.borrow_expr(discr, ty::ImmBorrow);
+            self.borrow_expr(discr, ImmBorrow);
         } else {
             let closure_def_id = match discr_place.place.base {
                 PlaceBase::Upvar(upvar_id) => Some(upvar_id.closure_expr_id),
@@ -495,7 +495,7 @@ impl<'a, 'tcx> ExprUseVisitor<'a, 'tcx> {
 
     fn walk_local<F>(
         &mut self,
-        expr: &hir::Expr<'_>,
+        expr: &Expr<'_>,
         pat: &hir::Pat<'_>,
         els: Option<&hir::Block<'_>>,
         mut f: F,
@@ -534,7 +534,7 @@ impl<'a, 'tcx> ExprUseVisitor<'a, 'tcx> {
     fn walk_struct_expr<'hir>(
         &mut self,
         fields: &[hir::ExprField<'_>],
-        opt_with: &Option<&'hir hir::Expr<'_>>,
+        opt_with: &Option<&'hir Expr<'_>>,
     ) {
         // Consume the expressions supplying values for each field.
         for field in fields {
@@ -594,7 +594,7 @@ impl<'a, 'tcx> ExprUseVisitor<'a, 'tcx> {
     /// Invoke the appropriate delegate calls for anything that gets
     /// consumed or borrowed as part of the automatic adjustment
     /// process.
-    fn walk_adjustment(&mut self, expr: &hir::Expr<'_>) {
+    fn walk_adjustment(&mut self, expr: &Expr<'_>) {
         let adjustments = self.mc.typeck_results.expr_adjustments(expr);
         let mut place_with_id = return_if_err!(self.mc.cat_expr_unadjusted(expr));
         for adjustment in adjustments {
@@ -634,7 +634,7 @@ impl<'a, 'tcx> ExprUseVisitor<'a, 'tcx> {
     /// after all relevant autoderefs have occurred.
     fn walk_autoref(
         &mut self,
-        expr: &hir::Expr<'_>,
+        expr: &Expr<'_>,
         base_place: &PlaceWithHirId<'tcx>,
         autoref: &adjustment::AutoBorrow<'tcx>,
     ) {

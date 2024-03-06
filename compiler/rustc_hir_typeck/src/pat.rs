@@ -424,7 +424,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             let tcx = self.tcx;
             let expected = self.resolve_vars_if_possible(expected);
             pat_ty = match expected.kind() {
-                ty::Adt(def, _) if Some(def.did()) == tcx.lang_items().string() => expected,
+                Adt(def, _) if Some(def.did()) == tcx.lang_items().string() => expected,
                 ty::Str => Ty::new_static_str(tcx),
                 _ => pat_ty,
             };
@@ -968,7 +968,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     fn emit_bad_pat_path(
         &self,
         mut e: Diag<'_>,
-        pat: &hir::Pat<'tcx>,
+        pat: &Pat<'tcx>,
         res: Res,
         pat_res: Res,
         pat_ty: Ty<'tcx>,
@@ -1111,7 +1111,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         if subpats.len() == variant.fields.len()
             || subpats.len() < variant.fields.len() && ddpos.as_opt_usize().is_some()
         {
-            let ty::Adt(_, args) = pat_ty.kind() else {
+            let Adt(_, args) = pat_ty.kind() else {
                 bug!("unexpected pattern type {:?}", pat_ty);
             };
             for (i, subpat) in subpats.iter().enumerate_and_adjust(variant.fields.len(), ddpos) {
@@ -1205,7 +1205,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // #67037: only do this if we could successfully type-check the expected type against
             // the tuple struct pattern. Otherwise the args could get out of range on e.g.,
             // `let P() = U;` where `P != U` with `struct P<T>(T);`.
-            (ty::Adt(_, args), [field], false) => {
+            (Adt(_, args), [field], false) => {
                 let field_ty = self.field_ty(pat_span, field, args);
                 match field_ty.kind() {
                     ty::Tuple(fields) => fields.len() == subpats.len(),
@@ -1347,14 +1347,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         &self,
         adt_ty: Ty<'tcx>,
         pat: &'tcx Pat<'tcx>,
-        variant: &'tcx ty::VariantDef,
+        variant: &'tcx VariantDef,
         fields: &'tcx [hir::PatField<'tcx>],
         has_rest_pat: bool,
         pat_info: PatInfo<'tcx, '_>,
     ) -> bool {
         let tcx = self.tcx;
 
-        let ty::Adt(adt, args) = adt_ty.kind() else {
+        let Adt(adt, args) = adt_ty.kind() else {
             span_bug!(pat.span, "struct pattern is not an ADT");
         };
 
@@ -1578,7 +1578,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         inexistent_fields: &[&hir::PatField<'tcx>],
         unmentioned_fields: &mut Vec<(&'tcx ty::FieldDef, Ident)>,
         pat: &'tcx Pat<'tcx>,
-        variant: &ty::VariantDef,
+        variant: &VariantDef,
         args: &'tcx ty::List<ty::GenericArg<'tcx>>,
     ) -> Diag<'tcx> {
         let tcx = self.tcx;
@@ -1684,7 +1684,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         &self,
         pat: &Pat<'_>,
         fields: &'tcx [hir::PatField<'tcx>],
-        variant: &ty::VariantDef,
+        variant: &VariantDef,
     ) -> Option<Diag<'tcx>> {
         if let (Some(CtorKind::Fn), PatKind::Struct(qpath, pattern_fields, ..)) =
             (variant.ctor_kind(), &pat.kind)
@@ -2295,7 +2295,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             let ty = self.resolve_vars_if_possible(ti.expected);
             let is_slice_or_array_or_vector = self.is_slice_or_array_or_vector(ty);
             match is_slice_or_array_or_vector.1.kind() {
-                ty::Adt(adt_def, _)
+                Adt(adt_def, _)
                     if self.tcx.is_diagnostic_item(sym::Option, adt_def.did())
                         || self.tcx.is_diagnostic_item(sym::Result, adt_def.did()) =>
                 {
@@ -2324,9 +2324,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
     fn is_slice_or_array_or_vector(&self, ty: Ty<'tcx>) -> (bool, Ty<'tcx>) {
         match ty.kind() {
-            ty::Adt(adt_def, _) if self.tcx.is_diagnostic_item(sym::Vec, adt_def.did()) => {
-                (true, ty)
-            }
+            Adt(adt_def, _) if self.tcx.is_diagnostic_item(sym::Vec, adt_def.did()) => (true, ty),
             ty::Ref(_, ty, _) => self.is_slice_or_array_or_vector(*ty),
             ty::Slice(..) | ty::Array(..) => (true, ty),
             _ => (false, ty),

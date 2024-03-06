@@ -132,7 +132,7 @@ pub(crate) struct Candidate<'tcx> {
     // if `T: Sized`.
     xform_self_ty: Ty<'tcx>,
     xform_ret_ty: Option<Ty<'tcx>>,
-    pub(crate) item: ty::AssocItem,
+    pub(crate) item: AssocItem,
     pub(crate) kind: CandidateKind<'tcx>,
     pub(crate) import_ids: SmallVec<[LocalDefId; 1]>,
 }
@@ -197,7 +197,7 @@ impl AutorefOrPtrAdjustment {
 
 #[derive(Debug, Clone)]
 pub struct Pick<'tcx> {
-    pub item: ty::AssocItem,
+    pub item: AssocItem,
     pub kind: PickKind<'tcx>,
     pub import_ids: SmallVec<[LocalDefId; 1]>,
 
@@ -265,8 +265,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         return_type: Ty<'tcx>,
         self_ty: Ty<'tcx>,
         scope_expr_id: hir::HirId,
-        candidate_filter: impl Fn(&ty::AssocItem) -> bool,
-    ) -> Vec<ty::AssocItem> {
+        candidate_filter: impl Fn(&AssocItem) -> bool,
+    ) -> Vec<AssocItem> {
         let method_names = self
             .probe_op(
                 span,
@@ -882,7 +882,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
         bounds: impl Iterator<Item = ty::PolyTraitRef<'tcx>>,
         mut mk_cand: F,
     ) where
-        F: for<'b> FnMut(&mut ProbeContext<'b, 'tcx>, ty::PolyTraitRef<'tcx>, ty::AssocItem),
+        F: for<'b> FnMut(&mut ProbeContext<'b, 'tcx>, ty::PolyTraitRef<'tcx>, AssocItem),
     {
         let tcx = self.tcx;
         for bound_trait_ref in traits::transitive_bounds(tcx, bounds) {
@@ -924,7 +924,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
 
     fn matches_return_type(
         &self,
-        method: ty::AssocItem,
+        method: AssocItem,
         self_ty: Option<Ty<'tcx>>,
         expected: Ty<'tcx>,
     ) -> bool {
@@ -1021,10 +1021,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
         }
     }
 
-    fn candidate_method_names(
-        &self,
-        candidate_filter: impl Fn(&ty::AssocItem) -> bool,
-    ) -> Vec<Ident> {
+    fn candidate_method_names(&self, candidate_filter: impl Fn(&AssocItem) -> bool) -> Vec<Ident> {
         let mut set = FxHashSet::default();
         let mut names: Vec<_> = self
             .inherent_candidates
@@ -1753,7 +1750,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
     /// edit distance based suggestions, we provide at most one such suggestion.
     pub(crate) fn probe_for_similar_candidate(
         &mut self,
-    ) -> Result<Option<ty::AssocItem>, MethodError<'tcx>> {
+    ) -> Result<Option<AssocItem>, MethodError<'tcx>> {
         debug!("probing for method names similar to {:?}", self.method_name);
 
         self.probe(|_| {
@@ -1773,7 +1770,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
 
             let method_names = pcx.candidate_method_names(|_| true);
             pcx.allow_similar_names = false;
-            let applicable_close_candidates: Vec<ty::AssocItem> = method_names
+            let applicable_close_candidates: Vec<AssocItem> = method_names
                 .iter()
                 .filter_map(|&method_name| {
                     pcx.reset();
@@ -1813,7 +1810,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
 
     ///////////////////////////////////////////////////////////////////////////
     // MISCELLANY
-    fn has_applicable_self(&self, item: &ty::AssocItem) -> bool {
+    fn has_applicable_self(&self, item: &AssocItem) -> bool {
         // "Fast track" -- check for usage of sugar when in method call
         // mode.
         //
@@ -1841,7 +1838,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
     #[instrument(level = "debug", skip(self))]
     fn xform_self_ty(
         &self,
-        item: ty::AssocItem,
+        item: AssocItem,
         impl_ty: Ty<'tcx>,
         args: GenericArgsRef<'tcx>,
     ) -> (Ty<'tcx>, Option<Ty<'tcx>>) {
@@ -1996,7 +1993,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
     /// `allow_similar_names` is set, find methods with close-matching names.
     // The length of the returned iterator is nearly always 0 or 1 and this
     // method is fairly hot.
-    fn impl_or_trait_item(&self, def_id: DefId) -> SmallVec<[ty::AssocItem; 1]> {
+    fn impl_or_trait_item(&self, def_id: DefId) -> SmallVec<[AssocItem; 1]> {
         if let Some(name) = self.method_name {
             if self.allow_similar_names {
                 let max_dist = max(name.as_str().len(), 3) / 3;

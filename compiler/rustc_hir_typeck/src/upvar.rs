@@ -1590,7 +1590,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         &self,
         place: &Place<'tcx>,
         capture_clause: hir::CaptureBy,
-    ) -> ty::UpvarCapture {
+    ) -> UpvarCapture {
         match capture_clause {
             // In case of a move closure if the data is accessed through a reference we
             // want to capture by ref to allow precise capture using reborrows.
@@ -1743,8 +1743,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 /// which states that it's unsafe to take a reference into a struct marked `repr(packed)`.
 fn restrict_repr_packed_field_ref_capture<'tcx>(
     mut place: Place<'tcx>,
-    mut curr_borrow_kind: ty::UpvarCapture,
-) -> (Place<'tcx>, ty::UpvarCapture) {
+    mut curr_borrow_kind: UpvarCapture,
+) -> (Place<'tcx>, UpvarCapture) {
     let pos = place.projections.iter().enumerate().position(|(i, p)| {
         let ty = place.ty_before_projection(i);
 
@@ -1922,8 +1922,8 @@ impl<'tcx> euv::Delegate<'tcx> for InferBorrowKind<'tcx> {
 fn restrict_precision_for_drop_types<'a, 'tcx>(
     fcx: &'a FnCtxt<'a, 'tcx>,
     mut place: Place<'tcx>,
-    mut curr_mode: ty::UpvarCapture,
-) -> (Place<'tcx>, ty::UpvarCapture) {
+    mut curr_mode: UpvarCapture,
+) -> (Place<'tcx>, UpvarCapture) {
     let is_copy_type = fcx.infcx.type_is_copy_modulo_regions(fcx.param_env, place.ty());
 
     if let (false, UpvarCapture::ByValue) = (is_copy_type, curr_mode) {
@@ -1947,8 +1947,8 @@ fn restrict_precision_for_drop_types<'a, 'tcx>(
 /// - No projections are applied on top of Union ADTs, since these require unsafe blocks.
 fn restrict_precision_for_unsafe(
     mut place: Place<'_>,
-    mut curr_mode: ty::UpvarCapture,
-) -> (Place<'_>, ty::UpvarCapture) {
+    mut curr_mode: UpvarCapture,
+) -> (Place<'_>, UpvarCapture) {
     if place.base_ty.is_unsafe_ptr() {
         truncate_place_to_len_and_update_capture_kind(&mut place, &mut curr_mode, 0);
     }
@@ -1980,8 +1980,8 @@ fn restrict_precision_for_unsafe(
 /// Returns the truncated place and updated capture mode.
 fn restrict_capture_precision(
     place: Place<'_>,
-    curr_mode: ty::UpvarCapture,
-) -> (Place<'_>, ty::UpvarCapture) {
+    curr_mode: UpvarCapture,
+) -> (Place<'_>, UpvarCapture) {
     let (mut place, mut curr_mode) = restrict_precision_for_unsafe(place, curr_mode);
 
     if place.projections.is_empty() {
@@ -2008,8 +2008,8 @@ fn restrict_capture_precision(
 /// Truncate deref of any reference.
 fn adjust_for_move_closure(
     mut place: Place<'_>,
-    mut kind: ty::UpvarCapture,
-) -> (Place<'_>, ty::UpvarCapture) {
+    mut kind: UpvarCapture,
+) -> (Place<'_>, UpvarCapture) {
     let first_deref = place.projections.iter().position(|proj| proj.kind == ProjectionKind::Deref);
 
     if let Some(idx) = first_deref {
@@ -2023,8 +2023,8 @@ fn adjust_for_move_closure(
 /// from enclosing stack frame.
 fn adjust_for_non_move_closure(
     mut place: Place<'_>,
-    mut kind: ty::UpvarCapture,
-) -> (Place<'_>, ty::UpvarCapture) {
+    mut kind: UpvarCapture,
+) -> (Place<'_>, UpvarCapture) {
     let contains_deref =
         place.projections.iter().position(|proj| proj.kind == ProjectionKind::Deref);
 
@@ -2234,7 +2234,7 @@ fn determine_capture_info(
 /// contained `Deref` of `&mut`.
 fn truncate_place_to_len_and_update_capture_kind<'tcx>(
     place: &mut Place<'tcx>,
-    curr_mode: &mut ty::UpvarCapture,
+    curr_mode: &mut UpvarCapture,
     len: usize,
 ) {
     let is_mut_ref = |ty: Ty<'_>| matches!(ty.kind(), ty::Ref(.., hir::Mutability::Mut));
@@ -2330,8 +2330,8 @@ fn determine_place_ancestry_relation<'tcx>(
 /// ```
 fn truncate_capture_for_optimization(
     mut place: Place<'_>,
-    mut curr_mode: ty::UpvarCapture,
-) -> (Place<'_>, ty::UpvarCapture) {
+    mut curr_mode: UpvarCapture,
+) -> (Place<'_>, UpvarCapture) {
     let is_shared_ref = |ty: Ty<'_>| matches!(ty.kind(), ty::Ref(.., hir::Mutability::Not));
 
     // Find the right-most deref (if any). All the projections that come after this

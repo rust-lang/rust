@@ -100,7 +100,7 @@ impl<'tcx> Inherited<'tcx> {
     }
 
     #[instrument(level = "debug", skip(self))]
-    pub(super) fn register_predicate(&self, obligation: traits::PredicateObligation<'tcx>) {
+    pub(super) fn register_predicate(&self, obligation: PredicateObligation<'tcx>) {
         if obligation.has_escaping_bound_vars() {
             span_bug!(obligation.cause.span, "escaping bound vars in predicate {:?}", obligation);
         }
@@ -112,7 +112,7 @@ impl<'tcx> Inherited<'tcx> {
 
     pub(super) fn register_predicates<I>(&self, obligations: I)
     where
-        I: IntoIterator<Item = traits::PredicateObligation<'tcx>>,
+        I: IntoIterator<Item = PredicateObligation<'tcx>>,
     {
         for obligation in obligations {
             self.register_predicate(obligation);

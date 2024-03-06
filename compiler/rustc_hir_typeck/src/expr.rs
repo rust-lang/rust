@@ -499,17 +499,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
     }
 
-    fn check_lang_item_path(
-        &self,
-        lang_item: hir::LangItem,
-        expr: &'tcx hir::Expr<'tcx>,
-    ) -> Ty<'tcx> {
+    fn check_lang_item_path(&self, lang_item: LangItem, expr: &'tcx hir::Expr<'tcx>) -> Ty<'tcx> {
         self.resolve_lang_item_path(lang_item, expr.span, expr.hir_id).1
     }
 
     pub(crate) fn check_expr_path(
         &self,
-        qpath: &'tcx hir::QPath<'tcx>,
+        qpath: &'tcx QPath<'tcx>,
         expr: &'tcx hir::Expr<'tcx>,
         args: &'tcx [hir::Expr<'tcx>],
         call: Option<&'tcx hir::Expr<'tcx>>,
@@ -2868,7 +2864,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         span: Span,
         base_ty: Ty<'tcx>,
         mod_id: DefId,
-        hir_id: hir::HirId,
+        hir_id: HirId,
     ) -> Vec<(Vec<&'tcx ty::FieldDef>, GenericArgsRef<'tcx>)> {
         debug!("get_field_candidates(span: {:?}, base_t: {:?}", span, base_ty);
 
@@ -3273,7 +3269,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         if let Some(ident_2) = fields.get(1)
             && !self.tcx.features().offset_of_nested
         {
-            rustc_session::parse::feature_err(
+            feature_err(
                 &self.tcx.sess,
                 sym::offset_of_nested,
                 ident_2.span,
@@ -3296,7 +3292,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         self.tcx.adjust_ident_and_get_scope(field, container_def.did(), block);
 
                     if !self.tcx.features().offset_of_enum {
-                        rustc_session::parse::feature_err(
+                        feature_err(
                             &self.tcx.sess,
                             sym::offset_of_enum,
                             ident.span,

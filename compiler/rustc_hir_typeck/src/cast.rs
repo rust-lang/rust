@@ -786,8 +786,8 @@ impl<'a, 'tcx> CastCheck<'tcx> {
     fn check_ptr_ptr_cast(
         &self,
         fcx: &FnCtxt<'a, 'tcx>,
-        m_expr: ty::TypeAndMut<'tcx>,
-        m_cast: ty::TypeAndMut<'tcx>,
+        m_expr: TypeAndMut<'tcx>,
+        m_cast: TypeAndMut<'tcx>,
     ) -> Result<CastKind, CastError> {
         debug!("check_ptr_ptr_cast m_expr={:?} m_cast={:?}", m_expr, m_cast);
         // ptr-ptr cast. vtables must match.
@@ -826,7 +826,7 @@ impl<'a, 'tcx> CastCheck<'tcx> {
     fn check_fptr_ptr_cast(
         &self,
         fcx: &FnCtxt<'a, 'tcx>,
-        m_cast: ty::TypeAndMut<'tcx>,
+        m_cast: TypeAndMut<'tcx>,
     ) -> Result<CastKind, CastError> {
         // fptr-ptr cast. must be to thin ptr
 
@@ -840,7 +840,7 @@ impl<'a, 'tcx> CastCheck<'tcx> {
     fn check_ptr_addr_cast(
         &self,
         fcx: &FnCtxt<'a, 'tcx>,
-        m_expr: ty::TypeAndMut<'tcx>,
+        m_expr: TypeAndMut<'tcx>,
     ) -> Result<CastKind, CastError> {
         // ptr-addr cast. must be from thin ptr
 
@@ -854,8 +854,8 @@ impl<'a, 'tcx> CastCheck<'tcx> {
     fn check_ref_cast(
         &self,
         fcx: &FnCtxt<'a, 'tcx>,
-        m_expr: ty::TypeAndMut<'tcx>,
-        m_cast: ty::TypeAndMut<'tcx>,
+        m_expr: TypeAndMut<'tcx>,
+        m_cast: TypeAndMut<'tcx>,
     ) -> Result<CastKind, CastError> {
         // array-ptr-cast: allow mut-to-mut, mut-to-const, const-to-const
         if m_expr.mutbl >= m_cast.mutbl {
@@ -904,7 +904,7 @@ impl<'a, 'tcx> CastCheck<'tcx> {
         }
     }
 
-    fn try_coercion_cast(&self, fcx: &FnCtxt<'a, 'tcx>) -> Result<(), ty::error::TypeError<'tcx>> {
+    fn try_coercion_cast(&self, fcx: &FnCtxt<'a, 'tcx>) -> Result<(), TypeError<'tcx>> {
         match fcx.coerce(self.expr, self.expr_ty, self.cast_ty, AllowTwoPhase::No, None) {
             Ok(_) => Ok(()),
             Err(err) => Err(err),

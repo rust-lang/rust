@@ -196,7 +196,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         method_name: Ident,
         self_ty: Ty<'tcx>,
         self_ty_span: Span,
-        expr_id: hir::HirId,
+        expr_id: HirId,
         pick: &Pick<'tcx>,
     ) {
         // Rust 2021 and later is already using the new prelude

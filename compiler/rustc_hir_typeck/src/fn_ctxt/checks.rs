@@ -1857,7 +1857,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     /// if false { return 0i32; } else { 1u32 }
     /// //                               ^^^^ point at this instead of the whole `if` expression
     /// ```
-    fn get_expr_coercion_span(&self, expr: &hir::Expr<'_>) -> rustc_span::Span {
+    fn get_expr_coercion_span(&self, expr: &hir::Expr<'_>) -> Span {
         let check_in_progress = |elem: &hir::Expr<'_>| {
             self.typeck_results.borrow().node_type_opt(elem.hir_id).filter(|ty| !ty.is_never()).map(
                 |_| match elem.kind {

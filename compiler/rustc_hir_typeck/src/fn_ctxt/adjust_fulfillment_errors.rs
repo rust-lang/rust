@@ -338,7 +338,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         struct FindAmbiguousParameter<'a, 'tcx>(&'a FnCtxt<'a, 'tcx>, DefId);
         impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for FindAmbiguousParameter<'_, 'tcx> {
             type BreakTy = ty::GenericArg<'tcx>;
-            fn visit_ty(&mut self, ty: Ty<'tcx>) -> std::ops::ControlFlow<Self::BreakTy> {
+            fn visit_ty(&mut self, ty: Ty<'tcx>) -> ControlFlow<Self::BreakTy> {
                 if let Some(origin) = self.0.type_var_origin(ty)
                     && let TypeVariableOriginKind::TypeParameterDefinition(_, def_id) = origin.kind
                     && let generics = self.0.tcx.generics_of(self.1)
@@ -513,7 +513,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
     fn blame_specific_expr_if_possible_for_obligation_cause_code(
         &self,
-        obligation_cause_code: &traits::ObligationCauseCode<'tcx>,
+        obligation_cause_code: &ObligationCauseCode<'tcx>,
         expr: &'tcx hir::Expr<'tcx>,
     ) -> Result<&'tcx hir::Expr<'tcx>, &'tcx hir::Expr<'tcx>> {
         match obligation_cause_code {

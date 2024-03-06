@@ -335,18 +335,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         &self,
         ty: Ty<'tcx>,
         span: Span,
-        code: traits::ObligationCauseCode<'tcx>,
+        code: ObligationCauseCode<'tcx>,
         def_id: DefId,
     ) {
         self.register_bound(ty, def_id, traits::ObligationCause::new(span, self.body_id, code));
     }
 
-    pub fn require_type_is_sized(
-        &self,
-        ty: Ty<'tcx>,
-        span: Span,
-        code: traits::ObligationCauseCode<'tcx>,
-    ) {
+    pub fn require_type_is_sized(&self, ty: Ty<'tcx>, span: Span, code: ObligationCauseCode<'tcx>) {
         if !ty.references_error() {
             let lang_item = self.tcx.require_lang_item(LangItem::Sized, None);
             self.require_type_meets(ty, span, code, lang_item);
@@ -357,7 +352,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         &self,
         ty: Ty<'tcx>,
         span: Span,
-        code: traits::ObligationCauseCode<'tcx>,
+        code: ObligationCauseCode<'tcx>,
     ) {
         if !ty.references_error() {
             self.deferred_sized_obligations.borrow_mut().push((ty, span, code));
@@ -480,7 +475,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         &self,
         arg: ty::GenericArg<'tcx>,
         span: Span,
-        code: traits::ObligationCauseCode<'tcx>,
+        code: ObligationCauseCode<'tcx>,
     ) {
         // WF obligations never themselves fail, so no real need to give a detailed cause:
         let cause = traits::ObligationCause::new(span, self.body_id, code);
@@ -752,7 +747,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
     pub(in super::super) fn resolve_lang_item_path(
         &self,
-        lang_item: hir::LangItem,
+        lang_item: LangItem,
         span: Span,
         hir_id: hir::HirId,
     ) -> (Res, Ty<'tcx>) {

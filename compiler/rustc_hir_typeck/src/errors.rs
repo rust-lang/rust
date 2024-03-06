@@ -549,7 +549,7 @@ pub enum CastUnknownPointerSub {
     From(Span),
 }
 
-impl rustc_errors::AddToDiagnostic for CastUnknownPointerSub {
+impl AddToDiagnostic for CastUnknownPointerSub {
     fn add_to_diagnostic_with<G: EmissionGuarantee, F: SubdiagMessageOp<G>>(
         self,
         diag: &mut Diag<'_, G>,
