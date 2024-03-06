@@ -3,7 +3,6 @@ use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::profiling::{QueryInvocationId, SelfProfilerRef};
 use rustc_data_structures::sharded::{self, Sharded};
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
-use rustc_data_structures::steal::Steal;
 use rustc_data_structures::sync::{AtomicU32, AtomicU64, Lock, Lrc};
 use rustc_data_structures::unord::UnordMap;
 use rustc_index::IndexVec;
@@ -194,7 +193,7 @@ impl<D: Deps> DepGraph<D> {
 
     pub fn with_query(&self, f: impl Fn(&DepGraphQuery)) {
         if let Some(data) = &self.data {
-            data.current.encoder.borrow().with_query(f)
+            data.current.encoder.with_query(f)
         }
     }
 
@@ -954,7 +953,7 @@ impl<D: Deps> DepGraph<D> {
 
     pub fn print_incremental_info(&self) {
         if let Some(data) = &self.data {
-            data.current.encoder.borrow().print_incremental_info(
+            data.current.encoder.print_incremental_info(
                 data.current.total_read_count.load(Ordering::Relaxed),
                 data.current.total_duplicate_read_count.load(Ordering::Relaxed),
             )
@@ -962,7 +961,7 @@ impl<D: Deps> DepGraph<D> {
     }
 
     pub fn finish_encoding(&self) -> FileEncodeResult {
-        if let Some(data) = &self.data { data.current.encoder.steal().finish() } else { Ok(0) }
+        if let Some(data) = &self.data { data.current.encoder.finish() } else { Ok(0) }
     }
 
     pub(crate) fn next_virtual_depnode_index(&self) -> DepNodeIndex {
@@ -1045,7 +1044,7 @@ rustc_index::newtype_index! {
 /// manipulating both, we acquire `new_node_to_index` or `prev_index_to_index`
 /// first, and `data` second.
 pub(super) struct CurrentDepGraph<D: Deps> {
-    encoder: Steal<GraphEncoder<D>>,
+    encoder: GraphEncoder<D>,
     new_node_to_index: Sharded<FxHashMap<DepNode, DepNodeIndex>>,
     prev_index_to_index: Lock<IndexVec<SerializedDepNodeIndex, Option<DepNodeIndex>>>,
 
@@ -1111,13 +1110,13 @@ impl<D: Deps> CurrentDepGraph<D> {
         let new_node_count_estimate = 102 * prev_graph_node_count / 100 + 200;
 
         CurrentDepGraph {
-            encoder: Steal::new(GraphEncoder::new(
+            encoder: GraphEncoder::new(
                 encoder,
                 prev_graph_node_count,
                 record_graph,
                 record_stats,
                 profiler,
-            )),
+            ),
             new_node_to_index: Sharded::new(|| {
                 FxHashMap::with_capacity_and_hasher(
                     new_node_count_estimate / sharded::shards(),
@@ -1156,7 +1155,7 @@ impl<D: Deps> CurrentDepGraph<D> {
         let dep_node_index = match self.new_node_to_index.lock_shard_by_value(&key).entry(key) {
             Entry::Occupied(entry) => *entry.get(),
             Entry::Vacant(entry) => {
-                let dep_node_index = self.encoder.borrow().send(key, current_fingerprint, edges);
+                let dep_node_index = self.encoder.send(key, current_fingerprint, edges);
                 entry.insert(dep_node_index);
                 dep_node_index
             }
@@ -1182,7 +1181,7 @@ impl<D: Deps> CurrentDepGraph<D> {
                 let dep_node_index = match prev_index_to_index[prev_index] {
                     Some(dep_node_index) => dep_node_index,
                     None => {
-                        let dep_node_index = self.encoder.borrow().send(key, fingerprint, edges);
+                        let dep_node_index = self.encoder.send(key, fingerprint, edges);
                         prev_index_to_index[prev_index] = Some(dep_node_index);
                         dep_node_index
                     }
@@ -1243,7 +1242,7 @@ impl<D: Deps> CurrentDepGraph<D> {
                     .map(|i| prev_index_to_index[i].unwrap())
                     .collect();
                 let fingerprint = prev_graph.fingerprint_by_index(prev_index);
-                let dep_node_index = self.encoder.borrow().send(key, fingerprint, edges);
+                let dep_node_index = self.encoder.send(key, fingerprint, edges);
                 prev_index_to_index[prev_index] = Some(dep_node_index);
                 #[cfg(debug_assertions)]
                 self.record_edge(dep_node_index, key, fingerprint);
