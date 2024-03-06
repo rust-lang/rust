@@ -4,7 +4,6 @@
 use std::mem;
 
 use base_db::CrateId;
-use either::Either;
 use hir_expand::{
     name::{name, AsName, Name},
     ExpandError, InFile,
@@ -29,7 +28,6 @@ use crate::{
     db::DefDatabase,
     expander::Expander,
     hir::{
-        dummy_expr_id,
         format_args::{
             self, FormatAlignment, FormatArgs, FormatArgsPiece, FormatArgument, FormatArgumentKind,
             FormatArgumentsCollector, FormatCount, FormatDebugHex, FormatOptions,
@@ -66,16 +64,7 @@ pub(super) fn lower(
         def_map: expander.module.def_map(db),
         source_map: BodySourceMap::default(),
         ast_id_map: db.ast_id_map(expander.current_file_id()),
-        body: Body {
-            exprs: Default::default(),
-            pats: Default::default(),
-            bindings: Default::default(),
-            binding_owners: Default::default(),
-            labels: Default::default(),
-            params: Vec::new(),
-            body_expr: dummy_expr_id(),
-            block_scopes: Vec::new(),
-        },
+        body: Body::default(),
         expander,
         current_try_block_label: None,
         is_lowering_assignee_expr: false,
@@ -191,35 +180,35 @@ impl ExprCollector<'_> {
         is_async_fn: bool,
     ) -> (Body, BodySourceMap) {
         if let Some((param_list, mut attr_enabled)) = param_list {
+            let mut params = vec![];
             if let Some(self_param) =
                 param_list.self_param().filter(|_| attr_enabled.next().unwrap_or(false))
             {
                 let is_mutable =
                     self_param.mut_token().is_some() && self_param.amp_token().is_none();
-                let ptr = AstPtr::new(&Either::Right(self_param));
                 let binding_id: la_arena::Idx<Binding> =
                     self.alloc_binding(name![self], BindingAnnotation::new(is_mutable, false));
-                let param_pat = self.alloc_pat(Pat::Bind { id: binding_id, subpat: None }, ptr);
-                self.add_definition_to_binding(binding_id, param_pat);
-                self.body.params.push(param_pat);
+                self.body.self_param = Some(binding_id);
+                self.source_map.self_param = Some(self.expander.in_file(AstPtr::new(&self_param)));
             }
 
             for (param, _) in param_list.params().zip(attr_enabled).filter(|(_, enabled)| *enabled)
             {
                 let param_pat = self.collect_pat_top(param.pat());
-                self.body.params.push(param_pat);
+                params.push(param_pat);
             }
+            self.body.params = params.into_boxed_slice();
         };
         self.body.body_expr = self.with_label_rib(RibKind::Closure, |this| {
             if is_async_fn {
                 match body {
                     Some(e) => {
+                        let syntax_ptr = AstPtr::new(&e);
                         let expr = this.collect_expr(e);
-                        this.alloc_expr_desugared(Expr::Async {
-                            id: None,
-                            statements: Box::new([]),
-                            tail: Some(expr),
-                        })
+                        this.alloc_expr_desugared_with_ptr(
+                            Expr::Async { id: None, statements: Box::new([]), tail: Some(expr) },
+                            syntax_ptr,
+                        )
                     }
                     None => this.missing_expr(),
                 }
@@ -405,7 +394,7 @@ impl ExprCollector<'_> {
             }
             ast::Expr::ParenExpr(e) => {
                 let inner = self.collect_expr_opt(e.expr());
-                // make the paren expr point to the inner expression as well
+                // make the paren expr point to the inner expression as well for IDE resolution
                 let src = self.expander.in_file(syntax_ptr);
                 self.source_map.expr_map.insert(src, inner);
                 inner
@@ -707,6 +696,7 @@ impl ExprCollector<'_> {
             .alloc_label_desugared(Label { name: Name::generate_new_name(self.body.labels.len()) });
         let old_label = self.current_try_block_label.replace(label);
 
+        let ptr = AstPtr::new(&e).upcast();
         let (btail, expr_id) = self.with_labeled_rib(label, |this| {
             let mut btail = None;
             let block = this.collect_block_(e, |id, statements, tail| {
@@ -716,23 +706,21 @@ impl ExprCollector<'_> {
             (btail, block)
         });
 
-        let callee = self.alloc_expr_desugared(Expr::Path(try_from_output));
+        let callee = self.alloc_expr_desugared_with_ptr(Expr::Path(try_from_output), ptr);
         let next_tail = match btail {
-            Some(tail) => self.alloc_expr_desugared(Expr::Call {
-                callee,
-                args: Box::new([tail]),
-                is_assignee_expr: false,
-            }),
+            Some(tail) => self.alloc_expr_desugared_with_ptr(
+                Expr::Call { callee, args: Box::new([tail]), is_assignee_expr: false },
+                ptr,
+            ),
             None => {
-                let unit = self.alloc_expr_desugared(Expr::Tuple {
-                    exprs: Box::new([]),
-                    is_assignee_expr: false,
-                });
-                self.alloc_expr_desugared(Expr::Call {
-                    callee,
-                    args: Box::new([unit]),
-                    is_assignee_expr: false,
-                })
+                let unit = self.alloc_expr_desugared_with_ptr(
+                    Expr::Tuple { exprs: Box::new([]), is_assignee_expr: false },
+                    ptr,
+                );
+                self.alloc_expr_desugared_with_ptr(
+                    Expr::Call { callee, args: Box::new([unit]), is_assignee_expr: false },
+                    ptr,
+                )
             }
         };
         let Expr::Block { tail, .. } = &mut self.body.exprs[expr_id] else {
@@ -1067,16 +1055,12 @@ impl ExprCollector<'_> {
                 None => None,
             },
         );
-        match expansion {
-            Some(tail) => {
-                // Make the macro-call point to its expanded expression so we can query
-                // semantics on syntax pointers to the macro
-                let src = self.expander.in_file(syntax_ptr);
-                self.source_map.expr_map.insert(src, tail);
-                Some(tail)
-            }
-            None => None,
-        }
+        expansion.inspect(|&tail| {
+            // Make the macro-call point to its expanded expression so we can query
+            // semantics on syntax pointers to the macro
+            let src = self.expander.in_file(syntax_ptr);
+            self.source_map.expr_map.insert(src, tail);
+        })
     }
 
     fn collect_stmt(&mut self, statements: &mut Vec<Statement>, s: ast::Stmt) {
@@ -1261,7 +1245,7 @@ impl ExprCollector<'_> {
                     (Some(id), Pat::Bind { id, subpat })
                 };
 
-                let ptr = AstPtr::new(&Either::Left(pat));
+                let ptr = AstPtr::new(&pat);
                 let pat = self.alloc_pat(pattern, ptr);
                 if let Some(binding_id) = binding {
                     self.add_definition_to_binding(binding_id, pat);
@@ -1359,9 +1343,10 @@ impl ExprCollector<'_> {
                     suffix: suffix.into_iter().map(|p| self.collect_pat(p, binding_list)).collect(),
                 }
             }
-            #[rustfmt::skip] // https://github.com/rust-lang/rustfmt/issues/5676
             ast::Pat::LiteralPat(lit) => 'b: {
-                let Some((hir_lit, ast_lit)) = pat_literal_to_hir(lit) else { break 'b Pat::Missing };
+                let Some((hir_lit, ast_lit)) = pat_literal_to_hir(lit) else {
+                    break 'b Pat::Missing;
+                };
                 let expr = Expr::Literal(hir_lit);
                 let expr_ptr = AstPtr::new(&ast::Expr::Literal(ast_lit));
                 let expr_id = self.alloc_expr(expr, expr_ptr);
@@ -1397,7 +1382,7 @@ impl ExprCollector<'_> {
             ast::Pat::MacroPat(mac) => match mac.macro_call() {
                 Some(call) => {
                     let macro_ptr = AstPtr::new(&call);
-                    let src = self.expander.in_file(AstPtr::new(&Either::Left(pat)));
+                    let src = self.expander.in_file(AstPtr::new(&pat));
                     let pat =
                         self.collect_macro_call(call, macro_ptr, true, |this, expanded_pat| {
                             this.collect_pat_opt(expanded_pat, binding_list)
@@ -1426,7 +1411,7 @@ impl ExprCollector<'_> {
                 Pat::Range { start, end }
             }
         };
-        let ptr = AstPtr::new(&Either::Left(pat));
+        let ptr = AstPtr::new(&pat);
         self.alloc_pat(pattern, ptr)
     }
 
@@ -1987,9 +1972,18 @@ impl ExprCollector<'_> {
         self.source_map.expr_map.insert(src, id);
         id
     }
-    // FIXME: desugared exprs don't have ptr, that's wrong and should be fixed somehow.
+    // FIXME: desugared exprs don't have ptr, that's wrong and should be fixed.
+    // Migrate to alloc_expr_desugared_with_ptr and then rename back
     fn alloc_expr_desugared(&mut self, expr: Expr) -> ExprId {
         self.body.exprs.alloc(expr)
+    }
+    fn alloc_expr_desugared_with_ptr(&mut self, expr: Expr, ptr: ExprPtr) -> ExprId {
+        let src = self.expander.in_file(ptr);
+        let id = self.body.exprs.alloc(expr);
+        self.source_map.expr_map_back.insert(id, src);
+        // We intentionally don't fill this as it could overwrite a non-desugared entry
+        // self.source_map.expr_map.insert(src, id);
+        id
     }
     fn missing_expr(&mut self) -> ExprId {
         self.alloc_expr_desugared(Expr::Missing)

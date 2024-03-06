@@ -376,6 +376,10 @@ impl MirEvalError {
                         Ok(s) => s.map(|it| it.syntax_node_ptr()),
                         Err(_) => continue,
                     },
+                    MirSpan::SelfParam => match source_map.self_param_syntax() {
+                        Some(s) => s.map(|it| it.syntax_node_ptr()),
+                        None => continue,
+                    },
                     MirSpan::Unknown => continue,
                 };
                 let file_id = span.file_id.original_file(db.upcast());
