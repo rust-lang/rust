@@ -352,7 +352,7 @@ impl Session {
     }
 
     pub fn instrument_coverage(&self) -> bool {
-        self.opts.cg.instrument_coverage() != InstrumentCoverage::Off
+        self.opts.cg.instrument_coverage() != InstrumentCoverage::No
     }
 
     pub fn instrument_coverage_branch(&self) -> bool {
