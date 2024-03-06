@@ -8,6 +8,7 @@ use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::Applicability;
 use rustc_hir as hir;
 use rustc_hir::def::DefKind;
+use rustc_hir::HirId;
 use rustc_hir_analysis::autoderef::{self, Autoderef};
 use rustc_infer::infer::canonical::OriginalQueryValues;
 use rustc_infer::infer::canonical::{Canonical, QueryResponse};
@@ -86,7 +87,7 @@ pub(crate) struct ProbeContext<'a, 'tcx> {
         Vec<(ty::Predicate<'tcx>, Option<ty::Predicate<'tcx>>, Option<ObligationCause<'tcx>>)>,
     >,
 
-    scope_expr_id: hir::HirId,
+    scope_expr_id: HirId,
 }
 
 impl<'a, 'tcx> Deref for ProbeContext<'a, 'tcx> {
@@ -263,7 +264,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         mode: Mode,
         return_type: Ty<'tcx>,
         self_ty: Ty<'tcx>,
-        scope_expr_id: hir::HirId,
+        scope_expr_id: HirId,
         candidate_filter: impl Fn(&ty::AssocItem) -> bool,
     ) -> Vec<ty::AssocItem> {
         let method_names = self
@@ -307,7 +308,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         return_type: Option<Ty<'tcx>>,
         is_suggestion: IsSuggestion,
         self_ty: Ty<'tcx>,
-        scope_expr_id: hir::HirId,
+        scope_expr_id: HirId,
         scope: ProbeScope,
     ) -> PickResult<'tcx> {
         self.probe_op(
@@ -331,7 +332,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         return_type: Option<Ty<'tcx>>,
         is_suggestion: IsSuggestion,
         self_ty: Ty<'tcx>,
-        scope_expr_id: hir::HirId,
+        scope_expr_id: HirId,
         scope: ProbeScope,
     ) -> Vec<Candidate<'tcx>> {
         self.probe_op(
@@ -362,7 +363,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         return_type: Option<Ty<'tcx>>,
         is_suggestion: IsSuggestion,
         self_ty: Ty<'tcx>,
-        scope_expr_id: hir::HirId,
+        scope_expr_id: HirId,
         scope: ProbeScope,
         op: OP,
     ) -> Result<R, MethodError<'tcx>>
@@ -589,7 +590,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
         return_type: Option<Ty<'tcx>>,
         orig_steps_var_values: &'a OriginalQueryValues<'tcx>,
         steps: &'tcx [CandidateStep<'tcx>],
-        scope_expr_id: hir::HirId,
+        scope_expr_id: HirId,
     ) -> ProbeContext<'a, 'tcx> {
         ProbeContext {
             fcx,
@@ -1381,7 +1382,7 @@ impl<'tcx> Pick<'tcx> {
         &self,
         tcx: TyCtxt<'tcx>,
         span: Span,
-        scope_expr_id: hir::HirId,
+        scope_expr_id: HirId,
     ) {
         if self.unstable_candidates.is_empty() {
             return;

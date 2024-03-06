@@ -1545,7 +1545,7 @@ pub struct SourceScopeData<'tcx> {
 #[derive(Clone, Debug, TyEncodable, TyDecodable, HashStable)]
 pub struct SourceScopeLocalData {
     /// An `HirId` with lint levels equivalent to this scope's lint levels.
-    pub lint_root: hir::HirId,
+    pub lint_root: HirId,
 }
 
 /// A collection of projections into user types.
