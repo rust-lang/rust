@@ -81,7 +81,7 @@ fn update_rustfmt_version(build: &Builder<'_>) {
 }
 
 /// Returns the Rust files modified between the `merge-base` of HEAD and
-/// rust-lang/master and what is now on the disk.
+/// rust-lang/master and what is now on the disk. Does not include removed files.
 ///
 /// Returns `None` if all files should be formatted.
 fn get_modified_rs_files(build: &Builder<'_>) -> Result<Option<Vec<String>>, String> {
