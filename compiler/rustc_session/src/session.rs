@@ -899,19 +899,6 @@ impl Session {
     }
 
     pub fn should_prefer_remapped_for_codegen(&self) -> bool {
-        // bail out, if any of the requested crate types aren't:
-        // "compiled executables or libraries"
-        for crate_type in &self.opts.crate_types {
-            match crate_type {
-                CrateType::Executable
-                | CrateType::Dylib
-                | CrateType::Rlib
-                | CrateType::Staticlib
-                | CrateType::Cdylib => continue,
-                CrateType::ProcMacro => return false,
-            }
-        }
-
         let has_split_debuginfo = match self.split_debuginfo() {
             SplitDebuginfo::Off => false,
             SplitDebuginfo::Packed => true,
