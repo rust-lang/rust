@@ -26,7 +26,6 @@ use rustc_infer::traits::{util, FulfillmentErrorCode, TraitEngine, TraitEngineEx
 use rustc_middle::traits::query::NoSolution;
 use rustc_middle::traits::solve::{CandidateSource, Certainty, Goal};
 use rustc_middle::traits::specialization_graph::OverlapMode;
-use rustc_middle::traits::DefiningAnchor;
 use rustc_middle::ty::fast_reject::{DeepRejectCtxt, TreatParams};
 use rustc_middle::ty::visit::{TypeVisitable, TypeVisitableExt};
 use rustc_middle::ty::{self, Ty, TyCtxt, TypeSuperVisitable, TypeVisitor};
@@ -207,7 +206,6 @@ fn overlap<'tcx>(
 
     let infcx = tcx
         .infer_ctxt()
-        .with_opaque_type_inference(DefiningAnchor::Bubble)
         .skip_leak_check(skip_leak_check.is_yes())
         .intercrate(true)
         .with_next_trait_solver(tcx.next_trait_solver_in_coherence())

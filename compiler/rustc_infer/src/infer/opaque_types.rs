@@ -100,6 +100,15 @@ impl<'tcx> InferCtxt<'tcx> {
         let process = |a: Ty<'tcx>, b: Ty<'tcx>| match *a.kind() {
             ty::Alias(ty::Opaque, ty::AliasTy { def_id, args, .. }) if def_id.is_local() => {
                 let def_id = def_id.expect_local();
+                if self.intercrate {
+                    // See comment on `insert_hidden_type` for why this is sufficient in coherence
+                    return Some(self.register_hidden_type(
+                        OpaqueTypeKey { def_id, args },
+                        cause.clone(),
+                        param_env,
+                        b,
+                    ));
+                }
                 match self.defining_use_anchor {
                     DefiningAnchor::Bind(_) => {
                         // Check that this is `impl Trait` type is
@@ -141,8 +150,10 @@ impl<'tcx> InferCtxt<'tcx> {
                         }
                     }
                     DefiningAnchor::Bubble => {}
-                    DefiningAnchor::Error => return None,
-                };
+                    DefiningAnchor::Error => {
+                        return None;
+                    }
+                }
                 if let ty::Alias(ty::Opaque, ty::AliasTy { def_id: b_def_id, .. }) = *b.kind() {
                     // We could accept this, but there are various ways to handle this situation, and we don't
                     // want to make a decision on it right now. Likely this case is so super rare anyway, that

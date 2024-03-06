@@ -452,7 +452,7 @@ fn adjust_for_rust_scalar<'tcx>(
             let no_alias = match kind {
                 PointerKind::SharedRef { frozen } => frozen,
                 PointerKind::MutableRef { unpin } => unpin && noalias_mut_ref,
-                PointerKind::Box { unpin } => unpin && noalias_for_box,
+                PointerKind::Box { unpin, global } => unpin && global && noalias_for_box,
             };
             // We can never add `noalias` in return position; that LLVM attribute has some very surprising semantics
             // (see <https://github.com/rust-lang/unsafe-code-guidelines/issues/385#issuecomment-1368055745>).

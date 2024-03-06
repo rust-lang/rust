@@ -709,7 +709,9 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
     // Internal attributes, Const related:
     // ==========================================================================
 
-    rustc_attr!(rustc_promotable, Normal, template!(Word), WarnFollowing, IMPL_DETAIL),
+    rustc_attr!(
+        rustc_promotable, Normal, template!(Word), WarnFollowing,
+        @only_local: true, IMPL_DETAIL),
     rustc_attr!(
         rustc_legacy_const_generics, Normal, template!(List: "N"), ErrorFollowing,
         INTERNAL_UNSTABLE
@@ -784,7 +786,7 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
          the given type by annotating all impl items with #[rustc_allow_incoherent_impl]."
     ),
     rustc_attr!(
-        rustc_box, AttributeType::Normal, template!(Word), ErrorFollowing,
+        rustc_box, AttributeType::Normal, template!(Word), ErrorFollowing, @only_local: true,
         "#[rustc_box] allows creating boxes \
         and it is only intended to be used in `alloc`."
     ),
@@ -806,11 +808,11 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
     gated!(
         // Used in resolve:
         prelude_import, Normal, template!(Word), WarnFollowing,
-        "`#[prelude_import]` is for use by rustc only",
+        @only_local: true, "`#[prelude_import]` is for use by rustc only",
     ),
     gated!(
-        rustc_paren_sugar, Normal, template!(Word), WarnFollowing, unboxed_closures,
-        "unboxed_closures are still evolving",
+        rustc_paren_sugar, Normal, template!(Word), WarnFollowing, @only_local: true,
+        unboxed_closures, "unboxed_closures are still evolving",
     ),
     rustc_attr!(
         rustc_inherit_overflow_checks, Normal, template!(Word), WarnFollowing, @only_local: true,
@@ -826,27 +828,31 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
     ),
     rustc_attr!(
         rustc_test_marker, Normal, template!(NameValueStr: "name"), WarnFollowing,
-        "the `#[rustc_test_marker]` attribute is used internally to track tests",
+        @only_local: true, "the `#[rustc_test_marker]` attribute is used internally to track tests",
     ),
     rustc_attr!(
-        rustc_unsafe_specialization_marker, Normal, template!(Word), WarnFollowing,
+        rustc_unsafe_specialization_marker, Normal, template!(Word),
+        WarnFollowing, @only_local: true,
         "the `#[rustc_unsafe_specialization_marker]` attribute is used to check specializations"
     ),
     rustc_attr!(
-        rustc_specialization_trait, Normal, template!(Word), WarnFollowing,
+        rustc_specialization_trait, Normal, template!(Word),
+        WarnFollowing, @only_local: true,
         "the `#[rustc_specialization_trait]` attribute is used to check specializations"
     ),
     rustc_attr!(
-        rustc_main, Normal, template!(Word), WarnFollowing,
+        rustc_main, Normal, template!(Word), WarnFollowing, @only_local: true,
         "the `#[rustc_main]` attribute is used internally to specify test entry point function",
     ),
     rustc_attr!(
-        rustc_skip_array_during_method_dispatch, Normal, template!(Word), WarnFollowing,
+        rustc_skip_array_during_method_dispatch, Normal, template!(Word),
+        WarnFollowing, @only_local: true,
         "the `#[rustc_skip_array_during_method_dispatch]` attribute is used to exclude a trait \
         from method dispatch when the receiver is an array, for compatibility in editions < 2021."
     ),
     rustc_attr!(
-        rustc_must_implement_one_of, Normal, template!(List: "function1, function2, ..."), ErrorFollowing,
+        rustc_must_implement_one_of, Normal, template!(List: "function1, function2, ..."),
+        ErrorFollowing, @only_local: true,
         "the `#[rustc_must_implement_one_of]` attribute is used to change minimal complete \
         definition of a trait, it's currently in experimental form and should be changed before \
         being exposed outside of the std"
@@ -857,6 +863,7 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
     ),
     rustc_attr!(
         rustc_safe_intrinsic, Normal, template!(Word), WarnFollowing,
+        @only_local: true,
         "the `#[rustc_safe_intrinsic]` attribute is used internally to mark intrinsics as safe"
     ),
     rustc_attr!(
@@ -877,8 +884,14 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
     // ==========================================================================
 
     rustc_attr!(TEST, rustc_effective_visibility, Normal, template!(Word), WarnFollowing),
-    rustc_attr!(TEST, rustc_outlives, Normal, template!(Word), WarnFollowing),
-    rustc_attr!(TEST, rustc_capture_analysis, Normal, template!(Word), WarnFollowing),
+    rustc_attr!(
+        TEST, rustc_outlives, Normal, template!(Word),
+        WarnFollowing, @only_local: true
+    ),
+    rustc_attr!(
+        TEST, rustc_capture_analysis, Normal, template!(Word),
+        WarnFollowing, @only_local: true
+    ),
     rustc_attr!(TEST, rustc_insignificant_dtor, Normal, template!(Word), WarnFollowing),
     rustc_attr!(TEST, rustc_strict_coherence, Normal, template!(Word), WarnFollowing),
     rustc_attr!(TEST, rustc_variance, Normal, template!(Word), WarnFollowing),

@@ -160,6 +160,7 @@ mod prelude {
         pub _marker: PhantomData<T>,
     }
 
+    #[lang = "global_alloc_ty"]
     pub struct Global;
 
     #[lang = "owned_box"]

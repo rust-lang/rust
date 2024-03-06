@@ -1999,6 +1999,27 @@ impl<'tcx> Ty<'tcx> {
         }
     }
 
+    /// Tests whether this is a Box using the global allocator.
+    #[inline]
+    pub fn is_box_global(self, tcx: TyCtxt<'tcx>) -> bool {
+        match self.kind() {
+            Adt(def, args) if def.is_box() => {
+                let Some(alloc) = args.get(1) else {
+                    // Single-argument Box is always global. (for "minicore" tests)
+                    return true;
+                };
+                if let Some(alloc_adt) = alloc.expect_ty().ty_adt_def() {
+                    let global_alloc = tcx.require_lang_item(LangItem::GlobalAlloc, None);
+                    alloc_adt.did() == global_alloc
+                } else {
+                    // Allocator is not an ADT...
+                    false
+                }
+            }
+            _ => false,
+        }
+    }
+
     /// Panics if called on any type other than `Box<T>`.
     pub fn boxed_ty(self) -> Ty<'tcx> {
         match self.kind() {

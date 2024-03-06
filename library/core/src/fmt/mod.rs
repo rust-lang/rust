@@ -633,6 +633,23 @@ pub use macros::Debug;
 /// [tostring]: ../../std/string/trait.ToString.html
 /// [tostring_function]: ../../std/string/trait.ToString.html#tymethod.to_string
 ///
+/// # Internationalization
+///
+/// Because a type can only have one `Display` implementation, it is often preferable
+/// to only implement `Display` when there is a single most "obvious" way that
+/// values can be formatted as text. This could mean formatting according to the
+/// "invariant" culture and "undefined" locale, or it could mean that the type
+/// display is designed for a specific culture/locale, such as developer logs.
+///
+/// If not all values have a justifiably canonical textual format or if you want
+/// to support alternative formats not covered by the standard set of possible
+/// [formatting traits], the most flexible approach is display adapters: methods
+/// like [`str::escape_default`] or [`Path::display`] which create a wrapper
+/// implementing `Display` to output the specific display format.
+///
+/// [formatting traits]: ../../std/fmt/index.html#formatting-traits
+/// [`Path::display`]: ../../std/path/struct.Path.html#method.display
+///
 /// # Examples
 ///
 /// Implementing `Display` on a type:
