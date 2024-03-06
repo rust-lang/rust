@@ -1,5 +1,4 @@
 //@no-rustfix: overlapping suggestions
-//@compile-flags: -Zdeduplicate-diagnostics=yes
 
 #![feature(lint_reasons)]
 #![allow(
