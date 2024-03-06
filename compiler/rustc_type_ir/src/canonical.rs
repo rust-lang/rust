@@ -16,6 +16,7 @@ use crate::{Interner, PlaceholderLike, UniverseIndex};
 pub struct Canonical<I: Interner, V> {
     pub value: V,
     pub max_universe: UniverseIndex,
+    pub defining_anchor: I::DefiningAnchor,
     pub variables: I::CanonicalVars,
 }
 
@@ -44,8 +45,8 @@ impl<I: Interner, V> Canonical<I, V> {
     /// let b: Canonical<I, (T, Ty<I>)> = a.unchecked_map(|v| (v, ty));
     /// ```
     pub fn unchecked_map<W>(self, map_op: impl FnOnce(V) -> W) -> Canonical<I, W> {
-        let Canonical { max_universe, variables, value } = self;
-        Canonical { max_universe, variables, value: map_op(value) }
+        let Canonical { defining_anchor, max_universe, variables, value } = self;
+        Canonical { defining_anchor, max_universe, variables, value: map_op(value) }
     }
 
     /// Allows you to map the `value` of a canonical while keeping the same set of
@@ -54,8 +55,8 @@ impl<I: Interner, V> Canonical<I, V> {
     /// **WARNING:** This function is very easy to mis-use, hence the name! See
     /// the comment of [Canonical::unchecked_map] for more details.
     pub fn unchecked_rebind<W>(self, value: W) -> Canonical<I, W> {
-        let Canonical { max_universe, variables, value: _ } = self;
-        Canonical { max_universe, variables, value }
+        let Canonical { defining_anchor, max_universe, variables, value: _ } = self;
+        Canonical { defining_anchor, max_universe, variables, value }
     }
 }
 
@@ -63,30 +64,32 @@ impl<I: Interner, V: Eq> Eq for Canonical<I, V> {}
 
 impl<I: Interner, V: PartialEq> PartialEq for Canonical<I, V> {
     fn eq(&self, other: &Self) -> bool {
-        let Self { value, max_universe, variables } = self;
+        let Self { value, max_universe, variables, defining_anchor } = self;
         *value == other.value
             && *max_universe == other.max_universe
             && *variables == other.variables
+            && *defining_anchor == other.defining_anchor
     }
 }
 
 impl<I: Interner, V: fmt::Display> fmt::Display for Canonical<I, V> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let Self { value, max_universe, variables } = self;
+        let Self { value, max_universe, variables, defining_anchor } = self;
         write!(
             f,
-            "Canonical {{ value: {value}, max_universe: {max_universe:?}, variables: {variables:?} }}",
+            "Canonical {{ value: {value}, max_universe: {max_universe:?}, variables: {variables:?}, defining_anchor: {defining_anchor:?} }}",
         )
     }
 }
 
 impl<I: Interner, V: fmt::Debug> fmt::Debug for Canonical<I, V> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let Self { value, max_universe, variables } = self;
+        let Self { value, max_universe, variables, defining_anchor } = self;
         f.debug_struct("Canonical")
             .field("value", &value)
             .field("max_universe", &max_universe)
             .field("variables", &variables)
+            .field("defining_anchor", &defining_anchor)
             .finish()
     }
 }
@@ -102,6 +105,7 @@ where
             value: self.value.try_fold_with(folder)?,
             max_universe: self.max_universe.try_fold_with(folder)?,
             variables: self.variables.try_fold_with(folder)?,
+            defining_anchor: self.defining_anchor,
         })
     }
 }
@@ -111,9 +115,10 @@ where
     I::CanonicalVars: TypeVisitable<I>,
 {
     fn visit_with<F: TypeVisitor<I>>(&self, folder: &mut F) -> F::Result {
-        let Self { value, max_universe, variables } = self;
+        let Self { value, max_universe, variables, defining_anchor } = self;
         try_visit!(value.visit_with(folder));
         try_visit!(max_universe.visit_with(folder));
+        try_visit!(defining_anchor.visit_with(folder));
         variables.visit_with(folder)
     }
 }

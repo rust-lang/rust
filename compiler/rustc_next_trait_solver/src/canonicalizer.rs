@@ -69,7 +69,8 @@ impl<'a, Infcx: InferCtxtLike<Interner = I>, I: Interner> Canonicalizer<'a, Infc
 
         let (max_universe, variables) = canonicalizer.finalize();
 
-        Canonical { max_universe, variables, value }
+        let defining_anchor = infcx.defining_anchor();
+        Canonical { defining_anchor, max_universe, variables, value }
     }
 
     fn finalize(self) -> (ty::UniverseIndex, I::CanonicalVars) {
