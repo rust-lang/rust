@@ -2289,21 +2289,15 @@ pub enum ImplItemKind<'hir> {
     Type(&'hir Ty<'hir>),
 }
 
-/// Bind a type to an associated type (i.e., `A = Foo`).
+/// An associated item binding.
 ///
-/// Bindings like `A: Debug` are represented as a special type `A =
-/// $::Debug` that is understood by the HIR ty lowering code.
+/// ### Examples
 ///
-/// FIXME(alexreg): why have a separate type for the binding case,
-/// wouldn't it be better to make the `ty` field an enum like the
-/// following?
-///
-/// ```ignore (pseudo-rust)
-/// enum TypeBindingKind {
-///    Equals(...),
-///    Binding(...),
-/// }
-/// ```
+/// * `Trait<A = Ty, B = Ty>`
+/// * `Trait<G<Ty> = Ty>`
+/// * `Trait<A: Bound>`
+/// * `Trait<C = { Ct }>` (under feature `associated_const_equality`)
+/// * `Trait<f(): Bound>` (under feature `return_type_notation`)
 #[derive(Debug, Clone, Copy, HashStable_Generic)]
 pub struct TypeBinding<'hir> {
     pub hir_id: HirId,
@@ -2336,7 +2330,7 @@ impl<'hir> From<AnonConst> for Term<'hir> {
 pub enum TypeBindingKind<'hir> {
     /// E.g., `Foo<Bar: Send>`.
     Constraint { bounds: &'hir [GenericBound<'hir>] },
-    /// E.g., `Foo<Bar = ()>`, `Foo<Bar = ()>`
+    /// E.g., `Foo<Bar = ()>`.
     Equality { term: Term<'hir> },
 }
 
