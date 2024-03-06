@@ -386,7 +386,7 @@ const fn is_ascii(s: &[u8]) -> bool {
     // have alignment information it should have given a `usize::MAX` for
     // `align_offset` earlier, sending things through the scalar path instead of
     // this one, so this check should pass if it's reachable.
-    debug_assert!(word_ptr.is_aligned_to(mem::align_of::<usize>()));
+    debug_assert!(word_ptr.is_aligned());
 
     // Read subsequent words until the last aligned word, excluding the last
     // aligned word by itself to be done in tail check later, to ensure that
