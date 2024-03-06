@@ -226,7 +226,6 @@ impl<'a, 'tcx> EvalCtxt<'a, 'tcx> {
             .infer_ctxt()
             .intercrate(intercrate)
             .with_next_trait_solver(true)
-            .with_opaque_type_inference(canonical_input.value.anchor)
             .build_with_canonical(DUMMY_SP, &canonical_input);
 
         let mut ecx = EvalCtxt {

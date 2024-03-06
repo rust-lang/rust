@@ -16,6 +16,7 @@ use crate::{Interner, PlaceholderLike, UniverseIndex};
 pub struct Canonical<I: Interner, V> {
     pub value: V,
     pub max_universe: UniverseIndex,
+    pub defining_anchor: I::DefiningAnchor,
     pub variables: I::CanonicalVars,
 }
 
@@ -44,8 +45,8 @@ impl<I: Interner, V> Canonical<I, V> {
     /// let b: Canonical<I, (T, Ty<I>)> = a.unchecked_map(|v| (v, ty));
     /// ```
     pub fn unchecked_map<W>(self, map_op: impl FnOnce(V) -> W) -> Canonical<I, W> {
-        let Canonical { max_universe, variables, value } = self;
-        Canonical { max_universe, variables, value: map_op(value) }
+        let Canonical { defining_anchor, max_universe, variables, value } = self;
+        Canonical { defining_anchor, max_universe, variables, value: map_op(value) }
     }
 
     /// Allows you to map the `value` of a canonical while keeping the same set of
@@ -54,8 +55,8 @@ impl<I: Interner, V> Canonical<I, V> {
     /// **WARNING:** This function is very easy to mis-use, hence the name! See
     /// the comment of [Canonical::unchecked_map] for more details.
     pub fn unchecked_rebind<W>(self, value: W) -> Canonical<I, W> {
-        let Canonical { max_universe, variables, value: _ } = self;
-        Canonical { max_universe, variables, value }
+        let Canonical { defining_anchor, max_universe, variables, value: _ } = self;
+        Canonical { defining_anchor, max_universe, variables, value }
     }
 }
 
@@ -100,6 +101,7 @@ where
             value: self.value.try_fold_with(folder)?,
             max_universe: self.max_universe.try_fold_with(folder)?,
             variables: self.variables.try_fold_with(folder)?,
+            defining_anchor: self.defining_anchor,
         })
     }
 }

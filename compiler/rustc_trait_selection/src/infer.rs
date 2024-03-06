@@ -1,5 +1,5 @@
 use crate::traits::query::evaluate_obligation::InferCtxtExt as _;
-use crate::traits::{self, DefiningAnchor, ObligationCtxt, SelectionContext};
+use crate::traits::{self, ObligationCtxt, SelectionContext};
 
 use crate::traits::TraitEngineExt as _;
 use rustc_hir::def_id::DefId;
@@ -133,9 +133,8 @@ impl<'tcx> InferCtxtBuilder<'tcx> {
         R: Debug + TypeFoldable<TyCtxt<'tcx>>,
         Canonical<'tcx, QueryResponse<'tcx, R>>: ArenaAllocatable<'tcx>,
     {
-        let (infcx, key, canonical_inference_vars) = self
-            .with_opaque_type_inference(DefiningAnchor::Bubble)
-            .build_with_canonical(DUMMY_SP, canonical_key);
+        let (infcx, key, canonical_inference_vars) =
+            self.build_with_canonical(DUMMY_SP, canonical_key);
         let ocx = ObligationCtxt::new(&infcx);
         let value = operation(&ocx, key)?;
         ocx.make_canonicalized_query_response(canonical_inference_vars, value)

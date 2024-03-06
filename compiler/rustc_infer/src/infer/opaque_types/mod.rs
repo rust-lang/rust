@@ -149,7 +149,6 @@ impl<'tcx> InferCtxt<'tcx> {
                             return None;
                         }
                     }
-                    DefiningAnchor::Bubble => {}
                 }
                 if let ty::Alias(ty::Opaque, ty::AliasTy { def_id: b_def_id, .. }) = *b.kind() {
                     // We could accept this, but there are various ways to handle this situation, and we don't
@@ -376,7 +375,6 @@ impl<'tcx> InferCtxt<'tcx> {
     #[instrument(skip(self), level = "trace", ret)]
     pub fn opaque_type_origin(&self, def_id: LocalDefId) -> Option<OpaqueTyOrigin> {
         let defined_opaque_types = match self.defining_use_anchor {
-            DefiningAnchor::Bubble => return None,
             DefiningAnchor::Bind(bind) => bind,
         };
 

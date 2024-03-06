@@ -4,7 +4,7 @@ use rustc_span::def_id::DefId;
 
 use crate::infer::canonical::{CanonicalVarValues, QueryRegionConstraints};
 use crate::traits::query::NoSolution;
-use crate::traits::{Canonical, DefiningAnchor};
+use crate::traits::Canonical;
 use crate::ty::{
     self, FallibleTypeFolder, ToPredicate, Ty, TyCtxt, TypeFoldable, TypeFolder, TypeVisitable,
     TypeVisitor,
@@ -114,7 +114,6 @@ impl MaybeCause {
 #[derive(Debug, PartialEq, Eq, Clone, Copy, Hash, HashStable, TypeFoldable, TypeVisitable)]
 pub struct QueryInput<'tcx, T> {
     pub goal: Goal<'tcx, T>,
-    pub anchor: DefiningAnchor<'tcx>,
     pub predefined_opaques_in_body: PredefinedOpaques<'tcx>,
 }
 

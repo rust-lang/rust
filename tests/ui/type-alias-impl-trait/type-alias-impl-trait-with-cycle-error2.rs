@@ -5,9 +5,9 @@ pub trait Bar<T> {
 }
 
 type Foo = impl Bar<Foo, Item = Foo>;
-//~^ ERROR: unconstrained opaque type
 
 fn crash(x: Foo) -> Foo {
+    //~^ ERROR: overflow
     x
 }
 

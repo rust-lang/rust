@@ -234,13 +234,7 @@ impl<'tcx> InferCtxtInner<'tcx> {
 pub struct InferCtxt<'tcx> {
     pub tcx: TyCtxt<'tcx>,
 
-    /// The `DefId` of the item in whose context we are performing inference or typeck.
-    /// It is used to check whether an opaque type use is a defining use.
-    ///
-    /// If it is `DefiningAnchor::Bubble`, we can't resolve opaque types here and need to bubble up
-    /// the obligation. This frequently happens for
-    /// short lived InferCtxt within queries. The opaque type obligations are forwarded
-    /// to the outside until the end up in an `InferCtxt` for typeck or borrowck.
+    /// The `DefIds` of the opaque types that may have their hidden types constrained.
     ///
     /// Its default value is `DefiningAnchor::Bind(&[])`, which means no opaque types may be defined.
     /// This way it is easier to catch errors that
@@ -391,6 +385,10 @@ impl<'tcx> ty::InferCtxtLike for InferCtxt<'tcx> {
 
     fn probe_ct_var(&self, vid: ConstVid) -> Option<ty::Const<'tcx>> {
         self.probe_const_var(vid).ok()
+    }
+
+    fn defining_anchor(&self) -> DefiningAnchor<'tcx> {
+        self.defining_use_anchor
     }
 }
 
@@ -670,14 +668,14 @@ impl<'tcx> InferCtxtBuilder<'tcx> {
     /// the bound values in `C` to their instantiated values in `V`
     /// (in other words, `S(C) = V`).
     pub fn build_with_canonical<T>(
-        &mut self,
+        self,
         span: Span,
         canonical: &Canonical<'tcx, T>,
     ) -> (InferCtxt<'tcx>, T, CanonicalVarValues<'tcx>)
     where
         T: TypeFoldable<TyCtxt<'tcx>>,
     {
-        let infcx = self.build();
+        let infcx = self.with_opaque_type_inference(canonical.defining_anchor).build();
         let (value, args) = infcx.instantiate_canonical_with_fresh_inference_vars(span, canonical);
         (infcx, value, args)
     }
