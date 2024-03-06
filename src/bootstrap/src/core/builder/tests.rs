@@ -116,6 +116,19 @@ fn test_intersection() {
 }
 
 #[test]
+fn validate_path_remap() {
+    let build = Build::new(configure("test", &["A"], &["A"]));
+
+    PATH_REMAP
+        .iter()
+        .flat_map(|(_, paths)| paths.iter())
+        .map(|path| build.src.join(path))
+        .for_each(|path| {
+            assert!(path.exists(), "{} should exist.", path.display());
+        });
+}
+
+#[test]
 fn test_exclude() {
     let mut config = configure("test", &["A"], &["A"]);
     config.skip = vec!["src/tools/tidy".into()];
