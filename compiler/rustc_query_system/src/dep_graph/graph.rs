@@ -134,7 +134,6 @@ impl<D: Deps> DepGraph<D> {
 
         // Instantiate a dependy-less node only once for anonymous queries.
         let _green_node_index = current.intern_new_node(
-            profiler,
             DepNode { kind: D::DEP_KIND_NULL, hash: current.anon_id_seed.into() },
             EdgesVec::new(),
             Fingerprint::ZERO,
@@ -443,12 +442,7 @@ impl<D: Deps> DepGraphData<D> {
                     hash: self.current.anon_id_seed.combine(hasher.finish()).into(),
                 };
 
-                self.current.intern_new_node(
-                    cx.profiler(),
-                    target_dep_node,
-                    task_deps,
-                    Fingerprint::ZERO,
-                )
+                self.current.intern_new_node(target_dep_node, task_deps, Fingerprint::ZERO)
             }
         };
 
@@ -871,11 +865,8 @@ impl<D: Deps> DepGraphData<D> {
 
         // We allocating an entry for the node in the current dependency graph and
         // adding all the appropriate edges imported from the previous graph
-        let dep_node_index = self.current.promote_node_and_deps_to_current(
-            qcx.dep_context().profiler(),
-            &self.previous,
-            prev_dep_node_index,
-        );
+        let dep_node_index =
+            self.current.promote_node_and_deps_to_current(&self.previous, prev_dep_node_index);
 
         // ... emitting any stored diagnostic ...
 
@@ -981,12 +972,8 @@ impl<D: Deps> DepGraph<D> {
         }
     }
 
-    pub fn finish_encoding(&self, profiler: &SelfProfilerRef) -> FileEncodeResult {
-        if let Some(data) = &self.data {
-            data.current.encoder.steal().finish(profiler)
-        } else {
-            Ok(0)
-        }
+    pub fn finish_encoding(&self) -> FileEncodeResult {
+        if let Some(data) = &self.data { data.current.encoder.steal().finish() } else { Ok(0) }
     }
 
     pub(crate) fn next_virtual_depnode_index(&self) -> DepNodeIndex {
@@ -1150,6 +1137,7 @@ impl<D: Deps> CurrentDepGraph<D> {
                 prev_graph_node_count,
                 record_graph,
                 record_stats,
+                profiler,
             )),
             new_node_to_index: Sharded::new(|| {
                 FxHashMap::with_capacity_and_hasher(
@@ -1183,7 +1171,6 @@ impl<D: Deps> CurrentDepGraph<D> {
     #[inline(always)]
     fn intern_new_node(
         &self,
-        profiler: &SelfProfilerRef,
         key: DepNode,
         edges: EdgesVec,
         current_fingerprint: Fingerprint,
@@ -1191,8 +1178,7 @@ impl<D: Deps> CurrentDepGraph<D> {
         let dep_node_index = match self.new_node_to_index.lock_shard_by_value(&key).entry(key) {
             Entry::Occupied(entry) => *entry.get(),
             Entry::Vacant(entry) => {
-                let dep_node_index =
-                    self.encoder.borrow().send(profiler, key, current_fingerprint, edges);
+                let dep_node_index = self.encoder.borrow().send(key, current_fingerprint, edges);
                 entry.insert(dep_node_index);
                 dep_node_index
             }
@@ -1223,8 +1209,7 @@ impl<D: Deps> CurrentDepGraph<D> {
                 let dep_node_index = match prev_index_to_index[prev_index] {
                     Some(dep_node_index) => dep_node_index,
                     None => {
-                        let dep_node_index =
-                            self.encoder.borrow().send(profiler, key, fingerprint, edges);
+                        let dep_node_index = self.encoder.borrow().send(key, fingerprint, edges);
                         prev_index_to_index[prev_index] = Some(dep_node_index);
                         dep_node_index
                     }
@@ -1261,7 +1246,7 @@ impl<D: Deps> CurrentDepGraph<D> {
             let fingerprint = fingerprint.unwrap_or(Fingerprint::ZERO);
 
             // This is a new node: it didn't exist in the previous compilation session.
-            let dep_node_index = self.intern_new_node(profiler, key, edges, fingerprint);
+            let dep_node_index = self.intern_new_node(key, edges, fingerprint);
 
             (dep_node_index, None)
         }
@@ -1269,7 +1254,6 @@ impl<D: Deps> CurrentDepGraph<D> {
 
     fn promote_node_and_deps_to_current(
         &self,
-        profiler: &SelfProfilerRef,
         prev_graph: &SerializedDepGraph,
         prev_index: SerializedDepNodeIndex,
     ) -> DepNodeIndex {
@@ -1286,7 +1270,7 @@ impl<D: Deps> CurrentDepGraph<D> {
                     .map(|i| prev_index_to_index[i].unwrap())
                     .collect();
                 let fingerprint = prev_graph.fingerprint_by_index(prev_index);
-                let dep_node_index = self.encoder.borrow().send(profiler, key, fingerprint, edges);
+                let dep_node_index = self.encoder.borrow().send(key, fingerprint, edges);
                 prev_index_to_index[prev_index] = Some(dep_node_index);
                 #[cfg(debug_assertions)]
                 self.record_edge(dep_node_index, key, fingerprint);

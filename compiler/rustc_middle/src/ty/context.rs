@@ -650,7 +650,7 @@ impl<'tcx> GlobalCtxt<'tcx> {
     }
 
     pub fn finish(&self) -> FileEncodeResult {
-        self.dep_graph.finish_encoding(&self.sess.prof)
+        self.dep_graph.finish_encoding()
     }
 }
 
