@@ -1336,9 +1336,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         }
 
         let mut is_redundant = true;
-
         let mut redundant_span = PerNS { value_ns: None, type_ns: None, macro_ns: None };
-
         self.per_ns(|this, ns| {
             if is_redundant && let Ok(binding) = source_bindings[ns].get() {
                 if binding.res() == Res::Err {
