@@ -621,12 +621,13 @@ pub trait LintContext {
     /// Note that this function should only be called for [`LintExpectationId`]s
     /// retrieved from the current lint pass. Buffered or manually created ids can
     /// cause ICEs.
-    #[rustc_lint_diagnostics]
     fn fulfill_expectation(&self, expectation: LintExpectationId) {
         // We need to make sure that submitted expectation ids are correctly fulfilled suppressed
         // and stored between compilation sessions. To not manually do these steps, we simply create
-        // a dummy diagnostic and emit is as usual, which will be suppressed and stored like a normal
-        // expected lint diagnostic.
+        // a dummy diagnostic and emit it as usual, which will be suppressed and stored like a
+        // normal expected lint diagnostic.
+        #[allow(rustc::diagnostic_outside_of_impl)]
+        #[allow(rustc::untranslatable_diagnostic)]
         self.sess()
             .dcx()
             .struct_expect(

@@ -1493,6 +1493,8 @@ fn pretty_printing_compatibility_hack(item: &Item, sess: &Session) -> bool {
                             };
 
                             if crate_matches {
+                                // FIXME: make this translatable
+                                #[allow(rustc::untranslatable_diagnostic)]
                                 sess.psess.buffer_lint_with_diagnostic(
                                         PROC_MACRO_BACK_COMPAT,
                                         item.ident.span,

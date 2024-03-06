@@ -312,6 +312,7 @@ impl Session {
     ) -> Diag<'a> {
         let mut err = self.dcx().create_err(err);
         if err.code.is_none() {
+            #[allow(rustc::diagnostic_outside_of_impl)]
             err.code(E0658);
         }
         add_feature_diagnostics(&mut err, self, feature);
@@ -1022,6 +1023,7 @@ fn default_emitter(
 
 // JUSTIFICATION: literally session construction
 #[allow(rustc::bad_opt_access)]
+#[allow(rustc::untranslatable_diagnostic)] // FIXME: make this translatable
 pub fn build_session(
     early_dcx: EarlyDiagCtxt,
     sopts: config::Options,

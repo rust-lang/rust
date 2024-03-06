@@ -76,6 +76,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
     /// LL |         for (key, value) in dict {
     ///    |                             ^^^^
     /// ```
+    #[allow(rustc::diagnostic_outside_of_impl)] // FIXME
     pub(super) fn add_moved_or_invoked_closure_note(
         &self,
         location: Location,
@@ -585,6 +586,7 @@ impl UseSpans<'_> {
     }
 
     /// Add a span label to the arguments of the closure, if it exists.
+    #[allow(rustc::diagnostic_outside_of_impl)]
     pub(super) fn args_subdiag(
         self,
         dcx: &rustc_errors::DiagCtxt,
@@ -598,6 +600,7 @@ impl UseSpans<'_> {
 
     /// Add a span label to the use of the captured variable, if it exists.
     /// only adds label to the `path_span`
+    #[allow(rustc::diagnostic_outside_of_impl)]
     pub(super) fn var_path_only_subdiag(
         self,
         dcx: &rustc_errors::DiagCtxt,
@@ -635,6 +638,7 @@ impl UseSpans<'_> {
     }
 
     /// Add a subdiagnostic to the use of the captured variable, if it exists.
+    #[allow(rustc::diagnostic_outside_of_impl)]
     pub(super) fn var_subdiag(
         self,
         dcx: &rustc_errors::DiagCtxt,
@@ -1008,6 +1012,8 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         self.borrow_spans(span, borrow.reserve_location)
     }
 
+    #[allow(rustc::diagnostic_outside_of_impl)]
+    #[allow(rustc::untranslatable_diagnostic)] // FIXME: make this translatable
     fn explain_captures(
         &mut self,
         err: &mut Diag<'_>,

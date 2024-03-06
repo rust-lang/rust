@@ -239,6 +239,7 @@ impl<'a> StripUnconfigured<'a> {
     /// Gives a compiler warning when the `cfg_attr` contains no attributes and
     /// is in the original source file. Gives a compiler error if the syntax of
     /// the attribute is incorrect.
+    #[allow(rustc::untranslatable_diagnostic)] // FIXME: make this translatable
     pub(crate) fn expand_cfg_attr(&self, attr: &Attribute, recursive: bool) -> Vec<Attribute> {
         let Some((cfg_predicate, expanded_attrs)) =
             rustc_parse::parse_cfg_attr(attr, &self.sess.psess)
@@ -273,6 +274,7 @@ impl<'a> StripUnconfigured<'a> {
         }
     }
 
+    #[allow(rustc::untranslatable_diagnostic)] // FIXME: make this translatable
     fn expand_cfg_attr_item(
         &self,
         attr: &Attribute,
@@ -371,6 +373,7 @@ impl<'a> StripUnconfigured<'a> {
     }
 
     /// If attributes are not allowed on expressions, emit an error for `attr`
+    #[allow(rustc::untranslatable_diagnostic)] // FIXME: make this translatable
     #[instrument(level = "trace", skip(self))]
     pub(crate) fn maybe_emit_expr_attr_err(&self, attr: &Attribute) {
         if self.features.is_some_and(|features| !features.stmt_expr_attributes)
@@ -384,7 +387,6 @@ impl<'a> StripUnconfigured<'a> {
             );
 
             if attr.is_doc_comment() {
-                #[allow(rustc::untranslatable_diagnostic)]
                 err.help("`///` is for documentation comments. For a plain comment, use `//`.");
             }
 
