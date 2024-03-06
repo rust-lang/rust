@@ -1,6 +1,6 @@
 // Check that we handle evaluating `wf` predicates correctly.
 
-// check-pass
+//@ check-pass
 
 struct X<T: B>(T)
 where

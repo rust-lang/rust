@@ -1,7 +1,7 @@
 #![feature(prelude_import)]
 #![no_std]
-// check-pass
-// compile-flags: -Z unpretty=expanded
+//@ check-pass
+//@ compile-flags: -Z unpretty=expanded
 
 #![feature(core_intrinsics, generic_assert)]
 #[prelude_import]

@@ -1,8 +1,8 @@
 // Check that we can manually implement an object-unsafe trait for its trait object.
 
-// revisions: current next
-//[next] compile-flags: -Znext-solver
-// run-pass
+//@ revisions: current next
+//@[next] compile-flags: -Znext-solver
+//@ run-pass
 
 #![feature(object_safe_for_dispatch)]
 
@@ -19,7 +19,7 @@ trait Bad {
 }
 
 trait Good {
-    fn good_virt(&self) -> char {
+    fn good_virt(&self) -> char { //~ WARN methods `good_virt` and `good_indirect` are never used
         panic!()
     }
     fn good_indirect(&self) -> char {

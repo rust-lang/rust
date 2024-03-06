@@ -1,6 +1,6 @@
-// edition:2018
-// aux-crate:issue_80074=issue-80074-macro.rs
-// aux-crate:issue_80074_2=issue-80074-macro-2.rs
+//@ edition:2018
+//@ aux-crate:issue_80074=issue-80074-macro.rs
+//@ aux-crate:issue_80074_2=issue-80074-macro-2.rs
 
 #[macro_use]
 extern crate issue_80074;

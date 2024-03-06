@@ -1,5 +1,5 @@
-// check-pass
-// compile-flags: -Znext-solver
+//@ check-pass
+//@ compile-flags: -Znext-solver
 
 trait Foo {
     type Gat<'a>

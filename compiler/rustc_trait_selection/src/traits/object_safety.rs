@@ -263,7 +263,7 @@ fn predicates_reference_self(
     predicates
         .predicates
         .iter()
-        .map(|&(predicate, sp)| (predicate.subst_supertrait(tcx, &trait_ref), sp))
+        .map(|&(predicate, sp)| (predicate.instantiate_supertrait(tcx, &trait_ref), sp))
         .filter_map(|predicate| predicate_references_self(tcx, predicate))
         .collect()
 }
@@ -555,7 +555,7 @@ fn virtual_call_violations_for_method<'tcx>(
 
     // NOTE: This check happens last, because it results in a lint, and not a
     // hard error.
-    if tcx.predicates_of(method.def_id).predicates.iter().any(|&(pred, span)| {
+    if tcx.predicates_of(method.def_id).predicates.iter().any(|&(pred, _span)| {
         // dyn Trait is okay:
         //
         //     trait Trait {
@@ -594,7 +594,10 @@ fn virtual_call_violations_for_method<'tcx>(
             // would already have reported an error at the definition of the
             // auto trait.
             if pred_trait_ref.args.len() != 1 {
-                tcx.dcx().span_delayed_bug(span, "auto traits cannot have generic parameters");
+                assert!(
+                    tcx.dcx().has_errors().is_some(),
+                    "auto traits cannot have generic parameters"
+                );
             }
             return false;
         }
@@ -607,7 +610,7 @@ fn virtual_call_violations_for_method<'tcx>(
     errors
 }
 
-/// Performs a type substitution to produce the version of `receiver_ty` when `Self = self_ty`.
+/// Performs a type instantiation to produce the version of `receiver_ty` when `Self = self_ty`.
 /// For example, for `receiver_ty = Rc<Self>` and `self_ty = Foo`, returns `Rc<Foo>`.
 fn receiver_for_self_ty<'tcx>(
     tcx: TyCtxt<'tcx>,
@@ -682,7 +685,7 @@ fn object_ty_for_trait<'tcx>(
 ///   ```
 ///
 ///   where `Foo[X => Y]` means "the same type as `Foo`, but with `X` replaced with `Y`"
-///   (substitution notation).
+///   (instantiation notation).
 ///
 /// Some examples of receiver types and their required obligation:
 /// - `&'a mut self` requires `&'a mut Self: DispatchFromDyn<&'a mut dyn Trait>`,
@@ -831,9 +834,9 @@ fn contains_illegal_self_type_reference<'tcx, T: TypeVisitable<TyCtxt<'tcx>>>(
     }
 
     impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for IllegalSelfTypeVisitor<'tcx> {
-        type BreakTy = ();
+        type Result = ControlFlow<()>;
 
-        fn visit_ty(&mut self, t: Ty<'tcx>) -> ControlFlow<Self::BreakTy> {
+        fn visit_ty(&mut self, t: Ty<'tcx>) -> Self::Result {
             match t.kind() {
                 ty::Param(_) => {
                     if t == self.tcx.types.self_param {
@@ -884,7 +887,7 @@ fn contains_illegal_self_type_reference<'tcx, T: TypeVisitable<TyCtxt<'tcx>>>(
             }
         }
 
-        fn visit_const(&mut self, ct: ty::Const<'tcx>) -> ControlFlow<Self::BreakTy> {
+        fn visit_const(&mut self, ct: ty::Const<'tcx>) -> Self::Result {
             // Constants can only influence object safety if they are generic and reference `Self`.
             // This is only possible for unevaluated constants, so we walk these here.
             self.tcx.expand_abstract_consts(ct).super_visit_with(self)

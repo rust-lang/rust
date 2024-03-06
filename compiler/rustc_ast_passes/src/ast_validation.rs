@@ -8,8 +8,7 @@
 
 use itertools::{Either, Itertools};
 use rustc_ast::ptr::P;
-use rustc_ast::visit::{AssocCtxt, BoundKind, FnCtxt, FnKind, Visitor};
-use rustc_ast::walk_list;
+use rustc_ast::visit::{walk_list, AssocCtxt, BoundKind, FnCtxt, FnKind, Visitor};
 use rustc_ast::*;
 use rustc_ast_pretty::pprust::{self, State};
 use rustc_data_structures::fx::FxIndexMap;
@@ -18,7 +17,7 @@ use rustc_parse::validate_attr;
 use rustc_session::lint::builtin::{
     DEPRECATED_WHERE_CLAUSE_LOCATION, MISSING_ABI, PATTERNS_IN_FNS_WITHOUT_BODY,
 };
-use rustc_session::lint::{BuiltinLintDiagnostics, LintBuffer};
+use rustc_session::lint::{BuiltinLintDiag, LintBuffer};
 use rustc_session::Session;
 use rustc_span::symbol::{kw, sym, Ident};
 use rustc_span::Span;
@@ -138,38 +137,42 @@ impl<'a> AstValidator<'a> {
         &mut self,
         ty_alias: &TyAlias,
     ) -> Result<(), errors::WhereClauseBeforeTypeAlias> {
-        let before_predicates =
-            ty_alias.generics.where_clause.predicates.split_at(ty_alias.where_predicates_split).0;
-
-        if ty_alias.ty.is_none() || before_predicates.is_empty() {
+        if ty_alias.ty.is_none() || !ty_alias.where_clauses.before.has_where_token {
             return Ok(());
         }
 
-        let mut state = State::new();
-        if !ty_alias.where_clauses.1.0 {
-            state.space();
-            state.word_space("where");
-        } else {
-            state.word_space(",");
-        }
-        let mut first = true;
-        for p in before_predicates {
-            if !first {
-                state.word_space(",");
-            }
-            first = false;
-            state.print_where_predicate(p);
-        }
+        let (before_predicates, after_predicates) =
+            ty_alias.generics.where_clause.predicates.split_at(ty_alias.where_clauses.split);
+        let span = ty_alias.where_clauses.before.span;
 
-        let span = ty_alias.where_clauses.0.1;
-        Err(errors::WhereClauseBeforeTypeAlias {
-            span,
-            sugg: errors::WhereClauseBeforeTypeAliasSugg {
+        let sugg = if !before_predicates.is_empty() || !ty_alias.where_clauses.after.has_where_token
+        {
+            let mut state = State::new();
+
+            if !ty_alias.where_clauses.after.has_where_token {
+                state.space();
+                state.word_space("where");
+            }
+
+            let mut first = after_predicates.is_empty();
+            for p in before_predicates {
+                if !first {
+                    state.word_space(",");
+                }
+                first = false;
+                state.print_where_predicate(p);
+            }
+
+            errors::WhereClauseBeforeTypeAliasSugg::Move {
                 left: span,
                 snippet: state.s.eof(),
-                right: ty_alias.where_clauses.1.1.shrink_to_hi(),
-            },
-        })
+                right: ty_alias.where_clauses.after.span.shrink_to_hi(),
+            }
+        } else {
+            errors::WhereClauseBeforeTypeAliasSugg::Remove { span }
+        };
+
+        Err(errors::WhereClauseBeforeTypeAlias { span, sugg })
     }
 
     fn with_impl_trait(&mut self, outer: Option<Span>, f: impl FnOnce(&mut Self)) {
@@ -219,8 +222,8 @@ impl<'a> AstValidator<'a> {
                     }
                 }
             }
-            TyKind::AnonStruct(ref fields, ..) | TyKind::AnonUnion(ref fields, ..) => {
-                walk_list!(self, visit_field_def, fields)
+            TyKind::AnonStruct(_, ref fields) | TyKind::AnonUnion(_, ref fields) => {
+                walk_list!(self, visit_struct_field_def, fields)
             }
             _ => visit::walk_ty(self, t),
         }
@@ -457,8 +460,7 @@ impl<'a> AstValidator<'a> {
     fn check_foreign_ty_genericless(
         &self,
         generics: &Generics,
-        before_where_clause: &TyAliasWhereClause,
-        after_where_clause: &TyAliasWhereClause,
+        where_clauses: &TyAliasWhereClauses,
     ) {
         let cannot_have = |span, descr, remove_descr| {
             self.dcx().emit_err(errors::ExternTypesCannotHave {
@@ -473,14 +475,14 @@ impl<'a> AstValidator<'a> {
             cannot_have(generics.span, "generic parameters", "generic parameters");
         }
 
-        let check_where_clause = |where_clause: &TyAliasWhereClause| {
-            if let TyAliasWhereClause(true, where_clause_span) = where_clause {
-                cannot_have(*where_clause_span, "`where` clauses", "`where` clause");
+        let check_where_clause = |where_clause: TyAliasWhereClause| {
+            if where_clause.has_where_token {
+                cannot_have(where_clause.span, "`where` clauses", "`where` clause");
             }
         };
 
-        check_where_clause(before_where_clause);
-        check_where_clause(after_where_clause);
+        check_where_clause(where_clauses.before);
+        check_where_clause(where_clauses.after);
     }
 
     fn check_foreign_kind_bodyless(&self, ident: Ident, kind: &str, body: Option<Span>) {
@@ -747,7 +749,7 @@ impl<'a> AstValidator<'a> {
                 id,
                 span,
                 fluent::ast_passes_extern_without_abi,
-                BuiltinLintDiagnostics::MissingAbi(span, abi::Abi::FALLBACK),
+                BuiltinLintDiag::MissingAbi(span, abi::Abi::FALLBACK),
             )
         }
     }
@@ -832,7 +834,7 @@ fn validate_generic_param_order(
 
 impl<'a> Visitor<'a> for AstValidator<'a> {
     fn visit_attribute(&mut self, attr: &Attribute) {
-        validate_attr::check_attr(&self.session.parse_sess, attr);
+        validate_attr::check_attr(&self.session.psess, attr);
     }
 
     fn visit_ty(&mut self, ty: &'a Ty) {
@@ -881,8 +883,10 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                         &item.vis,
                         errors::VisibilityNotPermittedNote::TraitImpl,
                     );
-                    if let TyKind::Err = self_ty.kind {
-                        this.dcx().emit_err(errors::ObsoleteAuto { span: item.span });
+                    if let TyKind::Dummy = self_ty.kind {
+                        // Abort immediately otherwise the `TyKind::Dummy` will reach HIR lowering,
+                        // which isn't allowed. Not a problem for this obscure, obsolete syntax.
+                        this.dcx().emit_fatal(errors::ObsoleteAuto { span: item.span });
                     }
                     if let (&Unsafe::Yes(span), &ImplPolarity::Negative(sp)) = (unsafety, polarity)
                     {
@@ -1120,9 +1124,9 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                     if let Err(err) = self.check_type_alias_where_clause_location(ty_alias) {
                         self.dcx().emit_err(err);
                     }
-                } else if where_clauses.1.0 {
+                } else if where_clauses.after.has_where_token {
                     self.dcx().emit_err(errors::WhereClauseAfterTypeAlias {
-                        span: where_clauses.1.1,
+                        span: where_clauses.after.span,
                         help: self.session.is_nightly_build().then_some(()),
                     });
                 }
@@ -1152,7 +1156,7 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                 self.check_defaultness(fi.span, *defaultness);
                 self.check_foreign_kind_bodyless(fi.ident, "type", ty.as_ref().map(|b| b.span));
                 self.check_type_no_bounds(bounds, "`extern` blocks");
-                self.check_foreign_ty_genericless(generics, &where_clauses.0, &where_clauses.1);
+                self.check_foreign_ty_genericless(generics, where_clauses);
                 self.check_foreign_item_ascii_only(fi.ident);
             }
             ForeignItemKind::Static(_, _, body) => {
@@ -1403,7 +1407,7 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                             FnCtxt::Foreign => fluent::ast_passes_pattern_in_foreign,
                             _ => fluent::ast_passes_pattern_in_bodiless,
                         };
-                        let diag = BuiltinLintDiagnostics::PatternsInFnsWithoutBody(span, ident);
+                        let diag = BuiltinLintDiag::PatternsInFnsWithoutBody(span, ident);
                         self.lint_buffer.buffer_lint_with_diagnostic(
                             PATTERNS_IN_FNS_WITHOUT_BODY,
                             id,
@@ -1475,15 +1479,18 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
         if let AssocItemKind::Type(ty_alias) = &item.kind
             && let Err(err) = self.check_type_alias_where_clause_location(ty_alias)
         {
+            let sugg = match err.sugg {
+                errors::WhereClauseBeforeTypeAliasSugg::Remove { .. } => None,
+                errors::WhereClauseBeforeTypeAliasSugg::Move { snippet, right, .. } => {
+                    Some((right, snippet))
+                }
+            };
             self.lint_buffer.buffer_lint_with_diagnostic(
                 DEPRECATED_WHERE_CLAUSE_LOCATION,
                 item.id,
                 err.span,
                 fluent::ast_passes_deprecated_where_clause_location,
-                BuiltinLintDiagnostics::DeprecatedWhereclauseLocation(
-                    err.sugg.right,
-                    err.sugg.snippet,
-                ),
+                BuiltinLintDiag::DeprecatedWhereclauseLocation(sugg),
             );
         }
 
@@ -1593,43 +1600,97 @@ fn deny_equality_constraints(
             }
         }
     }
-    // Given `A: Foo, A::Bar = RhsTy`, suggest `A: Foo<Bar = RhsTy>`.
-    if let TyKind::Path(None, full_path) = &predicate.lhs_ty.kind {
-        if let [potential_param, potential_assoc] = &full_path.segments[..] {
-            for param in &generics.params {
-                if param.ident == potential_param.ident {
-                    for bound in &param.bounds {
-                        if let ast::GenericBound::Trait(trait_ref, TraitBoundModifiers::NONE) =
-                            bound
+
+    let mut suggest =
+        |poly: &PolyTraitRef, potential_assoc: &PathSegment, predicate: &WhereEqPredicate| {
+            if let [trait_segment] = &poly.trait_ref.path.segments[..] {
+                let assoc = pprust::path_to_string(&ast::Path::from_ident(potential_assoc.ident));
+                let ty = pprust::ty_to_string(&predicate.rhs_ty);
+                let (args, span) = match &trait_segment.args {
+                    Some(args) => match args.deref() {
+                        ast::GenericArgs::AngleBracketed(args) => {
+                            let Some(arg) = args.args.last() else {
+                                return;
+                            };
+                            (format!(", {assoc} = {ty}"), arg.span().shrink_to_hi())
+                        }
+                        _ => return,
+                    },
+                    None => (format!("<{assoc} = {ty}>"), trait_segment.span().shrink_to_hi()),
+                };
+                let removal_span = if generics.where_clause.predicates.len() == 1 {
+                    // We're removing th eonly where bound left, remove the whole thing.
+                    generics.where_clause.span
+                } else {
+                    let mut span = predicate.span;
+                    let mut prev: Option<Span> = None;
+                    let mut preds = generics.where_clause.predicates.iter().peekable();
+                    // Find the predicate that shouldn't have been in the where bound list.
+                    while let Some(pred) = preds.next() {
+                        if let WherePredicate::EqPredicate(pred) = pred
+                            && pred.span == predicate.span
                         {
-                            if let [trait_segment] = &trait_ref.trait_ref.path.segments[..] {
-                                let assoc = pprust::path_to_string(&ast::Path::from_ident(
-                                    potential_assoc.ident,
-                                ));
-                                let ty = pprust::ty_to_string(&predicate.rhs_ty);
-                                let (args, span) = match &trait_segment.args {
-                                    Some(args) => match args.deref() {
-                                        ast::GenericArgs::AngleBracketed(args) => {
-                                            let Some(arg) = args.args.last() else {
-                                                continue;
-                                            };
-                                            (format!(", {assoc} = {ty}"), arg.span().shrink_to_hi())
-                                        }
-                                        _ => continue,
-                                    },
-                                    None => (
-                                        format!("<{assoc} = {ty}>"),
-                                        trait_segment.span().shrink_to_hi(),
-                                    ),
-                                };
-                                err.assoc2 = Some(errors::AssociatedSuggestion2 {
-                                    span,
-                                    args,
-                                    predicate: predicate.span,
-                                    trait_segment: trait_segment.ident,
-                                    potential_assoc: potential_assoc.ident,
-                                });
+                            if let Some(next) = preds.peek() {
+                                // This is the first predicate, remove the trailing comma as well.
+                                span = span.with_hi(next.span().lo());
+                            } else if let Some(prev) = prev {
+                                // Remove the previous comma as well.
+                                span = span.with_lo(prev.hi());
                             }
+                        }
+                        prev = Some(pred.span());
+                    }
+                    span
+                };
+                err.assoc2 = Some(errors::AssociatedSuggestion2 {
+                    span,
+                    args,
+                    predicate: removal_span,
+                    trait_segment: trait_segment.ident,
+                    potential_assoc: potential_assoc.ident,
+                });
+            }
+        };
+
+    if let TyKind::Path(None, full_path) = &predicate.lhs_ty.kind {
+        // Given `A: Foo, Foo::Bar = RhsTy`, suggest `A: Foo<Bar = RhsTy>`.
+        for bounds in generics.params.iter().map(|p| &p.bounds).chain(
+            generics.where_clause.predicates.iter().filter_map(|pred| match pred {
+                WherePredicate::BoundPredicate(p) => Some(&p.bounds),
+                _ => None,
+            }),
+        ) {
+            for bound in bounds {
+                if let GenericBound::Trait(poly, TraitBoundModifiers::NONE) = bound {
+                    if full_path.segments[..full_path.segments.len() - 1]
+                        .iter()
+                        .map(|segment| segment.ident.name)
+                        .zip(poly.trait_ref.path.segments.iter().map(|segment| segment.ident.name))
+                        .all(|(a, b)| a == b)
+                        && let Some(potential_assoc) = full_path.segments.iter().last()
+                    {
+                        suggest(poly, potential_assoc, predicate);
+                    }
+                }
+            }
+        }
+        // Given `A: Foo, A::Bar = RhsTy`, suggest `A: Foo<Bar = RhsTy>`.
+        if let [potential_param, potential_assoc] = &full_path.segments[..] {
+            for (ident, bounds) in generics.params.iter().map(|p| (p.ident, &p.bounds)).chain(
+                generics.where_clause.predicates.iter().filter_map(|pred| match pred {
+                    WherePredicate::BoundPredicate(p)
+                        if let ast::TyKind::Path(None, path) = &p.bounded_ty.kind
+                            && let [segment] = &path.segments[..] =>
+                    {
+                        Some((segment.ident, &p.bounds))
+                    }
+                    _ => None,
+                }),
+            ) {
+                if ident == potential_param.ident {
+                    for bound in bounds {
+                        if let ast::GenericBound::Trait(poly, TraitBoundModifiers::NONE) = bound {
+                            suggest(poly, potential_assoc, predicate);
                         }
                     }
                 }

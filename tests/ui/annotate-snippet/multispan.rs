@@ -1,6 +1,6 @@
-// aux-build:multispan.rs
-// error-pattern:hello to you, too!
-// compile-flags: --error-format human-annotate-rs -Z unstable-options
+//@ aux-build:multispan.rs
+//@ error-pattern:hello to you, too!
+//@ compile-flags: --error-format human-annotate-rs -Z unstable-options
 
 #![feature(proc_macro_hygiene)]
 

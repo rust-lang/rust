@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 
 // This test unsures that with_opt_const_param returns the
 // def_id of the N param in the Bar::Assoc GAT.

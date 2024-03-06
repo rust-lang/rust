@@ -1,8 +1,8 @@
-// build-pass
+//@ build-pass
 #![allow(unused_attributes)]
 #![allow(dead_code)]
-// pretty-expanded FIXME #23616
-// ignore-wasm32-bare no libc to test ffi with
+//@ pretty-expanded FIXME #23616
+//@ ignore-wasm32-bare no libc to test ffi with
 #![feature(rustc_private)]
 
 mod rustrt {

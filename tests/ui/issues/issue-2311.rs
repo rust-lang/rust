@@ -1,7 +1,7 @@
-// check-pass
+//@ check-pass
 #![allow(non_camel_case_types)]
 
-// pretty-expanded FIXME #23616
+//@ pretty-expanded FIXME #23616
 
 trait clam<A> { fn get(self) -> A; }
 trait foo<A> {

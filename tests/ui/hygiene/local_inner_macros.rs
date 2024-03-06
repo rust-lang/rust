@@ -1,5 +1,5 @@
-// check-pass
-// aux-build:local_inner_macros.rs
+//@ check-pass
+//@ aux-build:local_inner_macros.rs
 
 extern crate local_inner_macros;
 

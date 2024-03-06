@@ -158,7 +158,8 @@ impl HirDisplay for Adt {
 
 impl HirDisplay for Struct {
     fn hir_fmt(&self, f: &mut HirFormatter<'_>) -> Result<(), HirDisplayError> {
-        write_visibility(self.module(f.db).id, self.visibility(f.db), f)?;
+        let module_id = self.module(f.db).id;
+        write_visibility(module_id, self.visibility(f.db), f)?;
         f.write_str("struct ")?;
         write!(f, "{}", self.name(f.db).display(f.db.upcast()))?;
         let def_id = GenericDefId::AdtId(AdtId::StructId(self.id));
@@ -171,6 +172,7 @@ impl HirDisplay for Struct {
 
             while let Some((id, _)) = it.next() {
                 let field = Field { parent: (*self).into(), id };
+                write_visibility(module_id, field.visibility(f.db), f)?;
                 field.ty(f.db).hir_fmt(f)?;
                 if it.peek().is_some() {
                     f.write_str(", ")?;

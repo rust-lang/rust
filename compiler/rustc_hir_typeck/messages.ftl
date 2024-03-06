@@ -96,9 +96,6 @@ hir_typeck_lossy_provenance_ptr2int =
 hir_typeck_method_call_on_unknown_raw_pointee =
     cannot call a method on a raw pointer with an unknown pointee type
 
-hir_typeck_missing_fn_lang_items = failed to find an overloaded call trait for closure call
-    .help = make sure the `fn`/`fn_mut`/`fn_once` lang items are defined and have correctly defined `call`/`call_mut`/`call_once` methods
-
 hir_typeck_missing_parentheses_in_range = can't call method `{$method_name}` on type `{$ty_str}`
 
 hir_typeck_no_associated_item = no {$item_kind} named `{$item_name}` found for {$ty_prefix} `{$ty_str}`{$trait_missing_method ->
@@ -107,8 +104,6 @@ hir_typeck_no_associated_item = no {$item_kind} named `{$item_name}` found for {
 }
 
 hir_typeck_note_edition_guide = for more on editions, read https://doc.rust-lang.org/edition-guide
-
-hir_typeck_op_trait_generic_params = `{$method_name}` must not have any generic parameters
 
 hir_typeck_option_result_asref = use `{$def_path}::as_ref` to convert `{$expected_ty}` to `{$expr_ty}`
 hir_typeck_option_result_cloned = use `{$def_path}::cloned` to clone the value inside the `{$def_path}`

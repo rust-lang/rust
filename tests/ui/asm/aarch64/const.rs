@@ -1,6 +1,6 @@
-// only-aarch64
-// run-pass
-// needs-asm-support
+//@ only-aarch64
+//@ run-pass
+//@ needs-asm-support
 
 #![feature(asm_const)]
 

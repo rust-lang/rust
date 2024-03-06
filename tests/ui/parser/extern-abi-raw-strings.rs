@@ -1,4 +1,4 @@
-// check-pass
+//@ check-pass
 
 // Check that the string literal in `extern lit` will accept raw strings.
 

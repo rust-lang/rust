@@ -1,5 +1,5 @@
 error: non-item in item list
-  --> $DIR/suggest-assoc-const.rs:4:5
+  --> $DIR/suggest-assoc-const.rs:5:5
    |
 LL |     let _X: i32;
    |     ^^^ help: consider using `const` instead of `let` for associated const: `const`

@@ -2,7 +2,7 @@
 // the inherent impl requires normalization to be equal to the
 // user-provided type.
 //
-// check-pass
+//@ check-pass
 
 trait Mirror {
     type Me;

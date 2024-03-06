@@ -1,6 +1,6 @@
-// check-pass
-// compile-flags: -Z span-debug
-// aux-build:test-macros.rs
+//@ check-pass
+//@ compile-flags: -Z span-debug
+//@ aux-build:test-macros.rs
 
 #![feature(cfg_eval)]
 #![feature(proc_macro_hygiene)]

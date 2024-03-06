@@ -1,6 +1,5 @@
-// ignore-debug: the debug assertions get in the way
-// compile-flags: -O
-// only-x86_64 (vectorization varies between architectures)
+//@ compile-flags: -O
+//@ only-x86_64 (vectorization varies between architectures)
 #![crate_type = "lib"]
 
 

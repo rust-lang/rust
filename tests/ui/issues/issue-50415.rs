@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 fn main() {
     // Simplified test case
     let _ = || 0..=1;

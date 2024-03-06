@@ -1,4 +1,4 @@
-// check-pass
+//@ check-pass
 
 pub trait BufferTrait<'buffer> {
     type Subset<'channel>

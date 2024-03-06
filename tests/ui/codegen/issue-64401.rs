@@ -1,4 +1,4 @@
-// build-pass
+//@ build-pass
 // The ICE didn't happen with `cargo check` but `cargo build`.
 
 use std::marker::PhantomData;

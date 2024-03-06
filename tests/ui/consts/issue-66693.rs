@@ -12,9 +12,11 @@ const fn _foo() {
     //~^ ERROR: argument to `panic!()` in a const context must have type `&str`
 }
 
-// ensure that conforming panics don't cause an error
+// ensure that conforming panics don't cause an error beyond the failure to const eval
 const _: () = panic!();
+//~^ ERROR: evaluation of constant value failed
 static _BAR: () = panic!("panic in static");
+//~^ ERROR could not evaluate static initializer
 
 const fn _bar() {
     panic!("panic in const fn");

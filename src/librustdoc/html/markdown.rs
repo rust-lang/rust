@@ -27,7 +27,7 @@
 //! ```
 
 use rustc_data_structures::fx::FxHashMap;
-use rustc_errors::{DiagnosticBuilder, DiagnosticMessage};
+use rustc_errors::{Diag, DiagMessage};
 use rustc_hir::def_id::DefId;
 use rustc_middle::ty::TyCtxt;
 pub(crate) use rustc_resolve::rustdoc::main_body_opts;
@@ -45,6 +45,7 @@ use std::str::{self, CharIndices};
 
 use crate::clean::RenderedLink;
 use crate::doctest;
+use crate::doctest::GlobalTestOptions;
 use crate::html::escape::Escape;
 use crate::html::format::Buffer;
 use crate::html::highlight;
@@ -302,8 +303,10 @@ impl<'a, I: Iterator<Item = Event<'a>>> Iterator for CodeBlocks<'_, 'a, I> {
                 .intersperse("\n".into())
                 .collect::<String>();
             let krate = krate.as_ref().map(|s| s.as_str());
-            let (test, _, _) =
-                doctest::make_test(&test, krate, false, &Default::default(), edition, None);
+
+            let mut opts: GlobalTestOptions = Default::default();
+            opts.insert_indent_space = true;
+            let (test, _, _) = doctest::make_test(&test, krate, false, &opts, edition, None);
             let channel = if test.contains("#![feature(") { "&amp;version=nightly" } else { "" };
 
             let test_escaped = small_url_encode(test);
@@ -825,7 +828,7 @@ impl<'tcx> ExtraInfo<'tcx> {
         ExtraInfo { def_id, sp, tcx }
     }
 
-    fn error_invalid_codeblock_attr(&self, msg: impl Into<DiagnosticMessage>) {
+    fn error_invalid_codeblock_attr(&self, msg: impl Into<DiagMessage>) {
         if let Some(def_id) = self.def_id.as_local() {
             self.tcx.node_span_lint(
                 crate::lint::INVALID_CODEBLOCK_ATTRIBUTES,
@@ -839,8 +842,8 @@ impl<'tcx> ExtraInfo<'tcx> {
 
     fn error_invalid_codeblock_attr_with_help(
         &self,
-        msg: impl Into<DiagnosticMessage>,
-        f: impl for<'a, 'b> FnOnce(&'b mut DiagnosticBuilder<'a, ()>),
+        msg: impl Into<DiagMessage>,
+        f: impl for<'a, 'b> FnOnce(&'b mut Diag<'a, ()>),
     ) {
         if let Some(def_id) = self.def_id.as_local() {
             self.tcx.node_span_lint(
@@ -949,7 +952,7 @@ impl<'a, 'tcx> TagIterator<'a, 'tcx> {
         Self { inner: data.char_indices().peekable(), data, is_in_attribute_block: false, extra }
     }
 
-    fn emit_error(&self, err: impl Into<DiagnosticMessage>) {
+    fn emit_error(&self, err: impl Into<DiagMessage>) {
         if let Some(extra) = self.extra {
             extra.error_invalid_codeblock_attr(err);
         }

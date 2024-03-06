@@ -2,7 +2,7 @@
 //!
 //! Originates from `rustc_hir::pat_util`
 
-use std::iter::{Enumerate, ExactSizeIterator};
+use std::iter::Enumerate;
 
 pub(crate) struct EnumerateAndAdjust<I> {
     enumerate: Enumerate<I>,

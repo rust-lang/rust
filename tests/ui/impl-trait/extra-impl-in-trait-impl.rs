@@ -1,4 +1,4 @@
-// run-rustfix
+//@ run-rustfix
 
 struct S<T>(T);
 struct S2;

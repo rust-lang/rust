@@ -1,4 +1,4 @@
-// check-pass
+//@ check-pass
 
 // Test to check that pointee trait doesn't let region variables escape into the cache
 

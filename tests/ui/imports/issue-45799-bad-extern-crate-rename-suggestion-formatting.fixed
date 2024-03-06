@@ -1,4 +1,4 @@
-// run-rustfix
+//@ run-rustfix
 
 extern crate std as other_std;
 fn main() {}

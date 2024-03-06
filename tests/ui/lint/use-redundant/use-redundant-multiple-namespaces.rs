@@ -1,4 +1,4 @@
-// check-pass
+//@ check-pass
 #![allow(nonstandard_style)]
 
 pub mod bar {

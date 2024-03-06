@@ -2,7 +2,7 @@
 //! opaque types during const eval in order to obtain the exact type
 //! of associated types.
 
-// check-pass
+//@ check-pass
 
 trait MyTrait: Copy {
     const ASSOC: usize;

@@ -1,4 +1,4 @@
-// compile-flags: --crate-type=lib
+//@ compile-flags: --crate-type=lib
 
 // https://github.com/rust-lang/rust/issues/113766
 

@@ -5,7 +5,7 @@
 // The previous warning only talks about a "function or static" but foreign fns/statics
 // are also not allowed to have #[no_mangle]
 
-// build-pass
+//@ build-pass
 
 extern "C" {
     #[no_mangle]

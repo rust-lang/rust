@@ -1,23 +1,23 @@
 error: asm with the `pure` option must have at least one output
-  --> $DIR/naked-functions.rs:111:14
+  --> $DIR/naked-functions.rs:113:14
    |
 LL |     asm!("", options(readonly, nostack), options(pure));
    |              ^^^^^^^^^^^^^^^^^^^^^^^^^^  ^^^^^^^^^^^^^
 
 error: this is a user specified error
-  --> $DIR/naked-functions.rs:203:5
+  --> $DIR/naked-functions.rs:205:5
    |
 LL |     compile_error!("this is a user specified error")
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: this is a user specified error
-  --> $DIR/naked-functions.rs:209:5
+  --> $DIR/naked-functions.rs:211:5
    |
 LL |     compile_error!("this is a user specified error");
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: asm template must be a string literal
-  --> $DIR/naked-functions.rs:216:10
+  --> $DIR/naked-functions.rs:218:10
    |
 LL |     asm!(invalid_syntax)
    |          ^^^^^^^^^^^^^^
@@ -142,37 +142,37 @@ LL | pub extern "C" fn missing_assembly() {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0787]: asm in naked functions must use `noreturn` option
-  --> $DIR/naked-functions.rs:84:5
+  --> $DIR/naked-functions.rs:85:9
    |
-LL |     asm!("");
-   |     ^^^^^^^^
+LL |         asm!("");
+   |         ^^^^^^^^
    |
 help: consider specifying that the asm block is responsible for returning from the function
    |
-LL |     asm!("", options(noreturn));
-   |            +++++++++++++++++++
+LL |         asm!("", options(noreturn));
+   |                +++++++++++++++++++
 
 error[E0787]: asm in naked functions must use `noreturn` option
-  --> $DIR/naked-functions.rs:86:5
+  --> $DIR/naked-functions.rs:87:9
    |
-LL |     asm!("");
-   |     ^^^^^^^^
+LL |         asm!("");
+   |         ^^^^^^^^
    |
 help: consider specifying that the asm block is responsible for returning from the function
    |
-LL |     asm!("", options(noreturn));
-   |            +++++++++++++++++++
+LL |         asm!("", options(noreturn));
+   |                +++++++++++++++++++
 
 error[E0787]: asm in naked functions must use `noreturn` option
-  --> $DIR/naked-functions.rs:88:5
+  --> $DIR/naked-functions.rs:89:9
    |
-LL |     asm!("");
-   |     ^^^^^^^^
+LL |         asm!("");
+   |         ^^^^^^^^
    |
 help: consider specifying that the asm block is responsible for returning from the function
    |
-LL |     asm!("", options(noreturn));
-   |            +++++++++++++++++++
+LL |         asm!("", options(noreturn));
+   |                +++++++++++++++++++
 
 error[E0787]: naked functions must contain a single asm block
   --> $DIR/naked-functions.rs:82:1
@@ -180,17 +180,17 @@ error[E0787]: naked functions must contain a single asm block
 LL | pub extern "C" fn too_many_asm_blocks() {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 ...
-LL |     asm!("");
-   |     -------- multiple asm blocks are unsupported in naked functions
+LL |         asm!("");
+   |         -------- multiple asm blocks are unsupported in naked functions
 LL |
-LL |     asm!("");
-   |     -------- multiple asm blocks are unsupported in naked functions
+LL |         asm!("");
+   |         -------- multiple asm blocks are unsupported in naked functions
 LL |
-LL |     asm!("", options(noreturn));
-   |     --------------------------- multiple asm blocks are unsupported in naked functions
+LL |         asm!("", options(noreturn));
+   |         --------------------------- multiple asm blocks are unsupported in naked functions
 
 error: referencing function parameters is not allowed in naked functions
-  --> $DIR/naked-functions.rs:97:11
+  --> $DIR/naked-functions.rs:99:11
    |
 LL |         *&y
    |           ^
@@ -198,7 +198,7 @@ LL |         *&y
    = help: follow the calling convention in asm block to use parameters
 
 error[E0787]: naked functions must contain a single asm block
-  --> $DIR/naked-functions.rs:95:5
+  --> $DIR/naked-functions.rs:97:5
    |
 LL |     pub extern "C" fn inner(y: usize) -> usize {
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -207,19 +207,19 @@ LL |         *&y
    |         --- non-asm is unsupported in naked functions
 
 error[E0787]: asm options unsupported in naked functions: `nomem`, `preserves_flags`
-  --> $DIR/naked-functions.rs:105:5
+  --> $DIR/naked-functions.rs:107:5
    |
 LL |     asm!("", options(nomem, preserves_flags, noreturn));
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0787]: asm options unsupported in naked functions: `nostack`, `pure`, `readonly`
-  --> $DIR/naked-functions.rs:111:5
+  --> $DIR/naked-functions.rs:113:5
    |
 LL |     asm!("", options(readonly, nostack), options(pure));
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0787]: asm in naked functions must use `noreturn` option
-  --> $DIR/naked-functions.rs:111:5
+  --> $DIR/naked-functions.rs:113:5
    |
 LL |     asm!("", options(readonly, nostack), options(pure));
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -230,13 +230,13 @@ LL |     asm!("", options(noreturn), options(readonly, nostack), options(pure));
    |            +++++++++++++++++++
 
 error[E0787]: asm options unsupported in naked functions: `may_unwind`
-  --> $DIR/naked-functions.rs:119:5
+  --> $DIR/naked-functions.rs:121:5
    |
 LL |     asm!("", options(noreturn, may_unwind));
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 warning: Rust ABI is unsupported in naked functions
-  --> $DIR/naked-functions.rs:124:1
+  --> $DIR/naked-functions.rs:126:1
    |
 LL | pub unsafe fn default_abi() {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -244,43 +244,43 @@ LL | pub unsafe fn default_abi() {
    = note: `#[warn(undefined_naked_function_abi)]` on by default
 
 warning: Rust ABI is unsupported in naked functions
-  --> $DIR/naked-functions.rs:130:1
+  --> $DIR/naked-functions.rs:132:1
    |
 LL | pub unsafe fn rust_abi() {
    | ^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: naked functions cannot be inlined
-  --> $DIR/naked-functions.rs:170:1
+  --> $DIR/naked-functions.rs:172:1
    |
 LL | #[inline]
    | ^^^^^^^^^
 
 error: naked functions cannot be inlined
-  --> $DIR/naked-functions.rs:177:1
+  --> $DIR/naked-functions.rs:179:1
    |
 LL | #[inline(always)]
    | ^^^^^^^^^^^^^^^^^
 
 error: naked functions cannot be inlined
-  --> $DIR/naked-functions.rs:184:1
+  --> $DIR/naked-functions.rs:186:1
    |
 LL | #[inline(never)]
    | ^^^^^^^^^^^^^^^^
 
 error: naked functions cannot be inlined
-  --> $DIR/naked-functions.rs:191:1
+  --> $DIR/naked-functions.rs:193:1
    |
 LL | #[inline]
    | ^^^^^^^^^
 
 error: naked functions cannot be inlined
-  --> $DIR/naked-functions.rs:193:1
+  --> $DIR/naked-functions.rs:195:1
    |
 LL | #[inline(always)]
    | ^^^^^^^^^^^^^^^^^
 
 error: naked functions cannot be inlined
-  --> $DIR/naked-functions.rs:195:1
+  --> $DIR/naked-functions.rs:197:1
    |
 LL | #[inline(never)]
    | ^^^^^^^^^^^^^^^^

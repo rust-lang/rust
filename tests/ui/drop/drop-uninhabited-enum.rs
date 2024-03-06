@@ -1,7 +1,7 @@
-// run-pass
+//@ run-pass
 #![allow(dead_code)]
 #![allow(unused_variables)]
-// pretty-expanded FIXME #23616
+//@ pretty-expanded FIXME #23616
 
 enum Foo { }
 

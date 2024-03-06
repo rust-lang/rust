@@ -13,10 +13,7 @@
 #![feature(hash_raw_entry)]
 #![feature(iter_intersperse)]
 #![feature(let_chains)]
-#![feature(min_specialization)]
 #![feature(impl_trait_in_assoc_type)]
-#![deny(rustc::untranslatable_diagnostic)]
-#![deny(rustc::diagnostic_outside_of_impl)]
 
 #[macro_use]
 extern crate rustc_macros;
@@ -172,7 +169,7 @@ impl WriteBackendMethods for LlvmCodegenBackend {
     fn print_pass_timings(&self) {
         unsafe {
             let mut size = 0;
-            let cstr = llvm::LLVMRustPrintPassTimings(&mut size as *mut usize);
+            let cstr = llvm::LLVMRustPrintPassTimings(std::ptr::addr_of_mut!(size));
             if cstr.is_null() {
                 println!("failed to get pass timings");
             } else {
@@ -185,7 +182,7 @@ impl WriteBackendMethods for LlvmCodegenBackend {
     fn print_statistics(&self) {
         unsafe {
             let mut size = 0;
-            let cstr = llvm::LLVMRustPrintStatistics(&mut size as *mut usize);
+            let cstr = llvm::LLVMRustPrintStatistics(std::ptr::addr_of_mut!(size));
             if cstr.is_null() {
                 println!("failed to get pass stats");
             } else {
@@ -372,7 +369,7 @@ impl CodegenBackend for LlvmCodegenBackend {
         ongoing_codegen: Box<dyn Any>,
         sess: &Session,
         outputs: &OutputFilenames,
-    ) -> Result<(CodegenResults, FxIndexMap<WorkProductId, WorkProduct>), ErrorGuaranteed> {
+    ) -> (CodegenResults, FxIndexMap<WorkProductId, WorkProduct>) {
         let (codegen_results, work_products) = ongoing_codegen
             .downcast::<rustc_codegen_ssa::back::write::OngoingCodegen<LlvmCodegenBackend>>()
             .expect("Expected LlvmCodegenBackend's OngoingCodegen, found Box<Any>")
@@ -385,7 +382,7 @@ impl CodegenBackend for LlvmCodegenBackend {
             });
         }
 
-        Ok((codegen_results, work_products))
+        (codegen_results, work_products)
     }
 
     fn link(

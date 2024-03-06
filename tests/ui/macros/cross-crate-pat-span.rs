@@ -1,6 +1,6 @@
-// edition:2021
-// check-pass
-// aux-build: foreign-crate-macro-pat.rs
+//@ edition:2021
+//@ check-pass
+//@ aux-build: foreign-crate-macro-pat.rs
 //
 // Tests that the edition of the foreign crate is used
 // when determining the behavior of the `:pat` matcher.

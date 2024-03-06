@@ -2,10 +2,12 @@
 
 use crate::simplify::simplify_duplicate_switch_targets;
 use rustc_middle::mir::*;
+use rustc_middle::ty::layout;
 use rustc_middle::ty::layout::ValidityRequirement;
 use rustc_middle::ty::{self, GenericArgsRef, ParamEnv, Ty, TyCtxt};
 use rustc_span::symbol::Symbol;
 use rustc_target::abi::FieldIdx;
+use rustc_target::spec::abi::Abi;
 
 pub struct InstSimplify;
 
@@ -27,17 +29,15 @@ impl<'tcx> MirPass<'tcx> for InstSimplify {
                         ctx.simplify_bool_cmp(&statement.source_info, rvalue);
                         ctx.simplify_ref_deref(&statement.source_info, rvalue);
                         ctx.simplify_len(&statement.source_info, rvalue);
-                        ctx.simplify_cast(&statement.source_info, rvalue);
+                        ctx.simplify_cast(rvalue);
                     }
                     _ => {}
                 }
             }
 
             ctx.simplify_primitive_clone(block.terminator.as_mut().unwrap(), &mut block.statements);
-            ctx.simplify_intrinsic_assert(
-                block.terminator.as_mut().unwrap(),
-                &mut block.statements,
-            );
+            ctx.simplify_intrinsic_assert(block.terminator.as_mut().unwrap());
+            ctx.simplify_nounwind_call(block.terminator.as_mut().unwrap());
             simplify_duplicate_switch_targets(block.terminator.as_mut().unwrap());
         }
     }
@@ -140,7 +140,7 @@ impl<'tcx> InstSimplifyContext<'tcx, '_> {
         }
     }
 
-    fn simplify_cast(&self, _source_info: &SourceInfo, rvalue: &mut Rvalue<'tcx>) {
+    fn simplify_cast(&self, rvalue: &mut Rvalue<'tcx>) {
         if let Rvalue::Cast(kind, operand, cast_ty) = rvalue {
             let operand_ty = operand.ty(self.local_decls, self.tcx);
             if operand_ty == *cast_ty {
@@ -208,7 +208,7 @@ impl<'tcx> InstSimplifyContext<'tcx, '_> {
         // Only bother looking more if it's easy to know what we're calling
         let Some((fn_def_id, fn_args)) = func.const_fn_def() else { return };
 
-        // Clone needs one subst, so we can cheaply rule out other stuff
+        // Clone needs one arg, so we can cheaply rule out other stuff
         if fn_args.len() != 1 {
             return;
         }
@@ -252,11 +252,29 @@ impl<'tcx> InstSimplifyContext<'tcx, '_> {
         terminator.kind = TerminatorKind::Goto { target: destination_block };
     }
 
-    fn simplify_intrinsic_assert(
-        &self,
-        terminator: &mut Terminator<'tcx>,
-        _statements: &mut Vec<Statement<'tcx>>,
-    ) {
+    fn simplify_nounwind_call(&self, terminator: &mut Terminator<'tcx>) {
+        let TerminatorKind::Call { func, unwind, .. } = &mut terminator.kind else {
+            return;
+        };
+
+        let Some((def_id, _)) = func.const_fn_def() else {
+            return;
+        };
+
+        let body_ty = self.tcx.type_of(def_id).skip_binder();
+        let body_abi = match body_ty.kind() {
+            ty::FnDef(..) => body_ty.fn_sig(self.tcx).abi(),
+            ty::Closure(..) => Abi::RustCall,
+            ty::Coroutine(..) => Abi::Rust,
+            _ => bug!("unexpected body ty: {:?}", body_ty),
+        };
+
+        if !layout::fn_can_unwind(self.tcx, Some(def_id), body_abi) {
+            *unwind = UnwindAction::Unreachable;
+        }
+    }
+
+    fn simplify_intrinsic_assert(&self, terminator: &mut Terminator<'tcx>) {
         let TerminatorKind::Call { func, target, .. } = &mut terminator.kind else {
             return;
         };
@@ -271,9 +289,9 @@ impl<'tcx> InstSimplifyContext<'tcx, '_> {
         if args.is_empty() {
             return;
         }
-        let ty = args.type_at(0);
 
-        let known_is_valid = intrinsic_assert_panics(self.tcx, self.param_env, ty, intrinsic_name);
+        let known_is_valid =
+            intrinsic_assert_panics(self.tcx, self.param_env, args[0], intrinsic_name);
         match known_is_valid {
             // We don't know the layout or it's not validity assertion at all, don't touch it
             None => {}
@@ -292,10 +310,11 @@ impl<'tcx> InstSimplifyContext<'tcx, '_> {
 fn intrinsic_assert_panics<'tcx>(
     tcx: TyCtxt<'tcx>,
     param_env: ty::ParamEnv<'tcx>,
-    ty: Ty<'tcx>,
+    arg: ty::GenericArg<'tcx>,
     intrinsic_name: Symbol,
 ) -> Option<bool> {
     let requirement = ValidityRequirement::from_intrinsic(intrinsic_name)?;
+    let ty = arg.expect_ty();
     Some(!tcx.check_validity_requirement((requirement, param_env.and(ty))).ok()?)
 }
 
@@ -304,9 +323,8 @@ fn resolve_rust_intrinsic<'tcx>(
     func_ty: Ty<'tcx>,
 ) -> Option<(Symbol, GenericArgsRef<'tcx>)> {
     if let ty::FnDef(def_id, args) = *func_ty.kind() {
-        if tcx.is_intrinsic(def_id) {
-            return Some((tcx.item_name(def_id), args));
-        }
+        let intrinsic = tcx.intrinsic(def_id)?;
+        return Some((intrinsic.name, args));
     }
     None
 }

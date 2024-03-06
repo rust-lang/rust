@@ -18,7 +18,9 @@ fn sized_constraint_for_ty<'tcx>(
 
     let result = match ty.kind() {
         Bool | Char | Int(..) | Uint(..) | Float(..) | RawPtr(..) | Ref(..) | FnDef(..)
-        | FnPtr(_) | Array(..) | Closure(..) | Coroutine(..) | Never => vec![],
+        | FnPtr(_) | Array(..) | Closure(..) | CoroutineClosure(..) | Coroutine(..) | Never => {
+            vec![]
+        }
 
         Str | Dynamic(..) | Slice(_) | Foreign(..) | Error(_) | CoroutineWitness(..) => {
             // these are never sized - return the target type
@@ -172,17 +174,13 @@ struct ImplTraitInTraitFinder<'a, 'tcx> {
 }
 
 impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for ImplTraitInTraitFinder<'_, 'tcx> {
-    fn visit_binder<T: TypeVisitable<TyCtxt<'tcx>>>(
-        &mut self,
-        binder: &ty::Binder<'tcx, T>,
-    ) -> std::ops::ControlFlow<Self::BreakTy> {
+    fn visit_binder<T: TypeVisitable<TyCtxt<'tcx>>>(&mut self, binder: &ty::Binder<'tcx, T>) {
         self.depth.shift_in(1);
-        let binder = binder.super_visit_with(self);
+        binder.super_visit_with(self);
         self.depth.shift_out(1);
-        binder
     }
 
-    fn visit_ty(&mut self, ty: Ty<'tcx>) -> std::ops::ControlFlow<Self::BreakTy> {
+    fn visit_ty(&mut self, ty: Ty<'tcx>) {
         if let ty::Alias(ty::Projection, unshifted_alias_ty) = *ty.kind()
             && let Some(
                 ty::ImplTraitInTraitData::Trait { fn_def_id, .. }
@@ -255,14 +253,15 @@ fn param_env_reveal_all_normalized(tcx: TyCtxt<'_>, def_id: DefId) -> ty::ParamE
 fn issue33140_self_ty(tcx: TyCtxt<'_>, def_id: DefId) -> Option<EarlyBinder<Ty<'_>>> {
     debug!("issue33140_self_ty({:?})", def_id);
 
-    let trait_ref = tcx
-        .impl_trait_ref(def_id)
+    let impl_ = tcx
+        .impl_trait_header(def_id)
         .unwrap_or_else(|| bug!("issue33140_self_ty called on inherent impl {:?}", def_id))
         .skip_binder();
 
+    let trait_ref = impl_.trait_ref;
     debug!("issue33140_self_ty({:?}), trait-ref={:?}", def_id, trait_ref);
 
-    let is_marker_like = tcx.impl_polarity(def_id) == ty::ImplPolarity::Positive
+    let is_marker_like = impl_.polarity == ty::ImplPolarity::Positive
         && tcx.associated_item_def_ids(trait_ref.def_id).is_empty();
 
     // Check whether these impls would be ok for a marker trait.

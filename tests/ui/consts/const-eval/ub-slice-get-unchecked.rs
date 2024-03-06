@@ -1,4 +1,4 @@
-// known-bug: #110395
+//@ known-bug: #110395
 
 #![feature(const_slice_index)]
 

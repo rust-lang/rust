@@ -1,5 +1,5 @@
 PRINT-BANG INPUT (DISPLAY): { #![rustc_dummy] let a = "hello".len(); matches!(a, 5); }
-PRINT-BANG DEEP-RE-COLLECTED (DISPLAY): { #! [rustc_dummy] let a = "hello".len() ; matches! (a, 5) ; }
+PRINT-BANG DEEP-RE-COLLECTED (DISPLAY): { #! [rustc_dummy] let a = "hello".len(); matches! (a, 5); }
 PRINT-BANG INPUT (DEBUG): TokenStream [
     Group {
         delimiter: Brace,

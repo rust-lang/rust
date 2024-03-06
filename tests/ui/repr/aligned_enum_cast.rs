@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 // allows aligned custom discriminant enums to cast into other types
 // See the issue #92464 for more info
 #[allow(dead_code)]

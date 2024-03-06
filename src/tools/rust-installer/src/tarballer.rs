@@ -38,6 +38,10 @@ actor! {
 impl Tarballer {
     /// Generates the actual tarballs
     pub fn run(self) -> Result<()> {
+        if let CompressionProfile::NoOp = self.compression_profile {
+            return Ok(());
+        }
+
         let tarball_name = self.output.clone() + ".tar";
         let encoder = CombinedEncoder::new(
             self.compression_formats

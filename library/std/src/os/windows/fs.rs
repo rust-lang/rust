@@ -59,7 +59,7 @@ pub trait FileExt {
     /// function, it is set to the end of the write.
     ///
     /// When writing beyond the end of the file, the file is appropriately
-    /// extended and the intermediate bytes are left uninitialized.
+    /// extended and the intermediate bytes are set to zero.
     ///
     /// Note that similar to `File::write`, it is not an error to return a
     /// short write. When returning from such a short write, the file pointer

@@ -1,4 +1,4 @@
-// known-bug: #103507
+//@ known-bug: #103507
 
 #![feature(const_mut_refs)]
 #![feature(const_trait_impl)]

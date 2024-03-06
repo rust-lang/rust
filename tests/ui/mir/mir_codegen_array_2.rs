@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 fn into_inner(x: u64) -> [u64; 1024] {
     [x; 2*4*8*16]
 }

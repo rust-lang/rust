@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 
 #![feature(unboxed_closures, fn_traits)]
 

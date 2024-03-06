@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 pub trait Data { fn doit(&self) {} }
 impl<T> Data for T {}
 pub trait UnaryLogic { type D: Data; }

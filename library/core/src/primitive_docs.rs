@@ -448,22 +448,6 @@ mod prim_unit {}
 #[doc(hidden)]
 impl () {}
 
-// Fake impl that's only really used for docs.
-#[cfg(doc)]
-#[stable(feature = "rust1", since = "1.0.0")]
-impl Clone for () {
-    fn clone(&self) -> Self {
-        loop {}
-    }
-}
-
-// Fake impl that's only really used for docs.
-#[cfg(doc)]
-#[stable(feature = "rust1", since = "1.0.0")]
-impl Copy for () {
-    // empty
-}
-
 #[rustc_doc_primitive = "pointer"]
 #[doc(alias = "ptr")]
 #[doc(alias = "*")]
@@ -1384,6 +1368,30 @@ mod prim_usize {}
 /// work on references as well as they do on owned values! The implementations described here are
 /// meant for generic contexts, where the final type `T` is a type parameter or otherwise not
 /// locally known.
+///
+/// # Safety
+///
+/// For all types, `T: ?Sized`, and for all `t: &T` or `t: &mut T`, when such values cross an API
+/// boundary, the following invariants must generally be upheld:
+///
+/// * `t` is aligned to `align_of_val(t)`
+/// * `t` is dereferenceable for `size_of_val(t)` many bytes
+///
+/// If `t` points at address `a`, being "dereferenceable" for N bytes means that the memory range
+/// `[a, a + N)` is all contained within a single [allocated object].
+///
+/// For instance, this means that unsafe code in a safe function may assume these invariants are
+/// ensured of arguments passed by the caller, and it may assume that these invariants are ensured
+/// of return values from any safe functions it calls. In most cases, the inverse is also true:
+/// unsafe code must not violate these invariants when passing arguments to safe functions or
+/// returning values from safe functions; such violations may result in undefined behavior. Where
+/// exceptions to this latter requirement exist, they will be called out explicitly in documentation.
+///
+/// It is not decided yet whether unsafe code may violate these invariants temporarily on internal
+/// data. As a consequence, unsafe code which violates these invariants temporarily on internal data
+/// may become unsound in future versions of Rust depending on how this question is decided.
+///
+/// [allocated object]: ptr#allocated-object
 #[stable(feature = "rust1", since = "1.0.0")]
 mod prim_ref {}
 
@@ -1569,8 +1577,7 @@ mod prim_ref {}
 /// - Any two types with size 0 and alignment 1 are ABI-compatible.
 /// - A `repr(transparent)` type `T` is ABI-compatible with its unique non-trivial field, i.e., the
 ///   unique field that doesn't have size 0 and alignment 1 (if there is such a field).
-/// - `i32` is ABI-compatible with `NonZeroI32`, and similar for all other integer types with their
-///   matching `NonZero*` type.
+/// - `i32` is ABI-compatible with `NonZero<i32>`, and similar for all other integer types.
 /// - If `T` is guaranteed to be subject to the [null pointer
 ///   optimization](option/index.html#representation), then `T` and `Option<T>` are ABI-compatible.
 ///
@@ -1605,9 +1612,9 @@ mod prim_ref {}
 /// type in the function pointer to the type at the function declaration, and the return value is
 /// [`transmute`d][mem::transmute] from the type in the declaration to the type in the
 /// pointer. All the usual caveats and concerns around transmutation apply; for instance, if the
-/// function expects a `NonZeroI32` and the function pointer uses the ABI-compatible type
-/// `Option<NonZeroI32>`, and the value used for the argument is `None`, then this call is Undefined
-/// Behavior since transmuting `None::<NonZeroI32>` to `NonZeroI32` violates the non-zero
+/// function expects a `NonZero<i32>` and the function pointer uses the ABI-compatible type
+/// `Option<NonZero<i32>>`, and the value used for the argument is `None`, then this call is Undefined
+/// Behavior since transmuting `None::<NonZero<i32>>` to `NonZero<i32>` violates the non-zero
 /// requirement.
 ///
 /// #### Requirements concerning target features
@@ -1652,6 +1659,11 @@ mod prim_ref {}
 /// * [`UnwindSafe`]
 /// * [`RefUnwindSafe`]
 ///
+/// Note that while this type implements `PartialEq`, comparing function pointers is unreliable:
+/// pointers to the same function can compare inequal (because functions are duplicated in multiple
+/// codegen units), and pointers to *different* functions can compare equal (since identical
+/// functions can be deduplicated within a codegen unit).
+///
 /// [`Hash`]: hash::Hash
 /// [`Pointer`]: fmt::Pointer
 /// [`UnwindSafe`]: panic::UnwindSafe
@@ -1666,23 +1678,3 @@ mod prim_fn {}
 // See src/librustdoc/passes/collect_trait_impls.rs:collect_trait_impls
 #[doc(hidden)]
 impl<Ret, T> fn(T) -> Ret {}
-
-// Fake impl that's only really used for docs.
-#[cfg(doc)]
-#[stable(feature = "rust1", since = "1.0.0")]
-#[doc(fake_variadic)]
-/// This trait is implemented on function pointers with any number of arguments.
-impl<Ret, T> Clone for fn(T) -> Ret {
-    fn clone(&self) -> Self {
-        loop {}
-    }
-}
-
-// Fake impl that's only really used for docs.
-#[cfg(doc)]
-#[stable(feature = "rust1", since = "1.0.0")]
-#[doc(fake_variadic)]
-/// This trait is implemented on function pointers with any number of arguments.
-impl<Ret, T> Copy for fn(T) -> Ret {
-    // empty
-}

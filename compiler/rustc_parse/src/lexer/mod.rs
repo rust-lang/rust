@@ -4,19 +4,19 @@ use crate::errors;
 use crate::lexer::unicode_chars::UNICODE_ARRAY;
 use crate::make_unclosed_delims_error;
 use rustc_ast::ast::{self, AttrStyle};
-use rustc_ast::token::{self, CommentKind, Delimiter, Token, TokenKind};
+use rustc_ast::token::{self, CommentKind, Delimiter, IdentIsRaw, Token, TokenKind};
 use rustc_ast::tokenstream::TokenStream;
 use rustc_ast::util::unicode::contains_text_flow_control_chars;
-use rustc_errors::{codes::*, Applicability, DiagCtxt, DiagnosticBuilder, StashKey};
+use rustc_errors::{codes::*, Applicability, Diag, DiagCtxt, StashKey};
 use rustc_lexer::unescape::{self, EscapeError, Mode};
 use rustc_lexer::{Base, DocStyle, RawStrError};
 use rustc_lexer::{Cursor, LiteralKind};
 use rustc_session::lint::builtin::{
     RUST_2021_PREFIXES_INCOMPATIBLE_SYNTAX, TEXT_DIRECTION_CODEPOINT_IN_COMMENT,
 };
-use rustc_session::lint::BuiltinLintDiagnostics;
+use rustc_session::lint::BuiltinLintDiag;
 use rustc_session::parse::ParseSess;
-use rustc_span::symbol::{sym, Symbol};
+use rustc_span::symbol::Symbol;
 use rustc_span::{edition::Edition, BytePos, Pos, Span};
 
 mod diagnostics;
@@ -42,12 +42,12 @@ pub struct UnmatchedDelim {
     pub candidate_span: Option<Span>,
 }
 
-pub(crate) fn parse_token_trees<'sess, 'src>(
-    sess: &'sess ParseSess,
+pub(crate) fn parse_token_trees<'psess, 'src>(
+    psess: &'psess ParseSess,
     mut src: &'src str,
     mut start_pos: BytePos,
     override_span: Option<Span>,
-) -> Result<TokenStream, Vec<DiagnosticBuilder<'sess>>> {
+) -> Result<TokenStream, Vec<Diag<'psess>>> {
     // Skip `#!`, if present.
     if let Some(shebang_len) = rustc_lexer::strip_shebang(src) {
         src = &src[shebang_len..];
@@ -56,7 +56,7 @@ pub(crate) fn parse_token_trees<'sess, 'src>(
 
     let cursor = Cursor::new(src);
     let string_reader = StringReader {
-        sess,
+        psess,
         start_pos,
         pos: start_pos,
         src,
@@ -75,7 +75,7 @@ pub(crate) fn parse_token_trees<'sess, 'src>(
 
             let mut buffer = Vec::with_capacity(1);
             for unmatched in unmatched_delims {
-                if let Some(err) = make_unclosed_delims_error(unmatched, sess) {
+                if let Some(err) = make_unclosed_delims_error(unmatched, psess) {
                     buffer.push(err);
                 }
             }
@@ -90,8 +90,8 @@ pub(crate) fn parse_token_trees<'sess, 'src>(
     }
 }
 
-struct StringReader<'sess, 'src> {
-    sess: &'sess ParseSess,
+struct StringReader<'psess, 'src> {
+    psess: &'psess ParseSess,
     /// Initial position, read-only.
     start_pos: BytePos,
     /// The absolute offset within the source_map of the current character.
@@ -107,9 +107,9 @@ struct StringReader<'sess, 'src> {
     nbsp_is_whitespace: bool,
 }
 
-impl<'sess, 'src> StringReader<'sess, 'src> {
-    pub fn dcx(&self) -> &'sess DiagCtxt {
-        &self.sess.dcx
+impl<'psess, 'src> StringReader<'psess, 'src> {
+    pub fn dcx(&self) -> &'psess DiagCtxt {
+        &self.psess.dcx
     }
 
     fn mk_sp(&self, lo: BytePos, hi: BytePos) -> Span {
@@ -176,12 +176,12 @@ impl<'sess, 'src> StringReader<'sess, 'src> {
                 rustc_lexer::TokenKind::RawIdent => {
                     let sym = nfc_normalize(self.str_from(start + BytePos(2)));
                     let span = self.mk_sp(start, self.pos);
-                    self.sess.symbol_gallery.insert(sym, span);
+                    self.psess.symbol_gallery.insert(sym, span);
                     if !sym.can_be_raw() {
                         self.dcx().emit_err(errors::CannotBeRawIdent { span, ident: sym });
                     }
-                    self.sess.raw_identifier_spans.push(span);
-                    token::Ident(sym, true)
+                    self.psess.raw_identifier_spans.push(span);
+                    token::Ident(sym, IdentIsRaw::Yes)
                 }
                 rustc_lexer::TokenKind::UnknownPrefix => {
                     self.report_unknown_prefix(start);
@@ -199,9 +199,9 @@ impl<'sess, 'src> StringReader<'sess, 'src> {
                 {
                     let sym = nfc_normalize(self.str_from(start));
                     let span = self.mk_sp(start, self.pos);
-                    self.sess.bad_unicode_identifiers.borrow_mut().entry(sym).or_default()
+                    self.psess.bad_unicode_identifiers.borrow_mut().entry(sym).or_default()
                         .push(span);
-                    token::Ident(sym, false)
+                    token::Ident(sym, IdentIsRaw::No)
                 }
                 // split up (raw) c string literals to an ident and a string literal when edition < 2021.
                 rustc_lexer::TokenKind::Literal {
@@ -230,7 +230,7 @@ impl<'sess, 'src> StringReader<'sess, 'src> {
                     let suffix = if suffix_start < self.pos {
                         let string = self.str_from(suffix_start);
                         if string == "_" {
-                            self.sess
+                            self.psess
                                 .dcx
                                 .emit_err(errors::UnderscoreLiteralSuffix { span: self.mk_sp(suffix_start, self.pos) });
                             None
@@ -338,8 +338,8 @@ impl<'sess, 'src> StringReader<'sess, 'src> {
     fn ident(&self, start: BytePos) -> TokenKind {
         let sym = nfc_normalize(self.str_from(start));
         let span = self.mk_sp(start, self.pos);
-        self.sess.symbol_gallery.insert(sym, span);
-        token::Ident(sym, false)
+        self.psess.symbol_gallery.insert(sym, span);
+        token::Ident(sym, IdentIsRaw::No)
     }
 
     /// Detect usages of Unicode codepoints changing the direction of the text on screen and loudly
@@ -350,12 +350,12 @@ impl<'sess, 'src> StringReader<'sess, 'src> {
         let content = self.str_from(content_start);
         if contains_text_flow_control_chars(content) {
             let span = self.mk_sp(start, self.pos);
-            self.sess.buffer_lint_with_diagnostic(
+            self.psess.buffer_lint_with_diagnostic(
                 TEXT_DIRECTION_CODEPOINT_IN_COMMENT,
                 span,
                 ast::CRATE_NODE_ID,
                 "unicode codepoint changing visible direction of text present in comment",
-                BuiltinLintDiagnostics::UnicodeTextFlow(span, content.to_string()),
+                BuiltinLintDiag::UnicodeTextFlow(span, content.to_string()),
             );
         }
     }
@@ -478,31 +478,34 @@ impl<'sess, 'src> StringReader<'sess, 'src> {
                 }
             }
             rustc_lexer::LiteralKind::Int { base, empty_int } => {
+                let mut kind = token::Integer;
                 if empty_int {
                     let span = self.mk_sp(start, end);
-                    self.dcx().emit_err(errors::NoDigitsLiteral { span });
-                    (token::Integer, sym::integer(0))
-                } else {
-                    if matches!(base, Base::Binary | Base::Octal) {
-                        let base = base as u32;
-                        let s = self.str_from_to(start + BytePos(2), end);
-                        for (idx, c) in s.char_indices() {
-                            let span = self.mk_sp(
-                                start + BytePos::from_usize(2 + idx),
-                                start + BytePos::from_usize(2 + idx + c.len_utf8()),
-                            );
-                            if c != '_' && c.to_digit(base).is_none() {
+                    let guar = self.dcx().emit_err(errors::NoDigitsLiteral { span });
+                    kind = token::Err(guar);
+                } else if matches!(base, Base::Binary | Base::Octal) {
+                    let base = base as u32;
+                    let s = self.str_from_to(start + BytePos(2), end);
+                    for (idx, c) in s.char_indices() {
+                        let span = self.mk_sp(
+                            start + BytePos::from_usize(2 + idx),
+                            start + BytePos::from_usize(2 + idx + c.len_utf8()),
+                        );
+                        if c != '_' && c.to_digit(base).is_none() {
+                            let guar =
                                 self.dcx().emit_err(errors::InvalidDigitLiteral { span, base });
-                            }
+                            kind = token::Err(guar);
                         }
                     }
-                    (token::Integer, self.symbol_from_to(start, end))
                 }
+                (kind, self.symbol_from_to(start, end))
             }
             rustc_lexer::LiteralKind::Float { base, empty_exponent } => {
+                let mut kind = token::Float;
                 if empty_exponent {
                     let span = self.mk_sp(start, self.pos);
-                    self.dcx().emit_err(errors::EmptyExponentFloat { span });
+                    let guar = self.dcx().emit_err(errors::EmptyExponentFloat { span });
+                    kind = token::Err(guar);
                 }
                 let base = match base {
                     Base::Hexadecimal => Some("hexadecimal"),
@@ -512,9 +515,11 @@ impl<'sess, 'src> StringReader<'sess, 'src> {
                 };
                 if let Some(base) = base {
                     let span = self.mk_sp(start, end);
-                    self.dcx().emit_err(errors::FloatLiteralUnsupportedBase { span, base });
+                    let guar =
+                        self.dcx().emit_err(errors::FloatLiteralUnsupportedBase { span, base });
+                    kind = token::Err(guar)
                 }
-                (token::Float, self.symbol_from_to(start, end))
+                (kind, self.symbol_from_to(start, end))
             }
         }
     }
@@ -561,7 +566,7 @@ impl<'sess, 'src> StringReader<'sess, 'src> {
     }
 
     fn report_non_started_raw_string(&self, start: BytePos, bad_char: char) -> ! {
-        self.sess
+        self.psess
             .dcx
             .struct_span_fatal(
                 self.mk_sp(start, self.pos),
@@ -675,12 +680,12 @@ impl<'sess, 'src> StringReader<'sess, 'src> {
             self.dcx().emit_err(errors::UnknownPrefix { span: prefix_span, prefix, sugg });
         } else {
             // Before Rust 2021, only emit a lint for migration.
-            self.sess.buffer_lint_with_diagnostic(
+            self.psess.buffer_lint_with_diagnostic(
                 RUST_2021_PREFIXES_INCOMPATIBLE_SYNTAX,
                 prefix_span,
                 ast::CRATE_NODE_ID,
                 format!("prefix `{prefix}` is unknown"),
-                BuiltinLintDiagnostics::ReservedPrefix(prefix_span),
+                BuiltinLintDiag::ReservedPrefix(prefix_span),
             );
         }
     }
@@ -691,7 +696,7 @@ impl<'sess, 'src> StringReader<'sess, 'src> {
 
     fn cook_common(
         &self,
-        kind: token::LitKind,
+        mut kind: token::LitKind,
         mode: Mode,
         start: BytePos,
         end: BytePos,
@@ -699,7 +704,6 @@ impl<'sess, 'src> StringReader<'sess, 'src> {
         postfix_len: u32,
         unescape: fn(&str, Mode, &mut dyn FnMut(Range<usize>, Result<(), EscapeError>)),
     ) -> (token::LitKind, Symbol) {
-        let mut has_fatal_err = false;
         let content_start = start + BytePos(prefix_len);
         let content_end = end - BytePos(postfix_len);
         let lit_content = self.str_from_to(content_start, content_end);
@@ -711,10 +715,8 @@ impl<'sess, 'src> StringReader<'sess, 'src> {
                 let lo = content_start + BytePos(start);
                 let hi = lo + BytePos(end - start);
                 let span = self.mk_sp(lo, hi);
-                if err.is_fatal() {
-                    has_fatal_err = true;
-                }
-                emit_unescape_error(
+                let is_fatal = err.is_fatal();
+                if let Some(guar) = emit_unescape_error(
                     self.dcx(),
                     lit_content,
                     span_with_quotes,
@@ -722,17 +724,21 @@ impl<'sess, 'src> StringReader<'sess, 'src> {
                     mode,
                     range,
                     err,
-                );
+                ) {
+                    assert!(is_fatal);
+                    kind = token::Err(guar);
+                }
             }
         });
 
         // We normally exclude the quotes for the symbol, but for errors we
         // include it because it results in clearer error messages.
-        if !has_fatal_err {
-            (kind, Symbol::intern(lit_content))
+        let sym = if !matches!(kind, token::Err(_)) {
+            Symbol::intern(lit_content)
         } else {
-            (token::Err, self.symbol_from_to(start, end))
-        }
+            self.symbol_from_to(start, end)
+        };
+        (kind, sym)
     }
 
     fn cook_unicode(

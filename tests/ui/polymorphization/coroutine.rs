@@ -1,5 +1,5 @@
-// build-fail
-// compile-flags:-Zpolymorphize=on -Zinline-mir=off
+//@ build-fail
+//@ compile-flags:-Zpolymorphize=on -Zinline-mir=off
 #![feature(generic_const_exprs, coroutines, coroutine_trait, rustc_attrs)]
 //~^ WARN the feature `generic_const_exprs` is incomplete
 

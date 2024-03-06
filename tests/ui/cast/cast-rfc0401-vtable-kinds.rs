@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 // Check that you can cast between different pointers to trait objects
 // whose vtable have the same kind (both lengths, or both trait pointers).
 
@@ -8,7 +8,7 @@ trait Foo<T> {
     fn foo(&self, _: T) -> u32 { 42 }
 }
 
-trait Bar {
+trait Bar { //~ WARN trait `Bar` is never used
     fn bar(&self) { println!("Bar!"); }
 }
 

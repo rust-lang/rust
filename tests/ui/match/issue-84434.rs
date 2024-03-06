@@ -1,5 +1,5 @@
 // https://github.com/rust-lang/rust/issues/84434
-// check-pass
+//@ check-pass
 
 use std::path::Path;
 struct A {

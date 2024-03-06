@@ -1,1 +1,1 @@
-// ignore-test: not a test
+//@ ignore-test: not a test

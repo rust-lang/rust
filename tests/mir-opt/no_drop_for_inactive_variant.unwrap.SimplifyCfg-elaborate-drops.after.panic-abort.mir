@@ -15,16 +15,16 @@ fn unwrap(_1: Option<T>) -> T {
 
     bb0: {
         _2 = discriminant(_1);
-        switchInt(move _2) -> [0: bb1, 1: bb3, otherwise: bb2];
+        switchInt(move _2) -> [0: bb2, 1: bb3, otherwise: bb1];
     }
 
     bb1: {
-        StorageLive(_4);
-        _4 = begin_panic::<&str>(const "explicit panic") -> unwind unreachable;
+        unreachable;
     }
 
     bb2: {
-        unreachable;
+        StorageLive(_4);
+        _4 = begin_panic::<&str>(const "explicit panic") -> unwind unreachable;
     }
 
     bb3: {

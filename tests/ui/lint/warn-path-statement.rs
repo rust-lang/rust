@@ -1,4 +1,4 @@
-// compile-flags: -D path-statements
+//@ compile-flags: -D path-statements
 struct Droppy;
 
 impl Drop for Droppy {

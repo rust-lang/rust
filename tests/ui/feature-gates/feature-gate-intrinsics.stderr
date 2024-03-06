@@ -21,6 +21,16 @@ error[E0093]: unrecognized intrinsic function: `bar`
    |
 LL |     fn bar();
    |     ^^^^^^^^^ unrecognized intrinsic
+   |
+   = help: if you're adding an intrinsic, be sure to update `check_intrinsic_type`
+
+error[E0093]: unrecognized intrinsic function: `baz`
+  --> $DIR/feature-gate-intrinsics.rs:5:28
+   |
+LL | extern "rust-intrinsic" fn baz() {}
+   |                            ^^^ unrecognized intrinsic
+   |
+   = help: if you're adding an intrinsic, be sure to update `check_intrinsic_type`
 
 error: intrinsic must be in `extern "rust-intrinsic" { ... }` block
   --> $DIR/feature-gate-intrinsics.rs:5:34
@@ -28,7 +38,7 @@ error: intrinsic must be in `extern "rust-intrinsic" { ... }` block
 LL | extern "rust-intrinsic" fn baz() {}
    |                                  ^^
 
-error: aborting due to 4 previous errors
+error: aborting due to 5 previous errors
 
 Some errors have detailed explanations: E0093, E0658.
 For more information about an error, try `rustc --explain E0093`.

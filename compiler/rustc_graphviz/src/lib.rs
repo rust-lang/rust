@@ -276,8 +276,6 @@
 #![feature(rustdoc_internals)]
 #![doc(rust_logo)]
 #![allow(internal_features)]
-#![deny(rustc::untranslatable_diagnostic)]
-#![deny(rustc::diagnostic_outside_of_impl)]
 
 use LabelText::*;
 

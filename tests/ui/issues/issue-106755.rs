@@ -1,4 +1,4 @@
-// compile-flags:-Ztranslate-lang=en_US
+//@ compile-flags:-Ztranslate-lang=en_US
 
 #![feature(negative_impls)]
 #![feature(marker_trait_attr)]
@@ -15,7 +15,5 @@ impl<T: MyTrait> !Send for TestType<T> {} //~ ERROR found both positive and nega
 unsafe impl<T: 'static> Send for TestType<T> {} //~ ERROR conflicting implementations
 
 impl !Send for TestType<i32> {}
-//~^ WARNING
-//~| WARNING this will change its meaning
 
 fn main() {}

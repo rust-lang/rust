@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 
 #![feature(control_flow_enum)]
 #![feature(try_trait_v2)]

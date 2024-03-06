@@ -1,4 +1,8 @@
-#![feature(stdsimd, powerpc_target_feature)]
+#![feature(powerpc_target_feature)]
+#![cfg_attr(
+    any(target_arch = "powerpc", target_arch = "powerpc64"),
+    feature(stdarch_powerpc)
+)]
 
 pub mod array;
 

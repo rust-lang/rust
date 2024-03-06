@@ -5,7 +5,7 @@
 
 #![allow(warnings)]
 
-// check-pass
+//@ check-pass
 
 enum A { union }
 enum B { union {} }

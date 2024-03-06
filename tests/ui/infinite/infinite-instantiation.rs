@@ -1,5 +1,5 @@
-// build-fail
-// normalize-stderr-test: ".nll/" -> "/"
+//@ build-fail
+//@ normalize-stderr-test: ".nll/" -> "/"
 
 trait ToOpt: Sized {
     fn to_option(&self) -> Option<Self>;

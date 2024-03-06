@@ -1,4 +1,4 @@
-// only-x86_64
+//@ only-x86_64
 
 #![feature(target_feature_11)]
 
@@ -12,7 +12,7 @@ fn call(f: impl Fn()) {
     f()
 }
 
-fn call_mut(f: impl FnMut()) {
+fn call_mut(mut f: impl FnMut()) {
     f()
 }
 

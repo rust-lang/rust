@@ -1,5 +1,5 @@
-// needs-asm-support
-// check-pass
+//@ needs-asm-support
+//@ check-pass
 
 #![feature(never_type)]
 #![crate_type = "rlib"]

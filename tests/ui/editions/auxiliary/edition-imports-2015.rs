@@ -1,4 +1,4 @@
-// edition:2015
+//@ edition:2015
 
 #[macro_export]
 macro_rules! gen_imports { () => {

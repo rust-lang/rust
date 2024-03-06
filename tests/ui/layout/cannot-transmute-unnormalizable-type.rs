@@ -16,8 +16,7 @@ struct Other {
 
 fn main() {
     unsafe {
-        // FIXME(oli-obk): make this report a transmute error again.
         std::mem::transmute::<Option<()>, Option<&Other>>(None);
-        //^ ERROR cannot transmute between types of different sizes, or dependently-sized types
+        //~^ ERROR cannot transmute between types of different sizes, or dependently-sized types
     }
 }

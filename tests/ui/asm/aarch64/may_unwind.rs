@@ -1,7 +1,7 @@
-// only-aarch64
-// run-pass
-// needs-asm-support
-// needs-unwind
+//@ only-aarch64
+//@ run-pass
+//@ needs-asm-support
+//@ needs-unwind
 
 #![feature(asm_unwind)]
 

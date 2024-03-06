@@ -2,8 +2,8 @@
 // fn` with an `impl Trait` return that mentioned a `dyn Bar` with no
 // explicit lifetime bound.
 //
-// edition:2018
-// check-pass
+//@ edition:2018
+//@ check-pass
 
 trait Object {}
 

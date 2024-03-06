@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 
 
 fn two<F>(mut it: F) where F: FnMut(isize) { it(0); it(1); }

@@ -1,4 +1,4 @@
-// aux-build:issue-11680.rs
+//@ aux-build:issue-11680.rs
 
 extern crate issue_11680 as other;
 

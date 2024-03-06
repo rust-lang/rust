@@ -10,12 +10,12 @@
 // results in a change of the ICH for the struct's metadata, and that it stays
 // the same between rev2 and rev3.
 
-// build-pass (FIXME(62277): could be check-pass?)
-// revisions: cfail1 cfail2 cfail3 cfail4 cfail5 cfail6
-// compile-flags: -Z query-dep-graph -O
-// [cfail1]compile-flags: -Zincremental-ignore-spans
-// [cfail2]compile-flags: -Zincremental-ignore-spans
-// [cfail3]compile-flags: -Zincremental-ignore-spans
+//@ build-pass (FIXME(62277): could be check-pass?)
+//@ revisions: cfail1 cfail2 cfail3 cfail4 cfail5 cfail6
+//@ compile-flags: -Z query-dep-graph -O
+//@ [cfail1]compile-flags: -Zincremental-ignore-spans
+//@ [cfail2]compile-flags: -Zincremental-ignore-spans
+//@ [cfail3]compile-flags: -Zincremental-ignore-spans
 
 #![allow(warnings)]
 #![feature(rustc_attrs)]
@@ -51,9 +51,9 @@ struct LayoutC;
 struct TupleStructFieldType(i32);
 
 #[cfg(not(any(cfail1,cfail4)))]
-#[rustc_clean(except="hir_owner_nodes", cfg="cfail2")]
+#[rustc_clean(except="opt_hir_owner_nodes", cfg="cfail2")]
 #[rustc_clean(cfg="cfail3")]
-#[rustc_clean(except="hir_owner_nodes", cfg="cfail5")]
+#[rustc_clean(except="opt_hir_owner_nodes", cfg="cfail5")]
 #[rustc_clean(cfg="cfail6")]
 // Note that changing the type of a field does not change the type of the struct or enum, but
 // adding/removing fields or changing a fields name or visibility does.
@@ -68,9 +68,9 @@ struct TupleStructFieldType(
 struct TupleStructAddField(i32);
 
 #[cfg(not(any(cfail1,cfail4)))]
-#[rustc_clean(except="hir_owner_nodes,type_of", cfg="cfail2")]
+#[rustc_clean(except="opt_hir_owner_nodes,type_of", cfg="cfail2")]
 #[rustc_clean(cfg="cfail3")]
-#[rustc_clean(except="hir_owner_nodes,type_of", cfg="cfail5")]
+#[rustc_clean(except="opt_hir_owner_nodes,type_of", cfg="cfail5")]
 #[rustc_clean(cfg="cfail6")]
 struct TupleStructAddField(
     i32,
@@ -86,7 +86,7 @@ struct TupleStructFieldVisibility(    char);
 #[cfg(not(any(cfail1,cfail4)))]
 #[rustc_clean(cfg="cfail2", except="type_of")]
 #[rustc_clean(cfg="cfail3")]
-#[rustc_clean(cfg="cfail5", except="hir_owner_nodes,type_of")]
+#[rustc_clean(cfg="cfail5", except="opt_hir_owner_nodes,type_of")]
 #[rustc_clean(cfg="cfail6")]
 struct TupleStructFieldVisibility(pub char);
 
@@ -97,9 +97,9 @@ struct TupleStructFieldVisibility(pub char);
 struct RecordStructFieldType { x: f32 }
 
 #[cfg(not(any(cfail1,cfail4)))]
-#[rustc_clean(except="hir_owner_nodes", cfg="cfail2")]
+#[rustc_clean(except="opt_hir_owner_nodes", cfg="cfail2")]
 #[rustc_clean(cfg="cfail3")]
-#[rustc_clean(except="hir_owner_nodes", cfg="cfail5")]
+#[rustc_clean(except="opt_hir_owner_nodes", cfg="cfail5")]
 #[rustc_clean(cfg="cfail6")]
 // Note that changing the type of a field does not change the type of the struct or enum, but
 // adding/removing fields or changing a fields name or visibility does.
@@ -114,9 +114,9 @@ struct RecordStructFieldType {
 struct RecordStructFieldName { x: f32 }
 
 #[cfg(not(any(cfail1,cfail4)))]
-#[rustc_clean(except="hir_owner_nodes,type_of", cfg="cfail2")]
+#[rustc_clean(except="opt_hir_owner_nodes,type_of", cfg="cfail2")]
 #[rustc_clean(cfg="cfail3")]
-#[rustc_clean(except="hir_owner_nodes,type_of", cfg="cfail5")]
+#[rustc_clean(except="opt_hir_owner_nodes,type_of", cfg="cfail5")]
 #[rustc_clean(cfg="cfail6")]
 struct RecordStructFieldName { y: f32 }
 
@@ -127,9 +127,9 @@ struct RecordStructFieldName { y: f32 }
 struct RecordStructAddField { x: f32 }
 
 #[cfg(not(any(cfail1,cfail4)))]
-#[rustc_clean(except="hir_owner_nodes,type_of", cfg="cfail2")]
+#[rustc_clean(except="opt_hir_owner_nodes,type_of", cfg="cfail2")]
 #[rustc_clean(cfg="cfail3")]
-#[rustc_clean(except="hir_owner_nodes,type_of", cfg="cfail5")]
+#[rustc_clean(except="opt_hir_owner_nodes,type_of", cfg="cfail5")]
 #[rustc_clean(cfg="cfail6")]
 struct RecordStructAddField {
     x: f32,
@@ -144,7 +144,7 @@ struct RecordStructFieldVisibility {     x: f32 }
 #[cfg(not(any(cfail1,cfail4)))]
 #[rustc_clean(cfg="cfail2", except="type_of")]
 #[rustc_clean(cfg="cfail3")]
-#[rustc_clean(cfg="cfail5", except="hir_owner_nodes,type_of")]
+#[rustc_clean(cfg="cfail5", except="opt_hir_owner_nodes,type_of")]
 #[rustc_clean(cfg="cfail6")]
 struct RecordStructFieldVisibility { pub x: f32 }
 
@@ -155,9 +155,9 @@ struct RecordStructFieldVisibility { pub x: f32 }
 struct AddLifetimeParameter<'a>(&'a f32, &'a f64);
 
 #[cfg(not(any(cfail1,cfail4)))]
-#[rustc_clean(except="hir_owner_nodes,type_of,generics_of", cfg="cfail2")]
+#[rustc_clean(except="opt_hir_owner_nodes,type_of,generics_of", cfg="cfail2")]
 #[rustc_clean(cfg="cfail3")]
-#[rustc_clean(except="hir_owner_nodes,type_of,generics_of", cfg="cfail5")]
+#[rustc_clean(except="opt_hir_owner_nodes,type_of,generics_of", cfg="cfail5")]
 #[rustc_clean(cfg="cfail6")]
 struct AddLifetimeParameter<'a, 'b>(&'a f32, &'b f64);
 
@@ -168,9 +168,9 @@ struct AddLifetimeParameter<'a, 'b>(&'a f32, &'b f64);
 struct AddLifetimeParameterBound<'a, 'b>(&'a f32, &'b f64);
 
 #[cfg(not(any(cfail1,cfail4)))]
-#[rustc_clean(except="hir_owner_nodes,predicates_of", cfg="cfail2")]
+#[rustc_clean(except="opt_hir_owner_nodes,predicates_of", cfg="cfail2")]
 #[rustc_clean(cfg="cfail3")]
-#[rustc_clean(except="hir_owner_nodes,predicates_of", cfg="cfail5")]
+#[rustc_clean(except="opt_hir_owner_nodes,predicates_of", cfg="cfail5")]
 #[rustc_clean(cfg="cfail6")]
 struct AddLifetimeParameterBound<'a, 'b: 'a>(
     &'a f32,
@@ -181,9 +181,9 @@ struct AddLifetimeParameterBound<'a, 'b: 'a>(
 struct AddLifetimeParameterBoundWhereClause<'a, 'b>(&'a f32, &'b f64);
 
 #[cfg(not(any(cfail1,cfail4)))]
-#[rustc_clean(except="hir_owner_nodes,predicates_of", cfg="cfail2")]
+#[rustc_clean(except="opt_hir_owner_nodes,predicates_of", cfg="cfail2")]
 #[rustc_clean(cfg="cfail3")]
-#[rustc_clean(except="hir_owner_nodes,predicates_of", cfg="cfail5")]
+#[rustc_clean(except="opt_hir_owner_nodes,predicates_of", cfg="cfail5")]
 #[rustc_clean(cfg="cfail6")]
 struct AddLifetimeParameterBoundWhereClause<'a, 'b>(
     &'a f32,
@@ -197,9 +197,9 @@ struct AddLifetimeParameterBoundWhereClause<'a, 'b>(
 struct AddTypeParameter<T1>(T1, T1);
 
 #[cfg(not(any(cfail1,cfail4)))]
-#[rustc_clean(except="hir_owner_nodes,type_of,generics_of,predicates_of", cfg="cfail2")]
+#[rustc_clean(except="opt_hir_owner_nodes,type_of,generics_of,predicates_of", cfg="cfail2")]
 #[rustc_clean(cfg="cfail3")]
-#[rustc_clean(except="hir_owner_nodes,type_of,generics_of,predicates_of", cfg="cfail5")]
+#[rustc_clean(except="opt_hir_owner_nodes,type_of,generics_of,predicates_of", cfg="cfail5")]
 #[rustc_clean(cfg="cfail6")]
 struct AddTypeParameter<T1, T2>(
      // The field contains the parent's Generics, so it's dirty even though its
@@ -215,9 +215,9 @@ struct AddTypeParameter<T1, T2>(
 struct AddTypeParameterBound<T>(T);
 
 #[cfg(not(any(cfail1,cfail4)))]
-#[rustc_clean(except="hir_owner_nodes,predicates_of", cfg="cfail2")]
+#[rustc_clean(except="opt_hir_owner_nodes,predicates_of", cfg="cfail2")]
 #[rustc_clean(cfg="cfail3")]
-#[rustc_clean(except="hir_owner_nodes,predicates_of", cfg="cfail5")]
+#[rustc_clean(except="opt_hir_owner_nodes,predicates_of", cfg="cfail5")]
 #[rustc_clean(cfg="cfail6")]
 struct AddTypeParameterBound<T: Send>(
     T
@@ -228,9 +228,9 @@ struct AddTypeParameterBound<T: Send>(
 struct AddTypeParameterBoundWhereClause<T>(T);
 
 #[cfg(not(any(cfail1,cfail4)))]
-#[rustc_clean(except="hir_owner_nodes,predicates_of", cfg="cfail2")]
+#[rustc_clean(except="opt_hir_owner_nodes,predicates_of", cfg="cfail2")]
 #[rustc_clean(cfg="cfail3")]
-#[rustc_clean(except="hir_owner_nodes,predicates_of", cfg="cfail5")]
+#[rustc_clean(except="opt_hir_owner_nodes,predicates_of", cfg="cfail5")]
 #[rustc_clean(cfg="cfail6")]
 struct AddTypeParameterBoundWhereClause<T>(
     T
@@ -257,7 +257,7 @@ struct     Visibility;
 #[cfg(not(any(cfail1,cfail4)))]
 #[rustc_clean(cfg="cfail2")]
 #[rustc_clean(cfg="cfail3")]
-#[rustc_clean(cfg="cfail5", except="hir_owner_nodes")]
+#[rustc_clean(cfg="cfail5", except="opt_hir_owner_nodes")]
 #[rustc_clean(cfg="cfail6")]
 pub struct Visibility;
 
@@ -271,9 +271,9 @@ mod tuple_struct_change_field_type_indirectly {
     #[cfg(not(any(cfail1,cfail4)))]
     use super::ReferencedType2 as FieldType;
 
-    #[rustc_clean(except="hir_owner_nodes", cfg="cfail2")]
+    #[rustc_clean(except="opt_hir_owner_nodes", cfg="cfail2")]
     #[rustc_clean(cfg="cfail3")]
-    #[rustc_clean(except="hir_owner_nodes", cfg="cfail5")]
+    #[rustc_clean(except="opt_hir_owner_nodes", cfg="cfail5")]
     #[rustc_clean(cfg="cfail6")]
     struct TupleStruct(
         FieldType
@@ -288,9 +288,9 @@ mod record_struct_change_field_type_indirectly {
     #[cfg(not(any(cfail1,cfail4)))]
     use super::ReferencedType2 as FieldType;
 
-    #[rustc_clean(except="hir_owner_nodes", cfg="cfail2")]
+    #[rustc_clean(except="opt_hir_owner_nodes", cfg="cfail2")]
     #[rustc_clean(cfg="cfail3")]
-    #[rustc_clean(except="hir_owner_nodes", cfg="cfail5")]
+    #[rustc_clean(except="opt_hir_owner_nodes", cfg="cfail5")]
     #[rustc_clean(cfg="cfail6")]
     struct RecordStruct {
         _x: FieldType
@@ -310,9 +310,9 @@ mod change_trait_bound_indirectly {
     #[cfg(not(any(cfail1,cfail4)))]
     use super::ReferencedTrait2 as Trait;
 
-    #[rustc_clean(except="hir_owner_nodes,predicates_of", cfg="cfail2")]
+    #[rustc_clean(except="opt_hir_owner_nodes,predicates_of", cfg="cfail2")]
     #[rustc_clean(cfg="cfail3")]
-    #[rustc_clean(except="hir_owner_nodes,predicates_of", cfg="cfail5")]
+    #[rustc_clean(except="opt_hir_owner_nodes,predicates_of", cfg="cfail5")]
     #[rustc_clean(cfg="cfail6")]
     struct Struct<T: Trait>(T);
 }
@@ -324,9 +324,9 @@ mod change_trait_bound_indirectly_in_where_clause {
     #[cfg(not(any(cfail1,cfail4)))]
     use super::ReferencedTrait2 as Trait;
 
-    #[rustc_clean(except="hir_owner_nodes,predicates_of", cfg="cfail2")]
+    #[rustc_clean(except="opt_hir_owner_nodes,predicates_of", cfg="cfail2")]
     #[rustc_clean(cfg="cfail3")]
-    #[rustc_clean(except="hir_owner_nodes,predicates_of", cfg="cfail5")]
+    #[rustc_clean(except="opt_hir_owner_nodes,predicates_of", cfg="cfail5")]
     #[rustc_clean(cfg="cfail6")]
     struct Struct<T>(T) where T : Trait;
 }

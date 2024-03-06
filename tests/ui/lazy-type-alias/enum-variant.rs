@@ -1,5 +1,5 @@
 // Regression test for issue #113736.
-// check-pass
+//@ check-pass
 
 #![feature(lazy_type_alias)]
 //~^ WARN the feature `lazy_type_alias` is incomplete and may not be safe to use

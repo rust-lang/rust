@@ -1,4 +1,4 @@
-// check-pass
+//@ check-pass
 
 #![feature(lint_reasons)]
 #![allow(incomplete_features)]

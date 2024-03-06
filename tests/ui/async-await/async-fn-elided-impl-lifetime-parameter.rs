@@ -3,8 +3,8 @@
 //
 // Regression test for #63500.
 //
-// check-pass
-// edition:2018
+//@ check-pass
+//@ edition:2018
 
 struct Foo<'a>(&'a u8);
 

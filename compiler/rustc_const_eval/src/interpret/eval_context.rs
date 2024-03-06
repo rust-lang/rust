@@ -4,6 +4,7 @@ use std::{fmt, mem};
 use either::{Either, Left, Right};
 
 use hir::CRATE_HIR_ID;
+use rustc_errors::DiagCtxt;
 use rustc_hir::{self as hir, def_id::DefId, definitions::DefPathData};
 use rustc_index::IndexVec;
 use rustc_middle::mir;
@@ -287,7 +288,7 @@ impl<'tcx> fmt::Display for FrameInfo<'tcx> {
             if tcx.def_key(self.instance.def_id()).disambiguated_data.data == DefPathData::Closure {
                 write!(f, "inside closure")
             } else {
-                // Note: this triggers a `good_path_delayed_bug` state, which means that if we ever
+                // Note: this triggers a `must_produce_diag` state, which means that if we ever
                 // get here we must emit a diagnostic. We should never display a `FrameInfo` unless
                 // we actually want to emit a warning or error to the user.
                 write!(f, "inside `{}`", self.instance)
@@ -303,7 +304,7 @@ impl<'tcx> FrameInfo<'tcx> {
             errors::FrameNote { where_: "closure", span, instance: String::new(), times: 0 }
         } else {
             let instance = format!("{}", self.instance);
-            // Note: this triggers a `good_path_delayed_bug` state, which means that if we ever get
+            // Note: this triggers a `must_produce_diag` state, which means that if we ever get
             // here we must emit a diagnostic. We should never display a `FrameInfo` unless we
             // actually want to emit a warning or error to the user.
             errors::FrameNote { where_: "instance", span, instance, times: 0 }
@@ -430,6 +431,26 @@ pub(super) fn from_known_layout<'tcx>(
     }
 }
 
+/// Turn the given error into a human-readable string. Expects the string to be printed, so if
+/// `RUSTC_CTFE_BACKTRACE` is set this will show a backtrace of the rustc internals that
+/// triggered the error.
+///
+/// This is NOT the preferred way to render an error; use `report` from `const_eval` instead.
+/// However, this is useful when error messages appear in ICEs.
+pub fn format_interp_error<'tcx>(dcx: &DiagCtxt, e: InterpErrorInfo<'tcx>) -> String {
+    let (e, backtrace) = e.into_parts();
+    backtrace.print_backtrace();
+    // FIXME(fee1-dead), HACK: we want to use the error as title therefore we can just extract the
+    // label and arguments from the InterpError.
+    #[allow(rustc::untranslatable_diagnostic)]
+    let mut diag = dcx.struct_allow("");
+    let msg = e.diagnostic_message();
+    e.add_args(&mut diag);
+    let s = dcx.eagerly_translate_to_string(msg, diag.args.iter());
+    diag.cancel();
+    s
+}
+
 impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     pub fn new(
         tcx: TyCtxt<'tcx>,
@@ -460,27 +481,6 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             .iter()
             .find_map(|frame| frame.body.source.def_id().as_local())
             .map_or(CRATE_HIR_ID, |def_id| self.tcx.local_def_id_to_hir_id(def_id))
-    }
-
-    /// Turn the given error into a human-readable string. Expects the string to be printed, so if
-    /// `RUSTC_CTFE_BACKTRACE` is set this will show a backtrace of the rustc internals that
-    /// triggered the error.
-    ///
-    /// This is NOT the preferred way to render an error; use `report` from `const_eval` instead.
-    /// However, this is useful when error messages appear in ICEs.
-    pub fn format_error(&self, e: InterpErrorInfo<'tcx>) -> String {
-        let (e, backtrace) = e.into_parts();
-        backtrace.print_backtrace();
-        // FIXME(fee1-dead), HACK: we want to use the error as title therefore we can just extract the
-        // label and arguments from the InterpError.
-        let dcx = self.tcx.dcx();
-        #[allow(rustc::untranslatable_diagnostic)]
-        let mut diag = dcx.struct_allow("");
-        let msg = e.diagnostic_message();
-        e.add_args(dcx, &mut diag);
-        let s = dcx.eagerly_translate_to_string(msg, diag.args());
-        diag.cancel();
-        s
     }
 
     #[inline(always)]
@@ -554,18 +554,20 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
 
     /// Call this on things you got out of the MIR (so it is as generic as the current
     /// stack frame), to bring it into the proper environment for this interpreter.
-    pub(super) fn subst_from_current_frame_and_normalize_erasing_regions<
+    pub(super) fn instantiate_from_current_frame_and_normalize_erasing_regions<
         T: TypeFoldable<TyCtxt<'tcx>>,
     >(
         &self,
         value: T,
     ) -> Result<T, ErrorHandled> {
-        self.subst_from_frame_and_normalize_erasing_regions(self.frame(), value)
+        self.instantiate_from_frame_and_normalize_erasing_regions(self.frame(), value)
     }
 
     /// Call this on things you got out of the MIR (so it is as generic as the provided
     /// stack frame), to bring it into the proper environment for this interpreter.
-    pub(super) fn subst_from_frame_and_normalize_erasing_regions<T: TypeFoldable<TyCtxt<'tcx>>>(
+    pub(super) fn instantiate_from_frame_and_normalize_erasing_regions<
+        T: TypeFoldable<TyCtxt<'tcx>>,
+    >(
         &self,
         frame: &Frame<'mir, 'tcx, M::Provenance, M::FrameExtra>,
         value: T,
@@ -656,7 +658,8 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
 
         let layout = from_known_layout(self.tcx, self.param_env, layout, || {
             let local_ty = frame.body.local_decls[local].ty;
-            let local_ty = self.subst_from_frame_and_normalize_erasing_regions(frame, local_ty)?;
+            let local_ty =
+                self.instantiate_from_frame_and_normalize_erasing_regions(frame, local_ty)?;
             self.layout_of(local_ty)
         })?;
 
@@ -791,8 +794,8 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         // Make sure all the constants required by this frame evaluate successfully (post-monomorphization check).
         if M::POST_MONO_CHECKS {
             for &const_ in &body.required_consts {
-                let c =
-                    self.subst_from_current_frame_and_normalize_erasing_regions(const_.const_)?;
+                let c = self
+                    .instantiate_from_current_frame_and_normalize_erasing_regions(const_.const_)?;
                 c.eval(*self.tcx, self.param_env, Some(const_.span)).map_err(|err| {
                     err.emit_note(*self.tcx);
                     err
@@ -896,7 +899,19 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 .local_to_op(self.frame(), mir::RETURN_PLACE, None)
                 .expect("return place should always be live");
             let dest = self.frame().return_place.clone();
-            let err = self.copy_op(&op, &dest, /*allow_transmute*/ true);
+            let err = if self.stack().len() == 1 {
+                // The initializer of constants and statics will get validated separately
+                // after the constant has been fully evaluated. While we could fall back to the default
+                // code path, that will cause -Zenforce-validity to cycle on static initializers.
+                // Reading from a static's memory is not allowed during its evaluation, and will always
+                // trigger a cycle error. Validation must read from the memory of the current item.
+                // For Miri this means we do not validate the root frame return value,
+                // but Miri anyway calls `read_target_isize` on that so separate validation
+                // is not needed.
+                self.copy_op_no_dest_validation(&op, &dest)
+            } else {
+                self.copy_op_allow_transmute(&op, &dest)
+            };
             trace!("return value: {:?}", self.dump_place(&dest));
             // We delay actually short-circuiting on this error until *after* the stack frame is
             // popped, since we want this error to be attributed to the caller, whose type defines
@@ -1007,6 +1022,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 | ty::CoroutineWitness(..)
                 | ty::Array(..)
                 | ty::Closure(..)
+                | ty::CoroutineClosure(..)
                 | ty::Never
                 | ty::Error(_) => true,
 

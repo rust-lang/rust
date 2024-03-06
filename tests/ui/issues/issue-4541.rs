@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 
 fn parse_args() -> String {
     let args: Vec<_> = ::std::env::args().collect();

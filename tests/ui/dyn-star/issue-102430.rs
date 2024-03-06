@@ -1,4 +1,4 @@
-// check-pass
+//@ check-pass
 
 #![feature(dyn_star)]
 #![allow(incomplete_features)]

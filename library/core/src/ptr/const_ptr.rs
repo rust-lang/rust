@@ -48,8 +48,11 @@ impl<T: ?Sized> *const T {
             }
         }
 
+        #[cfg_attr(not(bootstrap), allow(unused_unsafe))] // on bootstrap bump, remove unsafe block
         // SAFETY: The two versions are equivalent at runtime.
-        unsafe { const_eval_select((self as *const u8,), const_impl, runtime_impl) }
+        unsafe {
+            const_eval_select((self as *const u8,), const_impl, runtime_impl)
+        }
     }
 
     /// Casts to a pointer of another type.
@@ -181,7 +184,7 @@ impl<T: ?Sized> *const T {
     ///
     /// This is similar to `self as usize`, which semantically discards *provenance* and
     /// *address-space* information. However, unlike `self as usize`, casting the returned address
-    /// back to a pointer yields [`invalid`][], which is undefined behavior to dereference. To
+    /// back to a pointer yields a [pointer without provenance][without_provenance], which is undefined behavior to dereference. To
     /// properly restore the lost information and obtain a dereferenceable pointer, use
     /// [`with_addr`][pointer::with_addr] or [`map_addr`][pointer::map_addr].
     ///
@@ -285,7 +288,7 @@ impl<T: ?Sized> *const T {
         self.with_addr(f(self.addr()))
     }
 
-    /// Decompose a (possibly wide) pointer into its address and metadata components.
+    /// Decompose a (possibly wide) pointer into its data pointer and metadata components.
     ///
     /// The pointer can be later reconstructed with [`from_raw_parts`].
     #[unstable(feature = "ptr_metadata", issue = "81513")]
@@ -806,13 +809,16 @@ impl<T: ?Sized> *const T {
     where
         T: Sized,
     {
-        let this = self;
+        #[cfg_attr(not(bootstrap), allow(unused_unsafe))] // on bootstrap bump, remove unsafe block
         // SAFETY: The comparison has no side-effects, and the intrinsic
         // does this check internally in the CTFE implementation.
         unsafe {
             assert_unsafe_precondition!(
-                "ptr::sub_ptr requires `this >= origin`",
-                [T](this: *const T, origin: *const T) => this >= origin
+                "ptr::sub_ptr requires `self >= origin`",
+                (
+                    this: *const () = self as *const (),
+                    origin: *const () = origin as *const (),
+                ) => this >= origin
             )
         };
 
@@ -1284,7 +1290,7 @@ impl<T: ?Sized> *const T {
     /// See [`ptr::copy`] for safety concerns and examples.
     ///
     /// [`ptr::copy`]: crate::ptr::copy()
-    #[rustc_const_stable(feature = "const_intrinsic_copy", since = "1.63.0")]
+    #[rustc_const_unstable(feature = "const_intrinsic_copy", issue = "80697")]
     #[stable(feature = "pointer_methods", since = "1.26.0")]
     #[inline]
     #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
@@ -1304,7 +1310,7 @@ impl<T: ?Sized> *const T {
     /// See [`ptr::copy_nonoverlapping`] for safety concerns and examples.
     ///
     /// [`ptr::copy_nonoverlapping`]: crate::ptr::copy_nonoverlapping()
-    #[rustc_const_stable(feature = "const_intrinsic_copy", since = "1.63.0")]
+    #[rustc_const_unstable(feature = "const_intrinsic_copy", issue = "80697")]
     #[stable(feature = "pointer_methods", since = "1.26.0")]
     #[inline]
     #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
@@ -1621,8 +1627,11 @@ impl<T: ?Sized> *const T {
             ptr.align_offset(align) == 0
         }
 
+        #[cfg_attr(not(bootstrap), allow(unused_unsafe))] // on bootstrap bump, remove unsafe block
         // SAFETY: The two versions are equivalent at runtime.
-        unsafe { const_eval_select((self.cast::<()>(), align), const_impl, runtime_impl) }
+        unsafe {
+            const_eval_select((self.cast::<()>(), align), const_impl, runtime_impl)
+        }
     }
 }
 

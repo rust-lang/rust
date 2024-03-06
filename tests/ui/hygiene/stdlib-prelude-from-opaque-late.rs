@@ -1,4 +1,4 @@
-// check-pass
+//@ check-pass
 
 #![feature(decl_macro)]
 #![allow(dropping_copy_types)]

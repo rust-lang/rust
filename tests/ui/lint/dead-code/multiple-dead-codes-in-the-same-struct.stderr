@@ -51,19 +51,13 @@ note: the lint level is defined here
 LL |     #[forbid(dead_code)]
    |              ^^^^^^^^^
 
-warning: field `0` is never read
-  --> $DIR/multiple-dead-codes-in-the-same-struct.rs:20:12
+warning: struct `Foo` is never constructed
+  --> $DIR/multiple-dead-codes-in-the-same-struct.rs:20:8
    |
 LL | struct Foo(usize, #[allow(unused)] usize);
-   |        --- ^^^^^
-   |        |
-   |        field in this struct
+   |        ^^^
    |
    = note: `Foo` has a derived impl for the trait `Debug`, but this is intentionally ignored during dead code analysis
-help: consider changing the field to be of unit type to suppress this warning while preserving the field numbering, or remove the field
-   |
-LL | struct Foo((), #[allow(unused)] usize);
-   |            ~~
 
 error: aborting due to 2 previous errors; 2 warnings emitted
 

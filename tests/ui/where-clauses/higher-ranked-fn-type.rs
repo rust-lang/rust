@@ -1,5 +1,5 @@
-// revisions: quiet verbose
-// [verbose]compile-flags: -Zverbose-internals
+//@ revisions: quiet verbose
+//@ [verbose]compile-flags: -Zverbose-internals
 
 #![allow(unused_parens)]
 

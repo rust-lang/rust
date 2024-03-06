@@ -1,4 +1,4 @@
-// ignore-cross-compile
+//@ ignore-cross-compile
 
 // https://github.com/rust-lang/rust/issues/43893
 

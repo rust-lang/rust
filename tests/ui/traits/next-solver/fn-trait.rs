@@ -1,4 +1,4 @@
-// compile-flags: -Znext-solver
+//@ compile-flags: -Znext-solver
 
 fn require_fn(_: impl Fn() -> i32) {}
 

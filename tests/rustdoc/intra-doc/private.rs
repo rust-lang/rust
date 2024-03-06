@@ -1,4 +1,4 @@
-// compile-flags: --document-private-items
+//@ compile-flags: --document-private-items
 
 // make sure to update `rustdoc-ui/intra-doc/private.rs` if you update this file
 

@@ -830,7 +830,9 @@ impl<T, E> Result<T, E> {
         }
     }
 
-    /// Calls the provided closure with a reference to the contained value (if [`Ok`]).
+    /// Calls a function with a reference to the contained value if [`Ok`].
+    ///
+    /// Returns the original result.
     ///
     /// # Examples
     ///
@@ -851,7 +853,9 @@ impl<T, E> Result<T, E> {
         self
     }
 
-    /// Calls the provided closure with a reference to the contained error (if [`Err`]).
+    /// Calls a function with a reference to the contained value if [`Err`].
+    ///
+    /// Returns the original result.
     ///
     /// # Examples
     ///
@@ -1311,6 +1315,7 @@ impl<T, E> Result<T, E> {
     /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
+    #[rustc_confusables("flat_map", "flatmap")]
     pub fn and_then<U, F: FnOnce(T) -> Result<U, E>>(self, op: F) -> Result<U, E> {
         match self {
             Ok(t) => op(t),

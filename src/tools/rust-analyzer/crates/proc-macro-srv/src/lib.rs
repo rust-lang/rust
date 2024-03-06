@@ -20,9 +20,14 @@ extern crate proc_macro;
 #[cfg(feature = "in-rust-tree")]
 extern crate rustc_driver as _;
 
+#[cfg(not(feature = "in-rust-tree"))]
+extern crate ra_ap_rustc_lexer as rustc_lexer;
+#[cfg(feature = "in-rust-tree")]
+extern crate rustc_lexer;
+
 mod dylib;
-mod server;
 mod proc_macros;
+mod server;
 
 use std::{
     collections::{hash_map::Entry, HashMap},

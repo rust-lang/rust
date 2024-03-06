@@ -1,5 +1,5 @@
-// build-pass
-// compile-flags: -g
+//@ build-pass
+//@ compile-flags: -g
 
 pub struct Dst {
     pub a: (),

@@ -1,4 +1,4 @@
-// normalize-stderr-test: "and \d+ other candidates" -> "and N other candidates"
+//@ normalize-stderr-test: "and \d+ other candidates" -> "and N other candidates"
 
 trait Get {
     type Value;

@@ -1,4 +1,4 @@
-// run-rustfix
+//@ run-rustfix
 
 struct _S(u32, Vec<i32>);
 

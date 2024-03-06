@@ -19,6 +19,23 @@ note: required by a bound in `needs_bar`
 LL | fn needs_bar<S: Bar>() {}
    |                 ^^^ required by this bound in `needs_bar`
 
+error[E0275]: overflow evaluating the requirement `<T as Foo>::Assoc: Sized`
+  --> $DIR/recursive-self-normalization.rs:11:17
+   |
+LL |     needs_bar::<T::Assoc>();
+   |                 ^^^^^^^^
+   |
+   = help: consider increasing the recursion limit by adding a `#![recursion_limit = "256"]` attribute to your crate (`recursive_self_normalization`)
+note: required by an implicit `Sized` bound in `needs_bar`
+  --> $DIR/recursive-self-normalization.rs:8:14
+   |
+LL | fn needs_bar<S: Bar>() {}
+   |              ^ required by the implicit `Sized` requirement on this type parameter in `needs_bar`
+help: consider relaxing the implicit `Sized` restriction
+   |
+LL | fn needs_bar<S: Bar + ?Sized>() {}
+   |                     ++++++++
+
 error[E0275]: overflow evaluating the requirement `<T as Foo>::Assoc == _`
   --> $DIR/recursive-self-normalization.rs:11:5
    |
@@ -45,6 +62,6 @@ LL |     needs_bar::<T::Assoc>();
    = help: consider increasing the recursion limit by adding a `#![recursion_limit = "256"]` attribute to your crate (`recursive_self_normalization`)
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
-error: aborting due to 5 previous errors
+error: aborting due to 6 previous errors
 
 For more information about this error, try `rustc --explain E0275`.

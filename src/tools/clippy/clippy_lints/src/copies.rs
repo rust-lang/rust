@@ -511,7 +511,8 @@ fn scan_block_for_eq<'tcx>(
                 for stmt in &stmts[stmts.len() - init..=stmts.len() - offset] {
                     if let StmtKind::Local(l) = stmt.kind {
                         l.pat.each_binding_or_first(&mut |_, id, _, _| {
-                            eq.locals.remove(&id);
+                            // FIXME(rust/#120456) - is `swap_remove` correct?
+                            eq.locals.swap_remove(&id);
                         });
                     }
                 }

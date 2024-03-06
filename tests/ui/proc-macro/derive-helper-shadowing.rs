@@ -1,6 +1,6 @@
-// edition:2018
-// aux-build:test-macros.rs
-// aux-build:derive-helper-shadowing.rs
+//@ edition:2018
+//@ aux-build:test-macros.rs
+//@ aux-build:derive-helper-shadowing.rs
 
 #[macro_use]
 extern crate test_macros;

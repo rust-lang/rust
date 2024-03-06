@@ -1,4 +1,4 @@
-// check-pass
+//@ check-pass
 
 #![feature(auto_traits)]
 #![feature(negative_impls)]

@@ -38,7 +38,7 @@ fn invalid_match() {
 
 fn dangling_let() {
     unsafe {
-        let ptr = ptr::invalid::<bool>(0x40);
+        let ptr = ptr::without_provenance::<bool>(0x40);
         let _ = *ptr;
     }
 }
@@ -54,7 +54,7 @@ fn invalid_let() {
 // Adding a type annotation used to change how MIR is generated, make sure we cover both cases.
 fn dangling_let_type_annotation() {
     unsafe {
-        let ptr = ptr::invalid::<bool>(0x40);
+        let ptr = ptr::without_provenance::<bool>(0x40);
         let _: bool = *ptr;
     }
 }

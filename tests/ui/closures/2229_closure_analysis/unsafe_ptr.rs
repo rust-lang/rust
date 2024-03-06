@@ -1,4 +1,4 @@
-// edition:2021
+//@ edition:2021
 
 // Test that we restrict precision of a capture when we access a raw ptr,
 // i.e. the capture doesn't deref the raw ptr.

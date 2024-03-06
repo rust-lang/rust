@@ -1,4 +1,4 @@
-// revisions: stock precise
+//@ revisions: stock precise
 
 #![cfg_attr(precise, feature(const_precise_live_drops))]
 

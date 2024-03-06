@@ -1,6 +1,6 @@
-// run-pass
-// ignore-emscripten
-// ignore-android
+//@ run-pass
+//@ ignore-emscripten
+//@ ignore-android
 
 // FIXME: this test fails on arm-android because the NDK version 14 is too old.
 // It needs at least version 18. We disable it on all android build bots because
@@ -8,14 +8,14 @@
 
 // Test that the simd floating-point math intrinsics produce correct results.
 
-#![feature(repr_simd, platform_intrinsics)]
+#![feature(repr_simd, intrinsics)]
 #![allow(non_camel_case_types)]
 
 #[repr(simd)]
 #[derive(Copy, Clone, PartialEq, Debug)]
 struct f32x4(pub f32, pub f32, pub f32, pub f32);
 
-extern "platform-intrinsic" {
+extern "rust-intrinsic" {
     fn simd_fsqrt<T>(x: T) -> T;
     fn simd_fabs<T>(x: T) -> T;
     fn simd_fsin<T>(x: T) -> T;

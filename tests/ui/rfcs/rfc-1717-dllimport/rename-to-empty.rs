@@ -1,5 +1,5 @@
-// compile-flags: -l foo:
-// error-pattern: an empty renaming target was specified for library
+//@ compile-flags: -l foo:
+//@ error-pattern: an empty renaming target was specified for library
 
 #![crate_type = "lib"]
 

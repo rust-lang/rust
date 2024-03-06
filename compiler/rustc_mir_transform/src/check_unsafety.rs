@@ -128,7 +128,9 @@ impl<'tcx> Visitor<'tcx> for UnsafetyChecker<'_, 'tcx> {
                         ),
                     }
                 }
-                &AggregateKind::Closure(def_id, _) | &AggregateKind::Coroutine(def_id, _) => {
+                &AggregateKind::Closure(def_id, _)
+                | &AggregateKind::CoroutineClosure(def_id, _)
+                | &AggregateKind::Coroutine(def_id, _) => {
                     let def_id = def_id.expect_local();
                     let UnsafetyCheckResult { violations, used_unsafe_blocks, .. } =
                         self.tcx.mir_unsafety_check_result(def_id);
@@ -241,10 +243,11 @@ impl<'tcx> Visitor<'tcx> for UnsafetyChecker<'_, 'tcx> {
                     // old value is being dropped.
                     let assigned_ty = place.ty(&self.body.local_decls, self.tcx).ty;
                     if assigned_ty.needs_drop(self.tcx, self.param_env) {
-                        // This would be unsafe, but should be outright impossible since we reject such unions.
-                        self.tcx.dcx().span_delayed_bug(
-                            self.source_info.span,
-                            format!("union fields that need dropping should be impossible: {assigned_ty}")
+                        // This would be unsafe, but should be outright impossible since we reject
+                        // such unions.
+                        assert!(
+                            self.tcx.dcx().has_errors().is_some(),
+                            "union fields that need dropping should be impossible: {assigned_ty}"
                         );
                     }
                 } else {

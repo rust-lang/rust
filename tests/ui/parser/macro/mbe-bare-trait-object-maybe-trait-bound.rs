@@ -3,8 +3,8 @@
 // even in newer editions like Rust 2021.
 // Therefore the arm `?$Trait:path` shouldn't get reached.
 
-// edition: 2021
-// check-pass
+//@ edition: 2021
+//@ check-pass
 
 macro_rules! check {
     ($Ty:ty) => {};

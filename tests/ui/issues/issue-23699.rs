@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 #![allow(unused_variables)]
 fn gimme_a_raw_pointer<T>(_: *const T) { }
 

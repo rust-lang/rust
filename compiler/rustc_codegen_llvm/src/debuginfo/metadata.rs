@@ -454,13 +454,18 @@ pub fn type_di_node<'ll, 'tcx>(cx: &CodegenCx<'ll, 'tcx>, t: Ty<'tcx>) -> &'ll D
         ty::RawPtr(ty::TypeAndMut { ty: pointee_type, .. }) | ty::Ref(_, pointee_type, _) => {
             build_pointer_or_reference_di_node(cx, t, pointee_type, unique_type_id)
         }
-        // Box<T, A> may have a non-1-ZST allocator A. In that case, we
-        // cannot treat Box<T, A> as just an owned alias of `*mut T`.
-        ty::Adt(def, args) if def.is_box() && cx.layout_of(args.type_at(1)).is_1zst() => {
+        // Some `Box` are newtyped pointers, make debuginfo aware of that.
+        // Only works if the allocator argument is a 1-ZST and hence irrelevant for layout
+        // (or if there is no allocator argument).
+        ty::Adt(def, args)
+            if def.is_box()
+                && args.get(1).map_or(true, |arg| cx.layout_of(arg.expect_ty()).is_1zst()) =>
+        {
             build_pointer_or_reference_di_node(cx, t, t.boxed_ty(), unique_type_id)
         }
         ty::FnDef(..) | ty::FnPtr(_) => build_subroutine_type_di_node(cx, unique_type_id),
         ty::Closure(..) => build_closure_env_di_node(cx, unique_type_id),
+        ty::CoroutineClosure(..) => build_closure_env_di_node(cx, unique_type_id),
         ty::Coroutine(..) => enums::build_coroutine_di_node(cx, unique_type_id),
         ty::Adt(def, ..) => match def.adt_kind() {
             AdtKind::Struct => build_struct_type_di_node(cx, unique_type_id),
@@ -694,9 +699,13 @@ impl MsvcBasicName for ty::UintTy {
 
 impl MsvcBasicName for ty::FloatTy {
     fn msvc_basic_name(self) -> &'static str {
+        // FIXME: f16 and f128 have no MSVC representation. We could improve the debuginfo.
+        // See: <https://github.com/rust-lang/rust/pull/114607/files#r1454683264>
         match self {
+            ty::FloatTy::F16 => "half",
             ty::FloatTy::F32 => "float",
             ty::FloatTy::F64 => "double",
+            ty::FloatTy::F128 => "fp128",
         }
     }
 }
@@ -1068,6 +1077,7 @@ fn build_upvar_field_di_nodes<'ll, 'tcx>(
     let (&def_id, up_var_tys) = match closure_or_coroutine_ty.kind() {
         ty::Coroutine(def_id, args) => (def_id, args.as_coroutine().prefix_tys()),
         ty::Closure(def_id, args) => (def_id, args.as_closure().upvar_tys()),
+        ty::CoroutineClosure(def_id, args) => (def_id, args.as_coroutine_closure().upvar_tys()),
         _ => {
             bug!(
                 "build_upvar_field_di_nodes() called with non-closure-or-coroutine-type: {:?}",
@@ -1153,7 +1163,8 @@ fn build_closure_env_di_node<'ll, 'tcx>(
     unique_type_id: UniqueTypeId<'tcx>,
 ) -> DINodeCreationResult<'ll> {
     let closure_env_type = unique_type_id.expect_ty();
-    let &ty::Closure(def_id, _args) = closure_env_type.kind() else {
+    let &(ty::Closure(def_id, _) | ty::CoroutineClosure(def_id, _)) = closure_env_type.kind()
+    else {
         bug!("build_closure_env_di_node() called with non-closure-type: {:?}", closure_env_type)
     };
     let containing_scope = get_namespace_for_item(cx, def_id);

@@ -1,6 +1,6 @@
 // ... continued from ./min-choice.rs
 
-// check-fail
+//@ check-fail
 
 trait Cap<'a> {}
 impl<T> Cap<'_> for T {}

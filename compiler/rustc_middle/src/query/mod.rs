@@ -20,7 +20,8 @@ use crate::middle::stability::{self, DeprecationEntry};
 use crate::mir;
 use crate::mir::interpret::GlobalId;
 use crate::mir::interpret::{
-    EvalToAllocationRawResult, EvalToConstValueResult, EvalToValTreeResult,
+    EvalStaticInitializerRawResult, EvalToAllocationRawResult, EvalToConstValueResult,
+    EvalToValTreeResult,
 };
 use crate::mir::interpret::{LitToConstError, LitToConstInput};
 use crate::mir::mono::CodegenUnit;
@@ -30,7 +31,7 @@ use crate::query::plumbing::{
 };
 use crate::thir;
 use crate::traits::query::{
-    CanonicalPredicateGoal, CanonicalProjectionGoal, CanonicalTyGoal,
+    CanonicalAliasGoal, CanonicalPredicateGoal, CanonicalTyGoal,
     CanonicalTypeOpAscribeUserTypeGoal, CanonicalTypeOpEqGoal, CanonicalTypeOpNormalizeGoal,
     CanonicalTypeOpProvePredicateGoal, CanonicalTypeOpSubtypeGoal, NoSolution,
 };
@@ -108,9 +109,9 @@ pub use plumbing::{IntoQueryParam, TyCtxtAt, TyCtxtEnsure, TyCtxtEnsureWithValue
 // Queries marked with `fatal_cycle` do not need the latter implementation,
 // as they will raise an fatal error on query cycles instead.
 rustc_queries! {
-    /// This exists purely for testing the interactions between span_delayed_bug and incremental.
-    query trigger_span_delayed_bug(key: DefId) -> () {
-        desc { "triggering a span delayed bug for testing incremental" }
+    /// This exists purely for testing the interactions between delayed bugs and incremental.
+    query trigger_delayed_bug(key: DefId) {
+        desc { "triggering a delayed bug for testing incremental" }
     }
 
     /// Collects the list of all tools registered using `#![register_tool]`.
@@ -119,7 +120,7 @@ rustc_queries! {
         desc { "compute registered tools for crate" }
     }
 
-    query early_lint_checks(_: ()) -> () {
+    query early_lint_checks(_: ()) {
         desc { "perform lints prior to macro expansion" }
     }
 
@@ -190,11 +191,11 @@ rustc_queries! {
         desc { |tcx| "getting HIR parent of `{}`", tcx.def_path_str(key) }
     }
 
-    /// Gives access to the HIR nodes and bodies inside the HIR owner `key`.
+    /// Gives access to the HIR nodes and bodies inside `key` if it's a HIR owner.
     ///
     /// This can be conveniently accessed by methods on `tcx.hir()`.
     /// Avoid calling this query directly.
-    query hir_owner_nodes(key: hir::OwnerId) -> hir::MaybeOwner<&'tcx hir::OwnerNodes<'tcx>> {
+    query opt_hir_owner_nodes(key: LocalDefId) -> Option<&'tcx hir::OwnerNodes<'tcx>> {
         desc { |tcx| "getting HIR owner items in `{}`", tcx.def_path_str(key) }
     }
 
@@ -299,7 +300,7 @@ rustc_queries! {
     /// name. This is useful for cases were not all linting code from rustc
     /// was called. With the default `None` all registered lints will also
     /// be checked for expectation fulfillment.
-    query check_expectations(key: Option<Symbol>) -> () {
+    query check_expectations(key: Option<Symbol>) {
         eval_always
         desc { "checking lint expectations (RFC 2383)" }
     }
@@ -335,15 +336,6 @@ rustc_queries! {
     }
 
     query opaque_types_defined_by(
-        key: LocalDefId
-    ) -> &'tcx ty::List<LocalDefId> {
-        desc {
-            |tcx| "computing the opaque types defined by `{}`",
-            tcx.def_path_str(key.to_def_id())
-        }
-    }
-
-    query impl_trait_in_assoc_types_defined_by(
         key: LocalDefId
     ) -> &'tcx ty::List<LocalDefId> {
         desc {
@@ -755,6 +747,11 @@ rustc_queries! {
         separate_provide_extern
     }
 
+    query coroutine_for_closure(def_id: DefId) -> DefId {
+        desc { |_tcx| "Given a coroutine-closure def id, return the def id of the coroutine returned by it" }
+        separate_provide_extern
+    }
+
     /// Gets a map with the variance of every item; use `variances_of` instead.
     query crate_variances(_: ()) -> &'tcx ty::CrateVariancesMap<'tcx> {
         arena_cache
@@ -841,15 +838,11 @@ rustc_queries! {
         cache_on_disk_if { true }
     }
 
-    /// Given an `impl_id`, return the trait it implements.
+    /// Given an `impl_id`, return the trait it implements along with some header information.
     /// Return `None` if this is an inherent impl.
-    query impl_trait_ref(impl_id: DefId) -> Option<ty::EarlyBinder<ty::TraitRef<'tcx>>> {
+    query impl_trait_header(impl_id: DefId) -> Option<ty::EarlyBinder<ty::ImplTraitHeader<'tcx>>> {
         desc { |tcx| "computing trait implemented by `{}`", tcx.def_path_str(impl_id) }
         cache_on_disk_if { impl_id.is_local() }
-        separate_provide_extern
-    }
-    query impl_polarity(impl_id: DefId) -> ty::ImplPolarity {
-        desc { |tcx| "computing implementation polarity of `{}`", tcx.def_path_str(impl_id) }
         separate_provide_extern
     }
 
@@ -906,39 +899,39 @@ rustc_queries! {
     }
 
     /// Performs lint checking for the module.
-    query lint_mod(key: LocalModDefId) -> () {
+    query lint_mod(key: LocalModDefId) {
         desc { |tcx| "linting {}", describe_as_module(key, tcx) }
     }
 
-    query check_unused_traits(_: ()) -> () {
+    query check_unused_traits(_: ()) {
         desc { "checking unused trait imports in crate" }
     }
 
     /// Checks the attributes in the module.
-    query check_mod_attrs(key: LocalModDefId) -> () {
+    query check_mod_attrs(key: LocalModDefId) {
         desc { |tcx| "checking attributes in {}", describe_as_module(key, tcx) }
     }
 
     /// Checks for uses of unstable APIs in the module.
-    query check_mod_unstable_api_usage(key: LocalModDefId) -> () {
+    query check_mod_unstable_api_usage(key: LocalModDefId) {
         desc { |tcx| "checking for unstable API usage in {}", describe_as_module(key, tcx) }
     }
 
     /// Checks the const bodies in the module for illegal operations (e.g. `if` or `loop`).
-    query check_mod_const_bodies(key: LocalModDefId) -> () {
+    query check_mod_const_bodies(key: LocalModDefId) {
         desc { |tcx| "checking consts in {}", describe_as_module(key, tcx) }
     }
 
     /// Checks the loops in the module.
-    query check_mod_loops(key: LocalModDefId) -> () {
+    query check_mod_loops(key: LocalModDefId) {
         desc { |tcx| "checking loops in {}", describe_as_module(key, tcx) }
     }
 
-    query check_mod_naked_functions(key: LocalModDefId) -> () {
+    query check_mod_naked_functions(key: LocalModDefId) {
         desc { |tcx| "checking naked functions in {}", describe_as_module(key, tcx) }
     }
 
-    query check_mod_privacy(key: LocalModDefId) -> () {
+    query check_mod_privacy(key: LocalModDefId) {
         desc { |tcx| "checking privacy in {}", describe_as_module(key.to_local_def_id(), tcx) }
     }
 
@@ -958,7 +951,7 @@ rustc_queries! {
         desc { "finding live symbols in crate" }
     }
 
-    query check_mod_deathness(key: LocalModDefId) -> () {
+    query check_mod_deathness(key: LocalModDefId) {
         desc { |tcx| "checking deathness of variables in {}", describe_as_module(key, tcx) }
     }
 
@@ -972,7 +965,7 @@ rustc_queries! {
         ensure_forwards_result_if_red
     }
 
-    query collect_mod_item_types(key: LocalModDefId) -> () {
+    query collect_mod_item_types(key: LocalModDefId) {
         desc { |tcx| "collecting item types in {}", describe_as_module(key, tcx) }
     }
 
@@ -1060,7 +1053,7 @@ rustc_queries! {
 
     /// Evaluates a constant and returns the computed allocation.
     ///
-    /// **Do not use this** directly, use the `tcx.eval_static_initializer` wrapper.
+    /// **Do not use this** directly, use the `eval_to_const_value` or `eval_to_valtree` instead.
     query eval_to_allocation_raw(key: ty::ParamEnvAnd<'tcx, GlobalId<'tcx>>)
         -> EvalToAllocationRawResult<'tcx> {
         desc { |tcx|
@@ -1068,6 +1061,16 @@ rustc_queries! {
             key.value.display(tcx)
         }
         cache_on_disk_if { true }
+    }
+
+    /// Evaluate a static's initializer, returning the allocation of the initializer's memory.
+    query eval_static_initializer(key: DefId) -> EvalStaticInitializerRawResult<'tcx> {
+        desc { |tcx|
+            "evaluating initializer of static `{}`",
+            tcx.def_path_str(key)
+        }
+        cache_on_disk_if { key.is_local() }
+        separate_provide_extern
     }
 
     /// Evaluates const items or anonymous constants
@@ -1121,7 +1124,7 @@ rustc_queries! {
         eval_always
         desc { "checking effective visibilities" }
     }
-    query check_private_in_public(_: ()) -> () {
+    query check_private_in_public(_: ()) {
         eval_always
         desc { "checking for private elements in public interfaces" }
     }
@@ -1748,8 +1751,8 @@ rustc_queries! {
         separate_provide_extern
     }
     /// Whether the function is an intrinsic
-    query is_intrinsic(def_id: DefId) -> bool {
-        desc { |tcx| "checking whether `{}` is an intrinsic", tcx.def_path_str(def_id) }
+    query intrinsic(def_id: DefId) -> Option<rustc_middle::ty::IntrinsicDef> {
+        desc { |tcx| "fetch intrinsic name if `{}` is an intrinsic", tcx.def_path_str(def_id) }
         separate_provide_extern
     }
     /// Returns the lang items defined in another crate by loading it from metadata.
@@ -1860,6 +1863,13 @@ rustc_queries! {
         eval_always
         desc { "fetching all foreign CrateNum instances" }
     }
+    // Crates that are loaded non-speculatively (not for diagnostics or doc links).
+    // FIXME: This is currently only used for collecting lang items, but should be used instead of
+    // `crates` in most other cases too.
+    query used_crates(_: ()) -> &'tcx [CrateNum] {
+        eval_always
+        desc { "fetching `CrateNum`s for all crates loaded non-speculatively" }
+    }
 
     /// A list of all traits in a crate, used by rustdoc and error reporting.
     query traits(_: CrateNum) -> &'tcx [DefId] {
@@ -1919,9 +1929,13 @@ rustc_queries! {
         arena_cache
     }
 
-    /// Do not call this query directly: invoke `normalize` instead.
-    query normalize_projection_ty(
-        goal: CanonicalProjectionGoal<'tcx>
+    /// <div class="warning">
+    ///
+    /// Do not call this query directly: Invoke `normalize` instead.
+    ///
+    /// </div>
+    query normalize_canonicalized_projection_ty(
+        goal: CanonicalAliasGoal<'tcx>
     ) -> Result<
         &'tcx Canonical<'tcx, canonical::QueryResponse<'tcx, NormalizationResult<'tcx>>>,
         NoSolution,
@@ -1929,9 +1943,13 @@ rustc_queries! {
         desc { "normalizing `{}`", goal.value.value }
     }
 
-    /// Do not call this query directly: invoke `normalize` instead.
-    query normalize_weak_ty(
-        goal: CanonicalProjectionGoal<'tcx>
+    /// <div class="warning">
+    ///
+    /// Do not call this query directly: Invoke `normalize` instead.
+    ///
+    /// </div>
+    query normalize_canonicalized_weak_ty(
+        goal: CanonicalAliasGoal<'tcx>
     ) -> Result<
         &'tcx Canonical<'tcx, canonical::QueryResponse<'tcx, NormalizationResult<'tcx>>>,
         NoSolution,
@@ -1939,9 +1957,13 @@ rustc_queries! {
         desc { "normalizing `{}`", goal.value.value }
     }
 
-    /// Do not call this query directly: invoke `normalize` instead.
-    query normalize_inherent_projection_ty(
-        goal: CanonicalProjectionGoal<'tcx>
+    /// <div class="warning">
+    ///
+    /// Do not call this query directly: Invoke `normalize` instead.
+    ///
+    /// </div>
+    query normalize_canonicalized_inherent_projection_ty(
+        goal: CanonicalAliasGoal<'tcx>
     ) -> Result<
         &'tcx Canonical<'tcx, canonical::QueryResponse<'tcx, NormalizationResult<'tcx>>>,
         NoSolution,
@@ -2073,9 +2095,9 @@ rustc_queries! {
         desc { "normalizing `{:?}`", goal.value.value.value }
     }
 
-    query subst_and_check_impossible_predicates(key: (DefId, GenericArgsRef<'tcx>)) -> bool {
+    query instantiate_and_check_impossible_predicates(key: (DefId, GenericArgsRef<'tcx>)) -> bool {
         desc { |tcx|
-            "checking impossible substituted predicates: `{}`",
+            "checking impossible instantiated predicates: `{}`",
             tcx.def_path_str(key.0)
         }
     }
@@ -2211,6 +2233,10 @@ rustc_queries! {
     query cross_crate_inlinable(def_id: DefId) -> bool {
         desc { "whether the item should be made inlinable across crates" }
         separate_provide_extern
+    }
+
+    query find_field((def_id, ident): (DefId, rustc_span::symbol::Ident)) -> Option<rustc_target::abi::FieldIdx> {
+        desc { |tcx| "find the index of maybe nested field `{ident}` in `{}`", tcx.def_path_str(def_id) }
     }
 }
 

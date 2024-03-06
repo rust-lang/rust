@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 
 // Test that both `&&` and `||` actually short-circuit.
 // Formerly, both sides were evaluated unconditionally

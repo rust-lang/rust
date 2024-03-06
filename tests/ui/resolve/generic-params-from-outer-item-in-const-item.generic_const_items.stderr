@@ -7,6 +7,8 @@ LL |     const K: u32 = T::C;
    |            -       ^^^^ use of generic parameter from outer item
    |            |
    |            help: try introducing a local generic parameter here: `<T>`
+   |
+   = note: a `const` is a separate item from the item that contains it
 
 error[E0401]: can't use generic parameters from outer item
   --> $DIR/generic-params-from-outer-item-in-const-item.rs:19:24
@@ -18,6 +20,8 @@ LL |         const I: u32 = T::C;
    |                -       ^^^^ use of generic parameter from outer item
    |                |
    |                help: try introducing a local generic parameter here: `<T>`
+   |
+   = note: a `const` is a separate item from the item that contains it
 
 error[E0401]: can't use generic parameters from outer item
   --> $DIR/generic-params-from-outer-item-in-const-item.rs:27:20
@@ -28,6 +32,8 @@ LL |     const _: u32 = T::C;
    |            -       ^^^^ use of generic parameter from outer item
    |            |
    |            help: try introducing a local generic parameter here: `<T>`
+   |
+   = note: a `const` is a separate item from the item that contains it
 
 error: aborting due to 3 previous errors
 

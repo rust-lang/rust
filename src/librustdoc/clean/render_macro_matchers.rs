@@ -1,10 +1,9 @@
-use rustc_ast::token::{self, BinOpToken, Delimiter};
+use rustc_ast::token::{self, BinOpToken, Delimiter, IdentIsRaw};
 use rustc_ast::tokenstream::{TokenStream, TokenTree};
 use rustc_ast_pretty::pprust::state::State as Printer;
 use rustc_ast_pretty::pprust::PrintState;
 use rustc_middle::ty::TyCtxt;
 use rustc_session::parse::ParseSess;
-use rustc_span::source_map::FilePathMapping;
 use rustc_span::symbol::{kw, Ident, Symbol};
 use rustc_span::Span;
 
@@ -63,11 +62,10 @@ fn snippet_equal_to_token(tcx: TyCtxt<'_>, matcher: &TokenTree) -> Option<String
     let snippet = source_map.span_to_snippet(span).ok()?;
 
     // Create a Parser.
-    let sess =
-        ParseSess::new(rustc_driver::DEFAULT_LOCALE_RESOURCES.to_vec(), FilePathMapping::empty());
+    let psess = ParseSess::new(rustc_driver::DEFAULT_LOCALE_RESOURCES.to_vec());
     let file_name = source_map.span_to_filename(span);
     let mut parser =
-        match rustc_parse::maybe_new_parser_from_source_str(&sess, file_name, snippet.clone()) {
+        match rustc_parse::maybe_new_parser_from_source_str(&psess, file_name, snippet.clone()) {
             Ok(parser) => parser,
             Err(errs) => {
                 errs.into_iter().for_each(|err| err.cancel());
@@ -148,7 +146,7 @@ fn print_tts(printer: &mut Printer<'_>, tts: &TokenStream) {
                     (false, Other)
                 }
                 (Pound, token::Not) => (false, PoundBang),
-                (_, token::Ident(symbol, /* is_raw */ false))
+                (_, token::Ident(symbol, IdentIsRaw::No))
                     if !usually_needs_space_between_keyword_and_open_delim(*symbol, tt.span) =>
                 {
                     (true, Ident)

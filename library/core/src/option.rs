@@ -558,6 +558,7 @@ use crate::panicking::{panic, panic_str};
 use crate::pin::Pin;
 use crate::{
     cmp, convert, hint, mem,
+    num::NonZero,
     ops::{self, ControlFlow, Deref, DerefMut},
     slice,
 };
@@ -567,6 +568,7 @@ use crate::{
 #[rustc_diagnostic_item = "Option"]
 #[lang = "Option"]
 #[stable(feature = "rust1", since = "1.0.0")]
+#[allow(clippy::derived_hash_with_manual_eq)] // PartialEq is specialized
 pub enum Option<T> {
     /// No value.
     #[lang = "None"]
@@ -1033,7 +1035,6 @@ impl<T> Option<T> {
     #[stable(feature = "option_result_unwrap_unchecked", since = "1.58.0")]
     #[rustc_const_unstable(feature = "const_option_ext", issue = "91930")]
     pub const unsafe fn unwrap_unchecked(self) -> T {
-        debug_assert!(self.is_some());
         match self {
             Some(val) => val,
             // SAFETY: the safety contract must be upheld by the caller.
@@ -1074,18 +1075,23 @@ impl<T> Option<T> {
         }
     }
 
-    /// Calls the provided closure with a reference to the contained value (if [`Some`]).
+    /// Calls a function with a reference to the contained value if [`Some`].
+    ///
+    /// Returns the original option.
     ///
     /// # Examples
     ///
     /// ```
-    /// let v = vec![1, 2, 3, 4, 5];
+    /// let list = vec![1, 2, 3];
     ///
-    /// // prints "got: 4"
-    /// let x: Option<&usize> = v.get(3).inspect(|x| println!("got: {x}"));
+    /// // prints "got: 2"
+    /// let x = list
+    ///     .get(1)
+    ///     .inspect(|x| println!("got: {x}"))
+    ///     .expect("list should be long enough");
     ///
     /// // prints nothing
-    /// let x: Option<&usize> = v.get(5).inspect(|x| println!("got: {x}"));
+    /// list.get(5).inspect(|x| println!("got: {x}"));
     /// ```
     #[inline]
     #[stable(feature = "result_option_inspect", since = "1.76.0")]
@@ -1398,6 +1404,7 @@ impl<T> Option<T> {
     #[doc(alias = "flatmap")]
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
+    #[rustc_confusables("flat_map", "flatmap")]
     pub fn and_then<U, F>(self, f: F) -> Option<U>
     where
         F: FnOnce(T) -> Option<U>,
@@ -2155,7 +2162,6 @@ impl<T: PartialEq> PartialEq for Option<T> {
 ///
 /// Once that's fixed, `Option` should go back to deriving `PartialEq`, as
 /// it used to do before <https://github.com/rust-lang/rust/pull/103556>.
-/// The comment regarding this trait on the `newtype_index` macro should be removed if this is done.
 #[unstable(feature = "spec_option_partial_eq", issue = "none", reason = "exposed only for rustc")]
 #[doc(hidden)]
 pub trait SpecOptionPartialEq: Sized {
@@ -2189,18 +2195,18 @@ macro_rules! non_zero_option {
 }
 
 non_zero_option! {
-    #[stable(feature = "nonzero", since = "1.28.0")] crate::num::NonZeroU8;
-    #[stable(feature = "nonzero", since = "1.28.0")] crate::num::NonZeroU16;
-    #[stable(feature = "nonzero", since = "1.28.0")] crate::num::NonZeroU32;
-    #[stable(feature = "nonzero", since = "1.28.0")] crate::num::NonZeroU64;
-    #[stable(feature = "nonzero", since = "1.28.0")] crate::num::NonZeroU128;
-    #[stable(feature = "nonzero", since = "1.28.0")] crate::num::NonZeroUsize;
-    #[stable(feature = "signed_nonzero", since = "1.34.0")] crate::num::NonZeroI8;
-    #[stable(feature = "signed_nonzero", since = "1.34.0")] crate::num::NonZeroI16;
-    #[stable(feature = "signed_nonzero", since = "1.34.0")] crate::num::NonZeroI32;
-    #[stable(feature = "signed_nonzero", since = "1.34.0")] crate::num::NonZeroI64;
-    #[stable(feature = "signed_nonzero", since = "1.34.0")] crate::num::NonZeroI128;
-    #[stable(feature = "signed_nonzero", since = "1.34.0")] crate::num::NonZeroIsize;
+    #[stable(feature = "nonzero", since = "1.28.0")] NonZero<u8>;
+    #[stable(feature = "nonzero", since = "1.28.0")] NonZero<u16>;
+    #[stable(feature = "nonzero", since = "1.28.0")] NonZero<u32>;
+    #[stable(feature = "nonzero", since = "1.28.0")] NonZero<u64>;
+    #[stable(feature = "nonzero", since = "1.28.0")] NonZero<u128>;
+    #[stable(feature = "nonzero", since = "1.28.0")] NonZero<usize>;
+    #[stable(feature = "signed_nonzero", since = "1.34.0")] NonZero<i8>;
+    #[stable(feature = "signed_nonzero", since = "1.34.0")] NonZero<i16>;
+    #[stable(feature = "signed_nonzero", since = "1.34.0")] NonZero<i32>;
+    #[stable(feature = "signed_nonzero", since = "1.34.0")] NonZero<i64>;
+    #[stable(feature = "signed_nonzero", since = "1.34.0")] NonZero<i128>;
+    #[stable(feature = "signed_nonzero", since = "1.34.0")] NonZero<isize>;
 }
 
 #[stable(feature = "nonnull", since = "1.25.0")]

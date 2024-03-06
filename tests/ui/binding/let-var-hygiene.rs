@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 // shouldn't affect evaluation of $ex:
 
 macro_rules! bad_macro {

@@ -1,6 +1,6 @@
-// aux-build:macro-vis.rs
-// build-aux-docs
-// ignore-cross-compile
+//@ aux-build:macro-vis.rs
+//@ build-aux-docs
+//@ ignore-cross-compile
 
 #[macro_use] extern crate qwop;
 

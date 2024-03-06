@@ -11,14 +11,13 @@
 #![feature(associated_type_bounds)]
 #![feature(const_option)]
 #![feature(core_intrinsics)]
+#![feature(generic_nonzero)]
 #![feature(inline_const)]
 #![feature(min_specialization)]
 #![feature(never_type)]
 #![feature(ptr_sub_ptr)]
 #![cfg_attr(test, feature(test))]
 #![allow(rustc::internal)]
-#![deny(rustc::untranslatable_diagnostic)]
-#![deny(rustc::diagnostic_outside_of_impl)]
 
 pub use self::serialize::{Decodable, Decoder, Encodable, Encoder};
 

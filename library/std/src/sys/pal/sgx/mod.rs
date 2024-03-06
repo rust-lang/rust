@@ -9,8 +9,6 @@ use crate::io::ErrorKind;
 use crate::sync::atomic::{AtomicBool, Ordering};
 
 pub mod abi;
-mod waitqueue;
-
 pub mod alloc;
 pub mod args;
 pub mod env;
@@ -19,10 +17,8 @@ pub mod fd;
 pub mod fs;
 #[path = "../unsupported/io.rs"]
 pub mod io;
-pub mod memchr;
 pub mod net;
 pub mod os;
-pub mod path;
 #[path = "../unsupported/pipe.rs"]
 pub mod pipe;
 #[path = "../unsupported/process.rs"]
@@ -32,16 +28,7 @@ pub mod thread;
 pub mod thread_local_key;
 pub mod thread_parking;
 pub mod time;
-
-mod condvar;
-mod mutex;
-mod rwlock;
-
-pub mod locks {
-    pub use super::condvar::*;
-    pub use super::mutex::*;
-    pub use super::rwlock::*;
-}
+pub mod waitqueue;
 
 // SAFETY: must be called only once during runtime initialization.
 // NOTE: this is not guaranteed to run, for example when Rust code is called externally.

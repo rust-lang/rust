@@ -2,7 +2,7 @@
 // fn with a named type parameter in order to add bounds, the suggested function
 // signature should be well-formed.
 //
-// edition:2018
+//@ edition:2018
 
 trait Foo {
     type Bar;

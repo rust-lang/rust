@@ -1,4 +1,4 @@
-// check-pass
+//@ check-pass
 
 #![feature(const_refs_to_cell)]
 

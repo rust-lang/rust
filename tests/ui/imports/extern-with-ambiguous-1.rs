@@ -1,5 +1,5 @@
-// edition: 2021
-// aux-build: extern-with-ambiguous-1-extern.rs
+//@ edition: 2021
+//@ aux-build: extern-with-ambiguous-1-extern.rs
 
 // `extern-with-ambiguous-1-extern.rs` doesn't has
 // ambiguous, just for compare.

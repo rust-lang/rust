@@ -1,4 +1,4 @@
-// build-pass (FIXME(62277): could be check-pass?)
+//@ build-pass (FIXME(62277): could be check-pass?)
 
 fn main() {
     const ARR: [i32; 6] = [42, 43, 44, 45, 46, 47];

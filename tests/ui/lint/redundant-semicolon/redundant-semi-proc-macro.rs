@@ -1,4 +1,4 @@
-// aux-build:redundant-semi-proc-macro-def.rs
+//@ aux-build:redundant-semi-proc-macro-def.rs
 
 #![deny(redundant_semicolons)]
 extern crate redundant_semi_proc_macro;

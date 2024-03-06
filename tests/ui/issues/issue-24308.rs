@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 pub trait Foo {
     fn method1() {}
     fn method2();

@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 fn f(x: &isize) -> &isize {
     return &*x;
 }

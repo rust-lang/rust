@@ -1,4 +1,4 @@
-// pp-exact
+//@ pp-exact
 
 #![feature(inline_const)]
 #![feature(inline_const_pat)]
@@ -113,7 +113,7 @@ fn _8() {
 }
 
 fn _9() {
-    macro_rules! stmt_mac { () => { let _ = () ; } }
+    macro_rules! stmt_mac { () => { let _ = (); } }
 
     #[rustc_dummy]
     stmt_mac!();

@@ -1,5 +1,5 @@
 warning: where clause not allowed here
-  --> $DIR/where-clause-placement-assoc-type-in-trait.rs:8:16
+  --> $DIR/where-clause-placement-assoc-type-in-trait.rs:9:16
    |
 LL |     type Assoc where u32: Copy = ();
    |                ^^^^^^^^^^^^^^^
@@ -13,7 +13,7 @@ LL +     type Assoc  = () where u32: Copy;
    |
 
 warning: where clause not allowed here
-  --> $DIR/where-clause-placement-assoc-type-in-trait.rs:11:17
+  --> $DIR/where-clause-placement-assoc-type-in-trait.rs:12:17
    |
 LL |     type Assoc2 where u32: Copy = () where i32: Copy;
    |                 ^^^^^^^^^^^^^^^

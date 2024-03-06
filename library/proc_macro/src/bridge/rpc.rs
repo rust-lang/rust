@@ -2,7 +2,7 @@
 
 use std::any::Any;
 use std::io::Write;
-use std::num::NonZeroU32;
+use std::num::NonZero;
 use std::str;
 
 pub(super) type Writer = super::buffer::Buffer;
@@ -157,13 +157,13 @@ impl<S> DecodeMut<'_, '_, S> for char {
     }
 }
 
-impl<S> Encode<S> for NonZeroU32 {
+impl<S> Encode<S> for NonZero<u32> {
     fn encode(self, w: &mut Writer, s: &mut S) {
         self.get().encode(w, s);
     }
 }
 
-impl<S> DecodeMut<'_, '_, S> for NonZeroU32 {
+impl<S> DecodeMut<'_, '_, S> for NonZero<u32> {
     fn decode(r: &mut Reader<'_>, s: &mut S) -> Self {
         Self::new(u32::decode(r, s)).unwrap()
     }

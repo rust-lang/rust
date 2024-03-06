@@ -2,10 +2,10 @@
 // `type Outer = impl Trait<Assoc = impl Sized>`.
 // See the comments below.
 //
-// revisions: pass pass_sound fail
-// [pass] check-pass
-// [pass_sound] check-fail
-// [fail] check-fail
+//@ revisions: pass pass_sound fail
+//@ [pass] check-pass
+//@ [pass_sound] check-fail
+//@ [fail] check-fail
 
 #![feature(type_alias_impl_trait)]
 

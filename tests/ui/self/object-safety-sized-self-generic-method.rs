@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 #![allow(unused_variables)]
 // Check that a trait is still object-safe (and usable) if it has
 // generic methods so long as they require `Self : Sized`.

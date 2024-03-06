@@ -1,4 +1,4 @@
-// compile-flags: -C debug-assertions
+//@ compile-flags: -C debug-assertions
 
 fn main() {
     env!{"\t"}; //~ ERROR not defined at compile time

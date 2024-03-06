@@ -1,9 +1,9 @@
-// revisions: normal lint
+//@ revisions: normal lint
 // Test that putting the lint level on a match arm emits a warning, as this was previously
 // meaningful and is no longer.
 #![feature(non_exhaustive_omitted_patterns_lint)]
 
-// aux-build:enums.rs
+//@ aux-build:enums.rs
 extern crate enums;
 
 use enums::NonExhaustiveEnum;

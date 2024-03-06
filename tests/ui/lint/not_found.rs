@@ -1,4 +1,4 @@
-// check-pass
+//@ check-pass
 
 // this tests the `unknown_lint` lint, especially the suggestions
 

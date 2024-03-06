@@ -1,5 +1,5 @@
-// compile-flags: --edition=2021
-// run-rustfix
+//@ compile-flags: --edition=2021
+//@ run-rustfix
 
 #![allow(unused)]
 

@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 
 // Tests that we can compare various kinds of extern fn signatures.
 #![allow(non_camel_case_types)]

@@ -46,9 +46,7 @@ pub(super) fn find_opaque_ty_constraints_for_impl_trait_in_assoc_type(
     for &assoc_id in tcx.associated_item_def_ids(impl_def_id) {
         let assoc = tcx.associated_item(assoc_id);
         match assoc.kind {
-            ty::AssocKind::Const | ty::AssocKind::Fn => {
-                locator.check(assoc_id.expect_local(), ImplTraitSource::AssocTy)
-            }
+            ty::AssocKind::Const | ty::AssocKind::Fn => locator.check(assoc_id.expect_local()),
             // Associated types don't have bodies, so they can't constrain hidden types
             ty::AssocKind::Type => {}
         }
@@ -58,10 +56,10 @@ pub(super) fn find_opaque_ty_constraints_for_impl_trait_in_assoc_type(
         // Only check against typeck if we didn't already error
         if !hidden.ty.references_error() {
             for concrete_type in locator.typeck_types {
-                if concrete_type.ty != tcx.erase_regions(hidden.ty)
-                    && !(concrete_type, hidden).references_error()
-                {
-                    hidden.report_mismatch(&concrete_type, def_id, tcx).emit();
+                if concrete_type.ty != tcx.erase_regions(hidden.ty) {
+                    if let Ok(d) = hidden.build_mismatch_error(&concrete_type, def_id, tcx) {
+                        d.emit();
+                    }
                 }
             }
         }
@@ -134,10 +132,10 @@ pub(super) fn find_opaque_ty_constraints_for_tait(tcx: TyCtxt<'_>, def_id: Local
         // Only check against typeck if we didn't already error
         if !hidden.ty.references_error() {
             for concrete_type in locator.typeck_types {
-                if concrete_type.ty != tcx.erase_regions(hidden.ty)
-                    && !(concrete_type, hidden).references_error()
-                {
-                    hidden.report_mismatch(&concrete_type, def_id, tcx).emit();
+                if concrete_type.ty != tcx.erase_regions(hidden.ty) {
+                    if let Ok(d) = hidden.build_mismatch_error(&concrete_type, def_id, tcx) {
+                        d.emit();
+                    }
                 }
             }
         }
@@ -182,15 +180,9 @@ struct TaitConstraintLocator<'tcx> {
     typeck_types: Vec<ty::OpaqueHiddenType<'tcx>>,
 }
 
-#[derive(Debug)]
-enum ImplTraitSource {
-    AssocTy,
-    TyAlias,
-}
-
 impl TaitConstraintLocator<'_> {
     #[instrument(skip(self), level = "debug")]
-    fn check(&mut self, item_def_id: LocalDefId, source: ImplTraitSource) {
+    fn check(&mut self, item_def_id: LocalDefId) {
         // Don't try to check items that cannot possibly constrain the type.
         if !self.tcx.has_typeck_results(item_def_id) {
             debug!("no constraint: no typeck results");
@@ -242,12 +234,8 @@ impl TaitConstraintLocator<'_> {
                 continue;
             }
             constrained = true;
-            let opaque_types_defined_by = match source {
-                ImplTraitSource::AssocTy => {
-                    self.tcx.impl_trait_in_assoc_types_defined_by(item_def_id)
-                }
-                ImplTraitSource::TyAlias => self.tcx.opaque_types_defined_by(item_def_id),
-            };
+            let opaque_types_defined_by = self.tcx.opaque_types_defined_by(item_def_id);
+
             if !opaque_types_defined_by.contains(&self.def_id) {
                 self.tcx.dcx().emit_err(TaitForwardCompat {
                     span: hidden_type.span,
@@ -287,8 +275,10 @@ impl TaitConstraintLocator<'_> {
         if let Some(&concrete_type) = borrowck_results.concrete_opaque_types.get(&self.def_id) {
             debug!(?concrete_type, "found constraint");
             if let Some(prev) = &mut self.found {
-                if concrete_type.ty != prev.ty && !(concrete_type, prev.ty).references_error() {
-                    let guar = prev.report_mismatch(&concrete_type, self.def_id, self.tcx).emit();
+                if concrete_type.ty != prev.ty {
+                    let (Ok(guar) | Err(guar)) = prev
+                        .build_mismatch_error(&concrete_type, self.def_id, self.tcx)
+                        .map(|d| d.emit());
                     prev.ty = Ty::new_error(self.tcx, guar);
                 }
             } else {
@@ -306,7 +296,7 @@ impl<'tcx> intravisit::Visitor<'tcx> for TaitConstraintLocator<'tcx> {
     }
     fn visit_expr(&mut self, ex: &'tcx Expr<'tcx>) {
         if let hir::ExprKind::Closure(closure) = ex.kind {
-            self.check(closure.def_id, ImplTraitSource::TyAlias);
+            self.check(closure.def_id);
         }
         intravisit::walk_expr(self, ex);
     }
@@ -314,7 +304,7 @@ impl<'tcx> intravisit::Visitor<'tcx> for TaitConstraintLocator<'tcx> {
         trace!(?it.owner_id);
         // The opaque type itself or its children are not within its reveal scope.
         if it.owner_id.def_id != self.def_id {
-            self.check(it.owner_id.def_id, ImplTraitSource::TyAlias);
+            self.check(it.owner_id.def_id);
             intravisit::walk_item(self, it);
         }
     }
@@ -322,13 +312,13 @@ impl<'tcx> intravisit::Visitor<'tcx> for TaitConstraintLocator<'tcx> {
         trace!(?it.owner_id);
         // The opaque type itself or its children are not within its reveal scope.
         if it.owner_id.def_id != self.def_id {
-            self.check(it.owner_id.def_id, ImplTraitSource::TyAlias);
+            self.check(it.owner_id.def_id);
             intravisit::walk_impl_item(self, it);
         }
     }
     fn visit_trait_item(&mut self, it: &'tcx TraitItem<'tcx>) {
         trace!(?it.owner_id);
-        self.check(it.owner_id.def_id, ImplTraitSource::TyAlias);
+        self.check(it.owner_id.def_id);
         intravisit::walk_trait_item(self, it);
     }
     fn visit_foreign_item(&mut self, it: &'tcx hir::ForeignItem<'tcx>) {
@@ -361,11 +351,13 @@ pub(super) fn find_opaque_ty_constraints_for_rpit<'tcx>(
                 hidden_type.remap_generic_params_to_declaration_params(opaque_type_key, tcx, true),
             );
             if let Some(prev) = &mut hir_opaque_ty {
-                if concrete_type.ty != prev.ty && !(concrete_type, prev.ty).references_error() {
-                    prev.report_mismatch(&concrete_type, def_id, tcx).stash(
-                        tcx.def_span(opaque_type_key.def_id),
-                        StashKey::OpaqueHiddenTypeMismatch,
-                    );
+                if concrete_type.ty != prev.ty {
+                    if let Ok(d) = prev.build_mismatch_error(&concrete_type, def_id, tcx) {
+                        d.stash(
+                            tcx.def_span(opaque_type_key.def_id),
+                            StashKey::OpaqueHiddenTypeMismatch,
+                        );
+                    }
                 }
             } else {
                 hir_opaque_ty = Some(concrete_type);
@@ -436,9 +428,12 @@ impl RpitConstraintChecker<'_> {
 
             debug!(?concrete_type, "found constraint");
 
-            if concrete_type.ty != self.found.ty && !(concrete_type, self.found).references_error()
-            {
-                self.found.report_mismatch(&concrete_type, self.def_id, self.tcx).emit();
+            if concrete_type.ty != self.found.ty {
+                if let Ok(d) =
+                    self.found.build_mismatch_error(&concrete_type, self.def_id, self.tcx)
+                {
+                    d.emit();
+                }
             }
         }
     }

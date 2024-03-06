@@ -32,6 +32,8 @@ declare_features! (
     // feature-group-start: removed features
     // -------------------------------------------------------------------------
 
+    /// Allows using the `amdgpu-kernel` ABI.
+    (removed, abi_amdgpu_kernel, "1.77.0", Some(51575), None),
     (removed, advanced_slice_patterns, "1.0.0", Some(62254),
      Some("merged into `#![feature(slice_patterns)]`")),
     (removed, allocator, "1.0.0", None, None),
@@ -95,6 +97,9 @@ declare_features! (
     /// Allows `#[doc(include = "some-file")]`.
     (removed, external_doc, "1.54.0", Some(44732),
      Some("use #[doc = include_str!(\"filename\")] instead, which handles macro invocations")),
+    /// Allows using `#[ffi_returns_twice]` on foreign functions.
+    (removed, ffi_returns_twice, "CURRENT_RUSTC_VERSION", Some(58314),
+     Some("being investigated by the ffi-unwind project group")),
     /// Allows generators to be cloned.
     (removed, generator_clone, "1.65.0", Some(95360), Some("renamed to `coroutine_clone`")),
     /// Allows defining generators.
@@ -151,6 +156,9 @@ declare_features! (
      Some("removed in favor of `#![feature(marker_trait_attr)]`")),
     (removed, panic_implementation, "1.28.0", Some(44489),
      Some("subsumed by `#[panic_handler]`")),
+    /// Allows `extern "platform-intrinsic" { ... }`.
+    (removed, platform_intrinsics, "1.4.0", Some(27731),
+     Some("SIMD intrinsics use the regular intrinsics ABI now")),
     /// Allows using `#![plugin(myplugin)]`.
     (removed, plugin, "1.75.0", Some(29597),
      Some("plugins are no longer supported")),

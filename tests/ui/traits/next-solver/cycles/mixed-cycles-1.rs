@@ -1,4 +1,4 @@
-// compile-flags: -Znext-solver
+//@ compile-flags: -Znext-solver
 #![feature(rustc_attrs)]
 
 // A test intended to check how we handle provisional results

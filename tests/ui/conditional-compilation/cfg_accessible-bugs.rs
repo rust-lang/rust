@@ -1,6 +1,6 @@
 // This test is a collection of test that should pass.
 //
-// check-fail
+//@ check-fail
 
 #![feature(cfg_accessible)]
 #![feature(trait_alias)]

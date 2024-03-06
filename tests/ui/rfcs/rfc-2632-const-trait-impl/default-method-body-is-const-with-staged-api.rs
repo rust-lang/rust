@@ -1,4 +1,4 @@
-// check-pass
+//@ check-pass
 
 // This was an ICE, because the compiler ensures the
 // function to be const when performing const checking,

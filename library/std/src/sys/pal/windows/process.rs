@@ -12,7 +12,7 @@ use crate::fmt;
 use crate::io::{self, Error, ErrorKind};
 use crate::mem;
 use crate::mem::MaybeUninit;
-use crate::num::NonZeroI32;
+use crate::num::NonZero;
 use crate::os::windows::ffi::{OsStrExt, OsStringExt};
 use crate::os::windows::io::{AsHandle, AsRawHandle, BorrowedHandle, FromRawHandle, IntoRawHandle};
 use crate::path::{Path, PathBuf};
@@ -350,10 +350,10 @@ impl Command {
                 StartupInfo: si,
                 lpAttributeList: proc_thread_attribute_list.0.as_mut_ptr() as _,
             };
-            si_ptr = &mut si_ex as *mut _ as _;
+            si_ptr = core::ptr::addr_of_mut!(si_ex) as _;
         } else {
             si.cb = mem::size_of::<c::STARTUPINFOW>() as c::DWORD;
-            si_ptr = &mut si as *mut _ as _;
+            si_ptr = core::ptr::addr_of_mut!(si) as _;
         }
 
         unsafe {
@@ -747,7 +747,7 @@ impl Into<ExitStatus> for ExitStatusError {
 }
 
 impl ExitStatusError {
-    pub fn code(self) -> Option<NonZeroI32> {
+    pub fn code(self) -> Option<NonZero<i32>> {
         Some((u32::from(self.0) as i32).try_into().unwrap())
     }
 }
@@ -935,7 +935,7 @@ fn make_proc_thread_attribute_list(
     // It's theoretically possible for the attribute count to exceed a u32 value.
     // Therefore, we ensure that we don't add more attributes than the buffer was initialized for.
     for (&attribute, value) in attributes.iter().take(attribute_count as usize) {
-        let value_ptr = &*value.data as *const (dyn Send + Sync) as _;
+        let value_ptr = core::ptr::addr_of!(*value.data) as _;
         cvt(unsafe {
             c::UpdateProcThreadAttribute(
                 proc_thread_attribute_list.0.as_mut_ptr() as _,

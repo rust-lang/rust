@@ -90,8 +90,7 @@ fn univariant_uninterned<'tcx>(
     let dl = cx.data_layout();
     let pack = repr.pack;
     if pack.is_some() && repr.align.is_some() {
-        cx.tcx.dcx().delayed_bug("struct cannot be packed and aligned");
-        return Err(cx.tcx.arena.alloc(LayoutError::Unknown(ty)));
+        cx.tcx.dcx().bug("struct cannot be packed and aligned");
     }
 
     cx.univariant(dl, fields, repr, kind).ok_or_else(|| error(cx, LayoutError::SizeOverflow(ty)))
@@ -142,8 +141,10 @@ fn layout_of_uncached<'tcx>(
         ty::Int(ity) => scalar(Int(Integer::from_int_ty(dl, ity), true)),
         ty::Uint(ity) => scalar(Int(Integer::from_uint_ty(dl, ity), false)),
         ty::Float(fty) => scalar(match fty {
+            ty::FloatTy::F16 => F16,
             ty::FloatTy::F32 => F32,
             ty::FloatTy::F64 => F64,
+            ty::FloatTy::F128 => F128,
         }),
         ty::FnPtr(_) => {
             let mut ptr = scalar_unit(Pointer(dl.instruction_address_space));
@@ -319,6 +320,17 @@ fn layout_of_uncached<'tcx>(
 
         ty::Closure(_, args) => {
             let tys = args.as_closure().upvar_tys();
+            univariant(
+                &tys.iter()
+                    .map(|ty| Ok(cx.layout_of(ty)?.layout))
+                    .try_collect::<IndexVec<_, _>>()?,
+                &ReprOptions::default(),
+                StructKind::AlwaysSized,
+            )?
+        }
+
+        ty::CoroutineClosure(_, args) => {
+            let tys = args.as_coroutine_closure().upvar_tys();
             univariant(
                 &tys.iter()
                     .map(|ty| Ok(cx.layout_of(ty)?.layout))
@@ -730,7 +742,7 @@ fn coroutine_layout<'tcx>(
 ) -> Result<Layout<'tcx>, &'tcx LayoutError<'tcx>> {
     use SavedLocalEligibility::*;
     let tcx = cx.tcx;
-    let subst_field = |ty: Ty<'tcx>| EarlyBinder::bind(ty).instantiate(tcx, args);
+    let instantiate_field = |ty: Ty<'tcx>| EarlyBinder::bind(ty).instantiate(tcx, args);
 
     let Some(info) = tcx.coroutine_layout(def_id) else {
         return Err(error(cx, LayoutError::Unknown(ty)));
@@ -752,7 +764,7 @@ fn coroutine_layout<'tcx>(
     let tag_layout = cx.tcx.mk_layout(LayoutS::scalar(cx, tag));
 
     let promoted_layouts = ineligible_locals.iter().map(|local| {
-        let field_ty = subst_field(info.field_tys[local].ty);
+        let field_ty = instantiate_field(info.field_tys[local].ty);
         let uninit_ty = Ty::new_maybe_uninit(tcx, field_ty);
         Ok(cx.spanned_layout_of(uninit_ty, info.field_tys[local].source_info.span)?.layout)
     });
@@ -827,7 +839,7 @@ fn coroutine_layout<'tcx>(
                     Ineligible(_) => false,
                 })
                 .map(|local| {
-                    let field_ty = subst_field(info.field_tys[*local].ty);
+                    let field_ty = instantiate_field(info.field_tys[*local].ty);
                     Ty::new_maybe_uninit(tcx, field_ty)
                 });
 

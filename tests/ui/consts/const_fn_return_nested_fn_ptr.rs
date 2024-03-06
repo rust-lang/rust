@@ -1,5 +1,5 @@
-// build-pass (FIXME(62277): could be check-pass?)
-// aux-build:const_fn_lib.rs
+//@ build-pass (FIXME(62277): could be check-pass?)
+//@ aux-build:const_fn_lib.rs
 
 extern crate const_fn_lib;
 

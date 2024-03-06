@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 // regression test for issue #50825
 // Check that the feature gate normalizes associated types.
 

@@ -1,5 +1,5 @@
 error: this returns a `Result<_, ()>`
-  --> $DIR/result_unit_error.rs:3:1
+  --> tests/ui/result_unit_error.rs:3:1
    |
 LL | pub fn returns_unit_error() -> Result<u32, ()> {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -9,7 +9,7 @@ LL | pub fn returns_unit_error() -> Result<u32, ()> {
    = help: to override `-D warnings` add `#[allow(clippy::result_unit_err)]`
 
 error: this returns a `Result<_, ()>`
-  --> $DIR/result_unit_error.rs:13:5
+  --> tests/ui/result_unit_error.rs:13:5
    |
 LL |     fn get_that_error(&self) -> Result<bool, ()>;
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -17,7 +17,7 @@ LL |     fn get_that_error(&self) -> Result<bool, ()>;
    = help: use a custom `Error` type instead
 
 error: this returns a `Result<_, ()>`
-  --> $DIR/result_unit_error.rs:16:5
+  --> tests/ui/result_unit_error.rs:16:5
    |
 LL |     fn get_this_one_too(&self) -> Result<bool, ()> {
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -25,7 +25,7 @@ LL |     fn get_this_one_too(&self) -> Result<bool, ()> {
    = help: use a custom `Error` type instead
 
 error: this returns a `Result<_, ()>`
-  --> $DIR/result_unit_error.rs:35:5
+  --> tests/ui/result_unit_error.rs:35:5
    |
 LL |     pub fn unit_error(&self) -> Result<usize, ()> {
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -33,7 +33,7 @@ LL |     pub fn unit_error(&self) -> Result<usize, ()> {
    = help: use a custom `Error` type instead
 
 error: this returns a `Result<_, ()>`
-  --> $DIR/result_unit_error.rs:45:5
+  --> tests/ui/result_unit_error.rs:45:5
    |
 LL |     pub fn should_lint() -> ResInv<(), usize> {
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

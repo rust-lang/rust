@@ -1,5 +1,5 @@
 // Test that multiple lifetimes are allowed in impl trait types.
-// build-pass (FIXME(62277): could be check-pass?)
+//@ build-pass (FIXME(62277): could be check-pass?)
 
 trait X<'x>: Sized {}
 

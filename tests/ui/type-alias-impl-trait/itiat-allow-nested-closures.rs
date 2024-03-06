@@ -1,7 +1,7 @@
 #![feature(impl_trait_in_assoc_type)]
 
-// revisions: ok bad
-// [ok] check-pass
+//@ revisions: ok bad
+//@ [ok] check-pass
 
 trait Foo {
     type Assoc;

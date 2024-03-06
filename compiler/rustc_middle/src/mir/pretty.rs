@@ -4,6 +4,8 @@ use std::fs;
 use std::io::{self, Write as _};
 use std::path::{Path, PathBuf};
 
+use crate::mir::interpret::ConstAllocation;
+
 use super::graphviz::write_mir_fn_graphviz;
 use rustc_ast::InlineAsmTemplatePiece;
 use rustc_middle::mir::interpret::{
@@ -491,7 +493,7 @@ fn write_mir_sig(tcx: TyCtxt<'_>, body: &Body<'_>, w: &mut dyn io::Write) -> io:
     let kind = tcx.def_kind(def_id);
     let is_function = match kind {
         DefKind::Fn | DefKind::AssocFn | DefKind::Ctor(..) => true,
-        _ => tcx.is_closure_or_coroutine(def_id),
+        _ => tcx.is_closure_like(def_id),
     };
     match (kind, body.source.promoted) {
         (_, Some(i)) => write!(w, "{i:?} in ")?,
@@ -907,6 +909,7 @@ impl<'tcx> Debug for Rvalue<'tcx> {
                     NullOp::SizeOf => write!(fmt, "SizeOf({t})"),
                     NullOp::AlignOf => write!(fmt, "AlignOf({t})"),
                     NullOp::OffsetOf(fields) => write!(fmt, "OffsetOf({t}, {fields:?})"),
+                    NullOp::DebugAssertions => write!(fmt, "cfg!(debug_assertions)"),
                 }
             }
             ThreadLocalRef(did) => ty::tls::with(|tcx| {
@@ -990,7 +993,8 @@ impl<'tcx> Debug for Rvalue<'tcx> {
                         })
                     }
 
-                    AggregateKind::Closure(def_id, args) => ty::tls::with(|tcx| {
+                    AggregateKind::Closure(def_id, args)
+                    | AggregateKind::CoroutineClosure(def_id, args) => ty::tls::with(|tcx| {
                         let name = if tcx.sess.opts.unstable_opts.span_free_formats {
                             let args = tcx.lift(args).unwrap();
                             format!("{{closure@{}}}", tcx.def_path_str_with_args(def_id, args),)

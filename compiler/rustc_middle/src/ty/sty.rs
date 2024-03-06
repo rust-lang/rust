@@ -6,118 +6,41 @@ use crate::infer::canonical::Canonical;
 use crate::ty::visit::ValidateBoundVars;
 use crate::ty::InferTy::*;
 use crate::ty::{
-    self, AdtDef, Discr, IntoKind, Term, Ty, TyCtxt, TypeFlags, TypeSuperVisitable, TypeVisitable,
-    TypeVisitableExt, TypeVisitor,
+    self, AdtDef, BoundRegionKind, Discr, Region, Ty, TyCtxt, TypeFlags, TypeSuperVisitable,
+    TypeVisitable, TypeVisitableExt, TypeVisitor,
 };
 use crate::ty::{GenericArg, GenericArgs, GenericArgsRef};
 use crate::ty::{List, ParamEnv};
 use hir::def::DefKind;
-use polonius_engine::Atom;
 use rustc_data_structures::captures::Captures;
-use rustc_data_structures::intern::Interned;
-use rustc_errors::{
-    DiagnosticArgValue, DiagnosticMessage, ErrorGuaranteed, IntoDiagnosticArg, MultiSpan,
-};
+use rustc_errors::{DiagArgValue, DiagMessage, ErrorGuaranteed, IntoDiagnosticArg, MultiSpan};
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
 use rustc_hir::LangItem;
-use rustc_index::Idx;
 use rustc_macros::HashStable;
-use rustc_span::symbol::{kw, sym, Symbol};
+use rustc_span::symbol::{sym, Symbol};
 use rustc_span::{Span, DUMMY_SP};
 use rustc_target::abi::{FieldIdx, VariantIdx, FIRST_VARIANT};
 use rustc_target::spec::abi::{self, Abi};
 use std::assert_matches::debug_assert_matches;
 use std::borrow::Cow;
-use std::cmp::Ordering;
-use std::fmt;
 use std::ops::{ControlFlow, Deref, Range};
 use ty::util::IntTypeExt;
 
 use rustc_type_ir::BoundVar;
-use rustc_type_ir::ClauseKind as IrClauseKind;
 use rustc_type_ir::CollectAndApply;
-use rustc_type_ir::ConstKind as IrConstKind;
-use rustc_type_ir::DebugWithInfcx;
 use rustc_type_ir::DynKind;
-use rustc_type_ir::PredicateKind as IrPredicateKind;
-use rustc_type_ir::RegionKind as IrRegionKind;
 use rustc_type_ir::TyKind as IrTyKind;
 use rustc_type_ir::TyKind::*;
 use rustc_type_ir::TypeAndMut as IrTypeAndMut;
 
+use super::fold::FnMutDelegate;
 use super::GenericParamDefKind;
 
 // Re-export and re-parameterize some `I = TyCtxt<'tcx>` types here
 #[rustc_diagnostic_item = "TyKind"]
 pub type TyKind<'tcx> = IrTyKind<TyCtxt<'tcx>>;
-pub type RegionKind<'tcx> = IrRegionKind<TyCtxt<'tcx>>;
-pub type ConstKind<'tcx> = IrConstKind<TyCtxt<'tcx>>;
-pub type PredicateKind<'tcx> = IrPredicateKind<TyCtxt<'tcx>>;
-pub type ClauseKind<'tcx> = IrClauseKind<TyCtxt<'tcx>>;
 pub type TypeAndMut<'tcx> = IrTypeAndMut<TyCtxt<'tcx>>;
-
-#[derive(Clone, PartialEq, PartialOrd, Eq, Ord, Hash, TyEncodable, TyDecodable, Copy)]
-#[derive(HashStable)]
-/// The parameter representation of late-bound function parameters, "some region
-/// at least as big as the scope `fr.scope`".
-pub struct LateParamRegion {
-    pub scope: DefId,
-    pub bound_region: BoundRegionKind,
-}
-
-#[derive(Clone, PartialEq, PartialOrd, Eq, Ord, Hash, TyEncodable, TyDecodable, Copy)]
-#[derive(HashStable)]
-pub enum BoundRegionKind {
-    /// An anonymous region parameter for a given fn (&T)
-    BrAnon,
-
-    /// Named region parameters for functions (a in &'a T)
-    ///
-    /// The `DefId` is needed to distinguish free regions in
-    /// the event of shadowing.
-    BrNamed(DefId, Symbol),
-
-    /// Anonymous region for the implicit env pointer parameter
-    /// to a closure
-    BrEnv,
-}
-
-#[derive(Copy, Clone, PartialEq, Eq, Hash, TyEncodable, TyDecodable, Debug, PartialOrd, Ord)]
-#[derive(HashStable)]
-pub struct BoundRegion {
-    pub var: BoundVar,
-    pub kind: BoundRegionKind,
-}
-
-impl BoundRegionKind {
-    pub fn is_named(&self) -> bool {
-        match *self {
-            BoundRegionKind::BrNamed(_, name) => {
-                name != kw::UnderscoreLifetime && name != kw::Empty
-            }
-            _ => false,
-        }
-    }
-
-    pub fn get_name(&self) -> Option<Symbol> {
-        if self.is_named() {
-            match *self {
-                BoundRegionKind::BrNamed(_, name) => return Some(name),
-                _ => unreachable!(),
-            }
-        }
-
-        None
-    }
-
-    pub fn get_id(&self) -> Option<DefId> {
-        match *self {
-            BoundRegionKind::BrNamed(id, _) => return Some(id),
-            _ => None,
-        }
-    }
-}
 
 pub trait Article {
     fn article(&self) -> &'static str;
@@ -283,7 +206,7 @@ impl<'tcx> ClosureArgs<'tcx> {
         }
     }
 
-    /// Returns the substitutions of the closure's parent.
+    /// Returns the generic parameters of the closure's parent.
     pub fn parent_args(self) -> &'tcx [GenericArg<'tcx>] {
         self.split().parent_args
     }
@@ -345,6 +268,275 @@ impl<'tcx> ClosureArgs<'tcx> {
     }
 }
 
+#[derive(Copy, Clone, PartialEq, Eq, Debug, TypeFoldable, TypeVisitable, Lift)]
+pub struct CoroutineClosureArgs<'tcx> {
+    pub args: GenericArgsRef<'tcx>,
+}
+
+/// See docs for explanation of how each argument is used.
+///
+/// See [`CoroutineClosureSignature`] for how these arguments are put together
+/// to make a callable [`FnSig`] suitable for typeck and borrowck.
+pub struct CoroutineClosureArgsParts<'tcx> {
+    /// This is the args of the typeck root.
+    pub parent_args: &'tcx [GenericArg<'tcx>],
+    /// Represents the maximum calling capability of the closure.
+    pub closure_kind_ty: Ty<'tcx>,
+    /// Represents all of the relevant parts of the coroutine returned by this
+    /// coroutine-closure. This signature parts type will have the general
+    /// shape of `fn(tupled_inputs, resume_ty) -> (return_ty, yield_ty)`, where
+    /// `resume_ty`, `return_ty`, and `yield_ty` are the respective types for the
+    /// coroutine returned by the coroutine-closure.
+    ///
+    /// Use `coroutine_closure_sig` to break up this type rather than using it
+    /// yourself.
+    pub signature_parts_ty: Ty<'tcx>,
+    /// The upvars captured by the closure. Remains an inference variable
+    /// until the upvar analysis, which happens late in HIR typeck.
+    pub tupled_upvars_ty: Ty<'tcx>,
+    /// a function pointer that has the shape `for<'env> fn() -> (&'env T, ...)`.
+    /// This allows us to represent the binder of the self-captures of the closure.
+    ///
+    /// For example, if the coroutine returned by the closure borrows `String`
+    /// from the closure's upvars, this will be `for<'env> fn() -> (&'env String,)`,
+    /// while the `tupled_upvars_ty`, representing the by-move version of the same
+    /// captures, will be `(String,)`.
+    pub coroutine_captures_by_ref_ty: Ty<'tcx>,
+    /// Witness type returned by the generator produced by this coroutine-closure.
+    pub coroutine_witness_ty: Ty<'tcx>,
+}
+
+impl<'tcx> CoroutineClosureArgs<'tcx> {
+    pub fn new(
+        tcx: TyCtxt<'tcx>,
+        parts: CoroutineClosureArgsParts<'tcx>,
+    ) -> CoroutineClosureArgs<'tcx> {
+        CoroutineClosureArgs {
+            args: tcx.mk_args_from_iter(parts.parent_args.iter().copied().chain([
+                parts.closure_kind_ty.into(),
+                parts.signature_parts_ty.into(),
+                parts.tupled_upvars_ty.into(),
+                parts.coroutine_captures_by_ref_ty.into(),
+                parts.coroutine_witness_ty.into(),
+            ])),
+        }
+    }
+
+    fn split(self) -> CoroutineClosureArgsParts<'tcx> {
+        match self.args[..] {
+            [
+                ref parent_args @ ..,
+                closure_kind_ty,
+                signature_parts_ty,
+                tupled_upvars_ty,
+                coroutine_captures_by_ref_ty,
+                coroutine_witness_ty,
+            ] => CoroutineClosureArgsParts {
+                parent_args,
+                closure_kind_ty: closure_kind_ty.expect_ty(),
+                signature_parts_ty: signature_parts_ty.expect_ty(),
+                tupled_upvars_ty: tupled_upvars_ty.expect_ty(),
+                coroutine_captures_by_ref_ty: coroutine_captures_by_ref_ty.expect_ty(),
+                coroutine_witness_ty: coroutine_witness_ty.expect_ty(),
+            },
+            _ => bug!("closure args missing synthetics"),
+        }
+    }
+
+    pub fn parent_args(self) -> &'tcx [GenericArg<'tcx>] {
+        self.split().parent_args
+    }
+
+    #[inline]
+    pub fn upvar_tys(self) -> &'tcx List<Ty<'tcx>> {
+        match self.tupled_upvars_ty().kind() {
+            TyKind::Error(_) => ty::List::empty(),
+            TyKind::Tuple(..) => self.tupled_upvars_ty().tuple_fields(),
+            TyKind::Infer(_) => bug!("upvar_tys called before capture types are inferred"),
+            ty => bug!("Unexpected representation of upvar types tuple {:?}", ty),
+        }
+    }
+
+    #[inline]
+    pub fn tupled_upvars_ty(self) -> Ty<'tcx> {
+        self.split().tupled_upvars_ty
+    }
+
+    pub fn kind_ty(self) -> Ty<'tcx> {
+        self.split().closure_kind_ty
+    }
+
+    pub fn kind(self) -> ty::ClosureKind {
+        self.kind_ty().to_opt_closure_kind().unwrap()
+    }
+
+    pub fn signature_parts_ty(self) -> Ty<'tcx> {
+        self.split().signature_parts_ty
+    }
+
+    pub fn coroutine_closure_sig(self) -> ty::Binder<'tcx, CoroutineClosureSignature<'tcx>> {
+        let interior = self.coroutine_witness_ty();
+        let ty::FnPtr(sig) = self.signature_parts_ty().kind() else { bug!() };
+        sig.map_bound(|sig| {
+            let [resume_ty, tupled_inputs_ty] = *sig.inputs() else {
+                bug!();
+            };
+            let [yield_ty, return_ty] = **sig.output().tuple_fields() else { bug!() };
+            CoroutineClosureSignature {
+                interior,
+                tupled_inputs_ty,
+                resume_ty,
+                yield_ty,
+                return_ty,
+                c_variadic: sig.c_variadic,
+                unsafety: sig.unsafety,
+                abi: sig.abi,
+            }
+        })
+    }
+
+    pub fn coroutine_captures_by_ref_ty(self) -> Ty<'tcx> {
+        self.split().coroutine_captures_by_ref_ty
+    }
+
+    pub fn coroutine_witness_ty(self) -> Ty<'tcx> {
+        self.split().coroutine_witness_ty
+    }
+}
+
+#[derive(Copy, Clone, PartialEq, Eq, Debug, TypeFoldable, TypeVisitable)]
+pub struct CoroutineClosureSignature<'tcx> {
+    pub interior: Ty<'tcx>,
+    pub tupled_inputs_ty: Ty<'tcx>,
+    pub resume_ty: Ty<'tcx>,
+    pub yield_ty: Ty<'tcx>,
+    pub return_ty: Ty<'tcx>,
+
+    // Like the `fn_sig_as_fn_ptr_ty` of a regular closure, these types
+    // never actually differ. But we save them rather than recreating them
+    // from scratch just for good measure.
+    /// Always false
+    pub c_variadic: bool,
+    /// Always [`hir::Unsafety::Normal`]
+    pub unsafety: hir::Unsafety,
+    /// Always [`abi::Abi::RustCall`]
+    pub abi: abi::Abi,
+}
+
+impl<'tcx> CoroutineClosureSignature<'tcx> {
+    /// Construct a coroutine from the closure signature. Since a coroutine signature
+    /// is agnostic to the type of generator that is returned (by-ref/by-move),
+    /// the caller must specify what "flavor" of generator that they'd like to
+    /// create. Additionally, they must manually compute the upvars of the closure.
+    ///
+    /// This helper is not really meant to be used directly except for early on
+    /// during typeck, when we want to put inference vars into the kind and upvars tys.
+    /// When the kind and upvars are known, use the other helper functions.
+    pub fn to_coroutine(
+        self,
+        tcx: TyCtxt<'tcx>,
+        parent_args: &'tcx [GenericArg<'tcx>],
+        coroutine_kind_ty: Ty<'tcx>,
+        coroutine_def_id: DefId,
+        tupled_upvars_ty: Ty<'tcx>,
+    ) -> Ty<'tcx> {
+        let coroutine_args = ty::CoroutineArgs::new(
+            tcx,
+            ty::CoroutineArgsParts {
+                parent_args,
+                kind_ty: coroutine_kind_ty,
+                resume_ty: self.resume_ty,
+                yield_ty: self.yield_ty,
+                return_ty: self.return_ty,
+                witness: self.interior,
+                tupled_upvars_ty,
+            },
+        );
+
+        Ty::new_coroutine(tcx, coroutine_def_id, coroutine_args.args)
+    }
+
+    /// Given known upvars and a [`ClosureKind`](ty::ClosureKind), compute the coroutine
+    /// returned by that corresponding async fn trait.
+    ///
+    /// This function expects the upvars to have been computed already, and doesn't check
+    /// that the `ClosureKind` is actually supported by the coroutine-closure.
+    pub fn to_coroutine_given_kind_and_upvars(
+        self,
+        tcx: TyCtxt<'tcx>,
+        parent_args: &'tcx [GenericArg<'tcx>],
+        coroutine_def_id: DefId,
+        goal_kind: ty::ClosureKind,
+        env_region: ty::Region<'tcx>,
+        closure_tupled_upvars_ty: Ty<'tcx>,
+        coroutine_captures_by_ref_ty: Ty<'tcx>,
+    ) -> Ty<'tcx> {
+        let tupled_upvars_ty = Self::tupled_upvars_by_closure_kind(
+            tcx,
+            goal_kind,
+            self.tupled_inputs_ty,
+            closure_tupled_upvars_ty,
+            coroutine_captures_by_ref_ty,
+            env_region,
+        );
+
+        self.to_coroutine(
+            tcx,
+            parent_args,
+            Ty::from_closure_kind(tcx, goal_kind),
+            coroutine_def_id,
+            tupled_upvars_ty,
+        )
+    }
+
+    /// Compute the tupled upvars that a coroutine-closure's output coroutine
+    /// would return for the given `ClosureKind`.
+    ///
+    /// When `ClosureKind` is `FnMut`/`Fn`, then this will use the "captures by ref"
+    /// to return a set of upvars which are borrowed with the given `env_region`.
+    ///
+    /// This ensures that the `AsyncFn::call` will return a coroutine whose upvars'
+    /// lifetimes are related to the lifetime of the borrow on the closure made for
+    /// the call. This allows borrowck to enforce the self-borrows correctly.
+    pub fn tupled_upvars_by_closure_kind(
+        tcx: TyCtxt<'tcx>,
+        kind: ty::ClosureKind,
+        tupled_inputs_ty: Ty<'tcx>,
+        closure_tupled_upvars_ty: Ty<'tcx>,
+        coroutine_captures_by_ref_ty: Ty<'tcx>,
+        env_region: ty::Region<'tcx>,
+    ) -> Ty<'tcx> {
+        match kind {
+            ty::ClosureKind::Fn | ty::ClosureKind::FnMut => {
+                let ty::FnPtr(sig) = *coroutine_captures_by_ref_ty.kind() else {
+                    bug!();
+                };
+                let coroutine_captures_by_ref_ty = tcx.replace_escaping_bound_vars_uncached(
+                    sig.output().skip_binder(),
+                    FnMutDelegate {
+                        consts: &mut |c, t| ty::Const::new_bound(tcx, ty::INNERMOST, c, t),
+                        types: &mut |t| Ty::new_bound(tcx, ty::INNERMOST, t),
+                        regions: &mut |_| env_region,
+                    },
+                );
+                Ty::new_tup_from_iter(
+                    tcx,
+                    tupled_inputs_ty
+                        .tuple_fields()
+                        .iter()
+                        .chain(coroutine_captures_by_ref_ty.tuple_fields()),
+                )
+            }
+            ty::ClosureKind::FnOnce => Ty::new_tup_from_iter(
+                tcx,
+                tupled_inputs_ty
+                    .tuple_fields()
+                    .iter()
+                    .chain(closure_tupled_upvars_ty.tuple_fields()),
+            ),
+        }
+    }
+}
 /// Similar to `ClosureArgs`; see the above documentation for more.
 #[derive(Copy, Clone, PartialEq, Eq, Debug, TypeFoldable, TypeVisitable)]
 pub struct CoroutineArgs<'tcx> {
@@ -354,13 +546,27 @@ pub struct CoroutineArgs<'tcx> {
 pub struct CoroutineArgsParts<'tcx> {
     /// This is the args of the typeck root.
     pub parent_args: &'tcx [GenericArg<'tcx>],
+
+    /// The coroutines returned by a coroutine-closure's `AsyncFnOnce`/`AsyncFnMut`
+    /// implementations must be distinguished since the former takes the closure's
+    /// upvars by move, and the latter takes the closure's upvars by ref.
+    ///
+    /// This field distinguishes these fields so that codegen can select the right
+    /// body for the coroutine. This has the same type representation as the closure
+    /// kind: `i8`/`i16`/`i32`.
+    ///
+    /// For regular coroutines, this field will always just be `()`.
+    pub kind_ty: Ty<'tcx>,
+
     pub resume_ty: Ty<'tcx>,
     pub yield_ty: Ty<'tcx>,
     pub return_ty: Ty<'tcx>,
+
     /// The interior type of the coroutine.
     /// Represents all types that are stored in locals
     /// in the coroutine's body.
     pub witness: Ty<'tcx>,
+
     /// The upvars captured by the closure. Remains an inference variable
     /// until the upvar analysis, which happens late in HIR typeck.
     pub tupled_upvars_ty: Ty<'tcx>,
@@ -372,6 +578,7 @@ impl<'tcx> CoroutineArgs<'tcx> {
     pub fn new(tcx: TyCtxt<'tcx>, parts: CoroutineArgsParts<'tcx>) -> CoroutineArgs<'tcx> {
         CoroutineArgs {
             args: tcx.mk_args_from_iter(parts.parent_args.iter().copied().chain([
+                parts.kind_ty.into(),
                 parts.resume_ty.into(),
                 parts.yield_ty.into(),
                 parts.return_ty.into(),
@@ -385,23 +592,35 @@ impl<'tcx> CoroutineArgs<'tcx> {
     /// The ordering assumed here must match that used by `CoroutineArgs::new` above.
     fn split(self) -> CoroutineArgsParts<'tcx> {
         match self.args[..] {
-            [ref parent_args @ .., resume_ty, yield_ty, return_ty, witness, tupled_upvars_ty] => {
-                CoroutineArgsParts {
-                    parent_args,
-                    resume_ty: resume_ty.expect_ty(),
-                    yield_ty: yield_ty.expect_ty(),
-                    return_ty: return_ty.expect_ty(),
-                    witness: witness.expect_ty(),
-                    tupled_upvars_ty: tupled_upvars_ty.expect_ty(),
-                }
-            }
+            [
+                ref parent_args @ ..,
+                kind_ty,
+                resume_ty,
+                yield_ty,
+                return_ty,
+                witness,
+                tupled_upvars_ty,
+            ] => CoroutineArgsParts {
+                parent_args,
+                kind_ty: kind_ty.expect_ty(),
+                resume_ty: resume_ty.expect_ty(),
+                yield_ty: yield_ty.expect_ty(),
+                return_ty: return_ty.expect_ty(),
+                witness: witness.expect_ty(),
+                tupled_upvars_ty: tupled_upvars_ty.expect_ty(),
+            },
             _ => bug!("coroutine args missing synthetics"),
         }
     }
 
-    /// Returns the substitutions of the coroutine's parent.
+    /// Returns the generic parameters of the coroutine's parent.
     pub fn parent_args(self) -> &'tcx [GenericArg<'tcx>] {
         self.split().parent_args
+    }
+
+    // Returns the kind of the coroutine. See docs on the `kind_ty` field.
+    pub fn kind_ty(self) -> Ty<'tcx> {
+        self.split().kind_ty
     }
 
     /// This describes the types that can be contained in a coroutine.
@@ -555,6 +774,7 @@ impl<'tcx> CoroutineArgs<'tcx> {
 pub enum UpvarArgs<'tcx> {
     Closure(GenericArgsRef<'tcx>),
     Coroutine(GenericArgsRef<'tcx>),
+    CoroutineClosure(GenericArgsRef<'tcx>),
 }
 
 impl<'tcx> UpvarArgs<'tcx> {
@@ -566,6 +786,7 @@ impl<'tcx> UpvarArgs<'tcx> {
         let tupled_tys = match self {
             UpvarArgs::Closure(args) => args.as_closure().tupled_upvars_ty(),
             UpvarArgs::Coroutine(args) => args.as_coroutine().tupled_upvars_ty(),
+            UpvarArgs::CoroutineClosure(args) => args.as_coroutine_closure().tupled_upvars_ty(),
         };
 
         match tupled_tys.kind() {
@@ -581,6 +802,7 @@ impl<'tcx> UpvarArgs<'tcx> {
         match self {
             UpvarArgs::Closure(args) => args.as_closure().tupled_upvars_ty(),
             UpvarArgs::Coroutine(args) => args.as_coroutine().tupled_upvars_ty(),
+            UpvarArgs::CoroutineClosure(args) => args.as_coroutine_closure().tupled_upvars_ty(),
         }
     }
 }
@@ -595,7 +817,7 @@ impl<'tcx> UpvarArgs<'tcx> {
 ///   inherited from the item that defined the inline const,
 /// - R represents the type of the constant.
 ///
-/// When the inline const is instantiated, `R` is substituted as the actual inferred
+/// When the inline const is instantiated, `R` is instantiated as the actual inferred
 /// type of the constant. The reason that `R` is represented as an extra type parameter
 /// is the same reason that [`ClosureArgs`] have `CS` and `U` as type parameters:
 /// inline const can reference lifetimes that are internal to the creating function.
@@ -634,7 +856,7 @@ impl<'tcx> InlineConstArgs<'tcx> {
         }
     }
 
-    /// Returns the substitutions of the inline const's parent.
+    /// Returns the generic parameters of the inline const's parent.
     pub fn parent_args(self) -> &'tcx [GenericArg<'tcx>] {
         self.split().parent_args
     }
@@ -642,290 +864,6 @@ impl<'tcx> InlineConstArgs<'tcx> {
     /// Returns the type of this inline const.
     pub fn ty(self) -> Ty<'tcx> {
         self.split().ty.expect_ty()
-    }
-}
-
-#[derive(Debug, Copy, Clone, PartialEq, PartialOrd, Ord, Eq, Hash, TyEncodable, TyDecodable)]
-#[derive(HashStable, TypeFoldable, TypeVisitable, Lift)]
-pub enum ExistentialPredicate<'tcx> {
-    /// E.g., `Iterator`.
-    Trait(ExistentialTraitRef<'tcx>),
-    /// E.g., `Iterator::Item = T`.
-    Projection(ExistentialProjection<'tcx>),
-    /// E.g., `Send`.
-    AutoTrait(DefId),
-}
-
-impl<'tcx> DebugWithInfcx<TyCtxt<'tcx>> for ExistentialPredicate<'tcx> {
-    fn fmt<Infcx: rustc_type_ir::InferCtxtLike<Interner = TyCtxt<'tcx>>>(
-        this: rustc_type_ir::WithInfcx<'_, Infcx, &Self>,
-        f: &mut core::fmt::Formatter<'_>,
-    ) -> core::fmt::Result {
-        fmt::Debug::fmt(&this.data, f)
-    }
-}
-
-impl<'tcx> ExistentialPredicate<'tcx> {
-    /// Compares via an ordering that will not change if modules are reordered or other changes are
-    /// made to the tree. In particular, this ordering is preserved across incremental compilations.
-    pub fn stable_cmp(&self, tcx: TyCtxt<'tcx>, other: &Self) -> Ordering {
-        use self::ExistentialPredicate::*;
-        match (*self, *other) {
-            (Trait(_), Trait(_)) => Ordering::Equal,
-            (Projection(ref a), Projection(ref b)) => {
-                tcx.def_path_hash(a.def_id).cmp(&tcx.def_path_hash(b.def_id))
-            }
-            (AutoTrait(ref a), AutoTrait(ref b)) => {
-                tcx.def_path_hash(*a).cmp(&tcx.def_path_hash(*b))
-            }
-            (Trait(_), _) => Ordering::Less,
-            (Projection(_), Trait(_)) => Ordering::Greater,
-            (Projection(_), _) => Ordering::Less,
-            (AutoTrait(_), _) => Ordering::Greater,
-        }
-    }
-}
-
-pub type PolyExistentialPredicate<'tcx> = Binder<'tcx, ExistentialPredicate<'tcx>>;
-
-impl<'tcx> PolyExistentialPredicate<'tcx> {
-    /// Given an existential predicate like `?Self: PartialEq<u32>` (e.g., derived from `dyn PartialEq<u32>`),
-    /// and a concrete type `self_ty`, returns a full predicate where the existentially quantified variable `?Self`
-    /// has been replaced with `self_ty` (e.g., `self_ty: PartialEq<u32>`, in our example).
-    pub fn with_self_ty(&self, tcx: TyCtxt<'tcx>, self_ty: Ty<'tcx>) -> ty::Clause<'tcx> {
-        use crate::ty::ToPredicate;
-        match self.skip_binder() {
-            ExistentialPredicate::Trait(tr) => {
-                self.rebind(tr).with_self_ty(tcx, self_ty).to_predicate(tcx)
-            }
-            ExistentialPredicate::Projection(p) => {
-                self.rebind(p.with_self_ty(tcx, self_ty)).to_predicate(tcx)
-            }
-            ExistentialPredicate::AutoTrait(did) => {
-                let generics = tcx.generics_of(did);
-                let trait_ref = if generics.params.len() == 1 {
-                    ty::TraitRef::new(tcx, did, [self_ty])
-                } else {
-                    // If this is an ill-formed auto trait, then synthesize
-                    // new error args for the missing generics.
-                    let err_args = ty::GenericArgs::extend_with_error(tcx, did, &[self_ty.into()]);
-                    ty::TraitRef::new(tcx, did, err_args)
-                };
-                self.rebind(trait_ref).to_predicate(tcx)
-            }
-        }
-    }
-}
-
-impl<'tcx> List<ty::PolyExistentialPredicate<'tcx>> {
-    /// Returns the "principal `DefId`" of this set of existential predicates.
-    ///
-    /// A Rust trait object type consists (in addition to a lifetime bound)
-    /// of a set of trait bounds, which are separated into any number
-    /// of auto-trait bounds, and at most one non-auto-trait bound. The
-    /// non-auto-trait bound is called the "principal" of the trait
-    /// object.
-    ///
-    /// Only the principal can have methods or type parameters (because
-    /// auto traits can have neither of them). This is important, because
-    /// it means the auto traits can be treated as an unordered set (methods
-    /// would force an order for the vtable, while relating traits with
-    /// type parameters without knowing the order to relate them in is
-    /// a rather non-trivial task).
-    ///
-    /// For example, in the trait object `dyn fmt::Debug + Sync`, the
-    /// principal bound is `Some(fmt::Debug)`, while the auto-trait bounds
-    /// are the set `{Sync}`.
-    ///
-    /// It is also possible to have a "trivial" trait object that
-    /// consists only of auto traits, with no principal - for example,
-    /// `dyn Send + Sync`. In that case, the set of auto-trait bounds
-    /// is `{Send, Sync}`, while there is no principal. These trait objects
-    /// have a "trivial" vtable consisting of just the size, alignment,
-    /// and destructor.
-    pub fn principal(&self) -> Option<ty::Binder<'tcx, ExistentialTraitRef<'tcx>>> {
-        self[0]
-            .map_bound(|this| match this {
-                ExistentialPredicate::Trait(tr) => Some(tr),
-                _ => None,
-            })
-            .transpose()
-    }
-
-    pub fn principal_def_id(&self) -> Option<DefId> {
-        self.principal().map(|trait_ref| trait_ref.skip_binder().def_id)
-    }
-
-    #[inline]
-    pub fn projection_bounds<'a>(
-        &'a self,
-    ) -> impl Iterator<Item = ty::Binder<'tcx, ExistentialProjection<'tcx>>> + 'a {
-        self.iter().filter_map(|predicate| {
-            predicate
-                .map_bound(|pred| match pred {
-                    ExistentialPredicate::Projection(projection) => Some(projection),
-                    _ => None,
-                })
-                .transpose()
-        })
-    }
-
-    #[inline]
-    pub fn auto_traits<'a>(&'a self) -> impl Iterator<Item = DefId> + Captures<'tcx> + 'a {
-        self.iter().filter_map(|predicate| match predicate.skip_binder() {
-            ExistentialPredicate::AutoTrait(did) => Some(did),
-            _ => None,
-        })
-    }
-}
-
-/// A complete reference to a trait. These take numerous guises in syntax,
-/// but perhaps the most recognizable form is in a where-clause:
-/// ```ignore (illustrative)
-/// T: Foo<U>
-/// ```
-/// This would be represented by a trait-reference where the `DefId` is the
-/// `DefId` for the trait `Foo` and the args define `T` as parameter 0,
-/// and `U` as parameter 1.
-///
-/// Trait references also appear in object types like `Foo<U>`, but in
-/// that case the `Self` parameter is absent from the substitutions.
-#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, TyEncodable, TyDecodable)]
-#[derive(HashStable, TypeFoldable, TypeVisitable, Lift)]
-pub struct TraitRef<'tcx> {
-    pub def_id: DefId,
-    pub args: GenericArgsRef<'tcx>,
-    /// This field exists to prevent the creation of `TraitRef` without
-    /// calling [`TraitRef::new`].
-    pub(super) _use_trait_ref_new_instead: (),
-}
-
-impl<'tcx> TraitRef<'tcx> {
-    pub fn new(
-        tcx: TyCtxt<'tcx>,
-        trait_def_id: DefId,
-        args: impl IntoIterator<Item: Into<GenericArg<'tcx>>>,
-    ) -> Self {
-        let args = tcx.check_and_mk_args(trait_def_id, args);
-        Self { def_id: trait_def_id, args, _use_trait_ref_new_instead: () }
-    }
-
-    pub fn from_lang_item(
-        tcx: TyCtxt<'tcx>,
-        trait_lang_item: LangItem,
-        span: Span,
-        args: impl IntoIterator<Item: Into<ty::GenericArg<'tcx>>>,
-    ) -> Self {
-        let trait_def_id = tcx.require_lang_item(trait_lang_item, Some(span));
-        Self::new(tcx, trait_def_id, args)
-    }
-
-    pub fn from_method(
-        tcx: TyCtxt<'tcx>,
-        trait_id: DefId,
-        args: GenericArgsRef<'tcx>,
-    ) -> ty::TraitRef<'tcx> {
-        let defs = tcx.generics_of(trait_id);
-        ty::TraitRef::new(tcx, trait_id, tcx.mk_args(&args[..defs.params.len()]))
-    }
-
-    /// Returns a `TraitRef` of the form `P0: Foo<P1..Pn>` where `Pi`
-    /// are the parameters defined on trait.
-    pub fn identity(tcx: TyCtxt<'tcx>, def_id: DefId) -> TraitRef<'tcx> {
-        ty::TraitRef::new(tcx, def_id, GenericArgs::identity_for_item(tcx, def_id))
-    }
-
-    pub fn with_self_ty(self, tcx: TyCtxt<'tcx>, self_ty: Ty<'tcx>) -> Self {
-        ty::TraitRef::new(
-            tcx,
-            self.def_id,
-            [self_ty.into()].into_iter().chain(self.args.iter().skip(1)),
-        )
-    }
-
-    #[inline]
-    pub fn self_ty(&self) -> Ty<'tcx> {
-        self.args.type_at(0)
-    }
-}
-
-pub type PolyTraitRef<'tcx> = Binder<'tcx, TraitRef<'tcx>>;
-
-impl<'tcx> PolyTraitRef<'tcx> {
-    pub fn self_ty(&self) -> Binder<'tcx, Ty<'tcx>> {
-        self.map_bound_ref(|tr| tr.self_ty())
-    }
-
-    pub fn def_id(&self) -> DefId {
-        self.skip_binder().def_id
-    }
-}
-
-impl<'tcx> IntoDiagnosticArg for TraitRef<'tcx> {
-    fn into_diagnostic_arg(self) -> DiagnosticArgValue<'static> {
-        self.to_string().into_diagnostic_arg()
-    }
-}
-
-/// An existential reference to a trait, where `Self` is erased.
-/// For example, the trait object `Trait<'a, 'b, X, Y>` is:
-/// ```ignore (illustrative)
-/// exists T. T: Trait<'a, 'b, X, Y>
-/// ```
-/// The substitutions don't include the erased `Self`, only trait
-/// type and lifetime parameters (`[X, Y]` and `['a, 'b]` above).
-#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, TyEncodable, TyDecodable)]
-#[derive(HashStable, TypeFoldable, TypeVisitable, Lift)]
-pub struct ExistentialTraitRef<'tcx> {
-    pub def_id: DefId,
-    pub args: GenericArgsRef<'tcx>,
-}
-
-impl<'tcx> ExistentialTraitRef<'tcx> {
-    pub fn erase_self_ty(
-        tcx: TyCtxt<'tcx>,
-        trait_ref: ty::TraitRef<'tcx>,
-    ) -> ty::ExistentialTraitRef<'tcx> {
-        // Assert there is a Self.
-        trait_ref.args.type_at(0);
-
-        ty::ExistentialTraitRef {
-            def_id: trait_ref.def_id,
-            args: tcx.mk_args(&trait_ref.args[1..]),
-        }
-    }
-
-    /// Object types don't have a self type specified. Therefore, when
-    /// we convert the principal trait-ref into a normal trait-ref,
-    /// you must give *some* self type. A common choice is `mk_err()`
-    /// or some placeholder type.
-    pub fn with_self_ty(&self, tcx: TyCtxt<'tcx>, self_ty: Ty<'tcx>) -> ty::TraitRef<'tcx> {
-        // otherwise the escaping vars would be captured by the binder
-        // debug_assert!(!self_ty.has_escaping_bound_vars());
-
-        ty::TraitRef::new(tcx, self.def_id, [self_ty.into()].into_iter().chain(self.args.iter()))
-    }
-}
-
-impl<'tcx> IntoDiagnosticArg for ExistentialTraitRef<'tcx> {
-    fn into_diagnostic_arg(self) -> DiagnosticArgValue<'static> {
-        self.to_string().into_diagnostic_arg()
-    }
-}
-
-pub type PolyExistentialTraitRef<'tcx> = Binder<'tcx, ExistentialTraitRef<'tcx>>;
-
-impl<'tcx> PolyExistentialTraitRef<'tcx> {
-    pub fn def_id(&self) -> DefId {
-        self.skip_binder().def_id
-    }
-
-    /// Object types don't have a self type specified. Therefore, when
-    /// we convert the principal trait-ref into a normal trait-ref,
-    /// you must give *some* self type. A common choice is `mk_err()`
-    /// or some placeholder type.
-    pub fn with_self_ty(&self, tcx: TyCtxt<'tcx>, self_ty: Ty<'tcx>) -> ty::PolyTraitRef<'tcx> {
-        self.map_bound(|trait_ref| trait_ref.with_self_ty(tcx, self_ty))
     }
 }
 
@@ -999,6 +937,16 @@ where
             value.visit_with(&mut validator);
         }
         Binder { value, bound_vars }
+    }
+}
+
+impl<'tcx, T> rustc_type_ir::BoundVars<TyCtxt<'tcx>> for ty::Binder<'tcx, T> {
+    fn bound_vars(&self) -> &'tcx List<ty::BoundVariableKind> {
+        self.bound_vars
+    }
+
+    fn has_no_bound_vars(&self) -> bool {
+        self.bound_vars.is_empty()
     }
 }
 
@@ -1112,6 +1060,7 @@ impl<'tcx, T> Binder<'tcx, T> {
     where
         T: TypeVisitable<TyCtxt<'tcx>>,
     {
+        // `self.value` is equivalent to `self.skip_binder()`
         if self.value.has_escaping_bound_vars() { None } else { Some(self.skip_binder()) }
     }
 
@@ -1149,7 +1098,7 @@ impl<'tcx, T> IntoDiagnosticArg for Binder<'tcx, T>
 where
     T: IntoDiagnosticArg,
 {
-    fn into_diagnostic_arg(self) -> DiagnosticArgValue<'static> {
+    fn into_diagnostic_arg(self) -> DiagArgValue {
         self.value.into_diagnostic_arg()
     }
 }
@@ -1164,13 +1113,13 @@ where
 pub struct AliasTy<'tcx> {
     /// The parameters of the associated or opaque item.
     ///
-    /// For a projection, these are the substitutions for the trait and the
-    /// GAT substitutions, if there are any.
+    /// For a projection, these are the generic parameters for the trait and the
+    /// GAT parameters, if there are any.
     ///
-    /// For an inherent projection, they consist of the self type and the GAT substitutions,
+    /// For an inherent projection, they consist of the self type and the GAT parameters,
     /// if there are any.
     ///
-    /// For RPIT the substitutions are for the generics of the function,
+    /// For RPIT the generic parameters are for the generics of the function,
     /// while for TAIT it is used for the generic parameters of the alias.
     pub args: GenericArgsRef<'tcx>,
 
@@ -1294,15 +1243,15 @@ impl<'tcx> AliasTy<'tcx> {
 
 /// The following methods work only with inherent associated type projections.
 impl<'tcx> AliasTy<'tcx> {
-    /// Transform the substitutions to have the given `impl` args as the base and the GAT args on top of that.
+    /// Transform the generic parameters to have the given `impl` args as the base and the GAT args on top of that.
     ///
     /// Does the following transformation:
     ///
     /// ```text
     /// [Self, P_0...P_m] -> [I_0...I_n, P_0...P_m]
     ///
-    ///     I_i impl subst
-    ///     P_j GAT subst
+    ///     I_i impl args
+    ///     P_j GAT args
     /// ```
     pub fn rebase_inherent_args_onto_impl(
         self,
@@ -1359,7 +1308,7 @@ impl<'tcx> FnSig<'tcx> {
 }
 
 impl<'tcx> IntoDiagnosticArg for FnSig<'tcx> {
-    fn into_diagnostic_arg(self) -> DiagnosticArgValue<'static> {
+    fn into_diagnostic_arg(self) -> DiagArgValue {
         self.to_string().into_diagnostic_arg()
     }
 }
@@ -1372,6 +1321,7 @@ impl<'tcx> PolyFnSig<'tcx> {
         self.map_bound_ref_unchecked(|fn_sig| fn_sig.inputs())
     }
     #[inline]
+    #[track_caller]
     pub fn input(&self, index: usize) -> ty::Binder<'tcx, Ty<'tcx>> {
         self.map_bound_ref(|fn_sig| fn_sig.inputs()[index])
     }
@@ -1452,154 +1402,6 @@ impl ParamConst {
     }
 }
 
-/// Use this rather than `RegionKind`, whenever possible.
-#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, HashStable)]
-#[rustc_pass_by_value]
-pub struct Region<'tcx>(pub Interned<'tcx, RegionKind<'tcx>>);
-
-impl<'tcx> IntoKind for Region<'tcx> {
-    type Kind = RegionKind<'tcx>;
-
-    fn kind(self) -> RegionKind<'tcx> {
-        *self
-    }
-}
-
-impl<'tcx> Region<'tcx> {
-    #[inline]
-    pub fn new_early_param(
-        tcx: TyCtxt<'tcx>,
-        early_bound_region: ty::EarlyParamRegion,
-    ) -> Region<'tcx> {
-        tcx.intern_region(ty::ReEarlyParam(early_bound_region))
-    }
-
-    #[inline]
-    pub fn new_bound(
-        tcx: TyCtxt<'tcx>,
-        debruijn: ty::DebruijnIndex,
-        bound_region: ty::BoundRegion,
-    ) -> Region<'tcx> {
-        // Use a pre-interned one when possible.
-        if let ty::BoundRegion { var, kind: ty::BrAnon } = bound_region
-            && let Some(inner) = tcx.lifetimes.re_late_bounds.get(debruijn.as_usize())
-            && let Some(re) = inner.get(var.as_usize()).copied()
-        {
-            re
-        } else {
-            tcx.intern_region(ty::ReBound(debruijn, bound_region))
-        }
-    }
-
-    #[inline]
-    pub fn new_late_param(
-        tcx: TyCtxt<'tcx>,
-        scope: DefId,
-        bound_region: ty::BoundRegionKind,
-    ) -> Region<'tcx> {
-        tcx.intern_region(ty::ReLateParam(ty::LateParamRegion { scope, bound_region }))
-    }
-
-    #[inline]
-    pub fn new_var(tcx: TyCtxt<'tcx>, v: ty::RegionVid) -> Region<'tcx> {
-        // Use a pre-interned one when possible.
-        tcx.lifetimes
-            .re_vars
-            .get(v.as_usize())
-            .copied()
-            .unwrap_or_else(|| tcx.intern_region(ty::ReVar(v)))
-    }
-
-    #[inline]
-    pub fn new_placeholder(tcx: TyCtxt<'tcx>, placeholder: ty::PlaceholderRegion) -> Region<'tcx> {
-        tcx.intern_region(ty::RePlaceholder(placeholder))
-    }
-
-    /// Constructs a `RegionKind::ReError` region.
-    #[track_caller]
-    pub fn new_error(tcx: TyCtxt<'tcx>, reported: ErrorGuaranteed) -> Region<'tcx> {
-        tcx.intern_region(ty::ReError(reported))
-    }
-
-    /// Constructs a `RegionKind::ReError` region and registers a `span_delayed_bug` to ensure it
-    /// gets used.
-    #[track_caller]
-    pub fn new_error_misc(tcx: TyCtxt<'tcx>) -> Region<'tcx> {
-        Region::new_error_with_message(
-            tcx,
-            DUMMY_SP,
-            "RegionKind::ReError constructed but no error reported",
-        )
-    }
-
-    /// Constructs a `RegionKind::ReError` region and registers a `span_delayed_bug` with the given
-    /// `msg` to ensure it gets used.
-    #[track_caller]
-    pub fn new_error_with_message<S: Into<MultiSpan>>(
-        tcx: TyCtxt<'tcx>,
-        span: S,
-        msg: &'static str,
-    ) -> Region<'tcx> {
-        let reported = tcx.dcx().span_delayed_bug(span, msg);
-        Region::new_error(tcx, reported)
-    }
-
-    /// Avoid this in favour of more specific `new_*` methods, where possible,
-    /// to avoid the cost of the `match`.
-    pub fn new_from_kind(tcx: TyCtxt<'tcx>, kind: RegionKind<'tcx>) -> Region<'tcx> {
-        match kind {
-            ty::ReEarlyParam(region) => Region::new_early_param(tcx, region),
-            ty::ReBound(debruijn, region) => Region::new_bound(tcx, debruijn, region),
-            ty::ReLateParam(ty::LateParamRegion { scope, bound_region }) => {
-                Region::new_late_param(tcx, scope, bound_region)
-            }
-            ty::ReStatic => tcx.lifetimes.re_static,
-            ty::ReVar(vid) => Region::new_var(tcx, vid),
-            ty::RePlaceholder(region) => Region::new_placeholder(tcx, region),
-            ty::ReErased => tcx.lifetimes.re_erased,
-            ty::ReError(reported) => Region::new_error(tcx, reported),
-        }
-    }
-}
-
-impl<'tcx> Deref for Region<'tcx> {
-    type Target = RegionKind<'tcx>;
-
-    #[inline]
-    fn deref(&self) -> &RegionKind<'tcx> {
-        self.0.0
-    }
-}
-
-#[derive(Copy, Clone, PartialEq, Eq, Hash, TyEncodable, TyDecodable, PartialOrd, Ord)]
-#[derive(HashStable)]
-pub struct EarlyParamRegion {
-    pub def_id: DefId,
-    pub index: u32,
-    pub name: Symbol,
-}
-
-impl fmt::Debug for EarlyParamRegion {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{:?}, {}, {}", self.def_id, self.index, self.name)
-    }
-}
-
-rustc_index::newtype_index! {
-    /// A **region** (lifetime) **v**ariable **ID**.
-    #[derive(HashStable)]
-    #[encodable]
-    #[orderable]
-    #[debug_format = "'?{}"]
-    pub struct RegionVid {}
-}
-
-impl Atom for RegionVid {
-    fn index(self) -> usize {
-        Idx::index(self)
-    }
-}
-
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, TyEncodable, TyDecodable)]
 #[derive(HashStable)]
 pub struct BoundTy {
@@ -1620,254 +1422,10 @@ impl From<BoundVar> for BoundTy {
     }
 }
 
-/// A `ProjectionPredicate` for an `ExistentialTraitRef`.
-#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Debug, TyEncodable, TyDecodable)]
-#[derive(HashStable, TypeFoldable, TypeVisitable, Lift)]
-pub struct ExistentialProjection<'tcx> {
-    pub def_id: DefId,
-    pub args: GenericArgsRef<'tcx>,
-    pub term: Term<'tcx>,
-}
-
-pub type PolyExistentialProjection<'tcx> = Binder<'tcx, ExistentialProjection<'tcx>>;
-
-impl<'tcx> ExistentialProjection<'tcx> {
-    /// Extracts the underlying existential trait reference from this projection.
-    /// For example, if this is a projection of `exists T. <T as Iterator>::Item == X`,
-    /// then this function would return an `exists T. T: Iterator` existential trait
-    /// reference.
-    pub fn trait_ref(&self, tcx: TyCtxt<'tcx>) -> ty::ExistentialTraitRef<'tcx> {
-        let def_id = tcx.parent(self.def_id);
-        let subst_count = tcx.generics_of(def_id).count() - 1;
-        let args = tcx.mk_args(&self.args[..subst_count]);
-        ty::ExistentialTraitRef { def_id, args }
-    }
-
-    pub fn with_self_ty(
-        &self,
-        tcx: TyCtxt<'tcx>,
-        self_ty: Ty<'tcx>,
-    ) -> ty::ProjectionPredicate<'tcx> {
-        // otherwise the escaping regions would be captured by the binders
-        debug_assert!(!self_ty.has_escaping_bound_vars());
-
-        ty::ProjectionPredicate {
-            projection_ty: AliasTy::new(
-                tcx,
-                self.def_id,
-                [self_ty.into()].into_iter().chain(self.args),
-            ),
-            term: self.term,
-        }
-    }
-
-    pub fn erase_self_ty(
-        tcx: TyCtxt<'tcx>,
-        projection_predicate: ty::ProjectionPredicate<'tcx>,
-    ) -> Self {
-        // Assert there is a Self.
-        projection_predicate.projection_ty.args.type_at(0);
-
-        Self {
-            def_id: projection_predicate.projection_ty.def_id,
-            args: tcx.mk_args(&projection_predicate.projection_ty.args[1..]),
-            term: projection_predicate.term,
-        }
-    }
-}
-
-impl<'tcx> PolyExistentialProjection<'tcx> {
-    pub fn with_self_ty(
-        &self,
-        tcx: TyCtxt<'tcx>,
-        self_ty: Ty<'tcx>,
-    ) -> ty::PolyProjectionPredicate<'tcx> {
-        self.map_bound(|p| p.with_self_ty(tcx, self_ty))
-    }
-
-    pub fn item_def_id(&self) -> DefId {
-        self.skip_binder().def_id
-    }
-}
-
-/// Region utilities
-impl<'tcx> Region<'tcx> {
-    pub fn kind(self) -> RegionKind<'tcx> {
-        *self.0.0
-    }
-
-    pub fn get_name(self) -> Option<Symbol> {
-        if self.has_name() {
-            match *self {
-                ty::ReEarlyParam(ebr) => Some(ebr.name),
-                ty::ReBound(_, br) => br.kind.get_name(),
-                ty::ReLateParam(fr) => fr.bound_region.get_name(),
-                ty::ReStatic => Some(kw::StaticLifetime),
-                ty::RePlaceholder(placeholder) => placeholder.bound.kind.get_name(),
-                _ => None,
-            }
-        } else {
-            None
-        }
-    }
-
-    pub fn get_name_or_anon(self) -> Symbol {
-        match self.get_name() {
-            Some(name) => name,
-            None => sym::anon,
-        }
-    }
-
-    /// Is this region named by the user?
-    pub fn has_name(self) -> bool {
-        match *self {
-            ty::ReEarlyParam(ebr) => ebr.has_name(),
-            ty::ReBound(_, br) => br.kind.is_named(),
-            ty::ReLateParam(fr) => fr.bound_region.is_named(),
-            ty::ReStatic => true,
-            ty::ReVar(..) => false,
-            ty::RePlaceholder(placeholder) => placeholder.bound.kind.is_named(),
-            ty::ReErased => false,
-            ty::ReError(_) => false,
-        }
-    }
-
-    #[inline]
-    pub fn is_error(self) -> bool {
-        matches!(*self, ty::ReError(_))
-    }
-
-    #[inline]
-    pub fn is_static(self) -> bool {
-        matches!(*self, ty::ReStatic)
-    }
-
-    #[inline]
-    pub fn is_erased(self) -> bool {
-        matches!(*self, ty::ReErased)
-    }
-
-    #[inline]
-    pub fn is_bound(self) -> bool {
-        matches!(*self, ty::ReBound(..))
-    }
-
-    #[inline]
-    pub fn is_placeholder(self) -> bool {
-        matches!(*self, ty::RePlaceholder(..))
-    }
-
-    #[inline]
-    pub fn bound_at_or_above_binder(self, index: ty::DebruijnIndex) -> bool {
-        match *self {
-            ty::ReBound(debruijn, _) => debruijn >= index,
-            _ => false,
-        }
-    }
-
-    pub fn type_flags(self) -> TypeFlags {
-        let mut flags = TypeFlags::empty();
-
-        match *self {
-            ty::ReVar(..) => {
-                flags = flags | TypeFlags::HAS_FREE_REGIONS;
-                flags = flags | TypeFlags::HAS_FREE_LOCAL_REGIONS;
-                flags = flags | TypeFlags::HAS_RE_INFER;
-            }
-            ty::RePlaceholder(..) => {
-                flags = flags | TypeFlags::HAS_FREE_REGIONS;
-                flags = flags | TypeFlags::HAS_FREE_LOCAL_REGIONS;
-                flags = flags | TypeFlags::HAS_RE_PLACEHOLDER;
-            }
-            ty::ReEarlyParam(..) => {
-                flags = flags | TypeFlags::HAS_FREE_REGIONS;
-                flags = flags | TypeFlags::HAS_FREE_LOCAL_REGIONS;
-                flags = flags | TypeFlags::HAS_RE_PARAM;
-            }
-            ty::ReLateParam { .. } => {
-                flags = flags | TypeFlags::HAS_FREE_REGIONS;
-                flags = flags | TypeFlags::HAS_FREE_LOCAL_REGIONS;
-            }
-            ty::ReStatic => {
-                flags = flags | TypeFlags::HAS_FREE_REGIONS;
-            }
-            ty::ReBound(..) => {
-                flags = flags | TypeFlags::HAS_RE_BOUND;
-            }
-            ty::ReErased => {
-                flags = flags | TypeFlags::HAS_RE_ERASED;
-            }
-            ty::ReError(_) => {
-                flags = flags | TypeFlags::HAS_FREE_REGIONS;
-            }
-        }
-
-        debug!("type_flags({:?}) = {:?}", self, flags);
-
-        flags
-    }
-
-    /// Given an early-bound or free region, returns the `DefId` where it was bound.
-    /// For example, consider the regions in this snippet of code:
-    ///
-    /// ```ignore (illustrative)
-    /// impl<'a> Foo {
-    /// //   ^^ -- early bound, declared on an impl
-    ///
-    ///     fn bar<'b, 'c>(x: &self, y: &'b u32, z: &'c u64) where 'static: 'c
-    /// //         ^^  ^^     ^ anonymous, late-bound
-    /// //         |   early-bound, appears in where-clauses
-    /// //         late-bound, appears only in fn args
-    ///     {..}
-    /// }
-    /// ```
-    ///
-    /// Here, `free_region_binding_scope('a)` would return the `DefId`
-    /// of the impl, and for all the other highlighted regions, it
-    /// would return the `DefId` of the function. In other cases (not shown), this
-    /// function might return the `DefId` of a closure.
-    pub fn free_region_binding_scope(self, tcx: TyCtxt<'_>) -> DefId {
-        match *self {
-            ty::ReEarlyParam(br) => tcx.parent(br.def_id),
-            ty::ReLateParam(fr) => fr.scope,
-            _ => bug!("free_region_binding_scope invoked on inappropriate region: {:?}", self),
-        }
-    }
-
-    /// True for free regions other than `'static`.
-    pub fn is_param(self) -> bool {
-        matches!(*self, ty::ReEarlyParam(_) | ty::ReLateParam(_))
-    }
-
-    /// True for free region in the current context.
-    ///
-    /// This is the case for `'static` and param regions.
-    pub fn is_free(self) -> bool {
-        match *self {
-            ty::ReStatic | ty::ReEarlyParam(..) | ty::ReLateParam(..) => true,
-            ty::ReVar(..)
-            | ty::RePlaceholder(..)
-            | ty::ReBound(..)
-            | ty::ReErased
-            | ty::ReError(..) => false,
-        }
-    }
-
-    pub fn is_var(self) -> bool {
-        matches!(self.kind(), ty::ReVar(_))
-    }
-
-    pub fn as_var(self) -> RegionVid {
-        match self.kind() {
-            ty::ReVar(vid) => vid,
-            _ => bug!("expected region {:?} to be of kind ReVar", self),
-        }
-    }
-}
-
 /// Constructors for `Ty`
 impl<'tcx> Ty<'tcx> {
-    // Avoid this in favour of more specific `new_*` methods, where possible.
+    /// Avoid using this in favour of more specific `new_*` methods, where possible.
+    /// The more specific methods will often optimize their creation.
     #[allow(rustc::usage_of_ty_tykind)]
     #[inline]
     pub fn new(tcx: TyCtxt<'tcx>, st: TyKind<'tcx>) -> Ty<'tcx> {
@@ -1969,8 +1527,8 @@ impl<'tcx> Ty<'tcx> {
     }
 
     /// Constructs a `TyKind::Error` type with current `ErrorGuaranteed`
-    pub fn new_error(tcx: TyCtxt<'tcx>, reported: ErrorGuaranteed) -> Ty<'tcx> {
-        Ty::new(tcx, Error(reported))
+    pub fn new_error(tcx: TyCtxt<'tcx>, guar: ErrorGuaranteed) -> Ty<'tcx> {
+        Ty::new(tcx, Error(guar))
     }
 
     /// Constructs a `TyKind::Error` type and registers a `span_delayed_bug` to ensure it gets used.
@@ -1985,7 +1543,7 @@ impl<'tcx> Ty<'tcx> {
     pub fn new_error_with_message<S: Into<MultiSpan>>(
         tcx: TyCtxt<'tcx>,
         span: S,
-        msg: impl Into<DiagnosticMessage>,
+        msg: impl Into<DiagMessage>,
     ) -> Ty<'tcx> {
         let reported = tcx.dcx().span_delayed_bug(span, msg);
         Ty::new(tcx, Error(reported))
@@ -2021,8 +1579,10 @@ impl<'tcx> Ty<'tcx> {
     pub fn new_float(tcx: TyCtxt<'tcx>, f: ty::FloatTy) -> Ty<'tcx> {
         use ty::FloatTy::*;
         match f {
+            F16 => tcx.types.f16,
             F32 => tcx.types.f32,
             F64 => tcx.types.f64,
+            F128 => tcx.types.f128,
         }
     }
 
@@ -2116,7 +1676,7 @@ impl<'tcx> Ty<'tcx> {
     #[inline]
     pub fn new_dynamic(
         tcx: TyCtxt<'tcx>,
-        obj: &'tcx List<PolyExistentialPredicate<'tcx>>,
+        obj: &'tcx List<ty::PolyExistentialPredicate<'tcx>>,
         reg: ty::Region<'tcx>,
         repr: DynKind,
     ) -> Ty<'tcx> {
@@ -2141,9 +1701,23 @@ impl<'tcx> Ty<'tcx> {
         debug_assert_eq!(
             closure_args.len(),
             tcx.generics_of(tcx.typeck_root_def_id(def_id)).count() + 3,
-            "closure constructed with incorrect substitutions"
+            "closure constructed with incorrect generic parameters"
         );
         Ty::new(tcx, Closure(def_id, closure_args))
+    }
+
+    #[inline]
+    pub fn new_coroutine_closure(
+        tcx: TyCtxt<'tcx>,
+        def_id: DefId,
+        closure_args: GenericArgsRef<'tcx>,
+    ) -> Ty<'tcx> {
+        debug_assert_eq!(
+            closure_args.len(),
+            tcx.generics_of(tcx.typeck_root_def_id(def_id)).count() + 5,
+            "closure constructed with incorrect generic parameters"
+        );
+        Ty::new(tcx, CoroutineClosure(def_id, closure_args))
     }
 
     #[inline]
@@ -2154,8 +1728,8 @@ impl<'tcx> Ty<'tcx> {
     ) -> Ty<'tcx> {
         debug_assert_eq!(
             coroutine_args.len(),
-            tcx.generics_of(tcx.typeck_root_def_id(def_id)).count() + 5,
-            "coroutine constructed with incorrect number of substitutions"
+            tcx.generics_of(tcx.typeck_root_def_id(def_id)).count() + 6,
+            "coroutine constructed with incorrect number of generic parameters"
         );
         Ty::new(tcx, Coroutine(def_id, coroutine_args))
     }
@@ -2238,6 +1812,12 @@ impl<'tcx> Ty<'tcx> {
     }
 }
 
+impl<'tcx> rustc_type_ir::new::Ty<TyCtxt<'tcx>> for Ty<'tcx> {
+    fn new_anon_bound(tcx: TyCtxt<'tcx>, debruijn: ty::DebruijnIndex, var: ty::BoundVar) -> Self {
+        Ty::new_bound(tcx, debruijn, ty::BoundTy { var, kind: ty::BoundTyKind::Anon })
+    }
+}
+
 /// Type utilities
 impl<'tcx> Ty<'tcx> {
     #[inline(always)]
@@ -2245,6 +1825,7 @@ impl<'tcx> Ty<'tcx> {
         self.0.0
     }
 
+    // FIXME(compiler-errors): Think about removing this.
     #[inline(always)]
     pub fn flags(self) -> TypeFlags {
         self.0.0.flags
@@ -2418,6 +1999,27 @@ impl<'tcx> Ty<'tcx> {
         }
     }
 
+    /// Tests whether this is a Box using the global allocator.
+    #[inline]
+    pub fn is_box_global(self, tcx: TyCtxt<'tcx>) -> bool {
+        match self.kind() {
+            Adt(def, args) if def.is_box() => {
+                let Some(alloc) = args.get(1) else {
+                    // Single-argument Box is always global. (for "minicore" tests)
+                    return true;
+                };
+                if let Some(alloc_adt) = alloc.expect_ty().ty_adt_def() {
+                    let global_alloc = tcx.require_lang_item(LangItem::GlobalAlloc, None);
+                    alloc_adt.did() == global_alloc
+                } else {
+                    // Allocator is not an ADT...
+                    false
+                }
+            }
+            _ => false,
+        }
+    }
+
     /// Panics if called on any type other than `Box<T>`.
     pub fn boxed_ty(self) -> Ty<'tcx> {
         match self.kind() {
@@ -2481,6 +2083,11 @@ impl<'tcx> Ty<'tcx> {
     }
 
     #[inline]
+    pub fn is_coroutine_closure(self) -> bool {
+        matches!(self.kind(), CoroutineClosure(..))
+    }
+
+    #[inline]
     pub fn is_integral(self) -> bool {
         matches!(self.kind(), Infer(IntVar(_)) | Int(_) | Uint(_))
     }
@@ -2527,9 +2134,9 @@ impl<'tcx> Ty<'tcx> {
         struct ContainsTyVisitor<'tcx>(Ty<'tcx>);
 
         impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for ContainsTyVisitor<'tcx> {
-            type BreakTy = ();
+            type Result = ControlFlow<()>;
 
-            fn visit_ty(&mut self, t: Ty<'tcx>) -> ControlFlow<Self::BreakTy> {
+            fn visit_ty(&mut self, t: Ty<'tcx>) -> Self::Result {
                 if self.0 == t { ControlFlow::Break(()) } else { t.super_visit_with(self) }
             }
         }
@@ -2545,10 +2152,10 @@ impl<'tcx> Ty<'tcx> {
         struct ContainsClosureVisitor;
 
         impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for ContainsClosureVisitor {
-            type BreakTy = ();
+            type Result = ControlFlow<()>;
 
-            fn visit_ty(&mut self, t: Ty<'tcx>) -> ControlFlow<Self::BreakTy> {
-                if let ty::Closure(_, _) = t.kind() {
+            fn visit_ty(&mut self, t: Ty<'tcx>) -> Self::Result {
+                if let ty::Closure(..) = t.kind() {
                     ControlFlow::Break(())
                 } else {
                     t.super_visit_with(self)
@@ -2695,6 +2302,7 @@ impl<'tcx> Ty<'tcx> {
             | ty::FnPtr(..)
             | ty::Dynamic(..)
             | ty::Closure(..)
+            | ty::CoroutineClosure(..)
             | ty::CoroutineWitness(..)
             | ty::Never
             | ty::Tuple(_)
@@ -2710,12 +2318,12 @@ impl<'tcx> Ty<'tcx> {
     }
 
     /// Returns the type of metadata for (potentially fat) pointers to this type,
-    /// and a boolean signifying if this is conditional on this type being `Sized`.
-    pub fn ptr_metadata_ty(
+    /// or the struct tail if the metadata type cannot be determined.
+    pub fn ptr_metadata_ty_or_tail(
         self,
         tcx: TyCtxt<'tcx>,
         normalize: impl FnMut(Ty<'tcx>) -> Ty<'tcx>,
-    ) -> (Ty<'tcx>, bool) {
+    ) -> Result<Ty<'tcx>, Ty<'tcx>> {
         let tail = tcx.struct_tail_with_normalize(self, normalize, || {});
         match tail.kind() {
             // Sized types
@@ -2733,49 +2341,94 @@ impl<'tcx> Ty<'tcx> {
             | ty::CoroutineWitness(..)
             | ty::Array(..)
             | ty::Closure(..)
+            | ty::CoroutineClosure(..)
             | ty::Never
             | ty::Error(_)
             // Extern types have metadata = ().
             | ty::Foreign(..)
-            // `dyn*` has no metadata
+            // `dyn*` has metadata = ().
             | ty::Dynamic(_, _, ty::DynStar)
-            // If returned by `struct_tail_without_normalization` this is a unit struct
+            // If returned by `struct_tail_with_normalize` this is a unit struct
             // without any fields, or not a struct, and therefore is Sized.
             | ty::Adt(..)
-            // If returned by `struct_tail_without_normalization` this is the empty tuple,
+            // If returned by `struct_tail_with_normalize` this is the empty tuple,
             // a.k.a. unit type, which is Sized
-            | ty::Tuple(..) => (tcx.types.unit, false),
+            | ty::Tuple(..) => Ok(tcx.types.unit),
 
-            ty::Str | ty::Slice(_) => (tcx.types.usize, false),
+            ty::Str | ty::Slice(_) => Ok(tcx.types.usize),
+
             ty::Dynamic(_, _, ty::Dyn) => {
                 let dyn_metadata = tcx.require_lang_item(LangItem::DynMetadata, None);
-                (tcx.type_of(dyn_metadata).instantiate(tcx, &[tail.into()]), false)
-            },
+                Ok(tcx.type_of(dyn_metadata).instantiate(tcx, &[tail.into()]))
+            }
 
-            // type parameters only have unit metadata if they're sized, so return true
-            // to make sure we double check this during confirmation
-            ty::Param(_) |  ty::Alias(..) => (tcx.types.unit, true),
+            // We don't know the metadata of `self`, but it must be equal to the
+            // metadata of `tail`.
+            ty::Param(_) | ty::Alias(..) => Err(tail),
 
             ty::Infer(ty::TyVar(_))
             | ty::Bound(..)
             | ty::Placeholder(..)
-            | ty::Infer(ty::FreshTy(_) | ty::FreshIntTy(_) | ty::FreshFloatTy(_)) => {
-                bug!("`ptr_metadata_ty` applied to unexpected type: {:?} (tail = {:?})", self, tail)
-            }
+            | ty::Infer(ty::FreshTy(_) | ty::FreshIntTy(_) | ty::FreshFloatTy(_)) => bug!(
+                "`ptr_metadata_ty_or_tail` applied to unexpected type: {self:?} (tail = {tail:?})"
+            ),
+        }
+    }
+
+    /// Returns the type of metadata for (potentially fat) pointers to this type.
+    /// Causes an ICE if the metadata type cannot be determined.
+    pub fn ptr_metadata_ty(
+        self,
+        tcx: TyCtxt<'tcx>,
+        normalize: impl FnMut(Ty<'tcx>) -> Ty<'tcx>,
+    ) -> Ty<'tcx> {
+        match self.ptr_metadata_ty_or_tail(tcx, normalize) {
+            Ok(metadata) => metadata,
+            Err(tail) => bug!(
+                "`ptr_metadata_ty` failed to get metadata for type: {self:?} (tail = {tail:?})"
+            ),
         }
     }
 
     /// When we create a closure, we record its kind (i.e., what trait
-    /// it implements) into its `ClosureArgs` using a type
+    /// it implements, constrained by how it uses its borrows) into its
+    /// [`ty::ClosureArgs`] or [`ty::CoroutineClosureArgs`] using a type
     /// parameter. This is kind of a phantom type, except that the
     /// most convenient thing for us to are the integral types. This
     /// function converts such a special type into the closure
-    /// kind. To go the other way, use `closure_kind.to_ty(tcx)`.
+    /// kind. To go the other way, use [`Ty::from_closure_kind`].
     ///
     /// Note that during type checking, we use an inference variable
     /// to represent the closure kind, because it has not yet been
     /// inferred. Once upvar inference (in `rustc_hir_analysis/src/check/upvar.rs`)
-    /// is complete, that type variable will be unified.
+    /// is complete, that type variable will be unified with one of
+    /// the integral types.
+    ///
+    /// ```rust,ignore (snippet of compiler code)
+    /// if let TyKind::Closure(def_id, args) = closure_ty.kind()
+    ///     && let Some(closure_kind) = args.as_closure().kind_ty().to_opt_closure_kind()
+    /// {
+    ///     println!("{closure_kind:?}");
+    /// } else if let TyKind::CoroutineClosure(def_id, args) = closure_ty.kind()
+    ///     && let Some(closure_kind) = args.as_coroutine_closure().kind_ty().to_opt_closure_kind()
+    /// {
+    ///     println!("{closure_kind:?}");
+    /// }
+    /// ```
+    ///
+    /// After upvar analysis, you should instead use [`ClosureArgs::kind()`]
+    /// or [`CoroutineClosureArgs::kind()`] to assert that the `ClosureKind`
+    /// has been constrained instead of manually calling this method.
+    ///
+    /// ```rust,ignore (snippet of compiler code)
+    /// if let TyKind::Closure(def_id, args) = closure_ty.kind()
+    /// {
+    ///     println!("{:?}", args.as_closure().kind());
+    /// } else if let TyKind::CoroutineClosure(def_id, args) = closure_ty.kind()
+    /// {
+    ///     println!("{:?}", args.as_coroutine_closure().kind());
+    /// }
+    /// ```
     pub fn to_opt_closure_kind(self) -> Option<ty::ClosureKind> {
         match self.kind() {
             Int(int_ty) => match int_ty {
@@ -2787,7 +2440,7 @@ impl<'tcx> Ty<'tcx> {
 
             // "Bound" types appear in canonical queries when the
             // closure type is not yet known
-            Bound(..) | Infer(_) => None,
+            Bound(..) | Param(_) | Infer(_) => None,
 
             Error(_) => Some(ty::ClosureKind::Fn),
 
@@ -2795,7 +2448,8 @@ impl<'tcx> Ty<'tcx> {
         }
     }
 
-    /// Inverse of [`Ty::to_opt_closure_kind`].
+    /// Inverse of [`Ty::to_opt_closure_kind`]. See docs on that method
+    /// for explanation of the relationship between `Ty` and [`ty::ClosureKind`].
     pub fn from_closure_kind(tcx: TyCtxt<'tcx>, kind: ty::ClosureKind) -> Ty<'tcx> {
         match kind {
             ty::ClosureKind::Fn => tcx.types.i8,
@@ -2830,6 +2484,7 @@ impl<'tcx> Ty<'tcx> {
             | ty::CoroutineWitness(..)
             | ty::Array(..)
             | ty::Closure(..)
+            | ty::CoroutineClosure(..)
             | ty::Never
             | ty::Error(_) => true,
 
@@ -2893,7 +2548,7 @@ impl<'tcx> Ty<'tcx> {
             ty::Coroutine(..) | ty::CoroutineWitness(..) => false,
 
             // Might be, but not "trivial" so just giving the safe answer.
-            ty::Adt(..) | ty::Closure(..) => false,
+            ty::Adt(..) | ty::Closure(..) | ty::CoroutineClosure(..) => false,
 
             // Needs normalization or revealing to determine, so no is the safe answer.
             ty::Alias(..) => false,
@@ -2912,8 +2567,10 @@ impl<'tcx> Ty<'tcx> {
             ty::Bool => Some(sym::bool),
             ty::Char => Some(sym::char),
             ty::Float(f) => match f {
+                ty::FloatTy::F16 => Some(sym::f16),
                 ty::FloatTy::F32 => Some(sym::f32),
                 ty::FloatTy::F64 => Some(sym::f64),
+                ty::FloatTy::F128 => Some(sym::f128),
             },
             ty::Int(f) => match f {
                 ty::IntTy::Isize => Some(sym::isize),
@@ -2943,7 +2600,7 @@ impl<'tcx> Ty<'tcx> {
     }
 
     /// Returns `true` when the outermost type cannot be further normalized,
-    /// resolved, or substituted. This includes all primitive types, but also
+    /// resolved, or instantiated. This includes all primitive types, but also
     /// things like ADTs and trait objects, sice even if their arguments or
     /// nested types may be further simplified, the outermost [`TyKind`] or
     /// type constructor remains the same.
@@ -2965,6 +2622,7 @@ impl<'tcx> Ty<'tcx> {
             | FnPtr(_)
             | Dynamic(_, _, _)
             | Closure(_, _)
+            | CoroutineClosure(_, _)
             | Coroutine(_, _)
             | CoroutineWitness(..)
             | Never
@@ -3017,7 +2675,7 @@ mod size_asserts {
     use super::*;
     use rustc_data_structures::static_assert_size;
     // tidy-alphabetical-start
-    static_assert_size!(RegionKind<'_>, 24);
-    static_assert_size!(TyKind<'_>, 32);
+    static_assert_size!(ty::RegionKind<'_>, 24);
+    static_assert_size!(ty::TyKind<'_>, 32);
     // tidy-alphabetical-end
 }

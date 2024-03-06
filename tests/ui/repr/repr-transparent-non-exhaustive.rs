@@ -1,6 +1,6 @@
 #![deny(repr_transparent_external_private_fields)]
 
-// aux-build: repr-transparent-non-exhaustive.rs
+//@ aux-build: repr-transparent-non-exhaustive.rs
 extern crate repr_transparent_non_exhaustive;
 
 use repr_transparent_non_exhaustive::{

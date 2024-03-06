@@ -1,4 +1,4 @@
-// revisions: full min
+//@ revisions: full min
 #![allow(incomplete_features)]
 #![cfg_attr(full, feature(generic_const_exprs))]
 #![cfg_attr(full, allow(incomplete_features))]
@@ -24,4 +24,5 @@ impl<const X: usize> ArrayHolder<X> {
 
 fn main() {
     let mut array = ArrayHolder::new();
+    //~^ ERROR: type annotations needed
 }

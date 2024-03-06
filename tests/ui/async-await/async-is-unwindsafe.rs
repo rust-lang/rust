@@ -1,4 +1,4 @@
-// edition:2018
+//@ edition:2018
 
 fn is_unwindsafe(_: impl std::panic::UnwindSafe) {}
 

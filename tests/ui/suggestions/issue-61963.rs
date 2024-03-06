@@ -1,5 +1,5 @@
-// aux-build:issue-61963.rs
-// aux-build:issue-61963-1.rs
+//@ aux-build:issue-61963.rs
+//@ aux-build:issue-61963-1.rs
 #![deny(bare_trait_objects)]
 
 #[macro_use]
@@ -18,19 +18,9 @@ pub struct Qux<T>(T);
 pub struct Foo {
     //~^ ERROR trait objects without an explicit `dyn` are deprecated [bare_trait_objects]
     //~| WARN this is accepted in the current edition
-    //~| ERROR trait objects without an explicit `dyn` are deprecated [bare_trait_objects]
-    //~| WARN this is accepted in the current edition
-    //~| ERROR trait objects without an explicit `dyn` are deprecated [bare_trait_objects]
-    //~| WARN this is accepted in the current edition
-    //~| ERROR trait objects without an explicit `dyn` are deprecated [bare_trait_objects]
-    //~| WARN this is accepted in the current edition
     qux: Qux<Qux<Baz>>,
     bar: Box<Bar>,
     //~^ ERROR trait objects without an explicit `dyn` are deprecated [bare_trait_objects]
-    //~| WARN this is accepted in the current edition
-    //~| ERROR trait objects without an explicit `dyn` are deprecated [bare_trait_objects]
-    //~| WARN this is accepted in the current edition
-    //~| ERROR trait objects without an explicit `dyn` are deprecated [bare_trait_objects]
     //~| WARN this is accepted in the current edition
 }
 

@@ -1,4 +1,4 @@
-// run-rustfix
+//@ run-rustfix
 
 fn main() {
     2.e1; //~ERROR `{integer}` is a primitive type and therefore doesn't have fields

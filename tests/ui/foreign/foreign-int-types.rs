@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 #![forbid(improper_ctypes)]
 #![allow(dead_code)]
 

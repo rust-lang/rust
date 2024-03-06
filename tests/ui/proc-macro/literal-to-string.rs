@@ -1,7 +1,7 @@
-// check-pass
-// edition: 2021
+//@ check-pass
+//@ edition: 2021
 
-// aux-build: print-tokens.rs
+//@ aux-build: print-tokens.rs
 extern crate print_tokens;
 
 fn main() {

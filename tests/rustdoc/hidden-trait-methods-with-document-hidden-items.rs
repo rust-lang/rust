@@ -1,4 +1,4 @@
-// compile-flags: -Z unstable-options --document-hidden-items
+//@ compile-flags: -Z unstable-options --document-hidden-items
 
 // test for trait methods with `doc(hidden)` with `--document-hidden-items` passed.
 #![crate_name = "foo"]

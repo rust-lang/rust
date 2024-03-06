@@ -1,9 +1,9 @@
-// run-pass
+//@ run-pass
 #![allow(dead_code)]
 #![allow(unused_variables)]
 #![allow(unused_imports)]
 
-// aux-build:go_trait.rs
+//@ aux-build:go_trait.rs
 
 #![feature(specialization)] //~ WARN the feature `specialization` is incomplete
 

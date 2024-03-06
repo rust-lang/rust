@@ -1,4 +1,4 @@
-// check-pass
+//@ check-pass
 
 struct LazyLock<T> {
     data: (Option<T>, fn() -> T),

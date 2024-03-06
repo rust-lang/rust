@@ -14,8 +14,7 @@ pub fn shuffle<T>(slice: &mut [T], mut rand_index: impl FnMut(usize) -> usize) {
 }
 
 pub fn seed() -> u64 {
-    use std::collections::hash_map::RandomState;
     use std::hash::{BuildHasher, Hasher};
-
-    RandomState::new().build_hasher().finish()
+    #[allow(clippy::disallowed_types)]
+    std::collections::hash_map::RandomState::new().build_hasher().finish()
 }

@@ -5,7 +5,7 @@ LL |     let gen_clone_0 = move || {
    |                       ------- within this `{coroutine@$DIR/clone-impl.rs:36:23: 36:30}`
 ...
 LL |     check_copy(&gen_clone_0);
-   |     ^^^^^^^^^^ within `{coroutine@$DIR/clone-impl.rs:36:23: 36:30}`, the trait `Copy` is not implemented for `Vec<u32>`
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^ within `{coroutine@$DIR/clone-impl.rs:36:23: 36:30}`, the trait `Copy` is not implemented for `Vec<u32>`, which is required by `{coroutine@$DIR/clone-impl.rs:36:23: 36:30}: Copy`
    |
 note: captured value does not implement `Copy`
   --> $DIR/clone-impl.rs:40:14
@@ -25,7 +25,7 @@ LL |     let gen_clone_0 = move || {
    |                       ------- within this `{coroutine@$DIR/clone-impl.rs:36:23: 36:30}`
 ...
 LL |     check_copy(&gen_clone_0);
-   |     ^^^^^^^^^^ within `{coroutine@$DIR/clone-impl.rs:36:23: 36:30}`, the trait `Copy` is not implemented for `Vec<char>`
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^ within `{coroutine@$DIR/clone-impl.rs:36:23: 36:30}`, the trait `Copy` is not implemented for `Vec<char>`, which is required by `{coroutine@$DIR/clone-impl.rs:36:23: 36:30}: Copy`
    |
 note: coroutine does not implement `Copy` as this value is used across a yield
   --> $DIR/clone-impl.rs:38:9
@@ -47,7 +47,7 @@ LL |     let gen_clone_1 = move || {
    |                       ------- within this `{coroutine@$DIR/clone-impl.rs:46:23: 46:30}`
 ...
 LL |     check_copy(&gen_clone_1);
-   |     ^^^^^^^^^^ within `{coroutine@$DIR/clone-impl.rs:46:23: 46:30}`, the trait `Copy` is not implemented for `Vec<u32>`
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^ within `{coroutine@$DIR/clone-impl.rs:46:23: 46:30}`, the trait `Copy` is not implemented for `Vec<u32>`, which is required by `{coroutine@$DIR/clone-impl.rs:46:23: 46:30}: Copy`
    |
 note: captured value does not implement `Copy`
   --> $DIR/clone-impl.rs:56:14
@@ -67,7 +67,7 @@ LL |     let gen_clone_1 = move || {
    |                       ------- within this `{coroutine@$DIR/clone-impl.rs:46:23: 46:30}`
 ...
 LL |     check_copy(&gen_clone_1);
-   |     ^^^^^^^^^^ within `{coroutine@$DIR/clone-impl.rs:46:23: 46:30}`, the trait `Copy` is not implemented for `Vec<char>`
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^ within `{coroutine@$DIR/clone-impl.rs:46:23: 46:30}`, the trait `Copy` is not implemented for `Vec<char>`, which is required by `{coroutine@$DIR/clone-impl.rs:46:23: 46:30}: Copy`
    |
 note: coroutine does not implement `Copy` as this value is used across a yield
   --> $DIR/clone-impl.rs:52:9
@@ -90,7 +90,7 @@ LL |     let gen_non_clone = move || {
    |                         ------- within this `{coroutine@$DIR/clone-impl.rs:62:25: 62:32}`
 ...
 LL |     check_copy(&gen_non_clone);
-   |     ^^^^^^^^^^ within `{coroutine@$DIR/clone-impl.rs:62:25: 62:32}`, the trait `Copy` is not implemented for `NonClone`
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^ within `{coroutine@$DIR/clone-impl.rs:62:25: 62:32}`, the trait `Copy` is not implemented for `NonClone`, which is required by `{coroutine@$DIR/clone-impl.rs:62:25: 62:32}: Copy`
    |
 note: captured value does not implement `Copy`
   --> $DIR/clone-impl.rs:64:14
@@ -115,7 +115,7 @@ LL |     let gen_non_clone = move || {
    |                         ------- within this `{coroutine@$DIR/clone-impl.rs:62:25: 62:32}`
 ...
 LL |     check_clone(&gen_non_clone);
-   |     ^^^^^^^^^^^ within `{coroutine@$DIR/clone-impl.rs:62:25: 62:32}`, the trait `Clone` is not implemented for `NonClone`
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^ within `{coroutine@$DIR/clone-impl.rs:62:25: 62:32}`, the trait `Clone` is not implemented for `NonClone`, which is required by `{coroutine@$DIR/clone-impl.rs:62:25: 62:32}: Clone`
    |
 note: captured value does not implement `Clone`
   --> $DIR/clone-impl.rs:64:14

@@ -1,4 +1,4 @@
-// run-rustfix
+//@ run-rustfix
 
 pub fn pre_regular() {
     let mut i = 0;

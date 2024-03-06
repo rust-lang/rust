@@ -423,6 +423,10 @@ changelog-branch = "master"
 
 [shortcut]
 
+[mentions."triagebot.toml"]
+message = "`triagebot.toml` has been modified, there may have been changes to the review queue."
+cc = ["@davidtwco", "@wesleywiser"]
+
 [mentions."compiler/rustc_codegen_cranelift"]
 cc = ["@bjorn3"]
 
@@ -480,13 +484,24 @@ cc = ["@lcnr", "@compiler-errors"]
 message = "Some changes occurred in diagnostic error codes"
 cc = ["@GuillaumeGomez"]
 
+[mentions."compiler/rustc_mir_build/src/build/matches"]
+message = "Some changes occurred in match lowering"
+cc = ["@Nadrieril"]
+
 [mentions."compiler/rustc_mir_build/src/thir/pattern"]
-message = "Some changes might have occurred in exhaustiveness checking"
+message = "Some changes occurred in match checking"
 cc = ["@Nadrieril"]
 
 [mentions."compiler/rustc_pattern_analysis"]
-message = "Some changes might have occurred in exhaustiveness checking"
+message = "Some changes occurred in exhaustiveness checking"
 cc = ["@Nadrieril"]
+
+[mentions."library/core/src/intrinsics/simd.rs"]
+message = """
+Some changes occurred to the platform-builtins intrinsics. Make sure the
+LLVM backend as well as portable-simd gets adapted for the changes.
+"""
+cc = ["@antoyo", "@GuillaumeGomez", "@bjorn3", "@calebzulawski", "@programmerjake"]
 
 [mentions."library/portable-simd"]
 message = """
@@ -616,11 +631,6 @@ This PR modifies `config.example.toml`.
 If appropriate, please update `CONFIG_CHANGE_HISTORY` in `src/bootstrap/src/utils/change_tracker.rs`.
 """
 
-[mentions."src/bootstrap/defaults/config.compiler.toml"]
-message = "This PR changes src/bootstrap/defaults/config.compiler.toml. If appropriate, please also update `config.codegen.toml` so the defaults are in sync."
-[mentions."src/bootstrap/defaults/config.codegen.toml"]
-message = "This PR changes src/bootstrap/defaults/config.codegen.toml. If appropriate, please also update `config.compiler.toml` so the defaults are in sync."
-
 [mentions."src/bootstrap/src/core/build_steps/llvm.rs"]
 message = "This PR changes how LLVM is built. Consider updating src/bootstrap/download-ci-llvm-stamp."
 
@@ -644,13 +654,15 @@ compiler-team = [
     "@petrochenkov",
     "@davidtwco",
     "@estebank",
+    "@lcnr",
     "@oli-obk",
+    "@pnkfelix",
     "@wesleywiser",
     "@michaelwoerister",
 ]
 compiler-team-contributors = [
     "@TaKO8Ki",
-    "@b-naber",
+    "@Nadrieril",
     "@nnethercote",
     "@fmease",
 ]
@@ -660,9 +672,13 @@ compiler = [
 ]
 libs = [
     "@cuviper",
-    "@joshtriplett",
     "@Mark-Simulacrum",
     "@m-ou-se",
+    "@Amanieu",
+    "@Nilstrieb",
+    "@workingjubilee",
+    "@joboet",
+    "@jhpratt",
 ]
 bootstrap = [
     "@Mark-Simulacrum",
@@ -675,7 +691,6 @@ infra-ci = [
     "@Kobzol",
 ]
 rustdoc = [
-    "@jsha",
     "@GuillaumeGomez",
     "@notriddle",
     "@fmease",
@@ -717,6 +732,7 @@ arena = [
 mir = [
     "@davidtwco",
     "@oli-obk",
+    "@matthewjasper"
 ]
 mir-opt = [
     "@oli-obk",
@@ -733,6 +749,7 @@ types = [
 borrowck = [
     "@davidtwco",
     "@pnkfelix",
+    "@matthewjasper"
 ]
 ast_lowering = [
     "@compiler-errors",
@@ -776,6 +793,7 @@ project-stable-mir = [
 "/compiler/rustc_data_structures/src/stable_hasher.rs" = ["compiler", "incremental"]
 "/compiler/rustc_hir_analysis" =                         ["compiler", "types"]
 "/compiler/rustc_incremental" =                          ["compiler", "incremental"]
+"/compiler/rustc_borrowck" =                             ["compiler", "borrowck"]
 "/compiler/rustc_lexer" =                                ["compiler", "lexer"]
 "/compiler/rustc_llvm" =                                 ["@cuviper"]
 "/compiler/rustc_codegen_llvm/src/debuginfo" =           ["compiler", "debuginfo"]
@@ -785,6 +803,7 @@ project-stable-mir = [
 "/compiler/rustc_const_eval/src/interpret" =             ["compiler", "mir"]
 "/compiler/rustc_const_eval/src/transform" =             ["compiler", "mir-opt"]
 "/compiler/rustc_mir_build/src/build" =                  ["compiler", "mir"]
+"/compiler/rustc_mir_transform" =                        ["compiler", "mir", "mir-opt"]
 "/compiler/rustc_smir" =                                 ["project-stable-mir"]
 "/compiler/rustc_parse" =                                ["compiler", "parser"]
 "/compiler/rustc_parse/src/lexer" =                      ["compiler", "lexer"]
@@ -797,11 +816,11 @@ project-stable-mir = [
 "/compiler/rustc_type_ir" =                              ["compiler", "types"]
 "/compiler/stable_mir" =                                 ["project-stable-mir"]
 "/library/alloc" =                                       ["libs"]
-"/library/core" =                                        ["libs"]
+"/library/core" =                                        ["libs", "@scottmcm"]
 "/library/panic_abort" =                                 ["libs"]
 "/library/panic_unwind" =                                ["libs"]
 "/library/proc_macro" =                                  ["@petrochenkov"]
-"/library/std" =                                         ["libs"]
+"/library/std" =                                         ["libs", "@ChrisDenton"]
 "/library/std/src/sys/pal/windows" =                     ["@ChrisDenton"]
 "/library/stdarch" =                                     ["libs"]
 "/library/test" =                                        ["libs"]
@@ -823,7 +842,7 @@ project-stable-mir = [
 "/src/rustdoc-json-types" =                              ["rustdoc"]
 "/src/stage0.json" =                                     ["bootstrap"]
 "/tests/ui" =                                            ["compiler"]
-"/src/tools/cargo" =                                     ["@ehuss", "@joshtriplett"]
+"/src/tools/cargo" =                                     ["@ehuss"]
 "/src/tools/compiletest" =                               ["bootstrap", "@wesleywiser", "@oli-obk", "@compiler-errors"]
 "/src/tools/linkchecker" =                               ["@ehuss"]
 "/src/tools/rust-installer" =                            ["bootstrap"]

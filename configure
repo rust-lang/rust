@@ -1,6 +1,6 @@
 #!/bin/sh
 
-script="$(dirname $0)"/src/bootstrap/configure.py
+script="$(dirname "$0")"/src/bootstrap/configure.py
 
 try() {
     cmd=$1
@@ -15,4 +15,4 @@ try python3 "$@"
 try python2.7 "$@"
 try python27 "$@"
 try python2 "$@"
-exec python $script "$@"
+exec python "$script" "$@"

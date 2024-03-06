@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 // test that ordinary fat pointer operations work.
 
 struct Wrapper<T: ?Sized>(#[allow(dead_code)] u32, T);

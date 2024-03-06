@@ -108,11 +108,8 @@ assume the right toolchain is pinned via `rustup override set nightly` or
 
 Now you can run your project in Miri:
 
-1. Run `cargo clean` to eliminate any cached dependencies. Miri needs your
-   dependencies to be compiled the right way, that would not happen if they have
-   previously already been compiled.
-2. To run all tests in your project through Miri, use `cargo miri test`.
-3. If you have a binary project, you can run it through Miri using `cargo miri run`.
+- To run all tests in your project through Miri, use `cargo miri test`.
+- If you have a binary project, you can run it through Miri using `cargo miri run`.
 
 The first time you run Miri, it will perform some extra setup and install some
 dependencies. It will ask you for confirmation before installing anything.
@@ -282,7 +279,7 @@ Miri builds and vice-versa.
 
 You may be running `cargo miri` with a different compiler version than the one
 used to build the custom libstd that Miri uses, and Miri failed to detect that.
-Try deleting `~/.cache/miri`.
+Try running `cargo miri clean`.
 
 #### "no mir for `std::rt::lang_start_internal`"
 
@@ -415,6 +412,8 @@ to Miri failing to detect cases of undefined behavior in a program.
   The default is to search for and remove unreachable provenance once every `10000` basic blocks. Setting
   this to `0` disables the garbage collector, which causes some programs to have explosive memory
   usage and/or super-linear runtime.
+* `-Zmiri-track-alloc-accesses` show not only allocation and free events for tracked allocations,
+  but also reads and writes.
 * `-Zmiri-track-alloc-id=<id1>,<id2>,...` shows a backtrace when the given allocations are
   being allocated or freed.  This helps in debugging memory leaks and
   use after free bugs. Specifying this argument multiple times does not overwrite the previous
@@ -468,7 +467,7 @@ Moreover, Miri recognizes some environment variables:
   must point to the `library` subdirectory of a `rust-lang/rust` repository
   checkout. Note that changing files in that directory does not automatically
   trigger a re-build of the standard library; you have to clear the Miri build
-  cache manually (on Linux, `rm -rf ~/.cache/miri`;
+  cache with `cargo miri clean` or deleting it manually (on Linux, `rm -rf ~/.cache/miri`;
   on Windows, `rmdir /S "%LOCALAPPDATA%\rust-lang\miri\cache"`;
   and on macOS, `rm -rf ~/Library/Caches/org.rust-lang.miri`).
 * `MIRI_SYSROOT` (recognized by `cargo miri` and the Miri driver) indicates the sysroot to use. When
@@ -591,6 +590,7 @@ Definite bugs found:
 * [Dropping with unaligned pointers in `vec::IntoIter`](https://github.com/rust-lang/rust/pull/106084)
 * [Deallocating with the wrong layout in new specializations for in-place `Iterator::collect`](https://github.com/rust-lang/rust/pull/118460)
 * [Incorrect offset computation for highly-aligned types in `portable-atomic-util`](https://github.com/taiki-e/portable-atomic/pull/138)
+* [Occasional memory leak in `std::mpsc` channels](https://github.com/rust-lang/rust/issues/121582) (original code in [crossbeam](https://github.com/crossbeam-rs/crossbeam/pull/1084))
 
 Violations of [Stacked Borrows] found that are likely bugs (but Stacked Borrows is currently just an experiment):
 

@@ -1,4 +1,4 @@
-   LL|       |// ignore-mode-coverage-map
+   LL|       |//@ ignore-mode-coverage-map
    LL|       |
    LL|      1|fn main() {}
 

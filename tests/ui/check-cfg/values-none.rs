@@ -1,12 +1,12 @@
-// check-pass
+//@ check-pass
 //
-// revisions: explicit implicit
-// compile-flags: -Zunstable-options
-// [explicit]compile-flags: --check-cfg=cfg(foo,values(none()))
-// [implicit]compile-flags: --check-cfg=cfg(foo)
-// [simple]  compile-flags: --check-cfg=cfg(foo,values(none(),"too"))
-// [concat_1]compile-flags: --check-cfg=cfg(foo) --check-cfg=cfg(foo,values("too"))
-// [concat_2]compile-flags: --check-cfg=cfg(foo,values("too")) --check-cfg=cfg(foo)
+//@ revisions: explicit implicit
+//@ compile-flags: -Zunstable-options
+//@ [explicit]compile-flags: --check-cfg=cfg(foo,values(none()))
+//@ [implicit]compile-flags: --check-cfg=cfg(foo)
+//@ [simple]  compile-flags: --check-cfg=cfg(foo,values(none(),"too"))
+//@ [concat_1]compile-flags: --check-cfg=cfg(foo) --check-cfg=cfg(foo,values("too"))
+//@ [concat_2]compile-flags: --check-cfg=cfg(foo,values("too")) --check-cfg=cfg(foo)
 
 #[cfg(foo = "too")]
 //[explicit]~^ WARNING unexpected `cfg` condition value

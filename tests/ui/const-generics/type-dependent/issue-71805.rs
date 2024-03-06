@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 use std::mem::MaybeUninit;
 
 trait CollectSlice<'a>: Iterator {

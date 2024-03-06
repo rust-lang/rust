@@ -1,9 +1,9 @@
 macro_rules! x {
     ($($c:tt)*) => {
-        $($c)ö* //~ ERROR macro expansion ends with an incomplete expression: expected expression
+        $($c)ö*
     };
 }
 
 fn main() {
-    x!(!);
+    x!(!); //~ ERROR macro expansion ends with an incomplete expression: expected expression
 }

@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 
 fn main() {
     named_argument_takes_precedence_to_captured();

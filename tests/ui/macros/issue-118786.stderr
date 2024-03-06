@@ -1,13 +1,13 @@
 error: macros that expand to items must be delimited with braces or followed by a semicolon
-  --> $DIR/issue-118786.rs:7:22
+  --> $DIR/issue-118786.rs:15:13
    |
-LL |         macro_rules! $macro_name {
-   |                      ^^^^^^^^^^^
+LL | make_macro!((meow));
+   |             ^^^^^^
    |
 help: change the delimiters to curly braces
    |
-LL |         macro_rules! {$macro_name} {
-   |                      +           +
+LL | make_macro!({meow});
+   |             ~    ~
 help: add a semicolon
    |
 LL |         macro_rules! $macro_name; {

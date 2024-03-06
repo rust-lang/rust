@@ -1,6 +1,6 @@
-// no-prefer-dynamic
-// revisions:rpass1 rpass2
-// compile-flags: -C lto
+//@ no-prefer-dynamic
+//@ revisions:rpass1 rpass2
+//@ compile-flags: -C lto
 
 mod x {
     pub struct X {

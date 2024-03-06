@@ -26,7 +26,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         prot: &OpTy<'tcx, Provenance>,
         flags: &OpTy<'tcx, Provenance>,
         fd: &OpTy<'tcx, Provenance>,
-        offset: &OpTy<'tcx, Provenance>,
+        offset: i128,
     ) -> InterpResult<'tcx, Scalar<Provenance>> {
         let this = self.eval_context_mut();
 
@@ -36,7 +36,6 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         let prot = this.read_scalar(prot)?.to_i32()?;
         let flags = this.read_scalar(flags)?.to_i32()?;
         let fd = this.read_scalar(fd)?.to_i32()?;
-        let offset = this.read_target_usize(offset)?;
 
         let map_private = this.eval_libc_i32("MAP_PRIVATE");
         let map_anonymous = this.eval_libc_i32("MAP_ANONYMOUS");

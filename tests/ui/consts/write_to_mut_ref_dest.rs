@@ -1,5 +1,5 @@
-// revisions: stock mut_refs
-//[mut_refs] check-pass
+//@ revisions: stock mut_refs
+//@[mut_refs] check-pass
 
 #![cfg_attr(mut_refs, feature(const_mut_refs))]
 

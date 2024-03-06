@@ -10,3 +10,4 @@ path = "main.rs"
 [dependencies]
 regex = "1"
 once_cell = "1"
+html5ever = "0.26.0"

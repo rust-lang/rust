@@ -1,4 +1,4 @@
-// compile-flags: -Znext-solver
+//@ compile-flags: -Znext-solver
 #![feature(rustc_attrs)]
 
 // Check that we correctly rerun the trait solver for heads of cycles,
@@ -23,6 +23,18 @@ where
     A<T>: NotImplemented,
 {
 }
+
+// HACK: This impls is necessary so that the impl above is well-formed.
+//
+// When checking that the impl above is well-formed we check `B<T>: Trait<'a, 'b>`
+// with the where clauses `A<T>: Trait<'a, 'b>` and `A<T> NotImplemented`. Trying to
+// use the impl itself to prove that adds region constraints as we uniquified the
+// regions in the `A<T>: Trait<'a, 'b>` where-bound. As both the impl above
+// and the impl below now apply with some constraints, we failed with ambiguity.
+impl<'a, 'b, T: ?Sized> Trait<'a, 'b> for B<T>
+where
+    A<T>: NotImplemented,
+{}
 
 // This impl directly requires 'b to be equal to 'static.
 //

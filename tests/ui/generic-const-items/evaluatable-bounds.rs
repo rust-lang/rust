@@ -1,7 +1,7 @@
 // This is a regression test for issue #104400.
 
-// revisions: unconstrained constrained
-//[constrained] check-pass
+//@ revisions: unconstrained constrained
+//@[constrained] check-pass
 
 // Test that we can constrain generic const items that appear inside associated consts by
 // adding a (makeshift) "evaluatable"-bound to the item.

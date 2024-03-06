@@ -1,4 +1,4 @@
-// check-pass
+//@ check-pass
 
 #![allow(opaque_hidden_inferred_bound)]
 #![allow(dead_code)]

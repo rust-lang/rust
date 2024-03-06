@@ -1,7 +1,7 @@
 // Test that we consider `for<'a> T: 'a` to be sufficient to prove
 // that `for<'a> T: 'a`.
 //
-// check-pass
+//@ check-pass
 
 #![allow(warnings)]
 

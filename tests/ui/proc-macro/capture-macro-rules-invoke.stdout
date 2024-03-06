@@ -271,7 +271,7 @@ PRINT-BANG INPUT (DEBUG): TokenStream [
                 span: $DIR/capture-macro-rules-invoke.rs:47:19: 47:20 (#0),
             },
         ],
-        span: $DIR/capture-macro-rules-invoke.rs:15:60: 15:63 (#0),
+        span: $DIR/capture-macro-rules-invoke.rs:47:13: 47:22 (#0),
     },
     Punct {
         ch: ',',

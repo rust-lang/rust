@@ -1,5 +1,5 @@
-// aux-build:hidden-struct.rs
-// compile-flags: --crate-type lib
+//@ aux-build:hidden-struct.rs
+//@ compile-flags: --crate-type lib
 
 extern crate hidden_struct;
 

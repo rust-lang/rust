@@ -1,6 +1,6 @@
 // Regression test for ICE #73061
 
-// aux-build:issue-73061.rs
+//@ aux-build:issue-73061.rs
 
 extern crate issue_73061;
 

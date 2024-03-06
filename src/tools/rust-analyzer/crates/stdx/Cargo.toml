@@ -13,7 +13,7 @@ doctest = false
 
 [dependencies]
 backtrace = { version = "0.3.67", optional = true }
-always-assert = { version = "0.1.2", features = ["log"] }
+always-assert = { version = "0.2.0", features = ["tracing"] }
 jod-thread = "0.1.2"
 libc.workspace = true
 crossbeam-channel = "0.5.5"

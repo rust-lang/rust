@@ -1,5 +1,5 @@
 //! Implementation of "range exclusive" inlay hints:
-//! ```no_run
+//! ```ignore
 //! for i in 0../* < */10 {}
 //! if let ../* < */100 = 50 {}
 //! ```

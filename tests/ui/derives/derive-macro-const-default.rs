@@ -1,4 +1,4 @@
-// check-pass
+//@ check-pass
 #[derive(Clone, PartialEq, Debug)]
 struct Example<T, const N: usize = 1usize>([T; N]);
 

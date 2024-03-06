@@ -1,5 +1,5 @@
-// build-pass
-// compile-flags: -Znext-solver
+//@ build-pass
+//@ compile-flags: -Znext-solver
 
 // Tests that the specializing impl `<() as Foo>` holds during codegen.
 

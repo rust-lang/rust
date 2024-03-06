@@ -1,4 +1,4 @@
-// compile-flags: -O
+//@ compile-flags: -O
 
 #![feature(core_intrinsics)]
 #![crate_type = "lib"]

@@ -1,5 +1,4 @@
-// compile-flags: -O
-// ignore-debug (debug assertions in `slice::from_raw_parts` block optimizations)
+//@ compile-flags: -O
 
 #![crate_type = "lib"]
 

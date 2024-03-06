@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 #![allow(unused_variables)]
 
 struct Node<T: ?Sized>(#[allow(dead_code)] T);

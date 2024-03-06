@@ -1,4 +1,4 @@
-// check-pass
+//@ check-pass
 
 // this test makes sure that the `unfulfilled_lint_expectations` lint
 // is being emited for `foo` as foo is not dead code, it's pub

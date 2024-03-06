@@ -1,4 +1,4 @@
-// build-pass
+//@ build-pass
 #![allow(dead_code)]
 #[repr(u64)]
 enum A {

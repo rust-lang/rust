@@ -1,6 +1,6 @@
 // Regression test for #54239, shouldn't trigger lint.
-// check-pass
-// edition:2018
+//@ check-pass
+//@ edition:2018
 
 #![deny(missing_debug_implementations)]
 

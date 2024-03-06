@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 #![feature(lang_items)]
 
 fn a<F:Fn(isize, isize) -> isize>(f: F) -> isize {

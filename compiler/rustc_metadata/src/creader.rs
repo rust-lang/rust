@@ -534,7 +534,10 @@ impl<'a, 'tcx> CrateLoader<'a, 'tcx> {
     ) -> Option<CrateNum> {
         self.used_extern_options.insert(name);
         match self.maybe_resolve_crate(name, dep_kind, None) {
-            Ok(cnum) => Some(cnum),
+            Ok(cnum) => {
+                self.cstore.set_used_recursively(cnum);
+                Some(cnum)
+            }
             Err(err) => {
                 let missing_core =
                     self.maybe_resolve_crate(sym::core, CrateDepKind::Explicit, None).is_err();
@@ -689,20 +692,8 @@ impl<'a, 'tcx> CrateLoader<'a, 'tcx> {
         path: &Path,
         stable_crate_id: StableCrateId,
     ) -> Result<&'static [ProcMacro], CrateError> {
-        // Make sure the path contains a / or the linker will search for it.
-        let path = try_canonicalize(path).unwrap();
-        let lib = load_dylib(&path, 5).map_err(|err| CrateError::DlOpen(err))?;
-
         let sym_name = self.sess.generate_proc_macro_decls_symbol(stable_crate_id);
-        let sym = unsafe { lib.get::<*const &[ProcMacro]>(sym_name.as_bytes()) }
-            .map_err(|err| CrateError::DlSym(err.to_string()))?;
-
-        // Intentionally leak the dynamic library. We can't ever unload it
-        // since the library can make things that will live arbitrarily long.
-        let sym = unsafe { sym.into_raw() };
-        std::mem::forget(lib);
-
-        Ok(unsafe { **sym })
+        Ok(unsafe { *load_symbol_from_dylib::<*const &[ProcMacro]>(path, &sym_name)? })
     }
 
     fn inject_panic_runtime(&mut self, krate: &ast::Crate) {
@@ -923,7 +914,7 @@ impl<'a, 'tcx> CrateLoader<'a, 'tcx> {
         what: &str,
         needs_dep: &dyn Fn(&CrateMetadata) -> bool,
     ) {
-        // don't perform this validation if the session has errors, as one of
+        // Don't perform this validation if the session has errors, as one of
         // those errors may indicate a circular dependency which could cause
         // this to stack overflow.
         if self.dcx().has_errors().is_some() {
@@ -980,7 +971,7 @@ impl<'a, 'tcx> CrateLoader<'a, 'tcx> {
                 continue;
             }
 
-            self.sess.parse_sess.buffer_lint(
+            self.sess.psess.buffer_lint(
                     lint::builtin::UNUSED_CRATE_DEPENDENCIES,
                     span,
                     ast::CRATE_NODE_ID,
@@ -1113,6 +1104,10 @@ fn alloc_error_handler_spans(krate: &ast::Crate) -> Vec<Span> {
     f.spans
 }
 
+fn format_dlopen_err(e: &(dyn std::error::Error + 'static)) -> String {
+    e.sources().map(|e| format!(": {e}")).collect()
+}
+
 // On Windows the compiler would sometimes intermittently fail to open the
 // proc-macro DLL with `Error::LoadLibraryExW`. It is suspected that something in the
 // system still holds a lock on the file, so we retry a few times before calling it
@@ -1137,7 +1132,13 @@ fn load_dylib(path: &Path, max_attempts: usize) -> Result<libloading::Library, S
             Err(err) => {
                 // Only try to recover from this specific error.
                 if !matches!(err, libloading::Error::LoadLibraryExW { .. }) {
-                    return Err(err.to_string());
+                    let err = format_dlopen_err(&err);
+                    // We include the path of the dylib in the error ourselves, so
+                    // if it's in the error, we strip it.
+                    if let Some(err) = err.strip_prefix(&format!(": {}", path.display())) {
+                        return Err(err.to_string());
+                    }
+                    return Err(err);
                 }
 
                 last_error = Some(err);
@@ -1151,9 +1152,43 @@ fn load_dylib(path: &Path, max_attempts: usize) -> Result<libloading::Library, S
 
     let last_error = last_error.unwrap();
     let message = if let Some(src) = last_error.source() {
-        format!("{last_error} ({src}) (retried {max_attempts} times)")
+        format!("{} ({src}) (retried {max_attempts} times)", format_dlopen_err(&last_error))
     } else {
-        format!("{last_error} (retried {max_attempts} times)")
+        format!("{} (retried {max_attempts} times)", format_dlopen_err(&last_error))
     };
     Err(message)
+}
+
+pub enum DylibError {
+    DlOpen(String, String),
+    DlSym(String, String),
+}
+
+impl From<DylibError> for CrateError {
+    fn from(err: DylibError) -> CrateError {
+        match err {
+            DylibError::DlOpen(path, err) => CrateError::DlOpen(path, err),
+            DylibError::DlSym(path, err) => CrateError::DlSym(path, err),
+        }
+    }
+}
+
+pub unsafe fn load_symbol_from_dylib<T: Copy>(
+    path: &Path,
+    sym_name: &str,
+) -> Result<T, DylibError> {
+    // Make sure the path contains a / or the linker will search for it.
+    let path = try_canonicalize(path).unwrap();
+    let lib =
+        load_dylib(&path, 5).map_err(|err| DylibError::DlOpen(path.display().to_string(), err))?;
+
+    let sym = unsafe { lib.get::<T>(sym_name.as_bytes()) }
+        .map_err(|err| DylibError::DlSym(path.display().to_string(), format_dlopen_err(&err)))?;
+
+    // Intentionally leak the dynamic library. We can't ever unload it
+    // since the library can make things that will live arbitrarily long.
+    let sym = unsafe { sym.into_raw() };
+    std::mem::forget(lib);
+
+    Ok(*sym)
 }

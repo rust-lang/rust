@@ -1,10 +1,10 @@
-// run-pass
+//@ run-pass
 
 // rpass test for reservation impls. Not 100% required because `From` uses them,
 // but still.
 
-// revisions: old next
-//[next] compile-flags: -Znext-solver
+//@ revisions: old next
+//@[next] compile-flags: -Znext-solver
 
 #![feature(rustc_attrs)]
 

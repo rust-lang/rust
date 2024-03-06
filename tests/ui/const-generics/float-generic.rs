@@ -1,4 +1,4 @@
-// revisions: simple adt_const_params
+//@ revisions: simple adt_const_params
 #![cfg_attr(adt_const_params, feature(adt_const_params))]
 #![cfg_attr(adt_const_params, allow(incomplete_features))]
 

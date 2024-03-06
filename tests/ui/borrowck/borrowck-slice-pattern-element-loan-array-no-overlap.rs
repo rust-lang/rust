@@ -1,4 +1,4 @@
-// check-pass
+//@ check-pass
 
 fn nop(_s: &[& i32]) {}
 fn nop_subslice(_s: &[i32]) {}

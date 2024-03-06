@@ -1,6 +1,6 @@
-// run-pass
+//@ run-pass
 #![allow(dead_code)]
-// pretty-expanded FIXME #23616
+//@ pretty-expanded FIXME #23616
 #![allow(non_camel_case_types)]
 
 struct r<F> where F: FnOnce() {

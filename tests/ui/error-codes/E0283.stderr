@@ -5,7 +5,7 @@ LL |     fn create() -> u32;
    |     ------------------- `Coroutine::create` defined here
 ...
 LL |     let cont: u32 = Coroutine::create();
-   |                     ^^^^^^^^^^^^^^^^^ cannot call associated function of trait
+   |                     ^^^^^^^^^^^^^^^^^^^ cannot call associated function of trait
    |
 help: use a fully-qualified path to a specific available implementation
    |

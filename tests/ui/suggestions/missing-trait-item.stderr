@@ -1,5 +1,5 @@
 error[E0046]: not all trait items implemented, missing: `foo`, `bar`
-  --> $DIR/missing-trait-item.rs:10:5
+  --> $DIR/missing-trait-item.rs:11:5
    |
 LL |     unsafe fn foo(a: &usize, b: &usize) -> usize;
    |     --------------------------------------------- `foo` from trait
@@ -10,7 +10,7 @@ LL |     impl T for () {}
    |     ^^^^^^^^^^^^^ missing `foo`, `bar` in implementation
 
 error[E0046]: not all trait items implemented, missing: `foo`, `bar`
-  --> $DIR/missing-trait-item.rs:12:5
+  --> $DIR/missing-trait-item.rs:13:5
    |
 LL |     unsafe fn foo(a: &usize, b: &usize) -> usize;
    |     --------------------------------------------- `foo` from trait

@@ -1,5 +1,5 @@
-// run-pass
-// aux-build:repeat.rs
+//@ run-pass
+//@ aux-build:repeat.rs
 
 // This tests the allocating algo branch of the
 // inherent impls overlap checker.

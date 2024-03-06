@@ -1,6 +1,6 @@
 // gate-test-const_fn_floating_point_arithmetic
 
-// revisions: stock gated
+//@ revisions: stock gated
 
 #![feature(rustc_attrs)]
 #![cfg_attr(gated, feature(const_fn_floating_point_arithmetic))]

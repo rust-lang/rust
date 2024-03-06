@@ -1,1 +1,1 @@
-// compile-flags: --llvm-args
+//@ compile-flags: --llvm-args

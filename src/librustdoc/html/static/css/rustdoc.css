@@ -638,7 +638,7 @@ ul.block, .block li {
 
 .sidebar-crate h2 a {
 	display: block;
-	margin: 0 calc(-24px + 0.25rem) 0 -0.5rem;
+	margin: 0 calc(-24px + 0.25rem) 0 -0.2rem;
 	/* Align the sidebar crate link with the search bar, which have different
 		font sizes.
 
@@ -653,7 +653,7 @@ ul.block, .block li {
 		x = ( 16px - 0.57rem ) / 2
 	*/
 	padding: calc( ( 16px - 0.57rem ) / 2 ) 0.25rem;
-	padding-left: 0.5rem;
+	padding-left: 0.2rem;
 }
 
 .sidebar-crate h2 .version {
@@ -661,8 +661,6 @@ ul.block, .block li {
 	font-weight: normal;
 	font-size: 1rem;
 	overflow-wrap: break-word;
-	/* opposite of the link padding, cut in half again */
-	margin-top: calc( ( -16px + 0.57rem ) / 2 );
 }
 
 .sidebar-crate + .version {
@@ -1943,13 +1941,8 @@ in src-script.js and main.js
 		   pixels to avoid overflowing the topbar when the user sets a bigger
 		   font size. */
 		font-size: 24px;
-	}
-
-	.mobile-topbar h2 a {
-		display: block;
-		text-overflow: ellipsis;
-		overflow: hidden;
 		white-space: nowrap;
+		text-overflow: ellipsis;
 	}
 
 	.mobile-topbar .logo-container > img {

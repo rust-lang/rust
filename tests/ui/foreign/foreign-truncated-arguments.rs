@@ -1,5 +1,5 @@
-// run-pass
-// compile-flags: -O
+//@ run-pass
+//@ compile-flags: -O
 // Regression test for https://github.com/rust-lang/rust/issues/33868
 
 #[repr(C)]

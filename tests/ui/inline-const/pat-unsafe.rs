@@ -1,7 +1,5 @@
-// check-pass
-// ignore-test This is currently broken
+//@ check-pass
 
-#![allow(incomplete_features)]
 #![warn(unused_unsafe)]
 #![feature(inline_const_pat)]
 

@@ -1,7 +1,7 @@
-// revisions: e2018 e2021
-//[e2018] edition:2018
-//[e2021] edition:2021
-//[e2018] check-pass
+//@ revisions: e2018 e2021
+//@[e2018] edition:2018
+//@[e2021] edition:2021
+//@[e2018] check-pass
 #![crate_type = "lib"]
 #![stable(feature = "foo", since = "1.0.0")]
 #![feature(staged_api)]

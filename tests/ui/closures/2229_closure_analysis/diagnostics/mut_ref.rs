@@ -1,4 +1,4 @@
-// edition:2021
+//@ edition:2021
 
 // Test that we can't mutate a place if we need to deref an imm-borrow
 // to reach it.

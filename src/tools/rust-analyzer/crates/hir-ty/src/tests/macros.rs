@@ -1373,3 +1373,34 @@ pub fn attr_macro() {}
 "#,
     );
 }
+
+#[test]
+fn clone_with_type_bound() {
+    check_types(
+        r#"
+//- minicore: derive, clone, builtin_impls
+#[derive(Clone)]
+struct Float;
+
+trait TensorKind: Clone {
+    /// The primitive type of the tensor.
+    type Primitive: Clone;
+}
+
+impl TensorKind for Float {
+    type Primitive = f64;
+}
+
+#[derive(Clone)]
+struct Tensor<K = Float> where K: TensorKind
+{
+    primitive: K::Primitive,
+}
+
+fn foo(t: Tensor) {
+    let x = t.clone();
+      //^ Tensor<Float>
+}
+"#,
+    );
+}

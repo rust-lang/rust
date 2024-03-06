@@ -1,4 +1,4 @@
-// check-fail
+//@ check-fail
 //
 // regression test for #68295
 

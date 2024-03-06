@@ -194,6 +194,7 @@ impl<'tcx> Rvalue<'tcx> {
             Rvalue::NullaryOp(NullOp::SizeOf | NullOp::AlignOf | NullOp::OffsetOf(..), _) => {
                 tcx.types.usize
             }
+            Rvalue::NullaryOp(NullOp::DebugAssertions, _) => tcx.types.bool,
             Rvalue::Aggregate(ref ak, ref ops) => match **ak {
                 AggregateKind::Array(ty) => Ty::new_array(tcx, ty, ops.len() as u64),
                 AggregateKind::Tuple => {
@@ -202,6 +203,9 @@ impl<'tcx> Rvalue<'tcx> {
                 AggregateKind::Adt(did, _, args, _, _) => tcx.type_of(did).instantiate(tcx, args),
                 AggregateKind::Closure(did, args) => Ty::new_closure(tcx, did, args),
                 AggregateKind::Coroutine(did, args) => Ty::new_coroutine(tcx, did, args),
+                AggregateKind::CoroutineClosure(did, args) => {
+                    Ty::new_coroutine_closure(tcx, did, args)
+                }
             },
             Rvalue::ShallowInitBox(_, ty) => Ty::new_box(tcx, ty),
             Rvalue::CopyForDeref(ref place) => place.ty(local_decls, tcx).ty,

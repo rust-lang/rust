@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 const ERROR_CONST: bool = true;
 
 fn get() -> bool {

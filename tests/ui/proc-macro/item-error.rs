@@ -1,4 +1,4 @@
-// aux-build:derive-b.rs
+//@ aux-build:derive-b.rs
 
 #![allow(warnings)]
 

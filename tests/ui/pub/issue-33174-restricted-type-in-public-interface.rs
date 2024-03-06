@@ -1,4 +1,4 @@
-// check-pass
+//@ check-pass
 
 #![allow(non_camel_case_types)] // genus is always capitalized
 

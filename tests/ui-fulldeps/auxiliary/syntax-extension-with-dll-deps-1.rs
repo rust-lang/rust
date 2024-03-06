@@ -1,4 +1,4 @@
-// force-host
+//@ force-host
 
 #![crate_type = "dylib"]
 

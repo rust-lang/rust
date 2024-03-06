@@ -1,5 +1,5 @@
 error[E0308]: mismatched types
-  --> $DIR/suggest-contraining-assoc-type-because-of-assoc-const.rs:12:21
+  --> $DIR/suggest-contraining-assoc-type-because-of-assoc-const.rs:13:21
    |
 LL |     const N: C::M = 4u8;
    |                     ^^^ expected associated type, found `u8`

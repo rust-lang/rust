@@ -1,4 +1,4 @@
-// aux-build:const-stability-attribute-implies.rs
+//@ aux-build:const-stability-attribute-implies.rs
 #![crate_type = "lib"]
 #![deny(stable_features)]
 #![feature(const_foo)]

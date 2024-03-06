@@ -1,4 +1,4 @@
-// aux-build: issue-114682-2-extern.rs
+//@ aux-build: issue-114682-2-extern.rs
 // https://github.com/rust-lang/rust/pull/114682#issuecomment-1879998900
 
 extern crate issue_114682_2_extern;

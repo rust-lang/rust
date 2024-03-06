@@ -1,5 +1,5 @@
 error[E0204]: the trait `Copy` cannot be implemented for this type
-  --> $DIR/missing-bound-in-manual-copy-impl.rs:6:18
+  --> $DIR/missing-bound-in-manual-copy-impl.rs:7:18
    |
 LL | struct Wrapper<T>(T);
    |                   - this field does not implement `Copy`

@@ -1,5 +1,6 @@
 use crate::infer::{InferCtxt, TyOrConstInferVar};
 use crate::traits::error_reporting::TypeErrCtxtExt;
+use crate::traits::normalize::normalize_with_depth_to;
 use rustc_data_structures::captures::Captures;
 use rustc_data_structures::obligation_forest::ProcessResult;
 use rustc_data_structures::obligation_forest::{Error, ForestObligation, Outcome};
@@ -137,7 +138,7 @@ impl<'tcx> TraitEngine<'tcx> for FulfillmentContext<'tcx> {
         _infcx: &InferCtxt<'tcx>,
     ) -> Vec<FulfillmentError<'tcx>> {
         self.predicates
-            .to_errors(FulfillmentErrorCode::Ambiguity { overflow: false })
+            .to_errors(FulfillmentErrorCode::Ambiguity { overflow: None })
             .into_iter()
             .map(to_fulfillment_error)
             .collect()
@@ -312,7 +313,7 @@ impl<'a, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'tcx> {
 
         if obligation.predicate.has_projections() {
             let mut obligations = Vec::new();
-            let predicate = crate::traits::project::try_normalize_with_depth_to(
+            let predicate = normalize_with_depth_to(
                 &mut self.selcx,
                 obligation.param_env,
                 obligation.cause.clone(),
@@ -358,8 +359,7 @@ impl<'a, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'tcx> {
                 | ty::PredicateKind::Coerce(_)
                 | ty::PredicateKind::Clause(ty::ClauseKind::ConstEvaluatable(..))
                 | ty::PredicateKind::ConstEquate(..) => {
-                    let pred =
-                        ty::Binder::dummy(infcx.instantiate_binder_with_placeholders(binder));
+                    let pred = ty::Binder::dummy(infcx.enter_forall_and_leak_universe(binder));
                     ProcessResult::Changed(mk_pending(vec![obligation.with(infcx.tcx, pred)]))
                 }
                 ty::PredicateKind::Ambiguous => ProcessResult::Unchanged,
@@ -424,6 +424,21 @@ impl<'a, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'tcx> {
                 ty::PredicateKind::AliasRelate(..) => {
                     bug!("AliasRelate is only used by the new solver")
                 }
+                // Compute `ConstArgHasType` above the overflow check below.
+                // This is because this is not ever a useful obligation to report
+                // as the cause of an overflow.
+                ty::PredicateKind::Clause(ty::ClauseKind::ConstArgHasType(ct, ty)) => {
+                    match self.selcx.infcx.at(&obligation.cause, obligation.param_env).eq(
+                        DefineOpaqueTypes::No,
+                        ct.ty(),
+                        ty,
+                    ) {
+                        Ok(inf_ok) => ProcessResult::Changed(mk_pending(inf_ok.into_obligations())),
+                        Err(_) => ProcessResult::Error(FulfillmentErrorCode::SelectionError(
+                            SelectionError::Unimplemented,
+                        )),
+                    }
+                }
 
                 // General case overflow check. Allow `process_trait_obligation`
                 // and `process_projection_obligation` to handle checking for
@@ -435,12 +450,7 @@ impl<'a, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'tcx> {
                     .recursion_limit()
                     .value_within_limit(obligation.recursion_depth) =>
                 {
-                    self.selcx.infcx.err_ctxt().report_overflow_error(
-                        &obligation.predicate,
-                        obligation.cause.span,
-                        false,
-                        |_| {},
-                    );
+                    self.selcx.infcx.err_ctxt().report_overflow_obligation(&obligation, false);
                 }
 
                 ty::PredicateKind::Clause(ty::ClauseKind::WellFormed(arg)) => {
@@ -649,18 +659,6 @@ impl<'a, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'tcx> {
                                 ))
                             }
                         }
-                    }
-                }
-                ty::PredicateKind::Clause(ty::ClauseKind::ConstArgHasType(ct, ty)) => {
-                    match self.selcx.infcx.at(&obligation.cause, obligation.param_env).eq(
-                        DefineOpaqueTypes::No,
-                        ct.ty(),
-                        ty,
-                    ) {
-                        Ok(inf_ok) => ProcessResult::Changed(mk_pending(inf_ok.into_obligations())),
-                        Err(_) => ProcessResult::Error(FulfillmentErrorCode::SelectionError(
-                            SelectionError::Unimplemented,
-                        )),
                     }
                 }
             },

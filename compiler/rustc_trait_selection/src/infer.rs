@@ -17,49 +17,8 @@ use std::fmt::Debug;
 
 pub use rustc_infer::infer::*;
 
-pub trait InferCtxtExt<'tcx> {
-    fn type_is_copy_modulo_regions(&self, param_env: ty::ParamEnv<'tcx>, ty: Ty<'tcx>) -> bool;
-
-    fn type_is_sized_modulo_regions(&self, param_env: ty::ParamEnv<'tcx>, ty: Ty<'tcx>) -> bool;
-
-    /// Check whether a `ty` implements given trait(trait_def_id) without side-effects.
-    ///
-    /// The inputs are:
-    ///
-    /// - the def-id of the trait
-    /// - the type parameters of the trait, including the self-type
-    /// - the parameter environment
-    ///
-    /// Invokes `evaluate_obligation`, so in the event that evaluating
-    /// `Ty: Trait` causes overflow, EvaluatedToErrStackDependent
-    /// (or EvaluatedToAmbigStackDependent) will be returned.
-    fn type_implements_trait(
-        &self,
-        trait_def_id: DefId,
-        params: impl IntoIterator<Item: Into<GenericArg<'tcx>>>,
-        param_env: ty::ParamEnv<'tcx>,
-    ) -> traits::EvaluationResult;
-
-    /// Returns `Some` if a type implements a trait shallowly, without side-effects,
-    /// along with any errors that would have been reported upon further obligation
-    /// processing.
-    ///
-    /// - If this returns `Some([])`, then the trait holds modulo regions.
-    /// - If this returns `Some([errors..])`, then the trait has an impl for
-    /// the self type, but some nested obligations do not hold.
-    /// - If this returns `None`, no implementation that applies could be found.
-    ///
-    /// FIXME(-Znext-solver): Due to the recursive nature of the new solver,
-    /// this will probably only ever return `Some([])` or `None`.
-    fn type_implements_trait_shallow(
-        &self,
-        trait_def_id: DefId,
-        ty: Ty<'tcx>,
-        param_env: ty::ParamEnv<'tcx>,
-    ) -> Option<Vec<traits::FulfillmentError<'tcx>>>;
-}
-
-impl<'tcx> InferCtxtExt<'tcx> for InferCtxt<'tcx> {
+#[extension(pub trait InferCtxtExt<'tcx>)]
+impl<'tcx> InferCtxt<'tcx> {
     fn type_is_copy_modulo_regions(&self, param_env: ty::ParamEnv<'tcx>, ty: Ty<'tcx>) -> bool {
         let ty = self.resolve_vars_if_possible(ty);
 
@@ -81,6 +40,17 @@ impl<'tcx> InferCtxtExt<'tcx> for InferCtxt<'tcx> {
         traits::type_known_to_meet_bound_modulo_regions(self, param_env, ty, lang_item)
     }
 
+    /// Check whether a `ty` implements given trait(trait_def_id) without side-effects.
+    ///
+    /// The inputs are:
+    ///
+    /// - the def-id of the trait
+    /// - the type parameters of the trait, including the self-type
+    /// - the parameter environment
+    ///
+    /// Invokes `evaluate_obligation`, so in the event that evaluating
+    /// `Ty: Trait` causes overflow, EvaluatedToErrStackDependent
+    /// (or EvaluatedToAmbigStackDependent) will be returned.
     #[instrument(level = "debug", skip(self, params), ret)]
     fn type_implements_trait(
         &self,
@@ -99,6 +69,17 @@ impl<'tcx> InferCtxtExt<'tcx> for InferCtxt<'tcx> {
         self.evaluate_obligation(&obligation).unwrap_or(traits::EvaluationResult::EvaluatedToErr)
     }
 
+    /// Returns `Some` if a type implements a trait shallowly, without side-effects,
+    /// along with any errors that would have been reported upon further obligation
+    /// processing.
+    ///
+    /// - If this returns `Some([])`, then the trait holds modulo regions.
+    /// - If this returns `Some([errors..])`, then the trait has an impl for
+    /// the self type, but some nested obligations do not hold.
+    /// - If this returns `None`, no implementation that applies could be found.
+    ///
+    /// FIXME(-Znext-solver): Due to the recursive nature of the new solver,
+    /// this will probably only ever return `Some([])` or `None`.
     fn type_implements_trait_shallow(
         &self,
         trait_def_id: DefId,
@@ -124,19 +105,8 @@ impl<'tcx> InferCtxtExt<'tcx> for InferCtxt<'tcx> {
     }
 }
 
-pub trait InferCtxtBuilderExt<'tcx> {
-    fn enter_canonical_trait_query<K, R>(
-        self,
-        canonical_key: &Canonical<'tcx, K>,
-        operation: impl FnOnce(&ObligationCtxt<'_, 'tcx>, K) -> Result<R, NoSolution>,
-    ) -> Result<CanonicalQueryResponse<'tcx, R>, NoSolution>
-    where
-        K: TypeFoldable<TyCtxt<'tcx>>,
-        R: Debug + TypeFoldable<TyCtxt<'tcx>>,
-        Canonical<'tcx, QueryResponse<'tcx, R>>: ArenaAllocatable<'tcx>;
-}
-
-impl<'tcx> InferCtxtBuilderExt<'tcx> for InferCtxtBuilder<'tcx> {
+#[extension(pub trait InferCtxtBuilderExt<'tcx>)]
+impl<'tcx> InferCtxtBuilder<'tcx> {
     /// The "main method" for a canonicalized trait query. Given the
     /// canonical key `canonical_key`, this method will create a new
     /// inference context, instantiate the key, and run your operation

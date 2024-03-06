@@ -2,6 +2,7 @@
 use crate::deref_separator::deref_finder;
 use rustc_attr::InlineAttr;
 use rustc_const_eval::transform::validate::validate_types;
+use rustc_hir::def::DefKind;
 use rustc_hir::def_id::DefId;
 use rustc_index::bit_set::BitSet;
 use rustc_index::Idx;
@@ -12,6 +13,7 @@ use rustc_middle::ty::TypeVisitableExt;
 use rustc_middle::ty::{self, Instance, InstanceDef, ParamEnv, Ty, TyCtxt};
 use rustc_session::config::OptLevel;
 use rustc_span::source_map::Spanned;
+use rustc_span::sym;
 use rustc_target::abi::FieldIdx;
 use rustc_target::spec::abi::Abi;
 
@@ -169,6 +171,13 @@ impl<'tcx> Inliner<'tcx> {
         let cross_crate_inlinable = self.tcx.cross_crate_inlinable(callsite.callee.def_id());
         self.check_codegen_attributes(callsite, callee_attrs, cross_crate_inlinable)?;
 
+        // Intrinsic fallback bodies are automatically made cross-crate inlineable,
+        // but at this stage we don't know whether codegen knows the intrinsic,
+        // so just conservatively don't inline it.
+        if self.tcx.has_attr(callsite.callee.def_id(), sym::rustc_intrinsic) {
+            return Err("Callee is an intrinsic, do not inline fallback bodies");
+        }
+
         let terminator = caller_body[callsite.block].terminator.as_ref().unwrap();
         let TerminatorKind::Call { args, destination, .. } = &terminator.kind else { bug!() };
         let destination_ty = destination.ty(&caller_body.local_decls, self.tcx).ty;
@@ -317,6 +326,8 @@ impl<'tcx> Inliner<'tcx> {
             | InstanceDef::ReifyShim(_)
             | InstanceDef::FnPtrShim(..)
             | InstanceDef::ClosureOnceShim { .. }
+            | InstanceDef::ConstructCoroutineInClosureShim { .. }
+            | InstanceDef::CoroutineKindShim { .. }
             | InstanceDef::DropGlue(..)
             | InstanceDef::CloneShim(..)
             | InstanceDef::ThreadLocalShim(..)
@@ -382,6 +393,17 @@ impl<'tcx> Inliner<'tcx> {
                 }
 
                 let fn_sig = self.tcx.fn_sig(def_id).instantiate(self.tcx, args);
+
+                // Additionally, check that the body that we're inlining actually agrees
+                // with the ABI of the trait that the item comes from.
+                if let InstanceDef::Item(instance_def_id) = callee.def
+                    && self.tcx.def_kind(instance_def_id) == DefKind::AssocFn
+                    && let instance_fn_sig = self.tcx.fn_sig(instance_def_id).skip_binder()
+                    && instance_fn_sig.abi() != fn_sig.abi()
+                {
+                    return None;
+                }
+
                 let source_info = SourceInfo { span: fn_span, ..terminator.source_info };
 
                 return Some(CallSite { callee, fn_sig, block: bb, source_info });
@@ -399,6 +421,10 @@ impl<'tcx> Inliner<'tcx> {
         callee_attrs: &CodegenFnAttrs,
         cross_crate_inlinable: bool,
     ) -> Result<(), &'static str> {
+        if self.tcx.has_attr(callsite.callee.def_id(), sym::rustc_no_mir_inline) {
+            return Err("#[rustc_no_mir_inline]");
+        }
+
         if let InlineAttr::Never = callee_attrs.inline {
             return Err("never inline hint");
         }
@@ -1025,21 +1051,16 @@ fn try_instance_mir<'tcx>(
     tcx: TyCtxt<'tcx>,
     instance: InstanceDef<'tcx>,
 ) -> Result<&'tcx Body<'tcx>, &'static str> {
-    match instance {
-        ty::InstanceDef::DropGlue(_, Some(ty)) => match ty.kind() {
-            ty::Adt(def, args) => {
-                let fields = def.all_fields();
-                for field in fields {
-                    let field_ty = field.ty(tcx, args);
-                    if field_ty.has_param() && field_ty.has_projections() {
-                        return Err("cannot build drop shim for polymorphic type");
-                    }
-                }
-
-                Ok(tcx.instance_mir(instance))
+    if let ty::InstanceDef::DropGlue(_, Some(ty)) = instance
+        && let ty::Adt(def, args) = ty.kind()
+    {
+        let fields = def.all_fields();
+        for field in fields {
+            let field_ty = field.ty(tcx, args);
+            if field_ty.has_param() && field_ty.has_projections() {
+                return Err("cannot build drop shim for polymorphic type");
             }
-            _ => Ok(tcx.instance_mir(instance)),
-        },
-        _ => Ok(tcx.instance_mir(instance)),
+        }
     }
+    Ok(tcx.instance_mir(instance))
 }

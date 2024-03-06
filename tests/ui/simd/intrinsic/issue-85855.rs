@@ -2,10 +2,10 @@
 // with the wrong number of generic lifetime/type/const parameters, and
 // that no ICE occurs in these cases.
 
-#![feature(platform_intrinsics)]
+#![feature(intrinsics)]
 #![crate_type="lib"]
 
-extern "platform-intrinsic" {
+extern "rust-intrinsic" {
     fn simd_saturating_add<'a, T: 'a>(x: T, y: T);
     //~^ ERROR: intrinsic has wrong number of lifetime parameters
 

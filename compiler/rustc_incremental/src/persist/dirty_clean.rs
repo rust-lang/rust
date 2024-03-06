@@ -57,13 +57,13 @@ const BASE_FN: &[&str] = &[
 
 /// DepNodes for Hir, which is pretty much everything
 const BASE_HIR: &[&str] = &[
-    // hir_owner_nodes should be computed for all nodes
-    label_strs::hir_owner_nodes,
+    // opt_hir_owner_nodes should be computed for all nodes
+    label_strs::opt_hir_owner_nodes,
 ];
 
 /// `impl` implementation of struct/trait
 const BASE_IMPL: &[&str] =
-    &[label_strs::associated_item_def_ids, label_strs::generics_of, label_strs::impl_trait_ref];
+    &[label_strs::associated_item_def_ids, label_strs::generics_of, label_strs::impl_trait_header];
 
 /// DepNodes for mir_built/Optimized, which is relevant in "executable"
 /// code, i.e., functions+methods
@@ -395,7 +395,7 @@ impl<'tcx> DirtyCleanVisitor<'tcx> {
 /// a cfg flag called `foo`.
 fn check_config(tcx: TyCtxt<'_>, attr: &Attribute) -> bool {
     debug!("check_config(attr={:?})", attr);
-    let config = &tcx.sess.parse_sess.config;
+    let config = &tcx.sess.psess.config;
     debug!("check_config: config={:?}", config);
     let mut cfg = None;
     for item in attr.meta_item_list().unwrap_or_else(ThinVec::new) {

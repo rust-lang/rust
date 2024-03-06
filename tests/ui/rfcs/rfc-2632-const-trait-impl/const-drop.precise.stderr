@@ -1,15 +1,92 @@
-error[E0493]: destructor of `T` cannot be evaluated at compile-time
-  --> $DIR/const-drop.rs:19:32
-   |
-LL | const fn a<T: ~const Destruct>(_: T) {}
-   |                                ^ the destructor for this type cannot be evaluated in constant functions
-
 error[E0493]: destructor of `S<'_>` cannot be evaluated at compile-time
   --> $DIR/const-drop.rs:24:13
    |
 LL |     let _ = S(&mut c);
    |             ^^^^^^^^^ the destructor for this type cannot be evaluated in constant functions
 
-error: aborting due to 2 previous errors
+error[E0080]: evaluation of constant value failed
+  --> $SRC_DIR/core/src/ptr/mod.rs:LL:COL
+   |
+   = note: calling non-const function `<S<'_> as Drop>::drop`
+   |
+note: inside `std::ptr::drop_in_place::<S<'_>> - shim(Some(S<'_>))`
+  --> $SRC_DIR/core/src/ptr/mod.rs:LL:COL
+note: inside `b`
+  --> $DIR/const-drop.rs:24:22
+   |
+LL |     let _ = S(&mut c);
+   |                      ^
+note: inside `C`
+  --> $DIR/const-drop.rs:30:15
+   |
+LL | const C: u8 = b();
+   |               ^^^
 
-For more information about this error, try `rustc --explain E0493`.
+error[E0493]: destructor of `T` cannot be evaluated at compile-time
+  --> $DIR/const-drop.rs:19:32
+   |
+LL | const fn a<T: ~const Destruct>(_: T) {}
+   |                                ^ the destructor for this type cannot be evaluated in constant functions
+
+error[E0080]: evaluation of constant value failed
+  --> $SRC_DIR/core/src/ptr/mod.rs:LL:COL
+   |
+   = note: calling non-const function `<t::ConstDrop as Drop>::drop`
+   |
+note: inside `std::ptr::drop_in_place::<t::ConstDrop> - shim(Some(t::ConstDrop))`
+  --> $SRC_DIR/core/src/ptr/mod.rs:LL:COL
+note: inside `a::<t::ConstDrop>`
+  --> $DIR/const-drop.rs:19:39
+   |
+LL | const fn a<T: ~const Destruct>(_: T) {}
+   |                                       ^
+note: inside `_`
+  --> $DIR/const-drop.rs:35:27
+   |
+LL |               const _: () = a($exp);
+   |                             ^^^^^^^
+...
+LL | / implements_const_drop! {
+LL | |     1u8,
+LL | |     2,
+LL | |     3.0,
+...  |
+LL | |     Result::<i32, !>::Ok(1),
+LL | | }
+   | |_- in this macro invocation
+   = note: this error originates in the macro `implements_const_drop` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0080]: evaluation of constant value failed
+  --> $SRC_DIR/core/src/ptr/mod.rs:LL:COL
+   |
+   = note: calling non-const function `<t::ConstDrop as Drop>::drop`
+   |
+note: inside `std::ptr::drop_in_place::<t::ConstDrop> - shim(Some(t::ConstDrop))`
+  --> $SRC_DIR/core/src/ptr/mod.rs:LL:COL
+note: inside `std::ptr::drop_in_place::<t::HasConstDrop> - shim(Some(t::HasConstDrop))`
+  --> $SRC_DIR/core/src/ptr/mod.rs:LL:COL
+note: inside `a::<t::HasConstDrop>`
+  --> $DIR/const-drop.rs:19:39
+   |
+LL | const fn a<T: ~const Destruct>(_: T) {}
+   |                                       ^
+note: inside `_`
+  --> $DIR/const-drop.rs:35:27
+   |
+LL |               const _: () = a($exp);
+   |                             ^^^^^^^
+...
+LL | / implements_const_drop! {
+LL | |     1u8,
+LL | |     2,
+LL | |     3.0,
+...  |
+LL | |     Result::<i32, !>::Ok(1),
+LL | | }
+   | |_- in this macro invocation
+   = note: this error originates in the macro `implements_const_drop` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: aborting due to 5 previous errors
+
+Some errors have detailed explanations: E0080, E0493.
+For more information about an error, try `rustc --explain E0080`.

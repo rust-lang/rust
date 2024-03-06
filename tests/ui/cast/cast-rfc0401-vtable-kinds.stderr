@@ -1,0 +1,10 @@
+warning: trait `Bar` is never used
+  --> $DIR/cast-rfc0401-vtable-kinds.rs:11:7
+   |
+LL | trait Bar {
+   |       ^^^
+   |
+   = note: `#[warn(dead_code)]` on by default
+
+warning: 1 warning emitted
+

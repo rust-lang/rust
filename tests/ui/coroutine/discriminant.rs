@@ -1,7 +1,7 @@
 //! Tests that coroutine discriminant sizes and ranges are chosen optimally and that they are
 //! reflected in the output of `mem::discriminant`.
 
-// run-pass
+//@ run-pass
 
 #![feature(coroutines, coroutine_trait, core_intrinsics, discriminant_kind)]
 

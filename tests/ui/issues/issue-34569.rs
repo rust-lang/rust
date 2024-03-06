@@ -1,5 +1,5 @@
-// run-pass
-// compile-flags:-g
+//@ run-pass
+//@ compile-flags:-g
 
 // In this test we just want to make sure that the code below does not lead to
 // a debuginfo verification assertion during compilation. This was caused by the

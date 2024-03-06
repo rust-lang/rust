@@ -3,7 +3,7 @@
 // the error points to the start of the file, not the line with the
 // transmute
 
-// error-pattern: cannot transmute between types of different sizes, or dependently-sized types
+//@ error-pattern: cannot transmute between types of different sizes, or dependently-sized types
 
 use std::mem;
 

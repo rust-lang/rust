@@ -31,6 +31,8 @@ pub use core::f64::{
 impl f64 {
     /// Returns the largest integer less than or equal to `self`.
     ///
+    /// This function always returns the precise result.
+    ///
     /// # Examples
     ///
     /// ```
@@ -52,6 +54,8 @@ impl f64 {
 
     /// Returns the smallest integer greater than or equal to `self`.
     ///
+    /// This function always returns the precise result.
+    ///
     /// # Examples
     ///
     /// ```
@@ -72,6 +76,8 @@ impl f64 {
 
     /// Returns the nearest integer to `self`. If a value is half-way between two
     /// integers, round away from `0.0`.
+    ///
+    /// This function always returns the precise result.
     ///
     /// # Examples
     ///
@@ -99,6 +105,8 @@ impl f64 {
     /// Returns the nearest integer to a number. Rounds half-way cases to the number
     /// with an even least significant digit.
     ///
+    /// This function always returns the precise result.
+    ///
     /// # Examples
     ///
     /// ```
@@ -114,7 +122,7 @@ impl f64 {
     /// ```
     #[rustc_allow_incoherent_impl]
     #[must_use = "method returns a new number and does not mutate the original value"]
-    #[stable(feature = "round_ties_even", since = "CURRENT_RUSTC_VERSION")]
+    #[stable(feature = "round_ties_even", since = "1.77.0")]
     #[inline]
     pub fn round_ties_even(self) -> f64 {
         unsafe { intrinsics::rintf64(self) }
@@ -122,6 +130,8 @@ impl f64 {
 
     /// Returns the integer part of `self`.
     /// This means that non-integer numbers are always truncated towards zero.
+    ///
+    /// This function always returns the precise result.
     ///
     /// # Examples
     ///
@@ -145,6 +155,8 @@ impl f64 {
 
     /// Returns the fractional part of `self`.
     ///
+    /// This function always returns the precise result.
+    ///
     /// # Examples
     ///
     /// ```
@@ -166,17 +178,16 @@ impl f64 {
 
     /// Computes the absolute value of `self`.
     ///
+    /// This function always returns the precise result.
+    ///
     /// # Examples
     ///
     /// ```
     /// let x = 3.5_f64;
     /// let y = -3.5_f64;
     ///
-    /// let abs_difference_x = (x.abs() - x).abs();
-    /// let abs_difference_y = (y.abs() - (-y)).abs();
-    ///
-    /// assert!(abs_difference_x < 1e-10);
-    /// assert!(abs_difference_y < 1e-10);
+    /// assert_eq!(x.abs(), x);
+    /// assert_eq!(y.abs(), -y);
     ///
     /// assert!(f64::NAN.abs().is_nan());
     /// ```
@@ -249,6 +260,12 @@ impl f64 {
     /// this is not always true, and will be heavily dependant on designing
     /// algorithms with specific target hardware in mind.
     ///
+    /// # Precision
+    ///
+    /// The result of this operation is guaranteed to be the rounded
+    /// infinite-precision result. It is specified by IEEE 754 as
+    /// `fusedMultiplyAdd` and guaranteed not to change.
+    ///
     /// # Examples
     ///
     /// ```
@@ -256,10 +273,17 @@ impl f64 {
     /// let x = 4.0_f64;
     /// let b = 60.0_f64;
     ///
-    /// // 100.0
-    /// let abs_difference = (m.mul_add(x, b) - ((m * x) + b)).abs();
+    /// assert_eq!(m.mul_add(x, b), 100.0);
+    /// assert_eq!(m * x + b, 100.0);
     ///
-    /// assert!(abs_difference < 1e-10);
+    /// let one_plus_eps = 1.0_f64 + f64::EPSILON;
+    /// let one_minus_eps = 1.0_f64 - f64::EPSILON;
+    /// let minus_one = -1.0_f64;
+    ///
+    /// // The exact result (1 + eps) * (1 - eps) = 1 - eps * eps.
+    /// assert_eq!(one_plus_eps.mul_add(one_minus_eps, minus_one), -f64::EPSILON * f64::EPSILON);
+    /// // Different rounding with the non-fused multiply and add.
+    /// assert_eq!(one_plus_eps * one_minus_eps + minus_one, 0.0);
     /// ```
     #[rustc_allow_incoherent_impl]
     #[must_use = "method returns a new number and does not mutate the original value"]
@@ -275,6 +299,11 @@ impl f64 {
     /// `self = n * rhs + self.rem_euclid(rhs)`.
     /// In other words, the result is `self / rhs` rounded to the integer `n`
     /// such that `self >= n * rhs`.
+    ///
+    /// # Precision
+    ///
+    /// The result of this operation is guaranteed to be the rounded
+    /// infinite-precision result.
     ///
     /// # Examples
     ///
@@ -309,6 +338,11 @@ impl f64 {
     /// property `self == self.div_euclid(rhs) * rhs + self.rem_euclid(rhs)`
     /// approximately.
     ///
+    /// # Precision
+    ///
+    /// The result of this operation is guaranteed to be the rounded
+    /// infinite-precision result.
+    ///
     /// # Examples
     ///
     /// ```
@@ -337,6 +371,10 @@ impl f64 {
     /// It might have a different sequence of rounding operations than `powf`,
     /// so the results are not guaranteed to agree.
     ///
+    /// # Platform-specific precision
+    ///
+    /// The precision of this function varies by platform and Rust version.
+    ///
     /// # Examples
     ///
     /// ```
@@ -354,6 +392,10 @@ impl f64 {
     }
 
     /// Raises a number to a floating point power.
+    ///
+    /// # Platform-specific precision
+    ///
+    /// The precision of this function varies by platform and Rust version.
     ///
     /// # Examples
     ///
@@ -375,6 +417,12 @@ impl f64 {
     ///
     /// Returns NaN if `self` is a negative number other than `-0.0`.
     ///
+    /// # Precision
+    ///
+    /// The result of this operation is guaranteed to be the rounded
+    /// infinite-precision result. It is specified by IEEE 754 as `squareRoot`
+    /// and guaranteed not to change.
+    ///
     /// # Examples
     ///
     /// ```
@@ -382,9 +430,7 @@ impl f64 {
     /// let negative = -4.0_f64;
     /// let negative_zero = -0.0_f64;
     ///
-    /// let abs_difference = (positive.sqrt() - 2.0).abs();
-    ///
-    /// assert!(abs_difference < 1e-10);
+    /// assert_eq!(positive.sqrt(), 2.0);
     /// assert!(negative.sqrt().is_nan());
     /// assert!(negative_zero.sqrt() == negative_zero);
     /// ```
@@ -397,6 +443,10 @@ impl f64 {
     }
 
     /// Returns `e^(self)`, (the exponential function).
+    ///
+    /// # Platform-specific precision
+    ///
+    /// The precision of this function varies by platform and Rust version.
     ///
     /// # Examples
     ///
@@ -420,6 +470,10 @@ impl f64 {
 
     /// Returns `2^(self)`.
     ///
+    /// # Platform-specific precision
+    ///
+    /// The precision of this function varies by platform and Rust version.
+    ///
     /// # Examples
     ///
     /// ```
@@ -439,6 +493,10 @@ impl f64 {
     }
 
     /// Returns the natural logarithm of the number.
+    ///
+    /// # Platform-specific precision
+    ///
+    /// The precision of this function varies by platform and Rust version.
     ///
     /// # Examples
     ///
@@ -466,6 +524,10 @@ impl f64 {
     /// `self.log2()` can produce more accurate results for base 2, and
     /// `self.log10()` can produce more accurate results for base 10.
     ///
+    /// # Platform-specific precision
+    ///
+    /// The precision of this function varies by platform and Rust version.
+    ///
     /// # Examples
     ///
     /// ```
@@ -486,6 +548,10 @@ impl f64 {
 
     /// Returns the base 2 logarithm of the number.
     ///
+    /// # Platform-specific precision
+    ///
+    /// The precision of this function varies by platform and Rust version.
+    ///
     /// # Examples
     ///
     /// ```
@@ -505,6 +571,10 @@ impl f64 {
     }
 
     /// Returns the base 10 logarithm of the number.
+    ///
+    /// # Platform-specific precision
+    ///
+    /// The precision of this function varies by platform and Rust version.
     ///
     /// # Examples
     ///
@@ -528,6 +598,12 @@ impl f64 {
     ///
     /// * If `self <= other`: `0.0`
     /// * Else: `self - other`
+    ///
+    /// # Platform-specific precision
+    ///
+    /// The precision of this function varies by platform and Rust version.
+    /// This function currently corresponds to the `fdim` from libc on Unix and
+    /// Windows. Note that this might change in the future.
     ///
     /// # Examples
     ///
@@ -561,6 +637,12 @@ impl f64 {
 
     /// Returns the cube root of a number.
     ///
+    /// # Platform-specific precision
+    ///
+    /// The precision of this function varies by platform and Rust version.
+    /// This function currently corresponds to the `cbrt` from libc on Unix and
+    /// Windows. Note that this might change in the future.
+    ///
     /// # Examples
     ///
     /// ```
@@ -584,6 +666,12 @@ impl f64 {
     /// right-angle triangle with other sides having length `x.abs()` and
     /// `y.abs()`.
     ///
+    /// # Platform-specific precision
+    ///
+    /// The precision of this function varies by platform and Rust version.
+    /// This function currently corresponds to the `hypot` from libc on Unix
+    /// and Windows. Note that this might change in the future.
+    ///
     /// # Examples
     ///
     /// ```
@@ -605,6 +693,10 @@ impl f64 {
 
     /// Computes the sine of a number (in radians).
     ///
+    /// # Platform-specific precision
+    ///
+    /// The precision of this function varies by platform and Rust version.
+    ///
     /// # Examples
     ///
     /// ```
@@ -623,6 +715,10 @@ impl f64 {
     }
 
     /// Computes the cosine of a number (in radians).
+    ///
+    /// # Platform-specific precision
+    ///
+    /// The precision of this function varies by platform and Rust version.
     ///
     /// # Examples
     ///
@@ -643,6 +739,12 @@ impl f64 {
 
     /// Computes the tangent of a number (in radians).
     ///
+    /// # Platform-specific precision
+    ///
+    /// The precision of this function varies by platform and Rust version.
+    /// This function currently corresponds to the `tan` from libc on Unix and
+    /// Windows. Note that this might change in the future.
+    ///
     /// # Examples
     ///
     /// ```
@@ -662,6 +764,12 @@ impl f64 {
     /// Computes the arcsine of a number. Return value is in radians in
     /// the range [-pi/2, pi/2] or NaN if the number is outside the range
     /// [-1, 1].
+    ///
+    /// # Platform-specific precision
+    ///
+    /// The precision of this function varies by platform and Rust version.
+    /// This function currently corresponds to the `asin` from libc on Unix and
+    /// Windows. Note that this might change in the future.
     ///
     /// # Examples
     ///
@@ -686,6 +794,12 @@ impl f64 {
     /// the range [0, pi] or NaN if the number is outside the range
     /// [-1, 1].
     ///
+    /// # Platform-specific precision
+    ///
+    /// The precision of this function varies by platform and Rust version.
+    /// This function currently corresponds to the `acos` from libc on Unix and
+    /// Windows. Note that this might change in the future.
+    ///
     /// # Examples
     ///
     /// ```
@@ -707,6 +821,12 @@ impl f64 {
 
     /// Computes the arctangent of a number. Return value is in radians in the
     /// range [-pi/2, pi/2];
+    ///
+    /// # Platform-specific precision
+    ///
+    /// The precision of this function varies by platform and Rust version.
+    /// This function currently corresponds to the `atan` from libc on Unix and
+    /// Windows. Note that this might change in the future.
     ///
     /// # Examples
     ///
@@ -733,6 +853,12 @@ impl f64 {
     /// * `x >= 0`: `arctan(y/x)` -> `[-pi/2, pi/2]`
     /// * `y >= 0`: `arctan(y/x) + pi` -> `(pi/2, pi]`
     /// * `y < 0`: `arctan(y/x) - pi` -> `(-pi, -pi/2)`
+    ///
+    /// # Platform-specific precision
+    ///
+    /// The precision of this function varies by platform and Rust version.
+    /// This function currently corresponds to the `atan2` from libc on Unix
+    /// and Windows. Note that this might change in the future.
     ///
     /// # Examples
     ///
@@ -764,6 +890,12 @@ impl f64 {
     /// Simultaneously computes the sine and cosine of the number, `x`. Returns
     /// `(sin(x), cos(x))`.
     ///
+    /// # Platform-specific precision
+    ///
+    /// The precision of this function varies by platform and Rust version.
+    /// This function currently corresponds to the `(f64::sin(x),
+    /// f64::cos(x))`. Note that this might change in the future.
+    ///
     /// # Examples
     ///
     /// ```
@@ -787,6 +919,12 @@ impl f64 {
     /// Returns `e^(self) - 1` in a way that is accurate even if the
     /// number is close to zero.
     ///
+    /// # Platform-specific precision
+    ///
+    /// The precision of this function varies by platform and Rust version.
+    /// This function currently corresponds to the `expm1` from libc on Unix
+    /// and Windows. Note that this might change in the future.
+    ///
     /// # Examples
     ///
     /// ```
@@ -809,6 +947,12 @@ impl f64 {
     /// Returns `ln(1+n)` (natural logarithm) more accurately than if
     /// the operations were performed separately.
     ///
+    /// # Platform-specific precision
+    ///
+    /// The precision of this function varies by platform and Rust version.
+    /// This function currently corresponds to the `log1p` from libc on Unix
+    /// and Windows. Note that this might change in the future.
+    ///
     /// # Examples
     ///
     /// ```
@@ -830,6 +974,12 @@ impl f64 {
     }
 
     /// Hyperbolic sine function.
+    ///
+    /// # Platform-specific precision
+    ///
+    /// The precision of this function varies by platform and Rust version.
+    /// This function currently corresponds to the `sinh` from libc on Unix
+    /// and Windows. Note that this might change in the future.
     ///
     /// # Examples
     ///
@@ -854,6 +1004,12 @@ impl f64 {
 
     /// Hyperbolic cosine function.
     ///
+    /// # Platform-specific precision
+    ///
+    /// The precision of this function varies by platform and Rust version.
+    /// This function currently corresponds to the `cosh` from libc on Unix
+    /// and Windows. Note that this might change in the future.
+    ///
     /// # Examples
     ///
     /// ```
@@ -876,6 +1032,12 @@ impl f64 {
     }
 
     /// Hyperbolic tangent function.
+    ///
+    /// # Platform-specific precision
+    ///
+    /// The precision of this function varies by platform and Rust version.
+    /// This function currently corresponds to the `tanh` from libc on Unix
+    /// and Windows. Note that this might change in the future.
     ///
     /// # Examples
     ///
@@ -900,6 +1062,10 @@ impl f64 {
 
     /// Inverse hyperbolic sine function.
     ///
+    /// # Platform-specific precision
+    ///
+    /// The precision of this function varies by platform and Rust version.
+    ///
     /// # Examples
     ///
     /// ```
@@ -922,6 +1088,10 @@ impl f64 {
     }
 
     /// Inverse hyperbolic cosine function.
+    ///
+    /// # Platform-specific precision
+    ///
+    /// The precision of this function varies by platform and Rust version.
     ///
     /// # Examples
     ///
@@ -948,6 +1118,10 @@ impl f64 {
 
     /// Inverse hyperbolic tangent function.
     ///
+    /// # Platform-specific precision
+    ///
+    /// The precision of this function varies by platform and Rust version.
+    ///
     /// # Examples
     ///
     /// ```
@@ -968,6 +1142,12 @@ impl f64 {
     }
 
     /// Gamma function.
+    ///
+    /// # Platform-specific precision
+    ///
+    /// The precision of this function varies by platform and Rust version.
+    /// This function currently corresponds to the `tgamma` from libc on Unix
+    /// and Windows. Note that this might change in the future.
     ///
     /// # Examples
     ///
@@ -990,6 +1170,12 @@ impl f64 {
     /// Natural logarithm of the absolute value of the gamma function
     ///
     /// The integer part of the tuple indicates the sign of the gamma function.
+    ///
+    /// # Platform-specific precision
+    ///
+    /// The precision of this function varies by platform and Rust version.
+    /// This function currently corresponds to the `lgamma_r` from libc on Unix
+    /// and Windows. Note that this might change in the future.
     ///
     /// # Examples
     ///

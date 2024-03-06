@@ -7,6 +7,15 @@ LL | |     where T: CoerceUnsized<U> {}
    |
    = note: expected a single field to be coerced, none found
 
-error: aborting due to 1 previous error
+error[E0392]: type parameter `T` is never used
+  --> $DIR/E0374.rs:4:12
+   |
+LL | struct Foo<T: ?Sized> {
+   |            ^ unused type parameter
+   |
+   = help: consider removing `T`, referring to it in a field, or using a marker such as `PhantomData`
 
-For more information about this error, try `rustc --explain E0374`.
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0374, E0392.
+For more information about an error, try `rustc --explain E0374`.

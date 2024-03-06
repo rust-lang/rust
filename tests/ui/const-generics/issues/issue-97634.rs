@@ -1,4 +1,4 @@
-// build-pass
+//@ build-pass
 
 pub enum Register<const N: u16> {
     Field0 = 40,

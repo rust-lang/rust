@@ -1,4 +1,4 @@
-// check-pass
+//@ check-pass
 //
 // Check that we don't ignore private fields in usefulness checking
 #![deny(unreachable_patterns)]

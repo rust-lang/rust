@@ -1,4 +1,4 @@
-// check-pass
+//@ check-pass
 //
 #![allow(mixed_script_confusables, non_camel_case_types)]
 

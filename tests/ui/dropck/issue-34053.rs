@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 use std::sync::atomic::{AtomicUsize, Ordering};
 
 static DROP_COUNTER: AtomicUsize = AtomicUsize::new(0);

@@ -1,5 +1,5 @@
 // Check what happens when `fun` is used to define a function, instead of `fn`
-// edition:2021
+//@ edition:2021
 
 #![allow(dead_code)]
 

@@ -22,8 +22,12 @@ parse_associated_static_item_not_allowed = associated `static` items are not all
 
 parse_async_block_in_2015 = `async` blocks are only allowed in Rust 2018 or later
 
+parse_async_bound_modifier_in_2015 = `async` trait bounds are only allowed in Rust 2018 or later
+
 parse_async_fn_in_2015 = `async fn` is not permitted in Rust 2015
     .label = to use `async fn`, switch to Rust 2018 or later
+
+parse_async_impl = `async` trait implementations are unsupported
 
 parse_async_move_block_in_2015 = `async move` blocks are only allowed in Rust 2018 or later
 
@@ -279,9 +283,6 @@ parse_found_expr_would_be_stmt = expected expression, found `{$token}`
 
 parse_function_body_equals_expr = function body cannot be `= expression;`
     .suggestion = surround the expression with `{"{"}` and `{"}"}` instead of `=` and `;`
-
-parse_gen_fn = `gen` functions are not yet implemented
-    .help = for now you can use `gen {"{}"}` blocks and return `impl Iterator` instead
 
 parse_generic_args_in_pat_require_turbofish_syntax = generic args in patterns require the turbofish syntax
 
@@ -771,6 +772,20 @@ parse_unexpected_const_param_declaration = unexpected `const` parameter declarat
 
 parse_unexpected_default_value_for_lifetime_in_generic_parameters = unexpected default lifetime parameter
     .label = lifetime parameters cannot have default values
+
+parse_unexpected_expr_in_pat =
+    expected {$is_bound ->
+        [true] a pattern range bound
+       *[false] a pattern
+    }, found {$is_method_call ->
+        [true] a method call
+       *[false] an expression
+    }
+
+    .label = {$is_method_call ->
+        [true] method calls
+       *[false] arbitrary expressions
+    } are not allowed in patterns
 
 parse_unexpected_if_with_if = unexpected `if` in the condition expression
     .suggestion = remove the `if`

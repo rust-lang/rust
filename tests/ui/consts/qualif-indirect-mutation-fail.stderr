@@ -1,20 +1,54 @@
-error[E0493]: destructor of `(u32, Option<String>)` cannot be evaluated at compile-time
-  --> $DIR/qualif-indirect-mutation-fail.rs:9:9
-   |
-LL |     let mut a: (u32, Option<String>) = (0, None);
-   |         ^^^^^ the destructor for this type cannot be evaluated in constant functions
-
 error[E0493]: destructor of `Option<String>` cannot be evaluated at compile-time
   --> $DIR/qualif-indirect-mutation-fail.rs:15:9
    |
 LL |     let mut x = None;
    |         ^^^^^ the destructor for this type cannot be evaluated in constants
 
+error[E0080]: evaluation of constant value failed
+  --> $SRC_DIR/core/src/ptr/mod.rs:LL:COL
+   |
+   = note: calling non-const function `<Vec<u8> as Drop>::drop`
+   |
+note: inside `std::ptr::drop_in_place::<Vec<u8>> - shim(Some(Vec<u8>))`
+  --> $SRC_DIR/core/src/ptr/mod.rs:LL:COL
+note: inside `std::ptr::drop_in_place::<String> - shim(Some(String))`
+  --> $SRC_DIR/core/src/ptr/mod.rs:LL:COL
+note: inside `std::ptr::drop_in_place::<Option<String>> - shim(Some(Option<String>))`
+  --> $SRC_DIR/core/src/ptr/mod.rs:LL:COL
+note: inside `A1`
+  --> $DIR/qualif-indirect-mutation-fail.rs:21:1
+   |
+LL | };
+   | ^
+
 error[E0493]: destructor of `Option<String>` cannot be evaluated at compile-time
   --> $DIR/qualif-indirect-mutation-fail.rs:31:9
    |
 LL |     let _z = x;
    |         ^^ the destructor for this type cannot be evaluated in constants
+
+error[E0080]: evaluation of constant value failed
+  --> $SRC_DIR/core/src/ptr/mod.rs:LL:COL
+   |
+   = note: calling non-const function `<Vec<u8> as Drop>::drop`
+   |
+note: inside `std::ptr::drop_in_place::<Vec<u8>> - shim(Some(Vec<u8>))`
+  --> $SRC_DIR/core/src/ptr/mod.rs:LL:COL
+note: inside `std::ptr::drop_in_place::<String> - shim(Some(String))`
+  --> $SRC_DIR/core/src/ptr/mod.rs:LL:COL
+note: inside `std::ptr::drop_in_place::<Option<String>> - shim(Some(Option<String>))`
+  --> $SRC_DIR/core/src/ptr/mod.rs:LL:COL
+note: inside `A2`
+  --> $DIR/qualif-indirect-mutation-fail.rs:32:1
+   |
+LL | };
+   | ^
+
+error[E0493]: destructor of `(u32, Option<String>)` cannot be evaluated at compile-time
+  --> $DIR/qualif-indirect-mutation-fail.rs:9:9
+   |
+LL |     let mut a: (u32, Option<String>) = (0, None);
+   |         ^^^^^ the destructor for this type cannot be evaluated in constant functions
 
 error[E0493]: destructor of `Option<T>` cannot be evaluated at compile-time
   --> $DIR/qualif-indirect-mutation-fail.rs:36:9
@@ -52,6 +86,7 @@ error[E0493]: destructor of `Option<String>` cannot be evaluated at compile-time
 LL |     let x: Option<String> = None;
    |         ^ the destructor for this type cannot be evaluated in constant functions
 
-error: aborting due to 9 previous errors
+error: aborting due to 11 previous errors
 
-For more information about this error, try `rustc --explain E0493`.
+Some errors have detailed explanations: E0080, E0493.
+For more information about an error, try `rustc --explain E0080`.

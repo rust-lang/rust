@@ -1,7 +1,7 @@
 // The canonical query `Projection(<get_rpit as FnOnce>::Output = Opaque)`
 // is the *only* site that defines `Opaque` in MIR typeck.
 //
-// check-pass
+//@ check-pass
 
 #![feature(type_alias_impl_trait)]
 

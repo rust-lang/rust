@@ -14,8 +14,11 @@ use rustc_data_structures::memmap::Mmap;
 use rustc_data_structures::profiling::{SelfProfilerRef, VerboseTimingGuard};
 use rustc_data_structures::sync::Lrc;
 use rustc_errors::emitter::Emitter;
-use rustc_errors::{translation::Translate, DiagCtxt, FatalError, Level};
-use rustc_errors::{DiagnosticBuilder, DiagnosticMessage, ErrCode, Style};
+use rustc_errors::translation::Translate;
+use rustc_errors::{
+    Diag, DiagArgMap, DiagCtxt, DiagMessage, ErrCode, FatalError, FluentBundle, Level, MultiSpan,
+    Style,
+};
 use rustc_fs_util::link_or_copy;
 use rustc_hir::def_id::{CrateNum, LOCAL_CRATE};
 use rustc_incremental::{
@@ -36,7 +39,6 @@ use rustc_target::spec::{MergeFunctions, SanitizerSet};
 
 use crate::errors::ErrorCreatingRemarkDir;
 use std::any::Any;
-use std::borrow::Cow;
 use std::fs;
 use std::io;
 use std::marker::PhantomData;
@@ -93,6 +95,7 @@ pub struct ModuleConfig {
 
     pub sanitizer: SanitizerSet,
     pub sanitizer_recover: SanitizerSet,
+    pub sanitizer_dataflow_abilist: Vec<String>,
     pub sanitizer_memory_track_origins: usize,
 
     // Flags indicating which outputs to produce.
@@ -195,6 +198,10 @@ impl ModuleConfig {
             ),
 
             sanitizer: if_regular!(sess.opts.unstable_opts.sanitizer, SanitizerSet::empty()),
+            sanitizer_dataflow_abilist: if_regular!(
+                sess.opts.unstable_opts.sanitizer_dataflow_abilist.clone(),
+                Vec::new()
+            ),
             sanitizer_recover: if_regular!(
                 sess.opts.unstable_opts.sanitizer_recover,
                 SanitizerSet::empty()
@@ -371,7 +378,7 @@ pub struct CodegenContext<B: WriteBackendMethods> {
 
 impl<B: WriteBackendMethods> CodegenContext<B> {
     pub fn create_dcx(&self) -> DiagCtxt {
-        DiagCtxt::with_emitter(Box::new(self.diag_emitter.clone()))
+        DiagCtxt::new(Box::new(self.diag_emitter.clone()))
     }
 
     pub fn config(&self, kind: ModuleKind) -> &ModuleConfig {
@@ -911,7 +918,9 @@ fn execute_copy_from_cache_work_item<B: ExtraBackendMethods>(
 
     let object = load_from_incr_comp_dir(
         cgcx.output_filenames.temp_path(OutputType::Object, Some(&module.name)),
-        module.source.saved_files.get("o").expect("no saved object file in work product"),
+        module.source.saved_files.get("o").unwrap_or_else(|| {
+            cgcx.create_dcx().emit_fatal(errors::NoSavedObjectFile { cgu_name: &module.name })
+        }),
     );
     let dwarf_object =
         module.source.saved_files.get("dwo").as_ref().and_then(|saved_dwarf_object_file| {
@@ -995,13 +1004,29 @@ pub(crate) enum Message<B: WriteBackendMethods> {
 /// process another codegen unit.
 pub struct CguMessage;
 
-type DiagnosticArgName<'source> = Cow<'source, str>;
-
+// A cut-down version of `rustc_errors::DiagInner` that impls `Send`, which
+// can be used to send diagnostics from codegen threads to the main thread.
+// It's missing the following fields from `rustc_errors::DiagInner`.
+// - `span`: it doesn't impl `Send`.
+// - `suggestions`: it doesn't impl `Send`, and isn't used for codegen
+//   diagnostics.
+// - `sort_span`: it doesn't impl `Send`.
+// - `is_lint`: lints aren't relevant during codegen.
+// - `emitted_at`: not used for codegen diagnostics.
 struct Diagnostic {
-    msgs: Vec<(DiagnosticMessage, Style)>,
-    args: FxHashMap<DiagnosticArgName<'static>, rustc_errors::DiagnosticArgValue<'static>>,
+    level: Level,
+    messages: Vec<(DiagMessage, Style)>,
     code: Option<ErrCode>,
-    lvl: Level,
+    children: Vec<Subdiagnostic>,
+    args: DiagArgMap,
+}
+
+// A cut-down version of `rustc_errors::Subdiag` that impls `Send`. It's
+// missing the following fields from `rustc_errors::Subdiag`.
+// - `span`: it doesn't impl `Send`.
+pub struct Subdiagnostic {
+    level: Level,
+    messages: Vec<(DiagMessage, Style)>,
 }
 
 #[derive(PartialEq, Clone, Copy, Debug)]
@@ -1764,7 +1789,6 @@ fn spawn_work<'a, B: ExtraBackendMethods>(
 enum SharedEmitterMessage {
     Diagnostic(Diagnostic),
     InlineAsmError(u32, String, Level, Option<(String, Vec<InnerSpan>)>),
-    AbortIfErrors,
     Fatal(String),
 }
 
@@ -1800,34 +1824,39 @@ impl SharedEmitter {
 }
 
 impl Translate for SharedEmitter {
-    fn fluent_bundle(&self) -> Option<&Lrc<rustc_errors::FluentBundle>> {
+    fn fluent_bundle(&self) -> Option<&Lrc<FluentBundle>> {
         None
     }
 
-    fn fallback_fluent_bundle(&self) -> &rustc_errors::FluentBundle {
+    fn fallback_fluent_bundle(&self) -> &FluentBundle {
         panic!("shared emitter attempted to translate a diagnostic");
     }
 }
 
 impl Emitter for SharedEmitter {
-    fn emit_diagnostic(&mut self, diag: &rustc_errors::Diagnostic) {
-        let args: FxHashMap<Cow<'_, str>, rustc_errors::DiagnosticArgValue<'_>> =
-            diag.args().map(|(name, arg)| (name.clone(), arg.clone())).collect();
-        drop(self.sender.send(SharedEmitterMessage::Diagnostic(Diagnostic {
-            msgs: diag.messages.clone(),
-            args: args.clone(),
-            code: diag.code.clone(),
-            lvl: diag.level(),
-        })));
-        for child in &diag.children {
-            drop(self.sender.send(SharedEmitterMessage::Diagnostic(Diagnostic {
-                msgs: child.messages.clone(),
-                args: args.clone(),
-                code: None,
-                lvl: child.level,
-            })));
-        }
-        drop(self.sender.send(SharedEmitterMessage::AbortIfErrors));
+    fn emit_diagnostic(&mut self, mut diag: rustc_errors::DiagInner) {
+        // Check that we aren't missing anything interesting when converting to
+        // the cut-down local `DiagInner`.
+        assert_eq!(diag.span, MultiSpan::new());
+        assert_eq!(diag.suggestions, Ok(vec![]));
+        assert_eq!(diag.sort_span, rustc_span::DUMMY_SP);
+        assert_eq!(diag.is_lint, None);
+        // No sensible check for `diag.emitted_at`.
+
+        let args = mem::replace(&mut diag.args, DiagArgMap::default());
+        drop(
+            self.sender.send(SharedEmitterMessage::Diagnostic(Diagnostic {
+                level: diag.level(),
+                messages: diag.messages,
+                code: diag.code,
+                children: diag
+                    .children
+                    .into_iter()
+                    .map(|child| Subdiagnostic { level: child.level, messages: child.messages })
+                    .collect(),
+                args,
+            })),
+        );
     }
 
     fn source_map(&self) -> Option<&Lrc<SourceMap>> {
@@ -1852,18 +1881,29 @@ impl SharedEmitterMain {
 
             match message {
                 Ok(SharedEmitterMessage::Diagnostic(diag)) => {
+                    // The diagnostic has been received on the main thread.
+                    // Convert it back to a full `Diagnostic` and emit.
                     let dcx = sess.dcx();
-                    let mut d = rustc_errors::Diagnostic::new_with_messages(diag.lvl, diag.msgs);
-                    if let Some(code) = diag.code {
-                        d.code(code);
-                    }
-                    d.replace_args(diag.args);
+                    let mut d =
+                        rustc_errors::DiagInner::new_with_messages(diag.level, diag.messages);
+                    d.code = diag.code; // may be `None`, that's ok
+                    d.children = diag
+                        .children
+                        .into_iter()
+                        .map(|sub| rustc_errors::Subdiag {
+                            level: sub.level,
+                            messages: sub.messages,
+                            span: MultiSpan::new(),
+                        })
+                        .collect();
+                    d.args = diag.args;
                     dcx.emit_diagnostic(d);
+                    sess.dcx().abort_if_errors();
                 }
                 Ok(SharedEmitterMessage::InlineAsmError(cookie, msg, level, source)) => {
                     assert!(matches!(level, Level::Error | Level::Warning | Level::Note));
                     let msg = msg.strip_prefix("error: ").unwrap_or(&msg).to_string();
-                    let mut err = DiagnosticBuilder::<()>::new(sess.dcx(), level, msg);
+                    let mut err = Diag::<()>::new(sess.dcx(), level, msg);
 
                     // If the cookie is 0 then we don't have span information.
                     if cookie != 0 {
@@ -1890,9 +1930,6 @@ impl SharedEmitterMain {
                     }
 
                     err.emit();
-                }
-                Ok(SharedEmitterMessage::AbortIfErrors) => {
-                    sess.dcx().abort_if_errors();
                 }
                 Ok(SharedEmitterMessage::Fatal(msg)) => {
                     sess.dcx().fatal(msg);

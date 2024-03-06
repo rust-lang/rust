@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 #![allow(dead_code)]
 // Test that a type which is covariant with respect to its region
 // parameter is successful when used in a covariant way.
@@ -9,7 +9,7 @@
 // This is covariant with respect to 'a, meaning that
 // Covariant<'foo> <: Covariant<'static> because
 // 'foo <= 'static
-// pretty-expanded FIXME #23616
+//@ pretty-expanded FIXME #23616
 
 struct Covariant<'a> {
     f: extern "Rust" fn(&'a isize)

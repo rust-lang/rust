@@ -197,7 +197,7 @@ pub struct ClosureTypeInfo<'tcx> {
 }
 
 fn closure_typeinfo<'tcx>(tcx: TyCtxt<'tcx>, def: LocalDefId) -> ClosureTypeInfo<'tcx> {
-    debug_assert!(tcx.is_closure_or_coroutine(def.to_def_id()));
+    debug_assert!(tcx.is_closure_like(def.to_def_id()));
     let typeck_results = tcx.typeck(def);
     let user_provided_sig = typeck_results.user_provided_sigs[&def];
     let captures = typeck_results.closure_min_captures_flattened(def);
@@ -217,7 +217,7 @@ impl<'tcx> TyCtxt<'tcx> {
     }
 
     pub fn closure_captures(self, def_id: LocalDefId) -> &'tcx [&'tcx ty::CapturedPlace<'tcx>] {
-        if !self.is_closure_or_coroutine(def_id.to_def_id()) {
+        if !self.is_closure_like(def_id.to_def_id()) {
             return &[];
         };
         self.closure_typeinfo(def_id).captures

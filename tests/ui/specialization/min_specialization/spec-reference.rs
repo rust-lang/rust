@@ -1,6 +1,6 @@
 // Check that lifetime parameters are allowed in specializing impls.
 
-// check-pass
+//@ check-pass
 
 #![feature(min_specialization)]
 

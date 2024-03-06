@@ -2,7 +2,7 @@ error[E0277]: the trait bound `String: Copy` is not satisfied
   --> $DIR/trait-error.rs:5:6
    |
 LL |     [Foo(String::new()); 4];
-   |      ^^^^^^^^^^^^^^^^^^ the trait `Copy` is not implemented for `String`
+   |      ^^^^^^^^^^^^^^^^^^ the trait `Copy` is not implemented for `String`, which is required by `Foo<String>: Copy`
    |
 note: required for `Foo<String>` to implement `Copy`
   --> $DIR/trait-error.rs:1:10

@@ -312,7 +312,7 @@ pub(crate) fn reverse_fixups(tt: &mut Subtree, undo_info: &SyntaxFixupUndoInfo) 
 }
 
 fn reverse_fixups_(tt: &mut Subtree, undo_info: &[Subtree]) {
-    let tts = std::mem::take(&mut tt.token_trees);
+    let tts = std::mem::take(&mut tt.token_trees).into_vec();
     tt.token_trees = tts
         .into_iter()
         // delete all fake nodes
@@ -343,7 +343,7 @@ fn reverse_fixups_(tt: &mut Subtree, undo_info: &[Subtree]) {
                     // we have a fake node here, we need to replace it again with the original
                     let original = undo_info[u32::from(leaf.span().range.start()) as usize].clone();
                     if original.delimiter.kind == tt::DelimiterKind::Invisible {
-                        original.token_trees.into()
+                        SmallVec::from(original.token_trees.into_vec())
                     } else {
                         SmallVec::from_const([original.into()])
                     }
@@ -383,7 +383,7 @@ mod tests {
     fn check_subtree_eq(a: &tt::Subtree, b: &tt::Subtree) -> bool {
         a.delimiter.kind == b.delimiter.kind
             && a.token_trees.len() == b.token_trees.len()
-            && a.token_trees.iter().zip(&b.token_trees).all(|(a, b)| check_tt_eq(a, b))
+            && a.token_trees.iter().zip(b.token_trees.iter()).all(|(a, b)| check_tt_eq(a, b))
     }
 
     fn check_tt_eq(a: &tt::TokenTree, b: &tt::TokenTree) -> bool {

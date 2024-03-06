@@ -18,7 +18,9 @@
 #![recursion_limit = "256"]
 #![warn(rustc::internal)]
 #![allow(clippy::collapsible_if, clippy::collapsible_else_if)]
+#![allow(rustc::diagnostic_outside_of_impl)]
 #![allow(rustc::potential_query_instability)]
+#![allow(rustc::untranslatable_diagnostic)]
 
 extern crate thin_vec;
 #[macro_use]
@@ -76,8 +78,7 @@ use std::io::{self, IsTerminal};
 use std::process;
 use std::sync::{atomic::AtomicBool, Arc};
 
-use rustc_driver::abort_on_err;
-use rustc_errors::ErrorGuaranteed;
+use rustc_errors::{ErrorGuaranteed, FatalError};
 use rustc_interface::interface;
 use rustc_middle::ty::TyCtxt;
 use rustc_session::config::{make_crate_type_option, ErrorOutputType, RustcOptGroup};
@@ -177,13 +178,16 @@ pub fn main() {
     init_logging(&early_dcx);
     rustc_driver::init_logger(&early_dcx, rustc_log::LoggerConfig::from_env("RUSTDOC_LOG"));
 
-    let exit_code = rustc_driver::catch_with_exit_code(|| match get_args(&early_dcx) {
-        Some(args) => main_args(&mut early_dcx, &args, using_internal_features),
-        _ =>
-        {
-            #[allow(deprecated)]
-            Err(ErrorGuaranteed::unchecked_claim_error_was_emitted())
-        }
+    let exit_code = rustc_driver::catch_with_exit_code(|| {
+        let args = env::args_os()
+            .enumerate()
+            .map(|(i, arg)| {
+                arg.into_string().unwrap_or_else(|arg| {
+                    early_dcx.early_fatal(format!("argument {i} is not valid Unicode: {arg:?}"))
+                })
+            })
+            .collect::<Vec<_>>();
+        main_args(&mut early_dcx, &args, using_internal_features)
     });
     process::exit(exit_code);
 }
@@ -217,19 +221,6 @@ fn init_logging(early_dcx: &EarlyDiagCtxt) {
     use tracing_subscriber::layer::SubscriberExt;
     let subscriber = tracing_subscriber::Registry::default().with(filter).with(layer);
     tracing::subscriber::set_global_default(subscriber).unwrap();
-}
-
-fn get_args(early_dcx: &EarlyDiagCtxt) -> Option<Vec<String>> {
-    env::args_os()
-        .enumerate()
-        .map(|(i, arg)| {
-            arg.into_string()
-                .map_err(|arg| {
-                    early_dcx.early_warn(format!("Argument {i} is not valid Unicode: {arg:?}"));
-                })
-                .ok()
-        })
-        .collect()
 }
 
 fn opts() -> Vec<RustcOptGroup> {
@@ -730,15 +721,8 @@ fn main_args(
     // Note that we discard any distinction between different non-zero exit
     // codes from `from_matches` here.
     let (options, render_options) = match config::Options::from_matches(early_dcx, &matches, args) {
-        Ok(opts) => opts,
-        Err(code) => {
-            return if code == 0 {
-                Ok(())
-            } else {
-                #[allow(deprecated)]
-                Err(ErrorGuaranteed::unchecked_claim_error_was_emitted())
-            };
-        }
+        Some(opts) => opts,
+        None => return Ok(()),
     };
 
     let diag =
@@ -794,7 +778,7 @@ fn main_args(
         }
 
         compiler.enter(|queries| {
-            let mut gcx = abort_on_err(queries.global_ctxt(), sess);
+            let Ok(mut gcx) = queries.global_ctxt() else { FatalError.raise() };
             if sess.dcx().has_errors().is_some() {
                 sess.dcx().fatal("Compilation failed, aborting rustdoc");
             }
@@ -802,7 +786,7 @@ fn main_args(
             gcx.enter(|tcx| {
                 let (krate, render_opts, mut cache) = sess.time("run_global_ctxt", || {
                     core::run_global_ctxt(tcx, show_coverage, render_options, output_format)
-                });
+                })?;
                 info!("finished with rustc");
 
                 if let Some(options) = scrape_examples_options {

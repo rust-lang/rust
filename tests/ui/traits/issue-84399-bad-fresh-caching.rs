@@ -1,5 +1,5 @@
-// compile-flags: --crate-type lib
-// check-pass
+//@ compile-flags: --crate-type lib
+//@ check-pass
 //
 // Regression test for issue #84399
 // Tests that we keep the full `ParamEnv` when

@@ -1,4 +1,4 @@
-// aux-build:extern-issue-98562.rs
+//@ aux-build:extern-issue-98562.rs
 
 extern crate extern_issue_98562;
 use extern_issue_98562::TraitA;

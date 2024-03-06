@@ -1,5 +1,5 @@
-// revisions: nofallback fallback
-//[nofallback] check-pass
+//@ revisions: nofallback fallback
+//@[nofallback] check-pass
 
 #![cfg_attr(fallback, feature(never_type, never_type_fallback))]
 

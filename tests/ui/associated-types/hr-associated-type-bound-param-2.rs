@@ -8,6 +8,8 @@ where
     type W: ?Sized;
     fn h(&self, x: &T::W) {
         <T::W>::clone(x);
+        //~^ the trait bound `str: Clone` is not satisfied
+        //~| the trait bound `str: Clone` is not satisfied
     }
 }
 
@@ -18,4 +20,5 @@ impl<'a> Z<'a, u16> for u16 {
 
 fn main() {
     1u16.h("abc");
+    //~^ ERROR Clone` is not satisfied
 }

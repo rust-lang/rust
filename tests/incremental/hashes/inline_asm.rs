@@ -5,13 +5,13 @@
 // and make sure that the hash has changed, then change nothing between rev2 and
 // rev3 and make sure that the hash has not changed.
 
-// build-pass (FIXME(62277): could be check-pass?)
-// revisions: cfail1 cfail2 cfail3 cfail4 cfail5 cfail6
-// compile-flags: -Z query-dep-graph -O
-// needs-asm-support
-// [cfail1]compile-flags: -Zincremental-ignore-spans
-// [cfail2]compile-flags: -Zincremental-ignore-spans
-// [cfail3]compile-flags: -Zincremental-ignore-spans
+//@ build-pass (FIXME(62277): could be check-pass?)
+//@ revisions: cfail1 cfail2 cfail3 cfail4 cfail5 cfail6
+//@ compile-flags: -Z query-dep-graph -O
+//@ needs-asm-support
+//@ [cfail1]compile-flags: -Zincremental-ignore-spans
+//@ [cfail2]compile-flags: -Zincremental-ignore-spans
+//@ [cfail3]compile-flags: -Zincremental-ignore-spans
 
 #![allow(warnings)]
 #![feature(rustc_attrs)]
@@ -33,9 +33,9 @@ pub fn change_template(_a: i32) -> i32 {
 }
 
 #[cfg(not(any(cfail1,cfail4)))]
-#[rustc_clean(cfg="cfail2", except="hir_owner_nodes, optimized_mir")]
+#[rustc_clean(cfg="cfail2", except="opt_hir_owner_nodes, optimized_mir")]
 #[rustc_clean(cfg="cfail3")]
-#[rustc_clean(cfg="cfail5", except="hir_owner_nodes, optimized_mir")]
+#[rustc_clean(cfg="cfail5", except="opt_hir_owner_nodes, optimized_mir")]
 #[rustc_clean(cfg="cfail6")]
 #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
 pub fn change_template(_a: i32) -> i32 {
@@ -66,9 +66,9 @@ pub fn change_output(a: i32) -> i32 {
 }
 
 #[cfg(not(any(cfail1,cfail4)))]
-#[rustc_clean(cfg="cfail2", except="hir_owner_nodes, optimized_mir")]
+#[rustc_clean(cfg="cfail2", except="opt_hir_owner_nodes, optimized_mir")]
 #[rustc_clean(cfg="cfail3")]
-#[rustc_clean(cfg="cfail5", except="hir_owner_nodes, optimized_mir")]
+#[rustc_clean(cfg="cfail5", except="opt_hir_owner_nodes, optimized_mir")]
 #[rustc_clean(cfg="cfail6")]
 #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
 pub fn change_output(a: i32) -> i32 {
@@ -100,9 +100,9 @@ pub fn change_input(_a: i32, _b: i32) -> i32 {
 }
 
 #[cfg(not(any(cfail1,cfail4)))]
-#[rustc_clean(cfg="cfail2", except="hir_owner_nodes, optimized_mir")]
+#[rustc_clean(cfg="cfail2", except="opt_hir_owner_nodes, optimized_mir")]
 #[rustc_clean(cfg="cfail3")]
-#[rustc_clean(cfg="cfail5", except="hir_owner_nodes, optimized_mir")]
+#[rustc_clean(cfg="cfail5", except="opt_hir_owner_nodes, optimized_mir")]
 #[rustc_clean(cfg="cfail6")]
 #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
 pub fn change_input(_a: i32, _b: i32) -> i32 {
@@ -133,9 +133,9 @@ pub fn change_input_constraint(_a: i32, _b: i32) -> i32 {
 }
 
 #[cfg(not(any(cfail1,cfail4)))]
-#[rustc_clean(cfg="cfail2", except="hir_owner_nodes, optimized_mir")]
+#[rustc_clean(cfg="cfail2", except="opt_hir_owner_nodes, optimized_mir")]
 #[rustc_clean(cfg="cfail3")]
-#[rustc_clean(cfg="cfail5", except="hir_owner_nodes, optimized_mir")]
+#[rustc_clean(cfg="cfail5", except="opt_hir_owner_nodes, optimized_mir")]
 #[rustc_clean(cfg="cfail6")]
 #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
 pub fn change_input_constraint(_a: i32, _b: i32) -> i32 {
@@ -166,9 +166,9 @@ pub fn change_clobber(_a: i32) -> i32 {
 }
 
 #[cfg(not(any(cfail1,cfail4)))]
-#[rustc_clean(cfg="cfail2", except="hir_owner_nodes, optimized_mir")]
+#[rustc_clean(cfg="cfail2", except="opt_hir_owner_nodes, optimized_mir")]
 #[rustc_clean(cfg="cfail3")]
-#[rustc_clean(cfg="cfail5", except="hir_owner_nodes, optimized_mir")]
+#[rustc_clean(cfg="cfail5", except="opt_hir_owner_nodes, optimized_mir")]
 #[rustc_clean(cfg="cfail6")]
 #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
 pub fn change_clobber(_a: i32) -> i32 {
@@ -201,9 +201,9 @@ pub fn change_options(_a: i32) -> i32 {
 }
 
 #[cfg(not(any(cfail1,cfail4)))]
-#[rustc_clean(cfg="cfail2", except="hir_owner_nodes, optimized_mir")]
+#[rustc_clean(cfg="cfail2", except="opt_hir_owner_nodes, optimized_mir")]
 #[rustc_clean(cfg="cfail3")]
-#[rustc_clean(cfg="cfail5", except="hir_owner_nodes, optimized_mir")]
+#[rustc_clean(cfg="cfail5", except="opt_hir_owner_nodes, optimized_mir")]
 #[rustc_clean(cfg="cfail6")]
 #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
 pub fn change_options(_a: i32) -> i32 {

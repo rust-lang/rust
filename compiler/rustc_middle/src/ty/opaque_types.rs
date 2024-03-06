@@ -164,9 +164,9 @@ impl<'tcx> TypeFolder<TyCtxt<'tcx>> for ReverseMapper<'tcx> {
             }
 
             ty::Param(param) => {
-                // Look it up in the substitution list.
+                // Look it up in the generic parameters list.
                 match self.map.get(&ty.into()).map(|k| k.unpack()) {
-                    // Found it in the substitution list; replace with the parameter from the
+                    // Found it in the generic parameters list; replace with the parameter from the
                     // opaque type.
                     Some(GenericArgKind::Type(t1)) => t1,
                     Some(u) => panic!("type mapped to unexpected kind: {u:?}"),
@@ -199,9 +199,9 @@ impl<'tcx> TypeFolder<TyCtxt<'tcx>> for ReverseMapper<'tcx> {
         // Find a const parameter
         match ct.kind() {
             ty::ConstKind::Param(..) => {
-                // Look it up in the substitution list.
+                // Look it up in the generic parameters list.
                 match self.map.get(&ct.into()).map(|k| k.unpack()) {
-                    // Found it in the substitution list, replace with the parameter from the
+                    // Found it in the generic parameters list, replace with the parameter from the
                     // opaque type.
                     Some(GenericArgKind::Const(c1)) => c1,
                     Some(u) => panic!("const mapped to unexpected kind: {u:?}"),

@@ -1,6 +1,6 @@
 // Check that we don't ICE for irrefutable or-patterns in function parameters
 
-// check-pass
+//@ check-pass
 
 fn foo((Some(_) | None): Option<u32>) {}
 

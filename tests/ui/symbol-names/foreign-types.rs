@@ -1,5 +1,5 @@
-// build-fail
-// compile-flags: -C symbol-mangling-version=v0
+//@ build-fail
+//@ compile-flags: -C symbol-mangling-version=v0
 
 #![feature(extern_types)]
 #![feature(rustc_attrs)]

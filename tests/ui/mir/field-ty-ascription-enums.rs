@@ -1,4 +1,4 @@
-// build-pass
+//@ build-pass
 
 enum Foo<T> {
     Var(T),

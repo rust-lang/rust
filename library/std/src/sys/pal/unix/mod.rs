@@ -20,14 +20,11 @@ pub mod io;
 pub mod kernel_copy;
 #[cfg(target_os = "l4re")]
 mod l4re;
-pub mod locks;
-pub mod memchr;
 #[cfg(not(target_os = "l4re"))]
 pub mod net;
 #[cfg(target_os = "l4re")]
 pub use self::l4re::net;
 pub mod os;
-pub mod path;
 pub mod pipe;
 pub mod process;
 pub mod rand;
@@ -40,7 +37,7 @@ pub mod thread_parking;
 pub mod time;
 
 #[cfg(target_os = "espidf")]
-pub fn init(argc: isize, argv: *const *const u8, _sigpipe: u8) {}
+pub fn init(_argc: isize, _argv: *const *const u8, _sigpipe: u8) {}
 
 #[cfg(not(target_os = "espidf"))]
 // SAFETY: must be called only once during runtime initialization.

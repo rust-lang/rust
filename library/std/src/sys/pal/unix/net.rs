@@ -272,7 +272,7 @@ impl Socket {
             )
         })?;
         unsafe {
-            buf.advance(ret as usize);
+            buf.advance_unchecked(ret as usize);
         }
         Ok(())
     }
@@ -316,7 +316,7 @@ impl Socket {
                 buf.as_mut_ptr() as *mut c_void,
                 buf.len(),
                 flags,
-                &mut storage as *mut _ as *mut _,
+                core::ptr::addr_of_mut!(storage) as *mut _,
                 &mut addrlen,
             )
         })?;
@@ -439,6 +439,18 @@ impl Socket {
     pub fn quickack(&self) -> io::Result<bool> {
         let raw: c_int = getsockopt(self, libc::IPPROTO_TCP, libc::TCP_QUICKACK)?;
         Ok(raw != 0)
+    }
+
+    // bionic libc makes no use of this flag
+    #[cfg(target_os = "linux")]
+    pub fn set_deferaccept(&self, accept: u32) -> io::Result<()> {
+        setsockopt(self, libc::IPPROTO_TCP, libc::TCP_DEFER_ACCEPT, accept as c_int)
+    }
+
+    #[cfg(target_os = "linux")]
+    pub fn deferaccept(&self) -> io::Result<u32> {
+        let raw: c_int = getsockopt(self, libc::IPPROTO_TCP, libc::TCP_DEFER_ACCEPT)?;
+        Ok(raw as u32)
     }
 
     #[cfg(any(target_os = "android", target_os = "linux",))]

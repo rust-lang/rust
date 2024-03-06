@@ -20,6 +20,7 @@ macro_rules! int_module {
         ///
         #[$attr]
         #[deprecated(since = "TBD", note = "replaced by the `MIN` associated constant on this type")]
+        #[rustc_diagnostic_item = concat!(stringify!($T), "_legacy_const_min")]
         pub const MIN: $T = $T::MIN;
 
         #[doc = concat!(
@@ -39,6 +40,7 @@ macro_rules! int_module {
         ///
         #[$attr]
         #[deprecated(since = "TBD", note = "replaced by the `MAX` associated constant on this type")]
+        #[rustc_diagnostic_item = concat!(stringify!($T), "_legacy_const_max")]
         pub const MAX: $T = $T::MAX;
     )
 }

@@ -4,13 +4,13 @@
 // This test also serve as an "anti-regression" for the well known
 // values since the suggestion shows them.
 //
-// check-pass
-// compile-flags: --check-cfg=cfg() -Z unstable-options
+//@ check-pass
+//@ compile-flags: --check-cfg=cfg() -Z unstable-options
+//@ compile-flags: -Zcheck-cfg-all-expected
 
 #![feature(cfg_overflow_checks)]
 #![feature(cfg_relocation_model)]
 #![feature(cfg_sanitize)]
-#![feature(cfg_target_abi)]
 #![feature(cfg_target_has_atomic)]
 #![feature(cfg_target_has_atomic_equal_alignment)]
 #![feature(cfg_target_thread_local)]
@@ -23,6 +23,8 @@
 // diagnostic prints the list of expected values.
 #[cfg(any(
     // tidy-alphabetical-start
+    clippy = "_UNEXPECTED_VALUE",
+    //~^ WARN unexpected `cfg` condition value
     debug_assertions = "_UNEXPECTED_VALUE",
     //~^ WARN unexpected `cfg` condition value
     doc = "_UNEXPECTED_VALUE",
@@ -105,5 +107,8 @@ fn unix() {}
 
 #[cfg(doc)]
 fn doc() {}
+
+#[cfg(clippy)]
+fn clippy() {}
 
 fn main() {}

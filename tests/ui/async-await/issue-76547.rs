@@ -1,5 +1,5 @@
 // Test for diagnostic improvement issue #76547
-// edition:2018
+//@ edition:2018
 
 use std::{
     future::Future,

@@ -1,9 +1,14 @@
-error[E0391]: cycle detected when elaborating drops for `FooDefault::BAR`
+error[E0391]: cycle detected when caching mir of `FooDefault::BAR` for CTFE
+  --> $DIR/issue-24949-assoc-const-static-recursion-trait-default.rs:8:5
+   |
+LL |     const BAR: u32 = DEFAULT_REF_BAR;
+   |     ^^^^^^^^^^^^^^
+   |
+note: ...which requires elaborating drops for `FooDefault::BAR`...
   --> $DIR/issue-24949-assoc-const-static-recursion-trait-default.rs:8:22
    |
 LL |     const BAR: u32 = DEFAULT_REF_BAR;
    |                      ^^^^^^^^^^^^^^^
-   |
 note: ...which requires simplifying constant for the type system `DEFAULT_REF_BAR`...
   --> $DIR/issue-24949-assoc-const-static-recursion-trait-default.rs:11:1
    |
@@ -24,13 +29,12 @@ note: ...which requires const-evaluating + checking `FooDefault::BAR`...
    |
 LL |     const BAR: u32 = DEFAULT_REF_BAR;
    |     ^^^^^^^^^^^^^^
-note: ...which requires caching mir of `FooDefault::BAR` for CTFE...
+   = note: ...which again requires caching mir of `FooDefault::BAR` for CTFE, completing the cycle
+note: cycle used when const-evaluating + checking `FooDefault::BAR`
   --> $DIR/issue-24949-assoc-const-static-recursion-trait-default.rs:8:5
    |
 LL |     const BAR: u32 = DEFAULT_REF_BAR;
    |     ^^^^^^^^^^^^^^
-   = note: ...which again requires elaborating drops for `FooDefault::BAR`, completing the cycle
-   = note: cycle used when running analysis passes on this crate
    = note: see https://rustc-dev-guide.rust-lang.org/overview.html#queries and https://rustc-dev-guide.rust-lang.org/query.html for more information
 
 error: aborting due to 1 previous error

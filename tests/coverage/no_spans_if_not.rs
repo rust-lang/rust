@@ -1,4 +1,4 @@
-// edition: 2021
+//@ edition: 2021
 
 // If the span extractor can't find any relevant spans for a function,
 // but the function contains coverage span-marker statements (e.g. inserted

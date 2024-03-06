@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 
 #![allow(unconditional_recursion)]
 #![allow(non_camel_case_types)]

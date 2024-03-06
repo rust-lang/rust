@@ -1,4 +1,4 @@
-// check-pass
+//@ check-pass
 
 pub trait Deserialize<'de>: Sized {}
 pub trait DeserializeOwned: for<'de> Deserialize<'de> {}

@@ -1,16 +1,16 @@
-error[E0271]: type mismatch resolving `() == impl !Sized + Sized`
+error[E0271]: type mismatch resolving `impl !Sized + Sized == ()`
   --> $DIR/opaque-type-unsatisfied-bound.rs:15:16
    |
 LL | fn weird0() -> impl Sized + !Sized {}
    |                ^^^^^^^^^^^^^^^^^^^ types differ
 
-error[E0271]: type mismatch resolving `() == impl !Sized + Sized`
+error[E0271]: type mismatch resolving `impl !Sized + Sized == ()`
   --> $DIR/opaque-type-unsatisfied-bound.rs:17:16
    |
 LL | fn weird1() -> impl !Sized + Sized {}
    |                ^^^^^^^^^^^^^^^^^^^ types differ
 
-error[E0271]: type mismatch resolving `() == impl !Sized`
+error[E0271]: type mismatch resolving `impl !Sized == ()`
   --> $DIR/opaque-type-unsatisfied-bound.rs:19:16
    |
 LL | fn weird2() -> impl !Sized {}

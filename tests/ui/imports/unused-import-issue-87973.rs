@@ -1,4 +1,4 @@
-// run-rustfix
+//@ run-rustfix
 #![deny(unused_imports)]
 
 // Check that attributes get removed too. See #87973.

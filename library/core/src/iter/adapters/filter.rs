@@ -1,6 +1,6 @@
 use crate::fmt;
 use crate::iter::{adapters::SourceIter, FusedIterator, InPlaceIterable, TrustedFused};
-use crate::num::NonZeroUsize;
+use crate::num::NonZero;
 use crate::ops::Try;
 use core::array;
 use core::mem::{ManuallyDrop, MaybeUninit};
@@ -209,6 +209,6 @@ where
 
 #[unstable(issue = "none", feature = "inplace_iteration")]
 unsafe impl<I: InPlaceIterable, P> InPlaceIterable for Filter<I, P> {
-    const EXPAND_BY: Option<NonZeroUsize> = I::EXPAND_BY;
-    const MERGE_BY: Option<NonZeroUsize> = I::MERGE_BY;
+    const EXPAND_BY: Option<NonZero<usize>> = I::EXPAND_BY;
+    const MERGE_BY: Option<NonZero<usize>> = I::MERGE_BY;
 }

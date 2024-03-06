@@ -1,4 +1,4 @@
-// run-rustfix
+//@ run-rustfix
 struct A;
 struct B;
 impl From<A> for B {

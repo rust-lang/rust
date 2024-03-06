@@ -1,4 +1,4 @@
-// edition:2021
+//@ edition:2021
 
 // Test borrow checker when we precise capture when using boxes
 

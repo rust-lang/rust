@@ -1,0 +1,22 @@
+error: inherent impls cannot be `const`
+  --> $DIR/span-bug-issue-121418.rs:7:12
+   |
+LL | impl const dyn T {
+   |      ----- ^^^^^ inherent impl for this type
+   |      |
+   |      `const` because of this
+   |
+   = note: only trait implementations may be annotated with `const`
+
+error[E0207]: the const parameter `host` is not constrained by the impl trait, self type, or predicates
+  --> $DIR/span-bug-issue-121418.rs:7:6
+   |
+LL | impl const dyn T {
+   |      ^^^^^ unconstrained const parameter
+   |
+   = note: expressions using a const parameter must map each value to a distinct output value
+   = note: proving the result of expressions other than the parameter are unique is not supported
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0207`.

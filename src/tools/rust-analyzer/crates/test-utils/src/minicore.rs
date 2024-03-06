@@ -28,7 +28,7 @@
 //!     env: option
 //!     eq: sized
 //!     error: fmt
-//!     fmt: result, transmute, coerce_unsized
+//!     fmt: option, result, transmute, coerce_unsized
 //!     fn:
 //!     from: sized
 //!     future: pin
@@ -60,6 +60,8 @@
 //!     try: infallible
 //!     unpin: sized
 //!     unsize: sized
+//!     todo: panic
+//!     unimplemented: panic
 
 #![rustc_coherence_is_core]
 
@@ -328,7 +330,6 @@ pub mod convert {
 }
 
 pub mod mem {
-    // region:drop
     // region:manually_drop
     #[lang = "manually_drop"]
     #[repr(transparent)]
@@ -353,6 +354,7 @@ pub mod mem {
 
     // endregion:manually_drop
 
+    // region:drop
     pub fn drop<T>(_x: T) {}
     pub const fn replace<T>(dest: &mut T, src: T) -> T {
         unsafe {
@@ -927,6 +929,10 @@ pub mod fmt {
                 use crate::mem::transmute;
                 unsafe { Argument { formatter: transmute(f), value: transmute(x) } }
             }
+
+            pub fn new_display<'b, T: Display>(x: &'b T) -> Argument<'_> {
+                Self::new(x, Display::fmt)
+            }
         }
 
         #[lang = "format_alignment"]
@@ -985,6 +991,10 @@ pub mod fmt {
     impl<'a> Arguments<'a> {
         pub const fn new_v1(pieces: &'a [&'static str], args: &'a [Argument<'a>]) -> Arguments<'a> {
             Arguments { pieces, fmt: None, args }
+        }
+
+        pub const fn new_const(pieces: &'a [&'static str]) -> Arguments<'a> {
+            Arguments { pieces, fmt: None, args: &[] }
         }
 
         pub fn new_v1_formatted(
@@ -1346,6 +1356,9 @@ pub mod iter {
 // region:panic
 mod panic {
     pub macro panic_2021 {
+        () => (
+            $crate::panicking::panic("explicit panic")
+        ),
         ($($t:tt)+) => (
             $crate::panicking::panic_fmt($crate::const_format_args!($($t)+))
         ),
@@ -1356,6 +1369,11 @@ mod panicking {
     #[lang = "panic_fmt"]
     pub const fn panic_fmt(_fmt: crate::fmt::Arguments<'_>) -> ! {
         loop {}
+    }
+
+    #[lang = "panic"]
+    pub const fn panic(expr: &'static str) -> ! {
+        panic_fmt(crate::fmt::Arguments::new_const(&[expr]))
     }
 }
 // endregion:panic
@@ -1425,6 +1443,33 @@ mod macros {
     }
 
     // endregion:fmt
+
+    // region:todo
+    #[macro_export]
+    #[allow_internal_unstable(core_panic)]
+    macro_rules! todo {
+        () => {
+            $crate::panicking::panic("not yet implemented")
+        };
+        ($($arg:tt)+) => {
+            $crate::panic!("not yet implemented: {}", $crate::format_args!($($arg)+))
+        };
+    }
+    // endregion:todo
+
+    // region:unimplemented
+    #[macro_export]
+    #[allow_internal_unstable(core_panic)]
+    macro_rules! unimplemented {
+        () => {
+            $crate::panicking::panic("not implemented")
+        };
+        ($($arg:tt)+) => {
+            $crate::panic!("not implemented: {}", $crate::format_args!($($arg)+))
+        };
+    }
+    // endregion:unimplemented
+
 
     // region:derive
     pub(crate) mod builtin {

@@ -22,10 +22,10 @@ use stable_mir::mir::mono::{InstanceDef, StaticDef};
 use stable_mir::mir::Body;
 use stable_mir::target::{MachineInfo, MachineSize};
 use stable_mir::ty::{
-    AdtDef, AdtKind, Allocation, ClosureDef, ClosureKind, Const, FieldDef, FnDef, GenericArgs,
-    LineInfo, PolyFnSig, RigidTy, Span, Ty, TyKind, VariantDef,
+    AdtDef, AdtKind, Allocation, ClosureDef, ClosureKind, Const, FieldDef, FnDef, ForeignDef,
+    ForeignItemKind, GenericArgs, LineInfo, PolyFnSig, RigidTy, Span, Ty, TyKind, VariantDef,
 };
-use stable_mir::{Crate, CrateItem, CrateNum, DefId, Error, Filename, ItemKind, Symbol};
+use stable_mir::{Crate, CrateDef, CrateItem, CrateNum, DefId, Error, Filename, ItemKind, Symbol};
 use std::cell::RefCell;
 use std::iter;
 
@@ -65,6 +65,39 @@ impl<'tcx> Context for TablesWrapper<'tcx> {
         let tables = self.0.borrow();
         let def_id = tables[def];
         tables.tcx.is_mir_available(def_id)
+    }
+
+    fn foreign_modules(&self, crate_num: CrateNum) -> Vec<stable_mir::ty::ForeignModuleDef> {
+        let mut tables = self.0.borrow_mut();
+        let tcx = tables.tcx;
+        tcx.foreign_modules(crate_num.internal(&mut *tables, tcx))
+            .keys()
+            .map(|mod_def_id| tables.foreign_module_def(*mod_def_id))
+            .collect()
+    }
+
+    fn foreign_module(
+        &self,
+        mod_def: stable_mir::ty::ForeignModuleDef,
+    ) -> stable_mir::ty::ForeignModule {
+        let mut tables = self.0.borrow_mut();
+        let def_id = tables[mod_def.def_id()];
+        let mod_def = tables.tcx.foreign_modules(def_id.krate).get(&def_id).unwrap();
+        mod_def.stable(&mut *tables)
+    }
+
+    fn foreign_items(&self, mod_def: stable_mir::ty::ForeignModuleDef) -> Vec<ForeignDef> {
+        let mut tables = self.0.borrow_mut();
+        let def_id = tables[mod_def.def_id()];
+        tables
+            .tcx
+            .foreign_modules(def_id.krate)
+            .get(&def_id)
+            .unwrap()
+            .foreign_items
+            .iter()
+            .map(|item_def| tables.foreign_def(*item_def))
+            .collect()
     }
 
     fn all_trait_decls(&self) -> stable_mir::TraitDecls {
@@ -175,11 +208,10 @@ impl<'tcx> Context for TablesWrapper<'tcx> {
         let crates: Vec<stable_mir::Crate> = [LOCAL_CRATE]
             .iter()
             .chain(tables.tcx.crates(()).iter())
-            .map(|crate_num| {
+            .filter_map(|crate_num| {
                 let crate_name = tables.tcx.crate_name(*crate_num).to_string();
                 (name == crate_name).then(|| smir_crate(tables.tcx, *crate_num))
             })
-            .flatten()
             .collect();
         crates
     }
@@ -223,6 +255,21 @@ impl<'tcx> Context for TablesWrapper<'tcx> {
     fn is_foreign_item(&self, item: DefId) -> bool {
         let tables = self.0.borrow();
         tables.tcx.is_foreign_item(tables[item])
+    }
+
+    fn foreign_item_kind(&self, def: ForeignDef) -> ForeignItemKind {
+        let mut tables = self.0.borrow_mut();
+        let def_id = tables[def.def_id()];
+        let tcx = tables.tcx;
+        use rustc_hir::def::DefKind;
+        match tcx.def_kind(def_id) {
+            DefKind::Fn => ForeignItemKind::Fn(tables.fn_def(def_id)),
+            DefKind::Static(..) => ForeignItemKind::Static(tables.static_def(def_id)),
+            DefKind::ForeignTy => ForeignItemKind::Type(
+                tables.intern_ty(rustc_middle::ty::Ty::new_foreign(tcx, def_id)),
+            ),
+            def_kind => unreachable!("Unexpected kind for a foreign item: {:?}", def_kind),
+        }
     }
 
     fn adt_kind(&self, def: AdtDef) -> AdtKind {
@@ -369,7 +416,7 @@ impl<'tcx> Context for TablesWrapper<'tcx> {
     fn instance_ty(&self, def: InstanceDef) -> stable_mir::ty::Ty {
         let mut tables = self.0.borrow_mut();
         let instance = tables.instances[def];
-        assert!(!instance.has_non_region_param(), "{instance:?} needs further substitution");
+        assert!(!instance.has_non_region_param(), "{instance:?} needs further instantiation");
         instance.ty(tables.tcx, ParamEnv::reveal_all()).stable(&mut *tables)
     }
 

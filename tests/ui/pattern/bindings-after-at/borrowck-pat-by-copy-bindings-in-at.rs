@@ -1,4 +1,4 @@
-// check-pass
+//@ check-pass
 
 // Test `Copy` bindings in the rhs of `@` patterns.
 

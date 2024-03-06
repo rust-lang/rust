@@ -1,4 +1,4 @@
-// build-pass
+//@ build-pass
 // ignore-tidy-linelength
 // Regression test for #31109 and #31407.
 

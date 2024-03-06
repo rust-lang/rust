@@ -1,6 +1,6 @@
 // When denying at the crate level, be sure to not get random warnings from the
 // injected intrinsics by the compiler.
-// aux-build:missing_docs.rs
+//@ aux-build:missing_docs.rs
 #![deny(missing_docs)]
 #![allow(dead_code)]
 #![feature(associated_type_defaults, extern_types)]

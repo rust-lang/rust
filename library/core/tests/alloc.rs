@@ -10,7 +10,7 @@ fn const_unchecked_layout() {
     const DANGLING: NonNull<u8> = LAYOUT.dangling();
     assert_eq!(LAYOUT.size(), SIZE);
     assert_eq!(LAYOUT.align(), ALIGN);
-    assert_eq!(Some(DANGLING), NonNull::new(ptr::invalid_mut(ALIGN)));
+    assert_eq!(Some(DANGLING), NonNull::new(ptr::without_provenance_mut(ALIGN)));
 }
 
 #[test]

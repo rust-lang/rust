@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 
 fn main() {
     let mut x: &[_] = &[1, 2, 3, 4];

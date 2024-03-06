@@ -1,5 +1,5 @@
-// run-pass
-// compile-flags: -C overflow_checks=false
+//@ run-pass
+//@ compile-flags: -C overflow_checks=false
 
 #![feature(cfg_overflow_checks)]
 

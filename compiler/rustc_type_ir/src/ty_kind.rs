@@ -1,3 +1,4 @@
+use rustc_ast_ir::try_visit;
 #[cfg(feature = "nightly")]
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 #[cfg(feature = "nightly")]
@@ -11,67 +12,7 @@ use crate::{DebruijnIndex, DebugWithInfcx, InferCtxtLike, WithInfcx};
 
 use self::TyKind::*;
 
-/// The movability of a coroutine / closure literal:
-/// whether a coroutine contains self-references, causing it to be `!Unpin`.
-#[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug, Copy)]
-#[cfg_attr(feature = "nightly", derive(Encodable, Decodable, HashStable_NoContext))]
-pub enum Movability {
-    /// May contain self-references, `!Unpin`.
-    Static,
-    /// Must not contain self-references, `Unpin`.
-    Movable,
-}
-
-#[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug, Copy)]
-#[cfg_attr(feature = "nightly", derive(Encodable, Decodable, HashStable_NoContext))]
-pub enum Mutability {
-    // N.B. Order is deliberate, so that Not < Mut
-    Not,
-    Mut,
-}
-
-impl Mutability {
-    pub fn invert(self) -> Self {
-        match self {
-            Mutability::Mut => Mutability::Not,
-            Mutability::Not => Mutability::Mut,
-        }
-    }
-
-    /// Returns `""` (empty string) or `"mut "` depending on the mutability.
-    pub fn prefix_str(self) -> &'static str {
-        match self {
-            Mutability::Mut => "mut ",
-            Mutability::Not => "",
-        }
-    }
-
-    /// Returns `"&"` or `"&mut "` depending on the mutability.
-    pub fn ref_prefix_str(self) -> &'static str {
-        match self {
-            Mutability::Not => "&",
-            Mutability::Mut => "&mut ",
-        }
-    }
-
-    /// Returns `""` (empty string) or `"mutably "` depending on the mutability.
-    pub fn mutably_str(self) -> &'static str {
-        match self {
-            Mutability::Not => "",
-            Mutability::Mut => "mutably ",
-        }
-    }
-
-    /// Return `true` if self is mutable
-    pub fn is_mut(self) -> bool {
-        matches!(self, Self::Mut)
-    }
-
-    /// Return `true` if self is **not** mutable
-    pub fn is_not(self) -> bool {
-        matches!(self, Self::Not)
-    }
-}
+use rustc_ast_ir::Mutability;
 
 /// Specifies how a trait object is represented.
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
@@ -103,6 +44,17 @@ pub enum AliasKind {
     /// Currently only used if the type alias references opaque types.
     /// Can always be normalized away.
     Weak,
+}
+
+impl AliasKind {
+    pub fn descr(self) -> &'static str {
+        match self {
+            AliasKind::Projection => "associated type",
+            AliasKind::Inherent => "inherent associated type",
+            AliasKind::Opaque => "opaque type",
+            AliasKind::Weak => "type alias",
+        }
+    }
 }
 
 /// Defines the kinds of types used by the type system.
@@ -143,7 +95,7 @@ pub enum TyKind<I: Interner> {
     /// For example, the type `List<i32>` would be represented using the `AdtDef`
     /// for `struct List<T>` and the args `[i32]`.
     ///
-    /// Note that generic parameters in fields only get lazily substituted
+    /// Note that generic parameters in fields only get lazily instantiated
     /// by using something like `adt_def.all_fields().map(|field| field.ty(tcx, args))`.
     Adt(I::AdtDef, I::GenericArgs),
 
@@ -197,10 +149,17 @@ pub enum TyKind<I: Interner> {
 
     /// The anonymous type of a closure. Used to represent the type of `|a| a`.
     ///
-    /// Closure args contain both the - potentially substituted - generic parameters
+    /// Closure args contain both the - potentially instantiated - generic parameters
     /// of its parent and some synthetic parameters. See the documentation for
     /// `ClosureArgs` for more details.
     Closure(I::DefId, I::GenericArgs),
+
+    /// The anonymous type of a closure. Used to represent the type of `async |a| a`.
+    ///
+    /// Coroutine-closure args contain both the - potentially instantiated - generic
+    /// parameters of its parent and some synthetic parameters. See the documentation
+    /// for `CoroutineClosureArgs` for more details.
+    CoroutineClosure(I::DefId, I::GenericArgs),
 
     /// The anonymous type of a coroutine. Used to represent the type of
     /// `|a| yield a`.
@@ -317,16 +276,17 @@ const fn tykind_discriminant<I: Interner>(value: &TyKind<I>) -> usize {
         FnPtr(_) => 13,
         Dynamic(..) => 14,
         Closure(_, _) => 15,
-        Coroutine(_, _) => 16,
-        CoroutineWitness(_, _) => 17,
-        Never => 18,
-        Tuple(_) => 19,
-        Alias(_, _) => 20,
-        Param(_) => 21,
-        Bound(_, _) => 22,
-        Placeholder(_) => 23,
-        Infer(_) => 24,
-        Error(_) => 25,
+        CoroutineClosure(_, _) => 16,
+        Coroutine(_, _) => 17,
+        CoroutineWitness(_, _) => 18,
+        Never => 19,
+        Tuple(_) => 20,
+        Alias(_, _) => 21,
+        Param(_) => 22,
+        Bound(_, _) => 23,
+        Placeholder(_) => 24,
+        Infer(_) => 25,
+        Error(_) => 26,
     }
 }
 
@@ -356,6 +316,7 @@ impl<I: Interner> PartialEq for TyKind<I> {
                 a_p == b_p && a_r == b_r && a_repr == b_repr
             }
             (Closure(a_d, a_s), Closure(b_d, b_s)) => a_d == b_d && a_s == b_s,
+            (CoroutineClosure(a_d, a_s), CoroutineClosure(b_d, b_s)) => a_d == b_d && a_s == b_s,
             (Coroutine(a_d, a_s), Coroutine(b_d, b_s)) => a_d == b_d && a_s == b_s,
             (CoroutineWitness(a_d, a_s), CoroutineWitness(b_d, b_s)) => a_d == b_d && a_s == b_s,
             (Tuple(a_t), Tuple(b_t)) => a_t == b_t,
@@ -430,6 +391,9 @@ impl<I: Interner> DebugWithInfcx<I> for TyKind<I> {
                 }
             },
             Closure(d, s) => f.debug_tuple("Closure").field(d).field(&this.wrap(s)).finish(),
+            CoroutineClosure(d, s) => {
+                f.debug_tuple("CoroutineClosure").field(d).field(&this.wrap(s)).finish()
+            }
             Coroutine(d, s) => f.debug_tuple("Coroutine").field(d).field(&this.wrap(s)).finish(),
             CoroutineWitness(d, s) => {
                 f.debug_tuple("CoroutineWitness").field(d).field(&this.wrap(s)).finish()
@@ -587,22 +551,28 @@ impl UintTy {
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 #[cfg_attr(feature = "nightly", derive(Encodable, Decodable, HashStable_NoContext))]
 pub enum FloatTy {
+    F16,
     F32,
     F64,
+    F128,
 }
 
 impl FloatTy {
     pub fn name_str(self) -> &'static str {
         match self {
+            FloatTy::F16 => "f16",
             FloatTy::F32 => "f32",
             FloatTy::F64 => "f64",
+            FloatTy::F128 => "f128",
         }
     }
 
     pub fn bit_width(self) -> u64 {
         match self {
+            FloatTy::F16 => 16,
             FloatTy::F32 => 32,
             FloatTy::F64 => 64,
+            FloatTy::F128 => 128,
         }
     }
 }
@@ -862,8 +832,8 @@ impl<I: Interner> TypeVisitable<I> for TypeAndMut<I>
 where
     I::Ty: TypeVisitable<I>,
 {
-    fn visit_with<V: TypeVisitor<I>>(&self, visitor: &mut V) -> std::ops::ControlFlow<V::BreakTy> {
-        self.ty.visit_with(visitor)?;
+    fn visit_with<V: TypeVisitor<I>>(&self, visitor: &mut V) -> V::Result {
+        try_visit!(self.ty.visit_with(visitor));
         self.mutbl.visit_with(visitor)
     }
 }

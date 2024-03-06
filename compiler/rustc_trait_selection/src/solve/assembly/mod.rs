@@ -5,17 +5,16 @@ use crate::solve::GoalSource;
 use crate::traits::coherence;
 use rustc_hir::def_id::DefId;
 use rustc_infer::traits::query::NoSolution;
-use rustc_infer::traits::Reveal;
 use rustc_middle::traits::solve::inspect::ProbeKind;
 use rustc_middle::traits::solve::{
-    CandidateSource, CanonicalResponse, Certainty, Goal, QueryResult,
+    CandidateSource, CanonicalResponse, Certainty, Goal, MaybeCause, QueryResult,
 };
 use rustc_middle::traits::BuiltinImplSource;
 use rustc_middle::ty::fast_reject::{SimplifiedType, TreatParams};
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_middle::ty::{fast_reject, TypeFoldable};
 use rustc_middle::ty::{ToPredicate, TypeVisitableExt};
-use rustc_span::ErrorGuaranteed;
+use rustc_span::{ErrorGuaranteed, DUMMY_SP};
 use std::fmt::Debug;
 
 pub(super) mod structural_traits;
@@ -67,20 +66,6 @@ pub(super) trait GoalKind<'tcx>:
             // `GoalSource::ImplWhereBound` for any caller.
             ecx.add_goals(GoalSource::Misc, requirements);
             ecx.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
-        })
-    }
-
-    /// Consider a bound originating from the item bounds of an alias. For this we
-    /// require that the well-formed requirements of the self type of the goal
-    /// are "satisfied from the param-env".
-    /// See [`EvalCtxt::validate_alias_bound_self_from_param_env`].
-    fn consider_alias_bound_candidate(
-        ecx: &mut EvalCtxt<'_, 'tcx>,
-        goal: Goal<'tcx, Self>,
-        assumption: ty::Clause<'tcx>,
-    ) -> QueryResult<'tcx> {
-        Self::probe_and_match_goal_against_assumption(ecx, goal, assumption, |ecx| {
-            ecx.validate_alias_bound_self_from_param_env(goal)
         })
     }
 
@@ -182,6 +167,22 @@ pub(super) trait GoalKind<'tcx>:
         kind: ty::ClosureKind,
     ) -> QueryResult<'tcx>;
 
+    /// An async closure is known to implement the `AsyncFn<A>` family of traits
+    /// where `A` is given by the signature of the type.
+    fn consider_builtin_async_fn_trait_candidates(
+        ecx: &mut EvalCtxt<'_, 'tcx>,
+        goal: Goal<'tcx, Self>,
+        kind: ty::ClosureKind,
+    ) -> QueryResult<'tcx>;
+
+    /// Compute the built-in logic of the `AsyncFnKindHelper` helper trait, which
+    /// is used internally to delay computation for async closures until after
+    /// upvar analysis is performed in HIR typeck.
+    fn consider_builtin_async_fn_kind_helper_candidate(
+        ecx: &mut EvalCtxt<'_, 'tcx>,
+        goal: Goal<'tcx, Self>,
+    ) -> QueryResult<'tcx>;
+
     /// `Tuple` is implemented if the `Self` type is a tuple.
     fn consider_builtin_tuple_candidate(
         ecx: &mut EvalCtxt<'_, 'tcx>,
@@ -253,17 +254,6 @@ pub(super) trait GoalKind<'tcx>:
         ecx: &mut EvalCtxt<'_, 'tcx>,
         goal: Goal<'tcx, Self>,
     ) -> Vec<(CanonicalResponse<'tcx>, BuiltinImplSource)>;
-
-    /// Consider the `Unsize` candidate corresponding to coercing a sized type
-    /// into a `dyn Trait`.
-    ///
-    /// This is computed separately from the rest of the `Unsize` candidates
-    /// since it is only done once per self type, and not once per
-    /// *normalization step* (in `assemble_candidates_via_self_ty`).
-    fn consider_unsize_to_dyn_candidate(
-        ecx: &mut EvalCtxt<'_, 'tcx>,
-        goal: Goal<'tcx, Self>,
-    ) -> QueryResult<'tcx>;
 }
 
 impl<'tcx> EvalCtxt<'_, 'tcx> {
@@ -271,64 +261,22 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
         &mut self,
         goal: Goal<'tcx, G>,
     ) -> Vec<Candidate<'tcx>> {
+        let Ok(normalized_self_ty) =
+            self.structurally_normalize_ty(goal.param_env, goal.predicate.self_ty())
+        else {
+            return vec![];
+        };
+
+        if normalized_self_ty.is_ty_var() {
+            debug!("self type has been normalized to infer");
+            return self.forced_ambiguity(MaybeCause::Ambiguity);
+        }
+
+        let goal =
+            goal.with(self.tcx(), goal.predicate.with_self_ty(self.tcx(), normalized_self_ty));
         debug_assert_eq!(goal, self.resolve_vars_if_possible(goal));
-        if let Some(ambig) = self.assemble_self_ty_infer_ambiguity_response(goal) {
-            return vec![ambig];
-        }
 
-        let mut candidates = self.assemble_candidates_via_self_ty(goal, 0);
-
-        self.assemble_unsize_to_dyn_candidate(goal, &mut candidates);
-
-        self.assemble_blanket_impl_candidates(goal, &mut candidates);
-
-        self.assemble_param_env_candidates(goal, &mut candidates);
-
-        self.assemble_coherence_unknowable_candidates(goal, &mut candidates);
-
-        candidates
-    }
-
-    /// `?0: Trait` is ambiguous, because it may be satisfied via a builtin rule,
-    /// object bound, alias bound, etc. We are unable to determine this until we can at
-    /// least structurally resolve the type one layer.
-    ///
-    /// It would also require us to consider all impls of the trait, which is both pretty
-    /// bad for perf and would also constrain the self type if there is just a single impl.
-    fn assemble_self_ty_infer_ambiguity_response<G: GoalKind<'tcx>>(
-        &mut self,
-        goal: Goal<'tcx, G>,
-    ) -> Option<Candidate<'tcx>> {
-        if goal.predicate.self_ty().is_ty_var() {
-            debug!("adding self_ty_infer_ambiguity_response");
-            let source = CandidateSource::BuiltinImpl(BuiltinImplSource::Misc);
-            let result = self
-                .evaluate_added_goals_and_make_canonical_response(Certainty::AMBIGUOUS)
-                .unwrap();
-            let mut dummy_probe = self.inspect.new_probe();
-            dummy_probe.probe_kind(ProbeKind::TraitCandidate { source, result: Ok(result) });
-            self.inspect.finish_probe(dummy_probe);
-            Some(Candidate { source, result })
-        } else {
-            None
-        }
-    }
-
-    /// Assemble candidates which apply to the self type. This only looks at candidate which
-    /// apply to the specific self type and ignores all others.
-    ///
-    /// Returns `None` if the self type is still ambiguous.
-    fn assemble_candidates_via_self_ty<G: GoalKind<'tcx>>(
-        &mut self,
-        goal: Goal<'tcx, G>,
-        num_steps: usize,
-    ) -> Vec<Candidate<'tcx>> {
-        debug_assert_eq!(goal, self.resolve_vars_if_possible(goal));
-        if let Some(ambig) = self.assemble_self_ty_infer_ambiguity_response(goal) {
-            return vec![ambig];
-        }
-
-        let mut candidates = Vec::new();
+        let mut candidates = vec![];
 
         self.assemble_non_blanket_impl_candidates(goal, &mut candidates);
 
@@ -338,61 +286,28 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
 
         self.assemble_object_bound_candidates(goal, &mut candidates);
 
-        self.assemble_candidates_after_normalizing_self_ty(goal, &mut candidates, num_steps);
+        self.assemble_blanket_impl_candidates(goal, &mut candidates);
+
+        self.assemble_param_env_candidates(goal, &mut candidates);
+
+        match self.solver_mode() {
+            SolverMode::Normal => self.discard_impls_shadowed_by_env(goal, &mut candidates),
+            SolverMode::Coherence => {
+                self.assemble_coherence_unknowable_candidates(goal, &mut candidates)
+            }
+        }
+
         candidates
     }
 
-    /// If the self type of a goal is an alias we first try to normalize the self type
-    /// and compute the candidates for the normalized self type in case that succeeds.
-    ///
-    /// These candidates are used in addition to the ones with the alias as a self type.
-    /// We do this to simplify both builtin candidates and for better performance.
-    ///
-    /// We generate the builtin candidates on the fly by looking at the self type, e.g.
-    /// add `FnPtr` candidates if the self type is a function pointer. Handling builtin
-    /// candidates while the self type is still an alias seems difficult. This is similar
-    /// to `try_structurally_resolve_type` during hir typeck (FIXME once implemented).
-    ///
-    /// Looking at all impls for some trait goal is prohibitively expensive. We therefore
-    /// only look at implementations with a matching self type. Because of this function,
-    /// we can avoid looking at all existing impls if the self type is an alias.
-    #[instrument(level = "debug", skip_all)]
-    fn assemble_candidates_after_normalizing_self_ty<G: GoalKind<'tcx>>(
-        &mut self,
-        goal: Goal<'tcx, G>,
-        candidates: &mut Vec<Candidate<'tcx>>,
-        num_steps: usize,
-    ) {
-        let tcx = self.tcx();
-        let &ty::Alias(_, alias) = goal.predicate.self_ty().kind() else { return };
-
-        candidates.extend(self.probe(|_| ProbeKind::NormalizedSelfTyAssembly).enter(|ecx| {
-            if tcx.recursion_limit().value_within_limit(num_steps) {
-                let normalized_ty = ecx.next_ty_infer();
-                let normalizes_to_goal =
-                    goal.with(tcx, ty::NormalizesTo { alias, term: normalized_ty.into() });
-                ecx.add_goal(GoalSource::Misc, normalizes_to_goal);
-                if let Err(NoSolution) = ecx.try_evaluate_added_goals() {
-                    debug!("self type normalization failed");
-                    return vec![];
-                }
-                let normalized_ty = ecx.resolve_vars_if_possible(normalized_ty);
-                debug!(?normalized_ty, "self type normalized");
-                // NOTE: Alternatively we could call `evaluate_goal` here and only
-                // have a `Normalized` candidate. This doesn't work as long as we
-                // use `CandidateSource` in winnowing.
-                let goal = goal.with(tcx, goal.predicate.with_self_ty(tcx, normalized_ty));
-                ecx.assemble_candidates_via_self_ty(goal, num_steps + 1)
-            } else {
-                match ecx.evaluate_added_goals_and_make_canonical_response(Certainty::OVERFLOW) {
-                    Ok(result) => vec![Candidate {
-                        source: CandidateSource::BuiltinImpl(BuiltinImplSource::Misc),
-                        result,
-                    }],
-                    Err(NoSolution) => vec![],
-                }
-            }
-        }));
+    fn forced_ambiguity(&mut self, cause: MaybeCause) -> Vec<Candidate<'tcx>> {
+        let source = CandidateSource::BuiltinImpl(BuiltinImplSource::Misc);
+        let certainty = Certainty::Maybe(cause);
+        let result = self.evaluate_added_goals_and_make_canonical_response(certainty).unwrap();
+        let mut dummy_probe = self.inspect.new_probe();
+        dummy_probe.probe_kind(ProbeKind::TraitCandidate { source, result: Ok(result) });
+        self.inspect.finish_probe(dummy_probe);
+        vec![Candidate { source, result }]
     }
 
     #[instrument(level = "debug", skip_all)]
@@ -407,6 +322,13 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
         let mut consider_impls_for_simplified_type = |simp| {
             if let Some(impls_for_type) = trait_impls.non_blanket_impls().get(&simp) {
                 for &impl_def_id in impls_for_type {
+                    // For every `default impl`, there's always a non-default `impl`
+                    // that will *also* apply. There's no reason to register a candidate
+                    // for this impl, since it is *not* proof that the trait goal holds.
+                    if tcx.defaultness(impl_def_id).is_default() {
+                        return;
+                    }
+
                     match G::consider_impl_candidate(self, goal, impl_def_id) {
                         Ok(candidate) => candidates.push(candidate),
                         Err(NoSolution) => (),
@@ -431,7 +353,8 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
             | ty::FnDef(_, _)
             | ty::FnPtr(_)
             | ty::Dynamic(_, _, _)
-            | ty::Closure(_, _)
+            | ty::Closure(..)
+            | ty::CoroutineClosure(..)
             | ty::Coroutine(_, _)
             | ty::Never
             | ty::Tuple(_) => {
@@ -471,10 +394,12 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
 
             ty::Infer(ty::FloatVar(_)) => {
                 // This causes a compiler error if any new float kinds are added.
-                let (ty::FloatTy::F32 | ty::FloatTy::F64);
+                let (ty::FloatTy::F16 | ty::FloatTy::F32 | ty::FloatTy::F64 | ty::FloatTy::F128);
                 let possible_floats = [
+                    SimplifiedType::Float(ty::FloatTy::F16),
                     SimplifiedType::Float(ty::FloatTy::F32),
                     SimplifiedType::Float(ty::FloatTy::F64),
+                    SimplifiedType::Float(ty::FloatTy::F128),
                 ];
 
                 for simp in possible_floats {
@@ -501,24 +426,6 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
     }
 
     #[instrument(level = "debug", skip_all)]
-    fn assemble_unsize_to_dyn_candidate<G: GoalKind<'tcx>>(
-        &mut self,
-        goal: Goal<'tcx, G>,
-        candidates: &mut Vec<Candidate<'tcx>>,
-    ) {
-        let tcx = self.tcx();
-        if tcx.lang_items().unsize_trait() == Some(goal.predicate.trait_def_id(tcx)) {
-            match G::consider_unsize_to_dyn_candidate(self, goal) {
-                Ok(result) => candidates.push(Candidate {
-                    source: CandidateSource::BuiltinImpl(BuiltinImplSource::Misc),
-                    result,
-                }),
-                Err(NoSolution) => (),
-            }
-        }
-    }
-
-    #[instrument(level = "debug", skip_all)]
     fn assemble_blanket_impl_candidates<G: GoalKind<'tcx>>(
         &mut self,
         goal: Goal<'tcx, G>,
@@ -527,6 +434,13 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
         let tcx = self.tcx();
         let trait_impls = tcx.trait_impls_of(goal.predicate.trait_def_id(tcx));
         for &impl_def_id in trait_impls.blanket_impls() {
+            // For every `default impl`, there's always a non-default `impl`
+            // that will *also* apply. There's no reason to register a candidate
+            // for this impl, since it is *not* proof that the trait goal holds.
+            if tcx.defaultness(impl_def_id).is_default() {
+                return;
+            }
+
             match G::consider_impl_candidate(self, goal, impl_def_id) {
                 Ok(candidate) => candidates.push(candidate),
                 Err(NoSolution) => (),
@@ -569,6 +483,10 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
             G::consider_builtin_fn_ptr_trait_candidate(self, goal)
         } else if let Some(kind) = self.tcx().fn_trait_kind_from_def_id(trait_def_id) {
             G::consider_builtin_fn_trait_candidates(self, goal, kind)
+        } else if let Some(kind) = self.tcx().async_fn_trait_kind_from_def_id(trait_def_id) {
+            G::consider_builtin_async_fn_trait_candidates(self, goal, kind)
+        } else if lang_items.async_fn_kind_helper() == Some(trait_def_id) {
+            G::consider_builtin_async_fn_kind_helper_candidate(self, goal)
         } else if lang_items.tuple_trait() == Some(trait_def_id) {
             G::consider_builtin_tuple_candidate(self, goal)
         } else if lang_items.pointee_trait() == Some(trait_def_id) {
@@ -630,7 +548,27 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
         goal: Goal<'tcx, G>,
         candidates: &mut Vec<Candidate<'tcx>>,
     ) {
-        let alias_ty = match goal.predicate.self_ty().kind() {
+        let () = self.probe(|_| ProbeKind::NormalizedSelfTyAssembly).enter(|ecx| {
+            ecx.assemble_alias_bound_candidates_recur(goal.predicate.self_ty(), goal, candidates);
+        });
+    }
+
+    /// For some deeply nested `<T>::A::B::C::D` rigid associated type,
+    /// we should explore the item bounds for all levels, since the
+    /// `associated_type_bounds` feature means that a parent associated
+    /// type may carry bounds for a nested associated type.
+    ///
+    /// If we have a projection, check that its self type is a rigid projection.
+    /// If so, continue searching by recursively calling after normalization.
+    // FIXME: This may recurse infinitely, but I can't seem to trigger it without
+    // hitting another overflow error something. Add a depth parameter needed later.
+    fn assemble_alias_bound_candidates_recur<G: GoalKind<'tcx>>(
+        &mut self,
+        self_ty: Ty<'tcx>,
+        goal: Goal<'tcx, G>,
+        candidates: &mut Vec<Candidate<'tcx>>,
+    ) {
+        let (kind, alias_ty) = match *self_ty.kind() {
             ty::Bool
             | ty::Char
             | ty::Int(_)
@@ -647,6 +585,7 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
             | ty::FnPtr(_)
             | ty::Dynamic(..)
             | ty::Closure(..)
+            | ty::CoroutineClosure(..)
             | ty::Coroutine(..)
             | ty::CoroutineWitness(..)
             | ty::Never
@@ -654,123 +593,54 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
             | ty::Param(_)
             | ty::Placeholder(..)
             | ty::Infer(ty::IntVar(_) | ty::FloatVar(_))
-            | ty::Alias(ty::Inherent, _)
-            | ty::Alias(ty::Weak, _)
             | ty::Error(_) => return,
-            ty::Infer(ty::TyVar(_) | ty::FreshTy(_) | ty::FreshIntTy(_) | ty::FreshFloatTy(_))
-            | ty::Bound(..) => bug!("unexpected self type for `{goal:?}`"),
-            // Excluding IATs and type aliases here as they don't have meaningful item bounds.
-            ty::Alias(ty::Projection | ty::Opaque, alias_ty) => alias_ty,
+            ty::Infer(ty::FreshTy(_) | ty::FreshIntTy(_) | ty::FreshFloatTy(_)) | ty::Bound(..) => {
+                bug!("unexpected self type for `{goal:?}`")
+            }
+
+            ty::Infer(ty::TyVar(_)) => {
+                // If we hit infer when normalizing the self type of an alias,
+                // then bail with ambiguity. We should never encounter this on
+                // the *first* iteration of this recursive function.
+                if let Ok(result) =
+                    self.evaluate_added_goals_and_make_canonical_response(Certainty::AMBIGUOUS)
+                {
+                    candidates.push(Candidate { source: CandidateSource::AliasBound, result });
+                }
+                return;
+            }
+
+            ty::Alias(kind @ (ty::Projection | ty::Opaque), alias_ty) => (kind, alias_ty),
+            ty::Alias(ty::Inherent | ty::Weak, _) => {
+                self.tcx().sess.dcx().span_delayed_bug(
+                    DUMMY_SP,
+                    format!("could not normalize {self_ty}, it is not WF"),
+                );
+                return;
+            }
         };
 
         for assumption in
             self.tcx().item_bounds(alias_ty.def_id).instantiate(self.tcx(), alias_ty.args)
         {
-            match G::consider_alias_bound_candidate(self, goal, assumption) {
+            match G::consider_implied_clause(self, goal, assumption, []) {
                 Ok(result) => {
-                    candidates.push(Candidate { source: CandidateSource::AliasBound, result })
+                    candidates.push(Candidate { source: CandidateSource::AliasBound, result });
                 }
-                Err(NoSolution) => (),
+                Err(NoSolution) => {}
             }
         }
-    }
 
-    /// Check that we are allowed to use an alias bound originating from the self
-    /// type of this goal. This means something different depending on the self type's
-    /// alias kind.
-    ///
-    /// * Projection: Given a goal with a self type such as `<Ty as Trait>::Assoc`,
-    /// we require that the bound `Ty: Trait` can be proven using either a nested alias
-    /// bound candidate, or a param-env candidate.
-    ///
-    /// * Opaque: The param-env must be in `Reveal::UserFacing` mode. Otherwise,
-    /// the goal should be proven by using the hidden type instead.
-    #[instrument(level = "debug", skip(self), ret)]
-    pub(super) fn validate_alias_bound_self_from_param_env<G: GoalKind<'tcx>>(
-        &mut self,
-        goal: Goal<'tcx, G>,
-    ) -> QueryResult<'tcx> {
-        match *goal.predicate.self_ty().kind() {
-            ty::Alias(ty::Projection, projection_ty) => {
-                let mut param_env_candidates = vec![];
-                let self_trait_ref = projection_ty.trait_ref(self.tcx());
-
-                if self_trait_ref.self_ty().is_ty_var() {
-                    return self
-                        .evaluate_added_goals_and_make_canonical_response(Certainty::AMBIGUOUS);
-                }
-
-                let trait_goal: Goal<'_, ty::TraitPredicate<'tcx>> = goal.with(
-                    self.tcx(),
-                    ty::TraitPredicate {
-                        trait_ref: self_trait_ref,
-                        polarity: ty::ImplPolarity::Positive,
-                    },
-                );
-
-                self.assemble_param_env_candidates(trait_goal, &mut param_env_candidates);
-                // FIXME: We probably need some sort of recursion depth check here.
-                // Can't come up with an example yet, though, and the worst case
-                // we can have is a compiler stack overflow...
-                self.assemble_alias_bound_candidates(trait_goal, &mut param_env_candidates);
-
-                // FIXME: We must also consider alias-bound candidates for a peculiar
-                // class of built-in candidates that I'll call "defaulted" built-ins.
-                //
-                // For example, we always know that `T: Pointee` is implemented, but
-                // we do not always know what `<T as Pointee>::Metadata` actually is,
-                // similar to if we had a user-defined impl with a `default type ...`.
-                // For these traits, since we're not able to always normalize their
-                // associated types to a concrete type, we must consider their alias bounds
-                // instead, so we can prove bounds such as `<T as Pointee>::Metadata: Copy`.
-                self.assemble_alias_bound_candidates_for_builtin_impl_default_items(
-                    trait_goal,
-                    &mut param_env_candidates,
-                );
-
-                self.merge_candidates(param_env_candidates)
-            }
-            ty::Alias(ty::Opaque, _opaque_ty) => match goal.param_env.reveal() {
-                Reveal::UserFacing => {
-                    self.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
-                }
-                Reveal::All => return Err(NoSolution),
-            },
-            _ => bug!("only expected to be called on alias tys"),
+        if kind != ty::Projection {
+            return;
         }
-    }
 
-    /// Assemble a subset of builtin impl candidates for a class of candidates called
-    /// "defaulted" built-in traits.
-    ///
-    /// For example, we always know that `T: Pointee` is implemented, but we do not
-    /// always know what `<T as Pointee>::Metadata` actually is! See the comment in
-    /// [`EvalCtxt::validate_alias_bound_self_from_param_env`] for more detail.
-    #[instrument(level = "debug", skip_all)]
-    fn assemble_alias_bound_candidates_for_builtin_impl_default_items<G: GoalKind<'tcx>>(
-        &mut self,
-        goal: Goal<'tcx, G>,
-        candidates: &mut Vec<Candidate<'tcx>>,
-    ) {
-        let lang_items = self.tcx().lang_items();
-        let trait_def_id = goal.predicate.trait_def_id(self.tcx());
-
-        // You probably shouldn't add anything to this list unless you
-        // know what you're doing.
-        let result = if lang_items.pointee_trait() == Some(trait_def_id) {
-            G::consider_builtin_pointee_candidate(self, goal)
-        } else if lang_items.discriminant_kind_trait() == Some(trait_def_id) {
-            G::consider_builtin_discriminant_kind_candidate(self, goal)
-        } else {
-            Err(NoSolution)
-        };
-
-        match result {
-            Ok(result) => candidates.push(Candidate {
-                source: CandidateSource::BuiltinImpl(BuiltinImplSource::Misc),
-                result,
-            }),
-            Err(NoSolution) => (),
+        // Recurse on the self type of the projection.
+        match self.structurally_normalize_ty(goal.param_env, alias_ty.self_ty()) {
+            Ok(next_self_ty) => {
+                self.assemble_alias_bound_candidates_recur(next_self_ty, goal, candidates)
+            }
+            Err(NoSolution) => {}
         }
     }
 
@@ -803,6 +673,7 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
             | ty::FnPtr(_)
             | ty::Alias(..)
             | ty::Closure(..)
+            | ty::CoroutineClosure(..)
             | ty::Coroutine(..)
             | ty::CoroutineWitness(..)
             | ty::Never
@@ -865,6 +736,12 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
         }
     }
 
+    /// In coherence we have to not only care about all impls we know about, but
+    /// also consider impls which may get added in a downstream or sibling crate
+    /// or which an upstream impl may add in a minor release.
+    ///
+    /// To do so we add an ambiguous candidate in case such an unknown impl could
+    /// apply to the current goal.
     #[instrument(level = "debug", skip_all)]
     fn assemble_coherence_unknowable_candidates<G: GoalKind<'tcx>>(
         &mut self,
@@ -872,26 +749,13 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
         candidates: &mut Vec<Candidate<'tcx>>,
     ) {
         let tcx = self.tcx();
-        match self.solver_mode() {
-            SolverMode::Normal => return,
-            SolverMode::Coherence => {}
-        };
-
         let result = self.probe_misc_candidate("coherence unknowable").enter(|ecx| {
             let trait_ref = goal.predicate.trait_ref(tcx);
-            #[derive(Debug)]
-            struct Overflow;
-            let lazily_normalize_ty = |ty| match ecx.try_normalize_ty(goal.param_env, ty) {
-                Some(ty) => Ok(ty),
-                None => Err(Overflow),
-            };
+            let lazily_normalize_ty = |ty| ecx.structurally_normalize_ty(goal.param_env, ty);
 
-            match coherence::trait_ref_is_knowable(tcx, trait_ref, lazily_normalize_ty) {
-                Err(Overflow) => {
-                    ecx.evaluate_added_goals_and_make_canonical_response(Certainty::OVERFLOW)
-                }
-                Ok(Ok(())) => Err(NoSolution),
-                Ok(Err(_)) => {
+            match coherence::trait_ref_is_knowable(tcx, trait_ref, lazily_normalize_ty)? {
+                Ok(()) => Err(NoSolution),
+                Err(_) => {
                     ecx.evaluate_added_goals_and_make_canonical_response(Certainty::AMBIGUOUS)
                 }
             }
@@ -906,46 +770,70 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
         }
     }
 
+    /// If there's a where-bound for the current goal, do not use any impl candidates
+    /// to prove the current goal. Most importantly, if there is a where-bound which does
+    /// not specify any associated types, we do not allow normalizing the associated type
+    /// by using an impl, even if it would apply.
+    ///
+    ///  <https://github.com/rust-lang/trait-system-refactor-initiative/issues/76>
+    // FIXME(@lcnr): The current structure here makes me unhappy and feels ugly. idk how
+    // to improve this however. However, this should make it fairly straightforward to refine
+    // the filtering going forward, so it seems alright-ish for now.
+    #[instrument(level = "debug", skip(self, goal))]
+    fn discard_impls_shadowed_by_env<G: GoalKind<'tcx>>(
+        &mut self,
+        goal: Goal<'tcx, G>,
+        candidates: &mut Vec<Candidate<'tcx>>,
+    ) {
+        let tcx = self.tcx();
+        let trait_goal: Goal<'tcx, ty::TraitPredicate<'tcx>> =
+            goal.with(tcx, goal.predicate.trait_ref(tcx));
+        let mut trait_candidates_from_env = Vec::new();
+        self.assemble_param_env_candidates(trait_goal, &mut trait_candidates_from_env);
+        self.assemble_alias_bound_candidates(trait_goal, &mut trait_candidates_from_env);
+        if !trait_candidates_from_env.is_empty() {
+            let trait_env_result = self.merge_candidates(trait_candidates_from_env);
+            match trait_env_result.unwrap().value.certainty {
+                // If proving the trait goal succeeds by using the env,
+                // we freely drop all impl candidates.
+                //
+                // FIXME(@lcnr): It feels like this could easily hide
+                // a forced ambiguity candidate added earlier.
+                // This feels dangerous.
+                Certainty::Yes => {
+                    candidates.retain(|c| match c.source {
+                        CandidateSource::Impl(_) | CandidateSource::BuiltinImpl(_) => {
+                            debug!(?c, "discard impl candidate");
+                            false
+                        }
+                        CandidateSource::ParamEnv(_) | CandidateSource::AliasBound => true,
+                    });
+                }
+                // If it is still ambiguous we instead just force the whole goal
+                // to be ambig and wait for inference constraints. See
+                // tests/ui/traits/next-solver/env-shadows-impls/ambig-env-no-shadow.rs
+                Certainty::Maybe(cause) => {
+                    debug!(?cause, "force ambiguity");
+                    *candidates = self.forced_ambiguity(cause);
+                }
+            }
+        }
+    }
+
     /// If there are multiple ways to prove a trait or projection goal, we have
     /// to somehow try to merge the candidates into one. If that fails, we return
     /// ambiguity.
     #[instrument(level = "debug", skip(self), ret)]
     pub(super) fn merge_candidates(
         &mut self,
-        mut candidates: Vec<Candidate<'tcx>>,
+        candidates: Vec<Candidate<'tcx>>,
     ) -> QueryResult<'tcx> {
         // First try merging all candidates. This is complete and fully sound.
         let responses = candidates.iter().map(|c| c.result).collect::<Vec<_>>();
         if let Some(result) = self.try_merge_responses(&responses) {
             return Ok(result);
+        } else {
+            self.flounder(&responses)
         }
-
-        // We then check whether we should prioritize `ParamEnv` candidates.
-        //
-        // Doing so is incomplete and would therefore be unsound during coherence.
-        match self.solver_mode() {
-            SolverMode::Coherence => (),
-            // Prioritize `ParamEnv` candidates only if they do not guide inference.
-            //
-            // This is still incomplete as we may add incorrect region bounds.
-            SolverMode::Normal => {
-                let param_env_responses = candidates
-                    .iter()
-                    .filter(|c| {
-                        matches!(
-                            c.source,
-                            CandidateSource::ParamEnv(_) | CandidateSource::AliasBound
-                        )
-                    })
-                    .map(|c| c.result)
-                    .collect::<Vec<_>>();
-                if let Some(result) = self.try_merge_responses(&param_env_responses) {
-                    // We strongly prefer alias and param-env bounds here, even if they affect inference.
-                    // See https://github.com/rust-lang/trait-system-refactor-initiative/issues/11.
-                    return Ok(result);
-                }
-            }
-        }
-        self.flounder(&responses)
     }
 }

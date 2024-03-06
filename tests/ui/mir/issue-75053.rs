@@ -1,4 +1,4 @@
-// compile-flags: -Z mir-opt-level=3
+//@ compile-flags: -Z mir-opt-level=3
 
 #![feature(type_alias_impl_trait, rustc_attrs)]
 

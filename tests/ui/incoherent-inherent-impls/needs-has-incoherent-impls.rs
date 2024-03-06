@@ -1,4 +1,4 @@
-// aux-build:extern-crate.rs
+//@ aux-build:extern-crate.rs
 #![feature(rustc_attrs)]
 extern crate extern_crate;
 

@@ -3,8 +3,8 @@
 //
 // Assertion `isa<X>(Val) && "cast<Ty>() argument of incompatible type!"' failed.
 //
-// build-pass
-// compile-flags: --crate-type=lib -Ccodegen-units=1
+//@ build-pass
+//@ compile-flags: --crate-type=lib -Ccodegen-units=1
 #![no_std]
 #![panic_runtime]
 #![feature(panic_runtime)]

@@ -61,11 +61,13 @@ use self::Ordering::*;
 /// The equality relation `==` must satisfy the following conditions
 /// (for all `a`, `b`, `c` of type `A`, `B`, `C`):
 ///
-/// - **Symmetric**: if `A: PartialEq<B>` and `B: PartialEq<A>`, then **`a == b`
+/// - **Symmetry**: if `A: PartialEq<B>` and `B: PartialEq<A>`, then **`a == b`
 ///   implies `b == a`**; and
 ///
-/// - **Transitive**: if `A: PartialEq<B>` and `B: PartialEq<C>` and `A:
+/// - **Transitivity**: if `A: PartialEq<B>` and `B: PartialEq<C>` and `A:
 ///   PartialEq<C>`, then **`a == b` and `b == c` implies `a == c`**.
+///   This must also work for longer chains, such as when `A: PartialEq<B>`, `B: PartialEq<C>`,
+///   `C: PartialEq<D>`, and `A: PartialEq<D>` all exist.
 ///
 /// Note that the `B: PartialEq<A>` (symmetric) and `A: PartialEq<C>`
 /// (transitive) impls are not forced to exist, but these requirements apply
@@ -75,6 +77,25 @@ use self::Ordering::*;
 /// specified, but users of the trait must ensure that such logic errors do *not* result in
 /// undefined behavior. This means that `unsafe` code **must not** rely on the correctness of these
 /// methods.
+///
+/// ## Cross-crate considerations
+///
+/// Upholding the requirements stated above can become tricky when one crate implements `PartialEq`
+/// for a type of another crate (i.e., to allow comparing one of its own types with a type from the
+/// standard library). The recommendation is to never implement this trait for a foreign type. In
+/// other words, such a crate should do `impl PartialEq<ForeignType> for LocalType`, but it should
+/// *not* do `impl PartialEq<LocalType> for ForeignType`.
+///
+/// This avoids the problem of transitive chains that criss-cross crate boundaries: for all local
+/// types `T`, you may assume that no other crate will add `impl`s that allow comparing `T == U`. In
+/// other words, if other crates add `impl`s that allow building longer transitive chains `U1 == ...
+/// == T == V1 == ...`, then all the types that appear to the right of `T` must be types that the
+/// crate defining `T` already knows about. This rules out transitive chains where downstream crates
+/// can add new `impl`s that "stitch together" comparisons of foreign types in ways that violate
+/// transitivity.
+///
+/// Not having such foreign `impl`s also avoids forward compatibility issues where one crate adding
+/// more `PartialEq` implementations can cause build failures in downstream crates.
 ///
 /// ## Derivable
 ///
@@ -920,19 +941,42 @@ pub macro Ord($item:item) {
 /// easy to accidentally make them disagree by deriving some of the traits and manually
 /// implementing others.
 ///
-/// The comparison must satisfy, for all `a`, `b` and `c`:
+/// The comparison relations must satisfy the following conditions
+/// (for all `a`, `b`, `c` of type `A`, `B`, `C`):
 ///
-/// - transitivity: `a < b` and `b < c` implies `a < c`. The same must hold for both `==` and `>`.
-/// - duality: `a < b` if and only if `b > a`.
+/// - **Transitivity**: if `A: PartialOrd<B>` and `B: PartialOrd<C>` and `A:
+///   PartialOrd<C>`, then `a < b` and `b < c` implies `a < c`. The same must hold for both `==` and `>`.
+///   This must also work for longer chains, such as when `A: PartialOrd<B>`, `B: PartialOrd<C>`,
+///   `C: PartialOrd<D>`, and `A: PartialOrd<D>` all exist.
+/// - **Duality**: if `A: PartialOrd<B>` and `B: PartialOrd<A>`, then `a < b` if and only if `b > a`.
 ///
-/// Note that these requirements mean that the trait itself must be implemented symmetrically and
-/// transitively: if `T: PartialOrd<U>` and `U: PartialOrd<V>` then `U: PartialOrd<T>` and `T:
-/// PartialOrd<V>`.
+/// Note that the `B: PartialOrd<A>` (dual) and `A: PartialOrd<C>`
+/// (transitive) impls are not forced to exist, but these requirements apply
+/// whenever they do exist.
 ///
 /// Violating these requirements is a logic error. The behavior resulting from a logic error is not
 /// specified, but users of the trait must ensure that such logic errors do *not* result in
 /// undefined behavior. This means that `unsafe` code **must not** rely on the correctness of these
 /// methods.
+///
+/// ## Cross-crate considerations
+///
+/// Upholding the requirements stated above can become tricky when one crate implements `PartialOrd`
+/// for a type of another crate (i.e., to allow comparing one of its own types with a type from the
+/// standard library). The recommendation is to never implement this trait for a foreign type. In
+/// other words, such a crate should do `impl PartialOrd<ForeignType> for LocalType`, but it should
+/// *not* do `impl PartialOrd<LocalType> for ForeignType`.
+///
+/// This avoids the problem of transitive chains that criss-cross crate boundaries: for all local
+/// types `T`, you may assume that no other crate will add `impl`s that allow comparing `T < U`. In
+/// other words, if other crates add `impl`s that allow building longer transitive chains `U1 < ...
+/// < T < V1 < ...`, then all the types that appear to the right of `T` must be types that the crate
+/// defining `T` already knows about. This rules out transitive chains where downstream crates can
+/// add new `impl`s that "stitch together" comparisons of foreign types in ways that violate
+/// transitivity.
+///
+/// Not having such foreign `impl`s also avoids forward compatibility issues where one crate adding
+/// more `PartialOrd` implementations can cause build failures in downstream crates.
 ///
 /// ## Corollaries
 ///

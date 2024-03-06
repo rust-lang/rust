@@ -1,4 +1,4 @@
-// compile-flags: -g
+//@ compile-flags: -g
 //
 // CHECK-LABEL: @main
 // MSVC: {{.*}}DIDerivedType(tag: DW_TAG_pointer_type, name: "recursive_type$ (*)()",{{.*}}

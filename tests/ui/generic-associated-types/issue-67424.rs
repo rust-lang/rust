@@ -1,4 +1,4 @@
-// check-pass
+//@ check-pass
 // Fixed by #67160
 
 trait Trait1 {

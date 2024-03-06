@@ -7,6 +7,12 @@ LL | const ZST: &[u8] = unsafe { std::mem::transmute(1usize) };
    = note: source type: `usize` (word size)
    = note: target type: `&[u8]` (2 * word size)
 
-error: aborting due to 1 previous error
+error: could not evaluate constant pattern
+  --> $DIR/transmute-size-mismatch-before-typeck.rs:8:9
+   |
+LL |         ZST => {}
+   |         ^^^
+
+error: aborting due to 2 previous errors
 
 For more information about this error, try `rustc --explain E0512`.

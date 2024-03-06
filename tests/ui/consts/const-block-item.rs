@@ -1,8 +1,8 @@
-// run-pass
+//@ run-pass
 #![allow(unused_imports)]
 
 mod foo {
-    pub trait Value {
+    pub trait Value { //~ WARN trait `Value` is never used
         fn value(&self) -> usize;
     }
 }

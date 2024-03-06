@@ -9,20 +9,20 @@ use crate::os::hermit::ffi::OsStringExt;
 use crate::path::{self, PathBuf};
 use crate::str;
 use crate::sync::Mutex;
-use crate::sys::memchr;
 use crate::sys::unsupported;
 use crate::vec;
+use core::slice::memchr;
 
 pub fn errno() -> i32 {
-    0
+    unsafe { abi::get_errno() }
 }
 
-pub fn error_string(_errno: i32) -> String {
-    "operation successful".to_string()
+pub fn error_string(errno: i32) -> String {
+    abi::error_string(errno).to_string()
 }
 
 pub fn getcwd() -> io::Result<PathBuf> {
-    unsupported()
+    Ok(PathBuf::from("/"))
 }
 
 pub fn chdir(_: &path::Path) -> io::Result<()> {
@@ -188,7 +188,7 @@ pub fn unsetenv(k: &OsStr) -> io::Result<()> {
 }
 
 pub fn temp_dir() -> PathBuf {
-    panic!("no filesystem on hermit")
+    PathBuf::from("/tmp")
 }
 
 pub fn home_dir() -> Option<PathBuf> {

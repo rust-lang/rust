@@ -1,5 +1,5 @@
 //! Name resolution façade.
-use std::{fmt, hash::BuildHasherDefault};
+use std::{fmt, hash::BuildHasherDefault, mem};
 
 use base_db::CrateId;
 use hir_expand::{
@@ -27,9 +27,9 @@ use crate::{
     visibility::{RawVisibility, Visibility},
     AdtId, ConstId, ConstParamId, CrateRootModuleId, DefWithBodyId, EnumId, EnumVariantId,
     ExternBlockId, ExternCrateId, FunctionId, GenericDefId, GenericParamId, HasModule, ImplId,
-    ItemContainerId, LifetimeParamId, LocalModuleId, Lookup, Macro2Id, MacroId, MacroRulesId,
-    ModuleDefId, ModuleId, ProcMacroId, StaticId, StructId, TraitAliasId, TraitId, TypeAliasId,
-    TypeOrConstParamId, TypeOwnerId, TypeParamId, UseId, VariantId,
+    ItemContainerId, ItemTreeLoc, LifetimeParamId, LocalModuleId, Lookup, Macro2Id, MacroId,
+    MacroRulesId, ModuleDefId, ModuleId, ProcMacroId, StaticId, StructId, TraitAliasId, TraitId,
+    TypeAliasId, TypeOrConstParamId, TypeOwnerId, TypeParamId, UseId, VariantId,
 };
 
 #[derive(Debug, Clone)]
@@ -248,6 +248,7 @@ impl Resolver {
             RawVisibility::Public => Some(Visibility::Public),
         }
     }
+
     pub fn resolve_path_in_value_ns(
         &self,
         db: &dyn DefDatabase,
@@ -808,7 +809,7 @@ fn resolver_for_scope_(
     for scope in scope_chain.into_iter().rev() {
         if let Some(block) = scopes.block(scope) {
             let def_map = db.block_def_map(block);
-            r = r.push_block_scope(def_map, DefMap::ROOT);
+            r = r.push_block_scope(def_map);
             // FIXME: This adds as many module scopes as there are blocks, but resolving in each
             // already traverses all parents, so this is O(n²). I think we could only store the
             // innermost module scope instead?
@@ -834,8 +835,9 @@ impl Resolver {
         self.push_scope(Scope::ImplDefScope(impl_def))
     }
 
-    fn push_block_scope(self, def_map: Arc<DefMap>, module_id: LocalModuleId) -> Resolver {
-        self.push_scope(Scope::BlockScope(ModuleItemMap { def_map, module_id }))
+    fn push_block_scope(self, def_map: Arc<DefMap>) -> Resolver {
+        debug_assert!(def_map.block_id().is_some());
+        self.push_scope(Scope::BlockScope(ModuleItemMap { def_map, module_id: DefMap::ROOT }))
     }
 
     fn push_expr_scope(
@@ -985,19 +987,27 @@ pub trait HasResolver: Copy {
 impl HasResolver for ModuleId {
     fn resolver(self, db: &dyn DefDatabase) -> Resolver {
         let mut def_map = self.def_map(db);
-        let mut modules: SmallVec<[_; 1]> = smallvec![];
         let mut module_id = self.local_id;
+        let mut modules: SmallVec<[_; 1]> = smallvec![];
+
+        if !self.is_block_module() {
+            return Resolver { scopes: vec![], module_scope: ModuleItemMap { def_map, module_id } };
+        }
+
         while let Some(parent) = def_map.parent() {
-            modules.push((def_map, module_id));
-            def_map = parent.def_map(db);
-            module_id = parent.local_id;
+            let block_def_map = mem::replace(&mut def_map, parent.def_map(db));
+            modules.push(block_def_map);
+            if !parent.is_block_module() {
+                module_id = parent.local_id;
+                break;
+            }
         }
         let mut resolver = Resolver {
             scopes: Vec::with_capacity(modules.len()),
             module_scope: ModuleItemMap { def_map, module_id },
         };
-        for (def_map, module) in modules.into_iter().rev() {
-            resolver = resolver.push_block_scope(def_map, module);
+        for def_map in modules.into_iter().rev() {
+            resolver = resolver.push_block_scope(def_map);
         }
         resolver
     }
@@ -1014,13 +1024,13 @@ impl HasResolver for CrateRootModuleId {
 
 impl HasResolver for TraitId {
     fn resolver(self, db: &dyn DefDatabase) -> Resolver {
-        self.lookup(db).container.resolver(db).push_generic_params_scope(db, self.into())
+        lookup_resolver(db, self).push_generic_params_scope(db, self.into())
     }
 }
 
 impl HasResolver for TraitAliasId {
     fn resolver(self, db: &dyn DefDatabase) -> Resolver {
-        self.lookup(db).container.resolver(db).push_generic_params_scope(db, self.into())
+        lookup_resolver(db, self).push_generic_params_scope(db, self.into())
     }
 }
 
@@ -1036,25 +1046,25 @@ impl<T: Into<AdtId> + Copy> HasResolver for T {
 
 impl HasResolver for FunctionId {
     fn resolver(self, db: &dyn DefDatabase) -> Resolver {
-        self.lookup(db).container.resolver(db).push_generic_params_scope(db, self.into())
+        lookup_resolver(db, self).push_generic_params_scope(db, self.into())
     }
 }
 
 impl HasResolver for ConstId {
     fn resolver(self, db: &dyn DefDatabase) -> Resolver {
-        self.lookup(db).container.resolver(db)
+        lookup_resolver(db, self)
     }
 }
 
 impl HasResolver for StaticId {
     fn resolver(self, db: &dyn DefDatabase) -> Resolver {
-        self.lookup(db).container.resolver(db)
+        lookup_resolver(db, self)
     }
 }
 
 impl HasResolver for TypeAliasId {
     fn resolver(self, db: &dyn DefDatabase) -> Resolver {
-        self.lookup(db).container.resolver(db).push_generic_params_scope(db, self.into())
+        lookup_resolver(db, self).push_generic_params_scope(db, self.into())
     }
 }
 
@@ -1071,19 +1081,19 @@ impl HasResolver for ImplId {
 impl HasResolver for ExternBlockId {
     fn resolver(self, db: &dyn DefDatabase) -> Resolver {
         // Same as parent's
-        self.lookup(db).container.resolver(db)
+        lookup_resolver(db, self)
     }
 }
 
 impl HasResolver for ExternCrateId {
     fn resolver(self, db: &dyn DefDatabase) -> Resolver {
-        self.lookup(db).container.resolver(db)
+        lookup_resolver(db, self)
     }
 }
 
 impl HasResolver for UseId {
     fn resolver(self, db: &dyn DefDatabase) -> Resolver {
-        self.lookup(db).container.resolver(db)
+        lookup_resolver(db, self)
     }
 }
 
@@ -1170,18 +1180,28 @@ impl HasResolver for MacroId {
 
 impl HasResolver for Macro2Id {
     fn resolver(self, db: &dyn DefDatabase) -> Resolver {
-        self.lookup(db).container.resolver(db)
+        lookup_resolver(db, self)
     }
 }
 
 impl HasResolver for ProcMacroId {
     fn resolver(self, db: &dyn DefDatabase) -> Resolver {
-        self.lookup(db).container.resolver(db)
+        lookup_resolver(db, self)
     }
 }
 
 impl HasResolver for MacroRulesId {
     fn resolver(self, db: &dyn DefDatabase) -> Resolver {
-        self.lookup(db).container.resolver(db)
+        lookup_resolver(db, self)
     }
+}
+
+fn lookup_resolver<'db>(
+    db: &(dyn DefDatabase + 'db),
+    lookup: impl Lookup<
+        Database<'db> = dyn DefDatabase + 'db,
+        Data = impl ItemTreeLoc<Container = impl HasResolver>,
+    >,
+) -> Resolver {
+    lookup.lookup(db).container().resolver(db)
 }

@@ -1,5 +1,5 @@
-// check-fail
-// known-bug: #104034
+//@ check-fail
+//@ known-bug: #104034
 
 #![feature(exhaustive_patterns, never_type)]
 

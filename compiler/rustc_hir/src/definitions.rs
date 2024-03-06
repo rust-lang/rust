@@ -287,6 +287,8 @@ pub enum DefPathData {
     /// An existential `impl Trait` type node.
     /// Argument position `impl Trait` have a `TypeNs` with their pretty-printed name.
     OpaqueTy,
+    /// An anonymous struct or union type i.e. `struct { foo: Type }` or `union { bar: Type }`
+    AnonAdt,
 }
 
 impl Definitions {
@@ -409,15 +411,18 @@ impl DefPathData {
         match *self {
             TypeNs(name) if name == kw::Empty => None,
             TypeNs(name) | ValueNs(name) | MacroNs(name) | LifetimeNs(name) => Some(name),
+
             Impl | ForeignMod | CrateRoot | Use | GlobalAsm | Closure | Ctor | AnonConst
-            | OpaqueTy => None,
+            | OpaqueTy | AnonAdt => None,
         }
     }
 
     pub fn name(&self) -> DefPathDataName {
         use self::DefPathData::*;
         match *self {
-            TypeNs(name) if name == kw::Empty => DefPathDataName::Anon { namespace: sym::opaque },
+            TypeNs(name) if name == kw::Empty => {
+                DefPathDataName::Anon { namespace: sym::synthetic }
+            }
             TypeNs(name) | ValueNs(name) | MacroNs(name) | LifetimeNs(name) => {
                 DefPathDataName::Named(name)
             }
@@ -431,6 +436,7 @@ impl DefPathData {
             Ctor => DefPathDataName::Anon { namespace: sym::constructor },
             AnonConst => DefPathDataName::Anon { namespace: sym::constant },
             OpaqueTy => DefPathDataName::Anon { namespace: sym::opaque },
+            AnonAdt => DefPathDataName::Anon { namespace: sym::anon_adt },
         }
     }
 }

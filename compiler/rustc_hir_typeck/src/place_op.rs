@@ -1,5 +1,5 @@
 use crate::method::MethodCallee;
-use crate::{has_expected_num_generic_args, FnCtxt, PlaceOp};
+use crate::{FnCtxt, PlaceOp};
 use rustc_ast as ast;
 use rustc_errors::Applicability;
 use rustc_hir as hir;
@@ -209,20 +209,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             return None;
         };
 
-        // If the lang item was declared incorrectly, stop here so that we don't
-        // run into an ICE (#83893). The error is reported where the lang item is
-        // declared.
-        if !has_expected_num_generic_args(
-            self.tcx,
-            imm_tr,
-            match op {
-                PlaceOp::Deref => 0,
-                PlaceOp::Index => 1,
-            },
-        ) {
-            return None;
-        }
-
         self.lookup_method_in_trait(
             self.misc(span),
             Ident::with_dummy_span(imm_op),
@@ -248,20 +234,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // Bail if `DerefMut` or `IndexMut` isn't defined.
             return None;
         };
-
-        // If the lang item was declared incorrectly, stop here so that we don't
-        // run into an ICE (#83893). The error is reported where the lang item is
-        // declared.
-        if !has_expected_num_generic_args(
-            self.tcx,
-            mut_tr,
-            match op {
-                PlaceOp::Deref => 0,
-                PlaceOp::Index => 1,
-            },
-        ) {
-            return None;
-        }
 
         self.lookup_method_in_trait(
             self.misc(span),
@@ -385,7 +357,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             PlaceOp::Deref => None,
             PlaceOp::Index => {
                 // We would need to recover the `T` used when we resolve `<_ as Index<T>>::index`
-                // in try_index_step. This is the subst at index 1.
+                // in try_index_step. This is the arg at index 1.
                 //
                 // Note: we should *not* use `expr_ty` of index_expr here because autoderef
                 // during coercions can cause type of index_expr to differ from `T` (#72002).

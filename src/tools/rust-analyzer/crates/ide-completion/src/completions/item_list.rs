@@ -1,7 +1,7 @@
 //! Completion of paths and keywords at item list position.
 
 use crate::{
-    context::{ExprCtx, ItemListKind, PathCompletionCtx, Qualified},
+    context::{ItemListKind, PathCompletionCtx, PathExprCtx, Qualified},
     CompletionContext, Completions,
 };
 
@@ -11,7 +11,7 @@ pub(crate) fn complete_item_list_in_expr(
     acc: &mut Completions,
     ctx: &CompletionContext<'_>,
     path_ctx: &PathCompletionCtx,
-    expr_ctx: &ExprCtx,
+    expr_ctx: &PathExprCtx,
 ) {
     if !expr_ctx.in_block_expr {
         return;
@@ -28,7 +28,7 @@ pub(crate) fn complete_item_list(
     path_ctx @ PathCompletionCtx { qualified, .. }: &PathCompletionCtx,
     kind: &ItemListKind,
 ) {
-    let _p = profile::span("complete_item_list");
+    let _p = tracing::span!(tracing::Level::INFO, "complete_item_list").entered();
     if path_ctx.is_trivial_path() {
         add_keywords(acc, ctx, Some(kind));
     }

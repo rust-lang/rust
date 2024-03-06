@@ -415,7 +415,7 @@ fn gen_partial_eq(adt: &ast::Adt, func: &ast::Fn, trait_ref: Option<TraitRef>) -
     }
 
     fn gen_record_pat(record_name: ast::Path, fields: Vec<ast::RecordPatField>) -> ast::RecordPat {
-        let list = make::record_pat_field_list(fields);
+        let list = make::record_pat_field_list(fields, None);
         make::record_pat_with_fields(record_name, list)
     }
 

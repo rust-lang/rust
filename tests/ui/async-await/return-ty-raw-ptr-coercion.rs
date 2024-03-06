@@ -2,8 +2,8 @@
 //
 // Also serves as a regression test for #60424.
 //
-// edition:2018
-// check-pass
+//@ edition:2018
+//@ check-pass
 
 #![allow(warnings)]
 

@@ -4,9 +4,9 @@
 // The order of these next lines is important, since we need
 // transitive_dep_two.rs to be able to reference transitive_dep_three.rs
 //
-// aux-build: transitive_dep_three.rs
-// aux-build: transitive_dep_two.rs
-// compile-flags: -Z macro-backtrace
+//@ aux-build: transitive_dep_three.rs
+//@ aux-build: transitive_dep_two.rs
+//@ compile-flags: -Z macro-backtrace
 
 extern crate transitive_dep_two;
 

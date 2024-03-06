@@ -1,4 +1,4 @@
-// check-pass
+//@ check-pass
 
 pub trait CSpace<const N: usize> {
     type Traj;

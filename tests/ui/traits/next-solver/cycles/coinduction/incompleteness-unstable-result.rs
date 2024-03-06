@@ -1,4 +1,4 @@
-// compile-flags: -Znext-solver
+//@ compile-flags: -Znext-solver
 #![feature(rustc_attrs)]
 
 // This test is incredibly subtle. At its core the goal is to get a coinductive cycle,

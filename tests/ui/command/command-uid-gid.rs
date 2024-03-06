@@ -1,8 +1,8 @@
-// run-pass
-// ignore-android
-// ignore-emscripten
-// ignore-sgx
-// ignore-fuchsia no '/bin/sh', '/bin/ls'
+//@ run-pass
+//@ ignore-android
+//@ ignore-emscripten
+//@ ignore-sgx
+//@ ignore-fuchsia no '/bin/sh', '/bin/ls'
 
 #![feature(rustc_private)]
 

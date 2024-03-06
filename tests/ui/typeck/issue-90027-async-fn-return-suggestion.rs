@@ -1,4 +1,4 @@
-// edition:2018
+//@ edition:2018
 
 async fn hello() { //~ HELP try adding a return type
     0

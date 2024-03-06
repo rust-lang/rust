@@ -1,20 +1,17 @@
-// This tests that optimized enum debug info accurately reflects the enum layout.
-// This is ignored for the fallback mode on MSVC due to problems with PDB.
-
+//! This tests that optimized enum debug info accurately reflects the enum layout.
+//! This is ignored for the fallback mode on MSVC due to problems with PDB.
+//!
+//@ compile-flags: -g -C no-prepopulate-passes
+//@ ignore-msvc
 //
-// ignore-msvc
-
-// compile-flags: -g -C no-prepopulate-passes
-
 // CHECK: {{.*}}DICompositeType{{.*}}tag: DW_TAG_variant_part,{{.*}}size: 32,{{.*}}
 // CHECK: {{.*}}DIDerivedType{{.*}}tag: DW_TAG_member,{{.*}}name: "Placeholder",{{.*}}extraData: i128 4294967295{{[,)].*}}
 // CHECK: {{.*}}DIDerivedType{{.*}}tag: DW_TAG_member,{{.*}}name: "Error",{{.*}}extraData: i128 0{{[,)].*}}
-
-#![feature(never_type)]
+#![feature(generic_nonzero, never_type)]
 
 #[derive(Copy, Clone)]
 pub struct Entity {
-    private: std::num::NonZeroU32,
+    private: std::num::NonZero<u32>,
 }
 
 #[derive(Copy, Clone, PartialEq, Eq)]

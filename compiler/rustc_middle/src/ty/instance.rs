@@ -19,7 +19,7 @@ use std::fmt;
 ///
 /// Monomorphization happens on-the-fly and no monomorphized MIR is ever created. Instead, this type
 /// simply couples a potentially generic `InstanceDef` with some args, and codegen and const eval
-/// will do all required substitution as they run.
+/// will do all required instantiations as they run.
 ///
 /// Note: the `Lift` impl is currently not used by rustc, but is used by
 /// rustc_codegen_cranelift when the `jit` feature is enabled.
@@ -82,10 +82,32 @@ pub enum InstanceDef<'tcx> {
     /// details on that).
     Virtual(DefId, usize),
 
-    /// `<[FnMut closure] as FnOnce>::call_once`.
+    /// `<[FnMut/Fn closure] as FnOnce>::call_once`.
     ///
     /// The `DefId` is the ID of the `call_once` method in `FnOnce`.
+    ///
+    /// This generates a body that will just borrow the (owned) self type,
+    /// and dispatch to the `FnMut::call_mut` instance for the closure.
     ClosureOnceShim { call_once: DefId, track_caller: bool },
+
+    /// `<[FnMut/Fn coroutine-closure] as FnOnce>::call_once` or
+    /// `<[Fn coroutine-closure] as FnMut>::call_mut`.
+    ///
+    /// The body generated here differs significantly from the `ClosureOnceShim`,
+    /// since we need to generate a distinct coroutine type that will move the
+    /// closure's upvars *out* of the closure.
+    ConstructCoroutineInClosureShim {
+        coroutine_closure_def_id: DefId,
+        target_kind: ty::ClosureKind,
+    },
+
+    /// `<[coroutine] as Future>::poll`, but for coroutines produced when `AsyncFnOnce`
+    /// is called on a coroutine-closure whose closure kind greater than `FnOnce`, or
+    /// similarly for `AsyncFnMut`.
+    ///
+    /// This will select the body that is produced by the `ByMoveBody` transform, and thus
+    /// take and use all of its upvars by-move rather than by-ref.
+    CoroutineKindShim { coroutine_def_id: DefId, target_kind: ty::ClosureKind },
 
     /// Compiler-generated accessor for thread locals which returns a reference to the thread local
     /// the `DefId` defines. This is used to export thread locals from dylibs on platforms lacking
@@ -116,7 +138,7 @@ pub enum InstanceDef<'tcx> {
 }
 
 impl<'tcx> Instance<'tcx> {
-    /// Returns the `Ty` corresponding to this `Instance`, with generic substitutions applied and
+    /// Returns the `Ty` corresponding to this `Instance`, with generic instantiations applied and
     /// lifetimes erased, allowing a `ParamEnv` to be specified for use during normalization.
     pub fn ty(&self, tcx: TyCtxt<'tcx>, param_env: ty::ParamEnv<'tcx>) -> Ty<'tcx> {
         let ty = tcx.type_of(self.def.def_id());
@@ -168,6 +190,11 @@ impl<'tcx> InstanceDef<'tcx> {
             | InstanceDef::Intrinsic(def_id)
             | InstanceDef::ThreadLocalShim(def_id)
             | InstanceDef::ClosureOnceShim { call_once: def_id, track_caller: _ }
+            | ty::InstanceDef::ConstructCoroutineInClosureShim {
+                coroutine_closure_def_id: def_id,
+                target_kind: _,
+            }
+            | ty::InstanceDef::CoroutineKindShim { coroutine_def_id: def_id, target_kind: _ }
             | InstanceDef::DropGlue(def_id, _)
             | InstanceDef::CloneShim(def_id, _)
             | InstanceDef::FnPtrAddrShim(def_id, _) => def_id,
@@ -187,6 +214,8 @@ impl<'tcx> InstanceDef<'tcx> {
             | InstanceDef::Virtual(..)
             | InstanceDef::Intrinsic(..)
             | InstanceDef::ClosureOnceShim { .. }
+            | ty::InstanceDef::ConstructCoroutineInClosureShim { .. }
+            | ty::InstanceDef::CoroutineKindShim { .. }
             | InstanceDef::DropGlue(..)
             | InstanceDef::CloneShim(..)
             | InstanceDef::FnPtrAddrShim(..) => None,
@@ -269,11 +298,11 @@ impl<'tcx> InstanceDef<'tcx> {
     }
 
     /// Returns `true` when the MIR body associated with this instance should be monomorphized
-    /// by its users (e.g. codegen or miri) by substituting the `args` from `Instance` (see
+    /// by its users (e.g. codegen or miri) by instantiating the `args` from `Instance` (see
     /// `Instance::args_for_mir_body`).
     ///
     /// Otherwise, returns `false` only for some kinds of shims where the construction of the MIR
-    /// body should perform necessary substitutions.
+    /// body should perform necessary instantiations.
     pub fn has_polymorphic_mir_body(&self) -> bool {
         match *self {
             InstanceDef::CloneShim(..)
@@ -282,6 +311,8 @@ impl<'tcx> InstanceDef<'tcx> {
             | InstanceDef::FnPtrShim(..)
             | InstanceDef::DropGlue(_, Some(_)) => false,
             InstanceDef::ClosureOnceShim { .. }
+            | InstanceDef::ConstructCoroutineInClosureShim { .. }
+            | InstanceDef::CoroutineKindShim { .. }
             | InstanceDef::DropGlue(..)
             | InstanceDef::Item(_)
             | InstanceDef::Intrinsic(..)
@@ -319,6 +350,8 @@ fn fmt_instance(
         InstanceDef::Virtual(_, num) => write!(f, " - virtual#{num}"),
         InstanceDef::FnPtrShim(_, ty) => write!(f, " - shim({ty})"),
         InstanceDef::ClosureOnceShim { .. } => write!(f, " - shim"),
+        InstanceDef::ConstructCoroutineInClosureShim { .. } => write!(f, " - shim"),
+        InstanceDef::CoroutineKindShim { .. } => write!(f, " - shim"),
         InstanceDef::DropGlue(_, None) => write!(f, " - shim(None)"),
         InstanceDef::DropGlue(_, Some(ty)) => write!(f, " - shim(Some({ty}))"),
         InstanceDef::CloneShim(_, ty) => write!(f, " - shim({ty})"),
@@ -432,10 +465,7 @@ impl<'tcx> Instance<'tcx> {
     ) -> Option<Instance<'tcx>> {
         debug!("resolve(def_id={:?}, args={:?})", def_id, args);
         // Use either `resolve_closure` or `resolve_for_vtable`
-        assert!(
-            !tcx.is_closure_or_coroutine(def_id),
-            "Called `resolve_for_fn_ptr` on closure: {def_id:?}"
-        );
+        assert!(!tcx.is_closure_like(def_id), "Called `resolve_for_fn_ptr` on closure: {def_id:?}");
         Instance::resolve(tcx, param_env, def_id, args).ok().flatten().map(|mut resolved| {
             match resolved.def {
                 InstanceDef::Item(def) if resolved.def.requires_caller_location(tcx) => {
@@ -497,7 +527,7 @@ impl<'tcx> Instance<'tcx> {
                                 })
                             )
                         {
-                            if tcx.is_closure_or_coroutine(def) {
+                            if tcx.is_closure_like(def) {
                                 debug!(" => vtable fn pointer created for closure with #[track_caller]: {:?} for method {:?} {:?}",
                                        def, def_id, args);
 
@@ -610,7 +640,24 @@ impl<'tcx> Instance<'tcx> {
         };
 
         if tcx.lang_items().get(coroutine_callable_item) == Some(trait_item_id) {
-            Some(Instance { def: ty::InstanceDef::Item(coroutine_def_id), args: args })
+            let ty::Coroutine(_, id_args) = *tcx.type_of(coroutine_def_id).skip_binder().kind()
+            else {
+                bug!()
+            };
+
+            // If the closure's kind ty disagrees with the identity closure's kind ty,
+            // then this must be a coroutine generated by one of the `ConstructCoroutineInClosureShim`s.
+            if args.as_coroutine().kind_ty() == id_args.as_coroutine().kind_ty() {
+                Some(Instance { def: ty::InstanceDef::Item(coroutine_def_id), args })
+            } else {
+                Some(Instance {
+                    def: ty::InstanceDef::CoroutineKindShim {
+                        coroutine_def_id,
+                        target_kind: args.as_coroutine().kind_ty().to_opt_closure_kind().unwrap(),
+                    },
+                    args,
+                })
+            }
         } else {
             // All other methods should be defaulted methods of the built-in trait.
             // This is important for `Iterator`'s combinators, but also useful for
@@ -622,13 +669,13 @@ impl<'tcx> Instance<'tcx> {
 
     /// Depending on the kind of `InstanceDef`, the MIR body associated with an
     /// instance is expressed in terms of the generic parameters of `self.def_id()`, and in other
-    /// cases the MIR body is expressed in terms of the types found in the substitution array.
-    /// In the former case, we want to substitute those generic types and replace them with the
+    /// cases the MIR body is expressed in terms of the types found in the generic parameter array.
+    /// In the former case, we want to instantiate those generic types and replace them with the
     /// values from the args when monomorphizing the function body. But in the latter case, we
-    /// don't want to do that substitution, since it has already been done effectively.
+    /// don't want to do that instantiation, since it has already been done effectively.
     ///
     /// This function returns `Some(args)` in the former case and `None` otherwise -- i.e., if
-    /// this function returns `None`, then the MIR body does not require substitution during
+    /// this function returns `None`, then the MIR body does not require instantiation during
     /// codegen.
     fn args_for_mir_body(&self) -> Option<GenericArgsRef<'tcx>> {
         self.def.has_polymorphic_mir_body().then_some(self.args)
@@ -715,7 +762,14 @@ fn polymorphize<'tcx>(
     let def_id = instance.def_id();
     let upvars_ty = match tcx.type_of(def_id).skip_binder().kind() {
         ty::Closure(..) => Some(args.as_closure().tupled_upvars_ty()),
-        ty::Coroutine(..) => Some(args.as_coroutine().tupled_upvars_ty()),
+        ty::Coroutine(..) => {
+            assert_eq!(
+                args.as_coroutine().kind_ty(),
+                tcx.types.unit,
+                "polymorphization does not support coroutines from async closures"
+            );
+            Some(args.as_coroutine().tupled_upvars_ty())
+        }
         _ => None,
     };
     let has_upvars = upvars_ty.is_some_and(|ty| !ty.tuple_fields().is_empty());

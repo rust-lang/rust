@@ -1,4 +1,4 @@
-// aux-build:meow.rs
+//@ aux-build:meow.rs
 
 extern crate meow;
 

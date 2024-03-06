@@ -1,10 +1,10 @@
-// run-pass
+//@ run-pass
 
 #![allow(dead_code)]
 // issue #680
 
 
-// pretty-expanded FIXME #23616
+//@ pretty-expanded FIXME #23616
 
 fn f() -> Vec<isize> { Vec::new() }
 

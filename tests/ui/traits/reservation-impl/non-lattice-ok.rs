@@ -1,4 +1,4 @@
-// build-pass
+//@ build-pass
 
 // Check that a reservation impl does not force other impls to follow
 // a lattice discipline.
@@ -33,8 +33,8 @@
 
 // check that reservation impls can't be used as normal impls in positive reasoning.
 
-// revisions: old next
-//[next] compile-flags: -Znext-solver
+//@ revisions: old next
+//@[next] compile-flags: -Znext-solver
 
 #![feature(rustc_attrs, never_type)]
 

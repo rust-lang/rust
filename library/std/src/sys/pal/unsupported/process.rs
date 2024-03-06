@@ -2,7 +2,7 @@ use crate::ffi::OsStr;
 use crate::fmt;
 use crate::io;
 use crate::marker::PhantomData;
-use crate::num::NonZeroI32;
+use crate::num::NonZero;
 use crate::path::Path;
 use crate::sys::fs::File;
 use crate::sys::pipe::AnonPipe;
@@ -170,7 +170,7 @@ impl Into<ExitStatus> for ExitStatusError {
 }
 
 impl ExitStatusError {
-    pub fn code(self) -> Option<NonZeroI32> {
+    pub fn code(self) -> Option<NonZero<i32>> {
         self.0
     }
 }

@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 // Test that the right implementation is called through a trait
 // object when supertraits include multiple references to the
 // same trait, with different type parameters.

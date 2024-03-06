@@ -2,7 +2,7 @@
 // when there are multiple inputs.  The `dyn Bar` should default to `+
 // 'static`. This used to erroneously generate an error (cc #62517).
 //
-// check-pass
+//@ check-pass
 
 trait Foo {
     type Item: ?Sized;

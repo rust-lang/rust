@@ -1,6 +1,6 @@
 #![feature(unstable_test_feature)]
 
-// aux-build:unstable.rs
+//@ aux-build:unstable.rs
 
 extern crate unstable;
 

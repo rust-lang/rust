@@ -1,7 +1,7 @@
-// only-x86_64
-// run-pass
-// needs-asm-support
-// needs-unwind
+//@ only-x86_64
+//@ run-pass
+//@ needs-asm-support
+//@ needs-unwind
 
 #![feature(asm_unwind)]
 

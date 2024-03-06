@@ -2,8 +2,6 @@
 //! the definitions in this file have equivalents in `rustc_ast_pretty`.
 
 #![recursion_limit = "256"]
-#![deny(rustc::untranslatable_diagnostic)]
-#![deny(rustc::diagnostic_outside_of_impl)]
 
 use rustc_ast as ast;
 use rustc_ast::util::parser::{self, AssocOp, Fixity};
@@ -23,7 +21,7 @@ use std::cell::Cell;
 use std::vec;
 
 pub fn id_to_string(map: &dyn rustc_hir::intravisit::Map<'_>, hir_id: hir::HirId) -> String {
-    to_string(&map, |s| s.print_node(map.find(hir_id).unwrap()))
+    to_string(&map, |s| s.print_node(map.hir_node(hir_id)))
 }
 
 pub enum AnnNode<'a> {
@@ -117,6 +115,13 @@ impl<'a> State<'a> {
             Node::Ctor(..) => panic!("cannot print isolated Ctor"),
             Node::Local(a) => self.print_local_decl(a),
             Node::Crate(..) => panic!("cannot print Crate"),
+            Node::WhereBoundPredicate(pred) => {
+                self.print_formal_generic_params(pred.bound_generic_params);
+                self.print_type(pred.bounded_ty);
+                self.print_bounds(":", pred.bounds);
+            }
+            Node::ArrayLenInfer(_) => self.word("_"),
+            Node::Err(_) => self.word("/*ERROR*/"),
         }
     }
 }
@@ -323,6 +328,7 @@ impl<'a> State<'a> {
             hir::TyKind::Infer | hir::TyKind::InferDelegation(..) => {
                 self.word("_");
             }
+            hir::TyKind::AnonAdt(..) => self.word("/* anonymous adt */"),
         }
         self.end()
     }
@@ -723,26 +729,30 @@ impl<'a> State<'a> {
             }
             hir::VariantData::Struct { .. } => {
                 self.print_where_clause(generics);
-                self.nbsp();
-                self.bopen();
-                self.hardbreak_if_not_bol();
-
-                for field in struct_def.fields() {
-                    self.hardbreak_if_not_bol();
-                    self.maybe_print_comment(field.span.lo());
-                    self.print_outer_attributes(self.attrs(field.hir_id));
-                    self.print_ident(field.ident);
-                    self.word_nbsp(":");
-                    self.print_type(field.ty);
-                    self.word(",");
-                }
-
-                self.bclose(span)
+                self.print_variant_struct(span, struct_def.fields())
             }
         }
     }
 
-    fn print_variant(&mut self, v: &hir::Variant<'_>) {
+    fn print_variant_struct(&mut self, span: rustc_span::Span, fields: &[hir::FieldDef<'_>]) {
+        self.nbsp();
+        self.bopen();
+        self.hardbreak_if_not_bol();
+
+        for field in fields {
+            self.hardbreak_if_not_bol();
+            self.maybe_print_comment(field.span.lo());
+            self.print_outer_attributes(self.attrs(field.hir_id));
+            self.print_ident(field.ident);
+            self.word_nbsp(":");
+            self.print_type(field.ty);
+            self.word(",");
+        }
+
+        self.bclose(span)
+    }
+
+    pub fn print_variant(&mut self, v: &hir::Variant<'_>) {
         self.head("");
         let generics = hir::Generics::empty();
         self.print_struct(&v.data, generics, v.ident.name, v.span, false);
@@ -956,7 +966,7 @@ impl<'a> State<'a> {
 
     fn print_array_length(&mut self, len: &hir::ArrayLen) {
         match len {
-            hir::ArrayLen::Infer(_, _) => self.word("_"),
+            hir::ArrayLen::Infer(..) => self.word("_"),
             hir::ArrayLen::Body(ct) => self.print_anon_const(ct),
         }
     }

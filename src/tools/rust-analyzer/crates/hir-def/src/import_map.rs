@@ -3,7 +3,7 @@
 use std::{fmt, hash::BuildHasherDefault};
 
 use base_db::CrateId;
-use fst::{self, raw::IndexedValue, Automaton, Streamer};
+use fst::{raw::IndexedValue, Automaton, Streamer};
 use hir_expand::name::Name;
 use indexmap::IndexMap;
 use itertools::Itertools;
@@ -75,7 +75,7 @@ impl ImportMap {
     }
 
     pub(crate) fn import_map_query(db: &dyn DefDatabase, krate: CrateId) -> Arc<Self> {
-        let _p = profile::span("import_map_query");
+        let _p = tracing::span!(tracing::Level::INFO, "import_map_query").entered();
 
         let map = Self::collect_import_map(db, krate);
 
@@ -126,7 +126,7 @@ impl ImportMap {
     }
 
     fn collect_import_map(db: &dyn DefDatabase, krate: CrateId) -> ImportMapIndex {
-        let _p = profile::span("collect_import_map");
+        let _p = tracing::span!(tracing::Level::INFO, "collect_import_map").entered();
 
         let def_map = db.crate_def_map(krate);
         let mut map = FxIndexMap::default();
@@ -216,7 +216,7 @@ impl ImportMap {
         is_type_in_ns: bool,
         trait_import_info: &ImportInfo,
     ) {
-        let _p = profile::span("collect_trait_assoc_items");
+        let _p = tracing::span!(tracing::Level::INFO, "collect_trait_assoc_items").entered();
         for &(ref assoc_item_name, item) in &db.trait_data(tr).items {
             let module_def_id = match item {
                 AssocItemId::FunctionId(f) => ModuleDefId::from(f),
@@ -297,7 +297,7 @@ impl SearchMode {
             SearchMode::Exact => candidate.eq_ignore_ascii_case(query),
             SearchMode::Prefix => {
                 query.len() <= candidate.len() && {
-                    let prefix = &candidate[..query.len() as usize];
+                    let prefix = &candidate[..query.len()];
                     if case_sensitive {
                         prefix == query
                     } else {
@@ -396,9 +396,9 @@ impl Query {
 pub fn search_dependencies(
     db: &dyn DefDatabase,
     krate: CrateId,
-    ref query: Query,
+    query: &Query,
 ) -> FxHashSet<ItemInNs> {
-    let _p = profile::span("search_dependencies").detail(|| format!("{query:?}"));
+    let _p = tracing::span!(tracing::Level::INFO, "search_dependencies", ?query).entered();
 
     let graph = db.crate_graph();
 
@@ -446,7 +446,7 @@ fn search_maps(
             let end = (value & 0xFFFF_FFFF) as usize;
             let start = (value >> 32) as usize;
             let ImportMap { item_to_info_map, importables, .. } = &*import_maps[import_map_idx];
-            let importables = &importables[start as usize..end];
+            let importables = &importables[start..end];
 
             let iter = importables
                 .iter()
@@ -477,7 +477,7 @@ mod tests {
     use expect_test::{expect, Expect};
     use test_fixture::WithFixture;
 
-    use crate::{db::DefDatabase, test_db::TestDB, ItemContainerId, Lookup};
+    use crate::{test_db::TestDB, ItemContainerId, Lookup};
 
     use super::*;
 
@@ -516,7 +516,7 @@ mod tests {
             })
             .expect("could not find crate");
 
-        let actual = search_dependencies(db.upcast(), krate, query)
+        let actual = search_dependencies(db.upcast(), krate, &query)
             .into_iter()
             .filter_map(|dependency| {
                 let dependency_krate = dependency.krate(db.upcast())?;
@@ -859,7 +859,7 @@ mod tests {
         check_search(
             ra_fixture,
             "main",
-            Query::new("fmt".to_string()).fuzzy(),
+            Query::new("fmt".to_owned()).fuzzy(),
             expect![[r#"
                 dep::fmt (t)
                 dep::fmt::Display::FMT_CONST (a)
@@ -888,9 +888,7 @@ mod tests {
         check_search(
             ra_fixture,
             "main",
-            Query::new("fmt".to_string())
-                .fuzzy()
-                .assoc_search_mode(AssocSearchMode::AssocItemsOnly),
+            Query::new("fmt".to_owned()).fuzzy().assoc_search_mode(AssocSearchMode::AssocItemsOnly),
             expect![[r#"
                 dep::fmt::Display::FMT_CONST (a)
                 dep::fmt::Display::format_function (a)
@@ -901,7 +899,7 @@ mod tests {
         check_search(
             ra_fixture,
             "main",
-            Query::new("fmt".to_string()).fuzzy().assoc_search_mode(AssocSearchMode::Exclude),
+            Query::new("fmt".to_owned()).fuzzy().assoc_search_mode(AssocSearchMode::Exclude),
             expect![[r#"
                 dep::fmt (t)
             "#]],
@@ -937,7 +935,7 @@ pub mod fmt {
         check_search(
             ra_fixture,
             "main",
-            Query::new("fmt".to_string()).fuzzy(),
+            Query::new("fmt".to_owned()).fuzzy(),
             expect![[r#"
                 dep::Fmt (m)
                 dep::Fmt (t)
@@ -951,7 +949,7 @@ pub mod fmt {
         check_search(
             ra_fixture,
             "main",
-            Query::new("fmt".to_string()),
+            Query::new("fmt".to_owned()),
             expect![[r#"
                 dep::Fmt (m)
                 dep::Fmt (t)
@@ -991,7 +989,7 @@ pub mod fmt {
         check_search(
             ra_fixture,
             "main",
-            Query::new("fmt".to_string()),
+            Query::new("fmt".to_owned()),
             expect![[r#"
                 dep::Fmt (m)
                 dep::Fmt (t)
@@ -1015,7 +1013,7 @@ pub mod fmt {
         check_search(
             ra_fixture,
             "main",
-            Query::new("FMT".to_string()),
+            Query::new("FMT".to_owned()),
             expect![[r#"
                 dep::FMT (t)
                 dep::FMT (v)
@@ -1027,7 +1025,7 @@ pub mod fmt {
         check_search(
             ra_fixture,
             "main",
-            Query::new("FMT".to_string()).case_sensitive(),
+            Query::new("FMT".to_owned()).case_sensitive(),
             expect![[r#"
                 dep::FMT (t)
                 dep::FMT (v)

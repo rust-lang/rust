@@ -2,8 +2,8 @@
 // Hide cross-crate `#[doc(hidden)]` associated items in trait impls.
 
 #![crate_name = "dependent"]
-// edition:2021
-// aux-crate:dependency=cross-crate-hidden-assoc-trait-items.rs
+//@ edition:2021
+//@ aux-crate:dependency=cross-crate-hidden-assoc-trait-items.rs
 
 // The trait `Tr` contains 2 hidden and 2 visisible associated items.
 // Instead of checking for the absence of the hidden items, check for the presence of the

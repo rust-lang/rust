@@ -1,6 +1,6 @@
-// run-pass
-// aux-build:issue-24687-lib.rs
-// compile-flags:-g
+//@ run-pass
+//@ aux-build:issue-24687-lib.rs
+//@ compile-flags:-g
 
 extern crate issue_24687_lib as d;
 

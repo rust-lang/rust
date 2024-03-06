@@ -1,4 +1,4 @@
-// build-pass
+//@ build-pass
 #![allow(dead_code)]
 // Regression test for issue 9243
 #![allow(non_upper_case_globals)]

@@ -1,9 +1,9 @@
 // This test makes sure that different expansions of the file!(), line!(),
 // column!() macros get picked up by the incr. comp. hash.
 
-// revisions:rpass1 rpass2
+//@ revisions:rpass1 rpass2
 
-// compile-flags: -Z query-dep-graph
+//@ compile-flags: -Z query-dep-graph
 
 #![feature(rustc_attrs)]
 
@@ -22,7 +22,7 @@ fn file_same() {
     let _ = file!();
 }
 
-#[rustc_clean(except="hir_owner_nodes,optimized_mir", cfg="rpass2")]
+#[rustc_clean(except="opt_hir_owner_nodes,optimized_mir", cfg="rpass2")]
 fn line_different() {
     #[cfg(rpass1)]
     {
@@ -34,7 +34,7 @@ fn line_different() {
     }
 }
 
-#[rustc_clean(except="hir_owner_nodes,optimized_mir", cfg="rpass2")]
+#[rustc_clean(except="opt_hir_owner_nodes,optimized_mir", cfg="rpass2")]
 fn col_different() {
     #[cfg(rpass1)]
     {

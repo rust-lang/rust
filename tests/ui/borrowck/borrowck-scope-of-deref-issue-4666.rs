@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 // Tests that the scope of the pointer returned from `get()` is
 // limited to the deref operation itself, and does not infect the
 // block as a whole.

@@ -1,6 +1,6 @@
-// run-pass
+//@ run-pass
 
-// aux-build:issue-2631-a.rs
+//@ aux-build:issue-2631-a.rs
 
 extern crate req;
 

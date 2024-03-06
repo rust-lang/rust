@@ -10,7 +10,12 @@
 #![feature(stmt_expr_attributes)]
 #![recursion_limit = "512"]
 #![cfg_attr(feature = "deny-warnings", deny(warnings))]
-#![allow(clippy::missing_docs_in_private_items, clippy::must_use_candidate)]
+#![allow(
+    clippy::missing_docs_in_private_items,
+    clippy::must_use_candidate,
+    rustc::diagnostic_outside_of_impl,
+    rustc::untranslatable_diagnostic
+)]
 #![warn(trivial_casts, trivial_numeric_casts)]
 // warn on lints, that are included in `rust-lang/rust`s bootstrap
 #![warn(rust_2018_idioms, unused_lifetimes)]
@@ -26,6 +31,7 @@ extern crate rustc_abi;
 extern crate rustc_arena;
 extern crate rustc_ast;
 extern crate rustc_ast_pretty;
+extern crate rustc_attr;
 extern crate rustc_data_structures;
 extern crate rustc_driver;
 extern crate rustc_errors;
@@ -153,6 +159,7 @@ mod implicit_return;
 mod implicit_saturating_add;
 mod implicit_saturating_sub;
 mod implied_bounds_in_impls;
+mod incompatible_msrv;
 mod inconsistent_struct_constructor;
 mod index_refutable_slice;
 mod indexing_slicing;
@@ -224,6 +231,7 @@ mod missing_trait_methods;
 mod mixed_read_write_in_expression;
 mod module_style;
 mod multi_assignments;
+mod multiple_bound_locations;
 mod multiple_unsafe_ops_per_block;
 mod mut_key;
 mod mut_mut;
@@ -325,6 +333,7 @@ mod temporary_assignment;
 mod tests_outside_test_module;
 mod thread_local_initializer_can_be_made_const;
 mod to_digit_is_some;
+mod to_string_trait_impl;
 mod trailing_empty_array;
 mod trait_bounds;
 mod transmute;
@@ -521,6 +530,7 @@ pub fn register_lints(store: &mut rustc_lint::LintStore, conf: &'static Conf) {
         ref allowed_dotfiles,
         ref allowed_idents_below_min_chars,
         ref allowed_scripts,
+        ref allowed_wildcard_imports,
         ref arithmetic_side_effects_allowed_binary,
         ref arithmetic_side_effects_allowed_unary,
         ref arithmetic_side_effects_allowed,
@@ -575,6 +585,7 @@ pub fn register_lints(store: &mut rustc_lint::LintStore, conf: &'static Conf) {
         check_private_items,
         pub_underscore_fields_behavior,
         ref allowed_duplicate_crates,
+        allow_comparison_to_zero,
 
         blacklisted_names: _,
         cyclomatic_complexity_threshold: _,
@@ -872,7 +883,12 @@ pub fn register_lints(store: &mut rustc_lint::LintStore, conf: &'static Conf) {
         ))
     });
     store.register_early_pass(|| Box::new(option_env_unwrap::OptionEnvUnwrap));
-    store.register_late_pass(move |_| Box::new(wildcard_imports::WildcardImports::new(warn_on_all_wildcard_imports)));
+    store.register_late_pass(move |_| {
+        Box::new(wildcard_imports::WildcardImports::new(
+            warn_on_all_wildcard_imports,
+            allowed_wildcard_imports.clone(),
+        ))
+    });
     store.register_late_pass(|_| Box::<redundant_pub_crate::RedundantPubCrate>::default());
     store.register_late_pass(|_| Box::new(unnamed_address::UnnamedAddress));
     store.register_late_pass(|_| Box::<dereference::Dereferencing<'_>>::default());
@@ -968,7 +984,12 @@ pub fn register_lints(store: &mut rustc_lint::LintStore, conf: &'static Conf) {
     store.register_late_pass(|_| Box::new(default_instead_of_iter_empty::DefaultIterEmpty));
     store.register_late_pass(move |_| Box::new(manual_rem_euclid::ManualRemEuclid::new(msrv())));
     store.register_late_pass(move |_| Box::new(manual_retain::ManualRetain::new(msrv())));
-    store.register_late_pass(move |_| Box::new(operators::Operators::new(verbose_bit_mask_threshold)));
+    store.register_late_pass(move |_| {
+        Box::new(operators::Operators::new(
+            verbose_bit_mask_threshold,
+            allow_comparison_to_zero,
+        ))
+    });
     store.register_late_pass(|_| Box::<std_instead_of_core::StdReexports>::default());
     store.register_late_pass(move |_| Box::new(instant_subtraction::InstantSubtraction::new(msrv())));
     store.register_late_pass(|_| Box::new(partialeq_to_none::PartialeqToNone));
@@ -1047,7 +1068,7 @@ pub fn register_lints(store: &mut rustc_lint::LintStore, conf: &'static Conf) {
     store.register_late_pass(move |_| {
         Box::new(single_call_fn::SingleCallFn {
             avoid_breaking_exported_api,
-            def_id_to_usage: rustc_data_structures::fx::FxHashMap::default(),
+            def_id_to_usage: rustc_data_structures::fx::FxIndexMap::default(),
         })
     });
     store.register_early_pass(move || {
@@ -1094,6 +1115,9 @@ pub fn register_lints(store: &mut rustc_lint::LintStore, conf: &'static Conf) {
     store.register_late_pass(move |_| {
         Box::new(thread_local_initializer_can_be_made_const::ThreadLocalInitializerCanBeMadeConst::new(msrv()))
     });
+    store.register_late_pass(move |_| Box::new(incompatible_msrv::IncompatibleMsrv::new(msrv())));
+    store.register_late_pass(|_| Box::new(to_string_trait_impl::ToStringTraitImpl));
+    store.register_early_pass(|| Box::new(multiple_bound_locations::MultipleBoundLocations));
     // add lints here, do not remove this comment, it's used in `new_lint`
 }
 

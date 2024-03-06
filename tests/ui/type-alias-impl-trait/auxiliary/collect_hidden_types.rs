@@ -1,6 +1,6 @@
 #![feature(impl_trait_in_assoc_type)]
 
-// edition:2018
+//@ edition:2018
 
 use std::future::Future;
 

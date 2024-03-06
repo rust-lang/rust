@@ -1,5 +1,5 @@
-// compile-flags: -O --target=avr-unknown-gnu-atmega328 --crate-type=rlib
-// needs-llvm-components: avr
+//@ compile-flags: -O --target=avr-unknown-gnu-atmega328 --crate-type=rlib
+//@ needs-llvm-components: avr
 
 // This test validates that function pointers can be stored in global variables
 // and called upon. It ensures that Rust emits function pointers in the correct

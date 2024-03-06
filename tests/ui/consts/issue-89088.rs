@@ -1,6 +1,6 @@
 // Regression test for the ICE described in #89088.
 
-// check-pass
+//@ check-pass
 
 #![allow(indirect_structural_match)]
 use std::borrow::Cow;

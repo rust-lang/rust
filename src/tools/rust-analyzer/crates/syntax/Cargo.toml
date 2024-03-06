@@ -22,6 +22,7 @@ once_cell = "1.17.0"
 indexmap.workspace = true
 smol_str.workspace = true
 triomphe.workspace = true
+tracing.workspace = true
 
 ra-ap-rustc_lexer.workspace = true
 

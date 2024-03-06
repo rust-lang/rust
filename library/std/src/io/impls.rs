@@ -303,8 +303,9 @@ impl Read for &[u8] {
 
     #[inline]
     fn read_to_end(&mut self, buf: &mut Vec<u8>) -> io::Result<usize> {
-        buf.extend_from_slice(*self);
         let len = self.len();
+        buf.try_reserve(len).map_err(|_| ErrorKind::OutOfMemory)?;
+        buf.extend_from_slice(*self);
         *self = &self[len..];
         Ok(len)
     }
@@ -451,7 +452,7 @@ impl<A: Allocator> Read for VecDeque<u8, A> {
     fn read_to_end(&mut self, buf: &mut Vec<u8>) -> io::Result<usize> {
         // The total len is known upfront so we can reserve it in a single call.
         let len = self.len();
-        buf.reserve(len);
+        buf.try_reserve(len).map_err(|_| ErrorKind::OutOfMemory)?;
 
         let (front, back) = self.as_slices();
         buf.extend_from_slice(front);

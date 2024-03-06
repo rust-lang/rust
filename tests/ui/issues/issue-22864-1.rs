@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 pub fn main() {
     struct Fun<F>(F);
     let f = Fun(|x| 3*x);

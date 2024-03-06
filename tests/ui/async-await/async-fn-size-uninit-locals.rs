@@ -4,11 +4,11 @@
 // What we don't want to see is the wrong multiple of 1024 (the size of `Big`)
 // being reflected in the size.
 
-// ignore-emscripten (sizes don't match)
-// needs-unwind Size of Futures change on panic=abort
-// run-pass
+//@ ignore-emscripten (sizes don't match)
+//@ needs-unwind Size of Futures change on panic=abort
+//@ run-pass
 
-// edition:2018
+//@ edition:2018
 
 #![allow(unused_variables, unused_assignments)]
 

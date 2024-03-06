@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 // Test HRTB used with the `Fn` trait.
 
 fn foo<F:Fn(&isize)>(f: F) {

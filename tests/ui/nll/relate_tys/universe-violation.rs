@@ -2,7 +2,7 @@
 // function returning either argument CANNOT be upcast to one
 // that returns always its first argument.
 //
-// compile-flags:-Zno-leak-check
+//@ compile-flags:-Zno-leak-check
 
 fn make_it() -> fn(&'static u32) -> &'static u32 {
     panic!()

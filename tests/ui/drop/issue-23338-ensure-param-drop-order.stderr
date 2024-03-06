@@ -1,14 +1,14 @@
-warning: shared reference of mutable static is discouraged
+warning: creating a shared reference to mutable static is discouraged
   --> $DIR/issue-23338-ensure-param-drop-order.rs:93:31
    |
 LL |             (mem::size_of_val(&trails) * 8) as u32
-   |                               ^^^^^^^ shared reference of mutable static
+   |                               ^^^^^^^ shared reference to mutable static
    |
    = note: for more information, see issue #114447 <https://github.com/rust-lang/rust/issues/114447>
-   = note: reference of mutable static is a hard error from 2024 edition
-   = note: mutable statics can be written to by multiple threads: aliasing violations or data races will cause undefined behavior
-   = note: `#[warn(static_mut_ref)]` on by default
-help: shared references are dangerous since if there's any kind of mutation of that static while the reference lives, that's UB; use `addr_of!` instead to create a raw pointer
+   = note: this will be a hard error in the 2024 edition
+   = note: this shared reference has lifetime `'static`, but if the static ever gets mutated, or a mutable reference is created, then any further use of this shared reference is Undefined Behavior
+   = note: `#[warn(static_mut_refs)]` on by default
+help: use `addr_of!` instead to create a raw pointer
    |
 LL |             (mem::size_of_val(addr_of!(trails)) * 8) as u32
    |                               ~~~~~~~~~~~~~~~~

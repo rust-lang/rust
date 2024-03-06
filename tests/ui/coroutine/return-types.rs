@@ -1,4 +1,4 @@
-// compile-flags: --edition 2024 -Zunstable-options
+//@ compile-flags: --edition 2024 -Zunstable-options
 
 #![feature(gen_blocks)]
 

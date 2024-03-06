@@ -1,4 +1,4 @@
-// build-pass
+//@ build-pass
 // compiler-opts: -Zmir-opt-level=2
 
 #![allow(dead_code)]

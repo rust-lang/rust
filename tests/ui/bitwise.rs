@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 
 #[cfg(any(target_pointer_width = "32"))]
 fn target() {

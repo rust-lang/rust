@@ -6,8 +6,6 @@
 #![feature(proc_macro_span)]
 #![feature(proc_macro_tracked_env)]
 #![allow(rustc::default_hash_types)]
-#![deny(rustc::untranslatable_diagnostic)]
-#![deny(rustc::diagnostic_outside_of_impl)]
 #![allow(internal_features)]
 
 use synstructure::decl_derive;
@@ -16,6 +14,7 @@ use proc_macro::TokenStream;
 
 mod current_version;
 mod diagnostics;
+mod extension;
 mod hash_stable;
 mod lift;
 mod query;
@@ -40,6 +39,25 @@ pub fn rustc_queries(input: TokenStream) -> TokenStream {
 #[proc_macro]
 pub fn symbols(input: TokenStream) -> TokenStream {
     symbols::symbols(input.into()).into()
+}
+
+/// Derive an extension trait for a given impl block. The trait name
+/// goes into the parenthesized args of the macro, for greppability.
+/// For example:
+/// ```
+/// use rustc_macros::extension;
+/// #[extension(pub trait Foo)]
+/// impl i32 { fn hello() {} }
+/// ```
+///
+/// expands to:
+/// ```
+/// pub trait Foo { fn hello(); }
+/// impl Foo for i32 { fn hello() {} }
+/// ```
+#[proc_macro_attribute]
+pub fn extension(attr: TokenStream, input: TokenStream) -> TokenStream {
+    extension::extension(attr, input)
 }
 
 decl_derive!([HashStable, attributes(stable_hasher)] => hash_stable::hash_stable_derive);

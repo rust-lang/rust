@@ -1,5 +1,5 @@
-// compile-flags: --crate-type=lib
-// check-pass
+//@ compile-flags: --crate-type=lib
+//@ check-pass
 #![feature(const_mut_refs)]
 #![feature(const_precise_live_drops)]
 

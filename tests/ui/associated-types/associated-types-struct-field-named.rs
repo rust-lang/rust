@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 // Test that we correctly normalize the type of a struct field
 // which has an associated type.
 

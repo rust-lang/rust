@@ -17,7 +17,7 @@ error[E0230]: there is no parameter `C` on trait `BadAnnotation2`
 LL | #[rustc_on_unimplemented = "Unimplemented trait error on `{Self}` with params `<{A},{B},{C}>`"]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error[E0231]: only named substitution parameters are allowed
+error[E0231]: only named generic parameters are allowed
   --> $DIR/bad-annotation.rs:27:1
    |
 LL | #[rustc_on_unimplemented = "Unimplemented trait error on `{Self}` with params `<{A},{B},{}>`"]

@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 
 const A: [u8; 1] = ['h' as u8];
 const B: u8 = (&A)[0];

@@ -1,6 +1,6 @@
 // Tests that no ICE occurs when a closure appears inside a node
 // that does not have a body when compiling with
-// check-pass
+//@ check-pass
 
 #![allow(dead_code)]
 

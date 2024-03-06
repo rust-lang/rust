@@ -1,5 +1,5 @@
 error: right curly brace `}` before `else` in a `let...else` statement not allowed
-  --> $DIR/bad-let-else-statement.rs:9:5
+  --> $DIR/bad-let-else-statement.rs:10:5
    |
 LL |     } else {
    |     ^
@@ -7,12 +7,13 @@ LL |     } else {
 help: wrap the expression in parentheses
    |
 LL ~     let foo = ({
+LL |
 LL |         1
 LL ~     }) else {
    |
 
 error: `for...else` loops are not supported
-  --> $DIR/bad-let-else-statement.rs:18:7
+  --> $DIR/bad-let-else-statement.rs:19:7
    |
 LL |       let foo = for i in 1..2 {
    |                 --- `else` is attached to this loop
@@ -27,7 +28,7 @@ LL | |     };
    = note: consider moving this `else` clause to a separate `if` statement and use a `bool` variable to control if it should run
 
 error: right curly brace `}` before `else` in a `let...else` statement not allowed
-  --> $DIR/bad-let-else-statement.rs:29:5
+  --> $DIR/bad-let-else-statement.rs:31:5
    |
 LL |     } else {
    |     ^
@@ -35,14 +36,14 @@ LL |     } else {
 help: wrap the expression in parentheses
    |
 LL ~     let foo = (if true {
-LL |         1
-LL |     } else {
+LL |
+ ...
 LL |         0
 LL ~     }) else {
    |
 
 error: `loop...else` loops are not supported
-  --> $DIR/bad-let-else-statement.rs:38:7
+  --> $DIR/bad-let-else-statement.rs:40:7
    |
 LL |       let foo = loop {
    |                 ---- `else` is attached to this loop
@@ -57,7 +58,7 @@ LL | |     };
    = note: consider moving this `else` clause to a separate `if` statement and use a `bool` variable to control if it should run
 
 error: right curly brace `}` before `else` in a `let...else` statement not allowed
-  --> $DIR/bad-let-else-statement.rs:48:5
+  --> $DIR/bad-let-else-statement.rs:51:5
    |
 LL |     } else {
    |     ^
@@ -65,13 +66,14 @@ LL |     } else {
 help: wrap the expression in parentheses
    |
 LL ~     let foo = (match true {
+LL |
 LL |         true => 1,
 LL |         false => 0
 LL ~     }) else {
    |
 
 error: right curly brace `}` before `else` in a `let...else` statement not allowed
-  --> $DIR/bad-let-else-statement.rs:58:5
+  --> $DIR/bad-let-else-statement.rs:62:5
    |
 LL |     } else {
    |     ^
@@ -79,12 +81,13 @@ LL |     } else {
 help: wrap the expression in parentheses
    |
 LL ~     let foo = (X {
+LL |
 LL |         a: 1
 LL ~     }) else {
    |
 
 error: `while...else` loops are not supported
-  --> $DIR/bad-let-else-statement.rs:67:7
+  --> $DIR/bad-let-else-statement.rs:71:7
    |
 LL |       let foo = while false {
    |                 ----- `else` is attached to this loop
@@ -99,7 +102,7 @@ LL | |     };
    = note: consider moving this `else` clause to a separate `if` statement and use a `bool` variable to control if it should run
 
 error: right curly brace `}` before `else` in a `let...else` statement not allowed
-  --> $DIR/bad-let-else-statement.rs:76:5
+  --> $DIR/bad-let-else-statement.rs:81:5
    |
 LL |     } else {
    |     ^
@@ -107,12 +110,13 @@ LL |     } else {
 help: wrap the expression in parentheses
    |
 LL ~     let foo = (const {
+LL |
 LL |         1
 LL ~     }) else {
    |
 
 error: right curly brace `}` before `else` in a `let...else` statement not allowed
-  --> $DIR/bad-let-else-statement.rs:85:5
+  --> $DIR/bad-let-else-statement.rs:91:5
    |
 LL |     } else {
    |     ^
@@ -120,12 +124,13 @@ LL |     } else {
 help: wrap the expression in parentheses
    |
 LL ~     let foo = &({
+LL |
 LL |         1
 LL ~     }) else {
    |
 
 error: right curly brace `}` before `else` in a `let...else` statement not allowed
-  --> $DIR/bad-let-else-statement.rs:95:5
+  --> $DIR/bad-let-else-statement.rs:102:5
    |
 LL |     } else {
    |     ^
@@ -133,12 +138,13 @@ LL |     } else {
 help: wrap the expression in parentheses
    |
 LL ~     let foo = bar = ({
+LL |
 LL |         1
 LL ~     }) else {
    |
 
 error: right curly brace `}` before `else` in a `let...else` statement not allowed
-  --> $DIR/bad-let-else-statement.rs:104:5
+  --> $DIR/bad-let-else-statement.rs:112:5
    |
 LL |     } else {
    |     ^
@@ -146,19 +152,7 @@ LL |     } else {
 help: wrap the expression in parentheses
    |
 LL ~     let foo = 1 + ({
-LL |         1
-LL ~     }) else {
-   |
-
-error: right curly brace `}` before `else` in a `let...else` statement not allowed
-  --> $DIR/bad-let-else-statement.rs:113:5
-   |
-LL |     } else {
-   |     ^
-   |
-help: wrap the expression in parentheses
-   |
-LL ~     let foo = 1..({
+LL |
 LL |         1
 LL ~     }) else {
    |
@@ -171,13 +165,28 @@ LL |     } else {
    |
 help: wrap the expression in parentheses
    |
+LL ~     let foo = 1..({
+LL |
+LL |         1
+LL ~     }) else {
+   |
+
+error: right curly brace `}` before `else` in a `let...else` statement not allowed
+  --> $DIR/bad-let-else-statement.rs:132:5
+   |
+LL |     } else {
+   |     ^
+   |
+help: wrap the expression in parentheses
+   |
 LL ~     let foo = return ({
+LL |
 LL |         ()
 LL ~     }) else {
    |
 
 error: right curly brace `}` before `else` in a `let...else` statement not allowed
-  --> $DIR/bad-let-else-statement.rs:131:5
+  --> $DIR/bad-let-else-statement.rs:142:5
    |
 LL |     } else {
    |     ^
@@ -185,12 +194,13 @@ LL |     } else {
 help: wrap the expression in parentheses
    |
 LL ~     let foo = -({
+LL |
 LL |         1
 LL ~     }) else {
    |
 
 error: right curly brace `}` before `else` in a `let...else` statement not allowed
-  --> $DIR/bad-let-else-statement.rs:140:5
+  --> $DIR/bad-let-else-statement.rs:152:5
    |
 LL |     } else {
    |     ^
@@ -198,12 +208,13 @@ LL |     } else {
 help: wrap the expression in parentheses
    |
 LL ~     let foo = do yeet ({
+LL |
 LL |         ()
 LL ~     }) else {
    |
 
 error: right curly brace `}` before `else` in a `let...else` statement not allowed
-  --> $DIR/bad-let-else-statement.rs:149:5
+  --> $DIR/bad-let-else-statement.rs:162:5
    |
 LL |     } else {
    |     ^
@@ -211,12 +222,13 @@ LL |     } else {
 help: wrap the expression in parentheses
    |
 LL ~     let foo = become ({
+LL |
 LL |         ()
 LL ~     }) else {
    |
 
 error: right curly brace `}` before `else` in a `let...else` statement not allowed
-  --> $DIR/bad-let-else-statement.rs:158:5
+  --> $DIR/bad-let-else-statement.rs:172:5
    |
 LL |     } else {
    |     ^
@@ -224,12 +236,13 @@ LL |     } else {
 help: wrap the expression in parentheses
    |
 LL ~     let foo = |x: i32| ({
+LL |
 LL |         x
 LL ~     }) else {
    |
 
 error: right curly brace `}` before `else` in a `let...else` statement not allowed
-  --> $DIR/bad-let-else-statement.rs:167:31
+  --> $DIR/bad-let-else-statement.rs:182:31
    |
 LL |     let bad = format_args! {""} else { return; };
    |                               ^
@@ -240,7 +253,7 @@ LL |     let bad = format_args! ("") else { return; };
    |                            ~  ~
 
 error: right curly brace `}` before `else` in a `let...else` statement not allowed
-  --> $DIR/bad-let-else-statement.rs:181:25
+  --> $DIR/bad-let-else-statement.rs:199:25
    |
 LL |             let x = a! {} else { return; };
    |                         ^
@@ -254,5 +267,251 @@ help: use parentheses instead of braces for this macro
 LL |             let x = a! () else { return; };
    |                        ~~
 
-error: aborting due to 19 previous errors
+warning: irrefutable `let...else` pattern
+  --> $DIR/bad-let-else-statement.rs:7:5
+   |
+LL | /     let foo = {
+LL | |
+LL | |         1
+LL | |     } else {
+   | |_____^
+   |
+   = note: this pattern will always match, so the `else` clause is useless
+   = help: consider removing the `else` clause
+   = note: `#[warn(irrefutable_let_patterns)]` on by default
 
+warning: irrefutable `let...else` pattern
+  --> $DIR/bad-let-else-statement.rs:26:5
+   |
+LL | /     let foo = if true {
+LL | |
+LL | |         1
+LL | |     } else {
+LL | |         0
+LL | |     } else {
+   | |_____^
+   |
+   = note: this pattern will always match, so the `else` clause is useless
+   = help: consider removing the `else` clause
+
+warning: irrefutable `let...else` pattern
+  --> $DIR/bad-let-else-statement.rs:47:5
+   |
+LL | /     let foo = match true {
+LL | |
+LL | |         true => 1,
+LL | |         false => 0
+LL | |     } else {
+   | |_____^
+   |
+   = note: this pattern will always match, so the `else` clause is useless
+   = help: consider removing the `else` clause
+
+warning: irrefutable `let...else` pattern
+  --> $DIR/bad-let-else-statement.rs:59:5
+   |
+LL | /     let foo = X {
+LL | |
+LL | |         a: 1
+LL | |     } else {
+   | |_____^
+   |
+   = note: this pattern will always match, so the `else` clause is useless
+   = help: consider removing the `else` clause
+
+warning: irrefutable `let...else` pattern
+  --> $DIR/bad-let-else-statement.rs:78:5
+   |
+LL | /     let foo = const {
+LL | |
+LL | |         1
+LL | |     } else {
+   | |_____^
+   |
+   = note: this pattern will always match, so the `else` clause is useless
+   = help: consider removing the `else` clause
+
+warning: irrefutable `let...else` pattern
+  --> $DIR/bad-let-else-statement.rs:88:5
+   |
+LL | /     let foo = &{
+LL | |
+LL | |         1
+LL | |     } else {
+   | |_____^
+   |
+   = note: this pattern will always match, so the `else` clause is useless
+   = help: consider removing the `else` clause
+
+warning: irrefutable `let...else` pattern
+  --> $DIR/bad-let-else-statement.rs:99:5
+   |
+LL | /     let foo = bar = {
+LL | |
+LL | |         1
+LL | |     } else {
+   | |_____^
+   |
+   = note: this pattern will always match, so the `else` clause is useless
+   = help: consider removing the `else` clause
+
+error[E0384]: cannot assign twice to immutable variable `bar`
+  --> $DIR/bad-let-else-statement.rs:99:15
+   |
+LL |       let bar = 0;
+   |           ---
+   |           |
+   |           first assignment to `bar`
+   |           help: consider making this binding mutable: `mut bar`
+LL |       let foo = bar = {
+   |  _______________^
+LL | |
+LL | |         1
+LL | |     } else {
+   | |_____^ cannot assign twice to immutable variable
+
+warning: irrefutable `let...else` pattern
+  --> $DIR/bad-let-else-statement.rs:109:5
+   |
+LL | /     let foo = 1 + {
+LL | |
+LL | |         1
+LL | |     } else {
+   | |_____^
+   |
+   = note: this pattern will always match, so the `else` clause is useless
+   = help: consider removing the `else` clause
+
+warning: irrefutable `let...else` pattern
+  --> $DIR/bad-let-else-statement.rs:119:5
+   |
+LL | /     let foo = 1..{
+LL | |
+LL | |         1
+LL | |     } else {
+   | |_____^
+   |
+   = note: this pattern will always match, so the `else` clause is useless
+   = help: consider removing the `else` clause
+
+warning: irrefutable `let...else` pattern
+  --> $DIR/bad-let-else-statement.rs:129:5
+   |
+LL | /     let foo = return {
+LL | |
+LL | |         ()
+LL | |     } else {
+   | |_____^
+   |
+   = note: this pattern will always match, so the `else` clause is useless
+   = help: consider removing the `else` clause
+
+warning: irrefutable `let...else` pattern
+  --> $DIR/bad-let-else-statement.rs:139:5
+   |
+LL | /     let foo = -{
+LL | |
+LL | |         1
+LL | |     } else {
+   | |_____^
+   |
+   = note: this pattern will always match, so the `else` clause is useless
+   = help: consider removing the `else` clause
+
+warning: irrefutable `let...else` pattern
+  --> $DIR/bad-let-else-statement.rs:149:5
+   |
+LL | /     let foo = do yeet {
+LL | |
+LL | |         ()
+LL | |     } else {
+   | |_____^
+   |
+   = note: this pattern will always match, so the `else` clause is useless
+   = help: consider removing the `else` clause
+
+warning: irrefutable `let...else` pattern
+  --> $DIR/bad-let-else-statement.rs:159:5
+   |
+LL | /     let foo = become {
+LL | |
+LL | |         ()
+LL | |     } else {
+   | |_____^
+   |
+   = note: this pattern will always match, so the `else` clause is useless
+   = help: consider removing the `else` clause
+
+warning: irrefutable `let...else` pattern
+  --> $DIR/bad-let-else-statement.rs:169:5
+   |
+LL | /     let foo = |x: i32| {
+LL | |
+LL | |         x
+LL | |     } else {
+   | |_____^
+   |
+   = note: this pattern will always match, so the `else` clause is useless
+   = help: consider removing the `else` clause
+
+warning: irrefutable `let...else` pattern
+  --> $DIR/bad-let-else-statement.rs:179:5
+   |
+LL |     let ok = format_args!("") else { return; };
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: this pattern will always match, so the `else` clause is useless
+   = help: consider removing the `else` clause
+
+warning: irrefutable `let...else` pattern
+  --> $DIR/bad-let-else-statement.rs:182:5
+   |
+LL |     let bad = format_args! {""} else { return; };
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: this pattern will always match, so the `else` clause is useless
+   = help: consider removing the `else` clause
+
+warning: irrefutable `let...else` pattern
+  --> $DIR/bad-let-else-statement.rs:189:19
+   |
+LL |           () => { {} }
+   |  ___________________^
+LL | |
+LL | |
+LL | |     }
+...  |
+LL | |         (1) => {
+LL | |             let x = a!() else { return; };
+   | |____________^
+...
+LL |       b!(1); b!(2);
+   |       ----- in this macro invocation
+   |
+   = note: this pattern will always match, so the `else` clause is useless
+   = help: consider removing the `else` clause
+   = note: this warning originates in the macro `b` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+warning: irrefutable `let...else` pattern
+  --> $DIR/bad-let-else-statement.rs:189:19
+   |
+LL |           () => { {} }
+   |  ___________________^
+LL | |
+LL | |
+LL | |     }
+...  |
+LL | |         (2) => {
+LL | |             let x = a! {} else { return; };
+   | |____________^
+...
+LL |       b!(1); b!(2);
+   |              ----- in this macro invocation
+   |
+   = note: this pattern will always match, so the `else` clause is useless
+   = help: consider removing the `else` clause
+   = note: this warning originates in the macro `b` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: aborting due to 20 previous errors; 18 warnings emitted
+
+For more information about this error, try `rustc --explain E0384`.

@@ -1,5 +1,5 @@
-// run-pass
-// compile-flags:-Zmir-opt-level=3
+//@ run-pass
+//@ compile-flags:-Zmir-opt-level=3
 
 trait Array {
     type Item;

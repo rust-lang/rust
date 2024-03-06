@@ -1,4 +1,4 @@
-// aux-build:test-macros.rs
+//@ aux-build:test-macros.rs
 
 extern crate test_macros;
 use test_macros::recollect_attr;

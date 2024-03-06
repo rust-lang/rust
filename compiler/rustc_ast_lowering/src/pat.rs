@@ -38,7 +38,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                             qself,
                             path,
                             ParamMode::Optional,
-                            &ImplTraitContext::Disallowed(ImplTraitPosition::Path),
+                            ImplTraitContext::Disallowed(ImplTraitPosition::Path),
                             None,
                         );
                         let (pats, ddpos) = self.lower_pat_tuple(pats, "tuple struct");
@@ -55,7 +55,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                             qself,
                             path,
                             ParamMode::Optional,
-                            &ImplTraitContext::Disallowed(ImplTraitPosition::Path),
+                            ImplTraitContext::Disallowed(ImplTraitPosition::Path),
                             None,
                         );
                         break hir::PatKind::Path(qpath);
@@ -66,7 +66,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                             qself,
                             path,
                             ParamMode::Optional,
-                            &ImplTraitContext::Disallowed(ImplTraitPosition::Path),
+                            ImplTraitContext::Disallowed(ImplTraitPosition::Path),
                             None,
                         );
 
@@ -331,7 +331,8 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             ExprKind::Lit(..)
             | ExprKind::ConstBlock(..)
             | ExprKind::IncludedBytes(..)
-            | ExprKind::Err => {}
+            | ExprKind::Err(_)
+            | ExprKind::Dummy => {}
             ExprKind::Path(..) if allow_paths => {}
             ExprKind::Unary(UnOp::Neg, inner) if matches!(inner.kind, ExprKind::Lit(_)) => {}
             _ => {

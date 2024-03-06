@@ -47,10 +47,10 @@ LL | fn g() -> impl Tr2<m::Alias> { 0 }
    |           ^^^^^^^^^^^^^^^^^^ private type
 
 error: type `Priv` is private
-  --> $DIR/private-type-in-interface.rs:28:16
+  --> $DIR/private-type-in-interface.rs:28:11
    |
 LL | fn g() -> impl Tr2<m::Alias> { 0 }
-   |                ^^^^^^^^^^^^^ private type
+   |           ^^^^^^^^^^^^^^^^^^ private type
 
 error: type `ext::Priv` is private
   --> $DIR/private-type-in-interface.rs:30:15
@@ -59,10 +59,10 @@ LL | fn g_ext() -> impl Tr2<ext::Alias> { 0 }
    |               ^^^^^^^^^^^^^^^^^^^^ private type
 
 error: type `ext::Priv` is private
-  --> $DIR/private-type-in-interface.rs:30:20
+  --> $DIR/private-type-in-interface.rs:30:15
    |
 LL | fn g_ext() -> impl Tr2<ext::Alias> { 0 }
-   |                    ^^^^^^^^^^^^^^^ private type
+   |               ^^^^^^^^^^^^^^^^^^^^ private type
 
 error: aborting due to 11 previous errors
 

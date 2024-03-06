@@ -1,5 +1,5 @@
-// revisions: current next
-//[next] compile-flags: -Znext-solver
+//@ revisions: current next
+//@[next] compile-flags: -Znext-solver
 
 #![crate_type = "lib"]
 #![feature(transmutability)]
@@ -8,11 +8,10 @@
 
 mod assert {
     use std::mem::BikeshedIntrinsicFrom;
-    struct Context;
 
     pub fn is_transmutable<Src, Dst>()
     where
-        Dst: BikeshedIntrinsicFrom<Src, Context>
+        Dst: BikeshedIntrinsicFrom<Src>
     {}
 }
 

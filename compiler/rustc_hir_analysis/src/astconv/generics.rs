@@ -1,12 +1,12 @@
 use super::IsMethodCall;
 use crate::astconv::{
-    errors::prohibit_assoc_ty_binding, CreateSubstsForGenericArgsCtxt, ExplicitLateBound,
+    errors::prohibit_assoc_ty_binding, CreateInstantiationsForGenericArgsCtxt, ExplicitLateBound,
     GenericArgCountMismatch, GenericArgCountResult, GenericArgPosition,
 };
-use crate::structured_errors::{GenericArgsInfo, StructuredDiagnostic, WrongNumberOfGenericArgs};
+use crate::structured_errors::{GenericArgsInfo, StructuredDiag, WrongNumberOfGenericArgs};
 use rustc_ast::ast::ParamKindOrd;
 use rustc_errors::{
-    codes::*, struct_span_code_err, Applicability, Diagnostic, ErrorGuaranteed, MultiSpan,
+    codes::*, struct_span_code_err, Applicability, Diag, ErrorGuaranteed, MultiSpan,
 };
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
@@ -16,7 +16,7 @@ use rustc_middle::ty::{
     self, GenericArgsRef, GenericParamDef, GenericParamDefKind, IsSuggestable, Ty, TyCtxt,
 };
 use rustc_session::lint::builtin::LATE_BOUND_LIFETIME_ARGUMENTS;
-use rustc_span::{symbol::kw, Span};
+use rustc_span::symbol::kw;
 use smallvec::SmallVec;
 
 /// Report an error that a generic argument did not match the generic parameter that was
@@ -47,7 +47,7 @@ fn generic_arg_mismatch_err(
         }
     }
 
-    let add_braces_suggestion = |arg: &GenericArg<'_>, err: &mut Diagnostic| {
+    let add_braces_suggestion = |arg: &GenericArg<'_>, err: &mut Diag<'_>| {
         let suggestions = vec![
             (arg.span().shrink_to_lo(), String::from("{ ")),
             (arg.span().shrink_to_hi(), String::from(" }")),
@@ -177,9 +177,9 @@ pub fn create_args_for_parent_generic_args<'tcx: 'a, 'a>(
     has_self: bool,
     self_ty: Option<Ty<'tcx>>,
     arg_count: &GenericArgCountResult,
-    ctx: &mut impl CreateSubstsForGenericArgsCtxt<'a, 'tcx>,
+    ctx: &mut impl CreateInstantiationsForGenericArgsCtxt<'a, 'tcx>,
 ) -> GenericArgsRef<'tcx> {
-    // Collect the segments of the path; we need to substitute arguments
+    // Collect the segments of the path; we need to instantiate arguments
     // for parameters throughout the entire path (wherever there are
     // generic parameters).
     let mut parent_defs = tcx.generics_of(def_id);
@@ -191,7 +191,7 @@ pub fn create_args_for_parent_generic_args<'tcx: 'a, 'a>(
     }
 
     // We manually build up the generic arguments, rather than using convenience
-    // methods in `subst.rs`, so that we can iterate over the arguments and
+    // methods in `rustc_middle/src/ty/generic_args.rs`, so that we can iterate over the arguments and
     // parameters in lock-step linearly, instead of trying to match each pair.
     let mut args: SmallVec<[ty::GenericArg<'tcx>; 8]> = SmallVec::with_capacity(count);
     // Iterate over each segment of the path.
@@ -404,7 +404,6 @@ pub fn create_args_for_parent_generic_args<'tcx: 'a, 'a>(
 /// Used specifically for function calls.
 pub fn check_generic_arg_count_for_call(
     tcx: TyCtxt<'_>,
-    span: Span,
     def_id: DefId,
     generics: &ty::Generics,
     seg: &hir::PathSegment<'_>,
@@ -418,17 +417,7 @@ pub fn check_generic_arg_count_for_call(
     };
     let has_self = generics.parent.is_none() && generics.has_self;
 
-    check_generic_arg_count(
-        tcx,
-        span,
-        def_id,
-        seg,
-        generics,
-        gen_args,
-        gen_pos,
-        has_self,
-        seg.infer_args,
-    )
+    check_generic_arg_count(tcx, def_id, seg, generics, gen_args, gen_pos, has_self, seg.infer_args)
 }
 
 /// Checks that the correct number of generic arguments have been provided.
@@ -436,7 +425,6 @@ pub fn check_generic_arg_count_for_call(
 #[instrument(skip(tcx, gen_pos), level = "debug")]
 pub(crate) fn check_generic_arg_count(
     tcx: TyCtxt<'_>,
-    span: Span,
     def_id: DefId,
     seg: &hir::PathSegment<'_>,
     gen_params: &ty::Generics,

@@ -1,8 +1,8 @@
-// build-fail
-// revisions: legacy v0
-//[legacy]compile-flags: -Z unstable-options -C symbol-mangling-version=legacy
-//[v0]compile-flags: -C symbol-mangling-version=v0
-//[legacy]normalize-stderr-test: "h[\w{16}]+" -> "SYMBOL_HASH"
+//@ build-fail
+//@ revisions: legacy v0
+//@[legacy]compile-flags: -Z unstable-options -C symbol-mangling-version=legacy
+//@[v0]compile-flags: -C symbol-mangling-version=v0
+//@[legacy]normalize-stderr-test: "h[\w{16}]+" -> "SYMBOL_HASH"
 
 #![feature(rustc_attrs)]
 

@@ -1,6 +1,6 @@
-// ignore-32bit (needs `usize` to be 8-aligned to reproduce all the errors below)
+//@ ignore-32bit (needs `usize` to be 8-aligned to reproduce all the errors below)
 #![allow(dead_code)]
-// ignore-emscripten weird assertion?
+//@ ignore-emscripten weird assertion?
 
 #[repr(C, packed(4))]
 struct Foo4C {

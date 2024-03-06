@@ -4,7 +4,6 @@
 use crate::lints::{
     BadOptAccessDiag, DefaultHashTypesDiag, DiagOutOfImpl, LintPassByHand, NonExistentDocKeyword,
     QueryInstability, SpanUseEqCtxtDiag, TyQualified, TykindDiag, TykindKind, UntranslatableDiag,
-    UntranslatableDiagnosticTrivial,
 };
 use crate::{EarlyContext, EarlyLintPass, LateContext, LateLintPass, LintContext};
 use rustc_ast as ast;
@@ -144,15 +143,14 @@ impl<'tcx> LateLintPass<'tcx> for TyTyKind {
         match &ty.kind {
             TyKind::Path(QPath::Resolved(_, path)) => {
                 if lint_ty_kind_usage(cx, &path.res) {
-                    let hir = cx.tcx.hir();
-                    let span = match hir.find_parent(ty.hir_id) {
-                        Some(Node::Pat(Pat {
+                    let span = match cx.tcx.parent_hir_node(ty.hir_id) {
+                        Node::Pat(Pat {
                             kind:
                                 PatKind::Path(qpath)
                                 | PatKind::TupleStruct(qpath, ..)
                                 | PatKind::Struct(qpath, ..),
                             ..
-                        })) => {
+                        }) => {
                             if let QPath::TypeRelative(qpath_ty, ..) = qpath
                                 && qpath_ty.hir_id == ty.hir_id
                             {
@@ -161,7 +159,7 @@ impl<'tcx> LateLintPass<'tcx> for TyTyKind {
                                 None
                             }
                         }
-                        Some(Node::Expr(Expr { kind: ExprKind::Path(qpath), .. })) => {
+                        Node::Expr(Expr { kind: ExprKind::Path(qpath), .. }) => {
                             if let QPath::TypeRelative(qpath_ty, ..) = qpath
                                 && qpath_ty.hir_id == ty.hir_id
                             {
@@ -172,7 +170,7 @@ impl<'tcx> LateLintPass<'tcx> for TyTyKind {
                         }
                         // Can't unify these two branches because qpath below is `&&` and above is `&`
                         // and `A | B` paths don't play well together with adjustments, apparently.
-                        Some(Node::Expr(Expr { kind: ExprKind::Struct(qpath, ..), .. })) => {
+                        Node::Expr(Expr { kind: ExprKind::Struct(qpath, ..), .. }) => {
                             if let QPath::TypeRelative(qpath_ty, ..) = qpath
                                 && qpath_ty.hir_id == ty.hir_id
                             {
@@ -345,7 +343,7 @@ declare_tool_lint! {
     ///
     /// More details on translatable diagnostics can be found [here](https://rustc-dev-guide.rust-lang.org/diagnostics/translation.html).
     pub rustc::UNTRANSLATABLE_DIAGNOSTIC,
-    Allow,
+    Deny,
     "prevent creation of diagnostics which cannot be translated",
     report_in_external_macro: true
 }
@@ -357,20 +355,12 @@ declare_tool_lint! {
     ///
     /// More details on diagnostics implementations can be found [here](https://rustc-dev-guide.rust-lang.org/diagnostics/diagnostic-structs.html).
     pub rustc::DIAGNOSTIC_OUTSIDE_OF_IMPL,
-    Allow,
+    Deny,
     "prevent creation of diagnostics outside of `IntoDiagnostic`/`AddToDiagnostic` impls",
     report_in_external_macro: true
 }
 
-declare_tool_lint! {
-    /// The `untranslatable_diagnostic_trivial` lint detects diagnostics created using only static strings.
-    pub rustc::UNTRANSLATABLE_DIAGNOSTIC_TRIVIAL,
-    Deny,
-    "prevent creation of diagnostics which cannot be translated, which use only static strings",
-    report_in_external_macro: true
-}
-
-declare_lint_pass!(Diagnostics => [ UNTRANSLATABLE_DIAGNOSTIC, DIAGNOSTIC_OUTSIDE_OF_IMPL, UNTRANSLATABLE_DIAGNOSTIC_TRIVIAL ]);
+declare_lint_pass!(Diagnostics => [UNTRANSLATABLE_DIAGNOSTIC, DIAGNOSTIC_OUTSIDE_OF_IMPL]);
 
 impl LateLintPass<'_> for Diagnostics {
     fn check_expr(&mut self, cx: &LateContext<'_>, expr: &Expr<'_>) {
@@ -413,7 +403,7 @@ impl LateLintPass<'_> for Diagnostics {
             debug!(?ty);
             if let Some(adt_def) = ty.ty_adt_def()
                 && let Some(name) = cx.tcx.get_diagnostic_name(adt_def.did())
-                && matches!(name, sym::DiagnosticMessage | sym::SubdiagnosticMessage)
+                && matches!(name, sym::DiagMessage | sym::SubdiagMessage)
             {
                 found_diagnostic_message = true;
                 break;
@@ -423,78 +413,6 @@ impl LateLintPass<'_> for Diagnostics {
         if !found_parent_with_attr && !found_diagnostic_message {
             cx.emit_span_lint(UNTRANSLATABLE_DIAGNOSTIC, span, UntranslatableDiag);
         }
-    }
-}
-
-impl EarlyLintPass for Diagnostics {
-    #[allow(unused_must_use)]
-    fn check_stmt(&mut self, cx: &EarlyContext<'_>, stmt: &ast::Stmt) {
-        // Looking for a straight chain of method calls from 'struct_span_err' to 'emit'.
-        let ast::StmtKind::Semi(expr) = &stmt.kind else {
-            return;
-        };
-        let ast::ExprKind::MethodCall(meth) = &expr.kind else {
-            return;
-        };
-        if meth.seg.ident.name != sym::emit || !meth.args.is_empty() {
-            return;
-        }
-        let mut segments = vec![];
-        let mut cur = &meth.receiver;
-        let fake = &[].into();
-        loop {
-            match &cur.kind {
-                ast::ExprKind::Call(func, args) => {
-                    if let ast::ExprKind::Path(_, path) = &func.kind {
-                        segments.push((path.segments.last().unwrap().ident.name, args))
-                    }
-                    break;
-                }
-                ast::ExprKind::MethodCall(method) => {
-                    segments.push((method.seg.ident.name, &method.args));
-                    cur = &method.receiver;
-                }
-                ast::ExprKind::MacCall(mac) => {
-                    segments.push((mac.path.segments.last().unwrap().ident.name, fake));
-                    break;
-                }
-                _ => {
-                    break;
-                }
-            }
-        }
-        segments.reverse();
-        if segments.is_empty() {
-            return;
-        }
-        if segments[0].0.as_str() != "struct_span_err" {
-            return;
-        }
-        if !segments.iter().all(|(name, args)| {
-            let arg = match name.as_str() {
-                "struct_span_err" | "span_note" | "span_label" | "span_help" if args.len() == 2 => {
-                    &args[1]
-                }
-                "note" | "help" if args.len() == 1 => &args[0],
-                _ => {
-                    return false;
-                }
-            };
-            if let ast::ExprKind::Lit(lit) = arg.kind
-                && let ast::token::LitKind::Str = lit.kind
-            {
-                true
-            } else {
-                false
-            }
-        }) {
-            return;
-        }
-        cx.emit_span_lint(
-            UNTRANSLATABLE_DIAGNOSTIC_TRIVIAL,
-            stmt.span,
-            UntranslatableDiagnosticTrivial,
-        );
     }
 }
 

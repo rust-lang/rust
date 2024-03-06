@@ -1,6 +1,6 @@
-// build-pass
-// dont-check-compiler-stderr
-// compile-flags: -Zmeta-stats
+//@ build-pass
+//@ dont-check-compiler-stderr
+//@ compile-flags: -Zmeta-stats
 
 #![crate_type = "lib"]
 

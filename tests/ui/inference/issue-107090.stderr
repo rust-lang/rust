@@ -66,6 +66,19 @@ LL | fn badboi<'in_, 'out, T>(x: Foo<'in_, 'out, T>, sadness: &'in_ Foo<'short, 
    |           |
    |           help: consider introducing lifetime `'short` here: `'short,`
 
-error: aborting due to 6 previous errors
+error[E0308]: mismatched types
+  --> $DIR/issue-107090.rs:22:5
+   |
+LL | fn badboi<'in_, 'out, T>(x: Foo<'in_, 'out, T>, sadness: &'in_ Foo<'short, 'out, T>) -> &'out T {
+   |                       - expected this type parameter                                    ------- expected `&'out T` because of return type
+LL |
+LL |     sadness.cast()
+   |     ^^^^^^^^^^^^^^ expected `&T`, found `&Foo<'_, '_, T>`
+   |
+   = note: expected reference `&'out T`
+              found reference `&Foo<'_, '_, T>`
 
-For more information about this error, try `rustc --explain E0261`.
+error: aborting due to 7 previous errors
+
+Some errors have detailed explanations: E0261, E0308.
+For more information about an error, try `rustc --explain E0261`.

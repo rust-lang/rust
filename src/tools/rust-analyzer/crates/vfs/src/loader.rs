@@ -201,7 +201,7 @@ impl Directories {
 /// ```
 fn dirs(base: AbsPathBuf, exclude: &[&str]) -> Directories {
     let exclude = exclude.iter().map(|it| base.join(it)).collect::<Vec<_>>();
-    Directories { extensions: vec!["rs".to_string()], include: vec![base], exclude }
+    Directories { extensions: vec!["rs".to_owned()], include: vec![base], exclude }
 }
 
 impl fmt::Debug for Message {

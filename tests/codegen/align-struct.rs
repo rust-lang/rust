@@ -1,4 +1,4 @@
-// compile-flags: -C no-prepopulate-passes -Z mir-opt-level=0
+//@ compile-flags: -C no-prepopulate-passes -Z mir-opt-level=0
 //
 
 #![crate_type = "lib"]
@@ -26,7 +26,6 @@ pub enum Enum64 {
     B(i32),
 }
 // CHECK: %Enum64 = type { i32, [31 x i32] }
-// CHECK: %"Enum64::A" = type { [8 x i64], %Align64 }
 
 // CHECK-LABEL: @align64
 #[no_mangle]

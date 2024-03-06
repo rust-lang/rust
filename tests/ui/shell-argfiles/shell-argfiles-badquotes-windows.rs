@@ -4,8 +4,8 @@
 // separators. This test uses backslash as the path separator for the command
 // line arguments and is only run on windows.
 //
-// only-windows
-// compile-flags: --cfg cmdline_set -Z shell-argfiles @shell:{{src-base}}\shell-argfiles\shell-argfiles-badquotes.args
+//@ only-windows
+//@ compile-flags: --cfg cmdline_set -Z shell-argfiles @shell:{{src-base}}\shell-argfiles\shell-argfiles-badquotes.args
 
 fn main() {
 }

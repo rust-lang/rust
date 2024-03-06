@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 
 #![allow(unused_imports)]
 // Test a regression found when building compiler. The `produce()`

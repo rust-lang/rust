@@ -1,4 +1,4 @@
-// run-rustfix
+//@ run-rustfix
 
 pub fn missing -> () {}
 //~^ ERROR missing parameters for function definition

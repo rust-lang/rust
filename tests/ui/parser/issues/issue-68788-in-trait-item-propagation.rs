@@ -1,7 +1,7 @@
 // Make sure we don't propagate restrictions on trait impl items to items inside them.
 
-// check-pass
-// edition:2018
+//@ check-pass
+//@ edition:2018
 
 fn main() {}
 

@@ -5,7 +5,7 @@ use crate::errors::{
 use crate::fluent_generated as fluent;
 use crate::infer::error_reporting::{note_and_explain_region, TypeErrCtxt};
 use crate::infer::{self, SubregionOrigin};
-use rustc_errors::{AddToDiagnostic, Diagnostic, DiagnosticBuilder};
+use rustc_errors::{AddToDiagnostic, Diag};
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_middle::traits::ObligationCauseCode;
 use rustc_middle::ty::error::TypeError;
@@ -15,7 +15,7 @@ use rustc_span::symbol::kw;
 use super::ObligationCauseAsDiagArg;
 
 impl<'tcx> TypeErrCtxt<'_, 'tcx> {
-    pub(super) fn note_region_origin(&self, err: &mut Diagnostic, origin: &SubregionOrigin<'tcx>) {
+    pub(super) fn note_region_origin(&self, err: &mut Diag<'_>, origin: &SubregionOrigin<'tcx>) {
         match *origin {
             infer::Subtype(ref trace) => RegionOriginNote::WithRequirement {
                 span: trace.cause.span,
@@ -78,7 +78,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
         origin: SubregionOrigin<'tcx>,
         sub: Region<'tcx>,
         sup: Region<'tcx>,
-    ) -> DiagnosticBuilder<'tcx> {
+    ) -> Diag<'tcx> {
         let mut err = match origin {
             infer::Subtype(box trace) => {
                 let terr = TypeError::RegionsDoesNotOutlive(sup, sub);
@@ -290,7 +290,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
         &self,
         trait_item_def_id: DefId,
         impl_item_def_id: LocalDefId,
-        err: &mut Diagnostic,
+        err: &mut Diag<'_>,
     ) {
         // FIXME(compiler-errors): Right now this is only being used for region
         // predicate mismatches. Ideally, we'd use it for *all* predicate mismatches,
@@ -342,7 +342,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                 trait_predicates: trait_predicates.join(", "),
             }
         };
-        err.subdiagnostic(suggestion);
+        err.subdiagnostic(self.dcx(), suggestion);
     }
 
     pub(super) fn report_placeholder_failure(
@@ -350,7 +350,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
         placeholder_origin: SubregionOrigin<'tcx>,
         sub: Region<'tcx>,
         sup: Region<'tcx>,
-    ) -> DiagnosticBuilder<'tcx> {
+    ) -> Diag<'tcx> {
         // I can't think how to do better than this right now. -nikomatsakis
         debug!(?placeholder_origin, ?sub, ?sup, "report_placeholder_failure");
         match placeholder_origin {

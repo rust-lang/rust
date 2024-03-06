@@ -2,7 +2,7 @@ use crate::cmp;
 use crate::fmt::{self, Debug};
 use crate::iter::{FusedIterator, TrustedFused};
 use crate::iter::{InPlaceIterable, SourceIter, TrustedLen, UncheckedIterator};
-use crate::num::NonZeroUsize;
+use crate::num::NonZero;
 
 /// An iterator that iterates two other iterators simultaneously.
 ///
@@ -489,8 +489,8 @@ where
 // Since SourceIter forwards the left hand side we do the same here
 #[unstable(issue = "none", feature = "inplace_iteration")]
 unsafe impl<A: InPlaceIterable, B> InPlaceIterable for Zip<A, B> {
-    const EXPAND_BY: Option<NonZeroUsize> = A::EXPAND_BY;
-    const MERGE_BY: Option<NonZeroUsize> = A::MERGE_BY;
+    const EXPAND_BY: Option<NonZero<usize>> = A::EXPAND_BY;
+    const MERGE_BY: Option<NonZero<usize>> = A::MERGE_BY;
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]

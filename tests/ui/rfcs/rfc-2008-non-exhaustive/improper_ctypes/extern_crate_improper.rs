@@ -1,4 +1,4 @@
-// aux-build:types.rs
+//@ aux-build:types.rs
 #![deny(improper_ctypes)]
 
 extern crate types;

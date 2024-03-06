@@ -1,4 +1,4 @@
-// edition:2021
+//@ edition:2021
 //! Missing docs lint warns about undocumented exported items.
 //! Use the lint to additionally verify that items are reachable
 //! but not exported.

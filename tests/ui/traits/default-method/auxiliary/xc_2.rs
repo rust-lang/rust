@@ -1,4 +1,4 @@
-// aux-build:xc.rs
+//@ aux-build:xc.rs
 
 extern crate xc as aux;
 use aux::A;

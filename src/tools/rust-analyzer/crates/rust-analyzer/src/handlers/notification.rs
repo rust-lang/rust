@@ -54,7 +54,7 @@ pub(crate) fn handle_did_open_text_document(
     state: &mut GlobalState,
     params: DidOpenTextDocumentParams,
 ) -> anyhow::Result<()> {
-    let _p = profile::span("handle_did_open_text_document");
+    let _p = tracing::span!(tracing::Level::INFO, "handle_did_open_text_document").entered();
 
     if let Ok(path) = from_proto::vfs_path(&params.text_document.uri) {
         let already_exists = state
@@ -70,7 +70,15 @@ pub(crate) fn handle_did_open_text_document(
         if already_exists {
             tracing::error!("duplicate DidOpenTextDocument: {}", path);
         }
+
         state.vfs.write().0.set_file_contents(path, Some(params.text_document.text.into_bytes()));
+        if state.config.notifications().unindexed_project {
+            tracing::debug!("queuing task");
+            let _ = state
+                .deferred_task_queue
+                .sender
+                .send(crate::main_loop::QueuedTask::CheckIfIndexed(params.text_document.uri));
+        }
     }
     Ok(())
 }
@@ -79,21 +87,16 @@ pub(crate) fn handle_did_change_text_document(
     state: &mut GlobalState,
     params: DidChangeTextDocumentParams,
 ) -> anyhow::Result<()> {
-    let _p = profile::span("handle_did_change_text_document");
+    let _p = tracing::span!(tracing::Level::INFO, "handle_did_change_text_document").entered();
 
     if let Ok(path) = from_proto::vfs_path(&params.text_document.uri) {
-        let data = match state.mem_docs.get_mut(&path) {
-            Some(doc) => {
-                // The version passed in DidChangeTextDocument is the version after all edits are applied
-                // so we should apply it before the vfs is notified.
-                doc.version = params.text_document.version;
-                &mut doc.data
-            }
-            None => {
-                tracing::error!("unexpected DidChangeTextDocument: {}", path);
-                return Ok(());
-            }
+        let Some(DocumentData { version, data }) = state.mem_docs.get_mut(&path) else {
+            tracing::error!(?path, "unexpected DidChangeTextDocument");
+            return Ok(());
         };
+        // The version passed in DidChangeTextDocument is the version after all edits are applied
+        // so we should apply it before the vfs is notified.
+        *version = params.text_document.version;
 
         let new_contents = apply_document_changes(
             state.config.position_encoding(),
@@ -113,7 +116,7 @@ pub(crate) fn handle_did_close_text_document(
     state: &mut GlobalState,
     params: DidCloseTextDocumentParams,
 ) -> anyhow::Result<()> {
-    let _p = profile::span("handle_did_close_text_document");
+    let _p = tracing::span!(tracing::Level::INFO, "handle_did_close_text_document").entered();
 
     if let Ok(path) = from_proto::vfs_path(&params.text_document.uri) {
         if state.mem_docs.remove(&path).is_err() {
@@ -137,11 +140,11 @@ pub(crate) fn handle_did_save_text_document(
     state: &mut GlobalState,
     params: DidSaveTextDocumentParams,
 ) -> anyhow::Result<()> {
-    if state.config.script_rebuild_on_save() && state.proc_macro_changed {
-        // reset the flag
-        state.proc_macro_changed = false;
-        // rebuild the proc macros
-        state.fetch_build_data_queue.request_op("ScriptRebuildOnSave".to_owned(), ());
+    if state.config.script_rebuild_on_save() && state.build_deps_changed {
+        state.build_deps_changed = false;
+        state
+            .fetch_build_data_queue
+            .request_op("build_deps_changed - save notification".to_owned(), ());
     }
 
     if let Ok(vfs_path) = from_proto::vfs_path(&params.text_document.uri) {
@@ -150,7 +153,7 @@ pub(crate) fn handle_did_save_text_document(
             if reload::should_refresh_for_change(abs_path, ChangeKind::Modify) {
                 state
                     .fetch_workspaces_queue
-                    .request_op(format!("DidSaveTextDocument {abs_path}"), false);
+                    .request_op(format!("workspace vfs file change saved {abs_path}"), false);
             }
         }
 
@@ -160,7 +163,7 @@ pub(crate) fn handle_did_save_text_document(
     } else if state.config.check_on_save() {
         // No specific flycheck was triggered, so let's trigger all of them.
         for flycheck in state.flycheck.iter() {
-            flycheck.restart();
+            flycheck.restart_workspace(None);
         }
     }
     Ok(())
@@ -176,7 +179,7 @@ pub(crate) fn handle_did_change_configuration(
         lsp_types::ConfigurationParams {
             items: vec![lsp_types::ConfigurationItem {
                 scope_uri: None,
-                section: Some("rust-analyzer".to_string()),
+                section: Some("rust-analyzer".to_owned()),
             }],
         },
         |this, resp| {
@@ -228,7 +231,7 @@ pub(crate) fn handle_did_change_workspace_folders(
 
     if !config.has_linked_projects() && config.detached_files().is_empty() {
         config.rediscover_workspaces();
-        state.fetch_workspaces_queue.request_op("client workspaces changed".to_string(), false)
+        state.fetch_workspaces_queue.request_op("client workspaces changed".to_owned(), false)
     }
 
     Ok(())
@@ -247,7 +250,7 @@ pub(crate) fn handle_did_change_watched_files(
 }
 
 fn run_flycheck(state: &mut GlobalState, vfs_path: VfsPath) -> bool {
-    let _p = profile::span("run_flycheck");
+    let _p = tracing::span!(tracing::Level::INFO, "run_flycheck").entered();
 
     let file_id = state.vfs.read().0.file_id(&vfs_path);
     if let Some(file_id) = file_id {
@@ -281,27 +284,42 @@ fn run_flycheck(state: &mut GlobalState, vfs_path: VfsPath) -> bool {
             let crate_root_paths: Vec<_> = crate_root_paths.iter().map(Deref::deref).collect();
 
             // Find all workspaces that have at least one target containing the saved file
-            let workspace_ids = world.workspaces.iter().enumerate().filter(|(_, ws)| match ws {
-                project_model::ProjectWorkspace::Cargo { cargo, .. } => {
-                    cargo.packages().any(|pkg| {
-                        cargo[pkg]
-                            .targets
-                            .iter()
-                            .any(|&it| crate_root_paths.contains(&cargo[it].root.as_path()))
-                    })
-                }
-                project_model::ProjectWorkspace::Json { project, .. } => {
-                    project.crates().any(|(c, _)| crate_ids.iter().any(|&crate_id| crate_id == c))
-                }
-                project_model::ProjectWorkspace::DetachedFiles { .. } => false,
+            let workspace_ids = world.workspaces.iter().enumerate().filter_map(|(idx, ws)| {
+                let package = match ws {
+                    project_model::ProjectWorkspace::Cargo { cargo, .. } => {
+                        cargo.packages().find_map(|pkg| {
+                            let has_target_with_root = cargo[pkg]
+                                .targets
+                                .iter()
+                                .any(|&it| crate_root_paths.contains(&cargo[it].root.as_path()));
+                            has_target_with_root.then(|| cargo[pkg].name.clone())
+                        })
+                    }
+                    project_model::ProjectWorkspace::Json { project, .. } => {
+                        if !project
+                            .crates()
+                            .any(|(c, _)| crate_ids.iter().any(|&crate_id| crate_id == c))
+                        {
+                            return None;
+                        }
+                        None
+                    }
+                    project_model::ProjectWorkspace::DetachedFiles { .. } => return None,
+                };
+                Some((idx, package))
             });
+
+            let saved_file = vfs_path.as_path().map(|p| p.to_owned());
 
             // Find and trigger corresponding flychecks
             for flycheck in world.flycheck.iter() {
-                for (id, _) in workspace_ids.clone() {
+                for (id, package) in workspace_ids.clone() {
                     if id == flycheck.id() {
                         updated = true;
-                        flycheck.restart();
+                        match package.filter(|_| !world.config.flycheck_workspace()) {
+                            Some(package) => flycheck.restart_for_package(package),
+                            None => flycheck.restart_workspace(saved_file.clone()),
+                        }
                         continue;
                     }
                 }
@@ -309,7 +327,7 @@ fn run_flycheck(state: &mut GlobalState, vfs_path: VfsPath) -> bool {
             // No specific flycheck was triggered, so let's trigger all of them.
             if !updated {
                 for flycheck in world.flycheck.iter() {
-                    flycheck.restart();
+                    flycheck.restart_workspace(saved_file.clone());
                 }
             }
             Ok(())
@@ -326,13 +344,13 @@ fn run_flycheck(state: &mut GlobalState, vfs_path: VfsPath) -> bool {
 }
 
 pub(crate) fn handle_cancel_flycheck(state: &mut GlobalState, _: ()) -> anyhow::Result<()> {
-    let _p = profile::span("handle_stop_flycheck");
+    let _p = tracing::span!(tracing::Level::INFO, "handle_stop_flycheck").entered();
     state.flycheck.iter().for_each(|flycheck| flycheck.cancel());
     Ok(())
 }
 
 pub(crate) fn handle_clear_flycheck(state: &mut GlobalState, _: ()) -> anyhow::Result<()> {
-    let _p = profile::span("handle_clear_flycheck");
+    let _p = tracing::span!(tracing::Level::INFO, "handle_clear_flycheck").entered();
     state.diagnostics.clear_check_all();
     Ok(())
 }
@@ -341,7 +359,7 @@ pub(crate) fn handle_run_flycheck(
     state: &mut GlobalState,
     params: RunFlycheckParams,
 ) -> anyhow::Result<()> {
-    let _p = profile::span("handle_run_flycheck");
+    let _p = tracing::span!(tracing::Level::INFO, "handle_run_flycheck").entered();
     if let Some(text_document) = params.text_document {
         if let Ok(vfs_path) = from_proto::vfs_path(&text_document.uri) {
             if run_flycheck(state, vfs_path) {
@@ -351,7 +369,7 @@ pub(crate) fn handle_run_flycheck(
     }
     // No specific flycheck was triggered, so let's trigger all of them.
     for flycheck in state.flycheck.iter() {
-        flycheck.restart();
+        flycheck.restart_workspace(None);
     }
     Ok(())
 }

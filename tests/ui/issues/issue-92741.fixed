@@ -1,4 +1,4 @@
-// run-rustfix
+//@ run-rustfix
 fn main() {}
 fn _foo() -> bool {
     if true { true } else { false }

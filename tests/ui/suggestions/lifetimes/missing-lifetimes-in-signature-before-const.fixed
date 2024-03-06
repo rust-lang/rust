@@ -1,4 +1,4 @@
-// run-rustfix
+//@ run-rustfix
 // https://github.com/rust-lang/rust/issues/95616
 
 fn buggy_const<'a, const N: usize>(_a: &'a Option<[u8; N]>, _f: &'a str) -> &'a str { //~ERROR [E0106]

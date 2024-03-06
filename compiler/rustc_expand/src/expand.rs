@@ -14,7 +14,7 @@ use rustc_ast::mut_visit::*;
 use rustc_ast::ptr::P;
 use rustc_ast::token::{self, Delimiter};
 use rustc_ast::tokenstream::TokenStream;
-use rustc_ast::visit::{self, AssocCtxt, Visitor};
+use rustc_ast::visit::{self, try_visit, walk_list, AssocCtxt, Visitor, VisitorResult};
 use rustc_ast::{AssocItemKind, AstNodeWrapper, AttrArgs, AttrStyle, AttrVec, ExprKind};
 use rustc_ast::{ForeignItemKind, HasAttrs, HasNodeId};
 use rustc_ast::{Inline, ItemKind, MacStmtStyle, MetaItemKind, ModKind};
@@ -29,11 +29,11 @@ use rustc_parse::parser::{
 };
 use rustc_parse::validate_attr;
 use rustc_session::lint::builtin::{UNUSED_ATTRIBUTES, UNUSED_DOC_COMMENTS};
-use rustc_session::lint::BuiltinLintDiagnostics;
+use rustc_session::lint::BuiltinLintDiag;
 use rustc_session::parse::feature_err;
 use rustc_session::{Limit, Session};
 use rustc_span::symbol::{sym, Ident};
-use rustc_span::{FileName, LocalExpnId, Span};
+use rustc_span::{ErrorGuaranteed, FileName, LocalExpnId, Span};
 
 use smallvec::SmallVec;
 use std::ops::Deref;
@@ -143,16 +143,15 @@ macro_rules! ast_fragments {
                 }
             }
 
-            pub fn visit_with<'a, V: Visitor<'a>>(&'a self, visitor: &mut V) {
+            pub fn visit_with<'a, V: Visitor<'a>>(&'a self, visitor: &mut V) -> V::Result {
                 match self {
-                    AstFragment::OptExpr(Some(expr)) => visitor.visit_expr(expr),
+                    AstFragment::OptExpr(Some(expr)) => try_visit!(visitor.visit_expr(expr)),
                     AstFragment::OptExpr(None) => {}
-                    AstFragment::MethodReceiverExpr(expr) => visitor.visit_method_receiver_expr(expr),
-                    $($(AstFragment::$Kind(ast) => visitor.$visit_ast(ast),)?)*
-                    $($(AstFragment::$Kind(ast) => for ast_elt in &ast[..] {
-                        visitor.$visit_ast_elt(ast_elt, $($args)*);
-                    })?)*
+                    AstFragment::MethodReceiverExpr(expr) => try_visit!(visitor.visit_method_receiver_expr(expr)),
+                    $($(AstFragment::$Kind(ast) => try_visit!(visitor.$visit_ast(ast)),)?)*
+                    $($(AstFragment::$Kind(ast) => walk_list!(visitor, $visit_ast_elt, &ast[..], $($args)*),)?)*
                 }
+                V::Result::output()
             }
         }
 
@@ -232,8 +231,8 @@ pub enum SupportsMacroExpansion {
 }
 
 impl AstFragmentKind {
-    pub(crate) fn dummy(self, span: Span) -> AstFragment {
-        self.make_from(DummyResult::any(span)).expect("couldn't create a dummy AST fragment")
+    pub(crate) fn dummy(self, span: Span, guar: ErrorGuaranteed) -> AstFragment {
+        self.make_from(DummyResult::any(span, guar)).expect("couldn't create a dummy AST fragment")
     }
 
     pub fn supports_macro_expansion(self) -> SupportsMacroExpansion {
@@ -604,14 +603,14 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
         (fragment, invocations)
     }
 
-    fn error_recursion_limit_reached(&mut self) {
+    fn error_recursion_limit_reached(&mut self) -> ErrorGuaranteed {
         let expn_data = self.cx.current_expansion.id.expn_data();
         let suggested_limit = match self.cx.ecfg.recursion_limit {
             Limit(0) => Limit(2),
             limit => limit * 2,
         };
 
-        self.cx.dcx().emit_err(RecursionLimitReached {
+        let guar = self.cx.dcx().emit_err(RecursionLimitReached {
             span: expn_data.call_site,
             descr: expn_data.kind.descr(),
             suggested_limit,
@@ -619,14 +618,21 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
         });
 
         self.cx.trace_macros_diag();
+        guar
     }
 
     /// A macro's expansion does not fit in this fragment kind.
     /// For example, a non-type macro in a type position.
-    fn error_wrong_fragment_kind(&mut self, kind: AstFragmentKind, mac: &ast::MacCall, span: Span) {
-        self.cx.dcx().emit_err(WrongFragmentKind { span, kind: kind.name(), name: &mac.path });
-
+    fn error_wrong_fragment_kind(
+        &mut self,
+        kind: AstFragmentKind,
+        mac: &ast::MacCall,
+        span: Span,
+    ) -> ErrorGuaranteed {
+        let guar =
+            self.cx.dcx().emit_err(WrongFragmentKind { span, kind: kind.name(), name: &mac.path });
         self.cx.trace_macros_diag();
+        guar
     }
 
     fn expand_invoc(
@@ -634,36 +640,41 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
         invoc: Invocation,
         ext: &SyntaxExtensionKind,
     ) -> ExpandResult<AstFragment, Invocation> {
-        let recursion_limit =
-            self.cx.reduced_recursion_limit.unwrap_or(self.cx.ecfg.recursion_limit);
+        let recursion_limit = match self.cx.reduced_recursion_limit {
+            Some((limit, _)) => limit,
+            None => self.cx.ecfg.recursion_limit,
+        };
+
         if !recursion_limit.value_within_limit(self.cx.current_expansion.depth) {
-            if self.cx.reduced_recursion_limit.is_none() {
-                self.error_recursion_limit_reached();
-            }
+            let guar = match self.cx.reduced_recursion_limit {
+                Some((_, guar)) => guar,
+                None => self.error_recursion_limit_reached(),
+            };
 
             // Reduce the recursion limit by half each time it triggers.
-            self.cx.reduced_recursion_limit = Some(recursion_limit / 2);
+            self.cx.reduced_recursion_limit = Some((recursion_limit / 2, guar));
 
-            return ExpandResult::Ready(invoc.fragment_kind.dummy(invoc.span()));
+            return ExpandResult::Ready(invoc.fragment_kind.dummy(invoc.span(), guar));
         }
 
         let (fragment_kind, span) = (invoc.fragment_kind, invoc.span());
         ExpandResult::Ready(match invoc.kind {
             InvocationKind::Bang { mac, .. } => match ext {
                 SyntaxExtensionKind::Bang(expander) => {
-                    let Ok(tok_result) = expander.expand(self.cx, span, mac.args.tokens.clone())
-                    else {
-                        return ExpandResult::Ready(fragment_kind.dummy(span));
-                    };
-                    self.parse_ast_fragment(tok_result, fragment_kind, &mac.path, span)
+                    match expander.expand(self.cx, span, mac.args.tokens.clone()) {
+                        Ok(tok_result) => {
+                            self.parse_ast_fragment(tok_result, fragment_kind, &mac.path, span)
+                        }
+                        Err(guar) => return ExpandResult::Ready(fragment_kind.dummy(span, guar)),
+                    }
                 }
                 SyntaxExtensionKind::LegacyBang(expander) => {
                     let tok_result = expander.expand(self.cx, span, mac.args.tokens.clone());
                     let result = if let Some(result) = fragment_kind.make_from(tok_result) {
                         result
                     } else {
-                        self.error_wrong_fragment_kind(fragment_kind, &mac, span);
-                        fragment_kind.dummy(span)
+                        let guar = self.error_wrong_fragment_kind(fragment_kind, &mac, span);
+                        fragment_kind.dummy(span, guar)
                     };
                     result
                 }
@@ -679,10 +690,9 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                         // fixed prior to stabilization
                         // Fake tokens when we are invoking an inner attribute, and
                         // we are invoking it on an out-of-line module or crate.
-                        Annotatable::Crate(krate) => rustc_parse::fake_token_stream_for_crate(
-                            &self.cx.sess.parse_sess,
-                            krate,
-                        ),
+                        Annotatable::Crate(krate) => {
+                            rustc_parse::fake_token_stream_for_crate(&self.cx.sess.psess, krate)
+                        }
                         Annotatable::Item(item_inner)
                             if matches!(attr.style, AttrStyle::Inner)
                                 && matches!(
@@ -693,10 +703,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                                     )
                                 ) =>
                         {
-                            rustc_parse::fake_token_stream_for_item(
-                                &self.cx.sess.parse_sess,
-                                item_inner,
-                            )
+                            rustc_parse::fake_token_stream_for_item(&self.cx.sess.psess, item_inner)
                         }
                         _ => item.to_tokens(),
                     };
@@ -705,14 +712,18 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                         self.cx.dcx().emit_err(UnsupportedKeyValue { span });
                     }
                     let inner_tokens = attr_item.args.inner_tokens();
-                    let Ok(tok_result) = expander.expand(self.cx, span, inner_tokens, tokens)
-                    else {
-                        return ExpandResult::Ready(fragment_kind.dummy(span));
-                    };
-                    self.parse_ast_fragment(tok_result, fragment_kind, &attr_item.path, span)
+                    match expander.expand(self.cx, span, inner_tokens, tokens) {
+                        Ok(tok_result) => self.parse_ast_fragment(
+                            tok_result,
+                            fragment_kind,
+                            &attr_item.path,
+                            span,
+                        ),
+                        Err(guar) => return ExpandResult::Ready(fragment_kind.dummy(span, guar)),
+                    }
                 }
                 SyntaxExtensionKind::LegacyAttr(expander) => {
-                    match validate_attr::parse_meta(&self.cx.sess.parse_sess, &attr) {
+                    match validate_attr::parse_meta(&self.cx.sess.psess, &attr) {
                         Ok(meta) => {
                             let items = match expander.expand(self.cx, span, &meta, item, false) {
                                 ExpandResult::Ready(items) => items,
@@ -729,15 +740,15 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                                 AstFragmentKind::Expr | AstFragmentKind::MethodReceiverExpr
                             ) && items.is_empty()
                             {
-                                self.cx.dcx().emit_err(RemoveExprNotSupported { span });
-                                fragment_kind.dummy(span)
+                                let guar = self.cx.dcx().emit_err(RemoveExprNotSupported { span });
+                                fragment_kind.dummy(span, guar)
                             } else {
                                 fragment_kind.expect_from_annotatables(items)
                             }
                         }
                         Err(err) => {
-                            err.emit();
-                            fragment_kind.dummy(span)
+                            let guar = err.emit();
+                            fragment_kind.dummy(span, guar)
                         }
                     }
                 }
@@ -857,9 +868,9 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                     err.span(span);
                 }
                 annotate_err_with_kind(&mut err, kind, span);
-                err.emit();
+                let guar = err.emit();
                 self.cx.trace_macros_diag();
-                kind.dummy(span)
+                kind.dummy(span, guar)
             }
         }
     }
@@ -946,8 +957,8 @@ pub fn ensure_complete_parse<'a>(
         // Avoid emitting backtrace info twice.
         let def_site_span = parser.token.span.with_ctxt(SyntaxContext::root());
 
-        let semi_span = parser.sess.source_map().next_point(span);
-        let add_semicolon = match &parser.sess.source_map().span_to_snippet(semi_span) {
+        let semi_span = parser.psess.source_map().next_point(span);
+        let add_semicolon = match &parser.psess.source_map().span_to_snippet(semi_span) {
             Ok(snippet) if &snippet[..] != ";" && kind_name == "expression" => {
                 Some(span.shrink_to_hi())
             }
@@ -1684,7 +1695,7 @@ impl<'a, 'b> InvocationCollector<'a, 'b> {
         let mut span: Option<Span> = None;
         while let Some(attr) = attrs.next() {
             rustc_ast_passes::feature_gate::check_attribute(attr, self.cx.sess, features);
-            validate_attr::check_attr(&self.cx.sess.parse_sess, attr);
+            validate_attr::check_attr(&self.cx.sess.psess, attr);
 
             let current_span = if let Some(sp) = span { sp.to(attr.span) } else { attr.span };
             span = Some(current_span);
@@ -1694,24 +1705,24 @@ impl<'a, 'b> InvocationCollector<'a, 'b> {
             }
 
             if attr.is_doc_comment() {
-                self.cx.sess.parse_sess.buffer_lint_with_diagnostic(
+                self.cx.sess.psess.buffer_lint_with_diagnostic(
                     UNUSED_DOC_COMMENTS,
                     current_span,
                     self.cx.current_expansion.lint_node_id,
                     "unused doc comment",
-                    BuiltinLintDiagnostics::UnusedDocComment(attr.span),
+                    BuiltinLintDiag::UnusedDocComment(attr.span),
                 );
             } else if rustc_attr::is_builtin_attr(attr) {
                 let attr_name = attr.ident().unwrap().name;
                 // `#[cfg]` and `#[cfg_attr]` are special - they are
                 // eagerly evaluated.
                 if attr_name != sym::cfg && attr_name != sym::cfg_attr {
-                    self.cx.sess.parse_sess.buffer_lint_with_diagnostic(
+                    self.cx.sess.psess.buffer_lint_with_diagnostic(
                         UNUSED_ATTRIBUTES,
                         attr.span,
                         self.cx.current_expansion.lint_node_id,
                         format!("unused attribute `{attr_name}`"),
-                        BuiltinLintDiagnostics::UnusedBuiltinAttribute {
+                        BuiltinLintDiag::UnusedBuiltinAttribute {
                             attr_name,
                             macro_name: pprust::path_to_string(&call.path),
                             invoc_span: call.path.span,

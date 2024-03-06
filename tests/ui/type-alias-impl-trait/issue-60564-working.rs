@@ -1,6 +1,6 @@
 #![feature(impl_trait_in_assoc_type)]
 
-// check-pass
+//@ check-pass
 
 trait IterBits {
     type BitsIter: Iterator<Item = u8>;

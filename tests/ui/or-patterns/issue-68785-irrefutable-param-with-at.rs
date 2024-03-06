@@ -1,4 +1,4 @@
-// check-pass
+//@ check-pass
 
 enum MyEnum {
     FirstCase(u8),

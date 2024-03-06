@@ -1,4 +1,4 @@
-// check-pass
+//@ check-pass
 struct A;
 
 impl From<A> for [u8; 2] {

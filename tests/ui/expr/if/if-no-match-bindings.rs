@@ -6,6 +6,7 @@
 
 fn b_ref<'a>() -> &'a bool { &true }
 fn b_mut_ref<'a>() -> &'a mut bool { &mut true }
+//~^ ERROR: cannot return reference to temporary
 
 fn main() {
     // This is OK:

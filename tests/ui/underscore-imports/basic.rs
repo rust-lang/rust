@@ -1,5 +1,5 @@
-// check-pass
-// aux-build:underscore-imports.rs
+//@ check-pass
+//@ aux-build:underscore-imports.rs
 
 #![warn(unused_imports, unused_extern_crates)]
 

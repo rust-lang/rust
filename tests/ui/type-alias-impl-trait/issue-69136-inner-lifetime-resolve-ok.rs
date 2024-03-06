@@ -1,6 +1,6 @@
 // Test-pass variant of #69136
 
-// check-pass
+//@ check-pass
 
 #![feature(type_alias_impl_trait)]
 

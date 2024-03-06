@@ -124,7 +124,7 @@ LL |     x / 100.0
    = help: the trait `Div<{float}>` is not implemented for `u8`
    = help: the following other types implement trait `Div<Rhs>`:
              <u8 as Div>
-             <u8 as Div<NonZeroU8>>
+             <u8 as Div<NonZero<u8>>>
              <u8 as Div<&u8>>
              <&'a u8 as Div<u8>>
              <&u8 as Div<&u8>>

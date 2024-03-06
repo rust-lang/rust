@@ -1,8 +1,8 @@
 // This used to mis-compile because the mir-opt `SimplifyArmIdentity`
 // did not check that the types matched up in the `Ok(r)` branch.
 //
-// run-pass
-// compile-flags: -Zmir-opt-level=3
+//@ run-pass
+//@ compile-flags: -Zmir-opt-level=3
 
 #[derive(Debug, PartialEq, Eq)]
 enum SpecialsRes { Res(u64) }

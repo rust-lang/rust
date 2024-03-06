@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 
 fn or_at(x: Result<u32, u32>) -> u32 {
     match x {

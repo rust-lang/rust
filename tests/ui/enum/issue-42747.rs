@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 macro_rules! fooN {
     ($cur:ident $prev:ty) => {
         #[allow(dead_code)]

@@ -5,7 +5,7 @@ use crate::util::{check_builtin_macro_attribute, warn_on_duplicate_attribute};
 use rustc_ast::ptr::P;
 use rustc_ast::{self as ast, attr, GenericParamKind};
 use rustc_ast_pretty::pprust;
-use rustc_errors::{Applicability, DiagnosticBuilder, Level};
+use rustc_errors::{Applicability, Diag, Level};
 use rustc_expand::base::*;
 use rustc_span::symbol::{sym, Ident, Symbol};
 use rustc_span::{ErrorGuaranteed, FileNameDisplayPreference, Span};
@@ -410,7 +410,7 @@ fn not_testable_error(cx: &ExtCtxt<'_>, attr_sp: Span, item: Option<&ast::Item>)
         Some(ast::ItemKind::MacCall(_)) => Level::Warning,
         _ => Level::Error,
     };
-    let mut err = DiagnosticBuilder::<()>::new(dcx, level, msg);
+    let mut err = Diag::<()>::new(dcx, level, msg);
     err.span(attr_sp);
     if let Some(item) = item {
         err.span_label(

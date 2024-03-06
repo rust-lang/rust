@@ -1,6 +1,6 @@
 // Regression test for #87017.
 
-// run-rustfix
+//@ run-rustfix
 
 fn main() {
     fn foo() -> Vec<i32> { vec![1, 2, 3] }

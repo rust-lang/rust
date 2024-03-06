@@ -916,8 +916,8 @@ pub fn for_each_top_level_late_bound_region<B>(
         f: F,
     }
     impl<'tcx, B, F: FnMut(BoundRegion) -> ControlFlow<B>> TypeVisitor<TyCtxt<'tcx>> for V<F> {
-        type BreakTy = B;
-        fn visit_region(&mut self, r: Region<'tcx>) -> ControlFlow<Self::BreakTy> {
+        type Result = ControlFlow<B>;
+        fn visit_region(&mut self, r: Region<'tcx>) -> Self::Result {
             if let RegionKind::ReBound(idx, bound) = r.kind()
                 && idx.as_u32() == self.index
             {
@@ -926,7 +926,7 @@ pub fn for_each_top_level_late_bound_region<B>(
                 ControlFlow::Continue(())
             }
         }
-        fn visit_binder<T: TypeVisitable<TyCtxt<'tcx>>>(&mut self, t: &Binder<'tcx, T>) -> ControlFlow<Self::BreakTy> {
+        fn visit_binder<T: TypeVisitable<TyCtxt<'tcx>>>(&mut self, t: &Binder<'tcx, T>) -> Self::Result {
             self.index += 1;
             let res = t.super_visit_with(self);
             self.index -= 1;
@@ -998,35 +998,6 @@ pub fn adt_and_variant_of_res<'tcx>(cx: &LateContext<'tcx>, res: Res) -> Option<
         },
         _ => None,
     }
-}
-
-/// Checks if the type is a type parameter implementing `FnOnce`, but not `FnMut`.
-pub fn ty_is_fn_once_param<'tcx>(tcx: TyCtxt<'_>, ty: Ty<'tcx>, predicates: &'tcx [ty::Clause<'_>]) -> bool {
-    let ty::Param(ty) = *ty.kind() else {
-        return false;
-    };
-    let lang = tcx.lang_items();
-    let (Some(fn_once_id), Some(fn_mut_id), Some(fn_id)) = (lang.fn_once_trait(), lang.fn_mut_trait(), lang.fn_trait())
-    else {
-        return false;
-    };
-    predicates
-        .iter()
-        .try_fold(false, |found, p| {
-            if let ty::ClauseKind::Trait(p) = p.kind().skip_binder()
-                && let ty::Param(self_ty) = p.trait_ref.self_ty().kind()
-                && ty.index == self_ty.index
-            {
-                // This should use `super_traits_of`, but that's a private function.
-                if p.trait_ref.def_id == fn_once_id {
-                    return Some(true);
-                } else if p.trait_ref.def_id == fn_mut_id || p.trait_ref.def_id == fn_id {
-                    return None;
-                }
-            }
-            Some(found)
-        })
-        .unwrap_or(false)
 }
 
 /// Comes up with an "at least" guesstimate for the type's size, not taking into

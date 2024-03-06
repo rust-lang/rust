@@ -3,8 +3,6 @@ mod simd;
 
 use std::iter;
 
-use log::trace;
-
 use rand::Rng;
 use rustc_apfloat::{Float, Round};
 use rustc_middle::ty::layout::LayoutOf;
@@ -56,7 +54,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
 
         // Some intrinsics are special and need the "ret".
         match intrinsic_name {
-            "try" => return this.handle_try(args, dest, ret),
+            "catch_unwind" => return this.handle_catch_unwind(args, dest, ret),
             _ => {}
         }
 
@@ -108,12 +106,12 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
             "volatile_load" => {
                 let [place] = check_arg_count(args)?;
                 let place = this.deref_pointer(place)?;
-                this.copy_op(&place, dest, /*allow_transmute*/ false)?;
+                this.copy_op(&place, dest)?;
             }
             "volatile_store" => {
                 let [place, dest] = check_arg_count(args)?;
                 let place = this.deref_pointer(place)?;
-                this.copy_op(dest, &place, /*allow_transmute*/ false)?;
+                this.copy_op(dest, &place)?;
             }
 
             "write_bytes" | "volatile_set_memory" => {

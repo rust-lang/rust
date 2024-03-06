@@ -1,6 +1,6 @@
 // Syntactically, a foreign static may have a body.
 
-// check-pass
+//@ check-pass
 
 fn main() {}
 

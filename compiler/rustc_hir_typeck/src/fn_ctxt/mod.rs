@@ -11,6 +11,7 @@ use rustc_hir as hir;
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir_analysis::astconv::AstConv;
 use rustc_infer::infer;
+use rustc_infer::infer::error_reporting::sub_relations::SubRelations;
 use rustc_infer::infer::error_reporting::TypeErrCtxt;
 use rustc_infer::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
 use rustc_middle::infer::unify_key::{ConstVariableOrigin, ConstVariableOriginKind};
@@ -44,14 +45,6 @@ pub struct FnCtxt<'a, 'tcx> {
     /// closures do not yet change the environment, but they will
     /// eventually).
     pub(super) param_env: ty::ParamEnv<'tcx>,
-
-    /// Number of errors that had been reported when we started
-    /// checking this function. On exit, if we find that *more* errors
-    /// have been reported, we will skip regionck and other work that
-    /// expects the types within the function to be consistent.
-    // FIXME(matthewjasper) This should not exist, and it's not correct
-    // if type checking is run in parallel.
-    err_count_on_creation: usize,
 
     /// If `Some`, this stores coercion information for returned
     /// expressions. If `None`, this is in a context where return is
@@ -126,7 +119,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         FnCtxt {
             body_id,
             param_env,
-            err_count_on_creation: inh.tcx.dcx().err_count(),
             ret_coercion: None,
             ret_coercion_span: Cell::new(None),
             coroutine_types: None,
@@ -164,8 +156,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     ///
     /// [`InferCtxt::err_ctxt`]: infer::InferCtxt::err_ctxt
     pub fn err_ctxt(&'a self) -> TypeErrCtxt<'a, 'tcx> {
+        let mut sub_relations = SubRelations::default();
+        sub_relations.add_constraints(
+            self,
+            self.fulfillment_cx.borrow_mut().pending_obligations().iter().map(|o| o.predicate),
+        );
         TypeErrCtxt {
             infcx: &self.infcx,
+            sub_relations: RefCell::new(sub_relations),
             typeck_results: Some(self.typeck_results.borrow()),
             fallback_has_occurred: self.fallback_has_occurred.get(),
             normalize_fn_sig: Box::new(|fn_sig| {
@@ -194,10 +192,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 steps
             }),
         }
-    }
-
-    pub fn errors_reported_since_creation(&self) -> bool {
-        self.dcx().err_count() > self.err_count_on_creation
     }
 }
 

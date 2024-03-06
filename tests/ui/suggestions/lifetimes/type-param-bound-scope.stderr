@@ -1,5 +1,5 @@
 error[E0309]: the parameter type `Self` may not live long enough
-  --> $DIR/type-param-bound-scope.rs:11:9
+  --> $DIR/type-param-bound-scope.rs:12:9
    |
 LL | trait Trait1<'a>: Sized {
    |              -- the parameter type `Self` must be valid for the lifetime `'a` as defined here...
@@ -13,7 +13,7 @@ LL | trait Trait1<'a>: Sized where Self: 'a {
    |                         ++++++++++++++
 
 error[E0309]: the parameter type `Self` may not live long enough
-  --> $DIR/type-param-bound-scope.rs:18:9
+  --> $DIR/type-param-bound-scope.rs:19:9
    |
 LL |     fn foo<'a>(self, lt: Inv<'a>) {
    |            -- the parameter type `Self` must be valid for the lifetime `'a` as defined here...
@@ -26,7 +26,7 @@ LL |     fn foo<'a>(self, lt: Inv<'a>) where Self: 'a {
    |                                   ++++++++++++++
 
 error[E0309]: the parameter type `T` may not live long enough
-  --> $DIR/type-param-bound-scope.rs:25:9
+  --> $DIR/type-param-bound-scope.rs:26:9
    |
 LL |     fn foo<'a>(arg: T, lt: Inv<'a>) {
    |            -- the parameter type `T` must be valid for the lifetime `'a` as defined here...
@@ -39,7 +39,7 @@ LL |     fn foo<'a>(arg: T, lt: Inv<'a>) where T: 'a {
    |                                     +++++++++++
 
 error[E0309]: the parameter type `T` may not live long enough
-  --> $DIR/type-param-bound-scope.rs:32:9
+  --> $DIR/type-param-bound-scope.rs:33:9
    |
 LL | trait Trait4<'a> {
    |              -- the parameter type `T` must be valid for the lifetime `'a` as defined here...
@@ -53,7 +53,7 @@ LL |     fn foo<T: 'a>(arg: T, lt: Inv<'a>) {
    |             ++++
 
 error[E0309]: the parameter type `T` may not live long enough
-  --> $DIR/type-param-bound-scope.rs:42:9
+  --> $DIR/type-param-bound-scope.rs:43:9
    |
 LL | impl<'a, T> Trait5<'a> for T {
    |      -- the parameter type `T` must be valid for the lifetime `'a` as defined here...

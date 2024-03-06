@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 fn works<T>(x: T) -> Vec<T> { vec![x] }
 
 fn also_works<T: Clone>(x: T) -> Vec<T> { vec![x] }

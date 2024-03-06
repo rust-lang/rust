@@ -16,7 +16,6 @@ use std::mem;
 use std::ops::Bound;
 use std::ops::Range;
 use std::panic;
-use std::sync::atomic::AtomicUsize;
 use std::sync::Once;
 use std::thread;
 
@@ -110,6 +109,23 @@ macro_rules! with_api {
             Symbol {
                 fn normalize_and_validate_ident(string: &str) -> Result<$S::Symbol, ()>;
             },
+        }
+    };
+}
+
+// Similar to `with_api`, but only lists the types requiring handles, and they
+// are divided into the two storage categories.
+macro_rules! with_api_handle_types {
+    ($m:ident) => {
+        $m! {
+            'owned:
+            FreeFunctions,
+            TokenStream,
+            SourceFile,
+
+            'interned:
+            Span,
+            // Symbol is handled manually
         }
     };
 }
@@ -338,7 +354,11 @@ pub enum LitKind {
     ByteStrRaw(u8),
     CStr,
     CStrRaw(u8),
-    Err,
+    // This should have an `ErrorGuaranteed`, except that type isn't available
+    // in this crate. (Imagine it is there.) Hence the `WithGuar` suffix. Must
+    // only be constructed in `LitKind::from_internal`, where an
+    // `ErrorGuaranteed` is available.
+    ErrWithGuar,
 }
 
 rpc_encode_decode!(
@@ -353,7 +373,7 @@ rpc_encode_decode!(
         ByteStrRaw(n),
         CStr,
         CStrRaw(n),
-        Err,
+        ErrWithGuar,
     }
 );
 

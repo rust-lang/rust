@@ -1,4 +1,4 @@
-// check-pass
+//@ check-pass
 // https://github.com/rust-lang/rust/pull/113099
 
 mod framing {

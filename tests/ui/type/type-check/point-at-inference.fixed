@@ -1,4 +1,4 @@
-// run-rustfix
+//@ run-rustfix
 fn bar(_: Vec<i32>) {}
 fn baz(_: &impl std::any::Any) {}
 fn main() {

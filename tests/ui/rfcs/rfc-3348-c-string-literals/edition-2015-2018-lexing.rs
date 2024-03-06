@@ -1,9 +1,9 @@
 // Regression test for issue #113235.
 
-// check-pass
-// revisions: edition2015 edition2018
-//[edition2015] edition: 2015
-//[edition2018] edition: 2018
+//@ check-pass
+//@ revisions: edition2015 edition2018
+//@[edition2015] edition: 2015
+//@[edition2018] edition: 2018
 
 // Make sure that in pre-2021 editions we continue to parse the snippet
 // `c"hello"` as an identifier followed by a (normal) string literal and

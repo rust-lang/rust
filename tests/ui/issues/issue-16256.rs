@@ -1,5 +1,5 @@
-// run-pass
-// pretty-expanded FIXME #23616
+//@ run-pass
+//@ pretty-expanded FIXME #23616
 
 fn main() {
     let mut buf = Vec::new();

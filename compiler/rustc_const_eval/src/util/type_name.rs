@@ -51,6 +51,7 @@ impl<'tcx> Printer<'tcx> for AbsolutePathPrinter<'tcx> {
             | ty::FnDef(def_id, args)
             | ty::Alias(ty::Projection | ty::Opaque, ty::AliasTy { def_id, args, .. })
             | ty::Closure(def_id, args)
+            | ty::CoroutineClosure(def_id, args)
             | ty::Coroutine(def_id, args) => self.print_def_path(def_id, args),
             ty::Foreign(def_id) => self.print_def_path(def_id, &[]),
 

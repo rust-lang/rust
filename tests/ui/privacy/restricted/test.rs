@@ -1,4 +1,4 @@
-// aux-build:pub_restricted.rs
+//@ aux-build:pub_restricted.rs
 
 #![allow(warnings)]
 extern crate pub_restricted;

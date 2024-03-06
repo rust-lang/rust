@@ -1,4 +1,4 @@
-// known-bug: #42940
+//@ known-bug: #42940
 
 trait Trait {}
 impl Trait for () {}

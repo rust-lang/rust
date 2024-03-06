@@ -1,4 +1,4 @@
-// check-pass
+//@ check-pass
 // Tests that we properly handle a nested macro expansion
 // involving a `#[doc]` attribute
 #![deny(missing_docs)]

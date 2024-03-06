@@ -1,4 +1,4 @@
-// build-pass
+//@ build-pass
 
 #![allow(incomplete_features)]
 #![feature(generic_const_exprs)]

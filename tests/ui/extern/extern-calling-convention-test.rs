@@ -1,7 +1,7 @@
-// run-pass
-// aux-build:extern_calling_convention.rs
+//@ run-pass
+//@ aux-build:extern_calling_convention.rs
 
-// pretty-expanded FIXME #23616
+//@ pretty-expanded FIXME #23616
 
 extern crate extern_calling_convention;
 

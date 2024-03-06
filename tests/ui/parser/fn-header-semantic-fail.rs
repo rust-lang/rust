@@ -1,6 +1,6 @@
 // Ensures that all `fn` forms can have all the function qualifiers syntactically.
 
-// edition:2018
+//@ edition:2018
 
 #![feature(const_extern_fn)]
 

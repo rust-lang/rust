@@ -1,7 +1,7 @@
 // A more comprehensive test that const parameters have correctly implemented
 // hygiene
 
-// check-pass
+//@ check-pass
 
 use std::ops::Add;
 

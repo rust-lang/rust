@@ -62,9 +62,6 @@ pub fn from_fn_attrs<'gcc, 'tcx>(
         if codegen_fn_attrs.flags.contains(CodegenFnAttrFlags::COLD) {
             func.add_attribute(FnAttribute::Cold);
         }
-        if codegen_fn_attrs.flags.contains(CodegenFnAttrFlags::FFI_RETURNS_TWICE) {
-            func.add_attribute(FnAttribute::ReturnsTwice);
-        }
         if codegen_fn_attrs.flags.contains(CodegenFnAttrFlags::FFI_PURE) {
             func.add_attribute(FnAttribute::Pure);
         }

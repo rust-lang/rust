@@ -1,9 +1,9 @@
-// run-pass
-// pretty-expanded FIXME #23616
+//@ run-pass
+//@ pretty-expanded FIXME #23616
 
 #![feature(fn_traits, unboxed_closures)]
 
-trait Foo { fn dummy(&self) { }}
+trait Foo { fn dummy(&self) { }} //~ WARN method `dummy` is never used
 
 struct Bar;
 

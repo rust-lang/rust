@@ -2,7 +2,7 @@ error[E0308]: mismatched types
   --> $DIR/obligation-cause.rs:20:5
    |
 LL |     g::<usize>();
-   |     ^^^^^^^^^^ expected `false`, found `true`
+   |     ^^^^^^^^^^^^ expected `false`, found `true`
    |
    = note: expected constant `false`
               found constant `true`

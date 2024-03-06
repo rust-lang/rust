@@ -14,7 +14,7 @@ use crate::{LateContext, LateLintPass, LintContext};
 use rustc_ast as ast;
 use rustc_attr as attr;
 use rustc_data_structures::fx::FxHashSet;
-use rustc_errors::DiagnosticMessage;
+use rustc_errors::DiagMessage;
 use rustc_hir as hir;
 use rustc_hir::{is_range_literal, Expr, ExprKind, Node};
 use rustc_middle::ty::layout::{IntegerExt, LayoutOf, SizeSkeleton};
@@ -200,8 +200,7 @@ fn lint_overflowing_range_endpoint<'tcx>(
     ty: &str,
 ) -> bool {
     // Look past casts to support cases like `0..256 as u8`
-    let (expr, lit_span) = if let Node::Expr(par_expr) =
-        cx.tcx.hir_node(cx.tcx.hir().parent_id(expr.hir_id))
+    let (expr, lit_span) = if let Node::Expr(par_expr) = cx.tcx.parent_hir_node(expr.hir_id)
         && let ExprKind::Cast(_, _) = par_expr.kind
     {
         (par_expr, expr.span)
@@ -211,9 +210,8 @@ fn lint_overflowing_range_endpoint<'tcx>(
 
     // We only want to handle exclusive (`..`) ranges,
     // which are represented as `ExprKind::Struct`.
-    let par_id = cx.tcx.hir().parent_id(expr.hir_id);
-    let Node::ExprField(field) = cx.tcx.hir_node(par_id) else { return false };
-    let Node::Expr(struct_expr) = cx.tcx.hir().get_parent(field.hir_id) else { return false };
+    let Node::ExprField(field) = cx.tcx.parent_hir_node(expr.hir_id) else { return false };
+    let Node::Expr(struct_expr) = cx.tcx.parent_hir_node(field.hir_id) else { return false };
     if !is_range_literal(struct_expr) {
         return false;
     };
@@ -496,8 +494,7 @@ fn lint_uint_literal<'tcx>(
         _ => bug!(),
     };
     if lit_val < min || lit_val > max {
-        let parent_id = cx.tcx.hir().parent_id(e.hir_id);
-        if let Node::Expr(par_e) = cx.tcx.hir_node(parent_id) {
+        if let Node::Expr(par_e) = cx.tcx.parent_hir_node(e.hir_id) {
             match par_e.kind {
                 hir::ExprKind::Cast(..) => {
                     if let ty::Char = cx.typeck_results().expr_ty(par_e).kind() {
@@ -564,8 +561,10 @@ fn lint_literal<'tcx>(
         ty::Float(t) => {
             let is_infinite = match lit.node {
                 ast::LitKind::Float(v, _) => match t {
+                    ty::FloatTy::F16 => unimplemented!("f16_f128"),
                     ty::FloatTy::F32 => v.as_str().parse().map(f32::is_infinite),
                     ty::FloatTy::F64 => v.as_str().parse().map(f64::is_infinite),
+                    ty::FloatTy::F128 => unimplemented!("f16_f128"),
                 },
                 _ => bug!(),
             };
@@ -960,7 +959,7 @@ struct ImproperCTypesVisitor<'a, 'tcx> {
 enum FfiResult<'tcx> {
     FfiSafe,
     FfiPhantom(Ty<'tcx>),
-    FfiUnsafe { ty: Ty<'tcx>, reason: DiagnosticMessage, help: Option<DiagnosticMessage> },
+    FfiUnsafe { ty: Ty<'tcx>, reason: DiagMessage, help: Option<DiagMessage> },
 }
 
 pub(crate) fn nonnull_optimization_guaranteed<'tcx>(
@@ -1435,6 +1434,7 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
             | ty::Bound(..)
             | ty::Error(_)
             | ty::Closure(..)
+            | ty::CoroutineClosure(..)
             | ty::Coroutine(..)
             | ty::CoroutineWitness(..)
             | ty::Placeholder(..)
@@ -1446,8 +1446,8 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
         &mut self,
         ty: Ty<'tcx>,
         sp: Span,
-        note: DiagnosticMessage,
-        help: Option<DiagnosticMessage>,
+        note: DiagMessage,
+        help: Option<DiagMessage>,
     ) {
         let lint = match self.mode {
             CItemKind::Declaration => IMPROPER_CTYPES,
@@ -1474,9 +1474,9 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
     fn check_for_opaque_ty(&mut self, sp: Span, ty: Ty<'tcx>) -> bool {
         struct ProhibitOpaqueTypes;
         impl<'tcx> ty::visit::TypeVisitor<TyCtxt<'tcx>> for ProhibitOpaqueTypes {
-            type BreakTy = Ty<'tcx>;
+            type Result = ControlFlow<Ty<'tcx>>;
 
-            fn visit_ty(&mut self, ty: Ty<'tcx>) -> ControlFlow<Self::BreakTy> {
+            fn visit_ty(&mut self, ty: Ty<'tcx>) -> Self::Result {
                 if !ty.has_opaque_types() {
                     return ControlFlow::Continue(());
                 }
@@ -1589,10 +1589,7 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
     }
 
     fn is_internal_abi(&self, abi: SpecAbi) -> bool {
-        matches!(
-            abi,
-            SpecAbi::Rust | SpecAbi::RustCall | SpecAbi::RustIntrinsic | SpecAbi::PlatformIntrinsic
-        )
+        matches!(abi, SpecAbi::Rust | SpecAbi::RustCall | SpecAbi::RustIntrinsic)
     }
 
     /// Find any fn-ptr types with external ABIs in `ty`.
@@ -1623,9 +1620,9 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
         }
 
         impl<'vis, 'a, 'tcx> ty::visit::TypeVisitor<TyCtxt<'tcx>> for FnPtrFinder<'vis, 'a, 'tcx> {
-            type BreakTy = Ty<'tcx>;
+            type Result = ControlFlow<Ty<'tcx>>;
 
-            fn visit_ty(&mut self, ty: Ty<'tcx>) -> ControlFlow<Self::BreakTy> {
+            fn visit_ty(&mut self, ty: Ty<'tcx>) -> Self::Result {
                 if let ty::FnPtr(sig) = ty.kind()
                     && !self.visitor.is_internal_abi(sig.abi())
                 {

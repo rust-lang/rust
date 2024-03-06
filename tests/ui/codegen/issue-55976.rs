@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 // ^-- The above is needed as this issue is related to LLVM/codegen.
 
 fn main() {

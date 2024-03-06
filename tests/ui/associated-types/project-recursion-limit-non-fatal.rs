@@ -2,7 +2,7 @@
 // is non-fatal. The above code, minimised from wundergraph shows a case
 // where this is relied on.
 
-// check-pass
+//@ check-pass
 
 struct AlternateTable {}
 struct AlternateQuery {}

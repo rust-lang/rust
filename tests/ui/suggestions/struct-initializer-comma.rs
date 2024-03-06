@@ -1,4 +1,4 @@
-// run-rustfix
+//@ run-rustfix
 
 pub struct Foo {
     pub first: bool,

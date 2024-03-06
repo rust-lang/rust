@@ -160,14 +160,14 @@ use core::alloc::Layout;
 use core::iter::{InPlaceIterable, SourceIter, TrustedRandomAccessNoCoerce};
 use core::marker::PhantomData;
 use core::mem::{self, ManuallyDrop, SizedTypeProperties};
-use core::num::NonZeroUsize;
+use core::num::NonZero;
 use core::ptr::{self, NonNull};
 
 use super::{InPlaceDrop, InPlaceDstDataSrcBufDrop, SpecFromIter, SpecFromIterNested, Vec};
 
 const fn in_place_collectible<DEST, SRC>(
-    step_merge: Option<NonZeroUsize>,
-    step_expand: Option<NonZeroUsize>,
+    step_merge: Option<NonZero<usize>>,
+    step_expand: Option<NonZero<usize>>,
 ) -> bool {
     // Require matching alignments because an alignment-changing realloc is inefficient on many
     // system allocators and better implementations would require the unstable Allocator trait.

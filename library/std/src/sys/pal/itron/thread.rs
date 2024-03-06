@@ -8,9 +8,10 @@ use super::{
 };
 use crate::{
     cell::UnsafeCell,
-    ffi::CStr,
+    ffi::{CStr, CString},
     hint, io,
     mem::ManuallyDrop,
+    num::NonZero,
     ptr::NonNull,
     sync::atomic::{AtomicUsize, Ordering},
     sys::thread_local_dtor::run_dtors,
@@ -203,6 +204,10 @@ impl Thread {
         // nope
     }
 
+    pub fn get_name() -> Option<CString> {
+        None
+    }
+
     pub fn sleep(dur: Duration) {
         for timeout in dur2reltims(dur) {
             expect_success(unsafe { abi::dly_tsk(timeout) }, &"dly_tsk");
@@ -363,6 +368,6 @@ unsafe fn terminate_and_delete_current_task() -> ! {
     unsafe { crate::hint::unreachable_unchecked() };
 }
 
-pub fn available_parallelism() -> io::Result<crate::num::NonZeroUsize> {
+pub fn available_parallelism() -> io::Result<NonZero<usize>> {
     super::unsupported()
 }

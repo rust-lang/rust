@@ -1,5 +1,5 @@
 error: you are implementing `Iterator` on a `Copy` type
-  --> $DIR/copy_iterator.rs:6:1
+  --> tests/ui/copy_iterator.rs:6:1
    |
 LL | / impl Iterator for Countdown {
 LL | |

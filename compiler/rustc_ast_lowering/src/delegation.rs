@@ -103,12 +103,8 @@ impl<'hir> LoweringContext<'_, 'hir> {
         span: Span,
     ) -> Result<DefId, ErrorGuaranteed> {
         let sig_id = if self.is_in_trait_impl { item_id } else { path_id };
-        let sig_id = self
-            .resolver
-            .get_partial_res(sig_id)
-            .map(|r| r.expect_full_res().opt_def_id())
-            .unwrap_or(None);
-
+        let sig_id =
+            self.resolver.get_partial_res(sig_id).and_then(|r| r.expect_full_res().opt_def_id());
         sig_id.ok_or_else(|| {
             self.tcx
                 .dcx()
@@ -138,7 +134,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         } else {
             self.tcx.fn_arg_names(sig_id).len()
         };
-        let inputs = self.arena.alloc_from_iter((0..args_count).into_iter().map(|arg| hir::Ty {
+        let inputs = self.arena.alloc_from_iter((0..args_count).map(|arg| hir::Ty {
             hir_id: self.next_id(),
             kind: hir::TyKind::InferDelegation(sig_id, hir::InferDelegationKind::Input(arg)),
             span: self.lower_span(param_span),
@@ -218,7 +214,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
             &delegation.qself,
             &delegation.path,
             ParamMode::Optional,
-            &ImplTraitContext::Disallowed(ImplTraitPosition::Path),
+            ImplTraitContext::Disallowed(ImplTraitPosition::Path),
             None,
         );
         let block = delegation.body.as_deref();

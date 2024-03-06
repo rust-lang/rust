@@ -182,11 +182,7 @@ fn try_filter_trait_item_definition(
     match assoc {
         AssocItem::Function(..) => None,
         AssocItem::Const(..) | AssocItem::TypeAlias(..) => {
-            let imp = match assoc.container(db) {
-                hir::AssocItemContainer::Impl(imp) => imp,
-                _ => return None,
-            };
-            let trait_ = imp.trait_(db)?;
+            let trait_ = assoc.implemented_trait(db)?;
             let name = def.name(db)?;
             let discri_value = discriminant(&assoc);
             trait_
@@ -226,6 +222,7 @@ mod tests {
             .map(|(FileRange { file_id, range }, _)| FileRange { file_id, range })
             .sorted_by_key(cmp)
             .collect::<Vec<_>>();
+
         assert_eq!(expected, navs);
     }
 
@@ -234,6 +231,60 @@ mod tests {
         let navs = analysis.goto_definition(position).unwrap().expect("no definition found").info;
 
         assert!(navs.is_empty(), "didn't expect this to resolve anywhere: {navs:?}")
+    }
+
+    #[test]
+    fn goto_def_in_included_file() {
+        check(
+            r#"
+//- minicore:include
+//- /main.rs
+
+include!("a.rs");
+
+fn main() {
+    foo();
+}
+
+//- /a.rs
+fn func_in_include() {
+ //^^^^^^^^^^^^^^^
+}
+
+fn foo() {
+    func_in_include$0();
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn goto_def_in_included_file_nested() {
+        check(
+            r#"
+//- minicore:include
+//- /main.rs
+
+macro_rules! passthrough {
+    ($($tt:tt)*) => { $($tt)* }
+}
+
+passthrough!(include!("a.rs"));
+
+fn main() {
+    foo();
+}
+
+//- /a.rs
+fn func_in_include() {
+ //^^^^^^^^^^^^^^^
+}
+
+fn foo() {
+    func_in_include$0();
+}
+"#,
+        );
     }
 
     #[test]
@@ -1905,6 +1956,34 @@ fn f() {
     }
 
     #[test]
+    fn goto_index_mut_op() {
+        check(
+            r#"
+//- minicore: index
+
+struct Foo;
+struct Bar;
+
+impl core::ops::Index<usize> for Foo {
+    type Output = Bar;
+
+    fn index(&self, index: usize) -> &Self::Output {}
+}
+
+impl core::ops::IndexMut<usize> for Foo {
+    fn index_mut(&mut self, index: usize) -> &mut Self::Output {}
+     //^^^^^^^^^
+}
+
+fn f() {
+    let mut foo = Foo;
+    foo[0]$0 = Bar;
+}
+"#,
+        );
+    }
+
+    #[test]
     fn goto_prefix_op() {
         check(
             r#"
@@ -1921,6 +2000,33 @@ impl core::ops::Deref for Struct {
 
 fn f() {
     $0*Struct;
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn goto_deref_mut() {
+        check(
+            r#"
+//- minicore: deref, deref_mut
+
+struct Foo;
+struct Bar;
+
+impl core::ops::Deref for Foo {
+    type Target = Bar;
+    fn deref(&self) -> &Self::Target {}
+}
+
+impl core::ops::DerefMut for Foo {
+    fn deref_mut(&mut self) -> &mut Self::Target {}
+     //^^^^^^^^^
+}
+
+fn f() {
+    let a = Foo;
+    $0*a = Bar;
 }
 "#,
         );

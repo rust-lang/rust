@@ -1,4 +1,4 @@
-// compile-flags: -Z allow_features=lang_items
+//@ compile-flags: -Z allow_features=lang_items
 // Note: This test uses rustc internal flags because they will never stabilize.
 
 #![feature(lang_items)]

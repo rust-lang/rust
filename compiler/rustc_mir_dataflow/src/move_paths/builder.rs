@@ -1,7 +1,7 @@
 use rustc_index::IndexVec;
 use rustc_middle::mir::tcx::{PlaceTy, RvalueInitializationState};
 use rustc_middle::mir::*;
-use rustc_middle::ty::{self, Ty, TyCtxt};
+use rustc_middle::ty::{self, Ty, TyCtxt, TypeVisitableExt};
 use smallvec::{smallvec, SmallVec};
 
 use std::mem;
@@ -132,6 +132,9 @@ impl<'b, 'a, 'tcx, F: Fn(Ty<'tcx>) -> bool> Gatherer<'b, 'a, 'tcx, F> {
             let body = self.builder.body;
             let tcx = self.builder.tcx;
             let place_ty = place_ref.ty(body, tcx).ty;
+            if place_ty.references_error() {
+                return MovePathResult::Error;
+            }
             match elem {
                 ProjectionElem::Deref => match place_ty.kind() {
                     ty::Ref(..) | ty::RawPtr(..) => {
@@ -154,7 +157,8 @@ impl<'b, 'a, 'tcx, F: Fn(Ty<'tcx>) -> bool> Gatherer<'b, 'a, 'tcx, F> {
                     | ty::FnDef(_, _)
                     | ty::FnPtr(_)
                     | ty::Dynamic(_, _, _)
-                    | ty::Closure(_, _)
+                    | ty::Closure(..)
+                    | ty::CoroutineClosure(..)
                     | ty::Coroutine(_, _)
                     | ty::CoroutineWitness(..)
                     | ty::Never
@@ -177,7 +181,10 @@ impl<'b, 'a, 'tcx, F: Fn(Ty<'tcx>) -> bool> Gatherer<'b, 'a, 'tcx, F> {
                             union_path.get_or_insert(base);
                         }
                     }
-                    ty::Closure(_, _) | ty::Coroutine(_, _) | ty::Tuple(_) => (),
+                    ty::Closure(..)
+                    | ty::CoroutineClosure(..)
+                    | ty::Coroutine(_, _)
+                    | ty::Tuple(_) => (),
                     ty::Bool
                     | ty::Char
                     | ty::Int(_)
@@ -425,7 +432,10 @@ impl<'b, 'a, 'tcx, F: Fn(Ty<'tcx>) -> bool> Gatherer<'b, 'a, 'tcx, F> {
             | Rvalue::AddressOf(..)
             | Rvalue::Discriminant(..)
             | Rvalue::Len(..)
-            | Rvalue::NullaryOp(NullOp::SizeOf | NullOp::AlignOf | NullOp::OffsetOf(..), _) => {}
+            | Rvalue::NullaryOp(
+                NullOp::SizeOf | NullOp::AlignOf | NullOp::OffsetOf(..) | NullOp::DebugAssertions,
+                _,
+            ) => {}
         }
     }
 

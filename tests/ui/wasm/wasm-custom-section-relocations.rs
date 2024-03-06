@@ -1,4 +1,4 @@
-// only-wasm32
+//@ only-wasm32
 
 #[link_section = "test"]
 pub static A: &[u8] = &[1]; //~ ERROR: no extra levels of indirection

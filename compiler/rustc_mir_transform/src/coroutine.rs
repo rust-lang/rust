@@ -50,6 +50,9 @@
 //! For coroutines with state 1 (returned) and state 2 (poisoned) it does nothing.
 //! Otherwise it drops all the values in scope at the last suspension point.
 
+mod by_move_body;
+pub use by_move_body::ByMoveBody;
+
 use crate::abort_unwinding_calls;
 use crate::deref_separator::deref_finder;
 use crate::errors;
@@ -723,7 +726,7 @@ fn replace_resume_ty_local<'tcx>(
 /// The async lowering step and the type / lifetime inference / checking are
 /// still using the `resume` argument for the time being. After this transform,
 /// the coroutine body doesn't have the `resume` argument.
-fn transform_gen_context<'tcx>(_tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
+fn transform_gen_context<'tcx>(body: &mut Body<'tcx>) {
     // This leaves the local representing the `resume` argument in place,
     // but turns it into a regular local variable. This is cheaper than
     // adjusting all local references in the body after removing it.
@@ -1612,11 +1615,7 @@ impl<'tcx> MirPass<'tcx> for StateTransform {
                 (args.discr_ty(tcx), coroutine_kind.movability() == hir::Movability::Movable)
             }
             _ => {
-                tcx.dcx().span_delayed_bug(
-                    body.span,
-                    format!("unexpected coroutine type {coroutine_ty}"),
-                );
-                return;
+                tcx.dcx().span_bug(body.span, format!("unexpected coroutine type {coroutine_ty}"));
             }
         };
 
@@ -1730,7 +1729,7 @@ impl<'tcx> MirPass<'tcx> for StateTransform {
 
         // Remove the context argument within generator bodies.
         if matches!(coroutine_kind, CoroutineKind::Desugared(CoroutineDesugaring::Gen, _)) {
-            transform_gen_context(tcx, body);
+            transform_gen_context(body);
         }
 
         // The original arguments to the function are no longer arguments, mark them as such.

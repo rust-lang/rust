@@ -1,7 +1,7 @@
-// run-pass
-// aux-build:test-macros.rs
-// compile-flags: -Z span-debug
-// edition:2018
+//@ run-pass
+//@ aux-build:test-macros.rs
+//@ compile-flags: -Z span-debug
+//@ edition:2018
 //
 // Tests the pretty-printing behavior of inserting `Invisible`-delimited groups
 

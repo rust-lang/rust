@@ -1,4 +1,4 @@
-// aux-build:auto-traits.rs
+//@ aux-build:auto-traits.rs
 
 #![feature(auto_traits)]
 

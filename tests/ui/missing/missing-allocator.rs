@@ -1,5 +1,5 @@
-// compile-flags: -C panic=abort
-// no-prefer-dynamic
+//@ compile-flags: -C panic=abort
+//@ no-prefer-dynamic
 
 #![no_std]
 #![crate_type = "staticlib"]

@@ -1,9 +1,7 @@
 use std::cmp;
 use std::iter;
-use std::num::NonZeroUsize;
+use std::num::NonZero;
 use std::time::Duration;
-
-use log::trace;
 
 use rustc_apfloat::ieee::{Double, Single};
 use rustc_apfloat::Float;
@@ -23,6 +21,13 @@ use rustc_target::spec::abi::Abi;
 use rand::RngCore;
 
 use crate::*;
+
+/// Indicates which kind of access is being performed.
+#[derive(Copy, Clone, Hash, PartialEq, Eq, Debug)]
+pub enum AccessKind {
+    Read,
+    Write,
+}
 
 // This mapping should match `decode_error_kind` in
 // <https://github.com/rust-lang/rust/blob/master/library/std/src/sys/pal/unix/mod.rs>.
@@ -574,7 +579,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
             fn visit_union(
                 &mut self,
                 _v: &MPlaceTy<'tcx, Provenance>,
-                _fields: NonZeroUsize,
+                _fields: NonZero<usize>,
             ) -> InterpResult<'tcx> {
                 bug!("we should have already handled unions in `visit_value`")
             }

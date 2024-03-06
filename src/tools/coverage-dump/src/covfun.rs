@@ -219,7 +219,7 @@ impl CovTerm {
 enum MappingKind {
     Code(CovTerm),
     Gap(CovTerm),
-    Expansion(u32),
+    Expansion(#[allow(dead_code)] u32),
     Skip,
     // Using raw identifiers here makes the dump output a little bit nicer
     // (via the derived Debug), at the expense of making this tool's source

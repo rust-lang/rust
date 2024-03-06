@@ -1,18 +1,18 @@
 // ignore-tidy-linelength
-// revisions:m68k wasm x86_64-linux x86_64-windows i686-linux i686-windows
+//@ revisions:m68k wasm x86_64-linux x86_64-windows i686-linux i686-windows
 
-//[m68k] compile-flags: --target m68k-unknown-linux-gnu
-//[m68k] needs-llvm-components: m68k
-//[wasm] compile-flags: --target wasm32-unknown-emscripten
-//[wasm] needs-llvm-components: webassembly
-//[x86_64-linux] compile-flags: --target x86_64-unknown-linux-gnu
-//[x86_64-linux] needs-llvm-components: x86
-//[x86_64-windows] compile-flags: --target x86_64-pc-windows-msvc
-//[x86_64-windows] needs-llvm-components: x86
-//[i686-linux] compile-flags: --target i686-unknown-linux-gnu
-//[i686-linux] needs-llvm-components: x86
-//[i686-windows] compile-flags: --target i686-pc-windows-msvc
-//[i686-windows] needs-llvm-components: x86
+//@[m68k] compile-flags: --target m68k-unknown-linux-gnu
+//@[m68k] needs-llvm-components: m68k
+//@[wasm] compile-flags: --target wasm32-unknown-emscripten
+//@[wasm] needs-llvm-components: webassembly
+//@[x86_64-linux] compile-flags: --target x86_64-unknown-linux-gnu
+//@[x86_64-linux] needs-llvm-components: x86
+//@[x86_64-windows] compile-flags: --target x86_64-pc-windows-msvc
+//@[x86_64-windows] needs-llvm-components: x86
+//@[i686-linux] compile-flags: --target i686-unknown-linux-gnu
+//@[i686-linux] needs-llvm-components: x86
+//@[i686-windows] compile-flags: --target i686-pc-windows-msvc
+//@[i686-windows] needs-llvm-components: x86
 
 // Tests that `byval` alignment is properly specified (#80127).
 // The only targets that use `byval` are m68k, wasm, x86-64, and x86.

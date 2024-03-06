@@ -1,8 +1,8 @@
-// run-pass
+//@ run-pass
 #![allow(unused_variables)]
 // Test that we can resolve nested projection types. Issue #20666.
 
-// pretty-expanded FIXME #23616
+//@ pretty-expanded FIXME #23616
 
 use std::slice;
 
@@ -13,7 +13,7 @@ impl<'a> Bound for &'a i32 {}
 trait IntoIterator {
     type Iter: Iterator;
 
-    fn into_iter(self) -> Self::Iter;
+    fn into_iter(self) -> Self::Iter; //~ WARN method `into_iter` is never used
 }
 
 impl<'a, T> IntoIterator for &'a [T; 3] {

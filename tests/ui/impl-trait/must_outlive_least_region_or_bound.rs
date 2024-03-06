@@ -16,12 +16,16 @@ fn foo<'a>(x: &i32) -> impl Copy + 'a { x }
 //~^ ERROR explicit lifetime required in the type of `x`
 
 fn elided3(x: &i32) -> Box<dyn Debug> { Box::new(x) }
+//~^ ERROR: lifetime may not live long enough
 
 fn explicit3<'a>(x: &'a i32) -> Box<dyn Debug> { Box::new(x) }
+//~^ ERROR: lifetime may not live long enough
 
 fn elided4(x: &i32) -> Box<dyn Debug + 'static> { Box::new(x) }
+//~^ ERROR: lifetime may not live long enough
 
 fn explicit4<'a>(x: &'a i32) -> Box<dyn Debug + 'static> { Box::new(x) }
+//~^ ERROR: lifetime may not live long enough
 
 fn elided5(x: &i32) -> (Box<dyn Debug>, impl Debug) { (Box::new(x), x) }
 //~^ ERROR lifetime may not live long enough

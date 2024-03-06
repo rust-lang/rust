@@ -1,7 +1,7 @@
-// compile-flags: -C no-prepopulate-passes -Zbranch-protection=bti
-// assembly-output: emit-asm
-// needs-asm-support
-// only-aarch64
+//@ compile-flags: -C no-prepopulate-passes -Zbranch-protection=bti
+//@ assembly-output: emit-asm
+//@ needs-asm-support
+//@ only-aarch64
 
 #![crate_type = "lib"]
 #![feature(naked_functions)]

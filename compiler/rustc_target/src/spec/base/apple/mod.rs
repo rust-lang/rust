@@ -17,6 +17,7 @@ pub enum Arch {
     Arm64e,
     Arm64_32,
     I386,
+    I386_sim,
     I686,
     X86_64,
     X86_64h,
@@ -34,7 +35,7 @@ impl Arch {
             Arm64 | Arm64_macabi | Arm64_sim => "arm64",
             Arm64e => "arm64e",
             Arm64_32 => "arm64_32",
-            I386 => "i386",
+            I386 | I386_sim => "i386",
             I686 => "i686",
             X86_64 | X86_64_sim | X86_64_macabi => "x86_64",
             X86_64h => "x86_64h",
@@ -45,7 +46,7 @@ impl Arch {
         Cow::Borrowed(match self {
             Armv7k | Armv7s => "arm",
             Arm64 | Arm64e | Arm64_32 | Arm64_macabi | Arm64_sim => "aarch64",
-            I386 | I686 => "x86",
+            I386 | I386_sim | I686 => "x86",
             X86_64 | X86_64_sim | X86_64_macabi | X86_64h => "x86_64",
         })
     }
@@ -54,9 +55,7 @@ impl Arch {
         match self {
             Armv7k | Armv7s | Arm64 | Arm64e | Arm64_32 | I386 | I686 | X86_64 | X86_64h => "",
             X86_64_macabi | Arm64_macabi => "macabi",
-            // x86_64-apple-ios is a simulator target, even though it isn't
-            // declared that way in the target like the other ones...
-            Arm64_sim | X86_64_sim => "sim",
+            I386_sim | Arm64_sim | X86_64_sim => "sim",
         }
     }
 
@@ -70,7 +69,7 @@ impl Arch {
             // Only macOS 10.12+ is supported, which means
             // all x86_64/x86 CPUs must be running at least penryn
             // https://github.com/llvm/llvm-project/blob/01f924d0e37a5deae51df0d77e10a15b63aa0c0f/clang/lib/Driver/ToolChains/Arch/X86.cpp#L79-L82
-            I386 | I686 => "penryn",
+            I386 | I386_sim | I686 => "penryn",
             X86_64 | X86_64_sim => "penryn",
             X86_64_macabi => "penryn",
             // Note: `core-avx2` is slightly more advanced than `x86_64h`, see
@@ -85,7 +84,7 @@ impl Arch {
     fn stack_probes(self) -> StackProbeType {
         match self {
             Armv7k | Armv7s => StackProbeType::None,
-            Arm64 | Arm64e | Arm64_32 | I386 | I686 | X86_64 | X86_64h | X86_64_sim
+            Arm64 | Arm64e | Arm64_32 | I386 | I386_sim | I686 | X86_64 | X86_64h | X86_64_sim
             | X86_64_macabi | Arm64_macabi | Arm64_sim => StackProbeType::Inline,
         }
     }
@@ -98,28 +97,39 @@ fn pre_link_args(os: &'static str, arch: Arch, abi: &'static str) -> LinkArgs {
         _ => os.into(),
     };
 
-    let platform_version: StaticCow<str> = match os {
-        "ios" => ios_lld_platform_version(arch),
-        "tvos" => tvos_lld_platform_version(),
-        "watchos" => watchos_lld_platform_version(),
-        "macos" => macos_lld_platform_version(arch),
-        _ => unreachable!(),
-    }
-    .into();
-
-    let arch = arch.target_name();
+    let min_version: StaticCow<str> = {
+        let (major, minor) = match os {
+            "ios" => ios_deployment_target(arch, abi),
+            "tvos" => tvos_deployment_target(),
+            "watchos" => watchos_deployment_target(),
+            "macos" => macos_deployment_target(arch),
+            _ => unreachable!(),
+        };
+        format!("{major}.{minor}").into()
+    };
+    let sdk_version = min_version.clone();
 
     let mut args = TargetOptions::link_args(
         LinkerFlavor::Darwin(Cc::No, Lld::No),
-        &["-arch", arch, "-platform_version"],
+        &["-arch", arch.target_name(), "-platform_version"],
     );
     add_link_args_iter(
         &mut args,
         LinkerFlavor::Darwin(Cc::No, Lld::No),
-        [platform_name, platform_version.clone(), platform_version].into_iter(),
+        [platform_name, min_version, sdk_version].into_iter(),
     );
     if abi != "macabi" {
-        add_link_args(&mut args, LinkerFlavor::Darwin(Cc::Yes, Lld::No), &["-arch", arch]);
+        add_link_args(
+            &mut args,
+            LinkerFlavor::Darwin(Cc::Yes, Lld::No),
+            &["-arch", arch.target_name()],
+        );
+    } else {
+        add_link_args_iter(
+            &mut args,
+            LinkerFlavor::Darwin(Cc::Yes, Lld::No),
+            ["-target".into(), mac_catalyst_llvm_target(arch).into()].into_iter(),
+        );
     }
 
     args
@@ -132,7 +142,7 @@ pub fn opts(os: &'static str, arch: Arch) -> TargetOptions {
         abi: abi.into(),
         os: os.into(),
         cpu: arch.target_cpu().into(),
-        link_env_remove: link_env_remove(arch, os),
+        link_env_remove: link_env_remove(os),
         vendor: "apple".into(),
         linker_flavor: LinkerFlavor::Darwin(Cc::Yes, Lld::No),
         // macOS has -dead_strip, which doesn't rely on function_sections
@@ -221,16 +231,13 @@ pub fn deployment_target(target: &Target) -> Option<(u32, u32)> {
             };
             macos_deployment_target(arch)
         }
-        "ios" => match &*target.abi {
-            "macabi" => mac_catalyst_deployment_target(),
-            _ => {
-                let arch = match target.arch.as_ref() {
-                    "arm64e" => Arm64e,
-                    _ => Arm64,
-                };
-                ios_deployment_target(arch)
-            }
-        },
+        "ios" => {
+            let arch = match target.arch.as_ref() {
+                "arm64e" => Arm64e,
+                _ => Arm64,
+            };
+            ios_deployment_target(arch, &target.abi)
+        }
         "watchos" => watchos_deployment_target(),
         "tvos" => tvos_deployment_target(),
         _ => return None,
@@ -261,17 +268,12 @@ fn macos_deployment_target(arch: Arch) -> (u32, u32) {
         .unwrap_or_else(|| macos_default_deployment_target(arch))
 }
 
-fn macos_lld_platform_version(arch: Arch) -> String {
-    let (major, minor) = macos_deployment_target(arch);
-    format!("{major}.{minor}")
-}
-
 pub fn macos_llvm_target(arch: Arch) -> String {
     let (major, minor) = macos_deployment_target(arch);
     format!("{}-apple-macosx{}.{}.0", arch.target_name(), major, minor)
 }
 
-fn link_env_remove(arch: Arch, os: &'static str) -> StaticCow<[StaticCow<str>]> {
+fn link_env_remove(os: &'static str) -> StaticCow<[StaticCow<str>]> {
     // Apple platforms only officially support macOS as a host for any compilation.
     //
     // If building for macOS, we go ahead and remove any erroneous environment state
@@ -299,27 +301,21 @@ fn link_env_remove(arch: Arch, os: &'static str) -> StaticCow<[StaticCow<str>]> 
         env_remove.push("TVOS_DEPLOYMENT_TARGET".into());
         env_remove.into()
     } else {
-        // Otherwise if cross-compiling for a different OS/SDK, remove any part
+        // Otherwise if cross-compiling for a different OS/SDK (including Mac Catalyst), remove any part
         // of the linking environment that's wrong and reversed.
-        match arch {
-            Armv7k | Armv7s | Arm64 | Arm64e | Arm64_32 | I386 | I686 | X86_64 | X86_64_sim
-            | X86_64h | Arm64_sim => {
-                cvs!["MACOSX_DEPLOYMENT_TARGET"]
-            }
-            X86_64_macabi | Arm64_macabi => cvs!["IPHONEOS_DEPLOYMENT_TARGET"],
-        }
+        cvs!["MACOSX_DEPLOYMENT_TARGET"]
     }
 }
 
-fn ios_deployment_target(arch: Arch) -> (u32, u32) {
+fn ios_deployment_target(arch: Arch, abi: &str) -> (u32, u32) {
     // If you are looking for the default deployment target, prefer `rustc --print deployment-target`.
-    let (major, minor) = if arch == Arm64e { (14, 0) } else { (10, 0) };
+    let (major, minor) = match (arch, abi) {
+        (Arm64e, _) => (14, 0),
+        // Mac Catalyst defaults to 13.1 in Clang.
+        (_, "macabi") => (13, 1),
+        _ => (10, 0),
+    };
     from_set_deployment_target("IPHONEOS_DEPLOYMENT_TARGET").unwrap_or((major, minor))
-}
-
-fn mac_catalyst_deployment_target() -> (u32, u32) {
-    // If you are looking for the default deployment target, prefer `rustc --print deployment-target`.
-    from_set_deployment_target("IPHONEOS_DEPLOYMENT_TARGET").unwrap_or((14, 0))
 }
 
 pub fn ios_llvm_target(arch: Arch) -> String {
@@ -329,28 +325,23 @@ pub fn ios_llvm_target(arch: Arch) -> String {
     // set high enough. Luckily one LC_BUILD_VERSION is enough, for Xcode
     // to pick it up (since std and core are still built with the fallback
     // of version 7.0 and hence emit the old LC_IPHONE_MIN_VERSION).
-    let (major, minor) = ios_deployment_target(arch);
+    let (major, minor) = ios_deployment_target(arch, "");
     format!("{}-apple-ios{}.{}.0", arch.target_name(), major, minor)
 }
 
-fn ios_lld_platform_version(arch: Arch) -> String {
-    let (major, minor) = ios_deployment_target(arch);
-    format!("{major}.{minor}")
+pub fn mac_catalyst_llvm_target(arch: Arch) -> String {
+    let (major, minor) = ios_deployment_target(arch, "macabi");
+    format!("{}-apple-ios{}.{}.0-macabi", arch.target_name(), major, minor)
 }
 
 pub fn ios_sim_llvm_target(arch: Arch) -> String {
-    let (major, minor) = ios_deployment_target(arch);
+    let (major, minor) = ios_deployment_target(arch, "sim");
     format!("{}-apple-ios{}.{}.0-simulator", arch.target_name(), major, minor)
 }
 
 fn tvos_deployment_target() -> (u32, u32) {
     // If you are looking for the default deployment target, prefer `rustc --print deployment-target`.
     from_set_deployment_target("TVOS_DEPLOYMENT_TARGET").unwrap_or((10, 0))
-}
-
-fn tvos_lld_platform_version() -> String {
-    let (major, minor) = tvos_deployment_target();
-    format!("{major}.{minor}")
 }
 
 pub fn tvos_llvm_target(arch: Arch) -> String {
@@ -366,11 +357,6 @@ pub fn tvos_sim_llvm_target(arch: Arch) -> String {
 fn watchos_deployment_target() -> (u32, u32) {
     // If you are looking for the default deployment target, prefer `rustc --print deployment-target`.
     from_set_deployment_target("WATCHOS_DEPLOYMENT_TARGET").unwrap_or((5, 0))
-}
-
-fn watchos_lld_platform_version() -> String {
-    let (major, minor) = watchos_deployment_target();
-    format!("{major}.{minor}")
 }
 
 pub fn watchos_sim_llvm_target(arch: Arch) -> String {

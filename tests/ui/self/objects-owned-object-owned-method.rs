@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 // Test invoked `&self` methods on owned objects where the values
 // closed over contain managed values. This implies that the boxes
 // will have headers that must be skipped over.

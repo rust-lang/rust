@@ -1,5 +1,5 @@
-// check-pass
-// compile-flags: -Wunused
+//@ check-pass
+//@ compile-flags: -Wunused
 
 // ensure there are no special warnings about uninhabited types
 // when deriving Debug on an empty enum

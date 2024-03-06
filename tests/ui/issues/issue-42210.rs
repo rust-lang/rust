@@ -1,7 +1,7 @@
-// run-pass
+//@ run-pass
 // Regression test for #42210.
 
-// compile-flags: -g
+//@ compile-flags: -g
 
 trait Foo {
     fn foo() { }

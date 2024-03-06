@@ -1,4 +1,4 @@
-// check-pass
+//@ check-pass
 
 // If we allow the parent generics here without using lazy normalization
 // this results in a cycle error.

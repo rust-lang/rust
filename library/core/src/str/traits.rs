@@ -200,7 +200,7 @@ unsafe impl SliceIndex<str> for ops::Range<usize> {
             // `str::get_unchecked` without adding a special function
             // to `SliceIndex` just for this.
             self.end >= self.start && self.end <= slice.len(),
-            "str::get_unchecked requires that the range is within the string slice",
+            "str::get_unchecked requires that the range is within the string slice"
         );
 
         // SAFETY: the caller guarantees that `self` is in bounds of `slice`
@@ -215,7 +215,7 @@ unsafe impl SliceIndex<str> for ops::Range<usize> {
 
         debug_assert_nounwind!(
             self.end >= self.start && self.end <= slice.len(),
-            "str::get_unchecked_mut requires that the range is within the string slice",
+            "str::get_unchecked_mut requires that the range is within the string slice"
         );
 
         // SAFETY: see comments for `get_unchecked`.

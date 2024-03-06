@@ -3,7 +3,7 @@
 // `D::Error:` is lowered to `D::Error: ReEmpty` - check that we don't ICE in
 // NLL for the unexpected region.
 
-// check-pass
+//@ check-pass
 
 trait Deserializer {
     type Error;

@@ -11,10 +11,10 @@
 // choose to make this always in error in the future - we perform the leak check
 // after coercing a function pointer.
 
-// revisions: leak noleak
-//[noleak] compile-flags: -Zno-leak-check
+//@ revisions: leak noleak
+//@[noleak] compile-flags: -Zno-leak-check
 
-//[noleak] check-pass
+//@[noleak] check-pass
 
 fn foo(x: for<'a, 'b> fn(&'a u8, &'b u8) -> &'a u8, y: for<'a> fn(&'a u8, &'a u8) -> &'a u8) {
     // The two types above are not equivalent. With the older LUB/GLB

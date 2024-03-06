@@ -1,5 +1,5 @@
-// check-pass
-// edition:2021
+//@ check-pass
+//@ edition:2021
 #![feature(generic_const_exprs)]
 #![allow(incomplete_features)]
 

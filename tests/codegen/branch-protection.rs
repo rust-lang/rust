@@ -1,12 +1,12 @@
 // Test that the correct module flags are emitted with different branch protection flags.
 
-// revisions: BTI PACRET LEAF BKEY NONE
-// needs-llvm-components: aarch64
-// [BTI] compile-flags: -Z branch-protection=bti
-// [PACRET] compile-flags: -Z branch-protection=pac-ret
-// [LEAF] compile-flags: -Z branch-protection=pac-ret,leaf
-// [BKEY] compile-flags: -Z branch-protection=pac-ret,b-key
-// compile-flags: --target aarch64-unknown-linux-gnu
+//@ revisions: BTI PACRET LEAF BKEY NONE
+//@ needs-llvm-components: aarch64
+//@ [BTI] compile-flags: -Z branch-protection=bti
+//@ [PACRET] compile-flags: -Z branch-protection=pac-ret
+//@ [LEAF] compile-flags: -Z branch-protection=pac-ret,leaf
+//@ [BKEY] compile-flags: -Z branch-protection=pac-ret,b-key
+//@ compile-flags: --target aarch64-unknown-linux-gnu
 
 #![crate_type = "lib"]
 #![feature(no_core, lang_items)]

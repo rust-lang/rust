@@ -1,4 +1,4 @@
-// run-rustfix
+//@ run-rustfix
 
 #![feature(let_chains)]
 #![allow(unused_variables)]

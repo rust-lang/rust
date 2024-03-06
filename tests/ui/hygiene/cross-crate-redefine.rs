@@ -1,7 +1,7 @@
 // Check that items with identical `SyntaxContext` conflict even when that
 // context involves a mark from another crate.
 
-// aux-build:use_by_macro.rs
+//@ aux-build:use_by_macro.rs
 
 extern crate use_by_macro;
 

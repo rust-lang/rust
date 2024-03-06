@@ -1,5 +1,5 @@
-// compile-flags:-C panic=abort
-// only-x86_64
+//@ compile-flags:-C panic=abort
+//@ only-x86_64
 
 #![feature(target_feature_11)]
 #![no_std]

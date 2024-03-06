@@ -1,5 +1,5 @@
-// revisions:verbose normal
-// [verbose]compile-flags:--verbose
+//@ revisions:verbose normal
+//@ [verbose]compile-flags:--verbose
 #![crate_type = "lib"]
 
 struct Foo<T, U> { x: T, y: U }

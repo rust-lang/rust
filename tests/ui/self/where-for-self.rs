@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 // Test that we can quantify lifetimes outside a constraint (i.e., including
 // the self type) in a where clause.
 

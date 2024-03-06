@@ -65,9 +65,20 @@ jobs:
           - name: x86_64-gnu-tools
             os: ubuntu-20.04-16core-64gb
             env: {}
+    defaults:
+      run:
+        shell: "${{ contains(matrix.os, 'windows') && 'msys2 {0}' || 'bash' }}"
     timeout-minutes: 600
     runs-on: "${{ matrix.os }}"
     steps:
+      - if: "contains(matrix.os, 'windows')"
+        uses: msys2/setup-msys2@v2.22.0
+        with:
+          msystem: "${{ contains(matrix.name, 'i686') && 'mingw32' || 'mingw64' }}"
+          update: false
+          release: true
+          path-type: inherit
+          install: "make dos2unix diffutils\n"
       - name: disable git crlf conversion
         run: git config --global core.autocrlf false
       - name: checkout the source code
@@ -224,6 +235,9 @@ jobs:
           - name: dist-loongarch64-linux
             os: ubuntu-20.04-8core-32gb
             env: {}
+          - name: dist-ohos
+            os: ubuntu-20.04-8core-32gb
+            env: {}
           - name: dist-powerpc-linux
             os: ubuntu-20.04-8core-32gb
             env: {}
@@ -294,7 +308,7 @@ jobs:
           - name: x86_64-gnu-integration
             env:
               CI_ONLY_WHEN_CHANNEL: nightly
-            os: ubuntu-20.04-16core-64gb
+            os: ubuntu-20.04-8core-32gb
           - name: x86_64-gnu-debug
             os: ubuntu-20.04-8core-32gb
             env: {}
@@ -319,10 +333,10 @@ jobs:
           - name: dist-x86_64-apple
             env:
               SCRIPT: "./x.py dist bootstrap --include-default-paths --host=x86_64-apple-darwin --target=x86_64-apple-darwin"
-              RUST_CONFIGURE_ARGS: "--enable-full-tools --enable-sanitizers --enable-profiler --set rust.jemalloc --set llvm.ninja=false --set rust.lto=thin"
+              RUST_CONFIGURE_ARGS: "--enable-full-tools --enable-sanitizers --enable-profiler --set rust.jemalloc --set rust.lto=thin"
               RUSTC_RETRY_LINKER_ON_SEGFAULT: 1
               MACOSX_DEPLOYMENT_TARGET: 10.12
-              SELECT_XCODE: /Applications/Xcode_13.4.1.app
+              SELECT_XCODE: /Applications/Xcode_14.3.1.app
               NO_LLVM_ASSERTIONS: 1
               NO_DEBUG_ASSERTIONS: 1
               NO_OVERFLOW_CHECKS: 1
@@ -332,10 +346,10 @@ jobs:
           - name: dist-apple-various
             env:
               SCRIPT: "./x.py dist bootstrap --include-default-paths --host='' --target=aarch64-apple-ios,x86_64-apple-ios,aarch64-apple-ios-sim"
-              RUST_CONFIGURE_ARGS: "--enable-sanitizers --enable-profiler --set rust.jemalloc --set llvm.ninja=false"
+              RUST_CONFIGURE_ARGS: "--enable-sanitizers --enable-profiler --set rust.jemalloc"
               RUSTC_RETRY_LINKER_ON_SEGFAULT: 1
               MACOSX_DEPLOYMENT_TARGET: 10.12
-              SELECT_XCODE: /Applications/Xcode_13.4.1.app
+              SELECT_XCODE: /Applications/Xcode_14.3.1.app
               NO_LLVM_ASSERTIONS: 1
               NO_DEBUG_ASSERTIONS: 1
               NO_OVERFLOW_CHECKS: 1
@@ -343,10 +357,11 @@ jobs:
           - name: x86_64-apple-1
             env:
               SCRIPT: "./x.py --stage 2 test --skip tests/ui --skip tests/rustdoc --skip tests/run-make-fulldeps"
-              RUST_CONFIGURE_ARGS: "--build=x86_64-apple-darwin --enable-sanitizers --enable-profiler --set rust.jemalloc --set llvm.ninja=false"
+              RUST_CONFIGURE_ARGS: "--build=x86_64-apple-darwin --enable-sanitizers --enable-profiler --set rust.jemalloc"
               RUSTC_RETRY_LINKER_ON_SEGFAULT: 1
               MACOSX_DEPLOYMENT_TARGET: 10.12
               MACOSX_STD_DEPLOYMENT_TARGET: 10.12
+              SELECT_XCODE: /Applications/Xcode_14.3.1.app
               NO_LLVM_ASSERTIONS: 1
               NO_DEBUG_ASSERTIONS: 1
               NO_OVERFLOW_CHECKS: 1
@@ -354,20 +369,21 @@ jobs:
           - name: x86_64-apple-2
             env:
               SCRIPT: "./x.py --stage 2 test tests/ui tests/rustdoc tests/run-make-fulldeps"
-              RUST_CONFIGURE_ARGS: "--build=x86_64-apple-darwin --enable-sanitizers --enable-profiler --set rust.jemalloc --set llvm.ninja=false"
+              RUST_CONFIGURE_ARGS: "--build=x86_64-apple-darwin --enable-sanitizers --enable-profiler --set rust.jemalloc"
               RUSTC_RETRY_LINKER_ON_SEGFAULT: 1
               MACOSX_DEPLOYMENT_TARGET: 10.12
               MACOSX_STD_DEPLOYMENT_TARGET: 10.12
+              SELECT_XCODE: /Applications/Xcode_14.3.1.app
               NO_LLVM_ASSERTIONS: 1
               NO_DEBUG_ASSERTIONS: 1
               NO_OVERFLOW_CHECKS: 1
             os: macos-13
           - name: dist-aarch64-apple
             env:
-              SCRIPT: "./x.py dist bootstrap --include-default-paths --stage 2"
-              RUST_CONFIGURE_ARGS: "--build=x86_64-apple-darwin --host=aarch64-apple-darwin --target=aarch64-apple-darwin --enable-full-tools --enable-sanitizers --enable-profiler --disable-docs --set rust.jemalloc --set llvm.ninja=false"
+              SCRIPT: "./x.py dist bootstrap --include-default-paths --host=aarch64-apple-darwin --target=aarch64-apple-darwin"
+              RUST_CONFIGURE_ARGS: "--enable-full-tools --enable-sanitizers --enable-profiler --set rust.jemalloc --set llvm.ninja=false --set rust.lto=thin"
               RUSTC_RETRY_LINKER_ON_SEGFAULT: 1
-              SELECT_XCODE: /Applications/Xcode_13.4.1.app
+              SELECT_XCODE: /Applications/Xcode_14.3.1.app
               USE_XCODE_CLANG: 1
               MACOSX_DEPLOYMENT_TARGET: 11.0
               MACOSX_STD_DEPLOYMENT_TARGET: 11.0
@@ -375,8 +391,20 @@ jobs:
               NO_DEBUG_ASSERTIONS: 1
               NO_OVERFLOW_CHECKS: 1
               DIST_REQUIRE_ALL_TOOLS: 1
-              JEMALLOC_SYS_WITH_LG_PAGE: 14
-            os: macos-13
+            os: macos-14
+          - name: aarch64-apple
+            env:
+              SCRIPT: "./x.py --stage 2 test --host=aarch64-apple-darwin --target=aarch64-apple-darwin"
+              RUST_CONFIGURE_ARGS: "--enable-sanitizers --enable-profiler --set rust.jemalloc"
+              RUSTC_RETRY_LINKER_ON_SEGFAULT: 1
+              SELECT_XCODE: /Applications/Xcode_14.3.1.app
+              USE_XCODE_CLANG: 1
+              MACOSX_DEPLOYMENT_TARGET: 11.0
+              MACOSX_STD_DEPLOYMENT_TARGET: 11.0
+              NO_LLVM_ASSERTIONS: 1
+              NO_DEBUG_ASSERTIONS: 1
+              NO_OVERFLOW_CHECKS: 1
+            os: macos-14
           - name: x86_64-msvc
             env:
               RUST_CONFIGURE_ARGS: "--build=x86_64-pc-windows-msvc --enable-profiler"
@@ -447,9 +475,20 @@ jobs:
               RUST_CONFIGURE_ARGS: "--build=x86_64-pc-windows-msvc --enable-extended --enable-profiler"
               SCRIPT: python x.py dist bootstrap --include-default-paths
             os: windows-2019-8core-32gb
+    defaults:
+      run:
+        shell: "${{ contains(matrix.os, 'windows') && 'msys2 {0}' || 'bash' }}"
     timeout-minutes: 600
     runs-on: "${{ matrix.os }}"
     steps:
+      - if: "contains(matrix.os, 'windows')"
+        uses: msys2/setup-msys2@v2.22.0
+        with:
+          msystem: "${{ contains(matrix.name, 'i686') && 'mingw32' || 'mingw64' }}"
+          update: false
+          release: true
+          path-type: inherit
+          install: "make dos2unix diffutils\n"
       - name: disable git crlf conversion
         run: git config --global core.autocrlf false
       - name: checkout the source code
@@ -575,9 +614,20 @@ jobs:
             env:
               CODEGEN_BACKENDS: "llvm,cranelift"
             os: ubuntu-20.04-16core-64gb
+    defaults:
+      run:
+        shell: "${{ contains(matrix.os, 'windows') && 'msys2 {0}' || 'bash' }}"
     timeout-minutes: 600
     runs-on: "${{ matrix.os }}"
     steps:
+      - if: "contains(matrix.os, 'windows')"
+        uses: msys2/setup-msys2@v2.22.0
+        with:
+          msystem: "${{ contains(matrix.name, 'i686') && 'mingw32' || 'mingw64' }}"
+          update: false
+          release: true
+          path-type: inherit
+          install: "make dos2unix diffutils\n"
       - name: disable git crlf conversion
         run: git config --global core.autocrlf false
       - name: checkout the source code

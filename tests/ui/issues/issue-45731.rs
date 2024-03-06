@@ -1,6 +1,6 @@
-// run-pass
+//@ run-pass
 #![allow(unused_variables)]
-// compile-flags:--test -g
+//@ compile-flags:--test -g
 
 #[cfg(target_os = "macos")]
 #[test]

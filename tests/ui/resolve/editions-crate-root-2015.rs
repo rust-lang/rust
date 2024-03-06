@@ -1,4 +1,4 @@
-// edition:2015
+//@ edition:2015
 
 mod inner {
     fn global_inner(_: ::nonexistant::Foo) {

@@ -1,4 +1,4 @@
-// only-aarch64
+//@ only-aarch64
 
 #![feature(asm_const)]
 

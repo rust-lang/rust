@@ -1,4 +1,4 @@
-// aux-build:noexporttypelib.rs
+//@ aux-build:noexporttypelib.rs
 
 extern crate noexporttypelib;
 

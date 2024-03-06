@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 
 trait Foo {
     const X: i32;
@@ -27,7 +27,7 @@ fn sub<A: Foo, B: Foo>() -> i32 {
     A::X - B::X
 }
 
-trait Bar: Foo {
+trait Bar: Foo { //~ WARN trait `Bar` is never used
     const Y: i32 = Self::X;
 }
 

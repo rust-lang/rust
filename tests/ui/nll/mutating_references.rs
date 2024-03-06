@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 
 struct List<T> {
     value: T,

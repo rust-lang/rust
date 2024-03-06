@@ -1,5 +1,5 @@
-// check-pass
-// edition:2021
+//@ check-pass
+//@ edition:2021
 
 #![deny(opaque_hidden_inferred_bound)]
 

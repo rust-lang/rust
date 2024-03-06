@@ -5,17 +5,33 @@ LL |     const MAX: u8 = A::MAX + B::MAX;
    |                     ^^^^^^^^^^^^^^^ attempt to compute `u8::MAX + u8::MAX`, which would overflow
 
 note: erroneous constant encountered
-  --> $DIR/issue-50814.rs:20:6
+  --> $DIR/issue-50814.rs:21:6
    |
 LL |     &Sum::<U8, U8>::MAX
    |      ^^^^^^^^^^^^^^^^^^
 
+error[E0080]: evaluation of `<Sum<U8, U8> as Unsigned>::MAX` failed
+  --> $DIR/issue-50814.rs:15:21
+   |
+LL |     const MAX: u8 = A::MAX + B::MAX;
+   |                     ^^^^^^^^^^^^^^^ attempt to compute `u8::MAX + u8::MAX`, which would overflow
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+note: erroneous constant encountered
+  --> $DIR/issue-50814.rs:21:6
+   |
+LL |     &Sum::<U8, U8>::MAX
+   |      ^^^^^^^^^^^^^^^^^^
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
 note: the above error was encountered while instantiating `fn foo::<i32>`
-  --> $DIR/issue-50814.rs:25:5
+  --> $DIR/issue-50814.rs:26:5
    |
 LL |     foo(0);
    |     ^^^^^^
 
-error: aborting due to 1 previous error
+error: aborting due to 2 previous errors
 
 For more information about this error, try `rustc --explain E0080`.

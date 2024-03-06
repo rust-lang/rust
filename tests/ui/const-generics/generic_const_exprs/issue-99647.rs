@@ -1,5 +1,5 @@
-// edition:2018
-// run-pass
+//@ edition:2018
+//@ run-pass
 
 #![allow(incomplete_features)]
 #![feature(generic_const_exprs)]

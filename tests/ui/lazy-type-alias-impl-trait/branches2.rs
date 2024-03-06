@@ -1,6 +1,6 @@
 #![feature(type_alias_impl_trait)]
 
-// check-pass
+//@ check-pass
 
 type Foo = impl std::iter::FromIterator<i32> + PartialEq<Vec<i32>> + std::fmt::Debug;
 

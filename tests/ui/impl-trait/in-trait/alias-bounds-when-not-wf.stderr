@@ -1,0 +1,17 @@
+warning: the feature `lazy_type_alias` is incomplete and may not be safe to use and/or cause compiler crashes
+  --> $DIR/alias-bounds-when-not-wf.rs:3:12
+   |
+LL | #![feature(lazy_type_alias)]
+   |            ^^^^^^^^^^^^^^^
+   |
+   = note: see issue #112792 <https://github.com/rust-lang/rust/issues/112792> for more information
+   = note: `#[warn(incomplete_features)]` on by default
+
+error: the type `W<A<usize>>` is not well-formed
+  --> $DIR/alias-bounds-when-not-wf.rs:16:13
+   |
+LL | fn hello(_: W<A<usize>>) {}
+   |             ^^^^^^^^^^^
+
+error: aborting due to 1 previous error; 1 warning emitted
+

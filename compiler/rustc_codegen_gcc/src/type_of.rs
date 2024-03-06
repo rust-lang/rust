@@ -6,7 +6,7 @@ use rustc_middle::bug;
 use rustc_middle::ty::{self, Ty, TypeVisitableExt};
 use rustc_middle::ty::layout::{LayoutOf, TyAndLayout};
 use rustc_middle::ty::print::with_no_trimmed_paths;
-use rustc_target::abi::{self, Abi, Align, F32, F64, FieldsShape, Int, Integer, Pointer, PointeeInfo, Size, TyAbiInterface, Variants};
+use rustc_target::abi::{self, Abi, Align, F16, F128, F32, F64, FieldsShape, Int, Integer, Pointer, PointeeInfo, Size, TyAbiInterface, Variants};
 use rustc_target::abi::call::{CastTarget, FnAbi, Reg};
 
 use crate::abi::{FnAbiGcc, FnAbiGccExt, GccType};
@@ -87,7 +87,7 @@ fn uncached_gcc_type<'gcc, 'tcx>(cx: &CodegenCx<'gcc, 'tcx>, layout: TyAndLayout
         // FIXME(eddyb) producing readable type names for trait objects can result
         // in problematically distinct types due to HRTB and subtyping (see #47638).
         // ty::Dynamic(..) |
-        ty::Adt(..) | ty::Closure(..) | ty::Foreign(..) | ty::Coroutine(..) | ty::Str
+        ty::Adt(..) | ty::Closure(..) | ty::CoroutineClosure(..) | ty::Foreign(..) | ty::Coroutine(..) | ty::Str
             if !cx.sess().fewer_names() =>
         {
             let mut name = with_no_trimmed_paths!(layout.ty.to_string());
@@ -151,7 +151,6 @@ pub trait LayoutGccExt<'tcx> {
     fn immediate_gcc_type<'gcc>(&self, cx: &CodegenCx<'gcc, 'tcx>) -> Type<'gcc>;
     fn scalar_gcc_type_at<'gcc>(&self, cx: &CodegenCx<'gcc, 'tcx>, scalar: &abi::Scalar, offset: Size) -> Type<'gcc>;
     fn scalar_pair_element_gcc_type<'gcc>(&self, cx: &CodegenCx<'gcc, 'tcx>, index: usize) -> Type<'gcc>;
-    fn gcc_field_index(&self, index: usize) -> u64;
     fn pointee_info_at<'gcc>(&self, cx: &CodegenCx<'gcc, 'tcx>, offset: Size) -> Option<PointeeInfo>;
 }
 
@@ -257,8 +256,10 @@ impl<'tcx> LayoutGccExt<'tcx> for TyAndLayout<'tcx> {
         match scalar.primitive() {
             Int(i, true) => cx.type_from_integer(i),
             Int(i, false) => cx.type_from_unsigned_integer(i),
+            F16 => cx.type_f16(),
             F32 => cx.type_f32(),
             F64 => cx.type_f64(),
+            F128 => cx.type_f128(),
             Pointer(address_space) => {
                 // If we know the alignment, pick something better than i8.
                 let pointee =
@@ -304,24 +305,6 @@ impl<'tcx> LayoutGccExt<'tcx> for TyAndLayout<'tcx> {
         self.scalar_gcc_type_at(cx, scalar, offset)
     }
 
-    fn gcc_field_index(&self, index: usize) -> u64 {
-        match self.abi {
-            Abi::Scalar(_) | Abi::ScalarPair(..) => {
-                bug!("TyAndLayout::gcc_field_index({:?}): not applicable", self)
-            }
-            _ => {}
-        }
-        match self.fields {
-            FieldsShape::Primitive | FieldsShape::Union(_) => {
-                bug!("TyAndLayout::gcc_field_index({:?}): not applicable", self)
-            }
-
-            FieldsShape::Array { .. } => index as u64,
-
-            FieldsShape::Arbitrary { .. } => 1 + (self.fields.memory_index(index) as u64) * 2,
-        }
-    }
-
     fn pointee_info_at<'a>(&self, cx: &CodegenCx<'a, 'tcx>, offset: Size) -> Option<PointeeInfo> {
         if let Some(&pointee) = cx.pointee_infos.borrow().get(&(self.ty, offset)) {
             return pointee;
@@ -349,10 +332,6 @@ impl<'gcc, 'tcx> LayoutTypeMethods<'tcx> for CodegenCx<'gcc, 'tcx> {
 
     fn is_backend_scalar_pair(&self, layout: TyAndLayout<'tcx>) -> bool {
         layout.is_gcc_scalar_pair()
-    }
-
-    fn backend_field_index(&self, layout: TyAndLayout<'tcx>, index: usize) -> u64 {
-        layout.gcc_field_index(index)
     }
 
     fn scalar_pair_element_backend_type(&self, layout: TyAndLayout<'tcx>, index: usize, _immediate: bool) -> Type<'gcc> {

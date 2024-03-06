@@ -1,5 +1,5 @@
 error: unsafe block missing a safety comment
-  --> $DIR/auxiliary/ice-7868-aux.rs:2:5
+  --> tests/ui/crashes/auxiliary/ice-7868-aux.rs:2:5
    |
 LL |     unsafe { 0 };
    |     ^^^^^^^^^^^^

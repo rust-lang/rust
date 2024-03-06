@@ -1,4 +1,4 @@
-// compile-flags: --crate-type=lib -O -Cdebuginfo=2 -Cno-prepopulate-passes -Zmir-enable-passes=-ScalarReplacementOfAggregates
+//@ compile-flags: --crate-type=lib -O -Cdebuginfo=2 -Cno-prepopulate-passes -Zmir-enable-passes=-ScalarReplacementOfAggregates
 // MIR SROA will decompose the closure
 #![feature(stmt_expr_attributes)]
 
@@ -16,8 +16,8 @@ pub fn outer_function(x: S, y: S) -> usize {
 // when generating debuginfo.
 // CHECK-LABEL: @outer_function
 // CHECK: [[spill:%.*]] = alloca %"{closure@{{.*.rs}}:9:23: 9:25}"
-// CHECK-NOT: [[ptr_tmp:%.*]] = getelementptr inbounds %"{closure@{{.*.rs}}:9:23: 9:25}", ptr [[spill]]
+// CHECK-NOT: [[ptr_tmp:%.*]] = getelementptr inbounds i8, ptr [[spill]]
 // CHECK-NOT: [[load:%.*]] = load ptr, ptr
 // CHECK: call void @llvm.lifetime.start{{.*}}({{.*}}, ptr [[spill]])
-// CHECK: [[inner:%.*]] = getelementptr inbounds %"{{.*}}", ptr [[spill]]
+// CHECK: [[inner:%.*]] = getelementptr inbounds i8, ptr [[spill]]
 // CHECK: call void @llvm.memcpy{{.*}}(ptr {{align .*}} [[inner]], ptr {{align .*}} %x

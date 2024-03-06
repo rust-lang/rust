@@ -1,4 +1,4 @@
-// check-pass
+//@ check-pass
 
 // mir borrowck previously incorrectly set `tainted_by_errors`
 // when buffering lints, which resulted in ICE later on,

@@ -1,4 +1,4 @@
-// compile-flags: -Zinline-mir
+//@ compile-flags: -Zinline-mir
 
 use std::fmt::Display;
 

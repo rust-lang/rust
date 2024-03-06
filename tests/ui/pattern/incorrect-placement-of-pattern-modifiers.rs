@@ -1,4 +1,4 @@
-// run-rustfix
+//@ run-rustfix
 struct S {
     field_name: (),
 }

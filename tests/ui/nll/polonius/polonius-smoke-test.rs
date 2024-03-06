@@ -1,5 +1,5 @@
 // Check that Polonius borrow check works for simple cases.
-// compile-flags: -Z polonius
+//@ compile-flags: -Z polonius
 
 pub fn return_ref_to_local() -> &'static i32 {
     let x = 0;

@@ -1,7 +1,7 @@
 // Test that inherent impls can be defined for extern types.
 
-// check-pass
-// aux-build:extern-types-inherent-impl.rs
+//@ check-pass
+//@ aux-build:extern-types-inherent-impl.rs
 
 #![feature(extern_types)]
 

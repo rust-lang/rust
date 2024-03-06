@@ -1,4 +1,4 @@
-// check-pass
+//@ check-pass
 union X { a: i8 }
 
 fn main() {

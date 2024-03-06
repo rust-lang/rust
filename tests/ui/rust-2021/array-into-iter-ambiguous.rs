@@ -1,7 +1,7 @@
 // See https://github.com/rust-lang/rust/issues/88475
-// run-rustfix
-// edition:2018
-// check-pass
+//@ run-rustfix
+//@ edition:2018
+//@ check-pass
 #![warn(array_into_iter)]
 #![allow(unused)]
 

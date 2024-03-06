@@ -1,5 +1,5 @@
-// check-pass
-// compile-flags: -Zvalidate-mir
+//@ check-pass
+//@ compile-flags: -Zvalidate-mir
 trait Duh {}
 
 impl Duh for i32 {}

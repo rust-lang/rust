@@ -2,10 +2,10 @@
 // Checks that we properly detect defining uses of opaque
 // types in 'item' position when generic parameters are involved
 //
-// run-pass
+//@ run-pass
 #![feature(impl_trait_in_assoc_type)]
 
-trait Meow {
+trait Meow { //~ WARN trait `Meow` is never used
     type MeowType;
     fn meow(self) -> Self::MeowType;
 }

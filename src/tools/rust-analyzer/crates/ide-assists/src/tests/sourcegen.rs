@@ -2,6 +2,7 @@
 
 use std::{fmt, fs, path::Path};
 
+use stdx::format_to_acc;
 use test_utils::project_root;
 
 #[test]
@@ -14,7 +15,7 @@ fn sourcegen_assists_docs() {
         let mut buf = "
 use super::check_doc_test;
 "
-        .to_string();
+        .to_owned();
         for assist in assists.iter() {
             for (idx, section) in assist.sections.iter().enumerate() {
                 let test_id =
@@ -100,7 +101,7 @@ impl Assist {
                 let mut assist = Assist { id, location, sections: Vec::new() };
 
                 while lines.peek().is_some() {
-                    let doc = take_until(lines.by_ref(), "```").trim().to_string();
+                    let doc = take_until(lines.by_ref(), "```").trim().to_owned();
                     assert!(
                         (doc.chars().next().unwrap().is_ascii_uppercase() && doc.ends_with('.'))
                             || !assist.sections.is_empty(),
@@ -172,8 +173,7 @@ impl fmt::Display for Assist {
 fn hide_hash_comments(text: &str) -> String {
     text.split('\n') // want final newline
         .filter(|&it| !(it.starts_with("# ") || it == "#"))
-        .map(|it| format!("{it}\n"))
-        .collect()
+        .fold(String::new(), |mut acc, it| format_to_acc!(acc, "{it}\n"))
 }
 
 fn reveal_hash_comments(text: &str) -> String {
@@ -187,6 +187,5 @@ fn reveal_hash_comments(text: &str) -> String {
                 it
             }
         })
-        .map(|it| format!("{it}\n"))
-        .collect()
+        .fold(String::new(), |mut acc, it| format_to_acc!(acc, "{it}\n"))
 }

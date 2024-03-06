@@ -1,5 +1,5 @@
-// revisions: old next
-//[next] compile-flags: -Znext-solver
+//@ revisions: old next
+//@[next] compile-flags: -Znext-solver
 
 // Tests that we consider `Box<U>: !Sugar` to be ambiguous, even
 // though we see no impl of `Sugar` for `Box`. Therefore, an overlap

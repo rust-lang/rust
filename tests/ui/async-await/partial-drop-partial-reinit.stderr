@@ -9,7 +9,7 @@ LL |     gimme_send(foo());
 LL | async fn foo() {
    | -------------- within this `impl Future<Output = ()>`
    |
-   = help: within `impl Future<Output = ()>`, the trait `Send` is not implemented for `NotSend`
+   = help: within `impl Future<Output = ()>`, the trait `Send` is not implemented for `NotSend`, which is required by `impl Future<Output = ()>: Send`
    = note: required because it appears within the type `(NotSend,)`
    = note: required because it captures the following types: `(NotSend,)`, `impl Future<Output = ()>`
 note: required because it's used within this `async` fn body

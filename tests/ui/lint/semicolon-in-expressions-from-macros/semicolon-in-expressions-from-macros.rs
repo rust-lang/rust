@@ -1,5 +1,5 @@
-// check-pass
-// edition:2018
+//@ check-pass
+//@ edition:2018
 #![feature(stmt_expr_attributes)]
 #![warn(semicolon_in_expressions_from_macros)]
 

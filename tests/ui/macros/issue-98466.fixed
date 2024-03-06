@@ -1,5 +1,5 @@
-// check-pass
-// run-rustfix
+//@ check-pass
+//@ run-rustfix
 
 fn main() {
     let mut _x: usize;

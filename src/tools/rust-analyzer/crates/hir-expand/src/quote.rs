@@ -31,7 +31,7 @@ macro_rules! __quote {
                     open: $span,
                     close: $span,
                 },
-                token_trees: $crate::quote::IntoTt::to_tokens(children),
+                token_trees: $crate::quote::IntoTt::to_tokens(children).into_boxed_slice(),
             }
         }
     };
@@ -146,7 +146,7 @@ impl IntoTt for Vec<crate::tt::TokenTree> {
     fn to_subtree(self, span: Span) -> crate::tt::Subtree {
         crate::tt::Subtree {
             delimiter: crate::tt::Delimiter::invisible_spanned(span),
-            token_trees: self,
+            token_trees: self.into_boxed_slice(),
         }
     }
 
@@ -296,8 +296,9 @@ mod tests {
         // }
         let struct_name = mk_ident("Foo");
         let fields = [mk_ident("name"), mk_ident("id")];
-        let fields =
-            fields.iter().flat_map(|it| quote!(DUMMY =>#it: self.#it.clone(), ).token_trees);
+        let fields = fields
+            .iter()
+            .flat_map(|it| quote!(DUMMY =>#it: self.#it.clone(), ).token_trees.into_vec());
 
         let list = crate::tt::Subtree {
             delimiter: crate::tt::Delimiter {

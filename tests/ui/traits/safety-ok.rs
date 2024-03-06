@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 // Simple smoke test that unsafe traits can be compiled etc.
 
 

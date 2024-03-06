@@ -1,4 +1,4 @@
-// build-pass (FIXME(62277): could be check-pass?)
+//@ build-pass (FIXME(62277): could be check-pass?)
 
 // Check that method probing ObjectCandidate works in the presence of
 // auto traits and/or HRTBs.

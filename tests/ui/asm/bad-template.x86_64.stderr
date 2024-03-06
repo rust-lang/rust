@@ -1,5 +1,5 @@
 error: invalid reference to argument at index 0
-  --> $DIR/bad-template.rs:27:15
+  --> $DIR/bad-template.rs:30:15
    |
 LL |         asm!("{}");
    |               ^^ from here
@@ -7,7 +7,7 @@ LL |         asm!("{}");
    = note: no arguments were given
 
 error: invalid reference to argument at index 1
-  --> $DIR/bad-template.rs:29:15
+  --> $DIR/bad-template.rs:32:15
    |
 LL |         asm!("{1}", in(reg) foo);
    |               ^^^ from here
@@ -15,7 +15,7 @@ LL |         asm!("{1}", in(reg) foo);
    = note: there is 1 argument
 
 error: argument never used
-  --> $DIR/bad-template.rs:29:21
+  --> $DIR/bad-template.rs:32:21
    |
 LL |         asm!("{1}", in(reg) foo);
    |                     ^^^^^^^^^^^ argument never used
@@ -23,13 +23,13 @@ LL |         asm!("{1}", in(reg) foo);
    = help: if this argument is intentionally unused, consider using it in an asm comment: `"/* {0} */"`
 
 error: there is no argument named `a`
-  --> $DIR/bad-template.rs:32:16
+  --> $DIR/bad-template.rs:35:16
    |
 LL |         asm!("{a}");
    |                ^
 
 error: invalid reference to argument at index 0
-  --> $DIR/bad-template.rs:34:15
+  --> $DIR/bad-template.rs:37:15
    |
 LL |         asm!("{}", a = in(reg) foo);
    |               ^^   --------------- named argument
@@ -38,13 +38,13 @@ LL |         asm!("{}", a = in(reg) foo);
    |
    = note: no positional arguments were given
 note: named arguments cannot be referenced by position
-  --> $DIR/bad-template.rs:34:20
+  --> $DIR/bad-template.rs:37:20
    |
 LL |         asm!("{}", a = in(reg) foo);
    |                    ^^^^^^^^^^^^^^^
 
 error: named argument never used
-  --> $DIR/bad-template.rs:34:20
+  --> $DIR/bad-template.rs:37:20
    |
 LL |         asm!("{}", a = in(reg) foo);
    |                    ^^^^^^^^^^^^^^^ named argument never used
@@ -52,7 +52,7 @@ LL |         asm!("{}", a = in(reg) foo);
    = help: if this argument is intentionally unused, consider using it in an asm comment: `"/* {a} */"`
 
 error: invalid reference to argument at index 1
-  --> $DIR/bad-template.rs:37:15
+  --> $DIR/bad-template.rs:40:15
    |
 LL |         asm!("{1}", a = in(reg) foo);
    |               ^^^ from here
@@ -60,7 +60,7 @@ LL |         asm!("{1}", a = in(reg) foo);
    = note: no positional arguments were given
 
 error: named argument never used
-  --> $DIR/bad-template.rs:37:21
+  --> $DIR/bad-template.rs:40:21
    |
 LL |         asm!("{1}", a = in(reg) foo);
    |                     ^^^^^^^^^^^^^^^ named argument never used
@@ -68,7 +68,7 @@ LL |         asm!("{1}", a = in(reg) foo);
    = help: if this argument is intentionally unused, consider using it in an asm comment: `"/* {a} */"`
 
 error: invalid reference to argument at index 0
-  --> $DIR/bad-template.rs:41:15
+  --> $DIR/bad-template.rs:44:15
    |
 LL |         asm!("{}", in("eax") foo);
    |               ^^   ------------- explicit register argument
@@ -77,24 +77,24 @@ LL |         asm!("{}", in("eax") foo);
    |
    = note: no positional arguments were given
 note: explicit register arguments cannot be used in the asm template
-  --> $DIR/bad-template.rs:41:20
+  --> $DIR/bad-template.rs:44:20
    |
 LL |         asm!("{}", in("eax") foo);
    |                    ^^^^^^^^^^^^^
 help: use the register name directly in the assembly code
-  --> $DIR/bad-template.rs:41:20
+  --> $DIR/bad-template.rs:44:20
    |
 LL |         asm!("{}", in("eax") foo);
    |                    ^^^^^^^^^^^^^
 
 error: asm template modifier must be a single character
-  --> $DIR/bad-template.rs:46:17
+  --> $DIR/bad-template.rs:49:17
    |
 LL |         asm!("{:foo}", in(reg) foo);
    |                 ^^^
 
 error: multiple unused asm arguments
-  --> $DIR/bad-template.rs:49:18
+  --> $DIR/bad-template.rs:52:18
    |
 LL |         asm!("", in(reg) 0, in(reg) 1);
    |                  ^^^^^^^^^  ^^^^^^^^^ argument never used
@@ -104,7 +104,7 @@ LL |         asm!("", in(reg) 0, in(reg) 1);
    = help: if these arguments are intentionally unused, consider using them in an asm comment: `"/* {0} {1} */"`
 
 error: invalid reference to argument at index 0
-  --> $DIR/bad-template.rs:55:14
+  --> $DIR/bad-template.rs:58:14
    |
 LL | global_asm!("{}");
    |              ^^ from here
@@ -112,7 +112,7 @@ LL | global_asm!("{}");
    = note: no arguments were given
 
 error: invalid reference to argument at index 1
-  --> $DIR/bad-template.rs:57:14
+  --> $DIR/bad-template.rs:60:14
    |
 LL | global_asm!("{1}", const FOO);
    |              ^^^ from here
@@ -120,7 +120,7 @@ LL | global_asm!("{1}", const FOO);
    = note: there is 1 argument
 
 error: argument never used
-  --> $DIR/bad-template.rs:57:20
+  --> $DIR/bad-template.rs:60:20
    |
 LL | global_asm!("{1}", const FOO);
    |                    ^^^^^^^^^ argument never used
@@ -128,13 +128,13 @@ LL | global_asm!("{1}", const FOO);
    = help: if this argument is intentionally unused, consider using it in an asm comment: `"/* {0} */"`
 
 error: there is no argument named `a`
-  --> $DIR/bad-template.rs:60:15
+  --> $DIR/bad-template.rs:63:15
    |
 LL | global_asm!("{a}");
    |               ^
 
 error: invalid reference to argument at index 0
-  --> $DIR/bad-template.rs:62:14
+  --> $DIR/bad-template.rs:65:14
    |
 LL | global_asm!("{}", a = const FOO);
    |              ^^   ------------- named argument
@@ -143,13 +143,13 @@ LL | global_asm!("{}", a = const FOO);
    |
    = note: no positional arguments were given
 note: named arguments cannot be referenced by position
-  --> $DIR/bad-template.rs:62:19
+  --> $DIR/bad-template.rs:65:19
    |
 LL | global_asm!("{}", a = const FOO);
    |                   ^^^^^^^^^^^^^
 
 error: named argument never used
-  --> $DIR/bad-template.rs:62:19
+  --> $DIR/bad-template.rs:65:19
    |
 LL | global_asm!("{}", a = const FOO);
    |                   ^^^^^^^^^^^^^ named argument never used
@@ -157,7 +157,7 @@ LL | global_asm!("{}", a = const FOO);
    = help: if this argument is intentionally unused, consider using it in an asm comment: `"/* {a} */"`
 
 error: invalid reference to argument at index 1
-  --> $DIR/bad-template.rs:65:14
+  --> $DIR/bad-template.rs:68:14
    |
 LL | global_asm!("{1}", a = const FOO);
    |              ^^^ from here
@@ -165,7 +165,7 @@ LL | global_asm!("{1}", a = const FOO);
    = note: no positional arguments were given
 
 error: named argument never used
-  --> $DIR/bad-template.rs:65:20
+  --> $DIR/bad-template.rs:68:20
    |
 LL | global_asm!("{1}", a = const FOO);
    |                    ^^^^^^^^^^^^^ named argument never used
@@ -173,13 +173,13 @@ LL | global_asm!("{1}", a = const FOO);
    = help: if this argument is intentionally unused, consider using it in an asm comment: `"/* {a} */"`
 
 error: asm template modifier must be a single character
-  --> $DIR/bad-template.rs:68:16
+  --> $DIR/bad-template.rs:71:16
    |
 LL | global_asm!("{:foo}", const FOO);
    |                ^^^
 
 error: multiple unused asm arguments
-  --> $DIR/bad-template.rs:70:17
+  --> $DIR/bad-template.rs:73:17
    |
 LL | global_asm!("", const FOO, const FOO);
    |                 ^^^^^^^^^  ^^^^^^^^^ argument never used
@@ -189,7 +189,7 @@ LL | global_asm!("", const FOO, const FOO);
    = help: if these arguments are intentionally unused, consider using them in an asm comment: `"/* {0} {1} */"`
 
 warning: formatting may not be suitable for sub-register argument
-  --> $DIR/bad-template.rs:46:15
+  --> $DIR/bad-template.rs:49:15
    |
 LL |         asm!("{:foo}", in(reg) foo);
    |               ^^^^^^           --- for this argument

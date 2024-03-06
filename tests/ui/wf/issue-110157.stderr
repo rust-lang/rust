@@ -1,36 +1,19 @@
 error[E0412]: cannot find type `Missing` in this scope
-  --> $DIR/issue-110157.rs:7:12
+  --> $DIR/issue-110157.rs:6:12
    |
 LL |     F: Fn(&Missing) -> Result<I, ()>,
    |            ^^^^^^^ not found in this scope
 
 error[E0412]: cannot find type `Missing` in this scope
-  --> $DIR/issue-110157.rs:9:24
+  --> $DIR/issue-110157.rs:8:24
    |
 LL |     I: Iterator<Item = Missing>,
    |                        ^^^^^^^ not found in this scope
-
-error[E0283]: type annotations needed
-  --> $DIR/issue-110157.rs:3:31
-   |
-LL | impl<'tcx, F, I> Iterator for NeedsDropTypes<'tcx, F>
-   |                               ^^^^^^^^^^^^^^^^^^^^^^^ cannot infer type for type parameter `I`
-   |
-   = note: cannot satisfy `_: Iterator`
-note: required for `NeedsDropTypes<'tcx, F>` to implement `Iterator`
-  --> $DIR/issue-110157.rs:3:18
-   |
-LL | impl<'tcx, F, I> Iterator for NeedsDropTypes<'tcx, F>
-   |                  ^^^^^^^^     ^^^^^^^^^^^^^^^^^^^^^^^
-...
-LL |     I: Iterator<Item = Missing>,
-   |        ------------------------ unsatisfied trait bound introduced here
 
 error[E0046]: not all trait items implemented, missing: `Item`, `next`
   --> $DIR/issue-110157.rs:3:1
    |
 LL | / impl<'tcx, F, I> Iterator for NeedsDropTypes<'tcx, F>
-LL | |
 LL | |
 LL | | where
 LL | |     F: Fn(&Missing) -> Result<I, ()>,
@@ -41,7 +24,7 @@ LL | |     I: Iterator<Item = Missing>,
    = help: implement the missing item: `type Item = /* Type */;`
    = help: implement the missing item: `fn next(&mut self) -> Option<<Self as Iterator>::Item> { todo!() }`
 
-error: aborting due to 4 previous errors
+error: aborting due to 3 previous errors
 
-Some errors have detailed explanations: E0046, E0283, E0412.
+Some errors have detailed explanations: E0046, E0412.
 For more information about an error, try `rustc --explain E0046`.

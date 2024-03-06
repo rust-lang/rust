@@ -3,7 +3,7 @@ use crate::iter::adapters::SourceIter;
 use crate::iter::{
     ByRefSized, FusedIterator, InPlaceIterable, TrustedFused, TrustedRandomAccessNoCoerce,
 };
-use crate::num::NonZeroUsize;
+use crate::num::NonZero;
 use crate::ops::{ControlFlow, NeverShortCircuit, Try};
 
 /// An iterator over `N` elements of the iterator at a time.
@@ -253,9 +253,9 @@ where
 
 #[unstable(issue = "none", feature = "inplace_iteration")]
 unsafe impl<I: InPlaceIterable + Iterator, const N: usize> InPlaceIterable for ArrayChunks<I, N> {
-    const EXPAND_BY: Option<NonZeroUsize> = I::EXPAND_BY;
-    const MERGE_BY: Option<NonZeroUsize> = const {
-        match (I::MERGE_BY, NonZeroUsize::new(N)) {
+    const EXPAND_BY: Option<NonZero<usize>> = I::EXPAND_BY;
+    const MERGE_BY: Option<NonZero<usize>> = const {
+        match (I::MERGE_BY, NonZero::new(N)) {
             (Some(m), Some(n)) => m.checked_mul(n),
             _ => None,
         }

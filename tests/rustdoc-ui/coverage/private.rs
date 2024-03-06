@@ -1,5 +1,5 @@
-// compile-flags:-Z unstable-options --show-coverage --document-private-items
-// check-pass
+//@ compile-flags:-Z unstable-options --show-coverage --document-private-items
+//@ check-pass
 
 #![allow(unused)]
 

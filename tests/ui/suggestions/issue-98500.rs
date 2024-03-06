@@ -1,4 +1,4 @@
-// aux-build:not-object-safe.rs
+//@ aux-build:not-object-safe.rs
 
 extern crate not_object_safe;
 

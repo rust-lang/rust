@@ -17,7 +17,6 @@ use rustc_middle::ty::{
     TypeVisitable, TypeVisitableExt, TypeVisitor,
 };
 use rustc_span::Span;
-use std::ops::ControlFlow;
 
 mod table;
 
@@ -78,9 +77,7 @@ impl<'tcx> InferCtxt<'tcx> {
                         span,
                     });
                     obligations.extend(
-                        self.handle_opaque_type(ty, ty_var, true, &cause, param_env)
-                            .unwrap()
-                            .obligations,
+                        self.handle_opaque_type(ty, ty_var, &cause, param_env).unwrap().obligations,
                     );
                     ty_var
                 }
@@ -94,17 +91,24 @@ impl<'tcx> InferCtxt<'tcx> {
         &self,
         a: Ty<'tcx>,
         b: Ty<'tcx>,
-        a_is_expected: bool,
         cause: &ObligationCause<'tcx>,
         param_env: ty::ParamEnv<'tcx>,
     ) -> InferResult<'tcx, ()> {
         if a.references_error() || b.references_error() {
             return Ok(InferOk { value: (), obligations: vec![] });
         }
-        let (a, b) = if a_is_expected { (a, b) } else { (b, a) };
-        let process = |a: Ty<'tcx>, b: Ty<'tcx>, a_is_expected| match *a.kind() {
+        let process = |a: Ty<'tcx>, b: Ty<'tcx>| match *a.kind() {
             ty::Alias(ty::Opaque, ty::AliasTy { def_id, args, .. }) if def_id.is_local() => {
                 let def_id = def_id.expect_local();
+                if self.intercrate {
+                    // See comment on `insert_hidden_type` for why this is sufficient in coherence
+                    return Some(self.register_hidden_type(
+                        OpaqueTypeKey { def_id, args },
+                        cause.clone(),
+                        param_env,
+                        b,
+                    ));
+                }
                 match self.defining_use_anchor {
                     DefiningAnchor::Bind(_) => {
                         // Check that this is `impl Trait` type is
@@ -146,8 +150,10 @@ impl<'tcx> InferCtxt<'tcx> {
                         }
                     }
                     DefiningAnchor::Bubble => {}
-                    DefiningAnchor::Error => return None,
-                };
+                    DefiningAnchor::Error => {
+                        return None;
+                    }
+                }
                 if let ty::Alias(ty::Opaque, ty::AliasTy { def_id: b_def_id, .. }) = *b.kind() {
                     // We could accept this, but there are various ways to handle this situation, and we don't
                     // want to make a decision on it right now. Likely this case is so super rare anyway, that
@@ -169,14 +175,13 @@ impl<'tcx> InferCtxt<'tcx> {
                     cause.clone(),
                     param_env,
                     b,
-                    a_is_expected,
                 ))
             }
             _ => None,
         };
-        if let Some(res) = process(a, b, true) {
+        if let Some(res) = process(a, b) {
             res
-        } else if let Some(res) = process(b, a, false) {
+        } else if let Some(res) = process(b, a) {
             res
         } else {
             let (a, b) = self.resolve_vars_if_possible((a, b));
@@ -219,7 +224,7 @@ impl<'tcx> InferCtxt<'tcx> {
     /// ```
     ///
     /// As indicating in the comments above, each of those references
-    /// is (in the compiler) basically a substitution (`args`)
+    /// is (in the compiler) basically generic paramters (`args`)
     /// applied to the type of a suitable `def_id` (which identifies
     /// `Foo1` or `Foo2`).
     ///
@@ -327,7 +332,6 @@ impl<'tcx> InferCtxt<'tcx> {
     #[instrument(level = "debug", skip(self))]
     pub fn register_member_constraints(
         &self,
-        param_env: ty::ParamEnv<'tcx>,
         opaque_type_key: OpaqueTypeKey<'tcx>,
         concrete_ty: Ty<'tcx>,
         span: Span,
@@ -421,29 +425,22 @@ impl<'tcx, OP> TypeVisitor<TyCtxt<'tcx>> for ConstrainOpaqueTypeRegionVisitor<'t
 where
     OP: FnMut(ty::Region<'tcx>),
 {
-    fn visit_binder<T: TypeVisitable<TyCtxt<'tcx>>>(
-        &mut self,
-        t: &ty::Binder<'tcx, T>,
-    ) -> ControlFlow<Self::BreakTy> {
+    fn visit_binder<T: TypeVisitable<TyCtxt<'tcx>>>(&mut self, t: &ty::Binder<'tcx, T>) {
         t.super_visit_with(self);
-        ControlFlow::Continue(())
     }
 
-    fn visit_region(&mut self, r: ty::Region<'tcx>) -> ControlFlow<Self::BreakTy> {
+    fn visit_region(&mut self, r: ty::Region<'tcx>) {
         match *r {
             // ignore bound regions, keep visiting
-            ty::ReBound(_, _) => ControlFlow::Continue(()),
-            _ => {
-                (self.op)(r);
-                ControlFlow::Continue(())
-            }
+            ty::ReBound(_, _) => {}
+            _ => (self.op)(r),
         }
     }
 
-    fn visit_ty(&mut self, ty: Ty<'tcx>) -> ControlFlow<Self::BreakTy> {
+    fn visit_ty(&mut self, ty: Ty<'tcx>) {
         // We're only interested in types involving regions
         if !ty.flags().intersects(ty::TypeFlags::HAS_FREE_REGIONS) {
-            return ControlFlow::Continue(());
+            return;
         }
 
         match ty.kind() {
@@ -454,6 +451,17 @@ where
                     upvar.visit_with(self);
                 }
                 args.as_closure().sig_as_fn_ptr_ty().visit_with(self);
+            }
+
+            ty::CoroutineClosure(_, args) => {
+                // Skip lifetime parameters of the enclosing item(s)
+
+                for upvar in args.as_coroutine_closure().upvar_tys() {
+                    upvar.visit_with(self);
+                }
+
+                // FIXME(async_closures): Is this the right signature to visit here?
+                args.as_coroutine_closure().signature_parts_ty().visit_with(self);
             }
 
             ty::Coroutine(_, args) => {
@@ -483,8 +491,6 @@ where
                 ty.super_visit_with(self);
             }
         }
-
-        ControlFlow::Continue(())
     }
 }
 
@@ -510,18 +516,10 @@ impl<'tcx> InferCtxt<'tcx> {
         cause: ObligationCause<'tcx>,
         param_env: ty::ParamEnv<'tcx>,
         hidden_ty: Ty<'tcx>,
-        a_is_expected: bool,
     ) -> InferResult<'tcx, ()> {
         let mut obligations = Vec::new();
 
-        self.insert_hidden_type(
-            opaque_type_key,
-            &cause,
-            param_env,
-            hidden_ty,
-            a_is_expected,
-            &mut obligations,
-        )?;
+        self.insert_hidden_type(opaque_type_key, &cause, param_env, hidden_ty, &mut obligations)?;
 
         self.add_item_bounds_for_hidden_type(
             opaque_type_key.def_id.to_def_id(),
@@ -548,7 +546,6 @@ impl<'tcx> InferCtxt<'tcx> {
         cause: &ObligationCause<'tcx>,
         param_env: ty::ParamEnv<'tcx>,
         hidden_ty: Ty<'tcx>,
-        a_is_expected: bool,
         obligations: &mut Vec<PredicateObligation<'tcx>>,
     ) -> Result<(), TypeError<'tcx>> {
         // Ideally, we'd get the span where *this specific `ty` came
@@ -576,7 +573,7 @@ impl<'tcx> InferCtxt<'tcx> {
             if let Some(prev) = prev {
                 obligations.extend(
                     self.at(cause, param_env)
-                        .eq_exp(DefineOpaqueTypes::Yes, a_is_expected, prev, hidden_ty)?
+                        .eq(DefineOpaqueTypes::Yes, prev, hidden_ty)?
                         .obligations,
                 );
             }
@@ -676,7 +673,7 @@ fn may_define_opaque_type(tcx: TyCtxt<'_>, def_id: LocalDefId, opaque_hir_id: hi
     let res = hir_id == scope;
     trace!(
         "may_define_opaque_type(def={:?}, opaque_node={:?}) = {}",
-        tcx.opt_hir_node(hir_id),
+        tcx.hir_node(hir_id),
         tcx.hir_node(opaque_hir_id),
         res
     );

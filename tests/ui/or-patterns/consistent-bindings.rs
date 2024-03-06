@@ -1,8 +1,8 @@
 // Check that or-patterns with consistent bindings across arms are allowed.
 
-// edition:2018
+//@ edition:2018
 
-// check-pass
+//@ check-pass
 
 fn main() {
     // One level:

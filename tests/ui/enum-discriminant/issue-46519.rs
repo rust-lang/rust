@@ -1,7 +1,7 @@
-// run-pass
-// compile-flags:--test -O
+//@ run-pass
+//@ compile-flags:--test -O
 
-// needs-unwind
+//@ needs-unwind
 
 #[test]
 #[should_panic(expected = "creating inhabited type")]

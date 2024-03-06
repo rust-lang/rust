@@ -1,4 +1,4 @@
-// aux-build:recursive_reexports.rs
+//@ aux-build:recursive_reexports.rs
 
 extern crate recursive_reexports;
 

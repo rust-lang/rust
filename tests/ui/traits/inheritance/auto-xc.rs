@@ -1,6 +1,6 @@
-// run-pass
+//@ run-pass
 #![allow(dead_code)]
-// aux-build:auto_xc.rs
+//@ aux-build:auto_xc.rs
 
 
 extern crate auto_xc as aux;

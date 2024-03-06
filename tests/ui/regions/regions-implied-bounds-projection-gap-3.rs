@@ -2,7 +2,7 @@
 // "projection gap": in this test, we know that `T::Foo: 'x`, and that
 // is (naturally) enough to conclude that `T::Foo: 'x`.
 
-// check-pass
+//@ check-pass
 #![allow(dead_code)]
 #![allow(unused_variables)]
 

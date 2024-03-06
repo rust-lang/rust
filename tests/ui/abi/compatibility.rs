@@ -1,57 +1,57 @@
-// check-pass
-// revisions: host
-// revisions: i686
-//[i686] compile-flags: --target i686-unknown-linux-gnu
-//[i686] needs-llvm-components: x86
-// revisions: x86-64
-//[x86-64] compile-flags: --target x86_64-unknown-linux-gnu
-//[x86-64] needs-llvm-components: x86
-// revisions: x86-64-win
-//[x86-64-win] compile-flags: --target x86_64-pc-windows-msvc
-//[x86-64-win] needs-llvm-components: x86
-// revisions: arm
-//[arm] compile-flags: --target arm-unknown-linux-gnueabi
-//[arm] needs-llvm-components: arm
-// revisions: aarch64
-//[aarch64] compile-flags: --target aarch64-unknown-linux-gnu
-//[aarch64] needs-llvm-components: aarch64
-// revisions: s390x
-//[s390x] compile-flags: --target s390x-unknown-linux-gnu
-//[s390x] needs-llvm-components: systemz
-// revisions: mips
-//[mips] compile-flags: --target mips-unknown-linux-gnu
-//[mips] needs-llvm-components: mips
-// revisions: mips64
-//[mips64] compile-flags: --target mips64-unknown-linux-gnuabi64
-//[mips64] needs-llvm-components: mips
-// revisions: sparc
-//[sparc] compile-flags: --target sparc-unknown-linux-gnu
-//[sparc] needs-llvm-components: sparc
-// revisions: sparc64
-//[sparc64] compile-flags: --target sparc64-unknown-linux-gnu
-//[sparc64] needs-llvm-components: sparc
-// revisions: powerpc64
-//[powerpc64] compile-flags: --target powerpc64-unknown-linux-gnu
-//[powerpc64] needs-llvm-components: powerpc
-// revisions: riscv
-//[riscv] compile-flags: --target riscv64gc-unknown-linux-gnu
-//[riscv] needs-llvm-components: riscv
-// revisions: loongarch64
-//[loongarch64] compile-flags: --target loongarch64-unknown-linux-gnu
-//[loongarch64] needs-llvm-components: loongarch
-//[loongarch64] min-llvm-version: 17
-// revisions: wasm
-//[wasm] compile-flags: --target wasm32-unknown-unknown
-//[wasm] needs-llvm-components: webassembly
-// revisions: wasi
-//[wasi] compile-flags: --target wasm32-wasi
-//[wasi] needs-llvm-components: webassembly
-// revisions: bpf
-//[bpf] compile-flags: --target bpfeb-unknown-none
-//[bpf] needs-llvm-components: bpf
-// revisions: m68k
-//[m68k] compile-flags: --target m68k-unknown-linux-gnu
-//[m68k] needs-llvm-components: m68k
+//@ check-pass
+//@ revisions: host
+//@ revisions: i686
+//@[i686] compile-flags: --target i686-unknown-linux-gnu
+//@[i686] needs-llvm-components: x86
+//@ revisions: x86-64
+//@[x86-64] compile-flags: --target x86_64-unknown-linux-gnu
+//@[x86-64] needs-llvm-components: x86
+//@ revisions: x86-64-win
+//@[x86-64-win] compile-flags: --target x86_64-pc-windows-msvc
+//@[x86-64-win] needs-llvm-components: x86
+//@ revisions: arm
+//@[arm] compile-flags: --target arm-unknown-linux-gnueabi
+//@[arm] needs-llvm-components: arm
+//@ revisions: aarch64
+//@[aarch64] compile-flags: --target aarch64-unknown-linux-gnu
+//@[aarch64] needs-llvm-components: aarch64
+//@ revisions: s390x
+//@[s390x] compile-flags: --target s390x-unknown-linux-gnu
+//@[s390x] needs-llvm-components: systemz
+//@ revisions: mips
+//@[mips] compile-flags: --target mips-unknown-linux-gnu
+//@[mips] needs-llvm-components: mips
+//@ revisions: mips64
+//@[mips64] compile-flags: --target mips64-unknown-linux-gnuabi64
+//@[mips64] needs-llvm-components: mips
+//@ revisions: sparc
+//@[sparc] compile-flags: --target sparc-unknown-linux-gnu
+//@[sparc] needs-llvm-components: sparc
+//@ revisions: sparc64
+//@[sparc64] compile-flags: --target sparc64-unknown-linux-gnu
+//@[sparc64] needs-llvm-components: sparc
+//@ revisions: powerpc64
+//@[powerpc64] compile-flags: --target powerpc64-unknown-linux-gnu
+//@[powerpc64] needs-llvm-components: powerpc
+//@ revisions: riscv
+//@[riscv] compile-flags: --target riscv64gc-unknown-linux-gnu
+//@[riscv] needs-llvm-components: riscv
+//@ revisions: loongarch64
+//@[loongarch64] compile-flags: --target loongarch64-unknown-linux-gnu
+//@[loongarch64] needs-llvm-components: loongarch
+//@[loongarch64] min-llvm-version: 17
+//@ revisions: wasm
+//@[wasm] compile-flags: --target wasm32-unknown-unknown
+//@[wasm] needs-llvm-components: webassembly
+//@ revisions: wasip1
+//@[wasip1] compile-flags: --target wasm32-wasip1
+//@[wasip1] needs-llvm-components: webassembly
+//@ revisions: bpf
+//@[bpf] compile-flags: --target bpfeb-unknown-none
+//@[bpf] needs-llvm-components: bpf
+//@ revisions: m68k
+//@[m68k] compile-flags: --target m68k-unknown-linux-gnu
+//@[m68k] needs-llvm-components: m68k
 // FIXME: disabled on nvptx64 since the target ABI fails the sanity check
 // see https://github.com/rust-lang/rust/issues/117480
 /* revisions: nvptx64
@@ -64,6 +64,7 @@
   [csky] needs-llvm-components: csky
 */
 #![feature(rustc_attrs, unsized_fn_params, transparent_unions)]
+#![cfg_attr(host, feature(generic_nonzero))]
 #![cfg_attr(not(host), feature(no_core, lang_items), no_std, no_core)]
 #![allow(unused, improper_ctypes_definitions, internal_features)]
 
@@ -74,7 +75,7 @@
 
 #[cfg(host)]
 use std::{
-    any::Any, marker::PhantomData, mem::ManuallyDrop, num::NonZeroI32, ptr::NonNull, rc::Rc,
+    any::Any, marker::PhantomData, mem::ManuallyDrop, num::NonZero, ptr::NonNull, rc::Rc,
     sync::Arc,
 };
 
@@ -145,7 +146,7 @@ mod prelude {
     #[repr(transparent)]
     #[rustc_layout_scalar_valid_range_start(1)]
     #[rustc_nonnull_optimization_guaranteed]
-    pub struct NonZeroI32(i32);
+    pub struct NonZero<T>(T);
 
     // This just stands in for a non-trivial type.
     pub struct Vec<T> {
@@ -159,6 +160,7 @@ mod prelude {
         pub _marker: PhantomData<T>,
     }
 
+    #[lang = "global_alloc_ty"]
     pub struct Global;
 
     #[lang = "owned_box"]
@@ -274,7 +276,7 @@ test_abi_compatible!(isize_int, isize, i64);
 test_abi_compatible!(zst_unit, Zst, ());
 #[cfg(not(any(target_arch = "sparc64")))]
 test_abi_compatible!(zst_array, Zst, [u8; 0]);
-test_abi_compatible!(nonzero_int, NonZeroI32, i32);
+test_abi_compatible!(nonzero_int, NonZero<i32>, i32);
 
 // `DispatchFromDyn` relies on ABI compatibility.
 // This is interesting since these types are not `repr(transparent)`. So this is not part of our
@@ -381,6 +383,6 @@ test_nonnull!(mut_unsized, &mut [i32]);
 test_nonnull!(fn_, fn());
 test_nonnull!(nonnull, NonNull<i32>);
 test_nonnull!(nonnull_unsized, NonNull<dyn Any>);
-test_nonnull!(non_zero, NonZeroI32);
+test_nonnull!(non_zero, NonZero<i32>);
 
 fn main() {}

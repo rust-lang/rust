@@ -1,7 +1,7 @@
 // Traits in scope are collected for doc links in both outer and inner module attributes.
 
-// check-pass
-// aux-build: assoc-mod-inner-outer-dep.rs
+//@ check-pass
+//@ aux-build: assoc-mod-inner-outer-dep.rs
 
 extern crate assoc_mod_inner_outer_dep;
 pub use assoc_mod_inner_outer_dep::*;

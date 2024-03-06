@@ -1,8 +1,8 @@
-error: expected one of `=>`, `@`, `if`, or `|`, found `[`
-  --> $DIR/issue-24375.rs:6:12
+error: expected a pattern, found an expression
+  --> $DIR/issue-24375.rs:6:9
    |
 LL |         tmp[0] => {}
-   |            ^ expected one of `=>`, `@`, `if`, or `|`
+   |         ^^^^^^ arbitrary expressions are not allowed in patterns
 
 error: aborting due to 1 previous error
 

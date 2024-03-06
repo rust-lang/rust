@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 use std::ops::Add;
 
 fn f<T: Add>(a: T, b: T) -> <T as Add>::Output {

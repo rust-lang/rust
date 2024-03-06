@@ -1,10 +1,9 @@
-// run-pass
+//@ run-pass
 
 // Test half-open range patterns against their expression equivalents
 // via `.contains(...)` and make sure the dynamic semantics match.
 
 #![feature(exclusive_range_pattern)]
-#![allow(illegal_floating_point_literal_pattern)]
 #![allow(unreachable_patterns)]
 
 macro_rules! yes {

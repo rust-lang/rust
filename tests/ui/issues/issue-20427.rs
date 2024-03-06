@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 #![allow(dead_code)]
 #![allow(unused_variables)]
 #![allow(unused_imports)]
@@ -6,7 +6,7 @@
 #![allow(non_camel_case_types)]
 #![allow(deprecated, deprecated_in_future)]
 
-// aux-build:i8.rs
+//@ aux-build:i8.rs
 
 extern crate i8;
 use std::string as i16;

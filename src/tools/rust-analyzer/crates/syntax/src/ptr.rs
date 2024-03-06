@@ -36,7 +36,7 @@ impl<N: AstNode + std::fmt::Debug> std::fmt::Debug for AstPtr<N> {
 impl<N: AstNode> Copy for AstPtr<N> {}
 impl<N: AstNode> Clone for AstPtr<N> {
     fn clone(&self) -> AstPtr<N> {
-        AstPtr { raw: self.raw, _ty: PhantomData }
+        *self
     }
 }
 

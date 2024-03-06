@@ -1,4 +1,4 @@
-// revisions: with_clause without_clause
+//@ revisions: with_clause without_clause
 // Tests that `EvaluatedToOkModuloRegions` from a projection sub-obligation
 // is correctly propagated
 

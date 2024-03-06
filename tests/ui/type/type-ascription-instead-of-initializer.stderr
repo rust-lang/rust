@@ -2,10 +2,10 @@ error: expected type, found `10`
   --> $DIR/type-ascription-instead-of-initializer.rs:2:31
    |
 LL |     let x: Vec::with_capacity(10, 20);
-   |         --                    ^^ expected type
-   |         ||
-   |         |help: use `=` if you meant to assign
-   |         while parsing the type for `x`
+   |          -                    ^^ expected type
+   |          |
+   |          while parsing the type for `x`
+   |          help: use `=` if you meant to assign
 
 error[E0061]: this function takes 1 argument but 2 arguments were supplied
   --> $DIR/type-ascription-instead-of-initializer.rs:2:12

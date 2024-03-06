@@ -1,6 +1,6 @@
 // We want to suggest a bound `T: 'a` but `'a` is elided,
-// run-rustfix
-// edition: 2018
+//@ run-rustfix
+//@ edition: 2018
 #![allow(dead_code)]
 
 struct Inv<'a>(Option<*mut &'a u8>);

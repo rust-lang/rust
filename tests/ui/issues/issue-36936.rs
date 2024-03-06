@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 // check that casts are not being treated as lexprs.
 
 fn main() {

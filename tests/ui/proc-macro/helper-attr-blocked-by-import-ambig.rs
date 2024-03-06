@@ -1,4 +1,4 @@
-// aux-build:test-macros.rs
+//@ aux-build:test-macros.rs
 
 #[macro_use(Empty)]
 extern crate test_macros;

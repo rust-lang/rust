@@ -4,32 +4,8 @@ use crate::infer::canonical::OriginalQueryValues;
 use crate::infer::InferCtxt;
 use crate::traits::{EvaluationResult, OverflowError, PredicateObligation, SelectionContext};
 
-pub trait InferCtxtExt<'tcx> {
-    fn predicate_may_hold(&self, obligation: &PredicateObligation<'tcx>) -> bool;
-
-    fn predicate_must_hold_considering_regions(
-        &self,
-        obligation: &PredicateObligation<'tcx>,
-    ) -> bool;
-
-    fn predicate_must_hold_modulo_regions(&self, obligation: &PredicateObligation<'tcx>) -> bool;
-
-    fn evaluate_obligation(
-        &self,
-        obligation: &PredicateObligation<'tcx>,
-    ) -> Result<EvaluationResult, OverflowError>;
-
-    // Helper function that canonicalizes and runs the query. If an
-    // overflow results, we re-run it in the local context so we can
-    // report a nice error.
-    /*crate*/
-    fn evaluate_obligation_no_overflow(
-        &self,
-        obligation: &PredicateObligation<'tcx>,
-    ) -> EvaluationResult;
-}
-
-impl<'tcx> InferCtxtExt<'tcx> for InferCtxt<'tcx> {
+#[extension(pub trait InferCtxtExt<'tcx>)]
+impl<'tcx> InferCtxt<'tcx> {
     /// Evaluates whether the predicate can be satisfied (by any means)
     /// in the given `ParamEnv`.
     fn predicate_may_hold(&self, obligation: &PredicateObligation<'tcx>) -> bool {
@@ -41,7 +17,28 @@ impl<'tcx> InferCtxtExt<'tcx> for InferCtxt<'tcx> {
     /// not entirely accurate if inference variables are involved.
     ///
     /// This version may conservatively fail when outlives obligations
-    /// are required.
+    /// are required. Therefore, this version should only be used for
+    /// optimizations or diagnostics and be treated as if it can always
+    /// return `false`.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// # #![allow(dead_code)]
+    /// trait Trait {}
+    ///
+    /// fn check<T: Trait>() {}
+    ///
+    /// fn foo<T: 'static>()
+    /// where
+    ///     &'static T: Trait,
+    /// {
+    ///     // Evaluating `&'?0 T: Trait` adds a `'?0: 'static` outlives obligation,
+    ///     // which means that `predicate_must_hold_considering_regions` will return
+    ///     // `false`.
+    ///     check::<&'_ T>();
+    /// }
+    /// ```
     fn predicate_must_hold_considering_regions(
         &self,
         obligation: &PredicateObligation<'tcx>,
@@ -93,9 +90,9 @@ impl<'tcx> InferCtxtExt<'tcx> for InferCtxt<'tcx> {
         }
     }
 
-    // Helper function that canonicalizes and runs the query. If an
-    // overflow results, we re-run it in the local context so we can
-    // report a nice error.
+    /// Helper function that canonicalizes and runs the query. If an
+    /// overflow results, we re-run it in the local context so we can
+    /// report a nice error.
     fn evaluate_obligation_no_overflow(
         &self,
         obligation: &PredicateObligation<'tcx>,

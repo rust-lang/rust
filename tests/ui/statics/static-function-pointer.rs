@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 
 fn f(x: isize) -> isize { x }
 fn g(x: isize) -> isize { 2 * x }

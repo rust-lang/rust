@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 
 // Test to make sure the destructors run in the right order.
 // Each destructor sets it's tag in the corresponding entry

@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 trait Tr { type T; }
 impl Tr for u8 { type T=(); }
 struct S<I: Tr>(#[allow(dead_code)] I::T);

@@ -93,7 +93,6 @@ use rustc_index::IndexVec;
 use rustc_middle::mir::interpret::GlobalAlloc;
 use rustc_middle::mir::visit::*;
 use rustc_middle::mir::*;
-use rustc_middle::ty::adjustment::PointerCoercion;
 use rustc_middle::ty::layout::LayoutOf;
 use rustc_middle::ty::{self, Ty, TyCtxt, TypeAndMut};
 use rustc_span::def_id::DefId;
@@ -400,7 +399,7 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
                     };
                     for (field_index, op) in fields.into_iter().enumerate() {
                         let field_dest = self.ecx.project_field(&variant_dest, field_index).ok()?;
-                        self.ecx.copy_op(op, &field_dest, /*allow_transmute*/ false).ok()?;
+                        self.ecx.copy_op(op, &field_dest).ok()?;
                     }
                     self.ecx.write_discriminant(variant.unwrap_or(FIRST_VARIANT), &dest).ok()?;
                     self.ecx
@@ -489,6 +488,7 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
                     NullOp::OffsetOf(fields) => {
                         layout.offset_of_subfield(&self.ecx, fields.iter()).bytes()
                     }
+                    NullOp::DebugAssertions => return None,
                 };
                 let usize_layout = self.ecx.layout_of(self.tcx.types.usize).unwrap();
                 let imm = ImmTy::try_from_uint(val, usize_layout)?;
@@ -550,6 +550,33 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
                         }
                     }
                     value.offset(Size::ZERO, to, &self.ecx).ok()?
+                }
+                CastKind::PointerCoercion(ty::adjustment::PointerCoercion::Unsize) => {
+                    let src = self.evaluated[value].as_ref()?;
+                    let to = self.ecx.layout_of(to).ok()?;
+                    let dest = self.ecx.allocate(to, MemoryKind::Stack).ok()?;
+                    self.ecx.unsize_into(src, to, &dest.clone().into()).ok()?;
+                    self.ecx
+                        .alloc_mark_immutable(dest.ptr().provenance.unwrap().alloc_id())
+                        .ok()?;
+                    dest.into()
+                }
+                CastKind::FnPtrToPtr | CastKind::PtrToPtr => {
+                    let src = self.evaluated[value].as_ref()?;
+                    let src = self.ecx.read_immediate(src).ok()?;
+                    let to = self.ecx.layout_of(to).ok()?;
+                    let ret = self.ecx.ptr_to_ptr(&src, to).ok()?;
+                    ret.into()
+                }
+                CastKind::PointerCoercion(
+                    ty::adjustment::PointerCoercion::MutToConstPointer
+                    | ty::adjustment::PointerCoercion::ArrayToPointer
+                    | ty::adjustment::PointerCoercion::UnsafeFnPointer,
+                ) => {
+                    let src = self.evaluated[value].as_ref()?;
+                    let src = self.ecx.read_immediate(src).ok()?;
+                    let to = self.ecx.layout_of(to).ok()?;
+                    ImmTy::from_immediate(*src, to).into()
                 }
                 _ => return None,
             },
@@ -777,18 +804,8 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
 
             // Operations.
             Rvalue::Len(ref mut place) => return self.simplify_len(place, location),
-            Rvalue::Cast(kind, ref mut value, to) => {
-                let from = value.ty(self.local_decls, self.tcx);
-                let value = self.simplify_operand(value, location)?;
-                if let CastKind::PointerCoercion(
-                    PointerCoercion::ReifyFnPointer | PointerCoercion::ClosureFnPointer(_),
-                ) = kind
-                {
-                    // Each reification of a generic fn may get a different pointer.
-                    // Do not try to merge them.
-                    return self.new_opaque();
-                }
-                Value::Cast { kind, value, from, to }
+            Rvalue::Cast(ref mut kind, ref mut value, to) => {
+                return self.simplify_cast(kind, value, to, location);
             }
             Rvalue::BinaryOp(op, box (ref mut lhs, ref mut rhs)) => {
                 let ty = lhs.ty(self.local_decls, self.tcx);
@@ -840,10 +857,10 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
 
     fn simplify_discriminant(&mut self, place: VnIndex) -> Option<VnIndex> {
         if let Value::Aggregate(enum_ty, variant, _) = *self.get(place)
-            && let AggregateTy::Def(enum_did, enum_substs) = enum_ty
+            && let AggregateTy::Def(enum_did, enum_args) = enum_ty
             && let DefKind::Enum = self.tcx.def_kind(enum_did)
         {
-            let enum_ty = self.tcx.type_of(enum_did).instantiate(self.tcx, enum_substs);
+            let enum_ty = self.tcx.type_of(enum_did).instantiate(self.tcx, enum_args);
             let discr = self.ecx.discriminant_for_variant(enum_ty, variant).ok()?;
             return Some(self.insert_scalar(discr.to_scalar(), discr.layout.ty));
         }
@@ -861,9 +878,10 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
         let tcx = self.tcx;
         if fields.is_empty() {
             let is_zst = match *kind {
-                AggregateKind::Array(..) | AggregateKind::Tuple | AggregateKind::Closure(..) => {
-                    true
-                }
+                AggregateKind::Array(..)
+                | AggregateKind::Tuple
+                | AggregateKind::Closure(..)
+                | AggregateKind::CoroutineClosure(..) => true,
                 // Only enums can be non-ZST.
                 AggregateKind::Adt(did, ..) => tcx.def_kind(did) != DefKind::Enum,
                 // Coroutines are never ZST, as they at least contain the implicit states.
@@ -885,11 +903,11 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
                 assert!(!fields.is_empty());
                 (AggregateTy::Tuple, FIRST_VARIANT)
             }
-            AggregateKind::Closure(did, substs) | AggregateKind::Coroutine(did, substs) => {
-                (AggregateTy::Def(did, substs), FIRST_VARIANT)
-            }
-            AggregateKind::Adt(did, variant_index, substs, _, None) => {
-                (AggregateTy::Def(did, substs), variant_index)
+            AggregateKind::Closure(did, args)
+            | AggregateKind::CoroutineClosure(did, args)
+            | AggregateKind::Coroutine(did, args) => (AggregateTy::Def(did, args), FIRST_VARIANT),
+            AggregateKind::Adt(did, variant_index, args, _, None) => {
+                (AggregateTy::Def(did, args), variant_index)
             }
             // Do not track unions.
             AggregateKind::Adt(_, _, _, _, Some(_)) => return None,
@@ -1031,6 +1049,50 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
         }
     }
 
+    fn simplify_cast(
+        &mut self,
+        kind: &mut CastKind,
+        operand: &mut Operand<'tcx>,
+        to: Ty<'tcx>,
+        location: Location,
+    ) -> Option<VnIndex> {
+        use rustc_middle::ty::adjustment::PointerCoercion::*;
+        use CastKind::*;
+
+        let mut from = operand.ty(self.local_decls, self.tcx);
+        let mut value = self.simplify_operand(operand, location)?;
+        if from == to {
+            return Some(value);
+        }
+
+        if let CastKind::PointerCoercion(ReifyFnPointer | ClosureFnPointer(_)) = kind {
+            // Each reification of a generic fn may get a different pointer.
+            // Do not try to merge them.
+            return self.new_opaque();
+        }
+
+        if let PtrToPtr | PointerCoercion(MutToConstPointer) = kind
+            && let Value::Cast { kind: inner_kind, value: inner_value, from: inner_from, to: _ } =
+                *self.get(value)
+            && let PtrToPtr | PointerCoercion(MutToConstPointer) = inner_kind
+        {
+            from = inner_from;
+            value = inner_value;
+            *kind = PtrToPtr;
+            if inner_from == to {
+                return Some(inner_value);
+            }
+            if let Some(const_) = self.try_as_constant(value) {
+                *operand = Operand::Constant(Box::new(const_));
+            } else if let Some(local) = self.try_as_local(value, location) {
+                *operand = Operand::Copy(local.into());
+                self.reused_locals.insert(local);
+            }
+        }
+
+        Some(self.insert(Value::Cast { kind: *kind, value, from, to }))
+    }
+
     fn simplify_len(&mut self, place: &mut Place<'tcx>, location: Location) -> Option<VnIndex> {
         // Trivial case: we are fetching a statically known length.
         let place_ty = place.ty(self.local_decls, self.tcx).ty;
@@ -1119,8 +1181,7 @@ fn op_to_prop_const<'tcx>(
     }
 
     // Everything failed: create a new allocation to hold the data.
-    let alloc_id =
-        ecx.intern_with_temp_alloc(op.layout, |ecx, dest| ecx.copy_op(op, dest, false)).ok()?;
+    let alloc_id = ecx.intern_with_temp_alloc(op.layout, |ecx, dest| ecx.copy_op(op, dest)).ok()?;
     let value = ConstValue::Indirect { alloc_id, offset: Size::ZERO };
 
     // Check that we do not leak a pointer.
@@ -1228,8 +1289,8 @@ impl<'tcx> MutVisitor<'tcx> for StorageRemover<'tcx> {
 
     fn visit_operand(&mut self, operand: &mut Operand<'tcx>, _: Location) {
         if let Operand::Move(place) = *operand
-            && let Some(local) = place.as_local()
-            && self.reused_locals.contains(local)
+            && !place.is_indirect_first_projection()
+            && self.reused_locals.contains(place.local)
         {
             *operand = Operand::Copy(place);
         }

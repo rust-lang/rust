@@ -9,6 +9,7 @@ use ide_db::{
     base_db::{FileId, FileRange},
     defs::{Definition, NameClass, NameRefClass},
     rename::{bail, format_err, source_edit_from_references, IdentifierKind},
+    source_change::SourceChangeBuilder,
     RootDatabase,
 };
 use itertools::Itertools;
@@ -84,31 +85,66 @@ pub(crate) fn rename(
     db: &RootDatabase,
     position: FilePosition,
     new_name: &str,
-    rename_external: bool,
 ) -> RenameResult<SourceChange> {
     let sema = Semantics::new(db);
     let source_file = sema.parse(position.file_id);
     let syntax = source_file.syntax();
 
     let defs = find_definitions(&sema, syntax, position)?;
+    let alias_fallback = alias_fallback(syntax, position, new_name);
 
-    let ops: RenameResult<Vec<SourceChange>> = defs
-        .map(|(.., def)| {
-            if let Definition::Local(local) = def {
-                if let Some(self_param) = local.as_self_param(sema.db) {
-                    cov_mark::hit!(rename_self_to_param);
-                    return rename_self_to_param(&sema, local, self_param, new_name);
+    let ops: RenameResult<Vec<SourceChange>> = match alias_fallback {
+        Some(_) => defs
+            // FIXME: This can use the `ide_db::rename_reference` (or def.rename) method once we can
+            // properly find "direct" usages/references.
+            .map(|(.., def)| {
+                match IdentifierKind::classify(new_name)? {
+                    IdentifierKind::Ident => (),
+                    IdentifierKind::Lifetime => {
+                        bail!("Cannot alias reference to a lifetime identifier")
+                    }
+                    IdentifierKind::Underscore => bail!("Cannot alias reference to `_`"),
+                };
+
+                let mut usages = def.usages(&sema).all();
+
+                // FIXME: hack - removes the usage that triggered this rename operation.
+                match usages.references.get_mut(&position.file_id).and_then(|refs| {
+                    refs.iter()
+                        .position(|ref_| ref_.range.contains_inclusive(position.offset))
+                        .map(|idx| refs.remove(idx))
+                }) {
+                    Some(_) => (),
+                    None => never!(),
+                };
+
+                let mut source_change = SourceChange::default();
+                source_change.extend(usages.iter().map(|(&file_id, refs)| {
+                    (file_id, source_edit_from_references(refs, def, new_name))
+                }));
+
+                Ok(source_change)
+            })
+            .collect(),
+        None => defs
+            .map(|(.., def)| {
+                if let Definition::Local(local) = def {
+                    if let Some(self_param) = local.as_self_param(sema.db) {
+                        cov_mark::hit!(rename_self_to_param);
+                        return rename_self_to_param(&sema, local, self_param, new_name);
+                    }
+                    if new_name == "self" {
+                        cov_mark::hit!(rename_to_self);
+                        return rename_to_self(&sema, local);
+                    }
                 }
-                if new_name == "self" {
-                    cov_mark::hit!(rename_to_self);
-                    return rename_to_self(&sema, local);
-                }
-            }
-            def.rename(&sema, new_name, rename_external)
-        })
-        .collect();
+                def.rename(&sema, new_name)
+            })
+            .collect(),
+    };
 
     ops?.into_iter()
+        .chain(alias_fallback)
         .reduce(|acc, elem| acc.merge(elem))
         .ok_or_else(|| format_err!("No references found at position"))
 }
@@ -123,12 +159,44 @@ pub(crate) fn will_rename_file(
     let module = sema.to_module_def(file_id)?;
     let def = Definition::Module(module);
     let mut change = if is_raw_identifier(new_name_stem) {
-        def.rename(&sema, &SmolStr::from_iter(["r#", new_name_stem]), true).ok()?
+        def.rename(&sema, &SmolStr::from_iter(["r#", new_name_stem])).ok()?
     } else {
-        def.rename(&sema, new_name_stem, true).ok()?
+        def.rename(&sema, new_name_stem).ok()?
     };
     change.file_system_edits.clear();
     Some(change)
+}
+
+// FIXME: Should support `extern crate`.
+fn alias_fallback(
+    syntax: &SyntaxNode,
+    FilePosition { file_id, offset }: FilePosition,
+    new_name: &str,
+) -> Option<SourceChange> {
+    let use_tree = syntax
+        .token_at_offset(offset)
+        .flat_map(|syntax| syntax.parent_ancestors())
+        .find_map(ast::UseTree::cast)?;
+
+    let last_path_segment = use_tree.path()?.segments().last()?.name_ref()?;
+    if !last_path_segment.syntax().text_range().contains_inclusive(offset) {
+        return None;
+    };
+
+    let mut builder = SourceChangeBuilder::new(file_id);
+
+    match use_tree.rename() {
+        Some(rename) => {
+            let offset = rename.syntax().text_range();
+            builder.replace(offset, format!("as {new_name}"));
+        }
+        None => {
+            let offset = use_tree.syntax().text_range().end();
+            builder.insert(offset, format!(" as {new_name}"));
+        }
+    }
+
+    Some(builder.finish())
 }
 
 fn find_definitions(
@@ -377,16 +445,11 @@ mod tests {
     use super::{RangeInfo, RenameError};
 
     fn check(new_name: &str, ra_fixture_before: &str, ra_fixture_after: &str) {
-        check_with_rename_config(new_name, ra_fixture_before, ra_fixture_after, true);
+        check_with_rename_config(new_name, ra_fixture_before, ra_fixture_after);
     }
 
     #[track_caller]
-    fn check_with_rename_config(
-        new_name: &str,
-        ra_fixture_before: &str,
-        ra_fixture_after: &str,
-        rename_external: bool,
-    ) {
+    fn check_with_rename_config(new_name: &str, ra_fixture_before: &str, ra_fixture_after: &str) {
         let ra_fixture_after = &trim_indent(ra_fixture_after);
         let (analysis, position) = fixture::position(ra_fixture_before);
         if !ra_fixture_after.starts_with("error: ") {
@@ -395,7 +458,7 @@ mod tests {
             }
         }
         let rename_result = analysis
-            .rename(position, new_name, rename_external)
+            .rename(position, new_name)
             .unwrap_or_else(|err| panic!("Rename to '{new_name}' was cancelled: {err}"));
         match rename_result {
             Ok(source_change) => {
@@ -426,10 +489,8 @@ mod tests {
 
     fn check_expect(new_name: &str, ra_fixture: &str, expect: Expect) {
         let (analysis, position) = fixture::position(ra_fixture);
-        let source_change = analysis
-            .rename(position, new_name, true)
-            .unwrap()
-            .expect("Expect returned a RenameError");
+        let source_change =
+            analysis.rename(position, new_name).unwrap().expect("Expect returned a RenameError");
         expect.assert_eq(&filter_expect(source_change))
     }
 
@@ -2634,21 +2695,10 @@ use qux as frob;
 //- /lib.rs crate:lib new_source_root:library
 pub struct S;
 //- /main.rs crate:main deps:lib new_source_root:local
-use lib::S$0;
+use lib::S;
+fn main() { let _: S$0; }
 "#,
-            "error: Cannot rename a non-local definition as the config for it is disabled",
-            false,
-        );
-
-        check(
-            "Baz",
-            r#"
-//- /lib.rs crate:lib new_source_root:library
-pub struct S;
-//- /main.rs crate:main deps:lib new_source_root:local
-use lib::S$0;
-"#,
-            "use lib::Baz;\n",
+            "error: Cannot rename a non-local definition",
         );
     }
 
@@ -2663,8 +2713,7 @@ use core::hash::Hash;
 #[derive(H$0ash)]
 struct A;
             "#,
-            "error: Cannot rename a non-local definition as the config for it is disabled",
-            false,
+            "error: Cannot rename a non-local definition",
         );
     }
 
@@ -2706,5 +2755,28 @@ fn test() {
 }
 "#,
         );
+    }
+
+    #[test]
+    fn rename_path_inside_use_tree() {
+        check(
+            "Baz",
+            r#"
+mod foo { pub struct Foo; }
+mod bar { use super::Foo; }
+
+use foo::Foo$0;
+
+fn main() { let _: Foo; }
+"#,
+            r#"
+mod foo { pub struct Foo; }
+mod bar { use super::Baz; }
+
+use foo::Foo as Baz;
+
+fn main() { let _: Baz; }
+"#,
+        )
     }
 }

@@ -1,5 +1,5 @@
-// edition:2018
-// aux-build:builtin-attrs.rs
+//@ edition:2018
+//@ aux-build:builtin-attrs.rs
 #![feature(decl_macro)] //~ ERROR `feature` is ambiguous
 
 extern crate builtin_attrs;

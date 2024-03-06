@@ -1,6 +1,6 @@
-// aux-build:test-macros.rs
-// compile-flags: -Z span-debug
-// check-pass
+//@ aux-build:test-macros.rs
+//@ compile-flags: -Z span-debug
+//@ check-pass
 
 // Tests that we properly handle parsing a nonterminal
 // where we have two consecutive angle brackets (one inside

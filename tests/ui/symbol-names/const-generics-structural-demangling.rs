@@ -1,7 +1,7 @@
-// build-fail
-// compile-flags: -C symbol-mangling-version=v0 --crate-name=c
+//@ build-fail
+//@ compile-flags: -C symbol-mangling-version=v0 --crate-name=c
 
-// normalize-stderr-test: "c\[[0-9a-f]+\]" -> "c[HASH]"
+//@ normalize-stderr-test: "c\[[0-9a-f]+\]" -> "c[HASH]"
 
 #![feature(adt_const_params, decl_macro, rustc_attrs)]
 #![allow(incomplete_features)]

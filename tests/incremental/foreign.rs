@@ -1,8 +1,8 @@
 // Test what happens we save incremental compilation state that makes
 // use of foreign items. This used to ICE (#34991).
-// ignore-sgx no libc
+//@ ignore-sgx no libc
 
-// revisions: rpass1
+//@ revisions: rpass1
 
 #![feature(rustc_private)]
 

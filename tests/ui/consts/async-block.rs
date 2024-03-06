@@ -1,7 +1,7 @@
 // gate-test-const_async_blocks
 
-// edition:2018
-// revisions: with_feature without_feature
+//@ edition:2018
+//@ revisions: with_feature without_feature
 
 #![feature(rustc_attrs)]
 #![cfg_attr(with_feature, feature(const_async_blocks))]

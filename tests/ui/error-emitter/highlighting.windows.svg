@@ -1,0 +1,73 @@
+<svg width="785px" height="434px" xmlns="http://www.w3.org/2000/svg">
+  <style>
+    .fg { fill: #AAAAAA }
+    .bg { background: #000000 }
+    .fg-ansi256-009 { fill: #FF5555 }
+    .fg-ansi256-010 { fill: #55FF55 }
+    .fg-ansi256-014 { fill: #55FFFF }
+    .fg-ansi256-015 { fill: #FFFFFF }
+    .fg-magenta { fill: #AA00AA }
+    .container {
+      padding: 0 10px;
+      line-height: 18px;
+    }
+    .bold { font-weight: bold; }
+    tspan {
+      font: 14px SFMono-Regular, Consolas, Liberation Mono, Menlo, monospace;
+      white-space: pre;
+      line-height: 18px;
+    }
+  </style>
+
+  <rect width="100%" height="100%" y="0" rx="4.5" class="bg" />
+
+  <text xml:space="preserve" class="container fg">
+    <tspan x="10px" y="28px"><tspan class="fg-ansi256-009 bold">error[E0308]</tspan><tspan class="fg-ansi256-015 bold">: mismatched types</tspan>
+</tspan>
+    <tspan x="10px" y="46px"><tspan>  </tspan><tspan class="fg-ansi256-014 bold">--&gt; </tspan><tspan>$DIR/highlighting.rs:24:11</tspan>
+</tspan>
+    <tspan x="10px" y="64px"><tspan>   </tspan><tspan class="fg-ansi256-014 bold">|</tspan>
+</tspan>
+    <tspan x="10px" y="82px"><tspan class="fg-ansi256-014 bold">LL</tspan><tspan> </tspan><tspan class="fg-ansi256-014 bold">|</tspan><tspan>     query(wrapped_fn);</tspan>
+</tspan>
+    <tspan x="10px" y="100px"><tspan>   </tspan><tspan class="fg-ansi256-014 bold">| </tspan><tspan>    </tspan><tspan class="fg-ansi256-014 bold">-----</tspan><tspan> </tspan><tspan class="fg-ansi256-009 bold">^^^^^^^^^^</tspan><tspan> </tspan><tspan class="fg-ansi256-009 bold">one type is more general than the other</tspan>
+</tspan>
+    <tspan x="10px" y="118px"><tspan>   </tspan><tspan class="fg-ansi256-014 bold">| </tspan><tspan>    </tspan><tspan class="fg-ansi256-014 bold">|</tspan>
+</tspan>
+    <tspan x="10px" y="136px"><tspan>   </tspan><tspan class="fg-ansi256-014 bold">| </tspan><tspan>    </tspan><tspan class="fg-ansi256-014 bold">arguments to this function are incorrect</tspan>
+</tspan>
+    <tspan x="10px" y="154px"><tspan>   </tspan><tspan class="fg-ansi256-014 bold">|</tspan>
+</tspan>
+    <tspan x="10px" y="172px"><tspan>   </tspan><tspan class="fg-ansi256-014 bold">= </tspan><tspan class="fg-ansi256-015 bold">note</tspan><tspan>: expected fn pointer `</tspan><tspan class="fg-magenta bold">for&lt;'a&gt; </tspan><tspan>fn(Box&lt;</tspan><tspan class="fg-magenta bold">(dyn Any + Send + 'a)</tspan><tspan>&gt;) -&gt; Pin&lt;_&gt;`</tspan>
+</tspan>
+    <tspan x="10px" y="190px"><tspan>                 found fn item `fn(Box&lt;</tspan><tspan class="fg-magenta bold">(dyn Any + Send + 'static)</tspan><tspan>&gt;) -&gt; Pin&lt;_&gt; {wrapped_fn}`</tspan>
+</tspan>
+    <tspan x="10px" y="208px"><tspan class="fg-ansi256-010 bold">note</tspan><tspan>: function defined here</tspan>
+</tspan>
+    <tspan x="10px" y="226px"><tspan>  </tspan><tspan class="fg-ansi256-014 bold">--&gt; </tspan><tspan>$DIR/highlighting.rs:13:4</tspan>
+</tspan>
+    <tspan x="10px" y="244px"><tspan>   </tspan><tspan class="fg-ansi256-014 bold">|</tspan>
+</tspan>
+    <tspan x="10px" y="262px"><tspan class="fg-ansi256-014 bold">LL</tspan><tspan> </tspan><tspan class="fg-ansi256-014 bold">|</tspan><tspan>   fn query(_: fn(Box&lt;(dyn Any + Send + '_)&gt;) -&gt; Pin&lt;Box&lt;(</tspan>
+</tspan>
+    <tspan x="10px" y="280px"><tspan>   </tspan><tspan class="fg-ansi256-014 bold">| </tspan><tspan> </tspan><tspan class="fg-ansi256-014 bold">____</tspan><tspan class="fg-ansi256-010 bold">^^^^^</tspan><tspan class="fg-ansi256-014 bold">_-</tspan>
+</tspan>
+    <tspan x="10px" y="298px"><tspan class="fg-ansi256-014 bold">LL</tspan><tspan> </tspan><tspan class="fg-ansi256-014 bold">|</tspan><tspan> </tspan><tspan class="fg-ansi256-014 bold">|</tspan><tspan>     dyn Future&lt;Output = Result&lt;Box&lt;(dyn Any + 'static)&gt;, String&gt;&gt; + Send + 'static</tspan>
+</tspan>
+    <tspan x="10px" y="316px"><tspan class="fg-ansi256-014 bold">LL</tspan><tspan> </tspan><tspan class="fg-ansi256-014 bold">|</tspan><tspan> </tspan><tspan class="fg-ansi256-014 bold">|</tspan><tspan> )&gt;&gt;) {}</tspan>
+</tspan>
+    <tspan x="10px" y="334px"><tspan>   </tspan><tspan class="fg-ansi256-014 bold">| </tspan><tspan class="fg-ansi256-014 bold">|___-</tspan>
+</tspan>
+    <tspan x="10px" y="352px">
+</tspan>
+    <tspan x="10px" y="370px"><tspan class="fg-ansi256-009 bold">error</tspan><tspan class="fg-ansi256-015 bold">: aborting due to 1 previous error</tspan>
+</tspan>
+    <tspan x="10px" y="388px">
+</tspan>
+    <tspan x="10px" y="406px"><tspan class="fg-ansi256-015 bold">For more information about this error, try `rustc --explain E0308`.</tspan>
+</tspan>
+    <tspan x="10px" y="424px">
+</tspan>
+  </text>
+
+</svg>

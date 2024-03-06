@@ -307,7 +307,7 @@ fn gather_explicit_predicates_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Gen
             tcx,
             &mut predicates,
             trait_ref,
-            &mut cgp::parameters_for_impl(self_ty, trait_ref),
+            &mut cgp::parameters_for_impl(tcx, self_ty, trait_ref),
         );
     }
 
@@ -315,8 +315,7 @@ fn gather_explicit_predicates_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Gen
     // We create bi-directional Outlives predicates between the original
     // and the duplicated parameter, to ensure that they do not get out of sync.
     if let Node::Item(&Item { kind: ItemKind::OpaqueTy(..), .. }) = node {
-        let opaque_ty_id = tcx.hir().parent_id(hir_id);
-        let opaque_ty_node = tcx.hir_node(opaque_ty_id);
+        let opaque_ty_node = tcx.parent_hir_node(hir_id);
         let Node::Ty(&Ty { kind: TyKind::OpaqueDef(_, lifetimes, _), .. }) = opaque_ty_node else {
             bug!("unexpected {opaque_ty_node:?}")
         };
@@ -641,16 +640,30 @@ pub(super) fn implied_predicates_with_filter(
 
     // Now require that immediate supertraits are converted, which will, in
     // turn, reach indirect supertraits, so we detect cycles now instead of
-    // overflowing during elaboration.
-    if matches!(filter, PredicateFilter::SelfOnly) {
-        for &(pred, span) in implied_bounds {
-            debug!("superbound: {:?}", pred);
-            if let ty::ClauseKind::Trait(bound) = pred.kind().skip_binder()
-                && bound.polarity == ty::ImplPolarity::Positive
-            {
-                tcx.at(span).super_predicates_of(bound.def_id());
+    // overflowing during elaboration. Same for implied predicates, which
+    // make sure we walk into associated type bounds.
+    match filter {
+        PredicateFilter::SelfOnly => {
+            for &(pred, span) in implied_bounds {
+                debug!("superbound: {:?}", pred);
+                if let ty::ClauseKind::Trait(bound) = pred.kind().skip_binder()
+                    && bound.polarity == ty::ImplPolarity::Positive
+                {
+                    tcx.at(span).super_predicates_of(bound.def_id());
+                }
             }
         }
+        PredicateFilter::SelfAndAssociatedTypeBounds => {
+            for &(pred, span) in implied_bounds {
+                debug!("superbound: {:?}", pred);
+                if let ty::ClauseKind::Trait(bound) = pred.kind().skip_binder()
+                    && bound.polarity == ty::ImplPolarity::Positive
+                {
+                    tcx.at(span).implied_predicates_of(bound.def_id());
+                }
+            }
+        }
+        _ => {}
     }
 
     ty::GenericPredicates { parent: None, predicates: implied_bounds }

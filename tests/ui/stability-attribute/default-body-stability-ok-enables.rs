@@ -1,5 +1,5 @@
-// check-pass
-// aux-build:default_body.rs
+//@ check-pass
+//@ aux-build:default_body.rs
 #![crate_type = "lib"]
 #![feature(fun_default_body, eq_default_body, constant_default_body)]
 

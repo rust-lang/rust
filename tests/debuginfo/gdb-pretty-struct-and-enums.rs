@@ -1,8 +1,8 @@
-// ignore-lldb
-// ignore-android: FIXME(#10381)
-// min-gdb-version: 8.1
+//@ ignore-lldb
+//@ ignore-android: FIXME(#10381)
+//@ min-gdb-version: 8.1
 
-// compile-flags:-g
+//@ compile-flags:-g
 
 // gdb-command: run
 

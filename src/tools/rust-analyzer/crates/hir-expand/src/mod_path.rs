@@ -10,6 +10,7 @@ use crate::{
     hygiene::{marks_rev, SyntaxContextExt, Transparency},
     name::{known, AsName, Name},
     span_map::SpanMapRef,
+    tt,
 };
 use base_db::CrateId;
 use smallvec::SmallVec;
@@ -39,7 +40,7 @@ pub enum PathKind {
     Crate,
     /// Absolute path (::foo)
     Abs,
-    // FIXME: Remove this
+    // FIXME: Can we remove this somehow?
     /// `$crate` from macro expansion
     DollarCrate(CrateId),
 }
@@ -50,11 +51,16 @@ impl ModPath {
         path: ast::Path,
         span_map: SpanMapRef<'_>,
     ) -> Option<ModPath> {
-        convert_path(db, None, path, span_map)
+        convert_path(db, path, span_map)
+    }
+
+    pub fn from_tt(db: &dyn ExpandDatabase, tt: &[tt::TokenTree]) -> Option<ModPath> {
+        convert_path_tt(db, tt)
     }
 
     pub fn from_segments(kind: PathKind, segments: impl IntoIterator<Item = Name>) -> ModPath {
-        let segments = segments.into_iter().collect();
+        let mut segments: SmallVec<_> = segments.into_iter().collect();
+        segments.shrink_to_fit();
         ModPath { kind, segments }
     }
 
@@ -86,6 +92,21 @@ impl ModPath {
                 PathKind::Abs => 0,
                 PathKind::DollarCrate(_) => 1,
             }
+    }
+
+    pub fn textual_len(&self) -> usize {
+        let base = match self.kind {
+            PathKind::Plain => 0,
+            PathKind::Super(0) => "self".len(),
+            PathKind::Super(i) => "super".len() * i as usize,
+            PathKind::Crate => "crate".len(),
+            PathKind::Abs => 0,
+            PathKind::DollarCrate(_) => "$crate".len(),
+        };
+        self.segments()
+            .iter()
+            .map(|segment| segment.as_str().map_or(0, str::len))
+            .fold(base, core::ops::Add::add)
     }
 
     pub fn is_ident(&self) -> bool {
@@ -193,22 +214,15 @@ fn display_fmt_path(
 
 fn convert_path(
     db: &dyn ExpandDatabase,
-    prefix: Option<ModPath>,
     path: ast::Path,
     span_map: SpanMapRef<'_>,
 ) -> Option<ModPath> {
-    let prefix = match path.qualifier() {
-        Some(qual) => Some(convert_path(db, prefix, qual, span_map)?),
-        None => prefix,
-    };
+    let mut segments = path.segments();
 
-    let segment = path.segment()?;
+    let segment = &segments.next()?;
     let mut mod_path = match segment.kind()? {
         ast::PathSegmentKind::Name(name_ref) => {
             if name_ref.text() == "$crate" {
-                if prefix.is_some() {
-                    return None;
-                }
                 ModPath::from_kind(
                     resolve_crate_root(
                         db,
@@ -218,47 +232,50 @@ fn convert_path(
                     .unwrap_or(PathKind::Crate),
                 )
             } else {
-                let mut res = prefix.unwrap_or_else(|| {
-                    ModPath::from_kind(
-                        segment.coloncolon_token().map_or(PathKind::Plain, |_| PathKind::Abs),
-                    )
-                });
+                let mut res = ModPath::from_kind(
+                    segment.coloncolon_token().map_or(PathKind::Plain, |_| PathKind::Abs),
+                );
                 res.segments.push(name_ref.as_name());
                 res
             }
         }
         ast::PathSegmentKind::SelfTypeKw => {
-            if prefix.is_some() {
-                return None;
-            }
             ModPath::from_segments(PathKind::Plain, Some(known::SELF_TYPE))
         }
-        ast::PathSegmentKind::CrateKw => {
-            if prefix.is_some() {
-                return None;
-            }
-            ModPath::from_segments(PathKind::Crate, iter::empty())
-        }
-        ast::PathSegmentKind::SelfKw => {
-            if prefix.is_some() {
-                return None;
-            }
-            ModPath::from_segments(PathKind::Super(0), iter::empty())
-        }
+        ast::PathSegmentKind::CrateKw => ModPath::from_segments(PathKind::Crate, iter::empty()),
+        ast::PathSegmentKind::SelfKw => ModPath::from_segments(PathKind::Super(0), iter::empty()),
         ast::PathSegmentKind::SuperKw => {
-            let nested_super_count = match prefix.map(|p| p.kind) {
-                Some(PathKind::Super(n)) => n,
-                Some(_) => return None,
-                None => 0,
-            };
+            let mut deg = 1;
+            let mut next_segment = None;
+            for segment in segments.by_ref() {
+                match segment.kind()? {
+                    ast::PathSegmentKind::SuperKw => deg += 1,
+                    ast::PathSegmentKind::Name(name) => {
+                        next_segment = Some(name.as_name());
+                        break;
+                    }
+                    ast::PathSegmentKind::Type { .. }
+                    | ast::PathSegmentKind::SelfTypeKw
+                    | ast::PathSegmentKind::SelfKw
+                    | ast::PathSegmentKind::CrateKw => return None,
+                }
+            }
 
-            ModPath::from_segments(PathKind::Super(nested_super_count + 1), iter::empty())
+            ModPath::from_segments(PathKind::Super(deg), next_segment)
         }
         ast::PathSegmentKind::Type { .. } => {
             // not allowed in imports
             return None;
         }
     };
+
+    for segment in segments {
+        let name = match segment.kind()? {
+            ast::PathSegmentKind::Name(name) => name.as_name(),
+            _ => return None,
+        };
+        mod_path.segments.push(name);
+    }
 
     // handle local_inner_macros :
     // Basically, even in rustc it is quite hacky:
@@ -281,6 +298,46 @@ fn convert_path(
     Some(mod_path)
 }
 
+fn convert_path_tt(db: &dyn ExpandDatabase, tt: &[tt::TokenTree]) -> Option<ModPath> {
+    let mut leaves = tt.iter().filter_map(|tt| match tt {
+        tt::TokenTree::Leaf(leaf) => Some(leaf),
+        tt::TokenTree::Subtree(_) => None,
+    });
+    let mut segments = smallvec::smallvec![];
+    let kind = match leaves.next()? {
+        tt::Leaf::Punct(tt::Punct { char: ':', .. }) => match leaves.next()? {
+            tt::Leaf::Punct(tt::Punct { char: ':', .. }) => PathKind::Abs,
+            _ => return None,
+        },
+        tt::Leaf::Ident(tt::Ident { text, span }) if text == "$crate" => {
+            resolve_crate_root(db, span.ctx).map(PathKind::DollarCrate).unwrap_or(PathKind::Crate)
+        }
+        tt::Leaf::Ident(tt::Ident { text, .. }) if text == "self" => PathKind::Super(0),
+        tt::Leaf::Ident(tt::Ident { text, .. }) if text == "super" => {
+            let mut deg = 1;
+            while let Some(tt::Leaf::Ident(tt::Ident { text, .. })) = leaves.next() {
+                if text != "super" {
+                    segments.push(Name::new_text_dont_use(text.clone()));
+                    break;
+                }
+                deg += 1;
+            }
+            PathKind::Super(deg)
+        }
+        tt::Leaf::Ident(tt::Ident { text, .. }) if text == "crate" => PathKind::Crate,
+        tt::Leaf::Ident(ident) => {
+            segments.push(Name::new_text_dont_use(ident.text.clone()));
+            PathKind::Plain
+        }
+        _ => return None,
+    };
+    segments.extend(leaves.filter_map(|leaf| match leaf {
+        ::tt::Leaf::Ident(ident) => Some(Name::new_text_dont_use(ident.text.clone())),
+        _ => None,
+    }));
+    Some(ModPath { kind, segments })
+}
+
 pub fn resolve_crate_root(db: &dyn ExpandDatabase, mut ctxt: SyntaxContextId) -> Option<CrateId> {
     // When resolving `$crate` from a `macro_rules!` invoked in a `macro`,
     // we don't want to pretend that the `macro_rules!` definition is in the `macro`
@@ -301,7 +358,7 @@ pub fn resolve_crate_root(db: &dyn ExpandDatabase, mut ctxt: SyntaxContextId) ->
         result_mark = Some(mark);
     }
 
-    result_mark.flatten().map(|call| db.lookup_intern_macro_call(call).def.krate)
+    result_mark.map(|call| db.lookup_intern_macro_call(call).def.krate)
 }
 
 pub use crate::name as __name;

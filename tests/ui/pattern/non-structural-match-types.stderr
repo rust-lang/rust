@@ -1,11 +1,11 @@
-error: `{closure@$DIR/non-structural-match-types.rs:10:17: 10:19}` cannot be used in patterns
-  --> $DIR/non-structural-match-types.rs:10:9
+error: `{closure@$DIR/non-structural-match-types.rs:9:17: 9:19}` cannot be used in patterns
+  --> $DIR/non-structural-match-types.rs:9:9
    |
 LL |         const { || {} } => {}
    |         ^^^^^^^^^^^^^^^
 
-error: `{async block@$DIR/non-structural-match-types.rs:13:17: 13:25}` cannot be used in patterns
-  --> $DIR/non-structural-match-types.rs:13:9
+error: `{async block@$DIR/non-structural-match-types.rs:12:17: 12:25}` cannot be used in patterns
+  --> $DIR/non-structural-match-types.rs:12:9
    |
 LL |         const { async {} } => {}
    |         ^^^^^^^^^^^^^^^^^^

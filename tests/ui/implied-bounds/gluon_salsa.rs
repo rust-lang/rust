@@ -1,4 +1,4 @@
-// check-pass
+//@ check-pass
 // Found in a crater run on #118553
 
 pub trait QueryBase {

@@ -1,4 +1,4 @@
-// run-rustfix
+//@ run-rustfix
 trait T {
     type Ty;
 }

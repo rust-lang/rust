@@ -1,4 +1,4 @@
-// compile-flags: -Znext-solver=coherence
+//@ compile-flags: -Znext-solver=coherence
 
 // Makes sure we don't ICE on associated const projection when the feature gate
 // is not enabled, since we should avoid encountering ICEs on stable if possible.

@@ -1,5 +1,5 @@
-// aux-build:attr-from-macro.rs
-// run-pass
+//@ aux-build:attr-from-macro.rs
+//@ run-pass
 
 extern crate attr_from_macro;
 

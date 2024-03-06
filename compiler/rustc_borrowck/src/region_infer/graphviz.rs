@@ -1,5 +1,3 @@
-#![deny(rustc::untranslatable_diagnostic)]
-#![deny(rustc::diagnostic_outside_of_impl)]
 //! This module provides linkage between RegionInferenceContext and
 //! `rustc_graphviz` traits, specialized to attaching borrowck analysis
 //! data to rendered labels.

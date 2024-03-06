@@ -1,7 +1,7 @@
 // This test previously ensured that attributes on formals in generic parameter
 // lists are rejected without a feature gate.
 
-// build-pass (FIXME(62277): could be check-pass?)
+//@ build-pass (FIXME(62277): could be check-pass?)
 
 #![feature(rustc_attrs)]
 

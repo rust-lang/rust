@@ -1,4 +1,4 @@
-// check-pass
+//@ check-pass
 
 #![allow(dead_code, incomplete_features)]
 #![feature(generic_const_exprs)]

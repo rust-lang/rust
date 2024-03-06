@@ -6,13 +6,13 @@ use std::io as sio;
 use std::process::Command;
 use std::{cmp::Ordering, ops, time::Instant};
 
+pub mod anymap;
 mod macros;
-pub mod process;
-pub mod panic_context;
 pub mod non_empty_vec;
+pub mod panic_context;
+pub mod process;
 pub mod rand;
 pub mod thread;
-pub mod anymap;
 
 pub use always_assert::{always, never};
 pub use itertools;
@@ -23,12 +23,14 @@ pub fn is_ci() -> bool {
 }
 
 #[must_use]
+#[allow(clippy::print_stderr)]
 pub fn timeit(label: &'static str) -> impl Drop {
     let start = Instant::now();
     defer(move || eprintln!("{}: {:.2?}", label, start.elapsed()))
 }
 
 /// Prints backtrace to stderr, useful for debugging.
+#[allow(clippy::print_stderr)]
 pub fn print_backtrace() {
     #[cfg(feature = "backtrace")]
     eprintln!("{:?}", backtrace::Backtrace::new());
@@ -298,6 +300,22 @@ where
 /// Returns all final segments of the argument, longest first.
 pub fn slice_tails<T>(this: &[T]) -> impl Iterator<Item = &[T]> {
     (0..this.len()).map(|i| &this[i..])
+}
+
+pub trait IsNoneOr {
+    type Type;
+    #[allow(clippy::wrong_self_convention)]
+    fn is_none_or(self, s: impl FnOnce(Self::Type) -> bool) -> bool;
+}
+#[allow(unstable_name_collisions)]
+impl<T> IsNoneOr for Option<T> {
+    type Type = T;
+    fn is_none_or(self, f: impl FnOnce(T) -> bool) -> bool {
+        match self {
+            Some(v) => f(v),
+            None => true,
+        }
+    }
 }
 
 #[cfg(test)]

@@ -1,9 +1,9 @@
-// run-pass
-// ignore-windows
-// ignore-android
-// ignore-emscripten no processes
-// ignore-haiku
-// ignore-sgx no processes
+//@ run-pass
+//@ ignore-windows
+//@ ignore-android
+//@ ignore-emscripten no processes
+//@ ignore-haiku
+//@ ignore-sgx no processes
 
 #![feature(rustc_private)]
 

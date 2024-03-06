@@ -1,5 +1,5 @@
-// edition:2021
-// run-pass
+//@ edition:2021
+//@ run-pass
 
 // Test that closures can capture paths that are more precise than just one level
 // from the root variable.

@@ -1,3 +1,5 @@
+//! The [`OsStr`] and [`OsString`] types and associated utilities.
+
 #[cfg(test)]
 mod tests;
 
@@ -9,7 +11,7 @@ use crate::hash::{Hash, Hasher};
 use crate::ops::{self, Range};
 use crate::rc::Rc;
 use crate::slice;
-use crate::str::{from_utf8 as str_from_utf8, FromStr};
+use crate::str::FromStr;
 use crate::sync::Arc;
 
 use crate::sys::os_str::{Buf, Slice};
@@ -255,6 +257,7 @@ impl OsString {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
+    #[rustc_confusables("append", "put")]
     pub fn push<T: AsRef<OsStr>>(&mut self, s: T) {
         self.inner.push_slice(&s.as_ref().inner)
     }
@@ -997,42 +1000,15 @@ impl OsStr {
     /// ```
     #[unstable(feature = "os_str_slice", issue = "118485")]
     pub fn slice_encoded_bytes<R: ops::RangeBounds<usize>>(&self, range: R) -> &Self {
-        #[track_caller]
-        fn check_valid_boundary(bytes: &[u8], index: usize) {
-            if index == 0 || index == bytes.len() {
-                return;
-            }
-
-            // Fast path
-            if bytes[index - 1].is_ascii() || bytes[index].is_ascii() {
-                return;
-            }
-
-            let (before, after) = bytes.split_at(index);
-
-            // UTF-8 takes at most 4 bytes per codepoint, so we don't
-            // need to check more than that.
-            let after = after.get(..4).unwrap_or(after);
-            match str_from_utf8(after) {
-                Ok(_) => return,
-                Err(err) if err.valid_up_to() != 0 => return,
-                Err(_) => (),
-            }
-
-            for len in 2..=4.min(index) {
-                let before = &before[index - len..];
-                if str_from_utf8(before).is_ok() {
-                    return;
-                }
-            }
-
-            panic!("byte index {index} is not an OsStr boundary");
-        }
-
         let encoded_bytes = self.as_encoded_bytes();
         let Range { start, end } = slice::range(range, ..encoded_bytes.len());
-        check_valid_boundary(encoded_bytes, start);
-        check_valid_boundary(encoded_bytes, end);
+
+        // `check_public_boundary` should panic if the index does not lie on an
+        // `OsStr` boundary as described above. It's possible to do this in an
+        // encoding-agnostic way, but details of the internal encoding might
+        // permit a more efficient implementation.
+        self.inner.check_public_boundary(start);
+        self.inner.check_public_boundary(end);
 
         // SAFETY: `slice::range` ensures that `start` and `end` are valid
         let slice = unsafe { encoded_bytes.get_unchecked(start..end) };
@@ -1172,6 +1148,32 @@ impl OsStr {
     #[stable(feature = "osstring_ascii", since = "1.53.0")]
     pub fn eq_ignore_ascii_case<S: AsRef<OsStr>>(&self, other: S) -> bool {
         self.inner.eq_ignore_ascii_case(&other.as_ref().inner)
+    }
+
+    /// Returns an object that implements [`Display`] for safely printing an
+    /// [`OsStr`] that may contain non-Unicode data. This may perform lossy
+    /// conversion, depending on the platform.  If you would like an
+    /// implementation which escapes the [`OsStr`] please use [`Debug`]
+    /// instead.
+    ///
+    /// [`Display`]: fmt::Display
+    /// [`Debug`]: fmt::Debug
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(os_str_display)]
+    /// use std::ffi::OsStr;
+    ///
+    /// let s = OsStr::new("Hello, world!");
+    /// println!("{}", s.display());
+    /// ```
+    #[unstable(feature = "os_str_display", issue = "120048")]
+    #[must_use = "this does not display the `OsStr`; \
+                  it returns an object that can be displayed"]
+    #[inline]
+    pub fn display(&self) -> Display<'_> {
+        Display { os_str: self }
     }
 }
 
@@ -1467,9 +1469,42 @@ impl fmt::Debug for OsStr {
     }
 }
 
-impl OsStr {
-    pub(crate) fn display(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
-        fmt::Display::fmt(&self.inner, formatter)
+/// Helper struct for safely printing an [`OsStr`] with [`format!`] and `{}`.
+///
+/// An [`OsStr`] might contain non-Unicode data. This `struct` implements the
+/// [`Display`] trait in a way that mitigates that. It is created by the
+/// [`display`](OsStr::display) method on [`OsStr`]. This may perform lossy
+/// conversion, depending on the platform. If you would like an implementation
+/// which escapes the [`OsStr`] please use [`Debug`] instead.
+///
+/// # Examples
+///
+/// ```
+/// #![feature(os_str_display)]
+/// use std::ffi::OsStr;
+///
+/// let s = OsStr::new("Hello, world!");
+/// println!("{}", s.display());
+/// ```
+///
+/// [`Display`]: fmt::Display
+/// [`format!`]: crate::format
+#[unstable(feature = "os_str_display", issue = "120048")]
+pub struct Display<'a> {
+    os_str: &'a OsStr,
+}
+
+#[unstable(feature = "os_str_display", issue = "120048")]
+impl fmt::Debug for Display<'_> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        fmt::Debug::fmt(&self.os_str, f)
+    }
+}
+
+#[unstable(feature = "os_str_display", issue = "120048")]
+impl fmt::Display for Display<'_> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        fmt::Display::fmt(&self.os_str.inner, f)
     }
 }
 

@@ -1,4 +1,4 @@
-// check-pass
+//@ check-pass
 
 #![feature(generic_const_items, associated_const_equality)]
 #![allow(incomplete_features)]

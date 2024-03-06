@@ -1,9 +1,15 @@
 #![allow(dead_code)]
 
+fn is_any(acc: bool, x: usize) -> bool {
+    acc || x > 2
+}
+
 /// Calls which should trigger the `UNNECESSARY_FOLD` lint
 fn unnecessary_fold() {
     // Can be replaced by .any
     let _ = (0..3).fold(false, |acc, x| acc || x > 2);
+    // Can be replaced by .any (checking suggestion)
+    let _ = (0..3).fold(false, |acc, x| is_any(acc, x));
     // Can be replaced by .all
     let _ = (0..3).fold(true, |acc, x| acc && x > 2);
     // Can be replaced by .sum

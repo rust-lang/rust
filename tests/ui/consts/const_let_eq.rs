@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 
 struct Foo<T>(T);
 struct Bar<T> { x: T }

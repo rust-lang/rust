@@ -1,7 +1,7 @@
 #![feature(type_alias_impl_trait)]
-// edition:2021
-// check-pass
-// revisions: tait rpit
+//@ edition:2021
+//@ check-pass
+//@ revisions: tait rpit
 
 struct Pending {}
 

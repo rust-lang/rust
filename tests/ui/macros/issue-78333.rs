@@ -1,4 +1,4 @@
-// build-pass
+//@ build-pass
 
 #![no_implicit_prelude]
 

@@ -1,7 +1,7 @@
-// revisions: current next
-//[next] compile-flags: -Znext-solver
+//@ revisions: current next
+//@[next] compile-flags: -Znext-solver
 
-//[next] build-fail
+//@[next] build-fail
 // Deeply normalizing writeback results of opaques makes this into a post-mono error :(
 
 #![feature(coroutines)]

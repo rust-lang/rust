@@ -1,4 +1,4 @@
-// aux-build:macro-in-other-crate.rs
+//@ aux-build:macro-in-other-crate.rs
 
 #[macro_use] extern crate macro_in_other_crate;
 

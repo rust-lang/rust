@@ -8,7 +8,7 @@ use rustc_middle::ty::print::{with_no_trimmed_paths, with_no_visible_paths};
 use rustc_middle::ty::{self, Ty, TypeVisitableExt};
 use rustc_target::abi::HasDataLayout;
 use rustc_target::abi::{Abi, Align, FieldsShape};
-use rustc_target::abi::{Int, Pointer, F32, F64};
+use rustc_target::abi::{Int, Pointer, F128, F16, F32, F64};
 use rustc_target::abi::{Scalar, Size, Variants};
 use smallvec::{smallvec, SmallVec};
 
@@ -33,7 +33,7 @@ fn uncached_llvm_type<'a, 'tcx>(
         // FIXME(eddyb) producing readable type names for trait objects can result
         // in problematically distinct types due to HRTB and subtyping (see #47638).
         // ty::Dynamic(..) |
-        ty::Adt(..) | ty::Closure(..) | ty::Foreign(..) | ty::Coroutine(..) | ty::Str
+        ty::Adt(..) | ty::Closure(..) | ty::CoroutineClosure(..) | ty::Foreign(..) | ty::Coroutine(..) | ty::Str
             // For performance reasons we use names only when emitting LLVM IR.
             if !cx.sess().fewer_names() =>
         {
@@ -174,7 +174,6 @@ pub trait LayoutLlvmExt<'tcx> {
         index: usize,
         immediate: bool,
     ) -> &'a Type;
-    fn llvm_field_index<'a>(&self, cx: &CodegenCx<'a, 'tcx>, index: usize) -> u64;
     fn scalar_copy_llvm_type<'a>(&self, cx: &CodegenCx<'a, 'tcx>) -> Option<&'a Type>;
 }
 
@@ -291,8 +290,10 @@ impl<'tcx> LayoutLlvmExt<'tcx> for TyAndLayout<'tcx> {
     fn scalar_llvm_type_at<'a>(&self, cx: &CodegenCx<'a, 'tcx>, scalar: Scalar) -> &'a Type {
         match scalar.primitive() {
             Int(i, _) => cx.type_from_integer(i),
+            F16 => cx.type_f16(),
             F32 => cx.type_f32(),
             F64 => cx.type_f64(),
+            F128 => cx.type_f128(),
             Pointer(address_space) => cx.type_ptr_ext(address_space),
         }
     }
@@ -322,42 +323,6 @@ impl<'tcx> LayoutLlvmExt<'tcx> for TyAndLayout<'tcx> {
         }
 
         self.scalar_llvm_type_at(cx, scalar)
-    }
-
-    fn llvm_field_index<'a>(&self, cx: &CodegenCx<'a, 'tcx>, index: usize) -> u64 {
-        match self.abi {
-            Abi::Scalar(_) | Abi::ScalarPair(..) => {
-                bug!("TyAndLayout::llvm_field_index({:?}): not applicable", self)
-            }
-            _ => {}
-        }
-        match self.fields {
-            FieldsShape::Primitive | FieldsShape::Union(_) => {
-                bug!("TyAndLayout::llvm_field_index({:?}): not applicable", self)
-            }
-
-            FieldsShape::Array { .. } => index as u64,
-
-            FieldsShape::Arbitrary { .. } => {
-                let variant_index = match self.variants {
-                    Variants::Single { index } => Some(index),
-                    _ => None,
-                };
-
-                // Look up llvm field if indexes do not match memory order due to padding. If
-                // `field_remapping` is `None` no padding was used and the llvm field index
-                // matches the memory index.
-                match cx.type_lowering.borrow().get(&(self.ty, variant_index)) {
-                    Some(TypeLowering { field_remapping: Some(ref remap), .. }) => {
-                        remap[index] as u64
-                    }
-                    Some(_) => self.fields.memory_index(index) as u64,
-                    None => {
-                        bug!("TyAndLayout::llvm_field_index({:?}): type info not found", self)
-                    }
-                }
-            }
-        }
     }
 
     fn scalar_copy_llvm_type<'a>(&self, cx: &CodegenCx<'a, 'tcx>) -> Option<&'a Type> {

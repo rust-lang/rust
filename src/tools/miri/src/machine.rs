@@ -2,7 +2,7 @@
 //! `Machine` trait.
 
 use std::borrow::Cow;
-use std::cell::{Cell, RefCell};
+use std::cell::RefCell;
 use std::collections::hash_map::Entry;
 use std::fmt;
 use std::path::Path;
@@ -113,6 +113,8 @@ pub enum MiriMemoryKind {
     C,
     /// Windows `HeapAlloc` memory.
     WinHeap,
+    /// Windows "local" memory (to be freed with `LocalFree`)
+    WinLocal,
     /// Memory for args, errno, and other parts of the machine-managed environment.
     /// This memory may leak.
     Machine,
@@ -144,7 +146,7 @@ impl MayLeak for MiriMemoryKind {
     fn may_leak(self) -> bool {
         use self::MiriMemoryKind::*;
         match self {
-            Rust | Miri | C | WinHeap | Runtime => false,
+            Rust | Miri | C | WinHeap | WinLocal | Runtime => false,
             Machine | Global | ExternStatic | Tls | Mmap => true,
         }
     }
@@ -156,7 +158,7 @@ impl MiriMemoryKind {
         use self::MiriMemoryKind::*;
         match self {
             // Heap allocations are fine since the `Allocation` is created immediately.
-            Rust | Miri | C | WinHeap | Mmap => true,
+            Rust | Miri | C | WinHeap | WinLocal | Mmap => true,
             // Everything else is unclear, let's not show potentially confusing spans.
             Machine | Global | ExternStatic | Tls | Runtime => false,
         }
@@ -171,6 +173,7 @@ impl fmt::Display for MiriMemoryKind {
             Miri => write!(f, "Miri bare-metal heap"),
             C => write!(f, "C heap"),
             WinHeap => write!(f, "Windows heap"),
+            WinLocal => write!(f, "Windows local memory"),
             Machine => write!(f, "machine-managed memory"),
             Runtime => write!(f, "language runtime memory"),
             Global => write!(f, "global (static or const)"),
@@ -336,20 +339,11 @@ pub struct AllocExtra<'tcx> {
     /// if this allocation is leakable. The backtrace is not
     /// pruned yet; that should be done before printing it.
     pub backtrace: Option<Vec<FrameInfo<'tcx>>>,
-    /// An offset inside this allocation that was deemed aligned even for symbolic alignment checks.
-    /// Invariant: the promised alignment will never be less than the native alignment of this allocation.
-    pub symbolic_alignment: Cell<Option<(Size, Align)>>,
 }
 
 impl VisitProvenance for AllocExtra<'_> {
     fn visit_provenance(&self, visit: &mut VisitWith<'_>) {
-        let AllocExtra {
-            borrow_tracker,
-            data_race,
-            weak_memory,
-            backtrace: _,
-            symbolic_alignment: _,
-        } = self;
+        let AllocExtra { borrow_tracker, data_race, weak_memory, backtrace: _ } = self;
 
         borrow_tracker.visit_provenance(visit);
         data_race.visit_provenance(visit);
@@ -521,6 +515,8 @@ pub struct MiriMachine<'mir, 'tcx> {
     /// The allocation IDs to report when they are being allocated
     /// (helps for debugging memory leaks and use after free bugs).
     tracked_alloc_ids: FxHashSet<AllocId>,
+    /// For the tracked alloc ids, also report read/write accesses.
+    track_alloc_accesses: bool,
 
     /// Controls whether alignment of memory accesses is being checked.
     pub(crate) check_alignment: AlignmentCheck,
@@ -572,6 +568,14 @@ pub struct MiriMachine<'mir, 'tcx> {
     /// that is fixed per stack frame; this lets us have sometimes different results for the
     /// same const while ensuring consistent results within a single call.
     const_cache: RefCell<FxHashMap<(mir::Const<'tcx>, usize), OpTy<'tcx, Provenance>>>,
+
+    /// For each allocation, an offset inside that allocation that was deemed aligned even for
+    /// symbolic alignment checks. This cannot be stored in `AllocExtra` since it needs to be
+    /// tracked for vtables and function allocations as well as regular allocations.
+    ///
+    /// Invariant: the promised alignment will never be less than the native alignment of the
+    /// allocation.
+    pub(crate) symbolic_alignment: RefCell<FxHashMap<AllocId, (Size, Align)>>,
 }
 
 impl<'mir, 'tcx> MiriMachine<'mir, 'tcx> {
@@ -655,6 +659,7 @@ impl<'mir, 'tcx> MiriMachine<'mir, 'tcx> {
             extern_statics: FxHashMap::default(),
             rng: RefCell::new(rng),
             tracked_alloc_ids: config.tracked_alloc_ids.clone(),
+            track_alloc_accesses: config.track_alloc_accesses,
             check_alignment: config.check_alignment,
             cmpxchg_weak_failure_rate: config.cmpxchg_weak_failure_rate,
             mute_stdout_stderr: config.mute_stdout_stderr,
@@ -698,6 +703,7 @@ impl<'mir, 'tcx> MiriMachine<'mir, 'tcx> {
             collect_leak_backtraces: config.collect_leak_backtraces,
             allocation_spans: RefCell::new(FxHashMap::default()),
             const_cache: RefCell::new(FxHashMap::default()),
+            symbolic_alignment: RefCell::new(FxHashMap::default()),
         }
     }
 
@@ -793,6 +799,7 @@ impl VisitProvenance for MiriMachine<'_, '_> {
             local_crates: _,
             rng: _,
             tracked_alloc_ids: _,
+            track_alloc_accesses: _,
             check_alignment: _,
             cmpxchg_weak_failure_rate: _,
             mute_stdout_stderr: _,
@@ -810,6 +817,7 @@ impl VisitProvenance for MiriMachine<'_, '_> {
             collect_leak_backtraces: _,
             allocation_spans: _,
             const_cache: _,
+            symbolic_alignment: _,
         } = self;
 
         threads.visit_provenance(visit);
@@ -893,9 +901,13 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for MiriMachine<'mir, 'tcx> {
             return None;
         }
         // Let's see which alignment we have been promised for this allocation.
-        let alloc_info = ecx.get_alloc_extra(alloc_id).unwrap(); // cannot fail since the allocation is live
-        let (promised_offset, promised_align) =
-            alloc_info.symbolic_alignment.get().unwrap_or((Size::ZERO, alloc_align));
+        let (promised_offset, promised_align) = ecx
+            .machine
+            .symbolic_alignment
+            .borrow()
+            .get(&alloc_id)
+            .copied()
+            .unwrap_or((Size::ZERO, alloc_align));
         if promised_align < align {
             // Definitely not enough.
             Some(Misalignment { has: promised_align, required: align })
@@ -1132,7 +1144,6 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for MiriMachine<'mir, 'tcx> {
                 data_race: race_alloc,
                 weak_memory: buffer_alloc,
                 backtrace,
-                symbolic_alignment: Cell::new(None),
             },
             |ptr| ecx.global_base_pointer(ptr),
         )?;
@@ -1231,6 +1242,10 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for MiriMachine<'mir, 'tcx> {
         (alloc_id, prov_extra): (AllocId, Self::ProvenanceExtra),
         range: AllocRange,
     ) -> InterpResult<'tcx> {
+        if machine.track_alloc_accesses && machine.tracked_alloc_ids.contains(&alloc_id) {
+            machine
+                .emit_diagnostic(NonHaltingDiagnostic::AccessedAlloc(alloc_id, AccessKind::Read));
+        }
         if let Some(data_race) = &alloc_extra.data_race {
             data_race.read(alloc_id, range, machine)?;
         }
@@ -1251,6 +1266,10 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for MiriMachine<'mir, 'tcx> {
         (alloc_id, prov_extra): (AllocId, Self::ProvenanceExtra),
         range: AllocRange,
     ) -> InterpResult<'tcx> {
+        if machine.track_alloc_accesses && machine.tracked_alloc_ids.contains(&alloc_id) {
+            machine
+                .emit_diagnostic(NonHaltingDiagnostic::AccessedAlloc(alloc_id, AccessKind::Write));
+        }
         if let Some(data_race) = &mut alloc_extra.data_race {
             data_race.write(alloc_id, range, machine)?;
         }

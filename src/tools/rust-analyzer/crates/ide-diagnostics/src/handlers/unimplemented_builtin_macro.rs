@@ -10,7 +10,7 @@ pub(crate) fn unimplemented_builtin_macro(
     Diagnostic::new_with_syntax_node_ptr(
         ctx,
         DiagnosticCode::Ra("unimplemented-builtin-macro", Severity::WeakWarning),
-        "unimplemented built-in macro".to_string(),
+        "unimplemented built-in macro".to_owned(),
         d.node,
     )
 }

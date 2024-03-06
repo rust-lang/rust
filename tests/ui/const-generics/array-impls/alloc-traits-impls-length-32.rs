@@ -1,4 +1,4 @@
-// check-pass
+//@ check-pass
 
 pub fn yes_vec_partial_eq_array<A, B>() -> impl PartialEq<[B; 32]>
 where

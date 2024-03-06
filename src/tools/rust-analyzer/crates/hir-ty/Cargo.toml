@@ -36,6 +36,7 @@ indexmap.workspace = true
 
 ra-ap-rustc_abi.workspace = true
 ra-ap-rustc_index.workspace = true
+ra-ap-rustc_pattern_analysis.workspace = true
 
 
 # local deps

@@ -1,6 +1,6 @@
-// min-lldb-version: 310
+//@ min-lldb-version: 310
 
-// compile-flags:-g
+//@ compile-flags:-g
 
 // This test checks whether debuginfo generation can handle multi-byte UTF-8
 // characters at the end of a block. There's no need to do anything in the

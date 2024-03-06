@@ -5,7 +5,7 @@ trait X {
     type Y<T>;
 }
 
-trait M {
+trait M { //~ NOTE
     fn f(&self) {}
 }
 
@@ -16,9 +16,7 @@ impl<T: X<Y<i32> = i32>> M for T {}
 //~| NOTE
 
 struct S;
-//~^ NOTE method `f` not found for this
-//~| NOTE doesn't satisfy `<S as X>::Y<i32> = i32`
-//~| NOTE doesn't satisfy `S: M`
+//~^ NOTE method `f` not found for this struct because it doesn't satisfy `<S as X>::Y<i32> = i32` or `S: M`
 
 impl X for S {
     type Y<T> = bool;

@@ -1,7 +1,7 @@
 // Here we test all the places `|` is *syntactically* allowed.
 // This is not a semantic test. We only test parsing.
 
-// check-pass
+//@ check-pass
 
 fn main() {}
 

@@ -11,9 +11,10 @@ use crate::mir::mono::{Instance, InstanceDef, StaticDef};
 use crate::mir::Body;
 use crate::target::MachineInfo;
 use crate::ty::{
-    AdtDef, AdtKind, Allocation, ClosureDef, ClosureKind, Const, FieldDef, FnDef, GenericArgs,
-    GenericPredicates, Generics, ImplDef, ImplTrait, LineInfo, PolyFnSig, RigidTy, Span, TraitDecl,
-    TraitDef, Ty, TyKind, VariantDef,
+    AdtDef, AdtKind, Allocation, ClosureDef, ClosureKind, Const, FieldDef, FnDef, ForeignDef,
+    ForeignItemKind, ForeignModule, ForeignModuleDef, GenericArgs, GenericPredicates, Generics,
+    ImplDef, ImplTrait, LineInfo, PolyFnSig, RigidTy, Span, TraitDecl, TraitDef, Ty, TyKind,
+    VariantDef,
 };
 use crate::{
     mir, Crate, CrateItem, CrateItems, CrateNum, DefId, Error, Filename, ImplTraitDecls, ItemKind,
@@ -31,6 +32,9 @@ pub trait Context {
     fn mir_body(&self, item: DefId) -> mir::Body;
     /// Check whether the body of a function is available.
     fn has_body(&self, item: DefId) -> bool;
+    fn foreign_modules(&self, crate_num: CrateNum) -> Vec<ForeignModuleDef>;
+    fn foreign_module(&self, mod_def: ForeignModuleDef) -> ForeignModule;
+    fn foreign_items(&self, mod_def: ForeignModuleDef) -> Vec<ForeignDef>;
     fn all_trait_decls(&self) -> TraitDecls;
     fn trait_decls(&self, crate_num: CrateNum) -> TraitDecls;
     fn trait_decl(&self, trait_def: &TraitDef) -> TraitDecl;
@@ -65,6 +69,9 @@ pub trait Context {
 
     /// Returns whether this is a foreign item.
     fn is_foreign_item(&self, item: DefId) -> bool;
+
+    /// Returns the kind of a given foreign item.
+    fn foreign_item_kind(&self, def: ForeignDef) -> ForeignItemKind;
 
     /// Returns the kind of a given algebraic data type
     fn adt_kind(&self, def: AdtDef) -> AdtKind;
@@ -124,7 +131,7 @@ pub trait Context {
     /// Get the body of an Instance which is already monomorphized.
     fn instance_body(&self, instance: InstanceDef) -> Option<Body>;
 
-    /// Get the instance type with generic substitutions applied and lifetimes erased.
+    /// Get the instance type with generic instantiations applied and lifetimes erased.
     fn instance_ty(&self, instance: InstanceDef) -> Ty;
 
     /// Get the instantiation types.
@@ -201,7 +208,7 @@ where
     if TLV.is_set() {
         Err(Error::from("StableMIR already running"))
     } else {
-        let ptr: *const () = &context as *const &_ as _;
+        let ptr: *const () = std::ptr::addr_of!(context) as _;
         TLV.set(&Cell::new(ptr), || Ok(f()))
     }
 }

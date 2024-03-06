@@ -1,9 +1,9 @@
-// run-pass
+//@ run-pass
 
 #![allow(unused_variables)]
 // Test coercions between pointers which don't do anything fancy like unsizing.
 
-// pretty-expanded FIXME #23616
+//@ pretty-expanded FIXME #23616
 
 pub fn main() {
     // &mut -> &

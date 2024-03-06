@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 
 #![allow(dead_code)]
 // Make sure #1399 stays fixed

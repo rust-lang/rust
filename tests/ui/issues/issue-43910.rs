@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 #![deny(unused_variables)]
 
 fn main() {

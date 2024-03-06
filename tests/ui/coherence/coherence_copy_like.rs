@@ -1,9 +1,9 @@
-// run-pass
+//@ run-pass
 #![allow(dead_code)]
 // Test that we are able to introduce a negative constraint that
 // `MyType: !MyTrait` along with other "fundamental" wrappers.
 
-// aux-build:coherence_copy_like_lib.rs
+//@ aux-build:coherence_copy_like_lib.rs
 
 extern crate coherence_copy_like_lib as lib;
 

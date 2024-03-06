@@ -1,4 +1,4 @@
-// ignore-wasm32 FIXME: ignoring wasm as it suggests slightly different impls
+//@ ignore-wasm32 FIXME: ignoring wasm as it suggests slightly different impls
 
 // Regression test for #72616, it used to emit incorrect diagnostics, like:
 // error[E0283]: type annotations needed for `String`

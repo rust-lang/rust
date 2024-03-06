@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 // Test that we "reset" the mode as we pass through a `&` pattern.
 //
 // cc #46688

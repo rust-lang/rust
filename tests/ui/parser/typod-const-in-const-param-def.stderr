@@ -4,7 +4,7 @@ error: `const` keyword was mistyped as `Const`
 LL | pub fn foo<Const N: u8>() {}
    |            ^^^^^
    |
-help: use the `const` keyword
+help: use the `const` keyword (notice the capitalization difference)
    |
 LL | pub fn foo<const N: u8>() {}
    |            ~~~~~
@@ -15,7 +15,7 @@ error: `const` keyword was mistyped as `Const`
 LL | pub fn baz<Const N: u8, T>() {}
    |            ^^^^^
    |
-help: use the `const` keyword
+help: use the `const` keyword (notice the capitalization difference)
    |
 LL | pub fn baz<const N: u8, T>() {}
    |            ~~~~~
@@ -26,7 +26,7 @@ error: `const` keyword was mistyped as `Const`
 LL | pub fn qux<T, Const N: u8>() {}
    |               ^^^^^
    |
-help: use the `const` keyword
+help: use the `const` keyword (notice the capitalization difference)
    |
 LL | pub fn qux<T, const N: u8>() {}
    |               ~~~~~
@@ -37,7 +37,7 @@ error: `const` keyword was mistyped as `Const`
 LL | pub fn quux<T, Const N: u8, U>() {}
    |                ^^^^^
    |
-help: use the `const` keyword
+help: use the `const` keyword (notice the capitalization difference)
    |
 LL | pub fn quux<T, const N: u8, U>() {}
    |                ~~~~~

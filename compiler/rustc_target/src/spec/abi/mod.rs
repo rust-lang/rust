@@ -44,7 +44,6 @@ pub enum Abi {
     PtxKernel,
     Msp430Interrupt,
     X86Interrupt,
-    AmdGpuKernel,
     EfiApi,
     AvrInterrupt,
     AvrNonBlockingInterrupt,
@@ -55,7 +54,6 @@ pub enum Abi {
     },
     RustIntrinsic,
     RustCall,
-    PlatformIntrinsic,
     Unadjusted,
     /// For things unlikely to be called, where reducing register pressure in
     /// `extern "Rust"` callers is worth paying extra cost in the callee.
@@ -121,7 +119,6 @@ const AbiDatas: &[AbiData] = &[
     AbiData { abi: Abi::PtxKernel, name: "ptx-kernel" },
     AbiData { abi: Abi::Msp430Interrupt, name: "msp430-interrupt" },
     AbiData { abi: Abi::X86Interrupt, name: "x86-interrupt" },
-    AbiData { abi: Abi::AmdGpuKernel, name: "amdgpu-kernel" },
     AbiData { abi: Abi::EfiApi, name: "efiapi" },
     AbiData { abi: Abi::AvrInterrupt, name: "avr-interrupt" },
     AbiData { abi: Abi::AvrNonBlockingInterrupt, name: "avr-non-blocking-interrupt" },
@@ -131,7 +128,6 @@ const AbiDatas: &[AbiData] = &[
     AbiData { abi: Abi::System { unwind: true }, name: "system-unwind" },
     AbiData { abi: Abi::RustIntrinsic, name: "rust-intrinsic" },
     AbiData { abi: Abi::RustCall, name: "rust-call" },
-    AbiData { abi: Abi::PlatformIntrinsic, name: "platform-intrinsic" },
     AbiData { abi: Abi::Unadjusted, name: "unadjusted" },
     AbiData { abi: Abi::RustCold, name: "rust-cold" },
     AbiData { abi: Abi::RiscvInterruptM, name: "riscv-interrupt-m" },
@@ -201,10 +197,6 @@ pub fn is_stable(name: &str) -> Result<(), AbiDisabled> {
             feature: sym::intrinsics,
             explain: "intrinsics are subject to change",
         }),
-        "platform-intrinsic" => Err(AbiDisabled::Unstable {
-            feature: sym::platform_intrinsics,
-            explain: "platform intrinsics are experimental and possibly buggy",
-        }),
         "vectorcall" => Err(AbiDisabled::Unstable {
             feature: sym::abi_vectorcall,
             explain: "vectorcall is experimental and subject to change",
@@ -236,10 +228,6 @@ pub fn is_stable(name: &str) -> Result<(), AbiDisabled> {
         "x86-interrupt" => Err(AbiDisabled::Unstable {
             feature: sym::abi_x86_interrupt,
             explain: "x86-interrupt ABI is experimental and subject to change",
-        }),
-        "amdgpu-kernel" => Err(AbiDisabled::Unstable {
-            feature: sym::abi_amdgpu_kernel,
-            explain: "amdgpu-kernel ABI is experimental and subject to change",
         }),
         "avr-interrupt" | "avr-non-blocking-interrupt" => Err(AbiDisabled::Unstable {
             feature: sym::abi_avr_interrupt,
@@ -295,22 +283,20 @@ impl Abi {
             PtxKernel => 19,
             Msp430Interrupt => 20,
             X86Interrupt => 21,
-            AmdGpuKernel => 22,
-            EfiApi => 23,
-            AvrInterrupt => 24,
-            AvrNonBlockingInterrupt => 25,
-            CCmseNonSecureCall => 26,
-            Wasm => 27,
+            EfiApi => 22,
+            AvrInterrupt => 23,
+            AvrNonBlockingInterrupt => 24,
+            CCmseNonSecureCall => 25,
+            Wasm => 26,
             // Cross-platform ABIs
-            System { unwind: false } => 28,
-            System { unwind: true } => 29,
-            RustIntrinsic => 30,
-            RustCall => 31,
-            PlatformIntrinsic => 32,
-            Unadjusted => 33,
-            RustCold => 34,
-            RiscvInterruptM => 35,
-            RiscvInterruptS => 36,
+            System { unwind: false } => 27,
+            System { unwind: true } => 28,
+            RustIntrinsic => 29,
+            RustCall => 30,
+            Unadjusted => 31,
+            RustCold => 32,
+            RiscvInterruptM => 33,
+            RiscvInterruptS => 34,
         };
         debug_assert!(
             AbiDatas

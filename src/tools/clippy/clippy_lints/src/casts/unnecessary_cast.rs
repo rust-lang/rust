@@ -2,7 +2,7 @@ use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::numeric_literal::NumericLiteral;
 use clippy_utils::source::snippet_opt;
 use clippy_utils::visitors::{for_each_expr, Visitable};
-use clippy_utils::{get_parent_expr, get_parent_node, is_hir_ty_cfg_dependant, is_ty_alias, path_to_local};
+use clippy_utils::{get_parent_expr, is_hir_ty_cfg_dependant, is_ty_alias, path_to_local};
 use rustc_ast::{LitFloatType, LitIntType, LitKind};
 use rustc_errors::Applicability;
 use rustc_hir::def::{DefKind, Res};
@@ -65,7 +65,7 @@ pub(super) fn check<'tcx>(
         && let ExprKind::Path(qpath) = inner.kind
         && let QPath::Resolved(None, Path { res, .. }) = qpath
         && let Res::Local(hir_id) = res
-        && let parent = cx.tcx.hir().get_parent(*hir_id)
+        && let parent = cx.tcx.parent_hir_node(*hir_id)
         && let Node::Local(local) = parent
     {
         if let Some(ty) = local.ty
@@ -144,8 +144,7 @@ pub(super) fn check<'tcx>(
 
     if cast_from.kind() == cast_to.kind() && !in_external_macro(cx.sess(), expr.span) {
         if let Some(id) = path_to_local(cast_expr)
-            && let Some(span) = cx.tcx.hir().opt_span(id)
-            && !span.eq_ctxt(cast_expr.span)
+            && !cx.tcx.hir().span(id).eq_ctxt(cast_expr.span)
         {
             // Binding context is different than the identifiers context.
             // Weird macro wizardry could be involved here.
@@ -265,8 +264,7 @@ fn is_cast_from_ty_alias<'tcx>(cx: &LateContext<'tcx>, expr: impl Visitable<'tcx
                 }
             // Local usage
             } else if let Res::Local(hir_id) = res
-                && let Some(parent) = get_parent_node(cx.tcx, hir_id)
-                && let Node::Local(l) = parent
+                && let Node::Local(l) = cx.tcx.parent_hir_node(hir_id)
             {
                 if let Some(e) = l.init
                     && is_cast_from_ty_alias(cx, e, cast_from)

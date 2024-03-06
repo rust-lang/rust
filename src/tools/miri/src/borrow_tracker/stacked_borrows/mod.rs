@@ -9,8 +9,6 @@ use std::cmp;
 use std::fmt::Write;
 use std::mem;
 
-use log::trace;
-
 use rustc_data_structures::fx::FxHashSet;
 use rustc_middle::mir::{Mutability, RetagKind};
 use rustc_middle::ty::{self, layout::HasParamEnv, Ty};
@@ -18,7 +16,7 @@ use rustc_target::abi::{Abi, Size};
 
 use crate::borrow_tracker::{
     stacked_borrows::diagnostics::{AllocHistory, DiagnosticCx, DiagnosticCxBuilder},
-    AccessKind, GlobalStateInner, ProtectorKind,
+    GlobalStateInner, ProtectorKind,
 };
 use crate::*;
 

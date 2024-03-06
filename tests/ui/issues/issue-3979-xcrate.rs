@@ -1,6 +1,6 @@
-// run-pass
+//@ run-pass
 #![allow(dead_code)]
-// aux-build:issue-3979-traits.rs
+//@ aux-build:issue-3979-traits.rs
 
 extern crate issue_3979_traits;
 use issue_3979_traits::{Positioned, Movable};

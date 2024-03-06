@@ -1,4 +1,4 @@
-// ignore-test: not a test
+//@ ignore-test: not a test
 
 pub mod y {
     pub mod z;

@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 
 pub trait Iter {
     type Item<'a> where Self: 'a;

@@ -11,8 +11,8 @@ use core::iter::{
     TrustedRandomAccessNoCoerce,
 };
 use core::marker::PhantomData;
-use core::mem::{self, ManuallyDrop, MaybeUninit, SizedTypeProperties};
-use core::num::NonZeroUsize;
+use core::mem::{ManuallyDrop, MaybeUninit, SizedTypeProperties};
+use core::num::NonZero;
 #[cfg(not(no_global_oom_handling))]
 use core::ops::Deref;
 use core::ptr::{self, NonNull};
@@ -136,7 +136,7 @@ impl<T, A: Allocator> IntoIter<T, A> {
         // struct and then overwriting &mut self.
         // this creates less assembly
         self.cap = 0;
-        self.buf = unsafe { NonNull::new_unchecked(RawVec::NEW.ptr()) };
+        self.buf = RawVec::NEW.non_null();
         self.ptr = self.buf;
         self.end = self.buf.as_ptr();
 
@@ -200,27 +200,23 @@ impl<T, A: Allocator> Iterator for IntoIter<T, A> {
 
     #[inline]
     fn next(&mut self) -> Option<T> {
-        if T::IS_ZST {
-            if self.ptr.as_ptr() == self.end as *mut _ {
-                None
-            } else {
-                // `ptr` has to stay where it is to remain aligned, so we reduce the length by 1 by
-                // reducing the `end`.
-                self.end = self.end.wrapping_byte_sub(1);
-
-                // Make up a value of this ZST.
-                Some(unsafe { mem::zeroed() })
+        let ptr = if T::IS_ZST {
+            if self.ptr.as_ptr() == self.end as *mut T {
+                return None;
             }
+            // `ptr` has to stay where it is to remain aligned, so we reduce the length by 1 by
+            // reducing the `end`.
+            self.end = self.end.wrapping_byte_sub(1);
+            self.ptr
         } else {
             if self.ptr == non_null!(self.end, T) {
-                None
-            } else {
-                let old = self.ptr;
-                self.ptr = unsafe { old.add(1) };
-
-                Some(unsafe { ptr::read(old.as_ptr()) })
+                return None;
             }
-        }
+            let old = self.ptr;
+            self.ptr = unsafe { old.add(1) };
+            old
+        };
+        Some(unsafe { ptr.read() })
     }
 
     #[inline]
@@ -234,7 +230,7 @@ impl<T, A: Allocator> Iterator for IntoIter<T, A> {
     }
 
     #[inline]
-    fn advance_by(&mut self, n: usize) -> Result<(), NonZeroUsize> {
+    fn advance_by(&mut self, n: usize) -> Result<(), NonZero<usize>> {
         let step_size = self.len().min(n);
         let to_drop = ptr::slice_from_raw_parts_mut(self.ptr.as_ptr(), step_size);
         if T::IS_ZST {
@@ -248,7 +244,7 @@ impl<T, A: Allocator> Iterator for IntoIter<T, A> {
         unsafe {
             ptr::drop_in_place(to_drop);
         }
-        NonZeroUsize::new(n - step_size).map_or(Ok(()), Err)
+        NonZero::new(n - step_size).map_or(Ok(()), Err)
     }
 
     #[inline]
@@ -305,7 +301,7 @@ impl<T, A: Allocator> Iterator for IntoIter<T, A> {
         // Also note the implementation of `Self: TrustedRandomAccess` requires
         // that `T: Copy` so reading elements from the buffer doesn't invalidate
         // them for `Drop`.
-        unsafe { if T::IS_ZST { mem::zeroed() } else { self.ptr.add(i).read() } }
+        unsafe { self.ptr.add(i).read() }
     }
 }
 
@@ -314,29 +310,28 @@ impl<T, A: Allocator> DoubleEndedIterator for IntoIter<T, A> {
     #[inline]
     fn next_back(&mut self) -> Option<T> {
         if T::IS_ZST {
-            if self.end as *mut _ == self.ptr.as_ptr() {
-                None
-            } else {
-                // See above for why 'ptr.offset' isn't used
-                self.end = self.end.wrapping_byte_sub(1);
-
-                // Make up a value of this ZST.
-                Some(unsafe { mem::zeroed() })
+            if self.ptr.as_ptr() == self.end as *mut _ {
+                return None;
             }
+            // See above for why 'ptr.offset' isn't used
+            self.end = self.end.wrapping_byte_sub(1);
+            // Note that even though this is next_back() we're reading from `self.ptr`, not
+            // `self.end`. We track our length using the byte offset from `self.ptr` to `self.end`,
+            // so the end pointer may not be suitably aligned for T.
+            Some(unsafe { ptr::read(self.ptr.as_ptr()) })
         } else {
-            if non_null!(self.end, T) == self.ptr {
-                None
-            } else {
-                let new_end = unsafe { non_null!(self.end, T).sub(1) };
-                *non_null!(mut self.end, T) = new_end;
-
-                Some(unsafe { ptr::read(new_end.as_ptr()) })
+            if self.ptr == non_null!(self.end, T) {
+                return None;
+            }
+            unsafe {
+                self.end = self.end.sub(1);
+                Some(ptr::read(self.end))
             }
         }
     }
 
     #[inline]
-    fn advance_back_by(&mut self, n: usize) -> Result<(), NonZeroUsize> {
+    fn advance_back_by(&mut self, n: usize) -> Result<(), NonZero<usize>> {
         let step_size = self.len().min(n);
         if T::IS_ZST {
             // SAFETY: same as for advance_by()
@@ -350,7 +345,7 @@ impl<T, A: Allocator> DoubleEndedIterator for IntoIter<T, A> {
         unsafe {
             ptr::drop_in_place(to_drop);
         }
-        NonZeroUsize::new(n - step_size).map_or(Ok(()), Err)
+        NonZero::new(n - step_size).map_or(Ok(()), Err)
     }
 }
 
@@ -457,8 +452,8 @@ unsafe impl<#[may_dangle] T, A: Allocator> Drop for IntoIter<T, A> {
 #[unstable(issue = "none", feature = "inplace_iteration")]
 #[doc(hidden)]
 unsafe impl<T, A: Allocator> InPlaceIterable for IntoIter<T, A> {
-    const EXPAND_BY: Option<NonZeroUsize> = NonZeroUsize::new(1);
-    const MERGE_BY: Option<NonZeroUsize> = NonZeroUsize::new(1);
+    const EXPAND_BY: Option<NonZero<usize>> = NonZero::new(1);
+    const MERGE_BY: Option<NonZero<usize>> = NonZero::new(1);
 }
 
 #[unstable(issue = "none", feature = "inplace_iteration")]

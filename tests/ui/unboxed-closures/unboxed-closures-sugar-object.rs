@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 // Test unboxed closure sugar used in object types.
 
 #![allow(dead_code)]

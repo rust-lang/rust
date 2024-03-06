@@ -53,7 +53,7 @@ pub(super) fn check_fn<'tcx>(cx: &LateContext<'_>, kind: &'tcx FnKind<'_>, body:
 
 pub(super) fn check_impl_item(cx: &LateContext<'_>, impl_item: &ImplItem<'_>) {
     if let ImplItemKind::Fn(_, body_id) = impl_item.kind
-        && let hir::Node::Item(item) = cx.tcx.hir().get_parent(impl_item.hir_id())
+        && let hir::Node::Item(item) = cx.tcx.parent_hir_node(impl_item.hir_id())
         && let hir::ItemKind::Impl(impl_) = item.kind
         && let hir::Impl { of_trait, .. } = *impl_
         && of_trait.is_none()
@@ -72,7 +72,7 @@ pub(super) fn check_impl_item(cx: &LateContext<'_>, impl_item: &ImplItem<'_>) {
 pub(super) fn check_trait_item(cx: &LateContext<'_>, trait_item: &TraitItem<'_>, avoid_breaking_exported_api: bool) {
     if !avoid_breaking_exported_api
         && let TraitItemKind::Fn(_, _) = trait_item.kind
-        && let hir::Node::Item(item) = cx.tcx.hir().get_parent(trait_item.hir_id())
+        && let hir::Node::Item(item) = cx.tcx.parent_hir_node(trait_item.hir_id())
         // ^^ (Will always be a trait)
         && !item.vis_span.is_empty() // Is public
         && !is_in_test_function(cx.tcx, trait_item.hir_id())

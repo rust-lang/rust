@@ -340,6 +340,46 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
         }
     }
 
+    fn fadd_algebraic(&mut self, lhs: &'ll Value, rhs: &'ll Value) -> &'ll Value {
+        unsafe {
+            let instr = llvm::LLVMBuildFAdd(self.llbuilder, lhs, rhs, UNNAMED);
+            llvm::LLVMRustSetAlgebraicMath(instr);
+            instr
+        }
+    }
+
+    fn fsub_algebraic(&mut self, lhs: &'ll Value, rhs: &'ll Value) -> &'ll Value {
+        unsafe {
+            let instr = llvm::LLVMBuildFSub(self.llbuilder, lhs, rhs, UNNAMED);
+            llvm::LLVMRustSetAlgebraicMath(instr);
+            instr
+        }
+    }
+
+    fn fmul_algebraic(&mut self, lhs: &'ll Value, rhs: &'ll Value) -> &'ll Value {
+        unsafe {
+            let instr = llvm::LLVMBuildFMul(self.llbuilder, lhs, rhs, UNNAMED);
+            llvm::LLVMRustSetAlgebraicMath(instr);
+            instr
+        }
+    }
+
+    fn fdiv_algebraic(&mut self, lhs: &'ll Value, rhs: &'ll Value) -> &'ll Value {
+        unsafe {
+            let instr = llvm::LLVMBuildFDiv(self.llbuilder, lhs, rhs, UNNAMED);
+            llvm::LLVMRustSetAlgebraicMath(instr);
+            instr
+        }
+    }
+
+    fn frem_algebraic(&mut self, lhs: &'ll Value, rhs: &'ll Value) -> &'ll Value {
+        unsafe {
+            let instr = llvm::LLVMBuildFRem(self.llbuilder, lhs, rhs, UNNAMED);
+            llvm::LLVMRustSetAlgebraicMath(instr);
+            instr
+        }
+    }
+
     fn checked_binop(
         &mut self,
         oop: OverflowOp,
@@ -528,7 +568,7 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
                         }
                     }
                 }
-                abi::F32 | abi::F64 => {}
+                abi::F16 | abi::F32 | abi::F64 | abi::F128 => {}
             }
         }
 
@@ -563,11 +603,7 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
                 let llptr = if i == 0 {
                     place.llval
                 } else {
-                    self.inbounds_gep(
-                        self.type_i8(),
-                        place.llval,
-                        &[self.const_usize(b_offset.bytes())],
-                    )
+                    self.inbounds_ptradd(place.llval, self.const_usize(b_offset.bytes()))
                 };
                 let llty = place.layout.scalar_pair_element_llvm_type(self, i, false);
                 let load = self.load(llty, llptr, align);
@@ -736,11 +772,6 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
                 UNNAMED,
             )
         }
-    }
-
-    fn struct_gep(&mut self, ty: &'ll Type, ptr: &'ll Value, idx: u64) -> &'ll Value {
-        assert_eq!(idx as c_uint as u64, idx);
-        unsafe { llvm::LLVMBuildStructGEP2(self.llbuilder, ty, ptr, idx as c_uint, UNNAMED) }
     }
 
     /* Casts */
@@ -1327,17 +1358,17 @@ impl<'a, 'll, 'tcx> Builder<'a, 'll, 'tcx> {
     pub fn vector_reduce_fmul(&mut self, acc: &'ll Value, src: &'ll Value) -> &'ll Value {
         unsafe { llvm::LLVMRustBuildVectorReduceFMul(self.llbuilder, acc, src) }
     }
-    pub fn vector_reduce_fadd_fast(&mut self, acc: &'ll Value, src: &'ll Value) -> &'ll Value {
+    pub fn vector_reduce_fadd_reassoc(&mut self, acc: &'ll Value, src: &'ll Value) -> &'ll Value {
         unsafe {
             let instr = llvm::LLVMRustBuildVectorReduceFAdd(self.llbuilder, acc, src);
-            llvm::LLVMRustSetFastMath(instr);
+            llvm::LLVMRustSetAllowReassoc(instr);
             instr
         }
     }
-    pub fn vector_reduce_fmul_fast(&mut self, acc: &'ll Value, src: &'ll Value) -> &'ll Value {
+    pub fn vector_reduce_fmul_reassoc(&mut self, acc: &'ll Value, src: &'ll Value) -> &'ll Value {
         unsafe {
             let instr = llvm::LLVMRustBuildVectorReduceFMul(self.llbuilder, acc, src);
-            llvm::LLVMRustSetFastMath(instr);
+            llvm::LLVMRustSetAllowReassoc(instr);
             instr
         }
     }
@@ -1364,22 +1395,6 @@ impl<'a, 'll, 'tcx> Builder<'a, 'll, 'tcx> {
     pub fn vector_reduce_fmax(&mut self, src: &'ll Value) -> &'ll Value {
         unsafe {
             llvm::LLVMRustBuildVectorReduceFMax(self.llbuilder, src, /*NoNaNs:*/ false)
-        }
-    }
-    pub fn vector_reduce_fmin_fast(&mut self, src: &'ll Value) -> &'ll Value {
-        unsafe {
-            let instr =
-                llvm::LLVMRustBuildVectorReduceFMin(self.llbuilder, src, /*NoNaNs:*/ true);
-            llvm::LLVMRustSetFastMath(instr);
-            instr
-        }
-    }
-    pub fn vector_reduce_fmax_fast(&mut self, src: &'ll Value) -> &'ll Value {
-        unsafe {
-            let instr =
-                llvm::LLVMRustBuildVectorReduceFMax(self.llbuilder, src, /*NoNaNs:*/ true);
-            llvm::LLVMRustSetFastMath(instr);
-            instr
         }
     }
     pub fn vector_reduce_min(&mut self, src: &'ll Value, is_signed: bool) -> &'ll Value {

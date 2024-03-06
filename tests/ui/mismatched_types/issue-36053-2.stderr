@@ -21,11 +21,7 @@ error[E0599]: the method `count` exists for struct `Filter<Fuse<Once<&str>>, {cl
 LL |     once::<&str>("str").fuse().filter(|a: &str| true).count();
    |                                       ---------       ^^^^^ method cannot be called due to unsatisfied trait bounds
    |                                       |
-   |                                       doesn't satisfy `<_ as FnOnce<(&&str,)>>::Output = bool`
-   |                                       doesn't satisfy `_: FnMut<(&&str,)>`
-  --> $SRC_DIR/core/src/iter/adapters/filter.rs:LL:COL
-   |
-   = note: doesn't satisfy `_: Iterator`
+   |                                       doesn't satisfy `<_ as FnOnce<(&&str,)>>::Output = bool` or `_: FnMut<(&&str,)>`
    |
    = note: the following trait bounds were not satisfied:
            `<{closure@$DIR/issue-36053-2.rs:7:39: 7:48} as FnOnce<(&&str,)>>::Output = bool`

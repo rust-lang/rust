@@ -1,4 +1,4 @@
-// check-pass
+//@ check-pass
 
 #[repr(transparent)]
 struct NonNullRawComPtr<T: ComInterface> {

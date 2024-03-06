@@ -56,11 +56,7 @@ pub(crate) fn conv_to_call_conv(sess: &Session, c: Conv, default_call_conv: Call
             sess.dcx().fatal("C-cmse-nonsecure-call call conv is not yet implemented");
         }
 
-        Conv::Msp430Intr
-        | Conv::PtxKernel
-        | Conv::AmdGpuKernel
-        | Conv::AvrInterrupt
-        | Conv::AvrNonBlockingInterrupt => {
+        Conv::Msp430Intr | Conv::PtxKernel | Conv::AvrInterrupt | Conv::AvrNonBlockingInterrupt => {
             unreachable!("tried to use {c:?} call conv which only exists on an unsupported target");
         }
     }
@@ -391,15 +387,17 @@ pub(crate) fn codegen_terminator_call<'tcx>(
 
         match instance.def {
             InstanceDef::Intrinsic(_) => {
-                crate::intrinsics::codegen_intrinsic_call(
+                match crate::intrinsics::codegen_intrinsic_call(
                     fx,
                     instance,
                     args,
                     ret_place,
                     target,
                     source_info,
-                );
-                return;
+                ) {
+                    Ok(()) => return,
+                    Err(instance) => Some(instance),
+                }
             }
             InstanceDef::DropGlue(_, None) => {
                 // empty drop glue - a nop.

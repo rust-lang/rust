@@ -87,10 +87,10 @@ fn test_writer_hasher() {
     let cs: Rc<[u8]> = Rc::new([1, 2, 3]);
     assert_eq!(hash(&cs), 9);
 
-    let ptr = ptr::invalid::<i32>(5_usize);
+    let ptr = ptr::without_provenance::<i32>(5_usize);
     assert_eq!(hash(&ptr), 5);
 
-    let ptr = ptr::invalid_mut::<i32>(5_usize);
+    let ptr = ptr::without_provenance_mut::<i32>(5_usize);
     assert_eq!(hash(&ptr), 5);
 
     if cfg!(miri) {

@@ -1,7 +1,7 @@
 // Tests inlining of diverging calls.
 //
 // EMIT_MIR_FOR_EACH_PANIC_STRATEGY
-// compile-flags: -Zinline-mir-hint-threshold=1000
+//@ compile-flags: -Zinline-mir-hint-threshold=1000
 #![crate_type = "lib"]
 
 // EMIT_MIR inline_diverging.f.Inline.diff

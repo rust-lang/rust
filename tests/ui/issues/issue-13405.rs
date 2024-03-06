@@ -1,7 +1,7 @@
-// check-pass
+//@ check-pass
 #![allow(dead_code)]
 #![allow(unused_variables)]
-// pretty-expanded FIXME #23616
+//@ pretty-expanded FIXME #23616
 
 struct Foo<'a> {
     i: &'a bool,

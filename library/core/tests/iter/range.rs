@@ -1,6 +1,6 @@
 use super::*;
 use core::ascii::Char as AsciiChar;
-use core::num::NonZeroUsize;
+use core::num::NonZero;
 
 #[test]
 fn test_range() {
@@ -314,7 +314,7 @@ fn test_range_advance_by() {
 
     assert_eq!((r.start, r.end), (1, usize::MAX - 1));
 
-    assert_eq!(Err(NonZeroUsize::new(2).unwrap()), r.advance_by(usize::MAX));
+    assert_eq!(Err(NonZero::new(2).unwrap()), r.advance_by(usize::MAX));
 
     assert_eq!(Ok(()), r.advance_by(0));
     assert_eq!(Ok(()), r.advance_back_by(0));

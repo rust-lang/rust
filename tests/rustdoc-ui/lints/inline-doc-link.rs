@@ -1,6 +1,6 @@
 // Regression test for <https://github.com/rust-lang/rust/pull/113167>
 
-// check-pass
+//@ check-pass
 #![deny(rustdoc::redundant_explicit_links)]
 
 mod m {

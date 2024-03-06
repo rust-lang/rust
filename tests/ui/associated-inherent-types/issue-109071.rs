@@ -1,4 +1,4 @@
-// revisions: with_gate no_gate
+//@ revisions: with_gate no_gate
 #![cfg_attr(with_gate, feature(inherent_associated_types))]
 #![cfg_attr(with_gate, allow(incomplete_features))]
 

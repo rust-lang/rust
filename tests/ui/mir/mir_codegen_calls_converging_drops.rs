@@ -1,8 +1,8 @@
-// run-fail
-// error-pattern:converging_fn called
-// error-pattern:0 dropped
-// error-pattern:exit
-// ignore-emscripten no processes
+//@ run-fail
+//@ error-pattern:converging_fn called
+//@ error-pattern:0 dropped
+//@ error-pattern:exit
+//@ ignore-emscripten no processes
 
 struct Droppable(u8);
 impl Drop for Droppable {

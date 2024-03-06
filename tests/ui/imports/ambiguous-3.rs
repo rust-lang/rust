@@ -1,4 +1,4 @@
-// check-pass
+//@ check-pass
 // https://github.com/rust-lang/rust/issues/47525
 
 fn main() {

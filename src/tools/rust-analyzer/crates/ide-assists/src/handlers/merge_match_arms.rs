@@ -1,5 +1,6 @@
 use hir::Type;
-use std::{collections::HashMap, iter::successors};
+use ide_db::FxHashMap;
+use std::iter::successors;
 use syntax::{
     algo::neighbor,
     ast::{self, AstNode, HasName},
@@ -95,7 +96,7 @@ fn contains_placeholder(a: &ast::MatchArm) -> bool {
 }
 
 fn are_same_types(
-    current_arm_types: &HashMap<String, Option<Type>>,
+    current_arm_types: &FxHashMap<String, Option<Type>>,
     arm: &ast::MatchArm,
     ctx: &AssistContext<'_>,
 ) -> bool {
@@ -114,11 +115,11 @@ fn are_same_types(
 fn get_arm_types(
     context: &AssistContext<'_>,
     arm: &ast::MatchArm,
-) -> HashMap<String, Option<Type>> {
-    let mut mapping: HashMap<String, Option<Type>> = HashMap::new();
+) -> FxHashMap<String, Option<Type>> {
+    let mut mapping: FxHashMap<String, Option<Type>> = FxHashMap::default();
 
     fn recurse(
-        map: &mut HashMap<String, Option<Type>>,
+        map: &mut FxHashMap<String, Option<Type>>,
         ctx: &AssistContext<'_>,
         pat: &Option<ast::Pat>,
     ) {

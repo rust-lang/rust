@@ -18,8 +18,8 @@ use rustc_span::hygiene::MacroKind;
 use rustc_span::symbol::{kw, sym, Symbol};
 
 use crate::clean::{
-    self, clean_bound_vars, clean_fn_decl_from_did_and_sig, clean_generics, clean_impl_item,
-    clean_middle_assoc_item, clean_middle_field, clean_middle_ty, clean_trait_ref_with_bindings,
+    self, clean_bound_vars, clean_generics, clean_impl_item, clean_middle_assoc_item,
+    clean_middle_field, clean_middle_ty, clean_poly_fn_sig, clean_trait_ref_with_bindings,
     clean_ty, clean_ty_alias_inner_type, clean_ty_generics, clean_variant_def, utils, Attributes,
     AttributesExt, ImplKind, ItemId, Type,
 };
@@ -65,37 +65,51 @@ pub(crate) fn try_inline(
     let kind = match res {
         Res::Def(DefKind::Trait, did) => {
             record_extern_fqn(cx, did, ItemType::Trait);
-            build_impls(cx, did, attrs_without_docs, &mut ret);
-            clean::TraitItem(Box::new(build_external_trait(cx, did)))
+            cx.with_param_env(did, |cx| {
+                build_impls(cx, did, attrs_without_docs, &mut ret);
+                clean::TraitItem(Box::new(build_external_trait(cx, did)))
+            })
         }
         Res::Def(DefKind::Fn, did) => {
             record_extern_fqn(cx, did, ItemType::Function);
-            clean::FunctionItem(build_external_function(cx, did))
+            cx.with_param_env(did, |cx| {
+                clean::enter_impl_trait(cx, |cx| clean::FunctionItem(build_function(cx, did)))
+            })
         }
         Res::Def(DefKind::Struct, did) => {
             record_extern_fqn(cx, did, ItemType::Struct);
-            build_impls(cx, did, attrs_without_docs, &mut ret);
-            clean::StructItem(build_struct(cx, did))
+            cx.with_param_env(did, |cx| {
+                build_impls(cx, did, attrs_without_docs, &mut ret);
+                clean::StructItem(build_struct(cx, did))
+            })
         }
         Res::Def(DefKind::Union, did) => {
             record_extern_fqn(cx, did, ItemType::Union);
-            build_impls(cx, did, attrs_without_docs, &mut ret);
-            clean::UnionItem(build_union(cx, did))
+            cx.with_param_env(did, |cx| {
+                build_impls(cx, did, attrs_without_docs, &mut ret);
+                clean::UnionItem(build_union(cx, did))
+            })
         }
         Res::Def(DefKind::TyAlias, did) => {
             record_extern_fqn(cx, did, ItemType::TypeAlias);
-            build_impls(cx, did, attrs_without_docs, &mut ret);
-            clean::TypeAliasItem(build_type_alias(cx, did, &mut ret))
+            cx.with_param_env(did, |cx| {
+                build_impls(cx, did, attrs_without_docs, &mut ret);
+                clean::TypeAliasItem(build_type_alias(cx, did, &mut ret))
+            })
         }
         Res::Def(DefKind::Enum, did) => {
             record_extern_fqn(cx, did, ItemType::Enum);
-            build_impls(cx, did, attrs_without_docs, &mut ret);
-            clean::EnumItem(build_enum(cx, did))
+            cx.with_param_env(did, |cx| {
+                build_impls(cx, did, attrs_without_docs, &mut ret);
+                clean::EnumItem(build_enum(cx, did))
+            })
         }
         Res::Def(DefKind::ForeignTy, did) => {
             record_extern_fqn(cx, did, ItemType::ForeignType);
-            build_impls(cx, did, attrs_without_docs, &mut ret);
-            clean::ForeignTypeItem
+            cx.with_param_env(did, |cx| {
+                build_impls(cx, did, attrs_without_docs, &mut ret);
+                clean::ForeignTypeItem
+            })
         }
         // Never inline enum variants but leave them shown as re-exports.
         Res::Def(DefKind::Variant, _) => return None,
@@ -108,11 +122,13 @@ pub(crate) fn try_inline(
         }
         Res::Def(DefKind::Static(_), did) => {
             record_extern_fqn(cx, did, ItemType::Static);
-            clean::StaticItem(build_static(cx, did, cx.tcx.is_mutable_static(did)))
+            cx.with_param_env(did, |cx| {
+                clean::StaticItem(build_static(cx, did, cx.tcx.is_mutable_static(did)))
+            })
         }
         Res::Def(DefKind::Const, did) => {
             record_extern_fqn(cx, did, ItemType::Constant);
-            clean::ConstantItem(build_const(cx, did))
+            cx.with_param_env(did, |cx| clean::ConstantItem(build_const(cx, did)))
         }
         Res::Def(DefKind::Macro(kind), did) => {
             let mac = build_macro(cx, did, name, import_def_id, kind);
@@ -191,15 +207,36 @@ pub(crate) fn load_attrs<'hir>(cx: &DocContext<'hir>, did: DefId) -> &'hir [ast:
     cx.tcx.get_attrs_unchecked(did)
 }
 
+pub(crate) fn item_relative_path(tcx: TyCtxt<'_>, def_id: DefId) -> Vec<Symbol> {
+    tcx.def_path(def_id)
+        .data
+        .into_iter()
+        .filter_map(|elem| {
+            // extern blocks (and a few others things) have an empty name.
+            match elem.data.get_opt_name() {
+                Some(s) if !s.is_empty() => Some(s),
+                _ => None,
+            }
+        })
+        .collect()
+}
+
 /// Record an external fully qualified name in the external_paths cache.
 ///
 /// These names are used later on by HTML rendering to generate things like
 /// source links back to the original item.
 pub(crate) fn record_extern_fqn(cx: &mut DocContext<'_>, did: DefId, kind: ItemType) {
+    if did.is_local() {
+        if cx.cache.exact_paths.contains_key(&did) {
+            return;
+        }
+    } else if cx.cache.external_paths.contains_key(&did) {
+        return;
+    }
+
     let crate_name = cx.tcx.crate_name(did.krate);
 
-    let relative =
-        cx.tcx.def_path(did).data.into_iter().filter_map(|elem| elem.data.get_opt_name());
+    let relative = item_relative_path(cx.tcx, did);
     let fqn = if let ItemType::Macro = kind {
         // Check to see if it is a macro 2.0 or built-in macro
         if matches!(
@@ -210,7 +247,7 @@ pub(crate) fn record_extern_fqn(cx: &mut DocContext<'_>, did: DefId, kind: ItemT
         ) {
             once(crate_name).chain(relative).collect()
         } else {
-            vec![crate_name, relative.last().expect("relative was empty")]
+            vec![crate_name, *relative.last().expect("relative was empty")]
         }
     } else {
         once(crate_name).chain(relative).collect()
@@ -239,18 +276,38 @@ pub(crate) fn build_external_trait(cx: &mut DocContext<'_>, did: DefId) -> clean
     clean::Trait { def_id: did, generics, items: trait_items, bounds: supertrait_bounds }
 }
 
-fn build_external_function<'tcx>(cx: &mut DocContext<'tcx>, did: DefId) -> Box<clean::Function> {
-    let sig = cx.tcx.fn_sig(did).instantiate_identity();
-    let predicates = cx.tcx.explicit_predicates_of(did);
+pub(crate) fn build_function<'tcx>(
+    cx: &mut DocContext<'tcx>,
+    def_id: DefId,
+) -> Box<clean::Function> {
+    let sig = cx.tcx.fn_sig(def_id).instantiate_identity();
+    // The generics need to be cleaned before the signature.
+    let mut generics =
+        clean_ty_generics(cx, cx.tcx.generics_of(def_id), cx.tcx.explicit_predicates_of(def_id));
+    let bound_vars = clean_bound_vars(sig.bound_vars());
 
-    let (generics, decl) = clean::enter_impl_trait(cx, |cx| {
-        // NOTE: generics need to be cleaned before the decl!
-        let mut generics = clean_ty_generics(cx, cx.tcx.generics_of(did), predicates);
-        // FIXME: This does not place parameters in source order (late-bound ones come last)
-        generics.params.extend(clean_bound_vars(sig.bound_vars()));
-        let decl = clean_fn_decl_from_did_and_sig(cx, Some(did), sig);
-        (generics, decl)
-    });
+    // At the time of writing early & late-bound params are stored separately in rustc,
+    // namely in `generics.params` and `bound_vars` respectively.
+    //
+    // To reestablish the original source code order of the generic parameters, we
+    // need to manually sort them by their definition span after concatenation.
+    //
+    // See also:
+    // * https://rustc-dev-guide.rust-lang.org/bound-vars-and-params.html
+    // * https://rustc-dev-guide.rust-lang.org/what-does-early-late-bound-mean.html
+    let has_early_bound_params = !generics.params.is_empty();
+    let has_late_bound_params = !bound_vars.is_empty();
+    generics.params.extend(bound_vars);
+    if has_early_bound_params && has_late_bound_params {
+        // If this ever becomes a performances bottleneck either due to the sorting
+        // or due to the query calls, consider inserting the late-bound lifetime params
+        // right after the last early-bound lifetime param followed by only sorting
+        // the slice of lifetime params.
+        generics.params.sort_by_key(|param| cx.tcx.def_ident_span(param.def_id).unwrap());
+    }
+
+    let decl = clean_poly_fn_sig(cx, Some(def_id), sig);
+
     Box::new(clean::Function { decl, generics })
 }
 
@@ -313,7 +370,9 @@ pub(crate) fn build_impls(
 
     // for each implementation of an item represented by `did`, build the clean::Item for that impl
     for &did in tcx.inherent_impls(did).into_iter().flatten() {
-        build_impl(cx, did, attrs, ret);
+        cx.with_param_env(did, |cx| {
+            build_impl(cx, did, attrs, ret);
+        });
     }
 
     // This pretty much exists expressly for `dyn Error` traits that exist in the `alloc` crate.
@@ -326,7 +385,9 @@ pub(crate) fn build_impls(
         let type_ =
             if tcx.is_trait(did) { SimplifiedType::Trait(did) } else { SimplifiedType::Adt(did) };
         for &did in tcx.incoherent_impls(type_).into_iter().flatten() {
-            build_impl(cx, did, attrs, ret);
+            cx.with_param_env(did, |cx| {
+                build_impl(cx, did, attrs, ret);
+            });
         }
     }
 }
@@ -382,11 +443,13 @@ pub(crate) fn build_impl(
             return;
         }
 
-        if let Some(stab) = tcx.lookup_stability(did)
-            && stab.is_unstable()
-            && stab.feature == sym::rustc_private
-        {
-            return;
+        if !tcx.features().rustc_private && !cx.render_options.force_unstable_if_unmarked {
+            if let Some(stab) = tcx.lookup_stability(did)
+                && stab.is_unstable()
+                && stab.feature == sym::rustc_private
+            {
+                return;
+            }
         }
     }
 
@@ -416,8 +479,11 @@ pub(crate) fn build_impl(
                 return;
             }
 
-            if let Some(stab) = tcx.lookup_stability(did) {
-                if stab.is_unstable() && stab.feature == sym::rustc_private {
+            if !tcx.features().rustc_private && !cx.render_options.force_unstable_if_unmarked {
+                if let Some(stab) = tcx.lookup_stability(did)
+                    && stab.is_unstable()
+                    && stab.feature == sym::rustc_private
+                {
                     return;
                 }
             }
@@ -528,7 +594,9 @@ pub(crate) fn build_impl(
     }
 
     if let Some(did) = trait_.as_ref().map(|t| t.def_id()) {
-        record_extern_trait(cx, did);
+        cx.with_param_env(did, |cx| {
+            record_extern_trait(cx, did);
+        });
     }
 
     let (merged_attrs, cfg) = merge_attrs(cx, load_attrs(cx, did), attrs);

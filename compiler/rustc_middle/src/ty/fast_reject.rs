@@ -128,7 +128,9 @@ pub fn simplify_type<'tcx>(
             _ => Some(SimplifiedType::MarkerTraitObject),
         },
         ty::Ref(_, _, mutbl) => Some(SimplifiedType::Ref(mutbl)),
-        ty::FnDef(def_id, _) | ty::Closure(def_id, _) => Some(SimplifiedType::Closure(def_id)),
+        ty::FnDef(def_id, _) | ty::Closure(def_id, _) | ty::CoroutineClosure(def_id, _) => {
+            Some(SimplifiedType::Closure(def_id))
+        }
         ty::Coroutine(def_id, _) => Some(SimplifiedType::Coroutine(def_id)),
         ty::CoroutineWitness(def_id, _) => Some(SimplifiedType::CoroutineWitness(def_id)),
         ty::Never => Some(SimplifiedType::Never),
@@ -236,6 +238,7 @@ impl DeepRejectCtxt {
             | ty::Foreign(..) => debug_assert!(impl_ty.is_known_rigid()),
             ty::FnDef(..)
             | ty::Closure(..)
+            | ty::CoroutineClosure(..)
             | ty::Coroutine(..)
             | ty::CoroutineWitness(..)
             | ty::Placeholder(..)
@@ -312,7 +315,7 @@ impl DeepRejectCtxt {
             },
 
             // Impls cannot contain these types as these cannot be named directly.
-            ty::FnDef(..) | ty::Closure(..) | ty::Coroutine(..) => false,
+            ty::FnDef(..) | ty::Closure(..) | ty::CoroutineClosure(..) | ty::Coroutine(..) => false,
 
             // Placeholder types don't unify with anything on their own
             ty::Placeholder(..) | ty::Bound(..) => false,

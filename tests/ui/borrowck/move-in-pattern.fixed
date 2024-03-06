@@ -1,4 +1,4 @@
-// run-rustfix
+//@ run-rustfix
 // Issue #63988
 #[derive(Debug)]
 struct S;

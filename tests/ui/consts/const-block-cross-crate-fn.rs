@@ -1,5 +1,5 @@
-// run-pass
-// aux-build:cci_const_block.rs
+//@ run-pass
+//@ aux-build:cci_const_block.rs
 
 
 extern crate cci_const_block;

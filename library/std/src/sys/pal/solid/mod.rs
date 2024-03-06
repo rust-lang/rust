@@ -2,19 +2,17 @@
 #![allow(missing_docs, nonstandard_style)]
 #![deny(unsafe_op_in_unsafe_fn)]
 
-mod abi;
+pub mod abi;
 
 #[path = "../itron"]
-mod itron {
-    pub(super) mod abi;
-    pub mod condvar;
-    pub(super) mod error;
-    pub mod mutex;
-    pub(super) mod spin;
-    pub(super) mod task;
+pub mod itron {
+    pub mod abi;
+    pub mod error;
+    pub mod spin;
+    pub mod task;
     pub mod thread;
     pub mod thread_parking;
-    pub(super) mod time;
+    pub mod time;
     use super::unsupported;
 }
 
@@ -29,26 +27,16 @@ pub mod fs;
 pub mod io;
 pub mod net;
 pub mod os;
-pub mod path;
 #[path = "../unsupported/pipe.rs"]
 pub mod pipe;
 #[path = "../unsupported/process.rs"]
 pub mod process;
 pub mod stdio;
 pub use self::itron::thread;
-pub mod memchr;
 pub mod thread_local_dtor;
 pub mod thread_local_key;
 pub use self::itron::thread_parking;
 pub mod time;
-
-mod rwlock;
-
-pub mod locks {
-    pub use super::itron::condvar::*;
-    pub use super::itron::mutex::*;
-    pub use super::rwlock::*;
-}
 
 // SAFETY: must be called only once during runtime initialization.
 // NOTE: this is not guaranteed to run, for example when Rust code is called externally.

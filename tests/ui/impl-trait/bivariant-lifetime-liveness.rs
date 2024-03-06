@@ -1,4 +1,4 @@
-// check-pass
+//@ check-pass
 // issue: 116794
 
 // Uncaptured lifetimes should not be required to be live.

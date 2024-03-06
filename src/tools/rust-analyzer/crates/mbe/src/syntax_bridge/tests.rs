@@ -1,5 +1,4 @@
-use std::collections::HashMap;
-
+use rustc_hash::FxHashMap;
 use syntax::{ast, AstNode};
 use test_utils::extract_annotations;
 use tt::{
@@ -12,7 +11,7 @@ use crate::{syntax_node_to_token_tree, DummyTestSpanData, DummyTestSpanMap, DUMM
 fn check_punct_spacing(fixture: &str) {
     let source_file = ast::SourceFile::parse(fixture).ok().unwrap();
     let subtree = syntax_node_to_token_tree(source_file.syntax(), DummyTestSpanMap, DUMMY);
-    let mut annotations: HashMap<_, _> = extract_annotations(fixture)
+    let mut annotations: FxHashMap<_, _> = extract_annotations(fixture)
         .into_iter()
         .map(|(range, annotation)| {
             let spacing = match annotation.as_str() {

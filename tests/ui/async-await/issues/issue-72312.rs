@@ -1,4 +1,4 @@
-// edition:2018
+//@ edition:2018
 fn require_static<T: 'static>(val: T) -> T {
     val
 }

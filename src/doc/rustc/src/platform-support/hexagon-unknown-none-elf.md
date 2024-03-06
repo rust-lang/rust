@@ -41,6 +41,8 @@ target = ["<target for your host>", "hexagon-unknown-none-elf"]
 cc = "hexagon-unknown-none-elf-clang"
 cxx = "hexagon-unknown-none-elf-clang++"
 linker = "hexagon-unknown-none-elf-clang"
+ranlib = "hexagon-unknown-none-elf-ranlib"
+ar = "hexagon-unknown-none-elf-ar"
 llvm-libunwind = 'in-tree'
 ```
 
@@ -128,7 +130,8 @@ q6_arch=v65
 g0_lib_path=${sdk_libs}/${q6_arch}/G0
 pic_lib_path=${sdk_libs}/${q6_arch}/G0/pic
 
-cargo build --target=hexagon-unknown-none-elf -Zbuild-std
+build_cfg=release
+cargo build --target=hexagon-unknown-none-elf -Zbuild-std --release
 
 # Builds an executable against "hexagon standalone OS" suitable for emulation:
 ${cc} --target=hexagon-unknown-none-elf -o testit \
@@ -141,13 +144,13 @@ ${cc} --target=hexagon-unknown-none-elf -o testit \
     ${g0_lib_path}/init.o \
     -L${sdk_libs}/${q6_arch}/ \
     -L${sdk_libs}/ \
-    testit.c \
-    target/hexagon-unknown-none-elf/debug/libmin_ex_lib_lin.rlib \
-    target/hexagon-unknown-none-elf/debug/deps/libcore-*.rlib \
-    target/hexagon-unknown-none-elf/debug/deps/libcompiler_builtins-*.rlib \
+    wrap.c \
+    target/hexagon-unknown-none-elf/${build_cfg}/libdemo1_hexagon.rlib \
+    target/hexagon-unknown-none-elf/${build_cfg}/deps/libcore-*.rlib \
+    target/hexagon-unknown-none-elf/${build_cfg}/deps/libcompiler_builtins-*.rlib \
     -Wl,--start-group \
     -Wl,--defsym,_SDA_BASE_=0,--defsym,__sbss_start=0,--defsym,__sbss_end=0 \
-    -lstandalone \
+    ${g0_lib_path}/libstandalone.a \
     ${g0_lib_path}/libc.a \
     -lgcc \
     -lc_eh \
@@ -216,7 +219,18 @@ fn rust_eh_personality() {}
 
 ```
 
-Next, save the script below as `build.sh` and edit it to suit your
+Next, create a C program as an entry point, save the content below as
+`wrap.c`:
+
+```C
+int hello();
+
+int main() {
+    hello();
+}
+```
+
+Then, save the script below as `build.sh` and edit it to suit your
 environment.  The script below will build a shared object against the QuRT
 RTOS which is suitable for emulation or on-device testing when loaded via
 the fastrpc-shell.
@@ -247,10 +261,10 @@ ${cc} --target=hexagon-unknown-none-elf -o testit.so \
       -Wl,--wrap=realloc \
       -Wl,--wrap=memalign \
     -m${q6_arch} \
-    testit.c \
-    target/hexagon-unknown-none-elf/debug/libmin_ex_lib_lin.rlib \
-    target/hexagon-unknown-none-elf/debug/deps/libcore-*.rlib \
-    target/hexagon-unknown-none-elf/debug/deps/libcompiler_builtins-*.rlib \
+    wrap.c \
+    target/hexagon-unknown-none-elf/${build_cfg}/libdemo2_hexagon.rlib \
+    target/hexagon-unknown-none-elf/${build_cfg}/deps/libcore-*.rlib \
+    target/hexagon-unknown-none-elf/${build_cfg}/deps/libcompiler_builtins-*.rlib \
     -Wl,-soname=testit \
     ${pic_lib_path}/libc.so
 

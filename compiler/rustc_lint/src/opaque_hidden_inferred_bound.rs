@@ -77,101 +77,104 @@ impl<'tcx> LateLintPass<'tcx> for OpaqueHiddenInferredBound {
         for (pred, pred_span) in
             cx.tcx.explicit_item_bounds(def_id).instantiate_identity_iter_copied()
         {
-            let predicate = infcx.instantiate_binder_with_placeholders(pred.kind());
-            let ty::ClauseKind::Projection(proj) = predicate else {
-                continue;
-            };
-            // Only check types, since those are the only things that may
-            // have opaques in them anyways.
-            let Some(proj_term) = proj.term.ty() else { continue };
-
-            // HACK: `impl Trait<Assoc = impl Trait2>` from an RPIT is "ok"...
-            if let ty::Alias(ty::Opaque, opaque_ty) = *proj_term.kind()
-                && cx.tcx.parent(opaque_ty.def_id) == def_id
-                && matches!(
-                    opaque.origin,
-                    hir::OpaqueTyOrigin::FnReturn(_) | hir::OpaqueTyOrigin::AsyncFn(_)
-                )
-            {
-                continue;
-            }
-
-            // HACK: `async fn() -> Self` in traits is "ok"...
-            // This is not really that great, but it's similar to why the `-> Self`
-            // return type is well-formed in traits even when `Self` isn't sized.
-            if let ty::Param(param_ty) = *proj_term.kind()
-                && param_ty.name == kw::SelfUpper
-                && matches!(opaque.origin, hir::OpaqueTyOrigin::AsyncFn(_))
-                && opaque.in_trait
-            {
-                continue;
-            }
-
-            let proj_ty =
-                Ty::new_projection(cx.tcx, proj.projection_ty.def_id, proj.projection_ty.args);
-            // For every instance of the projection type in the bounds,
-            // replace them with the term we're assigning to the associated
-            // type in our opaque type.
-            let proj_replacer = &mut BottomUpFolder {
-                tcx: cx.tcx,
-                ty_op: |ty| if ty == proj_ty { proj_term } else { ty },
-                lt_op: |lt| lt,
-                ct_op: |ct| ct,
-            };
-            // For example, in `impl Trait<Assoc = impl Send>`, for all of the bounds on `Assoc`,
-            // e.g. `type Assoc: OtherTrait`, replace `<impl Trait as Trait>::Assoc: OtherTrait`
-            // with `impl Send: OtherTrait`.
-            for (assoc_pred, assoc_pred_span) in cx
-                .tcx
-                .explicit_item_bounds(proj.projection_ty.def_id)
-                .iter_instantiated_copied(cx.tcx, proj.projection_ty.args)
-            {
-                let assoc_pred = assoc_pred.fold_with(proj_replacer);
-                let Ok(assoc_pred) = traits::fully_normalize(
-                    infcx,
-                    traits::ObligationCause::dummy(),
-                    cx.param_env,
-                    assoc_pred,
-                ) else {
-                    continue;
+            infcx.enter_forall(pred.kind(), |predicate| {
+                let ty::ClauseKind::Projection(proj) = predicate else {
+                    return;
                 };
-                // If that predicate doesn't hold modulo regions (but passed during type-check),
-                // then we must've taken advantage of the hack in `project_and_unify_types` where
-                // we replace opaques with inference vars. Emit a warning!
-                if !infcx.predicate_must_hold_modulo_regions(&traits::Obligation::new(
-                    cx.tcx,
-                    traits::ObligationCause::dummy(),
-                    cx.param_env,
-                    assoc_pred,
-                )) {
-                    // If it's a trait bound and an opaque that doesn't satisfy it,
-                    // then we can emit a suggestion to add the bound.
-                    let add_bound = match (proj_term.kind(), assoc_pred.kind().skip_binder()) {
-                        (
-                            ty::Alias(ty::Opaque, ty::AliasTy { def_id, .. }),
-                            ty::ClauseKind::Trait(trait_pred),
-                        ) => Some(AddBound {
-                            suggest_span: cx.tcx.def_span(*def_id).shrink_to_hi(),
-                            trait_ref: trait_pred.print_modifiers_and_trait_path(),
-                        }),
-                        _ => None,
-                    };
-                    cx.emit_span_lint(
-                        OPAQUE_HIDDEN_INFERRED_BOUND,
-                        pred_span,
-                        OpaqueHiddenInferredBoundLint {
-                            ty: Ty::new_opaque(
-                                cx.tcx,
-                                def_id,
-                                ty::GenericArgs::identity_for_item(cx.tcx, def_id),
-                            ),
-                            proj_ty: proj_term,
-                            assoc_pred_span,
-                            add_bound,
-                        },
-                    );
+                // Only check types, since those are the only things that may
+                // have opaques in them anyways.
+                let Some(proj_term) = proj.term.ty() else { return };
+
+                // HACK: `impl Trait<Assoc = impl Trait2>` from an RPIT is "ok"...
+                if let ty::Alias(ty::Opaque, opaque_ty) = *proj_term.kind()
+                    && cx.tcx.parent(opaque_ty.def_id) == def_id
+                    && matches!(
+                        opaque.origin,
+                        hir::OpaqueTyOrigin::FnReturn(_) | hir::OpaqueTyOrigin::AsyncFn(_)
+                    )
+                {
+                    return;
                 }
-            }
+
+                // HACK: `async fn() -> Self` in traits is "ok"...
+                // This is not really that great, but it's similar to why the `-> Self`
+                // return type is well-formed in traits even when `Self` isn't sized.
+                if let ty::Param(param_ty) = *proj_term.kind()
+                    && param_ty.name == kw::SelfUpper
+                    && matches!(opaque.origin, hir::OpaqueTyOrigin::AsyncFn(_))
+                    && opaque.in_trait
+                {
+                    return;
+                }
+
+                let proj_ty =
+                    Ty::new_projection(cx.tcx, proj.projection_ty.def_id, proj.projection_ty.args);
+                // For every instance of the projection type in the bounds,
+                // replace them with the term we're assigning to the associated
+                // type in our opaque type.
+                let proj_replacer = &mut BottomUpFolder {
+                    tcx: cx.tcx,
+                    ty_op: |ty| if ty == proj_ty { proj_term } else { ty },
+                    lt_op: |lt| lt,
+                    ct_op: |ct| ct,
+                };
+                // For example, in `impl Trait<Assoc = impl Send>`, for all of the bounds on `Assoc`,
+                // e.g. `type Assoc: OtherTrait`, replace `<impl Trait as Trait>::Assoc: OtherTrait`
+                // with `impl Send: OtherTrait`.
+                for (assoc_pred, assoc_pred_span) in cx
+                    .tcx
+                    .explicit_item_bounds(proj.projection_ty.def_id)
+                    .iter_instantiated_copied(cx.tcx, proj.projection_ty.args)
+                {
+                    let assoc_pred = assoc_pred.fold_with(proj_replacer);
+                    let Ok(assoc_pred) = traits::fully_normalize(
+                        infcx,
+                        traits::ObligationCause::dummy(),
+                        cx.param_env,
+                        assoc_pred,
+                    ) else {
+                        continue;
+                    };
+
+                    // If that predicate doesn't hold modulo regions (but passed during type-check),
+                    // then we must've taken advantage of the hack in `project_and_unify_types` where
+                    // we replace opaques with inference vars. Emit a warning!
+                    if !infcx.predicate_must_hold_modulo_regions(&traits::Obligation::new(
+                        cx.tcx,
+                        traits::ObligationCause::dummy(),
+                        cx.param_env,
+                        assoc_pred,
+                    )) {
+                        // If it's a trait bound and an opaque that doesn't satisfy it,
+                        // then we can emit a suggestion to add the bound.
+                        let add_bound = match (proj_term.kind(), assoc_pred.kind().skip_binder()) {
+                            (
+                                ty::Alias(ty::Opaque, ty::AliasTy { def_id, .. }),
+                                ty::ClauseKind::Trait(trait_pred),
+                            ) => Some(AddBound {
+                                suggest_span: cx.tcx.def_span(*def_id).shrink_to_hi(),
+                                trait_ref: trait_pred.print_modifiers_and_trait_path(),
+                            }),
+                            _ => None,
+                        };
+
+                        cx.emit_span_lint(
+                            OPAQUE_HIDDEN_INFERRED_BOUND,
+                            pred_span,
+                            OpaqueHiddenInferredBoundLint {
+                                ty: Ty::new_opaque(
+                                    cx.tcx,
+                                    def_id,
+                                    ty::GenericArgs::identity_for_item(cx.tcx, def_id),
+                                ),
+                                proj_ty: proj_term,
+                                assoc_pred_span,
+                                add_bound,
+                            },
+                        );
+                    }
+                }
+            });
         }
     }
 }

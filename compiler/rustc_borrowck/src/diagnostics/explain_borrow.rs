@@ -1,6 +1,9 @@
 //! Print diagnostics to explain why values are borrowed.
 
-use rustc_errors::{Applicability, Diagnostic};
+#![allow(rustc::diagnostic_outside_of_impl)]
+#![allow(rustc::untranslatable_diagnostic)]
+
+use rustc_errors::{Applicability, Diag};
 use rustc_hir as hir;
 use rustc_hir::intravisit::Visitor;
 use rustc_index::IndexSlice;
@@ -62,7 +65,7 @@ impl<'tcx> BorrowExplanation<'tcx> {
         tcx: TyCtxt<'tcx>,
         body: &Body<'tcx>,
         local_names: &IndexSlice<Local, Option<Symbol>>,
-        err: &mut Diagnostic,
+        err: &mut Diag<'_>,
         borrow_desc: &str,
         borrow_span: Option<Span>,
         multiple_borrow_span: Option<(Span, Span)>,
@@ -87,7 +90,7 @@ impl<'tcx> BorrowExplanation<'tcx> {
                     if let hir::ExprKind::Path(hir::QPath::Resolved(None, p)) = expr.kind
                         && let [hir::PathSegment { ident, args: None, .. }] = p.segments
                         && let hir::def::Res::Local(hir_id) = p.res
-                        && let Some(hir::Node::Pat(pat)) = tcx.opt_hir_node(hir_id)
+                        && let hir::Node::Pat(pat) = tcx.hir_node(hir_id)
                     {
                         err.span_label(pat.span, format!("binding `{ident}` declared here"));
                     }
@@ -303,7 +306,7 @@ impl<'tcx> BorrowExplanation<'tcx> {
     fn add_object_lifetime_default_note(
         &self,
         tcx: TyCtxt<'tcx>,
-        err: &mut Diagnostic,
+        err: &mut Diag<'_>,
         unsize_ty: Ty<'tcx>,
     ) {
         if let ty::Adt(def, args) = unsize_ty.kind() {
@@ -356,7 +359,7 @@ impl<'tcx> BorrowExplanation<'tcx> {
 
     fn add_lifetime_bound_suggestion_to_diagnostic(
         &self,
-        err: &mut Diagnostic,
+        err: &mut Diag<'_>,
         category: &ConstraintCategory<'tcx>,
         span: Span,
         region_name: &RegionName,

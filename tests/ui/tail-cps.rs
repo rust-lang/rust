@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 
 fn checktrue(rs: bool) -> bool { assert!((rs)); return true; }
 

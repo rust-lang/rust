@@ -2,16 +2,10 @@ error[E0599]: the method `clone` exists for struct `Foo<NonCopy>`, but its trait
   --> $DIR/deriving-with-repr-packed-2.rs:18:11
    |
 LL | pub struct Foo<T>(T, T, T);
-   | -----------------
-   | |
-   | method `clone` not found for this struct
-   | doesn't satisfy `Foo<NonCopy>: Clone`
+   | ----------------- method `clone` not found for this struct because it doesn't satisfy `Foo<NonCopy>: Clone`
 LL |
 LL | struct NonCopy;
-   | --------------
-   | |
-   | doesn't satisfy `NonCopy: Clone`
-   | doesn't satisfy `NonCopy: Copy`
+   | -------------- doesn't satisfy `NonCopy: Clone` or `NonCopy: Copy`
 ...
 LL |     _ = x.clone();
    |           ^^^^^ method cannot be called on `Foo<NonCopy>` due to unsatisfied trait bounds

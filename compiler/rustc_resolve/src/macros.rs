@@ -1,12 +1,11 @@
 //! A bunch of methods and structures more or less related to resolving macros and
 //! interface provided by `Resolver` to macro expander.
 
-use crate::errors::{
-    self, AddAsNonDerive, CannotDetermineMacroResolution, CannotFindIdentInThisScope,
-    MacroExpectedFound, RemoveSurroundingDerive,
-};
+use crate::errors::CannotDetermineMacroResolution;
+use crate::errors::{self, AddAsNonDerive, CannotFindIdentInThisScope};
+use crate::errors::{MacroExpectedFound, RemoveSurroundingDerive};
 use crate::Namespace::*;
-use crate::{BuiltinMacroState, Determinacy, MacroData};
+use crate::{BuiltinMacroState, Determinacy, MacroData, Used};
 use crate::{DeriveData, Finalize, ParentScope, ResolutionError, Resolver, ScopeSet};
 use crate::{ModuleKind, ModuleOrUniformRoot, NameBinding, PathResult, Segment, ToNameBinding};
 use rustc_ast::expand::StrippedCfgItem;
@@ -15,7 +14,7 @@ use rustc_ast_pretty::pprust;
 use rustc_attr::StabilityLevel;
 use rustc_data_structures::intern::Interned;
 use rustc_data_structures::sync::Lrc;
-use rustc_errors::{codes::*, struct_span_code_err, Applicability};
+use rustc_errors::{codes::*, struct_span_code_err, Applicability, StashKey};
 use rustc_expand::base::{Annotatable, DeriveResolutions, Indeterminate, ResolverExpand};
 use rustc_expand::base::{SyntaxExtension, SyntaxExtensionKind};
 use rustc_expand::compile_declarative_macro;
@@ -25,11 +24,10 @@ use rustc_hir::def_id::{CrateNum, DefId, LocalDefId};
 use rustc_middle::middle::stability;
 use rustc_middle::ty::RegisteredTools;
 use rustc_middle::ty::{TyCtxt, Visibility};
-use rustc_session::lint::builtin::{
-    LEGACY_DERIVE_HELPERS, SOFT_UNSTABLE, UNKNOWN_OR_MALFORMED_DIAGNOSTIC_ATTRIBUTES,
-};
+use rustc_session::lint::builtin::UNKNOWN_OR_MALFORMED_DIAGNOSTIC_ATTRIBUTES;
+use rustc_session::lint::builtin::{LEGACY_DERIVE_HELPERS, SOFT_UNSTABLE};
 use rustc_session::lint::builtin::{UNUSED_MACROS, UNUSED_MACRO_RULES};
-use rustc_session::lint::BuiltinLintDiagnostics;
+use rustc_session::lint::BuiltinLintDiag;
 use rustc_session::parse::feature_err;
 use rustc_span::edition::Edition;
 use rustc_span::hygiene::{self, ExpnData, ExpnKind, LocalExpnId};
@@ -592,7 +590,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                 _ => unreachable!(),
             };
             if soft_custom_inner_attributes_gate {
-                self.tcx.sess.parse_sess.buffer_lint(SOFT_UNSTABLE, path.span, node_id, msg);
+                self.tcx.sess.psess.buffer_lint(SOFT_UNSTABLE, path.span, node_id, msg);
             } else {
                 feature_err(&self.tcx.sess, sym::custom_inner_attributes, path.span, msg).emit();
             }
@@ -603,7 +601,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             && path.segments[0].ident.name == sym::diagnostic
             && path.segments[1].ident.name != sym::on_unimplemented
         {
-            self.tcx.sess.parse_sess.buffer_lint(
+            self.tcx.sess.psess.buffer_lint(
                 UNKNOWN_OR_MALFORMED_DIAGNOSTIC_ATTRIBUTES,
                 path.segments[1].span(),
                 node_id,
@@ -703,21 +701,21 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                     // situations should be reported as errors, so this is a bug.
                     this.dcx().span_delayed_bug(span, "inconsistent resolution for a macro");
                 }
-            } else {
+            } else if this.tcx.dcx().has_errors().is_none() && this.privacy_errors.is_empty() {
                 // It's possible that the macro was unresolved (indeterminate) and silently
                 // expanded into a dummy fragment for recovery during expansion.
                 // Now, post-expansion, the resolution may succeed, but we can't change the
                 // past and need to report an error.
                 // However, non-speculative `resolve_path` can successfully return private items
                 // even if speculative `resolve_path` returned nothing previously, so we skip this
-                // less informative error if the privacy error is reported elsewhere.
-                if this.privacy_errors.is_empty() {
-                    this.dcx().emit_err(CannotDetermineMacroResolution {
-                        span,
-                        kind: kind.descr(),
-                        path: Segment::names_to_string(path),
-                    });
-                }
+                // less informative error if no other error is reported elsewhere.
+
+                let err = this.dcx().create_err(CannotDetermineMacroResolution {
+                    span,
+                    kind: kind.descr(),
+                    path: Segment::names_to_string(path),
+                });
+                err.stash(span, StashKey::UndeterminedMacroResolution);
             }
         };
 
@@ -796,7 +794,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             ) {
                 Ok(binding) => {
                     let initial_res = initial_binding.map(|initial_binding| {
-                        self.record_use(ident, initial_binding, false);
+                        self.record_use(ident, initial_binding, Used::Other);
                         initial_binding.res()
                     });
                     let res = binding.res();
@@ -812,7 +810,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                             node_id,
                             ident.span,
                             "derive helper attribute is used before it is introduced",
-                            BuiltinLintDiagnostics::LegacyDeriveHelpers(binding.span),
+                            BuiltinLintDiag::LegacyDeriveHelpers(binding.span),
                         );
                     }
                 }

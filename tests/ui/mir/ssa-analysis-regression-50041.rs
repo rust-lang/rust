@@ -1,5 +1,5 @@
-// build-pass
-// compile-flags: -Z mir-opt-level=4
+//@ build-pass
+//@ compile-flags: -Z mir-opt-level=4
 
 #![crate_type = "lib"]
 #![feature(lang_items)]

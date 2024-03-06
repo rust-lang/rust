@@ -1154,6 +1154,8 @@ pub enum DesugaringKind {
     Await,
     ForLoop,
     WhileLoop,
+    /// `async Fn()` bound modifier
+    BoundModifier,
 }
 
 impl DesugaringKind {
@@ -1169,6 +1171,7 @@ impl DesugaringKind {
             DesugaringKind::OpaqueTy => "`impl Trait`",
             DesugaringKind::ForLoop => "`for` loop",
             DesugaringKind::WhileLoop => "`while` loop",
+            DesugaringKind::BoundModifier => "trait bound modifier",
         }
     }
 }

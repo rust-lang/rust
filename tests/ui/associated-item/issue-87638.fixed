@@ -1,4 +1,4 @@
-// run-rustfix
+//@ run-rustfix
 
 trait Trait {
     const FOO: usize;

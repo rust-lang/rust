@@ -52,18 +52,8 @@ pub trait TraitEngine<'tcx>: 'tcx {
     ) -> Vec<PredicateObligation<'tcx>>;
 }
 
-pub trait TraitEngineExt<'tcx> {
-    fn register_predicate_obligations(
-        &mut self,
-        infcx: &InferCtxt<'tcx>,
-        obligations: impl IntoIterator<Item = PredicateObligation<'tcx>>,
-    );
-
-    #[must_use]
-    fn select_all_or_error(&mut self, infcx: &InferCtxt<'tcx>) -> Vec<FulfillmentError<'tcx>>;
-}
-
-impl<'tcx, T: ?Sized + TraitEngine<'tcx>> TraitEngineExt<'tcx> for T {
+#[extension(pub trait TraitEngineExt<'tcx>)]
+impl<'tcx, T: ?Sized + TraitEngine<'tcx>> T {
     fn register_predicate_obligations(
         &mut self,
         infcx: &InferCtxt<'tcx>,
@@ -74,6 +64,7 @@ impl<'tcx, T: ?Sized + TraitEngine<'tcx>> TraitEngineExt<'tcx> for T {
         }
     }
 
+    #[must_use]
     fn select_all_or_error(&mut self, infcx: &InferCtxt<'tcx>) -> Vec<FulfillmentError<'tcx>> {
         let errors = self.select_where_possible(infcx);
         if !errors.is_empty() {

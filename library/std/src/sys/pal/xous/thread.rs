@@ -1,6 +1,6 @@
-use crate::ffi::CStr;
+use crate::ffi::{CStr, CString};
 use crate::io;
-use crate::num::NonZeroUsize;
+use crate::num::NonZero;
 use crate::os::xous::ffi::{
     blocking_scalar, create_thread, do_yield, join_thread, map_memory, update_memory_flags,
     MemoryFlags, Syscall, ThreadId,
@@ -113,6 +113,10 @@ impl Thread {
         // nope
     }
 
+    pub fn get_name() -> Option<CString> {
+        None
+    }
+
     pub fn sleep(dur: Duration) {
         // Because the sleep server works on units of `usized milliseconds`, split
         // the messages up into these chunks. This means we may run into issues
@@ -132,9 +136,9 @@ impl Thread {
     }
 }
 
-pub fn available_parallelism() -> io::Result<NonZeroUsize> {
+pub fn available_parallelism() -> io::Result<NonZero<usize>> {
     // We're unicore right now.
-    Ok(unsafe { NonZeroUsize::new_unchecked(1) })
+    Ok(unsafe { NonZero::new_unchecked(1) })
 }
 
 pub mod guard {

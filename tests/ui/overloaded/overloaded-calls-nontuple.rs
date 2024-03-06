@@ -20,11 +20,12 @@ impl FnOnce<isize> for S {
     type Output = isize;
     extern "rust-call" fn call_once(mut self, z: isize) -> isize {
         //~^ ERROR functions with the "rust-call" ABI must take a single non-self tuple argument
-        self.call_mut(z)
+        self.call_mut(z) //~ ERROR `isize` is not a tuple
     }
 }
 
 fn main() {
     let mut s = S { x: 1, y: 2 };
-    drop(s(3))
+    drop(s(3)) //~ ERROR `isize` is not a tuple
+    //~^ ERROR cannot use call notation
 }

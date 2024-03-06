@@ -1,5 +1,5 @@
 #![feature(fn_ptr_trait)]
-// check-pass
+//@ check-pass
 
 use std::marker::FnPtr;
 

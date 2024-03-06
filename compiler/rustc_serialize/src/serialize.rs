@@ -6,6 +6,7 @@ use std::cell::{Cell, RefCell};
 use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet, VecDeque};
 use std::hash::{BuildHasher, Hash};
 use std::marker::PhantomData;
+use std::num::NonZero;
 use std::path;
 use std::rc::Rc;
 use std::sync::Arc;
@@ -216,15 +217,15 @@ impl<D: Decoder> Decodable<D> for ! {
     }
 }
 
-impl<S: Encoder> Encodable<S> for ::std::num::NonZeroU32 {
+impl<S: Encoder> Encodable<S> for NonZero<u32> {
     fn encode(&self, s: &mut S) {
         s.emit_u32(self.get());
     }
 }
 
-impl<D: Decoder> Decodable<D> for ::std::num::NonZeroU32 {
+impl<D: Decoder> Decodable<D> for NonZero<u32> {
     fn decode(d: &mut D) -> Self {
-        ::std::num::NonZeroU32::new(d.read_u32()).unwrap()
+        NonZero::new(d.read_u32()).unwrap()
     }
 }
 

@@ -110,4 +110,11 @@ fn main() {
 
     // Issue #11885
     Cout << 16;
+
+    // Issue #11575
+    // Bad formatting is required to trigger the bug
+    #[rustfmt::skip]
+    'label: {
+        break 'label
+    };
 }

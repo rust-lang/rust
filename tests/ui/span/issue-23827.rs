@@ -2,6 +2,7 @@
 
 #![feature(fn_traits, unboxed_closures)]
 
+#[derive(Copy, Clone)]
 pub struct Prototype {
     pub target: u32
 }

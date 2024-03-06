@@ -1,4 +1,4 @@
-// forbid-output: &mut mut self
+//@ forbid-output: &mut mut self
 
 struct Struct;
 

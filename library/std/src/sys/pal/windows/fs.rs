@@ -16,8 +16,8 @@ use crate::sys::{c, cvt, Align8};
 use crate::sys_common::{AsInner, FromInner, IntoInner};
 use crate::thread;
 
-use super::path::maybe_verbatim;
 use super::{api, to_u16s, IoResult};
+use crate::sys::path::maybe_verbatim;
 
 pub struct File {
     handle: Handle,
@@ -112,6 +112,13 @@ impl fmt::Debug for ReadDir {
 impl Iterator for ReadDir {
     type Item = io::Result<DirEntry>;
     fn next(&mut self) -> Option<io::Result<DirEntry>> {
+        if self.handle.0 == c::INVALID_HANDLE_VALUE {
+            // This iterator was initialized with an `INVALID_HANDLE_VALUE` as its handle.
+            // Simply return `None` because this is only the case when `FindFirstFileW` in
+            // the construction of this iterator returns `ERROR_FILE_NOT_FOUND` which means
+            // no matchhing files can be found.
+            return None;
+        }
         if let Some(first) = self.first.take() {
             if let Some(e) = DirEntry::new(&self.root, &first) {
                 return Some(Ok(e));
@@ -387,7 +394,7 @@ impl File {
             cvt(c::GetFileInformationByHandleEx(
                 self.handle.as_raw_handle(),
                 c::FileBasicInfo,
-                &mut info as *mut _ as *mut c_void,
+                core::ptr::addr_of_mut!(info) as *mut c_void,
                 size as c::DWORD,
             ))?;
             let mut attr = FileAttr {
@@ -415,7 +422,7 @@ impl File {
             cvt(c::GetFileInformationByHandleEx(
                 self.handle.as_raw_handle(),
                 c::FileStandardInfo,
-                &mut info as *mut _ as *mut c_void,
+                core::ptr::addr_of_mut!(info) as *mut c_void,
                 size as c::DWORD,
             ))?;
             attr.file_size = info.AllocationSize as u64;
@@ -631,7 +638,7 @@ impl File {
             cvt(c::GetFileInformationByHandleEx(
                 self.handle.as_raw_handle(),
                 c::FileBasicInfo,
-                &mut info as *mut _ as *mut c_void,
+                core::ptr::addr_of_mut!(info) as *mut c_void,
                 size as c::DWORD,
             ))?;
             Ok(info)
@@ -1068,6 +1075,7 @@ pub fn readdir(p: &Path) -> io::Result<ReadDir> {
     unsafe {
         let mut wfd = mem::zeroed();
         let find_handle = c::FindFirstFileW(path.as_ptr(), &mut wfd);
+
         if find_handle != c::INVALID_HANDLE_VALUE {
             Ok(ReadDir {
                 handle: FindNextFileHandle(find_handle),
@@ -1075,7 +1083,31 @@ pub fn readdir(p: &Path) -> io::Result<ReadDir> {
                 first: Some(wfd),
             })
         } else {
-            Err(Error::last_os_error())
+            // The status `ERROR_FILE_NOT_FOUND` is returned by the `FindFirstFileW` function
+            // if no matching files can be found, but not necessarily that the path to find the
+            // files in does not exist.
+            //
+            // Hence, a check for whether the path to search in exists is added when the last
+            // os error returned by Windows is `ERROR_FILE_NOT_FOUND` to handle this scenario.
+            // If that is the case, an empty `ReadDir` iterator is returned as it returns `None`
+            // in the initial `.next()` invocation because `ERROR_NO_MORE_FILES` would have been
+            // returned by the `FindNextFileW` function.
+            //
+            // See issue #120040: https://github.com/rust-lang/rust/issues/120040.
+            let last_error = api::get_last_error();
+            if last_error.code == c::ERROR_FILE_NOT_FOUND {
+                return Ok(ReadDir {
+                    handle: FindNextFileHandle(find_handle),
+                    root: Arc::new(root),
+                    first: None,
+                });
+            }
+
+            // Just return the error constructed from the raw OS error if the above is not the case.
+            //
+            // Note: `ERROR_PATH_NOT_FOUND` would have been returned by the `FindFirstFileW` function
+            // when the path to search in does not exist in the first place.
+            Err(Error::from_raw_os_error(last_error.code as i32))
         }
     }
 }
@@ -1406,7 +1438,7 @@ pub fn copy(from: &Path, to: &Path) -> io::Result<u64> {
             pfrom.as_ptr(),
             pto.as_ptr(),
             Some(callback),
-            &mut size as *mut _ as *mut _,
+            core::ptr::addr_of_mut!(size) as *mut _,
             ptr::null_mut(),
             0,
         )

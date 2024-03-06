@@ -1,6 +1,7 @@
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::is_test_module_or_function;
 use clippy_utils::source::{snippet, snippet_with_applicability};
+use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::Applicability;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::{Item, ItemKind, PathSegment, UseKind};
@@ -100,13 +101,15 @@ declare_clippy_lint! {
 pub struct WildcardImports {
     warn_on_all: bool,
     test_modules_deep: u32,
+    allowed_segments: FxHashSet<String>,
 }
 
 impl WildcardImports {
-    pub fn new(warn_on_all: bool) -> Self {
+    pub fn new(warn_on_all: bool, allowed_wildcard_imports: FxHashSet<String>) -> Self {
         Self {
             warn_on_all,
             test_modules_deep: 0,
+            allowed_segments: allowed_wildcard_imports,
         }
     }
 }
@@ -190,6 +193,7 @@ impl WildcardImports {
         item.span.from_expansion()
             || is_prelude_import(segments)
             || (is_super_only_import(segments) && self.test_modules_deep > 0)
+            || is_allowed_via_config(segments, &self.allowed_segments)
     }
 }
 
@@ -198,10 +202,18 @@ impl WildcardImports {
 fn is_prelude_import(segments: &[PathSegment<'_>]) -> bool {
     segments
         .iter()
-        .any(|ps| ps.ident.name.as_str().contains(sym::prelude.as_str()))
+        .any(|ps| ps.ident.as_str().contains(sym::prelude.as_str()))
 }
 
 // Allow "super::*" imports in tests.
 fn is_super_only_import(segments: &[PathSegment<'_>]) -> bool {
     segments.len() == 1 && segments[0].ident.name == kw::Super
+}
+
+// Allow skipping imports containing user configured segments,
+// i.e. "...::utils::...::*" if user put `allowed-wildcard-imports = ["utils"]` in `Clippy.toml`
+fn is_allowed_via_config(segments: &[PathSegment<'_>], allowed_segments: &FxHashSet<String>) -> bool {
+    // segment matching need to be exact instead of using 'contains', in case user unintentionaly put
+    // a single character in the config thus skipping most of the warnings.
+    segments.iter().any(|seg| allowed_segments.contains(seg.ident.as_str()))
 }

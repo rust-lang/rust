@@ -24,18 +24,18 @@ use hir_def::{
 };
 use hir_expand::name::Name;
 use intern::Interned;
+use rustc_abi::TargetDataLayout;
 use rustc_hash::FxHashSet;
 use smallvec::{smallvec, SmallVec};
 use stdx::never;
-use triomphe::Arc;
 
 use crate::{
     consteval::unknown_const,
     db::HirDatabase,
     layout::{Layout, TagEncoding},
     mir::pad16,
-    ChalkTraitId, Const, ConstScalar, GenericArg, Interner, Substitution, TraitEnvironment,
-    TraitRef, TraitRefExt, Ty, WhereClause,
+    ChalkTraitId, Const, ConstScalar, GenericArg, Interner, Substitution, TraitRef, TraitRefExt,
+    Ty, WhereClause,
 };
 
 pub(crate) fn fn_traits(
@@ -105,6 +105,52 @@ impl Iterator for SuperTraits<'_> {
     fn next(&mut self) -> Option<Self::Item> {
         if let Some(next) = self.stack.pop() {
             self.elaborate(&next);
+            Some(next)
+        } else {
+            None
+        }
+    }
+}
+
+pub(super) fn elaborate_clause_supertraits(
+    db: &dyn HirDatabase,
+    clauses: impl Iterator<Item = WhereClause>,
+) -> ClauseElaborator<'_> {
+    let mut elaborator = ClauseElaborator { db, stack: Vec::new(), seen: FxHashSet::default() };
+    elaborator.extend_deduped(clauses);
+
+    elaborator
+}
+
+pub(super) struct ClauseElaborator<'a> {
+    db: &'a dyn HirDatabase,
+    stack: Vec<WhereClause>,
+    seen: FxHashSet<WhereClause>,
+}
+
+impl<'a> ClauseElaborator<'a> {
+    fn extend_deduped(&mut self, clauses: impl IntoIterator<Item = WhereClause>) {
+        self.stack.extend(clauses.into_iter().filter(|c| self.seen.insert(c.clone())))
+    }
+
+    fn elaborate_supertrait(&mut self, clause: &WhereClause) {
+        if let WhereClause::Implemented(trait_ref) = clause {
+            direct_super_trait_refs(self.db, trait_ref, |t| {
+                let clause = WhereClause::Implemented(t);
+                if self.seen.insert(clause.clone()) {
+                    self.stack.push(clause);
+                }
+            });
+        }
+    }
+}
+
+impl Iterator for ClauseElaborator<'_> {
+    type Item = WhereClause;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        if let Some(next) = self.stack.pop() {
+            self.elaborate_supertrait(&next);
             Some(next)
         } else {
             None
@@ -192,7 +238,7 @@ pub(crate) fn generics(db: &dyn DefDatabase, def: GenericDefId) -> Generics {
 /// and it doesn't store the closure types and fields.
 ///
 /// Codes should not assume this ordering, and should always use methods available
-/// on this struct for retriving, and `TyBuilder::substs_for_closure` for creating.
+/// on this struct for retrieving, and `TyBuilder::substs_for_closure` for creating.
 pub(crate) struct ClosureSubst<'a>(pub(crate) &'a Substitution);
 
 impl<'a> ClosureSubst<'a> {
@@ -431,18 +477,16 @@ impl FallibleTypeFolder<Interner> for UnevaluatedConstEvaluatorFolder<'_> {
 pub(crate) fn detect_variant_from_bytes<'a>(
     layout: &'a Layout,
     db: &dyn HirDatabase,
-    trait_env: Arc<TraitEnvironment>,
+    target_data_layout: &TargetDataLayout,
     b: &[u8],
     e: EnumId,
 ) -> Option<(EnumVariantId, &'a Layout)> {
-    let krate = trait_env.krate;
     let (var_id, var_layout) = match &layout.variants {
         hir_def::layout::Variants::Single { index } => {
             (db.enum_data(e).variants[index.0].0, layout)
         }
         hir_def::layout::Variants::Multiple { tag, tag_encoding, variants, .. } => {
-            let target_data_layout = db.target_data_layout(krate)?;
-            let size = tag.size(&*target_data_layout).bytes_usize();
+            let size = tag.size(target_data_layout).bytes_usize();
             let offset = layout.fields.offset(0).bytes_usize(); // The only field on enum variants is the tag field
             let tag = i128::from_le_bytes(pad16(&b[offset..offset + size], false));
             match tag_encoding {

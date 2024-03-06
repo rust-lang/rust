@@ -1,6 +1,6 @@
 // Test for <https://github.com/rust-lang/rust/issues/66756>
 
-// check-pass
+//@ check-pass
 
 enum E {
     A,

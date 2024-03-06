@@ -1,6 +1,6 @@
 // Test that we don't ICE after trying to construct a cross-file snippet #63800.
 
-// compile-flags: --test
+//@ compile-flags: --test
 
 #[macro_use]
 #[path = "move-error-snippets-ext.rs"]

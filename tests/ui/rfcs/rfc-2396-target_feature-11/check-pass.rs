@@ -6,8 +6,8 @@
 //   unsafe contexts
 // - functions with `#[target_feature]` can coerce to unsafe fn pointers
 
-// check-pass
-// only-x86_64
+//@ check-pass
+//@ only-x86_64
 
 #![feature(target_feature_11)]
 

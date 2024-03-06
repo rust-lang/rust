@@ -1,9 +1,8 @@
 use crate::fmt;
 use crate::io;
-use crate::num::NonZeroI32;
+use crate::num::NonZero;
 use crate::sys::pal::unix::unsupported::*;
 use crate::sys::process::process_common::*;
-use core::ffi::NonZero_c_int;
 
 use libc::{c_int, pid_t};
 
@@ -59,7 +58,7 @@ mod wait_status;
 pub use wait_status::ExitStatus;
 
 #[derive(PartialEq, Eq, Clone, Copy, Debug)]
-pub struct ExitStatusError(NonZero_c_int);
+pub struct ExitStatusError(NonZero<c_int>);
 
 impl Into<ExitStatus> for ExitStatusError {
     fn into(self) -> ExitStatus {
@@ -68,7 +67,7 @@ impl Into<ExitStatus> for ExitStatusError {
 }
 
 impl ExitStatusError {
-    pub fn code(self) -> Option<NonZeroI32> {
+    pub fn code(self) -> Option<NonZero<i32>> {
         ExitStatus::from(c_int::from(self.0)).code().map(|st| st.try_into().unwrap())
     }
 }

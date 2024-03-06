@@ -44,17 +44,17 @@ pub fn server_capabilities(config: &Config) -> ServerCapabilities {
         completion_provider: Some(CompletionOptions {
             resolve_provider: completions_resolve_provider(config.caps()),
             trigger_characters: Some(vec![
-                ":".to_string(),
-                ".".to_string(),
-                "'".to_string(),
-                "(".to_string(),
+                ":".to_owned(),
+                ".".to_owned(),
+                "'".to_owned(),
+                "(".to_owned(),
             ]),
             all_commit_characters: None,
             completion_item: completion_item(config),
             work_done_progress_options: WorkDoneProgressOptions { work_done_progress: None },
         }),
         signature_help_provider: Some(SignatureHelpOptions {
-            trigger_characters: Some(vec!["(".to_string(), ",".to_string(), "<".to_string()]),
+            trigger_characters: Some(vec!["(".to_owned(), ",".to_owned(), "<".to_owned()]),
             retrigger_characters: None,
             work_done_progress_options: WorkDoneProgressOptions { work_done_progress: None },
         }),
@@ -74,7 +74,7 @@ pub fn server_capabilities(config: &Config) -> ServerCapabilities {
             _ => Some(OneOf::Left(false)),
         },
         document_on_type_formatting_provider: Some(DocumentOnTypeFormattingOptions {
-            first_trigger_character: "=".to_string(),
+            first_trigger_character: "=".to_owned(),
             more_trigger_character: Some(more_trigger_character(config)),
         }),
         selection_range_provider: Some(SelectionRangeProviderCapability::Simple(true)),
@@ -222,9 +222,9 @@ fn code_action_capabilities(client_caps: &ClientCapabilities) -> CodeActionProvi
 }
 
 fn more_trigger_character(config: &Config) -> Vec<String> {
-    let mut res = vec![".".to_string(), ">".to_string(), "{".to_string(), "(".to_string()];
+    let mut res = vec![".".to_owned(), ">".to_owned(), "{".to_owned(), "(".to_owned()];
     if config.snippet_cap() {
-        res.push("<".to_string());
+        res.push("<".to_owned());
     }
     res
 }

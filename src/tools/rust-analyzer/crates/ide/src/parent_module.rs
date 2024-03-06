@@ -54,7 +54,7 @@ pub(crate) fn parent_module(db: &RootDatabase, position: FilePosition) -> Vec<Na
     }
 }
 
-/// Returns `Vec` for the same reason as `parent_module`
+/// This returns `Vec` because a module may be included from several places.
 pub(crate) fn crates_for(db: &RootDatabase, file_id: FileId) -> Vec<CrateId> {
     db.relevant_crates(file_id)
         .iter()

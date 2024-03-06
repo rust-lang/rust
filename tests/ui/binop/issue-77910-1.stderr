@@ -22,7 +22,20 @@ LL |     assert_eq!(foo, y);
    = help: use parentheses to call this function: `foo(/* &i32 */)`
    = note: this error originates in the macro `assert_eq` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error: aborting due to 2 previous errors
+error[E0381]: used binding `xs` isn't initialized
+  --> $DIR/issue-77910-1.rs:3:5
+   |
+LL |     let xs;
+   |         -- binding declared here but left uninitialized
+LL |     xs
+   |     ^^ `xs` used here but it isn't initialized
+   |
+help: consider assigning a value
+   |
+LL |     let xs = todo!();
+   |            +++++++++
 
-Some errors have detailed explanations: E0277, E0369.
+error: aborting due to 3 previous errors
+
+Some errors have detailed explanations: E0277, E0369, E0381.
 For more information about an error, try `rustc --explain E0277`.

@@ -1,6 +1,6 @@
-// revisions: classic next
-//[next] compile-flags: -Znext-solver
-//[next] check-pass
+//@ revisions: classic next
+//@[next] compile-flags: -Znext-solver
+//@[next] check-pass
 
 fn ice()
 where

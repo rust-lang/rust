@@ -1036,7 +1036,16 @@ class RustBuild(object):
                 eprint('ERROR: vendoring required, but vendor directory does not exist.')
                 eprint('       Run `cargo vendor {}` to initialize the '
                       'vendor directory.'.format(sync_dirs))
-                eprint('Alternatively, use the pre-vendored `rustc-src` dist component.')
+                eprint('       Alternatively, use the pre-vendored `rustc-src` dist component.')
+                eprint('       To get a stable/beta/nightly version, download it from: ')
+                eprint('       '
+                'https://forge.rust-lang.org/infra/other-installation-methods.html#source-code')
+                eprint('       To get a specific commit version, download it using the below URL,')
+                eprint('       replacing <commit> with a specific commit checksum: ')
+                eprint('       '
+                'https://ci-artifacts.rust-lang.org/rustc-builds/<commit>/rustc-nightly-src.tar.xz')
+                eprint('       Once you have the source downloaded, place the vendor directory')
+                eprint('       from the archive in the root of the rust project.')
                 raise Exception("{} not found".format(vendor_dir))
 
             if not os.path.exists(cargo_dir):

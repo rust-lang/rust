@@ -1,4 +1,4 @@
-// revisions: curr object_safe_for_dispatch
+//@ revisions: curr object_safe_for_dispatch
 
 #![cfg_attr(object_safe_for_dispatch, feature(object_safe_for_dispatch))]
 

@@ -1,5 +1,5 @@
-// check-pass
-// compile-flags: -Z unpretty=hir
+//@ check-pass
+//@ compile-flags: -Z unpretty=hir
 
 #![feature(type_alias_impl_trait)]
 #[prelude_import]

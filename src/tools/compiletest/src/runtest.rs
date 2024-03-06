@@ -1,6 +1,8 @@
 // ignore-tidy-filelength
 
-use crate::common::{expected_output_path, UI_EXTENSIONS, UI_FIXED, UI_STDERR, UI_STDOUT};
+use crate::common::{
+    expected_output_path, UI_EXTENSIONS, UI_FIXED, UI_STDERR, UI_STDOUT, UI_SVG, UI_WINDOWS_SVG,
+};
 use crate::common::{incremental_dir, output_base_dir, output_base_name, output_testname_unique};
 use crate::common::{Assembly, Incremental, JsDocTest, MirOpt, RunMake, RustdocJson, Ui};
 use crate::common::{Codegen, CodegenUnits, DebugInfo, Debugger, Rustdoc};
@@ -1936,7 +1938,7 @@ impl<'test> TestCx<'test> {
     fn document(&self, out_dir: &Path) -> ProcRes {
         if self.props.build_aux_docs {
             for rel_ab in &self.props.aux_builds {
-                let aux_testpaths = self.compute_aux_test_paths(rel_ab);
+                let aux_testpaths = self.compute_aux_test_paths(&self.testpaths, rel_ab);
                 let aux_props =
                     self.props.from_aux_file(&aux_testpaths.file, self.revision, self.config);
                 let aux_cx = TestCx {
@@ -2092,24 +2094,18 @@ impl<'test> TestCx<'test> {
         proc_res
     }
 
-    /// For each `aux-build: foo/bar` annotation, we check to find the
-    /// file in an `auxiliary` directory relative to the test itself.
-    fn compute_aux_test_paths(&self, rel_ab: &str) -> TestPaths {
-        let test_ab = self
-            .testpaths
-            .file
-            .parent()
-            .expect("test file path has no parent")
-            .join("auxiliary")
-            .join(rel_ab);
+    /// For each `aux-build: foo/bar` annotation, we check to find the file in an `auxiliary`
+    /// directory relative to the test itself (not any intermediate auxiliaries).
+    fn compute_aux_test_paths(&self, of: &TestPaths, rel_ab: &str) -> TestPaths {
+        let test_ab =
+            of.file.parent().expect("test file path has no parent").join("auxiliary").join(rel_ab);
         if !test_ab.exists() {
             self.fatal(&format!("aux-build `{}` source not found", test_ab.display()))
         }
 
         TestPaths {
             file: test_ab,
-            relative_dir: self
-                .testpaths
+            relative_dir: of
                 .relative_dir
                 .join(self.output_testname_unique())
                 .join("auxiliary")
@@ -2135,7 +2131,7 @@ impl<'test> TestCx<'test> {
         self.config.target.contains("vxworks") && !self.is_vxworks_pure_static()
     }
 
-    fn build_all_auxiliary(&self, rustc: &mut Command) -> PathBuf {
+    fn aux_output_dir(&self) -> PathBuf {
         let aux_dir = self.aux_output_dir_name();
 
         if !self.props.aux_builds.is_empty() {
@@ -2143,22 +2139,26 @@ impl<'test> TestCx<'test> {
             create_dir_all(&aux_dir).unwrap();
         }
 
+        aux_dir
+    }
+
+    fn build_all_auxiliary(&self, of: &TestPaths, aux_dir: &Path, rustc: &mut Command) {
         for rel_ab in &self.props.aux_builds {
-            self.build_auxiliary(rel_ab, &aux_dir);
+            self.build_auxiliary(of, rel_ab, &aux_dir);
         }
 
         for (aux_name, aux_path) in &self.props.aux_crates {
-            let is_dylib = self.build_auxiliary(&aux_path, &aux_dir);
+            let is_dylib = self.build_auxiliary(of, &aux_path, &aux_dir);
             let lib_name =
                 get_lib_name(&aux_path.trim_end_matches(".rs").replace('-', "_"), is_dylib);
             rustc.arg("--extern").arg(format!("{}={}/{}", aux_name, aux_dir.display(), lib_name));
         }
-
-        aux_dir
     }
 
     fn compose_and_run_compiler(&self, mut rustc: Command, input: Option<String>) -> ProcRes {
-        let aux_dir = self.build_all_auxiliary(&mut rustc);
+        let aux_dir = self.aux_output_dir();
+        self.build_all_auxiliary(&self.testpaths, &aux_dir, &mut rustc);
+
         self.props.unset_rustc_env.iter().fold(&mut rustc, Command::env_remove);
         rustc.envs(self.props.rustc_env.clone());
         self.compose_and_run(
@@ -2172,10 +2172,10 @@ impl<'test> TestCx<'test> {
     /// Builds an aux dependency.
     ///
     /// Returns whether or not it is a dylib.
-    fn build_auxiliary(&self, source_path: &str, aux_dir: &Path) -> bool {
-        let aux_testpaths = self.compute_aux_test_paths(source_path);
+    fn build_auxiliary(&self, of: &TestPaths, source_path: &str, aux_dir: &Path) -> bool {
+        let aux_testpaths = self.compute_aux_test_paths(of, source_path);
         let aux_props = self.props.from_aux_file(&aux_testpaths.file, self.revision, self.config);
-        let aux_output = TargetLocation::ThisDirectory(self.aux_output_dir_name());
+        let aux_output = TargetLocation::ThisDirectory(aux_dir.to_path_buf());
         let aux_cx = TestCx {
             config: self.config,
             props: &aux_props,
@@ -2193,6 +2193,7 @@ impl<'test> TestCx<'test> {
             LinkToAux::No,
             Vec::new(),
         );
+        aux_cx.build_all_auxiliary(of, aux_dir, &mut aux_rustc);
 
         for key in &aux_props.unset_rustc_env {
             aux_rustc.env_remove(key);
@@ -2467,6 +2468,7 @@ impl<'test> TestCx<'test> {
                     "-Zvalidate-mir",
                     "-Zlint-mir",
                     "-Zdump-mir-exclude-pass-number",
+                    "--crate-type=rlib",
                 ]);
                 if let Some(pass) = &self.props.mir_unit_test {
                     rustc.args(&["-Zmir-opt-level=0", &format!("-Zmir-enable-passes=+{}", pass)]);
@@ -2503,8 +2505,11 @@ impl<'test> TestCx<'test> {
                 // overridden by `compile-flags`.
                 rustc.arg("-Copt-level=2");
             }
-            RunPassValgrind | Pretty | DebugInfo | Codegen | Rustdoc | RustdocJson | RunMake
-            | CodegenUnits | JsDocTest | Assembly => {
+            Assembly | Codegen => {
+                rustc.arg("-Cdebug-assertions=no");
+            }
+            RunPassValgrind | Pretty | DebugInfo | Rustdoc | RustdocJson | RunMake
+            | CodegenUnits | JsDocTest => {
                 // do not use JSON output
             }
         }
@@ -2906,25 +2911,32 @@ impl<'test> TestCx<'test> {
     fn verify_with_filecheck(&self, output: &Path) -> ProcRes {
         let mut filecheck = Command::new(self.config.llvm_filecheck.as_ref().unwrap());
         filecheck.arg("--input-file").arg(output).arg(&self.testpaths.file);
-        // It would be more appropriate to make most of the arguments configurable through
-        // a comment-attribute similar to `compile-flags`. For example, --check-prefixes is a very
-        // useful flag.
-        //
-        // For now, though…
-        let prefix_for_target =
-            if self.config.target.contains("msvc") { "MSVC" } else { "NONMSVC" };
-        let prefixes = if let Some(rev) = self.revision {
-            format!("CHECK,{},{}", prefix_for_target, rev)
-        } else {
-            format!("CHECK,{}", prefix_for_target)
-        };
-        if self.config.llvm_version.unwrap_or(0) >= 130000 {
-            filecheck.args(&["--allow-unused-prefixes", "--check-prefixes", &prefixes]);
-        } else {
-            filecheck.args(&["--check-prefixes", &prefixes]);
+
+        // FIXME: Consider making some of these prefix flags opt-in per test,
+        // via `filecheck-flags` or by adding new header directives.
+
+        // Because we use custom prefixes, we also have to register the default prefix.
+        filecheck.arg("--check-prefix=CHECK");
+
+        // Some tests use the current revision name as a check prefix.
+        if let Some(rev) = self.revision {
+            filecheck.arg("--check-prefix").arg(rev);
         }
+
+        // Some tests also expect either the MSVC or NONMSVC prefix to be defined.
+        let msvc_or_not = if self.config.target.contains("msvc") { "MSVC" } else { "NONMSVC" };
+        filecheck.arg("--check-prefix").arg(msvc_or_not);
+
+        // The filecheck tool normally fails if a prefix is defined but not used.
+        // However, we define several prefixes globally for all tests.
+        filecheck.arg("--allow-unused-prefixes");
+
         // Provide more context on failures.
         filecheck.args(&["--dump-input-context", "100"]);
+
+        // Add custom flags supplied by the `filecheck-flags:` test header.
+        filecheck.args(&self.props.filecheck_flags);
+
         self.compose_and_run(filecheck, "", None, None)
     }
 
@@ -3033,7 +3045,8 @@ impl<'test> TestCx<'test> {
             LinkToAux::Yes,
             Vec::new(),
         );
-        new_rustdoc.build_all_auxiliary(&mut rustc);
+        let aux_dir = new_rustdoc.aux_output_dir();
+        new_rustdoc.build_all_auxiliary(&new_rustdoc.testpaths, &aux_dir, &mut rustc);
 
         let proc_res = new_rustdoc.document(&compare_dir);
         if !proc_res.status.success() {
@@ -3559,6 +3572,17 @@ impl<'test> TestCx<'test> {
     }
 
     fn run_rmake_test(&self) {
+        let test_dir = &self.testpaths.file;
+        if test_dir.join("rmake.rs").exists() {
+            self.run_rmake_v2_test();
+        } else if test_dir.join("Makefile").exists() {
+            self.run_rmake_legacy_test();
+        } else {
+            self.fatal("failed to find either `rmake.rs` or `Makefile`")
+        }
+    }
+
+    fn run_rmake_legacy_test(&self) {
         let cwd = env::current_dir().unwrap();
         let src_root = self.config.src_base.parent().unwrap().parent().unwrap();
         let src_root = cwd.join(&src_root);
@@ -3726,6 +3750,238 @@ impl<'test> TestCx<'test> {
         fs::remove_dir(path)
     }
 
+    fn run_rmake_v2_test(&self) {
+        // For `run-make` V2, we need to perform 2 steps to build and run a `run-make` V2 recipe
+        // (`rmake.rs`) to run the actual tests. The support library is already built as a tool
+        // dylib and is available under `build/$TARGET/stageN-tools-bin/librun_make_support.rlib`.
+        //
+        // 1. We need to build the recipe `rmake.rs` and link in the support library.
+        // 2. We need to run the recipe to build and run the tests.
+        let cwd = env::current_dir().unwrap();
+        let src_root = self.config.src_base.parent().unwrap().parent().unwrap();
+        let src_root = cwd.join(&src_root);
+        let build_root = self.config.build_base.parent().unwrap().parent().unwrap();
+        let build_root = cwd.join(&build_root);
+
+        let tmpdir = cwd.join(self.output_base_name());
+        if tmpdir.exists() {
+            self.aggressive_rm_rf(&tmpdir).unwrap();
+        }
+        create_dir_all(&tmpdir).unwrap();
+
+        // HACK: assume stageN-target, we only want stageN.
+        let stage = self.config.stage_id.split('-').next().unwrap();
+
+        // First, we construct the path to the built support library.
+        let mut support_lib_path = PathBuf::new();
+        support_lib_path.push(&build_root);
+        support_lib_path.push(format!("{}-tools-bin", stage));
+        support_lib_path.push("librun_make_support.rlib");
+
+        let mut stage_std_path = PathBuf::new();
+        stage_std_path.push(&build_root);
+        stage_std_path.push(&stage);
+        stage_std_path.push("lib");
+
+        // Then, we need to build the recipe `rmake.rs` and link in the support library.
+        let recipe_bin =
+            tmpdir.join(if self.config.target.contains("windows") { "rmake.exe" } else { "rmake" });
+
+        let mut support_lib_deps = PathBuf::new();
+        support_lib_deps.push(&build_root);
+        support_lib_deps.push(format!("{}-tools", stage));
+        support_lib_deps.push(&self.config.host);
+        support_lib_deps.push("release");
+        support_lib_deps.push("deps");
+
+        let mut support_lib_deps_deps = PathBuf::new();
+        support_lib_deps_deps.push(&build_root);
+        support_lib_deps_deps.push(format!("{}-tools", stage));
+        support_lib_deps_deps.push("release");
+        support_lib_deps_deps.push("deps");
+
+        debug!(?support_lib_deps);
+        debug!(?support_lib_deps_deps);
+
+        let res = self.cmd2procres(
+            Command::new(&self.config.rustc_path)
+                .arg("-o")
+                .arg(&recipe_bin)
+                .arg(format!(
+                    "-Ldependency={}",
+                    &support_lib_path.parent().unwrap().to_string_lossy()
+                ))
+                .arg(format!("-Ldependency={}", &support_lib_deps.to_string_lossy()))
+                .arg(format!("-Ldependency={}", &support_lib_deps_deps.to_string_lossy()))
+                .arg("--extern")
+                .arg(format!("run_make_support={}", &support_lib_path.to_string_lossy()))
+                .arg(&self.testpaths.file.join("rmake.rs"))
+                .env("TARGET", &self.config.target)
+                .env("PYTHON", &self.config.python)
+                .env("S", &src_root)
+                .env("RUST_BUILD_STAGE", &self.config.stage_id)
+                .env("RUSTC", cwd.join(&self.config.rustc_path))
+                .env("TMPDIR", &tmpdir)
+                .env("LD_LIB_PATH_ENVVAR", dylib_env_var())
+                .env("HOST_RPATH_DIR", cwd.join(&self.config.compile_lib_path))
+                .env("TARGET_RPATH_DIR", cwd.join(&self.config.run_lib_path))
+                .env("LLVM_COMPONENTS", &self.config.llvm_components)
+                // We for sure don't want these tests to run in parallel, so make
+                // sure they don't have access to these vars if we run via `make`
+                // at the top level
+                .env_remove("MAKEFLAGS")
+                .env_remove("MFLAGS")
+                .env_remove("CARGO_MAKEFLAGS"),
+        );
+        if !res.status.success() {
+            self.fatal_proc_rec("run-make test failed: could not build `rmake.rs` recipe", &res);
+        }
+
+        // Finally, we need to run the recipe binary to build and run the actual tests.
+        debug!(?recipe_bin);
+
+        let mut dylib_env_paths = String::new();
+        dylib_env_paths.push_str(&env::var(dylib_env_var()).unwrap());
+        dylib_env_paths.push(':');
+        dylib_env_paths.push_str(&support_lib_path.parent().unwrap().to_string_lossy());
+        dylib_env_paths.push(':');
+        dylib_env_paths.push_str(
+            &stage_std_path.join("rustlib").join(&self.config.host).join("lib").to_string_lossy(),
+        );
+
+        let mut target_rpath_env_path = String::new();
+        target_rpath_env_path.push_str(&tmpdir.to_string_lossy());
+        target_rpath_env_path.push(':');
+        target_rpath_env_path.push_str(&dylib_env_paths);
+
+        let mut cmd = Command::new(&recipe_bin);
+        cmd.current_dir(&self.testpaths.file)
+            .stdout(Stdio::piped())
+            .stderr(Stdio::piped())
+            .env("LD_LIB_PATH_ENVVAR", dylib_env_var())
+            .env("TARGET_RPATH_ENV", &target_rpath_env_path)
+            .env(dylib_env_var(), &dylib_env_paths)
+            .env("TARGET", &self.config.target)
+            .env("PYTHON", &self.config.python)
+            .env("S", &src_root)
+            .env("RUST_BUILD_STAGE", &self.config.stage_id)
+            .env("RUSTC", cwd.join(&self.config.rustc_path))
+            .env("TMPDIR", &tmpdir)
+            .env("HOST_RPATH_DIR", cwd.join(&self.config.compile_lib_path))
+            .env("TARGET_RPATH_DIR", cwd.join(&self.config.run_lib_path))
+            .env("LLVM_COMPONENTS", &self.config.llvm_components)
+            // We for sure don't want these tests to run in parallel, so make
+            // sure they don't have access to these vars if we run via `make`
+            // at the top level
+            .env_remove("MAKEFLAGS")
+            .env_remove("MFLAGS")
+            .env_remove("CARGO_MAKEFLAGS");
+
+        if let Some(ref rustdoc) = self.config.rustdoc_path {
+            cmd.env("RUSTDOC", cwd.join(rustdoc));
+        }
+
+        if let Some(ref rust_demangler) = self.config.rust_demangler_path {
+            cmd.env("RUST_DEMANGLER", cwd.join(rust_demangler));
+        }
+
+        if let Some(ref node) = self.config.nodejs {
+            cmd.env("NODE", node);
+        }
+
+        if let Some(ref linker) = self.config.target_linker {
+            cmd.env("RUSTC_LINKER", linker);
+        }
+
+        if let Some(ref clang) = self.config.run_clang_based_tests_with {
+            cmd.env("CLANG", clang);
+        }
+
+        if let Some(ref filecheck) = self.config.llvm_filecheck {
+            cmd.env("LLVM_FILECHECK", filecheck);
+        }
+
+        if let Some(ref llvm_bin_dir) = self.config.llvm_bin_dir {
+            cmd.env("LLVM_BIN_DIR", llvm_bin_dir);
+        }
+
+        if let Some(ref remote_test_client) = self.config.remote_test_client {
+            cmd.env("REMOTE_TEST_CLIENT", remote_test_client);
+        }
+
+        // We don't want RUSTFLAGS set from the outside to interfere with
+        // compiler flags set in the test cases:
+        cmd.env_remove("RUSTFLAGS");
+
+        // Use dynamic musl for tests because static doesn't allow creating dylibs
+        if self.config.host.contains("musl") {
+            cmd.env("RUSTFLAGS", "-Ctarget-feature=-crt-static").env("IS_MUSL_HOST", "1");
+        }
+
+        if self.config.bless {
+            cmd.env("RUSTC_BLESS_TEST", "--bless");
+            // Assume this option is active if the environment variable is "defined", with _any_ value.
+            // As an example, a `Makefile` can use this option by:
+            //
+            //   ifdef RUSTC_BLESS_TEST
+            //       cp "$(TMPDIR)"/actual_something.ext expected_something.ext
+            //   else
+            //       $(DIFF) expected_something.ext "$(TMPDIR)"/actual_something.ext
+            //   endif
+        }
+
+        if self.config.target.contains("msvc") && self.config.cc != "" {
+            // We need to pass a path to `lib.exe`, so assume that `cc` is `cl.exe`
+            // and that `lib.exe` lives next to it.
+            let lib = Path::new(&self.config.cc).parent().unwrap().join("lib.exe");
+
+            // MSYS doesn't like passing flags of the form `/foo` as it thinks it's
+            // a path and instead passes `C:\msys64\foo`, so convert all
+            // `/`-arguments to MSVC here to `-` arguments.
+            let cflags = self
+                .config
+                .cflags
+                .split(' ')
+                .map(|s| s.replace("/", "-"))
+                .collect::<Vec<_>>()
+                .join(" ");
+            let cxxflags = self
+                .config
+                .cxxflags
+                .split(' ')
+                .map(|s| s.replace("/", "-"))
+                .collect::<Vec<_>>()
+                .join(" ");
+
+            cmd.env("IS_MSVC", "1")
+                .env("IS_WINDOWS", "1")
+                .env("MSVC_LIB", format!("'{}' -nologo", lib.display()))
+                .env("CC", format!("'{}' {}", self.config.cc, cflags))
+                .env("CXX", format!("'{}' {}", &self.config.cxx, cxxflags));
+        } else {
+            cmd.env("CC", format!("{} {}", self.config.cc, self.config.cflags))
+                .env("CXX", format!("{} {}", self.config.cxx, self.config.cxxflags))
+                .env("AR", &self.config.ar);
+
+            if self.config.target.contains("windows") {
+                cmd.env("IS_WINDOWS", "1");
+            }
+        }
+
+        let (Output { stdout, stderr, status }, truncated) =
+            self.read2_abbreviated(cmd.spawn().expect("failed to spawn `rmake`"));
+        if !status.success() {
+            let res = ProcRes {
+                status,
+                stdout: String::from_utf8_lossy(&stdout).into_owned(),
+                stderr: String::from_utf8_lossy(&stderr).into_owned(),
+                truncated,
+                cmdline: format!("{:?}", cmd),
+            };
+            self.fatal_proc_rec("rmake recipe failed to complete", &res);
+        }
+    }
+
     fn run_js_doc_test(&self) {
         if let Some(nodejs) = &self.config.nodejs {
             let out_dir = self.output_base_dir();
@@ -3760,9 +4016,22 @@ impl<'test> TestCx<'test> {
         explicit_format: bool,
     ) -> usize {
         let stderr_bits = format!("{}bit.stderr", self.config.get_pointer_width());
+        let force_color_svg = self.props.compile_flags.iter().any(|s| s.contains("--color=always"));
         let (stderr_kind, stdout_kind) = match output_kind {
             TestOutput::Compile => (
-                { if self.props.stderr_per_bitwidth { &stderr_bits } else { UI_STDERR } },
+                if force_color_svg {
+                    if self.config.target.contains("windows") {
+                        // We single out Windows here because some of the CLI coloring is
+                        // specifically changed for Windows.
+                        UI_WINDOWS_SVG
+                    } else {
+                        UI_SVG
+                    }
+                } else if self.props.stderr_per_bitwidth {
+                    &stderr_bits
+                } else {
+                    UI_STDERR
+                },
                 UI_STDOUT,
             ),
             TestOutput::Run => (UI_RUN_STDERR, UI_RUN_STDOUT),
@@ -3797,7 +4066,9 @@ impl<'test> TestCx<'test> {
             _ => {}
         };
 
-        let stderr = if explicit_format {
+        let stderr = if force_color_svg {
+            anstyle_svg::Term::new().render_svg(&proc_res.stderr)
+        } else if explicit_format {
             proc_res.stderr.clone()
         } else {
             json::extract_rendered(&proc_res.stderr)
@@ -3938,7 +4209,7 @@ impl<'test> TestCx<'test> {
             );
         } else if !expected_fixed.is_empty() {
             panic!(
-                "the `// run-rustfix` directive wasn't found but a `*.fixed` \
+                "the `//@ run-rustfix` directive wasn't found but a `*.fixed` \
                  file was found"
             );
         }
@@ -4315,10 +4586,11 @@ impl<'test> TestCx<'test> {
             let mut seen_allocs = indexmap::IndexSet::new();
 
             // The alloc-id appears in pretty-printed allocations.
-            let re =
+            static ALLOC_ID_PP_RE: Lazy<Regex> = Lazy::new(|| {
                 Regex::new(r"╾─*a(lloc)?([0-9]+)(\+0x[0-9]+)?(<imm>)?( \([0-9]+ ptr bytes\))?─*╼")
-                    .unwrap();
-            normalized = re
+                    .unwrap()
+            });
+            normalized = ALLOC_ID_PP_RE
                 .replace_all(&normalized, |caps: &Captures<'_>| {
                     // Renumber the captured index.
                     let index = caps.get(2).unwrap().as_str().to_string();
@@ -4331,8 +4603,9 @@ impl<'test> TestCx<'test> {
                 .into_owned();
 
             // The alloc-id appears in a sentence.
-            let re = Regex::new(r"\balloc([0-9]+)\b").unwrap();
-            normalized = re
+            static ALLOC_ID_RE: Lazy<Regex> =
+                Lazy::new(|| Regex::new(r"\balloc([0-9]+)\b").unwrap());
+            normalized = ALLOC_ID_RE
                 .replace_all(&normalized, |caps: &Captures<'_>| {
                     let index = caps.get(1).unwrap().as_str().to_string();
                     let (index, _) = seen_allocs.insert_full(index);

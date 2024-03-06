@@ -1,5 +1,5 @@
 error: calls to `push` immediately after creation
-  --> $DIR/vec_init_then_push.rs:5:5
+  --> tests/ui/vec_init_then_push.rs:5:5
    |
 LL | /     let mut def_err: Vec<u32> = Default::default();
 LL | |
@@ -11,7 +11,7 @@ LL | |     def_err.push(0);
    = help: to override `-D warnings` add `#[allow(clippy::vec_init_then_push)]`
 
 error: calls to `push` immediately after creation
-  --> $DIR/vec_init_then_push.rs:10:5
+  --> tests/ui/vec_init_then_push.rs:10:5
    |
 LL | /     let mut new_err = Vec::<u32>::new();
 LL | |
@@ -19,7 +19,7 @@ LL | |     new_err.push(1);
    | |____________________^ help: consider using the `vec![]` macro: `let mut new_err = vec![..];`
 
 error: calls to `push` immediately after creation
-  --> $DIR/vec_init_then_push.rs:14:5
+  --> tests/ui/vec_init_then_push.rs:14:5
    |
 LL | /     let mut cap_err = Vec::with_capacity(2);
 LL | |
@@ -29,7 +29,7 @@ LL | |     cap_err.push(2);
    | |____________________^ help: consider using the `vec![]` macro: `let mut cap_err = vec![..];`
 
 error: calls to `push` immediately after creation
-  --> $DIR/vec_init_then_push.rs:27:5
+  --> tests/ui/vec_init_then_push.rs:27:5
    |
 LL | /     new_err = Vec::new();
 LL | |
@@ -37,7 +37,7 @@ LL | |     new_err.push(0);
    | |____________________^ help: consider using the `vec![]` macro: `new_err = vec![..];`
 
 error: calls to `push` immediately after creation
-  --> $DIR/vec_init_then_push.rs:78:5
+  --> tests/ui/vec_init_then_push.rs:78:5
    |
 LL | /     let mut v = Vec::new();
 LL | |
@@ -46,7 +46,7 @@ LL | |     v.push(1);
    | |______________^ help: consider using the `vec![]` macro: `let mut v = vec![..];`
 
 error: calls to `push` immediately after creation
-  --> $DIR/vec_init_then_push.rs:87:5
+  --> tests/ui/vec_init_then_push.rs:87:5
    |
 LL | /     let mut v = Vec::new();
 LL | |
@@ -58,7 +58,7 @@ LL | |     v.push(0);
    | |______________^ help: consider using the `vec![]` macro: `let mut v = vec![..];`
 
 error: calls to `push` immediately after creation
-  --> $DIR/vec_init_then_push.rs:101:5
+  --> tests/ui/vec_init_then_push.rs:101:5
    |
 LL | /     let mut v2 = Vec::new();
 LL | |
@@ -70,7 +70,7 @@ LL | |     v2.push(0);
    | |_______________^ help: consider using the `vec![]` macro: `let mut v2 = vec![..];`
 
 error: calls to `push` immediately after creation
-  --> $DIR/vec_init_then_push.rs:117:5
+  --> tests/ui/vec_init_then_push.rs:117:5
    |
 LL | /     let mut v = Vec::new();
 LL | |

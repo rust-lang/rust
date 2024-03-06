@@ -27,8 +27,9 @@
 //! Rust atomics currently follow the same rules as [C++20 atomics][cpp], specifically `atomic_ref`.
 //! Basically, creating a *shared reference* to one of the Rust atomic types corresponds to creating
 //! an `atomic_ref` in C++; the `atomic_ref` is destroyed when the lifetime of the shared reference
-//! ends. (A Rust atomic type that is exclusively owned or behind a mutable reference does *not*
-//! correspond to an "atomic object" in C++, since it can be accessed via non-atomic operations.)
+//! ends. A Rust atomic type that is exclusively owned or behind a mutable reference does *not*
+//! correspond to an “atomic object” in C++, since the underlying primitive can be mutably accessed,
+//! for example with `get_mut`, to perform non-atomic operations.
 //!
 //! [cpp]: https://en.cppreference.com/w/cpp/atomic
 //!
@@ -216,6 +217,10 @@
 #![cfg_attr(not(target_has_atomic_load_store = "8"), allow(dead_code))]
 #![cfg_attr(not(target_has_atomic_load_store = "8"), allow(unused_imports))]
 #![rustc_diagnostic_item = "atomic_mod"]
+// Clippy complains about the pattern of "safe function calling unsafe function taking pointers".
+// This happens with AtomicPtr intrinsics but is fine, as the pointers clippy is concerned about
+// are just normal values that get loaded/stored, but not dereferenced.
+#![allow(clippy::not_unsafe_ptr_arg_deref)]
 
 use self::Ordering::*;
 
@@ -1087,7 +1092,7 @@ impl AtomicBool {
 
     /// Returns a mutable pointer to the underlying [`bool`].
     ///
-    /// Doing non-atomic reads and writes on the resulting integer can be a data race.
+    /// Doing non-atomic reads and writes on the resulting boolean can be a data race.
     /// This method is mostly useful for FFI, where the function signature may use
     /// `*mut bool` instead of `&AtomicBool`.
     ///
@@ -1837,7 +1842,7 @@ impl<T> AtomicPtr<T> {
     #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
     pub fn fetch_byte_add(&self, val: usize, order: Ordering) -> *mut T {
         // SAFETY: data races are prevented by atomic intrinsics.
-        unsafe { atomic_add(self.p.get(), core::ptr::invalid_mut(val), order).cast() }
+        unsafe { atomic_add(self.p.get(), core::ptr::without_provenance_mut(val), order).cast() }
     }
 
     /// Offsets the pointer's address by subtracting `val` *bytes*, returning the
@@ -1862,7 +1867,7 @@ impl<T> AtomicPtr<T> {
     /// #![feature(strict_provenance_atomic_ptr, strict_provenance)]
     /// use core::sync::atomic::{AtomicPtr, Ordering};
     ///
-    /// let atom = AtomicPtr::<i64>::new(core::ptr::invalid_mut(1));
+    /// let atom = AtomicPtr::<i64>::new(core::ptr::without_provenance_mut(1));
     /// assert_eq!(atom.fetch_byte_sub(1, Ordering::Relaxed).addr(), 1);
     /// assert_eq!(atom.load(Ordering::Relaxed).addr(), 0);
     /// ```
@@ -1872,7 +1877,7 @@ impl<T> AtomicPtr<T> {
     #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
     pub fn fetch_byte_sub(&self, val: usize, order: Ordering) -> *mut T {
         // SAFETY: data races are prevented by atomic intrinsics.
-        unsafe { atomic_sub(self.p.get(), core::ptr::invalid_mut(val), order).cast() }
+        unsafe { atomic_sub(self.p.get(), core::ptr::without_provenance_mut(val), order).cast() }
     }
 
     /// Performs a bitwise "or" operation on the address of the current pointer,
@@ -1923,7 +1928,7 @@ impl<T> AtomicPtr<T> {
     #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
     pub fn fetch_or(&self, val: usize, order: Ordering) -> *mut T {
         // SAFETY: data races are prevented by atomic intrinsics.
-        unsafe { atomic_or(self.p.get(), core::ptr::invalid_mut(val), order).cast() }
+        unsafe { atomic_or(self.p.get(), core::ptr::without_provenance_mut(val), order).cast() }
     }
 
     /// Performs a bitwise "and" operation on the address of the current
@@ -1973,7 +1978,7 @@ impl<T> AtomicPtr<T> {
     #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
     pub fn fetch_and(&self, val: usize, order: Ordering) -> *mut T {
         // SAFETY: data races are prevented by atomic intrinsics.
-        unsafe { atomic_and(self.p.get(), core::ptr::invalid_mut(val), order).cast() }
+        unsafe { atomic_and(self.p.get(), core::ptr::without_provenance_mut(val), order).cast() }
     }
 
     /// Performs a bitwise "xor" operation on the address of the current
@@ -2021,12 +2026,12 @@ impl<T> AtomicPtr<T> {
     #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
     pub fn fetch_xor(&self, val: usize, order: Ordering) -> *mut T {
         // SAFETY: data races are prevented by atomic intrinsics.
-        unsafe { atomic_xor(self.p.get(), core::ptr::invalid_mut(val), order).cast() }
+        unsafe { atomic_xor(self.p.get(), core::ptr::without_provenance_mut(val), order).cast() }
     }
 
     /// Returns a mutable pointer to the underlying pointer.
     ///
-    /// Doing non-atomic reads and writes on the resulting integer can be a data race.
+    /// Doing non-atomic reads and writes on the resulting pointer can be a data race.
     /// This method is mostly useful for FFI, where the function signature may use
     /// `*mut *mut T` instead of `&AtomicPtr<T>`.
     ///
@@ -2119,7 +2124,16 @@ macro_rules! atomic_int {
         /// This type has the same in-memory representation as the underlying
         /// integer type, [`
         #[doc = $s_int_type]
-        /// `]. For more about the differences between atomic types and
+        /// `].
+        #[doc = if_not_8_bit! {
+            $int_type,
+            concat!(
+                "However, the alignment of this type is always equal to its ",
+                "size, even on targets where [`", $s_int_type, "`] has a ",
+                "lesser alignment."
+            )
+        }]
+        /// For more about the differences between atomic types and
         /// non-atomic types as well as information about the portability of
         /// this type, please see the [module-level documentation].
         ///

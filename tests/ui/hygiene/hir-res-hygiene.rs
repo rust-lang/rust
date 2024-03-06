@@ -1,6 +1,6 @@
-// check-pass
-// edition:2018
-// aux-build:not-libstd.rs
+//@ check-pass
+//@ edition:2018
+//@ aux-build:not-libstd.rs
 
 // Check that paths created in HIR are not affected by in scope names.
 

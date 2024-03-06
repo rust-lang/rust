@@ -1,7 +1,7 @@
 // This test ensures that `self` is syntactically accepted in all places an `FnDecl` is parsed.
 // FIXME(Centril): For now closures are an exception.
 
-// check-pass
+//@ check-pass
 
 fn main() {}
 

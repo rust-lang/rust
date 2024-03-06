@@ -1,5 +1,4 @@
-// compile-flags: -C opt-level=z --edition=2021
-// ignore-debug
+//@ compile-flags: -C opt-level=z --edition=2021
 
 #![crate_type = "lib"]
 
@@ -21,6 +20,6 @@ pub fn read_up_to_8(buf: &[u8]) -> u64 {
 // CHECK-LABEL: @checking_unwrap_expectation(
 #[no_mangle]
 pub fn checking_unwrap_expectation(buf: &[u8]) -> &[u8; 4] {
-    // CHECK: call void @_ZN4core6result13unwrap_failed17h
+    // CHECK: call void @{{.*core6result13unwrap_failed}}
     buf.try_into().unwrap()
 }

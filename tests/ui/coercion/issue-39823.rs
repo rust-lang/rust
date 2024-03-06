@@ -1,5 +1,5 @@
-// run-pass
-// aux-build:issue-39823.rs
+//@ run-pass
+//@ aux-build:issue-39823.rs
 
 extern crate issue_39823;
 use issue_39823::{RemoteC, RemoteG};

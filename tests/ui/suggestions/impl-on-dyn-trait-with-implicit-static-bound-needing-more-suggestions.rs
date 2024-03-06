@@ -64,6 +64,8 @@ mod bay {
 
     fn use_it<'a>(val: Box<dyn ObjectTrait<Assoc = i32> + 'a>) -> &'a () {
         val.use_self()
+        //~^ ERROR: cannot return value referencing function parameter `val`
+        //~| ERROR: borrowed data escapes outside of function
     }
 }
 
@@ -86,6 +88,7 @@ mod bax {
 
     fn use_it<'a>(val: Box<dyn ObjectTrait<Assoc = i32> + 'a>) -> &'a () {
         val.use_self()
+        //~^ ERROR: cannot return value referencing function parameter `val`
     }
 }
 

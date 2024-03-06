@@ -1,10 +1,10 @@
-// run-pass
+//@ run-pass
 
 #![allow(stable_features)]
-// ignore-windows - this is a unix-specific test
-// ignore-emscripten no processes
-// ignore-sgx no processes
-// ignore-fuchsia no execvp syscall provided
+//@ ignore-windows - this is a unix-specific test
+//@ ignore-emscripten no processes
+//@ ignore-sgx no processes
+//@ ignore-fuchsia no execvp syscall provided
 
 #![feature(process_exec)]
 

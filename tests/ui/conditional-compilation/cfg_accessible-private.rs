@@ -1,4 +1,4 @@
-// check-pass
+//@ check-pass
 
 #![feature(cfg_accessible)]
 

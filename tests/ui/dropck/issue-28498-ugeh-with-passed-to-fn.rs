@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 
 // Demonstrate the use of the unguarded escape hatch with a type param in negative position
 // to assert that destructor will not access any dead data.

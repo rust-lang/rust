@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 trait X {
     fn call<T: std::fmt::Debug>(&self, x: &T);
     fn default_method<T: std::fmt::Debug>(&self, x: &T) {

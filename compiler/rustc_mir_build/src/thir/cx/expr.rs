@@ -3,6 +3,7 @@ use crate::thir::cx::region::Scope;
 use crate::thir::cx::Cx;
 use crate::thir::util::UserAnnotatedTyHelpers;
 use itertools::Itertools;
+use rustc_ast::LitKind;
 use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_hir as hir;
 use rustc_hir::def::{CtorKind, CtorOf, DefKind, Res};
@@ -20,7 +21,8 @@ use rustc_middle::ty::GenericArgs;
 use rustc_middle::ty::{
     self, AdtKind, InlineConstArgs, InlineConstArgsParts, ScalarInt, Ty, UpvarArgs, UserType,
 };
-use rustc_span::{sym, Span};
+use rustc_span::source_map::Spanned;
+use rustc_span::{sym, Span, DUMMY_SP};
 use rustc_target::abi::{FieldIdx, FIRST_VARIANT};
 
 impl<'tcx> Cx<'tcx> {
@@ -556,6 +558,9 @@ impl<'tcx> Cx<'tcx> {
                     ty::Coroutine(def_id, args) => {
                         (def_id, UpvarArgs::Coroutine(args), Some(tcx.coroutine_movability(def_id)))
                     }
+                    ty::CoroutineClosure(def_id, args) => {
+                        (def_id, UpvarArgs::CoroutineClosure(args), None)
+                    }
                     _ => {
                         span_bug!(expr.span, "closure expr w/o closure type: {:?}", closure_ty);
                     }
@@ -731,11 +736,21 @@ impl<'tcx> Cx<'tcx> {
                 });
                 ExprKind::Loop { body }
             }
-            hir::ExprKind::Field(source, ..) => ExprKind::Field {
-                lhs: self.mirror_expr(source),
-                variant_index: FIRST_VARIANT,
-                name: self.typeck_results.field_index(expr.hir_id),
-            },
+            hir::ExprKind::Field(source, ..) => {
+                let mut kind = ExprKind::Field {
+                    lhs: self.mirror_expr(source),
+                    variant_index: FIRST_VARIANT,
+                    name: self.typeck_results.field_index(expr.hir_id),
+                };
+                let nested_field_tys_and_indices =
+                    self.typeck_results.nested_field_tys_and_indices(expr.hir_id);
+                for &(ty, idx) in nested_field_tys_and_indices {
+                    let expr = Expr { temp_lifetime, ty, span: source.span, kind };
+                    let lhs = self.thir.exprs.push(expr);
+                    kind = ExprKind::Field { lhs, variant_index: FIRST_VARIANT, name: idx };
+                }
+                kind
+            }
             hir::ExprKind::Cast(source, cast_ty) => {
                 // Check for a user-given type annotation on this `cast`
                 let user_provided_types = self.typeck_results.user_provided_types();
@@ -798,7 +813,7 @@ impl<'tcx> Cx<'tcx> {
         let user_provided_type = match res {
             // A reference to something callable -- e.g., a fn, method, or
             // a tuple-struct or tuple-variant. This has the type of a
-            // `Fn` but with the user-given substitutions.
+            // `Fn` but with the user-given generic parameters.
             Res::Def(DefKind::Fn, _)
             | Res::Def(DefKind::AssocFn, _)
             | Res::Def(DefKind::Ctor(_, CtorKind::Fn), _)
@@ -809,7 +824,7 @@ impl<'tcx> Cx<'tcx> {
 
             // A unit struct/variant which is used as a value (e.g.,
             // `None`). This has the type of the enum/struct that defines
-            // this variant -- but with the substitutions given by the
+            // this variant -- but with the generic parameters given by the
             // user.
             Res::Def(DefKind::Ctor(_, CtorKind::Const), _) => {
                 self.user_args_applied_to_ty_of_hir_id(hir_id).map(Box::new)
@@ -881,7 +896,16 @@ impl<'tcx> Cx<'tcx> {
             Res::Def(DefKind::ConstParam, def_id) => {
                 let hir_id = self.tcx.local_def_id_to_hir_id(def_id.expect_local());
                 let generics = self.tcx.generics_of(hir_id.owner);
-                let index = generics.param_def_id_to_index[&def_id];
+                let Some(&index) = generics.param_def_id_to_index.get(&def_id) else {
+                    let guar = self.tcx.dcx().has_errors().unwrap();
+                    // We already errored about a late bound const
+
+                    let lit = self
+                        .tcx
+                        .hir_arena
+                        .alloc(Spanned { span: DUMMY_SP, node: LitKind::Err(guar) });
+                    return ExprKind::Literal { lit, neg: false };
+                };
                 let name = self.tcx.hir().name(hir_id);
                 let param = ty::ParamConst::new(index, name);
 

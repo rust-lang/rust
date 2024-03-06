@@ -13,16 +13,15 @@ use crate::cli::{flags, full_name_of_item, Result};
 
 impl flags::RunTests {
     pub fn run(self) -> Result<()> {
-        let mut cargo_config = CargoConfig::default();
-        cargo_config.sysroot = Some(RustLibSource::Discover);
+        let cargo_config =
+            CargoConfig { sysroot: Some(RustLibSource::Discover), ..Default::default() };
         let load_cargo_config = LoadCargoConfig {
             load_out_dirs_from_check: true,
             with_proc_macro_server: ProcMacroServerChoice::Sysroot,
             prefill_caches: false,
         };
-        let (host, _vfs, _proc_macro) =
+        let (ref db, _vfs, _proc_macro) =
             load_workspace_at(&self.path, &cargo_config, &load_cargo_config, &|_| {})?;
-        let db = host.raw_database();
 
         let tests = all_modules(db)
             .into_iter()
@@ -34,7 +33,7 @@ impl flags::RunTests {
             .filter(|x| x.is_test(db));
         let span_formatter = |file_id, text_range: TextRange| {
             let line_col = match db.line_index(file_id).try_line_col(text_range.start()) {
-                None => " (unknown line col)".to_string(),
+                None => " (unknown line col)".to_owned(),
                 Some(x) => format!("#{}:{}", x.line + 1, x.col),
             };
             let path = &db

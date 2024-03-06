@@ -6,6 +6,7 @@ use rustc_hir::OpaqueTyOrigin;
 use rustc_infer::infer::InferCtxt;
 use rustc_infer::infer::TyCtxtInferExt as _;
 use rustc_infer::traits::{Obligation, ObligationCause};
+use rustc_macros::extension;
 use rustc_middle::traits::DefiningAnchor;
 use rustc_middle::ty::visit::TypeVisitableExt;
 use rustc_middle::ty::{self, OpaqueHiddenType, OpaqueTypeKey, Ty, TyCtxt, TypeFoldable};
@@ -45,7 +46,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     /// be allowed:
     /// `fn f<'a: 'b, 'b: 'a>(x: *mut &'b i32) -> impl Sized + 'a { x }`
     ///
-    /// Then we map the regions in both the type and the subst to their
+    /// Then we map the regions in both the type and the generic parameters to their
     /// `external_name` giving `concrete_type = &'a i32`,
     /// `args = ['static, 'a]`. This will then allow
     /// `infer_opaque_definition_from_instantiation` to determine that
@@ -77,9 +78,9 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             let args = opaque_type_key.args;
             debug!(?concrete_type, ?args);
 
-            let mut subst_regions = vec![self.universal_regions.fr_static];
+            let mut arg_regions = vec![self.universal_regions.fr_static];
 
-            let to_universal_region = |vid, subst_regions: &mut Vec<_>| {
+            let to_universal_region = |vid, arg_regions: &mut Vec<_>| {
                 trace!(?vid);
                 let scc = self.constraint_sccs.scc(vid);
                 trace!(?scc);
@@ -88,11 +89,11 @@ impl<'tcx> RegionInferenceContext<'tcx> {
                 }) {
                     Some(region) => {
                         let vid = self.universal_regions.to_region_vid(region);
-                        subst_regions.push(vid);
+                        arg_regions.push(vid);
                         region
                     }
                     None => {
-                        subst_regions.push(vid);
+                        arg_regions.push(vid);
                         ty::Region::new_error_with_message(
                             infcx.tcx,
                             concrete_type.span,
@@ -106,10 +107,10 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             // This will ensure they get precedence when folding the regions in the concrete type.
             if let Some(&ci) = member_constraints.get(&opaque_type_key) {
                 for &vid in self.member_constraints.choice_regions(ci) {
-                    to_universal_region(vid, &mut subst_regions);
+                    to_universal_region(vid, &mut arg_regions);
                 }
             }
-            debug!(?subst_regions);
+            debug!(?arg_regions);
 
             // Next, insert universal regions from args, so we can translate regions that appear
             // in them but are not subject to member constraints, for instance closure args.
@@ -119,18 +120,18 @@ impl<'tcx> RegionInferenceContext<'tcx> {
                     return region;
                 }
                 let vid = self.to_region_vid(region);
-                to_universal_region(vid, &mut subst_regions)
+                to_universal_region(vid, &mut arg_regions)
             });
             debug!(?universal_args);
-            debug!(?subst_regions);
+            debug!(?arg_regions);
 
             // Deduplicate the set of regions while keeping the chosen order.
-            let subst_regions = subst_regions.into_iter().collect::<FxIndexSet<_>>();
-            debug!(?subst_regions);
+            let arg_regions = arg_regions.into_iter().collect::<FxIndexSet<_>>();
+            debug!(?arg_regions);
 
             let universal_concrete_type =
                 infcx.tcx.fold_regions(concrete_type, |region, _| match *region {
-                    ty::ReVar(vid) => subst_regions
+                    ty::ReVar(vid) => arg_regions
                         .iter()
                         .find(|ur_vid| self.eval_equal(vid, **ur_vid))
                         .and_then(|ur_vid| self.definitions[*ur_vid].external_name)
@@ -152,12 +153,14 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             if let Some(prev) = result.get_mut(&opaque_type_key.def_id) {
                 if prev.ty != ty {
                     let guar = ty.error_reported().err().unwrap_or_else(|| {
-                        prev.report_mismatch(
-                            &OpaqueHiddenType { ty, span: concrete_type.span },
-                            opaque_type_key.def_id,
-                            infcx.tcx,
-                        )
-                        .emit()
+                        let (Ok(e) | Err(e)) = prev
+                            .build_mismatch_error(
+                                &OpaqueHiddenType { ty, span: concrete_type.span },
+                                opaque_type_key.def_id,
+                                infcx.tcx,
+                            )
+                            .map(|d| d.emit());
+                        e
                     });
                     prev.ty = Ty::new_error(infcx.tcx, guar);
                 }
@@ -225,15 +228,8 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     }
 }
 
-pub trait InferCtxtExt<'tcx> {
-    fn infer_opaque_definition_from_instantiation(
-        &self,
-        opaque_type_key: OpaqueTypeKey<'tcx>,
-        instantiated_ty: OpaqueHiddenType<'tcx>,
-    ) -> Ty<'tcx>;
-}
-
-impl<'tcx> InferCtxtExt<'tcx> for InferCtxt<'tcx> {
+#[extension(pub trait InferCtxtExt<'tcx>)]
+impl<'tcx> InferCtxt<'tcx> {
     /// Given the fully resolved, instantiated type for an opaque
     /// type, i.e., the value of an inference variable like C1 or C2
     /// (*), computes the "definition type" for an opaque type
@@ -418,6 +414,8 @@ fn check_opaque_type_parameter_valid(
                 .into_iter()
                 .map(|i| tcx.def_span(opaque_generics.param_at(i, tcx).def_id))
                 .collect();
+            #[allow(rustc::diagnostic_outside_of_impl)]
+            #[allow(rustc::untranslatable_diagnostic)]
             return Err(tcx
                 .dcx()
                 .struct_span_err(span, "non-defining opaque type use in defining scope")

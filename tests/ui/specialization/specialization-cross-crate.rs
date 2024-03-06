@@ -1,6 +1,6 @@
-// run-pass
+//@ run-pass
 
-// aux-build:specialization_cross_crate.rs
+//@ aux-build:specialization_cross_crate.rs
 
 #![feature(specialization)] //~ WARN the feature `specialization` is incomplete
 

@@ -2,9 +2,9 @@
 // and that no implicit cfgs is added from --cfg while also testing that
 // we correctly lint on the `cfg!` macro and `cfg_attr` attribute.
 //
-// check-pass
-// compile-flags: --cfg feature="bar" --cfg unknown_name -Z unstable-options
-// compile-flags: --check-cfg=cfg(feature,values("foo"))
+//@ check-pass
+//@ compile-flags: --cfg feature="bar" --cfg unknown_name -Z unstable-options
+//@ compile-flags: --check-cfg=cfg(feature,values("foo"))
 
 #[cfg(windows)]
 fn do_windows_stuff() {}
@@ -74,6 +74,8 @@ fn test_cfg_macro() {
     //~^ WARNING unexpected `cfg` condition value
     //~| WARNING unexpected `cfg` condition value
     //~| WARNING unexpected `cfg` condition value
+    cfg!(target_feature = "zebra");
+    //~^ WARNING unexpected `cfg` condition value
 }
 
 fn main() {}

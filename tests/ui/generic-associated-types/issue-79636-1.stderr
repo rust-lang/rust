@@ -30,19 +30,8 @@ help: function arguments must have a statically known size, borrowed types alway
 LL |     fn bind<B, F>(&self, f: F) -> Self::Wrapped<B> {
    |                   +
 
-error[E0282]: type annotations needed
-  --> $DIR/issue-79636-1.rs:17:17
-   |
-LL |     outer.bind(|inner| inner)
-   |                 ^^^^^
-   |
-help: consider giving this closure parameter an explicit type
-   |
-LL |     outer.bind(|inner: /* Type */| inner)
-   |                      ++++++++++++
-
 error[E0277]: the trait bound `Option<Option<bool>>: Monad` is not satisfied
-  --> $DIR/issue-79636-1.rs:22:21
+  --> $DIR/issue-79636-1.rs:21:21
    |
 LL |     assert_eq!(join(Some(Some(true))), Some(true));
    |                ---- ^^^^^^^^^^^^^^^^ the trait `Monad` is not implemented for `Option<Option<bool>>`
@@ -63,7 +52,7 @@ LL | where
 LL |     MOuter: Monad<Unwrapped = MInner>,
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `join`
 
-error: aborting due to 4 previous errors
+error: aborting due to 3 previous errors
 
-Some errors have detailed explanations: E0107, E0277, E0282.
+Some errors have detailed explanations: E0107, E0277.
 For more information about an error, try `rustc --explain E0107`.

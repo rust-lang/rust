@@ -1,6 +1,6 @@
-// run-pass
-// aux-build:attr-cfg.rs
-// revisions: foo bar
+//@ run-pass
+//@ aux-build:attr-cfg.rs
+//@ revisions: foo bar
 
 extern crate attr_cfg;
 use attr_cfg::attr_cfg;

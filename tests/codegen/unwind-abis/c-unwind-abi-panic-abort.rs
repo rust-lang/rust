@@ -1,4 +1,4 @@
-// compile-flags: -C panic=abort
+//@ compile-flags: -C panic=abort
 
 // Test that `nounwind` attributes are also applied to extern `C-unwind` Rust functions
 // when the code is compiled with `panic=abort`.

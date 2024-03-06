@@ -1,5 +1,5 @@
 #![allow(unused_assignments)]
-// failure-status: 101
+//@ failure-status: 101
 
 fn might_panic(should_panic: bool) {
     if should_panic {

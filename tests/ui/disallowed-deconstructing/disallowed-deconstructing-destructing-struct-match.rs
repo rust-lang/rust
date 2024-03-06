@@ -1,4 +1,4 @@
-// run-rustfix
+//@ run-rustfix
 struct X {
     x: String,
 }

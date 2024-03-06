@@ -1,4 +1,4 @@
-// edition:2018
+//@ edition:2018
 #![warn(rust_2021_prelude_collisions)]
 #![allow(dead_code)]
 #![allow(unused_imports)]

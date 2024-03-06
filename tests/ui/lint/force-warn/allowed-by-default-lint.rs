@@ -1,6 +1,6 @@
 // --force-warn $LINT causes $LINT (which is allow-by-default) to warn
-// compile-flags: --force-warn elided_lifetimes_in_paths
-// check-pass
+//@ compile-flags: --force-warn elided_lifetimes_in_paths
+//@ check-pass
 
 struct Foo<'a> {
     x: &'a u32,

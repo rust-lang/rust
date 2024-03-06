@@ -1,51 +1,51 @@
-error[E0392]: parameter `A` is never used
+error[E0392]: type parameter `A` is never used
   --> $DIR/variance-unused-type-param.rs:6:19
    |
 LL | struct SomeStruct<A> { x: u32 }
-   |                   ^ unused parameter
+   |                   ^ unused type parameter
    |
    = help: consider removing `A`, referring to it in a field, or using a marker such as `PhantomData`
-   = help: if you intended `A` to be a const parameter, use `const A: usize` instead
+   = help: if you intended `A` to be a const parameter, use `const A: /* Type */` instead
 
-error[E0392]: parameter `A` is never used
+error[E0392]: type parameter `A` is never used
   --> $DIR/variance-unused-type-param.rs:9:15
    |
 LL | enum SomeEnum<A> { Nothing }
-   |               ^ unused parameter
+   |               ^ unused type parameter
    |
    = help: consider removing `A`, referring to it in a field, or using a marker such as `PhantomData`
-   = help: if you intended `A` to be a const parameter, use `const A: usize` instead
+   = help: if you intended `A` to be a const parameter, use `const A: /* Type */` instead
 
-error[E0392]: parameter `T` is never used
+error[E0392]: type parameter `T` is never used
   --> $DIR/variance-unused-type-param.rs:13:15
    |
 LL | enum ListCell<T> {
-   |               ^ unused parameter
+   |               ^ unused type parameter
    |
    = help: consider removing `T`, referring to it in a field, or using a marker such as `PhantomData`
-   = help: if you intended `T` to be a const parameter, use `const T: usize` instead
+   = help: if you intended `T` to be a const parameter, use `const T: /* Type */` instead
 
-error[E0392]: parameter `T` is never used
+error[E0392]: type parameter `T` is never used
   --> $DIR/variance-unused-type-param.rs:19:19
    |
 LL | struct WithBounds<T: Sized> {}
-   |                   ^ unused parameter
+   |                   ^ unused type parameter
    |
    = help: consider removing `T`, referring to it in a field, or using a marker such as `PhantomData`
 
-error[E0392]: parameter `T` is never used
+error[E0392]: type parameter `T` is never used
   --> $DIR/variance-unused-type-param.rs:22:24
    |
 LL | struct WithWhereBounds<T> where T: Sized {}
-   |                        ^ unused parameter
+   |                        ^ unused type parameter
    |
    = help: consider removing `T`, referring to it in a field, or using a marker such as `PhantomData`
 
-error[E0392]: parameter `T` is never used
+error[E0392]: type parameter `T` is never used
   --> $DIR/variance-unused-type-param.rs:25:27
    |
 LL | struct WithOutlivesBounds<T: 'static> {}
-   |                           ^ unused parameter
+   |                           ^ unused type parameter
    |
    = help: consider removing `T`, referring to it in a field, or using a marker such as `PhantomData`
 

@@ -1,8 +1,8 @@
-// compile-flags: -Z oom=panic
-// run-pass
-// no-prefer-dynamic
-// needs-unwind
-// only-linux
+//@ compile-flags: -Z oom=panic
+//@ run-pass
+//@ no-prefer-dynamic
+//@ needs-unwind
+//@ only-linux
 
 use std::hint::black_box;
 use std::mem::forget;

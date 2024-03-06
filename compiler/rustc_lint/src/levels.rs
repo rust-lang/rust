@@ -16,7 +16,7 @@ use crate::{
 use rustc_ast as ast;
 use rustc_ast_pretty::pprust;
 use rustc_data_structures::fx::FxIndexMap;
-use rustc_errors::{DecorateLint, DiagnosticBuilder, DiagnosticMessage, MultiSpan};
+use rustc_errors::{DecorateLint, Diag, DiagMessage, MultiSpan};
 use rustc_feature::{Features, GateIssue};
 use rustc_hir as hir;
 use rustc_hir::intravisit::{self, Visitor};
@@ -181,7 +181,7 @@ fn shallow_lint_levels_on(tcx: TyCtxt<'_>, owner: hir::OwnerId) -> ShallowLintLe
         // Otherwise, we need to visit the attributes in source code order, so we fetch HIR and do
         // a standard visit.
         // FIXME(#102522) Just iterate on attrs once that iteration order matches HIR's.
-        _ => match tcx.hir().owner(owner) {
+        _ => match tcx.hir_owner_node(owner) {
             hir::OwnerNode::Item(item) => levels.visit_item(item),
             hir::OwnerNode::ForeignItem(item) => levels.visit_foreign_item(item),
             hir::OwnerNode::TraitItem(item) => levels.visit_trait_item(item),
@@ -1062,6 +1062,9 @@ impl<'s, P: LintLevelsProvider> LintLevelsBuilder<'s, P> {
                 if self.lint_added_lints {
                     let lint = builtin::UNKNOWN_LINTS;
                     let (level, src) = self.lint_level(builtin::UNKNOWN_LINTS);
+                    // FIXME: make this translatable
+                    #[allow(rustc::diagnostic_outside_of_impl)]
+                    #[allow(rustc::untranslatable_diagnostic)]
                     lint_level(
                         self.sess,
                         lint,
@@ -1103,8 +1106,8 @@ impl<'s, P: LintLevelsProvider> LintLevelsBuilder<'s, P> {
         &self,
         lint: &'static Lint,
         span: Option<MultiSpan>,
-        msg: impl Into<DiagnosticMessage>,
-        decorate: impl for<'a, 'b> FnOnce(&'b mut DiagnosticBuilder<'a, ()>),
+        msg: impl Into<DiagMessage>,
+        decorate: impl for<'a, 'b> FnOnce(&'b mut Diag<'a, ()>),
     ) {
         let (level, src) = self.lint_level(lint);
         lint_level(self.sess, lint, level, src, span, msg, decorate)

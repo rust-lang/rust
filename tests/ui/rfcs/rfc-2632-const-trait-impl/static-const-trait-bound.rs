@@ -1,4 +1,4 @@
-// check-pass
+//@ check-pass
 pub struct S<T, F: FnOnce() -> T = fn() -> T> {
     f: F,
     x: Option<T>,

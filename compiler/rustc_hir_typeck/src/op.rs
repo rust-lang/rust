@@ -1,11 +1,11 @@
 //! Code related to processing overloaded binary and unary operators.
 
 use super::method::MethodCallee;
-use super::{has_expected_num_generic_args, FnCtxt};
+use super::FnCtxt;
 use crate::Expectation;
 use rustc_ast as ast;
 use rustc_data_structures::packed::Pu128;
-use rustc_errors::{codes::*, struct_span_code_err, Applicability, Diagnostic, DiagnosticBuilder};
+use rustc_errors::{codes::*, struct_span_code_err, Applicability, Diag};
 use rustc_hir as hir;
 use rustc_infer::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
 use rustc_infer::traits::ObligationCauseCode;
@@ -383,44 +383,43 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     }
                 };
                 if self.check_for_missing_semi(expr, &mut err)
-                    && let hir::Node::Expr(expr) = self.tcx.hir().get_parent(expr.hir_id)
+                    && let hir::Node::Expr(expr) = self.tcx.parent_hir_node(expr.hir_id)
                     && let hir::ExprKind::Assign(..) = expr.kind
                 {
                     // We defer to the later error produced by `check_lhs_assignable`.
                     err.downgrade_to_delayed_bug();
                 }
 
-                let suggest_deref_binop =
-                    |err: &mut DiagnosticBuilder<'_, _>, lhs_deref_ty: Ty<'tcx>| {
-                        if self
-                            .lookup_op_method(
-                                (lhs_expr, lhs_deref_ty),
-                                Some((rhs_expr, rhs_ty)),
-                                Op::Binary(op, is_assign),
-                                expected,
-                            )
-                            .is_ok()
-                        {
-                            let msg = format!(
-                                "`{}{}` can be used on `{}` if you dereference the left-hand side",
-                                op.node.as_str(),
-                                match is_assign {
-                                    IsAssign::Yes => "=",
-                                    IsAssign::No => "",
-                                },
-                                lhs_deref_ty,
-                            );
-                            err.span_suggestion_verbose(
-                                lhs_expr.span.shrink_to_lo(),
-                                msg,
-                                "*",
-                                rustc_errors::Applicability::MachineApplicable,
-                            );
-                        }
-                    };
+                let suggest_deref_binop = |err: &mut Diag<'_, _>, lhs_deref_ty: Ty<'tcx>| {
+                    if self
+                        .lookup_op_method(
+                            (lhs_expr, lhs_deref_ty),
+                            Some((rhs_expr, rhs_ty)),
+                            Op::Binary(op, is_assign),
+                            expected,
+                        )
+                        .is_ok()
+                    {
+                        let msg = format!(
+                            "`{}{}` can be used on `{}` if you dereference the left-hand side",
+                            op.node.as_str(),
+                            match is_assign {
+                                IsAssign::Yes => "=",
+                                IsAssign::No => "",
+                            },
+                            lhs_deref_ty,
+                        );
+                        err.span_suggestion_verbose(
+                            lhs_expr.span.shrink_to_lo(),
+                            msg,
+                            "*",
+                            rustc_errors::Applicability::MachineApplicable,
+                        );
+                    }
+                };
 
                 let suggest_different_borrow =
-                    |err: &mut DiagnosticBuilder<'_, _>,
+                    |err: &mut Diag<'_, _>,
                      lhs_adjusted_ty,
                      lhs_new_mutbl: Option<ast::Mutability>,
                      rhs_adjusted_ty,
@@ -695,7 +694,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         rhs_expr: &'tcx hir::Expr<'tcx>,
         lhs_ty: Ty<'tcx>,
         rhs_ty: Ty<'tcx>,
-        err: &mut Diagnostic,
+        err: &mut Diag<'_>,
         is_assign: IsAssign,
         op: hir::BinOp,
     ) -> bool {
@@ -819,12 +818,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
                     let sp = self.tcx.sess.source_map().start_point(ex.span).with_parent(None);
                     if let Some(sp) =
-                        self.tcx.sess.parse_sess.ambiguous_block_expr_parse.borrow().get(&sp)
+                        self.tcx.sess.psess.ambiguous_block_expr_parse.borrow().get(&sp)
                     {
                         // If the previous expression was a block expression, suggest parentheses
                         // (turning this into a binary subtraction operation instead.)
                         // for example, `{2} - 2` -> `({2}) - 2` (see src\test\ui\parser\expr-as-stmt.rs)
-                        err.subdiagnostic(ExprParenthesesNeeded::surrounding(*sp));
+                        err.subdiagnostic(self.dcx(), ExprParenthesesNeeded::surrounding(*sp));
                     } else {
                         match actual.kind() {
                             Uint(_) if op == hir::UnOp::Neg => {
@@ -886,25 +885,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             "lookup_op_method(lhs_ty={:?}, op={:?}, opname={:?}, trait_did={:?})",
             lhs_ty, op, opname, trait_did
         );
-
-        // Catches cases like #83893, where a lang item is declared with the
-        // wrong number of generic arguments. Should have yielded an error
-        // elsewhere by now, but we have to catch it here so that we do not
-        // index `other_tys` out of bounds (if the lang item has too many
-        // generic arguments, `other_tys` is too short).
-        if !has_expected_num_generic_args(
-            self.tcx,
-            trait_did,
-            match op {
-                // Binary ops have a generic right-hand side, unary ops don't
-                Op::Binary(..) => 1,
-                Op::Unary(..) => 0,
-            },
-        ) {
-            self.dcx()
-                .span_delayed_bug(span, "operator didn't have the right number of generic args");
-            return Err(vec![]);
-        }
 
         let opname = Ident::with_dummy_span(opname);
         let (opt_rhs_expr, opt_rhs_ty) = opt_rhs.unzip();

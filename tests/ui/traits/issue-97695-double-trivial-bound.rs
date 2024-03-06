@@ -1,5 +1,5 @@
-// compile-flags: -Zinline-mir --emit=mir
-// build-pass
+//@ compile-flags: -Zinline-mir --emit=mir
+//@ build-pass
 
 pub trait Associate {
     type Associated;

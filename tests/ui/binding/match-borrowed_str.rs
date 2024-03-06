@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 
 fn f1(ref_string: &str) -> String {
     match ref_string {

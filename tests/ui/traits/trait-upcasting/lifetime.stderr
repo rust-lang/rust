@@ -1,0 +1,25 @@
+warning: methods `z` and `y` are never used
+  --> $DIR/lifetime.rs:10:8
+   |
+LL | trait Foo: PartialEq<i32> + std::fmt::Debug + Send + Sync {
+   |       --- methods in this trait
+...
+LL |     fn z(&self) -> i32 {
+   |        ^
+...
+LL |     fn y(&self) -> i32 {
+   |        ^
+   |
+   = note: `#[warn(dead_code)]` on by default
+
+warning: method `w` is never used
+  --> $DIR/lifetime.rs:24:8
+   |
+LL | trait Bar: Foo {
+   |       --- method in this trait
+...
+LL |     fn w(&self) -> i32 {
+   |        ^
+
+warning: 2 warnings emitted
+

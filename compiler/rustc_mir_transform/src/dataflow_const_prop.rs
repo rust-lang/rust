@@ -2,7 +2,9 @@
 //!
 //! Currently, this pass only propagates scalar values.
 
-use rustc_const_eval::interpret::{ImmTy, Immediate, InterpCx, OpTy, PlaceTy, Projectable};
+use rustc_const_eval::interpret::{
+    ImmTy, Immediate, InterpCx, OpTy, PlaceTy, PointerArithmetic, Projectable,
+};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_hir::def::DefKind;
 use rustc_middle::mir::interpret::{AllocId, ConstAllocation, InterpResult, Scalar};
@@ -19,7 +21,32 @@ use rustc_span::def_id::DefId;
 use rustc_span::DUMMY_SP;
 use rustc_target::abi::{Abi, FieldIdx, Size, VariantIdx, FIRST_VARIANT};
 
-use crate::const_prop::throw_machine_stop_str;
+/// Macro for machine-specific `InterpError` without allocation.
+/// (These will never be shown to the user, but they help diagnose ICEs.)
+pub(crate) macro throw_machine_stop_str($($tt:tt)*) {{
+    // We make a new local type for it. The type itself does not carry any information,
+    // but its vtable (for the `MachineStopType` trait) does.
+    #[derive(Debug)]
+    struct Zst;
+    // Printing this type shows the desired string.
+    impl std::fmt::Display for Zst {
+        fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+            write!(f, $($tt)*)
+        }
+    }
+
+    impl rustc_middle::mir::interpret::MachineStopType for Zst {
+        fn diagnostic_message(&self) -> rustc_errors::DiagMessage {
+            self.to_string().into()
+        }
+
+        fn add_args(
+            self: Box<Self>,
+            _: &mut dyn FnMut(rustc_errors::DiagArgName, rustc_errors::DiagArgValue),
+        ) {}
+    }
+    throw_machine_stop!(Zst)
+}}
 
 // These constants are somewhat random guesses and have not been optimized.
 // If `tcx.sess.mir_opt_level() >= 4`, we ignore the limits (this can become very expensive).
@@ -696,6 +723,7 @@ fn try_write_constant<'tcx>(
         | ty::Bound(..)
         | ty::Placeholder(..)
         | ty::Closure(..)
+        | ty::CoroutineClosure(..)
         | ty::Coroutine(..)
         | ty::Dynamic(..) => throw_machine_stop_str!("unsupported type"),
 
@@ -935,12 +963,50 @@ impl<'mir, 'tcx: 'mir> rustc_const_eval::interpret::Machine<'mir, 'tcx> for Dumm
     }
 
     fn binary_ptr_op(
-        _ecx: &InterpCx<'mir, 'tcx, Self>,
-        _bin_op: BinOp,
-        _left: &rustc_const_eval::interpret::ImmTy<'tcx, Self::Provenance>,
-        _right: &rustc_const_eval::interpret::ImmTy<'tcx, Self::Provenance>,
+        ecx: &InterpCx<'mir, 'tcx, Self>,
+        bin_op: BinOp,
+        left: &rustc_const_eval::interpret::ImmTy<'tcx, Self::Provenance>,
+        right: &rustc_const_eval::interpret::ImmTy<'tcx, Self::Provenance>,
     ) -> interpret::InterpResult<'tcx, (ImmTy<'tcx, Self::Provenance>, bool)> {
-        throw_machine_stop_str!("can't do pointer arithmetic");
+        use rustc_middle::mir::BinOp::*;
+        Ok(match bin_op {
+            Eq | Ne | Lt | Le | Gt | Ge => {
+                // Types can differ, e.g. fn ptrs with different `for`.
+                assert_eq!(left.layout.abi, right.layout.abi);
+                let size = ecx.pointer_size();
+                // Just compare the bits. ScalarPairs are compared lexicographically.
+                // We thus always compare pairs and simply fill scalars up with 0.
+                // If the pointer has provenance, `to_bits` will return `Err` and we bail out.
+                let left = match **left {
+                    Immediate::Scalar(l) => (l.to_bits(size)?, 0),
+                    Immediate::ScalarPair(l1, l2) => (l1.to_bits(size)?, l2.to_bits(size)?),
+                    Immediate::Uninit => panic!("we should never see uninit data here"),
+                };
+                let right = match **right {
+                    Immediate::Scalar(r) => (r.to_bits(size)?, 0),
+                    Immediate::ScalarPair(r1, r2) => (r1.to_bits(size)?, r2.to_bits(size)?),
+                    Immediate::Uninit => panic!("we should never see uninit data here"),
+                };
+                let res = match bin_op {
+                    Eq => left == right,
+                    Ne => left != right,
+                    Lt => left < right,
+                    Le => left <= right,
+                    Gt => left > right,
+                    Ge => left >= right,
+                    _ => bug!(),
+                };
+                (ImmTy::from_bool(res, *ecx.tcx), false)
+            }
+
+            // Some more operations are possible with atomics.
+            // The return value always has the provenance of the *left* operand.
+            Add | Sub | BitOr | BitAnd | BitXor => {
+                throw_machine_stop_str!("pointer arithmetic is not handled")
+            }
+
+            _ => span_bug!(ecx.cur_span(), "Invalid operator on pointers: {:?}", bin_op),
+        })
     }
 
     fn expose_ptr(

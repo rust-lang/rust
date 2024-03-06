@@ -406,8 +406,8 @@ fn main() {
                                 file_id: FileId(
                                     1,
                                 ),
-                                full_range: 631..866,
-                                focus_range: 692..698,
+                                full_range: 632..867,
+                                focus_range: 693..699,
                                 name: "FnOnce",
                                 kind: Trait,
                                 container_name: "function",
@@ -702,7 +702,7 @@ fn hover_shows_struct_field_info() {
     // Hovering over the field when instantiating
     check(
         r#"
-struct Foo { field_a: u32 }
+struct Foo { pub field_a: u32 }
 
 fn main() {
     let foo = Foo { field_a$0: 0, };
@@ -717,7 +717,7 @@ fn main() {
 
             ```rust
              // size = 4, align = 4, offset = 0
-            field_a: u32
+            pub field_a: u32
             ```
         "#]],
     );
@@ -725,7 +725,7 @@ fn main() {
     // Hovering over the field in the definition
     check(
         r#"
-struct Foo { field_a$0: u32 }
+struct Foo { pub field_a$0: u32 }
 
 fn main() {
     let foo = Foo { field_a: 0 };
@@ -740,7 +740,74 @@ fn main() {
 
             ```rust
              // size = 4, align = 4, offset = 0
-            field_a: u32
+            pub field_a: u32
+            ```
+        "#]],
+    );
+}
+
+#[test]
+fn hover_shows_tuple_struct_field_info() {
+    check(
+        r#"
+struct Foo(pub u32)
+
+fn main() {
+    let foo = Foo { 0$0: 0, };
+}
+"#,
+        expect![[r#"
+            *0*
+
+            ```rust
+            test::Foo
+            ```
+
+            ```rust
+             // size = 4, align = 4, offset = 0
+            pub 0: u32
+            ```
+        "#]],
+    );
+    check(
+        r#"
+struct Foo(pub u32)
+
+fn foo(foo: Foo) {
+    foo.0$0;
+}
+"#,
+        expect![[r#"
+            *0*
+
+            ```rust
+            test::Foo
+            ```
+
+            ```rust
+             // size = 4, align = 4, offset = 0
+            pub 0: u32
+            ```
+        "#]],
+    );
+}
+
+#[test]
+fn hover_tuple_struct() {
+    check(
+        r#"
+struct Foo$0(pub u32)
+"#,
+        expect![[r#"
+            *Foo*
+
+            ```rust
+            test
+            ```
+
+            ```rust
+             // size = 4, align = 4
+            struct Foo(pub u32);
             ```
         "#]],
     );
@@ -1135,7 +1202,7 @@ fn main() {
             *C*
 
             ```rust
-            test
+            test::X
             ```
 
             ```rust
@@ -1212,11 +1279,11 @@ impl Thing {
     );
     check(
         r#"
-        enum Thing { A }
-        impl Thing {
-            pub fn thing(a: Self$0) {}
-        }
-        "#,
+enum Thing { A }
+impl Thing {
+    pub fn thing(a: Self$0) {}
+}
+"#,
         expect![[r#"
                 *Self*
 
@@ -1230,6 +1297,42 @@ impl Thing {
                 }
                 ```
             "#]],
+    );
+    check(
+        r#"
+impl usize {
+    pub fn thing(a: Self$0) {}
+}
+"#,
+        expect![[r#"
+            *Self*
+
+            ```rust
+            test
+            ```
+
+            ```rust
+            usize
+            ```
+        "#]],
+    );
+    check(
+        r#"
+impl fn() -> usize {
+    pub fn thing(a: Self$0) {}
+}
+"#,
+        expect![[r#"
+            *Self*
+
+            ```rust
+            test
+            ```
+
+            ```rust
+            fn() -> usize
+            ```
+        "#]],
     );
 }
 
@@ -2174,7 +2277,7 @@ fn main() { let foo_test = unsafe { fo$0o(1, 2, 3); } }
             *foo*
 
             ```rust
-            test
+            test::<extern>
             ```
 
             ```rust
@@ -4163,7 +4266,7 @@ fn main() {
             *B*
 
             ```rust
-            test
+            test::T
             ```
 
             ```rust
@@ -4192,7 +4295,7 @@ fn main() {
             *B*
 
             ```rust
-            test
+            test::T
             ```
 
             ```rust
@@ -4224,7 +4327,7 @@ fn main() {
             *B*
 
             ```rust
-            test
+            test::T
             ```
 
             ```rust
@@ -4816,7 +4919,7 @@ fn test() {
             *FOO*
 
             ```rust
-            test
+            test::S
             ```
 
             ```rust
@@ -5181,7 +5284,7 @@ impl T1 for Foo {
             *Bar*
 
             ```rust
-            test::t2
+            test::t2::T2
             ```
 
             ```rust
@@ -5203,7 +5306,7 @@ trait A {
             *Assoc*
 
             ```rust
-            test
+            test::A
             ```
 
             ```rust
@@ -5224,7 +5327,7 @@ trait A {
             *Assoc*
 
             ```rust
-            test
+            test::A
             ```
 
             ```rust
@@ -5243,7 +5346,7 @@ trait A where
             *Assoc*
 
             ```rust
-            test
+            test::A
             ```
 
             ```rust
@@ -6001,6 +6104,31 @@ pub struct Foo(i32);
 }
 
 #[test]
+fn hover_intra_generics() {
+    check(
+        r#"
+/// Doc comment for [`Foo$0<T>`]
+pub struct Foo<T>(T);
+"#,
+        expect![[r#"
+            *[`Foo<T>`]*
+
+            ```rust
+            test
+            ```
+
+            ```rust
+            pub struct Foo<T>(T);
+            ```
+
+            ---
+
+            Doc comment for [`Foo<T>`](https://docs.rs/test/*/test/struct.Foo.html)
+        "#]],
+    );
+}
+
+#[test]
 fn hover_inert_attr() {
     check(
         r#"
@@ -6529,7 +6657,7 @@ fn test() {
             *A*
 
             ```rust
-            test
+            test::S
             ```
 
             ```rust
@@ -6558,7 +6686,7 @@ fn test() {
             *A*
 
             ```rust
-            test
+            test::S
             ```
 
             ```rust
@@ -6588,7 +6716,7 @@ mod m {
             *A*
 
             ```rust
-            test
+            test::S
             ```
 
             ```rust
@@ -7135,6 +7263,65 @@ impl Iterator for S {
 }
 
 #[test]
+fn extern_items() {
+    check(
+        r#"
+extern "C" {
+    static STATIC$0: ();
+}
+"#,
+        expect![[r#"
+            *STATIC*
+
+            ```rust
+            test::<extern>
+            ```
+
+            ```rust
+            static STATIC: ()
+            ```
+        "#]],
+    );
+    check(
+        r#"
+extern "C" {
+    fn fun$0();
+}
+"#,
+        expect![[r#"
+            *fun*
+
+            ```rust
+            test::<extern>
+            ```
+
+            ```rust
+            unsafe fn fun()
+            ```
+        "#]],
+    );
+    check(
+        r#"
+extern "C" {
+    type Ty$0;
+}
+"#,
+        expect![[r#"
+            *Ty*
+
+            ```rust
+            test::<extern>
+            ```
+
+            ```rust
+             // size = 0, align = 1
+            type Ty
+            ```
+        "#]],
+    );
+}
+
+#[test]
 fn notable_ranged() {
     check_hover_range(
         r#"
@@ -7196,8 +7383,8 @@ impl Iterator for S {
                                 file_id: FileId(
                                     1,
                                 ),
-                                full_range: 6012..6220,
-                                focus_range: 6077..6083,
+                                full_range: 6290..6498,
+                                focus_range: 6355..6361,
                                 name: "Future",
                                 kind: Trait,
                                 container_name: "future",
@@ -7210,8 +7397,8 @@ impl Iterator for S {
                                 file_id: FileId(
                                     1,
                                 ),
-                                full_range: 6850..7316,
-                                focus_range: 6894..6902,
+                                full_range: 7128..7594,
+                                focus_range: 7172..7180,
                                 name: "Iterator",
                                 kind: Trait,
                                 container_name: "iterator",

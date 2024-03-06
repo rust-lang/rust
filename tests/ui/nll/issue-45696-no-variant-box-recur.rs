@@ -3,7 +3,7 @@
 // to construct but *is* possible to declare; see also issues #4287, #44933,
 // and #52852).
 
-// run-pass
+//@ run-pass
 
 // This test has structs and functions that are by definition unusable
 // all over the place, so just go ahead and allow dead_code

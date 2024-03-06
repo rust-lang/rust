@@ -1,6 +1,6 @@
 use super::TypeErrCtxt;
 use rustc_errors::Applicability::{MachineApplicable, MaybeIncorrect};
-use rustc_errors::{pluralize, Diagnostic, MultiSpan};
+use rustc_errors::{pluralize, Diag, MultiSpan};
 use rustc_hir as hir;
 use rustc_hir::def::DefKind;
 use rustc_middle::traits::ObligationCauseCode;
@@ -15,7 +15,7 @@ use rustc_span::{def_id::DefId, sym, BytePos, Span, Symbol};
 impl<'tcx> TypeErrCtxt<'_, 'tcx> {
     pub fn note_and_explain_type_err(
         &self,
-        diag: &mut Diagnostic,
+        diag: &mut Diag<'_>,
         err: TypeError<'tcx>,
         cause: &ObligationCause<'tcx>,
         sp: Span,
@@ -106,7 +106,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                                 }
                                 p_def_id.as_local().and_then(|id| {
                                     let local_id = tcx.local_def_id_to_hir_id(id);
-                                    let generics = tcx.hir().find_parent(local_id)?.generics()?;
+                                    let generics = tcx.parent_hir_node(local_id).generics()?;
                                     Some((id, generics))
                                 })
                             });
@@ -195,7 +195,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                             }
                         }
                         diag.help("type parameters must be constrained to match other types");
-                        if tcx.sess.teach(diag.get_code().unwrap()) {
+                        if tcx.sess.teach(diag.code.unwrap()) {
                             diag.help(
                                 "given a type parameter `T` and a method `foo`:
 ```
@@ -228,7 +228,10 @@ impl<T> Trait<T> for X {
                              #traits-as-parameters",
                         );
                     }
-                    (ty::Param(p), ty::Closure(..) | ty::Coroutine(..)) => {
+                    (
+                        ty::Param(p),
+                        ty::Closure(..) | ty::CoroutineClosure(..) | ty::Coroutine(..),
+                    ) => {
                         let generics = tcx.generics_of(body_owner_def_id);
                         if let Some(param) = generics.opt_type_param(p, tcx) {
                             let p_span = tcx.def_span(param.def_id);
@@ -497,7 +500,7 @@ impl<T> Trait<T> for X {
             }
             CyclicTy(ty) => {
                 // Watch out for various cases of cyclic types and try to explain.
-                if ty.is_closure() || ty.is_coroutine() {
+                if ty.is_closure() || ty.is_coroutine() || ty.is_coroutine_closure() {
                     diag.note(
                         "closures cannot capture themselves or take themselves as argument;\n\
                          this error may be the result of a recent compiler bug-fix,\n\
@@ -519,7 +522,7 @@ impl<T> Trait<T> for X {
 
     fn suggest_constraint(
         &self,
-        diag: &mut Diagnostic,
+        diag: &mut Diag<'_>,
         msg: impl Fn() -> String,
         body_owner_def_id: DefId,
         proj_ty: &ty::AliasTy<'tcx>,
@@ -592,7 +595,7 @@ impl<T> Trait<T> for X {
     ///    fn that returns the type.
     fn expected_projection(
         &self,
-        diag: &mut Diagnostic,
+        diag: &mut Diag<'_>,
         proj_ty: &ty::AliasTy<'tcx>,
         values: ExpectedFound<Ty<'tcx>>,
         body_owner_def_id: DefId,
@@ -678,7 +681,7 @@ impl<T> Trait<T> for X {
                  https://doc.rust-lang.org/book/ch19-03-advanced-traits.html",
             );
         }
-        if tcx.sess.teach(diag.get_code().unwrap()) {
+        if tcx.sess.teach(diag.code.unwrap()) {
             diag.help(
                 "given an associated type `T` and a method `foo`:
 ```
@@ -702,7 +705,7 @@ fn foo(&self) -> Self::T { String::new() }
     /// a return type. This can occur when dealing with `TryStream` (#71035).
     fn suggest_constraining_opaque_associated_type(
         &self,
-        diag: &mut Diagnostic,
+        diag: &mut Diag<'_>,
         msg: impl Fn() -> String,
         proj_ty: &ty::AliasTy<'tcx>,
         ty: Ty<'tcx>,
@@ -737,7 +740,7 @@ fn foo(&self) -> Self::T { String::new() }
 
     fn point_at_methods_that_satisfy_associated_type(
         &self,
-        diag: &mut Diagnostic,
+        diag: &mut Diag<'_>,
         assoc_container_id: DefId,
         current_method_ident: Option<Symbol>,
         proj_ty_item_def_id: DefId,
@@ -795,7 +798,7 @@ fn foo(&self) -> Self::T { String::new() }
 
     fn point_at_associated_type(
         &self,
-        diag: &mut Diagnostic,
+        diag: &mut Diag<'_>,
         body_owner_def_id: DefId,
         found: Ty<'tcx>,
     ) -> bool {
@@ -876,7 +879,7 @@ fn foo(&self) -> Self::T { String::new() }
     /// type is defined on a supertrait of the one present in the bounds.
     fn constrain_generic_bound_associated_type_structured_suggestion(
         &self,
-        diag: &mut Diagnostic,
+        diag: &mut Diag<'_>,
         trait_ref: &ty::TraitRef<'tcx>,
         bounds: hir::GenericBounds<'_>,
         assoc: ty::AssocItem,
@@ -913,7 +916,7 @@ fn foo(&self) -> Self::T { String::new() }
     /// associated type to a given type `ty`.
     fn constrain_associated_type_structured_suggestion(
         &self,
-        diag: &mut Diagnostic,
+        diag: &mut Diag<'_>,
         span: Span,
         assoc: ty::AssocItem,
         assoc_args: &[ty::GenericArg<'tcx>],

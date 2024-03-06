@@ -1,4 +1,4 @@
-// check-pass
+//@ check-pass
 
 #![crate_type="lib"]
 

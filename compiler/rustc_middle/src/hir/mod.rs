@@ -12,7 +12,7 @@ use rustc_data_structures::sync::{try_par_for_each_in, DynSend, DynSync};
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{DefId, LocalDefId, LocalModDefId};
 use rustc_hir::*;
-use rustc_span::{ErrorGuaranteed, ExpnId, DUMMY_SP};
+use rustc_span::{ErrorGuaranteed, ExpnId};
 
 /// Gather the LocalDefId for each item-like within a module, including items contained within
 /// bodies. The Ids are in visitor order. This is used to partition a pass between modules.
@@ -127,37 +127,29 @@ pub fn provide(providers: &mut Providers) {
     providers.hir_crate_items = map::hir_crate_items;
     providers.crate_hash = map::crate_hash;
     providers.hir_module_items = map::hir_module_items;
-    providers.opt_local_def_id_to_hir_id = |tcx, id| {
-        let owner = tcx.hir_crate(()).owners[id].map(|_| ());
-        Some(match owner {
-            MaybeOwner::Owner(_) => HirId::make_owner(id),
-            MaybeOwner::Phantom => bug!("No HirId for {:?}", id),
+    providers.opt_local_def_id_to_hir_id = |tcx, def_id| {
+        Some(match tcx.hir_crate(()).owners[def_id] {
+            MaybeOwner::Owner(_) => HirId::make_owner(def_id),
             MaybeOwner::NonOwner(hir_id) => hir_id,
+            MaybeOwner::Phantom => bug!("No HirId for {:?}", def_id),
         })
     };
-    providers.hir_owner_nodes = |tcx, id| {
-        if let Some(i) = tcx.hir_crate(()).owners.get(id.def_id) {
-            i.map(|i| &i.nodes)
-        } else {
-            MaybeOwner::Phantom
-        }
-    };
-    providers.hir_owner_parent = |tcx, id| {
-        // Accessing the local_parent is ok since its value is hashed as part of `id`'s DefPathHash.
-        tcx.opt_local_parent(id.def_id).map_or(CRATE_HIR_ID, |parent| {
-            let mut parent_hir_id = tcx.local_def_id_to_hir_id(parent);
-            parent_hir_id.local_id =
-                tcx.hir_crate(()).owners[parent_hir_id.owner.def_id].unwrap().parenting[&id.def_id];
-            parent_hir_id
+    providers.opt_hir_owner_nodes =
+        |tcx, id| tcx.hir_crate(()).owners.get(id)?.as_owner().map(|i| &i.nodes);
+    providers.hir_owner_parent = |tcx, owner_id| {
+        tcx.opt_local_parent(owner_id.def_id).map_or(CRATE_HIR_ID, |parent_def_id| {
+            let parent_owner_id = tcx.local_def_id_to_hir_id(parent_def_id).owner;
+            HirId {
+                owner: parent_owner_id,
+                local_id: tcx.hir_crate(()).owners[parent_owner_id.def_id].unwrap().parenting
+                    [&owner_id.def_id],
+            }
         })
     };
     providers.hir_attrs = |tcx, id| {
         tcx.hir_crate(()).owners[id.def_id].as_owner().map_or(AttributeMap::EMPTY, |o| &o.attrs)
     };
-    providers.def_span = |tcx, def_id| {
-        let hir_id = tcx.local_def_id_to_hir_id(def_id);
-        tcx.hir().opt_span(hir_id).unwrap_or(DUMMY_SP)
-    };
+    providers.def_span = |tcx, def_id| tcx.hir().span(tcx.local_def_id_to_hir_id(def_id));
     providers.def_ident_span = |tcx, def_id| {
         let hir_id = tcx.local_def_id_to_hir_id(def_id);
         tcx.hir().opt_ident_span(hir_id)

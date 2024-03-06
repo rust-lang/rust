@@ -6,28 +6,26 @@
 
 use crate::infer::outlives::env::OutlivesEnvironment;
 use crate::infer::InferOk;
+use crate::regions::InferCtxtRegionExt;
 use crate::solve::inspect::{InspectGoal, ProofTreeInferCtxtExt, ProofTreeVisitor};
-use crate::solve::{deeply_normalize_for_diagnostics, inspect};
-use crate::traits::engine::TraitEngineExt;
-use crate::traits::query::evaluate_obligation::InferCtxtExt;
+use crate::solve::{deeply_normalize_for_diagnostics, inspect, FulfillmentCtxt};
+use crate::traits::engine::TraitEngineExt as _;
 use crate::traits::select::IntercrateAmbiguityCause;
 use crate::traits::structural_normalize::StructurallyNormalizeExt;
 use crate::traits::NormalizeExt;
 use crate::traits::SkipLeakCheck;
 use crate::traits::{
-    Obligation, ObligationCause, ObligationCtxt, PredicateObligation, PredicateObligations,
-    SelectionContext,
+    Obligation, ObligationCause, PredicateObligation, PredicateObligations, SelectionContext,
 };
 use rustc_data_structures::fx::FxIndexSet;
-use rustc_errors::Diagnostic;
+use rustc_errors::{Diag, EmissionGuarantee};
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{DefId, LOCAL_CRATE};
 use rustc_infer::infer::{DefineOpaqueTypes, InferCtxt, TyCtxtInferExt};
-use rustc_infer::traits::{util, TraitEngine};
+use rustc_infer::traits::{util, FulfillmentErrorCode, TraitEngine, TraitEngineExt};
 use rustc_middle::traits::query::NoSolution;
 use rustc_middle::traits::solve::{CandidateSource, Certainty, Goal};
 use rustc_middle::traits::specialization_graph::OverlapMode;
-use rustc_middle::traits::DefiningAnchor;
 use rustc_middle::ty::fast_reject::{DeepRejectCtxt, TreatParams};
 use rustc_middle::ty::visit::{TypeVisitable, TypeVisitableExt};
 use rustc_middle::ty::{self, Ty, TyCtxt, TypeSuperVisitable, TypeVisitor};
@@ -35,6 +33,8 @@ use rustc_span::symbol::sym;
 use rustc_span::DUMMY_SP;
 use std::fmt::Debug;
 use std::ops::ControlFlow;
+
+use super::error_reporting::suggest_new_overflow_limit;
 
 /// Whether we do the orphan check relative to this crate or
 /// to some remote crate.
@@ -57,13 +57,28 @@ pub struct OverlapResult<'tcx> {
     /// `true` if the overlap might've been permitted before the shift
     /// to universes.
     pub involves_placeholder: bool,
+
+    /// Used in the new solver to suggest increasing the recursion limit.
+    pub overflowing_predicates: Vec<ty::Predicate<'tcx>>,
 }
 
-pub fn add_placeholder_note(err: &mut Diagnostic) {
+pub fn add_placeholder_note<G: EmissionGuarantee>(err: &mut Diag<'_, G>) {
     err.note(
         "this behavior recently changed as a result of a bug fix; \
          see rust-lang/rust#56105 for details",
     );
+}
+
+pub fn suggest_increasing_recursion_limit<'tcx, G: EmissionGuarantee>(
+    tcx: TyCtxt<'tcx>,
+    err: &mut Diag<'_, G>,
+    overflowing_predicates: &[ty::Predicate<'tcx>],
+) {
+    for pred in overflowing_predicates {
+        err.note(format!("overflow evaluating the requirement `{}`", pred));
+    }
+
+    suggest_new_overflow_limit(tcx, err);
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -83,7 +98,7 @@ impl TrackAmbiguityCauses {
 
 /// If there are types that satisfy both impls, returns `Some`
 /// with a suitably-freshened `ImplHeader` with those types
-/// substituted. Otherwise, returns `None`.
+/// instantiated. Otherwise, returns `None`.
 #[instrument(skip(tcx, skip_leak_check), level = "debug")]
 pub fn overlapping_impls(
     tcx: TyCtxt<'_>,
@@ -191,7 +206,6 @@ fn overlap<'tcx>(
 
     let infcx = tcx
         .infer_ctxt()
-        .with_opaque_type_inference(DefiningAnchor::Bubble)
         .skip_leak_check(skip_leak_check.is_yes())
         .intercrate(true)
         .with_next_trait_solver(tcx.next_trait_solver_in_coherence())
@@ -222,11 +236,13 @@ fn overlap<'tcx>(
         ),
     );
 
+    let mut overflowing_predicates = Vec::new();
     if overlap_mode.use_implicit_negative() {
-        if let Some(_failing_obligation) =
-            impl_intersection_has_impossible_obligation(selcx, &obligations)
-        {
-            return None;
+        match impl_intersection_has_impossible_obligation(selcx, &obligations) {
+            IntersectionHasImpossibleObligations::Yes => return None,
+            IntersectionHasImpossibleObligations::No { overflowing_predicates: p } => {
+                overflowing_predicates = p
+            }
         }
     }
 
@@ -262,7 +278,12 @@ fn overlap<'tcx>(
         impl_header = deeply_normalize_for_diagnostics(&infcx, param_env, impl_header);
     }
 
-    Some(OverlapResult { impl_header, intercrate_ambiguity_causes, involves_placeholder })
+    Some(OverlapResult {
+        impl_header,
+        intercrate_ambiguity_causes,
+        involves_placeholder,
+        overflowing_predicates,
+    })
 }
 
 #[instrument(level = "debug", skip(infcx), ret)]
@@ -288,6 +309,19 @@ fn equate_impl_headers<'tcx>(
     result.map(|infer_ok| infer_ok.obligations).ok()
 }
 
+/// The result of [fn impl_intersection_has_impossible_obligation].
+enum IntersectionHasImpossibleObligations<'tcx> {
+    Yes,
+    No {
+        /// With `-Znext-solver=coherence`, some obligations may
+        /// fail if only the user increased the recursion limit.
+        ///
+        /// We return those obligations here and mention them in the
+        /// error message.
+        overflowing_predicates: Vec<ty::Predicate<'tcx>>,
+    },
+}
+
 /// Check if both impls can be satisfied by a common type by considering whether
 /// any of either impl's obligations is not known to hold.
 ///
@@ -309,29 +343,52 @@ fn equate_impl_headers<'tcx>(
 fn impl_intersection_has_impossible_obligation<'a, 'cx, 'tcx>(
     selcx: &mut SelectionContext<'cx, 'tcx>,
     obligations: &'a [PredicateObligation<'tcx>],
-) -> Option<&'a PredicateObligation<'tcx>> {
+) -> IntersectionHasImpossibleObligations<'tcx> {
     let infcx = selcx.infcx;
 
-    obligations.iter().find(|obligation| {
-        let evaluation_result = if infcx.next_trait_solver() {
-            infcx.evaluate_obligation(obligation)
-        } else {
-            // We use `evaluate_root_obligation` to correctly track intercrate
-            // ambiguity clauses. We cannot use this in the new solver.
-            selcx.evaluate_root_obligation(obligation)
-        };
+    if infcx.next_trait_solver() {
+        let mut fulfill_cx = FulfillmentCtxt::new(infcx);
+        fulfill_cx.register_predicate_obligations(infcx, obligations.iter().cloned());
 
-        match evaluation_result {
-            Ok(result) => !result.may_apply(),
-            // If overflow occurs, we need to conservatively treat the goal as possibly holding,
-            // since there can be instantiations of this goal that don't overflow and result in
-            // success. This isn't much of a problem in the old solver, since we treat overflow
-            // fatally (this still can be encountered: <https://github.com/rust-lang/rust/issues/105231>),
-            // but in the new solver, this is very important for correctness, since overflow
-            // *must* be treated as ambiguity for completeness.
-            Err(_overflow) => false,
+        // We only care about the obligations that are *definitely* true errors.
+        // Ambiguities do not prove the disjointness of two impls.
+        let errors = fulfill_cx.select_where_possible(infcx);
+        if errors.is_empty() {
+            let overflow_errors = fulfill_cx.collect_remaining_errors(infcx);
+            let overflowing_predicates = overflow_errors
+                .into_iter()
+                .filter(|e| match e.code {
+                    FulfillmentErrorCode::Ambiguity { overflow: Some(true) } => true,
+                    _ => false,
+                })
+                .map(|e| infcx.resolve_vars_if_possible(e.obligation.predicate))
+                .collect();
+            IntersectionHasImpossibleObligations::No { overflowing_predicates }
+        } else {
+            IntersectionHasImpossibleObligations::Yes
         }
-    })
+    } else {
+        for obligation in obligations {
+            // We use `evaluate_root_obligation` to correctly track intercrate
+            // ambiguity clauses.
+            let evaluation_result = selcx.evaluate_root_obligation(obligation);
+
+            match evaluation_result {
+                Ok(result) => {
+                    if !result.may_apply() {
+                        return IntersectionHasImpossibleObligations::Yes;
+                    }
+                }
+                // If overflow occurs, we need to conservatively treat the goal as possibly holding,
+                // since there can be instantiations of this goal that don't overflow and result in
+                // success. While this isn't much of a problem in the old solver, since we treat overflow
+                // fatally, this still can be encountered: <https://github.com/rust-lang/rust/issues/105231>.
+                Err(_overflow) => {}
+            }
+        }
+
+        IntersectionHasImpossibleObligations::No { overflowing_predicates: Vec::new() }
+    }
 }
 
 /// Check if both impls can be satisfied by a common type by considering whether
@@ -415,7 +472,7 @@ fn plug_infer_with_placeholders<'tcx>(
     }
 
     impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for PlugInferWithPlaceholder<'_, 'tcx> {
-        fn visit_ty(&mut self, ty: Ty<'tcx>) -> ControlFlow<Self::BreakTy> {
+        fn visit_ty(&mut self, ty: Ty<'tcx>) {
             let ty = self.infcx.shallow_resolve(ty);
             if ty.is_ty_var() {
                 let Ok(InferOk { value: (), obligations }) =
@@ -437,13 +494,12 @@ fn plug_infer_with_placeholders<'tcx>(
                     bug!("we always expect to be able to plug an infer var with placeholder")
                 };
                 assert_eq!(obligations, &[]);
-                ControlFlow::Continue(())
             } else {
-                ty.super_visit_with(self)
+                ty.super_visit_with(self);
             }
         }
 
-        fn visit_const(&mut self, ct: ty::Const<'tcx>) -> ControlFlow<Self::BreakTy> {
+        fn visit_const(&mut self, ct: ty::Const<'tcx>) {
             let ct = self.infcx.shallow_resolve(ct);
             if ct.is_ct_infer() {
                 let Ok(InferOk { value: (), obligations }) =
@@ -460,13 +516,12 @@ fn plug_infer_with_placeholders<'tcx>(
                     bug!("we always expect to be able to plug an infer var with placeholder")
                 };
                 assert_eq!(obligations, &[]);
-                ControlFlow::Continue(())
             } else {
-                ct.super_visit_with(self)
+                ct.super_visit_with(self);
             }
         }
 
-        fn visit_region(&mut self, r: ty::Region<'tcx>) -> ControlFlow<Self::BreakTy> {
+        fn visit_region(&mut self, r: ty::Region<'tcx>) {
             if let ty::ReVar(vid) = *r {
                 let r = self
                     .infcx
@@ -496,7 +551,6 @@ fn plug_infer_with_placeholders<'tcx>(
                     assert_eq!(obligations, &[]);
                 }
             }
-            ControlFlow::Continue(())
         }
     }
 
@@ -521,15 +575,13 @@ fn try_prove_negated_where_clause<'tcx>(
     // Without this, we over-eagerly register coherence ambiguity candidates when
     // impl candidates do exist.
     let ref infcx = root_infcx.fork_with_intercrate(false);
-    let ocx = ObligationCtxt::new(infcx);
+    let mut fulfill_cx = FulfillmentCtxt::new(infcx);
 
-    ocx.register_obligation(Obligation::new(
-        infcx.tcx,
-        ObligationCause::dummy(),
-        param_env,
-        negative_predicate,
-    ));
-    if !ocx.select_all_or_error().is_empty() {
+    fulfill_cx.register_predicate_obligation(
+        infcx,
+        Obligation::new(infcx.tcx, ObligationCause::dummy(), param_env, negative_predicate),
+    );
+    if !fulfill_cx.select_all_or_error(infcx).is_empty() {
         return false;
     }
 
@@ -560,21 +612,21 @@ pub fn trait_ref_is_knowable<'tcx, E: Debug>(
 ) -> Result<Result<(), Conflict>, E> {
     if orphan_check_trait_ref(trait_ref, InCrate::Remote, &mut lazily_normalize_ty)?.is_ok() {
         // A downstream or cousin crate is allowed to implement some
-        // substitution of this trait-ref.
+        // generic parameters of this trait-ref.
         return Ok(Err(Conflict::Downstream));
     }
 
     if trait_ref_is_local_or_fundamental(tcx, trait_ref) {
         // This is a local or fundamental trait, so future-compatibility
         // is no concern. We know that downstream/cousin crates are not
-        // allowed to implement a substitution of this trait ref, which
-        // means impls could only come from dependencies of this crate,
-        // which we already know about.
+        // allowed to implement a generic parameter of this trait ref,
+        // which means impls could only come from dependencies of this
+        // crate, which we already know about.
         return Ok(Ok(()));
     }
 
     // This is a remote non-fundamental trait, so if another crate
-    // can be the "final owner" of a substitution of this trait-ref,
+    // can be the "final owner" of the generic parameters of this trait-ref,
     // they are allowed to implement it future-compatibly.
     //
     // However, if we are a final owner, then nobody else can be,
@@ -595,9 +647,24 @@ pub fn trait_ref_is_local_or_fundamental<'tcx>(
     trait_ref.def_id.krate == LOCAL_CRATE || tcx.has_attr(trait_ref.def_id, sym::fundamental)
 }
 
+#[derive(Debug, Copy, Clone)]
+pub enum IsFirstInputType {
+    No,
+    Yes,
+}
+
+impl From<bool> for IsFirstInputType {
+    fn from(b: bool) -> IsFirstInputType {
+        match b {
+            false => IsFirstInputType::No,
+            true => IsFirstInputType::Yes,
+        }
+    }
+}
+
 #[derive(Debug)]
 pub enum OrphanCheckErr<'tcx> {
-    NonLocalInputType(Vec<(Ty<'tcx>, bool /* Is this the first input type? */)>),
+    NonLocalInputType(Vec<(Ty<'tcx>, IsFirstInputType)>),
     UncoveredTy(Ty<'tcx>, Option<Ty<'tcx>>),
 }
 
@@ -627,8 +694,8 @@ pub fn orphan_check(tcx: TyCtxt<'_>, impl_def_id: DefId) -> Result<(), OrphanChe
 ///
 /// The current rule is that a trait-ref orphan checks in a crate C:
 ///
-/// 1. Order the parameters in the trait-ref in subst order - Self first,
-///    others linearly (e.g., `<U as Foo<V, W>>` is U < V < W).
+/// 1. Order the parameters in the trait-ref in generic parameters order
+/// - Self first, others linearly (e.g., `<U as Foo<V, W>>` is U < V < W).
 /// 2. Of these type parameters, there is at least one type parameter
 ///    in which, walking the type as a tree, you can reach a type local
 ///    to C where all types in-between are fundamental types. Call the
@@ -695,7 +762,7 @@ pub fn orphan_check(tcx: TyCtxt<'_>, impl_def_id: DefId) -> Result<(), OrphanChe
 ///
 ///    Because we never perform negative reasoning generically (coherence does
 ///    not involve type parameters), this can be interpreted as doing the full
-///    orphan check (using InCrate::Local mode), substituting non-local known
+///    orphan check (using InCrate::Local mode), instantiating non-local known
 ///    types for all inference variables.
 ///
 ///    This allows for crates to future-compatibly add impls as long as they
@@ -748,7 +815,7 @@ struct OrphanChecker<'tcx, F> {
     /// Ignore orphan check failures and exclusively search for the first
     /// local type.
     search_first_local_ty: bool,
-    non_local_tys: Vec<(Ty<'tcx>, bool)>,
+    non_local_tys: Vec<(Ty<'tcx>, IsFirstInputType)>,
 }
 
 impl<'tcx, F, E> OrphanChecker<'tcx, F>
@@ -766,7 +833,7 @@ where
     }
 
     fn found_non_local_ty(&mut self, t: Ty<'tcx>) -> ControlFlow<OrphanCheckEarlyExit<'tcx, E>> {
-        self.non_local_tys.push((t, self.in_self_ty));
+        self.non_local_tys.push((t, self.in_self_ty.into()));
         ControlFlow::Continue(())
     }
 
@@ -796,12 +863,12 @@ impl<'tcx, F, E> TypeVisitor<TyCtxt<'tcx>> for OrphanChecker<'tcx, F>
 where
     F: FnMut(Ty<'tcx>) -> Result<Ty<'tcx>, E>,
 {
-    type BreakTy = OrphanCheckEarlyExit<'tcx, E>;
-    fn visit_region(&mut self, _r: ty::Region<'tcx>) -> ControlFlow<Self::BreakTy> {
+    type Result = ControlFlow<OrphanCheckEarlyExit<'tcx, E>>;
+    fn visit_region(&mut self, _r: ty::Region<'tcx>) -> Self::Result {
         ControlFlow::Continue(())
     }
 
-    fn visit_ty(&mut self, ty: Ty<'tcx>) -> ControlFlow<Self::BreakTy> {
+    fn visit_ty(&mut self, ty: Ty<'tcx>) -> Self::Result {
         // Need to lazily normalize here in with `-Znext-solver=coherence`.
         let ty = match (self.lazily_normalize_ty)(ty) {
             Ok(ty) => ty,
@@ -862,7 +929,7 @@ where
                 }
             }
             ty::Error(_) => ControlFlow::Break(OrphanCheckEarlyExit::LocalTy(ty)),
-            ty::Closure(did, ..) | ty::Coroutine(did, ..) => {
+            ty::Closure(did, ..) | ty::CoroutineClosure(did, ..) | ty::Coroutine(did, ..) => {
                 if self.def_id_is_local(did) {
                     ControlFlow::Break(OrphanCheckEarlyExit::LocalTy(ty))
                 } else {
@@ -924,7 +991,7 @@ where
     /// As these should be quite rare as const arguments and especially rare as impl
     /// parameters, allowing uncovered const parameters in impls seems more useful
     /// than allowing `impl<T> Trait<local_fn_ptr, T> for i32` to compile.
-    fn visit_const(&mut self, _c: ty::Const<'tcx>) -> ControlFlow<Self::BreakTy> {
+    fn visit_const(&mut self, _c: ty::Const<'tcx>) -> Self::Result {
         ControlFlow::Continue(())
     }
 }
@@ -954,23 +1021,22 @@ struct AmbiguityCausesVisitor<'a, 'tcx> {
 }
 
 impl<'a, 'tcx> ProofTreeVisitor<'tcx> for AmbiguityCausesVisitor<'a, 'tcx> {
-    type BreakTy = !;
-    fn visit_goal(&mut self, goal: &InspectGoal<'_, 'tcx>) -> ControlFlow<Self::BreakTy> {
+    fn visit_goal(&mut self, goal: &InspectGoal<'_, 'tcx>) {
         let infcx = goal.infcx();
         for cand in goal.candidates() {
-            cand.visit_nested(self)?;
+            cand.visit_nested(self);
         }
         // When searching for intercrate ambiguity causes, we only need to look
         // at ambiguous goals, as for others the coherence unknowable candidate
         // was irrelevant.
         match goal.result() {
             Ok(Certainty::Maybe(_)) => {}
-            Ok(Certainty::Yes) | Err(NoSolution) => return ControlFlow::Continue(()),
+            Ok(Certainty::Yes) | Err(NoSolution) => return,
         }
 
         let Goal { param_env, predicate } = goal.goal();
 
-        // For bound predicates we simply call `infcx.instantiate_binder_with_placeholders`
+        // For bound predicates we simply call `infcx.enter_forall`
         // and then prove the resulting predicate as a nested goal.
         let trait_ref = match predicate.kind().no_bound_vars() {
             Some(ty::PredicateKind::Clause(ty::ClauseKind::Trait(tr))) => tr.trait_ref,
@@ -982,7 +1048,7 @@ impl<'a, 'tcx> ProofTreeVisitor<'tcx> for AmbiguityCausesVisitor<'a, 'tcx> {
             {
                 proj.projection_ty.trait_ref(infcx.tcx)
             }
-            _ => return ControlFlow::Continue(()),
+            _ => return,
         };
 
         // Add ambiguity causes for reservation impls.
@@ -1082,8 +1148,6 @@ impl<'a, 'tcx> ProofTreeVisitor<'tcx> for AmbiguityCausesVisitor<'a, 'tcx> {
         if let Some(ambiguity_cause) = ambiguity_cause {
             self.causes.insert(ambiguity_cause);
         }
-
-        ControlFlow::Continue(())
     }
 }
 

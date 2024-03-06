@@ -1,4 +1,4 @@
-// build-pass
+//@ build-pass
 #![feature(coroutines)]
 
 static A: [i32; 5] = [1, 2, 3, 4, 5];

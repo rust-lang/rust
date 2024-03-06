@@ -1,6 +1,7 @@
 #![feature(rustc_private)]
 #![feature(cell_update)]
 #![feature(float_gamma)]
+#![feature(generic_nonzero)]
 #![feature(map_try_insert)]
 #![feature(never_type)]
 #![feature(try_blocks)]
@@ -10,7 +11,7 @@
 #![feature(nonzero_ops)]
 #![feature(let_chains)]
 #![feature(lint_reasons)]
-#![cfg_attr(not(bootstrap), feature(trait_upcasting))]
+#![feature(trait_upcasting)]
 // Configure clippy and other lints
 #![allow(
     clippy::collapsible_else_if,
@@ -33,8 +34,10 @@
     clippy::bool_to_int_with_if,
     clippy::box_default,
     clippy::needless_question_mark,
+    rustc::diagnostic_outside_of_impl,
     // We are not implementing queries here so it's fine
-    rustc::potential_query_instability
+    rustc::potential_query_instability,
+    rustc::untranslatable_diagnostic,
 )]
 #![warn(
     rust_2018_idioms,
@@ -60,6 +63,8 @@ extern crate rustc_middle;
 extern crate rustc_session;
 extern crate rustc_span;
 extern crate rustc_target;
+#[macro_use]
+extern crate tracing;
 
 // Necessary to pull in object code as the rest of the rustc crates are shipped only as rmeta
 // files.
@@ -115,7 +120,7 @@ pub use crate::diagnostics::{
 pub use crate::eval::{
     create_ecx, eval_entry, AlignmentCheck, BacktraceStyle, IsolatedOp, MiriConfig, RejectOpWith,
 };
-pub use crate::helpers::EvalContextExt as _;
+pub use crate::helpers::{AccessKind, EvalContextExt as _};
 pub use crate::intptrcast::{EvalContextExt as _, ProvenanceMode};
 pub use crate::machine::{
     AllocExtra, FrameExtra, MiriInterpCx, MiriInterpCxExt, MiriMachine, MiriMemoryKind,

@@ -1,7 +1,7 @@
-// run-pass
-// aux-build:default_type_params_xc.rs
+//@ run-pass
+//@ aux-build:default_type_params_xc.rs
 
-// pretty-expanded FIXME #23616
+//@ pretty-expanded FIXME #23616
 
 extern crate default_type_params_xc;
 

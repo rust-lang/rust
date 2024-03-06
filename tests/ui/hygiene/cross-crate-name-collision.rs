@@ -2,8 +2,8 @@
 // only differ by `SyntaxContext` do not cause name collisions when imported
 // in another crate.
 
-// check-pass
-// aux-build:needs_hygiene.rs
+//@ check-pass
+//@ aux-build:needs_hygiene.rs
 
 extern crate needs_hygiene;
 

@@ -1,6 +1,6 @@
 // Unnecessary path disambiguator is ok
 
-// check-pass
+//@ check-pass
 
 macro_rules! m {
     ($p: path) => {

@@ -15,6 +15,9 @@ extern crate rustc_abi;
 #[cfg(not(feature = "in-rust-tree"))]
 extern crate ra_ap_rustc_abi as rustc_abi;
 
+// No need to use the in-tree one.
+extern crate ra_ap_rustc_pattern_analysis as rustc_pattern_analysis;
+
 mod builder;
 mod chalk_db;
 mod chalk_ext;
@@ -39,15 +42,16 @@ pub mod primitive;
 pub mod traits;
 
 #[cfg(test)]
-mod tests;
-#[cfg(test)]
 mod test_db;
+#[cfg(test)]
+mod tests;
 
 use std::{
     collections::hash_map::Entry,
     hash::{BuildHasherDefault, Hash},
 };
 
+use base_db::salsa::impl_intern_value_trivial;
 use chalk_ir::{
     fold::{Shift, TypeFoldable},
     interner::HasInterner,
@@ -75,8 +79,8 @@ pub use builder::{ParamKind, TyBuilder};
 pub use chalk_ext::*;
 pub use infer::{
     closure::{CaptureKind, CapturedItem},
-    could_coerce, could_unify, Adjust, Adjustment, AutoBorrow, BindingMode, InferenceDiagnostic,
-    InferenceResult, OverloadedDeref, PointerCast,
+    could_coerce, could_unify, could_unify_deeply, Adjust, Adjustment, AutoBorrow, BindingMode,
+    InferenceDiagnostic, InferenceResult, OverloadedDeref, PointerCast,
 };
 pub use interner::Interner;
 pub use lower::{
@@ -225,7 +229,7 @@ impl MemoryMap {
         &self,
         mut f: impl FnMut(&[u8], usize) -> Result<usize, MirEvalError>,
     ) -> Result<FxHashMap<usize, usize>, MirEvalError> {
-        let mut transform = |(addr, val): (&usize, &Box<[u8]>)| {
+        let mut transform = |(addr, val): (&usize, &[u8])| {
             let addr = *addr;
             let align = if addr == 0 { 64 } else { (addr - (addr & (addr - 1))).min(64) };
             f(val, align).map(|it| (addr, it))
@@ -237,7 +241,9 @@ impl MemoryMap {
                 map.insert(addr, val);
                 map
             }),
-            MemoryMap::Complex(cm) => cm.memory.iter().map(transform).collect(),
+            MemoryMap::Complex(cm) => {
+                cm.memory.iter().map(|(addr, val)| transform((addr, val))).collect()
+            }
         }
     }
 
@@ -360,7 +366,6 @@ has_interner!(CallableSig);
 pub enum FnAbi {
     Aapcs,
     AapcsUnwind,
-    AmdgpuKernel,
     AvrInterrupt,
     AvrNonBlockingInterrupt,
     C,
@@ -419,7 +424,6 @@ impl FnAbi {
         match s {
             "aapcs-unwind" => FnAbi::AapcsUnwind,
             "aapcs" => FnAbi::Aapcs,
-            "amdgpu-kernel" => FnAbi::AmdgpuKernel,
             "avr-interrupt" => FnAbi::AvrInterrupt,
             "avr-non-blocking-interrupt" => FnAbi::AvrNonBlockingInterrupt,
             "C-cmse-nonsecure-call" => FnAbi::CCmseNonsecureCall,
@@ -462,7 +466,6 @@ impl FnAbi {
         match self {
             FnAbi::Aapcs => "aapcs",
             FnAbi::AapcsUnwind => "aapcs-unwind",
-            FnAbi::AmdgpuKernel => "amdgpu-kernel",
             FnAbi::AvrInterrupt => "avr-interrupt",
             FnAbi::AvrNonBlockingInterrupt => "avr-non-blocking-interrupt",
             FnAbi::C => "C",
@@ -584,6 +587,7 @@ pub enum ImplTraitId {
     ReturnTypeImplTrait(hir_def::FunctionId, RpitId),
     AsyncBlockTypeImplTrait(hir_def::DefWithBodyId, ExprId),
 }
+impl_intern_value_trivial!(ImplTraitId);
 
 #[derive(Clone, PartialEq, Eq, Debug, Hash)]
 pub struct ReturnTypeImplTraits {

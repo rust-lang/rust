@@ -41,7 +41,7 @@ pub(crate) fn inline_macro(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option
 
     acc.add(
         AssistId("inline_macro", AssistKind::RefactorInline),
-        "Inline macro".to_string(),
+        "Inline macro".to_owned(),
         text_range,
         |builder| builder.replace(text_range, expanded.to_string()),
     )

@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 #![feature(test)]
 
 extern crate test;

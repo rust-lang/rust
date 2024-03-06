@@ -16,22 +16,8 @@ LL |     let a: [String; 1];
 LL | };
    | - value is dropped here
 
-error[E0381]: used binding `a` isn't initialized
-  --> $DIR/drop-elaboration-after-borrowck-error.rs:7:5
-   |
-LL |     let a: [String; 1];
-   |         - binding declared here but left uninitialized
-LL |
-LL |     a[0] = String::new();
-   |     ^^^^ `a` used here but it isn't initialized
-   |
-help: consider assigning a value
-   |
-LL |     let a: [String; 1] = todo!();
-   |                        +++++++++
-
 error[E0493]: destructor of `T` cannot be evaluated at compile-time
-  --> $DIR/drop-elaboration-after-borrowck-error.rs:18:9
+  --> $DIR/drop-elaboration-after-borrowck-error.rs:17:9
    |
 LL |         self.0[0] = other;
    |         ^^^^^^^^^
@@ -40,7 +26,7 @@ LL |         self.0[0] = other;
    |         value is dropped here
 
 error[E0493]: destructor of `B<T>` cannot be evaluated at compile-time
-  --> $DIR/drop-elaboration-after-borrowck-error.rs:16:13
+  --> $DIR/drop-elaboration-after-borrowck-error.rs:15:13
    |
 LL |         let _this = self;
    |             ^^^^^ the destructor for this type cannot be evaluated in constant functions
@@ -48,18 +34,6 @@ LL |         let _this = self;
 LL |     }
    |     - value is dropped here
 
-error[E0382]: use of moved value: `self.0`
-  --> $DIR/drop-elaboration-after-borrowck-error.rs:18:9
-   |
-LL |     pub const fn f(mut self, other: T) -> Self {
-   |                    -------- move occurs because `self` has type `B<T>`, which does not implement the `Copy` trait
-LL |         let _this = self;
-   |                     ---- value moved here
-LL |
-LL |         self.0[0] = other;
-   |         ^^^^^^^^^ value used here after move
+error: aborting due to 4 previous errors
 
-error: aborting due to 6 previous errors
-
-Some errors have detailed explanations: E0381, E0382, E0493.
-For more information about an error, try `rustc --explain E0381`.
+For more information about this error, try `rustc --explain E0493`.

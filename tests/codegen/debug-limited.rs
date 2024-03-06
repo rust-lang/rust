@@ -1,6 +1,6 @@
 // Verify that the limited debuginfo option emits llvm's FullDebugInfo, but no type info.
 //
-// compile-flags: -C debuginfo=limited
+//@ compile-flags: -C debuginfo=limited
 
 #[repr(C)]
 struct StructType {

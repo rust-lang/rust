@@ -1,6 +1,6 @@
 #![deny(unreachable_patterns)]
 
-// check-pass
+//@ check-pass
 
 // We wrap patterns in a tuple because top-level or-patterns were special-cased.
 fn main() {

@@ -1,7 +1,7 @@
 use core::cell::Cell;
 use core::cmp::Ordering;
 use core::mem::MaybeUninit;
-use core::num::NonZeroUsize;
+use core::num::NonZero;
 use core::slice;
 
 #[test]
@@ -147,7 +147,7 @@ fn test_iterator_advance_by() {
     }
 
     let mut iter = v.iter();
-    assert_eq!(iter.advance_by(v.len() + 1), Err(NonZeroUsize::new(1).unwrap()));
+    assert_eq!(iter.advance_by(v.len() + 1), Err(NonZero::new(1).unwrap()));
     assert_eq!(iter.as_slice(), &[]);
 
     let mut iter = v.iter();
@@ -169,7 +169,7 @@ fn test_iterator_advance_back_by() {
     }
 
     let mut iter = v.iter();
-    assert_eq!(iter.advance_back_by(v.len() + 1), Err(NonZeroUsize::new(1).unwrap()));
+    assert_eq!(iter.advance_back_by(v.len() + 1), Err(NonZero::new(1).unwrap()));
     assert_eq!(iter.as_slice(), &[]);
 
     let mut iter = v.iter();

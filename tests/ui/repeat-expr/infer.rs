@@ -1,4 +1,4 @@
-// check-pass
+//@ check-pass
 
 #[derive(Clone, Default)]
 struct MaybeCopy<T>(T);

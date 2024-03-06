@@ -1,4 +1,4 @@
-// run-rustfix
+//@ run-rustfix
 // Regression test for #51415: match default bindings were failing to
 // see the "move out" implied by `&s` below.
 

@@ -1,6 +1,6 @@
-// aux-build:custom-quote.rs
-// aux-build:span-from-proc-macro.rs
-// compile-flags: -Z macro-backtrace
+//@ aux-build:custom-quote.rs
+//@ aux-build:span-from-proc-macro.rs
+//@ compile-flags: -Z macro-backtrace
 
 #[macro_use]
 extern crate span_from_proc_macro;

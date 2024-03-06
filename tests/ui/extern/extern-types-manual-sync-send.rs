@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 // Test that unsafe impl for Sync/Send can be provided for extern types.
 
 #![feature(extern_types)]

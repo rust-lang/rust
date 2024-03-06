@@ -1,6 +1,6 @@
 // Check that we aren't using unsound specialization in slice comparisons.
 
-// run-pass
+//@ run-pass
 
 use std::cell::Cell;
 use std::cmp::Ordering;

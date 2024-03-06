@@ -1,5 +1,5 @@
-// build-pass
-// compile-flags: --crate-type lib
+//@ build-pass
+//@ compile-flags: --crate-type lib
 
 // Regression test for ICE which occurred when const propagating an enum with three variants
 // one of which is uninhabited.

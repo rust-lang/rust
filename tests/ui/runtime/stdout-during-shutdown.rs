@@ -1,6 +1,6 @@
-// run-pass
-// check-run-results
-// ignore-emscripten
+//@ run-pass
+//@ check-run-results
+//@ ignore-emscripten
 
 // Emscripten doesn't flush its own stdout buffers on exit, which would fail
 // this test. So this test is disabled on this platform.

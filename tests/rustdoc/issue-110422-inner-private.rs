@@ -2,7 +2,7 @@
 // This test ensures that inner items (except for implementations and macros)
 // don't appear in documentation.
 
-// compile-flags: --document-private-items
+//@ compile-flags: --document-private-items
 
 #![crate_name = "foo"]
 

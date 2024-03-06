@@ -1,4 +1,4 @@
-// aux-build:extern-statics.rs
+//@ aux-build:extern-statics.rs
 
 extern crate extern_statics;
 use extern_statics::*;

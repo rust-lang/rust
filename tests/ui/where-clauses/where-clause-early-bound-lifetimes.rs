@@ -1,9 +1,9 @@
-// run-pass
+//@ run-pass
 #![allow(non_upper_case_globals)]
 
-// pretty-expanded FIXME #23616
+//@ pretty-expanded FIXME #23616
 
-trait TheTrait { fn dummy(&self) { } }
+trait TheTrait { fn dummy(&self) { } } //~ WARN method `dummy` is never used
 
 impl TheTrait for &'static isize { }
 

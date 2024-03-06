@@ -1,4 +1,4 @@
-// check-pass
+//@ check-pass
 trait Foo<'a, A>: Iterator<Item=A> {
     fn bar<const N: usize>(&mut self) -> *const [A; N];
 }

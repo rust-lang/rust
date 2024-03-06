@@ -1,4 +1,4 @@
-// check-pass
+//@ check-pass
 
 struct Const<const N: usize>;
 trait Foo<const N: usize> {}

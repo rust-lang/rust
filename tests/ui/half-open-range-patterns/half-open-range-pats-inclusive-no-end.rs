@@ -16,7 +16,9 @@ fn bar() {
     macro_rules! mac {
         ($e:expr) => {
             let $e...; //~ ERROR inclusive range with no end
+            //~^ ERROR: refutable pattern
             let $e..=; //~ ERROR inclusive range with no end
+            //~^ ERROR: refutable pattern
         }
     }
 

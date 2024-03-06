@@ -16,7 +16,7 @@ use crate::ty::GenericArgsRef;
 use crate::ty::{self, AdtKind, Ty};
 
 use rustc_data_structures::sync::Lrc;
-use rustc_errors::{Applicability, Diagnostic};
+use rustc_errors::{Applicability, Diag, EmissionGuarantee};
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
 use rustc_span::def_id::{LocalDefId, CRATE_DEF_ID};
@@ -292,6 +292,8 @@ pub enum ObligationCauseCode<'tcx> {
     SizedArgumentType(Option<hir::HirId>),
     /// Return type must be `Sized`.
     SizedReturnType,
+    /// Return type of a call expression must be `Sized`.
+    SizedCallReturnType,
     /// Yield type must be `Sized`.
     SizedYieldType,
     /// Inline asm operand type must be `Sized`.
@@ -567,9 +569,8 @@ pub struct MatchExpressionArmCause<'tcx> {
     pub prior_arm_ty: Ty<'tcx>,
     pub prior_arm_span: Span,
     pub scrut_span: Span,
-    pub scrut_hir_id: hir::HirId,
     pub source: hir::MatchSource,
-    pub prior_arms: Vec<Span>,
+    pub prior_non_diverging_arms: Vec<Span>,
     pub opt_suggest_box_span: Option<Span>,
 }
 
@@ -719,7 +720,7 @@ impl<'tcx, N> ImplSource<'tcx, N> {
 }
 
 /// Identifies a particular impl in the source, along with a set of
-/// substitutions from the impl's type/lifetime parameters. The
+/// generic parameters from the impl's type/lifetime parameters. The
 /// `nested` vector corresponds to the nested obligations attached to
 /// the impl's type parameters.
 ///
@@ -907,7 +908,7 @@ pub enum ObjectSafetyViolationSolution {
 }
 
 impl ObjectSafetyViolationSolution {
-    pub fn add_to(self, err: &mut Diagnostic) {
+    pub fn add_to<G: EmissionGuarantee>(self, err: &mut Diag<'_, G>) {
         match self {
             ObjectSafetyViolationSolution::None => {}
             ObjectSafetyViolationSolution::AddSelfOrMakeSized {

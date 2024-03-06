@@ -1,6 +1,6 @@
-// compile-flags:--test
-// run-pass
-// needs-unwind
+//@ compile-flags:--test
+//@ run-pass
+//@ needs-unwind
 
 use std::fmt;
 use std::fmt::{Display, Formatter};

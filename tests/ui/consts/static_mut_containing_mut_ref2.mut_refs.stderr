@@ -1,24 +1,9 @@
-warning: mutable reference of mutable static is discouraged
-  --> $DIR/static_mut_containing_mut_ref2.rs:8:6
-   |
-LL |     *(&mut STDERR_BUFFER_SPACE) = 42;
-   |      ^^^^^^^^^^^^^^^^^^^^^^^^^^ mutable reference of mutable static
-   |
-   = note: for more information, see issue #114447 <https://github.com/rust-lang/rust/issues/114447>
-   = note: reference of mutable static is a hard error from 2024 edition
-   = note: mutable statics can be written to by multiple threads: aliasing violations or data races will cause undefined behavior
-   = note: `#[warn(static_mut_ref)]` on by default
-help: mutable references are dangerous since if there's any other pointer or reference used for that static while the reference lives, that's UB; use `addr_of_mut!` instead to create a raw pointer
-   |
-LL |     *addr_of_mut!(STDERR_BUFFER_SPACE) = 42;
-   |      ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
 error[E0080]: could not evaluate static initializer
   --> $DIR/static_mut_containing_mut_ref2.rs:8:5
    |
 LL |     *(&mut STDERR_BUFFER_SPACE) = 42;
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ modifying a static's initial value from another static's initializer
 
-error: aborting due to 1 previous error; 1 warning emitted
+error: aborting due to 1 previous error
 
 For more information about this error, try `rustc --explain E0080`.

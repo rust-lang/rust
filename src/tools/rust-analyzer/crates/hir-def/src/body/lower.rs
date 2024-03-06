@@ -6,7 +6,6 @@ use std::mem;
 use base_db::CrateId;
 use either::Either;
 use hir_expand::{
-    ast_id_map::AstIdMap,
     name::{name, AsName, Name},
     ExpandError, InFile,
 };
@@ -14,6 +13,7 @@ use intern::Interned;
 use profile::Count;
 use rustc_hash::FxHashMap;
 use smallvec::SmallVec;
+use span::AstIdMap;
 use syntax::{
     ast::{
         self, ArrayExprKind, AstChildren, BlockExpr, HasArgList, HasAttrs, HasLoopBody, HasName,
@@ -415,6 +415,11 @@ impl ExprCollector<'_> {
             ast::Expr::ReturnExpr(e) => {
                 let expr = e.expr().map(|e| self.collect_expr(e));
                 self.alloc_expr(Expr::Return { expr }, syntax_ptr)
+            }
+            ast::Expr::BecomeExpr(e) => {
+                let expr =
+                    e.expr().map(|e| self.collect_expr(e)).unwrap_or_else(|| self.missing_expr());
+                self.alloc_expr(Expr::Become { expr }, syntax_ptr)
             }
             ast::Expr::YieldExpr(e) => {
                 self.is_lowering_coroutine = true;
@@ -1000,10 +1005,6 @@ impl ExprCollector<'_> {
                         krate: *krate,
                     });
                 }
-                Some(ExpandError::RecursionOverflowPoisoned) => {
-                    // Recursion limit has been reached in the macro expansion tree, but not in
-                    // this very macro call. Don't add diagnostics to avoid duplication.
-                }
                 Some(err) => {
                     self.source_map.diagnostics.push(BodyDiagnostic::MacroError {
                         node: InFile::new(outer_file, syntax_ptr),
@@ -1112,7 +1113,7 @@ impl ExprCollector<'_> {
                     statements.push(Statement::Expr { expr, has_semi });
                 }
             }
-            ast::Stmt::Item(_item) => (),
+            ast::Stmt::Item(_item) => statements.push(Statement::Item),
         }
     }
 
@@ -1335,6 +1336,7 @@ impl ExprCollector<'_> {
                 let args = record_pat_field_list
                     .fields()
                     .filter_map(|f| {
+                        self.check_cfg(&f)?;
                         let ast_pat = f.pat()?;
                         let pat = self.collect_pat(ast_pat, binding_list);
                         let name = f.field_name()?.as_name();
@@ -1979,10 +1981,7 @@ fn pat_literal_to_hir(lit: &ast::LiteralPat) -> Option<(Literal, ast::Literal)> 
     let ast_lit = lit.literal()?;
     let mut hir_lit: Literal = ast_lit.kind().into();
     if lit.minus_token().is_some() {
-        let Some(h) = hir_lit.negate() else {
-            return None;
-        };
-        hir_lit = h;
+        hir_lit = hir_lit.negate()?;
     }
     Some((hir_lit, ast_lit))
 }

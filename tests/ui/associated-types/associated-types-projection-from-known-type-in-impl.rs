@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 // Test where the impl self type uses a projection from a constant type.
 
 
@@ -6,7 +6,7 @@ trait Int
 {
     type T;
 
-    fn dummy(&self) { }
+    fn dummy(&self) { } //~ WARN method `dummy` is never used
 }
 
 trait NonZero

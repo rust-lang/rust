@@ -23,6 +23,7 @@ fn syntax2() {
     macro_rules! mac {
         ($e:expr) => {
             let ...$e; //~ ERROR range-to patterns with `...` are not allowed
+            //~^ ERROR refutable pattern in local binding
         }
     }
 

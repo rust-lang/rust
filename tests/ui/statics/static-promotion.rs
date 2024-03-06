@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 
 // Use of global static variables in literal values should be allowed for
 // promotion.

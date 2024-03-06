@@ -1,6 +1,8 @@
 // This should fail even without Stacked Borrows.
 //@compile-flags: -Zmiri-disable-stacked-borrows -Cdebug-assertions=no
 
+#![allow(invalid_reference_casting)] // for u16 -> u32
+
 fn main() {
     // Try many times as this might work by chance.
     for _ in 0..20 {

@@ -1,6 +1,6 @@
-// run-pass
-// edition:2021
-// compile-flags: --test
+//@ run-pass
+//@ edition:2021
+//@ compile-flags: --test
 
 #![allow(incomplete_features)]
 #![feature(async_closure)]
@@ -107,9 +107,9 @@ fn test_expr() {
     c1!(expr, [ true || false ], "true || false");
     c1!(expr, [ true || false && false ], "true || false && false");
     c1!(expr, [ a < 1 && 2 < b && c > 3 && 4 > d ], "a < 1 && 2 < b && c > 3 && 4 > d");
-    c2!(expr, [ a & b & !c ], "a & b & !c", "a & b &!c"); // FIXME
+    c1!(expr, [ a & b & !c ], "a & b & !c");
     c1!(expr, [ a + b * c - d + -1 * -2 - -3], "a + b * c - d + -1 * -2 - -3");
-    c2!(expr, [ x = !y ], "x = !y", "x =!y"); // FIXME
+    c1!(expr, [ x = !y ], "x = !y");
 
     // ExprKind::Unary
     c1!(expr, [ *expr ], "*expr");
@@ -141,15 +141,14 @@ fn test_expr() {
         "if let _ = (true && false) {}",
         "if let _ = true && false {}",
     );
-    c2!(expr,
+    c1!(expr,
         [ match () { _ if let _ = Struct {} => {} } ],
-        "match () { _ if let _ = Struct {} => {} }",
-        "match() { _ if let _ = Struct {} => {} }",
+        "match () { _ if let _ = Struct {} => {} }"
     );
 
     // ExprKind::If
     c1!(expr, [ if true {} ], "if true {}");
-    c2!(expr, [ if !true {} ], "if !true {}", "if!true {}"); // FIXME
+    c1!(expr, [ if !true {} ], "if !true {}");
     c1!(expr, [ if ::std::blah() { } else { } ], "if ::std::blah() {} else {}");
     c1!(expr, [ if let true = true {} else {} ], "if let true = true {} else {}");
     c1!(expr,
@@ -212,7 +211,7 @@ fn test_expr() {
     c2_match_arm!(
         [ { 1 } - 1 ],
         "match () { _ => ({ 1 }) - 1, }",
-        "match() { _ => { 1 } - 1 }",
+        "match () { _ => { 1 } - 1 }",
     );
 
     // ExprKind::Closure
@@ -655,11 +654,11 @@ fn test_stmt() {
     c2!(stmt, [ let _ ], "let _;", "let _");
     c2!(stmt, [ let x = true ], "let x = true;", "let x = true");
     c2!(stmt, [ let x: bool = true ], "let x: bool = true;", "let x: bool = true");
-    c2!(stmt, [ let (a, b) = (1, 2) ], "let (a, b) = (1, 2);", "let(a, b) = (1, 2)"); // FIXME
+    c2!(stmt, [ let (a, b) = (1, 2) ], "let (a, b) = (1, 2);", "let (a, b) = (1, 2)");
     c2!(stmt,
         [ let (a, b): (u32, u32) = (1, 2) ],
         "let (a, b): (u32, u32) = (1, 2);",
-        "let(a, b): (u32, u32) = (1, 2)" // FIXME
+        "let (a, b): (u32, u32) = (1, 2)"
     );
     macro_rules! c2_let_expr_minus_one {
         ([ $expr:expr ], $stmt_expected:expr, $tokens_expected:expr $(,)?) => {
@@ -776,8 +775,8 @@ fn test_ty() {
     c1!(ty, [ Ref<'a> ], "Ref<'a>");
     c1!(ty, [ PhantomData<T> ], "PhantomData<T>");
     c2!(ty, [ PhantomData::<T> ], "PhantomData<T>", "PhantomData::<T>");
-    c2!(ty, [ Fn() -> ! ], "Fn() -> !", "Fn() ->!");
-    c2!(ty, [ Fn(u8) -> ! ], "Fn(u8) -> !", "Fn(u8) ->!"); // FIXME
+    c1!(ty, [ Fn() -> ! ], "Fn() -> !");
+    c1!(ty, [ Fn(u8) -> ! ], "Fn(u8) -> !");
     c1!(ty, [ <Struct as Trait>::Type ], "<Struct as Trait>::Type");
 
     // TyKind::TraitObject
@@ -857,16 +856,16 @@ fn test_punct() {
     // Otherwise, any old proc macro that parses pretty-printed code might glue
     // together tokens that shouldn't be glued.
     p!([ = = < < <= <= == == != != >= >= > > ], "= = < < <= <= == == != != >= >= > >");
-    p!([ && && & & || || | | ! ! ], "&& && & & || || | |!!"); // FIXME
+    p!([ && && & & || || | | ! ! ], "&& && & & || || | | ! !");
     p!([ ~ ~ @ @ # # ], "~ ~ @ @ # #");
-    p!([ . . .. .. ... ... ..= ..=], ".... .. ... ... ..= ..="); // FIXME
-    p!([ , , ; ; : : :: :: ], ",, ; ; : : :: ::"); // FIXME
+    p!([ . . .. .. ... ... ..= ..=], ". . .. .. ... ... ..= ..=");
+    p!([ , , ; ; : : :: :: ], ", , ; ; : : :: ::");
     p!([ -> -> <- <- => =>], "-> -> <- <- => =>");
-    p!([ $ $ ? ? ' ' ], "$$? ? ' '"); // FIXME
+    p!([ $ $ ? ? ' ' ], "$ $ ? ? ' '");
     p!([ + + += += - - -= -= * * *= *= / / /= /= ], "+ + += += - - -= -= * * *= *= / / /= /=");
     p!([ % % %= %= ^ ^ ^= ^= << << <<= <<= >> >> >>= >>= ],
         "% % %= %= ^ ^ ^= ^= << << <<= <<= >> >> >>= >>=");
-    p!([ +! ?= |> >>@ --> <-- $$ =====> ], "+! ?= |> >>@ --> <-- $$=====>");
-    p!([ ,; ;, ** @@ $+$ >< <> ?? +== ], ",; ;, ** @@ $+$>< <> ?? +=="); // FIXME: `$ >` -> `$>`
+    p!([ +! ?= |> >>@ --> <-- $$ =====> ], "+! ?= |> >>@ --> <-- $$ =====>");
+    p!([ ,; ;, ** @@ $+$ >< <> ?? +== ], ",; ;, ** @@ $+$ >< <> ?? +==");
     p!([ :#!@|$=&*,+;*~? ], ":#!@|$=&*,+;*~?");
 }

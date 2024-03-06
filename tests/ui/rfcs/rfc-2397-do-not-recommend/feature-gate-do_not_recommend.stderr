@@ -1,8 +1,8 @@
-error[E0277]: the trait bound `u8: Foo` is not satisfied
+error[E0277]: the trait bound `u8: Bar` is not satisfied
   --> $DIR/feature-gate-do_not_recommend.rs:19:11
    |
 LL |     stuff(1u8);
-   |     ----- ^^^ the trait `Foo` is not implemented for `u8`
+   |     ----- ^^^ the trait `Foo` is not implemented for `u8`, which is required by `u8: Bar`
    |     |
    |     required by a bound introduced by this call
    |

@@ -1,6 +1,6 @@
-// run-fail
-// error-pattern:panic 1
-// ignore-emscripten no processes
+//@ run-fail
+//@ error-pattern:panic 1
+//@ ignore-emscripten no processes
 
 fn main() {
     let x = 2;

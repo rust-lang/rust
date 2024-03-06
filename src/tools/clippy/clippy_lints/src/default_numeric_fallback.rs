@@ -128,8 +128,7 @@ impl<'a, 'tcx> Visitor<'tcx> for NumericFallbackVisitor<'a, 'tcx> {
                 },
                 _,
             ) => {
-                if let Some(parent) = self.cx.tcx.hir().find_parent(expr.hir_id)
-                    && let Some(fn_sig) = parent.fn_sig()
+                if let Some(fn_sig) = self.cx.tcx.parent_hir_node(expr.hir_id).fn_sig()
                     && let FnRetTy::Return(_ty) = fn_sig.decl.output
                 {
                     // We cannot check the exact type since it's a `hir::Ty`` which does not implement `is_numeric`

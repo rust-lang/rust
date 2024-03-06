@@ -72,7 +72,7 @@ impl<'mir, 'tcx> ConstCx<'mir, 'tcx> {
 
     pub fn fn_sig(&self) -> PolyFnSig<'tcx> {
         let did = self.def_id().to_def_id();
-        if self.tcx.is_closure_or_coroutine(did) {
+        if self.tcx.is_closure_like(did) {
             let ty = self.tcx.type_of(did).instantiate_identity();
             let ty::Closure(_, args) = ty.kind() else { bug!("type_of closure not ty::Closure") };
             args.as_closure().sig()
@@ -131,11 +131,10 @@ fn is_parent_const_stable_trait(tcx: TyCtxt<'_>, def_id: DefId) -> bool {
     let local_def_id = def_id.expect_local();
     let hir_id = tcx.local_def_id_to_hir_id(local_def_id);
 
-    let Some(parent) = tcx.hir().opt_parent_id(hir_id) else { return false };
-
-    if !tcx.is_const_trait_impl_raw(parent.owner.def_id.to_def_id()) {
+    let parent_owner_id = tcx.parent_hir_id(hir_id).owner;
+    if !tcx.is_const_trait_impl_raw(parent_owner_id.to_def_id()) {
         return false;
     }
 
-    tcx.lookup_const_stability(parent.owner).is_some_and(|stab| stab.is_const_stable())
+    tcx.lookup_const_stability(parent_owner_id).is_some_and(|stab| stab.is_const_stable())
 }

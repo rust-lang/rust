@@ -1,4 +1,4 @@
-// check-pass
+//@ check-pass
 // a compared case for `import-after-macro-expand-6.rs`
 
 pub mod a {

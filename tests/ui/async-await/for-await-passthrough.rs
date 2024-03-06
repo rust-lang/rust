@@ -1,10 +1,8 @@
-// run-pass
-// edition: 2024
-// compile-flags: -Zunstable-options
+//@ run-pass
+//@ edition: 2024
+//@ compile-flags: -Zunstable-options
 #![feature(async_iterator, async_iter_from_iter, const_waker, async_for_loop, noop_waker,
            gen_blocks)]
-
-use std::future::Future;
 
 async gen fn async_iter() -> i32 {
     let iter = core::async_iter::from_iter(0..3);

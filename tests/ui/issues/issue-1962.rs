@@ -1,5 +1,5 @@
-// compile-flags: -D while-true
-// run-rustfix
+//@ compile-flags: -D while-true
+//@ run-rustfix
 
 fn main() {
     let mut i = 0;

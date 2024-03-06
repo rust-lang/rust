@@ -1,4 +1,4 @@
-// check-pass
+//@ check-pass
 fn main() {
     match (0i8, 0i8) {
         (0, _) => {}

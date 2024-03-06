@@ -2,8 +2,8 @@
 // different loan scopes when a region flowed into an SCC whose representative was an existential
 // region.
 
-// revisions: nll polonius
-// [polonius] compile-flags: -Zpolonius=next
+//@ revisions: nll polonius
+//@ [polonius] compile-flags: -Zpolonius=next
 
 fn main() {
     let a = ();

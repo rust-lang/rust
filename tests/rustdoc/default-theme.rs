@@ -1,4 +1,4 @@
-// compile-flags: --default-theme ayu
+//@ compile-flags: --default-theme ayu
 
 // @has default_theme/index.html
 // @has - '//script[@id="default-settings"]/@data-theme' 'ayu'

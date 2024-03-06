@@ -13,6 +13,7 @@ mod version;
 
 use indexmap::IndexSet;
 use paths::AbsPathBuf;
+use rustc_hash::FxHashMap;
 use span::Span;
 use std::{
     fmt, io,
@@ -107,13 +108,16 @@ pub struct MacroPanic {
 
 impl ProcMacroServer {
     /// Spawns an external process as the proc macro server and returns a client connected to it.
-    pub fn spawn(process_path: AbsPathBuf) -> io::Result<ProcMacroServer> {
-        let process = ProcMacroProcessSrv::run(process_path)?;
+    pub fn spawn(
+        process_path: AbsPathBuf,
+        env: &FxHashMap<String, String>,
+    ) -> io::Result<ProcMacroServer> {
+        let process = ProcMacroProcessSrv::run(process_path, env)?;
         Ok(ProcMacroServer { process: Arc::new(Mutex::new(process)) })
     }
 
     pub fn load_dylib(&self, dylib: MacroDylib) -> Result<Vec<ProcMacro>, ServerError> {
-        let _p = profile::span("ProcMacroClient::load_dylib");
+        let _p = tracing::span!(tracing::Level::INFO, "ProcMacroClient::load_dylib").entered();
         let macros =
             self.process.lock().unwrap_or_else(|e| e.into_inner()).find_proc_macros(&dylib.path)?;
 
@@ -184,7 +188,7 @@ impl ProcMacro {
             .process
             .lock()
             .unwrap_or_else(|e| e.into_inner())
-            .send_task(msg::Request::ExpandMacro(task))?;
+            .send_task(msg::Request::ExpandMacro(Box::new(task)))?;
 
         match response {
             msg::Response::ExpandMacro(it) => {
@@ -197,7 +201,7 @@ impl ProcMacro {
                     &deserialize_span_data_index_map(&resp.span_data_table),
                 )
             })),
-            _ => Err(ServerError { message: "unexpected response".to_string(), io: None }),
+            _ => Err(ServerError { message: "unexpected response".to_owned(), io: None }),
         }
     }
 }

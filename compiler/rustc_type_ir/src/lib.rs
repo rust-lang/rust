@@ -2,8 +2,6 @@
     feature = "nightly",
     feature(associated_type_defaults, min_specialization, never_type, rustc_attrs)
 )]
-#![deny(rustc::untranslatable_diagnostic)]
-#![deny(rustc::diagnostic_outside_of_impl)]
 #![allow(rustc::usage_of_ty_tykind)]
 #![cfg_attr(feature = "nightly", allow(internal_features))]
 
@@ -23,15 +21,19 @@ use std::hash::Hash;
 #[cfg(not(feature = "nightly"))]
 use std::sync::Arc as Lrc;
 
+#[macro_use]
+pub mod visit;
+
 #[cfg(feature = "nightly")]
 pub mod codec;
 pub mod fold;
+pub mod new;
 pub mod ty_info;
 pub mod ty_kind;
-pub mod visit;
 
 #[macro_use]
 mod macros;
+mod binder;
 mod canonical;
 mod const_kind;
 mod debug;
@@ -41,6 +43,7 @@ mod interner;
 mod predicate_kind;
 mod region_kind;
 
+pub use binder::*;
 pub use canonical::*;
 #[cfg(feature = "nightly")]
 pub use codec::*;

@@ -1,4 +1,4 @@
-// aux-build:offset-of-staged-api.rs
+//@ aux-build:offset-of-staged-api.rs
 
 #![feature(offset_of_nested)]
 

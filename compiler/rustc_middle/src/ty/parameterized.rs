@@ -75,6 +75,7 @@ trivially_parameterized_over_tcx! {
     ty::Visibility<DefIndex>,
     ty::adjustment::CoerceUnsizedInfo,
     ty::fast_reject::SimplifiedType,
+    ty::IntrinsicDef,
     rustc_ast::Attribute,
     rustc_ast::DelimArgs,
     rustc_ast::expand::StrippedCfgItem<rustc_hir::def_id::DefIndex>,
@@ -126,6 +127,7 @@ parameterized_over_tcx! {
     crate::middle::exported_symbols::ExportedSymbol,
     crate::mir::Body,
     crate::mir::CoroutineLayout,
+    crate::mir::interpret::ConstAllocation,
     ty::Ty,
     ty::FnSig,
     ty::GenericPredicates,
@@ -134,4 +136,5 @@ parameterized_over_tcx! {
     ty::Predicate,
     ty::Clause,
     ty::ClauseKind,
+    ty::ImplTraitHeader
 }

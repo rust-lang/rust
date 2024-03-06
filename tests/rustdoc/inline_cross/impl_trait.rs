@@ -1,5 +1,5 @@
-// aux-build:impl_trait_aux.rs
-// edition:2018
+//@ aux-build:impl_trait_aux.rs
+//@ edition:2018
 
 extern crate impl_trait_aux;
 

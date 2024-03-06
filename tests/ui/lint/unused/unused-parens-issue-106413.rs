@@ -1,4 +1,4 @@
-// check-pass
+//@ check-pass
 #![warn(unused_parens)]
 
 fn id<T>(t: T) -> T { t }

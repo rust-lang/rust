@@ -1,4 +1,4 @@
-// run-rustfix
+//@ run-rustfix
 
 fn main() {
     let _: f32 = .3;

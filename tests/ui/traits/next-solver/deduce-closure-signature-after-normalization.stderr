@@ -1,0 +1,14 @@
+error[E0282]: type annotations needed
+  --> $DIR/deduce-closure-signature-after-normalization.rs:6:10
+   |
+LL |         |x| x.count_ones()
+   |          ^  - type must be known at this point
+   |
+help: consider giving this closure parameter an explicit type
+   |
+LL |         |x: /* Type */| x.count_ones()
+   |           ++++++++++++
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0282`.

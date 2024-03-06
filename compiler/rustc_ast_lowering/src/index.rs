@@ -15,7 +15,7 @@ struct NodeCollector<'a, 'hir> {
     bodies: &'a SortedMap<ItemLocalId, &'hir Body<'hir>>,
 
     /// Outputs
-    nodes: IndexVec<ItemLocalId, Option<ParentedNode<'hir>>>,
+    nodes: IndexVec<ItemLocalId, ParentedNode<'hir>>,
     parenting: LocalDefIdMap<ItemLocalId>,
 
     /// The parent of this node
@@ -29,16 +29,19 @@ pub(super) fn index_hir<'hir>(
     tcx: TyCtxt<'hir>,
     item: hir::OwnerNode<'hir>,
     bodies: &SortedMap<ItemLocalId, &'hir Body<'hir>>,
-) -> (IndexVec<ItemLocalId, Option<ParentedNode<'hir>>>, LocalDefIdMap<ItemLocalId>) {
-    let mut nodes = IndexVec::new();
+    num_nodes: usize,
+) -> (IndexVec<ItemLocalId, ParentedNode<'hir>>, LocalDefIdMap<ItemLocalId>) {
+    let zero_id = ItemLocalId::new(0);
+    let err_node = ParentedNode { parent: zero_id, node: Node::Err(item.span()) };
+    let mut nodes = IndexVec::from_elem_n(err_node, num_nodes);
     // This node's parent should never be accessed: the owner's parent is computed by the
     // hir_owner_parent query. Make it invalid (= ItemLocalId::MAX) to force an ICE whenever it is
     // used.
-    nodes.push(Some(ParentedNode { parent: ItemLocalId::INVALID, node: item.into() }));
+    nodes[zero_id] = ParentedNode { parent: ItemLocalId::INVALID, node: item.into() };
     let mut collector = NodeCollector {
         tcx,
         owner: item.def_id(),
-        parent_node: ItemLocalId::new(0),
+        parent_node: zero_id,
         nodes,
         bodies,
         parenting: Default::default(),
@@ -53,6 +56,14 @@ pub(super) fn index_hir<'hir>(
         OwnerNode::ImplItem(item) => collector.visit_impl_item(item),
         OwnerNode::ForeignItem(item) => collector.visit_foreign_item(item),
     };
+
+    for (local_id, node) in collector.nodes.iter_enumerated() {
+        if let Node::Err(span) = node.node {
+            let hir_id = HirId { owner: item.def_id(), local_id };
+            let msg = format!("ID {hir_id} not encountered when visiting item HIR");
+            tcx.dcx().span_delayed_bug(*span, msg);
+        }
+    }
 
     (collector.nodes, collector.parenting)
 }
@@ -88,7 +99,7 @@ impl<'a, 'hir> NodeCollector<'a, 'hir> {
             }
         }
 
-        self.nodes.insert(hir_id.local_id, ParentedNode { parent: self.parent_node, node });
+        self.nodes[hir_id.local_id] = ParentedNode { parent: self.parent_node, node };
     }
 
     fn with_parent<F: FnOnce(&mut Self)>(&mut self, parent_node_id: HirId, f: F) {
@@ -254,6 +265,7 @@ impl<'a, 'hir> Visitor<'hir> for NodeCollector<'a, 'hir> {
     }
 
     fn visit_path_segment(&mut self, path_segment: &'hir PathSegment<'hir>) {
+        // FIXME: walk path segment with `path_segment.hir_id` parent.
         self.insert(path_segment.ident.span, path_segment.hir_id, Node::PathSegment(path_segment));
         intravisit::walk_path_segment(self, path_segment);
     }
@@ -347,5 +359,24 @@ impl<'a, 'hir> Visitor<'hir> for NodeCollector<'a, 'hir> {
         let ForeignItemRef { id, ident: _, span: _ } = *fi;
 
         self.visit_nested_foreign_item(id);
+    }
+
+    fn visit_where_predicate(&mut self, predicate: &'hir WherePredicate<'hir>) {
+        match predicate {
+            WherePredicate::BoundPredicate(pred) => {
+                self.insert(pred.span, pred.hir_id, Node::WhereBoundPredicate(pred));
+                self.with_parent(pred.hir_id, |this| {
+                    intravisit::walk_where_predicate(this, predicate)
+                })
+            }
+            _ => intravisit::walk_where_predicate(self, predicate),
+        }
+    }
+
+    fn visit_array_length(&mut self, len: &'hir ArrayLen) {
+        match len {
+            ArrayLen::Infer(inf) => self.insert(inf.span, inf.hir_id, Node::ArrayLenInfer(inf)),
+            ArrayLen::Body(..) => intravisit::walk_array_len(self, len),
+        }
     }
 }

@@ -1,6 +1,6 @@
 // Patterns and expressions are not interface parts and don't produce private-in-public errors.
 
-// build-pass (FIXME(62277): could be check-pass?)
+//@ build-pass (FIXME(62277): could be check-pass?)
 
 struct Priv1(usize);
 struct Priv2;

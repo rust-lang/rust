@@ -99,7 +99,7 @@ pub macro panic {
 
         // FIXME: This is a false-positive, the file is actually linked in via
         // `include!` macro
-        config.disabled.insert("unlinked-file".to_string());
+        config.disabled.insert("unlinked-file".to_owned());
 
         check_diagnostics_with_config(
             config,
@@ -242,7 +242,7 @@ macro_rules! foo {
 
 fn f() {
     foo!();
-  //^^^ error: invalid macro definition: expected subtree
+  //^^^ error: macro definition has parse errors
 
 }
 "#,
@@ -268,8 +268,8 @@ fn f() {
     #[test]
     fn include_does_not_break_diagnostics() {
         let mut config = DiagnosticsConfig::test_sample();
-        config.disabled.insert("inactive-code".to_string());
-        config.disabled.insert("unlinked-file".to_string());
+        config.disabled.insert("inactive-code".to_owned());
+        config.disabled.insert("unlinked-file".to_owned());
         check_diagnostics_with_config(
             config,
             r#"

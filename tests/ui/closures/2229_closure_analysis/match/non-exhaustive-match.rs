@@ -1,6 +1,6 @@
-// edition:2021
+//@ edition:2021
 
-// aux-build:match_non_exhaustive_lib.rs
+//@ aux-build:match_non_exhaustive_lib.rs
 
 /* The error message for non-exhaustive matches on non-local enums
  * marked as non-exhaustive should mention the fact that the enum

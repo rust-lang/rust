@@ -1,4 +1,4 @@
-// check-pass
+//@ check-pass
 
 // FamilyType (GAT workaround)
 pub trait FamilyLt<'a> {

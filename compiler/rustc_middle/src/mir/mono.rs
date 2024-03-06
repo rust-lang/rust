@@ -4,6 +4,7 @@ use rustc_attr::InlineAttr;
 use rustc_data_structures::base_n;
 use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::fx::FxHashMap;
+use rustc_data_structures::fx::FxIndexMap;
 use rustc_data_structures::stable_hasher::{Hash128, HashStable, StableHasher};
 use rustc_hir::def_id::{CrateNum, DefId, LOCAL_CRATE};
 use rustc_hir::ItemId;
@@ -186,7 +187,7 @@ impl<'tcx> MonoItem<'tcx> {
             MonoItem::GlobalAsm(..) => return true,
         };
 
-        !tcx.subst_and_check_impossible_predicates((def_id, &args))
+        !tcx.instantiate_and_check_impossible_predicates((def_id, &args))
     }
 
     pub fn local_span(&self, tcx: TyCtxt<'tcx>) -> Option<Span> {
@@ -241,7 +242,7 @@ pub struct CodegenUnit<'tcx> {
     /// contain something unique to this crate (e.g., a module path)
     /// as well as the crate name and disambiguator.
     name: Symbol,
-    items: FxHashMap<MonoItem<'tcx>, MonoItemData>,
+    items: FxIndexMap<MonoItem<'tcx>, MonoItemData>,
     size_estimate: usize,
     primary: bool,
     /// True if this is CGU is used to hold code coverage information for dead code,
@@ -316,13 +317,11 @@ impl<'tcx> CodegenUnit<'tcx> {
         self.primary = true;
     }
 
-    /// The order of these items is non-determinstic.
-    pub fn items(&self) -> &FxHashMap<MonoItem<'tcx>, MonoItemData> {
+    pub fn items(&self) -> &FxIndexMap<MonoItem<'tcx>, MonoItemData> {
         &self.items
     }
 
-    /// The order of these items is non-determinstic.
-    pub fn items_mut(&mut self) -> &mut FxHashMap<MonoItem<'tcx>, MonoItemData> {
+    pub fn items_mut(&mut self) -> &mut FxIndexMap<MonoItem<'tcx>, MonoItemData> {
         &mut self.items
     }
 
@@ -402,6 +401,8 @@ impl<'tcx> CodegenUnit<'tcx> {
                             | InstanceDef::FnPtrShim(..)
                             | InstanceDef::Virtual(..)
                             | InstanceDef::ClosureOnceShim { .. }
+                            | InstanceDef::ConstructCoroutineInClosureShim { .. }
+                            | InstanceDef::CoroutineKindShim { .. }
                             | InstanceDef::DropGlue(..)
                             | InstanceDef::CloneShim(..)
                             | InstanceDef::ThreadLocalShim(..)

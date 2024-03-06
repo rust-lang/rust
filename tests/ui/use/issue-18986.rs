@@ -1,4 +1,4 @@
-// aux-build:use-from-trait-xc.rs
+//@ aux-build:use-from-trait-xc.rs
 
 extern crate use_from_trait_xc;
 pub use use_from_trait_xc::Trait;

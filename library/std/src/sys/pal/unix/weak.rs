@@ -80,7 +80,11 @@ pub(crate) struct DlsymWeak<F> {
 
 impl<F> DlsymWeak<F> {
     pub(crate) const fn new(name: &'static str) -> Self {
-        DlsymWeak { name, func: AtomicPtr::new(ptr::invalid_mut(1)), _marker: PhantomData }
+        DlsymWeak {
+            name,
+            func: AtomicPtr::new(ptr::without_provenance_mut(1)),
+            _marker: PhantomData,
+        }
     }
 
     #[inline]

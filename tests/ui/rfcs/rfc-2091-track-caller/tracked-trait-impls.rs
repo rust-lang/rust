@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 
 macro_rules! assert_expansion_site_is_tracked {
     () => {{

@@ -1,7 +1,7 @@
 // Verifies that type metadata for functions are emitted.
 //
-// needs-sanitizer-cfi
-// compile-flags: -Clto -Cno-prepopulate-passes -Ctarget-feature=-crt-static -Zsanitizer=cfi
+//@ needs-sanitizer-cfi
+//@ compile-flags: -Clto -Cno-prepopulate-passes -Ctarget-feature=-crt-static -Zsanitizer=cfi
 
 #![crate_type="lib"]
 

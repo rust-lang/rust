@@ -1,4 +1,4 @@
-// check-pass
+//@ check-pass
 fn f<T> (it: &[T])
 where
     [T] : std::ops::Index<usize>,

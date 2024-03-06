@@ -3,7 +3,7 @@
 // Tests that repetition matchers cannot match the empty token tree (since that would be
 // ambiguous).
 
-// edition:2018
+//@ edition:2018
 
 macro_rules! foo {
     ( $()* ) => {};

@@ -1,6 +1,6 @@
-// build-pass
-// edition:2018
-// compile-flags: --crate-type lib
+//@ build-pass
+//@ edition:2018
+//@ compile-flags: --crate-type lib
 
 async fn move_part_await_return_rest_tuple() -> Vec<usize> {
     let x = (vec![3], vec![4, 4]);

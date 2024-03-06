@@ -8,7 +8,7 @@ use ide_db::{
 use syntax::{ast, AstNode, AstPtr};
 use text_edit::TextEdit;
 
-use crate::{adjusted_display_range_new, Diagnostic, DiagnosticCode, DiagnosticsContext};
+use crate::{adjusted_display_range, Diagnostic, DiagnosticCode, DiagnosticsContext};
 
 // Diagnostic: unresolved-field
 //
@@ -29,7 +29,7 @@ pub(crate) fn unresolved_field(
             d.name.display(ctx.sema.db),
             d.receiver.display(ctx.sema.db)
         ),
-        adjusted_display_range_new(ctx, d.expr, &|expr| {
+        adjusted_display_range(ctx, d.expr, &|expr| {
             Some(
                 match expr {
                     ast::Expr::MethodCallExpr(it) => it.name_ref(),
@@ -65,7 +65,7 @@ fn method_fix(
     let FileRange { range, file_id } = ctx.sema.original_range_opt(expr.syntax())?;
     Some(vec![Assist {
         id: AssistId("expected-field-found-method-call-fix", AssistKind::QuickFix),
-        label: Label::new("Use parentheses to call the method".to_string()),
+        label: Label::new("Use parentheses to call the method".to_owned()),
         group: None,
         target: range,
         source_change: Some(SourceChange::from_text_edit(
@@ -78,7 +78,9 @@ fn method_fix(
 #[cfg(test)]
 mod tests {
     use crate::{
-        tests::{check_diagnostics, check_diagnostics_with_config},
+        tests::{
+            check_diagnostics, check_diagnostics_with_config, check_diagnostics_with_disabled,
+        },
         DiagnosticsConfig,
     };
 
@@ -148,7 +150,7 @@ fn foo() {
 
     #[test]
     fn no_diagnostic_on_unknown() {
-        check_diagnostics(
+        check_diagnostics_with_disabled(
             r#"
 fn foo() {
     x.foo;
@@ -156,6 +158,7 @@ fn foo() {
     (&((x,),),).foo;
 }
 "#,
+            &["E0425"],
         );
     }
 

@@ -1,5 +1,5 @@
-// only-cdb
-// compile-flags: -g
+//@ only-cdb
+//@ compile-flags: -g
 
 // cdb-command: g
 

@@ -1,4 +1,4 @@
-// check-pass
+//@ check-pass
 
 // Some trait with a function that returns a slice:
 pub trait AsSlice {

@@ -1,5 +1,5 @@
-// run-rustfix
-// edition:2021
+//@ run-rustfix
+//@ edition:2021
 #![allow(dead_code)]
 #![allow(unused_variables)]
 use std::future::Future;

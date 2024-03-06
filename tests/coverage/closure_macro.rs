@@ -1,5 +1,4 @@
-// compile-flags: --edition=2018
-#![feature(coverage_attribute)]
+//@ edition: 2018
 
 macro_rules! bail {
     ($msg:literal $(,)?) => {
@@ -15,7 +14,7 @@ macro_rules! bail {
 macro_rules! on_error {
     ($value:expr, $error_message:expr) => {
         $value.or_else(|e| {
-            // FIXME(85000): no coverage in closure macros
+            // This closure, which is declared in a macro, should be instrumented.
             let message = format!($error_message, e);
             if message.len() > 0 {
                 println!("{}", message);

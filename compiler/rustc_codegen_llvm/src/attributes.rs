@@ -356,9 +356,6 @@ pub fn from_fn_attrs<'ll, 'tcx>(
     if codegen_fn_attrs.flags.contains(CodegenFnAttrFlags::COLD) {
         to_add.push(AttributeKind::Cold.create_attr(cx.llcx));
     }
-    if codegen_fn_attrs.flags.contains(CodegenFnAttrFlags::FFI_RETURNS_TWICE) {
-        to_add.push(AttributeKind::ReturnsTwice.create_attr(cx.llcx));
-    }
     if codegen_fn_attrs.flags.contains(CodegenFnAttrFlags::FFI_PURE) {
         to_add.push(MemoryEffects::ReadOnly.create_attr(cx.llcx));
     }
@@ -482,7 +479,7 @@ pub fn from_fn_attrs<'ll, 'tcx>(
         // `+multivalue` feature because the purpose of the wasm abi is to match
         // the WebAssembly specification, which has this feature. This won't be
         // needed when LLVM enables this `multivalue` feature by default.
-        if !cx.tcx.is_closure_or_coroutine(instance.def_id()) {
+        if !cx.tcx.is_closure_like(instance.def_id()) {
             let abi = cx.tcx.fn_sig(instance.def_id()).skip_binder().abi();
             if abi == Abi::Wasm {
                 function_features.push("+multivalue".to_string());

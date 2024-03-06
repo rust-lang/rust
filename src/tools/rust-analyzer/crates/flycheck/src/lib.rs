@@ -14,7 +14,7 @@ use std::{
 
 use command_group::{CommandGroup, GroupChild};
 use crossbeam_channel::{never, select, unbounded, Receiver, Sender};
-use paths::AbsPathBuf;
+use paths::{AbsPath, AbsPathBuf};
 use rustc_hash::FxHashMap;
 use serde::Deserialize;
 use stdx::process::streaming_output;
@@ -23,6 +23,7 @@ pub use cargo_metadata::diagnostic::{
     Applicability, Diagnostic, DiagnosticCode, DiagnosticLevel, DiagnosticSpan,
     DiagnosticSpanMacroExpansion,
 };
+use toolchain::Tool;
 
 #[derive(Copy, Clone, Debug, Default, PartialEq, Eq)]
 pub enum InvocationStrategy {
@@ -89,9 +90,10 @@ impl FlycheckHandle {
         id: usize,
         sender: Box<dyn Fn(Message) + Send>,
         config: FlycheckConfig,
+        sysroot_root: Option<AbsPathBuf>,
         workspace_root: AbsPathBuf,
     ) -> FlycheckHandle {
-        let actor = FlycheckActor::new(id, sender, config, workspace_root);
+        let actor = FlycheckActor::new(id, sender, config, sysroot_root, workspace_root);
         let (sender, receiver) = unbounded::<StateChange>();
         let thread = stdx::thread::Builder::new(stdx::thread::ThreadIntent::Worker)
             .name("Flycheck".to_owned())
@@ -100,9 +102,16 @@ impl FlycheckHandle {
         FlycheckHandle { id, sender, _thread: thread }
     }
 
-    /// Schedule a re-start of the cargo check worker.
-    pub fn restart(&self) {
-        self.sender.send(StateChange::Restart).unwrap();
+    /// Schedule a re-start of the cargo check worker to do a workspace wide check.
+    pub fn restart_workspace(&self, saved_file: Option<AbsPathBuf>) {
+        self.sender.send(StateChange::Restart { package: None, saved_file }).unwrap();
+    }
+
+    /// Schedule a re-start of the cargo check worker to do a package wide check.
+    pub fn restart_for_package(&self, package: String) {
+        self.sender
+            .send(StateChange::Restart { package: Some(package), saved_file: None })
+            .unwrap();
     }
 
     /// Stop this cargo check worker.
@@ -153,7 +162,7 @@ pub enum Progress {
 }
 
 enum StateChange {
-    Restart,
+    Restart { package: Option<String>, saved_file: Option<AbsPathBuf> },
     Cancel,
 }
 
@@ -166,6 +175,7 @@ struct FlycheckActor {
     /// Either the workspace root of the workspace we are flychecking,
     /// or the project root of the project.
     root: AbsPathBuf,
+    sysroot_root: Option<AbsPathBuf>,
     /// CargoHandle exists to wrap around the communication needed to be able to
     /// run `cargo check` without blocking. Currently the Rust standard library
     /// doesn't provide a way to read sub-process output without blocking, so we
@@ -179,15 +189,25 @@ enum Event {
     CheckEvent(Option<CargoMessage>),
 }
 
+const SAVED_FILE_PLACEHOLDER: &str = "$saved_file";
+
 impl FlycheckActor {
     fn new(
         id: usize,
         sender: Box<dyn Fn(Message) + Send>,
         config: FlycheckConfig,
+        sysroot_root: Option<AbsPathBuf>,
         workspace_root: AbsPathBuf,
     ) -> FlycheckActor {
         tracing::info!(%id, ?workspace_root, "Spawning flycheck");
-        FlycheckActor { id, sender, config, root: workspace_root, command_handle: None }
+        FlycheckActor {
+            id,
+            sender,
+            config,
+            sysroot_root,
+            root: workspace_root,
+            command_handle: None,
+        }
     }
 
     fn report_progress(&self, progress: Progress) {
@@ -213,7 +233,7 @@ impl FlycheckActor {
                     tracing::debug!(flycheck_id = self.id, "flycheck cancelled");
                     self.cancel_check_process();
                 }
-                Event::RequestStateChange(StateChange::Restart) => {
+                Event::RequestStateChange(StateChange::Restart { package, saved_file }) => {
                     // Cancel the previously spawned process
                     self.cancel_check_process();
                     while let Ok(restart) = inbox.recv_timeout(Duration::from_millis(50)) {
@@ -223,7 +243,11 @@ impl FlycheckActor {
                         }
                     }
 
-                    let command = self.check_command();
+                    let command =
+                        match self.check_command(package.as_deref(), saved_file.as_deref()) {
+                            Some(c) => c,
+                            None => continue,
+                        };
                     let formatted_command = format!("{:?}", command);
 
                     tracing::debug!(?command, "will restart flycheck");
@@ -297,7 +321,14 @@ impl FlycheckActor {
         }
     }
 
-    fn check_command(&self) -> Command {
+    /// Construct a `Command` object for checking the user's code. If the user
+    /// has specified a custom command with placeholders that we cannot fill,
+    /// return None.
+    fn check_command(
+        &self,
+        package: Option<&str>,
+        saved_file: Option<&AbsPath>,
+    ) -> Option<Command> {
         let (mut cmd, args) = match &self.config {
             FlycheckConfig::CargoCommand {
                 command,
@@ -311,10 +342,17 @@ impl FlycheckActor {
                 ansi_color_output,
                 target_dir,
             } => {
-                let mut cmd = Command::new(toolchain::cargo());
+                let mut cmd = Command::new(Tool::Cargo.path());
+                if let Some(sysroot_root) = &self.sysroot_root {
+                    cmd.env("RUSTUP_TOOLCHAIN", AsRef::<std::path::Path>::as_ref(sysroot_root));
+                }
                 cmd.arg(command);
                 cmd.current_dir(&self.root);
-                cmd.arg("--workspace");
+
+                match package {
+                    Some(pkg) => cmd.arg("-p").arg(pkg),
+                    None => cmd.arg("--workspace"),
+                };
 
                 cmd.arg(if *ansi_color_output {
                     "--message-format=json-diagnostic-rendered-ansi"
@@ -346,7 +384,7 @@ impl FlycheckActor {
                     cmd.arg("--target-dir").arg(target_dir);
                 }
                 cmd.envs(extra_env);
-                (cmd, extra_args)
+                (cmd, extra_args.clone())
             }
             FlycheckConfig::CustomCommand {
                 command,
@@ -375,12 +413,34 @@ impl FlycheckActor {
                     }
                 }
 
-                (cmd, args)
+                if args.contains(&SAVED_FILE_PLACEHOLDER.to_owned()) {
+                    // If the custom command has a $saved_file placeholder, and
+                    // we're saving a file, replace the placeholder in the arguments.
+                    if let Some(saved_file) = saved_file {
+                        let args = args
+                            .iter()
+                            .map(|arg| {
+                                if arg == SAVED_FILE_PLACEHOLDER {
+                                    saved_file.to_string()
+                                } else {
+                                    arg.clone()
+                                }
+                            })
+                            .collect();
+                        (cmd, args)
+                    } else {
+                        // The custom command has a $saved_file placeholder,
+                        // but we had an IDE event that wasn't a file save. Do nothing.
+                        return None;
+                    }
+                } else {
+                    (cmd, args.clone())
+                }
             }
         };
 
         cmd.args(args);
-        cmd
+        Some(cmd)
     }
 
     fn send(&self, check_task: Message) {
@@ -434,7 +494,7 @@ impl CommandHandle {
         let (sender, receiver) = unbounded();
         let actor = CargoActor::new(sender, stdout, stderr);
         let thread = stdx::thread::Builder::new(stdx::thread::ThreadIntent::Worker)
-            .name("CargoHandle".to_owned())
+            .name("CommandHandle".to_owned())
             .spawn(move || actor.run())
             .expect("failed to spawn thread");
         Ok(CommandHandle { program, arguments, current_dir, child, thread, receiver })
@@ -537,6 +597,7 @@ impl CargoActor {
     }
 }
 
+#[allow(clippy::large_enum_variant)]
 enum CargoMessage {
     CompilerArtifact(cargo_metadata::Artifact),
     Diagnostic(Diagnostic),

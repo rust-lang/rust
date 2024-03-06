@@ -13,4 +13,5 @@ fn main(){
 
 fn foo<F>(f: F) where F: FnMut() {
     f();
+    //~^ ERROR: cannot borrow
 }

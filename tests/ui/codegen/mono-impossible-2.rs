@@ -1,5 +1,5 @@
-//compile-flags: --crate-type=lib -Clink-dead-code=on
-// build-pass
+//@compile-flags: --crate-type=lib -Clink-dead-code=on
+//@ build-pass
 
 // Make sure that we don't monomorphize the impossible method `<() as Visit>::visit`,
 // which does not hold under a reveal-all param env.

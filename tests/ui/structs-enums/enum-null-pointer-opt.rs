@@ -1,13 +1,14 @@
-// run-pass
+//@ run-pass
+#![feature(generic_nonzero)]
 #![feature(transparent_unions)]
 
 use std::mem::size_of;
-use std::num::NonZeroUsize;
+use std::num::NonZero;
 use std::ptr::NonNull;
 use std::rc::Rc;
 use std::sync::Arc;
 
-trait Trait { fn dummy(&self) { } }
+trait Trait { fn dummy(&self) { } } //~ WARN method `dummy` is never used
 trait Mirror { type Image; }
 impl<T> Mirror for T { type Image = T; }
 struct ParamTypeStruct<T>(#[allow(dead_code)] T);
@@ -57,7 +58,7 @@ fn main() {
     assert_eq!(size_of::<[Box<isize>; 1]>(), size_of::<Option<[Box<isize>; 1]>>());
 
     // Should apply to NonZero
-    assert_eq!(size_of::<NonZeroUsize>(), size_of::<Option<NonZeroUsize>>());
+    assert_eq!(size_of::<NonZero<usize>>(), size_of::<Option<NonZero<usize>>>());
     assert_eq!(size_of::<NonNull<i8>>(), size_of::<Option<NonNull<i8>>>());
 
     // Should apply to types that use NonZero internally

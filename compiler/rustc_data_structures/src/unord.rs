@@ -524,6 +524,11 @@ impl<K: Eq + Hash, V> UnordMap<K, V> {
         UnordItems(self.inner.into_iter())
     }
 
+    #[inline]
+    pub fn keys(&self) -> UnordItems<&K, impl Iterator<Item = &K>> {
+        UnordItems(self.inner.keys())
+    }
+
     /// Returns the entries of this map in stable sort order (as defined by `ToStableHashKey`).
     ///
     /// The `cache_sort_key` parameter controls if [slice::sort_by_cached_key] or

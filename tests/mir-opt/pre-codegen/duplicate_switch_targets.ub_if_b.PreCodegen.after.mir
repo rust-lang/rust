@@ -4,19 +4,31 @@ fn ub_if_b(_1: Thing) -> Thing {
     debug t => _1;
     let mut _0: Thing;
     let mut _2: isize;
-    let mut _3: bool;
     scope 1 (inlined unreachable_unchecked) {
+        let mut _3: bool;
+        let _4: ();
         scope 2 {
-            scope 3 (inlined unreachable_unchecked::runtime) {
-            }
         }
     }
 
     bb0: {
         _2 = discriminant(_1);
-        _3 = Eq(_2, const 0_isize);
-        assume(move _3);
+        switchInt(move _2) -> [0: bb1, 1: bb2, otherwise: bb3];
+    }
+
+    bb1: {
         _0 = move _1;
         return;
+    }
+
+    bb2: {
+        StorageLive(_3);
+        _3 = cfg!(debug_assertions);
+        assume(_3);
+        _4 = unreachable_unchecked::precondition_check() -> [return: bb3, unwind unreachable];
+    }
+
+    bb3: {
+        unreachable;
     }
 }

@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 #![allow(dead_code)]
 // A quick test of 'unsafe const fn' functionality
 

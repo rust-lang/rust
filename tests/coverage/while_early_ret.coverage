@@ -1,5 +1,5 @@
    LL|       |#![allow(unused_assignments)]
-   LL|       |// failure-status: 1
+   LL|       |//@ failure-status: 1
    LL|       |
    LL|       |#[rustfmt::skip]
    LL|      1|fn main() -> Result<(), u8> {

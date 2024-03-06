@@ -1,5 +1,5 @@
-// compile-flags: --extern foo={{src-base}}/errors/issue-104621-extern-bad-file.rs
-// only-linux
+//@ compile-flags: --extern foo={{src-base}}/errors/issue-104621-extern-bad-file.rs
+//@ only-linux
 
 extern crate foo;
 //~^ ERROR extern location for foo is of an unknown type

@@ -1,5 +1,5 @@
-// run-pass
-// compile-flags:-C debuginfo=2
+//@ run-pass
+//@ compile-flags:-C debuginfo=2
 
 fn foo() -> impl Copy {
     foo

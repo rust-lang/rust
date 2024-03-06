@@ -3,7 +3,7 @@
 
 // Testing both single-byte and multi-byte characters, as we should handle both.
 
-// run-rustfix
+//@ run-rustfix
 
 fn main() {
     let _: char = "a"; //~ ERROR mismatched types

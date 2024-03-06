@@ -48,11 +48,13 @@ impl BuiltinAttrExpander {
 
 register_builtin! { expand:
     (bench, Bench) => dummy_attr_expand,
+    (cfg, Cfg) => dummy_attr_expand,
+    (cfg_attr, CfgAttr) => dummy_attr_expand,
     (cfg_accessible, CfgAccessible) => dummy_attr_expand,
     (cfg_eval, CfgEval) => dummy_attr_expand,
-    (derive, Derive) => derive_attr_expand,
+    (derive, Derive) => derive_expand,
     // derive const is equivalent to derive for our proposes.
-    (derive_const, DeriveConst) => derive_attr_expand,
+    (derive_const, DeriveConst) => derive_expand,
     (global_allocator, GlobalAllocator) => dummy_attr_expand,
     (test, Test) => dummy_attr_expand,
     (test_case, TestCase) => dummy_attr_expand
@@ -91,7 +93,7 @@ fn dummy_attr_expand(
 /// always resolve as a derive without nameres recollecting them.
 /// So this hacky approach is a lot more friendly for us, though it does require a bit of support in
 /// [`hir::Semantics`] to make this work.
-fn derive_attr_expand(
+fn derive_expand(
     db: &dyn ExpandDatabase,
     id: MacroCallId,
     tt: &tt::Subtree,
@@ -135,5 +137,8 @@ pub fn pseudo_derive_attr_expansion(
         token_trees.extend(tt.iter().cloned());
         token_trees.push(mk_leaf(']'));
     }
-    ExpandResult::ok(tt::Subtree { delimiter: tt.delimiter, token_trees })
+    ExpandResult::ok(tt::Subtree {
+        delimiter: tt.delimiter,
+        token_trees: token_trees.into_boxed_slice(),
+    })
 }

@@ -117,17 +117,13 @@ impl RawAttrs {
                 None => return smallvec![attr.clone()],
             };
             let index = attr.id;
-            let attrs =
-                parts.enumerate().take(1 << AttrId::CFG_ATTR_BITS).filter_map(|(idx, attr)| {
-                    let tree = Subtree {
-                        delimiter: tt::Delimiter::invisible_spanned(attr.first()?.first_span()),
-                        token_trees: attr.to_vec(),
-                    };
-                    Attr::from_tt(db, &tree, index.with_cfg_attr(idx))
-                });
+            let attrs = parts
+                .enumerate()
+                .take(1 << AttrId::CFG_ATTR_BITS)
+                .filter_map(|(idx, attr)| Attr::from_tt(db, attr, index.with_cfg_attr(idx)));
 
             let cfg_options = &crate_graph[krate].cfg_options;
-            let cfg = Subtree { delimiter: subtree.delimiter, token_trees: cfg.to_vec() };
+            let cfg = Subtree { delimiter: subtree.delimiter, token_trees: Box::from(cfg) };
             let cfg = CfgExpr::parse(&cfg);
             if cfg_options.check(&cfg) == Some(false) {
                 smallvec![]
@@ -222,12 +218,40 @@ impl Attr {
         Some(Attr { id, path, input, span })
     }
 
-    fn from_tt(db: &dyn ExpandDatabase, tt: &tt::Subtree, id: AttrId) -> Option<Attr> {
-        // FIXME: Unecessary roundtrip tt -> ast -> tt
-        let (parse, map) = mbe::token_tree_to_syntax_node(tt, mbe::TopEntryPoint::MetaItem);
-        let ast = ast::Meta::cast(parse.syntax_node())?;
+    fn from_tt(db: &dyn ExpandDatabase, tt: &[tt::TokenTree], id: AttrId) -> Option<Attr> {
+        let span = tt.first()?.first_span();
+        let path_end = tt
+            .iter()
+            .position(|tt| {
+                !matches!(
+                    tt,
+                    tt::TokenTree::Leaf(
+                        tt::Leaf::Punct(tt::Punct { char: ':' | '$', .. }) | tt::Leaf::Ident(_),
+                    )
+                )
+            })
+            .unwrap_or(tt.len());
 
-        Self::from_src(db, ast, SpanMapRef::ExpansionSpanMap(&map), id)
+        let (path, input) = tt.split_at(path_end);
+        let path = Interned::new(ModPath::from_tt(db, path)?);
+
+        let input = match input.first() {
+            Some(tt::TokenTree::Subtree(tree)) => {
+                Some(Interned::new(AttrInput::TokenTree(Box::new(tree.clone()))))
+            }
+            Some(tt::TokenTree::Leaf(tt::Leaf::Punct(tt::Punct { char: '=', .. }))) => {
+                let input = match input.get(1) {
+                    Some(tt::TokenTree::Leaf(tt::Leaf::Literal(tt::Literal { text, .. }))) => {
+                        //FIXME the trimming here isn't quite right, raw strings are not handled
+                        Some(Interned::new(AttrInput::Literal(text.trim_matches('"').into())))
+                    }
+                    _ => None,
+                };
+                input
+            }
+            _ => None,
+        };
+        Some(Attr { id, path, input, span })
     }
 
     pub fn path(&self) -> &ModPath {
@@ -277,29 +301,8 @@ impl Attr {
             .token_trees
             .split(|tt| matches!(tt, tt::TokenTree::Leaf(tt::Leaf::Punct(Punct { char: ',', .. }))))
             .filter_map(move |tts| {
-                if tts.is_empty() {
-                    return None;
-                }
-                // FIXME: This is necessarily a hack. It'd be nice if we could avoid allocation
-                // here or maybe just parse a mod path from a token tree directly
-                let subtree = tt::Subtree {
-                    delimiter: tt::Delimiter::invisible_spanned(tts.first()?.first_span()),
-                    token_trees: tts.to_vec(),
-                };
-                let (parse, span_map) =
-                    mbe::token_tree_to_syntax_node(&subtree, mbe::TopEntryPoint::MetaItem);
-                let meta = ast::Meta::cast(parse.syntax_node())?;
-                // Only simple paths are allowed.
-                if meta.eq_token().is_some() || meta.expr().is_some() || meta.token_tree().is_some()
-                {
-                    return None;
-                }
-                let path = meta.path()?;
-                let call_site = span_map.span_at(path.syntax().text_range().start());
-                Some((
-                    ModPath::from_src(db, path, SpanMapRef::ExpansionSpanMap(&span_map))?,
-                    call_site,
-                ))
+                let span = tts.first()?.first_span();
+                Some((ModPath::from_tt(db, tts)?, span))
             });
 
         Some(paths)

@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 #![allow(non_upper_case_globals)]
 
 // This test is ensuring that parameters are indeed dropped after
@@ -91,7 +91,7 @@ pub mod d {
     pub fn max_width() -> u32 {
         unsafe {
             (mem::size_of_val(&trails) * 8) as u32
-            //~^ WARN shared reference of mutable static is discouraged [static_mut_ref]
+            //~^ WARN shared reference to mutable static is discouraged [static_mut_refs]
         }
     }
 

@@ -1,0 +1,12 @@
+warning: method `t` is never used
+  --> $DIR/impl.rs:12:8
+   |
+LL | trait T {
+   |       - method in this trait
+LL |     fn t(&self) {}
+   |        ^
+   |
+   = note: `#[warn(dead_code)]` on by default
+
+warning: 1 warning emitted
+

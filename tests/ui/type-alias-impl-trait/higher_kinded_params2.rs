@@ -1,7 +1,7 @@
 //! This test checks the behaviour of walking into binders
 //! and normalizing something behind them actually works.
 
-// edition: 2021
+//@ edition: 2021
 
 #![feature(type_alias_impl_trait)]
 

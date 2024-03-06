@@ -1,7 +1,7 @@
-// run-pass
-// ignore-android
-// ignore-emscripten no processes
-// ignore-sgx no processes
+//@ run-pass
+//@ ignore-android
+//@ ignore-emscripten no processes
+//@ ignore-sgx no processes
 
 #![feature(rustc_private)]
 

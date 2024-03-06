@@ -28,7 +28,7 @@ pub(crate) fn build_tree(
         parser::StrStep::Enter { kind } => builder.start_node(kind),
         parser::StrStep::Exit => builder.finish_node(),
         parser::StrStep::Error { msg, pos } => {
-            builder.error(msg.to_string(), pos.try_into().unwrap())
+            builder.error(msg.to_owned(), pos.try_into().unwrap())
         }
     });
 

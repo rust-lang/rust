@@ -43,5 +43,7 @@ fn main() {
     assert_eq!(<dyn Send + Sync>::uvw(), false);
     assert_eq!(<dyn Sync + Send+ Sync>::uvw(), true);
     assert_eq!(<Foo<dyn Send + Sync>>::abc(), false);
+    //~^ ERROR: multiple applicable items in scope
     assert_eq!(<Foo<dyn Sync + Send>>::abc(), true);
+    //~^ ERROR: multiple applicable items in scope
 }

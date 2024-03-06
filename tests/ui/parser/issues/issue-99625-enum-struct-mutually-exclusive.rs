@@ -1,4 +1,4 @@
-// run-rustfix
+//@ run-rustfix
 
 pub enum struct Range {
     //~^ ERROR `enum` and `struct` are mutually exclusive

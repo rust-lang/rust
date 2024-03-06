@@ -1,5 +1,5 @@
 error: consider bringing this path into scope with the `use` keyword
-  --> $DIR/absolute_paths.rs:40:5
+  --> tests/ui-toml/absolute_paths/absolute_paths.rs:40:5
    |
 LL |     std::f32::MAX;
    |     ^^^^^^^^^^^^^
@@ -8,19 +8,19 @@ LL |     std::f32::MAX;
    = help: to override `-D warnings` add `#[allow(clippy::absolute_paths)]`
 
 error: consider bringing this path into scope with the `use` keyword
-  --> $DIR/absolute_paths.rs:41:5
+  --> tests/ui-toml/absolute_paths/absolute_paths.rs:41:5
    |
 LL |     core::f32::MAX;
    |     ^^^^^^^^^^^^^^
 
 error: consider bringing this path into scope with the `use` keyword
-  --> $DIR/absolute_paths.rs:42:5
+  --> tests/ui-toml/absolute_paths/absolute_paths.rs:42:5
    |
 LL |     ::core::f32::MAX;
    |     ^^^^^^^^^^^^^^^^
 
 error: consider bringing this path into scope with the `use` keyword
-  --> $DIR/absolute_paths.rs:58:5
+  --> tests/ui-toml/absolute_paths/absolute_paths.rs:58:5
    |
 LL |     ::std::f32::MAX;
    |     ^^^^^^^^^^^^^^^

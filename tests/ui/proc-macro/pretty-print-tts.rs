@@ -1,6 +1,6 @@
-// check-pass
-// aux-build:test-macros.rs
-// compile-flags: -Z span-debug
+//@ check-pass
+//@ aux-build:test-macros.rs
+//@ compile-flags: -Z span-debug
 
 #![feature(rustc_attrs)]
 

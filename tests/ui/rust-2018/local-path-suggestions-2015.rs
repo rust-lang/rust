@@ -1,6 +1,6 @@
-// aux-build:baz.rs
-// compile-flags:--extern baz
-// edition:2015
+//@ aux-build:baz.rs
+//@ compile-flags:--extern baz
+//@ edition:2015
 
 // This test exists to demonstrate the behaviour of the import suggestions
 // from the `local-path-suggestions-2018.rs` test when not using the 2018 edition.

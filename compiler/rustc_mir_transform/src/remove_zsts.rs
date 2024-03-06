@@ -46,6 +46,7 @@ fn maybe_zst(ty: Ty<'_>) -> bool {
         ty::Adt(..)
         | ty::Array(..)
         | ty::Closure(..)
+        | ty::CoroutineClosure(..)
         | ty::Tuple(..)
         | ty::Alias(ty::Opaque, ..) => true,
         // definitely ZST

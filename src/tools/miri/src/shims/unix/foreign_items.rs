@@ -1,8 +1,6 @@
 use std::ffi::OsStr;
 use std::str;
 
-use log::trace;
-
 use rustc_middle::ty::layout::LayoutOf;
 use rustc_span::Symbol;
 use rustc_target::abi::{Align, Size};
@@ -262,6 +260,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
 
             "mmap" => {
                 let [addr, length, prot, flags, fd, offset] = this.check_shim(abi, Abi::C {unwind: false}, link_name, args)?;
+                let offset = this.read_scalar(offset)?.to_int(this.libc_ty_layout("off_t").size)?;
                 let ptr = this.mmap(addr, length, prot, flags, fd, offset)?;
                 this.write_scalar(ptr, dest)?;
             }
@@ -709,6 +708,25 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                     this.write_null(&result)?;
                     this.write_scalar(this.eval_libc("ERANGE"), dest)?;
                 }
+            }
+
+            "sched_getaffinity" => {
+                // FreeBSD supports it as well since 13.1 (as a wrapper of cpuset_getaffinity)
+                if !matches!(&*this.tcx.sess.target.os, "linux" | "freebsd") {
+                    throw_unsup_format!(
+                        "`sched_getaffinity` is not supported on {}",
+                        this.tcx.sess.target.os
+                    );
+                }
+                let [pid, cpusetsize, mask] =
+                    this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
+                this.read_scalar(pid)?.to_i32()?;
+                this.read_target_usize(cpusetsize)?;
+                this.deref_pointer_as(mask, this.libc_ty_layout("cpu_set_t"))?;
+                // FIXME: we just return an error; `num_cpus` then falls back to `sysconf`.
+                let einval = this.eval_libc("EINVAL");
+                this.set_last_error(einval)?;
+                this.write_scalar(Scalar::from_i32(-1), dest)?;
             }
 
             // Platform-specific shims

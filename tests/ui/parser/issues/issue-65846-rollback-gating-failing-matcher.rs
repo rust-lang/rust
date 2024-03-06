@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 
 // Test that failing macro matchers will not cause pre-expansion errors
 // even though they use a feature that is pre-expansion gated.

@@ -77,7 +77,7 @@ fn integration_test() {
         // the repo basically just contains a span_delayed_bug that forces rustc/clippy to panic:
         /*
            #![feature(rustc_attrs)]
-           #[rustc_error(span_delayed_bug_from_inside_query)]
+           #[rustc_error(delayed_bug_from_inside_query)]
            fn main() {}
         */
 

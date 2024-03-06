@@ -1,5 +1,5 @@
 // skip-filecheck
-// compile-flags: -Z mir-opt-level=0
+//@ compile-flags: -Z mir-opt-level=0
 
 // EMIT_MIR byte_slice.main.SimplifyCfg-elaborate-drops.after.mir
 fn main() {

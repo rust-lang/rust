@@ -8,11 +8,11 @@
 use arrayvec::ArrayVec;
 use either::Either;
 use hir::{
-    Adt, AsAssocItem, AssocItem, AttributeTemplate, BuiltinAttr, BuiltinType, Const, Crate,
-    DefWithBody, DeriveHelper, DocLinkDef, ExternCrateDecl, Field, Function, GenericParam,
-    HasVisibility, HirDisplay, Impl, Label, Local, Macro, Module, ModuleDef, Name, PathResolution,
-    Semantics, Static, ToolModule, Trait, TraitAlias, TupleField, TypeAlias, Variant, VariantDef,
-    Visibility,
+    Adt, AsAssocItem, AsExternAssocItem, AssocItem, AttributeTemplate, BuiltinAttr, BuiltinType,
+    Const, Crate, DefWithBody, DeriveHelper, DocLinkDef, ExternAssocItem, ExternCrateDecl, Field,
+    Function, GenericParam, HasVisibility, HirDisplay, Impl, Label, Local, Macro, Module,
+    ModuleDef, Name, PathResolution, Semantics, Static, ToolModule, Trait, TraitAlias, TupleField,
+    TypeAlias, Variant, VariantDef, Visibility,
 };
 use stdx::{format_to, impl_from};
 use syntax::{
@@ -206,15 +206,15 @@ impl Definition {
             // docs are missing, for assoc items of trait impls try to fall back to the docs of the
             // original item of the trait
             let assoc = self.as_assoc_item(db)?;
-            let trait_ = assoc.containing_trait_impl(db)?;
+            let trait_ = assoc.implemented_trait(db)?;
             let name = Some(assoc.name(db)?);
             let item = trait_.items(db).into_iter().find(|it| it.name(db) == name)?;
             item.docs(db)
         })
     }
 
-    pub fn label(&self, db: &RootDatabase) -> Option<String> {
-        let label = match *self {
+    pub fn label(&self, db: &RootDatabase) -> String {
+        match *self {
             Definition::Macro(it) => it.display(db).to_string(),
             Definition::Field(it) => it.display(db).to_string(),
             Definition::TupleField(it) => it.display(db).to_string(),
@@ -241,7 +241,11 @@ impl Definition {
                 }
             }
             Definition::SelfType(impl_def) => {
-                impl_def.self_ty(db).as_adt().and_then(|adt| Definition::Adt(adt).label(db))?
+                let self_ty = &impl_def.self_ty(db);
+                match self_ty.as_adt() {
+                    Some(it) => it.display(db).to_string(),
+                    None => self_ty.display(db).to_string(),
+                }
             }
             Definition::GenericParam(it) => it.display(db).to_string(),
             Definition::Label(it) => it.name(db).display(db).to_string(),
@@ -249,8 +253,7 @@ impl Definition {
             Definition::BuiltinAttr(it) => format!("#[{}]", it.name(db)),
             Definition::ToolModule(it) => it.name(db).to_string(),
             Definition::DeriveHelper(it) => format!("derive_helper {}", it.name(db).display(db)),
-        };
-        Some(label)
+        }
     }
 }
 
@@ -404,7 +407,7 @@ impl NameClass {
     }
 
     pub fn classify(sema: &Semantics<'_, RootDatabase>, name: &ast::Name) -> Option<NameClass> {
-        let _p = profile::span("classify_name");
+        let _p = tracing::span!(tracing::Level::INFO, "classify_name").entered();
 
         let parent = name.syntax().parent()?;
 
@@ -496,7 +499,7 @@ impl NameClass {
         sema: &Semantics<'_, RootDatabase>,
         lifetime: &ast::Lifetime,
     ) -> Option<NameClass> {
-        let _p = profile::span("classify_lifetime").detail(|| lifetime.to_string());
+        let _p = tracing::span!(tracing::Level::INFO, "classify_lifetime", ?lifetime).entered();
         let parent = lifetime.syntax().parent()?;
 
         if let Some(it) = ast::LifetimeParam::cast(parent.clone()) {
@@ -587,7 +590,7 @@ impl NameRefClass {
         sema: &Semantics<'_, RootDatabase>,
         name_ref: &ast::NameRef,
     ) -> Option<NameRefClass> {
-        let _p = profile::span("classify_name_ref").detail(|| name_ref.to_string());
+        let _p = tracing::span!(tracing::Level::INFO, "classify_name_ref", ?name_ref).entered();
 
         let parent = name_ref.syntax().parent()?;
 
@@ -686,7 +689,7 @@ impl NameRefClass {
         sema: &Semantics<'_, RootDatabase>,
         lifetime: &ast::Lifetime,
     ) -> Option<NameRefClass> {
-        let _p = profile::span("classify_lifetime_ref").detail(|| lifetime.to_string());
+        let _p = tracing::span!(tracing::Level::INFO, "classify_lifetime_ref", ?lifetime).entered();
         let parent = lifetime.syntax().parent()?;
         match parent.kind() {
             SyntaxKind::BREAK_EXPR | SyntaxKind::CONTINUE_EXPR => {
@@ -718,7 +721,7 @@ impl NameRefClass {
 
 impl_from!(
     Field, Module, Function, Adt, Variant, Const, Static, Trait, TraitAlias, TypeAlias, BuiltinType, Local,
-    GenericParam, Label, Macro
+    GenericParam, Label, Macro, ExternCrateDecl
     for Definition
 );
 
@@ -734,6 +737,17 @@ impl AsAssocItem for Definition {
             Definition::Function(it) => it.as_assoc_item(db),
             Definition::Const(it) => it.as_assoc_item(db),
             Definition::TypeAlias(it) => it.as_assoc_item(db),
+            _ => None,
+        }
+    }
+}
+
+impl AsExternAssocItem for Definition {
+    fn as_extern_assoc_item(self, db: &dyn hir::db::HirDatabase) -> Option<ExternAssocItem> {
+        match self {
+            Definition::Function(it) => it.as_extern_assoc_item(db),
+            Definition::Static(it) => it.as_extern_assoc_item(db),
+            Definition::TypeAlias(it) => it.as_extern_assoc_item(db),
             _ => None,
         }
     }

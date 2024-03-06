@@ -1,7 +1,7 @@
 // Verifies that computing a layout of a coroutine tainted by type errors
 // doesn't ICE. Regression test for #80998.
 //
-// edition:2018
+//@ edition:2018
 
 #![feature(type_alias_impl_trait)]
 use std::future::Future;

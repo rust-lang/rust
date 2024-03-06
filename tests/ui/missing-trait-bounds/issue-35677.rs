@@ -1,4 +1,4 @@
-// run-rustfix
+//@ run-rustfix
 #![allow(dead_code)]
 use std::collections::HashSet;
 use std::hash::Hash;

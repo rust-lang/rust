@@ -7,6 +7,7 @@ use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::LocalDefId;
 use rustc_macros::HashStable;
+use rustc_type_ir::ConstKind as IrConstKind;
 use rustc_type_ir::{ConstTy, IntoKind, TypeFlags, WithCachedTypeInfo};
 
 mod int;
@@ -19,7 +20,7 @@ use rustc_span::Span;
 use rustc_span::DUMMY_SP;
 pub use valtree::*;
 
-use super::sty::ConstKind;
+pub type ConstKind<'tcx> = IrConstKind<TyCtxt<'tcx>>;
 
 /// Use this rather than `ConstData`, whenever possible.
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, HashStable)]
@@ -31,6 +32,16 @@ impl<'tcx> IntoKind for Const<'tcx> {
 
     fn kind(self) -> ConstKind<'tcx> {
         self.kind()
+    }
+}
+
+impl<'tcx> rustc_type_ir::visit::Flags for Const<'tcx> {
+    fn flags(&self) -> TypeFlags {
+        self.0.flags
+    }
+
+    fn outer_exclusive_binder(&self) -> rustc_type_ir::DebruijnIndex {
+        self.0.outer_exclusive_binder
     }
 }
 
@@ -62,11 +73,13 @@ impl<'tcx> Const<'tcx> {
         self.0.kind
     }
 
+    // FIXME(compiler-errors): Think about removing this.
     #[inline]
     pub fn flags(self) -> TypeFlags {
         self.0.flags
     }
 
+    // FIXME(compiler-errors): Think about removing this.
     #[inline]
     pub fn outer_exclusive_binder(self) -> ty::DebruijnIndex {
         self.0.outer_exclusive_binder
@@ -162,7 +175,20 @@ impl<'tcx> Const<'tcx> {
         let reported = tcx.dcx().span_delayed_bug(span, msg);
         Const::new_error(tcx, reported, ty)
     }
+}
 
+impl<'tcx> rustc_type_ir::new::Const<TyCtxt<'tcx>> for Const<'tcx> {
+    fn new_anon_bound(
+        tcx: TyCtxt<'tcx>,
+        debruijn: ty::DebruijnIndex,
+        var: ty::BoundVar,
+        ty: Ty<'tcx>,
+    ) -> Self {
+        Const::new_bound(tcx, debruijn, var, ty)
+    }
+}
+
+impl<'tcx> Const<'tcx> {
     /// Literals and const generic parameters are eagerly converted to a constant, everything else
     /// becomes `Unevaluated`.
     #[instrument(skip(tcx), level = "debug")]
@@ -234,7 +260,7 @@ impl<'tcx> Const<'tcx> {
         // FIXME(const_generics): We currently have to special case parameters because `min_const_generics`
         // does not provide the parents generics to anonymous constants. We still allow generic const
         // parameters by themselves however, e.g. `N`. These constants would cause an ICE if we were to
-        // ever try to substitute the generic parameters in their bodies.
+        // ever try to instantiate the generic parameters in their bodies.
         match expr.kind {
             hir::ExprKind::Path(hir::QPath::Resolved(
                 _,

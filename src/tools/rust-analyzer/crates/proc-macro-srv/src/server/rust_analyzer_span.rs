@@ -1,4 +1,4 @@
-//! proc-macro server backend based on rust-analyzer's internal span represention
+//! proc-macro server backend based on rust-analyzer's internal span representation
 //! This backend is used solely by rust-analyzer as it ties into rust-analyzer internals.
 //!
 //! It is an unfortunate result of how the proc-macro API works that we need to look into the
@@ -10,16 +10,16 @@ use std::{
     ops::{Bound, Range},
 };
 
-use ::tt::{TextRange, TextSize};
 use proc_macro::bridge::{self, server};
 use span::{Span, FIXUP_ERASED_FILE_AST_ID_MARKER};
+use tt::{TextRange, TextSize};
 
 use crate::server::{
-    delim_to_external, delim_to_internal, token_stream::TokenStreamBuilder, LiteralFormatter,
-    Symbol, SymbolInternerRef, SYMBOL_INTERNER,
+    delim_to_external, delim_to_internal, literal_with_stringify_parts,
+    token_stream::TokenStreamBuilder, Symbol, SymbolInternerRef, SYMBOL_INTERNER,
 };
 mod tt {
-    pub use ::tt::*;
+    pub use tt::*;
 
     pub type Subtree = ::tt::Subtree<super::Span>;
     pub type TokenTree = ::tt::TokenTree<super::Span>;
@@ -70,11 +70,69 @@ impl server::FreeFunctions for RaSpanServer {
         &mut self,
         s: &str,
     ) -> Result<bridge::Literal<Self::Span, Self::Symbol>, ()> {
-        // FIXME: keep track of LitKind and Suffix
+        use proc_macro::bridge::LitKind;
+        use rustc_lexer::{LiteralKind, Token, TokenKind};
+
+        let mut tokens = rustc_lexer::tokenize(s);
+        let minus_or_lit = tokens.next().unwrap_or(Token { kind: TokenKind::Eof, len: 0 });
+
+        let lit = if minus_or_lit.kind == TokenKind::Minus {
+            let lit = tokens.next().ok_or(())?;
+            if !matches!(
+                lit.kind,
+                TokenKind::Literal {
+                    kind: LiteralKind::Int { .. } | LiteralKind::Float { .. },
+                    ..
+                }
+            ) {
+                return Err(());
+            }
+            lit
+        } else {
+            minus_or_lit
+        };
+
+        if tokens.next().is_some() {
+            return Err(());
+        }
+
+        let TokenKind::Literal { kind, suffix_start } = lit.kind else { return Err(()) };
+        let (kind, start_offset, end_offset) = match kind {
+            LiteralKind::Int { .. } => (LitKind::Integer, 0, 0),
+            LiteralKind::Float { .. } => (LitKind::Float, 0, 0),
+            LiteralKind::Char { terminated } => (LitKind::Char, 1, terminated as usize),
+            LiteralKind::Byte { terminated } => (LitKind::Byte, 2, terminated as usize),
+            LiteralKind::Str { terminated } => (LitKind::Str, 1, terminated as usize),
+            LiteralKind::ByteStr { terminated } => (LitKind::ByteStr, 2, terminated as usize),
+            LiteralKind::CStr { terminated } => (LitKind::CStr, 2, terminated as usize),
+            LiteralKind::RawStr { n_hashes } => (
+                LitKind::StrRaw(n_hashes.unwrap_or_default()),
+                2 + n_hashes.unwrap_or_default() as usize,
+                1 + n_hashes.unwrap_or_default() as usize,
+            ),
+            LiteralKind::RawByteStr { n_hashes } => (
+                LitKind::ByteStrRaw(n_hashes.unwrap_or_default()),
+                3 + n_hashes.unwrap_or_default() as usize,
+                1 + n_hashes.unwrap_or_default() as usize,
+            ),
+            LiteralKind::RawCStr { n_hashes } => (
+                LitKind::CStrRaw(n_hashes.unwrap_or_default()),
+                3 + n_hashes.unwrap_or_default() as usize,
+                1 + n_hashes.unwrap_or_default() as usize,
+            ),
+        };
+
+        let (lit, suffix) = s.split_at(suffix_start as usize);
+        let lit = &lit[start_offset..lit.len() - end_offset];
+        let suffix = match suffix {
+            "" | "_" => None,
+            suffix => Some(Symbol::intern(self.interner, suffix)),
+        };
+
         Ok(bridge::Literal {
-            kind: bridge::LitKind::Err,
-            symbol: Symbol::intern(self.interner, s),
-            suffix: None,
+            kind,
+            symbol: Symbol::intern(self.interner, lit),
+            suffix,
             span: self.call_site,
         })
     }
@@ -104,7 +162,7 @@ impl server::TokenStream for RaSpanServer {
                     delimiter: delim_to_internal(group.delimiter, group.span),
                     token_trees: match group.stream {
                         Some(stream) => stream.into_iter().collect(),
-                        None => Vec::new(),
+                        None => Box::new([]),
                     },
                 };
                 let tree = tt::TokenTree::from(group);
@@ -122,12 +180,11 @@ impl server::TokenStream for RaSpanServer {
             }
 
             bridge::TokenTree::Literal(literal) => {
-                let literal = LiteralFormatter(literal);
-                let text = literal.with_stringify_parts(self.interner, |parts| {
+                let text = literal_with_stringify_parts(&literal, self.interner, |parts| {
                     ::tt::SmolStr::from_iter(parts.iter().copied())
                 });
 
-                let literal = tt::Literal { text, span: literal.0.span };
+                let literal = tt::Literal { text, span: literal.span };
                 let leaf: tt::Leaf = tt::Leaf::from(literal);
                 let tree = tt::TokenTree::from(leaf);
                 Self::TokenStream::from_iter(iter::once(tree))
@@ -193,20 +250,23 @@ impl server::TokenStream for RaSpanServer {
             .into_iter()
             .map(|tree| match tree {
                 tt::TokenTree::Leaf(tt::Leaf::Ident(ident)) => {
-                    bridge::TokenTree::Ident(bridge::Ident {
-                        sym: Symbol::intern(self.interner, ident.text.trim_start_matches("r#")),
-                        is_raw: ident.text.starts_with("r#"),
-                        span: ident.span,
+                    bridge::TokenTree::Ident(match ident.text.strip_prefix("r#") {
+                        Some(text) => bridge::Ident {
+                            sym: Symbol::intern(self.interner, text),
+                            is_raw: true,
+                            span: ident.span,
+                        },
+                        None => bridge::Ident {
+                            sym: Symbol::intern(self.interner, &ident.text),
+                            is_raw: false,
+                            span: ident.span,
+                        },
                     })
                 }
                 tt::TokenTree::Leaf(tt::Leaf::Literal(lit)) => {
                     bridge::TokenTree::Literal(bridge::Literal {
-                        // FIXME: handle literal kinds
-                        kind: bridge::LitKind::Err,
-                        symbol: Symbol::intern(self.interner, &lit.text),
-                        // FIXME: handle suffixes
-                        suffix: None,
                         span: lit.span,
+                        ..server::FreeFunctions::literal_from_str(self, &lit.text).unwrap()
                     })
                 }
                 tt::TokenTree::Leaf(tt::Leaf::Punct(punct)) => {
@@ -221,7 +281,7 @@ impl server::TokenStream for RaSpanServer {
                     stream: if subtree.token_trees.is_empty() {
                         None
                     } else {
-                        Some(subtree.token_trees.into_iter().collect())
+                        Some(subtree.token_trees.into_vec().into_iter().collect())
                     },
                     span: bridge::DelimSpan::from_single(subtree.delimiter.open),
                 }),
@@ -231,11 +291,12 @@ impl server::TokenStream for RaSpanServer {
 }
 
 impl server::SourceFile for RaSpanServer {
-    // FIXME these are all stubs
     fn eq(&mut self, _file1: &Self::SourceFile, _file2: &Self::SourceFile) -> bool {
+        // FIXME
         true
     }
     fn path(&mut self, _file: &Self::SourceFile) -> String {
+        // FIXME
         String::new()
     }
     fn is_real(&mut self, _file: &Self::SourceFile) -> bool {
@@ -252,11 +313,15 @@ impl server::Span for RaSpanServer {
         SourceFile {}
     }
     fn save_span(&mut self, _span: Self::Span) -> usize {
-        // FIXME stub, requires builtin quote! implementation
+        // FIXME, quote is incompatible with third-party tools
+        // This is called by the quote proc-macro which is expanded when the proc-macro is compiled
+        // As such, r-a will never observe this
         0
     }
     fn recover_proc_macro_span(&mut self, _id: usize) -> Self::Span {
-        // FIXME stub, requires builtin quote! implementation
+        // FIXME, quote is incompatible with third-party tools
+        // This is called by the expansion of quote!, r-a will observe this, but we don't have
+        // access to the spans that were encoded
         self.call_site
     }
     /// Recent feature, not yet in the proc_macro

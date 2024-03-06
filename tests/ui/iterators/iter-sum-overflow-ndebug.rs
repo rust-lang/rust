@@ -1,5 +1,5 @@
-// run-pass
-// compile-flags: -C debug_assertions=no
+//@ run-pass
+//@ compile-flags: -C debug_assertions=no
 
 fn main() {
     assert_eq!([1i32, i32::MAX].iter().sum::<i32>(),

@@ -1,4 +1,4 @@
-// edition:2021
+//@ edition:2021
 // Check what happens when a const async fn is in the main function (#102796)
 
 fn main() {

@@ -122,7 +122,7 @@ unsafe fn msys_tty_on(handle: c::HANDLE) -> bool {
     let res = c::GetFileInformationByHandleEx(
         handle,
         c::FileNameInfo,
-        &mut name_info as *mut _ as *mut c_void,
+        core::ptr::addr_of_mut!(name_info) as *mut c_void,
         size_of::<FILE_NAME_INFO>() as u32,
     );
     if res == 0 {

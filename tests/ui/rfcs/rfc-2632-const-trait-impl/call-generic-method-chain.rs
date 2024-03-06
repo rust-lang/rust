@@ -1,6 +1,6 @@
 //! Basic test for calling methods on generic type parameters in `const fn`.
 
-// check-pass
+//@ check-pass
 
 #![feature(const_trait_impl, effects)]
 

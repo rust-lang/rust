@@ -1,7 +1,11 @@
 use crate::coercion::CoerceMany;
 use crate::errors::SuggestPtrNullMut;
 use crate::fn_ctxt::arg_matrix::{ArgMatrix, Compatibility, Error, ExpectedIdx, ProvidedIdx};
+use crate::fn_ctxt::infer::FnCall;
 use crate::gather_locals::Declaration;
+use crate::method::probe::IsSuggestion;
+use crate::method::probe::Mode::MethodCall;
+use crate::method::probe::ProbeScope::TraitsInScope;
 use crate::method::MethodCallee;
 use crate::TupleArgumentsFlag::*;
 use crate::{errors, Expectation::*};
@@ -13,7 +17,7 @@ use itertools::Itertools;
 use rustc_ast as ast;
 use rustc_data_structures::fx::FxIndexSet;
 use rustc_errors::{
-    codes::*, pluralize, Applicability, Diagnostic, ErrCode, ErrorGuaranteed, MultiSpan, StashKey,
+    codes::*, pluralize, Applicability, Diag, ErrorGuaranteed, MultiSpan, StashKey,
 };
 use rustc_hir as hir;
 use rustc_hir::def::{CtorOf, DefKind, Res};
@@ -23,7 +27,7 @@ use rustc_hir::{ExprKind, Node, QPath};
 use rustc_hir_analysis::astconv::AstConv;
 use rustc_hir_analysis::check::intrinsicck::InlineAsmCtxt;
 use rustc_hir_analysis::check::potentially_plural_count;
-use rustc_hir_analysis::structured_errors::StructuredDiagnostic;
+use rustc_hir_analysis::structured_errors::StructuredDiag;
 use rustc_index::IndexVec;
 use rustc_infer::infer::error_reporting::{FailureCode, ObligationCauseExt};
 use rustc_infer::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
@@ -426,7 +430,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     .map(|vars| self.resolve_vars_if_possible(vars)),
             );
 
-            self.report_arg_errors(
+            self.set_tainted_by_errors(self.report_arg_errors(
                 compatibility_diagonal,
                 formal_and_expected_inputs,
                 provided_args,
@@ -435,7 +439,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 fn_def_id,
                 call_span,
                 call_expr,
-            );
+            ));
         }
     }
 
@@ -449,9 +453,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         fn_def_id: Option<DefId>,
         call_span: Span,
         call_expr: &'tcx hir::Expr<'tcx>,
-    ) {
+    ) -> ErrorGuaranteed {
         // Next, let's construct the error
-        let (error_span, full_call_span, call_name, is_method) = match &call_expr.kind {
+        let (error_span, call_ident, full_call_span, call_name, is_method) = match &call_expr.kind {
             hir::ExprKind::Call(
                 hir::Expr { hir_id, span, kind: hir::ExprKind::Path(qpath), .. },
                 _,
@@ -463,12 +467,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         CtorOf::Struct => "struct",
                         CtorOf::Variant => "enum variant",
                     };
-                    (call_span, *span, name, false)
+                    (call_span, None, *span, name, false)
                 } else {
-                    (call_span, *span, "function", false)
+                    (call_span, None, *span, "function", false)
                 }
             }
-            hir::ExprKind::Call(hir::Expr { span, .. }, _) => (call_span, *span, "function", false),
+            hir::ExprKind::Call(hir::Expr { span, .. }, _) => {
+                (call_span, None, *span, "function", false)
+            }
             hir::ExprKind::MethodCall(path_segment, _, _, span) => {
                 let ident_span = path_segment.ident.span;
                 let ident_span = if let Some(args) = path_segment.args {
@@ -476,7 +482,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 } else {
                     ident_span
                 };
-                (*span, ident_span, "method", true)
+                (*span, Some(path_segment.ident), ident_span, "method", true)
             }
             k => span_bug!(call_span, "checking argument types on a non-call: `{:?}`", k),
         };
@@ -488,10 +494,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
 
         let tcx = self.tcx;
-        // FIXME: taint after emitting errors and pass through an `ErrorGuaranteed`
-        self.set_tainted_by_errors(
-            tcx.dcx().span_delayed_bug(call_span, "no errors reported for args"),
-        );
 
         // Get the argument span in the context of the call span so that
         // suggestions and labels are (more) correct when an arg is a
@@ -534,6 +536,103 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let callee_ty = callee_expr
             .and_then(|callee_expr| self.typeck_results.borrow().expr_ty_adjusted_opt(callee_expr));
 
+        // Obtain another method on `Self` that have similar name.
+        let similar_assoc = |call_name: Ident| -> Option<(ty::AssocItem, ty::FnSig<'_>)> {
+            if let Some(callee_ty) = callee_ty
+                && let Ok(Some(assoc)) = self.probe_op(
+                    call_name.span,
+                    MethodCall,
+                    Some(call_name),
+                    None,
+                    IsSuggestion(true),
+                    callee_ty.peel_refs(),
+                    callee_expr.unwrap().hir_id,
+                    TraitsInScope,
+                    |mut ctxt| ctxt.probe_for_similar_candidate(),
+                )
+                && let ty::AssocKind::Fn = assoc.kind
+                && assoc.fn_has_self_parameter
+            {
+                let args = self.infcx.fresh_args_for_item(call_name.span, assoc.def_id);
+                let fn_sig = tcx.fn_sig(assoc.def_id).instantiate(tcx, args);
+
+                self.instantiate_binder_with_fresh_vars(call_name.span, FnCall, fn_sig);
+            }
+            None
+        };
+
+        let suggest_confusable = |err: &mut Diag<'_>| {
+            let Some(call_name) = call_ident else {
+                return;
+            };
+            let Some(callee_ty) = callee_ty else {
+                return;
+            };
+            let input_types: Vec<Ty<'_>> = provided_arg_tys.iter().map(|(ty, _)| *ty).collect();
+            // Check for other methods in the following order
+            //  - methods marked as `rustc_confusables` with the provided arguments
+            //  - methods with the same argument type/count and short levenshtein distance
+            //  - methods marked as `rustc_confusables` (done)
+            //  - methods with short levenshtein distance
+
+            // Look for commonly confusable method names considering arguments.
+            if let Some(_name) = self.confusable_method_name(
+                err,
+                callee_ty.peel_refs(),
+                call_name,
+                Some(input_types.clone()),
+            ) {
+                return;
+            }
+            // Look for method names with short levenshtein distance, considering arguments.
+            if let Some((assoc, fn_sig)) = similar_assoc(call_name)
+                && fn_sig.inputs()[1..]
+                    .iter()
+                    .zip(input_types.iter())
+                    .all(|(expected, found)| self.can_coerce(*expected, *found))
+                && fn_sig.inputs()[1..].len() == input_types.len()
+            {
+                err.span_suggestion_verbose(
+                    call_name.span,
+                    format!("you might have meant to use `{}`", assoc.name),
+                    assoc.name,
+                    Applicability::MaybeIncorrect,
+                );
+                return;
+            }
+            // Look for commonly confusable method names disregarding arguments.
+            if let Some(_name) =
+                self.confusable_method_name(err, callee_ty.peel_refs(), call_name, None)
+            {
+                return;
+            }
+            // Look for similarly named methods with levenshtein distance with the right
+            // number of arguments.
+            if let Some((assoc, fn_sig)) = similar_assoc(call_name)
+                && fn_sig.inputs()[1..].len() == input_types.len()
+            {
+                err.span_note(
+                    tcx.def_span(assoc.def_id),
+                    format!(
+                        "there's is a method with similar name `{}`, but the arguments don't match",
+                        assoc.name,
+                    ),
+                );
+                return;
+            }
+            // Fallthrough: look for similarly named methods with levenshtein distance.
+            if let Some((assoc, _)) = similar_assoc(call_name) {
+                err.span_note(
+                    tcx.def_span(assoc.def_id),
+                    format!(
+                        "there's is a method with similar name `{}`, but their argument count \
+                         doesn't match",
+                        assoc.name,
+                    ),
+                );
+                return;
+            }
+        };
         // A "softer" version of the `demand_compatible`, which checks types without persisting them,
         // and treats error types differently
         // This will allow us to "probe" for other argument orders that would likely have been correct
@@ -698,8 +797,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         Some(mismatch_idx),
                         is_method,
                     );
-                    err.emit();
-                    return;
+                    suggest_confusable(&mut err);
+                    return err.emit();
                 }
             }
         }
@@ -723,11 +822,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             if cfg!(debug_assertions) {
                 span_bug!(error_span, "expected errors from argument matrix");
             } else {
-                tcx.dcx().emit_err(errors::ArgMismatchIndeterminate { span: error_span });
+                let mut err =
+                    tcx.dcx().create_err(errors::ArgMismatchIndeterminate { span: error_span });
+                suggest_confusable(&mut err);
+                return err.emit();
             }
-            return;
         }
 
+        let mut reported = None;
         errors.retain(|error| {
             let Error::Invalid(provided_idx, expected_idx, Compatibility::Incompatible(Some(e))) =
                 error
@@ -738,16 +840,21 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             let trace =
                 mk_trace(provided_span, formal_and_expected_inputs[*expected_idx], provided_ty);
             if !matches!(trace.cause.as_failure_code(*e), FailureCode::Error0308) {
-                self.err_ctxt().report_and_explain_type_error(trace, *e).emit();
+                let mut err = self.err_ctxt().report_and_explain_type_error(trace, *e);
+                suggest_confusable(&mut err);
+                reported = Some(err.emit());
                 return false;
             }
             true
         });
 
         // We're done if we found errors, but we already emitted them.
-        if errors.is_empty() {
-            return;
+        if let Some(reported) = reported
+            && errors.is_empty()
+        {
+            return reported;
         }
+        assert!(!errors.is_empty());
 
         // Okay, now that we've emitted the special errors separately, we
         // are only left missing/extra/swapped and mismatched arguments, both
@@ -804,8 +911,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 Some(expected_idx.as_usize()),
                 is_method,
             );
-            err.emit();
-            return;
+            suggest_confusable(&mut err);
+            return err.emit();
         }
 
         let mut err = if formal_and_expected_inputs.len() == provided_args.len() {
@@ -832,6 +939,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 .with_code(err_code.to_owned())
         };
 
+        suggest_confusable(&mut err);
         // As we encounter issues, keep track of what we want to provide for the suggestion
         let mut labels = vec![];
         // If there is a single error, we give a specific suggestion; otherwise, we change to
@@ -1253,7 +1361,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             );
         }
 
-        err.emit();
+        err.emit()
     }
 
     fn suggest_ptr_null_mut(
@@ -1261,7 +1369,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         expected_ty: Ty<'tcx>,
         provided_ty: Ty<'tcx>,
         arg: &hir::Expr<'tcx>,
-        err: &mut rustc_errors::DiagnosticBuilder<'tcx>,
+        err: &mut Diag<'tcx>,
     ) {
         if let ty::RawPtr(ty::TypeAndMut { mutbl: hir::Mutability::Mut, .. }) = expected_ty.kind()
             && let ty::RawPtr(ty::TypeAndMut { mutbl: hir::Mutability::Not, .. }) =
@@ -1273,7 +1381,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         {
             // The user provided `ptr::null()`, but the function expects
             // `ptr::null_mut()`.
-            err.subdiagnostic(SuggestPtrNullMut { span: arg.span });
+            err.subdiagnostic(self.dcx(), SuggestPtrNullMut { span: arg.span });
         }
     }
 
@@ -1323,7 +1431,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 tcx.type_of(tcx.require_lang_item(hir::LangItem::CStr, Some(lit.span)))
                     .skip_binder(),
             ),
-            ast::LitKind::Err => Ty::new_misc_error(tcx),
+            ast::LitKind::Err(guar) => Ty::new_error(tcx, guar),
         }
     }
 
@@ -1636,7 +1744,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                         Ty::new_unit(self.tcx),
                                     );
                                 }
-                                if !self.consider_removing_semicolon(blk, expected_ty, err) {
+                                if !self.err_ctxt().consider_removing_semicolon(
+                                    blk,
+                                    expected_ty,
+                                    err,
+                                ) {
                                     self.err_ctxt().consider_returning_binding(
                                         blk,
                                         expected_ty,
@@ -1730,7 +1842,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     }
 
     /// Given a function block's `HirId`, returns its `FnDecl` if it exists, or `None` otherwise.
-    fn get_parent_fn_decl(&self, blk_id: hir::HirId) -> Option<(&'tcx hir::FnDecl<'tcx>, Ident)> {
+    pub(crate) fn get_parent_fn_decl(
+        &self,
+        blk_id: hir::HirId,
+    ) -> Option<(&'tcx hir::FnDecl<'tcx>, Ident)> {
         let parent = self.tcx.hir_node_by_def_id(self.tcx.hir().get_parent_item(blk_id).def_id);
         self.get_node_fn_decl(parent).map(|(_, fn_decl, ident, _)| (fn_decl, ident))
     }
@@ -1830,53 +1945,49 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         errors_causecode: Vec<(Span, ObligationCauseCode<'tcx>)>,
     ) {
         for (span, code) in errors_causecode {
-            let Some(mut diag) = self.dcx().steal_diagnostic(span, StashKey::MaybeForgetReturn)
-            else {
-                continue;
-            };
-
-            if let Some(fn_sig) = self.body_fn_sig()
-                && let ExprBindingObligation(_, _, hir_id, ..) = code
-                && !fn_sig.output().is_unit()
-            {
-                let mut block_num = 0;
-                let mut found_semi = false;
-                for (_, node) in self.tcx.hir().parent_iter(hir_id) {
-                    match node {
-                        hir::Node::Stmt(stmt) => {
-                            if let hir::StmtKind::Semi(expr) = stmt.kind {
-                                let expr_ty = self.typeck_results.borrow().expr_ty(expr);
-                                let return_ty = fn_sig.output();
-                                if !matches!(expr.kind, hir::ExprKind::Ret(..))
-                                    && self.can_coerce(expr_ty, return_ty)
-                                {
-                                    found_semi = true;
+            self.dcx().try_steal_modify_and_emit_err(span, StashKey::MaybeForgetReturn, |err| {
+                if let Some(fn_sig) = self.body_fn_sig()
+                    && let ExprBindingObligation(_, _, hir_id, ..) = code
+                    && !fn_sig.output().is_unit()
+                {
+                    let mut block_num = 0;
+                    let mut found_semi = false;
+                    for (_, node) in self.tcx.hir().parent_iter(hir_id) {
+                        match node {
+                            hir::Node::Stmt(stmt) => {
+                                if let hir::StmtKind::Semi(expr) = stmt.kind {
+                                    let expr_ty = self.typeck_results.borrow().expr_ty(expr);
+                                    let return_ty = fn_sig.output();
+                                    if !matches!(expr.kind, hir::ExprKind::Ret(..))
+                                        && self.can_coerce(expr_ty, return_ty)
+                                    {
+                                        found_semi = true;
+                                    }
                                 }
                             }
-                        }
-                        hir::Node::Block(_block) => {
-                            if found_semi {
-                                block_num += 1;
+                            hir::Node::Block(_block) => {
+                                if found_semi {
+                                    block_num += 1;
+                                }
                             }
-                        }
-                        hir::Node::Item(item) => {
-                            if let hir::ItemKind::Fn(..) = item.kind {
-                                break;
+                            hir::Node::Item(item) => {
+                                if let hir::ItemKind::Fn(..) = item.kind {
+                                    break;
+                                }
                             }
+                            _ => {}
                         }
-                        _ => {}
+                    }
+                    if block_num > 1 && found_semi {
+                        err.span_suggestion_verbose(
+                            span.shrink_to_lo(),
+                            "you might have meant to return this to infer its type parameters",
+                            "return ",
+                            Applicability::MaybeIncorrect,
+                        );
                     }
                 }
-                if block_num > 1 && found_semi {
-                    diag.span_suggestion_verbose(
-                        span.shrink_to_lo(),
-                        "you might have meant to return this to infer its type parameters",
-                        "return ",
-                        Applicability::MaybeIncorrect,
-                    );
-                }
-            }
-            diag.emit();
+            });
         }
     }
 
@@ -1936,7 +2047,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
     fn label_fn_like(
         &self,
-        err: &mut Diagnostic,
+        err: &mut Diag<'_>,
         callable_def_id: Option<DefId>,
         callee_ty: Option<Ty<'tcx>>,
         call_expr: &'tcx hir::Expr<'tcx>,
@@ -2064,7 +2175,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 let node = self
                     .tcx
                     .opt_local_def_id_to_hir_id(self.tcx.hir().get_parent_item(call_expr.hir_id))
-                    .and_then(|hir_id| self.tcx.opt_hir_node(hir_id));
+                    .map(|hir_id| self.tcx.hir_node(hir_id));
                 match node {
                     Some(hir::Node::Item(item)) => call_finder.visit_item(item),
                     Some(hir::Node::TraitItem(item)) => call_finder.visit_trait_item(item),

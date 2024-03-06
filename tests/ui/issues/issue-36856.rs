@@ -1,7 +1,7 @@
-// run-pass
+//@ run-pass
 // Regression test for #36856.
 
-// compile-flags:-g
+//@ compile-flags:-g
 
 fn g() -> bool {
     false

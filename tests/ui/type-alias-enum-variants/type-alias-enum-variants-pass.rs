@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 
 // Check that it is possible to resolve, in the value namespace,
 // to an `enum` variant through a type alias. This includes `Self`.

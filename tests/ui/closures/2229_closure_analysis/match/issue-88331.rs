@@ -1,4 +1,4 @@
-// edition:2021
+//@ edition:2021
 
 #[derive(Copy, Clone, PartialEq, Eq)]
 pub struct Opcode(pub u8);

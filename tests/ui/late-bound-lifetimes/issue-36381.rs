@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 // Regression test for #36381. The monomorphization collector was asserting that
 // there are no projection types, but the `<&str as
 // StreamOnce>::Position` projection contained a late-bound region,

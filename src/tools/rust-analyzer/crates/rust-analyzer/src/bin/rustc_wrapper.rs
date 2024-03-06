@@ -7,13 +7,17 @@
 use std::{
     ffi::OsString,
     io,
-    process::{Command, Stdio},
+    process::{Command, ExitCode, Stdio},
 };
 
-/// ExitCode/ExitStatus are impossible to create :(.
-pub(crate) struct ExitCode(pub(crate) Option<i32>);
+pub(crate) fn main() -> io::Result<ExitCode> {
+    let mut args = std::env::args_os();
+    let _me = args.next().unwrap();
+    let rustc = args.next().unwrap();
+    run_rustc_skipping_cargo_checking(rustc, args.collect())
+}
 
-pub(crate) fn run_rustc_skipping_cargo_checking(
+fn run_rustc_skipping_cargo_checking(
     rustc_executable: OsString,
     args: Vec<OsString>,
 ) -> io::Result<ExitCode> {
@@ -35,9 +39,10 @@ pub(crate) fn run_rustc_skipping_cargo_checking(
         arg.starts_with("--emit=") && arg.contains("metadata") && !arg.contains("link")
     });
     if not_invoked_by_build_script && is_cargo_check {
-        return Ok(ExitCode(Some(0)));
+        Ok(ExitCode::from(0))
+    } else {
+        run_rustc(rustc_executable, args)
     }
-    run_rustc(rustc_executable, args)
 }
 
 fn run_rustc(rustc_executable: OsString, args: Vec<OsString>) -> io::Result<ExitCode> {
@@ -47,5 +52,5 @@ fn run_rustc(rustc_executable: OsString, args: Vec<OsString>) -> io::Result<Exit
         .stdout(Stdio::inherit())
         .stderr(Stdio::inherit())
         .spawn()?;
-    Ok(ExitCode(child.wait()?.code()))
+    Ok(ExitCode::from(child.wait()?.code().unwrap_or(102) as u8))
 }

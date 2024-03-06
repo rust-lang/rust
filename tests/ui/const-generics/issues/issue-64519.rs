@@ -1,4 +1,4 @@
-// check-pass
+//@ check-pass
 struct Foo<const D: usize> {
     state: Option<[u8; D]>,
 }

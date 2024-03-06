@@ -1,9 +1,9 @@
-// run-pass
+//@ run-pass
 
 #![allow(dead_code, unused_imports)]
 #![feature(no_core)]
 #![no_core]
-// edition:2018
+//@ edition:2018
 
 extern crate std;
 extern crate core;

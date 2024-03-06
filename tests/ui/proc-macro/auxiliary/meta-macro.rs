@@ -1,6 +1,6 @@
-// force-host
-// no-prefer-dynamic
-// edition:2018
+//@ force-host
+//@ no-prefer-dynamic
+//@ edition:2018
 
 #![feature(proc_macro_def_site)]
 #![crate_type = "proc-macro"]

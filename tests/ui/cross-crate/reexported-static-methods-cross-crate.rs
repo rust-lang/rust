@@ -1,5 +1,5 @@
-// run-pass
-// aux-build:reexported_static_methods.rs
+//@ run-pass
+//@ aux-build:reexported_static_methods.rs
 
 extern crate reexported_static_methods;
 

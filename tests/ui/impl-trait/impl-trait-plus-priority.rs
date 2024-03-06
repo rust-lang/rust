@@ -1,4 +1,4 @@
-// compile-flags: -Z parse-only
+//@ compile-flags: -Z parse-only
 
 fn f() -> impl A + {} // OK
 fn f() -> impl A + B {} // OK

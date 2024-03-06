@@ -1,9 +1,9 @@
 // This test serves as a regression test for issue #114468 and it also ensures that we consider
 // type aliases from external crates that don't have `lazy_type_alias` enabled to be eager.
 
-// aux-crate:eager=eager.rs
-// edition: 2021
-// check-pass
+//@ aux-crate:eager=eager.rs
+//@ edition: 2021
+//@ check-pass
 
 #![feature(lazy_type_alias)]
 #![allow(incomplete_features)]

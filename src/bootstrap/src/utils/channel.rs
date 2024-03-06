@@ -97,7 +97,7 @@ impl GitInfo {
 
     pub fn version(&self, build: &Build, num: &str) -> String {
         let mut version = build.release(num);
-        if let Some(ref inner) = self.info() {
+        if let Some(inner) = self.info() {
             version.push_str(" (");
             version.push_str(&inner.short_sha);
             version.push(' ');
@@ -150,7 +150,7 @@ pub fn read_commit_info_file(root: &Path) -> Option<Info> {
 /// root.
 pub fn write_commit_info_file(root: &Path, info: &Info) {
     let commit_info = format!("{}\n{}\n{}\n", info.sha, info.short_sha, info.commit_date);
-    t!(fs::write(root.join("git-commit-info"), &commit_info));
+    t!(fs::write(root.join("git-commit-info"), commit_info));
 }
 
 /// Write the commit hash to the `git-commit-hash` file given the project root.

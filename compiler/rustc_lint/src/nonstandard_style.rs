@@ -10,6 +10,7 @@ use rustc_hir::def::{DefKind, Res};
 use rustc_hir::intravisit::FnKind;
 use rustc_hir::{GenericParamKind, PatKind};
 use rustc_middle::ty;
+use rustc_session::config::CrateType;
 use rustc_span::def_id::LocalDefId;
 use rustc_span::symbol::{sym, Ident};
 use rustc_span::{BytePos, Span};
@@ -331,6 +332,10 @@ impl<'tcx> LateLintPass<'tcx> for NonSnakeCase {
             return;
         }
 
+        if cx.tcx.crate_types().iter().all(|&crate_type| crate_type == CrateType::Executable) {
+            return;
+        }
+
         let crate_ident = if let Some(name) = &cx.tcx.sess.opts.crate_name {
             Some(Ident::from_str(name))
         } else {
@@ -427,7 +432,7 @@ impl<'tcx> LateLintPass<'tcx> for NonSnakeCase {
 
     fn check_pat(&mut self, cx: &LateContext<'_>, p: &hir::Pat<'_>) {
         if let PatKind::Binding(_, hid, ident, _) = p.kind {
-            if let hir::Node::PatField(field) = cx.tcx.hir().get_parent(hid) {
+            if let hir::Node::PatField(field) = cx.tcx.parent_hir_node(hid) {
                 if !field.is_shorthand {
                     // Only check if a new name has been introduced, to avoid warning
                     // on both the struct definition and this pattern.

@@ -6,11 +6,12 @@
 #![feature(if_let_guard)]
 #![feature(let_chains)]
 #![feature(macro_metavar_expr)]
+#![feature(map_try_insert)]
 #![feature(proc_macro_diagnostic)]
 #![feature(proc_macro_internals)]
 #![feature(proc_macro_span)]
 #![feature(try_blocks)]
-#![deny(rustc::untranslatable_diagnostic)]
+#![allow(rustc::diagnostic_outside_of_impl)]
 #![allow(internal_features)]
 
 #[macro_use]

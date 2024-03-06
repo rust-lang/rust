@@ -1,5 +1,5 @@
-// force-host
-// no-prefer-dynamic
+//@ force-host
+//@ no-prefer-dynamic
 
 // Proc macro helper for issue #89699, used by tests/ui/proc-macro/edition-gated-async-move-
 // syntax-issue89699.rs, emitting an `async move` closure. This syntax is only available in

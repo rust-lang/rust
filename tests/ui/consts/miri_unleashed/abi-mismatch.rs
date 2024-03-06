@@ -1,5 +1,5 @@
 // Checks that we report ABI mismatches for "const extern fn"
-// compile-flags: -Z unleash-the-miri-inside-of-you
+//@ compile-flags: -Z unleash-the-miri-inside-of-you
 
 #![feature(const_extern_fn)]
 

@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 
 mod bar1 {
     pub use self::bar2::Foo;

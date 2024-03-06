@@ -9,6 +9,8 @@ use rustc_middle::ty::{self, ImplTraitInTraitData, IsSuggestable, Ty, TyCtxt, Ty
 use rustc_span::symbol::Ident;
 use rustc_span::{Span, DUMMY_SP};
 
+use crate::errors::TypeofReservedKeywordUsed;
+
 use super::bad_placeholder;
 use super::ItemCtxt;
 pub use opaque::test_opaque_hidden_types;
@@ -28,7 +30,7 @@ fn anon_const_type_of<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalDefId) -> Ty<'tcx> {
         );
     };
 
-    let parent_node_id = tcx.hir().parent_id(hir_id);
+    let parent_node_id = tcx.parent_hir_id(hir_id);
     let parent_node = tcx.hir_node(parent_node_id);
 
     let (generics, arg_idx) = match parent_node {
@@ -39,8 +41,18 @@ fn anon_const_type_of<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalDefId) -> Ty<'tcx> {
         {
             return tcx.types.usize;
         }
-        Node::Ty(&hir::Ty { kind: TyKind::Typeof(ref e), .. }) if e.hir_id == hir_id => {
-            return tcx.typeck(def_id).node_type(e.hir_id);
+        Node::Ty(&hir::Ty { kind: TyKind::Typeof(ref e), span, .. }) if e.hir_id == hir_id => {
+            let ty = tcx.typeck(def_id).node_type(e.hir_id);
+            let ty = tcx.fold_regions(ty, |r, _| {
+                if r.is_erased() { ty::Region::new_error_misc(tcx) } else { r }
+            });
+            let (ty, opt_sugg) = if let Some(ty) = ty.make_suggestable(tcx, false) {
+                (ty, Some((span, Applicability::MachineApplicable)))
+            } else {
+                (ty, None)
+            };
+            tcx.dcx().emit_err(TypeofReservedKeywordUsed { span, ty, opt_sugg });
+            return ty;
         }
         Node::Expr(&Expr { kind: ExprKind::InlineAsm(asm), .. })
         | Node::Item(&Item { kind: ItemKind::GlobalAsm(asm), .. })
@@ -67,7 +79,7 @@ fn anon_const_type_of<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalDefId) -> Ty<'tcx> {
         }
 
         Node::TypeBinding(binding @ &TypeBinding { hir_id: binding_id, .. })
-            if let Node::TraitRef(trait_ref) = tcx.hir_node(tcx.hir().parent_id(binding_id)) =>
+            if let Node::TraitRef(trait_ref) = tcx.parent_hir_node(binding_id) =>
         {
             let Some(trait_def_id) = trait_ref.trait_def_id() else {
                 return Ty::new_error_with_message(
@@ -509,6 +521,8 @@ pub(super) fn type_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::EarlyBinder<Ty
             x => bug!("unexpected non-type Node::GenericParam: {:?}", x),
         },
 
+        Node::ArrayLenInfer(_) => tcx.types.usize,
+
         x => {
             bug!("unexpected sort of node in type_of(): {:?}", x);
         }
@@ -582,15 +596,15 @@ fn infer_placeholder_type<'a>(
     // then the user may have written e.g. `const A = 42;`.
     // In this case, the parser has stashed a diagnostic for
     // us to improve in typeck so we do that now.
-    match tcx.dcx().steal_diagnostic(span, StashKey::ItemNoType) {
-        Some(mut err) => {
+    let guar = tcx
+        .dcx()
+        .try_steal_modify_and_emit_err(span, StashKey::ItemNoType, |err| {
             if !ty.references_error() {
-                // Only suggest adding `:` if it was missing (and suggested by parsing diagnostic)
+                // Only suggest adding `:` if it was missing (and suggested by parsing diagnostic).
                 let colon = if span == item_ident.span.shrink_to_hi() { ":" } else { "" };
 
                 // The parser provided a sub-optimal `HasPlaceholders` suggestion for the type.
                 // We are typeck and have the real type, so remove that and suggest the actual type.
-                // FIXME(eddyb) this looks like it should be functionality on `Diagnostic`.
                 if let Ok(suggestions) = &mut err.suggestions {
                     suggestions.clear();
                 }
@@ -609,12 +623,8 @@ fn infer_placeholder_type<'a>(
                     ));
                 }
             }
-
-            err.emit();
-            // diagnostic stashing loses the information of whether something is a hard error.
-            Ty::new_error_with_message(tcx, span, "ItemNoType is a hard error")
-        }
-        None => {
+        })
+        .unwrap_or_else(|| {
             let mut diag = bad_placeholder(tcx, vec![span], kind);
 
             if !ty.references_error() {
@@ -632,10 +642,9 @@ fn infer_placeholder_type<'a>(
                     ));
                 }
             }
-
-            Ty::new_error(tcx, diag.emit())
-        }
-    }
+            diag.emit()
+        });
+    Ty::new_error(tcx, guar)
 }
 
 fn check_feature_inherent_assoc_ty(tcx: TyCtxt<'_>, span: Span) {

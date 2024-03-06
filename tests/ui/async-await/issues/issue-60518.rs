@@ -1,5 +1,5 @@
-// check-pass
-// edition:2018
+//@ check-pass
+//@ edition:2018
 
 // This is a regression test to ensure that simple bindings (where replacement arguments aren't
 // created during async fn lowering) that have their DefId used during HIR lowering (such as impl

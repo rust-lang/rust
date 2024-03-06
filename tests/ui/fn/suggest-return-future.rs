@@ -1,4 +1,4 @@
-// edition: 2021
+//@ edition: 2021
 
 async fn a() -> i32 {
     0

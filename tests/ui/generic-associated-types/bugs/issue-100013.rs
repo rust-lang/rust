@@ -1,6 +1,6 @@
-// check-fail
-// known-bug: unknown
-// edition: 2021
+//@ check-fail
+//@ known-bug: unknown
+//@ edition: 2021
 
 // We really should accept this, but we need implied bounds between the regions
 // in a coroutine interior.

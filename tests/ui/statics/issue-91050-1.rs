@@ -1,5 +1,5 @@
-// build-pass
-// compile-flags: --crate-type=rlib --emit=llvm-ir -Cno-prepopulate-passes
+//@ build-pass
+//@ compile-flags: --crate-type=rlib --emit=llvm-ir -Cno-prepopulate-passes
 
 // This test declares globals by the same name with different types, which
 // caused problems because Module::getOrInsertGlobal would return a Constant*

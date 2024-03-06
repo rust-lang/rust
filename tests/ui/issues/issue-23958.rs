@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 trait Collection where for<'a> &'a Self: IntoIterator {
     fn my_iter(&self) -> <&Self as IntoIterator>::IntoIter {
         self.into_iter()

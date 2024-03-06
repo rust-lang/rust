@@ -17,4 +17,5 @@ impl<'a> Y<'a, u8> for u8 {
 
 fn main() {
     1u8.g("abc");
+    //~^ ERROR the trait bound `str: Clone` is not satisfied
 }

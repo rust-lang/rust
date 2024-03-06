@@ -1,4 +1,4 @@
-// check-pass
+//@ check-pass
 
 trait FnOnceForGenericRef<T>: FnOnce(&T) -> Self::FnOutput {
     type FnOutput;

@@ -1,6 +1,6 @@
 // Type resolution: the phase that finds all the types in the AST with
 // unresolved type variables and replaces "ty_var" types with their
-// substitutions.
+// generic parameters.
 
 use crate::FnCtxt;
 use rustc_data_structures::unord::ExtendUnord;
@@ -221,8 +221,8 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
             if base_ty.is_none() {
                 // When encountering `return [0][0]` outside of a `fn` body we can encounter a base
                 // that isn't in the type table. We assume more relevant errors have already been
-                // emitted, so we delay an ICE if none have. (#64638)
-                self.tcx().dcx().span_delayed_bug(e.span, format!("bad base: `{base:?}`"));
+                // emitted. (#64638)
+                assert!(self.tcx().dcx().has_errors().is_some(), "bad base: `{base:?}`");
             }
             if let Some(base_ty) = base_ty
                 && let ty::Ref(_, base_ty_inner, _) = *base_ty.kind()
@@ -562,7 +562,15 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
 
     #[instrument(skip(self), level = "debug")]
     fn visit_opaque_types(&mut self) {
-        let opaque_types = self.fcx.infcx.take_opaque_types();
+        // We clone the opaques instead of stealing them here as they are still used for
+        // normalization in the next generation trait solver.
+        //
+        // FIXME(-Znext-solver): Opaque types defined after this would simply get dropped
+        // at the end of typeck. While this seems unlikely to happen in practice this
+        // should still get fixed. Either by preventing writeback from defining new opaque
+        // types or by using this function at the end of writeback and running it as a
+        // fixpoint.
+        let opaque_types = self.fcx.infcx.clone_opaque_types();
         for (opaque_type_key, decl) in opaque_types {
             let hidden_type = self.resolve(decl.hidden_type, &decl.hidden_type.span);
             let opaque_type_key = self.resolve(opaque_type_key, &decl.hidden_type.span);
@@ -581,12 +589,16 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
                 && last_opaque_ty.ty != hidden_type.ty
             {
                 assert!(!self.fcx.next_trait_solver());
-                hidden_type
-                    .report_mismatch(&last_opaque_ty, opaque_type_key.def_id, self.tcx())
-                    .stash(
+                if let Ok(d) = hidden_type.build_mismatch_error(
+                    &last_opaque_ty,
+                    opaque_type_key.def_id,
+                    self.tcx(),
+                ) {
+                    d.stash(
                         self.tcx().def_span(opaque_type_key.def_id),
                         StashKey::OpaqueHiddenTypeMismatch,
                     );
+                }
             }
         }
     }
@@ -595,6 +607,11 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
         if let Some(index) = self.fcx.typeck_results.borrow_mut().field_indices_mut().remove(hir_id)
         {
             self.typeck_results.field_indices_mut().insert(hir_id, index);
+        }
+        if let Some(nested_fields) =
+            self.fcx.typeck_results.borrow_mut().nested_fields_mut().remove(hir_id)
+        {
+            self.typeck_results.nested_fields_mut().insert(hir_id, nested_fields);
         }
     }
 
@@ -616,7 +633,7 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
         self.write_ty_to_typeck_results(hir_id, n_ty);
         debug!(?n_ty);
 
-        // Resolve any substitutions
+        // Resolve any generic parameters
         if let Some(args) = self.fcx.typeck_results.borrow().node_args_opt(hir_id) {
             let args = self.resolve(args, &span);
             debug!("write_args_to_tcx({:?}, {:?})", hir_id, args);
@@ -753,10 +770,10 @@ impl<'cx, 'tcx> Resolver<'cx, 'tcx> {
     }
 
     fn report_error(&self, p: impl Into<ty::GenericArg<'tcx>>) -> ErrorGuaranteed {
-        match self.fcx.dcx().has_errors() {
-            Some(e) => e,
-            None => self
-                .fcx
+        if let Some(guar) = self.fcx.dcx().has_errors() {
+            guar
+        } else {
+            self.fcx
                 .err_ctxt()
                 .emit_inference_failure_err(
                     self.fcx.tcx.hir().body_owner_def_id(self.body.id()),
@@ -765,7 +782,7 @@ impl<'cx, 'tcx> Resolver<'cx, 'tcx> {
                     E0282,
                     false,
                 )
-                .emit(),
+                .emit()
         }
     }
 

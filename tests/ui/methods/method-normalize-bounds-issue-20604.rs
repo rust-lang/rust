@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 #![allow(dead_code)]
 #![allow(unused_variables)]
 #![allow(stable_features)]
@@ -9,7 +9,7 @@
 // winnowing stage of method resolution failed to handle an associated
 // type projection.
 
-// pretty-expanded FIXME #23616
+//@ pretty-expanded FIXME #23616
 
 #![feature(associated_types)]
 

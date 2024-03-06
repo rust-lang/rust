@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 
 #![feature(const_size_of_val, const_align_of_val)]
 #![feature(const_size_of_val_raw, const_align_of_val_raw, layout_for_ptr)]

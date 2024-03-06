@@ -1,5 +1,5 @@
-// edition:2018
-// run-pass
+//@ edition:2018
+//@ run-pass
 
 // Test member constraints that appear in the `impl Trait`
 // return type of an async function.

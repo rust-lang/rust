@@ -1,5 +1,5 @@
-// compile-flags: -Z mir-opt-level=3
-// run-pass
+//@ compile-flags: -Z mir-opt-level=3
+//@ run-pass
 
 fn e220() -> (i64, i64) {
     #[inline(never)]

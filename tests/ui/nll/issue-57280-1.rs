@@ -1,4 +1,4 @@
-// check-pass
+//@ check-pass
 
 trait Foo<'a> {
     const C: &'a u32;

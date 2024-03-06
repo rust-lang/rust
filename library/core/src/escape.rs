@@ -1,7 +1,7 @@
 //! Helper code for character escaping.
 
 use crate::ascii;
-use crate::num::NonZeroUsize;
+use crate::num::NonZero;
 use crate::ops::Range;
 
 const HEX_DIGITS: [ascii::Char; 16] = *b"0123456789abcdef".as_ascii().unwrap();
@@ -106,11 +106,11 @@ impl<const N: usize> EscapeIterInner<N> {
         self.alive.next_back().map(|i| self.data[usize::from(i)].to_u8())
     }
 
-    pub fn advance_by(&mut self, n: usize) -> Result<(), NonZeroUsize> {
+    pub fn advance_by(&mut self, n: usize) -> Result<(), NonZero<usize>> {
         self.alive.advance_by(n)
     }
 
-    pub fn advance_back_by(&mut self, n: usize) -> Result<(), NonZeroUsize> {
+    pub fn advance_back_by(&mut self, n: usize) -> Result<(), NonZero<usize>> {
         self.alive.advance_back_by(n)
     }
 }

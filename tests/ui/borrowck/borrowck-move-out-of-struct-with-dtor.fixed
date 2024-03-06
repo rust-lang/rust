@@ -1,4 +1,4 @@
-// run-rustfix
+//@ run-rustfix
 #![allow(unused)]
 struct S {f:String}
 impl Drop for S {

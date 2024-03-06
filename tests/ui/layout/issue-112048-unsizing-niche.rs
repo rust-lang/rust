@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 
 // Check that unsizing does not change which field is considered for niche layout.
 

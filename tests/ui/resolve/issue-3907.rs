@@ -1,4 +1,4 @@
-// aux-build:issue-3907.rs
+//@ aux-build:issue-3907.rs
 
 extern crate issue_3907;
 

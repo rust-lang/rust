@@ -7,6 +7,10 @@
 +     scope 1 (inlined <C as Call>::call) {
 +         scope 2 (inlined <B<A> as Call>::call) {
 +             scope 3 (inlined <A as Call>::call) {
++                 scope 4 (inlined <B<C> as Call>::call) {
++                     scope 5 (inlined <C as Call>::call) {
++                     }
++                 }
 +             }
 +         }
 +     }
@@ -14,7 +18,7 @@
       bb0: {
           StorageLive(_1);
 -         _1 = <C as Call>::call() -> [return: bb1, unwind unreachable];
-+         _1 = <B<C> as Call>::call() -> [return: bb1, unwind unreachable];
++         _1 = <B<A> as Call>::call() -> [return: bb1, unwind unreachable];
       }
   
       bb1: {

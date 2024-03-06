@@ -1,4 +1,4 @@
-// check-pass
+//@ check-pass
 
 // In PR 71930, it was discovered that the code to retrieve the inferred type of a match scrutinee
 // was incorrect.

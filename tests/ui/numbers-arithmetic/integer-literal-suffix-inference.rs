@@ -1,5 +1,5 @@
-// run-pass
-// pretty-expanded FIXME #23616
+//@ run-pass
+//@ pretty-expanded FIXME #23616
 
 pub fn main() {
     fn id_i8(n: i8) -> i8 { n }

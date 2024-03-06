@@ -1,4 +1,4 @@
-// compile-flags: -Z ui-testing=no
+//@ compile-flags: -Z ui-testing=no
 
 struct MyError;
 impl std::error::Error for MyError {}

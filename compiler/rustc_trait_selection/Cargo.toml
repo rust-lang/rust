@@ -8,6 +8,7 @@ edition = "2021"
 bitflags = "2.4.1"
 itertools = "0.11.0"
 rustc_ast = { path = "../rustc_ast" }
+rustc_ast_ir = { path = "../rustc_ast_ir" }
 rustc_attr = { path = "../rustc_attr" }
 rustc_data_structures = { path = "../rustc_data_structures" }
 rustc_errors = { path = "../rustc_errors" }

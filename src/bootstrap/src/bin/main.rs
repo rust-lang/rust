@@ -39,14 +39,14 @@ fn main() {
             .open(&lock_path)));
         _build_lock_guard = match build_lock.try_write() {
             Ok(mut lock) => {
-                t!(lock.write(&process::id().to_string().as_ref()));
+                t!(lock.write(process::id().to_string().as_ref()));
                 lock
             }
             err => {
                 drop(err);
                 println!("WARNING: build directory locked by process {pid}, waiting for lock");
                 let mut lock = t!(build_lock.write());
-                t!(lock.write(&process::id().to_string().as_ref()));
+                t!(lock.write(process::id().to_string().as_ref()));
                 lock
             }
         };
@@ -113,14 +113,14 @@ fn main() {
                 continue;
             }
 
-            let file = t!(fs::File::open(&entry.path()));
+            let file = t!(fs::File::open(entry.path()));
 
             // To ensure deterministic results we must sort the dump lines.
             // This is necessary because the order of rustc invocations different
             // almost all the time.
             let mut lines: Vec<String> = t!(BufReader::new(&file).lines().collect());
             lines.sort_by_key(|t| t.to_lowercase());
-            let mut file = t!(OpenOptions::new().write(true).truncate(true).open(&entry.path()));
+            let mut file = t!(OpenOptions::new().write(true).truncate(true).open(entry.path()));
             t!(file.write_all(lines.join("\n").as_bytes()));
         }
     }
@@ -156,7 +156,7 @@ fn check_version(config: &Config) -> Option<String> {
         msg.push_str("There have been changes to x.py since you last updated:\n");
 
         for change in changes {
-            msg.push_str(&format!("  [{}] {}\n", change.severity.to_string(), change.summary));
+            msg.push_str(&format!("  [{}] {}\n", change.severity, change.summary));
             msg.push_str(&format!(
                 "    - PR Link https://github.com/rust-lang/rust/pull/{}\n",
                 change.change_id

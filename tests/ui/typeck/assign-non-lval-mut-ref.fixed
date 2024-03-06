@@ -1,4 +1,4 @@
-// run-rustfix
+//@ run-rustfix
 
 fn main() {
     let mut x = vec![1usize];

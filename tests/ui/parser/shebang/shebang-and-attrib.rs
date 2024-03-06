@@ -1,6 +1,6 @@
 #!/usr/bin/env run-cargo-script
 
-// check-pass
+//@ check-pass
 #![allow(unused_variables)]
 
 

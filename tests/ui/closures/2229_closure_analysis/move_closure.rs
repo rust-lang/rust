@@ -1,4 +1,4 @@
-// edition:2021
+//@ edition:2021
 
 // Test that move closures drop derefs with `capture_disjoint_fields` enabled.
 

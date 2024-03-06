@@ -83,8 +83,10 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                             let op = op.to_scalar();
                             // "Bitwise" operation, no NaN adjustments
                             match float_ty {
+                                FloatTy::F16 => unimplemented!("f16_f128"),
                                 FloatTy::F32 => Scalar::from_f32(op.to_f32()?.abs()),
                                 FloatTy::F64 => Scalar::from_f64(op.to_f64()?.abs()),
+                                FloatTy::F128 => unimplemented!("f16_f128"),
                             }
                         }
                         Op::Sqrt => {
@@ -93,6 +95,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                             };
                             // FIXME using host floats
                             match float_ty {
+                                FloatTy::F16 => unimplemented!("f16_f128"),
                                 FloatTy::F32 => {
                                     let f = op.to_scalar().to_f32()?;
                                     let res = f.to_host().sqrt().to_soft();
@@ -105,6 +108,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                                     let res = this.adjust_nan(res, &[f]);
                                     Scalar::from(res)
                                 }
+                                FloatTy::F128 => unimplemented!("f16_f128"),
                             }
                         }
                         Op::Round(rounding) => {
@@ -112,6 +116,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                                 span_bug!(this.cur_span(), "{} operand is not a float", intrinsic_name)
                             };
                             match float_ty {
+                                FloatTy::F16 => unimplemented!("f16_f128"),
                                 FloatTy::F32 => {
                                     let f = op.to_scalar().to_f32()?;
                                     let res = f.round_to_integral(rounding).value;
@@ -124,6 +129,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                                     let res = this.adjust_nan(res, &[f]);
                                     Scalar::from_f64(res)
                                 }
+                                FloatTy::F128 => unimplemented!("f16_f128"),
                             }
                         }
                         Op::Numeric(name) => {
@@ -267,6 +273,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                         span_bug!(this.cur_span(), "{} operand is not a float", intrinsic_name)
                     };
                     let val = match float_ty {
+                        FloatTy::F16 => unimplemented!("f16_f128"),
                         FloatTy::F32 => {
                             let a = a.to_f32()?;
                             let b = b.to_f32()?;
@@ -283,6 +290,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                             let res = this.adjust_nan(res, &[a, b, c]);
                             Scalar::from(res)
                         }
+                        FloatTy::F128 => unimplemented!("f16_f128"),
                     };
                     this.write_scalar(val, &dest)?;
                 }
@@ -563,9 +571,8 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                         let right_idx = src_index.checked_sub(left_len).unwrap();
                         this.read_immediate(&this.project_index(&right, right_idx)?)?
                     } else {
-                        span_bug!(
-                            this.cur_span(),
-                            "simd_shuffle index {src_index} is out of bounds for 2 vectors of size {left_len}",
+                        throw_ub_format!(
+                            "`simd_shuffle_generic` index {src_index} is out-of-bounds for 2 vectors with length {dest_len}"
                         );
                     };
                     this.write_immediate(*val, &dest)?;
@@ -604,9 +611,8 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                         let right_idx = src_index.checked_sub(left_len).unwrap();
                         this.read_immediate(&this.project_index(&right, right_idx)?)?
                     } else {
-                        span_bug!(
-                            this.cur_span(),
-                            "simd_shuffle index {src_index} is out of bounds for 2 vectors of size {left_len}",
+                        throw_ub_format!(
+                            "`simd_shuffle` index {src_index} is out-of-bounds for 2 vectors with length {dest_len}"
                         );
                     };
                     this.write_immediate(*val, &dest)?;
@@ -726,6 +732,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         let left = left.to_scalar();
         let right = right.to_scalar();
         Ok(match float_ty {
+            FloatTy::F16 => unimplemented!("f16_f128"),
             FloatTy::F32 => {
                 let left = left.to_f32()?;
                 let right = right.to_f32()?;
@@ -746,6 +753,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                 let res = this.adjust_nan(res, &[left, right]);
                 Scalar::from_f64(res)
             }
+            FloatTy::F128 => unimplemented!("f16_f128"),
         })
     }
 }

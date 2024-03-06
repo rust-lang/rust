@@ -1,4 +1,4 @@
-// compile-flags: -Cmetadata=aux
+//@ compile-flags: -Cmetadata=aux
 
 pub trait Foo {
     #[doc(hidden)]

@@ -1,11 +1,11 @@
-// run-pass
+//@ run-pass
 #![allow(non_camel_case_types)]
 
-// ignore-emscripten
+//@ ignore-emscripten
 
 // Test that the simd_reduce_{op} intrinsics produce the correct results.
 
-#![feature(repr_simd, platform_intrinsics)]
+#![feature(repr_simd, intrinsics)]
 #[allow(non_camel_case_types)]
 
 #[repr(simd)]
@@ -24,15 +24,13 @@ struct f32x4(pub f32, pub f32, pub f32, pub f32);
 #[derive(Copy, Clone)]
 struct b8x4(pub i8, pub i8, pub i8, pub i8);
 
-extern "platform-intrinsic" {
+extern "rust-intrinsic" {
     fn simd_reduce_add_unordered<T, U>(x: T) -> U;
     fn simd_reduce_mul_unordered<T, U>(x: T) -> U;
     fn simd_reduce_add_ordered<T, U>(x: T, acc: U) -> U;
     fn simd_reduce_mul_ordered<T, U>(x: T, acc: U) -> U;
     fn simd_reduce_min<T, U>(x: T) -> U;
     fn simd_reduce_max<T, U>(x: T) -> U;
-    fn simd_reduce_min_nanless<T, U>(x: T) -> U;
-    fn simd_reduce_max_nanless<T, U>(x: T) -> U;
     fn simd_reduce_and<T, U>(x: T) -> U;
     fn simd_reduce_or<T, U>(x: T) -> U;
     fn simd_reduce_xor<T, U>(x: T) -> U;
@@ -126,10 +124,6 @@ fn main() {
         let r: f32 = simd_reduce_min(x);
         assert_eq!(r, -2_f32);
         let r: f32 = simd_reduce_max(x);
-        assert_eq!(r, 4_f32);
-        let r: f32 = simd_reduce_min_nanless(x);
-        assert_eq!(r, -2_f32);
-        let r: f32 = simd_reduce_max_nanless(x);
         assert_eq!(r, 4_f32);
     }
 

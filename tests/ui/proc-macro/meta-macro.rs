@@ -1,8 +1,8 @@
-// aux-build:make-macro.rs
-// aux-build:meta-macro.rs
-// edition:2018
-// compile-flags: -Z span-debug
-// run-pass
+//@ aux-build:make-macro.rs
+//@ aux-build:meta-macro.rs
+//@ edition:2018
+//@ compile-flags: -Z span-debug
+//@ run-pass
 
 #![no_std] // Don't load unnecessary hygiene information from std
 extern crate std;

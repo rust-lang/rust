@@ -3,8 +3,8 @@ use std::borrow::Cow;
 use rustc_ast::token::Token;
 use rustc_ast::{Path, Visibility};
 use rustc_errors::{
-    codes::*, AddToDiagnostic, Applicability, DiagCtxt, DiagnosticBuilder, IntoDiagnostic, Level,
-    SubdiagnosticMessage,
+    codes::*, AddToDiagnostic, Applicability, Diag, DiagCtxt, EmissionGuarantee, IntoDiagnostic,
+    Level, SubdiagMessageOp,
 };
 use rustc_macros::{Diagnostic, Subdiagnostic};
 use rustc_session::errors::ExprParenthesesNeeded;
@@ -558,14 +558,6 @@ pub(crate) struct CatchAfterTry {
 }
 
 #[derive(Diagnostic)]
-#[diag(parse_gen_fn)]
-#[help]
-pub(crate) struct GenFn {
-    #[primary_span]
-    pub span: Span,
-}
-
-#[derive(Diagnostic)]
 #[diag(parse_comma_after_base_struct)]
 #[note]
 pub(crate) struct CommaAfterBaseStruct {
@@ -1073,12 +1065,12 @@ pub(crate) struct ExpectedIdentifier {
     pub help_cannot_start_number: Option<HelpIdentifierStartsWithNumber>,
 }
 
-impl<'a> IntoDiagnostic<'a> for ExpectedIdentifier {
+impl<'a, G: EmissionGuarantee> IntoDiagnostic<'a, G> for ExpectedIdentifier {
     #[track_caller]
-    fn into_diagnostic(self, dcx: &'a DiagCtxt, level: Level) -> DiagnosticBuilder<'a> {
+    fn into_diagnostic(self, dcx: &'a DiagCtxt, level: Level) -> Diag<'a, G> {
         let token_descr = TokenDescription::from_token(&self.token);
 
-        let mut diag = DiagnosticBuilder::new(
+        let mut diag = Diag::new(
             dcx,
             level,
             match token_descr {
@@ -1133,12 +1125,12 @@ pub(crate) struct ExpectedSemi {
     pub sugg: ExpectedSemiSugg,
 }
 
-impl<'a> IntoDiagnostic<'a> for ExpectedSemi {
+impl<'a, G: EmissionGuarantee> IntoDiagnostic<'a, G> for ExpectedSemi {
     #[track_caller]
-    fn into_diagnostic(self, dcx: &'a DiagCtxt, level: Level) -> DiagnosticBuilder<'a> {
+    fn into_diagnostic(self, dcx: &'a DiagCtxt, level: Level) -> Diag<'a, G> {
         let token_descr = TokenDescription::from_token(&self.token);
 
-        let mut diag = DiagnosticBuilder::new(
+        let mut diag = Diag::new(
             dcx,
             level,
             match token_descr {
@@ -1475,10 +1467,11 @@ pub(crate) struct FnTraitMissingParen {
 }
 
 impl AddToDiagnostic for FnTraitMissingParen {
-    fn add_to_diagnostic_with<F>(self, diag: &mut rustc_errors::Diagnostic, _: F)
-    where
-        F: Fn(&mut rustc_errors::Diagnostic, SubdiagnosticMessage) -> SubdiagnosticMessage,
-    {
+    fn add_to_diagnostic_with<G: EmissionGuarantee, F: SubdiagMessageOp<G>>(
+        self,
+        diag: &mut Diag<'_, G>,
+        _: F,
+    ) {
         diag.span_label(self.span, crate::fluent_generated::parse_fn_trait_missing_paren);
         let applicability = if self.machine_applicable {
             Applicability::MachineApplicable
@@ -1586,6 +1579,15 @@ pub(crate) struct AsyncBlockIn2015 {
 pub(crate) struct AsyncMoveBlockIn2015 {
     #[primary_span]
     pub span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(parse_async_bound_modifier_in_2015)]
+pub(crate) struct AsyncBoundModifierIn2015 {
+    #[primary_span]
+    pub span: Span,
+    #[subdiagnostic]
+    pub help: HelpUseLatestEdition,
 }
 
 #[derive(Diagnostic)]
@@ -2416,6 +2418,18 @@ pub(crate) struct ExpectedCommaAfterPatternField {
 }
 
 #[derive(Diagnostic)]
+#[diag(parse_unexpected_expr_in_pat)]
+pub(crate) struct UnexpectedExpressionInPattern {
+    #[primary_span]
+    #[label]
+    pub span: Span,
+    /// Was a `RangePatternBound` expected?
+    pub is_bound: bool,
+    /// Was the unexpected expression a `MethodCallExpression`?
+    pub is_method_call: bool,
+}
+
+#[derive(Diagnostic)]
 #[diag(parse_unexpected_paren_in_range_pat)]
 pub(crate) struct UnexpectedParenInRangePat {
     #[primary_span]
@@ -2527,7 +2541,7 @@ pub enum HelpUseLatestEdition {
 impl HelpUseLatestEdition {
     pub fn new() -> Self {
         let edition = LATEST_STABLE_EDITION;
-        if std::env::var_os("CARGO").is_some() {
+        if rustc_session::utils::was_invoked_from_cargo() {
             Self::Cargo { edition }
         } else {
             Self::Standalone { edition }
@@ -2953,3 +2967,10 @@ pub(crate) struct ArrayIndexInOffsetOf(#[primary_span] pub Span);
 #[derive(Diagnostic)]
 #[diag(parse_invalid_offset_of)]
 pub(crate) struct InvalidOffsetOf(#[primary_span] pub Span);
+
+#[derive(Diagnostic)]
+#[diag(parse_async_impl)]
+pub(crate) struct AsyncImpl {
+    #[primary_span]
+    pub span: Span,
+}

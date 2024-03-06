@@ -1,7 +1,7 @@
-// run-pass
-// aux-build:weak-lang-items.rs
+//@ run-pass
+//@ aux-build:weak-lang-items.rs
 
-// pretty-expanded FIXME #23616
+//@ pretty-expanded FIXME #23616
 
 extern crate weak_lang_items as other;
 

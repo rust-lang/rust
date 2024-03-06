@@ -1,4 +1,4 @@
-// check-fail
+//@ check-fail
 
 trait Trait {
     type Type;

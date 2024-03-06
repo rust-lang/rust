@@ -1,8 +1,8 @@
-// run-pass
+//@ run-pass
 
 #![allow(stable_features)]
-// compile-flags:-C target-feature=-crt-static -Z unstable-options
-// ignore-musl - requires changing the linker which is hard
+//@ compile-flags:-C target-feature=-crt-static -Z unstable-options
+//@ ignore-musl - requires changing the linker which is hard
 
 #![feature(cfg_target_feature)]
 

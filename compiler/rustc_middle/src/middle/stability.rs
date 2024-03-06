@@ -9,19 +9,19 @@ use rustc_attr::{
     self as attr, ConstStability, DefaultBodyStability, DeprecatedSince, Deprecation, Stability,
 };
 use rustc_data_structures::unord::UnordMap;
-use rustc_errors::{Applicability, Diagnostic};
+use rustc_errors::{Applicability, Diag};
 use rustc_feature::GateIssue;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{DefId, LocalDefId, LocalDefIdMap};
 use rustc_hir::{self as hir, HirId};
 use rustc_middle::ty::print::with_no_trimmed_paths;
 use rustc_session::lint::builtin::{DEPRECATED, DEPRECATED_IN_FUTURE, SOFT_UNSTABLE};
-use rustc_session::lint::{BuiltinLintDiagnostics, Level, Lint, LintBuffer};
+use rustc_session::lint::{BuiltinLintDiag, Level, Lint, LintBuffer};
 use rustc_session::parse::feature_err_issue;
 use rustc_session::Session;
 use rustc_span::symbol::{sym, Symbol};
 use rustc_span::Span;
-use std::num::NonZeroU32;
+use std::num::NonZero;
 
 #[derive(PartialEq, Clone, Copy, Debug)]
 pub enum StabilityLevel {
@@ -102,7 +102,7 @@ pub fn report_unstable(
     sess: &Session,
     feature: Symbol,
     reason: Option<Symbol>,
-    issue: Option<NonZeroU32>,
+    issue: Option<NonZero<u32>>,
     suggestion: Option<(Span, String, String, Applicability)>,
     is_soft: bool,
     span: Span,
@@ -125,7 +125,7 @@ pub fn report_unstable(
 }
 
 pub fn deprecation_suggestion(
-    diag: &mut Diagnostic,
+    diag: &mut Diag<'_, ()>,
     kind: &str,
     suggestion: Option<Symbol>,
     span: Span,
@@ -199,7 +199,7 @@ pub fn early_report_deprecation(
         return;
     }
 
-    let diag = BuiltinLintDiagnostics::DeprecatedMacro(suggestion, span);
+    let diag = BuiltinLintDiag::DeprecatedMacro(suggestion, span);
     lint_buffer.buffer_lint_with_diagnostic(lint, node_id, span, message, diag);
 }
 
@@ -235,7 +235,7 @@ pub enum EvalResult {
     Deny {
         feature: Symbol,
         reason: Option<Symbol>,
-        issue: Option<NonZeroU32>,
+        issue: Option<NonZero<u32>>,
         suggestion: Option<(Span, String, String, Applicability)>,
         is_soft: bool,
     },
@@ -269,7 +269,7 @@ fn suggestion_for_allocator_api(
     if feature == sym::allocator_api {
         if let Some(trait_) = tcx.opt_parent(def_id) {
             if tcx.is_diagnostic_item(sym::Vec, trait_) {
-                let sm = tcx.sess.parse_sess.source_map();
+                let sm = tcx.sess.psess.source_map();
                 let inner_types = sm.span_extend_to_prev_char(span, '<', true);
                 if let Ok(snippet) = sm.span_to_snippet(inner_types) {
                     return Some((
@@ -433,7 +433,7 @@ impl<'tcx> TyCtxt<'tcx> {
                 // the `-Z force-unstable-if-unmarked` flag present (we're
                 // compiling a compiler crate), then let this missing feature
                 // annotation slide.
-                if feature == sym::rustc_private && issue == NonZeroU32::new(27812) {
+                if feature == sym::rustc_private && issue == NonZero::new(27812) {
                     if self.sess.opts.unstable_opts.force_unstable_if_unmarked {
                         return EvalResult::Allow;
                     }

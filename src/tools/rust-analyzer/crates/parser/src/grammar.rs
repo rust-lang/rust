@@ -30,12 +30,12 @@
 
 mod attributes;
 mod expressions;
+mod generic_args;
+mod generic_params;
 mod items;
 mod params;
 mod paths;
 mod patterns;
-mod generic_args;
-mod generic_params;
 mod types;
 
 use crate::{
@@ -393,11 +393,26 @@ fn delimited(
     bra: SyntaxKind,
     ket: SyntaxKind,
     delim: SyntaxKind,
+    unexpected_delim_message: impl Fn() -> String,
     first_set: TokenSet,
     mut parser: impl FnMut(&mut Parser<'_>) -> bool,
 ) {
     p.bump(bra);
     while !p.at(ket) && !p.at(EOF) {
+        if p.at(delim) {
+            // Recover if an argument is missing and only got a delimiter,
+            // e.g. `(a, , b)`.
+
+            // Wrap the erroneous delimiter in an error node so that fixup logic gets rid of it.
+            // FIXME: Ideally this should be handled in fixup in a structured way, but our list
+            // nodes currently have no concept of a missing node between two delimiters.
+            // So doing it this way is easier.
+            let m = p.start();
+            p.error(unexpected_delim_message());
+            p.bump(delim);
+            m.complete(p, ERROR);
+            continue;
+        }
         if !parser(p) {
             break;
         }

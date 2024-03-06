@@ -1,5 +1,5 @@
-// edition:2018
-// compile-flags: --crate-version 1.0.0
+//@ edition:2018
+//@ compile-flags: --crate-version 1.0.0
 
 // @is "$.crate_version" \"1.0.0\"
 // @has "$.index[*][?(@.name=='nested')].inner.module"

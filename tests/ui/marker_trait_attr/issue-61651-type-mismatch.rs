@@ -1,4 +1,4 @@
-// check-pass
+//@ check-pass
 // Regression test for issue #61651
 // Verifies that we don't try to constrain inference
 // variables due to the presence of multiple applicable

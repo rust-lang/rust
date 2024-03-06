@@ -1,4 +1,4 @@
-// run-rustfix
+//@ run-rustfix
 
 // In this regression test for #67146, we check that the
 // negative outlives bound `!'a` is rejected by the parser.

@@ -7,8 +7,8 @@
 // encountering a set of obligations like `?T: Foo` and `Trait::Projection =
 // ?T`. In the code below, these are `R: Bar` and `Fn::Output = R`.
 //
-// revisions: nofallback fallback
-// check-pass
+//@ revisions: nofallback fallback
+//@ check-pass
 
 #![cfg_attr(fallback, feature(never_type_fallback))]
 

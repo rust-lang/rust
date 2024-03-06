@@ -4,7 +4,8 @@
 #![allow(
     clippy::must_use_candidate,
     clippy::missing_panics_doc,
-    rustc::untranslatable_diagnostic_trivial
+    rustc::diagnostic_outside_of_impl,
+    rustc::untranslatable_diagnostic,
 )]
 
 extern crate rustc_ast;

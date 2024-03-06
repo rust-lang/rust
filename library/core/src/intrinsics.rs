@@ -44,6 +44,15 @@
 //! * Sequentially consistent - sequentially consistent operations are
 //!   guaranteed to happen in order. This is the standard mode for working
 //!   with atomic types and is equivalent to Java's `volatile`.
+//!
+//! # Unwinding
+//!
+//! Rust intrinsics may, in general, unwind. If an intrinsic can never unwind, add the
+//! `#[rustc_nounwind]` attribute so that the compiler can make use of this fact.
+//!
+//! However, even for intrinsics that may unwind, rustc assumes that a Rust intrinsics will never
+//! initiate a foreign (non-Rust) unwind, and thus for panic=abort we can always assume that these
+//! intrinsics cannot unwind.
 
 #![unstable(
     feature = "core_intrinsics",
@@ -56,7 +65,7 @@
 
 use crate::marker::DiscriminantKind;
 use crate::marker::Tuple;
-use crate::mem;
+use crate::mem::align_of;
 
 pub mod mir;
 pub mod simd;
@@ -74,6 +83,9 @@ pub unsafe fn drop_in_place<T: ?Sized>(to_drop: *mut T) {
     // SAFETY: see `ptr::drop_in_place`
     unsafe { crate::ptr::drop_in_place(to_drop) }
 }
+
+#[cfg(bootstrap)]
+pub use self::r#try as catch_unwind;
 
 extern "rust-intrinsic" {
     // N.B., these intrinsics take raw pointers because they mutate aliased
@@ -689,6 +701,7 @@ extern "rust-intrinsic" {
     /// The stabilized version of this intrinsic is available on the
     /// [`atomic`] signed integer types via the `fetch_min` method by passing
     /// [`Ordering::AcqRel`] as the `order`. For example, [`AtomicI32::fetch_min`].
+    #[rustc_nounwind]
     pub fn atomic_min_acqrel<T: Copy>(dst: *mut T, src: T) -> T;
     /// Minimum with the current value using a signed comparison.
     ///
@@ -937,52 +950,71 @@ extern "rust-intrinsic" {
     #[rustc_nounwind]
     pub fn unreachable() -> !;
 
-    /// Informs the optimizer that a condition is always true.
-    /// If the condition is false, the behavior is undefined.
-    ///
-    /// No code is generated for this intrinsic, but the optimizer will try
-    /// to preserve it (and its condition) between passes, which may interfere
-    /// with optimization of surrounding code and reduce performance. It should
-    /// not be used if the invariant can be discovered by the optimizer on its
-    /// own, or if it does not enable any significant optimizations.
-    ///
-    /// This intrinsic does not have a stable counterpart.
-    #[rustc_const_stable(feature = "const_assume", since = "CURRENT_RUSTC_VERSION")]
-    #[rustc_nounwind]
-    pub fn assume(b: bool);
+}
 
-    /// Hints to the compiler that branch condition is likely to be true.
-    /// Returns the value passed to it.
-    ///
-    /// Any use other than with `if` statements will probably not have an effect.
-    ///
-    /// Note that, unlike most intrinsics, this is safe to call;
-    /// it does not require an `unsafe` block.
-    /// Therefore, implementations must not require the user to uphold
-    /// any safety invariants.
-    ///
-    /// This intrinsic does not have a stable counterpart.
-    #[rustc_const_unstable(feature = "const_likely", issue = "none")]
-    #[rustc_safe_intrinsic]
-    #[rustc_nounwind]
-    pub fn likely(b: bool) -> bool;
+/// Informs the optimizer that a condition is always true.
+/// If the condition is false, the behavior is undefined.
+///
+/// No code is generated for this intrinsic, but the optimizer will try
+/// to preserve it (and its condition) between passes, which may interfere
+/// with optimization of surrounding code and reduce performance. It should
+/// not be used if the invariant can be discovered by the optimizer on its
+/// own, or if it does not enable any significant optimizations.
+///
+/// This intrinsic does not have a stable counterpart.
+#[rustc_const_stable(feature = "const_assume", since = "1.77.0")]
+#[rustc_nounwind]
+#[unstable(feature = "core_intrinsics", issue = "none")]
+#[cfg_attr(not(bootstrap), rustc_intrinsic)]
+#[cfg_attr(bootstrap, inline)]
+pub const unsafe fn assume(b: bool) {
+    if !b {
+        // SAFETY: the caller must guarantee the argument is never `false`
+        unsafe { unreachable() }
+    }
+}
 
-    /// Hints to the compiler that branch condition is likely to be false.
-    /// Returns the value passed to it.
-    ///
-    /// Any use other than with `if` statements will probably not have an effect.
-    ///
-    /// Note that, unlike most intrinsics, this is safe to call;
-    /// it does not require an `unsafe` block.
-    /// Therefore, implementations must not require the user to uphold
-    /// any safety invariants.
-    ///
-    /// This intrinsic does not have a stable counterpart.
-    #[rustc_const_unstable(feature = "const_likely", issue = "none")]
-    #[rustc_safe_intrinsic]
-    #[rustc_nounwind]
-    pub fn unlikely(b: bool) -> bool;
+/// Hints to the compiler that branch condition is likely to be true.
+/// Returns the value passed to it.
+///
+/// Any use other than with `if` statements will probably not have an effect.
+///
+/// Note that, unlike most intrinsics, this is safe to call;
+/// it does not require an `unsafe` block.
+/// Therefore, implementations must not require the user to uphold
+/// any safety invariants.
+///
+/// This intrinsic does not have a stable counterpart.
+#[rustc_const_unstable(feature = "const_likely", issue = "none")]
+#[unstable(feature = "core_intrinsics", issue = "none")]
+#[cfg_attr(not(bootstrap), rustc_intrinsic)]
+#[rustc_nounwind]
+#[cfg_attr(bootstrap, inline)]
+pub const fn likely(b: bool) -> bool {
+    b
+}
 
+/// Hints to the compiler that branch condition is likely to be false.
+/// Returns the value passed to it.
+///
+/// Any use other than with `if` statements will probably not have an effect.
+///
+/// Note that, unlike most intrinsics, this is safe to call;
+/// it does not require an `unsafe` block.
+/// Therefore, implementations must not require the user to uphold
+/// any safety invariants.
+///
+/// This intrinsic does not have a stable counterpart.
+#[rustc_const_unstable(feature = "const_likely", issue = "none")]
+#[unstable(feature = "core_intrinsics", issue = "none")]
+#[cfg_attr(not(bootstrap), rustc_intrinsic)]
+#[rustc_nounwind]
+#[cfg_attr(bootstrap, inline)]
+pub const fn unlikely(b: bool) -> bool {
+    b
+}
+
+extern "rust-intrinsic" {
     /// Executes a breakpoint trap, for inspection by a debugger.
     ///
     /// This intrinsic does not have a stable counterpart.
@@ -1027,7 +1059,7 @@ extern "rust-intrinsic" {
 
     /// The size of the referenced value in bytes.
     ///
-    /// The stabilized version of this intrinsic is [`mem::size_of_val`].
+    /// The stabilized version of this intrinsic is [`crate::mem::size_of_val`].
     #[rustc_const_unstable(feature = "const_size_of_val", issue = "46571")]
     #[rustc_nounwind]
     pub fn size_of_val<T: ?Sized>(_: *const T) -> usize;
@@ -1107,7 +1139,7 @@ extern "rust-intrinsic" {
 
     /// Moves a value out of scope without running drop glue.
     ///
-    /// This exists solely for [`mem::forget_unsized`]; normal `forget` uses
+    /// This exists solely for [`crate::mem::forget_unsized`]; normal `forget` uses
     /// `ManuallyDrop` instead.
     ///
     /// Note that, unlike most intrinsics, this is safe to call;
@@ -1139,7 +1171,7 @@ extern "rust-intrinsic" {
     ///
     /// Transmuting pointers *to* integers in a `const` context is [undefined behavior][ub],
     /// unless the pointer was originally created *from* an integer.
-    /// (That includes this function specifically, integer-to-pointer casts, and helpers like [`invalid`][crate::ptr::invalid],
+    /// (That includes this function specifically, integer-to-pointer casts, and helpers like [`invalid`][crate::ptr::dangling],
     /// but also semantically-equivalent conversions such as punning through `repr(C)` union fields.)
     /// Any attempt to use the resulting value for integer operations will abort const-evaluation.
     /// (And even outside `const`, such transmutation is touching on many unspecified aspects of the
@@ -1233,7 +1265,7 @@ extern "rust-intrinsic" {
     /// Depending on what the code is doing, the following alternatives are preferable to
     /// pointer-to-integer transmutation:
     /// - If the code just wants to store data of arbitrary type in some buffer and needs to pick a
-    ///   type for that buffer, it can use [`MaybeUninit`][mem::MaybeUninit].
+    ///   type for that buffer, it can use [`MaybeUninit`][crate::mem::MaybeUninit].
     /// - If the code actually wants to work on the address the pointer points to, it can use `as`
     ///   casts or [`ptr.addr()`][pointer::addr].
     ///
@@ -1882,6 +1914,46 @@ extern "rust-intrinsic" {
     #[rustc_nounwind]
     pub fn frem_fast<T: Copy>(a: T, b: T) -> T;
 
+    /// Float addition that allows optimizations based on algebraic rules.
+    ///
+    /// This intrinsic does not have a stable counterpart.
+    #[rustc_nounwind]
+    #[rustc_safe_intrinsic]
+    #[cfg(not(bootstrap))]
+    pub fn fadd_algebraic<T: Copy>(a: T, b: T) -> T;
+
+    /// Float subtraction that allows optimizations based on algebraic rules.
+    ///
+    /// This intrinsic does not have a stable counterpart.
+    #[rustc_nounwind]
+    #[rustc_safe_intrinsic]
+    #[cfg(not(bootstrap))]
+    pub fn fsub_algebraic<T: Copy>(a: T, b: T) -> T;
+
+    /// Float multiplication that allows optimizations based on algebraic rules.
+    ///
+    /// This intrinsic does not have a stable counterpart.
+    #[rustc_nounwind]
+    #[rustc_safe_intrinsic]
+    #[cfg(not(bootstrap))]
+    pub fn fmul_algebraic<T: Copy>(a: T, b: T) -> T;
+
+    /// Float division that allows optimizations based on algebraic rules.
+    ///
+    /// This intrinsic does not have a stable counterpart.
+    #[rustc_nounwind]
+    #[rustc_safe_intrinsic]
+    #[cfg(not(bootstrap))]
+    pub fn fdiv_algebraic<T: Copy>(a: T, b: T) -> T;
+
+    /// Float remainder that allows optimizations based on algebraic rules.
+    ///
+    /// This intrinsic does not have a stable counterpart.
+    #[rustc_nounwind]
+    #[rustc_safe_intrinsic]
+    #[cfg(not(bootstrap))]
+    pub fn frem_algebraic<T: Copy>(a: T, b: T) -> T;
+
     /// Convert with LLVM’s fptoui/fptosi, which may return undef for values out of range
     /// (<https://github.com/rust-lang/rust/issues/10184>)
     ///
@@ -2317,22 +2389,30 @@ extern "rust-intrinsic" {
     /// Therefore, implementations must not require the user to uphold
     /// any safety invariants.
     ///
-    /// The to-be-stabilized version of this intrinsic is [`mem::variant_count`].
+    /// The to-be-stabilized version of this intrinsic is [`crate::mem::variant_count`].
     #[rustc_const_unstable(feature = "variant_count", issue = "73662")]
     #[rustc_safe_intrinsic]
     #[rustc_nounwind]
     pub fn variant_count<T>() -> usize;
 
-    /// Rust's "try catch" construct which invokes the function pointer `try_fn`
-    /// with the data pointer `data`.
-    ///
-    /// The third argument is a function called if a panic occurs. This function
-    /// takes the data pointer and a pointer to the target-specific exception
-    /// object that was caught. For more information see the compiler's
-    /// source as well as std's catch implementation.
+    /// Rust's "try catch" construct for unwinding. Invokes the function pointer `try_fn` with the
+    /// data pointer `data`, and calls `catch_fn` if unwinding occurs while `try_fn` runs.
     ///
     /// `catch_fn` must not unwind.
+    ///
+    /// The third argument is a function called if an unwind occurs (both Rust unwinds and foreign
+    /// unwinds). This function takes the data pointer and a pointer to the target-specific
+    /// exception object that was caught. For more information, see the compiler's source as well as
+    /// std's `catch_unwind` implementation.
+    ///
+    /// The stable version of this intrinsic is `std::panic::catch_unwind`.
     #[rustc_nounwind]
+    #[cfg(not(bootstrap))]
+    pub fn catch_unwind(try_fn: fn(*mut u8), data: *mut u8, catch_fn: fn(*mut u8, *mut u8)) -> i32;
+
+    /// For bootstrap only, see `catch_unwind`.
+    #[rustc_nounwind]
+    #[cfg(bootstrap)]
     pub fn r#try(try_fn: fn(*mut u8), data: *mut u8, catch_fn: fn(*mut u8, *mut u8)) -> i32;
 
     /// Emits a `!nontemporal` store according to LLVM (see their docs).
@@ -2367,32 +2447,6 @@ extern "rust-intrinsic" {
     #[rustc_safe_intrinsic]
     #[rustc_nounwind]
     pub fn ptr_guaranteed_cmp<T>(ptr: *const T, other: *const T) -> u8;
-
-    /// Allocates a block of memory at compile time.
-    /// At runtime, just returns a null pointer.
-    ///
-    /// # Safety
-    ///
-    /// - The `align` argument must be a power of two.
-    ///    - At compile time, a compile error occurs if this constraint is violated.
-    ///    - At runtime, it is not checked.
-    #[rustc_const_unstable(feature = "const_heap", issue = "79597")]
-    #[rustc_nounwind]
-    pub fn const_allocate(size: usize, align: usize) -> *mut u8;
-
-    /// Deallocates a memory which allocated by `intrinsics::const_allocate` at compile time.
-    /// At runtime, does nothing.
-    ///
-    /// # Safety
-    ///
-    /// - The `align` argument must be a power of two.
-    ///    - At compile time, a compile error occurs if this constraint is violated.
-    ///    - At runtime, it is not checked.
-    /// - If the `ptr` is created in an another const, this intrinsic doesn't deallocate it.
-    /// - If the `ptr` is pointing to a local variable, this intrinsic doesn't deallocate it.
-    #[rustc_const_unstable(feature = "const_heap", issue = "79597")]
-    #[rustc_nounwind]
-    pub fn const_deallocate(ptr: *mut u8, size: usize, align: usize);
 
     /// Determines whether the raw bytes of the two values are equal.
     ///
@@ -2445,9 +2499,8 @@ extern "rust-intrinsic" {
     #[rustc_nounwind]
     pub fn black_box<T>(dummy: T) -> T;
 
-    /// `ptr` must point to a vtable.
-    /// The intrinsic will return the size stored in that vtable.
     #[rustc_nounwind]
+    #[cfg(bootstrap)]
     pub fn vtable_size(ptr: *const ()) -> usize;
 
     /// `ptr` must point to a vtable.
@@ -2461,6 +2514,8 @@ extern "rust-intrinsic" {
     /// intrinsic will be replaced with a call to `called_in_const`. It gets
     /// replaced with a call to `called_at_rt` otherwise.
     ///
+    /// This function is safe to call, but note the stability concerns below.
+    ///
     /// # Type Requirements
     ///
     /// The two functions must be both function items. They cannot be function
@@ -2470,45 +2525,47 @@ extern "rust-intrinsic" {
     /// the two functions, therefore, both functions must accept the same type of
     /// arguments. Both functions must return RET.
     ///
-    /// # Safety
+    /// # Stability concerns
     ///
-    /// The two functions must behave observably equivalent. Safe code in other
-    /// crates may assume that calling a `const fn` at compile-time and at run-time
-    /// produces the same result. A function that produces a different result when
-    /// evaluated at run-time, or has any other observable side-effects, is
-    /// *unsound*.
+    /// Rust has not yet decided that `const fn` are allowed to tell whether
+    /// they run at compile-time or at runtime. Therefore, when using this
+    /// intrinsic anywhere that can be reached from stable, it is crucial that
+    /// the end-to-end behavior of the stable `const fn` is the same for both
+    /// modes of execution. (Here, Undefined Behavior is considered "the same"
+    /// as any other behavior, so if the function exhibits UB at runtime then
+    /// it may do whatever it wants at compile-time.)
     ///
     /// Here is an example of how this could cause a problem:
     /// ```no_run
     /// #![feature(const_eval_select)]
     /// #![feature(core_intrinsics)]
     /// # #![allow(internal_features)]
-    /// use std::hint::unreachable_unchecked;
+    /// # #![cfg_attr(bootstrap, allow(unused))]
     /// use std::intrinsics::const_eval_select;
     ///
-    /// // Crate A
+    /// // Standard library
+    /// # #[cfg(not(bootstrap))]
     /// pub const fn inconsistent() -> i32 {
     ///     fn runtime() -> i32 { 1 }
     ///     const fn compiletime() -> i32 { 2 }
     ///
-    ///     unsafe {
-    //          // ⚠ This code violates the required equivalence of `compiletime`
-    ///         // and `runtime`.
-    ///         const_eval_select((), compiletime, runtime)
-    ///     }
+    //      // ⚠ This code violates the required equivalence of `compiletime`
+    ///     // and `runtime`.
+    ///     const_eval_select((), compiletime, runtime)
     /// }
+    /// # #[cfg(bootstrap)]
+    /// # pub const fn inconsistent() -> i32 { 0 }
     ///
-    /// // Crate B
+    /// // User Crate
     /// const X: i32 = inconsistent();
     /// let x = inconsistent();
-    /// if x != X { unsafe { unreachable_unchecked(); }}
+    /// assert_eq!(x, X);
     /// ```
     ///
-    /// This code causes Undefined Behavior when being run, since the
-    /// `unreachable_unchecked` is actually being reached. The bug is in *crate A*,
-    /// which violates the principle that a `const fn` must behave the same at
-    /// compile-time and at run-time. The unsafe code in crate B is fine.
+    /// Currently such an assertion would always succeed; until Rust decides
+    /// otherwise, that principle should not be violated.
     #[rustc_const_unstable(feature = "const_eval_select", issue = "none")]
+    #[cfg_attr(not(bootstrap), rustc_safe_intrinsic)]
     pub fn const_eval_select<ARG: Tuple, F, G, RET>(
         arg: ARG,
         called_in_const: F,
@@ -2517,66 +2574,125 @@ extern "rust-intrinsic" {
     where
         G: FnOnce<ARG, Output = RET>,
         F: FnOnce<ARG, Output = RET>;
-
-    /// Returns whether the argument's value is statically known at
-    /// compile-time.
-    ///
-    /// This is useful when there is a way of writing the code that will
-    /// be *faster* when some variables have known values, but *slower*
-    /// in the general case: an `if is_val_statically_known(var)` can be used
-    /// to select between these two variants. The `if` will be optimized away
-    /// and only the desired branch remains.
-    ///
-    /// Formally speaking, this function non-deterministically returns `true`
-    /// or `false`, and the caller has to ensure sound behavior for both cases.
-    /// In other words, the following code has *Undefined Behavior*:
-    ///
-    /// ```no_run
-    /// #![feature(is_val_statically_known)]
-    /// #![feature(core_intrinsics)]
-    /// # #![allow(internal_features)]
-    /// use std::hint::unreachable_unchecked;
-    /// use std::intrinsics::is_val_statically_known;
-    ///
-    /// unsafe {
-    ///    if !is_val_statically_known(0) { unreachable_unchecked(); }
-    /// }
-    /// ```
-    ///
-    /// This also means that the following code's behavior is unspecified; it
-    /// may panic, or it may not:
-    ///
-    /// ```no_run
-    /// #![feature(is_val_statically_known)]
-    /// #![feature(core_intrinsics)]
-    /// # #![allow(internal_features)]
-    /// use std::intrinsics::is_val_statically_known;
-    ///
-    /// unsafe {
-    ///     assert_eq!(is_val_statically_known(0), is_val_statically_known(0));
-    /// }
-    /// ```
-    ///
-    /// Unsafe code may not rely on `is_val_statically_known` returning any
-    /// particular value, ever. However, the compiler will generally make it
-    /// return `true` only if the value of the argument is actually known.
-    ///
-    /// When calling this in a `const fn`, both paths must be semantically
-    /// equivalent, that is, the result of the `true` branch and the `false`
-    /// branch must return the same value and have the same side-effects *no
-    /// matter what*.
-    #[rustc_const_unstable(feature = "is_val_statically_known", issue = "none")]
-    #[rustc_nounwind]
-    #[cfg(not(bootstrap))]
-    pub fn is_val_statically_known<T: Copy>(arg: T) -> bool;
 }
 
-// FIXME: Seems using `unstable` here completely ignores `rustc_allow_const_fn_unstable`
-// and thus compiling stage0 core doesn't work.
-#[rustc_const_stable(feature = "is_val_statically_known", since = "0.0.0")]
-#[cfg(bootstrap)]
-pub const unsafe fn is_val_statically_known<T: Copy>(_arg: T) -> bool {
+/// Returns whether the argument's value is statically known at
+/// compile-time.
+///
+/// This is useful when there is a way of writing the code that will
+/// be *faster* when some variables have known values, but *slower*
+/// in the general case: an `if is_val_statically_known(var)` can be used
+/// to select between these two variants. The `if` will be optimized away
+/// and only the desired branch remains.
+///
+/// Formally speaking, this function non-deterministically returns `true`
+/// or `false`, and the caller has to ensure sound behavior for both cases.
+/// In other words, the following code has *Undefined Behavior*:
+///
+/// ```no_run
+/// #![feature(is_val_statically_known)]
+/// #![feature(core_intrinsics)]
+/// # #![allow(internal_features)]
+/// use std::hint::unreachable_unchecked;
+/// use std::intrinsics::is_val_statically_known;
+///
+/// if !is_val_statically_known(0) { unsafe { unreachable_unchecked(); } }
+/// ```
+///
+/// This also means that the following code's behavior is unspecified; it
+/// may panic, or it may not:
+///
+/// ```no_run
+/// #![feature(is_val_statically_known)]
+/// #![feature(core_intrinsics)]
+/// # #![allow(internal_features)]
+/// use std::intrinsics::is_val_statically_known;
+///
+/// assert_eq!(is_val_statically_known(0), is_val_statically_known(0));
+/// ```
+///
+/// Unsafe code may not rely on `is_val_statically_known` returning any
+/// particular value, ever. However, the compiler will generally make it
+/// return `true` only if the value of the argument is actually known.
+///
+/// When calling this in a `const fn`, both paths must be semantically
+/// equivalent, that is, the result of the `true` branch and the `false`
+/// branch must return the same value and have the same side-effects *no
+/// matter what*.
+#[rustc_const_unstable(feature = "is_val_statically_known", issue = "none")]
+#[rustc_nounwind]
+#[unstable(feature = "core_intrinsics", issue = "none")]
+#[cfg_attr(not(bootstrap), rustc_intrinsic)]
+#[cfg_attr(bootstrap, inline)]
+pub const fn is_val_statically_known<T: Copy>(_arg: T) -> bool {
     false
+}
+
+/// Returns the value of `cfg!(debug_assertions)`, but after monomorphization instead of in
+/// macro expansion.
+///
+/// This always returns `false` in const eval and Miri. The interpreter provides better
+/// diagnostics than the checks that this is used to implement. However, this means
+/// you should only be using this intrinsic to guard requirements that, if violated,
+/// immediately lead to UB. Otherwise, const-eval and Miri will miss out on those
+/// checks entirely.
+///
+/// Since this is evaluated after monomorphization, branching on this value can be used to
+/// implement debug assertions that are included in the precompiled standard library, but can
+/// be optimized out by builds that monomorphize the standard library code with debug
+/// assertions disabled. This intrinsic is primarily used by [`assert_unsafe_precondition`].
+#[rustc_const_unstable(feature = "delayed_debug_assertions", issue = "none")]
+#[unstable(feature = "core_intrinsics", issue = "none")]
+#[inline(always)]
+#[cfg_attr(not(bootstrap), rustc_intrinsic)]
+pub(crate) const fn debug_assertions() -> bool {
+    cfg!(debug_assertions)
+}
+
+/// Allocates a block of memory at compile time.
+/// At runtime, just returns a null pointer.
+///
+/// # Safety
+///
+/// - The `align` argument must be a power of two.
+///    - At compile time, a compile error occurs if this constraint is violated.
+///    - At runtime, it is not checked.
+#[rustc_const_unstable(feature = "const_heap", issue = "79597")]
+#[unstable(feature = "core_intrinsics", issue = "none")]
+#[rustc_nounwind]
+#[cfg_attr(not(bootstrap), rustc_intrinsic)]
+#[cfg_attr(bootstrap, inline)]
+pub const unsafe fn const_allocate(_size: usize, _align: usize) -> *mut u8 {
+    // const eval overrides this function, but runtime code should always just return null pointers.
+    crate::ptr::null_mut()
+}
+
+/// Deallocates a memory which allocated by `intrinsics::const_allocate` at compile time.
+/// At runtime, does nothing.
+///
+/// # Safety
+///
+/// - The `align` argument must be a power of two.
+///    - At compile time, a compile error occurs if this constraint is violated.
+///    - At runtime, it is not checked.
+/// - If the `ptr` is created in an another const, this intrinsic doesn't deallocate it.
+/// - If the `ptr` is pointing to a local variable, this intrinsic doesn't deallocate it.
+#[rustc_const_unstable(feature = "const_heap", issue = "79597")]
+#[unstable(feature = "core_intrinsics", issue = "none")]
+#[rustc_nounwind]
+#[cfg_attr(not(bootstrap), rustc_intrinsic)]
+#[cfg_attr(bootstrap, inline)]
+pub const unsafe fn const_deallocate(_ptr: *mut u8, _size: usize, _align: usize) {}
+
+/// `ptr` must point to a vtable.
+/// The intrinsic will return the size stored in that vtable.
+#[rustc_nounwind]
+#[unstable(feature = "core_intrinsics", issue = "none")]
+#[cfg_attr(not(bootstrap), rustc_intrinsic)]
+#[cfg_attr(not(bootstrap), rustc_intrinsic_must_be_overridden)]
+#[cfg(not(bootstrap))]
+pub unsafe fn vtable_size(_ptr: *const ()) -> usize {
+    unreachable!()
 }
 
 // Some functions are defined here because they accidentally got made
@@ -2587,10 +2703,27 @@ pub const unsafe fn is_val_statically_known<T: Copy>(_arg: T) -> bool {
 /// Check that the preconditions of an unsafe function are followed, if debug_assertions are on,
 /// and only at runtime.
 ///
-/// This macro should be called as `assert_unsafe_precondition!([Generics](name: Type) => Expression)`
-/// where the names specified will be moved into the macro as captured variables, and defines an item
-/// to call `const_eval_select` on. The tokens inside the square brackets are used to denote generics
-/// for the function declarations and can be omitted if there is no generics.
+/// This macro should be called as
+/// `assert_unsafe_precondition!((expr => name: Type, expr => name: Type) => Expression)`
+/// where each `expr` will be evaluated and passed in as function argument `name: Type`. Then all
+/// those arguments are passed to a function via [`const_eval_select`].
+///
+/// These checks are behind a condition which is evaluated at codegen time, not expansion time like
+/// [`debug_assert`]. This means that a standard library built with optimizations and debug
+/// assertions disabled will have these checks optimized out of its monomorphizations, but if a
+/// caller of the standard library has debug assertions enabled and monomorphizes an expansion of
+/// this macro, that monomorphization will contain the check.
+///
+/// Since these checks cannot be optimized out in MIR, some care must be taken in both call and
+/// implementation to mitigate their compile-time overhead. The runtime function that we
+/// [`const_eval_select`] to is monomorphic, `#[inline(never)]`, and `#[rustc_nounwind]`. That
+/// combination of properties ensures that the code for the checks is only compiled once, and has a
+/// minimal impact on the caller's code size.
+///
+/// Callers should also avoid introducing any other `let` bindings or any code outside this macro in
+/// order to call it. Since the precompiled standard library is built with full debuginfo and these
+/// variables cannot be optimized out in MIR, an innocent-looking `let` can produce enough
+/// debuginfo to have a measurable compile-time impact on debug builds.
 ///
 /// # Safety
 ///
@@ -2604,26 +2737,42 @@ pub const unsafe fn is_val_statically_known<T: Copy>(_arg: T) -> bool {
 ///
 /// So in a sense it is UB if this macro is useful, but we expect callers of `unsafe fn` to make
 /// the occasional mistake, and this check should help them figure things out.
-#[allow_internal_unstable(const_eval_select)] // permit this to be called in stably-const fn
+#[allow_internal_unstable(const_eval_select, delayed_debug_assertions)] // permit this to be called in stably-const fn
 macro_rules! assert_unsafe_precondition {
-    ($name:expr, $([$($tt:tt)*])?($($i:ident:$ty:ty),*$(,)?) => $e:expr $(,)?) => {
-        if cfg!(debug_assertions) {
-            // allow non_snake_case to allow capturing const generics
-            #[allow(non_snake_case)]
-            #[inline(always)]
-            fn runtime$(<$($tt)*>)?($($i:$ty),*) {
+    ($message:expr, ($($name:ident:$ty:ty = $arg:expr),*$(,)?) => $e:expr $(,)?) => {
+        {
+            // #[cfg(bootstrap)] (this comment)
+            // When the standard library is compiled with debug assertions, we want the check to inline for better performance.
+            // This is important when working on the compiler, which is compiled with debug assertions locally.
+            // When not compiled with debug assertions (so the precompiled std) we outline the check to minimize the compile
+            // time impact when debug assertions are disabled.
+            // The proper solution to this is the `#[rustc_no_mir_inline]` below, but we still want decent performance for cfg(bootstrap).
+            #[cfg_attr(all(debug_assertions, bootstrap), inline(always))]
+            #[cfg_attr(all(not(debug_assertions), bootstrap), inline(never))]
+
+            // This check is inlineable, but not by the MIR inliner.
+            // The reason for this is that the MIR inliner is in an exceptionally bad position
+            // to think about whether or not to inline this. In MIR, this call is gated behind `debug_assertions`,
+            // which will codegen to `false` in release builds. Inlining the check would be wasted work in that case and
+            // would be bad for compile times.
+            //
+            // LLVM on the other hand sees the constant branch, so if it's `false`, it can immediately delete it without
+            // inlining the check. If it's `true`, it can inline it and get significantly better performance.
+            #[cfg_attr(not(bootstrap), rustc_no_mir_inline)]
+            #[cfg_attr(not(bootstrap), inline)]
+            #[rustc_nounwind]
+            fn precondition_check($($name:$ty),*) {
                 if !$e {
-                    // don't unwind to reduce impact on code size
                     ::core::panicking::panic_nounwind(
-                        concat!("unsafe precondition(s) violated: ", $name)
+                        concat!("unsafe precondition(s) violated: ", $message)
                     );
                 }
             }
-            #[allow(non_snake_case)]
-            #[inline]
-            const fn comptime$(<$($tt)*>)?($(_:$ty),*) {}
+            const fn comptime($(_:$ty),*) {}
 
-            ::core::intrinsics::const_eval_select(($($i,)*), comptime, runtime);
+            if ::core::intrinsics::debug_assertions() {
+                ::core::intrinsics::const_eval_select(($($arg,)*), comptime, precondition_check);
+            }
         }
     };
 }
@@ -2632,30 +2781,27 @@ pub(crate) use assert_unsafe_precondition;
 /// Checks whether `ptr` is properly aligned with respect to
 /// `align_of::<T>()`.
 #[inline]
-pub(crate) fn is_aligned_and_not_null<T>(ptr: *const T) -> bool {
-    !ptr.is_null() && ptr.is_aligned()
+pub(crate) fn is_aligned_and_not_null(ptr: *const (), align: usize) -> bool {
+    !ptr.is_null() && ptr.is_aligned_to(align)
 }
 
-/// Checks whether an allocation of `len` instances of `T` exceeds
-/// the maximum allowed allocation size.
 #[inline]
-pub(crate) fn is_valid_allocation_size<T>(len: usize) -> bool {
-    let max_len = const {
-        let size = crate::mem::size_of::<T>();
-        if size == 0 { usize::MAX } else { isize::MAX as usize / size }
-    };
+pub(crate) fn is_valid_allocation_size(size: usize, len: usize) -> bool {
+    let max_len = if size == 0 { usize::MAX } else { isize::MAX as usize / size };
     len <= max_len
 }
 
 /// Checks whether the regions of memory starting at `src` and `dst` of size
-/// `count * size_of::<T>()` do *not* overlap.
+/// `count * size` do *not* overlap.
 #[inline]
-pub(crate) fn is_nonoverlapping<T>(src: *const T, dst: *const T, count: usize) -> bool {
+pub(crate) fn is_nonoverlapping(src: *const (), dst: *const (), size: usize, count: usize) -> bool {
     let src_usize = src.addr();
     let dst_usize = dst.addr();
-    let size = mem::size_of::<T>()
-        .checked_mul(count)
-        .expect("is_nonoverlapping: `size_of::<T>() * count` overflows a usize");
+    let Some(size) = size.checked_mul(count) else {
+        crate::panicking::panic_nounwind(
+            "is_nonoverlapping: `size_of::<T>() * count` overflows a usize",
+        )
+    };
     let diff = src_usize.abs_diff(dst_usize);
     // If the absolute distance between the ptrs is at least as big as the size of the buffer,
     // they do not overlap.
@@ -2749,13 +2895,13 @@ pub(crate) fn is_nonoverlapping<T>(src: *const T, dst: *const T, count: usize) -
 #[doc(alias = "memcpy")]
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_allowed_through_unstable_modules]
-#[rustc_const_stable(feature = "const_intrinsic_copy", since = "1.63.0")]
+#[rustc_const_unstable(feature = "const_intrinsic_copy", issue = "80697")]
 #[inline(always)]
 #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
 #[rustc_diagnostic_item = "ptr_copy_nonoverlapping"]
 pub const unsafe fn copy_nonoverlapping<T>(src: *const T, dst: *mut T, count: usize) {
     extern "rust-intrinsic" {
-        #[rustc_const_stable(feature = "const_intrinsic_copy", since = "1.63.0")]
+        #[rustc_const_unstable(feature = "const_intrinsic_copy", issue = "80697")]
         #[rustc_nounwind]
         pub fn copy_nonoverlapping<T>(src: *const T, dst: *mut T, count: usize);
     }
@@ -2766,10 +2912,16 @@ pub const unsafe fn copy_nonoverlapping<T>(src: *const T, dst: *mut T, count: us
         assert_unsafe_precondition!(
             "ptr::copy_nonoverlapping requires that both pointer arguments are aligned and non-null \
             and the specified memory ranges do not overlap",
-            [T](src: *const T, dst: *mut T, count: usize) =>
-            is_aligned_and_not_null(src)
-                && is_aligned_and_not_null(dst)
-                && is_nonoverlapping(src, dst, count)
+            (
+                src: *const () = src as *const (),
+                dst: *mut () = dst as *mut (),
+                size: usize = size_of::<T>(),
+                align: usize = align_of::<T>(),
+                count: usize = count,
+            ) =>
+            is_aligned_and_not_null(src, align)
+                && is_aligned_and_not_null(dst, align)
+                && is_nonoverlapping(src, dst, size, count)
         );
         copy_nonoverlapping(src, dst, count)
     }
@@ -2845,13 +2997,13 @@ pub const unsafe fn copy_nonoverlapping<T>(src: *const T, dst: *mut T, count: us
 #[doc(alias = "memmove")]
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_allowed_through_unstable_modules]
-#[rustc_const_stable(feature = "const_intrinsic_copy", since = "1.63.0")]
+#[rustc_const_unstable(feature = "const_intrinsic_copy", issue = "80697")]
 #[inline(always)]
 #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
 #[rustc_diagnostic_item = "ptr_copy"]
 pub const unsafe fn copy<T>(src: *const T, dst: *mut T, count: usize) {
     extern "rust-intrinsic" {
-        #[rustc_const_stable(feature = "const_intrinsic_copy", since = "1.63.0")]
+        #[rustc_const_unstable(feature = "const_intrinsic_copy", issue = "80697")]
         #[rustc_nounwind]
         fn copy<T>(src: *const T, dst: *mut T, count: usize);
     }
@@ -2859,9 +3011,15 @@ pub const unsafe fn copy<T>(src: *const T, dst: *mut T, count: usize) {
     // SAFETY: the safety contract for `copy` must be upheld by the caller.
     unsafe {
         assert_unsafe_precondition!(
-            "ptr::copy requires that both pointer arguments are aligned and non-null",
-            [T](src: *const T, dst: *mut T) =>
-            is_aligned_and_not_null(src) && is_aligned_and_not_null(dst)
+            "ptr::copy_nonoverlapping requires that both pointer arguments are aligned and non-null \
+            and the specified memory ranges do not overlap",
+            (
+                src: *const () = src as *const (),
+                dst: *mut () = dst as *mut (),
+                align: usize = align_of::<T>(),
+            ) =>
+            is_aligned_and_not_null(src, align)
+                && is_aligned_and_not_null(dst, align)
         );
         copy(src, dst, count)
     }
@@ -2934,7 +3092,10 @@ pub const unsafe fn write_bytes<T>(dst: *mut T, val: u8, count: usize) {
     unsafe {
         assert_unsafe_precondition!(
             "ptr::write_bytes requires that the destination pointer is aligned and non-null",
-            [T](dst: *mut T) => is_aligned_and_not_null(dst)
+            (
+                addr: *const () = dst as *const (),
+                align: usize = align_of::<T>(),
+            ) => is_aligned_and_not_null(addr, align)
         );
         write_bytes(dst, val, count)
     }

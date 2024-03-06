@@ -1,4 +1,4 @@
-// check-pass
+//@ check-pass
 
 // Ensure that we don't ICE when an alias that has escaping bound vars is
 // required to be live. This is because the code that allows us to deduce an

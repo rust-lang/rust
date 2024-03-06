@@ -1,4 +1,4 @@
-// run-rustfix
+//@ run-rustfix
 
 fn fun(x: i32) -> i32 { x }
 

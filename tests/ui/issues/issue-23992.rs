@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 pub struct Outer<T: Trait>(T);
 pub struct Inner<'a> { value: &'a bool }
 

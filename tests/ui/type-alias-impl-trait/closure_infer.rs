@@ -1,4 +1,4 @@
-// check-pass
+//@ check-pass
 
 // Regression test for an ICE: https://github.com/rust-lang/rust/issues/119916
 

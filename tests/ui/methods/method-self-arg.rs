@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 // Test method calls with self as an argument
 
 static mut COUNT: usize = 1;

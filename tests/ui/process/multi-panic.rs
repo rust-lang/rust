@@ -1,7 +1,7 @@
-// run-pass
-// ignore-emscripten no processes
-// ignore-sgx no processes
-// needs-unwind
+//@ run-pass
+//@ ignore-emscripten no processes
+//@ ignore-sgx no processes
+//@ needs-unwind
 
 fn check_for_no_backtrace(test: std::process::Output) {
     assert!(!test.status.success());

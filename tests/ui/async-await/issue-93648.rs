@@ -1,5 +1,5 @@
-// edition:2021
-// build-pass
+//@ edition:2021
+//@ build-pass
 
 fn main() {
     let _ = async {

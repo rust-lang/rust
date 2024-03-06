@@ -1,7 +1,7 @@
 // This checks that function pointer signatures that are referenced mutably
 // but contain a &mut T parameter still fail in a constant context: see issue #114994.
 //
-// check-fail
+//@ check-fail
 
 const fn use_mut_const_fn(_f: &mut fn(&mut String)) { //~ ERROR mutable references are not allowed in constant functions
     ()

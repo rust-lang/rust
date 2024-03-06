@@ -1,6 +1,6 @@
 // This test fails if #104478 is fixed before #104477.
 
-// check-pass
+//@ check-pass
 
 struct Printer<'a, 'b>(&'a (), &'b ());
 

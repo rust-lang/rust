@@ -1,4 +1,4 @@
-// edition: 2021
+//@ edition: 2021
 
 trait MyTrait<T> {
     async fn foo_recursive(&self, n: usize) -> T;

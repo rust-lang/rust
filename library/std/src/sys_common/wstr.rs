@@ -2,7 +2,7 @@
 #![allow(dead_code)]
 
 use crate::marker::PhantomData;
-use crate::num::NonZeroU16;
+use crate::num::NonZero;
 use crate::ptr::NonNull;
 
 /// A safe iterator over a LPWSTR
@@ -23,15 +23,15 @@ impl WStrUnits<'_> {
         Some(Self { lpwstr: NonNull::new(lpwstr as _)?, lifetime: PhantomData })
     }
 
-    pub fn peek(&self) -> Option<NonZeroU16> {
+    pub fn peek(&self) -> Option<NonZero<u16>> {
         // SAFETY: It's always safe to read the current item because we don't
         // ever move out of the array's bounds.
-        unsafe { NonZeroU16::new(*self.lpwstr.as_ptr()) }
+        unsafe { NonZero::new(*self.lpwstr.as_ptr()) }
     }
 
     /// Advance the iterator while `predicate` returns true.
     /// Returns the number of items it advanced by.
-    pub fn advance_while<P: FnMut(NonZeroU16) -> bool>(&mut self, mut predicate: P) -> usize {
+    pub fn advance_while<P: FnMut(NonZero<u16>) -> bool>(&mut self, mut predicate: P) -> usize {
         let mut counter = 0;
         while let Some(w) = self.peek() {
             if !predicate(w) {
@@ -46,8 +46,9 @@ impl WStrUnits<'_> {
 
 impl Iterator for WStrUnits<'_> {
     // This can never return zero as that marks the end of the string.
-    type Item = NonZeroU16;
-    fn next(&mut self) -> Option<NonZeroU16> {
+    type Item = NonZero<u16>;
+
+    fn next(&mut self) -> Option<Self::Item> {
         // SAFETY: If NULL is reached we immediately return.
         // Therefore it's safe to advance the pointer after that.
         unsafe {

@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 // Parsing of range patterns
 
 #![allow(ellipsis_inclusive_range_patterns)]

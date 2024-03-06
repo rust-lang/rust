@@ -56,7 +56,7 @@ type variable is an instance of a type parameter. That is,
 given a generic function `fn foo<T>(t: T)`, while checking the
 function `foo`, the type `ty_param(0)` refers to the type `T`, which
 is treated in abstract. However, when `foo()` is called, `T` will be
-substituted for a fresh type variable `N`. This variable will
+instantiated with a fresh type variable `N`. This variable will
 eventually be resolved to some concrete type (which might itself be
 a type parameter).
 
@@ -74,11 +74,11 @@ pub mod wfcheck;
 
 pub use check::check_abi;
 
-use std::num::NonZeroU32;
+use std::num::NonZero;
 
-use rustc_data_structures::fx::{FxHashMap, FxHashSet};
+use rustc_data_structures::fx::{FxHashSet, FxIndexMap};
 use rustc_errors::ErrorGuaranteed;
-use rustc_errors::{pluralize, struct_span_code_err, Diagnostic, DiagnosticBuilder};
+use rustc_errors::{pluralize, struct_span_code_err, Diag};
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::intravisit::Visitor;
 use rustc_index::bit_set::BitSet;
@@ -142,7 +142,7 @@ fn get_owner_return_paths(
 /// as they must always be defined by the compiler.
 // FIXME: Move this to a more appropriate place.
 pub fn forbid_intrinsic_abi(tcx: TyCtxt<'_>, sp: Span, abi: Abi) {
-    if let Abi::RustIntrinsic | Abi::PlatformIntrinsic = abi {
+    if let Abi::RustIntrinsic = abi {
         tcx.dcx().span_err(sp, "intrinsic must be in `extern \"rust-intrinsic\" { ... }` block");
     }
 }
@@ -270,7 +270,7 @@ fn default_body_is_unstable(
     item_did: DefId,
     feature: Symbol,
     reason: Option<Symbol>,
-    issue: Option<NonZeroU32>,
+    issue: Option<NonZero<u32>>,
 ) {
     let missing_item_name = tcx.associated_item(item_did).name;
     let (mut some_note, mut none_note, mut reason_str) = (false, false, String::new());
@@ -307,7 +307,7 @@ fn bounds_from_generic_predicates<'tcx>(
     tcx: TyCtxt<'tcx>,
     predicates: impl IntoIterator<Item = (ty::Clause<'tcx>, Span)>,
 ) -> (String, String) {
-    let mut types: FxHashMap<Ty<'tcx>, Vec<DefId>> = FxHashMap::default();
+    let mut types: FxIndexMap<Ty<'tcx>, Vec<DefId>> = FxIndexMap::default();
     let mut projections = vec![];
     for (predicate, _) in predicates {
         debug!("predicate {:?}", predicate);
@@ -578,7 +578,7 @@ pub fn check_function_signature<'tcx>(
         fn_id: LocalDefId,
     ) -> rustc_span::Span {
         let mut args = {
-            let node = tcx.hir().expect_owner(fn_id);
+            let node = tcx.expect_hir_owner_node(fn_id);
             let decl = node.fn_decl().unwrap_or_else(|| bug!("expected fn decl, found {:?}", node));
             decl.inputs.iter().map(|t| t.span).chain(std::iter::once(decl.output.span()))
         };

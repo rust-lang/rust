@@ -17,6 +17,7 @@ either.workspace = true
 arrayvec.workspace = true
 itertools.workspace = true
 smallvec.workspace = true
+tracing.workspace = true
 triomphe.workspace = true
 once_cell = "1.17.1"
 
@@ -30,6 +31,7 @@ profile.workspace = true
 stdx.workspace = true
 syntax.workspace = true
 tt.workspace = true
+span.workspace = true
 
 [features]
 in-rust-tree = []

@@ -1,6 +1,5 @@
 use crate::simd::{
     cmp::SimdPartialOrd,
-    intrinsics,
     ptr::{SimdConstPtr, SimdMutPtr},
     LaneCount, Mask, MaskElement, SupportedLaneCount, Swizzle,
 };
@@ -194,7 +193,7 @@ where
     /// With padding, `read_unaligned` will read past the end of an array of N elements.
     ///
     /// # Safety
-    /// Reading `ptr` must be safe, as if by `<*const [T; N]>::read_unaligned`.
+    /// Reading `ptr` must be safe, as if by `<*const [T; N]>::read`.
     #[inline]
     const unsafe fn load(ptr: *const [T; N]) -> Self {
         // There are potentially simpler ways to write this function, but this should result in
@@ -215,7 +214,7 @@ where
     /// See `load` as to why this function is necessary.
     ///
     /// # Safety
-    /// Writing to `ptr` must be safe, as if by `<*mut [T; N]>::write_unaligned`.
+    /// Writing to `ptr` must be safe, as if by `<*mut [T; N]>::write`.
     #[inline]
     const unsafe fn store(self, ptr: *mut [T; N]) {
         // There are potentially simpler ways to write this function, but this should result in
@@ -491,7 +490,7 @@ where
         or: Self,
     ) -> Self {
         // Safety: The caller is responsible for upholding all invariants
-        unsafe { intrinsics::simd_gather(or, source, enable.to_int()) }
+        unsafe { core::intrinsics::simd::simd_gather(or, source, enable.to_int()) }
     }
 
     /// Writes the values in a SIMD vector to potentially discontiguous indices in `slice`.
@@ -650,7 +649,7 @@ where
     #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
     pub unsafe fn scatter_select_ptr(self, dest: Simd<*mut T, N>, enable: Mask<isize, N>) {
         // Safety: The caller is responsible for upholding all invariants
-        unsafe { intrinsics::simd_scatter(self, dest, enable.to_int()) }
+        unsafe { core::intrinsics::simd::simd_scatter(self, dest, enable.to_int()) }
     }
 }
 
@@ -692,7 +691,8 @@ where
     fn eq(&self, other: &Self) -> bool {
         // Safety: All SIMD vectors are SimdPartialEq, and the comparison produces a valid mask.
         let mask = unsafe {
-            let tfvec: Simd<<T as SimdElement>::Mask, N> = intrinsics::simd_eq(*self, *other);
+            let tfvec: Simd<<T as SimdElement>::Mask, N> =
+                core::intrinsics::simd::simd_eq(*self, *other);
             Mask::from_int_unchecked(tfvec)
         };
 
@@ -705,7 +705,8 @@ where
     fn ne(&self, other: &Self) -> bool {
         // Safety: All SIMD vectors are SimdPartialEq, and the comparison produces a valid mask.
         let mask = unsafe {
-            let tfvec: Simd<<T as SimdElement>::Mask, N> = intrinsics::simd_ne(*self, *other);
+            let tfvec: Simd<<T as SimdElement>::Mask, N> =
+                core::intrinsics::simd::simd_ne(*self, *other);
             Mask::from_int_unchecked(tfvec)
         };
 

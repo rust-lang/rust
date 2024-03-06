@@ -4,7 +4,7 @@ use std::fmt;
 use std::hash::{Hash, Hasher};
 use std::marker::PhantomData;
 use std::mem::ManuallyDrop;
-use std::num::NonZeroUsize;
+use std::num::NonZero;
 use std::ops::{Deref, DerefMut};
 use std::ptr::NonNull;
 
@@ -134,7 +134,7 @@ where
 
         ptr.map_addr(|addr| {
             // Safety:
-            // - The pointer is `NonNull` => it's address is `NonZeroUsize`
+            // - The pointer is `NonNull` => it's address is `NonZero<usize>`
             // - `P::BITS` least significant bits are always zero (`Pointer` contract)
             // - `T::BITS <= P::BITS` (from `Self::ASSERTION`)
             //
@@ -143,14 +143,14 @@ where
             // `{non_zero} | packed_tag` can't make the value zero.
 
             let packed = (addr.get() >> T::BITS) | packed_tag;
-            unsafe { NonZeroUsize::new_unchecked(packed) }
+            unsafe { NonZero::new_unchecked(packed) }
         })
     }
 
     /// Retrieves the original raw pointer from `self.packed`.
     #[inline]
     pub(super) fn pointer_raw(&self) -> NonNull<P::Target> {
-        self.packed.map_addr(|addr| unsafe { NonZeroUsize::new_unchecked(addr.get() << T::BITS) })
+        self.packed.map_addr(|addr| unsafe { NonZero::new_unchecked(addr.get() << T::BITS) })
     }
 
     /// This provides a reference to the `P` pointer itself, rather than the

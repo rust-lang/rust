@@ -1,5 +1,5 @@
 // Regression Test for https://github.com/rust-lang/rust/issues/110138
-// aux-build: enum_with_discriminant.rs
+//@ aux-build: enum_with_discriminant.rs
 // ignore-tidy-linelength
 
 #[doc(inline)]

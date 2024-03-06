@@ -1,11 +1,11 @@
 // Meta test for compiletest: check that when we give the right error
 // patterns, the test passes. See all `revision-bad.rs`.
 
-// run-fail
-// revisions: foo bar
-//[foo] error-pattern:foo
-//[bar] error-pattern:bar
-// ignore-emscripten no processes
+//@ run-fail
+//@ revisions: foo bar
+//@[foo] error-pattern:foo
+//@[bar] error-pattern:bar
+//@ ignore-emscripten no processes
 
 #[cfg(foo)]
 fn die() {

@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 // Elaborated version of the opening example from RFC 738. This failed
 // to compile before variance because invariance of `Option` prevented
 // us from approximating the lifetimes of `field1` and `field2` to a

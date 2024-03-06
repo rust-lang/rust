@@ -1,5 +1,5 @@
-// edition:2018
-// incremental
+//@ edition:2018
+//@ incremental
 
 pub struct SadGirl;
 

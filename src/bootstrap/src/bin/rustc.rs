@@ -276,7 +276,7 @@ fn main() {
                 dur.as_secs(),
                 dur.subsec_millis(),
                 if rusage_data.is_some() { " " } else { "" },
-                rusage_data.unwrap_or(String::new()),
+                rusage_data.unwrap_or_default(),
             );
         }
     }
@@ -440,5 +440,5 @@ fn format_rusage_data(_child: Child) -> Option<String> {
         ));
     }
 
-    return Some(init_str);
+    Some(init_str)
 }

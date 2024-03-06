@@ -106,7 +106,7 @@ fn main() {
 }
 "#,
         r#"
-use dep::{FirstStruct, some_module::{SecondStruct, ThirdStruct}};
+use dep::{some_module::{SecondStruct, ThirdStruct}, FirstStruct};
 
 fn main() {
     ThirdStruct
@@ -371,6 +371,135 @@ fn main() {
     test_struct.random_method()$0
 }
 "#,
+    );
+}
+
+#[test]
+fn trait_method_fuzzy_completion_aware_of_fundamental_boxes() {
+    let fixture = r#"
+//- /fundamental.rs crate:fundamental
+#[lang = "owned_box"]
+#[fundamental]
+pub struct Box<T>(T);
+//- /foo.rs crate:foo
+pub trait TestTrait {
+    fn some_method(&self);
+}
+//- /main.rs crate:main deps:foo,fundamental
+struct TestStruct;
+
+impl foo::TestTrait for fundamental::Box<TestStruct> {
+    fn some_method(&self) {}
+}
+
+fn main() {
+    let t = fundamental::Box(TestStruct);
+    t.$0
+}
+"#;
+
+    check(
+        fixture,
+        expect![[r#"
+        me some_method() (use foo::TestTrait) fn(&self)
+    "#]],
+    );
+
+    check_edit(
+        "some_method",
+        fixture,
+        r#"
+use foo::TestTrait;
+
+struct TestStruct;
+
+impl foo::TestTrait for fundamental::Box<TestStruct> {
+    fn some_method(&self) {}
+}
+
+fn main() {
+    let t = fundamental::Box(TestStruct);
+    t.some_method()$0
+}
+"#,
+    );
+}
+
+#[test]
+fn trait_method_fuzzy_completion_aware_of_fundamental_references() {
+    let fixture = r#"
+//- /foo.rs crate:foo
+pub trait TestTrait {
+    fn some_method(&self);
+}
+//- /main.rs crate:main deps:foo
+struct TestStruct;
+
+impl foo::TestTrait for &TestStruct {
+    fn some_method(&self) {}
+}
+
+fn main() {
+    let t = &TestStruct;
+    t.$0
+}
+"#;
+
+    check(
+        fixture,
+        expect![[r#"
+        me some_method() (use foo::TestTrait) fn(&self)
+    "#]],
+    );
+
+    check_edit(
+        "some_method",
+        fixture,
+        r#"
+use foo::TestTrait;
+
+struct TestStruct;
+
+impl foo::TestTrait for &TestStruct {
+    fn some_method(&self) {}
+}
+
+fn main() {
+    let t = &TestStruct;
+    t.some_method()$0
+}
+"#,
+    );
+}
+
+#[test]
+fn trait_method_fuzzy_completion_aware_of_unit_type() {
+    let fixture = r#"
+//- /test_trait.rs crate:test_trait
+pub trait TestInto<T> {
+    fn into(self) -> T;
+}
+
+//- /main.rs crate:main deps:test_trait
+struct A;
+
+impl test_trait::TestInto<A> for () {
+    fn into(self) -> A {
+        A
+    }
+}
+
+fn main() {
+    let a = ();
+    a.$0
+}
+"#;
+
+    check(
+        fixture,
+        expect![[r#"
+    me into() (use test_trait::TestInto) fn(self) -> T
+    "#]],
     );
 }
 
@@ -1394,6 +1523,25 @@ pub use bridge2::server2::Span2;
         expect![[r#"
             tt Span (use dep::Span)
             tt Span2 (use dep::Span2)
+        "#]],
+    );
+}
+
+#[test]
+fn flyimport_only_traits_in_impl_trait_block() {
+    check(
+        r#"
+//- /main.rs crate:main deps:dep
+pub struct Bar;
+
+impl Foo$0 for Bar { }
+//- /lib.rs crate:dep
+pub trait FooTrait;
+
+pub struct FooStruct;
+"#,
+        expect![[r#"
+            tt FooTrait (use dep::FooTrait)
         "#]],
     );
 }

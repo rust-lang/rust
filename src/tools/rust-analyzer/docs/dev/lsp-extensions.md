@@ -1,5 +1,5 @@
 <!---
-lsp/ext.rs hash: dff0b009e82ef06a
+lsp/ext.rs hash: 8be79cc3b7f10ad7
 
 If you need to change the above hash to make the test pass, please check if you
 need to adjust this doc as well and ping this issue:
@@ -239,13 +239,13 @@ The primary goal of `onEnter` is to handle automatic indentation when opening a 
 This is not yet implemented.
 The secondary goal is to handle fixing up syntax, like continuing doc strings and comments, and escaping `\n` in string literals.
 
-As proper cursor positioning is raison-d'etat for `onEnter`, it uses `SnippetTextEdit`.
+As proper cursor positioning is raison d'être for `onEnter`, it uses `SnippetTextEdit`.
 
 ### Unresolved Question
 
 * How to deal with synchronicity of the request?
   One option is to require the client to block until the server returns the response.
-  Another option is to do a OT-style merging of edits from client and server.
+  Another option is to do a operational transforms style merging of edits from client and server.
   A third option is to do a record-replay: client applies heuristic on enter immediately, then applies all user's keypresses.
   When the server is ready with the response, the client rollbacks all the changes and applies the recorded actions on top of the correct response.
 * How to deal with multiple carets?
@@ -444,6 +444,25 @@ Reloads project information (that is, re-executes `cargo metadata`).
 **Response:** `null`
 
 Rebuilds build scripts and proc-macros, and runs the build scripts to reseed the build data.
+
+## Unindexed Project
+
+**Experimental Client Capability:** `{ "unindexedProject": boolean }`
+
+**Method:** `rust-analyzer/unindexedProject`
+
+**Notification:**
+
+```typescript
+interface UnindexedProjectParams {
+    /// A list of documents that rust-analyzer has determined are not indexed.
+    textDocuments: lc.TextDocumentIdentifier[]
+}
+```
+
+This notification is sent from the server to the client. The client is expected
+to determine the appropriate owners of `textDocuments` and update `linkedProjects`
+if an owner can be determined successfully.
 
 ## Server Status
 

@@ -8,12 +8,12 @@ use rustc_feature::{find_gated_cfg, is_builtin_attr_name, Features, GatedCfg};
 use rustc_macros::HashStable_Generic;
 use rustc_session::config::ExpectedValues;
 use rustc_session::lint::builtin::UNEXPECTED_CFGS;
-use rustc_session::lint::BuiltinLintDiagnostics;
+use rustc_session::lint::BuiltinLintDiag;
 use rustc_session::parse::feature_err;
 use rustc_session::{RustcVersion, Session};
 use rustc_span::hygiene::Transparency;
 use rustc_span::{symbol::sym, symbol::Symbol, Span};
-use std::num::NonZeroU32;
+use std::num::NonZero;
 
 use crate::session_diagnostics::{self, IncorrectReprFormatGenericCause};
 
@@ -113,7 +113,7 @@ pub enum StabilityLevel {
         /// Reason for the current stability level.
         reason: UnstableReason,
         /// Relevant `rust-lang/rust` issue.
-        issue: Option<NonZeroU32>,
+        issue: Option<NonZero<u32>>,
         is_soft: bool,
         /// If part of a feature is stabilized and a new feature is added for the remaining parts,
         /// then the `implied_by` attribute is used to indicate which now-stable feature previously
@@ -442,7 +442,7 @@ fn parse_unstability(sess: &Session, attr: &Attribute) -> Option<(Symbol, Stabil
                 // is a name/value pair string literal.
                 issue_num = match issue.unwrap().as_str() {
                     "none" => None,
-                    issue => match issue.parse::<NonZeroU32>() {
+                    issue => match issue.parse::<NonZero<u32>>() {
                         Ok(num) => Some(num),
                         Err(err) => {
                             sess.dcx().emit_err(
@@ -524,9 +524,9 @@ pub fn cfg_matches(
 ) -> bool {
     eval_condition(cfg, sess, features, &mut |cfg| {
         try_gate_cfg(cfg.name, cfg.span, sess, features);
-        match sess.parse_sess.check_config.expecteds.get(&cfg.name) {
+        match sess.psess.check_config.expecteds.get(&cfg.name) {
             Some(ExpectedValues::Some(values)) if !values.contains(&cfg.value) => {
-                sess.parse_sess.buffer_lint_with_diagnostic(
+                sess.psess.buffer_lint_with_diagnostic(
                     UNEXPECTED_CFGS,
                     cfg.span,
                     lint_node_id,
@@ -535,19 +535,19 @@ pub fn cfg_matches(
                     } else {
                         format!("unexpected `cfg` condition value: (none)")
                     },
-                    BuiltinLintDiagnostics::UnexpectedCfgValue(
+                    BuiltinLintDiag::UnexpectedCfgValue(
                         (cfg.name, cfg.name_span),
                         cfg.value.map(|v| (v, cfg.value_span.unwrap())),
                     ),
                 );
             }
-            None if sess.parse_sess.check_config.exhaustive_names => {
-                sess.parse_sess.buffer_lint_with_diagnostic(
+            None if sess.psess.check_config.exhaustive_names => {
+                sess.psess.buffer_lint_with_diagnostic(
                     UNEXPECTED_CFGS,
                     cfg.span,
                     lint_node_id,
                     format!("unexpected `cfg` condition name: `{}`", cfg.name),
-                    BuiltinLintDiagnostics::UnexpectedCfgName(
+                    BuiltinLintDiag::UnexpectedCfgName(
                         (cfg.name, cfg.name_span),
                         cfg.value.map(|v| (v, cfg.value_span.unwrap())),
                     ),
@@ -555,7 +555,7 @@ pub fn cfg_matches(
             }
             _ => { /* not unexpected */ }
         }
-        sess.parse_sess.config.contains(&(cfg.name, cfg.value))
+        sess.psess.config.contains(&(cfg.name, cfg.value))
     })
 }
 
@@ -598,7 +598,7 @@ pub fn eval_condition(
     features: Option<&Features>,
     eval: &mut impl FnMut(Condition) -> bool,
 ) -> bool {
-    let dcx = &sess.parse_sess.dcx;
+    let dcx = &sess.psess.dcx;
     match &cfg.kind {
         ast::MetaItemKind::List(mis) if cfg.name_or_empty() == sym::version => {
             try_gate_cfg(sym::version, cfg.span, sess, features);
@@ -626,7 +626,7 @@ pub fn eval_condition(
             };
 
             // See https://github.com/rust-lang/rust/issues/64796#issuecomment-640851454 for details
-            if sess.parse_sess.assume_incomplete_release {
+            if sess.psess.assume_incomplete_release {
                 RustcVersion::CURRENT > min_version
             } else {
                 RustcVersion::CURRENT >= min_version
@@ -984,17 +984,24 @@ pub fn parse_repr_attr(sess: &Session, attr: &Attribute) -> Vec<ReprAttr> {
                 }
             } else if let Some((name, value)) = item.name_value_literal() {
                 let mut literal_error = None;
+                let mut err_span = item.span();
                 if name == sym::align {
                     recognised = true;
                     match parse_alignment(&value.kind) {
                         Ok(literal) => acc.push(ReprAlign(literal)),
-                        Err(message) => literal_error = Some(message),
+                        Err(message) => {
+                            err_span = value.span;
+                            literal_error = Some(message)
+                        }
                     };
                 } else if name == sym::packed {
                     recognised = true;
                     match parse_alignment(&value.kind) {
                         Ok(literal) => acc.push(ReprPacked(literal)),
-                        Err(message) => literal_error = Some(message),
+                        Err(message) => {
+                            err_span = value.span;
+                            literal_error = Some(message)
+                        }
                     };
                 } else if matches!(name, sym::Rust | sym::C | sym::simd | sym::transparent)
                     || int_type_of_word(name).is_some()
@@ -1007,7 +1014,7 @@ pub fn parse_repr_attr(sess: &Session, attr: &Attribute) -> Vec<ReprAttr> {
                 }
                 if let Some(literal_error) = literal_error {
                     sess.dcx().emit_err(session_diagnostics::InvalidReprGeneric {
-                        span: item.span(),
+                        span: err_span,
                         repr_arg: name.to_ident_string(),
                         error_part: literal_error,
                     });
@@ -1039,21 +1046,37 @@ pub fn parse_repr_attr(sess: &Session, attr: &Attribute) -> Vec<ReprAttr> {
                             });
                         }
                     }
-                    MetaItemKind::List(_) => {
+                    MetaItemKind::List(nested_items) => {
                         if meta_item.has_name(sym::align) {
                             recognised = true;
-                            sess.dcx().emit_err(
-                                session_diagnostics::IncorrectReprFormatAlignOneArg {
-                                    span: meta_item.span,
-                                },
-                            );
+                            if nested_items.len() == 1 {
+                                sess.dcx().emit_err(
+                                    session_diagnostics::IncorrectReprFormatExpectInteger {
+                                        span: nested_items[0].span(),
+                                    },
+                                );
+                            } else {
+                                sess.dcx().emit_err(
+                                    session_diagnostics::IncorrectReprFormatAlignOneArg {
+                                        span: meta_item.span,
+                                    },
+                                );
+                            }
                         } else if meta_item.has_name(sym::packed) {
                             recognised = true;
-                            sess.dcx().emit_err(
-                                session_diagnostics::IncorrectReprFormatPackedOneOrZeroArg {
-                                    span: meta_item.span,
-                                },
-                            );
+                            if nested_items.len() == 1 {
+                                sess.dcx().emit_err(
+                                    session_diagnostics::IncorrectReprFormatPackedExpectInteger {
+                                        span: nested_items[0].span(),
+                                    },
+                                );
+                            } else {
+                                sess.dcx().emit_err(
+                                    session_diagnostics::IncorrectReprFormatPackedOneOrZeroArg {
+                                        span: meta_item.span,
+                                    },
+                                );
+                            }
                         } else if matches!(
                             meta_item.name_or_empty(),
                             sym::Rust | sym::C | sym::simd | sym::transparent

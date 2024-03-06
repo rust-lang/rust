@@ -1,12 +1,12 @@
-// revisions: x86_64 i686
-// assembly-output: emit-asm
-// compile-flags: -O
-//[x86_64] compile-flags: --target x86_64-unknown-linux-gnu
-//[x86_64] needs-llvm-components: x86
-//[i686] compile-flags: --target i686-unknown-linux-gnu
-//[i686] needs-llvm-components: x86
-// compile-flags: -C llvm-args=--x86-asm-syntax=intel
-// compile-flags: -C target-feature=+avx512bw
+//@ revisions: x86_64 i686
+//@ assembly-output: emit-asm
+//@ compile-flags: -O
+//@[x86_64] compile-flags: --target x86_64-unknown-linux-gnu
+//@[x86_64] needs-llvm-components: x86
+//@[i686] compile-flags: --target i686-unknown-linux-gnu
+//@[i686] needs-llvm-components: x86
+//@ compile-flags: -C llvm-args=--x86-asm-syntax=intel
+//@ compile-flags: -C target-feature=+avx512bw
 
 #![feature(no_core, lang_items, rustc_attrs)]
 #![crate_type = "rlib"]

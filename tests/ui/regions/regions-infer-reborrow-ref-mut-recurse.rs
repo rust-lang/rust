@@ -1,9 +1,9 @@
-// run-pass
+//@ run-pass
 #![allow(dead_code)]
 // Test an edge case in region inference: the lifetime of the borrow
 // of `*x` must be extended to at least 'a.
 
-// pretty-expanded FIXME #23616
+//@ pretty-expanded FIXME #23616
 
 fn foo<'a,'b>(x: &'a &'b mut isize) -> &'a isize {
     let y = &*x; // should be inferred to have type &'a &'b mut isize...

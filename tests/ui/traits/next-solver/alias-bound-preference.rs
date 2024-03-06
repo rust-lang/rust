@@ -1,6 +1,6 @@
-// revisions: old next
-//[next] compile-flags: -Znext-solver
-// run-pass
+//@ revisions: old next
+//@[next] compile-flags: -Znext-solver
+//@ run-pass
 
 // A test for https://github.com/rust-lang/trait-system-refactor-initiative/issues/45.
 

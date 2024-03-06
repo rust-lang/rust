@@ -1,5 +1,5 @@
 // Check that types with different const arguments are different.
-// revisions: full min
+//@ revisions: full min
 
 #![cfg_attr(full, feature(generic_const_exprs))]
 #![cfg_attr(full, allow(incomplete_features))]

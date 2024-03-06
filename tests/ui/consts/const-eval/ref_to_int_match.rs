@@ -1,4 +1,4 @@
-// stderr-per-bitwidth
+//@ stderr-per-bitwidth
 
 fn main() {
     let n: Int = 40;

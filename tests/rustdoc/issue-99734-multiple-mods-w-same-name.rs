@@ -1,6 +1,6 @@
-// aux-build:issue-99734-aux.rs
-// build-aux-docs
-// ignore-cross-compile
+//@ aux-build:issue-99734-aux.rs
+//@ build-aux-docs
+//@ ignore-cross-compile
 
 #![crate_name = "foo"]
 

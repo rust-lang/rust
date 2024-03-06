@@ -42,7 +42,11 @@
 #endif
 #include "llvm/Transforms/Instrumentation.h"
 #include "llvm/Transforms/Instrumentation/AddressSanitizer.h"
+#include "llvm/Transforms/Instrumentation/DataFlowSanitizer.h"
 #include "llvm/Support/TimeProfiler.h"
+#if LLVM_VERSION_GE(19, 0)
+#include "llvm/Support/PGOOptions.h"
+#endif
 #include "llvm/Transforms/Instrumentation/GCOVProfiler.h"
 #include "llvm/Transforms/Instrumentation/InstrProfiling.h"
 #include "llvm/Transforms/Instrumentation/ThreadSanitizer.h"
@@ -368,10 +372,10 @@ extern "C" void LLVMRustPrintTargetCPUs(LLVMTargetMachineRef TM,
 }
 
 extern "C" size_t LLVMRustGetTargetFeaturesCount(LLVMTargetMachineRef TM) {
-#ifdef LLVM_RUSTLLVM
+#if LLVM_VERSION_GE(18, 0)
   const TargetMachine *Target = unwrap(TM);
   const MCSubtargetInfo *MCInfo = Target->getMCSubtargetInfo();
-  const ArrayRef<SubtargetFeatureKV> FeatTable = MCInfo->getFeatureTable();
+  const ArrayRef<SubtargetFeatureKV> FeatTable = MCInfo->getAllProcessorFeatures();
   return FeatTable.size();
 #else
   return 0;
@@ -380,10 +384,10 @@ extern "C" size_t LLVMRustGetTargetFeaturesCount(LLVMTargetMachineRef TM) {
 
 extern "C" void LLVMRustGetTargetFeature(LLVMTargetMachineRef TM, size_t Index,
                                          const char** Feature, const char** Desc) {
-#ifdef LLVM_RUSTLLVM
+#if LLVM_VERSION_GE(18, 0)
   const TargetMachine *Target = unwrap(TM);
   const MCSubtargetInfo *MCInfo = Target->getMCSubtargetInfo();
-  const ArrayRef<SubtargetFeatureKV> FeatTable = MCInfo->getFeatureTable();
+  const ArrayRef<SubtargetFeatureKV> FeatTable = MCInfo->getAllProcessorFeatures();
   const SubtargetFeatureKV Feat = FeatTable[Index];
   *Feature = Feat.Key;
   *Desc = Feat.Desc;
@@ -683,6 +687,9 @@ struct LLVMRustSanitizerOptions {
   bool SanitizeAddress;
   bool SanitizeAddressRecover;
   bool SanitizeCFI;
+  bool SanitizeDataFlow;
+  char **SanitizeDataFlowABIList;
+  size_t SanitizeDataFlowABIListLen;
   bool SanitizeKCFI;
   bool SanitizeMemory;
   bool SanitizeMemoryRecover;
@@ -749,6 +756,9 @@ LLVMRustOptimize(
                         FS,
 #endif
                         PGOOptions::IRInstr, PGOOptions::NoCSAction,
+#if LLVM_VERSION_GE(19, 0)
+                        PGOOptions::ColdFuncOpt::Default,
+#endif
                         DebugInfoForProfiling);
   } else if (PGOUsePath) {
     assert(!PGOSampleUsePath);
@@ -758,6 +768,9 @@ LLVMRustOptimize(
                         FS,
 #endif
                         PGOOptions::IRUse, PGOOptions::NoCSAction,
+#if LLVM_VERSION_GE(19, 0)
+                        PGOOptions::ColdFuncOpt::Default,
+#endif
                         DebugInfoForProfiling);
   } else if (PGOSampleUsePath) {
     PGOOpt = PGOOptions(PGOSampleUsePath, "", "",
@@ -766,6 +779,9 @@ LLVMRustOptimize(
                         FS,
 #endif
                         PGOOptions::SampleUse, PGOOptions::NoCSAction,
+#if LLVM_VERSION_GE(19, 0)
+                        PGOOptions::ColdFuncOpt::Default,
+#endif
                         DebugInfoForProfiling);
   } else if (DebugInfoForProfiling) {
     PGOOpt = PGOOptions("", "", "",
@@ -774,6 +790,9 @@ LLVMRustOptimize(
                         FS,
 #endif
                         PGOOptions::NoAction, PGOOptions::NoCSAction,
+#if LLVM_VERSION_GE(19, 0)
+                        PGOOptions::ColdFuncOpt::Default,
+#endif
                         DebugInfoForProfiling);
   }
 
@@ -868,6 +887,18 @@ LLVMRustOptimize(
   }
 
   if (SanitizerOptions) {
+    if (SanitizerOptions->SanitizeDataFlow) {
+      std::vector<std::string> ABIListFiles(
+          SanitizerOptions->SanitizeDataFlowABIList,
+          SanitizerOptions->SanitizeDataFlowABIList +
+              SanitizerOptions->SanitizeDataFlowABIListLen);
+      OptimizerLastEPCallbacks.push_back(
+        [ABIListFiles](ModulePassManager &MPM, OptimizationLevel Level) {
+          MPM.addPass(DataFlowSanitizerPass(ABIListFiles));
+        }
+      );
+    }
+
     if (SanitizerOptions->SanitizeMemory) {
       MemorySanitizerOptions Options(
           SanitizerOptions->SanitizeMemoryTrackOrigins,
@@ -934,10 +965,8 @@ LLVMRustOptimize(
     } else {
       for (const auto &C : PipelineStartEPCallbacks)
         PB.registerPipelineStartEPCallback(C);
-      if (OptStage != LLVMRustOptStage::PreLinkThinLTO) {
-        for (const auto &C : OptimizerLastEPCallbacks)
-          PB.registerOptimizerLastEPCallback(C);
-      }
+      for (const auto &C : OptimizerLastEPCallbacks)
+        PB.registerOptimizerLastEPCallback(C);
 
       switch (OptStage) {
       case LLVMRustOptStage::PreLinkNoLTO:
@@ -945,14 +974,7 @@ LLVMRustOptimize(
         break;
       case LLVMRustOptStage::PreLinkThinLTO:
         MPM = PB.buildThinLTOPreLinkDefaultPipeline(OptLevel);
-        // The ThinLTOPreLink pipeline already includes ThinLTOBuffer passes. However, callback
-        // passes may still run afterwards. This means we need to run the buffer passes again.
-        // FIXME: In LLVM 13, the ThinLTOPreLink pipeline also runs OptimizerLastEPCallbacks
-        // before the RequiredLTOPreLinkPasses, in which case we can remove these hacks.
-        if (OptimizerLastEPCallbacks.empty())
-          NeedThinLTOBufferPasses = false;
-        for (const auto &C : OptimizerLastEPCallbacks)
-          C(MPM, OptLevel);
+        NeedThinLTOBufferPasses = false;
         break;
       case LLVMRustOptStage::PreLinkFatLTO:
         MPM = PB.buildLTOPreLinkDefaultPipeline(OptLevel);

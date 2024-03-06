@@ -165,8 +165,7 @@ use crate::fmt;
 use crate::io;
 use crate::marker::PhantomData;
 use crate::mem::{self, forget};
-use crate::num::NonZeroU64;
-use crate::num::NonZeroUsize;
+use crate::num::NonZero;
 use crate::panic;
 use crate::panicking;
 use crate::pin::Pin;
@@ -206,7 +205,7 @@ cfg_if::cfg_if! {
         #[doc(hidden)]
         #[unstable(feature = "thread_local_internals", issue = "none")]
         pub mod local_impl {
-            pub use crate::sys::common::thread_local::{thread_local_inner, Key, abort_on_dtor_unwind};
+            pub use crate::sys::thread_local::{thread_local_inner, Key, abort_on_dtor_unwind};
         }
     }
 }
@@ -1063,7 +1062,7 @@ pub fn park() {
     let guard = PanicGuard;
     // SAFETY: park_timeout is called on the parker owned by this thread.
     unsafe {
-        current().inner.as_ref().parker().park();
+        current().park();
     }
     // No panic occurred, do not abort.
     forget(guard);
@@ -1166,7 +1165,7 @@ pub fn park_timeout(dur: Duration) {
 /// [`id`]: Thread::id
 #[stable(feature = "thread_id", since = "1.19.0")]
 #[derive(Eq, PartialEq, Clone, Copy, Hash, Debug)]
-pub struct ThreadId(NonZeroU64);
+pub struct ThreadId(NonZero<u64>);
 
 impl ThreadId {
     // Generate a new unique thread ID.
@@ -1189,7 +1188,7 @@ impl ThreadId {
                     };
 
                     match COUNTER.compare_exchange_weak(last, id, Relaxed, Relaxed) {
-                        Ok(_) => return ThreadId(NonZeroU64::new(id).unwrap()),
+                        Ok(_) => return ThreadId(NonZero::new(id).unwrap()),
                         Err(id) => last = id,
                     }
                 }
@@ -1208,7 +1207,7 @@ impl ThreadId {
 
                 *counter = id;
                 drop(counter);
-                ThreadId(NonZeroU64::new(id).unwrap())
+                ThreadId(NonZero::new(id).unwrap())
             }
         }
     }
@@ -1223,7 +1222,7 @@ impl ThreadId {
     /// change across Rust versions.
     #[must_use]
     #[unstable(feature = "thread_id_value", issue = "67939")]
-    pub fn as_u64(&self) -> NonZeroU64 {
+    pub fn as_u64(&self) -> NonZero<u64> {
         self.0
     }
 }
@@ -1288,6 +1287,15 @@ impl Thread {
         };
 
         Thread { inner }
+    }
+
+    /// Like the public [`park`], but callable on any handle. This is used to
+    /// allow parking in TLS destructors.
+    ///
+    /// # Safety
+    /// May only be called from the thread to which this handle belongs.
+    pub(crate) unsafe fn park(&self) {
+        unsafe { self.inner.as_ref().parker().park() }
     }
 
     /// Atomically makes the handle's token available if it is not already.
@@ -1776,6 +1784,6 @@ fn _assert_sync_and_send() {
 #[doc(alias = "hardware_concurrency")] // Alias for C++ `std::thread::hardware_concurrency`.
 #[doc(alias = "num_cpus")] // Alias for a popular ecosystem crate which provides similar functionality.
 #[stable(feature = "available_parallelism", since = "1.59.0")]
-pub fn available_parallelism() -> io::Result<NonZeroUsize> {
+pub fn available_parallelism() -> io::Result<NonZero<usize>> {
     imp::available_parallelism()
 }

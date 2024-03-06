@@ -1,4 +1,4 @@
-// check-pass
+//@ check-pass
 
 // rust-lang/rust#72225: confusing diagnostics when calling FnMut through DerefMut.
 

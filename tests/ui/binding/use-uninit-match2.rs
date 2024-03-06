@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 #![allow(dead_code)]
 #![allow(unused_mut)]
 #![allow(non_camel_case_types)]

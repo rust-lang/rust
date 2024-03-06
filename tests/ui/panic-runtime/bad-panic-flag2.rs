@@ -1,4 +1,4 @@
-// compile-flags:-C panic
-// error-pattern:requires either `unwind` or `abort`
+//@ compile-flags:-C panic
+//@ error-pattern:requires either `unwind` or `abort`
 
 fn main() {}

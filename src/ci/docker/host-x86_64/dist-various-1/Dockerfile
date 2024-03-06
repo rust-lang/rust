@@ -134,6 +134,8 @@ ENV CFLAGS_armv5te_unknown_linux_musleabi="-march=armv5te -marm -mfloat-abi=soft
     CFLAGS_riscv32imc_unknown_none_elf=-march=rv32imc -mabi=ilp32 \
     CC_riscv32imac_unknown_none_elf=riscv32-unknown-elf-gcc \
     CFLAGS_riscv32imac_unknown_none_elf=-march=rv32imac -mabi=ilp32 \
+    CC_riscv32imafc_unknown_none_elf=riscv32-unknown-elf-gcc \
+    CFLAGS_riscv32imafc_unknown_none_elf=-march=rv32imafc -mabi=ilp32 \
     CC_riscv64imac_unknown_none_elf=riscv64-unknown-elf-gcc \
     CFLAGS_riscv64imac_unknown_none_elf=-march=rv64imac -mabi=lp64 \
     CC_riscv64gc_unknown_none_elf=riscv64-unknown-elf-gcc \

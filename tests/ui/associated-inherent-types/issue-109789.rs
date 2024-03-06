@@ -18,5 +18,7 @@ impl Other for u32 {}
 fn bar(_: Foo<for<'a> fn(&'a ())>::Assoc) {}
 //~^ ERROR mismatched types
 //~| ERROR mismatched types
+//~| ERROR higher-ranked subtype error
+//~| ERROR higher-ranked subtype error
 
 fn main() {}

@@ -1,4 +1,4 @@
-// check-pass
+//@ check-pass
 
 const FOO: &&&u32 = &&&42;
 

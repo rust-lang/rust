@@ -1,5 +1,5 @@
-// check-pass
-// edition:2021
+//@ check-pass
+//@ edition:2021
 
 use std::rc::Rc;
 

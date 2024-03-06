@@ -1,5 +1,5 @@
 // Regression test for #107426.
-// check-pass
+//@ check-pass
 
 use std::marker::PhantomData;
 #[derive(Clone, Copy)]

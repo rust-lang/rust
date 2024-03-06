@@ -1,4 +1,4 @@
-// error-pattern: requires `copy` lang_item
+//@ error-pattern: requires `copy` lang_item
 
 #![feature(lang_items, start, no_core)]
 #![no_core]

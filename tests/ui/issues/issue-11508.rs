@@ -1,5 +1,5 @@
-// run-pass
-// aux-build:issue-11508.rs
+//@ run-pass
+//@ aux-build:issue-11508.rs
 
 extern crate issue_11508 as rand;
 

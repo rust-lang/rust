@@ -1,5 +1,5 @@
-// run-pass
-// ignore-cross-compile
+//@ run-pass
+//@ ignore-cross-compile
 
 use std::env;
 use std::fs::File;

@@ -10,20 +10,19 @@ use crate::cli::flags;
 impl flags::Ssr {
     pub fn run(self) -> anyhow::Result<()> {
         use ide_db::base_db::SourceDatabaseExt;
-        let mut cargo_config = CargoConfig::default();
-        cargo_config.sysroot = Some(RustLibSource::Discover);
+        let cargo_config =
+            CargoConfig { sysroot: Some(RustLibSource::Discover), ..Default::default() };
         let load_cargo_config = LoadCargoConfig {
             load_out_dirs_from_check: true,
             with_proc_macro_server: ProcMacroServerChoice::Sysroot,
             prefill_caches: false,
         };
-        let (host, vfs, _proc_macro) = load_workspace_at(
+        let (ref db, vfs, _proc_macro) = load_workspace_at(
             &std::env::current_dir()?,
             &cargo_config,
             &load_cargo_config,
             &|_| {},
         )?;
-        let db = host.raw_database();
         let mut match_finder = MatchFinder::at_first_file(db)?;
         for rule in self.rule {
             match_finder.add_rule(rule)?;
@@ -54,13 +53,12 @@ impl flags::Search {
             with_proc_macro_server: ProcMacroServerChoice::Sysroot,
             prefill_caches: false,
         };
-        let (host, _vfs, _proc_macro) = load_workspace_at(
+        let (ref db, _vfs, _proc_macro) = load_workspace_at(
             &std::env::current_dir()?,
             &cargo_config,
             &load_cargo_config,
             &|_| {},
         )?;
-        let db = host.raw_database();
         let mut match_finder = MatchFinder::at_first_file(db)?;
         for pattern in self.pattern {
             match_finder.add_search_pattern(pattern)?;

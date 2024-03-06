@@ -8,7 +8,7 @@ LL |     let x: i32 = MyS::foo;
    |
    = note: expected type `i32`
            found fn item `fn() -> MyS {MyS::foo}`
-help: try referring to the associated const `FOO` instead
+help: try referring to the associated const `FOO` instead (notice the capitalization difference)
    |
 LL |     let x: i32 = MyS::FOO;
    |                       ~~~

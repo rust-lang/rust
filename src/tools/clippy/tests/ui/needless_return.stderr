@@ -1,5 +1,5 @@
 error: unneeded `return` statement
-  --> $DIR/needless_return.rs:26:5
+  --> tests/ui/needless_return.rs:26:5
    |
 LL |     return true;
    |     ^^^^^^^^^^^
@@ -13,7 +13,7 @@ LL +     true
    |
 
 error: unneeded `return` statement
-  --> $DIR/needless_return.rs:30:5
+  --> tests/ui/needless_return.rs:30:5
    |
 LL |     return true;
    |     ^^^^^^^^^^^
@@ -25,7 +25,7 @@ LL +     true
    |
 
 error: unneeded `return` statement
-  --> $DIR/needless_return.rs:35:5
+  --> tests/ui/needless_return.rs:35:5
    |
 LL |     return true;;;
    |     ^^^^^^^^^^^
@@ -37,7 +37,7 @@ LL +     true
    |
 
 error: unneeded `return` statement
-  --> $DIR/needless_return.rs:40:5
+  --> tests/ui/needless_return.rs:40:5
    |
 LL |     return true;; ; ;
    |     ^^^^^^^^^^^
@@ -49,7 +49,7 @@ LL +     true
    |
 
 error: unneeded `return` statement
-  --> $DIR/needless_return.rs:45:9
+  --> tests/ui/needless_return.rs:45:9
    |
 LL |         return true;
    |         ^^^^^^^^^^^
@@ -61,7 +61,7 @@ LL +         true
    |
 
 error: unneeded `return` statement
-  --> $DIR/needless_return.rs:47:9
+  --> tests/ui/needless_return.rs:47:9
    |
 LL |         return false;
    |         ^^^^^^^^^^^^
@@ -73,7 +73,7 @@ LL +         false
    |
 
 error: unneeded `return` statement
-  --> $DIR/needless_return.rs:53:17
+  --> tests/ui/needless_return.rs:53:17
    |
 LL |         true => return false,
    |                 ^^^^^^^^^^^^
@@ -84,7 +84,7 @@ LL |         true => false,
    |                 ~~~~~
 
 error: unneeded `return` statement
-  --> $DIR/needless_return.rs:55:13
+  --> tests/ui/needless_return.rs:55:13
    |
 LL |             return true;
    |             ^^^^^^^^^^^
@@ -96,7 +96,7 @@ LL +             true
    |
 
 error: unneeded `return` statement
-  --> $DIR/needless_return.rs:62:9
+  --> tests/ui/needless_return.rs:62:9
    |
 LL |         return true;
    |         ^^^^^^^^^^^
@@ -108,7 +108,7 @@ LL +         true
    |
 
 error: unneeded `return` statement
-  --> $DIR/needless_return.rs:64:16
+  --> tests/ui/needless_return.rs:64:16
    |
 LL |     let _ = || return true;
    |                ^^^^^^^^^^^
@@ -119,7 +119,7 @@ LL |     let _ = || true;
    |                ~~~~
 
 error: unneeded `return` statement
-  --> $DIR/needless_return.rs:68:5
+  --> tests/ui/needless_return.rs:68:5
    |
 LL |     return the_answer!();
    |     ^^^^^^^^^^^^^^^^^^^^
@@ -131,7 +131,7 @@ LL +     the_answer!()
    |
 
 error: unneeded `return` statement
-  --> $DIR/needless_return.rs:71:21
+  --> tests/ui/needless_return.rs:71:21
    |
 LL |   fn test_void_fun() {
    |  _____________________^
@@ -146,7 +146,7 @@ LL + fn test_void_fun() {
    |
 
 error: unneeded `return` statement
-  --> $DIR/needless_return.rs:76:11
+  --> tests/ui/needless_return.rs:76:11
    |
 LL |       if b {
    |  ___________^
@@ -161,7 +161,7 @@ LL +     if b {
    |
 
 error: unneeded `return` statement
-  --> $DIR/needless_return.rs:78:13
+  --> tests/ui/needless_return.rs:78:13
    |
 LL |       } else {
    |  _____________^
@@ -176,7 +176,7 @@ LL +     } else {
    |
 
 error: unneeded `return` statement
-  --> $DIR/needless_return.rs:86:14
+  --> tests/ui/needless_return.rs:86:14
    |
 LL |         _ => return,
    |              ^^^^^^
@@ -187,7 +187,7 @@ LL |         _ => (),
    |              ~~
 
 error: unneeded `return` statement
-  --> $DIR/needless_return.rs:94:24
+  --> tests/ui/needless_return.rs:94:24
    |
 LL |               let _ = 42;
    |  ________________________^
@@ -202,7 +202,7 @@ LL +             let _ = 42;
    |
 
 error: unneeded `return` statement
-  --> $DIR/needless_return.rs:97:14
+  --> tests/ui/needless_return.rs:97:14
    |
 LL |         _ => return,
    |              ^^^^^^
@@ -213,7 +213,7 @@ LL |         _ => (),
    |              ~~
 
 error: unneeded `return` statement
-  --> $DIR/needless_return.rs:110:9
+  --> tests/ui/needless_return.rs:110:9
    |
 LL |         return String::from("test");
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -225,7 +225,7 @@ LL +         String::from("test")
    |
 
 error: unneeded `return` statement
-  --> $DIR/needless_return.rs:112:9
+  --> tests/ui/needless_return.rs:112:9
    |
 LL |         return String::new();
    |         ^^^^^^^^^^^^^^^^^^^^
@@ -237,7 +237,7 @@ LL +         String::new()
    |
 
 error: unneeded `return` statement
-  --> $DIR/needless_return.rs:134:32
+  --> tests/ui/needless_return.rs:134:32
    |
 LL |         bar.unwrap_or_else(|_| return)
    |                                ^^^^^^
@@ -248,7 +248,7 @@ LL |         bar.unwrap_or_else(|_| {})
    |                                ~~
 
 error: unneeded `return` statement
-  --> $DIR/needless_return.rs:138:21
+  --> tests/ui/needless_return.rs:138:21
    |
 LL |           let _ = || {
    |  _____________________^
@@ -263,7 +263,7 @@ LL +         let _ = || {
    |
 
 error: unneeded `return` statement
-  --> $DIR/needless_return.rs:141:20
+  --> tests/ui/needless_return.rs:141:20
    |
 LL |         let _ = || return;
    |                    ^^^^^^
@@ -274,7 +274,7 @@ LL |         let _ = || {};
    |                    ~~
 
 error: unneeded `return` statement
-  --> $DIR/needless_return.rs:147:32
+  --> tests/ui/needless_return.rs:147:32
    |
 LL |         res.unwrap_or_else(|_| return Foo)
    |                                ^^^^^^^^^^
@@ -285,7 +285,7 @@ LL |         res.unwrap_or_else(|_| Foo)
    |                                ~~~
 
 error: unneeded `return` statement
-  --> $DIR/needless_return.rs:156:5
+  --> tests/ui/needless_return.rs:156:5
    |
 LL |     return true;
    |     ^^^^^^^^^^^
@@ -297,7 +297,7 @@ LL +     true
    |
 
 error: unneeded `return` statement
-  --> $DIR/needless_return.rs:160:5
+  --> tests/ui/needless_return.rs:160:5
    |
 LL |     return true;
    |     ^^^^^^^^^^^
@@ -309,7 +309,7 @@ LL +     true
    |
 
 error: unneeded `return` statement
-  --> $DIR/needless_return.rs:165:9
+  --> tests/ui/needless_return.rs:165:9
    |
 LL |         return true;
    |         ^^^^^^^^^^^
@@ -321,7 +321,7 @@ LL +         true
    |
 
 error: unneeded `return` statement
-  --> $DIR/needless_return.rs:167:9
+  --> tests/ui/needless_return.rs:167:9
    |
 LL |         return false;
    |         ^^^^^^^^^^^^
@@ -333,7 +333,7 @@ LL +         false
    |
 
 error: unneeded `return` statement
-  --> $DIR/needless_return.rs:173:17
+  --> tests/ui/needless_return.rs:173:17
    |
 LL |         true => return false,
    |                 ^^^^^^^^^^^^
@@ -344,7 +344,7 @@ LL |         true => false,
    |                 ~~~~~
 
 error: unneeded `return` statement
-  --> $DIR/needless_return.rs:175:13
+  --> tests/ui/needless_return.rs:175:13
    |
 LL |             return true;
    |             ^^^^^^^^^^^
@@ -356,7 +356,7 @@ LL +             true
    |
 
 error: unneeded `return` statement
-  --> $DIR/needless_return.rs:182:9
+  --> tests/ui/needless_return.rs:182:9
    |
 LL |         return true;
    |         ^^^^^^^^^^^
@@ -368,7 +368,7 @@ LL +         true
    |
 
 error: unneeded `return` statement
-  --> $DIR/needless_return.rs:184:16
+  --> tests/ui/needless_return.rs:184:16
    |
 LL |     let _ = || return true;
    |                ^^^^^^^^^^^
@@ -379,7 +379,7 @@ LL |     let _ = || true;
    |                ~~~~
 
 error: unneeded `return` statement
-  --> $DIR/needless_return.rs:188:5
+  --> tests/ui/needless_return.rs:188:5
    |
 LL |     return the_answer!();
    |     ^^^^^^^^^^^^^^^^^^^^
@@ -391,7 +391,7 @@ LL +     the_answer!()
    |
 
 error: unneeded `return` statement
-  --> $DIR/needless_return.rs:191:33
+  --> tests/ui/needless_return.rs:191:33
    |
 LL |   async fn async_test_void_fun() {
    |  _________________________________^
@@ -406,7 +406,7 @@ LL + async fn async_test_void_fun() {
    |
 
 error: unneeded `return` statement
-  --> $DIR/needless_return.rs:196:11
+  --> tests/ui/needless_return.rs:196:11
    |
 LL |       if b {
    |  ___________^
@@ -421,7 +421,7 @@ LL +     if b {
    |
 
 error: unneeded `return` statement
-  --> $DIR/needless_return.rs:198:13
+  --> tests/ui/needless_return.rs:198:13
    |
 LL |       } else {
    |  _____________^
@@ -436,7 +436,7 @@ LL +     } else {
    |
 
 error: unneeded `return` statement
-  --> $DIR/needless_return.rs:206:14
+  --> tests/ui/needless_return.rs:206:14
    |
 LL |         _ => return,
    |              ^^^^^^
@@ -447,7 +447,7 @@ LL |         _ => (),
    |              ~~
 
 error: unneeded `return` statement
-  --> $DIR/needless_return.rs:219:9
+  --> tests/ui/needless_return.rs:219:9
    |
 LL |         return String::from("test");
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -459,7 +459,7 @@ LL +         String::from("test")
    |
 
 error: unneeded `return` statement
-  --> $DIR/needless_return.rs:221:9
+  --> tests/ui/needless_return.rs:221:9
    |
 LL |         return String::new();
    |         ^^^^^^^^^^^^^^^^^^^^
@@ -471,7 +471,7 @@ LL +         String::new()
    |
 
 error: unneeded `return` statement
-  --> $DIR/needless_return.rs:237:5
+  --> tests/ui/needless_return.rs:237:5
    |
 LL |     return format!("Hello {}", "world!");
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -483,7 +483,7 @@ LL +     format!("Hello {}", "world!")
    |
 
 error: unneeded `return` statement
-  --> $DIR/needless_return.rs:249:9
+  --> tests/ui/needless_return.rs:249:9
    |
 LL |         return true;
    |         ^^^^^^^^^^^
@@ -497,7 +497,7 @@ LL ~     }
    |
 
 error: unneeded `return` statement
-  --> $DIR/needless_return.rs:251:9
+  --> tests/ui/needless_return.rs:251:9
    |
 LL |         return false;
    |         ^^^^^^^^^^^^
@@ -509,7 +509,7 @@ LL ~     }
    |
 
 error: unneeded `return` statement
-  --> $DIR/needless_return.rs:258:13
+  --> tests/ui/needless_return.rs:258:13
    |
 LL |             return 10;
    |             ^^^^^^^^^
@@ -524,7 +524,7 @@ LL ~     }
    |
 
 error: unneeded `return` statement
-  --> $DIR/needless_return.rs:261:13
+  --> tests/ui/needless_return.rs:261:13
    |
 LL |             return 100;
    |             ^^^^^^^^^^
@@ -537,7 +537,7 @@ LL ~     }
    |
 
 error: unneeded `return` statement
-  --> $DIR/needless_return.rs:269:9
+  --> tests/ui/needless_return.rs:269:9
    |
 LL |         return 0;
    |         ^^^^^^^^
@@ -549,7 +549,7 @@ LL ~     }
    |
 
 error: unneeded `return` statement
-  --> $DIR/needless_return.rs:276:13
+  --> tests/ui/needless_return.rs:276:13
    |
 LL |             return *(x as *const isize);
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -564,7 +564,7 @@ LL ~     }
    |
 
 error: unneeded `return` statement
-  --> $DIR/needless_return.rs:278:13
+  --> tests/ui/needless_return.rs:278:13
    |
 LL |             return !*(x as *const isize);
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -577,7 +577,7 @@ LL ~     }
    |
 
 error: unneeded `return` statement
-  --> $DIR/needless_return.rs:285:20
+  --> tests/ui/needless_return.rs:285:20
    |
 LL |           let _ = 42;
    |  ____________________^
@@ -594,7 +594,7 @@ LL +         let _ = 42;
    |
 
 error: unneeded `return` statement
-  --> $DIR/needless_return.rs:292:20
+  --> tests/ui/needless_return.rs:292:20
    |
 LL |         let _ = 42; return;
    |                    ^^^^^^^
@@ -606,7 +606,7 @@ LL +         let _ = 42;
    |
 
 error: unneeded `return` statement
-  --> $DIR/needless_return.rs:304:9
+  --> tests/ui/needless_return.rs:304:9
    |
 LL |         return Ok(format!("ok!"));
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -618,7 +618,7 @@ LL +         Ok(format!("ok!"))
    |
 
 error: unneeded `return` statement
-  --> $DIR/needless_return.rs:306:9
+  --> tests/ui/needless_return.rs:306:9
    |
 LL |         return Err(format!("err!"));
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -630,7 +630,7 @@ LL +         Err(format!("err!"))
    |
 
 error: unneeded `return` statement
-  --> $DIR/needless_return.rs:312:9
+  --> tests/ui/needless_return.rs:312:9
    |
 LL |         return if true { 1 } else { 2 };
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -642,7 +642,7 @@ LL +         if true { 1 } else { 2 }
    |
 
 error: unneeded `return` statement
-  --> $DIR/needless_return.rs:316:9
+  --> tests/ui/needless_return.rs:316:9
    |
 LL |         return if b1 { 0 } else { 1 } | if b2 { 2 } else { 3 } | if b3 { 4 } else { 5 };
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

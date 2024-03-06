@@ -1,4 +1,4 @@
-// aux-build: issue-75801.rs
+//@ aux-build: issue-75801.rs
 
 // Regression test for #75801.
 

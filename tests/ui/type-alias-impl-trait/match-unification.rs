@@ -1,6 +1,6 @@
 use std::fmt::Debug;
 
-// check-pass
+//@ check-pass
 
 fn bar() -> impl Debug {}
 

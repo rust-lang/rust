@@ -11,15 +11,18 @@ use hir_def::{ItemContainerId, Lookup};
 use hir_expand::name;
 use itertools::Itertools;
 use rustc_hash::FxHashSet;
+use rustc_pattern_analysis::usefulness::{compute_match_usefulness, ValidityConstraint};
+use syntax::{ast, AstNode};
+use tracing::debug;
 use triomphe::Arc;
 use typed_arena::Arena;
 
+use crate::Interner;
 use crate::{
     db::HirDatabase,
     diagnostics::match_check::{
         self,
-        deconstruct_pat::DeconstructedPat,
-        usefulness::{compute_match_usefulness, MatchCheckCtx},
+        pat_analysis::{self, DeconstructedPat, MatchCheckCtx, WitnessPat},
     },
     display::HirDisplay,
     InferenceResult, Ty, TyExt,
@@ -27,7 +30,7 @@ use crate::{
 
 pub(crate) use hir_def::{
     body::Body,
-    hir::{Expr, ExprId, MatchArm, Pat, PatId},
+    hir::{Expr, ExprId, MatchArm, Pat, PatId, Statement},
     LocalFieldId, VariantId,
 };
 
@@ -44,13 +47,25 @@ pub enum BodyValidationDiagnostic {
         match_expr: ExprId,
         uncovered_patterns: String,
     },
+    NonExhaustiveLet {
+        pat: PatId,
+        uncovered_patterns: String,
+    },
+    RemoveTrailingReturn {
+        return_expr: ExprId,
+    },
+    RemoveUnnecessaryElse {
+        if_expr: ExprId,
+    },
 }
 
 impl BodyValidationDiagnostic {
     pub fn collect(db: &dyn HirDatabase, owner: DefWithBodyId) -> Vec<BodyValidationDiagnostic> {
-        let _p = profile::span("BodyValidationDiagnostic::collect");
+        let _p =
+            tracing::span!(tracing::Level::INFO, "BodyValidationDiagnostic::collect").entered();
         let infer = db.infer(owner);
-        let mut validator = ExprValidator::new(owner, infer);
+        let body = db.body(owner);
+        let mut validator = ExprValidator { owner, body, infer, diagnostics: Vec::new() };
         validator.validate_body(db);
         validator.diagnostics
     }
@@ -58,18 +73,20 @@ impl BodyValidationDiagnostic {
 
 struct ExprValidator {
     owner: DefWithBodyId,
+    body: Arc<Body>,
     infer: Arc<InferenceResult>,
-    pub(super) diagnostics: Vec<BodyValidationDiagnostic>,
+    diagnostics: Vec<BodyValidationDiagnostic>,
 }
 
 impl ExprValidator {
-    fn new(owner: DefWithBodyId, infer: Arc<InferenceResult>) -> ExprValidator {
-        ExprValidator { owner, infer, diagnostics: Vec::new() }
-    }
-
     fn validate_body(&mut self, db: &dyn HirDatabase) {
-        let body = db.body(self.owner);
         let mut filter_map_next_checker = None;
+        // we'll pass &mut self while iterating over body.exprs, so they need to be disjoint
+        let body = Arc::clone(&self.body);
+
+        if matches!(self.owner, DefWithBodyId::FunctionId(_)) {
+            self.check_for_trailing_return(body.body_expr, &body);
+        }
 
         for (id, expr) in body.exprs.iter() {
             if let Some((variant, missed_fields, true)) =
@@ -89,9 +106,19 @@ impl ExprValidator {
                 Expr::Call { .. } | Expr::MethodCall { .. } => {
                     self.validate_call(db, id, expr, &mut filter_map_next_checker);
                 }
+                Expr::Closure { body: body_expr, .. } => {
+                    self.check_for_trailing_return(*body_expr, &body);
+                }
+                Expr::If { .. } => {
+                    self.check_for_unnecessary_else(id, expr, db);
+                }
+                Expr::Block { .. } => {
+                    self.validate_block(db, expr);
+                }
                 _ => {}
             }
         }
+
         for (id, pat) in body.pats.iter() {
             if let Some((variant, missed_fields, true)) =
                 record_pattern_missing_fields(db, &self.infer, id, pat)
@@ -123,17 +150,18 @@ impl ExprValidator {
                 None => return,
             };
 
-            if filter_map_next_checker
-                .get_or_insert_with(|| {
-                    FilterMapNextChecker::new(&self.owner.resolver(db.upcast()), db)
-                })
-                .check(call_id, receiver, &callee)
-                .is_some()
-            {
+            let checker = filter_map_next_checker.get_or_insert_with(|| {
+                FilterMapNextChecker::new(&self.owner.resolver(db.upcast()), db)
+            });
+
+            if checker.check(call_id, receiver, &callee).is_some() {
                 self.diagnostics.push(BodyValidationDiagnostic::ReplaceFilterMapNextWithFindMap {
                     method_call_expr: call_id,
                 });
             }
+
+            let receiver_ty = self.infer[*receiver].clone();
+            checker.prev_receiver_ty = Some(receiver_ty);
         }
     }
 
@@ -144,16 +172,14 @@ impl ExprValidator {
         arms: &[MatchArm],
         db: &dyn HirDatabase,
     ) {
-        let body = db.body(self.owner);
-
         let scrut_ty = &self.infer[scrutinee_expr];
         if scrut_ty.is_unknown() {
             return;
         }
 
-        let pattern_arena = Arena::new();
-        let cx = MatchCheckCtx::new(self.owner.module(db.upcast()), self.owner, db, &pattern_arena);
+        let cx = MatchCheckCtx::new(self.owner.module(db.upcast()), self.owner, db);
 
+        let pattern_arena = Arena::new();
         let mut m_arms = Vec::with_capacity(arms.len());
         let mut has_lowering_errors = false;
         for arm in arms {
@@ -173,14 +199,16 @@ impl ExprValidator {
                         .as_reference()
                         .map(|(match_expr_ty, ..)| match_expr_ty == pat_ty)
                         .unwrap_or(false))
-                    && types_of_subpatterns_do_match(arm.pat, &body, &self.infer)
+                    && types_of_subpatterns_do_match(arm.pat, &self.body, &self.infer)
                 {
                     // If we had a NotUsefulMatchArm diagnostic, we could
                     // check the usefulness of each pattern as we added it
                     // to the matrix here.
-                    let m_arm = match_check::MatchArm {
-                        pat: self.lower_pattern(&cx, arm.pat, db, &body, &mut has_lowering_errors),
+                    let pat = self.lower_pattern(&cx, arm.pat, db, &mut has_lowering_errors);
+                    let m_arm = pat_analysis::MatchArm {
+                        pat: pattern_arena.alloc(pat),
                         has_guard: arm.guard.is_some(),
+                        arm_data: (),
                     };
                     m_arms.push(m_arm);
                     if !has_lowering_errors {
@@ -197,7 +225,15 @@ impl ExprValidator {
             return;
         }
 
-        let report = compute_match_usefulness(&cx, &m_arms, scrut_ty);
+        let report = match compute_match_usefulness(
+            &cx,
+            m_arms.as_slice(),
+            scrut_ty.clone(),
+            ValidityConstraint::ValidOnly,
+        ) {
+            Ok(report) => report,
+            Err(()) => return,
+        };
 
         // FIXME Report unreachable arms
         // https://github.com/rust-lang/rust/blob/f31622a50/compiler/rustc_mir_build/src/thir/pattern/check_match.rs#L200
@@ -206,26 +242,152 @@ impl ExprValidator {
         if !witnesses.is_empty() {
             self.diagnostics.push(BodyValidationDiagnostic::MissingMatchArms {
                 match_expr,
-                uncovered_patterns: missing_match_arms(&cx, scrut_ty, witnesses, arms),
+                uncovered_patterns: missing_match_arms(&cx, scrut_ty, witnesses, m_arms.is_empty()),
             });
+        }
+    }
+
+    fn validate_block(&mut self, db: &dyn HirDatabase, expr: &Expr) {
+        let Expr::Block { statements, .. } = expr else { return };
+        let pattern_arena = Arena::new();
+        let cx = MatchCheckCtx::new(self.owner.module(db.upcast()), self.owner, db);
+        for stmt in &**statements {
+            let &Statement::Let { pat, initializer, else_branch: None, .. } = stmt else {
+                continue;
+            };
+            let Some(initializer) = initializer else { continue };
+            let ty = &self.infer[initializer];
+
+            let mut have_errors = false;
+            let deconstructed_pat = self.lower_pattern(&cx, pat, db, &mut have_errors);
+            let match_arm = rustc_pattern_analysis::MatchArm {
+                pat: pattern_arena.alloc(deconstructed_pat),
+                has_guard: false,
+                arm_data: (),
+            };
+            if have_errors {
+                continue;
+            }
+
+            let report = match compute_match_usefulness(
+                &cx,
+                &[match_arm],
+                ty.clone(),
+                ValidityConstraint::ValidOnly,
+            ) {
+                Ok(v) => v,
+                Err(e) => {
+                    debug!(?e, "match usefulness error");
+                    continue;
+                }
+            };
+            let witnesses = report.non_exhaustiveness_witnesses;
+            if !witnesses.is_empty() {
+                self.diagnostics.push(BodyValidationDiagnostic::NonExhaustiveLet {
+                    pat,
+                    uncovered_patterns: missing_match_arms(&cx, ty, witnesses, false),
+                });
+            }
         }
     }
 
     fn lower_pattern<'p>(
         &self,
-        cx: &MatchCheckCtx<'_, 'p>,
+        cx: &MatchCheckCtx<'p>,
         pat: PatId,
         db: &dyn HirDatabase,
-        body: &Body,
         have_errors: &mut bool,
-    ) -> &'p DeconstructedPat<'p> {
-        let mut patcx = match_check::PatCtxt::new(db, &self.infer, body);
+    ) -> DeconstructedPat<'p> {
+        let mut patcx = match_check::PatCtxt::new(db, &self.infer, &self.body);
         let pattern = patcx.lower_pattern(pat);
-        let pattern = cx.pattern_arena.alloc(DeconstructedPat::from_pat(cx, &pattern));
+        let pattern = cx.lower_pat(&pattern);
         if !patcx.errors.is_empty() {
             *have_errors = true;
         }
         pattern
+    }
+
+    fn check_for_trailing_return(&mut self, body_expr: ExprId, body: &Body) {
+        match &body.exprs[body_expr] {
+            Expr::Block { statements, tail, .. } => {
+                let last_stmt = tail.or_else(|| match statements.last()? {
+                    Statement::Expr { expr, .. } => Some(*expr),
+                    _ => None,
+                });
+                if let Some(last_stmt) = last_stmt {
+                    self.check_for_trailing_return(last_stmt, body);
+                }
+            }
+            Expr::If { then_branch, else_branch, .. } => {
+                self.check_for_trailing_return(*then_branch, body);
+                if let Some(else_branch) = else_branch {
+                    self.check_for_trailing_return(*else_branch, body);
+                }
+            }
+            Expr::Match { arms, .. } => {
+                for arm in arms.iter() {
+                    let MatchArm { expr, .. } = arm;
+                    self.check_for_trailing_return(*expr, body);
+                }
+            }
+            Expr::Return { .. } => {
+                self.diagnostics.push(BodyValidationDiagnostic::RemoveTrailingReturn {
+                    return_expr: body_expr,
+                });
+            }
+            _ => (),
+        }
+    }
+
+    fn check_for_unnecessary_else(&mut self, id: ExprId, expr: &Expr, db: &dyn HirDatabase) {
+        if let Expr::If { condition: _, then_branch, else_branch } = expr {
+            if else_branch.is_none() {
+                return;
+            }
+            if let Expr::Block { statements, tail, .. } = &self.body.exprs[*then_branch] {
+                let last_then_expr = tail.or_else(|| match statements.last()? {
+                    Statement::Expr { expr, .. } => Some(*expr),
+                    _ => None,
+                });
+                if let Some(last_then_expr) = last_then_expr {
+                    let last_then_expr_ty = &self.infer[last_then_expr];
+                    if last_then_expr_ty.is_never() {
+                        // Only look at sources if the then branch diverges and we have an else branch.
+                        let (_, source_map) = db.body_with_source_map(self.owner);
+                        let Ok(source_ptr) = source_map.expr_syntax(id) else {
+                            return;
+                        };
+                        let root = source_ptr.file_syntax(db.upcast());
+                        let ast::Expr::IfExpr(if_expr) = source_ptr.value.to_node(&root) else {
+                            return;
+                        };
+                        let mut top_if_expr = if_expr;
+                        loop {
+                            let parent = top_if_expr.syntax().parent();
+                            let has_parent_expr_stmt_or_stmt_list =
+                                parent.as_ref().map_or(false, |node| {
+                                    ast::ExprStmt::can_cast(node.kind())
+                                        | ast::StmtList::can_cast(node.kind())
+                                });
+                            if has_parent_expr_stmt_or_stmt_list {
+                                // Only emit diagnostic if parent or direct ancestor is either
+                                // an expr stmt or a stmt list.
+                                break;
+                            }
+                            let Some(parent_if_expr) = parent.and_then(ast::IfExpr::cast) else {
+                                // Bail if parent is neither an if expr, an expr stmt nor a stmt list.
+                                return;
+                            };
+                            // Check parent if expr.
+                            top_if_expr = parent_if_expr;
+                        }
+
+                        self.diagnostics
+                            .push(BodyValidationDiagnostic::RemoveUnnecessaryElse { if_expr: id })
+                    }
+                }
+            }
+        }
     }
 }
 
@@ -233,6 +395,7 @@ struct FilterMapNextChecker {
     filter_map_function_id: Option<hir_def::FunctionId>,
     next_function_id: Option<hir_def::FunctionId>,
     prev_filter_map_expr_id: Option<ExprId>,
+    prev_receiver_ty: Option<chalk_ir::Ty<Interner>>,
 }
 
 impl FilterMapNextChecker {
@@ -257,7 +420,12 @@ impl FilterMapNextChecker {
             ),
             None => (None, None),
         };
-        Self { filter_map_function_id, next_function_id, prev_filter_map_expr_id: None }
+        Self {
+            filter_map_function_id,
+            next_function_id,
+            prev_filter_map_expr_id: None,
+            prev_receiver_ty: None,
+        }
     }
 
     // check for instances of .filter_map(..).next()
@@ -274,7 +442,11 @@ impl FilterMapNextChecker {
 
         if *function_id == self.next_function_id? {
             if let Some(prev_filter_map_expr_id) = self.prev_filter_map_expr_id {
-                if *receiver_expr_id == prev_filter_map_expr_id {
+                let is_dyn_trait = self
+                    .prev_receiver_ty
+                    .as_ref()
+                    .map_or(false, |it| it.strip_references().dyn_trait().is_some());
+                if *receiver_expr_id == prev_filter_map_expr_id && !is_dyn_trait {
                     return Some(());
                 }
             }
@@ -364,16 +536,16 @@ fn types_of_subpatterns_do_match(pat: PatId, body: &Body, infer: &InferenceResul
 }
 
 fn missing_match_arms<'p>(
-    cx: &MatchCheckCtx<'_, 'p>,
+    cx: &MatchCheckCtx<'p>,
     scrut_ty: &Ty,
-    witnesses: Vec<DeconstructedPat<'p>>,
-    arms: &[MatchArm],
+    witnesses: Vec<WitnessPat<'p>>,
+    arms_is_empty: bool,
 ) -> String {
-    struct DisplayWitness<'a, 'p>(&'a DeconstructedPat<'p>, &'a MatchCheckCtx<'a, 'p>);
+    struct DisplayWitness<'a, 'p>(&'a WitnessPat<'p>, &'a MatchCheckCtx<'p>);
     impl fmt::Display for DisplayWitness<'_, '_> {
         fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
             let DisplayWitness(witness, cx) = *self;
-            let pat = witness.to_pat(cx);
+            let pat = cx.hoist_witness_pat(witness);
             write!(f, "{}", pat.display(cx.db))
         }
     }
@@ -382,7 +554,7 @@ fn missing_match_arms<'p>(
         Some((AdtId::EnumId(e), _)) => !cx.db.enum_data(e).variants.is_empty(),
         _ => false,
     };
-    if arms.is_empty() && !non_empty_enum {
+    if arms_is_empty && !non_empty_enum {
         format!("type `{}` is non-empty", scrut_ty.display(cx.db))
     } else {
         let pat_display = |witness| DisplayWitness(witness, cx);

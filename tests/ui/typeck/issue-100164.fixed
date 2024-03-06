@@ -1,4 +1,4 @@
-// run-rustfix
+//@ run-rustfix
 
 const _A: i32 = 123;
 //~^ ERROR: missing type for `const` item

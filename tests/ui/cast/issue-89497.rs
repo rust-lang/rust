@@ -1,6 +1,6 @@
 // Regression test for issue #89497.
 
-// run-rustfix
+//@ run-rustfix
 
 fn main() {
     let pointer: usize = &1_i32 as *const i32 as usize;

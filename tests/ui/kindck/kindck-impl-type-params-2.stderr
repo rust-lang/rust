@@ -1,8 +1,8 @@
-error[E0277]: the trait bound `Box<{integer}>: Copy` is not satisfied
+error[E0277]: the trait bound `Box<{integer}>: Foo` is not satisfied
   --> $DIR/kindck-impl-type-params-2.rs:13:16
    |
 LL |     take_param(&x);
-   |     ---------- ^^ the trait `Copy` is not implemented for `Box<{integer}>`
+   |     ---------- ^^ the trait `Copy` is not implemented for `Box<{integer}>`, which is required by `Box<{integer}>: Foo`
    |     |
    |     required by a bound introduced by this call
    |

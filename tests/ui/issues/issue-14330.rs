@@ -1,6 +1,6 @@
-// check-pass
+//@ check-pass
 #![allow(unused_imports)]
-// pretty-expanded FIXME #23616
+//@ pretty-expanded FIXME #23616
 
 #[macro_use] extern crate std as std2;
 

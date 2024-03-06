@@ -1,6 +1,6 @@
 // Check that the interpreter does not ICE when trying to unsize `B` to `[u8]`.
 // This is a `build` test to ensure that const-prop-lint runs.
-// build-pass
+//@ build-pass
 
 #![feature(unsize)]
 

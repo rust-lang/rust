@@ -6,7 +6,7 @@
 #![feature(rustc_private)]
 
 #[allow(dead_code)]
-#[cfg_attr(feature = "cargo-clippy", allow(dead_code))]
+#[cfg_attr(clippy, allow(dead_code))]
 #[rustfmt::skip]
 #[allow(unused_imports)]
 #[allow(unused_extern_crates)]
@@ -79,6 +79,14 @@ pub mod split {
 // https://github.com/rust-lang/rust-clippy/issues/8768
 #[allow(clippy::single_component_path_imports)]
 use regex;
+
+mod module {
+    pub(crate) struct Struct;
+}
+
+#[rustfmt::skip]
+#[allow(unused_import_braces)]
+use module::{Struct};
 
 fn main() {
     test_indented_attr();

@@ -11,6 +11,7 @@ use rustc_lint::{LateContext, LateLintPass};
 use rustc_semver::RustcVersion;
 use rustc_session::impl_lint_pass;
 use rustc_span::symbol::sym;
+use rustc_span::Span;
 
 const ACCEPTABLE_METHODS: [&[&str]; 5] = [
     &paths::BINARYHEAP_ITER,
@@ -28,6 +29,7 @@ const ACCEPTABLE_TYPES: [(rustc_span::Symbol, Option<RustcVersion>); 7] = [
     (sym::Vec, None),
     (sym::VecDeque, None),
 ];
+const MAP_TYPES: [rustc_span::Symbol; 2] = [sym::BTreeMap, sym::HashMap];
 
 declare_clippy_lint! {
     /// ### What it does
@@ -43,6 +45,7 @@ declare_clippy_lint! {
     /// Use instead:
     /// ```no_run
     /// let mut vec = vec![0, 1, 2];
+    /// vec.retain(|x| x % 2 == 0);
     /// vec.retain(|x| x % 2 == 0);
     /// ```
     #[clippy::version = "1.64.0"]
@@ -74,9 +77,9 @@ impl<'tcx> LateLintPass<'tcx> for ManualRetain {
             && let Some(collect_def_id) = cx.typeck_results().type_dependent_def_id(collect_expr.hir_id)
             && cx.tcx.is_diagnostic_item(sym::iterator_collect_fn, collect_def_id)
         {
-            check_into_iter(cx, parent_expr, left_expr, target_expr, &self.msrv);
-            check_iter(cx, parent_expr, left_expr, target_expr, &self.msrv);
-            check_to_owned(cx, parent_expr, left_expr, target_expr, &self.msrv);
+            check_into_iter(cx, left_expr, target_expr, parent_expr.span, &self.msrv);
+            check_iter(cx, left_expr, target_expr, parent_expr.span, &self.msrv);
+            check_to_owned(cx, left_expr, target_expr, parent_expr.span, &self.msrv);
         }
     }
 
@@ -85,9 +88,9 @@ impl<'tcx> LateLintPass<'tcx> for ManualRetain {
 
 fn check_into_iter(
     cx: &LateContext<'_>,
-    parent_expr: &hir::Expr<'_>,
     left_expr: &hir::Expr<'_>,
     target_expr: &hir::Expr<'_>,
+    parent_expr_span: Span,
     msrv: &Msrv,
 ) {
     if let hir::ExprKind::MethodCall(_, into_iter_expr, [_], _) = &target_expr.kind
@@ -98,16 +101,39 @@ fn check_into_iter(
         && Some(into_iter_def_id) == cx.tcx.lang_items().into_iter_fn()
         && match_acceptable_type(cx, left_expr, msrv)
         && SpanlessEq::new(cx).eq_expr(left_expr, struct_expr)
+        && let hir::ExprKind::MethodCall(_, _, [closure_expr], _) = target_expr.kind
+        && let hir::ExprKind::Closure(closure) = closure_expr.kind
+        && let filter_body = cx.tcx.hir().body(closure.body)
+        && let [filter_params] = filter_body.params
     {
-        suggest(cx, parent_expr, left_expr, target_expr);
+        if match_map_type(cx, left_expr) {
+            if let hir::PatKind::Tuple([key_pat, value_pat], _) = filter_params.pat.kind {
+                if let Some(sugg) = make_sugg(cx, key_pat, value_pat, left_expr, filter_body) {
+                    make_span_lint_and_sugg(cx, parent_expr_span, sugg);
+                }
+            }
+            // Cannot lint other cases because `retain` requires two parameters
+        } else {
+            // Can always move because `retain` and `filter` have the same bound on the predicate
+            // for other types
+            make_span_lint_and_sugg(
+                cx,
+                parent_expr_span,
+                format!(
+                    "{}.retain({})",
+                    snippet(cx, left_expr.span, ".."),
+                    snippet(cx, closure_expr.span, "..")
+                ),
+            );
+        }
     }
 }
 
 fn check_iter(
     cx: &LateContext<'_>,
-    parent_expr: &hir::Expr<'_>,
     left_expr: &hir::Expr<'_>,
     target_expr: &hir::Expr<'_>,
+    parent_expr_span: Span,
     msrv: &Msrv,
 ) {
     if let hir::ExprKind::MethodCall(_, filter_expr, [], _) = &target_expr.kind
@@ -122,16 +148,50 @@ fn check_iter(
         && match_acceptable_def_path(cx, iter_expr_def_id)
         && match_acceptable_type(cx, left_expr, msrv)
         && SpanlessEq::new(cx).eq_expr(left_expr, struct_expr)
+        && let hir::ExprKind::MethodCall(_, _, [closure_expr], _) = filter_expr.kind
+        && let hir::ExprKind::Closure(closure) = closure_expr.kind
+        && let filter_body = cx.tcx.hir().body(closure.body)
+        && let [filter_params] = filter_body.params
     {
-        suggest(cx, parent_expr, left_expr, filter_expr);
+        match filter_params.pat.kind {
+            // hir::PatKind::Binding(_, _, _, None) => {
+            //     // Be conservative now. Do nothing here.
+            //     // TODO: Ideally, we can rewrite the lambda by stripping one level of reference
+            // },
+            hir::PatKind::Tuple([_, _], _) => {
+                // the `&&` reference for the `filter` method will be auto derefed to `ref`
+                // so, we can directly use the lambda
+                // https://doc.rust-lang.org/reference/patterns.html#binding-modes
+                make_span_lint_and_sugg(
+                    cx,
+                    parent_expr_span,
+                    format!(
+                        "{}.retain({})",
+                        snippet(cx, left_expr.span, ".."),
+                        snippet(cx, closure_expr.span, "..")
+                    ),
+                );
+            },
+            hir::PatKind::Ref(pat, _) => make_span_lint_and_sugg(
+                cx,
+                parent_expr_span,
+                format!(
+                    "{}.retain(|{}| {})",
+                    snippet(cx, left_expr.span, ".."),
+                    snippet(cx, pat.span, ".."),
+                    snippet(cx, filter_body.value.span, "..")
+                ),
+            ),
+            _ => {},
+        }
     }
 }
 
 fn check_to_owned(
     cx: &LateContext<'_>,
-    parent_expr: &hir::Expr<'_>,
     left_expr: &hir::Expr<'_>,
     target_expr: &hir::Expr<'_>,
+    parent_expr_span: Span,
     msrv: &Msrv,
 ) {
     if msrv.meets(msrvs::STRING_RETAIN)
@@ -147,43 +207,25 @@ fn check_to_owned(
         && let ty = cx.typeck_results().expr_ty(str_expr).peel_refs()
         && is_type_lang_item(cx, ty, hir::LangItem::String)
         && SpanlessEq::new(cx).eq_expr(left_expr, str_expr)
-    {
-        suggest(cx, parent_expr, left_expr, filter_expr);
-    }
-}
-
-fn suggest(cx: &LateContext<'_>, parent_expr: &hir::Expr<'_>, left_expr: &hir::Expr<'_>, filter_expr: &hir::Expr<'_>) {
-    if let hir::ExprKind::MethodCall(_, _, [closure], _) = filter_expr.kind
-        && let hir::ExprKind::Closure(&hir::Closure { body, .. }) = closure.kind
-        && let filter_body = cx.tcx.hir().body(body)
+        && let hir::ExprKind::MethodCall(_, _, [closure_expr], _) = filter_expr.kind
+        && let hir::ExprKind::Closure(closure) = closure_expr.kind
+        && let filter_body = cx.tcx.hir().body(closure.body)
         && let [filter_params] = filter_body.params
-        && let Some(sugg) = match filter_params.pat.kind {
-            hir::PatKind::Binding(_, _, filter_param_ident, None) => Some(format!(
-                "{}.retain(|{filter_param_ident}| {})",
-                snippet(cx, left_expr.span, ".."),
-                snippet(cx, filter_body.value.span, "..")
-            )),
-            hir::PatKind::Tuple([key_pat, value_pat], _) => make_sugg(cx, key_pat, value_pat, left_expr, filter_body),
-            hir::PatKind::Ref(pat, _) => match pat.kind {
-                hir::PatKind::Binding(_, _, filter_param_ident, None) => Some(format!(
-                    "{}.retain(|{filter_param_ident}| {})",
-                    snippet(cx, left_expr.span, ".."),
-                    snippet(cx, filter_body.value.span, "..")
-                )),
-                _ => None,
-            },
-            _ => None,
-        }
     {
-        span_lint_and_sugg(
-            cx,
-            MANUAL_RETAIN,
-            parent_expr.span,
-            "this expression can be written more simply using `.retain()`",
-            "consider calling `.retain()` instead",
-            sugg,
-            Applicability::MachineApplicable,
-        );
+        if let hir::PatKind::Ref(pat, _) = filter_params.pat.kind {
+            make_span_lint_and_sugg(
+                cx,
+                parent_expr_span,
+                format!(
+                    "{}.retain(|{}| {})",
+                    snippet(cx, left_expr.span, ".."),
+                    snippet(cx, pat.span, ".."),
+                    snippet(cx, filter_body.value.span, "..")
+                ),
+            );
+        }
+        // Be conservative now. Do nothing for the `Binding` case.
+        // TODO: Ideally, we can rewrite the lambda by stripping one level of reference
     }
 }
 
@@ -228,4 +270,21 @@ fn match_acceptable_type(cx: &LateContext<'_>, expr: &hir::Expr<'_>, msrv: &Msrv
         is_type_diagnostic_item(cx, expr_ty, *ty)
             && acceptable_msrv.map_or(true, |acceptable_msrv| msrv.meets(acceptable_msrv))
     })
+}
+
+fn match_map_type(cx: &LateContext<'_>, expr: &hir::Expr<'_>) -> bool {
+    let expr_ty = cx.typeck_results().expr_ty(expr).peel_refs();
+    MAP_TYPES.iter().any(|ty| is_type_diagnostic_item(cx, expr_ty, *ty))
+}
+
+fn make_span_lint_and_sugg(cx: &LateContext<'_>, span: Span, sugg: String) {
+    span_lint_and_sugg(
+        cx,
+        MANUAL_RETAIN,
+        span,
+        "this expression can be written more simply using `.retain()`",
+        "consider calling `.retain()` instead",
+        sugg,
+        Applicability::MachineApplicable,
+    );
 }

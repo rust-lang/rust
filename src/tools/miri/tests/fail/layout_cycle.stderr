@@ -10,6 +10,7 @@ error: post-monomorphization error: a cycle occurred during layout computation
 LL |     intrinsics::size_of::<T>()
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^ a cycle occurred during layout computation
    |
+   = note: BACKTRACE:
    = note: inside `std::mem::size_of::<S<S<()>>>` at RUSTLIB/core/src/mem/mod.rs:LL:CC
 note: inside `foo::<S<()>>`
   --> $DIR/layout_cycle.rs:LL:CC

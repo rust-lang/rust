@@ -26,7 +26,6 @@ const SUPPORTED_CALLING_CONVENTIONS: &[&str] = &[
     "ptx-kernel",
     "msp430-interrupt",
     "x86-interrupt",
-    "amdgpu-kernel",
     "efiapi",
     "avr-interrupt",
     "avr-non-blocking-interrupt",

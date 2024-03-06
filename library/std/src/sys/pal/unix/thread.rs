@@ -1,8 +1,8 @@
 use crate::cmp;
-use crate::ffi::CStr;
+use crate::ffi::{CStr, CString};
 use crate::io;
 use crate::mem;
-use crate::num::NonZeroUsize;
+use crate::num::NonZero;
 use crate::ptr;
 use crate::sys::{os, stack_overflow};
 use crate::time::Duration;
@@ -225,6 +225,44 @@ impl Thread {
         // Newlib, Emscripten, and VxWorks have no way to set a thread name.
     }
 
+    #[cfg(target_os = "linux")]
+    pub fn get_name() -> Option<CString> {
+        const TASK_COMM_LEN: usize = 16;
+        let mut name = vec![0u8; TASK_COMM_LEN];
+        let res = unsafe {
+            libc::pthread_getname_np(libc::pthread_self(), name.as_mut_ptr().cast(), name.len())
+        };
+        if res != 0 {
+            return None;
+        }
+        name.truncate(name.iter().position(|&c| c == 0)?);
+        CString::new(name).ok()
+    }
+
+    #[cfg(any(target_os = "macos", target_os = "ios", target_os = "tvos", target_os = "watchos"))]
+    pub fn get_name() -> Option<CString> {
+        let mut name = vec![0u8; libc::MAXTHREADNAMESIZE];
+        let res = unsafe {
+            libc::pthread_getname_np(libc::pthread_self(), name.as_mut_ptr().cast(), name.len())
+        };
+        if res != 0 {
+            return None;
+        }
+        name.truncate(name.iter().position(|&c| c == 0)?);
+        CString::new(name).ok()
+    }
+
+    #[cfg(not(any(
+        target_os = "linux",
+        target_os = "macos",
+        target_os = "ios",
+        target_os = "tvos",
+        target_os = "watchos"
+    )))]
+    pub fn get_name() -> Option<CString> {
+        None
+    }
+
     #[cfg(not(target_os = "espidf"))]
     pub fn sleep(dur: Duration) {
         let mut secs = dur.as_secs();
@@ -239,7 +277,7 @@ impl Thread {
                     tv_nsec: nsecs,
                 };
                 secs -= ts.tv_sec as u64;
-                let ts_ptr = &mut ts as *mut _;
+                let ts_ptr = core::ptr::addr_of_mut!(ts);
                 if libc::nanosleep(ts_ptr, ts_ptr) == -1 {
                     assert_eq!(os::errno(), libc::EINTR);
                     secs += ts.tv_sec as u64;
@@ -306,7 +344,7 @@ fn truncate_cstr<const MAX_WITH_NUL: usize>(cstr: &CStr) -> [libc::c_char; MAX_W
     result
 }
 
-pub fn available_parallelism() -> io::Result<NonZeroUsize> {
+pub fn available_parallelism() -> io::Result<NonZero<usize>> {
     cfg_if::cfg_if! {
         if #[cfg(any(
             target_os = "android",
@@ -338,7 +376,7 @@ pub fn available_parallelism() -> io::Result<NonZeroUsize> {
                         // some old MIPS kernels were buggy and zero-initialized the mask if
                         // none was explicitly set.
                         // In that case we use the sysconf fallback.
-                        if let Some(count) = NonZeroUsize::new(count) {
+                        if let Some(count) = NonZero::new(count) {
                             return Ok(count)
                         }
                     }
@@ -351,7 +389,7 @@ pub fn available_parallelism() -> io::Result<NonZeroUsize> {
                     let count = cpus as usize;
                     // Cover the unusual situation where we were able to get the quota but not the affinity mask
                     let count = count.min(quota);
-                    Ok(unsafe { NonZeroUsize::new_unchecked(count) })
+                    Ok(unsafe { NonZero::new_unchecked(count) })
                 }
             }
         } else if #[cfg(any(
@@ -375,7 +413,7 @@ pub fn available_parallelism() -> io::Result<NonZeroUsize> {
                     ) == 0 {
                         let count = libc::CPU_COUNT(&set) as usize;
                         if count > 0 {
-                            return Ok(NonZeroUsize::new_unchecked(count));
+                            return Ok(NonZero::new_unchecked(count));
                         }
                     }
                 }
@@ -397,7 +435,7 @@ pub fn available_parallelism() -> io::Result<NonZeroUsize> {
                             }
                         }
                         libc::_cpuset_destroy(set);
-                        if let Some(count) = NonZeroUsize::new(count) {
+                        if let Some(count) = NonZero::new(count) {
                             return Ok(count);
                         }
                     }
@@ -418,8 +456,8 @@ pub fn available_parallelism() -> io::Result<NonZeroUsize> {
                     libc::sysctl(
                         mib.as_mut_ptr(),
                         2,
-                        &mut cpus as *mut _ as *mut _,
-                        &mut cpus_size as *mut _ as *mut _,
+                        core::ptr::addr_of_mut!(cpus) as *mut _,
+                        core::ptr::addr_of_mut!(cpus_size) as *mut _,
                         ptr::null_mut(),
                         0,
                     )
@@ -433,7 +471,7 @@ pub fn available_parallelism() -> io::Result<NonZeroUsize> {
                 }
             }
 
-            Ok(unsafe { NonZeroUsize::new_unchecked(cpus as usize) })
+            Ok(unsafe { NonZero::new_unchecked(cpus as usize) })
         } else if #[cfg(target_os = "nto")] {
             unsafe {
                 use libc::_syspage_ptr;
@@ -441,7 +479,7 @@ pub fn available_parallelism() -> io::Result<NonZeroUsize> {
                     Err(io::const_io_error!(io::ErrorKind::NotFound, "No syspage available"))
                 } else {
                     let cpus = (*_syspage_ptr).num_cpu;
-                    NonZeroUsize::new(cpus as usize)
+                    NonZero::new(cpus as usize)
                         .ok_or(io::const_io_error!(io::ErrorKind::NotFound, "The number of hardware threads is not known for the target platform"))
                 }
             }
@@ -456,7 +494,7 @@ pub fn available_parallelism() -> io::Result<NonZeroUsize> {
                     return Err(io::const_io_error!(io::ErrorKind::NotFound, "The number of hardware threads is not known for the target platform"));
                 }
 
-                Ok(NonZeroUsize::new_unchecked(sinfo.cpu_count as usize))
+                Ok(NonZero::new_unchecked(sinfo.cpu_count as usize))
             }
         } else {
             // FIXME: implement on vxWorks, Redox, l4re
@@ -847,11 +885,31 @@ pub mod guard {
             let stackptr = get_stack_start_aligned()?;
             let guardaddr = stackptr.addr();
             // Technically the number of guard pages is tunable and controlled
-            // by the security.bsd.stack_guard_page sysctl, but there are
-            // few reasons to change it from the default. The default value has
-            // been 1 ever since FreeBSD 11.1 and 10.4.
-            const GUARD_PAGES: usize = 1;
-            let guard = guardaddr..guardaddr + GUARD_PAGES * page_size;
+            // by the security.bsd.stack_guard_page sysctl.
+            // By default it is 1, checking once is enough since it is
+            // a boot time config value.
+            static LOCK: crate::sync::OnceLock<usize> = crate::sync::OnceLock::new();
+            let guard = guardaddr
+                ..guardaddr
+                    + *LOCK.get_or_init(|| {
+                        use crate::sys::weak::dlsym;
+                        dlsym!(fn sysctlbyname(*const libc::c_char, *mut libc::c_void, *mut libc::size_t, *const libc::c_void, libc::size_t) -> libc::c_int);
+                        let mut guard: usize = 0;
+                        let mut size = crate::mem::size_of_val(&guard);
+                        let oid = crate::ffi::CStr::from_bytes_with_nul(
+                            b"security.bsd.stack_guard_page\0",
+                        )
+                        .unwrap();
+                        match sysctlbyname.get() {
+                            Some(fcn) => {
+                                if fcn(oid.as_ptr(), core::ptr::addr_of_mut!(guard) as *mut _, core::ptr::addr_of_mut!(size) as *mut _, crate::ptr::null_mut(), 0) == 0 {
+                                    return guard;
+                                }
+                                return 1;
+                            },
+                            _ => { return 1; }
+                        }
+                    }) * page_size;
             Some(guard)
         } else if cfg!(target_os = "openbsd") {
             // OpenBSD stack already includes a guard page, and stack is

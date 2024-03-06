@@ -1,4 +1,4 @@
-// check-fail
+//@ check-fail
 
 #![deny(unknown_lints)]
 #![allow(test_unstable_lint)]

@@ -1,4 +1,4 @@
-// run-rustfix
+//@ run-rustfix
 //
 #![allow(warnings)]
 struct Wrapper<'a, T: ?Sized>(&'a T);

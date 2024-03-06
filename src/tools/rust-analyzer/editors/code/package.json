@@ -68,7 +68,9 @@
         "typescript": "^5.1.6"
     },
     "activationEvents": [
+        "workspaceContains:Cargo.toml",
         "workspaceContains:*/Cargo.toml",
+        "workspaceContains:rust-project.json",
         "workspaceContains:*/rust-project.json"
     ],
     "main": "./out/main",
@@ -588,7 +590,7 @@
                 },
                 "rust-analyzer.cargo.buildScripts.rebuildOnSave": {
                     "markdownDescription": "Rerun proc-macros building/build-scripts running when proc-macro\nor build-script sources change and are saved.",
-                    "default": false,
+                    "default": true,
                     "type": "boolean"
                 },
                 "rust-analyzer.cargo.buildScripts.useRustcWrapper": {
@@ -667,6 +669,21 @@
                     "type": [
                         "null",
                         "string"
+                    ]
+                },
+                "rust-analyzer.cargo.targetDir": {
+                    "markdownDescription": "Optional path to a rust-analyzer specific target directory.\nThis prevents rust-analyzer's `cargo check` and initial build-script and proc-macro\nbuilding from locking the `Cargo.lock` at the expense of duplicating build artifacts.\n\nSet to `true` to use a subdirectory of the existing target directory or\nset to a path relative to the workspace to use that path.",
+                    "default": null,
+                    "anyOf": [
+                        {
+                            "type": "null"
+                        },
+                        {
+                            "type": "boolean"
+                        },
+                        {
+                            "type": "string"
+                        }
                     ]
                 },
                 "rust-analyzer.cargo.unsetTest": {
@@ -775,7 +792,7 @@
                     ]
                 },
                 "rust-analyzer.check.overrideCommand": {
-                    "markdownDescription": "Override the command rust-analyzer uses instead of `cargo check` for\ndiagnostics on save. The command is required to output json and\nshould therefore include `--message-format=json` or a similar option\n(if your client supports the `colorDiagnosticOutput` experimental\ncapability, you can use `--message-format=json-diagnostic-rendered-ansi`).\n\nIf you're changing this because you're using some tool wrapping\nCargo, you might also want to change\n`#rust-analyzer.cargo.buildScripts.overrideCommand#`.\n\nIf there are multiple linked projects/workspaces, this command is invoked for\neach of them, with the working directory being the workspace root\n(i.e., the folder containing the `Cargo.toml`). This can be overwritten\nby changing `#rust-analyzer.check.invocationStrategy#` and\n`#rust-analyzer.check.invocationLocation#`.\n\nAn example command would be:\n\n```bash\ncargo check --workspace --message-format=json --all-targets\n```\n.",
+                    "markdownDescription": "Override the command rust-analyzer uses instead of `cargo check` for\ndiagnostics on save. The command is required to output json and\nshould therefore include `--message-format=json` or a similar option\n(if your client supports the `colorDiagnosticOutput` experimental\ncapability, you can use `--message-format=json-diagnostic-rendered-ansi`).\n\nIf you're changing this because you're using some tool wrapping\nCargo, you might also want to change\n`#rust-analyzer.cargo.buildScripts.overrideCommand#`.\n\nIf there are multiple linked projects/workspaces, this command is invoked for\neach of them, with the working directory being the workspace root\n(i.e., the folder containing the `Cargo.toml`). This can be overwritten\nby changing `#rust-analyzer.check.invocationStrategy#` and\n`#rust-analyzer.check.invocationLocation#`.\n\nIf `$saved_file` is part of the command, rust-analyzer will pass\nthe absolute path of the saved file to the provided command. This is\nintended to be used with non-Cargo build systems.\nNote that `$saved_file` is experimental and may be removed in the futureg.\n\nAn example command would be:\n\n```bash\ncargo check --workspace --message-format=json --all-targets\n```\n.",
                     "default": null,
                     "type": [
                         "null",
@@ -802,6 +819,11 @@
                             }
                         }
                     ]
+                },
+                "rust-analyzer.check.workspace": {
+                    "markdownDescription": "Whether `--workspace` should be passed to `cargo check`.\nIf false, `-p <package>` will be passed instead.",
+                    "default": true,
+                    "type": "boolean"
                 },
                 "rust-analyzer.completion.autoimport.enable": {
                     "markdownDescription": "Toggles the additional completions that automatically add imports when completed.\nNote that your client must specify the `additionalTextEdits` LSP client capability to truly have this feature enabled.",
@@ -896,6 +918,11 @@
                         }
                     },
                     "type": "object"
+                },
+                "rust-analyzer.completion.termSearch.enable": {
+                    "markdownDescription": "Whether to enable term search based snippets like `Some(foo.bar().baz())`.",
+                    "default": false,
+                    "type": "boolean"
                 },
                 "rust-analyzer.diagnostics.disabled": {
                     "markdownDescription": "List of rust-analyzer diagnostics to disable.",
@@ -1468,6 +1495,11 @@
                     "default": true,
                     "type": "boolean"
                 },
+                "rust-analyzer.notifications.unindexedProject": {
+                    "markdownDescription": "Whether to send an UnindexedProject notification to the client.",
+                    "default": false,
+                    "type": "boolean"
+                },
                 "rust-analyzer.numThreads": {
                     "markdownDescription": "How many worker threads in the main loop. The default `null` means to pick automatically.",
                     "default": null,
@@ -1505,8 +1537,8 @@
                     "default": false,
                     "type": "boolean"
                 },
-                "rust-analyzer.rename.allowExternalItems": {
-                    "markdownDescription": "Allow renaming of items not belonging to the loaded workspaces.",
+                "rust-analyzer.references.excludeTests": {
+                    "markdownDescription": "Exclude tests from find-all-references.",
                     "default": false,
                     "type": "boolean"
                 },
@@ -1525,21 +1557,6 @@
                     "items": {
                         "type": "string"
                     }
-                },
-                "rust-analyzer.rust.analyzerTargetDir": {
-                    "markdownDescription": "Optional path to a rust-analyzer specific target directory.\nThis prevents rust-analyzer's `cargo check` from locking the `Cargo.lock`\nat the expense of duplicating build artifacts.\n\nSet to `true` to use a subdirectory of the existing target directory or\nset to a path relative to the workspace to use that path.",
-                    "default": null,
-                    "anyOf": [
-                        {
-                            "type": "null"
-                        },
-                        {
-                            "type": "boolean"
-                        },
-                        {
-                            "type": "string"
-                        }
-                    ]
                 },
                 "rust-analyzer.rustc.source": {
                     "markdownDescription": "Path to the Cargo.toml of the rust compiler workspace, for usage in rustc_private\nprojects, or \"discover\" to try to automatically find it if the `rustc-dev` component\nis installed.\n\nAny project which uses rust-analyzer with the rustcPrivate\ncrates must set `[package.metadata.rust-analyzer] rustc_private=true` to use it.\n\nThis option does not take effect until rust-analyzer is restarted.",

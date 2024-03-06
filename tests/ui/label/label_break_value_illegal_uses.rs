@@ -1,4 +1,4 @@
-// run-rustfix
+//@ run-rustfix
 
 // These are forbidden occurrences of label-break-value
 

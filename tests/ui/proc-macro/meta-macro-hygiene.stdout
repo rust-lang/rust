@@ -2,15 +2,15 @@ Def site: $DIR/auxiliary/make-macro.rs:7:9: 7:56 (#4)
 Input: TokenStream [Ident { ident: "$crate", span: $DIR/meta-macro-hygiene.rs:26:37: 26:43 (#3) }, Punct { ch: ':', spacing: Joint, span: $DIR/meta-macro-hygiene.rs:26:43: 26:44 (#3) }, Punct { ch: ':', spacing: Alone, span: $DIR/meta-macro-hygiene.rs:26:44: 26:45 (#3) }, Ident { ident: "dummy", span: $DIR/meta-macro-hygiene.rs:26:45: 26:50 (#3) }, Punct { ch: '!', spacing: Alone, span: $DIR/meta-macro-hygiene.rs:26:50: 26:51 (#3) }, Group { delimiter: Parenthesis, stream: TokenStream [], span: $DIR/meta-macro-hygiene.rs:26:51: 26:53 (#3) }]
 Respanned: TokenStream [Ident { ident: "$crate", span: $DIR/auxiliary/make-macro.rs:7:9: 7:56 (#4) }, Punct { ch: ':', spacing: Joint, span: $DIR/auxiliary/make-macro.rs:7:9: 7:56 (#4) }, Punct { ch: ':', spacing: Alone, span: $DIR/auxiliary/make-macro.rs:7:9: 7:56 (#4) }, Ident { ident: "dummy", span: $DIR/auxiliary/make-macro.rs:7:9: 7:56 (#4) }, Punct { ch: '!', spacing: Alone, span: $DIR/auxiliary/make-macro.rs:7:9: 7:56 (#4) }, Group { delimiter: Parenthesis, stream: TokenStream [], span: $DIR/auxiliary/make-macro.rs:7:9: 7:56 (#4) }]
 #![feature /* 0#0 */(prelude_import)]
-// aux-build:make-macro.rs
-// aux-build:meta-macro.rs
-// edition:2018
-// compile-flags: -Z span-debug -Z macro-backtrace -Z unpretty=expanded,hygiene -Z trim-diagnostic-paths=no
-// check-pass
+//@ aux-build:make-macro.rs
+//@ aux-build:meta-macro.rs
+//@ edition:2018
+//@ compile-flags: -Z span-debug -Z macro-backtrace -Z unpretty=expanded,hygiene -Z trim-diagnostic-paths=no
+//@ check-pass
 // ignore-tidy-linelength
-// normalize-stdout-test "\d+#" -> "0#"
-// normalize-stdout-test "expn\d{3,}" -> "expnNNN"
-// normalize-stdout-test "extern crate compiler_builtins /\* \d+ \*/" -> "extern crate compiler_builtins /* NNN */"
+//@ normalize-stdout-test "\d+#" -> "0#"
+//@ normalize-stdout-test "expn\d{3,}" -> "expnNNN"
+//@ normalize-stdout-test "extern crate compiler_builtins /\* \d+ \*/" -> "extern crate compiler_builtins /* NNN */"
 //
 // We don't care about symbol ids, so we set them all to 0
 // in the stdout

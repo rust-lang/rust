@@ -17,7 +17,9 @@
 #![feature(let_chains)]
 #![feature(rustc_attrs)]
 #![allow(rustdoc::private_intra_doc_links)]
+#![allow(rustc::diagnostic_outside_of_impl)]
 #![allow(rustc::potential_query_instability)]
+#![allow(rustc::untranslatable_diagnostic)]
 #![allow(internal_features)]
 
 #[macro_use]
@@ -35,7 +37,7 @@ use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexMap, FxIndexSet};
 use rustc_data_structures::intern::Interned;
 use rustc_data_structures::steal::Steal;
 use rustc_data_structures::sync::{FreezeReadGuard, Lrc};
-use rustc_errors::{Applicability, DiagnosticBuilder, ErrCode};
+use rustc_errors::{Applicability, Diag, ErrCode};
 use rustc_expand::base::{DeriveResolutions, SyntaxExtension, SyntaxExtensionKind};
 use rustc_feature::BUILTIN_ATTRIBUTES;
 use rustc_hir::def::Namespace::{self, *};
@@ -173,6 +175,23 @@ enum ImplTraitContext {
     Universal,
 }
 
+/// Used for tracking import use types which will be used for redundant import checking.
+/// ### Used::Scope Example
+///  ```rust,compile_fail
+/// #![deny(unused_imports)]
+/// use std::mem::drop;
+/// fn main() {
+///     let s = Box::new(32);
+///     drop(s);
+/// }
+/// ```
+/// Used::Other is for other situations like module-relative uses.
+#[derive(Clone, Copy, PartialEq, PartialOrd, Debug)]
+enum Used {
+    Scope,
+    Other,
+}
+
 #[derive(Debug)]
 struct BindingError {
     name: Symbol,
@@ -184,7 +203,7 @@ struct BindingError {
 #[derive(Debug)]
 enum ResolutionError<'a> {
     /// Error E0401: can't use type or const parameters from outer item.
-    GenericParamsFromOuterItem(Res, HasGenericParams),
+    GenericParamsFromOuterItem(Res, HasGenericParams, DefKind),
     /// Error E0403: the name is already used for a type or const parameter in this generic
     /// parameter list.
     NameAlreadyUsedInParameterList(Symbol, Span),
@@ -693,7 +712,7 @@ impl<'a> ToNameBinding<'a> for NameBinding<'a> {
 enum NameBindingKind<'a> {
     Res(Res),
     Module(Module<'a>),
-    Import { binding: NameBinding<'a>, import: Import<'a>, used: Cell<bool> },
+    Import { binding: NameBinding<'a>, import: Import<'a> },
 }
 
 impl<'a> NameBindingKind<'a> {
@@ -714,7 +733,7 @@ struct PrivacyError<'a> {
 
 #[derive(Debug)]
 struct UseError<'a> {
-    err: DiagnosticBuilder<'a>,
+    err: Diag<'a>,
     /// Candidates which user could `use` to access the missing type.
     candidates: Vec<ImportSuggestion>,
     /// The `DefId` of the module to place the use-statements in.
@@ -1014,6 +1033,8 @@ pub struct Resolver<'a, 'tcx> {
     binding_parent_modules: FxHashMap<NameBinding<'a>, Module<'a>>,
 
     underscore_disambiguator: u32,
+    /// Disambiguator for anonymous adts.
+    empty_disambiguator: u32,
 
     /// Maps glob imports to the names of items actually imported.
     glob_map: FxHashMap<LocalDefId, FxHashSet<Symbol>>,
@@ -1217,6 +1238,10 @@ impl<'tcx> Resolver<'_, 'tcx> {
         self.opt_local_def_id(node).unwrap_or_else(|| panic!("no entry for node id: `{node:?}`"))
     }
 
+    fn local_def_kind(&self, node: NodeId) -> DefKind {
+        self.tcx.def_kind(self.local_def_id(node))
+    }
+
     /// Adds a definition with a parent definition.
     fn create_def(
         &mut self,
@@ -1237,7 +1262,7 @@ impl<'tcx> Resolver<'_, 'tcx> {
         );
 
         // FIXME: remove `def_span` body, pass in the right spans here and call `tcx.at().create_def()`
-        let def_id = self.tcx.create_def(parent, name, def_kind);
+        let def_id = self.tcx.create_def(parent, name, def_kind).def_id();
 
         // Create the definition.
         if expn_id != ExpnId::root() {
@@ -1361,6 +1386,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             module_children: Default::default(),
             trait_map: NodeMap::default(),
             underscore_disambiguator: 0,
+            empty_disambiguator: 0,
             empty_module,
             module_map,
             block_map: Default::default(),
@@ -1727,6 +1753,9 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         let disambiguator = if ident.name == kw::Underscore {
             self.underscore_disambiguator += 1;
             self.underscore_disambiguator
+        } else if ident.name == kw::Empty {
+            self.empty_disambiguator += 1;
+            self.empty_disambiguator
         } else {
             0
         };
@@ -1771,15 +1800,15 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         false
     }
 
-    fn record_use(&mut self, ident: Ident, used_binding: NameBinding<'a>, is_lexical_scope: bool) {
-        self.record_use_inner(ident, used_binding, is_lexical_scope, used_binding.warn_ambiguity);
+    fn record_use(&mut self, ident: Ident, used_binding: NameBinding<'a>, used: Used) {
+        self.record_use_inner(ident, used_binding, used, used_binding.warn_ambiguity);
     }
 
     fn record_use_inner(
         &mut self,
         ident: Ident,
         used_binding: NameBinding<'a>,
-        is_lexical_scope: bool,
+        used: Used,
         warn_ambiguity: bool,
     ) {
         if let Some((b2, kind)) = used_binding.ambiguity {
@@ -1797,27 +1826,35 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                 self.ambiguity_errors.push(ambiguity_error);
             }
         }
-        if let NameBindingKind::Import { import, binding, ref used } = used_binding.kind {
+        if let NameBindingKind::Import { import, binding } = used_binding.kind {
             if let ImportKind::MacroUse { warn_private: true } = import.kind {
                 let msg = format!("macro `{ident}` is private");
                 self.lint_buffer().buffer_lint(PRIVATE_MACRO_USE, import.root_id, ident.span, msg);
             }
             // Avoid marking `extern crate` items that refer to a name from extern prelude,
             // but not introduce it, as used if they are accessed from lexical scope.
-            if is_lexical_scope {
+            if used == Used::Scope {
                 if let Some(entry) = self.extern_prelude.get(&ident.normalize_to_macros_2_0()) {
                     if !entry.introduced_by_item && entry.binding == Some(used_binding) {
                         return;
                     }
                 }
             }
-            used.set(true);
-            import.used.set(true);
+            let old_used = import.used.get();
+            let new_used = Some(used);
+            if new_used > old_used {
+                import.used.set(new_used);
+            }
             if let Some(id) = import.id() {
                 self.used_imports.insert(id);
             }
             self.add_to_glob_map(import, ident);
-            self.record_use_inner(ident, binding, false, warn_ambiguity || binding.warn_ambiguity);
+            self.record_use_inner(
+                ident,
+                binding,
+                Used::Other,
+                warn_ambiguity || binding.warn_ambiguity,
+            );
         }
     }
 
@@ -1972,7 +2009,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                     if !entry.is_import() {
                         self.crate_loader(|c| c.process_path_extern(ident.name, ident.span));
                     } else if entry.introduced_by_item {
-                        self.record_use(ident, binding, false);
+                        self.record_use(ident, binding, Used::Other);
                     }
                 }
                 binding
@@ -2102,7 +2139,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         let is_import = name_binding.is_import();
         let span = name_binding.span;
         if let Res::Def(DefKind::Fn, _) = res {
-            self.record_use(ident, name_binding, false);
+            self.record_use(ident, name_binding, Used::Other);
         }
         self.main_def = Some(MainDefinition { res, is_import, span });
     }
@@ -2163,6 +2200,8 @@ struct Finalize {
     /// Whether to report privacy errors or silently return "no resolution" for them,
     /// similarly to speculative resolution.
     report_private: bool,
+    /// Tracks whether an item is used in scope or used relatively to a module.
+    used: Used,
 }
 
 impl Finalize {
@@ -2171,7 +2210,7 @@ impl Finalize {
     }
 
     fn with_root_span(node_id: NodeId, path_span: Span, root_span: Span) -> Finalize {
-        Finalize { node_id, path_span, root_span, report_private: true }
+        Finalize { node_id, path_span, root_span, report_private: true, used: Used::Other }
     }
 }
 

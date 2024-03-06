@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 
 fn pairwise_sub(mut t: Box<dyn DoubleEndedIterator<Item=isize>>) -> isize {
     let mut result = 0;

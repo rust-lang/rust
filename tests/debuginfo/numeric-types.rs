@@ -1,61 +1,61 @@
-// compile-flags:-g
+//@ compile-flags:-g
 
-// min-gdb-version: 8.1
-// ignore-windows-gnu // emit_debug_gdb_scripts is disabled on Windows
+//@ min-gdb-version: 8.1
+//@ ignore-windows-gnu // emit_debug_gdb_scripts is disabled on Windows
 
-// Tests the visualizations for `NonZero{I,U}{8,16,32,64,128,size}`, `Wrapping<T>` and
+// Tests the visualizations for `NonZero<T>`, `Wrapping<T>` and
 // `Atomic{Bool,I8,I16,I32,I64,Isize,U8,U16,U32,U64,Usize}` located in `libcore.natvis`.
 
 // === CDB TESTS ==================================================================================
 // cdb-command: g
 
 // cdb-command: dx nz_i8
-// cdb-check:nz_i8            : 11 [Type: core::num::nonzero::NonZeroI8]
-// cdb-check:    [<Raw View>]     [Type: core::num::nonzero::NonZeroI8]
+// cdb-check:nz_i8            : 11 [Type: core::num::nonzero::NonZero<i8>]
+// cdb-check:    [<Raw View>]     [Type: core::num::nonzero::NonZero<i8>]
 
 // cdb-command: dx nz_i16
-// cdb-check:nz_i16           : 22 [Type: core::num::nonzero::NonZeroI16]
-// cdb-check:    [<Raw View>]     [Type: core::num::nonzero::NonZeroI16]
+// cdb-check:nz_i16           : 22 [Type: core::num::nonzero::NonZero<i16>]
+// cdb-check:    [<Raw View>]     [Type: core::num::nonzero::NonZero<i16>]
 
 // cdb-command: dx nz_i32
-// cdb-check:nz_i32           : 33 [Type: core::num::nonzero::NonZeroI32]
-// cdb-check:    [<Raw View>]     [Type: core::num::nonzero::NonZeroI32]
+// cdb-check:nz_i32           : 33 [Type: core::num::nonzero::NonZero<i32>]
+// cdb-check:    [<Raw View>]     [Type: core::num::nonzero::NonZero<i32>]
 
 // cdb-command: dx nz_i64
-// cdb-check:nz_i64           : 44 [Type: core::num::nonzero::NonZeroI64]
-// cdb-check:    [<Raw View>]     [Type: core::num::nonzero::NonZeroI64]
+// cdb-check:nz_i64           : 44 [Type: core::num::nonzero::NonZero<i64>]
+// cdb-check:    [<Raw View>]     [Type: core::num::nonzero::NonZero<i64>]
 
 // 128-bit integers don't seem to work in CDB
 // cdb-command: dx nz_i128
-// cdb-check:    [<Raw View>]     [Type: core::num::nonzero::NonZeroI128]
+// cdb-check:    [<Raw View>]     [Type: core::num::nonzero::NonZero<i128>]
 
 // cdb-command: dx nz_isize
-// cdb-check:nz_isize         : 66 [Type: core::num::nonzero::NonZeroIsize]
-// cdb-check:    [<Raw View>]     [Type: core::num::nonzero::NonZeroIsize]
+// cdb-check:nz_isize         : 66 [Type: core::num::nonzero::NonZero<isize>]
+// cdb-check:    [<Raw View>]     [Type: core::num::nonzero::NonZero<isize>]
 
 // cdb-command: dx nz_u8
-// cdb-check:nz_u8            : 0x4d [Type: core::num::nonzero::NonZeroU8]
-// cdb-check:    [<Raw View>]     [Type: core::num::nonzero::NonZeroU8]
+// cdb-check:nz_u8            : 0x4d [Type: core::num::nonzero::NonZero<u8>]
+// cdb-check:    [<Raw View>]     [Type: core::num::nonzero::NonZero<u8>]
 
 // cdb-command: dx nz_u16
-// cdb-check:nz_u16           : 0x58 [Type: core::num::nonzero::NonZeroU16]
-// cdb-check:    [<Raw View>]     [Type: core::num::nonzero::NonZeroU16]
+// cdb-check:nz_u16           : 0x58 [Type: core::num::nonzero::NonZero<u16>]
+// cdb-check:    [<Raw View>]     [Type: core::num::nonzero::NonZero<u16>]
 
 // cdb-command: dx nz_u32
-// cdb-check:nz_u32           : 0x63 [Type: core::num::nonzero::NonZeroU32]
-// cdb-check:    [<Raw View>]     [Type: core::num::nonzero::NonZeroU32]
+// cdb-check:nz_u32           : 0x63 [Type: core::num::nonzero::NonZero<u32>]
+// cdb-check:    [<Raw View>]     [Type: core::num::nonzero::NonZero<u32>]
 
 // cdb-command: dx nz_u64
-// cdb-check:nz_u64           : 0x64 [Type: core::num::nonzero::NonZeroU64]
-// cdb-check:    [<Raw View>]     [Type: core::num::nonzero::NonZeroU64]
+// cdb-check:nz_u64           : 0x64 [Type: core::num::nonzero::NonZero<u64>]
+// cdb-check:    [<Raw View>]     [Type: core::num::nonzero::NonZero<u64>]
 
 // 128-bit integers don't seem to work in CDB
 // cdb-command: dx nz_u128
-// cdb-check:    [<Raw View>]     [Type: core::num::nonzero::NonZeroU128]
+// cdb-check:    [<Raw View>]     [Type: core::num::nonzero::NonZero<u128>]
 
 // cdb-command: dx nz_usize
-// cdb-check:nz_usize         : 0x7a [Type: core::num::nonzero::NonZeroUsize]
-// cdb-check:    [<Raw View>]     [Type: core::num::nonzero::NonZeroUsize]
+// cdb-check:nz_usize         : 0x7a [Type: core::num::nonzero::NonZero<usize>]
+// cdb-check:    [<Raw View>]     [Type: core::num::nonzero::NonZero<usize>]
 
 // cdb-command: dx w_i8
 // cdb-check:w_i8             : 10 [Type: core::num::wrapping::Wrapping<i8>]
@@ -237,25 +237,25 @@
 
 // lldb-command:print nz_usize
 // lldb-check:[...]$11 = 122 { __0 = 122 }
-
+#![feature(generic_nonzero)]
 
 use std::num::*;
 use std::sync::atomic::*;
 
 fn main() {
-    let nz_i8 = NonZeroI8::new(11).unwrap();
-    let nz_i16 = NonZeroI16::new(22).unwrap();
-    let nz_i32 = NonZeroI32::new(33).unwrap();
-    let nz_i64 = NonZeroI64::new(44).unwrap();
-    let nz_i128 = NonZeroI128::new(55).unwrap();
-    let nz_isize = NonZeroIsize::new(66).unwrap();
+    let nz_i8 = NonZero::new(11i8).unwrap();
+    let nz_i16 = NonZero::new(22i16).unwrap();
+    let nz_i32 = NonZero::new(33i32).unwrap();
+    let nz_i64 = NonZero::new(44i64).unwrap();
+    let nz_i128 = NonZero::new(55i128).unwrap();
+    let nz_isize = NonZero::new(66isize).unwrap();
 
-    let nz_u8 = NonZeroU8::new(77).unwrap();
-    let nz_u16 = NonZeroU16::new(88).unwrap();
-    let nz_u32 = NonZeroU32::new(99).unwrap();
-    let nz_u64 = NonZeroU64::new(100).unwrap();
-    let nz_u128 = NonZeroU128::new(111).unwrap();
-    let nz_usize = NonZeroUsize::new(122).unwrap();
+    let nz_u8 = NonZero::new(77u8).unwrap();
+    let nz_u16 = NonZero::new(88u16).unwrap();
+    let nz_u32 = NonZero::new(99u32).unwrap();
+    let nz_u64 = NonZero::new(100u64).unwrap();
+    let nz_u128 = NonZero::new(111u128).unwrap();
+    let nz_usize = NonZero::new(122usize).unwrap();
 
     let w_i8 = Wrapping(10i8);
     let w_i16 = Wrapping(20i16);

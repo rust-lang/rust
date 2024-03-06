@@ -3,7 +3,7 @@ use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::source::snippet_with_applicability;
 use clippy_utils::ty::{is_type_diagnostic_item, same_type_and_consts};
 use clippy_utils::{
-    eq_expr_value, get_parent_expr_for_hir, get_parent_node, higher, is_else_clause, is_res_lang_ctor, over, path_res,
+    eq_expr_value, get_parent_expr_for_hir, higher, is_else_clause, is_res_lang_ctor, over, path_res,
     peel_blocks_with_stmt,
 };
 use rustc_errors::Applicability;
@@ -123,37 +123,35 @@ fn strip_return<'hir>(expr: &'hir Expr<'hir>) -> &'hir Expr<'hir> {
 /// Manually check for coercion casting by checking if the type of the match operand or let expr
 /// differs with the assigned local variable or the function return type.
 fn expr_ty_matches_p_ty(cx: &LateContext<'_>, expr: &Expr<'_>, p_expr: &Expr<'_>) -> bool {
-    if let Some(p_node) = get_parent_node(cx.tcx, p_expr.hir_id) {
-        match p_node {
-            // Compare match_expr ty with local in `let local = match match_expr {..}`
-            Node::Local(local) => {
-                let results = cx.typeck_results();
-                return same_type_and_consts(results.node_type(local.hir_id), results.expr_ty(expr));
-            },
-            // compare match_expr ty with RetTy in `fn foo() -> RetTy`
-            Node::Item(item) => {
-                if let ItemKind::Fn(..) = item.kind {
-                    let output = cx
-                        .tcx
-                        .fn_sig(item.owner_id)
-                        .instantiate_identity()
-                        .output()
-                        .skip_binder();
-                    return same_type_and_consts(output, cx.typeck_results().expr_ty(expr));
-                }
-            },
-            // check the parent expr for this whole block `{ match match_expr {..} }`
-            Node::Block(block) => {
-                if let Some(block_parent_expr) = get_parent_expr_for_hir(cx, block.hir_id) {
-                    return expr_ty_matches_p_ty(cx, expr, block_parent_expr);
-                }
-            },
-            // recursively call on `if xxx {..}` etc.
-            Node::Expr(p_expr) => {
-                return expr_ty_matches_p_ty(cx, expr, p_expr);
-            },
-            _ => {},
-        }
+    match cx.tcx.parent_hir_node(p_expr.hir_id) {
+        // Compare match_expr ty with local in `let local = match match_expr {..}`
+        Node::Local(local) => {
+            let results = cx.typeck_results();
+            return same_type_and_consts(results.node_type(local.hir_id), results.expr_ty(expr));
+        },
+        // compare match_expr ty with RetTy in `fn foo() -> RetTy`
+        Node::Item(item) => {
+            if let ItemKind::Fn(..) = item.kind {
+                let output = cx
+                    .tcx
+                    .fn_sig(item.owner_id)
+                    .instantiate_identity()
+                    .output()
+                    .skip_binder();
+                return same_type_and_consts(output, cx.typeck_results().expr_ty(expr));
+            }
+        },
+        // check the parent expr for this whole block `{ match match_expr {..} }`
+        Node::Block(block) => {
+            if let Some(block_parent_expr) = get_parent_expr_for_hir(cx, block.hir_id) {
+                return expr_ty_matches_p_ty(cx, expr, block_parent_expr);
+            }
+        },
+        // recursively call on `if xxx {..}` etc.
+        Node::Expr(p_expr) => {
+            return expr_ty_matches_p_ty(cx, expr, p_expr);
+        },
+        _ => {},
     }
     false
 }

@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 
 fn test_generic<T: Clone, F>(expected: Box<T>, eq: F) where F: FnOnce(Box<T>, Box<T>) -> bool {
     let actual: Box<T> = match true {

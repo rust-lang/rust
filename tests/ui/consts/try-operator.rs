@@ -1,4 +1,4 @@
-// known-bug: #110395
+//@ known-bug: #110395
 
 #![feature(try_trait_v2)]
 #![feature(const_trait_impl)]

@@ -1,6 +1,6 @@
 // Verify that the only debuginfo generated are the line tables.
 //
-// compile-flags: -C debuginfo=line-tables-only
+//@ compile-flags: -C debuginfo=line-tables-only
 
 #[repr(C)]
 struct StructType {

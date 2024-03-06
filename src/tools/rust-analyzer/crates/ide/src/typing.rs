@@ -149,10 +149,7 @@ fn on_opening_bracket_typed(
 
         let tree: ast::UseTree = find_node_at_offset(file.syntax(), offset)?;
 
-        Some(TextEdit::insert(
-            tree.syntax().text_range().end() + TextSize::of("{"),
-            "}".to_string(),
-        ))
+        Some(TextEdit::insert(tree.syntax().text_range().end() + TextSize::of("{"), "}".to_owned()))
     }
 
     fn bracket_expr(
@@ -235,7 +232,7 @@ fn on_eq_typed(file: &SourceFile, offset: TextSize) -> Option<TextEdit> {
             return None;
         }
         let offset = expr.syntax().text_range().end();
-        Some(TextEdit::insert(offset, ";".to_string()))
+        Some(TextEdit::insert(offset, ";".to_owned()))
     }
 
     /// `a =$0 b;` removes the semicolon if an expression is valid in this context.
@@ -275,7 +272,7 @@ fn on_eq_typed(file: &SourceFile, offset: TextSize) -> Option<TextEdit> {
             return None;
         }
         let offset = let_stmt.syntax().text_range().end();
-        Some(TextEdit::insert(offset, ";".to_string()))
+        Some(TextEdit::insert(offset, ";".to_owned()))
     }
 }
 
@@ -353,7 +350,7 @@ fn on_left_angle_typed(file: &SourceFile, offset: TextSize) -> Option<ExtendedTe
     if let Some(t) = file.syntax().token_at_offset(offset).left_biased() {
         if T![impl] == t.kind() {
             return Some(ExtendedTextEdit {
-                edit: TextEdit::replace(range, "<$0>".to_string()),
+                edit: TextEdit::replace(range, "<$0>".to_owned()),
                 is_snippet: true,
             });
         }
@@ -363,7 +360,7 @@ fn on_left_angle_typed(file: &SourceFile, offset: TextSize) -> Option<ExtendedTe
         ast::GenericParamList::can_cast(n.kind()) || ast::GenericArgList::can_cast(n.kind())
     }) {
         Some(ExtendedTextEdit {
-            edit: TextEdit::replace(range, "<$0>".to_string()),
+            edit: TextEdit::replace(range, "<$0>".to_owned()),
             is_snippet: true,
         })
     } else {
@@ -383,7 +380,7 @@ fn on_right_angle_typed(file: &SourceFile, offset: TextSize) -> Option<TextEdit>
     }
     find_node_at_offset::<ast::RetType>(file.syntax(), offset)?;
 
-    Some(TextEdit::insert(after_arrow, " ".to_string()))
+    Some(TextEdit::insert(after_arrow, " ".to_owned()))
 }
 
 #[cfg(test)]

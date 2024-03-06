@@ -156,7 +156,7 @@ impl<'tcx> LateLintPass<'tcx> for UnusedAsync {
             && let Some(local_def_id) = def_id.as_local()
             && cx.tcx.def_kind(def_id) == DefKind::Fn
             && cx.tcx.asyncness(def_id).is_async()
-            && !is_node_func_call(cx.tcx.hir().get_parent(hir_id), path.span)
+            && !is_node_func_call(cx.tcx.parent_hir_node(hir_id), path.span)
         {
             self.async_fns_as_value.insert(local_def_id);
         }

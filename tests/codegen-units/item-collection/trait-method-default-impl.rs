@@ -1,4 +1,4 @@
-// compile-flags:-Zprint-mono-items=eager -Zpolymorphize=on -Zinline-mir=no
+//@ compile-flags:-Zprint-mono-items=eager -Zpolymorphize=on -Zinline-mir=no
 
 #![deny(dead_code)]
 #![feature(start)]
@@ -56,6 +56,9 @@ fn start(_: isize, _: *const *const u8) -> isize {
 
     //~ MONO_ITEM fn <u32 as SomeGenericTrait<i16>>::bar::<()>
     0u32.bar(0i16, ());
+
+    0i8.foo();
+    0i32.foo();
 
     0
 }

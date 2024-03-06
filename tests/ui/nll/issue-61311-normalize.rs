@@ -1,7 +1,7 @@
 // Regression test for #61311
 // We would ICE after failing to normalize `Self::Proj` in the `impl` below.
 
-// check-pass
+//@ check-pass
 
 pub struct Unit;
 trait Obj {}

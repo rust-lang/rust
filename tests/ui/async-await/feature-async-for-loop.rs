@@ -1,4 +1,4 @@
-// edition:2021
+//@ edition:2021
 // gate-test-async_for_loop
 
 #![feature(async_iter_from_iter, async_iterator)]

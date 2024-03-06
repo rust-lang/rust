@@ -1,5 +1,5 @@
-// run-pass
-// pretty-expanded FIXME #23616
+//@ check-pass
+//@ pretty-expanded FIXME #23616
 
 trait Foo {
     fn foo(&self);

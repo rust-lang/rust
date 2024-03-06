@@ -1,4 +1,4 @@
-// compile-flags: -O
+//@ compile-flags: -O
 
 #![deny(overflowing_literals)]
 

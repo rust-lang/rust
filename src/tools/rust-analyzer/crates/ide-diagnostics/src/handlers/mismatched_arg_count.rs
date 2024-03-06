@@ -3,7 +3,7 @@ use hir::InFile;
 use ide_db::base_db::FileRange;
 use syntax::{
     ast::{self, HasArgList},
-    AstNode, SyntaxNodePtr,
+    AstNode, AstPtr,
 };
 
 use crate::{adjusted_display_range, Diagnostic, DiagnosticCode, DiagnosticsContext};
@@ -24,7 +24,7 @@ pub(crate) fn mismatched_tuple_struct_pat_arg_count(
     Diagnostic::new(
         DiagnosticCode::RustcHardError("E0023"),
         message,
-        invalid_args_range(ctx, d.expr_or_pat.map(Into::into), d.expected, d.found),
+        invalid_args_range(ctx, d.expr_or_pat, d.expected, d.found),
     )
 }
 
@@ -40,17 +40,17 @@ pub(crate) fn mismatched_arg_count(
     Diagnostic::new(
         DiagnosticCode::RustcHardError("E0107"),
         message,
-        invalid_args_range(ctx, d.call_expr.map(Into::into), d.expected, d.found),
+        invalid_args_range(ctx, d.call_expr.map(AstPtr::wrap_left), d.expected, d.found),
     )
 }
 
 fn invalid_args_range(
     ctx: &DiagnosticsContext<'_>,
-    source: InFile<SyntaxNodePtr>,
+    source: InFile<AstPtr<Either<ast::Expr, ast::Pat>>>,
     expected: usize,
     found: usize,
 ) -> FileRange {
-    adjusted_display_range::<Either<ast::Expr, ast::TupleStructPat>>(ctx, source, &|expr| {
+    adjusted_display_range(ctx, source, &|expr| {
         let (text_range, r_paren_token, expected_arg) = match expr {
             Either::Left(ast::Expr::CallExpr(call)) => {
                 let arg_list = call.arg_list()?;
@@ -68,7 +68,7 @@ fn invalid_args_range(
                     arg_list.args().nth(expected).map(|it| it.syntax().text_range()),
                 )
             }
-            Either::Right(pat) => {
+            Either::Right(ast::Pat::TupleStructPat(pat)) => {
                 let r_paren = pat.r_paren_token()?;
                 let l_paren = pat.l_paren_token()?;
                 (
@@ -199,7 +199,7 @@ fn f() {
         // future, but we shouldn't emit an argument count diagnostic here
         check_diagnostics(
             r#"
-trait Foo { fn method(&self, arg: usize) {} }
+trait Foo { fn method(&self, _arg: usize) {} }
 
 fn f() {
     let x;

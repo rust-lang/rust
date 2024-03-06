@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 #![allow(dead_code)]
 #![allow(unused_imports)]
 // Test how resolving a projection interacts with inference.  In this

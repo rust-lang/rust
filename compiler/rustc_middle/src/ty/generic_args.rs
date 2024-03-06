@@ -2,12 +2,14 @@
 
 use crate::ty::codec::{TyDecoder, TyEncoder};
 use crate::ty::fold::{FallibleTypeFolder, TypeFoldable, TypeFolder, TypeSuperFoldable};
-use crate::ty::sty::{ClosureArgs, CoroutineArgs, InlineConstArgs};
+use crate::ty::sty::{ClosureArgs, CoroutineArgs, CoroutineClosureArgs, InlineConstArgs};
 use crate::ty::visit::{TypeVisitable, TypeVisitableExt, TypeVisitor};
 use crate::ty::{self, Lift, List, ParamConst, Ty, TyCtxt};
 
+use rustc_ast_ir::visit::VisitorResult;
+use rustc_ast_ir::walk_visitable_list;
 use rustc_data_structures::intern::Interned;
-use rustc_errors::{DiagnosticArgValue, IntoDiagnosticArg};
+use rustc_errors::{DiagArgValue, IntoDiagnosticArg};
 use rustc_hir::def_id::DefId;
 use rustc_macros::HashStable;
 use rustc_serialize::{Decodable, Encodable};
@@ -18,8 +20,8 @@ use core::intrinsics;
 use std::cmp::Ordering;
 use std::marker::PhantomData;
 use std::mem;
-use std::num::NonZeroUsize;
-use std::ops::{ControlFlow, Deref};
+use std::num::NonZero;
+use std::ops::Deref;
 use std::ptr::NonNull;
 
 /// An entity in the Rust type system, which can be one of
@@ -56,7 +58,7 @@ unsafe impl<'tcx> Sync for GenericArg<'tcx> where
 }
 
 impl<'tcx> IntoDiagnosticArg for GenericArg<'tcx> {
-    fn into_diagnostic_arg(self) -> DiagnosticArgValue<'static> {
+    fn into_diagnostic_arg(self) -> DiagArgValue {
         self.to_string().into_diagnostic_arg()
     }
 }
@@ -143,9 +145,8 @@ impl<'tcx> From<ty::Term<'tcx>> for GenericArg<'tcx> {
 impl<'tcx> GenericArg<'tcx> {
     #[inline]
     pub fn unpack(self) -> GenericArgKind<'tcx> {
-        let ptr = unsafe {
-            self.ptr.map_addr(|addr| NonZeroUsize::new_unchecked(addr.get() & !TAG_MASK))
-        };
+        let ptr =
+            unsafe { self.ptr.map_addr(|addr| NonZero::new_unchecked(addr.get() & !TAG_MASK)) };
         // SAFETY: use of `Interned::new_unchecked` here is ok because these
         // pointers were originally created from `Interned` types in `pack()`,
         // and this is just going in the other direction.
@@ -241,7 +242,7 @@ impl<'tcx> TypeFoldable<TyCtxt<'tcx>> for GenericArg<'tcx> {
 }
 
 impl<'tcx> TypeVisitable<TyCtxt<'tcx>> for GenericArg<'tcx> {
-    fn visit_with<V: TypeVisitor<TyCtxt<'tcx>>>(&self, visitor: &mut V) -> ControlFlow<V::BreakTy> {
+    fn visit_with<V: TypeVisitor<TyCtxt<'tcx>>>(&self, visitor: &mut V) -> V::Result {
         match self.unpack() {
             GenericArgKind::Lifetime(lt) => lt.visit_with(visitor),
             GenericArgKind::Type(ty) => ty.visit_with(visitor),
@@ -286,6 +287,14 @@ impl<'tcx> GenericArgs<'tcx> {
     /// see `ty::ClosureArgs` struct for more comments.
     pub fn as_closure(&'tcx self) -> ClosureArgs<'tcx> {
         ClosureArgs { args: self }
+    }
+
+    /// Interpret these generic args as the args of a coroutine-closure type.
+    /// Coroutine-closure args have a particular structure controlled by the
+    /// compiler that encodes information like the signature and closure kind;
+    /// see `ty::CoroutineClosureArgs` struct for more comments.
+    pub fn as_coroutine_closure(&'tcx self) -> CoroutineClosureArgs<'tcx> {
+        CoroutineClosureArgs { args: self }
     }
 
     /// Interpret these generic args as the args of a coroutine type.
@@ -547,8 +556,9 @@ impl<'tcx> TypeFoldable<TyCtxt<'tcx>> for &'tcx ty::List<Ty<'tcx>> {
 
 impl<'tcx, T: TypeVisitable<TyCtxt<'tcx>>> TypeVisitable<TyCtxt<'tcx>> for &'tcx ty::List<T> {
     #[inline]
-    fn visit_with<V: TypeVisitor<TyCtxt<'tcx>>>(&self, visitor: &mut V) -> ControlFlow<V::BreakTy> {
-        self.iter().try_for_each(|t| t.visit_with(visitor))
+    fn visit_with<V: TypeVisitor<TyCtxt<'tcx>>>(&self, visitor: &mut V) -> V::Result {
+        walk_visitable_list!(visitor, self.iter());
+        V::Result::output()
     }
 }
 
@@ -795,13 +805,13 @@ impl<'tcx, T: TypeFoldable<TyCtxt<'tcx>>> ty::EarlyBinder<T> {
 }
 
 ///////////////////////////////////////////////////////////////////////////
-// The actual substitution engine itself is a type folder.
+// The actual instantiation engine itself is a type folder.
 
 struct ArgFolder<'a, 'tcx> {
     tcx: TyCtxt<'tcx>,
     args: &'a [GenericArg<'tcx>],
 
-    /// Number of region binders we have passed through while doing the substitution
+    /// Number of region binders we have passed through while doing the instantiation
     binders_passed: u32,
 }
 
@@ -826,7 +836,7 @@ impl<'a, 'tcx> TypeFolder<TyCtxt<'tcx>> for ArgFolder<'a, 'tcx> {
         #[inline(never)]
         fn region_param_out_of_range(data: ty::EarlyParamRegion, args: &[GenericArg<'_>]) -> ! {
             bug!(
-                "Region parameter out of range when substituting in region {} (index={}, args = {:?})",
+                "Region parameter out of range when instantiating in region {} (index={}, args = {:?})",
                 data.name,
                 data.index,
                 args,
@@ -837,7 +847,7 @@ impl<'a, 'tcx> TypeFolder<TyCtxt<'tcx>> for ArgFolder<'a, 'tcx> {
         #[inline(never)]
         fn region_param_invalid(data: ty::EarlyParamRegion, other: GenericArgKind<'_>) -> ! {
             bug!(
-                "Unexpected parameter {:?} when substituting in region {} (index={})",
+                "Unexpected parameter {:?} when instantiating in region {} (index={})",
                 other,
                 data.name,
                 data.index
@@ -846,7 +856,7 @@ impl<'a, 'tcx> TypeFolder<TyCtxt<'tcx>> for ArgFolder<'a, 'tcx> {
 
         // Note: This routine only handles regions that are bound on
         // type declarations and other outer declarations, not those
-        // bound in *fn types*. Region substitution of the bound
+        // bound in *fn types*. Region instantiation of the bound
         // regions that appear in a function signature is done using
         // the specialized routine `ty::replace_late_regions()`.
         match *r {
@@ -905,7 +915,7 @@ impl<'a, 'tcx> ArgFolder<'a, 'tcx> {
     #[inline(never)]
     fn type_param_expected(&self, p: ty::ParamTy, ty: Ty<'tcx>, kind: GenericArgKind<'tcx>) -> ! {
         bug!(
-            "expected type for `{:?}` ({:?}/{}) but found {:?} when substituting, args={:?}",
+            "expected type for `{:?}` ({:?}/{}) but found {:?} when instantiating, args={:?}",
             p,
             ty,
             p.index,
@@ -918,7 +928,7 @@ impl<'a, 'tcx> ArgFolder<'a, 'tcx> {
     #[inline(never)]
     fn type_param_out_of_range(&self, p: ty::ParamTy, ty: Ty<'tcx>) -> ! {
         bug!(
-            "type parameter `{:?}` ({:?}/{}) out of range when substituting, args={:?}",
+            "type parameter `{:?}` ({:?}/{}) out of range when instantiating, args={:?}",
             p,
             ty,
             p.index,
@@ -947,7 +957,7 @@ impl<'a, 'tcx> ArgFolder<'a, 'tcx> {
         kind: GenericArgKind<'tcx>,
     ) -> ! {
         bug!(
-            "expected const for `{:?}` ({:?}/{}) but found {:?} when substituting args={:?}",
+            "expected const for `{:?}` ({:?}/{}) but found {:?} when instantiating args={:?}",
             p,
             ct,
             p.index,
@@ -960,7 +970,7 @@ impl<'a, 'tcx> ArgFolder<'a, 'tcx> {
     #[inline(never)]
     fn const_param_out_of_range(&self, p: ty::ParamConst, ct: ty::Const<'tcx>) -> ! {
         bug!(
-            "const parameter `{:?}` ({:?}/{}) out of range when substituting args={:?}",
+            "const parameter `{:?}` ({:?}/{}) out of range when instantiating args={:?}",
             p,
             ct,
             p.index,
@@ -968,8 +978,8 @@ impl<'a, 'tcx> ArgFolder<'a, 'tcx> {
         )
     }
 
-    /// It is sometimes necessary to adjust the De Bruijn indices during substitution. This occurs
-    /// when we are substituting a type with escaping bound vars into a context where we have
+    /// It is sometimes necessary to adjust the De Bruijn indices during instantiation. This occurs
+    /// when we are instantating a type with escaping bound vars into a context where we have
     /// passed through binders. That's quite a mouthful. Let's see an example:
     ///
     /// ```
@@ -989,7 +999,7 @@ impl<'a, 'tcx> ArgFolder<'a, 'tcx> {
     /// inner one. Therefore, that appearance will have a DebruijnIndex of 2, because we must skip
     /// over the inner binder (remember that we count De Bruijn indices from 1). However, in the
     /// definition of `MetaFunc`, the binder is not visible, so the type `&'a i32` will have a
-    /// De Bruijn index of 1. It's only during the substitution that we can see we must increase the
+    /// De Bruijn index of 1. It's only during the instantiation that we can see we must increase the
     /// depth by 1 to account for the binder that we passed through.
     ///
     /// As a second example, consider this twist:
@@ -1007,7 +1017,7 @@ impl<'a, 'tcx> ArgFolder<'a, 'tcx> {
     /// //   DebruijnIndex of 1 |
     /// //               DebruijnIndex of 2
     /// ```
-    /// As indicated in the diagram, here the same type `&'a i32` is substituted once, but in the
+    /// As indicated in the diagram, here the same type `&'a i32` is instantiated once, but in the
     /// first case we do not increase the De Bruijn index and in the second case we do. The reason
     /// is that only in the second case have we passed through a fn binder.
     fn shift_vars_through_binders<T: TypeFoldable<TyCtxt<'tcx>>>(&self, val: T) -> T {

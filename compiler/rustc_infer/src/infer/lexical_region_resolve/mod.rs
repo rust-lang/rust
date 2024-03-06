@@ -98,6 +98,8 @@ pub enum RegionResolutionError<'tcx> {
         SubregionOrigin<'tcx>, // cause of the constraint
         Region<'tcx>,          // the placeholder `'b`
     ),
+
+    CannotNormalize(ty::PolyTypeOutlivesPredicate<'tcx>, SubregionOrigin<'tcx>),
 }
 
 impl<'tcx> RegionResolutionError<'tcx> {
@@ -106,7 +108,8 @@ impl<'tcx> RegionResolutionError<'tcx> {
             RegionResolutionError::ConcreteFailure(origin, _, _)
             | RegionResolutionError::GenericBoundFailure(origin, _, _)
             | RegionResolutionError::SubSupConflict(_, _, origin, _, _, _, _)
-            | RegionResolutionError::UpperBoundUniverseConflict(_, _, _, origin, _) => origin,
+            | RegionResolutionError::UpperBoundUniverseConflict(_, _, _, origin, _)
+            | RegionResolutionError::CannotNormalize(_, origin) => origin,
         }
     }
 }
@@ -799,14 +802,12 @@ impl<'cx, 'tcx> LexicalResolver<'cx, 'tcx> {
         }
 
         // Errors in earlier passes can yield error variables without
-        // resolution errors here; delay ICE in favor of those errors.
-        self.tcx().dcx().span_delayed_bug(
-            self.var_infos[node_idx].origin.span(),
-            format!(
-                "collect_error_for_expanding_node() could not find \
-                 error for var {node_idx:?} in universe {node_universe:?}, lower_bounds={lower_bounds:#?}, \
-                 upper_bounds={upper_bounds:#?}"
-            ),
+        // resolution errors here; ICE if no errors have been emitted yet.
+        assert!(
+            self.tcx().dcx().has_errors().is_some(),
+            "collect_error_for_expanding_node() could not find error for var {node_idx:?} in \
+            universe {node_universe:?}, lower_bounds={lower_bounds:#?}, \
+            upper_bounds={upper_bounds:#?}",
         );
     }
 

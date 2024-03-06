@@ -1,7 +1,7 @@
 // Extern crate items are marked as used if they are used
 // through extern prelude entries introduced by them.
 
-// edition:2018
+//@ edition:2018
 
 #![deny(unused_extern_crates)]
 

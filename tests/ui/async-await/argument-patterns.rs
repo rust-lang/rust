@@ -1,5 +1,5 @@
-// edition:2018
-// check-pass
+//@ edition:2018
+//@ check-pass
 
 #![deny(unused_mut)]
 

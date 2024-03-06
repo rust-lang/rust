@@ -16,8 +16,6 @@ use rustc_middle::ty::print::RegionHighlightMode;
 use rustc_middle::ty::{self, Ty, TyCtxt, TypeVisitor};
 use rustc_span::Span;
 
-use std::ops::ControlFlow;
-
 impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
     /// Print the error message for lifetime errors when the `impl` doesn't conform to the `trait`.
     pub(super) fn try_report_impl_not_conforming_to_trait(&self) -> Option<ErrorGuaranteed> {
@@ -76,12 +74,11 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
         }
 
         impl<'tcx> ty::visit::TypeVisitor<TyCtxt<'tcx>> for HighlightBuilder<'tcx> {
-            fn visit_region(&mut self, r: ty::Region<'tcx>) -> ControlFlow<Self::BreakTy> {
+            fn visit_region(&mut self, r: ty::Region<'tcx>) {
                 if !r.has_name() && self.counter <= 3 {
                     self.highlight.highlighting_region(r, self.counter);
                     self.counter += 1;
                 }
-                ControlFlow::Continue(())
             }
         }
 

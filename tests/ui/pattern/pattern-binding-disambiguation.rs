@@ -26,7 +26,7 @@ fn main() {
     match doesnt_matter {
         BracedStruct => {} // OK, `BracedStruct` is a fresh binding
     }
-    match UnitVariant {
+    match UnitVariant { //~ ERROR: `E::TupleVariant` and `E::BracedVariant {  }` not covered
         UnitVariant => {} // OK, `UnitVariant` is a unit variant pattern
     }
     match doesnt_matter {
@@ -48,7 +48,7 @@ fn main() {
     let UnitStruct = UnitStruct; // OK, `UnitStruct` is a unit struct pattern
     let TupleStruct = doesnt_matter; //~ ERROR let bindings cannot shadow tuple structs
     let BracedStruct = doesnt_matter; // OK, `BracedStruct` is a fresh binding
-    let UnitVariant = UnitVariant; // OK, `UnitVariant` is a unit variant pattern
+    let UnitVariant = UnitVariant; //~ ERROR: refutable pattern in local binding
     let TupleVariant = doesnt_matter; //~ ERROR let bindings cannot shadow tuple variants
     let BracedVariant = doesnt_matter; // OK, `BracedVariant` is a fresh binding
     let CONST = CONST; // OK, `CONST` is a const pattern

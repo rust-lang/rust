@@ -1,4 +1,4 @@
-// aux-build:no_method_suggested_traits.rs
+//@ aux-build:no_method_suggested_traits.rs
 extern crate no_method_suggested_traits;
 
 struct Foo;

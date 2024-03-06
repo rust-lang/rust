@@ -1,4 +1,4 @@
-// aux-build:lifetime_bound_will_change_warning_lib.rs
+//@ aux-build:lifetime_bound_will_change_warning_lib.rs
 
 // Test that various corner cases cause an error. These are tests
 // that used to pass before we tweaked object defaults.

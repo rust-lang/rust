@@ -6,7 +6,7 @@ struct Cat {
 }
 
 impl Cat {
-    pub fn speak(&self) { self.meows += 1; }
+    pub fn speak(&mut self) { self.meows += 1; }
 }
 
 fn cat(in_x : usize, in_y : isize) -> Cat {

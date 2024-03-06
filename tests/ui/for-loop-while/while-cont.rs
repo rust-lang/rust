@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 // Issue #825: Should recheck the loop condition after continuing
 pub fn main() {
     let mut i = 1;

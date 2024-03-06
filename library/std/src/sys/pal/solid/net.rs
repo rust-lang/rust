@@ -209,7 +209,7 @@ impl Socket {
             netc::recv(self.as_raw_fd(), buf.as_mut().as_mut_ptr().cast(), buf.capacity(), flags)
         })?;
         unsafe {
-            buf.advance(ret as usize);
+            buf.advance_unchecked(ret as usize);
         }
         Ok(())
     }

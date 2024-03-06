@@ -3,12 +3,12 @@
 // - Remove unused aliases if there are no longer any users, see inline_call.rs.
 
 use hir::{HasSource, PathResolution};
+use ide_db::FxHashMap;
 use ide_db::{
     defs::Definition, imports::insert_use::ast_to_remove_for_path_in_use_stmt,
     search::FileReference,
 };
 use itertools::Itertools;
-use std::collections::HashMap;
 use syntax::{
     ast::{self, make, HasGenericParams, HasName},
     ted, AstNode, NodeOrToken, SyntaxNode,
@@ -189,14 +189,14 @@ fn inline(alias_def: &ast::TypeAlias, alias_instance: &ast::PathType) -> Option<
     Some(repl)
 }
 
-struct LifetimeMap(HashMap<String, ast::Lifetime>);
+struct LifetimeMap(FxHashMap<String, ast::Lifetime>);
 
 impl LifetimeMap {
     fn new(
         instance_args: &Option<ast::GenericArgList>,
         alias_generics: &ast::GenericParamList,
     ) -> Option<Self> {
-        let mut inner = HashMap::new();
+        let mut inner = FxHashMap::default();
 
         let wildcard_lifetime = make::lifetime("'_");
         let lifetimes = alias_generics
@@ -231,14 +231,14 @@ impl LifetimeMap {
     }
 }
 
-struct ConstAndTypeMap(HashMap<String, SyntaxNode>);
+struct ConstAndTypeMap(FxHashMap<String, SyntaxNode>);
 
 impl ConstAndTypeMap {
     fn new(
         instance_args: &Option<ast::GenericArgList>,
         alias_generics: &ast::GenericParamList,
     ) -> Option<Self> {
-        let mut inner = HashMap::new();
+        let mut inner = FxHashMap::default();
         let instance_generics = generic_args_to_const_and_type_generics(instance_args);
         let alias_generics = generic_param_list_to_const_and_type_generics(alias_generics);
 

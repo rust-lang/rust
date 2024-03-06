@@ -11,25 +11,6 @@ pub use rustc_middle::traits::query::OutlivesBound;
 
 pub type BoundsCompat<'a, 'tcx: 'a> = impl Iterator<Item = OutlivesBound<'tcx>> + 'a;
 pub type Bounds<'a, 'tcx: 'a> = impl Iterator<Item = OutlivesBound<'tcx>> + 'a;
-pub trait InferCtxtExt<'a, 'tcx> {
-    /// Do *NOT* call this directly.
-    fn implied_bounds_tys_compat(
-        &'a self,
-        param_env: ty::ParamEnv<'tcx>,
-        body_id: LocalDefId,
-        tys: &'a FxIndexSet<Ty<'tcx>>,
-        compat: bool,
-    ) -> BoundsCompat<'a, 'tcx>;
-
-    /// If `-Z no-implied-bounds-compat` is set, calls `implied_bounds_tys_compat`
-    /// with `compat` set to `true`, otherwise `false`.
-    fn implied_bounds_tys(
-        &'a self,
-        param_env: ty::ParamEnv<'tcx>,
-        body_id: LocalDefId,
-        tys: &'a FxIndexSet<Ty<'tcx>>,
-    ) -> Bounds<'a, 'tcx>;
-}
 
 /// Implied bounds are region relationships that we deduce
 /// automatically. The idea is that (e.g.) a caller must check that a
@@ -81,9 +62,10 @@ fn implied_outlives_bounds<'a, 'tcx>(
     };
 
     let mut constraints = QueryRegionConstraints::default();
+    let span = infcx.tcx.def_span(body_id);
     let Ok(InferOk { value: mut bounds, obligations }) = infcx
         .instantiate_nll_query_response_and_region_obligations(
-            &ObligationCause::dummy(),
+            &ObligationCause::dummy_with_span(span),
             param_env,
             &canonical_var_values,
             canonical_result,
@@ -99,8 +81,6 @@ fn implied_outlives_bounds<'a, 'tcx>(
     bounds.retain(|bound| !bound.has_placeholders());
 
     if !constraints.is_empty() {
-        let span = infcx.tcx.def_span(body_id);
-
         debug!(?constraints);
         if !constraints.member_constraints.is_empty() {
             span_bug!(span, "{:#?}", constraints.member_constraints);
@@ -120,7 +100,7 @@ fn implied_outlives_bounds<'a, 'tcx>(
 
         let errors = ocx.select_all_or_error();
         if !errors.is_empty() {
-            infcx.dcx().span_delayed_bug(
+            infcx.dcx().span_bug(
                 span,
                 "implied_outlives_bounds failed to solve obligations from instantiation",
             );
@@ -130,7 +110,9 @@ fn implied_outlives_bounds<'a, 'tcx>(
     bounds
 }
 
-impl<'a, 'tcx: 'a> InferCtxtExt<'a, 'tcx> for InferCtxt<'tcx> {
+#[extension(pub trait InferCtxtExt<'a, 'tcx>)]
+impl<'a, 'tcx: 'a> InferCtxt<'tcx> {
+    /// Do *NOT* call this directly.
     fn implied_bounds_tys_compat(
         &'a self,
         param_env: ParamEnv<'tcx>,
@@ -142,6 +124,8 @@ impl<'a, 'tcx: 'a> InferCtxtExt<'a, 'tcx> for InferCtxt<'tcx> {
             .flat_map(move |ty| implied_outlives_bounds(self, param_env, body_id, *ty, compat))
     }
 
+    /// If `-Z no-implied-bounds-compat` is set, calls `implied_bounds_tys_compat`
+    /// with `compat` set to `true`, otherwise `false`.
     fn implied_bounds_tys(
         &'a self,
         param_env: ParamEnv<'tcx>,

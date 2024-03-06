@@ -4,7 +4,7 @@ use crate::iter::adapters::{
 use crate::iter::{FusedIterator, InPlaceIterable, TrustedLen};
 use crate::mem::MaybeUninit;
 use crate::mem::SizedTypeProperties;
-use crate::num::NonZeroUsize;
+use crate::num::NonZero;
 use crate::ops::Try;
 use crate::{array, ptr};
 
@@ -90,7 +90,7 @@ where
     }
 
     #[inline]
-    fn advance_by(&mut self, n: usize) -> Result<(), NonZeroUsize> {
+    fn advance_by(&mut self, n: usize) -> Result<(), NonZero<usize>> {
         self.it.advance_by(n)
     }
 
@@ -131,7 +131,7 @@ where
     }
 
     #[inline]
-    fn advance_back_by(&mut self, n: usize) -> Result<(), NonZeroUsize> {
+    fn advance_back_by(&mut self, n: usize) -> Result<(), NonZero<usize>> {
         self.it.advance_back_by(n)
     }
 }
@@ -272,6 +272,6 @@ where
 
 #[unstable(issue = "none", feature = "inplace_iteration")]
 unsafe impl<I: InPlaceIterable> InPlaceIterable for Copied<I> {
-    const EXPAND_BY: Option<NonZeroUsize> = I::EXPAND_BY;
-    const MERGE_BY: Option<NonZeroUsize> = I::MERGE_BY;
+    const EXPAND_BY: Option<NonZero<usize>> = I::EXPAND_BY;
+    const MERGE_BY: Option<NonZero<usize>> = I::MERGE_BY;
 }

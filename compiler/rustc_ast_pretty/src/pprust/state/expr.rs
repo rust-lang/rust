@@ -893,10 +893,15 @@ impl<'a> State<'a> {
                 self.word_nbsp("try");
                 self.print_block_with_attrs(blk, attrs)
             }
-            ast::ExprKind::Err => {
+            ast::ExprKind::Err(_) => {
                 self.popen();
                 self.word("/*ERROR*/");
                 self.pclose()
+            }
+            ast::ExprKind::Dummy => {
+                self.popen();
+                self.word("/*DUMMY*/");
+                self.pclose();
             }
         }
 

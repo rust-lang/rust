@@ -1,6 +1,6 @@
-// run-pass
-// revisions: current next
-//[next] compile-flags: -Znext-solver
+//@ run-pass
+//@ revisions: current next
+//@[next] compile-flags: -Znext-solver
 
 use std::ops::Index;
 

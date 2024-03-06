@@ -1,4 +1,4 @@
-// build-pass
+//@ build-pass
 
 #![feature(const_trait_impl, effects)]
 

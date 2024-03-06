@@ -1,5 +1,5 @@
-// compile-flags: --test
-// run-pass
+//@ compile-flags: --test
+//@ run-pass
 
 #![feature(core_intrinsics, generic_assert)]
 

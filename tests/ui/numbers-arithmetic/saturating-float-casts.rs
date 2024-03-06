@@ -1,5 +1,5 @@
-// run-pass
-// compile-flags:-Zmir-opt-level=0
+//@ run-pass
+//@ compile-flags:-Zmir-opt-level=0
 
 #![feature(test, stmt_expr_attributes)]
 #![deny(overflowing_literals)]

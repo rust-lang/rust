@@ -1,5 +1,5 @@
-// compile-flags: -C opt-level=1
-// only-64bit (because we're using [ui]size)
+//@ compile-flags: -C opt-level=1
+//@ only-64bit (because we're using [ui]size)
 
 #![crate_type = "lib"]
 #![feature(core_intrinsics)]

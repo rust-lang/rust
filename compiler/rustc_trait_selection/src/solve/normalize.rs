@@ -1,6 +1,6 @@
-use crate::traits::error_reporting::TypeErrCtxtExt;
+use crate::traits::error_reporting::{OverflowCause, TypeErrCtxtExt};
 use crate::traits::query::evaluate_obligation::InferCtxtExt;
-use crate::traits::{needs_normalization, BoundVarReplacer, PlaceholderReplacer};
+use crate::traits::{BoundVarReplacer, PlaceholderReplacer};
 use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_infer::infer::at::At;
 use rustc_infer::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
@@ -60,8 +60,12 @@ impl<'tcx> NormalizationFolder<'_, 'tcx> {
         let tcx = infcx.tcx;
         let recursion_limit = tcx.recursion_limit();
         if !recursion_limit.value_within_limit(self.depth) {
+            let ty::Alias(_, data) = *alias_ty.kind() else {
+                unreachable!();
+            };
+
             self.at.infcx.err_ctxt().report_overflow_error(
-                &alias_ty,
+                OverflowCause::DeeplyNormalize(data),
                 self.at.cause.span,
                 true,
                 |_| {},
@@ -85,25 +89,16 @@ impl<'tcx> NormalizationFolder<'_, 'tcx> {
             ),
         );
 
-        // Do not emit an error if normalization is known to fail but instead
-        // keep the projection unnormalized. This is the case for projections
-        // with a `T: Trait` where-clause and opaque types outside of the defining
-        // scope.
-        let result = if infcx.predicate_may_hold(&obligation) {
-            self.fulfill_cx.register_predicate_obligation(infcx, obligation);
-            let errors = self.fulfill_cx.select_all_or_error(infcx);
-            if !errors.is_empty() {
-                return Err(errors);
-            }
-            let ty = infcx.resolve_vars_if_possible(new_infer_ty);
+        self.fulfill_cx.register_predicate_obligation(infcx, obligation);
+        let errors = self.fulfill_cx.select_all_or_error(infcx);
+        if !errors.is_empty() {
+            return Err(errors);
+        }
 
-            // Alias is guaranteed to be fully structurally resolved,
-            // so we can super fold here.
-            ty.try_super_fold_with(self)?
-        } else {
-            alias_ty.try_super_fold_with(self)?
-        };
-
+        // Alias is guaranteed to be fully structurally resolved,
+        // so we can super fold here.
+        let ty = infcx.resolve_vars_if_possible(new_infer_ty);
+        let result = ty.try_super_fold_with(self)?;
         self.depth -= 1;
         Ok(result)
     }
@@ -118,7 +113,7 @@ impl<'tcx> NormalizationFolder<'_, 'tcx> {
         let recursion_limit = tcx.recursion_limit();
         if !recursion_limit.value_within_limit(self.depth) {
             self.at.infcx.err_ctxt().report_overflow_error(
-                &ty::Const::new_unevaluated(tcx, uv, ty),
+                OverflowCause::DeeplyNormalize(ty::AliasTy::new(tcx, uv.def, uv.args)),
                 self.at.cause.span,
                 true,
                 |_| {},
@@ -178,6 +173,7 @@ impl<'tcx> FallibleTypeFolder<TyCtxt<'tcx>> for NormalizationFolder<'_, 'tcx> {
         Ok(t)
     }
 
+    #[instrument(level = "debug", skip(self), ret)]
     fn try_fold_ty(&mut self, ty: Ty<'tcx>) -> Result<Ty<'tcx>, Self::Error> {
         let infcx = self.at.infcx;
         debug_assert_eq!(ty, infcx.shallow_resolve(ty));
@@ -204,11 +200,11 @@ impl<'tcx> FallibleTypeFolder<TyCtxt<'tcx>> for NormalizationFolder<'_, 'tcx> {
         }
     }
 
+    #[instrument(level = "debug", skip(self), ret)]
     fn try_fold_const(&mut self, ct: ty::Const<'tcx>) -> Result<ty::Const<'tcx>, Self::Error> {
-        let reveal = self.at.param_env.reveal();
         let infcx = self.at.infcx;
         debug_assert_eq!(ct, infcx.shallow_resolve(ct));
-        if !needs_normalization(&ct, reveal) {
+        if !ct.has_projections() {
             return Ok(ct);
         }
 

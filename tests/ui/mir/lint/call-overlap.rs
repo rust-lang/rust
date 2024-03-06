@@ -1,8 +1,8 @@
-// compile-flags: -Zlint-mir -Ztreat-err-as-bug
-// build-fail
-// failure-status: 101
-// dont-check-compiler-stderr
-// error-pattern: encountered overlapping memory in `Move` arguments to `Call`
+//@ compile-flags: -Zlint-mir -Ztreat-err-as-bug
+//@ build-fail
+//@ failure-status: 101
+//@ dont-check-compiler-stderr
+//@ error-pattern: encountered overlapping memory in `Move` arguments to `Call`
 #![feature(custom_mir, core_intrinsics)]
 extern crate core;
 use core::intrinsics::mir::*;

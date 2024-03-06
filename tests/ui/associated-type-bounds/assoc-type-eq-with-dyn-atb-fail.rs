@@ -28,9 +28,9 @@ impl Bar for AssocNoCopy {
 
 impl Thing for AssocNoCopy {
     type Out = Box<dyn Bar<Assoc: Copy>>;
+    //~^ ERROR associated type bounds are not allowed in `dyn` types
 
     fn func() -> Self::Out {
-        //~^ ERROR the trait bound `String: Copy` is not satisfied
         Box::new(AssocNoCopy)
     }
 }

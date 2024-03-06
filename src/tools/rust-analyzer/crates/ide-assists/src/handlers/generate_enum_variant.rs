@@ -162,7 +162,7 @@ fn make_record_field_list(
 fn name_from_field(field: &ast::RecordExprField) -> ast::Name {
     let text = match field.name_ref() {
         Some(it) => it.to_string(),
-        None => name_from_field_shorthand(field).unwrap_or("unknown".to_string()),
+        None => name_from_field_shorthand(field).unwrap_or("unknown".to_owned()),
     };
     make::name(&text)
 }

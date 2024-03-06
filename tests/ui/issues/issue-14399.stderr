@@ -1,0 +1,12 @@
+warning: method `foo` is never used
+  --> $DIR/issue-14399.rs:12:14
+   |
+LL | trait A { fn foo(&self) {} }
+   |       -      ^^^
+   |       |
+   |       method in this trait
+   |
+   = note: `#[warn(dead_code)]` on by default
+
+warning: 1 warning emitted
+

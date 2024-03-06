@@ -1,6 +1,6 @@
-// check-pass
-// compile-flags: -Zunpretty=expanded
-// edition:2021
+//@ check-pass
+//@ compile-flags: -Zunpretty=expanded
+//@ edition:2021
 //
 // This test checks the code generated for all[*] the builtin derivable traits
 // on a variety of structs and enums. It protects against accidental changes to

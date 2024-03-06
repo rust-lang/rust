@@ -1,5 +1,8 @@
+#![allow(rustc::diagnostic_outside_of_impl)]
+#![allow(rustc::untranslatable_diagnostic)]
+
 use hir::ExprKind;
-use rustc_errors::{Applicability, Diagnostic, DiagnosticBuilder};
+use rustc_errors::{Applicability, Diag};
 use rustc_hir as hir;
 use rustc_hir::intravisit::Visitor;
 use rustc_hir::Node;
@@ -64,7 +67,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                 local,
                 projection: [proj_base @ .., ProjectionElem::Field(upvar_index, _)],
             } => {
-                debug_assert!(is_closure_or_coroutine(
+                debug_assert!(is_closure_like(
                     Place::ty_from(local, proj_base, self.body, self.infcx.tcx).ty
                 ));
 
@@ -123,9 +126,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                 {
                     item_msg = access_place_desc;
                     debug_assert!(self.body.local_decls[ty::CAPTURE_STRUCT_LOCAL].ty.is_ref());
-                    debug_assert!(is_closure_or_coroutine(
-                        the_place_err.ty(self.body, self.infcx.tcx).ty
-                    ));
+                    debug_assert!(is_closure_like(the_place_err.ty(self.body, self.infcx.tcx).ty));
 
                     reason = if self.is_upvar_field_projection(access_place.as_ref()).is_some() {
                         ", as it is a captured variable in a `Fn` closure".to_string()
@@ -198,12 +199,12 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                     {
                         let span = self.body.local_decls[local].source_info.span;
                         mut_error = Some(span);
-                        if let Some((buffer, c)) = self.get_buffered_mut_error(span) {
+                        if let Some((buffered_err, c)) = self.get_buffered_mut_error(span) {
                             // We've encountered a second (or more) attempt to mutably borrow an
                             // immutable binding, so the likely problem is with the binding
                             // declaration, not the use. We collect these in a single diagnostic
                             // and make the binding the primary span of the error.
-                            err = buffer;
+                            err = buffered_err;
                             count = c + 1;
                             if count == 2 {
                                 err.replace_span_with(span, false);
@@ -228,7 +229,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                 }
                 if suggest {
                     borrow_spans.var_subdiag(
-                        None,
+                        self.dcx(),
                         &mut err,
                         Some(mir::BorrowKind::Mut { kind: mir::MutBorrowKind::Default }),
                         |_kind, var_span| {
@@ -386,7 +387,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                 local,
                 projection: [proj_base @ .., ProjectionElem::Field(upvar_index, _)],
             } => {
-                debug_assert!(is_closure_or_coroutine(
+                debug_assert!(is_closure_like(
                     Place::ty_from(local, proj_base, self.body, self.infcx.tcx).ty
                 ));
 
@@ -396,7 +397,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
 
                 let upvar_hir_id = captured_place.get_root_variable();
 
-                if let Some(Node::Pat(pat)) = self.infcx.tcx.opt_hir_node(upvar_hir_id)
+                if let Node::Pat(pat) = self.infcx.tcx.hir_node(upvar_hir_id)
                     && let hir::PatKind::Binding(hir::BindingAnnotation::NONE, _, upvar_ident, _) =
                         pat.kind
                 {
@@ -539,7 +540,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
         }
     }
 
-    fn suggest_map_index_mut_alternatives(&self, ty: Ty<'tcx>, err: &mut Diagnostic, span: Span) {
+    fn suggest_map_index_mut_alternatives(&self, ty: Ty<'tcx>, err: &mut Diag<'tcx>, span: Span) {
         let Some(adt) = ty.ty_adt_def() else { return };
         let did = adt.did();
         if self.infcx.tcx.is_diagnostic_item(sym::HashMap, did)
@@ -547,7 +548,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
         {
             struct V<'a, 'tcx> {
                 assign_span: Span,
-                err: &'a mut Diagnostic,
+                err: &'a mut Diag<'tcx>,
                 ty: Ty<'tcx>,
                 suggested: bool,
             }
@@ -688,16 +689,16 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                         break;
                     }
                     f_in_trait_opt.and_then(|f_in_trait| {
-                        match self.infcx.tcx.opt_hir_node(f_in_trait) {
-                            Some(Node::TraitItem(hir::TraitItem {
+                        match self.infcx.tcx.hir_node(f_in_trait) {
+                            Node::TraitItem(hir::TraitItem {
                                 kind:
                                     hir::TraitItemKind::Fn(
                                         hir::FnSig { decl: hir::FnDecl { inputs, .. }, .. },
                                         _,
                                     ),
                                 ..
-                            })) => {
-                                let hir::Ty { span, .. } = inputs[local.index() - 1];
+                            }) => {
+                                let hir::Ty { span, .. } = *inputs.get(local.index() - 1)?;
                                 Some(span)
                             }
                             _ => None,
@@ -711,7 +712,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
 
     fn construct_mut_suggestion_for_local_binding_patterns(
         &self,
-        err: &mut DiagnosticBuilder<'_>,
+        err: &mut Diag<'_>,
         local: Local,
     ) {
         let local_decl = &self.body.local_decls[local];
@@ -759,10 +760,10 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
         //
         // `let &b = a;` -> `let &(mut b) = a;`
         if let Some(hir_id) = hir_id
-            && let Some(hir::Node::Local(hir::Local {
+            && let hir::Node::Local(hir::Local {
                 pat: hir::Pat { kind: hir::PatKind::Ref(_, _), .. },
                 ..
-            })) = self.infcx.tcx.opt_hir_node(hir_id)
+            }) = self.infcx.tcx.hir_node(hir_id)
             && let Ok(name) =
                 self.infcx.tcx.sess.source_map().span_to_snippet(local_decl.source_info.span)
         {
@@ -789,7 +790,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
         tcx: TyCtxt<'_>,
         closure_local_def_id: hir::def_id::LocalDefId,
         the_place_err: PlaceRef<'tcx>,
-        err: &mut Diagnostic,
+        err: &mut Diag<'_>,
     ) {
         let tables = tcx.typeck(closure_local_def_id);
         if let Some((span, closure_kind_origin)) = tcx.closure_kind_origin(closure_local_def_id) {
@@ -851,7 +852,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
 
     // Attempt to search similar mutable associated items for suggestion.
     // In the future, attempt in all path but initially for RHS of for_loop
-    fn suggest_similar_mut_method_for_for_loop(&self, err: &mut Diagnostic, span: Span) {
+    fn suggest_similar_mut_method_for_for_loop(&self, err: &mut Diag<'_>, span: Span) {
         use hir::{
             BorrowKind, Expr,
             ExprKind::{AddrOf, Block, Call, MethodCall},
@@ -924,7 +925,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                         err.span_suggestion_verbose(
                             expr.span.shrink_to_lo(),
                             "use a mutable iterator instead",
-                            "mut ".to_string(),
+                            "mut ",
                             Applicability::MachineApplicable,
                         );
                     }
@@ -935,13 +936,13 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
     }
 
     /// Targeted error when encountering an `FnMut` closure where an `Fn` closure was expected.
-    fn expected_fn_found_fn_mut_call(&self, err: &mut Diagnostic, sp: Span, act: &str) {
+    fn expected_fn_found_fn_mut_call(&self, err: &mut Diag<'_>, sp: Span, act: &str) {
         err.span_label(sp, format!("cannot {act}"));
 
         let hir = self.infcx.tcx.hir();
         let closure_id = self.mir_hir_id();
         let closure_span = self.infcx.tcx.def_span(self.mir_def_id());
-        let fn_call_id = hir.parent_id(closure_id);
+        let fn_call_id = self.infcx.tcx.parent_hir_id(closure_id);
         let node = self.infcx.tcx.hir_node(fn_call_id);
         let def_id = hir.enclosing_body_owner(fn_call_id);
         let mut look_at_return = true;
@@ -1025,13 +1026,13 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
         }
     }
 
-    fn suggest_using_iter_mut(&self, err: &mut DiagnosticBuilder<'_>) {
+    fn suggest_using_iter_mut(&self, err: &mut Diag<'_>) {
         let source = self.body.source;
         let hir = self.infcx.tcx.hir();
         if let InstanceDef::Item(def_id) = source.instance
             && let Some(Node::Expr(hir::Expr { hir_id, kind, .. })) = hir.get_if_local(def_id)
             && let ExprKind::Closure(hir::Closure { kind: hir::ClosureKind::Closure, .. }) = kind
-            && let Some(Node::Expr(expr)) = hir.find_parent(*hir_id)
+            && let Node::Expr(expr) = self.infcx.tcx.parent_hir_node(*hir_id)
         {
             let mut cur_expr = expr;
             while let ExprKind::MethodCall(path_segment, recv, _, _) = cur_expr.kind {
@@ -1066,7 +1067,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
         }
     }
 
-    fn suggest_make_local_mut(&self, err: &mut DiagnosticBuilder<'_>, local: Local, name: Symbol) {
+    fn suggest_make_local_mut(&self, err: &mut Diag<'_>, local: Local, name: Symbol) {
         let local_decl = &self.body.local_decls[local];
 
         let (pointer_sigil, pointer_desc) =
@@ -1206,7 +1207,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                 };
 
                 if let Some(hir_id) = hir_id
-                    && let Some(hir::Node::Local(local)) = self.infcx.tcx.opt_hir_node(hir_id)
+                    && let hir::Node::Local(local) = self.infcx.tcx.hir_node(hir_id)
                 {
                     let tables = self.infcx.tcx.typeck(def_id.as_local().unwrap());
                     if let Some(clone_trait) = self.infcx.tcx.lang_items().clone_trait()
@@ -1471,8 +1472,9 @@ fn suggest_ampmut<'tcx>(
     }
 }
 
-fn is_closure_or_coroutine(ty: Ty<'_>) -> bool {
-    ty.is_closure() || ty.is_coroutine()
+/// If the type is a `Coroutine`, `Closure`, or `CoroutineClosure`
+fn is_closure_like(ty: Ty<'_>) -> bool {
+    ty.is_closure() || ty.is_coroutine() || ty.is_coroutine_closure()
 }
 
 /// Given a field that needs to be mutable, returns a span where the " mut " could go.

@@ -98,9 +98,6 @@ pub fn prebuilt_llvm_config(
     let out_dir = builder.llvm_out(target);
 
     let mut llvm_config_ret_dir = builder.llvm_out(builder.config.build);
-    if !builder.config.build.is_msvc() || builder.ninja() {
-        llvm_config_ret_dir.push("build");
-    }
     llvm_config_ret_dir.push("bin");
     let build_llvm_config = llvm_config_ret_dir.join(exe("llvm-config", builder.config.build));
     let llvm_cmake_dir = out_dir.join("lib/cmake/llvm");
@@ -110,7 +107,7 @@ pub fn prebuilt_llvm_config(
     let smart_stamp_hash = STAMP_HASH_MEMO.get_or_init(|| {
         generate_smart_stamp_hash(
             &builder.config.src.join("src/llvm-project"),
-            &builder.in_tree_llvm_info.sha().unwrap_or_default(),
+            builder.in_tree_llvm_info.sha().unwrap_or_default(),
         )
     });
 
@@ -242,7 +239,7 @@ pub(crate) fn is_ci_llvm_modified(config: &Config) -> bool {
     }
 }
 
-#[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
+#[derive(Debug, Clone, Hash, PartialEq, Eq)]
 pub struct Llvm {
     pub target: TargetSelection,
 }
@@ -289,7 +286,7 @@ impl Step for Llvm {
 
         let _guard = builder.msg_unstaged(Kind::Build, "LLVM", target);
         t!(stamp.remove());
-        let _time = helpers::timeit(&builder);
+        let _time = helpers::timeit(builder);
         t!(fs::create_dir_all(&out_dir));
 
         // https://llvm.org/docs/CMake.html
@@ -355,7 +352,7 @@ impl Step for Llvm {
             cfg.define("LLVM_BUILD_RUNTIME", "No");
         }
         if let Some(path) = builder.config.llvm_profile_use.as_ref() {
-            cfg.define("LLVM_PROFDATA_FILE", &path);
+            cfg.define("LLVM_PROFDATA_FILE", path);
         }
 
         // Disable zstd to avoid a dependency on libzstd.so.
@@ -412,9 +409,7 @@ impl Step for Llvm {
         }
 
         if target.is_msvc() {
-            cfg.define("LLVM_USE_CRT_DEBUG", "MT");
-            cfg.define("LLVM_USE_CRT_RELEASE", "MT");
-            cfg.define("LLVM_USE_CRT_RELWITHDEBINFO", "MT");
+            cfg.define("CMAKE_MSVC_RUNTIME_LIBRARY", "MultiThreaded");
             cfg.static_crt(true);
         }
 
@@ -645,7 +640,7 @@ fn configure_cmake(
 
     let sanitize_cc = |cc: &Path| {
         if target.is_msvc() {
-            OsString::from(cc.to_str().unwrap().replace("\\", "/"))
+            OsString::from(cc.to_str().unwrap().replace('\\', "/"))
         } else {
             cc.as_os_str().to_owned()
         }
@@ -810,14 +805,14 @@ fn configure_llvm(builder: &Builder<'_>, target: TargetSelection, cfg: &mut cmak
 // Adapted from https://github.com/alexcrichton/cc-rs/blob/fba7feded71ee4f63cfe885673ead6d7b4f2f454/src/lib.rs#L2347-L2365
 fn get_var(var_base: &str, host: &str, target: &str) -> Option<OsString> {
     let kind = if host == target { "HOST" } else { "TARGET" };
-    let target_u = target.replace("-", "_");
-    env::var_os(&format!("{var_base}_{target}"))
-        .or_else(|| env::var_os(&format!("{}_{}", var_base, target_u)))
-        .or_else(|| env::var_os(&format!("{}_{}", kind, var_base)))
+    let target_u = target.replace('-', "_");
+    env::var_os(format!("{var_base}_{target}"))
+        .or_else(|| env::var_os(format!("{}_{}", var_base, target_u)))
+        .or_else(|| env::var_os(format!("{}_{}", kind, var_base)))
         .or_else(|| env::var_os(var_base))
 }
 
-#[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
+#[derive(Debug, Clone, Hash, PartialEq, Eq)]
 pub struct Lld {
     pub target: TargetSelection,
 }
@@ -864,7 +859,7 @@ impl Step for Lld {
         }
 
         let _guard = builder.msg_unstaged(Kind::Build, "LLD", target);
-        let _time = helpers::timeit(&builder);
+        let _time = helpers::timeit(builder);
         t!(fs::create_dir_all(&out_dir));
 
         let mut cfg = cmake::Config::new(builder.src.join("src/llvm-project/lld"));
@@ -939,7 +934,7 @@ impl Step for Lld {
     }
 }
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Sanitizers {
     pub target: TargetSelection,
 }
@@ -988,7 +983,7 @@ impl Step for Sanitizers {
 
         let _guard = builder.msg_unstaged(Kind::Build, "sanitizers", self.target);
         t!(stamp.remove());
-        let _time = helpers::timeit(&builder);
+        let _time = helpers::timeit(builder);
 
         let mut cfg = cmake::Config::new(&compiler_rt_dir);
         cfg.profile("Release");
@@ -1053,7 +1048,7 @@ fn supported_sanitizers(
             .map(move |c| SanitizerRuntime {
                 cmake_target: format!("clang_rt.{}_{}_dynamic", c, os),
                 path: out_dir
-                    .join(&format!("build/lib/darwin/libclang_rt.{}_{}_dynamic.dylib", c, os)),
+                    .join(format!("build/lib/darwin/libclang_rt.{}_{}_dynamic.dylib", c, os)),
                 name: format!("librustc-{}_rt.{}.dylib", channel, c),
             })
             .collect()
@@ -1064,7 +1059,7 @@ fn supported_sanitizers(
             .iter()
             .map(move |c| SanitizerRuntime {
                 cmake_target: format!("clang_rt.{}-{}", c, arch),
-                path: out_dir.join(&format!("build/lib/{}/libclang_rt.{}-{}.a", os, c, arch)),
+                path: out_dir.join(format!("build/lib/{}/libclang_rt.{}-{}.a", os, c, arch)),
                 name: format!("librustc-{}_rt.{}.a", channel, c),
             })
             .collect()
@@ -1093,7 +1088,7 @@ fn supported_sanitizers(
         "x86_64-unknown-illumos" => common_libs("illumos", "x86_64", &["asan"]),
         "x86_64-pc-solaris" => common_libs("solaris", "x86_64", &["asan"]),
         "x86_64-unknown-linux-gnu" => {
-            common_libs("linux", "x86_64", &["asan", "lsan", "msan", "safestack", "tsan"])
+            common_libs("linux", "x86_64", &["asan", "dfsan", "lsan", "msan", "safestack", "tsan"])
         }
         "x86_64-unknown-linux-musl" => {
             common_libs("linux", "x86_64", &["asan", "lsan", "msan", "tsan"])
@@ -1149,7 +1144,7 @@ impl HashStamp {
     }
 }
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct CrtBeginEnd {
     pub target: TargetSelection,
 }
@@ -1167,7 +1162,7 @@ impl Step for CrtBeginEnd {
 
     /// Build crtbegin.o/crtend.o for musl target.
     fn run(self, builder: &Builder<'_>) -> Self::Output {
-        builder.update_submodule(&Path::new("src/llvm-project"));
+        builder.update_submodule(Path::new("src/llvm-project"));
 
         let out_dir = builder.native_dir(self.target).join("crt");
 
@@ -1217,7 +1212,7 @@ impl Step for CrtBeginEnd {
     }
 }
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Libunwind {
     pub target: TargetSelection,
 }
@@ -1235,7 +1230,7 @@ impl Step for Libunwind {
 
     /// Build libunwind.a
     fn run(self, builder: &Builder<'_>) -> Self::Output {
-        builder.update_submodule(&Path::new("src/llvm-project"));
+        builder.update_submodule(Path::new("src/llvm-project"));
 
         if builder.config.dry_run() {
             return PathBuf::new();

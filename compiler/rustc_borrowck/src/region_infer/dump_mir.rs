@@ -1,5 +1,3 @@
-#![deny(rustc::untranslatable_diagnostic)]
-#![deny(rustc::diagnostic_outside_of_impl)]
 //! As part of generating the regions, if you enable `-Zdump-mir=nll`,
 //! we will generate an annotated copy of the MIR that includes the
 //! state of region inference. This code handles emitting the region

@@ -79,7 +79,7 @@ pub(crate) fn generate_is_empty_from_len(acc: &mut Assists, ctx: &AssistContext<
     pub fn is_empty(&self) -> bool {
         self.len() == 0
     }"#
-            .to_string();
+            .to_owned();
             builder.insert(range.end(), code)
         },
     )

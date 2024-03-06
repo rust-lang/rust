@@ -1,4 +1,4 @@
-// aux-build:subspan.rs
+//@ aux-build:subspan.rs
 
 extern crate subspan;
 

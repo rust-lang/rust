@@ -1,4 +1,4 @@
-// edition:2018
+//@ edition:2018
 
 trait Trait<'a, 'b> {}
 impl<T> Trait<'_, '_> for T {}

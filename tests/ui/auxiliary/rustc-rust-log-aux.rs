@@ -1,1 +1,1 @@
-// rustc-env:RUSTC_LOG=debug
+//@ rustc-env:RUSTC_LOG=debug

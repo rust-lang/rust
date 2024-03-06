@@ -15,6 +15,7 @@ impl<'a> ValueRef<'a> {
         match *self {
             ValueRef::Text(t) => {
                 std::str::from_utf8(t).map_err(|_| FromSqlError::InvalidType).map(|x| (x, &x))
+                //~^ ERROR: cannot return value referencing function parameter `x`
             }
             _ => Err(FromSqlError::InvalidType),
         }

@@ -1,7 +1,7 @@
-// check-pass
-// force-host
-// no-prefer-dynamic
-// compile-flags: -Z unpretty=expanded
+//@ check-pass
+//@ force-host
+//@ no-prefer-dynamic
+//@ compile-flags: -Z unpretty=expanded
 //
 // This file is not actually used as a proc-macro - instead,
 // it's just used to show the output of the `quote!` macro

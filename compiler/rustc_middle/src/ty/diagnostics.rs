@@ -11,7 +11,7 @@ use crate::ty::{
 };
 
 use rustc_data_structures::fx::FxHashMap;
-use rustc_errors::{Applicability, Diagnostic, DiagnosticArgValue, IntoDiagnosticArg};
+use rustc_errors::{Applicability, Diag, DiagArgValue, IntoDiagnosticArg};
 use rustc_hir as hir;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::DefId;
@@ -20,7 +20,7 @@ use rustc_span::{BytePos, Span};
 use rustc_type_ir::TyKind::*;
 
 impl<'tcx> IntoDiagnosticArg for Ty<'tcx> {
-    fn into_diagnostic_arg(self) -> DiagnosticArgValue<'static> {
+    fn into_diagnostic_arg(self) -> DiagArgValue {
         self.to_string().into_diagnostic_arg()
     }
 }
@@ -98,6 +98,7 @@ impl<'tcx, T> IsSuggestable<'tcx> for T
 where
     T: TypeVisitable<TyCtxt<'tcx>> + TypeFoldable<TyCtxt<'tcx>>,
 {
+    #[tracing::instrument(level = "debug", skip(tcx))]
     fn is_suggestable(self, tcx: TyCtxt<'tcx>, infer_suggestable: bool) -> bool {
         self.visit_with(&mut IsSuggestableVisitor { tcx, infer_suggestable }).is_continue()
     }
@@ -110,7 +111,7 @@ where
 pub fn suggest_arbitrary_trait_bound<'tcx>(
     tcx: TyCtxt<'tcx>,
     generics: &hir::Generics<'_>,
-    err: &mut Diagnostic,
+    err: &mut Diag<'_>,
     trait_pred: PolyTraitPredicate<'tcx>,
     associated_ty: Option<(&'static str, Ty<'tcx>)>,
 ) -> bool {
@@ -215,7 +216,7 @@ fn suggest_changing_unsized_bound(
 pub fn suggest_constraining_type_param(
     tcx: TyCtxt<'_>,
     generics: &hir::Generics<'_>,
-    err: &mut Diagnostic,
+    err: &mut Diag<'_>,
     param_name: &str,
     constraint: &str,
     def_id: Option<DefId>,
@@ -234,7 +235,7 @@ pub fn suggest_constraining_type_param(
 pub fn suggest_constraining_type_params<'a>(
     tcx: TyCtxt<'_>,
     generics: &hir::Generics<'_>,
-    err: &mut Diagnostic,
+    err: &mut Diag<'_>,
     param_names_and_constraints: impl Iterator<Item = (&'a str, &'a str, Option<DefId>)>,
     span_to_replace: Option<Span>,
 ) -> bool {
@@ -357,11 +358,17 @@ pub fn suggest_constraining_type_params<'a>(
         //      trait Foo<T=()> {... }
         //                     - insert: `where T: Zar`
         if matches!(param.kind, hir::GenericParamKind::Type { default: Some(_), .. }) {
+            // If we are here and the where clause span is of non-zero length
+            // it means we're dealing with an empty where clause like this:
+            //      fn foo<X>(x: X) where { ... }
+            // In that case we don't want to add another "where" (Fixes #120838)
+            let where_prefix = if generics.where_clause_span.is_empty() { " where" } else { "" };
+
             // Suggest a bound, but there is no existing `where` clause *and* the type param has a
             // default (`<T=Foo>`), so we suggest adding `where T: Bar`.
             suggestions.push((
                 generics.tail_span_for_predicate_suggestion(),
-                format!(" where {param_name}: {constraint}"),
+                format!("{where_prefix} {param_name}: {constraint}"),
                 SuggestChangingConstraintsMessage::RestrictTypeFurther { ty: param_name },
             ));
             continue;
@@ -475,9 +482,9 @@ pub struct IsSuggestableVisitor<'tcx> {
 }
 
 impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for IsSuggestableVisitor<'tcx> {
-    type BreakTy = ();
+    type Result = ControlFlow<()>;
 
-    fn visit_ty(&mut self, t: Ty<'tcx>) -> ControlFlow<Self::BreakTy> {
+    fn visit_ty(&mut self, t: Ty<'tcx>) -> Self::Result {
         match *t.kind() {
             Infer(InferTy::TyVar(_)) if self.infer_suggestable => {}
 
@@ -529,9 +536,12 @@ impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for IsSuggestableVisitor<'tcx> {
         t.super_visit_with(self)
     }
 
-    fn visit_const(&mut self, c: Const<'tcx>) -> ControlFlow<Self::BreakTy> {
+    fn visit_const(&mut self, c: Const<'tcx>) -> Self::Result {
         match c.kind() {
             ConstKind::Infer(InferConst::Var(_)) if self.infer_suggestable => {}
+
+            // effect variables are always suggestable, because they are not visible
+            ConstKind::Infer(InferConst::EffectVar(_)) => {}
 
             ConstKind::Infer(..)
             | ConstKind::Bound(..)

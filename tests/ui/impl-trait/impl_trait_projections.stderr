@@ -32,7 +32,7 @@ error[E0277]: the trait bound `impl Debug: Step` is not satisfied
   --> $DIR/impl_trait_projections.rs:26:8
    |
 LL |     -> <::std::ops::Range<impl Debug> as Iterator>::Item
-   |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `Step` is not implemented for `impl Debug`
+   |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `Step` is not implemented for `impl Debug`, which is required by `std::ops::Range<impl Debug>: Iterator`
    |
    = help: the following other types implement trait `Step`:
              char
@@ -53,7 +53,7 @@ LL | / {
 LL | |
 LL | |     (1i32..100).next().unwrap()
 LL | | }
-   | |_^ the trait `Step` is not implemented for `impl Debug`
+   | |_^ the trait `Step` is not implemented for `impl Debug`, which is required by `std::ops::Range<impl Debug>: Iterator`
    |
    = help: the following other types implement trait `Step`:
              char

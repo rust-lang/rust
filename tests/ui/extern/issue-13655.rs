@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 #![feature(fn_traits, unboxed_closures)]
 struct Foo<T>(T);
 

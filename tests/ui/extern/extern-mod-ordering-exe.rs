@@ -1,7 +1,7 @@
-// run-pass
-// aux-build:extern_mod_ordering_lib.rs
+//@ run-pass
+//@ aux-build:extern_mod_ordering_lib.rs
 
-// pretty-expanded FIXME #23616
+//@ pretty-expanded FIXME #23616
 
 extern crate extern_mod_ordering_lib;
 

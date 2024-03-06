@@ -1,7 +1,7 @@
 // Check the if let guards don't force capture by value
-// revisions: e2018 e2021
-//[e2018] edition:2018
-//[e2021] edition:2021
+//@ revisions: e2018 e2021
+//@[e2018] edition:2018
+//@[e2021] edition:2021
 
 #![feature(if_let_guard)]
 #![allow(irrefutable_let_patterns)]

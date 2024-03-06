@@ -1,5 +1,5 @@
-// build-pass
-// edition:2018
+//@ build-pass
+//@ edition:2018
 
 type BoxFuture<T> = std::pin::Pin<Box<dyn std::future::Future<Output=T>>>;
 

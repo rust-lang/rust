@@ -1,17 +1,17 @@
-// revisions: x64 i686 aarch64 arm riscv32 riscv64
+//@ revisions: x64 i686 aarch64 arm riscv32 riscv64
 //
-// [x64] needs-llvm-components: x86
-// [x64] compile-flags: --target=x86_64-unknown-linux-gnu --crate-type=rlib
-// [i686] needs-llvm-components: x86
-// [i686] compile-flags: --target=i686-unknown-linux-gnu --crate-type=rlib
-// [aarch64] needs-llvm-components: aarch64
-// [aarch64] compile-flags: --target=aarch64-unknown-linux-gnu --crate-type=rlib
-// [arm] needs-llvm-components: arm
-// [arm] compile-flags: --target=armv7-unknown-linux-gnueabihf --crate-type=rlib
-// [riscv32] needs-llvm-components: riscv
-// [riscv32] compile-flags: --target=riscv32i-unknown-none-elf --crate-type=rlib
-// [riscv64] needs-llvm-components: riscv
-// [riscv64] compile-flags: --target=riscv64gc-unknown-none-elf --crate-type=rlib
+//@ [x64] needs-llvm-components: x86
+//@ [x64] compile-flags: --target=x86_64-unknown-linux-gnu --crate-type=rlib
+//@ [i686] needs-llvm-components: x86
+//@ [i686] compile-flags: --target=i686-unknown-linux-gnu --crate-type=rlib
+//@ [aarch64] needs-llvm-components: aarch64
+//@ [aarch64] compile-flags: --target=aarch64-unknown-linux-gnu --crate-type=rlib
+//@ [arm] needs-llvm-components: arm
+//@ [arm] compile-flags: --target=armv7-unknown-linux-gnueabihf --crate-type=rlib
+//@ [riscv32] needs-llvm-components: riscv
+//@ [riscv32] compile-flags: --target=riscv32i-unknown-none-elf --crate-type=rlib
+//@ [riscv64] needs-llvm-components: riscv
+//@ [riscv64] compile-flags: --target=riscv64gc-unknown-none-elf --crate-type=rlib
 #![no_core]
 #![feature(
     no_core,
@@ -19,7 +19,6 @@
     abi_ptx,
     abi_msp430_interrupt,
     abi_avr_interrupt,
-    abi_amdgpu_kernel,
     wasm_abi,
     abi_x86_interrupt,
     abi_riscv_interrupt
@@ -28,8 +27,6 @@
 trait Sized {}
 
 extern "ptx-kernel" fn ptx() {}
-//~^ ERROR is not a supported ABI
-extern "amdgpu-kernel" fn amdgpu() {}
 //~^ ERROR is not a supported ABI
 extern "wasm" fn wasm() {}
 //~^ ERROR is not a supported ABI

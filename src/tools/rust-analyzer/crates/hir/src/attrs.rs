@@ -2,7 +2,6 @@
 
 use std::ops::ControlFlow;
 
-use base_db::FileId;
 use hir_def::{
     attr::AttrsWithOwner,
     item_scope::ItemInNs,
@@ -11,12 +10,8 @@ use hir_def::{
     resolver::{HasResolver, Resolver, TypeNs},
     AssocItemId, AttrDefId, ModuleDefId,
 };
-use hir_expand::{
-    name::Name,
-    span_map::{RealSpanMap, SpanMapRef},
-};
+use hir_expand::{mod_path::PathKind, name::Name};
 use hir_ty::{db::HirDatabase, method_resolution};
-use syntax::{ast, AstNode};
 
 use crate::{
     Adt, AsAssocItem, AssocItem, BuiltinType, Const, ConstParam, DocLinkDef, Enum, ExternCrateDecl,
@@ -35,7 +30,7 @@ macro_rules! impl_has_attrs {
         impl HasAttrs for $def {
             fn attrs(self, db: &dyn HirDatabase) -> AttrsWithOwner {
                 let def = AttrDefId::$def_id(self.into());
-                AttrsWithOwner::attrs_with_owner(db.upcast(), def)
+                AttrsWithOwner::new(db.upcast(), def)
             }
             fn attr_id(self) -> AttrDefId {
                 AttrDefId::$def_id(self.into())
@@ -129,7 +124,7 @@ fn resolve_doc_path_on_(
         AttrDefId::GenericParamId(_) => return None,
     };
 
-    let mut modpath = modpath_from_str(db, link)?;
+    let mut modpath = doc_modpath_from_str(link)?;
 
     let resolved = resolver.resolve_module_path_in_items(db.upcast(), &modpath);
     if resolved.is_none() {
@@ -244,10 +239,9 @@ fn resolve_impl_trait_item(
 ) -> Option<DocLinkDef> {
     let canonical = ty.canonical();
     let krate = ty.krate(db);
-    let environment = resolver.generic_def().map_or_else(
-        || crate::TraitEnvironment::empty(krate.id).into(),
-        |d| db.trait_environment(d),
-    );
+    let environment = resolver
+        .generic_def()
+        .map_or_else(|| crate::TraitEnvironment::empty(krate.id), |d| db.trait_environment(d));
     let traits_in_scope = resolver.traits_in_scope(db.upcast());
 
     let mut result = None;
@@ -302,37 +296,42 @@ fn as_module_def_if_namespace_matches(
         AssocItem::TypeAlias(it) => (ModuleDef::TypeAlias(it), Namespace::Types),
     };
 
-    (ns.unwrap_or(expected_ns) == expected_ns).then(|| DocLinkDef::ModuleDef(def))
+    (ns.unwrap_or(expected_ns) == expected_ns).then_some(DocLinkDef::ModuleDef(def))
 }
 
-fn modpath_from_str(db: &dyn HirDatabase, link: &str) -> Option<ModPath> {
+fn doc_modpath_from_str(link: &str) -> Option<ModPath> {
     // FIXME: this is not how we should get a mod path here.
     let try_get_modpath = |link: &str| {
-        let ast_path = ast::SourceFile::parse(&format!("type T = {link};"))
-            .syntax_node()
-            .descendants()
-            .find_map(ast::Path::cast)?;
-        if ast_path.syntax().text() != link {
-            return None;
-        }
-        ModPath::from_src(
-            db.upcast(),
-            ast_path,
-            SpanMapRef::RealSpanMap(&RealSpanMap::absolute(FileId::BOGUS)),
-        )
+        let mut parts = link.split("::");
+        let mut first_segment = None;
+        let kind = match parts.next()? {
+            "" => PathKind::Abs,
+            "crate" => PathKind::Crate,
+            "self" => PathKind::Super(0),
+            "super" => {
+                let mut deg = 1;
+                for segment in parts.by_ref() {
+                    if segment == "super" {
+                        deg += 1;
+                    } else {
+                        first_segment = Some(segment);
+                        break;
+                    }
+                }
+                PathKind::Super(deg)
+            }
+            segment => {
+                first_segment = Some(segment);
+                PathKind::Plain
+            }
+        };
+        let parts = first_segment.into_iter().chain(parts).map(|segment| match segment.parse() {
+            Ok(idx) => Name::new_tuple_field(idx),
+            Err(_) => {
+                Name::new_text_dont_use(segment.split_once('<').map_or(segment, |it| it.0).into())
+            }
+        });
+        Some(ModPath::from_segments(kind, parts))
     };
-
-    let full = try_get_modpath(link);
-    if full.is_some() {
-        return full;
-    }
-
-    // Tuple field names cannot be a part of `ModPath` usually, but rustdoc can
-    // resolve doc paths like `TupleStruct::0`.
-    // FIXME: Find a better way to handle these.
-    let (base, maybe_tuple_field) = link.rsplit_once("::")?;
-    let tuple_field = Name::new_tuple_field(maybe_tuple_field.parse().ok()?);
-    let mut modpath = try_get_modpath(base)?;
-    modpath.push_segment(tuple_field);
-    Some(modpath)
+    try_get_modpath(link)
 }

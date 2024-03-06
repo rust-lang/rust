@@ -1,7 +1,7 @@
-// check-pass
-// pretty-expanded FIXME #23616
-// revisions: current next
-//[next] compile-flags: -Znext-solver
+//@ check-pass
+//@ pretty-expanded FIXME #23616
+//@ revisions: current next
+//@[next] compile-flags: -Znext-solver
 
 use std::slice;
 

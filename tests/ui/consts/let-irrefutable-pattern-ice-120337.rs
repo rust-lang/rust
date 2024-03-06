@@ -1,4 +1,4 @@
-// check-pass
+//@ check-pass
 #![feature(never_type)]
 #[derive(Copy, Clone)]
 pub enum E { A(!), }

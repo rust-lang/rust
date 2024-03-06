@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 fn test() {
     let v;
     loop {

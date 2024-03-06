@@ -1,5 +1,5 @@
-// edition:2021
-// run-pass
+//@ edition:2021
+//@ run-pass
 
 // Test that we can use raw ptrs when using `capture_disjoint_fields`.
 

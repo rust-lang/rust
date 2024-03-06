@@ -6,7 +6,7 @@
 // FIXME(fmease): Extend this test to cover supertraits again
 // once #118040 is fixed. See initial version of PR #118360.
 
-// check-pass
+//@ check-pass
 
 #![feature(associated_const_equality)]
 

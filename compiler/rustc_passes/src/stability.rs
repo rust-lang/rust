@@ -27,7 +27,7 @@ use rustc_span::Span;
 use rustc_target::spec::abi::Abi;
 
 use std::mem::replace;
-use std::num::NonZeroU32;
+use std::num::NonZero;
 
 #[derive(PartialEq)]
 enum AnnotationKind {
@@ -173,10 +173,7 @@ impl<'a, 'tcx> Annotator<'a, 'tcx> {
         // If the current node is a function, has const stability attributes and if it doesn not have an intrinsic ABI,
         // check if the function/method is const or the parent impl block is const
         if let (Some(const_span), Some(fn_sig)) = (const_span, fn_sig) {
-            if fn_sig.header.abi != Abi::RustIntrinsic
-                && fn_sig.header.abi != Abi::PlatformIntrinsic
-                && !fn_sig.header.is_const()
-            {
+            if fn_sig.header.abi != Abi::RustIntrinsic && !fn_sig.header.is_const() {
                 if !self.in_trait_impl
                     || (self.in_trait_impl && !self.tcx.is_const_fn_raw(def_id.to_def_id()))
                 {
@@ -645,7 +642,7 @@ fn stability_index(tcx: TyCtxt<'_>, (): ()) -> Index {
             let stability = Stability {
                 level: attr::StabilityLevel::Unstable {
                     reason: UnstableReason::Default,
-                    issue: NonZeroU32::new(27812),
+                    issue: NonZero::new(27812),
                     is_soft: false,
                     implied_by: None,
                 },
@@ -957,8 +954,9 @@ pub fn check_unused_or_stable_features(tcx: TyCtxt<'_>) {
     // available as we'd like it to be.
     // FIXME: only remove `libc` when `stdbuild` is active.
     // FIXME: remove special casing for `test`.
-    remaining_lib_features.remove(&sym::libc);
-    remaining_lib_features.remove(&sym::test);
+    // FIXME(#120456) - is `swap_remove` correct?
+    remaining_lib_features.swap_remove(&sym::libc);
+    remaining_lib_features.swap_remove(&sym::test);
 
     /// For each feature in `defined_features`..
     ///
@@ -996,7 +994,8 @@ pub fn check_unused_or_stable_features(tcx: TyCtxt<'_>) {
                     unnecessary_stable_feature_lint(tcx, *span, feature, since);
                 }
             }
-            remaining_lib_features.remove(&feature);
+            // FIXME(#120456) - is `swap_remove` correct?
+            remaining_lib_features.swap_remove(&feature);
 
             // `feature` is the feature doing the implying, but `implied_by` is the feature with
             // the attribute that establishes this relationship. `implied_by` is guaranteed to be a

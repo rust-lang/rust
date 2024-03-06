@@ -10,8 +10,8 @@
 
 // Issue 62307 pointed out a case where the structural-match checking
 // was too shallow.
-#![warn(indirect_structural_match, nontrivial_structural_match)]
-// run-pass
+#![warn(indirect_structural_match)]
+//@ run-pass
 
 #[derive(Debug)]
 struct B(i32);

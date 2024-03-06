@@ -20,7 +20,7 @@ note: ...which requires const-evaluating + checking `Tr::B`...
 LL |     const B: u8 = Self::A;
    |                   ^^^^^^^
    = note: ...which again requires simplifying constant for the type system `Tr::A`, completing the cycle
-note: cycle used when const-evaluating + checking `main::promoted[1]`
+note: cycle used when optimizing promoted MIR for `main`
   --> $DIR/defaults-cyclic-fail.rs:16:16
    |
 LL |     assert_eq!(<() as Tr>::A, 0);

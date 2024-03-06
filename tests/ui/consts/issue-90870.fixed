@@ -1,6 +1,6 @@
 // Regression test for issue #90870.
 
-// run-rustfix
+//@ run-rustfix
 
 #![allow(dead_code)]
 

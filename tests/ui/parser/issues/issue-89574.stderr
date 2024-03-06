@@ -1,8 +1,23 @@
+error[E0282]: type annotations needed
+  --> $DIR/issue-89574.rs:2:25
+   |
+LL |     const EMPTY_ARRAY = [];
+   |                         ^^ cannot infer type
+
 error: missing type for `const` item
   --> $DIR/issue-89574.rs:2:22
    |
 LL |     const EMPTY_ARRAY = [];
    |                      ^ help: provide a type for the item: `: <type>`
 
-error: aborting due to 1 previous error
+error[E0282]: type annotations needed
+  --> $DIR/issue-89574.rs:2:25
+   |
+LL |     const EMPTY_ARRAY = [];
+   |                         ^^ cannot infer type
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0282`.

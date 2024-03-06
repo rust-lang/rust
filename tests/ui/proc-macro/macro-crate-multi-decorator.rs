@@ -1,7 +1,7 @@
 // The duplicate macro will create a copy of the item with the given identifier.
 
-// check-pass
-// aux-build:duplicate.rs
+//@ check-pass
+//@ aux-build:duplicate.rs
 
 #[macro_use]
 extern crate duplicate;

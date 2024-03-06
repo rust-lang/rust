@@ -1,6 +1,6 @@
 // The WF requirements of the *unnormalized* form of type annotations
 // can guide inference.
-// check-pass
+//@ check-pass
 
 pub trait EqualTo {
     type Ty;

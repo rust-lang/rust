@@ -1,5 +1,5 @@
-// compile-flags: -Znext-solver
-// check-pass
+//@ compile-flags: -Znext-solver
+//@ check-pass
 
 trait Id {
     type Assoc;
@@ -9,7 +9,7 @@ impl<T> Id for T {
 }
 
 
-// Coherence should be able to reason that `(): PartialEq<<T as Id>::Assoc>>`
+// Coherence should be able to reason that `(): PartialEq<<LocalTy as Id>::Assoc>>`
 // does not hold.
 //
 // See https://github.com/rust-lang/trait-system-refactor-initiative/issues/51

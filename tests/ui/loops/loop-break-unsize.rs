@@ -1,5 +1,5 @@
 // Regression test for #62312
-// check-pass
+//@ check-pass
 
 fn main() {
     let _ = loop {

@@ -22,7 +22,7 @@ pub fn main() {
 
         let j2 = spawn(move || {
             let c = c; // avoid field capturing
-            (&*c.0).load(Ordering::SeqCst) //~ ERROR: Data race detected between (1) non-atomic write on thread `<unnamed>` and (2) atomic load on thread `<unnamed>`
+            (&*c.0).load(Ordering::SeqCst) //~ ERROR: Data race detected between (1) non-atomic write on thread `unnamed-1` and (2) atomic load on thread `unnamed-2`
         });
 
         j1.join().unwrap();

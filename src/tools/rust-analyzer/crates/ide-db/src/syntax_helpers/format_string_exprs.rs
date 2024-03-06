@@ -203,7 +203,7 @@ mod tests {
     use expect_test::{expect, Expect};
 
     fn check(input: &str, expect: &Expect) {
-        let (output, exprs) = parse_format_exprs(input).unwrap_or(("-".to_string(), vec![]));
+        let (output, exprs) = parse_format_exprs(input).unwrap_or(("-".to_owned(), vec![]));
         let outcome_repr = if !exprs.is_empty() {
             format!("{output}; {}", with_placeholders(exprs).join(", "))
         } else {

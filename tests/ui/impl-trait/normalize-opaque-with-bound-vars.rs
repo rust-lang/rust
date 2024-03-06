@@ -1,6 +1,6 @@
-// build-pass
-// edition:2021
-// compile-flags: -Cdebuginfo=2
+//@ build-pass
+//@ edition:2021
+//@ compile-flags: -Cdebuginfo=2
 
 // We were not normalizing opaques with escaping bound vars during codegen,
 // leading to later linker errors because of differences in mangled symbol name.

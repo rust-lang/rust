@@ -1,6 +1,6 @@
-// build-fail
-// normalize-stderr-test "std::option::Option<\[u32; \d+\]>" -> "TYPE"
-// normalize-stderr-test "\[u32; \d+\]" -> "TYPE"
+//@ build-fail
+//@ normalize-stderr-test "std::option::Option<\[u32; \d+\]>" -> "TYPE"
+//@ normalize-stderr-test "\[u32; \d+\]" -> "TYPE"
 
 #[cfg(target_pointer_width = "32")]
 type BIG = Option<[u32; (1<<29)-1]>;

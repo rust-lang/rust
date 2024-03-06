@@ -1,3 +1,5 @@
+#![allow(rustc::diagnostic_outside_of_impl)]
+#![allow(rustc::untranslatable_diagnostic)]
 #![feature(rustc_private)]
 #![feature(let_chains)]
 #![feature(lazy_cell)]
@@ -22,6 +24,7 @@ use rustc_session::EarlyDiagCtxt;
 use rustc_span::symbol::Symbol;
 
 use std::env;
+use std::fs::read_to_string;
 use std::ops::Deref;
 use std::path::Path;
 use std::process::exit;
@@ -65,8 +68,8 @@ fn test_arg_value() {
     assert_eq!(arg_value(args, "--foo", |_| true), None);
 }
 
-fn track_clippy_args(parse_sess: &mut ParseSess, args_env_var: &Option<String>) {
-    parse_sess.env_depinfo.get_mut().insert((
+fn track_clippy_args(psess: &mut ParseSess, args_env_var: &Option<String>) {
+    psess.env_depinfo.get_mut().insert((
         Symbol::intern("CLIPPY_ARGS"),
         args_env_var.as_deref().map(Symbol::intern),
     ));
@@ -74,8 +77,8 @@ fn track_clippy_args(parse_sess: &mut ParseSess, args_env_var: &Option<String>) 
 
 /// Track files that may be accessed at runtime in `file_depinfo` so that cargo will re-run clippy
 /// when any of them are modified
-fn track_files(parse_sess: &mut ParseSess) {
-    let file_depinfo = parse_sess.file_depinfo.get_mut();
+fn track_files(psess: &mut ParseSess) {
+    let file_depinfo = psess.file_depinfo.get_mut();
 
     // Used by `clippy::cargo` lints and to determine the MSRV. `cargo clippy` executes `clippy-driver`
     // with the current directory set to `CARGO_MANIFEST_DIR` so a relative path is fine
@@ -112,8 +115,8 @@ struct RustcCallbacks {
 impl rustc_driver::Callbacks for RustcCallbacks {
     fn config(&mut self, config: &mut interface::Config) {
         let clippy_args_var = self.clippy_args_var.take();
-        config.parse_sess_created = Some(Box::new(move |parse_sess| {
-            track_clippy_args(parse_sess, &clippy_args_var);
+        config.psess_created = Some(Box::new(move |psess| {
+            track_clippy_args(psess, &clippy_args_var);
         }));
     }
 }
@@ -129,13 +132,13 @@ impl rustc_driver::Callbacks for ClippyCallbacks {
         let conf_path = clippy_config::lookup_conf_file();
         let previous = config.register_lints.take();
         let clippy_args_var = self.clippy_args_var.take();
-        config.parse_sess_created = Some(Box::new(move |parse_sess| {
-            track_clippy_args(parse_sess, &clippy_args_var);
-            track_files(parse_sess);
+        config.psess_created = Some(Box::new(move |psess| {
+            track_clippy_args(psess, &clippy_args_var);
+            track_files(psess);
 
             // Trigger a rebuild if CLIPPY_CONF_DIR changes. The value must be a valid string so
             // changes between dirs that are invalid UTF-8 will not trigger rebuilds
-            parse_sess.env_depinfo.get_mut().insert((
+            psess.env_depinfo.get_mut().insert((
                 Symbol::intern("CLIPPY_CONF_DIR"),
                 env::var("CLIPPY_CONF_DIR").ok().map(|dir| Symbol::intern(&dir)),
             ));
@@ -188,12 +191,31 @@ pub fn main() {
 
     exit(rustc_driver::catch_with_exit_code(move || {
         let mut orig_args: Vec<String> = env::args().collect();
-        let has_sysroot_arg = arg_value(&orig_args, "--sysroot", |_| true).is_some();
+
+        let has_sysroot_arg = |args: &mut [String]| -> bool {
+            if arg_value(args, "--sysroot", |_| true).is_some() {
+                return true;
+            }
+            // https://doc.rust-lang.org/rustc/command-line-arguments.html#path-load-command-line-flags-from-a-path
+            // Beside checking for existence of `--sysroot` on the command line, we need to
+            // check for the arg files that are prefixed with @ as well to be consistent with rustc
+            for arg in args.iter() {
+                if let Some(arg_file_path) = arg.strip_prefix('@') {
+                    if let Ok(arg_file) = read_to_string(arg_file_path) {
+                        let split_arg_file: Vec<String> = arg_file.lines().map(ToString::to_string).collect();
+                        if arg_value(&split_arg_file, "--sysroot", |_| true).is_some() {
+                            return true;
+                        }
+                    }
+                }
+            }
+            false
+        };
 
         let sys_root_env = std::env::var("SYSROOT").ok();
         let pass_sysroot_env_if_given = |args: &mut Vec<String>, sys_root_env| {
             if let Some(sys_root) = sys_root_env {
-                if !has_sysroot_arg {
+                if !has_sysroot_arg(args) {
                     args.extend(vec!["--sysroot".into(), sys_root]);
                 }
             };
@@ -250,7 +272,9 @@ pub fn main() {
                 },
                 _ => Some(s.to_string()),
             })
+            // FIXME: remove this line in 1.79 to only keep `--cfg clippy`.
             .chain(vec!["--cfg".into(), r#"feature="cargo-clippy""#.into()])
+            .chain(vec!["--cfg".into(), "clippy".into()])
             .collect::<Vec<String>>();
 
         // We enable Clippy if one of the following conditions is met

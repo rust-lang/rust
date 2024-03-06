@@ -1,4 +1,4 @@
-// aux-build:test-macros.rs
+//@ aux-build:test-macros.rs
 
 #![feature(rustc_attrs)]
 #![warn(unused_extern_crates)]

@@ -1,4 +1,4 @@
-// aux-build:issue-73112.rs
+//@ aux-build:issue-73112.rs
 
 extern crate issue_73112;
 

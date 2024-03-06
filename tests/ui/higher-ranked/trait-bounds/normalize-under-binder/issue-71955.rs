@@ -1,4 +1,4 @@
-// check-fail
+//@ check-fail
 #![feature(rustc_attrs)]
 
 trait Parser<'s> {

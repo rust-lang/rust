@@ -1,7 +1,7 @@
 // Opaque macro can eagerly expand its input without breaking its resolution.
 // Regression test for issue #63685.
 
-// check-pass
+//@ check-pass
 
 macro_rules! foo {
     () => {

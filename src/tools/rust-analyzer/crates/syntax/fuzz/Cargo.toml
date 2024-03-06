@@ -3,7 +3,7 @@ name = "syntax-fuzz"
 version = "0.0.1"
 publish = false
 edition = "2021"
-rust-version = "1.66.1"
+rust-version = "1.76"
 
 [package.metadata]
 cargo-fuzz = true

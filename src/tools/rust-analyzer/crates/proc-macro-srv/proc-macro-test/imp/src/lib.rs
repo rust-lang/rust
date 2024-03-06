@@ -2,6 +2,7 @@
 
 #![warn(rust_2018_idioms, unused_lifetimes)]
 #![feature(proc_macro_span, proc_macro_def_site)]
+#![allow(clippy::all)]
 
 use proc_macro::{Group, Ident, Literal, Punct, Span, TokenStream, TokenTree};
 

@@ -1,7 +1,7 @@
-// run-pass
+//@ run-pass
 #![allow(unused_must_use)]
-// ignore-emscripten no threads support
-// needs-unwind
+//@ ignore-emscripten no threads support
+//@ needs-unwind
 #![feature(rustc_attrs)]
 
 use std::thread;

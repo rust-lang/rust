@@ -1,10 +1,11 @@
-// compile-flags: -O -C no-prepopulate-passes
-
+//@ compile-flags: -O -C no-prepopulate-passes
 #![crate_type = "lib"]
 #![feature(dyn_star)]
+#![feature(generic_nonzero)]
+#![feature(allocator_api)]
 
 use std::mem::MaybeUninit;
-use std::num::NonZeroU64;
+use std::num::NonZero;
 use std::marker::PhantomPinned;
 use std::ptr::NonNull;
 
@@ -70,13 +71,13 @@ pub fn int(x: u64) -> u64 {
 
 // CHECK: noundef i64 @nonzero_int(i64 noundef %x)
 #[no_mangle]
-pub fn nonzero_int(x: NonZeroU64) -> NonZeroU64 {
+pub fn nonzero_int(x: NonZero<u64>) -> NonZero<u64> {
   x
 }
 
 // CHECK: noundef i64 @option_nonzero_int(i64 noundef %x)
 #[no_mangle]
-pub fn option_nonzero_int(x: Option<NonZeroU64>) -> Option<NonZeroU64> {
+pub fn option_nonzero_int(x: Option<NonZero<u64>>) -> Option<NonZero<u64>> {
   x
 }
 
@@ -180,6 +181,15 @@ pub fn raw_option_nonnull_struct(_: Option<NonNull<S>>) {
 #[no_mangle]
 pub fn _box(x: Box<i32>) -> Box<i32> {
   x
+}
+
+// With a custom allocator, it should *not* have `noalias`. (See
+// <https://github.com/rust-lang/miri/issues/3341> for why.) The second argument is the allocator,
+// which is a reference here that still carries `noalias` as usual.
+// CHECK: @_box_custom(ptr noundef nonnull align 4 %x.0, ptr noalias noundef nonnull readonly align 1 %x.1)
+#[no_mangle]
+pub fn _box_custom(x: Box<i32, &std::alloc::Global>) {
+  drop(x)
 }
 
 // CHECK: noundef nonnull align 4 ptr @notunpin_box(ptr noundef nonnull align 4 %x)

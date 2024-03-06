@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 // This is largely checking that we now accept code where temp values
 // are borrowing from the input parameters (the `foo` case below).
 //

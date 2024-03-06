@@ -1,6 +1,6 @@
-// revisions: cfail1 cfail2
-// compile-flags: -Z query-dep-graph -Copt-level=0
-// build-pass (FIXME(62277): could be check-pass?)
+//@ revisions: cfail1 cfail2
+//@ compile-flags: -Z query-dep-graph -Copt-level=0
+//@ build-pass (FIXME(62277): could be check-pass?)
 
 #![allow(warnings)]
 #![feature(rustc_attrs)]
@@ -17,7 +17,7 @@ pub mod x {
     }
 
     #[cfg(cfail2)]
-    #[rustc_clean(except = "hir_owner_nodes,promoted_mir", cfg = "cfail2")]
+    #[rustc_clean(except = "opt_hir_owner_nodes,promoted_mir", cfg = "cfail2")]
     pub fn x() {
         println!("{}", "2");
     }

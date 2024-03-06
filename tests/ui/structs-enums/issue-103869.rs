@@ -1,4 +1,4 @@
-// run-rustfix
+//@ run-rustfix
 
 enum VecOrMap {
     //~^ HELP: perhaps you meant to use `struct` here

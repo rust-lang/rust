@@ -1,4 +1,4 @@
-// check-pass
+//@ check-pass
 
 // See https://github.com/rust-lang/rust/issues/95151
 #[track_caller]

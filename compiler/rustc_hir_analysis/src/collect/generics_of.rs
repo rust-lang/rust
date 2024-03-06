@@ -51,7 +51,7 @@ pub(super) fn generics_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Generics {
                 // of a const parameter type, e.g. `struct Foo<const N: usize, const M: [u8; N]>` is not allowed.
                 None
             } else if tcx.features().generic_const_exprs {
-                let parent_node = tcx.hir().get_parent(hir_id);
+                let parent_node = tcx.parent_hir_node(hir_id);
                 if let Node::Variant(Variant { disr_expr: Some(constant), .. }) = parent_node
                     && constant.hir_id == hir_id
                 {
@@ -71,7 +71,7 @@ pub(super) fn generics_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Generics {
                     // end up with that const looking like: `ty::ConstKind::Unevaluated(def_id, args: [N#0])`.
                     //
                     // This causes ICEs (#86580) when building the args for Foo in `fn foo() -> Foo { .. }` as
-                    // we substitute the defaults with the partially built args when we build the args. Subst'ing
+                    // we instantiate the defaults with the partially built args when we build the args. Instantiating
                     // the `N#0` on the unevaluated const indexes into the empty args we're in the process of building.
                     //
                     // We fix this by having this function return the parent's generics ourselves and truncating the
@@ -113,7 +113,7 @@ pub(super) fn generics_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Generics {
                     Some(parent_def_id.to_def_id())
                 }
             } else {
-                let parent_node = tcx.hir().get_parent(hir_id);
+                let parent_node = tcx.parent_hir_node(hir_id);
                 match parent_node {
                     // HACK(eddyb) this provides the correct generics for repeat
                     // expressions' count (i.e. `N` in `[x; N]`), and explicit
@@ -344,11 +344,25 @@ pub(super) fn generics_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Generics {
         kind: hir::ExprKind::Closure(hir::Closure { kind, .. }), ..
     }) = node
     {
+        // See `ClosureArgsParts`, `CoroutineArgsParts`, and `CoroutineClosureArgsParts`
+        // for info on the usage of each of these fields.
         let dummy_args = match kind {
             ClosureKind::Closure => &["<closure_kind>", "<closure_signature>", "<upvars>"][..],
-            ClosureKind::Coroutine(_) => {
-                &["<resume_ty>", "<yield_ty>", "<return_ty>", "<witness>", "<upvars>"][..]
-            }
+            ClosureKind::Coroutine(_) => &[
+                "<coroutine_kind>",
+                "<resume_ty>",
+                "<yield_ty>",
+                "<return_ty>",
+                "<witness>",
+                "<upvars>",
+            ][..],
+            ClosureKind::CoroutineClosure(_) => &[
+                "<closure_kind>",
+                "<closure_signature_parts>",
+                "<upvars>",
+                "<bound_captures_by_ref>",
+                "<witness>",
+            ][..],
         };
 
         params.extend(dummy_args.iter().map(|&arg| ty::GenericParamDef {

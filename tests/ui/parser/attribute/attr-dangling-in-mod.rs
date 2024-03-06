@@ -1,4 +1,4 @@
-// error-pattern:expected item
+//@ error-pattern:expected item
 
 fn main() {
 }

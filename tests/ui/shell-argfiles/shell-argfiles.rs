@@ -1,7 +1,7 @@
 // Check to see if we can get parameters from an @argsfile file
 //
-// build-pass
-// compile-flags: --cfg cmdline_set -Z shell-argfiles @shell:{{src-base}}/shell-argfiles/shell-argfiles.args
+//@ build-pass
+//@ compile-flags: --cfg cmdline_set -Z shell-argfiles @shell:{{src-base}}/shell-argfiles/shell-argfiles.args
 
 #[cfg(not(cmdline_set))]
 compile_error!("cmdline_set not set");

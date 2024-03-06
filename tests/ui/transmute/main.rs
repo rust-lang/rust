@@ -1,5 +1,5 @@
-// normalize-stderr-32bit: "`&str` \(64 bits\)" -> "`&str` ($$STR bits)"
-// normalize-stderr-64bit: "`&str` \(128 bits\)" -> "`&str` ($$STR bits)"
+//@ normalize-stderr-32bit: "`&str` \(64 bits\)" -> "`&str` ($$STR bits)"
+//@ normalize-stderr-64bit: "`&str` \(128 bits\)" -> "`&str` ($$STR bits)"
 
 use std::mem::transmute;
 

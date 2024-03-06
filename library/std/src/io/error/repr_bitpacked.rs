@@ -73,7 +73,7 @@
 //! union Repr {
 //!     // holds integer (Simple/Os) variants, and
 //!     // provides access to the tag bits.
-//!     bits: NonZeroU64,
+//!     bits: NonZero<u64>,
 //!     // Tag is 0, so this is stored untagged.
 //!     msg: &'static SimpleMessage,
 //!     // Tagged (offset) `Box<Custom>` pointer.
@@ -93,7 +93,7 @@
 //!    `io::Result<()>` and `io::Result<usize>` larger, which defeats part of
 //!    the motivation of this bitpacking.
 //!
-//! Storing everything in a `NonZeroUsize` (or some other integer) would be a
+//! Storing everything in a `NonZero<usize>` (or some other integer) would be a
 //! bit more traditional for pointer tagging, but it would lose provenance
 //! information, couldn't be constructed from a `const fn`, and would probably
 //! run into other issues as well.
@@ -174,7 +174,10 @@ impl Repr {
     pub(super) fn new_os(code: RawOsError) -> Self {
         let utagged = ((code as usize) << 32) | TAG_OS;
         // Safety: `TAG_OS` is not zero, so the result of the `|` is not 0.
-        let res = Self(unsafe { NonNull::new_unchecked(ptr::invalid_mut(utagged)) }, PhantomData);
+        let res = Self(
+            unsafe { NonNull::new_unchecked(ptr::without_provenance_mut(utagged)) },
+            PhantomData,
+        );
         // quickly smoke-check we encoded the right thing (This generally will
         // only run in std's tests, unless the user uses -Zbuild-std)
         debug_assert!(
@@ -188,7 +191,10 @@ impl Repr {
     pub(super) fn new_simple(kind: ErrorKind) -> Self {
         let utagged = ((kind as usize) << 32) | TAG_SIMPLE;
         // Safety: `TAG_SIMPLE` is not zero, so the result of the `|` is not 0.
-        let res = Self(unsafe { NonNull::new_unchecked(ptr::invalid_mut(utagged)) }, PhantomData);
+        let res = Self(
+            unsafe { NonNull::new_unchecked(ptr::without_provenance_mut(utagged)) },
+            PhantomData,
+        );
         // quickly smoke-check we encoded the right thing (This generally will
         // only run in std's tests, unless the user uses -Zbuild-std)
         debug_assert!(

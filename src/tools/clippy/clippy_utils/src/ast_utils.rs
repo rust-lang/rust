@@ -2,7 +2,7 @@
 //!
 //! - The `eq_foobar` functions test for semantic equality but ignores `NodeId`s and `Span`s.
 
-#![allow(clippy::similar_names, clippy::wildcard_imports, clippy::enum_glob_use)]
+#![allow(clippy::wildcard_imports, clippy::enum_glob_use)]
 
 use crate::{both, over};
 use rustc_ast::ptr::P;
@@ -143,7 +143,8 @@ pub fn eq_expr(l: &Expr, r: &Expr) -> bool {
     match (&l.kind, &r.kind) {
         (Paren(l), _) => eq_expr(l, r),
         (_, Paren(r)) => eq_expr(l, r),
-        (Err, Err) => true,
+        (Err(_), Err(_)) => true,
+        (Dummy, _) | (_, Dummy) => unreachable!("comparing `ExprKind::Dummy`"),
         (Try(l), Try(r)) | (Await(l, _), Await(r, _)) => eq_expr(l, r),
         (Array(l), Array(r)) => over(l, r, |l, r| eq_expr(l, r)),
         (Tup(l), Tup(r)) => over(l, r, |l, r| eq_expr(l, r)),
@@ -296,7 +297,7 @@ pub fn eq_item<K>(l: &Item<K>, r: &Item<K>, mut eq_kind: impl FnMut(&K, &K) -> b
     eq_id(l.ident, r.ident) && over(&l.attrs, &r.attrs, eq_attr) && eq_vis(&l.vis, &r.vis) && eq_kind(&l.kind, &r.kind)
 }
 
-#[expect(clippy::too_many_lines)] // Just a big match statement
+#[expect(clippy::similar_names, clippy::too_many_lines)] // Just a big match statement
 pub fn eq_item_kind(l: &ItemKind, r: &ItemKind) -> bool {
     use ItemKind::*;
     match (l, r) {
@@ -690,7 +691,9 @@ pub fn eq_ty(l: &Ty, r: &Ty) -> bool {
     match (&l.kind, &r.kind) {
         (Paren(l), _) => eq_ty(l, r),
         (_, Paren(r)) => eq_ty(l, r),
-        (Never, Never) | (Infer, Infer) | (ImplicitSelf, ImplicitSelf) | (Err, Err) | (CVarArgs, CVarArgs) => true,
+        (Never, Never) | (Infer, Infer) | (ImplicitSelf, ImplicitSelf) | (Err(_), Err(_)) | (CVarArgs, CVarArgs) => {
+            true
+        },
         (Slice(l), Slice(r)) => eq_ty(l, r),
         (Array(le, ls), Array(re, rs)) => eq_ty(le, re) && eq_expr(&ls.value, &rs.value),
         (Ptr(l), Ptr(r)) => l.mutbl == r.mutbl && eq_ty(&l.ty, &r.ty),

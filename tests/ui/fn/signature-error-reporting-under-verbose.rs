@@ -1,4 +1,4 @@
-// compile-flags: -Zverbose-internals
+//@ compile-flags: -Zverbose-internals
 
 fn foo(_: i32, _: i32) {}
 

@@ -1,6 +1,6 @@
-// build-pass (FIXME(62277): could be check-pass?)
+//@ build-pass (FIXME(62277): could be check-pass?)
 // note this was only reproducible with lib crates
-// compile-flags: --crate-type=lib
+//@ compile-flags: --crate-type=lib
 
 pub struct Hz;
 

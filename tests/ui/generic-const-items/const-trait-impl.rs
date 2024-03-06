@@ -1,4 +1,4 @@
-// check-pass
+//@ check-pass
 
 // Test that we can call methods from const trait impls inside of generic const items.
 

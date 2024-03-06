@@ -1,7 +1,7 @@
 // Regression test for <https://github.com/rust-lang/rust/issues/73137>
 
-// run-pass
-// edition:2018
+//@ run-pass
+//@ edition:2018
 
 #![allow(dead_code)]
 use std::future::Future;

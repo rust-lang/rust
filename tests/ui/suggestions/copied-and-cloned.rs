@@ -1,4 +1,4 @@
-// run-rustfix
+//@ run-rustfix
 
 fn expect<T>(_: T) {}
 

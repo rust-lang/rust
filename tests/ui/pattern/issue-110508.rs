@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 
 #[derive(PartialEq, Eq)]
 pub enum Foo {

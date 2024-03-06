@@ -323,6 +323,15 @@ fn record_pat_field(p: &mut Parser<'_>) {
             p.bump(T![:]);
             pattern(p);
         }
+        // test_err record_pat_field_eq_recovery
+        // fn main() {
+        //     let S { field = foo };
+        // }
+        IDENT | INT_NUMBER if p.nth(1) == T![=] => {
+            name_ref_or_index(p);
+            p.err_and_bump("expected `:`");
+            pattern(p);
+        }
         T![box] => {
             // FIXME: not all box patterns should be allowed
             box_pat(p);

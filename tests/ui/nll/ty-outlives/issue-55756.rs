@@ -16,7 +16,7 @@
 // Fixed by tweaking the solver to recognize that the constraint from
 // the environment duplicates one from the trait.
 //
-// check-pass
+//@ check-pass
 
 #![crate_type="lib"]
 

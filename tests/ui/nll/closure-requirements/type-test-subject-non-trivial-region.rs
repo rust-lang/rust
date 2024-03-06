@@ -1,5 +1,5 @@
 // See #108639 for description.
-// check-pass
+//@ check-pass
 
 trait Trait {
     type Item<'a>: 'a;

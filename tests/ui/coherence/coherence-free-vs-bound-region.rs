@@ -15,7 +15,7 @@ impl<'a> TheTrait for fn(&'a u8) {}
 
 impl TheTrait for fn(&u8) {
     //~^ ERROR conflicting implementations of trait
-    //~| WARNING this was previously accepted by the compiler
+    //~| WARN the behavior may change in a future release
 }
 
 fn main() {}

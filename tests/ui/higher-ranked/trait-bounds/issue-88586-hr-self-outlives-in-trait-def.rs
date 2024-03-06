@@ -3,7 +3,7 @@
 //
 // Made to pass as part of fixing #98095.
 //
-// check-pass
+//@ check-pass
 
 trait A where
     for<'a> Self: 'a,

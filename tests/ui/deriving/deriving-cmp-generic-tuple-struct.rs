@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 #[derive(PartialEq, Eq, PartialOrd, Ord)]
 struct TS<T>(T,T);
 

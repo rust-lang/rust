@@ -27,7 +27,7 @@ pub(super) const unsafe fn from_u32_unchecked(i: u32) -> char {
     unsafe {
         assert_unsafe_precondition!(
             "invalid value for `char`",
-            (i: u32) => char_try_from_u32(i).is_ok()
+            (i: u32 = i) => char_try_from_u32(i).is_ok()
         );
         transmute(i)
     }

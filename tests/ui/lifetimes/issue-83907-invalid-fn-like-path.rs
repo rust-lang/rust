@@ -1,4 +1,4 @@
-// check-fail
+//@ check-fail
 
 static STATIC_VAR_FIVE: &One();
 //~^ cannot find type

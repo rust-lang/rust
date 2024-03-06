@@ -1,8 +1,8 @@
-// run-pass
-// needs-unwind
+//@ run-pass
+//@ needs-unwind
 #![allow(stable_features)]
 
-// ignore-emscripten no threads support
+//@ ignore-emscripten no threads support
 
 #![feature(std_panic)]
 

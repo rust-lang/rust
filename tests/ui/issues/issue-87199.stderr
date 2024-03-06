@@ -23,11 +23,11 @@ LL |     ref_arg::<[i32]>(&[5]);
    |               ^^^^^ doesn't have a size known at compile-time
    |
    = help: the trait `Sized` is not implemented for `[i32]`
-note: required by a bound in `ref_arg`
+note: required by an implicit `Sized` bound in `ref_arg`
   --> $DIR/issue-87199.rs:10:12
    |
 LL | fn ref_arg<T: ?Send>(_: &T) {}
-   |            ^ required by this bound in `ref_arg`
+   |            ^ required by the implicit `Sized` requirement on this type parameter in `ref_arg`
 help: consider relaxing the implicit `Sized` restriction
    |
 LL | fn ref_arg<T: ?Send + ?Sized>(_: &T) {}

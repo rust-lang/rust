@@ -1,6 +1,6 @@
-// check-pass
-// revisions: current next
-//[next] compile-flags: -Znext-solver
+//@ check-pass
+//@ revisions: current next
+//@[next] compile-flags: -Znext-solver
 
 #![feature(lazy_type_alias)]
 //~^ WARN the feature `lazy_type_alias` is incomplete

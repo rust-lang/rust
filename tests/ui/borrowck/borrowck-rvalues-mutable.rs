@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 
 struct Counter {
     value: usize

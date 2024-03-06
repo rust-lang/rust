@@ -8,7 +8,7 @@
 //
 // The test is much cleaner if we deduplicate, though.
 
-// compile-flags: -Z deduplicate-diagnostics=true
+//@ compile-flags: -Z deduplicate-diagnostics=true
 
 #![forbid(
     unsafe_code,

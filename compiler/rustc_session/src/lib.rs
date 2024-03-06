@@ -1,11 +1,10 @@
+#![feature(generic_nonzero)]
 #![feature(let_chains)]
 #![feature(lazy_cell)]
 #![feature(option_get_or_insert_default)]
 #![feature(rustc_attrs)]
 #![feature(map_many_mut)]
 #![feature(iter_intersperse)]
-#![deny(rustc::untranslatable_diagnostic)]
-#![deny(rustc::diagnostic_outside_of_impl)]
 #![allow(internal_features)]
 
 #[macro_use]

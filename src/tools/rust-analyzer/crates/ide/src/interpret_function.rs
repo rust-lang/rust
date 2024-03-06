@@ -15,8 +15,8 @@ use syntax::{algo::ancestors_at_offset, ast, AstNode, TextRange};
 // |===
 pub(crate) fn interpret_function(db: &RootDatabase, position: FilePosition) -> String {
     let start_time = Instant::now();
-    let mut result = find_and_interpret(db, position)
-        .unwrap_or_else(|| "Not inside a function body".to_string());
+    let mut result =
+        find_and_interpret(db, position).unwrap_or_else(|| "Not inside a function body".to_owned());
     let duration = Instant::now() - start_time;
     writeln!(result).unwrap();
     writeln!(result, "----------------------").unwrap();

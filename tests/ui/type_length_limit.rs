@@ -1,7 +1,7 @@
-// build-fail
-// error-pattern: reached the type-length limit while instantiating
-// compile-flags: -Copt-level=0
-// normalize-stderr-test: ".nll/" -> "/"
+//@ build-fail
+//@ error-pattern: reached the type-length limit while instantiating
+//@ compile-flags: -Copt-level=0
+//@ normalize-stderr-test: ".nll/" -> "/"
 
 // Test that the type length limit can be changed.
 // The exact type depends on optimizations, so disable them.

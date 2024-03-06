@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 macro_rules! enum_number {
     ($name:ident { $($variant:ident = $value:expr, )* }) => {
         enum $name {

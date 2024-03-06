@@ -1,5 +1,5 @@
 // Test for #109537: ensure that column numbers are correctly generated when using hard tabs.
-// aux-build:tab_column_numbers.rs
+//@ aux-build:tab_column_numbers.rs
 
 // ignore-tidy-tab
 

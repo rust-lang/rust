@@ -1,5 +1,5 @@
-// run-pass
-// compile-flags: -O -Zmir-opt-level=3 -Cno-prepopulate-passes
+//@ run-pass
+//@ compile-flags: -O -Zmir-opt-level=3 -Cno-prepopulate-passes
 
 // Regression test for a broken MIR optimization (issue #113407).
 pub fn main() {

@@ -1,5 +1,5 @@
-// compile-flags: -Zunstable-options
-// check-pass
+//@ compile-flags: -Zunstable-options
+//@ check-pass
 #![warn(rustc::internal)]
 
 #[allow(rustc::foo::bar::default_hash_types)]

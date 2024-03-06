@@ -2,7 +2,7 @@
 // that `I: 'x` where `'x` is the lifetime of the reference `&mut Self::Input`
 // in `parse_first`; but to observe that, one must normalize first.
 //
-// run-pass
+//@ run-pass
 
 pub trait Parser {
     type Input;

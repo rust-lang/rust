@@ -1,3 +1,11 @@
+error[E0080]: evaluation of constant value failed
+  --> $DIR/trivially-unsatisfied-bounds-0.rs:6:1
+   |
+LL | / const UNUSABLE: () = ()
+LL | | where
+LL | |     String: Copy;
+   | |_________________^ entering unreachable code
+
 error[E0277]: the trait bound `String: Copy` is not satisfied
   --> $DIR/trivially-unsatisfied-bounds-0.rs:11:13
    |
@@ -13,6 +21,7 @@ LL | where
 LL |     String: Copy;
    |             ^^^^ required by this bound in `UNUSABLE`
 
-error: aborting due to 1 previous error
+error: aborting due to 2 previous errors
 
-For more information about this error, try `rustc --explain E0277`.
+Some errors have detailed explanations: E0080, E0277.
+For more information about an error, try `rustc --explain E0080`.

@@ -2,7 +2,7 @@
 // accidentally allowed under migrate/nll, then linted against in migrate mode
 // but disallowed under NLL. Now, we accept it everywhere.
 
-//ignore-compare-mode-polonius
+//@ignore-compare-mode-polonius
 
 fn double_conflicts() {
     let mut v = vec![0, 1, 2];

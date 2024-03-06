@@ -1,4 +1,4 @@
-// edition:2021
+//@ edition:2021
 
 // Test that array access is not stored as part of closure kind origin
 

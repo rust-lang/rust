@@ -1,4 +1,4 @@
-// run-rustfix
+//@ run-rustfix
 fn main() {}
 fn _foo() -> bool {
     &  //~ ERROR 4:5: 6:36: mismatched types [E0308]

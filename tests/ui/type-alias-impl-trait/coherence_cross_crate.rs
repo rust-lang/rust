@@ -1,4 +1,4 @@
-// aux-build: coherence_cross_crate_trait_decl.rs
+//@ aux-build: coherence_cross_crate_trait_decl.rs
 // This test ensures that adding an `impl SomeTrait for i32` within
 // `coherence_cross_crate_trait_decl` is not a breaking change, by
 // making sure that even without such an impl this test fails to compile.

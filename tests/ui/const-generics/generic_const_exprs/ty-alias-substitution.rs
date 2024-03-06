@@ -1,4 +1,4 @@
-// check-pass
+//@ check-pass
 // Test that we correctly substitute generic arguments for type aliases.
 #![feature(generic_const_exprs)]
 #![allow(incomplete_features)]

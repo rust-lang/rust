@@ -1,0 +1,28 @@
+error[E0392]: lifetime parameter `'a` is never used
+  --> $DIR/unused-generic-parameters.rs:8:8
+   |
+LL | type A<'a> = ();
+   |        ^^ unused lifetime parameter
+   |
+   = help: consider removing `'a` or referring to it in the body of the type alias
+
+error[E0392]: type parameter `T` is never used
+  --> $DIR/unused-generic-parameters.rs:12:8
+   |
+LL | type B<T> = ();
+   |        ^ unused type parameter
+   |
+   = help: consider removing `T` or referring to it in the body of the type alias
+   = help: if you intended `T` to be a const parameter, use `const T: /* Type */` instead
+
+error[E0392]: type parameter `T` is never used
+  --> $DIR/unused-generic-parameters.rs:18:8
+   |
+LL | type C<T: Copy> = ();
+   |        ^ unused type parameter
+   |
+   = help: consider removing `T` or referring to it in the body of the type alias
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0392`.

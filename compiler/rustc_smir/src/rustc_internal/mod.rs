@@ -85,6 +85,10 @@ impl<'tcx> Tables<'tcx> {
         stable_mir::ty::AdtDef(self.create_def_id(did))
     }
 
+    pub fn foreign_module_def(&mut self, did: DefId) -> stable_mir::ty::ForeignModuleDef {
+        stable_mir::ty::ForeignModuleDef(self.create_def_id(did))
+    }
+
     pub fn foreign_def(&mut self, did: DefId) -> stable_mir::ty::ForeignDef {
         stable_mir::ty::ForeignDef(self.create_def_id(did))
     }
@@ -343,8 +347,14 @@ macro_rules! run_driver {
                         Err(CompilerError::Interrupted(value))
                     }
                     (Ok(Ok(_)), None) => Err(CompilerError::Skipped),
-                    (Ok(Err(_)), _) => Err(CompilerError::CompilationFailed),
-                    (Err(_), _) => Err(CompilerError::ICE),
+                    // Two cases here:
+                    // - `run` finished normally and returned `Err`
+                    // - `run` panicked with `FatalErr`
+                    // You might think that normal compile errors cause the former, and
+                    // ICEs cause the latter. But some normal compiler errors also cause
+                    // the latter. So we can't meaningfully distinguish them, and group
+                    // them together.
+                    (Ok(Err(_)), _) | (Err(_), _) => Err(CompilerError::Failed),
                 }
             }
         }

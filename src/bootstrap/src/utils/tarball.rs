@@ -3,8 +3,8 @@ use std::{
     process::Command,
 };
 
-use crate::core::build_steps::dist::distdir;
 use crate::core::builder::Builder;
+use crate::core::{build_steps::dist::distdir, builder::Kind};
 use crate::utils::channel;
 use crate::utils::helpers::t;
 
@@ -226,8 +226,7 @@ impl<'a> Tarball<'a> {
         if self.include_target_in_component_name {
             component_name.push('-');
             component_name.push_str(
-                &self
-                    .target
+                self.target
                     .as_ref()
                     .expect("include_target_in_component_name used in a targetless tarball"),
             );
@@ -326,7 +325,22 @@ impl<'a> Tarball<'a> {
             assert!(!formats.is_empty(), "dist.compression-formats can't be empty");
             cmd.arg("--compression-formats").arg(formats.join(","));
         }
-        cmd.args(&["--compression-profile", &self.builder.config.dist_compression_profile]);
+
+        // For `x install` tarball files aren't needed, so we can speed up the process by not producing them.
+        let compression_profile = if self.builder.kind == Kind::Install {
+            self.builder.verbose("Forcing dist.compression-profile = 'no-op' for `x install`.");
+            // "no-op" indicates that the rust-installer won't produce compressed tarball sources.
+            "no-op"
+        } else {
+            assert!(
+                self.builder.config.dist_compression_profile != "no-op",
+                "dist.compression-profile = 'no-op' can only be used for `x install`"
+            );
+
+            &self.builder.config.dist_compression_profile
+        };
+
+        cmd.args(&["--compression-profile", compression_profile]);
         self.builder.run(&mut cmd);
 
         // Ensure there are no symbolic links in the tarball. In particular,
@@ -347,7 +361,7 @@ impl<'a> Tarball<'a> {
             .config
             .dist_compression_formats
             .as_ref()
-            .and_then(|formats| formats.get(0))
+            .and_then(|formats| formats.first())
             .map(|s| s.as_str())
             .unwrap_or("gz");
 

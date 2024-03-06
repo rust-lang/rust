@@ -1,5 +1,5 @@
 // Regression test for issues #100790 and #106439.
-// run-rustfix
+//@ run-rustfix
 
 pub struct Example
 where

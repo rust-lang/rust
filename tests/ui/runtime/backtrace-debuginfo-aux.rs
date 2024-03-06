@@ -1,5 +1,5 @@
-// run-pass
-// ignore-test: not a test, used by backtrace-debuginfo.rs to test file!()
+//@ run-pass
+//@ ignore-test: not a test, used by backtrace-debuginfo.rs to test file!()
 
 #[inline(never)]
 pub fn callback<F>(f: F) where F: FnOnce((&'static str, u32)) {

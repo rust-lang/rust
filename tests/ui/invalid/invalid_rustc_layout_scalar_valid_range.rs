@@ -26,5 +26,7 @@ fn main() {
     let _ = A(0);
     let _ = B(0);
     let _ = C(0);
-    let _ = E::X;
+    unsafe {
+        let _ = E::X;
+    }
 }

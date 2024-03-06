@@ -1,7 +1,7 @@
 // Test that when we infer the lifetime to a subset of the fn body, it
 // works out.
 //
-// check-pass
+//@ check-pass
 
 #![allow(dropping_references)]
 

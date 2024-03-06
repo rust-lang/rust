@@ -1,4 +1,4 @@
-// run-rustfix
+//@ run-rustfix
 
 fn main() {
     match &Some(3) {

@@ -1,4 +1,4 @@
-// edition:2018
+//@ edition:2018
 //
 // Regression test for issue #75785
 // Tests that we don't point to a confusing named

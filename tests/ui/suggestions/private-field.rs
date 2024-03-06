@@ -1,4 +1,4 @@
-// compile-flags: --crate-type lib
+//@ compile-flags: --crate-type lib
 pub struct S {
     pub val: string::MyString,
 }

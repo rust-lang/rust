@@ -1,4 +1,4 @@
-// compile-flags: -Znext-solver
+//@ compile-flags: -Znext-solver
 
 // In the new solver, we are trying to select `<?0 as Iterator>::Item: Debug`,
 // which, naively can be unified with every impl of `Debug` if we're not careful.

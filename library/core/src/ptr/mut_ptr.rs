@@ -48,8 +48,11 @@ impl<T: ?Sized> *mut T {
             }
         }
 
+        #[cfg_attr(not(bootstrap), allow(unused_unsafe))] // on bootstrap bump, remove unsafe block
         // SAFETY: The two versions are equivalent at runtime.
-        unsafe { const_eval_select((self as *mut u8,), const_impl, runtime_impl) }
+        unsafe {
+            const_eval_select((self as *mut u8,), const_impl, runtime_impl)
+        }
     }
 
     /// Casts to a pointer of another type.
@@ -188,9 +191,10 @@ impl<T: ?Sized> *mut T {
     ///
     /// This is similar to `self as usize`, which semantically discards *provenance* and
     /// *address-space* information. However, unlike `self as usize`, casting the returned address
-    /// back to a pointer yields [`invalid`][], which is undefined behavior to dereference. To
-    /// properly restore the lost information and obtain a dereferenceable pointer, use
-    /// [`with_addr`][pointer::with_addr] or [`map_addr`][pointer::map_addr].
+    /// back to a pointer yields yields a [pointer without provenance][without_provenance_mut], which is undefined
+    /// behavior to dereference. To properly restore the lost information and obtain a
+    /// dereferenceable pointer, use [`with_addr`][pointer::with_addr] or
+    /// [`map_addr`][pointer::map_addr].
     ///
     /// If using those APIs is not possible because there is no way to preserve a pointer with the
     /// required provenance, then Strict Provenance might not be for you. Use pointer-integer casts
@@ -292,7 +296,7 @@ impl<T: ?Sized> *mut T {
         self.with_addr(f(self.addr()))
     }
 
-    /// Decompose a (possibly wide) pointer into its address and metadata components.
+    /// Decompose a (possibly wide) pointer into its data pointer and metadata components.
     ///
     /// The pointer can be later reconstructed with [`from_raw_parts_mut`].
     #[unstable(feature = "ptr_metadata", issue = "81513")]
@@ -1385,7 +1389,7 @@ impl<T: ?Sized> *mut T {
     /// See [`ptr::copy`] for safety concerns and examples.
     ///
     /// [`ptr::copy`]: crate::ptr::copy()
-    #[rustc_const_stable(feature = "const_intrinsic_copy", since = "1.63.0")]
+    #[rustc_const_unstable(feature = "const_intrinsic_copy", issue = "80697")]
     #[stable(feature = "pointer_methods", since = "1.26.0")]
     #[inline(always)]
     #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
@@ -1405,7 +1409,7 @@ impl<T: ?Sized> *mut T {
     /// See [`ptr::copy_nonoverlapping`] for safety concerns and examples.
     ///
     /// [`ptr::copy_nonoverlapping`]: crate::ptr::copy_nonoverlapping()
-    #[rustc_const_stable(feature = "const_intrinsic_copy", since = "1.63.0")]
+    #[rustc_const_unstable(feature = "const_intrinsic_copy", issue = "80697")]
     #[stable(feature = "pointer_methods", since = "1.26.0")]
     #[inline(always)]
     #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
@@ -1425,7 +1429,7 @@ impl<T: ?Sized> *mut T {
     /// See [`ptr::copy`] for safety concerns and examples.
     ///
     /// [`ptr::copy`]: crate::ptr::copy()
-    #[rustc_const_stable(feature = "const_intrinsic_copy", since = "1.63.0")]
+    #[rustc_const_unstable(feature = "const_intrinsic_copy", issue = "80697")]
     #[stable(feature = "pointer_methods", since = "1.26.0")]
     #[inline(always)]
     #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
@@ -1445,7 +1449,7 @@ impl<T: ?Sized> *mut T {
     /// See [`ptr::copy_nonoverlapping`] for safety concerns and examples.
     ///
     /// [`ptr::copy_nonoverlapping`]: crate::ptr::copy_nonoverlapping()
-    #[rustc_const_stable(feature = "const_intrinsic_copy", since = "1.63.0")]
+    #[rustc_const_unstable(feature = "const_intrinsic_copy", issue = "80697")]
     #[stable(feature = "pointer_methods", since = "1.26.0")]
     #[inline(always)]
     #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
@@ -1895,8 +1899,11 @@ impl<T: ?Sized> *mut T {
             ptr.align_offset(align) == 0
         }
 
+        #[cfg_attr(not(bootstrap), allow(unused_unsafe))] // on bootstrap bump, remove unsafe block
         // SAFETY: The two versions are equivalent at runtime.
-        unsafe { const_eval_select((self.cast::<()>(), align), const_impl, runtime_impl) }
+        unsafe {
+            const_eval_select((self.cast::<()>(), align), const_impl, runtime_impl)
+        }
     }
 }
 

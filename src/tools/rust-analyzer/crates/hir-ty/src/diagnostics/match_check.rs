@@ -7,8 +7,7 @@
 
 mod pat_util;
 
-pub(crate) mod deconstruct_pat;
-pub(crate) mod usefulness;
+pub(crate) mod pat_analysis;
 
 use chalk_ir::Mutability;
 use hir_def::{
@@ -26,8 +25,6 @@ use crate::{
 };
 
 use self::pat_util::EnumerateAndAdjustIterator;
-
-pub(crate) use self::usefulness::MatchArm;
 
 #[derive(Clone, Debug)]
 pub(crate) enum PatternError {
@@ -411,100 +408,5 @@ where
 {
     fn hir_fmt(&self, f: &mut HirFormatter<'_>) -> Result<(), HirDisplayError> {
         (self.0)(f)
-    }
-}
-
-pub(crate) trait PatternFoldable: Sized {
-    fn fold_with<F: PatternFolder>(&self, folder: &mut F) -> Self {
-        self.super_fold_with(folder)
-    }
-
-    fn super_fold_with<F: PatternFolder>(&self, folder: &mut F) -> Self;
-}
-
-pub(crate) trait PatternFolder: Sized {
-    fn fold_pattern(&mut self, pattern: &Pat) -> Pat {
-        pattern.super_fold_with(self)
-    }
-
-    fn fold_pattern_kind(&mut self, kind: &PatKind) -> PatKind {
-        kind.super_fold_with(self)
-    }
-}
-
-impl<T: PatternFoldable> PatternFoldable for Box<T> {
-    fn super_fold_with<F: PatternFolder>(&self, folder: &mut F) -> Self {
-        let content: T = (**self).fold_with(folder);
-        Box::new(content)
-    }
-}
-
-impl<T: PatternFoldable> PatternFoldable for Vec<T> {
-    fn super_fold_with<F: PatternFolder>(&self, folder: &mut F) -> Self {
-        self.iter().map(|t| t.fold_with(folder)).collect()
-    }
-}
-
-impl<T: PatternFoldable> PatternFoldable for Option<T> {
-    fn super_fold_with<F: PatternFolder>(&self, folder: &mut F) -> Self {
-        self.as_ref().map(|t| t.fold_with(folder))
-    }
-}
-
-macro_rules! clone_impls {
-    ($($ty:ty),+) => {
-        $(
-            impl PatternFoldable for $ty {
-                fn super_fold_with<F: PatternFolder>(&self, _: &mut F) -> Self {
-                    Clone::clone(self)
-                }
-            }
-        )+
-    }
-}
-
-clone_impls! { LocalFieldId, Ty, Substitution, EnumVariantId }
-
-impl PatternFoldable for FieldPat {
-    fn super_fold_with<F: PatternFolder>(&self, folder: &mut F) -> Self {
-        FieldPat { field: self.field.fold_with(folder), pattern: self.pattern.fold_with(folder) }
-    }
-}
-
-impl PatternFoldable for Pat {
-    fn fold_with<F: PatternFolder>(&self, folder: &mut F) -> Self {
-        folder.fold_pattern(self)
-    }
-
-    fn super_fold_with<F: PatternFolder>(&self, folder: &mut F) -> Self {
-        Pat { ty: self.ty.fold_with(folder), kind: self.kind.fold_with(folder) }
-    }
-}
-
-impl PatternFoldable for PatKind {
-    fn fold_with<F: PatternFolder>(&self, folder: &mut F) -> Self {
-        folder.fold_pattern_kind(self)
-    }
-
-    fn super_fold_with<F: PatternFolder>(&self, folder: &mut F) -> Self {
-        match self {
-            PatKind::Wild => PatKind::Wild,
-            PatKind::Binding { name, subpattern } => {
-                PatKind::Binding { name: name.clone(), subpattern: subpattern.fold_with(folder) }
-            }
-            PatKind::Variant { substs, enum_variant, subpatterns } => PatKind::Variant {
-                substs: substs.fold_with(folder),
-                enum_variant: enum_variant.fold_with(folder),
-                subpatterns: subpatterns.fold_with(folder),
-            },
-            PatKind::Leaf { subpatterns } => {
-                PatKind::Leaf { subpatterns: subpatterns.fold_with(folder) }
-            }
-            PatKind::Deref { subpattern } => {
-                PatKind::Deref { subpattern: subpattern.fold_with(folder) }
-            }
-            &PatKind::LiteralBool { value } => PatKind::LiteralBool { value },
-            PatKind::Or { pats } => PatKind::Or { pats: pats.fold_with(folder) },
-        }
     }
 }

@@ -1,5 +1,5 @@
 //! Check that const eval can use the size of opaque types.
-// check-pass
+//@ check-pass
 use std::mem;
 fn returns_opaque() -> impl Sized {
     0u8

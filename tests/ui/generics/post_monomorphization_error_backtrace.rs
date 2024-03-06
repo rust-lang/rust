@@ -1,4 +1,4 @@
-// build-fail
+//@ build-fail
 
 fn assert_zst<T>() {
     struct F<T>(T);

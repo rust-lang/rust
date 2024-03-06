@@ -1,20 +1,15 @@
-error[E0391]: cycle detected when const-evaluating + checking `FOO`
+error[E0080]: could not evaluate static initializer
   --> $DIR/recursive-static-definition.rs:1:23
    |
 LL | pub static FOO: u32 = FOO;
-   |                       ^^^
-   |
-   = note: ...which immediately requires const-evaluating + checking `FOO` again
-note: cycle used when linting top-level module
-  --> $DIR/recursive-static-definition.rs:1:1
-   |
-LL | / pub static FOO: u32 = FOO;
-LL | |
-LL | |
-LL | | fn main() {}
-   | |____________^
-   = note: see https://rustc-dev-guide.rust-lang.org/overview.html#queries and https://rustc-dev-guide.rust-lang.org/query.html for more information
+   |                       ^^^ encountered static that tried to initialize itself with itself
 
-error: aborting due to 1 previous error
+error[E0080]: could not evaluate static initializer
+  --> $DIR/recursive-static-definition.rs:9:23
+   |
+LL | pub static BAR: Foo = BAR;
+   |                       ^^^ encountered static that tried to initialize itself with itself
 
-For more information about this error, try `rustc --explain E0391`.
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0080`.

@@ -106,12 +106,12 @@
 #![allow(incomplete_features)]
 #![warn(multiple_supertrait_upcastable)]
 #![allow(internal_features)]
+#![deny(ffi_unwind_calls)]
 // Do not check link redundancy on bootstraping phase
 #![allow(rustdoc::redundant_explicit_links)]
 //
 // Library features:
 // tidy-alphabetical-start
-#![cfg_attr(not(bootstrap), feature(offset_of_nested))]
 #![feature(char_indices_offset)]
 #![feature(const_align_of_val)]
 #![feature(const_align_of_val_raw)]
@@ -135,6 +135,7 @@
 #![feature(const_hint_assert_unchecked)]
 #![feature(const_index_range_slice_index)]
 #![feature(const_int_unchecked_arith)]
+#![feature(const_intrinsic_copy)]
 #![feature(const_intrinsic_forget)]
 #![feature(const_ipv4)]
 #![feature(const_ipv6)]
@@ -180,6 +181,7 @@
 #![feature(maybe_uninit_uninit_array)]
 #![feature(non_null_convenience)]
 #![feature(offset_of_enum)]
+#![feature(offset_of_nested)]
 #![feature(panic_internals)]
 #![feature(ptr_alignment_type)]
 #![feature(ptr_metadata)]
@@ -200,7 +202,7 @@
 //
 // Language features:
 // tidy-alphabetical-start
-#![cfg_attr(not(bootstrap), feature(is_val_statically_known))]
+#![cfg_attr(bootstrap, feature(platform_intrinsics))]
 #![feature(abi_unadjusted)]
 #![feature(adt_const_params)]
 #![feature(allow_internal_unsafe)]
@@ -245,7 +247,6 @@
 #![feature(never_type)]
 #![feature(no_core)]
 #![feature(no_sanitize)]
-#![feature(platform_intrinsics)]
 #![feature(prelude_import)]
 #![feature(repr_simd)]
 #![feature(rustc_allow_const_fn_unstable)]
@@ -309,29 +310,41 @@ mod internal_macros;
 #[macro_use]
 mod int_macros;
 
+#[rustc_diagnostic_item = "i128_legacy_mod"]
 #[path = "num/shells/i128.rs"]
 pub mod i128;
+#[rustc_diagnostic_item = "i16_legacy_mod"]
 #[path = "num/shells/i16.rs"]
 pub mod i16;
+#[rustc_diagnostic_item = "i32_legacy_mod"]
 #[path = "num/shells/i32.rs"]
 pub mod i32;
+#[rustc_diagnostic_item = "i64_legacy_mod"]
 #[path = "num/shells/i64.rs"]
 pub mod i64;
+#[rustc_diagnostic_item = "i8_legacy_mod"]
 #[path = "num/shells/i8.rs"]
 pub mod i8;
+#[rustc_diagnostic_item = "isize_legacy_mod"]
 #[path = "num/shells/isize.rs"]
 pub mod isize;
 
+#[rustc_diagnostic_item = "u128_legacy_mod"]
 #[path = "num/shells/u128.rs"]
 pub mod u128;
+#[rustc_diagnostic_item = "u16_legacy_mod"]
 #[path = "num/shells/u16.rs"]
 pub mod u16;
+#[rustc_diagnostic_item = "u32_legacy_mod"]
 #[path = "num/shells/u32.rs"]
 pub mod u32;
+#[rustc_diagnostic_item = "u64_legacy_mod"]
 #[path = "num/shells/u64.rs"]
 pub mod u64;
+#[rustc_diagnostic_item = "u8_legacy_mod"]
 #[path = "num/shells/u8.rs"]
 pub mod u8;
+#[rustc_diagnostic_item = "usize_legacy_mod"]
 #[path = "num/shells/usize.rs"]
 pub mod usize;
 
@@ -429,10 +442,6 @@ pub mod primitive;
     deprecated_in_future
 )]
 #[allow(rustdoc::bare_urls)]
-// FIXME: This annotation should be moved into rust-lang/stdarch after clashing_extern_declarations is
-// merged. It currently cannot because bootstrap fails as the lint hasn't been defined yet.
-#[allow(clashing_extern_declarations)]
-#[unstable(feature = "stdsimd", issue = "48556")]
 mod core_arch;
 
 #[stable(feature = "simd_arch", since = "1.27.0")]

@@ -2,10 +2,10 @@
 
 use super::abi;
 use super::thread_local_dtor::run_dtors;
-use crate::ffi::CStr;
+use crate::ffi::{CStr, CString};
 use crate::io;
 use crate::mem;
-use crate::num::NonZeroUsize;
+use crate::num::NonZero;
 use crate::ptr;
 use crate::time::Duration;
 
@@ -71,6 +71,10 @@ impl Thread {
         // nope
     }
 
+    pub fn get_name() -> Option<CString> {
+        None
+    }
+
     #[inline]
     pub fn sleep(dur: Duration) {
         unsafe {
@@ -97,8 +101,8 @@ impl Thread {
     }
 }
 
-pub fn available_parallelism() -> io::Result<NonZeroUsize> {
-    unsafe { Ok(NonZeroUsize::new_unchecked(abi::get_processor_count())) }
+pub fn available_parallelism() -> io::Result<NonZero<usize>> {
+    unsafe { Ok(NonZero::new_unchecked(abi::get_processor_count())) }
 }
 
 pub mod guard {

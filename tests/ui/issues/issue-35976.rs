@@ -1,5 +1,5 @@
-// revisions: imported unimported
-//[imported] check-pass
+//@ revisions: imported unimported
+//@[imported] check-pass
 
 mod private {
     pub trait Future {

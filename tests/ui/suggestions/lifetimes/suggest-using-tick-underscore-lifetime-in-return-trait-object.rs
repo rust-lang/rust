@@ -1,4 +1,4 @@
-// run-rustfix
+//@ run-rustfix
 use std::any::Any;
 
 fn foo<T: Any>(value: &T) -> Box<dyn Any> {

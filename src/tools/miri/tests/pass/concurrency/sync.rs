@@ -1,6 +1,7 @@
 //@revisions: stack tree
 //@[tree]compile-flags: -Zmiri-tree-borrows
-//@compile-flags: -Zmiri-disable-isolation -Zmiri-strict-provenance
+// We use `yield` to test specific interleavings, so disable automatic preemption.
+//@compile-flags: -Zmiri-disable-isolation -Zmiri-strict-provenance -Zmiri-preemption-rate=0
 
 use std::sync::{Arc, Barrier, Condvar, Mutex, Once, RwLock};
 use std::thread;
@@ -62,10 +63,10 @@ fn check_conditional_variables_timed_wait_timeout() {
     let cvar = Condvar::new();
     let guard = lock.lock().unwrap();
     let now = Instant::now();
-    let (_guard, timeout) = cvar.wait_timeout(guard, Duration::from_millis(100)).unwrap();
+    let (_guard, timeout) = cvar.wait_timeout(guard, Duration::from_millis(10)).unwrap();
     assert!(timeout.timed_out());
     let elapsed_time = now.elapsed().as_millis();
-    assert!(100 <= elapsed_time && elapsed_time <= 1000);
+    assert!(10 <= elapsed_time && elapsed_time <= 1000);
 }
 
 /// Test that signaling a conditional variable when waiting with a timeout works
@@ -78,7 +79,7 @@ fn check_conditional_variables_timed_wait_notimeout() {
     let guard = lock.lock().unwrap();
 
     let handle = thread::spawn(move || {
-        thread::sleep(Duration::from_millis(100)); // Make sure the other thread is waiting by the time we call `notify`.
+        thread::sleep(Duration::from_millis(1)); // Make sure the other thread is waiting by the time we call `notify`.
         let (_lock, cvar) = &*pair2;
         cvar.notify_one();
     });
@@ -119,13 +120,25 @@ fn check_rwlock_write() {
     let mut threads = Vec::new();
 
     for _ in 0..3 {
-        let data = Arc::clone(&data);
-        let thread = thread::spawn(move || {
-            let mut data = data.write().unwrap();
-            thread::yield_now();
-            *data += 1;
+        let thread = thread::spawn({
+            let data = Arc::clone(&data);
+            move || {
+                let mut data = data.write().unwrap();
+                thread::yield_now();
+                *data += 1;
+            }
         });
         threads.push(thread);
+
+        let readthread = thread::spawn({
+            let data = Arc::clone(&data);
+            move || {
+                let data = data.read().unwrap();
+                thread::yield_now();
+                assert!(*data >= 0 && *data <= 3);
+            }
+        });
+        threads.push(readthread);
     }
 
     for thread in threads {
@@ -144,8 +157,10 @@ fn check_rwlock_read_no_deadlock() {
 
     let l1_copy = Arc::clone(&l1);
     let l2_copy = Arc::clone(&l2);
+    // acquire l1 and hold it until after the other thread is done
     let _guard1 = l1.read().unwrap();
     let handle = thread::spawn(move || {
+        // acquire l2 before the other thread
         let _guard2 = l2_copy.read().unwrap();
         thread::yield_now();
         let _guard1 = l1_copy.read().unwrap();

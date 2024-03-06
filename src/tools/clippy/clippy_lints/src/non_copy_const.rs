@@ -449,11 +449,11 @@ impl<'tcx> LateLintPass<'tcx> for NonCopyConst {
             let mut dereferenced_expr = expr;
             let mut needs_check_adjustment = true;
             loop {
-                let parent_id = cx.tcx.hir().parent_id(cur_expr.hir_id);
+                let parent_id = cx.tcx.parent_hir_id(cur_expr.hir_id);
                 if parent_id == cur_expr.hir_id {
                     break;
                 }
-                if let Some(Node::Expr(parent_expr)) = cx.tcx.opt_hir_node(parent_id) {
+                if let Node::Expr(parent_expr) = cx.tcx.hir_node(parent_id) {
                     match &parent_expr.kind {
                         ExprKind::AddrOf(..) => {
                             // `&e` => `e` must be referenced.

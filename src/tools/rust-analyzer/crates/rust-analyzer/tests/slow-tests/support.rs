@@ -13,7 +13,7 @@ use rust_analyzer::{config::Config, lsp, main_loop};
 use serde::Serialize;
 use serde_json::{json, to_string_pretty, Value};
 use test_utils::FixtureWithProjectMeta;
-use tracing_subscriber::{prelude::*, Layer};
+use tracing_subscriber::fmt::TestWriter;
 use vfs::AbsPathBuf;
 
 use crate::testdir::TestDir;
@@ -91,16 +91,23 @@ impl Project<'_> {
 
         static INIT: Once = Once::new();
         INIT.call_once(|| {
-            let filter: tracing_subscriber::filter::Targets =
-                std::env::var("RA_LOG").ok().and_then(|it| it.parse().ok()).unwrap_or_default();
-            let layer =
-                tracing_subscriber::fmt::Layer::new().with_test_writer().with_filter(filter);
-            tracing_subscriber::Registry::default().with(layer).init();
-            profile::init_from(crate::PROFILE);
+            let _ = rust_analyzer::tracing::Config {
+                writer: TestWriter::default(),
+                // Deliberately enable all `error` logs if the user has not set RA_LOG, as there is usually
+                // useful information in there for debugging.
+                filter: std::env::var("RA_LOG").ok().unwrap_or_else(|| "error".to_owned()),
+                chalk_filter: std::env::var("CHALK_DEBUG").ok(),
+                profile_filter: std::env::var("RA_PROFILE").ok(),
+            };
         });
 
-        let FixtureWithProjectMeta { fixture, mini_core, proc_macro_names, toolchain } =
-            FixtureWithProjectMeta::parse(self.fixture);
+        let FixtureWithProjectMeta {
+            fixture,
+            mini_core,
+            proc_macro_names,
+            toolchain,
+            target_data_layout: _,
+        } = FixtureWithProjectMeta::parse(self.fixture);
         assert!(proc_macro_names.is_empty());
         assert!(mini_core.is_none());
         assert!(toolchain.is_none());
@@ -191,7 +198,7 @@ impl Server {
         let (connection, client) = Connection::memory();
 
         let _thread = stdx::thread::Builder::new(stdx::thread::ThreadIntent::Worker)
-            .name("test server".to_string())
+            .name("test server".to_owned())
             .spawn(move || main_loop(config, connection).unwrap())
             .expect("failed to spawn a thread");
 
@@ -208,8 +215,42 @@ impl Server {
         N: lsp_types::notification::Notification,
         N::Params: Serialize,
     {
-        let r = Notification::new(N::METHOD.to_string(), params);
+        let r = Notification::new(N::METHOD.to_owned(), params);
         self.send_notification(r)
+    }
+
+    pub(crate) fn expect_notification<N>(&self, expected: Value)
+    where
+        N: lsp_types::notification::Notification,
+        N::Params: Serialize,
+    {
+        while let Some(Message::Notification(actual)) =
+            recv_timeout(&self.client.receiver).unwrap_or_else(|_| panic!("timed out"))
+        {
+            if actual.method == N::METHOD {
+                let actual = actual
+                    .clone()
+                    .extract::<Value>(N::METHOD)
+                    .expect("was not able to extract notification");
+
+                tracing::debug!(?actual, "got notification");
+                if let Some((expected_part, actual_part)) = find_mismatch(&expected, &actual) {
+                    panic!(
+                            "JSON mismatch\nExpected:\n{}\nWas:\n{}\nExpected part:\n{}\nActual part:\n{}\n",
+                            to_string_pretty(&expected).unwrap(),
+                            to_string_pretty(&actual).unwrap(),
+                            to_string_pretty(expected_part).unwrap(),
+                            to_string_pretty(actual_part).unwrap(),
+                        );
+                } else {
+                    tracing::debug!("successfully matched notification");
+                    return;
+                }
+            } else {
+                continue;
+            }
+        }
+        panic!("never got expected notification");
     }
 
     #[track_caller]
@@ -238,7 +279,7 @@ impl Server {
         let id = self.req_id.get();
         self.req_id.set(id.wrapping_add(1));
 
-        let r = Request::new(id.into(), R::METHOD.to_string(), params);
+        let r = Request::new(id.into(), R::METHOD.to_owned(), params);
         self.send_request_(r)
     }
     fn send_request_(&self, r: Request) -> Value {

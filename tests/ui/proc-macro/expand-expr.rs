@@ -1,4 +1,4 @@
-// aux-build:expand-expr.rs
+//@ aux-build:expand-expr.rs
 // no-remap-src-base: check_expand_expr_file!() fails when enabled.
 
 #![feature(concat_bytes)]

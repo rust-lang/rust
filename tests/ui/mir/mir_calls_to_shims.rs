@@ -1,5 +1,5 @@
-// run-pass
-// needs-unwind
+//@ run-pass
+//@ needs-unwind
 
 #![feature(fn_traits)]
 #![feature(never_type)]

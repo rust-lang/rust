@@ -313,7 +313,7 @@ impl<'a, 'tcx> WfPredicates<'a, 'tcx> {
             // Don't normalize the whole obligation, the param env is either
             // already normalized, or we're currently normalizing the
             // param_env. Either way we should only normalize the predicate.
-            let normalized_predicate = traits::project::normalize_with_depth_to(
+            let normalized_predicate = traits::normalize::normalize_with_depth_to(
                 &mut selcx,
                 param_env,
                 cause.clone(),
@@ -380,7 +380,7 @@ impl<'a, 'tcx> WfPredicates<'a, 'tcx> {
                 .filter(|(_, arg)| !arg.has_escaping_bound_vars())
                 .map(|(i, arg)| {
                     let mut cause = traits::ObligationCause::misc(self.span, self.body_id);
-                    // The first subst is the self ty - use the correct span for it.
+                    // The first arg is the self ty - use the correct span for it.
                     if i == 0 {
                         if let Some(hir::ItemKind::Impl(hir::Impl { self_ty, .. })) =
                             item.map(|i| &i.kind)
@@ -723,6 +723,14 @@ impl<'a, 'tcx> WfPredicates<'a, 'tcx> {
                     // can cause compiler crashes when the user abuses unsafe
                     // code to procure such a closure.
                     // See tests/ui/type-alias-impl-trait/wf_check_closures.rs
+                    let obligations = self.nominal_obligations(did, args);
+                    self.out.extend(obligations);
+                }
+
+                ty::CoroutineClosure(did, args) => {
+                    // See the above comments. The same apply to coroutine-closures.
+                    walker.skip_current_subtree();
+                    self.compute(args.as_coroutine_closure().tupled_upvars_ty().into());
                     let obligations = self.nominal_obligations(did, args);
                     self.out.extend(obligations);
                 }

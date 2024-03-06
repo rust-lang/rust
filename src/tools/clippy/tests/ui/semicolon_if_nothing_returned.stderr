@@ -1,5 +1,5 @@
 error: consider adding a `;` to the last statement for consistent formatting
-  --> $DIR/semicolon_if_nothing_returned.rs:13:5
+  --> tests/ui/semicolon_if_nothing_returned.rs:18:5
    |
 LL |     println!("Hello")
    |     ^^^^^^^^^^^^^^^^^ help: add a `;` here: `println!("Hello");`
@@ -8,25 +8,25 @@ LL |     println!("Hello")
    = help: to override `-D warnings` add `#[allow(clippy::semicolon_if_nothing_returned)]`
 
 error: consider adding a `;` to the last statement for consistent formatting
-  --> $DIR/semicolon_if_nothing_returned.rs:17:5
+  --> tests/ui/semicolon_if_nothing_returned.rs:22:5
    |
 LL |     get_unit()
    |     ^^^^^^^^^^ help: add a `;` here: `get_unit();`
 
 error: consider adding a `;` to the last statement for consistent formatting
-  --> $DIR/semicolon_if_nothing_returned.rs:22:5
+  --> tests/ui/semicolon_if_nothing_returned.rs:27:5
    |
 LL |     y = x + 1
    |     ^^^^^^^^^ help: add a `;` here: `y = x + 1;`
 
 error: consider adding a `;` to the last statement for consistent formatting
-  --> $DIR/semicolon_if_nothing_returned.rs:28:9
+  --> tests/ui/semicolon_if_nothing_returned.rs:33:9
    |
 LL |         hello()
    |         ^^^^^^^ help: add a `;` here: `hello();`
 
 error: consider adding a `;` to the last statement for consistent formatting
-  --> $DIR/semicolon_if_nothing_returned.rs:39:9
+  --> tests/ui/semicolon_if_nothing_returned.rs:44:9
    |
 LL |         ptr::drop_in_place(s.as_mut_ptr())
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: add a `;` here: `ptr::drop_in_place(s.as_mut_ptr());`

@@ -1,6 +1,6 @@
 // Check that macro expanded underscore imports behave as expected
 
-// check-pass
+//@ check-pass
 
 #![feature(decl_macro, rustc_attrs)]
 

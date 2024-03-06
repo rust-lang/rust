@@ -1,6 +1,6 @@
-// aux-build: tls-rlib.rs
-// aux-build: tls-export.rs
-// run-pass
+//@ aux-build: tls-rlib.rs
+//@ aux-build: tls-export.rs
+//@ run-pass
 
 #![feature(cfg_target_thread_local)]
 

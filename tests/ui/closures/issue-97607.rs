@@ -1,4 +1,4 @@
-// check-pass
+//@ check-pass
 #[allow(unused)]
 
 fn test<T, F, U>(f: F) -> Box<dyn Fn(T) -> U + 'static>

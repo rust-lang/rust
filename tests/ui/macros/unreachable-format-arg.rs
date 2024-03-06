@@ -1,11 +1,11 @@
-// run-fail
-// ignore-emscripten no processes
+//@ run-fail
+//@ ignore-emscripten no processes
 
-// revisions: edition_2015 edition_2021
-// [edition_2015]edition:2015
-// [edition_2021]edition:2021
-// [edition_2015]error-pattern:internal error: entered unreachable code: x is {x}
-// [edition_2021]error-pattern:internal error: entered unreachable code: x is 5
+//@ revisions: edition_2015 edition_2021
+//@ [edition_2015]edition:2015
+//@ [edition_2021]edition:2021
+//@ [edition_2015]error-pattern:internal error: entered unreachable code: x is {x}
+//@ [edition_2021]error-pattern:internal error: entered unreachable code: x is 5
 
 #![allow(non_fmt_panics)]
 

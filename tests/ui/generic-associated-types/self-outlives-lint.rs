@@ -1,4 +1,4 @@
-// check-fail
+//@ check-fail
 
 use std::fmt::Debug;
 

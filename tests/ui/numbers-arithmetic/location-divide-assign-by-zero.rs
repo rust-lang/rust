@@ -1,6 +1,6 @@
-// run-fail
-// ignore-wasm32
-// error-pattern:location-divide-assign-by-zero.rs
+//@ run-fail
+//@ ignore-wasm32
+//@ error-pattern:location-divide-assign-by-zero.rs
 
 fn main() {
     let mut a = 1;

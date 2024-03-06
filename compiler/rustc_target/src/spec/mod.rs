@@ -1221,6 +1221,7 @@ bitflags::bitflags! {
         const KCFI    = 1 << 8;
         const KERNELADDRESS = 1 << 9;
         const SAFESTACK = 1 << 10;
+        const DATAFLOW = 1 << 11;
     }
 }
 rustc_data_structures::external_bitflags_debug! { SanitizerSet }
@@ -1233,6 +1234,7 @@ impl SanitizerSet {
         Some(match self {
             SanitizerSet::ADDRESS => "address",
             SanitizerSet::CFI => "cfi",
+            SanitizerSet::DATAFLOW => "dataflow",
             SanitizerSet::KCFI => "kcfi",
             SanitizerSet::KERNELADDRESS => "kernel-address",
             SanitizerSet::LEAK => "leak",
@@ -1543,6 +1545,7 @@ supported_targets! {
     ("armebv7r-none-eabihf", armebv7r_none_eabihf),
     ("armv7r-none-eabi", armv7r_none_eabi),
     ("armv7r-none-eabihf", armv7r_none_eabihf),
+    ("armv8r-none-eabihf", armv8r_none_eabihf),
 
     ("x86_64-pc-solaris", x86_64_pc_solaris),
     ("sparcv9-sun-solaris", sparcv9_sun_solaris),
@@ -1574,7 +1577,8 @@ supported_targets! {
     ("wasm32-unknown-emscripten", wasm32_unknown_emscripten),
     ("wasm32-unknown-unknown", wasm32_unknown_unknown),
     ("wasm32-wasi", wasm32_wasi),
-    ("wasm32-wasi-preview2", wasm32_wasi_preview2),
+    ("wasm32-wasip1", wasm32_wasip1),
+    ("wasm32-wasip2", wasm32_wasip2),
     ("wasm32-wasi-preview1-threads", wasm32_wasi_preview1_threads),
     ("wasm64-unknown-unknown", wasm64_unknown_unknown),
 
@@ -1673,7 +1677,7 @@ supported_targets! {
 
     ("mips64-openwrt-linux-musl", mips64_openwrt_linux_musl),
 
-    ("aarch64-unknown-nto-qnx710", aarch64_unknown_nto_qnx_710),
+    ("aarch64-unknown-nto-qnx710", aarch64_unknown_nto_qnx710),
     ("x86_64-pc-nto-qnx710", x86_64_pc_nto_qnx710),
     ("i586-pc-nto-qnx700", i586_pc_nto_qnx700),
 
@@ -1737,6 +1741,11 @@ impl TargetWarnings {
 pub struct Target {
     /// Target triple to pass to LLVM.
     pub llvm_target: StaticCow<str>,
+    /// A short description of the target including platform requirements,
+    /// for example "64-bit Linux (kernel 3.2+, glibc 2.17+)".
+    /// Optional for now, intended to be required in the future.
+    /// Part of #120745.
+    pub description: Option<StaticCow<str>>,
     /// Number of bits in a pointer. Influences the `target_pointer_width` `cfg` variable.
     pub pointer_width: u32,
     /// Architecture to use for ABI considerations. Valid options include: "x86",
@@ -1887,6 +1896,8 @@ pub struct TargetOptions {
     /// passed, and cannot be disabled even via `-C`. Corresponds to `llc
     /// -mattr=$features`.
     pub features: StaticCow<str>,
+    /// Direct or use GOT indirect to reference external data symbols
+    pub direct_access_external_data: Option<bool>,
     /// Whether dynamic linking is available on this target. Defaults to false.
     pub dynamic_linking: bool,
     /// Whether dynamic linking can export TLS globals. Defaults to true.
@@ -2281,6 +2292,7 @@ impl Default for TargetOptions {
             asm_args: cvs![],
             cpu: "generic".into(),
             features: "".into(),
+            direct_access_external_data: None,
             dynamic_linking: false,
             dll_tls_export: true,
             only_cdylib: false,
@@ -2445,7 +2457,6 @@ impl Target {
             | System { .. }
             | RustIntrinsic
             | RustCall
-            | PlatformIntrinsic
             | Unadjusted
             | Cdecl { .. }
             | RustCold => true,
@@ -2458,7 +2469,6 @@ impl Target {
             Win64 { .. } | SysV64 { .. } => self.arch == "x86_64",
             PtxKernel => self.arch == "nvptx64",
             Msp430Interrupt => self.arch == "msp430",
-            AmdGpuKernel => self.arch == "amdgcn",
             RiscvInterruptM | RiscvInterruptS => ["riscv32", "riscv64"].contains(&&self.arch[..]),
             AvrInterrupt | AvrNonBlockingInterrupt => self.arch == "avr",
             Wasm => ["wasm32", "wasm64"].contains(&&self.arch[..]),
@@ -2537,6 +2547,7 @@ impl Target {
 
         let mut base = Target {
             llvm_target: get_req_field("llvm-target")?.into(),
+            description: get_req_field("description").ok().map(Into::into),
             pointer_width: get_req_field("target-pointer-width")?
                 .parse::<u32>()
                 .map_err(|_| "target-pointer-width must be an integer".to_string())?,
@@ -2579,6 +2590,12 @@ impl Target {
                         return Err("Not a valid DWARF version number".into());
                     }
                     base.$key_name = s as u32;
+                }
+            } );
+            ($key_name:ident, Option<bool>) => ( {
+                let name = (stringify!($key_name)).replace("_", "-");
+                if let Some(s) = obj.remove(&name).and_then(|b| b.as_bool()) {
+                    base.$key_name = Some(s);
                 }
             } );
             ($key_name:ident, Option<u64>) => ( {
@@ -2782,6 +2799,7 @@ impl Target {
                             base.$key_name |= match s.as_str() {
                                 Some("address") => SanitizerSet::ADDRESS,
                                 Some("cfi") => SanitizerSet::CFI,
+                                Some("dataflow") => SanitizerSet::DATAFLOW,
                                 Some("kcfi") => SanitizerSet::KCFI,
                                 Some("kernel-address") => SanitizerSet::KERNELADDRESS,
                                 Some("leak") => SanitizerSet::LEAK,
@@ -3009,6 +3027,7 @@ impl Target {
         key!(cpu);
         key!(features);
         key!(dynamic_linking, bool);
+        key!(direct_access_external_data, Option<bool>);
         key!(dll_tls_export, bool);
         key!(only_cdylib, bool);
         key!(executables, bool);
@@ -3263,6 +3282,7 @@ impl ToJson for Target {
         target_option_val!(cpu);
         target_option_val!(features);
         target_option_val!(dynamic_linking);
+        target_option_val!(direct_access_external_data);
         target_option_val!(dll_tls_export);
         target_option_val!(only_cdylib);
         target_option_val!(executables);

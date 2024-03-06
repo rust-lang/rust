@@ -1,4 +1,4 @@
-// check-pass
+//@ check-pass
 
 // Makes sure that we only consider `Self` supertrait predicates while
 // elaborating during closure signature deduction.

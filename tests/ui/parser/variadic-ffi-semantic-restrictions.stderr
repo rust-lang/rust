@@ -83,25 +83,25 @@ LL | const unsafe extern "C" fn f4_1(x: isize, ...) {}
    | ^^^^^ `const` because of this             ^^^ C-variadic because of this
 
 error: functions cannot be both `const` and C-variadic
-  --> $DIR/variadic-ffi-semantic-restrictions.rs:38:1
+  --> $DIR/variadic-ffi-semantic-restrictions.rs:39:1
    |
 LL | const extern "C" fn f4_2(x: isize, ...) {}
    | ^^^^^ `const` because of this      ^^^ C-variadic because of this
 
 error: only foreign or `unsafe extern "C"` functions may be C-variadic
-  --> $DIR/variadic-ffi-semantic-restrictions.rs:38:36
+  --> $DIR/variadic-ffi-semantic-restrictions.rs:39:36
    |
 LL | const extern "C" fn f4_2(x: isize, ...) {}
    |                                    ^^^
 
 error: `...` must be the last argument of a C-variadic function
-  --> $DIR/variadic-ffi-semantic-restrictions.rs:42:26
+  --> $DIR/variadic-ffi-semantic-restrictions.rs:44:26
    |
 LL | const extern "C" fn f4_3(..., x: isize, ...) {}
    |                          ^^^
 
 error: functions cannot be both `const` and C-variadic
-  --> $DIR/variadic-ffi-semantic-restrictions.rs:42:1
+  --> $DIR/variadic-ffi-semantic-restrictions.rs:44:1
    |
 LL | const extern "C" fn f4_3(..., x: isize, ...) {}
    | ^^^^^                    ^^^            ^^^ C-variadic because of this
@@ -110,67 +110,67 @@ LL | const extern "C" fn f4_3(..., x: isize, ...) {}
    | `const` because of this
 
 error: only foreign or `unsafe extern "C"` functions may be C-variadic
-  --> $DIR/variadic-ffi-semantic-restrictions.rs:42:26
+  --> $DIR/variadic-ffi-semantic-restrictions.rs:44:26
    |
 LL | const extern "C" fn f4_3(..., x: isize, ...) {}
    |                          ^^^            ^^^
 
 error: C-variadic function must be declared with at least one named argument
-  --> $DIR/variadic-ffi-semantic-restrictions.rs:48:13
+  --> $DIR/variadic-ffi-semantic-restrictions.rs:50:13
    |
 LL |     fn e_f1(...);
    |             ^^^
 
 error: `...` must be the last argument of a C-variadic function
-  --> $DIR/variadic-ffi-semantic-restrictions.rs:50:13
+  --> $DIR/variadic-ffi-semantic-restrictions.rs:52:13
    |
 LL |     fn e_f2(..., x: isize);
    |             ^^^
 
 error: only foreign or `unsafe extern "C"` functions may be C-variadic
-  --> $DIR/variadic-ffi-semantic-restrictions.rs:57:23
+  --> $DIR/variadic-ffi-semantic-restrictions.rs:59:23
    |
 LL |     fn i_f1(x: isize, ...) {}
    |                       ^^^
 
 error: C-variadic function must be declared with at least one named argument
-  --> $DIR/variadic-ffi-semantic-restrictions.rs:59:13
+  --> $DIR/variadic-ffi-semantic-restrictions.rs:61:13
    |
 LL |     fn i_f2(...) {}
    |             ^^^
 
 error: only foreign or `unsafe extern "C"` functions may be C-variadic
-  --> $DIR/variadic-ffi-semantic-restrictions.rs:59:13
+  --> $DIR/variadic-ffi-semantic-restrictions.rs:61:13
    |
 LL |     fn i_f2(...) {}
    |             ^^^
 
 error: `...` must be the last argument of a C-variadic function
-  --> $DIR/variadic-ffi-semantic-restrictions.rs:62:13
+  --> $DIR/variadic-ffi-semantic-restrictions.rs:64:13
    |
 LL |     fn i_f3(..., x: isize, ...) {}
    |             ^^^
 
 error: only foreign or `unsafe extern "C"` functions may be C-variadic
-  --> $DIR/variadic-ffi-semantic-restrictions.rs:62:13
+  --> $DIR/variadic-ffi-semantic-restrictions.rs:64:13
    |
 LL |     fn i_f3(..., x: isize, ...) {}
    |             ^^^            ^^^
 
 error: `...` must be the last argument of a C-variadic function
-  --> $DIR/variadic-ffi-semantic-restrictions.rs:65:13
+  --> $DIR/variadic-ffi-semantic-restrictions.rs:67:13
    |
 LL |     fn i_f4(..., x: isize, ...) {}
    |             ^^^
 
 error: only foreign or `unsafe extern "C"` functions may be C-variadic
-  --> $DIR/variadic-ffi-semantic-restrictions.rs:65:13
+  --> $DIR/variadic-ffi-semantic-restrictions.rs:67:13
    |
 LL |     fn i_f4(..., x: isize, ...) {}
    |             ^^^            ^^^
 
 error: functions cannot be both `const` and C-variadic
-  --> $DIR/variadic-ffi-semantic-restrictions.rs:68:5
+  --> $DIR/variadic-ffi-semantic-restrictions.rs:70:5
    |
 LL |     const fn i_f5(x: isize, ...) {}
    |     ^^^^^                   ^^^ C-variadic because of this
@@ -178,70 +178,95 @@ LL |     const fn i_f5(x: isize, ...) {}
    |     `const` because of this
 
 error: only foreign or `unsafe extern "C"` functions may be C-variadic
-  --> $DIR/variadic-ffi-semantic-restrictions.rs:68:29
+  --> $DIR/variadic-ffi-semantic-restrictions.rs:70:29
    |
 LL |     const fn i_f5(x: isize, ...) {}
    |                             ^^^
 
 error: only foreign or `unsafe extern "C"` functions may be C-variadic
-  --> $DIR/variadic-ffi-semantic-restrictions.rs:74:23
+  --> $DIR/variadic-ffi-semantic-restrictions.rs:77:23
    |
 LL |     fn t_f1(x: isize, ...) {}
    |                       ^^^
 
 error: only foreign or `unsafe extern "C"` functions may be C-variadic
-  --> $DIR/variadic-ffi-semantic-restrictions.rs:76:23
+  --> $DIR/variadic-ffi-semantic-restrictions.rs:79:23
    |
 LL |     fn t_f2(x: isize, ...);
    |                       ^^^
 
 error: C-variadic function must be declared with at least one named argument
-  --> $DIR/variadic-ffi-semantic-restrictions.rs:78:13
+  --> $DIR/variadic-ffi-semantic-restrictions.rs:81:13
    |
 LL |     fn t_f3(...) {}
    |             ^^^
 
 error: only foreign or `unsafe extern "C"` functions may be C-variadic
-  --> $DIR/variadic-ffi-semantic-restrictions.rs:78:13
+  --> $DIR/variadic-ffi-semantic-restrictions.rs:81:13
    |
 LL |     fn t_f3(...) {}
    |             ^^^
 
 error: C-variadic function must be declared with at least one named argument
-  --> $DIR/variadic-ffi-semantic-restrictions.rs:81:13
+  --> $DIR/variadic-ffi-semantic-restrictions.rs:84:13
    |
 LL |     fn t_f4(...);
    |             ^^^
 
 error: only foreign or `unsafe extern "C"` functions may be C-variadic
-  --> $DIR/variadic-ffi-semantic-restrictions.rs:81:13
+  --> $DIR/variadic-ffi-semantic-restrictions.rs:84:13
    |
 LL |     fn t_f4(...);
    |             ^^^
 
 error: `...` must be the last argument of a C-variadic function
-  --> $DIR/variadic-ffi-semantic-restrictions.rs:84:13
+  --> $DIR/variadic-ffi-semantic-restrictions.rs:87:13
    |
 LL |     fn t_f5(..., x: isize) {}
    |             ^^^
 
 error: only foreign or `unsafe extern "C"` functions may be C-variadic
-  --> $DIR/variadic-ffi-semantic-restrictions.rs:84:13
+  --> $DIR/variadic-ffi-semantic-restrictions.rs:87:13
    |
 LL |     fn t_f5(..., x: isize) {}
    |             ^^^
 
 error: `...` must be the last argument of a C-variadic function
-  --> $DIR/variadic-ffi-semantic-restrictions.rs:87:13
+  --> $DIR/variadic-ffi-semantic-restrictions.rs:90:13
    |
 LL |     fn t_f6(..., x: isize);
    |             ^^^
 
 error: only foreign or `unsafe extern "C"` functions may be C-variadic
-  --> $DIR/variadic-ffi-semantic-restrictions.rs:87:13
+  --> $DIR/variadic-ffi-semantic-restrictions.rs:90:13
    |
 LL |     fn t_f6(..., x: isize);
    |             ^^^
 
-error: aborting due to 40 previous errors
+error[E0493]: destructor of `VaListImpl<'_>` cannot be evaluated at compile-time
+  --> $DIR/variadic-ffi-semantic-restrictions.rs:35:43
+   |
+LL | const unsafe extern "C" fn f4_1(x: isize, ...) {}
+   |                                           ^^^   - value is dropped here
+   |                                           |
+   |                                           the destructor for this type cannot be evaluated in constant functions
 
+error[E0493]: destructor of `VaListImpl<'_>` cannot be evaluated at compile-time
+  --> $DIR/variadic-ffi-semantic-restrictions.rs:39:36
+   |
+LL | const extern "C" fn f4_2(x: isize, ...) {}
+   |                                    ^^^   - value is dropped here
+   |                                    |
+   |                                    the destructor for this type cannot be evaluated in constant functions
+
+error[E0493]: destructor of `VaListImpl<'_>` cannot be evaluated at compile-time
+  --> $DIR/variadic-ffi-semantic-restrictions.rs:70:29
+   |
+LL |     const fn i_f5(x: isize, ...) {}
+   |                             ^^^   - value is dropped here
+   |                             |
+   |                             the destructor for this type cannot be evaluated in constant functions
+
+error: aborting due to 43 previous errors
+
+For more information about this error, try `rustc --explain E0493`.

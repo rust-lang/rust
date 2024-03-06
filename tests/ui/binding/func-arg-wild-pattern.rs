@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 // Test that we can compile code that uses a `_` in function argument
 // patterns.
 

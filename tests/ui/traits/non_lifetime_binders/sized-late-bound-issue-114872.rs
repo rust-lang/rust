@@ -1,4 +1,4 @@
-// check-pass
+//@ check-pass
 
 #![feature(non_lifetime_binders)]
 //~^ WARN is incomplete and may not be safe

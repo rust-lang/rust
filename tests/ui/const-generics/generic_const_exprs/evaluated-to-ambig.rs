@@ -1,4 +1,4 @@
-// check-pass
+//@ check-pass
 
 // We previously always returned ambiguity when equating generic consts, even if they
 // only contain generic parameters. This is incorrect as trying to unify `N > 1` with `M > 1`

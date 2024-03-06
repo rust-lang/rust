@@ -1,4 +1,4 @@
-// check-fail
+//@ check-fail
 
 enum Either<L, R> {
     Left(L),

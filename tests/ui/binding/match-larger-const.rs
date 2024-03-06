@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 #[derive(Eq, PartialEq)]
 pub struct Data([u8; 4]);
 

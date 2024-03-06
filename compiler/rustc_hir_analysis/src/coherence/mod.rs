@@ -10,7 +10,7 @@ use rustc_errors::{codes::*, struct_span_code_err};
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_middle::query::Providers;
 use rustc_middle::ty::{self, TyCtxt, TypeVisitableExt};
-use rustc_span::ErrorGuaranteed;
+use rustc_span::{sym, ErrorGuaranteed};
 use rustc_trait_selection::traits;
 
 mod builtin;
@@ -23,6 +23,7 @@ fn check_impl(
     tcx: TyCtxt<'_>,
     impl_def_id: LocalDefId,
     trait_ref: ty::TraitRef<'_>,
+    trait_def: &ty::TraitDef,
 ) -> Result<(), ErrorGuaranteed> {
     debug!(
         "(checking implementation) adding impl for trait '{:?}', item '{}'",
@@ -36,19 +37,20 @@ fn check_impl(
         return Ok(());
     }
 
-    enforce_trait_manually_implementable(tcx, impl_def_id, trait_ref.def_id)
-        .and(enforce_empty_impls_for_marker_traits(tcx, impl_def_id, trait_ref.def_id))
+    enforce_trait_manually_implementable(tcx, impl_def_id, trait_ref.def_id, trait_def)
+        .and(enforce_empty_impls_for_marker_traits(tcx, impl_def_id, trait_ref.def_id, trait_def))
 }
 
 fn enforce_trait_manually_implementable(
     tcx: TyCtxt<'_>,
     impl_def_id: LocalDefId,
     trait_def_id: DefId,
+    trait_def: &ty::TraitDef,
 ) -> Result<(), ErrorGuaranteed> {
     let impl_header_span = tcx.def_span(impl_def_id);
 
     // Disallow *all* explicit impls of traits marked `#[rustc_deny_explicit_impl]`
-    if tcx.trait_def(trait_def_id).deny_explicit_impl {
+    if trait_def.deny_explicit_impl {
         let trait_name = tcx.item_name(trait_def_id);
         let mut err = struct_span_code_err!(
             tcx.dcx(),
@@ -67,10 +69,13 @@ fn enforce_trait_manually_implementable(
         return Err(err.emit());
     }
 
-    if let ty::trait_def::TraitSpecializationKind::AlwaysApplicable =
-        tcx.trait_def(trait_def_id).specialization_kind
+    if let ty::trait_def::TraitSpecializationKind::AlwaysApplicable = trait_def.specialization_kind
     {
-        if !tcx.features().specialization && !tcx.features().min_specialization {
+        if !tcx.features().specialization
+            && !tcx.features().min_specialization
+            && !impl_header_span.allows_unstable(sym::specialization)
+            && !impl_header_span.allows_unstable(sym::min_specialization)
+        {
             return Err(tcx.dcx().emit_err(errors::SpecializationTrait { span: impl_header_span }));
         }
     }
@@ -83,8 +88,9 @@ fn enforce_empty_impls_for_marker_traits(
     tcx: TyCtxt<'_>,
     impl_def_id: LocalDefId,
     trait_def_id: DefId,
+    trait_def: &ty::TraitDef,
 ) -> Result<(), ErrorGuaranteed> {
-    if !tcx.trait_def(trait_def_id).is_marker {
+    if !trait_def.is_marker {
         return Ok(());
     }
 
@@ -120,22 +126,26 @@ pub fn provide(providers: &mut Providers) {
 }
 
 fn coherent_trait(tcx: TyCtxt<'_>, def_id: DefId) -> Result<(), ErrorGuaranteed> {
+    // If there are no impls for the trait, then "all impls" are trivially coherent and we won't check anything
+    // anyway. Thus we bail out even before the specialization graph, avoiding the dep_graph edge.
+    let Some(impls) = tcx.all_local_trait_impls(()).get(&def_id) else { return Ok(()) };
     // Trigger building the specialization graph for the trait. This will detect and report any
     // overlap errors.
     let mut res = tcx.ensure().specialization_graph_of(def_id);
 
-    let impls = tcx.hir().trait_impls(def_id);
     for &impl_def_id in impls {
-        let trait_ref = tcx.impl_trait_ref(impl_def_id).unwrap().instantiate_identity();
+        let trait_header = tcx.impl_trait_header(impl_def_id).unwrap().instantiate_identity();
+        let trait_def = tcx.trait_def(trait_header.trait_ref.def_id);
 
-        res = res.and(check_impl(tcx, impl_def_id, trait_ref));
-        res = res.and(check_object_overlap(tcx, impl_def_id, trait_ref));
+        res = res.and(check_impl(tcx, impl_def_id, trait_header.trait_ref, trait_def));
+        res = res.and(check_object_overlap(tcx, impl_def_id, trait_header.trait_ref));
 
-        res = res.and(unsafety::check_item(tcx, impl_def_id));
+        res = res.and(unsafety::check_item(tcx, impl_def_id, trait_header, trait_def));
         res = res.and(tcx.ensure().orphan_check_impl(impl_def_id));
+        res = res.and(builtin::check_trait(tcx, def_id, impl_def_id, trait_header));
     }
 
-    res.and(builtin::check_trait(tcx, def_id))
+    res
 }
 
 /// Checks whether an impl overlaps with the automatic `impl Trait for dyn Trait`.

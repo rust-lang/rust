@@ -1,5 +1,5 @@
 // emit-mir
-// check-pass
+//@ check-pass
 
 const fn foo() -> i32 {
     5 + 6

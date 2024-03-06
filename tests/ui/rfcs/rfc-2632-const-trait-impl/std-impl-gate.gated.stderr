@@ -4,6 +4,16 @@ error[E0635]: unknown feature `const_default_impls`
 LL | #![cfg_attr(gated, feature(const_trait_impl, const_default_impls))]
    |                                              ^^^^^^^^^^^^^^^^^^^
 
-error: aborting due to 1 previous error
+error[E0015]: cannot call non-const fn `<Vec<usize> as Default>::default` in constant functions
+  --> $DIR/std-impl-gate.rs:13:5
+   |
+LL |     Default::default()
+   |     ^^^^^^^^^^^^^^^^^^
+   |
+   = note: calls in constant functions are limited to constant functions, tuple structs and tuple variants
+   = help: add `#![feature(effects)]` to the crate attributes to enable
 
-For more information about this error, try `rustc --explain E0635`.
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0015, E0635.
+For more information about an error, try `rustc --explain E0015`.

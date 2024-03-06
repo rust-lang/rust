@@ -1,4 +1,4 @@
-// edition:2018
+//@ edition:2018
 
 mod t {
     const async pub fn t() {}

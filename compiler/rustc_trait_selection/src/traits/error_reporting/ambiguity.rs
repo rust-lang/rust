@@ -21,51 +21,62 @@ pub fn recompute_applicable_impls<'tcx>(
 
     let impl_may_apply = |impl_def_id| {
         let ocx = ObligationCtxt::new(infcx);
-        let placeholder_obligation =
-            infcx.instantiate_binder_with_placeholders(obligation.predicate);
-        let obligation_trait_ref =
-            ocx.normalize(&ObligationCause::dummy(), param_env, placeholder_obligation.trait_ref);
+        infcx.enter_forall(obligation.predicate, |placeholder_obligation| {
+            let obligation_trait_ref = ocx.normalize(
+                &ObligationCause::dummy(),
+                param_env,
+                placeholder_obligation.trait_ref,
+            );
 
-        let impl_args = infcx.fresh_args_for_item(DUMMY_SP, impl_def_id);
-        let impl_trait_ref = tcx.impl_trait_ref(impl_def_id).unwrap().instantiate(tcx, impl_args);
-        let impl_trait_ref = ocx.normalize(&ObligationCause::dummy(), param_env, impl_trait_ref);
+            let impl_args = infcx.fresh_args_for_item(DUMMY_SP, impl_def_id);
+            let impl_trait_ref =
+                tcx.impl_trait_ref(impl_def_id).unwrap().instantiate(tcx, impl_args);
+            let impl_trait_ref =
+                ocx.normalize(&ObligationCause::dummy(), param_env, impl_trait_ref);
 
-        if let Err(_) =
-            ocx.eq(&ObligationCause::dummy(), param_env, obligation_trait_ref, impl_trait_ref)
-        {
-            return false;
-        }
+            if let Err(_) =
+                ocx.eq(&ObligationCause::dummy(), param_env, obligation_trait_ref, impl_trait_ref)
+            {
+                return false;
+            }
 
-        let impl_predicates = tcx.predicates_of(impl_def_id).instantiate(tcx, impl_args);
-        ocx.register_obligations(impl_predicates.predicates.iter().map(|&predicate| {
-            Obligation::new(tcx, ObligationCause::dummy(), param_env, predicate)
-        }));
+            let impl_predicates = tcx.predicates_of(impl_def_id).instantiate(tcx, impl_args);
+            ocx.register_obligations(impl_predicates.predicates.iter().map(|&predicate| {
+                Obligation::new(tcx, ObligationCause::dummy(), param_env, predicate)
+            }));
 
-        ocx.select_where_possible().is_empty()
+            ocx.select_where_possible().is_empty()
+        })
     };
 
     let param_env_candidate_may_apply = |poly_trait_predicate: ty::PolyTraitPredicate<'tcx>| {
         let ocx = ObligationCtxt::new(infcx);
-        let placeholder_obligation =
-            infcx.instantiate_binder_with_placeholders(obligation.predicate);
-        let obligation_trait_ref =
-            ocx.normalize(&ObligationCause::dummy(), param_env, placeholder_obligation.trait_ref);
+        infcx.enter_forall(obligation.predicate, |placeholder_obligation| {
+            let obligation_trait_ref = ocx.normalize(
+                &ObligationCause::dummy(),
+                param_env,
+                placeholder_obligation.trait_ref,
+            );
 
-        let param_env_predicate = infcx.instantiate_binder_with_fresh_vars(
-            DUMMY_SP,
-            BoundRegionConversionTime::HigherRankedType,
-            poly_trait_predicate,
-        );
-        let param_env_trait_ref =
-            ocx.normalize(&ObligationCause::dummy(), param_env, param_env_predicate.trait_ref);
+            let param_env_predicate = infcx.instantiate_binder_with_fresh_vars(
+                DUMMY_SP,
+                BoundRegionConversionTime::HigherRankedType,
+                poly_trait_predicate,
+            );
+            let param_env_trait_ref =
+                ocx.normalize(&ObligationCause::dummy(), param_env, param_env_predicate.trait_ref);
 
-        if let Err(_) =
-            ocx.eq(&ObligationCause::dummy(), param_env, obligation_trait_ref, param_env_trait_ref)
-        {
-            return false;
-        }
+            if let Err(_) = ocx.eq(
+                &ObligationCause::dummy(),
+                param_env,
+                obligation_trait_ref,
+                param_env_trait_ref,
+            ) {
+                return false;
+            }
 
-        ocx.select_where_possible().is_empty()
+            ocx.select_where_possible().is_empty()
+        })
     };
 
     let mut ambiguities = Vec::new();

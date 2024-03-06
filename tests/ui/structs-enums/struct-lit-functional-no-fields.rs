@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 #[derive(Debug,PartialEq,Clone)]
 struct Foo<T> {
     bar: T,

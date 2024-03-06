@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 // Test a rather underspecified example:
 #![allow(unused_braces)]
 

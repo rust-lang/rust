@@ -4,8 +4,8 @@
 // [^1]: Counterexample: `unresolved-import-suggest-disambiguated-crate-name.rs`
 #![feature(decl_macro)] // allows us to create items with hygienic names
 
-// aux-crate:library=library.rs
-// edition: 2021
+//@ aux-crate:library=library.rs
+//@ edition: 2021
 
 mod hygiene {
     make!();

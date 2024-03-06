@@ -1,5 +1,7 @@
 use super::*;
 
+// test_err generic_arg_list_recover
+// type T = T<0, ,T>;
 pub(super) fn opt_generic_arg_list(p: &mut Parser<'_>, colon_colon_required: bool) {
     let m;
     if p.at(T![::]) && p.nth(2) == T![<] {
@@ -11,7 +13,15 @@ pub(super) fn opt_generic_arg_list(p: &mut Parser<'_>, colon_colon_required: boo
         return;
     }
 
-    delimited(p, T![<], T![>], T![,], GENERIC_ARG_FIRST, generic_arg);
+    delimited(
+        p,
+        T![<],
+        T![>],
+        T![,],
+        || "expected generic argument".into(),
+        GENERIC_ARG_FIRST,
+        generic_arg,
+    );
     m.complete(p, GENERIC_ARG_LIST);
 }
 

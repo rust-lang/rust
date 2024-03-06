@@ -1,4 +1,4 @@
-// compile-flags:--crate-type lib
+//@ compile-flags:--crate-type lib
 #![feature(decl_macro)]
 #![feature(rustc_attrs)]
 

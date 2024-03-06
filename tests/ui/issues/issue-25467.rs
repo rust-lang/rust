@@ -1,6 +1,6 @@
-// run-pass
+//@ run-pass
 #![allow(unused_variables)]
-// aux-build:issue-25467.rs
+//@ aux-build:issue-25467.rs
 
 pub type Issue25467BarT = ();
 pub type Issue25467FooT = ();

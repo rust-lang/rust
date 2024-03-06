@@ -1,4 +1,4 @@
-// edition:2018
+//@ edition:2018
 
 use std::future::Future;
 fn foo<T: Send, U>(ty: T, ty1: U) -> impl Future<Output = (T, U)> + Send {

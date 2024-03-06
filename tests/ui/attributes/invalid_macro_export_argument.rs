@@ -1,5 +1,5 @@
-// revisions: deny allow
-//[allow] check-pass
+//@ revisions: deny allow
+//@[allow] check-pass
 
 #![cfg_attr(deny, deny(invalid_macro_export_arguments))]
 #![cfg_attr(allow, allow(invalid_macro_export_arguments))]

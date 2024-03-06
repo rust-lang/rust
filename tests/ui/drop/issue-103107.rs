@@ -1,5 +1,5 @@
-// check-pass
-// compile-flags: -Z validate-mir
+//@ check-pass
+//@ compile-flags: -Z validate-mir
 
 struct Foo<'a>(&'a mut u32);
 

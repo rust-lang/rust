@@ -30,7 +30,7 @@ python3 "$X_PY" test --stage 2 src/tools/rustfmt
 # We set the GC interval to the shortest possible value (0 would be off) to increase the chance
 # that bugs which only surface when the GC runs at a specific time are more likely to cause CI to fail.
 # This significantly increases the runtime of our test suite, or we'd do this in PR CI too.
-if [[ -z "${PR_CI_JOB:-}" ]]; then
+if [ -z "${PR_CI_JOB:-}" ]; then
     MIRIFLAGS=-Zmiri-provenance-gc=1 python3 "$X_PY" test --stage 2 src/tools/miri
 else
     python3 "$X_PY" test --stage 2 src/tools/miri

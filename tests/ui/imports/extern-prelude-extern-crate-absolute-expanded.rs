@@ -1,5 +1,5 @@
-// build-pass (FIXME(62277): could be check-pass?)
-// edition:2018
+//@ build-pass (FIXME(62277): could be check-pass?)
+//@ edition:2018
 
 macro_rules! define_iso { () => {
     extern crate std as iso;

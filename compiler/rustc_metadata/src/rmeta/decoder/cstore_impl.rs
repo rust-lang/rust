@@ -26,6 +26,7 @@ use rustc_span::symbol::{kw, Symbol};
 use rustc_span::Span;
 
 use std::any::Any;
+use std::mem;
 
 use super::{Decodable, DecodeContext, DecodeIterator};
 
@@ -214,7 +215,7 @@ provide! { tcx, def_id, other, cdata,
     variances_of => { table }
     fn_sig => { table }
     codegen_fn_attrs => { table }
-    impl_trait_ref => { table }
+    impl_trait_header => { table }
     const_param_default => { table }
     object_lifetime_default => { table }
     thir_abstract_const => { table }
@@ -233,7 +234,6 @@ provide! { tcx, def_id, other, cdata,
     unused_generic_params => { cdata.root.tables.unused_generic_params.get(cdata, def_id.index) }
     def_kind => { cdata.def_kind(def_id.index) }
     impl_parent => { table }
-    impl_polarity => { table_direct }
     defaultness => { table_direct }
     constness => { table_direct }
     coerce_unsized_info => {
@@ -249,6 +249,16 @@ provide! { tcx, def_id, other, cdata,
     asyncness => { table_direct }
     fn_arg_names => { table }
     coroutine_kind => { table_direct }
+    coroutine_for_closure => { table }
+    eval_static_initializer => {
+        Ok(cdata
+            .root
+            .tables
+            .eval_static_initializer
+            .get(cdata, def_id.index)
+            .map(|lazy| lazy.decode((cdata, tcx)))
+            .unwrap_or_else(|| panic!("{def_id:?} does not have eval_static_initializer")))
+    }
     trait_def => { table }
     deduced_param_attrs => { table }
     is_type_alias_impl_trait => {
@@ -346,7 +356,7 @@ provide! { tcx, def_id, other, cdata,
         cdata.get_stability_implications(tcx).iter().copied().collect()
     }
     stripped_cfg_items => { cdata.get_stripped_cfg_items(cdata.cnum, tcx) }
-    is_intrinsic => { cdata.get_is_intrinsic(def_id.index) }
+    intrinsic => { cdata.get_intrinsic(def_id.index) }
     defined_lang_items => { cdata.get_lang_items(tcx) }
     diagnostic_items => { cdata.get_diagnostic_items() }
     missing_lang_items => { cdata.get_missing_lang_items(tcx) }
@@ -509,6 +519,16 @@ pub(in crate::rmeta) fn provide(providers: &mut Providers) {
             tcx.untracked().cstore.freeze();
             tcx.arena.alloc_from_iter(CStore::from_tcx(tcx).iter_crate_data().map(|(cnum, _)| cnum))
         },
+        used_crates: |tcx, ()| {
+            // The list of loaded crates is now frozen in query cache,
+            // so make sure cstore is not mutably accessed from here on.
+            tcx.untracked().cstore.freeze();
+            tcx.arena.alloc_from_iter(
+                CStore::from_tcx(tcx)
+                    .iter_crate_data()
+                    .filter_map(|(cnum, data)| data.used().then_some(cnum)),
+            )
+        },
         ..providers.queries
     };
     provide_extern(&mut providers.extern_queries);
@@ -576,12 +596,24 @@ impl CStore {
         self.get_crate_data(cnum).get_proc_macro_quoted_span(id, sess)
     }
 
+    pub fn set_used_recursively(&mut self, cnum: CrateNum) {
+        let cmeta = self.get_crate_data_mut(cnum);
+        if !cmeta.used {
+            cmeta.used = true;
+            let dependencies = mem::take(&mut cmeta.dependencies);
+            for &dep_cnum in &dependencies {
+                self.set_used_recursively(dep_cnum);
+            }
+            self.get_crate_data_mut(cnum).dependencies = dependencies;
+        }
+    }
+
     pub(crate) fn update_extern_crate(&mut self, cnum: CrateNum, extern_crate: ExternCrate) {
         let cmeta = self.get_crate_data_mut(cnum);
         if cmeta.update_extern_crate(extern_crate) {
             // Propagate the extern crate info to dependencies if it was updated.
             let extern_crate = ExternCrate { dependency_of: cnum, ..extern_crate };
-            let dependencies = std::mem::take(&mut cmeta.dependencies);
+            let dependencies = mem::take(&mut cmeta.dependencies);
             for &dep_cnum in &dependencies {
                 self.update_extern_crate(dep_cnum, extern_crate);
             }

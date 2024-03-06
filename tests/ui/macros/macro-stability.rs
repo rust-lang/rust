@@ -1,4 +1,4 @@
-// aux-build:unstable-macros.rs
+//@ aux-build:unstable-macros.rs
 
 #![feature(decl_macro)]
 #![feature(staged_api)]

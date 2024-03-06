@@ -3,7 +3,7 @@
 
 #![feature(rustc_attrs)]
 
-// run-pass
+//@ run-pass
 
 #[rustc_macro_transparency = "transparent"]
 macro_rules! k {

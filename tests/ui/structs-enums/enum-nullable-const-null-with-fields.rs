@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 
 static C: Result<(), Box<isize>> = Ok(());
 

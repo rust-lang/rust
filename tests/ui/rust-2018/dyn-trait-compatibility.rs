@@ -1,4 +1,4 @@
-// edition:2018
+//@ edition:2018
 
 type A0 = dyn;
 type A1 = dyn::dyn; //~ERROR expected identifier, found keyword `dyn`

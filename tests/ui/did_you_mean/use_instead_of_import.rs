@@ -1,4 +1,4 @@
-// run-rustfix
+//@ run-rustfix
 
 import std::{
     //~^ ERROR expected item, found `import`

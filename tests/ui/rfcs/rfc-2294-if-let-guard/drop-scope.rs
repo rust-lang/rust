@@ -1,7 +1,7 @@
 // Ensure that temporaries in if-let guards live for the arm
 // regression test for #118593
 
-// check-pass
+//@ check-pass
 
 #![feature(if_let_guard)]
 #![feature(let_chains)]

@@ -1,5 +1,7 @@
 // different number of duplicated diagnostics on different targets
-// compile-flags: -Zdeduplicate-diagnostics=yes
+//@ only-x86_64
+//@ only-linux
+//@ compile-flags: -Zdeduplicate-diagnostics=yes
 
 #![allow(bare_trait_objects)]
 use std::cell::RefCell;
@@ -18,21 +20,31 @@ pub union Qux<'t, 'k, I> {
 trait Tar<'t, 'k, I> {}
 
 thread_local! {
+    //~^ ERROR lifetime may not live long enough
+    //~| ERROR lifetime may not live long enough
     static a: RefCell<HashMap<i32, Vec<Vec<Foo>>>> = RefCell::new(HashMap::new());
       //~^ ERROR missing lifetime specifiers
       //~| ERROR missing lifetime specifiers
 }
 thread_local! {
+    //~^ ERROR lifetime may not live long enough
+    //~| ERROR lifetime may not live long enough
+    //~| ERROR lifetime may not live long enough
     static b: RefCell<HashMap<i32, Vec<Vec<&Bar>>>> = RefCell::new(HashMap::new());
       //~^ ERROR missing lifetime specifiers
       //~| ERROR missing lifetime specifiers
 }
 thread_local! {
+    //~^ ERROR lifetime may not live long enough
+    //~| ERROR lifetime may not live long enough
     static c: RefCell<HashMap<i32, Vec<Vec<Qux<i32>>>>> = RefCell::new(HashMap::new());
     //~^ ERROR missing lifetime specifiers
     //~| ERROR missing lifetime specifiers
 }
 thread_local! {
+    //~^ ERROR lifetime may not live long enough
+    //~| ERROR lifetime may not live long enough
+    //~| ERROR lifetime may not live long enough
     static d: RefCell<HashMap<i32, Vec<Vec<&Tar<i32>>>>> = RefCell::new(HashMap::new());
     //~^ ERROR missing lifetime specifiers
     //~| ERROR missing lifetime specifiers

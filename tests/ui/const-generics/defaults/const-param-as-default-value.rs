@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 struct Foo<const N: usize, const M: usize = N>([u8; N], [u8; M]);
 
 fn foo<const N: usize>() -> Foo<N> {

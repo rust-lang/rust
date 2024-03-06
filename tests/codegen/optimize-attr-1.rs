@@ -1,7 +1,7 @@
-// revisions: NO-OPT SIZE-OPT SPEED-OPT
-//[NO-OPT] compile-flags: -Copt-level=0 -Ccodegen-units=1
-//[SIZE-OPT] compile-flags: -Copt-level=s -Ccodegen-units=1
-//[SPEED-OPT] compile-flags: -Copt-level=3 -Ccodegen-units=1
+//@ revisions: NO-OPT SIZE-OPT SPEED-OPT
+//@[NO-OPT] compile-flags: -Copt-level=0 -Ccodegen-units=1
+//@[SIZE-OPT] compile-flags: -Copt-level=s -Ccodegen-units=1
+//@[SPEED-OPT] compile-flags: -Copt-level=3 -Ccodegen-units=1
 
 #![feature(optimize_attribute)]
 #![crate_type="rlib"]

@@ -179,7 +179,7 @@ impl<'tcx> AutoTraitFinder<'tcx> {
         }
 
         let outlives_env = OutlivesEnvironment::new(full_env);
-        infcx.process_registered_region_obligations(&outlives_env);
+        let _ = infcx.process_registered_region_obligations(&outlives_env, |ty, _| Ok(ty));
 
         let region_data =
             infcx.inner.borrow_mut().unwrap_region_constraints().region_constraint_data().clone();
@@ -513,6 +513,7 @@ impl<'tcx> AutoTraitFinder<'tcx> {
         }
 
         while !vid_map.is_empty() {
+            #[allow(rustc::potential_query_instability)]
             let target = *vid_map.keys().next().expect("Keys somehow empty");
             let deps = vid_map.remove(&target).expect("Entry somehow missing");
 
@@ -523,13 +524,15 @@ impl<'tcx> AutoTraitFinder<'tcx> {
                             if let Entry::Occupied(v) = vid_map.entry(*smaller) {
                                 let smaller_deps = v.into_mut();
                                 smaller_deps.larger.insert(*larger);
-                                smaller_deps.larger.remove(&target);
+                                // FIXME(#120456) - is `swap_remove` correct?
+                                smaller_deps.larger.swap_remove(&target);
                             }
 
                             if let Entry::Occupied(v) = vid_map.entry(*larger) {
                                 let larger_deps = v.into_mut();
                                 larger_deps.smaller.insert(*smaller);
-                                larger_deps.smaller.remove(&target);
+                                // FIXME(#120456) - is `swap_remove` correct?
+                                larger_deps.smaller.swap_remove(&target);
                             }
                         }
                         (&RegionTarget::RegionVid(v1), &RegionTarget::Region(r1)) => {
@@ -542,13 +545,15 @@ impl<'tcx> AutoTraitFinder<'tcx> {
                             if let Entry::Occupied(v) = vid_map.entry(*smaller) {
                                 let smaller_deps = v.into_mut();
                                 smaller_deps.larger.insert(*larger);
-                                smaller_deps.larger.remove(&target);
+                                // FIXME(#120456) - is `swap_remove` correct?
+                                smaller_deps.larger.swap_remove(&target);
                             }
 
                             if let Entry::Occupied(v) = vid_map.entry(*larger) {
                                 let larger_deps = v.into_mut();
                                 larger_deps.smaller.insert(*smaller);
-                                larger_deps.smaller.remove(&target);
+                                // FIXME(#120456) - is `swap_remove` correct?
+                                larger_deps.smaller.swap_remove(&target);
                             }
                         }
                     }

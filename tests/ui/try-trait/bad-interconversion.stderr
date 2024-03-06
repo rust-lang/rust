@@ -4,14 +4,13 @@ error[E0277]: `?` couldn't convert the error to `u8`
 LL | fn result_to_result() -> Result<u64, u8> {
    |                          --------------- expected `u8` because of this
 LL |     Ok(Err(123_i32)?)
-   |        ------------^ the trait `From<i32>` is not implemented for `u8`
+   |        ------------^ the trait `From<i32>` is not implemented for `u8`, which is required by `Result<u64, u8>: FromResidual<Result<Infallible, i32>>`
    |        |
    |        this can't be annotated with `?` because it has type `Result<_, i32>`
    |
    = note: the question mark operation (`?`) implicitly performs a conversion on the error value using the `From` trait
    = help: the following other types implement trait `From<T>`:
              <u8 as From<bool>>
-             <u8 as From<NonZeroU8>>
              <u8 as From<Char>>
    = note: required for `Result<u64, u8>` to implement `FromResidual<Result<Infallible, i32>>`
 

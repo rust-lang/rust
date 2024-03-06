@@ -1,7 +1,7 @@
 // This checks that function pointer signatures containing &mut T types
 // work in a constant context: see issue #114994.
 //
-// check-pass
+//@ check-pass
 
 const fn use_const_fn(_f: fn(&mut String)) {
     ()

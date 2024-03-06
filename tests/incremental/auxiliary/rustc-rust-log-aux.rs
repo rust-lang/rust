@@ -1,4 +1,4 @@
-// rustc-env:RUSTC_LOG=debug
+//@ rustc-env:RUSTC_LOG=debug
 #[cfg(rpass1)]
 pub fn foo() {}
 

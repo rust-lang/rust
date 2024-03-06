@@ -1,4 +1,4 @@
-// check-pass
+//@ check-pass
 #![warn(unused_imports)]
 
 pub mod bar {

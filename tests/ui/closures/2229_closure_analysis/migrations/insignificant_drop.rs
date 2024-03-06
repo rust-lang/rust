@@ -1,5 +1,5 @@
-// run-pass
-// run-rustfix
+//@ run-pass
+//@ run-rustfix
 
 #![deny(rust_2021_incompatible_closure_captures)]
 #![allow(unused)]

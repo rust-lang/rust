@@ -1,9 +1,11 @@
+#![allow(rustc::diagnostic_outside_of_impl)]
+#![allow(rustc::untranslatable_diagnostic)]
 #![feature(if_let_guard)]
 #![feature(let_chains)]
 #![feature(try_blocks)]
 #![feature(never_type)]
 #![feature(box_patterns)]
-#![feature(min_specialization)]
+#![cfg_attr(bootstrap, feature(min_specialization))]
 #![feature(control_flow_enum)]
 
 #[macro_use]
@@ -51,7 +53,7 @@ use crate::expectation::Expectation;
 use crate::fn_ctxt::LoweredTy;
 use crate::gather_locals::GatherLocalsVisitor;
 use rustc_data_structures::unord::UnordSet;
-use rustc_errors::{codes::*, struct_span_code_err, ErrCode, ErrorGuaranteed};
+use rustc_errors::{codes::*, struct_span_code_err, ErrorGuaranteed};
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::intravisit::Visitor;
@@ -218,7 +220,7 @@ fn typeck_with_fallback<'tcx>(
                 span,
             }))
         } else if let Node::AnonConst(_) = node {
-            match tcx.hir_node(tcx.hir().parent_id(id)) {
+            match tcx.parent_hir_node(id) {
                 Node::Ty(&hir::Ty { kind: hir::TyKind::Typeof(ref anon_const), .. })
                     if anon_const.hir_id == id =>
                 {
@@ -286,7 +288,7 @@ fn typeck_with_fallback<'tcx>(
     debug!(pending_obligations = ?fcx.fulfillment_cx.borrow().pending_obligations());
 
     // This must be the last thing before `report_ambiguity_errors`.
-    fcx.resolve_coroutine_interiors(def_id.to_def_id());
+    fcx.resolve_coroutine_interiors();
 
     debug!(pending_obligations = ?fcx.fulfillment_cx.borrow().pending_obligations());
 
@@ -301,6 +303,10 @@ fn typeck_with_fallback<'tcx>(
     fcx.check_asms();
 
     let typeck_results = fcx.resolve_type_vars_in_body(body);
+
+    // We clone the defined opaque types during writeback in the new solver
+    // because we have to use them during normalization.
+    let _ = fcx.infcx.take_opaque_types();
 
     // Consistency check our TypeckResults instance can hold all ItemLocalIds
     // it will need to hold.
@@ -442,15 +448,6 @@ fn fatally_break_rust(tcx: TyCtxt<'_>, span: Span) -> ! {
         }
     }
     diag.emit()
-}
-
-/// `expected` here is the expected number of explicit generic arguments on the trait.
-fn has_expected_num_generic_args(tcx: TyCtxt<'_>, trait_did: DefId, expected: usize) -> bool {
-    let generics = tcx.generics_of(trait_did);
-    generics.count()
-        == expected
-            + if generics.has_self { 1 } else { 0 }
-            + if generics.host_effect_index.is_some() { 1 } else { 0 }
 }
 
 pub fn provide(providers: &mut Providers) {

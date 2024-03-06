@@ -5,20 +5,20 @@
 //! - [Error]: Generic error that represents the reason why a request that could not be fulfilled.
 
 use std::fmt::{Debug, Display, Formatter};
-use std::{error, fmt, io};
+use std::{fmt, io};
 
 macro_rules! error {
      ($fmt: literal $(,)?) => { Error(format!($fmt)) };
      ($fmt: literal, $($arg:tt)*) => { Error(format!($fmt, $($arg)*)) };
- }
+}
+
+pub(crate) use error;
 
 /// An error type used to represent an error that has already been reported by the compiler.
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub enum CompilerError<T> {
-    /// Internal compiler error (I.e.: Compiler crashed).
-    ICE,
-    /// Compilation failed.
-    CompilationFailed,
+    /// Compilation failed, either due to normal errors or ICE.
+    Failed,
     /// Compilation was interrupted.
     Interrupted(T),
     /// Compilation skipped. This happens when users invoke rustc to retrieve information such as
@@ -54,8 +54,7 @@ where
 {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         match self {
-            CompilerError::ICE => write!(f, "Internal Compiler Error"),
-            CompilerError::CompilationFailed => write!(f, "Compilation Failed"),
+            CompilerError::Failed => write!(f, "Compilation Failed"),
             CompilerError::Interrupted(reason) => write!(f, "Compilation Interrupted: {reason}"),
             CompilerError::Skipped => write!(f, "Compilation Skipped"),
         }
@@ -68,16 +67,16 @@ where
 {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         match self {
-            CompilerError::ICE => write!(f, "Internal Compiler Error"),
-            CompilerError::CompilationFailed => write!(f, "Compilation Failed"),
+            CompilerError::Failed => write!(f, "Compilation Failed"),
             CompilerError::Interrupted(reason) => write!(f, "Compilation Interrupted: {reason:?}"),
             CompilerError::Skipped => write!(f, "Compilation Skipped"),
         }
     }
 }
 
-impl error::Error for Error {}
-impl<T> error::Error for CompilerError<T> where T: Display + Debug {}
+impl std::error::Error for Error {}
+
+impl<T> std::error::Error for CompilerError<T> where T: Display + Debug {}
 
 impl From<io::Error> for Error {
     fn from(value: io::Error) -> Self {

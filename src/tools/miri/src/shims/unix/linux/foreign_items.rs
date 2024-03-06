@@ -9,6 +9,7 @@ use shims::unix::fs::EvalContextExt as _;
 use shims::unix::linux::fd::EvalContextExt as _;
 use shims::unix::linux::mem::EvalContextExt as _;
 use shims::unix::linux::sync::futex;
+use shims::unix::mem::EvalContextExt as _;
 use shims::unix::sync::EvalContextExt as _;
 use shims::unix::thread::EvalContextExt as _;
 
@@ -43,6 +44,14 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                 let result = this.linux_readdir64(dirp)?;
                 this.write_scalar(result, dest)?;
             }
+            "mmap64" => {
+                let [addr, length, prot, flags, fd, offset] =
+                    this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
+                let offset = this.read_scalar(offset)?.to_i64()?;
+                let ptr = this.mmap(addr, length, prot, flags, fd, offset.into())?;
+                this.write_scalar(ptr, dest)?;
+            }
+
             // Linux-only
             "sync_file_range" => {
                 let [fd, offset, nbytes, flags] =
@@ -196,17 +205,6 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                 let [ptr, len, flags] =
                     this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
                 getrandom(this, ptr, len, flags, dest)?;
-            }
-            "sched_getaffinity" => {
-                let [pid, cpusetsize, mask] =
-                    this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
-                this.read_scalar(pid)?.to_i32()?;
-                this.read_target_usize(cpusetsize)?;
-                this.deref_pointer_as(mask, this.libc_ty_layout("cpu_set_t"))?;
-                // FIXME: we just return an error; `num_cpus` then falls back to `sysconf`.
-                let einval = this.eval_libc("EINVAL");
-                this.set_last_error(einval)?;
-                this.write_scalar(Scalar::from_i32(-1), dest)?;
             }
 
             // Incomplete shims that we "stub out" just to get pre-main initialization code to work.

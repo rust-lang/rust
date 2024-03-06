@@ -1,5 +1,4 @@
 #![feature(inline_const_pat)]
-//~^ WARN the feature `inline_const_pat` is incomplete
 
 fn uwu() {}
 

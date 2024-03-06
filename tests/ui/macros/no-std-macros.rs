@@ -1,5 +1,5 @@
-// compile-flags: --crate-type=lib
-// check-pass
+//@ compile-flags: --crate-type=lib
+//@ check-pass
 // issue #55482
 #![no_std]
 

@@ -1,5 +1,5 @@
-// check-pass
-// compile-flags: -Z parse-only
+//@ check-pass
+//@ compile-flags: -Z parse-only
 
 use std::ops::Deref;
 use std::fmt::Debug;

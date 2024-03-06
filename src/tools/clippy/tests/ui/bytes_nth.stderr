@@ -1,5 +1,5 @@
 error: called `.bytes().nth()` on a `String`
-  --> $DIR/bytes_nth.rs:6:13
+  --> tests/ui/bytes_nth.rs:6:13
    |
 LL |     let _ = s.bytes().nth(3);
    |             ^^^^^^^^^^^^^^^^ help: try: `s.as_bytes().get(3).copied()`
@@ -8,13 +8,13 @@ LL |     let _ = s.bytes().nth(3);
    = help: to override `-D warnings` add `#[allow(clippy::bytes_nth)]`
 
 error: called `.bytes().nth().unwrap()` on a `String`
-  --> $DIR/bytes_nth.rs:7:14
+  --> tests/ui/bytes_nth.rs:7:14
    |
 LL |     let _ = &s.bytes().nth(3).unwrap();
    |              ^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `s.as_bytes()[3]`
 
 error: called `.bytes().nth()` on a `str`
-  --> $DIR/bytes_nth.rs:8:13
+  --> tests/ui/bytes_nth.rs:8:13
    |
 LL |     let _ = s[..].bytes().nth(3);
    |             ^^^^^^^^^^^^^^^^^^^^ help: try: `s[..].as_bytes().get(3).copied()`

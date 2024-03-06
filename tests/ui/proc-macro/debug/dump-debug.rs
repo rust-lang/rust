@@ -1,5 +1,5 @@
-// run-pass
-// aux-build:macro-dump-debug.rs
+//@ run-pass
+//@ aux-build:macro-dump-debug.rs
 
 extern crate macro_dump_debug;
 use macro_dump_debug::dump_debug;

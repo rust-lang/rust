@@ -1,5 +1,5 @@
-// check-pass
-// known-bug: unknown
+//@ check-pass
+//@ known-bug: unknown
 
 // This should not compile, as the compiler should not know
 // `A - 0` is satisfied `?x - 0` if `?x` is inferred to `A`.

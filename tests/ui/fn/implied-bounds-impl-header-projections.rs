@@ -1,5 +1,5 @@
-// check-pass
-// known-bug: #100051
+//@ check-pass
+//@ known-bug: #100051
 
 // Should fail. Implied bounds from projections in impl headers can create
 // improper lifetimes.  Variant of issue #98543 which was fixed by #99217.

@@ -5,7 +5,7 @@
 // relationships. In the 'main' variant, there are a number of
 // anonymous regions as well.
 
-// compile-flags:-Zverbose-internals
+//@ compile-flags:-Zverbose-internals
 
 #![feature(rustc_attrs)]
 

@@ -1,4 +1,4 @@
-// check-pass
+//@ check-pass
 // Due to #53114, which causes a "read" of the `_` patterns,
 // the borrow-checker refuses this code, while it should probably be allowed.
 // Once the bug is fixed, the test, which is derived from a

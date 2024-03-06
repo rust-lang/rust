@@ -63,7 +63,7 @@ impl<'tcx> Visitor<'tcx> for FunctionItemRefChecker<'_, 'tcx> {
 
 impl<'tcx> FunctionItemRefChecker<'_, 'tcx> {
     /// Emits a lint for function reference arguments bound by `fmt::Pointer` in calls to the
-    /// function defined by `def_id` with the substitutions `args_ref`.
+    /// function defined by `def_id` with the generic parameters `args_ref`.
     fn check_bound_args(
         &self,
         def_id: DefId,
@@ -83,11 +83,11 @@ impl<'tcx> FunctionItemRefChecker<'_, 'tcx> {
                     for inner_ty in arg_def.walk().filter_map(|arg| arg.as_type()) {
                         // If the inner type matches the type bound by `Pointer`
                         if inner_ty == bound_ty {
-                            // Do a substitution using the parameters from the callsite
-                            let subst_ty =
+                            // Do an instantiation using the parameters from the callsite
+                            let instantiated_ty =
                                 EarlyBinder::bind(inner_ty).instantiate(self.tcx, args_ref);
                             if let Some((fn_id, fn_args)) =
-                                FunctionItemRefChecker::is_fn_ref(subst_ty)
+                                FunctionItemRefChecker::is_fn_ref(instantiated_ty)
                             {
                                 let mut span = self.nth_arg_span(args, arg_num);
                                 if span.from_expansion() {

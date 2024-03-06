@@ -1,7 +1,7 @@
-// run-pass
-// aux-build:cci_const.rs
+//@ run-pass
+//@ aux-build:cci_const.rs
 
-// pretty-expanded FIXME #23616
+//@ pretty-expanded FIXME #23616
 
 extern crate cci_const;
 

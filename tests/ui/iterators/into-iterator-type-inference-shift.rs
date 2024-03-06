@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 #![allow(unused_must_use)]
 #![allow(dead_code)]
 #![allow(unused_mut)]
@@ -8,7 +8,7 @@
 // propagation yet, and so we just saw a type variable, yielding an
 // error.
 
-// pretty-expanded FIXME #23616
+//@ pretty-expanded FIXME #23616
 
 trait IntoIterator {
     type Iter: Iterator;

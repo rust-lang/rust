@@ -174,6 +174,7 @@ impl<'tcx> LateLintPass<'tcx> for IndexingSlicing {
                         // only `usize` index is legal in rust array index
                         // leave other type to rustc
                         if let Constant::Int(off) = constant
+                            && off <= usize::MAX as u128
                             && let ty::Uint(utype) = cx.typeck_results().expr_ty(index).kind()
                             && *utype == ty::UintTy::Usize
                             && let ty::Array(_, s) = ty.kind()

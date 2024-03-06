@@ -1,6 +1,6 @@
-// edition: 2024
-// compile-flags: -Zunstable-options
-// check-pass
+//@ edition: 2024
+//@ compile-flags: -Zunstable-options
+//@ check-pass
 #![feature(gen_blocks)]
 
 // make sure gen fn captures lifetimes in its signature

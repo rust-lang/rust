@@ -1,5 +1,5 @@
-// compile-flags:-Zpolymorphize=on
-// build-pass
+//@ compile-flags:-Zpolymorphize=on
+//@ build-pass
 
 fn test<T>() {
     std::mem::size_of::<T>();

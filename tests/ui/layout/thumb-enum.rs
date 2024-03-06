@@ -1,5 +1,5 @@
-// compile-flags: --target thumbv8m.main-none-eabihf
-// needs-llvm-components: arm
+//@ compile-flags: --target thumbv8m.main-none-eabihf
+//@ needs-llvm-components: arm
 //
 // Verify that thumb targets implement the repr(C) for enums correctly.
 //

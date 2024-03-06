@@ -1,9 +1,9 @@
-// run-pass
+//@ run-pass
 // Constants (static variables) can be used to match in patterns, but mutable
 // statics cannot. This ensures that there's some form of error if this is
 // attempted.
 
-// ignore-wasm32-bare no libc to test ffi with
+//@ ignore-wasm32-bare no libc to test ffi with
 
 #![feature(rustc_private)]
 
@@ -33,9 +33,9 @@ unsafe fn run() {
     rust_dbg_static_mut = -3;
     assert_eq!(rust_dbg_static_mut, -3);
     static_bound(&rust_dbg_static_mut);
-    //~^ WARN shared reference of mutable static is discouraged [static_mut_ref]
+    //~^ WARN shared reference to mutable static is discouraged [static_mut_refs]
     static_bound_set(&mut rust_dbg_static_mut);
-    //~^ WARN mutable reference of mutable static is discouraged [static_mut_ref]
+    //~^ WARN mutable reference to mutable static is discouraged [static_mut_refs]
 }
 
 pub fn main() {

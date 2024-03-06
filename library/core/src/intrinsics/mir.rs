@@ -105,7 +105,6 @@
 //! }
 //!
 //! #[custom_mir(dialect = "runtime", phase = "optimized")]
-#![cfg_attr(bootstrap, doc = "#[cfg(any())]")] // disable the following function in doctests when `bootstrap` is set
 //! fn push_and_pop<T>(v: &mut Vec<T>, value: T) {
 //!     mir!(
 //!         let _unused;
@@ -357,7 +356,6 @@ define!("mir_unwind_resume",
 
 define!("mir_storage_live", fn StorageLive<T>(local: T));
 define!("mir_storage_dead", fn StorageDead<T>(local: T));
-#[cfg(not(bootstrap))]
 define!("mir_assume", fn Assume(operand: bool));
 define!("mir_deinit", fn Deinit<T>(place: T));
 define!("mir_checked", fn Checked<T>(binop: T) -> (T, bool));

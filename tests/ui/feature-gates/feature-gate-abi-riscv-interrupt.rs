@@ -1,5 +1,5 @@
-// needs-llvm-components: riscv
-// compile-flags: --target=riscv32imc-unknown-none-elf --crate-type=rlib
+//@ needs-llvm-components: riscv
+//@ compile-flags: --target=riscv32imc-unknown-none-elf --crate-type=rlib
 #![no_core]
 #![feature(no_core, lang_items)]
 #[lang = "sized"]

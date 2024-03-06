@@ -1,4 +1,4 @@
-// check-pass
+//@ check-pass
 // issue: 113415
 
 // Makes sure that coherence doesn't call any of the `predicate_may_hold`-esque fns,

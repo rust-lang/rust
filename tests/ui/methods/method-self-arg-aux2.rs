@@ -1,7 +1,7 @@
-// run-pass
+//@ run-pass
 // Test method calls with self as an argument (cross-crate)
 
-// aux-build:method_self_arg2.rs
+//@ aux-build:method_self_arg2.rs
 extern crate method_self_arg2;
 use method_self_arg2::{Foo, Bar};
 

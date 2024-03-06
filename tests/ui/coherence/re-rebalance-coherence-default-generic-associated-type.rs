@@ -1,5 +1,5 @@
-// run-pass
-// aux-build:re_rebalance_coherence_lib-rpass.rs
+//@ run-pass
+//@ aux-build:re_rebalance_coherence_lib-rpass.rs
 
 #![allow(dead_code)]
 // check that a generic type with a default value from an associated type can be used without

@@ -2,15 +2,17 @@ use hir::{InFile, MacroFileIdExt, ModuleDef};
 use ide_db::{helpers::mod_path_to_ast, imports::import_assets::NameToImport, items_locator};
 use itertools::Itertools;
 use syntax::{
-    ast::{self, AstNode, HasName},
+    ast::{self, make, AstNode, HasName},
+    ted,
     SyntaxKind::WHITESPACE,
+    T,
 };
 
 use crate::{
     assist_context::{AssistContext, Assists, SourceChangeBuilder},
     utils::{
-        add_trait_assoc_items_to_impl, filter_assoc_items, gen_trait_fn_body,
-        generate_trait_impl_text, render_snippet, Cursor, DefaultMethods, IgnoreAssocItems,
+        add_trait_assoc_items_to_impl, filter_assoc_items, gen_trait_fn_body, generate_trait_impl,
+        DefaultMethods, IgnoreAssocItems,
     },
     AssistId, AssistKind,
 };
@@ -132,35 +134,59 @@ fn add_assist(
         label,
         target,
         |builder| {
-            let insert_pos = adt.syntax().text_range().end();
+            let insert_after = ted::Position::after(builder.make_mut(adt.clone()).syntax());
+
             let impl_def_with_items =
                 impl_def_from_trait(&ctx.sema, adt, &annotated_name, trait_, replace_trait_path);
             update_attribute(builder, old_derives, old_tree, old_trait_path, attr);
-            let trait_path = replace_trait_path.to_string();
+
+            let trait_path = make::ty_path(replace_trait_path.clone());
+
             match (ctx.config.snippet_cap, impl_def_with_items) {
                 (None, _) => {
-                    builder.insert(insert_pos, generate_trait_impl_text(adt, &trait_path, ""))
+                    let impl_def = generate_trait_impl(adt, trait_path);
+
+                    ted::insert_all(
+                        insert_after,
+                        vec![make::tokens::blank_line().into(), impl_def.syntax().clone().into()],
+                    );
                 }
-                (Some(cap), None) => builder.insert_snippet(
-                    cap,
-                    insert_pos,
-                    generate_trait_impl_text(adt, &trait_path, "    $0"),
-                ),
+                (Some(cap), None) => {
+                    let impl_def = generate_trait_impl(adt, trait_path);
+
+                    if let Some(l_curly) =
+                        impl_def.assoc_item_list().and_then(|it| it.l_curly_token())
+                    {
+                        builder.add_tabstop_after_token(cap, l_curly);
+                    }
+
+                    ted::insert_all(
+                        insert_after,
+                        vec![make::tokens::blank_line().into(), impl_def.syntax().clone().into()],
+                    );
+                }
                 (Some(cap), Some((impl_def, first_assoc_item))) => {
-                    let mut cursor = Cursor::Before(first_assoc_item.syntax());
-                    let placeholder;
+                    let mut added_snippet = false;
                     if let ast::AssocItem::Fn(ref func) = first_assoc_item {
                         if let Some(m) = func.syntax().descendants().find_map(ast::MacroCall::cast)
                         {
                             if m.syntax().text() == "todo!()" {
-                                placeholder = m;
-                                cursor = Cursor::Replace(placeholder.syntax());
+                                // Make the `todo!()` a placeholder
+                                builder.add_placeholder_snippet(cap, m);
+                                added_snippet = true;
                             }
                         }
                     }
 
-                    let rendered = render_snippet(cap, impl_def.syntax(), cursor);
-                    builder.insert_snippet(cap, insert_pos, format!("\n\n{rendered}"))
+                    if !added_snippet {
+                        // If we haven't already added a snippet, add a tabstop before the generated function
+                        builder.add_tabstop_before(cap, first_assoc_item);
+                    }
+
+                    ted::insert_all(
+                        insert_after,
+                        vec![make::tokens::blank_line().into(), impl_def.syntax().clone().into()],
+                    );
                 }
             };
         },
@@ -190,28 +216,7 @@ fn impl_def_from_trait(
     if trait_items.is_empty() {
         return None;
     }
-    let impl_def = {
-        use syntax::ast::Impl;
-        let text = generate_trait_impl_text(adt, trait_path.to_string().as_str(), "");
-        // FIXME: `generate_trait_impl_text` currently generates two newlines
-        // at the front, but these leading newlines should really instead be
-        // inserted at the same time the impl is inserted
-        assert_eq!(&text[..2], "\n\n", "`generate_trait_impl_text` output changed");
-        let parse = syntax::SourceFile::parse(&text[2..]);
-        let node = match parse.tree().syntax().descendants().find_map(Impl::cast) {
-            Some(it) => it,
-            None => {
-                panic!(
-                    "Failed to make ast node `{}` from text {}",
-                    std::any::type_name::<Impl>(),
-                    text
-                )
-            }
-        };
-        let node = node.clone_for_update();
-        assert_eq!(node.syntax().text_range().start(), 0.into());
-        node
-    };
+    let impl_def = generate_trait_impl(adt, make::ty_path(trait_path.clone()));
 
     let first_assoc_item =
         add_trait_assoc_items_to_impl(sema, &trait_items, trait_, &impl_def, target_scope);
@@ -238,20 +243,34 @@ fn update_attribute(
     let has_more_derives = !new_derives.is_empty();
 
     if has_more_derives {
-        let new_derives = format!("({})", new_derives.iter().format(", "));
-        builder.replace(old_tree.syntax().text_range(), new_derives);
-    } else {
-        let attr_range = attr.syntax().text_range();
-        builder.delete(attr_range);
+        let old_tree = builder.make_mut(old_tree.clone());
 
-        if let Some(line_break_range) = attr
-            .syntax()
-            .next_sibling_or_token()
-            .filter(|t| t.kind() == WHITESPACE)
-            .map(|t| t.text_range())
+        // Make the paths into flat lists of tokens in a vec
+        let tt = new_derives.iter().map(|path| path.syntax().clone()).map(|node| {
+            node.descendants_with_tokens()
+                .filter_map(|element| element.into_token())
+                .collect::<Vec<_>>()
+        });
+        // ...which are interspersed with ", "
+        let tt = Itertools::intersperse(tt, vec![make::token(T![,]), make::tokens::single_space()]);
+        // ...wrap them into the appropriate `NodeOrToken` variant
+        let tt = tt.flatten().map(syntax::NodeOrToken::Token);
+        // ...and make them into a flat list of tokens
+        let tt = tt.collect::<Vec<_>>();
+
+        let new_tree = make::token_tree(T!['('], tt).clone_for_update();
+        ted::replace(old_tree.syntax(), new_tree.syntax());
+    } else {
+        // Remove the attr and any trailing whitespace
+        let attr = builder.make_mut(attr.clone());
+
+        if let Some(line_break) =
+            attr.syntax().next_sibling_or_token().filter(|t| t.kind() == WHITESPACE)
         {
-            builder.delete(line_break_range);
+            ted::remove(line_break)
         }
+
+        ted::remove(attr.syntax())
     }
 }
 
@@ -1168,9 +1187,7 @@ struct Foo {
     bar: String,
 }
 
-impl Debug for Foo {
-    $0
-}
+impl Debug for Foo {$0}
             "#,
         )
     }
@@ -1191,9 +1208,7 @@ pub struct Foo {
     bar: String,
 }
 
-impl Debug for Foo {
-    $0
-}
+impl Debug for Foo {$0}
             "#,
         )
     }
@@ -1211,9 +1226,7 @@ struct Foo {}
 #[derive(Display, Serialize)]
 struct Foo {}
 
-impl Debug for Foo {
-    $0
-}
+impl Debug for Foo {$0}
             "#,
         )
     }

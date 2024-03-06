@@ -11,6 +11,8 @@
 //! projections.
 use la_arena::{Arena, ArenaMap, Idx, RawIdx};
 
+// FIXME: This isn't really used anymore, at least not in a way where it does anything useful.
+// Check if we should get rid of this or make proper use of it instead.
 pub(crate) struct Trace<T, V> {
     arena: Option<Arena<T>>,
     map: Option<ArenaMap<Idx<T>, V>>,

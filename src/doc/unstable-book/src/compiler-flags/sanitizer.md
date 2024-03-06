@@ -1,5 +1,14 @@
 # `sanitizer`
 
+Sanitizers are tools that help detect and prevent various types of bugs and
+vulnerabilities in software. They are available in compilers and work by
+instrumenting the code to add additional runtime checks. While they provide
+powerful tools for identifying bugs or security issues, it's important to note
+that using sanitizers can introduce runtime overhead and might not catch all
+possible issues. Therefore, they are typically used alongside other best
+practices in software development, such as testing and fuzzing, to ensure the
+highest level of software quality and security.
+
 The tracking issues for this feature are:
 
 * [#39699](https://github.com/rust-lang/rust/issues/39699).
@@ -9,29 +18,43 @@ The tracking issues for this feature are:
 
 This feature allows for use of one of following sanitizers:
 
-* [AddressSanitizer](#addresssanitizer) a fast memory error detector.
-* [ControlFlowIntegrity](#controlflowintegrity) LLVM Control Flow Integrity (CFI) provides
-  forward-edge control flow protection.
-* [HWAddressSanitizer](#hwaddresssanitizer) a memory error detector similar to
-  AddressSanitizer, but based on partial hardware assistance.
-* [KernelControlFlowIntegrity](#kernelcontrolflowintegrity) LLVM Kernel Control
-  Flow Integrity (KCFI) provides forward-edge control flow protection for
-  operating systems kernels.
-* [LeakSanitizer](#leaksanitizer) a run-time memory leak detector.
-* [MemorySanitizer](#memorysanitizer) a detector of uninitialized reads.
-* [MemTagSanitizer](#memtagsanitizer) fast memory error detector based on
-  Armv8.5-A Memory Tagging Extension.
-* [SafeStack](#safestack) provides backward-edge control flow protection by separating the stack into safe and unsafe regions.
-* [ShadowCallStack](#shadowcallstack) provides backward-edge control flow protection (aarch64 only).
-* [ThreadSanitizer](#threadsanitizer) a fast data race detector.
+* Those intended for testing or fuzzing (but not production use):
+  * [AddressSanitizer](#addresssanitizer) a fast memory error detector.
+  * [HWAddressSanitizer](#hwaddresssanitizer) a memory error detector similar to
+    AddressSanitizer, but based on partial hardware assistance.
+  * [LeakSanitizer](#leaksanitizer) a run-time memory leak detector.
+  * [MemorySanitizer](#memorysanitizer) a detector of uninitialized reads.
+  * [ThreadSanitizer](#threadsanitizer) a fast data race detector.
 
-To enable a sanitizer compile with `-Zsanitizer=address`,`-Zsanitizer=cfi`,
-`-Zsanitizer=hwaddress`, `-Zsanitizer=leak`, `-Zsanitizer=memory`,
-`-Zsanitizer=memtag`, `-Zsanitizer=shadow-call-stack`, or `-Zsanitizer=thread`.
-You might also need the `--target` and `build-std` flags. Example:
+* Those that apart from testing, may be used in production:
+  * [ControlFlowIntegrity](#controlflowintegrity) LLVM Control Flow Integrity
+    (CFI) provides forward-edge control flow protection.
+  * [DataFlowSanitizer](#dataflowsanitizer) a generic dynamic data flow analysis
+    framework.
+  * [KernelControlFlowIntegrity](#kernelcontrolflowintegrity) LLVM Kernel
+    Control Flow Integrity (KCFI) provides forward-edge control flow protection
+    for operating systems kernels.
+  * [MemTagSanitizer](#memtagsanitizer) fast memory error detector based on
+    Armv8.5-A Memory Tagging Extension.
+  * [SafeStack](#safestack) provides backward-edge control flow protection by
+    separating the stack into safe and unsafe regions.
+  * [ShadowCallStack](#shadowcallstack) provides backward-edge control flow
+    protection (aarch64 only).
+
+To enable a sanitizer compile with `-Zsanitizer=address`, `-Zsanitizer=cfi`,
+`-Zsanitizer=dataflow`,`-Zsanitizer=hwaddress`, `-Zsanitizer=leak`,
+`-Zsanitizer=memory`, `-Zsanitizer=memtag`, `-Zsanitizer=shadow-call-stack`, or
+`-Zsanitizer=thread`. You might also need the `--target` and `build-std` flags.
+
+Example:
 ```shell
 $ RUSTFLAGS=-Zsanitizer=address cargo build -Zbuild-std --target x86_64-unknown-linux-gnu
 ```
+
+Additional options for sanitizers can be passed to LLVM command line argument
+processor via LLVM arguments using `llvm-args` codegen option (e.g.,
+`-Cllvm-args=-dfsan-combine-pointer-labels-on-load=false`). See the sanitizer
+documentation for more information about additional options.
 
 # AddressSanitizer
 
@@ -625,6 +648,21 @@ LLVM KCFI is supported on the following targets:
 See the [Clang KernelControlFlowIntegrity documentation][clang-kcfi] for more
 details.
 
+# DataFlowSanitizer
+
+DataFlowSanitizer is a generalised dynamic data flow analysis.
+
+Unlike other Sanitizer tools, this tool is not designed to detect a specific
+class of bugs on its own. Instead, it provides a generic dynamic data flow
+analysis framework to be used by clients to help detect application-specific
+issues within their own code.
+
+DataFlowSanitizer is supported on the following targets:
+
+* `x86_64-unknown-linux-gnu`
+
+See the [Clang DataFlowSanitizer documentation][clang-dataflow] for more details.
+
 # KernelAddressSanitizer
 
 KernelAddressSanitizer (KASAN) is a freestanding version of AddressSanitizer
@@ -835,6 +873,7 @@ Sanitizers produce symbolized stacktraces when llvm-symbolizer binary is in `PAT
 * [Sanitizers project page](https://github.com/google/sanitizers/wiki/)
 * [AddressSanitizer in Clang][clang-asan]
 * [ControlFlowIntegrity in Clang][clang-cfi]
+* [DataFlowSanitizer in Clang][clang-dataflow]
 * [HWAddressSanitizer in Clang][clang-hwasan]
 * [Linux Kernel's KernelAddressSanitizer documentation][linux-kasan]
 * [LeakSanitizer in Clang][clang-lsan]
@@ -844,6 +883,7 @@ Sanitizers produce symbolized stacktraces when llvm-symbolizer binary is in `PAT
 
 [clang-asan]: https://clang.llvm.org/docs/AddressSanitizer.html
 [clang-cfi]: https://clang.llvm.org/docs/ControlFlowIntegrity.html
+[clang-dataflow]: https://clang.llvm.org/docs/DataFlowSanitizer.html
 [clang-hwasan]: https://clang.llvm.org/docs/HardwareAssistedAddressSanitizerDesign.html
 [clang-kcfi]: https://clang.llvm.org/docs/ControlFlowIntegrity.html#fsanitize-kcfi
 [clang-lsan]: https://clang.llvm.org/docs/LeakSanitizer.html

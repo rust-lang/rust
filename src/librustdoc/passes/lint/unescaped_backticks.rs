@@ -4,7 +4,7 @@ use crate::clean::Item;
 use crate::core::DocContext;
 use crate::html::markdown::main_body_opts;
 use pulldown_cmark::{BrokenLink, Event, Parser};
-use rustc_errors::DiagnosticBuilder;
+use rustc_errors::Diag;
 use rustc_lint_defs::Applicability;
 use rustc_resolve::rustdoc::source_span_for_markdown_range;
 use std::ops::Range;
@@ -368,7 +368,7 @@ fn suggest_insertion(
     cx: &DocContext<'_>,
     item: &Item,
     dox: &str,
-    lint: &mut DiagnosticBuilder<'_, ()>,
+    lint: &mut Diag<'_, ()>,
     insert_index: usize,
     suggestion: char,
     message: &'static str,

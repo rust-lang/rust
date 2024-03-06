@@ -1,6 +1,6 @@
 // #99269
 
-// check-pass
+//@ check-pass
 
 #![warn(unused_must_use)]
 

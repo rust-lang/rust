@@ -6,8 +6,8 @@
 // See https://github.com/rust-lang/rust/issues/64477#issuecomment-534669068 for details
 // and https://github.com/rust-lang/rust/issues/64477#issuecomment-531882958 for an example.
 //
-// check-pass
-// edition:2018
+//@ check-pass
+//@ edition:2018
 
 async fn foo(_: String) {}
 

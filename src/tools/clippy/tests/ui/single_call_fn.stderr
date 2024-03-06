@@ -1,5 +1,31 @@
 error: this function is only used once
-  --> $DIR/single_call_fn.rs:34:1
+  --> tests/ui/single_call_fn.rs:13:1
+   |
+LL | fn i() {}
+   | ^^^^^^^^^
+   |
+note: used here
+  --> tests/ui/single_call_fn.rs:18:13
+   |
+LL |     let a = i;
+   |             ^
+   = note: `-D clippy::single-call-fn` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::single_call_fn)]`
+
+error: this function is only used once
+  --> tests/ui/single_call_fn.rs:14:1
+   |
+LL | fn j() {}
+   | ^^^^^^^^^
+   |
+note: used here
+  --> tests/ui/single_call_fn.rs:25:9
+   |
+LL |         j();
+   |         ^
+
+error: this function is only used once
+  --> tests/ui/single_call_fn.rs:34:1
    |
 LL | / fn c() {
 LL | |     println!("really");
@@ -8,49 +34,47 @@ LL | |     println!("function...");
 LL | | }
    | |_^
    |
-help: used here
-  --> $DIR/single_call_fn.rs:41:5
+note: used here
+  --> tests/ui/single_call_fn.rs:41:5
    |
 LL |     c();
    |     ^
-   = note: `-D clippy::single-call-fn` implied by `-D warnings`
-   = help: to override `-D warnings` add `#[allow(clippy::single_call_fn)]`
 
 error: this function is only used once
-  --> $DIR/single_call_fn.rs:13:1
-   |
-LL | fn i() {}
-   | ^^^^^^^^^
-   |
-help: used here
-  --> $DIR/single_call_fn.rs:18:13
-   |
-LL |     let a = i;
-   |             ^
-
-error: this function is only used once
-  --> $DIR/single_call_fn.rs:44:1
+  --> tests/ui/single_call_fn.rs:44:1
    |
 LL | fn a() {}
    | ^^^^^^^^^
    |
-help: used here
-  --> $DIR/single_call_fn.rs:47:5
+note: used here
+  --> tests/ui/single_call_fn.rs:47:5
    |
 LL |     a();
    |     ^
 
 error: this function is only used once
-  --> $DIR/single_call_fn.rs:14:1
+  --> tests/ui/single_call_fn.rs:89:5
    |
-LL | fn j() {}
-   | ^^^^^^^^^
+LL |     fn default() {}
+   |     ^^^^^^^^^^^^^^^
    |
-help: used here
-  --> $DIR/single_call_fn.rs:25:9
+note: used here
+  --> tests/ui/single_call_fn.rs:104:5
    |
-LL |         j();
-   |         ^
+LL |     T::default();
+   |     ^^^^^^^^^^
 
-error: aborting due to 4 previous errors
+error: this function is only used once
+  --> tests/ui/single_call_fn.rs:102:9
+   |
+LL |         fn foo() {}
+   |         ^^^^^^^^^^^
+   |
+note: used here
+  --> tests/ui/single_call_fn.rs:105:5
+   |
+LL |     S::foo();
+   |     ^^^^^^
+
+error: aborting due to 6 previous errors
 

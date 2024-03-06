@@ -384,7 +384,7 @@ impl ast::UseTreeList {
         // the below remove the innermost {}, got `use crate::{{{A}}}`
         remove_brace_in_use_tree_list(&self);
 
-        // the below remove othe unnecessary {}, got `use crate::A`
+        // the below remove other unnecessary {}, got `use crate::A`
         while let Some(parent_use_tree_list) = self.parent_use_tree().parent_use_tree_list() {
             remove_brace_in_use_tree_list(&parent_use_tree_list);
             self = parent_use_tree_list;
@@ -565,6 +565,26 @@ impl fmt::Display for NameOrNameRef {
         match self {
             NameOrNameRef::Name(it) => fmt::Display::fmt(it, f),
             NameOrNameRef::NameRef(it) => fmt::Display::fmt(it, f),
+        }
+    }
+}
+
+impl ast::AstNode for NameOrNameRef {
+    fn can_cast(kind: SyntaxKind) -> bool {
+        matches!(kind, SyntaxKind::NAME | SyntaxKind::NAME_REF)
+    }
+    fn cast(syntax: SyntaxNode) -> Option<Self> {
+        let res = match syntax.kind() {
+            SyntaxKind::NAME => NameOrNameRef::Name(ast::Name { syntax }),
+            SyntaxKind::NAME_REF => NameOrNameRef::NameRef(ast::NameRef { syntax }),
+            _ => return None,
+        };
+        Some(res)
+    }
+    fn syntax(&self) -> &SyntaxNode {
+        match self {
+            NameOrNameRef::NameRef(it) => it.syntax(),
+            NameOrNameRef::Name(it) => it.syntax(),
         }
     }
 }

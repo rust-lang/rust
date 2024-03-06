@@ -68,10 +68,10 @@ LL |     ($i: ident) => ($i)
    |                       ^ expected one of `move`, `|`, or `||`
 
 error: macro expansion ends with an incomplete expression: expected one of `move`, `|`, or `||`
-  --> $DIR/edition-keywords-2018-2018-parsing.rs:19:20
+  --> $DIR/edition-keywords-2018-2018-parsing.rs:37:30
    |
-LL |     ($i: tt) => ($i)
-   |                    ^ expected one of `move`, `|`, or `||`
+LL |     if local_passes_tt!(async) == 1 {}
+   |                              ^ expected one of `move`, `|`, or `||`
 
 error[E0308]: mismatched types
   --> $DIR/edition-keywords-2018-2018-parsing.rs:42:33

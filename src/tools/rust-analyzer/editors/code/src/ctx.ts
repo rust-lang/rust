@@ -234,6 +234,23 @@ export class Ctx implements RustAnalyzerExtensionApi {
                     this.outputChannel!.show();
                 }),
             );
+            this.pushClientCleanup(
+                this._client.onNotification(ra.unindexedProject, async (params) => {
+                    if (this.config.discoverProjectRunner) {
+                        const command = `${this.config.discoverProjectRunner}.discoverWorkspaceCommand`;
+                        log.info(`running command: ${command}`);
+                        const uris = params.textDocuments.map((doc) =>
+                            vscode.Uri.parse(doc.uri, true),
+                        );
+                        const projects: JsonProject[] = await vscode.commands.executeCommand(
+                            command,
+                            uris,
+                        );
+                        this.setWorkspaces(projects);
+                        await this.notifyRustAnalyzer();
+                    }
+                }),
+            );
         }
         return this._client;
     }

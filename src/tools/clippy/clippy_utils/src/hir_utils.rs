@@ -132,7 +132,6 @@ impl HirEqInterExpr<'_, '_, '_> {
     }
 
     /// Checks whether two blocks are the same.
-    #[expect(clippy::similar_names)]
     fn eq_block(&mut self, left: &Block<'_>, right: &Block<'_>) -> bool {
         use TokenKind::{Semi, Whitespace};
         if left.stmts.len() != right.stmts.len() {
@@ -247,7 +246,7 @@ impl HirEqInterExpr<'_, '_, '_> {
         res
     }
 
-    #[expect(clippy::similar_names, clippy::too_many_lines)]
+    #[expect(clippy::too_many_lines)]
     pub fn eq_expr(&mut self, left: &Expr<'_>, right: &Expr<'_>) -> bool {
         if !self.check_ctxt(left.span.ctxt(), right.span.ctxt()) {
             return false;
@@ -463,7 +462,6 @@ impl HirEqInterExpr<'_, '_, '_> {
         }
     }
 
-    #[expect(clippy::similar_names)]
     fn eq_qpath(&mut self, left: &QPath<'_>, right: &QPath<'_>) -> bool {
         match (left, right) {
             (&QPath::Resolved(ref lty, lpath), &QPath::Resolved(ref rty, rpath)) => {
@@ -515,6 +513,7 @@ impl HirEqInterExpr<'_, '_, '_> {
             (TyKind::Path(l), TyKind::Path(r)) => self.eq_qpath(l, r),
             (&TyKind::Tup(l), &TyKind::Tup(r)) => over(l, r, |l, r| self.eq_ty(l, r)),
             (&TyKind::Infer, &TyKind::Infer) => true,
+            (TyKind::AnonAdt(l_item_id), TyKind::AnonAdt(r_item_id)) => l_item_id == r_item_id,
             _ => false,
         }
     }
@@ -1108,7 +1107,7 @@ impl<'a, 'tcx> SpanlessHash<'a, 'tcx> {
             TyKind::Typeof(anon_const) => {
                 self.hash_body(anon_const.body);
             },
-            TyKind::Err(_) | TyKind::Infer | TyKind::Never | TyKind::InferDelegation(..) => {},
+            TyKind::Err(_) | TyKind::Infer | TyKind::Never | TyKind::InferDelegation(..) | TyKind::AnonAdt(_) => {},
         }
     }
 
@@ -1158,7 +1157,6 @@ pub fn hash_expr(cx: &LateContext<'_>, e: &Expr<'_>) -> u64 {
     h.finish()
 }
 
-#[expect(clippy::similar_names)]
 fn eq_span_tokens(
     cx: &LateContext<'_>,
     left: impl SpanRange,

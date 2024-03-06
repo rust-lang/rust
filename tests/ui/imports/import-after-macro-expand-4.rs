@@ -1,4 +1,4 @@
-// check-pass
+//@ check-pass
 // https://github.com/rust-lang/rust/pull/113242#issuecomment-1616034904
 // similar with `import-after-macro-expand-2.rs`
 

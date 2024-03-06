@@ -1,6 +1,6 @@
 // regression test for #74868
 
-// check-pass
+//@ check-pass
 
 trait BoxedDsl<'a> {
     type Output;

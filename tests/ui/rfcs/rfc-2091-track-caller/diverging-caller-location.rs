@@ -1,4 +1,4 @@
-// run-fail
+//@ run-fail
 
 //! This test ensures that `#[track_caller]` can be applied directly to diverging functions, as
 //! the tracking issue says: https://github.com/rust-lang/rust/issues/47809#issue-292138490.

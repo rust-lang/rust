@@ -1,4 +1,4 @@
-// check-pass
+//@ check-pass
 //
 // Regression test for issue #99286
 // Tests that stabilized intrinsics are accessible

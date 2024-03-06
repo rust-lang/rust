@@ -16,6 +16,7 @@ cov-mark = "2.0.0-pre.1"
 either.workspace = true
 itertools.workspace = true
 serde_json.workspace = true
+tracing.workspace = true
 once_cell = "1.17.0"
 
 # local deps

@@ -127,6 +127,11 @@
 //! trait, which provides a [`from_wide`] method to convert a native Windows
 //! string (without the terminating nul character) to an [`OsString`].
 //!
+//! ## Other platforms
+//!
+//! Many other platforms provide their own extension traits in a
+//! `std::os::*::ffi` module.
+//!
 //! ## On all platforms
 //!
 //! On all platforms, [`OsStr`] consists of a sequence of bytes that is encoded as a superset of
@@ -134,6 +139,8 @@
 //!
 //! For limited, inexpensive conversions from and to bytes, see [`OsStr::as_encoded_bytes`] and
 //! [`OsStr::from_encoded_bytes_unchecked`].
+//!
+//! For basic string processing, see [`OsStr::slice_encoded_bytes`].
 //!
 //! [Unicode scalar value]: https://www.unicode.org/glossary/#unicode_scalar_value
 //! [Unicode code point]: https://www.unicode.org/glossary/#code_point
@@ -162,6 +169,7 @@ pub use core::ffi::FromBytesUntilNulError;
 pub use core::ffi::{CStr, FromBytesWithNulError};
 
 #[stable(feature = "rust1", since = "1.0.0")]
+#[doc(inline)]
 pub use self::os_str::{OsStr, OsString};
 
 #[stable(feature = "core_ffi_c", since = "1.64.0")]
@@ -181,4 +189,5 @@ pub use core::ffi::c_void;
 )]
 pub use core::ffi::{VaList, VaListImpl};
 
-mod os_str;
+#[unstable(feature = "os_str_display", issue = "120048")]
+pub mod os_str;

@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 
 pub struct Data<T> {
     function: fn() -> T,

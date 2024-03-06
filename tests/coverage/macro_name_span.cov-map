@@ -1,10 +1,10 @@
 Function name: macro_name_span::affected_function
-Raw bytes (9): 0x[01, 01, 00, 01, 01, 16, 1c, 02, 06]
+Raw bytes (9): 0x[01, 01, 00, 01, 01, 16, 1c, 01, 40]
 Number of files: 1
 - file 0 => global file 1
 Number of expressions: 0
 Number of file 0 mappings: 1
-- Code(Counter(0)) at (prev + 22, 28) to (start + 2, 6)
+- Code(Counter(0)) at (prev + 22, 28) to (start + 1, 64)
 
 Function name: macro_name_span::main
 Raw bytes (9): 0x[01, 01, 00, 01, 01, 0b, 01, 02, 02]

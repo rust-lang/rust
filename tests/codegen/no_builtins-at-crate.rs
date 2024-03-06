@@ -1,4 +1,4 @@
-// compile-flags: -C opt-level=1
+//@ compile-flags: -C opt-level=1
 
 #![no_builtins]
 #![crate_type = "lib"]

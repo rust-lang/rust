@@ -1,5 +1,5 @@
 error: this creates an owned instance just for comparison
-  --> $DIR/with_suggestion.rs:5:14
+  --> tests/ui/cmp_owned/with_suggestion.rs:5:14
    |
 LL |         x != "foo".to_string();
    |              ^^^^^^^^^^^^^^^^^ help: try: `"foo"`
@@ -8,31 +8,31 @@ LL |         x != "foo".to_string();
    = help: to override `-D warnings` add `#[allow(clippy::cmp_owned)]`
 
 error: this creates an owned instance just for comparison
-  --> $DIR/with_suggestion.rs:7:9
+  --> tests/ui/cmp_owned/with_suggestion.rs:7:9
    |
 LL |         "foo".to_string() != x;
    |         ^^^^^^^^^^^^^^^^^ help: try: `"foo"`
 
 error: this creates an owned instance just for comparison
-  --> $DIR/with_suggestion.rs:14:10
+  --> tests/ui/cmp_owned/with_suggestion.rs:14:10
    |
 LL |     x != "foo".to_owned();
    |          ^^^^^^^^^^^^^^^^ help: try: `"foo"`
 
 error: this creates an owned instance just for comparison
-  --> $DIR/with_suggestion.rs:16:10
+  --> tests/ui/cmp_owned/with_suggestion.rs:16:10
    |
 LL |     x != String::from("foo");
    |          ^^^^^^^^^^^^^^^^^^^ help: try: `"foo"`
 
 error: this creates an owned instance just for comparison
-  --> $DIR/with_suggestion.rs:20:5
+  --> tests/ui/cmp_owned/with_suggestion.rs:20:5
    |
 LL |     Foo.to_owned() == Foo;
    |     ^^^^^^^^^^^^^^ help: try: `Foo`
 
 error: this creates an owned instance just for comparison
-  --> $DIR/with_suggestion.rs:22:30
+  --> tests/ui/cmp_owned/with_suggestion.rs:22:30
    |
 LL |     "abc".chars().filter(|c| c.to_owned() != 'X');
    |                              ^^^^^^^^^^^^ help: try: `*c`

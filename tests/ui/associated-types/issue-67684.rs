@@ -1,10 +1,10 @@
-// revisions: check build
-// [check]check-pass
+//@ revisions: check build
+//@ [check]check-pass
 //
 // This second configuration aims to verify that we do not ICE in ConstProp because of
 // normalization failure.
-// [build]build-pass
-// [build]compile-flags: -Zmir-opt-level=3 --emit=mir
+//@ [build]build-pass
+//@ [build]compile-flags: -Zmir-opt-level=3 --emit=mir
 
 #![allow(dead_code)]
 

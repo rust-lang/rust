@@ -1,4 +1,4 @@
-// check-pass
+//@ check-pass
 
 fn macros() {
     macro_rules! foo {

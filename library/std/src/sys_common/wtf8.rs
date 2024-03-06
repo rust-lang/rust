@@ -885,15 +885,43 @@ fn decode_surrogate_pair(lead: u16, trail: u16) -> char {
     unsafe { char::from_u32_unchecked(code_point) }
 }
 
-/// Copied from core::str::StrPrelude::is_char_boundary
+/// Copied from str::is_char_boundary
 #[inline]
 pub fn is_code_point_boundary(slice: &Wtf8, index: usize) -> bool {
-    if index == slice.len() {
+    if index == 0 {
         return true;
     }
     match slice.bytes.get(index) {
-        None => false,
-        Some(&b) => b < 128 || b >= 192,
+        None => index == slice.len(),
+        Some(&b) => (b as i8) >= -0x40,
+    }
+}
+
+/// Verify that `index` is at the edge of either a valid UTF-8 codepoint
+/// (i.e. a codepoint that's not a surrogate) or of the whole string.
+///
+/// These are the cases currently permitted by `OsStr::slice_encoded_bytes`.
+/// Splitting between surrogates is valid as far as WTF-8 is concerned, but
+/// we do not permit it in the public API because WTF-8 is considered an
+/// implementation detail.
+#[track_caller]
+#[inline]
+pub fn check_utf8_boundary(slice: &Wtf8, index: usize) {
+    if index == 0 {
+        return;
+    }
+    match slice.bytes.get(index) {
+        Some(0xED) => (), // Might be a surrogate
+        Some(&b) if (b as i8) >= -0x40 => return,
+        Some(_) => panic!("byte index {index} is not a codepoint boundary"),
+        None if index == slice.len() => return,
+        None => panic!("byte index {index} is out of bounds"),
+    }
+    if slice.bytes[index + 1] >= 0xA0 {
+        // There's a surrogate after index. Now check before index.
+        if index >= 3 && slice.bytes[index - 3] == 0xED && slice.bytes[index - 2] >= 0xA0 {
+            panic!("byte index {index} lies between surrogate codepoints");
+        }
     }
 }
 

@@ -1,8 +1,8 @@
 #![cfg_attr(test, allow(dead_code))] // why is this necessary?
 use super::unsupported;
-use crate::ffi::CStr;
+use crate::ffi::{CStr, CString};
 use crate::io;
-use crate::num::NonZeroUsize;
+use crate::num::NonZero;
 use crate::time::Duration;
 
 use super::abi::usercalls;
@@ -133,6 +133,10 @@ impl Thread {
         // which succeeds as-is with the SGX target.
     }
 
+    pub fn get_name() -> Option<CString> {
+        None
+    }
+
     pub fn sleep(dur: Duration) {
         usercalls::wait_timeout(0, dur, || true);
     }
@@ -142,7 +146,7 @@ impl Thread {
     }
 }
 
-pub fn available_parallelism() -> io::Result<NonZeroUsize> {
+pub fn available_parallelism() -> io::Result<NonZero<usize>> {
     unsupported()
 }
 

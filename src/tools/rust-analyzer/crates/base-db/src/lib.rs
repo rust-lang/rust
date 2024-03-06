@@ -2,8 +2,8 @@
 
 #![warn(rust_2018_idioms, unused_lifetimes)]
 
-mod input;
 mod change;
+mod input;
 
 use std::panic;
 
@@ -62,10 +62,24 @@ pub trait SourceDatabase: FileLoader + std::fmt::Debug {
     /// The crate graph.
     #[salsa::input]
     fn crate_graph(&self) -> Arc<CrateGraph>;
+
+    // FIXME: Consider removing this, making HirDatabase::target_data_layout an input query
+    #[salsa::input]
+    fn data_layout(&self, krate: CrateId) -> TargetLayoutLoadResult;
+
+    #[salsa::input]
+    fn toolchain(&self, krate: CrateId) -> Option<Version>;
+
+    #[salsa::transparent]
+    fn toolchain_channel(&self, krate: CrateId) -> Option<ReleaseChannel>;
+}
+
+fn toolchain_channel(db: &dyn SourceDatabase, krate: CrateId) -> Option<ReleaseChannel> {
+    db.toolchain(krate).as_ref().and_then(|v| ReleaseChannel::from_str(&v.pre))
 }
 
 fn parse(db: &dyn SourceDatabase, file_id: FileId) -> Parse<ast::SourceFile> {
-    let _p = profile::span("parse_query").detail(|| format!("{file_id:?}"));
+    let _p = tracing::span!(tracing::Level::INFO, "parse_query", ?file_id).entered();
     let text = db.file_text(file_id);
     SourceFile::parse(&text)
 }
@@ -116,7 +130,7 @@ impl<T: SourceDatabaseExt> FileLoader for FileLoaderDelegate<&'_ T> {
     }
 
     fn relevant_crates(&self, file_id: FileId) -> Arc<[CrateId]> {
-        let _p = profile::span("relevant_crates");
+        let _p = tracing::span!(tracing::Level::INFO, "relevant_crates").entered();
         let source_root = self.0.file_source_root(file_id);
         self.0.source_root_crates(source_root)
     }

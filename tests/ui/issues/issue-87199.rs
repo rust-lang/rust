@@ -2,7 +2,7 @@
 // other than the only supported `?Sized` would still cause the compiler
 // to assume that the `Sized` bound was relaxed.
 
-// check-fail
+//@ check-fail
 
 // Check that these function definitions only emit warnings, not errors
 fn arg<T: ?Send>(_: T) {}

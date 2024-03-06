@@ -2,7 +2,7 @@
 
 #![feature(rustc_attrs)]
 
-// run-pass
+//@ run-pass
 
 macro_rules! make_mac {
     ( $($dollar:tt $arg:ident),+ ) => {

@@ -1,4 +1,4 @@
-// run-rustfix
+//@ run-rustfix
 
 #[derive(Clone)]
 struct Foo;

@@ -958,7 +958,7 @@ fn univariant<
             #[cfg(feature = "randomize")]
             {
                 use rand::{seq::SliceRandom, SeedableRng};
-                // `ReprOptions.layout_seed` is a deterministic seed we can use to randomize field
+                // `ReprOptions.field_shuffle_seed` is a deterministic seed we can use to randomize field
                 // ordering.
                 let mut rng =
                     rand_xoshiro::Xoshiro128StarStar::seed_from_u64(repr.field_shuffle_seed);

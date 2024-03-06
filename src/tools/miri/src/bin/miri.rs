@@ -1,8 +1,11 @@
+#![feature(generic_nonzero)]
 #![feature(rustc_private, stmt_expr_attributes)]
 #![allow(
     clippy::manual_range_contains,
     clippy::useless_format,
-    clippy::field_reassign_with_default
+    clippy::field_reassign_with_default,
+    rustc::diagnostic_outside_of_impl,
+    rustc::untranslatable_diagnostic
 )]
 
 extern crate rustc_data_structures;
@@ -13,13 +16,13 @@ extern crate rustc_log;
 extern crate rustc_metadata;
 extern crate rustc_middle;
 extern crate rustc_session;
+#[macro_use]
+extern crate tracing;
 
 use std::env::{self, VarError};
-use std::num::NonZeroU64;
+use std::num::NonZero;
 use std::path::PathBuf;
 use std::str::FromStr;
-
-use log::debug;
 
 use rustc_data_structures::sync::Lrc;
 use rustc_driver::Compilation;
@@ -65,7 +68,7 @@ impl rustc_driver::Callbacks for MiriCompilerCalls {
         queries: &'tcx rustc_interface::Queries<'tcx>,
     ) -> Compilation {
         queries.global_ctxt().unwrap().enter(|tcx| {
-            if tcx.sess.compile_status().is_err() {
+            if tcx.sess.dcx().has_errors_or_delayed_bugs().is_some() {
                 tcx.dcx().fatal("miri cannot be run on programs that fail compilation");
             }
 
@@ -197,7 +200,7 @@ fn rustc_logger_config() -> rustc_log::LoggerConfig {
             // CTFE-related. Otherwise, we use it verbatim for `RUSTC_LOG`.
             // This way, if you set `MIRI_LOG=trace`, you get only the right parts of
             // rustc traced, but you can also do `MIRI_LOG=miri=trace,rustc_const_eval::interpret=debug`.
-            if log::Level::from_str(&var).is_ok() {
+            if tracing::Level::from_str(&var).is_ok() {
                 cfg.filter = Ok(format!(
                     "rustc_middle::mir::interpret={var},rustc_const_eval::interpret={var}"
                 ));
@@ -215,10 +218,6 @@ fn rustc_logger_config() -> rustc_log::LoggerConfig {
 }
 
 fn init_early_loggers(early_dcx: &EarlyDiagCtxt) {
-    // Note that our `extern crate log` is *not* the same as rustc's; as a result, we have to
-    // initialize them both, and we always initialize `miri`'s first.
-    let env = env_logger::Env::new().filter("MIRI_LOG").write_style("MIRI_LOG_STYLE");
-    env_logger::init_from_env(env);
     // Now for rustc. We only initialize `rustc` if the env var is set (so the user asked for it).
     // If it is not set, we avoid initializing now so that we can initialize later with our custom
     // settings, and *not* log anything for what happens before `miri` gets started.
@@ -526,7 +525,7 @@ fn main() {
                 }
             }
         } else if let Some(param) = arg.strip_prefix("-Zmiri-track-alloc-id=") {
-            let ids: Vec<miri::AllocId> = match parse_comma_list::<NonZeroU64>(param) {
+            let ids: Vec<miri::AllocId> = match parse_comma_list::<NonZero<u64>>(param) {
                 Ok(ids) => ids.into_iter().map(miri::AllocId).collect(),
                 Err(err) =>
                     show_error!(
@@ -535,6 +534,8 @@ fn main() {
                     ),
             };
             miri_config.tracked_alloc_ids.extend(ids);
+        } else if arg == "-Zmiri-track-alloc-accesses" {
+            miri_config.track_alloc_accesses = true;
         } else if let Some(param) = arg.strip_prefix("-Zmiri-compare-exchange-weak-failure-rate=") {
             let rate = match param.parse::<f64>() {
                 Ok(rate) if rate >= 0.0 && rate <= 1.0 => rate,

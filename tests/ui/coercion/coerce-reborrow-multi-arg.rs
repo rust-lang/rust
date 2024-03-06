@@ -1,4 +1,4 @@
-// build-pass
+//@ build-pass
 fn test<T>(_a: T, _b: T) {}
 
 fn main() {

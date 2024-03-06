@@ -14,6 +14,9 @@ fn main() {
     _msrv_153();
     _msrv_126();
     _msrv_118();
+
+    issue_10393();
+    issue_12081();
 }
 
 fn binary_heap_retain() {
@@ -22,6 +25,11 @@ fn binary_heap_retain() {
     binary_heap.retain(|x| x % 2 == 0);
     binary_heap.retain(|x| x % 2 == 0);
     binary_heap.retain(|x| x % 2 == 0);
+
+    // Do lint, because we use pattern matching
+    let mut tuples = BinaryHeap::from([(0, 1), (1, 2), (2, 3)]);
+    tuples.retain(|(ref x, ref y)| *x == 0);
+    tuples.retain(|(x, y)| *x == 0);
 
     // Do not lint, because type conversion is performed
     binary_heap = binary_heap
@@ -55,6 +63,9 @@ fn btree_map_retain() {
     btree_map.retain(|_, &mut v| v % 2 == 0);
     btree_map.retain(|k, &mut v| (k % 2 == 0) && (v % 2 == 0));
 
+    // Do not lint, because the parameters are not matched in tuple pattern
+    btree_map = btree_map.into_iter().filter(|t| t.0 % 2 == 0).collect();
+
     // Do not lint.
     btree_map = btree_map
         .into_iter()
@@ -75,6 +86,11 @@ fn btree_set_retain() {
     btree_set.retain(|x| x % 2 == 0);
     btree_set.retain(|x| x % 2 == 0);
     btree_set.retain(|x| x % 2 == 0);
+
+    // Do lint, because we use pattern matching
+    let mut tuples = BTreeSet::from([(0, 1), (1, 2), (2, 3)]);
+    tuples.retain(|(ref x, ref y)| *x == 0);
+    tuples.retain(|(x, y)| *x == 0);
 
     // Do not lint, because type conversion is performed
     btree_set = btree_set
@@ -108,6 +124,9 @@ fn hash_map_retain() {
     hash_map.retain(|_, &mut v| v % 2 == 0);
     hash_map.retain(|k, &mut v| (k % 2 == 0) && (v % 2 == 0));
 
+    // Do not lint, because the parameters are not matched in tuple pattern
+    hash_map = hash_map.into_iter().filter(|t| t.0 % 2 == 0).collect();
+
     // Do not lint.
     hash_map = hash_map
         .into_iter()
@@ -127,6 +146,11 @@ fn hash_set_retain() {
     hash_set.retain(|x| x % 2 == 0);
     hash_set.retain(|x| x % 2 == 0);
     hash_set.retain(|x| x % 2 == 0);
+
+    // Do lint, because we use pattern matching
+    let mut tuples = HashSet::from([(0, 1), (1, 2), (2, 3)]);
+    tuples.retain(|(ref x, ref y)| *x == 0);
+    tuples.retain(|(x, y)| *x == 0);
 
     // Do not lint, because type conversion is performed
     hash_set = hash_set.into_iter().filter(|x| x % 2 == 0).collect::<HashSet<i8>>();
@@ -170,6 +194,11 @@ fn vec_retain() {
     vec.retain(|x| x % 2 == 0);
     vec.retain(|x| x % 2 == 0);
     vec.retain(|x| x % 2 == 0);
+
+    // Do lint, because we use pattern matching
+    let mut tuples = vec![(0, 1), (1, 2), (2, 3)];
+    tuples.retain(|(ref x, ref y)| *x == 0);
+    tuples.retain(|(x, y)| *x == 0);
 
     // Do not lint, because type conversion is performed
     vec = vec.into_iter().filter(|x| x % 2 == 0).collect::<Vec<i8>>();
@@ -245,4 +274,38 @@ fn _msrv_118() {
     hash_set = hash_set.into_iter().filter(|x| x % 2 == 0).collect();
     let mut hash_map: HashMap<i8, i8> = (0..8).map(|x| (x, x * 10)).collect();
     hash_map = hash_map.into_iter().filter(|(k, _)| k % 2 == 0).collect();
+}
+
+fn issue_10393() {
+    // Do lint
+    let mut vec = vec![(0, 1), (1, 2), (2, 3)];
+    vec.retain(|(x, y)| *x == 0);
+
+    // Do lint
+    let mut tuples = vec![(true, -2), (false, 3)];
+    tuples.retain(|(_, n)| *n > 0);
+}
+
+fn issue_11457() {
+    // Do not lint, as we need to modify the closure
+    let mut vals = vec![1, 2, 3, 4];
+    vals = vals.iter().filter(|v| **v != 1).cloned().collect();
+
+    // Do not lint, as we need to modify the closure
+    let mut s = String::from("foobar");
+    s = s.chars().filter(|c| *c != 'o').to_owned().collect();
+}
+
+fn issue_12081() {
+    let mut vec = vec![0, 1, 2];
+
+    // Do lint
+    vec.retain(|&x| x == 0);
+    vec.retain(|&x| x == 0);
+    vec.retain(|&x| x == 0);
+
+    // Do lint
+    vec.retain(|x| *x == 0);
+    vec.retain(|x| *x == 0);
+    vec.retain(|x| *x == 0);
 }

@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 
 #![feature(const_eval_select)]
 #![feature(core_intrinsics)]
@@ -13,9 +13,9 @@ fn no() -> bool {
     false
 }
 
-// not a sound use case; testing only
+// not allowed on stable; testing only
 const fn is_const_eval() -> bool {
-    unsafe { const_eval_select((), yes, no) }
+    const_eval_select((), yes, no)
 }
 
 fn main() {

@@ -1,6 +1,6 @@
-// run-pass
+//@ run-pass
 #![allow(unused_imports)]
-// aux-build:use-macro-self.rs
+//@ aux-build:use-macro-self.rs
 
 #[macro_use]
 extern crate use_macro_self;

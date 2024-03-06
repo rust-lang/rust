@@ -1,4 +1,4 @@
-// check-pass
+//@ check-pass
 
 fn ages() -> Option<impl Iterator> {
     None::<std::slice::Iter<()>>

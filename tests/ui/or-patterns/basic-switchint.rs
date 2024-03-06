@@ -1,7 +1,7 @@
 // Test basic or-patterns when the target pattern type will be lowered to
 // a `SwitchInt`. This will happen when the target type is an integer.
 
-// run-pass
+//@ run-pass
 
 #[derive(Debug, PartialEq)]
 enum MatchArm {

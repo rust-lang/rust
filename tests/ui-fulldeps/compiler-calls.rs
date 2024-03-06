@@ -1,8 +1,8 @@
-// run-pass
+//@ run-pass
 // Test that the Callbacks interface to the compiler works.
 
-// ignore-cross-compile
-// ignore-remote
+//@ ignore-cross-compile
+//@ ignore-remote
 
 #![feature(rustc_private)]
 

@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 
 pub fn main() {
   let f = 1_usize as *const String;

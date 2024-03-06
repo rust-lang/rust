@@ -13,7 +13,7 @@ use rustc_data_structures::unhash::UnhashMap;
 use rustc_expand::base::{SyntaxExtension, SyntaxExtensionKind};
 use rustc_expand::proc_macro::{AttrProcMacro, BangProcMacro, DeriveProcMacro};
 use rustc_hir::def::Res;
-use rustc_hir::def_id::{DefIdMap, CRATE_DEF_INDEX, LOCAL_CRATE};
+use rustc_hir::def_id::{CRATE_DEF_INDEX, LOCAL_CRATE};
 use rustc_hir::definitions::{DefPath, DefPathData};
 use rustc_hir::diagnostic_items::DiagnosticItems;
 use rustc_index::Idx;
@@ -106,6 +106,8 @@ pub(crate) struct CrateMetadata {
     private_dep: bool,
     /// The hash for the host proc macro. Used to support `-Z dual-proc-macro`.
     host_hash: Option<Svh>,
+    /// The crate was used non-speculatively.
+    used: bool,
 
     /// Additional data used for decoding `HygieneData` (e.g. `SyntaxContext`
     /// and `ExpnId`).
@@ -325,7 +327,7 @@ impl<'a, 'tcx> DecodeContext<'a, 'tcx> {
     }
 
     #[inline]
-    fn read_lazy_offset_then<T>(&mut self, f: impl Fn(NonZeroUsize) -> T) -> T {
+    fn read_lazy_offset_then<T>(&mut self, f: impl Fn(NonZero<usize>) -> T) -> T {
         let distance = self.read_usize();
         let position = match self.lazy_state {
             LazyState::NoNode => bug!("read_lazy_with_meta: outside of a metadata node"),
@@ -336,7 +338,7 @@ impl<'a, 'tcx> DecodeContext<'a, 'tcx> {
             }
             LazyState::Previous(last_pos) => last_pos.get() + distance,
         };
-        let position = NonZeroUsize::new(position).unwrap();
+        let position = NonZero::new(position).unwrap();
         self.lazy_state = LazyState::Previous(position);
         f(position)
     }
@@ -418,7 +420,7 @@ impl<'a, 'tcx> Decodable<DecodeContext<'a, 'tcx>> for ExpnIndex {
 impl<'a, 'tcx> SpanDecoder for DecodeContext<'a, 'tcx> {
     fn decode_attr_id(&mut self) -> rustc_span::AttrId {
         let sess = self.sess.expect("can't decode AttrId without Session");
-        sess.parse_sess.attr_id_generator.mk_attr_id()
+        sess.psess.attr_id_generator.mk_attr_id()
     }
 
     fn decode_crate_num(&mut self) -> CrateNum {
@@ -683,15 +685,15 @@ impl MetadataBlob {
     }
 
     pub(crate) fn get_rustc_version(&self) -> String {
-        LazyValue::<String>::from_position(NonZeroUsize::new(METADATA_HEADER.len() + 8).unwrap())
+        LazyValue::<String>::from_position(NonZero::new(METADATA_HEADER.len() + 8).unwrap())
             .decode(self)
     }
 
-    fn root_pos(&self) -> NonZeroUsize {
+    fn root_pos(&self) -> NonZero<usize> {
         let offset = METADATA_HEADER.len();
         let pos_bytes = self.blob()[offset..][..8].try_into().unwrap();
         let pos = u64::from_le_bytes(pos_bytes);
-        NonZeroUsize::new(pos as usize).unwrap()
+        NonZero::new(pos as usize).unwrap()
     }
 
     pub(crate) fn get_header(&self) -> CrateHeader {
@@ -1082,6 +1084,8 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
                 parent_did,
                 false,
                 data.is_non_exhaustive,
+                // FIXME: unnamed fields in crate metadata is unimplemented yet.
+                false,
             ),
         )
     }
@@ -1124,6 +1128,7 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
             adt_kind,
             variants.into_iter().map(|(_, variant)| variant).collect(),
             repr,
+            false,
         )
     }
 
@@ -1744,8 +1749,8 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
         self.root.tables.attr_flags.get(self, index)
     }
 
-    fn get_is_intrinsic(self, index: DefIndex) -> bool {
-        self.root.tables.is_intrinsic.get(self, index)
+    fn get_intrinsic(self, index: DefIndex) -> Option<ty::IntrinsicDef> {
+        self.root.tables.intrinsic.get(self, index).map(|d| d.decode(self))
     }
 
     fn get_doc_link_resolutions(self, index: DefIndex) -> DocLinkResMap {
@@ -1811,6 +1816,7 @@ impl CrateMetadata {
             source: Lrc::new(source),
             private_dep,
             host_hash,
+            used: false,
             extern_crate: None,
             hygiene_context: Default::default(),
             def_key_cache: Default::default(),
@@ -1858,6 +1864,10 @@ impl CrateMetadata {
 
     pub(crate) fn update_and_private_dep(&mut self, private_dep: bool) {
         self.private_dep &= private_dep;
+    }
+
+    pub(crate) fn used(&self) -> bool {
+        self.used
     }
 
     pub(crate) fn required_panic_strategy(&self) -> Option<PanicStrategy> {

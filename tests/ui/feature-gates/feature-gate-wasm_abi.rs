@@ -1,5 +1,5 @@
-// needs-llvm-components: webassembly
-// compile-flags: --target=wasm32-unknown-unknown --crate-type=rlib
+//@ needs-llvm-components: webassembly
+//@ compile-flags: --target=wasm32-unknown-unknown --crate-type=rlib
 #![no_core]
 #![feature(no_core, lang_items)]
 #[lang="sized"]

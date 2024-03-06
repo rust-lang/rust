@@ -1,5 +1,4 @@
-// compile-flags: -C opt-level=1
-// ignore-debug (the extra assertions get in the way)
+//@ compile-flags: -C opt-level=1
 
 #![crate_type = "lib"]
 #![feature(ascii_char)]

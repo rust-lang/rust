@@ -1,4 +1,4 @@
-// only-x86_64
+//@ only-x86_64
 
 use std::arch::{asm, global_asm};
 

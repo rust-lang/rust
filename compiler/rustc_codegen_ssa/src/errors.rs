@@ -4,8 +4,8 @@ use crate::assert_module_sources::CguReuse;
 use crate::back::command::Command;
 use crate::fluent_generated as fluent;
 use rustc_errors::{
-    codes::*, DiagCtxt, DiagnosticArgValue, DiagnosticBuilder, EmissionGuarantee, IntoDiagnostic,
-    IntoDiagnosticArg, Level,
+    codes::*, Diag, DiagArgValue, DiagCtxt, EmissionGuarantee, IntoDiagnostic, IntoDiagnosticArg,
+    Level,
 };
 use rustc_macros::Diagnostic;
 use rustc_middle::ty::layout::LayoutError;
@@ -122,6 +122,12 @@ pub struct NoNatvisDirectory {
 }
 
 #[derive(Diagnostic)]
+#[diag(codegen_ssa_no_saved_object_file)]
+pub struct NoSavedObjectFile<'a> {
+    pub cgu_name: &'a str,
+}
+
+#[derive(Diagnostic)]
 #[diag(codegen_ssa_copy_path_buf)]
 pub struct CopyPathBuf {
     pub source_file: PathBuf,
@@ -147,8 +153,8 @@ impl<'a> CopyPath<'a> {
 struct DebugArgPath<'a>(pub &'a Path);
 
 impl IntoDiagnosticArg for DebugArgPath<'_> {
-    fn into_diagnostic_arg(self) -> rustc_errors::DiagnosticArgValue<'static> {
-        DiagnosticArgValue::Str(Cow::Owned(format!("{:?}", self.0)))
+    fn into_diagnostic_arg(self) -> rustc_errors::DiagArgValue {
+        DiagArgValue::Str(Cow::Owned(format!("{:?}", self.0)))
     }
 }
 
@@ -210,8 +216,8 @@ pub enum LinkRlibError {
 pub struct ThorinErrorWrapper(pub thorin::Error);
 
 impl<G: EmissionGuarantee> IntoDiagnostic<'_, G> for ThorinErrorWrapper {
-    fn into_diagnostic(self, dcx: &DiagCtxt, level: Level) -> DiagnosticBuilder<'_, G> {
-        let build = |msg| DiagnosticBuilder::new(dcx, level, msg);
+    fn into_diagnostic(self, dcx: &DiagCtxt, level: Level) -> Diag<'_, G> {
+        let build = |msg| Diag::new(dcx, level, msg);
         match self.0 {
             thorin::Error::ReadInput(_) => build(fluent::codegen_ssa_thorin_read_input_failure),
             thorin::Error::ParseFileKind(_) => {
@@ -343,8 +349,8 @@ pub struct LinkingFailed<'a> {
 }
 
 impl<G: EmissionGuarantee> IntoDiagnostic<'_, G> for LinkingFailed<'_> {
-    fn into_diagnostic(self, dcx: &DiagCtxt, level: Level) -> DiagnosticBuilder<'_, G> {
-        let mut diag = DiagnosticBuilder::new(dcx, level, fluent::codegen_ssa_linking_failed);
+    fn into_diagnostic(self, dcx: &DiagCtxt, level: Level) -> Diag<'_, G> {
+        let mut diag = Diag::new(dcx, level, fluent::codegen_ssa_linking_failed);
         diag.arg("linker_path", format!("{}", self.linker_path.display()));
         diag.arg("exit_status", format!("{}", self.exit_status));
 
@@ -356,8 +362,11 @@ impl<G: EmissionGuarantee> IntoDiagnostic<'_, G> for LinkingFailed<'_> {
         // which by now we have no way to translate.
         if contains_undefined_ref {
             diag.note(fluent::codegen_ssa_extern_funcs_not_found)
-                .note(fluent::codegen_ssa_specify_libraries_to_link)
-                .note(fluent::codegen_ssa_use_cargo_directive);
+                .note(fluent::codegen_ssa_specify_libraries_to_link);
+
+            if rustc_session::utils::was_invoked_from_cargo() {
+                diag.note(fluent::codegen_ssa_use_cargo_directive);
+            }
         }
         diag
     }
@@ -788,16 +797,8 @@ pub enum InvalidMonomorphization<'tcx> {
         out_ty: Ty<'tcx>,
     },
 
-    #[diag(codegen_ssa_invalid_monomorphization_shuffle_index_not_constant, code = E0511)]
-    ShuffleIndexNotConstant {
-        #[primary_span]
-        span: Span,
-        name: Symbol,
-        arg_idx: u64,
-    },
-
-    #[diag(codegen_ssa_invalid_monomorphization_shuffle_index_out_of_bounds, code = E0511)]
-    ShuffleIndexOutOfBounds {
+    #[diag(codegen_ssa_invalid_monomorphization_simd_index_out_of_bounds, code = E0511)]
+    SimdIndexOutOfBounds {
         #[primary_span]
         span: Span,
         name: Symbol,
@@ -974,10 +975,10 @@ pub enum ExpectedPointerMutability {
 }
 
 impl IntoDiagnosticArg for ExpectedPointerMutability {
-    fn into_diagnostic_arg(self) -> DiagnosticArgValue<'static> {
+    fn into_diagnostic_arg(self) -> DiagArgValue {
         match self {
-            ExpectedPointerMutability::Mut => DiagnosticArgValue::Str(Cow::Borrowed("*mut")),
-            ExpectedPointerMutability::Not => DiagnosticArgValue::Str(Cow::Borrowed("*_")),
+            ExpectedPointerMutability::Mut => DiagArgValue::Str(Cow::Borrowed("*mut")),
+            ExpectedPointerMutability::Not => DiagArgValue::Str(Cow::Borrowed("*_")),
         }
     }
 }

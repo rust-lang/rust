@@ -1,7 +1,7 @@
 use crate::mir::interpret::{AllocRange, GlobalAlloc, Pointer, Provenance, Scalar};
 use crate::query::IntoQueryParam;
 use crate::query::Providers;
-use crate::traits::util::supertraits_for_pretty_printing;
+use crate::traits::util::{super_predicates_for_pretty_printing, supertraits_for_pretty_printing};
 use crate::ty::GenericArgKind;
 use crate::ty::{
     ConstInt, ParamConst, ScalarInt, Term, TermKind, TypeFoldable, TypeSuperFoldable,
@@ -27,7 +27,7 @@ use std::cell::Cell;
 use std::collections::BTreeMap;
 use std::fmt::{self, Write as _};
 use std::iter;
-use std::ops::{ControlFlow, Deref, DerefMut};
+use std::ops::{Deref, DerefMut};
 
 // `pretty` is a separate module only for organization.
 use super::*;
@@ -64,7 +64,7 @@ thread_local! {
     static SHOULD_PREFIX_WITH_CRATE: Cell<bool> = const { Cell::new(false) };
     static NO_TRIMMED_PATH: Cell<bool> = const { Cell::new(false) };
     static FORCE_TRIMMED_PATH: Cell<bool> = const { Cell::new(false) };
-    static NO_QUERIES: Cell<bool> = const { Cell::new(false) };
+    static REDUCED_QUERIES: Cell<bool> = const { Cell::new(false) };
     static NO_VISIBLE_PATH: Cell<bool> = const { Cell::new(false) };
 }
 
@@ -102,14 +102,14 @@ macro_rules! define_helper {
 }
 
 define_helper!(
-    /// Avoids running any queries during any prints that occur
+    /// Avoids running select queries during any prints that occur
     /// during the closure. This may alter the appearance of some
     /// types (e.g. forcing verbose printing for opaque types).
     /// This method is used during some queries (e.g. `explicit_item_bounds`
     /// for opaque types), to ensure that any debug printing that
     /// occurs during the query computation does not end up recursively
     /// calling the same query.
-    fn with_no_queries(NoQueriesGuard, NO_QUERIES);
+    fn with_reduced_queries(ReducedQueriesGuard, REDUCED_QUERIES);
     /// Force us to name impls with just the filename/line number. We
     /// normally try to use types. But at some points, notably while printing
     /// cycle errors, this can result in extra or suboptimal error output,
@@ -126,6 +126,15 @@ define_helper!(
     /// visible (public) reexports of types as paths.
     fn with_no_visible_paths(NoVisibleGuard, NO_VISIBLE_PATH);
 );
+
+/// Avoids running any queries during prints.
+pub macro with_no_queries($e:expr) {{
+    $crate::ty::print::with_reduced_queries!($crate::ty::print::with_forced_impl_filename_line!(
+        $crate::ty::print::with_no_trimmed_paths!($crate::ty::print::with_no_visible_paths!(
+            $crate::ty::print::with_forced_impl_filename_line!($e)
+        ))
+    ))
+}}
 
 /// The "region highlights" are used to control region printing during
 /// specific error messages. When a "region highlight" is enabled, it
@@ -659,7 +668,7 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
                 p!(")")
             }
             ty::FnDef(def_id, args) => {
-                if with_no_queries() {
+                if with_reduced_queries() {
                     p!(print_def_path(def_id, args));
                 } else {
                     let sig = self.tcx().fn_sig(def_id).instantiate(self.tcx(), args);
@@ -715,13 +724,7 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
                 p!(print_def_path(def_id, &[]));
             }
             ty::Alias(ty::Projection | ty::Inherent | ty::Weak, ref data) => {
-                if !(self.should_print_verbose() || with_no_queries())
-                    && self.tcx().is_impl_trait_in_trait(data.def_id)
-                {
-                    return self.pretty_print_opaque_impl_type(data.def_id, data.args);
-                } else {
-                    p!(print(data))
-                }
+                p!(print(data))
             }
             ty::Placeholder(placeholder) => match placeholder.bound.kind {
                 ty::BoundTyKind::Anon => p!(write("{placeholder:?}")),
@@ -765,7 +768,7 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
                         return Ok(());
                     }
                     _ => {
-                        if with_no_queries() {
+                        if with_reduced_queries() {
                             p!(print_def_path(def_id, &[]));
                             return Ok(());
                         } else {
@@ -870,6 +873,65 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
                         print(args.as_closure().sig_as_fn_ptr_ty()),
                         " upvar_tys=",
                         print(args.as_closure().tupled_upvars_ty())
+                    );
+                }
+                p!("}}");
+            }
+            ty::CoroutineClosure(did, args) => {
+                p!(write("{{"));
+                if !self.should_print_verbose() {
+                    match self.tcx().coroutine_kind(self.tcx().coroutine_for_closure(did)).unwrap()
+                    {
+                        hir::CoroutineKind::Desugared(
+                            hir::CoroutineDesugaring::Async,
+                            hir::CoroutineSource::Closure,
+                        ) => p!("async closure"),
+                        hir::CoroutineKind::Desugared(
+                            hir::CoroutineDesugaring::AsyncGen,
+                            hir::CoroutineSource::Closure,
+                        ) => p!("async gen closure"),
+                        hir::CoroutineKind::Desugared(
+                            hir::CoroutineDesugaring::Gen,
+                            hir::CoroutineSource::Closure,
+                        ) => p!("gen closure"),
+                        _ => unreachable!(
+                            "coroutine from coroutine-closure should have CoroutineSource::Closure"
+                        ),
+                    }
+                    // FIXME(eddyb) should use `def_span`.
+                    if let Some(did) = did.as_local() {
+                        if self.tcx().sess.opts.unstable_opts.span_free_formats {
+                            p!("@", print_def_path(did.to_def_id(), args));
+                        } else {
+                            let span = self.tcx().def_span(did);
+                            let preference = if with_forced_trimmed_paths() {
+                                FileNameDisplayPreference::Short
+                            } else {
+                                FileNameDisplayPreference::Remapped
+                            };
+                            p!(write(
+                                "@{}",
+                                // This may end up in stderr diagnostics but it may also be emitted
+                                // into MIR. Hence we use the remapped path if available
+                                self.tcx().sess.source_map().span_to_string(span, preference)
+                            ));
+                        }
+                    } else {
+                        p!(write("@"), print_def_path(did, args));
+                    }
+                } else {
+                    p!(print_def_path(did, args));
+                    p!(
+                        " closure_kind_ty=",
+                        print(args.as_coroutine_closure().kind_ty()),
+                        " signature_parts_ty=",
+                        print(args.as_coroutine_closure().signature_parts_ty()),
+                        " upvar_tys=",
+                        print(args.as_coroutine_closure().tupled_upvars_ty()),
+                        " coroutine_captures_by_ref_ty=",
+                        print(args.as_coroutine_closure().coroutine_captures_by_ref_ty()),
+                        " coroutine_witness_ty=",
+                        print(args.as_coroutine_closure().coroutine_witness_ty())
                     );
                 }
                 p!("}}");
@@ -1213,8 +1275,8 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
         // Generate the main trait ref, including associated types.
         let mut first = true;
 
-        if let Some(principal) = predicates.principal() {
-            self.wrap_binder(&principal, |principal, cx| {
+        if let Some(bound_principal) = predicates.principal() {
+            self.wrap_binder(&bound_principal, |principal, cx| {
                 define_scoped_cx!(cx);
                 p!(print_def_path(principal.def_id, &[]));
 
@@ -1239,19 +1301,53 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
                 // HACK(eddyb) this duplicates `FmtPrinter`'s `path_generic_args`,
                 // in order to place the projections inside the `<...>`.
                 if !resugared {
-                    // Use a type that can't appear in defaults of type parameters.
-                    let dummy_cx = Ty::new_fresh(cx.tcx(), 0);
-                    let principal = principal.with_self_ty(cx.tcx(), dummy_cx);
+                    let principal_with_self =
+                        principal.with_self_ty(cx.tcx(), cx.tcx().types.trait_object_dummy_self);
 
                     let args = cx
                         .tcx()
-                        .generics_of(principal.def_id)
-                        .own_args_no_defaults(cx.tcx(), principal.args);
+                        .generics_of(principal_with_self.def_id)
+                        .own_args_no_defaults(cx.tcx(), principal_with_self.args);
 
-                    let mut projections: Vec<_> = predicates.projection_bounds().collect();
-                    projections.sort_by_cached_key(|proj| {
-                        cx.tcx().item_name(proj.item_def_id()).to_string()
-                    });
+                    let bound_principal_with_self = bound_principal
+                        .with_self_ty(cx.tcx(), cx.tcx().types.trait_object_dummy_self);
+
+                    let super_projections: Vec<_> =
+                        super_predicates_for_pretty_printing(cx.tcx(), bound_principal_with_self)
+                            .filter_map(|clause| clause.as_projection_clause())
+                            .collect();
+
+                    let mut projections: Vec<_> = predicates
+                        .projection_bounds()
+                        .filter(|&proj| {
+                            // Filter out projections that are implied by the super predicates.
+                            let proj_is_implied = super_projections.iter().any(|&super_proj| {
+                                let super_proj = super_proj.map_bound(|super_proj| {
+                                    ty::ExistentialProjection::erase_self_ty(cx.tcx(), super_proj)
+                                });
+
+                                // This function is sometimes called on types with erased and
+                                // anonymized regions, but the super projections can still
+                                // contain named regions. So we erase and anonymize everything
+                                // here to compare the types modulo regions below.
+                                let proj = cx.tcx().erase_regions(proj);
+                                let proj = cx.tcx().anonymize_bound_vars(proj);
+                                let super_proj = cx.tcx().erase_regions(super_proj);
+                                let super_proj = cx.tcx().anonymize_bound_vars(super_proj);
+
+                                proj == super_proj
+                            });
+                            !proj_is_implied
+                        })
+                        .map(|proj| {
+                            // Skip the binder, because we don't want to print the binder in
+                            // front of the associated item.
+                            proj.skip_binder()
+                        })
+                        .collect();
+
+                    projections
+                        .sort_by_cached_key(|proj| cx.tcx().item_name(proj.def_id).to_string());
 
                     if !args.is_empty() || !projections.is_empty() {
                         p!(generic_delimiters(|cx| {
@@ -1789,7 +1885,8 @@ impl DerefMut for FmtPrinter<'_, '_> {
 
 impl<'a, 'tcx> FmtPrinter<'a, 'tcx> {
     pub fn new(tcx: TyCtxt<'tcx>, ns: Namespace) -> Self {
-        let limit = if with_no_queries() { Limit::new(1048576) } else { tcx.type_length_limit() };
+        let limit =
+            if with_reduced_queries() { Limit::new(1048576) } else { tcx.type_length_limit() };
         Self::new_with_limit(tcx, ns, limit)
     }
 
@@ -2570,9 +2667,7 @@ impl<'tcx> FmtPrinter<'_, 'tcx> {
         }
 
         impl<'tcx> ty::visit::TypeVisitor<TyCtxt<'tcx>> for RegionNameCollector<'tcx> {
-            type BreakTy = ();
-
-            fn visit_region(&mut self, r: ty::Region<'tcx>) -> ControlFlow<Self::BreakTy> {
+            fn visit_region(&mut self, r: ty::Region<'tcx>) {
                 trace!("address: {:p}", r.0.0);
 
                 // Collect all named lifetimes. These allow us to prevent duplication
@@ -2581,18 +2676,14 @@ impl<'tcx> FmtPrinter<'_, 'tcx> {
                 if let Some(name) = r.get_name() {
                     self.used_region_names.insert(name);
                 }
-
-                ControlFlow::Continue(())
             }
 
             // We collect types in order to prevent really large types from compiling for
             // a really long time. See issue #83150 for why this is necessary.
-            fn visit_ty(&mut self, ty: Ty<'tcx>) -> ControlFlow<Self::BreakTy> {
+            fn visit_ty(&mut self, ty: Ty<'tcx>) {
                 let not_previously_inserted = self.type_collector.insert(ty);
                 if not_previously_inserted {
                     ty.super_visit_with(self)
-                } else {
-                    ControlFlow::Continue(())
                 }
             }
         }
@@ -2632,7 +2723,7 @@ where
 pub struct TraitRefPrintOnlyTraitPath<'tcx>(ty::TraitRef<'tcx>);
 
 impl<'tcx> rustc_errors::IntoDiagnosticArg for TraitRefPrintOnlyTraitPath<'tcx> {
-    fn into_diagnostic_arg(self) -> rustc_errors::DiagnosticArgValue<'static> {
+    fn into_diagnostic_arg(self) -> rustc_errors::DiagArgValue {
         self.to_string().into_diagnostic_arg()
     }
 }
@@ -2649,7 +2740,7 @@ impl<'tcx> fmt::Debug for TraitRefPrintOnlyTraitPath<'tcx> {
 pub struct TraitRefPrintSugared<'tcx>(ty::TraitRef<'tcx>);
 
 impl<'tcx> rustc_errors::IntoDiagnosticArg for TraitRefPrintSugared<'tcx> {
-    fn into_diagnostic_arg(self) -> rustc_errors::DiagnosticArgValue<'static> {
+    fn into_diagnostic_arg(self) -> rustc_errors::DiagArgValue {
         self.to_string().into_diagnostic_arg()
     }
 }
@@ -2836,7 +2927,7 @@ define_print_and_forward_display! {
 
     ty::ExistentialTraitRef<'tcx> {
         // Use a type that can't appear in defaults of type parameters.
-        let dummy_self = Ty::new_fresh(cx.tcx(),0);
+        let dummy_self = Ty::new_fresh(cx.tcx(), 0);
         let trait_ref = self.with_self_ty(cx.tcx(), dummy_self);
         p!(print(trait_ref.print_only_trait_path()))
     }
@@ -2875,7 +2966,7 @@ define_print_and_forward_display! {
     }
 
     TraitRefPrintSugared<'tcx> {
-        if !with_no_queries()
+        if !with_reduced_queries()
             && let Some(kind) = cx.tcx().fn_trait_kind_from_def_id(self.0.def_id)
             && let ty::Tuple(args) = self.0.args.type_at(1).kind()
         {
@@ -2960,7 +3051,17 @@ define_print_and_forward_display! {
         if let DefKind::Impl { of_trait: false } = cx.tcx().def_kind(cx.tcx().parent(self.def_id)) {
             p!(pretty_print_inherent_projection(self))
         } else {
-            p!(print_def_path(self.def_id, self.args));
+            // If we're printing verbosely, or don't want to invoke queries
+            // (`is_impl_trait_in_trait`), then fall back to printing the def path.
+            // This is likely what you want if you're debugging the compiler anyways.
+            if !(cx.should_print_verbose() || with_reduced_queries())
+                && cx.tcx().is_impl_trait_in_trait(self.def_id)
+            {
+                return cx.pretty_print_opaque_impl_type(self.def_id, self.args);
+            } else {
+                p!(print_def_path(self.def_id, self.args));
+            }
+
         }
     }
 
@@ -3063,13 +3164,12 @@ fn for_each_def(tcx: TyCtxt<'_>, mut collect_fn: impl for<'b> FnMut(&'b Ident, N
 // this is pub to be able to intra-doc-link it
 pub fn trimmed_def_paths(tcx: TyCtxt<'_>, (): ()) -> DefIdMap<Symbol> {
     // Trimming paths is expensive and not optimized, since we expect it to only be used for error
-    // reporting.
+    // reporting. Record the fact that we did it, so we can abort if we later found it was
+    // unnecessary.
     //
-    // For good paths causing this bug, the `rustc_middle::ty::print::with_no_trimmed_paths`
-    // wrapper can be used to suppress this query, in exchange for full paths being formatted.
-    tcx.sess.good_path_delayed_bug(
-        "trimmed_def_paths constructed but no error emitted; use `DelayDm` for lints or `with_no_trimmed_paths` for debugging",
-    );
+    // The `rustc_middle::ty::print::with_no_trimmed_paths` wrapper can be used to suppress this
+    // checking, in exchange for full paths being formatted.
+    tcx.sess.record_trimmed_def_paths();
 
     // Once constructed, unique namespace+symbol pairs will have a `Some(_)` entry, while
     // non-unique pairs will have a `None` entry.

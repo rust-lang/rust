@@ -1,4 +1,4 @@
-// check-pass
+//@ check-pass
 //
 // Ensures that we properly lint
 // a removed 'expression' resulting from a macro

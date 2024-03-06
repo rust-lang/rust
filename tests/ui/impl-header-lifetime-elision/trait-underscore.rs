@@ -1,7 +1,7 @@
 // Test that `impl MyTrait<'_> for &i32` is equivalent to `impl<'a,
 // 'b> MyTrait<'a> for &'b i32`.
 //
-// run-pass
+//@ run-pass
 
 #![allow(warnings)]
 

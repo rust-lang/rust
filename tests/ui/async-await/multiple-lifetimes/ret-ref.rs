@@ -1,4 +1,4 @@
-// edition:2018
+//@ edition:2018
 
 // Test that we get the expected borrow check errors when an async
 // function (which takes multiple lifetimes) only returns data from

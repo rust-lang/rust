@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 // Test that when we write `x.foo()`, we do not have to know the
 // complete type of `x` in order to type-check the method call. In
 // this case, we know that `x: Vec<_1>`, but we don't know what type
@@ -14,7 +14,7 @@ trait Foo {
     fn foo(&self) -> isize;
 }
 
-trait MyCopy { fn foo(&self) { } }
+trait MyCopy { fn foo(&self) { } } //~ WARN method `foo` is never used
 impl MyCopy for i32 { }
 
 impl<T:MyCopy> Foo for Vec<T> {

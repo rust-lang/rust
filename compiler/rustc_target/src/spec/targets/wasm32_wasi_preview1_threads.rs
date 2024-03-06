@@ -72,12 +72,11 @@
 //! best we can with this target. Don't start relying on too much here unless
 //! you know what you're getting in to!
 
-use crate::spec::{base, crt_objects, cvs, Cc, LinkSelfContainedDefault, LinkerFlavor, Target};
+use crate::spec::{base, crt_objects, Cc, LinkSelfContainedDefault, LinkerFlavor, Target};
 
 pub fn target() -> Target {
     let mut options = base::wasm::options();
 
-    options.families = cvs!["wasm", "wasi"];
     options.os = "wasi".into();
 
     options.add_pre_link_args(
@@ -126,6 +125,7 @@ pub fn target() -> Target {
 
     Target {
         llvm_target: "wasm32-wasi".into(),
+        description: None,
         pointer_width: 32,
         data_layout: "e-m:e-p:32:32-p10:8:8-p20:8:8-i64:64-n32:64-S128-ni:1:10:20".into(),
         arch: "wasm32".into(),

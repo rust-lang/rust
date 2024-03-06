@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 #![allow(dead_code)]
 #![allow(unused_variables)]
 // Test that we handle binder levels in object types correctly.
@@ -6,7 +6,7 @@
 // `&Typer<'tcx>` was getting an incorrect binder level, yielding
 // weird compilation ICEs and so forth.
 
-// pretty-expanded FIXME #23616
+//@ pretty-expanded FIXME #23616
 
 trait Typer<'tcx> {
     fn method(&self, data: &'tcx isize) -> &'tcx isize { data }

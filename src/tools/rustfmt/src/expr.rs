@@ -404,7 +404,7 @@ pub(crate) fn format_expr(
             // These do not occur in the AST because macros aren't expanded.
             unreachable!()
         }
-        ast::ExprKind::Err => None,
+        ast::ExprKind::Err(_) | ast::ExprKind::Dummy => None,
     };
 
     expr_rw

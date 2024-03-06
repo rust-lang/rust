@@ -1,11 +1,11 @@
-// compile-flags: -C no-prepopulate-passes
-// only-64bit (because the LLVM type of i64 for usize shows up)
+//@ compile-flags: -C no-prepopulate-passes
+//@ only-64bit (because the LLVM type of i64 for usize shows up)
 //
 
 #![crate_type = "lib"]
-#![feature(repr_simd, platform_intrinsics)]
+#![feature(repr_simd, intrinsics)]
 
-extern "platform-intrinsic" {
+extern "rust-intrinsic" {
     pub(crate) fn simd_arith_offset<T, U>(ptrs: T, offsets: U) -> T;
 }
 

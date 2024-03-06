@@ -60,13 +60,19 @@ const MAX_PLACES: usize = 100;
 
 impl<'tcx> MirPass<'tcx> for JumpThreading {
     fn is_enabled(&self, sess: &rustc_session::Session) -> bool {
-        sess.mir_opt_level() >= 4
+        sess.mir_opt_level() >= 2
     }
 
     #[instrument(skip_all level = "debug")]
     fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
         let def_id = body.source.def_id();
         debug!(?def_id);
+
+        // Optimizing coroutines creates query cycles.
+        if tcx.is_coroutine(def_id) {
+            trace!("Skipped for coroutine {:?}", def_id);
+            return;
+        }
 
         let param_env = tcx.param_env_reveal_all_normalized(def_id);
         let map = Map::new(tcx, body, Some(MAX_PLACES));

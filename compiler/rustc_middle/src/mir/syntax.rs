@@ -15,7 +15,7 @@ use crate::ty::{Region, UserTypeAnnotationIndex};
 use rustc_ast::{InlineAsmOptions, InlineAsmTemplatePiece};
 use rustc_data_structures::packed::Pu128;
 use rustc_hir::def_id::DefId;
-use rustc_hir::{self, CoroutineKind};
+use rustc_hir::CoroutineKind;
 use rustc_index::IndexVec;
 use rustc_span::source_map::Spanned;
 use rustc_target::abi::{FieldIdx, VariantIdx};
@@ -1350,6 +1350,7 @@ pub enum AggregateKind<'tcx> {
 
     Closure(DefId, GenericArgsRef<'tcx>),
     Coroutine(DefId, GenericArgsRef<'tcx>),
+    CoroutineClosure(DefId, GenericArgsRef<'tcx>),
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, TyEncodable, TyDecodable, Hash, HashStable)]
@@ -1360,6 +1361,8 @@ pub enum NullOp<'tcx> {
     AlignOf,
     /// Returns the offset of a field
     OffsetOf(&'tcx List<(VariantIdx, FieldIdx)>),
+    /// cfg!(debug_assertions), but expanded in codegen
+    DebugAssertions,
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]

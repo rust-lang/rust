@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 #![allow(unused_braces)]
 
 fn force<F>(f: F) -> isize where F: FnOnce() -> isize { return f(); }

@@ -30,7 +30,7 @@ pub use crate::error::*;
 use crate::mir::pretty::function_name;
 use crate::mir::Body;
 use crate::mir::Mutability;
-use crate::ty::{ImplDef, IndexedVal, Span, TraitDef, Ty};
+use crate::ty::{ForeignModuleDef, ImplDef, IndexedVal, Span, TraitDef, Ty};
 
 pub mod abi;
 #[macro_use]
@@ -86,6 +86,11 @@ pub struct Crate {
 }
 
 impl Crate {
+    /// The list of foreign modules in this crate.
+    pub fn foreign_modules(&self) -> Vec<ForeignModuleDef> {
+        with(|cx| cx.foreign_modules(self.id))
+    }
+
     /// The list of traits declared in this crate.
     pub fn trait_decls(&self) -> TraitDecls {
         with(|cx| cx.trait_decls(self.id))

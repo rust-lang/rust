@@ -1,4 +1,4 @@
-// aux-build:unstable_generic_param.rs
+//@ aux-build:unstable_generic_param.rs
 
 extern crate unstable_generic_param;
 

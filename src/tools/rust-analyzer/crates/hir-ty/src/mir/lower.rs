@@ -25,19 +25,25 @@ use triomphe::Arc;
 
 use crate::{
     consteval::ConstEvalError,
-    db::HirDatabase,
+    db::{HirDatabase, InternedClosure},
     display::HirDisplay,
     infer::{CaptureKind, CapturedItem, TypeMismatch},
     inhabitedness::is_ty_uninhabited_from,
     layout::LayoutError,
     mapping::ToChalk,
+    mir::{
+        intern_const_scalar, return_slot, AggregateKind, Arena, BasicBlock, BasicBlockId, BinOp,
+        BorrowKind, CastKind, ClosureId, ConstScalar, Either, Expr, FieldId, Idx, InferenceResult,
+        Interner, Local, LocalId, MemoryMap, MirBody, MirSpan, Mutability, Operand, Place,
+        PlaceElem, PointerCast, ProjectionElem, ProjectionStore, RawIdx, Rvalue, Statement,
+        StatementKind, Substitution, SwitchTargets, Terminator, TerminatorKind, TupleFieldId, Ty,
+        UnOp, VariantId,
+    },
     static_lifetime,
     traits::FnTrait,
     utils::{generics, ClosureSubst},
     Adjust, Adjustment, AutoBorrow, CallableDefId, TyBuilder, TyExt,
 };
-
-use super::*;
 
 mod as_place;
 mod pattern_matching;
@@ -97,7 +103,7 @@ pub enum MirLowerError {
     MutatingRvalue,
     UnresolvedLabel,
     UnresolvedUpvar(Place),
-    UnaccessableLocal,
+    InaccessibleLocal,
 
     // monomorphization errors:
     GenericArgNotProvided(TypeOrConstParamId, Substitution),
@@ -116,7 +122,7 @@ impl DropScopeToken {
         ctx.pop_drop_scope_internal(current, span)
     }
 
-    /// It is useful when we want a drop scope is syntaxically closed, but we don't want to execute any drop
+    /// It is useful when we want a drop scope is syntactically closed, but we don't want to execute any drop
     /// code. Either when the control flow is diverging (so drop code doesn't reached) or when drop is handled
     /// for us (for example a block that ended with a return statement. Return will drop everything, so the block shouldn't
     /// do anything)
@@ -124,6 +130,10 @@ impl DropScopeToken {
         std::mem::forget(self);
         ctx.pop_drop_scope_assume_dropped_internal();
     }
+}
+
+impl Drop for DropScopeToken {
+    fn drop(&mut self) {}
 }
 
 // Uncomment this to make `DropScopeToken` a drop bomb. Unfortunately we can't do this in release, since
@@ -186,7 +196,7 @@ impl MirLowerError {
             | MirLowerError::UnsizedTemporary(_)
             | MirLowerError::IncompleteExpr
             | MirLowerError::IncompletePattern
-            | MirLowerError::UnaccessableLocal
+            | MirLowerError::InaccessibleLocal
             | MirLowerError::TraitFunctionDefinition(_, _)
             | MirLowerError::UnresolvedName(_)
             | MirLowerError::RecordLiteralWithoutPath
@@ -771,6 +781,7 @@ impl<'ctx> MirLowerCtx<'ctx> {
                 self.set_terminator(current, TerminatorKind::Return, expr_id.into());
                 Ok(None)
             }
+            Expr::Become { .. } => not_supported!("tail-calls"),
             Expr::Yield { .. } => not_supported!("yield"),
             Expr::RecordLit { fields, path, spread, ellipsis: _, is_assignee_expr: _ } => {
                 let spread_place = match spread {
@@ -939,7 +950,7 @@ impl<'ctx> MirLowerCtx<'ctx> {
                 Ok(Some(current))
             }
             Expr::BinaryOp { lhs, rhs, op } => {
-                let op = op.ok_or(MirLowerError::IncompleteExpr)?;
+                let op: BinaryOp = op.ok_or(MirLowerError::IncompleteExpr)?;
                 let is_builtin = 'b: {
                     // Without adjust here is a hack. We assume that we know every possible adjustment
                     // for binary operator, and use without adjust to simplify our conditions.
@@ -1242,7 +1253,7 @@ impl<'ctx> MirLowerCtx<'ctx> {
                 self.push_assignment(current, place, op.into(), expr_id.into());
                 Ok(Some(current))
             }
-            Expr::Underscore => not_supported!("underscore"),
+            Expr::Underscore => Ok(Some(current)),
         }
     }
 
@@ -1630,7 +1641,7 @@ impl<'ctx> MirLowerCtx<'ctx> {
         self.set_goto(prev_block, begin, span);
         f(self, begin)?;
         let my = mem::replace(&mut self.current_loop_blocks, prev).ok_or(
-            MirLowerError::ImplementationError("current_loop_blocks is corrupt".to_string()),
+            MirLowerError::ImplementationError("current_loop_blocks is corrupt".to_owned()),
         )?;
         if let Some(prev) = prev_label {
             self.labeled_loop_blocks.insert(label.unwrap(), prev);
@@ -1665,7 +1676,7 @@ impl<'ctx> MirLowerCtx<'ctx> {
             .current_loop_blocks
             .as_mut()
             .ok_or(MirLowerError::ImplementationError(
-                "Current loop access out of loop".to_string(),
+                "Current loop access out of loop".to_owned(),
             ))?
             .end
         {
@@ -1675,7 +1686,7 @@ impl<'ctx> MirLowerCtx<'ctx> {
                 self.current_loop_blocks
                     .as_mut()
                     .ok_or(MirLowerError::ImplementationError(
-                        "Current loop access out of loop".to_string(),
+                        "Current loop access out of loop".to_owned(),
                     ))?
                     .end = Some(s);
                 s
@@ -1776,6 +1787,7 @@ impl<'ctx> MirLowerCtx<'ctx> {
                     self.push_fake_read(c, p, expr.into());
                     current = scope2.pop_and_drop(self, c, expr.into());
                 }
+                hir_def::hir::Statement::Item => (),
             }
         }
         if let Some(tail) = tail {
@@ -1843,8 +1855,8 @@ impl<'ctx> MirLowerCtx<'ctx> {
             None => {
                 // FIXME: It should never happens, but currently it will happen in `const_dependent_on_local` test, which
                 // is a hir lowering problem IMO.
-                // never!("Using unaccessable local for binding is always a bug");
-                Err(MirLowerError::UnaccessableLocal)
+                // never!("Using inaccessible local for binding is always a bug");
+                Err(MirLowerError::InaccessibleLocal)
             }
         }
     }
@@ -1973,7 +1985,7 @@ pub fn mir_body_for_closure_query(
     db: &dyn HirDatabase,
     closure: ClosureId,
 ) -> Result<Arc<MirBody>> {
-    let (owner, expr) = db.lookup_intern_closure(closure.into());
+    let InternedClosure(owner, expr) = db.lookup_intern_closure(closure.into());
     let body = db.body(owner);
     let infer = db.infer(owner);
     let Expr::Closure { args, body: root, .. } = &body[expr] else {
@@ -2068,7 +2080,7 @@ pub fn mir_body_for_closure_query(
 }
 
 pub fn mir_body_query(db: &dyn HirDatabase, def: DefWithBodyId) -> Result<Arc<MirBody>> {
-    let _p = profile::span("mir_body_query").detail(|| match def {
+    let detail = match def {
         DefWithBodyId::FunctionId(it) => db.function_data(it).name.display(db.upcast()).to_string(),
         DefWithBodyId::StaticId(it) => db.static_data(it).name.display(db.upcast()).to_string(),
         DefWithBodyId::ConstId(it) => db
@@ -2082,7 +2094,8 @@ pub fn mir_body_query(db: &dyn HirDatabase, def: DefWithBodyId) -> Result<Arc<Mi
             db.enum_variant_data(it).name.display(db.upcast()).to_string()
         }
         DefWithBodyId::InTypeConstId(it) => format!("in type const {it:?}"),
-    });
+    };
+    let _p = tracing::span!(tracing::Level::INFO, "mir_body_query", ?detail).entered();
     let body = db.body(def);
     let infer = db.infer(def);
     let mut result = lower_to_mir(db, def, &body, &infer, body.body_expr)?;

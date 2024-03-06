@@ -1,6 +1,6 @@
 // skip-filecheck
 // EMIT_MIR tls_access.main.PreCodegen.after.mir
-// compile-flags: -Zmir-opt-level=0
+//@ compile-flags: -Zmir-opt-level=0
 
 #![feature(thread_local)]
 

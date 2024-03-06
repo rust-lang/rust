@@ -11,8 +11,8 @@ use crate::iter::{
 };
 use crate::marker::PhantomData;
 use crate::mem::{self, SizedTypeProperties};
-use crate::num::{NonZero, NonZeroUsize};
-use crate::ptr::{self, invalid, invalid_mut, NonNull};
+use crate::num::NonZero;
+use crate::ptr::{self, without_provenance, without_provenance_mut, NonNull};
 
 use super::{from_raw_parts, from_raw_parts_mut};
 
@@ -67,7 +67,7 @@ pub struct Iter<'a, T: 'a> {
     ptr: NonNull<T>,
     /// For non-ZSTs, the non-null pointer to the past-the-end element.
     ///
-    /// For ZSTs, this is `ptr::invalid(len)`.
+    /// For ZSTs, this is `ptr::dangling(len)`.
     end_or_len: *const T,
     _marker: PhantomData<&'a T>,
 }
@@ -87,12 +87,14 @@ unsafe impl<T: Sync> Send for Iter<'_, T> {}
 impl<'a, T> Iter<'a, T> {
     #[inline]
     pub(super) fn new(slice: &'a [T]) -> Self {
-        let ptr = slice.as_ptr();
+        let len = slice.len();
+        let ptr: NonNull<T> = NonNull::from(slice).cast();
         // SAFETY: Similar to `IterMut::new`.
         unsafe {
-            let end_or_len = if T::IS_ZST { invalid(slice.len()) } else { ptr.add(slice.len()) };
+            let end_or_len =
+                if T::IS_ZST { without_provenance(len) } else { ptr.as_ptr().add(len) };
 
-            Self { ptr: NonNull::new_unchecked(ptr as *mut T), end_or_len, _marker: PhantomData }
+            Self { ptr, end_or_len, _marker: PhantomData }
         }
     }
 
@@ -188,7 +190,7 @@ pub struct IterMut<'a, T: 'a> {
     ptr: NonNull<T>,
     /// For non-ZSTs, the non-null pointer to the past-the-end element.
     ///
-    /// For ZSTs, this is `ptr::invalid_mut(len)`.
+    /// For ZSTs, this is `ptr::without_provenance_mut(len)`.
     end_or_len: *mut T,
     _marker: PhantomData<&'a mut T>,
 }
@@ -208,7 +210,8 @@ unsafe impl<T: Send> Send for IterMut<'_, T> {}
 impl<'a, T> IterMut<'a, T> {
     #[inline]
     pub(super) fn new(slice: &'a mut [T]) -> Self {
-        let ptr = slice.as_mut_ptr();
+        let len = slice.len();
+        let ptr: NonNull<T> = NonNull::from(slice).cast();
         // SAFETY: There are several things here:
         //
         // `ptr` has been obtained by `slice.as_ptr()` where `slice` is a valid
@@ -227,9 +230,9 @@ impl<'a, T> IterMut<'a, T> {
         // `post_inc_start` method for more information.
         unsafe {
             let end_or_len =
-                if T::IS_ZST { invalid_mut(slice.len()) } else { ptr.add(slice.len()) };
+                if T::IS_ZST { without_provenance_mut(len) } else { ptr.as_ptr().add(len) };
 
-            Self { ptr: NonNull::new_unchecked(ptr), end_or_len, _marker: PhantomData }
+            Self { ptr, end_or_len, _marker: PhantomData }
         }
     }
 
@@ -3252,21 +3255,21 @@ unsafe impl<'a, T> TrustedRandomAccessNoCoerce for IterMut<'a, T> {
 ///
 /// [`chunk_by`]: slice::chunk_by
 /// [slices]: slice
-#[stable(feature = "slice_group_by", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "slice_group_by", since = "1.77.0")]
 #[must_use = "iterators are lazy and do nothing unless consumed"]
 pub struct ChunkBy<'a, T: 'a, P> {
     slice: &'a [T],
     predicate: P,
 }
 
-#[stable(feature = "slice_group_by", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "slice_group_by", since = "1.77.0")]
 impl<'a, T: 'a, P> ChunkBy<'a, T, P> {
     pub(super) fn new(slice: &'a [T], predicate: P) -> Self {
         ChunkBy { slice, predicate }
     }
 }
 
-#[stable(feature = "slice_group_by", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "slice_group_by", since = "1.77.0")]
 impl<'a, T: 'a, P> Iterator for ChunkBy<'a, T, P>
 where
     P: FnMut(&T, &T) -> bool,
@@ -3300,7 +3303,7 @@ where
     }
 }
 
-#[stable(feature = "slice_group_by", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "slice_group_by", since = "1.77.0")]
 impl<'a, T: 'a, P> DoubleEndedIterator for ChunkBy<'a, T, P>
 where
     P: FnMut(&T, &T) -> bool,
@@ -3322,10 +3325,10 @@ where
     }
 }
 
-#[stable(feature = "slice_group_by", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "slice_group_by", since = "1.77.0")]
 impl<'a, T: 'a, P> FusedIterator for ChunkBy<'a, T, P> where P: FnMut(&T, &T) -> bool {}
 
-#[stable(feature = "slice_group_by", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "slice_group_by", since = "1.77.0")]
 impl<'a, T: 'a + fmt::Debug, P> fmt::Debug for ChunkBy<'a, T, P> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("ChunkBy").field("slice", &self.slice).finish()
@@ -3339,21 +3342,21 @@ impl<'a, T: 'a + fmt::Debug, P> fmt::Debug for ChunkBy<'a, T, P> {
 ///
 /// [`chunk_by_mut`]: slice::chunk_by_mut
 /// [slices]: slice
-#[stable(feature = "slice_group_by", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "slice_group_by", since = "1.77.0")]
 #[must_use = "iterators are lazy and do nothing unless consumed"]
 pub struct ChunkByMut<'a, T: 'a, P> {
     slice: &'a mut [T],
     predicate: P,
 }
 
-#[stable(feature = "slice_group_by", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "slice_group_by", since = "1.77.0")]
 impl<'a, T: 'a, P> ChunkByMut<'a, T, P> {
     pub(super) fn new(slice: &'a mut [T], predicate: P) -> Self {
         ChunkByMut { slice, predicate }
     }
 }
 
-#[stable(feature = "slice_group_by", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "slice_group_by", since = "1.77.0")]
 impl<'a, T: 'a, P> Iterator for ChunkByMut<'a, T, P>
 where
     P: FnMut(&T, &T) -> bool,
@@ -3388,7 +3391,7 @@ where
     }
 }
 
-#[stable(feature = "slice_group_by", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "slice_group_by", since = "1.77.0")]
 impl<'a, T: 'a, P> DoubleEndedIterator for ChunkByMut<'a, T, P>
 where
     P: FnMut(&T, &T) -> bool,
@@ -3411,10 +3414,10 @@ where
     }
 }
 
-#[stable(feature = "slice_group_by", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "slice_group_by", since = "1.77.0")]
 impl<'a, T: 'a, P> FusedIterator for ChunkByMut<'a, T, P> where P: FnMut(&T, &T) -> bool {}
 
-#[stable(feature = "slice_group_by", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "slice_group_by", since = "1.77.0")]
 impl<'a, T: 'a + fmt::Debug, P> fmt::Debug for ChunkByMut<'a, T, P> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("ChunkByMut").field("slice", &self.slice).finish()

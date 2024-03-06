@@ -17,6 +17,7 @@ cov-mark = "2.0.0-pre.1"
 itertools.workspace = true
 either.workspace = true
 smallvec.workspace = true
+tracing.workspace = true
 
 # local deps
 stdx.workspace = true

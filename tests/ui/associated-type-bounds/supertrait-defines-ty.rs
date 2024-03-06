@@ -1,4 +1,4 @@
-// check-pass
+//@ check-pass
 
 // Make sure that we don't look into associated type bounds when looking for
 // supertraits that define an associated type. Fixes #76593.

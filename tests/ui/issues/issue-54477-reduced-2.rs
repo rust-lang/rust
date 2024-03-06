@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 // rust-lang/rust#54477: runtime bug in the VecDeque library that was
 // exposed by this test case, derived from test suite of crates.io
 // `collection` crate.

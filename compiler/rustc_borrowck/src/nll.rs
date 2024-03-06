@@ -1,5 +1,3 @@
-#![deny(rustc::untranslatable_diagnostic)]
-#![deny(rustc::diagnostic_outside_of_impl)]
 //! The entry point of the NLL borrow checker.
 
 use polonius_engine::{Algorithm, Output};
@@ -184,14 +182,11 @@ pub(crate) fn compute_regions<'cx, 'tcx>(
 
     // Solve the region constraints.
     let (closure_region_requirements, nll_errors) =
-        regioncx.solve(infcx, param_env, body, polonius_output.clone());
+        regioncx.solve(infcx, body, polonius_output.clone());
 
-    if !nll_errors.is_empty() {
+    if let Some(guar) = nll_errors.has_errors() {
         // Suppress unhelpful extra errors in `infer_opaque_types`.
-        infcx.set_tainted_by_errors(infcx.dcx().span_delayed_bug(
-            body.span,
-            "`compute_regions` tainted `infcx` with errors but did not emit any errors",
-        ));
+        infcx.set_tainted_by_errors(guar);
     }
 
     let remapped_opaque_tys = regioncx.infer_opaque_types(infcx, opaque_type_values);
@@ -264,7 +259,7 @@ pub(super) fn dump_annotation<'tcx>(
     regioncx: &RegionInferenceContext<'tcx>,
     closure_region_requirements: &Option<ClosureRegionRequirements<'tcx>>,
     opaque_type_values: &FxIndexMap<LocalDefId, OpaqueHiddenType<'tcx>>,
-    errors: &mut crate::error::BorrowckErrors<'tcx>,
+    diags: &mut crate::diags::BorrowckDiags<'tcx>,
 ) {
     let tcx = infcx.tcx;
     let base_def_id = tcx.typeck_root_def_id(body.source.def_id());
@@ -310,7 +305,7 @@ pub(super) fn dump_annotation<'tcx>(
         err.note(format!("Inferred opaque type values:\n{opaque_type_values:#?}"));
     }
 
-    errors.buffer_non_error_diag(err);
+    diags.buffer_non_error(err);
 }
 
 fn for_each_region_constraint<'tcx>(

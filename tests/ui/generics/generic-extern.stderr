@@ -6,6 +6,15 @@ LL |     fn foo<T>();
    |
    = help: replace the type parameters with concrete types like `u32`
 
-error: aborting due to 1 previous error
+error[E0133]: call to unsafe function `foo` is unsafe and requires unsafe function or block
+  --> $DIR/generic-extern.rs:6:5
+   |
+LL |     foo::<i32>();
+   |     ^^^^^^^^^^^^ call to unsafe function
+   |
+   = note: consult the function's documentation for information on how to avoid undefined behavior
 
-For more information about this error, try `rustc --explain E0044`.
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0044, E0133.
+For more information about an error, try `rustc --explain E0044`.

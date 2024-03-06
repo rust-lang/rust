@@ -2,7 +2,7 @@ error[E0308]: mismatched types
   --> $DIR/issue-79674.rs:26:5
    |
 LL |     requires_distinct("str", 12);
-   |     ^^^^^^^^^^^^^^^^^ expected `true`, found `false`
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected `true`, found `false`
    |
    = note: expected constant `true`
               found constant `false`

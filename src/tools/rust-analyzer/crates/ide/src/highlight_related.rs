@@ -55,7 +55,7 @@ pub(crate) fn highlight_related(
     config: HighlightRelatedConfig,
     pos @ FilePosition { offset, file_id }: FilePosition,
 ) -> Option<Vec<HighlightedRange>> {
-    let _p = profile::span("highlight_related");
+    let _p = tracing::span!(tracing::Level::INFO, "highlight_related").entered();
     let syntax = sema.parse(file_id).syntax().clone();
 
     let token = pick_best_token(syntax.token_at_offset(offset), |kind| match kind {
@@ -166,7 +166,7 @@ fn highlight_references(
                     match parent {
                         ast::UseTree(it) => it.syntax().ancestors().find(|it| {
                             ast::SourceFile::can_cast(it.kind()) || ast::Module::can_cast(it.kind())
-                        }),
+                        }).zip(Some(true)),
                         ast::PathType(it) => it
                             .syntax()
                             .ancestors()
@@ -178,14 +178,14 @@ fn highlight_references(
                             .ancestors()
                             .find(|it| {
                                 ast::Item::can_cast(it.kind())
-                            }),
+                            }).zip(Some(false)),
                         _ => None,
                     }
                 }
             })();
-            if let Some(trait_item_use_scope) = trait_item_use_scope {
+            if let Some((trait_item_use_scope, use_tree)) = trait_item_use_scope {
                 res.extend(
-                    t.items_with_supertraits(sema.db)
+                    if use_tree { t.items(sema.db) } else { t.items_with_supertraits(sema.db) }
                         .into_iter()
                         .filter_map(|item| {
                             Definition::from(item)
@@ -519,8 +519,9 @@ mod tests {
                             ReferenceCategory::Read => "read",
                             ReferenceCategory::Write => "write",
                             ReferenceCategory::Import => "import",
+                            ReferenceCategory::Test => "test",
                         }
-                        .to_string()
+                        .to_owned()
                     }),
                 )
             })
@@ -1597,7 +1598,10 @@ fn f() {
     fn test_trait_highlights_assoc_item_uses() {
         check(
             r#"
-trait Foo {
+trait Super {
+    type SuperT;
+}
+trait Foo: Super {
     //^^^
     type T;
     const C: usize;
@@ -1613,6 +1617,8 @@ impl Foo for i32 {
 }
 fn f<T: Foo$0>(t: T) {
       //^^^
+    let _: T::SuperT;
+            //^^^^^^
     let _: T::T;
             //^
     t.m();
@@ -1629,6 +1635,49 @@ fn f2<T: Foo>(t: T) {
     t.m();
     T::C;
     T::f();
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn test_trait_highlights_assoc_item_uses_use_tree() {
+        check(
+            r#"
+use Foo$0;
+ // ^^^ import
+trait Super {
+    type SuperT;
+}
+trait Foo: Super {
+    //^^^
+    type T;
+    const C: usize;
+    fn f() {}
+    fn m(&self) {}
+}
+impl Foo for i32 {
+   //^^^
+    type T = i32;
+      // ^
+    const C: usize = 0;
+       // ^
+    fn f() {}
+    // ^
+    fn m(&self) {}
+    // ^
+}
+fn f<T: Foo>(t: T) {
+      //^^^
+    let _: T::SuperT;
+    let _: T::T;
+            //^
+    t.m();
+    //^
+    T::C;
+     //^
+    T::f();
+     //^
 }
 "#,
         );

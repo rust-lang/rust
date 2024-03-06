@@ -85,6 +85,14 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                     // Write result.
                     let niche_dest = self.project_field(dest, tag_field)?;
                     self.write_immediate(*tag_val, &niche_dest)?;
+                } else {
+                    // The untagged variant is implicitly encoded simply by having a value that is
+                    // outside the niche variants. But what if the data stored here does not
+                    // actually encode this variant? That would be bad! So let's double-check...
+                    let actual_variant = self.read_discriminant(&dest.to_op(self)?)?;
+                    if actual_variant != variant_index {
+                        throw_ub!(InvalidNichedEnumVariantWritten { enum_ty: dest.layout().ty });
+                    }
                 }
             }
         }

@@ -1,10 +1,10 @@
 // WF check for impl Trait in associated type position.
 //
-// revisions: pass pass_next fail
-// [pass] check-pass
-// [pass_next] compile-flags: -Znext-solver
-// [pass_next] check-pass
-// [fail] check-fail
+//@ revisions: pass pass_next fail
+//@ [pass] check-pass
+//@ [pass_next] compile-flags: -Znext-solver
+//@ [pass_next] check-pass
+//@ [fail] check-fail
 
 #![feature(impl_trait_in_assoc_type)]
 

@@ -27,27 +27,22 @@ extern crate ra_ap_rustc_lexer as rustc_lexer;
 #[cfg(feature = "in-rust-tree")]
 extern crate rustc_lexer;
 
-#[allow(unused)]
-macro_rules! eprintln {
-    ($($tt:tt)*) => { stdx::eprintln!($($tt)*) };
-}
-
-mod syntax_node;
-mod syntax_error;
 mod parsing;
-mod validation;
 mod ptr;
-mod token_text;
+mod syntax_error;
+mod syntax_node;
 #[cfg(test)]
 mod tests;
+mod token_text;
+mod validation;
 
 pub mod algo;
 pub mod ast;
 #[doc(hidden)]
 pub mod fuzz;
-pub mod utils;
-pub mod ted;
 pub mod hacks;
+pub mod ted;
+pub mod utils;
 
 use std::marker::PhantomData;
 
@@ -432,7 +427,7 @@ fn api_walkthrough() {
             WalkEvent::Enter(node) => {
                 let text = match &node {
                     NodeOrToken::Node(it) => it.text().to_string(),
-                    NodeOrToken::Token(it) => it.text().to_string(),
+                    NodeOrToken::Token(it) => it.text().to_owned(),
                 };
                 format_to!(buf, "{:indent$}{:?} {:?}\n", " ", text, node.kind(), indent = indent);
                 indent += 2;

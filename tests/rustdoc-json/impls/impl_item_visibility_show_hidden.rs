@@ -1,4 +1,4 @@
-// compile-flags: --document-hidden-items
+//@ compile-flags: --document-hidden-items
 
 pub struct Foo;
 

@@ -1,5 +1,5 @@
-// aux-build:two_macros.rs
-// compile-flags:--extern non_existent
+//@ aux-build:two_macros.rs
+//@ compile-flags:--extern non_existent
 
 mod n {
     extern crate two_macros;

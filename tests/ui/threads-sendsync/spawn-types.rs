@@ -1,7 +1,7 @@
-// run-pass
+//@ run-pass
 #![allow(non_camel_case_types)]
 
-// ignore-emscripten no threads support
+//@ ignore-emscripten no threads support
 
 /*
   Make sure we can spawn tasks that take different types of

@@ -187,7 +187,7 @@ passes_doc_attr_not_crate_level =
     `#![doc({$attr_name} = "...")]` isn't allowed as a crate-level attribute
 
 passes_doc_cfg_hide_takes_list =
-    `#[doc(cfg_hide(...)]` takes a list of attributes
+    `#[doc(cfg_hide(...))]` takes a list of attributes
 
 passes_doc_expect_str =
     doc {$attr_name} attribute expects a string: #[doc({$attr_name} = "a")]
@@ -322,9 +322,6 @@ passes_ffi_const_invalid_target =
 
 passes_ffi_pure_invalid_target =
     `#[ffi_pure]` may only be used on foreign functions
-
-passes_ffi_returns_twice_invalid_target =
-    `#[ffi_returns_twice]` may only be used on foreign functions
 
 passes_has_incoherent_inherent_impl =
     `rustc_has_incoherent_inherent_impls` attribute should be applied to types or traits.

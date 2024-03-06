@@ -1,4 +1,4 @@
-// check-pass
+//@ check-pass
 
 trait Document {
     type Cursor<'a>: DocCursor<'a> where Self: 'a;

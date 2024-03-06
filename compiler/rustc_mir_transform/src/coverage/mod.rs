@@ -7,7 +7,7 @@ mod spans;
 #[cfg(test)]
 mod tests;
 
-use self::counters::{BcbCounter, CoverageCounters};
+use self::counters::{CounterIncrementSite, CoverageCounters};
 use self::graph::{BasicCoverageBlock, CoverageGraph};
 use self::spans::{BcbMapping, BcbMappingKind, CoverageSpans};
 
@@ -155,61 +155,52 @@ fn inject_coverage_statements<'tcx>(
     bcb_has_coverage_spans: impl Fn(BasicCoverageBlock) -> bool,
     coverage_counters: &CoverageCounters,
 ) {
-    // Process the counters associated with BCB nodes.
-    for (bcb, counter_kind) in coverage_counters.bcb_node_counters() {
-        let do_inject = match counter_kind {
-            // Counter-increment statements always need to be injected.
-            BcbCounter::Counter { .. } => true,
-            // The only purpose of expression-used statements is to detect
-            // when a mapping is unreachable, so we only inject them for
-            // expressions with one or more mappings.
-            BcbCounter::Expression { .. } => bcb_has_coverage_spans(bcb),
+    // Inject counter-increment statements into MIR.
+    for (id, counter_increment_site) in coverage_counters.counter_increment_sites() {
+        // Determine the block to inject a counter-increment statement into.
+        // For BCB nodes this is just their first block, but for edges we need
+        // to create a new block between the two BCBs, and inject into that.
+        let target_bb = match *counter_increment_site {
+            CounterIncrementSite::Node { bcb } => basic_coverage_blocks[bcb].leader_bb(),
+            CounterIncrementSite::Edge { from_bcb, to_bcb } => {
+                // Create a new block between the last block of `from_bcb` and
+                // the first block of `to_bcb`.
+                let from_bb = basic_coverage_blocks[from_bcb].last_bb();
+                let to_bb = basic_coverage_blocks[to_bcb].leader_bb();
+
+                let new_bb = inject_edge_counter_basic_block(mir_body, from_bb, to_bb);
+                debug!(
+                    "Edge {from_bcb:?} (last {from_bb:?}) -> {to_bcb:?} (leader {to_bb:?}) \
+                    requires a new MIR BasicBlock {new_bb:?} for counter increment {id:?}",
+                );
+                new_bb
+            }
         };
-        if do_inject {
-            inject_statement(
-                mir_body,
-                make_mir_coverage_kind(counter_kind),
-                basic_coverage_blocks[bcb].leader_bb(),
-            );
-        }
+
+        inject_statement(mir_body, CoverageKind::CounterIncrement { id }, target_bb);
     }
 
-    // Process the counters associated with BCB edges.
-    for (from_bcb, to_bcb, counter_kind) in coverage_counters.bcb_edge_counters() {
-        let do_inject = match counter_kind {
-            // Counter-increment statements always need to be injected.
-            BcbCounter::Counter { .. } => true,
-            // BCB-edge expressions never have mappings, so they never need
-            // a corresponding statement.
-            BcbCounter::Expression { .. } => false,
-        };
-        if !do_inject {
-            continue;
-        }
-
-        // We need to inject a coverage statement into a new BB between the
-        // last BB of `from_bcb` and the first BB of `to_bcb`.
-        let from_bb = basic_coverage_blocks[from_bcb].last_bb();
-        let to_bb = basic_coverage_blocks[to_bcb].leader_bb();
-
-        let new_bb = inject_edge_counter_basic_block(mir_body, from_bb, to_bb);
-        debug!(
-            "Edge {from_bcb:?} (last {from_bb:?}) -> {to_bcb:?} (leader {to_bb:?}) \
-                requires a new MIR BasicBlock {new_bb:?} for edge counter {counter_kind:?}",
+    // For each counter expression that is directly associated with at least one
+    // span, we inject an "expression-used" statement, so that coverage codegen
+    // can check whether the injected statement survived MIR optimization.
+    // (BCB edges can't have spans, so we only need to process BCB nodes here.)
+    //
+    // See the code in `rustc_codegen_llvm::coverageinfo::map_data` that deals
+    // with "expressions seen" and "zero terms".
+    for (bcb, expression_id) in coverage_counters
+        .bcb_nodes_with_coverage_expressions()
+        .filter(|&(bcb, _)| bcb_has_coverage_spans(bcb))
+    {
+        inject_statement(
+            mir_body,
+            CoverageKind::ExpressionUsed { id: expression_id },
+            basic_coverage_blocks[bcb].leader_bb(),
         );
-
-        // Inject a counter into the newly-created BB.
-        inject_statement(mir_body, make_mir_coverage_kind(counter_kind), new_bb);
     }
 }
 
-fn make_mir_coverage_kind(counter_kind: &BcbCounter) -> CoverageKind {
-    match *counter_kind {
-        BcbCounter::Counter { id } => CoverageKind::CounterIncrement { id },
-        BcbCounter::Expression { id } => CoverageKind::ExpressionUsed { id },
-    }
-}
-
+/// Given two basic blocks that have a control-flow edge between them, creates
+/// and returns a new block that sits between those blocks.
 fn inject_edge_counter_basic_block(
     mir_body: &mut mir::Body<'_>,
     from_bb: BasicBlock,
@@ -394,7 +385,9 @@ fn is_eligible_for_coverage(tcx: TyCtxt<'_>, def_id: LocalDefId) -> bool {
 struct ExtractedHirInfo {
     function_source_hash: u64,
     is_async_fn: bool,
-    fn_sig_span: Span,
+    /// The span of the function's signature, extended to the start of `body_span`.
+    /// Must have the same context and filename as the body span.
+    fn_sig_span_extended: Option<Span>,
     body_span: Span,
 }
 
@@ -407,13 +400,25 @@ fn extract_hir_info<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalDefId) -> ExtractedHir
         hir::map::associated_body(hir_node).expect("HIR node is a function with body");
     let hir_body = tcx.hir().body(fn_body_id);
 
-    let is_async_fn = hir_node.fn_sig().is_some_and(|fn_sig| fn_sig.header.is_async());
-    let body_span = get_body_span(tcx, hir_body, def_id);
+    let maybe_fn_sig = hir_node.fn_sig();
+    let is_async_fn = maybe_fn_sig.is_some_and(|fn_sig| fn_sig.header.is_async());
+
+    let mut body_span = hir_body.value.span;
+
+    use rustc_hir::{Closure, Expr, ExprKind, Node};
+    // Unexpand a closure's body span back to the context of its declaration.
+    // This helps with closure bodies that consist of just a single bang-macro,
+    // and also with closure bodies produced by async desugaring.
+    if let Node::Expr(&Expr { kind: ExprKind::Closure(&Closure { fn_decl_span, .. }), .. }) =
+        hir_node
+    {
+        body_span = body_span.find_ancestor_in_same_ctxt(fn_decl_span).unwrap_or(body_span);
+    }
 
     // The actual signature span is only used if it has the same context and
     // filename as the body, and precedes the body.
-    let maybe_fn_sig_span = hir_node.fn_sig().map(|fn_sig| fn_sig.span);
-    let fn_sig_span = maybe_fn_sig_span
+    let fn_sig_span_extended = maybe_fn_sig
+        .map(|fn_sig| fn_sig.span)
         .filter(|&fn_sig_span| {
             let source_map = tcx.sess.source_map();
             let file_idx = |span: Span| source_map.lookup_source_file_idx(span.lo());
@@ -423,39 +428,15 @@ fn extract_hir_info<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalDefId) -> ExtractedHir
                 && file_idx(fn_sig_span) == file_idx(body_span)
         })
         // If so, extend it to the start of the body span.
-        .map(|fn_sig_span| fn_sig_span.with_hi(body_span.lo()))
-        // Otherwise, create a dummy signature span at the start of the body.
-        .unwrap_or_else(|| body_span.shrink_to_lo());
+        .map(|fn_sig_span| fn_sig_span.with_hi(body_span.lo()));
 
     let function_source_hash = hash_mir_source(tcx, hir_body);
 
-    ExtractedHirInfo { function_source_hash, is_async_fn, fn_sig_span, body_span }
-}
-
-fn get_body_span<'tcx>(
-    tcx: TyCtxt<'tcx>,
-    hir_body: &rustc_hir::Body<'tcx>,
-    def_id: LocalDefId,
-) -> Span {
-    let mut body_span = hir_body.value.span;
-
-    if tcx.is_closure_or_coroutine(def_id.to_def_id()) {
-        // If the current function is a closure, and its "body" span was created
-        // by macro expansion or compiler desugaring, try to walk backwards to
-        // the pre-expansion call site or body.
-        body_span = body_span.source_callsite();
-    }
-
-    body_span
+    ExtractedHirInfo { function_source_hash, is_async_fn, fn_sig_span_extended, body_span }
 }
 
 fn hash_mir_source<'tcx>(tcx: TyCtxt<'tcx>, hir_body: &'tcx rustc_hir::Body<'tcx>) -> u64 {
     // FIXME(cjgillot) Stop hashing HIR manually here.
     let owner = hir_body.id().hir_id.owner;
-    tcx.hir_owner_nodes(owner)
-        .unwrap()
-        .opt_hash_including_bodies
-        .unwrap()
-        .to_smaller_hash()
-        .as_u64()
+    tcx.hir_owner_nodes(owner).opt_hash_including_bodies.unwrap().to_smaller_hash().as_u64()
 }

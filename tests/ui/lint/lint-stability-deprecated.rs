@@ -1,8 +1,8 @@
-// check-pass
-// aux-build:lint_stability.rs
-// aux-build:inherited_stability.rs
-// aux-build:stability_cfg1.rs
-// aux-build:stability-cfg2.rs
+//@ check-pass
+//@ aux-build:lint_stability.rs
+//@ aux-build:inherited_stability.rs
+//@ aux-build:stability_cfg1.rs
+//@ aux-build:stability-cfg2.rs
 #![warn(deprecated)]
 #![feature(staged_api, unstable_test_feature)]
 
@@ -96,13 +96,10 @@ mod cross_crate {
         struct S1<T: TraitWithAssociatedTypes>(T::TypeUnstable);
         struct S2<T: TraitWithAssociatedTypes>(T::TypeDeprecated);
         //~^ WARN use of deprecated associated type `lint_stability::TraitWithAssociatedTypes::TypeDeprecated`: text
-        //~| WARN use of deprecated associated type `lint_stability::TraitWithAssociatedTypes::TypeDeprecated`: text
         type A = dyn TraitWithAssociatedTypes<
             TypeUnstable = u8,
             TypeDeprecated = u16,
             //~^ WARN use of deprecated associated type `lint_stability::TraitWithAssociatedTypes::TypeDeprecated`
-            //~| WARN use of deprecated associated type `lint_stability::TraitWithAssociatedTypes::TypeDeprecated`
-            //~| WARN use of deprecated associated type `lint_stability::TraitWithAssociatedTypes::TypeDeprecated`
         >;
 
         let _ = DeprecatedStruct { //~ WARN use of deprecated struct `lint_stability::DeprecatedStruct`

@@ -7,6 +7,7 @@ use rustc_ast as ast;
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_data_structures::unord::UnordMap;
 use rustc_span::symbol::Symbol;
+use unicode_security::general_security_profile::IdentifierType;
 
 declare_lint! {
     /// The `non_ascii_idents` lint detects non-ASCII identifiers.
@@ -171,7 +172,7 @@ impl EarlyLintPass for NonAsciiIdents {
         }
 
         let mut has_non_ascii_idents = false;
-        let symbols = cx.sess().parse_sess.symbol_gallery.symbols.lock();
+        let symbols = cx.sess().psess.symbol_gallery.symbols.lock();
 
         // Sort by `Span` so that error messages make sense with respect to the
         // order of identifier locations in the code.
@@ -179,7 +180,6 @@ impl EarlyLintPass for NonAsciiIdents {
         #[allow(rustc::potential_query_instability)]
         let mut symbols: Vec<_> = symbols.iter().collect();
         symbols.sort_by_key(|k| k.1);
-
         for (symbol, &sp) in symbols.iter() {
             let symbol_str = symbol.as_str();
             if symbol_str.is_ascii() {
@@ -190,17 +190,47 @@ impl EarlyLintPass for NonAsciiIdents {
             if check_uncommon_codepoints
                 && !symbol_str.chars().all(GeneralSecurityProfile::identifier_allowed)
             {
-                let codepoints: Vec<_> = symbol_str
+                let mut chars: Vec<_> = symbol_str
                     .chars()
-                    .filter(|c| !GeneralSecurityProfile::identifier_allowed(*c))
+                    .map(|c| (c, GeneralSecurityProfile::identifier_type(c)))
                     .collect();
-                let codepoints_len = codepoints.len();
 
-                cx.emit_span_lint(
-                    UNCOMMON_CODEPOINTS,
-                    sp,
-                    IdentifierUncommonCodepoints { codepoints, codepoints_len },
-                );
+                for (id_ty, id_ty_descr) in [
+                    (IdentifierType::Exclusion, "Exclusion"),
+                    (IdentifierType::Technical, "Technical"),
+                    (IdentifierType::Limited_Use, "Limited_Use"),
+                    (IdentifierType::Not_NFKC, "Not_NFKC"),
+                ] {
+                    let codepoints: Vec<_> =
+                        chars.extract_if(|(_, ty)| *ty == Some(id_ty)).collect();
+                    if codepoints.is_empty() {
+                        continue;
+                    }
+                    cx.emit_span_lint(
+                        UNCOMMON_CODEPOINTS,
+                        sp,
+                        IdentifierUncommonCodepoints {
+                            codepoints_len: codepoints.len(),
+                            codepoints: codepoints.into_iter().map(|(c, _)| c).collect(),
+                            identifier_type: id_ty_descr,
+                        },
+                    );
+                }
+
+                let remaining = chars
+                    .extract_if(|(c, _)| !GeneralSecurityProfile::identifier_allowed(*c))
+                    .collect::<Vec<_>>();
+                if !remaining.is_empty() {
+                    cx.emit_span_lint(
+                        UNCOMMON_CODEPOINTS,
+                        sp,
+                        IdentifierUncommonCodepoints {
+                            codepoints_len: remaining.len(),
+                            codepoints: remaining.into_iter().map(|(c, _)| c).collect(),
+                            identifier_type: "Restricted",
+                        },
+                    );
+                }
             }
         }
 

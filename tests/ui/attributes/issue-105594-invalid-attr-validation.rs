@@ -1,7 +1,7 @@
 // This checks that the attribute validation ICE in issue #105594 doesn't
 // recur.
 //
-// ignore-thumbv8m.base-none-eabi
+//@ ignore-thumbv8m.base-none-eabi
 #![feature(cmse_nonsecure_entry)]
 
 fn main() {}

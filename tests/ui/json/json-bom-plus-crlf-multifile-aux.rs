@@ -1,6 +1,6 @@
 ﻿// (This line has BOM so it's ignored by compiletest for directives)
 //
-// ignore-test Not a test. Used by other tests
+//@ ignore-test Not a test. Used by other tests
 // ignore-tidy-cr
 
 // For easier verifying, the byte offsets in this file should match those

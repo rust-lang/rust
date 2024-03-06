@@ -1,11 +1,11 @@
 // Optimized MIR shouldn't have critical call edges
 //
-// build-fail
-// edition: 2021
-// compile-flags: --crate-type=lib
-// failure-status: 101
-// dont-check-compiler-stderr
-// error-pattern: encountered critical edge in `Call` terminator
+//@ build-fail
+//@ edition: 2021
+//@ compile-flags: --crate-type=lib
+//@ failure-status: 101
+//@ dont-check-compiler-stderr
+//@ error-pattern: encountered critical edge in `Call` terminator
 #![feature(custom_mir, core_intrinsics)]
 use core::intrinsics::mir::*;
 

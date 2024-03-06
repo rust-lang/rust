@@ -72,7 +72,7 @@ impl Runnable {
             RunnableKind::Bench { test_id } => format!("bench {test_id}"),
             RunnableKind::DocTest { test_id, .. } => format!("doctest {test_id}"),
             RunnableKind::Bin => {
-                target.map_or_else(|| "run binary".to_string(), |t| format!("run {t}"))
+                target.map_or_else(|| "run binary".to_owned(), |t| format!("run {t}"))
             }
         }
     }
@@ -442,8 +442,7 @@ fn module_def_doctest(db: &RootDatabase, def: Definition) -> Option<Runnable> {
             .for_each(|name| format_to!(path, "{}::", name.display(db)));
         // This probably belongs to canonical_path?
         if let Some(assoc_item) = def.as_assoc_item(db) {
-            if let hir::AssocItemContainer::Impl(imp) = assoc_item.container(db) {
-                let ty = imp.self_ty(db);
+            if let Some(ty) = assoc_item.implementing_ty(db) {
                 if let Some(adt) = ty.as_adt() {
                     let name = adt.name(db);
                     let mut ty_args = ty.generic_parameters(db).peekable();

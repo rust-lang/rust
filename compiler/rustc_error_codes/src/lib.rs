@@ -5,8 +5,6 @@
 #![feature(rustdoc_internals)]
 #![doc(rust_logo)]
 #![deny(rustdoc::invalid_codeblock_attributes)]
-#![deny(rustc::untranslatable_diagnostic)]
-#![deny(rustc::diagnostic_outside_of_impl)]
 
 // This higher-order macro defines the error codes that are in use. It is used
 // in the `rustc_errors` crate. Removed error codes are listed in the comment

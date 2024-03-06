@@ -1,8 +1,7 @@
 use std::cell::RefCell;
 use std::fmt;
-use std::num::NonZeroU64;
+use std::num::NonZero;
 
-use log::trace;
 use smallvec::SmallVec;
 
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
@@ -13,22 +12,22 @@ use crate::*;
 pub mod stacked_borrows;
 pub mod tree_borrows;
 
-pub type CallId = NonZeroU64;
+pub type CallId = NonZero<u64>;
 
 /// Tracking pointer provenance
 #[derive(Copy, Clone, Hash, PartialEq, Eq, PartialOrd, Ord)]
-pub struct BorTag(NonZeroU64);
+pub struct BorTag(NonZero<u64>);
 
 impl BorTag {
     pub fn new(i: u64) -> Option<Self> {
-        NonZeroU64::new(i).map(BorTag)
+        NonZero::new(i).map(BorTag)
     }
 
     pub fn get(&self) -> u64 {
         self.0.get()
     }
 
-    pub fn inner(&self) -> NonZeroU64 {
+    pub fn inner(&self) -> NonZero<u64> {
         self.0
     }
 
@@ -123,13 +122,6 @@ impl VisitProvenance for GlobalStateInner {
 /// We need interior mutable access to the global state.
 pub type GlobalState = RefCell<GlobalStateInner>;
 
-/// Indicates which kind of access is being performed.
-#[derive(Copy, Clone, Hash, PartialEq, Eq, Debug)]
-pub enum AccessKind {
-    Read,
-    Write,
-}
-
 impl fmt::Display for AccessKind {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
@@ -184,7 +176,7 @@ impl GlobalStateInner {
             borrow_tracker_method,
             next_ptr_tag: BorTag::one(),
             base_ptr_tags: FxHashMap::default(),
-            next_call_id: NonZeroU64::new(1).unwrap(),
+            next_call_id: NonZero::new(1).unwrap(),
             protected_tags: FxHashMap::default(),
             tracked_pointer_tags,
             tracked_call_ids,
@@ -206,7 +198,7 @@ impl GlobalStateInner {
         if self.tracked_call_ids.contains(&call_id) {
             machine.emit_diagnostic(NonHaltingDiagnostic::CreatedCallId(call_id));
         }
-        self.next_call_id = NonZeroU64::new(call_id.get() + 1).unwrap();
+        self.next_call_id = NonZero::new(call_id.get() + 1).unwrap();
         FrameState { call_id, protected_tags: SmallVec::new() }
     }
 
@@ -383,9 +375,14 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
             // will never cause UB on the pointer itself.
             let (_, _, kind) = this.get_alloc_info(*alloc_id);
             if matches!(kind, AllocKind::LiveData) {
-                let alloc_extra = this.get_alloc_extra(*alloc_id).unwrap();
+                let alloc_extra = this.get_alloc_extra(*alloc_id)?; // can still fail for `extern static`
                 let alloc_borrow_tracker = &alloc_extra.borrow_tracker.as_ref().unwrap();
-                alloc_borrow_tracker.release_protector(&this.machine, borrow_tracker, *tag)?;
+                alloc_borrow_tracker.release_protector(
+                    &this.machine,
+                    borrow_tracker,
+                    *tag,
+                    *alloc_id,
+                )?;
             }
         }
         borrow_tracker.borrow_mut().end_call(&frame.extra);
@@ -499,10 +496,12 @@ impl AllocState {
         machine: &MiriMachine<'_, 'tcx>,
         global: &GlobalState,
         tag: BorTag,
+        alloc_id: AllocId, // diagnostics
     ) -> InterpResult<'tcx> {
         match self {
             AllocState::StackedBorrows(_sb) => Ok(()),
-            AllocState::TreeBorrows(tb) => tb.borrow_mut().release_protector(machine, global, tag),
+            AllocState::TreeBorrows(tb) =>
+                tb.borrow_mut().release_protector(machine, global, tag, alloc_id),
         }
     }
 }

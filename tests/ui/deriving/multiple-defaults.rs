@@ -1,4 +1,4 @@
-// compile-flags: --crate-type=lib
+//@ compile-flags: --crate-type=lib
 
 // When we get multiple `#[default]` variants, we emit several tool-only suggestions
 // to remove all except one of the `#[default]`s.

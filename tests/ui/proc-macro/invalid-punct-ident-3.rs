@@ -1,5 +1,5 @@
-// aux-build:invalid-punct-ident.rs
-// needs-unwind proc macro panics to report errors
+//@ aux-build:invalid-punct-ident.rs
+//@ needs-unwind proc macro panics to report errors
 
 #[macro_use]
 extern crate invalid_punct_ident;

@@ -1,4 +1,4 @@
-// aux-build: enum_with_discriminant.rs
+//@ aux-build: enum_with_discriminant.rs
 
 extern crate enum_with_discriminant;
 

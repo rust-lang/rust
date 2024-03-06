@@ -1,4 +1,4 @@
-// check-pass
+//@ check-pass
 
 mod a {
     pub mod b { pub struct Foo; }

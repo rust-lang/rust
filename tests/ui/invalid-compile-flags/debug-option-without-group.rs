@@ -1,1 +1,1 @@
-// compile-flags: --unpretty=hir
+//@ compile-flags: --unpretty=hir

@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 #![allow(dead_code)]
 #![allow(unused_variables)]
 // Test that we choose Deref or DerefMut appropriately based on mutability of ref bindings (#15609).

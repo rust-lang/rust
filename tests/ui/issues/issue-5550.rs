@@ -1,6 +1,6 @@
-// run-pass
+//@ run-pass
 #![allow(unused_assignments)]
-// pretty-expanded FIXME #23616
+//@ pretty-expanded FIXME #23616
 
 pub fn main() {
     let s: String = "foobar".to_string();

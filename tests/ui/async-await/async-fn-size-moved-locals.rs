@@ -7,10 +7,10 @@
 //
 // See issue #59123 for a full explanation.
 
-// needs-unwind Size of Futures change on panic=abort
-// run-pass
+//@ needs-unwind Size of Futures change on panic=abort
+//@ run-pass
 
-// edition:2018
+//@ edition:2018
 
 use std::future::Future;
 use std::pin::Pin;

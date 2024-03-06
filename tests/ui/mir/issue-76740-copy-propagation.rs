@@ -1,6 +1,6 @@
 // Regression test for issue #76740.
-// run-pass
-// compile-flags: -Zmir-opt-level=4
+//@ run-pass
+//@ compile-flags: -Zmir-opt-level=4
 
 #[derive(Copy, Clone)]
 pub struct V([usize; 4]);

@@ -50,7 +50,7 @@ fn fn_sig_for_fn_abi<'tcx>(
             // `tests/ui/polymorphization/normalized_sig_types.rs`), and codegen not keeping
             // track of a polymorphization `ParamEnv` to allow normalizing later.
             //
-            // We normalize the `fn_sig` again after substituting at a later point.
+            // We normalize the `fn_sig` again after instantiating at a later point.
             let mut sig = match *ty.kind() {
                 ty::FnDef(def_id, args) => tcx
                     .fn_sig(def_id)
@@ -101,6 +101,49 @@ fn fn_sig_for_fn_abi<'tcx>(
                 bound_vars,
             )
         }
+        ty::CoroutineClosure(def_id, args) => {
+            let sig = args.as_coroutine_closure().coroutine_closure_sig();
+            let bound_vars = tcx.mk_bound_variable_kinds_from_iter(
+                sig.bound_vars().iter().chain(iter::once(ty::BoundVariableKind::Region(ty::BrEnv))),
+            );
+            let br = ty::BoundRegion {
+                var: ty::BoundVar::from_usize(bound_vars.len() - 1),
+                kind: ty::BoundRegionKind::BrEnv,
+            };
+            let env_region = ty::Region::new_bound(tcx, ty::INNERMOST, br);
+
+            // When this `CoroutineClosure` comes from a `ConstructCoroutineInClosureShim`,
+            // make sure we respect the `target_kind` in that shim.
+            // FIXME(async_closures): This shouldn't be needed, and we should be populating
+            // a separate def-id for these bodies.
+            let mut kind = args.as_coroutine_closure().kind();
+            if let InstanceDef::ConstructCoroutineInClosureShim { target_kind, .. } = instance.def {
+                kind = target_kind;
+            }
+
+            let env_ty =
+                tcx.closure_env_ty(Ty::new_coroutine_closure(tcx, def_id, args), kind, env_region);
+
+            let sig = sig.skip_binder();
+            ty::Binder::bind_with_vars(
+                tcx.mk_fn_sig(
+                    iter::once(env_ty).chain([sig.tupled_inputs_ty]),
+                    sig.to_coroutine_given_kind_and_upvars(
+                        tcx,
+                        args.as_coroutine_closure().parent_args(),
+                        tcx.coroutine_for_closure(def_id),
+                        kind,
+                        env_region,
+                        args.as_coroutine_closure().tupled_upvars_ty(),
+                        args.as_coroutine_closure().coroutine_captures_by_ref_ty(),
+                    ),
+                    sig.c_variadic,
+                    sig.unsafety,
+                    sig.abi,
+                ),
+                bound_vars,
+            )
+        }
         ty::Coroutine(did, args) => {
             let coroutine_kind = tcx.coroutine_kind(did).unwrap();
             let sig = args.as_coroutine().sig();
@@ -112,6 +155,40 @@ fn fn_sig_for_fn_abi<'tcx>(
                 var: ty::BoundVar::from_usize(bound_vars.len() - 1),
                 kind: ty::BoundRegionKind::BrEnv,
             };
+
+            let mut ty = ty;
+            // When this `Closure` comes from a `CoroutineKindShim`,
+            // make sure we respect the `target_kind` in that shim.
+            // FIXME(async_closures): This shouldn't be needed, and we should be populating
+            // a separate def-id for these bodies.
+            if let InstanceDef::CoroutineKindShim { target_kind, .. } = instance.def {
+                // Grab the parent coroutine-closure. It has the same args for the purposes
+                // of instantiation, so this will be okay to do.
+                let ty::CoroutineClosure(_, coroutine_closure_args) = *tcx
+                    .instantiate_and_normalize_erasing_regions(
+                        args,
+                        param_env,
+                        tcx.type_of(tcx.parent(did)),
+                    )
+                    .kind()
+                else {
+                    bug!("CoroutineKindShim comes from calling a coroutine-closure");
+                };
+                let coroutine_closure_args = coroutine_closure_args.as_coroutine_closure();
+                ty = tcx.instantiate_bound_regions_with_erased(
+                    coroutine_closure_args.coroutine_closure_sig().map_bound(|sig| {
+                        sig.to_coroutine_given_kind_and_upvars(
+                            tcx,
+                            coroutine_closure_args.parent_args(),
+                            did,
+                            target_kind,
+                            tcx.lifetimes.re_erased,
+                            coroutine_closure_args.tupled_upvars_ty(),
+                            coroutine_closure_args.coroutine_captures_by_ref_ty(),
+                        )
+                    }),
+                );
+            }
             let env_ty = Ty::new_mut_ref(tcx, ty::Region::new_bound(tcx, ty::INNERMOST, br), ty);
 
             let pin_did = tcx.require_lang_item(LangItem::Pin, None);
@@ -235,7 +312,7 @@ fn fn_sig_for_fn_abi<'tcx>(
 fn conv_from_spec_abi(tcx: TyCtxt<'_>, abi: SpecAbi, c_variadic: bool) -> Conv {
     use rustc_target::spec::abi::Abi::*;
     match tcx.sess.target.adjust_abi(abi, c_variadic) {
-        RustIntrinsic | PlatformIntrinsic | Rust | RustCall => Conv::Rust,
+        RustIntrinsic | Rust | RustCall => Conv::Rust,
 
         // This is intentionally not using `Conv::Cold`, as that has to preserve
         // even SIMD registers, which is generally not a good trade-off.
@@ -258,7 +335,6 @@ fn conv_from_spec_abi(tcx: TyCtxt<'_>, abi: SpecAbi, c_variadic: bool) -> Conv {
         PtxKernel => Conv::PtxKernel,
         Msp430Interrupt => Conv::Msp430Intr,
         X86Interrupt => Conv::X86Intr,
-        AmdGpuKernel => Conv::AmdGpuKernel,
         AvrInterrupt => Conv::AvrInterrupt,
         AvrNonBlockingInterrupt => Conv::AvrNonBlockingInterrupt,
         RiscvInterruptM => Conv::RiscvInterrupt { kind: RiscvInterruptKind::Machine },
@@ -376,7 +452,7 @@ fn adjust_for_rust_scalar<'tcx>(
             let no_alias = match kind {
                 PointerKind::SharedRef { frozen } => frozen,
                 PointerKind::MutableRef { unpin } => unpin && noalias_mut_ref,
-                PointerKind::Box { unpin } => unpin && noalias_for_box,
+                PointerKind::Box { unpin, global } => unpin && global && noalias_for_box,
             };
             // We can never add `noalias` in return position; that LLVM attribute has some very surprising semantics
             // (see <https://github.com/rust-lang/unsafe-code-guidelines/issues/385#issuecomment-1368055745>).
@@ -529,7 +605,7 @@ fn fn_abi_new_uncached<'tcx>(
     let linux_powerpc_gnu_like =
         target.os == "linux" && target.arch == "powerpc" && target_env_gnu_like;
     use SpecAbi::*;
-    let rust_abi = matches!(sig.abi, RustIntrinsic | PlatformIntrinsic | Rust | RustCall);
+    let rust_abi = matches!(sig.abi, RustIntrinsic | Rust | RustCall);
 
     let is_drop_in_place =
         fn_def_id.is_some() && fn_def_id == cx.tcx.lang_items().drop_in_place_fn();
@@ -637,11 +713,7 @@ fn fn_abi_adjust_for_abi<'tcx>(
         return Ok(());
     }
 
-    if abi == SpecAbi::Rust
-        || abi == SpecAbi::RustCall
-        || abi == SpecAbi::RustIntrinsic
-        || abi == SpecAbi::PlatformIntrinsic
-    {
+    if abi == SpecAbi::Rust || abi == SpecAbi::RustCall || abi == SpecAbi::RustIntrinsic {
         // Look up the deduced parameter attributes for this function, if we have its def ID and
         // we're optimizing in non-incremental mode. We'll tag its parameters with those attributes
         // as appropriate.
@@ -677,12 +749,11 @@ fn fn_abi_adjust_for_abi<'tcx>(
                 // target feature sets. Some more information about this
                 // issue can be found in #44367.
                 //
-                // Note that the platform intrinsic ABI is exempt here as
+                // Note that the intrinsic ABI is exempt here as
                 // that's how we connect up to LLVM and it's unstable
                 // anyway, we control all calls to it in libstd.
                 Abi::Vector { .. }
-                    if abi != SpecAbi::PlatformIntrinsic
-                        && cx.tcx.sess.target.simd_types_indirect =>
+                    if abi != SpecAbi::RustIntrinsic && cx.tcx.sess.target.simd_types_indirect =>
                 {
                     arg.make_indirect();
                     return;

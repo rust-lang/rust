@@ -1,6 +1,6 @@
 #!/usr/bin/env run-cargo-script
 
-// check-pass
+//@ check-pass
 fn main() {
     println!("Hello World!");
 }

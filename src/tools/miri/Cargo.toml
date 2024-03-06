@@ -19,8 +19,6 @@ doctest = false # and no doc tests
 
 [dependencies]
 getrandom = { version = "0.2", features = ["std"] }
-env_logger = "0.10"
-log = "0.4"
 rand = "0.8"
 smallvec = "1.7"
 aes = { version = "0.8.3", features = ["hazmat"] }

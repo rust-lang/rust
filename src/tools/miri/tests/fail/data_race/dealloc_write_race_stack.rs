@@ -36,7 +36,7 @@ pub fn main() {
                 sleep(Duration::from_millis(200));
 
                 // Now `stack_var` gets deallocated.
-            } //~ ERROR: Data race detected between (1) non-atomic write on thread `<unnamed>` and (2) deallocation on thread `<unnamed>`
+            } //~ ERROR: Data race detected between (1) non-atomic write on thread `unnamed-2` and (2) deallocation on thread `unnamed-1`
         });
 
         let j2 = spawn(move || {

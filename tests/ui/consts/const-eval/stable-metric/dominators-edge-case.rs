@@ -1,4 +1,4 @@
-// check-pass
+//@ check-pass
 //
 // Exercising an edge case which was found during Stage 2 compilation.
 // Compilation would fail for this code when running the `CtfeLimit`

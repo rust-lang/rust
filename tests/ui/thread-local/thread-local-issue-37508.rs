@@ -1,6 +1,6 @@
-// only-x86_64
-// compile-flags: -Ccode-model=large --crate-type lib
-// build-pass
+//@ only-x86_64
+//@ compile-flags: -Ccode-model=large --crate-type lib
+//@ build-pass
 //
 // Regression test for issue #37508
 

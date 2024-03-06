@@ -1,4 +1,4 @@
-// aux-build:privacy_tuple_struct.rs
+//@ aux-build:privacy_tuple_struct.rs
 
 extern crate privacy_tuple_struct as other;
 

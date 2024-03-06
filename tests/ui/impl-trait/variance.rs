@@ -1,6 +1,6 @@
-// revisions: old new e2024
-//[e2024] edition: 2024
-//[e2024] compile-flags: -Z unstable-options
+//@ revisions: old new e2024
+//@[e2024] edition: 2024
+//@[e2024] compile-flags: -Z unstable-options
 
 #![cfg_attr(new, feature(lifetime_capture_rules_2024))]
 

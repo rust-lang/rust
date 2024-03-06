@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 
 fn main () {
     let n = (1, (2, 3)).1.1;

@@ -1,6 +1,6 @@
-// run-pass
-// edition:2021
-// aux-build:reserved-prefixes-macro-2018.rs
+//@ run-pass
+//@ edition:2021
+//@ aux-build:reserved-prefixes-macro-2018.rs
 
 extern crate reserved_prefixes_macro_2018 as m2018;
 

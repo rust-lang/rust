@@ -1,4 +1,4 @@
-// aux-build: reexports.rs
+//@ aux-build: reexports.rs
 
 #![crate_name = "foo"]
 

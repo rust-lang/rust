@@ -1,5 +1,4 @@
 use clippy_utils::diagnostics::span_lint_and_then;
-use clippy_utils::get_parent_node;
 use clippy_utils::source::snippet_with_context;
 use clippy_utils::visitors::{for_each_local_assignment, for_each_value_source};
 use core::ops::ControlFlow;
@@ -103,7 +102,7 @@ fn expr_needs_inferred_result<'tcx>(cx: &LateContext<'tcx>, e: &'tcx Expr<'_>) -
         return false;
     }
     while let Some(id) = locals_to_check.pop() {
-        if let Some(Node::Local(l)) = get_parent_node(cx.tcx, id) {
+        if let Node::Local(l) = cx.tcx.parent_hir_node(id) {
             if !l.ty.map_or(true, |ty| matches!(ty.kind, TyKind::Infer)) {
                 return false;
             }

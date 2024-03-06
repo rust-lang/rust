@@ -59,6 +59,11 @@ mod tests {
     }
 
     #[test]
+    fn flip_trait_bound_works_for_dyn() {
+        check_assist(flip_trait_bound, "fn f<'a>(x: dyn Copy $0+ 'a)", "fn f<'a>(x: dyn 'a + Copy)")
+    }
+
+    #[test]
     fn flip_trait_bound_works_for_struct() {
         check_assist(
             flip_trait_bound,

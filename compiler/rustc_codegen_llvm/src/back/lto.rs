@@ -21,6 +21,7 @@ use rustc_middle::dep_graph::WorkProduct;
 use rustc_middle::middle::exported_symbols::{SymbolExportInfo, SymbolExportLevel};
 use rustc_session::config::{self, CrateType, Lto};
 
+use std::collections::BTreeMap;
 use std::ffi::{CStr, CString};
 use std::fs::File;
 use std::io;
@@ -787,7 +788,7 @@ pub unsafe fn optimize_thin_module(
 #[derive(Debug, Default)]
 pub struct ThinLTOKeysMap {
     // key = llvm name of importing module, value = LLVM cache key
-    keys: FxHashMap<String, String>,
+    keys: BTreeMap<String, String>,
 }
 
 impl ThinLTOKeysMap {
@@ -797,7 +798,6 @@ impl ThinLTOKeysMap {
         let mut writer = io::BufWriter::new(file);
         // The entries are loaded back into a hash map in `load_from_file()`, so
         // the order in which we write them to file here does not matter.
-        #[allow(rustc::potential_query_instability)]
         for (module, key) in &self.keys {
             writeln!(writer, "{module} {key}")?;
         }
@@ -806,7 +806,7 @@ impl ThinLTOKeysMap {
 
     fn load_from_file(path: &Path) -> io::Result<Self> {
         use std::io::BufRead;
-        let mut keys = FxHashMap::default();
+        let mut keys = BTreeMap::default();
         let file = File::open(path)?;
         for line in io::BufReader::new(file).lines() {
             let line = line?;

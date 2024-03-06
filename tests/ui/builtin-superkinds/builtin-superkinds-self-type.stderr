@@ -17,6 +17,20 @@ help: consider adding an explicit lifetime bound
 LL | impl <T: Sync + 'static> Foo for T { }
    |               +++++++++
 
-error: aborting due to 1 previous error
+error[E0308]: mismatched types
+  --> $DIR/builtin-superkinds-self-type.rs:16:27
+   |
+LL |     assert_eq!(rx.recv(), 1193182);
+   |                           ^^^^^^^ expected `Result<{integer}, RecvError>`, found integer
+   |
+   = note: expected enum `Result<{integer}, RecvError>`
+              found type `{integer}`
+help: try wrapping the expression in `Ok`
+   |
+LL |     assert_eq!(rx.recv(), Ok(1193182));
+   |                           +++       +
 
-For more information about this error, try `rustc --explain E0310`.
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0308, E0310.
+For more information about an error, try `rustc --explain E0308`.

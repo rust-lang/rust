@@ -1,6 +1,6 @@
-// check-pass
-// revisions: new old
-//[new] compile-flags: -Znext-solver
+//@ check-pass
+//@ revisions: new old
+//@[new] compile-flags: -Znext-solver
 
 //! This test checks that we can successfully infer
 //! the hidden type of `FooImpl` to be `Foo<i32, {closure}>`

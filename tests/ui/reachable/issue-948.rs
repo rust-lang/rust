@@ -1,6 +1,6 @@
-// run-fail
-// error-pattern:beep boop
-// ignore-emscripten no processes
+//@ run-fail
+//@ error-pattern:beep boop
+//@ ignore-emscripten no processes
 
 #![allow(unused_variables)]
 

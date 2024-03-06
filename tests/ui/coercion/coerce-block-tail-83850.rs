@@ -1,4 +1,4 @@
-// check-fail
+//@ check-fail
 fn f(_: &[i32]) {}
 
 fn main() {

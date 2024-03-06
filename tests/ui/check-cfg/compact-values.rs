@@ -1,7 +1,7 @@
 // This test check that we correctly emit an warning for compact cfg
 //
-// check-pass
-// compile-flags: --check-cfg=cfg() -Z unstable-options
+//@ check-pass
+//@ compile-flags: --check-cfg=cfg() -Z unstable-options
 
 #![feature(cfg_target_compact)]
 

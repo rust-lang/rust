@@ -1,5 +1,5 @@
-// check-pass
-// known-bug: #57893
+//@ check-pass
+//@ known-bug: #57893
 
 // Should fail. Because we see an impl that uses a certain associated type, we
 // type-check assuming that impl is used. However, this conflicts with the

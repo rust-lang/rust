@@ -1,4 +1,4 @@
-use rustc_data_structures::fx::FxHashSet;
+use rustc_data_structures::fx::FxIndexSet;
 use rustc_data_structures::memmap::Mmap;
 use rustc_session::cstore::DllImport;
 use rustc_session::Session;
@@ -21,7 +21,7 @@ use std::path::{Path, PathBuf};
 pub use crate::errors::{ArchiveBuildFailure, ExtractBundledLibsError, UnknownArchiveKind};
 
 pub trait ArchiveBuilderBuilder {
-    fn new_archive_builder<'a>(&self, sess: &'a Session) -> Box<dyn ArchiveBuilder<'a> + 'a>;
+    fn new_archive_builder<'a>(&self, sess: &'a Session) -> Box<dyn ArchiveBuilder + 'a>;
 
     /// Creates a DLL Import Library <https://docs.microsoft.com/en-us/windows/win32/dlls/dynamic-link-library-creation#creating-an-import-library>.
     /// and returns the path on disk to that import library.
@@ -41,7 +41,7 @@ pub trait ArchiveBuilderBuilder {
         &'a self,
         rlib: &'a Path,
         outdir: &Path,
-        bundled_lib_file_names: &FxHashSet<Symbol>,
+        bundled_lib_file_names: &FxIndexSet<Symbol>,
     ) -> Result<(), ExtractBundledLibsError<'_>> {
         let archive_map = unsafe {
             Mmap::map(
@@ -74,7 +74,7 @@ pub trait ArchiveBuilderBuilder {
     }
 }
 
-pub trait ArchiveBuilder<'a> {
+pub trait ArchiveBuilder {
     fn add_file(&mut self, path: &Path);
 
     fn add_archive(
@@ -167,7 +167,7 @@ pub fn try_extract_macho_fat_archive(
     }
 }
 
-impl<'a> ArchiveBuilder<'a> for ArArchiveBuilder<'a> {
+impl<'a> ArchiveBuilder for ArArchiveBuilder<'a> {
     fn add_archive(
         &mut self,
         archive_path: &Path,

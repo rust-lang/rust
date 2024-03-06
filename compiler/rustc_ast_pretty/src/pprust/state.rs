@@ -8,12 +8,13 @@ mod item;
 use crate::pp::Breaks::{Consistent, Inconsistent};
 use crate::pp::{self, Breaks};
 use crate::pprust::state::expr::FixupContext;
+use ast::TraitBoundModifiers;
 use rustc_ast::attr::AttrIdGenerator;
 use rustc_ast::ptr::P;
 use rustc_ast::token::{self, BinOpToken, CommentKind, Delimiter, Nonterminal, Token, TokenKind};
 use rustc_ast::tokenstream::{Spacing, TokenStream, TokenTree};
 use rustc_ast::util::classify;
-use rustc_ast::util::comments::{gather_comments, Comment, CommentStyle};
+use rustc_ast::util::comments::{Comment, CommentStyle};
 use rustc_ast::util::parser;
 use rustc_ast::{self as ast, AttrArgs, AttrArgsEq, BlockCheckMode, PatKind};
 use rustc_ast::{attr, BindingAnnotation, ByRef, DelimArgs, RangeEnd, RangeSyntax, Term};
@@ -23,7 +24,7 @@ use rustc_ast::{InlineAsmOptions, InlineAsmTemplatePiece};
 use rustc_span::edition::Edition;
 use rustc_span::source_map::{SourceMap, Spanned};
 use rustc_span::symbol::{kw, sym, Ident, IdentPrinter, Symbol};
-use rustc_span::{BytePos, FileName, Span, DUMMY_SP};
+use rustc_span::{BytePos, CharPos, FileName, Pos, Span, DUMMY_SP};
 use std::borrow::Cow;
 use thin_vec::ThinVec;
 
@@ -56,6 +57,127 @@ pub struct Comments<'a> {
     sm: &'a SourceMap,
     comments: Vec<Comment>,
     current: usize,
+}
+
+/// Returns `None` if the first `col` chars of `s` contain a non-whitespace char.
+/// Otherwise returns `Some(k)` where `k` is first char offset after that leading
+/// whitespace. Note that `k` may be outside bounds of `s`.
+fn all_whitespace(s: &str, col: CharPos) -> Option<usize> {
+    let mut idx = 0;
+    for (i, ch) in s.char_indices().take(col.to_usize()) {
+        if !ch.is_whitespace() {
+            return None;
+        }
+        idx = i + ch.len_utf8();
+    }
+    Some(idx)
+}
+
+fn trim_whitespace_prefix(s: &str, col: CharPos) -> &str {
+    let len = s.len();
+    match all_whitespace(s, col) {
+        Some(col) => {
+            if col < len {
+                &s[col..]
+            } else {
+                ""
+            }
+        }
+        None => s,
+    }
+}
+
+fn split_block_comment_into_lines(text: &str, col: CharPos) -> Vec<String> {
+    let mut res: Vec<String> = vec![];
+    let mut lines = text.lines();
+    // just push the first line
+    res.extend(lines.next().map(|it| it.to_string()));
+    // for other lines, strip common whitespace prefix
+    for line in lines {
+        res.push(trim_whitespace_prefix(line, col).to_string())
+    }
+    res
+}
+
+fn gather_comments(sm: &SourceMap, path: FileName, src: String) -> Vec<Comment> {
+    let sm = SourceMap::new(sm.path_mapping().clone());
+    let source_file = sm.new_source_file(path, src);
+    let text = (*source_file.src.as_ref().unwrap()).clone();
+
+    let text: &str = text.as_str();
+    let start_bpos = source_file.start_pos;
+    let mut pos = 0;
+    let mut comments: Vec<Comment> = Vec::new();
+    let mut code_to_the_left = false;
+
+    if let Some(shebang_len) = rustc_lexer::strip_shebang(text) {
+        comments.push(Comment {
+            style: CommentStyle::Isolated,
+            lines: vec![text[..shebang_len].to_string()],
+            pos: start_bpos,
+        });
+        pos += shebang_len;
+    }
+
+    for token in rustc_lexer::tokenize(&text[pos..]) {
+        let token_text = &text[pos..pos + token.len as usize];
+        match token.kind {
+            rustc_lexer::TokenKind::Whitespace => {
+                if let Some(mut idx) = token_text.find('\n') {
+                    code_to_the_left = false;
+                    while let Some(next_newline) = &token_text[idx + 1..].find('\n') {
+                        idx += 1 + next_newline;
+                        comments.push(Comment {
+                            style: CommentStyle::BlankLine,
+                            lines: vec![],
+                            pos: start_bpos + BytePos((pos + idx) as u32),
+                        });
+                    }
+                }
+            }
+            rustc_lexer::TokenKind::BlockComment { doc_style, .. } => {
+                if doc_style.is_none() {
+                    let code_to_the_right = !matches!(
+                        text[pos + token.len as usize..].chars().next(),
+                        Some('\r' | '\n')
+                    );
+                    let style = match (code_to_the_left, code_to_the_right) {
+                        (_, true) => CommentStyle::Mixed,
+                        (false, false) => CommentStyle::Isolated,
+                        (true, false) => CommentStyle::Trailing,
+                    };
+
+                    // Count the number of chars since the start of the line by rescanning.
+                    let pos_in_file = start_bpos + BytePos(pos as u32);
+                    let line_begin_in_file = source_file.line_begin_pos(pos_in_file);
+                    let line_begin_pos = (line_begin_in_file - start_bpos).to_usize();
+                    let col = CharPos(text[line_begin_pos..pos].chars().count());
+
+                    let lines = split_block_comment_into_lines(token_text, col);
+                    comments.push(Comment { style, lines, pos: pos_in_file })
+                }
+            }
+            rustc_lexer::TokenKind::LineComment { doc_style } => {
+                if doc_style.is_none() {
+                    comments.push(Comment {
+                        style: if code_to_the_left {
+                            CommentStyle::Trailing
+                        } else {
+                            CommentStyle::Isolated
+                        },
+                        lines: vec![token_text.to_string()],
+                        pos: start_bpos + BytePos(pos as u32),
+                    })
+                }
+            }
+            _ => {
+                code_to_the_left = true;
+            }
+        }
+        pos += token.len as usize;
+    }
+
+    comments
 }
 
 impl<'a> Comments<'a> {
@@ -160,6 +282,10 @@ fn space_between(tt1: &TokenTree, tt2: &TokenTree) -> bool {
     use TokenTree::Delimited as Del;
     use TokenTree::Token as Tok;
 
+    fn is_punct(tt: &TokenTree) -> bool {
+        matches!(tt, TokenTree::Token(tok, _) if tok.is_punct())
+    }
+
     // Each match arm has one or more examples in comments. The default is to
     // insert space between adjacent tokens, except for the cases listed in
     // this match.
@@ -167,24 +293,35 @@ fn space_between(tt1: &TokenTree, tt2: &TokenTree) -> bool {
         // No space after line doc comments.
         (Tok(Token { kind: DocComment(CommentKind::Line, ..), .. }, _), _) => false,
 
-        // `.` + ANYTHING: `x.y`, `tup.0`
-        // `$` + ANYTHING: `$e`
-        (Tok(Token { kind: Dot | Dollar, .. }, _), _) => false,
+        // `.` + NON-PUNCT: `x.y`, `tup.0`
+        (Tok(Token { kind: Dot, .. }, _), tt2) if !is_punct(tt2) => false,
 
-        // ANYTHING + `,`: `foo,`
-        // ANYTHING + `.`: `x.y`, `tup.0`
-        // ANYTHING + `!`: `foo! { ... }`
-        //
-        // FIXME: Incorrect cases:
-        // - Logical not: `x =! y`, `if! x { f(); }`
-        // - Never type: `Fn() ->!`
-        (_, Tok(Token { kind: Comma | Dot | Not, .. }, _)) => false,
+        // `$` + IDENT: `$e`
+        (Tok(Token { kind: Dollar, .. }, _), Tok(Token { kind: Ident(..), .. }, _)) => false,
 
-        // IDENT + `(`: `f(3)`
-        //
-        // FIXME: Incorrect cases:
-        // - Let: `let(a, b) = (1, 2)`
-        (Tok(Token { kind: Ident(..), .. }, _), Del(_, _, Parenthesis, _)) => false,
+        // NON-PUNCT + `,`: `foo,`
+        // NON-PUNCT + `;`: `x = 3;`, `[T; 3]`
+        // NON-PUNCT + `.`: `x.y`, `tup.0`
+        (tt1, Tok(Token { kind: Comma | Semi | Dot, .. }, _)) if !is_punct(tt1) => false,
+
+        // IDENT + `!`: `println!()`, but `if !x { ... }` needs a space after the `if`
+        (Tok(Token { kind: Ident(sym, is_raw), span }, _), Tok(Token { kind: Not, .. }, _))
+            if !Ident::new(*sym, *span).is_reserved() || matches!(is_raw, IdentIsRaw::Yes) =>
+        {
+            false
+        }
+
+        // IDENT|`fn`|`Self`|`pub` + `(`: `f(3)`, `fn(x: u8)`, `Self()`, `pub(crate)`,
+        //      but `let (a, b) = (1, 2)` needs a space after the `let`
+        (Tok(Token { kind: Ident(sym, is_raw), span }, _), Del(_, _, Parenthesis, _))
+            if !Ident::new(*sym, *span).is_reserved()
+                || *sym == kw::Fn
+                || *sym == kw::SelfUpper
+                || *sym == kw::Pub
+                || matches!(is_raw, IdentIsRaw::Yes) =>
+        {
+            false
+        }
 
         // `#` + `[`: `#[attr]`
         (Tok(Token { kind: Pound, .. }, _), Del(_, _, Bracket, _)) => false,
@@ -238,7 +375,7 @@ fn literal_to_string(lit: token::Lit) -> String {
         token::CStrRaw(n) => {
             format!("cr{delim}\"{symbol}\"{delim}", delim = "#".repeat(n as usize))
         }
-        token::Integer | token::Float | token::Bool | token::Err => symbol.to_string(),
+        token::Integer | token::Float | token::Bool | token::Err(_) => symbol.to_string(),
     };
 
     if let Some(suffix) = suffix {
@@ -715,7 +852,7 @@ pub trait PrintState<'a>: std::ops::Deref<Target = pp::Printer> + std::ops::Dere
             token::NtBlock(e) => self.block_to_string(e),
             token::NtStmt(e) => self.stmt_to_string(e),
             token::NtPat(e) => self.pat_to_string(e),
-            token::NtIdent(e, is_raw) => IdentPrinter::for_ast_ident(*e, *is_raw).to_string(),
+            &token::NtIdent(e, is_raw) => IdentPrinter::for_ast_ident(e, is_raw.into()).to_string(),
             token::NtLifetime(e) => e.to_string(),
             token::NtLiteral(e) => self.expr_to_string(e),
             token::NtVis(e) => self.vis_to_string(e),
@@ -779,7 +916,7 @@ pub trait PrintState<'a>: std::ops::Deref<Target = pp::Printer> + std::ops::Dere
 
             /* Name components */
             token::Ident(s, is_raw) => {
-                IdentPrinter::new(s, is_raw, convert_dollar_crate).to_string().into()
+                IdentPrinter::new(s, is_raw.into(), convert_dollar_crate).to_string().into()
             }
             token::Lifetime(s) => s.to_string().into(),
 
@@ -987,11 +1124,11 @@ impl<'a> State<'a> {
                 }
                 self.pclose();
             }
-            ast::TyKind::AnonStruct(fields) => {
+            ast::TyKind::AnonStruct(_, fields) => {
                 self.head("struct");
                 self.print_record_struct_body(fields, ty.span);
             }
-            ast::TyKind::AnonUnion(fields) => {
+            ast::TyKind::AnonUnion(_, fields) => {
                 self.head("union");
                 self.print_record_struct_body(fields, ty.span);
             }
@@ -1032,9 +1169,14 @@ impl<'a> State<'a> {
             ast::TyKind::Infer => {
                 self.word("_");
             }
-            ast::TyKind::Err => {
+            ast::TyKind::Err(_) => {
                 self.popen();
                 self.word("/*ERROR*/");
+                self.pclose();
+            }
+            ast::TyKind::Dummy => {
+                self.popen();
+                self.word("/*DUMMY*/");
                 self.pclose();
             }
             ast::TyKind::ImplicitSelf => {
@@ -1575,18 +1717,28 @@ impl<'a> State<'a> {
             }
 
             match bound {
-                GenericBound::Trait(tref, modifier) => {
-                    match modifier.constness {
+                GenericBound::Trait(
+                    tref,
+                    TraitBoundModifiers { constness, asyncness, polarity },
+                ) => {
+                    match constness {
                         ast::BoundConstness::Never => {}
                         ast::BoundConstness::Always(_) | ast::BoundConstness::Maybe(_) => {
-                            self.word_space(modifier.constness.as_str());
+                            self.word_space(constness.as_str());
                         }
                     }
 
-                    match modifier.polarity {
+                    match asyncness {
+                        ast::BoundAsyncness::Normal => {}
+                        ast::BoundAsyncness::Async(_) => {
+                            self.word_space(asyncness.as_str());
+                        }
+                    }
+
+                    match polarity {
                         ast::BoundPolarity::Positive => {}
                         ast::BoundPolarity::Negative(_) | ast::BoundPolarity::Maybe(_) => {
-                            self.word(modifier.polarity.as_str());
+                            self.word(polarity.as_str());
                         }
                     }
 

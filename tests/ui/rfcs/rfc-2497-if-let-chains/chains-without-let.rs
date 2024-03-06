@@ -1,4 +1,4 @@
-// check-pass
+//@ check-pass
 
 fn and_chain() {
     let z;

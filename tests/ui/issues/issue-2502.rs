@@ -1,9 +1,9 @@
-// check-pass
+//@ check-pass
 #![allow(dead_code)]
 #![allow(non_camel_case_types)]
 
 
-// pretty-expanded FIXME #23616
+//@ pretty-expanded FIXME #23616
 
 struct font<'a> {
     fontbuf: &'a Vec<u8> ,

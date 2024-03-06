@@ -1,6 +1,6 @@
-// compile-flags:-Zprint-mono-items=eager
-// compile-flags:-Zinline-in-all-cgus
-// compile-flags:-Zmir-opt-level=0
+//@ compile-flags:-Zprint-mono-items=eager
+//@ compile-flags:-Zinline-in-all-cgus
+//@ compile-flags:-Zmir-opt-level=0
 
 #![deny(dead_code)]
 #![feature(coerce_unsized)]
@@ -74,6 +74,8 @@ fn start(_: isize, _: *const *const u8) -> isize {
     //~ MONO_ITEM fn std::ptr::drop_in_place::<u32> - shim(None) @@ unsizing-cgu.0[Internal]
     //~ MONO_ITEM fn <u32 as Trait>::foo
     let _wrapper_sized = wrapper_sized as Wrapper<Trait>;
+
+    false.foo();
 
     0
 }

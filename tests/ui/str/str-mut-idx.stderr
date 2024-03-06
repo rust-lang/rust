@@ -2,14 +2,14 @@ error[E0277]: the size for values of type `str` cannot be known at compilation t
   --> $DIR/str-mut-idx.rs:4:15
    |
 LL |     s[1..2] = bot();
-   |               ^^^ doesn't have a size known at compile-time
+   |               ^^^^^ doesn't have a size known at compile-time
    |
    = help: the trait `Sized` is not implemented for `str`
-note: required by a bound in `bot`
+note: required by an implicit `Sized` bound in `bot`
   --> $DIR/str-mut-idx.rs:1:8
    |
 LL | fn bot<T>() -> T { loop {} }
-   |        ^ required by this bound in `bot`
+   |        ^ required by the implicit `Sized` requirement on this type parameter in `bot`
 help: consider relaxing the implicit `Sized` restriction
    |
 LL | fn bot<T: ?Sized>() -> T { loop {} }
@@ -30,7 +30,7 @@ error[E0277]: the type `str` cannot be indexed by `usize`
 LL |     s[1usize] = bot();
    |       ^^^^^^ string indices are ranges of `usize`
    |
-   = help: the trait `SliceIndex<str>` is not implemented for `usize`
+   = help: the trait `SliceIndex<str>` is not implemented for `usize`, which is required by `str: Index<_>`
    = help: the trait `SliceIndex<[_]>` is implemented for `usize`
    = help: for that trait implementation, expected `[_]`, found `str`
    = note: required for `str` to implement `Index<usize>`
@@ -73,7 +73,7 @@ error[E0277]: the type `str` cannot be indexed by `char`
 LL |     s['c'];
    |       ^^^ string indices are ranges of `usize`
    |
-   = help: the trait `SliceIndex<str>` is not implemented for `char`
+   = help: the trait `SliceIndex<str>` is not implemented for `char`, which is required by `str: Index<_>`
    = note: required for `str` to implement `Index<char>`
 
 error: aborting due to 6 previous errors

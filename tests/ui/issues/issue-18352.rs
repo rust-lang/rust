@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 
 const X: &'static str = "12345";
 

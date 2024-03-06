@@ -13,7 +13,7 @@ use std::fmt;
 use std::ptr;
 
 use rustc_ast::Mutability;
-use rustc_data_structures::fx::{FxHashMap, FxHashSet};
+use rustc_data_structures::fx::{FxHashSet, FxIndexMap};
 use rustc_middle::mir::display_allocation;
 use rustc_middle::ty::{self, Instance, ParamEnv, Ty, TyCtxt};
 use rustc_target::abi::{Align, HasDataLayout, Size};
@@ -104,13 +104,13 @@ pub struct Memory<'mir, 'tcx, M: Machine<'mir, 'tcx>> {
     pub(super) alloc_map: M::MemoryMap,
 
     /// Map for "extra" function pointers.
-    extra_fn_ptr_map: FxHashMap<AllocId, M::ExtraFnVal>,
+    extra_fn_ptr_map: FxIndexMap<AllocId, M::ExtraFnVal>,
 
     /// To be able to compare pointers with null, and to check alignment for accesses
     /// to ZSTs (where pointers may dangle), we keep track of the size even for allocations
     /// that do not exist any more.
     // FIXME: this should not be public, but interning currently needs access to it
-    pub(super) dead_alloc_map: FxHashMap<AllocId, (Size, Align)>,
+    pub(super) dead_alloc_map: FxIndexMap<AllocId, (Size, Align)>,
 }
 
 /// A reference to some allocation that was already bounds-checked for the given region
@@ -135,8 +135,8 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
     pub fn new() -> Self {
         Memory {
             alloc_map: M::MemoryMap::default(),
-            extra_fn_ptr_map: FxHashMap::default(),
-            dead_alloc_map: FxHashMap::default(),
+            extra_fn_ptr_map: FxIndexMap::default(),
+            dead_alloc_map: FxIndexMap::default(),
         }
     }
 
@@ -396,7 +396,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     /// to the allocation it points to. Supports both shared and mutable references, as the actual
     /// checking is offloaded to a helper closure.
     ///
-    /// If this returns `None`, the size is 0; it can however return `Some` even for size 0.
+    /// Returns `None` if and only if the size is 0.
     fn check_and_deref_ptr<T>(
         &self,
         ptr: Pointer<Option<M::Provenance>>,
@@ -557,7 +557,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 if self.tcx.is_foreign_item(def_id) {
                     // This is unreachable in Miri, but can happen in CTFE where we actually *do* support
                     // referencing arbitrary (declared) extern statics.
-                    throw_unsup!(ReadExternStatic(def_id));
+                    throw_unsup!(ExternStatic(def_id));
                 }
 
                 // We don't give a span -- statics don't need that, they cannot be generic or associated.
@@ -624,19 +624,20 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             size,
             CheckInAllocMsg::MemoryAccessTest,
             |alloc_id, offset, prov| {
+                // We want to call the hook on *all* accesses that involve an AllocId,
+                // including zero-sized accesses. That means we have to do it here
+                // rather than below in the `Some` branch.
+                M::before_alloc_read(self, alloc_id)?;
                 let alloc = self.get_alloc_raw(alloc_id)?;
                 Ok((alloc.size(), alloc.align, (alloc_id, offset, prov, alloc)))
             },
         )?;
+
         if let Some((alloc_id, offset, prov, alloc)) = ptr_and_alloc {
             let range = alloc_range(offset, size);
             M::before_memory_read(self.tcx, &self.machine, &alloc.extra, (alloc_id, prov), range)?;
             Ok(Some(AllocRef { alloc, range, tcx: *self.tcx, alloc_id }))
         } else {
-            // Even in this branch we have to be sure that we actually access the allocation, in
-            // order to ensure that `static FOO: Type = FOO;` causes a cycle error instead of
-            // magically pulling *any* ZST value from the ether. However, the `get_raw` above is
-            // always called when `ptr` has an `AllocId`.
             Ok(None)
         }
     }
@@ -853,6 +854,21 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         allocs.sort();
         allocs.dedup();
         DumpAllocs { ecx: self, allocs }
+    }
+
+    /// Print the allocation's bytes, without any nested allocations.
+    pub fn print_alloc_bytes_for_diagnostics(&self, id: AllocId) -> String {
+        // Using the "raw" access to avoid the `before_alloc_read` hook, we specifically
+        // want to be able to read all memory for diagnostics, even if that is cyclic.
+        let alloc = self.get_alloc_raw(id).unwrap();
+        let mut bytes = String::new();
+        if alloc.size() != Size::ZERO {
+            bytes = "\n".into();
+            // FIXME(translation) there might be pieces that are translatable.
+            rustc_middle::mir::pretty::write_allocation_bytes(*self.tcx, alloc, &mut bytes, "    ")
+                .unwrap();
+        }
+        bytes
     }
 
     /// Find leaked allocations. Allocations reachable from `static_roots` or a `Global` allocation
@@ -1214,10 +1230,9 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             let size_in_bytes = size.bytes_usize();
             // For particularly large arrays (where this is perf-sensitive) it's common that
             // we're writing a single byte repeatedly. So, optimize that case to a memset.
-            if size_in_bytes == 1 && num_copies >= 1 {
-                // SAFETY: `src_bytes` would be read from anyway by copies below (num_copies >= 1).
-                // Since size_in_bytes = 1, then the `init.no_bytes_init()` check above guarantees
-                // that this read at type `u8` is OK -- it must be an initialized byte.
+            if size_in_bytes == 1 {
+                debug_assert!(num_copies >= 1); // we already handled the zero-sized cases above.
+                // SAFETY: `src_bytes` would be read from anyway by `copy` below (num_copies >= 1).
                 let value = *src_bytes;
                 dest_bytes.write_bytes(value, (size * num_copies).bytes_usize());
             } else if src_alloc_id == dest_alloc_id {

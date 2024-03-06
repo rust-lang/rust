@@ -1,5 +1,5 @@
-// edition:2018
-// build-pass (FIXME(62277): could be check-pass?
+//@ edition:2018
+//@ build-pass (FIXME(62277): could be check-pass?
 
 trait Trait<'a, 'b> {}
 impl<T> Trait<'_, '_> for T {}

@@ -1,4 +1,4 @@
-// build-pass
+//@ build-pass
 
 #![feature(generic_const_exprs)]
 //~^ WARNING the feature `generic_const_exprs` is incomplete

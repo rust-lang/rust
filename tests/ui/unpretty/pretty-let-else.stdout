@@ -2,8 +2,8 @@
 use ::std::prelude::rust_2015::*;
 #[macro_use]
 extern crate std;
-// compile-flags: -Zunpretty=hir
-// check-pass
+//@ compile-flags: -Zunpretty=hir
+//@ check-pass
 
 
 

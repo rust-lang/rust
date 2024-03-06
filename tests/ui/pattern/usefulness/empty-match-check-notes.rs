@@ -1,5 +1,5 @@
-// aux-build:empty.rs
-// revisions: normal exhaustive_patterns
+//@ aux-build:empty.rs
+//@ revisions: normal exhaustive_patterns
 //
 // This tests a match with no arms on various types, and checks NOTEs.
 #![feature(never_type)]
@@ -43,10 +43,10 @@ fn empty_foreign_enum_private(x: Option<empty::SecretlyUninhabitedForeignStruct>
 
 fn main() {
     match 0u8 {
-        //~^ ERROR `_` not covered
+        //~^ ERROR not covered
         //~| NOTE the matched value is of type
         //~| NOTE match arms with guards don't count towards exhaustivity
-        //~| NOTE pattern `_` not covered
+        //~| NOTE not covered
         _ if false => {}
     }
 }

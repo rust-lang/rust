@@ -2,7 +2,7 @@
 // but which encountered the same ICE/error. See `issue-53548.rs`
 // for details.
 //
-// check-pass
+//@ check-pass
 
 use std::cell::RefCell;
 use std::rc::Rc;

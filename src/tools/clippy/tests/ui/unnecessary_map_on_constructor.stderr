@@ -1,5 +1,5 @@
 error: unnecessary map on constructor Some(_)
-  --> $DIR/unnecessary_map_on_constructor.rs:32:13
+  --> tests/ui/unnecessary_map_on_constructor.rs:32:13
    |
 LL |     let a = Some(x).map(fun);
    |             ^^^^^^^^^^^^^^^^ help: try: `Some(fun(x))`
@@ -8,43 +8,43 @@ LL |     let a = Some(x).map(fun);
    = help: to override `-D warnings` add `#[allow(clippy::unnecessary_map_on_constructor)]`
 
 error: unnecessary map on constructor Ok(_)
-  --> $DIR/unnecessary_map_on_constructor.rs:33:27
+  --> tests/ui/unnecessary_map_on_constructor.rs:33:27
    |
 LL |     let b: SimpleResult = Ok(x).map(fun);
    |                           ^^^^^^^^^^^^^^ help: try: `Ok(fun(x))`
 
 error: unnecessary map_err on constructor Err(_)
-  --> $DIR/unnecessary_map_on_constructor.rs:34:27
+  --> tests/ui/unnecessary_map_on_constructor.rs:34:27
    |
 LL |     let c: SimpleResult = Err(err).map_err(notfun);
    |                           ^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `Err(notfun(err))`
 
 error: unnecessary map on constructor Option::Some(_)
-  --> $DIR/unnecessary_map_on_constructor.rs:36:13
+  --> tests/ui/unnecessary_map_on_constructor.rs:36:13
    |
 LL |     let a = Option::Some(x).map(fun);
    |             ^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `Option::Some(fun(x))`
 
 error: unnecessary map on constructor SimpleResult::Ok(_)
-  --> $DIR/unnecessary_map_on_constructor.rs:37:27
+  --> tests/ui/unnecessary_map_on_constructor.rs:37:27
    |
 LL |     let b: SimpleResult = SimpleResult::Ok(x).map(fun);
    |                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `SimpleResult::Ok(fun(x))`
 
 error: unnecessary map_err on constructor SimpleResult::Err(_)
-  --> $DIR/unnecessary_map_on_constructor.rs:38:27
+  --> tests/ui/unnecessary_map_on_constructor.rs:38:27
    |
 LL |     let c: SimpleResult = SimpleResult::Err(err).map_err(notfun);
    |                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `SimpleResult::Err(notfun(err))`
 
 error: unnecessary map on constructor Ok(_)
-  --> $DIR/unnecessary_map_on_constructor.rs:39:52
+  --> tests/ui/unnecessary_map_on_constructor.rs:39:52
    |
 LL |     let b: std::result::Result<i32, SimpleError> = Ok(x).map(fun);
    |                                                    ^^^^^^^^^^^^^^ help: try: `Ok(fun(x))`
 
 error: unnecessary map_err on constructor Err(_)
-  --> $DIR/unnecessary_map_on_constructor.rs:40:52
+  --> tests/ui/unnecessary_map_on_constructor.rs:40:52
    |
 LL |     let c: std::result::Result<i32, SimpleError> = Err(err).map_err(notfun);
    |                                                    ^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `Err(notfun(err))`

@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 
 // Test file taken from issue 45129 (https://github.com/rust-lang/rust/issues/45129)
 
@@ -17,7 +17,7 @@ impl Foo {
 fn main() {
     unsafe {
         let sfoo: *mut Foo = &mut SFOO;
-        //~^ WARN mutable reference of mutable static is discouraged [static_mut_ref]
+        //~^ WARN mutable reference to mutable static is discouraged [static_mut_refs]
         let x = (*sfoo).x();
         (*sfoo).x[1] += 1;
         *x += 1;

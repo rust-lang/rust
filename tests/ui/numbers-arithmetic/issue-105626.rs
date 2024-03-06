@@ -1,6 +1,6 @@
-// run-pass
-// only-x86
-// compile-flags: -Ctarget-feature=+sse2
+//@ run-pass
+//@ only-x86
+//@ compile-flags: -Ctarget-feature=+sse2
 
 use std::hint::black_box;
 

@@ -24,7 +24,7 @@ use crate::borrow_tracker::tree_borrows::{
     unimap::{UniEntry, UniIndex, UniKeyMap, UniValMap},
     Permission,
 };
-use crate::borrow_tracker::{AccessKind, GlobalState, ProtectorKind};
+use crate::borrow_tracker::{GlobalState, ProtectorKind};
 use crate::*;
 
 mod tests;
@@ -516,13 +516,15 @@ impl<'tcx> Tree {
         tag: BorTag,
         access_range: AllocRange,
         global: &GlobalState,
-        span: Span, // diagnostics
+        alloc_id: AllocId, // diagnostics
+        span: Span,        // diagnostics
     ) -> InterpResult<'tcx> {
         self.perform_access(
             AccessKind::Write,
             tag,
             Some(access_range),
             global,
+            alloc_id,
             span,
             diagnostics::AccessCause::Dealloc,
         )?;
@@ -545,6 +547,7 @@ impl<'tcx> Tree {
                         TbError {
                             conflicting_info,
                             access_cause: diagnostics::AccessCause::Dealloc,
+                            alloc_id,
                             error_offset: perms_range.start,
                             error_kind,
                             accessed_info,
@@ -576,6 +579,7 @@ impl<'tcx> Tree {
         tag: BorTag,
         access_range: Option<AllocRange>,
         global: &GlobalState,
+        alloc_id: AllocId,                      // diagnostics
         span: Span,                             // diagnostics
         access_cause: diagnostics::AccessCause, // diagnostics
     ) -> InterpResult<'tcx> {
@@ -628,6 +632,7 @@ impl<'tcx> Tree {
             TbError {
                 conflicting_info,
                 access_cause,
+                alloc_id,
                 error_offset: perms_range.start,
                 error_kind,
                 accessed_info,

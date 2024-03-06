@@ -2,7 +2,6 @@ use std::cell::RefCell;
 use std::cmp::max;
 use std::collections::hash_map::Entry;
 
-use log::trace;
 use rand::Rng;
 
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};

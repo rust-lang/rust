@@ -28,4 +28,5 @@ fn require<A,B>()
 
 fn main() {
     require::<i32, u32>();
+    //~^ ERROR `i32: Bar<u32>` is not satisfied
 }

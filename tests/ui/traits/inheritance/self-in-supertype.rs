@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 // Test for issue #4183: use of Self in supertraits.
 
 pub static FUZZY_EPSILON: f64 = 0.1;

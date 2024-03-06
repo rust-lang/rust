@@ -1,6 +1,6 @@
-// run-pass
-// only-i686-pc-windows-msvc
-// compile-flags: -Copt-level=0 -Cdebug-assertions=yes
+//@ run-pass
+//@ only-i686-pc-windows-msvc
+//@ compile-flags: -Copt-level=0 -Cdebug-assertions=yes
 
 // MSVC isn't sure if on 32-bit Windows its u64 type is 8-byte-aligned or 4-byte-aligned.
 // So this test ensures that on i686-pc-windows-msvc, we do not insert a runtime check

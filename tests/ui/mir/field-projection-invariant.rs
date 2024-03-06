@@ -1,4 +1,4 @@
-// build-pass
+//@ build-pass
 struct Inv<'a>(&'a mut &'a ());
 enum Foo<T> {
     Bar,

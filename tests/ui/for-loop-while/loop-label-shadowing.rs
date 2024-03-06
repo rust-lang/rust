@@ -1,7 +1,7 @@
-// run-pass
+//@ run-pass
 // Issue #12512.
 
-// pretty-expanded FIXME #23616
+//@ pretty-expanded FIXME #23616
 
 fn main() {
     let mut foo = Vec::new();

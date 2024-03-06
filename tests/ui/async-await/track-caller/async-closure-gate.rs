@@ -1,5 +1,5 @@
-// edition:2021
-// revisions: afn nofeat
+//@ edition:2021
+//@ revisions: afn nofeat
 
 #![feature(async_closure, stmt_expr_attributes)]
 #![cfg_attr(afn, feature(async_fn_track_caller))]

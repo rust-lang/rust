@@ -1,4 +1,4 @@
-// check-pass
+//@ check-pass
 
 #![allow(bare_trait_objects)]
 

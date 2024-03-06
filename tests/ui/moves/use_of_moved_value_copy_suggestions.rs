@@ -1,4 +1,4 @@
-// run-rustfix
+//@ run-rustfix
 #![allow(dead_code)]
 
 fn duplicate_t<T>(t: T) -> (T, T) {

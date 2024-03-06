@@ -193,7 +193,7 @@ fn structure_token(token: SyntaxToken) -> Option<StructureNode> {
         if let Some(region_name) = text.strip_prefix("// region:").map(str::trim) {
             return Some(StructureNode {
                 parent: None,
-                label: region_name.to_string(),
+                label: region_name.to_owned(),
                 navigation_range: comment.syntax().text_range(),
                 node_range: comment.syntax().text_range(),
                 kind: StructureNodeKind::Region,

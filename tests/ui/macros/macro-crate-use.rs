@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 
 pub fn increment(x: usize) -> usize {
     x + 1

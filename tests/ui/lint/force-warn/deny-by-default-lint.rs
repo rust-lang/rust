@@ -1,6 +1,6 @@
 // --force-warn $LINT causes $LINT (which is deny-by-default) to warn
-// compile-flags: --force-warn mutable_transmutes
-// check-pass
+//@ compile-flags: --force-warn mutable_transmutes
+//@ check-pass
 
 fn main() {
     unsafe {

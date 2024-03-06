@@ -1,4 +1,4 @@
-// forbid-output: in this expansion of
+//@ forbid-output: in this expansion of
 
 macro_rules! make_method {
     ($name:ident) => ( fn $name(&self) { } )

@@ -1,5 +1,5 @@
-// check-pass
-// compile-flags: --emit=mir,link
+//@ check-pass
+//@ compile-flags: --emit=mir,link
 // Regression test for #66930, this ICE requires `--emit=mir` flag.
 
 static UTF8_CHAR_WIDTH: [u8; 0] = [];

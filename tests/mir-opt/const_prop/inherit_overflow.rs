@@ -1,6 +1,6 @@
 // EMIT_MIR_FOR_EACH_PANIC_STRATEGY
-// unit-test: GVN
-// compile-flags: -Zmir-enable-passes=+Inline
+//@ unit-test: GVN
+//@ compile-flags: -Zmir-enable-passes=+Inline
 
 // After inlining, this will contain a `CheckedBinaryOp`.
 // Propagating the overflow is ok as codegen will just skip emitting the panic.

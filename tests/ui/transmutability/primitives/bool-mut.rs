@@ -1,14 +1,13 @@
-// check-fail
-//[next] compile-flags: -Znext-solver
+//@ check-fail
+//@[next] compile-flags: -Znext-solver
 
 #![feature(transmutability)]
 mod assert {
     use std::mem::{Assume, BikeshedIntrinsicFrom};
-    pub struct Context;
 
     pub fn is_transmutable<Src, Dst>()
     where
-        Dst: BikeshedIntrinsicFrom<Src, Context, { Assume::SAFETY }>
+        Dst: BikeshedIntrinsicFrom<Src, { Assume::SAFETY }>
     {}
 }
 

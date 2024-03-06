@@ -58,7 +58,7 @@ pub(crate) fn rewrite_links(db: &RootDatabase, markdown: &str, definition: Defin
         // and valid URLs so we choose to be too eager to try to resolve what might be
         // a URL.
         if target.contains("://") {
-            (Some(LinkType::Inline), target.to_string(), title.to_string())
+            (Some(LinkType::Inline), target.to_owned(), title.to_owned())
         } else {
             // Two possibilities:
             // * path-based links: `../../module/struct.MyStruct.html`
@@ -66,9 +66,9 @@ pub(crate) fn rewrite_links(db: &RootDatabase, markdown: &str, definition: Defin
             if let Some((target, title)) = rewrite_intra_doc_link(db, definition, target, title) {
                 (None, target, title)
             } else if let Some(target) = rewrite_url_link(db, definition, target) {
-                (Some(LinkType::Inline), target, title.to_string())
+                (Some(LinkType::Inline), target, title.to_owned())
             } else {
-                (None, target.to_string(), title.to_string())
+                (None, target.to_owned(), title.to_owned())
             }
         }
     });
@@ -186,7 +186,7 @@ pub(crate) fn extract_definitions_from_docs(
             let (link, ns) = parse_intra_doc_link(&target);
             Some((
                 TextRange::new(range.start.try_into().ok()?, range.end.try_into().ok()?),
-                link.to_string(),
+                link.to_owned(),
                 ns,
             ))
         }
@@ -233,21 +233,22 @@ pub(crate) fn doc_attributes(
 ) -> Option<(hir::AttrsWithOwner, Definition)> {
     match_ast! {
         match node {
-            ast::SourceFile(it)  => sema.to_def(&it).map(|def| (def.attrs(sema.db), Definition::Module(def))),
-            ast::Module(it)      => sema.to_def(&it).map(|def| (def.attrs(sema.db), Definition::Module(def))),
-            ast::Fn(it)          => sema.to_def(&it).map(|def| (def.attrs(sema.db), Definition::Function(def))),
-            ast::Struct(it)      => sema.to_def(&it).map(|def| (def.attrs(sema.db), Definition::Adt(hir::Adt::Struct(def)))),
-            ast::Union(it)       => sema.to_def(&it).map(|def| (def.attrs(sema.db), Definition::Adt(hir::Adt::Union(def)))),
-            ast::Enum(it)        => sema.to_def(&it).map(|def| (def.attrs(sema.db), Definition::Adt(hir::Adt::Enum(def)))),
-            ast::Variant(it)     => sema.to_def(&it).map(|def| (def.attrs(sema.db), Definition::Variant(def))),
-            ast::Trait(it)       => sema.to_def(&it).map(|def| (def.attrs(sema.db), Definition::Trait(def))),
-            ast::Static(it)      => sema.to_def(&it).map(|def| (def.attrs(sema.db), Definition::Static(def))),
-            ast::Const(it)       => sema.to_def(&it).map(|def| (def.attrs(sema.db), Definition::Const(def))),
-            ast::TypeAlias(it)   => sema.to_def(&it).map(|def| (def.attrs(sema.db), Definition::TypeAlias(def))),
-            ast::Impl(it)        => sema.to_def(&it).map(|def| (def.attrs(sema.db), Definition::SelfType(def))),
-            ast::RecordField(it) => sema.to_def(&it).map(|def| (def.attrs(sema.db), Definition::Field(def))),
-            ast::TupleField(it)  => sema.to_def(&it).map(|def| (def.attrs(sema.db), Definition::Field(def))),
-            ast::Macro(it)       => sema.to_def(&it).map(|def| (def.attrs(sema.db), Definition::Macro(def))),
+            ast::SourceFile(it)  => sema.to_def(&it).map(|def| (def.attrs(sema.db), Definition::from(def))),
+            ast::Module(it)      => sema.to_def(&it).map(|def| (def.attrs(sema.db), Definition::from(def))),
+            ast::Fn(it)          => sema.to_def(&it).map(|def| (def.attrs(sema.db), Definition::from(def))),
+            ast::Struct(it)      => sema.to_def(&it).map(|def| (def.attrs(sema.db), Definition::from(hir::Adt::Struct(def)))),
+            ast::Union(it)       => sema.to_def(&it).map(|def| (def.attrs(sema.db), Definition::from(hir::Adt::Union(def)))),
+            ast::Enum(it)        => sema.to_def(&it).map(|def| (def.attrs(sema.db), Definition::from(hir::Adt::Enum(def)))),
+            ast::Variant(it)     => sema.to_def(&it).map(|def| (def.attrs(sema.db), Definition::from(def))),
+            ast::Trait(it)       => sema.to_def(&it).map(|def| (def.attrs(sema.db), Definition::from(def))),
+            ast::Static(it)      => sema.to_def(&it).map(|def| (def.attrs(sema.db), Definition::from(def))),
+            ast::Const(it)       => sema.to_def(&it).map(|def| (def.attrs(sema.db), Definition::from(def))),
+            ast::TypeAlias(it)   => sema.to_def(&it).map(|def| (def.attrs(sema.db), Definition::from(def))),
+            ast::Impl(it)        => sema.to_def(&it).map(|def| (def.attrs(sema.db), Definition::from(def))),
+            ast::RecordField(it) => sema.to_def(&it).map(|def| (def.attrs(sema.db), Definition::from(def))),
+            ast::TupleField(it)  => sema.to_def(&it).map(|def| (def.attrs(sema.db), Definition::from(def))),
+            ast::Macro(it)       => sema.to_def(&it).map(|def| (def.attrs(sema.db), Definition::from(def))),
+            ast::ExternCrate(it) => sema.to_def(&it).map(|def| (def.attrs(sema.db), Definition::from(def))),
             // ast::Use(it) => sema.to_def(&it).map(|def| (Box::new(it) as _, def.attrs(sema.db))),
             _ => None
         }
@@ -388,7 +389,7 @@ fn rewrite_intra_doc_link(
     url = url.join(&file).ok()?;
     url.set_fragment(anchor);
 
-    Some((url.into(), strip_prefixes_suffixes(title).to_string()))
+    Some((url.into(), strip_prefixes_suffixes(title).to_owned()))
 }
 
 /// Try to resolve path to local documentation via path-based links (i.e. `../gateway/struct.Shard.html`).
@@ -501,7 +502,7 @@ fn get_doc_base_urls(
     let Some(krate) = def.krate(db) else { return Default::default() };
     let Some(display_name) = krate.display_name(db) else { return Default::default() };
     let crate_data = &db.crate_graph()[krate.into()];
-    let channel = crate_data.channel().unwrap_or(ReleaseChannel::Nightly).as_str();
+    let channel = db.toolchain_channel(krate.into()).unwrap_or(ReleaseChannel::Nightly).as_str();
 
     let (web_base, local_base) = match &crate_data.origin {
         // std and co do not specify `html_root_url` any longer so we gotta handwrite this ourself.
@@ -668,7 +669,7 @@ fn get_assoc_item_fragment(db: &dyn HirDatabase, assoc_item: hir::AssocItem) -> 
     Some(match assoc_item {
         AssocItem::Function(function) => {
             let is_trait_method =
-                function.as_assoc_item(db).and_then(|assoc| assoc.containing_trait(db)).is_some();
+                function.as_assoc_item(db).and_then(|assoc| assoc.container_trait(db)).is_some();
             // This distinction may get more complicated when specialization is available.
             // Rustdoc makes this decision based on whether a method 'has defaultness'.
             // Currently this is only the case for provided trait methods.

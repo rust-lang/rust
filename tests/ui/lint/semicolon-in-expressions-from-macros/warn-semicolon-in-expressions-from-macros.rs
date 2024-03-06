@@ -1,4 +1,4 @@
-// check-pass
+//@ check-pass
 // Ensure that trailing semicolons cause warnings by default
 
 macro_rules! foo {

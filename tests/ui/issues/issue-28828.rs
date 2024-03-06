@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 pub trait Foo {
     type Out;
 }

@@ -1,7 +1,7 @@
 // rust-lang/rust#45696: This test is checking that we can return
 // mutable borrows owned by boxes even when the boxes are dropped.
 
-// run-pass
+//@ run-pass
 
 // This function shows quite directly what is going on: We have a
 // reborrow of contents within the box.

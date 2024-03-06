@@ -120,7 +120,7 @@ impl<'tcx> Queries<'tcx> {
 
             rustc_builtin_macros::cmdline_attrs::inject(
                 &mut krate,
-                &sess.parse_sess,
+                &sess.psess,
                 &sess.opts.unstable_opts.crate_attr,
             );
 
@@ -194,16 +194,16 @@ impl<'tcx> Queries<'tcx> {
         let Some((def_id, _)) = tcx.entry_fn(()) else { return };
         for attr in tcx.get_attrs(def_id, sym::rustc_error) {
             match attr.meta_item_list() {
-                // Check if there is a `#[rustc_error(span_delayed_bug_from_inside_query)]`.
+                // Check if there is a `#[rustc_error(delayed_bug_from_inside_query)]`.
                 Some(list)
                     if list.iter().any(|list_item| {
                         matches!(
                             list_item.ident().map(|i| i.name),
-                            Some(sym::span_delayed_bug_from_inside_query)
+                            Some(sym::delayed_bug_from_inside_query)
                         )
                     }) =>
                 {
-                    tcx.ensure().trigger_span_delayed_bug(def_id);
+                    tcx.ensure().trigger_delayed_bug(def_id);
                 }
 
                 // Bare `#[rustc_error]`.
@@ -222,12 +222,12 @@ impl<'tcx> Queries<'tcx> {
 
     pub fn codegen_and_build_linker(&'tcx self) -> Result<Linker> {
         self.global_ctxt()?.enter(|tcx| {
-            // Don't do code generation if there were any errors
-            self.compiler.sess.compile_status()?;
-
-            // If we have any delayed bugs, for example because we created TyKind::Error earlier,
-            // it's likely that codegen will only cause more ICEs, obscuring the original problem
-            self.compiler.sess.dcx().flush_delayed();
+            // Don't do code generation if there were any errors. Likewise if
+            // there were any delayed bugs, because codegen will likely cause
+            // more ICEs, obscuring the original problem.
+            if let Some(guar) = self.compiler.sess.dcx().has_errors_or_delayed_bugs() {
+                return Err(guar);
+            }
 
             // Hook for UI tests.
             Self::check_for_rustc_errors_attr(tcx);
@@ -259,9 +259,11 @@ pub struct Linker {
 impl Linker {
     pub fn link(self, sess: &Session, codegen_backend: &dyn CodegenBackend) -> Result<()> {
         let (codegen_results, work_products) =
-            codegen_backend.join_codegen(self.ongoing_codegen, sess, &self.output_filenames)?;
+            codegen_backend.join_codegen(self.ongoing_codegen, sess, &self.output_filenames);
 
-        sess.compile_status()?;
+        if let Some(guar) = sess.dcx().has_errors() {
+            return Err(guar);
+        }
 
         sess.time("serialize_work_products", || {
             rustc_incremental::save_work_product_index(sess, &self.dep_graph, work_products)

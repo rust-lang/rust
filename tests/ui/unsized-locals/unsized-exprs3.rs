@@ -1,4 +1,4 @@
-// aux-build:ufuncs.rs
+//@ aux-build:ufuncs.rs
 
 extern crate ufuncs;
 

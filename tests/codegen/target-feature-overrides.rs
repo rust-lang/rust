@@ -1,8 +1,8 @@
-// revisions: COMPAT INCOMPAT
-// needs-llvm-components: x86
-// compile-flags: --target=x86_64-unknown-linux-gnu -Copt-level=3
-// [COMPAT] compile-flags: -Ctarget-feature=+avx2,+avx
-// [INCOMPAT] compile-flags: -Ctarget-feature=-avx2,-avx
+//@ revisions: COMPAT INCOMPAT
+//@ needs-llvm-components: x86
+//@ compile-flags: --target=x86_64-unknown-linux-gnu -Copt-level=3
+//@ [COMPAT] compile-flags: -Ctarget-feature=+avx2,+avx
+//@ [INCOMPAT] compile-flags: -Ctarget-feature=-avx2,-avx
 
 // See also tests/assembly/target-feature-multiple.rs
 #![feature(no_core, lang_items)]

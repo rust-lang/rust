@@ -208,7 +208,7 @@ struct MutationVisitor<'tcx> {
 /// (i.e. the `x` in `x.as_mut()`), and that is the reason for why we care about its parent
 /// expression: that will be where the actual method call is.
 fn is_option_as_mut_use(tcx: TyCtxt<'_>, expr_id: HirId) -> bool {
-    if let Node::Expr(mutating_expr) = tcx.hir().get_parent(expr_id)
+    if let Node::Expr(mutating_expr) = tcx.parent_hir_node(expr_id)
         && let ExprKind::MethodCall(path, ..) = mutating_expr.kind
     {
         path.ident.name.as_str() == "as_mut"

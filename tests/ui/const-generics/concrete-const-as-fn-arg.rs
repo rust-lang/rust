@@ -1,5 +1,5 @@
 // Test that a concrete const type i.e. A<2>, can be used as an argument type in a function
-// run-pass
+//@ run-pass
 
 struct A<const N: usize>; // ok
 

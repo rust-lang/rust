@@ -48,26 +48,26 @@
 //! the result
 
 pub mod attr_resolution;
-pub mod proc_macro;
-pub mod diagnostics;
 mod collector;
+pub mod diagnostics;
 mod mod_resolution;
 mod path_resolution;
+pub mod proc_macro;
 
 #[cfg(test)]
 mod tests;
 
-use std::{cmp::Ord, ops::Deref};
+use std::ops::Deref;
 
 use base_db::{CrateId, Edition, FileId};
 use hir_expand::{
-    ast_id_map::FileAstId, name::Name, proc_macro::ProcMacroKind, HirFileId, InFile, MacroCallId,
-    MacroDefId,
+    name::Name, proc_macro::ProcMacroKind, HirFileId, InFile, MacroCallId, MacroDefId,
 };
 use itertools::Itertools;
 use la_arena::Arena;
 use profile::Count;
 use rustc_hash::{FxHashMap, FxHashSet};
+use span::FileAstId;
 use stdx::format_to;
 use syntax::{ast, SmolStr};
 use triomphe::Arc;
@@ -79,7 +79,7 @@ use crate::{
     nameres::{diagnostics::DefDiagnostic, path_resolution::ResolveMode},
     path::ModPath,
     per_ns::PerNs,
-    visibility::{Visibility, VisibilityExplicity},
+    visibility::{Visibility, VisibilityExplicitness},
     AstId, BlockId, BlockLoc, CrateRootModuleId, EnumId, EnumVariantId, ExternCrateId, FunctionId,
     LocalModuleId, Lookup, MacroExpander, MacroId, ModuleId, ProcMacroId, UseId,
 };
@@ -306,9 +306,10 @@ impl DefMap {
     pub const ROOT: LocalModuleId = LocalModuleId::from_raw(la_arena::RawIdx::from_u32(0));
 
     pub(crate) fn crate_def_map_query(db: &dyn DefDatabase, krate: CrateId) -> Arc<DefMap> {
-        let _p = profile::span("crate_def_map_query").detail(|| {
-            db.crate_graph()[krate].display_name.as_deref().unwrap_or_default().to_string()
-        });
+        let crate_graph = db.crate_graph();
+        let krate_name = crate_graph[krate].display_name.as_deref().unwrap_or_default();
+
+        let _p = tracing::span!(tracing::Level::INFO, "crate_def_map_query", ?krate_name).entered();
 
         let crate_graph = db.crate_graph();
 
@@ -335,7 +336,7 @@ impl DefMap {
         // this visibility for anything outside IDE, so that's probably OK.
         let visibility = Visibility::Module(
             ModuleId { krate, local_id, block: None },
-            VisibilityExplicity::Implicit,
+            VisibilityExplicitness::Implicit,
         );
         let module_data = ModuleData::new(
             ModuleOrigin::BlockExpr { block: block.ast_id, id: block_id },
@@ -466,6 +467,12 @@ impl DefMap {
 
     pub fn crate_root(&self) -> CrateRootModuleId {
         CrateRootModuleId { krate: self.krate }
+    }
+
+    /// This is the same as [`Self::crate_root`] for crate def maps, but for block def maps, it
+    /// returns the root block module.
+    pub fn root_module_id(&self) -> ModuleId {
+        self.module_id(Self::ROOT)
     }
 
     pub(crate) fn resolve_path(

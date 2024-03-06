@@ -1,7 +1,7 @@
-// run-pass
-// aux-build:some_crate.rs
-// compile-flags:--extern some_crate
-// edition:2018
+//@ run-pass
+//@ aux-build:some_crate.rs
+//@ compile-flags:--extern some_crate
+//@ edition:2018
 
 use some_crate as some_name;
 

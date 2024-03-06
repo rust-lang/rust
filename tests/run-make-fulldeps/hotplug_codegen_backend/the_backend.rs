@@ -49,11 +49,11 @@ impl CodegenBackend for TheBackend {
         ongoing_codegen: Box<dyn Any>,
         _sess: &Session,
         _outputs: &OutputFilenames,
-    ) -> Result<(CodegenResults, FxIndexMap<WorkProductId, WorkProduct>), ErrorGuaranteed> {
+    ) -> (CodegenResults, FxIndexMap<WorkProductId, WorkProduct>) {
         let codegen_results = ongoing_codegen
             .downcast::<CodegenResults>()
             .expect("in join_codegen: ongoing_codegen is not a CodegenResults");
-        Ok((*codegen_results, FxIndexMap::default()))
+        (*codegen_results, FxIndexMap::default())
     }
 
     fn link(

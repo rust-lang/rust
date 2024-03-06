@@ -7,16 +7,20 @@ use std::iter;
 
 use hir_def::{DefWithBodyId, HasModule};
 use la_arena::ArenaMap;
+use rustc_hash::FxHashMap;
 use stdx::never;
 use triomphe::Arc;
 
 use crate::{
-    db::HirDatabase, mir::Operand, utils::ClosureSubst, ClosureId, Interner, Ty, TyExt, TypeFlags,
+    db::{HirDatabase, InternedClosure},
+    mir::Operand,
+    utils::ClosureSubst,
+    ClosureId, Interner, Substitution, Ty, TyExt, TypeFlags,
 };
 
 use super::{
-    BasicBlockId, BorrowKind, LocalId, MirBody, MirLowerError, MirSpan, Place, ProjectionElem,
-    Rvalue, StatementKind, TerminatorKind,
+    BasicBlockId, BorrowKind, LocalId, MirBody, MirLowerError, MirSpan, MutBorrowKind, Place,
+    ProjectionElem, Rvalue, StatementKind, TerminatorKind,
 };
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -34,10 +38,26 @@ pub struct MovedOutOfRef {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
+pub struct PartiallyMoved {
+    pub ty: Ty,
+    pub span: MirSpan,
+    pub local: LocalId,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct BorrowRegion {
+    pub local: LocalId,
+    pub kind: BorrowKind,
+    pub places: Vec<MirSpan>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct BorrowckResult {
     pub mir_body: Arc<MirBody>,
     pub mutability_of_locals: ArenaMap<LocalId, MutabilityReason>,
     pub moved_out_of_ref: Vec<MovedOutOfRef>,
+    pub partially_moved: Vec<PartiallyMoved>,
+    pub borrow_regions: Vec<BorrowRegion>,
 }
 
 fn all_mir_bodies(
@@ -71,16 +91,30 @@ pub fn borrowck_query(
     db: &dyn HirDatabase,
     def: DefWithBodyId,
 ) -> Result<Arc<[BorrowckResult]>, MirLowerError> {
-    let _p = profile::span("borrowck_query");
+    let _p = tracing::span!(tracing::Level::INFO, "borrowck_query").entered();
     let mut res = vec![];
     all_mir_bodies(db, def, |body| {
         res.push(BorrowckResult {
             mutability_of_locals: mutability_of_locals(db, &body),
             moved_out_of_ref: moved_out_of_ref(db, &body),
+            partially_moved: partially_moved(db, &body),
+            borrow_regions: borrow_regions(db, &body),
             mir_body: body,
         });
     })?;
     Ok(res.into())
+}
+
+fn make_fetch_closure_field(
+    db: &dyn HirDatabase,
+) -> impl FnOnce(ClosureId, &Substitution, usize) -> Ty + '_ {
+    |c: ClosureId, subst: &Substitution, f: usize| {
+        let InternedClosure(def, _) = db.lookup_intern_closure(c.into());
+        let infer = db.infer(def);
+        let (captures, _) = infer.closure_info(&c);
+        let parent_subst = ClosureSubst(subst).parent_subst();
+        captures.get(f).expect("broken closure field").ty.clone().substitute(Interner, parent_subst)
+    }
 }
 
 fn moved_out_of_ref(db: &dyn HirDatabase, body: &MirBody) -> Vec<MovedOutOfRef> {
@@ -96,18 +130,7 @@ fn moved_out_of_ref(db: &dyn HirDatabase, body: &MirBody) -> Vec<MovedOutOfRef> 
                 ty = proj.projected_ty(
                     ty,
                     db,
-                    |c, subst, f| {
-                        let (def, _) = db.lookup_intern_closure(c.into());
-                        let infer = db.infer(def);
-                        let (captures, _) = infer.closure_info(&c);
-                        let parent_subst = ClosureSubst(subst).parent_subst();
-                        captures
-                            .get(f)
-                            .expect("broken closure field")
-                            .ty
-                            .clone()
-                            .substitute(Interner, parent_subst)
-                    },
+                    make_fetch_closure_field(db),
                     body.owner.module(db.upcast()).krate(),
                 );
             }
@@ -185,6 +208,132 @@ fn moved_out_of_ref(db: &dyn HirDatabase, body: &MirBody) -> Vec<MovedOutOfRef> 
     result
 }
 
+fn partially_moved(db: &dyn HirDatabase, body: &MirBody) -> Vec<PartiallyMoved> {
+    let mut result = vec![];
+    let mut for_operand = |op: &Operand, span: MirSpan| match op {
+        Operand::Copy(p) | Operand::Move(p) => {
+            let mut ty: Ty = body.locals[p.local].ty.clone();
+            for proj in p.projection.lookup(&body.projection_store) {
+                ty = proj.projected_ty(
+                    ty,
+                    db,
+                    make_fetch_closure_field(db),
+                    body.owner.module(db.upcast()).krate(),
+                );
+            }
+            if !ty.clone().is_copy(db, body.owner)
+                && !ty.data(Interner).flags.intersects(TypeFlags::HAS_ERROR)
+            {
+                result.push(PartiallyMoved { span, ty, local: p.local });
+            }
+        }
+        Operand::Constant(_) | Operand::Static(_) => (),
+    };
+    for (_, block) in body.basic_blocks.iter() {
+        db.unwind_if_cancelled();
+        for statement in &block.statements {
+            match &statement.kind {
+                StatementKind::Assign(_, r) => match r {
+                    Rvalue::ShallowInitBoxWithAlloc(_) => (),
+                    Rvalue::ShallowInitBox(o, _)
+                    | Rvalue::UnaryOp(_, o)
+                    | Rvalue::Cast(_, o, _)
+                    | Rvalue::Repeat(o, _)
+                    | Rvalue::Use(o) => for_operand(o, statement.span),
+                    Rvalue::CopyForDeref(_)
+                    | Rvalue::Discriminant(_)
+                    | Rvalue::Len(_)
+                    | Rvalue::Ref(_, _) => (),
+                    Rvalue::CheckedBinaryOp(_, o1, o2) => {
+                        for_operand(o1, statement.span);
+                        for_operand(o2, statement.span);
+                    }
+                    Rvalue::Aggregate(_, ops) => {
+                        for op in ops.iter() {
+                            for_operand(op, statement.span);
+                        }
+                    }
+                },
+                StatementKind::FakeRead(_)
+                | StatementKind::Deinit(_)
+                | StatementKind::StorageLive(_)
+                | StatementKind::StorageDead(_)
+                | StatementKind::Nop => (),
+            }
+        }
+        match &block.terminator {
+            Some(terminator) => match &terminator.kind {
+                TerminatorKind::SwitchInt { discr, .. } => for_operand(discr, terminator.span),
+                TerminatorKind::FalseEdge { .. }
+                | TerminatorKind::FalseUnwind { .. }
+                | TerminatorKind::Goto { .. }
+                | TerminatorKind::UnwindResume
+                | TerminatorKind::CoroutineDrop
+                | TerminatorKind::Abort
+                | TerminatorKind::Return
+                | TerminatorKind::Unreachable
+                | TerminatorKind::Drop { .. } => (),
+                TerminatorKind::DropAndReplace { value, .. } => {
+                    for_operand(value, terminator.span);
+                }
+                TerminatorKind::Call { func, args, .. } => {
+                    for_operand(func, terminator.span);
+                    args.iter().for_each(|it| for_operand(it, terminator.span));
+                }
+                TerminatorKind::Assert { cond, .. } => {
+                    for_operand(cond, terminator.span);
+                }
+                TerminatorKind::Yield { value, .. } => {
+                    for_operand(value, terminator.span);
+                }
+            },
+            None => (),
+        }
+    }
+    result.shrink_to_fit();
+    result
+}
+
+fn borrow_regions(db: &dyn HirDatabase, body: &MirBody) -> Vec<BorrowRegion> {
+    let mut borrows = FxHashMap::default();
+    for (_, block) in body.basic_blocks.iter() {
+        db.unwind_if_cancelled();
+        for statement in &block.statements {
+            if let StatementKind::Assign(_, Rvalue::Ref(kind, p)) = &statement.kind {
+                borrows
+                    .entry(p.local)
+                    .and_modify(|it: &mut BorrowRegion| {
+                        it.places.push(statement.span);
+                    })
+                    .or_insert_with(|| BorrowRegion {
+                        local: p.local,
+                        kind: *kind,
+                        places: vec![statement.span],
+                    });
+            }
+        }
+        match &block.terminator {
+            Some(terminator) => match &terminator.kind {
+                TerminatorKind::FalseEdge { .. }
+                | TerminatorKind::FalseUnwind { .. }
+                | TerminatorKind::Goto { .. }
+                | TerminatorKind::UnwindResume
+                | TerminatorKind::CoroutineDrop
+                | TerminatorKind::Abort
+                | TerminatorKind::Return
+                | TerminatorKind::Unreachable
+                | TerminatorKind::Drop { .. } => (),
+                TerminatorKind::DropAndReplace { .. } => {}
+                TerminatorKind::Call { .. } => {}
+                _ => (),
+            },
+            None => (),
+        }
+    }
+
+    borrows.into_values().collect()
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum ProjectionCase {
     /// Projection is a local
@@ -214,18 +363,7 @@ fn place_case(db: &dyn HirDatabase, body: &MirBody, lvalue: &Place) -> Projectio
         ty = proj.projected_ty(
             ty,
             db,
-            |c, subst, f| {
-                let (def, _) = db.lookup_intern_closure(c.into());
-                let infer = db.infer(def);
-                let (captures, _) = infer.closure_info(&c);
-                let parent_subst = ClosureSubst(subst).parent_subst();
-                captures
-                    .get(f)
-                    .expect("broken closure field")
-                    .ty
-                    .clone()
-                    .substitute(Interner, parent_subst)
-            },
+            make_fetch_closure_field(db),
             body.owner.module(db.upcast()).krate(),
         );
     }
@@ -402,7 +540,13 @@ fn mutability_of_locals(
                         }
                         Rvalue::ShallowInitBox(_, _) | Rvalue::ShallowInitBoxWithAlloc(_) => (),
                     }
-                    if let Rvalue::Ref(BorrowKind::Mut { .. }, p) = value {
+                    if let Rvalue::Ref(
+                        BorrowKind::Mut {
+                            kind: MutBorrowKind::Default | MutBorrowKind::TwoPhasedBorrow,
+                        },
+                        p,
+                    ) = value
+                    {
                         if place_case(db, body, p) != ProjectionCase::Indirect {
                             push_mut_span(p.local, statement.span, &mut result);
                         }
@@ -444,7 +588,7 @@ fn mutability_of_locals(
                 }
                 if destination.projection.lookup(&body.projection_store).is_empty() {
                     if ever_init_map.get(destination.local).copied().unwrap_or_default() {
-                        push_mut_span(destination.local, MirSpan::Unknown, &mut result);
+                        push_mut_span(destination.local, terminator.span, &mut result);
                     } else {
                         ever_init_map.insert(destination.local, true);
                     }

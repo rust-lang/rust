@@ -2,6 +2,8 @@
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
+use crate::ascii::Char as AsciiChar;
+
 /// A trait for giving a type a useful default value.
 ///
 /// Sometimes, you want to fall back to some kind of default value, and
@@ -158,6 +160,7 @@ macro_rules! default_impl {
 default_impl! { (), (), "Returns the default value of `()`" }
 default_impl! { bool, false, "Returns the default value of `false`" }
 default_impl! { char, '\x00', "Returns the default value of `\\x00`" }
+default_impl! { AsciiChar, AsciiChar::Null, "Returns the default value of `Null`" }
 
 default_impl! { usize, 0, "Returns the default value of `0`" }
 default_impl! { u8, 0, "Returns the default value of `0`" }

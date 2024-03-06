@@ -1,5 +1,5 @@
-// run-pass
-// no-prefer-dynamic
+//@ run-pass
+//@ no-prefer-dynamic
 
 // The test copies itself into a subdirectory with a non-ASCII name and then
 // runs it as a child process within the subdirectory.  The parent process
@@ -7,9 +7,9 @@
 // non-ASCII characters.  The child process ensures all the strings are
 // intact.
 
-// ignore-emscripten no processes
-// ignore-sgx no processes
-// ignore-fuchsia Filesystem manipulation privileged
+//@ ignore-emscripten no processes
+//@ ignore-sgx no processes
+//@ ignore-fuchsia Filesystem manipulation privileged
 
 use std::io::prelude::*;
 use std::io;

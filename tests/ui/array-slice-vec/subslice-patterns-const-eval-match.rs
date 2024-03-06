@@ -1,6 +1,6 @@
 // Test that slice subslice patterns are correctly handled in const evaluation.
 
-// run-pass
+//@ run-pass
 
 #[derive(PartialEq, Debug, Clone)]
 struct N(u8);

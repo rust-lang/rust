@@ -1,5 +1,5 @@
-// run-pass
-// only-windows
+//@ run-pass
+//@ only-windows
 // GetLastError doesn't seem to work with stack switching
 
 #[cfg(windows)]

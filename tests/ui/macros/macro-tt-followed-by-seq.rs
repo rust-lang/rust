@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 // Regression test for issue #25436: permit token-trees to be followed
 // by sequences, enabling more general parsing.
 

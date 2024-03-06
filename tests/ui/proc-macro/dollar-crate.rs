@@ -1,8 +1,8 @@
-// check-pass
-// edition:2018
-// compile-flags: -Z span-debug
-// aux-build:test-macros.rs
-// aux-build:dollar-crate-external.rs
+//@ check-pass
+//@ edition:2018
+//@ compile-flags: -Z span-debug
+//@ aux-build:test-macros.rs
+//@ aux-build:dollar-crate-external.rs
 
 #![no_std] // Don't load unnecessary hygiene information from std
 extern crate std;

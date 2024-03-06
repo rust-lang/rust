@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 #![allow(unused_variables)]
 macro_rules! foo {
     ($l:lifetime, $l2:lifetime) => {

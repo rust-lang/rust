@@ -1,5 +1,5 @@
-// run-pass
-// pretty-expanded FIXME #23616
+//@ run-pass
+//@ pretty-expanded FIXME #23616
 
 pub fn main() {
     // Make sure that this view item is filtered out because otherwise it would

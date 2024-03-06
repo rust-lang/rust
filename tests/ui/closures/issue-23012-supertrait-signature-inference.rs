@@ -1,4 +1,4 @@
-// check-pass
+//@ check-pass
 // Checks that we can infer a closure signature even if the `FnOnce` bound is
 // a supertrait of the obligations we have currently registered for the Ty var.
 

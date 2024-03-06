@@ -1,6 +1,6 @@
-// compile-flags:--crate-type=lib
-// edition:2021
-// check-pass
+//@ compile-flags:--crate-type=lib
+//@ edition:2021
+//@ check-pass
 
 #![allow(incomplete_features)]
 

@@ -1,5 +1,5 @@
 type Foo<
-    Unused //~ ERROR type parameter `Unused` is unused
+    Unused //~ ERROR type parameter `Unused` is never used
     > = u8;
 
 fn main() {

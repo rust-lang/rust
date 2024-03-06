@@ -1,7 +1,7 @@
 // Test that the crate hash is not affected by reordering items.
 
-// revisions:rpass1 rpass2 rpass3
-// compile-flags: -Z query-dep-graph
+//@ revisions:rpass1 rpass2 rpass3
+//@ compile-flags: -Z query-dep-graph
 
 #![feature(rustc_attrs)]
 

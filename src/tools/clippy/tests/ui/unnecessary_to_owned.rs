@@ -27,6 +27,7 @@ impl AsRef<str> for X {
     }
 }
 
+#[allow(clippy::to_string_trait_impl)]
 impl ToString for X {
     fn to_string(&self) -> String {
         self.0.to_string()
@@ -265,6 +266,7 @@ mod issue_8507 {
         }
     }
 
+    #[allow(clippy::to_string_trait_impl)]
     impl ToString for Y {
         fn to_string(&self) -> String {
             self.0.to_string()
@@ -338,6 +340,7 @@ mod issue_9317 {
 
     struct Bytes {}
 
+    #[allow(clippy::to_string_trait_impl)]
     impl ToString for Bytes {
         fn to_string(&self) -> String {
             "123".to_string()
@@ -526,4 +529,40 @@ mod issue_11952 {
     fn bar() {
         IntoFuture::into_future(foo([].to_vec(), &0));
     }
+}
+
+fn borrow_checks() {
+    use std::borrow::Borrow;
+    use std::collections::HashSet;
+
+    fn inner(a: &[&str]) {
+        let mut s = HashSet::from([vec!["a"]]);
+        s.remove(&a.to_vec()); //~ ERROR: unnecessary use of `to_vec`
+    }
+
+    let mut s = HashSet::from(["a".to_string()]);
+    s.remove(&"b".to_owned()); //~ ERROR: unnecessary use of `to_owned`
+    s.remove(&"b".to_string()); //~ ERROR: unnecessary use of `to_string`
+    // Should not warn.
+    s.remove("b");
+
+    let mut s = HashSet::from([vec!["a"]]);
+    s.remove(&["b"].to_vec()); //~ ERROR: unnecessary use of `to_vec`
+    s.remove(&(&["b"]).to_vec()); //~ ERROR: unnecessary use of `to_vec`
+
+    // Should not warn.
+    s.remove(&["b"].to_vec().clone());
+    s.remove(["a"].as_slice());
+
+    trait SetExt {
+        fn foo<Q: Borrow<str>>(&self, _: &String);
+    }
+
+    impl<K> SetExt for HashSet<K> {
+        fn foo<Q: Borrow<str>>(&self, _: &String) {}
+    }
+
+    // Should not lint!
+    HashSet::<i32>::new().foo::<&str>(&"".to_owned());
+    HashSet::<String>::new().get(&1.to_string());
 }

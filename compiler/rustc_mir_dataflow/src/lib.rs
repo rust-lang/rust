@@ -2,10 +2,8 @@
 #![feature(box_patterns)]
 #![feature(exact_size_is_empty)]
 #![feature(let_chains)]
-#![feature(min_specialization)]
+#![cfg_attr(bootstrap, feature(min_specialization))]
 #![feature(try_blocks)]
-#![deny(rustc::untranslatable_diagnostic)]
-#![deny(rustc::diagnostic_outside_of_impl)]
 
 #[macro_use]
 extern crate tracing;

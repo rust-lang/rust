@@ -83,25 +83,40 @@ LL |     m!('b: 'a);
    = note: this error originates in the macro `m` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: outlives requirements can be inferred
-  --> $DIR/edition-lint-infer-outlives-macro.rs:114:31
-   |
-LL |             struct Foo<$a, $b $colon $a>(&$a &$b ());
-   |                               ^^^^^^^^^ help: remove this bound
-
-error: outlives requirements can be inferred
-  --> $DIR/edition-lint-infer-outlives-macro.rs:126:31
-   |
-LL |             struct Foo<$a, $b $colon $a>(&$a &$b ());
-   |                               ^^^^^^^^^ help: remove this bound
-
-error: outlives requirements can be inferred
-  --> $DIR/edition-lint-infer-outlives-macro.rs:128:50
+  --> $DIR/edition-lint-infer-outlives-macro.rs:117:44
    |
 LL |             struct Bar<$a, $b>(&$a &$b ()) where $b $colon $a;
-   |                                                  ^^^^^^^^^^^^ help: remove this bound
+   |                                            ^^^^^^^^^^^^^^^^^^ help: remove this bound
+...
+LL |     m!('b: 'a);
+   |     ---------- in this macro invocation
+   |
+   = note: this error originates in the macro `m` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: outlives requirements can be inferred
-  --> $DIR/edition-lint-infer-outlives-macro.rs:130:61
+  --> $DIR/edition-lint-infer-outlives-macro.rs:119:61
+   |
+LL |             struct Baz<$a, $b>(&$a &$b ()) where (): Sized, $b $colon $a;
+   |                                                             ^^^^^^^^^^^^ help: remove this bound
+...
+LL |     m!('b: 'a);
+   |     ---------- in this macro invocation
+   |
+   = note: this error originates in the macro `m` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: outlives requirements can be inferred
+  --> $DIR/edition-lint-infer-outlives-macro.rs:132:44
+   |
+LL |             struct Bar<$a, $b>(&$a &$b ()) where $b $colon $a;
+   |                                            ^^^^^^^^^^^^^^^^^^ help: remove this bound
+...
+LL |     m!('b: 'a);
+   |     ---------- in this macro invocation
+   |
+   = note: this error originates in the macro `m` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: outlives requirements can be inferred
+  --> $DIR/edition-lint-infer-outlives-macro.rs:134:61
    |
 LL |             struct Baz<$a, $b>(&$a &$b ()) where (): Sized, $b $colon $a;
    |                                                             ^^^^^^^^^^^^ help: remove this bound

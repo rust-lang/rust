@@ -1,4 +1,4 @@
-// build-pass
+//@ build-pass
 
 // Ensures that we don't regress on "implementation is not general enough" when
 // normalizating under binders.

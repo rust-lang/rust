@@ -1,4 +1,4 @@
-// edition:2018
+//@ edition:2018
 
 // This test is similar to `ambiguity-macros.rs`, but nested in a module.
 

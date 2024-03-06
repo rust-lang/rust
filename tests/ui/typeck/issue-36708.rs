@@ -1,4 +1,4 @@
-// aux-build:issue-36708.rs
+//@ aux-build:issue-36708.rs
 
 extern crate issue_36708 as lib;
 

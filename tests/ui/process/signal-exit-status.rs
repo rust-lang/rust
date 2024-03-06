@@ -1,8 +1,8 @@
-// run-pass
-// ignore-emscripten no processes
-// ignore-sgx no processes
-// ignore-windows
-// ignore-fuchsia code returned as ZX_TASK_RETCODE_EXCEPTION_KILL, FIXME (#58590)
+//@ run-pass
+//@ ignore-emscripten no processes
+//@ ignore-sgx no processes
+//@ ignore-windows
+//@ ignore-fuchsia code returned as ZX_TASK_RETCODE_EXCEPTION_KILL, FIXME (#58590)
 
 #![feature(core_intrinsics)]
 

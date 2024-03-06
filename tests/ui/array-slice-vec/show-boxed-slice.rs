@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 
 #[derive(Debug)]
 struct Foo(#[allow(dead_code)] Box<[u8]>);

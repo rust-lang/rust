@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 // Test that we allow unsizing even if there is an unchanged param in the
 // field getting unsized.
 struct A<T, U: ?Sized + 'static>(#[allow(dead_code)] T, B<T, U>);

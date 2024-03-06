@@ -1,5 +1,5 @@
-// force-host
-// no-prefer-dynamic
+//@ force-host
+//@ no-prefer-dynamic
 
 // check that having extern "C" functions in a proc macro doesn't crash.
 

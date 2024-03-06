@@ -1,7 +1,7 @@
 // Test that specializing on the well-formed predicates of the trait and
 // self-type of an impl is allowed.
 
-// check-pass
+//@ check-pass
 
 #![feature(min_specialization)]
 

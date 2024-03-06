@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 
 macro_rules! do_block{
     ($val:block) => {$val}

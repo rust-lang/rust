@@ -7,7 +7,7 @@ fn main() {
     match &mut Some(1) {
         ref mut z @ &mut Some(ref a) => {
         //~^ ERROR cannot borrow value as immutable because it is also borrowed as mutable
-        //~| ERROR cannot borrow value as immutable because it is also borrowed as mutable
+        //~| ERROR cannot borrow value as mutable because it is also borrowed as immutable
             **z = None;
             println!("{}", *a);
         }
@@ -76,8 +76,8 @@ fn main() {
         ref a @ Ok(ref mut b) | ref a @ Err(ref mut b) => {
             //~^ ERROR cannot borrow value as mutable because it is also borrowed as immutable
             //~| ERROR cannot borrow value as mutable because it is also borrowed as immutable
-            //~| ERROR cannot borrow value as mutable because it is also borrowed as immutable
-            //~| ERROR cannot borrow value as mutable because it is also borrowed as immutable
+            //~| ERROR cannot borrow value as immutable because it is also borrowed as mutable
+            //~| ERROR cannot borrow value as immutable because it is also borrowed as mutable
             *b = U;
             drop(a);
         }
@@ -87,6 +87,8 @@ fn main() {
         ref a @ Ok(ref mut b) | ref a @ Err(ref mut b) if { *b = U; false } => {}
         //~^ ERROR cannot borrow value as mutable because it is also borrowed as immutable
         //~| ERROR cannot borrow value as mutable because it is also borrowed as immutable
+        //~| ERROR cannot borrow value as immutable because it is also borrowed as mutable
+        //~| ERROR cannot borrow value as immutable because it is also borrowed as mutable
         //~| ERROR cannot assign to `*b`, as it is immutable for the pattern guard
         _ => {}
     }
@@ -101,6 +103,8 @@ fn main() {
         ref a @ Ok(ref mut b) | ref a @ Err(ref mut b) if { drop(b); false } => {}
         //~^ ERROR cannot borrow value as mutable because it is also borrowed as immutable
         //~| ERROR cannot borrow value as mutable because it is also borrowed as immutable
+        //~| ERROR cannot borrow value as immutable because it is also borrowed as mutable
+        //~| ERROR cannot borrow value as immutable because it is also borrowed as mutable
         //~| ERROR cannot move out of `b` in pattern guard
         //~| ERROR cannot move out of `b` in pattern guard
         _ => {}

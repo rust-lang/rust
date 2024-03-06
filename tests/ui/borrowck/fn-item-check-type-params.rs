@@ -3,7 +3,7 @@
 // Previously, different borrowck implementations used to disagree here.
 // The status of each is documented on `fn test_*`.
 
-// check-fail
+//@ check-fail
 
 use std::fmt::Display;
 

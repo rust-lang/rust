@@ -1,7 +1,7 @@
 // Make sure that built-in derives don't rely on the user not declaring certain
 // names to work properly.
 
-// check-pass
+//@ check-pass
 
 #![allow(nonstandard_style)]
 #![feature(decl_macro)]

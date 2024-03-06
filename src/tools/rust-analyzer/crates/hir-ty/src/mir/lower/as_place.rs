@@ -1,5 +1,7 @@
 //! MIR lowering for places
 
+use crate::mir::MutBorrowKind;
+
 use super::*;
 use hir_def::FunctionId;
 use hir_expand::name;
@@ -225,7 +227,7 @@ impl MirLowerCtx<'_> {
                 {
                     let Some(index_fn) = self.infer.method_resolution(expr_id) else {
                         return Err(MirLowerError::UnresolvedMethod(
-                            "[overloaded index]".to_string(),
+                            "[overloaded index]".to_owned(),
                         ));
                     };
                     let Some((base_place, current)) =
@@ -328,7 +330,7 @@ impl MirLowerCtx<'_> {
                 Mutability::Mut,
                 LangItem::DerefMut,
                 name![deref_mut],
-                BorrowKind::Mut { allow_two_phase_borrow: false },
+                BorrowKind::Mut { kind: MutBorrowKind::Default },
             )
         };
         let ty_ref = TyKind::Ref(chalk_mut, static_lifetime(), source_ty.clone()).intern(Interner);

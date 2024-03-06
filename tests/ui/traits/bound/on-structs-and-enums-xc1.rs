@@ -1,4 +1,4 @@
-// aux-build:on_structs_and_enums_xc.rs
+//@ aux-build:on_structs_and_enums_xc.rs
 
 extern crate on_structs_and_enums_xc;
 

@@ -1,5 +1,5 @@
-// only-x86_64
-// compile-flags:-C target-feature=+ssse3
+//@ only-x86_64
+//@ compile-flags:-C target-feature=+ssse3
 
 #![crate_type = "lib"]
 

@@ -1,4 +1,4 @@
-// build-pass
+//@ build-pass
 
 // A test to ensure coroutines capture values that were conditionally dropped,
 // and also that values that are dropped along all paths to a yield do not get

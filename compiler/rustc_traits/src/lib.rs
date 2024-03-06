@@ -1,7 +1,5 @@
 //! Queries that are independent from the main solver code.
 
-#![deny(rustc::untranslatable_diagnostic)]
-#![deny(rustc::diagnostic_outside_of_impl)]
 #![recursion_limit = "256"]
 
 #[macro_use]

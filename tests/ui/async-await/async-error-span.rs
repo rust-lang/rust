@@ -1,4 +1,4 @@
-// edition:2018
+//@ edition:2018
 
 // Regression test for issue #62382.
 

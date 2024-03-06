@@ -5,7 +5,7 @@ use crate::iter::{
     adapters::SourceIter, FusedIterator, InPlaceIterable, TrustedLen, TrustedRandomAccess,
     TrustedRandomAccessNoCoerce,
 };
-use crate::num::NonZeroUsize;
+use crate::num::NonZero;
 use crate::ops::{ControlFlow, Try};
 
 /// An iterator that skips over `n` elements of `iter`.
@@ -134,7 +134,7 @@ where
 
     #[inline]
     #[rustc_inherit_overflow_checks]
-    fn advance_by(&mut self, mut n: usize) -> Result<(), NonZeroUsize> {
+    fn advance_by(&mut self, mut n: usize) -> Result<(), NonZero<usize>> {
         let skip_inner = self.n;
         let skip_and_advance = skip_inner.saturating_add(n);
 
@@ -154,7 +154,7 @@ where
             }
         }
 
-        NonZeroUsize::new(n).map_or(Ok(()), Err)
+        NonZero::new(n).map_or(Ok(()), Err)
     }
 
     #[doc(hidden)]
@@ -234,11 +234,11 @@ where
     impl_fold_via_try_fold! { rfold -> try_rfold }
 
     #[inline]
-    fn advance_back_by(&mut self, n: usize) -> Result<(), NonZeroUsize> {
+    fn advance_back_by(&mut self, n: usize) -> Result<(), NonZero<usize>> {
         let min = crate::cmp::min(self.len(), n);
         let rem = self.iter.advance_back_by(min);
         assert!(rem.is_ok(), "ExactSizeIterator contract violation");
-        NonZeroUsize::new(n - min).map_or(Ok(()), Err)
+        NonZero::new(n - min).map_or(Ok(()), Err)
     }
 }
 
@@ -264,8 +264,8 @@ where
 
 #[unstable(issue = "none", feature = "inplace_iteration")]
 unsafe impl<I: InPlaceIterable> InPlaceIterable for Skip<I> {
-    const EXPAND_BY: Option<NonZeroUsize> = I::EXPAND_BY;
-    const MERGE_BY: Option<NonZeroUsize> = I::MERGE_BY;
+    const EXPAND_BY: Option<NonZero<usize>> = I::EXPAND_BY;
+    const MERGE_BY: Option<NonZero<usize>> = I::MERGE_BY;
 }
 
 #[doc(hidden)]

@@ -1,4 +1,4 @@
-// aux-build:resolved-located-at.rs
+//@ aux-build:resolved-located-at.rs
 
 #[macro_use]
 extern crate resolved_located_at;

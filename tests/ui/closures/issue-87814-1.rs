@@ -1,4 +1,4 @@
-// check-pass
+//@ check-pass
 fn main() {
     let mut schema_all = vec![];
     (0..42).for_each(|_x| match Err(()) as Result<(), _> {

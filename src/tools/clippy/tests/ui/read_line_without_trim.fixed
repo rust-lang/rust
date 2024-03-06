@@ -31,4 +31,17 @@ fn main() {
     std::io::stdin().read_line(&mut input).unwrap();
     // this is actually ok, so don't lint here
     let _x = input.parse::<String>().unwrap();
+
+    // comparing with string literals
+    let mut input = String::new();
+    std::io::stdin().read_line(&mut input).unwrap();
+    if input.trim_end() == "foo" {
+        println!("This will never ever execute!");
+    }
+
+    let mut input = String::new();
+    std::io::stdin().read_line(&mut input).unwrap();
+    if input.trim_end().ends_with("foo") {
+        println!("Neither will this");
+    }
 }

@@ -1,6 +1,6 @@
-// ignore-windows
+//@ ignore-windows
 
-// compile-flags: -g -C no-prepopulate-passes
+//@ compile-flags: -g -C no-prepopulate-passes
 
 // CHECK-LABEL: @main
 // CHECK: {{.*}}DICompositeType{{.*}}tag: DW_TAG_structure_type,{{.*}}name: "Generic<i32>",{{.*}}

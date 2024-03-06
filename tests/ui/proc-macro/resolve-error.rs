@@ -1,6 +1,6 @@
-// aux-build:derive-foo.rs
-// aux-build:derive-clona.rs
-// aux-build:test-macros.rs
+//@ aux-build:derive-foo.rs
+//@ aux-build:derive-clona.rs
+//@ aux-build:test-macros.rs
 
 #[macro_use]
 extern crate derive_foo;

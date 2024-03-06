@@ -1,3 +1,4 @@
+#![allow(clippy::print_stderr)]
 #[cfg(not(feature = "in-rust-tree"))]
 mod sourcegen;
 
@@ -33,13 +34,35 @@ pub(crate) fn check_fixes(ra_fixture_before: &str, ra_fixtures_after: Vec<&str>)
 
 #[track_caller]
 fn check_nth_fix(nth: usize, ra_fixture_before: &str, ra_fixture_after: &str) {
+    let mut config = DiagnosticsConfig::test_sample();
+    config.expr_fill_default = ExprFillDefaultMode::Default;
+    check_nth_fix_with_config(config, nth, ra_fixture_before, ra_fixture_after)
+}
+
+#[track_caller]
+pub(crate) fn check_fix_with_disabled(
+    ra_fixture_before: &str,
+    ra_fixture_after: &str,
+    disabled: impl Iterator<Item = String>,
+) {
+    let mut config = DiagnosticsConfig::test_sample();
+    config.expr_fill_default = ExprFillDefaultMode::Default;
+    config.disabled.extend(disabled);
+    check_nth_fix_with_config(config, 0, ra_fixture_before, ra_fixture_after)
+}
+
+#[track_caller]
+fn check_nth_fix_with_config(
+    config: DiagnosticsConfig,
+    nth: usize,
+    ra_fixture_before: &str,
+    ra_fixture_after: &str,
+) {
     let after = trim_indent(ra_fixture_after);
 
     let (db, file_position) = RootDatabase::with_position(ra_fixture_before);
-    let mut conf = DiagnosticsConfig::test_sample();
-    conf.expr_fill_default = ExprFillDefaultMode::Default;
     let diagnostic =
-        super::diagnostics(&db, &conf, &AssistResolveStrategy::All, file_position.file_id)
+        super::diagnostics(&db, &config, &AssistResolveStrategy::All, file_position.file_id)
             .pop()
             .expect("no diagnostics");
     let fix = &diagnostic
@@ -68,6 +91,91 @@ fn check_nth_fix(nth: usize, ra_fixture_before: &str, ra_fixture_after: &str) {
     assert_eq_text!(&after, &actual);
 }
 
+pub(crate) fn check_fixes_unordered(ra_fixture_before: &str, ra_fixtures_after: Vec<&str>) {
+    for ra_fixture_after in ra_fixtures_after.iter() {
+        check_has_fix(ra_fixture_before, ra_fixture_after)
+    }
+}
+
+#[track_caller]
+pub(crate) fn check_has_fix(ra_fixture_before: &str, ra_fixture_after: &str) {
+    let after = trim_indent(ra_fixture_after);
+
+    let (db, file_position) = RootDatabase::with_position(ra_fixture_before);
+    let mut conf = DiagnosticsConfig::test_sample();
+    conf.expr_fill_default = ExprFillDefaultMode::Default;
+    let fix = super::diagnostics(&db, &conf, &AssistResolveStrategy::All, file_position.file_id)
+        .into_iter()
+        .find(|d| {
+            d.fixes
+                .as_ref()
+                .and_then(|fixes| {
+                    fixes.iter().find(|fix| {
+                        if !fix.target.contains_inclusive(file_position.offset) {
+                            return false;
+                        }
+                        let actual = {
+                            let source_change = fix.source_change.as_ref().unwrap();
+                            let file_id = *source_change.source_file_edits.keys().next().unwrap();
+                            let mut actual = db.file_text(file_id).to_string();
+
+                            for (edit, snippet_edit) in source_change.source_file_edits.values() {
+                                edit.apply(&mut actual);
+                                if let Some(snippet_edit) = snippet_edit {
+                                    snippet_edit.apply(&mut actual);
+                                }
+                            }
+                            actual
+                        };
+                        after == actual
+                    })
+                })
+                .is_some()
+        });
+    assert!(fix.is_some(), "no diagnostic with desired fix");
+}
+
+#[track_caller]
+pub(crate) fn check_has_single_fix(ra_fixture_before: &str, ra_fixture_after: &str) {
+    let after = trim_indent(ra_fixture_after);
+
+    let (db, file_position) = RootDatabase::with_position(ra_fixture_before);
+    let mut conf = DiagnosticsConfig::test_sample();
+    conf.expr_fill_default = ExprFillDefaultMode::Default;
+    let mut n_fixes = 0;
+    let fix = super::diagnostics(&db, &conf, &AssistResolveStrategy::All, file_position.file_id)
+        .into_iter()
+        .find(|d| {
+            d.fixes
+                .as_ref()
+                .and_then(|fixes| {
+                    n_fixes += fixes.len();
+                    fixes.iter().find(|fix| {
+                        if !fix.target.contains_inclusive(file_position.offset) {
+                            return false;
+                        }
+                        let actual = {
+                            let source_change = fix.source_change.as_ref().unwrap();
+                            let file_id = *source_change.source_file_edits.keys().next().unwrap();
+                            let mut actual = db.file_text(file_id).to_string();
+
+                            for (edit, snippet_edit) in source_change.source_file_edits.values() {
+                                edit.apply(&mut actual);
+                                if let Some(snippet_edit) = snippet_edit {
+                                    snippet_edit.apply(&mut actual);
+                                }
+                            }
+                            actual
+                        };
+                        after == actual
+                    })
+                })
+                .is_some()
+        });
+    assert!(fix.is_some(), "no diagnostic with desired fix");
+    assert!(n_fixes == 1, "Too many fixes suggested");
+}
+
 /// Checks that there's a diagnostic *without* fix at `$0`.
 pub(crate) fn check_no_fix(ra_fixture: &str) {
     let (db, file_position) = RootDatabase::with_position(ra_fixture);
@@ -85,7 +193,14 @@ pub(crate) fn check_no_fix(ra_fixture: &str) {
 #[track_caller]
 pub(crate) fn check_diagnostics(ra_fixture: &str) {
     let mut config = DiagnosticsConfig::test_sample();
-    config.disabled.insert("inactive-code".to_string());
+    config.disabled.insert("inactive-code".to_owned());
+    check_diagnostics_with_config(config, ra_fixture)
+}
+
+#[track_caller]
+pub(crate) fn check_diagnostics_with_disabled(ra_fixture: &str, disabled: &[&str]) {
+    let mut config = DiagnosticsConfig::test_sample();
+    config.disabled.extend(disabled.iter().map(|&s| s.to_owned()));
     check_diagnostics_with_config(config, ra_fixture)
 }
 
@@ -173,8 +288,9 @@ fn minicore_smoke_test() {
     fn check(minicore: MiniCore) {
         let source = minicore.source_code();
         let mut config = DiagnosticsConfig::test_sample();
-        // This should be ignored since we conditionaly remove code which creates single item use with braces
-        config.disabled.insert("unused_braces".to_string());
+        // This should be ignored since we conditionally remove code which creates single item use with braces
+        config.disabled.insert("unused_braces".to_owned());
+        config.disabled.insert("unused_variables".to_owned());
         check_diagnostics_with_config(config, &source);
     }
 

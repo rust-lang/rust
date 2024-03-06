@@ -1,12 +1,12 @@
 // Test that structs aligned to 128 bits are passed with the correct ABI on aarch64.
 
-// revisions:linux darwin windows
-//[linux] compile-flags: --target aarch64-unknown-linux-gnu
-//[darwin] compile-flags: --target aarch64-apple-darwin
-//[windows] compile-flags: --target aarch64-pc-windows-msvc
-//[linux] needs-llvm-components: aarch64
-//[darwin] needs-llvm-components: aarch64
-//[windows] needs-llvm-components: aarch64
+//@ revisions:linux darwin windows
+//@[linux] compile-flags: --target aarch64-unknown-linux-gnu
+//@[darwin] compile-flags: --target aarch64-apple-darwin
+//@[windows] compile-flags: --target aarch64-pc-windows-msvc
+//@[linux] needs-llvm-components: aarch64
+//@[darwin] needs-llvm-components: aarch64
+//@[windows] needs-llvm-components: aarch64
 
 #![feature(no_core, lang_items)]
 #![crate_type = "lib"]

@@ -593,11 +593,17 @@ else if (window.initSearch) window.initSearch(searchIndex);
                 ret
             })
             .collect::<Vec<_>>();
-        let impls = format!(
-            r#""{}":{}"#,
-            krate.name(cx.tcx()),
-            serde_json::to_string(&impls).expect("failed serde conversion"),
-        );
+
+        // FIXME: this fixes only rustdoc part of instability of trait impls
+        // for js files, see #120371
+        // Manually collect to string and sort to make list not depend on order
+        let mut impls = impls
+            .iter()
+            .map(|i| serde_json::to_string(i).expect("failed serde conversion"))
+            .collect::<Vec<_>>();
+        impls.sort();
+
+        let impls = format!(r#""{}":[{}]"#, krate.name(cx.tcx()), impls.join(","));
 
         let mut mydst = dst.clone();
         for part in &aliased_type.target_fqp[..aliased_type.target_fqp.len() - 1] {
@@ -702,11 +708,16 @@ else if (window.initSearch) window.initSearch(searchIndex);
             continue;
         }
 
-        let implementors = format!(
-            r#""{}":{}"#,
-            krate.name(cx.tcx()),
-            serde_json::to_string(&implementors).expect("failed serde conversion"),
-        );
+        // FIXME: this fixes only rustdoc part of instability of trait impls
+        // for js files, see #120371
+        // Manually collect to string and sort to make list not depend on order
+        let mut implementors = implementors
+            .iter()
+            .map(|i| serde_json::to_string(i).expect("failed serde conversion"))
+            .collect::<Vec<_>>();
+        implementors.sort();
+
+        let implementors = format!(r#""{}":[{}]"#, krate.name(cx.tcx()), implementors.join(","));
 
         let mut mydst = dst.clone();
         for part in &remote_path[..remote_path.len() - 1] {

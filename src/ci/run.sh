@@ -76,7 +76,7 @@ RUST_CONFIGURE_ARGS="$RUST_CONFIGURE_ARGS --set dist.compression-profile=balance
 # the LLVM build, as not to run out of memory.
 # This is an attempt to fix the spurious build error tracked by
 # https://github.com/rust-lang/rust/issues/108227.
-if isWindows && [[ ${CUSTOM_MINGW-0} -eq 1 ]]; then
+if isKnownToBeMingwBuild; then
     RUST_CONFIGURE_ARGS="$RUST_CONFIGURE_ARGS --set llvm.link-jobs=1"
 fi
 
@@ -119,7 +119,8 @@ if [ "$DEPLOY$DEPLOY_ALT" = "1" ]; then
     RUST_CONFIGURE_ARGS="$RUST_CONFIGURE_ARGS --set rust.verify-llvm-ir"
   fi
 
-  RUST_CONFIGURE_ARGS="$RUST_CONFIGURE_ARGS --set rust.codegen-backends=${CODEGEN_BACKENDS:-llvm}"
+  CODEGEN_BACKENDS="${CODEGEN_BACKENDS:-llvm}"
+  RUST_CONFIGURE_ARGS="$RUST_CONFIGURE_ARGS --set rust.codegen-backends=$CODEGEN_BACKENDS"
 else
   # We almost always want debug assertions enabled, but sometimes this takes too
   # long for too little benefit, so we just turn them off.
@@ -144,11 +145,12 @@ else
   # tests as it will fail them.
   if [[ "${ENABLE_GCC_CODEGEN}" == "1" ]]; then
     # Test the Cranelift and GCC backends in CI. Bootstrap knows which targets to run tests on.
-    RUST_CONFIGURE_ARGS="$RUST_CONFIGURE_ARGS --set rust.codegen-backends=llvm,cranelift,gcc"
+    CODEGEN_BACKENDS="${CODEGEN_BACKENDS:-llvm,cranelift,gcc}"
   else
     # Test the Cranelift backend in CI. Bootstrap knows which targets to run tests on.
-    RUST_CONFIGURE_ARGS="$RUST_CONFIGURE_ARGS --set rust.codegen-backends=llvm,cranelift"
+    CODEGEN_BACKENDS="${CODEGEN_BACKENDS:-llvm,cranelift}"
   fi
+  RUST_CONFIGURE_ARGS="$RUST_CONFIGURE_ARGS --set rust.codegen-backends=$CODEGEN_BACKENDS"
 
   # We enable this for non-dist builders, since those aren't trying to produce
   # fresh binaries. We currently don't entirely support distributing a fresh

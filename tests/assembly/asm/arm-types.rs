@@ -1,8 +1,8 @@
-// assembly-output: emit-asm
-// compile-flags: --target armv7-unknown-linux-gnueabihf
-// compile-flags: -C target-feature=+neon
-// compile-flags: -C opt-level=0
-// needs-llvm-components: arm
+//@ assembly-output: emit-asm
+//@ compile-flags: --target armv7-unknown-linux-gnueabihf
+//@ compile-flags: -C target-feature=+neon
+//@ compile-flags: -C opt-level=0
+//@ needs-llvm-components: arm
 
 #![feature(no_core, lang_items, rustc_attrs, repr_simd)]
 #![crate_type = "rlib"]

@@ -27,25 +27,26 @@ use crate::imports::ImportKind;
 use crate::module_to_string;
 use crate::Resolver;
 
+use crate::NameBindingKind;
 use rustc_ast as ast;
 use rustc_ast::visit::{self, Visitor};
-use rustc_data_structures::fx::{FxHashMap, FxIndexMap};
+use rustc_data_structures::fx::{FxHashMap, FxIndexMap, FxIndexSet};
 use rustc_data_structures::unord::UnordSet;
 use rustc_errors::{pluralize, MultiSpan};
 use rustc_hir::def::{DefKind, Res};
 use rustc_session::lint::builtin::{MACRO_USE_EXTERN_CRATE, UNUSED_EXTERN_CRATES, UNUSED_IMPORTS};
-use rustc_session::lint::BuiltinLintDiagnostics;
+use rustc_session::lint::BuiltinLintDiag;
 use rustc_span::symbol::{kw, Ident};
 use rustc_span::{Span, DUMMY_SP};
 
-struct UnusedImport<'a> {
-    use_tree: &'a ast::UseTree,
+struct UnusedImport {
+    use_tree: ast::UseTree,
     use_tree_id: ast::NodeId,
     item_span: Span,
     unused: UnordSet<ast::NodeId>,
 }
 
-impl<'a> UnusedImport<'a> {
+impl UnusedImport {
     fn add(&mut self, id: ast::NodeId) {
         self.unused.insert(id);
     }
@@ -54,7 +55,7 @@ impl<'a> UnusedImport<'a> {
 struct UnusedImportCheckVisitor<'a, 'b, 'tcx> {
     r: &'a mut Resolver<'b, 'tcx>,
     /// All the (so far) unused imports, grouped path list
-    unused_imports: FxIndexMap<ast::NodeId, UnusedImport<'a>>,
+    unused_imports: FxIndexMap<ast::NodeId, UnusedImport>,
     extern_crate_items: Vec<ExternCrateToLint>,
     base_use_tree: Option<&'a ast::UseTree>,
     base_id: ast::NodeId,
@@ -92,16 +93,17 @@ impl<'a, 'b, 'tcx> UnusedImportCheckVisitor<'a, 'b, 'tcx> {
         } else {
             // This trait import is definitely used, in a way other than
             // method resolution.
-            self.r.maybe_unused_trait_imports.remove(&def_id);
+            // FIXME(#120456) - is `swap_remove` correct?
+            self.r.maybe_unused_trait_imports.swap_remove(&def_id);
             if let Some(i) = self.unused_imports.get_mut(&self.base_id) {
                 i.unused.remove(&id);
             }
         }
     }
 
-    fn unused_import(&mut self, id: ast::NodeId) -> &mut UnusedImport<'a> {
+    fn unused_import(&mut self, id: ast::NodeId) -> &mut UnusedImport {
         let use_tree_id = self.base_id;
-        let use_tree = self.base_use_tree.unwrap();
+        let use_tree = self.base_use_tree.unwrap().clone();
         let item_span = self.item_span;
 
         self.unused_imports.entry(id).or_insert_with(|| UnusedImport {
@@ -196,7 +198,7 @@ enum UnusedSpanResult {
 }
 
 fn calc_unused_spans(
-    unused_import: &UnusedImport<'_>,
+    unused_import: &UnusedImport,
     use_tree: &ast::UseTree,
     use_tree_id: ast::NodeId,
 ) -> UnusedSpanResult {
@@ -286,7 +288,7 @@ impl Resolver<'_, '_> {
 
         for import in self.potentially_unused_imports.iter() {
             match import.kind {
-                _ if import.used.get()
+                _ if import.used.get().is_some()
                     || import.expect_vis().is_public()
                     || import.span.is_dummy() =>
                 {
@@ -335,7 +337,7 @@ impl Resolver<'_, '_> {
 
         for unused in visitor.unused_imports.values() {
             let mut fixes = Vec::new();
-            let spans = match calc_unused_spans(unused, unused.use_tree, unused.use_tree_id) {
+            let spans = match calc_unused_spans(unused, &unused.use_tree, unused.use_tree_id) {
                 UnusedSpanResult::Used => continue,
                 UnusedSpanResult::FlatUnused(span, remove) => {
                     fixes.push((remove, String::new()));
@@ -410,7 +412,7 @@ impl Resolver<'_, '_> {
                 unused.use_tree_id,
                 ms,
                 msg,
-                BuiltinLintDiagnostics::UnusedImports(fix_msg.into(), fixes, test_module_span),
+                BuiltinLintDiag::UnusedImports(fix_msg.into(), fixes, test_module_span),
             );
         }
 
@@ -426,7 +428,7 @@ impl Resolver<'_, '_> {
                         extern_crate.id,
                         span,
                         "unused extern crate",
-                        BuiltinLintDiagnostics::UnusedExternCrate {
+                        BuiltinLintDiag::UnusedExternCrate {
                             removal_span: extern_crate.span_with_attributes,
                         },
                     );
@@ -479,8 +481,33 @@ impl Resolver<'_, '_> {
                 extern_crate.id,
                 extern_crate.span,
                 "`extern crate` is not idiomatic in the new edition",
-                BuiltinLintDiagnostics::ExternCrateNotIdiomatic { vis_span, ident_span },
+                BuiltinLintDiag::ExternCrateNotIdiomatic { vis_span, ident_span },
             );
+        }
+
+        let unused_imports = visitor.unused_imports;
+        let mut check_redundant_imports = FxIndexSet::default();
+        for module in self.arenas.local_modules().iter() {
+            for (_key, resolution) in self.resolutions(*module).borrow().iter() {
+                let resolution = resolution.borrow();
+
+                if let Some(binding) = resolution.binding
+                    && let NameBindingKind::Import { import, .. } = binding.kind
+                    && let ImportKind::Single { id, .. } = import.kind
+                {
+                    if let Some(unused_import) = unused_imports.get(&import.root_id)
+                        && unused_import.unused.contains(&id)
+                    {
+                        continue;
+                    }
+
+                    check_redundant_imports.insert(import);
+                }
+            }
+        }
+
+        for import in check_redundant_imports {
+            self.check_for_redundant_imports(import);
         }
     }
 }

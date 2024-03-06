@@ -4,8 +4,8 @@
 // This is due to the fact that 'public_private_dependencies' just enables
 // a lint, so disabling it shouldn't cause any code to stop compiling.
 
-// run-pass
-// aux-build:pub_dep.rs
+//@ run-pass
+//@ aux-build:pub_dep.rs
 
 // Without ![feature(public_private_dependencies)],
 // this should do nothing/

@@ -1,4 +1,4 @@
-// check-pass
+//@ check-pass
 
 // We currently special case bevy from erroring on incorrect implied bounds
 // from normalization (issue #109628).

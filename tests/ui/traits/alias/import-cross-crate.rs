@@ -1,5 +1,5 @@
-// run-pass
-// aux-build:greeter.rs
+//@ run-pass
+//@ aux-build:greeter.rs
 
 #![feature(trait_alias)]
 

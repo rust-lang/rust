@@ -1,4 +1,4 @@
-// aux-build:macro-in-other-crate.rs
+//@ aux-build:macro-in-other-crate.rs
 
 #![feature(decl_macro)]
 

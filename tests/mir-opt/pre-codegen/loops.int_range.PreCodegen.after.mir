@@ -7,14 +7,13 @@ fn int_range(_1: usize, _2: usize) -> () {
     let mut _3: std::ops::Range<usize>;
     let mut _4: std::ops::Range<usize>;
     let mut _5: &mut std::ops::Range<usize>;
-    let mut _11: std::option::Option<usize>;
-    let mut _14: isize;
-    let _16: ();
+    let mut _13: std::option::Option<usize>;
+    let _15: ();
     scope 1 {
         debug iter => _4;
-        let _15: usize;
+        let _14: usize;
         scope 2 {
-            debug i => _15;
+            debug i => _14;
         }
         scope 4 (inlined iter::range::<impl Iterator for std::ops::Range<usize>>::next) {
             debug self => _5;
@@ -23,10 +22,10 @@ fn int_range(_1: usize, _2: usize) -> () {
                 let mut _6: &usize;
                 let mut _7: &usize;
                 let mut _10: bool;
-                let _12: usize;
-                let mut _13: usize;
+                let _11: usize;
+                let mut _12: usize;
                 scope 6 {
-                    debug old => _12;
+                    debug old => _11;
                     scope 7 {
                     }
                 }
@@ -51,9 +50,9 @@ fn int_range(_1: usize, _2: usize) -> () {
     }
 
     bb1: {
-        StorageLive(_11);
+        StorageLive(_13);
         _5 = &mut _4;
-        StorageLive(_12);
+        StorageLive(_11);
         StorageLive(_10);
         StorageLive(_6);
         _6 = &(_4.0: usize);
@@ -72,53 +71,33 @@ fn int_range(_1: usize, _2: usize) -> () {
     bb2: {
         StorageDead(_7);
         StorageDead(_6);
-        _11 = const Option::<usize>::None;
-        goto -> bb5;
+        StorageDead(_10);
+        StorageDead(_11);
+        StorageDead(_13);
+        StorageDead(_4);
+        return;
     }
 
     bb3: {
         StorageDead(_7);
         StorageDead(_6);
-        _12 = (_4.0: usize);
-        StorageLive(_13);
-        _13 = <usize as Step>::forward_unchecked(_12, const 1_usize) -> [return: bb4, unwind continue];
+        _11 = (_4.0: usize);
+        StorageLive(_12);
+        _12 = <usize as Step>::forward_unchecked(_11, const 1_usize) -> [return: bb4, unwind continue];
     }
 
     bb4: {
-        (_4.0: usize) = move _13;
-        StorageDead(_13);
-        _11 = Option::<usize>::Some(_12);
-        goto -> bb5;
+        (_4.0: usize) = move _12;
+        StorageDead(_12);
+        _13 = Option::<usize>::Some(_11);
+        StorageDead(_10);
+        StorageDead(_11);
+        _14 = ((_13 as Some).0: usize);
+        _15 = opaque::<usize>(move _14) -> [return: bb5, unwind continue];
     }
 
     bb5: {
-        StorageDead(_10);
-        StorageDead(_12);
-        _14 = discriminant(_11);
-        switchInt(move _14) -> [0: bb6, 1: bb7, otherwise: bb9];
-    }
-
-    bb6: {
-        StorageDead(_11);
-        StorageDead(_4);
-        return;
-    }
-
-    bb7: {
-        _15 = ((_11 as Some).0: usize);
-        _16 = opaque::<usize>(move _15) -> [return: bb8, unwind continue];
-    }
-
-    bb8: {
-        StorageDead(_11);
+        StorageDead(_13);
         goto -> bb1;
     }
-
-    bb9: {
-        unreachable;
-    }
-}
-
-ALLOC0 (size: 16, align: 8) {
-    00 00 00 00 00 00 00 00 __ __ __ __ __ __ __ __ │ ........░░░░░░░░
 }

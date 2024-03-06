@@ -36,7 +36,7 @@ use rustc_span::InnerSpan;
 use rustc_target::spec::{CodeModel, RelocModel, SanitizerSet, SplitDebuginfo, TlsModel};
 
 use crate::llvm::diagnostic::OptimizationDiagnosticKind;
-use libc::{c_char, c_int, c_uint, c_void, size_t};
+use libc::{c_char, c_int, c_void, size_t};
 use std::ffi::CString;
 use std::fs;
 use std::io::{self, Write};
@@ -406,7 +406,7 @@ fn report_inline_asm(
     cgcx: &CodegenContext<LlvmCodegenBackend>,
     msg: String,
     level: llvm::DiagnosticLevel,
-    mut cookie: c_uint,
+    mut cookie: u64,
     source: Option<(String, Vec<InnerSpan>)>,
 ) {
     // In LTO build we may get srcloc values from other crates which are invalid
@@ -420,7 +420,7 @@ fn report_inline_asm(
         llvm::DiagnosticLevel::Warning => Level::Warning,
         llvm::DiagnosticLevel::Note | llvm::DiagnosticLevel::Remark => Level::Note,
     };
-    cgcx.diag_emitter.inline_asm_error(cookie as u32, msg, level, source);
+    cgcx.diag_emitter.inline_asm_error(cookie.try_into().unwrap(), msg, level, source);
 }
 
 unsafe extern "C" fn diagnostic_handler(info: &DiagnosticInfo, user: *mut c_void) {
@@ -519,12 +519,22 @@ pub(crate) unsafe fn llvm_optimize(
     let pgo_sample_use_path = get_pgo_sample_use_path(config);
     let is_lto = opt_stage == llvm::OptStage::ThinLTO || opt_stage == llvm::OptStage::FatLTO;
     let instr_profile_output_path = get_instr_profile_output_path(config);
+    let sanitize_dataflow_abilist: Vec<_> = config
+        .sanitizer_dataflow_abilist
+        .iter()
+        .map(|file| CString::new(file.as_str()).unwrap())
+        .collect();
+    let sanitize_dataflow_abilist_ptrs: Vec<_> =
+        sanitize_dataflow_abilist.iter().map(|file| file.as_ptr()).collect();
     // Sanitizer instrumentation is only inserted during the pre-link optimization stage.
     let sanitizer_options = if !is_lto {
         Some(llvm::SanitizerOptions {
             sanitize_address: config.sanitizer.contains(SanitizerSet::ADDRESS),
             sanitize_address_recover: config.sanitizer_recover.contains(SanitizerSet::ADDRESS),
             sanitize_cfi: config.sanitizer.contains(SanitizerSet::CFI),
+            sanitize_dataflow: config.sanitizer.contains(SanitizerSet::DATAFLOW),
+            sanitize_dataflow_abilist: sanitize_dataflow_abilist_ptrs.as_ptr(),
+            sanitize_dataflow_abilist_len: sanitize_dataflow_abilist_ptrs.len(),
             sanitize_kcfi: config.sanitizer.contains(SanitizerSet::KCFI),
             sanitize_memory: config.sanitizer.contains(SanitizerSet::MEMORY),
             sanitize_memory_recover: config.sanitizer_recover.contains(SanitizerSet::MEMORY),

@@ -1,7 +1,8 @@
+use crate::errors;
 use crate::mbe::macro_parser::count_metavar_decls;
 use crate::mbe::{Delimited, KleeneOp, KleeneToken, MetaVarExpr, SequenceRepetition, TokenTree};
 
-use rustc_ast::token::{self, Delimiter, Token};
+use rustc_ast::token::{self, Delimiter, IdentIsRaw, Token};
 use rustc_ast::{tokenstream, NodeId};
 use rustc_ast_pretty::pprust;
 use rustc_feature::Features;
@@ -60,11 +61,11 @@ pub(super) fn parse(
                     Some(&tokenstream::TokenTree::Token(Token { kind: token::Colon, span }, _)) => {
                         match trees.next() {
                             Some(tokenstream::TokenTree::Token(token, _)) => match token.ident() {
-                                Some((frag, _)) => {
+                                Some((fragment, _)) => {
                                     let span = token.span.with_lo(start_sp.lo());
 
                                     let kind =
-                                        token::NonterminalKind::from_symbol(frag.name, || {
+                                        token::NonterminalKind::from_symbol(fragment.name, || {
                                             // FIXME(#85708) - once we properly decode a foreign
                                             // crate's `SyntaxContext::root`, then we can replace
                                             // this with just `span.edition()`. A
@@ -81,14 +82,13 @@ pub(super) fn parse(
                                         })
                                         .unwrap_or_else(
                                             || {
-                                                let msg = format!(
-                                                    "invalid fragment specifier `{}`",
-                                                    frag.name
+                                                sess.dcx().emit_err(
+                                                    errors::InvalidFragmentSpecifier {
+                                                        span,
+                                                        fragment,
+                                                        help: VALID_FRAGMENT_NAMES_MSG.into(),
+                                                    },
                                                 );
-                                                sess.dcx()
-                                                    .struct_span_err(span, msg)
-                                                    .with_help(VALID_FRAGMENT_NAMES_MSG)
-                                                    .emit();
                                                 token::NonterminalKind::Ident
                                             },
                                         );
@@ -175,8 +175,7 @@ fn parse_tree<'a>(
                                 // The delimiter is `{`. This indicates the beginning
                                 // of a meta-variable expression (e.g. `${count(ident)}`).
                                 // Try to parse the meta-variable expression.
-                                match MetaVarExpr::parse(tts, delim_span.entire(), &sess.parse_sess)
-                                {
+                                match MetaVarExpr::parse(tts, delim_span.entire(), &sess.psess) {
                                     Err(err) => {
                                         err.emit();
                                         // Returns early the same read `$` to avoid spanning
@@ -222,7 +221,7 @@ fn parse_tree<'a>(
                 Some(tokenstream::TokenTree::Token(token, _)) if token.is_ident() => {
                     let (ident, is_raw) = token.ident().unwrap();
                     let span = ident.span.with_lo(span.lo());
-                    if ident.name == kw::Crate && !is_raw {
+                    if ident.name == kw::Crate && matches!(is_raw, IdentIsRaw::No) {
                         TokenTree::token(token::Ident(kw::DollarCrate, is_raw), span)
                     } else {
                         TokenTree::MetaVar(span, ident)

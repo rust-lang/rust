@@ -1,10 +1,9 @@
 //! A set of high-level utility fixture methods to use in tests.
-use std::{mem, ops::Not, str::FromStr, sync};
+use std::{iter, mem, ops::Not, str::FromStr, sync};
 
 use base_db::{
-    CrateDisplayName, CrateGraph, CrateId, CrateName, CrateOrigin, Dependency, DependencyKind,
-    Edition, Env, FileChange, FileSet, LangCrateOrigin, SourceDatabaseExt, SourceRoot, Version,
-    VfsPath,
+    CrateDisplayName, CrateGraph, CrateId, CrateName, CrateOrigin, Dependency, Edition, Env,
+    FileChange, FileSet, LangCrateOrigin, SourceDatabaseExt, SourceRoot, Version, VfsPath,
 };
 use cfg::CfgOptions;
 use hir_expand::{
@@ -118,8 +117,14 @@ impl ChangeFixture {
         ra_fixture: &str,
         mut proc_macro_defs: Vec<(String, ProcMacro)>,
     ) -> ChangeFixture {
-        let FixtureWithProjectMeta { fixture, mini_core, proc_macro_names, toolchain } =
-            FixtureWithProjectMeta::parse(ra_fixture);
+        let FixtureWithProjectMeta {
+            fixture,
+            mini_core,
+            proc_macro_names,
+            toolchain,
+            target_data_layout,
+        } = FixtureWithProjectMeta::parse(ra_fixture);
+        let target_data_layout = Ok(target_data_layout.into());
         let toolchain = Some({
             let channel = toolchain.as_deref().unwrap_or("stable");
             Version::parse(&format!("1.76.0-{channel}")).unwrap()
@@ -131,7 +136,6 @@ impl ChangeFixture {
         let mut crates = FxHashMap::default();
         let mut crate_deps = Vec::new();
         let mut default_crate_root: Option<FileId> = None;
-        let mut default_target_data_layout: Option<String> = None;
         let mut default_cfg = CfgOptions::default();
         let mut default_env = Env::new_for_test_fixture();
 
@@ -187,11 +191,6 @@ impl ChangeFixture {
                     meta.env,
                     false,
                     origin,
-                    meta.target_data_layout
-                        .as_deref()
-                        .map(From::from)
-                        .ok_or_else(|| "target_data_layout unset".into()),
-                    toolchain.clone(),
                 );
                 let prev = crates.insert(crate_name.clone(), crate_id);
                 assert!(prev.is_none(), "multiple crates with same name: {}", crate_name);
@@ -205,7 +204,6 @@ impl ChangeFixture {
                 default_crate_root = Some(file_id);
                 default_cfg.extend(meta.cfg.into_iter());
                 default_env.extend(meta.env.iter().map(|(x, y)| (x.to_owned(), y.to_owned())));
-                default_target_data_layout = meta.target_data_layout;
             }
 
             source_change.change_file(file_id, Some(text.into()));
@@ -228,10 +226,6 @@ impl ChangeFixture {
                 default_env,
                 false,
                 CrateOrigin::Local { repo: None, name: None },
-                default_target_data_layout
-                    .map(|it| it.into())
-                    .ok_or_else(|| "target_data_layout unset".into()),
-                toolchain.clone(),
             );
         } else {
             for (from, to, prelude) in crate_deps {
@@ -240,27 +234,18 @@ impl ChangeFixture {
                 crate_graph
                     .add_dep(
                         from_id,
-                        Dependency::with_prelude(
-                            CrateName::new(&to).unwrap(),
-                            to_id,
-                            prelude,
-                            DependencyKind::Normal,
-                        ),
+                        Dependency::with_prelude(CrateName::new(&to).unwrap(), to_id, prelude),
                     )
                     .unwrap();
             }
         }
-        let target_layout = crate_graph.iter().next().map_or_else(
-            || Err("target_data_layout unset".into()),
-            |it| crate_graph[it].target_layout.clone(),
-        );
 
         if let Some(mini_core) = mini_core {
             let core_file = file_id;
             file_id = FileId::from_raw(file_id.index() + 1);
 
             let mut fs = FileSet::default();
-            fs.insert(core_file, VfsPath::new_virtual_path("/sysroot/core/lib.rs".to_string()));
+            fs.insert(core_file, VfsPath::new_virtual_path("/sysroot/core/lib.rs".to_owned()));
             roots.push(SourceRoot::new_library(fs));
 
             source_change.change_file(core_file, Some(mini_core.source_code().into()));
@@ -270,27 +255,18 @@ impl ChangeFixture {
             let core_crate = crate_graph.add_crate_root(
                 core_file,
                 Edition::Edition2021,
-                Some(CrateDisplayName::from_canonical_name("core".to_string())),
+                Some(CrateDisplayName::from_canonical_name("core".to_owned())),
                 None,
                 Default::default(),
                 Default::default(),
                 Env::new_for_test_fixture(),
                 false,
                 CrateOrigin::Lang(LangCrateOrigin::Core),
-                target_layout.clone(),
-                toolchain.clone(),
             );
 
             for krate in all_crates {
                 crate_graph
-                    .add_dep(
-                        krate,
-                        Dependency::new(
-                            CrateName::new("core").unwrap(),
-                            core_crate,
-                            DependencyKind::Normal,
-                        ),
-                    )
+                    .add_dep(krate, Dependency::new(CrateName::new("core").unwrap(), core_crate))
                     .unwrap();
             }
         }
@@ -304,7 +280,7 @@ impl ChangeFixture {
             let mut fs = FileSet::default();
             fs.insert(
                 proc_lib_file,
-                VfsPath::new_virtual_path("/sysroot/proc_macros/lib.rs".to_string()),
+                VfsPath::new_virtual_path("/sysroot/proc_macros/lib.rs".to_owned()),
             );
             roots.push(SourceRoot::new_library(fs));
 
@@ -315,15 +291,13 @@ impl ChangeFixture {
             let proc_macros_crate = crate_graph.add_crate_root(
                 proc_lib_file,
                 Edition::Edition2021,
-                Some(CrateDisplayName::from_canonical_name("proc_macros".to_string())),
+                Some(CrateDisplayName::from_canonical_name("proc_macros".to_owned())),
                 None,
                 Default::default(),
                 Default::default(),
                 Env::new_for_test_fixture(),
                 true,
                 CrateOrigin::Local { repo: None, name: None },
-                target_layout,
-                toolchain,
             );
             proc_macros.insert(proc_macros_crate, Ok(proc_macro));
 
@@ -331,11 +305,7 @@ impl ChangeFixture {
                 crate_graph
                     .add_dep(
                         krate,
-                        Dependency::new(
-                            CrateName::new("proc_macros").unwrap(),
-                            proc_macros_crate,
-                            DependencyKind::Normal,
-                        ),
+                        Dependency::new(CrateName::new("proc_macros").unwrap(), proc_macros_crate),
                     )
                     .unwrap();
             }
@@ -346,17 +316,20 @@ impl ChangeFixture {
             SourceRootKind::Library => SourceRoot::new_library(mem::take(&mut file_set)),
         };
         roots.push(root);
-        source_change.set_roots(roots);
-        source_change.set_crate_graph(crate_graph);
 
-        ChangeFixture {
-            file_position,
-            files,
-            change: Change {
-                source_change,
-                proc_macros: proc_macros.is_empty().not().then_some(proc_macros),
-            },
-        }
+        let mut change = Change {
+            source_change,
+            proc_macros: proc_macros.is_empty().not().then_some(proc_macros),
+            toolchains: Some(iter::repeat(toolchain).take(crate_graph.len()).collect()),
+            target_data_layouts: Some(
+                iter::repeat(target_data_layout).take(crate_graph.len()).collect(),
+            ),
+        };
+
+        change.source_change.set_roots(roots);
+        change.source_change.set_crate_graph(crate_graph);
+
+        ChangeFixture { file_position, files, change }
     }
 }
 
@@ -374,6 +347,7 @@ pub fn identity(_attr: TokenStream, item: TokenStream) -> TokenStream {
                 name: "identity".into(),
                 kind: ProcMacroKind::Attr,
                 expander: sync::Arc::new(IdentityProcMacroExpander),
+                disabled: false,
             },
         ),
         (
@@ -388,6 +362,7 @@ pub fn derive_identity(item: TokenStream) -> TokenStream {
                 name: "DeriveIdentity".into(),
                 kind: ProcMacroKind::CustomDerive,
                 expander: sync::Arc::new(IdentityProcMacroExpander),
+                disabled: false,
             },
         ),
         (
@@ -402,6 +377,7 @@ pub fn input_replace(attr: TokenStream, _item: TokenStream) -> TokenStream {
                 name: "input_replace".into(),
                 kind: ProcMacroKind::Attr,
                 expander: sync::Arc::new(AttributeInputReplaceProcMacroExpander),
+                disabled: false,
             },
         ),
         (
@@ -416,6 +392,7 @@ pub fn mirror(input: TokenStream) -> TokenStream {
                 name: "mirror".into(),
                 kind: ProcMacroKind::FuncLike,
                 expander: sync::Arc::new(MirrorProcMacroExpander),
+                disabled: false,
             },
         ),
         (
@@ -430,6 +407,7 @@ pub fn shorten(input: TokenStream) -> TokenStream {
                 name: "shorten".into(),
                 kind: ProcMacroKind::FuncLike,
                 expander: sync::Arc::new(ShortenProcMacroExpander),
+                disabled: false,
             },
         ),
     ]
@@ -470,7 +448,6 @@ struct FileMeta {
     edition: Edition,
     env: Env,
     introduce_new_source_root: Option<SourceRootKind>,
-    target_data_layout: Option<String>,
 }
 
 impl FileMeta {
@@ -502,7 +479,6 @@ impl FileMeta {
             edition: f.edition.map_or(Edition::CURRENT, |v| Edition::from_str(&v).unwrap()),
             env: f.env.into_iter().collect(),
             introduce_new_source_root,
-            target_data_layout: f.target_data_layout,
         }
     }
 }
@@ -598,7 +574,7 @@ impl ProcMacroExpander for MirrorProcMacroExpander {
                 };
                 token_trees.push(tt);
             }
-            Subtree { delimiter: input.delimiter, token_trees }
+            Subtree { delimiter: input.delimiter, token_trees: token_trees.into_boxed_slice() }
         }
         Ok(traverse(input))
     }

@@ -1,5 +1,5 @@
-// edition:2018
-// run-pass
+//@ edition:2018
+//@ run-pass
 
 use std::sync::Mutex;
 

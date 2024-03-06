@@ -1,7 +1,7 @@
 // Test that we consider equal regions when checking for hidden regions in
 // opaque types
 
-// check-pass
+//@ check-pass
 
 // `'a == 'static` so `&'a i32` is fine as the return type
 fn equal_regions_static<'a: 'static>(x: &'a i32) -> impl Sized {

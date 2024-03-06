@@ -1,5 +1,5 @@
-// compile-flags: -Znext-solver
-// check-pass
+//@ compile-flags: -Znext-solver
+//@ check-pass
 
 trait Iter<'a, I: 'a>: Iterator<Item = &'a I> {}
 

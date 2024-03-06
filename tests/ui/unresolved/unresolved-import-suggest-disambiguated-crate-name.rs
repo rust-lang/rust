@@ -7,11 +7,11 @@
 // For context, when it can be avoided we don't prepend `::` to paths referencing crates
 // from the extern prelude. See also `unresolved-import-avoid-suggesting-global-path.rs`.
 
-// run-rustfix
+//@ run-rustfix
 
-// compile-flags: --crate-type=lib
-// aux-crate:library=library.rs
-// edition: 2021
+//@ compile-flags: --crate-type=lib
+//@ aux-crate:library=library.rs
+//@ edition: 2021
 
 mod library {} // this module shares the same name as the external crate!
 

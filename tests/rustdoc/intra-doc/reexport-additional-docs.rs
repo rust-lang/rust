@@ -1,5 +1,5 @@
-// aux-build:intra-link-reexport-additional-docs.rs
-// build-aux-docs
+//@ aux-build:intra-link-reexport-additional-docs.rs
+//@ build-aux-docs
 #![crate_name = "foo"]
 extern crate inner;
 

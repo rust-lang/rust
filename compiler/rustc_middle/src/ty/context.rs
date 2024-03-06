@@ -28,7 +28,7 @@ use crate::ty::{
     self, AdtDef, AdtDefData, AdtKind, Binder, Clause, Const, ConstData, GenericParamDefKind,
     ImplPolarity, List, ParamConst, ParamTy, PolyExistentialPredicate, PolyFnSig, Predicate,
     PredicateKind, Region, RegionKind, ReprOptions, TraitObjectVisitor, Ty, TyKind, TyVid,
-    Visibility,
+    TypeVisitable, Visibility,
 };
 use crate::ty::{GenericArg, GenericArgs, GenericArgsRef};
 use rustc_ast::{self as ast, attr};
@@ -43,9 +43,7 @@ use rustc_data_structures::sync::{self, FreezeReadGuard, Lock, WorkerLocal};
 #[cfg(parallel_compiler)]
 use rustc_data_structures::sync::{DynSend, DynSync};
 use rustc_data_structures::unord::UnordSet;
-use rustc_errors::{
-    DecorateLint, DiagCtxt, DiagnosticBuilder, DiagnosticMessage, ErrorGuaranteed, MultiSpan,
-};
+use rustc_errors::{DecorateLint, Diag, DiagCtxt, DiagMessage, ErrorGuaranteed, MultiSpan};
 use rustc_hir as hir;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{CrateNum, DefId, LocalDefId, LOCAL_CRATE};
@@ -87,7 +85,9 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
     type GenericArg = ty::GenericArg<'tcx>;
     type Term = ty::Term<'tcx>;
 
-    type Binder<T> = Binder<'tcx, T>;
+    type Binder<T: TypeVisitable<TyCtxt<'tcx>>> = Binder<'tcx, T>;
+    type BoundVars = &'tcx List<ty::BoundVariableKind>;
+    type BoundVar = ty::BoundVariableKind;
     type CanonicalVars = CanonicalVarInfos<'tcx>;
 
     type Ty = Ty<'tcx>;
@@ -129,27 +129,6 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
 
     fn mk_canonical_var_infos(self, infos: &[ty::CanonicalVarInfo<Self>]) -> Self::CanonicalVars {
         self.mk_canonical_var_infos(infos)
-    }
-
-    fn mk_bound_ty(self, debruijn: ty::DebruijnIndex, var: ty::BoundVar) -> Self::Ty {
-        Ty::new_bound(self, debruijn, ty::BoundTy { var, kind: ty::BoundTyKind::Anon })
-    }
-
-    fn mk_bound_region(self, debruijn: ty::DebruijnIndex, var: ty::BoundVar) -> Self::Region {
-        Region::new_bound(
-            self,
-            debruijn,
-            ty::BoundRegion { var, kind: ty::BoundRegionKind::BrAnon },
-        )
-    }
-
-    fn mk_bound_const(
-        self,
-        debruijn: ty::DebruijnIndex,
-        var: ty::BoundVar,
-        ty: Self::Ty,
-    ) -> Self::Const {
-        Const::new_bound(self, debruijn, var, ty)
     }
 }
 
@@ -335,8 +314,10 @@ pub struct CommonTypes<'tcx> {
     pub u32: Ty<'tcx>,
     pub u64: Ty<'tcx>,
     pub u128: Ty<'tcx>,
+    pub f16: Ty<'tcx>,
     pub f32: Ty<'tcx>,
     pub f64: Ty<'tcx>,
+    pub f128: Ty<'tcx>,
     pub str_: Ty<'tcx>,
     pub never: Ty<'tcx>,
     pub self_param: Ty<'tcx>,
@@ -416,8 +397,10 @@ impl<'tcx> CommonTypes<'tcx> {
             u32: mk(Uint(ty::UintTy::U32)),
             u64: mk(Uint(ty::UintTy::U64)),
             u128: mk(Uint(ty::UintTy::U128)),
+            f16: mk(Float(ty::FloatTy::F16)),
             f32: mk(Float(ty::FloatTy::F32)),
             f64: mk(Float(ty::FloatTy::F64)),
+            f128: mk(Float(ty::FloatTy::F128)),
             str_: mk(Str),
             self_param: mk(ty::Param(ty::ParamTy { index: 0, name: kw::SelfUpper })),
 
@@ -715,8 +698,16 @@ impl<'tcx> TyCtxt<'tcx> {
         kind: AdtKind,
         variants: IndexVec<VariantIdx, ty::VariantDef>,
         repr: ReprOptions,
+        is_anonymous: bool,
     ) -> ty::AdtDef<'tcx> {
-        self.mk_adt_def_from_data(ty::AdtDefData::new(self, did, kind, variants, repr))
+        self.mk_adt_def_from_data(ty::AdtDefData::new(
+            self,
+            did,
+            kind,
+            variants,
+            repr,
+            is_anonymous,
+        ))
     }
 
     /// Allocates a read-only byte or string literal for `mir::interpret`.
@@ -1038,12 +1029,22 @@ impl<'tcx> TyCtxtAt<'tcx> {
         name: Symbol,
         def_kind: DefKind,
     ) -> TyCtxtFeed<'tcx, LocalDefId> {
-        // This function modifies `self.definitions` using a side-effect.
-        // We need to ensure that these side effects are re-run by the incr. comp. engine.
-        // Depending on the forever-red node will tell the graph that the calling query
-        // needs to be re-evaluated.
-        self.dep_graph.read_index(DepNodeIndex::FOREVER_RED_NODE);
+        let feed = self.tcx.create_def(parent, name, def_kind);
 
+        feed.def_span(self.span);
+        feed
+    }
+}
+
+impl<'tcx> TyCtxt<'tcx> {
+    /// `tcx`-dependent operations performed for every created definition.
+    pub fn create_def(
+        self,
+        parent: LocalDefId,
+        name: Symbol,
+        def_kind: DefKind,
+    ) -> TyCtxtFeed<'tcx, LocalDefId> {
+        let data = def_kind.def_path_data(name);
         // The following call has the side effect of modifying the tables inside `definitions`.
         // These very tables are relied on by the incr. comp. engine to decode DepNodes and to
         // decode the on-disk cache.
@@ -1058,19 +1059,13 @@ impl<'tcx> TyCtxtAt<'tcx> {
         // This is fine because:
         // - those queries are `eval_always` so we won't miss their result changing;
         // - this write will have happened before these queries are called.
-        let def_id = self.tcx.create_def(parent, name, def_kind);
-
-        let feed = self.tcx.feed_local_def_id(def_id);
-        feed.def_span(self.span);
-        feed
-    }
-}
-
-impl<'tcx> TyCtxt<'tcx> {
-    /// `tcx`-dependent operations performed for every created definition.
-    pub fn create_def(self, parent: LocalDefId, name: Symbol, def_kind: DefKind) -> LocalDefId {
-        let data = def_kind.def_path_data(name);
         let def_id = self.untracked.definitions.write().create_def(parent, data);
+
+        // This function modifies `self.definitions` using a side-effect.
+        // We need to ensure that these side effects are re-run by the incr. comp. engine.
+        // Depending on the forever-red node will tell the graph that the calling query
+        // needs to be re-evaluated.
+        self.dep_graph.read_index(DepNodeIndex::FOREVER_RED_NODE);
 
         let feed = self.feed_local_def_id(def_id);
         feed.def_kind(def_kind);
@@ -1083,7 +1078,7 @@ impl<'tcx> TyCtxt<'tcx> {
             feed.visibility(ty::Visibility::Restricted(parent_mod));
         }
 
-        def_id
+        feed
     }
 
     pub fn iter_local_def_id(self) -> impl Iterator<Item = LocalDefId> + 'tcx {
@@ -1193,7 +1188,7 @@ impl<'tcx> TyCtxt<'tcx> {
         let (suitable_region_binding_scope, bound_region) = loop {
             let def_id = match region.kind() {
                 ty::ReLateParam(fr) => fr.bound_region.get_id()?.as_local()?,
-                ty::ReEarlyParam(ebr) => ebr.def_id.expect_local(),
+                ty::ReEarlyParam(ebr) => ebr.def_id.as_local()?,
                 _ => return None, // not a free region
             };
             let scope = self.local_parent(def_id);
@@ -1544,6 +1539,7 @@ impl<'tcx> TyCtxt<'tcx> {
                     CoroutineWitness,
                     Dynamic,
                     Closure,
+                    CoroutineClosure,
                     Tuple,
                     Bound,
                     Param,
@@ -2101,8 +2097,8 @@ impl<'tcx> TyCtxt<'tcx> {
         lint: &'static Lint,
         hir_id: HirId,
         span: impl Into<MultiSpan>,
-        msg: impl Into<DiagnosticMessage>,
-        decorate: impl for<'a, 'b> FnOnce(&'b mut DiagnosticBuilder<'a, ()>),
+        msg: impl Into<DiagMessage>,
+        decorate: impl for<'a, 'b> FnOnce(&'b mut Diag<'a, ()>),
     ) {
         let (level, src) = self.lint_level_at_node(lint, hir_id);
         lint_level(self.sess, lint, level, src, Some(span.into()), msg, decorate);
@@ -2131,8 +2127,8 @@ impl<'tcx> TyCtxt<'tcx> {
         self,
         lint: &'static Lint,
         id: HirId,
-        msg: impl Into<DiagnosticMessage>,
-        decorate: impl for<'a, 'b> FnOnce(&'b mut DiagnosticBuilder<'a, ()>),
+        msg: impl Into<DiagMessage>,
+        decorate: impl for<'a, 'b> FnOnce(&'b mut Diag<'a, ()>),
     ) {
         let (level, src) = self.lint_level_at_node(lint, id);
         lint_level(self.sess, lint, level, src, None, msg, decorate);
@@ -2306,6 +2302,20 @@ impl<'tcx> TyCtxt<'tcx> {
     /// (probably due to hashing spans in `ModChild`ren).
     pub fn module_children_local(self, def_id: LocalDefId) -> &'tcx [ModChild] {
         self.resolutions(()).module_children.get(&def_id).map_or(&[], |v| &v[..])
+    }
+
+    /// Given an `impl_id`, return the trait it implements.
+    /// Return `None` if this is an inherent impl.
+    pub fn impl_trait_ref(
+        self,
+        def_id: impl IntoQueryParam<DefId>,
+    ) -> Option<ty::EarlyBinder<ty::TraitRef<'tcx>>> {
+        Some(self.impl_trait_header(def_id)?.map_bound(|h| h.trait_ref))
+    }
+
+    pub fn impl_polarity(self, def_id: impl IntoQueryParam<DefId>) -> ty::ImplPolarity {
+        self.impl_trait_header(def_id)
+            .map_or(ty::ImplPolarity::Positive, |h| h.skip_binder().polarity)
     }
 }
 

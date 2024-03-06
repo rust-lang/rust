@@ -1,5 +1,5 @@
 error: `<Foo as staged_api::MyTrait>::func` is not yet stable as a const fn
-  --> $DIR/staged-api.rs:35:5
+  --> $DIR/staged-api.rs:34:5
    |
 LL |     Foo::func();
    |     ^^^^^^^^^^^
@@ -7,7 +7,7 @@ LL |     Foo::func();
    = help: add `#![feature(foo)]` to the crate attributes to enable
 
 error: `<Foo as staged_api::MyTrait>::func` is not yet stable as a const fn
-  --> $DIR/staged-api.rs:47:5
+  --> $DIR/staged-api.rs:45:5
    |
 LL |     Foo::func();
    |     ^^^^^^^^^^^
@@ -15,7 +15,7 @@ LL |     Foo::func();
    = help: add `#![feature(foo)]` to the crate attributes to enable
 
 error: `<staged_api::Unstable as staged_api::MyTrait>::func` is not yet stable as a const fn
-  --> $DIR/staged-api.rs:55:5
+  --> $DIR/staged-api.rs:53:5
    |
 LL |     Unstable::func();
    |     ^^^^^^^^^^^^^^^^
@@ -23,7 +23,7 @@ LL |     Unstable::func();
    = help: const-stable functions can only call other const-stable functions
 
 error: `<Foo as staged_api::MyTrait>::func` is not yet stable as a const fn
-  --> $DIR/staged-api.rs:57:5
+  --> $DIR/staged-api.rs:55:5
    |
 LL |     Foo::func();
    |     ^^^^^^^^^^^
@@ -31,7 +31,7 @@ LL |     Foo::func();
    = help: const-stable functions can only call other const-stable functions
 
 error: `const_context_not_const_stable` is not yet stable as a const fn
-  --> $DIR/staged-api.rs:59:5
+  --> $DIR/staged-api.rs:57:5
    |
 LL |     const_context_not_const_stable()
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

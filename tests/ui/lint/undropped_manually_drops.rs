@@ -1,4 +1,4 @@
-// check-fail
+//@ check-fail
 
 struct S;
 

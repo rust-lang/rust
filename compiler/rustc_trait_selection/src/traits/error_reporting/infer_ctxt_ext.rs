@@ -1,7 +1,7 @@
 use crate::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
 use crate::infer::InferCtxt;
 use crate::traits::{Obligation, ObligationCause, ObligationCtxt};
-use rustc_errors::{codes::*, pluralize, struct_span_code_err, Applicability, DiagnosticBuilder};
+use rustc_errors::{codes::*, pluralize, struct_span_code_err, Applicability, Diag};
 use rustc_hir as hir;
 use rustc_hir::Node;
 use rustc_middle::ty::{self, Ty};
@@ -11,38 +11,8 @@ use super::ArgKind;
 
 pub use rustc_infer::traits::error_reporting::*;
 
-pub trait InferCtxtExt<'tcx> {
-    /// Given some node representing a fn-like thing in the HIR map,
-    /// returns a span and `ArgKind` information that describes the
-    /// arguments it expects. This can be supplied to
-    /// `report_arg_count_mismatch`.
-    fn get_fn_like_arguments(&self, node: Node<'_>) -> Option<(Span, Option<Span>, Vec<ArgKind>)>;
-
-    /// Reports an error when the number of arguments needed by a
-    /// trait match doesn't match the number that the expression
-    /// provides.
-    fn report_arg_count_mismatch(
-        &self,
-        span: Span,
-        found_span: Option<Span>,
-        expected_args: Vec<ArgKind>,
-        found_args: Vec<ArgKind>,
-        is_closure: bool,
-        closure_pipe_span: Option<Span>,
-    ) -> DiagnosticBuilder<'tcx>;
-
-    /// Checks if the type implements one of `Fn`, `FnMut`, or `FnOnce`
-    /// in that order, and returns the generic type corresponding to the
-    /// argument of that trait (corresponding to the closure arguments).
-    fn type_implements_fn_trait(
-        &self,
-        param_env: ty::ParamEnv<'tcx>,
-        ty: ty::Binder<'tcx, Ty<'tcx>>,
-        polarity: ty::ImplPolarity,
-    ) -> Result<(ty::ClosureKind, ty::Binder<'tcx, Ty<'tcx>>), ()>;
-}
-
-impl<'tcx> InferCtxtExt<'tcx> for InferCtxt<'tcx> {
+#[extension(pub trait InferCtxtExt<'tcx>)]
+impl<'tcx> InferCtxt<'tcx> {
     /// Given some node representing a fn-like thing in the HIR map,
     /// returns a span and `ArgKind` information that describes the
     /// arguments it expects. This can be supplied to
@@ -118,7 +88,7 @@ impl<'tcx> InferCtxtExt<'tcx> for InferCtxt<'tcx> {
         found_args: Vec<ArgKind>,
         is_closure: bool,
         closure_arg_span: Option<Span>,
-    ) -> DiagnosticBuilder<'tcx> {
+    ) -> Diag<'tcx> {
         let kind = if is_closure { "closure" } else { "function" };
 
         let args_str = |arguments: &[ArgKind], other: &[ArgKind]| {
@@ -229,6 +199,9 @@ impl<'tcx> InferCtxtExt<'tcx> for InferCtxt<'tcx> {
         err
     }
 
+    /// Checks if the type implements one of `Fn`, `FnMut`, or `FnOnce`
+    /// in that order, and returns the generic type corresponding to the
+    /// argument of that trait (corresponding to the closure arguments).
     fn type_implements_fn_trait(
         &self,
         param_env: ty::ParamEnv<'tcx>,
@@ -242,7 +215,7 @@ impl<'tcx> InferCtxtExt<'tcx> for InferCtxt<'tcx> {
                 self.tcx.lang_items().fn_once_trait(),
             ] {
                 let Some(trait_def_id) = trait_def_id else { continue };
-                // Make a fresh inference variable so we can determine what the substitutions
+                // Make a fresh inference variable so we can determine what the generic parameters
                 // of the trait are.
                 let var = self.next_ty_var(TypeVariableOrigin {
                     span: DUMMY_SP,

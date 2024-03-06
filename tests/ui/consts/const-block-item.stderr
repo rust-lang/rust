@@ -1,0 +1,10 @@
+warning: trait `Value` is never used
+  --> $DIR/const-block-item.rs:5:15
+   |
+LL |     pub trait Value {
+   |               ^^^^^
+   |
+   = note: `#[warn(dead_code)]` on by default
+
+warning: 1 warning emitted
+

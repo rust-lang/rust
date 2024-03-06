@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 
 // Check that the various ways of getting to a reference to a vec (both sized
 // and unsized) work properly.

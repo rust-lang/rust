@@ -1,4 +1,4 @@
-// error-pattern: import
+//@ error-pattern: import
 
 
 mod a { pub use b::foo; }

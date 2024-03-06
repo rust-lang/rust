@@ -1,10 +1,10 @@
 // Regression test for issue #117331, where variable `a` was misidentified as
 // being in SSA form (the definition occurs on the return edge only).
 //
-// edition:2021
-// compile-flags: --crate-type=lib
-// build-pass
-// needs-unwind
+//@ edition:2021
+//@ compile-flags: --crate-type=lib
+//@ build-pass
+//@ needs-unwind
 #![feature(custom_mir, core_intrinsics)]
 use core::intrinsics::mir::*;
 

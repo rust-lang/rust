@@ -1,4 +1,4 @@
-// check-pass
+//@ check-pass
 
 #![feature(offset_of_nested)]
 #![deny(dead_code)]

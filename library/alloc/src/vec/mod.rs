@@ -481,7 +481,7 @@ impl<T> Vec<T> {
         Self::with_capacity_in(capacity, Global)
     }
 
-    /// Creates a `Vec<T>` directly from a pointer, a capacity, and a length.
+    /// Creates a `Vec<T>` directly from a pointer, a length, and a capacity.
     ///
     /// # Safety
     ///
@@ -672,7 +672,7 @@ impl<T, A: Allocator> Vec<T, A> {
         Vec { buf: RawVec::with_capacity_in(capacity, alloc), len: 0 }
     }
 
-    /// Creates a `Vec<T, A>` directly from a pointer, a capacity, a length,
+    /// Creates a `Vec<T, A>` directly from a pointer, a length, a capacity,
     /// and an allocator.
     ///
     /// # Safety
@@ -786,7 +786,7 @@ impl<T, A: Allocator> Vec<T, A> {
         unsafe { Vec { buf: RawVec::from_raw_parts_in(ptr, capacity, alloc), len: length } }
     }
 
-    /// Decomposes a `Vec<T>` into its raw components.
+    /// Decomposes a `Vec<T>` into its raw components: `(pointer, length, capacity)`.
     ///
     /// Returns the raw pointer to the underlying data, the length of
     /// the vector (in elements), and the allocated capacity of the
@@ -824,7 +824,7 @@ impl<T, A: Allocator> Vec<T, A> {
         (me.as_mut_ptr(), me.len(), me.capacity())
     }
 
-    /// Decomposes a `Vec<T>` into its raw components.
+    /// Decomposes a `Vec<T>` into its raw components: `(pointer, length, capacity, allocator)`.
     ///
     /// Returns the raw pointer to the underlying data, the length of the vector (in elements),
     /// the allocated capacity of the data (in elements), and the allocator. These are the same
@@ -1490,6 +1490,12 @@ impl<T, A: Allocator> Vec<T, A> {
     /// vec.insert(4, 5);
     /// assert_eq!(vec, [1, 4, 2, 3, 5]);
     /// ```
+    ///
+    /// # Time complexity
+    ///
+    /// Takes *O*([`Vec::len`]) time. All items after the insertion index must be
+    /// shifted to the right. In the worst case, all elements are shifted when
+    /// the insertion index is 0.
     #[cfg(not(no_global_oom_handling))]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn insert(&mut self, index: usize, element: T) {
@@ -1554,6 +1560,7 @@ impl<T, A: Allocator> Vec<T, A> {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     #[track_caller]
+    #[rustc_confusables("delete", "take")]
     pub fn remove(&mut self, index: usize) -> T {
         #[cold]
         #[cfg_attr(not(feature = "panic_immediate_abort"), inline(never))]
@@ -1912,9 +1919,17 @@ impl<T, A: Allocator> Vec<T, A> {
     /// vec.push(3);
     /// assert_eq!(vec, [1, 2, 3]);
     /// ```
+    ///
+    /// # Time complexity
+    ///
+    /// Takes amortized *O*(1) time. If the vector's length would exceed its
+    /// capacity after the push, *O*(*capacity*) time is taken to copy the
+    /// vector's elements to a larger allocation. This expensive operation is
+    /// offset by the *capacity* *O*(1) insertions it allows.
     #[cfg(not(no_global_oom_handling))]
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
+    #[rustc_confusables("push_back", "put", "append")]
     pub fn push(&mut self, value: T) {
         // This will panic or abort if we would allocate > isize::MAX bytes
         // or if the length increment would overflow for zero-sized types.
@@ -1959,6 +1974,10 @@ impl<T, A: Allocator> Vec<T, A> {
     /// }
     /// assert_eq!(from_iter_fallible(0..100), Ok(Vec::from_iter(0..100)));
     /// ```
+    ///
+    /// # Time complexity
+    ///
+    /// Takes *O*(1) time.
     #[inline]
     #[unstable(feature = "vec_push_within_capacity", issue = "100486")]
     pub fn push_within_capacity(&mut self, value: T) -> Result<(), T> {
@@ -1988,6 +2007,10 @@ impl<T, A: Allocator> Vec<T, A> {
     /// assert_eq!(vec.pop(), Some(3));
     /// assert_eq!(vec, [1, 2]);
     /// ```
+    ///
+    /// # Time complexity
+    ///
+    /// Takes *O*(1) time.
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn pop(&mut self) -> Option<T> {
@@ -2141,6 +2164,7 @@ impl<T, A: Allocator> Vec<T, A> {
     /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
+    #[rustc_confusables("length", "size")]
     pub fn len(&self) -> usize {
         self.len
     }
@@ -2784,6 +2808,50 @@ impl<T, I: SliceIndex<[T]>, A: Allocator> IndexMut<I> for Vec<T, A> {
     }
 }
 
+/// Collects an iterator into a Vec, commonly called via [`Iterator::collect()`]
+///
+/// # Allocation behavior
+///
+/// In general `Vec` does not guarantee any particular growth or allocation strategy.
+/// That also applies to this trait impl.
+///
+/// **Note:** This section covers implementation details and is therefore exempt from
+/// stability guarantees.
+///
+/// Vec may use any or none of the following strategies,
+/// depending on the supplied iterator:
+///
+/// * preallocate based on [`Iterator::size_hint()`]
+///   * and panic if the number of items is outside the provided lower/upper bounds
+/// * use an amortized growth strategy similar to `pushing` one item at a time
+/// * perform the iteration in-place on the original allocation backing the iterator
+///
+/// The last case warrants some attention. It is an optimization that in many cases reduces peak memory
+/// consumption and improves cache locality. But when big, short-lived allocations are created,
+/// only a small fraction of their items get collected, no further use is made of the spare capacity
+/// and the resulting `Vec` is moved into a longer-lived structure, then this can lead to the large
+/// allocations having their lifetimes unnecessarily extended which can result in increased memory
+/// footprint.
+///
+/// In cases where this is an issue, the excess capacity can be discarded with [`Vec::shrink_to()`],
+/// [`Vec::shrink_to_fit()`] or by collecting into [`Box<[T]>`][owned slice] instead, which additionally reduces
+/// the size of the long-lived struct.
+///
+/// [owned slice]: Box
+///
+/// ```rust
+/// # use std::sync::Mutex;
+/// static LONG_LIVED: Mutex<Vec<Vec<u16>>> = Mutex::new(Vec::new());
+///
+/// for i in 0..10 {
+///     let big_temporary: Vec<u16> = (0..1024).collect();
+///     // discard most items
+///     let mut result: Vec<_> = big_temporary.into_iter().filter(|i| i % 100 == 0).collect();
+///     // without this a lot of unused capacity might be moved into the global
+///     result.shrink_to_fit();
+///     LONG_LIVED.lock().unwrap().push(result);
+/// }
+/// ```
 #[cfg(not(no_global_oom_handling))]
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T> FromIterator<T> for Vec<T> {
@@ -2817,16 +2885,16 @@ impl<T, A: Allocator> IntoIterator for Vec<T, A> {
     #[inline]
     fn into_iter(self) -> Self::IntoIter {
         unsafe {
-            let mut me = ManuallyDrop::new(self);
+            let me = ManuallyDrop::new(self);
             let alloc = ManuallyDrop::new(ptr::read(me.allocator()));
-            let begin = me.as_mut_ptr();
+            let buf = me.buf.non_null();
+            let begin = buf.as_ptr();
             let end = if T::IS_ZST {
                 begin.wrapping_byte_add(me.len())
             } else {
                 begin.add(me.len()) as *const T
             };
             let cap = me.buf.capacity();
-            let buf = NonNull::new_unchecked(begin);
             IntoIter { buf, phantom: PhantomData, cap, alloc, ptr: buf, end }
         }
     }

@@ -1,5 +1,5 @@
-// check-pass
-// compile-flags: -Zvalidate-mir
+//@ check-pass
+//@ compile-flags: -Zvalidate-mir
 
 // Using -Zvalidate-mir as a regression test for #107346.
 

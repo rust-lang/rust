@@ -1,5 +1,5 @@
-// edition:2021
-// run-pass
+//@ edition:2021
+//@ run-pass
 
 #[derive(Debug, PartialEq, Eq)]
 pub enum Color {

@@ -1,7 +1,7 @@
 // Here we do not get a coherence conflict because `Baz: Iterator`
 // does not hold and (due to the orphan rules), we can rely on that.
 
-// check-pass
+//@ check-pass
 
 pub trait Foo<P> {}
 

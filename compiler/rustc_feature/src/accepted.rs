@@ -77,13 +77,15 @@ declare_features! (
     /// Allows empty structs and enum variants with braces.
     (accepted, braced_empty_structs, "1.8.0", Some(29720)),
     /// Allows `c"foo"` literals.
-    (accepted, c_str_literals, "CURRENT_RUSTC_VERSION", Some(105723)),
+    (accepted, c_str_literals, "1.77.0", Some(105723)),
     /// Allows `#[cfg_attr(predicate, multiple, attributes, here)]`.
     (accepted, cfg_attr_multi, "1.33.0", Some(54881)),
     /// Allows the use of `#[cfg(doctest)]`, set when rustdoc is collecting doctests.
     (accepted, cfg_doctest, "1.40.0", Some(62210)),
     /// Enables `#[cfg(panic = "...")]` config key.
     (accepted, cfg_panic, "1.60.0", Some(77443)),
+    /// Allows `cfg(target_abi = "...")`.
+    (accepted, cfg_target_abi, "CURRENT_RUSTC_VERSION", Some(80970)),
     /// Allows `cfg(target_feature = "...")`.
     (accepted, cfg_target_feature, "1.27.0", Some(29717)),
     /// Allows `cfg(target_vendor = "...")`.

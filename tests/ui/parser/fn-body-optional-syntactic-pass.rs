@@ -1,6 +1,6 @@
 // Ensures that all `fn` forms having or lacking a body are syntactically valid.
 
-// check-pass
+//@ check-pass
 
 fn main() {}
 

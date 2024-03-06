@@ -1,5 +1,5 @@
-// run-pass
-// aux-build:cci_class.rs
+//@ run-pass
+//@ aux-build:cci_class.rs
 
 extern crate cci_class;
 use cci_class::kitties::cat;

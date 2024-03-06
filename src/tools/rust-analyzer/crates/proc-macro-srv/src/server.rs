@@ -13,9 +13,9 @@ use proc_macro::bridge;
 mod token_stream;
 pub use token_stream::TokenStream;
 
-pub mod token_id;
 pub mod rust_analyzer_span;
 mod symbol;
+pub mod token_id;
 pub use symbol::*;
 use tt::Spacing;
 
@@ -54,33 +54,33 @@ fn spacing_to_external(spacing: Spacing) -> proc_macro::Spacing {
     }
 }
 
-struct LiteralFormatter<S>(bridge::Literal<S, Symbol>);
-
-impl<S> LiteralFormatter<S> {
-    /// Invokes the callback with a `&[&str]` consisting of each part of the
-    /// literal's representation. This is done to allow the `ToString` and
-    /// `Display` implementations to borrow references to symbol values, and
-    /// both be optimized to reduce overhead.
-    fn with_stringify_parts<R>(
-        &self,
-        interner: SymbolInternerRef,
-        f: impl FnOnce(&[&str]) -> R,
-    ) -> R {
-        /// Returns a string containing exactly `num` '#' characters.
-        /// Uses a 256-character source string literal which is always safe to
-        /// index with a `u8` index.
-        fn get_hashes_str(num: u8) -> &'static str {
-            const HASHES: &str = "\
+/// Invokes the callback with a `&[&str]` consisting of each part of the
+/// literal's representation. This is done to allow the `ToString` and
+/// `Display` implementations to borrow references to symbol values, and
+/// both be optimized to reduce overhead.
+fn literal_with_stringify_parts<S, R>(
+    literal: &bridge::Literal<S, Symbol>,
+    interner: SymbolInternerRef,
+    f: impl FnOnce(&[&str]) -> R,
+) -> R {
+    /// Returns a string containing exactly `num` '#' characters.
+    /// Uses a 256-character source string literal which is always safe to
+    /// index with a `u8` index.
+    fn get_hashes_str(num: u8) -> &'static str {
+        const HASHES: &str = "\
                         ################################################################\
                         ################################################################\
                         ################################################################\
                         ################################################################\
                         ";
-            const _: () = assert!(HASHES.len() == 256);
-            &HASHES[..num as usize]
-        }
+        const _: () = assert!(HASHES.len() == 256);
+        &HASHES[..num as usize]
+    }
 
-        self.with_symbol_and_suffix(interner, |symbol, suffix| match self.0.kind {
+    {
+        let symbol = &*literal.symbol.text(interner);
+        let suffix = &*literal.suffix.map(|s| s.text(interner)).unwrap_or_default();
+        match literal.kind {
             bridge::LitKind::Byte => f(&["b'", symbol, "'", suffix]),
             bridge::LitKind::Char => f(&["'", symbol, "'", suffix]),
             bridge::LitKind::Str => f(&["\"", symbol, "\"", suffix]),
@@ -93,17 +93,14 @@ impl<S> LiteralFormatter<S> {
                 let hashes = get_hashes_str(n);
                 f(&["br", hashes, "\"", symbol, "\"", hashes, suffix])
             }
-            _ => f(&[symbol, suffix]),
-        })
-    }
-
-    fn with_symbol_and_suffix<R>(
-        &self,
-        interner: SymbolInternerRef,
-        f: impl FnOnce(&str, &str) -> R,
-    ) -> R {
-        let symbol = self.0.symbol.text(interner);
-        let suffix = self.0.suffix.map(|s| s.text(interner)).unwrap_or_default();
-        f(symbol.as_str(), suffix.as_str())
+            bridge::LitKind::CStr => f(&["c\"", symbol, "\"", suffix]),
+            bridge::LitKind::CStrRaw(n) => {
+                let hashes = get_hashes_str(n);
+                f(&["cr", hashes, "\"", symbol, "\"", hashes, suffix])
+            }
+            bridge::LitKind::Integer | bridge::LitKind::Float | bridge::LitKind::ErrWithGuar => {
+                f(&[symbol, suffix])
+            }
+        }
     }
 }

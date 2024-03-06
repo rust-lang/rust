@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 #![allow(dead_code)]
 #![allow(unused_variables)]
 // Test that when we match a trait reference like `Foo<A>: Foo<?0t>`,

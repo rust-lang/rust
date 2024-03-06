@@ -1,4 +1,4 @@
-// check-pass
+//@ check-pass
 
 pub fn yes_as_ref() -> impl AsRef<[u8]> {
     [0; 33]

@@ -1,9 +1,9 @@
 // Ensures #[unstable] functions without opting in the corresponding #![feature]
 // will not break inference.
 
-// aux-build:inference_unstable_iterator.rs
-// aux-build:inference_unstable_itertools.rs
-// run-pass
+//@ aux-build:inference_unstable_iterator.rs
+//@ aux-build:inference_unstable_itertools.rs
+//@ run-pass
 
 extern crate inference_unstable_iterator;
 extern crate inference_unstable_itertools;

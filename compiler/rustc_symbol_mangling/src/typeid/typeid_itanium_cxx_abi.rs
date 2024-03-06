@@ -261,12 +261,7 @@ fn encode_predicates<'tcx>(
 }
 
 /// Encodes a region using the Itanium C++ ABI as a vendor extended type.
-fn encode_region<'tcx>(
-    _tcx: TyCtxt<'tcx>,
-    region: Region<'tcx>,
-    dict: &mut FxHashMap<DictKey<'tcx>, usize>,
-    _options: EncodeTyOptions,
-) -> String {
+fn encode_region<'tcx>(region: Region<'tcx>, dict: &mut FxHashMap<DictKey<'tcx>, usize>) -> String {
     // u6region[I[<region-disambiguator>][<region-index>]E] as vendor extended type
     let mut s = String::new();
     match region.kind() {
@@ -314,7 +309,7 @@ fn encode_args<'tcx>(
         for arg in args {
             match arg.unpack() {
                 GenericArgKind::Lifetime(region) => {
-                    s.push_str(&encode_region(tcx, region, dict, options));
+                    s.push_str(&encode_region(region, dict));
                 }
                 GenericArgKind::Type(ty) => {
                     s.push_str(&encode_ty(tcx, ty, dict, options));
@@ -387,7 +382,8 @@ fn encode_ty_name(tcx: TyCtxt<'_>, def_id: DefId) -> String {
             | hir::definitions::DefPathData::Use
             | hir::definitions::DefPathData::GlobalAsm
             | hir::definitions::DefPathData::MacroNs(..)
-            | hir::definitions::DefPathData::LifetimeNs(..) => {
+            | hir::definitions::DefPathData::LifetimeNs(..)
+            | hir::definitions::DefPathData::AnonAdt => {
                 bug!("encode_ty_name: unexpected `{:?}`", disambiguated_data.data);
             }
         });
@@ -468,14 +464,17 @@ fn encode_ty<'tcx>(
             typeid.push_str(&s);
         }
 
-        // Rust's f32 and f64 single (32-bit) and double (64-bit) precision floating-point types
-        // have IEEE-754 binary32 and binary64 floating-point layouts, respectively.
+        // Rust's f16, f32, f64, and f126 half (16-bit), single (32-bit), double (64-bit), and
+        // quad (128-bit)  precision floating-point types have IEEE-754 binary16, binary32,
+        // binary64, and binary128 floating-point layouts, respectively.
         //
         // (See https://rust-lang.github.io/unsafe-code-guidelines/layout/scalars.html#fixed-width-floating-point-types.)
         ty::Float(float_ty) => {
-            typeid.push(match float_ty {
-                FloatTy::F32 => 'f',
-                FloatTy::F64 => 'd',
+            typeid.push_str(match float_ty {
+                FloatTy::F16 => "Dh",
+                FloatTy::F32 => "f",
+                FloatTy::F64 => "d",
+                FloatTy::F128 => "g",
             });
         }
 
@@ -550,8 +549,20 @@ fn encode_ty<'tcx>(
             if let Some(cfi_encoding) = tcx.get_attr(def_id, sym::cfi_encoding) {
                 // Use user-defined CFI encoding for type
                 if let Some(value_str) = cfi_encoding.value_str() {
-                    if !value_str.to_string().trim().is_empty() {
-                        s.push_str(value_str.to_string().trim());
+                    let value_str = value_str.to_string();
+                    let str = value_str.trim();
+                    if !str.is_empty() {
+                        s.push_str(str);
+                        // Don't compress user-defined builtin types (see
+                        // https://itanium-cxx-abi.github.io/cxx-abi/abi.html#mangling-builtin and
+                        // https://itanium-cxx-abi.github.io/cxx-abi/abi.html#mangling-compression).
+                        let builtin_types = [
+                            "v", "w", "b", "c", "a", "h", "s", "t", "i", "j", "l", "m", "x", "y",
+                            "n", "o", "f", "d", "e", "g", "z", "Dh",
+                        ];
+                        if !builtin_types.contains(&str) {
+                            compress(dict, DictKey::Ty(ty, TyQ::None), &mut s);
+                        }
                     } else {
                         #[allow(
                             rustc::diagnostic_outside_of_impl,
@@ -567,7 +578,6 @@ fn encode_ty<'tcx>(
                 } else {
                     bug!("encode_ty: invalid `cfi_encoding` for `{:?}`", ty.kind());
                 }
-                compress(dict, DictKey::Ty(ty, TyQ::None), &mut s);
             } else if options.contains(EncodeTyOptions::GENERALIZE_REPR_C) && adt_def.repr().c() {
                 // For cross-language LLVM CFI support, the encoding must be compatible at the FFI
                 // boundary. For instance:
@@ -628,7 +638,9 @@ fn encode_ty<'tcx>(
         }
 
         // Function types
-        ty::FnDef(def_id, args) | ty::Closure(def_id, args) => {
+        ty::FnDef(def_id, args)
+        | ty::Closure(def_id, args)
+        | ty::CoroutineClosure(def_id, args) => {
             // u<length><name>[I<element-type1..element-typeN>E], where <element-type> is <subst>,
             // as vendor extended type.
             let mut s = String::new();
@@ -701,7 +713,7 @@ fn encode_ty<'tcx>(
                 ty::DynStar => "u7dynstarI",
             });
             s.push_str(&encode_predicates(tcx, predicates, dict, options));
-            s.push_str(&encode_region(tcx, *region, dict, options));
+            s.push_str(&encode_region(*region, dict));
             s.push('E');
             compress(dict, DictKey::Ty(ty, TyQ::None), &mut s);
             typeid.push_str(&s);
@@ -733,7 +745,6 @@ fn encode_ty<'tcx>(
 fn transform_predicates<'tcx>(
     tcx: TyCtxt<'tcx>,
     predicates: &List<ty::PolyExistentialPredicate<'tcx>>,
-    _options: EncodeTyOptions,
 ) -> &'tcx List<ty::PolyExistentialPredicate<'tcx>> {
     let predicates: Vec<ty::PolyExistentialPredicate<'tcx>> = predicates
         .iter()
@@ -895,6 +906,10 @@ fn transform_ty<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>, options: TransformTyOptio
             ty = Ty::new_closure(tcx, *def_id, transform_args(tcx, args, options));
         }
 
+        ty::CoroutineClosure(def_id, args) => {
+            ty = Ty::new_coroutine_closure(tcx, *def_id, transform_args(tcx, args, options));
+        }
+
         ty::Coroutine(def_id, args) => {
             ty = Ty::new_coroutine(tcx, *def_id, transform_args(tcx, args, options));
         }
@@ -961,7 +976,7 @@ fn transform_ty<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>, options: TransformTyOptio
         ty::Dynamic(predicates, _region, kind) => {
             ty = Ty::new_dynamic(
                 tcx,
-                transform_predicates(tcx, predicates, options),
+                transform_predicates(tcx, predicates),
                 tcx.lifetimes.re_erased,
                 *kind,
             );
@@ -1047,41 +1062,6 @@ pub fn typeid_for_fnabi<'tcx>(
 
     // Close the "F..E" pair
     typeid.push('E');
-
-    // Add encoding suffixes
-    if options.contains(EncodeTyOptions::NORMALIZE_INTEGERS) {
-        typeid.push_str(".normalized");
-    }
-
-    if options.contains(EncodeTyOptions::GENERALIZE_POINTERS) {
-        typeid.push_str(".generalized");
-    }
-
-    typeid
-}
-
-/// Returns a type metadata identifier for the specified FnSig using the Itanium C++ ABI with vendor
-/// extended type qualifiers and types for Rust types that are not used at the FFI boundary.
-pub fn typeid_for_fnsig<'tcx>(
-    tcx: TyCtxt<'tcx>,
-    fn_sig: &FnSig<'tcx>,
-    options: TypeIdOptions,
-) -> String {
-    // A name is mangled by prefixing "_Z" to an encoding of its name, and in the case of functions
-    // its type.
-    let mut typeid = String::from("_Z");
-
-    // Clang uses the Itanium C++ ABI's virtual tables and RTTI typeinfo structure name as type
-    // metadata identifiers for function pointers. The typeinfo name encoding is a two-character
-    // code (i.e., 'TS') prefixed to the type encoding for the function.
-    typeid.push_str("TS");
-
-    // A dictionary of substitution candidates used for compression (see
-    // https://itanium-cxx-abi.github.io/cxx-abi/abi.html#mangling-compression).
-    let mut dict: FxHashMap<DictKey<'tcx>, usize> = FxHashMap::default();
-
-    // Encode the function signature
-    typeid.push_str(&encode_fnsig(tcx, fn_sig, &mut dict, options));
 
     // Add encoding suffixes
     if options.contains(EncodeTyOptions::NORMALIZE_INTEGERS) {

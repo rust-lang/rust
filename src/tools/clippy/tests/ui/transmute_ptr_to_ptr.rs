@@ -35,7 +35,7 @@ fn transmute_ptr_to_ptr() {
         // ref-ref transmutes; bad
         let _: &f32 = std::mem::transmute(&1u32);
         //~^ ERROR: transmute from a reference to a reference
-        let _: &f64 = std::mem::transmute(&1f32);
+        let _: &f32 = std::mem::transmute(&1f64);
         //~^ ERROR: transmute from a reference to a reference
         //:^ this test is here because both f32 and f64 are the same TypeVariant, but they are not
         // the same type
@@ -43,8 +43,8 @@ fn transmute_ptr_to_ptr() {
         //~^ ERROR: transmute from a reference to a reference
         let _: &GenericParam<f32> = std::mem::transmute(&GenericParam { t: 1u32 });
         //~^ ERROR: transmute from a reference to a reference
-        let u8_ref: &u8 = &0u8;
-        let u64_ref: &u64 = unsafe { std::mem::transmute(u8_ref) };
+        let u64_ref: &u64 = &0u64;
+        let u8_ref: &u8 = unsafe { std::mem::transmute(u64_ref) };
         //~^ ERROR: transmute from a reference to a reference
     }
 

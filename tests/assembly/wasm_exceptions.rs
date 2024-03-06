@@ -1,8 +1,8 @@
-// only-wasm32-bare
-// assembly-output: emit-asm
-// compile-flags: -C target-feature=+exception-handling
-// compile-flags: -C panic=unwind
-// compile-flags: -C llvm-args=-wasm-enable-eh
+//@ only-wasm32-bare
+//@ assembly-output: emit-asm
+//@ compile-flags: -C target-feature=+exception-handling
+//@ compile-flags: -C panic=unwind
+//@ compile-flags: -C llvm-args=-wasm-enable-eh
 
 #![crate_type = "lib"]
 #![feature(core_intrinsics)]
@@ -41,7 +41,7 @@ pub fn test_cleanup() {
 #[no_mangle]
 pub fn test_rtry() {
     unsafe {
-        core::intrinsics::r#try(|_| {
+        core::intrinsics::catch_unwind(|_| {
             may_panic();
         }, core::ptr::null_mut(), |data, exception| {
             log_number(data as usize);

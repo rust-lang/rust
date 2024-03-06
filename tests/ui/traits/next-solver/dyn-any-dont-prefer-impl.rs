@@ -1,5 +1,5 @@
-// compile-flags: -Znext-solver
-// check-pass
+//@ compile-flags: -Znext-solver
+//@ check-pass
 
 // Test that selection prefers the builtin trait object impl for `Any`
 // instead of the user defined impl. Both impls apply to the trait

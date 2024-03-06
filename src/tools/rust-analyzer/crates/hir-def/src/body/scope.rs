@@ -197,6 +197,7 @@ fn compute_block_scopes(
             Statement::Expr { expr, .. } => {
                 compute_expr_scopes(*expr, body, scopes, scope);
             }
+            Statement::Item => (),
         }
     }
     if let Some(expr) = tail {

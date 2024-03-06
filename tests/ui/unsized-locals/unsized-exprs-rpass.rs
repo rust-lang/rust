@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 #![allow(incomplete_features, unused_braces, unused_parens)]
 #![feature(unsized_tuple_coercion, unsized_locals, unsized_fn_params)]
 

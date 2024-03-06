@@ -2,7 +2,7 @@
 // It is not clear whether this is desirable behavior or not.
 // It is also not clear how to prevent it if it is not desirable.
 
-// check-pass
+//@ check-pass
 
 #![feature(decl_macro)]
 #![feature(trait_alias)]

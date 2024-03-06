@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 
 fn my_err(s: String) -> ! { println!("{}", s); panic!(); }
 

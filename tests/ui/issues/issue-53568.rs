@@ -1,7 +1,7 @@
 // Regression test for an NLL-related ICE (#53568) -- we failed to
 // resolve inference variables in "custom type-ops".
 //
-// check-pass
+//@ check-pass
 
 trait Future {
     type Item;

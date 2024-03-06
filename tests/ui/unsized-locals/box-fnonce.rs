@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 
 fn call_it<T>(f: Box<dyn FnOnce() -> T>) -> T {
     f()

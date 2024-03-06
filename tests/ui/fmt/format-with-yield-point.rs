@@ -1,5 +1,5 @@
-// check-pass
-// edition:2021
+//@ check-pass
+//@ edition:2021
 
 macro_rules! m {
     () => {

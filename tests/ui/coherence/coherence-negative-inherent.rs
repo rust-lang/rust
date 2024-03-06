@@ -1,4 +1,4 @@
-// check-pass
+//@ check-pass
 
 #![feature(negative_impls)]
 #![feature(rustc_attrs)]

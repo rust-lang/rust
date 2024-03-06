@@ -1,4 +1,4 @@
-// aux-build:issue-3907.rs
+//@ aux-build:issue-3907.rs
 
 extern crate issue_3907;
 
@@ -10,5 +10,6 @@ struct S {
 
 fn bar(_x: Foo) {}
 //~^ ERROR E0038
+//~| ERROR E0277
 
 fn main() {}

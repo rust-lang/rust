@@ -1,4 +1,4 @@
-// check-pass
+//@ check-pass
 // FIXME(effects) this shouldn't pass
 #![feature(const_closures, const_trait_impl, effects)]
 #![allow(incomplete_features)]

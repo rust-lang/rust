@@ -8,9 +8,9 @@
 //
 // This is a regression test for https://github.com/rust-lang/rust/issues/85955.
 
-// check-pass
-// compile-flags: --crate-type=rlib
-// aux-build:same-file-in-two-crates-aux.rs
+//@ check-pass
+//@ compile-flags: --crate-type=rlib
+//@ aux-build:same-file-in-two-crates-aux.rs
 extern crate same_file_in_two_crates_aux;
 
 pub fn foo() -> u32 {

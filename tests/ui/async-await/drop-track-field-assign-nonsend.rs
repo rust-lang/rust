@@ -1,5 +1,5 @@
 // Derived from an ICE found in tokio-xmpp during a crater run.
-// edition:2021
+//@ edition:2021
 
 #![allow(dead_code)]
 

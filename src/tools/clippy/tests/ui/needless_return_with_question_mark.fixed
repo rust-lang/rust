@@ -77,3 +77,53 @@ fn issue11616() -> Result<(), ()> {
     };
     Ok(())
 }
+
+fn issue11982() {
+    mod bar {
+        pub struct Error;
+        pub fn foo(_: bool) -> Result<(), Error> {
+            Ok(())
+        }
+    }
+
+    pub struct Error;
+
+    impl From<bar::Error> for Error {
+        fn from(_: bar::Error) -> Self {
+            Error
+        }
+    }
+
+    fn foo(ok: bool) -> Result<(), Error> {
+        if !ok {
+            return bar::foo(ok).map(|_| Ok::<(), Error>(()))?;
+        };
+        Ok(())
+    }
+}
+
+fn issue11982_no_conversion() {
+    mod bar {
+        pub struct Error;
+        pub fn foo(_: bool) -> Result<(), Error> {
+            Ok(())
+        }
+    }
+
+    fn foo(ok: bool) -> Result<(), bar::Error> {
+        if !ok {
+            return bar::foo(ok).map(|_| Ok::<(), bar::Error>(()))?;
+        };
+        Ok(())
+    }
+}
+
+fn general_return() {
+    fn foo(ok: bool) -> Result<(), ()> {
+        let bar = Result::Ok(Result::<(), ()>::Ok(()));
+        if !ok {
+            return bar?;
+        };
+        Ok(())
+    }
+}

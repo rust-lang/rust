@@ -34,7 +34,7 @@
 // inputs are handled by each, and (2.) to ease searching for related
 // occurrences in the source text.
 
-// check-pass
+//@ check-pass
 
 #![feature(test)]
 #![warn(unused_attributes, unknown_lints)]

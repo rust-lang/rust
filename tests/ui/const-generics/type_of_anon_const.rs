@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 trait T<const A: usize> {
     fn l<const N: bool>() -> usize;
     fn r<const N: bool>() -> bool;

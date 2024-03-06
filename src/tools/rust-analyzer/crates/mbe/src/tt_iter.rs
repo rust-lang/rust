@@ -180,7 +180,7 @@ impl<'a, S: Span> TtIter<'a, S> {
             [] | [_] => res.pop(),
             [first, ..] => Some(tt::TokenTree::Subtree(tt::Subtree {
                 delimiter: tt::Delimiter::invisible_spanned(first.first_span()),
-                token_trees: res,
+                token_trees: res.into_boxed_slice(),
             })),
         };
         ExpandResult { value: res, err }

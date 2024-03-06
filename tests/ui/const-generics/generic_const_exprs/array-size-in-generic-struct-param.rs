@@ -1,5 +1,5 @@
 // Tests that array sizes that depend on const-params are checked using `ConstEvaluatable`.
-// revisions: full min
+//@ revisions: full min
 
 #![cfg_attr(full, feature(generic_const_exprs, adt_const_params))]
 #![cfg_attr(full, allow(incomplete_features))]

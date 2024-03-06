@@ -7,9 +7,6 @@ use std::path::PathBuf;
 use std::task::Poll;
 use std::thread;
 
-use log::info;
-use rustc_middle::ty::Ty;
-
 use crate::concurrency::thread::TlsAllocAction;
 use crate::diagnostics::report_leaks;
 use rustc_data_structures::fx::FxHashSet;
@@ -18,7 +15,7 @@ use rustc_hir::def_id::DefId;
 use rustc_middle::ty::{
     self,
     layout::{LayoutCx, LayoutOf},
-    TyCtxt,
+    Ty, TyCtxt,
 };
 use rustc_target::spec::abi::Abi;
 
@@ -115,6 +112,8 @@ pub struct MiriConfig {
     pub tracked_call_ids: FxHashSet<CallId>,
     /// The allocation ids to report about.
     pub tracked_alloc_ids: FxHashSet<AllocId>,
+    /// For the tracked alloc ids, also report read/write accesses.
+    pub track_alloc_accesses: bool,
     /// Determine if data race detection should be enabled
     pub data_race_detector: bool,
     /// Determine if weak memory emulation should be enabled. Requires data race detection to be enabled
@@ -172,6 +171,7 @@ impl Default for MiriConfig {
             tracked_pointer_tags: FxHashSet::default(),
             tracked_call_ids: FxHashSet::default(),
             tracked_alloc_ids: FxHashSet::default(),
+            track_alloc_accesses: false,
             data_race_detector: true,
             weak_memory_emulation: true,
             track_outdated_loads: false,

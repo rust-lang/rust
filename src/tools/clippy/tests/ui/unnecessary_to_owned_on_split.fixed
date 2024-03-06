@@ -8,6 +8,7 @@ impl AsRef<str> for Issue12068 {
     }
 }
 
+#[allow(clippy::to_string_trait_impl)]
 impl ToString for Issue12068 {
     fn to_string(&self) -> String {
         String::new()

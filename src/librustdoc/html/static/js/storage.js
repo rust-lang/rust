@@ -101,6 +101,14 @@ const getVar = (function getVar(name) {
 });
 
 function switchTheme(newThemeName, saveTheme) {
+    const themeNames = getVar("themes").split(",").filter(t => t);
+    themeNames.push(...builtinThemes);
+
+    // Ensure that the new theme name is among the defined themes
+    if (themeNames.indexOf(newThemeName) === -1) {
+        return;
+    }
+
     // If this new value comes from a system setting or from the previously
     // saved theme, no need to save it.
     if (saveTheme) {
@@ -115,7 +123,7 @@ function switchTheme(newThemeName, saveTheme) {
             window.currentTheme = null;
         }
     } else {
-        const newHref = getVar("root-path") + newThemeName +
+        const newHref = getVar("root-path") + encodeURIComponent(newThemeName) +
             getVar("resource-suffix") + ".css";
         if (!window.currentTheme) {
             // If we're in the middle of loading, document.write blocks

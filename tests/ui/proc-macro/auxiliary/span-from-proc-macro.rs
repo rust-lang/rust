@@ -1,5 +1,5 @@
-// force-host
-// no-prefer-dynamic
+//@ force-host
+//@ no-prefer-dynamic
 
 #![feature(proc_macro_quote)]
 #![feature(proc_macro_internals)] // FIXME - this shouldn't be necessary

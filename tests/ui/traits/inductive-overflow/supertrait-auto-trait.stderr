@@ -6,11 +6,11 @@ LL | auto trait Magic: Copy {}
    |            |
    |            auto traits cannot have super traits or lifetime bounds
 
-error[E0277]: the trait bound `NoClone: Copy` is not satisfied
+error[E0277]: the trait bound `NoClone: Magic` is not satisfied
   --> $DIR/supertrait-auto-trait.rs:16:23
    |
 LL |     let (a, b) = copy(NoClone);
-   |                  ---- ^^^^^^^ the trait `Copy` is not implemented for `NoClone`
+   |                  ---- ^^^^^^^ the trait `Copy` is not implemented for `NoClone`, which is required by `NoClone: Magic`
    |                  |
    |                  required by a bound introduced by this call
    |

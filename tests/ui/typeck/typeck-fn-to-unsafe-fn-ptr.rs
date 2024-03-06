@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 // This tests reification from safe function to `unsafe fn` pointer
 
 fn do_nothing() -> () {}

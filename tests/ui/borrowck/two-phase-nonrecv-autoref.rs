@@ -1,6 +1,6 @@
-// revisions: base
+//@ revisions: base
 
-//[g2p]compile-flags: -Z two-phase-beyond-autoref
+//@[g2p]compile-flags: -Z two-phase-beyond-autoref
 // the above revision is disabled until two-phase-beyond-autoref support is better
 
 // This is a test checking that when we limit two-phase borrows to

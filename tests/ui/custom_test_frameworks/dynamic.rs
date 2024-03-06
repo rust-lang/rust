@@ -1,6 +1,6 @@
-// run-pass
-// aux-build:dynamic_runner.rs
-// compile-flags:--test
+//@ run-pass
+//@ aux-build:dynamic_runner.rs
+//@ compile-flags:--test
 #![feature(custom_test_frameworks)]
 #![test_runner(dynamic_runner::runner)]
 

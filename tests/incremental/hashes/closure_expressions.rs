@@ -5,12 +5,12 @@
 // and make sure that the hash has changed, then change nothing between rev2 and
 // rev3 and make sure that the hash has not changed.
 
-// build-pass (FIXME(62277): could be check-pass?)
-// revisions: cfail1 cfail2 cfail3 cfail4 cfail5 cfail6
-// compile-flags: -Z query-dep-graph -O
-// [cfail1]compile-flags: -Zincremental-ignore-spans
-// [cfail2]compile-flags: -Zincremental-ignore-spans
-// [cfail3]compile-flags: -Zincremental-ignore-spans
+//@ build-pass (FIXME(62277): could be check-pass?)
+//@ revisions: cfail1 cfail2 cfail3 cfail4 cfail5 cfail6
+//@ compile-flags: -Z query-dep-graph -O
+//@ [cfail1]compile-flags: -Zincremental-ignore-spans
+//@ [cfail2]compile-flags: -Zincremental-ignore-spans
+//@ [cfail3]compile-flags: -Zincremental-ignore-spans
 
 #![allow(warnings)]
 #![feature(rustc_attrs)]
@@ -24,9 +24,9 @@ pub fn change_closure_body() {
 }
 
 #[cfg(not(any(cfail1,cfail4)))]
-#[rustc_clean(cfg="cfail2", except="hir_owner_nodes")]
+#[rustc_clean(cfg="cfail2", except="opt_hir_owner_nodes")]
 #[rustc_clean(cfg="cfail3")]
-#[rustc_clean(cfg="cfail5", except="hir_owner_nodes")]
+#[rustc_clean(cfg="cfail5", except="opt_hir_owner_nodes")]
 #[rustc_clean(cfg="cfail6")]
 pub fn change_closure_body() {
     let _ = || 3u32;
@@ -42,9 +42,9 @@ pub fn add_parameter() {
 }
 
 #[cfg(not(any(cfail1,cfail4)))]
-#[rustc_clean(cfg="cfail2", except="hir_owner_nodes, typeck")]
+#[rustc_clean(cfg="cfail2", except="opt_hir_owner_nodes, typeck")]
 #[rustc_clean(cfg="cfail3")]
-#[rustc_clean(cfg="cfail5", except="hir_owner_nodes, typeck")]
+#[rustc_clean(cfg="cfail5", except="opt_hir_owner_nodes, typeck")]
 #[rustc_clean(cfg="cfail6")]
 pub fn add_parameter() {
     let x = 0u32;
@@ -60,9 +60,9 @@ pub fn change_parameter_pattern() {
 }
 
 #[cfg(not(any(cfail1,cfail4)))]
-#[rustc_clean(cfg="cfail2", except="hir_owner_nodes, typeck")]
+#[rustc_clean(cfg="cfail2", except="opt_hir_owner_nodes, typeck")]
 #[rustc_clean(cfg="cfail3")]
-#[rustc_clean(cfg="cfail5", except="hir_owner_nodes, typeck")]
+#[rustc_clean(cfg="cfail5", except="opt_hir_owner_nodes, typeck")]
 #[rustc_clean(cfg="cfail6")]
 pub fn change_parameter_pattern() {
     let _ = |(x,): (u32,)| x;
@@ -77,9 +77,9 @@ pub fn add_move() {
 }
 
 #[cfg(not(any(cfail1,cfail4)))]
-#[rustc_clean(cfg="cfail2", except="hir_owner_nodes")]
+#[rustc_clean(cfg="cfail2", except="opt_hir_owner_nodes")]
 #[rustc_clean(cfg="cfail3")]
-#[rustc_clean(cfg="cfail5", except="hir_owner_nodes")]
+#[rustc_clean(cfg="cfail5", except="opt_hir_owner_nodes")]
 #[rustc_clean(cfg="cfail6")]
 pub fn add_move() {
     let _ = move || 1;
@@ -95,9 +95,9 @@ pub fn add_type_ascription_to_parameter() {
 }
 
 #[cfg(not(any(cfail1,cfail4)))]
-#[rustc_clean(cfg = "cfail2", except = "hir_owner_nodes, typeck")]
+#[rustc_clean(cfg = "cfail2", except = "opt_hir_owner_nodes, typeck")]
 #[rustc_clean(cfg = "cfail3")]
-#[rustc_clean(cfg = "cfail5", except = "hir_owner_nodes, typeck")]
+#[rustc_clean(cfg = "cfail5", except = "opt_hir_owner_nodes, typeck")]
 #[rustc_clean(cfg = "cfail6")]
 pub fn add_type_ascription_to_parameter() {
     let closure = |x: u32| x + 1u32;
@@ -114,9 +114,9 @@ pub fn change_parameter_type() {
 }
 
 #[cfg(not(any(cfail1,cfail4)))]
-#[rustc_clean(cfg="cfail2", except="hir_owner_nodes, optimized_mir, typeck")]
+#[rustc_clean(cfg="cfail2", except="opt_hir_owner_nodes, optimized_mir, typeck")]
 #[rustc_clean(cfg="cfail3")]
-#[rustc_clean(cfg="cfail5", except="hir_owner_nodes, optimized_mir, typeck")]
+#[rustc_clean(cfg="cfail5", except="opt_hir_owner_nodes, optimized_mir, typeck")]
 #[rustc_clean(cfg="cfail6")]
 pub fn change_parameter_type() {
     let closure = |x: u16| (x as u64) + 1;

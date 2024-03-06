@@ -1,4 +1,4 @@
-// build-fail
+//@ build-fail
 
 trait ZeroSized: Sized {
     const I_AM_ZERO_SIZED: ();

@@ -1,4 +1,4 @@
-// edition:2018
+//@ edition:2018
 
 struct S;
 

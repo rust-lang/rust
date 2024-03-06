@@ -1,6 +1,5 @@
-// compile-flags: -O -C target-feature=+avx
-// only-x86_64
-// ignore-debug: the debug assertions get in the way
+//@ compile-flags: -O -C target-feature=+avx
+//@ only-x86_64
 
 #![crate_type = "lib"]
 

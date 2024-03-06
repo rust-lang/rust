@@ -2,7 +2,7 @@
 // Tests that we don't emit a spurious "borrow might be used" error
 // when we have an explicit `drop` in a loop
 
-// check-pass
+//@ check-pass
 
 struct WrapperWithDrop<'a>(&'a mut bool);
 impl<'a> Drop for WrapperWithDrop<'a> {

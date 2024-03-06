@@ -421,18 +421,18 @@ LL |         std::ptr::eq(*a, *b)
    |         ~~~~~~~~~~~~~  ~   +
 
 warning: ambiguous wide pointer comparison, the comparison includes metadata which may not be expected
-  --> $DIR/wide_pointer_comparisons.rs:112:33
+  --> $DIR/wide_pointer_comparisons.rs:117:14
    |
-LL |             ($a:tt, $b:tt) => { $a == $b }
-   |                                 ^^^^^^^^
+LL |         cmp!(a, b);
+   |              ^^^^
    |
 help: use `std::ptr::addr_eq` or untyped pointers to only compare their addresses
    |
-LL |             ($a:tt, $b:tt) => { std::ptr::addr_eq($a, $b) }
-   |                                 ++++++++++++++++++  ~   +
+LL |         cmp!(std::ptr::addr_eq(a, b));
+   |              ++++++++++++++++++ ~  +
 
 warning: ambiguous wide pointer comparison, the comparison includes metadata which may not be expected
-  --> $DIR/wide_pointer_comparisons.rs:121:39
+  --> $DIR/wide_pointer_comparisons.rs:123:39
    |
 LL |             ($a:ident, $b:ident) => { $a == $b }
    |                                       ^^^^^^^^
@@ -447,7 +447,7 @@ LL |             ($a:ident, $b:ident) => { std::ptr::addr_eq($a, $b) }
    |                                       ++++++++++++++++++  ~   +
 
 warning: ambiguous wide pointer comparison, the comparison includes metadata which may not be expected
-  --> $DIR/wide_pointer_comparisons.rs:131:37
+  --> $DIR/wide_pointer_comparisons.rs:133:37
    |
 LL |             ($a:expr, $b:expr) => { $a == $b }
    |                                     ^^

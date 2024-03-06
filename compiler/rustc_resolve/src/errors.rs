@@ -1,4 +1,4 @@
-use rustc_errors::codes::*;
+use rustc_errors::{codes::*, Applicability};
 use rustc_macros::{Diagnostic, Subdiagnostic};
 use rustc_span::{
     symbol::{Ident, Symbol},
@@ -6,32 +6,6 @@ use rustc_span::{
 };
 
 use crate::{late::PatternSource, Res};
-
-#[derive(Diagnostic)]
-#[diag(resolve_parent_module_reset_for_binding, code = E0637)]
-pub(crate) struct ParentModuleResetForBinding;
-
-#[derive(Diagnostic)]
-#[diag(resolve_ampersand_used_without_explicit_lifetime_name, code = E0637)]
-#[note]
-pub(crate) struct AmpersandUsedWithoutExplicitLifetimeName(#[primary_span] pub(crate) Span);
-
-#[derive(Diagnostic)]
-#[diag(resolve_underscore_lifetime_name_cannot_be_used_here, code = E0637)]
-#[note]
-pub(crate) struct UnderscoreLifetimeNameCannotBeUsedHere(#[primary_span] pub(crate) Span);
-
-#[derive(Diagnostic)]
-#[diag(resolve_crate_may_not_be_imported)]
-pub(crate) struct CrateMayNotBeImported(#[primary_span] pub(crate) Span);
-
-#[derive(Diagnostic)]
-#[diag(resolve_crate_root_imports_must_be_named_explicitly)]
-pub(crate) struct CrateRootNamesMustBeNamedExplicitly(#[primary_span] pub(crate) Span);
-
-#[derive(Diagnostic)]
-#[diag(resolve_crate_root_imports_must_be_named_explicitly)]
-pub(crate) struct ResolutionError(#[primary_span] pub(crate) Span);
 
 #[derive(Diagnostic)]
 #[diag(resolve_generic_params_from_outer_item, code = E0401)]
@@ -45,6 +19,17 @@ pub(crate) struct GenericParamsFromOuterItem {
     pub(crate) refer_to_type_directly: Option<Span>,
     #[subdiagnostic]
     pub(crate) sugg: Option<GenericParamsFromOuterItemSugg>,
+    #[subdiagnostic]
+    pub(crate) static_or_const: Option<GenericParamsFromOuterItemStaticOrConst>,
+    pub(crate) is_self: bool,
+}
+
+#[derive(Subdiagnostic)]
+pub(crate) enum GenericParamsFromOuterItemStaticOrConst {
+    #[note(resolve_generic_params_from_outer_item_static)]
+    Static,
+    #[note(resolve_generic_params_from_outer_item_const)]
+    Const,
 }
 
 #[derive(Subdiagnostic)]
@@ -457,19 +442,6 @@ pub(crate) struct UnreachableLabelSubLabelUnreachable {
 }
 
 #[derive(Diagnostic)]
-#[diag(resolve_trait_impl_mismatch)]
-pub(crate) struct TraitImplMismatch {
-    #[primary_span]
-    #[label]
-    pub(crate) span: Span,
-    pub(crate) name: Symbol,
-    pub(crate) kind: String,
-    #[label(resolve_label_trait_item)]
-    pub(crate) trait_item_span: Span,
-    pub(crate) trait_path: String,
-}
-
-#[derive(Diagnostic)]
 #[diag(resolve_invalid_asm_sym)]
 #[help]
 pub(crate) struct InvalidAsmSym {
@@ -675,6 +647,21 @@ pub(crate) struct ExplicitUnsafeTraits {
 }
 
 #[derive(Subdiagnostic)]
+#[note(resolve_macro_defined_later)]
+pub(crate) struct MacroDefinedLater {
+    #[primary_span]
+    pub(crate) span: Span,
+}
+
+#[derive(Subdiagnostic)]
+#[label(resolve_consider_move_macro_position)]
+pub(crate) struct MacroSuggMovePosition {
+    #[primary_span]
+    pub(crate) span: Span,
+    pub(crate) ident: Ident,
+}
+
+#[derive(Subdiagnostic)]
 #[note(resolve_missing_macro_rules_name)]
 pub(crate) struct MaybeMissingMacroRulesName {
     #[primary_span]
@@ -786,4 +773,31 @@ pub(crate) struct IsNotDirectlyImportable {
     #[label]
     pub(crate) span: Span,
     pub(crate) target: Ident,
+}
+
+#[derive(Subdiagnostic)]
+#[suggestion(
+    resolve_unexpected_res_change_ty_to_const_param_sugg,
+    code = "const ",
+    style = "verbose"
+)]
+pub(crate) struct UnexpectedResChangeTyToConstParamSugg {
+    #[primary_span]
+    pub span: Span,
+    #[applicability]
+    pub applicability: Applicability,
+}
+
+#[derive(Subdiagnostic)]
+#[suggestion(
+    resolve_unexpected_res_use_at_op_in_slice_pat_with_range_sugg,
+    code = "{snippet}",
+    applicability = "maybe-incorrect",
+    style = "verbose"
+)]
+pub(crate) struct UnexpectedResUseAtOpInSlicePatWithRangeSugg {
+    #[primary_span]
+    pub span: Span,
+    pub ident: Ident,
+    pub snippet: String,
 }

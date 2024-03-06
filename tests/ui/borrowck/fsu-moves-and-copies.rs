@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 
 #![allow(non_camel_case_types)]
 #![allow(stable_features)]

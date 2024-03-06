@@ -3,8 +3,8 @@ use std::borrow::Cow;
 
 use crate::fluent_generated as fluent;
 use rustc_errors::{
-    codes::*, AddToDiagnostic, Applicability, Diagnostic, DiagnosticArgValue, IntoDiagnosticArg,
-    MultiSpan, SubdiagnosticMessage,
+    codes::*, AddToDiagnostic, Applicability, Diag, DiagArgValue, EmissionGuarantee,
+    IntoDiagnosticArg, MultiSpan, SubdiagMessageOp,
 };
 use rustc_macros::{Diagnostic, LintDiagnostic, Subdiagnostic};
 use rustc_middle::ty::Ty;
@@ -43,14 +43,14 @@ pub enum ReturnLikeStatementKind {
 }
 
 impl IntoDiagnosticArg for ReturnLikeStatementKind {
-    fn into_diagnostic_arg(self) -> DiagnosticArgValue<'static> {
+    fn into_diagnostic_arg(self) -> DiagArgValue {
         let kind = match self {
             Self::Return => "return",
             Self::Become => "become",
         }
         .into();
 
-        DiagnosticArgValue::Str(kind)
+        DiagArgValue::Str(kind)
     }
 }
 
@@ -79,14 +79,6 @@ pub struct StructExprNonExhaustive {
 #[derive(Diagnostic)]
 #[diag(hir_typeck_method_call_on_unknown_raw_pointee, code = E0699)]
 pub struct MethodCallOnUnknownRawPointee {
-    #[primary_span]
-    pub span: Span,
-}
-
-#[derive(Diagnostic)]
-#[diag(hir_typeck_missing_fn_lang_items)]
-#[help]
-pub struct MissingFnLangItems {
     #[primary_span]
     pub span: Span,
 }
@@ -193,14 +185,6 @@ pub struct AddMissingParenthesesInRange {
     pub right: Span,
 }
 
-#[derive(Diagnostic)]
-#[diag(hir_typeck_op_trait_generic_params)]
-pub struct OpMethodGenericParams {
-    #[primary_span]
-    pub span: Span,
-    pub method_name: String,
-}
-
 pub struct TypeMismatchFruTypo {
     /// Span of the LHS of the range
     pub expr_span: Span,
@@ -211,10 +195,11 @@ pub struct TypeMismatchFruTypo {
 }
 
 impl AddToDiagnostic for TypeMismatchFruTypo {
-    fn add_to_diagnostic_with<F>(self, diag: &mut Diagnostic, _: F)
-    where
-        F: Fn(&mut Diagnostic, SubdiagnosticMessage) -> SubdiagnosticMessage,
-    {
+    fn add_to_diagnostic_with<G: EmissionGuarantee, F: SubdiagMessageOp<G>>(
+        self,
+        diag: &mut Diag<'_, G>,
+        _f: F,
+    ) {
         diag.arg("expr", self.expr.as_deref().unwrap_or("NONE"));
 
         // Only explain that `a ..b` is a range if it's split up
@@ -312,7 +297,7 @@ pub enum HelpUseLatestEdition {
 impl HelpUseLatestEdition {
     pub fn new() -> Self {
         let edition = LATEST_STABLE_EDITION;
-        if std::env::var_os("CARGO").is_some() {
+        if rustc_session::utils::was_invoked_from_cargo() {
             Self::Cargo { edition }
         } else {
             Self::Standalone { edition }
@@ -389,10 +374,11 @@ pub struct RemoveSemiForCoerce {
 }
 
 impl AddToDiagnostic for RemoveSemiForCoerce {
-    fn add_to_diagnostic_with<F>(self, diag: &mut Diagnostic, _: F)
-    where
-        F: Fn(&mut Diagnostic, SubdiagnosticMessage) -> SubdiagnosticMessage,
-    {
+    fn add_to_diagnostic_with<G: EmissionGuarantee, F: SubdiagMessageOp<G>>(
+        self,
+        diag: &mut Diag<'_, G>,
+        _f: F,
+    ) {
         let mut multispan: MultiSpan = self.semi.into();
         multispan.push_span_label(self.expr, fluent::hir_typeck_remove_semi_for_coerce_expr);
         multispan.push_span_label(self.ret, fluent::hir_typeck_remove_semi_for_coerce_ret);
@@ -564,13 +550,11 @@ pub enum CastUnknownPointerSub {
 }
 
 impl rustc_errors::AddToDiagnostic for CastUnknownPointerSub {
-    fn add_to_diagnostic_with<F>(self, diag: &mut rustc_errors::Diagnostic, f: F)
-    where
-        F: Fn(
-            &mut Diagnostic,
-            rustc_errors::SubdiagnosticMessage,
-        ) -> rustc_errors::SubdiagnosticMessage,
-    {
+    fn add_to_diagnostic_with<G: EmissionGuarantee, F: SubdiagMessageOp<G>>(
+        self,
+        diag: &mut Diag<'_, G>,
+        f: F,
+    ) {
         match self {
             CastUnknownPointerSub::To(span) => {
                 let msg = f(diag, crate::fluent_generated::hir_typeck_label_to);

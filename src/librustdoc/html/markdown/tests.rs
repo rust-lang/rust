@@ -480,11 +480,6 @@ fn test_markdown_html_escape() {
 #[test]
 fn test_find_testable_code_line() {
     fn t(input: &str, expect: &[usize]) {
-        impl crate::doctest::Tester for Vec<usize> {
-            fn add_test(&mut self, _test: String, _config: LangString, line: usize) {
-                self.push(line);
-            }
-        }
         let mut lines = Vec::<usize>::new();
         find_testable_code(input, &mut lines, ErrorCodes::No, false, None, true);
         assert_eq!(lines, expect);

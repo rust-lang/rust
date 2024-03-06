@@ -1,4 +1,4 @@
-// compile-flags:-C panic=abort
+//@ compile-flags:-C panic=abort
 
 #![feature(alloc_error_handler)]
 #![no_std]

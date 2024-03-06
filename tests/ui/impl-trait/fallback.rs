@@ -1,4 +1,4 @@
-// check-pass
+//@ check-pass
 
 fn take_edge_counters(
     x: &mut Option<Vec<i32>>,

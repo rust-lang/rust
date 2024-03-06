@@ -3,7 +3,7 @@ use std::task::{RawWaker, RawWakerVTable, Waker};
 
 #[test]
 fn test_waker_getters() {
-    let raw_waker = RawWaker::new(ptr::invalid_mut(42usize), &WAKER_VTABLE);
+    let raw_waker = RawWaker::new(ptr::without_provenance_mut(42usize), &WAKER_VTABLE);
     assert_eq!(raw_waker.data() as usize, 42);
     assert!(ptr::eq(raw_waker.vtable(), &WAKER_VTABLE));
 
@@ -15,7 +15,7 @@ fn test_waker_getters() {
 }
 
 static WAKER_VTABLE: RawWakerVTable = RawWakerVTable::new(
-    |data| RawWaker::new(ptr::invalid_mut(data as usize + 1), &WAKER_VTABLE),
+    |data| RawWaker::new(ptr::without_provenance_mut(data as usize + 1), &WAKER_VTABLE),
     |_| {},
     |_| {},
     |_| {},

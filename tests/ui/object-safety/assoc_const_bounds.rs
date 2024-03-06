@@ -1,7 +1,7 @@
 #![feature(generic_const_items)]
 #![allow(incomplete_features, dead_code)]
 
-// check-pass
+//@ check-pass
 
 trait Foo<T> {
     const BAR: bool

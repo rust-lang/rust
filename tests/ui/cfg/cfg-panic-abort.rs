@@ -1,6 +1,6 @@
-// build-pass
-// compile-flags: -C panic=abort
-// no-prefer-dynamic
+//@ build-pass
+//@ compile-flags: -C panic=abort
+//@ no-prefer-dynamic
 
 
 #[cfg(panic = "unwind")]

@@ -1,7 +1,7 @@
 // Regression test for issues #84660 and #86411: both are variations on #76202.
 // Tests that we don't ICE when we have an opaque type appearing anywhere in an impl header.
 
-// check-pass
+//@ check-pass
 
 #![feature(type_alias_impl_trait)]
 

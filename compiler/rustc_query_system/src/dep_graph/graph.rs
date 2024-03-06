@@ -52,7 +52,7 @@ impl From<DepNodeIndex> for QueryInvocationId {
     }
 }
 
-pub(crate) struct MarkFrame<'a> {
+pub struct MarkFrame<'a> {
     index: SerializedDepNodeIndex,
     parent: Option<&'a MarkFrame<'a>>,
 }
@@ -754,7 +754,6 @@ impl<D: Deps> DepGraphData<D> {
         &self,
         qcx: Qcx,
         parent_dep_node_index: SerializedDepNodeIndex,
-        dep_node: &DepNode,
         frame: Option<&MarkFrame<'_>>,
     ) -> Option<()> {
         let dep_dep_node_color = self.colors.get(parent_dep_node_index);
@@ -818,7 +817,7 @@ impl<D: Deps> DepGraphData<D> {
             None => {}
         }
 
-        if let None = qcx.dep_context().sess().dcx().has_errors_or_lint_errors_or_delayed_bugs() {
+        if let None = qcx.dep_context().sess().dcx().has_errors_or_delayed_bugs() {
             panic!("try_mark_previous_green() - Forcing the DepNode should have set its color")
         }
 
@@ -861,7 +860,7 @@ impl<D: Deps> DepGraphData<D> {
         let prev_deps = self.previous.edge_targets_from(prev_dep_node_index);
 
         for dep_dep_node_index in prev_deps {
-            self.try_mark_parent_green(qcx, dep_dep_node_index, dep_node, Some(&frame))?;
+            self.try_mark_parent_green(qcx, dep_dep_node_index, Some(&frame))?;
         }
 
         // If we got here without hitting a `return` that means that all

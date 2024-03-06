@@ -1,4 +1,4 @@
-// aux-build:issue-45829-b.rs
+//@ aux-build:issue-45829-b.rs
 
 mod foo {
     pub mod bar {}

@@ -1,11 +1,11 @@
-// run-pass
+//@ run-pass
 #![allow(unused_variables)]
-// compile-flags:-C panic=abort
-// aux-build:exit-success-if-unwind.rs
-// no-prefer-dynamic
-// ignore-emscripten no processes
-// ignore-sgx no processes
-// ignore-macos
+//@ compile-flags:-C panic=abort
+//@ aux-build:exit-success-if-unwind.rs
+//@ no-prefer-dynamic
+//@ ignore-emscripten no processes
+//@ ignore-sgx no processes
+//@ ignore-macos
 
 extern crate exit_success_if_unwind;
 

@@ -6,281 +6,91 @@
 //! - `place @ (P1, P2)` can be simplified to `[place.0 @ P1, place.1 @ P2]`
 //! - `place @ x` can be simplified to `[]` by binding `x` to `place`
 //!
-//! The `simplify_candidate` routine just repeatedly applies these
+//! The `simplify_match_pairs` routine just repeatedly applies these
 //! sort of simplifications until there is nothing left to
 //! simplify. Match pairs cannot be simplified if they require some
 //! sort of test: for example, testing which variant an enum is, or
 //! testing a value against a constant.
 
-use crate::build::expr::as_place::PlaceBuilder;
-use crate::build::matches::{Ascription, Binding, Candidate, MatchPair};
+use crate::build::matches::{Ascription, Binding, Candidate, FlatPat, MatchPair, TestCase};
 use crate::build::Builder;
-use rustc_middle::thir::{self, *};
 
 use std::mem;
 
 impl<'a, 'tcx> Builder<'a, 'tcx> {
-    /// Simplify a candidate so that all match pairs require a test.
-    ///
-    /// This method will also split a candidate, in which the only
-    /// match-pair is an or-pattern, into multiple candidates.
-    /// This is so that
-    ///
-    /// match x {
-    ///     0 | 1 => { ... },
-    ///     2 | 3 => { ... },
-    /// }
-    ///
-    /// only generates a single switch. If this happens this method returns
-    /// `true`.
-    #[instrument(skip(self, candidate), level = "debug")]
-    pub(super) fn simplify_candidate<'pat>(
+    /// Simplify a list of match pairs so they all require a test. Stores relevant bindings and
+    /// ascriptions in the provided `Vec`s.
+    #[instrument(skip(self), level = "debug")]
+    pub(super) fn simplify_match_pairs<'pat>(
         &mut self,
-        candidate: &mut Candidate<'pat, 'tcx>,
-    ) -> bool {
-        // repeatedly simplify match pairs until fixed point is reached
-        debug!("{candidate:#?}");
-
-        // existing_bindings and new_bindings exists to keep the semantics in order.
-        // Reversing the binding order for bindings after `@` changes the binding order in places
-        // it shouldn't be changed, for example `let (Some(a), Some(b)) = (x, y)`
+        match_pairs: &mut Vec<MatchPair<'pat, 'tcx>>,
+        candidate_bindings: &mut Vec<Binding<'tcx>>,
+        candidate_ascriptions: &mut Vec<Ascription<'tcx>>,
+    ) {
+        // In order to please the borrow checker, in a pattern like `x @ pat` we must lower the
+        // bindings in `pat` before `x`. E.g. (#69971):
         //
-        // To avoid this, the binding occurs in the following manner:
-        // * the bindings for one iteration of the following loop occurs in order (i.e. left to
-        // right)
-        // * the bindings from the previous iteration of the loop is prepended to the bindings from
-        // the current iteration (in the implementation this is done by mem::swap and extend)
-        // * after all iterations, these new bindings are then appended to the bindings that were
-        // preexisting (i.e. `candidate.binding` when the function was called).
+        // struct NonCopyStruct {
+        //     copy_field: u32,
+        // }
         //
-        // example:
-        // candidate.bindings = [1, 2, 3]
-        // binding in iter 1: [4, 5]
-        // binding in iter 2: [6, 7]
+        // fn foo1(x: NonCopyStruct) {
+        //     let y @ NonCopyStruct { copy_field: z } = x;
+        //     // the above should turn into
+        //     let z = x.copy_field;
+        //     let y = x;
+        // }
         //
-        // final binding: [1, 2, 3, 6, 7, 4, 5]
-        let mut existing_bindings = mem::take(&mut candidate.bindings);
-        let mut new_bindings = Vec::new();
-        loop {
-            let match_pairs = mem::take(&mut candidate.match_pairs);
-
-            if let [MatchPair { pattern: Pat { kind: PatKind::Or { pats }, .. }, place }] =
-                &*match_pairs
-            {
-                existing_bindings.extend_from_slice(&new_bindings);
-                mem::swap(&mut candidate.bindings, &mut existing_bindings);
-                candidate.subcandidates = self.create_or_subcandidates(candidate, place, pats);
-                return true;
-            }
-
-            let mut changed = false;
-            for match_pair in match_pairs {
-                match self.simplify_match_pair(match_pair, candidate) {
-                    Ok(()) => {
-                        changed = true;
-                    }
-                    Err(match_pair) => {
-                        candidate.match_pairs.push(match_pair);
-                    }
+        // We therefore lower bindings from left-to-right, except we lower the `x` in `x @ pat`
+        // after any bindings in `pat`. This doesn't work for or-patterns: the current structure of
+        // match lowering forces us to lower bindings inside or-patterns last.
+        for mut match_pair in mem::take(match_pairs) {
+            self.simplify_match_pairs(
+                &mut match_pair.subpairs,
+                candidate_bindings,
+                candidate_ascriptions,
+            );
+            if let TestCase::Irrefutable { binding, ascription } = match_pair.test_case {
+                if let Some(binding) = binding {
+                    candidate_bindings.push(binding);
                 }
-            }
-            // Avoid issue #69971: the binding order should be right to left if there are more
-            // bindings after `@` to please the borrow checker
-            // Ex
-            // struct NonCopyStruct {
-            //     copy_field: u32,
-            // }
-            //
-            // fn foo1(x: NonCopyStruct) {
-            //     let y @ NonCopyStruct { copy_field: z } = x;
-            //     // the above should turn into
-            //     let z = x.copy_field;
-            //     let y = x;
-            // }
-            candidate.bindings.extend_from_slice(&new_bindings);
-            mem::swap(&mut candidate.bindings, &mut new_bindings);
-            candidate.bindings.clear();
-
-            if !changed {
-                existing_bindings.extend_from_slice(&new_bindings);
-                mem::swap(&mut candidate.bindings, &mut existing_bindings);
-                // Move or-patterns to the end, because they can result in us
-                // creating additional candidates, so we want to test them as
-                // late as possible.
-                candidate
-                    .match_pairs
-                    .sort_by_key(|pair| matches!(pair.pattern.kind, PatKind::Or { .. }));
-                debug!(simplified = ?candidate, "simplify_candidate");
-                return false; // if we were not able to simplify any, done.
+                if let Some(ascription) = ascription {
+                    candidate_ascriptions.push(ascription);
+                }
+                // Simplifiable pattern; we replace it with its already simplified subpairs.
+                match_pairs.append(&mut match_pair.subpairs);
+            } else {
+                // Unsimplifiable pattern; we keep it.
+                match_pairs.push(match_pair);
             }
         }
+
+        // Move or-patterns to the end, because they can result in us
+        // creating additional candidates, so we want to test them as
+        // late as possible.
+        match_pairs.sort_by_key(|pair| matches!(pair.test_case, TestCase::Or { .. }));
+        debug!(simplified = ?match_pairs, "simplify_match_pairs");
     }
 
-    /// Given `candidate` that has a single or-pattern for its match-pairs,
-    /// creates a fresh candidate for each of its input subpatterns passed via
-    /// `pats`.
-    fn create_or_subcandidates<'pat>(
+    /// Create a new candidate for each pattern in `pats`, and recursively simplify tje
+    /// single-or-pattern case.
+    pub(super) fn create_or_subcandidates<'pat>(
         &mut self,
-        candidate: &Candidate<'pat, 'tcx>,
-        place: &PlaceBuilder<'tcx>,
-        pats: &'pat [Box<Pat<'tcx>>],
+        pats: &[FlatPat<'pat, 'tcx>],
+        has_guard: bool,
     ) -> Vec<Candidate<'pat, 'tcx>> {
         pats.iter()
-            .map(|box pat| {
-                let mut candidate = Candidate::new(place.clone(), pat, candidate.has_guard, self);
-                self.simplify_candidate(&mut candidate);
+            .cloned()
+            .map(|flat_pat| {
+                let mut candidate = Candidate::from_flat_pat(flat_pat, has_guard);
+                if let [MatchPair { test_case: TestCase::Or { pats, .. }, .. }] =
+                    &*candidate.match_pairs
+                {
+                    candidate.subcandidates = self.create_or_subcandidates(pats, has_guard);
+                    candidate.match_pairs.pop();
+                }
                 candidate
             })
             .collect()
-    }
-
-    /// Tries to simplify `match_pair`, returning `Ok(())` if
-    /// successful. If successful, new match pairs and bindings will
-    /// have been pushed into the candidate. If no simplification is
-    /// possible, `Err` is returned and no changes are made to
-    /// candidate.
-    fn simplify_match_pair<'pat>(
-        &mut self,
-        match_pair: MatchPair<'pat, 'tcx>,
-        candidate: &mut Candidate<'pat, 'tcx>,
-    ) -> Result<(), MatchPair<'pat, 'tcx>> {
-        match match_pair.pattern.kind {
-            PatKind::AscribeUserType {
-                ref subpattern,
-                ascription: thir::Ascription { ref annotation, variance },
-            } => {
-                // Apply the type ascription to the value at `match_pair.place`, which is the
-                if let Some(source) = match_pair.place.try_to_place(self) {
-                    candidate.ascriptions.push(Ascription {
-                        annotation: annotation.clone(),
-                        source,
-                        variance,
-                    });
-                }
-
-                candidate.match_pairs.push(MatchPair::new(match_pair.place, subpattern, self));
-
-                Ok(())
-            }
-
-            PatKind::Wild | PatKind::Error(_) => {
-                // nothing left to do
-                Ok(())
-            }
-
-            PatKind::Binding {
-                name: _,
-                mutability: _,
-                mode,
-                var,
-                ty: _,
-                ref subpattern,
-                is_primary: _,
-            } => {
-                if let Some(source) = match_pair.place.try_to_place(self) {
-                    candidate.bindings.push(Binding {
-                        span: match_pair.pattern.span,
-                        source,
-                        var_id: var,
-                        binding_mode: mode,
-                    });
-                }
-
-                if let Some(subpattern) = subpattern.as_ref() {
-                    // this is the `x @ P` case; have to keep matching against `P` now
-                    candidate.match_pairs.push(MatchPair::new(match_pair.place, subpattern, self));
-                }
-
-                Ok(())
-            }
-
-            PatKind::Never => {
-                // A never pattern acts like a load from the place.
-                // FIXME(never_patterns): load from the place
-                Ok(())
-            }
-
-            PatKind::Constant { .. } => {
-                // FIXME normalize patterns when possible
-                Err(match_pair)
-            }
-
-            PatKind::InlineConstant { subpattern: ref pattern, def: _ } => {
-                candidate.match_pairs.push(MatchPair::new(match_pair.place, pattern, self));
-
-                Ok(())
-            }
-
-            PatKind::Range(ref range) => {
-                if let Some(true) = range.is_full_range(self.tcx) {
-                    // Irrefutable pattern match.
-                    return Ok(());
-                }
-                Err(match_pair)
-            }
-
-            PatKind::Slice { ref prefix, ref slice, ref suffix } => {
-                if prefix.is_empty() && slice.is_some() && suffix.is_empty() {
-                    // irrefutable
-                    self.prefix_slice_suffix(
-                        &mut candidate.match_pairs,
-                        &match_pair.place,
-                        prefix,
-                        slice,
-                        suffix,
-                    );
-                    Ok(())
-                } else {
-                    Err(match_pair)
-                }
-            }
-
-            PatKind::Variant { adt_def, args, variant_index, ref subpatterns } => {
-                let irrefutable = adt_def.variants().iter_enumerated().all(|(i, v)| {
-                    i == variant_index || {
-                        self.tcx.features().exhaustive_patterns
-                            && !v
-                                .inhabited_predicate(self.tcx, adt_def)
-                                .instantiate(self.tcx, args)
-                                .apply_ignore_module(self.tcx, self.param_env)
-                    }
-                }) && (adt_def.did().is_local()
-                    || !adt_def.is_variant_list_non_exhaustive());
-                if irrefutable {
-                    let place_builder = match_pair.place.downcast(adt_def, variant_index);
-                    candidate
-                        .match_pairs
-                        .extend(self.field_match_pairs(place_builder, subpatterns));
-                    Ok(())
-                } else {
-                    Err(match_pair)
-                }
-            }
-
-            PatKind::Array { ref prefix, ref slice, ref suffix } => {
-                self.prefix_slice_suffix(
-                    &mut candidate.match_pairs,
-                    &match_pair.place,
-                    prefix,
-                    slice,
-                    suffix,
-                );
-                Ok(())
-            }
-
-            PatKind::Leaf { ref subpatterns } => {
-                // tuple struct, match subpats (if any)
-                candidate.match_pairs.extend(self.field_match_pairs(match_pair.place, subpatterns));
-                Ok(())
-            }
-
-            PatKind::Deref { ref subpattern } => {
-                let place_builder = match_pair.place.deref();
-                candidate.match_pairs.push(MatchPair::new(place_builder, subpattern, self));
-                Ok(())
-            }
-
-            PatKind::Or { .. } => Err(match_pair),
-        }
     }
 }

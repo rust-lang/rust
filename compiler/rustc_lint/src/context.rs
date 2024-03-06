@@ -18,9 +18,10 @@ use self::TargetLint::*;
 
 use crate::levels::LintLevelsBuilder;
 use crate::passes::{EarlyLintPassObject, LateLintPassObject};
-use rustc_data_structures::fx::FxHashMap;
+use rustc_data_structures::fx::FxIndexMap;
 use rustc_data_structures::sync;
-use rustc_errors::{DecorateLint, DiagnosticBuilder, DiagnosticMessage, MultiSpan};
+use rustc_data_structures::unord::UnordMap;
+use rustc_errors::{DecorateLint, Diag, DiagMessage, MultiSpan};
 use rustc_feature::Features;
 use rustc_hir as hir;
 use rustc_hir::def::Res;
@@ -30,7 +31,7 @@ use rustc_middle::middle::privacy::EffectiveVisibilities;
 use rustc_middle::ty::layout::{LayoutError, LayoutOfHelpers, TyAndLayout};
 use rustc_middle::ty::print::{with_no_trimmed_paths, PrintError};
 use rustc_middle::ty::{self, print::Printer, GenericArg, RegisteredTools, Ty, TyCtxt};
-use rustc_session::lint::{BuiltinLintDiagnostics, LintExpectationId};
+use rustc_session::lint::{BuiltinLintDiag, LintExpectationId};
 use rustc_session::lint::{FutureIncompatibleInfo, Level, Lint, LintBuffer, LintId};
 use rustc_session::{LintStoreMarker, Session};
 use rustc_span::edit_distance::find_best_match_for_names;
@@ -69,10 +70,10 @@ pub struct LintStore {
     pub late_module_passes: Vec<Box<LateLintPassFactory>>,
 
     /// Lints indexed by name.
-    by_name: FxHashMap<String, TargetLint>,
+    by_name: UnordMap<String, TargetLint>,
 
     /// Map of registered lint groups to what lints they expand to.
-    lint_groups: FxHashMap<&'static str, LintGroup>,
+    lint_groups: FxIndexMap<&'static str, LintGroup>,
 }
 
 impl LintStoreMarker for LintStore {}
@@ -152,8 +153,6 @@ impl LintStore {
     pub fn get_lint_groups<'t>(
         &'t self,
     ) -> impl Iterator<Item = (&'static str, Vec<LintId>, bool)> + 't {
-        // This function is not used in a way which observes the order of lints.
-        #[allow(rustc::potential_query_instability)]
         self.lint_groups
             .iter()
             .filter(|(_, LintGroup { depr, .. })| {
@@ -339,7 +338,7 @@ impl LintStore {
     }
 
     /// Checks the name of a lint for its existence, and whether it was
-    /// renamed or removed. Generates a DiagnosticBuilder containing a
+    /// renamed or removed. Generates a `Diag` containing a
     /// warning for renamed and removed lints. This is over both lint
     /// names from attributes and those passed on the command line. Since
     /// it emits non-fatal warnings and there are *two* lint passes that
@@ -374,8 +373,9 @@ impl LintStore {
                     None => {
                         // 1. The tool is currently running, so this lint really doesn't exist.
                         // FIXME: should this handle tools that never register a lint, like rustfmt?
-                        debug!("lints={:?}", self.by_name.keys().collect::<Vec<_>>());
+                        debug!("lints={:?}", self.by_name);
                         let tool_prefix = format!("{tool_name}::");
+
                         return if self.by_name.keys().any(|lint| lint.starts_with(&tool_prefix)) {
                             self.no_lint_suggestion(&complete_name, tool_name.as_str())
                         } else {
@@ -536,9 +536,9 @@ pub trait LintContext {
         &self,
         lint: &'static Lint,
         span: Option<impl Into<MultiSpan>>,
-        msg: impl Into<DiagnosticMessage>,
-        decorate: impl for<'a, 'b> FnOnce(&'b mut DiagnosticBuilder<'a, ()>),
-        diagnostic: BuiltinLintDiagnostics,
+        msg: impl Into<DiagMessage>,
+        decorate: impl for<'a, 'b> FnOnce(&'b mut Diag<'a, ()>),
+        diagnostic: BuiltinLintDiag,
     ) {
         // We first generate a blank diagnostic.
         self.opt_span_lint(lint, span, msg, |db| {
@@ -559,8 +559,8 @@ pub trait LintContext {
         &self,
         lint: &'static Lint,
         span: Option<S>,
-        msg: impl Into<DiagnosticMessage>,
-        decorate: impl for<'a, 'b> FnOnce(&'b mut DiagnosticBuilder<'a, ()>),
+        msg: impl Into<DiagMessage>,
+        decorate: impl for<'a, 'b> FnOnce(&'b mut Diag<'a, ()>),
     );
 
     /// Emit a lint at `span` from a lint struct (some type that implements `DecorateLint`,
@@ -584,8 +584,8 @@ pub trait LintContext {
         &self,
         lint: &'static Lint,
         span: S,
-        msg: impl Into<DiagnosticMessage>,
-        decorate: impl for<'a, 'b> FnOnce(&'b mut DiagnosticBuilder<'a, ()>),
+        msg: impl Into<DiagMessage>,
+        decorate: impl for<'a, 'b> FnOnce(&'b mut Diag<'a, ()>),
     ) {
         self.opt_span_lint(lint, Some(span), msg, decorate);
     }
@@ -605,8 +605,8 @@ pub trait LintContext {
     fn lint(
         &self,
         lint: &'static Lint,
-        msg: impl Into<DiagnosticMessage>,
-        decorate: impl for<'a, 'b> FnOnce(&'b mut DiagnosticBuilder<'a, ()>),
+        msg: impl Into<DiagMessage>,
+        decorate: impl for<'a, 'b> FnOnce(&'b mut Diag<'a, ()>),
     ) {
         self.opt_span_lint(lint, None as Option<Span>, msg, decorate);
     }
@@ -670,8 +670,8 @@ impl<'tcx> LintContext for LateContext<'tcx> {
         &self,
         lint: &'static Lint,
         span: Option<S>,
-        msg: impl Into<DiagnosticMessage>,
-        decorate: impl for<'a, 'b> FnOnce(&'b mut DiagnosticBuilder<'a, ()>),
+        msg: impl Into<DiagMessage>,
+        decorate: impl for<'a, 'b> FnOnce(&'b mut Diag<'a, ()>),
     ) {
         let hir_id = self.last_node_with_lint_attrs;
 
@@ -697,8 +697,8 @@ impl LintContext for EarlyContext<'_> {
         &self,
         lint: &'static Lint,
         span: Option<S>,
-        msg: impl Into<DiagnosticMessage>,
-        decorate: impl for<'a, 'b> FnOnce(&'b mut DiagnosticBuilder<'a, ()>),
+        msg: impl Into<DiagMessage>,
+        decorate: impl for<'a, 'b> FnOnce(&'b mut Diag<'a, ()>),
     ) {
         self.builder.opt_span_lint(lint, span.map(|s| s.into()), msg, decorate)
     }
@@ -931,7 +931,7 @@ impl<'tcx> LateContext<'tcx> {
 
         while let hir::ExprKind::Path(ref qpath) = expr.kind
             && let Some(parent_node) = match self.qpath_res(qpath, expr.hir_id) {
-                Res::Local(hir_id) => self.tcx.hir().find_parent(hir_id),
+                Res::Local(hir_id) => Some(self.tcx.parent_hir_node(hir_id)),
                 _ => None,
             }
             && let Some(init) = match parent_node {
@@ -975,7 +975,7 @@ impl<'tcx> LateContext<'tcx> {
 
         while let hir::ExprKind::Path(ref qpath) = expr.kind
             && let Some(parent_node) = match self.qpath_res(qpath, expr.hir_id) {
-                Res::Local(hir_id) => self.tcx.hir().find_parent(hir_id),
+                Res::Local(hir_id) => Some(self.tcx.parent_hir_node(hir_id)),
                 Res::Def(_, def_id) => self.tcx.hir().get_if_local(def_id),
                 _ => None,
             }

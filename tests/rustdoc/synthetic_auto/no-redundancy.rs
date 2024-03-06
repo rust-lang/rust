@@ -1,5 +1,5 @@
 // FIXME(fmease, #119216): Reenable this test!
-// ignore-test
+//@ ignore-test
 
 pub struct Inner<T> {
     field: T,

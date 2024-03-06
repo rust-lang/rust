@@ -15,5 +15,6 @@ pub struct I8<const F: i8>;
 
 impl <I8<{i8::MIN}> as Identity>::Identity {
 //~^ ERROR no nominal type found for inherent implementation
+//~| ERROR no associated item named `MIN` found for type `i8`
     pub fn foo(&self) {}
 }

@@ -2,7 +2,7 @@
 // implied bounds was causing outlives relations that were not
 // properly handled.
 //
-// check-pass
+//@ check-pass
 
 fn main() {}
 

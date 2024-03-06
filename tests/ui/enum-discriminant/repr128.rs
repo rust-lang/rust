@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 #![feature(repr128, core_intrinsics, discriminant_kind)]
 //~^ WARN the feature `repr128` is incomplete
 

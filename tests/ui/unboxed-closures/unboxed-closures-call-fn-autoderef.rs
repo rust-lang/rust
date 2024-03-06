@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 #![allow(unused_imports)]
 // Test that the call operator autoderefs when calling a bounded type parameter.
 

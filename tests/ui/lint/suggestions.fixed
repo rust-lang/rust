@@ -1,12 +1,11 @@
 // ignore-tidy-tab
-// run-rustfix
+//@ run-rustfix
 
 #![warn(unused_mut, unused_parens)] // UI tests pass `-A unused`—see Issue #43896
 
 #[no_mangle] pub static DISCOVERY: usize = 1;
 //~^ ERROR const items should never be `#[no_mangle]`
 //~| HELP try a static value
-
 
 //~^ HELP remove this attribute
 pub fn defiant<T>(_t: T) {}

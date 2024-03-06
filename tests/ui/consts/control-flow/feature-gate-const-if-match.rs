@@ -1,4 +1,4 @@
-// check-pass
+//@ check-pass
 
 const _: i32 = if true { 5 } else { 6 };
 

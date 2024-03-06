@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 
 fn test_generic<T: Clone, F>(expected: T, eq: F) where F: FnOnce(T, T) -> bool {
     let actual: T = match true {

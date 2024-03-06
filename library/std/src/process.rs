@@ -111,7 +111,7 @@ use crate::ffi::OsStr;
 use crate::fmt;
 use crate::fs;
 use crate::io::{self, BorrowedCursor, IoSlice, IoSliceMut};
-use crate::num::NonZeroI32;
+use crate::num::NonZero;
 use crate::path::Path;
 use crate::str;
 use crate::sys::pipe::{read2, AnonPipe};
@@ -171,7 +171,7 @@ pub struct Child {
     /// The handle for writing to the child's standard input (stdin), if it
     /// has been captured. You might find it helpful to do
     ///
-    /// ```compile_fail,E0425
+    /// ```ignore (incomplete)
     /// let stdin = child.stdin.take().unwrap();
     /// ```
     ///
@@ -183,7 +183,7 @@ pub struct Child {
     /// The handle for reading from the child's standard output (stdout), if it
     /// has been captured. You might find it helpful to do
     ///
-    /// ```compile_fail,E0425
+    /// ```ignore (incomplete)
     /// let stdout = child.stdout.take().unwrap();
     /// ```
     ///
@@ -195,7 +195,7 @@ pub struct Child {
     /// The handle for reading from the child's standard error (stderr), if it
     /// has been captured. You might find it helpful to do
     ///
-    /// ```compile_fail,E0425
+    /// ```ignore (incomplete)
     /// let stderr = child.stderr.take().unwrap();
     /// ```
     ///
@@ -1775,9 +1775,9 @@ impl ExitStatusError {
         self.code_nonzero().map(Into::into)
     }
 
-    /// Reports the exit code, if applicable, from an `ExitStatusError`, as a `NonZero`
+    /// Reports the exit code, if applicable, from an `ExitStatusError`, as a [`NonZero`].
     ///
-    /// This is exactly like [`code()`](Self::code), except that it returns a `NonZeroI32`.
+    /// This is exactly like [`code()`](Self::code), except that it returns a <code>[NonZero]<[i32]></code>.
     ///
     /// Plain `code`, returning a plain integer, is provided because it is often more convenient.
     /// The returned value from `code()` is indeed also nonzero; use `code_nonzero()` when you want
@@ -1786,17 +1786,17 @@ impl ExitStatusError {
     /// # Examples
     ///
     /// ```
-    /// #![feature(exit_status_error)]
+    /// #![feature(exit_status_error, generic_nonzero)]
     /// # if cfg!(unix) {
-    /// use std::num::NonZeroI32;
+    /// use std::num::NonZero;
     /// use std::process::Command;
     ///
     /// let bad = Command::new("false").status().unwrap().exit_ok().unwrap_err();
-    /// assert_eq!(bad.code_nonzero().unwrap(), NonZeroI32::try_from(1).unwrap());
+    /// assert_eq!(bad.code_nonzero().unwrap(), NonZero::new(1).unwrap());
     /// # } // cfg!(unix)
     /// ```
     #[must_use]
-    pub fn code_nonzero(&self) -> Option<NonZeroI32> {
+    pub fn code_nonzero(&self) -> Option<NonZero<i32>> {
         self.0.code()
     }
 

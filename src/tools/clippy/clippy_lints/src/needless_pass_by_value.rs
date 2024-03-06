@@ -6,7 +6,7 @@ use clippy_utils::ty::{
     implements_trait, implements_trait_with_env_from_iter, is_copy, is_type_diagnostic_item, is_type_lang_item,
 };
 use rustc_ast::ast::Attribute;
-use rustc_errors::{Applicability, Diagnostic};
+use rustc_errors::{Applicability, Diag};
 use rustc_hir::intravisit::FnKind;
 use rustc_hir::{
     BindingAnnotation, Body, FnDecl, GenericArg, HirId, HirIdSet, Impl, ItemKind, LangItem, Mutability, Node, PatKind,
@@ -100,7 +100,7 @@ impl<'tcx> LateLintPass<'tcx> for NeedlessPassByValue {
         }
 
         // Exclude non-inherent impls
-        if let Some(Node::Item(item)) = cx.tcx.hir().find_parent(hir_id) {
+        if let Node::Item(item) = cx.tcx.parent_hir_node(hir_id) {
             if matches!(
                 item.kind,
                 ItemKind::Impl(Impl { of_trait: Some(_), .. }) | ItemKind::Trait(..)
@@ -196,7 +196,7 @@ impl<'tcx> LateLintPass<'tcx> for NeedlessPassByValue {
                 && !moved_vars.contains(&canonical_id)
             {
                 // Dereference suggestion
-                let sugg = |diag: &mut Diagnostic| {
+                let sugg = |diag: &mut Diag<'_, ()>| {
                     if let ty::Adt(def, ..) = ty.kind() {
                         if let Some(span) = cx.tcx.hir().span_if_local(def.did()) {
                             if type_allowed_to_implement_copy(

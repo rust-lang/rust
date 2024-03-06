@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 // alloc::heap::reallocate test.
 //
 // Ideally this would be revised to use no_std, but for now it serves

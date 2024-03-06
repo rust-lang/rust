@@ -1,4 +1,4 @@
-// edition:2018
+//@ edition:2018
 
 // This test checks that we emit the correct borrowck error when `Self` or a projection is used as
 // a return type.  See #61949 for context.

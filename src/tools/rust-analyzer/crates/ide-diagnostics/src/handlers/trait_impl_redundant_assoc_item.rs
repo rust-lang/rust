@@ -103,7 +103,7 @@ fn quickfix_for_redundant_assoc_item(
 
     Some(vec![Assist {
         id: AssistId("add assoc item def into trait def", AssistKind::QuickFix),
-        label: Label::new("Add assoc item def into trait def".to_string()),
+        label: Label::new("Add assoc item def into trait def".to_owned()),
         group: None,
         target: range,
         source_change: Some(source_change_builder.finish()),

@@ -1,5 +1,5 @@
 PRINT-ATTR INPUT (DISPLAY): #[rustc_dummy] { 1 +1; }
-PRINT-ATTR DEEP-RE-COLLECTED (DISPLAY): #[rustc_dummy] { 1 + 1 ; }
+PRINT-ATTR DEEP-RE-COLLECTED (DISPLAY): #[rustc_dummy] { 1 + 1; }
 PRINT-ATTR INPUT (DEBUG): TokenStream [
     Punct {
         ch: '#',

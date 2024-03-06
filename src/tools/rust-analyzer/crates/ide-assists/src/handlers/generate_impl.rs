@@ -1,9 +1,9 @@
-use syntax::ast::{self, AstNode, HasName};
-
-use crate::{
-    utils::{generate_impl_text, generate_trait_impl_text_intransitive},
-    AssistContext, AssistId, AssistKind, Assists,
+use syntax::{
+    ast::{self, make, AstNode, HasName},
+    ted,
 };
+
+use crate::{utils, AssistContext, AssistId, AssistKind, Assists};
 
 // Assist: generate_impl
 //
@@ -20,9 +20,7 @@ use crate::{
 //     data: T,
 // }
 //
-// impl<T: Clone> Ctx<T> {
-//     $0
-// }
+// impl<T: Clone> Ctx<T> {$0}
 // ```
 pub(crate) fn generate_impl(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<()> {
     let nominal = ctx.find_node_at_offset::<ast::Adt>()?;
@@ -38,17 +36,22 @@ pub(crate) fn generate_impl(acc: &mut Assists, ctx: &AssistContext<'_>) -> Optio
         format!("Generate impl for `{name}`"),
         target,
         |edit| {
-            let start_offset = nominal.syntax().text_range().end();
-            match ctx.config.snippet_cap {
-                Some(cap) => {
-                    let snippet = generate_impl_text(&nominal, "    $0");
-                    edit.insert_snippet(cap, start_offset, snippet);
-                }
-                None => {
-                    let snippet = generate_impl_text(&nominal, "");
-                    edit.insert(start_offset, snippet);
+            // Generate the impl
+            let impl_ = utils::generate_impl(&nominal);
+
+            // Add a tabstop after the left curly brace
+            if let Some(cap) = ctx.config.snippet_cap {
+                if let Some(l_curly) = impl_.assoc_item_list().and_then(|it| it.l_curly_token()) {
+                    edit.add_tabstop_after_token(cap, l_curly);
                 }
             }
+
+            // Add the impl after the adt
+            let nominal = edit.make_mut(nominal);
+            ted::insert_all_raw(
+                ted::Position::after(nominal.syntax()),
+                vec![make::tokens::blank_line().into(), impl_.syntax().clone().into()],
+            );
         },
     )
 }
@@ -68,9 +71,7 @@ pub(crate) fn generate_impl(acc: &mut Assists, ctx: &AssistContext<'_>) -> Optio
 //     data: T,
 // }
 //
-// impl<T: Clone> $0 for Ctx<T> {
-//
-// }
+// impl<T: Clone> ${0:_} for Ctx<T> {}
 // ```
 pub(crate) fn generate_trait_impl(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<()> {
     let nominal = ctx.find_node_at_offset::<ast::Adt>()?;
@@ -86,17 +87,22 @@ pub(crate) fn generate_trait_impl(acc: &mut Assists, ctx: &AssistContext<'_>) ->
         format!("Generate trait impl for `{name}`"),
         target,
         |edit| {
-            let start_offset = nominal.syntax().text_range().end();
-            match ctx.config.snippet_cap {
-                Some(cap) => {
-                    let snippet = generate_trait_impl_text_intransitive(&nominal, "$0", "");
-                    edit.insert_snippet(cap, start_offset, snippet);
-                }
-                None => {
-                    let text = generate_trait_impl_text_intransitive(&nominal, "", "");
-                    edit.insert(start_offset, text);
+            // Generate the impl
+            let impl_ = utils::generate_trait_impl_intransitive(&nominal, make::ty_placeholder());
+
+            // Make the trait type a placeholder snippet
+            if let Some(cap) = ctx.config.snippet_cap {
+                if let Some(trait_) = impl_.trait_() {
+                    edit.add_placeholder_snippet(cap, trait_);
                 }
             }
+
+            // Add the impl after the adt
+            let nominal = edit.make_mut(nominal);
+            ted::insert_all_raw(
+                ted::Position::after(nominal.syntax()),
+                vec![make::tokens::blank_line().into(), impl_.syntax().clone().into()],
+            );
         },
     )
 }
@@ -117,9 +123,7 @@ mod tests {
             r#"
                 struct Foo {}
 
-                impl Foo {
-                    $0
-                }
+                impl Foo {$0}
             "#,
         );
     }
@@ -134,9 +138,7 @@ mod tests {
             r#"
                 struct Foo<T: Clone> {}
 
-                impl<T: Clone> Foo<T> {
-                    $0
-                }
+                impl<T: Clone> Foo<T> {$0}
             "#,
         );
     }
@@ -151,9 +153,7 @@ mod tests {
             r#"
                 struct Foo<'a, T: Foo<'a>> {}
 
-                impl<'a, T: Foo<'a>> Foo<'a, T> {
-                    $0
-                }
+                impl<'a, T: Foo<'a>> Foo<'a, T> {$0}
             "#,
         );
     }
@@ -171,9 +171,7 @@ mod tests {
                 struct Foo<'a, T: Foo<'a>> {}
 
                 #[cfg(feature = "foo")]
-                impl<'a, T: Foo<'a>> Foo<'a, T> {
-                    $0
-                }
+                impl<'a, T: Foo<'a>> Foo<'a, T> {$0}
             "#,
         );
     }
@@ -188,9 +186,7 @@ mod tests {
             r#"
                 struct Defaulted<T = i32> {}
 
-                impl<T> Defaulted<T> {
-                    $0
-                }
+                impl<T> Defaulted<T> {$0}
             "#,
         );
     }
@@ -205,9 +201,7 @@ mod tests {
             r#"
                 struct Defaulted<'a, 'b: 'a, T: Debug + Clone + 'a + 'b = String, const S: usize> {}
 
-                impl<'a, 'b: 'a, T: Debug + Clone + 'a + 'b, const S: usize> Defaulted<'a, 'b, T, S> {
-                    $0
-                }
+                impl<'a, 'b: 'a, T: Debug + Clone + 'a + 'b, const S: usize> Defaulted<'a, 'b, T, S> {$0}
             "#,
         );
     }
@@ -222,9 +216,7 @@ mod tests {
             r#"
                 struct Defaulted<const N: i32 = 0> {}
 
-                impl<const N: i32> Defaulted<N> {
-                    $0
-                }
+                impl<const N: i32> Defaulted<N> {$0}
             "#,
         );
     }
@@ -254,8 +246,7 @@ mod tests {
                 impl<T> Struct<T>
                 where
                     T: Trait,
-                {
-                    $0
+                {$0
                 }
             "#,
         );
@@ -285,9 +276,7 @@ mod tests {
             r#"
                 struct Foo {}
 
-                impl $0 for Foo {
-
-                }
+                impl ${0:_} for Foo {}
             "#,
         );
     }
@@ -302,9 +291,7 @@ mod tests {
             r#"
                 struct Foo<T: Clone> {}
 
-                impl<T: Clone> $0 for Foo<T> {
-
-                }
+                impl<T: Clone> ${0:_} for Foo<T> {}
             "#,
         );
     }
@@ -319,9 +306,7 @@ mod tests {
             r#"
                 struct Foo<'a, T: Foo<'a>> {}
 
-                impl<'a, T: Foo<'a>> $0 for Foo<'a, T> {
-
-                }
+                impl<'a, T: Foo<'a>> ${0:_} for Foo<'a, T> {}
             "#,
         );
     }
@@ -339,9 +324,7 @@ mod tests {
                 struct Foo<'a, T: Foo<'a>> {}
 
                 #[cfg(feature = "foo")]
-                impl<'a, T: Foo<'a>> $0 for Foo<'a, T> {
-
-                }
+                impl<'a, T: Foo<'a>> ${0:_} for Foo<'a, T> {}
             "#,
         );
     }
@@ -356,9 +339,7 @@ mod tests {
             r#"
                 struct Defaulted<T = i32> {}
 
-                impl<T> $0 for Defaulted<T> {
-
-                }
+                impl<T> ${0:_} for Defaulted<T> {}
             "#,
         );
     }
@@ -373,9 +354,7 @@ mod tests {
             r#"
                 struct Defaulted<'a, 'b: 'a, T: Debug + Clone + 'a + 'b = String, const S: usize> {}
 
-                impl<'a, 'b: 'a, T: Debug + Clone + 'a + 'b, const S: usize> $0 for Defaulted<'a, 'b, T, S> {
-
-                }
+                impl<'a, 'b: 'a, T: Debug + Clone + 'a + 'b, const S: usize> ${0:_} for Defaulted<'a, 'b, T, S> {}
             "#,
         );
     }
@@ -390,9 +369,7 @@ mod tests {
             r#"
                 struct Defaulted<const N: i32 = 0> {}
 
-                impl<const N: i32> $0 for Defaulted<N> {
-
-                }
+                impl<const N: i32> ${0:_} for Defaulted<N> {}
             "#,
         );
     }
@@ -419,11 +396,10 @@ mod tests {
                     inner: T,
                 }
 
-                impl<T> $0 for Struct<T>
+                impl<T> ${0:_} for Struct<T>
                 where
                     T: Trait,
                 {
-
                 }
             "#,
         );

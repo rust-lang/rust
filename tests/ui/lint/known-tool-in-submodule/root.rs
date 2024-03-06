@@ -1,4 +1,4 @@
-// check-pass
+//@ check-pass
 
 #![feature(register_tool)]
 #![register_tool(tool)]

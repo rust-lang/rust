@@ -1,14 +1,18 @@
 //! File and span related types.
-// FIXME: This should be moved into its own crate to get rid of the dependency inversion, base-db
-// has business depending on tt, tt should depend on a span crate only (which unforunately will have
-// to depend on salsa)
 use std::fmt::{self, Write};
 
 use salsa::InternId;
 
+mod ast_id;
+mod hygiene;
 mod map;
 
-pub use crate::map::{RealSpanMap, SpanMap};
+pub use self::{
+    ast_id::{AstIdMap, AstIdNode, ErasedFileAstId, FileAstId},
+    hygiene::{SyntaxContextData, SyntaxContextId, Transparency},
+    map::{RealSpanMap, SpanMap},
+};
+
 pub use syntax::{TextRange, TextSize};
 pub use vfs::FileId;
 
@@ -24,9 +28,10 @@ pub struct FileRange {
     pub range: TextRange,
 }
 
-pub type ErasedFileAstId = la_arena::Idx<syntax::SyntaxNodePtr>;
-
-// The first inde is always the root node's AstId
+// The first index is always the root node's AstId
+/// The root ast id always points to the encompassing file, using this in spans is discouraged as
+/// any range relative to it will be effectively absolute, ruining the entire point of anchored
+/// relative text ranges.
 pub const ROOT_ERASED_FILE_AST_ID: ErasedFileAstId =
     la_arena::Idx::from_raw(la_arena::RawIdx::from_u32(0));
 
@@ -45,6 +50,7 @@ pub struct SpanData<Ctx> {
     /// We need the anchor for incrementality, as storing absolute ranges will require
     /// recomputation on every change in a file at all times.
     pub range: TextRange,
+    /// The anchor this span is relative to.
     pub anchor: SpanAnchor,
     /// The syntax context of the span.
     pub ctx: Ctx,
@@ -68,62 +74,6 @@ impl fmt::Display for Span {
         fmt::Debug::fmt(&self.range, f)?;
         f.write_char('#')?;
         self.ctx.fmt(f)
-    }
-}
-
-#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub struct SyntaxContextId(InternId);
-
-impl fmt::Debug for SyntaxContextId {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        if *self == Self::SELF_REF {
-            f.debug_tuple("SyntaxContextId")
-                .field(&{
-                    #[derive(Debug)]
-                    #[allow(non_camel_case_types)]
-                    struct SELF_REF;
-                    SELF_REF
-                })
-                .finish()
-        } else {
-            f.debug_tuple("SyntaxContextId").field(&self.0).finish()
-        }
-    }
-}
-
-impl salsa::InternKey for SyntaxContextId {
-    fn from_intern_id(v: salsa::InternId) -> Self {
-        SyntaxContextId(v)
-    }
-    fn as_intern_id(&self) -> salsa::InternId {
-        self.0
-    }
-}
-
-impl fmt::Display for SyntaxContextId {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", self.0.as_u32())
-    }
-}
-
-// inherent trait impls please tyvm
-impl SyntaxContextId {
-    pub const ROOT: Self = SyntaxContextId(unsafe { InternId::new_unchecked(0) });
-    // veykril(HACK): FIXME salsa doesn't allow us fetching the id of the current input to be allocated so
-    // we need a special value that behaves as the current context.
-    pub const SELF_REF: Self =
-        SyntaxContextId(unsafe { InternId::new_unchecked(InternId::MAX - 1) });
-
-    pub fn is_root(self) -> bool {
-        self == Self::ROOT
-    }
-
-    pub fn into_u32(self) -> u32 {
-        self.0.as_u32()
-    }
-
-    pub fn from_u32(u32: u32) -> Self {
-        Self(InternId::from(u32))
     }
 }
 

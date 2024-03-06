@@ -10,6 +10,18 @@ LL |             Foo::Baz(..) => (),
    |                  variant or associated item not found in `Foo`
    |                  help: there is a variant with a similar name: `Bar`
 
-error: aborting due to 1 previous error
+error[E0596]: cannot borrow `f` as mutable, as it is not declared as mutable
+  --> $DIR/issue-28971.rs:15:5
+   |
+LL |     f();
+   |     ^ cannot borrow as mutable
+   |
+help: consider changing this to be mutable
+   |
+LL | fn foo<F>(mut f: F) where F: FnMut() {
+   |           +++
 
-For more information about this error, try `rustc --explain E0599`.
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0596, E0599.
+For more information about an error, try `rustc --explain E0596`.

@@ -1,9 +1,9 @@
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::sync::Lrc;
 use rustc_data_structures::unord::UnordSet;
-use rustc_errors::emitter::{DynEmitter, HumanEmitter};
+use rustc_errors::emitter::{stderr_destination, DynEmitter, HumanEmitter};
 use rustc_errors::json::JsonEmitter;
-use rustc_errors::{codes::*, TerminalUrl};
+use rustc_errors::{codes::*, ErrorGuaranteed, TerminalUrl};
 use rustc_feature::UnstableFeatures;
 use rustc_hir::def::Res;
 use rustc_hir::def_id::{DefId, DefIdMap, DefIdSet, LocalDefId};
@@ -20,6 +20,7 @@ use rustc_span::symbol::sym;
 use rustc_span::{source_map, Span};
 
 use std::cell::RefCell;
+use std::io;
 use std::mem;
 use std::rc::Rc;
 use std::sync::LazyLock;
@@ -44,10 +45,13 @@ pub(crate) struct DocContext<'tcx> {
     /// Used while populating `external_traits` to ensure we don't process the same trait twice at
     /// the same time.
     pub(crate) active_extern_traits: DefIdSet,
-    // The current set of parameter substitutions,
-    // for expanding type aliases at the HIR level:
-    /// Table `DefId` of type, lifetime, or const parameter -> substituted type, lifetime, or const
-    pub(crate) args: DefIdMap<clean::SubstParam>,
+    /// The current set of parameter instantiations for expanding type aliases at the HIR level.
+    ///
+    /// Maps from the `DefId` of a lifetime or type parameter to the
+    /// generic argument it's currently instantiated to in this context.
+    // FIXME(#82852): We don't record const params since we don't visit const exprs at all and
+    // therefore wouldn't use the corresp. generic arg anyway. Add support for them.
+    pub(crate) args: DefIdMap<clean::GenericArg>,
     pub(crate) current_type_aliases: DefIdMap<usize>,
     /// Table synthetic type parameter for `impl Trait` in argument position -> bounds
     pub(crate) impl_trait_bounds: FxHashMap<ImplTraitParam, Vec<clean::GenericBound>>,
@@ -84,10 +88,10 @@ impl<'tcx> DocContext<'tcx> {
     }
 
     /// Call the closure with the given parameters set as
-    /// the substitutions for a type alias' RHS.
+    /// the generic parameters for a type alias' RHS.
     pub(crate) fn enter_alias<F, R>(
         &mut self,
-        args: DefIdMap<clean::SubstParam>,
+        args: DefIdMap<clean::GenericArg>,
         def_id: DefId,
         f: F,
     ) -> R
@@ -138,7 +142,7 @@ pub(crate) fn new_dcx(
         ErrorOutputType::HumanReadable(kind) => {
             let (short, color_config) = kind.unzip();
             Box::new(
-                HumanEmitter::stderr(color_config, fallback_bundle)
+                HumanEmitter::new(stderr_destination(color_config), fallback_bundle)
                     .sm(source_map.map(|sm| sm as _))
                     .short_message(short)
                     .teach(unstable_opts.teach)
@@ -152,24 +156,22 @@ pub(crate) fn new_dcx(
                 Lrc::new(source_map::SourceMap::new(source_map::FilePathMapping::empty()))
             });
             Box::new(
-                JsonEmitter::stderr(
-                    None,
+                JsonEmitter::new(
+                    Box::new(io::BufWriter::new(io::stderr())),
                     source_map,
-                    None,
                     fallback_bundle,
                     pretty,
                     json_rendered,
-                    diagnostic_width,
-                    false,
-                    unstable_opts.track_diagnostics,
-                    TerminalUrl::No,
                 )
-                .ui_testing(unstable_opts.ui_testing),
+                .ui_testing(unstable_opts.ui_testing)
+                .diagnostic_width(diagnostic_width)
+                .track_diagnostics(unstable_opts.track_diagnostics)
+                .terminal_url(TerminalUrl::No),
             )
         }
     };
 
-    rustc_errors::DiagCtxt::with_emitter(emitter).with_flags(unstable_opts.dcx_flags(true))
+    rustc_errors::DiagCtxt::new(emitter).with_flags(unstable_opts.dcx_flags(true))
 }
 
 /// Parse, resolve, and typecheck the given crate.
@@ -261,7 +263,7 @@ pub(crate) fn create_config(
         file_loader: None,
         locale_resources: rustc_driver::DEFAULT_LOCALE_RESOURCES,
         lint_caps,
-        parse_sess_created: None,
+        psess_created: None,
         hash_untracked_state: None,
         register_lints: Some(Box::new(crate::lint::register_lints)),
         override_queries: Some(|_sess, providers| {
@@ -303,7 +305,7 @@ pub(crate) fn run_global_ctxt(
     show_coverage: bool,
     render_options: RenderOptions,
     output_format: OutputFormat,
-) -> (clean::Crate, RenderOptions, Cache) {
+) -> Result<(clean::Crate, RenderOptions, Cache), ErrorGuaranteed> {
     // Certain queries assume that some checks were run elsewhere
     // (see https://github.com/rust-lang/rust/pull/73566#issuecomment-656954425),
     // so type-check everything other than function bodies in this crate before running lints.
@@ -328,7 +330,10 @@ pub(crate) fn run_global_ctxt(
         });
     });
 
-    tcx.dcx().abort_if_errors();
+    if let Some(guar) = tcx.dcx().has_errors() {
+        return Err(guar);
+    }
+
     tcx.sess.time("missing_docs", || rustc_lint::check_crate(tcx));
     tcx.sess.time("check_mod_attrs", || {
         tcx.hir().for_each_module(|module| tcx.ensure().check_mod_attrs(module))
@@ -449,14 +454,13 @@ pub(crate) fn run_global_ctxt(
 
     tcx.sess.time("check_lint_expectations", || tcx.check_expectations(Some(sym::rustdoc)));
 
-    // We must include lint errors here.
-    if tcx.dcx().has_errors_or_lint_errors().is_some() {
-        rustc_errors::FatalError.raise();
+    if let Some(guar) = tcx.dcx().has_errors() {
+        return Err(guar);
     }
 
     krate = tcx.sess.time("create_format_cache", || Cache::populate(&mut ctxt, krate));
 
-    (krate, ctxt.render_options, ctxt.cache)
+    Ok((krate, ctxt.render_options, ctxt.cache))
 }
 
 /// Due to <https://github.com/rust-lang/rust/pull/73566>,

@@ -1,4 +1,4 @@
-// build-pass
+//@ build-pass
 // issue: #115807
 
 trait Chip: for<'a> TraitWithLifetime<'a> + SomeMarker {

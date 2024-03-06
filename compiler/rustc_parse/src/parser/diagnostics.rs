@@ -21,6 +21,8 @@ use crate::errors::{
 use crate::fluent_generated as fluent;
 use crate::parser;
 use crate::parser::attr::InnerAttrPolicy;
+use ast::token::IdentIsRaw;
+use parser::Recovered;
 use rustc_ast as ast;
 use rustc_ast::ptr::P;
 use rustc_ast::token::{self, Delimiter, Lit, LitKind, Token, TokenKind};
@@ -34,8 +36,8 @@ use rustc_ast::{
 use rustc_ast_pretty::pprust;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::{
-    pluralize, AddToDiagnostic, Applicability, DiagCtxt, Diagnostic, DiagnosticBuilder,
-    ErrorGuaranteed, FatalError, PErr, PResult,
+    pluralize, AddToDiagnostic, Applicability, Diag, DiagCtxt, ErrorGuaranteed, FatalError, PErr,
+    PResult,
 };
 use rustc_session::errors::ExprParenthesesNeeded;
 use rustc_span::source_map::Spanned;
@@ -46,14 +48,14 @@ use std::ops::{Deref, DerefMut};
 use thin_vec::{thin_vec, ThinVec};
 
 /// Creates a placeholder argument.
-pub(super) fn dummy_arg(ident: Ident) -> Param {
+pub(super) fn dummy_arg(ident: Ident, guar: ErrorGuaranteed) -> Param {
     let pat = P(Pat {
         id: ast::DUMMY_NODE_ID,
         kind: PatKind::Ident(BindingAnnotation::NONE, ident, None),
         span: ident.span,
         tokens: None,
     });
-    let ty = Ty { kind: TyKind::Err, span: ident.span, id: ast::DUMMY_NODE_ID, tokens: None };
+    let ty = Ty { kind: TyKind::Err(guar), span: ident.span, id: ast::DUMMY_NODE_ID, tokens: None };
     Param {
         attrs: AttrVec::default(),
         id: ast::DUMMY_NODE_ID,
@@ -208,11 +210,11 @@ struct MultiSugg {
 }
 
 impl MultiSugg {
-    fn emit(self, err: &mut Diagnostic) {
+    fn emit(self, err: &mut Diag<'_>) {
         err.multipart_suggestion(self.msg, self.patches, self.applicability);
     }
 
-    fn emit_verbose(self, err: &mut Diagnostic) {
+    fn emit_verbose(self, err: &mut Diag<'_>) {
         err.multipart_suggestion_verbose(self.msg, self.patches, self.applicability);
     }
 }
@@ -240,7 +242,7 @@ impl<'a> DerefMut for SnapshotParser<'a> {
 
 impl<'a> Parser<'a> {
     pub fn dcx(&self) -> &'a DiagCtxt {
-        &self.sess.dcx
+        &self.psess.dcx
     }
 
     /// Replace `self` with `snapshot.parser`.
@@ -255,7 +257,7 @@ impl<'a> Parser<'a> {
     }
 
     pub(super) fn span_to_snippet(&self, span: Span) -> Result<String, SpanSnippetError> {
-        self.sess.source_map().span_to_snippet(span)
+        self.psess.source_map().span_to_snippet(span)
     }
 
     /// Emits an error with suggestions if an identifier was expected but not found.
@@ -264,7 +266,7 @@ impl<'a> Parser<'a> {
     pub(super) fn expected_ident_found(
         &mut self,
         recover: bool,
-    ) -> PResult<'a, (Ident, /* is_raw */ bool)> {
+    ) -> PResult<'a, (Ident, IdentIsRaw)> {
         if let TokenKind::DocComment(..) = self.prev_token.kind {
             return Err(self.dcx().create_err(DocCommentDoesNotDocumentAnything {
                 span: self.prev_token.span,
@@ -290,11 +292,11 @@ impl<'a> Parser<'a> {
         let bad_token = self.token.clone();
 
         // suggest prepending a keyword in identifier position with `r#`
-        let suggest_raw = if let Some((ident, false)) = self.token.ident()
+        let suggest_raw = if let Some((ident, IdentIsRaw::No)) = self.token.ident()
             && ident.is_raw_guess()
             && self.look_ahead(1, |t| valid_follow.contains(&t.kind))
         {
-            recovered_ident = Some((ident, true));
+            recovered_ident = Some((ident, IdentIsRaw::Yes));
 
             // `Symbol::to_string()` is different from `Symbol::into_diagnostic_arg()`,
             // which uses `Symbol::to_ident_string()` and "helpfully" adds an implicit `r#`
@@ -320,7 +322,7 @@ impl<'a> Parser<'a> {
         let help_cannot_start_number = self.is_lit_bad_ident().map(|(len, valid_portion)| {
             let (invalid, valid) = self.token.span.split_at(len as u32);
 
-            recovered_ident = Some((Ident::new(valid_portion, valid), false));
+            recovered_ident = Some((Ident::new(valid_portion, valid), IdentIsRaw::No));
 
             HelpIdentifierStartsWithNumber { num_span: invalid }
         });
@@ -362,7 +364,7 @@ impl<'a> Parser<'a> {
 
                             if !self.look_ahead(1, |t| *t == token::Lt)
                                 && let Ok(snippet) =
-                                    self.sess.source_map().span_to_snippet(generic.span)
+                                    self.psess.source_map().span_to_snippet(generic.span)
                             {
                                 err.multipart_suggestion_verbose(
                                         format!("place the generic parameter name after the {ident_name} name"),
@@ -399,7 +401,7 @@ impl<'a> Parser<'a> {
         }
     }
 
-    pub(super) fn expected_ident_found_err(&mut self) -> DiagnosticBuilder<'a> {
+    pub(super) fn expected_ident_found_err(&mut self) -> Diag<'a> {
         self.expected_ident_found(false).unwrap_err()
     }
 
@@ -429,7 +431,7 @@ impl<'a> Parser<'a> {
         &mut self,
         edible: &[TokenKind],
         inedible: &[TokenKind],
-    ) -> PResult<'a, bool /* recovered */> {
+    ) -> PResult<'a, Recovered> {
         debug!("expected_one_of_not_found(edible: {:?}, inedible: {:?})", edible, inedible);
         fn tokens_to_string(tokens: &[TokenType]) -> String {
             let mut i = tokens.iter();
@@ -452,7 +454,6 @@ impl<'a> Parser<'a> {
         let mut expected = self
             .expected_tokens
             .iter()
-            .cloned()
             .filter(|token| {
                 // Filter out suggestions that suggest the same token which was found and deemed incorrect.
                 fn is_ident_eq_keyword(found: &TokenKind, expected: &TokenType) -> bool {
@@ -464,7 +465,7 @@ impl<'a> Parser<'a> {
                     false
                 }
 
-                if *token != parser::TokenType::Token(self.token.kind.clone()) {
+                if **token != parser::TokenType::Token(self.token.kind.clone()) {
                     let eq = is_ident_eq_keyword(&self.token.kind, &token);
                     // If the suggestion is a keyword and the found token is an ident,
                     // the content of which are equal to the suggestion's content,
@@ -483,11 +484,12 @@ impl<'a> Parser<'a> {
                 }
                 false
             })
+            .cloned()
             .collect::<Vec<_>>();
         expected.sort_by_cached_key(|x| x.to_string());
         expected.dedup();
 
-        let sm = self.sess.source_map();
+        let sm = self.psess.source_map();
 
         // Special-case "expected `;`" errors.
         if expected.contains(&TokenType::Token(token::Semi)) {
@@ -532,7 +534,7 @@ impl<'a> Parser<'a> {
                     sugg: ExpectedSemiSugg::ChangeToSemi(self.token.span),
                 });
                 self.bump();
-                return Ok(true);
+                return Ok(Recovered::Yes);
             } else if self.look_ahead(0, |t| {
                 t == &token::CloseDelim(Delimiter::Brace)
                     || ((t.can_begin_expr() || t.can_begin_item())
@@ -556,7 +558,7 @@ impl<'a> Parser<'a> {
                     unexpected_token_label: Some(self.token.span),
                     sugg: ExpectedSemiSugg::AddSemi(span),
                 });
-                return Ok(true);
+                return Ok(Recovered::Yes);
             }
         }
 
@@ -653,9 +655,9 @@ impl<'a> Parser<'a> {
         // positive for a `cr#` that wasn't intended to start a c-string literal, but identifying
         // that in the parser requires unbounded lookahead, so we only add a hint to the existing
         // error rather than replacing it entirely.
-        if ((self.prev_token.kind == TokenKind::Ident(sym::c, false)
+        if ((self.prev_token.kind == TokenKind::Ident(sym::c, IdentIsRaw::No)
             && matches!(&self.token.kind, TokenKind::Literal(token::Lit { kind: token::Str, .. })))
-            || (self.prev_token.kind == TokenKind::Ident(sym::cr, false)
+            || (self.prev_token.kind == TokenKind::Ident(sym::cr, IdentIsRaw::No)
                 && matches!(
                     &self.token.kind,
                     TokenKind::Literal(token::Lit { kind: token::Str, .. }) | token::Pound
@@ -711,7 +713,7 @@ impl<'a> Parser<'a> {
         if self.check_too_many_raw_str_terminators(&mut err) {
             if expected.contains(&TokenType::Token(token::Semi)) && self.eat(&token::Semi) {
                 err.emit();
-                return Ok(true);
+                return Ok(Recovered::Yes);
             } else {
                 return Err(err);
             }
@@ -742,7 +744,8 @@ impl<'a> Parser<'a> {
         Err(err)
     }
 
-    pub(super) fn attr_on_non_tail_expr(&self, expr: &Expr) {
+    /// The user has written `#[attr] expr` which is unsupported. (#106020)
+    pub(super) fn attr_on_non_tail_expr(&self, expr: &Expr) -> ErrorGuaranteed {
         // Missing semicolon typo error.
         let span = self.prev_token.span.shrink_to_hi();
         let mut err = self.dcx().create_err(ExpectedSemi {
@@ -785,6 +788,8 @@ impl<'a> Parser<'a> {
                 ],
                 Applicability::MachineApplicable,
             );
+
+            // Special handling for `#[cfg(...)]` chains
             let mut snapshot = self.create_snapshot_for_diagnostic();
             if let [attr] = &expr.attrs[..]
                 && let ast::AttrKind::Normal(attr_kind) = &attr.kind
@@ -795,9 +800,8 @@ impl<'a> Parser<'a> {
                 {
                     Ok(next_attr) => next_attr,
                     Err(inner_err) => {
-                        err.cancel();
                         inner_err.cancel();
-                        return;
+                        return err.emit();
                     }
                 }
                 && let ast::AttrKind::Normal(next_attr_kind) = next_attr.kind
@@ -808,9 +812,8 @@ impl<'a> Parser<'a> {
                 let next_expr = match snapshot.parse_expr() {
                     Ok(next_expr) => next_expr,
                     Err(inner_err) => {
-                        err.cancel();
                         inner_err.cancel();
-                        return;
+                        return err.emit();
                     }
                 };
                 // We have for sure
@@ -819,7 +822,7 @@ impl<'a> Parser<'a> {
                 // #[cfg(..)]
                 // other_expr
                 // So we suggest using `if cfg!(..) { expr } else if cfg!(..) { other_expr }`.
-                let margin = self.sess.source_map().span_to_margin(next_expr.span).unwrap_or(0);
+                let margin = self.psess.source_map().span_to_margin(next_expr.span).unwrap_or(0);
                 let sugg = vec![
                     (attr.span.with_hi(segment.span().hi()), "if cfg!".to_string()),
                     (args_span.shrink_to_hi().with_hi(attr.span.hi()), " {".to_string()),
@@ -843,11 +846,11 @@ impl<'a> Parser<'a> {
                 );
             }
         }
-        err.emit();
+        err.emit()
     }
 
-    fn check_too_many_raw_str_terminators(&mut self, err: &mut Diagnostic) -> bool {
-        let sm = self.sess.source_map();
+    fn check_too_many_raw_str_terminators(&mut self, err: &mut Diag<'_>) -> bool {
+        let sm = self.psess.source_map();
         match (&self.prev_token.kind, &self.token.kind) {
             (
                 TokenKind::Literal(Lit {
@@ -900,7 +903,7 @@ impl<'a> Parser<'a> {
             // fn foo() -> Foo {
             //     field: value,
             // }
-            info!(?maybe_struct_name, ?self.token);
+            debug!(?maybe_struct_name, ?self.token);
             let mut snapshot = self.create_snapshot_for_diagnostic();
             let path = Path {
                 segments: ThinVec::new(),
@@ -919,10 +922,10 @@ impl<'a> Parser<'a> {
                     // fn foo() -> Foo { Path {
                     //     field: value,
                     // } }
-                    err.delay_as_bug();
+                    let guar = err.delay_as_bug();
                     self.restore_snapshot(snapshot);
                     let mut tail = self.mk_block(
-                        thin_vec![self.mk_stmt_err(expr.span)],
+                        thin_vec![self.mk_stmt_err(expr.span, guar)],
                         s,
                         lo.to(self.prev_token.span),
                     );
@@ -932,7 +935,7 @@ impl<'a> Parser<'a> {
                         // expand `before` so that we take care of module path such as:
                         // `foo::Bar { ... } `
                         // we expect to suggest `(foo::Bar { ... })` instead of `foo::(Bar { ... })`
-                        let sm = self.sess.source_map();
+                        let sm = self.psess.source_map();
                         let before = maybe_struct_name.span.shrink_to_lo();
                         if let Ok(extend_before) = sm.span_extend_prev_while(before, |t| {
                             t.is_alphanumeric() || t == ':' || t == '_'
@@ -980,7 +983,7 @@ impl<'a> Parser<'a> {
 
     pub(super) fn recover_closure_body(
         &mut self,
-        mut err: DiagnosticBuilder<'a>,
+        mut err: Diag<'a>,
         before: token::Token,
         prev: token::Token,
         token: token::Token,
@@ -988,7 +991,7 @@ impl<'a> Parser<'a> {
         decl_hi: Span,
     ) -> PResult<'a, P<Expr>> {
         err.span_label(lo.to(decl_hi), "while parsing the body of this closure");
-        match before.kind {
+        let guar = match before.kind {
             token::OpenDelim(Delimiter::Brace)
                 if !matches!(token.kind, token::OpenDelim(Delimiter::Brace)) =>
             {
@@ -1002,8 +1005,9 @@ impl<'a> Parser<'a> {
                     ],
                     Applicability::MaybeIncorrect,
                 );
-                err.emit();
+                let guar = err.emit();
                 self.eat_to_tokens(&[&token::CloseDelim(Delimiter::Brace)]);
+                guar
             }
             token::OpenDelim(Delimiter::Parenthesis)
                 if !matches!(token.kind, token::OpenDelim(Delimiter::Brace)) =>
@@ -1020,7 +1024,7 @@ impl<'a> Parser<'a> {
                     ],
                     Applicability::MaybeIncorrect,
                 );
-                err.emit();
+                err.emit()
             }
             _ if !matches!(token.kind, token::OpenDelim(Delimiter::Brace)) => {
                 // We don't have a heuristic to correctly identify where the block
@@ -1033,8 +1037,8 @@ impl<'a> Parser<'a> {
                 return Err(err);
             }
             _ => return Err(err),
-        }
-        Ok(self.mk_expr_err(lo.to(self.token.span)))
+        };
+        Ok(self.mk_expr_err(lo.to(self.token.span), guar))
     }
 
     /// Eats and discards tokens until one of `kets` is encountered. Respects token trees,
@@ -1210,9 +1214,9 @@ impl<'a> Parser<'a> {
     /// encounter a parse error when encountering the first `,`.
     pub(super) fn check_mistyped_turbofish_with_multiple_type_params(
         &mut self,
-        mut e: DiagnosticBuilder<'a>,
+        mut e: Diag<'a>,
         expr: &mut P<Expr>,
-    ) -> PResult<'a, ()> {
+    ) -> PResult<'a, ErrorGuaranteed> {
         if let ExprKind::Binary(binop, _, _) = &expr.kind
             && let ast::BinOpKind::Lt = binop.node
             && self.eat(&token::Comma)
@@ -1223,7 +1227,7 @@ impl<'a> Parser<'a> {
                 |p| p.parse_generic_arg(None),
             );
             match x {
-                Ok((_, _, false)) => {
+                Ok((_, _, Recovered::No)) => {
                     if self.eat(&token::Gt) {
                         // We made sense of it. Improve the error message.
                         e.span_suggestion_verbose(
@@ -1237,9 +1241,9 @@ impl<'a> Parser<'a> {
                                 // The subsequent expression is valid. Mark
                                 // `expr` as erroneous and emit `e` now, but
                                 // return `Ok` so parsing can continue.
-                                e.emit();
-                                *expr = self.mk_expr_err(expr.span.to(self.prev_token.span));
-                                return Ok(());
+                                let guar = e.emit();
+                                *expr = self.mk_expr_err(expr.span.to(self.prev_token.span), guar);
+                                return Ok(guar);
                             }
                             Err(err) => {
                                 err.cancel();
@@ -1247,7 +1251,7 @@ impl<'a> Parser<'a> {
                         }
                     }
                 }
-                Ok((_, _, true)) => {}
+                Ok((_, _, Recovered::Yes)) => {}
                 Err(err) => {
                     err.cancel();
                 }
@@ -1258,7 +1262,7 @@ impl<'a> Parser<'a> {
 
     /// Suggest add the missing `let` before the identifier in stmt
     /// `a: Ty = 1` -> `let a: Ty = 1`
-    pub(super) fn suggest_add_missing_let_for_stmt(&mut self, err: &mut DiagnosticBuilder<'a>) {
+    pub(super) fn suggest_add_missing_let_for_stmt(&mut self, err: &mut Diag<'a>) {
         if self.token == token::Colon {
             let prev_span = self.prev_token.span.shrink_to_lo();
             let snapshot = self.create_snapshot_for_diagnostic();
@@ -1286,7 +1290,7 @@ impl<'a> Parser<'a> {
         err: &mut ComparisonOperatorsCannotBeChained,
         inner_op: &Expr,
         outer_op: &Spanned<AssocOp>,
-    ) -> bool /* advanced the cursor */ {
+    ) -> Recovered {
         if let ExprKind::Binary(op, l1, r1) = &inner_op.kind {
             if let ExprKind::Field(_, ident) = l1.kind
                 && ident.as_str().parse::<i32>().is_err()
@@ -1294,7 +1298,7 @@ impl<'a> Parser<'a> {
             {
                 // The parser has encountered `foo.bar<baz`, the likelihood of the turbofish
                 // suggestion being the only one to apply is high.
-                return false;
+                return Recovered::No;
             }
             return match (op.node, &outer_op.node) {
                 // `x == y == z`
@@ -1313,7 +1317,7 @@ impl<'a> Parser<'a> {
                         span: inner_op.span.shrink_to_hi(),
                         middle_term: expr_to_str(r1),
                     });
-                    false // Keep the current parse behavior, where the AST is `(x < y) < z`.
+                    Recovered::No // Keep the current parse behavior, where the AST is `(x < y) < z`.
                 }
                 // `x == y < z`
                 (BinOpKind::Eq, AssocOp::Less | AssocOp::LessEqual | AssocOp::Greater | AssocOp::GreaterEqual) => {
@@ -1327,12 +1331,12 @@ impl<'a> Parser<'a> {
                                 left: r1.span.shrink_to_lo(),
                                 right: r2.span.shrink_to_hi(),
                             });
-                            true
+                            Recovered::Yes
                         }
                         Err(expr_err) => {
                             expr_err.cancel();
                             self.restore_snapshot(snapshot);
-                            false
+                            Recovered::Yes
                         }
                     }
                 }
@@ -1347,19 +1351,19 @@ impl<'a> Parser<'a> {
                                 left: l1.span.shrink_to_lo(),
                                 right: r1.span.shrink_to_hi(),
                             });
-                            true
+                            Recovered::Yes
                         }
                         Err(expr_err) => {
                             expr_err.cancel();
                             self.restore_snapshot(snapshot);
-                            false
+                            Recovered::No
                         }
                     }
                 }
-                _ => false,
+                _ => Recovered::No,
             };
         }
-        false
+        Recovered::No
     }
 
     /// Produces an error if comparison operators are chained (RFC #558).
@@ -1391,7 +1395,8 @@ impl<'a> Parser<'a> {
             outer_op.node,
         );
 
-        let mk_err_expr = |this: &Self, span| Ok(Some(this.mk_expr(span, ExprKind::Err)));
+        let mk_err_expr =
+            |this: &Self, span, guar| Ok(Some(this.mk_expr(span, ExprKind::Err(guar))));
 
         match &inner_op.kind {
             ExprKind::Binary(op, l1, r1) if op.node.is_comparison() => {
@@ -1441,11 +1446,11 @@ impl<'a> Parser<'a> {
                         match self.parse_expr() {
                             Ok(_) => {
                                 // 99% certain that the suggestion is correct, continue parsing.
-                                self.dcx().emit_err(err);
+                                let guar = self.dcx().emit_err(err);
                                 // FIXME: actually check that the two expressions in the binop are
                                 // paths and resynthesize new fn call expression instead of using
                                 // `ExprKind::Err` placeholder.
-                                mk_err_expr(self, inner_op.span.to(self.prev_token.span))
+                                mk_err_expr(self, inner_op.span.to(self.prev_token.span), guar)
                             }
                             Err(expr_err) => {
                                 expr_err.cancel();
@@ -1469,11 +1474,11 @@ impl<'a> Parser<'a> {
                         match self.consume_fn_args() {
                             Err(()) => Err(self.dcx().create_err(err)),
                             Ok(()) => {
-                                self.dcx().emit_err(err);
+                                let guar = self.dcx().emit_err(err);
                                 // FIXME: actually check that the two expressions in the binop are
                                 // paths and resynthesize new fn call expression instead of using
                                 // `ExprKind::Err` placeholder.
-                                mk_err_expr(self, inner_op.span.to(self.prev_token.span))
+                                mk_err_expr(self, inner_op.span.to(self.prev_token.span), guar)
                             }
                         }
                     } else {
@@ -1487,10 +1492,11 @@ impl<'a> Parser<'a> {
 
                         // If it looks like a genuine attempt to chain operators (as opposed to a
                         // misformatted turbofish, for instance), suggest a correct form.
-                        if self.attempt_chained_comparison_suggestion(&mut err, inner_op, outer_op)
-                        {
-                            self.dcx().emit_err(err);
-                            mk_err_expr(self, inner_op.span.to(self.prev_token.span))
+                        let recovered = self
+                            .attempt_chained_comparison_suggestion(&mut err, inner_op, outer_op);
+                        if matches!(recovered, Recovered::Yes) {
+                            let guar = self.dcx().emit_err(err);
+                            mk_err_expr(self, inner_op.span.to(self.prev_token.span), guar)
                         } else {
                             // These cases cause too many knock-down errors, bail out (#61329).
                             Err(self.dcx().create_err(err))
@@ -1499,9 +1505,9 @@ impl<'a> Parser<'a> {
                 }
                 let recover =
                     self.attempt_chained_comparison_suggestion(&mut err, inner_op, outer_op);
-                self.dcx().emit_err(err);
-                if recover {
-                    return mk_err_expr(self, inner_op.span.to(self.prev_token.span));
+                let guar = self.dcx().emit_err(err);
+                if matches!(recover, Recovered::Yes) {
+                    return mk_err_expr(self, inner_op.span.to(self.prev_token.span), guar);
                 }
             }
             _ => {}
@@ -1540,14 +1546,14 @@ impl<'a> Parser<'a> {
     pub(super) fn maybe_recover_from_question_mark(&mut self, ty: P<Ty>) -> P<Ty> {
         if self.token == token::Question {
             self.bump();
-            self.dcx().emit_err(QuestionMarkInType {
+            let guar = self.dcx().emit_err(QuestionMarkInType {
                 span: self.prev_token.span,
                 sugg: QuestionMarkInTypeSugg {
                     left: ty.span.shrink_to_lo(),
                     right: self.prev_token.span,
                 },
             });
-            self.mk_ty(ty.span.to(self.prev_token.span), TyKind::Err)
+            self.mk_ty(ty.span.to(self.prev_token.span), TyKind::Err(guar))
         } else {
             ty
         }
@@ -1677,7 +1683,7 @@ impl<'a> Parser<'a> {
         );
         err.span_label(op_span, format!("not a valid {} operator", kind.fixity));
 
-        let help_base_case = |mut err: DiagnosticBuilder<'_, _>, base| {
+        let help_base_case = |mut err: Diag<'_, _>, base| {
             err.help(format!("use `{}= 1` instead", kind.op.chr()));
             err.emit();
             Ok(base)
@@ -1838,12 +1844,9 @@ impl<'a> Parser<'a> {
         }
     }
 
-    /// Creates a `DiagnosticBuilder` for an unexpected token `t` and tries to recover if it is a
+    /// Creates a `Diag` for an unexpected token `t` and tries to recover if it is a
     /// closing delimiter.
-    pub(super) fn unexpected_try_recover(
-        &mut self,
-        t: &TokenKind,
-    ) -> PResult<'a, bool /* recovered */> {
+    pub(super) fn unexpected_try_recover(&mut self, t: &TokenKind) -> PResult<'a, Recovered> {
         let token_str = pprust::token_kind_to_string(t);
         let this_token_str = super::token_descr(&self.token);
         let (prev_sp, sp) = match (&self.token.kind, self.subparser_name) {
@@ -1869,7 +1872,7 @@ impl<'a> Parser<'a> {
         );
         let mut err = self.dcx().struct_span_err(sp, msg);
         let label_exp = format!("expected `{token_str}`");
-        let sm = self.sess.source_map();
+        let sm = self.psess.source_map();
         if !sm.is_multiline(prev_sp.until(sp)) {
             // When the spans are in the same line, it means that the only content
             // between them is whitespace, point only at the found token.
@@ -1890,7 +1893,7 @@ impl<'a> Parser<'a> {
 
     pub(super) fn recover_colon_as_semi(&mut self) -> bool {
         let line_idx = |span: Span| {
-            self.sess
+            self.psess
                 .source_map()
                 .span_to_lines(span)
                 .ok()
@@ -1903,7 +1906,7 @@ impl<'a> Parser<'a> {
         {
             self.dcx().emit_err(ColonAsSemi {
                 span: self.token.span,
-                type_ascription: self.sess.unstable_features.is_nightly_build().then_some(()),
+                type_ascription: self.psess.unstable_features.is_nightly_build().then_some(()),
             });
             self.bump();
             return true;
@@ -1925,8 +1928,8 @@ impl<'a> Parser<'a> {
         } else {
             self.recover_await_prefix(await_sp)?
         };
-        let sp = self.error_on_incorrect_await(lo, hi, &expr, is_question);
-        let expr = self.mk_expr(lo.to(sp), ExprKind::Err);
+        let (sp, guar) = self.error_on_incorrect_await(lo, hi, &expr, is_question);
+        let expr = self.mk_expr_err(lo.to(sp), guar);
         self.maybe_recover_from_bad_qpath(expr)
     }
 
@@ -1955,21 +1958,27 @@ impl<'a> Parser<'a> {
         Ok((expr.span, expr, is_question))
     }
 
-    fn error_on_incorrect_await(&self, lo: Span, hi: Span, expr: &Expr, is_question: bool) -> Span {
+    fn error_on_incorrect_await(
+        &self,
+        lo: Span,
+        hi: Span,
+        expr: &Expr,
+        is_question: bool,
+    ) -> (Span, ErrorGuaranteed) {
         let span = lo.to(hi);
         let applicability = match expr.kind {
             ExprKind::Try(_) => Applicability::MaybeIncorrect, // `await <expr>?`
             _ => Applicability::MachineApplicable,
         };
 
-        self.dcx().emit_err(IncorrectAwait {
+        let guar = self.dcx().emit_err(IncorrectAwait {
             span,
             sugg_span: (span, applicability),
             expr: self.span_to_snippet(expr.span).unwrap_or_else(|_| pprust::expr_to_string(expr)),
             question_mark: if is_question { "?" } else { "" },
         });
 
-        span
+        (span, guar)
     }
 
     /// If encountering `future.await()`, consumes and emits an error.
@@ -2013,8 +2022,8 @@ impl<'a> Parser<'a> {
                 );
             }
             err.span_suggestion(lo.shrink_to_lo(), format!("{prefix}you can still access the deprecated `try!()` macro using the \"raw identifier\" syntax"), "r#", Applicability::MachineApplicable);
-            err.emit();
-            Ok(self.mk_expr_err(lo.to(hi)))
+            let guar = err.emit();
+            Ok(self.mk_expr_err(lo.to(hi), guar))
         } else {
             Err(self.expected_expression_found()) // The user isn't trying to invoke the try! macro
         }
@@ -2059,10 +2068,10 @@ impl<'a> Parser<'a> {
         lo: Span,
         err: PErr<'a>,
     ) -> P<Expr> {
-        err.emit();
+        let guar = err.emit();
         // Recover from parse error, callers expect the closing delim to be consumed.
         self.consume_block(delim, ConsumeClosingDelim::Yes);
-        self.mk_expr(lo.to(self.prev_token.span), ExprKind::Err)
+        self.mk_expr(lo.to(self.prev_token.span), ExprKind::Err(guar))
     }
 
     /// Eats tokens until we can be relatively sure we reached the end of the
@@ -2179,7 +2188,7 @@ impl<'a> Parser<'a> {
 
     pub(super) fn parameter_without_type(
         &mut self,
-        err: &mut Diagnostic,
+        err: &mut Diag<'_>,
         pat: P<ast::Pat>,
         require_name: bool,
         first_param: bool,
@@ -2304,8 +2313,8 @@ impl<'a> Parser<'a> {
 
     pub(super) fn recover_bad_self_param(&mut self, mut param: Param) -> PResult<'a, Param> {
         let span = param.pat.span;
-        param.ty.kind = TyKind::Err;
-        self.dcx().emit_err(SelfParamNotFirst { span });
+        let guar = self.dcx().emit_err(SelfParamNotFirst { span });
+        param.ty.kind = TyKind::Err(guar);
         Ok(param)
     }
 
@@ -2336,7 +2345,7 @@ impl<'a> Parser<'a> {
         }
     }
 
-    pub(super) fn expected_expression_found(&self) -> DiagnosticBuilder<'a> {
+    pub(super) fn expected_expression_found(&self) -> Diag<'a> {
         let (span, msg) = match (&self.token.kind, self.subparser_name) {
             (&token::Eof, Some(origin)) => {
                 let sp = self.prev_token.span.shrink_to_hi();
@@ -2348,9 +2357,9 @@ impl<'a> Parser<'a> {
             ),
         };
         let mut err = self.dcx().struct_span_err(span, msg);
-        let sp = self.sess.source_map().start_point(self.token.span);
-        if let Some(sp) = self.sess.ambiguous_block_expr_parse.borrow().get(&sp) {
-            err.subdiagnostic(ExprParenthesesNeeded::surrounding(*sp));
+        let sp = self.psess.source_map().start_point(self.token.span);
+        if let Some(sp) = self.psess.ambiguous_block_expr_parse.borrow().get(&sp) {
+            err.subdiagnostic(self.dcx(), ExprParenthesesNeeded::surrounding(*sp));
         }
         err.span_label(span, "expected expression");
 
@@ -2437,7 +2446,7 @@ impl<'a> Parser<'a> {
     pub(super) fn deduplicate_recovered_params_names(&self, fn_inputs: &mut ThinVec<Param>) {
         let mut seen_inputs = FxHashSet::default();
         for input in fn_inputs.iter_mut() {
-            let opt_ident = if let (PatKind::Ident(_, ident, _), TyKind::Err) =
+            let opt_ident = if let (PatKind::Ident(_, ident, _), TyKind::Err(_)) =
                 (&input.pat.kind, &input.ty.kind)
             {
                 Some(*ident)
@@ -2530,7 +2539,7 @@ impl<'a> Parser<'a> {
         };
 
         let ident = param.ident.to_string();
-        let sugg = match (ty_generics, self.sess.source_map().span_to_snippet(param.span())) {
+        let sugg = match (ty_generics, self.psess.source_map().span_to_snippet(param.span())) {
             (Some(Generics { params, span: impl_generics, .. }), Ok(snippet)) => {
                 Some(match &params[..] {
                     [] => UnexpectedConstParamDeclarationSugg::AddParam {
@@ -2549,9 +2558,10 @@ impl<'a> Parser<'a> {
             }
             _ => None,
         };
-        self.dcx().emit_err(UnexpectedConstParamDeclaration { span: param.span(), sugg });
+        let guar =
+            self.dcx().emit_err(UnexpectedConstParamDeclaration { span: param.span(), sugg });
 
-        let value = self.mk_expr_err(param.span());
+        let value = self.mk_expr_err(param.span(), guar);
         Some(GenericArg::Const(AnonConst { id: ast::DUMMY_NODE_ID, value }))
     }
 
@@ -2585,11 +2595,7 @@ impl<'a> Parser<'a> {
     /// When encountering code like `foo::< bar + 3 >` or `foo::< bar - baz >` we suggest
     /// `foo::<{ bar + 3 }>` and `foo::<{ bar - baz }>`, respectively. We only provide a suggestion
     /// if we think that the resulting expression would be well formed.
-    pub fn recover_const_arg(
-        &mut self,
-        start: Span,
-        mut err: DiagnosticBuilder<'a>,
-    ) -> PResult<'a, GenericArg> {
+    pub fn recover_const_arg(&mut self, start: Span, mut err: Diag<'a>) -> PResult<'a, GenericArg> {
         let is_op_or_dot = AssocOp::from_token(&self.token)
             .and_then(|op| {
                 if let AssocOp::Greater
@@ -2630,8 +2636,8 @@ impl<'a> Parser<'a> {
                         "=",
                         Applicability::MaybeIncorrect,
                     );
-                    let value = self.mk_expr_err(start.to(expr.span));
-                    err.emit();
+                    let guar = err.emit();
+                    let value = self.mk_expr_err(start.to(expr.span), guar);
                     return Ok(GenericArg::Const(AnonConst { id: ast::DUMMY_NODE_ID, value }));
                 } else if token::Colon == snapshot.token.kind
                     && expr.span.lo() == snapshot.token.span.hi()
@@ -2644,8 +2650,10 @@ impl<'a> Parser<'a> {
                         "::",
                         Applicability::MaybeIncorrect,
                     );
-                    err.emit();
-                    return Ok(GenericArg::Type(self.mk_ty(start.to(expr.span), TyKind::Err)));
+                    let guar = err.emit();
+                    return Ok(GenericArg::Type(
+                        self.mk_ty(start.to(expr.span), TyKind::Err(guar)),
+                    ));
                 } else if token::Comma == self.token.kind || self.token.kind.should_end_const_arg()
                 {
                     // Avoid the following output by checking that we consumed a full const arg:
@@ -2688,19 +2696,15 @@ impl<'a> Parser<'a> {
     }
 
     /// Creates a dummy const argument, and reports that the expression must be enclosed in braces
-    pub fn dummy_const_arg_needs_braces(
-        &self,
-        mut err: DiagnosticBuilder<'a>,
-        span: Span,
-    ) -> GenericArg {
+    pub fn dummy_const_arg_needs_braces(&self, mut err: Diag<'a>, span: Span) -> GenericArg {
         err.multipart_suggestion(
             "expressions must be enclosed in braces to be used as const generic \
              arguments",
             vec![(span.shrink_to_lo(), "{ ".to_string()), (span.shrink_to_hi(), " }".to_string())],
             Applicability::MaybeIncorrect,
         );
-        let value = self.mk_expr_err(span);
-        err.emit();
+        let guar = err.emit();
+        let value = self.mk_expr_err(span, guar);
         GenericArg::Const(AnonConst { id: ast::DUMMY_NODE_ID, value })
     }
 

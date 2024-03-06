@@ -1,6 +1,6 @@
 // Test bindings-after-at with or-patterns and slice-patterns
 
-// run-pass
+//@ run-pass
 
 
 #[derive(Debug, PartialEq)]

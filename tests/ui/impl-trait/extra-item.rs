@@ -1,5 +1,5 @@
-// aux-build:extra-item.rs
-// compile-flags:--extern extra_item
+//@ aux-build:extra-item.rs
+//@ compile-flags:--extern extra_item
 
 struct S;
 

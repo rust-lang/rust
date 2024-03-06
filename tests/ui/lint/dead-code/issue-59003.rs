@@ -1,4 +1,4 @@
-// check-pass
+//@ check-pass
 
 // Make sure we don't have any false positives about the "struct is never constructed" lint.
 

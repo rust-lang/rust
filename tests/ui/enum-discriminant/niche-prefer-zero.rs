@@ -1,6 +1,6 @@
 // Check that niche selection prefers zero.
 // See https://github.com/rust-lang/rust/pull/87794
-// run-pass
+//@ run-pass
 #[repr(u8)]
 pub enum Size {
     One = 1,

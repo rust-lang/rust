@@ -1,4 +1,4 @@
-// edition:2018
+//@ edition:2018
 //
 // Regression test for issue #73741
 // Ensures that we don't emit spurious errors when

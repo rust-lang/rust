@@ -1,6 +1,6 @@
 // `macro_rules` scopes are respected during doc link resolution.
 
-// compile-flags: --document-private-items
+//@ compile-flags: --document-private-items
 
 #![deny(rustdoc::broken_intra_doc_links)]
 

@@ -19,7 +19,7 @@ fn main() {
         });
         s.spawn(|| {
             a8[0].store(1, Ordering::SeqCst);
-            //~^ ERROR: Race condition detected between (1) 2-byte atomic store on thread `<unnamed>` and (2) 1-byte atomic store on thread `<unnamed>`
+            //~^ ERROR: Race condition detected between (1) 2-byte atomic store on thread `unnamed-1` and (2) 1-byte atomic store on thread `unnamed-2`
         });
     });
 }

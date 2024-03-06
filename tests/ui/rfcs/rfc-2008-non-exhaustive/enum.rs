@@ -1,4 +1,4 @@
-// aux-build:enums.rs
+//@ aux-build:enums.rs
 extern crate enums;
 
 use enums::{EmptyNonExhaustiveEnum, NonExhaustiveEnum};

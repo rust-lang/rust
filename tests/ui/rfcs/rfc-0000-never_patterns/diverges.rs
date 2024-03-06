@@ -1,5 +1,5 @@
-// check-pass
-// edition: 2018
+//@ check-pass
+//@ edition: 2018
 #![feature(never_patterns)]
 #![allow(incomplete_features)]
 #![deny(unreachable_patterns)]

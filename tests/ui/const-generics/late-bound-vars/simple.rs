@@ -1,4 +1,4 @@
-// known-bug: unknown
+//@ known-bug: unknown
 
 // If we want this to compile, then we'd need to do something like RPITs do,
 // where nested associated constants have early-bound versions of their captured

@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 // Test that subtyping the body of a static doesn't cause an ICE.
 
 fn foo(_ : &()) {}

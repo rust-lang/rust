@@ -1,7 +1,7 @@
 // Regression test for issue #57807 - ensure
 // that we properly unify associated types within
 // a type alias impl trait
-// check-pass
+//@ check-pass
 #![feature(impl_trait_in_assoc_type)]
 
 trait Bar {

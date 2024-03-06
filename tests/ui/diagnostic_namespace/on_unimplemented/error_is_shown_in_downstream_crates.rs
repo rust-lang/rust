@@ -1,4 +1,4 @@
-// aux-build:other.rs
+//@ aux-build:other.rs
 
 extern crate other;
 

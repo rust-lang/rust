@@ -1,6 +1,6 @@
 // Regression test for #53789.
 //
-// check-pass
+//@ check-pass
 
 use std::cmp::Ord;
 use std::collections::BTreeMap;

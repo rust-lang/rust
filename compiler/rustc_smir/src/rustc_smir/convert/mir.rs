@@ -257,6 +257,7 @@ impl<'tcx> Stable<'tcx> for mir::NullOp<'tcx> {
             OffsetOf(indices) => stable_mir::mir::NullOp::OffsetOf(
                 indices.iter().map(|idx| idx.stable(tables)).collect(),
             ),
+            DebugAssertions => stable_mir::mir::NullOp::DebugAssertions,
         }
     }
 }
@@ -537,6 +538,9 @@ impl<'tcx> Stable<'tcx> for mir::AggregateKind<'tcx> {
                     generic_arg.stable(tables),
                     tables.tcx.coroutine_movability(*def_id).stable(tables),
                 )
+            }
+            mir::AggregateKind::CoroutineClosure(..) => {
+                todo!("FIXME(async_closures): Lower these to SMIR")
             }
         }
     }

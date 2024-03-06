@@ -1,5 +1,5 @@
-// edition: 2021
-// revisions: rpitit assoc_ty
+//@ edition: 2021
+//@ revisions: rpitit assoc_ty
 
 #![deny(unused_must_use)]
 

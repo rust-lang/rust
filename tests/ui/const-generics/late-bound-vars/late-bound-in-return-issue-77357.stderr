@@ -13,5 +13,37 @@ LL | fn bug<'a, T>() -> &'static dyn MyTrait<[(); { |x: &'a u32| { x }; 4 }]> {
    = help: consider moving this anonymous constant into a `const` function
    = note: this operation may be supported in the future
 
-error: aborting due to 2 previous errors
+error[E0391]: cycle detected when evaluating type-level constant
+  --> $DIR/late-bound-in-return-issue-77357.rs:9:46
+   |
+LL | fn bug<'a, T>() -> &'static dyn MyTrait<[(); { |x: &'a u32| { x }; 4 }]> {
+   |                                              ^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: ...which requires const-evaluating + checking `bug::{constant#0}`...
+  --> $DIR/late-bound-in-return-issue-77357.rs:9:46
+   |
+LL | fn bug<'a, T>() -> &'static dyn MyTrait<[(); { |x: &'a u32| { x }; 4 }]> {
+   |                                              ^^^^^^^^^^^^^^^^^^^^^^^^^
+note: ...which requires caching mir of `bug::{constant#0}` for CTFE...
+  --> $DIR/late-bound-in-return-issue-77357.rs:9:46
+   |
+LL | fn bug<'a, T>() -> &'static dyn MyTrait<[(); { |x: &'a u32| { x }; 4 }]> {
+   |                                              ^^^^^^^^^^^^^^^^^^^^^^^^^
+note: ...which requires elaborating drops for `bug::{constant#0}`...
+  --> $DIR/late-bound-in-return-issue-77357.rs:9:46
+   |
+LL | fn bug<'a, T>() -> &'static dyn MyTrait<[(); { |x: &'a u32| { x }; 4 }]> {
+   |                                              ^^^^^^^^^^^^^^^^^^^^^^^^^
+note: ...which requires borrow-checking `bug::{constant#0}`...
+  --> $DIR/late-bound-in-return-issue-77357.rs:9:46
+   |
+LL | fn bug<'a, T>() -> &'static dyn MyTrait<[(); { |x: &'a u32| { x }; 4 }]> {
+   |                                              ^^^^^^^^^^^^^^^^^^^^^^^^^
+   = note: ...which requires normalizing `Binder { value: ConstEvaluatable(UnevaluatedConst { def: DefId(0:8 ~ late_bound_in_return_issue_77357[9394]::bug::{constant#0}), args: [T/#0] }: usize), bound_vars: [] }`...
+   = note: ...which again requires evaluating type-level constant, completing the cycle
+   = note: cycle used when normalizing `&dyn MyTrait<[(); { |x: &'a u32| { x }; 4 }]>`
+   = note: see https://rustc-dev-guide.rust-lang.org/overview.html#queries and https://rustc-dev-guide.rust-lang.org/query.html for more information
 
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0391`.

@@ -1,4 +1,4 @@
-// check-pass
+//@ check-pass
 
 // Tests for nested self-reference which caused a stack overflow.
 

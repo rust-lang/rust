@@ -2,10 +2,9 @@ use super::ObjectSafetyViolation;
 
 use crate::infer::InferCtxt;
 use rustc_data_structures::fx::FxIndexSet;
-use rustc_errors::{codes::*, struct_span_code_err, Applicability, DiagnosticBuilder, MultiSpan};
+use rustc_errors::{codes::*, struct_span_code_err, Applicability, Diag, MultiSpan};
 use rustc_hir as hir;
 use rustc_hir::def_id::{DefId, LocalDefId};
-use rustc_hir::intravisit::Map;
 use rustc_middle::ty::print::with_no_trimmed_paths;
 use rustc_middle::ty::{self, TyCtxt};
 use rustc_span::Span;
@@ -19,7 +18,7 @@ impl<'tcx> InferCtxt<'tcx> {
         impl_item_def_id: LocalDefId,
         trait_item_def_id: DefId,
         requirement: &dyn fmt::Display,
-    ) -> DiagnosticBuilder<'tcx> {
+    ) -> Diag<'tcx> {
         let mut err = struct_span_code_err!(
             self.tcx.dcx(),
             error_span,
@@ -46,7 +45,7 @@ pub fn report_object_safety_error<'tcx>(
     hir_id: Option<hir::HirId>,
     trait_def_id: DefId,
     violations: &[ObjectSafetyViolation],
-) -> DiagnosticBuilder<'tcx> {
+) -> Diag<'tcx> {
     let trait_str = tcx.def_path_str(trait_def_id);
     let trait_span = tcx.hir().get_if_local(trait_def_id).and_then(|node| match node {
         hir::Node::Item(item) => Some(item.ident.span),
@@ -62,14 +61,14 @@ pub fn report_object_safety_error<'tcx>(
     err.span_label(span, format!("`{trait_str}` cannot be made into an object"));
 
     if let Some(hir_id) = hir_id
-        && let Some(hir::Node::Ty(ty)) = tcx.hir().find(hir_id)
+        && let hir::Node::Ty(ty) = tcx.hir_node(hir_id)
         && let hir::TyKind::TraitObject([trait_ref, ..], ..) = ty.kind
     {
         let mut hir_id = hir_id;
-        while let hir::Node::Ty(ty) = tcx.hir().get_parent(hir_id) {
+        while let hir::Node::Ty(ty) = tcx.parent_hir_node(hir_id) {
             hir_id = ty.hir_id;
         }
-        if tcx.hir().get_parent(hir_id).fn_sig().is_some() {
+        if tcx.parent_hir_node(hir_id).fn_sig().is_some() {
             // Do not suggest `impl Trait` when dealing with things like super-traits.
             err.span_suggestion_verbose(
                 ty.span.until(trait_ref.span),
@@ -178,12 +177,13 @@ pub fn report_object_safety_error<'tcx>(
             )));
         }
         impls => {
-            let types = impls
+            let mut types = impls
                 .iter()
                 .map(|t| {
                     with_no_trimmed_paths!(format!("  {}", tcx.type_of(*t).instantiate_identity(),))
                 })
                 .collect::<Vec<_>>();
+            types.sort();
             err.help(format!(
                 "the following types implement the trait, consider defining an enum where each \
                  variant holds one of these types, implementing `{}` for this new enum and using \

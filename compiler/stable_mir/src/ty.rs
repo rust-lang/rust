@@ -4,9 +4,9 @@ use super::{
     with, DefId, Error, Symbol,
 };
 use crate::abi::Layout;
-use crate::crate_def::CrateDef;
 use crate::mir::alloc::{read_target_int, read_target_uint, AllocId};
 use crate::target::MachineInfo;
+use crate::{crate_def::CrateDef, mir::mono::StaticDef};
 use crate::{Filename, Opaque};
 use std::fmt::{self, Debug, Display, Formatter};
 use std::ops::Range;
@@ -324,7 +324,9 @@ impl TyKind {
 
     #[inline]
     pub fn is_cstr(&self) -> bool {
-        let TyKind::RigidTy(RigidTy::Adt(def, _)) = self else { return false };
+        let TyKind::RigidTy(RigidTy::Adt(def, _)) = self else {
+            return false;
+        };
         with(|cx| cx.adt_is_cstr(*def))
     }
 
@@ -540,8 +542,42 @@ pub enum Movability {
 }
 
 crate_def! {
+    pub ForeignModuleDef;
+}
+
+impl ForeignModuleDef {
+    pub fn module(&self) -> ForeignModule {
+        with(|cx| cx.foreign_module(*self))
+    }
+}
+
+pub struct ForeignModule {
+    pub def_id: ForeignModuleDef,
+    pub abi: Abi,
+}
+
+impl ForeignModule {
+    pub fn items(&self) -> Vec<ForeignDef> {
+        with(|cx| cx.foreign_items(self.def_id))
+    }
+}
+
+crate_def! {
     /// Hold information about a ForeignItem in a crate.
     pub ForeignDef;
+}
+
+impl ForeignDef {
+    pub fn kind(&self) -> ForeignItemKind {
+        with(|cx| cx.foreign_item_kind(*self))
+    }
+}
+
+#[derive(Clone, Copy, PartialEq, Eq, Debug, Hash)]
+pub enum ForeignItemKind {
+    Fn(FnDef),
+    Static(StaticDef),
+    Type(Ty),
 }
 
 crate_def! {
@@ -864,7 +900,6 @@ pub enum Abi {
     PtxKernel,
     Msp430Interrupt,
     X86Interrupt,
-    AmdGpuKernel,
     EfiApi,
     AvrInterrupt,
     AvrNonBlockingInterrupt,
@@ -873,7 +908,6 @@ pub enum Abi {
     System { unwind: bool },
     RustIntrinsic,
     RustCall,
-    PlatformIntrinsic,
     Unadjusted,
     RustCold,
     RiscvInterruptM,
@@ -1000,10 +1034,13 @@ pub struct BoundTy {
 }
 
 pub type Bytes = Vec<Option<u8>>;
+
+/// Size in bytes.
 pub type Size = usize;
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug, Hash)]
 pub struct Prov(pub AllocId);
+
 pub type Align = u64;
 pub type Promoted = u32;
 pub type InitMaskMaterialized = Vec<u64>;

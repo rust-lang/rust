@@ -1,5 +1,5 @@
-// compile-flags: -Znext-solver
-// check-pass
+//@ compile-flags: -Znext-solver
+//@ check-pass
 #![feature(rustc_attrs)]
 
 // A test showcasing that using a provisional cache can differ

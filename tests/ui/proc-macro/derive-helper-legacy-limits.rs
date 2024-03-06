@@ -1,8 +1,8 @@
 // Support for legacy derive helpers is limited and heuristic-based
 // (that's exactly the reason why they are deprecated).
 
-// edition:2018
-// aux-build:test-macros.rs
+//@ edition:2018
+//@ aux-build:test-macros.rs
 
 #[macro_use]
 extern crate test_macros;

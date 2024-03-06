@@ -1,6 +1,6 @@
 // Test that specializing on a `rustc_specialization_trait` trait is allowed.
 
-// check-pass
+//@ check-pass
 
 #![feature(min_specialization)]
 #![feature(rustc_attrs)]

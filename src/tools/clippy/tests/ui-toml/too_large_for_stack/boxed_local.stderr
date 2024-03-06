@@ -1,5 +1,5 @@
 error: local variable doesn't need to be boxed here
-  --> $DIR/boxed_local.rs:1:6
+  --> tests/ui-toml/too_large_for_stack/boxed_local.rs:1:6
    |
 LL | fn f(x: Box<[u8; 500]>) {}
    |      ^

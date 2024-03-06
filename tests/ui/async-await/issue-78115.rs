@@ -1,7 +1,7 @@
 // Regression test for issue #78115: "ICE: variable should be placed in scope earlier"
 
-// check-pass
-// edition:2018
+//@ check-pass
+//@ edition:2018
 
 #[allow(dead_code)]
 struct Foo {

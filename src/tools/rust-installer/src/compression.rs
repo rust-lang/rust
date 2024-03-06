@@ -1,11 +1,12 @@
 use anyhow::{Context, Error};
 use flate2::{read::GzDecoder, write::GzEncoder};
 use rayon::prelude::*;
-use std::{convert::TryFrom, fmt, io::Read, io::Write, path::Path, str::FromStr};
+use std::{fmt, io::Read, io::Write, path::Path, str::FromStr};
 use xz2::{read::XzDecoder, write::XzEncoder};
 
 #[derive(Default, Debug, Copy, Clone)]
 pub enum CompressionProfile {
+    NoOp,
     Fast,
     #[default]
     Balanced,
@@ -20,6 +21,7 @@ impl FromStr for CompressionProfile {
             "fast" => Self::Fast,
             "balanced" => Self::Balanced,
             "best" => Self::Best,
+            "no-op" => Self::NoOp,
             other => anyhow::bail!("invalid compression profile: {other}"),
         })
     }
@@ -31,6 +33,7 @@ impl fmt::Display for CompressionProfile {
             CompressionProfile::Fast => f.write_str("fast"),
             CompressionProfile::Balanced => f.write_str("balanced"),
             CompressionProfile::Best => f.write_str("best"),
+            CompressionProfile::NoOp => f.write_str("no-op"),
         }
     }
 }
@@ -78,10 +81,16 @@ impl CompressionFormat {
                     CompressionProfile::Fast => flate2::Compression::fast(),
                     CompressionProfile::Balanced => flate2::Compression::new(6),
                     CompressionProfile::Best => flate2::Compression::best(),
+                    CompressionProfile::NoOp => panic!(
+                        "compression profile 'no-op' should not call `CompressionFormat::encode`."
+                    ),
                 },
             )),
             CompressionFormat::Xz => {
                 let encoder = match profile {
+                    CompressionProfile::NoOp => panic!(
+                        "compression profile 'no-op' should not call `CompressionFormat::encode`."
+                    ),
                     CompressionProfile::Fast => {
                         xz2::stream::MtStreamBuilder::new().threads(6).preset(1).encoder().unwrap()
                     }

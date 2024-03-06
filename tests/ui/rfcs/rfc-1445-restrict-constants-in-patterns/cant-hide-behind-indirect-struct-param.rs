@@ -5,7 +5,7 @@
 //
 // See discussion on rust-lang/rust#62307 and rust-lang/rust#62339
 #![warn(indirect_structural_match)]
-// run-pass
+//@ run-pass
 
 struct NoDerive(#[allow(dead_code)] i32);
 

@@ -1,9 +1,9 @@
 // Checks that we don't get conflicting arguments in our debug info with a particular async function
 // structure.
 
-// edition:2021
-// compile-flags: -Cdebuginfo=2
-// build-pass
+//@ edition:2021
+//@ compile-flags: -Cdebuginfo=2
+//@ build-pass
 
 #![crate_type = "lib"]
 

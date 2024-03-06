@@ -1,5 +1,5 @@
-// revisions: rpass1 rpass2
-// compile-flags: -Z incremental-ignore-spans -Z query-dep-graph
+//@ revisions: rpass1 rpass2
+//@ compile-flags: -Z incremental-ignore-spans -Z query-dep-graph
 
 // Tests that module hashing depends on the order of the items
 // (since the order is exposed through `Mod.item_ids`).
@@ -12,14 +12,14 @@
 #![feature(rustc_attrs)]
 
 #[cfg(rpass1)]
-#[rustc_clean(cfg="rpass1",except="hir_owner_nodes")]
+#[rustc_clean(cfg="rpass1",except="opt_hir_owner_nodes")]
 mod foo {
     struct First;
     struct Second;
 }
 
 #[cfg(rpass2)]
-#[rustc_clean(cfg="rpass2",except="hir_owner_nodes")]
+#[rustc_clean(cfg="rpass2",except="opt_hir_owner_nodes")]
 mod foo {
     struct Second;
     struct First;

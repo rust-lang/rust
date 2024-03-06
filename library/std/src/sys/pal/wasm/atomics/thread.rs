@@ -1,6 +1,7 @@
 use crate::ffi::CStr;
+use crate::ffi::CString;
 use crate::io;
-use crate::num::NonZeroUsize;
+use crate::num::NonZero;
 use crate::sys::unsupported;
 use crate::time::Duration;
 
@@ -17,6 +18,9 @@ impl Thread {
     pub fn yield_now() {}
 
     pub fn set_name(_name: &CStr) {}
+    pub fn get_name() -> Option<CString> {
+        None
+    }
 
     pub fn sleep(dur: Duration) {
         use crate::arch::wasm32;
@@ -40,7 +44,7 @@ impl Thread {
     pub fn join(self) {}
 }
 
-pub fn available_parallelism() -> io::Result<NonZeroUsize> {
+pub fn available_parallelism() -> io::Result<NonZero<usize>> {
     unsupported()
 }
 

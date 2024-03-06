@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 #![feature(cfg_target_compact)]
 
 #[cfg(target(os = "linux", pointer_width = "64"))]

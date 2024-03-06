@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 #![allow(dead_code)]
 #![allow(unused_variables)]
 // Test that when there is a conditional (but blanket) impl and a
@@ -6,7 +6,7 @@
 //
 // Issue #18453.
 
-// pretty-expanded FIXME #23616
+//@ pretty-expanded FIXME #23616
 
 use std::rc::Rc;
 

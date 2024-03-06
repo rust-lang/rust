@@ -4,7 +4,7 @@
 // This simulates the `rustc_driver` crate, and the main crate simulates rustc's main binary hooking
 // into this driver.
 
-// compile-flags: -Zdylib-lto -C lto=thin
+//@ compile-flags: -Zdylib-lto -C lto=thin
 
 use std::panic;
 

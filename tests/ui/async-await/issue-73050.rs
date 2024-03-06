@@ -1,5 +1,5 @@
-// check-pass
-// edition:2018
+//@ check-pass
+//@ edition:2018
 
 #[allow(unused)]
 async fn foo<'a>() {

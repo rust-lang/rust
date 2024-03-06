@@ -263,13 +263,13 @@ impl<'b, 'a: 'b> FmtVisitor<'a> {
         item_kind: ReorderableItemKind,
         in_group: bool,
     ) -> usize {
-        let mut last = self.parse_sess.lookup_line_range(items[0].span());
+        let mut last = self.psess.lookup_line_range(items[0].span());
         let item_length = items
             .iter()
             .take_while(|ppi| {
                 item_kind.is_same_item_kind(&***ppi)
                     && (!in_group || {
-                        let current = self.parse_sess.lookup_line_range(ppi.span());
+                        let current = self.psess.lookup_line_range(ppi.span());
                         let in_same_group = current.lo < last.hi + 2;
                         last = current;
                         in_same_group

@@ -2,8 +2,8 @@
 // general than the other. Test the case where the more general type (`x`) is the first
 // match arm specifically.
 
-// revisions: leak noleak
-//[noleak] compile-flags:-Zno-leak-check
+//@ revisions: leak noleak
+//@[noleak] compile-flags:-Zno-leak-check
 
 fn foo(x: for<'a, 'b> fn(&'a u8, &'b u8) -> &'a u8, y: for<'a> fn(&'a u8, &'a u8) -> &'a u8) {
     // The two types above are not equivalent. With the older LUB/GLB

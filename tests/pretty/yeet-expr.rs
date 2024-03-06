@@ -1,4 +1,4 @@
-// pp-exact
+//@ pp-exact
 #![feature(yeet_expr)]
 
 fn yeet_no_expr() -> Option<String> { do yeet }

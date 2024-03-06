@@ -1,5 +1,5 @@
 // regression test for https://github.com/rust-lang/rust/issues/69016
-// check-pass
+//@ check-pass
 
 #![warn(unused)]
 #![deny(warnings)]

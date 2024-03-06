@@ -502,6 +502,7 @@ impl AsHandle for fs::File {
 
 #[stable(feature = "io_safety", since = "1.63.0")]
 impl From<fs::File> for OwnedHandle {
+    /// Takes ownership of a [`File`](fs::File)'s underlying file handle.
     #[inline]
     fn from(file: fs::File) -> OwnedHandle {
         file.into_inner().into_inner().into_inner()
@@ -510,6 +511,7 @@ impl From<fs::File> for OwnedHandle {
 
 #[stable(feature = "io_safety", since = "1.63.0")]
 impl From<OwnedHandle> for fs::File {
+    /// Returns a [`File`](fs::File) that takes ownership of the given handle.
     #[inline]
     fn from(owned: OwnedHandle) -> Self {
         Self::from_inner(FromInner::from_inner(FromInner::from_inner(owned)))
@@ -574,6 +576,7 @@ impl AsHandle for crate::process::ChildStdin {
 
 #[stable(feature = "io_safety", since = "1.63.0")]
 impl From<crate::process::ChildStdin> for OwnedHandle {
+    /// Takes ownership of a [`ChildStdin`](crate::process::ChildStdin)'s file handle.
     #[inline]
     fn from(child_stdin: crate::process::ChildStdin) -> OwnedHandle {
         unsafe { OwnedHandle::from_raw_handle(child_stdin.into_raw_handle()) }
@@ -590,6 +593,7 @@ impl AsHandle for crate::process::ChildStdout {
 
 #[stable(feature = "io_safety", since = "1.63.0")]
 impl From<crate::process::ChildStdout> for OwnedHandle {
+    /// Takes ownership of a [`ChildStdout`](crate::process::ChildStdout)'s file handle.
     #[inline]
     fn from(child_stdout: crate::process::ChildStdout) -> OwnedHandle {
         unsafe { OwnedHandle::from_raw_handle(child_stdout.into_raw_handle()) }
@@ -606,6 +610,7 @@ impl AsHandle for crate::process::ChildStderr {
 
 #[stable(feature = "io_safety", since = "1.63.0")]
 impl From<crate::process::ChildStderr> for OwnedHandle {
+    /// Takes ownership of a [`ChildStderr`](crate::process::ChildStderr)'s file handle.
     #[inline]
     fn from(child_stderr: crate::process::ChildStderr) -> OwnedHandle {
         unsafe { OwnedHandle::from_raw_handle(child_stderr.into_raw_handle()) }

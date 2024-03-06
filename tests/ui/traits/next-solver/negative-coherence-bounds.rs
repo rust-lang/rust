@@ -1,4 +1,4 @@
-// check-pass
+//@ check-pass
 
 // This test verifies that negative trait predicate cannot be satisfied from a
 // positive param-env candidate.

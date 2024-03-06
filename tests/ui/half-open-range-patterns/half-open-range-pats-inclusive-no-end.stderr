@@ -43,7 +43,7 @@ LL |     mac!(0);
    = note: this error originates in the macro `mac` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0586]: inclusive range with no end
-  --> $DIR/half-open-range-pats-inclusive-no-end.rs:19:19
+  --> $DIR/half-open-range-pats-inclusive-no-end.rs:20:19
    |
 LL |             let $e..=;
    |                   ^^^ help: use `..` instead
@@ -54,6 +54,43 @@ LL |     mac!(0);
    = note: inclusive ranges must be bounded at the end (`..=b` or `a..=b`)
    = note: this error originates in the macro `mac` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error: aborting due to 6 previous errors
+error[E0005]: refutable pattern in local binding
+  --> $DIR/half-open-range-pats-inclusive-no-end.rs:18:17
+   |
+LL |             let $e...;
+   |                 ^^^^^ pattern `i32::MIN..=-1_i32` not covered
+...
+LL |     mac!(0);
+   |     ------- in this macro invocation
+   |
+   = note: `let` bindings require an "irrefutable pattern", like a `struct` or an `enum` with only one variant
+   = note: for more information, visit https://doc.rust-lang.org/book/ch18-02-refutability.html
+   = note: the matched value is of type `i32`
+   = note: this error originates in the macro `mac` (in Nightly builds, run with -Z macro-backtrace for more info)
+help: you might want to use `if let` to ignore the variant that isn't matched
+   |
+LL |             if let $e...; { todo!() }
+   |             ++            +++++++++++
 
-For more information about this error, try `rustc --explain E0586`.
+error[E0005]: refutable pattern in local binding
+  --> $DIR/half-open-range-pats-inclusive-no-end.rs:20:17
+   |
+LL |             let $e..=;
+   |                 ^^^^^ pattern `i32::MIN..=-1_i32` not covered
+...
+LL |     mac!(0);
+   |     ------- in this macro invocation
+   |
+   = note: `let` bindings require an "irrefutable pattern", like a `struct` or an `enum` with only one variant
+   = note: for more information, visit https://doc.rust-lang.org/book/ch18-02-refutability.html
+   = note: the matched value is of type `i32`
+   = note: this error originates in the macro `mac` (in Nightly builds, run with -Z macro-backtrace for more info)
+help: you might want to use `if let` to ignore the variant that isn't matched
+   |
+LL |             if let $e..=; { todo!() }
+   |             ++            +++++++++++
+
+error: aborting due to 8 previous errors
+
+Some errors have detailed explanations: E0005, E0586.
+For more information about an error, try `rustc --explain E0005`.

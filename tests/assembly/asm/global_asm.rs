@@ -1,8 +1,8 @@
-// only-x86_64
-// only-linux
-// assembly-output: emit-asm
-// compile-flags: -C llvm-args=--x86-asm-syntax=intel
-// compile-flags: -C symbol-mangling-version=v0
+//@ only-x86_64
+//@ only-linux
+//@ assembly-output: emit-asm
+//@ compile-flags: -C llvm-args=--x86-asm-syntax=intel
+//@ compile-flags: -C symbol-mangling-version=v0
 
 #![feature(asm_const)]
 #![crate_type = "rlib"]

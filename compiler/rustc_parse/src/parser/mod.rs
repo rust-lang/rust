@@ -11,6 +11,7 @@ mod stmt;
 mod ty;
 
 use crate::lexer::UnmatchedDelim;
+use ast::token::IdentIsRaw;
 pub use attr_wrapper::AttrWrapper;
 pub use diagnostics::AttemptLocalParseRecovery;
 pub(crate) use expr::ForbiddenLetReason;
@@ -32,7 +33,7 @@ use rustc_ast::{HasAttrs, HasTokens, Unsafe, Visibility, VisibilityKind};
 use rustc_ast_pretty::pprust;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::PResult;
-use rustc_errors::{Applicability, DiagnosticBuilder, FatalError, MultiSpan};
+use rustc_errors::{Applicability, Diag, FatalError, MultiSpan};
 use rustc_session::parse::ParseSess;
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
 use rustc_span::{Span, DUMMY_SP};
@@ -53,6 +54,7 @@ bitflags::bitflags! {
         const CONST_EXPR        = 1 << 2;
         const ALLOW_LET         = 1 << 3;
         const IN_IF_GUARD       = 1 << 4;
+        const IS_PAT            = 1 << 5;
     }
 }
 
@@ -126,7 +128,7 @@ pub enum Recovery {
 
 #[derive(Clone)]
 pub struct Parser<'a> {
-    pub sess: &'a ParseSess,
+    pub psess: &'a ParseSess,
     /// The current token.
     pub token: Token,
     /// The spacing for the current token.
@@ -356,6 +358,25 @@ pub enum FollowedByType {
     No,
 }
 
+/// Whether a function performed recovery
+#[derive(Copy, Clone, Debug)]
+pub enum Recovered {
+    No,
+    Yes,
+}
+
+impl From<Recovered> for bool {
+    fn from(r: Recovered) -> bool {
+        matches!(r, Recovered::Yes)
+    }
+}
+
+#[derive(Copy, Clone, Debug)]
+pub enum Trailing {
+    No,
+    Yes,
+}
+
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub enum TokenDescription {
     ReservedIdentifier,
@@ -393,12 +414,12 @@ pub(super) fn token_descr(token: &Token) -> String {
 
 impl<'a> Parser<'a> {
     pub fn new(
-        sess: &'a ParseSess,
+        psess: &'a ParseSess,
         stream: TokenStream,
         subparser_name: Option<&'static str>,
     ) -> Self {
         let mut parser = Parser {
-            sess,
+            psess,
             token: Token::dummy(),
             token_spacing: Spacing::Alone,
             prev_token: Token::dummy(),
@@ -454,11 +475,11 @@ impl<'a> Parser<'a> {
     }
 
     /// Expects and consumes the token `t`. Signals an error if the next token is not `t`.
-    pub fn expect(&mut self, t: &TokenKind) -> PResult<'a, bool /* recovered */> {
+    pub fn expect(&mut self, t: &TokenKind) -> PResult<'a, Recovered> {
         if self.expected_tokens.is_empty() {
             if self.token == *t {
                 self.bump();
-                Ok(false)
+                Ok(Recovered::No)
             } else {
                 self.unexpected_try_recover(t)
             }
@@ -474,13 +495,13 @@ impl<'a> Parser<'a> {
         &mut self,
         edible: &[TokenKind],
         inedible: &[TokenKind],
-    ) -> PResult<'a, bool /* recovered */> {
+    ) -> PResult<'a, Recovered> {
         if edible.contains(&self.token.kind) {
             self.bump();
-            Ok(false)
+            Ok(Recovered::No)
         } else if inedible.contains(&self.token.kind) {
             // leave it in the input
-            Ok(false)
+            Ok(Recovered::No)
         } else if self.token.kind != token::Eof
             && self.last_unexpected_token_span == Some(self.token.span)
         {
@@ -498,7 +519,7 @@ impl<'a> Parser<'a> {
     fn parse_ident_common(&mut self, recover: bool) -> PResult<'a, Ident> {
         let (ident, is_raw) = self.ident_or_err(recover)?;
 
-        if !is_raw && ident.is_reserved() {
+        if matches!(is_raw, IdentIsRaw::No) && ident.is_reserved() {
             let err = self.expected_ident_found_err();
             if recover {
                 err.emit();
@@ -510,7 +531,7 @@ impl<'a> Parser<'a> {
         Ok(ident)
     }
 
-    fn ident_or_err(&mut self, recover: bool) -> PResult<'a, (Ident, /* is_raw */ bool)> {
+    fn ident_or_err(&mut self, recover: bool) -> PResult<'a, (Ident, IdentIsRaw)> {
         match self.token.ident() {
             Some(ident) => Ok(ident),
             None => self.expected_ident_found(recover),
@@ -567,7 +588,7 @@ impl<'a> Parser<'a> {
         }
 
         if case == Case::Insensitive
-            && let Some((ident, /* is_raw */ false)) = self.token.ident()
+            && let Some((ident, IdentIsRaw::No)) = self.token.ident()
             && ident.as_str().to_lowercase() == kw.as_str().to_lowercase()
         {
             true
@@ -597,7 +618,7 @@ impl<'a> Parser<'a> {
         }
 
         if case == Case::Insensitive
-            && let Some((ident, /* is_raw */ false)) = self.token.ident()
+            && let Some((ident, IdentIsRaw::No)) = self.token.ident()
             && ident.as_str().to_lowercase() == kw.as_str().to_lowercase()
         {
             self.dcx().emit_err(errors::KwBadCase { span: ident.span, kw: kw.as_str() });
@@ -693,7 +714,7 @@ impl<'a> Parser<'a> {
         }
         match self.token.kind.break_two_token_op() {
             Some((first, second)) if first == expected => {
-                let first_span = self.sess.source_map().start_point(self.token.span);
+                let first_span = self.psess.source_map().start_point(self.token.span);
                 let second_span = self.token.span.with_lo(first_span.hi());
                 self.token = Token::new(first, first_span);
                 // Keep track of this token - if we end token capturing now,
@@ -782,10 +803,10 @@ impl<'a> Parser<'a> {
         sep: SeqSep,
         expect: TokenExpectType,
         mut f: impl FnMut(&mut Parser<'a>) -> PResult<'a, T>,
-    ) -> PResult<'a, (ThinVec<T>, bool /* trailing */, bool /* recovered */)> {
+    ) -> PResult<'a, (ThinVec<T>, Trailing, Recovered)> {
         let mut first = true;
-        let mut recovered = false;
-        let mut trailing = false;
+        let mut recovered = Recovered::No;
+        let mut trailing = Trailing::No;
         let mut v = ThinVec::new();
 
         while !self.expect_any_with_type(kets, expect) {
@@ -799,12 +820,12 @@ impl<'a> Parser<'a> {
                 } else {
                     // check for separator
                     match self.expect(t) {
-                        Ok(false) /* not recovered */ => {
+                        Ok(Recovered::No) => {
                             self.current_closure.take();
                         }
-                        Ok(true) /* recovered */ => {
+                        Ok(Recovered::Yes) => {
                             self.current_closure.take();
-                            recovered = true;
+                            recovered = Recovered::Yes;
                             break;
                         }
                         Err(mut expect_err) => {
@@ -899,7 +920,7 @@ impl<'a> Parser<'a> {
                 }
             }
             if sep.trailing_sep_allowed && self.expect_any_with_type(kets, expect) {
-                trailing = true;
+                trailing = Trailing::Yes;
                 break;
             }
 
@@ -913,7 +934,7 @@ impl<'a> Parser<'a> {
     fn recover_missing_braces_around_closure_body(
         &mut self,
         closure_spans: ClosureSpans,
-        mut expect_err: DiagnosticBuilder<'_>,
+        mut expect_err: Diag<'_>,
     ) -> PResult<'a, ()> {
         let initial_semicolon = self.token.span;
 
@@ -977,7 +998,7 @@ impl<'a> Parser<'a> {
         ket: &TokenKind,
         sep: SeqSep,
         f: impl FnMut(&mut Parser<'a>) -> PResult<'a, T>,
-    ) -> PResult<'a, (ThinVec<T>, bool /* trailing */, bool /* recovered */)> {
+    ) -> PResult<'a, (ThinVec<T>, Trailing, Recovered)> {
         self.parse_seq_to_before_tokens(&[ket], sep, TokenExpectType::Expect, f)
     }
 
@@ -989,9 +1010,9 @@ impl<'a> Parser<'a> {
         ket: &TokenKind,
         sep: SeqSep,
         f: impl FnMut(&mut Parser<'a>) -> PResult<'a, T>,
-    ) -> PResult<'a, (ThinVec<T>, bool /* trailing */)> {
+    ) -> PResult<'a, (ThinVec<T>, Trailing)> {
         let (val, trailing, recovered) = self.parse_seq_to_before_end(ket, sep, f)?;
-        if !recovered {
+        if matches!(recovered, Recovered::No) {
             self.eat(ket);
         }
         Ok((val, trailing))
@@ -1006,7 +1027,7 @@ impl<'a> Parser<'a> {
         ket: &TokenKind,
         sep: SeqSep,
         f: impl FnMut(&mut Parser<'a>) -> PResult<'a, T>,
-    ) -> PResult<'a, (ThinVec<T>, bool /* trailing */)> {
+    ) -> PResult<'a, (ThinVec<T>, Trailing)> {
         self.expect(bra)?;
         self.parse_seq_to_end(ket, sep, f)
     }
@@ -1018,7 +1039,7 @@ impl<'a> Parser<'a> {
         &mut self,
         delim: Delimiter,
         f: impl FnMut(&mut Parser<'a>) -> PResult<'a, T>,
-    ) -> PResult<'a, (ThinVec<T>, bool /* trailing */)> {
+    ) -> PResult<'a, (ThinVec<T>, Trailing)> {
         self.parse_unspanned_seq(
             &token::OpenDelim(delim),
             &token::CloseDelim(delim),
@@ -1033,7 +1054,7 @@ impl<'a> Parser<'a> {
     fn parse_paren_comma_seq<T>(
         &mut self,
         f: impl FnMut(&mut Parser<'a>) -> PResult<'a, T>,
-    ) -> PResult<'a, (ThinVec<T>, bool /* trailing */)> {
+    ) -> PResult<'a, (ThinVec<T>, Trailing)> {
         self.parse_delim_comma_seq(Delimiter::Parenthesis, f)
     }
 
@@ -1192,7 +1213,7 @@ impl<'a> Parser<'a> {
     fn parse_closure_constness(&mut self) -> Const {
         let constness = self.parse_constness_(Case::Sensitive, true);
         if let Const::Yes(span) = constness {
-            self.sess.gated_spans.gate(sym::const_closures, span);
+            self.psess.gated_spans.gate(sym::const_closures, span);
         }
         constness
     }
@@ -1213,9 +1234,9 @@ impl<'a> Parser<'a> {
     /// Parses inline const expressions.
     fn parse_const_block(&mut self, span: Span, pat: bool) -> PResult<'a, P<Expr>> {
         if pat {
-            self.sess.gated_spans.gate(sym::inline_const_pat, span);
+            self.psess.gated_spans.gate(sym::inline_const_pat, span);
         } else {
-            self.sess.gated_spans.gate(sym::inline_const, span);
+            self.psess.gated_spans.gate(sym::inline_const, span);
         }
         self.eat_keyword(kw::Const);
         let (attrs, blk) = self.parse_inner_attrs_and_block()?;
@@ -1458,7 +1479,7 @@ impl<'a> Parser<'a> {
         match self.parse_str_lit() {
             Ok(str_lit) => Some(str_lit),
             Err(Some(lit)) => match lit.kind {
-                ast::LitKind::Err => None,
+                ast::LitKind::Err(_) => None,
                 _ => {
                     self.dcx().emit_err(NonStringAbiLiteral { span: lit.span });
                     None
@@ -1500,8 +1521,8 @@ impl<'a> Parser<'a> {
 
 pub(crate) fn make_unclosed_delims_error(
     unmatched: UnmatchedDelim,
-    sess: &ParseSess,
-) -> Option<DiagnosticBuilder<'_>> {
+    psess: &ParseSess,
+) -> Option<Diag<'_>> {
     // `None` here means an `Eof` was found. We already emit those errors elsewhere, we add them to
     // `unmatched_delims` only for error recovery in the `Parser`.
     let found_delim = unmatched.found_delim?;
@@ -1509,7 +1530,7 @@ pub(crate) fn make_unclosed_delims_error(
     if let Some(sp) = unmatched.unclosed_span {
         spans.push(sp);
     };
-    let err = sess.dcx.create_err(MismatchedClosingDelimiter {
+    let err = psess.dcx.create_err(MismatchedClosingDelimiter {
         spans,
         delimiter: pprust::token_kind_to_string(&token::CloseDelim(found_delim)).to_string(),
         unmatched: unmatched.found_span,

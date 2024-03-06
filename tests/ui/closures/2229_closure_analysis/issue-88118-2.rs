@@ -1,5 +1,5 @@
-// edition:2021
-// run-pass
+//@ edition:2021
+//@ run-pass
 #![feature(if_let_guard)]
 #[allow(unused_must_use)]
 #[allow(dead_code)]

@@ -1,4 +1,4 @@
-use rustc_errors::{AddToDiagnostic, Diagnostic, SubdiagnosticMessage};
+use rustc_errors::{AddToDiagnostic, Diag, EmissionGuarantee, SubdiagMessageOp};
 use rustc_macros::{LintDiagnostic, Subdiagnostic};
 use rustc_middle::thir::Pat;
 use rustc_middle::ty::Ty;
@@ -23,7 +23,10 @@ impl<'tcx> Uncovered<'tcx> {
         span: Span,
         cx: &RustcMatchCheckCtxt<'p, 'tcx>,
         witnesses: Vec<WitnessPat<'p, 'tcx>>,
-    ) -> Self {
+    ) -> Self
+    where
+        'tcx: 'p,
+    {
         let witness_1 = cx.hoist_witness_pat(witnesses.get(0).unwrap());
         Self {
             span,
@@ -59,10 +62,11 @@ pub struct Overlap<'tcx> {
 }
 
 impl<'tcx> AddToDiagnostic for Overlap<'tcx> {
-    fn add_to_diagnostic_with<F>(self, diag: &mut Diagnostic, _: F)
-    where
-        F: Fn(&mut Diagnostic, SubdiagnosticMessage) -> SubdiagnosticMessage,
-    {
+    fn add_to_diagnostic_with<G: EmissionGuarantee, F: SubdiagMessageOp<G>>(
+        self,
+        diag: &mut Diag<'_, G>,
+        _: F,
+    ) {
         let Overlap { span, range } = self;
 
         // FIXME(mejrs) unfortunately `#[derive(LintDiagnostic)]`

@@ -31,6 +31,7 @@ const VS_CODES: &[&str] = &["code", "code-exploration", "code-insiders", "codium
 
 pub(crate) struct ServerOpt {
     pub(crate) malloc: Malloc,
+    pub(crate) dev_rel: bool,
 }
 
 pub(crate) enum Malloc {
@@ -50,7 +51,7 @@ fn fix_path_for_mac(sh: &Shell) -> anyhow::Result<()> {
 
         [ROOT_DIR, &home_dir]
             .into_iter()
-            .map(|dir| dir.to_string() + COMMON_APP_PATH)
+            .map(|dir| dir.to_owned() + COMMON_APP_PATH)
             .map(PathBuf::from)
             .filter(|path| path.exists())
             .collect()
@@ -135,8 +136,9 @@ fn install_server(sh: &Shell, opts: ServerOpt) -> anyhow::Result<()> {
         Malloc::Mimalloc => &["--features", "mimalloc"],
         Malloc::Jemalloc => &["--features", "jemalloc"],
     };
+    let profile = if opts.dev_rel { "dev-rel" } else { "release" };
 
-    let cmd = cmd!(sh, "cargo install --path crates/rust-analyzer --locked --force --features force-always-assert {features...}");
+    let cmd = cmd!(sh, "cargo install --path crates/rust-analyzer --profile={profile} --locked --force --features force-always-assert {features...}");
     cmd.run()?;
     Ok(())
 }

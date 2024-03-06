@@ -1,6 +1,5 @@
-// compile-flags: -O -Z merge-functions=disabled
-// only-x86_64
-// ignore-debug: the debug assertions get in the way
+//@ compile-flags: -O -Z merge-functions=disabled
+//@ only-x86_64
 
 #![crate_type = "lib"]
 

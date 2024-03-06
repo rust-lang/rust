@@ -1,2 +1,2 @@
-// error-pattern:cannot find macro
+//@ error-pattern:cannot find macro
 fn main() { iamnotanextensionthatexists!(""); }

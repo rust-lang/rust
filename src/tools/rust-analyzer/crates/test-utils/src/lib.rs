@@ -7,6 +7,7 @@
 //! * marks (see the eponymous module).
 
 #![warn(rust_2018_idioms, unused_lifetimes)]
+#![allow(clippy::print_stderr)]
 
 mod assert_linear;
 pub mod bench_fixture;
@@ -163,7 +164,7 @@ pub fn extract_tags(mut text: &str, tag: &str) -> (Vec<(TextRange, Option<String
                 if text.starts_with(&open) {
                     let close_open = text.find('>').unwrap();
                     let attr = text[open.len()..close_open].trim();
-                    let attr = if attr.is_empty() { None } else { Some(attr.to_string()) };
+                    let attr = if attr.is_empty() { None } else { Some(attr.to_owned()) };
                     text = &text[close_open + '>'.len_utf8()..];
                     let from = TextSize::of(&res);
                     stack.push((from, attr));
@@ -325,7 +326,7 @@ fn extract_line_annotations(mut line: &str) -> Vec<LineAnnotation> {
             content = &content["file".len()..];
         }
 
-        let content = content.trim_start().to_string();
+        let content = content.trim_start().to_owned();
 
         let annotation = if continuation {
             LineAnnotation::Continuation { offset: range.end(), content }
@@ -424,7 +425,7 @@ pub fn format_diff(chunks: Vec<dissimilar::Chunk<'_>>) -> String {
 ///
 /// A benchmark test looks like this:
 ///
-/// ```
+/// ```ignore
 /// #[test]
 /// fn benchmark_foo() {
 ///     if skip_slow_tests() { return; }

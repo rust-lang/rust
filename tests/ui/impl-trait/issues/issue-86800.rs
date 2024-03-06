@@ -1,12 +1,12 @@
 #![feature(type_alias_impl_trait)]
 
-// edition:2021
-// compile-flags:-Z treat-err-as-bug=2
-// error-pattern: due to `-Z treat-err-as-bug=2
-// failure-status:101
-// normalize-stderr-test ".*note: .*\n\n" -> ""
-// normalize-stderr-test "thread 'rustc' panicked.*:\n.*\n" -> ""
-// rustc-env:RUST_BACKTRACE=0
+//@ edition:2021
+//@ compile-flags:-Z treat-err-as-bug=2
+//@ error-pattern: due to `-Z treat-err-as-bug=2
+//@ failure-status:101
+//@ normalize-stderr-test ".*note: .*\n\n" -> ""
+//@ normalize-stderr-test "thread 'rustc' panicked.*:\n.*\n" -> ""
+//@ rustc-env:RUST_BACKTRACE=0
 
 use std::future::Future;
 

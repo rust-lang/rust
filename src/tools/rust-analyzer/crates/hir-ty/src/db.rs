@@ -3,7 +3,11 @@
 
 use std::sync;
 
-use base_db::{impl_intern_key, salsa, CrateId, Upcast};
+use base_db::{
+    impl_intern_key,
+    salsa::{self, impl_intern_value_trivial},
+    CrateId, Upcast,
+};
 use hir_def::{
     db::DefDatabase, hir::ExprId, layout::TargetDataLayout, AdtId, BlockId, ConstParamId,
     DefWithBodyId, EnumVariantId, FunctionId, GeneralConstId, GenericDefId, ImplId,
@@ -86,7 +90,7 @@ pub trait HirDatabase: DefDatabase + Upcast<dyn DefDatabase> {
     #[salsa::cycle(crate::lower::ty_recover)]
     fn ty(&self, def: TyDefId) -> Binders<Ty>;
 
-    /// Returns the type of the value of the given constant, or `None` if the the `ValueTyDefId` is
+    /// Returns the type of the value of the given constant, or `None` if the `ValueTyDefId` is
     /// a `StructId` or `EnumVariantId` with a record constructor.
     #[salsa::invoke(crate::lower::value_ty_query)]
     fn value_ty(&self, def: ValueTyDefId) -> Option<Binders<Ty>>;
@@ -118,7 +122,7 @@ pub trait HirDatabase: DefDatabase + Upcast<dyn DefDatabase> {
     fn layout_of_ty(&self, ty: Ty, env: Arc<TraitEnvironment>) -> Result<Arc<Layout>, LayoutError>;
 
     #[salsa::invoke(crate::layout::target_data_layout_query)]
-    fn target_data_layout(&self, krate: CrateId) -> Option<Arc<TargetDataLayout>>;
+    fn target_data_layout(&self, krate: CrateId) -> Result<Arc<TargetDataLayout>, Arc<str>>;
 
     #[salsa::invoke(crate::method_resolution::lookup_impl_method_query)]
     fn lookup_impl_method(
@@ -199,9 +203,9 @@ pub trait HirDatabase: DefDatabase + Upcast<dyn DefDatabase> {
     #[salsa::interned]
     fn intern_impl_trait_id(&self, id: ImplTraitId) -> InternedOpaqueTyId;
     #[salsa::interned]
-    fn intern_closure(&self, id: (DefWithBodyId, ExprId)) -> InternedClosureId;
+    fn intern_closure(&self, id: InternedClosure) -> InternedClosureId;
     #[salsa::interned]
-    fn intern_coroutine(&self, id: (DefWithBodyId, ExprId)) -> InternedCoroutineId;
+    fn intern_coroutine(&self, id: InternedCoroutine) -> InternedCoroutineId;
 
     #[salsa::invoke(chalk_db::associated_ty_data_query)]
     fn associated_ty_data(
@@ -216,12 +220,12 @@ pub trait HirDatabase: DefDatabase + Upcast<dyn DefDatabase> {
         trait_id: chalk_db::TraitId,
     ) -> sync::Arc<chalk_db::TraitDatum>;
 
-    #[salsa::invoke(chalk_db::struct_datum_query)]
-    fn struct_datum(
+    #[salsa::invoke(chalk_db::adt_datum_query)]
+    fn adt_datum(
         &self,
         krate: CrateId,
         struct_id: chalk_db::AdtId,
-    ) -> sync::Arc<chalk_db::StructDatum>;
+    ) -> sync::Arc<chalk_db::AdtDatum>;
 
     #[salsa::invoke(chalk_db::impl_datum_query)]
     fn impl_datum(
@@ -281,7 +285,7 @@ pub trait HirDatabase: DefDatabase + Upcast<dyn DefDatabase> {
 }
 
 fn infer_wait(db: &dyn HirDatabase, def: DefWithBodyId) -> Arc<InferenceResult> {
-    let _p = profile::span("infer:wait").detail(|| match def {
+    let detail = match def {
         DefWithBodyId::FunctionId(it) => db.function_data(it).name.display(db.upcast()).to_string(),
         DefWithBodyId::StaticId(it) => {
             db.static_data(it).name.clone().display(db.upcast()).to_string()
@@ -297,7 +301,8 @@ fn infer_wait(db: &dyn HirDatabase, def: DefWithBodyId) -> Arc<InferenceResult> 
             db.enum_variant_data(it).name.display(db.upcast()).to_string()
         }
         DefWithBodyId::InTypeConstId(it) => format!("in type const {it:?}"),
-    });
+    };
+    let _p = tracing::span!(tracing::Level::INFO, "infer:wait", ?detail).entered();
     db.infer_query(def)
 }
 
@@ -307,7 +312,7 @@ fn trait_solve_wait(
     block: Option<BlockId>,
     goal: crate::Canonical<crate::InEnvironment<crate::Goal>>,
 ) -> Option<crate::Solution> {
-    let _p = profile::span("trait_solve::wait");
+    let _p = tracing::span!(tracing::Level::INFO, "trait_solve::wait").entered();
     db.trait_solve_query(krate, block, goal)
 }
 
@@ -337,8 +342,16 @@ pub struct InternedClosureId(salsa::InternId);
 impl_intern_key!(InternedClosureId);
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub struct InternedClosure(pub DefWithBodyId, pub ExprId);
+impl_intern_value_trivial!(InternedClosure);
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct InternedCoroutineId(salsa::InternId);
 impl_intern_key!(InternedCoroutineId);
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub struct InternedCoroutine(pub DefWithBodyId, pub ExprId);
+impl_intern_value_trivial!(InternedCoroutine);
 
 /// This exists just for Chalk, because Chalk just has a single `FnDefId` where
 /// we have different IDs for struct and enum variant constructors.

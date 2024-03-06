@@ -396,6 +396,7 @@ pub trait AsMut<T: ?Sized> {
 /// For example, take this code:
 ///
 /// ```
+/// # #![cfg_attr(not(bootstrap), allow(non_local_definitions))]
 /// struct Wrapper<T>(Vec<T>);
 /// impl<T> From<Wrapper<T>> for Vec<T> {
 ///     fn from(w: Wrapper<T>) -> Vec<T> {
@@ -465,10 +466,10 @@ pub trait Into<T>: Sized {
 /// Prefer using [`Into`] over using `From` when specifying trait bounds on a generic function.
 /// This way, types that directly implement [`Into`] can be used as arguments as well.
 ///
-/// The `From` is also very useful when performing error handling. When constructing a function
+/// The `From` trait is also very useful when performing error handling. When constructing a function
 /// that is capable of failing, the return type will generally be of the form `Result<T, E>`.
-/// The `From` trait simplifies error handling by allowing a function to return a single error type
-/// that encapsulate multiple error types. See the "Examples" section and [the book][book] for more
+/// `From` simplifies error handling by allowing a function to return a single error type
+/// that encapsulates multiple error types. See the "Examples" section and [the book][book] for more
 /// details.
 ///
 /// **Note: This trait must not fail**. The `From` trait is intended for perfect conversions.

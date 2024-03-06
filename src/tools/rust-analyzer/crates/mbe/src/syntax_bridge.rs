@@ -130,7 +130,7 @@ where
         tt::Subtree {
             delimiter: tt::Delimiter { kind: tt::DelimiterKind::Invisible, .. },
             token_trees,
-        } => TokenBuffer::from_tokens(token_trees.as_slice()),
+        } => TokenBuffer::from_tokens(token_trees),
         _ => TokenBuffer::from_subtree(tt),
     };
     let parser_input = to_parser_input(&buffer);
@@ -146,7 +146,7 @@ where
             }
             parser::Step::Enter { kind } => tree_sink.start_node(kind),
             parser::Step::Exit => tree_sink.finish_node(),
-            parser::Step::Error { msg } => tree_sink.error(msg.to_string()),
+            parser::Step::Error { msg } => tree_sink.error(msg.to_owned()),
         }
     }
     tree_sink.finish()
@@ -227,14 +227,14 @@ where
     C: TokenConverter<S>,
     S: Span,
 {
-    let entry = tt::Subtree {
+    let entry = tt::SubtreeBuilder {
         delimiter: tt::Delimiter::invisible_spanned(conv.call_site()),
         token_trees: vec![],
     };
     let mut stack = NonEmptyVec::new(entry);
 
     while let Some((token, abs_range)) = conv.bump() {
-        let tt::Subtree { delimiter, token_trees: result } = stack.last_mut();
+        let tt::SubtreeBuilder { delimiter, token_trees } = stack.last_mut();
 
         let tt = match token.as_leaf() {
             Some(leaf) => tt::TokenTree::Leaf(leaf.clone()),
@@ -243,7 +243,7 @@ where
                 COMMENT => {
                     let span = conv.span_for(abs_range);
                     if let Some(tokens) = conv.convert_doc_comment(&token, span) {
-                        result.extend(tokens);
+                        token_trees.extend(tokens);
                     }
                     continue;
                 }
@@ -260,7 +260,7 @@ where
                     if matches!(expected, Some(expected) if expected == kind) {
                         if let Some(mut subtree) = stack.pop() {
                             subtree.delimiter.close = conv.span_for(abs_range);
-                            stack.last_mut().token_trees.push(subtree.into());
+                            stack.last_mut().token_trees.push(subtree.build().into());
                         }
                         continue;
                     }
@@ -275,7 +275,7 @@ where
                     // Start a new subtree
                     if let Some(kind) = delim {
                         let open = conv.span_for(abs_range);
-                        stack.push(tt::Subtree {
+                        stack.push(tt::SubtreeBuilder {
                             delimiter: tt::Delimiter {
                                 open,
                                 // will be overwritten on subtree close above
@@ -317,7 +317,7 @@ where
                                 span: conv
                                     .span_for(TextRange::at(abs_range.start(), TextSize::of('\''))),
                             });
-                            result.push(apostrophe.into());
+                            token_trees.push(apostrophe.into());
 
                             let ident = tt::Leaf::from(tt::Ident {
                                 text: SmolStr::new(&token.to_text(conv)[1..]),
@@ -326,7 +326,7 @@ where
                                     abs_range.end(),
                                 )),
                             });
-                            result.push(ident.into());
+                            token_trees.push(ident.into());
                             continue;
                         }
                         _ => continue,
@@ -337,7 +337,7 @@ where
             },
         };
 
-        result.push(tt);
+        token_trees.push(tt);
     }
 
     // If we get here, we've consumed all input tokens.
@@ -361,7 +361,7 @@ where
         parent.token_trees.extend(entry.token_trees);
     }
 
-    let subtree = stack.into_last();
+    let subtree = stack.into_last().build();
     if let [tt::TokenTree::Subtree(first)] = &*subtree.token_trees {
         first.clone()
     } else {
@@ -454,7 +454,7 @@ fn convert_doc_comment<S: Copy>(
     };
 
     // Make `doc="\" Comments\""
-    let meta_tkns = vec![mk_ident("doc"), mk_punct('='), mk_doc_literal(&comment)];
+    let meta_tkns = Box::new([mk_ident("doc"), mk_punct('='), mk_doc_literal(&comment)]);
 
     // Make `#![]`
     let mut token_trees = Vec::with_capacity(3);
@@ -622,7 +622,7 @@ where
 
 struct Converter<SpanMap, S> {
     current: Option<SyntaxToken>,
-    current_leafs: Vec<tt::Leaf<S>>,
+    current_leaves: Vec<tt::Leaf<S>>,
     preorder: PreorderWithTokens,
     range: TextRange,
     punct_offset: Option<(SyntaxToken, TextSize)>,
@@ -650,7 +650,7 @@ impl<SpanMap, S> Converter<SpanMap, S> {
             append,
             remove,
             call_site,
-            current_leafs: vec![],
+            current_leaves: vec![],
         };
         let first = this.next_token();
         this.current = first;
@@ -665,7 +665,7 @@ impl<SpanMap, S> Converter<SpanMap, S> {
                     self.preorder.skip_subtree();
                     if let Some(mut v) = self.append.remove(&n.into()) {
                         v.reverse();
-                        self.current_leafs.extend(v);
+                        self.current_leaves.extend(v);
                         return None;
                     }
                 }
@@ -673,7 +673,7 @@ impl<SpanMap, S> Converter<SpanMap, S> {
                 WalkEvent::Leave(ele) => {
                     if let Some(mut v) = self.append.remove(&ele) {
                         v.reverse();
-                        self.current_leafs.extend(v);
+                        self.current_leaves.extend(v);
                         return None;
                     }
                 }
@@ -700,10 +700,12 @@ impl<S> SynToken<S> {
 }
 
 impl<SpanMap, S: std::fmt::Debug> SrcToken<Converter<SpanMap, S>, S> for SynToken<S> {
-    fn kind(&self, ctx: &Converter<SpanMap, S>) -> SyntaxKind {
+    fn kind(&self, _ctx: &Converter<SpanMap, S>) -> SyntaxKind {
         match self {
             SynToken::Ordinary(token) => token.kind(),
-            SynToken::Punct { .. } => SyntaxKind::from_char(self.to_char(ctx).unwrap()).unwrap(),
+            SynToken::Punct { token, offset: i } => {
+                SyntaxKind::from_char(token.text().chars().nth(*i).unwrap()).unwrap()
+            }
             SynToken::Leaf(_) => {
                 never!();
                 SyntaxKind::ERROR
@@ -758,8 +760,8 @@ where
             }
         }
 
-        if let Some(leaf) = self.current_leafs.pop() {
-            if self.current_leafs.is_empty() {
+        if let Some(leaf) = self.current_leaves.pop() {
+            if self.current_leaves.is_empty() {
                 self.current = self.next_token();
             }
             return Some((SynToken::Leaf(leaf), TextRange::empty(TextSize::new(0))));

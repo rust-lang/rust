@@ -54,7 +54,7 @@ use core::ops::Add;
 use core::ops::AddAssign;
 #[cfg(not(no_global_oom_handling))]
 use core::ops::Bound::{Excluded, Included, Unbounded};
-use core::ops::{self, Index, IndexMut, Range, RangeBounds};
+use core::ops::{self, Range, RangeBounds};
 use core::ptr;
 use core::slice;
 use core::str::pattern::Pattern;
@@ -864,7 +864,7 @@ impl String {
         }
     }
 
-    /// Decomposes a `String` into its raw components.
+    /// Decomposes a `String` into its raw components: `(pointer, length, capacity)`.
     ///
     /// Returns the raw pointer to the underlying data, the length of
     /// the string (in bytes), and the allocated capacity of the data
@@ -896,7 +896,7 @@ impl String {
         self.vec.into_raw_parts()
     }
 
-    /// Creates a new `String` from a length, capacity, and pointer.
+    /// Creates a new `String` from a pointer, a length and a capacity.
     ///
     /// # Safety
     ///
@@ -1049,6 +1049,7 @@ impl String {
     #[cfg(not(no_global_oom_handling))]
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
+    #[rustc_confusables("append", "push")]
     pub fn push_str(&mut self, string: &str) {
         self.vec.extend_from_slice(string.as_bytes())
     }
@@ -1445,6 +1446,7 @@ impl String {
     /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
+    #[rustc_confusables("delete", "take")]
     pub fn remove(&mut self, idx: usize) -> char {
         let ch = match self[idx..].chars().next() {
             Some(ch) => ch,
@@ -1639,6 +1641,7 @@ impl String {
     #[cfg(not(no_global_oom_handling))]
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
+    #[rustc_confusables("set")]
     pub fn insert(&mut self, idx: usize, ch: char) {
         assert!(self.is_char_boundary(idx));
         let mut bits = [0; 4];
@@ -1738,6 +1741,7 @@ impl String {
     #[inline]
     #[must_use]
     #[stable(feature = "rust1", since = "1.0.0")]
+    #[rustc_confusables("length", "size")]
     pub fn len(&self) -> usize {
         self.vec.len()
     }
@@ -2429,100 +2433,26 @@ impl AddAssign<&str> for String {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl ops::Index<ops::Range<usize>> for String {
-    type Output = str;
+impl<I> ops::Index<I> for String
+where
+    I: slice::SliceIndex<str>,
+{
+    type Output = I::Output;
 
     #[inline]
-    fn index(&self, index: ops::Range<usize>) -> &str {
-        &self[..][index]
+    fn index(&self, index: I) -> &I::Output {
+        index.index(self.as_str())
     }
 }
+
 #[stable(feature = "rust1", since = "1.0.0")]
-impl ops::Index<ops::RangeTo<usize>> for String {
-    type Output = str;
-
+impl<I> ops::IndexMut<I> for String
+where
+    I: slice::SliceIndex<str>,
+{
     #[inline]
-    fn index(&self, index: ops::RangeTo<usize>) -> &str {
-        &self[..][index]
-    }
-}
-#[stable(feature = "rust1", since = "1.0.0")]
-impl ops::Index<ops::RangeFrom<usize>> for String {
-    type Output = str;
-
-    #[inline]
-    fn index(&self, index: ops::RangeFrom<usize>) -> &str {
-        &self[..][index]
-    }
-}
-#[stable(feature = "rust1", since = "1.0.0")]
-impl ops::Index<ops::RangeFull> for String {
-    type Output = str;
-
-    #[inline]
-    fn index(&self, _index: ops::RangeFull) -> &str {
-        unsafe { str::from_utf8_unchecked(&self.vec) }
-    }
-}
-#[stable(feature = "inclusive_range", since = "1.26.0")]
-impl ops::Index<ops::RangeInclusive<usize>> for String {
-    type Output = str;
-
-    #[inline]
-    fn index(&self, index: ops::RangeInclusive<usize>) -> &str {
-        Index::index(&**self, index)
-    }
-}
-#[stable(feature = "inclusive_range", since = "1.26.0")]
-impl ops::Index<ops::RangeToInclusive<usize>> for String {
-    type Output = str;
-
-    #[inline]
-    fn index(&self, index: ops::RangeToInclusive<usize>) -> &str {
-        Index::index(&**self, index)
-    }
-}
-
-#[stable(feature = "derefmut_for_string", since = "1.3.0")]
-impl ops::IndexMut<ops::Range<usize>> for String {
-    #[inline]
-    fn index_mut(&mut self, index: ops::Range<usize>) -> &mut str {
-        &mut self[..][index]
-    }
-}
-#[stable(feature = "derefmut_for_string", since = "1.3.0")]
-impl ops::IndexMut<ops::RangeTo<usize>> for String {
-    #[inline]
-    fn index_mut(&mut self, index: ops::RangeTo<usize>) -> &mut str {
-        &mut self[..][index]
-    }
-}
-#[stable(feature = "derefmut_for_string", since = "1.3.0")]
-impl ops::IndexMut<ops::RangeFrom<usize>> for String {
-    #[inline]
-    fn index_mut(&mut self, index: ops::RangeFrom<usize>) -> &mut str {
-        &mut self[..][index]
-    }
-}
-#[stable(feature = "derefmut_for_string", since = "1.3.0")]
-impl ops::IndexMut<ops::RangeFull> for String {
-    #[inline]
-    fn index_mut(&mut self, _index: ops::RangeFull) -> &mut str {
-        unsafe { str::from_utf8_unchecked_mut(&mut *self.vec) }
-    }
-}
-#[stable(feature = "inclusive_range", since = "1.26.0")]
-impl ops::IndexMut<ops::RangeInclusive<usize>> for String {
-    #[inline]
-    fn index_mut(&mut self, index: ops::RangeInclusive<usize>) -> &mut str {
-        IndexMut::index_mut(&mut **self, index)
-    }
-}
-#[stable(feature = "inclusive_range", since = "1.26.0")]
-impl ops::IndexMut<ops::RangeToInclusive<usize>> for String {
-    #[inline]
-    fn index_mut(&mut self, index: ops::RangeToInclusive<usize>) -> &mut str {
-        IndexMut::index_mut(&mut **self, index)
+    fn index_mut(&mut self, index: I) -> &mut I::Output {
+        index.index_mut(self.as_mut_str())
     }
 }
 

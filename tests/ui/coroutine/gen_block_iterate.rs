@@ -1,7 +1,7 @@
-// revisions: next old
-//compile-flags: --edition 2024 -Zunstable-options
-//[next] compile-flags: -Znext-solver
-// run-pass
+//@ revisions: next old
+//@compile-flags: --edition 2024 -Zunstable-options
+//@[next] compile-flags: -Znext-solver
+//@ run-pass
 #![feature(gen_blocks)]
 
 fn foo() -> impl Iterator<Item = u32> {

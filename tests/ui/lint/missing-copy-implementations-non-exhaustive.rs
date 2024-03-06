@@ -2,7 +2,7 @@
 // Ensure that we don't suggest impl'ing `Copy` for a type if it or at least one
 // of it's variants are marked as `non_exhaustive`.
 
-// check-pass
+//@ check-pass
 
 #![deny(missing_copy_implementations)]
 

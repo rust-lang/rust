@@ -161,7 +161,7 @@ impl FileDesc {
 
         // Safety: `ret` bytes were written to the initialized portion of the buffer
         unsafe {
-            cursor.advance(ret as usize);
+            cursor.advance_unchecked(ret as usize);
         }
         Ok(())
     }

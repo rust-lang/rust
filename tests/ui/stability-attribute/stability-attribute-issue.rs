@@ -1,4 +1,4 @@
-// aux-build:stability_attribute_issue.rs
+//@ aux-build:stability_attribute_issue.rs
 #![deny(deprecated)]
 
 extern crate stability_attribute_issue;

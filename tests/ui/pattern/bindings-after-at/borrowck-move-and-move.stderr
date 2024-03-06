@@ -40,35 +40,33 @@ help: borrow this binding in the pattern to avoid moving the value
 LL |     let ref a @ (b, ref c) = (u(), u());
    |         +++         +++
 
-error[E0382]: use of moved value
-  --> $DIR/borrowck-move-and-move.rs:18:16
+error[E0382]: use of partially moved value
+  --> $DIR/borrowck-move-and-move.rs:18:9
    |
-LL |     match Ok(U) {
-   |           ----- move occurs because value has type `Result<U, U>`, which does not implement the `Copy` trait
 LL |         a @ Ok(b) | a @ Err(b) => {}
-   |         -      ^ value used here after move
+   |         ^      - value partially moved here
    |         |
-   |         value moved here
+   |         value used here after partial move
    |
+   = note: partial move occurs because value has type `U`, which does not implement the `Copy` trait
 help: borrow this binding in the pattern to avoid moving the value
    |
-LL |         ref a @ Ok(b) | a @ Err(b) => {}
-   |         +++
+LL |         ref a @ Ok(ref b) | a @ Err(b) => {}
+   |         +++        +++
 
-error[E0382]: use of moved value
-  --> $DIR/borrowck-move-and-move.rs:18:29
+error[E0382]: use of partially moved value
+  --> $DIR/borrowck-move-and-move.rs:18:21
    |
-LL |     match Ok(U) {
-   |           ----- move occurs because value has type `Result<U, U>`, which does not implement the `Copy` trait
 LL |         a @ Ok(b) | a @ Err(b) => {}
-   |                     -       ^ value used here after move
+   |                     ^       - value partially moved here
    |                     |
-   |                     value moved here
+   |                     value used here after partial move
    |
+   = note: partial move occurs because value has type `U`, which does not implement the `Copy` trait
 help: borrow this binding in the pattern to avoid moving the value
    |
-LL |         a @ Ok(b) | ref a @ Err(b) => {}
-   |                     +++
+LL |         a @ Ok(b) | ref a @ Err(ref b) => {}
+   |                     +++         +++
 
 error[E0382]: use of partially moved value
   --> $DIR/borrowck-move-and-move.rs:25:9

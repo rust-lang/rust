@@ -1,5 +1,5 @@
-// check-pass
-// incremental
+//@ check-pass
+//@ incremental
 
 #![feature(lint_reasons)]
 #![warn(unused)]

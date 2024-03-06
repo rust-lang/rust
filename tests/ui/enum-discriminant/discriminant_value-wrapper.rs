@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 
 #![allow(enum_intrinsics_non_enums)]
 

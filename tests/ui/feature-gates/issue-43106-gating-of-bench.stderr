@@ -1,17 +1,9 @@
-error: cannot determine resolution for the attribute macro `bench`
-  --> $DIR/issue-43106-gating-of-bench.rs:7:4
-   |
-LL | #![bench                   = "4100"]
-   |    ^^^^^
-   |
-   = note: import resolution is stuck, try simplifying macro imports
-
 error: `bench` attribute cannot be used at crate level
   --> $DIR/issue-43106-gating-of-bench.rs:7:1
    |
 LL | #![bench                   = "4100"]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-...
+LL |
 LL | fn main() {}
    |    ---- the inner attribute doesn't annotate this function
    |
@@ -21,5 +13,5 @@ LL - #![bench                   = "4100"]
 LL + #[bench                   = "4100"]
    |
 
-error: aborting due to 2 previous errors
+error: aborting due to 1 previous error
 

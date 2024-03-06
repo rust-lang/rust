@@ -1,5 +1,5 @@
-// compile-flags:-Zverbose-internals
-// check-pass
+//@ compile-flags:-Zverbose-internals
+//@ check-pass
 
 // Test that we assume that universal types like `T` outlive the
 // function body.

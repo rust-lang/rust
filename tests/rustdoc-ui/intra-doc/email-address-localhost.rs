@@ -1,5 +1,5 @@
-// normalize-stderr-test: "nightly|beta|1\.[0-9][0-9]\.[0-9]" -> "$$CHANNEL"
-// check-pass
+//@ normalize-stderr-test: "nightly|beta|1\.[0-9][0-9]\.[0-9]" -> "$$CHANNEL"
+//@ check-pass
 #![deny(warnings)]
 
 //! Email me at <hello@localhost>.

@@ -1,7 +1,5 @@
 use std::{collections::hash_map::Entry, io::Write, iter, path::Path};
 
-use log::trace;
-
 use rustc_apfloat::Float;
 use rustc_ast::expand::allocator::AllocatorKind;
 use rustc_hir::{
@@ -70,9 +68,9 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         let ret = match ret {
             None =>
                 match link_name.as_str() {
-                    "miri_start_panic" => {
-                        // `check_shim` happens inside `handle_miri_start_panic`.
-                        this.handle_miri_start_panic(abi, link_name, args, unwind)?;
+                    "miri_start_unwind" => {
+                        // `check_shim` happens inside `handle_miri_start_unwind`.
+                        this.handle_miri_start_unwind(abi, link_name, args, unwind)?;
                         return Ok(None);
                     }
                     // This matches calls to the foreign item `panic_impl`.
@@ -477,7 +475,7 @@ trait EvalContextExtPriv<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                 let [id, show_unnamed] = this.check_shim(abi, Abi::Rust, link_name, args)?;
                 let id = this.read_scalar(id)?.to_u64()?;
                 let show_unnamed = this.read_scalar(show_unnamed)?.to_bool()?;
-                if let Some(id) = std::num::NonZeroU64::new(id) {
+                if let Some(id) = std::num::NonZero::new(id) {
                     this.print_borrow_state(AllocId(id), show_unnamed)?;
                 }
             }
@@ -585,17 +583,17 @@ trait EvalContextExtPriv<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                 }
                 if let Ok((alloc_id, offset, ..)) = this.ptr_try_get_alloc_id(ptr) {
                     let (_size, alloc_align, _kind) = this.get_alloc_info(alloc_id);
-                    // Not `get_alloc_extra_mut`, need to handle read-only allocations!
-                    let alloc_extra = this.get_alloc_extra(alloc_id)?;
                     // If the newly promised alignment is bigger than the native alignment of this
                     // allocation, and bigger than the previously promised alignment, then set it.
                     if align > alloc_align
-                        && !alloc_extra
+                        && !this
+                            .machine
                             .symbolic_alignment
-                            .get()
-                            .is_some_and(|(_, old_align)| align <= old_align)
+                            .get_mut()
+                            .get(&alloc_id)
+                            .is_some_and(|&(_, old_align)| align <= old_align)
                     {
-                        alloc_extra.symbolic_alignment.set(Some((offset, align)));
+                        this.machine.symbolic_alignment.get_mut().insert(alloc_id, (offset, align));
                     }
                 }
             }

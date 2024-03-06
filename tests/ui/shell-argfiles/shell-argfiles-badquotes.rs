@@ -5,8 +5,8 @@
 // the path separator for the command line arguments that is only run on
 // windows.
 //
-// ignore-windows
-// compile-flags: --cfg cmdline_set -Z shell-argfiles @shell:{{src-base}}/shell-argfiles/shell-argfiles-badquotes.args
+//@ ignore-windows
+//@ compile-flags: --cfg cmdline_set -Z shell-argfiles @shell:{{src-base}}/shell-argfiles/shell-argfiles-badquotes.args
 
 fn main() {
 }

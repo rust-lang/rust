@@ -1,8 +1,8 @@
-// run-pass
+//@ run-pass
 // Test that even with prior inferred parameters, object lifetimes of objects after are still
 // valid.
 
-// pretty-expanded FIXME #23616
+//@ pretty-expanded FIXME #23616
 
 #![allow(dead_code)]
 #![feature(generic_arg_infer)]

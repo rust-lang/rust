@@ -1,4 +1,4 @@
-// check-pass
+//@ check-pass
 
 fn main() {
     // Test that we can infer the type of binary operands when

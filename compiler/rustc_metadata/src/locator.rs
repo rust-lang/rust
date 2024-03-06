@@ -220,7 +220,7 @@ use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::memmap::Mmap;
 use rustc_data_structures::owned_slice::slice_owned;
 use rustc_data_structures::svh::Svh;
-use rustc_errors::{DiagnosticArgValue, IntoDiagnosticArg};
+use rustc_errors::{DiagArgValue, IntoDiagnosticArg};
 use rustc_fs_util::try_canonicalize;
 use rustc_session::config;
 use rustc_session::cstore::CrateSource;
@@ -291,11 +291,11 @@ impl fmt::Display for CrateFlavor {
 }
 
 impl IntoDiagnosticArg for CrateFlavor {
-    fn into_diagnostic_arg(self) -> rustc_errors::DiagnosticArgValue<'static> {
+    fn into_diagnostic_arg(self) -> rustc_errors::DiagArgValue {
         match self {
-            CrateFlavor::Rlib => DiagnosticArgValue::Str(Cow::Borrowed("rlib")),
-            CrateFlavor::Rmeta => DiagnosticArgValue::Str(Cow::Borrowed("rmeta")),
-            CrateFlavor::Dylib => DiagnosticArgValue::Str(Cow::Borrowed("dylib")),
+            CrateFlavor::Rlib => DiagArgValue::Str(Cow::Borrowed("rlib")),
+            CrateFlavor::Rmeta => DiagArgValue::Str(Cow::Borrowed("rmeta")),
+            CrateFlavor::Dylib => DiagArgValue::Str(Cow::Borrowed("dylib")),
         }
     }
 }
@@ -921,8 +921,8 @@ pub(crate) enum CrateError {
     MultipleCandidates(Symbol, CrateFlavor, Vec<PathBuf>),
     SymbolConflictsCurrent(Symbol),
     StableCrateIdCollision(Symbol, Symbol),
-    DlOpen(String),
-    DlSym(String),
+    DlOpen(String, String),
+    DlSym(String, String),
     LocatorCombined(Box<CombinedLocatorError>),
     NotFound(Symbol),
 }
@@ -967,8 +967,8 @@ impl CrateError {
             CrateError::StableCrateIdCollision(crate_name0, crate_name1) => {
                 dcx.emit_err(errors::StableCrateIdCollision { span, crate_name0, crate_name1 });
             }
-            CrateError::DlOpen(s) | CrateError::DlSym(s) => {
-                dcx.emit_err(errors::DlError { span, err: s });
+            CrateError::DlOpen(path, err) | CrateError::DlSym(path, err) => {
+                dcx.emit_err(errors::DlError { span, path, err });
             }
             CrateError::LocatorCombined(locator) => {
                 let crate_name = locator.crate_name;

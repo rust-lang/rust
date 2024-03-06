@@ -1,12 +1,12 @@
 use clippy_utils::diagnostics::{span_lint_hir, span_lint_hir_and_then};
 use clippy_utils::source::snippet_opt;
 use clippy_utils::ty::has_drop;
-use clippy_utils::{any_parent_is_automatically_derived, get_parent_node, is_lint_allowed, path_to_local, peel_blocks};
+use clippy_utils::{any_parent_is_automatically_derived, is_lint_allowed, path_to_local, peel_blocks};
 use rustc_errors::Applicability;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::{
-    is_range_literal, BinOpKind, BlockCheckMode, Expr, ExprKind, HirId, HirIdMap, ItemKind, Node, PatKind, Stmt,
-    StmtKind, UnsafeSource,
+    is_range_literal, BinOpKind, BlockCheckMode, Expr, ExprKind, HirId, HirIdMap, ItemKind, LocalSource, Node, PatKind,
+    Stmt, StmtKind, UnsafeSource,
 };
 use rustc_infer::infer::TyCtxtInferExt as _;
 use rustc_lint::{LateContext, LateLintPass, LintContext};
@@ -42,10 +42,6 @@ declare_clippy_lint! {
     /// Unlike dead code, these bindings are actually
     /// executed. However, as they have no effect and shouldn't be used further on, all they
     /// do is make the code less readable.
-    ///
-    /// ### Known problems
-    /// Further usage of this variable is not checked, which can lead to false positives if it is
-    /// used later in the code.
     ///
     /// ### Example
     /// ```rust,ignore
@@ -98,7 +94,8 @@ impl<'tcx> LateLintPass<'tcx> for NoEffect {
 
     fn check_block_post(&mut self, cx: &LateContext<'tcx>, _: &'tcx rustc_hir::Block<'tcx>) {
         for hir_id in self.local_bindings.pop().unwrap() {
-            if let Some(span) = self.underscore_bindings.remove(&hir_id) {
+            // FIXME(rust/#120456) - is `swap_remove` correct?
+            if let Some(span) = self.underscore_bindings.swap_remove(&hir_id) {
                 span_lint_hir(
                     cx,
                     NO_EFFECT_UNDERSCORE_BINDING,
@@ -112,7 +109,8 @@ impl<'tcx> LateLintPass<'tcx> for NoEffect {
 
     fn check_expr(&mut self, _: &LateContext<'tcx>, expr: &'tcx rustc_hir::Expr<'tcx>) {
         if let Some(def_id) = path_to_local(expr) {
-            self.underscore_bindings.remove(&def_id);
+            // FIXME(rust/#120456) - is `swap_remove` correct?
+            self.underscore_bindings.swap_remove(&def_id);
         }
     }
 }
@@ -142,7 +140,7 @@ impl NoEffect {
                         for parent in cx.tcx.hir().parent_iter(stmt.hir_id) {
                             if let Node::Item(item) = parent.1
                                 && let ItemKind::Fn(..) = item.kind
-                                && let Some(Node::Block(block)) = get_parent_node(cx.tcx, stmt.hir_id)
+                                && let Node::Block(block) = cx.tcx.parent_hir_node(stmt.hir_id)
                                 && let [.., final_stmt] = block.stmts
                                 && final_stmt.hir_id == stmt.hir_id
                             {
@@ -178,6 +176,7 @@ impl NoEffect {
             }
         } else if let StmtKind::Local(local) = stmt.kind {
             if !is_lint_allowed(cx, NO_EFFECT_UNDERSCORE_BINDING, local.hir_id)
+                && !matches!(local.source, LocalSource::AsyncFn)
                 && let Some(init) = local.init
                 && local.els.is_none()
                 && !local.pat.span.from_expansion()
@@ -357,7 +356,7 @@ fn reduce_expression<'a>(cx: &LateContext<'_>, expr: &'a Expr<'a>) -> Option<Vec
             }
         },
         ExprKind::Block(block, _) => {
-            if block.stmts.is_empty() {
+            if block.stmts.is_empty() && !block.targeted_by_break {
                 block.expr.as_ref().and_then(|e| {
                     match block.rules {
                         BlockCheckMode::UnsafeBlock(UnsafeSource::UserProvided) => None,

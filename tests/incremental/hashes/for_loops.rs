@@ -5,12 +5,12 @@
 // and make sure that the hash has changed, then change nothing between rev2 and
 // rev3 and make sure that the hash has not changed.
 
-// build-pass (FIXME(62277): could be check-pass?)
-// revisions: cfail1 cfail2 cfail3 cfail4 cfail5 cfail6
-// compile-flags: -Z query-dep-graph -O
-// [cfail1]compile-flags: -Zincremental-ignore-spans
-// [cfail2]compile-flags: -Zincremental-ignore-spans
-// [cfail3]compile-flags: -Zincremental-ignore-spans
+//@ build-pass (FIXME(62277): could be check-pass?)
+//@ revisions: cfail1 cfail2 cfail3 cfail4 cfail5 cfail6
+//@ compile-flags: -Z query-dep-graph -O
+//@ [cfail1]compile-flags: -Zincremental-ignore-spans
+//@ [cfail2]compile-flags: -Zincremental-ignore-spans
+//@ [cfail3]compile-flags: -Zincremental-ignore-spans
 
 #![allow(warnings)]
 #![feature(rustc_attrs)]
@@ -28,9 +28,9 @@ pub fn change_loop_body() {
 }
 
 #[cfg(not(any(cfail1,cfail4)))]
-#[rustc_clean(cfg="cfail2", except="hir_owner_nodes, optimized_mir")]
+#[rustc_clean(cfg="cfail2", except="opt_hir_owner_nodes, optimized_mir")]
 #[rustc_clean(cfg="cfail3")]
-#[rustc_clean(cfg="cfail5", except="hir_owner_nodes, optimized_mir")]
+#[rustc_clean(cfg="cfail5", except="opt_hir_owner_nodes, optimized_mir")]
 #[rustc_clean(cfg="cfail6")]
 pub fn change_loop_body() {
     let mut _x = 0;
@@ -53,9 +53,9 @@ pub fn change_iteration_variable_name() {
 }
 
 #[cfg(not(any(cfail1,cfail4)))]
-#[rustc_clean(cfg="cfail2", except="hir_owner_nodes, optimized_mir")]
+#[rustc_clean(cfg="cfail2", except="opt_hir_owner_nodes, optimized_mir")]
 #[rustc_clean(cfg="cfail3")]
-#[rustc_clean(cfg="cfail5", except="hir_owner_nodes, optimized_mir")]
+#[rustc_clean(cfg="cfail5", except="opt_hir_owner_nodes, optimized_mir")]
 #[rustc_clean(cfg="cfail6")]
 pub fn change_iteration_variable_name() {
     let mut _x = 0;
@@ -78,9 +78,9 @@ pub fn change_iteration_variable_pattern() {
 }
 
 #[cfg(not(any(cfail1,cfail4)))]
-#[rustc_clean(cfg="cfail2", except="hir_owner_nodes, optimized_mir, typeck")]
+#[rustc_clean(cfg="cfail2", except="opt_hir_owner_nodes, optimized_mir, typeck")]
 #[rustc_clean(cfg="cfail3")]
-#[rustc_clean(cfg="cfail5", except="hir_owner_nodes, optimized_mir, typeck")]
+#[rustc_clean(cfg="cfail5", except="opt_hir_owner_nodes, optimized_mir, typeck")]
 #[rustc_clean(cfg="cfail6")]
 pub fn change_iteration_variable_pattern() {
     let mut _x = 0;
@@ -103,9 +103,9 @@ pub fn change_iterable() {
 }
 
 #[cfg(not(any(cfail1,cfail4)))]
-#[rustc_clean(cfg="cfail2", except="hir_owner_nodes, promoted_mir, optimized_mir")]
+#[rustc_clean(cfg="cfail2", except="opt_hir_owner_nodes, promoted_mir, optimized_mir")]
 #[rustc_clean(cfg="cfail3")]
-#[rustc_clean(cfg="cfail5", except="hir_owner_nodes, promoted_mir, optimized_mir")]
+#[rustc_clean(cfg="cfail5", except="opt_hir_owner_nodes, promoted_mir, optimized_mir")]
 #[rustc_clean(cfg="cfail6")]
 pub fn change_iterable() {
     let mut _x = 0;
@@ -128,9 +128,9 @@ pub fn add_break() {
 }
 
 #[cfg(not(any(cfail1,cfail4)))]
-#[rustc_clean(cfg="cfail2", except="hir_owner_nodes, optimized_mir, typeck")]
+#[rustc_clean(cfg="cfail2", except="opt_hir_owner_nodes, optimized_mir, typeck")]
 #[rustc_clean(cfg="cfail3")]
-#[rustc_clean(cfg="cfail5", except="hir_owner_nodes, optimized_mir, typeck")]
+#[rustc_clean(cfg="cfail5", except="opt_hir_owner_nodes, optimized_mir, typeck")]
 #[rustc_clean(cfg="cfail6")]
 pub fn add_break() {
     let mut _x = 0;
@@ -153,9 +153,9 @@ pub fn add_loop_label() {
 }
 
 #[cfg(not(any(cfail1,cfail4)))]
-#[rustc_clean(cfg="cfail2", except="hir_owner_nodes")]
+#[rustc_clean(cfg="cfail2", except="opt_hir_owner_nodes")]
 #[rustc_clean(cfg="cfail3")]
-#[rustc_clean(cfg="cfail5", except="hir_owner_nodes, optimized_mir")]
+#[rustc_clean(cfg="cfail5", except="opt_hir_owner_nodes, optimized_mir")]
 #[rustc_clean(cfg="cfail6")]
 pub fn add_loop_label() {
     let mut _x = 0;
@@ -178,9 +178,9 @@ pub fn add_loop_label_to_break() {
 }
 
 #[cfg(not(any(cfail1,cfail4)))]
-#[rustc_clean(cfg="cfail2", except="hir_owner_nodes")]
+#[rustc_clean(cfg="cfail2", except="opt_hir_owner_nodes")]
 #[rustc_clean(cfg="cfail3")]
-#[rustc_clean(cfg="cfail5", except="hir_owner_nodes, optimized_mir")]
+#[rustc_clean(cfg="cfail5", except="opt_hir_owner_nodes, optimized_mir")]
 #[rustc_clean(cfg="cfail6")]
 pub fn add_loop_label_to_break() {
     let mut _x = 0;
@@ -205,9 +205,9 @@ pub fn change_break_label() {
 }
 
 #[cfg(not(any(cfail1,cfail4)))]
-#[rustc_clean(cfg="cfail2", except="hir_owner_nodes, optimized_mir")]
+#[rustc_clean(cfg="cfail2", except="opt_hir_owner_nodes, optimized_mir")]
 #[rustc_clean(cfg="cfail3")]
-#[rustc_clean(cfg="cfail5", except="hir_owner_nodes, optimized_mir")]
+#[rustc_clean(cfg="cfail5", except="opt_hir_owner_nodes, optimized_mir")]
 #[rustc_clean(cfg="cfail6")]
 pub fn change_break_label() {
     let mut _x = 0;
@@ -232,9 +232,9 @@ pub fn add_loop_label_to_continue() {
 }
 
 #[cfg(not(any(cfail1,cfail4)))]
-#[rustc_clean(cfg="cfail2", except="hir_owner_nodes")]
+#[rustc_clean(cfg="cfail2", except="opt_hir_owner_nodes")]
 #[rustc_clean(cfg="cfail3")]
-#[rustc_clean(cfg="cfail5", except="hir_owner_nodes")]
+#[rustc_clean(cfg="cfail5", except="opt_hir_owner_nodes")]
 #[rustc_clean(cfg="cfail6")]
 pub fn add_loop_label_to_continue() {
     let mut _x = 0;
@@ -259,9 +259,9 @@ pub fn change_continue_label() {
 }
 
 #[cfg(not(any(cfail1,cfail4)))]
-#[rustc_clean(cfg="cfail2", except="hir_owner_nodes, optimized_mir")]
+#[rustc_clean(cfg="cfail2", except="opt_hir_owner_nodes, optimized_mir")]
 #[rustc_clean(cfg="cfail3")]
-#[rustc_clean(cfg="cfail5", except="hir_owner_nodes, optimized_mir")]
+#[rustc_clean(cfg="cfail5", except="opt_hir_owner_nodes, optimized_mir")]
 #[rustc_clean(cfg="cfail6")]
 pub fn change_continue_label() {
     let mut _x = 0;
@@ -286,9 +286,9 @@ pub fn change_continue_to_break() {
 }
 
 #[cfg(not(any(cfail1,cfail4)))]
-#[rustc_clean(cfg="cfail2", except="hir_owner_nodes, optimized_mir")]
+#[rustc_clean(cfg="cfail2", except="opt_hir_owner_nodes, optimized_mir")]
 #[rustc_clean(cfg="cfail3")]
-#[rustc_clean(cfg="cfail5", except="hir_owner_nodes, optimized_mir")]
+#[rustc_clean(cfg="cfail5", except="opt_hir_owner_nodes, optimized_mir")]
 #[rustc_clean(cfg="cfail6")]
 pub fn change_continue_to_break() {
     let mut _x = 0;

@@ -1,5 +1,5 @@
-// check-pass
-// aux-build:attributes-on-definitions.rs
+//@ check-pass
+//@ aux-build:attributes-on-definitions.rs
 
 #![forbid(unsafe_code)]
 

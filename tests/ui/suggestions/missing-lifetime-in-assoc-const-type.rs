@@ -1,4 +1,4 @@
-// revisions: default generic_const_items
+//@ revisions: default generic_const_items
 
 #![cfg_attr(generic_const_items, feature(generic_const_items), allow(incomplete_features))]
 

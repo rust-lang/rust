@@ -346,6 +346,23 @@ fn angle_brackets_and_args() {
     dyn_opt.map(|d| d.method_on_dyn());
 }
 
+// https://github.com/rust-lang/rust-clippy/issues/12199
+fn track_caller_fp() {
+    struct S;
+    impl S {
+        #[track_caller]
+        fn add_location(self) {}
+    }
+
+    #[track_caller]
+    fn add_location() {}
+
+    fn foo(_: fn()) {}
+    fn foo2(_: fn(S)) {}
+    foo(|| add_location());
+    foo2(|s| s.add_location());
+}
+
 fn _late_bound_to_early_bound_regions() {
     struct Foo<'a>(&'a u32);
     impl<'a> Foo<'a> {
@@ -399,4 +416,58 @@ fn _closure_with_types() {
 
     let _ = f2(|x: u32| f(x));
     let _ = f2(|x| -> u32 { f(x) });
+}
+
+/// https://github.com/rust-lang/rust-clippy/issues/10854
+/// This is to verify that redundant_closure_for_method_calls resolves suggested paths to relative.
+mod issue_10854 {
+    pub mod test_mod {
+        pub struct Test;
+
+        impl Test {
+            pub fn method(self) -> i32 {
+                0
+            }
+        }
+
+        pub fn calls_test(test: Option<Test>) -> Option<i32> {
+            test.map(|t| t.method())
+        }
+
+        pub fn calls_outer(test: Option<super::Outer>) -> Option<i32> {
+            test.map(|t| t.method())
+        }
+    }
+
+    pub struct Outer;
+
+    impl Outer {
+        pub fn method(self) -> i32 {
+            0
+        }
+    }
+
+    pub fn calls_into_mod(test: Option<test_mod::Test>) -> Option<i32> {
+        test.map(|t| t.method())
+    }
+
+    mod a {
+        pub mod b {
+            pub mod c {
+                pub fn extreme_nesting(test: Option<super::super::super::d::Test>) -> Option<i32> {
+                    test.map(|t| t.method())
+                }
+            }
+        }
+    }
+
+    mod d {
+        pub struct Test;
+
+        impl Test {
+            pub fn method(self) -> i32 {
+                0
+            }
+        }
+    }
 }

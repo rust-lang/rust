@@ -723,6 +723,35 @@ fn main() {
 }
 
 #[test]
+fn doctest_destructure_struct_binding() {
+    check_doc_test(
+        "destructure_struct_binding",
+        r#####"
+struct Foo {
+    bar: i32,
+    baz: i32,
+}
+fn main() {
+    let $0foo = Foo { bar: 1, baz: 2 };
+    let bar2 = foo.bar;
+    let baz2 = &foo.baz;
+}
+"#####,
+        r#####"
+struct Foo {
+    bar: i32,
+    baz: i32,
+}
+fn main() {
+    let Foo { bar, baz } = Foo { bar: 1, baz: 2 };
+    let bar2 = bar;
+    let baz2 = &baz;
+}
+"#####,
+    )
+}
+
+#[test]
 fn doctest_destructure_tuple_binding() {
     check_doc_test(
         "destructure_tuple_binding",
@@ -904,6 +933,27 @@ fn main() {
 fn main() {
     let $0var_name = (1 + 2);
     var_name * 4;
+}
+"#####,
+    )
+}
+
+#[test]
+fn doctest_fill_record_pattern_fields() {
+    check_doc_test(
+        "fill_record_pattern_fields",
+        r#####"
+struct Bar { y: Y, z: Z }
+
+fn foo(bar: Bar) {
+    let Bar { ..$0 } = bar;
+}
+"#####,
+        r#####"
+struct Bar { y: Y, z: Z }
+
+fn foo(bar: Bar) {
+    let Bar { y, z  } = bar;
 }
 "#####,
     )
@@ -1429,10 +1479,17 @@ fn doctest_generate_getter() {
     check_doc_test(
         "generate_getter",
         r#####"
-//- minicore: as_ref
+//- minicore: as_ref, deref
 pub struct String;
 impl AsRef<str> for String {
     fn as_ref(&self) -> &str {
+        ""
+    }
+}
+
+impl core::ops::Deref for String {
+    type Target = str;
+    fn deref(&self) -> &Self::Target {
         ""
     }
 }
@@ -1449,13 +1506,20 @@ impl AsRef<str> for String {
     }
 }
 
+impl core::ops::Deref for String {
+    type Target = str;
+    fn deref(&self) -> &Self::Target {
+        ""
+    }
+}
+
 struct Person {
     name: String,
 }
 
 impl Person {
     fn $0name(&self) -> &str {
-        self.name.as_ref()
+        &self.name
     }
 }
 "#####,
@@ -1499,9 +1563,7 @@ struct Ctx<T: Clone> {
     data: T,
 }
 
-impl<T: Clone> Ctx<T> {
-    $0
-}
+impl<T: Clone> Ctx<T> {$0}
 "#####,
     )
 }
@@ -1589,7 +1651,9 @@ struct Ctx<T: Clone> {
 }
 
 impl<T: Clone> Ctx<T> {
-    fn $0new(data: T) -> Self { Self { data } }
+    fn $0new(data: T) -> Self {
+        Self { data }
+    }
 }
 "#####,
     )
@@ -1651,7 +1715,7 @@ macro_rules! const_maker {
     };
 }
 
-trait ${0:TraitName}<const N: usize> {
+trait ${0:NewTrait}<const N: usize> {
     // Used as an associated constant.
     const CONST_ASSOC: usize = N * 4;
 
@@ -1660,7 +1724,7 @@ trait ${0:TraitName}<const N: usize> {
     const_maker! {i32, 7}
 }
 
-impl<const N: usize> ${0:TraitName}<N> for Foo<N> {
+impl<const N: usize> ${0:NewTrait}<N> for Foo<N> {
     // Used as an associated constant.
     const CONST_ASSOC: usize = N * 4;
 
@@ -1688,9 +1752,7 @@ struct Ctx<T: Clone> {
     data: T,
 }
 
-impl<T: Clone> $0 for Ctx<T> {
-
-}
+impl<T: Clone> ${0:_} for Ctx<T> {}
 "#####,
     )
 }
@@ -2213,6 +2275,19 @@ $0fn t() {}$0
 "#####,
         r#####"
 fn t() {}
+"#####,
+    )
+}
+
+#[test]
+fn doctest_normalize_import() {
+    check_doc_test(
+        "normalize_import",
+        r#####"
+use$0 std::{io, {fmt::Formatter}};
+"#####,
+        r#####"
+use std::{fmt::Formatter, io};
 "#####,
     )
 }

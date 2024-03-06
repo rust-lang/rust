@@ -989,3 +989,43 @@ fn foo<'a>() { S::<'static, F$0, _, _>; }
         "#]],
     );
 }
+
+#[test]
+fn complete_traits_on_impl_trait_block() {
+    check(
+        r#"
+trait Foo {}
+
+struct Bar;
+
+impl $0 for Bar { }
+"#,
+        expect![[r#"
+            md module
+            tt Foo
+            tt Trait
+            kw crate::
+            kw self::
+        "#]],
+    );
+}
+
+#[test]
+fn complete_traits_with_path_on_impl_trait_block() {
+    check(
+        r#"
+mod outer {
+    pub trait Foo {}
+    pub struct Bar;
+    pub mod inner {
+    }
+}
+
+impl outer::$0 for Bar { }
+"#,
+        expect![[r#"
+            md inner
+            tt Foo
+        "#]],
+    );
+}

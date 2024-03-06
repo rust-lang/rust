@@ -1,10 +1,10 @@
 error[E0109]: type arguments are not allowed on this type
   --> $DIR/issue-116473-ice-wrong-span-variant-args.rs:15:51
    |
+LL |     () => (recursive_tt!(VariantB));
+   |                          -------- not allowed on this type
 LL |     ($variant:tt) => (if let EnumUnit::$variant::<i32, u32> {} = 5 { true } else { false });
-   |                                        --------   ^^^  ^^^ type argument not allowed
-   |                                        |
-   |                                        not allowed on this type
+   |                                                   ^^^  ^^^ type argument not allowed
 ...
 LL |     recursive_tt!();
    |     --------------- in this macro invocation
@@ -69,10 +69,11 @@ LL |     recursive_ident!();
 error[E0109]: type arguments are not allowed on this type
   --> $DIR/issue-116473-ice-wrong-span-variant-args.rs:38:51
    |
+LL |     () => (nested2_tt!(VariantB));
+   |                        -------- not allowed on this type
+...
 LL |     ($variant:tt) => (if let EnumUnit::$variant::<i32, u32> {} = 5 { true } else { false });
-   |                                        --------   ^^^  ^^^ type argument not allowed
-   |                                        |
-   |                                        not allowed on this type
+   |                                                   ^^^  ^^^ type argument not allowed
 ...
 LL |     nested1_tt!();
    |     ------------- in this macro invocation
@@ -136,12 +137,13 @@ LL |     nested1_ident!();
    = note: this error originates in the macro `nested2_ident` which comes from the expansion of the macro `nested1_ident` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0109]: type arguments are not allowed on this type
-  --> $DIR/issue-116473-ice-wrong-span-variant-args.rs:64:58
+  --> $DIR/issue-116473-ice-wrong-span-variant-args.rs:60:44
    |
+LL |     () => (nested2_tt_args_in_first_macro!(i32, u32));
+   |                                            ^^^  ^^^ type argument not allowed
+...
 LL |     ($arg1:tt, $arg2:tt) => (if let EnumUnit::VariantB::<$arg1, $arg2> {}
-   |                                               --------   ^^^^^  ^^^^^ type argument not allowed
-   |                                               |
-   |                                               not allowed on this type
+   |                                               -------- not allowed on this type
 ...
 LL |     nested1_tt_args_in_first_macro!();
    |     --------------------------------- in this macro invocation
@@ -155,11 +157,11 @@ LL +     ($arg1:tt, $arg2:tt) => (if let EnumUnit::<$arg1, $arg2>::VariantB {}
    |
 
 error[E0308]: mismatched types
-  --> $DIR/issue-116473-ice-wrong-span-variant-args.rs:64:37
+  --> $DIR/issue-116473-ice-wrong-span-variant-args.rs:65:37
    |
 LL |     ($arg1:tt, $arg2:tt) => (if let EnumUnit::VariantB::<$arg1, $arg2> {}
    |                                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected integer, found `Enum<(), ()>`
-...
+LL |
 LL |             = 5 { true } else { false });
    |               - this expression has type `{integer}`
 ...

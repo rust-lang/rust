@@ -1,5 +1,5 @@
-// edition:2021
-// run-pass
+//@ edition:2021
+//@ run-pass
 
 // Test disjoint capture within an impl block
 

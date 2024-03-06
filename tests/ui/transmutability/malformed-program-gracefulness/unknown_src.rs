@@ -6,16 +6,14 @@
 
 mod assert {
     use std::mem::BikeshedIntrinsicFrom;
-    pub struct Context;
 
-    pub fn is_transmutable<Src, Dst, Context>()
+    pub fn is_transmutable<Src, Dst>()
     where
-        Dst: BikeshedIntrinsicFrom<Src, Context>
+        Dst: BikeshedIntrinsicFrom<Src>
     {}
 }
 
 fn should_gracefully_handle_unknown_src() {
-    struct Context;
     #[repr(C)] struct Dst;
-    assert::is_transmutable::<Src, Dst, Context>(); //~ cannot find type
+    assert::is_transmutable::<Src, Dst>(); //~ cannot find type
 }

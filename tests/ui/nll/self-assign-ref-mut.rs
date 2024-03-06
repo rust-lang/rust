@@ -1,6 +1,6 @@
 // Check that `*y` isn't borrowed after `y = y`.
 
-// check-pass
+//@ check-pass
 
 fn main() {
     let mut x = 1;

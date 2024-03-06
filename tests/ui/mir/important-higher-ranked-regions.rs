@@ -1,5 +1,5 @@
-// check-pass
-// compile-flags: -Zvalidate-mir
+//@ check-pass
+//@ compile-flags: -Zvalidate-mir
 
 // This test checks that bivariant parameters are handled correctly
 // in the mir.

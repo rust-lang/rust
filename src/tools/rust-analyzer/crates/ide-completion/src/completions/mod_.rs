@@ -21,7 +21,7 @@ pub(crate) fn complete_mod(
         return None;
     }
 
-    let _p = profile::span("completion::complete_mod");
+    let _p = tracing::span!(tracing::Level::INFO, "completion::complete_mod").entered();
 
     let mut current_module = ctx.module;
     // For `mod $0`, `ctx.module` is its parent, but for `mod f$0`, it's `mod f` itself, but we're

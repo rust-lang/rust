@@ -1,4 +1,4 @@
-// check-pass
+//@ check-pass
 #![feature(const_trait_impl, rustc_attrs)]
 
 #[const_trait]

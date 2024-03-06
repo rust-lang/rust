@@ -2,7 +2,7 @@
 // even when they are only used once (since to not use a named
 // lifetime is illegal!)
 //
-// check-pass
+//@ check-pass
 
 // Use forbid to verify that `automatically_derived` is handled correctly.
 #![forbid(single_use_lifetimes)]

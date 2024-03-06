@@ -1,6 +1,6 @@
 // This test is a regression test for #34792
 
-// check-pass
+//@ check-pass
 
 pub struct A;
 pub struct B;

@@ -1,4 +1,4 @@
-// edition:2021
+//@ edition:2021
 
 // Test that we do not suggest `.await` when it doesn't make sense.
 

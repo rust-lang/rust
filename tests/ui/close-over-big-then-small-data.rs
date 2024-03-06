@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 
 #![allow(dead_code)]
 // If we use GEPi rather than GEP_tup_like when

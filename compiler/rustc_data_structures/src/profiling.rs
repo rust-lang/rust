@@ -866,16 +866,14 @@ cfg_match! {
             use std::mem;
 
             use windows::{
-                // FIXME: change back to K32GetProcessMemoryInfo when windows crate
-                // updated to 0.49.0+ to drop dependency on psapi.dll
-                Win32::System::ProcessStatus::{GetProcessMemoryInfo, PROCESS_MEMORY_COUNTERS},
+                Win32::System::ProcessStatus::{K32GetProcessMemoryInfo, PROCESS_MEMORY_COUNTERS},
                 Win32::System::Threading::GetCurrentProcess,
             };
 
             let mut pmc = PROCESS_MEMORY_COUNTERS::default();
             let pmc_size = mem::size_of_val(&pmc);
             unsafe {
-                GetProcessMemoryInfo(
+                K32GetProcessMemoryInfo(
                     GetCurrentProcess(),
                     &mut pmc,
                     pmc_size as u32,

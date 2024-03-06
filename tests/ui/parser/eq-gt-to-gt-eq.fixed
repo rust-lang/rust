@@ -1,4 +1,4 @@
-// run-rustfix
+//@ run-rustfix
 // Check that we try to correct `=>` to `>=` in conditions.
 #![allow(unused)]
 

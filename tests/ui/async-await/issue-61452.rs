@@ -1,4 +1,4 @@
-// edition:2018
+//@ edition:2018
 
 pub async fn f(x: Option<usize>) {
     x.take();

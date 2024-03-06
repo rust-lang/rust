@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 // Regression test for issue #48508:
 //
 // Confusion between global and local file offsets caused incorrect handling of multibyte character
@@ -6,7 +6,7 @@
 // when a multibyte character is at the end of a scope. The problematic code is actually in
 // issue-48508-aux.rs
 
-// compile-flags:-g
+//@ compile-flags:-g
 
 #![allow(uncommon_codepoints)]
 

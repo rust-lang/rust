@@ -1,12 +1,9 @@
-#![deny(rustc::untranslatable_diagnostic)]
-
 use crate::base::ast::NestedMetaItem;
 use crate::errors;
 use crate::expand::{self, AstFragment, Invocation};
 use crate::module::DirOwnership;
 
 use rustc_ast::attr::MarkedAttrs;
-use rustc_ast::mut_visit::DummyAstNode;
 use rustc_ast::ptr::P;
 use rustc_ast::token::{self, Nonterminal};
 use rustc_ast::tokenstream::TokenStream;
@@ -15,10 +12,10 @@ use rustc_ast::{self as ast, AttrVec, Attribute, HasAttrs, Item, NodeId, PatKind
 use rustc_attr::{self as attr, Deprecation, Stability};
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_data_structures::sync::{self, Lrc};
-use rustc_errors::{Applicability, DiagCtxt, DiagnosticBuilder, ErrorGuaranteed, PResult};
+use rustc_errors::{Applicability, Diag, DiagCtxt, ErrorGuaranteed, PResult};
 use rustc_feature::Features;
 use rustc_lint_defs::builtin::PROC_MACRO_BACK_COMPAT;
-use rustc_lint_defs::{BufferedEarlyLint, BuiltinLintDiagnostics, RegisteredTools};
+use rustc_lint_defs::{BufferedEarlyLint, BuiltinLintDiag, RegisteredTools};
 use rustc_parse::{parser, MACRO_ARGUMENTS};
 use rustc_session::config::CollapseMacroDebuginfo;
 use rustc_session::errors::report_lit_error;
@@ -98,7 +95,7 @@ impl Annotatable {
         }
     }
 
-    pub fn visit_with<'a, V: Visitor<'a>>(&'a self, visitor: &mut V) {
+    pub fn visit_with<'a, V: Visitor<'a>>(&'a self, visitor: &mut V) -> V::Result {
         match self {
             Annotatable::Item(item) => visitor.visit_item(item),
             Annotatable::TraitItem(item) => visitor.visit_assoc_item(item, AssocCtxt::Trait),
@@ -534,7 +531,7 @@ impl MacResult for MacEager {
 /// after hitting errors.
 #[derive(Copy, Clone)]
 pub struct DummyResult {
-    is_error: bool,
+    guar: Option<ErrorGuaranteed>,
     span: Span,
 }
 
@@ -543,20 +540,24 @@ impl DummyResult {
     ///
     /// Use this as a return value after hitting any errors and
     /// calling `span_err`.
-    pub fn any(span: Span) -> Box<dyn MacResult + 'static> {
-        Box::new(DummyResult { is_error: true, span })
+    pub fn any(span: Span, guar: ErrorGuaranteed) -> Box<dyn MacResult + 'static> {
+        Box::new(DummyResult { guar: Some(guar), span })
     }
 
     /// Same as `any`, but must be a valid fragment, not error.
     pub fn any_valid(span: Span) -> Box<dyn MacResult + 'static> {
-        Box::new(DummyResult { is_error: false, span })
+        Box::new(DummyResult { guar: None, span })
     }
 
     /// A plain dummy expression.
-    pub fn raw_expr(sp: Span, is_error: bool) -> P<ast::Expr> {
+    pub fn raw_expr(sp: Span, guar: Option<ErrorGuaranteed>) -> P<ast::Expr> {
         P(ast::Expr {
             id: ast::DUMMY_NODE_ID,
-            kind: if is_error { ast::ExprKind::Err } else { ast::ExprKind::Tup(ThinVec::new()) },
+            kind: if let Some(guar) = guar {
+                ast::ExprKind::Err(guar)
+            } else {
+                ast::ExprKind::Tup(ThinVec::new())
+            },
             span: sp,
             attrs: ast::AttrVec::new(),
             tokens: None,
@@ -569,19 +570,33 @@ impl DummyResult {
     }
 
     /// A plain dummy type.
-    pub fn raw_ty(sp: Span, is_error: bool) -> P<ast::Ty> {
+    pub fn raw_ty(sp: Span) -> P<ast::Ty> {
+        // FIXME(nnethercote): you might expect `ast::TyKind::Dummy` to be used here, but some
+        // values produced here end up being lowered to HIR, which `ast::TyKind::Dummy` does not
+        // support, so we use an empty tuple instead.
         P(ast::Ty {
             id: ast::DUMMY_NODE_ID,
-            kind: if is_error { ast::TyKind::Err } else { ast::TyKind::Tup(ThinVec::new()) },
+            kind: ast::TyKind::Tup(ThinVec::new()),
             span: sp,
             tokens: None,
         })
+    }
+
+    /// A plain dummy crate.
+    pub fn raw_crate() -> ast::Crate {
+        ast::Crate {
+            attrs: Default::default(),
+            items: Default::default(),
+            spans: Default::default(),
+            id: ast::DUMMY_NODE_ID,
+            is_placeholder: Default::default(),
+        }
     }
 }
 
 impl MacResult for DummyResult {
     fn make_expr(self: Box<DummyResult>) -> Option<P<ast::Expr>> {
-        Some(DummyResult::raw_expr(self.span, self.is_error))
+        Some(DummyResult::raw_expr(self.span, self.guar))
     }
 
     fn make_pat(self: Box<DummyResult>) -> Option<P<ast::Pat>> {
@@ -607,13 +622,13 @@ impl MacResult for DummyResult {
     fn make_stmts(self: Box<DummyResult>) -> Option<SmallVec<[ast::Stmt; 1]>> {
         Some(smallvec![ast::Stmt {
             id: ast::DUMMY_NODE_ID,
-            kind: ast::StmtKind::Expr(DummyResult::raw_expr(self.span, self.is_error)),
+            kind: ast::StmtKind::Expr(DummyResult::raw_expr(self.span, self.guar)),
             span: self.span,
         }])
     }
 
     fn make_ty(self: Box<DummyResult>) -> Option<P<ast::Ty>> {
-        Some(DummyResult::raw_ty(self.span, self.is_error))
+        Some(DummyResult::raw_ty(self.span))
     }
 
     fn make_arms(self: Box<DummyResult>) -> Option<SmallVec<[ast::Arm; 1]>> {
@@ -645,7 +660,7 @@ impl MacResult for DummyResult {
     }
 
     fn make_crate(self: Box<DummyResult>) -> Option<ast::Crate> {
-        Some(DummyAstNode::dummy())
+        Some(DummyResult::raw_crate())
     }
 }
 
@@ -883,17 +898,19 @@ impl SyntaxExtension {
         }
     }
 
+    /// A dummy bang macro `foo!()`.
     pub fn dummy_bang(edition: Edition) -> SyntaxExtension {
         fn expander<'cx>(
-            _: &'cx mut ExtCtxt<'_>,
+            cx: &'cx mut ExtCtxt<'_>,
             span: Span,
             _: TokenStream,
         ) -> Box<dyn MacResult + 'cx> {
-            DummyResult::any(span)
+            DummyResult::any(span, cx.dcx().span_delayed_bug(span, "expanded a dummy bang macro"))
         }
         SyntaxExtension::default(SyntaxExtensionKind::LegacyBang(Box::new(expander)), edition)
     }
 
+    /// A dummy derive macro `#[derive(Foo)]`.
     pub fn dummy_derive(edition: Edition) -> SyntaxExtension {
         fn expander(
             _: &mut ExtCtxt<'_>,
@@ -1065,7 +1082,7 @@ pub struct ExtCtxt<'a> {
     pub sess: &'a Session,
     pub ecfg: expand::ExpansionConfig<'a>,
     pub num_standard_library_imports: usize,
-    pub reduced_recursion_limit: Option<Limit>,
+    pub reduced_recursion_limit: Option<(Limit, ErrorGuaranteed)>,
     pub root_path: PathBuf,
     pub resolver: &'a mut dyn ResolverExpand,
     pub current_expansion: ExpansionData,
@@ -1128,13 +1145,13 @@ impl<'a> ExtCtxt<'a> {
         expand::MacroExpander::new(self, true)
     }
     pub fn new_parser_from_tts(&self, stream: TokenStream) -> parser::Parser<'a> {
-        rustc_parse::stream_to_parser(&self.sess.parse_sess, stream, MACRO_ARGUMENTS)
+        rustc_parse::stream_to_parser(&self.sess.psess, stream, MACRO_ARGUMENTS)
     }
     pub fn source_map(&self) -> &'a SourceMap {
-        self.sess.parse_sess.source_map()
+        self.sess.psess.source_map()
     }
-    pub fn parse_sess(&self) -> &'a ParseSess {
-        &self.sess.parse_sess
+    pub fn psess(&self) -> &'a ParseSess {
+        &self.sess.psess
     }
     pub fn call_site(&self) -> Span {
         self.current_expansion.id.expn_data().call_site
@@ -1175,6 +1192,8 @@ impl<'a> ExtCtxt<'a> {
         for (span, notes) in self.expansions.iter() {
             let mut db = self.dcx().create_note(errors::TraceMacro { span: *span });
             for note in notes {
+                // FIXME: make this translatable
+                #[allow(rustc::untranslatable_diagnostic)]
                 db.note(note.clone());
             }
             db.emit();
@@ -1207,26 +1226,22 @@ impl<'a> ExtCtxt<'a> {
 /// Resolves a `path` mentioned inside Rust code, returning an absolute path.
 ///
 /// This unifies the logic used for resolving `include_X!`.
-pub fn resolve_path(
-    parse_sess: &Session,
-    path: impl Into<PathBuf>,
-    span: Span,
-) -> PResult<'_, PathBuf> {
+pub fn resolve_path(sess: &Session, path: impl Into<PathBuf>, span: Span) -> PResult<'_, PathBuf> {
     let path = path.into();
 
     // Relative paths are resolved relative to the file in which they are found
     // after macro expansion (that is, they are unhygienic).
     if !path.is_absolute() {
         let callsite = span.source_callsite();
-        let mut result = match parse_sess.source_map().span_to_filename(callsite) {
+        let mut result = match sess.source_map().span_to_filename(callsite) {
             FileName::Real(name) => name
                 .into_local_path()
                 .expect("attempting to resolve a file path in an external file"),
             FileName::DocTest(path, _) => path,
             other => {
-                return Err(parse_sess.dcx().create_err(errors::ResolveRelativePath {
+                return Err(sess.dcx().create_err(errors::ResolveRelativePath {
                     span,
-                    path: parse_sess.source_map().filename_for_diagnostics(&other).to_string(),
+                    path: sess.source_map().filename_for_diagnostics(&other).to_string(),
                 }));
             }
         };
@@ -1241,7 +1256,7 @@ pub fn resolve_path(
 /// Extracts a string literal from the macro expanded version of `expr`,
 /// returning a diagnostic error of `err_msg` if `expr` is not a string literal.
 /// The returned bool indicates whether an applicable suggestion has already been
-/// added to the diagnostic to avoid emitting multiple suggestions. `Err(None)`
+/// added to the diagnostic to avoid emitting multiple suggestions. `Err(Err(ErrorGuaranteed))`
 /// indicates that an ast error was encountered.
 // FIXME(Nilstrieb) Make this function setup translatable
 #[allow(rustc::untranslatable_diagnostic)]
@@ -1249,7 +1264,10 @@ pub fn expr_to_spanned_string<'a>(
     cx: &'a mut ExtCtxt<'_>,
     expr: P<ast::Expr>,
     err_msg: &'static str,
-) -> Result<(Symbol, ast::StrStyle, Span), Option<(DiagnosticBuilder<'a>, bool)>> {
+) -> Result<
+    (Symbol, ast::StrStyle, Span),
+    Result<(Diag<'a>, bool /* has_suggestions */), ErrorGuaranteed>,
+> {
     // Perform eager expansion on the expression.
     // We want to be able to handle e.g., `concat!("foo", "bar")`.
     let expr = cx.expander().fully_expand_fragment(AstFragment::Expr(expr)).make_expr();
@@ -1266,35 +1284,33 @@ pub fn expr_to_spanned_string<'a>(
                     "",
                     Applicability::MaybeIncorrect,
                 );
-                Some((err, true))
+                Ok((err, true))
             }
-            Ok(ast::LitKind::Err) => None,
-            Err(err) => {
-                report_lit_error(&cx.sess.parse_sess, err, token_lit, expr.span);
-                None
-            }
-            _ => Some((cx.dcx().struct_span_err(expr.span, err_msg), false)),
+            Ok(ast::LitKind::Err(guar)) => Err(guar),
+            Err(err) => Err(report_lit_error(&cx.sess.psess, err, token_lit, expr.span)),
+            _ => Ok((cx.dcx().struct_span_err(expr.span, err_msg), false)),
         },
-        ast::ExprKind::Err => None,
-        _ => Some((cx.dcx().struct_span_err(expr.span, err_msg), false)),
+        ast::ExprKind::Err(guar) => Err(guar),
+        ast::ExprKind::Dummy => {
+            cx.dcx().span_bug(expr.span, "tried to get a string literal from `ExprKind::Dummy`")
+        }
+        _ => Ok((cx.dcx().struct_span_err(expr.span, err_msg), false)),
     })
 }
 
 /// Extracts a string literal from the macro expanded version of `expr`,
 /// emitting `err_msg` if `expr` is not a string literal. This does not stop
-/// compilation on error, merely emits a non-fatal error and returns `None`.
+/// compilation on error, merely emits a non-fatal error and returns `Err`.
 pub fn expr_to_string(
     cx: &mut ExtCtxt<'_>,
     expr: P<ast::Expr>,
     err_msg: &'static str,
-) -> Option<(Symbol, ast::StrStyle)> {
+) -> Result<(Symbol, ast::StrStyle), ErrorGuaranteed> {
     expr_to_spanned_string(cx, expr, err_msg)
-        .map_err(|err| {
-            err.map(|(err, _)| {
-                err.emit();
-            })
+        .map_err(|err| match err {
+            Ok((err, _)) => err.emit(),
+            Err(guar) => guar,
         })
-        .ok()
         .map(|(symbol, style, _)| (symbol, style))
 }
 
@@ -1308,32 +1324,30 @@ pub fn check_zero_tts(cx: &ExtCtxt<'_>, span: Span, tts: TokenStream, name: &str
     }
 }
 
-/// Parse an expression. On error, emit it, advancing to `Eof`, and return `None`.
-pub fn parse_expr(p: &mut parser::Parser<'_>) -> Option<P<ast::Expr>> {
-    match p.parse_expr() {
-        Ok(e) => return Some(e),
-        Err(err) => {
-            err.emit();
-        }
-    }
+/// Parse an expression. On error, emit it, advancing to `Eof`, and return `Err`.
+pub fn parse_expr(p: &mut parser::Parser<'_>) -> Result<P<ast::Expr>, ErrorGuaranteed> {
+    let guar = match p.parse_expr() {
+        Ok(expr) => return Ok(expr),
+        Err(err) => err.emit(),
+    };
     while p.token != token::Eof {
         p.bump();
     }
-    None
+    Err(guar)
 }
 
 /// Interpreting `tts` as a comma-separated sequence of expressions,
-/// expect exactly one string literal, or emit an error and return `None`.
+/// expect exactly one string literal, or emit an error and return `Err`.
 pub fn get_single_str_from_tts(
     cx: &mut ExtCtxt<'_>,
     span: Span,
     tts: TokenStream,
     name: &str,
-) -> Option<Symbol> {
+) -> Result<Symbol, ErrorGuaranteed> {
     let mut p = cx.new_parser_from_tts(tts);
     if p.token == token::Eof {
-        cx.dcx().emit_err(errors::OnlyOneArgument { span, name });
-        return None;
+        let guar = cx.dcx().emit_err(errors::OnlyOneArgument { span, name });
+        return Err(guar);
     }
     let ret = parse_expr(&mut p)?;
     let _ = p.eat(&token::Comma);
@@ -1345,8 +1359,11 @@ pub fn get_single_str_from_tts(
 }
 
 /// Extracts comma-separated expressions from `tts`.
-/// On error, emit it, and return `None`.
-pub fn get_exprs_from_tts(cx: &mut ExtCtxt<'_>, tts: TokenStream) -> Option<Vec<P<ast::Expr>>> {
+/// On error, emit it, and return `Err`.
+pub fn get_exprs_from_tts(
+    cx: &mut ExtCtxt<'_>,
+    tts: TokenStream,
+) -> Result<Vec<P<ast::Expr>>, ErrorGuaranteed> {
     let mut p = cx.new_parser_from_tts(tts);
     let mut es = Vec::new();
     while p.token != token::Eof {
@@ -1361,11 +1378,11 @@ pub fn get_exprs_from_tts(cx: &mut ExtCtxt<'_>, tts: TokenStream) -> Option<Vec<
             continue;
         }
         if p.token != token::Eof {
-            cx.dcx().emit_err(errors::ExpectedCommaInList { span: p.token.span });
-            return None;
+            let guar = cx.dcx().emit_err(errors::ExpectedCommaInList { span: p.token.span });
+            return Err(guar);
         }
     }
-    Some(es)
+    Ok(es)
 }
 
 pub fn parse_macro_name_and_helper_attrs(
@@ -1476,12 +1493,12 @@ fn pretty_printing_compatibility_hack(item: &Item, sess: &Session) -> bool {
                             };
 
                             if crate_matches {
-                                sess.parse_sess.buffer_lint_with_diagnostic(
+                                sess.psess.buffer_lint_with_diagnostic(
                                         PROC_MACRO_BACK_COMPAT,
                                         item.ident.span,
                                         ast::CRATE_NODE_ID,
                                         "using an old version of `rental`",
-                                        BuiltinLintDiagnostics::ProcMacroBackCompat(
+                                        BuiltinLintDiag::ProcMacroBackCompat(
                                         "older versions of the `rental` crate will stop compiling in future versions of Rust; \
                                         please update to `rental` v0.5.6, or switch to one of the `rental` alternatives".to_string()
                                         )

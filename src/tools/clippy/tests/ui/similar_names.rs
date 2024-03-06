@@ -17,13 +17,10 @@ fn main() {
     let specter: i32;
     let spectre: i32;
 
+    // ok; first letter is different enough
     let apple: i32;
-
     let bpple: i32;
-    //~^ ERROR: binding's name is too similar to existing binding
-
     let cpple: i32;
-    //~^ ERROR: binding's name is too similar to existing binding
 
     let a_bar: i32;
     let b_bar: i32;

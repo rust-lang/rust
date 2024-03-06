@@ -1,4 +1,4 @@
-// aux-build:unreachable_variant.rs
+//@ aux-build:unreachable_variant.rs
 
 extern crate unreachable_variant as other;
 

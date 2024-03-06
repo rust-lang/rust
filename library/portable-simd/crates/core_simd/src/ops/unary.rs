@@ -1,4 +1,3 @@
-use crate::simd::intrinsics;
 use crate::simd::{LaneCount, Simd, SimdElement, SupportedLaneCount};
 use core::ops::{Neg, Not}; // unary ops
 
@@ -15,7 +14,7 @@ macro_rules! neg {
             #[must_use = "operator returns a new vector without mutating the input"]
             fn neg(self) -> Self::Output {
                 // Safety: `self` is a signed vector
-                unsafe { intrinsics::simd_neg(self) }
+                unsafe { core::intrinsics::simd::simd_neg(self) }
             }
         })*
     }

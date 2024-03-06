@@ -1,7 +1,7 @@
 error[E0412]: cannot find type `Dst` in this scope
-  --> $DIR/unknown_dst.rs:20:36
+  --> $DIR/unknown_dst.rs:18:36
    |
-LL |     assert::is_transmutable::<Src, Dst, Context>();
+LL |     assert::is_transmutable::<Src, Dst>();
    |                                    ^^^ not found in this scope
    |
 help: you might be missing a type parameter

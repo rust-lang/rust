@@ -12,18 +12,16 @@ impl SadBee for for<'a> fn(&'a ()) {
     const ASSOC: usize = 0;
 }
 impl SadBee for fn(&'static ()) {
-    //~^ WARNING conflicting implementations of trait
-    //~| WARNING this was previously accepted
+    //~^ WARN conflicting implementations of trait
+    //~| WARN the behavior may change in a future release
     const ASSOC: usize = 100;
 }
 
 struct Foo<T: SadBee>([u8; <T as SadBee>::ASSOC], PhantomData<T>)
 where
-    [(); <T as SadBee>::ASSOC]: ;
+    [(); <T as SadBee>::ASSOC]:;
 
-fn covariant(
-    v: &'static Foo<for<'a> fn(&'a ())>
-) -> &'static Foo<fn(&'static ())> {
+fn covariant(v: &'static Foo<for<'a> fn(&'a ())>) -> &'static Foo<fn(&'static ())> {
     v
     //~^ ERROR mismatched types
 }

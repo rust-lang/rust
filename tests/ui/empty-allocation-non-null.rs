@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 
 pub fn main() {
     assert!(Some(Box::new(())).is_some());

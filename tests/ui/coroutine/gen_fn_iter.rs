@@ -1,6 +1,6 @@
-// edition: 2024
-// compile-flags: -Zunstable-options
-// run-pass
+//@ edition: 2024
+//@ compile-flags: -Zunstable-options
+//@ run-pass
 #![feature(gen_blocks)]
 
 // make sure that a ridiculously simple gen fn works as an iterator.

@@ -1,7 +1,7 @@
 // Test that we DO NOT warn for a lifetime on an impl used in both
 // header and in an associated type.
 //
-// check-pass
+//@ check-pass
 
 #![deny(single_use_lifetimes)]
 #![allow(dead_code)]

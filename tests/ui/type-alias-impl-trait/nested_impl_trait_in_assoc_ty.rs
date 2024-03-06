@@ -4,8 +4,8 @@
 //! a signature. They become part of a signature via `dyn Trait` or `impl Trait`,
 //! which is something that we process abstractly without looking at its hidden
 //! types.
-// edition: 2021
-// check-pass
+//@ edition: 2021
+//@ check-pass
 
 #![feature(impl_trait_in_assoc_type)]
 

@@ -1,6 +1,6 @@
 // Tests that trait bounds on specializing trait impls must be `~const` if the
 // same bound is present on the default impl and is `~const` there.
-// check-pass
+//@ check-pass
 // FIXME(effects) ^ should error
 
 #![feature(const_trait_impl)]

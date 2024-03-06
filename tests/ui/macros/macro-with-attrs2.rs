@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 
 #[cfg(foo)]
 macro_rules! foo { () => (1) }

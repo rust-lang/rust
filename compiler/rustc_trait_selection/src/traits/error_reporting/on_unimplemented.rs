@@ -16,30 +16,13 @@ use rustc_session::lint::builtin::UNKNOWN_OR_MALFORMED_DIAGNOSTIC_ATTRIBUTES;
 use rustc_span::symbol::{kw, sym, Symbol};
 use rustc_span::Span;
 use std::iter;
+use std::path::PathBuf;
 
 use crate::errors::{
     EmptyOnClauseInOnUnimplemented, InvalidOnClauseInOnUnimplemented, NoValueInOnUnimplemented,
 };
 
 use crate::traits::error_reporting::type_err_ctxt_ext::InferCtxtPrivExt;
-
-pub trait TypeErrCtxtExt<'tcx> {
-    /*private*/
-    fn impl_similar_to(
-        &self,
-        trait_ref: ty::PolyTraitRef<'tcx>,
-        obligation: &PredicateObligation<'tcx>,
-    ) -> Option<(DefId, GenericArgsRef<'tcx>)>;
-
-    /*private*/
-    fn describe_enclosure(&self, def_id: LocalDefId) -> Option<&'static str>;
-
-    fn on_unimplemented_note(
-        &self,
-        trait_ref: ty::PolyTraitRef<'tcx>,
-        obligation: &PredicateObligation<'tcx>,
-    ) -> OnUnimplementedNote;
-}
 
 /// The symbols which are always allowed in a format string
 static ALLOWED_FORMAT_SYMBOLS: &[Symbol] = &[
@@ -56,7 +39,8 @@ static ALLOWED_FORMAT_SYMBOLS: &[Symbol] = &[
     sym::Trait,
 ];
 
-impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
+#[extension(pub trait TypeErrCtxtExt<'tcx>)]
+impl<'tcx> TypeErrCtxt<'_, 'tcx> {
     fn impl_similar_to(
         &self,
         trait_ref: ty::PolyTraitRef<'tcx>,
@@ -64,39 +48,44 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
     ) -> Option<(DefId, GenericArgsRef<'tcx>)> {
         let tcx = self.tcx;
         let param_env = obligation.param_env;
-        let trait_ref = self.instantiate_binder_with_placeholders(trait_ref);
-        let trait_self_ty = trait_ref.self_ty();
+        self.enter_forall(trait_ref, |trait_ref| {
+            let trait_self_ty = trait_ref.self_ty();
 
-        let mut self_match_impls = vec![];
-        let mut fuzzy_match_impls = vec![];
+            let mut self_match_impls = vec![];
+            let mut fuzzy_match_impls = vec![];
 
-        self.tcx.for_each_relevant_impl(trait_ref.def_id, trait_self_ty, |def_id| {
-            let impl_args = self.fresh_args_for_item(obligation.cause.span, def_id);
-            let impl_trait_ref = tcx.impl_trait_ref(def_id).unwrap().instantiate(tcx, impl_args);
+            self.tcx.for_each_relevant_impl(trait_ref.def_id, trait_self_ty, |def_id| {
+                let impl_args = self.fresh_args_for_item(obligation.cause.span, def_id);
+                let impl_trait_ref =
+                    tcx.impl_trait_ref(def_id).unwrap().instantiate(tcx, impl_args);
 
-            let impl_self_ty = impl_trait_ref.self_ty();
+                let impl_self_ty = impl_trait_ref.self_ty();
 
-            if self.can_eq(param_env, trait_self_ty, impl_self_ty) {
-                self_match_impls.push((def_id, impl_args));
+                if self.can_eq(param_env, trait_self_ty, impl_self_ty) {
+                    self_match_impls.push((def_id, impl_args));
 
-                if iter::zip(trait_ref.args.types().skip(1), impl_trait_ref.args.types().skip(1))
+                    if iter::zip(
+                        trait_ref.args.types().skip(1),
+                        impl_trait_ref.args.types().skip(1),
+                    )
                     .all(|(u, v)| self.fuzzy_match_tys(u, v, false).is_some())
-                {
-                    fuzzy_match_impls.push((def_id, impl_args));
+                    {
+                        fuzzy_match_impls.push((def_id, impl_args));
+                    }
                 }
-            }
-        });
+            });
 
-        let impl_def_id_and_args = if self_match_impls.len() == 1 {
-            self_match_impls[0]
-        } else if fuzzy_match_impls.len() == 1 {
-            fuzzy_match_impls[0]
-        } else {
-            return None;
-        };
+            let impl_def_id_and_args = if self_match_impls.len() == 1 {
+                self_match_impls[0]
+            } else if fuzzy_match_impls.len() == 1 {
+                fuzzy_match_impls[0]
+            } else {
+                return None;
+            };
 
-        tcx.has_attr(impl_def_id_and_args.0, sym::rustc_on_unimplemented)
-            .then_some(impl_def_id_and_args)
+            tcx.has_attr(impl_def_id_and_args.0, sym::rustc_on_unimplemented)
+                .then_some(impl_def_id_and_args)
+        })
     }
 
     /// Used to set on_unimplemented's `ItemContext`
@@ -122,6 +111,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
         &self,
         trait_ref: ty::PolyTraitRef<'tcx>,
         obligation: &PredicateObligation<'tcx>,
+        long_ty_file: &mut Option<PathBuf>,
     ) -> OnUnimplementedNote {
         let (def_id, args) = self
             .impl_similar_to(trait_ref, obligation)
@@ -277,7 +267,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
         }));
 
         if let Ok(Some(command)) = OnUnimplementedDirective::of_item(self.tcx, def_id) {
-            command.evaluate(self.tcx, trait_ref, &flags)
+            command.evaluate(self.tcx, trait_ref, &flags, long_ty_file)
         } else {
             OnUnimplementedNote::default()
         }
@@ -669,6 +659,7 @@ impl<'tcx> OnUnimplementedDirective {
         tcx: TyCtxt<'tcx>,
         trait_ref: ty::TraitRef<'tcx>,
         options: &[(Symbol, Option<String>)],
+        long_ty_file: &mut Option<PathBuf>,
     ) -> OnUnimplementedNote {
         let mut message = None;
         let mut label = None;
@@ -681,6 +672,7 @@ impl<'tcx> OnUnimplementedDirective {
             options.iter().filter_map(|(k, v)| v.clone().map(|v| (*k, v))).collect();
 
         for command in self.subcommands.iter().chain(Some(self)).rev() {
+            debug!(?command);
             if let Some(ref condition) = command.condition
                 && !attr::eval_condition(condition, &tcx.sess, Some(tcx.features()), &mut |cfg| {
                     let value = cfg.value.map(|v| {
@@ -692,7 +684,12 @@ impl<'tcx> OnUnimplementedDirective {
                                 span: cfg.span,
                                 is_diagnostic_namespace_variant: false
                             }
-                            .format(tcx, trait_ref, &options_map)
+                            .format(
+                                tcx,
+                                trait_ref,
+                                &options_map,
+                                long_ty_file
+                            )
                         )
                     });
 
@@ -721,10 +718,14 @@ impl<'tcx> OnUnimplementedDirective {
         }
 
         OnUnimplementedNote {
-            label: label.map(|l| l.format(tcx, trait_ref, &options_map)),
-            message: message.map(|m| m.format(tcx, trait_ref, &options_map)),
-            notes: notes.into_iter().map(|n| n.format(tcx, trait_ref, &options_map)).collect(),
-            parent_label: parent_label.map(|e_s| e_s.format(tcx, trait_ref, &options_map)),
+            label: label.map(|l| l.format(tcx, trait_ref, &options_map, long_ty_file)),
+            message: message.map(|m| m.format(tcx, trait_ref, &options_map, long_ty_file)),
+            notes: notes
+                .into_iter()
+                .map(|n| n.format(tcx, trait_ref, &options_map, long_ty_file))
+                .collect(),
+            parent_label: parent_label
+                .map(|e_s| e_s.format(tcx, trait_ref, &options_map, long_ty_file)),
             append_const_msg,
         }
     }
@@ -809,7 +810,7 @@ impl<'tcx> OnUnimplementedFormatString {
                             tcx.dcx(),
                             self.span,
                             E0231,
-                            "only named substitution parameters are allowed"
+                            "only named generic parameters are allowed"
                         )
                         .emit();
                         result = Err(reported);
@@ -826,6 +827,7 @@ impl<'tcx> OnUnimplementedFormatString {
         tcx: TyCtxt<'tcx>,
         trait_ref: ty::TraitRef<'tcx>,
         options: &FxHashMap<Symbol, String>,
+        long_ty_file: &mut Option<PathBuf>,
     ) -> String {
         let name = tcx.item_name(trait_ref.def_id);
         let trait_str = tcx.def_path_str(trait_ref.def_id);
@@ -836,7 +838,11 @@ impl<'tcx> OnUnimplementedFormatString {
             .filter_map(|param| {
                 let value = match param.kind {
                     GenericParamDefKind::Type { .. } | GenericParamDefKind::Const { .. } => {
-                        trait_ref.args[param.index as usize].to_string()
+                        if let Some(ty) = trait_ref.args[param.index as usize].as_type() {
+                            tcx.short_ty_string(ty, long_ty_file)
+                        } else {
+                            trait_ref.args[param.index as usize].to_string()
+                        }
                     }
                     GenericParamDefKind::Lifetime => return None,
                 };

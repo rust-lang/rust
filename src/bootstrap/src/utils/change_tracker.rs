@@ -2,6 +2,11 @@
 //! with the goal of keeping developers synchronized with important modifications in
 //! the bootstrap.
 
+use std::fmt::Display;
+
+#[cfg(test)]
+mod tests;
+
 #[derive(Clone, Debug)]
 pub struct ChangeInfo {
     /// Represents the ID of PR caused major change on bootstrap.
@@ -21,11 +26,11 @@ pub enum ChangeSeverity {
     Warning,
 }
 
-impl ToString for ChangeSeverity {
-    fn to_string(&self) -> String {
+impl Display for ChangeSeverity {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            ChangeSeverity::Info => "INFO".to_string(),
-            ChangeSeverity::Warning => "WARNING".to_string(),
+            ChangeSeverity::Info => write!(f, "INFO"),
+            ChangeSeverity::Warning => write!(f, "WARNING"),
         }
     }
 }
@@ -37,7 +42,7 @@ pub fn find_recent_config_change_ids(current_id: usize) -> Vec<ChangeInfo> {
         // older one); otherwise, return the full list (assuming the user provided
         // the incorrect change-id by accident).
         if let Some(config) = CONFIG_CHANGE_HISTORY.iter().max_by_key(|config| config.change_id) {
-            if &current_id > &config.change_id {
+            if current_id > config.change_id {
                 return Vec::new();
             }
         }
@@ -110,5 +115,25 @@ pub const CONFIG_CHANGE_HISTORY: &[ChangeInfo] = &[
         change_id: 102579,
         severity: ChangeSeverity::Warning,
         summary: "A new `optimized-compiler-builtins` option has been introduced. Whether to build llvm's `compiler-rt` from source is no longer implicitly controlled by git state. See the PR for more details.",
+    },
+    ChangeInfo {
+        change_id: 120348,
+        severity: ChangeSeverity::Info,
+        summary: "New option `target.<triple>.codegen-backends` added to config.toml.",
+    },
+    ChangeInfo {
+        change_id: 121203,
+        severity: ChangeSeverity::Info,
+        summary: "A new `rust.frame-pointers` option has been introduced and made the default in the compiler and codegen profiles.",
+    },
+    ChangeInfo {
+        change_id: 121278,
+        severity: ChangeSeverity::Warning,
+        summary: "The \"codegen\"/\"llvm\" profile has been removed and replaced with \"compiler\", use it instead for the same behavior.",
+    },
+    ChangeInfo {
+        change_id: 118724,
+        severity: ChangeSeverity::Info,
+        summary: "`x install` now skips providing tarball sources (under 'build/dist' path) to speed up the installation process.",
     },
 ];

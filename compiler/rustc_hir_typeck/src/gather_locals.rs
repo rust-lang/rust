@@ -48,9 +48,9 @@ impl<'a> From<&'a hir::Local<'a>> for Declaration<'a> {
     }
 }
 
-impl<'a> From<&'a hir::Let<'a>> for Declaration<'a> {
-    fn from(let_expr: &'a hir::Let<'a>) -> Self {
-        let hir::Let { hir_id, pat, ty, span, init, is_recovered: _ } = *let_expr;
+impl<'a> From<(&'a hir::Let<'a>, hir::HirId)> for Declaration<'a> {
+    fn from((let_expr, hir_id): (&'a hir::Let<'a>, hir::HirId)) -> Self {
+        let hir::Let { pat, ty, span, init, is_recovered: _ } = *let_expr;
         Declaration { hir_id, pat, ty, span, init: Some(init), origin: DeclOrigin::LetExpr }
     }
 }
@@ -125,9 +125,11 @@ impl<'a, 'tcx> Visitor<'tcx> for GatherLocalsVisitor<'a, 'tcx> {
         intravisit::walk_local(self, local)
     }
 
-    fn visit_let_expr(&mut self, let_expr: &'tcx hir::Let<'tcx>) {
-        self.declare(let_expr.into());
-        intravisit::walk_let_expr(self, let_expr);
+    fn visit_expr(&mut self, expr: &'tcx hir::Expr<'tcx>) {
+        if let hir::ExprKind::Let(let_expr) = expr.kind {
+            self.declare((let_expr, expr.hir_id).into());
+        }
+        intravisit::walk_expr(self, expr)
     }
 
     fn visit_param(&mut self, param: &'tcx hir::Param<'tcx>) {
@@ -151,7 +153,7 @@ impl<'a, 'tcx> Visitor<'tcx> for GatherLocalsVisitor<'a, 'tcx> {
                         // ascription, or if it's an implicit `self` parameter
                         traits::SizedArgumentType(
                             if ty_span == ident.span
-                                && self.fcx.tcx.is_closure_or_coroutine(self.fcx.body_id.into())
+                                && self.fcx.tcx.is_closure_like(self.fcx.body_id.into())
                             {
                                 None
                             } else {

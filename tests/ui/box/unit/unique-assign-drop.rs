@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 #![allow(unused_assignments)]
 
 pub fn main() {

@@ -1,4 +1,4 @@
-// compile-flags: -O
+//@ compile-flags: -O
 
 #![crate_type = "lib"]
 #![allow(incomplete_features)]

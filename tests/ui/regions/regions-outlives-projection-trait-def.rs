@@ -1,7 +1,7 @@
 // Test that `<F as Foo<'a>>::Type: 'b`, where `trait Foo<'a> { Type:
 // 'a; }`, does not require that `F: 'b`.
 
-// check-pass
+//@ check-pass
 #![allow(dead_code)]
 
 trait SomeTrait<'a> {

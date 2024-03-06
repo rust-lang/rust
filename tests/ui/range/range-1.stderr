@@ -8,7 +8,7 @@ error[E0277]: the trait bound `bool: Step` is not satisfied
   --> $DIR/range-1.rs:9:14
    |
 LL |     for i in false..true {}
-   |              ^^^^^^^^^^^ the trait `Step` is not implemented for `bool`
+   |              ^^^^^^^^^^^ the trait `Step` is not implemented for `bool`, which is required by `std::ops::Range<bool>: IntoIterator`
    |
    = help: the following other types implement trait `Step`:
              char
@@ -30,7 +30,7 @@ LL |     let range = *arr..;
    |                 ^^^^ doesn't have a size known at compile-time
    |
    = help: the trait `Sized` is not implemented for `[{integer}]`
-note: required by a bound in `RangeFrom`
+note: required by an implicit `Sized` bound in `RangeFrom`
   --> $SRC_DIR/core/src/ops/range.rs:LL:COL
 
 error: aborting due to 3 previous errors

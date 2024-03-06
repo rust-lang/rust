@@ -27,13 +27,13 @@ fn main() -> () {
         StorageLive(_5);
         PlaceMention(_1);
         _6 = discriminant(_1);
-        switchInt(move _6) -> [1: bb4, otherwise: bb3];
+        switchInt(move _6) -> [1: bb6, otherwise: bb4];
     }
 
     bb1: {
         StorageLive(_3);
         StorageLive(_4);
-        _4 = begin_panic::<&str>(const "explicit panic") -> bb7;
+        _4 = begin_panic::<&str>(const "explicit panic") -> bb10;
     }
 
     bb2: {
@@ -43,14 +43,27 @@ fn main() -> () {
     }
 
     bb3: {
-        goto -> bb6;
+        FakeRead(ForMatchedPlace(None), _1);
+        unreachable;
     }
 
     bb4: {
-        falseEdge -> [real: bb5, imaginary: bb3];
+        goto -> bb9;
     }
 
     bb5: {
+        goto -> bb3;
+    }
+
+    bb6: {
+        falseEdge -> [real: bb8, imaginary: bb4];
+    }
+
+    bb7: {
+        goto -> bb4;
+    }
+
+    bb8: {
         _5 = ((_1 as Some).0: u8);
         _0 = const ();
         StorageDead(_5);
@@ -58,12 +71,12 @@ fn main() -> () {
         return;
     }
 
-    bb6: {
+    bb9: {
         StorageDead(_5);
         goto -> bb1;
     }
 
-    bb7 (cleanup): {
+    bb10 (cleanup): {
         resume;
     }
 }

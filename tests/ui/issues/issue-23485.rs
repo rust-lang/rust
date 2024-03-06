@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 #![allow(unused_imports)]
 // Test for an ICE that occurred when a default method implementation
 // was applied to a type that did not meet the prerequisites. The
@@ -17,7 +17,7 @@ trait Iterator {
 
     fn next(&mut self) -> Option<Self::Item>;
 
-    fn clone_first(mut self) -> Option<<Self::Item as Deref>::Target> where
+    fn clone_first(mut self) -> Option<<Self::Item as Deref>::Target> where //~ WARN method `clone_first` is never used
         Self: Sized,
         Self::Item: Deref,
         <Self::Item as Deref>::Target: Clone,

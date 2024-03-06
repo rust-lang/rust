@@ -1,5 +1,5 @@
-// force-host
-// no-prefer-dynamic
+//@ force-host
+//@ no-prefer-dynamic
 
 #![feature(proc_macro_def_site)]
 #![feature(proc_macro_diagnostic)]

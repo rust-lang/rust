@@ -4,7 +4,7 @@
 // relations to other regions. Note that `'static` shows up in the
 // stderr output as `'0`.
 
-// compile-flags:-Zverbose-internals
+//@ compile-flags:-Zverbose-internals
 
 #![feature(rustc_attrs)]
 

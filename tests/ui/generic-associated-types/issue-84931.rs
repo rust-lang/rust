@@ -1,4 +1,4 @@
-// check-fail
+//@ check-fail
 
 trait StreamingIter {
     type Item<'a> where Self: 'a;

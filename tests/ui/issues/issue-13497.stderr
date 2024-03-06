@@ -14,6 +14,16 @@ help: instead, you are more likely to want to return an owned value
 LL |     String
    |     ~~~~~~
 
-error: aborting due to 1 previous error
+error[E0515]: cannot return value referencing local variable `rawLines`
+  --> $DIR/issue-13497.rs:5:5
+   |
+LL |     rawLines.iter().map(|l| l.trim()).collect()
+   |     --------^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |     |
+   |     returns a value referencing data owned by the current function
+   |     `rawLines` is borrowed here
 
-For more information about this error, try `rustc --explain E0106`.
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0106, E0515.
+For more information about an error, try `rustc --explain E0106`.

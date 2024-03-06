@@ -1,4 +1,4 @@
-// compile-flags: -Zdeduplicate-diagnostics=no
+//@ compile-flags: -Zdeduplicate-diagnostics=no
 
 #![crate_type = "lib"]
 

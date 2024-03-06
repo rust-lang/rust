@@ -4,6 +4,7 @@ use crate::ffi::c_char;
 use crate::fmt;
 use crate::intrinsics;
 use crate::ops;
+use crate::ptr::addr_of;
 use crate::slice;
 use crate::slice::memchr;
 use crate::str;
@@ -88,6 +89,7 @@ use crate::str;
 // want `repr(transparent)` but we don't want it to show up in rustdoc, so we hide it under
 // `cfg(doc)`. This is an ad-hoc implementation of attribute privacy.
 #[cfg_attr(not(doc), repr(transparent))]
+#[allow(clippy::derived_hash_with_manual_eq)]
 pub struct CStr {
     // FIXME: this should not be represented with a DST slice but rather with
     //        just a raw `c_char` along with some form of marker to make
@@ -426,10 +428,13 @@ impl CStr {
             unsafe { &*(bytes as *const [u8] as *const CStr) }
         }
 
+        #[cfg_attr(not(bootstrap), allow(unused_unsafe))] // on bootstrap bump, remove unsafe block
         // SAFETY: The const and runtime versions have identical behavior
         // unless the safety contract of `from_bytes_with_nul_unchecked` is
         // violated, which is UB.
-        unsafe { intrinsics::const_eval_select((bytes,), const_impl, rt_impl) }
+        unsafe {
+            intrinsics::const_eval_select((bytes,), const_impl, rt_impl)
+        }
     }
 
     /// Returns the inner pointer to this C string.
@@ -602,7 +607,7 @@ impl CStr {
     pub const fn to_bytes_with_nul(&self) -> &[u8] {
         // SAFETY: Transmuting a slice of `c_char`s to a slice of `u8`s
         // is safe on all supported targets.
-        unsafe { &*(&self.inner as *const [c_char] as *const [u8]) }
+        unsafe { &*(addr_of!(self.inner) as *const [u8]) }
     }
 
     /// Yields a <code>&[str]</code> slice if the `CStr` contains valid UTF-8.
@@ -717,6 +722,9 @@ const unsafe fn const_strlen(ptr: *const c_char) -> usize {
         unsafe { strlen(s) }
     }
 
+    #[cfg_attr(not(bootstrap), allow(unused_unsafe))] // on bootstrap bump, remove unsafe block
     // SAFETY: the two functions always provide equivalent functionality
-    unsafe { intrinsics::const_eval_select((ptr,), strlen_ct, strlen_rt) }
+    unsafe {
+        intrinsics::const_eval_select((ptr,), strlen_ct, strlen_rt)
+    }
 }

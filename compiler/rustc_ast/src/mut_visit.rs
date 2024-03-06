@@ -481,7 +481,12 @@ pub fn noop_visit_ty<T: MutVisitor>(ty: &mut P<Ty>, vis: &mut T) {
     let Ty { id, kind, span, tokens } = ty.deref_mut();
     vis.visit_id(id);
     match kind {
-        TyKind::Infer | TyKind::ImplicitSelf | TyKind::Err | TyKind::Never | TyKind::CVarArgs => {}
+        TyKind::Infer
+        | TyKind::ImplicitSelf
+        | TyKind::Err(_)
+        | TyKind::Dummy
+        | TyKind::Never
+        | TyKind::CVarArgs => {}
         TyKind::Slice(ty) => vis.visit_ty(ty),
         TyKind::Ptr(mt) => vis.visit_mt(mt),
         TyKind::Ref(lt, mt) => {
@@ -514,7 +519,8 @@ pub fn noop_visit_ty<T: MutVisitor>(ty: &mut P<Ty>, vis: &mut T) {
             visit_vec(bounds, |bound| vis.visit_param_bound(bound));
         }
         TyKind::MacCall(mac) => vis.visit_mac_call(mac),
-        TyKind::AnonStruct(fields) | TyKind::AnonUnion(fields) => {
+        TyKind::AnonStruct(id, fields) | TyKind::AnonUnion(id, fields) => {
+            vis.visit_id(id);
             fields.flat_map_in_place(|field| vis.flat_map_field_def(field));
         }
     }
@@ -603,7 +609,7 @@ pub fn noop_visit_parenthesized_parameter_data<T: MutVisitor>(
 }
 
 pub fn noop_visit_local<T: MutVisitor>(local: &mut P<Local>, vis: &mut T) {
-    let Local { id, pat, ty, kind, span, attrs, tokens } = local.deref_mut();
+    let Local { id, pat, ty, kind, span, colon_sp, attrs, tokens } = local.deref_mut();
     vis.visit_id(id);
     vis.visit_pat(pat);
     visit_opt(ty, |ty| vis.visit_ty(ty));
@@ -618,6 +624,7 @@ pub fn noop_visit_local<T: MutVisitor>(local: &mut P<Local>, vis: &mut T) {
         }
     }
     vis.visit_span(span);
+    visit_opt(colon_sp, |sp| vis.visit_span(sp));
     visit_attrs(attrs, vis);
     visit_lazy_tts(tokens, vis);
 }
@@ -1073,8 +1080,8 @@ pub fn noop_visit_item_kind<T: MutVisitor>(kind: &mut ItemKind, vis: &mut T) {
         }) => {
             visit_defaultness(defaultness, vis);
             vis.visit_generics(generics);
-            vis.visit_span(&mut where_clauses.0.1);
-            vis.visit_span(&mut where_clauses.1.1);
+            vis.visit_span(&mut where_clauses.before.span);
+            vis.visit_span(&mut where_clauses.after.span);
             visit_bounds(bounds, vis);
             visit_opt(ty, |ty| vis.visit_ty(ty));
         }
@@ -1157,8 +1164,8 @@ pub fn noop_flat_map_assoc_item<T: MutVisitor>(
         }) => {
             visit_defaultness(defaultness, visitor);
             visitor.visit_generics(generics);
-            visitor.visit_span(&mut where_clauses.0.1);
-            visitor.visit_span(&mut where_clauses.1.1);
+            visitor.visit_span(&mut where_clauses.before.span);
+            visitor.visit_span(&mut where_clauses.after.span);
             visit_bounds(bounds, visitor);
             visit_opt(ty, |ty| visitor.visit_ty(ty));
         }
@@ -1251,8 +1258,8 @@ pub fn noop_flat_map_foreign_item<T: MutVisitor>(
         }) => {
             visit_defaultness(defaultness, visitor);
             visitor.visit_generics(generics);
-            visitor.visit_span(&mut where_clauses.0.1);
-            visitor.visit_span(&mut where_clauses.1.1);
+            visitor.visit_span(&mut where_clauses.before.span);
+            visitor.visit_span(&mut where_clauses.after.span);
             visit_bounds(bounds, visitor);
             visit_opt(ty, |ty| visitor.visit_ty(ty));
         }
@@ -1520,7 +1527,7 @@ pub fn noop_visit_expr<T: MutVisitor>(
         }
         ExprKind::Try(expr) => vis.visit_expr(expr),
         ExprKind::TryBlock(body) => vis.visit_block(body),
-        ExprKind::Lit(_) | ExprKind::IncludedBytes(..) | ExprKind::Err => {}
+        ExprKind::Lit(_) | ExprKind::IncludedBytes(..) | ExprKind::Err(_) | ExprKind::Dummy => {}
     }
     vis.visit_id(id);
     vis.visit_span(span);
@@ -1597,7 +1604,10 @@ pub fn noop_visit_capture_by<T: MutVisitor>(capture_by: &mut CaptureBy, vis: &mu
     }
 }
 
-/// Some value for the AST node that is valid but possibly meaningless.
+/// Some value for the AST node that is valid but possibly meaningless. Similar
+/// to `Default` but not intended for wide use. The value will never be used
+/// meaningfully, it exists just to support unwinding in `visit_clobber` in the
+/// case where its closure panics.
 pub trait DummyAstNode {
     fn dummy() -> Self;
 }
@@ -1636,7 +1646,7 @@ impl DummyAstNode for Expr {
     fn dummy() -> Self {
         Expr {
             id: DUMMY_NODE_ID,
-            kind: ExprKind::Err,
+            kind: ExprKind::Dummy,
             span: Default::default(),
             attrs: Default::default(),
             tokens: Default::default(),
@@ -1648,7 +1658,7 @@ impl DummyAstNode for Ty {
     fn dummy() -> Self {
         Ty {
             id: DUMMY_NODE_ID,
-            kind: TyKind::Err,
+            kind: TyKind::Dummy,
             span: Default::default(),
             tokens: Default::default(),
         }
@@ -1669,19 +1679,6 @@ impl DummyAstNode for Pat {
 impl DummyAstNode for Stmt {
     fn dummy() -> Self {
         Stmt { id: DUMMY_NODE_ID, kind: StmtKind::Empty, span: Default::default() }
-    }
-}
-
-impl DummyAstNode for Block {
-    fn dummy() -> Self {
-        Block {
-            stmts: Default::default(),
-            id: DUMMY_NODE_ID,
-            rules: BlockCheckMode::Default,
-            span: Default::default(),
-            tokens: Default::default(),
-            could_be_bare_literal: Default::default(),
-        }
     }
 }
 

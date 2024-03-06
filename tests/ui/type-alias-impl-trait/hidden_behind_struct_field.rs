@@ -4,7 +4,7 @@
 //! if the opaque type is actually used in the field.
 
 #![feature(impl_trait_in_assoc_type)]
-// check-pass
+//@ check-pass
 
 use std::marker::PhantomData;
 

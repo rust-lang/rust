@@ -1,4 +1,4 @@
-// aux-build:three-equals.rs
+//@ aux-build:three-equals.rs
 
 extern crate three_equals;
 

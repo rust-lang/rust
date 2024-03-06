@@ -1,4 +1,4 @@
-// run-rustfix
+//@ run-rustfix
 
 #![feature(generic_const_items)]
 #![allow(incomplete_features, dead_code)]

@@ -1,4 +1,4 @@
-// aux-build:foo.rs
+//@ aux-build:foo.rs
 
 extern crate foo;
 

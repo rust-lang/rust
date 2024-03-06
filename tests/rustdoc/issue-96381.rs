@@ -1,4 +1,4 @@
-// should-fail
+//@ should-fail
 
 #![allow(unused)]
 

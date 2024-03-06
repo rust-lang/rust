@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 
 fn test_if_panic() {
     let x = if false { panic!() } else { 10 };

@@ -1,4 +1,4 @@
-// check-pass
+//@ check-pass
 
 #![deny(multiple_supertrait_upcastable)]
 //~^ WARNING unknown lint: `multiple_supertrait_upcastable`

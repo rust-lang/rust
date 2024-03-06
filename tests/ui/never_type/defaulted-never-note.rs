@@ -1,6 +1,6 @@
-// revisions: nofallback fallback
-//[nofallback] run-pass
-//[fallback] check-fail
+//@ revisions: nofallback fallback
+//@[nofallback] run-pass
+//@[fallback] check-fail
 
 // We need to opt into the `never_type_fallback` feature
 // to trigger the requirement that this is testing.

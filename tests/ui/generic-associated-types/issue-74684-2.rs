@@ -10,7 +10,7 @@ impl <T> Fun for T {
 
 fn bug<'a, T: ?Sized + Fun<F<'a> = [u8]>>(t: Box<T>) -> &'static T::F<'a> {
     let a = [0; 1];
-    let x = T::identity(&a);
+    let x = T::identity(&a); //~ ERROR: does not live long enough
     todo!()
 }
 

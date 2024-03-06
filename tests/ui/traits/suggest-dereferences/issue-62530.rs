@@ -1,4 +1,4 @@
-// run-rustfix
+//@ run-rustfix
 fn takes_str(_x: &str) {}
 
 fn takes_type_parameter<T>(_x: T) where T: SomeTrait {}

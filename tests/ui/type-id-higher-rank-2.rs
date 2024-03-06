@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 // Test that we can't ignore lifetimes by going through Any.
 
 use std::any::Any;

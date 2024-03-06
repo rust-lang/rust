@@ -1,4 +1,4 @@
-// check-pass
+//@ check-pass
 #![feature(inherent_associated_types)]
 #![allow(incomplete_features)]
 

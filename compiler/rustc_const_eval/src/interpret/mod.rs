@@ -20,7 +20,7 @@ mod visitor;
 
 pub use rustc_middle::mir::interpret::*; // have all the `interpret` symbols in one place: here
 
-pub use self::eval_context::{Frame, FrameInfo, InterpCx, StackPopCleanup};
+pub use self::eval_context::{format_interp_error, Frame, FrameInfo, InterpCx, StackPopCleanup};
 pub use self::intern::{
     intern_const_alloc_for_constprop, intern_const_alloc_recursive, InternKind,
 };
@@ -39,4 +39,5 @@ use self::{
 };
 
 pub(crate) use self::intrinsics::eval_nullary_intrinsic;
+pub(crate) use self::util::{create_static_alloc, take_static_root_alloc};
 use eval_context::{from_known_layout, mir_assign_valid_types};

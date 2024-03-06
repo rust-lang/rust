@@ -1,6 +1,6 @@
 //! Regression test showing that we can access associated types during const eval,
 //! even if they rely on specialization.
-// check-pass
+//@ check-pass
 #![feature(specialization)]
 //~^ WARNING the feature `specialization` is incomplete and may not be safe to use
 

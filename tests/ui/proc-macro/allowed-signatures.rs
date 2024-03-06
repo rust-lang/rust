@@ -1,6 +1,6 @@
-// check-pass
-// force-host
-// no-prefer-dynamic
+//@ check-pass
+//@ force-host
+//@ no-prefer-dynamic
 
 #![crate_type = "proc-macro"]
 #![allow(private_interfaces)]

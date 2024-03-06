@@ -1,4 +1,4 @@
-// incremental
+//@ incremental
 #![crate_type = "lib"]
 
 trait Q {

@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 
 pub fn main() {
     let mut a: Vec<Box<_>> = vec![Box::new(10)];

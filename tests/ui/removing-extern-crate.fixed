@@ -1,7 +1,7 @@
-// edition:2018
-// aux-build:removing-extern-crate.rs
-// run-rustfix
-// check-pass
+//@ edition:2018
+//@ aux-build:removing-extern-crate.rs
+//@ run-rustfix
+//@ check-pass
 
 #![warn(rust_2018_idioms)]
 

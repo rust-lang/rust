@@ -142,7 +142,7 @@ impl<'a, 'tcx> ExprUseVisitor<'a, 'tcx> {
             let param_ty = return_if_err!(self.mc.pat_ty_adjusted(param.pat));
             debug!("consume_body: param_ty = {:?}", param_ty);
 
-            let param_place = self.mc.cat_rvalue(param.hir_id, param.pat.span, param_ty);
+            let param_place = self.mc.cat_rvalue(param.hir_id, param_ty);
 
             self.walk_irrefutable_pat(&param_place, param.pat);
         }

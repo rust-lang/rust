@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 #![allow(unused_must_use)]
 fn bug<T>() -> impl Iterator<Item = [(); { |x: u32| { x }; 4 }]> {
     std::iter::empty()

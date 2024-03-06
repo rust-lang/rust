@@ -1,5 +1,5 @@
-// force-host
-// no-prefer-dynamic
+//@ force-host
+//@ no-prefer-dynamic
 
 // These are tests for syntax that is accepted by the Rust parser but
 // unconditionally rejected semantically after macro expansion. Attribute macros

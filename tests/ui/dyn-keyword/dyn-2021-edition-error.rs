@@ -1,4 +1,4 @@
-// edition:2021
+//@ edition:2021
 
 fn function(x: &SomeTrait, y: Box<SomeTrait>) {
     //~^ ERROR trait objects must include the `dyn` keyword

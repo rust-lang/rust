@@ -1,5 +1,5 @@
 error: non-canonical implementation of `partial_cmp` on an `Ord` type
-  --> $DIR/non_canonical_partial_ord_impl_fully_qual.rs:23:1
+  --> tests/ui/non_canonical_partial_ord_impl_fully_qual.rs:23:1
    |
 LL | /  impl PartialOrd for A {
 LL | |      fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
@@ -16,7 +16,7 @@ LL | |  }
    = help: to override `-D warnings` add `#[allow(clippy::non_canonical_partial_ord_impl)]`
 
 error: non-canonical implementation of `partial_cmp` on an `Ord` type
-  --> $DIR/non_canonical_partial_ord_impl_fully_qual.rs:46:1
+  --> tests/ui/non_canonical_partial_ord_impl_fully_qual.rs:46:1
    |
 LL | /  impl PartialOrd for B {
 LL | |      fn partial_cmp(&self, other: &Self) -> Option<Ordering> {

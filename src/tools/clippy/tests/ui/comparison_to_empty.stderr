@@ -1,5 +1,5 @@
 error: comparison to empty slice
-  --> $DIR/comparison_to_empty.rs:8:13
+  --> tests/ui/comparison_to_empty.rs:8:13
    |
 LL |     let _ = s == "";
    |             ^^^^^^^ help: using `is_empty` is clearer and more explicit: `s.is_empty()`
@@ -8,49 +8,49 @@ LL |     let _ = s == "";
    = help: to override `-D warnings` add `#[allow(clippy::comparison_to_empty)]`
 
 error: comparison to empty slice
-  --> $DIR/comparison_to_empty.rs:9:13
+  --> tests/ui/comparison_to_empty.rs:9:13
    |
 LL |     let _ = s != "";
    |             ^^^^^^^ help: using `!is_empty` is clearer and more explicit: `!s.is_empty()`
 
 error: comparison to empty slice
-  --> $DIR/comparison_to_empty.rs:12:13
+  --> tests/ui/comparison_to_empty.rs:12:13
    |
 LL |     let _ = v == [];
    |             ^^^^^^^ help: using `is_empty` is clearer and more explicit: `v.is_empty()`
 
 error: comparison to empty slice
-  --> $DIR/comparison_to_empty.rs:13:13
+  --> tests/ui/comparison_to_empty.rs:13:13
    |
 LL |     let _ = v != [];
    |             ^^^^^^^ help: using `!is_empty` is clearer and more explicit: `!v.is_empty()`
 
 error: comparison to empty slice using `if let`
-  --> $DIR/comparison_to_empty.rs:14:8
+  --> tests/ui/comparison_to_empty.rs:14:8
    |
 LL |     if let [] = &*v {}
    |        ^^^^^^^^^^^^ help: using `is_empty` is clearer and more explicit: `(*v).is_empty()`
 
 error: comparison to empty slice using `if let`
-  --> $DIR/comparison_to_empty.rs:16:8
+  --> tests/ui/comparison_to_empty.rs:16:8
    |
 LL |     if let [] = s {}
    |        ^^^^^^^^^^ help: using `is_empty` is clearer and more explicit: `s.is_empty()`
 
 error: comparison to empty slice using `if let`
-  --> $DIR/comparison_to_empty.rs:17:8
+  --> tests/ui/comparison_to_empty.rs:17:8
    |
 LL |     if let [] = &*s {}
    |        ^^^^^^^^^^^^ help: using `is_empty` is clearer and more explicit: `s.is_empty()`
 
 error: comparison to empty slice using `if let`
-  --> $DIR/comparison_to_empty.rs:18:8
+  --> tests/ui/comparison_to_empty.rs:18:8
    |
 LL |     if let [] = &*s
    |        ^^^^^^^^^^^^ help: using `is_empty` is clearer and more explicit: `s.is_empty()`
 
 error: comparison to empty slice
-  --> $DIR/comparison_to_empty.rs:19:12
+  --> tests/ui/comparison_to_empty.rs:19:12
    |
 LL |         && s == []
    |            ^^^^^^^ help: using `is_empty` is clearer and more explicit: `s.is_empty()`

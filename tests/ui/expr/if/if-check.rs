@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 
 fn even(x: usize) -> bool {
     if x < 2 {

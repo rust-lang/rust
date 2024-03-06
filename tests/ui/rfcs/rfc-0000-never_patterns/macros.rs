@@ -1,7 +1,7 @@
-// check-pass
-// revisions: e2018 e2021
-//[e2018] edition:2018
-//[e2021] edition:2021
+//@ check-pass
+//@ revisions: e2018 e2021
+//@[e2018] edition:2018
+//@[e2021] edition:2021
 #![feature(never_patterns)]
 #![allow(incomplete_features)]
 

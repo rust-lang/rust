@@ -4,6 +4,8 @@
 use crossbeam_channel::Sender;
 use stdx::thread::{Pool, ThreadIntent};
 
+use crate::main_loop::QueuedTask;
+
 pub(crate) struct TaskPool<T> {
     sender: Sender<T>,
     pool: Pool,
@@ -39,4 +41,13 @@ impl<T> TaskPool<T> {
     pub(crate) fn len(&self) -> usize {
         self.pool.len()
     }
+}
+
+/// `TaskQueue`, like its name suggests, queues tasks.
+///
+/// This should only be used used if a task must run after [`GlobalState::process_changes`]
+/// has been called.
+pub(crate) struct TaskQueue {
+    pub(crate) sender: crossbeam_channel::Sender<QueuedTask>,
+    pub(crate) receiver: crossbeam_channel::Receiver<QueuedTask>,
 }

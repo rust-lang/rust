@@ -1,6 +1,6 @@
-// run-pass
-// aux-build:link-cfg-works-transitive-rlib.rs
-// aux-build:link-cfg-works-transitive-dylib.rs
+//@ run-pass
+//@ aux-build:link-cfg-works-transitive-rlib.rs
+//@ aux-build:link-cfg-works-transitive-dylib.rs
 
 #![feature(link_cfg)]
 

@@ -1,6 +1,6 @@
    LL|       |#![allow(unused_assignments)]
-   LL|       |// compile-flags: -Coverflow-checks=yes
-   LL|       |// failure-status: 101
+   LL|       |//@ compile-flags: -Coverflow-checks=yes
+   LL|       |//@ failure-status: 101
    LL|       |
    LL|      4|fn might_overflow(to_add: u32) -> u32 {
    LL|      4|    if to_add > 5 {

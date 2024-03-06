@@ -1,4 +1,4 @@
-   LL|       |// edition: 2021
+   LL|       |//@ edition: 2021
    LL|       |
    LL|       |// If the span extractor can't find any relevant spans for a function,
    LL|       |// but the function contains coverage span-marker statements (e.g. inserted
@@ -19,11 +19,11 @@
    LL|       |}
    LL|       |
    LL|       |macro_that_defines_a_function! {
-   LL|       |    fn affected_function() {
-   LL|       |        if !false {
-   LL|       |            ()
+   LL|      1|    fn affected_function() {
+   LL|      1|        if !false {
+   LL|      1|            ()
    LL|       |        } else {
-   LL|       |            ()
+   LL|      0|            ()
    LL|       |        }
    LL|       |    }
    LL|       |}

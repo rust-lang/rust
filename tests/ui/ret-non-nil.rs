@@ -1,4 +1,4 @@
-// error-pattern: `return;` in a function whose return type is not `()`
+//@ error-pattern: `return;` in a function whose return type is not `()`
 
 fn f() { return; }
 

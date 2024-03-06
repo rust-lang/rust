@@ -1,6 +1,6 @@
-// compile-flags: -Znext-solver
+//@ compile-flags: -Znext-solver
 
-// check-pass
+//@ check-pass
 // (should not pass, should be turned into a coherence-only test)
 
 // check that when computing `alias-eq(<() as Foo<u16, T>>::Assoc, <() as Foo<?0, T>>::Assoc)`

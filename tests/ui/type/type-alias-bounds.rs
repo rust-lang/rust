@@ -1,6 +1,6 @@
 // Test `ignored_generic_bounds` lint warning about bounds in type aliases.
 
-// check-pass
+//@ check-pass
 #![allow(dead_code)]
 
 use std::rc::Rc;

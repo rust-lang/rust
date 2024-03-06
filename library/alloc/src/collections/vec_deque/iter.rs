@@ -1,5 +1,5 @@
 use core::iter::{FusedIterator, TrustedLen, TrustedRandomAccess, TrustedRandomAccessNoCoerce};
-use core::num::NonZeroUsize;
+use core::num::NonZero;
 use core::ops::Try;
 use core::{fmt, mem, slice};
 
@@ -56,7 +56,7 @@ impl<'a, T> Iterator for Iter<'a, T> {
         }
     }
 
-    fn advance_by(&mut self, n: usize) -> Result<(), NonZeroUsize> {
+    fn advance_by(&mut self, n: usize) -> Result<(), NonZero<usize>> {
         let remaining = self.i1.advance_by(n);
         match remaining {
             Ok(()) => return Ok(()),
@@ -128,7 +128,7 @@ impl<'a, T> DoubleEndedIterator for Iter<'a, T> {
         }
     }
 
-    fn advance_back_by(&mut self, n: usize) -> Result<(), NonZeroUsize> {
+    fn advance_back_by(&mut self, n: usize) -> Result<(), NonZero<usize>> {
         match self.i2.advance_back_by(n) {
             Ok(()) => return Ok(()),
             Err(n) => {

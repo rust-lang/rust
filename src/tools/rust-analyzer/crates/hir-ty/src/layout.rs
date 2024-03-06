@@ -19,8 +19,12 @@ use stdx::never;
 use triomphe::Arc;
 
 use crate::{
-    consteval::try_const_usize, db::HirDatabase, infer::normalize, layout::adt::struct_variant_idx,
-    utils::ClosureSubst, Interner, ProjectionTy, Substitution, TraitEnvironment, Ty,
+    consteval::try_const_usize,
+    db::{HirDatabase, InternedClosure},
+    infer::normalize,
+    layout::adt::struct_variant_idx,
+    utils::ClosureSubst,
+    Interner, ProjectionTy, Substitution, TraitEnvironment, Ty,
 };
 
 pub use self::{
@@ -198,7 +202,7 @@ pub fn layout_of_ty_query(
     trait_env: Arc<TraitEnvironment>,
 ) -> Result<Arc<Layout>, LayoutError> {
     let krate = trait_env.krate;
-    let Some(target) = db.target_data_layout(krate) else {
+    let Ok(target) = db.target_data_layout(krate) else {
         return Err(LayoutError::TargetLayoutNotAvailable);
     };
     let cx = LayoutCx { target: &target };
@@ -391,7 +395,7 @@ pub fn layout_of_ty_query(
             }
         }
         TyKind::Closure(c, subst) => {
-            let (def, _) = db.lookup_intern_closure((*c).into());
+            let InternedClosure(def, _) = db.lookup_intern_closure((*c).into());
             let infer = db.infer(def);
             let (captures, _) = infer.closure_info(c);
             let fields = captures

@@ -1,10 +1,10 @@
-// run-pass
+//@ run-pass
 // Check that we can use `-C lto` when linking against libraries that were
 // separately compiled.
 
-// aux-build:sepcomp_lib.rs
-// compile-flags: -C lto -g
-// no-prefer-dynamic
+//@ aux-build:sepcomp_lib.rs
+//@ compile-flags: -C lto -g
+//@ no-prefer-dynamic
 
 extern crate sepcomp_lib;
 use sepcomp_lib::a::one;

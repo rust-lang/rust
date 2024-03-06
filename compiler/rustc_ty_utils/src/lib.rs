@@ -15,8 +15,6 @@
 #![feature(iterator_try_collect)]
 #![feature(let_chains)]
 #![feature(never_type)]
-#![deny(rustc::untranslatable_diagnostic)]
-#![deny(rustc::diagnostic_outside_of_impl)]
 
 #[macro_use]
 extern crate rustc_middle;
@@ -37,7 +35,7 @@ mod layout_sanity_check;
 mod needs_drop;
 mod opaque_types;
 mod representability;
-mod sig_types;
+pub mod sig_types;
 mod structural_match;
 mod ty;
 

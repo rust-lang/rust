@@ -107,6 +107,9 @@ pub(crate) fn inline_into_callers(acc: &mut Assists, ctx: &AssistContext<'_>) ->
                 let call_infos: Vec<_> = name_refs
                     .into_iter()
                     .filter_map(CallInfo::from_name_ref)
+                    // FIXME: do not handle callsites in macros' parameters, because
+                    // directly inlining into macros may cause errors.
+                    .filter(|call_info| !ctx.sema.hir_file_for(call_info.node.syntax()).is_macro())
                     .map(|call_info| {
                         let mut_node = builder.make_syntax_mut(call_info.node.syntax().clone());
                         (call_info, mut_node)
@@ -415,7 +418,24 @@ fn inline(
         let expr: &ast::Expr = expr;
 
         let mut insert_let_stmt = || {
-            let ty = sema.type_of_expr(expr).filter(TypeInfo::has_adjustment).and(param_ty.clone());
+            let param_ty = match param_ty {
+                None => None,
+                Some(param_ty) => {
+                    if sema.hir_file_for(param_ty.syntax()).is_macro() {
+                        if let Some(param_ty) =
+                            ast::Type::cast(insert_ws_into(param_ty.syntax().clone()))
+                        {
+                            Some(param_ty)
+                        } else {
+                            Some(param_ty.clone_for_update())
+                        }
+                    } else {
+                        Some(param_ty.clone_for_update())
+                    }
+                }
+            };
+            let ty: Option<syntax::ast::Type> =
+                sema.type_of_expr(expr).filter(TypeInfo::has_adjustment).and(param_ty);
 
             let is_self = param
                 .name(sema.db)
@@ -1734,5 +1754,70 @@ pub fn main() {
 }
 "#,
         )
+    }
+
+    #[test]
+    fn inline_call_with_reference_in_macros() {
+        check_assist(
+            inline_call,
+            r#"
+fn _write_u64(s: &mut u64, x: u64) {
+    *s += x;
+}
+macro_rules! impl_write {
+    ($(($ty:ident, $meth:ident),)*) => {$(
+        fn _hash(inner_self_: &u64, state: &mut u64) {
+            $meth(state, *inner_self_)
+        }
+    )*}
+}
+impl_write! { (u64, _write_u64), }
+fn _hash2(self_: &u64, state: &mut u64) {
+    $0_hash(&self_, state);
+}
+"#,
+            r#"
+fn _write_u64(s: &mut u64, x: u64) {
+    *s += x;
+}
+macro_rules! impl_write {
+    ($(($ty:ident, $meth:ident),)*) => {$(
+        fn _hash(inner_self_: &u64, state: &mut u64) {
+            $meth(state, *inner_self_)
+        }
+    )*}
+}
+impl_write! { (u64, _write_u64), }
+fn _hash2(self_: &u64, state: &mut u64) {
+    {
+        let inner_self_: &u64 = &self_;
+        let state: &mut u64 = state;
+      _write_u64(state, *inner_self_)
+    };
+}
+"#,
+        )
+    }
+
+    #[test]
+    fn inline_into_callers_in_macros_not_applicable() {
+        check_assist_not_applicable(
+            inline_into_callers,
+            r#"
+fn foo() -> u32 {
+    42
+}
+
+macro_rules! bar {
+    ($x:expr) => {
+      $x
+    };
+}
+
+fn f() {
+    bar!(foo$0());
+}
+"#,
+        );
     }
 }

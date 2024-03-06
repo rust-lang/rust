@@ -1,5 +1,5 @@
 // Regression test for #84408.
-// check-pass
+//@ check-pass
 
 #![feature(generic_const_exprs)]
 #![allow(incomplete_features)]

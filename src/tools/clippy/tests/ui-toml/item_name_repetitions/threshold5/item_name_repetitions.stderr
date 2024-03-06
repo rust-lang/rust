@@ -1,5 +1,5 @@
 error: all fields have the same postfix: `data`
-  --> $DIR/item_name_repetitions.rs:9:1
+  --> tests/ui-toml/item_name_repetitions/threshold5/item_name_repetitions.rs:9:1
    |
 LL | / struct Data2 {
 LL | |
@@ -15,7 +15,7 @@ LL | | }
    = help: to override `-D warnings` add `#[allow(clippy::struct_field_names)]`
 
 error: all variants have the same postfix: `Foo`
-  --> $DIR/item_name_repetitions.rs:23:1
+  --> tests/ui-toml/item_name_repetitions/threshold5/item_name_repetitions.rs:23:1
    |
 LL | / enum Foo2 {
 LL | |

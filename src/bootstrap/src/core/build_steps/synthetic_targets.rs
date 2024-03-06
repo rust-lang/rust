@@ -12,7 +12,7 @@ use crate::core::config::TargetSelection;
 use crate::Compiler;
 use std::process::{Command, Stdio};
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub(crate) struct MirOptPanicAbortSyntheticTarget {
     pub(crate) compiler: Compiler,
     pub(crate) base: TargetSelection,
@@ -79,7 +79,7 @@ fn create_synthetic_target(
 
     customize(spec_map);
 
-    std::fs::write(&path, &serde_json::to_vec_pretty(&spec).unwrap()).unwrap();
+    std::fs::write(&path, serde_json::to_vec_pretty(&spec).unwrap()).unwrap();
     let target = TargetSelection::create_synthetic(&name, path.to_str().unwrap());
     crate::utils::cc_detect::find_target(builder, target);
 

@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 
 #![deny(rust_2021_incompatible_closure_captures)]
 

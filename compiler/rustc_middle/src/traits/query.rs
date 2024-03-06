@@ -67,7 +67,7 @@ pub mod type_op {
     }
 }
 
-pub type CanonicalProjectionGoal<'tcx> = Canonical<'tcx, ty::ParamEnvAnd<'tcx, ty::AliasTy<'tcx>>>;
+pub type CanonicalAliasGoal<'tcx> = Canonical<'tcx, ty::ParamEnvAnd<'tcx, ty::AliasTy<'tcx>>>;
 
 pub type CanonicalTyGoal<'tcx> = Canonical<'tcx, ty::ParamEnvAnd<'tcx, Ty<'tcx>>>;
 
@@ -177,10 +177,10 @@ pub struct MethodAutoderefBadTy<'tcx> {
     pub ty: Canonical<'tcx, QueryResponse<'tcx, Ty<'tcx>>>,
 }
 
-/// Result from the `normalize_projection_ty` query.
+/// Result of the `normalize_canonicalized_{{,inherent_}projection,weak}_ty` queries.
 #[derive(Clone, Debug, HashStable, TypeFoldable, TypeVisitable)]
 pub struct NormalizationResult<'tcx> {
-    /// Result of normalization.
+    /// Result of the normalization.
     pub normalized_ty: Ty<'tcx>,
 }
 

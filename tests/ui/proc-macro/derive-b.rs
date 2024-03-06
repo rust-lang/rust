@@ -1,5 +1,5 @@
-// run-pass
-// aux-build:derive-b-rpass.rs
+//@ run-pass
+//@ aux-build:derive-b-rpass.rs
 
 extern crate derive_b_rpass as derive_b;
 

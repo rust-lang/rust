@@ -1,7 +1,7 @@
-// run-pass
-// aux-build:xcrate_static_addresses.rs
+//@ run-pass
+//@ aux-build:xcrate_static_addresses.rs
 
-// pretty-expanded FIXME #23616
+//@ pretty-expanded FIXME #23616
 
 extern crate xcrate_static_addresses;
 

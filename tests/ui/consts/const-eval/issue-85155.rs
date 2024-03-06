@@ -8,8 +8,8 @@
 // Therefore, its setup is reproduced with an aux crate, which will similarly trigger a PME
 // depending on the const argument value, like the `stdarch` intrinsics would.
 //
-// aux-build: post_monomorphization_error.rs
-// build-fail: this is a post-monomorphization error, it passes check runs and requires building
+//@ aux-build: post_monomorphization_error.rs
+//@ build-fail: this is a post-monomorphization error, it passes check runs and requires building
 //             to actually fail.
 
 extern crate post_monomorphization_error;

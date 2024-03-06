@@ -1,5 +1,5 @@
-// check-pass
-// compile-flags: -Z unpretty=expanded
+//@ check-pass
+//@ compile-flags: -Z unpretty=expanded
 
 #![feature(core_intrinsics, generic_assert)]
 

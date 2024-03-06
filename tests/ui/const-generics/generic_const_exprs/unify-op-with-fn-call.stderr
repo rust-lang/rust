@@ -34,6 +34,47 @@ LL + #[derive(ConstParamTy)]
 LL | struct Foo(u8);
    |
 
-error: aborting due to 3 previous errors
+error: unconstrained generic constant
+  --> $DIR/unify-op-with-fn-call.rs:30:12
+   |
+LL |     bar2::<{ std::ops::Add::add(N, N) }>();
+   |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: try adding a `where` bound using this expression: `where [(); { std::ops::Add::add(N, N) }]:`
 
-For more information about this error, try `rustc --explain E0741`.
+error[E0015]: cannot call non-const operator in constants
+  --> $DIR/unify-op-with-fn-call.rs:20:39
+   |
+LL | fn foo<const N: Foo>(a: Evaluatable<{ N + N }>) {
+   |                                       ^^^^^
+   |
+note: impl defined here, but it is not `const`
+  --> $DIR/unify-op-with-fn-call.rs:10:1
+   |
+LL | impl const std::ops::Add for Foo {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   = note: calls in constants are limited to constant functions, tuple structs and tuple variants
+   = help: add `#![feature(effects)]` to the crate attributes to enable
+
+error[E0015]: cannot call non-const fn `<Foo as Add>::add` in constants
+  --> $DIR/unify-op-with-fn-call.rs:21:13
+   |
+LL |     bar::<{ std::ops::Add::add(N, N) }>();
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: calls in constants are limited to constant functions, tuple structs and tuple variants
+   = help: add `#![feature(effects)]` to the crate attributes to enable
+
+error[E0015]: cannot call non-const fn `<usize as Add>::add` in constants
+  --> $DIR/unify-op-with-fn-call.rs:30:14
+   |
+LL |     bar2::<{ std::ops::Add::add(N, N) }>();
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: calls in constants are limited to constant functions, tuple structs and tuple variants
+   = help: add `#![feature(effects)]` to the crate attributes to enable
+
+error: aborting due to 7 previous errors
+
+Some errors have detailed explanations: E0015, E0741.
+For more information about an error, try `rustc --explain E0015`.

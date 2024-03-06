@@ -1,6 +1,6 @@
-// assembly-output: emit-asm
-// compile-flags: --target avr-unknown-gnu-atmega328
-// needs-llvm-components: avr
+//@ assembly-output: emit-asm
+//@ compile-flags: --target avr-unknown-gnu-atmega328
+//@ needs-llvm-components: avr
 
 #![feature(no_core, lang_items, rustc_attrs, asm_experimental_arch)]
 #![crate_type = "rlib"]

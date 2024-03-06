@@ -175,7 +175,7 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
     ) -> Result<PatKind<'tcx>, ErrorGuaranteed> {
         if lo_expr.is_none() && hi_expr.is_none() {
             let msg = "found twice-open range pattern (`..`) outside of error recovery";
-            return Err(self.tcx.dcx().span_delayed_bug(span, msg));
+            self.tcx.dcx().span_bug(span, msg);
         }
 
         let (lo, lo_ascr, lo_inline) = self.lower_pattern_range_endpoint(lo_expr)?;
@@ -223,19 +223,14 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
         // If we are handling a range with associated constants (e.g.
         // `Foo::<'a>::A..=Foo::B`), we need to put the ascriptions for the associated
         // constants somewhere. Have them on the range pattern.
-        for ascr in [lo_ascr, hi_ascr] {
-            if let Some(ascription) = ascr {
-                kind = PatKind::AscribeUserType {
-                    ascription,
-                    subpattern: Box::new(Pat { span, ty, kind }),
-                };
-            }
+        for ascription in [lo_ascr, hi_ascr].into_iter().flatten() {
+            kind = PatKind::AscribeUserType {
+                ascription,
+                subpattern: Box::new(Pat { span, ty, kind }),
+            };
         }
-        for inline_const in [lo_inline, hi_inline] {
-            if let Some(def) = inline_const {
-                kind =
-                    PatKind::InlineConstant { def, subpattern: Box::new(Pat { span, ty, kind }) };
-            }
+        for def in [lo_inline, hi_inline].into_iter().flatten() {
+            kind = PatKind::InlineConstant { def, subpattern: Box::new(Pat { span, ty, kind }) };
         }
         Ok(kind)
     }
@@ -542,7 +537,7 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
 
         match const_value {
             Ok(const_) => {
-                let pattern = self.const_to_pat(const_, id, span, Some(instance.def_id()));
+                let pattern = self.const_to_pat(const_, id, span);
 
                 if !is_associated_const {
                     return pattern;
@@ -612,7 +607,7 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
         };
         if let Some(lit_input) = lit_input {
             match tcx.at(expr.span).lit_to_const(lit_input) {
-                Ok(c) => return self.const_to_pat(Const::Ty(c), id, span, None).kind,
+                Ok(c) => return self.const_to_pat(Const::Ty(c), id, span).kind,
                 // If an error occurred, ignore that it's a literal
                 // and leave reporting the error up to const eval of
                 // the unevaluated constant below.
@@ -635,17 +630,13 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
         if let Ok(Some(valtree)) =
             self.tcx.const_eval_resolve_for_typeck(self.param_env, ct, Some(span))
         {
-            let subpattern = self.const_to_pat(
-                Const::Ty(ty::Const::new_value(self.tcx, valtree, ty)),
-                id,
-                span,
-                None,
-            );
+            let subpattern =
+                self.const_to_pat(Const::Ty(ty::Const::new_value(self.tcx, valtree, ty)), id, span);
             PatKind::InlineConstant { subpattern, def: def_id }
         } else {
             // If that fails, convert it to an opaque constant pattern.
             match tcx.const_eval_resolve(self.param_env, uneval, Some(span)) {
-                Ok(val) => self.const_to_pat(mir::Const::Val(val, ty), id, span, None).kind,
+                Ok(val) => self.const_to_pat(mir::Const::Val(val, ty), id, span).kind,
                 Err(ErrorHandled::TooGeneric(_)) => {
                     // If we land here it means the const can't be evaluated because it's `TooGeneric`.
                     let e = self.tcx.dcx().emit_err(ConstPatternDependsOnGenericParameter { span });
@@ -681,9 +672,7 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
         let lit_input =
             LitToConstInput { lit: &lit.node, ty: self.typeck_results.expr_ty(expr), neg };
         match self.tcx.at(expr.span).lit_to_const(lit_input) {
-            Ok(constant) => {
-                self.const_to_pat(Const::Ty(constant), expr.hir_id, lit.span, None).kind
-            }
+            Ok(constant) => self.const_to_pat(Const::Ty(constant), expr.hir_id, lit.span).kind,
             Err(LitToConstError::Reported(e)) => PatKind::Error(e),
             Err(LitToConstError::TypeError) => bug!("lower_lit: had type error"),
         }

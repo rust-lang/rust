@@ -21,7 +21,7 @@ use rustc_span::SourceFileHashAlgorithm;
 use std::collections::BTreeMap;
 
 use std::hash::{DefaultHasher, Hasher};
-use std::num::{IntErrorKind, NonZeroUsize};
+use std::num::{IntErrorKind, NonZero};
 use std::path::PathBuf;
 use std::str;
 
@@ -371,7 +371,8 @@ mod desc {
     pub const parse_list: &str = "a space-separated list of strings";
     pub const parse_list_with_polarity: &str =
         "a comma-separated list of strings, with elements beginning with + or -";
-    pub const parse_opt_comma_list: &str = "a comma-separated list of strings";
+    pub const parse_comma_list: &str = "a comma-separated list of strings";
+    pub const parse_opt_comma_list: &str = parse_comma_list;
     pub const parse_number: &str = "a number";
     pub const parse_opt_number: &str = parse_number;
     pub const parse_threads: &str = parse_number;
@@ -381,7 +382,7 @@ mod desc {
     pub const parse_opt_panic_strategy: &str = parse_panic_strategy;
     pub const parse_oom_strategy: &str = "either `panic` or `abort`";
     pub const parse_relro_level: &str = "one of: `full`, `partial`, or `off`";
-    pub const parse_sanitizers: &str = "comma separated list of sanitizers: `address`, `cfi`, `hwaddress`, `kcfi`, `kernel-address`, `leak`, `memory`, `memtag`, `safestack`, `shadow-call-stack`, or `thread`";
+    pub const parse_sanitizers: &str = "comma separated list of sanitizers: `address`, `cfi`, `dataflow`, `hwaddress`, `kcfi`, `kernel-address`, `leak`, `memory`, `memtag`, `safestack`, `shadow-call-stack`, or `thread`";
     pub const parse_sanitizer_memory_track_origins: &str = "0, 1, or 2";
     pub const parse_cfguard: &str =
         "either a boolean (`yes`, `no`, `on`, `off`, etc), `checks`, or `nochecks`";
@@ -602,6 +603,18 @@ mod parse {
         }
     }
 
+    pub(crate) fn parse_comma_list(slot: &mut Vec<String>, v: Option<&str>) -> bool {
+        match v {
+            Some(s) => {
+                let mut v: Vec<_> = s.split(',').map(|s| s.to_string()).collect();
+                v.sort_unstable();
+                *slot = v;
+                true
+            }
+            None => false,
+        }
+    }
+
     pub(crate) fn parse_opt_comma_list(slot: &mut Option<Vec<String>>, v: Option<&str>) -> bool {
         match v {
             Some(s) => {
@@ -617,7 +630,7 @@ mod parse {
     pub(crate) fn parse_threads(slot: &mut usize, v: Option<&str>) -> bool {
         match v.and_then(|s| s.parse().ok()) {
             Some(0) => {
-                *slot = std::thread::available_parallelism().map_or(1, std::num::NonZeroUsize::get);
+                *slot = std::thread::available_parallelism().map_or(1, NonZero::<usize>::get);
                 true
             }
             Some(i) => {
@@ -718,6 +731,7 @@ mod parse {
                 *slot |= match s {
                     "address" => SanitizerSet::ADDRESS,
                     "cfi" => SanitizerSet::CFI,
+                    "dataflow" => SanitizerSet::DATAFLOW,
                     "kcfi" => SanitizerSet::KCFI,
                     "kernel-address" => SanitizerSet::KERNELADDRESS,
                     "leak" => SanitizerSet::LEAK,
@@ -991,7 +1005,10 @@ mod parse {
         true
     }
 
-    pub(crate) fn parse_treat_err_as_bug(slot: &mut Option<NonZeroUsize>, v: Option<&str>) -> bool {
+    pub(crate) fn parse_treat_err_as_bug(
+        slot: &mut Option<NonZero<usize>>,
+        v: Option<&str>,
+    ) -> bool {
         match v {
             Some(s) => match s.parse() {
                 Ok(val) => {
@@ -1004,7 +1021,7 @@ mod parse {
                 }
             },
             None => {
-                *slot = NonZeroUsize::new(1);
+                *slot = NonZero::new(1);
                 true
             }
         }
@@ -1548,6 +1565,8 @@ options! {
         "set options for branch target identification and pointer authentication on AArch64"),
     cf_protection: CFProtection = (CFProtection::None, parse_cfprotection, [TRACKED],
         "instrument control-flow architecture protection"),
+    check_cfg_all_expected: bool = (false, parse_bool, [UNTRACKED],
+        "show all expected values in check-cfg diagnostics (default: no)"),
     codegen_backend: Option<String> = (None, parse_opt_string, [TRACKED],
         "the backend to use"),
     collapse_macro_debuginfo: CollapseMacroDebuginfo = (CollapseMacroDebuginfo::Unspecified,
@@ -1572,6 +1591,8 @@ options! {
     dep_info_omit_d_target: bool = (false, parse_bool, [TRACKED],
         "in dep-info output, omit targets for tracking dependencies of the dep-info files \
         themselves (default: no)"),
+    direct_access_external_data: Option<bool> = (None, parse_opt_bool, [TRACKED],
+        "Direct or use GOT indirect to reference external data symbols"),
     dual_proc_macros: bool = (false, parse_bool, [TRACKED],
         "load proc macros for both target and host, but only link to the target (default: no)"),
     dump_dep_graph: bool = (false, parse_bool, [UNTRACKED],
@@ -1841,6 +1862,8 @@ written to standard error output)"),
         "enable generalizing pointer types (default: no)"),
     sanitizer_cfi_normalize_integers: Option<bool> = (None, parse_opt_bool, [TRACKED],
         "enable normalizing integer types (default: no)"),
+    sanitizer_dataflow_abilist: Vec<String> = (Vec::new(), parse_comma_list, [TRACKED],
+        "additional ABI list files that control how shadow parameters are passed (comma separated)"),
     sanitizer_memory_track_origins: usize = (0, parse_sanitizer_memory_track_origins, [TRACKED],
         "enable origins tracking in MemorySanitizer"),
     sanitizer_recover: SanitizerSet = (SanitizerSet::empty(), parse_sanitizers, [TRACKED],
@@ -1948,7 +1971,7 @@ written to standard error output)"),
         "translate remapped paths into local paths when possible (default: yes)"),
     trap_unreachable: Option<bool> = (None, parse_opt_bool, [TRACKED],
         "generate trap instructions for unreachable intrinsics (default: use target setting, usually yes)"),
-    treat_err_as_bug: Option<NonZeroUsize> = (None, parse_treat_err_as_bug, [TRACKED],
+    treat_err_as_bug: Option<NonZero<usize>> = (None, parse_treat_err_as_bug, [TRACKED],
         "treat the `val`th error that occurs as bug (default if not specified: 0 - don't treat errors as bugs. \
         default if specified without a value: 1 - treat the first error as bug)"),
     trim_diagnostic_paths: bool = (true, parse_bool, [UNTRACKED],

@@ -1,4 +1,4 @@
-// build-pass
+//@ build-pass
 // ignore-tidy-filelength
 #![crate_type = "rlib"]
 

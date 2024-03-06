@@ -1,4 +1,4 @@
-// compile-flags:-C panic=abort
+//@ compile-flags:-C panic=abort
 
 #![feature(lang_items)]
 #![no_std]

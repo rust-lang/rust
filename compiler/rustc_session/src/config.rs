@@ -11,7 +11,7 @@ use crate::{EarlyDiagCtxt, Session};
 use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexMap, FxIndexSet};
 use rustc_data_structures::stable_hasher::{StableOrd, ToStableHashKey};
 use rustc_errors::emitter::HumanReadableErrorType;
-use rustc_errors::{ColorConfig, DiagCtxtFlags, DiagnosticArgValue, IntoDiagnosticArg};
+use rustc_errors::{ColorConfig, DiagArgValue, DiagCtxtFlags, IntoDiagnosticArg};
 use rustc_feature::UnstableFeatures;
 use rustc_span::edition::{Edition, DEFAULT_EDITION, EDITION_NAME_LIST, LATEST_STABLE_EDITION};
 use rustc_span::source_map::FilePathMapping;
@@ -1435,12 +1435,16 @@ impl CheckCfg {
         //
         // When adding a new config here you should also update
         // `tests/ui/check-cfg/well-known-values.rs`.
+        //
+        // Don't forget to update `src/doc/unstable-book/src/compiler-flags/check-cfg.md`
+        // in the unstable book as well!
 
         ins!(sym::debug_assertions, no_values);
 
-        // These three are never set by rustc, but we set them anyway: they
-        // should not trigger a lint because `cargo doc`, `cargo test`, and
-        // `cargo miri run` (respectively) can set them.
+        // These four are never set by rustc, but we set them anyway: they
+        // should not trigger a lint because `cargo clippy`, `cargo doc`,
+        // `cargo test` and `cargo miri run` (respectively) can set them.
+        ins!(sym::clippy, no_values);
         ins!(sym::doc, no_values);
         ins!(sym::doctest, no_values);
         ins!(sym::miri, no_values);
@@ -2464,6 +2468,9 @@ pub fn parse_externs(
             ));
             let adjusted_name = name.replace('-', "_");
             if is_ascii_ident(&adjusted_name) {
+                // FIXME: make this translatable
+                #[allow(rustc::diagnostic_outside_of_impl)]
+                #[allow(rustc::untranslatable_diagnostic)]
                 error.help(format!(
                     "consider replacing the dashes with underscores: `{adjusted_name}`"
                 ));
@@ -3092,7 +3099,7 @@ impl fmt::Display for CrateType {
 }
 
 impl IntoDiagnosticArg for CrateType {
-    fn into_diagnostic_arg(self) -> DiagnosticArgValue<'static> {
+    fn into_diagnostic_arg(self) -> DiagArgValue {
         self.to_string().into_diagnostic_arg()
     }
 }
@@ -3226,7 +3233,7 @@ pub(crate) mod dep_tracking {
     };
     use std::collections::BTreeMap;
     use std::hash::{DefaultHasher, Hash};
-    use std::num::NonZeroUsize;
+    use std::num::NonZero;
     use std::path::PathBuf;
 
     pub trait DepTrackingHash {
@@ -3268,7 +3275,7 @@ pub(crate) mod dep_tracking {
     impl_dep_tracking_hash_via_hash!(
         bool,
         usize,
-        NonZeroUsize,
+        NonZero<usize>,
         u64,
         Hash64,
         String,

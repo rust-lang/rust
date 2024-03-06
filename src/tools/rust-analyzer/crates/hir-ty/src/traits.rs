@@ -100,13 +100,14 @@ pub(crate) fn trait_solve_query(
     block: Option<BlockId>,
     goal: Canonical<InEnvironment<Goal>>,
 ) -> Option<Solution> {
-    let _p = profile::span("trait_solve_query").detail(|| match &goal.value.goal.data(Interner) {
+    let detail = match &goal.value.goal.data(Interner) {
         GoalData::DomainGoal(DomainGoal::Holds(WhereClause::Implemented(it))) => {
             db.trait_data(it.hir_trait_id()).name.display(db.upcast()).to_string()
         }
-        GoalData::DomainGoal(DomainGoal::Holds(WhereClause::AliasEq(_))) => "alias_eq".to_string(),
-        _ => "??".to_string(),
-    });
+        GoalData::DomainGoal(DomainGoal::Holds(WhereClause::AliasEq(_))) => "alias_eq".to_owned(),
+        _ => "??".to_owned(),
+    };
+    let _p = tracing::span!(tracing::Level::INFO, "trait_solve_query", ?detail).entered();
     tracing::info!("trait_solve_query({:?})", goal.value.goal);
 
     if let GoalData::DomainGoal(DomainGoal::Holds(WhereClause::AliasEq(AliasEq {
@@ -138,6 +139,7 @@ fn solve(
     block: Option<BlockId>,
     goal: &chalk_ir::UCanonical<chalk_ir::InEnvironment<chalk_ir::Goal<Interner>>>,
 ) -> Option<chalk_solve::Solution<Interner>> {
+    let _p = tracing::span!(tracing::Level::INFO, "solve", ?krate, ?block).entered();
     let context = ChalkContext { db, krate, block };
     tracing::debug!("solve goal: {:?}", goal);
     let mut solver = create_chalk_solver();
@@ -186,7 +188,7 @@ struct LoggingRustIrDatabaseLoggingOnDrop<'a>(LoggingRustIrDatabase<Interner, Ch
 
 impl Drop for LoggingRustIrDatabaseLoggingOnDrop<'_> {
     fn drop(&mut self) {
-        eprintln!("chalk program:\n{}", self.0);
+        tracing::info!("chalk program:\n{}", self.0);
     }
 }
 
@@ -213,6 +215,15 @@ impl FnTrait {
             FnTrait::FnOnce => LangItem::FnOnce,
             FnTrait::FnMut => LangItem::FnMut,
             FnTrait::Fn => LangItem::Fn,
+        }
+    }
+
+    pub const fn from_lang_item(lang_item: LangItem) -> Option<Self> {
+        match lang_item {
+            LangItem::FnOnce => Some(FnTrait::FnOnce),
+            LangItem::FnMut => Some(FnTrait::FnMut),
+            LangItem::Fn => Some(FnTrait::Fn),
+            _ => None,
         }
     }
 

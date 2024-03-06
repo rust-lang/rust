@@ -1,4 +1,4 @@
-// check-pass
+//@ check-pass
 
 enum Foo {
     Bar = { let x = 1; 3 }

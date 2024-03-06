@@ -1,5 +1,5 @@
 // Previously ICEd because we didn't properly track binders in suggestions
-// check-fail
+//@ check-fail
 
 pub trait Foo<'de>: Sized {}
 

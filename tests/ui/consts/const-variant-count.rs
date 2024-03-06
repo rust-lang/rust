@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 #![allow(dead_code, enum_intrinsics_non_enums)]
 #![feature(variant_count)]
 #![feature(never_type)]

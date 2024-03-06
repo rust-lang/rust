@@ -163,9 +163,8 @@ pub(crate) fn convert_bool_then_to_if(acc: &mut Assists, ctx: &AssistContext<'_>
         return None;
     }
     let assoc = func.as_assoc_item(ctx.sema.db)?;
-    match assoc.container(ctx.sema.db) {
-        hir::AssocItemContainer::Impl(impl_) if impl_.self_ty(ctx.sema.db).is_bool() => {}
-        _ => return None,
+    if !assoc.implementing_ty(ctx.sema.db)?.is_bool() {
+        return None;
     }
 
     let target = mcall.syntax().text_range();

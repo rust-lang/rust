@@ -1,6 +1,6 @@
 // Can't use unit struct as tuple struct pattern
 
-// aux-build:empty-struct.rs
+//@ aux-build:empty-struct.rs
 
 extern crate empty_struct;
 use empty_struct::*;

@@ -1,5 +1,5 @@
-// edition:2021
-//check-pass
+//@ edition:2021
+//@check-pass
 #![warn(unused)]
 #![feature(rustc_attrs)]
 #![feature(btree_extract_if)]

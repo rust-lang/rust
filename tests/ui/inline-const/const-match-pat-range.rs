@@ -1,6 +1,5 @@
-// build-pass
+//@ build-pass
 
-#![allow(incomplete_features)]
 #![feature(inline_const_pat, exclusive_range_pattern)]
 
 fn main() {

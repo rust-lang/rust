@@ -1,5 +1,5 @@
-// run-pass
-// needs-unwind
+//@ run-pass
+//@ needs-unwind
 
 #![feature(coroutines, coroutine_trait)]
 #![feature(if_let_guard)]

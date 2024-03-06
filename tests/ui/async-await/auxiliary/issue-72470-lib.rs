@@ -1,5 +1,5 @@
-// compile-flags: -C opt-level=3
-// edition:2018
+//@ compile-flags: -C opt-level=3
+//@ edition:2018
 
 use std::future::Future;
 use std::marker::PhantomData;

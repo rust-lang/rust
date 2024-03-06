@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 // Ensures that single-word environments work right in unboxed closures.
 // These take a different path in codegen.
 

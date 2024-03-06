@@ -1,4 +1,4 @@
-// check-pass
+//@ check-pass
 
 trait Foo {
     fn do_stuff() -> Self;

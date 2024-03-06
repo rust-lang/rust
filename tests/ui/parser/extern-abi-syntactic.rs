@@ -1,4 +1,4 @@
-// check-pass
+//@ check-pass
 
 // Check that from the grammar's point of view,
 // the specific set of ABIs is not part of it.

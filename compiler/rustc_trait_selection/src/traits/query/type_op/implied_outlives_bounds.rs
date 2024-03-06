@@ -170,7 +170,7 @@ pub fn compute_implied_outlives_bounds_compat_inner<'tcx>(
         }
 
         // Compute the obligations for `arg` to be well-formed. If `arg` is
-        // an unresolved inference variable, just substituted an empty set
+        // an unresolved inference variable, just instantiated an empty set
         // -- because the return type here is going to be things we *add*
         // to the environment, it's always ok for this set to be smaller
         // than the ultimate set. (Note: normally there won't be

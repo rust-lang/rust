@@ -1,4 +1,4 @@
-// check-pass
+//@ check-pass
 
 pub struct X {
     pub a: i32,

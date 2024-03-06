@@ -1,6 +1,6 @@
 // Tests for repeating attribute warnings.
-// aux-build:lint_unused_extern_crate.rs
-// compile-flags:--test
+//@ aux-build:lint_unused_extern_crate.rs
+//@ compile-flags:--test
 // Not tested due to extra requirements:
 // - panic_handler: needs extra setup
 // - target_feature: platform-specific

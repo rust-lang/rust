@@ -1,5 +1,5 @@
 // Regression test for #71297
-// edition:2018
+//@ edition:2018
 
 async fn a((x | s): String) {}
 //~^ ERROR variable `x` is not bound in all patterns

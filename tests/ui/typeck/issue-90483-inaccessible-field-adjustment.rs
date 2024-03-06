@@ -1,4 +1,4 @@
-// edition:2021
+//@ edition:2021
 
 mod m {
   pub struct S { foo: i32 }

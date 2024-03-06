@@ -1,0 +1,10 @@
+warning: trait `Bar` is never used
+  --> $DIR/associated-const-type-parameters.rs:30:7
+   |
+LL | trait Bar: Foo {
+   |       ^^^
+   |
+   = note: `#[warn(dead_code)]` on by default
+
+warning: 1 warning emitted
+

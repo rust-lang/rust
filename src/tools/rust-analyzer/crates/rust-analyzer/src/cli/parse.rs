@@ -5,7 +5,7 @@ use crate::cli::{flags, read_stdin};
 
 impl flags::Parse {
     pub fn run(self) -> anyhow::Result<()> {
-        let _p = profile::span("parsing");
+        let _p = tracing::span!(tracing::Level::INFO, "parsing").entered();
         let text = read_stdin()?;
         let file = SourceFile::parse(&text).tree();
         if !self.no_dump {

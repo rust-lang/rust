@@ -1,4 +1,4 @@
-// build-pass
+//@ build-pass
 
 #![allow(unused_must_use)]
 #![allow(ambiguous_wide_pointer_comparisons)]

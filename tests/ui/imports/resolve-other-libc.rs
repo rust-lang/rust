@@ -1,6 +1,6 @@
 // Regression test for https://github.com/rust-lang/rust/issues/26043
 
-// compile-flags: --extern libc=test.rlib
+//@ compile-flags: --extern libc=test.rlib
 
 // The error shall NOT be something similar to the following, because it
 // indicates that `libc` was wrongly resolved to `libc` shipped with the

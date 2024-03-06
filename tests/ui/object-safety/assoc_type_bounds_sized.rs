@@ -1,7 +1,7 @@
 //! This test checks that associated types only need to be
 //! mentioned in trait objects, if they don't require `Self: Sized`.
 
-// check-pass
+//@ check-pass
 
 trait Foo {
     type Bar

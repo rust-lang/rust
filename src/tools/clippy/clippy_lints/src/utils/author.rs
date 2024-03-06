@@ -279,7 +279,7 @@ impl<'a, 'tcx> PrintVisitor<'a, 'tcx> {
         match lit.value.node {
             LitKind::Bool(val) => kind!("Bool({val:?})"),
             LitKind::Char(c) => kind!("Char({c:?})"),
-            LitKind::Err => kind!("Err"),
+            LitKind::Err(_) => kind!("Err"),
             LitKind::Byte(b) => kind!("Byte({b})"),
             LitKind::Int(i, suffix) => {
                 let int_ty = match suffix {
@@ -489,6 +489,9 @@ impl<'a, 'tcx> PrintVisitor<'a, 'tcx> {
                         CoroutineKind::Coroutine(movability) => {
                             format!("ClosureKind::Coroutine(CoroutineKind::Coroutine(Movability::{movability:?})")
                         },
+                    },
+                    ClosureKind::CoroutineClosure(desugaring) => {
+                        format!("ClosureKind::CoroutineClosure(CoroutineDesugaring::{desugaring:?})")
                     },
                 };
 

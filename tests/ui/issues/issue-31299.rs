@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 // Regression test for #31299. This was generating an overflow error
 // because of eager normalization:
 //

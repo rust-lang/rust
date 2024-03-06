@@ -1,6 +1,6 @@
-// run-pass
-// aux-build:test-macros.rs
-// ignore-wasm32
+//@ run-pass
+//@ aux-build:test-macros.rs
+//@ ignore-wasm32
 
 #[macro_use]
 extern crate test_macros;

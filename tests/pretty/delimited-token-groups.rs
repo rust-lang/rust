@@ -1,4 +1,4 @@
-// pp-exact
+//@ pp-exact
 
 #![feature(rustc_attrs)]
 
@@ -9,7 +9,7 @@ mac! {
     {
         fn clone() -> S
         {
-            panic! () ;
+            panic! ();
 
         }
     }

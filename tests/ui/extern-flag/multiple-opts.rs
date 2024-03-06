@@ -1,6 +1,6 @@
-// aux-crate:priv,noprelude:somedep=somedep.rs
-// compile-flags: -Zunstable-options
-// edition:2018
+//@ aux-crate:priv,noprelude:somedep=somedep.rs
+//@ compile-flags: -Zunstable-options
+//@ edition:2018
 
 // Test for multiple options to --extern. Can't test for errors from both
 // options at the same time, so this only checks that noprelude is honored.

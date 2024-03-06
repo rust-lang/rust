@@ -1,4 +1,4 @@
-// aux-build:trait-visibility.rs
+//@ aux-build:trait-visibility.rs
 
 #![crate_name = "foo"]
 

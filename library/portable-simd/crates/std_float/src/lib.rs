@@ -1,7 +1,7 @@
 #![cfg_attr(feature = "as_crate", no_std)] // We are std!
 #![cfg_attr(
     feature = "as_crate",
-    feature(platform_intrinsics),
+    feature(core_intrinsics),
     feature(portable_simd),
     allow(internal_features)
 )]
@@ -9,6 +9,8 @@
 use core::simd;
 #[cfg(feature = "as_crate")]
 use core_simd::simd;
+
+use core::intrinsics::simd as intrinsics;
 
 use simd::{LaneCount, Simd, SupportedLaneCount};
 
@@ -21,28 +23,6 @@ mod experimental {
 use experimental as sealed;
 
 use crate::sealed::Sealed;
-
-// "platform intrinsics" are essentially "codegen intrinsics"
-// each of these may be scalarized and lowered to a libm call
-extern "platform-intrinsic" {
-    // ceil
-    fn simd_ceil<T>(x: T) -> T;
-
-    // floor
-    fn simd_floor<T>(x: T) -> T;
-
-    // round
-    fn simd_round<T>(x: T) -> T;
-
-    // trunc
-    fn simd_trunc<T>(x: T) -> T;
-
-    // fsqrt
-    fn simd_fsqrt<T>(x: T) -> T;
-
-    // fma
-    fn simd_fma<T>(x: T, y: T, z: T) -> T;
-}
 
 /// This trait provides a possibly-temporary implementation of float functions
 /// that may, in the absence of hardware support, canonicalize to calling an
@@ -74,7 +54,7 @@ pub trait StdFloat: Sealed + Sized {
     #[inline]
     #[must_use = "method returns a new vector and does not mutate the original value"]
     fn mul_add(self, a: Self, b: Self) -> Self {
-        unsafe { simd_fma(self, a, b) }
+        unsafe { intrinsics::simd_fma(self, a, b) }
     }
 
     /// Produces a vector where every lane has the square root value
@@ -82,35 +62,35 @@ pub trait StdFloat: Sealed + Sized {
     #[inline]
     #[must_use = "method returns a new vector and does not mutate the original value"]
     fn sqrt(self) -> Self {
-        unsafe { simd_fsqrt(self) }
+        unsafe { intrinsics::simd_fsqrt(self) }
     }
 
     /// Returns the smallest integer greater than or equal to each lane.
     #[must_use = "method returns a new vector and does not mutate the original value"]
     #[inline]
     fn ceil(self) -> Self {
-        unsafe { simd_ceil(self) }
+        unsafe { intrinsics::simd_ceil(self) }
     }
 
     /// Returns the largest integer value less than or equal to each lane.
     #[must_use = "method returns a new vector and does not mutate the original value"]
     #[inline]
     fn floor(self) -> Self {
-        unsafe { simd_floor(self) }
+        unsafe { intrinsics::simd_floor(self) }
     }
 
     /// Rounds to the nearest integer value. Ties round toward zero.
     #[must_use = "method returns a new vector and does not mutate the original value"]
     #[inline]
     fn round(self) -> Self {
-        unsafe { simd_round(self) }
+        unsafe { intrinsics::simd_round(self) }
     }
 
     /// Returns the floating point's integer value, with its fractional part removed.
     #[must_use = "method returns a new vector and does not mutate the original value"]
     #[inline]
     fn trunc(self) -> Self {
-        unsafe { simd_trunc(self) }
+        unsafe { intrinsics::simd_trunc(self) }
     }
 
     /// Returns the floating point's fractional value, with its integer part removed.

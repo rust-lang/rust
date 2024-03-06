@@ -1,4 +1,4 @@
-// check-pass
+//@ check-pass
 
 #![deny(named_arguments_used_positionally)]
 

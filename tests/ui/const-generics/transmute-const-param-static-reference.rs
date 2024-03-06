@@ -1,5 +1,5 @@
-// revisions: full min
-//[full] check-pass
+//@ revisions: full min
+//@[full] check-pass
 
 #![cfg_attr(full, feature(adt_const_params))]
 #![cfg_attr(full, allow(incomplete_features))]

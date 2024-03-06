@@ -1,6 +1,6 @@
 #![feature(coverage_attribute)]
 #![feature(noop_waker)]
-// edition: 2021
+//@ edition: 2021
 
 fn main() {
     for i in 0..16 {

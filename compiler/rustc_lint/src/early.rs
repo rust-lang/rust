@@ -17,8 +17,8 @@
 use crate::context::{EarlyContext, LintContext, LintStore};
 use crate::passes::{EarlyLintPass, EarlyLintPassObject};
 use rustc_ast::ptr::P;
-use rustc_ast::visit::{self as ast_visit, Visitor};
-use rustc_ast::{self as ast, walk_list, HasAttrs};
+use rustc_ast::visit::{self as ast_visit, walk_list, Visitor};
+use rustc_ast::{self as ast, HasAttrs};
 use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_feature::Features;
 use rustc_middle::ty::RegisteredTools;
@@ -431,14 +431,13 @@ pub fn check_ast_node_inner<'a, T: EarlyLintPass>(
     // If not, that means that we somehow buffered a lint for a node id
     // that was not lint-checked (perhaps it doesn't exist?). This is a bug.
     for (id, lints) in cx.context.buffered.map {
-        for early_lint in lints {
-            sess.dcx().span_delayed_bug(
-                early_lint.span,
-                format!(
-                    "failed to process buffered lint here (dummy = {})",
-                    id == ast::DUMMY_NODE_ID
-                ),
+        if !lints.is_empty() {
+            assert!(
+                sess.dcx().has_errors().is_some(),
+                "failed to process buffered lint here (dummy = {})",
+                id == ast::DUMMY_NODE_ID
             );
+            break;
         }
     }
 }

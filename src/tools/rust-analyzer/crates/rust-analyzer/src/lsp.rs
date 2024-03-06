@@ -2,11 +2,11 @@
 
 use core::fmt;
 
-pub(crate) mod utils;
-pub(crate) mod semantic_tokens;
 pub mod ext;
 pub(crate) mod from_proto;
+pub(crate) mod semantic_tokens;
 pub(crate) mod to_proto;
+pub(crate) mod utils;
 
 #[derive(Debug)]
 pub(crate) struct LspError {

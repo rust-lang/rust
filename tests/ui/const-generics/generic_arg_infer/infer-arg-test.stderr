@@ -10,14 +10,14 @@ error: expected identifier, found reserved identifier `_`
 LL | fn bad_infer_fn<_>() {}
    |                 ^ expected identifier, found reserved identifier
 
-error[E0392]: parameter `_` is never used
+error[E0392]: type parameter `_` is never used
   --> $DIR/infer-arg-test.rs:7:17
    |
 LL | struct BadInfer<_>;
-   |                 ^ unused parameter
+   |                 ^ unused type parameter
    |
    = help: consider removing `_`, referring to it in a field, or using a marker such as `PhantomData`
-   = help: if you intended `_` to be a const parameter, use `const _: usize` instead
+   = help: if you intended `_` to be a const parameter, use `const _: /* Type */` instead
 
 error[E0107]: struct takes 2 generic arguments but 3 generic arguments were supplied
   --> $DIR/infer-arg-test.rs:18:10

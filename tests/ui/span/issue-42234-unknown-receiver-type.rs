@@ -1,4 +1,4 @@
-// revisions: full generic_arg
+//@ revisions: full generic_arg
 #![cfg_attr(generic_arg, feature(generic_arg_infer))]
 
 // When the type of a method call's receiver is unknown, the span should point

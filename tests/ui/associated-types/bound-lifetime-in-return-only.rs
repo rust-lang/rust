@@ -1,4 +1,4 @@
-// revisions: sig local structure ok elision
+//@ revisions: sig local structure ok elision
 
 #![allow(dead_code)]
 #![feature(rustc_attrs)]

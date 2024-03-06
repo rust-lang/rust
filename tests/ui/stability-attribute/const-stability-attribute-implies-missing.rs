@@ -14,3 +14,4 @@ pub const fn foobar() -> u32 {
 }
 
 const VAR: u32 = foobar();
+//~^ ERROR: `foobar` is not yet stable as a const fn

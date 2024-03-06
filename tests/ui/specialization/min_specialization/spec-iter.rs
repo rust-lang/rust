@@ -1,7 +1,7 @@
 // Check that we can specialize on a concrete iterator type. This requires us
 // to consider which parameters in the parent impl are constrained.
 
-// check-pass
+//@ check-pass
 
 #![feature(min_specialization)]
 

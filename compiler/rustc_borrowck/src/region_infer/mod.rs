@@ -5,7 +5,7 @@ use rustc_data_structures::binary_search_util;
 use rustc_data_structures::frozen::Frozen;
 use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
 use rustc_data_structures::graph::scc::Sccs;
-use rustc_errors::Diagnostic;
+use rustc_errors::Diag;
 use rustc_hir::def_id::CRATE_DEF_ID;
 use rustc_index::{IndexSlice, IndexVec};
 use rustc_infer::infer::outlives::test_type_match;
@@ -592,7 +592,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     }
 
     /// Adds annotations for `#[rustc_regions]`; see `UniversalRegions::annotate`.
-    pub(crate) fn annotate(&self, tcx: TyCtxt<'tcx>, err: &mut Diagnostic) {
+    pub(crate) fn annotate(&self, tcx: TyCtxt<'tcx>, err: &mut Diag<'_, ()>) {
         self.universal_regions.annotate(tcx, err)
     }
 
@@ -658,12 +658,11 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     pub(super) fn solve(
         &mut self,
         infcx: &InferCtxt<'tcx>,
-        param_env: ty::ParamEnv<'tcx>,
         body: &Body<'tcx>,
         polonius_output: Option<Rc<PoloniusOutput>>,
     ) -> (Option<ClosureRegionRequirements<'tcx>>, RegionErrors<'tcx>) {
         let mir_def_id = body.source.def_id();
-        self.propagate_constraints(body);
+        self.propagate_constraints();
 
         let mut errors_buffer = RegionErrors::new(infcx.tcx);
 
@@ -674,7 +673,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         // eagerly.
         let mut outlives_requirements = infcx.tcx.is_typeck_child(mir_def_id).then(Vec::new);
 
-        self.check_type_tests(infcx, body, outlives_requirements.as_mut(), &mut errors_buffer);
+        self.check_type_tests(infcx, outlives_requirements.as_mut(), &mut errors_buffer);
 
         debug!(?errors_buffer);
         debug!(?outlives_requirements);
@@ -717,8 +716,8 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     /// for each region variable until all the constraints are
     /// satisfied. Note that some values may grow **too** large to be
     /// feasible, but we check this later.
-    #[instrument(skip(self, _body), level = "debug")]
-    fn propagate_constraints(&mut self, _body: &Body<'tcx>) {
+    #[instrument(skip(self), level = "debug")]
+    fn propagate_constraints(&mut self) {
         debug!("constraints={:#?}", {
             let mut constraints: Vec<_> = self.outlives_constraints().collect();
             constraints.sort_by_key(|c| (c.sup, c.sub));
@@ -932,7 +931,6 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     fn check_type_tests(
         &self,
         infcx: &InferCtxt<'tcx>,
-        body: &Body<'tcx>,
         mut propagated_outlives_requirements: Option<&mut Vec<ClosureOutlivesRequirement<'tcx>>>,
         errors_buffer: &mut RegionErrors<'tcx>,
     ) {
@@ -957,12 +955,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             }
 
             if let Some(propagated_outlives_requirements) = &mut propagated_outlives_requirements {
-                if self.try_promote_type_test(
-                    infcx,
-                    body,
-                    type_test,
-                    propagated_outlives_requirements,
-                ) {
+                if self.try_promote_type_test(infcx, type_test, propagated_outlives_requirements) {
                     continue;
                 }
             }
@@ -1016,7 +1009,6 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     fn try_promote_type_test(
         &self,
         infcx: &InferCtxt<'tcx>,
-        body: &Body<'tcx>,
         type_test: &TypeTest<'tcx>,
         propagated_outlives_requirements: &mut Vec<ClosureOutlivesRequirement<'tcx>>,
     ) -> bool {
@@ -1177,35 +1169,6 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         }
 
         Some(ClosureOutlivesSubject::Ty(ClosureOutlivesSubjectTy::bind(tcx, ty)))
-    }
-
-    /// Returns a universally quantified region that outlives the
-    /// value of `r` (`r` may be existentially or universally
-    /// quantified).
-    ///
-    /// Since `r` is (potentially) an existential region, it has some
-    /// value which may include (a) any number of points in the CFG
-    /// and (b) any number of `end('x)` elements of universally
-    /// quantified regions. To convert this into a single universal
-    /// region we do as follows:
-    ///
-    /// - Ignore the CFG points in `'r`. All universally quantified regions
-    ///   include the CFG anyhow.
-    /// - For each `end('x)` element in `'r`, compute the mutual LUB, yielding
-    ///   a result `'y`.
-    #[instrument(skip(self), level = "debug", ret)]
-    pub(crate) fn universal_upper_bound(&self, r: RegionVid) -> RegionVid {
-        debug!(r = %self.region_value_str(r));
-
-        // Find the smallest universal region that contains all other
-        // universal regions within `region`.
-        let mut lub = self.universal_regions.fr_fn_body;
-        let r_scc = self.constraint_sccs.scc(r);
-        for ur in self.scc_values.universal_regions_outlived_by(r_scc) {
-            lub = self.universal_region_relations.postdom_upper_bound(lub, ur);
-        }
-
-        lub
     }
 
     /// Like `universal_upper_bound`, but returns an approximation more suitable

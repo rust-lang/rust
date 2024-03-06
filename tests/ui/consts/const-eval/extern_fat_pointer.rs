@@ -1,4 +1,4 @@
-// check-pass
+//@ check-pass
 
 #![feature(extern_types)]
 

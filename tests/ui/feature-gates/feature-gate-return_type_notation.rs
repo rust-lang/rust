@@ -1,7 +1,7 @@
-// edition: 2021
-// revisions: cfg no
+//@ edition: 2021
+//@ revisions: cfg no
 
-// [no] check-pass
+//@ [no] check-pass
 // Since we're not adding new syntax, `cfg`'d out RTN must pass.
 
 

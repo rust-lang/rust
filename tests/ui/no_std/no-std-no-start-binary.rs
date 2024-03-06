@@ -1,5 +1,5 @@
-// compile-flags: -Cpanic=abort --emit link
-// error-pattern:using `fn main` requires the standard library
+//@ compile-flags: -Cpanic=abort --emit link
+//@ error-pattern:using `fn main` requires the standard library
 
 // Make sure that we don't emit an error message mentioning internal lang items.
 

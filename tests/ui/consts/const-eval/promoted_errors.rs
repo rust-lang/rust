@@ -1,10 +1,10 @@
-// revisions: noopt opt opt_with_overflow_checks
-//[noopt]compile-flags: -C opt-level=0
-//[opt]compile-flags: -O
-//[opt_with_overflow_checks]compile-flags: -C overflow-checks=on -O
+//@ revisions: noopt opt opt_with_overflow_checks
+//@[noopt]compile-flags: -C opt-level=0
+//@[opt]compile-flags: -O
+//@[opt_with_overflow_checks]compile-flags: -C overflow-checks=on -O
 
-// build-pass
-// ignore-pass (test emits codegen-time warnings and verifies that they are not errors)
+//@ build-pass
+//@ ignore-pass (test emits codegen-time warnings and verifies that they are not errors)
 
 //! This test ensures that when we promote code that fails to evaluate, the build still succeeds.
 

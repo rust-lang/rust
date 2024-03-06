@@ -1,4 +1,4 @@
-// run-rustfix
+//@ run-rustfix
 
 fn foo<N>(_x: N) {}
 //~^ NOTE function defined here

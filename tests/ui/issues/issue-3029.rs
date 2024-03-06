@@ -1,6 +1,6 @@
-// run-fail
-// error-pattern:so long
-// ignore-emscripten no processes
+//@ run-fail
+//@ error-pattern:so long
+//@ ignore-emscripten no processes
 
 #![allow(unreachable_code)]
 

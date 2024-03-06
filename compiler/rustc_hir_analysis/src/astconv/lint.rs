@@ -1,5 +1,5 @@
 use rustc_ast::TraitObjectSyntax;
-use rustc_errors::{codes::*, Diagnostic, StashKey};
+use rustc_errors::{codes::*, Diag, EmissionGuarantee, StashKey};
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
 use rustc_lint_defs::{builtin::BARE_TRAIT_OBJECTS, Applicability};
@@ -10,10 +10,10 @@ use super::AstConv;
 
 impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
     /// Make sure that we are in the condition to suggest the blanket implementation.
-    pub(super) fn maybe_lint_blanket_trait_impl(
+    pub(super) fn maybe_lint_blanket_trait_impl<G: EmissionGuarantee>(
         &self,
         self_ty: &hir::Ty<'_>,
-        diag: &mut Diagnostic,
+        diag: &mut Diag<'_, G>,
     ) {
         let tcx = self.tcx();
         let parent_id = tcx.hir().get_parent_item(self_ty.hir_id).def_id;
@@ -75,7 +75,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
     }
 
     /// Make sure that we are in the condition to suggest `impl Trait`.
-    fn maybe_lint_impl_trait(&self, self_ty: &hir::Ty<'_>, diag: &mut Diagnostic) -> bool {
+    fn maybe_lint_impl_trait(&self, self_ty: &hir::Ty<'_>, diag: &mut Diag<'_>) -> bool {
         let tcx = self.tcx();
         let parent_id = tcx.hir().get_parent_item(self_ty.hir_id).def_id;
         let (sig, generics, owner) = match tcx.hir_node_by_def_id(parent_id) {
@@ -132,7 +132,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                     ],
                     Applicability::MachineApplicable,
                 );
-            } else if diag.is_error() && is_downgradable {
+            } else if is_downgradable {
                 // We'll emit the object safety error already, with a structured suggestion.
                 diag.downgrade_to_delayed_bug();
             }
@@ -158,7 +158,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             }
             if !is_object_safe {
                 diag.note(format!("`{trait_name}` it is not object safe, so it can't be `dyn`"));
-                if diag.is_error() && is_downgradable {
+                if is_downgradable {
                     // We'll emit the object safety error already, with a structured suggestion.
                     diag.downgrade_to_delayed_bug();
                 }
@@ -241,11 +241,9 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             } else {
                 let msg = "trait objects without an explicit `dyn` are deprecated";
                 tcx.node_span_lint(BARE_TRAIT_OBJECTS, self_ty.hir_id, self_ty.span, msg, |lint| {
-                    if self_ty.span.can_be_used_for_suggestions()
-                        && !self.maybe_lint_impl_trait(self_ty, lint)
-                    {
+                    if self_ty.span.can_be_used_for_suggestions() {
                         lint.multipart_suggestion_verbose(
-                            "use `dyn`",
+                            "if this is an object-safe trait, use `dyn`",
                             sugg,
                             Applicability::MachineApplicable,
                         );

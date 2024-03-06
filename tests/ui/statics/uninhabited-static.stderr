@@ -34,7 +34,7 @@ LL | static VOID2: Void = unsafe { std::mem::transmute(()) };
    = note: uninhabited statics cannot be initialized, and any access would be an immediate error
 
 error: static of uninhabited type
-  --> $DIR/uninhabited-static.rs:16:1
+  --> $DIR/uninhabited-static.rs:15:1
    |
 LL | static NEVER2: Void = unsafe { std::mem::transmute(()) };
    | ^^^^^^^^^^^^^^^^^^^
@@ -49,37 +49,12 @@ error[E0080]: could not evaluate static initializer
 LL | static VOID2: Void = unsafe { std::mem::transmute(()) };
    |                               ^^^^^^^^^^^^^^^^^^^^^^^ constructing invalid value: encountered a value of uninhabited type `Void`
 
-warning: the type `Void` does not permit zero-initialization
-  --> $DIR/uninhabited-static.rs:12:31
-   |
-LL | static VOID2: Void = unsafe { std::mem::transmute(()) };
-   |                               ^^^^^^^^^^^^^^^^^^^^^^^ this code causes undefined behavior when executed
-   |
-note: enums with no inhabited variants have no valid value
-  --> $DIR/uninhabited-static.rs:4:1
-   |
-LL | enum Void {}
-   | ^^^^^^^^^
-   = note: `#[warn(invalid_value)]` on by default
-
 error[E0080]: could not evaluate static initializer
-  --> $DIR/uninhabited-static.rs:16:32
+  --> $DIR/uninhabited-static.rs:15:32
    |
 LL | static NEVER2: Void = unsafe { std::mem::transmute(()) };
    |                                ^^^^^^^^^^^^^^^^^^^^^^^ constructing invalid value: encountered a value of uninhabited type `Void`
 
-warning: the type `Void` does not permit zero-initialization
-  --> $DIR/uninhabited-static.rs:16:32
-   |
-LL | static NEVER2: Void = unsafe { std::mem::transmute(()) };
-   |                                ^^^^^^^^^^^^^^^^^^^^^^^ this code causes undefined behavior when executed
-   |
-note: enums with no inhabited variants have no valid value
-  --> $DIR/uninhabited-static.rs:4:1
-   |
-LL | enum Void {}
-   | ^^^^^^^^^
-
-error: aborting due to 6 previous errors; 2 warnings emitted
+error: aborting due to 6 previous errors
 
 For more information about this error, try `rustc --explain E0080`.

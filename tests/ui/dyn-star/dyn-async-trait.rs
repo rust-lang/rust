@@ -1,5 +1,5 @@
-// check-pass
-// edition: 2021
+//@ check-pass
+//@ edition: 2021
 
 // This test case is meant to demonstrate how close we can get to async
 // functions in dyn traits with the current level of dyn* support.

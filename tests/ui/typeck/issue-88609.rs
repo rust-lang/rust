@@ -2,7 +2,7 @@
 // The return type for `main` is not normalized while checking if it implements
 // the trait `std::process::Termination`.
 
-// build-pass
+//@ build-pass
 
 trait Same {
     type Output;

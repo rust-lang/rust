@@ -18,6 +18,7 @@ impl<'a> Container<'a> {
 pub fn for_stdin<'a>() -> Container<'a> {
     let mut r = io::stdin();
     Container::wrap(&mut r as &mut dyn io::Read)
+    //~^ ERROR cannot return value referencing local variable
 }
 
 fn main() {

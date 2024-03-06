@@ -1,4 +1,4 @@
-// run-pass (ensure that const-prop is run)
+//@ run-pass (ensure that const-prop is run)
 
 struct A<T: ?Sized>(T);
 

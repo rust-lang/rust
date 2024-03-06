@@ -81,6 +81,10 @@ fn reachable_non_generics_provider(tcx: TyCtxt<'_>, _: LocalCrate) -> DefIdMap<S
                 return library.kind.is_statically_included().then_some(def_id);
             }
 
+            if tcx.intrinsic(def_id).is_some_and(|i| i.must_be_overridden) {
+                return None;
+            }
+
             // Only consider nodes that actually have exported symbols.
             match tcx.def_kind(def_id) {
                 DefKind::Fn | DefKind::Static(_) => {}

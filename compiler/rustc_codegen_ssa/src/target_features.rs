@@ -77,6 +77,8 @@ pub fn from_target_feature(
                 Some(sym::aarch64_ver_target_feature) => rust_features.aarch64_ver_target_feature,
                 Some(sym::csky_target_feature) => rust_features.csky_target_feature,
                 Some(sym::loongarch_target_feature) => rust_features.loongarch_target_feature,
+                Some(sym::lahfsahf_target_feature) => rust_features.lahfsahf_target_feature,
+                Some(sym::prfchw_target_feature) => rust_features.prfchw_target_feature,
                 Some(name) => bug!("unknown target feature gate {}", name),
                 None => true,
             };
@@ -104,7 +106,8 @@ fn asm_target_features(tcx: TyCtxt<'_>, did: DefId) -> &FxIndexSet<Symbol> {
         match attrs.instruction_set {
             None => {}
             Some(InstructionSetAttr::ArmA32) => {
-                target_features.remove(&sym::thumb_mode);
+                // FIXME(#120456) - is `swap_remove` correct?
+                target_features.swap_remove(&sym::thumb_mode);
             }
             Some(InstructionSetAttr::ArmT32) => {
                 target_features.insert(sym::thumb_mode);

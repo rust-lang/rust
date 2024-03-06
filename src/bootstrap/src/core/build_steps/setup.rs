@@ -8,19 +8,17 @@ use std::env::consts::EXE_SUFFIX;
 use std::fmt::Write as _;
 use std::fs::File;
 use std::io::Write;
-use std::path::{Path, PathBuf, MAIN_SEPARATOR};
+use std::path::{Path, PathBuf, MAIN_SEPARATOR_STR};
 use std::process::Command;
 use std::str::FromStr;
 use std::{fmt, fs, io};
 
 #[cfg(test)]
-#[path = "../../tests/setup.rs"]
 mod tests;
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Hash)]
 pub enum Profile {
     Compiler,
-    Codegen,
     Library,
     Tools,
     Dist,
@@ -49,7 +47,7 @@ impl Profile {
     pub fn all() -> impl Iterator<Item = Self> {
         use Profile::*;
         // N.B. these are ordered by how they are displayed, not alphabetically
-        [Library, Compiler, Codegen, Tools, Dist, None].iter().copied()
+        [Library, Compiler, Tools, Dist, None].iter().copied()
     }
 
     pub fn purpose(&self) -> String {
@@ -57,7 +55,6 @@ impl Profile {
         match self {
             Library => "Contribute to the standard library",
             Compiler => "Contribute to the compiler itself",
-            Codegen => "Contribute to the compiler, and also modify LLVM or codegen",
             Tools => "Contribute to tools which depend on the compiler, but do not modify it directly (e.g. rustdoc, clippy, miri)",
             Dist => "Install Rust from source",
             None => "Do not modify `config.toml`"
@@ -76,7 +73,6 @@ impl Profile {
     pub fn as_str(&self) -> &'static str {
         match self {
             Profile::Compiler => "compiler",
-            Profile::Codegen => "codegen",
             Profile::Library => "library",
             Profile::Tools => "tools",
             Profile::Dist => "dist",
@@ -92,12 +88,15 @@ impl FromStr for Profile {
         match s {
             "lib" | "library" => Ok(Profile::Library),
             "compiler" => Ok(Profile::Compiler),
-            "llvm" | "codegen" => Ok(Profile::Codegen),
             "maintainer" | "dist" | "user" => Ok(Profile::Dist),
             "tools" | "tool" | "rustdoc" | "clippy" | "miri" | "rustfmt" | "rls" => {
                 Ok(Profile::Tools)
             }
             "none" => Ok(Profile::None),
+            "llvm" | "codegen" => Err(format!(
+                "the \"llvm\" and \"codegen\" profiles have been removed,\
+                use \"compiler\" instead which has the same functionality"
+            )),
             _ => Err(format!("unknown profile: '{s}'")),
         }
     }
@@ -171,22 +170,13 @@ impl Step for Profile {
     }
 
     fn run(self, builder: &Builder<'_>) {
-        // During ./x.py setup once you select the codegen profile.
-        // The submodule will be downloaded. It does not work in the
-        // tarball case since they don't include Git and submodules
-        // are already included.
-        if !builder.rust_info().is_from_tarball() {
-            if self == Profile::Codegen {
-                builder.update_submodule(&Path::new("src/llvm-project"));
-            }
-        }
-        setup(&builder.build.config, self)
+        setup(&builder.build.config, self);
     }
 }
 
 pub fn setup(config: &Config, profile: Profile) {
     let suggestions: &[&str] = match profile {
-        Profile::Codegen | Profile::Compiler | Profile::None => &["check", "build", "test"],
+        Profile::Compiler | Profile::None => &["check", "build", "test"],
         Profile::Tools => &[
             "check",
             "build",
@@ -243,7 +233,7 @@ fn setup_config_toml(path: &PathBuf, profile: Profile, config: &Config) {
 }
 
 /// Creates a toolchain link for stage1 using `rustup`
-#[derive(Clone, Copy, Debug, Eq, PartialEq, Hash)]
+#[derive(Clone, Debug, Eq, PartialEq, Hash)]
 pub struct Link;
 impl Step for Link {
     type Output = ();
@@ -267,8 +257,7 @@ impl Step for Link {
             return;
         }
         let stage_path =
-            ["build", config.build.rustc_target_arg(), "stage1"].join(&MAIN_SEPARATOR.to_string());
-
+            ["build", config.build.rustc_target_arg(), "stage1"].join(MAIN_SEPARATOR_STR);
         if !rustup_installed() {
             eprintln!("`rustup` is not installed; cannot link `stage1` toolchain");
         } else if stage_dir_exists(&stage_path[..]) && !config.dry_run() {
@@ -286,7 +275,7 @@ fn rustup_installed() -> bool {
 }
 
 fn stage_dir_exists(stage_path: &str) -> bool {
-    match fs::create_dir(&stage_path) {
+    match fs::create_dir(stage_path) {
         Ok(_) => true,
         Err(_) => Path::new(&stage_path).exists(),
     }
@@ -304,7 +293,7 @@ fn attempt_toolchain_link(stage_path: &str) {
         return;
     }
 
-    if try_link_toolchain(&stage_path) {
+    if try_link_toolchain(stage_path) {
         println!(
             "Added `stage1` rustup toolchain; try `cargo +stage1 build` on a separate rust project to run a newly-built toolchain"
         );
@@ -320,7 +309,7 @@ fn attempt_toolchain_link(stage_path: &str) {
 
 fn toolchain_is_linked() -> bool {
     match Command::new("rustup")
-        .args(&["toolchain", "list"])
+        .args(["toolchain", "list"])
         .stdout(std::process::Stdio::piped())
         .output()
     {
@@ -347,7 +336,7 @@ fn toolchain_is_linked() -> bool {
 fn try_link_toolchain(stage_path: &str) -> bool {
     Command::new("rustup")
         .stdout(std::process::Stdio::null())
-        .args(&["toolchain", "link", "stage1", &stage_path])
+        .args(["toolchain", "link", "stage1", stage_path])
         .output()
         .map_or(false, |output| output.status.success())
 }
@@ -376,7 +365,7 @@ fn ensure_stage1_toolchain_placeholder_exists(stage_path: &str) -> bool {
         return false;
     }
 
-    return true;
+    true
 }
 
 // Used to get the path for `Subcommand::Setup`
@@ -455,7 +444,7 @@ fn prompt_user(prompt: &str) -> io::Result<Option<PromptResult>> {
 }
 
 /// Installs `src/etc/pre-push.sh` as a Git hook
-#[derive(Clone, Copy, Debug, Eq, PartialEq, Hash)]
+#[derive(Clone, Debug, Eq, PartialEq, Hash)]
 pub struct Hook;
 
 impl Step for Hook {
@@ -479,13 +468,13 @@ impl Step for Hook {
         if config.dry_run() {
             return;
         }
-        t!(install_git_hook_maybe(&config));
+        t!(install_git_hook_maybe(config));
     }
 }
 
 // install a git hook to automatically run tidy, if they want
 fn install_git_hook_maybe(config: &Config) -> io::Result<()> {
-    let git = t!(config.git().args(&["rev-parse", "--git-common-dir"]).output().map(|output| {
+    let git = t!(config.git().args(["rev-parse", "--git-common-dir"]).output().map(|output| {
         assert!(output.status.success(), "failed to run `git`");
         PathBuf::from(t!(String::from_utf8(output.stdout)).trim())
     }));
@@ -527,7 +516,7 @@ undesirable, simply delete the `pre-push` file from .git/hooks."
 }
 
 /// Sets up or displays `src/etc/rust_analyzer_settings.json`
-#[derive(Clone, Copy, Debug, Eq, PartialEq, Hash)]
+#[derive(Clone, Debug, Eq, PartialEq, Hash)]
 pub struct Vscode;
 
 impl Step for Vscode {
@@ -551,7 +540,7 @@ impl Step for Vscode {
         if config.dry_run() {
             return;
         }
-        while !t!(create_vscode_settings_maybe(&config)) {}
+        while !t!(create_vscode_settings_maybe(config)) {}
     }
 }
 
@@ -618,7 +607,7 @@ fn create_vscode_settings_maybe(config: &Config) -> io::Result<bool> {
             }
             _ => "Created",
         };
-        fs::write(&vscode_settings, &RUST_ANALYZER_SETTINGS)?;
+        fs::write(&vscode_settings, RUST_ANALYZER_SETTINGS)?;
         println!("{verb} `.vscode/settings.json`");
     } else {
         println!("\n{RUST_ANALYZER_SETTINGS}");

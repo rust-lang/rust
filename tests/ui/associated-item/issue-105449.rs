@@ -1,5 +1,5 @@
-// check-pass
-// compile-flags: -C debug_assertions=yes -Zunstable-options
+//@ check-pass
+//@ compile-flags: -C debug_assertions=yes -Zunstable-options
 
 #[allow(dead_code)]
 fn problematic_function<Space>()

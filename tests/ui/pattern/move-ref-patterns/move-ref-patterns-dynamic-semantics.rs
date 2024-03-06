@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 
 // This test checks the dynamic semantics and drop order of pattern matching
 // where a product pattern has both a by-move and by-ref binding.

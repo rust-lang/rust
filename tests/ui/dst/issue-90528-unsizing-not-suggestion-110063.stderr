@@ -15,7 +15,7 @@ error[E0277]: the trait bound `[u8; 1]: Test` is not satisfied
   --> $DIR/issue-90528-unsizing-not-suggestion-110063.rs:11:22
    |
 LL |     let x: [u8; 1] = needs_test();
-   |                      ^^^^^^^^^^ the trait `Test` is not implemented for `[u8; 1]`
+   |                      ^^^^^^^^^^^^ the trait `Test` is not implemented for `[u8; 1]`
    |
    = help: the trait `Test` is implemented for `&[u8]`
 note: required by a bound in `needs_test`

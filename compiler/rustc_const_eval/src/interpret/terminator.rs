@@ -173,7 +173,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             Drop { place, target, unwind, replace: _ } => {
                 let frame = self.frame();
                 let ty = place.ty(&frame.body.local_decls, *self.tcx).ty;
-                let ty = self.subst_from_frame_and_normalize_erasing_regions(frame, ty)?;
+                let ty = self.instantiate_from_frame_and_normalize_erasing_regions(frame, ty)?;
                 let instance = Instance::resolve_drop_in_place(*self.tcx, ty);
                 if let ty::InstanceDef::DropGlue(_, None) = instance.def {
                     // This is the branch we enter if and only if the dropped type has no drop glue
@@ -359,26 +359,19 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             Ok(Some(match ty.kind() {
                 ty::Ref(_, ty, _) => *ty,
                 ty::RawPtr(mt) => mt.ty,
-                // We should only accept `Box` with the default allocator.
-                // It's hard to test for that though so we accept every 1-ZST allocator.
-                ty::Adt(def, args)
-                    if def.is_box()
-                        && self.layout_of(args[1].expect_ty()).is_ok_and(|l| l.is_1zst()) =>
-                {
-                    args[0].expect_ty()
-                }
+                // We only accept `Box` with the default allocator.
+                _ if ty.is_box_global(*self.tcx) => ty.boxed_ty(),
                 _ => return Ok(None),
             }))
         };
         if let (Some(caller), Some(callee)) = (pointee_ty(caller.ty)?, pointee_ty(callee.ty)?) {
             // This is okay if they have the same metadata type.
             let meta_ty = |ty: Ty<'tcx>| {
-                let (meta, only_if_sized) = ty.ptr_metadata_ty(*self.tcx, |ty| ty);
-                assert!(
-                    !only_if_sized,
-                    "there should be no more 'maybe has that metadata' types during interpretation"
-                );
-                meta
+                // Even if `ty` is normalized, the search for the unsized tail will project
+                // to fields, which can yield non-normalized types. So we need to provide a
+                // normalization function.
+                let normalize = |ty| self.tcx.normalize_erasing_regions(self.param_env, ty);
+                ty.ptr_metadata_ty(*self.tcx, normalize)
             };
             return Ok(meta_ty(caller) == meta_ty(callee));
         }
@@ -482,7 +475,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         // FIXME: Depending on the PassMode, this should reset some padding to uninitialized. (This
         // is true for all `copy_op`, but there are a lot of special cases for argument passing
         // specifically.)
-        self.copy_op(&caller_arg_copy, &callee_arg, /*allow_transmute*/ true)?;
+        self.copy_op_allow_transmute(&caller_arg_copy, &callee_arg)?;
         // If this was an in-place pass, protect the place it comes from for the duration of the call.
         if let FnArg::InPlace(place) = caller_arg {
             M::protect_in_place_function_argument(self, place)?;
@@ -527,7 +520,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
 
         match instance.def {
             ty::InstanceDef::Intrinsic(def_id) => {
-                assert!(self.tcx.is_intrinsic(def_id));
+                assert!(self.tcx.intrinsic(def_id).is_some());
                 // FIXME: Should `InPlace` arguments be reset to uninit?
                 M::call_intrinsic(
                     self,
@@ -541,6 +534,8 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             ty::InstanceDef::VTableShim(..)
             | ty::InstanceDef::ReifyShim(..)
             | ty::InstanceDef::ClosureOnceShim { .. }
+            | ty::InstanceDef::ConstructCoroutineInClosureShim { .. }
+            | ty::InstanceDef::CoroutineKindShim { .. }
             | ty::InstanceDef::FnPtrShim(..)
             | ty::InstanceDef::DropGlue(..)
             | ty::InstanceDef::CloneShim(..)
@@ -671,8 +666,8 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                         // Construct the destination place for this argument. At this point all
                         // locals are still dead, so we cannot construct a `PlaceTy`.
                         let dest = mir::Place::from(local);
-                        // `layout_of_local` does more than just the substitution we need to get the
-                        // type, but the result gets cached so this avoids calling the substitution
+                        // `layout_of_local` does more than just the instantiation we need to get the
+                        // type, but the result gets cached so this avoids calling the instantiation
                         // query *again* the next time this local is accessed.
                         let ty = self.layout_of_local(self.frame(), local, None)?.ty;
                         if Some(local) == body.spread_arg {

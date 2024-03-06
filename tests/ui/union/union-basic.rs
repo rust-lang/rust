@@ -1,8 +1,8 @@
-// run-pass
+//@ run-pass
 
 #![allow(unused_imports)]
 
-// aux-build:union.rs
+//@ aux-build:union.rs
 
 extern crate union;
 use std::mem::{size_of, align_of, zeroed};

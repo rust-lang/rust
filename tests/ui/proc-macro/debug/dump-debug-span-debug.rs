@@ -1,6 +1,6 @@
-// run-pass
-// aux-build:macro-dump-debug.rs
-// compile-flags: -Z span-debug
+//@ run-pass
+//@ aux-build:macro-dump-debug.rs
+//@ compile-flags: -Z span-debug
 
 
 extern crate macro_dump_debug;

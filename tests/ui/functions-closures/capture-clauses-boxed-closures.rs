@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 
 fn each<T, F>(x: &[T], mut f: F) where F: FnMut(&T) {
     for val in x {

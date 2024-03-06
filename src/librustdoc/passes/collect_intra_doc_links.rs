@@ -8,7 +8,7 @@ use rustc_data_structures::{
     fx::{FxHashMap, FxHashSet},
     intern::Interned,
 };
-use rustc_errors::{Applicability, Diagnostic, DiagnosticMessage};
+use rustc_errors::{Applicability, Diag, DiagMessage};
 use rustc_hir::def::Namespace::*;
 use rustc_hir::def::{DefKind, Namespace, PerNS};
 use rustc_hir::def_id::{DefId, CRATE_DEF_ID};
@@ -503,6 +503,7 @@ impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
             }
             ty::Alias(..)
             | ty::Closure(..)
+            | ty::CoroutineClosure(..)
             | ty::Coroutine(..)
             | ty::CoroutineWitness(..)
             | ty::Dynamic(..)
@@ -1172,7 +1173,7 @@ impl LinkCollector<'_, '_> {
     ) {
         // The resolved item did not match the disambiguator; give a better error than 'not found'
         let msg = format!("incompatible link kind for `{path_str}`");
-        let callback = |diag: &mut Diagnostic, sp: Option<rustc_span::Span>, link_range| {
+        let callback = |diag: &mut Diag<'_, ()>, sp: Option<rustc_span::Span>, link_range| {
             let note = format!(
                 "this link resolved to {} {}, which is not {} {}",
                 resolved.article(),
@@ -1673,9 +1674,9 @@ impl Suggestion {
 fn report_diagnostic(
     tcx: TyCtxt<'_>,
     lint: &'static Lint,
-    msg: impl Into<DiagnosticMessage> + Display,
+    msg: impl Into<DiagMessage> + Display,
     DiagnosticInfo { item, ori_link: _, dox, link_range }: &DiagnosticInfo<'_>,
-    decorate: impl FnOnce(&mut Diagnostic, Option<rustc_span::Span>, MarkdownLinkRange),
+    decorate: impl FnOnce(&mut Diag<'_, ()>, Option<rustc_span::Span>, MarkdownLinkRange),
 ) {
     let Some(hir_id) = DocContext::as_local_hir_id(tcx, item.item_id) else {
         // If non-local, no need to check anything.
@@ -2009,7 +2010,7 @@ fn disambiguator_error(
     cx: &DocContext<'_>,
     mut diag_info: DiagnosticInfo<'_>,
     disambiguator_range: MarkdownLinkRange,
-    msg: impl Into<DiagnosticMessage> + Display,
+    msg: impl Into<DiagMessage> + Display,
 ) {
     diag_info.link_range = disambiguator_range;
     report_diagnostic(cx.tcx, BROKEN_INTRA_DOC_LINKS, msg, &diag_info, |diag, _sp, _link_range| {
@@ -2123,7 +2124,7 @@ fn ambiguity_error(
 /// disambiguator.
 fn suggest_disambiguator(
     res: Res,
-    diag: &mut Diagnostic,
+    diag: &mut Diag<'_, ()>,
     path_str: &str,
     link_range: MarkdownLinkRange,
     sp: Option<rustc_span::Span>,

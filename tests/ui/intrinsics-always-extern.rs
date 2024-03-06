@@ -10,6 +10,7 @@ impl Foo for () {
 }
 
 extern "rust-intrinsic" fn hello() {//~ ERROR intrinsic must
+    //~^ ERROR unrecognized intrinsic function: `hello`
 }
 
 fn main() {

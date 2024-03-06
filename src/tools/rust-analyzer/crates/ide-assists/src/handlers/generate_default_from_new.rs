@@ -418,7 +418,7 @@ where
     }
 
     #[test]
-    fn new_function_with_generics_and_wheres() {
+    fn new_function_with_generics_and_where() {
         check_assist(
             generate_default_from_new,
             r#"

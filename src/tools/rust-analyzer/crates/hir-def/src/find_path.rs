@@ -13,7 +13,7 @@ use crate::{
     item_scope::ItemInNs,
     nameres::DefMap,
     path::{ModPath, PathKind},
-    visibility::{Visibility, VisibilityExplicity},
+    visibility::{Visibility, VisibilityExplicitness},
     CrateRootModuleId, ModuleDefId, ModuleId,
 };
 
@@ -26,7 +26,7 @@ pub fn find_path(
     prefer_no_std: bool,
     prefer_prelude: bool,
 ) -> Option<ModPath> {
-    let _p = profile::span("find_path");
+    let _p = tracing::span!(tracing::Level::INFO, "find_path").entered();
     find_path_inner(FindPathCtx { db, prefixed: None, prefer_no_std, prefer_prelude }, item, from)
 }
 
@@ -38,7 +38,7 @@ pub fn find_path_prefixed(
     prefer_no_std: bool,
     prefer_prelude: bool,
 ) -> Option<ModPath> {
-    let _p = profile::span("find_path_prefixed");
+    let _p = tracing::span!(tracing::Level::INFO, "find_path_prefixed").entered();
     find_path_inner(
         FindPathCtx { db, prefixed: Some(prefix_kind), prefer_no_std, prefer_prelude },
         item,
@@ -171,6 +171,7 @@ fn find_path_inner(ctx: FindPathCtx<'_>, item: ItemInNs, from: ModuleId) -> Opti
     .map(|(item, _)| item)
 }
 
+#[tracing::instrument(skip_all)]
 fn find_path_for_module(
     ctx: FindPathCtx<'_>,
     def_map: &DefMap,
@@ -312,6 +313,7 @@ fn find_self_super(def_map: &DefMap, item: ModuleId, from: ModuleId) -> Option<M
     }
 }
 
+#[tracing::instrument(skip_all)]
 fn calculate_best_path(
     ctx: FindPathCtx<'_>,
     def_map: &DefMap,
@@ -445,18 +447,25 @@ fn select_best_path(
     }
     const STD_CRATES: [Name; 3] = [known::std, known::core, known::alloc];
 
-    let choose = |new_path: (ModPath, _), old_path: (ModPath, _)| {
-        let new_has_prelude = new_path.0.segments().iter().any(|seg| seg == &known::prelude);
-        let old_has_prelude = old_path.0.segments().iter().any(|seg| seg == &known::prelude);
+    let choose = |new: (ModPath, _), old: (ModPath, _)| {
+        let (new_path, _) = &new;
+        let (old_path, _) = &old;
+        let new_has_prelude = new_path.segments().iter().any(|seg| seg == &known::prelude);
+        let old_has_prelude = old_path.segments().iter().any(|seg| seg == &known::prelude);
         match (new_has_prelude, old_has_prelude, prefer_prelude) {
-            (true, false, true) | (false, true, false) => new_path,
-            (true, false, false) | (false, true, true) => old_path,
-            // no prelude difference in the paths, so pick the smaller one
+            (true, false, true) | (false, true, false) => new,
+            (true, false, false) | (false, true, true) => old,
+            // no prelude difference in the paths, so pick the shorter one
             (true, true, _) | (false, false, _) => {
-                if new_path.0.len() < old_path.0.len() {
-                    new_path
+                let new_path_is_shorter = new_path
+                    .len()
+                    .cmp(&old_path.len())
+                    .then_with(|| new_path.textual_len().cmp(&old_path.textual_len()))
+                    .is_lt();
+                if new_path_is_shorter {
+                    new
                 } else {
-                    old_path
+                    old
                 }
             }
         }
@@ -467,8 +476,8 @@ fn select_best_path(
             let rank = match prefer_no_std {
                 false => |name: &Name| match name {
                     name if name == &known::core => 0,
-                    name if name == &known::alloc => 0,
-                    name if name == &known::std => 1,
+                    name if name == &known::alloc => 1,
+                    name if name == &known::std => 2,
                     _ => unreachable!(),
                 },
                 true => |name: &Name| match name {
@@ -497,7 +506,7 @@ fn find_local_import_locations(
     item: ItemInNs,
     from: ModuleId,
 ) -> Vec<(ModuleId, Name)> {
-    let _p = profile::span("find_local_import_locations");
+    let _p = tracing::span!(tracing::Level::INFO, "find_local_import_locations").entered();
 
     // `from` can import anything below `from` with visibility of at least `from`, and anything
     // above `from` with any visibility. That means we do not need to descend into private siblings
@@ -544,11 +553,11 @@ fn find_local_import_locations(
         if let Some((name, vis, declared)) = data.scope.name_of(item) {
             if vis.is_visible_from(db, from) {
                 let is_pub_or_explicit = match vis {
-                    Visibility::Module(_, VisibilityExplicity::Explicit) => {
+                    Visibility::Module(_, VisibilityExplicitness::Explicit) => {
                         cov_mark::hit!(explicit_private_imports);
                         true
                     }
-                    Visibility::Module(_, VisibilityExplicity::Implicit) => {
+                    Visibility::Module(_, VisibilityExplicitness::Implicit) => {
                         cov_mark::hit!(discount_private_imports);
                         false
                     }
@@ -1535,6 +1544,40 @@ pub mod foo {
             "krate::prelude::Foo",
             "krate::prelude::Foo",
             "krate::prelude::Foo",
+        );
+    }
+
+    #[test]
+    fn respect_segment_length() {
+        check_found_path(
+            r#"
+//- /main.rs crate:main deps:petgraph
+$0
+//- /petgraph.rs crate:petgraph
+pub mod graph {
+    pub use crate::graph_impl::{
+        NodeIndex
+    };
+}
+
+mod graph_impl {
+    pub struct NodeIndex<Ix>(Ix);
+}
+
+pub mod stable_graph {
+    #[doc(no_inline)]
+    pub use crate::graph::{NodeIndex};
+}
+
+pub mod prelude {
+    #[doc(no_inline)]
+    pub use crate::graph::{NodeIndex};
+}
+"#,
+            "petgraph::graph::NodeIndex",
+            "petgraph::graph::NodeIndex",
+            "petgraph::graph::NodeIndex",
+            "petgraph::graph::NodeIndex",
         );
     }
 }

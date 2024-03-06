@@ -1,4 +1,4 @@
-// edition:2018
+//@ edition:2018
 #![forbid(internal_features, unsafe_code)]
 #![feature(unsafe_pin_internals)]
 //~^ ERROR the feature `unsafe_pin_internals` is internal to the compiler or standard library

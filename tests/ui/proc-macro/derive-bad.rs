@@ -1,4 +1,4 @@
-// aux-build:derive-bad.rs
+//@ aux-build:derive-bad.rs
 
 #[macro_use]
 extern crate derive_bad;

@@ -3,7 +3,7 @@
 
 #![feature(non_exhaustive_omitted_patterns_lint)]
 
-// aux-build:unstable.rs
+//@ aux-build:unstable.rs
 extern crate unstable;
 
 use unstable::{OnlyUnstableEnum, OnlyUnstableStruct, UnstableEnum, UnstableStruct};

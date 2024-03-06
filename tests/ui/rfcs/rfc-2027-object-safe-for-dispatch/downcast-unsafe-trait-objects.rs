@@ -1,7 +1,7 @@
 // Check that we if we get ahold of an object unsafe trait
 // object with auto traits and lifetimes, we can downcast it
 //
-// check-pass
+//@ check-pass
 
 #![feature(object_safe_for_dispatch)]
 

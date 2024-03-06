@@ -1,4 +1,4 @@
-// edition:2018
+//@ edition:2018
 async fn foo<F>(fun: F)
 where
     F: FnOnce() + 'static

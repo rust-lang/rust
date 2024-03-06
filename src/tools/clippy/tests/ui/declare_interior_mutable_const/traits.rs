@@ -7,6 +7,7 @@ use std::sync::atomic::AtomicUsize;
 macro_rules! declare_const {
     ($name:ident: $ty:ty = $e:expr) => {
         const $name: $ty = $e;
+        //~^ ERROR: interior mutable
     };
 }
 
@@ -15,7 +16,7 @@ trait ConcreteTypes {
     const ATOMIC: AtomicUsize; //~ ERROR: interior mutable
     const INTEGER: u64;
     const STRING: String;
-    declare_const!(ANOTHER_ATOMIC: AtomicUsize = Self::ATOMIC); //~ ERROR: interior mutable
+    declare_const!(ANOTHER_ATOMIC: AtomicUsize = Self::ATOMIC);
 }
 
 impl ConcreteTypes for u64 {

@@ -2,7 +2,7 @@ error[E0283]: type annotations needed for `Foo<i32, &str, W, Z>`
   --> $DIR/erase-type-params-in-label.rs:2:9
    |
 LL |     let foo = foo(1, "");
-   |         ^^^   --- type must be known at this point
+   |         ^^^   ---------- type must be known at this point
    |
    = note: cannot satisfy `_: Default`
 note: required by a bound in `foo`
@@ -19,7 +19,7 @@ error[E0283]: type annotations needed for `Bar<i32, &str, Z>`
   --> $DIR/erase-type-params-in-label.rs:5:9
    |
 LL |     let bar = bar(1, "");
-   |         ^^^   --- type must be known at this point
+   |         ^^^   ---------- type must be known at this point
    |
    = note: cannot satisfy `_: Default`
 note: required by a bound in `bar`

@@ -1,13 +1,13 @@
-// run-rustfix
+//@ run-rustfix
 
 fn foo(x: &str) -> bool {
     x.starts_with("hi".to_string() + " you")
-    //~^ ERROR expected a `FnMut(char)` closure, found `String`
+    //~^ ERROR the trait bound `String: Pattern<'_>` is not satisfied [E0277]
 }
 
 fn foo2(x: &str) -> bool {
     x.starts_with("hi".to_string())
-    //~^ ERROR expected a `FnMut(char)` closure, found `String`
+    //~^ ERROR the trait bound `String: Pattern<'_>` is not satisfied [E0277]
 }
 
 fn main() {

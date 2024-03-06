@@ -1,5 +1,5 @@
 error: attempted to include a large file
-  --> $DIR/large_include_file.rs:13:43
+  --> tests/ui-toml/large_include_file/large_include_file.rs:13:43
    |
 LL | const TOO_BIG_INCLUDE_BYTES: &[u8; 654] = include_bytes!("too_big.txt");
    |                                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -10,7 +10,7 @@ LL | const TOO_BIG_INCLUDE_BYTES: &[u8; 654] = include_bytes!("too_big.txt");
    = note: this error originates in the macro `include_bytes` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: attempted to include a large file
-  --> $DIR/large_include_file.rs:14:35
+  --> tests/ui-toml/large_include_file/large_include_file.rs:14:35
    |
 LL | const TOO_BIG_INCLUDE_STR: &str = include_str!("too_big.txt");
    |                                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^

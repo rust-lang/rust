@@ -1,12 +1,11 @@
-// check-pass
+//@ check-pass
 #![crate_type = "lib"]
 #![feature(transmutability)]
 use std::mem::BikeshedIntrinsicFrom;
-pub struct Context;
 
 pub fn is_maybe_transmutable<Src, Dst>()
 where
-    Dst: BikeshedIntrinsicFrom<Src, Context>,
+    Dst: BikeshedIntrinsicFrom<Src>,
 {
 }
 

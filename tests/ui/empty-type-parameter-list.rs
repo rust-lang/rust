@@ -1,9 +1,9 @@
-// run-pass
+//@ run-pass
 // Test that empty type parameter list (<>) is synonymous with
 // no type parameters at all
 
 struct S<>;
-trait T<> {}
+trait T<> {} //~ WARN trait `T` is never used
 enum E<> { V }
 impl<> T<> for S<> {}
 impl T for E {}

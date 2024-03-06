@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 pub fn main() {
     // Make sure we properly handle repeated self-appends.
     let mut a: String = "A".to_string();

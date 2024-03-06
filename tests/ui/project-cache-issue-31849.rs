@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 // Regression test for #31849: the problem here was actually a performance
 // cliff, but I'm adding the test for reference.
 

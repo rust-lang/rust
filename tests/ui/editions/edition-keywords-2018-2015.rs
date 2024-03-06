@@ -1,8 +1,8 @@
-// run-pass
+//@ run-pass
 
 #![allow(unused_assignments)]
-// edition:2018
-// aux-build:edition-kw-macro-2015.rs
+//@ edition:2018
+//@ aux-build:edition-kw-macro-2015.rs
 
 #[macro_use]
 extern crate edition_kw_macro_2015;

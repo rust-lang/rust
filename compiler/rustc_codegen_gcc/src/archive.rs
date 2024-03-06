@@ -10,7 +10,7 @@ use rustc_session::cstore::DllImport;
 pub(crate) struct ArArchiveBuilderBuilder;
 
 impl ArchiveBuilderBuilder for ArArchiveBuilderBuilder {
-    fn new_archive_builder<'a>(&self, sess: &'a Session) -> Box<dyn ArchiveBuilder<'a> + 'a> {
+    fn new_archive_builder<'a>(&self, sess: &'a Session) -> Box<dyn ArchiveBuilder + 'a> {
         Box::new(ArArchiveBuilder::new(sess, get_native_object_symbols))
     }
 

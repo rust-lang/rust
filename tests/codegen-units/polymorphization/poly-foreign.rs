@@ -1,5 +1,5 @@
-// aux-build:poly-dep.rs
-// compile-flags: --crate-type=lib -Zprint-mono-items=eager -Zpolymorphize=on
+//@ aux-build:poly-dep.rs
+//@ compile-flags: --crate-type=lib -Zprint-mono-items=eager -Zpolymorphize=on
 
 extern crate poly_dep;
 

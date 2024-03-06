@@ -4,7 +4,7 @@
 // when checking call destinations and also when checking MIR
 // assignment statements.
 
-// check-pass
+//@ check-pass
 
 trait HasAssocType {
     type Inner;

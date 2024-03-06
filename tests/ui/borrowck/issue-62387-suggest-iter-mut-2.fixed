@@ -1,4 +1,4 @@
-// run-rustfix
+//@ run-rustfix
 #![allow(unused_mut)]
 #![allow(dead_code)]
 use std::path::PathBuf;

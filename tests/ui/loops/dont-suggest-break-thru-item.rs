@@ -1,4 +1,4 @@
-// edition:2021
+//@ edition:2021
 
 #![feature(inline_const)]
 
@@ -8,6 +8,7 @@ fn closure() {
             if true {
                 Err(1)
                 //~^ ERROR mismatched types
+                //~| HELP you might have meant to return this value
             }
 
             Ok(())
@@ -21,6 +22,7 @@ fn async_block() {
             if true {
                 Err(1)
                 //~^ ERROR mismatched types
+                //~| HELP you might have meant to return this value
             }
 
             Ok(())

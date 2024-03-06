@@ -1,5 +1,5 @@
-// check-pass
-// aux-build:empty-struct.rs
+//@ check-pass
+//@ aux-build:empty-struct.rs
 
 #[no_link]
 extern crate empty_struct;

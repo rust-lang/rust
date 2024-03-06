@@ -1,4 +1,4 @@
-// edition:2018
+//@ edition:2018
 
 // There is an order to respect for keywords before a function:
 // `<visibility>, const, async, unsafe, extern, "<ABI>"`

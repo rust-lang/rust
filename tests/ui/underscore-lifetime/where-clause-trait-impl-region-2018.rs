@@ -1,5 +1,7 @@
-// run-rustfix
-// edition:2018
+//@ run-rustfix
+//@ edition:2018
+
+#![allow(dead_code)]
 
 trait WithType<T> {}
 trait WithRegion<'a> { }

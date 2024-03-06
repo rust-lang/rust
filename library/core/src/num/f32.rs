@@ -32,6 +32,7 @@ use crate::num::FpCategory;
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
 #[deprecated(since = "TBD", note = "replaced by the `RADIX` associated constant on `f32`")]
+#[rustc_diagnostic_item = "f32_legacy_const_radix"]
 pub const RADIX: u32 = f32::RADIX;
 
 /// Number of significant digits in base 2.
@@ -52,6 +53,7 @@ pub const RADIX: u32 = f32::RADIX;
     since = "TBD",
     note = "replaced by the `MANTISSA_DIGITS` associated constant on `f32`"
 )]
+#[rustc_diagnostic_item = "f32_legacy_const_mantissa_dig"]
 pub const MANTISSA_DIGITS: u32 = f32::MANTISSA_DIGITS;
 
 /// Approximate number of significant digits in base 10.
@@ -69,6 +71,7 @@ pub const MANTISSA_DIGITS: u32 = f32::MANTISSA_DIGITS;
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
 #[deprecated(since = "TBD", note = "replaced by the `DIGITS` associated constant on `f32`")]
+#[rustc_diagnostic_item = "f32_legacy_const_digits"]
 pub const DIGITS: u32 = f32::DIGITS;
 
 /// [Machine epsilon] value for `f32`.
@@ -90,6 +93,7 @@ pub const DIGITS: u32 = f32::DIGITS;
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
 #[deprecated(since = "TBD", note = "replaced by the `EPSILON` associated constant on `f32`")]
+#[rustc_diagnostic_item = "f32_legacy_const_epsilon"]
 pub const EPSILON: f32 = f32::EPSILON;
 
 /// Smallest finite `f32` value.
@@ -107,6 +111,7 @@ pub const EPSILON: f32 = f32::EPSILON;
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
 #[deprecated(since = "TBD", note = "replaced by the `MIN` associated constant on `f32`")]
+#[rustc_diagnostic_item = "f32_legacy_const_min"]
 pub const MIN: f32 = f32::MIN;
 
 /// Smallest positive normal `f32` value.
@@ -124,6 +129,7 @@ pub const MIN: f32 = f32::MIN;
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
 #[deprecated(since = "TBD", note = "replaced by the `MIN_POSITIVE` associated constant on `f32`")]
+#[rustc_diagnostic_item = "f32_legacy_const_min_positive"]
 pub const MIN_POSITIVE: f32 = f32::MIN_POSITIVE;
 
 /// Largest finite `f32` value.
@@ -141,6 +147,7 @@ pub const MIN_POSITIVE: f32 = f32::MIN_POSITIVE;
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
 #[deprecated(since = "TBD", note = "replaced by the `MAX` associated constant on `f32`")]
+#[rustc_diagnostic_item = "f32_legacy_const_max"]
 pub const MAX: f32 = f32::MAX;
 
 /// One greater than the minimum possible normal power of 2 exponent.
@@ -158,6 +165,7 @@ pub const MAX: f32 = f32::MAX;
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
 #[deprecated(since = "TBD", note = "replaced by the `MIN_EXP` associated constant on `f32`")]
+#[rustc_diagnostic_item = "f32_legacy_const_min_exp"]
 pub const MIN_EXP: i32 = f32::MIN_EXP;
 
 /// Maximum possible power of 2 exponent.
@@ -175,6 +183,7 @@ pub const MIN_EXP: i32 = f32::MIN_EXP;
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
 #[deprecated(since = "TBD", note = "replaced by the `MAX_EXP` associated constant on `f32`")]
+#[rustc_diagnostic_item = "f32_legacy_const_max_exp"]
 pub const MAX_EXP: i32 = f32::MAX_EXP;
 
 /// Minimum possible normal power of 10 exponent.
@@ -192,6 +201,7 @@ pub const MAX_EXP: i32 = f32::MAX_EXP;
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
 #[deprecated(since = "TBD", note = "replaced by the `MIN_10_EXP` associated constant on `f32`")]
+#[rustc_diagnostic_item = "f32_legacy_const_min_10_exp"]
 pub const MIN_10_EXP: i32 = f32::MIN_10_EXP;
 
 /// Maximum possible power of 10 exponent.
@@ -209,6 +219,7 @@ pub const MIN_10_EXP: i32 = f32::MIN_10_EXP;
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
 #[deprecated(since = "TBD", note = "replaced by the `MAX_10_EXP` associated constant on `f32`")]
+#[rustc_diagnostic_item = "f32_legacy_const_max_10_exp"]
 pub const MAX_10_EXP: i32 = f32::MAX_10_EXP;
 
 /// Not a Number (NaN).
@@ -226,6 +237,7 @@ pub const MAX_10_EXP: i32 = f32::MAX_10_EXP;
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
 #[deprecated(since = "TBD", note = "replaced by the `NAN` associated constant on `f32`")]
+#[rustc_diagnostic_item = "f32_legacy_const_nan"]
 pub const NAN: f32 = f32::NAN;
 
 /// Infinity (∞).
@@ -243,6 +255,7 @@ pub const NAN: f32 = f32::NAN;
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
 #[deprecated(since = "TBD", note = "replaced by the `INFINITY` associated constant on `f32`")]
+#[rustc_diagnostic_item = "f32_legacy_const_infinity"]
 pub const INFINITY: f32 = f32::INFINITY;
 
 /// Negative infinity (−∞).
@@ -260,6 +273,7 @@ pub const INFINITY: f32 = f32::INFINITY;
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
 #[deprecated(since = "TBD", note = "replaced by the `NEG_INFINITY` associated constant on `f32`")]
+#[rustc_diagnostic_item = "f32_legacy_const_neg_infinity"]
 pub const NEG_INFINITY: f32 = f32::NEG_INFINITY;
 
 /// Basic mathematical constants.
@@ -462,6 +476,7 @@ impl f32 {
     /// and target platforms isn't guaranteed.
     #[stable(feature = "assoc_int_consts", since = "1.43.0")]
     #[rustc_diagnostic_item = "f32_nan"]
+    #[allow(clippy::eq_op)]
     pub const NAN: f32 = 0.0_f32 / 0.0_f32;
     /// Infinity (∞).
     #[stable(feature = "assoc_int_consts", since = "1.43.0")]
@@ -483,6 +498,7 @@ impl f32 {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[rustc_const_unstable(feature = "const_float_classify", issue = "72505")]
     #[inline]
+    #[allow(clippy::eq_op)] // > if you intended to check if the operand is NaN, use `.is_nan()` instead :)
     pub const fn is_nan(self) -> bool {
         self != self
     }
@@ -1137,8 +1153,11 @@ impl f32 {
             // Stability concerns.
             unsafe { mem::transmute(x) }
         }
+        #[cfg_attr(not(bootstrap), allow(unused_unsafe))] // on bootstrap bump, remove unsafe block
         // SAFETY: We use internal implementations that either always work or fail at compile time.
-        unsafe { intrinsics::const_eval_select((self,), ct_f32_to_u32, rt_f32_to_u32) }
+        unsafe {
+            intrinsics::const_eval_select((self,), ct_f32_to_u32, rt_f32_to_u32)
+        }
     }
 
     /// Raw transmutation from `u32`.
@@ -1229,8 +1248,11 @@ impl f32 {
             // Stability concerns.
             unsafe { mem::transmute(x) }
         }
+        #[cfg_attr(not(bootstrap), allow(unused_unsafe))] // on bootstrap bump, remove unsafe block
         // SAFETY: We use internal implementations that either always work or fail at compile time.
-        unsafe { intrinsics::const_eval_select((v,), ct_u32_to_f32, rt_u32_to_f32) }
+        unsafe {
+            intrinsics::const_eval_select((v,), ct_u32_to_f32, rt_u32_to_f32)
+        }
     }
 
     /// Return the memory representation of this floating point number as a byte array in

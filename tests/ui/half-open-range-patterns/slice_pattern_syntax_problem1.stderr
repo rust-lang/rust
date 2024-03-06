@@ -30,6 +30,21 @@ LL |     let [a @ 3.., b @ ..3, c @ 4..6, ..] = xs;
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
    = help: use an inclusive range pattern, like N..=M
 
-error: aborting due to 3 previous errors
+error[E0005]: refutable pattern in local binding
+  --> $DIR/slice_pattern_syntax_problem1.rs:4:9
+   |
+LL |     let [a @ 3.., b @ ..3, c @ 4..6, ..] = xs;
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ pattern `[i32::MIN..=2_i32, ..]` not covered
+   |
+   = note: `let` bindings require an "irrefutable pattern", like a `struct` or an `enum` with only one variant
+   = note: for more information, visit https://doc.rust-lang.org/book/ch18-02-refutability.html
+   = note: the matched value is of type `[i32; 8]`
+help: you might want to use `let else` to handle the variant that isn't matched
+   |
+LL |     let [a @ 3.., b @ ..3, c @ 4..6, ..] = xs else { todo!() };
+   |                                               ++++++++++++++++
 
-For more information about this error, try `rustc --explain E0658`.
+error: aborting due to 4 previous errors
+
+Some errors have detailed explanations: E0005, E0658.
+For more information about an error, try `rustc --explain E0005`.

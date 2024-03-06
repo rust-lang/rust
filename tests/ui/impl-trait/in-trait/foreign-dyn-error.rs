@@ -1,4 +1,4 @@
-// aux-build: rpitit.rs
+//@ aux-build: rpitit.rs
 
 extern crate rpitit;
 

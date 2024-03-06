@@ -1,4 +1,4 @@
-// compile-flags: -Zverbose-internals
+//@ compile-flags: -Zverbose-internals
 
 // Same as closure-coerce-fn-1.rs
 

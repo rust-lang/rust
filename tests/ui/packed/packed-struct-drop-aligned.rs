@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 #![feature(coroutines)]
 #![feature(coroutine_trait)]
 use std::cell::Cell;

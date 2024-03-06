@@ -1,4 +1,4 @@
-// aux-build:issue-19452-aux.rs
+//@ aux-build:issue-19452-aux.rs
 
 extern crate issue_19452_aux;
 

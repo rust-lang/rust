@@ -3,8 +3,8 @@ use std::{mem, ops::Not};
 
 use either::Either;
 use hir::{
-    Adt, AsAssocItem, CaptureKind, HasCrate, HasSource, HirDisplay, Layout, LayoutError, Name,
-    Semantics, Trait, Type, TypeInfo,
+    Adt, AsAssocItem, AsExternAssocItem, CaptureKind, HasCrate, HasSource, HirDisplay, Layout,
+    LayoutError, Name, Semantics, Trait, Type, TypeInfo,
 };
 use ide_db::{
     base_db::SourceDatabase,
@@ -264,7 +264,7 @@ pub(super) fn keyword(
     let markup = process_markup(
         sema.db,
         Definition::Module(doc_owner),
-        &markup(Some(docs.into()), description, None)?,
+        &markup(Some(docs.into()), description, None),
         config,
     );
     Some(HoverResult { markup, actions })
@@ -369,12 +369,20 @@ fn definition_owner_name(db: &RootDatabase, def: &Definition) -> Option<String> 
     match def {
         Definition::Field(f) => Some(f.parent_def(db).name(db)),
         Definition::Local(l) => l.parent(db).name(db),
-        Definition::Function(f) => match f.as_assoc_item(db)?.container(db) {
-            hir::AssocItemContainer::Trait(t) => Some(t.name(db)),
-            hir::AssocItemContainer::Impl(i) => i.self_ty(db).as_adt().map(|adt| adt.name(db)),
-        },
         Definition::Variant(e) => Some(e.parent_enum(db).name(db)),
-        _ => None,
+
+        d => {
+            if let Some(assoc_item) = d.as_assoc_item(db) {
+                match assoc_item.container(db) {
+                    hir::AssocItemContainer::Trait(t) => Some(t.name(db)),
+                    hir::AssocItemContainer::Impl(i) => {
+                        i.self_ty(db).as_adt().map(|adt| adt.name(db))
+                    }
+                }
+            } else {
+                return d.as_extern_assoc_item(db).map(|_| "<extern>".to_owned());
+            }
+        }
     }
     .map(|name| name.display(db).to_string())
 }
@@ -396,11 +404,11 @@ pub(super) fn definition(
     famous_defs: Option<&FamousDefs<'_, '_>>,
     notable_traits: &[(Trait, Vec<(Option<Type>, Name)>)],
     config: &HoverConfig,
-) -> Option<Markup> {
+) -> Markup {
     let mod_path = definition_mod_path(db, &def);
-    let label = def.label(db)?;
+    let label = def.label(db);
     let docs = def.docs(db, famous_defs);
-    let value = match def {
+    let value = (|| match def {
         Definition::Variant(it) => {
             if !it.parent_enum(db).is_data_carrying(db) {
                 match it.eval(db) {
@@ -436,7 +444,7 @@ pub(super) fn definition(
             Some(body.to_string())
         }
         _ => None,
-    };
+    })();
 
     let layout_info = match def {
         Definition::Field(it) => render_memory_layout(
@@ -621,7 +629,7 @@ fn closure_ty(
         })
         .join("\n");
     if captures_rendered.trim().is_empty() {
-        captures_rendered = "This closure captures nothing".to_string();
+        captures_rendered = "This closure captures nothing".to_owned();
     }
     let mut targets: Vec<hir::ModuleDef> = Vec::new();
     let mut push_new_def = |item: hir::ModuleDef| {
@@ -683,7 +691,7 @@ fn definition_mod_path(db: &RootDatabase, def: &Definition) -> Option<String> {
     def.module(db).map(|module| path(db, module, definition_owner_name(db, def)))
 }
 
-fn markup(docs: Option<String>, desc: String, mod_path: Option<String>) -> Option<Markup> {
+fn markup(docs: Option<String>, desc: String, mod_path: Option<String>) -> Markup {
     let mut buf = String::new();
 
     if let Some(mod_path) = mod_path {
@@ -696,7 +704,7 @@ fn markup(docs: Option<String>, desc: String, mod_path: Option<String>) -> Optio
     if let Some(doc) = docs {
         format_to!(buf, "\n___\n\n{}", doc);
     }
-    Some(buf.into())
+    buf.into()
 }
 
 fn find_std_module(famous_defs: &FamousDefs<'_, '_>, name: &str) -> Option<hir::Module> {
@@ -823,7 +831,7 @@ fn keyword_hints(
                     }
                 }
                 _ => KeywordHint {
-                    description: token.text().to_string(),
+                    description: token.text().to_owned(),
                     keyword_mod,
                     actions: Vec::new(),
                 },
@@ -835,9 +843,9 @@ fn keyword_hints(
                 Some(_) => format!("prim_{}", token.text()),
                 None => format!("{}_keyword", token.text()),
             };
-            KeywordHint::new(token.text().to_string(), module)
+            KeywordHint::new(token.text().to_owned(), module)
         }
-        T![Self] => KeywordHint::new(token.text().to_string(), "self_upper_keyword".into()),
-        _ => KeywordHint::new(token.text().to_string(), format!("{}_keyword", token.text())),
+        T![Self] => KeywordHint::new(token.text().to_owned(), "self_upper_keyword".into()),
+        _ => KeywordHint::new(token.text().to_owned(), format!("{}_keyword", token.text())),
     }
 }

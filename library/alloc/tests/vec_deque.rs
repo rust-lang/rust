@@ -1,4 +1,4 @@
-use core::num::NonZeroUsize;
+use core::num::NonZero;
 use std::assert_matches::assert_matches;
 use std::collections::TryReserveErrorKind::*;
 use std::collections::{vec_deque::Drain, VecDeque};
@@ -445,9 +445,9 @@ fn test_into_iter() {
         assert_eq!(it.next_back(), Some(3));
 
         let mut it = VecDeque::from(vec![1, 2, 3, 4, 5]).into_iter();
-        assert_eq!(it.advance_by(10), Err(NonZeroUsize::new(5).unwrap()));
+        assert_eq!(it.advance_by(10), Err(NonZero::new(5).unwrap()));
         let mut it = VecDeque::from(vec![1, 2, 3, 4, 5]).into_iter();
-        assert_eq!(it.advance_back_by(10), Err(NonZeroUsize::new(5).unwrap()));
+        assert_eq!(it.advance_back_by(10), Err(NonZero::new(5).unwrap()));
     }
 }
 

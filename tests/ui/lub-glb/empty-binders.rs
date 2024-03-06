@@ -1,4 +1,4 @@
-// check-pass
+//@ check-pass
 //
 // Check that computing the lub works even for empty binders.
 fn lt<'a: 'a>() -> &'a () {

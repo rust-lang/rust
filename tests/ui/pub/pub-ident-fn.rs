@@ -1,4 +1,4 @@
-// run-rustfix
+//@ run-rustfix
 
 pub   foo(_s: usize) -> bool { true }
 //~^ ERROR missing `fn` for function definition

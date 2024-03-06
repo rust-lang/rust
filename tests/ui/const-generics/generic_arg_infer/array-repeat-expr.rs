@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 
 // To avoid having to `or` gate `_` as an expr.
 #![feature(generic_arg_infer)]

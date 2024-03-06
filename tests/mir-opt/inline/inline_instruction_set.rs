@@ -2,8 +2,8 @@
 //
 // A function is "compatible" when the *callee* has the same attribute or no attribute.
 //
-// compile-flags: --target thumbv4t-none-eabi
-// needs-llvm-components: arm
+//@ compile-flags: --target thumbv4t-none-eabi
+//@ needs-llvm-components: arm
 
 #![crate_type = "lib"]
 #![feature(rustc_attrs)]

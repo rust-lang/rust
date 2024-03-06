@@ -5,8 +5,10 @@
 //! item.
 
 use crate::{errors, fluent_generated as fluent};
-use rustc_ast::{ast, AttrStyle, Attribute, LitKind, MetaItemKind, MetaItemLit, NestedMetaItem};
+use rustc_ast::{ast, AttrKind, AttrStyle, Attribute, LitKind};
+use rustc_ast::{MetaItemKind, MetaItemLit, NestedMetaItem};
 use rustc_data_structures::fx::FxHashMap;
+use rustc_errors::StashKey;
 use rustc_errors::{Applicability, DiagCtxt, IntoDiagnosticArg, MultiSpan};
 use rustc_feature::{AttributeDuplicates, AttributeType, BuiltinAttribute, BUILTIN_ATTRIBUTE_MAP};
 use rustc_hir as hir;
@@ -78,7 +80,7 @@ pub(crate) enum ProcMacroKind {
 }
 
 impl IntoDiagnosticArg for ProcMacroKind {
-    fn into_diagnostic_arg(self) -> rustc_errors::DiagnosticArgValue<'static> {
+    fn into_diagnostic_arg(self) -> rustc_errors::DiagArgValue {
         match self {
             ProcMacroKind::Attribute => "attribute proc macro",
             ProcMacroKind::Derive => "derive proc macro",
@@ -190,13 +192,12 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                 }
                 sym::ffi_pure => self.check_ffi_pure(attr.span, attrs, target),
                 sym::ffi_const => self.check_ffi_const(attr.span, target),
-                sym::ffi_returns_twice => self.check_ffi_returns_twice(attr.span, target),
                 sym::rustc_const_unstable
                 | sym::rustc_const_stable
                 | sym::unstable
                 | sym::stable
                 | sym::rustc_allowed_through_unstable_modules
-                | sym::rustc_promotable => self.check_stability_promotable(attr, span, target),
+                | sym::rustc_promotable => self.check_stability_promotable(attr, target),
                 sym::link_ordinal => self.check_link_ordinal(attr, span, target),
                 sym::rustc_confusables => self.check_confusables(attr, target),
                 sym::rustc_safe_intrinsic => {
@@ -826,10 +827,11 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
             self.doc_attr_str_error(meta, "keyword");
             return false;
         }
-        match self.tcx.opt_hir_node(hir_id).and_then(|node| match node {
+        let item_kind = match self.tcx.hir_node(hir_id) {
             hir::Node::Item(item) => Some(&item.kind),
             _ => None,
-        }) {
+        };
+        match item_kind {
             Some(ItemKind::Mod(module)) => {
                 if !module.item_ids.is_empty() {
                     self.dcx().emit_err(errors::DocKeywordEmptyMod { span: meta.span() });
@@ -852,10 +854,11 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
     }
 
     fn check_doc_fake_variadic(&self, meta: &NestedMetaItem, hir_id: HirId) -> bool {
-        match self.tcx.opt_hir_node(hir_id).and_then(|node| match node {
+        let item_kind = match self.tcx.hir_node(hir_id) {
             hir::Node::Item(item) => Some(&item.kind),
             _ => None,
-        }) {
+        };
+        match item_kind {
             Some(ItemKind::Impl(i)) => {
                 let is_valid = matches!(&i.self_ty.kind, hir::TyKind::Tup([_]))
                     || if let hir::TyKind::BareFn(bare_fn_ty) = &i.self_ty.kind {
@@ -1307,15 +1310,6 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
         }
     }
 
-    fn check_ffi_returns_twice(&self, attr_span: Span, target: Target) -> bool {
-        if target == Target::ForeignFn {
-            true
-        } else {
-            self.dcx().emit_err(errors::FfiReturnsTwiceInvalidTarget { attr_span });
-            false
-        }
-    }
-
     /// Warns against some misuses of `#[must_use]`
     fn check_must_use(&self, hir_id: HirId, attr: &Attribute, target: Target) -> bool {
         if !matches!(
@@ -1395,7 +1389,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
         if target == Target::ForeignMod
             && let hir::Node::Item(item) = self.tcx.hir_node(hir_id)
             && let Item { kind: ItemKind::ForeignMod { abi, .. }, .. } = item
-            && !matches!(abi, Abi::Rust | Abi::RustIntrinsic | Abi::PlatformIntrinsic)
+            && !matches!(abi, Abi::Rust | Abi::RustIntrinsic)
         {
             return;
         }
@@ -2075,14 +2069,11 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
         span: Span,
         target: Target,
     ) -> bool {
-        let hir = self.tcx.hir();
-
         if let Target::ForeignFn = target
-            && let Some(parent) = hir.opt_parent_id(hir_id)
             && let hir::Node::Item(Item {
-                kind: ItemKind::ForeignMod { abi: Abi::RustIntrinsic | Abi::PlatformIntrinsic, .. },
+                kind: ItemKind::ForeignMod { abi: Abi::RustIntrinsic, .. },
                 ..
-            }) = self.tcx.hir_node(parent)
+            }) = self.tcx.parent_hir_node(hir_id)
         {
             return true;
         }
@@ -2108,7 +2099,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
         }
     }
 
-    fn check_stability_promotable(&self, attr: &Attribute, _span: Span, target: Target) -> bool {
+    fn check_stability_promotable(&self, attr: &Attribute, target: Target) -> bool {
         match target {
             Target::Expression => {
                 self.dcx().emit_err(errors::StabilityPromotable { attr_span: attr.span });
@@ -2229,8 +2220,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
             }
         } else {
             // special case when `#[macro_export]` is applied to a macro 2.0
-            let (macro_definition, _) =
-                self.tcx.opt_hir_node(hir_id).unwrap().expect_item().expect_macro();
+            let (macro_definition, _) = self.tcx.hir_node(hir_id).expect_item().expect_macro();
             let is_decl_macro = !macro_definition.macro_rules;
 
             if is_decl_macro {
@@ -2539,7 +2529,7 @@ fn check_invalid_crate_level_attr(tcx: TyCtxt<'_>, attrs: &[Attribute]) {
                             span: item.ident.span,
                             kind: item.kind.descr(),
                         });
-                    tcx.dcx().emit_err(errors::InvalidAttrAtCrateLevel {
+                    let err = tcx.dcx().create_err(errors::InvalidAttrAtCrateLevel {
                         span: attr.span,
                         sugg_span: tcx
                             .sess
@@ -2555,6 +2545,16 @@ fn check_invalid_crate_level_attr(tcx: TyCtxt<'_>, attrs: &[Attribute]) {
                         name: *attr_to_check,
                         item,
                     });
+
+                    if let AttrKind::Normal(ref p) = attr.kind {
+                        tcx.dcx().try_steal_replace_and_emit_err(
+                            p.item.path.span,
+                            StashKey::UndeterminedMacroResolution,
+                            err,
+                        );
+                    } else {
+                        err.emit();
+                    }
                 }
             }
         }

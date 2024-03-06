@@ -17,15 +17,15 @@
 
 #![warn(rust_2018_idioms, unused_lifetimes)]
 
-mod manifest_path;
+mod build_scripts;
 mod cargo_workspace;
 mod cfg_flag;
+mod manifest_path;
 mod project_json;
-mod sysroot;
-mod workspace;
 mod rustc_cfg;
-mod build_scripts;
+mod sysroot;
 pub mod target_data_layout;
+mod workspace;
 
 #[cfg(test)]
 mod tests;
@@ -167,7 +167,7 @@ fn utf8_stdout(mut cmd: Command) -> anyhow::Result<String> {
         }
     }
     let stdout = String::from_utf8(output.stdout)?;
-    Ok(stdout.trim().to_string())
+    Ok(stdout.trim().to_owned())
 }
 
 #[derive(Copy, Clone, Debug, Default, PartialEq, Eq)]

@@ -142,21 +142,29 @@ LL |     const fn get_mut_sq(&mut self) -> &mut T { &mut self.0 }
    = help: add `#![feature(const_mut_refs)]` to the crate attributes to enable
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
-error[E0013]: constant functions cannot refer to statics
+error[E0658]: referencing statics in constant functions is unstable
   --> $DIR/min_const_fn.rs:89:27
    |
 LL | const fn foo25() -> u32 { BAR }
    |                           ^^^
    |
-   = help: consider extracting the value of the `static` to a `const`, and referring to that
+   = note: see issue #119618 <https://github.com/rust-lang/rust/issues/119618> for more information
+   = help: add `#![feature(const_refs_to_static)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+   = note: `static` and `const` variables can refer to other `const` variables. A `const` variable, however, cannot refer to a `static` variable.
+   = help: to fix this, the value can be extracted to a `const` and then used.
 
-error[E0013]: constant functions cannot refer to statics
+error[E0658]: referencing statics in constant functions is unstable
   --> $DIR/min_const_fn.rs:90:37
    |
 LL | const fn foo26() -> &'static u32 { &BAR }
    |                                     ^^^
    |
-   = help: consider extracting the value of the `static` to a `const`, and referring to that
+   = note: see issue #119618 <https://github.com/rust-lang/rust/issues/119618> for more information
+   = help: add `#![feature(const_refs_to_static)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+   = note: `static` and `const` variables can refer to other `const` variables. A `const` variable, however, cannot refer to a `static` variable.
+   = help: to fix this, the value can be extracted to a `const` and then used.
 
 error: pointers cannot be cast to integers during const eval
   --> $DIR/min_const_fn.rs:91:42
@@ -222,5 +230,5 @@ LL | const fn no_apit(_x: impl std::fmt::Debug) {}
 
 error: aborting due to 24 previous errors
 
-Some errors have detailed explanations: E0013, E0493, E0658.
-For more information about an error, try `rustc --explain E0013`.
+Some errors have detailed explanations: E0493, E0658.
+For more information about an error, try `rustc --explain E0493`.

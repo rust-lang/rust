@@ -27,6 +27,7 @@ pub use UnsafeSource::*;
 use crate::ptr::P;
 use crate::token::{self, CommentKind, Delimiter};
 use crate::tokenstream::{DelimSpan, LazyAttrTokenStream, TokenStream};
+pub use rustc_ast_ir::{Movability, Mutability};
 use rustc_data_structures::packed::Pu128;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_data_structures::stack::ensure_sufficient_stack;
@@ -35,7 +36,6 @@ use rustc_macros::HashStable_Generic;
 use rustc_span::source_map::{respan, Spanned};
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
 use rustc_span::{ErrorGuaranteed, Span, DUMMY_SP};
-pub use rustc_type_ir::{Movability, Mutability};
 use std::fmt;
 use std::mem;
 use thin_vec::{thin_vec, ThinVec};
@@ -291,12 +291,16 @@ pub use crate::node_id::{NodeId, CRATE_NODE_ID, DUMMY_NODE_ID};
 #[derive(Copy, Clone, PartialEq, Eq, Encodable, Decodable, Debug)]
 pub struct TraitBoundModifiers {
     pub constness: BoundConstness,
+    pub asyncness: BoundAsyncness,
     pub polarity: BoundPolarity,
 }
 
 impl TraitBoundModifiers {
-    pub const NONE: Self =
-        Self { constness: BoundConstness::Never, polarity: BoundPolarity::Positive };
+    pub const NONE: Self = Self {
+        constness: BoundConstness::Never,
+        asyncness: BoundAsyncness::Normal,
+        polarity: BoundPolarity::Positive,
+    };
 }
 
 /// The AST represents all type param bounds as types.
@@ -399,9 +403,10 @@ impl Default for Generics {
 /// A where-clause in a definition.
 #[derive(Clone, Encodable, Decodable, Debug)]
 pub struct WhereClause {
-    /// `true` if we ate a `where` token: this can happen
-    /// if we parsed no predicates (e.g. `struct Foo where {}`).
-    /// This allows us to pretty-print accurately.
+    /// `true` if we ate a `where` token.
+    ///
+    /// This can happen if we parsed no predicates, e.g., `struct Foo where {}`.
+    /// This allows us to pretty-print accurately and provide correct suggestion diagnostics.
     pub has_where_token: bool,
     pub predicates: ThinVec<WherePredicate>,
     pub span: Span,
@@ -665,6 +670,16 @@ impl Pat {
             true
         });
         contains_never_pattern
+    }
+
+    /// Return a name suitable for diagnostics.
+    pub fn descr(&self) -> Option<String> {
+        match &self.kind {
+            PatKind::Wild => Some("_".to_string()),
+            PatKind::Ident(BindingAnnotation::NONE, ident, None) => Some(format!("{ident}")),
+            PatKind::Ref(pat, mutbl) => pat.descr().map(|d| format!("&{}{d}", mutbl.prefix_str())),
+            _ => None,
+        }
     }
 }
 
@@ -1048,6 +1063,7 @@ pub struct Local {
     pub ty: Option<P<Ty>>,
     pub kind: LocalKind,
     pub span: Span,
+    pub colon_sp: Option<Span>,
     pub attrs: AttrVec,
     pub tokens: Option<LazyAttrTokenStream>,
 }
@@ -1292,21 +1308,8 @@ impl Expr {
             ExprKind::Yeet(..) => ExprPrecedence::Yeet,
             ExprKind::FormatArgs(..) => ExprPrecedence::FormatArgs,
             ExprKind::Become(..) => ExprPrecedence::Become,
-            ExprKind::Err => ExprPrecedence::Err,
+            ExprKind::Err(_) | ExprKind::Dummy => ExprPrecedence::Err,
         }
-    }
-
-    pub fn take(&mut self) -> Self {
-        mem::replace(
-            self,
-            Expr {
-                id: DUMMY_NODE_ID,
-                kind: ExprKind::Err,
-                span: DUMMY_SP,
-                attrs: AttrVec::new(),
-                tokens: None,
-            },
-        )
     }
 
     /// To a first-order approximation, is this a pattern?
@@ -1527,7 +1530,10 @@ pub enum ExprKind {
     FormatArgs(P<FormatArgs>),
 
     /// Placeholder for an expression that wasn't syntactically well formed in some way.
-    Err,
+    Err(ErrorGuaranteed),
+
+    /// Acts as a null expression. Lowering it will always emit a bug.
+    Dummy,
 }
 
 /// Used to differentiate between `for` loops and `for await` loops.
@@ -1842,7 +1848,7 @@ pub enum LitKind {
     /// A boolean literal (`true`, `false`).
     Bool(bool),
     /// Placeholder for a literal that wasn't well-formed in some way.
-    Err,
+    Err(ErrorGuaranteed),
 }
 
 impl LitKind {
@@ -1889,7 +1895,7 @@ impl LitKind {
             | LitKind::Int(_, LitIntType::Unsuffixed)
             | LitKind::Float(_, LitFloatType::Unsuffixed)
             | LitKind::Bool(..)
-            | LitKind::Err => false,
+            | LitKind::Err(_) => false,
         }
     }
 }
@@ -1914,22 +1920,28 @@ pub struct FnSig {
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
 #[derive(Encodable, Decodable, HashStable_Generic)]
 pub enum FloatTy {
+    F16,
     F32,
     F64,
+    F128,
 }
 
 impl FloatTy {
     pub fn name_str(self) -> &'static str {
         match self {
+            FloatTy::F16 => "f16",
             FloatTy::F32 => "f32",
             FloatTy::F64 => "f64",
+            FloatTy::F128 => "f128",
         }
     }
 
     pub fn name(self) -> Symbol {
         match self {
+            FloatTy::F16 => sym::f16,
             FloatTy::F32 => sym::f32,
             FloatTy::F64 => sym::f64,
+            FloatTy::F128 => sym::f128,
         }
     }
 }
@@ -2103,9 +2115,9 @@ pub enum TyKind {
     /// A tuple (`(A, B, C, D,...)`).
     Tup(ThinVec<P<Ty>>),
     /// An anonymous struct type i.e. `struct { foo: Type }`
-    AnonStruct(ThinVec<FieldDef>),
+    AnonStruct(NodeId, ThinVec<FieldDef>),
     /// An anonymous union type i.e. `union { bar: Type }`
-    AnonUnion(ThinVec<FieldDef>),
+    AnonUnion(NodeId, ThinVec<FieldDef>),
     /// A path (`module::module::...::Type`), optionally
     /// "qualified", e.g., `<Vec<T> as SomeTrait>::SomeType`.
     ///
@@ -2132,10 +2144,12 @@ pub enum TyKind {
     ImplicitSelf,
     /// A macro in the type position.
     MacCall(P<MacCall>),
-    /// Placeholder for a kind that has failed to be defined.
-    Err,
     /// Placeholder for a `va_list`.
     CVarArgs,
+    /// Sometimes we need a dummy value when no error has occurred.
+    Dummy,
+    /// Placeholder for a kind that has failed to be defined.
+    Err(ErrorGuaranteed),
 }
 
 impl TyKind {
@@ -2156,6 +2170,10 @@ impl TyKind {
         } else {
             None
         }
+    }
+
+    pub fn is_anon_adt(&self) -> bool {
+        matches!(self, TyKind::AnonStruct(..) | TyKind::AnonUnion(..))
     }
 }
 
@@ -2558,6 +2576,25 @@ impl BoundConstness {
             Self::Never => "",
             Self::Always(_) => "const",
             Self::Maybe(_) => "~const",
+        }
+    }
+}
+
+/// The asyncness of a trait bound.
+#[derive(Copy, Clone, PartialEq, Eq, Encodable, Decodable, Debug)]
+#[derive(HashStable_Generic)]
+pub enum BoundAsyncness {
+    /// `Type: Trait`
+    Normal,
+    /// `Type: async Trait`
+    Async(Span),
+}
+
+impl BoundAsyncness {
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Self::Normal => "",
+            Self::Async(_) => "async",
         }
     }
 }
@@ -2988,18 +3025,29 @@ pub struct Trait {
 ///
 /// If there is no where clause, then this is `false` with `DUMMY_SP`.
 #[derive(Copy, Clone, Encodable, Decodable, Debug, Default)]
-pub struct TyAliasWhereClause(pub bool, pub Span);
+pub struct TyAliasWhereClause {
+    pub has_where_token: bool,
+    pub span: Span,
+}
+
+/// The span information for the two where clauses on a `TyAlias`.
+#[derive(Copy, Clone, Encodable, Decodable, Debug, Default)]
+pub struct TyAliasWhereClauses {
+    /// Before the equals sign.
+    pub before: TyAliasWhereClause,
+    /// After the equals sign.
+    pub after: TyAliasWhereClause,
+    /// The index in `TyAlias.generics.where_clause.predicates` that would split
+    /// into predicates from the where clause before the equals sign and the ones
+    /// from the where clause after the equals sign.
+    pub split: usize,
+}
 
 #[derive(Clone, Encodable, Decodable, Debug)]
 pub struct TyAlias {
     pub defaultness: Defaultness,
     pub generics: Generics,
-    /// The span information for the two where clauses (before equals, after equals)
-    pub where_clauses: (TyAliasWhereClause, TyAliasWhereClause),
-    /// The index in `generics.where_clause.predicates` that would split into
-    /// predicates from the where clause before the equals and the predicates
-    /// from the where clause after the equals
-    pub where_predicates_split: usize,
+    pub where_clauses: TyAliasWhereClauses,
     pub bounds: GenericBounds,
     pub ty: Option<P<Ty>>,
 }
@@ -3300,13 +3348,13 @@ mod size_asserts {
     static_assert_size!(ForeignItem, 96);
     static_assert_size!(ForeignItemKind, 24);
     static_assert_size!(GenericArg, 24);
-    static_assert_size!(GenericBound, 72);
+    static_assert_size!(GenericBound, 88);
     static_assert_size!(Generics, 40);
     static_assert_size!(Impl, 136);
     static_assert_size!(Item, 136);
     static_assert_size!(ItemKind, 64);
     static_assert_size!(LitKind, 24);
-    static_assert_size!(Local, 72);
+    static_assert_size!(Local, 80);
     static_assert_size!(MetaItemLit, 40);
     static_assert_size!(Param, 40);
     static_assert_size!(Pat, 72);

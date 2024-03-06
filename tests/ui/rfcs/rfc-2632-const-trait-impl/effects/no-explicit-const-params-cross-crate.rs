@@ -1,4 +1,4 @@
-// aux-build: cross-crate.rs
+//@ aux-build: cross-crate.rs
 extern crate cross_crate;
 
 use cross_crate::{Bar, foo};

@@ -1,4 +1,4 @@
-// run-rustfix
+//@ run-rustfix
 
 fn add_ten<N: std::ops::Add<i32, Output = N>>(n: N) -> N {
     n + 10

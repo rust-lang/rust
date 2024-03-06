@@ -1,4 +1,4 @@
-// check-fail
+//@ check-fail
 //
 // regression test for issue 52893
 trait At<Name> {

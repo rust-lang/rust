@@ -1,5 +1,5 @@
-// incremental
-// edition:2021
+//@ incremental
+//@ edition:2021
 
 fn main() {
     let _ = async {

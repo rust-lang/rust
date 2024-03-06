@@ -9,7 +9,7 @@ use crossbeam_channel::{unbounded, Receiver, Sender};
 use flycheck::FlycheckHandle;
 use hir::Change;
 use ide::{Analysis, AnalysisHost, Cancellable, FileId};
-use ide_db::base_db::{CrateId, FileLoader, ProcMacroPaths, SourceDatabase};
+use ide_db::base_db::{CrateId, ProcMacroPaths};
 use load_cargo::SourceRootConfig;
 use lsp_types::{SemanticTokens, Url};
 use nohash_hasher::IntMap;
@@ -33,7 +33,7 @@ use crate::{
     mem_docs::MemDocs,
     op_queue::OpQueue,
     reload,
-    task_pool::TaskPool,
+    task_pool::{TaskPool, TaskQueue},
 };
 
 // Enforces drop order
@@ -74,8 +74,8 @@ pub(crate) struct GlobalState {
     pub(crate) last_reported_status: Option<lsp_ext::ServerStatusParams>,
 
     // proc macros
-    pub(crate) proc_macro_changed: bool,
     pub(crate) proc_macro_clients: Arc<[anyhow::Result<ProcMacroServer>]>,
+    pub(crate) build_deps_changed: bool,
 
     // Flycheck
     pub(crate) flycheck: Arc<[FlycheckHandle]>,
@@ -126,6 +126,17 @@ pub(crate) struct GlobalState {
         OpQueue<(), (Arc<Vec<ProjectWorkspace>>, Vec<anyhow::Result<WorkspaceBuildScripts>>)>,
     pub(crate) fetch_proc_macros_queue: OpQueue<Vec<ProcMacroPaths>, bool>,
     pub(crate) prime_caches_queue: OpQueue,
+
+    /// A deferred task queue.
+    ///
+    /// This queue is used for doing database-dependent work inside of sync
+    /// handlers, as accessing the database may block latency-sensitive
+    /// interactions and should be moved away from the main thread.
+    ///
+    /// For certain features, such as [`lsp_ext::UnindexedProjectParams`],
+    /// this queue should run only *after* [`GlobalState::process_changes`] has
+    /// been called.
+    pub(crate) deferred_task_queue: TaskQueue,
 }
 
 /// An immutable snapshot of the world's state at a point in time.
@@ -165,6 +176,11 @@ impl GlobalState {
             Handle { handle, receiver }
         };
 
+        let task_queue = {
+            let (sender, receiver) = unbounded();
+            TaskQueue { sender, receiver }
+        };
+
         let mut analysis_host = AnalysisHost::new(config.lru_parse_query_capacity());
         if let Some(capacities) = config.lru_query_capacities() {
             analysis_host.update_lru_capacities(capacities);
@@ -187,8 +203,9 @@ impl GlobalState {
             source_root_config: SourceRootConfig::default(),
             config_errors: Default::default(),
 
-            proc_macro_changed: false,
             proc_macro_clients: Arc::from_iter([]),
+
+            build_deps_changed: false,
 
             flycheck: Arc::from_iter([]),
             flycheck_sender,
@@ -208,6 +225,8 @@ impl GlobalState {
             fetch_proc_macros_queue: OpQueue::default(),
 
             prime_caches_queue: OpQueue::default(),
+
+            deferred_task_queue: task_queue,
         };
         // Apply any required database inputs from the config.
         this.update_configuration(config);
@@ -215,7 +234,7 @@ impl GlobalState {
     }
 
     pub(crate) fn process_changes(&mut self) -> bool {
-        let _p = profile::span("GlobalState::process_changes");
+        let _p = tracing::span!(tracing::Level::INFO, "GlobalState::process_changes").entered();
 
         let mut file_changes = FxHashMap::<_, (bool, ChangedFile)>::default();
         let (change, modified_rust_files, workspace_structure_change) = {
@@ -328,8 +347,14 @@ impl GlobalState {
         };
 
         self.analysis_host.apply_change(change);
+
         {
-            let raw_database = self.analysis_host.raw_database();
+            if !matches!(&workspace_structure_change, Some((.., true))) {
+                _ = self
+                    .deferred_task_queue
+                    .sender
+                    .send(crate::main_loop::QueuedTask::CheckProcMacroSources(modified_rust_files));
+            }
             // FIXME: ideally we should only trigger a workspace fetch for non-library changes
             // but something's going wrong with the source root business when we add a new local
             // crate see https://github.com/rust-lang/rust-analyzer/issues/13029
@@ -339,12 +364,6 @@ impl GlobalState {
                     force_crate_graph_reload,
                 );
             }
-            self.proc_macro_changed = modified_rust_files.into_iter().any(|file_id| {
-                let crates = raw_database.relevant_crates(file_id);
-                let crate_graph = raw_database.crate_graph();
-
-                crates.iter().any(|&krate| crate_graph[krate].is_proc_macro)
-            });
         }
 
         true
@@ -370,7 +389,7 @@ impl GlobalState {
         params: R::Params,
         handler: ReqHandler,
     ) {
-        let request = self.req_queue.outgoing.register(R::METHOD.to_string(), params, handler);
+        let request = self.req_queue.outgoing.register(R::METHOD.to_owned(), params, handler);
         self.send(request.into());
     }
 
@@ -387,7 +406,7 @@ impl GlobalState {
         &self,
         params: N::Params,
     ) {
-        let not = lsp_server::Notification::new(N::METHOD.to_string(), params);
+        let not = lsp_server::Notification::new(N::METHOD.to_owned(), params);
         self.send(not.into());
     }
 

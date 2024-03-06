@@ -5,9 +5,9 @@
 // and make sure that the hash has changed, then change nothing between rev2 and
 // rev3 and make sure that the hash has not changed.
 
-// build-pass (FIXME(62277): could be check-pass?)
-// revisions: cfail1 cfail2 cfail3
-// compile-flags: -Z query-dep-graph -O
+//@ build-pass (FIXME(62277): could be check-pass?)
+//@ revisions: cfail1 cfail2 cfail3
+//@ compile-flags: -Z query-dep-graph -O
 
 #![allow(warnings)]
 #![feature(rustc_attrs)]
@@ -19,7 +19,7 @@
 const CONST_VISIBILITY: u8 = 0;
 
 #[cfg(not(cfail1))]
-#[rustc_clean(cfg="cfail2", except="hir_owner_nodes")]
+#[rustc_clean(cfg="cfail2", except="opt_hir_owner_nodes")]
 #[rustc_clean(cfg="cfail3")]
 pub const CONST_VISIBILITY: u8 = 0;
 
@@ -29,7 +29,7 @@ pub const CONST_VISIBILITY: u8 = 0;
 const CONST_CHANGE_TYPE_1: i32 = 0;
 
 #[cfg(not(cfail1))]
-#[rustc_clean(cfg="cfail2", except="hir_owner_nodes,type_of")]
+#[rustc_clean(cfg="cfail2", except="opt_hir_owner_nodes,type_of")]
 #[rustc_clean(cfg="cfail3")]
 const CONST_CHANGE_TYPE_1: u32 = 0;
 
@@ -39,13 +39,13 @@ const CONST_CHANGE_TYPE_1: u32 = 0;
 const CONST_CHANGE_TYPE_2: Option<u32> = None;
 
 #[cfg(not(cfail1))]
-#[rustc_clean(cfg="cfail2", except="hir_owner_nodes,type_of")]
+#[rustc_clean(cfg="cfail2", except="opt_hir_owner_nodes,type_of")]
 #[rustc_clean(cfg="cfail3")]
 const CONST_CHANGE_TYPE_2: Option<u64> = None;
 
 
 // Change value between simple literals
-#[rustc_clean(cfg="cfail2", except="hir_owner_nodes")]
+#[rustc_clean(cfg="cfail2", except="opt_hir_owner_nodes")]
 #[rustc_clean(cfg="cfail3")]
 const CONST_CHANGE_VALUE_1: i16 = {
     #[cfg(cfail1)]
@@ -57,7 +57,7 @@ const CONST_CHANGE_VALUE_1: i16 = {
 
 
 // Change value between expressions
-#[rustc_clean(cfg="cfail2", except="hir_owner_nodes")]
+#[rustc_clean(cfg="cfail2", except="opt_hir_owner_nodes")]
 #[rustc_clean(cfg="cfail3")]
 const CONST_CHANGE_VALUE_2: i16 = {
     #[cfg(cfail1)]
@@ -67,7 +67,7 @@ const CONST_CHANGE_VALUE_2: i16 = {
     { 1 + 2 }
 };
 
-#[rustc_clean(cfg="cfail2", except="hir_owner_nodes")]
+#[rustc_clean(cfg="cfail2", except="opt_hir_owner_nodes")]
 #[rustc_clean(cfg="cfail3")]
 const CONST_CHANGE_VALUE_3: i16 = {
     #[cfg(cfail1)]
@@ -77,7 +77,7 @@ const CONST_CHANGE_VALUE_3: i16 = {
     { 2 * 3 }
 };
 
-#[rustc_clean(cfg="cfail2", except="hir_owner_nodes")]
+#[rustc_clean(cfg="cfail2", except="opt_hir_owner_nodes")]
 #[rustc_clean(cfg="cfail3")]
 const CONST_CHANGE_VALUE_4: i16 = {
     #[cfg(cfail1)]
@@ -99,11 +99,11 @@ mod const_change_type_indirectly {
     #[cfg(not(cfail1))]
     use super::ReferencedType2 as Type;
 
-    #[rustc_clean(cfg="cfail2", except="hir_owner_nodes,type_of")]
+    #[rustc_clean(cfg="cfail2", except="opt_hir_owner_nodes,type_of")]
     #[rustc_clean(cfg="cfail3")]
     const CONST_CHANGE_TYPE_INDIRECTLY_1: Type = Type;
 
-    #[rustc_clean(cfg="cfail2", except="hir_owner_nodes,type_of")]
+    #[rustc_clean(cfg="cfail2", except="opt_hir_owner_nodes,type_of")]
     #[rustc_clean(cfg="cfail3")]
     const CONST_CHANGE_TYPE_INDIRECTLY_2: Option<Type> = None;
 }

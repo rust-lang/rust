@@ -2,7 +2,7 @@
 // Tests that retrieving the ident of the X::foo field
 // in main() does not cause an ICE
 
-// check-pass
+//@ check-pass
 
 #[allow(dead_code)]
 struct X {

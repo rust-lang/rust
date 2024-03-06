@@ -1,5 +1,5 @@
 error: usage of `process::exit`
-  --> $DIR/exit2.rs:4:5
+  --> tests/ui/exit2.rs:4:5
    |
 LL |     std::process::exit(3);
    |     ^^^^^^^^^^^^^^^^^^^^^

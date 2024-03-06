@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 
 // The actual regression test from #63479. (Including this because my
 // first draft at fn-ptr-is-structurally-matchable.rs failed to actually

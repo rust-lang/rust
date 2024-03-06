@@ -12,33 +12,28 @@
 #![cfg_attr(feature = "in-rust-tree", feature(rustc_private))]
 #![recursion_limit = "128"]
 
-#[allow(unused)]
-macro_rules! eprintln {
-    ($($tt:tt)*) => { stdx::eprintln!($($tt)*) };
-}
-
 #[cfg(test)]
 mod fixture;
 
 mod markup;
-mod prime_caches;
 mod navigation_target;
 
 mod annotations;
 mod call_hierarchy;
-mod signature_help;
 mod doc_links;
-mod highlight_related;
 mod expand_macro;
 mod extend_selection;
+mod fetch_crates;
 mod file_structure;
 mod folding_ranges;
 mod goto_declaration;
 mod goto_definition;
 mod goto_implementation;
 mod goto_type_definition;
+mod highlight_related;
 mod hover;
 mod inlay_hints;
+mod interpret_function;
 mod join_lines;
 mod markdown_remove;
 mod matching_brace;
@@ -48,6 +43,8 @@ mod parent_module;
 mod references;
 mod rename;
 mod runnables;
+mod shuffle_crate_graph;
+mod signature_help;
 mod ssr;
 mod static_index;
 mod status;
@@ -56,12 +53,9 @@ mod syntax_tree;
 mod typing;
 mod view_crate_graph;
 mod view_hir;
-mod view_mir;
-mod interpret_function;
 mod view_item_tree;
-mod shuffle_crate_graph;
-mod fetch_crates;
 mod view_memory_layout;
+mod view_mir;
 
 use std::ffi::OsStr;
 
@@ -73,13 +67,13 @@ use ide_db::{
         salsa::{self, ParallelDatabase},
         CrateOrigin, Env, FileLoader, FileSet, SourceDatabase, VfsPath,
     },
-    symbol_index, FxHashMap, FxIndexSet, LineIndexDatabase,
+    prime_caches, symbol_index, FxHashMap, FxIndexSet, LineIndexDatabase,
 };
 use syntax::SourceFile;
 use triomphe::Arc;
 use view_memory_layout::{view_memory_layout, RecursiveMemoryLayout};
 
-use crate::navigation_target::{ToNav, TryToNav};
+use crate::navigation_target::ToNav;
 
 pub use crate::{
     annotations::{Annotation, AnnotationConfig, AnnotationKind, AnnotationLocation},
@@ -104,8 +98,7 @@ pub use crate::{
         SymbolInformationKind,
     },
     move_item::Direction,
-    navigation_target::{NavigationTarget, UpmappingResult},
-    prime_caches::ParallelPrimeCachesProgress,
+    navigation_target::{NavigationTarget, TryToNav, UpmappingResult},
     references::ReferenceSearchResult,
     rename::RenameError,
     runnables::{Runnable, RunnableKind, TestId},
@@ -132,6 +125,7 @@ pub use ide_db::{
     documentation::Documentation,
     label::Label,
     line_index::{LineCol, LineIndex},
+    prime_caches::ParallelPrimeCachesProgress,
     search::{ReferenceCategory, SearchScope},
     source_change::{FileSystemEdit, SnippetEdit, SourceChange},
     symbol_index::Query,
@@ -168,6 +162,10 @@ pub struct AnalysisHost {
 impl AnalysisHost {
     pub fn new(lru_capacity: Option<usize>) -> AnalysisHost {
         AnalysisHost { db: RootDatabase::new(lru_capacity) }
+    }
+
+    pub fn with_database(db: RootDatabase) -> AnalysisHost {
+        AnalysisHost { db }
     }
 
     pub fn update_lru_capacity(&mut self, lru_capacity: Option<usize>) {
@@ -238,7 +236,7 @@ impl Analysis {
         let mut host = AnalysisHost::default();
         let file_id = FileId::from_raw(0);
         let mut file_set = FileSet::default();
-        file_set.insert(file_id, VfsPath::new_virtual_path("/main.rs".to_string()));
+        file_set.insert(file_id, VfsPath::new_virtual_path("/main.rs".to_owned()));
         let source_root = SourceRoot::new_local(file_set);
 
         let mut change = Change::new();
@@ -258,11 +256,11 @@ impl Analysis {
             Env::default(),
             false,
             CrateOrigin::Local { repo: None, name: None },
-            Err("Analysis::from_single_file has no target layout".into()),
-            None,
         );
         change.change_file(file_id, Some(Arc::from(text)));
         change.set_crate_graph(crate_graph);
+        change.set_target_data_layouts(vec![Err("fixture has no layout".into())]);
+        change.set_toolchains(vec![None]);
         host.apply_change(change);
         (host.analysis(), file_id)
     }
@@ -680,9 +678,8 @@ impl Analysis {
         &self,
         position: FilePosition,
         new_name: &str,
-        rename_external: bool,
     ) -> Cancellable<Result<SourceChange, RenameError>> {
-        self.with_db(|db| rename::rename(db, position, new_name, rename_external))
+        self.with_db(|db| rename::rename(db, position, new_name))
     }
 
     pub fn prepare_rename(

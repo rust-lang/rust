@@ -1,4 +1,4 @@
-// check-pass
+//@ check-pass
 
 fn main() {
     let array = [0x42u8; 10];

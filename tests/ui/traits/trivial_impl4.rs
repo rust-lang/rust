@@ -5,7 +5,7 @@
 //! This test differs from `trivial_impl3` because there actually
 //! exists any impl for `Trait`, which has an effect on coherence.
 
-// aux-build:trivial4.rs
+//@ aux-build:trivial4.rs
 
 extern crate trivial4;
 

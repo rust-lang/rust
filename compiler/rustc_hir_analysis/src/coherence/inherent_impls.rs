@@ -144,6 +144,7 @@ impl<'tcx> InherentCollect<'tcx> {
         let id = id.owner_id.def_id;
         let item_span = self.tcx.def_span(id);
         let self_ty = self.tcx.type_of(id).instantiate_identity();
+        let self_ty = self.tcx.peel_off_weak_alias_tys(self_ty);
         match *self_ty.kind() {
             ty::Adt(def, _) => self.check_def_id(id, self_ty, def.did()),
             ty::Foreign(did) => self.check_def_id(id, self_ty, did),
@@ -166,13 +167,15 @@ impl<'tcx> InherentCollect<'tcx> {
             | ty::Never
             | ty::FnPtr(_)
             | ty::Tuple(..) => self.check_primitive_impl(id, self_ty),
-            ty::Alias(..) | ty::Param(_) => {
+            ty::Alias(ty::Projection | ty::Inherent | ty::Opaque, _) | ty::Param(_) => {
                 Err(self.tcx.dcx().emit_err(errors::InherentNominal { span: item_span }))
             }
             ty::FnDef(..)
             | ty::Closure(..)
+            | ty::CoroutineClosure(..)
             | ty::Coroutine(..)
             | ty::CoroutineWitness(..)
+            | ty::Alias(ty::Weak, _)
             | ty::Bound(..)
             | ty::Placeholder(_)
             | ty::Infer(_) => {

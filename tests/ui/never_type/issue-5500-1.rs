@@ -2,7 +2,7 @@
 // is OK because the test is here to check that the compiler doesn't ICE (cf.
 // #5500).
 
-// check-pass
+//@ check-pass
 
 struct TrieMapIterator<'a> {
     node: &'a usize

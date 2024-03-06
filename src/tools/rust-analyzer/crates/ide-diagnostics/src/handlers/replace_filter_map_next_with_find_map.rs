@@ -63,8 +63,8 @@ mod tests {
     #[track_caller]
     pub(crate) fn check_diagnostics(ra_fixture: &str) {
         let mut config = DiagnosticsConfig::test_sample();
-        config.disabled.insert("inactive-code".to_string());
-        config.disabled.insert("E0599".to_string());
+        config.disabled.insert("inactive-code".to_owned());
+        config.disabled.insert("E0599".to_owned());
         check_diagnostics_with_config(config, ra_fixture)
     }
 
@@ -76,6 +76,21 @@ mod tests {
 fn foo() {
     let _m = core::iter::repeat(()).filter_map(|()| Some(92)).next();
 }          //^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ 💡 weak: replace filter_map(..).next() with find_map(..)
+"#,
+        );
+    }
+
+    #[test]
+    fn replace_filter_map_next_dont_work_for_not_sized_issues_16596() {
+        check_diagnostics(
+            r#"
+//- minicore: iterators
+fn foo() {
+    let mut j = [0].into_iter();
+    let i: &mut dyn Iterator<Item = i32>  = &mut j;
+    let dummy_fn = |v| (v > 0).then_some(v + 1);
+    let _res = i.filter_map(dummy_fn).next();
+}
 "#,
         );
     }

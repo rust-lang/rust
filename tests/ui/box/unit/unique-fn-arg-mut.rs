@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 
 fn f(i: &mut Box<isize>) {
     *i = Box::new(200);

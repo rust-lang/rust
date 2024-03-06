@@ -1,5 +1,5 @@
-// check-pass
-// aux-build:call-site.rs
+//@ check-pass
+//@ aux-build:call-site.rs
 
 extern crate call_site;
 

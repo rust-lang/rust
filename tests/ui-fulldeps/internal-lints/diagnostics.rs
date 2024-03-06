@@ -1,4 +1,5 @@
-// compile-flags: -Z unstable-options
+//@ compile-flags: -Z unstable-options
+//@ ignore-stage1
 
 #![crate_type = "lib"]
 #![feature(rustc_attrs)]
@@ -13,8 +14,8 @@ extern crate rustc_session;
 extern crate rustc_span;
 
 use rustc_errors::{
-    AddToDiagnostic, Diagnostic, DiagnosticBuilder, DiagnosticMessage, EmissionGuarantee, DiagCtxt,
-    IntoDiagnostic, Level, SubdiagnosticMessage,
+    AddToDiagnostic, Diag, EmissionGuarantee, DiagCtxt, IntoDiagnostic, Level,
+    SubdiagMessageOp,
 };
 use rustc_macros::{Diagnostic, Subdiagnostic};
 use rustc_span::Span;
@@ -38,8 +39,8 @@ struct Note {
 pub struct UntranslatableInIntoDiagnostic;
 
 impl<'a, G: EmissionGuarantee> IntoDiagnostic<'a, G> for UntranslatableInIntoDiagnostic {
-    fn into_diagnostic(self, dcx: &'a DiagCtxt, level: Level) -> DiagnosticBuilder<'a, G> {
-        DiagnosticBuilder::new(dcx, level, "untranslatable diagnostic")
+    fn into_diagnostic(self, dcx: &'a DiagCtxt, level: Level) -> Diag<'a, G> {
+        Diag::new(dcx, level, "untranslatable diagnostic")
         //~^ ERROR diagnostics should be created using translatable messages
     }
 }
@@ -47,18 +48,19 @@ impl<'a, G: EmissionGuarantee> IntoDiagnostic<'a, G> for UntranslatableInIntoDia
 pub struct TranslatableInIntoDiagnostic;
 
 impl<'a, G: EmissionGuarantee> IntoDiagnostic<'a, G> for TranslatableInIntoDiagnostic {
-    fn into_diagnostic(self, dcx: &'a DiagCtxt, level: Level) -> DiagnosticBuilder<'a, G> {
-        DiagnosticBuilder::new(dcx, level, crate::fluent_generated::no_crate_example)
+    fn into_diagnostic(self, dcx: &'a DiagCtxt, level: Level) -> Diag<'a, G> {
+        Diag::new(dcx, level, crate::fluent_generated::no_crate_example)
     }
 }
 
 pub struct UntranslatableInAddToDiagnostic;
 
 impl AddToDiagnostic for UntranslatableInAddToDiagnostic {
-    fn add_to_diagnostic_with<F>(self, diag: &mut Diagnostic, _: F)
-    where
-        F: Fn(&mut Diagnostic, SubdiagnosticMessage) -> SubdiagnosticMessage,
-    {
+    fn add_to_diagnostic_with<G: EmissionGuarantee, F: SubdiagMessageOp<G>>(
+        self,
+        diag: &mut Diag<'_, G>,
+        f: F,
+    ) {
         diag.note("untranslatable diagnostic");
         //~^ ERROR diagnostics should be created using translatable messages
     }
@@ -67,10 +69,11 @@ impl AddToDiagnostic for UntranslatableInAddToDiagnostic {
 pub struct TranslatableInAddToDiagnostic;
 
 impl AddToDiagnostic for TranslatableInAddToDiagnostic {
-    fn add_to_diagnostic_with<F>(self, diag: &mut Diagnostic, _: F)
-    where
-        F: Fn(&mut Diagnostic, SubdiagnosticMessage) -> SubdiagnosticMessage,
-    {
+    fn add_to_diagnostic_with<G: EmissionGuarantee, F: SubdiagMessageOp<G>>(
+        self,
+        diag: &mut Diag<'_, G>,
+        f: F,
+    ) {
         diag.note(crate::fluent_generated::no_crate_note);
     }
 }

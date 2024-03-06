@@ -1,4 +1,4 @@
-// run-rustfix
+//@ run-rustfix
 
 trait Greeter0 {
     fn greet(&self);

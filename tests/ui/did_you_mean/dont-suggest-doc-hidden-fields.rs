@@ -1,7 +1,7 @@
 // Regression test for issue #93210.
 
-// aux-crate:doc_hidden_fields=doc-hidden-fields.rs
-// edition: 2021
+//@ aux-crate:doc_hidden_fields=doc-hidden-fields.rs
+//@ edition: 2021
 
 #[derive(Default)]
 pub struct A {

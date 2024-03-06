@@ -1,5 +1,5 @@
-// needs-llvm-components: nvptx
-// compile-flags: --target=nvptx64-nvidia-cuda --crate-type=rlib
+//@ needs-llvm-components: nvptx
+//@ compile-flags: --target=nvptx64-nvidia-cuda --crate-type=rlib
 #![no_core]
 #![feature(no_core, lang_items)]
 #[lang="sized"]

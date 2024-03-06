@@ -21,7 +21,7 @@ pub(super) fn check<'tcx>(
     unwrap_arg: &'tcx hir::Expr<'_>,
     msrv: &Msrv,
 ) -> bool {
-    // lint if the caller of `map()` is an `Option`
+    // lint if the caller of `map()` is an `Option` or a `Result`.
     let is_option = is_type_diagnostic_item(cx, cx.typeck_results().expr_ty(recv), sym::Option);
     let is_result = is_type_diagnostic_item(cx, cx.typeck_results().expr_ty(recv), sym::Result);
 

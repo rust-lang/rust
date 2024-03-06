@@ -1,7 +1,3 @@
-#![feature(min_specialization)]
-#![deny(rustc::untranslatable_diagnostic)]
-#![deny(rustc::diagnostic_outside_of_impl)]
-
 #[macro_use]
 extern crate rustc_macros;
 
@@ -12,7 +8,7 @@ use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
 use rustc_data_structures::stable_hasher::{
     HashStable, StableCompare, StableHasher, ToStableHashKey,
 };
-use rustc_error_messages::{DiagnosticMessage, MultiSpan};
+use rustc_error_messages::{DiagMessage, MultiSpan};
 use rustc_hir::HashStableContext;
 use rustc_hir::HirId;
 use rustc_span::edition::Edition;
@@ -73,7 +69,7 @@ pub enum Applicability {
 }
 
 /// Each lint expectation has a `LintExpectationId` assigned by the `LintLevelsBuilder`.
-/// Expected `Diagnostic`s get the lint level `Expect` which stores the `LintExpectationId`
+/// Expected diagnostics get the lint level `Expect` which stores the `LintExpectationId`
 /// to match it with the actual expectation later on.
 ///
 /// The `LintExpectationId` has to be stable between compilations, as diagnostic
@@ -231,8 +227,8 @@ impl Level {
     }
 
     /// Converts a lower-case string to a level. This will never construct the expect
-    /// level as that would require a [`LintExpectationId`]
-    pub fn from_str(x: &str) -> Option<Level> {
+    /// level as that would require a [`LintExpectationId`].
+    pub fn from_str(x: &str) -> Option<Self> {
         match x {
             "allow" => Some(Level::Allow),
             "warn" => Some(Level::Warn),
@@ -242,17 +238,21 @@ impl Level {
         }
     }
 
-    /// Converts a symbol to a level.
-    pub fn from_attr(attr: &Attribute) -> Option<Level> {
-        match attr.name_or_empty() {
-            sym::allow => Some(Level::Allow),
-            sym::expect => Some(Level::Expect(LintExpectationId::Unstable {
-                attr_id: attr.id,
-                lint_index: None,
-            })),
-            sym::warn => Some(Level::Warn),
-            sym::deny => Some(Level::Deny),
-            sym::forbid => Some(Level::Forbid),
+    /// Converts an `Attribute` to a level.
+    pub fn from_attr(attr: &Attribute) -> Option<Self> {
+        Self::from_symbol(attr.name_or_empty(), Some(attr.id))
+    }
+
+    /// Converts a `Symbol` to a level.
+    pub fn from_symbol(s: Symbol, id: Option<AttrId>) -> Option<Self> {
+        match (s, id) {
+            (sym::allow, _) => Some(Level::Allow),
+            (sym::expect, Some(attr_id)) => {
+                Some(Level::Expect(LintExpectationId::Unstable { attr_id, lint_index: None }))
+            }
+            (sym::warn, _) => Some(Level::Warn),
+            (sym::deny, _) => Some(Level::Deny),
+            (sym::forbid, _) => Some(Level::Forbid),
             _ => None,
         }
     }
@@ -569,7 +569,7 @@ pub struct AmbiguityErrorDiag {
 // This could be a closure, but then implementing derive trait
 // becomes hacky (and it gets allocated).
 #[derive(Debug)]
-pub enum BuiltinLintDiagnostics {
+pub enum BuiltinLintDiag {
     Normal,
     AbsPathWithModule(Span),
     ProcMacroDeriveResolutionFallback(Span),
@@ -597,7 +597,7 @@ pub enum BuiltinLintDiagnostics {
     UnicodeTextFlow(Span, String),
     UnexpectedCfgName((Symbol, Span), Option<(Symbol, Span)>),
     UnexpectedCfgValue((Symbol, Span), Option<(Symbol, Span)>),
-    DeprecatedWhereclauseLocation(Span, String),
+    DeprecatedWhereclauseLocation(Option<(Span, String)>),
     SingleUseLifetime {
         /// Span of the parameter which declares this lifetime.
         param_span: Span,
@@ -674,7 +674,7 @@ pub struct BufferedEarlyLint {
     pub span: MultiSpan,
 
     /// The lint message.
-    pub msg: DiagnosticMessage,
+    pub msg: DiagMessage,
 
     /// The `NodeId` of the AST node that generated the lint.
     pub node_id: NodeId,
@@ -683,8 +683,8 @@ pub struct BufferedEarlyLint {
     /// `rustc_lint::early::EarlyContextAndPass::check_id`.
     pub lint_id: LintId,
 
-    /// Customization of the `DiagnosticBuilder<'_>` for the lint.
-    pub diagnostic: BuiltinLintDiagnostics,
+    /// Customization of the `Diag<'_>` for the lint.
+    pub diagnostic: BuiltinLintDiag,
 }
 
 #[derive(Default, Debug)]
@@ -703,8 +703,8 @@ impl LintBuffer {
         lint: &'static Lint,
         node_id: NodeId,
         span: MultiSpan,
-        msg: impl Into<DiagnosticMessage>,
-        diagnostic: BuiltinLintDiagnostics,
+        msg: impl Into<DiagMessage>,
+        diagnostic: BuiltinLintDiag,
     ) {
         let lint_id = LintId::of(lint);
         let msg = msg.into();
@@ -712,7 +712,8 @@ impl LintBuffer {
     }
 
     pub fn take(&mut self, id: NodeId) -> Vec<BufferedEarlyLint> {
-        self.map.remove(&id).unwrap_or_default()
+        // FIXME(#120456) - is `swap_remove` correct?
+        self.map.swap_remove(&id).unwrap_or_default()
     }
 
     pub fn buffer_lint(
@@ -720,9 +721,9 @@ impl LintBuffer {
         lint: &'static Lint,
         id: NodeId,
         sp: impl Into<MultiSpan>,
-        msg: impl Into<DiagnosticMessage>,
+        msg: impl Into<DiagMessage>,
     ) {
-        self.add_lint(lint, id, sp.into(), msg, BuiltinLintDiagnostics::Normal)
+        self.add_lint(lint, id, sp.into(), msg, BuiltinLintDiag::Normal)
     }
 
     pub fn buffer_lint_with_diagnostic(
@@ -730,8 +731,8 @@ impl LintBuffer {
         lint: &'static Lint,
         id: NodeId,
         sp: impl Into<MultiSpan>,
-        msg: impl Into<DiagnosticMessage>,
-        diagnostic: BuiltinLintDiagnostics,
+        msg: impl Into<DiagMessage>,
+        diagnostic: BuiltinLintDiag,
     ) {
         self.add_lint(lint, id, sp.into(), msg, diagnostic)
     }

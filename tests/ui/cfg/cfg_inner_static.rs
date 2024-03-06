@@ -1,7 +1,7 @@
-// run-pass
-// aux-build:cfg_inner_static.rs
+//@ run-pass
+//@ aux-build:cfg_inner_static.rs
 
-// pretty-expanded FIXME #23616
+//@ pretty-expanded FIXME #23616
 
 extern crate cfg_inner_static;
 

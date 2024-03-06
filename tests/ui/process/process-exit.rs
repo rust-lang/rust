@@ -1,7 +1,7 @@
-// run-pass
+//@ run-pass
 #![allow(unused_imports)]
-// ignore-emscripten no processes
-// ignore-sgx no processes
+//@ ignore-emscripten no processes
+//@ ignore-sgx no processes
 
 use std::env;
 use std::process::{self, Command, Stdio};

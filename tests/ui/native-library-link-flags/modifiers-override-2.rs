@@ -1,3 +1,3 @@
-// compile-flags:-lstatic:+whole-archive,-whole-archive=foo
+//@ compile-flags:-lstatic:+whole-archive,-whole-archive=foo
 
 fn main() {}

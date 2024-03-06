@@ -1,4 +1,4 @@
-// check-pass
+//@ check-pass
 // check that `deref_into_dyn_supertrait` doesn't cause ICE by eagerly converting
 // a cancelled lint
 

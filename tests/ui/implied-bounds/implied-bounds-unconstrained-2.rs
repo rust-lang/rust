@@ -1,4 +1,4 @@
-// check-pass
+//@ check-pass
 
 // Another minimized regression test for #112832.
 trait Trait {

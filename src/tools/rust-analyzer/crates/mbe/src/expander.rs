@@ -58,7 +58,7 @@ pub(crate) fn expand_rules<S: Span>(
         ExpandResult::new(
             tt::Subtree {
                 delimiter: tt::Delimiter::invisible_spanned(call_site),
-                token_trees: vec![],
+                token_trees: Box::new([]),
             },
             ExpandError::NoMatchingRule,
         )

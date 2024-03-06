@@ -1,4 +1,4 @@
-// aux-build:private-inferred-type.rs
+//@ aux-build:private-inferred-type.rs
 
 #![allow(warnings)]
 #![allow(private_interfaces)]

@@ -9,8 +9,6 @@ fn foo<T>(x: T) {
            (y: T) { //~ ERROR E0401
     }
     bfnr(x);
-    //~^ ERROR type annotations needed
-    //~| ERROR type annotations needed
 }
 
 

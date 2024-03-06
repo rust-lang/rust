@@ -149,6 +149,8 @@ where
             "`field` projection called on a slice -- call `index` projection instead"
         );
         let offset = base.layout().fields.offset(field);
+        // Computing the layout does normalization, so we get a normalized type out of this
+        // even if the field type is non-normalized (possible e.g. via associated types).
         let field_layout = base.layout().field(self, field);
 
         // Offset may need adjustment for unsized fields.

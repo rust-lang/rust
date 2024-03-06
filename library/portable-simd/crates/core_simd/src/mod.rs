@@ -1,8 +1,6 @@
 #[macro_use]
 mod swizzle;
 
-pub(crate) mod intrinsics;
-
 mod alias;
 mod cast;
 mod fmt;
@@ -26,8 +24,6 @@ pub mod simd {
     pub mod ptr;
 
     pub mod cmp;
-
-    pub(crate) use crate::core_simd::intrinsics;
 
     pub use crate::core_simd::alias::*;
     pub use crate::core_simd::cast::*;

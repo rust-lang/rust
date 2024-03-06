@@ -3,7 +3,7 @@
 // defines is only not imported because `my_struct` is defined by a macros 2.0
 // macro.
 
-// aux-build:use_by_macro.rs
+//@ aux-build:use_by_macro.rs
 
 extern crate use_by_macro;
 

@@ -1,4 +1,4 @@
-// check-pass
+//@ check-pass
 
 const SZ: usize = 64_000_000;
 type BigDrop = [String; SZ];

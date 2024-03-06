@@ -57,7 +57,7 @@ fn block_to_line(acc: &mut Assists, comment: ast::Comment) -> Option<()> {
 
                     // Don't introduce trailing whitespace
                     if line.is_empty() {
-                        line_prefix.to_string()
+                        line_prefix.to_owned()
                     } else {
                         format!("{line_prefix} {line}")
                     }

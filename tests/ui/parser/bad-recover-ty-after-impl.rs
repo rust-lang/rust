@@ -1,4 +1,4 @@
-// check-pass
+//@ check-pass
 
 macro_rules! impl_primitive {
     ($ty:ty) => { impl_primitive!(impl $ty); };

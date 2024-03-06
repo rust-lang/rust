@@ -1,4 +1,4 @@
-use rustc_errors::{codes::*, DiagnosticArgFromDisplay};
+use rustc_errors::{codes::*, DiagArgFromDisplay};
 use rustc_macros::{Diagnostic, LintDiagnostic, Subdiagnostic};
 use rustc_span::{Span, Symbol};
 
@@ -36,7 +36,7 @@ pub struct ItemIsPrivate<'a> {
     #[label]
     pub span: Span,
     pub kind: &'a str,
-    pub descr: DiagnosticArgFromDisplay<'a>,
+    pub descr: DiagArgFromDisplay<'a>,
 }
 
 #[derive(Diagnostic)]
@@ -55,7 +55,7 @@ pub struct InPublicInterface<'a> {
     pub span: Span,
     pub vis_descr: &'static str,
     pub kind: &'a str,
-    pub descr: DiagnosticArgFromDisplay<'a>,
+    pub descr: DiagArgFromDisplay<'a>,
     #[label(privacy_visibility_label)]
     pub vis_span: Span,
 }
@@ -72,7 +72,7 @@ pub struct ReportEffectiveVisibility {
 #[diag(privacy_from_private_dep_in_public_interface)]
 pub struct FromPrivateDependencyInPublicInterface<'a> {
     pub kind: &'a str,
-    pub descr: DiagnosticArgFromDisplay<'a>,
+    pub descr: DiagArgFromDisplay<'a>,
     pub krate: Symbol,
 }
 
@@ -82,7 +82,7 @@ pub struct UnnameableTypesLint<'a> {
     #[label]
     pub span: Span,
     pub kind: &'a str,
-    pub descr: DiagnosticArgFromDisplay<'a>,
+    pub descr: DiagArgFromDisplay<'a>,
     pub reachable_vis: &'a str,
     pub reexported_vis: &'a str,
 }
@@ -96,11 +96,11 @@ pub struct PrivateInterfacesOrBoundsLint<'a> {
     #[label(privacy_item_label)]
     pub item_span: Span,
     pub item_kind: &'a str,
-    pub item_descr: DiagnosticArgFromDisplay<'a>,
+    pub item_descr: DiagArgFromDisplay<'a>,
     pub item_vis_descr: &'a str,
     #[note(privacy_ty_note)]
     pub ty_span: Span,
     pub ty_kind: &'a str,
-    pub ty_descr: DiagnosticArgFromDisplay<'a>,
+    pub ty_descr: DiagArgFromDisplay<'a>,
     pub ty_vis_descr: &'a str,
 }

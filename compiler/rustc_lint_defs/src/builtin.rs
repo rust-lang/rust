@@ -3,6 +3,9 @@
 //! These are the built-in lints that are emitted direct in the main
 //! compiler code, rather than using their own custom pass. Those
 //! lints are all available in `rustc_lint::builtin`.
+//!
+//! When removing a lint, make sure to also add a call to `register_removed` in
+//! compiler/rustc_lint/src/lib.rs.
 
 use crate::{declare_lint, declare_lint_pass, FutureIncompatibilityReason};
 use rustc_span::edition::Edition;
@@ -29,7 +32,6 @@ declare_lint_pass! {
         CONFLICTING_REPR_HINTS,
         CONST_EVALUATABLE_UNCHECKED,
         CONST_ITEM_MUTATION,
-        CONST_PATTERNS_WITHOUT_PARTIAL_EQ,
         DEAD_CODE,
         DEPRECATED,
         DEPRECATED_CFG_ATTR_CRATE_TYPE_NAME,
@@ -45,7 +47,6 @@ declare_lint_pass! {
         FUZZY_PROVENANCE_CASTS,
         HIDDEN_GLOB_REEXPORTS,
         ILL_FORMED_ATTRIBUTE_INPUT,
-        ILLEGAL_FLOATING_POINT_LITERAL_PATTERN,
         INCOMPLETE_INCLUDE,
         INDIRECT_STRUCTURAL_MATCH,
         INEFFECTIVE_UNSTABLE_TRAIT_IMPL,
@@ -67,7 +68,6 @@ declare_lint_pass! {
         MUST_NOT_SUSPEND,
         NAMED_ARGUMENTS_USED_POSITIONALLY,
         NON_EXHAUSTIVE_OMITTED_PATTERNS,
-        NONTRIVIAL_STRUCTURAL_MATCH,
         ORDER_DEPENDENT_TRAIT_OBJECTS,
         OVERLAPPING_RANGE_ENDPOINTS,
         PATTERNS_IN_FNS_WITHOUT_BODY,
@@ -88,8 +88,7 @@ declare_lint_pass! {
         SINGLE_USE_LIFETIMES,
         SOFT_UNSTABLE,
         STABLE_FEATURES,
-        STATIC_MUT_REF,
-        SUSPICIOUS_AUTO_TRAIT_IMPLS,
+        STATIC_MUT_REFS,
         TEST_UNSTABLE_LINT,
         TEXT_DIRECTION_CODEPOINT_IN_COMMENT,
         TRIVIAL_CASTS,
@@ -1502,7 +1501,7 @@ declare_lint! {
     Warn,
     "distinct impls distinguished only by the leak-check code",
     @future_incompatible = FutureIncompatibleInfo {
-        reason: FutureIncompatibilityReason::FutureReleaseErrorDontReportInDeps,
+        reason: FutureIncompatibilityReason::Custom("the behavior may change in a future release"),
         reference: "issue #56105 <https://github.com/rust-lang/rust/issues/56105>",
     };
 }
@@ -1768,7 +1767,7 @@ declare_lint! {
 }
 
 declare_lint! {
-    /// The `static_mut_ref` lint checks for shared or mutable references
+    /// The `static_mut_refs` lint checks for shared or mutable references
     /// of mutable static inside `unsafe` blocks and `unsafe` functions.
     ///
     /// ### Example
@@ -1806,9 +1805,9 @@ declare_lint! {
     /// Shared or mutable references of mutable static are almost always a mistake and
     /// can lead to undefined behavior and various other problems in your code.
     ///
-    /// This lint is "warn" by default on editions up to 2021, from 2024 there is
+    /// This lint is "warn" by default on editions up to 2021, in 2024 there is
     /// a hard error instead.
-    pub STATIC_MUT_REF,
+    pub STATIC_MUT_REFS,
     Warn,
     "shared references or mutable references of mutable static is discouraged",
     @future_incompatible = FutureIncompatibleInfo {
@@ -1871,55 +1870,6 @@ declare_lint! {
         reason: FutureIncompatibilityReason::EditionError(Edition::Edition2018),
         reference: "issue #53130 <https://github.com/rust-lang/rust/issues/53130>",
      };
-}
-
-declare_lint! {
-    /// The `illegal_floating_point_literal_pattern` lint detects
-    /// floating-point literals used in patterns.
-    ///
-    /// ### Example
-    ///
-    /// ```rust
-    /// let x = 42.0;
-    ///
-    /// match x {
-    ///     5.0 => {}
-    ///     _ => {}
-    /// }
-    /// ```
-    ///
-    /// {{produces}}
-    ///
-    /// ### Explanation
-    ///
-    /// Previous versions of the compiler accepted floating-point literals in
-    /// patterns, but it was later determined this was a mistake. The
-    /// semantics of comparing floating-point values may not be clear in a
-    /// pattern when contrasted with "structural equality". Typically you can
-    /// work around this by using a [match guard], such as:
-    ///
-    /// ```rust
-    /// # let x = 42.0;
-    ///
-    /// match x {
-    ///     y if y == 5.0 => {}
-    ///     _ => {}
-    /// }
-    /// ```
-    ///
-    /// This is a [future-incompatible] lint to transition this to a hard
-    /// error in the future. See [issue #41620] for more details.
-    ///
-    /// [issue #41620]: https://github.com/rust-lang/rust/issues/41620
-    /// [match guard]: https://doc.rust-lang.org/reference/expressions/match-expr.html#match-guards
-    /// [future-incompatible]: ../index.md#future-incompatible-lints
-    pub ILLEGAL_FLOATING_POINT_LITERAL_PATTERN,
-    Warn,
-    "floating-point literals cannot be used in patterns",
-    @future_incompatible = FutureIncompatibleInfo {
-        reason: FutureIncompatibilityReason::FutureReleaseErrorDontReportInDeps,
-        reference: "issue #41620 <https://github.com/rust-lang/rust/issues/41620>",
-    };
 }
 
 declare_lint! {
@@ -2330,8 +2280,8 @@ declare_lint! {
     Warn,
     "constant used in pattern contains value of non-structural-match type in a field or a variant",
     @future_incompatible = FutureIncompatibleInfo {
-        reason: FutureIncompatibilityReason::FutureReleaseErrorDontReportInDeps,
-        reference: "issue #62411 <https://github.com/rust-lang/rust/issues/62411>",
+        reason: FutureIncompatibilityReason::FutureReleaseErrorReportInDeps,
+        reference: "issue #120362 <https://github.com/rust-lang/rust/issues/120362>",
     };
 }
 
@@ -2386,98 +2336,8 @@ declare_lint! {
     Warn,
     "pointers are not structural-match",
     @future_incompatible = FutureIncompatibleInfo {
-        reason: FutureIncompatibilityReason::FutureReleaseErrorDontReportInDeps,
-        reference: "issue #62411 <https://github.com/rust-lang/rust/issues/70861>",
-    };
-}
-
-declare_lint! {
-    /// The `nontrivial_structural_match` lint detects constants that are used in patterns,
-    /// whose type is not structural-match and whose initializer body actually uses values
-    /// that are not structural-match. So `Option<NotStructuralMatch>` is ok if the constant
-    /// is just `None`.
-    ///
-    /// ### Example
-    ///
-    /// ```rust,compile_fail
-    /// #![deny(nontrivial_structural_match)]
-    ///
-    /// #[derive(Copy, Clone, Debug)]
-    /// struct NoDerive(u32);
-    /// impl PartialEq for NoDerive { fn eq(&self, _: &Self) -> bool { false } }
-    /// impl Eq for NoDerive { }
-    /// fn main() {
-    ///     const INDEX: Option<NoDerive> = [None, Some(NoDerive(10))][0];
-    ///     match None { Some(_) => panic!("whoops"), INDEX => dbg!(INDEX), };
-    /// }
-    /// ```
-    ///
-    /// {{produces}}
-    ///
-    /// ### Explanation
-    ///
-    /// Previous versions of Rust accepted constants in patterns, even if those constants' types
-    /// did not have `PartialEq` derived. Thus the compiler falls back to runtime execution of
-    /// `PartialEq`, which can report that two constants are not equal even if they are
-    /// bit-equivalent.
-    pub NONTRIVIAL_STRUCTURAL_MATCH,
-    Warn,
-    "constant used in pattern of non-structural-match type and the constant's initializer \
-    expression contains values of non-structural-match types",
-    @future_incompatible = FutureIncompatibleInfo {
-        reason: FutureIncompatibilityReason::FutureReleaseErrorDontReportInDeps,
-        reference: "issue #73448 <https://github.com/rust-lang/rust/issues/73448>",
-    };
-}
-
-declare_lint! {
-    /// The `const_patterns_without_partial_eq` lint detects constants that are used in patterns,
-    /// whose type does not implement `PartialEq`.
-    ///
-    /// ### Example
-    ///
-    /// ```rust,compile_fail
-    /// #![deny(const_patterns_without_partial_eq)]
-    ///
-    /// trait EnumSetType {
-    ///    type Repr;
-    /// }
-    ///
-    /// enum Enum8 { }
-    /// impl EnumSetType for Enum8 {
-    ///     type Repr = u8;
-    /// }
-    ///
-    /// #[derive(PartialEq, Eq)]
-    /// struct EnumSet<T: EnumSetType> {
-    ///     __enumset_underlying: T::Repr,
-    /// }
-    ///
-    /// const CONST_SET: EnumSet<Enum8> = EnumSet { __enumset_underlying: 3 };
-    ///
-    /// fn main() {
-    ///     match CONST_SET {
-    ///         CONST_SET => { /* ok */ }
-    ///         _ => panic!("match fell through?"),
-    ///     }
-    /// }
-    /// ```
-    ///
-    /// {{produces}}
-    ///
-    /// ### Explanation
-    ///
-    /// Previous versions of Rust accepted constants in patterns, even if those constants' types
-    /// did not have `PartialEq` implemented. The compiler falls back to comparing the value
-    /// field-by-field. In the future we'd like to ensure that pattern matching always
-    /// follows `PartialEq` semantics, so that trait bound will become a requirement for
-    /// matching on constants.
-    pub CONST_PATTERNS_WITHOUT_PARTIAL_EQ,
-    Warn,
-    "constant in pattern does not implement `PartialEq`",
-    @future_incompatible = FutureIncompatibleInfo {
         reason: FutureIncompatibilityReason::FutureReleaseErrorReportInDeps,
-        reference: "issue #116122 <https://github.com/rust-lang/rust/issues/116122>",
+        reference: "issue #120362 <https://github.com/rust-lang/rust/issues/120362>",
     };
 }
 
@@ -3726,18 +3586,9 @@ declare_lint! {
     /// being validated. Usually these should be rejected as a hard error,
     /// but this lint was introduced to avoid breaking any existing
     /// crates which included them.
-    ///
-    /// This is a [future-incompatible] lint to transition this to a hard
-    /// error in the future. See [issue #82730] for more details.
-    ///
-    /// [issue #82730]: https://github.com/rust-lang/rust/issues/82730
     pub INVALID_DOC_ATTRIBUTES,
-    Warn,
+    Deny,
     "detects invalid `#[doc(...)]` attributes",
-    @future_incompatible = FutureIncompatibleInfo {
-        reason: FutureIncompatibilityReason::FutureReleaseErrorDontReportInDeps,
-        reference: "issue #82730 <https://github.com/rust-lang/rust/issues/82730>",
-    };
 }
 
 declare_lint! {
@@ -4117,40 +3968,6 @@ declare_lint! {
     pub DUPLICATE_MACRO_ATTRIBUTES,
     Warn,
     "duplicated attribute"
-}
-
-declare_lint! {
-    /// The `suspicious_auto_trait_impls` lint checks for potentially incorrect
-    /// implementations of auto traits.
-    ///
-    /// ### Example
-    ///
-    /// ```rust
-    /// struct Foo<T>(T);
-    ///
-    /// unsafe impl<T> Send for Foo<*const T> {}
-    /// ```
-    ///
-    /// {{produces}}
-    ///
-    /// ### Explanation
-    ///
-    /// A type can implement auto traits, e.g. `Send`, `Sync` and `Unpin`,
-    /// in two different ways: either by writing an explicit impl or if
-    /// all fields of the type implement that auto trait.
-    ///
-    /// The compiler disables the automatic implementation if an explicit one
-    /// exists for given type constructor. The exact rules governing this
-    /// were previously unsound, quite subtle, and have been recently modified.
-    /// This change caused the automatic implementation to be disabled in more
-    /// cases, potentially breaking some code.
-    pub SUSPICIOUS_AUTO_TRAIT_IMPLS,
-    Warn,
-    "the rules governing auto traits have recently changed resulting in potential breakage",
-    @future_incompatible = FutureIncompatibleInfo {
-        reason: FutureIncompatibilityReason::FutureReleaseSemanticsChange,
-        reference: "issue #93367 <https://github.com/rust-lang/rust/issues/93367>",
-    };
 }
 
 declare_lint! {

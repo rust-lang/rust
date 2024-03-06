@@ -26,8 +26,7 @@ use buffer::Buffer;
 /// unwrapping the `BufReader<R>` with [`BufReader::into_inner`] can also cause
 /// data loss.
 ///
-// HACK(#78696): can't use `crate` for associated items
-/// [`TcpStream::read`]: super::super::super::net::TcpStream::read
+/// [`TcpStream::read`]: crate::net::TcpStream::read
 /// [`TcpStream`]: crate::net::TcpStream
 ///
 /// # Examples
@@ -345,6 +344,7 @@ impl<R: ?Sized + Read> Read for BufReader<R> {
     // delegate to the inner implementation.
     fn read_to_end(&mut self, buf: &mut Vec<u8>) -> io::Result<usize> {
         let inner_buf = self.buffer();
+        buf.try_reserve(inner_buf.len()).map_err(|_| io::ErrorKind::OutOfMemory)?;
         buf.extend_from_slice(inner_buf);
         let nread = inner_buf.len();
         self.discard_buffer();

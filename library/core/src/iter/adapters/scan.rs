@@ -1,6 +1,6 @@
 use crate::fmt;
 use crate::iter::{adapters::SourceIter, InPlaceIterable};
-use crate::num::NonZeroUsize;
+use crate::num::NonZero;
 use crate::ops::{ControlFlow, Try};
 
 /// An iterator to maintain state while iterating another iterator.
@@ -94,6 +94,6 @@ where
 
 #[unstable(issue = "none", feature = "inplace_iteration")]
 unsafe impl<St, F, I: InPlaceIterable> InPlaceIterable for Scan<I, St, F> {
-    const EXPAND_BY: Option<NonZeroUsize> = I::EXPAND_BY;
-    const MERGE_BY: Option<NonZeroUsize> = I::MERGE_BY;
+    const EXPAND_BY: Option<NonZero<usize>> = I::EXPAND_BY;
+    const MERGE_BY: Option<NonZero<usize>> = I::MERGE_BY;
 }

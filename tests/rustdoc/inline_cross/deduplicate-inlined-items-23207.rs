@@ -1,6 +1,6 @@
-// aux-build:issue-23207-1.rs
-// aux-build:issue-23207-2.rs
-// ignore-cross-compile
+//@ aux-build:issue-23207-1.rs
+//@ aux-build:issue-23207-2.rs
+//@ ignore-cross-compile
 
 // https://github.com/rust-lang/rust/issues/23207
 #![crate_name="issue_23207"]

@@ -207,7 +207,8 @@ fn import_on_the_fly(
     position: SyntaxNode,
     potential_import_name: String,
 ) -> Option<()> {
-    let _p = profile::span("import_on_the_fly").detail(|| potential_import_name.clone());
+    let _p =
+        tracing::span!(tracing::Level::INFO, "import_on_the_fly", ?potential_import_name).entered();
 
     ImportScope::find_insert_use_container(&position, &ctx.sema)?;
 
@@ -237,6 +238,8 @@ fn import_on_the_fly(
             (PathKind::Type { location }, ItemInNs::Types(ty)) => {
                 if matches!(location, TypeLocation::TypeBound) {
                     matches!(ty, ModuleDef::Trait(_))
+                } else if matches!(location, TypeLocation::ImplTrait) {
+                    matches!(ty, ModuleDef::Trait(_) | ModuleDef::Module(_))
                 } else {
                     true
                 }
@@ -293,7 +296,8 @@ fn import_on_the_fly_pat_(
     position: SyntaxNode,
     potential_import_name: String,
 ) -> Option<()> {
-    let _p = profile::span("import_on_the_fly_pat").detail(|| potential_import_name.clone());
+    let _p = tracing::span!(tracing::Level::INFO, "import_on_the_fly_pat", ?potential_import_name)
+        .entered();
 
     ImportScope::find_insert_use_container(&position, &ctx.sema)?;
 
@@ -343,7 +347,9 @@ fn import_on_the_fly_method(
     position: SyntaxNode,
     potential_import_name: String,
 ) -> Option<()> {
-    let _p = profile::span("import_on_the_fly_method").detail(|| potential_import_name.clone());
+    let _p =
+        tracing::span!(tracing::Level::INFO, "import_on_the_fly_method", ?potential_import_name)
+            .entered();
 
     ImportScope::find_insert_use_container(&position, &ctx.sema)?;
 
@@ -391,6 +397,14 @@ fn import_assets_for_path(
     potential_import_name: &str,
     qualifier: Option<ast::Path>,
 ) -> Option<ImportAssets> {
+    let _p = tracing::span!(
+        tracing::Level::INFO,
+        "import_assets_for_path",
+        ?potential_import_name,
+        ?qualifier
+    )
+    .entered();
+
     let fuzzy_name_length = potential_import_name.len();
     let mut assets_for_path = ImportAssets::for_fuzzy_path(
         ctx.module,

@@ -1,10 +1,10 @@
-// run-pass
+//@ run-pass
 // Test that we select between traits A and B. To do that, we must
 // consider the `Sized` bound.
 
-// pretty-expanded FIXME #23616
+//@ pretty-expanded FIXME #23616
 
-trait A {
+trait A { //~ WARN trait `A` is never used
     fn foo(self);
 }
 

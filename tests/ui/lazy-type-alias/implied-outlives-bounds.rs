@@ -1,7 +1,7 @@
 // Check that we imply outlives-bounds on lazy type aliases.
 
-// revisions: pos neg
-//[pos] check-pass
+//@ revisions: pos neg
+//@[pos] check-pass
 
 #![feature(lazy_type_alias)]
 #![allow(incomplete_features)]

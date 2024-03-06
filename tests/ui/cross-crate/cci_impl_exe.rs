@@ -1,5 +1,5 @@
-// run-pass
-// aux-build:cci_impl_lib.rs
+//@ run-pass
+//@ aux-build:cci_impl_lib.rs
 
 extern crate cci_impl_lib;
 use cci_impl_lib::uint_helpers;

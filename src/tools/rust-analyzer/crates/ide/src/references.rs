@@ -9,8 +9,6 @@
 //! at the index that the match starts at and its tree parent is
 //! resolved to the search element definition, we get a reference.
 
-use std::collections::HashMap;
-
 use hir::{DescendPreference, PathResolution, Semantics};
 use ide_db::{
     base_db::FileId,
@@ -57,7 +55,7 @@ pub(crate) fn find_all_refs(
     position: FilePosition,
     search_scope: Option<SearchScope>,
 ) -> Option<Vec<ReferenceSearchResult>> {
-    let _p = profile::span("find_all_refs");
+    let _p = tracing::span!(tracing::Level::INFO, "find_all_refs").entered();
     let syntax = sema.parse(position.file_id).syntax().clone();
     let make_searcher = |literal_search: bool| {
         move |def: Definition| {
@@ -79,7 +77,7 @@ pub(crate) fn find_all_refs(
                             .collect(),
                     )
                 })
-                .collect::<HashMap<_, Vec<_>, _>>();
+                .collect::<IntMap<_, Vec<_>>>();
             let declaration = match def {
                 Definition::Module(module) => {
                     Some(NavigationTarget::from_module_to_decl(sema.db, module))
@@ -308,6 +306,51 @@ mod tests {
     use crate::{fixture, SearchScope};
 
     #[test]
+    fn exclude_tests() {
+        check(
+            r#"
+fn test_func() {}
+
+fn func() {
+    test_func$0();
+}
+
+#[test]
+fn test() {
+    test_func();
+}
+"#,
+            expect![[r#"
+                test_func Function FileId(0) 0..17 3..12
+
+                FileId(0) 35..44
+                FileId(0) 75..84 Test
+            "#]],
+        );
+
+        check(
+            r#"
+fn test_func() {}
+
+fn func() {
+    test_func$0();
+}
+
+#[::core::prelude::v1::test]
+fn test() {
+    test_func();
+}
+"#,
+            expect![[r#"
+                test_func Function FileId(0) 0..17 3..12
+
+                FileId(0) 35..44
+                FileId(0) 96..105 Test
+            "#]],
+        );
+    }
+
+    #[test]
     fn test_struct_literal_after_space() {
         check(
             r#"
@@ -454,6 +497,7 @@ fn main() {
             "#]],
         );
     }
+
     #[test]
     fn test_variant_tuple_before_paren() {
         check(
@@ -1435,7 +1479,7 @@ fn test$0() {
             expect![[r#"
                 test Function FileId(0) 0..33 11..15
 
-                FileId(0) 24..28
+                FileId(0) 24..28 Test
             "#]],
         );
     }

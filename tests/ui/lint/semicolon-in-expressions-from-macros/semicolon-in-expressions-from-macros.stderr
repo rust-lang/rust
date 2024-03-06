@@ -60,11 +60,6 @@ LL |         foo!(first)
    = note: for more information, see issue #79813 <https://github.com/rust-lang/rust/issues/79813>
    = note: macro invocations at the end of a block are treated as expressions
    = note: to ignore the value produced by the macro, add a semicolon after the invocation of `foo`
-note: the lint level is defined here
-  --> $DIR/semicolon-in-expressions-from-macros.rs:24:13
-   |
-LL |     #[allow(semicolon_in_expressions_from_macros)]
-   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    = note: this warning originates in the macro `foo` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 Future breakage diagnostic:
@@ -79,11 +74,6 @@ LL |     let _ = foo!(second);
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #79813 <https://github.com/rust-lang/rust/issues/79813>
-note: the lint level is defined here
-  --> $DIR/semicolon-in-expressions-from-macros.rs:29:13
-   |
-LL |     #[allow(semicolon_in_expressions_from_macros)]
-   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    = note: this warning originates in the macro `foo` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 Future breakage diagnostic:
@@ -98,11 +88,6 @@ LL |         let _ = foo!(third);
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #79813 <https://github.com/rust-lang/rust/issues/79813>
-note: the lint level is defined here
-  --> $DIR/semicolon-in-expressions-from-macros.rs:32:13
-   |
-LL |     #[allow(semicolon_in_expressions_from_macros)]
-   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    = note: this warning originates in the macro `foo` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 Future breakage diagnostic:
@@ -117,11 +102,6 @@ LL |         let _ = foo!(fourth);
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #79813 <https://github.com/rust-lang/rust/issues/79813>
-note: the lint level is defined here
-  --> $DIR/semicolon-in-expressions-from-macros.rs:37:13
-   |
-LL |     #[allow(semicolon_in_expressions_from_macros)]
-   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    = note: this warning originates in the macro `foo` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 Future breakage diagnostic:

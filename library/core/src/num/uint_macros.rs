@@ -480,6 +480,8 @@ macro_rules! uint_impl {
         #[doc = concat!("assert_eq!((", stringify!($SelfT), "::MAX - 2).strict_add(1), ", stringify!($SelfT), "::MAX - 1);")]
         /// ```
         ///
+        /// The following panics because of overflow:
+        ///
         /// ```should_panic
         /// #![feature(strict_overflow_ops)]
         #[doc = concat!("let _ = (", stringify!($SelfT), "::MAX - 2).strict_add(3);")]
@@ -561,6 +563,8 @@ macro_rules! uint_impl {
         #[doc = concat!("assert_eq!(1", stringify!($SelfT), ".strict_add_signed(2), 3);")]
         /// ```
         ///
+        /// The following panic because of overflow:
+        ///
         /// ```should_panic
         /// #![feature(strict_overflow_ops)]
         #[doc = concat!("let _ = 1", stringify!($SelfT), ".strict_add_signed(-2);")]
@@ -619,6 +623,8 @@ macro_rules! uint_impl {
         /// #![feature(strict_overflow_ops)]
         #[doc = concat!("assert_eq!(1", stringify!($SelfT), ".strict_sub(1), 0);")]
         /// ```
+        ///
+        /// The following panics because of overflow:
         ///
         /// ```should_panic
         /// #![feature(strict_overflow_ops)]
@@ -699,6 +705,8 @@ macro_rules! uint_impl {
         /// #![feature(strict_overflow_ops)]
         #[doc = concat!("assert_eq!(5", stringify!($SelfT), ".strict_mul(1), 5);")]
         /// ```
+        ///
+        /// The following panics because of overflow:
         ///
         /// ``` should_panic
         /// #![feature(strict_overflow_ops)]
@@ -785,6 +793,13 @@ macro_rules! uint_impl {
         /// #![feature(strict_overflow_ops)]
         #[doc = concat!("assert_eq!(100", stringify!($SelfT), ".strict_div(10), 10);")]
         /// ```
+        ///
+        /// The following panics because of division by zero:
+        ///
+        /// ```should_panic
+        /// #![feature(strict_overflow_ops)]
+        #[doc = concat!("let _ = (1", stringify!($SelfT), ").strict_div(0);")]
+        /// ```
         #[unstable(feature = "strict_overflow_ops", issue = "118260")]
         #[rustc_const_unstable(feature = "const_strict_overflow_ops", issue = "118260")]
         #[must_use = "this returns the result of the operation, \
@@ -839,6 +854,12 @@ macro_rules! uint_impl {
         /// ```
         /// #![feature(strict_overflow_ops)]
         #[doc = concat!("assert_eq!(100", stringify!($SelfT), ".strict_div_euclid(10), 10);")]
+        /// ```
+        /// The following panics because of division by zero:
+        ///
+        /// ```should_panic
+        /// #![feature(strict_overflow_ops)]
+        #[doc = concat!("let _ = (1", stringify!($SelfT), ").strict_div_euclid(0);")]
         /// ```
         #[unstable(feature = "strict_overflow_ops", issue = "118260")]
         #[rustc_const_unstable(feature = "const_strict_overflow_ops", issue = "118260")]
@@ -895,6 +916,13 @@ macro_rules! uint_impl {
         /// #![feature(strict_overflow_ops)]
         #[doc = concat!("assert_eq!(100", stringify!($SelfT), ".strict_rem(10), 0);")]
         /// ```
+        ///
+        /// The following panics because of division by zero:
+        ///
+        /// ```should_panic
+        /// #![feature(strict_overflow_ops)]
+        #[doc = concat!("let _ = 5", stringify!($SelfT), ".strict_rem(0);")]
+        /// ```
         #[unstable(feature = "strict_overflow_ops", issue = "118260")]
         #[rustc_const_unstable(feature = "const_strict_overflow_ops", issue = "118260")]
         #[must_use = "this returns the result of the operation, \
@@ -950,6 +978,13 @@ macro_rules! uint_impl {
         /// ```
         /// #![feature(strict_overflow_ops)]
         #[doc = concat!("assert_eq!(100", stringify!($SelfT), ".strict_rem_euclid(10), 0);")]
+        /// ```
+        ///
+        /// The following panics because of division by zero:
+        ///
+        /// ```should_panic
+        /// #![feature(strict_overflow_ops)]
+        #[doc = concat!("let _ = 5", stringify!($SelfT), ".strict_rem_euclid(0);")]
         /// ```
         #[unstable(feature = "strict_overflow_ops", issue = "118260")]
         #[rustc_const_unstable(feature = "const_strict_overflow_ops", issue = "118260")]
@@ -1172,6 +1207,8 @@ macro_rules! uint_impl {
         #[doc = concat!("assert_eq!(0", stringify!($SelfT), ".strict_neg(), 0);")]
         /// ```
         ///
+        /// The following panics because of overflow:
+        ///
         /// ```should_panic
         /// #![feature(strict_overflow_ops)]
         #[doc = concat!("let _ = 1", stringify!($SelfT), ".strict_neg();")]
@@ -1225,6 +1262,8 @@ macro_rules! uint_impl {
         /// #![feature(strict_overflow_ops)]
         #[doc = concat!("assert_eq!(0x1", stringify!($SelfT), ".strict_shl(4), 0x10);")]
         /// ```
+        ///
+        /// The following panics because of overflow:
         ///
         /// ```should_panic
         /// #![feature(strict_overflow_ops)]
@@ -1307,6 +1346,8 @@ macro_rules! uint_impl {
         #[doc = concat!("assert_eq!(0x10", stringify!($SelfT), ".strict_shr(4), 0x1);")]
         /// ```
         ///
+        /// The following panics because of overflow:
+        ///
         /// ```should_panic
         /// #![feature(strict_overflow_ops)]
         #[doc = concat!("let _ = 0x10", stringify!($SelfT), ".strict_shr(129);")]
@@ -1364,49 +1405,28 @@ macro_rules! uint_impl {
         #[rustc_const_stable(feature = "const_int_pow", since = "1.50.0")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
-        #[rustc_allow_const_fn_unstable(is_val_statically_known, const_int_unchecked_arith)]
         #[inline]
         pub const fn checked_pow(self, mut exp: u32) -> Option<Self> {
-            // SAFETY: This path has the same behavior as the other.
-            if unsafe { intrinsics::is_val_statically_known(self) }
-                && self.is_power_of_two()
-            {
-                if self == 1 { // Avoid divide by zero
-                    return Some(1);
-                }
-                // SAFETY: We just checked this is a power of two. and above zero.
-                let power_used = unsafe { intrinsics::cttz_nonzero(self) as u32 };
-                if exp > Self::BITS / power_used { return None; } // Division of constants is free
-
-                // SAFETY: exp <= Self::BITS / power_used
-                unsafe { Some(intrinsics::unchecked_shl(
-                    1 as Self,
-                    intrinsics::unchecked_mul(power_used, exp) as Self
-                )) }
-                // LLVM doesn't always optimize out the checks
-                // at the ir level.
-            } else {
-                if exp == 0 {
-                    return Some(1);
-                }
-                let mut base = self;
-                let mut acc: Self = 1;
-
-                while exp > 1 {
-                    if (exp & 1) == 1 {
-                        acc = try_opt!(acc.checked_mul(base));
-                    }
-                    exp /= 2;
-                    base = try_opt!(base.checked_mul(base));
-                }
-
-                // since exp!=0, finally the exp must be 1.
-                // Deal with the final bit of the exponent separately, since
-                // squaring the base afterwards is not necessary and may cause a
-                // needless overflow.
-
-                acc.checked_mul(base)
+            if exp == 0 {
+                return Some(1);
             }
+            let mut base = self;
+            let mut acc: Self = 1;
+
+            while exp > 1 {
+                if (exp & 1) == 1 {
+                    acc = try_opt!(acc.checked_mul(base));
+                }
+                exp /= 2;
+                base = try_opt!(base.checked_mul(base));
+            }
+
+            // since exp!=0, finally the exp must be 1.
+            // Deal with the final bit of the exponent separately, since
+            // squaring the base afterwards is not necessary and may cause a
+            // needless overflow.
+
+            acc.checked_mul(base)
         }
 
         /// Strict exponentiation. Computes `self.pow(exp)`, panicking if
@@ -1426,6 +1446,8 @@ macro_rules! uint_impl {
         /// #![feature(strict_overflow_ops)]
         #[doc = concat!("assert_eq!(2", stringify!($SelfT), ".strict_pow(5), 32);")]
         /// ```
+        ///
+        /// The following panics because of overflow:
         ///
         /// ```should_panic
         /// #![feature(strict_overflow_ops)]
@@ -1908,48 +1930,27 @@ macro_rules! uint_impl {
         #[rustc_const_stable(feature = "const_int_pow", since = "1.50.0")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
-        #[rustc_allow_const_fn_unstable(is_val_statically_known, const_int_unchecked_arith)]
         #[inline]
         pub const fn wrapping_pow(self, mut exp: u32) -> Self {
-            // SAFETY: This path has the same behavior as the other.
-            if unsafe { intrinsics::is_val_statically_known(self) }
-                && self.is_power_of_two()
-            {
-                if self == 1 { // Avoid divide by zero
-                    return 1;
-                }
-                // SAFETY: We just checked this is a power of two. and above zero.
-                let power_used = unsafe { intrinsics::cttz_nonzero(self) as u32 };
-                if exp > Self::BITS / power_used {  return 0; } // Division of constants is free
-
-                // SAFETY: exp <= Self::BITS / power_used
-                unsafe { intrinsics::unchecked_shl(
-                    1 as Self,
-                    intrinsics::unchecked_mul(power_used, exp) as Self
-                )}
-                // LLVM doesn't always optimize out the checks
-                // at the ir level.
-            } else {
-                if exp == 0 {
-                    return 1;
-                }
-                let mut base = self;
-                let mut acc: Self = 1;
-
-                while exp > 1 {
-                    if (exp & 1) == 1 {
-                        acc = acc.wrapping_mul(base);
-                    }
-                    exp /= 2;
-                    base = base.wrapping_mul(base);
-                }
-
-                // since exp!=0, finally the exp must be 1.
-                // Deal with the final bit of the exponent separately, since
-                // squaring the base afterwards is not necessary and may cause a
-                // needless overflow.
-                acc.wrapping_mul(base)
+            if exp == 0 {
+                return 1;
             }
+            let mut base = self;
+            let mut acc: Self = 1;
+
+            while exp > 1 {
+                if (exp & 1) == 1 {
+                    acc = acc.wrapping_mul(base);
+                }
+                exp /= 2;
+                base = base.wrapping_mul(base);
+            }
+
+            // since exp!=0, finally the exp must be 1.
+            // Deal with the final bit of the exponent separately, since
+            // squaring the base afterwards is not necessary and may cause a
+            // needless overflow.
+            acc.wrapping_mul(base)
         }
 
         /// Calculates `self` + `rhs`
@@ -2383,58 +2384,37 @@ macro_rules! uint_impl {
         #[rustc_const_stable(feature = "const_int_pow", since = "1.50.0")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
-        #[rustc_allow_const_fn_unstable(is_val_statically_known, const_int_unchecked_arith)]
         #[inline]
         pub const fn overflowing_pow(self, mut exp: u32) -> (Self, bool) {
-            // SAFETY: This path has the same behavior as the other.
-            if unsafe { intrinsics::is_val_statically_known(self) }
-                && self.is_power_of_two()
-            {
-                if self == 1 { // Avoid divide by zero
-                    return (1, false);
-                }
-                // SAFETY: We just checked this is a power of two. and above zero.
-                let power_used = unsafe { intrinsics::cttz_nonzero(self) as u32 };
-                if exp > Self::BITS / power_used {  return (0, true); } // Division of constants is free
+            if exp == 0{
+                return (1,false);
+            }
+            let mut base = self;
+            let mut acc: Self = 1;
+            let mut overflown = false;
+            // Scratch space for storing results of overflowing_mul.
+            let mut r;
 
-                // SAFETY: exp <= Self::BITS / power_used
-                unsafe { (intrinsics::unchecked_shl(
-                    1 as Self,
-                    intrinsics::unchecked_mul(power_used, exp) as Self
-                ), false) }
-                // LLVM doesn't always optimize out the checks
-                // at the ir level.
-            } else {
-                if exp == 0{
-                    return (1,false);
-                }
-                let mut base = self;
-                let mut acc: Self = 1;
-                let mut overflown = false;
-                // Scratch space for storing results of overflowing_mul.
-                let mut r;
-
-                while exp > 1 {
-                    if (exp & 1) == 1 {
-                        r = acc.overflowing_mul(base);
-                        acc = r.0;
-                        overflown |= r.1;
-                    }
-                    exp /= 2;
-                    r = base.overflowing_mul(base);
-                    base = r.0;
+            while exp > 1 {
+                if (exp & 1) == 1 {
+                    r = acc.overflowing_mul(base);
+                    acc = r.0;
                     overflown |= r.1;
                 }
-
-                // since exp!=0, finally the exp must be 1.
-                // Deal with the final bit of the exponent separately, since
-                // squaring the base afterwards is not necessary and may cause a
-                // needless overflow.
-                r = acc.overflowing_mul(base);
-                r.1 |= overflown;
-
-                r
+                exp /= 2;
+                r = base.overflowing_mul(base);
+                base = r.0;
+                overflown |= r.1;
             }
+
+            // since exp!=0, finally the exp must be 1.
+            // Deal with the final bit of the exponent separately, since
+            // squaring the base afterwards is not necessary and may cause a
+            // needless overflow.
+            r = acc.overflowing_mul(base);
+            r.1 |= overflown;
+
+            r
         }
 
         /// Raises self to the power of `exp`, using exponentiation by squaring.
@@ -2450,64 +2430,28 @@ macro_rules! uint_impl {
         #[rustc_const_stable(feature = "const_int_pow", since = "1.50.0")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
-        #[rustc_allow_const_fn_unstable(is_val_statically_known, const_int_unchecked_arith)]
         #[inline]
         #[rustc_inherit_overflow_checks]
-        #[track_caller] // Hides the hackish overflow check for powers of two.
         pub const fn pow(self, mut exp: u32) -> Self {
-            // LLVM now knows that `self` is a constant value, but not a
-            // constant in Rust. This allows us to compute the power used at
-            // compile-time.
-            //
-            // This will likely add a branch in debug builds, but this should
-            // be ok.
-            //
-            // This is a massive performance boost in release builds as you can
-            // get the power of a power of two and the exponent through a `shl`
-            // instruction, but we must add a couple more checks for parity with
-            // our own `pow`.
-            // SAFETY: This path has the same behavior as the other.
-            if unsafe { intrinsics::is_val_statically_known(self) }
-                && self.is_power_of_two()
-            {
-                if self == 1 { // Avoid divide by zero
-                    return 1;
-                }
-                // SAFETY: We just checked this is a power of two. and above zero.
-                let power_used = unsafe { intrinsics::cttz_nonzero(self) as u32 };
-                if exp > Self::BITS / power_used { // Division of constants is free
-                    #[allow(arithmetic_overflow)]
-                    return Self::MAX * Self::MAX * 0;
-                }
-
-                // SAFETY: exp <= Self::BITS / power_used
-                unsafe { intrinsics::unchecked_shl(
-                    1 as Self,
-                    intrinsics::unchecked_mul(power_used, exp) as Self
-                )}
-                // LLVM doesn't always optimize out the checks
-                // at the ir level.
-            } else {
-                if exp == 0 {
-                    return 1;
-                }
-                let mut base = self;
-                let mut acc = 1;
-
-                while exp > 1 {
-                    if (exp & 1) == 1 {
-                        acc = acc * base;
-                    }
-                    exp /= 2;
-                    base = base * base;
-                }
-
-                // since exp!=0, finally the exp must be 1.
-                // Deal with the final bit of the exponent separately, since
-                // squaring the base afterwards is not necessary and may cause a
-                // needless overflow.
-                acc * base
+            if exp == 0 {
+                return 1;
             }
+            let mut base = self;
+            let mut acc = 1;
+
+            while exp > 1 {
+                if (exp & 1) == 1 {
+                    acc = acc * base;
+                }
+                exp /= 2;
+                base = base * base;
+            }
+
+            // since exp!=0, finally the exp must be 1.
+            // Deal with the final bit of the exponent separately, since
+            // squaring the base afterwards is not necessary and may cause a
+            // needless overflow.
+            acc * base
         }
 
         /// Returns the square root of the number, rounded down.

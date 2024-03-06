@@ -1,4 +1,4 @@
-// aux-build:hidden.rs
+//@ aux-build:hidden.rs
 
 extern crate hidden;
 

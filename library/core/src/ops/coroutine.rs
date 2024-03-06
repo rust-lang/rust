@@ -111,7 +111,7 @@ pub trait Coroutine<R = ()> {
     /// been returned previously. While coroutine literals in the language are
     /// guaranteed to panic on resuming after `Complete`, this is not guaranteed
     /// for all implementations of the `Coroutine` trait.
-    #[cfg_attr(not(bootstrap), lang = "coroutine_resume")]
+    #[lang = "coroutine_resume"]
     fn resume(self: Pin<&mut Self>, arg: R) -> CoroutineState<Self::Yield, Self::Return>;
 }
 

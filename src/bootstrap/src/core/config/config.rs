@@ -3,10 +3,6 @@
 //! This module implements parsing `config.toml` configuration files to tweak
 //! how the build runs.
 
-#[cfg(test)]
-#[path = "../../tests/config.rs"]
-mod tests;
-
 use std::cell::{Cell, RefCell};
 use std::cmp;
 use std::collections::{HashMap, HashSet};
@@ -26,6 +22,7 @@ use crate::utils::cache::{Interned, INTERNER};
 use crate::utils::channel::{self, GitInfo};
 use crate::utils::helpers::{exe, output, t};
 use build_helper::exit;
+use build_helper::util::fail;
 use semver::Version;
 use serde::{Deserialize, Deserializer};
 use serde_derive::Deserialize;
@@ -260,6 +257,7 @@ pub struct Config {
     pub rust_split_debuginfo: SplitDebuginfo,
     pub rust_rpath: bool,
     pub rust_strip: bool,
+    pub rust_frame_pointers: bool,
     pub rust_stack_protector: Option<String>,
     pub rustc_parallel: bool,
     pub rustc_default_linker: Option<String>,
@@ -471,7 +469,7 @@ pub struct TargetSelectionList(Vec<TargetSelection>);
 
 pub fn target_selection_list(s: &str) -> Result<TargetSelectionList, String> {
     Ok(TargetSelectionList(
-        s.split(",").filter(|s| !s.is_empty()).map(TargetSelection::from_user).collect(),
+        s.split(',').filter(|s| !s.is_empty()).map(TargetSelection::from_user).collect(),
     ))
 }
 
@@ -581,6 +579,7 @@ pub struct Target {
     pub wasi_root: Option<PathBuf>,
     pub qemu_rootfs: Option<PathBuf>,
     pub no_std: bool,
+    pub codegen_backends: Option<Vec<Interned<String>>>,
 }
 
 impl Target {
@@ -965,10 +964,10 @@ impl<'de> serde::de::Visitor<'de> for OptimizeVisitor {
     where
         E: serde::de::Error,
     {
-        if ["s", "z"].iter().find(|x| **x == value).is_some() {
+        if matches!(value, "s" | "z") {
             Ok(RustOptimize::String(value.to_string()))
         } else {
-            Err(format_optimize_error_msg(value)).map_err(serde::de::Error::custom)
+            Err(serde::de::Error::custom(format_optimize_error_msg(value)))
         }
     }
 
@@ -979,7 +978,7 @@ impl<'de> serde::de::Visitor<'de> for OptimizeVisitor {
         if matches!(value, 0..=3) {
             Ok(RustOptimize::Int(value as u8))
         } else {
-            Err(format_optimize_error_msg(value)).map_err(serde::de::Error::custom)
+            Err(serde::de::Error::custom(format_optimize_error_msg(value)))
         }
     }
 
@@ -1086,6 +1085,7 @@ define_config! {
         musl_root: Option<String> = "musl-root",
         rpath: Option<bool> = "rpath",
         strip: Option<bool> = "strip",
+        frame_pointers: Option<bool> = "frame-pointers",
         stack_protector: Option<String> = "stack-protector",
         verbose_tests: Option<bool> = "verbose-tests",
         optimize_tests: Option<bool> = "optimize-tests",
@@ -1139,46 +1139,50 @@ define_config! {
         wasi_root: Option<String> = "wasi-root",
         qemu_rootfs: Option<String> = "qemu-rootfs",
         no_std: Option<bool> = "no-std",
+        codegen_backends: Option<Vec<String>> = "codegen-backends",
     }
 }
 
 impl Config {
     pub fn default_opts() -> Config {
-        let mut config = Config::default();
-        config.bypass_bootstrap_lock = false;
-        config.llvm_optimize = true;
-        config.ninja_in_file = true;
-        config.llvm_static_stdcpp = false;
-        config.backtrace = true;
-        config.rust_optimize = RustOptimize::Bool(true);
-        config.rust_optimize_tests = true;
-        config.submodules = None;
-        config.docs = true;
-        config.docs_minification = true;
-        config.rust_rpath = true;
-        config.rust_strip = false;
-        config.channel = "dev".to_string();
-        config.codegen_tests = true;
-        config.rust_dist_src = true;
-        config.rust_codegen_backends = vec![INTERNER.intern_str("llvm")];
-        config.deny_warnings = true;
-        config.bindir = "bin".into();
-        config.dist_include_mingw_linker = true;
-        config.dist_compression_profile = "fast".into();
-        config.rustc_parallel = true;
+        Config {
+            bypass_bootstrap_lock: false,
+            llvm_optimize: true,
+            ninja_in_file: true,
+            llvm_static_stdcpp: false,
+            backtrace: true,
+            rust_optimize: RustOptimize::Bool(true),
+            rust_optimize_tests: true,
+            submodules: None,
+            docs: true,
+            docs_minification: true,
+            rust_rpath: true,
+            rust_strip: false,
+            channel: "dev".to_string(),
+            codegen_tests: true,
+            rust_dist_src: true,
+            rust_codegen_backends: vec![INTERNER.intern_str("llvm")],
+            deny_warnings: true,
+            bindir: "bin".into(),
+            dist_include_mingw_linker: true,
+            dist_compression_profile: "fast".into(),
+            rustc_parallel: true,
 
-        config.stdout_is_tty = std::io::stdout().is_terminal();
-        config.stderr_is_tty = std::io::stderr().is_terminal();
+            stdout_is_tty: std::io::stdout().is_terminal(),
+            stderr_is_tty: std::io::stderr().is_terminal(),
 
-        // set by build.rs
-        config.build = TargetSelection::from_user(&env!("BUILD_TRIPLE"));
+            // set by build.rs
+            build: TargetSelection::from_user(env!("BUILD_TRIPLE")),
 
-        let manifest_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
-        // Undo `src/bootstrap`
-        config.src = manifest_dir.parent().unwrap().parent().unwrap().to_owned();
-        config.out = PathBuf::from("build");
+            src: {
+                let manifest_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
+                // Undo `src/bootstrap`
+                manifest_dir.parent().unwrap().parent().unwrap().to_owned()
+            },
+            out: PathBuf::from("build"),
 
-        config
+            ..Default::default()
+        }
     }
 
     pub fn parse(args: &[String]) -> Config {
@@ -1203,8 +1207,8 @@ impl Config {
         Self::parse_inner(args, get_toml)
     }
 
-    fn parse_inner(args: &[String], get_toml: impl Fn(&Path) -> TomlConfig) -> Config {
-        let mut flags = Flags::parse(&args);
+    pub(crate) fn parse_inner(args: &[String], get_toml: impl Fn(&Path) -> TomlConfig) -> Config {
+        let mut flags = Flags::parse(args);
         let mut config = Config::default_opts();
 
         // Set flags.
@@ -1231,12 +1235,16 @@ impl Config {
         // Infer the rest of the configuration.
 
         // Infer the source directory. This is non-trivial because we want to support a downloaded bootstrap binary,
-        // running on a completely machine from where it was compiled.
+        // running on a completely different machine from where it was compiled.
         let mut cmd = Command::new("git");
-        // NOTE: we cannot support running from outside the repository because the only path we have available
-        // is set at compile time, which can be wrong if bootstrap was downloaded from source.
+        // NOTE: we cannot support running from outside the repository because the only other path we have available
+        // is set at compile time, which can be wrong if bootstrap was downloaded rather than compiled locally.
         // We still support running outside the repository if we find we aren't in a git directory.
-        cmd.arg("rev-parse").arg("--show-toplevel");
+
+        // NOTE: We get a relative path from git to work around an issue on MSYS/mingw. If we used an absolute path,
+        // and end up using MSYS's git rather than git-for-windows, we would get a unix-y MSYS path. But as bootstrap
+        // has already been (kinda-cross-)compiled to Windows land, we require a normal Windows path.
+        cmd.arg("rev-parse").arg("--show-cdup");
         // Discard stderr because we expect this to fail when building from a tarball.
         let output = cmd
             .stderr(std::process::Stdio::null())
@@ -1244,15 +1252,20 @@ impl Config {
             .ok()
             .and_then(|output| if output.status.success() { Some(output) } else { None });
         if let Some(output) = output {
-            let git_root = String::from_utf8(output.stdout).unwrap();
-            // We need to canonicalize this path to make sure it uses backslashes instead of forward slashes.
-            let git_root = PathBuf::from(git_root.trim()).canonicalize().unwrap();
+            let git_root_relative = String::from_utf8(output.stdout).unwrap();
+            // We need to canonicalize this path to make sure it uses backslashes instead of forward slashes,
+            // and to resolve any relative components.
+            let git_root = env::current_dir()
+                .unwrap()
+                .join(PathBuf::from(git_root_relative.trim()))
+                .canonicalize()
+                .unwrap();
             let s = git_root.to_str().unwrap();
 
             // Bootstrap is quite bad at handling /? in front of paths
-            let src = match s.strip_prefix("\\\\?\\") {
+            let git_root = match s.strip_prefix("\\\\?\\") {
                 Some(p) => PathBuf::from(p),
-                None => PathBuf::from(git_root),
+                None => git_root,
             };
             // If this doesn't have at least `stage0.json`, we guessed wrong. This can happen when,
             // for example, the build directory is inside of another unrelated git directory.
@@ -1260,8 +1273,8 @@ impl Config {
             //
             // NOTE: this implies that downloadable bootstrap isn't supported when the build directory is outside
             // the source directory. We could fix that by setting a variable from all three of python, ./x, and x.ps1.
-            if src.join("src").join("stage0.json").exists() {
-                config.src = src;
+            if git_root.join("src").join("stage0.json").exists() {
+                config.src = git_root;
             }
         } else {
             // We're building from a tarball, not git sources.
@@ -1278,7 +1291,7 @@ impl Config {
             .to_path_buf();
         }
 
-        let stage0_json = t!(std::fs::read(&config.src.join("src").join("stage0.json")));
+        let stage0_json = t!(std::fs::read(config.src.join("src").join("stage0.json")));
 
         config.stage0_metadata = t!(serde_json::from_slice::<Stage0Metadata>(&stage0_json));
 
@@ -1324,8 +1337,7 @@ impl Config {
         let mut override_toml = TomlConfig::default();
         for option in flags.set.iter() {
             fn get_table(option: &str) -> Result<TomlConfig, toml::de::Error> {
-                toml::from_str(&option)
-                    .and_then(|table: toml::Value| TomlConfig::deserialize(table))
+                toml::from_str(option).and_then(|table: toml::Value| TomlConfig::deserialize(table))
             }
 
             let mut err = match get_table(option) {
@@ -1337,7 +1349,7 @@ impl Config {
             };
             // We want to be able to set string values without quotes,
             // like in `configure.py`. Try adding quotes around the right hand side
-            if let Some((key, value)) = option.split_once("=") {
+            if let Some((key, value)) = option.split_once('=') {
                 if !value.contains('"') {
                     match get_table(&format!(r#"{key}="{value}""#)) {
                         Ok(v) => {
@@ -1416,7 +1428,7 @@ impl Config {
 
         config.initial_rustc = if let Some(rustc) = rustc {
             if !flags.skip_stage0_validation {
-                config.check_build_rustc_version(&rustc);
+                config.check_stage0_version(&rustc, "rustc");
             }
             PathBuf::from(rustc)
         } else {
@@ -1424,11 +1436,15 @@ impl Config {
             config.out.join(config.build.triple).join("stage0/bin/rustc")
         };
 
-        config.initial_cargo = cargo
-            .map(|cargo| {
-                t!(PathBuf::from(cargo).canonicalize(), "`initial_cargo` not found on disk")
-            })
-            .unwrap_or_else(|| config.out.join(config.build.triple).join("stage0/bin/cargo"));
+        config.initial_cargo = if let Some(cargo) = cargo {
+            if !flags.skip_stage0_validation {
+                config.check_stage0_version(&cargo, "cargo");
+            }
+            PathBuf::from(cargo)
+        } else {
+            config.download_beta_toolchain();
+            config.out.join(config.build.triple).join("stage0/bin/cargo")
+        };
 
         // NOTE: it's important this comes *after* we set `initial_rustc` just above.
         if config.dry_run() {
@@ -1563,6 +1579,7 @@ impl Config {
                 download_rustc,
                 lto,
                 validate_mir_opts,
+                frame_pointers,
                 stack_protector,
                 strip,
                 lld_mode,
@@ -1611,6 +1628,7 @@ impl Config {
             set(&mut config.codegen_tests, codegen_tests);
             set(&mut config.rust_rpath, rpath);
             set(&mut config.rust_strip, strip);
+            set(&mut config.rust_frame_pointers, frame_pointers);
             config.rust_stack_protector = stack_protector;
             set(&mut config.jemalloc, jemalloc);
             set(&mut config.test_compare_mode, test_compare_mode);
@@ -1658,7 +1676,7 @@ impl Config {
                 llvm_libunwind.map(|v| v.parse().expect("failed to parse rust.llvm-libunwind"));
 
             if let Some(ref backends) = codegen_backends {
-                let available_backends = vec!["llvm", "cranelift", "gcc"];
+                let available_backends = ["llvm", "cranelift", "gcc"];
 
                 config.rust_codegen_backends = backends.iter().map(|s| {
                     if let Some(backend) = s.strip_prefix(CODEGEN_BACKEND_PREFIX) {
@@ -1806,7 +1824,7 @@ impl Config {
                 let mut target = Target::from_triple(&triple);
 
                 if let Some(ref s) = cfg.llvm_config {
-                    if config.download_rustc_commit.is_some() && triple == &*config.build.triple {
+                    if config.download_rustc_commit.is_some() && triple == *config.build.triple {
                         panic!(
                             "setting llvm_config for the host is incompatible with download-rustc"
                         );
@@ -1814,10 +1832,9 @@ impl Config {
                     target.llvm_config = Some(config.src.join(s));
                 }
                 if let Some(patches) = cfg.llvm_has_rust_patches {
-                    assert_eq!(
-                        config.submodules,
-                        Some(false),
-                        "cannot set `llvm-has-rust-patches` for a managed submodule (set `build.submodules = false` if you want to apply patches)"
+                    assert!(
+                        config.submodules == Some(false) || cfg.llvm_config.is_some(),
+                        "use of `llvm-has-rust-patches` is restricted to cases where either submodules are disabled or llvm-config been provided"
                     );
                     target.llvm_has_rust_patches = Some(patches);
                 }
@@ -1845,6 +1862,24 @@ impl Config {
                 target.profiler = cfg.profiler;
                 target.rpath = cfg.rpath;
 
+                if let Some(ref backends) = cfg.codegen_backends {
+                    let available_backends = ["llvm", "cranelift", "gcc"];
+
+                    target.codegen_backends = Some(backends.iter().map(|s| {
+                        if let Some(backend) = s.strip_prefix(CODEGEN_BACKEND_PREFIX) {
+                            if available_backends.contains(&backend) {
+                                panic!("Invalid value '{s}' for 'target.{triple}.codegen-backends'. Instead, please use '{backend}'.");
+                            } else {
+                                println!("HELP: '{s}' for 'target.{triple}.codegen-backends' might fail. \
+                                    Codegen backends are mostly defined without the '{CODEGEN_BACKEND_PREFIX}' prefix. \
+                                    In this case, it would be referred to as '{backend}'.");
+                            }
+                        }
+
+                        INTERNER.intern_str(s)
+                    }).collect());
+                }
+
                 config.target_config.insert(TargetSelection::from_user(&triple), target);
             }
         }
@@ -1855,7 +1890,7 @@ impl Config {
             let build_target = config
                 .target_config
                 .entry(config.build)
-                .or_insert_with(|| Target::from_triple(&triple));
+                .or_insert_with(|| Target::from_triple(triple));
 
             check_ci_llvm!(build_target.llvm_config);
             check_ci_llvm!(build_target.llvm_filecheck);
@@ -2189,7 +2224,7 @@ impl Config {
     }
 
     pub fn sanitizers_enabled(&self, target: TargetSelection) -> bool {
-        self.target_config.get(&target).map(|t| t.sanitizers).flatten().unwrap_or(self.sanitizers)
+        self.target_config.get(&target).and_then(|t| t.sanitizers).unwrap_or(self.sanitizers)
     }
 
     pub fn needs_sanitizer_runtime_built(&self, target: TargetSelection) -> bool {
@@ -2224,11 +2259,11 @@ impl Config {
     }
 
     pub fn rpath_enabled(&self, target: TargetSelection) -> bool {
-        self.target_config.get(&target).map(|t| t.rpath).flatten().unwrap_or(self.rust_rpath)
+        self.target_config.get(&target).and_then(|t| t.rpath).unwrap_or(self.rust_rpath)
     }
 
-    pub fn llvm_enabled(&self) -> bool {
-        self.rust_codegen_backends.contains(&INTERNER.intern_str("llvm"))
+    pub fn llvm_enabled(&self, target: TargetSelection) -> bool {
+        self.codegen_backends(target).contains(&INTERNER.intern_str("llvm"))
     }
 
     pub fn llvm_libunwind(&self, target: TargetSelection) -> LlvmLibunwind {
@@ -2247,8 +2282,15 @@ impl Config {
         self.submodules.unwrap_or(rust_info.is_managed_git_subrepository())
     }
 
-    pub fn default_codegen_backend(&self) -> Option<Interned<String>> {
-        self.rust_codegen_backends.get(0).cloned()
+    pub fn codegen_backends(&self, target: TargetSelection) -> &[Interned<String>] {
+        self.target_config
+            .get(&target)
+            .and_then(|cfg| cfg.codegen_backends.as_deref())
+            .unwrap_or(&self.rust_codegen_backends)
+    }
+
+    pub fn default_codegen_backend(&self, target: TargetSelection) -> Option<Interned<String>> {
+        self.codegen_backends(target).first().cloned()
     }
 
     pub fn git_config(&self) -> GitConfig<'_> {
@@ -2258,39 +2300,37 @@ impl Config {
         }
     }
 
-    pub fn check_build_rustc_version(&self, rustc_path: &str) {
+    // check rustc/cargo version is same or lower with 1 apart from the building one
+    pub fn check_stage0_version(&self, program_path: &str, component_name: &'static str) {
         if self.dry_run() {
             return;
         }
 
-        // check rustc version is same or lower with 1 apart from the building one
-        let mut cmd = Command::new(rustc_path);
-        cmd.arg("--version");
-        let rustc_output = output(&mut cmd)
-            .lines()
-            .next()
-            .unwrap()
-            .split(' ')
-            .nth(1)
-            .unwrap()
-            .split('-')
-            .next()
-            .unwrap()
-            .to_owned();
-        let rustc_version = Version::parse(&rustc_output.trim()).unwrap();
-        let source_version =
-            Version::parse(&fs::read_to_string(self.src.join("src/version")).unwrap().trim())
+        let stage0_output = output(Command::new(program_path).arg("--version"));
+        let mut stage0_output = stage0_output.lines().next().unwrap().split(' ');
+
+        let stage0_name = stage0_output.next().unwrap();
+        if stage0_name != component_name {
+            fail(&format!(
+                "Expected to find {component_name} at {program_path} but it claims to be {stage0_name}"
+            ));
+        }
+
+        let stage0_version =
+            Version::parse(stage0_output.next().unwrap().split('-').next().unwrap().trim())
                 .unwrap();
-        if !(source_version == rustc_version
-            || (source_version.major == rustc_version.major
-                && (source_version.minor == rustc_version.minor
-                    || source_version.minor == rustc_version.minor + 1)))
+        let source_version =
+            Version::parse(fs::read_to_string(self.src.join("src/version")).unwrap().trim())
+                .unwrap();
+        if !(source_version == stage0_version
+            || (source_version.major == stage0_version.major
+                && (source_version.minor == stage0_version.minor
+                    || source_version.minor == stage0_version.minor + 1)))
         {
             let prev_version = format!("{}.{}.x", source_version.major, source_version.minor - 1);
-            eprintln!(
-                "Unexpected rustc version: {rustc_version}, we should use {prev_version}/{source_version} to build source with {source_version}"
-            );
-            exit!(1);
+            fail(&format!(
+                "Unexpected {component_name} version: {stage0_version}, we should use {prev_version}/{source_version} to build source with {source_version}"
+            ));
         }
     }
 
@@ -2307,7 +2347,7 @@ impl Config {
         };
 
         // Handle running from a directory other than the top level
-        let top_level = output(self.git().args(&["rev-parse", "--show-toplevel"]));
+        let top_level = output(self.git().args(["rev-parse", "--show-toplevel"]));
         let top_level = top_level.trim_end();
         let compiler = format!("{top_level}/compiler/");
         let library = format!("{top_level}/library/");
@@ -2318,7 +2358,7 @@ impl Config {
             self.git()
                 .arg("rev-list")
                 .arg(format!("--author={}", self.stage0_metadata.config.git_merge_commit_email))
-                .args(&["-n1", "--first-parent", "HEAD"]),
+                .args(["-n1", "--first-parent", "HEAD"]),
         );
         let commit = merge_base.trim_end();
         if commit.is_empty() {
@@ -2332,7 +2372,7 @@ impl Config {
         // Warn if there were changes to the compiler or standard library since the ancestor commit.
         let has_changes = !t!(self
             .git()
-            .args(&["diff-index", "--quiet", &commit, "--", &compiler, &library])
+            .args(["diff-index", "--quiet", commit, "--", &compiler, &library])
             .status())
         .success();
         if has_changes {
@@ -2368,10 +2408,10 @@ impl Config {
                     .last_modified_commit(&["src/llvm-project"], "download-ci-llvm", true)
                     .is_none()
             {
-                // there are some untracked changes in the the given paths.
+                // there are some untracked changes in the given paths.
                 false
             } else {
-                llvm::is_ci_llvm_available(&self, asserts)
+                llvm::is_ci_llvm_available(self, asserts)
             }
         };
         match download_ci_llvm {
@@ -2380,7 +2420,7 @@ impl Config {
             // FIXME: "if-available" is deprecated. Remove this block later (around mid 2024)
             // to not break builds between the recent-to-old checkouts.
             Some(StringOrBool::String(s)) if s == "if-available" => {
-                llvm::is_ci_llvm_available(&self, asserts)
+                llvm::is_ci_llvm_available(self, asserts)
             }
             Some(StringOrBool::String(s)) if s == "if-unchanged" => if_unchanged(),
             Some(StringOrBool::String(other)) => {
@@ -2398,7 +2438,7 @@ impl Config {
         if_unchanged: bool,
     ) -> Option<String> {
         // Handle running from a directory other than the top level
-        let top_level = output(self.git().args(&["rev-parse", "--show-toplevel"]));
+        let top_level = output(self.git().args(["rev-parse", "--show-toplevel"]));
         let top_level = top_level.trim_end();
 
         // Look for a version to compare to based on the current commit.
@@ -2407,7 +2447,7 @@ impl Config {
             self.git()
                 .arg("rev-list")
                 .arg(format!("--author={}", self.stage0_metadata.config.git_merge_commit_email))
-                .args(&["-n1", "--first-parent", "HEAD"]),
+                .args(["-n1", "--first-parent", "HEAD"]),
         );
         let commit = merge_base.trim_end();
         if commit.is_empty() {
@@ -2420,7 +2460,7 @@ impl Config {
 
         // Warn if there were changes to the compiler or standard library since the ancestor commit.
         let mut git = self.git();
-        git.args(&["diff-index", "--quiet", &commit, "--"]);
+        git.args(["diff-index", "--quiet", commit, "--"]);
 
         for path in modified_paths {
             git.arg(format!("{top_level}/{path}"));

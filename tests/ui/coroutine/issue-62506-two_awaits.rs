@@ -1,8 +1,8 @@
 // Output = String caused an ICE whereas Output = &'static str compiled successfully.
 // Broken MIR: coroutine contains type std::string::String in MIR,
 // but typeck only knows about {<S as T>::Future, ()}
-// check-pass
-// edition:2018
+//@ check-pass
+//@ edition:2018
 
 use std::future::Future;
 

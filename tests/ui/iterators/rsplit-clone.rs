@@ -1,4 +1,4 @@
-// check-pass
+//@ check-pass
 
 // RSplit<T, P> previously required T: Clone in order to be Clone
 

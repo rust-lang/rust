@@ -1,4 +1,4 @@
-// compile-flags: -Zverbose-internals
+//@ compile-flags: -Zverbose-internals
 
 mod mod1 {
     pub fn f<T: std::fmt::Display>(t: T)

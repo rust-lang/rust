@@ -15,22 +15,28 @@ const NUL_ERR: io::Error =
     io::const_io_error!(io::ErrorKind::InvalidInput, "file name contained an unexpected NUL byte");
 
 #[inline]
-pub fn run_path_with_cstr<T, F>(path: &Path, f: F) -> io::Result<T>
-where
-    F: FnOnce(&CStr) -> io::Result<T>,
-{
+pub fn run_path_with_cstr<T>(path: &Path, f: &dyn Fn(&CStr) -> io::Result<T>) -> io::Result<T> {
     run_with_cstr(path.as_os_str().as_encoded_bytes(), f)
 }
 
 #[inline]
-pub fn run_with_cstr<T, F>(bytes: &[u8], f: F) -> io::Result<T>
-where
-    F: FnOnce(&CStr) -> io::Result<T>,
-{
+pub fn run_with_cstr<T>(bytes: &[u8], f: &dyn Fn(&CStr) -> io::Result<T>) -> io::Result<T> {
+    // Dispatch and dyn erase the closure type to prevent mono bloat.
+    // See https://github.com/rust-lang/rust/pull/121101.
     if bytes.len() >= MAX_STACK_ALLOCATION {
-        return run_with_cstr_allocating(bytes, f);
+        run_with_cstr_allocating(bytes, f)
+    } else {
+        unsafe { run_with_cstr_stack(bytes, f) }
     }
+}
 
+/// # Safety
+///
+/// `bytes` must have a length less than `MAX_STACK_ALLOCATION`.
+unsafe fn run_with_cstr_stack<T>(
+    bytes: &[u8],
+    f: &dyn Fn(&CStr) -> io::Result<T>,
+) -> io::Result<T> {
     let mut buf = MaybeUninit::<[u8; MAX_STACK_ALLOCATION]>::uninit();
     let buf_ptr = buf.as_mut_ptr() as *mut u8;
 
@@ -47,10 +53,7 @@ where
 
 #[cold]
 #[inline(never)]
-fn run_with_cstr_allocating<T, F>(bytes: &[u8], f: F) -> io::Result<T>
-where
-    F: FnOnce(&CStr) -> io::Result<T>,
-{
+fn run_with_cstr_allocating<T>(bytes: &[u8], f: &dyn Fn(&CStr) -> io::Result<T>) -> io::Result<T> {
     match CString::new(bytes) {
         Ok(s) => f(&s),
         Err(_) => Err(NUL_ERR),

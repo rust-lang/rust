@@ -1,7 +1,7 @@
-// run-pass
-// aux-build:ver-cfg-rel.rs
-// revisions: assume no_assume
-// [assume]compile-flags: -Z assume-incomplete-release
+//@ run-pass
+//@ aux-build:ver-cfg-rel.rs
+//@ revisions: assume no_assume
+//@ [assume]compile-flags: -Z assume-incomplete-release
 
 #![feature(cfg_version)]
 

@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 const C1: i32 = 0x12345678;
 const C2: isize = C1 as i16 as isize;
 

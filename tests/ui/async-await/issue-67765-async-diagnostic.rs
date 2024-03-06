@@ -1,4 +1,4 @@
-// edition:2018
+//@ edition:2018
 //
 // Regression test for issue #67765
 // Tests that we point at the proper location when giving

@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 trait Trait {
     const ASSOC: fn(&'static u32);
 }

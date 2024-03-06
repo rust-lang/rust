@@ -1,4 +1,4 @@
-// edition:2021
+//@ edition:2021
 
 #[derive(Debug)]
 struct Point {
@@ -15,6 +15,6 @@ fn foo () -> impl FnMut()->() {
     c
 }
 fn main() {
-    let c = foo();
+    let mut c = foo();
     c();
 }

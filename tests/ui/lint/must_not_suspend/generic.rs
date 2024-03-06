@@ -1,5 +1,5 @@
-// edition:2018
-// run-pass
+//@ edition:2018
+//@ run-pass
 //
 // this test shows a case where the lint doesn't fire in generic code
 #![feature(must_not_suspend)]

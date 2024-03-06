@@ -1,11 +1,11 @@
-// run-pass
-// pretty-expanded FIXME #23616
+//@ run-pass
+//@ pretty-expanded FIXME #23616
 
 // This is a regression test that the metadata for the
 // name_pool::methods impl in the other crate is reachable from this
 // crate.
 
-// aux-build:crate-method-reexport-grrrrrrr2.rs
+//@ aux-build:crate-method-reexport-grrrrrrr2.rs
 
 extern crate crate_method_reexport_grrrrrrr2;
 

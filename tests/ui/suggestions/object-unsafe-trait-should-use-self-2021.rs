@@ -1,4 +1,4 @@
-// edition:2021
+//@ edition:2021
 #![allow(bare_trait_objects)]
 trait A: Sized {
     fn f(a: dyn A) -> dyn A;

@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 
 macro_rules! assert_approx_eq {
     ($a:expr, $b:expr) => ({

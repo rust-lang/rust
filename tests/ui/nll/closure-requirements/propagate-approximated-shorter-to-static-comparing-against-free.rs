@@ -2,7 +2,7 @@
 // where `'x` is bound in closure type but `'a` is free. This forces
 // us to approximate `'x` one way or the other.
 
-// compile-flags:-Zverbose-internals
+//@ compile-flags:-Zverbose-internals
 
 #![feature(rustc_attrs)]
 

@@ -1,7 +1,7 @@
 // Check that we correctly prevent users from making trait objects
 // from traits with static methods.
 //
-// revisions: curr object_safe_for_dispatch
+//@ revisions: curr object_safe_for_dispatch
 
 #![cfg_attr(object_safe_for_dispatch, feature(object_safe_for_dispatch))]
 
@@ -20,5 +20,6 @@ impl Foo for Bar {}
 
 fn main() {
     let b: Box<dyn Foo> = Box::new(Bar);
-    //[object_safe_for_dispatch]~^ ERROR E0038
+    //~^ ERROR E0038
+    //[curr]~| ERROR E0038
 }

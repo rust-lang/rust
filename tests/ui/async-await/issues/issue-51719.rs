@@ -1,4 +1,4 @@
-// edition:2018
+//@ edition:2018
 //
 // Tests that the .await syntax can't be used to make a coroutine
 

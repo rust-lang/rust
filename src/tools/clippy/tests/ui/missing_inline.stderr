@@ -1,5 +1,5 @@
 error: missing `#[inline]` for a function
-  --> $DIR/missing_inline.rs:20:1
+  --> tests/ui/missing_inline.rs:20:1
    |
 LL | pub fn pub_foo() {}
    | ^^^^^^^^^^^^^^^^^^^
@@ -8,31 +8,31 @@ LL | pub fn pub_foo() {}
    = help: to override `-D warnings` add `#[allow(clippy::missing_inline_in_public_items)]`
 
 error: missing `#[inline]` for a default trait method
-  --> $DIR/missing_inline.rs:39:5
+  --> tests/ui/missing_inline.rs:39:5
    |
 LL |     fn PubBar_b() {}
    |     ^^^^^^^^^^^^^^^^
 
 error: missing `#[inline]` for a method
-  --> $DIR/missing_inline.rs:55:5
+  --> tests/ui/missing_inline.rs:55:5
    |
 LL |     fn PubBar_a() {}
    |     ^^^^^^^^^^^^^^^^
 
 error: missing `#[inline]` for a method
-  --> $DIR/missing_inline.rs:58:5
+  --> tests/ui/missing_inline.rs:58:5
    |
 LL |     fn PubBar_b() {}
    |     ^^^^^^^^^^^^^^^^
 
 error: missing `#[inline]` for a method
-  --> $DIR/missing_inline.rs:61:5
+  --> tests/ui/missing_inline.rs:61:5
    |
 LL |     fn PubBar_c() {}
    |     ^^^^^^^^^^^^^^^^
 
 error: missing `#[inline]` for a method
-  --> $DIR/missing_inline.rs:73:5
+  --> tests/ui/missing_inline.rs:73:5
    |
 LL |     pub fn PubFooImpl() {}
    |     ^^^^^^^^^^^^^^^^^^^^^^

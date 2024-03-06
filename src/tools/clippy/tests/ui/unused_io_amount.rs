@@ -229,4 +229,47 @@ fn on_return_should_not_raise<T: io::Read + io::Write>(s: &mut T) -> io::Result<
     s.read(&mut buf)
 }
 
+pub fn unwrap_in_block(rdr: &mut dyn std::io::Read) -> std::io::Result<usize> {
+    let read = { rdr.read(&mut [0])? };
+    Ok(read)
+}
+
+pub fn consumed_example(rdr: &mut dyn std::io::Read) {
+    match rdr.read(&mut [0]) {
+        Ok(0) => println!("EOF"),
+        Ok(_) => println!("fully read"),
+        Err(_) => println!("fail"),
+    };
+    match rdr.read(&mut [0]) {
+        Ok(0) => println!("EOF"),
+        Ok(_) => println!("fully read"),
+        Err(_) => println!("fail"),
+    }
+}
+
+pub fn unreachable_or_panic(rdr: &mut dyn std::io::Read) {
+    {
+        match rdr.read(&mut [0]) {
+            Ok(_) => unreachable!(),
+            Err(_) => println!("expected"),
+        }
+    }
+
+    {
+        match rdr.read(&mut [0]) {
+            Ok(_) => panic!(),
+            Err(_) => println!("expected"),
+        }
+    }
+}
+
+pub fn wildcards(rdr: &mut dyn std::io::Read) {
+    {
+        match rdr.read(&mut [0]) {
+            Ok(1) => todo!(),
+            _ => todo!(),
+        }
+    }
+}
+
 fn main() {}

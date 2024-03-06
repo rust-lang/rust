@@ -1,0 +1,10 @@
+warning: trait `Tr` is never used
+  --> $DIR/issue-22546.rs:18:7
+   |
+LL | trait Tr {
+   |       ^^
+   |
+   = note: `#[warn(dead_code)]` on by default
+
+warning: 1 warning emitted
+

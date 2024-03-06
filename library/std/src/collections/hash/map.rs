@@ -356,6 +356,7 @@ impl<K, V, S> HashMap<K, V, S> {
     ///
     /// In the current implementation, iterating over keys takes O(capacity) time
     /// instead of O(len) because it internally visits empty buckets too.
+    #[rustc_lint_query_instability]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn keys(&self) -> Keys<'_, K, V> {
         Keys { inner: self.iter() }
@@ -417,6 +418,7 @@ impl<K, V, S> HashMap<K, V, S> {
     ///
     /// In the current implementation, iterating over values takes O(capacity) time
     /// instead of O(len) because it internally visits empty buckets too.
+    #[rustc_lint_query_instability]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn values(&self) -> Values<'_, K, V> {
         Values { inner: self.iter() }
@@ -449,6 +451,7 @@ impl<K, V, S> HashMap<K, V, S> {
     ///
     /// In the current implementation, iterating over values takes O(capacity) time
     /// instead of O(len) because it internally visits empty buckets too.
+    #[rustc_lint_query_instability]
     #[stable(feature = "map_values_mut", since = "1.10.0")]
     pub fn values_mut(&mut self) -> ValuesMut<'_, K, V> {
         ValuesMut { inner: self.iter_mut() }
@@ -1098,6 +1101,7 @@ where
     /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
+    #[rustc_confusables("push", "append")]
     pub fn insert(&mut self, k: K, v: V) -> Option<V> {
         self.base.insert(k, v)
     }
@@ -1152,6 +1156,7 @@ where
     /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
+    #[rustc_confusables("delete", "take")]
     pub fn remove<Q: ?Sized>(&mut self, k: &Q) -> Option<V>
     where
         K: Borrow<Q>,

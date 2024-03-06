@@ -1,5 +1,5 @@
-// run-pass
-// compile-flags: -C debug-assertions
+//@ run-pass
+//@ compile-flags: -C debug-assertions
 
 // Check that we do *not* overflow on a number of edge cases.
 // (compare with test/run-fail/overflowing-{lsh,rsh}*.rs)

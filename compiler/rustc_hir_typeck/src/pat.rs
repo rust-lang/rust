@@ -3,8 +3,7 @@ use crate::{errors, FnCtxt, LoweredTy};
 use rustc_ast as ast;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::{
-    codes::*, pluralize, struct_span_code_err, Applicability, Diagnostic, DiagnosticBuilder,
-    ErrorGuaranteed, MultiSpan,
+    codes::*, pluralize, struct_span_code_err, Applicability, Diag, ErrorGuaranteed, MultiSpan,
 };
 use rustc_hir as hir;
 use rustc_hir::def::{CtorKind, DefKind, Res};
@@ -99,7 +98,7 @@ impl<'tcx> FnCtxt<'_, 'tcx> {
         expected: Ty<'tcx>,
         actual: Ty<'tcx>,
         ti: TopInfo<'tcx>,
-    ) -> Option<DiagnosticBuilder<'tcx>> {
+    ) -> Option<Diag<'tcx>> {
         let mut diag =
             self.demand_eqtype_with_origin(&self.pattern_cause(ti, cause_span), expected, actual)?;
         if let Some(expr) = ti.origin_expr {
@@ -529,7 +528,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         ty
     }
 
-    fn endpoint_has_type(&self, err: &mut Diagnostic, span: Span, ty: Ty<'_>) {
+    fn endpoint_has_type(&self, err: &mut Diag<'_>, span: Span, ty: Ty<'_>) {
         if !ty.references_error() {
             err.span_label(span, format!("this is of type `{ty}`"));
         }
@@ -576,7 +575,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         if (lhs, rhs).references_error() {
             err.downgrade_to_delayed_bug();
         }
-        if self.tcx.sess.teach(err.get_code().unwrap()) {
+        if self.tcx.sess.teach(err.code.unwrap()) {
             err.note(
                 "In a match expression, only numbers and characters can be matched \
                     against a range. This is because the compiler checks that the range \
@@ -683,7 +682,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
     fn suggest_adding_missing_ref_or_removing_ref(
         &self,
-        err: &mut Diagnostic,
+        err: &mut Diag<'_>,
         span: Span,
         expected: Ty<'tcx>,
         actual: Ty<'tcx>,
@@ -715,13 +714,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     }
 
     // Precondition: pat is a Ref(_) pattern
-    fn borrow_pat_suggestion(&self, err: &mut Diagnostic, pat: &Pat<'_>) {
+    fn borrow_pat_suggestion(&self, err: &mut Diag<'_>, pat: &Pat<'_>) {
         let tcx = self.tcx;
         if let PatKind::Ref(inner, mutbl) = pat.kind
             && let PatKind::Binding(_, _, binding, ..) = inner.kind
         {
-            let binding_parent_id = tcx.hir().parent_id(pat.hir_id);
-            let binding_parent = tcx.hir_node(binding_parent_id);
+            let binding_parent = tcx.parent_hir_node(pat.hir_id);
             debug!(?inner, ?pat, ?binding_parent);
 
             let mutability = match mutbl {
@@ -847,7 +845,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 type_str
             );
             err.span_label(span, format!("type `{type_str}` cannot be dereferenced"));
-            if self.tcx.sess.teach(err.get_code().unwrap()) {
+            if self.tcx.sess.teach(err.code.unwrap()) {
                 err.note(CANNOT_IMPLICITLY_DEREF_POINTER_TRAIT_OBJ);
             }
             return Err(err.emit());
@@ -923,7 +921,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         // Type-check the path.
         let (pat_ty, pat_res) =
-            self.instantiate_value_path(segments, opt_ty, res, pat.span, pat.hir_id);
+            self.instantiate_value_path(segments, opt_ty, res, pat.span, pat.span, pat.hir_id);
         if let Some(err) =
             self.demand_suptype_with_origin(&self.pattern_cause(ti, pat.span), expected, pat_ty)
         {
@@ -934,7 +932,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
     fn maybe_suggest_range_literal(
         &self,
-        e: &mut Diagnostic,
+        e: &mut Diag<'_>,
         opt_def_id: Option<hir::def_id::DefId>,
         ident: Ident,
     ) -> bool {
@@ -969,7 +967,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
     fn emit_bad_pat_path(
         &self,
-        mut e: DiagnosticBuilder<'_>,
+        mut e: Diag<'_>,
         pat: &hir::Pat<'tcx>,
         res: Res,
         pat_res: Res,
@@ -989,7 +987,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         res.descr(),
                     ),
                 );
-                match self.tcx.hir().get_parent(pat.hir_id) {
+                match self.tcx.parent_hir_node(pat.hir_id) {
                     hir::Node::PatField(..) => {
                         e.span_suggestion_verbose(
                             ident.span.shrink_to_hi(),
@@ -1078,7 +1076,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         // Type-check the path.
         let (pat_ty, res) =
-            self.instantiate_value_path(segments, opt_ty, res, pat.span, pat.hir_id);
+            self.instantiate_value_path(segments, opt_ty, res, pat.span, pat.span, pat.hir_id);
         if !pat_ty.is_fn() {
             let e = report_unexpected_res(res);
             return Ty::new_error(tcx, e);
@@ -1086,10 +1084,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         let variant = match res {
             Res::Err => {
-                let e = tcx.dcx().span_delayed_bug(pat.span, "`Res::Err` but no error emitted");
-                self.set_tainted_by_errors(e);
-                on_error(e);
-                return Ty::new_error(tcx, e);
+                tcx.dcx().span_bug(pat.span, "`Res::Err` but no error emitted");
             }
             Res::Def(DefKind::AssocConst | DefKind::AssocFn, _) => {
                 let e = report_unexpected_res(res);
@@ -1390,7 +1385,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     field_map
                         .get(&ident)
                         .map(|(i, f)| {
-                            self.write_field_index(field.hir_id, *i);
+                            // FIXME: handle nested fields
+                            self.write_field_index(field.hir_id, *i, Vec::new());
                             self.tcx.check_stability(f.did, Some(pat.hir_id), span, None);
                             self.field_ty(span, f, args)
                         })
@@ -1508,7 +1504,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         variant: &VariantDef,
         pat: &'_ Pat<'_>,
         fields: &[hir::PatField<'_>],
-    ) -> Option<DiagnosticBuilder<'_>> {
+    ) -> Option<Diag<'_>> {
         // if this is a tuple struct, then all field names will be numbers
         // so if any fields in a struct pattern use shorthand syntax, they will
         // be invalid identifiers (for example, Foo { 0, 1 }).
@@ -1584,7 +1580,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         pat: &'tcx Pat<'tcx>,
         variant: &ty::VariantDef,
         args: &'tcx ty::List<ty::GenericArg<'tcx>>,
-    ) -> DiagnosticBuilder<'tcx> {
+    ) -> Diag<'tcx> {
         let tcx = self.tcx;
         let (field_names, t, plural) = if let [field] = inexistent_fields {
             (format!("a field named `{}`", field.ident), "this", "")
@@ -1669,7 +1665,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 }
             }
         }
-        if tcx.sess.teach(err.get_code().unwrap()) {
+        if tcx.sess.teach(err.code.unwrap()) {
             err.note(
                 "This error indicates that a struct pattern attempted to \
                  extract a nonexistent field from a struct. Struct fields \
@@ -1689,7 +1685,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         pat: &Pat<'_>,
         fields: &'tcx [hir::PatField<'tcx>],
         variant: &ty::VariantDef,
-    ) -> Option<DiagnosticBuilder<'tcx>> {
+    ) -> Option<Diag<'tcx>> {
         if let (Some(CtorKind::Fn), PatKind::Struct(qpath, pattern_fields, ..)) =
             (variant.ctor_kind(), &pat.kind)
         {
@@ -1775,7 +1771,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         &self,
         pat: &Pat<'_>,
         fields: &'tcx [hir::PatField<'tcx>],
-    ) -> DiagnosticBuilder<'tcx> {
+    ) -> Diag<'tcx> {
         let mut err = self
             .dcx()
             .struct_span_err(pat.span, "pattern requires `..` due to inaccessible fields");
@@ -1866,7 +1862,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         unmentioned_fields: &[(&ty::FieldDef, Ident)],
         have_inaccessible_fields: bool,
         fields: &'tcx [hir::PatField<'tcx>],
-    ) -> DiagnosticBuilder<'tcx> {
+    ) -> Diag<'tcx> {
         let inaccessible = if have_inaccessible_fields { " and inaccessible fields" } else { "" };
         let field_names = if let [(_, field)] = unmentioned_fields {
             format!("field `{field}`{inaccessible}")
@@ -2038,7 +2034,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         slice: Option<&'tcx Pat<'tcx>>,
         span: Span,
     ) -> Option<Ty<'tcx>> {
-        if !slice.is_none() {
+        if slice.is_some() {
             return None;
         }
 

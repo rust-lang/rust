@@ -1,6 +1,6 @@
 use crate::intrinsics::{unchecked_add, unchecked_sub};
 use crate::iter::{FusedIterator, TrustedLen};
-use crate::num::NonZeroUsize;
+use crate::num::NonZero;
 
 /// Like a `Range<usize>`, but with a safety invariant that `start <= end`.
 ///
@@ -130,9 +130,9 @@ impl Iterator for IndexRange {
     }
 
     #[inline]
-    fn advance_by(&mut self, n: usize) -> Result<(), NonZeroUsize> {
+    fn advance_by(&mut self, n: usize) -> Result<(), NonZero<usize>> {
         let taken = self.take_prefix(n);
-        NonZeroUsize::new(n - taken.len()).map_or(Ok(()), Err)
+        NonZero::new(n - taken.len()).map_or(Ok(()), Err)
     }
 }
 
@@ -148,9 +148,9 @@ impl DoubleEndedIterator for IndexRange {
     }
 
     #[inline]
-    fn advance_back_by(&mut self, n: usize) -> Result<(), NonZeroUsize> {
+    fn advance_back_by(&mut self, n: usize) -> Result<(), NonZero<usize>> {
         let taken = self.take_suffix(n);
-        NonZeroUsize::new(n - taken.len()).map_or(Ok(()), Err)
+        NonZero::new(n - taken.len()).map_or(Ok(()), Err)
     }
 }
 

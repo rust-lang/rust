@@ -1,11 +1,11 @@
-// run-pass
+//@ run-pass
 // Test that we can infer the Target based on the Self or vice versa.
 
 
 use std::mem;
 
 trait Convert<Target> {
-    fn convert(&self) -> Target;
+    fn convert(&self) -> Target; //~ WARN method `convert` is never used
 }
 
 impl Convert<u32> for i16 {

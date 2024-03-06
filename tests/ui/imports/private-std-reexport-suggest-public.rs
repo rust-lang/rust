@@ -1,4 +1,4 @@
-// run-rustfix
+//@ run-rustfix
 #![allow(unused_imports)]
 fn main() {
     use foo::mem; //~ ERROR module import `mem` is private

@@ -1,4 +1,4 @@
-// run-rustfix
+//@ run-rustfix
 #![allow(unused)]
 enum Foo {
     Foo1(Box<u32>, Box<u32>),

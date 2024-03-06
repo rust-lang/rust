@@ -1,5 +1,5 @@
-// force-host
-// no-prefer-dynamic
+//@ force-host
+//@ no-prefer-dynamic
 #![crate_type = "proc-macro"]
 #![crate_name="some_macros"]
 

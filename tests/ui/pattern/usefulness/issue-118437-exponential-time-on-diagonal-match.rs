@@ -1,4 +1,7 @@
-// check-pass
+#![feature(rustc_attrs)]
+#![pattern_complexity = "61"]
+
+//@ check-pass
 struct BaseCommand {
     field01: bool,
     field02: bool,

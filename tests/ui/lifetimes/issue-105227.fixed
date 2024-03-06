@@ -1,6 +1,6 @@
 // Regression test for issue #105227.
 
-// run-rustfix
+//@ run-rustfix
 #![allow(warnings)]
 fn chars0<'a>(v :(&'a  str, &'a str)) -> impl Iterator<Item = char> + 'a  {
 //~^ HELP to declare that `impl Iterator<Item = char>` captures `'_`, you can introduce a named lifetime parameter `'a`

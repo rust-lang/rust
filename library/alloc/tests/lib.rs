@@ -13,6 +13,7 @@
 #![feature(core_intrinsics)]
 #![feature(extract_if)]
 #![feature(exact_size_is_empty)]
+#![feature(generic_nonzero)]
 #![feature(linked_list_cursors)]
 #![feature(map_try_insert)]
 #![feature(new_uninit)]
@@ -40,6 +41,7 @@
 #![feature(thin_box)]
 #![feature(strict_provenance)]
 #![feature(drain_keep_rest)]
+#![feature(local_waker)]
 #![allow(internal_features)]
 #![deny(fuzzy_provenance_casts)]
 #![deny(unsafe_op_in_unsafe_fn)]
@@ -61,6 +63,7 @@ mod rc;
 mod slice;
 mod str;
 mod string;
+mod task;
 mod thin_box;
 mod vec;
 mod vec_deque;

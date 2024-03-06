@@ -1,6 +1,6 @@
-// run-pass
-// compile-flags: -C codegen-units=3
-// aux-build:sepcomp_cci_lib.rs
+//@ run-pass
+//@ compile-flags: -C codegen-units=3
+//@ aux-build:sepcomp_cci_lib.rs
 
 // Test accessing cross-crate inlined items from multiple compilation units.
 

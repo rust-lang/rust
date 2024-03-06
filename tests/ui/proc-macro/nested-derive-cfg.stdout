@@ -1,7 +1,7 @@
 PRINT-DERIVE INPUT (DISPLAY): struct Foo
 { my_array: [bool; { struct Inner { non_removed_inner_field: usize } 0 }] }
 PRINT-DERIVE DEEP-RE-COLLECTED (DISPLAY): struct Foo
-{ my_array : [bool ; { struct Inner { non_removed_inner_field : usize } 0 }] }
+{ my_array : [bool; { struct Inner { non_removed_inner_field : usize } 0 }] }
 PRINT-DERIVE INPUT (DEBUG): TokenStream [
     Ident {
         ident: "struct",

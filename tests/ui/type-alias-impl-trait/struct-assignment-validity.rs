@@ -1,5 +1,5 @@
-// compile-flags: -Zvalidate-mir
-// check-pass
+//@ compile-flags: -Zvalidate-mir
+//@ check-pass
 
 // Check that we don't cause cycle errors when validating pre-`Reveal::All` MIR
 // that assigns opaques through normalized projections.

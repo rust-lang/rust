@@ -1,4 +1,4 @@
-// check-pass
+//@ check-pass
 #![feature(generic_arg_infer)]
 
 struct Foo<const N: bool, const M: u8>;

@@ -7,6 +7,16 @@ LL | impl<T: Default> A for T {
 LL | impl<T: Default + ~const Sup> const A for T {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ conflicting implementation
 
-error: aborting due to 1 previous error
+error[E0308]: mismatched types
+  --> $DIR/specializing-constness-2.rs:27:5
+   |
+LL |     <T as A>::a();
+   |     ^^^^^^^^^^^^^ expected `host`, found `true`
+   |
+   = note: expected constant `host`
+              found constant `true`
 
-For more information about this error, try `rustc --explain E0119`.
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0119, E0308.
+For more information about an error, try `rustc --explain E0119`.

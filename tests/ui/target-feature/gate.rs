@@ -1,4 +1,4 @@
-// only-x86_64
+//@ only-x86_64
 //
 // gate-test-sse4a_target_feature
 // gate-test-powerpc_target_feature
@@ -19,6 +19,8 @@
 // gate-test-aarch64_ver_target_feature
 // gate-test-csky_target_feature
 // gate-test-loongarch_target_feature
+// gate-test-lahfsahf_target_feature
+// gate-test-prfchw_target_feature
 
 #[target_feature(enable = "avx512bw")]
 //~^ ERROR: currently unstable

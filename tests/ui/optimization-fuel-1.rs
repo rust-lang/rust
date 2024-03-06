@@ -1,10 +1,10 @@
-// run-pass
+//@ run-pass
 
 #![crate_name="foo"]
 
 use std::mem::size_of;
 
-// compile-flags: -Z fuel=foo=1
+//@ compile-flags: -Z fuel=foo=1
 
 #[allow(dead_code)]
 struct S1(u8, u16, u8);

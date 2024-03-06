@@ -1,5 +1,4 @@
-// run-pass
-#![feature(cfg_target_abi)]
+//@ run-pass
 
 #[cfg(target_abi = "eabihf")]
 pub fn main() {

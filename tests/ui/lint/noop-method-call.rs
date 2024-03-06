@@ -1,5 +1,4 @@
-// check-pass
-// run-rustfix
+//@ check-pass
 
 #![feature(rustc_attrs)]
 #![allow(unused)]

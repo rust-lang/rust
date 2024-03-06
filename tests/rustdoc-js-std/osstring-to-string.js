@@ -4,6 +4,6 @@
 const EXPECTED = {
     'query': 'OsString -> String',
     'others': [
-        { 'path': 'std::ffi::OsString', 'name': 'into_string' },
+        { 'path': 'std::ffi::os_str::OsString', 'name': 'into_string' },
     ]
 };

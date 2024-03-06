@@ -1,8 +1,8 @@
 // Testing the display of RwLock and RwLockReadGuard in cdb.
 
 // cdb-only
-// min-cdb-version: 10.0.18317.1001
-// compile-flags:-g
+//@ min-cdb-version: 10.0.18317.1001
+//@ compile-flags:-g
 
 // === CDB TESTS ==================================================================================
 //
@@ -16,7 +16,7 @@
 // cdb-command:dx r
 // cdb-check:r                [Type: std::sync::rwlock::RwLockReadGuard<i32>]
 // cdb-check:    [...] data             : NonNull([...]: 0) [Type: core::ptr::non_null::NonNull<i32>]
-// cdb-check:    [...] inner_lock       : [...] [Type: std::sys::pal::windows::locks::rwlock::RwLock *]
+// cdb-check:    [...] inner_lock       : [...] [Type: std::sys::locks::rwlock::windows::RwLock *]
 
 #[allow(unused_variables)]
 

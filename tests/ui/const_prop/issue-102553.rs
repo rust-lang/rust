@@ -1,5 +1,5 @@
-// compile-flags: --crate-type=lib
-// check-pass
+//@ compile-flags: --crate-type=lib
+//@ check-pass
 
 pub trait Widget<E> {
     fn boxed<'w>(self) -> Box<dyn WidgetDyn<E> + 'w>

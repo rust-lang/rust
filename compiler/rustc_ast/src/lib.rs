@@ -12,14 +12,14 @@
 #![allow(internal_features)]
 #![feature(rustdoc_internals)]
 #![feature(associated_type_bounds)]
+#![feature(associated_type_defaults)]
 #![feature(box_patterns)]
 #![feature(if_let_guard)]
 #![feature(let_chains)]
-#![feature(min_specialization)]
+#![cfg_attr(bootstrap, feature(min_specialization))]
+#![feature(never_type)]
 #![feature(negative_impls)]
 #![feature(stmt_expr_attributes)]
-#![deny(rustc::untranslatable_diagnostic)]
-#![deny(rustc::diagnostic_outside_of_impl)]
 
 #[macro_use]
 extern crate rustc_macros;

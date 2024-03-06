@@ -1,4 +1,4 @@
-// check-pass
+//@ check-pass
 //
 // see issue #70529
 

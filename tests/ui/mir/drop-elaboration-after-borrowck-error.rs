@@ -6,7 +6,6 @@ static A: () = {
     //~^ ERROR destructor of
     a[0] = String::new();
     //~^ ERROR destructor of
-    //~| ERROR binding `a` isn't initialized
 };
 
 struct B<T>([T; 1]);
@@ -17,7 +16,6 @@ impl<T> B<T> {
         //~^ ERROR destructor of
         self.0[0] = other;
         //~^ ERROR destructor of
-        //~| ERROR use of moved value
         self
     }
 }

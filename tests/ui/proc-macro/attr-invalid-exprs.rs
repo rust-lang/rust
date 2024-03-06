@@ -1,6 +1,6 @@
 //! Attributes producing expressions in invalid locations
 
-// aux-build:attr-stmt-expr.rs
+//@ aux-build:attr-stmt-expr.rs
 
 #![feature(proc_macro_hygiene)]
 #![feature(stmt_expr_attributes)]

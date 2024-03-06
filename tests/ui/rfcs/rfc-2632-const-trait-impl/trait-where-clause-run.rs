@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 
 #![feature(const_trait_impl, effects)]
 

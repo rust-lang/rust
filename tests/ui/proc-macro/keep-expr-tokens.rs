@@ -1,5 +1,5 @@
-// aux-build:test-macros.rs
-// compile-flags: -Z span-debug
+//@ aux-build:test-macros.rs
+//@ compile-flags: -Z span-debug
 
 #![feature(stmt_expr_attributes)]
 #![feature(proc_macro_hygiene)]

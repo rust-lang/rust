@@ -1,5 +1,4 @@
-// compile-flags:-C panic=abort
-// error-pattern: language item required, but not found: `panic_info`
+//@ compile-flags:-C panic=abort
 
 #![feature(lang_items)]
 #![feature(no_core)]
@@ -8,6 +7,7 @@
 
 #[panic_handler]
 fn panic() -> ! {
+    //~^ ERROR requires `panic_info` lang_item
     loop {}
 }
 

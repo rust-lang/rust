@@ -1,9 +1,9 @@
-// run-pass
+//@ run-pass
 #![allow(dead_code)]
 #![allow(unused_assignments)]
 #![allow(unused_variables)]
-// ignore-emscripten no threads support
-// needs-unwind
+//@ ignore-emscripten no threads support
+//@ needs-unwind
 
 use std::thread;
 use std::sync::mpsc::{channel, Sender};

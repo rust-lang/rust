@@ -4,10 +4,7 @@ error: the associated type `X` exists for `S<Featureless, Featureless>`, but its
 LL | struct S<A, B>(A, B);
    | -------------- associated item `X` not found for this struct
 LL | struct Featureless;
-   | ------------------
-   | |
-   | doesn't satisfy `Featureless: One`
-   | doesn't satisfy `Featureless: Two`
+   | ------------------ doesn't satisfy `Featureless: One` or `Featureless: Two`
 ...
 LL |     let _: S::<Featureless, Featureless>::X;
    |                                           ^ associated type cannot be referenced on `S<Featureless, Featureless>` due to unsatisfied trait bounds

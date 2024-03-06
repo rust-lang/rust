@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 
 #![feature(fn_delegation)]
 //~^ WARN the feature `fn_delegation` is incomplete

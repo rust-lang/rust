@@ -1,6 +1,6 @@
 use super::{repeat, BorrowedBuf, Cursor, SeekFrom};
 use crate::cmp::{self, min};
-use crate::io::{self, IoSlice, IoSliceMut};
+use crate::io::{self, IoSlice, IoSliceMut, DEFAULT_BUF_SIZE};
 use crate::io::{BufRead, BufReader, Read, Seek, Write};
 use crate::mem::MaybeUninit;
 use crate::ops::Deref;
@@ -259,6 +259,17 @@ fn chain_bufread() {
         (&testdata[..3]).chain(&testdata[3..6]).chain(&testdata[6..9]).chain(&testdata[9..]);
     let chain2 = (&testdata[..4]).chain(&testdata[4..8]).chain(&testdata[8..]);
     cmp_bufread(chain1, chain2, &testdata[..]);
+}
+
+#[test]
+fn chain_splitted_char() {
+    let chain = b"\xc3".chain(b"\xa9".as_slice());
+    assert_eq!(crate::io::read_to_string(chain).unwrap(), "é");
+
+    let mut chain = b"\xc3".chain(b"\xa9\n".as_slice());
+    let mut buf = String::new();
+    assert_eq!(chain.read_line(&mut buf).unwrap(), 3);
+    assert_eq!(buf, "é\n");
 }
 
 #[test]
@@ -651,4 +662,33 @@ fn bench_take_read_buf(b: &mut test::Bencher) {
 
         [255; 128].take(64).read_buf(buf.unfilled()).unwrap();
     });
+}
+
+// Issue #120603
+#[test]
+#[should_panic]
+fn read_buf_broken_read() {
+    struct MalformedRead;
+
+    impl Read for MalformedRead {
+        fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
+            // broken length calculation
+            Ok(buf.len() + 1)
+        }
+    }
+
+    let _ = BufReader::new(MalformedRead).fill_buf();
+}
+
+#[test]
+fn read_buf_full_read() {
+    struct FullRead;
+
+    impl Read for FullRead {
+        fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
+            Ok(buf.len())
+        }
+    }
+
+    assert_eq!(BufReader::new(FullRead).fill_buf().unwrap().len(), DEFAULT_BUF_SIZE);
 }

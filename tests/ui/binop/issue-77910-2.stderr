@@ -11,6 +11,20 @@ help: use parentheses to call this function
 LL |     if foo(/* &i32 */) == y {}
    |           ++++++++++++
 
-error: aborting due to 1 previous error
+error[E0381]: used binding `xs` isn't initialized
+  --> $DIR/issue-77910-2.rs:3:5
+   |
+LL |     let xs;
+   |         -- binding declared here but left uninitialized
+LL |     xs
+   |     ^^ `xs` used here but it isn't initialized
+   |
+help: consider assigning a value
+   |
+LL |     let xs = todo!();
+   |            +++++++++
 
-For more information about this error, try `rustc --explain E0369`.
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0369, E0381.
+For more information about an error, try `rustc --explain E0369`.

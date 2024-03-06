@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 
 #![feature(lang_items, unboxed_closures, fn_traits)]
 

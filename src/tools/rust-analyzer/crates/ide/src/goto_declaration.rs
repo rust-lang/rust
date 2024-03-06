@@ -61,7 +61,7 @@ pub(crate) fn goto_declaration(
                 _ => None,
             }?;
 
-            let trait_ = assoc.containing_trait_impl(db)?;
+            let trait_ = assoc.implemented_trait(db)?;
             let name = Some(assoc.name(db)?);
             let item = trait_.items(db).into_iter().find(|it| it.name(db) == name)?;
             item.try_to_nav(db)

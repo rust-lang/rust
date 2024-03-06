@@ -696,9 +696,10 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         trace!("eval_place_to_op: got {:?}", op);
         // Sanity-check the type we ended up with.
         if cfg!(debug_assertions) {
-            let normalized_place_ty = self.subst_from_current_frame_and_normalize_erasing_regions(
-                mir_place.ty(&self.frame().body.local_decls, *self.tcx).ty,
-            )?;
+            let normalized_place_ty = self
+                .instantiate_from_current_frame_and_normalize_erasing_regions(
+                    mir_place.ty(&self.frame().body.local_decls, *self.tcx).ty,
+                )?;
             if !mir_assign_valid_types(
                 *self.tcx,
                 self.param_env,
@@ -731,8 +732,9 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             &Copy(place) | &Move(place) => self.eval_place_to_op(place, layout)?,
 
             Constant(constant) => {
-                let c =
-                    self.subst_from_current_frame_and_normalize_erasing_regions(constant.const_)?;
+                let c = self.instantiate_from_current_frame_and_normalize_erasing_regions(
+                    constant.const_,
+                )?;
 
                 // This can still fail:
                 // * During ConstProp, with `TooGeneric` or since the `required_consts` were not all

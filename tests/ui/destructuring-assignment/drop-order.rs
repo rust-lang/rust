@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 
 //! Test that let bindings and destructuring assignments have consistent drop orders
 

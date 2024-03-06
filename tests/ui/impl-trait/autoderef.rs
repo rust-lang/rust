@@ -1,6 +1,6 @@
-// revisions: current next
-//[next] compile-flags: -Znext-solver
-// check-pass
+//@ revisions: current next
+//@[next] compile-flags: -Znext-solver
+//@ check-pass
 
 use std::path::Path;
 use std::ffi::OsStr;

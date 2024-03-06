@@ -1,6 +1,6 @@
 // Test or-patterns with box-patterns
 
-// run-pass
+//@ run-pass
 
 #![feature(box_patterns)]
 

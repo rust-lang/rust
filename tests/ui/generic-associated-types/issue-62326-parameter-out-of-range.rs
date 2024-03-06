@@ -1,4 +1,4 @@
-// check-pass
+//@ check-pass
 
 trait Iterator {
     type Item<'a>: 'a;

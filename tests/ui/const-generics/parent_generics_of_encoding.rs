@@ -1,5 +1,5 @@
-// aux-build:generics_of_parent.rs
-// check-pass
+//@ aux-build:generics_of_parent.rs
+//@ check-pass
 #![feature(generic_const_exprs)]
 #![allow(incomplete_features)]
 

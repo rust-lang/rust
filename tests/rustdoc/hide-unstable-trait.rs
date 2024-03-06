@@ -1,4 +1,4 @@
-// aux-build:unstable-trait.rs
+//@ aux-build:unstable-trait.rs
 
 #![crate_name = "foo"]
 #![feature(private_trait)]

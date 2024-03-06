@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 pub struct ConstDefault<const N: usize = 3>;
 
 impl<const N: usize> ConstDefault<N> {

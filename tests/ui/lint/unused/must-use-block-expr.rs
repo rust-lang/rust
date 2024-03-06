@@ -1,5 +1,5 @@
-// run-rustfix
-// check-pass
+//@ run-rustfix
+//@ check-pass
 
 #![warn(unused_must_use)]
 

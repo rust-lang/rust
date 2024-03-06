@@ -581,10 +581,7 @@ PRINT-ATTR INPUT (DEBUG): TokenStream [
 PRINT-DERIVE INPUT (DISPLAY): struct MyDerivePrint
 { field: [u8; { match true { _ => { #![rustc_dummy(third)] true } }; 0 }] }
 PRINT-DERIVE DEEP-RE-COLLECTED (DISPLAY): struct MyDerivePrint
-{
-    field :
-    [u8 ; { match true { _ => { #! [rustc_dummy(third)] true } } ; 0 }]
-}
+{ field : [u8; { match true { _ => { #! [rustc_dummy(third)] true } }; 0 }] }
 PRINT-DERIVE INPUT (DEBUG): TokenStream [
     Ident {
         ident: "struct",
@@ -718,8 +715,7 @@ PRINT-ATTR_ARGS INPUT (DEBUG): TokenStream [
     },
 ]
 PRINT-ATTR INPUT (DISPLAY): (3, 4, { #![cfg_attr(not(FALSE), rustc_dummy(innermost))] 5 });
-PRINT-ATTR RE-COLLECTED (DISPLAY): (3, 4, { #![cfg_attr(not(FALSE), rustc_dummy(innermost))] 5 }) ;
-PRINT-ATTR DEEP-RE-COLLECTED (DISPLAY): (3, 4, { #! [cfg_attr(not(FALSE), rustc_dummy(innermost))] 5 }) ;
+PRINT-ATTR DEEP-RE-COLLECTED (DISPLAY): (3, 4, { #! [cfg_attr(not(FALSE), rustc_dummy(innermost))] 5 });
 PRINT-ATTR INPUT (DEBUG): TokenStream [
     Group {
         delimiter: Parenthesis,
@@ -834,8 +830,7 @@ PRINT-ATTR_ARGS INPUT (DEBUG): TokenStream [
     },
 ]
 PRINT-ATTR INPUT (DISPLAY): (3, 4, { #![cfg_attr(not(FALSE), rustc_dummy(innermost))] 5 });
-PRINT-ATTR RE-COLLECTED (DISPLAY): (3, 4, { #![cfg_attr(not(FALSE), rustc_dummy(innermost))] 5 }) ;
-PRINT-ATTR DEEP-RE-COLLECTED (DISPLAY): (3, 4, { #! [cfg_attr(not(FALSE), rustc_dummy(innermost))] 5 }) ;
+PRINT-ATTR DEEP-RE-COLLECTED (DISPLAY): (3, 4, { #! [cfg_attr(not(FALSE), rustc_dummy(innermost))] 5 });
 PRINT-ATTR INPUT (DEBUG): TokenStream [
     Group {
         delimiter: Parenthesis,

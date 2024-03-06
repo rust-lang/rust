@@ -1,11 +1,10 @@
 use crate::fmt;
 use crate::io::{self, Error, ErrorKind};
 use crate::mem;
-use crate::num::NonZeroI32;
+use crate::num::NonZero;
 use crate::sys;
 use crate::sys::cvt;
 use crate::sys::process::process_common::*;
-use core::ffi::NonZero_c_int;
 
 #[cfg(target_os = "linux")]
 use crate::os::linux::process::PidFd;
@@ -695,15 +694,15 @@ impl Command {
             let mut iov = [IoSlice::new(b"")];
             let mut msg: libc::msghdr = mem::zeroed();
 
-            msg.msg_iov = &mut iov as *mut _ as *mut _;
+            msg.msg_iov = core::ptr::addr_of_mut!(iov) as *mut _;
             msg.msg_iovlen = 1;
 
             // only attach cmsg if we successfully acquired the pidfd
             if pidfd >= 0 {
                 msg.msg_controllen = mem::size_of_val(&cmsg.buf) as _;
-                msg.msg_control = &mut cmsg.buf as *mut _ as *mut _;
+                msg.msg_control = core::ptr::addr_of_mut!(cmsg.buf) as *mut _;
 
-                let hdr = CMSG_FIRSTHDR(&mut msg as *mut _ as *mut _);
+                let hdr = CMSG_FIRSTHDR(core::ptr::addr_of_mut!(msg) as *mut _);
                 (*hdr).cmsg_level = SOL_SOCKET;
                 (*hdr).cmsg_type = SCM_RIGHTS;
                 (*hdr).cmsg_len = CMSG_LEN(SCM_MSG_LEN as _) as _;
@@ -745,17 +744,17 @@ impl Command {
 
             let mut msg: libc::msghdr = mem::zeroed();
 
-            msg.msg_iov = &mut iov as *mut _ as *mut _;
+            msg.msg_iov = core::ptr::addr_of_mut!(iov) as *mut _;
             msg.msg_iovlen = 1;
             msg.msg_controllen = mem::size_of::<Cmsg>() as _;
-            msg.msg_control = &mut cmsg as *mut _ as *mut _;
+            msg.msg_control = core::ptr::addr_of_mut!(cmsg) as *mut _;
 
             match cvt_r(|| libc::recvmsg(sock.as_raw(), &mut msg, libc::MSG_CMSG_CLOEXEC)) {
                 Err(_) => return -1,
                 Ok(_) => {}
             }
 
-            let hdr = CMSG_FIRSTHDR(&mut msg as *mut _ as *mut _);
+            let hdr = CMSG_FIRSTHDR(core::ptr::addr_of_mut!(msg) as *mut _);
             if hdr.is_null()
                 || (*hdr).cmsg_level != SOL_SOCKET
                 || (*hdr).cmsg_type != SCM_RIGHTS
@@ -935,7 +934,7 @@ impl ExitStatus {
         // https://pubs.opengroup.org/onlinepubs/9699919799/functions/wait.html. If it is not
         // true for a platform pretending to be Unix, the tests (our doctests, and also
         // process_unix/tests.rs) will spot it. `ExitStatusError::code` assumes this too.
-        match NonZero_c_int::try_from(self.0) {
+        match NonZero::try_from(self.0) {
             /* was nonzero */ Ok(failure) => Err(ExitStatusError(failure)),
             /* was zero, couldn't convert */ Err(_) => Ok(()),
         }
@@ -1092,7 +1091,7 @@ impl fmt::Display for ExitStatus {
 }
 
 #[derive(PartialEq, Eq, Clone, Copy)]
-pub struct ExitStatusError(NonZero_c_int);
+pub struct ExitStatusError(NonZero<c_int>);
 
 impl Into<ExitStatus> for ExitStatusError {
     fn into(self) -> ExitStatus {
@@ -1107,7 +1106,7 @@ impl fmt::Debug for ExitStatusError {
 }
 
 impl ExitStatusError {
-    pub fn code(self) -> Option<NonZeroI32> {
+    pub fn code(self) -> Option<NonZero<i32>> {
         ExitStatus(self.0.into()).code().map(|st| st.try_into().unwrap())
     }
 }

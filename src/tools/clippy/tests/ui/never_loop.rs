@@ -1,4 +1,4 @@
-#![feature(inline_const)]
+#![feature(inline_const, try_blocks)]
 #![allow(
     clippy::eq_op,
     clippy::single_match,
@@ -397,6 +397,15 @@ pub fn test32() {
     loop {
         // no error
         todo!("maybe later");
+    }
+}
+
+pub fn issue12205() -> Option<()> {
+    loop {
+        let _: Option<_> = try {
+            None?;
+            return Some(());
+        };
     }
 }
 

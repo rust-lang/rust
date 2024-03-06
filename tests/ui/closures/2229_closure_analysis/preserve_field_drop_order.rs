@@ -1,4 +1,4 @@
-// edition:2021
+//@ edition:2021
 
 // Tests that in cases where we individually capture all the fields of a type,
 // we still drop them in the order they would have been dropped in the 2018 edition.

@@ -1,4 +1,4 @@
-// build-pass
+//@ build-pass
 
 trait Trait {
     type Ref<'a>;

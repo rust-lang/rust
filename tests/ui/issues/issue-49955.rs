@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 
 const ALL_THE_NUMS: [u32; 1] = [
     1

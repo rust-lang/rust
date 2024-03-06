@@ -3,9 +3,9 @@
 // * The future is dropped at one of its suspend points.
 // * Dropping one of the values panics while dropping the future.
 
-// run-pass
-// needs-unwind
-// edition:2018
+//@ run-pass
+//@ needs-unwind
+//@ edition:2018
 
 #![allow(unused)]
 

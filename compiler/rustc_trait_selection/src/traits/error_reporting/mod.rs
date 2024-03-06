@@ -152,9 +152,9 @@ impl ArgKind {
 struct HasNumericInferVisitor;
 
 impl<'tcx> ty::TypeVisitor<TyCtxt<'tcx>> for HasNumericInferVisitor {
-    type BreakTy = ();
+    type Result = ControlFlow<()>;
 
-    fn visit_ty(&mut self, ty: Ty<'tcx>) -> ControlFlow<Self::BreakTy> {
+    fn visit_ty(&mut self, ty: Ty<'tcx>) -> Self::Result {
         if matches!(ty.kind(), ty::Infer(ty::FloatVar(_) | ty::IntVar(_))) {
             ControlFlow::Break(())
         } else {

@@ -1,5 +1,5 @@
-// run-pass
-// only-x86_64
+//@ run-pass
+//@ only-x86_64
 
 #![feature(const_eval_select)]
 #![feature(core_intrinsics)]
@@ -22,9 +22,7 @@ fn eq_rt(x: [i32; 4], y: [i32; 4]) -> bool {
 }
 
 const fn eq(x: [i32; 4], y: [i32; 4]) -> bool {
-    unsafe {
-        const_eval_select((x, y), eq_ct, eq_rt)
-    }
+    const_eval_select((x, y), eq_ct, eq_rt)
 }
 
 fn main() {

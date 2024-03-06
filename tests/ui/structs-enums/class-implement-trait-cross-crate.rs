@@ -1,8 +1,8 @@
-// run-pass
+//@ run-pass
 #![allow(dead_code)]
 #![allow(non_camel_case_types)]
 
-// aux-build:cci_class_trait.rs
+//@ aux-build:cci_class_trait.rs
 extern crate cci_class_trait;
 use cci_class_trait::animals::noisy;
 

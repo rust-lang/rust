@@ -1,4 +1,3 @@
-use hir::PrefixKind;
 use stdx::trim_indent;
 use test_fixture::WithFixture;
 use test_utils::{assert_eq_text, CURSOR_MARKER};
@@ -635,7 +634,7 @@ use std::io;",
     check_one(
         "std::io",
         r"use {std::fmt::{Result, Display}};",
-        r"use {std::{fmt::{Result, Display}, io}};",
+        r"use {std::{fmt::{Display, Result}, io}};",
     );
 }
 
@@ -650,12 +649,12 @@ fn merge_groups_full() {
     check_crate(
         "std::io",
         r"use std::fmt::{Result, Display};",
-        r"use std::{fmt::{Result, Display}, io};",
+        r"use std::{fmt::{Display, Result}, io};",
     );
     check_one(
         "std::io",
         r"use {std::fmt::{Result, Display}};",
-        r"use {std::{fmt::{Result, Display}, io}};",
+        r"use {std::{fmt::{Display, Result}, io}};",
     );
 }
 
@@ -749,12 +748,12 @@ fn merge_groups_full_nested_deep() {
     check_crate(
         "std::foo::bar::quux::Baz",
         r"use std::foo::bar::{Qux, quux::{Fez, Fizz}};",
-        r"use std::foo::bar::{Qux, quux::{Baz, Fez, Fizz}};",
+        r"use std::foo::bar::{quux::{Baz, Fez, Fizz}, Qux};",
     );
     check_one(
         "std::foo::bar::quux::Baz",
         r"use {std::foo::bar::{Qux, quux::{Fez, Fizz}}};",
-        r"use {std::foo::bar::{Qux, quux::{Baz, Fez, Fizz}}};",
+        r"use {std::foo::bar::{quux::{Baz, Fez, Fizz}, Qux}};",
     );
 }
 
@@ -763,7 +762,7 @@ fn merge_groups_full_nested_long() {
     check_crate(
         "std::foo::bar::Baz",
         r"use std::{foo::bar::Qux};",
-        r"use std::{foo::bar::{Baz, Qux}};",
+        r"use std::foo::bar::{Baz, Qux};",
     );
 }
 
@@ -772,12 +771,12 @@ fn merge_groups_last_nested_long() {
     check_crate(
         "std::foo::bar::Baz",
         r"use std::{foo::bar::Qux};",
-        r"use std::{foo::bar::{Baz, Qux}};",
+        r"use std::foo::bar::{Baz, Qux};",
     );
     check_one(
         "std::foo::bar::Baz",
         r"use {std::{foo::bar::Qux}};",
-        r"use {std::{foo::bar::{Baz, Qux}}};",
+        r"use {std::foo::bar::{Baz, Qux}};",
     );
 }
 
@@ -898,7 +897,7 @@ fn merge_glob() {
         r"
 use syntax::{SyntaxKind::*};",
         r"
-use syntax::{SyntaxKind::{self, *}};",
+use syntax::SyntaxKind::{self, *};",
     )
 }
 
@@ -907,7 +906,7 @@ fn merge_glob_nested() {
     check_crate(
         "foo::bar::quux::Fez",
         r"use foo::bar::{Baz, quux::*};",
-        r"use foo::bar::{Baz, quux::{Fez, *}};",
+        r"use foo::bar::{quux::{Fez, *}, Baz};",
     )
 }
 
@@ -1211,7 +1210,7 @@ fn insert_with_renamed_import_complex_use() {
 use self::foo::{self, Foo as _, Bar};
 "#,
         r#"
-use self::foo::{self, Foo, Bar};
+use self::foo::{self, Bar, Foo};
 "#,
         &InsertUseConfig {
             granularity: ImportGranularity::Crate,

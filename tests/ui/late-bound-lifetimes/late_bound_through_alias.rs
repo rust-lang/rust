@@ -1,4 +1,4 @@
-// check-pass
+//@ check-pass
 
 fn f(_: X) -> X {
     unimplemented!()

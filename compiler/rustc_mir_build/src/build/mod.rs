@@ -495,7 +495,7 @@ fn construct_fn<'tcx>(
             args.as_coroutine().yield_ty(),
             args.as_coroutine().resume_ty(),
         ))),
-        ty::Closure(..) | ty::FnDef(..) => None,
+        ty::Closure(..) | ty::CoroutineClosure(..) | ty::FnDef(..) => None,
         ty => span_bug!(span_with_body, "unexpected type of body: {ty:?}"),
     };
 
@@ -666,7 +666,7 @@ fn construct_error(tcx: TyCtxt<'_>, def_id: LocalDefId, guar: ErrorGuaranteed) -
                     let yield_ty = args.yield_ty();
                     let return_ty = args.return_ty();
                     (
-                        vec![closure_ty, args.resume_ty()],
+                        vec![closure_ty, resume_ty],
                         return_ty,
                         Some(Box::new(CoroutineInfo::initial(
                             tcx.coroutine_kind(def_id).unwrap(),
@@ -675,8 +675,39 @@ fn construct_error(tcx: TyCtxt<'_>, def_id: LocalDefId, guar: ErrorGuaranteed) -
                         ))),
                     )
                 }
-                _ => {
-                    span_bug!(span, "expected type of closure body to be a closure or coroutine");
+                ty::CoroutineClosure(did, args) => {
+                    let args = args.as_coroutine_closure();
+                    let sig = tcx.liberate_late_bound_regions(
+                        def_id.to_def_id(),
+                        args.coroutine_closure_sig(),
+                    );
+                    let self_ty = match args.kind() {
+                        ty::ClosureKind::Fn => {
+                            Ty::new_imm_ref(tcx, tcx.lifetimes.re_erased, closure_ty)
+                        }
+                        ty::ClosureKind::FnMut => {
+                            Ty::new_mut_ref(tcx, tcx.lifetimes.re_erased, closure_ty)
+                        }
+                        ty::ClosureKind::FnOnce => closure_ty,
+                    };
+                    (
+                        [self_ty].into_iter().chain(sig.tupled_inputs_ty.tuple_fields()).collect(),
+                        sig.to_coroutine(
+                            tcx,
+                            args.parent_args(),
+                            args.kind_ty(),
+                            tcx.coroutine_for_closure(*did),
+                            Ty::new_error(tcx, guar),
+                        ),
+                        None,
+                    )
+                }
+                ty::Error(_) => (vec![closure_ty, closure_ty], closure_ty, None),
+                kind => {
+                    span_bug!(
+                        span,
+                        "expected type of closure body to be a closure or coroutine, got {kind:?}"
+                    );
                 }
             }
         }
@@ -822,6 +853,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         let upvar_args = match closure_ty.kind() {
             ty::Closure(_, args) => ty::UpvarArgs::Closure(args),
             ty::Coroutine(_, args) => ty::UpvarArgs::Coroutine(args),
+            ty::CoroutineClosure(_, args) => ty::UpvarArgs::CoroutineClosure(args),
             _ => return,
         };
 
@@ -1021,6 +1053,7 @@ pub(crate) fn parse_float_into_scalar(
 ) -> Option<Scalar> {
     let num = num.as_str();
     match float_ty {
+        ty::FloatTy::F16 => unimplemented!("f16_f128"),
         ty::FloatTy::F32 => {
             let Ok(rust_f) = num.parse::<f32>() else { return None };
             let mut f = num
@@ -1067,6 +1100,7 @@ pub(crate) fn parse_float_into_scalar(
 
             Some(Scalar::from_f64(f))
         }
+        ty::FloatTy::F128 => unimplemented!("f16_f128"),
     }
 }
 

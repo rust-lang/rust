@@ -1,4 +1,4 @@
-// check-pass
+//@ check-pass
 //! The payloads of an enum variant should be ordered after its tag.
 
 #![crate_type = "lib"]
@@ -7,11 +7,10 @@
 
 mod assert {
     use std::mem::{Assume, BikeshedIntrinsicFrom};
-    pub struct Context;
 
     pub fn is_transmutable<Src, Dst>()
     where
-        Dst: BikeshedIntrinsicFrom<Src, Context, {
+        Dst: BikeshedIntrinsicFrom<Src, {
             Assume::ALIGNMENT
                 .and(Assume::LIFETIMES)
                 .and(Assume::SAFETY)

@@ -9,10 +9,11 @@
 //! API should require to assemble every node piecewise. The trick of
 //! `parse(format!())` we use internally is an implementation detail -- long
 //! term, it will be replaced with direct tree manipulation.
+
 use itertools::Itertools;
 use parser::T;
 use rowan::NodeOrToken;
-use stdx::{format_to, never};
+use stdx::{format_to, format_to_acc, never};
 
 use crate::{ast, utils::is_raw_identifier, AstNode, SourceFile, SyntaxKind, SyntaxToken};
 
@@ -66,6 +67,9 @@ pub mod ext {
     }
     pub fn expr_ty_new(ty: &ast::Type) -> ast::Expr {
         expr_from_text(&format!("{ty}::new()"))
+    }
+    pub fn expr_self() -> ast::Expr {
+        expr_from_text("self")
     }
 
     pub fn zero_number() -> ast::Expr {
@@ -235,24 +239,21 @@ fn merge_where_clause(
 
 pub fn impl_(
     generic_params: Option<ast::GenericParamList>,
-    generic_args: Option<ast::GenericParamList>,
+    generic_args: Option<ast::GenericArgList>,
     path_type: ast::Type,
     where_clause: Option<ast::WhereClause>,
     body: Option<Vec<either::Either<ast::Attr, ast::AssocItem>>>,
 ) -> ast::Impl {
-    let (gen_params, tr_gen_args) = match (generic_params, generic_args) {
-        (None, None) => (String::new(), String::new()),
-        (None, Some(args)) => (String::new(), args.to_generic_args().to_string()),
-        (Some(params), None) => (params.to_string(), params.to_generic_args().to_string()),
-        (Some(params), Some(args)) => match merge_gen_params(Some(params.clone()), Some(args)) {
-            Some(merged) => (params.to_string(), merged.to_generic_args().to_string()),
-            None => (params.to_string(), String::new()),
-        },
-    };
+    let gen_args = generic_args.map_or_else(String::new, |it| it.to_string());
+
+    let gen_params = generic_params.map_or_else(String::new, |it| it.to_string());
+
+    let body_newline =
+        if where_clause.is_some() && body.is_none() { "\n".to_owned() } else { String::new() };
 
     let where_clause = match where_clause {
-        Some(pr) => pr.to_string(),
-        None => " ".to_string(),
+        Some(pr) => format!("\n{pr}\n"),
+        None => " ".to_owned(),
     };
 
     let body = match body {
@@ -260,7 +261,9 @@ pub fn impl_(
         None => String::new(),
     };
 
-    ast_from_text(&format!("impl{gen_params} {path_type}{tr_gen_args}{where_clause}{{{}}}", body))
+    ast_from_text(&format!(
+        "impl{gen_params} {path_type}{gen_args}{where_clause}{{{body_newline}{body}}}"
+    ))
 }
 
 pub fn impl_trait(
@@ -281,22 +284,27 @@ pub fn impl_trait(
     let trait_gen_args = trait_gen_args.map(|args| args.to_string()).unwrap_or_default();
     let type_gen_args = type_gen_args.map(|args| args.to_string()).unwrap_or_default();
 
-    let gen_params = match merge_gen_params(trait_gen_params, type_gen_params) {
-        Some(pars) => pars.to_string(),
-        None => String::new(),
-    };
+    let gen_params = merge_gen_params(trait_gen_params, type_gen_params)
+        .map_or_else(String::new, |it| it.to_string());
 
     let is_negative = if is_negative { "! " } else { "" };
 
+    let body_newline =
+        if (ty_where_clause.is_some() || trait_where_clause.is_some()) && body.is_none() {
+            "\n".to_owned()
+        } else {
+            String::new()
+        };
+
     let where_clause = merge_where_clause(ty_where_clause, trait_where_clause)
-        .map_or_else(|| " ".to_string(), |wc| format!("\n{}\n", wc));
+        .map_or_else(|| " ".to_owned(), |wc| format!("\n{}\n", wc));
 
     let body = match body {
         Some(bd) => bd.iter().map(|elem| elem.to_string()).join(""),
         None => String::new(),
     };
 
-    ast_from_text(&format!("{is_unsafe}impl{gen_params} {is_negative}{path_type}{trait_gen_args} for {ty}{type_gen_args}{where_clause}{{{}}}" , body))
+    ast_from_text(&format!("{is_unsafe}impl{gen_params} {is_negative}{path_type}{trait_gen_args} for {ty}{type_gen_args}{where_clause}{{{body_newline}{body}}}"))
 }
 
 pub fn impl_trait_type(bounds: ast::TypeBoundList) -> ast::ImplTraitType {
@@ -370,7 +378,7 @@ pub fn use_tree(
     alias: Option<ast::Rename>,
     add_star: bool,
 ) -> ast::UseTree {
-    let mut buf = "use ".to_string();
+    let mut buf = "use ".to_owned();
     buf += &path.syntax().to_string();
     if let Some(use_tree_list) = use_tree_list {
         format_to!(buf, "::{use_tree_list}");
@@ -436,7 +444,7 @@ pub fn block_expr(
     stmts: impl IntoIterator<Item = ast::Stmt>,
     tail_expr: Option<ast::Expr>,
 ) -> ast::BlockExpr {
-    let mut buf = "{\n".to_string();
+    let mut buf = "{\n".to_owned();
     for stmt in stmts.into_iter() {
         format_to!(buf, "    {stmt}\n");
     }
@@ -451,7 +459,7 @@ pub fn async_move_block_expr(
     stmts: impl IntoIterator<Item = ast::Stmt>,
     tail_expr: Option<ast::Expr>,
 ) -> ast::BlockExpr {
-    let mut buf = "async move {\n".to_string();
+    let mut buf = "async move {\n".to_owned();
     for stmt in stmts.into_iter() {
         format_to!(buf, "    {stmt}\n");
     }
@@ -474,7 +482,7 @@ pub fn hacky_block_expr(
     elements: impl IntoIterator<Item = crate::SyntaxElement>,
     tail_expr: Option<ast::Expr>,
 ) -> ast::BlockExpr {
-    let mut buf = "{\n".to_string();
+    let mut buf = "{\n".to_owned();
     for node_or_token in elements.into_iter() {
         match node_or_token {
             rowan::NodeOrToken::Node(n) => format_to!(buf, "    {n}\n"),
@@ -648,6 +656,10 @@ pub fn wildcard_pat() -> ast::WildcardPat {
     }
 }
 
+pub fn rest_pat() -> ast::RestPat {
+    ast_from_text("fn f(..)")
+}
+
 pub fn literal_pat(lit: &str) -> ast::LiteralPat {
     return from_text(lit);
 
@@ -708,8 +720,12 @@ pub fn record_pat_with_fields(path: ast::Path, fields: ast::RecordPatFieldList) 
 
 pub fn record_pat_field_list(
     fields: impl IntoIterator<Item = ast::RecordPatField>,
+    rest_pat: Option<ast::RestPat>,
 ) -> ast::RecordPatFieldList {
-    let fields = fields.into_iter().join(", ");
+    let mut fields = fields.into_iter().join(", ");
+    if let Some(rest_pat) = rest_pat {
+        format_to!(fields, ", {rest_pat}");
+    }
     ast_from_text(&format!("fn f(S {{ {fields} }}: ()))"))
 }
 
@@ -759,15 +775,12 @@ pub fn match_arm_with_guard(
 }
 
 pub fn match_arm_list(arms: impl IntoIterator<Item = ast::MatchArm>) -> ast::MatchArmList {
-    let arms_str = arms
-        .into_iter()
-        .map(|arm| {
-            let needs_comma = arm.expr().map_or(true, |it| !it.is_block_like());
-            let comma = if needs_comma { "," } else { "" };
-            let arm = arm.syntax();
-            format!("    {arm}{comma}\n")
-        })
-        .collect::<String>();
+    let arms_str = arms.into_iter().fold(String::new(), |mut acc, arm| {
+        let needs_comma = arm.expr().map_or(true, |it| !it.is_block_like());
+        let comma = if needs_comma { "," } else { "" };
+        let arm = arm.syntax();
+        format_to_acc!(acc, "    {arm}{comma}\n")
+    });
     return from_text(&arms_str);
 
     fn from_text(text: &str) -> ast::MatchArmList {
@@ -905,7 +918,12 @@ pub fn trait_(
     ast_from_text(&text)
 }
 
-pub fn type_bound(bound: &str) -> ast::TypeBound {
+// FIXME: remove when no one depends on `generate_impl_text_inner`
+pub fn type_bound_text(bound: &str) -> ast::TypeBound {
+    ast_from_text(&format!("fn f<T: {bound}>() {{ }}"))
+}
+
+pub fn type_bound(bound: ast::Type) -> ast::TypeBound {
     ast_from_text(&format!("fn f<T: {bound}>() {{ }}"))
 }
 
@@ -1137,7 +1155,7 @@ pub mod tokens {
 
     pub(super) static SOURCE_FILE: Lazy<Parse<SourceFile>> = Lazy::new(|| {
         SourceFile::parse(
-            "const C: <()>::Item = ( true && true , true || true , 1 != 1, 2 == 2, 3 < 3, 4 <= 4, 5 > 5, 6 >= 6, !true, *p, &p , &mut p, { let a @ [] })\n;\n\n",
+            "const C: <()>::Item = ( true && true , true || true , 1 != 1, 2 == 2, 3 < 3, 4 <= 4, 5 > 5, 6 >= 6, !true, *p, &p , &mut p, { let a @ [] })\n;\n\nimpl A for B where: {}",
         )
     });
 

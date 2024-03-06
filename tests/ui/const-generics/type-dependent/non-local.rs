@@ -1,5 +1,5 @@
-// aux-build:type_dependent_lib.rs
-// run-pass
+//@ aux-build:type_dependent_lib.rs
+//@ run-pass
 extern crate type_dependent_lib;
 
 use type_dependent_lib::*;

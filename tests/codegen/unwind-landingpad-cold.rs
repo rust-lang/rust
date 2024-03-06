@@ -1,6 +1,6 @@
-// compile-flags: -Cno-prepopulate-passes
-// needs-unwind
-// min-llvm-version: 17.0.2
+//@ compile-flags: -Cno-prepopulate-passes
+//@ needs-unwind
+//@ min-llvm-version: 17.0.2
 #![crate_type = "lib"]
 
 // This test checks that drop calls in unwind landing pads

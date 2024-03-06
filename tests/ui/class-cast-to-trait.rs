@@ -1,5 +1,5 @@
 trait Noisy {
-  fn speak(&self);
+  fn speak(&mut self);
 }
 
 struct Cat {
@@ -10,7 +10,7 @@ struct Cat {
 }
 
 impl Cat {
-  pub fn eat(&self) -> bool {
+  pub fn eat(&mut self) -> bool {
     if self.how_hungry > 0 {
         println!("OM NOM NOM");
         self.how_hungry -= 2;
@@ -24,12 +24,12 @@ impl Cat {
 }
 
 impl Noisy for Cat {
-  fn speak(&self) { self.meow(); }
+  fn speak(&mut self) { self.meow(); }
 
 }
 
 impl Cat {
-    fn meow(&self) {
+    fn meow(&mut self) {
       println!("Meow");
       self.meows += 1;
       if self.meows % 5 == 0 {

@@ -12,8 +12,8 @@ mod attribute;
 mod expression;
 mod flyimport;
 mod fn_param;
-mod item_list;
 mod item;
+mod item_list;
 mod pattern;
 mod predicate;
 mod proc_macros;
@@ -65,6 +65,7 @@ pub(crate) const TEST_CONFIG: CompletionConfig = CompletionConfig {
     enable_imports_on_the_fly: true,
     enable_self_on_the_fly: true,
     enable_private_editable: false,
+    enable_term_search: true,
     full_function_signatures: false,
     callable: Some(CallableSnippets::FillArguments),
     snippet_cap: SnippetCap::new(true),
@@ -210,23 +211,14 @@ pub(crate) fn check_edit_with_config(
 
     let mut combined_edit = completion.text_edit.clone();
 
-    resolve_completion_edits(
-        &db,
-        &config,
-        position,
-        completion
-            .import_to_add
-            .iter()
-            .cloned()
-            .filter_map(|(import_path, import_name)| Some((import_path, import_name))),
-    )
-    .into_iter()
-    .flatten()
-    .for_each(|text_edit| {
-        combined_edit.union(text_edit).expect(
-            "Failed to apply completion resolve changes: change ranges overlap, but should not",
-        )
-    });
+    resolve_completion_edits(&db, &config, position, completion.import_to_add.iter().cloned())
+        .into_iter()
+        .flatten()
+        .for_each(|text_edit| {
+            combined_edit.union(text_edit).expect(
+                "Failed to apply completion resolve changes: change ranges overlap, but should not",
+            )
+        });
 
     combined_edit.apply(&mut actual);
     assert_eq_text!(&ra_fixture_after, &actual)

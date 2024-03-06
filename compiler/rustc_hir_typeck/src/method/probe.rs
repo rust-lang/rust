@@ -54,7 +54,7 @@ pub use self::PickKind::*;
 #[derive(Clone, Copy, Debug)]
 pub struct IsSuggestion(pub bool);
 
-struct ProbeContext<'a, 'tcx> {
+pub(crate) struct ProbeContext<'a, 'tcx> {
     fcx: &'a FnCtxt<'a, 'tcx>,
     span: Span,
     mode: Mode,
@@ -111,7 +111,7 @@ pub(crate) struct Candidate<'tcx> {
     // The way this is handled is through `xform_self_ty`. It contains
     // the receiver type of this candidate, but `xform_self_ty`,
     // `xform_ret_ty` and `kind` (which contains the predicates) have the
-    // generic parameters of this candidate substituted with the *same set*
+    // generic parameters of this candidate instantiated with the *same set*
     // of inference variables, which acts as some weird sort of "query".
     //
     // When we check out a candidate, we require `xform_self_ty` to be
@@ -355,7 +355,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         .unwrap()
     }
 
-    fn probe_op<OP, R>(
+    pub(crate) fn probe_op<OP, R>(
         &'a self,
         span: Span,
         mode: Mode,
@@ -799,7 +799,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
         // the `Self` type. An [`ObjectSafetyViolation::SupertraitSelf`] error
         // will be reported by `object_safety.rs` if the method refers to the
         // `Self` type anywhere other than the receiver. Here, we use a
-        // substitution that replaces `Self` with the object type itself. Hence,
+        // instantiation that replaces `Self` with the object type itself. Hence,
         // a `&self` method will wind up with an argument type like `&dyn Trait`.
         let trait_ref = principal.with_self_ty(self.tcx, self_ty);
         self.elaborate_bounds(iter::once(trait_ref), |this, new_trait_ref, item| {
@@ -1751,7 +1751,9 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
     /// Similarly to `probe_for_return_type`, this method attempts to find the best matching
     /// candidate method where the method name may have been misspelled. Similarly to other
     /// edit distance based suggestions, we provide at most one such suggestion.
-    fn probe_for_similar_candidate(&mut self) -> Result<Option<ty::AssocItem>, MethodError<'tcx>> {
+    pub(crate) fn probe_for_similar_candidate(
+        &mut self,
+    ) -> Result<Option<ty::AssocItem>, MethodError<'tcx>> {
         debug!("probing for method names similar to {:?}", self.method_name);
 
         self.probe(|_| {
@@ -1767,6 +1769,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
             );
             pcx.allow_similar_names = true;
             pcx.assemble_inherent_candidates();
+            pcx.assemble_extension_candidates_for_all_traits();
 
             let method_names = pcx.candidate_method_names(|_| true);
             pcx.allow_similar_names = false;
@@ -1776,6 +1779,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
                     pcx.reset();
                     pcx.method_name = Some(method_name);
                     pcx.assemble_inherent_candidates();
+                    pcx.assemble_extension_candidates_for_all_traits();
                     pcx.pick_core().and_then(|pick| pick.ok()).map(|pick| pick.item)
                 })
                 .collect();
@@ -1857,8 +1861,8 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
         assert!(!args.has_escaping_bound_vars());
 
         // It is possible for type parameters or early-bound lifetimes
-        // to appear in the signature of `self`. The substitutions we
-        // are given do not include type/lifetime parameters for the
+        // to appear in the signature of `self`. The generic parameters
+        // we are given do not include type/lifetime parameters for the
         // method yet. So create fresh variables here for those too,
         // if there are any.
         let generics = self.tcx.generics_of(method);
@@ -1889,7 +1893,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
         self.instantiate_bound_regions_with_erased(xform_fn_sig)
     }
 
-    /// Gets the type of an impl and generate substitutions with inference vars.
+    /// Gets the type of an impl and generate generic parameters with inference vars.
     fn impl_ty_and_args(
         &self,
         impl_def_id: DefId,
@@ -1913,7 +1917,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
     ///    late-bound regions with 'static. Otherwise, if we were going to replace late-bound
     ///    regions with actual region variables as is proper, we'd have to ensure that the same
     ///    region got replaced with the same variable, which requires a bit more coordination
-    ///    and/or tracking the substitution and
+    ///    and/or tracking the instantiations and
     ///    so forth.
     fn instantiate_bound_regions_with_erased<T>(&self, value: ty::Binder<'tcx, T>) -> T
     where
@@ -1943,7 +1947,21 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
         let hir_id = self.fcx.tcx.local_def_id_to_hir_id(local_def_id);
         let attrs = self.fcx.tcx.hir().attrs(hir_id);
         for attr in attrs {
-            let sym::doc = attr.name_or_empty() else {
+            if sym::doc == attr.name_or_empty() {
+            } else if sym::rustc_confusables == attr.name_or_empty() {
+                let Some(confusables) = attr.meta_item_list() else {
+                    continue;
+                };
+                // #[rustc_confusables("foo", "bar"))]
+                for n in confusables {
+                    if let Some(lit) = n.lit()
+                        && name.as_str() == lit.symbol.as_str()
+                    {
+                        return true;
+                    }
+                }
+                continue;
+            } else {
                 continue;
             };
             let Some(values) = attr.meta_item_list() else {

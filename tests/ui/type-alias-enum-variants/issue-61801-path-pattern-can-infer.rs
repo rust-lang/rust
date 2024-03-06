@@ -1,7 +1,7 @@
 // In this regression test we check that a path pattern referring to a unit variant
 // through a type alias is successful in inferring the generic argument.
 
-// check-pass
+//@ check-pass
 
 enum Opt<T> {
     N,

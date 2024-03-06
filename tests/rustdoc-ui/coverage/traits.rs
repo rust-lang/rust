@@ -1,5 +1,5 @@
-// compile-flags:-Z unstable-options --show-coverage
-// check-pass
+//@ compile-flags:-Z unstable-options --show-coverage
+//@ check-pass
 
 #![feature(trait_alias)]
 #![feature(type_alias_impl_trait)]

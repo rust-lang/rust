@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 
 enum Foo {
     Bar(u32),

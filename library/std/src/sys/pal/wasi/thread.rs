@@ -1,7 +1,7 @@
-use crate::ffi::CStr;
+use crate::ffi::{CStr, CString};
 use crate::io;
 use crate::mem;
-use crate::num::NonZeroUsize;
+use crate::num::NonZero;
 use crate::sys::unsupported;
 use crate::time::Duration;
 
@@ -134,6 +134,10 @@ impl Thread {
         // nope
     }
 
+    pub fn get_name() -> Option<CString> {
+        None
+    }
+
     pub fn sleep(dur: Duration) {
         let nanos = dur.as_nanos();
         assert!(nanos <= u64::MAX as u128);
@@ -186,7 +190,7 @@ impl Thread {
     }
 }
 
-pub fn available_parallelism() -> io::Result<NonZeroUsize> {
+pub fn available_parallelism() -> io::Result<NonZero<usize>> {
     unsupported()
 }
 

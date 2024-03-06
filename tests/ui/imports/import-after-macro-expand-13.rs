@@ -1,4 +1,4 @@
-// check-pass
+//@ check-pass
 // similar as `import-after-macro-expand-6.rs`
 
 use crate::a::HeaderMap;

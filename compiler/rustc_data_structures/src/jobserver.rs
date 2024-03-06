@@ -23,7 +23,10 @@ static GLOBAL_CLIENT: LazyLock<Result<Client, String>> = LazyLock::new(|| {
 
     if matches!(
         error.kind(),
-        FromEnvErrorKind::NoEnvVar | FromEnvErrorKind::NoJobserver | FromEnvErrorKind::Unsupported
+        FromEnvErrorKind::NoEnvVar
+            | FromEnvErrorKind::NoJobserver
+            | FromEnvErrorKind::NegativeFd
+            | FromEnvErrorKind::Unsupported
     ) {
         return Ok(default_client());
     }

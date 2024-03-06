@@ -85,6 +85,7 @@ pub(crate) fn eval_nullary_intrinsic<'tcx>(
             | ty::FnPtr(_)
             | ty::Dynamic(_, _, _)
             | ty::Closure(_, _)
+            | ty::CoroutineClosure(_, _)
             | ty::Coroutine(_, _)
             | ty::CoroutineWitness(..)
             | ty::Never
@@ -119,7 +120,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 let val = self.tcx.span_as_caller_location(span);
                 let val =
                     self.const_val_to_op(val, self.tcx.caller_location_ty(), Some(dest.layout))?;
-                self.copy_op(&val, dest, /* allow_transmute */ false)?;
+                self.copy_op(&val, dest)?;
             }
 
             sym::min_align_of_val | sym::size_of_val => {
@@ -156,7 +157,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                     tcx.const_eval_global_id(self.param_env, gid, Some(tcx.span))
                 })?;
                 let val = self.const_val_to_op(val, ty, Some(dest.layout))?;
-                self.copy_op(&val, dest, /*allow_transmute*/ false)?;
+                self.copy_op(&val, dest)?;
             }
 
             sym::ctpop
@@ -378,10 +379,12 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 let (input, input_len) = self.operand_to_simd(&args[0])?;
                 let (dest, dest_len) = self.place_to_simd(dest)?;
                 assert_eq!(input_len, dest_len, "Return vector length must match input length");
-                assert!(
-                    index < dest_len,
-                    "Index `{index}` must be in bounds of vector with length {dest_len}"
-                );
+                // Bounds are not checked by typeck so we have to do it ourselves.
+                if index >= input_len {
+                    throw_ub_format!(
+                        "`simd_insert` index {index} is out-of-bounds of vector with length {input_len}"
+                    );
+                }
 
                 for i in 0..dest_len {
                     let place = self.project_index(&dest, i)?;
@@ -390,25 +393,23 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                     } else {
                         self.project_index(&input, i)?.into()
                     };
-                    self.copy_op(&value, &place, /*allow_transmute*/ false)?;
+                    self.copy_op(&value, &place)?;
                 }
             }
             sym::simd_extract => {
                 let index = u64::from(self.read_scalar(&args[1])?.to_u32()?);
                 let (input, input_len) = self.operand_to_simd(&args[0])?;
-                assert!(
-                    index < input_len,
-                    "index `{index}` must be in bounds of vector with length {input_len}"
-                );
-                self.copy_op(
-                    &self.project_index(&input, index)?,
-                    dest,
-                    /*allow_transmute*/ false,
-                )?;
+                // Bounds are not checked by typeck so we have to do it ourselves.
+                if index >= input_len {
+                    throw_ub_format!(
+                        "`simd_extract` index {index} is out-of-bounds of vector with length {input_len}"
+                    );
+                }
+                self.copy_op(&self.project_index(&input, index)?, dest)?;
             }
             sym::likely | sym::unlikely | sym::black_box => {
                 // These just return their argument
-                self.copy_op(&args[0], dest, /*allow_transmute*/ false)?;
+                self.copy_op(&args[0], dest)?;
             }
             sym::raw_eq => {
                 let result = self.raw_eq_intrinsic(&args[0], &args[1])?;
