@@ -33,7 +33,7 @@ RUN yum upgrade -y && \
       xz \
       zlib-devel.i686 \
       zlib-devel.x86_64 \
-      jemalloc-devel
+      jemalloc-devel \
       && yum clean all
 
 RUN mkdir -p /rustroot/bin
