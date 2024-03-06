@@ -472,11 +472,11 @@ pub trait Machine<'mir, 'tcx: 'mir>: Sized {
     /// argument/return value was actually copied or passed in-place..
     fn protect_in_place_function_argument(
         ecx: &mut InterpCx<'mir, 'tcx, Self>,
-        place: &PlaceTy<'tcx, Self::Provenance>,
+        mplace: &MPlaceTy<'tcx, Self::Provenance>,
     ) -> InterpResult<'tcx> {
         // Without an aliasing model, all we can do is put `Uninit` into the place.
         // Conveniently this also ensures that the place actually points to suitable memory.
-        ecx.write_uninit(place)
+        ecx.write_uninit(mplace)
     }
 
     /// Called immediately before a new stack frame gets pushed.
