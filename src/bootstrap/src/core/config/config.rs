@@ -579,6 +579,7 @@ pub struct Target {
     pub musl_libdir: Option<PathBuf>,
     pub wasi_root: Option<PathBuf>,
     pub qemu_rootfs: Option<PathBuf>,
+    pub runner: Option<String>,
     pub no_std: bool,
     pub codegen_backends: Option<Vec<Interned<String>>>,
 }
@@ -1142,6 +1143,7 @@ define_config! {
         qemu_rootfs: Option<String> = "qemu-rootfs",
         no_std: Option<bool> = "no-std",
         codegen_backends: Option<Vec<String>> = "codegen-backends",
+        runner: Option<String> = "runner",
     }
 }
 
@@ -1862,6 +1864,7 @@ impl Config {
                 target.musl_libdir = cfg.musl_libdir.map(PathBuf::from);
                 target.wasi_root = cfg.wasi_root.map(PathBuf::from);
                 target.qemu_rootfs = cfg.qemu_rootfs.map(PathBuf::from);
+                target.runner = cfg.runner;
                 target.sanitizers = cfg.sanitizers;
                 target.profiler = cfg.profiler;
                 target.rpath = cfg.rpath;
