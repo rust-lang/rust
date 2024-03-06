@@ -43,8 +43,6 @@ jobs:
     - env:
         TARGET: ${{ matrix.target }}
         CHANNEL: ${{ matrix.channel }}
-        CROSS: ${{ matrix.target != 'x86_64-unknown-linux-gnu' && '1' || '0' }}
-        NO_STD: ${{ matrix.target == 'thumbv6m-none-eabi' && '1' || '0' }}
       run: sh ci/run.sh
     strategy:
       matrix:
