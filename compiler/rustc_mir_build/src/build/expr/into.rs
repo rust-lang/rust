@@ -66,6 +66,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     (if_then_scope, then_source_info),
                     LintLevel::Inherited,
                     |this| {
+                        // FIXME: Does this need extra logic to handle let-chains?
                         let source_info = if this.is_let(cond) {
                             let variable_scope =
                                 this.new_source_scope(then_span, LintLevel::Inherited, None);
@@ -74,6 +75,8 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                         } else {
                             this.source_info(then_span)
                         };
+
+                        // Lower the condition, and have it branch into `then` and `else` blocks.
                         let (then_block, else_block) =
                             this.in_if_then_scope(condition_scope, then_span, |this| {
                                 let then_blk = unpack!(this.then_else_break(
@@ -85,8 +88,11 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                                     true, // Declare `let` bindings normally
                                 ));
 
+                                // Lower the `then` arm into its block.
                                 this.expr_into_dest(destination, then_blk, then)
                             });
+
+                        // Pack `(then_block, else_block)` into `BlockAnd<BasicBlock>`.
                         then_block.and(else_block)
                     },
                 );
@@ -105,6 +111,8 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     this.cfg.push_assign_unit(else_blk, correct_si, destination, this.tcx);
                 }
 
+                // The `then` and `else` arms have been lowered into their respective
+                // blocks, so make both of them meet up in a new block.
                 let join_block = this.cfg.start_new_block();
                 this.cfg.goto(then_blk, source_info, join_block);
                 this.cfg.goto(else_blk, source_info, join_block);
