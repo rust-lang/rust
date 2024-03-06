@@ -58,41 +58,42 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 this.thir[scrutinee].span,
             ),
             ExprKind::If { cond, then, else_opt, if_then_scope } => {
-                let then_blk;
                 let then_span = this.thir[then].span;
                 let then_source_info = this.source_info(then_span);
                 let condition_scope = this.local_scope();
 
-                let mut else_blk = unpack!(
-                    then_blk = this.in_scope(
-                        (if_then_scope, then_source_info),
-                        LintLevel::Inherited,
-                        |this| {
-                            let source_info = if this.is_let(cond) {
-                                let variable_scope =
-                                    this.new_source_scope(then_span, LintLevel::Inherited, None);
-                                this.source_scope = variable_scope;
-                                SourceInfo { span: then_span, scope: variable_scope }
-                            } else {
-                                this.source_info(then_span)
-                            };
-                            let (then_block, else_block) =
-                                this.in_if_then_scope(condition_scope, then_span, |this| {
-                                    let then_blk = unpack!(this.then_else_break(
-                                        block,
-                                        cond,
-                                        Some(condition_scope), // Temp scope
-                                        condition_scope,
-                                        source_info,
-                                        true, // Declare `let` bindings normally
-                                    ));
+                let then_and_else_blocks = this.in_scope(
+                    (if_then_scope, then_source_info),
+                    LintLevel::Inherited,
+                    |this| {
+                        let source_info = if this.is_let(cond) {
+                            let variable_scope =
+                                this.new_source_scope(then_span, LintLevel::Inherited, None);
+                            this.source_scope = variable_scope;
+                            SourceInfo { span: then_span, scope: variable_scope }
+                        } else {
+                            this.source_info(then_span)
+                        };
+                        let (then_block, else_block) =
+                            this.in_if_then_scope(condition_scope, then_span, |this| {
+                                let then_blk = unpack!(this.then_else_break(
+                                    block,
+                                    cond,
+                                    Some(condition_scope), // Temp scope
+                                    condition_scope,
+                                    source_info,
+                                    true, // Declare `let` bindings normally
+                                ));
 
-                                    this.expr_into_dest(destination, then_blk, then)
-                                });
-                            then_block.and(else_block)
-                        },
-                    )
+                                this.expr_into_dest(destination, then_blk, then)
+                            });
+                        then_block.and(else_block)
+                    },
                 );
+
+                // Unpack `BlockAnd<BasicBlock>` into `(then_blk, else_blk)`.
+                let (then_blk, mut else_blk);
+                else_blk = unpack!(then_blk = then_and_else_blocks);
 
                 else_blk = if let Some(else_opt) = else_opt {
                     unpack!(this.expr_into_dest(destination, else_blk, else_opt))
