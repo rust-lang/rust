@@ -1102,20 +1102,17 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
             }
         }
 
-        let (val, status) = match src.layout.ty.kind() {
-            // f32
-            ty::Float(FloatTy::F32) =>
+        let ty::Float(fty) = src.layout.ty.kind() else {
+            bug!("float_to_int_checked: non-float input type {}", src.layout.ty)
+        };
+
+        let (val, status) = match fty {
+            FloatTy::F16 => unimplemented!("f16_f128"),
+            FloatTy::F32 =>
                 float_to_int_inner::<Single>(this, src.to_scalar().to_f32()?, cast_to, round),
-            // f64
-            ty::Float(FloatTy::F64) =>
+            FloatTy::F64 =>
                 float_to_int_inner::<Double>(this, src.to_scalar().to_f64()?, cast_to, round),
-            // Nothing else
-            _ =>
-                span_bug!(
-                    this.cur_span(),
-                    "attempted float-to-int conversion with non-float input type {}",
-                    src.layout.ty,
-                ),
+            FloatTy::F128 => unimplemented!("f16_f128"),
         };
 
         if status.intersects(
