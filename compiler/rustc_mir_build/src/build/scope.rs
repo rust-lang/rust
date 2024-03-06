@@ -247,7 +247,7 @@ trait DropTreeBuilder<'tcx> {
 
     /// Links a block outside the drop tree, `from`, to the block `to` inside
     /// the drop tree.
-    fn add_entry(cfg: &mut CFG<'tcx>, from: BasicBlock, to: BasicBlock);
+    fn link_entry_point(cfg: &mut CFG<'tcx>, from: BasicBlock, to: BasicBlock);
 }
 
 impl DropTree {
@@ -332,7 +332,7 @@ impl DropTree {
                 needs_block[drop_idx] = Block::Own;
                 while entry_points.last().is_some_and(|entry_point| entry_point.0 == drop_idx) {
                     let entry_block = entry_points.pop().unwrap().1;
-                    T::add_entry(cfg, entry_block, block);
+                    T::link_entry_point(cfg, entry_block, block);
                 }
             }
             match needs_block[drop_idx] {
@@ -1439,7 +1439,7 @@ impl<'tcx> DropTreeBuilder<'tcx> for ExitScopes {
     fn make_block(cfg: &mut CFG<'tcx>) -> BasicBlock {
         cfg.start_new_block()
     }
-    fn add_entry(cfg: &mut CFG<'tcx>, from: BasicBlock, to: BasicBlock) {
+    fn link_entry_point(cfg: &mut CFG<'tcx>, from: BasicBlock, to: BasicBlock) {
         cfg.block_data_mut(from).terminator_mut().kind = TerminatorKind::Goto { target: to };
     }
 }
@@ -1450,7 +1450,7 @@ impl<'tcx> DropTreeBuilder<'tcx> for CoroutineDrop {
     fn make_block(cfg: &mut CFG<'tcx>) -> BasicBlock {
         cfg.start_new_block()
     }
-    fn add_entry(cfg: &mut CFG<'tcx>, from: BasicBlock, to: BasicBlock) {
+    fn link_entry_point(cfg: &mut CFG<'tcx>, from: BasicBlock, to: BasicBlock) {
         let term = cfg.block_data_mut(from).terminator_mut();
         if let TerminatorKind::Yield { ref mut drop, .. } = term.kind {
             *drop = Some(to);
@@ -1470,7 +1470,7 @@ impl<'tcx> DropTreeBuilder<'tcx> for Unwind {
     fn make_block(cfg: &mut CFG<'tcx>) -> BasicBlock {
         cfg.start_new_cleanup_block()
     }
-    fn add_entry(cfg: &mut CFG<'tcx>, from: BasicBlock, to: BasicBlock) {
+    fn link_entry_point(cfg: &mut CFG<'tcx>, from: BasicBlock, to: BasicBlock) {
         let term = &mut cfg.block_data_mut(from).terminator_mut();
         match &mut term.kind {
             TerminatorKind::Drop { unwind, .. } => {
