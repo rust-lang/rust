@@ -337,8 +337,8 @@ pub mod panic_count {
 #[doc(hidden)]
 #[cfg(not(feature = "panic_immediate_abort"))]
 #[unstable(feature = "update_panic_count", issue = "none")]
-// FIXME: Use `SyncUnsafeCell` instead of allowing `static_mut_ref` lint
-#[cfg_attr(not(bootstrap), allow(static_mut_ref))]
+// FIXME: Use `SyncUnsafeCell` instead of allowing `static_mut_refs` lint
+#[cfg_attr(not(bootstrap), allow(static_mut_refs))]
 pub mod panic_count {
     use crate::cell::Cell;
     use crate::sync::atomic::{AtomicUsize, Ordering};

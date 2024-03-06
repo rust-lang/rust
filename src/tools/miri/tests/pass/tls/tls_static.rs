@@ -8,8 +8,8 @@
 //! test, we also check that thread-locals act as per-thread statics.
 
 #![feature(thread_local)]
-// FIXME: Use `SyncUnsafeCell` instead of allowing `static_mut_ref` lint
-#![allow(static_mut_ref)]
+// FIXME: Use `SyncUnsafeCell` instead of allowing `static_mut_refs` lint
+#![allow(static_mut_refs)]
 
 use std::thread;
 

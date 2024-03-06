@@ -1,5 +1,5 @@
 error[E0796]: creating a shared reference to a mutable static
-  --> $DIR/reference-of-mut-static-unsafe-fn.rs:9:14
+  --> $DIR/reference-to-mut-static-unsafe-fn.rs:9:14
    |
 LL |     let _y = &X;
    |              ^^ shared reference to mutable static
@@ -11,7 +11,7 @@ LL |     let _y = addr_of!(X);
    |              ~~~~~~~~~~~
 
 error[E0796]: creating a shared reference to a mutable static
-  --> $DIR/reference-of-mut-static-unsafe-fn.rs:12:18
+  --> $DIR/reference-to-mut-static-unsafe-fn.rs:12:18
    |
 LL |     let ref _a = X;
    |                  ^ shared reference to mutable static
@@ -23,7 +23,7 @@ LL |     let ref _a = addr_of!(X);
    |                  ~~~~~~~~~~~
 
 error[E0796]: creating a mutable reference to a mutable static
-  --> $DIR/reference-of-mut-static-unsafe-fn.rs:15:22
+  --> $DIR/reference-to-mut-static-unsafe-fn.rs:15:22
    |
 LL |     let ref mut _a = X;
    |                      ^ mutable reference to mutable static
@@ -35,7 +35,7 @@ LL |     let ref mut _a = addr_of_mut!(X);
    |                      ~~~~~~~~~~~~~~~
 
 error[E0796]: creating a shared reference to a mutable static
-  --> $DIR/reference-of-mut-static-unsafe-fn.rs:18:21
+  --> $DIR/reference-to-mut-static-unsafe-fn.rs:18:21
    |
 LL |     let (_b, _c) = (&X, &mut Y);
    |                     ^^ shared reference to mutable static
@@ -47,7 +47,7 @@ LL |     let (_b, _c) = (addr_of!(X), &mut Y);
    |                     ~~~~~~~~~~~
 
 error[E0796]: creating a mutable reference to a mutable static
-  --> $DIR/reference-of-mut-static-unsafe-fn.rs:18:25
+  --> $DIR/reference-to-mut-static-unsafe-fn.rs:18:25
    |
 LL |     let (_b, _c) = (&X, &mut Y);
    |                         ^^^^^^ mutable reference to mutable static
@@ -59,7 +59,7 @@ LL |     let (_b, _c) = (&X, addr_of_mut!(Y));
    |                         ~~~~~~~~~~~~~~~
 
 error[E0796]: creating a shared reference to a mutable static
-  --> $DIR/reference-of-mut-static-unsafe-fn.rs:22:9
+  --> $DIR/reference-to-mut-static-unsafe-fn.rs:22:9
    |
 LL |     foo(&X);
    |         ^^ shared reference to mutable static
