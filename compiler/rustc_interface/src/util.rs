@@ -160,6 +160,7 @@ pub(crate) fn run_in_thread_pool_with_globals<F: FnOnce() -> R + Send, R: Send>(
     })
 }
 
+#[allow(rustc::untranslatable_diagnostic)] // FIXME: make this translatable
 fn load_backend_from_dylib(early_dcx: &EarlyDiagCtxt, path: &Path) -> MakeBackendFn {
     match unsafe { load_symbol_from_dylib::<MakeBackendFn>(path, "__rustc_codegen_backend") } {
         Ok(backend_sym) => backend_sym,
@@ -227,6 +228,7 @@ fn get_rustc_path_inner(bin_path: &str) -> Option<PathBuf> {
     })
 }
 
+#[allow(rustc::untranslatable_diagnostic)] // FIXME: make this translatable
 fn get_codegen_sysroot(
     early_dcx: &EarlyDiagCtxt,
     maybe_sysroot: &Option<PathBuf>,
@@ -319,6 +321,7 @@ fn get_codegen_sysroot(
     }
 }
 
+#[allow(rustc::untranslatable_diagnostic)] // FIXME: make this translatable
 pub(crate) fn check_attr_crate_type(
     sess: &Session,
     attrs: &[ast::Attribute],

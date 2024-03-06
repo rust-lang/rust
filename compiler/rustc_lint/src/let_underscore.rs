@@ -104,6 +104,7 @@ const SYNC_GUARD_SYMBOLS: [Symbol; 3] = [
 ];
 
 impl<'tcx> LateLintPass<'tcx> for LetUnderscore {
+    #[allow(rustc::untranslatable_diagnostic)] // FIXME: make this translatable
     fn check_local(&mut self, cx: &LateContext<'_>, local: &hir::Local<'_>) {
         if matches!(local.source, rustc_hir::LocalSource::AsyncFn) {
             return;

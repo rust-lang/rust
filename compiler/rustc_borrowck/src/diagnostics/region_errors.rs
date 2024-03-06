@@ -201,6 +201,8 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
     // For generic associated types (GATs) which implied 'static requirement
     // from higher-ranked trait bounds (HRTB). Try to locate span of the trait
     // and the span which bounded to the trait for adding 'static lifetime suggestion
+    #[allow(rustc::diagnostic_outside_of_impl)]
+    #[allow(rustc::untranslatable_diagnostic)] // FIXME: make this translatable
     fn suggest_static_lifetime_for_gat_from_hrtb(
         &self,
         diag: &mut Diag<'_>,
@@ -254,9 +256,6 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
 
         hrtb_bounds.iter().for_each(|bound| {
             let Trait(PolyTraitRef { trait_ref, span: trait_span, .. }, _) = bound else { return; };
-            // FIXME: make this translatable
-            #[allow(rustc::diagnostic_outside_of_impl)]
-            #[allow(rustc::untranslatable_diagnostic)]
             diag.span_note(
                 *trait_span,
                 "due to current limitations in the borrow checker, this implies a `'static` lifetime"
@@ -580,6 +579,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
     ///            executing...
     ///    = note: ...therefore, returned references to captured variables will escape the closure
     /// ```
+    #[allow(rustc::diagnostic_outside_of_impl)] // FIXME
     fn report_fnmut_error(
         &self,
         errci: &ErrorConstraintInfo<'tcx>,
@@ -761,6 +761,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
     ///    |     ^^^^^^^^^^^^^^ function was supposed to return data with lifetime `'a` but it
     ///    |                    is returning data with lifetime `'b`
     /// ```
+    #[allow(rustc::diagnostic_outside_of_impl)] // FIXME
     fn report_general_error(&self, errci: &ErrorConstraintInfo<'tcx>) -> Diag<'tcx> {
         let ErrorConstraintInfo {
             fr,
@@ -822,6 +823,8 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
     /// LL |     fn iter_values_anon(&self) -> impl Iterator<Item=u32> + 'a {
     ///    |                                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
     /// ```
+    #[allow(rustc::diagnostic_outside_of_impl)]
+    #[allow(rustc::untranslatable_diagnostic)] // FIXME: make this translatable
     fn add_static_impl_trait_suggestion(
         &self,
         diag: &mut Diag<'_>,
@@ -972,6 +975,8 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
         self.suggest_constrain_dyn_trait_in_impl(diag, &visitor.0, ident, self_ty);
     }
 
+    #[allow(rustc::diagnostic_outside_of_impl)]
+    #[allow(rustc::untranslatable_diagnostic)] // FIXME: make this translatable
     #[instrument(skip(self, err), level = "debug")]
     fn suggest_constrain_dyn_trait_in_impl(
         &self,
@@ -1034,6 +1039,8 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
         suggest_adding_lifetime_params(self.infcx.tcx, sub, ty_sup, ty_sub, diag);
     }
 
+    #[allow(rustc::diagnostic_outside_of_impl)]
+    #[allow(rustc::untranslatable_diagnostic)] // FIXME: make this translatable
     fn suggest_move_on_borrowing_closure(&self, diag: &mut Diag<'_>) {
         let map = self.infcx.tcx.hir();
         let body_id = map.body_owned_by(self.mir_def_id());

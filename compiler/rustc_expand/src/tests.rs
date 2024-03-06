@@ -178,6 +178,7 @@ impl<T: Write> Write for Shared<T> {
     }
 }
 
+#[allow(rustc::untranslatable_diagnostic)] // no translation needed for tests
 fn test_harness(file_text: &str, span_labels: Vec<SpanLabel>, expected_output: &str) {
     create_default_session_globals_then(|| {
         let (handler, source_map, output) = create_test_handler();
@@ -192,7 +193,6 @@ fn test_harness(file_text: &str, span_labels: Vec<SpanLabel>, expected_output: &
             println!("text: {:?}", source_map.span_to_snippet(span));
         }
 
-        #[allow(rustc::untranslatable_diagnostic)]
         handler.span_err(msp, "foo");
 
         assert!(

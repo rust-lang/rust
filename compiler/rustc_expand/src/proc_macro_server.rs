@@ -517,6 +517,9 @@ impl server::FreeFunctions for Rustc<'_, '_> {
             Diag::new(&self.psess().dcx, diagnostic.level.to_internal(), message);
         diag.span(MultiSpan::from_spans(diagnostic.spans));
         for child in diagnostic.children {
+            // This message comes from another diagnostic, and we are just reconstructing the
+            // diagnostic, so there's no need for translation.
+            #[allow(rustc::untranslatable_diagnostic)]
             diag.sub(child.level.to_internal(), child.message, MultiSpan::from_spans(child.spans));
         }
         diag.emit();

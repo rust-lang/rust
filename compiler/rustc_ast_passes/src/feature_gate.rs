@@ -17,6 +17,7 @@ use crate::errors;
 macro_rules! gate {
     ($visitor:expr, $feature:ident, $span:expr, $explain:expr) => {{
         if !$visitor.features.$feature && !$span.allows_unstable(sym::$feature) {
+            #[allow(rustc::untranslatable_diagnostic)] // FIXME: make this translatable
             feature_err(&$visitor.sess, sym::$feature, $span, $explain).emit();
         }
     }};
@@ -34,6 +35,7 @@ macro_rules! gate {
 macro_rules! gate_alt {
     ($visitor:expr, $has_feature:expr, $name:expr, $span:expr, $explain:expr) => {{
         if !$has_feature && !$span.allows_unstable($name) {
+            #[allow(rustc::untranslatable_diagnostic)] // FIXME: make this translatable
             feature_err(&$visitor.sess, $name, $span, $explain).emit();
         }
     }};
@@ -73,6 +75,7 @@ struct PostExpansionVisitor<'a> {
 }
 
 impl<'a> PostExpansionVisitor<'a> {
+    #[allow(rustc::untranslatable_diagnostic)] // FIXME: make this translatable
     fn check_abi(&self, abi: ast::StrLit, constness: ast::Const) {
         let ast::StrLit { symbol_unescaped, span, .. } = abi;
 
@@ -579,6 +582,7 @@ pub fn check_crate(krate: &ast::Crate, sess: &Session, features: &Features) {
                 if let Ok(snippet) = sm.span_to_snippet(span)
                     && snippet == "!"
                 {
+                    #[allow(rustc::untranslatable_diagnostic)] // FIXME: make this translatable
                     feature_err(sess, sym::never_patterns, span, "`!` patterns are experimental")
                         .emit();
                 } else {
