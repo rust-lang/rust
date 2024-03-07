@@ -298,31 +298,31 @@ fn check_item<'tcx>(tcx: TyCtxt<'tcx>, item: &'tcx hir::Item<'tcx>) -> Result<()
         hir::ItemKind::Const(ty, ..) => {
             check_item_type(tcx, def_id, ty.span, UnsizedHandling::Forbid)
         }
-        hir::ItemKind::Struct(_, ast_generics) => {
+        hir::ItemKind::Struct(_, hir_generics) => {
             let res = check_type_defn(tcx, item, false);
-            check_variances_for_type_defn(tcx, item, ast_generics);
+            check_variances_for_type_defn(tcx, item, hir_generics);
             res
         }
-        hir::ItemKind::Union(_, ast_generics) => {
+        hir::ItemKind::Union(_, hir_generics) => {
             let res = check_type_defn(tcx, item, true);
-            check_variances_for_type_defn(tcx, item, ast_generics);
+            check_variances_for_type_defn(tcx, item, hir_generics);
             res
         }
-        hir::ItemKind::Enum(_, ast_generics) => {
+        hir::ItemKind::Enum(_, hir_generics) => {
             let res = check_type_defn(tcx, item, true);
-            check_variances_for_type_defn(tcx, item, ast_generics);
+            check_variances_for_type_defn(tcx, item, hir_generics);
             res
         }
         hir::ItemKind::Trait(..) => check_trait(tcx, item),
         hir::ItemKind::TraitAlias(..) => check_trait(tcx, item),
         // `ForeignItem`s are handled separately.
         hir::ItemKind::ForeignMod { .. } => Ok(()),
-        hir::ItemKind::TyAlias(hir_ty, ast_generics) => {
+        hir::ItemKind::TyAlias(hir_ty, hir_generics) => {
             if tcx.type_alias_is_lazy(item.owner_id) {
                 // Bounds of lazy type aliases and of eager ones that contain opaque types are respected.
                 // E.g: `type X = impl Trait;`, `type X = (impl Trait, Y);`.
                 let res = check_item_type(tcx, def_id, hir_ty.span, UnsizedHandling::Allow);
-                check_variances_for_type_defn(tcx, item, ast_generics);
+                check_variances_for_type_defn(tcx, item, hir_generics);
                 res
             } else {
                 Ok(())
@@ -1277,16 +1277,16 @@ fn check_item_type(
     })
 }
 
-#[instrument(level = "debug", skip(tcx, ast_self_ty, ast_trait_ref))]
+#[instrument(level = "debug", skip(tcx, hir_self_ty, hir_trait_ref))]
 fn check_impl<'tcx>(
     tcx: TyCtxt<'tcx>,
     item: &'tcx hir::Item<'tcx>,
-    ast_self_ty: &hir::Ty<'_>,
-    ast_trait_ref: &Option<hir::TraitRef<'_>>,
+    hir_self_ty: &hir::Ty<'_>,
+    hir_trait_ref: &Option<hir::TraitRef<'_>>,
 ) -> Result<(), ErrorGuaranteed> {
     enter_wf_checking_ctxt(tcx, item.span, item.owner_id.def_id, |wfcx| {
-        match ast_trait_ref {
-            Some(ast_trait_ref) => {
+        match hir_trait_ref {
+            Some(hir_trait_ref) => {
                 // `#[rustc_reservation_impl]` impls are not real impls and
                 // therefore don't need to be WF (the trait's `Self: Trait` predicate
                 // won't hold).
@@ -1294,8 +1294,9 @@ fn check_impl<'tcx>(
                 // Avoid bogus "type annotations needed `Foo: Bar`" errors on `impl Bar for Foo` in case
                 // other `Foo` impls are incoherent.
                 tcx.ensure().coherent_trait(trait_ref.def_id)?;
+                let trait_span = hir_trait_ref.path.span;
                 let trait_ref = wfcx.normalize(
-                    ast_trait_ref.path.span,
+                    trait_span,
                     Some(WellFormedLoc::Ty(item.hir_id().expect_owner().def_id)),
                     trait_ref,
                 );
@@ -1306,14 +1307,23 @@ fn check_impl<'tcx>(
                     wfcx.param_env,
                     wfcx.body_def_id,
                     trait_pred,
-                    ast_trait_ref.path.span,
+                    trait_span,
                     item,
                 );
                 for obligation in &mut obligations {
+                    if obligation.cause.span != trait_span {
+                        // We already have a better span.
+                        continue;
+                    }
                     if let Some(pred) = obligation.predicate.to_opt_poly_trait_pred()
-                        && pred.self_ty().skip_binder() == trait_ref.self_ty()
+                        && pred.skip_binder().self_ty() == trait_ref.self_ty()
                     {
-                        obligation.cause.span = ast_self_ty.span;
+                        obligation.cause.span = hir_self_ty.span;
+                    }
+                    if let Some(pred) = obligation.predicate.to_opt_poly_projection_pred()
+                        && pred.skip_binder().self_ty() == trait_ref.self_ty()
+                    {
+                        obligation.cause.span = hir_self_ty.span;
                     }
                 }
                 debug!(?obligations);
@@ -1327,7 +1337,7 @@ fn check_impl<'tcx>(
                     self_ty,
                 );
                 wfcx.register_wf_obligation(
-                    ast_self_ty.span,
+                    hir_self_ty.span,
                     Some(WellFormedLoc::Ty(item.hir_id().expect_owner().def_id)),
                     self_ty.into(),
                 );

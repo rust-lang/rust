@@ -77,7 +77,7 @@ impl<'tcx> InferCtxt<'tcx> {
         // that name placeholders created in this function. Nested goals from type relations can
         // also contain placeholders created by this function.
         let value = self.enter_forall_and_leak_universe(forall);
-        debug!("?value");
+        debug!(?value);
         f(value)
     }
 
