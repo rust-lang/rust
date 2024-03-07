@@ -1,5 +1,5 @@
 error: `if` expression with an `else if`, but without a final `else`
-  --> tests/ui/else_if_without_else.rs:45:12
+  --> tests/ui/else_if_without_else.rs:47:12
    |
 LL |       } else if bla2() {
    |  ____________^
@@ -13,7 +13,7 @@ LL | |     }
    = help: to override `-D warnings` add `#[allow(clippy::else_if_without_else)]`
 
 error: `if` expression with an `else if`, but without a final `else`
-  --> tests/ui/else_if_without_else.rs:54:12
+  --> tests/ui/else_if_without_else.rs:56:12
    |
 LL |       } else if bla3() {
    |  ____________^
