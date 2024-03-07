@@ -280,7 +280,7 @@ fn configure_and_expand(
 
 fn early_lint_checks(tcx: TyCtxt<'_>, (): ()) {
     let sess = tcx.sess;
-    let (resolver, krate) = &*tcx.resolver_for_lowering(()).borrow();
+    let (resolver, krate) = &*tcx.resolver_for_lowering().borrow();
     let mut lint_buffer = resolver.lint_buffer.steal();
 
     if sess.opts.unstable_opts.input_stats {
@@ -531,10 +531,10 @@ fn write_out_deps(tcx: TyCtxt<'_>, outputs: &OutputFilenames, out_filenames: &[P
     }
 }
 
-fn resolver_for_lowering<'tcx>(
+fn resolver_for_lowering_raw<'tcx>(
     tcx: TyCtxt<'tcx>,
     (): (),
-) -> &'tcx Steal<(ty::ResolverAstLowering, Lrc<ast::Crate>)> {
+) -> (&'tcx Steal<(ty::ResolverAstLowering, Lrc<ast::Crate>)>, &'tcx ty::ResolverGlobalCtxt) {
     let arenas = Resolver::arenas();
     let _ = tcx.registered_tools(()); // Uses `crate_for_resolver`.
     let (krate, pre_configured_attrs) = tcx.crate_for_resolver(()).steal();
@@ -549,16 +549,15 @@ fn resolver_for_lowering<'tcx>(
         ast_lowering: untracked_resolver_for_lowering,
     } = resolver.into_outputs();
 
-    let feed = tcx.feed_unit_query();
-    feed.resolutions(tcx.arena.alloc(untracked_resolutions));
-    tcx.arena.alloc(Steal::new((untracked_resolver_for_lowering, Lrc::new(krate))))
+    let resolutions = tcx.arena.alloc(untracked_resolutions);
+    (tcx.arena.alloc(Steal::new((untracked_resolver_for_lowering, Lrc::new(krate)))), resolutions)
 }
 
 pub(crate) fn write_dep_info(tcx: TyCtxt<'_>) {
     // Make sure name resolution and macro expansion is run for
     // the side-effect of providing a complete set of all
     // accessed files and env vars.
-    let _ = tcx.resolver_for_lowering(());
+    let _ = tcx.resolver_for_lowering();
 
     let sess = tcx.sess;
     let _timer = sess.timer("write_dep_info");
@@ -607,7 +606,10 @@ pub static DEFAULT_QUERY_PROVIDERS: LazyLock<Providers> = LazyLock::new(|| {
     let providers = &mut Providers::default();
     providers.analysis = analysis;
     providers.hir_crate = rustc_ast_lowering::lower_to_hir;
-    providers.resolver_for_lowering = resolver_for_lowering;
+    providers.resolver_for_lowering_raw = resolver_for_lowering_raw;
+    providers.stripped_cfg_items =
+        |tcx, _| tcx.arena.alloc_from_iter(tcx.resolutions(()).stripped_cfg_items.steal());
+    providers.resolutions = |tcx, ()| tcx.resolver_for_lowering_raw(()).1;
     providers.early_lint_checks = early_lint_checks;
     proc_macro_decls::provide(providers);
     rustc_const_eval::provide(providers);

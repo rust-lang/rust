@@ -3121,7 +3121,7 @@ impl<'a: 'ast, 'b, 'ast, 'tcx> LateResolutionVisitor<'a, 'b, 'ast, 'tcx> {
                 );
                 rustc_middle::ty::Visibility::Public
             };
-            this.r.feed_visibility(this.r.local_def_id(id), vis);
+            this.r.feed_visibility(this.r.feed(id), vis);
         };
 
         let Some(binding) = binding else {
