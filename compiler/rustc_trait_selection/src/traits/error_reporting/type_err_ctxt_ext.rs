@@ -1419,6 +1419,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
 
     // returns if `cond` not occurring implies that `error` does not occur - i.e., that
     // `error` occurring implies that `cond` occurs.
+    #[instrument(level = "debug", skip(self), ret)]
     fn error_implies(&self, cond: ty::Predicate<'tcx>, error: ty::Predicate<'tcx>) -> bool {
         if cond == error {
             return true;
@@ -1428,25 +1429,13 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
             self.enter_forall(error, |error| {
                 elaborate(self.tcx, std::iter::once(cond))
                     .filter_map(|implied| implied.to_opt_poly_trait_pred())
-                    .any(|implied| {
-                        let is_implied = self.can_match_trait(error, implied);
-                        if is_implied {
-                            debug!("error_implies: {:?} -> {:?} -> {:?}", cond, error, implied);
-                        }
-                        is_implied
-                    })
+                    .any(|implied| self.can_match_trait(error, implied))
             })
         } else if let Some(error) = error.to_opt_poly_projection_pred() {
             self.enter_forall(error, |error| {
                 elaborate(self.tcx, std::iter::once(cond))
                     .filter_map(|implied| implied.to_opt_poly_projection_pred())
-                    .any(|implied| {
-                        let is_implied = self.can_match_projection(error, implied);
-                        if is_implied {
-                            debug!("error_implies: {:?} -> {:?} -> {:?}", cond, error, implied);
-                        }
-                        is_implied
-                    })
+                    .any(|implied| self.can_match_projection(error, implied))
             })
         } else {
             false
