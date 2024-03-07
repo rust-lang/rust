@@ -1,4 +1,3 @@
-#![feature(diagnostic_namespace)]
 //@ check-pass
 #[diagnostic::non_existing_attribute]
 //~^WARN unknown diagnostic attribute
