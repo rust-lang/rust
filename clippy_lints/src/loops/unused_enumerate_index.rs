@@ -8,6 +8,8 @@ use rustc_lint::LateContext;
 use rustc_middle::ty;
 
 /// Checks for the `UNUSED_ENUMERATE_INDEX` lint.
+///
+/// The lint is also partially implemented in `clippy_lints/src/methods/unused_enumerate_index.rs`.
 pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, pat: &Pat<'tcx>, arg: &Expr<'_>, body: &'tcx Expr<'tcx>) {
     if let PatKind::Tuple([index, elem], _) = pat.kind
         && let ExprKind::MethodCall(_method, self_arg, [], _) = arg.kind

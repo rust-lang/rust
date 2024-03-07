@@ -1,5 +1,5 @@
 error: you seem to use `.enumerate()` and immediately discard the index
-  --> tests/ui/unused_enumerate_index.rs:8:19
+  --> tests/ui/unused_enumerate_index.rs:12:19
    |
 LL |     for (_, x) in v.iter().enumerate() {
    |                   ^^^^^^^^^^^^^^^^^^^^
@@ -12,7 +12,7 @@ LL |     for x in v.iter() {
    |         ~    ~~~~~~~~
 
 error: you seem to use `.enumerate()` and immediately discard the index
-  --> tests/ui/unused_enumerate_index.rs:55:19
+  --> tests/ui/unused_enumerate_index.rs:59:19
    |
 LL |     for (_, x) in dummy.enumerate() {
    |                   ^^^^^^^^^^^^^^^^^
@@ -22,5 +22,41 @@ help: remove the `.enumerate()` call
 LL |     for x in dummy {
    |         ~    ~~~~~
 
-error: aborting due to 2 previous errors
+error: you seem to use `.enumerate()` and immediately discard the index
+  --> tests/ui/unused_enumerate_index.rs:63:39
+   |
+LL |     let _ = vec![1, 2, 3].into_iter().enumerate().map(|(_, x)| println!("{x}"));
+   |                                       ^^^^^^^^^^^
+   |
+help: remove the `.enumerate()` call
+   |
+LL -     let _ = vec![1, 2, 3].into_iter().enumerate().map(|(_, x)| println!("{x}"));
+LL +     let _ = vec![1, 2, 3].into_iter().map(|x| println!("{x}"));
+   |
+
+error: you seem to use `.enumerate()` and immediately discard the index
+  --> tests/ui/unused_enumerate_index.rs:65:39
+   |
+LL |     let p = vec![1, 2, 3].into_iter().enumerate();
+   |                                       ^^^^^^^^^^^
+   |
+help: remove the `.enumerate()` call
+   |
+LL ~     let p = vec![1, 2, 3].into_iter();
+LL ~     p.map(|x| println!("{x}"));
+   |
+
+error: you seem to use `.enumerate()` and immediately discard the index
+  --> tests/ui/unused_enumerate_index.rs:86:17
+   |
+LL |     _ = mac2!().enumerate().map(|(_, _v)| {});
+   |                 ^^^^^^^^^^^
+   |
+help: remove the `.enumerate()` call
+   |
+LL -     _ = mac2!().enumerate().map(|(_, _v)| {});
+LL +     _ = mac2!().map(|_v| {});
+   |
+
+error: aborting due to 5 previous errors
 

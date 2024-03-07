@@ -118,6 +118,7 @@ mod unnecessary_literal_unwrap;
 mod unnecessary_result_map_or_else;
 mod unnecessary_sort_by;
 mod unnecessary_to_owned;
+mod unused_enumerate_index;
 mod unwrap_expect_used;
 mod useless_asref;
 mod utils;
@@ -4403,6 +4404,7 @@ impl Methods {
                     zst_offset::check(cx, expr, recv);
                 },
                 ("all", [arg]) => {
+                    unused_enumerate_index::check(cx, expr, recv, arg);
                     if let Some(("cloned", recv2, [], _, _)) = method_call(recv) {
                         iter_overeager_cloned::check(
                             cx,
@@ -4421,23 +4423,26 @@ impl Methods {
                         unnecessary_lazy_eval::check(cx, expr, recv, arg, "and");
                     }
                 },
-                ("any", [arg]) => match method_call(recv) {
-                    Some(("cloned", recv2, [], _, _)) => iter_overeager_cloned::check(
-                        cx,
-                        expr,
-                        recv,
-                        recv2,
-                        iter_overeager_cloned::Op::NeedlessMove(arg),
-                        false,
-                    ),
-                    Some(("chars", recv, _, _, _))
-                        if let ExprKind::Closure(arg) = arg.kind
-                            && let body = cx.tcx.hir().body(arg.body)
-                            && let [param] = body.params =>
-                    {
-                        string_lit_chars_any::check(cx, expr, recv, param, peel_blocks(body.value), &self.msrv);
-                    },
-                    _ => {},
+                ("any", [arg]) => {
+                    unused_enumerate_index::check(cx, expr, recv, arg);
+                    match method_call(recv) {
+                        Some(("cloned", recv2, [], _, _)) => iter_overeager_cloned::check(
+                            cx,
+                            expr,
+                            recv,
+                            recv2,
+                            iter_overeager_cloned::Op::NeedlessMove(arg),
+                            false,
+                        ),
+                        Some(("chars", recv, _, _, _))
+                            if let ExprKind::Closure(arg) = arg.kind
+                                && let body = cx.tcx.hir().body(arg.body)
+                                && let [param] = body.params =>
+                        {
+                            string_lit_chars_any::check(cx, expr, recv, param, peel_blocks(body.value), &self.msrv);
+                        },
+                        _ => {},
+                    }
                 },
                 ("arg", [arg]) => {
                     suspicious_command_arg_space::check(cx, recv, arg, span);
@@ -4570,14 +4575,17 @@ impl Methods {
                     }
                 },
                 ("filter_map", [arg]) => {
+                    unused_enumerate_index::check(cx, expr, recv, arg);
                     unnecessary_filter_map::check(cx, expr, arg, name);
                     filter_map_bool_then::check(cx, expr, arg, call_span);
                     filter_map_identity::check(cx, expr, arg, span);
                 },
                 ("find_map", [arg]) => {
+                    unused_enumerate_index::check(cx, expr, recv, arg);
                     unnecessary_filter_map::check(cx, expr, arg, name);
                 },
                 ("flat_map", [arg]) => {
+                    unused_enumerate_index::check(cx, expr, recv, arg);
                     flat_map_identity::check(cx, expr, arg, span);
                     flat_map_option::check(cx, expr, arg, span);
                 },
@@ -4599,17 +4607,20 @@ impl Methods {
                     manual_try_fold::check(cx, expr, init, acc, call_span, &self.msrv);
                     unnecessary_fold::check(cx, expr, init, acc, span);
                 },
-                ("for_each", [arg]) => match method_call(recv) {
-                    Some(("inspect", _, [_], span2, _)) => inspect_for_each::check(cx, expr, span2),
-                    Some(("cloned", recv2, [], _, _)) => iter_overeager_cloned::check(
-                        cx,
-                        expr,
-                        recv,
-                        recv2,
-                        iter_overeager_cloned::Op::NeedlessMove(arg),
-                        false,
-                    ),
-                    _ => {},
+                ("for_each", [arg]) => {
+                    unused_enumerate_index::check(cx, expr, recv, arg);
+                    match method_call(recv) {
+                        Some(("inspect", _, [_], span2, _)) => inspect_for_each::check(cx, expr, span2),
+                        Some(("cloned", recv2, [], _, _)) => iter_overeager_cloned::check(
+                            cx,
+                            expr,
+                            recv,
+                            recv2,
+                            iter_overeager_cloned::Op::NeedlessMove(arg),
+                            false,
+                        ),
+                        _ => {},
+                    }
                 },
                 ("get", [arg]) => {
                     get_first::check(cx, expr, recv, arg);
@@ -4650,6 +4661,7 @@ impl Methods {
                 },
                 (name @ ("map" | "map_err"), [m_arg]) => {
                     if name == "map" {
+                        unused_enumerate_index::check(cx, expr, recv, m_arg);
                         map_clone::check(cx, expr, recv, m_arg, &self.msrv);
                         match method_call(recv) {
                             Some((map_name @ ("iter" | "into_iter"), recv2, _, _, _)) => {

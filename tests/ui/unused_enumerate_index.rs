@@ -3,6 +3,10 @@
 
 use std::iter::Enumerate;
 
+fn get_enumerate() -> Enumerate<std::vec::IntoIter<i32>> {
+    vec![1].into_iter().enumerate()
+}
+
 fn main() {
     let v = [1, 2, 3];
     for (_, x) in v.iter().enumerate() {
@@ -55,4 +59,34 @@ fn main() {
     for (_, x) in dummy.enumerate() {
         println!("{x}");
     }
+
+    let _ = vec![1, 2, 3].into_iter().enumerate().map(|(_, x)| println!("{x}"));
+
+    let p = vec![1, 2, 3].into_iter().enumerate();
+    p.map(|(_, x)| println!("{x}"));
+
+    // This shouldn't trigger the lint. `get_enumerate` may come from an external library on which we
+    // have no control.
+    let p = get_enumerate();
+    p.map(|(_, x)| println!("{x}"));
+
+    // This shouldn't trigger the lint. The `enumerate` call is in a different context.
+    macro_rules! mac {
+        () => {
+            [1].iter().enumerate()
+        };
+    }
+    _ = mac!().map(|(_, v)| v);
+
+    macro_rules! mac2 {
+        () => {
+            [1].iter()
+        };
+    }
+    _ = mac2!().enumerate().map(|(_, _v)| {});
+
+    // This shouldn't trigger the lint because of the `allow`.
+    #[allow(clippy::unused_enumerate_index)]
+    let v = [1].iter().enumerate();
+    v.map(|(_, _x)| {});
 }
