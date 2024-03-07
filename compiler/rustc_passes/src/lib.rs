@@ -28,6 +28,7 @@ mod debugger_visualizer;
 mod diagnostic_items;
 pub mod entry;
 mod errors;
+#[cfg(debug_assertions)]
 pub mod hir_id_validator;
 pub mod hir_stats;
 mod lang_items;
