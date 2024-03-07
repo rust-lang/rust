@@ -592,7 +592,7 @@ impl<'tcx> LateLintPass<'tcx> for Transmute {
                 | (eager_transmute::check(cx, e, arg, from_ty, to_ty));
 
             if !linted {
-                transmutes_expressible_as_ptr_casts::check(cx, e, from_ty, from_ty_adjusted, to_ty, arg);
+                transmutes_expressible_as_ptr_casts::check(cx, e, from_ty, from_ty_adjusted, to_ty, arg, const_context);
             }
         }
     }
