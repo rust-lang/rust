@@ -1004,6 +1004,10 @@ pub enum CodegenObligationError {
 pub enum DefiningAnchor<'tcx> {
     /// Define opaques which are in-scope of the current item being analyzed.
     /// Also, eagerly replace these opaque types in `replace_opaque_types_with_inference_vars`.
+    ///
+    /// If the list is empty, do not allow any opaques to be defined. This is used to catch type mismatch
+    /// errors when handling opaque types, and also should be used when we would
+    /// otherwise reveal opaques (such as [`Reveal::All`] reveal mode).
     Bind(&'tcx ty::List<LocalDefId>),
     /// In contexts where we don't currently know what opaques are allowed to be
     /// defined, such as (old solver) canonical queries, we will simply allow
@@ -1013,10 +1017,6 @@ pub enum DefiningAnchor<'tcx> {
     /// We do not eagerly replace opaque types in `replace_opaque_types_with_inference_vars`,
     /// which may affect what predicates pass and fail in the old trait solver.
     Bubble,
-    /// Do not allow any opaques to be defined. This is used to catch type mismatch
-    /// errors when handling opaque types, and also should be used when we would
-    /// otherwise reveal opaques (such as [`Reveal::All`] reveal mode).
-    Error,
 }
 
 impl<'tcx> DefiningAnchor<'tcx> {
