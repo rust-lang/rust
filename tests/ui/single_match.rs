@@ -1,3 +1,5 @@
+//@compile-flags: -Zdeduplicate-diagnostics=yes
+
 #![warn(clippy::single_match)]
 #![allow(
     unused,

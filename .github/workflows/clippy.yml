@@ -44,11 +44,6 @@ jobs:
       run: rustup show active-toolchain
 
     # Run
-    - name: Set LD_LIBRARY_PATH (Linux)
-      run: |
-        SYSROOT=$(rustc --print sysroot)
-        echo "LD_LIBRARY_PATH=${SYSROOT}/lib${LD_LIBRARY_PATH+:${LD_LIBRARY_PATH}}" >> $GITHUB_ENV
-
     - name: Build
       run: cargo build --tests --features deny-warnings,internal
 
@@ -72,6 +67,6 @@ jobs:
       working-directory: clippy_dev
 
     - name: Test clippy-driver
-      run: bash .github/driver.sh
-      env:
-        OS: ${{ runner.os }}
+      run: |
+        TOOLCHAIN=$(rustup show active-toolchain | cut -f1 -d' ')
+        rustup run $TOOLCHAIN bash .github/driver.sh
