@@ -340,7 +340,8 @@ macro_rules! define_callbacks {
                     <$($K)* as keys::Key>::CacheSelector as CacheSelector<'tcx, Erase<$V>>
                 >::Cache;
 
-                // Ensure that keys grow no larger than 72 bytes
+                // Ensure that keys grow no larger than 72 bytes by accident.
+                // Increase this limit if necessary, but do try to keep the size low if possible
                 #[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
                 const _: () = {
                     if mem::size_of::<Key<'static>>() > 72 {
@@ -354,10 +355,11 @@ macro_rules! define_callbacks {
                     }
                 };
 
-                // Ensure that values grow no larger than 72 bytes
+                // Ensure that values grow no larger than 64 bytes by accident.
+                // Increase this limit if necessary, but do try to keep the size low if possible
                 #[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
                 const _: () = {
-                    if mem::size_of::<Value<'static>>() > 72 {
+                    if mem::size_of::<Value<'static>>() > 64 {
                         panic!("{}", concat!(
                             "the query `",
                             stringify!($name),
