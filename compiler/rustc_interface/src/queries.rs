@@ -8,8 +8,7 @@ use rustc_codegen_ssa::CodegenResults;
 use rustc_data_structures::steal::Steal;
 use rustc_data_structures::svh::Svh;
 use rustc_data_structures::sync::{AppendOnlyIndexVec, FreezeLock, OnceLock, WorkerLocal};
-use rustc_hir::def::DefKind;
-use rustc_hir::def_id::{StableCrateId, CRATE_DEF_ID, LOCAL_CRATE};
+use rustc_hir::def_id::{StableCrateId, LOCAL_CRATE};
 use rustc_hir::definitions::Definitions;
 use rustc_incremental::setup_dep_graph;
 use rustc_metadata::creader::CStore;
@@ -144,10 +143,8 @@ impl<'tcx> Queries<'tcx> {
                 stable_crate_id,
             )) as _);
             let definitions = FreezeLock::new(Definitions::new(stable_crate_id));
-            let source_span = AppendOnlyIndexVec::new();
-            let _id = source_span.push(krate.spans.inner_span);
-            debug_assert_eq!(_id, CRATE_DEF_ID);
-            let untracked = Untracked { cstore, source_span, definitions };
+            let untracked =
+                Untracked { cstore, source_span: AppendOnlyIndexVec::new(), definitions };
 
             let qcx = passes::create_global_ctxt(
                 self.compiler,
@@ -172,9 +169,6 @@ impl<'tcx> Queries<'tcx> {
                 )));
                 feed.crate_for_resolver(tcx.arena.alloc(Steal::new((krate, pre_configured_attrs))));
                 feed.output_filenames(Arc::new(outputs));
-
-                let feed = tcx.feed_local_def_id(CRATE_DEF_ID);
-                feed.def_kind(DefKind::Mod);
             });
             Ok(qcx)
         })
