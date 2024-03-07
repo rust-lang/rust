@@ -89,8 +89,8 @@ ENV RUST_CONFIGURE_ARGS \
       --set rust.lto=thin \
       --set rust.codegen-units=1
 
-ENV SCRIPT LD_PRELOAD=`jemalloc-config --libdir`/libjemalloc.so.`jemalloc-config --revision` python3 ../x.py build --set rust.debug=true opt-dist && \
-    ./build/$HOSTS/stage0-tools-bin/opt-dist linux-ci -- python3 ../x.py dist \
+ENV SCRIPT python3 ../x.py build --set rust.debug=true opt-dist && \
+    LD_PRELOAD=`jemalloc-config --libdir`/libjemalloc.so.`jemalloc-config --revision` ./build/$HOSTS/stage0-tools-bin/opt-dist linux-ci -- python3 ../x.py dist \
     --host $HOSTS --target $HOSTS \
     --include-default-paths \
     build-manifest bootstrap
