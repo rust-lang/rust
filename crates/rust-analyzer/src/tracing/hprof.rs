@@ -71,11 +71,11 @@ where
             None => true,
         };
 
-        metadata.is_span()
-            && allowed
+        allowed
+            && metadata.is_span()
             && metadata.level() >= &Level::INFO
-            // && !metadata.target().starts_with("salsa")
-            && !metadata.target().contains("compute_exhaustiveness_and_usefulness")
+            && !metadata.target().starts_with("salsa")
+            && metadata.name() != "compute_exhaustiveness_and_usefulness"
             && !metadata.target().starts_with("chalk")
     });
 

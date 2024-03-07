@@ -4,7 +4,7 @@
 use std::io;
 
 use anyhow::Context;
-use tracing::{level_filters::LevelFilter, Level};
+use tracing::level_filters::LevelFilter;
 use tracing_subscriber::{
     filter::Targets, fmt::MakeWriter, layer::SubscriberExt, util::SubscriberInitExt, Layer,
     Registry,
