@@ -29,9 +29,6 @@
 //!
 //! In general, any item in the `ItemTree` stores its `AstId`, which allows mapping it back to its
 //! surface syntax.
-//!
-//! Note that we cannot store [`span::Span`]s inside of this, as typing in an item invalidates its
-//! encompassing span!
 
 mod lower;
 mod pretty;
@@ -824,11 +821,13 @@ impl Use {
         // Note: The AST unwraps are fine, since if they fail we should have never obtained `index`.
         let ast = InFile::new(file_id, self.ast_id).to_node(db.upcast());
         let ast_use_tree = ast.use_tree().expect("missing `use_tree`");
-        let span_map = db.span_map(file_id);
-        let (_, source_map) = lower::lower_use_tree(db, span_map.as_ref(), ast_use_tree)
-            .expect("failed to lower use tree");
+        let (_, source_map) = lower::lower_use_tree(db, ast_use_tree, &mut |range| {
+            db.span_map(file_id).span_for_range(range).ctx
+        })
+        .expect("failed to lower use tree");
         source_map[index].clone()
     }
+
     /// Maps a `UseTree` contained in this import back to its AST node.
     pub fn use_tree_source_map(
         &self,
@@ -839,10 +838,11 @@ impl Use {
         // Note: The AST unwraps are fine, since if they fail we should have never obtained `index`.
         let ast = InFile::new(file_id, self.ast_id).to_node(db.upcast());
         let ast_use_tree = ast.use_tree().expect("missing `use_tree`");
-        let span_map = db.span_map(file_id);
-        lower::lower_use_tree(db, span_map.as_ref(), ast_use_tree)
-            .expect("failed to lower use tree")
-            .1
+        lower::lower_use_tree(db, ast_use_tree, &mut |range| {
+            db.span_map(file_id).span_for_range(range).ctx
+        })
+        .expect("failed to lower use tree")
+        .1
     }
 }
 

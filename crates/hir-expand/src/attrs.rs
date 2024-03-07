@@ -90,7 +90,7 @@ impl RawAttrs {
     }
 
     /// Processes `cfg_attr`s, returning the resulting semantic `Attrs`.
-    // FIXME: This should return a different type
+    // FIXME: This should return a different type, signaling it was filtered?
     pub fn filter(self, db: &dyn ExpandDatabase, krate: CrateId) -> RawAttrs {
         let has_cfg_attrs = self
             .iter()
@@ -201,7 +201,9 @@ impl Attr {
         span_map: SpanMapRef<'_>,
         id: AttrId,
     ) -> Option<Attr> {
-        let path = Interned::new(ModPath::from_src(db, ast.path()?, span_map)?);
+        let path = Interned::new(ModPath::from_src(db, ast.path()?, &mut |range| {
+            span_map.span_for_range(range).ctx
+        })?);
         let span = span_map.span_for_range(ast.syntax().text_range());
         let input = if let Some(ast::Expr::Literal(lit)) = ast.expr() {
             let value = match lit.kind() {

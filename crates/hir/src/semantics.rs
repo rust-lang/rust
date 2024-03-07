@@ -1073,7 +1073,7 @@ impl<'db> SemanticsImpl<'db> {
 
     pub fn resolve_type(&self, ty: &ast::Type) -> Option<Type> {
         let analyze = self.analyze(ty.syntax())?;
-        let ctx = LowerCtx::with_file_id(self.db.upcast(), analyze.file_id);
+        let ctx = LowerCtx::new(self.db.upcast(), analyze.file_id);
         let ty = hir_ty::TyLoweringContext::new_maybe_unowned(
             self.db,
             &analyze.resolver,
@@ -1085,8 +1085,7 @@ impl<'db> SemanticsImpl<'db> {
 
     pub fn resolve_trait(&self, path: &ast::Path) -> Option<Trait> {
         let analyze = self.analyze(path.syntax())?;
-        let span_map = self.db.span_map(analyze.file_id);
-        let ctx = LowerCtx::with_span_map(self.db.upcast(), span_map);
+        let ctx = LowerCtx::new(self.db.upcast(), analyze.file_id);
         let hir_path = Path::from_src(&ctx, path.clone())?;
         match analyze.resolver.resolve_path_in_type_ns_fully(self.db.upcast(), &hir_path)? {
             TypeNs::TraitId(id) => Some(Trait { id }),
@@ -1694,7 +1693,7 @@ impl SemanticsScope<'_> {
     /// Resolve a path as-if it was written at the given scope. This is
     /// necessary a heuristic, as it doesn't take hygiene into account.
     pub fn speculative_resolve(&self, path: &ast::Path) -> Option<PathResolution> {
-        let ctx = LowerCtx::with_file_id(self.db.upcast(), self.file_id);
+        let ctx = LowerCtx::new(self.db.upcast(), self.file_id);
         let path = Path::from_src(&ctx, path.clone())?;
         resolve_hir_path(self.db, &self.resolver, &path)
     }
