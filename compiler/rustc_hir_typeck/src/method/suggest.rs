@@ -3368,11 +3368,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                 "inherent impls can't be candidates, only trait impls can be",
                             )
                         })
-                        .filter(|header| {
-                            header.skip_binder().polarity == ty::ImplPolarity::Negative
-                        })
+                        .filter(|header| header.polarity == ty::ImplPolarity::Negative)
                         .any(|header| {
-                            let imp = header.instantiate_identity().trait_ref;
+                            let imp = header.trait_ref.instantiate_identity();
                             let imp_simp =
                                 simplify_type(self.tcx, imp.self_ty(), TreatParams::ForLookup);
                             imp_simp.is_some_and(|s| s == simp_rcvr_ty)

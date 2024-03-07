@@ -247,7 +247,7 @@ fn check_item<'tcx>(tcx: TyCtxt<'tcx>, item: &'tcx hir::Item<'tcx>) -> Result<()
         hir::ItemKind::Impl(impl_) => {
             let header = tcx.impl_trait_header(def_id);
             let is_auto = header
-                .is_some_and(|header| tcx.trait_is_auto(header.skip_binder().trait_ref.def_id));
+                .is_some_and(|header| tcx.trait_is_auto(header.trait_ref.skip_binder().def_id));
 
             crate::impl_wf_check::check_impl_wf(tcx, def_id)?;
             let mut res = Ok(());
@@ -261,7 +261,7 @@ fn check_item<'tcx>(tcx: TyCtxt<'tcx>, item: &'tcx hir::Item<'tcx>) -> Result<()
                     .emit());
             }
             // We match on both `ty::ImplPolarity` and `ast::ImplPolarity` just to get the `!` span.
-            match header.map(|h| h.skip_binder().polarity) {
+            match header.map(|h| h.polarity) {
                 // `None` means this is an inherent impl
                 Some(ty::ImplPolarity::Positive) | None => {
                     res = res.and(check_impl(tcx, item, impl_.self_ty, &impl_.of_trait));
