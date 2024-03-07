@@ -1,5 +1,5 @@
 warning: malformed `on_unimplemented` attribute
-  --> $DIR/ignore_unsupported_options_and_continue_to_use_fallback.rs:4:5
+  --> $DIR/ignore_unsupported_options_and_continue_to_use_fallback.rs:2:5
    |
 LL |     if(Self = "()"),
    |     ^^^^^^^^^^^^^^^ invalid option found here
@@ -8,7 +8,7 @@ LL |     if(Self = "()"),
    = note: `#[warn(unknown_or_malformed_diagnostic_attributes)]` on by default
 
 warning: `message` is ignored due to previous definition of `message`
-  --> $DIR/ignore_unsupported_options_and_continue_to_use_fallback.rs:10:32
+  --> $DIR/ignore_unsupported_options_and_continue_to_use_fallback.rs:8:32
    |
 LL |     message = "custom message",
    |     -------------------------- `message` is first declared here
@@ -17,7 +17,7 @@ LL | #[diagnostic::on_unimplemented(message = "fallback!!")]
    |                                ^^^^^^^^^^^^^^^^^^^^^^ `message` is already declared here
 
 warning: malformed `on_unimplemented` attribute
-  --> $DIR/ignore_unsupported_options_and_continue_to_use_fallback.rs:4:5
+  --> $DIR/ignore_unsupported_options_and_continue_to_use_fallback.rs:2:5
    |
 LL |     if(Self = "()"),
    |     ^^^^^^^^^^^^^^^ invalid option found here
@@ -26,7 +26,7 @@ LL |     if(Self = "()"),
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 warning: `message` is ignored due to previous definition of `message`
-  --> $DIR/ignore_unsupported_options_and_continue_to_use_fallback.rs:10:32
+  --> $DIR/ignore_unsupported_options_and_continue_to_use_fallback.rs:8:32
    |
 LL |     message = "custom message",
    |     -------------------------- `message` is first declared here
@@ -37,7 +37,7 @@ LL | #[diagnostic::on_unimplemented(message = "fallback!!")]
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 error[E0277]: custom message
-  --> $DIR/ignore_unsupported_options_and_continue_to_use_fallback.rs:20:15
+  --> $DIR/ignore_unsupported_options_and_continue_to_use_fallback.rs:18:15
    |
 LL |     takes_foo(());
    |     --------- ^^ fallback label
@@ -48,12 +48,12 @@ LL |     takes_foo(());
    = note: custom note
    = note: fallback note
 help: this trait has no implementations, consider adding one
-  --> $DIR/ignore_unsupported_options_and_continue_to_use_fallback.rs:15:1
+  --> $DIR/ignore_unsupported_options_and_continue_to_use_fallback.rs:13:1
    |
 LL | trait Foo {}
    | ^^^^^^^^^
 note: required by a bound in `takes_foo`
-  --> $DIR/ignore_unsupported_options_and_continue_to_use_fallback.rs:17:22
+  --> $DIR/ignore_unsupported_options_and_continue_to_use_fallback.rs:15:22
    |
 LL | fn takes_foo(_: impl Foo) {}
    |                      ^^^ required by this bound in `takes_foo`

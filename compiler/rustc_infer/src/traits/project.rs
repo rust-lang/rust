@@ -2,7 +2,7 @@
 
 use super::PredicateObligation;
 
-use crate::infer::InferCtxtUndoLogs;
+use crate::infer::snapshot::undo_log::InferCtxtUndoLogs;
 
 use rustc_data_structures::{
     snapshot_map::{self, SnapshotMapRef, SnapshotMapStorage},

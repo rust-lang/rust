@@ -12,6 +12,20 @@ mod listener;
 mod stream;
 #[cfg(all(test, not(target_os = "emscripten")))]
 mod tests;
+#[cfg(any(
+    target_os = "android",
+    target_os = "linux",
+    target_os = "dragonfly",
+    target_os = "freebsd",
+    target_os = "ios",
+    target_os = "tvos",
+    target_os = "watchos",
+    target_os = "macos",
+    target_os = "netbsd",
+    target_os = "openbsd",
+    target_os = "nto",
+))]
+mod ucred;
 
 #[stable(feature = "unix_socket", since = "1.10.0")]
 pub use self::addr::*;
@@ -24,3 +38,18 @@ pub use self::datagram::*;
 pub use self::listener::*;
 #[stable(feature = "unix_socket", since = "1.10.0")]
 pub use self::stream::*;
+#[cfg(any(
+    target_os = "android",
+    target_os = "linux",
+    target_os = "dragonfly",
+    target_os = "freebsd",
+    target_os = "ios",
+    target_os = "tvos",
+    target_os = "watchos",
+    target_os = "macos",
+    target_os = "netbsd",
+    target_os = "openbsd",
+    target_os = "nto",
+))]
+#[unstable(feature = "peer_credentials_unix_socket", issue = "42839", reason = "unstable")]
+pub use self::ucred::*;
