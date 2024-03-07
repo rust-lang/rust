@@ -55,6 +55,12 @@ struct ListSkeleton<H, T> {
     data: [T; 0],
 }
 
+impl<T> Default for &List<T> {
+    fn default() -> Self {
+        List::empty()
+    }
+}
+
 extern "C" {
     /// A dummy type used to force `List` to be unsized while not requiring
     /// references to it be wide pointers.

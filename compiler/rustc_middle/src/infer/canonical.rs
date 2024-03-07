@@ -23,6 +23,7 @@
 
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::sync::Lock;
+use rustc_hir::def_id::LocalDefId;
 use rustc_macros::HashStable;
 use rustc_type_ir::Canonical as IrCanonical;
 use rustc_type_ir::CanonicalVarInfo as IrCanonicalVarInfo;
@@ -33,7 +34,6 @@ use std::ops::Index;
 
 use crate::infer::MemberConstraint;
 use crate::mir::ConstraintCategory;
-use crate::traits::DefiningAnchor;
 use crate::ty::GenericArg;
 use crate::ty::{self, BoundVar, List, Region, Ty, TyCtxt, TypeFlags, TypeVisitableExt};
 
@@ -312,7 +312,7 @@ impl<'tcx> CanonicalParamEnvCache<'tcx> {
         &self,
         tcx: TyCtxt<'tcx>,
         key: ty::ParamEnv<'tcx>,
-        defining_anchor: DefiningAnchor<'tcx>,
+        defining_opaque_types: &'tcx ty::List<LocalDefId>,
         state: &mut OriginalQueryValues<'tcx>,
         canonicalize_op: fn(
             TyCtxt<'tcx>,
@@ -327,7 +327,7 @@ impl<'tcx> CanonicalParamEnvCache<'tcx> {
                 max_universe: ty::UniverseIndex::ROOT,
                 variables: List::empty(),
                 value: key,
-                defining_anchor,
+                defining_opaque_types,
             };
         }
 
@@ -343,7 +343,7 @@ impl<'tcx> CanonicalParamEnvCache<'tcx> {
             }
             Entry::Vacant(e) => {
                 let mut canonical = canonicalize_op(tcx, key, state);
-                canonical.defining_anchor = defining_anchor;
+                canonical.defining_opaque_types = defining_opaque_types;
                 let OriginalQueryValues { var_values, universe_map } = state;
                 assert_eq!(universe_map.len(), 1);
                 e.insert((canonical, tcx.arena.alloc_slice(var_values)));

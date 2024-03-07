@@ -45,7 +45,7 @@ impl<'tcx> InferCtxt<'tcx> {
         let param_env = self.tcx.canonical_param_env_cache.get_or_insert(
             self.tcx,
             param_env,
-            self.defining_use_anchor,
+            self.defining_opaque_types,
             query_state,
             |tcx, param_env, query_state| {
                 // FIXME(#118965): We don't canonicalize the static lifetimes that appear in the
@@ -541,7 +541,7 @@ impl<'cx, 'tcx> Canonicalizer<'cx, 'tcx> {
             max_universe: ty::UniverseIndex::ROOT,
             variables: List::empty(),
             value: (),
-            defining_anchor: infcx.map(|i| i.defining_use_anchor).unwrap_or_default(),
+            defining_opaque_types: infcx.map(|i| i.defining_opaque_types).unwrap_or_default(),
         };
         Canonicalizer::canonicalize_with_base(
             base,
@@ -615,7 +615,7 @@ impl<'cx, 'tcx> Canonicalizer<'cx, 'tcx> {
             max_universe,
             variables: canonical_variables,
             value: (base.value, out_value),
-            defining_anchor: base.defining_anchor,
+            defining_opaque_types: base.defining_opaque_types,
         }
     }
 

@@ -44,7 +44,7 @@ impl<I: Interner> InferCtxtLike for NoInfcx<I> {
         None
     }
 
-    fn defining_anchor(&self) -> <Self::Interner as Interner>::DefiningAnchor {
+    fn defining_opaque_types(&self) -> <Self::Interner as Interner>::DefiningOpaqueTypes {
         Default::default()
     }
 }
