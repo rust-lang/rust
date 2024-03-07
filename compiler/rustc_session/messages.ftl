@@ -24,6 +24,9 @@ session_feature_diagnostic_for_issue =
 session_feature_diagnostic_help =
     add `#![feature({$feature})]` to the crate attributes to enable
 
+session_feature_diagnostic_suggestion =
+    add `#![feature({$feature})]` to the crate attributes to enable
+
 session_feature_suggest_upgrade_compiler =
     this compiler was built on {$date}; consider upgrading it if it is out of date
 

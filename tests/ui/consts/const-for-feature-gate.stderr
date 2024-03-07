@@ -17,7 +17,10 @@ LL |     for _ in 0..5 {}
 note: impl defined here, but it is not `const`
   --> $SRC_DIR/core/src/iter/traits/collect.rs:LL:COL
    = note: calls in constants are limited to constant functions, tuple structs and tuple variants
-   = help: add `#![feature(const_trait_impl)]` to the crate attributes to enable
+help: add `#![feature(const_trait_impl)]` to the crate attributes to enable
+   |
+LL + #![feature(const_trait_impl)]
+   |
 
 error[E0658]: mutable references are not allowed in constants
   --> $DIR/const-for-feature-gate.rs:4:14
@@ -36,7 +39,10 @@ LL |     for _ in 0..5 {}
    |              ^^^^
    |
    = note: calls in constants are limited to constant functions, tuple structs and tuple variants
-   = help: add `#![feature(const_trait_impl)]` to the crate attributes to enable
+help: add `#![feature(const_trait_impl)]` to the crate attributes to enable
+   |
+LL + #![feature(const_trait_impl)]
+   |
 
 error: aborting due to 4 previous errors
 

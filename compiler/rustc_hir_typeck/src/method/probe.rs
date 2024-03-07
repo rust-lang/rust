@@ -1420,15 +1420,13 @@ impl<'tcx> Pick<'tcx> {
                     }
                     _ => {}
                 }
-                if tcx.sess.is_nightly_build() {
-                    for (candidate, feature) in &self.unstable_candidates {
-                        lint.help(format!(
-                            "add `#![feature({})]` to the crate attributes to enable `{}`",
-                            feature,
-                            tcx.def_path_str(candidate.item.def_id),
-                        ));
-                    }
-                }
+                tcx.disabled_nightly_features(
+                    lint,
+                    Some(scope_expr_id),
+                    self.unstable_candidates.iter().map(|(candidate, feature)| {
+                        (format!(" `{}`", tcx.def_path_str(candidate.item.def_id)), *feature)
+                    }),
+                );
             },
         );
     }

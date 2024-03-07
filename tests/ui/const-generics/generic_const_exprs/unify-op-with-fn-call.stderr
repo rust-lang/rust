@@ -54,7 +54,10 @@ note: impl defined here, but it is not `const`
 LL | impl const std::ops::Add for Foo {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    = note: calls in constants are limited to constant functions, tuple structs and tuple variants
-   = help: add `#![feature(effects)]` to the crate attributes to enable
+help: add `#![feature(effects)]` to the crate attributes to enable
+   |
+LL + #![feature(effects)]
+   |
 
 error[E0015]: cannot call non-const fn `<Foo as Add>::add` in constants
   --> $DIR/unify-op-with-fn-call.rs:21:13
@@ -63,7 +66,10 @@ LL |     bar::<{ std::ops::Add::add(N, N) }>();
    |             ^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: calls in constants are limited to constant functions, tuple structs and tuple variants
-   = help: add `#![feature(effects)]` to the crate attributes to enable
+help: add `#![feature(effects)]` to the crate attributes to enable
+   |
+LL + #![feature(effects)]
+   |
 
 error[E0015]: cannot call non-const fn `<usize as Add>::add` in constants
   --> $DIR/unify-op-with-fn-call.rs:30:14
@@ -72,7 +78,10 @@ LL |     bar2::<{ std::ops::Add::add(N, N) }>();
    |              ^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: calls in constants are limited to constant functions, tuple structs and tuple variants
-   = help: add `#![feature(effects)]` to the crate attributes to enable
+help: add `#![feature(effects)]` to the crate attributes to enable
+   |
+LL + #![feature(effects)]
+   |
 
 error: aborting due to 7 previous errors
 

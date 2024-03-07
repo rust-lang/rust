@@ -11,11 +11,14 @@ LL |     fun(filter_positive());
    |     ^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: calls in constant functions are limited to constant functions, tuple structs and tuple variants
-   = help: add `#![feature(effects)]` to the crate attributes to enable
 help: consider further restricting this bound
    |
 LL | const fn with_positive<F: ~const for<'a> Fn(&'a Alias<'a>) + ~const Destruct + ~const std::ops::Fn<(&Alias<'_>,)>>(fun: F) {
    |                                                                              ++++++++++++++++++++++++++++++++++++
+help: add `#![feature(effects)]` to the crate attributes to enable
+   |
+LL + #![feature(effects)]
+   |
 
 error[E0493]: destructor of `F` cannot be evaluated at compile-time
   --> $DIR/normalize-tait-in-const.rs:25:79

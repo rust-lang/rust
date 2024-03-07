@@ -3510,9 +3510,11 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
             }
             ObligationCauseCode::TrivialBound => {
                 err.help("see issue #48214");
-                if tcx.sess.opts.unstable_features.is_nightly_build() {
-                    err.help("add `#![feature(trivial_bounds)]` to the crate attributes to enable");
-                }
+                tcx.disabled_nightly_features(
+                    err,
+                    Some(tcx.local_def_id_to_hir_id(body_id)),
+                    [(String::new(), sym::trivial_bounds)],
+                );
             }
             ObligationCauseCode::OpaqueReturnType(expr_info) => {
                 if let Some((expr_ty, expr_span)) = expr_info {

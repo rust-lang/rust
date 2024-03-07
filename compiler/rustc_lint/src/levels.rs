@@ -1078,6 +1078,7 @@ impl<'s, P: LintLevelsProvider> LintLevelsBuilder<'s, P> {
                         feature,
                         GateIssue::Language,
                         lint_from_cli,
+                        None,
                     );
                 },
             );

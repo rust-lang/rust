@@ -999,9 +999,14 @@ fn check_param_wf(tcx: TyCtxt<'_>, param: &hir::GenericParam<'_>) -> Result<(), 
                     // Implments `ConstParamTy`, suggest adding the feature to enable.
                     Ok(..) => true,
                 };
-                if may_suggest_feature && tcx.sess.is_nightly_build() {
-                    diag.help(
-                        "add `#![feature(adt_const_params)]` to the crate attributes to enable more complex and user defined types",
+                if may_suggest_feature {
+                    tcx.disabled_nightly_features(
+                        &mut diag,
+                        Some(param.hir_id),
+                        [(
+                            " more complex and user defined types".to_string(),
+                            sym::adt_const_params,
+                        )],
                     );
                 }
 

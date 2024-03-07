@@ -16,7 +16,7 @@ use rustc_middle::ty::{
     self, GenericArgsRef, GenericParamDef, GenericParamDefKind, IsSuggestable, Ty, TyCtxt,
 };
 use rustc_session::lint::builtin::LATE_BOUND_LIFETIME_ARGUMENTS;
-use rustc_span::symbol::kw;
+use rustc_span::symbol::{kw, sym};
 use smallvec::SmallVec;
 
 /// Report an error that a generic argument did not match the generic parameter that was
@@ -41,9 +41,11 @@ fn generic_arg_mismatch_err(
     if let GenericParamDefKind::Const { .. } = param.kind {
         if matches!(arg, GenericArg::Type(hir::Ty { kind: hir::TyKind::Infer, .. })) {
             err.help("const arguments cannot yet be inferred with `_`");
-            if sess.is_nightly_build() {
-                err.help("add `#![feature(generic_arg_infer)]` to the crate attributes to enable");
-            }
+            tcx.disabled_nightly_features(
+                &mut err,
+                param.def_id.as_local().map(|local| tcx.local_def_id_to_hir_id(local)),
+                [(String::new(), sym::generic_arg_infer)],
+            );
         }
     }
 
