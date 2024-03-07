@@ -2954,6 +2954,16 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                 }
             }
             ObligationCauseCode::VariableType(hir_id) => {
+                if let Some(typeck_results) = &self.typeck_results
+                    && let Some(ty) = typeck_results.node_type_opt(hir_id)
+                    && let ty::Error(_) = ty.kind()
+                {
+                    err.note(format!(
+                        "`{predicate}` isn't satisfied, but the type of this pattern is \
+                         `{{type error}}`",
+                    ));
+                    err.downgrade_to_delayed_bug();
+                }
                 match tcx.parent_hir_node(hir_id) {
                     Node::Local(hir::Local { ty: Some(ty), .. }) => {
                         err.span_suggestion_verbose(

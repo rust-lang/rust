@@ -1,7 +1,7 @@
 #![allow(warnings)]
 
 fn issue_117846_repro() {
-    let (a, _) = if true { //~ ERROR E0277
+    let (a, _) = if true {
         produce()
     } else {
         (Vec::new(), &[]) //~ ERROR E0308
