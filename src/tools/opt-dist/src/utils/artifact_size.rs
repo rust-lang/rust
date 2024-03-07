@@ -15,21 +15,8 @@ pub fn print_binary_sizes(env: &Environment) -> anyhow::Result<()> {
 
     let root = env.build_artifacts().join("stage2");
 
-    let all_lib_files = get_files_from_dir(&root.join("lib"), None)?;
-
     let mut files = get_files_from_dir(&root.join("bin"), None)?;
-    files.extend(get_files_from_dir(&root.join("lib"), Some(".so"))?);
-
-    // libLLVM.so can be named libLLVM.so.<suffix>, so we try to explicitly add it here if it
-    // wasn't found by the above call.
-    if !files.iter().any(|f| f.file_name().unwrap_or_default().starts_with("libLLVM")) {
-        if let Some(llvm_lib) =
-            all_lib_files.iter().find(|f| f.file_name().unwrap_or_default().starts_with("libLLVM"))
-        {
-            files.push(llvm_lib.clone());
-        }
-    }
-
+    files.extend(get_files_from_dir(&root.join("lib"), None)?);
     files.sort_unstable();
 
     let items: Vec<_> = files
