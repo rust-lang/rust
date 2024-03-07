@@ -1,6 +1,10 @@
 //@ignore-target-windows: File handling is not implemented yet
 //@compile-flags: -Zmiri-disable-isolation
 
+// If this test is failing for you locally, you can try
+// 1. Deleting the files `/tmp/miri_*`
+// 2. Setting `MIRI_TEMP` or `TMPDIR` to a different directory, without the `miri_*` files
+
 #![feature(io_error_more)]
 #![feature(io_error_uncategorized)]
 
