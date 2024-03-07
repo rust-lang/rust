@@ -108,7 +108,7 @@ pub struct Frame<'mir, 'tcx, Prov: Provenance = CtfeProvenance, Extra = ()> {
 
     /// The location where the result of the current stack frame should be written to,
     /// and its layout in the caller.
-    pub return_place: PlaceTy<'tcx, Prov>,
+    pub return_place: MPlaceTy<'tcx, Prov>,
 
     /// The list of locals for this stack frame, stored in order as
     /// `[return_ptr, arguments..., variables..., temporaries...]`.
@@ -771,7 +771,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         &mut self,
         instance: ty::Instance<'tcx>,
         body: &'mir mir::Body<'tcx>,
-        return_place: &PlaceTy<'tcx, M::Provenance>,
+        return_place: &MPlaceTy<'tcx, M::Provenance>,
         return_to_block: StackPopCleanup,
     ) -> InterpResult<'tcx> {
         trace!("body: {:#?}", body);
@@ -912,7 +912,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             } else {
                 self.copy_op_allow_transmute(&op, &dest)
             };
-            trace!("return value: {:?}", self.dump_place(&dest));
+            trace!("return value: {:?}", self.dump_place(&dest.into()));
             // We delay actually short-circuiting on this error until *after* the stack frame is
             // popped, since we want this error to be attributed to the caller, whose type defines
             // this transmute.

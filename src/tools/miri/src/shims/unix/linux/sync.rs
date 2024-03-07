@@ -8,7 +8,7 @@ use crate::*;
 pub fn futex<'tcx>(
     this: &mut MiriInterpCx<'_, 'tcx>,
     args: &[OpTy<'tcx, Provenance>],
-    dest: &PlaceTy<'tcx, Provenance>,
+    dest: &MPlaceTy<'tcx, Provenance>,
 ) -> InterpResult<'tcx> {
     // The amount of arguments used depends on the type of futex operation.
     // The full futex syscall takes six arguments (excluding the syscall
@@ -179,7 +179,7 @@ pub fn futex<'tcx>(
                     struct Callback<'tcx> {
                         thread: ThreadId,
                         addr_usize: u64,
-                        dest: PlaceTy<'tcx, Provenance>,
+                        dest: MPlaceTy<'tcx, Provenance>,
                     }
 
                     impl<'tcx> VisitProvenance for Callback<'tcx> {

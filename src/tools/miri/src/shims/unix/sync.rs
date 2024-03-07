@@ -843,7 +843,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         cond_op: &OpTy<'tcx, Provenance>,
         mutex_op: &OpTy<'tcx, Provenance>,
         abstime_op: &OpTy<'tcx, Provenance>,
-        dest: &PlaceTy<'tcx, Provenance>,
+        dest: &MPlaceTy<'tcx, Provenance>,
     ) -> InterpResult<'tcx> {
         let this = self.eval_context_mut();
 
@@ -883,7 +883,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
             active_thread: ThreadId,
             mutex_id: MutexId,
             id: CondvarId,
-            dest: PlaceTy<'tcx, Provenance>,
+            dest: MPlaceTy<'tcx, Provenance>,
         }
 
         impl<'tcx> VisitProvenance for Callback<'tcx> {
