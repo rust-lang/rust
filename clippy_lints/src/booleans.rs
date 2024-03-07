@@ -88,7 +88,6 @@ impl<'tcx> LateLintPass<'tcx> for NonminimalBool {
 
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>) {
         match expr.kind {
-            ExprKind::Unary(UnOp::Not, sub) => check_inverted_condition(cx, expr.span, sub),
             // This check the case where an element in a boolean comparison is inverted, like:
             //
             // ```
@@ -119,27 +118,6 @@ fn bin_op_eq_str(op: BinOpKind) -> Option<&'static str> {
     }
 }
 
-fn check_inverted_condition(cx: &LateContext<'_>, expr_span: Span, sub_expr: &Expr<'_>) {
-    if !expr_span.from_expansion()
-        && let ExprKind::Binary(op, left, right) = sub_expr.kind
-        && let Some(left) = snippet_opt(cx, left.span)
-        && let Some(right) = snippet_opt(cx, right.span)
-    {
-        let Some(op) = inverted_bin_op_eq_str(op.node) else {
-            return;
-        };
-        span_lint_and_sugg(
-            cx,
-            NONMINIMAL_BOOL,
-            expr_span,
-            "this boolean expression can be simplified",
-            "try",
-            format!("{left} {op} {right}",),
-            Applicability::MachineApplicable,
-        );
-    }
-}
-
 fn check_inverted_bool_in_condition(
     cx: &LateContext<'_>,
     expr_span: Span,
@@ -148,8 +126,8 @@ fn check_inverted_bool_in_condition(
     right: &Expr<'_>,
 ) {
     if expr_span.from_expansion()
-        && (!cx.typeck_results().node_types()[left.hir_id].is_bool()
-            || !cx.typeck_results().node_types()[right.hir_id].is_bool())
+        || !cx.typeck_results().node_types()[left.hir_id].is_bool()
+        || !cx.typeck_results().node_types()[right.hir_id].is_bool()
     {
         return;
     }

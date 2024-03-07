@@ -1,5 +1,5 @@
 error: used import from `std` instead of `core`
-  --> tests/ui/std_instead_of_core.rs:13:9
+  --> tests/ui/std_instead_of_core.rs:14:9
    |
 LL |     use std::hash::Hasher;
    |         ^^^ help: consider importing the item from `core`: `core`
@@ -8,49 +8,61 @@ LL |     use std::hash::Hasher;
    = help: to override `-D warnings` add `#[allow(clippy::std_instead_of_core)]`
 
 error: used import from `std` instead of `core`
-  --> tests/ui/std_instead_of_core.rs:16:11
+  --> tests/ui/std_instead_of_core.rs:17:11
    |
 LL |     use ::std::hash::Hash;
    |           ^^^ help: consider importing the item from `core`: `core`
 
 error: used import from `std` instead of `core`
-  --> tests/ui/std_instead_of_core.rs:22:9
+  --> tests/ui/std_instead_of_core.rs:20:9
+   |
+LL |     use std::env;
+   |         ^^^ help: consider importing the item from `core`: `core`
+
+error: used import from `std` instead of `core`
+  --> tests/ui/std_instead_of_core.rs:23:9
    |
 LL |     use std::fmt::{Debug, Result};
    |         ^^^ help: consider importing the item from `core`: `core`
 
 error: used import from `std` instead of `core`
-  --> tests/ui/std_instead_of_core.rs:26:15
+  --> tests/ui/std_instead_of_core.rs:28:9
+   |
+LL |     use std::{
+   |         ^^^ help: consider importing the item from `core`: `core`
+
+error: used import from `std` instead of `core`
+  --> tests/ui/std_instead_of_core.rs:35:15
    |
 LL |     let ptr = std::ptr::null::<u32>();
    |               ^^^ help: consider importing the item from `core`: `core`
 
 error: used import from `std` instead of `core`
-  --> tests/ui/std_instead_of_core.rs:28:21
+  --> tests/ui/std_instead_of_core.rs:37:21
    |
 LL |     let ptr_mut = ::std::ptr::null_mut::<usize>();
    |                     ^^^ help: consider importing the item from `core`: `core`
 
 error: used import from `std` instead of `core`
-  --> tests/ui/std_instead_of_core.rs:32:16
+  --> tests/ui/std_instead_of_core.rs:41:16
    |
 LL |     let cell = std::cell::Cell::new(8u32);
    |                ^^^ help: consider importing the item from `core`: `core`
 
 error: used import from `std` instead of `core`
-  --> tests/ui/std_instead_of_core.rs:34:27
+  --> tests/ui/std_instead_of_core.rs:43:27
    |
 LL |     let cell_absolute = ::std::cell::Cell::new(8u32);
    |                           ^^^ help: consider importing the item from `core`: `core`
 
 error: used import from `std` instead of `core`
-  --> tests/ui/std_instead_of_core.rs:43:9
+  --> tests/ui/std_instead_of_core.rs:52:9
    |
 LL |     use std::iter::Iterator;
    |         ^^^ help: consider importing the item from `core`: `core`
 
 error: used import from `std` instead of `alloc`
-  --> tests/ui/std_instead_of_core.rs:50:9
+  --> tests/ui/std_instead_of_core.rs:59:9
    |
 LL |     use std::vec;
    |         ^^^ help: consider importing the item from `alloc`: `alloc`
@@ -59,13 +71,13 @@ LL |     use std::vec;
    = help: to override `-D warnings` add `#[allow(clippy::std_instead_of_alloc)]`
 
 error: used import from `std` instead of `alloc`
-  --> tests/ui/std_instead_of_core.rs:52:9
+  --> tests/ui/std_instead_of_core.rs:61:9
    |
 LL |     use std::vec::Vec;
    |         ^^^ help: consider importing the item from `alloc`: `alloc`
 
 error: used import from `alloc` instead of `core`
-  --> tests/ui/std_instead_of_core.rs:58:9
+  --> tests/ui/std_instead_of_core.rs:67:9
    |
 LL |     use alloc::slice::from_ref;
    |         ^^^^^ help: consider importing the item from `core`: `core`
@@ -73,5 +85,5 @@ LL |     use alloc::slice::from_ref;
    = note: `-D clippy::alloc-instead-of-core` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::alloc_instead_of_core)]`
 
-error: aborting due to 11 previous errors
+error: aborting due to 13 previous errors
 

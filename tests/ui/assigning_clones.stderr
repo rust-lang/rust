@@ -1,0 +1,107 @@
+error: assigning the result of `Clone::clone()` may be inefficient
+  --> tests/ui/assigning_clones.rs:24:5
+   |
+LL |     *mut_thing = value_thing.clone();
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use `clone_from()`: `mut_thing.clone_from(&value_thing)`
+   |
+   = note: `-D clippy::assigning-clones` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::assigning_clones)]`
+
+error: assigning the result of `Clone::clone()` may be inefficient
+  --> tests/ui/assigning_clones.rs:28:5
+   |
+LL |     *mut_thing = ref_thing.clone();
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use `clone_from()`: `mut_thing.clone_from(ref_thing)`
+
+error: assigning the result of `Clone::clone()` may be inefficient
+  --> tests/ui/assigning_clones.rs:32:5
+   |
+LL |     mut_thing = ref_thing.clone();
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use `clone_from()`: `mut_thing.clone_from(ref_thing)`
+
+error: assigning the result of `Clone::clone()` may be inefficient
+  --> tests/ui/assigning_clones.rs:36:5
+   |
+LL |     *mut_thing = Clone::clone(ref_thing);
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use `clone_from()`: `Clone::clone_from(mut_thing, ref_thing)`
+
+error: assigning the result of `Clone::clone()` may be inefficient
+  --> tests/ui/assigning_clones.rs:40:5
+   |
+LL |     mut_thing = Clone::clone(ref_thing);
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use `clone_from()`: `Clone::clone_from(&mut mut_thing, ref_thing)`
+
+error: assigning the result of `Clone::clone()` may be inefficient
+  --> tests/ui/assigning_clones.rs:44:5
+   |
+LL |     *mut_thing = Clone::clone(ref_thing);
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use `clone_from()`: `Clone::clone_from(mut_thing, ref_thing)`
+
+error: assigning the result of `Clone::clone()` may be inefficient
+  --> tests/ui/assigning_clones.rs:48:5
+   |
+LL |     *mut_thing = HasCloneFrom::clone(ref_thing);
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use `clone_from()`: `Clone::clone_from(mut_thing, ref_thing)`
+
+error: assigning the result of `Clone::clone()` may be inefficient
+  --> tests/ui/assigning_clones.rs:52:5
+   |
+LL |     *mut_thing = <HasCloneFrom as Clone>::clone(ref_thing);
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use `clone_from()`: `Clone::clone_from(mut_thing, ref_thing)`
+
+error: assigning the result of `Clone::clone()` may be inefficient
+  --> tests/ui/assigning_clones.rs:57:5
+   |
+LL |     *(mut_thing + &mut HasCloneFrom) = ref_thing.clone();
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use `clone_from()`: `(mut_thing + &mut HasCloneFrom).clone_from(ref_thing)`
+
+error: assigning the result of `Clone::clone()` may be inefficient
+  --> tests/ui/assigning_clones.rs:62:5
+   |
+LL |     *mut_thing = (ref_thing + ref_thing).clone();
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use `clone_from()`: `mut_thing.clone_from(ref_thing + ref_thing)`
+
+error: assigning the result of `Clone::clone()` may be inefficient
+  --> tests/ui/assigning_clones.rs:68:9
+   |
+LL |         a = b.clone();
+   |         ^^^^^^^^^^^^^ help: use `clone_from()`: `a.clone_from(&b)`
+
+error: assigning the result of `ToOwned::to_owned()` may be inefficient
+  --> tests/ui/assigning_clones.rs:145:5
+   |
+LL |     *mut_string = ref_str.to_owned();
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use `clone_into()`: `ref_str.clone_into(mut_string)`
+
+error: assigning the result of `ToOwned::to_owned()` may be inefficient
+  --> tests/ui/assigning_clones.rs:149:5
+   |
+LL |     mut_string = ref_str.to_owned();
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use `clone_into()`: `ref_str.clone_into(&mut mut_string)`
+
+error: assigning the result of `ToOwned::to_owned()` may be inefficient
+  --> tests/ui/assigning_clones.rs:170:5
+   |
+LL |     **mut_box_string = ref_str.to_owned();
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use `clone_into()`: `ref_str.clone_into(&mut (*mut_box_string))`
+
+error: assigning the result of `ToOwned::to_owned()` may be inefficient
+  --> tests/ui/assigning_clones.rs:174:5
+   |
+LL |     **mut_box_string = ref_str.to_owned();
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use `clone_into()`: `ref_str.clone_into(&mut (*mut_box_string))`
+
+error: assigning the result of `ToOwned::to_owned()` may be inefficient
+  --> tests/ui/assigning_clones.rs:178:5
+   |
+LL |     *mut_thing = ToOwned::to_owned(ref_str);
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use `clone_into()`: `ToOwned::clone_into(ref_str, mut_thing)`
+
+error: assigning the result of `ToOwned::to_owned()` may be inefficient
+  --> tests/ui/assigning_clones.rs:182:5
+   |
+LL |     mut_thing = ToOwned::to_owned(ref_str);
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use `clone_into()`: `ToOwned::clone_into(ref_str, &mut mut_thing)`
+
+error: aborting due to 17 previous errors
+
