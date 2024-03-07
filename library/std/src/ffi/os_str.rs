@@ -157,7 +157,7 @@ impl OsString {
     /// # Safety
     ///
     /// As the encoding is unspecified, callers must pass in bytes that originated as a mixture of
-    /// validated UTF-8 and bytes from [`OsStr::as_encoded_bytes`] from within the same rust version
+    /// validated UTF-8 and bytes from [`OsStr::as_encoded_bytes`] from within the same Rust version
     /// built for the same target platform.  For example, reconstructing an `OsString` from bytes sent
     /// over the network or stored in a file will likely violate these safety rules.
     ///
@@ -213,7 +213,7 @@ impl OsString {
     /// ASCII.
     ///
     /// Note: As the encoding is unspecified, any sub-slice of bytes that is not valid UTF-8 should
-    /// be treated as opaque and only comparable within the same rust version built for the same
+    /// be treated as opaque and only comparable within the same Rust version built for the same
     /// target platform.  For example, sending the bytes over the network or storing it in a file
     /// will likely result in incompatible data.  See [`OsString`] for more encoding details
     /// and [`std::ffi`] for platform-specific, specified conversions.
@@ -747,7 +747,7 @@ impl OsStr {
     /// # Safety
     ///
     /// As the encoding is unspecified, callers must pass in bytes that originated as a mixture of
-    /// validated UTF-8 and bytes from [`OsStr::as_encoded_bytes`] from within the same rust version
+    /// validated UTF-8 and bytes from [`OsStr::as_encoded_bytes`] from within the same Rust version
     /// built for the same target platform.  For example, reconstructing an `OsStr` from bytes sent
     /// over the network or stored in a file will likely violate these safety rules.
     ///
@@ -955,7 +955,7 @@ impl OsStr {
     /// ASCII.
     ///
     /// Note: As the encoding is unspecified, any sub-slice of bytes that is not valid UTF-8 should
-    /// be treated as opaque and only comparable within the same rust version built for the same
+    /// be treated as opaque and only comparable within the same Rust version built for the same
     /// target platform.  For example, sending the slice over the network or storing it in a file
     /// will likely result in incompatible byte slices.  See [`OsString`] for more encoding details
     /// and [`std::ffi`] for platform-specific, specified conversions.
