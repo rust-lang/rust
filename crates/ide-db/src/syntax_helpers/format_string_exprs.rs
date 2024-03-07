@@ -11,15 +11,12 @@ pub enum Arg {
     Expr(String),
 }
 
-/**
- Add placeholders like `$1` and `$2` in place of [`Arg::Placeholder`],
- and unwraps the [`Arg::Ident`] and [`Arg::Expr`] enums.
- ```rust
- # use ide_db::syntax_helpers::format_string_exprs::*;
- assert_eq!(with_placeholders(vec![Arg::Ident("ident".to_owned()), Arg::Placeholder, Arg::Expr("expr + 2".to_owned())]), vec!["ident".to_owned(), "$1".to_owned(), "expr + 2".to_owned()])
- ```
-*/
-
+/// Add placeholders like `$1` and `$2` in place of [`Arg::Placeholder`],
+/// and unwraps the [`Arg::Ident`] and [`Arg::Expr`] enums.
+/// ```rust
+/// # use ide_db::syntax_helpers::format_string_exprs::*;
+/// assert_eq!(with_placeholders(vec![Arg::Ident("ident".to_owned()), Arg::Placeholder, Arg::Expr("expr + 2".to_owned())]), vec!["ident".to_owned(), "$1".to_owned(), "expr + 2".to_owned()])
+/// ```
 pub fn with_placeholders(args: Vec<Arg>) -> Vec<String> {
     let mut placeholder_id = 1;
     args.into_iter()
@@ -34,18 +31,15 @@ pub fn with_placeholders(args: Vec<Arg>) -> Vec<String> {
         .collect()
 }
 
-/**
- Parser for a format-like string. It is more allowing in terms of string contents,
- as we expect variable placeholders to be filled with expressions.
-
- Built for completions and assists, and escapes `\` and `$` in output.
- (See the comments on `get_receiver_text()` for detail.)
- Splits a format string that may contain expressions
- like
- ```rust
- assert_eq!(parse("{ident} {} {expr + 42} ").unwrap(), ("{} {} {}", vec![Arg::Ident("ident"), Arg::Placeholder, Arg::Expr("expr + 42")]));
- ```
-*/
+/// Parser for a format-like string. It is more allowing in terms of string contents,
+/// as we expect variable placeholders to be filled with expressions.
+///
+/// Splits a format string that may contain expressions
+/// like
+/// ```rust
+/// # use ide_db::syntax_helpers::format_string_exprs::*;
+/// assert_eq!(parse_format_exprs("{ident} {} {expr + 42} ").unwrap(), ("{ident} {} {} ".to_owned(), vec![Arg::Placeholder, Arg::Expr("expr + 42".to_owned())]));
+/// ```
 pub fn parse_format_exprs(input: &str) -> Result<(String, Vec<Arg>), ()> {
     #[derive(Debug, Clone, Copy, PartialEq)]
     enum State {
