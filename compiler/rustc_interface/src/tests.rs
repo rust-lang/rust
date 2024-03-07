@@ -13,7 +13,7 @@ use rustc_session::config::{
 use rustc_session::lint::Level;
 use rustc_session::search_paths::SearchPath;
 use rustc_session::utils::{CanonicalizedPath, NativeLib, NativeLibKind};
-use rustc_session::{build_session, getopts, CompilerIO, EarlyDiagCtxt, Session};
+use rustc_session::{build_session, filesearch, getopts, CompilerIO, EarlyDiagCtxt, Session};
 use rustc_span::edition::{Edition, DEFAULT_EDITION};
 use rustc_span::symbol::sym;
 use rustc_span::{FileName, SourceFileHashAlgorithm};
@@ -37,6 +37,12 @@ fn mk_session(matches: getopts::Matches) -> (Session, Cfg) {
         output_file: None,
         temps_dir,
     };
+
+    let sysroot = filesearch::materialize_sysroot(sessopts.maybe_sysroot.clone());
+
+    let target_cfg =
+        rustc_session::config::build_target_config(&early_dcx, &sessopts, None, &sysroot);
+
     let sess = build_session(
         early_dcx,
         sessopts,
@@ -46,7 +52,8 @@ fn mk_session(matches: getopts::Matches) -> (Session, Cfg) {
         vec![],
         Default::default(),
         None,
-        None,
+        target_cfg,
+        sysroot,
         "",
         None,
         Arc::default(),
