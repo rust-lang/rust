@@ -357,11 +357,10 @@ impl OnDiskCache {
         &self,
         tcx: TyCtxt<'_>,
         dep_node_index: SerializedDepNodeIndex,
-    ) -> QuerySideEffects {
+    ) -> Option<QuerySideEffects> {
         let side_effects: Option<QuerySideEffects> =
             self.load_indexed(tcx, dep_node_index, &self.prev_side_effects_index);
-
-        side_effects.unwrap_or_default()
+        side_effects
     }
 
     /// Stores a `QuerySideEffects` emitted during the current compilation session.
@@ -393,21 +392,6 @@ impl OnDiskCache {
         let opt_value = self.load_indexed(tcx, dep_node_index, &self.query_result_index);
         debug_assert_eq!(opt_value.is_some(), self.loadable_from_disk(dep_node_index));
         opt_value
-    }
-
-    /// Stores side effect emitted during computation of an anonymous query.
-    /// Since many anonymous queries can share the same `DepNode`, we aggregate
-    /// them -- as opposed to regular queries where we assume that there is a
-    /// 1:1 relationship between query-key and `DepNode`.
-    pub fn store_side_effects_for_anon_node(
-        &self,
-        dep_node_index: DepNodeIndex,
-        side_effects: QuerySideEffects,
-    ) {
-        let mut current_side_effects = self.current_side_effects.borrow_mut();
-
-        let x = current_side_effects.entry(dep_node_index).or_default();
-        x.append(side_effects);
     }
 
     fn load_indexed<'tcx, T>(
