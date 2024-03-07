@@ -62,7 +62,7 @@ fn test_from_utf8() {
     const N: usize = 10;
     let vec = vec![0x4141414141414141u64; N];
     let content = unsafe { std::slice::from_raw_parts(vec.as_ptr() as *const u8, 8 * N) };
-    println!("{:?}", std::str::from_utf8(content).unwrap());
+    format!("{:?}", std::str::from_utf8(content).unwrap());
 }
 
 fn test_u64_array() {
@@ -115,10 +115,9 @@ fn vtable() {
     let parts: (*const (), *const u8) = unsafe { mem::transmute(ptr) };
     let vtable = parts.1;
     let offset = vtable.align_offset(mem::align_of::<TWOPTR>());
-    let _vtable_aligned = vtable.wrapping_add(offset) as *const [TWOPTR; 0];
-    // FIXME: we can't actually do the access since vtable pointers act like zero-sized allocations.
-    // Enable the next line once https://github.com/rust-lang/rust/issues/117945 is implemented.
-    //let _place = unsafe { &*vtable_aligned };
+    let vtable_aligned = vtable.wrapping_add(offset) as *const [TWOPTR; 0];
+    // Zero-sized deref, so no in-bounds requirement.
+    let _place = unsafe { &*vtable_aligned };
 }
 
 fn main() {

@@ -8,21 +8,15 @@ use rustc_middle::ty::layout::{LayoutOf as _, ValidityRequirement};
 use rustc_middle::ty::GenericArgsRef;
 use rustc_middle::ty::{Ty, TyCtxt};
 use rustc_middle::{
-    mir::{
-        self,
-        interpret::{
-            Allocation, ConstAllocation, GlobalId, InterpResult, PointerArithmetic, Scalar,
-        },
-        BinOp, ConstValue, NonDivergingIntrinsic,
-    },
+    mir::{self, BinOp, ConstValue, NonDivergingIntrinsic},
     ty::layout::TyAndLayout,
 };
 use rustc_span::symbol::{sym, Symbol};
 use rustc_target::abi::Size;
 
 use super::{
-    util::ensure_monomorphic_enough, CheckInAllocMsg, ImmTy, InterpCx, Machine, OpTy, PlaceTy,
-    Pointer,
+    util::ensure_monomorphic_enough, Allocation, CheckInAllocMsg, ConstAllocation, GlobalId, ImmTy,
+    InterpCx, InterpResult, Machine, OpTy, PlaceTy, Pointer, PointerArithmetic, Provenance, Scalar,
 };
 
 use crate::fluent_generated as fluent;
@@ -236,106 +230,125 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             }
             sym::ptr_offset_from | sym::ptr_offset_from_unsigned => {
                 let a = self.read_pointer(&args[0])?;
+                let a_parts = self.ptr_try_get_alloc_id(a);
                 let b = self.read_pointer(&args[1])?;
+                let b_parts = self.ptr_try_get_alloc_id(b);
 
-                let usize_layout = self.layout_of(self.tcx.types.usize)?;
-                let isize_layout = self.layout_of(self.tcx.types.isize)?;
-
-                // Get offsets for both that are at least relative to the same base.
-                let (a_offset, b_offset) =
-                    match (self.ptr_try_get_alloc_id(a), self.ptr_try_get_alloc_id(b)) {
-                        (Err(a), Err(b)) => {
-                            // Neither pointer points to an allocation.
-                            // If these are inequal or null, this *will* fail the deref check below.
-                            (a, b)
-                        }
-                        (Err(_), _) | (_, Err(_)) => {
-                            // We managed to find a valid allocation for one pointer, but not the other.
-                            // That means they are definitely not pointing to the same allocation.
-                            throw_ub_custom!(
-                                fluent::const_eval_different_allocations,
-                                name = intrinsic_name,
-                            );
-                        }
-                        (Ok((a_alloc_id, a_offset, _)), Ok((b_alloc_id, b_offset, _))) => {
-                            // Found allocation for both. They must be into the same allocation.
-                            if a_alloc_id != b_alloc_id {
-                                throw_ub_custom!(
-                                    fluent::const_eval_different_allocations,
-                                    name = intrinsic_name,
-                                );
-                            }
-                            // Use these offsets for distance calculation.
-                            (a_offset.bytes(), b_offset.bytes())
-                        }
-                    };
-
-                // Compute distance.
-                let dist = {
-                    // Addresses are unsigned, so this is a `usize` computation. We have to do the
-                    // overflow check separately anyway.
-                    let (val, overflowed) = {
-                        let a_offset = ImmTy::from_uint(a_offset, usize_layout);
-                        let b_offset = ImmTy::from_uint(b_offset, usize_layout);
-                        self.overflowing_binary_op(BinOp::Sub, &a_offset, &b_offset)?
-                    };
-                    if overflowed {
-                        // a < b
-                        if intrinsic_name == sym::ptr_offset_from_unsigned {
-                            throw_ub_custom!(
-                                fluent::const_eval_unsigned_offset_from_overflow,
-                                a_offset = a_offset,
-                                b_offset = b_offset,
-                            );
-                        }
-                        // The signed form of the intrinsic allows this. If we interpret the
-                        // difference as isize, we'll get the proper signed difference. If that
-                        // seems *positive*, they were more than isize::MAX apart.
-                        let dist = val.to_scalar().to_target_isize(self)?;
-                        if dist >= 0 {
-                            throw_ub_custom!(
-                                fluent::const_eval_offset_from_underflow,
-                                name = intrinsic_name,
-                            );
-                        }
-                        dist
-                    } else {
-                        // b >= a
-                        let dist = val.to_scalar().to_target_isize(self)?;
-                        // If converting to isize produced a *negative* result, we had an overflow
-                        // because they were more than isize::MAX apart.
-                        if dist < 0 {
-                            throw_ub_custom!(
-                                fluent::const_eval_offset_from_overflow,
-                                name = intrinsic_name,
-                            );
-                        }
-                        dist
+                // If the pointers' addresses are the same, then different rules apply.
+                let same_addr = match (a_parts, b_parts) {
+                    (Err(a_addr), Err(b_addr)) => a_addr == b_addr,
+                    _ if M::Provenance::OFFSET_IS_ADDR => a.addr() == b.addr(),
+                    _ => {
+                        // We can't determine whether they are the same, so we have to assume they
+                        // are different.
+                        false
                     }
                 };
 
-                // Check that the range between them is dereferenceable ("in-bounds or one past the
-                // end of the same allocation"). This is like the check in ptr_offset_inbounds.
-                let min_ptr = if dist >= 0 { b } else { a };
-                self.check_ptr_access(
-                    min_ptr,
-                    Size::from_bytes(dist.unsigned_abs()),
-                    CheckInAllocMsg::OffsetFromTest,
-                )?;
-
-                // Perform division by size to compute return value.
-                let ret_layout = if intrinsic_name == sym::ptr_offset_from_unsigned {
-                    assert!(0 <= dist && dist <= self.target_isize_max());
-                    usize_layout
+                if same_addr {
+                    // Distance: 0. No further requirements.
+                    self.write_scalar(Scalar::from_target_usize(0, self), dest)?;
                 } else {
-                    assert!(self.target_isize_min() <= dist && dist <= self.target_isize_max());
-                    isize_layout
-                };
-                let pointee_layout = self.layout_of(instance_args.type_at(0))?;
-                // If ret_layout is unsigned, we checked that so is the distance, so we are good.
-                let val = ImmTy::from_int(dist, ret_layout);
-                let size = ImmTy::from_int(pointee_layout.size.bytes(), ret_layout);
-                self.exact_div(&val, &size, dest)?;
+                    let usize_layout = self.layout_of(self.tcx.types.usize)?;
+                    let isize_layout = self.layout_of(self.tcx.types.isize)?;
+
+                    // The addresses are not the same, so we have to do some extra checks and some maths.
+                    let (a_offset, b_offset) =
+                        match (self.ptr_try_get_alloc_id(a), self.ptr_try_get_alloc_id(b)) {
+                            (Ok((a_alloc_id, a_offset, _)), Ok((b_alloc_id, b_offset, _))) => {
+                                // Found allocation for both. They must be into the same allocation.
+                                if a_alloc_id != b_alloc_id {
+                                    throw_ub_custom!(
+                                        fluent::const_eval_offset_from_different_allocations,
+                                        name = intrinsic_name,
+                                    );
+                                }
+                                // Use these offsets for distance calculation.
+                                (a_offset.bytes(), b_offset.bytes())
+                            }
+                            (Err(_), Err(_)) => {
+                                throw_ub_custom!(
+                                    fluent::const_eval_offset_from_different_integers,
+                                    name = intrinsic_name,
+                                );
+                            }
+                            _ => {
+                                // They don't both have an allocation, and they are also not the same.
+                                // This is never allowed.
+                                throw_ub_custom!(
+                                    fluent::const_eval_offset_from_different_allocations,
+                                    name = intrinsic_name,
+                                );
+                            }
+                        };
+
+                    // Compute distance.
+                    let dist = {
+                        // Addresses are unsigned, so this is a `usize` computation. We have to do the
+                        // overflow check separately anyway.
+                        let (val, overflowed) = {
+                            let a_offset = ImmTy::from_uint(a_offset, usize_layout);
+                            let b_offset = ImmTy::from_uint(b_offset, usize_layout);
+                            self.overflowing_binary_op(BinOp::Sub, &a_offset, &b_offset)?
+                        };
+                        if overflowed {
+                            // a < b
+                            if intrinsic_name == sym::ptr_offset_from_unsigned {
+                                throw_ub_custom!(
+                                    fluent::const_eval_offset_from_unsigned_overflow,
+                                    a_offset = a_offset,
+                                    b_offset = b_offset,
+                                );
+                            }
+                            // The signed form of the intrinsic allows this. If we interpret the
+                            // difference as isize, we'll get the proper signed difference. If that
+                            // seems *positive*, they were more than isize::MAX apart.
+                            let dist = val.to_scalar().to_target_isize(self)?;
+                            if dist >= 0 {
+                                throw_ub_custom!(
+                                    fluent::const_eval_offset_from_underflow,
+                                    name = intrinsic_name,
+                                );
+                            }
+                            dist
+                        } else {
+                            // b >= a
+                            let dist = val.to_scalar().to_target_isize(self)?;
+                            // If converting to isize produced a *negative* result, we had an overflow
+                            // because they were more than isize::MAX apart.
+                            if dist < 0 {
+                                throw_ub_custom!(
+                                    fluent::const_eval_offset_from_overflow,
+                                    name = intrinsic_name,
+                                );
+                            }
+                            dist
+                        }
+                    };
+
+                    // Check that the range between them is dereferenceable ("in-bounds or one past the
+                    // end of the same allocation"). This is like the check in ptr_offset_inbounds.
+                    let min_ptr = if dist >= 0 { b } else { a };
+                    self.check_ptr_access(
+                        min_ptr,
+                        Size::from_bytes(dist.unsigned_abs()),
+                        CheckInAllocMsg::OffsetFromTest,
+                    )?;
+
+                    // Perform division by size to compute return value.
+                    let ret_layout = if intrinsic_name == sym::ptr_offset_from_unsigned {
+                        assert!(0 <= dist && dist <= self.target_isize_max());
+                        usize_layout
+                    } else {
+                        assert!(self.target_isize_min() <= dist && dist <= self.target_isize_max());
+                        isize_layout
+                    };
+                    let pointee_layout = self.layout_of(instance_args.type_at(0))?;
+                    // If ret_layout is unsigned, we checked that so is the distance, so we are good.
+                    let val = ImmTy::from_int(dist, ret_layout);
+                    let size = ImmTy::from_int(pointee_layout.size.bytes(), ret_layout);
+                    self.exact_div(&val, &size, dest)?;
+                }
             }
 
             sym::assert_inhabited

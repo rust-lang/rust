@@ -7,11 +7,11 @@ use std::mem::MaybeUninit;
 
 fn main() {
     const LHS_NULL: i32 = unsafe {
-        compare_bytes(0 as *const u8, 2 as *const u8, 0)
+        compare_bytes(0 as *const u8, 2 as *const u8, 1)
         //~^ ERROR evaluation of constant value failed
     };
     const RHS_NULL: i32 = unsafe {
-        compare_bytes(1 as *const u8, 0 as *const u8, 0)
+        compare_bytes(1 as *const u8, 0 as *const u8, 1)
         //~^ ERROR evaluation of constant value failed
     };
     const DANGLING_PTR_NON_ZERO_LENGTH: i32 = unsafe {

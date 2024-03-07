@@ -12,7 +12,7 @@ use std::{
     slice::{from_ptr_range, from_raw_parts},
 };
 
-// Null is never valid for reads
+// Null is never valid for references
 pub static S0: &[u32] = unsafe { from_raw_parts(ptr::null(), 0) };
 //~^ ERROR: it is undefined behavior to use this value
 pub static S1: &[()] = unsafe { from_raw_parts(ptr::null(), 0) };
@@ -46,10 +46,11 @@ pub static S8: &[u64] = unsafe {
 };
 
 pub static R0: &[u32] = unsafe { from_ptr_range(ptr::null()..ptr::null()) };
-pub static R1: &[()] = unsafe { from_ptr_range(ptr::null()..ptr::null()) };
+//~^ ERROR it is undefined behavior to use this value
+pub static R1: &[()] = unsafe { from_ptr_range(ptr::null()..ptr::null()) }; // errors inside libcore
 pub static R2: &[u32] = unsafe {
     let ptr = &D0 as *const u32;
-    from_ptr_range(ptr..ptr.add(2))
+    from_ptr_range(ptr..ptr.add(2)) // errors inside libcore
 };
 pub static R4: &[u8] = unsafe {
     //~^ ERROR: it is undefined behavior to use this value

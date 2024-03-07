@@ -32,17 +32,11 @@ pub const NOT_MULTIPLE_OF_SIZE: isize = {
     //~| 1_isize cannot be divided by 2_isize without remainder
 };
 
-pub const OFFSET_FROM_NULL: isize = {
-    let ptr = 0 as *const u8;
-    unsafe { ptr_offset_from(ptr, ptr) } //~ERROR evaluation of constant value failed
-    //~| null pointer is a dangling pointer
-};
-
 pub const DIFFERENT_INT: isize = { // offset_from with two different integers: like DIFFERENT_ALLOC
     let ptr1 = 8 as *const u8;
     let ptr2 = 16 as *const u8;
     unsafe { ptr_offset_from(ptr2, ptr1) } //~ERROR evaluation of constant value failed
-    //~| 0x8[noalloc] is a dangling pointer
+    //~| different pointers without provenance
 };
 
 const OUT_OF_BOUNDS_1: isize = {
@@ -63,14 +57,6 @@ const OUT_OF_BOUNDS_2: isize = {
     //~| pointer to 10 bytes starting at offset 0 is out-of-bounds
 };
 
-const OUT_OF_BOUNDS_SAME: isize = {
-    let start_ptr = &4 as *const _ as *const u8;
-    let length = 10;
-    let end_ptr = (start_ptr).wrapping_add(length);
-    unsafe { ptr_offset_from(end_ptr, end_ptr) } //~ERROR evaluation of constant value failed
-    //~| pointer at offset 10 is out-of-bounds
-};
-
 pub const DIFFERENT_ALLOC_UNSIGNED: usize = {
     let uninit = std::mem::MaybeUninit::<Struct>::uninit();
     let base_ptr: *const Struct = &uninit as *const _ as *const Struct;
@@ -81,13 +67,13 @@ pub const DIFFERENT_ALLOC_UNSIGNED: usize = {
 };
 
 pub const TOO_FAR_APART1: isize = {
-    let ptr1 = ptr::null::<u8>();
+    let ptr1 = &0u8 as *const u8;
     let ptr2 = ptr1.wrapping_add(isize::MAX as usize + 42);
     unsafe { ptr_offset_from(ptr2, ptr1) } //~ERROR evaluation of constant value failed
     //~| too far ahead
 };
 pub const TOO_FAR_APART2: isize = {
-    let ptr1 = ptr::null::<u8>();
+    let ptr1 = &0u8 as *const u8;
     let ptr2 = ptr1.wrapping_add(isize::MAX as usize + 42);
     unsafe { ptr_offset_from(ptr1, ptr2) } //~ERROR evaluation of constant value failed
     //~| too far before
@@ -100,7 +86,7 @@ const WRONG_ORDER_UNSIGNED: usize = {
     //~| first pointer has smaller offset than second: 0 < 8
 };
 pub const TOO_FAR_APART_UNSIGNED: usize = {
-    let ptr1 = ptr::null::<u8>();
+    let ptr1 = &0u8 as *const u8;
     let ptr2 = ptr1.wrapping_add(isize::MAX as usize + 42);
     // This would fit into a `usize` but we still don't allow it.
     unsafe { ptr_offset_from_unsigned(ptr2, ptr1) } //~ERROR evaluation of constant value failed
@@ -120,6 +106,25 @@ pub const OFFSET_VERY_FAR2: isize = {
     let ptr2 = ptr1.wrapping_offset(isize::MAX);
     unsafe { ptr1.offset_from(ptr2.wrapping_offset(1)) }
     //~^ inside
+};
+
+// If the pointers are the same, OOB/null/UAF is fine.
+pub const OFFSET_FROM_NULL_SAME: isize = {
+    let ptr = 0 as *const u8;
+    unsafe { ptr_offset_from(ptr, ptr) }
+};
+const OUT_OF_BOUNDS_SAME: isize = {
+    let start_ptr = &4 as *const _ as *const u8;
+    let length = 10;
+    let end_ptr = (start_ptr).wrapping_add(length);
+    unsafe { ptr_offset_from(end_ptr, end_ptr) }
+};
+const UAF_SAME: isize = {
+    let uaf_ptr = {
+        let x = 0;
+        &x as *const i32
+    };
+    unsafe { ptr_offset_from(uaf_ptr, uaf_ptr) }
 };
 
 fn main() {}
