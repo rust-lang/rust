@@ -29,7 +29,7 @@ help: consider introducing lifetime `'b` here
 LL | fn two_htrb_outlives_uses<'b>() -> impl for<'a> Bar<'a, Assoc = impl for<'b> Sized + 'b> {}
    |                          ++++
 
-error: higher kinded lifetime bounds on nested opaque types are not supported yet
+error[E0657]: `impl Trait` cannot capture higher-ranked lifetime from outer `impl Trait`
   --> $DIR/nested-rpit-hrtb.rs:25:69
    |
 LL | fn one_hrtb_outlives() -> impl for<'a> Foo<'a, Assoc = impl Sized + 'a> {}
@@ -41,7 +41,7 @@ note: lifetime declared here
 LL | fn one_hrtb_outlives() -> impl for<'a> Foo<'a, Assoc = impl Sized + 'a> {}
    |                                    ^^
 
-error: higher kinded lifetime bounds on nested opaque types are not supported yet
+error[E0657]: `impl Trait` cannot capture higher-ranked lifetime from outer `impl Trait`
   --> $DIR/nested-rpit-hrtb.rs:29:68
    |
 LL | fn one_hrtb_trait_param() -> impl for<'a> Foo<'a, Assoc = impl Qux<'a>> {}
@@ -53,7 +53,7 @@ note: lifetime declared here
 LL | fn one_hrtb_trait_param() -> impl for<'a> Foo<'a, Assoc = impl Qux<'a>> {}
    |                                       ^^
 
-error: higher kinded lifetime bounds on nested opaque types are not supported yet
+error[E0657]: `impl Trait` cannot capture higher-ranked lifetime from outer `impl Trait`
   --> $DIR/nested-rpit-hrtb.rs:32:74
    |
 LL | fn one_hrtb_outlives_uses() -> impl for<'a> Bar<'a, Assoc = impl Sized + 'a> {}
@@ -74,7 +74,7 @@ LL | fn one_hrtb_outlives_uses() -> impl for<'a> Bar<'a, Assoc = impl Sized + 'a
    = note: `()` must implement `Bar<'a>`
    = note: ...but it actually implements `Bar<'0>`, for some specific lifetime `'0`
 
-error: higher kinded lifetime bounds on nested opaque types are not supported yet
+error[E0657]: `impl Trait` cannot capture higher-ranked lifetime from outer `impl Trait`
   --> $DIR/nested-rpit-hrtb.rs:36:73
    |
 LL | fn one_hrtb_trait_param_uses() -> impl for<'a> Bar<'a, Assoc = impl Qux<'a>> {}
@@ -133,5 +133,5 @@ LL | fn two_htrb_outlives_uses() -> impl for<'a> Bar<'a, Assoc = impl for<'b> Si
 
 error: aborting due to 12 previous errors
 
-Some errors have detailed explanations: E0261, E0277.
+Some errors have detailed explanations: E0261, E0277, E0657.
 For more information about an error, try `rustc --explain E0261`.

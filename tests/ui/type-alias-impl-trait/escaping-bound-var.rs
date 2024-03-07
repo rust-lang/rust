@@ -7,7 +7,7 @@ pub trait Trait<'a> {
 trait Test<'a> {}
 
 pub type Foo = impl for<'a> Trait<'a, Assoc = impl Test<'a>>;
-//~^ ERROR higher kinded lifetime bounds on nested opaque types are not supported yet
+//~^ ERROR `impl Trait` cannot capture higher-ranked lifetime from outer `impl Trait`
 
 impl Trait<'_> for () {
     type Assoc = ();

@@ -312,6 +312,10 @@ hir_analysis_only_current_traits_primitive = only traits defined in the current 
 
 hir_analysis_only_current_traits_ty = `{$ty}` is not defined in the current crate
 
+hir_analysis_opaque_captures_higher_ranked_lifetime = `impl Trait` cannot capture {$bad_place}
+    .label = `impl Trait` implicitly captures all lifetimes in scope
+    .note = lifetime declared here
+
 hir_analysis_paren_sugar_attribute = the `#[rustc_paren_sugar]` attribute is a temporary means of controlling which traits can use parenthetical notation
     .help = add `#![feature(unboxed_closures)]` to the crate attributes to use it
 
