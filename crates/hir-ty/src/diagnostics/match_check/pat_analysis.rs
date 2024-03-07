@@ -8,7 +8,7 @@ use rustc_hash::FxHashMap;
 use rustc_pattern_analysis::{
     constructor::{Constructor, ConstructorSet, VariantVisibility},
     index::IdxContainer,
-    Captures, TypeCx,
+    Captures, PrivateUninhabitedField, TypeCx,
 };
 use smallvec::{smallvec, SmallVec};
 use stdx::never;
@@ -88,39 +88,21 @@ impl<'p> MatchCheckCtx<'p> {
         }
     }
 
-    // In the cases of either a `#[non_exhaustive]` field list or a non-public field, we hide
-    // uninhabited fields in order not to reveal the uninhabitedness of the whole variant.
-    // This lists the fields we keep along with their types.
-    fn list_variant_nonhidden_fields<'a>(
+    // This lists the fields of a variant along with their types.
+    fn list_variant_fields<'a>(
         &'a self,
         ty: &'a Ty,
         variant: VariantId,
     ) -> impl Iterator<Item = (LocalFieldId, Ty)> + Captures<'a> + Captures<'p> {
-        let cx = self;
-        let (adt, substs) = ty.as_adt().unwrap();
+        let (_, substs) = ty.as_adt().unwrap();
 
-        let adt_is_local = variant.module(cx.db.upcast()).krate() == cx.module.krate();
+        let field_tys = self.db.field_types(variant);
+        let fields_len = variant.variant_data(self.db.upcast()).fields().len() as u32;
 
-        // Whether we must not match the fields of this variant exhaustively.
-        let is_non_exhaustive =
-            cx.db.attrs(variant.into()).by_key("non_exhaustive").exists() && !adt_is_local;
-
-        let visibility = cx.db.field_visibilities(variant);
-        let field_ty = cx.db.field_types(variant);
-        let fields_len = variant.variant_data(cx.db.upcast()).fields().len() as u32;
-
-        (0..fields_len).map(|idx| LocalFieldId::from_raw(idx.into())).filter_map(move |fid| {
-            let ty = field_ty[fid].clone().substitute(Interner, substs);
-            let ty = normalize(cx.db, cx.db.trait_environment_for_body(cx.body), ty);
-            let is_visible = matches!(adt, hir_def::AdtId::EnumId(..))
-                || visibility[fid].is_visible_from(cx.db.upcast(), cx.module);
-            let is_uninhabited = cx.is_uninhabited(&ty);
-
-            if is_uninhabited && (!is_visible || is_non_exhaustive) {
-                None
-            } else {
-                Some((fid, ty))
-            }
+        (0..fields_len).map(|idx| LocalFieldId::from_raw(idx.into())).map(move |fid| {
+            let ty = field_tys[fid].clone().substitute(Interner, substs);
+            let ty = normalize(self.db, self.db.trait_environment_for_body(self.body), ty);
+            (fid, ty)
         })
     }
 
@@ -199,23 +181,16 @@ impl<'p> MatchCheckCtx<'p> {
                             }
                         };
                         let variant = Self::variant_id_for_adt(&ctor, adt.0).unwrap();
-                        let fields_len = variant.variant_data(self.db.upcast()).fields().len();
-                        // For each field in the variant, we store the relevant index into `self.fields` if any.
-                        let mut field_id_to_id: Vec<Option<usize>> = vec![None; fields_len];
-                        let tys = self
-                            .list_variant_nonhidden_fields(&pat.ty, variant)
-                            .enumerate()
-                            .map(|(i, (fid, ty))| {
-                                let field_idx: u32 = fid.into_raw().into();
-                                field_id_to_id[field_idx as usize] = Some(i);
-                                ty
-                            });
-                        let mut wilds: Vec<_> = tys.map(DeconstructedPat::wildcard).collect();
+                        // Fill a vec with wildcards, then place the fields we have at the right
+                        // index.
+                        let mut wilds: Vec<_> = self
+                            .list_variant_fields(&pat.ty, variant)
+                            .map(|(_, ty)| ty)
+                            .map(DeconstructedPat::wildcard)
+                            .collect();
                         for pat in subpatterns {
-                            let field_idx: u32 = pat.field.into_raw().into();
-                            if let Some(i) = field_id_to_id[field_idx as usize] {
-                                wilds[i] = self.lower_pat(&pat.pattern);
-                            }
+                            let field_id: u32 = pat.field.into_raw().into();
+                            wilds[field_id as usize] = self.lower_pat(&pat.pattern);
                         }
                         fields = wilds;
                     }
@@ -263,7 +238,7 @@ impl<'p> MatchCheckCtx<'p> {
                 TyKind::Adt(adt, substs) => {
                     let variant = Self::variant_id_for_adt(pat.ctor(), adt.0).unwrap();
                     let subpatterns = self
-                        .list_variant_nonhidden_fields(pat.ty(), variant)
+                        .list_variant_fields(pat.ty(), variant)
                         .zip(subpatterns)
                         .map(|((field, _ty), pattern)| FieldPat { field, pattern })
                         .collect();
@@ -286,7 +261,7 @@ impl<'p> MatchCheckCtx<'p> {
             Ref => PatKind::Deref { subpattern: subpatterns.next().unwrap() },
             Slice(_) => unimplemented!(),
             &Str(void) => match void {},
-            Wildcard | NonExhaustive | Hidden => PatKind::Wild,
+            Wildcard | NonExhaustive | Hidden | PrivateUninhabited => PatKind::Wild,
             Missing | F32Range(..) | F64Range(..) | Opaque(..) | Or => {
                 never!("can't convert to pattern: {:?}", pat.ctor());
                 PatKind::Wild
@@ -326,7 +301,7 @@ impl<'p> TypeCx for MatchCheckCtx<'p> {
                         1
                     } else {
                         let variant = Self::variant_id_for_adt(ctor, adt).unwrap();
-                        self.list_variant_nonhidden_fields(ty, variant).count()
+                        variant.variant_data(self.db.upcast()).fields().len()
                     }
                 }
                 _ => {
@@ -337,7 +312,7 @@ impl<'p> TypeCx for MatchCheckCtx<'p> {
             Ref => 1,
             Slice(..) => unimplemented!(),
             Bool(..) | IntRange(..) | F32Range(..) | F64Range(..) | Str(..) | Opaque(..)
-            | NonExhaustive | Hidden | Missing | Wildcard => 0,
+            | NonExhaustive | PrivateUninhabited | Hidden | Missing | Wildcard => 0,
             Or => {
                 never!("The `Or` constructor doesn't have a fixed arity");
                 0
@@ -349,13 +324,13 @@ impl<'p> TypeCx for MatchCheckCtx<'p> {
         &'a self,
         ctor: &'a rustc_pattern_analysis::constructor::Constructor<Self>,
         ty: &'a Self::Ty,
-    ) -> impl ExactSizeIterator<Item = Self::Ty> + Captures<'a> {
-        let single = |ty| smallvec![ty];
+    ) -> impl ExactSizeIterator<Item = (Self::Ty, PrivateUninhabitedField)> + Captures<'a> {
+        let single = |ty| smallvec![(ty, PrivateUninhabitedField(false))];
         let tys: SmallVec<[_; 2]> = match ctor {
             Struct | Variant(_) | UnionField => match ty.kind(Interner) {
                 TyKind::Tuple(_, substs) => {
                     let tys = substs.iter(Interner).map(|ty| ty.assert_ty_ref(Interner));
-                    tys.cloned().collect()
+                    tys.cloned().map(|ty| (ty, PrivateUninhabitedField(false))).collect()
                 }
                 TyKind::Ref(.., rty) => single(rty.clone()),
                 &TyKind::Adt(AdtId(adt), ref substs) => {
@@ -366,7 +341,27 @@ impl<'p> TypeCx for MatchCheckCtx<'p> {
                         single(subst_ty)
                     } else {
                         let variant = Self::variant_id_for_adt(ctor, adt).unwrap();
-                        self.list_variant_nonhidden_fields(ty, variant).map(|(_, ty)| ty).collect()
+                        let (adt, _) = ty.as_adt().unwrap();
+
+                        let adt_is_local =
+                            variant.module(self.db.upcast()).krate() == self.module.krate();
+                        // Whether we must not match the fields of this variant exhaustively.
+                        let is_non_exhaustive =
+                            self.db.attrs(variant.into()).by_key("non_exhaustive").exists()
+                                && !adt_is_local;
+                        let visibilities = self.db.field_visibilities(variant);
+
+                        self.list_variant_fields(ty, variant)
+                            .map(move |(fid, ty)| {
+                                let is_visible = matches!(adt, hir_def::AdtId::EnumId(..))
+                                    || visibilities[fid]
+                                        .is_visible_from(self.db.upcast(), self.module);
+                                let is_uninhabited = self.is_uninhabited(&ty);
+                                let private_uninhabited =
+                                    is_uninhabited && (!is_visible || is_non_exhaustive);
+                                (ty, PrivateUninhabitedField(private_uninhabited))
+                            })
+                            .collect()
                     }
                 }
                 ty_kind => {
@@ -383,7 +378,7 @@ impl<'p> TypeCx for MatchCheckCtx<'p> {
             },
             Slice(_) => unreachable!("Found a `Slice` constructor in match checking"),
             Bool(..) | IntRange(..) | F32Range(..) | F64Range(..) | Str(..) | Opaque(..)
-            | NonExhaustive | Hidden | Missing | Wildcard => smallvec![],
+            | NonExhaustive | PrivateUninhabited | Hidden | Missing | Wildcard => smallvec![],
             Or => {
                 never!("called `Fields::wildcards` on an `Or` ctor");
                 smallvec![]
@@ -477,6 +472,11 @@ impl<'p> TypeCx for MatchCheckCtx<'p> {
 
     fn bug(&self, fmt: fmt::Arguments<'_>) {
         debug!("{}", fmt)
+    }
+
+    fn complexity_exceeded(&self) -> Result<(), Self::Error> {
+        // FIXME(Nadrieril): make use of the complexity counter.
+        Err(())
     }
 }
 

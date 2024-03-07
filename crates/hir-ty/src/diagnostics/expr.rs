@@ -239,6 +239,7 @@ impl ExprValidator {
             m_arms.as_slice(),
             scrut_ty.clone(),
             ValidityConstraint::ValidOnly,
+            None,
         ) {
             Ok(report) => report,
             Err(()) => return,
@@ -283,6 +284,7 @@ impl ExprValidator {
                 &[match_arm],
                 ty.clone(),
                 ValidityConstraint::ValidOnly,
+                None,
             ) {
                 Ok(v) => v,
                 Err(e) => {
