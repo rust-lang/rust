@@ -567,9 +567,10 @@ pub fn linking_symbol_name_for_instance_in_crate<'tcx>(
         return undecorated;
     }
 
-    let x86 = match &target.arch[..] {
-        "x86" => true,
-        "x86_64" => false,
+    let prefix = match &target.arch[..] {
+        "x86" => Some('_'),
+        "x86_64" => None,
+        "arm64ec" => Some('#'),
         // Only x86/64 use symbol decorations.
         _ => return undecorated,
     };
@@ -606,8 +607,8 @@ pub fn linking_symbol_name_for_instance_in_crate<'tcx>(
         Conv::X86Stdcall => ("_", "@"),
         Conv::X86VectorCall => ("", "@@"),
         _ => {
-            if x86 {
-                undecorated.insert(0, '_');
+            if let Some(prefix) = prefix {
+                undecorated.insert(0, prefix);
             }
             return undecorated;
         }
