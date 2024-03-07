@@ -5,8 +5,7 @@ use rustc_data_structures::fx::FxHashMap;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::{DefId, LOCAL_CRATE};
 use rustc_hir::intravisit::{self, Visitor};
-use rustc_hir::{ExprKind, HirId, Item, ItemKind, Mod, Node};
-use rustc_middle::hir::nested_filter;
+use rustc_hir::{HirId, Item, ItemKind, Mod, Node};
 use rustc_middle::ty::TyCtxt;
 use rustc_span::hygiene::MacroKind;
 use rustc_span::{BytePos, ExpnKind, Span};
@@ -49,7 +48,7 @@ pub(crate) fn collect_spans_and_sources(
 
     if include_sources {
         if generate_link_to_definition {
-            tcx.hir().walk_toplevel_module(&mut visitor);
+            tcx.hir().visit_all_item_likes_in_crate(&mut visitor);
         }
         let sources = sources::collect_local_sources(tcx, src_root, krate);
         (sources, visitor.matches)
@@ -154,37 +153,9 @@ impl<'tcx> SpanMapVisitor<'tcx> {
         self.matches.insert(new_span, link_from_src);
         true
     }
-
-    fn handle_call(&mut self, hir_id: HirId, expr_hir_id: Option<HirId>, span: Span) {
-        let hir = self.tcx.hir();
-        let body_id = hir.enclosing_body_owner(hir_id);
-        // FIXME: this is showing error messages for parts of the code that are not
-        // compiled (because of cfg)!
-        //
-        // See discussion in https://github.com/rust-lang/rust/issues/69426#issuecomment-1019412352
-        let typeck_results = self
-            .tcx
-            .typeck_body(hir.maybe_body_owned_by(body_id).expect("a body which isn't a body"));
-        // Interestingly enough, for method calls, we need the whole expression whereas for static
-        // method/function calls, we need the call expression specifically.
-        if let Some(def_id) = typeck_results.type_dependent_def_id(expr_hir_id.unwrap_or(hir_id)) {
-            let link = if def_id.as_local().is_some() {
-                LinkFromSrc::Local(rustc_span(def_id, self.tcx))
-            } else {
-                LinkFromSrc::External(def_id)
-            };
-            self.matches.insert(span, link);
-        }
-    }
 }
 
 impl<'tcx> Visitor<'tcx> for SpanMapVisitor<'tcx> {
-    type NestedFilter = nested_filter::All;
-
-    fn nested_visit_map(&mut self) -> Self::Map {
-        self.tcx.hir()
-    }
-
     fn visit_path(&mut self, path: &rustc_hir::Path<'tcx>, _id: HirId) {
         if self.handle_macro(path.span) {
             return;
@@ -210,22 +181,6 @@ impl<'tcx> Visitor<'tcx> for SpanMapVisitor<'tcx> {
             self.extract_info_from_hir_id(id);
         }
         intravisit::walk_mod(self, m, id);
-    }
-
-    fn visit_expr(&mut self, expr: &'tcx rustc_hir::Expr<'tcx>) {
-        match expr.kind {
-            ExprKind::MethodCall(segment, ..) => {
-                self.handle_call(segment.hir_id, Some(expr.hir_id), segment.ident.span)
-            }
-            ExprKind::Call(call, ..) => self.handle_call(call.hir_id, None, call.span),
-            _ => {
-                if self.handle_macro(expr.span) {
-                    // We don't want to go deeper into the macro.
-                    return;
-                }
-            }
-        }
-        intravisit::walk_expr(self, expr);
     }
 
     fn visit_item(&mut self, item: &'tcx Item<'tcx>) {

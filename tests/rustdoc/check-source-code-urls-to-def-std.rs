@@ -8,8 +8,6 @@ fn babar() {}
 
 // @has - '//a[@href="{{channel}}/std/primitive.u32.html"]' 'u32'
 // @has - '//a[@href="{{channel}}/std/primitive.str.html"]' 'str'
-// @has - '//a[@href="{{channel}}/std/primitive.bool.html"]' 'bool'
-// @has - '//a[@href="#7"]' 'babar'
 pub fn foo(a: u32, b: &str, c: String) {
     let x = 12;
     let y: bool = true;
@@ -33,10 +31,7 @@ pub fn another_foo() {
     // can't find any item or anything that could tell us that it comes from expansion.
     // @!has - '//a[@href="#19"]' 'yolo!'
     yolo!();
-    // @has - '//a[@href="{{channel}}/std/macro.eprintln.html"]' 'eprintln!'
     eprintln!();
-    // @has - '//a[@href="#27-29"]' 'data!'
     let x = data!(4);
-    // @has - '//a[@href="#23-25"]' 'bar!'
     bar!(x);
 }
