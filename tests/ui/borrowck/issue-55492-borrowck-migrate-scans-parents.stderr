@@ -13,6 +13,15 @@ help: use `addr_of_mut!` instead to create a raw pointer
 LL |             c1(addr_of_mut!(Y));
    |                ~~~~~~~~~~~~~~~
 
+error[E0594]: cannot assign to `x`, as it is not declared as mutable
+  --> $DIR/issue-55492-borrowck-migrate-scans-parents.rs:9:46
+   |
+LL |     pub fn e(x: &'static mut isize) {
+   |              - help: consider changing this to be mutable: `mut x`
+LL |         static mut Y: isize = 3;
+LL |         let mut c1 = |y: &'static mut isize| x = y;
+   |                                              ^^^^^ cannot assign
+
 warning: creating a mutable reference to mutable static is discouraged
   --> $DIR/issue-55492-borrowck-migrate-scans-parents.rs:27:16
    |
@@ -26,29 +35,6 @@ help: use `addr_of_mut!` instead to create a raw pointer
    |
 LL |             c1(addr_of_mut!(Z));
    |                ~~~~~~~~~~~~~~~
-
-warning: creating a mutable reference to mutable static is discouraged
-  --> $DIR/issue-55492-borrowck-migrate-scans-parents.rs:64:37
-   |
-LL |         borrowck_closures_unique::e(&mut X);
-   |                                     ^^^^^^ mutable reference to mutable static
-   |
-   = note: for more information, see issue #114447 <https://github.com/rust-lang/rust/issues/114447>
-   = note: this will be a hard error in the 2024 edition
-   = note: this mutable reference has lifetime `'static`, but if the static gets accessed (read or written) by any other means, or any other reference is created, then any further use of this mutable reference is Undefined Behavior
-help: use `addr_of_mut!` instead to create a raw pointer
-   |
-LL |         borrowck_closures_unique::e(addr_of_mut!(X));
-   |                                     ~~~~~~~~~~~~~~~
-
-error[E0594]: cannot assign to `x`, as it is not declared as mutable
-  --> $DIR/issue-55492-borrowck-migrate-scans-parents.rs:9:46
-   |
-LL |     pub fn e(x: &'static mut isize) {
-   |              - help: consider changing this to be mutable: `mut x`
-LL |         static mut Y: isize = 3;
-LL |         let mut c1 = |y: &'static mut isize| x = y;
-   |                                              ^^^^^ cannot assign
 
 error[E0594]: cannot assign to `x`, as it is not declared as mutable
   --> $DIR/issue-55492-borrowck-migrate-scans-parents.rs:22:50
@@ -94,6 +80,20 @@ LL |     pub fn capture_reborrow_part(x: (i32,)) {
 LL |         || {
 LL |             &mut x.0;
    |             ^^^^^^^^ cannot borrow as mutable
+
+warning: creating a mutable reference to mutable static is discouraged
+  --> $DIR/issue-55492-borrowck-migrate-scans-parents.rs:64:37
+   |
+LL |         borrowck_closures_unique::e(&mut X);
+   |                                     ^^^^^^ mutable reference to mutable static
+   |
+   = note: for more information, see issue #114447 <https://github.com/rust-lang/rust/issues/114447>
+   = note: this will be a hard error in the 2024 edition
+   = note: this mutable reference has lifetime `'static`, but if the static gets accessed (read or written) by any other means, or any other reference is created, then any further use of this mutable reference is Undefined Behavior
+help: use `addr_of_mut!` instead to create a raw pointer
+   |
+LL |         borrowck_closures_unique::e(addr_of_mut!(X));
+   |                                     ~~~~~~~~~~~~~~~
 
 error: aborting due to 6 previous errors; 3 warnings emitted
 

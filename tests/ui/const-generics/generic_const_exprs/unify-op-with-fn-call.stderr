@@ -34,14 +34,6 @@ LL + #[derive(ConstParamTy)]
 LL | struct Foo(u8);
    |
 
-error: unconstrained generic constant
-  --> $DIR/unify-op-with-fn-call.rs:30:12
-   |
-LL |     bar2::<{ std::ops::Add::add(N, N) }>();
-   |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   |
-   = help: try adding a `where` bound using this expression: `where [(); { std::ops::Add::add(N, N) }]:`
-
 error[E0015]: cannot call non-const operator in constants
   --> $DIR/unify-op-with-fn-call.rs:20:39
    |
@@ -64,6 +56,14 @@ LL |     bar::<{ std::ops::Add::add(N, N) }>();
    |
    = note: calls in constants are limited to constant functions, tuple structs and tuple variants
    = help: add `#![feature(effects)]` to the crate attributes to enable
+
+error: unconstrained generic constant
+  --> $DIR/unify-op-with-fn-call.rs:30:12
+   |
+LL |     bar2::<{ std::ops::Add::add(N, N) }>();
+   |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: try adding a `where` bound using this expression: `where [(); { std::ops::Add::add(N, N) }]:`
 
 error[E0015]: cannot call non-const fn `<usize as Add>::add` in constants
   --> $DIR/unify-op-with-fn-call.rs:30:14

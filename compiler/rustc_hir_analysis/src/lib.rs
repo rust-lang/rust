@@ -191,19 +191,6 @@ pub fn check_crate(tcx: TyCtxt<'_>) {
     // Freeze definitions as we don't add new ones at this point. This improves performance by
     // allowing lock-free access to them.
     tcx.untracked().definitions.freeze();
-
-    // FIXME: Remove this when we implement creating `DefId`s
-    // for anon constants during their parents' typeck.
-    // Typeck all body owners in parallel will produce queries
-    // cycle errors because it may typeck on anon constants directly.
-    tcx.hir().par_body_owners(|item_def_id| {
-        let def_kind = tcx.def_kind(item_def_id);
-        if !matches!(def_kind, DefKind::AnonConst) {
-            tcx.ensure().typeck(item_def_id);
-        }
-    });
-
-    tcx.ensure().check_unused_traits(());
 }
 
 /// A quasi-deprecated helper used in rustdoc and clippy to get
