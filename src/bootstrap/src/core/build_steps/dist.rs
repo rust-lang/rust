@@ -2046,7 +2046,8 @@ fn install_llvm_file(
             // projects like miri link against librustc_driver.so. We don't use a symlink, as
             // these are not allowed inside rustup components.
             let link = t!(fs::read_link(source));
-            t!(std::fs::write(full_dest, format!("INPUT({})\n", link.display())));
+            let mut linker_script = t!(fs::File::create(full_dest));
+            t!(write!(linker_script, "INPUT({})\n", link.display()));
         }
     } else {
         builder.install(&source, destination, 0o644);
