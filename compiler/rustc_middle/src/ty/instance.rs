@@ -694,6 +694,7 @@ impl<'tcx> Instance<'tcx> {
     }
 
     #[inline(always)]
+    // Keep me in sync with try_instantiate_mir_and_normalize_erasing_regions
     pub fn instantiate_mir_and_normalize_erasing_regions<T>(
         &self,
         tcx: TyCtxt<'tcx>,
@@ -701,16 +702,17 @@ impl<'tcx> Instance<'tcx> {
         v: EarlyBinder<T>,
     ) -> T
     where
-        T: TypeFoldable<TyCtxt<'tcx>> + Clone,
+        T: TypeFoldable<TyCtxt<'tcx>>,
     {
         if let Some(args) = self.args_for_mir_body() {
             tcx.instantiate_and_normalize_erasing_regions(args, param_env, v)
         } else {
-            tcx.normalize_erasing_regions(param_env, v.skip_binder())
+            tcx.normalize_erasing_regions(param_env, v.instantiate_identity())
         }
     }
 
     #[inline(always)]
+    // Keep me in sync with instantiate_mir_and_normalize_erasing_regions
     pub fn try_instantiate_mir_and_normalize_erasing_regions<T>(
         &self,
         tcx: TyCtxt<'tcx>,
