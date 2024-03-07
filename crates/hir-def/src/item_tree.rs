@@ -392,7 +392,7 @@ impl TreeId {
 
     pub(crate) fn item_tree(&self, db: &dyn DefDatabase) -> Arc<ItemTree> {
         match self.block {
-            Some(block) => db.block_item_tree_query(block),
+            Some(block) => db.block_item_tree(block),
             None => db.file_item_tree(self.file),
         }
     }

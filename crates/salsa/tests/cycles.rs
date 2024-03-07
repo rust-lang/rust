@@ -171,8 +171,8 @@ fn cycle_memoized() {
     let cycle = extract_cycle(|| db.memoized_a());
     expect![[r#"
         [
-            "memoized_a(())",
-            "memoized_b(())",
+            "cycles::MemoizedAQuery::memoized_a(())",
+            "cycles::MemoizedBQuery::memoized_b(())",
         ]
     "#]]
     .assert_debug_eq(&cycle.unexpected_participants(&db));
@@ -184,8 +184,8 @@ fn cycle_volatile() {
     let cycle = extract_cycle(|| db.volatile_a());
     expect![[r#"
         [
-            "volatile_a(())",
-            "volatile_b(())",
+            "cycles::VolatileAQuery::volatile_a(())",
+            "cycles::VolatileBQuery::volatile_b(())",
         ]
     "#]]
     .assert_debug_eq(&cycle.unexpected_participants(&db));
@@ -222,8 +222,8 @@ fn inner_cycle() {
     let cycle = err.unwrap_err().cycle;
     expect![[r#"
         [
-            "cycle_a(())",
-            "cycle_b(())",
+            "cycles::CycleAQuery::cycle_a(())",
+            "cycles::CycleBQuery::cycle_b(())",
         ]
     "#]]
     .assert_debug_eq(&cycle);
@@ -262,8 +262,8 @@ fn cycle_revalidate_unchanged_twice() {
         Err(
             Error {
                 cycle: [
-                    "cycle_a(())",
-                    "cycle_b(())",
+                    "cycles::CycleAQuery::cycle_a(())",
+                    "cycles::CycleBQuery::cycle_b(())",
                 ],
             },
         )
@@ -344,8 +344,8 @@ fn cycle_mixed_1() {
         Err(
             Error {
                 cycle: [
-                    "cycle_b(())",
-                    "cycle_c(())",
+                    "cycles::CycleBQuery::cycle_b(())",
+                    "cycles::CycleCQuery::cycle_c(())",
                 ],
             },
         )
@@ -371,9 +371,9 @@ fn cycle_mixed_2() {
         Err(
             Error {
                 cycle: [
-                    "cycle_a(())",
-                    "cycle_b(())",
-                    "cycle_c(())",
+                    "cycles::CycleAQuery::cycle_a(())",
+                    "cycles::CycleBQuery::cycle_b(())",
+                    "cycles::CycleCQuery::cycle_c(())",
                 ],
             },
         )
@@ -400,16 +400,16 @@ fn cycle_deterministic_order() {
             Err(
                 Error {
                     cycle: [
-                        "cycle_a(())",
-                        "cycle_b(())",
+                        "cycles::CycleAQuery::cycle_a(())",
+                        "cycles::CycleBQuery::cycle_b(())",
                     ],
                 },
             ),
             Err(
                 Error {
                     cycle: [
-                        "cycle_a(())",
-                        "cycle_b(())",
+                        "cycles::CycleAQuery::cycle_a(())",
+                        "cycles::CycleBQuery::cycle_b(())",
                     ],
                 },
             ),
@@ -445,24 +445,24 @@ fn cycle_multiple() {
             Err(
                 Error {
                     cycle: [
-                        "cycle_a(())",
-                        "cycle_b(())",
+                        "cycles::CycleAQuery::cycle_a(())",
+                        "cycles::CycleBQuery::cycle_b(())",
                     ],
                 },
             ),
             Err(
                 Error {
                     cycle: [
-                        "cycle_a(())",
-                        "cycle_b(())",
+                        "cycles::CycleAQuery::cycle_a(())",
+                        "cycles::CycleBQuery::cycle_b(())",
                     ],
                 },
             ),
             Err(
                 Error {
                     cycle: [
-                        "cycle_a(())",
-                        "cycle_b(())",
+                        "cycles::CycleAQuery::cycle_a(())",
+                        "cycles::CycleBQuery::cycle_b(())",
                     ],
                 },
             ),
@@ -485,7 +485,7 @@ fn cycle_recovery_set_but_not_participating() {
     let r = extract_cycle(|| drop(db.cycle_a()));
     expect![[r#"
         [
-            "cycle_c(())",
+            "cycles::CycleCQuery::cycle_c(())",
         ]
     "#]]
     .assert_debug_eq(&r.all_participants(&db));
