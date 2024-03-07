@@ -244,7 +244,7 @@ impl BlockLike {
     }
 }
 
-const VISIBILITY_FIRST: TokenSet = TokenSet::new(&[T![pub], T![crate]]);
+const VISIBILITY_FIRST: TokenSet = TokenSet::new(&[T![pub]]);
 
 fn opt_visibility(p: &mut Parser<'_>, in_tuple_field: bool) -> bool {
     if !p.at(T![pub]) {
