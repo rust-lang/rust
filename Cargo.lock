@@ -588,7 +588,7 @@ dependencies = [
  "oorandom",
  "project-model",
  "ra-ap-rustc_abi",
- "ra-ap-rustc_index",
+ "ra-ap-rustc_index 0.40.0",
  "ra-ap-rustc_pattern_analysis",
  "rustc-hash",
  "scoped-tls",
@@ -1430,7 +1430,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "2548746ce549476a7aa982099dfe5139f939099d83077b3393baf5e920292f64"
 dependencies = [
  "bitflags 2.4.2",
- "ra-ap-rustc_index",
+ "ra-ap-rustc_index 0.40.0",
  "tracing",
 ]
 
@@ -1441,7 +1441,18 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "371db64f1be25aae96650b5528c76066ac325f0fe23efec0aab1179d75eea5c3"
 dependencies = [
  "arrayvec",
- "ra-ap-rustc_index_macros",
+ "ra-ap-rustc_index_macros 0.40.0",
+ "smallvec",
+]
+
+[[package]]
+name = "ra-ap-rustc_index"
+version = "0.42.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "bfd7e10c7853fe79443d46e1d2d8ab09fe99926118e59653fb8b480d5045f126"
+dependencies = [
+ "arrayvec",
+ "ra-ap-rustc_index_macros 0.42.0",
  "smallvec",
 ]
 
@@ -1450,6 +1461,18 @@ name = "ra-ap-rustc_index_macros"
 version = "0.40.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "fa4a454193807f557a991f52157250fd2db95abfb96da65e85355e6949802a98"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn",
+ "synstructure",
+]
+
+[[package]]
+name = "ra-ap-rustc_index_macros"
+version = "0.42.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "47f1d1c589be6c9a9e852fadee0e60329c0f862e87442ac2fe5adae30663cc76"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -1473,17 +1496,17 @@ version = "0.40.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "85f8a94cf47d86b93e7c2440de4308de74e1d5cb71ed3a9df7dcde2550742e6e"
 dependencies = [
- "ra-ap-rustc_index",
+ "ra-ap-rustc_index 0.40.0",
  "ra-ap-rustc_lexer",
 ]
 
 [[package]]
 name = "ra-ap-rustc_pattern_analysis"
-version = "0.40.0"
+version = "0.42.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c9cb49490fadb58e6b8cc825f73157a33730495bfd5c6e9eef067a4b50ad1836"
+checksum = "1253da23515d80c377a3998731e0ec3794997b62b989fd47db73efbde6a0bd7c"
 dependencies = [
- "ra-ap-rustc_index",
+ "ra-ap-rustc_index 0.42.0",
  "rustc-hash",
  "rustc_apfloat",
  "smallvec",
