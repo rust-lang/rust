@@ -222,7 +222,8 @@ impl<'a> Sugg<'a> {
             | ast::ExprKind::Array(..)
             | ast::ExprKind::While(..)
             | ast::ExprKind::Await(..)
-            | ast::ExprKind::Err => Sugg::NonParen(snippet_with_context(cx, expr.span, ctxt, default, app).0),
+            | ast::ExprKind::Err(_)
+            | ast::ExprKind::Dummy => Sugg::NonParen(snippet_with_context(cx, expr.span, ctxt, default, app).0),
             ast::ExprKind::Range(ref lhs, ref rhs, RangeLimits::HalfOpen) => Sugg::BinOp(
                 AssocOp::DotDot,
                 lhs.as_ref().map_or("".into(), |lhs| {
@@ -683,8 +684,8 @@ fn indentation<T: LintContext>(cx: &T, span: Span) -> Option<String> {
         })
 }
 
-/// Convenience extension trait for `DiagnosticBuilder`.
-pub trait DiagnosticExt<T: LintContext> {
+/// Convenience extension trait for `Diag`.
+pub trait DiagExt<T: LintContext> {
     /// Suggests to add an attribute to an item.
     ///
     /// Correctly handles indentation of the attribute and item.
@@ -731,7 +732,7 @@ pub trait DiagnosticExt<T: LintContext> {
     fn suggest_remove_item(&mut self, cx: &T, item: Span, msg: &str, applicability: Applicability);
 }
 
-impl<T: LintContext> DiagnosticExt<T> for rustc_errors::DiagnosticBuilder<'_, ()> {
+impl<T: LintContext> DiagExt<T> for rustc_errors::Diag<'_, ()> {
     fn suggest_item_with_attr<D: Display + ?Sized>(
         &mut self,
         cx: &T,

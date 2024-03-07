@@ -3,6 +3,7 @@
 
 #![warn(clippy::use_self)]
 #![allow(dead_code, clippy::let_with_type_underscore)]
+#![allow(non_local_definitions)]
 
 struct Foo;
 

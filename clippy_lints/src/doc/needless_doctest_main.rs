@@ -6,7 +6,7 @@ use clippy_utils::diagnostics::span_lint;
 use rustc_ast::{CoroutineKind, Fn, FnRetTy, Item, ItemKind};
 use rustc_data_structures::sync::Lrc;
 use rustc_errors::emitter::HumanEmitter;
-use rustc_errors::{DiagCtxt, DiagnosticBuilder};
+use rustc_errors::{Diag, DiagCtxt};
 use rustc_lint::LateContext;
 use rustc_parse::maybe_new_parser_from_source_str;
 use rustc_parse::parser::ForceCollect;
@@ -45,15 +45,15 @@ pub fn check(
                 let fallback_bundle =
                     rustc_errors::fallback_fluent_bundle(rustc_driver::DEFAULT_LOCALE_RESOURCES.to_vec(), false);
                 let emitter = HumanEmitter::new(Box::new(io::sink()), fallback_bundle);
-                let dcx = DiagCtxt::with_emitter(Box::new(emitter)).disable_warnings();
+                let dcx = DiagCtxt::new(Box::new(emitter)).disable_warnings();
                 #[expect(clippy::arc_with_non_send_sync)] // `Lrc` is expected by with_dcx
                 let sm = Lrc::new(SourceMap::new(FilePathMapping::empty()));
-                let sess = ParseSess::with_dcx(dcx, sm);
+                let psess = ParseSess::with_dcx(dcx, sm);
 
-                let mut parser = match maybe_new_parser_from_source_str(&sess, filename, code) {
+                let mut parser = match maybe_new_parser_from_source_str(&psess, filename, code) {
                     Ok(p) => p,
                     Err(errs) => {
-                        errs.into_iter().for_each(DiagnosticBuilder::cancel);
+                        errs.into_iter().for_each(Diag::cancel);
                         return (false, test_attr_spans);
                     },
                 };

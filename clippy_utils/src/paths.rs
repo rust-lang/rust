@@ -11,7 +11,7 @@ pub const APPLICABILITY_VALUES: [[&str; 3]; 4] = [
     ["rustc_lint_defs", "Applicability", "MaybeIncorrect"],
     ["rustc_lint_defs", "Applicability", "MachineApplicable"],
 ];
-pub const DIAGNOSTIC_BUILDER: [&str; 2] = ["rustc_errors", "DiagnosticBuilder"];
+pub const DIAG: [&str; 2] = ["rustc_errors", "Diag"];
 pub const BINARYHEAP_ITER: [&str; 5] = ["alloc", "collections", "binary_heap", "BinaryHeap", "iter"];
 pub const BTREEMAP_CONTAINS_KEY: [&str; 6] = ["alloc", "collections", "btree", "map", "BTreeMap", "contains_key"];
 pub const BTREEMAP_INSERT: [&str; 6] = ["alloc", "collections", "btree", "map", "BTreeMap", "insert"];
@@ -115,4 +115,3 @@ pub const OPTION_UNWRAP: [&str; 4] = ["core", "option", "Option", "unwrap"];
 pub const OPTION_EXPECT: [&str; 4] = ["core", "option", "Option", "expect"];
 #[expect(clippy::invalid_paths)] // not sure why it thinks this, it works so
 pub const BOOL_THEN: [&str; 4] = ["core", "bool", "<impl bool>", "then"];
-pub const ALLOCATOR_GLOBAL: [&str; 3] = ["alloc", "alloc", "Global"];

@@ -6,12 +6,9 @@
 extern crate proc_macros;
 use proc_macros::external;
 
-
 pub fn must_use_default() {}
 
-
 pub fn must_use_unit() -> () {}
-
 
 pub fn must_use_with_note() {}
 
