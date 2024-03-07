@@ -162,6 +162,7 @@ pub struct CtxtInterners<'tcx> {
     predefined_opaques_in_body: InternedSet<'tcx, PredefinedOpaquesData<'tcx>>,
     fields: InternedSet<'tcx, List<FieldIdx>>,
     local_def_ids: InternedSet<'tcx, List<LocalDefId>>,
+    captures: InternedSet<'tcx, List<&'tcx ty::CapturedPlace<'tcx>>>,
     offset_of: InternedSet<'tcx, List<(VariantIdx, FieldIdx)>>,
 }
 
@@ -189,6 +190,7 @@ impl<'tcx> CtxtInterners<'tcx> {
             predefined_opaques_in_body: Default::default(),
             fields: Default::default(),
             local_def_ids: Default::default(),
+            captures: Default::default(),
             offset_of: Default::default(),
         }
     }
@@ -1778,6 +1780,7 @@ slice_interners!(
     bound_variable_kinds: pub mk_bound_variable_kinds(ty::BoundVariableKind),
     fields: pub mk_fields(FieldIdx),
     local_def_ids: intern_local_def_ids(LocalDefId),
+    captures: intern_captures(&'tcx ty::CapturedPlace<'tcx>),
     offset_of: pub mk_offset_of((VariantIdx, FieldIdx)),
 );
 
@@ -2026,6 +2029,17 @@ impl<'tcx> TyCtxt<'tcx> {
         T: CollectAndApply<LocalDefId, &'tcx List<LocalDefId>>,
     {
         T::collect_and_apply(iter, |xs| self.mk_local_def_ids(xs))
+    }
+
+    pub fn mk_captures_from_iter<I, T>(self, iter: I) -> T::Output
+    where
+        I: Iterator<Item = T>,
+        T: CollectAndApply<
+                &'tcx ty::CapturedPlace<'tcx>,
+                &'tcx List<&'tcx ty::CapturedPlace<'tcx>>,
+            >,
+    {
+        T::collect_and_apply(iter, |xs| self.intern_captures(xs))
     }
 
     pub fn mk_const_list_from_iter<I, T>(self, iter: I) -> T::Output
