@@ -1526,44 +1526,19 @@ fn impl_trait_header(
     let icx = ItemCtxt::new(tcx, def_id);
     let item = tcx.hir().expect_item(def_id);
     let impl_ = item.expect_impl();
-    impl_
-        .of_trait
-        .as_ref()
-        .map(|ast_trait_ref| {
-            let selfty = tcx.type_of(def_id).instantiate_identity();
+    impl_.of_trait.as_ref().map(|ast_trait_ref| {
+        let selfty = tcx.type_of(def_id).instantiate_identity();
 
-            let trait_ref = if let Some(ErrorGuaranteed { .. }) = check_impl_constness(
-                tcx,
-                tcx.is_const_trait_impl_raw(def_id.to_def_id()),
-                ast_trait_ref,
-            ) {
-                // we have a const impl, but for a trait without `#[const_trait]`, so
-                // without the host param. If we continue with the HIR trait ref, we get
-                // ICEs for generic arg count mismatch. We do a little HIR editing to
-                // make astconv happy.
-                let mut path_segments = ast_trait_ref.path.segments.to_vec();
-                let last_segment = path_segments.len() - 1;
-                let mut args = *path_segments[last_segment].args();
-                let last_arg = args.args.len() - 1;
-                assert!(matches!(args.args[last_arg], hir::GenericArg::Const(anon_const) if anon_const.is_desugared_from_effects));
-                args.args = &args.args[..args.args.len() - 1];
-                path_segments[last_segment].args = Some(tcx.hir_arena.alloc(args));
-                let path = hir::Path {
-                    span: ast_trait_ref.path.span,
-                    res: ast_trait_ref.path.res,
-                    segments: tcx.hir_arena.alloc_slice(&path_segments),
-                };
-                let trait_ref = tcx.hir_arena.alloc(hir::TraitRef { path: tcx.hir_arena.alloc(path), hir_ref_id: ast_trait_ref.hir_ref_id });
-                icx.astconv().instantiate_mono_trait_ref(trait_ref, selfty)
-            } else {
-                icx.astconv().instantiate_mono_trait_ref(ast_trait_ref, selfty)
-            };
-            ty::EarlyBinder::bind(ty::ImplTraitHeader {
-                trait_ref,
-                unsafety: impl_.unsafety,
-                polarity: polarity_of_impl(tcx, def_id,  impl_, item.span)
-            })
+        check_impl_constness(tcx, tcx.is_const_trait_impl_raw(def_id.to_def_id()), ast_trait_ref);
+
+        let trait_ref = icx.astconv().instantiate_mono_trait_ref(ast_trait_ref, selfty);
+
+        ty::EarlyBinder::bind(ty::ImplTraitHeader {
+            trait_ref,
+            unsafety: impl_.unsafety,
+            polarity: polarity_of_impl(tcx, def_id, impl_, item.span),
         })
+    })
 }
 
 fn check_impl_constness(

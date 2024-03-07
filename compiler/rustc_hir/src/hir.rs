@@ -485,6 +485,7 @@ pub enum GenericParamKind<'hir> {
         /// Optional default value for the const generic param
         default: Option<AnonConst>,
         is_host_effect: bool,
+        synthetic: bool,
     },
 }
 
@@ -3173,6 +3174,7 @@ pub enum ItemKind<'hir> {
 
 #[derive(Debug, Clone, Copy, HashStable_Generic)]
 pub struct Impl<'hir> {
+    pub constness: Constness,
     pub unsafety: Unsafety,
     pub polarity: ImplPolarity,
     pub defaultness: Defaultness,

@@ -4874,6 +4874,12 @@ fn point_at_assoc_type_restriction<G: EmissionGuarantee>(
     let ty::ClauseKind::Projection(proj) = clause else {
         return;
     };
+    // avoid ICEing since effects desugared associated types don't have names.
+    // this path should only be hit for `~const` on invalid places, so they
+    // will have an informative error already.
+    if tcx.is_effects_desugared_assoc_ty(proj.projection_ty.def_id) {
+        return;
+    }
     let name = tcx.item_name(proj.projection_ty.def_id);
     let mut predicates = generics.predicates.iter().peekable();
     let mut prev: Option<&hir::WhereBoundPredicate<'_>> = None;

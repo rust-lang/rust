@@ -931,7 +931,7 @@ marker_impls! {
 #[lang = "destruct"]
 #[rustc_on_unimplemented(message = "can't drop `{Self}`", append_const_msg)]
 #[rustc_deny_explicit_impl(implement_via_object = false)]
-#[const_trait]
+// FIXME(effects) #[const_trait]
 pub trait Destruct {}
 
 /// A marker for tuple types.
@@ -1005,4 +1005,35 @@ pub trait FnPtr: Copy + Clone {
     /// Returns the address of the function pointer.
     #[lang = "fn_ptr_addr"]
     fn addr(self) -> *const ();
+}
+
+#[doc(hidden)]
+#[unstable(
+    feature = "effect_types",
+    issue = "none",
+    reason = "internal module for implementing effects"
+)]
+#[allow(missing_debug_implementations)] // these unit structs don't need `Debug` impls.
+#[cfg(not(bootstrap))]
+// TODO docs
+pub mod effects {
+    #[lang = "EffectsNoRuntime"]
+    pub struct NoRuntime;
+    #[lang = "EffectsMaybe"]
+    pub struct Maybe;
+    #[lang = "EffectsRuntime"]
+    pub struct Runtime;
+
+    #[lang = "EffectsCompat"]
+    pub trait Compat<#[rustc_runtime] const RUNTIME: bool = true> {}
+
+    impl Compat<false> for NoRuntime {}
+    impl Compat<true> for Runtime {}
+    impl<#[rustc_runtime] const RUNTIME: bool> Compat<RUNTIME> for Maybe {}
+
+    #[lang = "EffectsEq"]
+    pub trait EffectsEq<T: ?Sized> {}
+    impl EffectsEq<NoRuntime> for NoRuntime {}
+    impl EffectsEq<Maybe> for Maybe {}
+    impl EffectsEq<Runtime> for Runtime {}
 }

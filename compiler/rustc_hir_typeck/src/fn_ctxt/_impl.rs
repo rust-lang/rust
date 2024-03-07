@@ -1331,7 +1331,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         self.fcx.ty_infer(Some(param), inf.span).into()
                     }
                     (
-                        &GenericParamDefKind::Const { has_default, is_host_effect },
+                        &GenericParamDefKind::Const { has_default, is_host_effect, .. },
                         GenericArg::Infer(inf),
                     ) => {
                         let tcx = self.fcx.tcx();
@@ -1379,7 +1379,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             self.fcx.var_for_def(self.span, param)
                         }
                     }
-                    GenericParamDefKind::Const { has_default, is_host_effect } => {
+                    GenericParamDefKind::Const { has_default, is_host_effect, .. } => {
                         if has_default {
                             // N.B. this is a bit of a hack. `infer_args` is passed depending on
                             // whether the user has provided generic args. E.g. for `Vec::new`

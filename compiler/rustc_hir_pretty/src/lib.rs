@@ -574,6 +574,7 @@ impl<'a> State<'a> {
                 self.print_struct(struct_def, generics, item.ident.name, item.span, true);
             }
             hir::ItemKind::Impl(&hir::Impl {
+                constness,
                 unsafety,
                 polarity,
                 defaultness,
@@ -587,6 +588,10 @@ impl<'a> State<'a> {
                 self.print_defaultness(defaultness);
                 self.print_unsafety(unsafety);
                 self.word_nbsp("impl");
+
+                if let hir::Constness::Const = constness {
+                    self.word_nbsp("const");
+                }
 
                 if !generics.params.is_empty() {
                     self.print_generic_params(generics.params);
@@ -2104,7 +2109,7 @@ impl<'a> State<'a> {
                     self.print_type(default);
                 }
             }
-            GenericParamKind::Const { ty, ref default, is_host_effect: _ } => {
+            GenericParamKind::Const { ty, ref default, is_host_effect: _, synthetic: _ } => {
                 self.word_space(":");
                 self.print_type(ty);
                 if let Some(default) = default {
