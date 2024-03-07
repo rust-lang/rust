@@ -75,7 +75,7 @@ impl<'tcx> InferCtxt<'tcx> {
     pub fn fork_with_intercrate(&self, intercrate: bool) -> Self {
         Self {
             tcx: self.tcx,
-            defining_use_anchor: self.defining_use_anchor,
+            defining_opaque_types: self.defining_opaque_types,
             considering_regions: self.considering_regions,
             skip_leak_check: self.skip_leak_check,
             inner: self.inner.clone(),

@@ -441,6 +441,12 @@ impl<'tcx, D: TyDecoder<I = TyCtxt<'tcx>>> RefDecodable<'tcx, D> for ty::List<Lo
     }
 }
 
+impl<'tcx, D: TyDecoder<I = TyCtxt<'tcx>>> Decodable<D> for &'tcx ty::List<LocalDefId> {
+    fn decode(d: &mut D) -> Self {
+        RefDecodable::decode(d)
+    }
+}
+
 impl<'tcx, D: TyDecoder<I = TyCtxt<'tcx>>> RefDecodable<'tcx, D>
     for ty::List<(VariantIdx, FieldIdx)>
 {

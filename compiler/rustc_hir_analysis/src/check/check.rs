@@ -13,7 +13,7 @@ use rustc_infer::infer::{RegionVariableOrigin, TyCtxtInferExt};
 use rustc_infer::traits::{Obligation, TraitEngineExt as _};
 use rustc_lint_defs::builtin::REPR_TRANSPARENT_EXTERNAL_PRIVATE_FIELDS;
 use rustc_middle::middle::stability::EvalResult;
-use rustc_middle::traits::{DefiningAnchor, ObligationCauseCode};
+use rustc_middle::traits::ObligationCauseCode;
 use rustc_middle::ty::fold::BottomUpFolder;
 use rustc_middle::ty::layout::{LayoutError, MAX_SIMD_LANES};
 use rustc_middle::ty::util::{Discr, InspectCoroutineFields, IntTypeExt};
@@ -345,10 +345,7 @@ fn check_opaque_meets_bounds<'tcx>(
     };
     let param_env = tcx.param_env(defining_use_anchor);
 
-    let infcx = tcx
-        .infer_ctxt()
-        .with_opaque_type_inference(DefiningAnchor::bind(tcx, defining_use_anchor))
-        .build();
+    let infcx = tcx.infer_ctxt().with_opaque_type_inference(defining_use_anchor).build();
     let ocx = ObligationCtxt::new(&infcx);
 
     let args = match *origin {
@@ -1564,7 +1561,7 @@ pub(super) fn check_coroutine_obligations(
         .ignoring_regions()
         // Bind opaque types to type checking root, as they should have been checked by borrowck,
         // but may show up in some cases, like when (root) obligations are stalled in the new solver.
-        .with_opaque_type_inference(DefiningAnchor::bind(tcx, typeck.hir_owner.def_id))
+        .with_opaque_type_inference(typeck.hir_owner.def_id)
         .build();
 
     let mut fulfillment_cx = <dyn TraitEngine<'_>>::new(&infcx);

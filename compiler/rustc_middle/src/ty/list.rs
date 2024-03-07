@@ -39,6 +39,12 @@ pub struct List<T> {
     opaque: OpaqueListContents,
 }
 
+impl<T> Default for &List<T> {
+    fn default() -> Self {
+        List::empty()
+    }
+}
+
 extern "C" {
     /// A dummy type used to force `List` to be unsized while not requiring
     /// references to it be wide pointers.

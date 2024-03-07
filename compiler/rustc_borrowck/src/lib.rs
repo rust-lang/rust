@@ -32,7 +32,6 @@ use rustc_infer::infer::{
 use rustc_middle::mir::tcx::PlaceTy;
 use rustc_middle::mir::*;
 use rustc_middle::query::Providers;
-use rustc_middle::traits::DefiningAnchor;
 use rustc_middle::ty::{self, ParamEnv, RegionVid, TyCtxt};
 use rustc_session::lint::builtin::UNUSED_MUT;
 use rustc_span::{Span, Symbol};
@@ -126,7 +125,7 @@ fn mir_borrowck(tcx: TyCtxt<'_>, def: LocalDefId) -> &BorrowCheckResult<'_> {
         return tcx.arena.alloc(result);
     }
 
-    let infcx = tcx.infer_ctxt().with_opaque_type_inference(DefiningAnchor::bind(tcx, def)).build();
+    let infcx = tcx.infer_ctxt().with_opaque_type_inference(def).build();
     let promoted: &IndexSlice<_, _> = &promoted.borrow();
     let opt_closure_req = do_mir_borrowck(&infcx, input_body, promoted, None).0;
     debug!("mir_borrowck done");

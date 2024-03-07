@@ -38,5 +38,5 @@ pub trait InferCtxtLike {
     /// Resolve `ConstVid` to its inferred type, if it has been equated with a non-infer type.
     fn probe_ct_var(&self, vid: ConstVid) -> Option<<Self::Interner as Interner>::Const>;
 
-    fn defining_anchor(&self) -> <Self::Interner as Interner>::DefiningAnchor;
+    fn defining_opaque_types(&self) -> <Self::Interner as Interner>::DefiningOpaqueTypes;
 }
