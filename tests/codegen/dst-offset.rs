@@ -4,6 +4,8 @@
 
 #![crate_type = "lib"]
 
+#![feature(extern_types)]
+
 use std::ptr::addr_of;
 
 // Hack to get the correct type for usize
@@ -66,4 +68,17 @@ pub fn packed_dst_slice_offset(s: &PackedDstSlice) -> *const [u16] {
 // CHECK-NEXT: insertvalue
 // CHECK-NEXT: ret
     addr_of!(s.z)
+}
+
+extern {
+    pub type Extern;
+}
+
+// CHECK-LABEL: @dst_extern
+#[no_mangle]
+pub fn dst_extern(s: &Dst<Extern>) -> &Extern {
+// Computing the alignment of an extern type is currently unsupported and just panics.
+
+// CHECK: call void @{{.+}}panic
+    &s.z
 }
