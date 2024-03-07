@@ -43,6 +43,9 @@ pub struct Compiler {
     pub compiler_for_deadlock_handler: Arc<AtomicPtr<()>>,
 }
 
+impl !Sync for Compiler {}
+impl !rustc_data_structures::sync::DynSync for Compiler {}
+
 /// Converts strings provided as `--cfg [cfgspec]` into a `Cfg`.
 pub(crate) fn parse_cfg(dcx: &DiagCtxt, cfgs: Vec<String>) -> Cfg {
     cfgs.into_iter()

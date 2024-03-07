@@ -161,9 +161,11 @@ impl<'tcx> Queries<'tcx> {
                 &self.hir_arena,
             );
 
-            self.compiler
+            let old = self
+                .compiler
                 .compiler_for_deadlock_handler
-                .store(qcx as *const _ as *mut _, Ordering::Relaxed);
+                .swap(qcx as *const _ as *mut _, Ordering::Relaxed);
+            assert!(old.is_null());
 
             qcx.enter(|tcx| {
                 let feed = tcx.feed_local_crate();
@@ -321,6 +323,7 @@ impl Compiler {
             // is accessing the `GlobalCtxt`.
             self.compiler_for_deadlock_handler.store(std::ptr::null_mut(), Ordering::Relaxed);
         });
+        assert!(self.compiler_for_deadlock_handler.load(Ordering::Relaxed).is_null());
         let queries = Queries::new(self);
         let ret = f(&queries);
 

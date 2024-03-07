@@ -4,6 +4,7 @@
 #![feature(let_chains)]
 #![feature(thread_spawn_unchecked)]
 #![feature(try_blocks)]
+#![feature(negative_impls)]
 
 #[macro_use]
 extern crate tracing;
