@@ -296,6 +296,15 @@ pub(crate) struct DerivePathArgsValue {
 }
 
 #[derive(Diagnostic)]
+#[diag(builtin_macros_derive_skip_bad_argument)]
+pub(crate) struct DeriveSkipBadArgument {
+    #[note]
+    #[help]
+    #[primary_span]
+    pub(crate) span: Span,
+}
+
+#[derive(Diagnostic)]
 #[diag(builtin_macros_no_default_variant)]
 #[help]
 pub(crate) struct NoDefaultVariant {

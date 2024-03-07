@@ -92,6 +92,7 @@ fn cs_partial_cmp(
         cx,
         span,
         substr,
+        sym::PartialOrd,
         |cx, fold| match fold {
             CsFold::Single(field) => {
                 let [other_expr] = &field.other_selflike_exprs[..] else {
