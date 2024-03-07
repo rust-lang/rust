@@ -5,7 +5,7 @@
 //@ error-pattern:should be a positive integer
 //@ compile-flags: --test
 //@ exec-env:RUST_TEST_THREADS=foo
-//@ ignore-emscripten
+//@ needs-threads
 
 #[test]
 fn do_nothing() {}

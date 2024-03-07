@@ -1,13 +1,13 @@
 //@ run-pass
 #![allow(unused_must_use)]
-//@ ignore-emscripten no threads support
+//@ needs-threads
 
 use std::thread;
 use std::sync::mpsc::{channel, Sender};
 
 pub fn main() {
     let (tx, rx) = channel();
-    let t = thread::spawn(move|| { child(&tx) });
+    let t = thread::spawn(move || { child(&tx) });
     let y = rx.recv().unwrap();
     println!("received");
     println!("{}", y);

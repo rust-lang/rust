@@ -1,7 +1,7 @@
 //@ run-pass
 
 #![allow(unused_must_use)]
-//@ ignore-emscripten no threads support
+//@ needs-threads
 
 use std::thread;
 

@@ -3,7 +3,7 @@
 //@ revisions: default nomiropt
 //@[nomiropt]compile-flags: -Z mir-opt-level=0
 
-//@ ignore-emscripten no threads support
+//@ needs-threads
 //@ compile-flags: --test
 
 #![feature(coroutines, coroutine_trait)]

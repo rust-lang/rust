@@ -11,6 +11,7 @@
 #include "llvm/ADT/SmallString.h"
 #include "llvm/IR/LLVMContext.h"
 #include "llvm/Object/ObjectFile.h"
+#include <llvm/Support/raw_ostream.h>
 
 using namespace llvm;
 using namespace llvm::sys;
@@ -42,7 +43,7 @@ extern "C" void *LLVMRustGetSymbols(
     MemoryBuffer::getMemBuffer(StringRef(BufPtr, BufLen), StringRef("LLVMRustGetSymbolsObject"),
                                false);
   SmallString<0> SymNameBuf;
-  raw_svector_ostream SymName(SymNameBuf);
+  auto SymName = raw_svector_ostream(SymNameBuf);
 
   // In the scenario when LLVMContext is populated SymbolicFile will contain a
   // reference to it, thus SymbolicFile should be destroyed first.
@@ -60,7 +61,7 @@ extern "C" void *LLVMRustGetSymbols(
     if (!ObjOrErr) {
       Error E = ObjOrErr.takeError();
       SmallString<0> ErrorBuf;
-      raw_svector_ostream Error(ErrorBuf);
+      auto Error = raw_svector_ostream(ErrorBuf);
       Error << E << '\0';
       return ErrorCallback(Error.str().data());
     }
@@ -70,7 +71,7 @@ extern "C" void *LLVMRustGetSymbols(
     if (!ObjOrErr) {
       Error E = ObjOrErr.takeError();
       SmallString<0> ErrorBuf;
-      raw_svector_ostream Error(ErrorBuf);
+      auto Error = raw_svector_ostream(ErrorBuf);
       Error << E << '\0';
       return ErrorCallback(Error.str().data());
     }
@@ -83,7 +84,7 @@ extern "C" void *LLVMRustGetSymbols(
       continue;
     if (Error E = S.printName(SymName)) {
       SmallString<0> ErrorBuf;
-      raw_svector_ostream Error(ErrorBuf);
+      auto Error = raw_svector_ostream(ErrorBuf);
       Error << E << '\0';
       return ErrorCallback(Error.str().data());
     }

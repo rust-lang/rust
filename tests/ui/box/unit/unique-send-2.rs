@@ -1,6 +1,6 @@
 //@ run-pass
 #![allow(unused_must_use)]
-//@ ignore-emscripten no threads support
+//@ needs-threads
 
 use std::sync::mpsc::{channel, Sender};
 use std::thread;

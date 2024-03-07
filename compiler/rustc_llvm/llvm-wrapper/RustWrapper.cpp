@@ -66,12 +66,22 @@ static LLVM_THREAD_LOCAL char *LastError;
 static void FatalErrorHandler(void *UserData,
                               const char* Reason,
                               bool GenCrashDiag) {
-  // Do the same thing that the default error handler does.
-  std::cerr << "LLVM ERROR: " << Reason << std::endl;
+  // Once upon a time we emitted "LLVM ERROR:" specifically to mimic LLVM. Then,
+  // we developed crater and other tools which only expose logs, not error codes.
+  // Use a more greppable prefix that will still match the "LLVM ERROR:" prefix.
+  std::cerr << "rustc-LLVM ERROR: " << Reason << std::endl;
 
   // Since this error handler exits the process, we have to run any cleanup that
   // LLVM would run after handling the error. This might change with an LLVM
   // upgrade.
+  //
+  // In practice, this will do nothing, because the only cleanup LLVM does is
+  // to remove all files that were registered with it via a frontend calling
+  // one of the `createOutputFile` family of functions in LLVM and passing true
+  // to RemoveFileOnSignal, something that rustc does not do. However, it would
+  // be... inadvisable to suddenly stop running these handlers, if LLVM gets
+  // "interesting" ideas in the future about what cleanup should be done.
+  // We might even find it useful for generating less artifacts.
   sys::RunInterruptHandlers();
 
   exit(101);
@@ -109,7 +119,7 @@ extern "C" void LLVMRustSetNormalizedTarget(LLVMModuleRef M,
 
 extern "C" const char *LLVMRustPrintPassTimings(size_t *Len) {
   std::string buf;
-  raw_string_ostream SS(buf);
+  auto SS = raw_string_ostream(buf);
   TimerGroup::printAll(SS);
   SS.flush();
   *Len = buf.length();
@@ -120,7 +130,7 @@ extern "C" const char *LLVMRustPrintPassTimings(size_t *Len) {
 
 extern "C" const char *LLVMRustPrintStatistics(size_t *Len) {
   std::string buf;
-  raw_string_ostream SS(buf);
+  auto SS = raw_string_ostream(buf);
   llvm::PrintStatistics(SS);
   SS.flush();
   *Len = buf.length();
@@ -174,7 +184,7 @@ extern "C" LLVMValueRef LLVMRustGetOrInsertFunction(LLVMModuleRef M,
 extern "C" LLVMValueRef
 LLVMRustGetOrInsertGlobal(LLVMModuleRef M, const char *Name, size_t NameLen, LLVMTypeRef Ty) {
   Module *Mod = unwrap(M);
-  StringRef NameRef(Name, NameLen);
+  auto NameRef = StringRef(Name, NameLen);
 
   // We don't use Module::getOrInsertGlobal because that returns a Constant*,
   // which may either be the real GlobalVariable*, or a constant bitcast of it
@@ -285,7 +295,7 @@ static Attribute::AttrKind fromRust(LLVMRustAttribute Kind) {
 template<typename T> static inline void AddAttributes(T *t, unsigned Index,
                                                       LLVMAttributeRef *Attrs, size_t AttrsLen) {
   AttributeList PAL = t->getAttributes();
-  AttrBuilder B(t->getContext());
+  auto B = AttrBuilder(t->getContext());
   for (LLVMAttributeRef Attr : ArrayRef<LLVMAttributeRef>(Attrs, AttrsLen))
     B.addAttribute(unwrap(Attr));
   AttributeList PALNew = PAL.addAttributesAtIndex(t->getContext(), Index, B);
@@ -1195,13 +1205,13 @@ extern "C" int64_t LLVMRustDIBuilderCreateOpLLVMFragment() {
 }
 
 extern "C" void LLVMRustWriteTypeToString(LLVMTypeRef Ty, RustStringRef Str) {
-  RawRustStringOstream OS(Str);
+  auto OS = RawRustStringOstream(Str);
   unwrap<llvm::Type>(Ty)->print(OS);
 }
 
 extern "C" void LLVMRustWriteValueToString(LLVMValueRef V,
                                            RustStringRef Str) {
-  RawRustStringOstream OS(Str);
+  auto OS = RawRustStringOstream(Str);
   if (!V) {
     OS << "(null)";
   } else {
@@ -1224,7 +1234,7 @@ extern "C" LLVMTypeRef LLVMRustArrayType(LLVMTypeRef ElementTy,
 DEFINE_SIMPLE_CONVERSION_FUNCTIONS(Twine, LLVMTwineRef)
 
 extern "C" void LLVMRustWriteTwineToString(LLVMTwineRef T, RustStringRef Str) {
-  RawRustStringOstream OS(Str);
+  auto OS = RawRustStringOstream(Str);
   unwrap(T)->print(OS);
 }
 
@@ -1236,11 +1246,11 @@ extern "C" void LLVMRustUnpackOptimizationDiagnostic(
   llvm::DiagnosticInfoOptimizationBase *Opt =
       static_cast<llvm::DiagnosticInfoOptimizationBase *>(unwrap(DI));
 
-  RawRustStringOstream PassNameOS(PassNameOut);
+  auto PassNameOS = RawRustStringOstream(PassNameOut);
   PassNameOS << Opt->getPassName();
   *FunctionOut = wrap(&Opt->getFunction());
 
-  RawRustStringOstream FilenameOS(FilenameOut);
+  auto FilenameOS = RawRustStringOstream(FilenameOut);
   DiagnosticLocation loc = Opt->getLocation();
   if (loc.isValid()) {
     *Line = loc.getLine();
@@ -1248,7 +1258,7 @@ extern "C" void LLVMRustUnpackOptimizationDiagnostic(
     FilenameOS << loc.getAbsolutePath();
   }
 
-  RawRustStringOstream MessageOS(MessageOut);
+  auto MessageOS = RawRustStringOstream(MessageOut);
   MessageOS << Opt->getMsg();
 }
 
@@ -1291,8 +1301,8 @@ LLVMRustUnpackInlineAsmDiagnostic(LLVMDiagnosticInfoRef DI,
 
 extern "C" void LLVMRustWriteDiagnosticInfoToString(LLVMDiagnosticInfoRef DI,
                                                     RustStringRef Str) {
-  RawRustStringOstream OS(Str);
-  DiagnosticPrinterRawOStream DP(OS);
+  auto OS = RawRustStringOstream(Str);
+  auto DP = DiagnosticPrinterRawOStream(OS);
   unwrap(DI)->print(DP);
 }
 
@@ -1406,7 +1416,7 @@ extern "C" LLVMTypeKind LLVMRustGetTypeKind(LLVMTypeRef Ty) {
   default:
     {
       std::string error;
-      llvm::raw_string_ostream stream(error);
+      auto stream = llvm::raw_string_ostream(error);
       stream << "Rust does not support the TypeID: " << unwrap(Ty)->getTypeID()
              << " for the type: " << *unwrap(Ty);
       stream.flush();
@@ -1432,7 +1442,7 @@ extern "C" bool LLVMRustUnpackSMDiagnostic(LLVMSMDiagnosticRef DRef,
                                            unsigned* RangesOut,
                                            size_t* NumRanges) {
   SMDiagnostic& D = *unwrap(DRef);
-  RawRustStringOstream MessageOS(MessageOut);
+  auto MessageOS = RawRustStringOstream(MessageOut);
   MessageOS << D.getMessage();
 
   switch (D.getKind()) {
@@ -1547,7 +1557,7 @@ extern "C" void LLVMRustPositionBuilderAtStart(LLVMBuilderRef B,
 
 extern "C" void LLVMRustSetComdat(LLVMModuleRef M, LLVMValueRef V,
                                   const char *Name, size_t NameLen) {
-  Triple TargetTriple(unwrap(M)->getTargetTriple());
+  Triple TargetTriple = Triple(unwrap(M)->getTargetTriple());
   GlobalObject *GV = unwrap<GlobalObject>(V);
   if (TargetTriple.supportsCOMDAT()) {
     StringRef NameRef(Name, NameLen);
@@ -1711,7 +1721,7 @@ extern "C" LLVMRustModuleBuffer*
 LLVMRustModuleBufferCreate(LLVMModuleRef M) {
   auto Ret = std::make_unique<LLVMRustModuleBuffer>();
   {
-    raw_string_ostream OS(Ret->data);
+    auto OS = raw_string_ostream(Ret->data);
     WriteBitcodeToFile(*unwrap(M), OS);
   }
   return Ret.release();
@@ -1741,8 +1751,8 @@ LLVMRustModuleCost(LLVMModuleRef M) {
 extern "C" void
 LLVMRustModuleInstructionStats(LLVMModuleRef M, RustStringRef Str)
 {
-  RawRustStringOstream OS(Str);
-  llvm::json::OStream JOS(OS);
+  auto OS = RawRustStringOstream(Str);
+  auto JOS = llvm::json::OStream(OS);
   auto Module = unwrap(M);
 
   JOS.object([&] {
@@ -1857,7 +1867,7 @@ extern "C" LLVMRustResult LLVMRustWriteImportLibrary(
     MinGW);
   if (Error) {
     std::string errorString;
-    llvm::raw_string_ostream stream(errorString);
+    auto stream = llvm::raw_string_ostream(errorString);
     stream << Error;
     stream.flush();
     LLVMRustSetLastError(errorString.c_str());
@@ -2041,7 +2051,7 @@ extern "C" void LLVMRustContextConfigureDiagnosticHandler(
 }
 
 extern "C" void LLVMRustGetMangledName(LLVMValueRef V, RustStringRef Str) {
-  RawRustStringOstream OS(Str);
+  auto OS = RawRustStringOstream(Str);
   GlobalValue *GV = unwrap<GlobalValue>(V);
   Mangler().getNameWithPrefix(OS, GV, true);
 }

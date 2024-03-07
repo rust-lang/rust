@@ -1,5 +1,5 @@
 //@ run-pass
-//@ ignore-emscripten no threads
+//@ needs-threads
 //@ ignore-sgx no processes
 
 use std::thread;

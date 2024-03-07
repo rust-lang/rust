@@ -1,7 +1,7 @@
 //@ run-fail
 //@ error-pattern:thread 'owned name' panicked
 //@ error-pattern:test
-//@ ignore-emscripten Needs threads.
+//@ needs-threads
 
 use std::thread::Builder;
 

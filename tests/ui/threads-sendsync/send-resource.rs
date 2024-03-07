@@ -4,7 +4,7 @@
 #![allow(non_camel_case_types)]
 
 //@ pretty-expanded FIXME #23616
-//@ ignore-emscripten no threads support
+//@ needs-threads
 
 use std::thread;
 use std::sync::mpsc::channel;
