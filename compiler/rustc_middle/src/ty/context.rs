@@ -2310,12 +2310,11 @@ impl<'tcx> TyCtxt<'tcx> {
         self,
         def_id: impl IntoQueryParam<DefId>,
     ) -> Option<ty::EarlyBinder<ty::TraitRef<'tcx>>> {
-        Some(self.impl_trait_header(def_id)?.map_bound(|h| h.trait_ref))
+        Some(self.impl_trait_header(def_id)?.trait_ref)
     }
 
     pub fn impl_polarity(self, def_id: impl IntoQueryParam<DefId>) -> ty::ImplPolarity {
-        self.impl_trait_header(def_id)
-            .map_or(ty::ImplPolarity::Positive, |h| h.skip_binder().polarity)
+        self.impl_trait_header(def_id).map_or(ty::ImplPolarity::Positive, |h| h.polarity)
     }
 }
 

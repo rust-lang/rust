@@ -223,60 +223,87 @@ enum Elaborate {
     None,
 }
 
+/// Points the cause span of a super predicate at the relevant associated type.
+///
+/// Given a trait impl item:
+///
+/// ```ignore (incomplete)
+/// impl TargetTrait for TargetType {
+///    type Assoc = SomeType;
+/// }
+/// ```
+///
+/// And a super predicate of `TargetTrait` that has any of the following forms:
+///
+/// 1. `<OtherType as OtherTrait>::Assoc == <TargetType as TargetTrait>::Assoc`
+/// 2. `<<TargetType as TargetTrait>::Assoc as OtherTrait>::Assoc == OtherType`
+/// 3. `<TargetType as TargetTrait>::Assoc: OtherTrait`
+///
+/// Replace the span of the cause with the span of the associated item:
+///
+/// ```ignore (incomplete)
+/// impl TargetTrait for TargetType {
+///     type Assoc = SomeType;
+/// //               ^^^^^^^^ this span
+/// }
+/// ```
+///
+/// Note that bounds that can be expressed as associated item bounds are **not**
+/// super predicates. This means that form 2 and 3 from above are only relevant if
+/// the [`GenericArgsRef`] of the projection type are not its identity arguments.
 fn extend_cause_with_original_assoc_item_obligation<'tcx>(
     tcx: TyCtxt<'tcx>,
-    trait_ref: ty::TraitRef<'tcx>,
     item: Option<&hir::Item<'tcx>>,
     cause: &mut traits::ObligationCause<'tcx>,
     pred: ty::Predicate<'tcx>,
 ) {
-    debug!(
-        "extended_cause_with_original_assoc_item_obligation {:?} {:?} {:?} {:?}",
-        trait_ref, item, cause, pred
-    );
+    debug!(?item, ?cause, ?pred, "extended_cause_with_original_assoc_item_obligation");
     let (items, impl_def_id) = match item {
         Some(hir::Item { kind: hir::ItemKind::Impl(impl_), owner_id, .. }) => {
             (impl_.items, *owner_id)
         }
         _ => return,
     };
-    let fix_span =
-        |impl_item_ref: &hir::ImplItemRef| match tcx.hir().impl_item(impl_item_ref.id).kind {
-            hir::ImplItemKind::Const(ty, _) | hir::ImplItemKind::Type(ty) => ty.span,
-            _ => impl_item_ref.span,
-        };
+
+    let ty_to_impl_span = |ty: Ty<'_>| {
+        if let ty::Alias(ty::Projection, projection_ty) = ty.kind()
+            && let Some(&impl_item_id) =
+                tcx.impl_item_implementor_ids(impl_def_id).get(&projection_ty.def_id)
+            && let Some(impl_item) =
+                items.iter().find(|item| item.id.owner_id.to_def_id() == impl_item_id)
+        {
+            Some(tcx.hir().impl_item(impl_item.id).expect_type().span)
+        } else {
+            None
+        }
+    };
 
     // It is fine to skip the binder as we don't care about regions here.
     match pred.kind().skip_binder() {
         ty::PredicateKind::Clause(ty::ClauseKind::Projection(proj)) => {
-            // The obligation comes not from the current `impl` nor the `trait` being implemented,
-            // but rather from a "second order" obligation, where an associated type has a
-            // projection coming from another associated type. See
-            // `tests/ui/associated-types/point-at-type-on-obligation-failure.rs` and
-            // `traits-assoc-type-in-supertrait-bad.rs`.
-            if let Some(ty::Alias(ty::Projection, projection_ty)) =
-                proj.term.ty().map(|ty| ty.kind())
-                && let Some(&impl_item_id) =
-                    tcx.impl_item_implementor_ids(impl_def_id).get(&projection_ty.def_id)
-                && let Some(impl_item_span) = items
-                    .iter()
-                    .find(|item| item.id.owner_id.to_def_id() == impl_item_id)
-                    .map(fix_span)
+            // Form 1: The obligation comes not from the current `impl` nor the `trait` being
+            // implemented, but rather from a "second order" obligation, where an associated
+            // type has a projection coming from another associated type.
+            // See `tests/ui/traits/assoc-type-in-superbad.rs` for an example.
+            if let Some(term_ty) = proj.term.ty()
+                && let Some(impl_item_span) = ty_to_impl_span(term_ty)
             {
                 cause.span = impl_item_span;
             }
+
+            // Form 2: A projection obligation for an associated item failed to be met.
+            // We overwrite the span from above to ensure that a bound like
+            // `Self::Assoc1: Trait<OtherAssoc = Self::Assoc2>` gets the same
+            // span for both obligations that it is lowered to.
+            if let Some(impl_item_span) = ty_to_impl_span(proj.self_ty()) {
+                cause.span = impl_item_span;
+            }
         }
+
         ty::PredicateKind::Clause(ty::ClauseKind::Trait(pred)) => {
-            // An associated item obligation born out of the `trait` failed to be met. An example
-            // can be seen in `ui/associated-types/point-at-type-on-obligation-failure-2.rs`.
+            // Form 3: A trait obligation for an associated item failed to be met.
             debug!("extended_cause_with_original_assoc_item_obligation trait proj {:?}", pred);
-            if let ty::Alias(ty::Projection, ty::AliasTy { def_id, .. }) = *pred.self_ty().kind()
-                && let Some(&impl_item_id) = tcx.impl_item_implementor_ids(impl_def_id).get(&def_id)
-                && let Some(impl_item_span) = items
-                    .iter()
-                    .find(|item| item.id.owner_id.to_def_id() == impl_item_id)
-                    .map(fix_span)
-            {
+            if let Some(impl_item_span) = ty_to_impl_span(pred.self_ty()) {
                 cause.span = impl_item_span;
             }
         }
@@ -355,9 +382,7 @@ impl<'a, 'tcx> WfPredicates<'a, 'tcx> {
                     traits::ObligationCauseCode::DerivedObligation,
                 );
             }
-            extend_cause_with_original_assoc_item_obligation(
-                tcx, trait_ref, item, &mut cause, predicate,
-            );
+            extend_cause_with_original_assoc_item_obligation(tcx, item, &mut cause, predicate);
             traits::Obligation::with_depth(tcx, cause, depth, param_env, predicate)
         };
 

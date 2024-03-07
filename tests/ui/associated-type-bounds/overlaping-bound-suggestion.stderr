@@ -1,11 +1,8 @@
-error[E0191]: the value of the associated types `Item`, `Item`, `IntoIter` and `IntoIter` in `IntoIterator` must be specified
+error[E0191]: the value of the associated types `Item` and `IntoIter` in `IntoIterator` must be specified
   --> $DIR/overlaping-bound-suggestion.rs:7:13
    |
 LL |     inner: <IntoIterator<Item: IntoIterator<Item: >>::IntoIterator as Item>::Core,
-   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   |             |                  |
-   |             |                  associated types `Item`, `IntoIter` must be specified
-   |             associated types `Item`, `IntoIter` must be specified
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: specify the associated types: `IntoIterator<Item: IntoIterator<Item: >, Item = Type, IntoIter = Type>`
 
 error[E0223]: ambiguous associated type
   --> $DIR/overlaping-bound-suggestion.rs:7:13

@@ -1993,9 +1993,8 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
 
             if of_trait && let Some(header) = tcx.impl_trait_header(def_id) {
                 record!(self.tables.impl_trait_header[def_id] <- header);
-                let trait_ref = header.map_bound(|h| h.trait_ref);
 
-                let trait_ref = trait_ref.instantiate_identity();
+                let trait_ref = header.trait_ref.instantiate_identity();
                 let simplified_self_ty = fast_reject::simplify_type(
                     self.tcx,
                     trait_ref.self_ty(),

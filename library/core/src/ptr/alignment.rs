@@ -3,7 +3,7 @@ use crate::num::NonZero;
 use crate::{cmp, fmt, hash, mem, num};
 
 /// A type storing a `usize` which is a power of two, and thus
-/// represents a possible alignment in the rust abstract machine.
+/// represents a possible alignment in the Rust abstract machine.
 ///
 /// Note that particularly large alignments, while representable in this type,
 /// are likely not to be supported by actual allocators and linkers.
