@@ -4,9 +4,9 @@
 
 use core::ops::ControlFlow;
 use itertools::Itertools;
+use mid::ty::ParamTy;
 use rustc_ast::ast::Mutability;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
-use rustc_hir as hir;
 use rustc_hir::def::{CtorKind, CtorOf, DefKind, Res};
 use rustc_hir::def_id::DefId;
 use rustc_hir::{Expr, FnDecl, LangItem, TyKind, Unsafety};
@@ -31,6 +31,7 @@ use rustc_trait_selection::traits::{Obligation, ObligationCause};
 use std::assert_matches::debug_assert_matches;
 use std::collections::hash_map::Entry;
 use std::iter;
+use {rustc_hir as hir, rustc_middle as mid};
 
 use crate::{def_path_def_ids, match_def_path, path_res};
 
@@ -655,7 +656,7 @@ pub fn all_predicates_of(tcx: TyCtxt<'_>, id: DefId) -> impl Iterator<Item = &(t
 }
 
 /// A signature for a function like type.
-#[derive(Clone, Copy)]
+#[derive(Debug, Clone, Copy)]
 pub enum ExprFnSig<'tcx> {
     Sig(Binder<'tcx, FnSig<'tcx>>, Option<DefId>),
     Closure(Option<&'tcx FnDecl<'tcx>>, Binder<'tcx, FnSig<'tcx>>),
@@ -949,6 +950,117 @@ pub fn for_each_top_level_late_bound_region<B>(
         }
     }
     ty.visit_with(&mut V { index: 0, f })
+}
+
+/// This function calls the given function `f` for every region in a type.
+/// For example `&'a Type<'b>` would call the function twice for  `'a` and `b`.
+pub fn for_each_region<'tcx>(ty: Ty<'tcx>, f: impl FnMut(Region<'tcx>)) {
+    struct V<F> {
+        f: F,
+    }
+    impl<'tcx, F: FnMut(Region<'tcx>)> TypeVisitor<TyCtxt<'tcx>> for V<F> {
+        fn visit_region(&mut self, region: Region<'tcx>) -> ControlFlow<Self::BreakTy> {
+            (self.f)(region);
+            ControlFlow::Continue(())
+        }
+    }
+    ty.visit_with(&mut V { f });
+}
+
+// pub fn for_each_generic_region<'tcx>(ty: Ty<'tcx>, f: impl FnMut(DefId)) {
+//     struct V<F> {
+//         f: F,
+//     }
+//     impl<'tcx, F: FnMut(DefId)> TypeVisitor<TyCtxt<'tcx>> for V<F> {
+//         fn visit_ty(&mut self, ty: Ty<'tcx>) -> ControlFlow<Self::BreakTy> {
+//             if let mid::ty::TyKind::Param(param) = ty.kind()
+//             {
+//                 (self.f)(def_id);
+//             }
+//             ControlFlow::Continue(())
+//         }
+//     }
+//     ty.visit_with(&mut V { f });
+// }
+
+/// This function calls the given function `f` for every region on a reference.
+/// For example `&'a Type<'b>` would call the function once for `'a`.
+pub fn for_each_ref_region<'tcx>(ty: Ty<'tcx>, f: &mut impl FnMut(Region<'tcx>, mid::ty::Ty<'tcx>, Mutability)) {
+    match ty.kind() {
+        mid::ty::TyKind::Tuple(next_tys) => next_tys.iter().for_each(|next_ty| for_each_ref_region(next_ty, f)),
+        mid::ty::TyKind::Slice(next_ty) | mid::ty::TyKind::Array(next_ty, _) => for_each_ref_region(*next_ty, f),
+        mid::ty::TyKind::RawPtr(next_ty) => for_each_ref_region(next_ty.ty, f),
+        mid::ty::TyKind::Ref(region, ty, mutability) => {
+            f(*region, *ty, *mutability);
+            for_each_ref_region(*ty, f);
+        },
+
+        // All of these are either uninteresting or we don't want to visit their generics
+        mid::ty::TyKind::Bool
+        | mid::ty::TyKind::Char
+        | mid::ty::TyKind::Int(_)
+        | mid::ty::TyKind::Uint(_)
+        | mid::ty::TyKind::Float(_)
+        | mid::ty::TyKind::Adt(_, _)
+        | mid::ty::TyKind::Foreign(_)
+        | mid::ty::TyKind::Str
+        | mid::ty::TyKind::FnDef(_, _)
+        | mid::ty::TyKind::FnPtr(_)
+        | mid::ty::TyKind::Dynamic(_, _, _)
+        | mid::ty::TyKind::Closure(_, _)
+        | mid::ty::TyKind::CoroutineClosure(_, _)
+        | mid::ty::TyKind::Coroutine(_, _)
+        | mid::ty::TyKind::CoroutineWitness(_, _)
+        | mid::ty::TyKind::Never
+        | mid::ty::TyKind::Alias(_, _)
+        | mid::ty::TyKind::Param(_)
+        | mid::ty::TyKind::Bound(_, _)
+        | mid::ty::TyKind::Placeholder(_)
+        | mid::ty::TyKind::Infer(_)
+        | mid::ty::TyKind::Error(_) => {},
+    }
+}
+
+/// This function calls the given function `f` for every region on a reference.
+/// For example `&'a Type<'b>` would call the function once for `'a`.
+pub fn for_each_param_ty(ty: Ty<'_>, f: &mut impl FnMut(ParamTy)) {
+    match ty.kind() {
+        mid::ty::TyKind::Tuple(next_tys) => next_tys.iter().for_each(|next_ty| for_each_param_ty(next_ty, f)),
+        mid::ty::TyKind::Slice(next_ty) | mid::ty::TyKind::Array(next_ty, _) => for_each_param_ty(*next_ty, f),
+        mid::ty::TyKind::RawPtr(next_ty) => for_each_param_ty(next_ty.ty, f),
+        mid::ty::TyKind::Ref(_region, ty, _mutability) => {
+            for_each_param_ty(*ty, f);
+        },
+        mid::ty::TyKind::Param(param) => f(*param),
+        mid::ty::TyKind::Adt(_, generics) => {
+            generics
+                .iter()
+                .filter_map(rustc_middle::ty::GenericArg::as_type)
+                .for_each(|gen_ty| for_each_param_ty(gen_ty, f));
+        },
+
+        // All of these are either uninteresting or we don't want to visit their generics
+        mid::ty::TyKind::Bool
+        | mid::ty::TyKind::Char
+        | mid::ty::TyKind::Int(_)
+        | mid::ty::TyKind::Uint(_)
+        | mid::ty::TyKind::Float(_)
+        | mid::ty::TyKind::Foreign(_)
+        | mid::ty::TyKind::Str
+        | mid::ty::TyKind::FnDef(_, _)
+        | mid::ty::TyKind::FnPtr(_)
+        | mid::ty::TyKind::Dynamic(_, _, _)
+        | mid::ty::TyKind::Closure(_, _)
+        | mid::ty::TyKind::CoroutineClosure(_, _)
+        | mid::ty::TyKind::Coroutine(_, _)
+        | mid::ty::TyKind::CoroutineWitness(_, _)
+        | mid::ty::TyKind::Never
+        | mid::ty::TyKind::Alias(_, _)
+        | mid::ty::TyKind::Bound(_, _)
+        | mid::ty::TyKind::Placeholder(_)
+        | mid::ty::TyKind::Infer(_)
+        | mid::ty::TyKind::Error(_) => {},
+    }
 }
 
 pub struct AdtVariantInfo {

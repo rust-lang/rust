@@ -2,10 +2,12 @@
 #![feature(binary_heap_into_iter_sorted)]
 #![feature(box_patterns)]
 #![feature(if_let_guard)]
+#![feature(iter_collect_into)]
 #![feature(iter_intersperse)]
 #![feature(let_chains)]
 #![feature(lint_reasons)]
 #![feature(never_type)]
+#![feature(option_take_if)]
 #![feature(rustc_private)]
 #![feature(stmt_expr_attributes)]
 #![recursion_limit = "512"]
@@ -35,6 +37,7 @@ extern crate rustc_arena;
 extern crate rustc_ast;
 extern crate rustc_ast_pretty;
 extern crate rustc_attr;
+extern crate rustc_borrowck;
 extern crate rustc_data_structures;
 extern crate rustc_driver;
 extern crate rustc_errors;
@@ -87,6 +90,7 @@ mod bool_assert_comparison;
 mod bool_to_int_with_if;
 mod booleans;
 mod borrow_deref_ref;
+mod borrow_pats;
 mod box_default;
 mod cargo;
 mod casts;
@@ -612,6 +616,11 @@ pub fn register_lints(store: &mut rustc_lint::LintStore, conf: &'static Conf) {
             store.register_late_pass(|_| Box::new(utils::internal_lints::metadata_collector::MetadataCollector::new()));
             return;
         }
+    }
+
+    store.register_late_pass(move |_| Box::new(borrow_pats::BorrowPats::new(msrv())));
+    if !std::env::var("ENABLE_ALL_LINTS").eq(&Ok("1".to_string())) {
+        return;
     }
 
     let format_args_storage = FormatArgsStorage::default();

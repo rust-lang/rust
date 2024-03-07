@@ -1,0 +1,242 @@
+# Relations for "test_return"
+- Incompltete Stats: BodyStats {
+    return_relations_signature: 0,
+    return_relations_found: 0,
+    arg_relations_signature: 0,
+    arg_relations_found: 0,
+    arg_relation_possibly_missed_due_generics: 0,
+    arg_relation_possibly_missed_due_to_late_bounds: 0,
+    owned: OwnedStats {
+        arg_borrow_count: 0,
+        arg_borrow_mut_count: 0,
+        arg_borrow_extended_count: 0,
+        arg_borrow_mut_extended_count: 0,
+        named_borrow_count: 0,
+        named_borrow_mut_count: 0,
+        borrowed_for_closure_count: 0,
+        borrowed_mut_for_closure_count: 0,
+        two_phased_borrows: 0,
+    },
+}
+- Called function relations: {
+    bb0: {},
+    bb1: {
+        _7: [
+            _8,
+        ],
+    },
+    bb2: {
+        _10: [
+            _13,
+        ],
+    },
+    bb3: {
+        _15: [
+            _16,
+            _18,
+        ],
+    },
+    bb4: {
+        _20: [
+            _21,
+            _24,
+        ],
+    },
+    bb5: {
+        _27: [
+            _28,
+            _30,
+        ],
+    },
+    bb6: {
+        _32: [
+            _33,
+            _35,
+        ],
+    },
+    bb7: {
+        _37: [
+            _38,
+            _40,
+        ],
+    },
+    bb8: {
+        _42: [
+            _43,
+            _45,
+        ],
+    },
+    bb9: {
+        _47: [
+            _48,
+            _50,
+        ],
+    },
+}
+- Incompltete Body: Output(Unit)     , NotConst , Safe  , Sync , Free       {}
+
+Connection from _1 to _2 was not confirmed
+# Relations for "test_mut_args_1"
+- Incompltete Stats: BodyStats {
+    return_relations_signature: 0,
+    return_relations_found: 0,
+    arg_relations_signature: 1,
+    arg_relations_found: 1,
+    arg_relation_possibly_missed_due_generics: 0,
+    arg_relation_possibly_missed_due_to_late_bounds: 0,
+    owned: OwnedStats {
+        arg_borrow_count: 0,
+        arg_borrow_mut_count: 0,
+        arg_borrow_extended_count: 0,
+        arg_borrow_mut_extended_count: 0,
+        named_borrow_count: 0,
+        named_borrow_mut_count: 0,
+        borrowed_for_closure_count: 0,
+        borrowed_mut_for_closure_count: 0,
+        two_phased_borrows: 0,
+    },
+}
+- Called function relations: {
+    bb0: {},
+    bb1: {},
+    bb2: {},
+    bb3: {
+        _13: [
+            _14,
+        ],
+    },
+}
+- Incompltete Body: Output(Unit)     , NotConst , Safe  , Sync , Free       {}
+
+Connection from _1 to _2 was not confirmed
+# Relations for "test_mut_args_2"
+- Incompltete Stats: BodyStats {
+    return_relations_signature: 0,
+    return_relations_found: 0,
+    arg_relations_signature: 1,
+    arg_relations_found: 0,
+    arg_relation_possibly_missed_due_generics: 0,
+    arg_relation_possibly_missed_due_to_late_bounds: 0,
+    owned: OwnedStats {
+        arg_borrow_count: 0,
+        arg_borrow_mut_count: 0,
+        arg_borrow_extended_count: 0,
+        arg_borrow_mut_extended_count: 0,
+        named_borrow_count: 0,
+        named_borrow_mut_count: 0,
+        borrowed_for_closure_count: 0,
+        borrowed_mut_for_closure_count: 0,
+        two_phased_borrows: 0,
+    },
+}
+- Called function relations: {
+    bb0: {},
+}
+- Incompltete Body: Output(Unit)     , NotConst , Safe  , Sync , Free       {}
+
+# Relations for "test_mut_args_3"
+- Incompltete Stats: BodyStats {
+    return_relations_signature: 0,
+    return_relations_found: 0,
+    arg_relations_signature: 1,
+    arg_relations_found: 1,
+    arg_relation_possibly_missed_due_generics: 0,
+    arg_relation_possibly_missed_due_to_late_bounds: 0,
+    owned: OwnedStats {
+        arg_borrow_count: 0,
+        arg_borrow_mut_count: 0,
+        arg_borrow_extended_count: 0,
+        arg_borrow_mut_extended_count: 0,
+        named_borrow_count: 0,
+        named_borrow_mut_count: 0,
+        borrowed_for_closure_count: 0,
+        borrowed_mut_for_closure_count: 0,
+        two_phased_borrows: 0,
+    },
+}
+- Called function relations: {
+    bb0: {
+        _4: [
+            _5,
+        ],
+    },
+}
+- Incompltete Body: Output(Unit)     , NotConst , Safe  , Sync , Free       {}
+
+# Relations for "use_local_func"
+- Incompltete Stats: BodyStats {
+    return_relations_signature: 0,
+    return_relations_found: 0,
+    arg_relations_signature: 0,
+    arg_relations_found: 0,
+    arg_relation_possibly_missed_due_generics: 0,
+    arg_relation_possibly_missed_due_to_late_bounds: 0,
+    owned: OwnedStats {
+        arg_borrow_count: 0,
+        arg_borrow_mut_count: 0,
+        arg_borrow_extended_count: 0,
+        arg_borrow_mut_extended_count: 0,
+        named_borrow_count: 0,
+        named_borrow_mut_count: 0,
+        borrowed_for_closure_count: 0,
+        borrowed_mut_for_closure_count: 0,
+        two_phased_borrows: 0,
+    },
+}
+- Called function relations: {
+    bb0: {},
+    bb1: {},
+}
+- Incompltete Body: Output(Unit)     , NotConst , Safe  , Sync , Free       {NoArguments}
+
+# Relations for "use_arg_func"
+- Incompltete Stats: BodyStats {
+    return_relations_signature: 0,
+    return_relations_found: 0,
+    arg_relations_signature: 0,
+    arg_relations_found: 0,
+    arg_relation_possibly_missed_due_generics: 0,
+    arg_relation_possibly_missed_due_to_late_bounds: 1,
+    owned: OwnedStats {
+        arg_borrow_count: 0,
+        arg_borrow_mut_count: 0,
+        arg_borrow_extended_count: 0,
+        arg_borrow_mut_extended_count: 0,
+        named_borrow_count: 0,
+        named_borrow_mut_count: 0,
+        borrowed_for_closure_count: 0,
+        borrowed_mut_for_closure_count: 0,
+        two_phased_borrows: 0,
+    },
+}
+- Called function relations: {
+    bb0: {},
+    bb1: {},
+}
+- Incompltete Body: Output(Unit)     , NotConst , Safe  , Sync , Free       {}
+
+# Relations for "borrow_as_generic"
+- Incompltete Stats: BodyStats {
+    return_relations_signature: 0,
+    return_relations_found: 0,
+    arg_relations_signature: 0,
+    arg_relations_found: 0,
+    arg_relation_possibly_missed_due_generics: 1,
+    arg_relation_possibly_missed_due_to_late_bounds: 0,
+    owned: OwnedStats {
+        arg_borrow_count: 0,
+        arg_borrow_mut_count: 0,
+        arg_borrow_extended_count: 0,
+        arg_borrow_mut_extended_count: 0,
+        named_borrow_count: 0,
+        named_borrow_mut_count: 0,
+        borrowed_for_closure_count: 0,
+        borrowed_mut_for_closure_count: 0,
+        two_phased_borrows: 0,
+    },
+}
+- Called function relations: {
+    bb0: {},
+}
+- Incompltete Body: Output(Unit)     , NotConst , Safe  , Sync , Free       {}
+

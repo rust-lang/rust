@@ -98,8 +98,11 @@ fn run_clippy_for_package(project: &str, args: &[&str]) -> bool {
     command
         .current_dir(root_dir.join(project))
         .env("CARGO_INCREMENTAL", "0")
+        .env("ENABLE_ALL_LINTS", "1")
         .arg("clippy")
         .arg("--all-targets")
+        // .arg("--fix")
+        // .arg("--allow-dirty")
         .arg("--all-features");
 
     if let Ok(dogfood_args) = std::env::var("__CLIPPY_DOGFOOD_ARGS") {

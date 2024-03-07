@@ -1,0 +1,1488 @@
+# print_mir
+
+
+## MIR:
+bb0:
+    StorageLive(_1)
+    StorageLive(_2)
+    _2 = const true
+    switchInt(move _2) -> [0: bb5, otherwise: bb1]
+
+bb1:
+    StorageLive(_3)
+    _3 = std::vec::Vec::<i32>::new() -> [return: bb2, unwind: bb13]
+
+bb2:
+    FakeRead(ForLet(None), _3)
+    StorageLive(_4)
+    StorageLive(_5)
+    _5 = &mut _3
+    _4 = std::vec::Vec::<i32>::push(move _5, const 1_i32) -> [return: bb3, unwind: bb12]
+
+bb3:
+    StorageDead(_5)
+    StorageDead(_4)
+    _1 = move _3
+    drop(_3) -> [return: bb4, unwind: bb13]
+
+bb4:
+    StorageDead(_3)
+    goto -> bb9
+
+bb5:
+    StorageLive(_6)
+    _6 = std::vec::Vec::<i32>::new() -> [return: bb6, unwind: bb13]
+
+bb6:
+    FakeRead(ForLet(None), _6)
+    StorageLive(_7)
+    StorageLive(_8)
+    _8 = &mut _6
+    _7 = std::vec::Vec::<i32>::push(move _8, const 89_i32) -> [return: bb7, unwind: bb11]
+
+bb7:
+    StorageDead(_8)
+    StorageDead(_7)
+    _1 = move _6
+    drop(_6) -> [return: bb8, unwind: bb13]
+
+bb8:
+    StorageDead(_6)
+    goto -> bb9
+
+bb9:
+    StorageDead(_2)
+    FakeRead(ForLet(None), _1)
+    _0 = const ()
+    drop(_1) -> [return: bb10, unwind: bb13]
+
+bb10:
+    StorageDead(_1)
+    return
+
+bb11:
+    drop(_6) -> [return: bb13, unwind terminate(cleanup)]
+
+bb12:
+    drop(_3) -> [return: bb13, unwind terminate(cleanup)]
+
+bb13:
+    resume
+
+
+
+## Body:
+Body {
+    basic_blocks: BasicBlocks {
+        basic_blocks: [
+            BasicBlockData {
+                statements: [
+                    StorageLive(_1),
+                    StorageLive(_2),
+                    _2 = const true,
+                ],
+                terminator: Some(
+                    Terminator {
+                        source_info: SourceInfo {
+                            span: tests/ui/thesis/simple_main.rs:26:16: 26:20 (#0),
+                            scope: scope[0],
+                        },
+                        kind: switchInt(move _2) -> [0: bb5, otherwise: bb1],
+                    },
+                ),
+                is_cleanup: false,
+            },
+            BasicBlockData {
+                statements: [
+                    StorageLive(_3),
+                ],
+                terminator: Some(
+                    Terminator {
+                        source_info: SourceInfo {
+                            span: tests/ui/thesis/simple_main.rs:27:21: 27:31 (#0),
+                            scope: scope[0],
+                        },
+                        kind: _3 = std::vec::Vec::<i32>::new() -> [return: bb2, unwind: bb13],
+                    },
+                ),
+                is_cleanup: false,
+            },
+            BasicBlockData {
+                statements: [
+                    FakeRead(ForLet(None), _3),
+                    StorageLive(_4),
+                    StorageLive(_5),
+                    _5 = &mut _3,
+                ],
+                terminator: Some(
+                    Terminator {
+                        source_info: SourceInfo {
+                            span: tests/ui/thesis/simple_main.rs:28:9: 28:18 (#0),
+                            scope: scope[2],
+                        },
+                        kind: _4 = std::vec::Vec::<i32>::push(move _5, const 1_i32) -> [return: bb3, unwind: bb12],
+                    },
+                ),
+                is_cleanup: false,
+            },
+            BasicBlockData {
+                statements: [
+                    StorageDead(_5),
+                    StorageDead(_4),
+                    _1 = move _3,
+                ],
+                terminator: Some(
+                    Terminator {
+                        source_info: SourceInfo {
+                            span: tests/ui/thesis/simple_main.rs:30:5: 30:6 (#0),
+                            scope: scope[0],
+                        },
+                        kind: drop(_3) -> [return: bb4, unwind: bb13],
+                    },
+                ),
+                is_cleanup: false,
+            },
+            BasicBlockData {
+                statements: [
+                    StorageDead(_3),
+                ],
+                terminator: Some(
+                    Terminator {
+                        source_info: SourceInfo {
+                            span: tests/ui/thesis/simple_main.rs:26:13: 34:6 (#0),
+                            scope: scope[0],
+                        },
+                        kind: goto -> bb9,
+                    },
+                ),
+                is_cleanup: false,
+            },
+            BasicBlockData {
+                statements: [
+                    StorageLive(_6),
+                ],
+                terminator: Some(
+                    Terminator {
+                        source_info: SourceInfo {
+                            span: tests/ui/thesis/simple_main.rs:31:21: 31:31 (#0),
+                            scope: scope[0],
+                        },
+                        kind: _6 = std::vec::Vec::<i32>::new() -> [return: bb6, unwind: bb13],
+                    },
+                ),
+                is_cleanup: false,
+            },
+            BasicBlockData {
+                statements: [
+                    FakeRead(ForLet(None), _6),
+                    StorageLive(_7),
+                    StorageLive(_8),
+                    _8 = &mut _6,
+                ],
+                terminator: Some(
+                    Terminator {
+                        source_info: SourceInfo {
+                            span: tests/ui/thesis/simple_main.rs:32:9: 32:19 (#0),
+                            scope: scope[3],
+                        },
+                        kind: _7 = std::vec::Vec::<i32>::push(move _8, const 89_i32) -> [return: bb7, unwind: bb11],
+                    },
+                ),
+                is_cleanup: false,
+            },
+            BasicBlockData {
+                statements: [
+                    StorageDead(_8),
+                    StorageDead(_7),
+                    _1 = move _6,
+                ],
+                terminator: Some(
+                    Terminator {
+                        source_info: SourceInfo {
+                            span: tests/ui/thesis/simple_main.rs:34:5: 34:6 (#0),
+                            scope: scope[0],
+                        },
+                        kind: drop(_6) -> [return: bb8, unwind: bb13],
+                    },
+                ),
+                is_cleanup: false,
+            },
+            BasicBlockData {
+                statements: [
+                    StorageDead(_6),
+                ],
+                terminator: Some(
+                    Terminator {
+                        source_info: SourceInfo {
+                            span: tests/ui/thesis/simple_main.rs:26:13: 34:6 (#0),
+                            scope: scope[0],
+                        },
+                        kind: goto -> bb9,
+                    },
+                ),
+                is_cleanup: false,
+            },
+            BasicBlockData {
+                statements: [
+                    StorageDead(_2),
+                    FakeRead(ForLet(None), _1),
+                    _0 = const (),
+                ],
+                terminator: Some(
+                    Terminator {
+                        source_info: SourceInfo {
+                            span: tests/ui/thesis/simple_main.rs:35:1: 35:2 (#0),
+                            scope: scope[0],
+                        },
+                        kind: drop(_1) -> [return: bb10, unwind: bb13],
+                    },
+                ),
+                is_cleanup: false,
+            },
+            BasicBlockData {
+                statements: [
+                    StorageDead(_1),
+                ],
+                terminator: Some(
+                    Terminator {
+                        source_info: SourceInfo {
+                            span: tests/ui/thesis/simple_main.rs:35:2: 35:2 (#0),
+                            scope: scope[0],
+                        },
+                        kind: return,
+                    },
+                ),
+                is_cleanup: false,
+            },
+            BasicBlockData {
+                statements: [],
+                terminator: Some(
+                    Terminator {
+                        source_info: SourceInfo {
+                            span: tests/ui/thesis/simple_main.rs:34:5: 34:6 (#0),
+                            scope: scope[0],
+                        },
+                        kind: drop(_6) -> [return: bb13, unwind terminate(cleanup)],
+                    },
+                ),
+                is_cleanup: true,
+            },
+            BasicBlockData {
+                statements: [],
+                terminator: Some(
+                    Terminator {
+                        source_info: SourceInfo {
+                            span: tests/ui/thesis/simple_main.rs:30:5: 30:6 (#0),
+                            scope: scope[0],
+                        },
+                        kind: drop(_3) -> [return: bb13, unwind terminate(cleanup)],
+                    },
+                ),
+                is_cleanup: true,
+            },
+            BasicBlockData {
+                statements: [],
+                terminator: Some(
+                    Terminator {
+                        source_info: SourceInfo {
+                            span: tests/ui/thesis/simple_main.rs:25:1: 35:2 (#0),
+                            scope: scope[0],
+                        },
+                        kind: resume,
+                    },
+                ),
+                is_cleanup: true,
+            },
+        ],
+        cache: Cache {
+            predecessors: OnceLock(
+                <uninit>,
+            ),
+            switch_sources: OnceLock(
+                <uninit>,
+            ),
+            is_cyclic: OnceLock(
+                <uninit>,
+            ),
+            reverse_postorder: OnceLock(
+                <uninit>,
+            ),
+            dominators: OnceLock(
+                <uninit>,
+            ),
+        },
+    },
+    phase: Analysis(
+        Initial,
+    ),
+    pass_count: 1,
+    source: MirSource {
+        instance: Item(
+            DefId(0:12 ~ simple_main[0912]::print_mir),
+        ),
+        promoted: None,
+    },
+    source_scopes: [
+        SourceScopeData {
+            span: tests/ui/thesis/simple_main.rs:25:1: 35:2 (#0),
+            parent_scope: None,
+            inlined: None,
+            inlined_parent_scope: None,
+            local_data: Set(
+                SourceScopeLocalData {
+                    lint_root: HirId(DefId(0:12 ~ simple_main[0912]::print_mir).0),
+                    safety: Safe,
+                },
+            ),
+        },
+        SourceScopeData {
+            span: tests/ui/thesis/simple_main.rs:26:5: 35:2 (#0),
+            parent_scope: Some(
+                scope[0],
+            ),
+            inlined: None,
+            inlined_parent_scope: None,
+            local_data: Set(
+                SourceScopeLocalData {
+                    lint_root: HirId(DefId(0:12 ~ simple_main[0912]::print_mir).0),
+                    safety: Safe,
+                },
+            ),
+        },
+        SourceScopeData {
+            span: tests/ui/thesis/simple_main.rs:27:9: 30:6 (#0),
+            parent_scope: Some(
+                scope[0],
+            ),
+            inlined: None,
+            inlined_parent_scope: None,
+            local_data: Set(
+                SourceScopeLocalData {
+                    lint_root: HirId(DefId(0:12 ~ simple_main[0912]::print_mir).0),
+                    safety: Safe,
+                },
+            ),
+        },
+        SourceScopeData {
+            span: tests/ui/thesis/simple_main.rs:31:9: 34:6 (#0),
+            parent_scope: Some(
+                scope[0],
+            ),
+            inlined: None,
+            inlined_parent_scope: None,
+            local_data: Set(
+                SourceScopeLocalData {
+                    lint_root: HirId(DefId(0:12 ~ simple_main[0912]::print_mir).0),
+                    safety: Safe,
+                },
+            ),
+        },
+    ],
+    coroutine: None,
+    local_decls: [
+        LocalDecl {
+            mutability: Mut,
+            local_info: Set(
+                Boring,
+            ),
+            ty: (),
+            user_ty: None,
+            source_info: SourceInfo {
+                span: tests/ui/thesis/simple_main.rs:25:15: 25:15 (#0),
+                scope: scope[0],
+            },
+        },
+        LocalDecl {
+            mutability: Not,
+            local_info: Set(
+                User(
+                    Var(
+                        VarBindingForm {
+                            binding_mode: BindByValue(
+                                Not,
+                            ),
+                            opt_ty_info: None,
+                            opt_match_place: Some(
+                                (
+                                    None,
+                                    tests/ui/thesis/simple_main.rs:26:13: 34:6 (#0),
+                                ),
+                            ),
+                            pat_span: tests/ui/thesis/simple_main.rs:26:9: 26:10 (#0),
+                        },
+                    ),
+                ),
+            ),
+            ty: std::vec::Vec<i32, std::alloc::Global>,
+            user_ty: None,
+            source_info: SourceInfo {
+                span: tests/ui/thesis/simple_main.rs:26:9: 26:10 (#0),
+                scope: scope[0],
+            },
+        },
+        LocalDecl {
+            mutability: Mut,
+            local_info: Set(
+                Boring,
+            ),
+            ty: bool,
+            user_ty: None,
+            source_info: SourceInfo {
+                span: tests/ui/thesis/simple_main.rs:26:16: 26:20 (#0),
+                scope: scope[0],
+            },
+        },
+        LocalDecl {
+            mutability: Mut,
+            local_info: Set(
+                User(
+                    Var(
+                        VarBindingForm {
+                            binding_mode: BindByValue(
+                                Mut,
+                            ),
+                            opt_ty_info: None,
+                            opt_match_place: Some(
+                                (
+                                    None,
+                                    tests/ui/thesis/simple_main.rs:27:21: 27:31 (#0),
+                                ),
+                            ),
+                            pat_span: tests/ui/thesis/simple_main.rs:27:13: 27:18 (#0),
+                        },
+                    ),
+                ),
+            ),
+            ty: std::vec::Vec<i32, std::alloc::Global>,
+            user_ty: None,
+            source_info: SourceInfo {
+                span: tests/ui/thesis/simple_main.rs:27:13: 27:18 (#0),
+                scope: scope[0],
+            },
+        },
+        LocalDecl {
+            mutability: Not,
+            local_info: Set(
+                Boring,
+            ),
+            ty: (),
+            user_ty: None,
+            source_info: SourceInfo {
+                span: tests/ui/thesis/simple_main.rs:28:9: 28:18 (#0),
+                scope: scope[0],
+            },
+        },
+        LocalDecl {
+            mutability: Mut,
+            local_info: Set(
+                Boring,
+            ),
+            ty: &ReErased mut std::vec::Vec<i32, std::alloc::Global>,
+            user_ty: None,
+            source_info: SourceInfo {
+                span: tests/ui/thesis/simple_main.rs:28:9: 28:10 (#0),
+                scope: scope[0],
+            },
+        },
+        LocalDecl {
+            mutability: Mut,
+            local_info: Set(
+                User(
+                    Var(
+                        VarBindingForm {
+                            binding_mode: BindByValue(
+                                Mut,
+                            ),
+                            opt_ty_info: None,
+                            opt_match_place: Some(
+                                (
+                                    None,
+                                    tests/ui/thesis/simple_main.rs:31:21: 31:31 (#0),
+                                ),
+                            ),
+                            pat_span: tests/ui/thesis/simple_main.rs:31:13: 31:18 (#0),
+                        },
+                    ),
+                ),
+            ),
+            ty: std::vec::Vec<i32, std::alloc::Global>,
+            user_ty: None,
+            source_info: SourceInfo {
+                span: tests/ui/thesis/simple_main.rs:31:13: 31:18 (#0),
+                scope: scope[0],
+            },
+        },
+        LocalDecl {
+            mutability: Not,
+            local_info: Set(
+                Boring,
+            ),
+            ty: (),
+            user_ty: None,
+            source_info: SourceInfo {
+                span: tests/ui/thesis/simple_main.rs:32:9: 32:19 (#0),
+                scope: scope[0],
+            },
+        },
+        LocalDecl {
+            mutability: Mut,
+            local_info: Set(
+                Boring,
+            ),
+            ty: &ReErased mut std::vec::Vec<i32, std::alloc::Global>,
+            user_ty: None,
+            source_info: SourceInfo {
+                span: tests/ui/thesis/simple_main.rs:32:9: 32:10 (#0),
+                scope: scope[0],
+            },
+        },
+    ],
+    user_type_annotations: [
+        CanonicalUserTypeAnnotation {
+            user_ty: Canonical {
+                value: TypeOf(
+                    DefId(5:7062 ~ alloc[6fc5]::vec::{impl#0}::new),
+                    UserArgs {
+                        args: [
+                            ^0,
+                        ],
+                        user_self_ty: Some(
+                            UserSelfTy {
+                                impl_def_id: DefId(5:7060 ~ alloc[6fc5]::vec::{impl#0}),
+                                self_ty: std::vec::Vec<^1, ^2>,
+                            },
+                        ),
+                    },
+                ),
+                max_universe: U0,
+                variables: [
+                    CanonicalVarInfo {
+                        kind: Ty(
+                            General(
+                                U0,
+                            ),
+                        ),
+                    },
+                    CanonicalVarInfo {
+                        kind: Ty(
+                            General(
+                                U0,
+                            ),
+                        ),
+                    },
+                    CanonicalVarInfo {
+                        kind: Ty(
+                            General(
+                                U0,
+                            ),
+                        ),
+                    },
+                ],
+            },
+            span: tests/ui/thesis/simple_main.rs:27:21: 27:29 (#0),
+            inferred_ty: FnDef(
+                DefId(5:7062 ~ alloc[6fc5]::vec::{impl#0}::new),
+                [
+                i32,
+                ],
+            ),
+        },
+        CanonicalUserTypeAnnotation {
+            user_ty: Canonical {
+                value: TypeOf(
+                    DefId(5:7062 ~ alloc[6fc5]::vec::{impl#0}::new),
+                    UserArgs {
+                        args: [
+                            ^0,
+                        ],
+                        user_self_ty: Some(
+                            UserSelfTy {
+                                impl_def_id: DefId(5:7060 ~ alloc[6fc5]::vec::{impl#0}),
+                                self_ty: std::vec::Vec<^1, ^2>,
+                            },
+                        ),
+                    },
+                ),
+                max_universe: U0,
+                variables: [
+                    CanonicalVarInfo {
+                        kind: Ty(
+                            General(
+                                U0,
+                            ),
+                        ),
+                    },
+                    CanonicalVarInfo {
+                        kind: Ty(
+                            General(
+                                U0,
+                            ),
+                        ),
+                    },
+                    CanonicalVarInfo {
+                        kind: Ty(
+                            General(
+                                U0,
+                            ),
+                        ),
+                    },
+                ],
+            },
+            span: tests/ui/thesis/simple_main.rs:31:21: 31:29 (#0),
+            inferred_ty: FnDef(
+                DefId(5:7062 ~ alloc[6fc5]::vec::{impl#0}::new),
+                [
+                i32,
+                ],
+            ),
+        },
+    ],
+    arg_count: 0,
+    spread_arg: None,
+    var_debug_info: [
+        a => _1,
+        x => _3,
+        y => _6,
+    ],
+    span: tests/ui/thesis/simple_main.rs:25:1: 35:2 (#0),
+    required_consts: [],
+    is_polymorphic: false,
+    injection_phase: None,
+    tainted_by_errors: None,
+    function_coverage_info: None,
+}
+# simple_ownership
+
+
+## MIR:
+bb0:
+    StorageLive(_2)
+    StorageLive(_3)
+    StorageLive(_4)
+    _4 = &_1
+    _3 = std::vec::Vec::<i32>::is_empty(move _4) -> [return: bb1, unwind: bb10]
+
+bb1:
+    switchInt(move _3) -> [0: bb3, otherwise: bb2]
+
+bb2:
+    StorageDead(_4)
+    StorageLive(_5)
+    _5 = const 17_i32
+    FakeRead(ForLet(None), _5)
+    _2 = const ()
+    StorageDead(_5)
+    goto -> bb4
+
+bb3:
+    StorageDead(_4)
+    _2 = const ()
+    goto -> bb4
+
+bb4:
+    StorageDead(_3)
+    StorageDead(_2)
+    StorageLive(_6)
+    StorageLive(_7)
+    _7 = &_1
+    _6 = std::vec::Vec::<i32>::is_empty(move _7) -> [return: bb5, unwind: bb10]
+
+bb5:
+    switchInt(move _6) -> [0: bb7, otherwise: bb6]
+
+bb6:
+    StorageDead(_7)
+    StorageLive(_8)
+    _8 = const 89_i32
+    FakeRead(ForLet(None), _8)
+    _0 = const ()
+    StorageDead(_8)
+    goto -> bb8
+
+bb7:
+    StorageDead(_7)
+    _0 = const ()
+    goto -> bb8
+
+bb8:
+    StorageDead(_6)
+    drop(_1) -> [return: bb9, unwind: bb11]
+
+bb9:
+    return
+
+bb10:
+    drop(_1) -> [return: bb11, unwind terminate(cleanup)]
+
+bb11:
+    resume
+
+
+
+## Run:
+
+
+## Analysis:
+BorrowAnalysis {
+    body: Body {
+        basic_blocks: BasicBlocks {
+            basic_blocks: [
+                BasicBlockData {
+                    statements: [
+                        StorageLive(_2),
+                        StorageLive(_3),
+                        StorageLive(_4),
+                        _4 = &_1,
+                    ],
+                    terminator: Some(
+                        Terminator {
+                            source_info: SourceInfo {
+                                span: tests/ui/thesis/simple_main.rs:38:8: 38:24 (#0),
+                                scope: scope[0],
+                            },
+                            kind: _3 = std::vec::Vec::<i32>::is_empty(move _4) -> [return: bb1, unwind: bb10],
+                        },
+                    ),
+                    is_cleanup: false,
+                },
+                BasicBlockData {
+                    statements: [],
+                    terminator: Some(
+                        Terminator {
+                            source_info: SourceInfo {
+                                span: tests/ui/thesis/simple_main.rs:38:8: 38:24 (#0),
+                                scope: scope[0],
+                            },
+                            kind: switchInt(move _3) -> [0: bb3, otherwise: bb2],
+                        },
+                    ),
+                    is_cleanup: false,
+                },
+                BasicBlockData {
+                    statements: [
+                        StorageDead(_4),
+                        StorageLive(_5),
+                        _5 = const 17_i32,
+                        FakeRead(ForLet(None), _5),
+                        _2 = const (),
+                        StorageDead(_5),
+                    ],
+                    terminator: Some(
+                        Terminator {
+                            source_info: SourceInfo {
+                                span: tests/ui/thesis/simple_main.rs:38:5: 40:6 (#0),
+                                scope: scope[0],
+                            },
+                            kind: goto -> bb4,
+                        },
+                    ),
+                    is_cleanup: false,
+                },
+                BasicBlockData {
+                    statements: [
+                        StorageDead(_4),
+                        _2 = const (),
+                    ],
+                    terminator: Some(
+                        Terminator {
+                            source_info: SourceInfo {
+                                span: tests/ui/thesis/simple_main.rs:38:5: 40:6 (#0),
+                                scope: scope[0],
+                            },
+                            kind: goto -> bb4,
+                        },
+                    ),
+                    is_cleanup: false,
+                },
+                BasicBlockData {
+                    statements: [
+                        StorageDead(_3),
+                        StorageDead(_2),
+                        StorageLive(_6),
+                        StorageLive(_7),
+                        _7 = &_1,
+                    ],
+                    terminator: Some(
+                        Terminator {
+                            source_info: SourceInfo {
+                                span: tests/ui/thesis/simple_main.rs:42:8: 42:24 (#0),
+                                scope: scope[0],
+                            },
+                            kind: _6 = std::vec::Vec::<i32>::is_empty(move _7) -> [return: bb5, unwind: bb10],
+                        },
+                    ),
+                    is_cleanup: false,
+                },
+                BasicBlockData {
+                    statements: [],
+                    terminator: Some(
+                        Terminator {
+                            source_info: SourceInfo {
+                                span: tests/ui/thesis/simple_main.rs:42:8: 42:24 (#0),
+                                scope: scope[0],
+                            },
+                            kind: switchInt(move _6) -> [0: bb7, otherwise: bb6],
+                        },
+                    ),
+                    is_cleanup: false,
+                },
+                BasicBlockData {
+                    statements: [
+                        StorageDead(_7),
+                        StorageLive(_8),
+                        _8 = const 89_i32,
+                        FakeRead(ForLet(None), _8),
+                        _0 = const (),
+                        StorageDead(_8),
+                    ],
+                    terminator: Some(
+                        Terminator {
+                            source_info: SourceInfo {
+                                span: tests/ui/thesis/simple_main.rs:42:5: 44:6 (#0),
+                                scope: scope[0],
+                            },
+                            kind: goto -> bb8,
+                        },
+                    ),
+                    is_cleanup: false,
+                },
+                BasicBlockData {
+                    statements: [
+                        StorageDead(_7),
+                        _0 = const (),
+                    ],
+                    terminator: Some(
+                        Terminator {
+                            source_info: SourceInfo {
+                                span: tests/ui/thesis/simple_main.rs:42:5: 44:6 (#0),
+                                scope: scope[0],
+                            },
+                            kind: goto -> bb8,
+                        },
+                    ),
+                    is_cleanup: false,
+                },
+                BasicBlockData {
+                    statements: [
+                        StorageDead(_6),
+                    ],
+                    terminator: Some(
+                        Terminator {
+                            source_info: SourceInfo {
+                                span: tests/ui/thesis/simple_main.rs:45:1: 45:2 (#0),
+                                scope: scope[0],
+                            },
+                            kind: drop(_1) -> [return: bb9, unwind: bb11],
+                        },
+                    ),
+                    is_cleanup: false,
+                },
+                BasicBlockData {
+                    statements: [],
+                    terminator: Some(
+                        Terminator {
+                            source_info: SourceInfo {
+                                span: tests/ui/thesis/simple_main.rs:45:2: 45:2 (#0),
+                                scope: scope[0],
+                            },
+                            kind: return,
+                        },
+                    ),
+                    is_cleanup: false,
+                },
+                BasicBlockData {
+                    statements: [],
+                    terminator: Some(
+                        Terminator {
+                            source_info: SourceInfo {
+                                span: tests/ui/thesis/simple_main.rs:45:1: 45:2 (#0),
+                                scope: scope[0],
+                            },
+                            kind: drop(_1) -> [return: bb11, unwind terminate(cleanup)],
+                        },
+                    ),
+                    is_cleanup: true,
+                },
+                BasicBlockData {
+                    statements: [],
+                    terminator: Some(
+                        Terminator {
+                            source_info: SourceInfo {
+                                span: tests/ui/thesis/simple_main.rs:37:1: 45:2 (#0),
+                                scope: scope[0],
+                            },
+                            kind: resume,
+                        },
+                    ),
+                    is_cleanup: true,
+                },
+            ],
+            cache: Cache {
+                predecessors: OnceLock(
+                    <uninit>,
+                ),
+                switch_sources: OnceLock(
+                    <uninit>,
+                ),
+                is_cyclic: OnceLock(
+                    <uninit>,
+                ),
+                reverse_postorder: OnceLock(
+                    <uninit>,
+                ),
+                dominators: OnceLock(
+                    <uninit>,
+                ),
+            },
+        },
+        phase: Analysis(
+            Initial,
+        ),
+        pass_count: 1,
+        source: MirSource {
+            instance: Item(
+                DefId(0:13 ~ simple_main[0912]::simple_ownership),
+            ),
+            promoted: None,
+        },
+        source_scopes: [
+            SourceScopeData {
+                span: tests/ui/thesis/simple_main.rs:37:1: 45:2 (#0),
+                parent_scope: None,
+                inlined: None,
+                inlined_parent_scope: None,
+                local_data: Set(
+                    SourceScopeLocalData {
+                        lint_root: HirId(DefId(0:13 ~ simple_main[0912]::simple_ownership).0),
+                        safety: Safe,
+                    },
+                ),
+            },
+            SourceScopeData {
+                span: tests/ui/thesis/simple_main.rs:39:9: 40:6 (#0),
+                parent_scope: Some(
+                    scope[0],
+                ),
+                inlined: None,
+                inlined_parent_scope: None,
+                local_data: Set(
+                    SourceScopeLocalData {
+                        lint_root: HirId(DefId(0:13 ~ simple_main[0912]::simple_ownership).0),
+                        safety: Safe,
+                    },
+                ),
+            },
+            SourceScopeData {
+                span: tests/ui/thesis/simple_main.rs:43:9: 44:6 (#0),
+                parent_scope: Some(
+                    scope[0],
+                ),
+                inlined: None,
+                inlined_parent_scope: None,
+                local_data: Set(
+                    SourceScopeLocalData {
+                        lint_root: HirId(DefId(0:13 ~ simple_main[0912]::simple_ownership).0),
+                        safety: Safe,
+                    },
+                ),
+            },
+        ],
+        coroutine: None,
+        local_decls: [
+            LocalDecl {
+                mutability: Mut,
+                local_info: Set(
+                    Boring,
+                ),
+                ty: (),
+                user_ty: None,
+                source_info: SourceInfo {
+                    span: tests/ui/thesis/simple_main.rs:37:41: 37:41 (#0),
+                    scope: scope[0],
+                },
+            },
+            LocalDecl {
+                mutability: Mut,
+                local_info: Set(
+                    User(
+                        Var(
+                            VarBindingForm {
+                                binding_mode: BindByValue(
+                                    Mut,
+                                ),
+                                opt_ty_info: Some(
+                                    tests/ui/thesis/simple_main.rs:37:32: 37:40 (#0),
+                                ),
+                                opt_match_place: Some(
+                                    (
+                                        None,
+                                        tests/ui/thesis/simple_main.rs:37:21: 37:30 (#0),
+                                    ),
+                                ),
+                                pat_span: tests/ui/thesis/simple_main.rs:37:21: 37:30 (#0),
+                            },
+                        ),
+                    ),
+                ),
+                ty: std::vec::Vec<i32, std::alloc::Global>,
+                user_ty: None,
+                source_info: SourceInfo {
+                    span: tests/ui/thesis/simple_main.rs:37:21: 37:30 (#0),
+                    scope: scope[0],
+                },
+            },
+            LocalDecl {
+                mutability: Not,
+                local_info: Set(
+                    Boring,
+                ),
+                ty: (),
+                user_ty: None,
+                source_info: SourceInfo {
+                    span: tests/ui/thesis/simple_main.rs:38:5: 40:6 (#0),
+                    scope: scope[0],
+                },
+            },
+            LocalDecl {
+                mutability: Mut,
+                local_info: Set(
+                    Boring,
+                ),
+                ty: bool,
+                user_ty: None,
+                source_info: SourceInfo {
+                    span: tests/ui/thesis/simple_main.rs:38:8: 38:24 (#0),
+                    scope: scope[0],
+                },
+            },
+            LocalDecl {
+                mutability: Mut,
+                local_info: Set(
+                    Boring,
+                ),
+                ty: &ReErased std::vec::Vec<i32, std::alloc::Global>,
+                user_ty: None,
+                source_info: SourceInfo {
+                    span: tests/ui/thesis/simple_main.rs:38:8: 38:13 (#0),
+                    scope: scope[0],
+                },
+            },
+            LocalDecl {
+                mutability: Not,
+                local_info: Set(
+                    User(
+                        Var(
+                            VarBindingForm {
+                                binding_mode: BindByValue(
+                                    Not,
+                                ),
+                                opt_ty_info: None,
+                                opt_match_place: Some(
+                                    (
+                                        None,
+                                        tests/ui/thesis/simple_main.rs:39:18: 39:20 (#0),
+                                    ),
+                                ),
+                                pat_span: tests/ui/thesis/simple_main.rs:39:13: 39:15 (#0),
+                            },
+                        ),
+                    ),
+                ),
+                ty: i32,
+                user_ty: None,
+                source_info: SourceInfo {
+                    span: tests/ui/thesis/simple_main.rs:39:13: 39:15 (#0),
+                    scope: scope[0],
+                },
+            },
+            LocalDecl {
+                mutability: Mut,
+                local_info: Set(
+                    BlockTailTemp(
+                        BlockTailInfo {
+                            tail_result_is_ignored: true,
+                            span: tests/ui/thesis/simple_main.rs:42:5: 44:6 (#0),
+                        },
+                    ),
+                ),
+                ty: bool,
+                user_ty: None,
+                source_info: SourceInfo {
+                    span: tests/ui/thesis/simple_main.rs:42:8: 42:24 (#0),
+                    scope: scope[0],
+                },
+            },
+            LocalDecl {
+                mutability: Mut,
+                local_info: Set(
+                    BlockTailTemp(
+                        BlockTailInfo {
+                            tail_result_is_ignored: true,
+                            span: tests/ui/thesis/simple_main.rs:42:5: 44:6 (#0),
+                        },
+                    ),
+                ),
+                ty: &ReErased std::vec::Vec<i32, std::alloc::Global>,
+                user_ty: None,
+                source_info: SourceInfo {
+                    span: tests/ui/thesis/simple_main.rs:42:8: 42:13 (#0),
+                    scope: scope[0],
+                },
+            },
+            LocalDecl {
+                mutability: Not,
+                local_info: Set(
+                    User(
+                        Var(
+                            VarBindingForm {
+                                binding_mode: BindByValue(
+                                    Not,
+                                ),
+                                opt_ty_info: None,
+                                opt_match_place: Some(
+                                    (
+                                        None,
+                                        tests/ui/thesis/simple_main.rs:43:18: 43:20 (#0),
+                                    ),
+                                ),
+                                pat_span: tests/ui/thesis/simple_main.rs:43:13: 43:15 (#0),
+                            },
+                        ),
+                    ),
+                ),
+                ty: i32,
+                user_ty: None,
+                source_info: SourceInfo {
+                    span: tests/ui/thesis/simple_main.rs:43:13: 43:15 (#0),
+                    scope: scope[0],
+                },
+            },
+        ],
+        user_type_annotations: [],
+        arg_count: 1,
+        spread_arg: None,
+        var_debug_info: [
+            owned => _1,
+            _a => _5,
+            _b => _8,
+        ],
+        span: tests/ui/thesis/simple_main.rs:37:1: 45:2 (#0),
+        required_consts: [],
+        is_polymorphic: false,
+        injection_phase: None,
+        tainted_by_errors: None,
+        function_coverage_info: None,
+    },
+    current_bb: bb9,
+    edges: {
+        bb0: [
+            bb1,
+            bb10,
+        ],
+        bb7: [
+            bb8,
+        ],
+        bb4: [
+            bb5,
+            bb10,
+        ],
+        bb1: [
+            bb3,
+            bb2,
+        ],
+        bb8: [
+            bb9,
+            bb11,
+        ],
+        bb5: [
+            bb7,
+            bb6,
+        ],
+        bb2: [
+            bb4,
+        ],
+        bb9: [],
+        bb6: [
+            bb8,
+        ],
+        bb3: [
+            bb4,
+        ],
+    },
+    autos: [
+        Automata {
+            local: _0,
+            local_kind: Return,
+            body: PrintPrevent,
+            state: Todo,
+            events: [
+                Event {
+                    bb: bb6,
+                    local: _0,
+                    kind: Assign(
+                        Const,
+                    ),
+                },
+                Event {
+                    bb: bb7,
+                    local: _0,
+                    kind: Assign(
+                        Const,
+                    ),
+                },
+            ],
+            best_pet: Unknown,
+        },
+        Automata {
+            local: _1,
+            local_kind: UserArg(
+                "owned",
+            ),
+            body: PrintPrevent,
+            state: Owned(
+                Dropped,
+            ),
+            events: [
+                Event {
+                    bb: bb0,
+                    local: _1,
+                    kind: BorrowInto(
+                        Not,
+                        _4,
+                        AnonVar,
+                    ),
+                },
+                Event {
+                    bb: bb4,
+                    local: _1,
+                    kind: BorrowInto(
+                        Not,
+                        _7,
+                        AnonVar,
+                    ),
+                },
+                Event {
+                    bb: bb8,
+                    local: _1,
+                    kind: Owned(
+                        AutoDrop {
+                            replace: false,
+                        },
+                    ),
+                },
+            ],
+            best_pet: TempBorrowed,
+        },
+        Automata {
+            local: _2,
+            local_kind: AnonVar,
+            body: PrintPrevent,
+            state: Owned(
+                Filled(
+                    Conditional(
+                        [
+                            bb2,
+                            bb3,
+                        ],
+                    ),
+                ),
+            ),
+            events: [
+                Event {
+                    bb: bb2,
+                    local: _2,
+                    kind: Assign(
+                        Const,
+                    ),
+                },
+                Event {
+                    bb: bb3,
+                    local: _2,
+                    kind: Assign(
+                        Const,
+                    ),
+                },
+            ],
+            best_pet: Unknown,
+        },
+        Automata {
+            local: _3,
+            local_kind: AnonVar,
+            body: PrintPrevent,
+            state: Owned(
+                Moved,
+            ),
+            events: [
+                Event {
+                    bb: bb0,
+                    local: _3,
+                    kind: Assign(
+                        FnRes(
+                            [
+                                Spanned {
+                                    node: move _4,
+                                    span: tests/ui/thesis/simple_main.rs:38:8: 38:13 (#0),
+                                },
+                            ],
+                        ),
+                    ),
+                },
+                Event {
+                    bb: bb1,
+                    local: _3,
+                    kind: Move(
+                        Switch,
+                    ),
+                },
+            ],
+            best_pet: Unknown,
+        },
+        Automata {
+            local: _4,
+            local_kind: AnonVar,
+            body: PrintPrevent,
+            state: AnonRef(
+                Dead,
+            ),
+            events: [
+                Event {
+                    bb: bb0,
+                    local: _4,
+                    kind: BorrowFrom(
+                        Not,
+                        _1,
+                    ),
+                },
+                Event {
+                    bb: bb0,
+                    local: _4,
+                    kind: Move(
+                        FnArg,
+                    ),
+                },
+            ],
+            best_pet: Unknown,
+        },
+        Automata {
+            local: _5,
+            local_kind: UserVar(
+                "_a",
+            ),
+            body: PrintPrevent,
+            state: Owned(
+                Filled(
+                    Single(
+                        bb2,
+                    ),
+                ),
+            ),
+            events: [
+                Event {
+                    bb: bb2,
+                    local: _5,
+                    kind: Assign(
+                        Const,
+                    ),
+                },
+            ],
+            best_pet: Unknown,
+        },
+        Automata {
+            local: _6,
+            local_kind: AnonVar,
+            body: PrintPrevent,
+            state: Owned(
+                Moved,
+            ),
+            events: [
+                Event {
+                    bb: bb4,
+                    local: _6,
+                    kind: Assign(
+                        FnRes(
+                            [
+                                Spanned {
+                                    node: move _7,
+                                    span: tests/ui/thesis/simple_main.rs:42:8: 42:13 (#0),
+                                },
+                            ],
+                        ),
+                    ),
+                },
+                Event {
+                    bb: bb5,
+                    local: _6,
+                    kind: Move(
+                        Switch,
+                    ),
+                },
+            ],
+            best_pet: Unknown,
+        },
+        Automata {
+            local: _7,
+            local_kind: AnonVar,
+            body: PrintPrevent,
+            state: AnonRef(
+                Dead,
+            ),
+            events: [
+                Event {
+                    bb: bb4,
+                    local: _7,
+                    kind: BorrowFrom(
+                        Not,
+                        _1,
+                    ),
+                },
+                Event {
+                    bb: bb4,
+                    local: _7,
+                    kind: Move(
+                        FnArg,
+                    ),
+                },
+            ],
+            best_pet: Unknown,
+        },
+        Automata {
+            local: _8,
+            local_kind: UserVar(
+                "_b",
+            ),
+            body: PrintPrevent,
+            state: Owned(
+                Filled(
+                    Single(
+                        bb6,
+                    ),
+                ),
+            ),
+            events: [
+                Event {
+                    bb: bb6,
+                    local: _8,
+                    kind: Assign(
+                        Const,
+                    ),
+                },
+            ],
+            best_pet: Unknown,
+        },
+    ],
+    ret_ctn: 1,
+}
+
+
+## Results:
+| Name | Kind                 | Pattern              | Final State |
+|---|---|---|---|
+|  _0 | Return               | Unknown              | [Todo] |
+|  _1 | UserArg("owned")     | TempBorrowed         | [Owned(Dropped)] |
+|  _2 | AnonVar              | Unknown              | [Owned(Filled(Conditional([bb2, bb3])))] |
+|  _3 | AnonVar              | Unknown              | [Owned(Moved)] |
+|  _4 | AnonVar              | Unknown              | [AnonRef(Dead)] |
+|  _5 | UserVar("_a")        | Unknown              | [Owned(Filled(Single(bb2)))] |
+|  _6 | AnonVar              | Unknown              | [Owned(Moved)] |
+|  _7 | AnonVar              | Unknown              | [AnonRef(Dead)] |
+|  _8 | UserVar("_b")        | Unknown              | [Owned(Filled(Single(bb6)))] |

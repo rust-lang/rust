@@ -1,0 +1,35 @@
+## MIR:
+bb0:
+    StorageLive(_3)
+    _3 = _2
+    switchInt(move _3) -> [0: bb2, otherwise: bb1]
+
+bb1:
+    StorageLive(_4)
+    _4 = const "default"
+    _0 = &(*_4)
+    StorageDead(_4)
+    goto -> bb4
+
+bb2:
+    StorageLive(_5)
+    StorageLive(_6)
+    StorageLive(_7)
+    _7 = &((*_1).0: std::string::String)
+    _6 = &(*_7)
+    _5 = <std::string::String as std::ops::Deref>::deref(move _6) -> [return: bb3, unwind: bb5]
+
+bb3:
+    _0 = &(*_5)
+    StorageDead(_6)
+    StorageDead(_7)
+    StorageDead(_5)
+    goto -> bb4
+
+bb4:
+    StorageDead(_3)
+    return
+
+bb5:
+    resume
+
