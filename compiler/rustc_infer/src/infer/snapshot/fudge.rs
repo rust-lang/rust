@@ -2,9 +2,9 @@ use rustc_middle::infer::unify_key::{ConstVariableOriginKind, ConstVariableValue
 use rustc_middle::ty::fold::{TypeFoldable, TypeFolder, TypeSuperFoldable};
 use rustc_middle::ty::{self, ConstVid, FloatVid, IntVid, RegionVid, Ty, TyCtxt, TyVid};
 
-use super::type_variable::TypeVariableOrigin;
-use super::InferCtxt;
-use super::{ConstVariableOrigin, RegionVariableOrigin, UnificationTable};
+use crate::infer::type_variable::TypeVariableOrigin;
+use crate::infer::InferCtxt;
+use crate::infer::{ConstVariableOrigin, RegionVariableOrigin, UnificationTable};
 
 use rustc_data_structures::snapshot_vec as sv;
 use rustc_data_structures::unify as ut;
