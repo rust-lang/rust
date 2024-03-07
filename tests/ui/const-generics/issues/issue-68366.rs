@@ -7,10 +7,12 @@
 #![cfg_attr(full, allow(incomplete_features))]
 
 struct Collatz<const N: Option<usize>>;
+//~^ ERROR: `Option<usize>` is forbidden
 
 impl <const N: usize> Collatz<{Some(N)}> {}
 //~^ ERROR the const parameter
 //[min]~^^ generic parameters may not be used in const operations
+//[full]~^^^ ERROR overly complex
 
 struct Foo;
 

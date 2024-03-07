@@ -9,6 +9,8 @@ impl<T> X for () {
     //~^ ERROR `T` is not constrained by the impl trait, self type, or predicates
     type I = impl Sized;
     fn f() -> Self::I {}
+    //~^ ERROR type annotations needed
+    //~| ERROR type annotations needed
 }
 
 fn main() {}

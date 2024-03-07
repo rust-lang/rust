@@ -2593,10 +2593,19 @@ impl<'a: 'ast, 'b, 'ast, 'tcx> LateResolutionVisitor<'a, 'b, 'ast, 'tcx> {
                     let span = *entry.get();
                     let err = ResolutionError::NameAlreadyUsedInParameterList(ident.name, span);
                     self.report_error(param.ident.span, err);
-                    if let GenericParamKind::Lifetime = param.kind {
-                        // Record lifetime res, so lowering knows there is something fishy.
-                        self.record_lifetime_param(param.id, LifetimeRes::Error);
-                    }
+                    let rib = match param.kind {
+                        GenericParamKind::Lifetime => {
+                            // Record lifetime res, so lowering knows there is something fishy.
+                            self.record_lifetime_param(param.id, LifetimeRes::Error);
+                            continue;
+                        }
+                        GenericParamKind::Type { .. } => &mut function_type_rib,
+                        GenericParamKind::Const { .. } => &mut function_value_rib,
+                    };
+
+                    // Taint the resolution in case of errors to prevent follow up errors in typeck
+                    self.r.record_partial_res(param.id, PartialRes::new(Res::Err));
+                    rib.bindings.insert(ident, Res::Err);
                     continue;
                 }
                 Entry::Vacant(entry) => {

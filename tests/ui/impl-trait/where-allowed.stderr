@@ -361,14 +361,6 @@ LL | fn in_method_generic_param_default<T = impl Debug>(_: T) {}
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #36887 <https://github.com/rust-lang/rust/issues/36887>
 
-error[E0118]: no nominal type found for inherent implementation
-  --> $DIR/where-allowed.rs:239:1
-   |
-LL | impl <T = impl Debug> T {}
-   | ^^^^^^^^^^^^^^^^^^^^^^^ impl requires a nominal type
-   |
-   = note: either implement a trait on it or create a newtype to wrap it instead
-
 error[E0283]: type annotations needed
   --> $DIR/where-allowed.rs:46:57
    |
@@ -388,6 +380,14 @@ LL | fn in_impl_Fn_return_in_return() -> &'static impl Fn() -> impl Debug { pani
              where A: Tuple, F: Fn<A>, F: ?Sized;
            - impl<Args, F, A> Fn<Args> for Box<F, A>
              where Args: Tuple, F: Fn<Args>, A: Allocator, F: ?Sized;
+
+error[E0118]: no nominal type found for inherent implementation
+  --> $DIR/where-allowed.rs:239:1
+   |
+LL | impl <T = impl Debug> T {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^ impl requires a nominal type
+   |
+   = note: either implement a trait on it or create a newtype to wrap it instead
 
 error[E0599]: no function or associated item named `into_vec` found for slice `[_]` in the current scope
   --> $DIR/where-allowed.rs:81:5

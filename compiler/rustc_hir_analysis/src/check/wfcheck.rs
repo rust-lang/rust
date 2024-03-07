@@ -248,6 +248,8 @@ fn check_item<'tcx>(tcx: TyCtxt<'tcx>, item: &'tcx hir::Item<'tcx>) -> Result<()
             let header = tcx.impl_trait_header(def_id);
             let is_auto = header
                 .is_some_and(|header| tcx.trait_is_auto(header.skip_binder().trait_ref.def_id));
+
+            crate::impl_wf_check::check_impl_wf(tcx, def_id)?;
             let mut res = Ok(());
             if let (hir::Defaultness::Default { .. }, true) = (impl_.defaultness, is_auto) {
                 let sp = impl_.of_trait.as_ref().map_or(item.span, |t| t.path.span);
