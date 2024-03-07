@@ -14,6 +14,7 @@ use rustc_middle::ty::{GenericArgKind, GenericArgsRef};
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
 use rustc_span::{Span, DUMMY_SP};
 
+use crate::session_diagnostics::RegionNameLabels;
 use crate::{universal_regions::DefiningTy, MirBorrowckCtxt};
 
 /// A name for a particular region used in emitting diagnostics. This name could be a generated
@@ -137,15 +138,18 @@ impl RegionName {
                 RegionNameHighlight::MatchedAdtAndSegment(span),
                 _,
             ) => {
-                diag.span_label(*span, format!("let's call this `{self}`"));
+                diag.subdiagnostic(
+                    diag.dcx,
+                    RegionNameLabels::NameRegion { span: *span, rg_name: self },
+                );
             }
             RegionNameSource::AnonRegionFromArgument(RegionNameHighlight::Occluded(
                 span,
                 type_name,
             )) => {
-                diag.span_label(
-                    *span,
-                    format!("lifetime `{self}` appears in the type {type_name}"),
+                diag.subdiagnostic(
+                    diag.dcx,
+                    RegionNameLabels::LifetimeInType { span: *span, type_name, rg_name: self },
                 );
             }
             RegionNameSource::AnonRegionFromOutput(
@@ -160,9 +164,9 @@ impl RegionName {
                 );
             }
             RegionNameSource::AnonRegionFromUpvar(span, upvar_name) => {
-                diag.span_label(
-                    *span,
-                    format!("lifetime `{self}` appears in the type of `{upvar_name}`"),
+                diag.subdiagnostic(
+                    diag.dcx,
+                    RegionNameLabels::LifetimeInTypeOf { span: *span, upvar_name, rg_name: self },
                 );
             }
             RegionNameSource::AnonRegionFromOutput(
@@ -172,12 +176,19 @@ impl RegionName {
                 diag.span_label(*span, format!("return type{mir_description} is {type_name}"));
             }
             RegionNameSource::AnonRegionFromYieldTy(span, type_name) => {
-                diag.span_label(*span, format!("yield type is {type_name}"));
+                diag.subdiagnostic(
+                    diag.dcx,
+                    RegionNameLabels::YieldTypeIsTpye { span: *span, type_name },
+                );
             }
             RegionNameSource::AnonRegionFromImplSignature(span, location) => {
-                diag.span_label(
-                    *span,
-                    format!("lifetime `{self}` appears in the `impl`'s {location}"),
+                diag.subdiagnostic(
+                    diag.dcx,
+                    RegionNameLabels::LifetimeInImpl {
+                        span: *span,
+                        rg_name: self,
+                        location: &location,
+                    },
                 );
             }
             RegionNameSource::Static => {}

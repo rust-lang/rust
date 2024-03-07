@@ -5,7 +5,7 @@ use crate::session_diagnostics::{
     CaptureVarKind, CaptureVarPathUseCause, OnClosureNote,
 };
 use itertools::Itertools;
-use rustc_errors::{Applicability, Diag};
+use rustc_errors::{Applicability, Diag, DiagArgValue, IntoDiagnosticArg};
 use rustc_hir as hir;
 use rustc_hir::def::{CtorKind, Namespace};
 use rustc_hir::CoroutineKind;
@@ -48,7 +48,7 @@ mod region_errors;
 
 pub(crate) use bound_region_errors::{ToUniverseInfo, UniverseInfo};
 pub(crate) use move_errors::{IllegalMoveOriginKind, MoveError};
-pub(crate) use mutability_errors::AccessKind;
+pub(crate) use mutability_errors::{AccessKind, PlaceAndReason};
 pub(crate) use outlives_suggestion::OutlivesSuggestionBuilder;
 pub(crate) use region_errors::{ErrorConstraintInfo, RegionErrorKind, RegionErrors};
 pub(crate) use region_name::{RegionName, RegionNameSource};
@@ -64,6 +64,18 @@ pub(super) struct DescribePlaceOpt {
 
 pub(super) struct IncludingTupleField(pub(super) bool);
 
+#[derive(Debug)]
+pub(super) struct DescribedPlace(pub(super) Option<String>);
+
+impl IntoDiagnosticArg for DescribedPlace {
+    fn into_diagnostic_arg(self) -> DiagArgValue {
+        match self.0 {
+            Some(descr) => descr.into_diagnostic_arg(),
+            None => "value".into_diagnostic_arg(),
+        }
+    }
+}
+
 impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
     /// Adds a suggestion when a closure is invoked twice with a moved variable or when a closure
     /// is moved after being invoked.
@@ -76,7 +88,6 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
     /// LL |         for (key, value) in dict {
     ///    |                             ^^^^
     /// ```
-    #[allow(rustc::diagnostic_outside_of_impl)] // FIXME
     pub(super) fn add_moved_or_invoked_closure_note(
         &self,
         location: Location,
@@ -174,6 +185,10 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
             }
             None => "value".to_string(),
         }
+    }
+
+    pub(super) fn describe_place_typed(&self, place_ref: PlaceRef<'tcx>) -> DescribedPlace {
+        DescribedPlace(self.describe_place(place_ref))
     }
 
     /// End-user visible description of `place` if one can be found.
@@ -586,7 +601,6 @@ impl UseSpans<'_> {
     }
 
     /// Add a span label to the arguments of the closure, if it exists.
-    #[allow(rustc::diagnostic_outside_of_impl)]
     pub(super) fn args_subdiag(
         self,
         dcx: &rustc_errors::DiagCtxt,
@@ -600,7 +614,6 @@ impl UseSpans<'_> {
 
     /// Add a span label to the use of the captured variable, if it exists.
     /// only adds label to the `path_span`
-    #[allow(rustc::diagnostic_outside_of_impl)]
     pub(super) fn var_path_only_subdiag(
         self,
         dcx: &rustc_errors::DiagCtxt,
@@ -638,7 +651,6 @@ impl UseSpans<'_> {
     }
 
     /// Add a subdiagnostic to the use of the captured variable, if it exists.
-    #[allow(rustc::diagnostic_outside_of_impl)]
     pub(super) fn var_subdiag(
         self,
         dcx: &rustc_errors::DiagCtxt,
@@ -703,6 +715,7 @@ impl UseSpans<'_> {
     }
 }
 
+#[derive(Clone, Copy, Debug)]
 pub(super) enum BorrowedContentSource<'tcx> {
     DerefRawPointer,
     DerefMutableRef,
@@ -754,7 +767,7 @@ impl<'tcx> BorrowedContentSource<'tcx> {
                     _ => None,
                 })
                 .unwrap_or_else(|| format!("dereference of `{ty}`")),
-            BorrowedContentSource::OverloadedIndex(ty) => format!("an index of `{ty}`"),
+            BorrowedContentSource::OverloadedIndex(ty) => format!("`{ty}`"),
         }
     }
 
@@ -1012,8 +1025,6 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         self.borrow_spans(span, borrow.reserve_location)
     }
 
-    #[allow(rustc::diagnostic_outside_of_impl)]
-    #[allow(rustc::untranslatable_diagnostic)] // FIXME: make this translatable
     fn explain_captures(
         &mut self,
         err: &mut Diag<'_>,

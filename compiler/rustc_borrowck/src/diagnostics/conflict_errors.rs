@@ -1911,6 +1911,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
     /// cannot borrow `a.u` (via `a.u.z.c`) as immutable because it is also borrowed as
     /// mutable (via `a.u.s.b`) [E0502]
     /// ```
+    // FIXME(#100717): In the return value, the first three strings can contain untranslated text.
     pub(crate) fn describe_place_for_conflicting_borrow(
         &self,
         first_borrowed_place: Place<'tcx>,

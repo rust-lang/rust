@@ -1,6 +1,5 @@
 #![allow(rustc::diagnostic_outside_of_impl)]
 #![allow(rustc::untranslatable_diagnostic)]
-
 use core::ops::ControlFlow;
 use hir::ExprKind;
 use rustc_errors::{Applicability, Diag};
@@ -21,13 +20,32 @@ use rustc_trait_selection::infer::InferCtxtExt;
 use rustc_trait_selection::traits::error_reporting::suggestions::TypeErrCtxtExt;
 
 use crate::diagnostics::BorrowedContentSource;
+use crate::session_diagnostics::{BorrowMutUpvarLable, FnMutBumpFn, OnModifyTy};
 use crate::util::FindAssignments;
 use crate::MirBorrowckCtxt;
+
+use super::DescribedPlace;
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
 pub(crate) enum AccessKind {
     MutableBorrow,
     Mutate,
+}
+
+#[derive(Debug)]
+pub(crate) enum PlaceAndReason<'a> {
+    // place, name
+    DeclaredImmute(DescribedPlace, Option<String>),
+    // place
+    InPatternGuard(DescribedPlace),
+    // place, name
+    StaticItem(DescribedPlace, Option<String>),
+    // place
+    UpvarCaptured(DescribedPlace),
+    // place
+    SelfCaptured(DescribedPlace),
+    // place, pointer_type, name
+    BehindPointer(DescribedPlace, BorrowedContentSource<'a>, String),
 }
 
 impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
@@ -47,21 +65,18 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
         );
 
         let mut err;
-        let item_msg;
-        let reason;
+        let diagnostic: PlaceAndReason<'_>;
         let mut opt_source = None;
-        let access_place_desc = self.describe_any_place(access_place.as_ref());
-        debug!("report_mutability_error: access_place_desc={:?}", access_place_desc);
+        let access_place_desc = self.describe_place_typed(access_place.as_ref());
 
         match the_place_err {
             PlaceRef { local, projection: [] } => {
-                item_msg = access_place_desc;
-                if access_place.as_local().is_some() {
-                    reason = ", as it is not declared as mutable".to_string();
+                diagnostic = if access_place.as_local().is_some() {
+                    PlaceAndReason::DeclaredImmute(access_place_desc, None)
                 } else {
                     let name = self.local_names[local].expect("immutable unnamed local");
-                    reason = format!(", as `{name}` is not declared as mutable");
-                }
+                    PlaceAndReason::DeclaredImmute(access_place_desc, Some(name.to_string()))
+                };
             }
 
             PlaceRef {
@@ -87,12 +102,12 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                     // If we deref an immutable ref then the suggestion here doesn't help.
                     return;
                 } else {
-                    item_msg = access_place_desc;
-                    if self.is_upvar_field_projection(access_place.as_ref()).is_some() {
-                        reason = ", as it is not declared as mutable".to_string();
+                    diagnostic = if self.is_upvar_field_projection(access_place.as_ref()).is_some()
+                    {
+                        PlaceAndReason::DeclaredImmute(access_place_desc, None)
                     } else {
                         let name = self.upvars[upvar_index.index()].to_string(self.infcx.tcx);
-                        reason = format!(", as `{name}` is not declared as mutable");
+                        PlaceAndReason::DeclaredImmute(access_place_desc, Some(name))
                     }
                 }
             }
@@ -100,21 +115,18 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
             PlaceRef { local, projection: [ProjectionElem::Deref] }
                 if self.body.local_decls[local].is_ref_for_guard() =>
             {
-                item_msg = access_place_desc;
-                reason = ", as it is immutable for the pattern guard".to_string();
+                diagnostic = PlaceAndReason::InPatternGuard(access_place_desc)
             }
             PlaceRef { local, projection: [ProjectionElem::Deref] }
                 if self.body.local_decls[local].is_ref_to_static() =>
             {
-                if access_place.projection.len() == 1 {
-                    item_msg = format!("immutable static item {access_place_desc}");
-                    reason = String::new();
+                diagnostic = if access_place.projection.len() == 1 {
+                    PlaceAndReason::StaticItem(access_place_desc, None)
                 } else {
-                    item_msg = access_place_desc;
                     let local_info = self.body.local_decls[local].local_info();
                     if let LocalInfo::StaticRef { def_id, .. } = *local_info {
                         let static_name = &self.infcx.tcx.item_name(def_id);
-                        reason = format!(", as `{static_name}` is an immutable static item");
+                        PlaceAndReason::StaticItem(access_place_desc, Some(static_name.to_string()))
                     } else {
                         bug!("is_ref_to_static return true, but not ref to static?");
                     }
@@ -125,34 +137,27 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                     && proj_base.is_empty()
                     && !self.upvars.is_empty()
                 {
-                    item_msg = access_place_desc;
                     debug_assert!(self.body.local_decls[ty::CAPTURE_STRUCT_LOCAL].ty.is_ref());
                     debug_assert!(is_closure_like(the_place_err.ty(self.body, self.infcx.tcx).ty));
 
-                    reason = if self.is_upvar_field_projection(access_place.as_ref()).is_some() {
-                        ", as it is a captured variable in a `Fn` closure".to_string()
+                    diagnostic = if self.is_upvar_field_projection(access_place.as_ref()).is_some()
+                    {
+                        PlaceAndReason::SelfCaptured(access_place_desc)
                     } else {
-                        ", as `Fn` closures cannot mutate their captured variables".to_string()
+                        PlaceAndReason::UpvarCaptured(access_place_desc)
                     }
                 } else {
-                    let source = self.borrowed_content_source(PlaceRef {
+                    let ptr_source = self.borrowed_content_source(PlaceRef {
                         local: the_place_err.local,
                         projection: proj_base,
                     });
-                    let pointer_type = source.describe_for_immutable_place(self.infcx.tcx);
-                    opt_source = Some(source);
-                    if let Some(desc) = self.describe_place(access_place.as_ref()) {
-                        item_msg = format!("`{desc}`");
-                        reason = match error_access {
-                            AccessKind::Mutate => format!(", which is behind {pointer_type}"),
-                            AccessKind::MutableBorrow => {
-                                format!(", as it is behind {pointer_type}")
-                            }
-                        }
-                    } else {
-                        item_msg = format!("data in {pointer_type}");
-                        reason = String::new();
-                    }
+                    let name = ptr_source.describe_for_immutable_place(self.infcx.tcx);
+                    diagnostic = PlaceAndReason::BehindPointer(
+                        self.describe_place_typed(access_place.as_ref()),
+                        ptr_source,
+                        name,
+                    );
+                    opt_source = Some(ptr_source);
                 }
             }
 
@@ -171,8 +176,6 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
             } => bug!("Unexpected immutable place."),
         }
 
-        debug!("report_mutability_error: item_msg={:?}, reason={:?}", item_msg, reason);
-
         // `act` and `acted_on` are strings that let us abstract over
         // the verbs used in some diagnostic messages.
         let act;
@@ -181,9 +184,13 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
         let mut mut_error = None;
         let mut count = 1;
 
+        let access_diagnose_builder = |sp: Span| match error_access {
+            AccessKind::MutableBorrow => FnMutBumpFn::CannotBorrowMut { sp },
+            AccessKind::Mutate => FnMutBumpFn::CannotAssign { sp },
+        };
         let span = match error_access {
             AccessKind::Mutate => {
-                err = self.cannot_assign(span, &(item_msg + &reason));
+                err = self.cannot_assign(span, diagnostic);
                 act = "assign";
                 acted_on = "written";
                 span
@@ -213,19 +220,12 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                             }
                             suggest = false;
                         } else {
-                            err = self.cannot_borrow_path_as_mutable_because(
-                                borrow_span,
-                                &item_msg,
-                                &reason,
-                            );
+                            err =
+                                self.cannot_borrow_path_as_mutable_because(borrow_span, diagnostic);
                         }
                     }
                     _ => {
-                        err = self.cannot_borrow_path_as_mutable_because(
-                            borrow_span,
-                            &item_msg,
-                            &reason,
-                        );
+                        err = self.cannot_borrow_path_as_mutable_because(borrow_span, diagnostic);
                     }
                 }
                 if suggest {
@@ -246,8 +246,6 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
             }
         };
 
-        debug!("report_mutability_error: act={:?}, acted_on={:?}", act, acted_on);
-
         match the_place_err {
             // Suggest making an existing shared borrow in a struct definition a mutable borrow.
             //
@@ -265,7 +263,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                         ProjectionElem::Deref,
                     ],
             } => {
-                err.span_label(span, format!("cannot {act}"));
+                err.subdiagnostic(self.dcx(), access_diagnose_builder(span));
 
                 let place = Place::ty_from(local, proj_base, self.body, self.infcx.tcx);
                 if let Some(span) = get_mut_span_in_struct_field(self.infcx.tcx, place.ty, *field) {
@@ -287,7 +285,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                     .is_some_and(|l| mut_borrow_of_mutable_ref(l, self.local_names[local])) =>
             {
                 let decl = &self.body.local_decls[local];
-                err.span_label(span, format!("cannot {act}"));
+                err.subdiagnostic(self.dcx(), access_diagnose_builder(span));
                 if let Some(mir::Statement {
                     source_info,
                     kind:
@@ -372,7 +370,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                 assert_eq!(local_decl.mutability, Mutability::Not);
 
                 if count < 10 {
-                    err.span_label(span, format!("cannot {act}"));
+                    err.subdiagnostic(self.dcx(), access_diagnose_builder(span));
                 }
                 if suggest {
                     self.construct_mut_suggestion_for_local_binding_patterns(&mut err, local);
@@ -394,7 +392,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
 
                 let captured_place = self.upvars[upvar_index.index()];
 
-                err.span_label(span, format!("cannot {act}"));
+                err.subdiagnostic(self.dcx(), access_diagnose_builder(span));
 
                 let upvar_hir_id = captured_place.get_root_variable();
 
@@ -449,7 +447,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                     .span_to_snippet(span)
                     .is_ok_and(|snippet| snippet.starts_with("&mut ")) =>
             {
-                err.span_label(span, format!("cannot {act}"));
+                err.subdiagnostic(self.dcx(), access_diagnose_builder(span));
                 err.span_suggestion(
                     span,
                     "try removing `&mut` here",
@@ -461,7 +459,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
             PlaceRef { local, projection: [ProjectionElem::Deref] }
                 if self.body.local_decls[local].is_ref_for_guard() =>
             {
-                err.span_label(span, format!("cannot {act}"));
+                err.subdiagnostic(self.dcx(), access_diagnose_builder(span));
                 err.note(
                     "variables bound in patterns are immutable until the end of the pattern guard",
                 );
@@ -509,7 +507,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
             }
 
             PlaceRef { local: _, projection: [.., ProjectionElem::Deref] } => {
-                err.span_label(span, format!("cannot {act}"));
+                err.subdiagnostic(self.dcx(), access_diagnose_builder(span));
 
                 match opt_source {
                     Some(BorrowedContentSource::OverloadedDeref(ty)) => {
@@ -530,7 +528,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
             }
 
             _ => {
-                err.span_label(span, format!("cannot {act}"));
+                err.subdiagnostic(self.dcx(), access_diagnose_builder(span));
             }
         }
 
@@ -649,9 +647,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
             let mut v = V { assign_span: span, err, ty, suggested: false };
             v.visit_body(body);
             if !v.suggested {
-                err.help(format!(
-                    "to modify a `{ty}`, use `.get_mut()`, `.insert()` or the entry API",
-                ));
+                err.subdiagnostic(self.dcx(), OnModifyTy { ty });
             }
         }
     }
@@ -777,7 +773,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
     ) {
         let tables = tcx.typeck(closure_local_def_id);
         if let Some((span, closure_kind_origin)) = tcx.closure_kind_origin(closure_local_def_id) {
-            let reason = if let PlaceBase::Upvar(upvar_id) = closure_kind_origin.base {
+            if let PlaceBase::Upvar(upvar_id) = closure_kind_origin.base {
                 let upvar = ty::place_to_string_for_capture(tcx, closure_kind_origin);
                 let root_hir_id = upvar_id.var_path.hir_id;
                 // we have an origin for this closure kind starting at this root variable so it's safe to unwrap here
@@ -789,7 +785,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                     .iter()
                     .map(|proj| proj.kind)
                     .collect::<Vec<_>>();
-                let mut capture_reason = String::new();
+                let mut capture_reason_captured = false;
                 for captured_place in captured_places {
                     let captured_place_kinds = captured_place
                         .place
@@ -801,35 +797,43 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                         &captured_place_kinds,
                         &origin_projection,
                     ) {
+                        let place = self.describe_place(the_place_err).unwrap();
                         match captured_place.info.capture_kind {
                             ty::UpvarCapture::ByRef(
                                 ty::BorrowKind::MutBorrow | ty::BorrowKind::UniqueImmBorrow,
                             ) => {
-                                capture_reason = format!("mutable borrow of `{upvar}`");
+                                err.subdiagnostic(
+                                    self.dcx(),
+                                    BorrowMutUpvarLable::MutBorrow {
+                                        span: *span,
+                                        upvar: &upvar,
+                                        place,
+                                    },
+                                );
+                                capture_reason_captured = true;
                             }
                             ty::UpvarCapture::ByValue => {
-                                capture_reason = format!("possible mutation of `{upvar}`");
+                                err.subdiagnostic(
+                                    self.dcx(),
+                                    BorrowMutUpvarLable::Mutation {
+                                        span: *span,
+                                        upvar: &upvar,
+                                        place,
+                                    },
+                                );
+                                capture_reason_captured = true;
                             }
                             _ => bug!("upvar `{upvar}` borrowed, but not mutably"),
                         }
                         break;
                     }
                 }
-                if capture_reason.is_empty() {
+                if !capture_reason_captured {
                     bug!("upvar `{upvar}` borrowed, but cannot find reason");
                 }
-                capture_reason
             } else {
                 bug!("not an upvar")
             };
-            err.span_label(
-                *span,
-                format!(
-                    "calling `{}` requires mutable binding due to {}",
-                    self.describe_place(the_place_err).unwrap(),
-                    reason
-                ),
-            );
         }
     }
 
@@ -973,9 +977,9 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                     _ => None,
                 };
                 if let Some(span) = arg {
-                    err.span_label(span, "change this to accept `FnMut` instead of `Fn`");
-                    err.span_label(func.span, "expects `Fn` instead of `FnMut`");
-                    err.span_label(closure_span, "in this closure");
+                    err.subdiagnostic(self.dcx(), FnMutBumpFn::AcceptFnMut { span });
+                    err.subdiagnostic(self.dcx(), FnMutBumpFn::AcceptFn { span: func.span });
+                    err.subdiagnostic(self.dcx(), FnMutBumpFn::Here { span: closure_span });
                     look_at_return = false;
                 }
             }
@@ -996,12 +1000,12 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                     kind: hir::ImplItemKind::Fn(sig, _),
                     ..
                 }) => {
-                    err.span_label(ident.span, "");
-                    err.span_label(
-                        sig.decl.output.span(),
-                        "change this to return `FnMut` instead of `Fn`",
+                    err.subdiagnostic(self.dcx(), FnMutBumpFn::EmptyLabel { span: ident.span });
+                    err.subdiagnostic(
+                        self.dcx(),
+                        FnMutBumpFn::ReturnFnMut { span: sig.decl.output.span() },
                     );
-                    err.span_label(closure_span, "in this closure");
+                    err.subdiagnostic(self.dcx(), FnMutBumpFn::Here { span: closure_span });
                 }
                 _ => {}
             }

@@ -799,7 +799,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
             },
             _ => LifetimeReturnCategoryErr::ShortReturn {
                 span: *span,
-                category_desc: category.description(),
+                category: category.description(),
                 free_region_name: &fr_name,
                 outlived_fr_name,
             },
