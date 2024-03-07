@@ -160,6 +160,8 @@ pub fn check_crate(tcx: TyCtxt<'_>) {
 
     if tcx.features().rustc_attrs {
         tcx.sess.time("outlives_testing", || outlives::test::test_inferred_outlives(tcx));
+        tcx.sess.time("variance_testing", || variance::test::test_variance(tcx));
+        collect::test_opaque_hidden_types(tcx);
     }
 
     tcx.sess.time("coherence_checking", || {
@@ -174,14 +176,6 @@ pub fn check_crate(tcx: TyCtxt<'_>) {
         let _ = tcx.ensure().crate_inherent_impls(());
         let _ = tcx.ensure().crate_inherent_impls_overlap_check(());
     });
-
-    if tcx.features().rustc_attrs {
-        tcx.sess.time("variance_testing", || variance::test::test_variance(tcx));
-    }
-
-    if tcx.features().rustc_attrs {
-        collect::test_opaque_hidden_types(tcx);
-    }
 
     // Make sure we evaluate all static and (non-associated) const items, even if unused.
     // If any of these fail to evaluate, we do not want this crate to pass compilation.
