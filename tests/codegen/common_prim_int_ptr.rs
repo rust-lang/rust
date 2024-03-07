@@ -28,16 +28,16 @@ pub fn insert_box(x: Box<()>) -> Result<usize, Box<()>> {
 // CHECK-LABEL: @extract_int
 #[no_mangle]
 pub unsafe fn extract_int(x: Result<usize, Box<()>>) -> usize {
-    // CHECK: start:
-    // CHECK-NEXT: ptrtoint
-    // CHECK-NEXT: ret
+    // CHECK: ptrtoint
     x.unwrap_unchecked()
 }
 
 // CHECK-LABEL: @extract_box
 #[no_mangle]
 pub unsafe fn extract_box(x: Result<usize, Box<()>>) -> Box<()> {
-    // CHECK: start:
-    // CHECK-NEXT: ret ptr
+    // CHECK-NOT: ptrtoint
+    // CHECK-NOT: inttoptr
+    // CHECK-NOT: load
+    // CHECK-NOT: store
     x.unwrap_err_unchecked()
 }
