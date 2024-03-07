@@ -113,6 +113,7 @@ pub fn get_git_merge_base(
 
 /// Returns the files that have been modified in the current branch compared to the master branch.
 /// The `extensions` parameter can be used to filter the files by their extension.
+/// Does not include removed files.
 /// If `extensions` is empty, all files will be returned.
 pub fn get_git_modified_files(
     config: &GitConfig<'_>,
@@ -125,13 +126,19 @@ pub fn get_git_modified_files(
     if let Some(git_dir) = git_dir {
         git.current_dir(git_dir);
     }
-    let files = output_result(git.args(["diff-index", "--name-only", merge_base.trim()]))?
+    let files = output_result(git.args(["diff-index", "--name-status", merge_base.trim()]))?
         .lines()
-        .map(|s| s.trim().to_owned())
-        .filter(|f| {
-            Path::new(f).extension().map_or(false, |ext| {
+        .filter_map(|f| {
+            let (status, name) = f.trim().split_once(char::is_whitespace).unwrap();
+            if status == "D" {
+                None
+            } else if Path::new(name).extension().map_or(false, |ext| {
                 extensions.is_empty() || extensions.contains(&ext.to_str().unwrap())
-            })
+            }) {
+                Some(name.to_owned())
+            } else {
+                None
+            }
         })
         .collect();
     Ok(Some(files))
