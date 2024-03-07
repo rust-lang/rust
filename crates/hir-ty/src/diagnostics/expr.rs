@@ -182,7 +182,7 @@ impl ExprValidator {
         db: &dyn HirDatabase,
     ) {
         let scrut_ty = &self.infer[scrutinee_expr];
-        if scrut_ty.is_unknown() {
+        if scrut_ty.contains_unknown() {
             return;
         }
 
@@ -267,6 +267,9 @@ impl ExprValidator {
             };
             let Some(initializer) = initializer else { continue };
             let ty = &self.infer[initializer];
+            if ty.contains_unknown() {
+                continue;
+            }
 
             let mut have_errors = false;
             let deconstructed_pat = self.lower_pattern(&cx, pat, db, &mut have_errors);
