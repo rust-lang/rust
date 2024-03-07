@@ -60,12 +60,17 @@ static AtomicOrdering fromRust(LLVMAtomicOrdering Ordering) {
 
 static LLVM_THREAD_LOCAL char *LastError;
 
+static std::mutex FatalErrorHandlerMutex;
+static std::unique_lock<std::mutex> FatalErrorHandlerLock(FatalErrorHandlerMutex, std::defer_lock);
 // Custom error handler for fatal LLVM errors.
 //
 // Notably it exits the process with code 101, unlike LLVM's default of 1.
 static void FatalErrorHandler(void *UserData,
                               const char* Reason,
                               bool GenCrashDiag) {
+  // Add a global lock to avoid re-entry here. When encountering an error,
+  // we only need and can only enter once.
+  FatalErrorHandlerLock.lock();
   // Once upon a time we emitted "LLVM ERROR:" specifically to mimic LLVM. Then,
   // we developed crater and other tools which only expose logs, not error codes.
   // Use a more greppable prefix that will still match the "LLVM ERROR:" prefix.
