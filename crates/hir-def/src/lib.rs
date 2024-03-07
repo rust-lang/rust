@@ -1341,8 +1341,11 @@ impl AsMacroCall for InFile<&ast::MacroCall> {
         let expands_to = hir_expand::ExpandTo::from_call_site(self.value);
         let ast_id = AstId::new(self.file_id, db.ast_id_map(self.file_id).ast_id(self.value));
         let span_map = db.span_map(self.file_id);
-        let path =
-            self.value.path().and_then(|path| path::ModPath::from_src(db, path, span_map.as_ref()));
+        let path = self.value.path().and_then(|path| {
+            path::ModPath::from_src(db, path, &mut |range| {
+                span_map.as_ref().span_for_range(range).ctx
+            })
+        });
 
         let Some(path) = path else {
             return Ok(ExpandResult::only_err(ExpandError::other("malformed macro invocation")));
