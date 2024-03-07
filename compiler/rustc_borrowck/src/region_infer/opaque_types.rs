@@ -7,7 +7,6 @@ use rustc_infer::infer::InferCtxt;
 use rustc_infer::infer::TyCtxtInferExt as _;
 use rustc_infer::traits::{Obligation, ObligationCause};
 use rustc_macros::extension;
-use rustc_middle::traits::DefiningAnchor;
 use rustc_middle::ty::visit::TypeVisitableExt;
 use rustc_middle::ty::{self, OpaqueHiddenType, OpaqueTypeKey, Ty, TyCtxt, TypeFoldable};
 use rustc_middle::ty::{GenericArgKind, GenericArgs};
@@ -322,13 +321,13 @@ fn check_opaque_type_well_formed<'tcx>(
         parent_def_id = tcx.local_parent(parent_def_id);
     }
 
-    // FIXME(-Znext-solver): We probably should use `DefiningAnchor::Bind(&[])`
+    // FIXME(-Znext-solver): We probably should use `&[]` instead of
     // and prepopulate this `InferCtxt` with known opaque values, rather than
-    // using the `Bind` anchor here. For now it's fine.
+    // allowing opaque types to be defined and checking them after the fact.
     let infcx = tcx
         .infer_ctxt()
         .with_next_trait_solver(next_trait_solver)
-        .with_opaque_type_inference(DefiningAnchor::bind(tcx, parent_def_id))
+        .with_opaque_type_inference(parent_def_id)
         .build();
     let ocx = ObligationCtxt::new(&infcx);
     let identity_args = GenericArgs::identity_for_item(tcx, def_id);
