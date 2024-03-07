@@ -54,8 +54,10 @@ pub enum PassMode {
     /// argument. (This is the only mode that supports unsized arguments.)
     /// `on_stack` defines that the value should be passed at a fixed stack offset in accordance to
     /// the ABI rather than passed using a pointer. This corresponds to the `byval` LLVM argument
-    /// attribute (using the Rust type of this argument). `on_stack` cannot be true for unsized
-    /// arguments, i.e., when `meta_attrs` is `Some`.
+    /// attribute (using a byte array type with the same size as the Rust type [which ensures that
+    /// padding is preserved and that we do not rely on LLVM's struct layout], and with alignment
+    /// determined in a complex, target-specific manner [see callers of `make_indirect_byval`]).
+    /// `on_stack` cannot be true for unsized arguments, i.e., when `meta_attrs` is `Some`.
     Indirect { attrs: ArgAttributes, meta_attrs: Option<ArgAttributes>, on_stack: bool },
 }
 
