@@ -8,7 +8,7 @@ use std::{collections::hash_map::Entry, time::Instant};
 use crossbeam_channel::{unbounded, Receiver, Sender};
 use flycheck::FlycheckHandle;
 use hir::ChangeWithProcMacros;
-use ide::{Analysis, AnalysisHost, Cancellable, FileId};
+use ide::{Analysis, AnalysisHost, Cancellable, FileId, SourceRootId};
 use ide_db::base_db::{CrateId, ProcMacroPaths};
 use load_cargo::SourceRootConfig;
 use lsp_types::{SemanticTokens, Url};
@@ -66,6 +66,8 @@ pub(crate) struct GlobalState {
     pub(crate) diagnostics: DiagnosticCollection,
     pub(crate) mem_docs: MemDocs,
     pub(crate) source_root_config: SourceRootConfig,
+    /// A mapping that maps a local source root's `SourceRootId` to it parent's `SourceRootId`, if it has one.
+    pub(crate) local_roots_parent_map: FxHashMap<SourceRootId, SourceRootId>,
     pub(crate) semantic_tokens_cache: Arc<Mutex<FxHashMap<Url, SemanticTokens>>>,
 
     // status
@@ -204,6 +206,7 @@ impl GlobalState {
             send_hint_refresh_query: false,
             last_reported_status: None,
             source_root_config: SourceRootConfig::default(),
+            local_roots_parent_map: FxHashMap::default(),
             config_errors: Default::default(),
 
             proc_macro_clients: Arc::from_iter([]),
