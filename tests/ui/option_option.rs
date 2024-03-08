@@ -1,7 +1,7 @@
 //@compile-flags: -Zdeduplicate-diagnostics=yes
 
 #![deny(clippy::option_option)]
-#![allow(clippy::unnecessary_wraps)]
+#![allow(clippy::unnecessary_wraps, clippy::match_option_and_default)]
 
 const C: Option<Option<i32>> = None;
 //~^ ERROR: consider using `Option<T>` instead of `Option<Option<T>>` or a custom enum if
