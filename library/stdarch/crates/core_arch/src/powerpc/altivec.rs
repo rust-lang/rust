@@ -18,6 +18,8 @@ use crate::{core_arch::simd::*, intrinsics::simd::*, mem, mem::transmute};
 #[cfg(test)]
 use stdarch_test::assert_instr;
 
+use super::macros::*;
+
 types! {
     /// PowerPC-specific 128-bit wide vector of sixteen packed `i8`
     #[unstable(feature = "stdarch_powerpc", issue = "111145")]
@@ -395,182 +397,7 @@ extern "C" {
     fn vrfin(a: vector_float) -> vector_float;
 }
 
-macro_rules! s_t_l {
-    (i32x4) => {
-        vector_signed_int
-    };
-    (i16x8) => {
-        vector_signed_short
-    };
-    (i8x16) => {
-        vector_signed_char
-    };
-
-    (u32x4) => {
-        vector_unsigned_int
-    };
-    (u16x8) => {
-        vector_unsigned_short
-    };
-    (u8x16) => {
-        vector_unsigned_char
-    };
-
-    (f32x4) => {
-        vector_float
-    };
-}
-
-macro_rules! t_t_l {
-    (i32) => {
-        vector_signed_int
-    };
-    (i16) => {
-        vector_signed_short
-    };
-    (i8) => {
-        vector_signed_char
-    };
-
-    (u32) => {
-        vector_unsigned_int
-    };
-    (u16) => {
-        vector_unsigned_short
-    };
-    (u8) => {
-        vector_unsigned_char
-    };
-
-    (f32) => {
-        vector_float
-    };
-}
-
-macro_rules! t_t_s {
-    (i32) => {
-        i32x4
-    };
-    (i16) => {
-        i16x8
-    };
-    (i8) => {
-        i8x16
-    };
-
-    (u32) => {
-        u32x4
-    };
-    (u16) => {
-        u16x8
-    };
-    (u8) => {
-        u8x16
-    };
-
-    (f32) => {
-        f32x4
-    };
-}
-
-macro_rules! t_u {
-    (vector_bool_char) => {
-        vector_unsigned_char
-    };
-    (vector_bool_short) => {
-        vector_unsigned_short
-    };
-    (vector_bool_int) => {
-        vector_unsigned_int
-    };
-    (vector_unsigned_char) => {
-        vector_unsigned_char
-    };
-    (vector_unsigned_short) => {
-        vector_unsigned_short
-    };
-    (vector_unsigned_int) => {
-        vector_unsigned_int
-    };
-    (vector_signed_char) => {
-        vector_unsigned_char
-    };
-    (vector_signed_short) => {
-        vector_unsigned_short
-    };
-    (vector_signed_int) => {
-        vector_unsigned_int
-    };
-    (vector_float) => {
-        vector_unsigned_int
-    };
-}
-
-macro_rules! t_b {
-    (vector_bool_char) => {
-        vector_bool_char
-    };
-    (vector_bool_short) => {
-        vector_bool_short
-    };
-    (vector_bool_int) => {
-        vector_bool_int
-    };
-    (vector_signed_char) => {
-        vector_bool_char
-    };
-    (vector_signed_short) => {
-        vector_bool_short
-    };
-    (vector_signed_int) => {
-        vector_bool_int
-    };
-    (vector_unsigned_char) => {
-        vector_bool_char
-    };
-    (vector_unsigned_short) => {
-        vector_bool_short
-    };
-    (vector_unsigned_int) => {
-        vector_bool_int
-    };
-    (vector_float) => {
-        vector_bool_int
-    };
-}
-
-macro_rules! impl_from {
-    ($s: ident) => {
-        #[unstable(feature = "stdarch_powerpc", issue = "111145")]
-        impl From<$s> for s_t_l!($s) {
-            fn from (v: $s) -> Self {
-                unsafe {
-                    transmute(v)
-                }
-            }
-        }
-    };
-    ($($s: ident),*) => {
-        $(
-            impl_from! { $s }
-        )*
-    };
-}
-
 impl_from! { i8x16, u8x16,  i16x8, u16x8, i32x4, u32x4, f32x4 }
-
-macro_rules! impl_neg {
-    ($s: ident : $zero: expr) => {
-        #[unstable(feature = "stdarch_powerpc", issue = "111145")]
-        impl crate::ops::Neg for s_t_l!($s) {
-            type Output = s_t_l!($s);
-            fn neg(self) -> Self::Output {
-                let zero = $s::splat($zero);
-                unsafe { transmute(simd_sub(zero, transmute(self))) }
-            }
-        }
-    };
-}
 
 impl_neg! { i8x16 : 0 }
 impl_neg! { i16x8 : 0 }
@@ -4641,11 +4468,7 @@ pub use self::endian::*;
 
 #[cfg(test)]
 mod tests {
-    #[cfg(target_arch = "powerpc")]
-    use crate::core_arch::arch::powerpc::*;
-
-    #[cfg(target_arch = "powerpc64")]
-    use crate::core_arch::arch::powerpc64::*;
+    use super::*;
 
     use std::mem::transmute;
 

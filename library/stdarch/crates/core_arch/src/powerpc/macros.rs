@@ -122,3 +122,188 @@ macro_rules! impl_vec_trait {
         impl_vec_trait!{ [$Trait $m]+ $w (vector_signed_int, vector_signed_int) -> vector_signed_int }
     }
 }
+
+macro_rules! s_t_l {
+    (i32x4) => {
+        vector_signed_int
+    };
+    (i16x8) => {
+        vector_signed_short
+    };
+    (i8x16) => {
+        vector_signed_char
+    };
+
+    (u32x4) => {
+        vector_unsigned_int
+    };
+    (u16x8) => {
+        vector_unsigned_short
+    };
+    (u8x16) => {
+        vector_unsigned_char
+    };
+
+    (f32x4) => {
+        vector_float
+    };
+}
+
+macro_rules! t_t_l {
+    (i32) => {
+        vector_signed_int
+    };
+    (i16) => {
+        vector_signed_short
+    };
+    (i8) => {
+        vector_signed_char
+    };
+
+    (u32) => {
+        vector_unsigned_int
+    };
+    (u16) => {
+        vector_unsigned_short
+    };
+    (u8) => {
+        vector_unsigned_char
+    };
+
+    (f32) => {
+        vector_float
+    };
+}
+
+macro_rules! t_t_s {
+    (i32) => {
+        i32x4
+    };
+    (i16) => {
+        i16x8
+    };
+    (i8) => {
+        i8x16
+    };
+
+    (u32) => {
+        u32x4
+    };
+    (u16) => {
+        u16x8
+    };
+    (u8) => {
+        u8x16
+    };
+
+    (f32) => {
+        f32x4
+    };
+}
+
+macro_rules! t_u {
+    (vector_bool_char) => {
+        vector_unsigned_char
+    };
+    (vector_bool_short) => {
+        vector_unsigned_short
+    };
+    (vector_bool_int) => {
+        vector_unsigned_int
+    };
+    (vector_unsigned_char) => {
+        vector_unsigned_char
+    };
+    (vector_unsigned_short) => {
+        vector_unsigned_short
+    };
+    (vector_unsigned_int) => {
+        vector_unsigned_int
+    };
+    (vector_signed_char) => {
+        vector_unsigned_char
+    };
+    (vector_signed_short) => {
+        vector_unsigned_short
+    };
+    (vector_signed_int) => {
+        vector_unsigned_int
+    };
+    (vector_float) => {
+        vector_unsigned_int
+    };
+}
+
+macro_rules! t_b {
+    (vector_bool_char) => {
+        vector_bool_char
+    };
+    (vector_bool_short) => {
+        vector_bool_short
+    };
+    (vector_bool_int) => {
+        vector_bool_int
+    };
+    (vector_signed_char) => {
+        vector_bool_char
+    };
+    (vector_signed_short) => {
+        vector_bool_short
+    };
+    (vector_signed_int) => {
+        vector_bool_int
+    };
+    (vector_unsigned_char) => {
+        vector_bool_char
+    };
+    (vector_unsigned_short) => {
+        vector_bool_short
+    };
+    (vector_unsigned_int) => {
+        vector_bool_int
+    };
+    (vector_float) => {
+        vector_bool_int
+    };
+}
+
+macro_rules! impl_from {
+    ($s: ident) => {
+        #[unstable(feature = "stdarch_powerpc", issue = "111145")]
+        impl From<$s> for s_t_l!($s) {
+            fn from (v: $s) -> Self {
+                unsafe {
+                    transmute(v)
+                }
+            }
+        }
+    };
+    ($($s: ident),*) => {
+        $(
+            impl_from! { $s }
+        )*
+    };
+}
+
+macro_rules! impl_neg {
+    ($s: ident : $zero: expr) => {
+        #[unstable(feature = "stdarch_powerpc", issue = "111145")]
+        impl crate::ops::Neg for s_t_l!($s) {
+            type Output = s_t_l!($s);
+            fn neg(self) -> Self::Output {
+                let zero = $s::splat($zero);
+                unsafe { transmute(simd_sub(zero, transmute(self))) }
+            }
+        }
+    };
+}
+
+pub(crate) use impl_from;
+pub(crate) use impl_neg;
+pub(crate) use impl_vec_trait;
+pub(crate) use s_t_l;
+pub(crate) use t_b;
+pub(crate) use t_t_l;
+pub(crate) use t_t_s;
+pub(crate) use t_u;
+pub(crate) use test_impl;

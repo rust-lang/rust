@@ -1,7 +1,6 @@
 //! PowerPC intrinsics
 
-#[macro_use]
-mod macros;
+pub(crate) mod macros;
 
 mod altivec;
 #[unstable(feature = "stdarch_powerpc", issue = "111145")]
