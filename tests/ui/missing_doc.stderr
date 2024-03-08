@@ -88,20 +88,5 @@ error: missing documentation for a function
 LL |         fn also_undocumented2() {}
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: missing documentation for a struct
-  --> tests/ui/missing_doc.rs:123:1
-   |
-LL | / pub struct Test {
-LL | |     /// Dox
-LL | |     a: u8,
-LL | | }
-   | |_^
-
-error: missing documentation for a struct field
-  --> tests/ui/missing_doc.rs:125:5
-   |
-LL |     a: u8,
-   |     ^^^^^
-
-error: aborting due to 15 previous errors
+error: aborting due to 13 previous errors
 
