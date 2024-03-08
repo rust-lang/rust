@@ -985,7 +985,13 @@ pub(crate) unsafe fn enzyme_rust_reverse_diff(
 }
 
 extern "C" {
+    // TODO: can I just ignore the non void return
+    // EraseFromParent doesn't exist :(
+    //pub fn LLVMEraseFromParent(BB: &BasicBlock) -> &Value;
     // Enzyme
+    pub fn LLVMRustEraseBBFromParent(B: &BasicBlock);
+    pub fn LLVMRustEraseInstFromParent(V: &Value);
+    pub fn LLVMRustGetTerminator<'a>(B: &BasicBlock) -> &'a Value;
     pub fn LLVMGetReturnType(T: &Type) -> &Type;
     pub fn LLVMDumpModule(M: &Module);
     pub fn LLVMCountStructElementTypes(T: &Type) -> c_uint;
@@ -1215,6 +1221,7 @@ extern "C" {
     // Operations on instructions
     pub fn LLVMIsAInstruction(Val: &Value) -> Option<&Value>;
     pub fn LLVMGetFirstBasicBlock(Fn: &Value) -> &BasicBlock;
+    pub fn LLVMGetNextBasicBlock(Fn: &BasicBlock) -> &BasicBlock;
 
     // Operations on call sites
     pub fn LLVMSetInstructionCallConv(Instr: &Value, CC: c_uint);

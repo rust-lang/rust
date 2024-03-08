@@ -313,6 +313,21 @@ LLVMRustCreateAttrNoValue(LLVMContextRef C, LLVMRustAttribute RustAttr) {
   return wrap(Attribute::get(*unwrap(C), fromRust(RustAttr)));
 }
 
+extern "C" LLVMValueRef LLVMRustGetTerminator(LLVMBasicBlockRef BB) {
+  Instruction *ret = unwrap(BB)->getTerminator();
+  return wrap(ret);
+}
+
+extern "C" void LLVMRustEraseInstFromParent(LLVMValueRef Instr) {
+  if (auto I = dyn_cast<Instruction>(unwrap<Value>(Instr))) {
+    I->eraseFromParent();
+  }
+}
+
+extern "C" void LLVMRustEraseBBFromParent(LLVMBasicBlockRef BB) {
+  unwrap(BB)->eraseFromParent();
+}
+
 extern "C" LLVMTypeRef LLVMRustGetFunctionType(LLVMValueRef Fn) {
   auto Ftype = unwrap<Function>(Fn)->getFunctionType();
   return wrap(Ftype);

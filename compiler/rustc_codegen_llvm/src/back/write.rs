@@ -1,3 +1,8 @@
+use crate::llvm::LLVMGetFirstBasicBlock;
+use crate::llvm::LLVMRustGetTerminator;
+use crate::llvm::LLVMRustEraseInstFromParent;
+use crate::llvm::LLVMRustEraseBBFromParent;
+//use crate::llvm::LLVMEraseFromParent;
 use crate::back::lto::ThinBuffer;
 use crate::back::owned_target_machine::OwnedTargetMachine;
 use crate::back::profiling::{
@@ -31,7 +36,7 @@ use crate::DiffTypeTree;
 use crate::LlvmCodegenBackend;
 use crate::ModuleLlvm;
 use llvm::{
-    LLVMRustLLVMHasZlibCompressionForDebugSymbols, LLVMRustLLVMHasZstdCompressionForDebugSymbols,
+    LLVMRustLLVMHasZlibCompressionForDebugSymbols, LLVMRustLLVMHasZstdCompressionForDebugSymbols, LLVMGetNextBasicBlock,
 };
 use rustc_ast::expand::autodiff_attrs::{AutoDiffItem, DiffActivity, DiffMode};
 use rustc_codegen_ssa::back::link::ensure_removed;
@@ -629,6 +634,62 @@ fn get_params(fnc: &Value) -> Vec<&Value> {
     }
 }
 
+// DESIGN:
+// Today we have our placeholder function, and our Enzyme generated one.
+// We create a wrapper function and delete the placeholder body.
+// We then call the wrapper from the placeholder.
+//
+// Soon, we won't delete the whole placeholder, but just the loop,
+// and the two inline asm sections. For now we can still call the wrapper.
+// In the future we call our Enzyme generated function directly and unwrap the return
+// struct in our original placeholder.
+//
+// define internal double @_ZN2ad3bar17ha38374e821680177E(ptr align 8 %0, ptr align 8 %1, double %2) unnamed_addr #17 !dbg !13678 {
+//  %4 = alloca double, align 8
+//  %5 = alloca ptr, align 8
+//  %6 = alloca ptr, align 8
+//  %7 = alloca { ptr, double }, align 8
+//  store ptr %0, ptr %6, align 8
+//  call void @llvm.dbg.declare(metadata ptr %6, metadata !13682, metadata !DIExpression()), !dbg !13685
+//  store ptr %1, ptr %5, align 8
+//  call void @llvm.dbg.declare(metadata ptr %5, metadata !13683, metadata !DIExpression()), !dbg !13685
+//  store double %2, ptr %4, align 8
+//  call void @llvm.dbg.declare(metadata ptr %4, metadata !13684, metadata !DIExpression()), !dbg !13686
+//  call void asm sideeffect alignstack inteldialect "NOP", "~{dirflag},~{fpsr},~{flags},~{memory}"(), !dbg !13687, !srcloc !23
+//  %8 = call double @_ZN2ad3foo17h95b548a9411653b2E(ptr align 8 %0), !dbg !13687
+//  %9 = call double @_ZN4core4hint9black_box17h7bd67a41b0f12bdfE(double %8), !dbg !13687
+//  store ptr %1, ptr %7, align 8, !dbg !13687
+//  %10 = getelementptr inbounds { ptr, double }, ptr %7, i32 0, i32 1, !dbg !13687
+//  store double %2, ptr %10, align 8, !dbg !13687
+//  %11 = getelementptr inbounds { ptr, double }, ptr %7, i32 0, i32 0, !dbg !13687
+//  %12 = load ptr, ptr %11, align 8, !dbg !13687, !nonnull !23, !align !1047, !noundef !23
+//  %13 = getelementptr inbounds { ptr, double }, ptr %7, i32 0, i32 1, !dbg !13687
+//  %14 = load double, ptr %13, align 8, !dbg !13687, !noundef !23
+//  %15 = call { ptr, double } @_ZN4core4hint9black_box17h669f3b22afdcb487E(ptr align 8 %12, double %14), !dbg !13687
+//  %16 = extractvalue { ptr, double } %15, 0, !dbg !13687
+//  %17 = extractvalue { ptr, double } %15, 1, !dbg !13687
+//  br label %18, !dbg !13687
+//
+//18:                                               ; preds = %18, %3
+//  br label %18, !dbg !13687
+
+#[allow(unused_variables)]
+#[allow(unused)]
+unsafe fn cleanup<'a>(fnc: &'a Value) {
+   // first, remove all calls from fnc
+   let bb = LLVMGetFirstBasicBlock(fnc);
+   let bb2 = LLVMGetNextBasicBlock(bb);
+   let br = LLVMRustGetTerminator(bb);
+   LLVMRustEraseInstFromParent(br);
+
+   LLVMRustEraseBBFromParent(bb2);
+   //LLVMEraseFromParent(bb);
+   dbg!(&fnc);
+   //let bb2 = LLVMGet
+   //LLVMEraseFromParent
+
+}
+
 // TODO: Here we could start adding length checks for the shaddow args.
 unsafe fn create_wrapper<'a>(
     llmod: &'a llvm::Module,
@@ -744,6 +805,8 @@ pub(crate) unsafe fn enzyme_ad(
             ));
         }
     };
+    dbg!(&target_fnc);
+    cleanup(target_fnc);
     let src_num_args = llvm::LLVMCountParams(src_fnc);
     let target_num_args = llvm::LLVMCountParams(target_fnc);
     // A really simple check
