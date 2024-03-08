@@ -587,6 +587,16 @@ impl<'tcx> Context for TablesWrapper<'tcx> {
         }
     }
 
+    /// Retrieve the plain intrinsic name of an instance.
+    ///
+    /// This assumes that the instance is an intrinsic.
+    fn intrinsic_name(&self, def: InstanceDef) -> Symbol {
+        let tables = self.0.borrow_mut();
+        let instance = tables.instances[def];
+        let intrinsic = tables.tcx.intrinsic(instance.def_id()).unwrap();
+        intrinsic.name.to_string()
+    }
+
     fn ty_layout(&self, ty: Ty) -> Result<Layout, Error> {
         let mut tables = self.0.borrow_mut();
         let tcx = tables.tcx;
