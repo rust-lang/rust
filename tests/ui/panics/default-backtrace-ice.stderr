@@ -20,6 +20,8 @@ error: the compiler unexpectedly panicked. this is a bug.
 
 
 
+
+
 query stack during panic:
 #0 [resolver_for_lowering_raw] getting the resolver for lowering
 end of query stack

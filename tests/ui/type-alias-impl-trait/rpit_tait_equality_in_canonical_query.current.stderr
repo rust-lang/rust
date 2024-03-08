@@ -19,5 +19,7 @@ LL |     query(get_rpit);
 LL |     query(get_rpit);
    |     ^^^^^^^^^^^^^^^
 
+note: if you are using a nightly compiler, please make sure that you have updated to the latest nightly
+
 query stack during panic:
 end of query stack
