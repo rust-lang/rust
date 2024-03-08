@@ -352,8 +352,7 @@ declare_tool_lint! {
 declare_tool_lint! {
     /// The `diagnostic_outside_of_impl` lint detects calls to functions annotated with
     /// `#[rustc_lint_diagnostics]` that are outside an `Diagnostic`, `Subdiagnostic`, or
-    /// `LintDiagnostic` impl, or a `#[derive(Diagnostic)]`, `#[derive(Subdiagnostic)]`,
-    /// `#[derive(LintDiagnostic)]` expansion.
+    /// `LintDiagnostic` impl (either hand-written or derived).
     ///
     /// More details on diagnostics implementations can be found
     /// [here](https://rustc-dev-guide.rust-lang.org/diagnostics/diagnostic-structs.html).

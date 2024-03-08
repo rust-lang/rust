@@ -17,12 +17,12 @@ use synstructure::{BindingInfo, Structure, VariantInfo};
 use super::utils::SubdiagnosticVariant;
 
 /// The central struct for constructing the `add_to_diag` method from an annotated struct.
-pub(crate) struct SubdiagnosticDeriveBuilder {
+pub(crate) struct SubdiagnosticDerive {
     diag: syn::Ident,
     f: syn::Ident,
 }
 
-impl SubdiagnosticDeriveBuilder {
+impl SubdiagnosticDerive {
     pub(crate) fn new() -> Self {
         let diag = format_ident!("diag");
         let f = format_ident!("f");
@@ -109,7 +109,7 @@ impl SubdiagnosticDeriveBuilder {
 /// double mut borrow later on.
 struct SubdiagnosticDeriveVariantBuilder<'parent, 'a> {
     /// The identifier to use for the generated `Diag` instance.
-    parent: &'parent SubdiagnosticDeriveBuilder,
+    parent: &'parent SubdiagnosticDerive,
 
     /// Info for the current variant (or the type if not an enum).
     variant: &'a VariantInfo<'a>,
