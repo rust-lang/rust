@@ -339,7 +339,7 @@ pub(crate) fn create_object_file(sess: &Session) -> Option<write::Object<'static
                 "ilp32s" | "lp64s" => e_flags |= elf::EF_LARCH_ABI_SOFT_FLOAT,
                 "ilp32f" | "lp64f" => e_flags |= elf::EF_LARCH_ABI_SINGLE_FLOAT,
                 "ilp32d" | "lp64d" => e_flags |= elf::EF_LARCH_ABI_DOUBLE_FLOAT,
-                _ => bug!("unknown RISC-V ABI name"),
+                _ => bug!("unknown LoongArch ABI name"),
             }
 
             e_flags
