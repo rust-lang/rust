@@ -76,7 +76,7 @@ export type RunTestParams = {
 export type TestItem = {
     id: string;
     label: string;
-    icon: "package" | "module" | "test";
+    kind: "package" | "module" | "test";
     canResolveChildren: boolean;
     parent?: string | undefined;
     textDocument?: lc.TextDocumentIdentifier | undefined;
@@ -84,7 +84,12 @@ export type TestItem = {
     runnable?: Runnable | undefined;
 };
 export type DiscoverTestResults = { tests: TestItem[]; scope: string[] };
-export type TestState = { tag: "failed"; message: string } | { tag: "passed" } | { tag: "started" };
+export type TestState =
+    | { tag: "failed"; message: string }
+    | { tag: "passed" }
+    | { tag: "started" }
+    | { tag: "enqueued" }
+    | { tag: "skipped" };
 export type ChangeTestStateParams = { testId: string; state: TestState };
 export const discoverTest = new lc.RequestType<DiscoverTestParams, DiscoverTestResults, void>(
     "experimental/discoverTest",

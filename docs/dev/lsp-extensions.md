@@ -1,5 +1,5 @@
 <!---
-lsp/ext.rs hash: 4b06686d086b7d9b
+lsp/ext.rs hash: 6bc140531b403717
 
 If you need to change the above hash to make the test pass, please check if you
 need to adjust this doc as well and ping this issue:
@@ -416,7 +416,9 @@ interface TestItem {
     range?: lc.Range | undefined;
     // A human readable name for this test
     label: string;
-    icon: "package" | "module" | "test";
+    // The kind of this test item. Based on the kind,
+	// an icon is chosen by the editor. 
+    kind: "package" | "module" | "test";
     // True if this test may have children not available eagerly
     canResolveChildren: boolean;
     // The id of the parent test in the test tree. If not present, this test
@@ -425,6 +427,10 @@ interface TestItem {
     // The information useful for running the test. The client can use `runTest`
     // request for simple execution, but for more complex execution forms
     // like debugging, this field is useful.
+    // Note that this field includes some information about label and location as well, but
+    // those exist just for keeping things in sync with other methods of running runnables
+    // (for example using one consistent name in the vscode's launch.json) so for any propose
+    // other than running tests this field should not be used.
     runnable?: Runnable | undefined;
 };
 
@@ -451,8 +457,14 @@ the same as the one in `experimental/discoverTest` response.
 **Request:** `RunTestParams`
 
 ```typescript
-interface DiscoverTestParams {
+interface RunTestParams {
+    // Id of the tests to be run. If a test is included, all of its children are included implicitly. If
+    // this property is undefined, then the server should simply run all tests.
     include?: string[] | undefined;
+    // An array of test ids the user has marked as excluded from the test included in this run; exclusions
+    // should apply after inclusions.
+    // May be omitted if no exclusions were requested. Server should not run excluded tests or
+    // any children of excluded tests.
     exclude?: string[] | undefined;
 }
 ```
@@ -480,9 +492,16 @@ a `experimental/endRunTest` when is done.
 **Notification:** `ChangeTestStateParams`
 
 ```typescript
-type TestState = { tag: "failed"; message: string }
-    | { tag: "passed" }
-    | { tag: "started" };
+type TestState = { tag: "passed" } 
+    | {
+        tag: "failed"; 
+        // The standard error of the test, containing the panic message. Clients should
+        // render it similar to a terminal, and e.g. handle ansi colors.
+        message: string;
+    }
+    | { tag: "started" }
+    | { tag: "enqueued" }
+    | { tag: "skipped" };
 
 interface ChangeTestStateParams {
     testId: string;

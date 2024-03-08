@@ -1506,10 +1506,10 @@ pub(crate) fn test_item(
     lsp_ext::TestItem {
         id: test_item.id,
         label: test_item.label,
-        icon: match test_item.kind {
-            ide::TestItemKind::Crate => lsp_ext::TestItemIcon::Package,
-            ide::TestItemKind::Module => lsp_ext::TestItemIcon::Module,
-            ide::TestItemKind::Function => lsp_ext::TestItemIcon::Test,
+        kind: match test_item.kind {
+            ide::TestItemKind::Crate => lsp_ext::TestItemKind::Package,
+            ide::TestItemKind::Module => lsp_ext::TestItemKind::Module,
+            ide::TestItemKind::Function => lsp_ext::TestItemKind::Test,
         },
         can_resolve_children: matches!(
             test_item.kind,

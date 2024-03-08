@@ -14,6 +14,7 @@ use crate::command::{CommandHandle, ParseFromLine};
 pub enum TestState {
     Started,
     Ok,
+    Ignored,
     Failed { stdout: String },
 }
 
