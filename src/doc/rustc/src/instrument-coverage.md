@@ -346,6 +346,14 @@ $ llvm-cov report \
   more fine-grained coverage options are added.
   Using this value is currently not recommended.
 
+## `-Z coverage-options=<options>`
+
+This unstable option provides finer control over some aspects of coverage
+instrumentation. Pass one or more of the following values, separated by commas.
+
+- `branch` or `no-branch`
+  - Placeholder for potential branch coverage support in the future.
+
 ## Other references
 
 Rust's implementation and workflow for source-based code coverage is based on the same library and tools used to implement [source-based code coverage in Clang]. (This document is partially based on the Clang guide.)

@@ -396,6 +396,7 @@ mod desc {
     pub const parse_optimization_fuel: &str = "crate=integer";
     pub const parse_dump_mono_stats: &str = "`markdown` (default) or `json`";
     pub const parse_instrument_coverage: &str = parse_bool;
+    pub const parse_coverage_options: &str = "`branch` or `no-branch`";
     pub const parse_instrument_xray: &str = "either a boolean (`yes`, `no`, `on`, `off`, etc), or a comma separated list of settings: `always` or `never` (mutually exclusive), `ignore-loops`, `instruction-threshold=N`, `skip-entry`, `skip-exit`";
     pub const parse_unpretty: &str = "`string` or `string=string`";
     pub const parse_treat_err_as_bug: &str = "either no value or a non-negative number";
@@ -935,6 +936,24 @@ mod parse {
             "0" => InstrumentCoverage::No,
             _ => return false,
         };
+        true
+    }
+
+    pub(crate) fn parse_coverage_options(slot: &mut CoverageOptions, v: Option<&str>) -> bool {
+        let Some(v) = v else { return true };
+
+        for option in v.split(',') {
+            let (option, enabled) = match option.strip_prefix("no-") {
+                Some(without_no) => (without_no, false),
+                None => (option, true),
+            };
+            let slot = match option {
+                "branch" => &mut slot.branch,
+                _ => return false,
+            };
+            *slot = enabled;
+        }
+
         true
     }
 
@@ -1564,6 +1583,8 @@ options! {
         "set option to collapse debuginfo for macros"),
     combine_cgu: bool = (false, parse_bool, [TRACKED],
         "combine CGUs into a single one"),
+    coverage_options: CoverageOptions = (CoverageOptions::default(), parse_coverage_options, [TRACKED],
+        "control details of coverage instrumentation"),
     crate_attr: Vec<String> = (Vec::new(), parse_string_push, [TRACKED],
         "inject the given attribute in the crate"),
     cross_crate_inline_threshold: InliningThreshold = (InliningThreshold::Sometimes(100), parse_inlining_threshold, [TRACKED],

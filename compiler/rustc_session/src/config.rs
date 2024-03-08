@@ -143,6 +143,19 @@ pub enum InstrumentCoverage {
     Yes,
 }
 
+/// Individual flag values controlled by `-Z coverage-options`.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub struct CoverageOptions {
+    /// Add branch coverage instrumentation (placeholder flag; not yet implemented).
+    pub branch: bool,
+}
+
+impl Default for CoverageOptions {
+    fn default() -> Self {
+        Self { branch: false }
+    }
+}
+
 /// Settings for `-Z instrument-xray` flag.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
 pub struct InstrumentXRay {
@@ -3168,12 +3181,12 @@ pub enum WasiExecModel {
 /// how the hash should be calculated when adding a new command-line argument.
 pub(crate) mod dep_tracking {
     use super::{
-        BranchProtection, CFGuard, CFProtection, CollapseMacroDebuginfo, CrateType, DebugInfo,
-        DebugInfoCompression, ErrorOutputType, FunctionReturn, InliningThreshold,
-        InstrumentCoverage, InstrumentXRay, LinkerPluginLto, LocationDetail, LtoCli,
-        NextSolverConfig, OomStrategy, OptLevel, OutFileName, OutputType, OutputTypes, Polonius,
-        RemapPathScopeComponents, ResolveDocLinks, SourceFileHashAlgorithm, SplitDwarfKind,
-        SwitchWithOptPath, SymbolManglingVersion, WasiExecModel,
+        BranchProtection, CFGuard, CFProtection, CollapseMacroDebuginfo, CoverageOptions,
+        CrateType, DebugInfo, DebugInfoCompression, ErrorOutputType, FunctionReturn,
+        InliningThreshold, InstrumentCoverage, InstrumentXRay, LinkerPluginLto, LocationDetail,
+        LtoCli, NextSolverConfig, OomStrategy, OptLevel, OutFileName, OutputType, OutputTypes,
+        Polonius, RemapPathScopeComponents, ResolveDocLinks, SourceFileHashAlgorithm,
+        SplitDwarfKind, SwitchWithOptPath, SymbolManglingVersion, WasiExecModel,
     };
     use crate::lint;
     use crate::utils::NativeLib;
@@ -3243,6 +3256,7 @@ pub(crate) mod dep_tracking {
         CodeModel,
         TlsModel,
         InstrumentCoverage,
+        CoverageOptions,
         InstrumentXRay,
         CrateType,
         MergeFunctions,
