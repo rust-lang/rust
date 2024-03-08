@@ -474,7 +474,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             // candidate.
             self.bind_and_guard_matched_candidate(
                 candidate,
-                &[],
+                &mut vec![],
                 fake_borrow_temps,
                 scrutinee_span,
                 arm_match_scope,
@@ -505,13 +505,13 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             traverse_candidate(
                 candidate,
                 &mut Vec::new(),
-                &mut |leaf_candidate, parent_data| {
+                &mut |leaf_candidate, collected_data| {
                     if let Some(arm) = arm {
                         self.clear_top_scope(arm.scope);
                     }
                     let binding_end = self.bind_and_guard_matched_candidate(
                         leaf_candidate,
-                        parent_data,
+                        collected_data,
                         fake_borrow_temps,
                         scrutinee_span,
                         arm_match_scope,
@@ -523,12 +523,12 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     }
                     self.cfg.goto(binding_end, outer_source_info, target_block);
                 },
-                |inner_candidate, parent_data| {
-                    parent_data.push(inner_candidate.extra_data);
+                |inner_candidate, collected_data| {
+                    collected_data.push(inner_candidate.extra_data);
                     inner_candidate.subcandidates.into_iter()
                 },
-                |parent_data| {
-                    parent_data.pop();
+                |collected_data| {
+                    collected_data.pop();
                 },
             );
 
@@ -929,7 +929,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
 /// Data extracted from a pattern that doesn't affect which branch is taken. Collected during
 /// pattern simplification and not mutated later.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Default)]
 struct PatternExtraData<'tcx> {
     /// [`Span`] of the original pattern.
     span: Span,
@@ -1958,7 +1958,8 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     fn bind_and_guard_matched_candidate<'pat>(
         &mut self,
         candidate: Candidate<'pat, 'tcx>,
-        parent_data: &[PatternExtraData<'tcx>],
+        // Manage in a stack fashion.
+        collected_data: &mut Vec<PatternExtraData<'tcx>>,
         fake_borrows: &[(Place<'tcx>, Local)],
         scrutinee_span: Span,
         arm_match_scope: Option<(&Arm<'tcx>, region::Scope)>,
@@ -1970,6 +1971,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         debug_assert!(candidate.match_pairs.is_empty());
 
         let candidate_source_info = self.source_info(candidate.extra_data.span);
+        collected_data.push(candidate.extra_data);
 
         let mut block = candidate.pre_binding_block.unwrap();
 
@@ -1984,14 +1986,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             block = fresh_block;
         }
 
-        self.ascribe_types(
-            block,
-            parent_data
-                .iter()
-                .flat_map(|d| &d.ascriptions)
-                .cloned()
-                .chain(candidate.extra_data.ascriptions),
-        );
+        self.ascribe_types(block, collected_data.iter().flat_map(|d| &d.ascriptions).cloned());
 
         // rust-lang/rust#27282: The `autoref` business deserves some
         // explanation here.
@@ -2074,12 +2069,11 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         //      the reference that we create for the arm.
         //    * So we eagerly create the reference for the arm and then take a
         //      reference to that.
-        if let Some((arm, match_scope)) = arm_match_scope
+        let block = if let Some((arm, match_scope)) = arm_match_scope
             && let Some(guard) = arm.guard
         {
             let tcx = self.tcx;
-            let bindings =
-                parent_data.iter().flat_map(|d| &d.bindings).chain(&candidate.extra_data.bindings);
+            let bindings = collected_data.iter().flat_map(|d| &d.bindings);
 
             self.bind_matched_candidate_for_guard(block, schedule_drops, bindings.clone());
             let guard_frame = GuardFrame {
@@ -2157,10 +2151,9 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             // ```
             //
             // and that is clearly not correct.
-            let by_value_bindings = parent_data
+            let by_value_bindings = collected_data
                 .iter()
                 .flat_map(|d| &d.bindings)
-                .chain(&candidate.extra_data.bindings)
                 .filter(|binding| matches!(binding.binding_mode, BindingMode::ByValue));
             // Read all of the by reference bindings to ensure that the
             // place they refer to can't be modified by the guard.
@@ -2185,11 +2178,13 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             self.bind_matched_candidate_for_arm_body(
                 block,
                 schedule_drops,
-                parent_data.iter().flat_map(|d| &d.bindings).chain(&candidate.extra_data.bindings),
+                collected_data.iter().flat_map(|d| &d.bindings),
                 storages_alive,
             );
             block
-        }
+        };
+        collected_data.pop();
+        block
     }
 
     /// Append `AscribeUserType` statements onto the end of `block`
