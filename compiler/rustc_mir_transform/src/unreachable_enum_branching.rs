@@ -177,7 +177,7 @@ impl<'tcx> MirPass<'tcx> for UnreachableEnumBranching {
                 && allowed_variants.len() == 1
                 && check_successors(&body.basic_blocks, targets.otherwise());
             let replace_otherwise_to_unreachable = otherwise_is_last_variant
-                || !otherwise_is_empty_unreachable && allowed_variants.is_empty();
+                || (!otherwise_is_empty_unreachable && allowed_variants.is_empty());
 
             if unreachable_targets.is_empty() && !replace_otherwise_to_unreachable {
                 continue;
