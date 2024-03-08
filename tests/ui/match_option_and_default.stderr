@@ -1,0 +1,56 @@
+error: match can be simplified with `.unwrap_or_default()`
+  --> tests/ui/match_option_and_default.rs:6:5
+   |
+LL | /     match x {
+LL | |
+LL | |         Some(v) => v,
+LL | |         None => Vec::default(),
+LL | |     };
+   | |_____^ help: replace it with: `x.unwrap_or_default()`
+   |
+   = note: `-D clippy::match-option-and-default` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::match_option_and_default)]`
+
+error: match can be simplified with `.unwrap_or_default()`
+  --> tests/ui/match_option_and_default.rs:13:5
+   |
+LL | /     match x {
+LL | |
+LL | |         Some(v) => v,
+LL | |         _ => Vec::default(),
+LL | |     };
+   | |_____^ help: replace it with: `x.unwrap_or_default()`
+
+error: match can be simplified with `.unwrap_or_default()`
+  --> tests/ui/match_option_and_default.rs:20:5
+   |
+LL | /     match x {
+LL | |
+LL | |         Some(v) => v,
+LL | |         None => String::new(),
+LL | |     };
+   | |_____^ help: replace it with: `x.unwrap_or_default()`
+
+error: match can be simplified with `.unwrap_or_default()`
+  --> tests/ui/match_option_and_default.rs:27:5
+   |
+LL | /     match x {
+LL | |
+LL | |         None => Vec::default(),
+LL | |         Some(v) => v,
+LL | |     };
+   | |_____^ help: replace it with: `x.unwrap_or_default()`
+
+error: if let can be simplified with `.unwrap_or_default()`
+  --> tests/ui/match_option_and_default.rs:34:5
+   |
+LL | /     if let Some(v) = x {
+LL | |
+LL | |         v
+LL | |     } else {
+LL | |         Vec::default()
+LL | |     };
+   | |_____^ help: replace it with: `x.unwrap_or_default()`
+
+error: aborting due to 5 previous errors
+
