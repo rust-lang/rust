@@ -2564,8 +2564,12 @@ impl Step for Crate {
         let mode = self.mode;
 
         // See [field@compile::Std::force_recompile].
-        builder.ensure(compile::Std::force_recompile(compiler, target));
-        builder.ensure(RemoteCopyLibs { compiler, target });
+        builder.ensure(compile::Std::force_recompile(compiler, compiler.host));
+
+        if builder.config.build != target {
+            builder.ensure(compile::Std::force_recompile(compiler, target));
+            builder.ensure(RemoteCopyLibs { compiler, target });
+        }
 
         // If we're not doing a full bootstrap but we're testing a stage2
         // version of libstd, then what we're actually testing is the libstd
