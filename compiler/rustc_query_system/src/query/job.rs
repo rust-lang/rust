@@ -17,10 +17,9 @@ use std::num::NonZero;
 use {
     parking_lot::{Condvar, Mutex},
     rustc_data_structures::fx::FxHashSet,
-    rustc_data_structures::{defer, jobserver},
+    rustc_data_structures::jobserver,
     rustc_span::DUMMY_SP,
     std::iter,
-    std::process,
     std::sync::Arc,
 };
 
@@ -514,12 +513,7 @@ fn remove_cycle(
 /// There may be multiple cycles involved in a deadlock, so this searches
 /// all active queries for cycles before finally resuming all the waiters at once.
 #[cfg(parallel_compiler)]
-pub fn deadlock(query_map: QueryMap, registry: &rayon_core::Registry) {
-    let on_panic = defer(|| {
-        eprintln!("deadlock handler panicked, aborting process");
-        process::abort();
-    });
-
+pub fn break_query_cycles(query_map: QueryMap, registry: &rayon_core::Registry) {
     let mut wakelist = Vec::new();
     let mut jobs: Vec<QueryJobId> = query_map.keys().cloned().collect();
 
@@ -539,19 +533,17 @@ pub fn deadlock(query_map: QueryMap, registry: &rayon_core::Registry) {
     // X to Y due to Rayon waiting and a true dependency from Y to X. The algorithm here
     // only considers the true dependency and won't detect a cycle.
     if !found_cycle {
-        if query_map.len() == 0 {
-            panic!("deadlock detected without any query!")
-        } else {
-            panic!("deadlock detected! current query map:\n{:#?}", query_map);
-        }
+        panic!(
+            "deadlock detected as we're unable to find a query cycle to break\n\
+            current query map:\n{:#?}",
+            query_map
+        );
     }
 
     // FIXME: Ensure this won't cause a deadlock before we return
     for waiter in wakelist.into_iter() {
         waiter.notify(registry);
     }
-
-    on_panic.disable();
 }
 
 #[inline(never)]
