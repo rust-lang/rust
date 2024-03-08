@@ -1,5 +1,4 @@
 use crate::common::*;
-use crate::context::TypeLowering;
 use crate::type_::Type;
 use rustc_codegen_ssa::traits::*;
 use rustc_middle::bug;
@@ -10,7 +9,6 @@ use rustc_target::abi::HasDataLayout;
 use rustc_target::abi::{Abi, Align, FieldsShape};
 use rustc_target::abi::{Int, Pointer, F128, F16, F32, F64};
 use rustc_target::abi::{Scalar, Size, Variants};
-use smallvec::{smallvec, SmallVec};
 
 use std::fmt::Write;
 
@@ -18,7 +16,6 @@ fn uncached_llvm_type<'a, 'tcx>(
     cx: &CodegenCx<'a, 'tcx>,
     layout: TyAndLayout<'tcx>,
     defer: &mut Option<(&'a Type, TyAndLayout<'tcx>)>,
-    field_remapping: &mut Option<SmallVec<[u32; 4]>>,
 ) -> &'a Type {
     match layout.abi {
         Abi::Scalar(_) => bug!("handled elsewhere"),
@@ -71,8 +68,7 @@ fn uncached_llvm_type<'a, 'tcx>(
         FieldsShape::Array { count, .. } => cx.type_array(layout.field(cx, 0).llvm_type(cx), count),
         FieldsShape::Arbitrary { .. } => match name {
             None => {
-                let (llfields, packed, new_field_remapping) = struct_llfields(cx, layout);
-                *field_remapping = new_field_remapping;
+                let (llfields, packed) = struct_llfields(cx, layout);
                 cx.type_struct(&llfields, packed)
             }
             Some(ref name) => {
@@ -87,7 +83,7 @@ fn uncached_llvm_type<'a, 'tcx>(
 fn struct_llfields<'a, 'tcx>(
     cx: &CodegenCx<'a, 'tcx>,
     layout: TyAndLayout<'tcx>,
-) -> (Vec<&'a Type>, bool, Option<SmallVec<[u32; 4]>>) {
+) -> (Vec<&'a Type>, bool) {
     debug!("struct_llfields: {:#?}", layout);
     let field_count = layout.fields.count();
 
@@ -95,7 +91,6 @@ fn struct_llfields<'a, 'tcx>(
     let mut offset = Size::ZERO;
     let mut prev_effective_align = layout.align.abi;
     let mut result: Vec<_> = Vec::with_capacity(1 + field_count * 2);
-    let mut field_remapping = smallvec![0; field_count];
     for i in layout.fields.index_by_increasing_offset() {
         let target_offset = layout.fields.offset(i as usize);
         let field = layout.field(cx, i);
@@ -120,12 +115,10 @@ fn struct_llfields<'a, 'tcx>(
             result.push(cx.type_padding_filler(padding, padding_align));
             debug!("    padding before: {:?}", padding);
         }
-        field_remapping[i] = result.len() as u32;
         result.push(field.llvm_type(cx));
         offset = target_offset + field.size;
         prev_effective_align = effective_field_align;
     }
-    let padding_used = result.len() > field_count;
     if layout.is_sized() && field_count > 0 {
         if offset > layout.size {
             bug!("layout: {:#?} stride: {:?} offset: {:?}", layout, layout.size, offset);
@@ -143,8 +136,7 @@ fn struct_llfields<'a, 'tcx>(
     } else {
         debug!("struct_llfields: offset: {:?} stride: {:?}", offset, layout.size);
     }
-    let field_remapping = padding_used.then_some(field_remapping);
-    (result, packed, field_remapping)
+    (result, packed)
 }
 
 impl<'a, 'tcx> CodegenCx<'a, 'tcx> {
@@ -224,7 +216,7 @@ impl<'tcx> LayoutLlvmExt<'tcx> for TyAndLayout<'tcx> {
             _ => None,
         };
         if let Some(llty) = cx.type_lowering.borrow().get(&(self.ty, variant_index)) {
-            return llty.lltype;
+            return llty;
         }
 
         debug!("llvm_type({:#?})", self);
@@ -236,7 +228,6 @@ impl<'tcx> LayoutLlvmExt<'tcx> for TyAndLayout<'tcx> {
         let normal_ty = cx.tcx.erase_regions(self.ty);
 
         let mut defer = None;
-        let mut field_remapping = None;
         let llty = if self.ty != normal_ty {
             let mut layout = cx.layout_of(normal_ty);
             if let Some(v) = variant_index {
@@ -244,22 +235,15 @@ impl<'tcx> LayoutLlvmExt<'tcx> for TyAndLayout<'tcx> {
             }
             layout.llvm_type(cx)
         } else {
-            uncached_llvm_type(cx, *self, &mut defer, &mut field_remapping)
+            uncached_llvm_type(cx, *self, &mut defer)
         };
         debug!("--> mapped {:#?} to llty={:?}", self, llty);
 
-        cx.type_lowering
-            .borrow_mut()
-            .insert((self.ty, variant_index), TypeLowering { lltype: llty, field_remapping });
+        cx.type_lowering.borrow_mut().insert((self.ty, variant_index), llty);
 
         if let Some((llty, layout)) = defer {
-            let (llfields, packed, new_field_remapping) = struct_llfields(cx, layout);
+            let (llfields, packed) = struct_llfields(cx, layout);
             cx.set_struct_body(llty, &llfields, packed);
-            cx.type_lowering
-                .borrow_mut()
-                .get_mut(&(self.ty, variant_index))
-                .unwrap()
-                .field_remapping = new_field_remapping;
         }
         llty
     }
