@@ -70,8 +70,7 @@ pub(super) fn item_or_macro(p: &mut Parser<'_>, stop_on_r_curly: bool) {
     // macro_rules! {};
     // macro_rules! ()
     // macro_rules! []
-    let no_ident = p.at_contextual_kw(T![macro_rules]) && p.nth_at(1, BANG) && !p.nth_at(2, IDENT);
-    if paths::is_use_path_start(p) || no_ident {
+    if paths::is_use_path_start(p) {
         macro_call(p, m);
         return;
     }
