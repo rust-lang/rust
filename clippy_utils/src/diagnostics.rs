@@ -152,6 +152,25 @@ where
     });
 }
 
+/// Like [`span_lint`], but allows providing the `HirId` of the node that caused us to emit this
+/// lint.
+///
+/// The `HirId` is used for checking lint level attributes.
+///
+/// For example:
+/// ```ignore
+/// fn f() { /* '1 */
+///
+///     #[allow(clippy::some_lint)]
+///     let _x = /* '2 */;
+/// }
+/// ```
+/// If `some_lint` does its analysis in `LintPass::check_fn` (at `'1`) and emits a lint at `'2`
+/// using [`span_lint`], then allowing the lint at `'2` as attempted in the snippet will not work!
+/// Even though that is where the warning points at, which would be confusing to users.
+///
+/// Instead, use this function and also pass the `HirId` of the node at `'2`, which will let the
+/// compiler check lint level attributes at `'2` as one would expect, and the `#[allow]` will work.
 pub fn span_lint_hir(cx: &LateContext<'_>, lint: &'static Lint, hir_id: HirId, sp: Span, msg: &str) {
     #[expect(clippy::disallowed_methods)]
     cx.tcx.node_span_lint(lint, hir_id, sp, msg.to_string(), |diag| {
@@ -159,6 +178,25 @@ pub fn span_lint_hir(cx: &LateContext<'_>, lint: &'static Lint, hir_id: HirId, s
     });
 }
 
+/// Like [`span_lint_and_then`], but allows providing the `HirId` of the node that caused us to emit
+/// this lint.
+///
+/// The `HirId` is used for checking lint level attributes.
+///
+/// For example:
+/// ```ignore
+/// fn f() { /* '1 */
+///
+///     #[allow(clippy::some_lint)]
+///     let _x = /* '2 */;
+/// }
+/// ```
+/// If `some_lint` does its analysis in `LintPass::check_fn` (at `'1`) and emits a lint at `'2`
+/// using [`span_lint_and_then`], then allowing the lint at `'2` as attempted in the snippet will
+/// not work! Even though that is where the warning points at, which would be confusing to users.
+///
+/// Instead, use this function and also pass the `HirId` of the node at `'2`, which will let the
+/// compiler check lint level attributes at `'2` as one would expect, and the `#[allow]` will work.
 pub fn span_lint_hir_and_then(
     cx: &LateContext<'_>,
     lint: &'static Lint,
