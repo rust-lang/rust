@@ -1,4 +1,5 @@
 use crate::infer::error_reporting::hir::Path;
+use core::ops::ControlFlow;
 use hir::def::CtorKind;
 use hir::intravisit::{walk_expr, walk_stmt, Visitor};
 use hir::{Local, QPath};
@@ -563,62 +564,55 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
         cause: &ObligationCause<'_>,
         span: Span,
     ) -> Option<TypeErrorAdditionalDiags> {
-        let hir = self.tcx.hir();
-        if let Some(body_id) = self.tcx.hir().maybe_body_owned_by(cause.body_id) {
-            let body = hir.body(body_id);
+        /// Find the if expression with given span
+        struct IfVisitor {
+            pub found_if: bool,
+            pub err_span: Span,
+        }
 
-            /// Find the if expression with given span
-            struct IfVisitor {
-                pub result: bool,
-                pub found_if: bool,
-                pub err_span: Span,
-            }
-
-            impl<'v> Visitor<'v> for IfVisitor {
-                fn visit_expr(&mut self, ex: &'v hir::Expr<'v>) {
-                    if self.result {
-                        return;
+        impl<'v> Visitor<'v> for IfVisitor {
+            type Result = ControlFlow<()>;
+            fn visit_expr(&mut self, ex: &'v hir::Expr<'v>) -> Self::Result {
+                match ex.kind {
+                    hir::ExprKind::If(cond, _, _) => {
+                        self.found_if = true;
+                        walk_expr(self, cond)?;
+                        self.found_if = false;
+                        ControlFlow::Continue(())
                     }
-                    match ex.kind {
-                        hir::ExprKind::If(cond, _, _) => {
-                            self.found_if = true;
-                            walk_expr(self, cond);
-                            self.found_if = false;
-                        }
-                        _ => walk_expr(self, ex),
-                    }
-                }
-
-                fn visit_stmt(&mut self, ex: &'v hir::Stmt<'v>) {
-                    if let hir::StmtKind::Local(hir::Local {
-                        span,
-                        pat: hir::Pat { .. },
-                        ty: None,
-                        init: Some(_),
-                        ..
-                    }) = &ex.kind
-                        && self.found_if
-                        && span.eq(&self.err_span)
-                    {
-                        self.result = true;
-                    }
-                    walk_stmt(self, ex);
-                }
-
-                fn visit_body(&mut self, body: &'v hir::Body<'v>) {
-                    hir::intravisit::walk_body(self, body);
+                    _ => walk_expr(self, ex),
                 }
             }
 
-            let mut visitor = IfVisitor { err_span: span, found_if: false, result: false };
-            visitor.visit_body(body);
-            if visitor.result {
-                return Some(TypeErrorAdditionalDiags::AddLetForLetChains {
-                    span: span.shrink_to_lo(),
-                });
+            fn visit_stmt(&mut self, ex: &'v hir::Stmt<'v>) -> Self::Result {
+                if let hir::StmtKind::Local(hir::Local {
+                    span,
+                    pat: hir::Pat { .. },
+                    ty: None,
+                    init: Some(_),
+                    ..
+                }) = &ex.kind
+                    && self.found_if
+                    && span.eq(&self.err_span)
+                {
+                    ControlFlow::Break(())
+                } else {
+                    walk_stmt(self, ex)
+                }
+            }
+
+            fn visit_body(&mut self, body: &'v hir::Body<'v>) -> Self::Result {
+                hir::intravisit::walk_body(self, body)
             }
         }
-        None
+
+        self.tcx.hir().maybe_body_owned_by(cause.body_id).and_then(|body_id| {
+            let body = self.tcx.hir().body(body_id);
+            IfVisitor { err_span: span, found_if: false }
+                .visit_body(body)
+                .is_break()
+                .then(|| TypeErrorAdditionalDiags::AddLetForLetChains { span: span.shrink_to_lo() })
+        })
     }
 
     /// For "one type is more general than the other" errors on closures, suggest changing the lifetime

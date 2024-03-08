@@ -18,7 +18,7 @@ const ENTRY_LIMIT: usize = 900;
 // FIXME: The following limits should be reduced eventually.
 
 const ISSUES_ENTRY_LIMIT: usize = 1750;
-const ROOT_ENTRY_LIMIT: usize = 872;
+const ROOT_ENTRY_LIMIT: usize = 866;
 
 const EXPECTED_TEST_FILE_EXTENSIONS: &[&str] = &[
     "rs",     // test source files
@@ -34,8 +34,8 @@ const EXTENSION_EXCEPTION_PATHS: &[&str] = &[
     "tests/ui/asm/named-asm-labels.s", // loading an external asm file to test named labels lint
     "tests/ui/codegen/mismatched-data-layout.json", // testing mismatched data layout w/ custom targets
     "tests/ui/check-cfg/my-awesome-platform.json",  // testing custom targets with cfgs
-    "tests/ui/commandline-argfile-badutf8.args",    // passing args via a file
-    "tests/ui/commandline-argfile.args",            // passing args via a file
+    "tests/ui/argfile/commandline-argfile-badutf8.args", // passing args via a file
+    "tests/ui/argfile/commandline-argfile.args",    // passing args via a file
     "tests/ui/crate-loading/auxiliary/libfoo.rlib", // testing loading a manually created rlib
     "tests/ui/include-macros/data.bin", // testing including data with the include macros
     "tests/ui/include-macros/file.txt", // testing including data with the include macros
@@ -104,9 +104,18 @@ pub fn check(path: &Path, bless: bool, bad: &mut bool) {
 
     // the list of files in ui tests that are allowed to start with `issue-XXXX`
     // BTreeSet because we would like a stable ordering so --bless works
-    let allowed_issue_names = BTreeSet::from(
-        include!("issues.txt").map(|path| path.replace("/", std::path::MAIN_SEPARATOR_STR)),
-    );
+    let issues_list =
+        include!("issues.txt").map(|path| path.replace("/", std::path::MAIN_SEPARATOR_STR));
+    let issues: Vec<String> = Vec::from(issues_list.clone());
+    let is_sorted = issues.windows(2).all(|w| w[0] < w[1]);
+    if !is_sorted && !bless {
+        tidy_error!(
+            bad,
+            "`src/tools/tidy/src/issues.txt` is not in order, mostly because you modified it manually,
+            please only update it with command `x test tidy --bless`"
+        );
+    }
+    let allowed_issue_names = BTreeSet::from(issues_list);
 
     let mut remaining_issue_names: BTreeSet<String> = allowed_issue_names.clone();
 

@@ -1,3 +1,4 @@
+use core::ops::ControlFlow;
 use rustc_errors::{Applicability, StashKey};
 use rustc_hir as hir;
 use rustc_hir::def_id::{DefId, LocalDefId};
@@ -675,19 +676,16 @@ pub fn type_alias_is_lazy<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalDefId) -> bool {
     if tcx.features().lazy_type_alias {
         return true;
     }
-    struct HasTait {
-        has_type_alias_impl_trait: bool,
-    }
+    struct HasTait;
     impl<'tcx> Visitor<'tcx> for HasTait {
-        fn visit_ty(&mut self, t: &'tcx hir::Ty<'tcx>) {
+        type Result = ControlFlow<()>;
+        fn visit_ty(&mut self, t: &'tcx hir::Ty<'tcx>) -> Self::Result {
             if let hir::TyKind::OpaqueDef(..) = t.kind {
-                self.has_type_alias_impl_trait = true;
+                ControlFlow::Break(())
             } else {
-                hir::intravisit::walk_ty(self, t);
+                hir::intravisit::walk_ty(self, t)
             }
         }
     }
-    let mut has_tait = HasTait { has_type_alias_impl_trait: false };
-    has_tait.visit_ty(tcx.hir().expect_item(def_id).expect_ty_alias().0);
-    has_tait.has_type_alias_impl_trait
+    HasTait.visit_ty(tcx.hir().expect_item(def_id).expect_ty_alias().0).is_break()
 }
