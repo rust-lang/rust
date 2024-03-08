@@ -339,8 +339,9 @@ fn check_opaque_meets_bounds<'tcx>(
     origin: &hir::OpaqueTyOrigin,
 ) -> Result<(), ErrorGuaranteed> {
     let defining_use_anchor = match *origin {
-        hir::OpaqueTyOrigin::FnReturn(did) | hir::OpaqueTyOrigin::AsyncFn(did) => did,
-        hir::OpaqueTyOrigin::TyAlias { .. } => tcx.impl_trait_parent(def_id),
+        hir::OpaqueTyOrigin::FnReturn(did)
+        | hir::OpaqueTyOrigin::AsyncFn(did)
+        | hir::OpaqueTyOrigin::TyAlias { parent: did, .. } => did,
     };
     let param_env = tcx.param_env(defining_use_anchor);
 
@@ -351,14 +352,14 @@ fn check_opaque_meets_bounds<'tcx>(
     let ocx = ObligationCtxt::new(&infcx);
 
     let args = match *origin {
-        hir::OpaqueTyOrigin::FnReturn(parent) | hir::OpaqueTyOrigin::AsyncFn(parent) => {
-            GenericArgs::identity_for_item(tcx, parent).extend_to(
-                tcx,
-                def_id.to_def_id(),
-                |param, _| tcx.map_rpit_lifetime_to_fn_lifetime(param.def_id.expect_local()).into(),
-            )
-        }
-        hir::OpaqueTyOrigin::TyAlias { .. } => GenericArgs::identity_for_item(tcx, def_id),
+        hir::OpaqueTyOrigin::FnReturn(parent)
+        | hir::OpaqueTyOrigin::AsyncFn(parent)
+        | hir::OpaqueTyOrigin::TyAlias { parent, .. } => GenericArgs::identity_for_item(
+            tcx, parent,
+        )
+        .extend_to(tcx, def_id.to_def_id(), |param, _| {
+            tcx.map_opaque_lifetime_to_parent_lifetime(param.def_id.expect_local()).into()
+        }),
     };
 
     let opaque_ty = Ty::new_opaque(tcx, def_id.to_def_id(), args);

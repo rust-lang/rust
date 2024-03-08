@@ -1254,7 +1254,7 @@ impl<'tcx> TyCtxt<'tcx> {
             if self.def_kind(scope) == DefKind::OpaqueTy {
                 // Lifetime params of opaque types are synthetic and thus irrelevant to
                 // diagnostics. Map them back to their origin!
-                region = self.map_rpit_lifetime_to_fn_lifetime(def_id);
+                region = self.map_opaque_lifetime_to_parent_lifetime(def_id);
                 continue;
             }
             break (scope, ty::BrNamed(def_id.into(), self.item_name(def_id.into())));
@@ -2219,31 +2219,31 @@ impl<'tcx> TyCtxt<'tcx> {
         )
     }
 
-    /// Given the def-id of an early-bound lifetime on an RPIT corresponding to
+    /// Given the def-id of an early-bound lifetime on an opaque corresponding to
     /// a duplicated captured lifetime, map it back to the early- or late-bound
     /// lifetime of the function from which it originally as captured. If it is
     /// a late-bound lifetime, this will represent the liberated (`ReLateParam`) lifetime
     /// of the signature.
     // FIXME(RPITIT): if we ever synthesize new lifetimes for RPITITs and not just
     // re-use the generics of the opaque, this function will need to be tweaked slightly.
-    pub fn map_rpit_lifetime_to_fn_lifetime(
+    pub fn map_opaque_lifetime_to_parent_lifetime(
         self,
-        mut rpit_lifetime_param_def_id: LocalDefId,
+        mut opaque_lifetime_param_def_id: LocalDefId,
     ) -> ty::Region<'tcx> {
         debug_assert!(
-            matches!(self.def_kind(rpit_lifetime_param_def_id), DefKind::LifetimeParam),
-            "{rpit_lifetime_param_def_id:?} is a {}",
-            self.def_descr(rpit_lifetime_param_def_id.to_def_id())
+            matches!(self.def_kind(opaque_lifetime_param_def_id), DefKind::LifetimeParam),
+            "{opaque_lifetime_param_def_id:?} is a {}",
+            self.def_descr(opaque_lifetime_param_def_id.to_def_id())
         );
 
         loop {
-            let parent = self.local_parent(rpit_lifetime_param_def_id);
+            let parent = self.local_parent(opaque_lifetime_param_def_id);
             let hir::OpaqueTy { lifetime_mapping, .. } =
                 self.hir_node_by_def_id(parent).expect_item().expect_opaque_ty();
 
             let Some((lifetime, _)) = lifetime_mapping
                 .iter()
-                .find(|(_, duplicated_param)| *duplicated_param == rpit_lifetime_param_def_id)
+                .find(|(_, duplicated_param)| *duplicated_param == opaque_lifetime_param_def_id)
             else {
                 bug!("duplicated lifetime param should be present");
             };
@@ -2256,7 +2256,7 @@ impl<'tcx> TyCtxt<'tcx> {
                     // of the opaque we mapped from. Continue mapping.
                     if matches!(self.def_kind(new_parent), DefKind::OpaqueTy) {
                         debug_assert_eq!(self.parent(parent.to_def_id()), new_parent);
-                        rpit_lifetime_param_def_id = ebv.expect_local();
+                        opaque_lifetime_param_def_id = ebv.expect_local();
                         continue;
                     }
 

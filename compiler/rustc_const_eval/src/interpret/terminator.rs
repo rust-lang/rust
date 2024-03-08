@@ -1,6 +1,5 @@
 use std::borrow::Cow;
 
-use rustc_ast::ast::InlineAsmOptions;
 use rustc_middle::{
     mir,
     ty::{
@@ -224,15 +223,8 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 terminator.kind
             ),
 
-            InlineAsm { template, ref operands, options, destination, .. } => {
-                M::eval_inline_asm(self, template, operands, options)?;
-                if options.contains(InlineAsmOptions::NORETURN) {
-                    throw_ub_custom!(fluent::const_eval_noreturn_asm_returned);
-                }
-                self.go_to_block(
-                    destination
-                        .expect("InlineAsm terminators without noreturn must have a destination"),
-                )
+            InlineAsm { template, ref operands, options, ref targets, .. } => {
+                M::eval_inline_asm(self, template, operands, options, targets)?;
             }
         }
 

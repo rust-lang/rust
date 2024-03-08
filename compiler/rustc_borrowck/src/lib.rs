@@ -723,7 +723,7 @@ impl<'cx, 'tcx, R> rustc_mir_dataflow::ResultsVisitor<'cx, 'tcx, R> for MirBorro
                 operands,
                 options: _,
                 line_spans: _,
-                destination: _,
+                targets: _,
                 unwind: _,
             } => {
                 for op in operands {
@@ -749,7 +749,8 @@ impl<'cx, 'tcx, R> rustc_mir_dataflow::ResultsVisitor<'cx, 'tcx, R> for MirBorro
                         }
                         InlineAsmOperand::Const { value: _ }
                         | InlineAsmOperand::SymFn { value: _ }
-                        | InlineAsmOperand::SymStatic { def_id: _ } => {}
+                        | InlineAsmOperand::SymStatic { def_id: _ }
+                        | InlineAsmOperand::Label { target_index: _ } => {}
                     }
                 }
             }

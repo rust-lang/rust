@@ -86,7 +86,6 @@ use crate::errors;
 use self::LiveNodeKind::*;
 use self::VarKind::*;
 
-use rustc_ast::InlineAsmOptions;
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_hir as hir;
 use rustc_hir::def::*;
@@ -414,6 +413,12 @@ impl<'tcx> Visitor<'tcx> for IrMaps<'tcx> {
             }
             hir::ExprKind::Binary(op, ..) if op.node.is_lazy() => {
                 self.add_live_node_for_node(expr.hir_id, ExprNode(expr.span, expr.hir_id));
+            }
+
+            // Inline assembly may contain labels.
+            hir::ExprKind::InlineAsm(asm) if asm.contains_label() => {
+                self.add_live_node_for_node(expr.hir_id, ExprNode(expr.span, expr.hir_id));
+                intravisit::walk_expr(self, expr);
             }
 
             // otherwise, live nodes are not required:
@@ -1045,20 +1050,53 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
             | hir::ExprKind::Repeat(ref e, _) => self.propagate_through_expr(e, succ),
 
             hir::ExprKind::InlineAsm(asm) => {
-                // Handle non-returning asm
-                let mut succ = if asm.options.contains(InlineAsmOptions::NORETURN) {
-                    self.exit_ln
-                } else {
-                    succ
-                };
+                //
+                //     (inputs)
+                //        |
+                //        v
+                //     (outputs)
+                //    /         \
+                //    |         |
+                //    v         v
+                // (labels)(fallthrough)
+                //    |         |
+                //    v         v
+                // ( succ / exit_ln )
 
-                // Do a first pass for writing outputs only
+                // Handle non-returning asm
+                let mut succ =
+                    if self.typeck_results.expr_ty(expr).is_never() { self.exit_ln } else { succ };
+
+                // Do a first pass for labels only
+                if asm.contains_label() {
+                    let ln = self.live_node(expr.hir_id, expr.span);
+                    self.init_from_succ(ln, succ);
+                    for (op, _op_sp) in asm.operands.iter().rev() {
+                        match op {
+                            hir::InlineAsmOperand::Label { block } => {
+                                let label_ln = self.propagate_through_block(block, succ);
+                                self.merge_from_succ(ln, label_ln);
+                            }
+                            hir::InlineAsmOperand::In { .. }
+                            | hir::InlineAsmOperand::Out { .. }
+                            | hir::InlineAsmOperand::InOut { .. }
+                            | hir::InlineAsmOperand::SplitInOut { .. }
+                            | hir::InlineAsmOperand::Const { .. }
+                            | hir::InlineAsmOperand::SymFn { .. }
+                            | hir::InlineAsmOperand::SymStatic { .. } => {}
+                        }
+                    }
+                    succ = ln;
+                }
+
+                // Do a second pass for writing outputs only
                 for (op, _op_sp) in asm.operands.iter().rev() {
                     match op {
                         hir::InlineAsmOperand::In { .. }
                         | hir::InlineAsmOperand::Const { .. }
                         | hir::InlineAsmOperand::SymFn { .. }
-                        | hir::InlineAsmOperand::SymStatic { .. } => {}
+                        | hir::InlineAsmOperand::SymStatic { .. }
+                        | hir::InlineAsmOperand::Label { .. } => {}
                         hir::InlineAsmOperand::Out { expr, .. } => {
                             if let Some(expr) = expr {
                                 succ = self.write_place(expr, succ, ACC_WRITE);
@@ -1075,7 +1113,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
                     }
                 }
 
-                // Then do a second pass for inputs
+                // Then do a third pass for inputs
                 for (op, _op_sp) in asm.operands.iter().rev() {
                     match op {
                         hir::InlineAsmOperand::In { expr, .. } => {
@@ -1097,7 +1135,8 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
                         }
                         hir::InlineAsmOperand::Const { .. }
                         | hir::InlineAsmOperand::SymFn { .. }
-                        | hir::InlineAsmOperand::SymStatic { .. } => {}
+                        | hir::InlineAsmOperand::SymStatic { .. }
+                        | hir::InlineAsmOperand::Label { .. } => {}
                     }
                 }
                 succ

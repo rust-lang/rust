@@ -399,6 +399,7 @@ symbols! {
         asm,
         asm_const,
         asm_experimental_arch,
+        asm_goto,
         asm_sym,
         asm_unwind,
         assert,

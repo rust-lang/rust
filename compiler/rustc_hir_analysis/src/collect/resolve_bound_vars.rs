@@ -514,38 +514,11 @@ impl<'a, 'tcx> Visitor<'tcx> for BoundVarContext<'a, 'tcx> {
                 // These sorts of items have no lifetime parameters at all.
                 intravisit::walk_item(self, item);
             }
-            hir::ItemKind::OpaqueTy(hir::OpaqueTy {
-                origin: hir::OpaqueTyOrigin::TyAlias { .. },
-                ..
-            }) => {
-                // Opaque types are visited when we visit the
-                // `TyKind::OpaqueDef`, so that they have the lifetimes from
-                // their parent opaque_ty in scope.
-                //
-                // The core idea here is that since OpaqueTys are generated with the impl Trait as
-                // their owner, we can keep going until we find the Item that owns that. We then
-                // conservatively add all resolved lifetimes. Otherwise we run into problems in
-                // cases like `type Foo<'a> = impl Bar<As = impl Baz + 'a>`.
-                let parent_item = self.tcx.hir().get_parent_item(item.hir_id());
-                let resolved_lifetimes: &ResolveBoundVars =
-                    self.tcx.resolve_bound_vars(parent_item);
-                // We need to add *all* deps, since opaque tys may want them from *us*
-                for (&owner, defs) in resolved_lifetimes.defs.iter() {
-                    defs.iter().for_each(|(&local_id, region)| {
-                        self.map.defs.insert(hir::HirId { owner, local_id }, *region);
-                    });
-                }
-                for (&owner, late_bound_vars) in resolved_lifetimes.late_bound_vars.iter() {
-                    late_bound_vars.iter().for_each(|(&local_id, late_bound_vars)| {
-                        self.record_late_bound_vars(
-                            hir::HirId { owner, local_id },
-                            late_bound_vars.clone(),
-                        );
-                    });
-                }
-            }
             hir::ItemKind::OpaqueTy(&hir::OpaqueTy {
-                origin: hir::OpaqueTyOrigin::FnReturn(parent) | hir::OpaqueTyOrigin::AsyncFn(parent),
+                origin:
+                    hir::OpaqueTyOrigin::FnReturn(parent)
+                    | hir::OpaqueTyOrigin::AsyncFn(parent)
+                    | hir::OpaqueTyOrigin::TyAlias { parent, .. },
                 generics,
                 ..
             }) => {
@@ -683,26 +656,7 @@ impl<'a, 'tcx> Visitor<'tcx> for BoundVarContext<'a, 'tcx> {
                 //                                      the opaque_ty generics
                 let opaque_ty = self.tcx.hir().item(item_id);
                 match &opaque_ty.kind {
-                    hir::ItemKind::OpaqueTy(hir::OpaqueTy {
-                        origin: hir::OpaqueTyOrigin::TyAlias { .. },
-                        ..
-                    }) => {
-                        intravisit::walk_ty(self, ty);
-
-                        // Elided lifetimes and late-bound lifetimes (from the parent)
-                        // are not allowed in non-return position impl Trait
-                        let scope = Scope::LateBoundary {
-                            s: &Scope::TraitRefBoundary { s: self.scope },
-                            what: "type alias impl trait",
-                        };
-                        self.with(scope, |this| intravisit::walk_item(this, opaque_ty));
-
-                        return;
-                    }
-                    hir::ItemKind::OpaqueTy(hir::OpaqueTy {
-                        origin: hir::OpaqueTyOrigin::FnReturn(..) | hir::OpaqueTyOrigin::AsyncFn(..),
-                        ..
-                    }) => {}
+                    hir::ItemKind::OpaqueTy(hir::OpaqueTy { origin: _, .. }) => {}
                     i => bug!("`impl Trait` pointed to non-opaque type?? {:#?}", i),
                 };
 

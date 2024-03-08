@@ -262,6 +262,16 @@ pub struct InvalidAsmTemplateModifierSym {
 }
 
 #[derive(Diagnostic, Clone, Copy)]
+#[diag(ast_lowering_invalid_asm_template_modifier_label)]
+pub struct InvalidAsmTemplateModifierLabel {
+    #[primary_span]
+    #[label(ast_lowering_template_modifier)]
+    pub placeholder_span: Span,
+    #[label(ast_lowering_argument)]
+    pub op_span: Span,
+}
+
+#[derive(Diagnostic, Clone, Copy)]
 #[diag(ast_lowering_register_class_only_clobber)]
 pub struct RegisterClassOnlyClobber {
     #[primary_span]

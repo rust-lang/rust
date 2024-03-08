@@ -448,11 +448,13 @@ impl<'ll, 'tcx> IntrinsicCallMethods<'tcx> for Builder<'_, 'll, 'tcx> {
                     constraint,
                     inputs,
                     self.type_void(),
+                    &[],
                     true,
                     false,
                     llvm::AsmDialect::Att,
                     &[span],
                     false,
+                    None,
                     None,
                 )
                 .unwrap_or_else(|| bug!("failed to generate inline asm call for `black_box`"));

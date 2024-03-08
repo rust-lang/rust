@@ -796,6 +796,17 @@ pub const fn from_mut<T: ?Sized>(r: &mut T) -> *mut T {
 /// let slice = ptr::slice_from_raw_parts(raw_pointer, 3);
 /// assert_eq!(unsafe { &*slice }[2], 7);
 /// ```
+///
+/// You must ensure that the pointer is valid and not null before dereferencing
+/// the raw slice. A slice reference must never have a null pointer, even if it's empty.
+///
+/// ```rust,should_panic
+/// use std::ptr;
+/// let danger: *const [u8] = ptr::slice_from_raw_parts(ptr::null(), 0);
+/// unsafe {
+///     danger.as_ref().expect("references must not be null");
+/// }
+/// ```
 #[inline]
 #[stable(feature = "slice_from_raw_parts", since = "1.42.0")]
 #[rustc_const_stable(feature = "const_slice_from_raw_parts", since = "1.64.0")]
@@ -805,10 +816,12 @@ pub const fn slice_from_raw_parts<T>(data: *const T, len: usize) -> *const [T] {
     from_raw_parts(data.cast(), len)
 }
 
+/// Forms a raw mutable slice from a pointer and a length.
+///
+/// The `len` argument is the number of **elements**, not the number of bytes.
+///
 /// Performs the same functionality as [`slice_from_raw_parts`], except that a
 /// raw mutable slice is returned, as opposed to a raw immutable slice.
-///
-/// See the documentation of [`slice_from_raw_parts`] for more details.
 ///
 /// This function is safe, but actually using the return value is unsafe.
 /// See the documentation of [`slice::from_raw_parts_mut`] for slice safety requirements.
@@ -829,6 +842,17 @@ pub const fn slice_from_raw_parts<T>(data: *const T, len: usize) -> *const [T] {
 /// };
 ///
 /// assert_eq!(unsafe { &*slice }[2], 99);
+/// ```
+///
+/// You must ensure that the pointer is valid and not null before dereferencing
+/// the raw slice. A slice reference must never have a null pointer, even if it's empty.
+///
+/// ```rust,should_panic
+/// use std::ptr;
+/// let danger: *mut [u8] = ptr::slice_from_raw_parts_mut(ptr::null_mut(), 0);
+/// unsafe {
+///     danger.as_mut().expect("references must not be null");
+/// }
 /// ```
 #[inline]
 #[stable(feature = "slice_from_raw_parts", since = "1.42.0")]

@@ -374,11 +374,17 @@ pub trait Machine<'mir, 'tcx: 'mir>: Sized {
         kind: Option<MemoryKind<Self::MemoryKind>>,
     ) -> InterpResult<'tcx, Cow<'b, Allocation<Self::Provenance, Self::AllocExtra, Self::Bytes>>>;
 
+    /// Evaluate the inline assembly.
+    ///
+    /// This should take care of jumping to the next block (one of `targets`) when asm goto
+    /// is triggered, `targets[0]` when the assembly falls through, or diverge in case of
+    /// `InlineAsmOptions::NORETURN` being set.
     fn eval_inline_asm(
         _ecx: &mut InterpCx<'mir, 'tcx, Self>,
         _template: &'tcx [InlineAsmTemplatePiece],
         _operands: &[mir::InlineAsmOperand<'tcx>],
         _options: InlineAsmOptions,
+        _targets: &[mir::BasicBlock],
     ) -> InterpResult<'tcx> {
         throw_unsup_format!("inline assembly is not supported")
     }

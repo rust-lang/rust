@@ -1289,6 +1289,7 @@ pub fn walk_inline_asm<'v, V: Visitor<'v>>(
             InlineAsmOperand::SymStatic { path, .. } => {
                 try_visit!(visitor.visit_qpath(path, id, *op_sp));
             }
+            InlineAsmOperand::Label { block } => try_visit!(visitor.visit_block(block)),
         }
     }
     V::Result::output()

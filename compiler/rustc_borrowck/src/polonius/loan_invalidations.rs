@@ -161,7 +161,7 @@ impl<'cx, 'tcx> Visitor<'tcx> for LoanInvalidationsGenerator<'cx, 'tcx> {
                 operands,
                 options: _,
                 line_spans: _,
-                destination: _,
+                targets: _,
                 unwind: _,
             } => {
                 for op in operands {
@@ -182,7 +182,8 @@ impl<'cx, 'tcx> Visitor<'tcx> for LoanInvalidationsGenerator<'cx, 'tcx> {
                         }
                         InlineAsmOperand::Const { value: _ }
                         | InlineAsmOperand::SymFn { value: _ }
-                        | InlineAsmOperand::SymStatic { def_id: _ } => {}
+                        | InlineAsmOperand::SymStatic { def_id: _ }
+                        | InlineAsmOperand::Label { target_index: _ } => {}
                     }
                 }
             }

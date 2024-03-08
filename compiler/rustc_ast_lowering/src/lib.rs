@@ -265,13 +265,12 @@ enum ImplTraitContext {
     /// Example: `fn foo() -> impl Debug`, where `impl Debug` is conceptually
     /// equivalent to a new opaque type like `type T = impl Debug; fn foo() -> T`.
     ///
-    ReturnPositionOpaqueTy {
-        /// Origin: Either OpaqueTyOrigin::FnReturn or OpaqueTyOrigin::AsyncFn,
+    OpaqueTy {
         origin: hir::OpaqueTyOrigin,
-        fn_kind: FnDeclKind,
+        /// Only used to change the lifetime capture rules, since
+        /// RPITIT captures all in scope, RPIT does not.
+        fn_kind: Option<FnDeclKind>,
     },
-    /// Impl trait in type aliases.
-    TypeAliasesOpaqueTy { in_assoc_ty: bool },
     /// `impl Trait` is unstably accepted in this position.
     FeatureGated(ImplTraitPosition, Symbol),
     /// `impl Trait` is not accepted in this position.
@@ -1075,9 +1074,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                 // Disallow ATB in dyn types
                 if self.is_in_dyn_type {
                     let suggestion = match itctx {
-                        ImplTraitContext::ReturnPositionOpaqueTy { .. }
-                        | ImplTraitContext::TypeAliasesOpaqueTy { .. }
-                        | ImplTraitContext::Universal => {
+                        ImplTraitContext::OpaqueTy { .. } | ImplTraitContext::Universal => {
                             let bound_end_span = constraint
                                 .gen_args
                                 .as_ref()
@@ -1417,24 +1414,14 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             TyKind::ImplTrait(def_node_id, bounds) => {
                 let span = t.span;
                 match itctx {
-                    ImplTraitContext::ReturnPositionOpaqueTy { origin, fn_kind } => self
-                        .lower_opaque_impl_trait(
-                            span,
-                            origin,
-                            *def_node_id,
-                            bounds,
-                            Some(fn_kind),
-                            itctx,
-                        ),
-                    ImplTraitContext::TypeAliasesOpaqueTy { in_assoc_ty } => self
-                        .lower_opaque_impl_trait(
-                            span,
-                            hir::OpaqueTyOrigin::TyAlias { in_assoc_ty },
-                            *def_node_id,
-                            bounds,
-                            None,
-                            itctx,
-                        ),
+                    ImplTraitContext::OpaqueTy { origin, fn_kind } => self.lower_opaque_impl_trait(
+                        span,
+                        origin,
+                        *def_node_id,
+                        bounds,
+                        fn_kind,
+                        itctx,
+                    ),
                     ImplTraitContext::Universal => {
                         let span = t.span;
 
@@ -1553,9 +1540,14 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
 
         let captured_lifetimes_to_duplicate = match origin {
             hir::OpaqueTyOrigin::TyAlias { .. } => {
-                // in a TAIT like `type Foo<'a> = impl Foo<'a>`, we don't duplicate any
-                // lifetimes, since we don't have the issue that any are late-bound.
-                Vec::new()
+                // type alias impl trait and associated type position impl trait were
+                // decided to capture all in-scope lifetimes, which we collect for
+                // all opaques during resolution.
+                self.resolver
+                    .take_extra_lifetime_params(opaque_ty_node_id)
+                    .into_iter()
+                    .map(|(ident, id, _)| Lifetime { id, ident })
+                    .collect()
             }
             hir::OpaqueTyOrigin::FnReturn(..) => {
                 if matches!(
@@ -1823,9 +1815,9 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                         FnDeclKind::Fn
                         | FnDeclKind::Inherent
                         | FnDeclKind::Trait
-                        | FnDeclKind::Impl => ImplTraitContext::ReturnPositionOpaqueTy {
+                        | FnDeclKind::Impl => ImplTraitContext::OpaqueTy {
                             origin: hir::OpaqueTyOrigin::FnReturn(self.local_def_id(fn_node_id)),
-                            fn_kind: kind,
+                            fn_kind: Some(kind),
                         },
                         FnDeclKind::ExternFn => {
                             ImplTraitContext::Disallowed(ImplTraitPosition::ExternFnReturn)
@@ -1919,9 +1911,9 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                     output,
                     coro,
                     opaque_ty_span,
-                    ImplTraitContext::ReturnPositionOpaqueTy {
+                    ImplTraitContext::OpaqueTy {
                         origin: hir::OpaqueTyOrigin::FnReturn(fn_def_id),
-                        fn_kind,
+                        fn_kind: Some(fn_kind),
                     },
                 );
                 arena_vec![this; bound]
