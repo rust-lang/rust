@@ -1469,27 +1469,31 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         let hir = tcx.hir();
         let Some(body_id) = tcx.hir_node(self.mir_hir_id()).body_id() else { return };
         struct FindUselessClone<'hir> {
+            tcx: TyCtxt<'hir>,
+            def_id: DefId,
             pub clones: Vec<&'hir hir::Expr<'hir>>,
         }
         impl<'hir> FindUselessClone<'hir> {
-            pub fn new() -> Self {
-                Self { clones: vec![] }
+            pub fn new(tcx: TyCtxt<'hir>, def_id: DefId) -> Self {
+                Self { tcx, def_id, clones: vec![] }
             }
         }
 
         impl<'v> Visitor<'v> for FindUselessClone<'v> {
             fn visit_expr(&mut self, ex: &'v hir::Expr<'v>) {
-                // FIXME: use `lookup_method_for_diagnostic`?
                 if let hir::ExprKind::MethodCall(segment, _rcvr, args, _span) = ex.kind
                     && segment.ident.name == sym::clone
                     && args.len() == 0
+                    && let Some(def_id) = self.def_id.as_local()
+                    && let Some(method) = self.tcx.lookup_method_for_diagnostic((def_id, ex.hir_id))
+                    && Some(self.tcx.parent(method)) == self.tcx.lang_items().clone_trait()
                 {
                     self.clones.push(ex);
                 }
                 hir::intravisit::walk_expr(self, ex);
             }
         }
-        let mut expr_finder = FindUselessClone::new();
+        let mut expr_finder = FindUselessClone::new(tcx, self.mir_def_id().into());
 
         let body = hir.body(body_id).value;
         expr_finder.visit_expr(body);
