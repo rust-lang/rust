@@ -5390,6 +5390,7 @@ Released 2018-09-13
 [`match_bool`]: https://rust-lang.github.io/rust-clippy/master/index.html#match_bool
 [`match_like_matches_macro`]: https://rust-lang.github.io/rust-clippy/master/index.html#match_like_matches_macro
 [`match_on_vec_items`]: https://rust-lang.github.io/rust-clippy/master/index.html#match_on_vec_items
+[`match_option_and_default`]: https://rust-lang.github.io/rust-clippy/master/index.html#match_option_and_default
 [`match_overlapping_arm`]: https://rust-lang.github.io/rust-clippy/master/index.html#match_overlapping_arm
 [`match_ref_pats`]: https://rust-lang.github.io/rust-clippy/master/index.html#match_ref_pats
 [`match_result_ok`]: https://rust-lang.github.io/rust-clippy/master/index.html#match_result_ok

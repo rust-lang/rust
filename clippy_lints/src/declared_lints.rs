@@ -312,6 +312,7 @@ pub(crate) static LINTS: &[&crate::LintInfo] = &[
     crate::manual_strip::MANUAL_STRIP_INFO,
     crate::map_unit_fn::OPTION_MAP_UNIT_FN_INFO,
     crate::map_unit_fn::RESULT_MAP_UNIT_FN_INFO,
+    crate::match_option_and_default::MATCH_OPTION_AND_DEFAULT_INFO,
     crate::match_result_ok::MATCH_RESULT_OK_INFO,
     crate::matches::COLLAPSIBLE_MATCH_INFO,
     crate::matches::INFALLIBLE_DESTRUCTURING_MATCH_INFO,
