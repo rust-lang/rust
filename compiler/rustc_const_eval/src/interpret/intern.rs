@@ -19,6 +19,7 @@ use rustc_errors::ErrorGuaranteed;
 use rustc_hir as hir;
 use rustc_middle::mir::interpret::{CtfeProvenance, InterpResult};
 use rustc_middle::ty::layout::TyAndLayout;
+use rustc_session::lint;
 
 use super::{AllocId, Allocation, InterpCx, MPlaceTy, Machine, MemoryKind, PlaceTy};
 use crate::const_eval;
@@ -195,10 +196,13 @@ pub fn intern_const_alloc_recursive<
         })?;
     }
     if found_bad_mutable_pointer {
-        return Err(ecx
-            .tcx
-            .dcx()
-            .emit_err(MutablePtrInFinal { span: ecx.tcx.span, kind: intern_kind }));
+        let err_diag = MutablePtrInFinal { span: ecx.tcx.span, kind: intern_kind };
+        ecx.tcx.emit_node_span_lint(
+            lint::builtin::CONST_EVAL_MUTABLE_PTR_IN_FINAL_VALUE,
+            ecx.best_lint_scope(),
+            err_diag.span,
+            err_diag,
+        )
     }
 
     Ok(())
