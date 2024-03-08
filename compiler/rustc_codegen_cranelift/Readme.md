@@ -123,11 +123,6 @@ You need to do this steps to successfully compile and use the cranelift backend 
 
 You can also set `rust-analyzer.rustc.source` to your rust workspace to get rust-analyzer to understand your changes.
 
-## Configuration
-
-See the documentation on the `BackendConfig` struct in [config.rs](src/config.rs) for all
-configuration options.
-
 ## Not yet supported
 
 * SIMD ([tracked here](https://github.com/rust-lang/rustc_codegen_cranelift/issues/171), `std::simd` fully works, `std::arch` is partially supported)

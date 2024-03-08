@@ -853,7 +853,13 @@ pub(super) fn codegen_simd_intrinsic_call<'tcx>(
             };
 
             for lane in 0..lane_count {
-                let m_lane = fx.bcx.ins().ushr_imm(m, u64::from(lane) as i64);
+                // The bit order of the mask depends on the byte endianness, LSB-first for
+                // little endian and MSB-first for big endian.
+                let mask_lane = match fx.tcx.sess.target.endian {
+                    Endian::Big => lane_count - 1 - lane,
+                    Endian::Little => lane,
+                };
+                let m_lane = fx.bcx.ins().ushr_imm(m, u64::from(mask_lane) as i64);
                 let m_lane = fx.bcx.ins().band_imm(m_lane, 1);
                 let a_lane = a.value_lane(fx, lane).load_scalar(fx);
                 let b_lane = b.value_lane(fx, lane).load_scalar(fx);
