@@ -25,10 +25,13 @@ pub(crate) struct DanglingPtrInFinal {
     pub kind: InternKind,
 }
 
-#[derive(Diagnostic)]
+#[derive(LintDiagnostic)]
 #[diag(const_eval_mutable_ptr_in_final)]
 pub(crate) struct MutablePtrInFinal {
-    #[primary_span]
+    // rust-lang/rust#122153: This was marked as `#[primary_span]` under
+    // `derive(Diagnostic)`. Since we expect we may hard-error in future, we are
+    // keeping the field (and skipping it under `derive(LintDiagnostic)`).
+    #[skip_arg]
     pub span: Span,
     pub kind: InternKind,
 }
