@@ -44,9 +44,10 @@ jobs:
             env:
               TARGET_TRIPLE: x86_64-apple-darwin
           # cross-compile from Linux to Windows using mingw
-          - os: ubuntu-latest
-            env:
-              TARGET_TRIPLE: x86_64-pc-windows-gnu
+          # FIXME The wine version in Ubuntu 22.04 is missing ProcessPrng
+          #- os: ubuntu-latest
+          #  env:
+          #    TARGET_TRIPLE: x86_64-pc-windows-gnu
           - os: ubuntu-latest
             env:
               TARGET_TRIPLE: aarch64-unknown-linux-gnu
@@ -80,11 +81,11 @@ jobs:
       if: matrix.os == 'windows-latest' && matrix.env.TARGET_TRIPLE == 'x86_64-pc-windows-gnu'
       run: rustup set default-host x86_64-pc-windows-gnu
 
-    - name: Install MinGW toolchain and wine
-      if: matrix.os == 'ubuntu-latest' && matrix.env.TARGET_TRIPLE == 'x86_64-pc-windows-gnu'
-      run: |
-        sudo apt-get update
-        sudo apt-get install -y gcc-mingw-w64-x86-64 wine-stable
+    #- name: Install MinGW toolchain and wine
+    #  if: matrix.os == 'ubuntu-latest' && matrix.env.TARGET_TRIPLE == 'x86_64-pc-windows-gnu'
+    #  run: |
+    #    sudo apt-get update
+    #    sudo apt-get install -y gcc-mingw-w64-x86-64 wine-stable
 
     - name: Install AArch64 toolchain and qemu
       if: matrix.os == 'ubuntu-latest' && matrix.env.TARGET_TRIPLE == 'aarch64-unknown-linux-gnu'
