@@ -1,0 +1,27 @@
+From 94d120099daad021de3da9249a9ea655592f8787 Mon Sep 17 00:00:00 2001
+From: bjorn3 <17426603+bjorn3@users.noreply.github.com>
+Date: Fri, 8 Mar 2024 18:26:17 +0000
+Subject: [PATCH] Disable sqrt test for MinGW
+
+---
+ crates/std_float/tests/float.rs | 4 +++-
+ 1 file changed, 3 insertions(+), 1 deletion(-)
+
+diff --git a/crates/std_float/tests/float.rs b/crates/std_float/tests/float.rs
+index c66c968..9a13dd0 100644
+--- a/crates/std_float/tests/float.rs
++++ b/crates/std_float/tests/float.rs
+@@ -53,7 +53,9 @@ macro_rules! impl_tests {
+         mod $scalar {
+             use std_float::StdFloat;
+ 
+-            unary_test! { $scalar, sqrt, sin, cos, exp, exp2, ln, log2, log10, ceil, floor, round, trunc }
++            unary_test! { $scalar, sin, cos, exp, exp2, ln, log2, log10, ceil, floor, round, trunc }
++            #[cfg(not(all(target_os = "windows", target_env = "gnu")))] // Rounding error with MinGW
++            unary_test! { $scalar, sqrt }
+             binary_test! { $scalar, log }
+             ternary_test! { $scalar, mul_add }
+ 
+-- 
+2.34.1
+
