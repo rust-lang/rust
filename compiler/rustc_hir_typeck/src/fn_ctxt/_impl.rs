@@ -589,11 +589,20 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         &self,
         mutate_fulfillment_errors: impl Fn(&mut Vec<traits::FulfillmentError<'tcx>>),
     ) {
-        let mut result = self.fulfillment_cx.borrow_mut().select_where_possible(self);
-        if !result.is_empty() {
-            mutate_fulfillment_errors(&mut result);
-            self.adjust_fulfillment_errors_for_expr_obligation(&mut result);
-            self.err_ctxt().report_fulfillment_errors(result);
+        let mut errors = self.fulfillment_cx.borrow_mut().select_where_possible(self);
+        if !errors.is_empty() {
+            mutate_fulfillment_errors(&mut errors);
+            if errors.is_empty() {
+                // We sometimes skip reporting fulfillment errors while constructing
+                // a different error.
+                self.dcx().span_delayed_bug(
+                    self.tcx.def_span(self.body_id),
+                    "skipped reporting fulfillment errors",
+                );
+                return;
+            }
+            self.adjust_fulfillment_errors_for_expr_obligation(&mut errors);
+            self.err_ctxt().report_fulfillment_errors(errors);
         }
     }
 
