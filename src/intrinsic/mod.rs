@@ -91,7 +91,7 @@ fn get_simple_intrinsic<'gcc, 'tcx>(
         sym::abort => "abort",
         _ => return None,
     };
-    Some(cx.context.get_builtin_function(&gcc_name))
+    Some(cx.context.get_builtin_function(gcc_name))
 }
 
 impl<'a, 'gcc, 'tcx> IntrinsicCallMethods<'tcx> for Builder<'a, 'gcc, 'tcx> {
@@ -699,13 +699,13 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
         let count_leading_zeroes =
             // TODO(antoyo): write a new function Type::is_compatible_with(&Type) and use it here
             // instead of using is_uint().
-            if arg_type.is_uint(&self.cx) {
+            if arg_type.is_uint(self.cx) {
                 "__builtin_clz"
             }
-            else if arg_type.is_ulong(&self.cx) {
+            else if arg_type.is_ulong(self.cx) {
                 "__builtin_clzl"
             }
-            else if arg_type.is_ulonglong(&self.cx) {
+            else if arg_type.is_ulonglong(self.cx) {
                 "__builtin_clzll"
             }
             else if width == 128 {
@@ -780,17 +780,17 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
         let (count_trailing_zeroes, expected_type) =
             // TODO(antoyo): write a new function Type::is_compatible_with(&Type) and use it here
             // instead of using is_uint().
-            if arg_type.is_uchar(&self.cx) || arg_type.is_ushort(&self.cx) || arg_type.is_uint(&self.cx) {
+            if arg_type.is_uchar(self.cx) || arg_type.is_ushort(self.cx) || arg_type.is_uint(self.cx) {
                 // NOTE: we don't need to & 0xFF for uchar because the result is undefined on zero.
                 ("__builtin_ctz", self.cx.uint_type)
             }
-            else if arg_type.is_ulong(&self.cx) {
+            else if arg_type.is_ulong(self.cx) {
                 ("__builtin_ctzl", self.cx.ulong_type)
             }
-            else if arg_type.is_ulonglong(&self.cx) {
+            else if arg_type.is_ulonglong(self.cx) {
                 ("__builtin_ctzll", self.cx.ulonglong_type)
             }
-            else if arg_type.is_u128(&self.cx) {
+            else if arg_type.is_u128(self.cx) {
                 // Adapted from the algorithm to count leading zeroes from: https://stackoverflow.com/a/28433850/389119
                 let array_type = self.context.new_array_type(None, arg_type, 3);
                 let result = self.current_func()
@@ -872,7 +872,7 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
 
         // only break apart 128-bit ints if they're not natively supported
         // TODO(antoyo): remove this if/when native 128-bit integers land in libgccjit
-        if value_type.is_u128(&self.cx) && !self.cx.supports_128bit_integers {
+        if value_type.is_u128(self.cx) && !self.cx.supports_128bit_integers {
             let sixty_four = self.gcc_int(value_type, 64);
             let right_shift = self.gcc_lshr(value, sixty_four);
             let high = self.gcc_int_cast(right_shift, self.cx.ulonglong_type);
@@ -995,7 +995,7 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
 
             // Return `result_type`'s maximum or minimum value on overflow
             // NOTE: convert the type to unsigned to have an unsigned shift.
-            let unsigned_type = result_type.to_unsigned(&self.cx);
+            let unsigned_type = result_type.to_unsigned(self.cx);
             let shifted = self.gcc_lshr(
                 self.gcc_int_cast(lhs, unsigned_type),
                 self.gcc_int(unsigned_type, width as i64 - 1),

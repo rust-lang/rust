@@ -15,7 +15,7 @@ pub fn adjust_intrinsic_arguments<'a, 'b, 'gcc, 'tcx>(
     // Some LLVM intrinsics do not map 1-to-1 to GCC intrinsics, so we add the missing
     // arguments here.
     if gcc_func.get_param_count() != args.len() {
-        match &*func_name {
+        match func_name {
             // NOTE: the following intrinsics have a different number of parameters in LLVM and GCC.
             "__builtin_ia32_prold512_mask"
             | "__builtin_ia32_pmuldq512_mask"
@@ -380,7 +380,7 @@ pub fn adjust_intrinsic_arguments<'a, 'b, 'gcc, 'tcx>(
             _ => (),
         }
     } else {
-        match &*func_name {
+        match func_name {
             "__builtin_ia32_rndscaless_mask_round" | "__builtin_ia32_rndscalesd_mask_round" => {
                 let new_args = args.to_vec();
                 let arg3_type = gcc_func.get_param_type(2);
@@ -629,14 +629,11 @@ pub fn intrinsic<'gcc, 'tcx>(name: &str, cx: &CodegenCx<'gcc, 'tcx>) -> Function
 
 #[cfg(feature = "master")]
 pub fn intrinsic<'gcc, 'tcx>(name: &str, cx: &CodegenCx<'gcc, 'tcx>) -> Function<'gcc> {
-    match name {
-        "llvm.prefetch" => {
-            let gcc_name = "__builtin_prefetch";
-            let func = cx.context.get_builtin_function(gcc_name);
-            cx.functions.borrow_mut().insert(gcc_name.to_string(), func);
-            return func;
-        }
-        _ => (),
+    if name == "llvm.prefetch" {
+        let gcc_name = "__builtin_prefetch";
+        let func = cx.context.get_builtin_function(gcc_name);
+        cx.functions.borrow_mut().insert(gcc_name.to_string(), func);
+        return func;
     }
 
     let gcc_name = match name {

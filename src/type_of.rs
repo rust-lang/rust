@@ -220,7 +220,7 @@ impl<'tcx> LayoutGccExt<'tcx> for TyAndLayout<'tcx> {
                 // to fn_ptr_backend_type handle the on-stack attribute.
                 // TODO(antoyo): find a less hackish way to hande the on-stack attribute.
                 ty::FnPtr(sig) => {
-                    cx.fn_ptr_backend_type(&cx.fn_abi_of_fn_ptr(sig, ty::List::empty()))
+                    cx.fn_ptr_backend_type(cx.fn_abi_of_fn_ptr(sig, ty::List::empty()))
                 }
                 _ => self.scalar_gcc_type_at(cx, scalar, Size::ZERO),
             };

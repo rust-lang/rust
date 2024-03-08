@@ -135,7 +135,7 @@ pub fn compile_codegen_unit(
 
         let target_cpu = gcc_util::target_cpu(tcx.sess);
         if target_cpu != "generic" {
-            context.add_command_line_option(&format!("-march={}", target_cpu));
+            context.add_command_line_option(format!("-march={}", target_cpu));
         }
 
         if tcx

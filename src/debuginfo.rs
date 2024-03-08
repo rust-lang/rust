@@ -225,7 +225,7 @@ impl<'gcc, 'tcx> DebugInfoMethods<'tcx> for CodegenCx<'gcc, 'tcx> {
             file_end_pos: BytePos(0),
         };
         let mut fn_debug_context = FunctionDebugContext {
-            scopes: IndexVec::from_elem(empty_scope, &mir.source_scopes.as_slice()),
+            scopes: IndexVec::from_elem(empty_scope, mir.source_scopes.as_slice()),
             inlined_function_scopes: Default::default(),
         };
 

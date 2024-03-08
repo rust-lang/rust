@@ -2,8 +2,6 @@
 //! This module exists because some integer types are not supported on some gcc platforms, e.g.
 //! 128-bit integers on 32-bit platforms and thus require to be handled manually.
 
-use std::convert::TryFrom;
-
 use gccjit::{BinaryOp, ComparisonOp, FunctionType, Location, RValue, ToRValue, Type, UnaryOp};
 use rustc_codegen_ssa::common::{IntPredicate, TypeKind};
 use rustc_codegen_ssa::traits::{BackendTypes, BaseTypeMethods, BuilderMethods, OverflowOp};
@@ -126,7 +124,7 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
 
             let shift_value = self.gcc_sub(sixty_four, b);
             // NOTE: cast low to its unsigned type in order to perform a logical right shift.
-            let unsigned_type = native_int_type.to_unsigned(&self.cx);
+            let unsigned_type = native_int_type.to_unsigned(self.cx);
             let casted_low = self.context.new_cast(self.location, self.low(a), unsigned_type);
             let shifted_low = casted_low >> self.context.new_cast(self.location, b, unsigned_type);
             let shifted_low = self.context.new_cast(self.location, shifted_low, native_int_type);
@@ -258,7 +256,7 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
         let new_kind = match typ.kind() {
             Int(t @ Isize) => Int(t.normalize(self.tcx.sess.target.pointer_width)),
             Uint(t @ Usize) => Uint(t.normalize(self.tcx.sess.target.pointer_width)),
-            t @ (Uint(_) | Int(_)) => t.clone(),
+            t @ (Uint(_) | Int(_)) => *t,
             _ => panic!("tried to get overflow intrinsic for op applied to non-int type"),
         };
 
@@ -344,7 +342,7 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
             }
         };
 
-        let intrinsic = self.context.get_builtin_function(&name);
+        let intrinsic = self.context.get_builtin_function(name);
         let res = self
             .current_func()
             // TODO(antoyo): is it correct to use rhs type instead of the parameter typ?
@@ -454,7 +452,7 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
             let native_int_type = a_type.dyncast_array().expect("get element type");
             // NOTE: cast low to its unsigned type in order to perform a comparison correctly (e.g.
             // the sign is only on high).
-            let unsigned_type = native_int_type.to_unsigned(&self.cx);
+            let unsigned_type = native_int_type.to_unsigned(self.cx);
 
             let lhs_low = self.context.new_cast(self.location, self.low(lhs), unsigned_type);
             let rhs_low = self.context.new_cast(self.location, self.low(rhs), unsigned_type);
@@ -589,7 +587,7 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
                 | IntPredicate::IntULT
                 | IntPredicate::IntULE => {
                     if !a_type.is_vector() {
-                        let unsigned_type = a_type.to_unsigned(&self.cx);
+                        let unsigned_type = a_type.to_unsigned(self.cx);
                         lhs = self.context.new_cast(self.location, lhs, unsigned_type);
                         rhs = self.context.new_cast(self.location, rhs, unsigned_type);
                     }
@@ -673,7 +671,7 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
 
             // NOTE: cast low to its unsigned type in order to perform a logical right shift.
             // TODO(antoyo): adjust this ^ comment.
-            let unsigned_type = native_int_type.to_unsigned(&self.cx);
+            let unsigned_type = native_int_type.to_unsigned(self.cx);
             let casted_low = self.context.new_cast(self.location, self.low(a), unsigned_type);
             let shift_value = self.context.new_cast(self.location, sixty_four - b, unsigned_type);
             let high_low =
@@ -727,7 +725,7 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
 impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
     pub fn gcc_int(&self, typ: Type<'gcc>, int: i64) -> RValue<'gcc> {
         if self.is_native_int_type_or_bool(typ) {
-            self.context.new_rvalue_from_long(typ, i64::try_from(int).expect("i64::try_from"))
+            self.context.new_rvalue_from_long(typ, int)
         } else {
             // NOTE: set the sign in high.
             self.from_low_high(typ, int, -(int.is_negative() as i64))
@@ -740,8 +738,7 @@ impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
             let num = self.context.new_rvalue_from_long(self.u64_type, int as i64);
             self.gcc_int_cast(num, typ)
         } else if self.is_native_int_type_or_bool(typ) {
-            self.context
-                .new_rvalue_from_long(typ, u64::try_from(int).expect("u64::try_from") as i64)
+            self.context.new_rvalue_from_long(typ, int as i64)
         } else {
             self.from_low_high(typ, int as i64, 0)
         }

@@ -104,7 +104,7 @@ pub(crate) unsafe fn codegen(
                     // FIXME(antoyo): segfault in dump_reproducer_to_file() might be caused by
                     // transmuting an rvalue to an lvalue.
                     // Segfault is actually in gcc::jit::reproducer::get_identifier_as_lvalue
-                    context.dump_reproducer_to_file(&format!("/tmp/reproducers/{}.c", module.name));
+                    context.dump_reproducer_to_file(format!("/tmp/reproducers/{}.c", module.name));
                     println!("Dumped reproducer {}", module.name);
                 }
                 if env::var("CG_GCCJIT_DUMP_TO_FILE").as_deref() == Ok("1") {

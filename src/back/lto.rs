@@ -128,8 +128,7 @@ fn prepare_lto(
             }
 
             let archive_data = unsafe {
-                Mmap::map(File::open(&path).expect("couldn't open rlib"))
-                    .expect("couldn't map rlib")
+                Mmap::map(File::open(path).expect("couldn't open rlib")).expect("couldn't map rlib")
             };
             let archive = ArchiveFile::parse(&*archive_data).expect("wanted an rlib");
             let obj_files = archive

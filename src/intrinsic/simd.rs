@@ -308,10 +308,9 @@ pub fn generic_simd_intrinsic<'a, 'gcc, 'tcx>(
                 })
                 .collect();
             return Ok(bx.context.new_rvalue_from_vector(None, v_type, &elems));
-        } else {
-            // avoid the unnecessary truncation as an optimization.
-            return Ok(bx.context.new_bitcast(None, result, v_type));
         }
+        // avoid the unnecessary truncation as an optimization.
+        return Ok(bx.context.new_bitcast(None, result, v_type));
     }
     // since gcc doesn't have vector shuffle methods available in non-patched builds, fallback to
     // component-wise bitreverses if they're not available.
