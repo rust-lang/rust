@@ -1,5 +1,5 @@
 error[E0282]: type annotations needed
-  --> $DIR/call_method_on_inherent_impl_ref.rs:18:13
+  --> $DIR/call_method_on_inherent_impl_ref.rs:17:13
    |
 LL |         let x = my_foo();
    |             ^
@@ -13,7 +13,7 @@ LL |         let x: /* Type */ = my_foo();
    |              ++++++++++++
 
 error[E0282]: type annotations needed for `&_`
-  --> $DIR/call_method_on_inherent_impl_ref.rs:28:13
+  --> $DIR/call_method_on_inherent_impl_ref.rs:27:13
    |
 LL |         let x = &my_bar();
    |             ^

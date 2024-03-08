@@ -9,7 +9,6 @@ impl MyTrait for i32 {
         //~| ERROR functions in trait impls cannot be declared const
         //~| ERROR functions cannot be both `const` and `async`
         //~| ERROR method `bar` is not a member
-        //~| ERROR cycle detected when computing type
         main8().await;
         //~^ ERROR cannot find function
     }
