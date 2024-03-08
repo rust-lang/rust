@@ -1,5 +1,5 @@
 error: missing documentation for a type alias
-  --> tests/ui/missing_doc.rs:16:1
+  --> tests/ui/missing_doc.rs:19:1
    |
 LL | type Typedef = String;
    | ^^^^^^^^^^^^^^^^^^^^^^
@@ -8,19 +8,19 @@ LL | type Typedef = String;
    = help: to override `-D warnings` add `#[allow(clippy::missing_docs_in_private_items)]`
 
 error: missing documentation for a module
-  --> tests/ui/missing_doc.rs:19:1
+  --> tests/ui/missing_doc.rs:22:1
    |
 LL | mod module_no_dox {}
    | ^^^^^^^^^^^^^^^^^^^^
 
 error: missing documentation for a function
-  --> tests/ui/missing_doc.rs:25:1
+  --> tests/ui/missing_doc.rs:28:1
    |
 LL | fn foo3() {}
    | ^^^^^^^^^^^^
 
 error: missing documentation for an enum
-  --> tests/ui/missing_doc.rs:39:1
+  --> tests/ui/missing_doc.rs:42:1
    |
 LL | / enum Baz {
 LL | |     BazA { a: isize, b: isize },
@@ -29,43 +29,43 @@ LL | | }
    | |_^
 
 error: missing documentation for a variant
-  --> tests/ui/missing_doc.rs:40:5
+  --> tests/ui/missing_doc.rs:43:5
    |
 LL |     BazA { a: isize, b: isize },
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: missing documentation for a struct field
-  --> tests/ui/missing_doc.rs:40:12
+  --> tests/ui/missing_doc.rs:43:12
    |
 LL |     BazA { a: isize, b: isize },
    |            ^^^^^^^^
 
 error: missing documentation for a struct field
-  --> tests/ui/missing_doc.rs:40:22
+  --> tests/ui/missing_doc.rs:43:22
    |
 LL |     BazA { a: isize, b: isize },
    |                      ^^^^^^^^
 
 error: missing documentation for a variant
-  --> tests/ui/missing_doc.rs:41:5
+  --> tests/ui/missing_doc.rs:44:5
    |
 LL |     BarB,
    |     ^^^^
 
 error: missing documentation for a constant
-  --> tests/ui/missing_doc.rs:65:1
+  --> tests/ui/missing_doc.rs:68:1
    |
 LL | const FOO: u32 = 0;
    | ^^^^^^^^^^^^^^^^^^^
 
 error: missing documentation for a static
-  --> tests/ui/missing_doc.rs:74:1
+  --> tests/ui/missing_doc.rs:77:1
    |
 LL | static BAR: u32 = 0;
    | ^^^^^^^^^^^^^^^^^^^^
 
 error: missing documentation for a module
-  --> tests/ui/missing_doc.rs:83:1
+  --> tests/ui/missing_doc.rs:86:1
    |
 LL | / mod internal_impl {
 LL | |     /// dox
@@ -77,16 +77,31 @@ LL | | }
    | |_^
 
 error: missing documentation for a function
-  --> tests/ui/missing_doc.rs:88:5
+  --> tests/ui/missing_doc.rs:91:5
    |
 LL |     fn undocumented3() {}
    |     ^^^^^^^^^^^^^^^^^^^^^
 
 error: missing documentation for a function
-  --> tests/ui/missing_doc.rs:94:9
+  --> tests/ui/missing_doc.rs:97:9
    |
 LL |         fn also_undocumented2() {}
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: aborting due to 13 previous errors
+error: missing documentation for a struct
+  --> tests/ui/missing_doc.rs:123:1
+   |
+LL | / pub struct Test {
+LL | |     /// Dox
+LL | |     a: u8,
+LL | | }
+   | |_^
+
+error: missing documentation for a struct field
+  --> tests/ui/missing_doc.rs:125:5
+   |
+LL |     a: u8,
+   |     ^^^^^
+
+error: aborting due to 15 previous errors
 
