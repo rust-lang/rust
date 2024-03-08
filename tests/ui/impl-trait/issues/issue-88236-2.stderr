@@ -1,4 +1,4 @@
-error: higher kinded lifetime bounds on nested opaque types are not supported yet
+error[E0657]: `impl Trait` cannot capture higher-ranked lifetime from outer `impl Trait`
   --> $DIR/issue-88236-2.rs:15:61
    |
 LL | fn make_impl() -> impl for<'a> Hrtb<'a, Assoc = impl Send + 'a> {}
@@ -10,7 +10,7 @@ note: lifetime declared here
 LL | fn make_impl() -> impl for<'a> Hrtb<'a, Assoc = impl Send + 'a> {}
    |                            ^^
 
-error: higher kinded lifetime bounds on nested opaque types are not supported yet
+error[E0657]: `impl Trait` cannot capture higher-ranked lifetime from outer `impl Trait`
   --> $DIR/issue-88236-2.rs:18:80
    |
 LL | fn make_weird_impl<'b>(x: &'b ()) -> impl for<'a> Hrtb<'a, Assoc = impl Send + 'a> {
@@ -40,7 +40,7 @@ LL |     &()
    = note: `Hrtb<'a>` would have to be implemented for the type `&()`
    = note: ...but `Hrtb<'0>` is actually implemented for the type `&'0 ()`, for some specific lifetime `'0`
 
-error: higher kinded lifetime bounds on nested opaque types are not supported yet
+error[E0657]: `impl Trait` cannot capture higher-ranked lifetime from outer `impl Trait`
   --> $DIR/issue-88236-2.rs:25:78
    |
 LL | fn make_bad_impl<'b>(x: &'b ()) -> impl for<'a> Hrtb<'a, Assoc = impl Send + 'a> {
@@ -90,3 +90,4 @@ LL |     x
 
 error: aborting due to 8 previous errors
 
+For more information about this error, try `rustc --explain E0657`.
