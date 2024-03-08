@@ -2562,6 +2562,8 @@ pub enum OpaqueTyOrigin {
     AsyncFn(LocalDefId),
     /// type aliases: `type Foo = impl Trait;`
     TyAlias {
+        /// The type alias or associated type parent of the TAIT/ATPIT
+        parent: LocalDefId,
         /// associated types in impl blocks for traits.
         in_assoc_ty: bool,
     },

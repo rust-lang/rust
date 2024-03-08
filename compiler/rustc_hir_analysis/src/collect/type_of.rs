@@ -553,11 +553,11 @@ pub(super) fn type_of_opaque(
         Ok(ty::EarlyBinder::bind(match tcx.hir_node_by_def_id(def_id) {
             Node::Item(item) => match item.kind {
                 ItemKind::OpaqueTy(OpaqueTy {
-                    origin: hir::OpaqueTyOrigin::TyAlias { in_assoc_ty: false },
+                    origin: hir::OpaqueTyOrigin::TyAlias { in_assoc_ty: false, .. },
                     ..
                 }) => opaque::find_opaque_ty_constraints_for_tait(tcx, def_id),
                 ItemKind::OpaqueTy(OpaqueTy {
-                    origin: hir::OpaqueTyOrigin::TyAlias { in_assoc_ty: true },
+                    origin: hir::OpaqueTyOrigin::TyAlias { in_assoc_ty: true, .. },
                     ..
                 }) => opaque::find_opaque_ty_constraints_for_impl_trait_in_assoc_type(tcx, def_id),
                 // Opaque types desugared from `impl Trait`.
