@@ -63,7 +63,7 @@ impl CfgExpr {
     }
 }
 
-fn next_cfg_expr<S>(it: &mut SliceIter<'_, tt::TokenTree<S>>) -> Option<CfgExpr> {
+pub(crate) fn next_cfg_expr<S>(it: &mut SliceIter<'_, tt::TokenTree<S>>) -> Option<CfgExpr> {
     let name = match it.next() {
         None => return None,
         Some(tt::TokenTree::Leaf(tt::Leaf::Ident(ident))) => ident.text.clone(),

@@ -2,7 +2,8 @@
 
 #![warn(rust_2018_idioms, unused_lifetimes)]
 
-mod cfg_expr;
+mod cfg_attr;
+pub(crate) mod cfg_expr;
 mod dnf;
 #[cfg(test)]
 mod tests;
@@ -12,6 +13,7 @@ use std::fmt;
 use rustc_hash::FxHashSet;
 use tt::SmolStr;
 
+pub use cfg_attr::CfgAttr;
 pub use cfg_expr::{CfgAtom, CfgExpr};
 pub use dnf::DnfExpr;
 

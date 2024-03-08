@@ -9,6 +9,7 @@ use syntax::{
     SyntaxKind::*,
     SyntaxNode, SyntaxToken, SyntaxTreeBuilder, TextRange, TextSize, WalkEvent, T,
 };
+use tracing::info;
 use tt::{
     buffer::{Cursor, TokenBuffer},
     Span,
@@ -92,7 +93,7 @@ pub fn syntax_node_to_token_tree_modified<Ctx, SpanMap>(
     node: &SyntaxNode,
     map: SpanMap,
     append: FxHashMap<SyntaxElement, Vec<tt::Leaf<SpanData<Ctx>>>>,
-    remove: FxHashSet<SyntaxNode>,
+    remove: FxHashSet<SyntaxElement>,
     call_site: SpanData<Ctx>,
 ) -> tt::Subtree<SpanData<Ctx>>
 where
@@ -629,7 +630,7 @@ struct Converter<SpanMap, S> {
     /// Used to make the emitted text ranges in the spans relative to the span anchor.
     map: SpanMap,
     append: FxHashMap<SyntaxElement, Vec<tt::Leaf<S>>>,
-    remove: FxHashSet<SyntaxNode>,
+    remove: FxHashSet<SyntaxElement>,
     call_site: S,
 }
 
@@ -638,7 +639,7 @@ impl<SpanMap, S> Converter<SpanMap, S> {
         node: &SyntaxNode,
         map: SpanMap,
         append: FxHashMap<SyntaxElement, Vec<tt::Leaf<S>>>,
-        remove: FxHashSet<SyntaxNode>,
+        remove: FxHashSet<SyntaxElement>,
         call_site: S,
     ) -> Self {
         let mut this = Converter {
@@ -660,16 +661,30 @@ impl<SpanMap, S> Converter<SpanMap, S> {
     fn next_token(&mut self) -> Option<SyntaxToken> {
         while let Some(ev) = self.preorder.next() {
             match ev {
-                WalkEvent::Enter(SyntaxElement::Token(t)) => return Some(t),
-                WalkEvent::Enter(SyntaxElement::Node(n)) if self.remove.contains(&n) => {
-                    self.preorder.skip_subtree();
-                    if let Some(mut v) = self.append.remove(&n.into()) {
-                        v.reverse();
-                        self.current_leaves.extend(v);
-                        return None;
+                WalkEvent::Enter(token) => {
+                    if self.remove.contains(&token) {
+                        match token {
+                            syntax::NodeOrToken::Token(_) => {
+                                continue;
+                            }
+                            node => {
+                                self.preorder.skip_subtree();
+                                if let Some(mut v) = self.append.remove(&node) {
+                                    v.reverse();
+                                    self.current_leaves.extend(v);
+                                    return None;
+                                }
+                            }
+                        }
+                    } else {
+                        match token {
+                            syntax::NodeOrToken::Token(token) => {
+                                return Some(token);
+                            }
+                            _ => (),
+                        }
                     }
                 }
-                WalkEvent::Enter(SyntaxElement::Node(_)) => (),
                 WalkEvent::Leave(ele) => {
                     if let Some(mut v) = self.append.remove(&ele) {
                         v.reverse();

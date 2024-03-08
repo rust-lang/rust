@@ -22,8 +22,8 @@ pub mod proc_macro;
 pub mod quote;
 pub mod span_map;
 
+mod cfg_process;
 mod fixup;
-
 use attrs::collect_attrs;
 use triomphe::Arc;
 
