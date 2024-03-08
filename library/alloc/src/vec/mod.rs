@@ -2758,8 +2758,30 @@ impl<T: Clone, A: Allocator + Clone> Clone for Vec<T, A> {
         crate::slice::to_vec(&**self, alloc)
     }
 
-    fn clone_from(&mut self, other: &Self) {
-        crate::slice::SpecCloneIntoVec::clone_into(other.as_slice(), self);
+    /// Overwrites the contents of `self` with a clone of the contents of `source`.
+    ///
+    /// This method is preferred over simply assigning `source.clone()` to `self`,
+    /// as it avoids reallocation if possible. Additionally, if the element type
+    /// `T` overrides `clone_from()`, this will reuse the resources of `self`'s
+    /// elements as well.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// let x = vec![5, 6, 7];
+    /// let mut y = vec![8, 9, 10];
+    /// let yp: *const i32 = y.as_ptr();
+    ///
+    /// y.clone_from(&x);
+    ///
+    /// // The value is the same
+    /// assert_eq!(x, y);
+    ///
+    /// // And no reallocation occurred
+    /// assert_eq!(yp, y.as_ptr());
+    /// ```
+    fn clone_from(&mut self, source: &Self) {
+        crate::slice::SpecCloneIntoVec::clone_into(source.as_slice(), self);
     }
 }
 

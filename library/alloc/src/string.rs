@@ -2084,6 +2084,10 @@ impl Clone for String {
         String { vec: self.vec.clone() }
     }
 
+    /// Clones the contents of `source` into `self`.
+    ///
+    /// This method is preferred over simply assigning `source.clone()` to `self`,
+    /// as it avoids reallocation if possible.
     fn clone_from(&mut self, source: &Self) {
         self.vec.clone_from(&source.vec);
     }

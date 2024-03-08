@@ -113,9 +113,15 @@ impl<T: Clone, A: Allocator + Clone> Clone for VecDeque<T, A> {
         deq
     }
 
-    fn clone_from(&mut self, other: &Self) {
+    /// Overwrites the contents of `self` with a clone of the contents of `source`.
+    ///
+    /// This method is preferred over simply assigning `source.clone()` to `self`,
+    /// as it avoids reallocation if possible. Additionally, if the element type
+    /// `T` overrides `clone_from()`, this will reuse the resources of `self`'s
+    /// elements as well.
+    fn clone_from(&mut self, source: &Self) {
         self.clear();
-        self.extend(other.iter().cloned());
+        self.extend(source.iter().cloned());
     }
 }
 

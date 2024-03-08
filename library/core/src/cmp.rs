@@ -684,8 +684,8 @@ impl<T: Clone> Clone for Reverse<T> {
     }
 
     #[inline]
-    fn clone_from(&mut self, other: &Self) {
-        self.0.clone_from(&other.0)
+    fn clone_from(&mut self, source: &Self) {
+        self.0.clone_from(&source.0)
     }
 }
 
