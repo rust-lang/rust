@@ -353,6 +353,8 @@ instrumentation. Pass one or more of the following values, separated by commas.
 
 - `branch` or `no-branch`
   - Enables or disables branch coverage instrumentation.
+- `mcdc` or `no-mcdc`
+  - Enables or disables MCDC coverage instrumentation.
 
 ## Other references
 

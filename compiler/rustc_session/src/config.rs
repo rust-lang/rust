@@ -148,6 +148,8 @@ pub enum InstrumentCoverage {
 pub struct CoverageOptions {
     /// Add branch coverage instrumentation.
     pub branch: bool,
+    /// Add MCDC coverage instrumentation.
+    pub mcdc: bool,
 }
 
 /// Settings for `-Z instrument-xray` flag.

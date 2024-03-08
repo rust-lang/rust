@@ -352,6 +352,10 @@ impl Session {
         self.instrument_coverage() && self.opts.unstable_opts.coverage_options.branch
     }
 
+    pub fn instrument_coverage_mcdc(&self) -> bool {
+        self.instrument_coverage() && self.opts.unstable_opts.coverage_options.mcdc
+    }
+
     pub fn is_sanitizer_cfi_enabled(&self) -> bool {
         self.opts.unstable_opts.sanitizer.contains(SanitizerSet::CFI)
     }
