@@ -1,19 +1,23 @@
 //@ compile-flags: -Zunleash-the-miri-inside-of-you
-
+#![deny(const_eval_mutable_ptr_in_final_value)]
 use std::cell::UnsafeCell;
 
 // a test demonstrating what things we could allow with a smarter const qualification
 
 static FOO: &&mut u32 = &&mut 42;
 //~^ ERROR encountered mutable pointer in final value of static
+//~| WARNING this was previously accepted by the compiler
+//~| ERROR it is undefined behavior to use this value
 
 static BAR: &mut () = &mut ();
 //~^ ERROR encountered mutable pointer in final value of static
+//~| WARNING this was previously accepted by the compiler
 
 struct Foo<T>(T);
 
 static BOO: &mut Foo<()> = &mut Foo(());
 //~^ ERROR encountered mutable pointer in final value of static
+//~| WARNING this was previously accepted by the compiler
 
 struct Meh {
     x: &'static UnsafeCell<i32>,
@@ -21,9 +25,13 @@ struct Meh {
 unsafe impl Sync for Meh {}
 static MEH: Meh = Meh { x: &UnsafeCell::new(42) };
 //~^ ERROR encountered mutable pointer in final value of static
+//~| WARNING this was previously accepted by the compiler
+//~| ERROR it is undefined behavior to use this value
 
 static OH_YES: &mut i32 = &mut 42;
 //~^ ERROR encountered mutable pointer in final value of static
+//~| WARNING this was previously accepted by the compiler
+//~| ERROR it is undefined behavior to use this value
 
 fn main() {
     unsafe {
