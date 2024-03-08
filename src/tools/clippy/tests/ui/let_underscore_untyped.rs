@@ -73,3 +73,5 @@ fn main() {
     #[allow(clippy::let_underscore_untyped)]
     let _ = a();
 }
+
+async fn dont_lint_async_prototype(_: u8) {}

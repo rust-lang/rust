@@ -1,7 +1,7 @@
 use clippy_utils::diagnostics::span_lint_and_help;
 use clippy_utils::ty::{implements_trait, is_must_use_ty, match_type};
 use clippy_utils::{is_from_proc_macro, is_must_use_func_call, paths};
-use rustc_hir::{Local, PatKind};
+use rustc_hir::{Local, LocalSource, PatKind};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::lint::in_external_macro;
 use rustc_middle::ty::{GenericArgKind, IsSuggestable};
@@ -139,7 +139,8 @@ const SYNC_GUARD_PATHS: [&[&str]; 3] = [
 
 impl<'tcx> LateLintPass<'tcx> for LetUnderscore {
     fn check_local(&mut self, cx: &LateContext<'tcx>, local: &Local<'tcx>) {
-        if !in_external_macro(cx.tcx.sess, local.span)
+        if matches!(local.source, LocalSource::Normal)
+            && !in_external_macro(cx.tcx.sess, local.span)
             && let PatKind::Wild = local.pat.kind
             && let Some(init) = local.init
         {

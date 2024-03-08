@@ -25,7 +25,7 @@ use rustc_trait_selection::traits::ObligationCtxt;
 use rustc_trait_selection::traits::{self, ObligationCause};
 use std::collections::BTreeMap;
 
-pub fn check_trait<'tcx>(
+pub(super) fn check_trait<'tcx>(
     tcx: TyCtxt<'tcx>,
     trait_def_id: DefId,
     impl_def_id: LocalDefId,
@@ -66,10 +66,9 @@ impl<'tcx> Checker<'tcx> {
 
 fn visit_implementation_of_drop(checker: &Checker<'_>) -> Result<(), ErrorGuaranteed> {
     let tcx = checker.tcx;
-    let header = checker.impl_header;
     let impl_did = checker.impl_def_id;
     // Destructors only work on local ADT types.
-    match header.trait_ref.self_ty().kind() {
+    match checker.impl_header.trait_ref.instantiate_identity().self_ty().kind() {
         ty::Adt(def, _) if def.did().is_local() => return Ok(()),
         ty::Error(_) => return Ok(()),
         _ => {}
@@ -86,7 +85,7 @@ fn visit_implementation_of_copy(checker: &Checker<'_>) -> Result<(), ErrorGuaran
     let impl_did = checker.impl_def_id;
     debug!("visit_implementation_of_copy: impl_did={:?}", impl_did);
 
-    let self_type = impl_header.trait_ref.self_ty();
+    let self_type = impl_header.trait_ref.instantiate_identity().self_ty();
     debug!("visit_implementation_of_copy: self_type={:?} (bound)", self_type);
 
     let param_env = tcx.param_env(impl_did);
@@ -120,7 +119,7 @@ fn visit_implementation_of_const_param_ty(checker: &Checker<'_>) -> Result<(), E
     let tcx = checker.tcx;
     let header = checker.impl_header;
     let impl_did = checker.impl_def_id;
-    let self_type = header.trait_ref.self_ty();
+    let self_type = header.trait_ref.instantiate_identity().self_ty();
     assert!(!self_type.has_escaping_bound_vars());
 
     let param_env = tcx.param_env(impl_did);
@@ -157,9 +156,8 @@ fn visit_implementation_of_coerce_unsized(checker: &Checker<'_>) -> Result<(), E
 
 fn visit_implementation_of_dispatch_from_dyn(checker: &Checker<'_>) -> Result<(), ErrorGuaranteed> {
     let tcx = checker.tcx;
-    let header = checker.impl_header;
     let impl_did = checker.impl_def_id;
-    let trait_ref = header.trait_ref;
+    let trait_ref = checker.impl_header.trait_ref.instantiate_identity();
     debug!("visit_implementation_of_dispatch_from_dyn: impl_did={:?}", impl_did);
 
     let span = tcx.def_span(impl_did);

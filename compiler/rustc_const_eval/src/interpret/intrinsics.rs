@@ -21,7 +21,7 @@ use rustc_span::symbol::{sym, Symbol};
 use rustc_target::abi::Size;
 
 use super::{
-    util::ensure_monomorphic_enough, CheckInAllocMsg, ImmTy, InterpCx, Machine, OpTy, PlaceTy,
+    util::ensure_monomorphic_enough, CheckInAllocMsg, ImmTy, InterpCx, MPlaceTy, Machine, OpTy,
     Pointer,
 };
 
@@ -104,7 +104,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         &mut self,
         instance: ty::Instance<'tcx>,
         args: &[OpTy<'tcx, M::Provenance>],
-        dest: &PlaceTy<'tcx, M::Provenance>,
+        dest: &MPlaceTy<'tcx, M::Provenance>,
         ret: Option<mir::BasicBlock>,
     ) -> InterpResult<'tcx, bool> {
         let instance_args = instance.args;
@@ -377,7 +377,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 let index = u64::from(self.read_scalar(&args[1])?.to_u32()?);
                 let elem = &args[2];
                 let (input, input_len) = self.operand_to_simd(&args[0])?;
-                let (dest, dest_len) = self.place_to_simd(dest)?;
+                let (dest, dest_len) = self.mplace_to_simd(dest)?;
                 assert_eq!(input_len, dest_len, "Return vector length must match input length");
                 // Bounds are not checked by typeck so we have to do it ourselves.
                 if index >= input_len {
@@ -430,7 +430,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             _ => return Ok(false),
         }
 
-        trace!("{:?}", self.dump_place(dest));
+        trace!("{:?}", self.dump_place(&dest.clone().into()));
         self.go_to_block(ret);
         Ok(true)
     }
@@ -488,7 +488,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         &mut self,
         a: &ImmTy<'tcx, M::Provenance>,
         b: &ImmTy<'tcx, M::Provenance>,
-        dest: &PlaceTy<'tcx, M::Provenance>,
+        dest: &MPlaceTy<'tcx, M::Provenance>,
     ) -> InterpResult<'tcx> {
         assert_eq!(a.layout.ty, b.layout.ty);
         assert!(matches!(a.layout.ty.kind(), ty::Int(..) | ty::Uint(..)));
@@ -506,7 +506,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             )
         }
         // `Rem` says this is all right, so we can let `Div` do its job.
-        self.binop_ignore_overflow(BinOp::Div, a, b, dest)
+        self.binop_ignore_overflow(BinOp::Div, a, b, &dest.clone().into())
     }
 
     pub fn saturating_arith(

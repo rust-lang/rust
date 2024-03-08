@@ -288,7 +288,7 @@ pub(super) fn emit_va_arg<'ll, 'tcx>(
         // Generic x86
         "x86" => emit_ptr_va_arg(bx, addr, target_ty, false, Align::from_bytes(4).unwrap(), true),
         // Windows AArch64
-        "aarch64" if target.is_like_windows => {
+        "aarch64" | "arm64ec" if target.is_like_windows => {
             emit_ptr_va_arg(bx, addr, target_ty, false, Align::from_bytes(8).unwrap(), false)
         }
         // macOS / iOS AArch64

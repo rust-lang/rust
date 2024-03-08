@@ -2,7 +2,7 @@
 // Reported as issue #126, child leaks the string.
 
 //@ pretty-expanded FIXME #23616
-//@ ignore-emscripten no threads support
+//@ needs-threads
 
 use std::thread;
 

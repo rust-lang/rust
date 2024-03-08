@@ -7,8 +7,7 @@
 // optimisation.
 
 //@ pretty-expanded FIXME #23616
-//@ ignore-emscripten no threads support
-
+//@ needs-threads
 #![feature(intrinsics)]
 
 use std::{mem, thread};

@@ -787,6 +787,7 @@ const DIAGNOSTICS_DIRECTIVE_NAMES: &[&str] = &[
     "needs-sanitizer-shadow-call-stack",
     "needs-sanitizer-support",
     "needs-sanitizer-thread",
+    "needs-threads",
     "needs-unwind",
     "needs-xray",
     "no-prefer-dynamic",

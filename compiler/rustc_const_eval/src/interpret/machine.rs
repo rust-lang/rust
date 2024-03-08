@@ -196,7 +196,7 @@ pub trait Machine<'mir, 'tcx: 'mir>: Sized {
         instance: ty::Instance<'tcx>,
         abi: CallAbi,
         args: &[FnArg<'tcx, Self::Provenance>],
-        destination: &PlaceTy<'tcx, Self::Provenance>,
+        destination: &MPlaceTy<'tcx, Self::Provenance>,
         target: Option<mir::BasicBlock>,
         unwind: mir::UnwindAction,
     ) -> InterpResult<'tcx, Option<(&'mir mir::Body<'tcx>, ty::Instance<'tcx>)>>;
@@ -208,7 +208,7 @@ pub trait Machine<'mir, 'tcx: 'mir>: Sized {
         fn_val: Self::ExtraFnVal,
         abi: CallAbi,
         args: &[FnArg<'tcx, Self::Provenance>],
-        destination: &PlaceTy<'tcx, Self::Provenance>,
+        destination: &MPlaceTy<'tcx, Self::Provenance>,
         target: Option<mir::BasicBlock>,
         unwind: mir::UnwindAction,
     ) -> InterpResult<'tcx>;
@@ -219,7 +219,7 @@ pub trait Machine<'mir, 'tcx: 'mir>: Sized {
         ecx: &mut InterpCx<'mir, 'tcx, Self>,
         instance: ty::Instance<'tcx>,
         args: &[OpTy<'tcx, Self::Provenance>],
-        destination: &PlaceTy<'tcx, Self::Provenance>,
+        destination: &MPlaceTy<'tcx, Self::Provenance>,
         target: Option<mir::BasicBlock>,
         unwind: mir::UnwindAction,
     ) -> InterpResult<'tcx>;
@@ -584,7 +584,7 @@ pub macro compile_time_machine(<$mir: lifetime, $tcx: lifetime>) {
         fn_val: !,
         _abi: CallAbi,
         _args: &[FnArg<$tcx>],
-        _destination: &PlaceTy<$tcx, Self::Provenance>,
+        _destination: &MPlaceTy<$tcx, Self::Provenance>,
         _target: Option<mir::BasicBlock>,
         _unwind: mir::UnwindAction,
     ) -> InterpResult<$tcx> {

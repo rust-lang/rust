@@ -194,6 +194,12 @@ pub(super) enum Place<Prov: Provenance = CtfeProvenance> {
     Local { frame: usize, local: mir::Local, offset: Option<Size> },
 }
 
+/// An evaluated place, together with its type.
+///
+/// This may reference a stack frame by its index, so `PlaceTy` should generally not be kept around
+/// for longer than a single operation. Popping and then pushing a stack frame can make `PlaceTy`
+/// point to the wrong destination. If the interpreter has multiple stacks, stack switching will
+/// also invalidate a `PlaceTy`.
 #[derive(Clone)]
 pub struct PlaceTy<'tcx, Prov: Provenance = CtfeProvenance> {
     place: Place<Prov>, // Keep this private; it helps enforce invariants.
@@ -493,16 +499,6 @@ where
         let layout = self.layout_of(array)?;
         let mplace = mplace.transmute(layout, self)?;
         Ok((mplace, len))
-    }
-
-    /// Converts a repr(simd) place into a place where `place_index` accesses the SIMD elements.
-    /// Also returns the number of elements.
-    pub fn place_to_simd(
-        &mut self,
-        place: &PlaceTy<'tcx, M::Provenance>,
-    ) -> InterpResult<'tcx, (MPlaceTy<'tcx, M::Provenance>, u64)> {
-        let mplace = self.force_allocation(place)?;
-        self.mplace_to_simd(&mplace)
     }
 
     pub fn local_to_place(

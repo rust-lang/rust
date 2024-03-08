@@ -797,7 +797,10 @@ impl Step for Rustc {
         cargo.rustdocflag("-Zunstable-options");
         cargo.rustdocflag("-Znormalize-docs");
         cargo.rustdocflag("--show-type-layout");
-        cargo.rustdocflag("--generate-link-to-definition");
+        // FIXME: `--generate-link-to-definition` tries to resolve cfged out code
+        // see https://github.com/rust-lang/rust/pull/122066#issuecomment-1983049222
+        // cargo.rustdocflag("--generate-link-to-definition");
+
         compile::rustc_cargo(builder, &mut cargo, target, compiler.stage);
         cargo.arg("-Zunstable-options");
         cargo.arg("-Zskip-rustdoc-fingerprint");
@@ -953,8 +956,10 @@ macro_rules! tool_doc {
                 cargo.rustdocflag("-Arustdoc::private-intra-doc-links");
                 cargo.rustdocflag("--enable-index-page");
                 cargo.rustdocflag("--show-type-layout");
-                cargo.rustdocflag("--generate-link-to-definition");
                 cargo.rustdocflag("-Zunstable-options");
+                // FIXME: `--generate-link-to-definition` tries to resolve cfged out code
+                // see https://github.com/rust-lang/rust/pull/122066#issuecomment-1983049222
+                // cargo.rustdocflag("--generate-link-to-definition");
 
                 let out_dir = builder.stage_out(compiler, Mode::ToolRustc).join(target.triple).join("doc");
                 $(for krate in $crates {

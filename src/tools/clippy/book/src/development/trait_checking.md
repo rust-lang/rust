@@ -94,6 +94,53 @@ impl LateLintPass<'_> for CheckTokioAsyncReadExtTrait {
 }
 ```
 
+## Creating Types Programmatically
+
+Traits are often generic over a type parameter, e.g. `Borrow<T>` is generic
+over `T`. Rust allows us to implement a trait for a specific type. For example,
+we can implement `Borrow<[u8]>` for a hypothetical type `Foo`. Let's suppose
+that we would like to find whether our type actually implements `Borrow<[u8]>`.
+
+To do so, we can use the same `implements_trait` function as above, and supply
+a type parameter that represents `[u8]`. Since `[u8]` is a specialization of
+`[T]`, we can use the  [`Ty::new_slice`][new_slice] method to create a type
+that represents `[T]` and supply `u8` as a type parameter.
+To create a `ty::Ty` programmatically, we rely on `Ty::new_*` methods. These
+methods create a `TyKind` and then wrap it in a `Ty` struct. This means we
+have access to all the primitive types, such as `Ty::new_char`,
+`Ty::new_bool`, `Ty::new_int`, etc. We can also create more complex types,
+such as slices, tuples, and references out of these basic building blocks.
+
+For trait checking, it is not enough to create the types, we need to convert
+them into [GenericArg]. In rustc, a generic is an entity that the compiler
+understands and has three kinds, type, const and lifetime. By calling
+`.into()` on a constructed [Ty], we wrap the type into a generic which can
+then be used by the query system to decide whether the specialized trait
+is implemented.
+
+The following code demonstrates how to do this:
+
+```rust
+
+use rustc_middle::ty::Ty;
+use clippy_utils::ty::implements_trait;
+use rustc_span::symbol::sym;
+
+let ty = todo!("Get the `Foo` type to check for a trait implementation");
+let borrow_id = cx.tcx.get_diagnostic_item(sym::Borrow).unwrap(); // avoid unwrap in real code
+let slice_of_bytes_t = Ty::new_slice(cx.tcx, cx.tcx.types.u8);
+let generic_param = slice_of_bytes_t.into();
+if implements_trait(cx, ty, borrow_id, &[generic_param]) {
+    todo!("Rest of lint implementation")
+}
+```
+
+In essence, the [Ty] struct allows us to create types programmatically in a
+representation that can be used by the compiler and the query engine. We then
+use the `rustc_middle::Ty` of the type we are interested in, and query the
+compiler to see if it indeed implements the trait we are interested in.
+
+
 [DefId]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_hir/def_id/struct.DefId.html
 [diagnostic_items]: https://rustc-dev-guide.rust-lang.org/diagnostics/diagnostic-items.html
 [lang_items]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_hir/lang_items/struct.LanguageItems.html
@@ -102,4 +149,7 @@ impl LateLintPass<'_> for CheckTokioAsyncReadExtTrait {
 [symbol]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_span/symbol/struct.Symbol.html
 [symbol_index]: https://doc.rust-lang.org/beta/nightly-rustc/rustc_span/symbol/sym/index.html
 [TyCtxt]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/context/struct.TyCtxt.html
+[Ty]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/struct.Ty.html
 [rust]: https://github.com/rust-lang/rust
+[new_slice]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/struct.Ty.html#method.new_slice
+[GenericArg]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/struct.GenericArg.html

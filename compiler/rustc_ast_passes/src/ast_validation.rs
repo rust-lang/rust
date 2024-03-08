@@ -929,35 +929,38 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                         only_trait: only_trait.then_some(()),
                     };
 
-                self.visibility_not_permitted(
-                    &item.vis,
-                    errors::VisibilityNotPermittedNote::IndividualImplItems,
-                );
-                if let &Unsafe::Yes(span) = unsafety {
-                    self.dcx().emit_err(errors::InherentImplCannotUnsafe {
-                        span: self_ty.span,
-                        annotation_span: span,
-                        annotation: "unsafe",
-                        self_ty: self_ty.span,
-                    });
-                }
-                if let &ImplPolarity::Negative(span) = polarity {
-                    self.dcx().emit_err(error(span, "negative", false));
-                }
-                if let &Defaultness::Default(def_span) = defaultness {
-                    self.dcx().emit_err(error(def_span, "`default`", true));
-                }
-                if let &Const::Yes(span) = constness {
-                    self.dcx().emit_err(error(span, "`const`", true));
-                }
+                self.with_in_trait_impl(None, |this| {
+                    this.visibility_not_permitted(
+                        &item.vis,
+                        errors::VisibilityNotPermittedNote::IndividualImplItems,
+                    );
+                    if let &Unsafe::Yes(span) = unsafety {
+                        this.dcx().emit_err(errors::InherentImplCannotUnsafe {
+                            span: self_ty.span,
+                            annotation_span: span,
+                            annotation: "unsafe",
+                            self_ty: self_ty.span,
+                        });
+                    }
+                    if let &ImplPolarity::Negative(span) = polarity {
+                        this.dcx().emit_err(error(span, "negative", false));
+                    }
+                    if let &Defaultness::Default(def_span) = defaultness {
+                        this.dcx().emit_err(error(def_span, "`default`", true));
+                    }
+                    if let &Const::Yes(span) = constness {
+                        this.dcx().emit_err(error(span, "`const`", true));
+                    }
 
-                self.visit_vis(&item.vis);
-                self.visit_ident(item.ident);
-                self.with_tilde_const(Some(DisallowTildeConstContext::Impl(item.span)), |this| {
-                    this.visit_generics(generics)
+                    this.visit_vis(&item.vis);
+                    this.visit_ident(item.ident);
+                    this.with_tilde_const(
+                        Some(DisallowTildeConstContext::Impl(item.span)),
+                        |this| this.visit_generics(generics),
+                    );
+                    this.visit_ty(self_ty);
+                    walk_list!(this, visit_assoc_item, items, AssocCtxt::Impl);
                 });
-                self.visit_ty(self_ty);
-                walk_list!(self, visit_assoc_item, items, AssocCtxt::Impl);
                 walk_list!(self, visit_attribute, &item.attrs);
                 return; // Avoid visiting again.
             }

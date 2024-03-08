@@ -1,5 +1,5 @@
 error[E0277]: Foo
-  --> $DIR/on_unimplemented_simple.rs:9:15
+  --> $DIR/on_unimplemented_simple.rs:7:15
    |
 LL |     takes_foo(());
    |     --------- ^^ Bar
@@ -9,12 +9,12 @@ LL |     takes_foo(());
    = help: the trait `Foo` is not implemented for `()`
    = note: Baz
 help: this trait has no implementations, consider adding one
-  --> $DIR/on_unimplemented_simple.rs:4:1
+  --> $DIR/on_unimplemented_simple.rs:2:1
    |
 LL | trait Foo {}
    | ^^^^^^^^^
 note: required by a bound in `takes_foo`
-  --> $DIR/on_unimplemented_simple.rs:6:22
+  --> $DIR/on_unimplemented_simple.rs:4:22
    |
 LL | fn takes_foo(_: impl Foo) {}
    |                      ^^^ required by this bound in `takes_foo`

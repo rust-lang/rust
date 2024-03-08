@@ -1,5 +1,5 @@
 error: `as` casting between raw pointers without changing its mutability
-  --> tests/ui/ptr_as_ptr.rs:18:33
+  --> tests/ui/ptr_as_ptr.rs:19:33
    |
 LL |         *unsafe { Box::from_raw(Box::into_raw(Box::new(o)) as *mut super::issue_11278_a::T<String>) }
    |                                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try `pointer::cast`, a safer alternative: `Box::into_raw(Box::new(o)).cast::<super::issue_11278_a::T<String>>()`
@@ -8,37 +8,37 @@ LL |         *unsafe { Box::from_raw(Box::into_raw(Box::new(o)) as *mut super::i
    = help: to override `-D warnings` add `#[allow(clippy::ptr_as_ptr)]`
 
 error: `as` casting between raw pointers without changing its mutability
-  --> tests/ui/ptr_as_ptr.rs:27:13
+  --> tests/ui/ptr_as_ptr.rs:28:13
    |
 LL |     let _ = ptr as *const i32;
    |             ^^^^^^^^^^^^^^^^^ help: try `pointer::cast`, a safer alternative: `ptr.cast::<i32>()`
 
 error: `as` casting between raw pointers without changing its mutability
-  --> tests/ui/ptr_as_ptr.rs:28:13
+  --> tests/ui/ptr_as_ptr.rs:29:13
    |
 LL |     let _ = mut_ptr as *mut i32;
    |             ^^^^^^^^^^^^^^^^^^^ help: try `pointer::cast`, a safer alternative: `mut_ptr.cast::<i32>()`
 
 error: `as` casting between raw pointers without changing its mutability
-  --> tests/ui/ptr_as_ptr.rs:33:17
+  --> tests/ui/ptr_as_ptr.rs:34:17
    |
 LL |         let _ = *ptr_ptr as *const i32;
    |                 ^^^^^^^^^^^^^^^^^^^^^^ help: try `pointer::cast`, a safer alternative: `(*ptr_ptr).cast::<i32>()`
 
 error: `as` casting between raw pointers without changing its mutability
-  --> tests/ui/ptr_as_ptr.rs:46:25
+  --> tests/ui/ptr_as_ptr.rs:47:25
    |
 LL |     let _: *const i32 = ptr as *const _;
    |                         ^^^^^^^^^^^^^^^ help: try `pointer::cast`, a safer alternative: `ptr.cast()`
 
 error: `as` casting between raw pointers without changing its mutability
-  --> tests/ui/ptr_as_ptr.rs:47:23
+  --> tests/ui/ptr_as_ptr.rs:48:23
    |
 LL |     let _: *mut i32 = mut_ptr as _;
    |                       ^^^^^^^^^^^^ help: try `pointer::cast`, a safer alternative: `mut_ptr.cast()`
 
 error: `as` casting between raw pointers without changing its mutability
-  --> tests/ui/ptr_as_ptr.rs:50:21
+  --> tests/ui/ptr_as_ptr.rs:51:21
    |
 LL |     let _ = inline!($ptr as *const i32);
    |                     ^^^^^^^^^^^^^^^^^^ help: try `pointer::cast`, a safer alternative: `$ptr.cast::<i32>()`
@@ -46,157 +46,157 @@ LL |     let _ = inline!($ptr as *const i32);
    = note: this error originates in the macro `__inline_mac_fn_main` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: `as` casting between raw pointers without changing its mutability
-  --> tests/ui/ptr_as_ptr.rs:71:13
+  --> tests/ui/ptr_as_ptr.rs:72:13
    |
 LL |     let _ = ptr as *const i32;
    |             ^^^^^^^^^^^^^^^^^ help: try `pointer::cast`, a safer alternative: `ptr.cast::<i32>()`
 
 error: `as` casting between raw pointers without changing its mutability
-  --> tests/ui/ptr_as_ptr.rs:72:13
+  --> tests/ui/ptr_as_ptr.rs:73:13
    |
 LL |     let _ = mut_ptr as *mut i32;
    |             ^^^^^^^^^^^^^^^^^^^ help: try `pointer::cast`, a safer alternative: `mut_ptr.cast::<i32>()`
 
 error: `as` casting between raw pointers without changing its mutability
-  --> tests/ui/ptr_as_ptr.rs:79:9
+  --> tests/ui/ptr_as_ptr.rs:80:9
    |
 LL |         ptr::null_mut() as *mut u32
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try call directly: `ptr::null_mut::<u32>()`
 
 error: `as` casting between raw pointers without changing its mutability
-  --> tests/ui/ptr_as_ptr.rs:83:9
+  --> tests/ui/ptr_as_ptr.rs:84:9
    |
 LL |         std::ptr::null_mut() as *mut u32
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try call directly: `std::ptr::null_mut::<u32>()`
 
 error: `as` casting between raw pointers without changing its mutability
-  --> tests/ui/ptr_as_ptr.rs:88:9
+  --> tests/ui/ptr_as_ptr.rs:89:9
    |
 LL |         ptr::null_mut() as *mut u32
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try call directly: `ptr::null_mut::<u32>()`
 
 error: `as` casting between raw pointers without changing its mutability
-  --> tests/ui/ptr_as_ptr.rs:92:9
+  --> tests/ui/ptr_as_ptr.rs:93:9
    |
 LL |         core::ptr::null_mut() as *mut u32
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try call directly: `core::ptr::null_mut::<u32>()`
 
 error: `as` casting between raw pointers without changing its mutability
-  --> tests/ui/ptr_as_ptr.rs:97:9
+  --> tests/ui/ptr_as_ptr.rs:98:9
    |
 LL |         ptr::null() as *const u32
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^ help: try call directly: `ptr::null::<u32>()`
 
 error: `as` casting between raw pointers without changing its mutability
-  --> tests/ui/ptr_as_ptr.rs:101:9
+  --> tests/ui/ptr_as_ptr.rs:102:9
    |
 LL |         std::ptr::null() as *const u32
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try call directly: `std::ptr::null::<u32>()`
 
 error: `as` casting between raw pointers without changing its mutability
-  --> tests/ui/ptr_as_ptr.rs:106:9
+  --> tests/ui/ptr_as_ptr.rs:107:9
    |
 LL |         ptr::null() as *const u32
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^ help: try call directly: `ptr::null::<u32>()`
 
 error: `as` casting between raw pointers without changing its mutability
-  --> tests/ui/ptr_as_ptr.rs:110:9
+  --> tests/ui/ptr_as_ptr.rs:111:9
    |
 LL |         core::ptr::null() as *const u32
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try call directly: `core::ptr::null::<u32>()`
 
 error: `as` casting between raw pointers without changing its mutability
-  --> tests/ui/ptr_as_ptr.rs:117:9
+  --> tests/ui/ptr_as_ptr.rs:118:9
    |
 LL |         ptr::null_mut() as *mut _
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^ help: try call directly: `ptr::null_mut()`
 
 error: `as` casting between raw pointers without changing its mutability
-  --> tests/ui/ptr_as_ptr.rs:121:9
+  --> tests/ui/ptr_as_ptr.rs:122:9
    |
 LL |         std::ptr::null_mut() as *mut _
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try call directly: `std::ptr::null_mut()`
 
 error: `as` casting between raw pointers without changing its mutability
-  --> tests/ui/ptr_as_ptr.rs:126:9
+  --> tests/ui/ptr_as_ptr.rs:127:9
    |
 LL |         ptr::null_mut() as *mut _
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^ help: try call directly: `ptr::null_mut()`
 
 error: `as` casting between raw pointers without changing its mutability
-  --> tests/ui/ptr_as_ptr.rs:130:9
+  --> tests/ui/ptr_as_ptr.rs:131:9
    |
 LL |         core::ptr::null_mut() as *mut _
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try call directly: `core::ptr::null_mut()`
 
 error: `as` casting between raw pointers without changing its mutability
-  --> tests/ui/ptr_as_ptr.rs:135:9
+  --> tests/ui/ptr_as_ptr.rs:136:9
    |
 LL |         ptr::null() as *const _
    |         ^^^^^^^^^^^^^^^^^^^^^^^ help: try call directly: `ptr::null()`
 
 error: `as` casting between raw pointers without changing its mutability
-  --> tests/ui/ptr_as_ptr.rs:139:9
+  --> tests/ui/ptr_as_ptr.rs:140:9
    |
 LL |         std::ptr::null() as *const _
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try call directly: `std::ptr::null()`
 
 error: `as` casting between raw pointers without changing its mutability
-  --> tests/ui/ptr_as_ptr.rs:144:9
+  --> tests/ui/ptr_as_ptr.rs:145:9
    |
 LL |         ptr::null() as *const _
    |         ^^^^^^^^^^^^^^^^^^^^^^^ help: try call directly: `ptr::null()`
 
 error: `as` casting between raw pointers without changing its mutability
-  --> tests/ui/ptr_as_ptr.rs:148:9
+  --> tests/ui/ptr_as_ptr.rs:149:9
    |
 LL |         core::ptr::null() as *const _
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try call directly: `core::ptr::null()`
 
 error: `as` casting between raw pointers without changing its mutability
-  --> tests/ui/ptr_as_ptr.rs:155:9
+  --> tests/ui/ptr_as_ptr.rs:156:9
    |
 LL |         ptr::null_mut() as _
    |         ^^^^^^^^^^^^^^^^^^^^ help: try call directly: `ptr::null_mut()`
 
 error: `as` casting between raw pointers without changing its mutability
-  --> tests/ui/ptr_as_ptr.rs:159:9
+  --> tests/ui/ptr_as_ptr.rs:160:9
    |
 LL |         std::ptr::null_mut() as _
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^ help: try call directly: `std::ptr::null_mut()`
 
 error: `as` casting between raw pointers without changing its mutability
-  --> tests/ui/ptr_as_ptr.rs:164:9
+  --> tests/ui/ptr_as_ptr.rs:165:9
    |
 LL |         ptr::null_mut() as _
    |         ^^^^^^^^^^^^^^^^^^^^ help: try call directly: `ptr::null_mut()`
 
 error: `as` casting between raw pointers without changing its mutability
-  --> tests/ui/ptr_as_ptr.rs:168:9
+  --> tests/ui/ptr_as_ptr.rs:169:9
    |
 LL |         core::ptr::null_mut() as _
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try call directly: `core::ptr::null_mut()`
 
 error: `as` casting between raw pointers without changing its mutability
-  --> tests/ui/ptr_as_ptr.rs:173:9
+  --> tests/ui/ptr_as_ptr.rs:174:9
    |
 LL |         ptr::null() as _
    |         ^^^^^^^^^^^^^^^^ help: try call directly: `ptr::null()`
 
 error: `as` casting between raw pointers without changing its mutability
-  --> tests/ui/ptr_as_ptr.rs:177:9
+  --> tests/ui/ptr_as_ptr.rs:178:9
    |
 LL |         std::ptr::null() as _
    |         ^^^^^^^^^^^^^^^^^^^^^ help: try call directly: `std::ptr::null()`
 
 error: `as` casting between raw pointers without changing its mutability
-  --> tests/ui/ptr_as_ptr.rs:182:9
+  --> tests/ui/ptr_as_ptr.rs:183:9
    |
 LL |         ptr::null() as _
    |         ^^^^^^^^^^^^^^^^ help: try call directly: `ptr::null()`
 
 error: `as` casting between raw pointers without changing its mutability
-  --> tests/ui/ptr_as_ptr.rs:186:9
+  --> tests/ui/ptr_as_ptr.rs:187:9
    |
 LL |         core::ptr::null() as _
    |         ^^^^^^^^^^^^^^^^^^^^^^ help: try call directly: `core::ptr::null()`

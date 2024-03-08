@@ -3,6 +3,7 @@ use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::source::snippet;
 use clippy_utils::sugg::Sugg;
 use clippy_utils::ty::is_copy;
+use clippy_utils::usage::local_used_in;
 use clippy_utils::{get_enclosing_block, higher, path_to_local, sugg};
 use rustc_ast::ast;
 use rustc_errors::Applicability;
@@ -63,8 +64,9 @@ pub(super) fn check<'tcx>(
                             && get_slice_like_element_ty(cx, cx.typeck_results().expr_ty(base_right)).is_some()
                             && let Some((start_left, offset_left)) = get_details_from_idx(cx, idx_left, &starts)
                             && let Some((start_right, offset_right)) = get_details_from_idx(cx, idx_right, &starts)
-
-                            // Source and destination must be different
+                            && !local_used_in(cx, canonical_id, base_left)
+                            && !local_used_in(cx, canonical_id, base_right)
+							// Source and destination must be different
                             && path_to_local(base_left) != path_to_local(base_right)
                         {
                             Some((

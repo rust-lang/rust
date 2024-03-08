@@ -70,7 +70,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
     fn call_external_c_and_store_return<'a>(
         &mut self,
         link_name: Symbol,
-        dest: &PlaceTy<'tcx, Provenance>,
+        dest: &MPlaceTy<'tcx, Provenance>,
         ptr: CodePtr,
         libffi_args: Vec<libffi::high::Arg<'a>>,
     ) -> InterpResult<'tcx, ()> {
@@ -205,7 +205,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
     fn call_external_c_fct(
         &mut self,
         link_name: Symbol,
-        dest: &PlaceTy<'tcx, Provenance>,
+        dest: &MPlaceTy<'tcx, Provenance>,
         args: &[OpTy<'tcx, Provenance>],
     ) -> InterpResult<'tcx, bool> {
         // Get the pointer to the function in the shared object file if it exists.

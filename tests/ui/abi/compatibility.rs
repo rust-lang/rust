@@ -39,7 +39,7 @@
 //@ revisions: loongarch64
 //@[loongarch64] compile-flags: --target loongarch64-unknown-linux-gnu
 //@[loongarch64] needs-llvm-components: loongarch
-//@[loongarch64] min-llvm-version: 17
+//@[loongarch64] min-llvm-version: 18
 //@ revisions: wasm
 //@[wasm] compile-flags: --target wasm32-unknown-unknown
 //@[wasm] needs-llvm-components: webassembly

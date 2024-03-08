@@ -1,7 +1,7 @@
 //@ run-pass
 #![allow(stable_features)]
 
-//@ ignore-emscripten no threads support
+//@ needs-threads
 
 #![feature(thread_local_try_with)]
 

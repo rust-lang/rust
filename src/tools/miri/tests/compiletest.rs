@@ -81,8 +81,10 @@ fn test_config(target: &str, path: &str, mode: Mode, with_dependencies: bool) ->
 
     // Add a test env var to do environment communication tests.
     program.envs.push(("MIRI_ENV_VAR_TEST".into(), Some("0".into())));
+
     // Let the tests know where to store temp files (they might run for a different target, which can make this hard to find).
-    program.envs.push(("MIRI_TEMP".into(), Some(env::temp_dir().into())));
+    let miri_temp = env::var_os("MIRI_TEMP").unwrap_or_else(|| env::temp_dir().into());
+    program.envs.push(("MIRI_TEMP".into(), Some(miri_temp)));
 
     let mut config = Config {
         target: Some(target.to_owned()),

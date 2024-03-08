@@ -153,7 +153,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                     ),
                 };
 
-                let destination = self.eval_place(destination)?;
+                let destination = self.force_allocation(&self.eval_place(destination)?)?;
                 self.eval_fn_call(
                     fn_val,
                     (fn_sig.abi, fn_abi),
@@ -497,7 +497,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         (caller_abi, caller_fn_abi): (Abi, &FnAbi<'tcx, Ty<'tcx>>),
         args: &[FnArg<'tcx, M::Provenance>],
         with_caller_location: bool,
-        destination: &PlaceTy<'tcx, M::Provenance>,
+        destination: &MPlaceTy<'tcx, M::Provenance>,
         target: Option<mir::BasicBlock>,
         mut unwind: mir::UnwindAction,
     ) -> InterpResult<'tcx> {
@@ -726,7 +726,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                         });
                     }
                     // Protect return place for in-place return value passing.
-                    M::protect_in_place_function_argument(self, destination)?;
+                    M::protect_in_place_function_argument(self, &destination.clone().into())?;
 
                     // Don't forget to mark "initially live" locals as live.
                     self.storage_live_for_always_live_locals()?;

@@ -1,3 +1,5 @@
+//@compile-flags: -Zdeduplicate-diagnostics=yes
+
 #![warn(clippy::no_effect_replace)]
 
 fn main() {

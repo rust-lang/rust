@@ -1431,45 +1431,64 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
 
 #[extension(pub(super) trait InferCtxtPrivExt<'tcx>)]
 impl<'tcx> TypeErrCtxt<'_, 'tcx> {
+    fn can_match_trait(
+        &self,
+        goal: ty::TraitPredicate<'tcx>,
+        assumption: ty::PolyTraitPredicate<'tcx>,
+    ) -> bool {
+        if goal.polarity != assumption.polarity() {
+            return false;
+        }
+
+        let trait_goal = goal.trait_ref;
+        let trait_assumption = self.instantiate_binder_with_fresh_vars(
+            DUMMY_SP,
+            infer::BoundRegionConversionTime::HigherRankedType,
+            assumption.to_poly_trait_ref(),
+        );
+
+        self.can_eq(ty::ParamEnv::empty(), trait_goal, trait_assumption)
+    }
+
+    fn can_match_projection(
+        &self,
+        goal: ty::ProjectionPredicate<'tcx>,
+        assumption: ty::PolyProjectionPredicate<'tcx>,
+    ) -> bool {
+        let assumption = self.instantiate_binder_with_fresh_vars(
+            DUMMY_SP,
+            infer::BoundRegionConversionTime::HigherRankedType,
+            assumption,
+        );
+
+        let param_env = ty::ParamEnv::empty();
+        self.can_eq(param_env, goal.projection_ty, assumption.projection_ty)
+            && self.can_eq(param_env, goal.term, assumption.term)
+    }
+
     // returns if `cond` not occurring implies that `error` does not occur - i.e., that
     // `error` occurring implies that `cond` occurs.
+    #[instrument(level = "debug", skip(self), ret)]
     fn error_implies(&self, cond: ty::Predicate<'tcx>, error: ty::Predicate<'tcx>) -> bool {
         if cond == error {
             return true;
         }
 
-        // FIXME: It should be possible to deal with `ForAll` in a cleaner way.
-        let bound_error = error.kind();
-        let (cond, error) = match (cond.kind().skip_binder(), bound_error.skip_binder()) {
-            (
-                ty::PredicateKind::Clause(ty::ClauseKind::Trait(..)),
-                ty::PredicateKind::Clause(ty::ClauseKind::Trait(error)),
-            ) => (cond, bound_error.rebind(error)),
-            _ => {
-                // FIXME: make this work in other cases too.
-                return false;
-            }
-        };
-
-        for pred in elaborate(self.tcx, std::iter::once(cond)) {
-            let bound_predicate = pred.kind();
-            if let ty::PredicateKind::Clause(ty::ClauseKind::Trait(implication)) =
-                bound_predicate.skip_binder()
-            {
-                let error = error.to_poly_trait_ref();
-                let implication = bound_predicate.rebind(implication.trait_ref);
-                // FIXME: I'm just not taking associated types at all here.
-                // Eventually I'll need to implement param-env-aware
-                // `Γ₁ ⊦ φ₁ => Γ₂ ⊦ φ₂` logic.
-                let param_env = ty::ParamEnv::empty();
-                if self.can_sub(param_env, error, implication) {
-                    debug!("error_implies: {:?} -> {:?} -> {:?}", cond, error, implication);
-                    return true;
-                }
-            }
+        if let Some(error) = error.to_opt_poly_trait_pred() {
+            self.enter_forall(error, |error| {
+                elaborate(self.tcx, std::iter::once(cond))
+                    .filter_map(|implied| implied.to_opt_poly_trait_pred())
+                    .any(|implied| self.can_match_trait(error, implied))
+            })
+        } else if let Some(error) = error.to_opt_poly_projection_pred() {
+            self.enter_forall(error, |error| {
+                elaborate(self.tcx, std::iter::once(cond))
+                    .filter_map(|implied| implied.to_opt_poly_projection_pred())
+                    .any(|implied| self.can_match_projection(error, implied))
+            })
+        } else {
+            false
         }
-
-        false
     }
 
     #[instrument(skip(self), level = "debug")]
@@ -1888,13 +1907,13 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
             .tcx
             .all_impls(trait_pred.def_id())
             .filter_map(|def_id| {
-                let imp = self.tcx.impl_trait_header(def_id).unwrap().skip_binder();
+                let imp = self.tcx.impl_trait_header(def_id).unwrap();
                 if imp.polarity == ty::ImplPolarity::Negative
                     || !self.tcx.is_user_visible_dep(def_id.krate)
                 {
                     return None;
                 }
-                let imp = imp.trait_ref;
+                let imp = imp.trait_ref.skip_binder();
 
                 self.fuzzy_match_tys(trait_pred.skip_binder().self_ty(), imp.self_ty(), false).map(
                     |similarity| ImplCandidate { trait_ref: imp, similarity, impl_def_id: def_id },
@@ -2078,12 +2097,11 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                 .all_impls(def_id)
                 // Ignore automatically derived impls and `!Trait` impls.
                 .filter_map(|def_id| self.tcx.impl_trait_header(def_id))
-                .map(ty::EarlyBinder::instantiate_identity)
-                .filter(|header| {
-                    header.polarity != ty::ImplPolarity::Negative
-                        || self.tcx.is_automatically_derived(def_id)
+                .filter_map(|header| {
+                    (header.polarity != ty::ImplPolarity::Negative
+                        || self.tcx.is_automatically_derived(def_id))
+                    .then(|| header.trait_ref.instantiate_identity())
                 })
-                .map(|header| header.trait_ref)
                 .filter(|trait_ref| {
                     let self_ty = trait_ref.self_ty();
                     // Avoid mentioning type parameters.

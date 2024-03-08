@@ -4,7 +4,7 @@
 // make sure the stack pointers are maintained properly in both
 // directions
 
-//@ ignore-emscripten no threads support
+//@ needs-threads
 #![feature(rustc_private)]
 
 extern crate libc;

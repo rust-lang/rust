@@ -16,7 +16,7 @@ pub fn print_binary_sizes(env: &Environment) -> anyhow::Result<()> {
     let root = env.build_artifacts().join("stage2");
 
     let mut files = get_files_from_dir(&root.join("bin"), None)?;
-    files.extend(get_files_from_dir(&root.join("lib"), Some(".so"))?);
+    files.extend(get_files_from_dir(&root.join("lib"), None)?);
     files.sort_unstable();
 
     let items: Vec<_> = files

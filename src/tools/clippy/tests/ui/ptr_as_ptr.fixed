@@ -1,4 +1,5 @@
 //@aux-build:proc_macros.rs
+//@compile-flags: -Zdeduplicate-diagnostics=yes
 
 #![warn(clippy::ptr_as_ptr)]
 
