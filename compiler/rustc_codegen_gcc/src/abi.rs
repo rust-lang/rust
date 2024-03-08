@@ -119,7 +119,7 @@ impl<'gcc, 'tcx> FnAbiGccExt<'gcc, 'tcx> for FnAbi<'tcx, Ty<'tcx>> {
 
         // This capacity calculation is approximate.
         let mut argument_tys = Vec::with_capacity(
-            self.args.len() + if let PassMode::Indirect { .. } = self.ret.mode { 1 } else { 0 }
+            self.args.len() + matches!(self.ret.mode, PassMode::Indirect { .. }) as usize
         );
 
         let return_type =

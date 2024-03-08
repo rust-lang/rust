@@ -2152,7 +2152,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 .and_then(|node| node.body_id())
                 .into_iter()
                 .flat_map(|id| self.tcx.hir().body(id).params)
-                .skip(if is_method { 1 } else { 0 });
+                .skip(is_method as usize);
 
             for (_, param) in params
                 .into_iter()

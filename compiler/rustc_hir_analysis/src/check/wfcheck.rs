@@ -1570,7 +1570,7 @@ fn check_fn_or_method<'tcx>(
     if sig.abi == Abi::RustCall {
         let span = tcx.def_span(def_id);
         let has_implicit_self = hir_decl.implicit_self != hir::ImplicitSelfKind::None;
-        let mut inputs = sig.inputs().iter().skip(if has_implicit_self { 1 } else { 0 });
+        let mut inputs = sig.inputs().iter().skip(has_implicit_self as usize);
         // Check that the argument is a tuple and is sized
         if let Some(ty) = inputs.next() {
             wfcx.register_bound(

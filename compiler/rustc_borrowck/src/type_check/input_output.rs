@@ -117,7 +117,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
             // In MIR, closure args begin with an implicit `self`.
             // Also, coroutines have a resume type which may be implicitly `()`.
             body.args_iter()
-                .skip(1 + if is_coroutine_with_implicit_resume_ty { 1 } else { 0 })
+                .skip(1 + is_coroutine_with_implicit_resume_ty as usize)
                 .map(|local| &body.local_decls[local]),
         ) {
             self.ascribe_user_type_skip_wf(

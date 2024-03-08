@@ -1104,9 +1104,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 return;
             }
             let fn_sig = fn_ty.fn_sig(self.tcx).skip_binder();
-            let Some(&arg) = fn_sig
-                .inputs()
-                .get(arg_idx + if matches!(kind, CallableKind::Method) { 1 } else { 0 })
+            let Some(&arg) =
+                fn_sig.inputs().get(arg_idx + matches!(kind, CallableKind::Method) as usize)
             else {
                 return;
             };

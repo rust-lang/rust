@@ -55,7 +55,7 @@ pub trait Encoder {
 
     #[inline]
     fn emit_bool(&mut self, v: bool) {
-        self.emit_u8(if v { 1 } else { 0 });
+        self.emit_u8(v as u8);
     }
 
     #[inline]

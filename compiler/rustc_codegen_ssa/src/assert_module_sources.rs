@@ -279,7 +279,7 @@ impl CguReuseTracker {
                     };
 
                     if error {
-                        let at_least = if at_least { 1 } else { 0 };
+                        let at_least = at_least as u8;
                         sess.dcx().emit_err(errors::IncorrectCguReuseType {
                             span: *error_span,
                             cgu_user_name,

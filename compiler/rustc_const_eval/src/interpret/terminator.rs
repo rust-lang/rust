@@ -647,7 +647,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                     // If `with_caller_location` is set we pretend there is an extra argument (that
                     // we will not pass).
                     assert_eq!(
-                        caller_args.len() + if with_caller_location { 1 } else { 0 },
+                        caller_args.len() + with_caller_location as usize,
                         caller_fn_abi.args.len(),
                         "mismatch between caller ABI and caller arguments",
                     );

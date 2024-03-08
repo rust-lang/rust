@@ -478,7 +478,7 @@ impl<'a> Parser<'a> {
         } else {
             description = "expected `'}'` but string was terminated".to_owned();
             // point at closing `"`
-            pos = self.input.len() - if self.append_newline { 1 } else { 0 };
+            pos = self.input.len() - self.append_newline as usize;
         }
 
         let pos = self.to_span_index(pos);

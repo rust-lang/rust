@@ -2535,7 +2535,7 @@ fn num_overlap(
     b_end: usize,
     inclusive: bool,
 ) -> bool {
-    let extra = if inclusive { 1 } else { 0 };
+    let extra = inclusive as usize;
     (b_start..b_end + extra).contains(&a_start) || (a_start..a_end + extra).contains(&b_start)
 }
 

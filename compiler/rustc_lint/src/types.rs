@@ -398,7 +398,7 @@ fn get_type_suggestion(t: Ty<'_>, val: u128, negative: bool) -> Option<&'static 
         ($ty:expr, $val:expr, $negative:expr,
          $($type:ident => [$($utypes:expr),*] => [$($itypes:expr),*]),+) => {
             {
-                let _neg = if negative { 1 } else { 0 };
+                let _neg = negative as u128;
                 match $ty {
                     $($type => {
                         $(if !negative && val <= uint_ty_range($utypes).1 {

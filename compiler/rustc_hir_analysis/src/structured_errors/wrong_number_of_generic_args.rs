@@ -758,7 +758,7 @@ impl<'a, 'tcx> WrongNumberOfGenericArgs<'a, 'tcx> {
 
         let trait_generics = self.tcx.generics_of(trait_);
         let num_trait_generics_except_self =
-            trait_generics.count() - if trait_generics.has_self { 1 } else { 0 };
+            trait_generics.count() - trait_generics.has_self as usize;
 
         let msg = format!(
             "consider moving {these} generic argument{s} to the `{name}` trait, which takes up to {num} argument{s}",

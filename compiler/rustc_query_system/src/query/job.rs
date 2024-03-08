@@ -394,11 +394,10 @@ where
         .min_by_key(|v| {
             let (span, query) = f(v);
             let hash = query.query(query_map).hash;
-            // Prefer entry points which have valid spans for nicer error messages
-            // We add an integer to the tuple ensuring that entry points
-            // with valid spans are picked first
-            let span_cmp = if span == DUMMY_SP { 1 } else { 0 };
-            (span_cmp, hash)
+            // Prefer entry points which have valid spans for nicer error messages.
+            // We add an bool to the tuple ensuring that entry points with valid
+            // spans are picked first.
+            (span.is_dummy(), hash)
         })
         .unwrap()
 }

@@ -1341,8 +1341,7 @@ fn start_executing_work<B: ExtraBackendMethods>(
         // How many LLVM worker threads are running in total. This *includes*
         // any that the main thread is lending a Token to.
         let running_with_any_token = |main_thread_state, running_with_own_token| {
-            running_with_own_token
-                + if main_thread_state == MainThreadState::Lending { 1 } else { 0 }
+            running_with_own_token + (main_thread_state == MainThreadState::Lending) as usize
         };
 
         let mut llvm_start_time: Option<VerboseTimingGuard<'_>> = None;

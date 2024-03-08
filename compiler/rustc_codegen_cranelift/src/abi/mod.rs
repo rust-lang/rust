@@ -523,12 +523,11 @@ pub(crate) fn codegen_terminator_call<'tcx>(
             .into_iter()
             .chain(first_arg_override.into_iter())
             .chain(
-                args.into_iter()
-                    .enumerate()
-                    .skip(if first_arg_override.is_some() { 1 } else { 0 })
-                    .flat_map(|(i, arg)| {
+                args.into_iter().enumerate().skip(first_arg_override.is_some() as usize).flat_map(
+                    |(i, arg)| {
                         adjust_arg_for_abi(fx, arg.value, &fn_abi.args[i], arg.is_owned).into_iter()
-                    }),
+                    },
+                ),
             )
             .collect::<Vec<Value>>();
 

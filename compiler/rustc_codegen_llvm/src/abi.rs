@@ -325,7 +325,7 @@ impl<'ll, 'tcx> FnAbiLlvmExt<'ll, 'tcx> for FnAbi<'tcx, Ty<'tcx>> {
 
         // This capacity calculation is approximate.
         let mut llargument_tys = Vec::with_capacity(
-            self.args.len() + if let PassMode::Indirect { .. } = self.ret.mode { 1 } else { 0 },
+            self.args.len() + matches!(self.ret.mode, PassMode::Indirect { .. }) as usize,
         );
 
         let llreturn_ty = match &self.ret.mode {
