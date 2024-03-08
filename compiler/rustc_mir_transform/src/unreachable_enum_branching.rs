@@ -96,8 +96,10 @@ impl<'tcx> MirPass<'tcx> for UnreachableEnumBranching {
             );
 
             let mut allowed_variants = if let Ok(layout) = layout {
+                // Find allowed variants based on uninhabited.
                 variant_discriminants(&layout, discriminant_ty, tcx)
             } else if let Some(variant_range) = discriminant_ty.variant_range(tcx) {
+                // If there are some generics, we can still get the allowed variants.
                 variant_range
                     .map(|variant| {
                         discriminant_ty.discriminant_for_variant(tcx, variant).unwrap().val
@@ -124,6 +126,23 @@ impl<'tcx> MirPass<'tcx> for UnreachableEnumBranching {
             fn check_successors(basic_blocks: &BasicBlocks<'_>, bb: BasicBlock) -> bool {
                 // After resolving https://github.com/llvm/llvm-project/issues/78578,
                 // We can remove this check.
+                // The main issue here is that `early-tailduplication` causes compile time overhead
+                // and potential performance problems.
+                // Simply put, when encounter a switch (indirect branch) statement,
+                // `early-tailduplication` tries to duplicate the switch branch statement with BB
+                // into (each) predecessors. This makes CFG very complex.
+                // We can understand it as it transforms the following code
+                // ```rust
+                // match a { ... many cases };
+                // match b { ... many cases };
+                // ```
+                // into
+                // ```rust
+                // match a { ... many match b { goto BB cases } }
+                // ... BB cases
+                // ```
+                // Abandon this transformation when it is possible (the best effort)
+                // to encounter the problem.
                 let mut successors = basic_blocks[bb].terminator().successors();
                 let Some(first_successor) = successors.next() else { return true };
                 if successors.next().is_some() {
@@ -136,6 +155,24 @@ impl<'tcx> MirPass<'tcx> for UnreachableEnumBranching {
                 };
                 true
             }
+            // If and only if there is a variant that does not have a branch set,
+            // change the current of otherwise as the variant branch and set otherwise to unreachable.
+            // It transforms following code
+            // ```rust
+            // match c {
+            //     Ordering::Less => 1,
+            //     Ordering::Equal => 2,
+            //     _ => 3,
+            // }
+            // ```
+            // to
+            // ```rust
+            // match c {
+            //     Ordering::Less => 1,
+            //     Ordering::Equal => 2,
+            //     Ordering::Greater => 3,
+            // }
+            // ```
             let otherwise_is_last_variant = !otherwise_is_empty_unreachable
                 && allowed_variants.len() == 1
                 && check_successors(&body.basic_blocks, targets.otherwise());
@@ -150,6 +187,7 @@ impl<'tcx> MirPass<'tcx> for UnreachableEnumBranching {
             let mut targets = targets.clone();
             if replace_otherwise_to_unreachable {
                 if otherwise_is_last_variant {
+                    // We have checked that `allowed_variants` has only one element.
                     #[allow(rustc::potential_query_instability)]
                     let last_variant = *allowed_variants.iter().next().unwrap();
                     targets.add_target(last_variant, targets.otherwise());
