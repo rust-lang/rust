@@ -170,6 +170,65 @@ pub(crate) fn codegen_x86_llvm_intrinsic_call<'tcx>(
             }
         }
 
+        "llvm.x86.sse.add.ss" => {
+            // https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_add_ss&ig_expand=171
+            intrinsic_args!(fx, args => (a, b); intrinsic);
+
+            assert_eq!(a.layout(), b.layout());
+            assert_eq!(a.layout(), ret.layout());
+            let layout = a.layout();
+
+            let (_, lane_ty) = layout.ty.simd_size_and_type(fx.tcx);
+            assert!(lane_ty.is_floating_point());
+            let ret_lane_layout = fx.layout_of(lane_ty);
+
+            ret.write_cvalue(fx, a);
+
+            let a_lane = a.value_lane(fx, 0).load_scalar(fx);
+            let b_lane = b.value_lane(fx, 0).load_scalar(fx);
+
+            let res = fx.bcx.ins().fadd(a_lane, b_lane);
+
+            let res_lane = CValue::by_val(res, ret_lane_layout);
+            ret.place_lane(fx, 0).write_cvalue(fx, res_lane);
+        }
+
+        "llvm.x86.sse.sqrt.ps" => {
+            // https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_sqrt_ps&ig_expand=6245
+            intrinsic_args!(fx, args => (a); intrinsic);
+
+            // FIXME use vector instructions when possible
+            simd_for_each_lane(fx, a, ret, &|fx, _lane_ty, _res_lane_ty, lane| {
+                fx.bcx.ins().sqrt(lane)
+            });
+        }
+
+        "llvm.x86.sse.max.ps" => {
+            // https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_max_ps&ig_expand=4357
+            intrinsic_args!(fx, args => (a, b); intrinsic);
+
+            simd_pair_for_each_lane(
+                fx,
+                a,
+                b,
+                ret,
+                &|fx, _lane_ty, _res_lane_ty, a_lane, b_lane| fx.bcx.ins().fmax(a_lane, b_lane),
+            );
+        }
+
+        "llvm.x86.sse.min.ps" => {
+            // https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_min_ps&ig_expand=4489
+            intrinsic_args!(fx, args => (a, b); intrinsic);
+
+            simd_pair_for_each_lane(
+                fx,
+                a,
+                b,
+                ret,
+                &|fx, _lane_ty, _res_lane_ty, a_lane, b_lane| fx.bcx.ins().fmin(a_lane, b_lane),
+            );
+        }
+
         "llvm.x86.sse.cmp.ps" | "llvm.x86.sse2.cmp.pd" => {
             let (x, y, kind) = match args {
                 [x, y, kind] => (x, y, kind),
@@ -1061,6 +1120,122 @@ pub(crate) fn codegen_x86_llvm_intrinsic_call<'tcx>(
                     CInlineAsmOperand::In {
                         reg: InlineAsmRegOrRegClass::Reg(InlineAsmReg::X86(X86InlineAsmReg::xmm1)),
                         value: round_key,
+                    },
+                ],
+                InlineAsmOptions::NOSTACK | InlineAsmOptions::PURE | InlineAsmOptions::NOMEM,
+            );
+        }
+
+        "llvm.x86.sha1rnds4" => {
+            // https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_sha1rnds4_epu32&ig_expand=5877
+            intrinsic_args!(fx, args => (a, b, _func); intrinsic);
+
+            let a = a.load_scalar(fx);
+            let b = b.load_scalar(fx);
+
+            let func = if let Some(func) =
+                crate::constant::mir_operand_get_const_val(fx, &args[2].node)
+            {
+                func
+            } else {
+                fx.tcx
+                    .dcx()
+                    .span_fatal(span, "Func argument for `_mm_sha1rnds4_epu32` is not a constant");
+            };
+
+            let func = func.try_to_u8().unwrap_or_else(|_| panic!("kind not scalar: {:?}", func));
+
+            codegen_inline_asm_inner(
+                fx,
+                &[InlineAsmTemplatePiece::String(format!("sha1rnds4 xmm1, xmm2, {func}"))],
+                &[
+                    CInlineAsmOperand::InOut {
+                        reg: InlineAsmRegOrRegClass::Reg(InlineAsmReg::X86(X86InlineAsmReg::xmm1)),
+                        _late: true,
+                        in_value: a,
+                        out_place: Some(ret),
+                    },
+                    CInlineAsmOperand::In {
+                        reg: InlineAsmRegOrRegClass::Reg(InlineAsmReg::X86(X86InlineAsmReg::xmm2)),
+                        value: b,
+                    },
+                ],
+                InlineAsmOptions::NOSTACK | InlineAsmOptions::PURE | InlineAsmOptions::NOMEM,
+            );
+        }
+
+        "llvm.x86.sha1msg1" => {
+            // https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_sha1msg1_epu32&ig_expand=5874
+            intrinsic_args!(fx, args => (a, b); intrinsic);
+
+            let a = a.load_scalar(fx);
+            let b = b.load_scalar(fx);
+
+            codegen_inline_asm_inner(
+                fx,
+                &[InlineAsmTemplatePiece::String("sha1msg1 xmm1, xmm2".to_string())],
+                &[
+                    CInlineAsmOperand::InOut {
+                        reg: InlineAsmRegOrRegClass::Reg(InlineAsmReg::X86(X86InlineAsmReg::xmm1)),
+                        _late: true,
+                        in_value: a,
+                        out_place: Some(ret),
+                    },
+                    CInlineAsmOperand::In {
+                        reg: InlineAsmRegOrRegClass::Reg(InlineAsmReg::X86(X86InlineAsmReg::xmm2)),
+                        value: b,
+                    },
+                ],
+                InlineAsmOptions::NOSTACK | InlineAsmOptions::PURE | InlineAsmOptions::NOMEM,
+            );
+        }
+
+        "llvm.x86.sha1msg2" => {
+            // https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_sha1msg2_epu32&ig_expand=5875
+            intrinsic_args!(fx, args => (a, b); intrinsic);
+
+            let a = a.load_scalar(fx);
+            let b = b.load_scalar(fx);
+
+            codegen_inline_asm_inner(
+                fx,
+                &[InlineAsmTemplatePiece::String("sha1msg2 xmm1, xmm2".to_string())],
+                &[
+                    CInlineAsmOperand::InOut {
+                        reg: InlineAsmRegOrRegClass::Reg(InlineAsmReg::X86(X86InlineAsmReg::xmm1)),
+                        _late: true,
+                        in_value: a,
+                        out_place: Some(ret),
+                    },
+                    CInlineAsmOperand::In {
+                        reg: InlineAsmRegOrRegClass::Reg(InlineAsmReg::X86(X86InlineAsmReg::xmm2)),
+                        value: b,
+                    },
+                ],
+                InlineAsmOptions::NOSTACK | InlineAsmOptions::PURE | InlineAsmOptions::NOMEM,
+            );
+        }
+
+        "llvm.x86.sha1nexte" => {
+            // https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_sha1nexte_epu32&ig_expand=5876
+            intrinsic_args!(fx, args => (a, b); intrinsic);
+
+            let a = a.load_scalar(fx);
+            let b = b.load_scalar(fx);
+
+            codegen_inline_asm_inner(
+                fx,
+                &[InlineAsmTemplatePiece::String("sha1nexte xmm1, xmm2".to_string())],
+                &[
+                    CInlineAsmOperand::InOut {
+                        reg: InlineAsmRegOrRegClass::Reg(InlineAsmReg::X86(X86InlineAsmReg::xmm1)),
+                        _late: true,
+                        in_value: a,
+                        out_place: Some(ret),
+                    },
+                    CInlineAsmOperand::In {
+                        reg: InlineAsmRegOrRegClass::Reg(InlineAsmReg::X86(X86InlineAsmReg::xmm2)),
+                        value: b,
                     },
                 ],
                 InlineAsmOptions::NOSTACK | InlineAsmOptions::PURE | InlineAsmOptions::NOMEM,
