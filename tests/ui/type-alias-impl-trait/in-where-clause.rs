@@ -4,7 +4,6 @@
 #![feature(type_alias_impl_trait)]
 type Bar = impl Sized;
 //~^ ERROR: cycle
-//~| ERROR: cycle
 
 fn foo() -> Bar
 where
