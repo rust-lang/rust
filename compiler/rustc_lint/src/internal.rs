@@ -379,13 +379,15 @@ impl LateLintPass<'_> for Diagnostics {
                     _ => return, // occurs for fns passed as args
                 }
             }
-            ExprKind::MethodCall(segment, _recv, args, _span) => {
-                let def_id = cx.typeck_results().type_dependent_def_id(expr.hir_id).unwrap();
-                let fn_gen_args = cx.typeck_results().node_args(expr.hir_id);
+            ExprKind::MethodCall(_segment, _recv, args, _span) => {
+                let Some((span, def_id, fn_gen_args)) = typeck_results_of_method_fn(cx, expr)
+                else {
+                    return;
+                };
                 let mut call_tys: Vec<_> =
                     args.iter().map(|arg| cx.typeck_results().expr_ty(arg)).collect();
                 call_tys.insert(0, cx.tcx.types.self_param); // dummy inserted for `self`
-                (segment.ident.span, def_id, fn_gen_args, call_tys)
+                (span, def_id, fn_gen_args, call_tys)
             }
             _ => return,
         };
