@@ -1,0 +1,23 @@
+warning: unreachable statement
+  --> $DIR/goto.rs:99:9
+   |
+LL | /         asm!(
+LL | |             "jmp {}",
+LL | |             label {
+LL | |                 return;
+LL | |             },
+LL | |             options(noreturn)
+LL | |         );
+   | |_________- any code following this expression is unreachable
+LL |           unreachable!();
+   |           ^^^^^^^^^^^^^^ unreachable statement
+   |
+note: the lint level is defined here
+  --> $DIR/goto.rs:89:8
+   |
+LL | #[warn(unreachable_code)]
+   |        ^^^^^^^^^^^^^^^^
+   = note: this warning originates in the macro `unreachable` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+warning: 1 warning emitted
+

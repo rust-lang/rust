@@ -793,9 +793,10 @@ pub enum TerminatorKind<'tcx> {
         /// used to map assembler errors back to the line in the source code.
         line_spans: &'tcx [Span],
 
-        /// Destination block after the inline assembly returns, unless it is
-        /// diverging (InlineAsmOptions::NORETURN).
-        destination: Option<BasicBlock>,
+        /// Valid targets for the inline assembly.
+        /// The first element is the fallthrough destination, unless
+        /// InlineAsmOptions::NORETURN is set.
+        targets: Vec<BasicBlock>,
 
         /// Action to be taken if the inline assembly unwinds. This is present
         /// if and only if InlineAsmOptions::MAY_UNWIND is set.
@@ -917,6 +918,10 @@ pub enum InlineAsmOperand<'tcx> {
     },
     SymStatic {
         def_id: DefId,
+    },
+    Label {
+        /// This represents the index into the `targets` array in `TerminatorKind::InlineAsm`.
+        target_index: usize,
     },
 }
 

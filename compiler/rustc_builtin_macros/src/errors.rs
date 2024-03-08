@@ -767,6 +767,13 @@ pub(crate) struct AsmNoReturn {
 }
 
 #[derive(Diagnostic)]
+#[diag(builtin_macros_asm_mayunwind)]
+pub(crate) struct AsmMayUnwind {
+    #[primary_span]
+    pub(crate) labels_sp: Vec<Span>,
+}
+
+#[derive(Diagnostic)]
 #[diag(builtin_macros_global_asm_clobber_abi)]
 pub(crate) struct GlobalAsmClobberAbi {
     #[primary_span]

@@ -7,7 +7,7 @@ use std::path::{Path, PathBuf};
 use crate::mir::interpret::ConstAllocation;
 
 use super::graphviz::write_mir_fn_graphviz;
-use rustc_ast::InlineAsmTemplatePiece;
+use rustc_ast::{InlineAsmOptions, InlineAsmTemplatePiece};
 use rustc_middle::mir::interpret::{
     alloc_range, read_target_uint, AllocBytes, AllocId, Allocation, GlobalAlloc, Pointer,
     Provenance,
@@ -830,6 +830,9 @@ impl<'tcx> TerminatorKind<'tcx> {
                         InlineAsmOperand::SymStatic { def_id } => {
                             write!(fmt, "sym_static {def_id:?}")?;
                         }
+                        InlineAsmOperand::Label { target_index } => {
+                            write!(fmt, "label {target_index}")?;
+                        }
                     }
                 }
                 write!(fmt, ", options({options:?}))")
@@ -868,16 +871,19 @@ impl<'tcx> TerminatorKind<'tcx> {
                 vec!["real".into(), "unwind".into()]
             }
             FalseUnwind { unwind: _, .. } => vec!["real".into()],
-            InlineAsm { destination: Some(_), unwind: UnwindAction::Cleanup(_), .. } => {
-                vec!["return".into(), "unwind".into()]
+            InlineAsm { options, ref targets, unwind, .. } => {
+                let mut vec = Vec::with_capacity(targets.len() + 1);
+                if !options.contains(InlineAsmOptions::NORETURN) {
+                    vec.push("return".into());
+                }
+                vec.resize(targets.len(), "label".into());
+
+                if let UnwindAction::Cleanup(_) = unwind {
+                    vec.push("unwind".into());
+                }
+
+                vec
             }
-            InlineAsm { destination: Some(_), unwind: _, .. } => {
-                vec!["return".into()]
-            }
-            InlineAsm { destination: None, unwind: UnwindAction::Cleanup(_), .. } => {
-                vec!["unwind".into()]
-            }
-            InlineAsm { destination: None, unwind: _, .. } => vec![],
         }
     }
 }

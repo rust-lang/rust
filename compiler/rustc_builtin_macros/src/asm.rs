@@ -164,6 +164,9 @@ pub fn parse_asm_args<'a>(
                 path: path.clone(),
             };
             ast::InlineAsmOperand::Sym { sym }
+        } else if !is_global_asm && p.eat_keyword(sym::label) {
+            let block = p.parse_block()?;
+            ast::InlineAsmOperand::Label { block }
         } else if allow_templates {
             let template = p.parse_expr()?;
             // If it can't possibly expand to a string, provide diagnostics here to include other
@@ -240,6 +243,7 @@ pub fn parse_asm_args<'a>(
     let mut have_real_output = false;
     let mut outputs_sp = vec![];
     let mut regclass_outputs = vec![];
+    let mut labels_sp = vec![];
     for (op, op_sp) in &args.operands {
         match op {
             ast::InlineAsmOperand::Out { reg, expr, .. }
@@ -257,6 +261,9 @@ pub fn parse_asm_args<'a>(
                     regclass_outputs.push(*op_sp);
                 }
             }
+            ast::InlineAsmOperand::Label { .. } => {
+                labels_sp.push(*op_sp);
+            }
             _ => {}
         }
     }
@@ -267,6 +274,9 @@ pub fn parse_asm_args<'a>(
         let err = dcx.create_err(errors::AsmNoReturn { outputs_sp });
         // Bail out now since this is likely to confuse MIR
         return Err(err);
+    }
+    if args.options.contains(ast::InlineAsmOptions::MAY_UNWIND) && !labels_sp.is_empty() {
+        dcx.emit_err(errors::AsmMayUnwind { labels_sp });
     }
 
     if args.clobber_abis.len() > 0 {

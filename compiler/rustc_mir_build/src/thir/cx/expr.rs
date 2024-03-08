@@ -656,6 +656,9 @@ impl<'tcx> Cx<'tcx> {
                         hir::InlineAsmOperand::SymStatic { path: _, def_id } => {
                             InlineAsmOperand::SymStatic { def_id }
                         }
+                        hir::InlineAsmOperand::Label { block } => {
+                            InlineAsmOperand::Label { block: self.mirror_block(block) }
+                        }
                     })
                     .collect(),
                 options: asm.options,
