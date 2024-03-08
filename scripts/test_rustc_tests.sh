@@ -10,12 +10,26 @@ pushd rust
 
 command -v rg >/dev/null 2>&1 || cargo install ripgrep
 
+# FIXME(rust-lang/rust#122196) fix stage0 rmake.rs run-make tests and remove
+# this workaround
+for test in $(ls tests/run-make); do
+  if [[ -e "tests/run-make/$test/rmake.rs" ]]; then
+    rm -r "tests/run-make/$test"
+  fi
+done
+
+# FIXME remove this workaround once ICE tests no longer emit an outdated nightly message
+for test in $(rg -i --files-with-matches "//@(\[.*\])? failure-status: 101" tests/ui); do
+  echo "rm $test"
+  rm $test
+done
+
 rm -r tests/ui/{unsized-locals/,lto/,linkage*} || true
 for test in $(rg --files-with-matches "lto" tests/{codegen-units,ui,incremental}); do
   rm $test
 done
 
-for test in $(rg -i --files-with-matches "//(\[\w+\])?~[^\|]*\s*ERR|//@ error-pattern:|//@ build-fail|//@ run-fail|-Cllvm-args" tests/ui); do
+for test in $(rg -i --files-with-matches "//(\[\w+\])?~[^\|]*\s*ERR|//@ error-pattern:|//@(\[.*\])? build-fail|//@(\[.*\])? run-fail|-Cllvm-args" tests/ui); do
   rm $test
 done
 
@@ -107,8 +121,6 @@ rm -r tests/run-make/optimization-remarks-dir # remarks are LLVM specific
 rm tests/ui/mir/mir_misc_casts.rs # depends on deduplication of constants
 rm tests/ui/mir/mir_raw_fat_ptr.rs # same
 rm tests/ui/consts/issue-33537.rs # same
-rm tests/ui/layout/valid_range_oob.rs # different ICE message
-rm tests/ui/const-generics/generic_const_exprs/issue-80742.rs # gives error instead of ICE with cg_clif
 
 # rustdoc-clif passes extra args, suppressing the help message when no args are passed
 rm -r tests/run-make/issue-88756-default-output
