@@ -184,8 +184,16 @@ impl Filler<'_> {
                                     self.generics
                                         .as_ref()
                                         .and_then(|it| it.iter().nth(b.index))
-                                        .unwrap()
-                                        .0,
+                                        .and_then(|(id, _)| match id {
+                                            hir_def::GenericParamId::ConstParamId(id) => {
+                                                Some(hir_def::TypeOrConstParamId::from(id))
+                                            }
+                                            hir_def::GenericParamId::TypeParamId(id) => {
+                                                Some(hir_def::TypeOrConstParamId::from(id))
+                                            }
+                                            _ => None,
+                                        })
+                                        .unwrap(),
                                     self.subst.clone(),
                                 )
                             })?

@@ -9,8 +9,7 @@ use chalk_ir::{
     AdtId, DebruijnIndex, Scalar,
 };
 use hir_def::{
-    builtin_type::BuiltinType, generics::TypeOrConstParamData, ConstParamId, DefWithBodyId,
-    GenericDefId, TraitId, TypeAliasId,
+    builtin_type::BuiltinType, DefWithBodyId, GenericDefId, GenericParamId, TraitId, TypeAliasId,
 };
 use smallvec::SmallVec;
 
@@ -209,10 +208,11 @@ impl TyBuilder<()> {
         Substitution::from_iter(
             Interner,
             params.iter_id().map(|id| match id {
-                either::Either::Left(_) => TyKind::Error.intern(Interner).cast(Interner),
-                either::Either::Right(id) => {
+                GenericParamId::TypeParamId(_) => TyKind::Error.intern(Interner).cast(Interner),
+                GenericParamId::ConstParamId(id) => {
                     unknown_const_as_generic(db.const_param_ty(id)).cast(Interner)
                 }
+                GenericParamId::LifetimeParamId(_) => error_lifetime().cast(Interner),
             }),
         )
     }
@@ -225,16 +225,13 @@ impl TyBuilder<()> {
     ) -> TyBuilder<()> {
         let generics = generics(db.upcast(), def.into());
         assert!(generics.parent_generics().is_some() == parent_subst.is_some());
-        let lt_iter = generics.iter_lt_self().map(|_| ParamKind::Lifetime);
         let params = generics
             .iter_self()
-            .map(|(id, data)| match data {
-                TypeOrConstParamData::TypeParamData(_) => ParamKind::Type,
-                TypeOrConstParamData::ConstParamData(_) => {
-                    ParamKind::Const(db.const_param_ty(ConstParamId::from_unchecked(id)))
-                }
+            .map(|(id, _data)| match id {
+                GenericParamId::TypeParamId(_) => ParamKind::Type,
+                GenericParamId::ConstParamId(id) => ParamKind::Const(db.const_param_ty(id)),
+                GenericParamId::LifetimeParamId(_) => ParamKind::Lifetime,
             })
-            .chain(lt_iter)
             .collect();
         TyBuilder::new((), params, parent_subst)
     }

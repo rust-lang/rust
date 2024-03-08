@@ -102,6 +102,46 @@ impl TypeOrConstParamData {
 
 impl_from!(TypeParamData, ConstParamData for TypeOrConstParamData);
 
+#[derive(Clone, PartialEq, Eq, Debug, Hash)]
+pub enum GenericParamData {
+    TypeParamData(TypeParamData),
+    ConstParamData(ConstParamData),
+    LifetimeParamData(LifetimeParamData),
+}
+
+impl GenericParamData {
+    pub fn name(&self) -> Option<&Name> {
+        match self {
+            GenericParamData::TypeParamData(it) => it.name.as_ref(),
+            GenericParamData::ConstParamData(it) => Some(&it.name),
+            GenericParamData::LifetimeParamData(it) => Some(&it.name),
+        }
+    }
+
+    pub fn type_param(&self) -> Option<&TypeParamData> {
+        match self {
+            GenericParamData::TypeParamData(it) => Some(it),
+            _ => None,
+        }
+    }
+
+    pub fn const_param(&self) -> Option<&ConstParamData> {
+        match self {
+            GenericParamData::ConstParamData(it) => Some(it),
+            _ => None,
+        }
+    }
+
+    pub fn lifetime_param(&self) -> Option<&LifetimeParamData> {
+        match self {
+            GenericParamData::LifetimeParamData(it) => Some(it),
+            _ => None,
+        }
+    }
+}
+
+impl_from!(TypeParamData, ConstParamData, LifetimeParamData for GenericParamData);
+
 /// Data about the generic parameters of a function, struct, impl, etc.
 #[derive(Clone, PartialEq, Eq, Debug, Hash)]
 pub struct GenericParams {

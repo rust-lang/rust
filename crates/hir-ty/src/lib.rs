@@ -337,7 +337,7 @@ pub(crate) fn make_binders_with_count<T: HasInterner<Interner = Interner>>(
     generics: &Generics,
     value: T,
 ) -> Binders<T> {
-    let it = generics.iter_id_with_lt().take(count);
+    let it = generics.iter_id().take(count);
 
     Binders::new(
         VariableKinds::from_iter(

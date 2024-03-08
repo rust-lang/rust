@@ -8,13 +8,12 @@ use std::{
 use chalk_ir::{cast::Cast, fold::Shift, DebruijnIndex, Mutability, TyVariableKind};
 use either::Either;
 use hir_def::{
-    generics::TypeOrConstParamData,
     hir::{
         ArithOp, Array, BinaryOp, ClosureKind, Expr, ExprId, LabelId, Literal, Statement, UnaryOp,
     },
     lang_item::{LangItem, LangItemTarget},
     path::{GenericArgs, Path},
-    BlockId, ConstParamId, FieldId, ItemContainerId, Lookup, TupleFieldId, TupleId,
+    BlockId, FieldId, GenericParamId, ItemContainerId, Lookup, TupleFieldId, TupleId,
 };
 use hir_expand::name::{name, Name};
 use stdx::always;
@@ -1836,7 +1835,7 @@ impl InferenceContext<'_> {
                 .args
                 .iter()
                 .take(type_params + const_params + lifetime_params)
-                .zip(def_generics.iter_id_with_lt())
+                .zip(def_generics.iter_id())
             {
                 if let Some(g) = generic_arg_to_chalk(
                     self.db,
@@ -1866,16 +1865,16 @@ impl InferenceContext<'_> {
 
         // Handle everything else as unknown. This also handles generic arguments for the method's
         // parent (impl or trait), which should come after those for the method.
-        for (id, data) in def_generics.iter().skip(substs.len()) {
-            match data {
-                TypeOrConstParamData::TypeParamData(_) => {
+        for (id, _data) in def_generics.iter().skip(substs.len()) {
+            match id {
+                GenericParamId::TypeParamId(_) => {
                     substs.push(self.table.new_type_var().cast(Interner))
                 }
-                TypeOrConstParamData::ConstParamData(_) => substs.push(
-                    self.table
-                        .new_const_var(self.db.const_param_ty(ConstParamId::from_unchecked(id)))
-                        .cast(Interner),
-                ),
+                GenericParamId::ConstParamId(id) => {
+                    substs.push(self.table.new_const_var(self.db.const_param_ty(id)).cast(Interner))
+                }
+                // FIXME: create `new_lifetime_var` in infer
+                GenericParamId::LifetimeParamId(_) => substs.push(static_lifetime().cast(Interner)),
             }
         }
         assert_eq!(substs.len(), total_len);

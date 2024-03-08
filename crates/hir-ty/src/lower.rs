@@ -18,13 +18,13 @@ use chalk_ir::{
     cast::Cast, fold::Shift, fold::TypeFoldable, interner::HasInterner, Mutability, Safety,
 };
 
-use either::Either;
 use hir_def::{
     builtin_type::BuiltinType,
     data::adt::StructKind,
     expander::Expander,
     generics::{
-        TypeOrConstParamData, TypeParamProvenance, WherePredicate, WherePredicateTypeTarget,
+        GenericParamData, TypeOrConstParamData, TypeParamProvenance, WherePredicate,
+        WherePredicateTypeTarget,
     },
     lang_item::LangItem,
     nameres::MacroSubNs,
@@ -354,13 +354,18 @@ impl<'a> TyLoweringContext<'a> {
                                 .filter(|(_, data)| {
                                     matches!(
                                         data,
-                                        TypeOrConstParamData::TypeParamData(data)
+                                        GenericParamData::TypeParamData(data)
                                         if data.provenance == TypeParamProvenance::ArgumentImplTrait
                                     )
                                 })
                                 .nth(idx as usize)
                                 .map_or(TyKind::Error, |(id, _)| {
-                                    TyKind::Placeholder(to_placeholder_idx(self.db, id))
+                                    if let GenericParamId::TypeParamId(id) = id {
+                                        TyKind::Placeholder(to_placeholder_idx(self.db, id.into()))
+                                    } else {
+                                        // we just filtered them out
+                                        unreachable!("Unexpected lifetime or const argument");
+                                    }
                                 });
                             param.intern(Interner)
                         } else {
@@ -837,7 +842,7 @@ impl<'a> TyLoweringContext<'a> {
 
         let ty_error = TyKind::Error.intern(Interner).cast(Interner);
 
-        let mut def_generic_iter = def_generics.iter_id_with_lt();
+        let mut def_generic_iter = def_generics.iter_id();
 
         let fill_self_params = || {
             for x in explicit_self_ty
@@ -1732,9 +1737,9 @@ pub(crate) fn generic_defaults_query(
     let generic_params = generics(db.upcast(), def);
     let parent_start_idx = generic_params.len_self();
 
-    let toc_iter = generic_params.iter().enumerate().map(|(idx, (id, p))| {
+    let defaults = Arc::from_iter(generic_params.iter().enumerate().map(|(idx, (id, p))| {
         match p {
-            TypeOrConstParamData::TypeParamData(p) => {
+            GenericParamData::TypeParamData(p) => {
                 let mut ty =
                     p.default.as_ref().map_or(TyKind::Error.intern(Interner), |t| ctx.lower_ty(t));
                 // Each default can only refer to previous parameters.
@@ -1743,13 +1748,13 @@ pub(crate) fn generic_defaults_query(
                 ty = fallback_bound_vars(ty, idx, parent_start_idx);
                 crate::make_binders(db, &generic_params, ty.cast(Interner))
             }
-            TypeOrConstParamData::ConstParamData(p) => {
+            GenericParamData::ConstParamData(p) => {
+                let GenericParamId::ConstParamId(id) = id else {
+                    unreachable!("Unexpected lifetime or type argument")
+                };
+
                 let mut val = p.default.as_ref().map_or_else(
-                    || {
-                        unknown_const_as_generic(
-                            db.const_param_ty(ConstParamId::from_unchecked(id)),
-                        )
-                    },
+                    || unknown_const_as_generic(db.const_param_ty(id.into())),
                     |c| {
                         let c = ctx.lower_const(c, ctx.lower_ty(&p.ty));
                         c.cast(Interner)
@@ -1759,15 +1764,12 @@ pub(crate) fn generic_defaults_query(
                 val = fallback_bound_vars(val, idx, parent_start_idx);
                 make_binders(db, &generic_params, val)
             }
+            GenericParamData::LifetimeParamData(_) => {
+                // using static because it requires defaults
+                make_binders(db, &generic_params, static_lifetime().cast(Interner))
+            }
         }
-    });
-
-    let lt_iter = generic_params
-        .iter_lt()
-        .enumerate()
-        .map(|_| make_binders(db, &generic_params, static_lifetime().cast(Interner)));
-
-    let defaults = Arc::from_iter(toc_iter.chain(lt_iter));
+    }));
 
     defaults
 }
@@ -1782,8 +1784,9 @@ pub(crate) fn generic_defaults_recover(
     // we still need one default per parameter
     let defaults = Arc::from_iter(generic_params.iter_id().map(|id| {
         let val = match id {
-            Either::Left(_) => TyKind::Error.intern(Interner).cast(Interner),
-            Either::Right(id) => unknown_const_as_generic(db.const_param_ty(id)),
+            GenericParamId::TypeParamId(_) => TyKind::Error.intern(Interner).cast(Interner),
+            GenericParamId::ConstParamId(id) => unknown_const_as_generic(db.const_param_ty(id)),
+            GenericParamId::LifetimeParamId(_) => static_lifetime().cast(Interner),
         };
         crate::make_binders(db, &generic_params, val)
     }));
