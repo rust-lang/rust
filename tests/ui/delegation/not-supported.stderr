@@ -70,14 +70,14 @@ LL |         fn foo(&self, x: i32) -> i32 { x }
 LL |         reuse Trait::foo;
    |                      ^^^
 
-error: delegation with early bound generics is not supported yet
+error[E0049]: method `foo2` has 0 type parameters but its trait declaration has 1 type parameter
   --> $DIR/not-supported.rs:49:22
    |
 LL |         fn foo2<T>(&self, x: T) -> T { x }
-   |         ---------------------------- callee defined here
+   |                 - expected 1 type parameter
 ...
 LL |         reuse Trait::foo2 { &self.0 }
-   |                      ^^^^
+   |                      ^^^^ found 0 type parameters
 
 error: delegation with early bound generics is not supported yet
   --> $DIR/not-supported.rs:52:29
@@ -88,6 +88,15 @@ LL |         fn foo3<'a: 'a>(_: &'a u32) {}
 LL |         reuse <F as Trait>::foo3;
    |                             ^^^^
 
+error[E0195]: lifetime parameters or bounds on method `foo3` do not match the trait declaration
+  --> $DIR/not-supported.rs:52:29
+   |
+LL |         fn foo3<'a: 'a>(_: &'a u32) {}
+   |                -------- lifetimes in impl do not match this method in trait
+...
+LL |         reuse <F as Trait>::foo3;
+   |                             ^^^^ lifetimes do not match method in trait
+
 error: delegation with early bound generics is not supported yet
   --> $DIR/not-supported.rs:59:22
    |
@@ -96,6 +105,15 @@ LL |         fn foo(&self, x: i32) -> i32 { x }
 ...
 LL |         reuse Trait::foo { &self.0 }
    |                      ^^^
+
+error: delegation with early bound generics is not supported yet
+  --> $DIR/not-supported.rs:49:22
+   |
+LL |         fn foo2<T>(&self, x: T) -> T { x }
+   |         ---------------------------- callee defined here
+...
+LL |         reuse Trait::foo2 { &self.0 }
+   |                      ^^^^
 
 error: delegation with early bound generics is not supported yet
   --> $DIR/not-supported.rs:74:21
@@ -159,24 +177,6 @@ LL |         pub reuse to_reuse2::foo;
 ...
 LL |     reuse to_reuse1::foo;
    |                      ^^^
-
-error[E0049]: method `foo2` has 0 type parameters but its trait declaration has 1 type parameter
-  --> $DIR/not-supported.rs:49:22
-   |
-LL |         fn foo2<T>(&self, x: T) -> T { x }
-   |                 - expected 1 type parameter
-...
-LL |         reuse Trait::foo2 { &self.0 }
-   |                      ^^^^ found 0 type parameters
-
-error[E0195]: lifetime parameters or bounds on method `foo3` do not match the trait declaration
-  --> $DIR/not-supported.rs:52:29
-   |
-LL |         fn foo3<'a: 'a>(_: &'a u32) {}
-   |                -------- lifetimes in impl do not match this method in trait
-...
-LL |         reuse <F as Trait>::foo3;
-   |                             ^^^^ lifetimes do not match method in trait
 
 error: aborting due to 19 previous errors; 1 warning emitted
 

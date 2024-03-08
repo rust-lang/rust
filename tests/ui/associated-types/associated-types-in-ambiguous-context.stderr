@@ -10,6 +10,23 @@ LL | fn get<T:Get,U:Get>(x: T, y: U) -> <Example as Get>::Value {}
    |                                    ~~~~~~~~~~~~~~~~~~~~~~~
 
 error[E0223]: ambiguous associated type
+  --> $DIR/associated-types-in-ambiguous-context.rs:13:23
+   |
+LL |     fn grab(&self) -> Grab::Value;
+   |                       ^^^^^^^^^^^ help: use fully-qualified syntax: `<Self as Grab>::Value`
+
+error[E0223]: ambiguous associated type
+  --> $DIR/associated-types-in-ambiguous-context.rs:16:22
+   |
+LL |     fn get(&self) -> Get::Value;
+   |                      ^^^^^^^^^^
+   |
+help: if there were a type named `Example` that implemented `Get`, you could use the fully-qualified path
+   |
+LL |     fn get(&self) -> <Example as Get>::Value;
+   |                      ~~~~~~~~~~~~~~~~~~~~~~~
+
+error[E0223]: ambiguous associated type
   --> $DIR/associated-types-in-ambiguous-context.rs:22:17
    |
 LL | trait Foo where Foo::Assoc: Bar {
@@ -32,23 +49,6 @@ LL | type X = <IoSliceMut<'_> as Deref>::Target;
 LL | type X = <OsString as Deref>::Target;
    |          ~~~~~~~~~~~~~~~~~~~~~~~~~~~
      and N other candidates
-
-error[E0223]: ambiguous associated type
-  --> $DIR/associated-types-in-ambiguous-context.rs:13:23
-   |
-LL |     fn grab(&self) -> Grab::Value;
-   |                       ^^^^^^^^^^^ help: use fully-qualified syntax: `<Self as Grab>::Value`
-
-error[E0223]: ambiguous associated type
-  --> $DIR/associated-types-in-ambiguous-context.rs:16:22
-   |
-LL |     fn get(&self) -> Get::Value;
-   |                      ^^^^^^^^^^
-   |
-help: if there were a type named `Example` that implemented `Get`, you could use the fully-qualified path
-   |
-LL |     fn get(&self) -> <Example as Get>::Value;
-   |                      ~~~~~~~~~~~~~~~~~~~~~~~
 
 error: aborting due to 5 previous errors
 

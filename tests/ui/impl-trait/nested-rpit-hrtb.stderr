@@ -65,6 +65,15 @@ note: lifetime declared here
 LL | fn one_hrtb_outlives_uses() -> impl for<'a> Bar<'a, Assoc = impl Sized + 'a> {}
    |                                         ^^
 
+error: implementation of `Bar` is not general enough
+  --> $DIR/nested-rpit-hrtb.rs:32:78
+   |
+LL | fn one_hrtb_outlives_uses() -> impl for<'a> Bar<'a, Assoc = impl Sized + 'a> {}
+   |                                                                              ^^ implementation of `Bar` is not general enough
+   |
+   = note: `()` must implement `Bar<'a>`
+   = note: ...but it actually implements `Bar<'0>`, for some specific lifetime `'0`
+
 error: higher kinded lifetime bounds on nested opaque types are not supported yet
   --> $DIR/nested-rpit-hrtb.rs:36:73
    |
@@ -76,15 +85,6 @@ note: lifetime declared here
    |
 LL | fn one_hrtb_trait_param_uses() -> impl for<'a> Bar<'a, Assoc = impl Qux<'a>> {}
    |                                            ^^
-
-error: implementation of `Bar` is not general enough
-  --> $DIR/nested-rpit-hrtb.rs:32:78
-   |
-LL | fn one_hrtb_outlives_uses() -> impl for<'a> Bar<'a, Assoc = impl Sized + 'a> {}
-   |                                                                              ^^ implementation of `Bar` is not general enough
-   |
-   = note: `()` must implement `Bar<'a>`
-   = note: ...but it actually implements `Bar<'0>`, for some specific lifetime `'0`
 
 error[E0277]: the trait bound `for<'a> &'a (): Qux<'_>` is not satisfied
   --> $DIR/nested-rpit-hrtb.rs:36:64

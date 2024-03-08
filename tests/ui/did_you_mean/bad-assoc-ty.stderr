@@ -272,6 +272,17 @@ help: use type parameters instead
 LL | struct L<F, T>(F) where F: Fn() -> T;
    |           +++                      ~
 
+error[E0121]: the placeholder `_` is not allowed within types on item signatures for functions
+  --> $DIR/bad-assoc-ty.rs:82:38
+   |
+LL |     fn foo<F>(_: F) where F: Fn() -> _ {}
+   |                                      ^ not allowed in type signatures
+   |
+help: use type parameters instead
+   |
+LL |     fn foo<F, T>(_: F) where F: Fn() -> T {}
+   |             +++                         ~
+
 error[E0121]: the placeholder `_` is not allowed within types on item signatures for structs
   --> $DIR/bad-assoc-ty.rs:62:30
    |
@@ -305,28 +316,6 @@ help: use type parameters instead
 LL | union O<F, T> where F: Fn() -> T {
    |          +++                   ~
 
-error[E0121]: the placeholder `_` is not allowed within types on item signatures for traits
-  --> $DIR/bad-assoc-ty.rs:77:29
-   |
-LL | trait P<F> where F: Fn() -> _ {
-   |                             ^ not allowed in type signatures
-   |
-help: use type parameters instead
-   |
-LL | trait P<F, T> where F: Fn() -> T {
-   |          +++                   ~
-
-error[E0121]: the placeholder `_` is not allowed within types on item signatures for functions
-  --> $DIR/bad-assoc-ty.rs:82:38
-   |
-LL |     fn foo<F>(_: F) where F: Fn() -> _ {}
-   |                                      ^ not allowed in type signatures
-   |
-help: use type parameters instead
-   |
-LL |     fn foo<F, T>(_: F) where F: Fn() -> T {}
-   |             +++                         ~
-
 error[E0740]: field must implement `Copy` or be wrapped in `ManuallyDrop<...>` to be used in a union
   --> $DIR/bad-assoc-ty.rs:73:5
    |
@@ -338,6 +327,17 @@ help: wrap the field type in `ManuallyDrop<...>`
    |
 LL |     foo: std::mem::ManuallyDrop<F>,
    |          +++++++++++++++++++++++ +
+
+error[E0121]: the placeholder `_` is not allowed within types on item signatures for traits
+  --> $DIR/bad-assoc-ty.rs:77:29
+   |
+LL | trait P<F> where F: Fn() -> _ {
+   |                             ^ not allowed in type signatures
+   |
+help: use type parameters instead
+   |
+LL | trait P<F, T> where F: Fn() -> T {
+   |          +++                   ~
 
 error: aborting due to 29 previous errors; 1 warning emitted
 

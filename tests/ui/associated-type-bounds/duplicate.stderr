@@ -198,6 +198,17 @@ LL | fn FRPIT1() -> impl Iterator<Item: Copy, Item: Send> {
    |                              |
    |                              `Item` bound here first
 
+error[E0282]: type annotations needed
+  --> $DIR/duplicate.rs:136:5
+   |
+LL |     iter::empty()
+   |     ^^^^^^^^^^^ cannot infer type of the type parameter `T` declared on the function `empty`
+   |
+help: consider specifying the generic argument
+   |
+LL |     iter::empty::<T>()
+   |                +++++
+
 error[E0719]: the value of the associated type `Item` in trait `Iterator` is already specified
   --> $DIR/duplicate.rs:139:42
    |
@@ -206,6 +217,17 @@ LL | fn FRPIT2() -> impl Iterator<Item: Copy, Item: Copy> {
    |                              |
    |                              `Item` bound here first
 
+error[E0282]: type annotations needed
+  --> $DIR/duplicate.rs:141:5
+   |
+LL |     iter::empty()
+   |     ^^^^^^^^^^^ cannot infer type of the type parameter `T` declared on the function `empty`
+   |
+help: consider specifying the generic argument
+   |
+LL |     iter::empty::<T>()
+   |                +++++
+
 error[E0719]: the value of the associated type `Item` in trait `Iterator` is already specified
   --> $DIR/duplicate.rs:144:45
    |
@@ -213,6 +235,17 @@ LL | fn FRPIT3() -> impl Iterator<Item: 'static, Item: 'static> {
    |                              -------------  ^^^^^^^^^^^^^ re-bound here
    |                              |
    |                              `Item` bound here first
+
+error[E0282]: type annotations needed
+  --> $DIR/duplicate.rs:146:5
+   |
+LL |     iter::empty()
+   |     ^^^^^^^^^^^ cannot infer type of the type parameter `T` declared on the function `empty`
+   |
+help: consider specifying the generic argument
+   |
+LL |     iter::empty::<T>()
+   |                +++++
 
 error[E0719]: the value of the associated type `Item` in trait `Iterator` is already specified
   --> $DIR/duplicate.rs:149:40
@@ -377,6 +410,16 @@ LL | trait TRS1: Iterator<Item: Copy, Item: Send> {}
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 error[E0719]: the value of the associated type `Item` in trait `Iterator` is already specified
+  --> $DIR/duplicate.rs:197:34
+   |
+LL | trait TRS1: Iterator<Item: Copy, Item: Send> {}
+   |                      ----------  ^^^^^^^^^^ re-bound here
+   |                      |
+   |                      `Item` bound here first
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error[E0719]: the value of the associated type `Item` in trait `Iterator` is already specified
   --> $DIR/duplicate.rs:201:34
    |
 LL | trait TRS2: Iterator<Item: Copy, Item: Copy> {}
@@ -395,12 +438,32 @@ LL | trait TRS2: Iterator<Item: Copy, Item: Copy> {}
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 error[E0719]: the value of the associated type `Item` in trait `Iterator` is already specified
+  --> $DIR/duplicate.rs:201:34
+   |
+LL | trait TRS2: Iterator<Item: Copy, Item: Copy> {}
+   |                      ----------  ^^^^^^^^^^ re-bound here
+   |                      |
+   |                      `Item` bound here first
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error[E0719]: the value of the associated type `Item` in trait `Iterator` is already specified
   --> $DIR/duplicate.rs:205:37
    |
 LL | trait TRS3: Iterator<Item: 'static, Item: 'static> {}
    |                      -------------  ^^^^^^^^^^^^^ re-bound here
    |                      |
    |                      `Item` bound here first
+
+error[E0719]: the value of the associated type `Item` in trait `Iterator` is already specified
+  --> $DIR/duplicate.rs:205:37
+   |
+LL | trait TRS3: Iterator<Item: 'static, Item: 'static> {}
+   |                      -------------  ^^^^^^^^^^^^^ re-bound here
+   |                      |
+   |                      `Item` bound here first
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 error[E0719]: the value of the associated type `Item` in trait `Iterator` is already specified
   --> $DIR/duplicate.rs:205:37
@@ -455,6 +518,16 @@ LL |     Self: Iterator<Item: Copy, Item: Send>,
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 error[E0719]: the value of the associated type `Item` in trait `Iterator` is already specified
+  --> $DIR/duplicate.rs:229:32
+   |
+LL |     Self: Iterator<Item: Copy, Item: Send>,
+   |                    ----------  ^^^^^^^^^^ re-bound here
+   |                    |
+   |                    `Item` bound here first
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error[E0719]: the value of the associated type `Item` in trait `Iterator` is already specified
   --> $DIR/duplicate.rs:237:32
    |
 LL |     Self: Iterator<Item: Copy, Item: Copy>,
@@ -473,12 +546,32 @@ LL |     Self: Iterator<Item: Copy, Item: Copy>,
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 error[E0719]: the value of the associated type `Item` in trait `Iterator` is already specified
+  --> $DIR/duplicate.rs:237:32
+   |
+LL |     Self: Iterator<Item: Copy, Item: Copy>,
+   |                    ----------  ^^^^^^^^^^ re-bound here
+   |                    |
+   |                    `Item` bound here first
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error[E0719]: the value of the associated type `Item` in trait `Iterator` is already specified
   --> $DIR/duplicate.rs:245:35
    |
 LL |     Self: Iterator<Item: 'static, Item: 'static>,
    |                    -------------  ^^^^^^^^^^^^^ re-bound here
    |                    |
    |                    `Item` bound here first
+
+error[E0719]: the value of the associated type `Item` in trait `Iterator` is already specified
+  --> $DIR/duplicate.rs:245:35
+   |
+LL |     Self: Iterator<Item: 'static, Item: 'static>,
+   |                    -------------  ^^^^^^^^^^^^^ re-bound here
+   |                    |
+   |                    `Item` bound here first
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 error[E0719]: the value of the associated type `Item` in trait `Iterator` is already specified
   --> $DIR/duplicate.rs:245:35
@@ -513,99 +606,6 @@ LL |     type A: Iterator<Item: 'static, Item: 'static>;
    |                      -------------  ^^^^^^^^^^^^^ re-bound here
    |                      |
    |                      `Item` bound here first
-
-error[E0282]: type annotations needed
-  --> $DIR/duplicate.rs:136:5
-   |
-LL |     iter::empty()
-   |     ^^^^^^^^^^^ cannot infer type of the type parameter `T` declared on the function `empty`
-   |
-help: consider specifying the generic argument
-   |
-LL |     iter::empty::<T>()
-   |                +++++
-
-error[E0282]: type annotations needed
-  --> $DIR/duplicate.rs:141:5
-   |
-LL |     iter::empty()
-   |     ^^^^^^^^^^^ cannot infer type of the type parameter `T` declared on the function `empty`
-   |
-help: consider specifying the generic argument
-   |
-LL |     iter::empty::<T>()
-   |                +++++
-
-error[E0282]: type annotations needed
-  --> $DIR/duplicate.rs:146:5
-   |
-LL |     iter::empty()
-   |     ^^^^^^^^^^^ cannot infer type of the type parameter `T` declared on the function `empty`
-   |
-help: consider specifying the generic argument
-   |
-LL |     iter::empty::<T>()
-   |                +++++
-
-error[E0719]: the value of the associated type `Item` in trait `Iterator` is already specified
-  --> $DIR/duplicate.rs:197:34
-   |
-LL | trait TRS1: Iterator<Item: Copy, Item: Send> {}
-   |                      ----------  ^^^^^^^^^^ re-bound here
-   |                      |
-   |                      `Item` bound here first
-   |
-   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
-
-error[E0719]: the value of the associated type `Item` in trait `Iterator` is already specified
-  --> $DIR/duplicate.rs:201:34
-   |
-LL | trait TRS2: Iterator<Item: Copy, Item: Copy> {}
-   |                      ----------  ^^^^^^^^^^ re-bound here
-   |                      |
-   |                      `Item` bound here first
-   |
-   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
-
-error[E0719]: the value of the associated type `Item` in trait `Iterator` is already specified
-  --> $DIR/duplicate.rs:205:37
-   |
-LL | trait TRS3: Iterator<Item: 'static, Item: 'static> {}
-   |                      -------------  ^^^^^^^^^^^^^ re-bound here
-   |                      |
-   |                      `Item` bound here first
-   |
-   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
-
-error[E0719]: the value of the associated type `Item` in trait `Iterator` is already specified
-  --> $DIR/duplicate.rs:229:32
-   |
-LL |     Self: Iterator<Item: Copy, Item: Send>,
-   |                    ----------  ^^^^^^^^^^ re-bound here
-   |                    |
-   |                    `Item` bound here first
-   |
-   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
-
-error[E0719]: the value of the associated type `Item` in trait `Iterator` is already specified
-  --> $DIR/duplicate.rs:237:32
-   |
-LL |     Self: Iterator<Item: Copy, Item: Copy>,
-   |                    ----------  ^^^^^^^^^^ re-bound here
-   |                    |
-   |                    `Item` bound here first
-   |
-   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
-
-error[E0719]: the value of the associated type `Item` in trait `Iterator` is already specified
-  --> $DIR/duplicate.rs:245:35
-   |
-LL |     Self: Iterator<Item: 'static, Item: 'static>,
-   |                    -------------  ^^^^^^^^^^^^^ re-bound here
-   |                    |
-   |                    `Item` bound here first
-   |
-   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 error: aborting due to 72 previous errors
 

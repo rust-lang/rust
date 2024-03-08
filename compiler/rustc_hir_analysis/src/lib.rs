@@ -159,12 +159,6 @@ pub fn provide(providers: &mut Providers) {
 pub fn check_crate(tcx: TyCtxt<'_>) -> Result<(), ErrorGuaranteed> {
     let _prof_timer = tcx.sess.timer("type_check_crate");
 
-    // this ensures that later parts of type checking can assume that items
-    // have valid types and not error
-    tcx.sess.time("type_collecting", || {
-        tcx.hir().for_each_module(|module| tcx.ensure().collect_mod_item_types(module))
-    });
-
     if tcx.features().rustc_attrs {
         tcx.sess.time("outlives_testing", || outlives::test::test_inferred_outlives(tcx))?;
     }
