@@ -1,4 +1,4 @@
-//! A pass that eliminates branches on uninhabited enum variants.
+//! A pass that eliminates branches on uninhabited or unreachable enum variants.
 
 use crate::MirPass;
 use rustc_data_structures::fx::FxHashSet;
@@ -11,7 +11,7 @@ use rustc_middle::ty::layout::TyAndLayout;
 use rustc_middle::ty::{Ty, TyCtxt};
 use rustc_target::abi::{Abi, Variants};
 
-pub struct UninhabitedEnumBranching;
+pub struct UnreachableEnumBranching;
 
 fn get_discriminant_local(terminator: &TerminatorKind<'_>) -> Option<Local> {
     if let TerminatorKind::SwitchInt { discr: Operand::Move(p), .. } = terminator {
@@ -71,13 +71,13 @@ fn variant_discriminants<'tcx>(
     }
 }
 
-impl<'tcx> MirPass<'tcx> for UninhabitedEnumBranching {
+impl<'tcx> MirPass<'tcx> for UnreachableEnumBranching {
     fn is_enabled(&self, sess: &rustc_session::Session) -> bool {
         sess.mir_opt_level() > 0
     }
 
     fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
-        trace!("UninhabitedEnumBranching starting for {:?}", body.source);
+        trace!("UnreachableEnumBranching starting for {:?}", body.source);
 
         let mut unreachable_targets = Vec::new();
         let mut patch = MirPatch::new(body);
@@ -121,9 +121,9 @@ impl<'tcx> MirPass<'tcx> for UninhabitedEnumBranching {
             }
             let otherwise_is_empty_unreachable =
                 body.basic_blocks[targets.otherwise()].is_empty_unreachable();
-            // After resolving https://github.com/llvm/llvm-project/issues/78578,
-            // we can remove the limit on the number of successors.
             fn check_successors(basic_blocks: &BasicBlocks<'_>, bb: BasicBlock) -> bool {
+                // After resolving https://github.com/llvm/llvm-project/issues/78578,
+                // We can remove this check.
                 let mut successors = basic_blocks[bb].terminator().successors();
                 let Some(first_successor) = successors.next() else { return true };
                 if successors.next().is_some() {

@@ -9,7 +9,7 @@ enum S {
 
 use S::*;
 
-// EMIT_MIR uninhabited_fallthrough_elimination.keep_fallthrough.UninhabitedEnumBranching.diff
+// EMIT_MIR uninhabited_fallthrough_elimination.keep_fallthrough.UnreachableEnumBranching.diff
 fn keep_fallthrough(s: S) -> u32 {
     match s {
         A(_) => 1,
@@ -18,7 +18,7 @@ fn keep_fallthrough(s: S) -> u32 {
     }
 }
 
-// EMIT_MIR uninhabited_fallthrough_elimination.eliminate_fallthrough.UninhabitedEnumBranching.diff
+// EMIT_MIR uninhabited_fallthrough_elimination.eliminate_fallthrough.UnreachableEnumBranching.diff
 fn eliminate_fallthrough(s: S) -> u32 {
     match s {
         C => 1,

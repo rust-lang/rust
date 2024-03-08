@@ -1,5 +1,5 @@
-- // MIR for `custom_discriminant` before UninhabitedEnumBranching
-+ // MIR for `custom_discriminant` after UninhabitedEnumBranching
+- // MIR for `custom_discriminant` before UnreachableEnumBranching
++ // MIR for `custom_discriminant` after UnreachableEnumBranching
   
   fn custom_discriminant() -> () {
       let mut _0: ();

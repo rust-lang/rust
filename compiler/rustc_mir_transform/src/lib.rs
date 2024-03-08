@@ -109,7 +109,7 @@ pub mod simplify;
 mod simplify_branches;
 mod simplify_comparison_integral;
 mod sroa;
-mod uninhabited_enum_branching;
+mod unreachable_enum_branching;
 mod unreachable_prop;
 
 use rustc_const_eval::transform::check_consts::{self, ConstCx};
@@ -579,9 +579,10 @@ fn run_optimization_passes<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
             &remove_zsts::RemoveZsts,
             &remove_unneeded_drops::RemoveUnneededDrops,
             // Type instantiation may create uninhabited enums.
-            &uninhabited_enum_branching::UninhabitedEnumBranching,
+            // Also eliminates some unreachable branches based on variants of enums.
+            &unreachable_enum_branching::UnreachableEnumBranching,
             &unreachable_prop::UnreachablePropagation,
-            &o1(simplify::SimplifyCfg::AfterUninhabitedEnumBranching),
+            &o1(simplify::SimplifyCfg::AfterUnreachableEnumBranching),
             // Inlining may have introduced a lot of redundant code and a large move pattern.
             // Now, we need to shrink the generated MIR.
 

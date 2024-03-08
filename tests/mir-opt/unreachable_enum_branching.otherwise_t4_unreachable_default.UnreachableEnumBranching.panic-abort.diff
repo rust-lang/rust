@@ -1,7 +1,7 @@
-- // MIR for `otherwise_t4_uninhabited_default` before UninhabitedEnumBranching
-+ // MIR for `otherwise_t4_uninhabited_default` after UninhabitedEnumBranching
+- // MIR for `otherwise_t4_unreachable_default` before UnreachableEnumBranching
++ // MIR for `otherwise_t4_unreachable_default` after UnreachableEnumBranching
   
-  fn otherwise_t4_uninhabited_default() -> () {
+  fn otherwise_t4_unreachable_default() -> () {
       let mut _0: ();
       let _1: &str;
       let mut _2: Test4;

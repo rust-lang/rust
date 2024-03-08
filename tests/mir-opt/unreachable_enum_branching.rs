@@ -1,4 +1,4 @@
-//@ unit-test: UninhabitedEnumBranching
+//@ unit-test: UnreachableEnumBranching
 // EMIT_MIR_FOR_EACH_PANIC_STRATEGY
 
 enum Empty {}
@@ -45,7 +45,7 @@ struct Plop {
     test3: Test3,
 }
 
-// EMIT_MIR uninhabited_enum_branching.simple.UninhabitedEnumBranching.diff
+// EMIT_MIR unreachable_enum_branching.simple.UnreachableEnumBranching.diff
 fn simple() {
     // CHECK-LABEL: fn simple(
     // CHECK: [[discr:_.*]] = discriminant(
@@ -59,7 +59,7 @@ fn simple() {
     };
 }
 
-// EMIT_MIR uninhabited_enum_branching.custom_discriminant.UninhabitedEnumBranching.diff
+// EMIT_MIR unreachable_enum_branching.custom_discriminant.UnreachableEnumBranching.diff
 fn custom_discriminant() {
     // CHECK-LABEL: fn custom_discriminant(
     // CHECK: [[discr:_.*]] = discriminant(
@@ -72,7 +72,7 @@ fn custom_discriminant() {
     };
 }
 
-// EMIT_MIR uninhabited_enum_branching.otherwise_t1.UninhabitedEnumBranching.diff
+// EMIT_MIR unreachable_enum_branching.otherwise_t1.UnreachableEnumBranching.diff
 fn otherwise_t1() {
     // CHECK-LABEL: fn otherwise_t1(
     // CHECK: [[discr:_.*]] = discriminant(
@@ -86,7 +86,7 @@ fn otherwise_t1() {
     };
 }
 
-// EMIT_MIR uninhabited_enum_branching.otherwise_t2.UninhabitedEnumBranching.diff
+// EMIT_MIR unreachable_enum_branching.otherwise_t2.UnreachableEnumBranching.diff
 fn otherwise_t2() {
     // CHECK-LABEL: fn otherwise_t2(
     // CHECK: [[discr:_.*]] = discriminant(
@@ -99,7 +99,7 @@ fn otherwise_t2() {
     };
 }
 
-// EMIT_MIR uninhabited_enum_branching.otherwise_t3.UninhabitedEnumBranching.diff
+// EMIT_MIR unreachable_enum_branching.otherwise_t3.UnreachableEnumBranching.diff
 fn otherwise_t3() {
     // CHECK-LABEL: fn otherwise_t3(
     // CHECK: [[discr:_.*]] = discriminant(
@@ -116,9 +116,9 @@ fn otherwise_t3() {
     };
 }
 
-// EMIT_MIR uninhabited_enum_branching.otherwise_t4_uninhabited_default.UninhabitedEnumBranching.diff
-fn otherwise_t4_uninhabited_default() {
-    // CHECK-LABEL: fn otherwise_t4_uninhabited_default(
+// EMIT_MIR unreachable_enum_branching.otherwise_t4_unreachable_default.UnreachableEnumBranching.diff
+fn otherwise_t4_unreachable_default() {
+    // CHECK-LABEL: fn otherwise_t4_unreachable_default(
     // CHECK: [[discr:_.*]] = discriminant(
     // CHECK: switchInt(move [[discr]]) -> [0: bb2, 1: bb3, 2: bb4, 3: bb1, otherwise: [[unreachable:bb.*]]];
     // CHECK: [[unreachable]]: {
@@ -131,9 +131,9 @@ fn otherwise_t4_uninhabited_default() {
     };
 }
 
-// EMIT_MIR uninhabited_enum_branching.otherwise_t4_uninhabited_default_2.UninhabitedEnumBranching.diff
-fn otherwise_t4_uninhabited_default_2() {
-    // CHECK-LABEL: fn otherwise_t4_uninhabited_default_2(
+// EMIT_MIR unreachable_enum_branching.otherwise_t4_unreachable_default_2.UnreachableEnumBranching.diff
+fn otherwise_t4_unreachable_default_2() {
+    // CHECK-LABEL: fn otherwise_t4_unreachable_default_2(
     // CHECK: [[discr:_.*]] = discriminant(
     // CHECK: switchInt(move [[discr]]) -> [0: bb2, 1: bb5, 2: bb6, 3: bb1, otherwise: [[unreachable:bb.*]]];
     // CHECK: [[unreachable]]: {
@@ -147,7 +147,7 @@ fn otherwise_t4_uninhabited_default_2() {
     };
 }
 
-// EMIT_MIR uninhabited_enum_branching.otherwise_t4.UninhabitedEnumBranching.diff
+// EMIT_MIR unreachable_enum_branching.otherwise_t4.UnreachableEnumBranching.diff
 fn otherwise_t4() {
     // CHECK-LABEL: fn otherwise_t4(
     // CHECK: [[discr:_.*]] = discriminant(
@@ -162,9 +162,9 @@ fn otherwise_t4() {
     };
 }
 
-// EMIT_MIR uninhabited_enum_branching.otherwise_t5_uninhabited_default.UninhabitedEnumBranching.diff
-fn otherwise_t5_uninhabited_default<T>() {
-    // CHECK-LABEL: fn otherwise_t5_uninhabited_default(
+// EMIT_MIR unreachable_enum_branching.otherwise_t5_unreachable_default.UnreachableEnumBranching.diff
+fn otherwise_t5_unreachable_default<T>() {
+    // CHECK-LABEL: fn otherwise_t5_unreachable_default(
     // CHECK: [[discr:_.*]] = discriminant(
     // CHECK: switchInt(move [[discr]]) -> [255: bb2, 0: bb3, 5: bb4, 3: bb1, otherwise: [[unreachable:bb.*]]];
     // CHECK: [[unreachable]]: {
@@ -177,7 +177,7 @@ fn otherwise_t5_uninhabited_default<T>() {
     };
 }
 
-// EMIT_MIR uninhabited_enum_branching.byref.UninhabitedEnumBranching.diff
+// EMIT_MIR unreachable_enum_branching.byref.UnreachableEnumBranching.diff
 fn byref() {
     // CHECK-LABEL: fn byref(
     let plop = Plop { xx: 51, test3: Test3::C };
@@ -210,9 +210,9 @@ fn main() {
     otherwise_t1();
     otherwise_t2();
     otherwise_t3();
-    otherwise_t4_uninhabited_default();
-    otherwise_t4_uninhabited_default_2();
+    otherwise_t4_unreachable_default();
+    otherwise_t4_unreachable_default_2();
     otherwise_t4();
-    otherwise_t5_uninhabited_default::<i32>();
+    otherwise_t5_unreachable_default::<i32>();
     byref();
 }
