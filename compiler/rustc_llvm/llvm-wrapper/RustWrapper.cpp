@@ -1549,6 +1549,31 @@ LLVMRustBuildInvoke(LLVMBuilderRef B, LLVMTypeRef Ty, LLVMValueRef Fn,
                                       Name));
 }
 
+extern "C" LLVMValueRef
+LLVMRustBuildCallBr(LLVMBuilderRef B, LLVMTypeRef Ty, LLVMValueRef Fn,
+                    LLVMBasicBlockRef DefaultDest,
+                    LLVMBasicBlockRef *IndirectDests, unsigned NumIndirectDests,
+                    LLVMValueRef *Args, unsigned NumArgs,
+                    OperandBundleDef **OpBundles, unsigned NumOpBundles,
+                    const char *Name) {
+  Value *Callee = unwrap(Fn);
+  FunctionType *FTy = unwrap<FunctionType>(Ty);
+
+  // FIXME: Is there a way around this?
+  std::vector<BasicBlock*> IndirectDestsUnwrapped;
+  IndirectDestsUnwrapped.reserve(NumIndirectDests);
+  for (unsigned i = 0; i < NumIndirectDests; ++i) {
+    IndirectDestsUnwrapped.push_back(unwrap(IndirectDests[i]));
+  }
+
+  return wrap(unwrap(B)->CreateCallBr(
+      FTy, Callee, unwrap(DefaultDest),
+      ArrayRef<BasicBlock*>(IndirectDestsUnwrapped),
+      ArrayRef<Value*>(unwrap(Args), NumArgs),
+      ArrayRef<OperandBundleDef>(*OpBundles, NumOpBundles),
+      Name));
+}
+
 extern "C" void LLVMRustPositionBuilderAtStart(LLVMBuilderRef B,
                                                LLVMBasicBlockRef BB) {
   auto Point = unwrap(BB)->getFirstInsertionPt();

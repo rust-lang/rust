@@ -491,7 +491,7 @@ impl<'b, 'a, 'tcx, F: Fn(Ty<'tcx>) -> bool> Gatherer<'b, 'a, 'tcx, F> {
                 ref operands,
                 options: _,
                 line_spans: _,
-                destination: _,
+                targets: _,
                 unwind: _,
             } => {
                 for op in operands {
@@ -515,7 +515,8 @@ impl<'b, 'a, 'tcx, F: Fn(Ty<'tcx>) -> bool> Gatherer<'b, 'a, 'tcx, F> {
                         }
                         InlineAsmOperand::Const { value: _ }
                         | InlineAsmOperand::SymFn { value: _ }
-                        | InlineAsmOperand::SymStatic { def_id: _ } => {}
+                        | InlineAsmOperand::SymStatic { def_id: _ }
+                        | InlineAsmOperand::Label { target_index: _ } => {}
                     }
                 }
             }

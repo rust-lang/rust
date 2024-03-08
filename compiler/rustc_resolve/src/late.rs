@@ -1242,6 +1242,7 @@ impl<'a: 'ast, 'ast, 'tcx> Visitor<'ast> for LateResolutionVisitor<'a, '_, 'ast,
                     self.resolve_anon_const(anon_const, AnonConstKind::InlineConst);
                 }
                 InlineAsmOperand::Sym { sym } => self.visit_inline_asm_sym(sym),
+                InlineAsmOperand::Label { block } => self.visit_block(block),
             }
         }
     }

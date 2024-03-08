@@ -129,6 +129,9 @@ pub(crate) fn codegen_inline_asm_terminator<'tcx>(
                 let instance = Instance::mono(fx.tcx, def_id).polymorphize(fx.tcx);
                 CInlineAsmOperand::Symbol { symbol: fx.tcx.symbol_name(instance).name.to_owned() }
             }
+            InlineAsmOperand::Label { .. } => {
+                span_bug!(span, "asm! label operands are not yet supported");
+            }
         })
         .collect::<Vec<_>>();
 
