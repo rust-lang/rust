@@ -510,11 +510,13 @@ fn get_argc_argv<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
         // Params for UEFI
         let param_handle = bx.get_param(0);
         let param_system_table = bx.get_param(1);
+        let ptr_size = bx.tcx().data_layout.pointer_size;
+        let ptr_align = bx.tcx().data_layout.pointer_align.abi;
         let arg_argc = bx.const_int(cx.type_isize(), 2);
-        let arg_argv = bx.alloca(cx.type_array(cx.type_ptr(), 2), Align::ONE);
-        bx.store(param_handle, arg_argv, Align::ONE);
-        let arg_argv_el1 = bx.gep(cx.type_ptr(), arg_argv, &[bx.const_int(cx.type_int(), 1)]);
-        bx.store(param_system_table, arg_argv_el1, Align::ONE);
+        let arg_argv = bx.alloca(cx.type_array(cx.type_ptr(), 2), ptr_align);
+        bx.store(param_handle, arg_argv, ptr_align);
+        let arg_argv_el1 = bx.inbounds_ptradd(arg_argv, bx.const_usize(ptr_size.bytes()));
+        bx.store(param_system_table, arg_argv_el1, ptr_align);
         (arg_argc, arg_argv)
     } else if cx.sess().target.main_needs_argc_argv {
         // Params from native `main()` used as args for rust start function
