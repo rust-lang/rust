@@ -879,6 +879,10 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 self.visit_primary_bindings(subpattern, pattern_user_ty.deref(), f);
             }
 
+            PatKind::DerefPattern { ref subpattern } => {
+                self.visit_primary_bindings(subpattern, UserTypeProjections::none(), f);
+            }
+
             PatKind::AscribeUserType {
                 ref subpattern,
                 ascription: thir::Ascription { ref annotation, variance: _ },

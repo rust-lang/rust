@@ -413,7 +413,10 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
                 }
             }
             PatKind::Box(..) => {
-                gate!(&self, box_patterns, pattern.span, "box pattern syntax is experimental");
+                if !self.features.deref_patterns {
+                    // Allow box patterns under `deref_patterns`.
+                    gate!(&self, box_patterns, pattern.span, "box pattern syntax is experimental");
+                }
             }
             PatKind::Range(_, Some(_), Spanned { node: RangeEnd::Excluded, .. }) => {
                 gate!(
@@ -607,13 +610,16 @@ pub fn check_crate(krate: &ast::Crate, sess: &Session, features: &Features) {
         };
     }
 
+    if !visitor.features.deref_patterns {
+        // Allow box patterns under `deref_patterns`.
+        gate_all_legacy_dont_use!(box_patterns, "box pattern syntax is experimental");
+    }
     gate_all_legacy_dont_use!(trait_alias, "trait aliases are experimental");
     // Despite being a new feature, `where T: Trait<Assoc(): Sized>`, which is RTN syntax now,
     // used to be gated under associated_type_bounds, which are right above, so RTN needs to
     // be too.
     gate_all_legacy_dont_use!(return_type_notation, "return type notation is experimental");
     gate_all_legacy_dont_use!(decl_macro, "`macro` is experimental");
-    gate_all_legacy_dont_use!(box_patterns, "box pattern syntax is experimental");
     gate_all_legacy_dont_use!(
         exclusive_range_pattern,
         "exclusive range pattern syntax is experimental"
