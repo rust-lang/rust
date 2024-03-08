@@ -768,13 +768,7 @@ impl DiagCtxt {
                     format!("invalid level in `stash_diagnostic`: {:?}", diag.level),
                 );
             }
-            Error => {
-                // This `unchecked_error_guaranteed` is valid. It is where the
-                // `ErrorGuaranteed` for stashed errors originates. See
-                // `DiagCtxtInner::drop`.
-                #[allow(deprecated)]
-                Some(ErrorGuaranteed::unchecked_error_guaranteed())
-            }
+            Error => Some(self.span_delayed_bug(span, "stashing {key:?}")),
             DelayedBug => return self.inner.borrow_mut().emit_diagnostic(diag),
             ForceWarning(_) | Warning | Note | OnceNote | Help | OnceHelp | FailureNote | Allow
             | Expect(_) => None,

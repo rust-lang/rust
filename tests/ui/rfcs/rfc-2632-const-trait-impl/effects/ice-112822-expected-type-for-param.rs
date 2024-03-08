@@ -1,7 +1,6 @@
 #![feature(const_trait_impl, effects)]
 
 const fn test() -> impl ~const Fn() { //~ ERROR `~const` can only be applied to `#[const_trait]` traits
-    //~^ ERROR cycle detected
     const move || { //~ ERROR const closures are experimental
         let sl: &[u8] = b"foo";
 
