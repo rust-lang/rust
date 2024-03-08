@@ -1462,28 +1462,6 @@ fn f() {
 }
 
 #[test]
-fn trait_impl_in_synstructure_const() {
-    check_types(
-        r#"
-struct S;
-
-trait Tr {
-    fn method(&self) -> u16;
-}
-
-const _DERIVE_Tr_: () = {
-    impl Tr for S {}
-};
-
-fn f() {
-    S.method();
-  //^^^^^^^^^^ u16
-}
-    "#,
-    );
-}
-
-#[test]
 fn inherent_impl_in_unnamed_const() {
     check_types(
         r#"

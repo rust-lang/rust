@@ -3,7 +3,7 @@
 use either::Either;
 use hir_expand::InFile;
 use la_arena::ArenaMap;
-use syntax::ast;
+use syntax::{ast, AstNode, AstPtr};
 
 use crate::{
     data::adt::lower_struct, db::DefDatabase, item_tree::ItemTreeNode, trace::Trace, GenericDefId,
@@ -12,8 +12,12 @@ use crate::{
 };
 
 pub trait HasSource {
-    type Value;
-    fn source(&self, db: &dyn DefDatabase) -> InFile<Self::Value>;
+    type Value: AstNode;
+    fn source(&self, db: &dyn DefDatabase) -> InFile<Self::Value> {
+        let InFile { file_id, value } = self.ast_ptr(db);
+        InFile::new(file_id, value.to_node(&db.parse_or_expand(file_id)))
+    }
+    fn ast_ptr(&self, db: &dyn DefDatabase) -> InFile<AstPtr<Self::Value>>;
 }
 
 impl<T> HasSource for T
@@ -22,16 +26,14 @@ where
     T::Id: ItemTreeNode,
 {
     type Value = <T::Id as ItemTreeNode>::Source;
-
-    fn source(&self, db: &dyn DefDatabase) -> InFile<Self::Value> {
+    fn ast_ptr(&self, db: &dyn DefDatabase) -> InFile<AstPtr<Self::Value>> {
         let id = self.item_tree_id();
         let file_id = id.file_id();
         let tree = id.item_tree(db);
         let ast_id_map = db.ast_id_map(file_id);
-        let root = db.parse_or_expand(file_id);
         let node = &tree[id.value];
 
-        InFile::new(file_id, ast_id_map.get(node.ast_id()).to_node(&root))
+        InFile::new(file_id, ast_id_map.get(node.ast_id()))
     }
 }
 
