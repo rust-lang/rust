@@ -306,7 +306,7 @@ fn integrated_diagnostics_benchmark() {
         let mut text = host.analysis().file_text(file_id).unwrap().to_string();
         patch(&mut text, "db.struct_data(self.id)", "();\ndb.struct_data(self.id)");
         let mut change = ChangeWithProcMacros::new();
-        change.change_file(file_id, Some(Arc::from(text)));
+        change.change_file(file_id, Some(text));
         host.apply_change(change);
     };
 
