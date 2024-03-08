@@ -1,4 +1,5 @@
 //@aux-build:proc_macro_derive.rs
+
 #![warn(clippy::std_instead_of_core)]
 #![allow(unused_imports)]
 
@@ -16,11 +17,19 @@ fn std_instead_of_core() {
     use ::core::hash::Hash;
     //~^ ERROR: used import from `std` instead of `core`
     // Don't lint on `env` macro
-    use std::env;
+    use core::env;
 
     // Multiple imports
     use core::fmt::{Debug, Result};
     //~^ ERROR: used import from `std` instead of `core`
+
+    // Multiple imports multiline
+    #[rustfmt::skip]
+    use core::{
+        //~^ ERROR: used import from `std` instead of `core`
+        fmt::Write as _,
+        ptr::read_unaligned,
+    };
 
     // Function calls
     let ptr = core::ptr::null::<u32>();

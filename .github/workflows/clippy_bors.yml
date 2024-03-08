@@ -59,7 +59,7 @@ jobs:
           host: i686-unknown-linux-gnu
         - os: windows-latest
           host: x86_64-pc-windows-msvc
-        - os: macos-latest
+        - os: macos-13
           host: x86_64-apple-darwin
 
     runs-on: ${{ matrix.os }}
@@ -87,23 +87,6 @@ jobs:
         rustup show active-toolchain
 
     # Run
-    - name: Set LD_LIBRARY_PATH (Linux)
-      if: runner.os == 'Linux'
-      run: |
-        SYSROOT=$(rustc --print sysroot)
-        echo "LD_LIBRARY_PATH=${SYSROOT}/lib${LD_LIBRARY_PATH+:${LD_LIBRARY_PATH}}" >> $GITHUB_ENV
-    - name: Link rustc dylib (MacOS)
-      if: runner.os == 'macOS'
-      run: |
-        SYSROOT=$(rustc --print sysroot)
-        sudo mkdir -p /usr/local/lib
-        sudo find "${SYSROOT}/lib" -maxdepth 1 -name '*dylib' -exec ln -s {} /usr/local/lib \;
-    - name: Set PATH (Windows)
-      if: runner.os == 'Windows'
-      run: |
-        SYSROOT=$(rustc --print sysroot)
-        echo "$SYSROOT/bin" >> $GITHUB_PATH
-
     - name: Build
       run: cargo build --tests --features deny-warnings,internal
 
@@ -136,7 +119,9 @@ jobs:
       working-directory: clippy_dev
 
     - name: Test clippy-driver
-      run: bash .github/driver.sh
+      run: |
+        TOOLCHAIN=$(rustup show active-toolchain | cut -f1 -d' ')
+        rustup run $TOOLCHAIN bash .github/driver.sh
       env:
         OS: ${{ runner.os }}
 
@@ -236,11 +221,6 @@ jobs:
     - name: Install toolchain
       run: rustup show active-toolchain
 
-    - name: Set LD_LIBRARY_PATH
-      run: |
-        SYSROOT=$(rustc --print sysroot)
-        echo "LD_LIBRARY_PATH=${SYSROOT}/lib${LD_LIBRARY_PATH+:${LD_LIBRARY_PATH}}" >> $GITHUB_ENV
-
     # Download
     - name: Download target dir
       uses: actions/download-artifact@v3
@@ -254,8 +234,8 @@ jobs:
     # Run
     - name: Test ${{ matrix.integration }}
       run: |
-        RUSTUP_TOOLCHAIN="$(rustup show active-toolchain | grep -o -E "nightly-[0-9]{4}-[0-9]{2}-[0-9]{2}")" \
-          $CARGO_TARGET_DIR/debug/integration --show-output
+          TOOLCHAIN=$(rustup show active-toolchain | cut -f1 -d' ')
+          rustup run $TOOLCHAIN $CARGO_TARGET_DIR/debug/integration --show-output
       env:
         INTEGRATION: ${{ matrix.integration }}
 

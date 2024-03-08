@@ -193,7 +193,7 @@ macro_rules! define_Conf {
         }
 
         pub fn get_configuration_metadata() -> Vec<ClippyConfiguration> {
-            vec![
+            let mut sorted = vec![
                 $(
                     {
                         let deprecation_reason = wrap_option!($($dep)?);
@@ -206,7 +206,9 @@ macro_rules! define_Conf {
                         )
                     },
                 )+
-            ]
+            ];
+            sorted.sort_by(|a, b| a.name.cmp(&b.name));
+            sorted
         }
     };
 }

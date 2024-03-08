@@ -1,5 +1,7 @@
 #![allow(unused)]
 #![warn(clippy::empty_docs)]
+#![allow(clippy::mixed_attributes_style)]
+
 mod outer {
     //!
 

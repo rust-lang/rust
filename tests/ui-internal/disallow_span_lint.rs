@@ -10,22 +10,11 @@ use rustc_hir::hir_id::HirId;
 use rustc_lint::{Lint, LintContext};
 use rustc_middle::ty::TyCtxt;
 
-pub fn a(
-    cx: impl LintContext,
-    lint: &'static Lint,
-    span: impl Into<MultiSpan>,
-    msg: impl Into<DiagMessage>)
-{
+pub fn a(cx: impl LintContext, lint: &'static Lint, span: impl Into<MultiSpan>, msg: impl Into<DiagMessage>) {
     cx.span_lint(lint, span, msg, |_| {});
 }
 
-pub fn b(
-    tcx: TyCtxt<'_>,
-    lint: &'static Lint,
-    hir_id: HirId,
-    span: impl Into<MultiSpan>,
-    msg: impl Into<DiagMessage>,
-) {
+pub fn b(tcx: TyCtxt<'_>, lint: &'static Lint, hir_id: HirId, span: impl Into<MultiSpan>, msg: impl Into<DiagMessage>) {
     tcx.node_span_lint(lint, hir_id, span, msg, |_| {});
 }
 

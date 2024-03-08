@@ -67,5 +67,17 @@ error: you are deriving `PartialEq` and can implement `Eq`
 LL |     #[derive(PartialEq)]
    |              ^^^^^^^^^ help: consider deriving `Eq` as well: `PartialEq, Eq`
 
-error: aborting due to 11 previous errors
+error: you are deriving `PartialEq` and can implement `Eq`
+  --> tests/ui/derive_partial_eq_without_eq.rs:166:14
+   |
+LL |     #[derive(PartialEq)]
+   |              ^^^^^^^^^ help: consider deriving `Eq` as well: `PartialEq, Eq`
+
+error: you are deriving `PartialEq` and can implement `Eq`
+  --> tests/ui/derive_partial_eq_without_eq.rs:174:14
+   |
+LL |     #[derive(PartialEq)]
+   |              ^^^^^^^^^ help: consider deriving `Eq` as well: `PartialEq, Eq`
+
+error: aborting due to 13 previous errors
 

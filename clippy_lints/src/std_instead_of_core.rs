@@ -109,7 +109,6 @@ impl<'tcx> LateLintPass<'tcx> for StdReexports {
                     sym::core => (STD_INSTEAD_OF_CORE, "std", "core"),
                     sym::alloc => (STD_INSTEAD_OF_ALLOC, "std", "alloc"),
                     _ => {
-                        self.prev_span = path.span;
                         return;
                     },
                 },
@@ -117,13 +116,12 @@ impl<'tcx> LateLintPass<'tcx> for StdReexports {
                     if cx.tcx.crate_name(def_id.krate) == sym::core {
                         (ALLOC_INSTEAD_OF_CORE, "alloc", "core")
                     } else {
-                        self.prev_span = path.span;
                         return;
                     }
                 },
                 _ => return,
             };
-            if path.span != self.prev_span {
+            if first_segment.ident.span != self.prev_span {
                 span_lint_and_sugg(
                     cx,
                     lint,
@@ -133,7 +131,7 @@ impl<'tcx> LateLintPass<'tcx> for StdReexports {
                     replace_with.to_string(),
                     Applicability::MachineApplicable,
                 );
-                self.prev_span = path.span;
+                self.prev_span = first_segment.ident.span;
             }
         }
     }

@@ -27,4 +27,18 @@ fn main() {
     }
     //~^^^^ ERROR: initializer for `thread_local` value can be made `const`
     //~^^^ ERROR: initializer for `thread_local` value can be made `const`
+
+    thread_local! {
+        static PEEL_ME: i32 = { 1 };
+        //~^ ERROR: initializer for `thread_local` value can be made `const`
+        static PEEL_ME_MANY: i32 = { let x = 1; x * x };
+        //~^ ERROR: initializer for `thread_local` value can be made `const`
+    }
+}
+
+#[clippy::msrv = "1.58"]
+fn f() {
+    thread_local! {
+        static TLS: i32 = 1;
+    }
 }

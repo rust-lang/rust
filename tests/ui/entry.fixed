@@ -165,4 +165,15 @@ pub fn issue_10331() {
     }
 }
 
+/// Issue 11935
+/// Do not suggest using entries if the map is used inside the `insert` expression.
+pub fn issue_11935() {
+    let mut counts: HashMap<u64, u64> = HashMap::new();
+    if !counts.contains_key(&1) {
+        counts.insert(1, 1);
+    } else {
+        counts.insert(1, counts.get(&1).unwrap() + 1);
+    }
+}
+
 fn main() {}
