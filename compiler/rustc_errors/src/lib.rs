@@ -37,8 +37,8 @@ extern crate self as rustc_errors;
 
 pub use codes::*;
 pub use diagnostic::{
-    BugAbort, DecorateLint, Diag, DiagArg, DiagArgMap, DiagArgName, DiagArgValue, DiagInner,
-    DiagStyledString, Diagnostic, EmissionGuarantee, FatalAbort, IntoDiagArg, StringPart, Subdiag,
+    BugAbort, Diag, DiagArg, DiagArgMap, DiagArgName, DiagArgValue, DiagInner, DiagStyledString,
+    Diagnostic, EmissionGuarantee, FatalAbort, IntoDiagArg, LintDiagnostic, StringPart, Subdiag,
     SubdiagMessageOp, Subdiagnostic,
 };
 pub use diagnostic_impls::{

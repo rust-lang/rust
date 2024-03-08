@@ -153,7 +153,7 @@ impl<'a> LintDiagnosticDerive<'a> {
         });
 
         let mut imp = structure.gen_impl(quote! {
-            gen impl<'__a> rustc_errors::DecorateLint<'__a, ()> for @Self {
+            gen impl<'__a> rustc_errors::LintDiagnostic<'__a, ()> for @Self {
                 #[track_caller]
                 fn decorate_lint<'__b>(
                     self,

@@ -193,8 +193,8 @@ pub trait SubdiagMessageOp<G> = Fn(&mut Diag<'_, G>, SubdiagMessage) -> SubdiagM
 
 /// Trait implemented by lint types. This should not be implemented manually. Instead, use
 /// `#[derive(LintDiagnostic)]` -- see [rustc_macros::LintDiagnostic].
-#[rustc_diagnostic_item = "DecorateLint"]
-pub trait DecorateLint<'a, G: EmissionGuarantee> {
+#[rustc_diagnostic_item = "LintDiagnostic"]
+pub trait LintDiagnostic<'a, G: EmissionGuarantee> {
     /// Decorate and emit a lint.
     fn decorate_lint<'b>(self, diag: &'b mut Diag<'a, G>);
 

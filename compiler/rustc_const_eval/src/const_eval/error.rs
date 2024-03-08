@@ -168,7 +168,7 @@ pub(super) fn lint<'tcx, 'mir, L>(
     lint: &'static rustc_session::lint::Lint,
     decorator: impl FnOnce(Vec<errors::FrameNote>) -> L,
 ) where
-    L: for<'a> rustc_errors::DecorateLint<'a, ()>,
+    L: for<'a> rustc_errors::LintDiagnostic<'a, ()>,
 {
     let (span, frames) = get_span_and_frames(tcx, machine);
 

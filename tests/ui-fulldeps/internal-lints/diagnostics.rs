@@ -14,7 +14,7 @@ extern crate rustc_session;
 extern crate rustc_span;
 
 use rustc_errors::{
-    DecorateLint, Diag, DiagCtxt, DiagInner, DiagMessage, Diagnostic, EmissionGuarantee, Level,
+    Diag, DiagCtxt, DiagInner, DiagMessage, Diagnostic, EmissionGuarantee, Level, LintDiagnostic,
     SubdiagMessageOp, Subdiagnostic,
 };
 use rustc_macros::{Diagnostic, Subdiagnostic};
@@ -78,9 +78,9 @@ impl Subdiagnostic for TranslatableInAddtoDiag {
     }
 }
 
-pub struct UntranslatableInDecorateLint;
+pub struct UntranslatableInLintDiagnostic;
 
-impl<'a> DecorateLint<'a, ()> for UntranslatableInDecorateLint {
+impl<'a> LintDiagnostic<'a, ()> for UntranslatableInLintDiagnostic {
     fn decorate_lint<'b, >(self, diag: &'b mut Diag<'a, ()>) {
         diag.note("untranslatable diagnostic");
         //~^ ERROR diagnostics should be created using translatable messages
@@ -91,9 +91,9 @@ impl<'a> DecorateLint<'a, ()> for UntranslatableInDecorateLint {
     }
 }
 
-pub struct TranslatableInDecorateLint;
+pub struct TranslatableInLintDiagnostic;
 
-impl<'a> DecorateLint<'a, ()> for TranslatableInDecorateLint {
+impl<'a> LintDiagnostic<'a, ()> for TranslatableInLintDiagnostic {
     fn decorate_lint<'b>(self, diag: &'b mut Diag<'a, ()>) {
         diag.note(crate::fluent_generated::no_crate_note);
     }
@@ -105,10 +105,10 @@ impl<'a> DecorateLint<'a, ()> for TranslatableInDecorateLint {
 
 pub fn make_diagnostics<'a>(dcx: &'a DiagCtxt) {
     let _diag = dcx.struct_err(crate::fluent_generated::no_crate_example);
-    //~^ ERROR diagnostics should only be created in `Diagnostic`/`Subdiagnostic` impls
+    //~^ ERROR diagnostics should only be created in `Diagnostic`/`Subdiagnostic`/`LintDiagnostic` impls
 
     let _diag = dcx.struct_err("untranslatable diagnostic");
-    //~^ ERROR diagnostics should only be created in `Diagnostic`/`Subdiagnostic` impls
+    //~^ ERROR diagnostics should only be created in `Diagnostic`/`Subdiagnostic`/`LintDiagnostic` impls
     //~^^ ERROR diagnostics should be created using translatable messages
 }
 
