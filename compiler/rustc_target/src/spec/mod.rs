@@ -3253,6 +3253,7 @@ impl ToJson for Target {
         }
 
         target_val!(llvm_target);
+        target_val!(description);
         d.insert("target-pointer-width".to_string(), self.pointer_width.to_string().to_json());
         target_val!(arch);
         target_val!(data_layout);

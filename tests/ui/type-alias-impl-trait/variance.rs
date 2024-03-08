@@ -12,11 +12,11 @@ type CapturedEarly<'a> = impl Sized + Captures<'a>; //~ [*, o]
 //~^ ERROR: unconstrained opaque type
 
 type NotCapturedLate<'a> = dyn for<'b> Iterator<Item = impl Sized>; //~ [*, o, o]
-//~^ ERROR `impl Trait` can only capture lifetimes bound at the fn or impl level
+//~^ ERROR `impl Trait` cannot capture higher-ranked lifetime from `dyn` type
 //~| ERROR: unconstrained opaque type
 
 type Captured<'a> = dyn for<'b> Iterator<Item = impl Sized + Captures<'a>>; //~ [*, o, o]
-//~^ ERROR `impl Trait` can only capture lifetimes bound at the fn or impl level
+//~^ ERROR `impl Trait` cannot capture higher-ranked lifetime from `dyn` type
 //~| ERROR: unconstrained opaque type
 
 type Bar<'a, 'b: 'b, T> = impl Sized; //~ ERROR [*, *, o, o, o]

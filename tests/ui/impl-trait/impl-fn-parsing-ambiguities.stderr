@@ -10,7 +10,7 @@ error: ambiguous `+` in a type
 LL | fn b() -> impl Fn() -> impl Debug + Send {
    |                        ^^^^^^^^^^^^^^^^^ help: use parentheses to disambiguate: `(impl Debug + Send)`
 
-error: higher kinded lifetime bounds on nested opaque types are not supported yet
+error[E0657]: `impl Trait` cannot capture higher-ranked lifetime from outer `impl Trait`
   --> $DIR/impl-fn-parsing-ambiguities.rs:4:40
    |
 LL | fn a() -> impl Fn(&u8) -> impl Debug + '_ {
@@ -33,3 +33,4 @@ LL |     |x| x
 
 error: aborting due to 4 previous errors
 
+For more information about this error, try `rustc --explain E0657`.

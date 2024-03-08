@@ -1,10 +1,22 @@
-error[E0657]: `impl Trait` can only capture lifetimes bound at the fn or impl level
+error[E0657]: `impl Trait` cannot capture higher-ranked lifetime from `dyn` type
+  --> $DIR/variance.rs:14:56
+   |
+LL | type NotCapturedLate<'a> = dyn for<'b> Iterator<Item = impl Sized>;
+   |                                                        ^^^^^^^^^^ `impl Trait` implicitly captures all lifetimes in scope
+   |
+note: lifetime declared here
   --> $DIR/variance.rs:14:36
    |
 LL | type NotCapturedLate<'a> = dyn for<'b> Iterator<Item = impl Sized>;
    |                                    ^^
 
-error[E0657]: `impl Trait` can only capture lifetimes bound at the fn or impl level
+error[E0657]: `impl Trait` cannot capture higher-ranked lifetime from `dyn` type
+  --> $DIR/variance.rs:18:49
+   |
+LL | type Captured<'a> = dyn for<'b> Iterator<Item = impl Sized + Captures<'a>>;
+   |                                                 ^^^^^^^^^^^^^^^^^^^^^^^^^ `impl Trait` implicitly captures all lifetimes in scope
+   |
+note: lifetime declared here
   --> $DIR/variance.rs:18:29
    |
 LL | type Captured<'a> = dyn for<'b> Iterator<Item = impl Sized + Captures<'a>>;

@@ -19,7 +19,7 @@ where
 
 struct A;
 fn test() -> impl for<'a> MyFn<&'a A, Output=impl Iterator + 'a> {
-    //~^ ERROR higher kinded lifetime bounds on nested opaque types are not supported yet
+    //~^ ERROR `impl Trait` cannot capture higher-ranked lifetime from outer `impl Trait`
     Wrap(|a| Some(a).into_iter())
     //~^ ERROR implementation of `FnOnce` is not general enough
     //~| ERROR implementation of `FnOnce` is not general enough

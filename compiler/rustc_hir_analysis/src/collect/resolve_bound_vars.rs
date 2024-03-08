@@ -9,7 +9,6 @@
 use core::ops::ControlFlow;
 use rustc_ast::visit::walk_list;
 use rustc_data_structures::fx::{FxHashSet, FxIndexMap, FxIndexSet};
-use rustc_errors::{codes::*, struct_span_code_err};
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::LocalDefId;
@@ -669,34 +668,47 @@ impl<'a, 'tcx> Visitor<'tcx> for BoundVarContext<'a, 'tcx> {
                     // and ban them. Type variables instantiated inside binders aren't
                     // well-supported at the moment, so this doesn't work.
                     // In the future, this should be fixed and this error should be removed.
-                    let def = self.map.defs.get(&lifetime.hir_id).cloned();
-                    let Some(ResolvedArg::LateBound(_, _, def_id)) = def else { continue };
-                    let Some(def_id) = def_id.as_local() else { continue };
-                    let hir_id = self.tcx.local_def_id_to_hir_id(def_id);
-                    // Ensure that the parent of the def is an item, not HRTB
-                    let parent_id = self.tcx.parent_hir_id(hir_id);
-                    if !parent_id.is_owner() {
-                        struct_span_code_err!(
-                            self.tcx.dcx(),
-                            lifetime.ident.span,
-                            E0657,
-                            "`impl Trait` can only capture lifetimes bound at the fn or impl level"
-                        )
-                        .emit();
-                        self.uninsert_lifetime_on_error(lifetime, def.unwrap());
-                    }
-                    if let hir::Node::Item(hir::Item {
-                        kind: hir::ItemKind::OpaqueTy { .. }, ..
-                    }) = self.tcx.hir_node(parent_id)
+                    let def = self.map.defs.get(&lifetime.hir_id).copied();
+                    let Some(ResolvedArg::LateBound(_, _, lifetime_def_id)) = def else { continue };
+                    let Some(lifetime_def_id) = lifetime_def_id.as_local() else { continue };
+                    let lifetime_hir_id = self.tcx.local_def_id_to_hir_id(lifetime_def_id);
+
+                    let bad_place = match self.tcx.hir_node(self.tcx.parent_hir_id(lifetime_hir_id))
                     {
-                        self.tcx.dcx().struct_span_err(
-                            lifetime.ident.span,
-                            "higher kinded lifetime bounds on nested opaque types are not supported yet",
-                        )
-                        .with_span_note(self.tcx.def_span(def_id), "lifetime declared here")
-                        .emit();
-                        self.uninsert_lifetime_on_error(lifetime, def.unwrap());
-                    }
+                        // Opaques do not declare their own lifetimes, so if a lifetime comes from an opaque
+                        // it must be a reified late-bound lifetime from a trait goal.
+                        hir::Node::Item(hir::Item {
+                            kind: hir::ItemKind::OpaqueTy { .. }, ..
+                        }) => "higher-ranked lifetime from outer `impl Trait`",
+                        // Other items are fine.
+                        hir::Node::Item(_) | hir::Node::TraitItem(_) | hir::Node::ImplItem(_) => {
+                            continue;
+                        }
+                        hir::Node::Ty(hir::Ty { kind: hir::TyKind::BareFn(_), .. }) => {
+                            "higher-ranked lifetime from function pointer"
+                        }
+                        hir::Node::Ty(hir::Ty { kind: hir::TyKind::TraitObject(..), .. }) => {
+                            "higher-ranked lifetime from `dyn` type"
+                        }
+                        _ => "higher-ranked lifetime",
+                    };
+
+                    let (span, label) = if lifetime.ident.span == self.tcx.def_span(lifetime_def_id)
+                    {
+                        let opaque_span = self.tcx.def_span(item_id.owner_id);
+                        (opaque_span, Some(opaque_span))
+                    } else {
+                        (lifetime.ident.span, None)
+                    };
+
+                    // Ensure that the parent of the def is an item, not HRTB
+                    self.tcx.dcx().emit_err(errors::OpaqueCapturesHigherRankedLifetime {
+                        span,
+                        label,
+                        decl_span: self.tcx.def_span(lifetime_def_id),
+                        bad_place,
+                    });
+                    self.uninsert_lifetime_on_error(lifetime, def.unwrap());
                 }
             }
             _ => intravisit::walk_ty(self, ty),

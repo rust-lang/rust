@@ -8,7 +8,6 @@ use std::fmt;
 use std::path::Path;
 use std::process;
 
-use either::Either;
 use rand::rngs::StdRng;
 use rand::Rng;
 use rand::SeedableRng;
@@ -962,7 +961,7 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for MiriMachine<'mir, 'tcx> {
             // to run extra MIR), and Ok(Some(body)) if we found MIR to run for the
             // foreign function
             // Any needed call to `goto_block` will be performed by `emulate_foreign_item`.
-            let args = ecx.copy_fn_args(args)?; // FIXME: Should `InPlace` arguments be reset to uninit?
+            let args = ecx.copy_fn_args(args); // FIXME: Should `InPlace` arguments be reset to uninit?
             let link_name = ecx.item_link_name(instance.def_id());
             return ecx.emulate_foreign_item(link_name, abi, &args, dest, ret, unwind);
         }
@@ -981,7 +980,7 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for MiriMachine<'mir, 'tcx> {
         ret: Option<mir::BasicBlock>,
         unwind: mir::UnwindAction,
     ) -> InterpResult<'tcx> {
-        let args = ecx.copy_fn_args(args)?; // FIXME: Should `InPlace` arguments be reset to uninit?
+        let args = ecx.copy_fn_args(args); // FIXME: Should `InPlace` arguments be reset to uninit?
         ecx.emulate_dyn_sym(fn_val, abi, &args, dest, ret, unwind)
     }
 
@@ -1334,18 +1333,12 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for MiriMachine<'mir, 'tcx> {
 
     fn protect_in_place_function_argument(
         ecx: &mut InterpCx<'mir, 'tcx, Self>,
-        place: &PlaceTy<'tcx, Provenance>,
+        place: &MPlaceTy<'tcx, Provenance>,
     ) -> InterpResult<'tcx> {
         // If we have a borrow tracker, we also have it set up protection so that all reads *and
         // writes* during this call are insta-UB.
         let protected_place = if ecx.machine.borrow_tracker.is_some() {
-            // Have to do `to_op` first because a `Place::Local` doesn't imply the local doesn't have an address.
-            if let Either::Left(place) = ecx.place_to_op(place)?.as_mplace_or_imm() {
-                ecx.protect_place(&place)?.into()
-            } else {
-                // Locals that don't have their address taken are as protected as they can ever be.
-                place.clone()
-            }
+            ecx.protect_place(&place)?.into()
         } else {
             // No borrow tracker.
             place.clone()
