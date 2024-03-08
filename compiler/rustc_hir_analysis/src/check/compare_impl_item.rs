@@ -521,14 +521,6 @@ pub(super) fn collect_return_position_impl_trait_in_trait_tys<'tcx>(
         )
         .fold_with(&mut collector);
 
-    if !unnormalized_trait_sig.output().references_error() {
-        debug_assert_ne!(
-            collector.types.len(),
-            0,
-            "expect >1 RPITITs in call to `collect_return_position_impl_trait_in_trait_tys`"
-        );
-    }
-
     let trait_sig = ocx.normalize(&misc_cause, param_env, unnormalized_trait_sig);
     trait_sig.error_reported()?;
     let trait_return_ty = trait_sig.output();
@@ -645,6 +637,13 @@ pub(super) fn collect_return_position_impl_trait_in_trait_tys<'tcx>(
             );
             return Err(emitted);
         }
+    }
+
+    if !unnormalized_trait_sig.output().references_error() {
+        debug_assert!(
+            !collector.types.is_empty(),
+            "expect >0 RPITITs in call to `collect_return_position_impl_trait_in_trait_tys`"
+        );
     }
 
     // FIXME: This has the same issue as #108544, but since this isn't breaking
