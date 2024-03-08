@@ -492,9 +492,9 @@
 //@ revisions: wasm32_wasip1
 //@ [wasm32_wasip1] compile-flags: --target wasm32-wasip1
 //@ [wasm32_wasip1] needs-llvm-components: webassembly
-//@ revisions: wasm32_wasi_preview1_threads
-//@ [wasm32_wasi_preview1_threads] compile-flags: --target wasm32-wasi-preview1-threads
-//@ [wasm32_wasi_preview1_threads] needs-llvm-components: webassembly
+//@ revisions: wasm32_wasip1_threads
+//@ [wasm32_wasip1_threads] compile-flags: --target wasm32-wasip1-threads
+//@ [wasm32_wasip1_threads] needs-llvm-components: webassembly
 //@ revisions: wasm32_wasip2
 //@ [wasm32_wasip2] compile-flags: --target wasm32-wasip2
 //@ [wasm32_wasip2] needs-llvm-components: webassembly

@@ -1,12 +1,16 @@
-# `wasm32-wasi-preview1-threads`
+# `wasm32-wasip1-threads`
 
 **Tier: 2**
 
-The `wasm32-wasi-preview1-threads` target is a new and still (as of July 2023) an
-experimental target. This target is an extension to `wasm32-wasi-preview1` target,
+The `wasm32-wasip1-threads` target is a new and still (as of July 2023) an
+experimental target. This target is an extension to `wasm32-wasip1` target,
 originally known as `wasm32-wasi`. It extends the original target with a
-standardized set of syscalls that are intended to empower WebAssembly binaries with
-native multi threading capabilities.
+standardized set of syscalls that are intended to empower WebAssembly binaries
+with native multi threading capabilities.
+
+> **Note**: Prior to March 2024 this target was known as
+> `wasm32-wasi-preview1-threads`, and even longer before that it was known as
+> `wasm32-wasi-threads`.
 
 [wasi-threads]: https://github.com/WebAssembly/wasi-threads
 [threads]: https://github.com/WebAssembly/threads
@@ -26,11 +30,11 @@ This target is cross-compiled. The target supports `std` fully.
 The Rust target definition here is interesting in a few ways. We want to
 serve two use cases here with this target:
 * First, we want Rust usage of the target to be as hassle-free as possible,
-  ideally avoiding the need to configure and install a local wasm32-wasi-preview1-threads
+  ideally avoiding the need to configure and install a local wasm32-wasip1-threads
   toolchain.
 * Second, one of the primary use cases of LLVM's new wasm backend and the
   wasm support in LLD is that any compiled language can interoperate with
-  any other. The `wasm32-wasi-preview1-threads` target is the first with a viable C
+  any other. The `wasm32-wasip1-threads` target is the first with a viable C
   standard library and sysroot common definition, so we want Rust and C/C++
   code to interoperate when compiled to `wasm32-unknown-unknown`.
 
@@ -49,7 +53,7 @@ some copied crt startup object files to ensure that you can download the
 wasi target for Rust and you're off to the races, no further configuration
 necessary.
 All in all, by default, no external dependencies are required. You can
-compile `wasm32-wasi-preview1-threads` binaries straight out of the box. You can't, however,
+compile `wasm32-wasip1-threads` binaries straight out of the box. You can't, however,
 reliably interoperate with C code in this mode (yet).
 ### Interop with C required
 For the second goal we repurpose the `target-feature` flag, meaning that
@@ -59,18 +63,18 @@ you'll need to do a few things to have C/Rust code interoperate.
    not be used.
 2. If you're using rustc to build a linked artifact then you'll need to
    specify `-C linker` to a `clang` binary that supports
-   `wasm32-wasi-preview1-threads` and is configured with the `wasm32-wasi-preview1-threads` sysroot. This
+   `wasm32-wasip1-threads` and is configured with the `wasm32-wasip1-threads` sysroot. This
    will cause Rust code to be linked against the libc.a that the specified
    `clang` provides.
 3. If you're building a staticlib and integrating Rust code elsewhere, then
    compiling with `-C target-feature=-crt-static` is all you need to do.
 
 All in all, by default, no external dependencies are required. You can
-compile `wasm32-wasi-preview1-threads` binaries straight out of the box. You can't, however,
+compile `wasm32-wasip1-threads` binaries straight out of the box. You can't, however,
 reliably interoperate with C code in this mode (yet).
 
 
-Also note that at this time the `wasm32-wasi-preview1-threads` target assumes the
+Also note that at this time the `wasm32-wasip1-threads` target assumes the
 presence of other merged wasm proposals such as (with their LLVM feature flags):
 
 * [Bulk memory] - `+bulk-memory`
@@ -106,7 +110,7 @@ https://github.com/WebAssembly/wasi-sdk/releases/tag/wasi-sdk-20
 and specify path to *wasi-root* `.cargo/config.toml`
 
 ```toml
-[target.wasm32-wasi-preview1-threads]
+[target.wasm32-wasip1-threads]
 wasi-root = ".../wasi-libc/sysroot"
 ```
 
@@ -118,13 +122,13 @@ After that users can build this by adding it to the `target` list in
 From Rust Nightly 1.71.1 (2023-08-03) on the artifacts are shipped pre-compiled:
 
 ```text
-rustup target add wasm32-wasi-preview1-threads --toolchain nightly
+rustup target add wasm32-wasip1-threads --toolchain nightly
 ```
 
 Rust programs can be built for that target:
 
 ```text
-rustc --target wasm32-wasi-preview1-threads your-code.rs
+rustc --target wasm32-wasip1-threads your-code.rs
 ```
 
 ## Cross-compilation
@@ -133,7 +137,7 @@ This target can be cross-compiled from any hosts.
 
 ## Testing
 
-Currently testing is not well supported for `wasm32-wasi-preview1-threads` and the
+Currently testing is not well supported for `wasm32-wasip1-threads` and the
 Rust project doesn't run any tests for this target. However the UI testsuite can be run
 manually following this instructions:
 
@@ -141,8 +145,8 @@ manually following this instructions:
 or another engine that supports `wasi-threads` is installed and can be found in the `$PATH` env variable.
 1. Clone master branch.
 2. Apply such [a change](https://github.com/g0djan/rust/compare/godjan/wasi-threads...g0djan:rust:godjan/wasi-run-ui-tests?expand=1) with an engine from the step 1.
-3. Run `./x.py test --target wasm32-wasi-preview1-threads tests/ui` and save the list of failed tests.
+3. Run `./x.py test --target wasm32-wasip1-threads tests/ui` and save the list of failed tests.
 4. Checkout branch with your changes.
 5. Apply such [a change](https://github.com/g0djan/rust/compare/godjan/wasi-threads...g0djan:rust:godjan/wasi-run-ui-tests?expand=1) with an engine from the step 1.
-6. Run `./x.py test --target wasm32-wasi-preview1-threads tests/ui` and save the list of failed tests.
+6. Run `./x.py test --target wasm32-wasip1-threads tests/ui` and save the list of failed tests.
 7. For both lists of failed tests run `cat list | sort > sorted_list` and compare it with `diff sorted_list1 sorted_list2`.
