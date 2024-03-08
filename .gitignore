@@ -1,18 +1,21 @@
-/target
-/build_system/target
-**/*.rs.bk
-*.rlib
-*.o
-perf.data
-perf.data.old
-*.events
-*.string*
+# Build artifacts during normal use
 /y.bin
 /y.bin.dSYM
 /y.exe
 /y.pdb
+/download
 /build
 /dist
+/target
+/build_system/target
+
+# Downloaded by certain scripts
 /rust
-/download
 /git-fixed-subtree.sh
+
+# Various things that can be created during development
+*.rlib
+*.o
+perf.data
+perf.data.old
+*.mm_profdata
