@@ -1,38 +1,26 @@
 use rustc_data_structures::sync::Lock;
 use rustc_hir as hir;
 use rustc_hir::def_id::LocalDefId;
-use rustc_hir::intravisit;
-use rustc_hir::{HirId, ItemLocalId};
+use rustc_hir::{intravisit, HirId, ItemLocalId};
 use rustc_index::bit_set::GrowableBitSet;
 use rustc_middle::hir::nested_filter;
 use rustc_middle::ty::TyCtxt;
 
 pub fn check_crate(tcx: TyCtxt<'_>) {
-    if tcx.sess.opts.unstable_opts.hir_stats {
-        crate::hir_stats::print_hir_stats(tcx);
-    }
+    let errors = Lock::new(Vec::new());
 
-    #[cfg(debug_assertions)]
-    {
-        let errors = Lock::new(Vec::new());
+    tcx.hir().par_for_each_module(|module_id| {
+        let mut v =
+            HirIdValidator { tcx, owner: None, hir_ids_seen: Default::default(), errors: &errors };
 
-        tcx.hir().par_for_each_module(|module_id| {
-            let mut v = HirIdValidator {
-                tcx,
-                owner: None,
-                hir_ids_seen: Default::default(),
-                errors: &errors,
-            };
+        tcx.hir().visit_item_likes_in_module(module_id, &mut v);
+    });
 
-            tcx.hir().visit_item_likes_in_module(module_id, &mut v);
-        });
+    let errors = errors.into_inner();
 
-        let errors = errors.into_inner();
-
-        if !errors.is_empty() {
-            let message = errors.iter().fold(String::new(), |s1, s2| s1 + "\n" + s2);
-            tcx.dcx().delayed_bug(message);
-        }
+    if !errors.is_empty() {
+        let message = errors.iter().fold(String::new(), |s1, s2| s1 + "\n" + s2);
+        tcx.dcx().delayed_bug(message);
     }
 }
 
@@ -90,7 +78,7 @@ impl<'a, 'hir> HirIdValidator<'a, 'hir> {
             self.error(|| {
                 format!(
                     "ItemLocalIds not assigned densely in {pretty_owner}. \
-                Max ItemLocalId = {max}, missing IDs = {missing_items:#?}; seen IDs = {seen_items:#?}"
+            Max ItemLocalId = {max}, missing IDs = {missing_items:#?}; seen IDs = {seen_items:#?}"
                 )
             });
         }

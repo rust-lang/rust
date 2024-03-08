@@ -37,7 +37,19 @@ error[E0207]: the const parameter `host` is not constrained by the impl trait, s
    = note: expressions using a const parameter must map each value to a distinct output value
    = note: proving the result of expressions other than the parameter are unique is not supported
 
-error: aborting due to 5 previous errors
+error[E0308]: mismatched types
+  --> $DIR/derive-const-use.rs:16:14
+   |
+LL | #[derive_const(Default, PartialEq)]
+   |                         --------- in this derive macro expansion
+LL | pub struct S((), A);
+   |              ^^ expected `host`, found `true`
+   |
+   = note: expected constant `host`
+              found constant `true`
+   = note: this error originates in the derive macro `PartialEq` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-Some errors have detailed explanations: E0207, E0635.
+error: aborting due to 6 previous errors
+
+Some errors have detailed explanations: E0207, E0308, E0635.
 For more information about an error, try `rustc --explain E0207`.

@@ -24,7 +24,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         link_name: Symbol,
         abi: Abi,
         args: &[OpTy<'tcx, Provenance>],
-        dest: &PlaceTy<'tcx, Provenance>,
+        dest: &MPlaceTy<'tcx, Provenance>,
     ) -> InterpResult<'tcx, EmulateForeignItemResult> {
         let this = self.eval_context_mut();
 
@@ -228,7 +228,7 @@ fn getrandom<'tcx>(
     ptr: &OpTy<'tcx, Provenance>,
     len: &OpTy<'tcx, Provenance>,
     flags: &OpTy<'tcx, Provenance>,
-    dest: &PlaceTy<'tcx, Provenance>,
+    dest: &MPlaceTy<'tcx, Provenance>,
 ) -> InterpResult<'tcx> {
     let ptr = this.read_pointer(ptr)?;
     let len = this.read_target_usize(len)?;

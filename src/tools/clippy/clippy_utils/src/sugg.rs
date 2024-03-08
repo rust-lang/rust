@@ -995,7 +995,7 @@ impl<'tcx> Delegate<'tcx> for DerefDelegate<'_, 'tcx> {
                         // no adjustment needed here, as field projections are handled by the compiler
                         ProjectionKind::Field(..) => match cmt.place.ty_before_projection(i).kind() {
                             ty::Adt(..) | ty::Tuple(_) => {
-                                replacement_str = ident_str_with_proj.clone();
+                                replacement_str.clone_from(&ident_str_with_proj);
                                 projections_handled = true;
                             },
                             _ => (),

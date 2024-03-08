@@ -28,7 +28,7 @@ pub struct CatchUnwindData<'tcx> {
     /// The `data` argument for that callback.
     data: Scalar<Provenance>,
     /// The return place from the original call to `try`.
-    dest: PlaceTy<'tcx, Provenance>,
+    dest: MPlaceTy<'tcx, Provenance>,
     /// The return block from the original call to `try`.
     ret: mir::BasicBlock,
 }
@@ -72,7 +72,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
     fn handle_catch_unwind(
         &mut self,
         args: &[OpTy<'tcx, Provenance>],
-        dest: &PlaceTy<'tcx, Provenance>,
+        dest: &MPlaceTy<'tcx, Provenance>,
         ret: mir::BasicBlock,
     ) -> InterpResult<'tcx> {
         let this = self.eval_context_mut();

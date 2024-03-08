@@ -377,10 +377,12 @@ const LOONGARCH_ALLOWED_FEATURES: &[(&str, Stability)] = &[
     // tidy-alphabetical-start
     ("d", Unstable(sym::loongarch_target_feature)),
     ("f", Unstable(sym::loongarch_target_feature)),
+    ("frecipe", Unstable(sym::loongarch_target_feature)),
     ("lasx", Unstable(sym::loongarch_target_feature)),
     ("lbt", Unstable(sym::loongarch_target_feature)),
     ("lsx", Unstable(sym::loongarch_target_feature)),
     ("lvz", Unstable(sym::loongarch_target_feature)),
+    ("relax", Unstable(sym::loongarch_target_feature)),
     ("ual", Unstable(sym::loongarch_target_feature)),
     // tidy-alphabetical-end
 ];
@@ -409,7 +411,7 @@ impl super::spec::Target {
     pub fn supported_target_features(&self) -> &'static [(&'static str, Stability)] {
         match &*self.arch {
             "arm" => ARM_ALLOWED_FEATURES,
-            "aarch64" => AARCH64_ALLOWED_FEATURES,
+            "aarch64" | "arm64ec" => AARCH64_ALLOWED_FEATURES,
             "x86" | "x86_64" => X86_ALLOWED_FEATURES,
             "hexagon" => HEXAGON_ALLOWED_FEATURES,
             "mips" | "mips32r6" | "mips64" | "mips64r6" => MIPS_ALLOWED_FEATURES,
@@ -425,7 +427,7 @@ impl super::spec::Target {
 
     pub fn tied_target_features(&self) -> &'static [&'static [&'static str]] {
         match &*self.arch {
-            "aarch64" => AARCH64_TIED_FEATURES,
+            "aarch64" | "arm64ec" => AARCH64_TIED_FEATURES,
             _ => &[],
         }
     }

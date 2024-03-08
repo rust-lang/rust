@@ -599,10 +599,19 @@ fn check_doc<'a, Events: Iterator<Item = (pulldown_cmark::Event<'a>, Range<usize
     let mut ignore = false;
     let mut edition = None;
     let mut ticks_unbalanced = false;
-    let mut text_to_check: Vec<(CowStr<'_>, Range<usize>)> = Vec::new();
+    let mut text_to_check: Vec<(CowStr<'_>, Range<usize>, isize)> = Vec::new();
     let mut paragraph_range = 0..0;
+    let mut code_level = 0;
+
     for (event, range) in events {
         match event {
+            Html(tag) => {
+                if tag.starts_with("<code") {
+                    code_level += 1;
+                } else if tag.starts_with("</code") {
+                    code_level -= 1;
+                }
+            },
             Start(CodeBlock(ref kind)) => {
                 in_code = true;
                 if let CodeBlockKind::Fenced(lang) = kind {
@@ -652,16 +661,15 @@ fn check_doc<'a, Events: Iterator<Item = (pulldown_cmark::Event<'a>, Range<usize
                         "a backtick may be missing a pair",
                     );
                 } else {
-                    for (text, range) in text_to_check {
+                    for (text, range, assoc_code_level) in text_to_check {
                         if let Some(span) = fragments.span(cx, range) {
-                            markdown::check(cx, valid_idents, &text, span);
+                            markdown::check(cx, valid_idents, &text, span, assoc_code_level);
                         }
                     }
                 }
                 text_to_check = Vec::new();
             },
             Start(_tag) | End(_tag) => (), // We don't care about other tags
-            Html(_html) => (),             // HTML is weird, just ignore it
             SoftBreak | HardBreak | TaskListMarker(_) | Code(_) | Rule => (),
             FootnoteReference(text) | Text(text) => {
                 paragraph_range.end = range.end;
@@ -694,7 +702,7 @@ fn check_doc<'a, Events: Iterator<Item = (pulldown_cmark::Event<'a>, Range<usize
                         // Don't check the text associated with external URLs
                         continue;
                     }
-                    text_to_check.push((text, range));
+                    text_to_check.push((text, range, code_level));
                 }
             },
         }

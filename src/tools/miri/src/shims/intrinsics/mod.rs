@@ -23,7 +23,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         &mut self,
         instance: ty::Instance<'tcx>,
         args: &[OpTy<'tcx, Provenance>],
-        dest: &PlaceTy<'tcx, Provenance>,
+        dest: &MPlaceTy<'tcx, Provenance>,
         ret: Option<mir::BasicBlock>,
         _unwind: mir::UnwindAction,
     ) -> InterpResult<'tcx> {
@@ -61,7 +61,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         // The rest jumps to `ret` immediately.
         this.emulate_intrinsic_by_name(intrinsic_name, instance.args, args, dest)?;
 
-        trace!("{:?}", this.dump_place(dest));
+        trace!("{:?}", this.dump_place(&dest.clone().into()));
         this.go_to_block(ret);
         Ok(())
     }
@@ -72,7 +72,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         intrinsic_name: &str,
         generic_args: ty::GenericArgsRef<'tcx>,
         args: &[OpTy<'tcx, Provenance>],
-        dest: &PlaceTy<'tcx, Provenance>,
+        dest: &MPlaceTy<'tcx, Provenance>,
     ) -> InterpResult<'tcx> {
         let this = self.eval_context_mut();
 

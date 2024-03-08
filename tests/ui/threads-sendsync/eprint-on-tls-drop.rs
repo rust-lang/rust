@@ -1,5 +1,5 @@
 //@ run-pass
-//@ ignore-emscripten no processes
+//@ needs-threads
 //@ ignore-sgx no processes
 
 use std::cell::RefCell;

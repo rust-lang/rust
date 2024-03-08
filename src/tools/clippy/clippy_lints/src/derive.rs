@@ -451,8 +451,8 @@ fn check_partial_eq_without_eq<'tcx>(cx: &LateContext<'tcx>, span: Span, trait_r
         && let Some(def_id) = trait_ref.trait_def_id()
         && cx.tcx.is_diagnostic_item(sym::PartialEq, def_id)
         && !has_non_exhaustive_attr(cx.tcx, *adt)
+        && !ty_implements_eq_trait(cx.tcx, ty, eq_trait_def_id)
         && let param_env = param_env_for_derived_eq(cx.tcx, adt.did(), eq_trait_def_id)
-        && !implements_trait_with_env(cx.tcx, param_env, ty, eq_trait_def_id, None, &[])
         // If all of our fields implement `Eq`, we can implement `Eq` too
         && adt
             .all_fields()
@@ -469,6 +469,10 @@ fn check_partial_eq_without_eq<'tcx>(cx: &LateContext<'tcx>, span: Span, trait_r
             Applicability::MachineApplicable,
         );
     }
+}
+
+fn ty_implements_eq_trait<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>, eq_trait_id: DefId) -> bool {
+    tcx.non_blanket_impls_for_ty(eq_trait_id, ty).next().is_some()
 }
 
 /// Creates the `ParamEnv` used for the give type's derived `Eq` impl.

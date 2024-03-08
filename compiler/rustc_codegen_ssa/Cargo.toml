@@ -7,7 +7,7 @@ edition = "2021"
 # tidy-alphabetical-start
 ar_archive_writer = "0.1.5"
 bitflags = "2.4.1"
-cc = "1.0.69"
+cc = "1.0.90"
 itertools = "0.11"
 jobserver = "0.1.28"
 pathdiff = "0.2.0"

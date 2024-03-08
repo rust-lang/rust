@@ -530,11 +530,7 @@ pub(crate) fn check_item_type(tcx: TyCtxt<'_>, def_id: LocalDefId) {
         }
         DefKind::Impl { of_trait } => {
             if of_trait && let Some(impl_trait_header) = tcx.impl_trait_header(def_id) {
-                check_impl_items_against_trait(
-                    tcx,
-                    def_id,
-                    impl_trait_header.instantiate_identity(),
-                );
+                check_impl_items_against_trait(tcx, def_id, impl_trait_header);
                 check_on_unimplemented(tcx, def_id);
             }
         }
@@ -725,10 +721,11 @@ fn check_impl_items_against_trait<'tcx>(
     impl_id: LocalDefId,
     impl_trait_header: ty::ImplTraitHeader<'tcx>,
 ) {
+    let trait_ref = impl_trait_header.trait_ref.instantiate_identity();
     // If the trait reference itself is erroneous (so the compilation is going
     // to fail), skip checking the items here -- the `impl_item` table in `tcx`
     // isn't populated for such impls.
-    if impl_trait_header.references_error() {
+    if trait_ref.references_error() {
         return;
     }
 
@@ -752,7 +749,7 @@ fn check_impl_items_against_trait<'tcx>(
         }
     }
 
-    let trait_def = tcx.trait_def(impl_trait_header.trait_ref.def_id);
+    let trait_def = tcx.trait_def(trait_ref.def_id);
 
     for &impl_item in impl_item_refs {
         let ty_impl_item = tcx.associated_item(impl_item);
@@ -771,10 +768,10 @@ fn check_impl_items_against_trait<'tcx>(
                 ));
             }
             ty::AssocKind::Fn => {
-                compare_impl_method(tcx, ty_impl_item, ty_trait_item, impl_trait_header.trait_ref);
+                compare_impl_method(tcx, ty_impl_item, ty_trait_item, trait_ref);
             }
             ty::AssocKind::Type => {
-                compare_impl_ty(tcx, ty_impl_item, ty_trait_item, impl_trait_header.trait_ref);
+                compare_impl_ty(tcx, ty_impl_item, ty_trait_item, trait_ref);
             }
         }
 
@@ -794,7 +791,7 @@ fn check_impl_items_against_trait<'tcx>(
         let mut must_implement_one_of: Option<&[Ident]> =
             trait_def.must_implement_one_of.as_deref();
 
-        for &trait_item_id in tcx.associated_item_def_ids(impl_trait_header.trait_ref.def_id) {
+        for &trait_item_id in tcx.associated_item_def_ids(trait_ref.def_id) {
             let leaf_def = ancestors.leaf_def(tcx, trait_item_id);
 
             let is_implemented = leaf_def
@@ -872,7 +869,7 @@ fn check_impl_items_against_trait<'tcx>(
 
         if let Some(missing_items) = must_implement_one_of {
             let attr_span = tcx
-                .get_attr(impl_trait_header.trait_ref.def_id, sym::rustc_must_implement_one_of)
+                .get_attr(trait_ref.def_id, sym::rustc_must_implement_one_of)
                 .map(|attr| attr.span);
 
             missing_items_must_implement_one_of_err(

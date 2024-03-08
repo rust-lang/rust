@@ -206,14 +206,6 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
                 );
             }
         }
-        if !attr.is_doc_comment()
-            && let [seg, _] = attr.get_normal_item().path.segments.as_slice()
-            && seg.ident.name == sym::diagnostic
-            && !self.features.diagnostic_namespace
-        {
-            let msg = "`#[diagnostic]` attribute name space is experimental";
-            gate!(self, diagnostic_namespace, seg.ident.span, msg);
-        }
 
         // Emit errors for non-staged-api crates.
         if !self.features.staged_api {

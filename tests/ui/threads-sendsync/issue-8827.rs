@@ -1,5 +1,5 @@
 //@ run-pass
-//@ ignore-emscripten no threads support
+//@ needs-threads
 
 use std::thread;
 use std::sync::mpsc::{channel, Receiver};

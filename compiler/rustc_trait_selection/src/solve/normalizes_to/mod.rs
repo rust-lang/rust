@@ -166,13 +166,13 @@ impl<'tcx> assembly::GoalKind<'tcx> for NormalizesTo<'tcx> {
         let drcx = DeepRejectCtxt { treat_obligation_params: TreatParams::ForLookup };
         if !drcx.args_may_unify(
             goal.predicate.trait_ref(tcx).args,
-            impl_trait_header.skip_binder().trait_ref.args,
+            impl_trait_header.trait_ref.skip_binder().args,
         ) {
             return Err(NoSolution);
         }
 
         // We have to ignore negative impls when projecting.
-        let impl_polarity = impl_trait_header.skip_binder().polarity;
+        let impl_polarity = impl_trait_header.polarity;
         match impl_polarity {
             ty::ImplPolarity::Negative => return Err(NoSolution),
             ty::ImplPolarity::Reservation => {
@@ -183,7 +183,7 @@ impl<'tcx> assembly::GoalKind<'tcx> for NormalizesTo<'tcx> {
 
         ecx.probe_trait_candidate(CandidateSource::Impl(impl_def_id)).enter(|ecx| {
             let impl_args = ecx.fresh_args_for_item(impl_def_id);
-            let impl_trait_ref = impl_trait_header.instantiate(tcx, impl_args).trait_ref;
+            let impl_trait_ref = impl_trait_header.trait_ref.instantiate(tcx, impl_args);
 
             ecx.eq(goal.param_env, goal_trait_ref, impl_trait_ref)?;
 

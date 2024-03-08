@@ -1,12 +1,11 @@
-use clippy_config::msrvs::Msrv;
+use clippy_config::msrvs::{self, Msrv};
 use clippy_utils::diagnostics::span_lint_and_sugg;
-use clippy_utils::fn_has_unsatisfiable_preds;
 use clippy_utils::qualify_min_const_fn::is_min_const_fn;
 use clippy_utils::source::snippet;
+use clippy_utils::{fn_has_unsatisfiable_preds, peel_blocks};
 use rustc_errors::Applicability;
 use rustc_hir::{intravisit, ExprKind};
-use rustc_lint::{LateContext, LateLintPass, LintContext};
-use rustc_middle::lint::in_external_macro;
+use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::impl_lint_pass;
 use rustc_span::sym::thread_local_macro;
 
@@ -57,6 +56,31 @@ impl ThreadLocalInitializerCanBeMadeConst {
 
 impl_lint_pass!(ThreadLocalInitializerCanBeMadeConst => [THREAD_LOCAL_INITIALIZER_CAN_BE_MADE_CONST]);
 
+#[inline]
+fn is_thread_local_initializer(
+    cx: &LateContext<'_>,
+    fn_kind: rustc_hir::intravisit::FnKind<'_>,
+    span: rustc_span::Span,
+) -> Option<bool> {
+    let macro_def_id = span.source_callee()?.macro_def_id?;
+    Some(
+        cx.tcx.is_diagnostic_item(thread_local_macro, macro_def_id)
+            && matches!(fn_kind, intravisit::FnKind::ItemFn(..)),
+    )
+}
+
+#[inline]
+fn initializer_can_be_made_const(cx: &LateContext<'_>, defid: rustc_span::def_id::DefId, msrv: &Msrv) -> bool {
+    // Building MIR for `fn`s with unsatisfiable preds results in ICE.
+    if !fn_has_unsatisfiable_preds(cx, defid)
+        && let mir = cx.tcx.optimized_mir(defid)
+        && let Ok(()) = is_min_const_fn(cx.tcx, mir, msrv)
+    {
+        return true;
+    }
+    false
+}
+
 impl<'tcx> LateLintPass<'tcx> for ThreadLocalInitializerCanBeMadeConst {
     fn check_fn(
         &mut self,
@@ -65,31 +89,32 @@ impl<'tcx> LateLintPass<'tcx> for ThreadLocalInitializerCanBeMadeConst {
         _: &'tcx rustc_hir::FnDecl<'tcx>,
         body: &'tcx rustc_hir::Body<'tcx>,
         span: rustc_span::Span,
-        defid: rustc_span::def_id::LocalDefId,
+        local_defid: rustc_span::def_id::LocalDefId,
     ) {
-        if in_external_macro(cx.sess(), span)
-            && let Some(callee) = span.source_callee()
-            && let Some(macro_def_id) = callee.macro_def_id
-            && cx.tcx.is_diagnostic_item(thread_local_macro, macro_def_id)
-            && let intravisit::FnKind::ItemFn(..) = fn_kind
-            // Building MIR for `fn`s with unsatisfiable preds results in ICE.
-            && !fn_has_unsatisfiable_preds(cx, defid.to_def_id())
-            && let mir = cx.tcx.optimized_mir(defid.to_def_id())
-            && let Ok(()) = is_min_const_fn(cx.tcx, mir, &self.msrv)
-            // this is the `__init` function emitted by the `thread_local!` macro
-            // when the `const` keyword is not used. We avoid checking the `__init` directly
-            // as that is not a public API.
-            // we know that the function is const-qualifiable, so now we need only to get the
-            // initializer expression to span-lint it.
+        let defid = local_defid.to_def_id();
+        if self.msrv.meets(msrvs::THREAD_LOCAL_INITIALIZER_CAN_BE_MADE_CONST)
+            && is_thread_local_initializer(cx, fn_kind, span).unwrap_or(false)
+            // Some implementations of `thread_local!` include an initializer fn.
+            // In the case of a const initializer, the init fn is also const,
+            // so we can skip the lint in that case. This occurs only on some
+            // backends due to conditional compilation:
+            // https://doc.rust-lang.org/src/std/sys/common/thread_local/mod.rs.html
+            // for details on this issue, see:
+            // https://github.com/rust-lang/rust-clippy/pull/12276
+            && !cx.tcx.is_const_fn(defid)
+            && initializer_can_be_made_const(cx, defid, &self.msrv)
+            // we know that the function is const-qualifiable, so now
+            // we need only to get the initializer expression to span-lint it.
             && let ExprKind::Block(block, _) = body.value.kind
-            && let Some(ret_expr) = block.expr
+            && let Some(unpeeled) = block.expr
+            && let ret_expr = peel_blocks(unpeeled)
             && let initializer_snippet = snippet(cx, ret_expr.span, "thread_local! { ... }")
             && initializer_snippet != "thread_local! { ... }"
         {
             span_lint_and_sugg(
                 cx,
                 THREAD_LOCAL_INITIALIZER_CAN_BE_MADE_CONST,
-                ret_expr.span,
+                unpeeled.span,
                 "initializer for `thread_local` value can be made `const`",
                 "replace with",
                 format!("const {{ {initializer_snippet} }}"),

@@ -273,3 +273,13 @@ const fn issue9175(option: Option<()>) -> Option<()> {
     //stuff
     Some(())
 }
+
+fn issue12337() -> Option<i32> {
+    let _: Option<i32> = try {
+        let Some(_) = Some(42) else {
+            return None;
+        };
+        123
+    };
+    Some(42)
+}

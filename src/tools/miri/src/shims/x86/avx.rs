@@ -21,7 +21,7 @@ pub(super) trait EvalContextExt<'mir, 'tcx: 'mir>:
         link_name: Symbol,
         abi: Abi,
         args: &[OpTy<'tcx, Provenance>],
-        dest: &PlaceTy<'tcx, Provenance>,
+        dest: &MPlaceTy<'tcx, Provenance>,
     ) -> InterpResult<'tcx, EmulateForeignItemResult> {
         let this = self.eval_context_mut();
         this.expect_target_feature_for_intrinsic(link_name, "avx")?;
@@ -164,7 +164,7 @@ pub(super) trait EvalContextExt<'mir, 'tcx: 'mir>:
 
                 let (data, data_len) = this.operand_to_simd(data)?;
                 let (control, control_len) = this.operand_to_simd(control)?;
-                let (dest, dest_len) = this.place_to_simd(dest)?;
+                let (dest, dest_len) = this.mplace_to_simd(dest)?;
 
                 assert_eq!(dest_len, data_len);
                 assert_eq!(dest_len, control_len);
@@ -199,7 +199,7 @@ pub(super) trait EvalContextExt<'mir, 'tcx: 'mir>:
 
                 let (data, data_len) = this.operand_to_simd(data)?;
                 let (control, control_len) = this.operand_to_simd(control)?;
-                let (dest, dest_len) = this.place_to_simd(dest)?;
+                let (dest, dest_len) = this.mplace_to_simd(dest)?;
 
                 assert_eq!(dest_len, data_len);
                 assert_eq!(dest_len, control_len);
@@ -354,10 +354,10 @@ fn mask_load<'tcx>(
     this: &mut crate::MiriInterpCx<'_, 'tcx>,
     ptr: &OpTy<'tcx, Provenance>,
     mask: &OpTy<'tcx, Provenance>,
-    dest: &PlaceTy<'tcx, Provenance>,
+    dest: &MPlaceTy<'tcx, Provenance>,
 ) -> InterpResult<'tcx, ()> {
     let (mask, mask_len) = this.operand_to_simd(mask)?;
-    let (dest, dest_len) = this.place_to_simd(dest)?;
+    let (dest, dest_len) = this.mplace_to_simd(dest)?;
 
     assert_eq!(dest_len, mask_len);
 

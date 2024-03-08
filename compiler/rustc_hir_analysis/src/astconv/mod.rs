@@ -1612,10 +1612,11 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                         .any(|impl_def_id| {
                             let impl_header = tcx.impl_trait_header(impl_def_id);
                             impl_header.is_some_and(|header| {
-                                let header = header.instantiate(
+                                let trait_ref = header.trait_ref.instantiate(
                                     tcx,
                                     infcx.fresh_args_for_item(DUMMY_SP, impl_def_id),
                                 );
+
                                 let value = tcx.fold_regions(qself_ty, |_, _| tcx.lifetimes.re_erased);
                                 // FIXME: Don't bother dealing with non-lifetime binders here...
                                 if value.has_escaping_bound_vars() {
@@ -1624,7 +1625,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                                 infcx
                                     .can_eq(
                                         ty::ParamEnv::empty(),
-                                        header.trait_ref.self_ty(),
+                                        trait_ref.self_ty(),
                                         value,
                                     ) && header.polarity != ty::ImplPolarity::Negative
                             })
@@ -1677,9 +1678,9 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                     .filter(|header| {
                         // Consider only accessible traits
                         tcx.visibility(trait_def_id).is_accessible_from(self.item_def_id(), tcx)
-                            && header.skip_binder().polarity != ty::ImplPolarity::Negative
+                            && header.polarity != ty::ImplPolarity::Negative
                     })
-                    .map(|header| header.instantiate_identity().trait_ref.self_ty())
+                    .map(|header| header.trait_ref.instantiate_identity().self_ty())
                     // We don't care about blanket impls.
                     .filter(|self_ty| !self_ty.has_non_region_param())
                     .map(|self_ty| tcx.erase_regions(self_ty).to_string())

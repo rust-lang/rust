@@ -3,7 +3,7 @@
 #![allow(unused_mut)]
 //@ ignore-windows
 //@ exec-env:RUST_LOG=debug
-//@ ignore-emscripten no threads support
+//@ needs-threads
 
 // regression test for issue #10405, make sure we don't call println! too soon.
 

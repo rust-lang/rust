@@ -19,16 +19,19 @@ struct TestStruct<U,T:Setter<U>> { //~ ERROR [+, +]
 
 #[rustc_variance]
 enum TestEnum<U,T:Setter<U>> { //~ ERROR [*, +]
+    //~^ ERROR: `U` is never used
     Foo(T)
 }
 
 #[rustc_variance]
 struct TestContraStruct<U,T:Setter<U>> { //~ ERROR [*, +]
+    //~^ ERROR: `U` is never used
     t: T
 }
 
 #[rustc_variance]
 struct TestBox<U,T:Getter<U>+Setter<U>> { //~ ERROR [*, +]
+    //~^ ERROR: `U` is never used
     t: T
 }
 

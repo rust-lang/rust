@@ -890,7 +890,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
             instance,
             start_abi,
             &[*func_arg],
-            Some(&ret_place.into()),
+            Some(&ret_place),
             StackPopCleanup::Root { cleanup: true },
         )?;
 

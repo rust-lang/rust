@@ -3,9 +3,8 @@
 use self::CombineMapType::*;
 use self::UndoLog::*;
 
-use super::{
-    InferCtxtUndoLogs, MiscVariable, RegionVariableOrigin, Rollback, Snapshot, SubregionOrigin,
-};
+use super::{MiscVariable, RegionVariableOrigin, Rollback, SubregionOrigin};
+use crate::infer::snapshot::undo_log::{InferCtxtUndoLogs, Snapshot};
 
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::sync::Lrc;
@@ -360,7 +359,7 @@ impl<'tcx> RegionConstraintCollector<'_, 'tcx> {
     ///
     /// Not legal during a snapshot.
     pub fn into_infos_and_data(self) -> (VarInfos, RegionConstraintData<'tcx>) {
-        assert!(!UndoLogs::<super::UndoLog<'_>>::in_snapshot(&self.undo_log));
+        assert!(!UndoLogs::<UndoLog<'_>>::in_snapshot(&self.undo_log));
         (mem::take(&mut self.storage.var_infos), mem::take(&mut self.storage.data))
     }
 
@@ -377,7 +376,7 @@ impl<'tcx> RegionConstraintCollector<'_, 'tcx> {
     ///
     /// Not legal during a snapshot.
     pub fn take_and_reset_data(&mut self) -> RegionConstraintData<'tcx> {
-        assert!(!UndoLogs::<super::UndoLog<'_>>::in_snapshot(&self.undo_log));
+        assert!(!UndoLogs::<UndoLog<'_>>::in_snapshot(&self.undo_log));
 
         // If you add a new field to `RegionConstraintCollector`, you
         // should think carefully about whether it needs to be cleared

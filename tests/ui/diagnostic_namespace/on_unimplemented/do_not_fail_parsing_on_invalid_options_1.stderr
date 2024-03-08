@@ -1,5 +1,5 @@
 warning: `#[diagnostic::on_unimplemented]` can only be applied to trait definitions
-  --> $DIR/do_not_fail_parsing_on_invalid_options_1.rs:8:1
+  --> $DIR/do_not_fail_parsing_on_invalid_options_1.rs:6:1
    |
 LL | #[diagnostic::on_unimplemented(message = "Baz")]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -7,7 +7,7 @@ LL | #[diagnostic::on_unimplemented(message = "Baz")]
    = note: `#[warn(unknown_or_malformed_diagnostic_attributes)]` on by default
 
 warning: malformed `on_unimplemented` attribute
-  --> $DIR/do_not_fail_parsing_on_invalid_options_1.rs:3:32
+  --> $DIR/do_not_fail_parsing_on_invalid_options_1.rs:1:32
    |
 LL | #[diagnostic::on_unimplemented(unsupported = "foo")]
    |                                ^^^^^^^^^^^^^^^^^^^ invalid option found here
@@ -15,7 +15,7 @@ LL | #[diagnostic::on_unimplemented(unsupported = "foo")]
    = help: only `message`, `note` and `label` are allowed as options
 
 warning: malformed `on_unimplemented` attribute
-  --> $DIR/do_not_fail_parsing_on_invalid_options_1.rs:12:50
+  --> $DIR/do_not_fail_parsing_on_invalid_options_1.rs:10:50
    |
 LL | #[diagnostic::on_unimplemented(message = "Boom", unsupported = "Bar")]
    |                                                  ^^^^^^^^^^^^^^^^^^^ invalid option found here
@@ -23,7 +23,7 @@ LL | #[diagnostic::on_unimplemented(message = "Boom", unsupported = "Bar")]
    = help: only `message`, `note` and `label` are allowed as options
 
 warning: malformed `on_unimplemented` attribute
-  --> $DIR/do_not_fail_parsing_on_invalid_options_1.rs:17:50
+  --> $DIR/do_not_fail_parsing_on_invalid_options_1.rs:15:50
    |
 LL | #[diagnostic::on_unimplemented(message = "Boom", on(_Self = "i32", message = "whatever"))]
    |                                                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ invalid option found here
@@ -31,7 +31,7 @@ LL | #[diagnostic::on_unimplemented(message = "Boom", on(_Self = "i32", message 
    = help: only `message`, `note` and `label` are allowed as options
 
 warning: malformed `on_unimplemented` attribute
-  --> $DIR/do_not_fail_parsing_on_invalid_options_1.rs:22:32
+  --> $DIR/do_not_fail_parsing_on_invalid_options_1.rs:20:32
    |
 LL | #[diagnostic::on_unimplemented = "boom"]
    |                                ^^^^^^^^ invalid option found here
@@ -39,7 +39,7 @@ LL | #[diagnostic::on_unimplemented = "boom"]
    = help: only `message`, `note` and `label` are allowed as options
 
 warning: missing options for `on_unimplemented` attribute
-  --> $DIR/do_not_fail_parsing_on_invalid_options_1.rs:26:1
+  --> $DIR/do_not_fail_parsing_on_invalid_options_1.rs:24:1
    |
 LL | #[diagnostic::on_unimplemented]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -47,7 +47,7 @@ LL | #[diagnostic::on_unimplemented]
    = help: at least one of the `message`, `note` and `label` options are expected
 
 warning: there is no parameter `DoesNotExist` on trait `Test`
-  --> $DIR/do_not_fail_parsing_on_invalid_options_1.rs:31:32
+  --> $DIR/do_not_fail_parsing_on_invalid_options_1.rs:29:32
    |
 LL | #[diagnostic::on_unimplemented(message = "{DoesNotExist}")]
    |                                ^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -55,7 +55,7 @@ LL | #[diagnostic::on_unimplemented(message = "{DoesNotExist}")]
    = help: expect either a generic argument name or `{Self}` as format argument
 
 warning: malformed `on_unimplemented` attribute
-  --> $DIR/do_not_fail_parsing_on_invalid_options_1.rs:3:32
+  --> $DIR/do_not_fail_parsing_on_invalid_options_1.rs:1:32
    |
 LL | #[diagnostic::on_unimplemented(unsupported = "foo")]
    |                                ^^^^^^^^^^^^^^^^^^^ invalid option found here
@@ -64,7 +64,7 @@ LL | #[diagnostic::on_unimplemented(unsupported = "foo")]
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 error[E0277]: the trait bound `i32: Foo` is not satisfied
-  --> $DIR/do_not_fail_parsing_on_invalid_options_1.rs:43:14
+  --> $DIR/do_not_fail_parsing_on_invalid_options_1.rs:41:14
    |
 LL |     take_foo(1_i32);
    |     -------- ^^^^^ the trait `Foo` is not implemented for `i32`
@@ -72,18 +72,18 @@ LL |     take_foo(1_i32);
    |     required by a bound introduced by this call
    |
 help: this trait has no implementations, consider adding one
-  --> $DIR/do_not_fail_parsing_on_invalid_options_1.rs:6:1
+  --> $DIR/do_not_fail_parsing_on_invalid_options_1.rs:4:1
    |
 LL | trait Foo {}
    | ^^^^^^^^^
 note: required by a bound in `take_foo`
-  --> $DIR/do_not_fail_parsing_on_invalid_options_1.rs:36:21
+  --> $DIR/do_not_fail_parsing_on_invalid_options_1.rs:34:21
    |
 LL | fn take_foo(_: impl Foo) {}
    |                     ^^^ required by this bound in `take_foo`
 
 warning: malformed `on_unimplemented` attribute
-  --> $DIR/do_not_fail_parsing_on_invalid_options_1.rs:12:50
+  --> $DIR/do_not_fail_parsing_on_invalid_options_1.rs:10:50
    |
 LL | #[diagnostic::on_unimplemented(message = "Boom", unsupported = "Bar")]
    |                                                  ^^^^^^^^^^^^^^^^^^^ invalid option found here
@@ -92,7 +92,7 @@ LL | #[diagnostic::on_unimplemented(message = "Boom", unsupported = "Bar")]
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 error[E0277]: Boom
-  --> $DIR/do_not_fail_parsing_on_invalid_options_1.rs:45:14
+  --> $DIR/do_not_fail_parsing_on_invalid_options_1.rs:43:14
    |
 LL |     take_baz(1_i32);
    |     -------- ^^^^^ the trait `Baz` is not implemented for `i32`
@@ -100,18 +100,18 @@ LL |     take_baz(1_i32);
    |     required by a bound introduced by this call
    |
 help: this trait has no implementations, consider adding one
-  --> $DIR/do_not_fail_parsing_on_invalid_options_1.rs:15:1
+  --> $DIR/do_not_fail_parsing_on_invalid_options_1.rs:13:1
    |
 LL | trait Baz {}
    | ^^^^^^^^^
 note: required by a bound in `take_baz`
-  --> $DIR/do_not_fail_parsing_on_invalid_options_1.rs:37:21
+  --> $DIR/do_not_fail_parsing_on_invalid_options_1.rs:35:21
    |
 LL | fn take_baz(_: impl Baz) {}
    |                     ^^^ required by this bound in `take_baz`
 
 warning: malformed `on_unimplemented` attribute
-  --> $DIR/do_not_fail_parsing_on_invalid_options_1.rs:17:50
+  --> $DIR/do_not_fail_parsing_on_invalid_options_1.rs:15:50
    |
 LL | #[diagnostic::on_unimplemented(message = "Boom", on(_Self = "i32", message = "whatever"))]
    |                                                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ invalid option found here
@@ -120,7 +120,7 @@ LL | #[diagnostic::on_unimplemented(message = "Boom", on(_Self = "i32", message 
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 error[E0277]: Boom
-  --> $DIR/do_not_fail_parsing_on_invalid_options_1.rs:47:15
+  --> $DIR/do_not_fail_parsing_on_invalid_options_1.rs:45:15
    |
 LL |     take_boom(1_i32);
    |     --------- ^^^^^ the trait `Boom` is not implemented for `i32`
@@ -128,18 +128,18 @@ LL |     take_boom(1_i32);
    |     required by a bound introduced by this call
    |
 help: this trait has no implementations, consider adding one
-  --> $DIR/do_not_fail_parsing_on_invalid_options_1.rs:20:1
+  --> $DIR/do_not_fail_parsing_on_invalid_options_1.rs:18:1
    |
 LL | trait Boom {}
    | ^^^^^^^^^^
 note: required by a bound in `take_boom`
-  --> $DIR/do_not_fail_parsing_on_invalid_options_1.rs:38:22
+  --> $DIR/do_not_fail_parsing_on_invalid_options_1.rs:36:22
    |
 LL | fn take_boom(_: impl Boom) {}
    |                      ^^^^ required by this bound in `take_boom`
 
 warning: missing options for `on_unimplemented` attribute
-  --> $DIR/do_not_fail_parsing_on_invalid_options_1.rs:26:1
+  --> $DIR/do_not_fail_parsing_on_invalid_options_1.rs:24:1
    |
 LL | #[diagnostic::on_unimplemented]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -148,7 +148,7 @@ LL | #[diagnostic::on_unimplemented]
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 error[E0277]: the trait bound `i32: Whatever` is not satisfied
-  --> $DIR/do_not_fail_parsing_on_invalid_options_1.rs:49:19
+  --> $DIR/do_not_fail_parsing_on_invalid_options_1.rs:47:19
    |
 LL |     take_whatever(1_i32);
    |     ------------- ^^^^^ the trait `Whatever` is not implemented for `i32`
@@ -156,18 +156,18 @@ LL |     take_whatever(1_i32);
    |     required by a bound introduced by this call
    |
 help: this trait has no implementations, consider adding one
-  --> $DIR/do_not_fail_parsing_on_invalid_options_1.rs:29:1
+  --> $DIR/do_not_fail_parsing_on_invalid_options_1.rs:27:1
    |
 LL | trait Whatever {}
    | ^^^^^^^^^^^^^^
 note: required by a bound in `take_whatever`
-  --> $DIR/do_not_fail_parsing_on_invalid_options_1.rs:39:26
+  --> $DIR/do_not_fail_parsing_on_invalid_options_1.rs:37:26
    |
 LL | fn take_whatever(_: impl Whatever) {}
    |                          ^^^^^^^^ required by this bound in `take_whatever`
 
 warning: there is no parameter `DoesNotExist` on trait `Test`
-  --> $DIR/do_not_fail_parsing_on_invalid_options_1.rs:31:32
+  --> $DIR/do_not_fail_parsing_on_invalid_options_1.rs:29:32
    |
 LL | #[diagnostic::on_unimplemented(message = "{DoesNotExist}")]
    |                                ^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -176,7 +176,7 @@ LL | #[diagnostic::on_unimplemented(message = "{DoesNotExist}")]
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 error[E0277]: {DoesNotExist}
-  --> $DIR/do_not_fail_parsing_on_invalid_options_1.rs:51:15
+  --> $DIR/do_not_fail_parsing_on_invalid_options_1.rs:49:15
    |
 LL |     take_test(());
    |     --------- ^^ the trait `Test` is not implemented for `()`
@@ -184,12 +184,12 @@ LL |     take_test(());
    |     required by a bound introduced by this call
    |
 help: this trait has no implementations, consider adding one
-  --> $DIR/do_not_fail_parsing_on_invalid_options_1.rs:34:1
+  --> $DIR/do_not_fail_parsing_on_invalid_options_1.rs:32:1
    |
 LL | trait Test {}
    | ^^^^^^^^^^
 note: required by a bound in `take_test`
-  --> $DIR/do_not_fail_parsing_on_invalid_options_1.rs:40:22
+  --> $DIR/do_not_fail_parsing_on_invalid_options_1.rs:38:22
    |
 LL | fn take_test(_: impl Test) {}
    |                      ^^^^ required by this bound in `take_test`

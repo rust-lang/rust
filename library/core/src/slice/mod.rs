@@ -23,7 +23,7 @@ use crate::slice;
     issue = "none",
     reason = "exposed from core to be reused in std; use the memchr crate"
 )]
-/// Pure rust memchr implementation, taken from rust-memchr
+/// Pure Rust memchr implementation, taken from rust-memchr
 pub mod memchr;
 
 #[unstable(

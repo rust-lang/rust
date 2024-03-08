@@ -1,5 +1,5 @@
 //@ run-pass
-//@ ignore-emscripten no threads support
+//@ needs-threads
 
 pub fn main() {
     let f = || || 0;

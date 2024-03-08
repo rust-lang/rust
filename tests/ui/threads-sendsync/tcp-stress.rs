@@ -1,6 +1,6 @@
 //@ run-pass
 //@ ignore-android needs extra network permissions
-//@ ignore-emscripten no threads or sockets support
+//@ needs-threads
 //@ ignore-netbsd system ulimit (Too many open files)
 //@ ignore-openbsd system ulimit (Too many open files)
 

@@ -5,6 +5,7 @@
 //@normalize-stderr-test: "'rustc'" -> "'<unnamed>'"
 //@normalize-stderr-test: "rustc 1\.\d+.* running on .*" -> "rustc <version> running on <target>"
 //@normalize-stderr-test: "(?ms)query stack during panic:\n.*end of query stack\n" -> ""
+//@normalize-stderr-test: "this compiler `.*` is outdated" -> "this compiler <version> is outdated"
 
 #![deny(clippy::internal)]
 #![allow(clippy::missing_clippy_version_attribute)]

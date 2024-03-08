@@ -383,7 +383,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         f: ty::Instance<'tcx>,
         caller_abi: Abi,
         args: &[Immediate<Provenance>],
-        dest: Option<&PlaceTy<'tcx, Provenance>>,
+        dest: Option<&MPlaceTy<'tcx, Provenance>>,
         stack_pop: StackPopCleanup,
     ) -> InterpResult<'tcx> {
         let this = self.eval_context_mut();
@@ -401,7 +401,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         let mir = this.load_mir(f.def, None)?;
         let dest = match dest {
             Some(dest) => dest.clone(),
-            None => MPlaceTy::fake_alloc_zst(this.layout_of(mir.return_ty())?).into(),
+            None => MPlaceTy::fake_alloc_zst(this.layout_of(mir.return_ty())?),
         };
         this.push_stack_frame(f, mir, &dest, stack_pop)?;
 

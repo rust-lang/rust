@@ -125,12 +125,11 @@ rustc_queries! {
     }
 
     query resolutions(_: ()) -> &'tcx ty::ResolverGlobalCtxt {
-        feedable
         no_hash
         desc { "getting the resolver outputs" }
     }
 
-    query resolver_for_lowering(_: ()) -> &'tcx Steal<(ty::ResolverAstLowering, Lrc<ast::Crate>)> {
+    query resolver_for_lowering_raw(_: ()) -> (&'tcx Steal<(ty::ResolverAstLowering, Lrc<ast::Crate>)>, &'tcx ty::ResolverGlobalCtxt) {
         eval_always
         no_hash
         desc { "getting the resolver for lowering" }
@@ -826,7 +825,7 @@ rustc_queries! {
     /// creates and returns the associated items that correspond to each impl trait in return position
     /// of the implemented trait.
     query associated_types_for_impl_traits_in_associated_fn(fn_def_id: DefId) -> &'tcx [DefId] {
-        desc { |tcx| "creating associated items for impl trait in trait returned by `{}`", tcx.def_path_str(fn_def_id) }
+        desc { |tcx| "creating associated items for opaque types returned by `{}`", tcx.def_path_str(fn_def_id) }
         cache_on_disk_if { fn_def_id.is_local() }
         separate_provide_extern
     }
@@ -834,13 +833,13 @@ rustc_queries! {
     /// Given an impl trait in trait `opaque_ty_def_id`, create and return the corresponding
     /// associated item.
     query associated_type_for_impl_trait_in_trait(opaque_ty_def_id: LocalDefId) -> LocalDefId {
-        desc { |tcx| "creates the associated item corresponding to the opaque type `{}`", tcx.def_path_str(opaque_ty_def_id.to_def_id()) }
+        desc { |tcx| "creating the associated item corresponding to the opaque type `{}`", tcx.def_path_str(opaque_ty_def_id.to_def_id()) }
         cache_on_disk_if { true }
     }
 
     /// Given an `impl_id`, return the trait it implements along with some header information.
     /// Return `None` if this is an inherent impl.
-    query impl_trait_header(impl_id: DefId) -> Option<ty::EarlyBinder<ty::ImplTraitHeader<'tcx>>> {
+    query impl_trait_header(impl_id: DefId) -> Option<ty::ImplTraitHeader<'tcx>> {
         desc { |tcx| "computing trait implemented by `{}`", tcx.def_path_str(impl_id) }
         cache_on_disk_if { impl_id.is_local() }
         separate_provide_extern
@@ -953,11 +952,6 @@ rustc_queries! {
 
     query check_mod_deathness(key: LocalModDefId) {
         desc { |tcx| "checking deathness of variables in {}", describe_as_module(key, tcx) }
-    }
-
-    query check_mod_impl_wf(key: LocalModDefId) -> Result<(), ErrorGuaranteed> {
-        desc { |tcx| "checking that impls are well-formed in {}", describe_as_module(key, tcx) }
-        ensure_forwards_result_if_red
     }
 
     query check_mod_type_wf(key: LocalModDefId) -> Result<(), ErrorGuaranteed> {
@@ -2221,7 +2215,6 @@ rustc_queries! {
     /// Should not be called for the local crate before the resolver outputs are created, as it
     /// is only fed there.
     query stripped_cfg_items(cnum: CrateNum) -> &'tcx [StrippedCfgItem] {
-        feedable
         desc { "getting cfg-ed out item names" }
         separate_provide_extern
     }

@@ -255,10 +255,9 @@ fn issue33140_self_ty(tcx: TyCtxt<'_>, def_id: DefId) -> Option<EarlyBinder<Ty<'
 
     let impl_ = tcx
         .impl_trait_header(def_id)
-        .unwrap_or_else(|| bug!("issue33140_self_ty called on inherent impl {:?}", def_id))
-        .skip_binder();
+        .unwrap_or_else(|| bug!("issue33140_self_ty called on inherent impl {:?}", def_id));
 
-    let trait_ref = impl_.trait_ref;
+    let trait_ref = impl_.trait_ref.skip_binder();
     debug!("issue33140_self_ty({:?}), trait-ref={:?}", def_id, trait_ref);
 
     let is_marker_like = impl_.polarity == ty::ImplPolarity::Positive

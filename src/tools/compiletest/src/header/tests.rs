@@ -592,3 +592,23 @@ fn ignore_mode() {
         assert!(!check_ignore(&config, &format!("//@ ignore-mode-{other}")));
     }
 }
+
+#[test]
+fn threads_support() {
+    let threads = [
+        ("x86_64-unknown-linux-gnu", true),
+        ("aarch64-apple-darwin", true),
+        ("wasm32-unknown-unknown", false),
+        ("wasm64-unknown-unknown", false),
+        #[cfg(not(bootstrap))]
+        ("wasm32-wasip1", false),
+        #[cfg(not(bootstrap))]
+        ("wasm32-wasip1-threads", true),
+        ("wasm32-wasi-preview1-threads", true),
+    ];
+    for (target, has_threads) in threads {
+        let config = cfg().target(target).build();
+        assert_eq!(config.has_threads(), has_threads);
+        assert_eq!(check_ignore(&config, "//@ needs-threads"), !has_threads)
+    }
+}
