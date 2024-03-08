@@ -19,7 +19,7 @@ use hir_def::{
     lang_item::LangItem,
     resolver::{HasResolver, TypeNs},
     type_ref::{TraitBoundModifier, TypeRef},
-    ConstParamId, EnumId, EnumVariantId, FunctionId, GenericDefId, ItemContainerId,
+    ConstParamId, EnumId, EnumVariantId, FunctionId, GenericDefId, GenericParamId, ItemContainerId,
     LifetimeParamId, Lookup, OpaqueInternableThing, TraitId, TypeAliasId, TypeOrConstParamId,
     TypeParamId,
 };
@@ -311,10 +311,48 @@ impl Generics {
         })
     }
 
+    pub(crate) fn iter_id_with_lt(&self) -> impl Iterator<Item = GenericParamId> + '_ {
+        let toc_iter = self.iter().map(|(id, data)| match data {
+            TypeOrConstParamData::TypeParamData(_) => {
+                GenericParamId::TypeParamId(TypeParamId::from_unchecked(id))
+            }
+            TypeOrConstParamData::ConstParamData(_) => {
+                GenericParamId::ConstParamId(ConstParamId::from_unchecked(id))
+            }
+        });
+        let lt_iter = self.iter_lt().map(|(id, _)| GenericParamId::LifetimeParamId(id));
+
+        toc_iter.chain(lt_iter)
+    }
+
+    pub(crate) fn iter_lt<'a>(
+        &'a self,
+    ) -> impl DoubleEndedIterator<Item = (LifetimeParamId, &'a LifetimeParamData)> + 'a {
+        self.iter_lt_self().chain(self.iter_lt_parent())
+    }
+
+    fn iter_lt_self<'a>(
+        &'a self,
+    ) -> impl DoubleEndedIterator<Item = (LifetimeParamId, &'a LifetimeParamData)> + 'a {
+        let to_id = |it: &'a Generics| {
+            move |(local_id, p)| (LifetimeParamId { parent: it.def, local_id }, p)
+        };
+        self.params.iter_lt().map(to_id(self))
+    }
+
+    fn iter_lt_parent(
+        &self,
+    ) -> impl DoubleEndedIterator<Item = (LifetimeParamId, &LifetimeParamData)> {
+        self.parent_generics().into_iter().flat_map(|it| {
+            let to_id = move |(local_id, p)| (LifetimeParamId { parent: it.def, local_id }, p);
+            it.params.iter_lt().map(to_id)
+        })
+    }
+
     /// Returns total number of generic parameters in scope, including those from parent.
     pub(crate) fn len(&self) -> usize {
         let parent = self.parent_generics().map_or(0, Generics::len);
-        let child = self.params.type_or_consts.len();
+        let child = self.params.type_or_consts.len() + self.params.lifetimes.len();
         parent + child
     }
 
@@ -396,11 +434,16 @@ impl Generics {
     ) -> Substitution {
         Substitution::from_iter(
             Interner,
-            self.iter_id().enumerate().map(|(idx, id)| match id {
-                Either::Left(_) => BoundVar::new(debruijn, idx).to_ty(Interner).cast(Interner),
-                Either::Right(id) => BoundVar::new(debruijn, idx)
+            self.iter_id_with_lt().enumerate().map(|(idx, id)| match id {
+                GenericParamId::ConstParamId(id) => BoundVar::new(debruijn, idx)
                     .to_const(Interner, db.const_param_ty(id))
                     .cast(Interner),
+                GenericParamId::TypeParamId(_) => {
+                    BoundVar::new(debruijn, idx).to_ty(Interner).cast(Interner)
+                }
+                GenericParamId::LifetimeParamId(_) => {
+                    BoundVar::new(debruijn, idx).to_lifetime(Interner).cast(Interner)
+                }
             }),
         )
     }

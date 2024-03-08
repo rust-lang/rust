@@ -337,11 +337,23 @@ pub(crate) fn make_binders_with_count<T: HasInterner<Interner = Interner>>(
     generics: &Generics,
     value: T,
 ) -> Binders<T> {
-    let it = generics.iter_id().take(count).map(|id| match id {
-        Either::Left(_) => None,
-        Either::Right(id) => Some(db.const_param_ty(id)),
-    });
-    crate::make_type_and_const_binders(it, value)
+    let it = generics.iter_id_with_lt().take(count);
+
+    Binders::new(
+        VariableKinds::from_iter(
+            Interner,
+            it.map(|x| match x {
+                hir_def::GenericParamId::ConstParamId(id) => {
+                    chalk_ir::VariableKind::Const(db.const_param_ty(id))
+                }
+                hir_def::GenericParamId::TypeParamId(_) => {
+                    chalk_ir::VariableKind::Ty(chalk_ir::TyVariableKind::General)
+                }
+                hir_def::GenericParamId::LifetimeParamId(_) => chalk_ir::VariableKind::Lifetime,
+            }),
+        ),
+        value,
+    )
 }
 
 pub(crate) fn make_binders<T: HasInterner<Interner = Interner>>(
