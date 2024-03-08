@@ -256,6 +256,12 @@ impl<'pat, 'tcx> MatchPair<'pat, 'tcx> {
                 subpairs.push(MatchPair::new(place_builder, subpattern, cx));
                 default_irrefutable()
             }
+
+            PatKind::DerefPattern { .. } => {
+                // FIXME(deref_patterns)
+                // Treat it like a wildcard for now.
+                default_irrefutable()
+            }
         };
 
         MatchPair { place, test_case, subpairs, pattern }

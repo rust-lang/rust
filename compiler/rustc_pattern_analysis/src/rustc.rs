@@ -462,6 +462,11 @@ impl<'p, 'tcx: 'p> RustcPatCtxt<'p, 'tcx> {
                     _ => bug!("pattern has unexpected type: pat: {:?}, ty: {:?}", pat, ty),
                 };
             }
+            PatKind::DerefPattern { .. } => {
+                // FIXME(deref_patterns): At least detect that `box _` is irrefutable.
+                fields = vec![];
+                ctor = Opaque(OpaqueId::new());
+            }
             PatKind::Leaf { subpatterns } | PatKind::Variant { subpatterns, .. } => {
                 match ty.kind() {
                     ty::Tuple(fs) => {
