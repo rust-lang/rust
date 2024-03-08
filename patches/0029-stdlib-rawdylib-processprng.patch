@@ -1,0 +1,47 @@
+From 9f65e742ba3e41474e6126c6c4469c48eaa6ca7e Mon Sep 17 00:00:00 2001
+From: Chris Denton <chris@chrisdenton.dev>
+Date: Tue, 20 Feb 2024 16:01:40 -0300
+Subject: [PATCH] Don't use raw-dylib in std
+
+---
+ library/std/src/sys/pal/windows/c.rs    | 2 +-
+ library/std/src/sys/pal/windows/rand.rs | 3 +--
+ 2 files changed, 2 insertions(+), 3 deletions(-)
+
+diff --git a/library/std/src/sys/pal/windows/c.rs b/library/std/src/sys/pal/windows/c.rs
+index ad8e01bfa9b..9ca8e4c16ce 100644
+--- a/library/std/src/sys/pal/windows/c.rs
++++ b/library/std/src/sys/pal/windows/c.rs
+@@ -323,7 +323,7 @@ pub unsafe fn NtWriteFile(
+ 
+ // Use raw-dylib to import ProcessPrng as we can't rely on there being an import library.
+ cfg_if::cfg_if! {
+-if #[cfg(not(target_vendor = "win7"))] {
++if #[cfg(any())] {
+     #[cfg(target_arch = "x86")]
+     #[link(name = "bcryptprimitives", kind = "raw-dylib", import_name_type = "undecorated")]
+     extern "system" {
+diff --git a/library/std/src/sys/pal/windows/rand.rs b/library/std/src/sys/pal/windows/rand.rs
+index e427546222a..f2fe42a4d51 100644
+--- a/library/std/src/sys/pal/windows/rand.rs
++++ b/library/std/src/sys/pal/windows/rand.rs
+@@ -2,7 +2,7 @@
+ use core::mem;
+ use core::ptr;
+ 
+-#[cfg(not(target_vendor = "win7"))]
++#[cfg(any())]
+ #[inline]
+ pub fn hashmap_random_keys() -> (u64, u64) {
+     let mut v = (0, 0);
+@@ -13,7 +13,6 @@ pub fn hashmap_random_keys() -> (u64, u64) {
+     v
+ }
+ 
+-#[cfg(target_vendor = "win7")]
+ pub fn hashmap_random_keys() -> (u64, u64) {
+     use crate::ffi::c_void;
+     use crate::io;
+-- 
+2.42.0.windows.2
+
