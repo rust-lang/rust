@@ -391,7 +391,7 @@ pub fn create_ecx<'mir, 'tcx: 'mir>(
                     argv,
                     Scalar::from_u8(sigpipe).into(),
                 ],
-                Some(&ret_place.into()),
+                Some(&ret_place),
                 StackPopCleanup::Root { cleanup: true },
             )?;
         }
@@ -400,7 +400,7 @@ pub fn create_ecx<'mir, 'tcx: 'mir>(
                 entry_instance,
                 Abi::Rust,
                 &[argc.into(), argv],
-                Some(&ret_place.into()),
+                Some(&ret_place),
                 StackPopCleanup::Root { cleanup: true },
             )?;
         }

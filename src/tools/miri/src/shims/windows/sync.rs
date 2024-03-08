@@ -179,7 +179,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
 
         let id = this.init_once_get_id(init_once_op)?;
         let flags = this.read_scalar(flags_op)?.to_u32()?;
-        let pending_place = this.deref_pointer(pending_op)?.into();
+        let pending_place = this.deref_pointer(pending_op)?;
         let context = this.read_pointer(context_op)?;
 
         if flags != 0 {
