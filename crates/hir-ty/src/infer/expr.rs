@@ -13,7 +13,7 @@ use hir_def::{
         ArithOp, Array, BinaryOp, ClosureKind, Expr, ExprId, LabelId, Literal, Statement, UnaryOp,
     },
     lang_item::{LangItem, LangItemTarget},
-    path::{GenericArg, GenericArgs, Path},
+    path::{GenericArgs, Path},
     BlockId, ConstParamId, FieldId, ItemContainerId, Lookup, TupleFieldId, TupleId,
 };
 use hir_expand::name::{name, Name};
@@ -1816,10 +1816,17 @@ impl InferenceContext<'_> {
         def_generics: Generics,
         generic_args: Option<&GenericArgs>,
     ) -> Substitution {
-        let (parent_params, self_params, type_params, const_params, impl_trait_params) =
-            def_generics.provenance_split();
+        let (
+            parent_params,
+            self_params,
+            type_params,
+            const_params,
+            impl_trait_params,
+            lifetime_params,
+        ) = def_generics.provenance_split();
         assert_eq!(self_params, 0); // method shouldn't have another Self param
-        let total_len = parent_params + type_params + const_params + impl_trait_params;
+        let total_len =
+            parent_params + type_params + const_params + impl_trait_params + lifetime_params;
         let mut substs = Vec::with_capacity(total_len);
 
         // handle provided arguments
@@ -1828,9 +1835,8 @@ impl InferenceContext<'_> {
             for (arg, kind_id) in generic_args
                 .args
                 .iter()
-                .filter(|arg| !matches!(arg, GenericArg::Lifetime(_)))
-                .take(type_params + const_params)
-                .zip(def_generics.iter_id())
+                .take(type_params + const_params + lifetime_params)
+                .zip(def_generics.iter_id_with_lt())
             {
                 if let Some(g) = generic_arg_to_chalk(
                     self.db,
@@ -1850,6 +1856,8 @@ impl InferenceContext<'_> {
                             DebruijnIndex::INNERMOST,
                         )
                     },
+                    // FIXME: create make_lifetimes and infer lifetimes
+                    |_, _| static_lifetime(),
                 ) {
                     substs.push(g);
                 }

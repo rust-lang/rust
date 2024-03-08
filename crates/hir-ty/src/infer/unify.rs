@@ -807,6 +807,7 @@ impl<'a> InferenceTable<'a> {
             .fill(|it| {
                 let arg = match it {
                     ParamKind::Type => self.new_type_var(),
+                    ParamKind::Lifetime => unreachable!("Tuple with lifetime parameter"),
                     ParamKind::Const(_) => unreachable!("Tuple with const parameter"),
                 };
                 arg_tys.push(arg.clone());

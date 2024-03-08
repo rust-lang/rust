@@ -65,7 +65,7 @@ use hir_ty::{
     consteval::{try_const_usize, unknown_const_as_generic, ConstExt},
     db::InternedClosure,
     diagnostics::BodyValidationDiagnostic,
-    known_const_to_ast,
+    error_lifetime, known_const_to_ast,
     layout::{Layout as TyLayout, RustcEnumVariantIdx, RustcFieldIdx, TagEncoding},
     method_resolution::{self, TyFingerprint},
     mir::{interpret_mir, MutBorrowKind},
@@ -1106,6 +1106,7 @@ impl Field {
                     generics.next().unwrap_or_else(|| TyKind::Error.intern(Interner)).cast(Interner)
                 }
                 ParamKind::Const(ty) => unknown_const_as_generic(ty.clone()),
+                ParamKind::Lifetime => error_lifetime().cast(Interner),
             })
             .build();
         let ty = db.field_types(var_id)[self.id].clone().substitute(Interner, &substs);
@@ -1447,6 +1448,7 @@ impl Adt {
                 match x {
                     ParamKind::Type => r.cast(Interner),
                     ParamKind::Const(ty) => unknown_const_as_generic(ty.clone()),
+                    ParamKind::Lifetime => error_lifetime().cast(Interner),
                 }
             })
             .build();
@@ -1865,6 +1867,7 @@ impl Function {
                 generics.next().unwrap_or_else(|| TyKind::Error.intern(Interner)).cast(Interner)
             }
             ParamKind::Const(ty) => unknown_const_as_generic(ty.clone()),
+            ParamKind::Lifetime => error_lifetime().cast(Interner),
         };
 
         let parent_substs =
@@ -1963,6 +1966,7 @@ impl Function {
                         .unwrap_or_else(|| TyKind::Error.intern(Interner))
                         .cast(Interner),
                     ParamKind::Const(ty) => unknown_const_as_generic(ty.clone()),
+                    ParamKind::Lifetime => error_lifetime().cast(Interner),
                 })
                 .build()
         });
@@ -2221,6 +2225,7 @@ impl SelfParam {
                 generics.next().unwrap_or_else(|| TyKind::Error.intern(Interner)).cast(Interner)
             }
             ParamKind::Const(ty) => unknown_const_as_generic(ty.clone()),
+            ParamKind::Lifetime => error_lifetime().cast(Interner),
         };
 
         let parent_substs = TyBuilder::subst_for_def(db, parent_id, None).fill(&mut filler).build();
@@ -4114,6 +4119,7 @@ impl Type {
                         // FIXME: this code is not covered in tests.
                         unknown_const_as_generic(ty.clone())
                     }
+                    ParamKind::Lifetime => error_lifetime().cast(Interner),
                 }
             })
             .build();
@@ -4144,6 +4150,7 @@ impl Type {
                 match it {
                     ParamKind::Type => args.next().unwrap().ty.clone().cast(Interner),
                     ParamKind::Const(ty) => unknown_const_as_generic(ty.clone()),
+                    ParamKind::Lifetime => error_lifetime().cast(Interner),
                 }
             })
             .build();

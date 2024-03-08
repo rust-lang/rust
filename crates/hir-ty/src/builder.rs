@@ -15,15 +15,16 @@ use hir_def::{
 use smallvec::SmallVec;
 
 use crate::{
-    consteval::unknown_const_as_generic, db::HirDatabase, infer::unify::InferenceTable, primitive,
-    to_assoc_type_id, to_chalk_trait_id, utils::generics, Binders, BoundVar, CallableSig,
-    GenericArg, GenericArgData, Interner, ProjectionTy, Substitution, TraitRef, Ty, TyDefId, TyExt,
-    TyKind,
+    consteval::unknown_const_as_generic, db::HirDatabase, error_lifetime,
+    infer::unify::InferenceTable, primitive, static_lifetime, to_assoc_type_id, to_chalk_trait_id,
+    utils::generics, Binders, BoundVar, CallableSig, GenericArg, GenericArgData, Interner,
+    ProjectionTy, Substitution, TraitRef, Ty, TyDefId, TyExt, TyKind,
 };
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ParamKind {
     Type,
+    Lifetime,
     Const(Ty),
 }
 
@@ -107,6 +108,9 @@ impl<D> TyBuilder<D> {
             ParamKind::Const(ty) => {
                 BoundVar::new(debruijn, idx).to_const(Interner, ty.clone()).cast(Interner)
             }
+            ParamKind::Lifetime => {
+                BoundVar::new(debruijn, idx).to_lifetime(Interner).cast(Interner)
+            }
         });
         this.vec.extend(filler.take(this.remaining()).casted(Interner));
         assert_eq!(this.remaining(), 0);
@@ -119,6 +123,7 @@ impl<D> TyBuilder<D> {
         let filler = this.param_kinds[this.vec.len()..].iter().map(|x| match x {
             ParamKind::Type => TyKind::Error.intern(Interner).cast(Interner),
             ParamKind::Const(ty) => unknown_const_as_generic(ty.clone()),
+            ParamKind::Lifetime => error_lifetime().cast(Interner),
         });
         this.vec.extend(filler.casted(Interner));
         assert_eq!(this.remaining(), 0);
@@ -130,6 +135,8 @@ impl<D> TyBuilder<D> {
         self.fill(|x| match x {
             ParamKind::Type => table.new_type_var().cast(Interner),
             ParamKind::Const(ty) => table.new_const_var(ty.clone()).cast(Interner),
+            // FIXME: create new_lifetime_var in table
+            ParamKind::Lifetime => static_lifetime().cast(Interner),
         })
     }
 
@@ -142,7 +149,8 @@ impl<D> TyBuilder<D> {
     fn assert_match_kind(&self, a: &chalk_ir::GenericArg<Interner>, e: &ParamKind) {
         match (a.data(Interner), e) {
             (GenericArgData::Ty(_), ParamKind::Type)
-            | (GenericArgData::Const(_), ParamKind::Const(_)) => (),
+            | (GenericArgData::Const(_), ParamKind::Const(_))
+            | (GenericArgData::Lifetime(_), ParamKind::Lifetime) => (),
             _ => panic!("Mismatched kinds: {a:?}, {:?}, {:?}", self.vec, self.param_kinds),
         }
     }
@@ -217,6 +225,7 @@ impl TyBuilder<()> {
     ) -> TyBuilder<()> {
         let generics = generics(db.upcast(), def.into());
         assert!(generics.parent_generics().is_some() == parent_subst.is_some());
+        let lt_iter = generics.iter_lt_self().map(|_| ParamKind::Lifetime);
         let params = generics
             .iter_self()
             .map(|(id, data)| match data {
@@ -225,6 +234,7 @@ impl TyBuilder<()> {
                     ParamKind::Const(db.const_param_ty(ConstParamId::from_unchecked(id)))
                 }
             })
+            .chain(lt_iter)
             .collect();
         TyBuilder::new((), params, parent_subst)
     }

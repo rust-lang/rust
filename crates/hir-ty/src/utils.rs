@@ -367,11 +367,12 @@ impl Generics {
     }
 
     /// (parent total, self param, type param list, const param list, impl trait)
-    pub(crate) fn provenance_split(&self) -> (usize, usize, usize, usize, usize) {
+    pub(crate) fn provenance_split(&self) -> (usize, usize, usize, usize, usize, usize) {
         let mut self_params = 0;
         let mut type_params = 0;
         let mut impl_trait_params = 0;
         let mut const_params = 0;
+        let mut lifetime_params = 0;
         self.params.iter().for_each(|(_, data)| match data {
             TypeOrConstParamData::TypeParamData(p) => match p.provenance {
                 TypeParamProvenance::TypeParamList => type_params += 1,
@@ -381,8 +382,10 @@ impl Generics {
             TypeOrConstParamData::ConstParamData(_) => const_params += 1,
         });
 
+        self.params.iter_lt().for_each(|(_, _)| lifetime_params += 1);
+
         let parent_len = self.parent_generics().map_or(0, Generics::len);
-        (parent_len, self_params, type_params, const_params, impl_trait_params)
+        (parent_len, self_params, type_params, const_params, impl_trait_params, lifetime_params)
     }
 
     pub(crate) fn param_idx(&self, param: TypeOrConstParamId) -> Option<usize> {

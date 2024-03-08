@@ -151,7 +151,7 @@ pub fn lt_from_placeholder_idx(db: &dyn HirDatabase, idx: PlaceholderIndex) -> L
     db.lookup_intern_lifetime_param_id(interned_id)
 }
 
-pub(crate) fn lt_to_placeholder_idx(db: &dyn HirDatabase, id: LifetimeParamId) -> PlaceholderIndex {
+pub fn lt_to_placeholder_idx(db: &dyn HirDatabase, id: LifetimeParamId) -> PlaceholderIndex {
     let interned_id = db.intern_lifetime_param_id(id);
     PlaceholderIndex {
         ui: chalk_ir::UniverseIndex::ROOT,
