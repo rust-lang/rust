@@ -64,6 +64,9 @@ The general form is:
 
 *test-name*`.`*revision*`.`*compare_mode*`.`*extension*
 
+* *test-name* cannot contain dots. This is so that the general form of test
+  output filenames have a predictable form we can pattern match on in order to
+  track stray test output files.
 * *revision* is the [revision](#cfg-revisions) name.
   This is not included when not using revisions.
 * *compare_mode* is the [compare mode](#compare-modes).
