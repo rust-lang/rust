@@ -128,8 +128,8 @@ impl Write for StdoutRaw {
     }
 
     fn write_vectored(&mut self, bufs: &[IoSlice<'_>]) -> io::Result<usize> {
-        let total = bufs.iter().map(|b| b.len()).sum();
-        handle_ebadf(self.0.write_vectored(bufs), total)
+        let total = || bufs.iter().map(|b| b.len()).sum();
+        handle_ebadf_lazy(self.0.write_vectored(bufs), total)
     }
 
     #[inline]
@@ -160,8 +160,8 @@ impl Write for StderrRaw {
     }
 
     fn write_vectored(&mut self, bufs: &[IoSlice<'_>]) -> io::Result<usize> {
-        let total = bufs.iter().map(|b| b.len()).sum();
-        handle_ebadf(self.0.write_vectored(bufs), total)
+        let total = || bufs.iter().map(|b| b.len()).sum();
+        handle_ebadf_lazy(self.0.write_vectored(bufs), total)
     }
 
     #[inline]
@@ -189,6 +189,13 @@ impl Write for StderrRaw {
 fn handle_ebadf<T>(r: io::Result<T>, default: T) -> io::Result<T> {
     match r {
         Err(ref e) if stdio::is_ebadf(e) => Ok(default),
+        r => r,
+    }
+}
+
+fn handle_ebadf_lazy<T>(r: io::Result<T>, default: impl FnOnce() -> T) -> io::Result<T> {
+    match r {
+        Err(ref e) if stdio::is_ebadf(e) => Ok(default()),
         r => r,
     }
 }
