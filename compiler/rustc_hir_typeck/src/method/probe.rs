@@ -13,8 +13,10 @@ use rustc_hir_analysis::autoderef::{self, Autoderef};
 use rustc_infer::infer::canonical::OriginalQueryValues;
 use rustc_infer::infer::canonical::{Canonical, QueryResponse};
 use rustc_infer::infer::error_reporting::TypeAnnotationNeeded::E0282;
+use rustc_infer::infer::snapshot::NoSnapshotLeaks;
 use rustc_infer::infer::DefineOpaqueTypes;
 use rustc_infer::infer::{self, InferOk, TyCtxtInferExt};
+use rustc_infer::trivial_no_snapshot_leaks;
 use rustc_middle::middle::stability;
 use rustc_middle::query::Providers;
 use rustc_middle::ty::fast_reject::{simplify_type, TreatParams};
@@ -97,6 +99,8 @@ impl<'a, 'tcx> Deref for ProbeContext<'a, 'tcx> {
     }
 }
 
+// FIXME(#122188): This is wrong as this type may leak inference variables.
+trivial_no_snapshot_leaks!('tcx, Candidate<'tcx>);
 #[derive(Debug, Clone)]
 pub(crate) struct Candidate<'tcx> {
     // Candidates are (I'm not quite sure, but they are mostly) basically
@@ -152,6 +156,7 @@ pub(crate) enum CandidateKind<'tcx> {
     ),
 }
 
+trivial_no_snapshot_leaks!('tcx, ProbeResult);
 #[derive(Debug, PartialEq, Eq, Copy, Clone)]
 enum ProbeResult {
     NoMatch,
@@ -195,6 +200,8 @@ impl AutorefOrPtrAdjustment {
     }
 }
 
+// FIXME(#122188): This is wrong as this type may leak inference variables.
+trivial_no_snapshot_leaks!('tcx, Pick<'tcx>);
 #[derive(Debug, Clone)]
 pub struct Pick<'tcx> {
     pub item: ty::AssocItem,
@@ -368,6 +375,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         op: OP,
     ) -> Result<R, MethodError<'tcx>>
     where
+        R: NoSnapshotLeaks<'tcx>,
         OP: FnOnce(ProbeContext<'_, 'tcx>) -> Result<R, MethodError<'tcx>>,
     {
         let mut orig_values = OriginalQueryValues::default();

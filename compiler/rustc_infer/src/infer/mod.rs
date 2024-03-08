@@ -62,7 +62,7 @@ mod projection;
 pub mod region_constraints;
 mod relate;
 pub mod resolve;
-pub(crate) mod snapshot;
+pub mod snapshot;
 pub mod type_variable;
 
 #[must_use]

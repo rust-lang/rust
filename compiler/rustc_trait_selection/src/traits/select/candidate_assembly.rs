@@ -893,7 +893,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         ty: Ty<'tcx>,
         param_env: ty::ParamEnv<'tcx>,
         cause: &ObligationCause<'tcx>,
-    ) -> Option<ty::PolyExistentialTraitRef<'tcx>> {
+    ) -> Option<DefId> {
         let tcx = self.tcx();
         if tcx.features().trait_upcasting {
             return None;
@@ -922,7 +922,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             .ty()
             .unwrap();
 
-            if let ty::Dynamic(data, ..) = ty.kind() { data.principal() } else { None }
+            if let ty::Dynamic(data, ..) = ty.kind() { data.principal_def_id() } else { None }
         })
     }
 
@@ -993,12 +993,12 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                     let principal_a = a_data.principal().unwrap();
                     let target_trait_did = principal_def_id_b.unwrap();
                     let source_trait_ref = principal_a.with_self_ty(self.tcx(), source);
-                    if let Some(deref_trait_ref) = self.need_migrate_deref_output_trait_object(
+                    if let Some(deref_trait_def_id) = self.need_migrate_deref_output_trait_object(
                         source,
                         obligation.param_env,
                         &obligation.cause,
                     ) {
-                        if deref_trait_ref.def_id() == target_trait_did {
+                        if deref_trait_def_id == target_trait_did {
                             return;
                         }
                     }

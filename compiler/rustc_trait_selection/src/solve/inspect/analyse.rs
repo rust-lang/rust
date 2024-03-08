@@ -11,6 +11,7 @@
 
 use rustc_ast_ir::try_visit;
 use rustc_ast_ir::visit::VisitorResult;
+use rustc_infer::infer::snapshot::NoSnapshotLeaks;
 use rustc_infer::infer::InferCtxt;
 use rustc_middle::traits::query::NoSolution;
 use rustc_middle::traits::solve::{inspect, QueryResult};
@@ -201,7 +202,7 @@ impl<'a, 'tcx> InspectGoal<'a, 'tcx> {
 
 /// The public API to interact with proof trees.
 pub trait ProofTreeVisitor<'tcx> {
-    type Result: VisitorResult = ();
+    type Result: VisitorResult + NoSnapshotLeaks<'tcx> = ();
 
     fn visit_goal(&mut self, goal: &InspectGoal<'_, 'tcx>) -> Self::Result;
 }

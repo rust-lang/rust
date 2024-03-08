@@ -241,22 +241,22 @@ fn fulfillment_error_for_stalled<'tcx>(
     infcx: &InferCtxt<'tcx>,
     obligation: PredicateObligation<'tcx>,
 ) -> FulfillmentError<'tcx> {
-    let code = infcx.probe(|_| {
-        match infcx.evaluate_root_goal(obligation.clone().into(), GenerateProofTree::Never).0 {
-            Ok((_, Certainty::Maybe(MaybeCause::Ambiguity))) => {
-                FulfillmentErrorCode::Ambiguity { overflow: None }
-            }
-            Ok((_, Certainty::Maybe(MaybeCause::Overflow { suggest_increasing_limit }))) => {
-                FulfillmentErrorCode::Ambiguity { overflow: Some(suggest_increasing_limit) }
-            }
-            Ok((_, Certainty::Yes)) => {
-                bug!("did not expect successful goal when collecting ambiguity errors")
-            }
-            Err(_) => {
-                bug!("did not expect selection error when collecting ambiguity errors")
-            }
+    let code = match infcx
+        .probe(|_| infcx.evaluate_root_goal(obligation.clone().into(), GenerateProofTree::Never).0)
+    {
+        Ok((_, Certainty::Maybe(MaybeCause::Ambiguity))) => {
+            FulfillmentErrorCode::Ambiguity { overflow: None }
         }
-    });
+        Ok((_, Certainty::Maybe(MaybeCause::Overflow { suggest_increasing_limit }))) => {
+            FulfillmentErrorCode::Ambiguity { overflow: Some(suggest_increasing_limit) }
+        }
+        Ok((_, Certainty::Yes)) => {
+            bug!("did not expect successful goal when collecting ambiguity errors")
+        }
+        Err(_) => {
+            bug!("did not expect selection error when collecting ambiguity errors")
+        }
+    };
 
     FulfillmentError { obligation: obligation.clone(), code, root_obligation: obligation }
 }

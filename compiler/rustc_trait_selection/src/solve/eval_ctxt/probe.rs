@@ -1,6 +1,7 @@
 use crate::solve::assembly::Candidate;
 
 use super::EvalCtxt;
+use rustc_infer::infer::snapshot::NoSnapshotLeaks;
 use rustc_middle::traits::{
     query::NoSolution,
     solve::{inspect, CandidateSource, QueryResult},
@@ -15,6 +16,7 @@ pub(in crate::solve) struct ProbeCtxt<'me, 'a, 'tcx, F, T> {
 
 impl<'tcx, F, T> ProbeCtxt<'_, '_, 'tcx, F, T>
 where
+    T: NoSnapshotLeaks<'tcx>,
     F: FnOnce(&T) -> inspect::ProbeKind<'tcx>,
 {
     pub(in crate::solve) fn enter(self, f: impl FnOnce(&mut EvalCtxt<'_, 'tcx>) -> T) -> T {

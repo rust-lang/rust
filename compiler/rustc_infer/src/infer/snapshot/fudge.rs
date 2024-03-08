@@ -1,6 +1,7 @@
 use rustc_middle::infer::unify_key::{ConstVariableOriginKind, ConstVariableValue, ConstVidKey};
-use rustc_middle::ty::fold::{TypeFoldable, TypeFolder, TypeSuperFoldable};
+use rustc_middle::ty::TypeVisitableExt;
 use rustc_middle::ty::{self, ConstVid, FloatVid, IntVid, RegionVid, Ty, TyCtxt, TyVid};
+use rustc_middle::ty::{TypeFoldable, TypeFolder, TypeSuperFoldable};
 
 use crate::infer::type_variable::TypeVariableOrigin;
 use crate::infer::InferCtxt;
@@ -11,6 +12,8 @@ use rustc_data_structures::unify as ut;
 use ut::UnifyKey;
 
 use std::ops::Range;
+
+use super::{NoSnapshotLeaks, VariableLengths};
 
 fn vars_since_snapshot<'tcx, T>(
     table: &mut UnificationTable<'_, 'tcx, T>,
@@ -43,26 +46,7 @@ fn const_vars_since_snapshot<'tcx>(
     )
 }
 
-struct VariableLengths {
-    type_var_len: usize,
-    const_var_len: usize,
-    int_var_len: usize,
-    float_var_len: usize,
-    region_constraints_len: usize,
-}
-
 impl<'tcx> InferCtxt<'tcx> {
-    fn variable_lengths(&self) -> VariableLengths {
-        let mut inner = self.inner.borrow_mut();
-        VariableLengths {
-            type_var_len: inner.type_variables().num_vars(),
-            const_var_len: inner.const_unification_table().len(),
-            int_var_len: inner.int_unification_table().len(),
-            float_var_len: inner.float_unification_table().len(),
-            region_constraints_len: inner.unwrap_region_constraints().num_region_vars(),
-        }
-    }
-
     /// This rather funky routine is used while processing expected
     /// types. What happens here is that we want to propagate a
     /// coercion through the return type of a fn to its
@@ -107,80 +91,128 @@ impl<'tcx> InferCtxt<'tcx> {
     where
         F: FnOnce() -> Result<T, E>,
         T: TypeFoldable<TyCtxt<'tcx>>,
+        E: NoSnapshotLeaks<'tcx>,
     {
-        let variable_lengths = self.variable_lengths();
-        let (mut fudger, value) = self.probe(|_| {
-            match f() {
-                Ok(value) => {
-                    let value = self.resolve_vars_if_possible(value);
+        self.probe(|_| f().map(|value| FudgeInference(self.resolve_vars_if_possible(value))))
+            .map(|FudgeInference(value)| value)
+    }
+}
 
-                    // At this point, `value` could in principle refer
-                    // to inference variables that have been created during
-                    // the snapshot. Once we exit `probe()`, those are
-                    // going to be popped, so we will have to
-                    // eliminate any references to them.
-
-                    let mut inner = self.inner.borrow_mut();
-                    let type_vars =
-                        inner.type_variables().vars_since_snapshot(variable_lengths.type_var_len);
-                    let int_vars = vars_since_snapshot(
-                        &mut inner.int_unification_table(),
-                        variable_lengths.int_var_len,
-                    );
-                    let float_vars = vars_since_snapshot(
-                        &mut inner.float_unification_table(),
-                        variable_lengths.float_var_len,
-                    );
-                    let region_vars = inner
-                        .unwrap_region_constraints()
-                        .vars_since_snapshot(variable_lengths.region_constraints_len);
-                    let const_vars = const_vars_since_snapshot(
-                        &mut inner.const_unification_table(),
-                        variable_lengths.const_var_len,
-                    );
-
-                    let fudger = InferenceFudger {
-                        infcx: self,
-                        type_vars,
-                        int_vars,
-                        float_vars,
-                        region_vars,
-                        const_vars,
-                    };
-
-                    Ok((fudger, value))
+#[macro_export]
+macro_rules! fudge_vars_no_snapshot_leaks {
+    ($tcx:lifetime, $t:ty) => {
+        const _: () = {
+            use rustc_middle::ty::TypeVisitableExt;
+            use $crate::infer::snapshot::fudge::InferenceFudgeData;
+            impl<$tcx> $crate::infer::snapshot::NoSnapshotLeaks<$tcx> for $t {
+                type StartData = $crate::infer::snapshot::VariableLengths;
+                type EndData = ($t, Option<InferenceFudgeData>);
+                fn snapshot_start_data(infcx: &InferCtxt<$tcx>) -> Self::StartData {
+                    infcx.variable_lengths()
                 }
-                Err(e) => Err(e),
+                fn end_of_snapshot(
+                    infcx: &InferCtxt<$tcx>,
+                    value: $t,
+                    variable_lengths: Self::StartData,
+                ) -> Self::EndData {
+                    if value.has_infer() {
+                        (value, Some(InferenceFudgeData::new(infcx, variable_lengths)))
+                    } else {
+                        (value, None)
+                    }
+                }
+                fn avoid_leaks(
+                    infcx: &InferCtxt<'tcx>,
+                    (value, fudge_data): Self::EndData,
+                ) -> Self {
+                    if let Some(fudge_data) = fudge_data {
+                        fudge_data.fudge_inference(infcx, value)
+                    } else {
+                        value
+                    }
+                }
             }
-        })?;
+        };
+    };
+}
 
-        // At this point, we need to replace any of the now-popped
-        // type/region variables that appear in `value` with a fresh
-        // variable of the appropriate kind. We can't do this during
-        // the probe because they would just get popped then too. =)
-
-        // Micro-optimization: if no variables have been created, then
-        // `value` can't refer to any of them. =) So we can just return it.
-        if fudger.type_vars.0.is_empty()
-            && fudger.int_vars.is_empty()
-            && fudger.float_vars.is_empty()
-            && fudger.region_vars.0.is_empty()
-            && fudger.const_vars.0.is_empty()
-        {
-            Ok(value)
+struct FudgeInference<T>(T);
+impl<'tcx, T: TypeFoldable<TyCtxt<'tcx>>> NoSnapshotLeaks<'tcx> for FudgeInference<T> {
+    type StartData = VariableLengths;
+    type EndData = (T, Option<InferenceFudgeData>);
+    fn snapshot_start_data(infcx: &InferCtxt<'tcx>) -> Self::StartData {
+        infcx.variable_lengths()
+    }
+    fn end_of_snapshot(
+        infcx: &InferCtxt<'tcx>,
+        FudgeInference(value): FudgeInference<T>,
+        variable_lengths: Self::StartData,
+    ) -> Self::EndData {
+        if value.has_infer() {
+            (value, Some(InferenceFudgeData::new(infcx, variable_lengths)))
         } else {
-            Ok(value.fold_with(&mut fudger))
+            (value, None)
+        }
+    }
+    fn avoid_leaks(infcx: &InferCtxt<'tcx>, (value, fudge_data): Self::EndData) -> Self {
+        if let Some(fudge_data) = fudge_data {
+            FudgeInference(fudge_data.fudge_inference(infcx, value))
+        } else {
+            FudgeInference(value)
         }
     }
 }
 
-pub struct InferenceFudger<'a, 'tcx> {
-    infcx: &'a InferCtxt<'tcx>,
+pub struct InferenceFudgeData {
     type_vars: (Range<TyVid>, Vec<TypeVariableOrigin>),
     int_vars: Range<IntVid>,
     float_vars: Range<FloatVid>,
     region_vars: (Range<RegionVid>, Vec<RegionVariableOrigin>),
     const_vars: (Range<ConstVid>, Vec<ConstVariableOrigin>),
+}
+
+impl InferenceFudgeData {
+    pub fn new<'tcx>(
+        infcx: &InferCtxt<'tcx>,
+        variable_lengths: VariableLengths,
+    ) -> InferenceFudgeData {
+        let mut inner = infcx.inner.borrow_mut();
+        let type_vars = inner.type_variables().vars_since_snapshot(variable_lengths.type_vars);
+        let int_vars =
+            vars_since_snapshot(&mut inner.int_unification_table(), variable_lengths.int_vars);
+        let float_vars =
+            vars_since_snapshot(&mut inner.float_unification_table(), variable_lengths.float_vars);
+        let region_vars =
+            inner.unwrap_region_constraints().vars_since_snapshot(variable_lengths.region_vars);
+        let const_vars = const_vars_since_snapshot(
+            &mut inner.const_unification_table(),
+            variable_lengths.const_vars,
+        );
+
+        InferenceFudgeData { type_vars, int_vars, float_vars, region_vars, const_vars }
+    }
+
+    pub fn fudge_inference<'tcx, T: TypeFoldable<TyCtxt<'tcx>>>(
+        self,
+        infcx: &InferCtxt<'tcx>,
+        value: T,
+    ) -> T {
+        if self.type_vars.0.is_empty()
+            && self.int_vars.is_empty()
+            && self.float_vars.is_empty()
+            && self.region_vars.0.is_empty()
+            && self.const_vars.0.is_empty()
+        {
+            value
+        } else {
+            value.fold_with(&mut InferenceFudger { infcx, data: self })
+        }
+    }
+}
+
+struct InferenceFudger<'a, 'tcx> {
+    infcx: &'a InferCtxt<'tcx>,
+    data: InferenceFudgeData,
 }
 
 impl<'a, 'tcx> TypeFolder<TyCtxt<'tcx>> for InferenceFudger<'a, 'tcx> {
@@ -191,11 +223,11 @@ impl<'a, 'tcx> TypeFolder<TyCtxt<'tcx>> for InferenceFudger<'a, 'tcx> {
     fn fold_ty(&mut self, ty: Ty<'tcx>) -> Ty<'tcx> {
         match *ty.kind() {
             ty::Infer(ty::InferTy::TyVar(vid)) => {
-                if self.type_vars.0.contains(&vid) {
+                if self.data.type_vars.0.contains(&vid) {
                     // This variable was created during the fudging.
                     // Recreate it with a fresh variable here.
-                    let idx = vid.as_usize() - self.type_vars.0.start.as_usize();
-                    let origin = self.type_vars.1[idx];
+                    let idx = vid.as_usize() - self.data.type_vars.0.start.as_usize();
+                    let origin = self.data.type_vars.1[idx];
                     self.infcx.next_ty_var(origin)
                 } else {
                     // This variable was created before the
@@ -210,14 +242,14 @@ impl<'a, 'tcx> TypeFolder<TyCtxt<'tcx>> for InferenceFudger<'a, 'tcx> {
                 }
             }
             ty::Infer(ty::InferTy::IntVar(vid)) => {
-                if self.int_vars.contains(&vid) {
+                if self.data.int_vars.contains(&vid) {
                     self.infcx.next_int_var()
                 } else {
                     ty
                 }
             }
             ty::Infer(ty::InferTy::FloatVar(vid)) => {
-                if self.float_vars.contains(&vid) {
+                if self.data.float_vars.contains(&vid) {
                     self.infcx.next_float_var()
                 } else {
                     ty
@@ -229,10 +261,10 @@ impl<'a, 'tcx> TypeFolder<TyCtxt<'tcx>> for InferenceFudger<'a, 'tcx> {
 
     fn fold_region(&mut self, r: ty::Region<'tcx>) -> ty::Region<'tcx> {
         if let ty::ReVar(vid) = *r
-            && self.region_vars.0.contains(&vid)
+            && self.data.region_vars.0.contains(&vid)
         {
-            let idx = vid.index() - self.region_vars.0.start.index();
-            let origin = self.region_vars.1[idx];
+            let idx = vid.index() - self.data.region_vars.0.start.index();
+            let origin = self.data.region_vars.1[idx];
             return self.infcx.next_region_var(origin);
         }
         r
@@ -240,11 +272,11 @@ impl<'a, 'tcx> TypeFolder<TyCtxt<'tcx>> for InferenceFudger<'a, 'tcx> {
 
     fn fold_const(&mut self, ct: ty::Const<'tcx>) -> ty::Const<'tcx> {
         if let ty::ConstKind::Infer(ty::InferConst::Var(vid)) = ct.kind() {
-            if self.const_vars.0.contains(&vid) {
+            if self.data.const_vars.0.contains(&vid) {
                 // This variable was created during the fudging.
                 // Recreate it with a fresh variable here.
-                let idx = vid.index() - self.const_vars.0.start.index();
-                let origin = self.const_vars.1[idx];
+                let idx = vid.index() - self.data.const_vars.0.start.index();
+                let origin = self.data.const_vars.1[idx];
                 self.infcx.next_const_var(ct.ty(), origin)
             } else {
                 ct
