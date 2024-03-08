@@ -803,28 +803,10 @@ pub mod guard {
         Some(stack_ptr.with_addr(stackaddr))
     }
 
-    #[cfg(target_os = "netbsd")]
-    unsafe fn get_stack_start() -> Option<*mut libc::c_void> {
-        let mut ret = None;
-        let mut attr: libc::pthread_attr_t = crate::mem::zeroed();
-        let e = libc::pthread_getattr_np(libc::pthread_self(), &mut attr);
-        if e == 0 {
-            let mut stackaddr = crate::ptr::null_mut();
-            let mut stacksize = 0;
-            let mut guardsize = 0;
-            assert_eq!(libc::pthread_attr_getstack(&attr, &mut stackaddr, &mut stacksize), 0);
-            // on netbsd, we need to take in account the guard size to push up
-            // the stack's address from the bottom.
-            assert_eq!(libc::pthread_attr_getguardsize(&attr, &mut guardsize), 0);
-            stackaddr = stackaddr.add(guardsize);
-            ret = Some(stackaddr);
-        }
-        ret
-    }
-
     #[cfg(any(
         target_os = "android",
         target_os = "freebsd",
+        target_os = "netbsd",
         target_os = "hurd",
         target_os = "linux",
         target_os = "l4re"
