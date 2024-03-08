@@ -1,4 +1,5 @@
 use super::LoweringContext;
+use core::ops::ControlFlow;
 use rustc_ast as ast;
 use rustc_ast::visit::Visitor;
 use rustc_ast::*;
@@ -594,30 +595,32 @@ fn expand_format_args<'hir>(
 }
 
 fn may_contain_yield_point(e: &ast::Expr) -> bool {
-    struct MayContainYieldPoint(bool);
+    struct MayContainYieldPoint;
 
     impl Visitor<'_> for MayContainYieldPoint {
-        fn visit_expr(&mut self, e: &ast::Expr) {
+        type Result = ControlFlow<()>;
+
+        fn visit_expr(&mut self, e: &ast::Expr) -> ControlFlow<()> {
             if let ast::ExprKind::Await(_, _) | ast::ExprKind::Yield(_) = e.kind {
-                self.0 = true;
+                ControlFlow::Break(())
             } else {
                 visit::walk_expr(self, e);
+                ControlFlow::Continue(())
             }
         }
 
-        fn visit_mac_call(&mut self, _: &ast::MacCall) {
+        fn visit_mac_call(&mut self, _: &ast::MacCall) -> ControlFlow<()> {
             // Macros should be expanded at this point.
             unreachable!("unexpanded macro in ast lowering");
         }
 
-        fn visit_item(&mut self, _: &ast::Item) {
+        fn visit_item(&mut self, _: &ast::Item) -> ControlFlow<()> {
             // Do not recurse into nested items.
+            ControlFlow::Continue(())
         }
     }
 
-    let mut visitor = MayContainYieldPoint(false);
-    visitor.visit_expr(e);
-    visitor.0
+    MayContainYieldPoint.visit_expr(e).is_break()
 }
 
 fn for_all_argument_indexes(template: &mut [FormatArgsPiece], mut f: impl FnMut(&mut usize)) {
