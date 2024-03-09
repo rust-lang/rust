@@ -938,6 +938,12 @@ struct PatternExtraData<'tcx> {
     ascriptions: Vec<Ascription<'tcx>>,
 }
 
+impl<'tcx> PatternExtraData<'tcx> {
+    fn is_empty(&self) -> bool {
+        self.bindings.is_empty() && self.ascriptions.is_empty()
+    }
+}
+
 /// A pattern in a form suitable for generating code.
 #[derive(Debug, Clone)]
 struct FlatPat<'pat, 'tcx> {
@@ -970,7 +976,7 @@ impl<'tcx, 'pat> FlatPat<'pat, 'tcx> {
 
 #[derive(Debug)]
 struct Candidate<'pat, 'tcx> {
-    /// For the candidate to match, &ll of these must be satisfied...
+    /// For the candidate to match, all of these must be satisfied...
     // Invariant: all the `MatchPair`s are recursively simplified.
     // Invariant: or-patterns must be sorted at the end.
     match_pairs: Vec<MatchPair<'pat, 'tcx>>,
@@ -1518,9 +1524,8 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             self.merge_trivial_subcandidates(subcandidate, source_info);
 
             // FIXME(or_patterns; matthewjasper) Try to be more aggressive here.
-            can_merge &= subcandidate.subcandidates.is_empty()
-                && subcandidate.extra_data.bindings.is_empty()
-                && subcandidate.extra_data.ascriptions.is_empty();
+            can_merge &=
+                subcandidate.subcandidates.is_empty() && subcandidate.extra_data.is_empty();
         }
 
         if can_merge {
