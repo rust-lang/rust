@@ -1,4 +1,4 @@
-use clippy_utils::diagnostics::span_lint_and_then;
+use clippy_utils::diagnostics::span_lint_hir_and_then;
 use clippy_utils::path_to_local_id;
 use clippy_utils::source::snippet;
 use clippy_utils::visitors::is_local_used;
@@ -122,9 +122,10 @@ impl<'tcx> LateLintPass<'tcx> for LetIfSeq {
                     value=snippet(cx, value.span, "<value>"),
                     default=snippet(cx, default.span, "<default>"),
                 );
-                span_lint_and_then(
+                span_lint_hir_and_then(
                     cx,
                     USELESS_LET_IF_SEQ,
+                    local.hir_id,
                     span,
                     "`if _ { .. } else { .. }` is an expression",
                     |diag| {

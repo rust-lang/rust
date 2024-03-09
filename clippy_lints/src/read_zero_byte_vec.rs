@@ -1,4 +1,4 @@
-use clippy_utils::diagnostics::{span_lint, span_lint_and_sugg};
+use clippy_utils::diagnostics::{span_lint_hir, span_lint_hir_and_then};
 use clippy_utils::get_enclosing_block;
 use clippy_utils::higher::{get_vec_init_kind, VecInitKind};
 use clippy_utils::source::snippet;
@@ -77,36 +77,52 @@ impl<'tcx> LateLintPass<'tcx> for ReadZeroByteVec {
                 if let Some(expr) = visitor.read_zero_expr {
                     let applicability = Applicability::MaybeIncorrect;
                     match vec_init_kind {
-                        VecInitKind::WithConstCapacity(len) => {
-                            span_lint_and_sugg(
-                                cx,
-                                READ_ZERO_BYTE_VEC,
-                                expr.span,
-                                "reading zero byte data to `Vec`",
-                                "try",
-                                format!("{}.resize({len}, 0); {}", ident.as_str(), snippet(cx, expr.span, "..")),
-                                applicability,
-                            );
-                        },
+                        VecInitKind::WithConstCapacity(len) => span_lint_hir_and_then(
+                            cx,
+                            READ_ZERO_BYTE_VEC,
+                            expr.hir_id,
+                            expr.span,
+                            "reading zero byte data to `Vec`",
+                            |diag| {
+                                diag.span_suggestion(
+                                    expr.span,
+                                    "try",
+                                    format!("{}.resize({len}, 0); {}", ident.as_str(), snippet(cx, expr.span, "..")),
+                                    applicability,
+                                );
+                            },
+                        ),
                         VecInitKind::WithExprCapacity(hir_id) => {
                             let e = cx.tcx.hir().expect_expr(hir_id);
-                            span_lint_and_sugg(
+                            span_lint_hir_and_then(
                                 cx,
                                 READ_ZERO_BYTE_VEC,
+                                expr.hir_id,
                                 expr.span,
                                 "reading zero byte data to `Vec`",
-                                "try",
-                                format!(
-                                    "{}.resize({}, 0); {}",
-                                    ident.as_str(),
-                                    snippet(cx, e.span, ".."),
-                                    snippet(cx, expr.span, "..")
-                                ),
-                                applicability,
+                                |diag| {
+                                    diag.span_suggestion(
+                                        expr.span,
+                                        "try",
+                                        format!(
+                                            "{}.resize({}, 0); {}",
+                                            ident.as_str(),
+                                            snippet(cx, e.span, ".."),
+                                            snippet(cx, expr.span, "..")
+                                        ),
+                                        applicability,
+                                    );
+                                },
                             );
                         },
                         _ => {
-                            span_lint(cx, READ_ZERO_BYTE_VEC, expr.span, "reading zero byte data to `Vec`");
+                            span_lint_hir(
+                                cx,
+                                READ_ZERO_BYTE_VEC,
+                                expr.hir_id,
+                                expr.span,
+                                "reading zero byte data to `Vec`",
+                            );
                         },
                     }
                 }
