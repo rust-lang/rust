@@ -3120,6 +3120,7 @@ pub(crate) const fn miri_promise_symbolic_alignment(ptr: *const (), align: usize
 
     const fn compiletime(_ptr: *const (), _align: usize) {}
 
+    #[cfg_attr(not(bootstrap), allow(unused_unsafe))] // on bootstrap bump, remove unsafe block
     // SAFETY: the extra behavior at runtime is for UB checks only.
     unsafe {
         const_eval_select((ptr, align), compiletime, runtime);
