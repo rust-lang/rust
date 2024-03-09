@@ -1994,6 +1994,17 @@ pub enum UnknownPrefixSugg {
         style = "verbose"
     )]
     Whitespace(#[primary_span] Span),
+    #[multipart_suggestion(
+        parse_suggestion_str,
+        applicability = "maybe-incorrect",
+        style = "verbose"
+    )]
+    MeantStr {
+        #[suggestion_part(code = "\"")]
+        start: Span,
+        #[suggestion_part(code = "\"")]
+        end: Span,
+    },
 }
 
 #[derive(Diagnostic)]
