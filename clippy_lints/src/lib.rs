@@ -373,6 +373,7 @@ mod visibility;
 mod wildcard_imports;
 mod write;
 mod zero_div_zero;
+mod zero_repeat_side_effects;
 mod zero_sized_map_values;
 // end lints modules, do not remove this comment, it’s used in `update_lints`
 
@@ -1120,6 +1121,7 @@ pub fn register_lints(store: &mut rustc_lint::LintStore, conf: &'static Conf) {
     store.register_late_pass(|_| Box::new(to_string_trait_impl::ToStringTraitImpl));
     store.register_early_pass(|| Box::new(multiple_bound_locations::MultipleBoundLocations));
     store.register_late_pass(|_| Box::new(assigning_clones::AssigningClones));
+    store.register_late_pass(|_| Box::new(zero_repeat_side_effects::ZeroRepeatSideEffects));
     // add lints here, do not remove this comment, it's used in `new_lint`
 }
 

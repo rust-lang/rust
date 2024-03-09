@@ -5814,6 +5814,7 @@ Released 2018-09-13
 [`zero_divided_by_zero`]: https://rust-lang.github.io/rust-clippy/master/index.html#zero_divided_by_zero
 [`zero_prefixed_literal`]: https://rust-lang.github.io/rust-clippy/master/index.html#zero_prefixed_literal
 [`zero_ptr`]: https://rust-lang.github.io/rust-clippy/master/index.html#zero_ptr
+[`zero_repeat_side_effects`]: https://rust-lang.github.io/rust-clippy/master/index.html#zero_repeat_side_effects
 [`zero_sized_map_values`]: https://rust-lang.github.io/rust-clippy/master/index.html#zero_sized_map_values
 [`zero_width_space`]: https://rust-lang.github.io/rust-clippy/master/index.html#zero_width_space
 [`zst_offset`]: https://rust-lang.github.io/rust-clippy/master/index.html#zst_offset

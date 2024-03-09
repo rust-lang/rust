@@ -751,5 +751,6 @@ pub(crate) static LINTS: &[&crate::LintInfo] = &[
     crate::write::WRITE_LITERAL_INFO,
     crate::write::WRITE_WITH_NEWLINE_INFO,
     crate::zero_div_zero::ZERO_DIVIDED_BY_ZERO_INFO,
+    crate::zero_repeat_side_effects::ZERO_REPEAT_SIDE_EFFECTS_INFO,
     crate::zero_sized_map_values::ZERO_SIZED_MAP_VALUES_INFO,
 ];
