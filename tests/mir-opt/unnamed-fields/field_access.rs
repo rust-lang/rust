@@ -1,4 +1,4 @@
-//@ unit-test: UnnamedFields
+// Tests the correct handling of unnamed fields within structs and unions marked with #[repr(C)].
 
 // EMIT_MIR field_access.foo.SimplifyCfg-initial.after.mir
 // EMIT_MIR field_access.bar.SimplifyCfg-initial.after.mir
