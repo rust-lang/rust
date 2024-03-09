@@ -368,7 +368,7 @@ where
                 // SAFETY: The caller guarantees that `n` references a value that is non-zero, so this is unreachable.
                 unsafe {
                     intrinsics::assert_unsafe_precondition!(
-                        check_language_ub,
+                        check_library_ub,
                         "NonZero::from_mut_unchecked requires the argument to dereference as non-zero",
                         () => false,
                     );
