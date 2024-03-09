@@ -21,7 +21,7 @@ declare_clippy_lint! {
     ///
     /// ### Example
     /// ```no_run
-    /// fn side_effect(): i32 {
+    /// fn side_effect() -> i32 {
     ///     println!("side effect");
     ///     10
     /// }
@@ -29,7 +29,7 @@ declare_clippy_lint! {
     /// ```
     /// Use instead:
     /// ```no_run
-    /// fn side_effect(): i32 {
+    /// fn side_effect() -> i32 {
     ///     println!("side effect");
     ///     10
     /// }
