@@ -114,7 +114,8 @@ impl<'a, 'gcc, 'tcx> AsmBuilderMethods<'tcx> for Builder<'a, 'gcc, 'tcx> {
         options: InlineAsmOptions,
         span: &[Span],
         instance: Instance<'_>,
-        _catch_funclet: Option<(Self::BasicBlock, Self::BasicBlock, Option<&Self::Funclet>)>,
+        dest: Option<Self::BasicBlock>,
+        _catch_funclet: Option<(Self::BasicBlock, Option<&Self::Funclet>)>,
     ) {
         if options.contains(InlineAsmOptions::MAY_UNWIND) {
             self.sess().dcx().create_err(UnwindingInlineAsm { span: span[0] }).emit();
@@ -537,8 +538,9 @@ impl<'a, 'gcc, 'tcx> AsmBuilderMethods<'tcx> for Builder<'a, 'gcc, 'tcx> {
         }
         if dest.is_none() && options.contains(InlineAsmOptions::NORETURN) {
             let builtin_unreachable = self.context.get_builtin_function("__builtin_unreachable");
-            let builtin_unreachable: RValue<'gcc> =
-                unsafe { std::mem::transmute(builtin_unreachable) };
+            let builtin_unreachable: RValue<'gcc> = unsafe {
+                std::mem::transmute(builtin_unreachable)
+            };
             self.call(self.type_void(), None, None, builtin_unreachable, &[], None);
         }
 
