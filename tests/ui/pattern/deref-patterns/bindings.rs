@@ -5,8 +5,7 @@
 fn simple_vec(vec: Vec<u32>) -> u32 {
     match vec {
         deref!([]) => 100,
-        // FIXME(deref_patterns): fake borrows break guards
-        // deref!([x]) if x == 4 => x + 4,
+        deref!([x]) if x == 4 => x + 4,
         deref!([x]) => x,
         deref!([1, x]) => x + 200,
         deref!(ref slice) => slice.iter().sum(),
@@ -29,6 +28,7 @@ fn main() {
     assert_eq!(simple_vec(vec![1]), 1);
     assert_eq!(simple_vec(vec![1, 2]), 202);
     assert_eq!(simple_vec(vec![1, 2, 3]), 6);
+    assert_eq!(simple_vec(vec![4]), 8);
 
     assert_eq!(nested_vec(vec![vec![0, 42]]), 42);
     assert_eq!(nested_vec(vec![vec![1, 42]]), 42);

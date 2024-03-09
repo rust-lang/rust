@@ -5,7 +5,7 @@
 //! This also includes code for pattern bindings in `let` statements and
 //! function parameters.
 
-use crate::build::expr::as_place::PlaceBuilder;
+use crate::build::expr::as_place::{PlaceBase, PlaceBuilder};
 use crate::build::scope::DropKind;
 use crate::build::ForGuard::{self, OutsideGuard, RefWithinGuard};
 use crate::build::{BlockAnd, BlockAndExtension, Builder};
@@ -438,7 +438,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         }
 
         if let Some(ref borrows) = fake_borrows {
-            self.calculate_fake_borrows(borrows, scrutinee_span)
+            self.calculate_fake_borrows(borrows, scrutinee_place_builder.base(), scrutinee_span)
         } else {
             Vec::new()
         }
@@ -1936,6 +1936,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     fn calculate_fake_borrows<'b>(
         &mut self,
         fake_borrows: &'b FxIndexSet<Place<'tcx>>,
+        scrutinee_base: PlaceBase,
         temp_span: Span,
     ) -> Vec<(Place<'tcx>, Local)> {
         let tcx = self.tcx;
@@ -1946,6 +1947,15 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
         // Insert a Shallow borrow of the prefixes of any fake borrows.
         for place in fake_borrows {
+            if let PlaceBase::Local(l) = scrutinee_base
+                && l != place.local
+            {
+                // The base of this place is a temporary created for deref patterns. We don't emit
+                // fake borrows for these as they are not initialized in all branches.
+                // FIXME(deref_patterns): is this sound?
+                continue;
+            }
+
             let mut cursor = place.projection.as_ref();
             while let [proj_base @ .., elem] = cursor {
                 cursor = proj_base;
