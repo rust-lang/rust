@@ -243,7 +243,6 @@ use std::{cmp, fmt};
 pub(crate) struct CrateLocator<'a> {
     // Immutable per-session configuration.
     only_needs_metadata: bool,
-    sysroot: &'a Path,
     metadata_loader: &'a dyn MetadataLoader,
     cfg_version: &'static str,
 
@@ -319,7 +318,6 @@ impl<'a> CrateLocator<'a> {
 
         CrateLocator {
             only_needs_metadata,
-            sysroot: &sess.sysroot,
             metadata_loader,
             cfg_version: sess.cfg_version,
             crate_name,
@@ -610,32 +608,6 @@ impl<'a> CrateLocator<'a> {
                 continue;
             }
 
-            // Ok so at this point we've determined that `(lib, kind)` above is
-            // a candidate crate to load, and that `slot` is either none (this
-            // is the first crate of its kind) or if some the previous path has
-            // the exact same hash (e.g., it's the exact same crate).
-            //
-            // In principle these two candidate crates are exactly the same so
-            // we can choose either of them to link. As a stupidly gross hack,
-            // however, we favor crate in the sysroot.
-            //
-            // You can find more info in rust-lang/rust#39518 and various linked
-            // issues, but the general gist is that during testing libstd the
-            // compilers has two candidates to choose from: one in the sysroot
-            // and one in the deps folder. These two crates are the exact same
-            // crate but if the compiler chooses the one in the deps folder
-            // it'll cause spurious errors on Windows.
-            //
-            // As a result, we favor the sysroot crate here. Note that the
-            // candidates are all canonicalized, so we canonicalize the sysroot
-            // as well.
-            if let Some((prev, _)) = &ret {
-                let sysroot = self.sysroot;
-                let sysroot = try_canonicalize(sysroot).unwrap_or_else(|_| sysroot.to_path_buf());
-                if prev.starts_with(&sysroot) {
-                    continue;
-                }
-            }
             *slot = Some((hash, metadata, lib.clone()));
             ret = Some((lib, kind));
         }
