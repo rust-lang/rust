@@ -12,20 +12,19 @@
 //! sort of test: for example, testing which variant an enum is, or
 //! testing a value against a constant.
 
-use crate::build::matches::{Ascription, Binding, Candidate, FlatPat, MatchPair, TestCase};
+use crate::build::matches::{Candidate, FlatPat, MatchPair, PatternExtraData, TestCase};
 use crate::build::Builder;
 
 use std::mem;
 
 impl<'a, 'tcx> Builder<'a, 'tcx> {
     /// Simplify a list of match pairs so they all require a test. Stores relevant bindings and
-    /// ascriptions in the provided `Vec`s.
+    /// ascriptions in `extra_data`.
     #[instrument(skip(self), level = "debug")]
     pub(super) fn simplify_match_pairs<'pat>(
         &mut self,
         match_pairs: &mut Vec<MatchPair<'pat, 'tcx>>,
-        candidate_bindings: &mut Vec<Binding<'tcx>>,
-        candidate_ascriptions: &mut Vec<Ascription<'tcx>>,
+        extra_data: &mut PatternExtraData<'tcx>,
     ) {
         // In order to please the borrow checker, in a pattern like `x @ pat` we must lower the
         // bindings in `pat` before `x`. E.g. (#69971):
@@ -45,17 +44,13 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         // after any bindings in `pat`. This doesn't work for or-patterns: the current structure of
         // match lowering forces us to lower bindings inside or-patterns last.
         for mut match_pair in mem::take(match_pairs) {
-            self.simplify_match_pairs(
-                &mut match_pair.subpairs,
-                candidate_bindings,
-                candidate_ascriptions,
-            );
+            self.simplify_match_pairs(&mut match_pair.subpairs, extra_data);
             if let TestCase::Irrefutable { binding, ascription } = match_pair.test_case {
                 if let Some(binding) = binding {
-                    candidate_bindings.push(binding);
+                    extra_data.bindings.push(binding);
                 }
                 if let Some(ascription) = ascription {
-                    candidate_ascriptions.push(ascription);
+                    extra_data.ascriptions.push(ascription);
                 }
                 // Simplifiable pattern; we replace it with its already simplified subpairs.
                 match_pairs.append(&mut match_pair.subpairs);
