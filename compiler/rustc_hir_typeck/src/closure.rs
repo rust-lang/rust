@@ -19,7 +19,7 @@ use rustc_target::spec::abi::Abi;
 use rustc_trait_selection::traits;
 use rustc_trait_selection::traits::error_reporting::ArgKind;
 use rustc_trait_selection::traits::error_reporting::InferCtxtExt as _;
-use std::cmp;
+use rustc_type_ir::ClosureKind;
 use std::iter;
 use std::ops::ControlFlow;
 
@@ -437,10 +437,17 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 };
 
                 if let Some(found_kind) = found_kind {
-                    expected_kind = Some(
-                        expected_kind
-                            .map_or_else(|| found_kind, |current| cmp::min(current, found_kind)),
-                    );
+                    // always use the closure kind that is more permissive.
+                    match (expected_kind, found_kind) {
+                        (None, _) => expected_kind = Some(found_kind),
+                        (Some(ClosureKind::FnMut), ClosureKind::Fn) => {
+                            expected_kind = Some(ClosureKind::Fn)
+                        }
+                        (Some(ClosureKind::FnOnce), ClosureKind::Fn | ClosureKind::FnMut) => {
+                            expected_kind = Some(found_kind)
+                        }
+                        _ => {}
+                    }
                 }
             }
         }

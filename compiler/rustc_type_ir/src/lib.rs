@@ -369,12 +369,9 @@ rustc_index::newtype_index! {
 ///
 /// You can get the environment type of a closure using
 /// `tcx.closure_env_ty()`.
-#[derive(Clone, Copy, PartialOrd, Ord, PartialEq, Eq, Hash, Debug)]
+#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
 #[cfg_attr(feature = "nightly", derive(Encodable, Decodable, HashStable_NoContext))]
 pub enum ClosureKind {
-    // Warning: Ordering is significant here! The ordering is chosen
-    // because the trait Fn is a subtrait of FnMut and so in turn, and
-    // hence we order it so that Fn < FnMut < FnOnce.
     Fn,
     FnMut,
     FnOnce,
@@ -394,8 +391,15 @@ impl ClosureKind {
 
     /// Returns `true` if a type that impls this closure kind
     /// must also implement `other`.
+    #[rustfmt::skip]
     pub fn extends(self, other: ClosureKind) -> bool {
-        self <= other
+        use ClosureKind::*;
+        match (self, other) {
+              (Fn, Fn | FnMut | FnOnce)
+            | (FnMut,   FnMut | FnOnce)
+            | (FnOnce,          FnOnce) => true,
+            _ => false,
+        }
     }
 }
 
