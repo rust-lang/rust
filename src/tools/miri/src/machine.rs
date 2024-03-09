@@ -1289,7 +1289,7 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for MiriMachine<'mir, 'tcx> {
         alloc_extra: &mut AllocExtra<'tcx>,
         (alloc_id, prove_extra): (AllocId, Self::ProvenanceExtra),
         size: Size,
-        _align: Align,
+        align: Align,
     ) -> InterpResult<'tcx> {
         if machine.tracked_alloc_ids.contains(&alloc_id) {
             machine.emit_diagnostic(NonHaltingDiagnostic::FreedAlloc(alloc_id));
@@ -1304,7 +1304,12 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for MiriMachine<'mir, 'tcx> {
         {
             *deallocated_at = Some(machine.current_span());
         }
-        machine.alloc_addresses.get_mut().free_alloc_id(alloc_id);
+        machine.alloc_addresses.get_mut().free_alloc_id(
+            machine.rng.get_mut(),
+            alloc_id,
+            size,
+            align,
+        );
         Ok(())
     }
 
