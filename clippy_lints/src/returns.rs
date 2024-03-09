@@ -1,4 +1,4 @@
-use clippy_utils::diagnostics::{span_lint_and_sugg, span_lint_and_then, span_lint_hir_and_then};
+use clippy_utils::diagnostics::{span_lint_and_sugg, span_lint_hir_and_then};
 use clippy_utils::source::{snippet_opt, snippet_with_context};
 use clippy_utils::sugg::has_enclosing_paren;
 use clippy_utils::visitors::{for_each_expr_with_closures, Descend};
@@ -380,7 +380,7 @@ fn check_final_expr<'tcx>(
                 return;
             }
 
-            emit_return_lint(cx, ret_span, semi_spans, &replacement);
+            emit_return_lint(cx, ret_span, semi_spans, &replacement, expr.hir_id);
         },
         ExprKind::If(_, then, else_clause_opt) => {
             check_block_return(cx, &then.kind, peeled_drop_expr.span, semi_spans.clone());
@@ -415,18 +415,31 @@ fn expr_contains_conjunctive_ifs<'tcx>(expr: &'tcx Expr<'tcx>) -> bool {
     contains_if(expr, false)
 }
 
-fn emit_return_lint(cx: &LateContext<'_>, ret_span: Span, semi_spans: Vec<Span>, replacement: &RetReplacement<'_>) {
+fn emit_return_lint(
+    cx: &LateContext<'_>,
+    ret_span: Span,
+    semi_spans: Vec<Span>,
+    replacement: &RetReplacement<'_>,
+    at: HirId,
+) {
     if ret_span.from_expansion() {
         return;
     }
 
-    span_lint_and_then(cx, NEEDLESS_RETURN, ret_span, "unneeded `return` statement", |diag| {
-        let suggestions = std::iter::once((ret_span, replacement.to_string()))
-            .chain(semi_spans.into_iter().map(|span| (span, String::new())))
-            .collect();
+    span_lint_hir_and_then(
+        cx,
+        NEEDLESS_RETURN,
+        at,
+        ret_span,
+        "unneeded `return` statement",
+        |diag| {
+            let suggestions = std::iter::once((ret_span, replacement.to_string()))
+                .chain(semi_spans.into_iter().map(|span| (span, String::new())))
+                .collect();
 
-        diag.multipart_suggestion_verbose(replacement.sugg_help(), suggestions, replacement.applicability());
-    });
+            diag.multipart_suggestion_verbose(replacement.sugg_help(), suggestions, replacement.applicability());
+        },
+    );
 }
 
 fn last_statement_borrows<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>) -> bool {

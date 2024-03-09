@@ -1,4 +1,4 @@
-use clippy_utils::diagnostics::span_lint_and_help;
+use clippy_utils::diagnostics::span_lint_hir_and_then;
 use clippy_utils::ty::{is_type_diagnostic_item, peel_mid_ty_refs_is_mutable};
 use clippy_utils::{fn_def_id, is_trait_method, path_to_local_id, peel_ref_operators};
 use rustc_ast::Mutability;
@@ -79,13 +79,15 @@ impl<'tcx> LateLintPass<'tcx> for UnusedPeekable {
                 }
 
                 if !vis.found_peek_call {
-                    span_lint_and_help(
+                    span_lint_hir_and_then(
                         cx,
                         UNUSED_PEEKABLE,
+                        local.hir_id,
                         ident.span,
                         "`peek` never called on `Peekable` iterator",
-                        None,
-                        "consider removing the call to `peekable`",
+                        |diag| {
+                            diag.help("consider removing the call to `peekable`");
+                        },
                     );
                 }
             }

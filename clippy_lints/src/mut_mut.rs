@@ -1,4 +1,4 @@
-use clippy_utils::diagnostics::span_lint;
+use clippy_utils::diagnostics::{span_lint, span_lint_hir};
 use clippy_utils::higher;
 use rustc_hir as hir;
 use rustc_hir::intravisit;
@@ -87,17 +87,19 @@ impl<'a, 'tcx> intravisit::Visitor<'tcx> for MutVisitor<'a, 'tcx> {
             intravisit::walk_expr(self, body);
         } else if let hir::ExprKind::AddrOf(hir::BorrowKind::Ref, hir::Mutability::Mut, e) = expr.kind {
             if let hir::ExprKind::AddrOf(hir::BorrowKind::Ref, hir::Mutability::Mut, _) = e.kind {
-                span_lint(
+                span_lint_hir(
                     self.cx,
                     MUT_MUT,
+                    expr.hir_id,
                     expr.span,
                     "generally you want to avoid `&mut &mut _` if possible",
                 );
             } else if let ty::Ref(_, ty, hir::Mutability::Mut) = self.cx.typeck_results().expr_ty(e).kind() {
                 if ty.peel_refs().is_sized(self.cx.tcx, self.cx.param_env) {
-                    span_lint(
+                    span_lint_hir(
                         self.cx,
                         MUT_MUT,
+                        expr.hir_id,
                         expr.span,
                         "this expression mutably borrows a mutable reference. Consider reborrowing",
                     );
