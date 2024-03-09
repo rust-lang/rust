@@ -2327,13 +2327,15 @@ pub mod sym {
     ///
     /// The first few non-negative integers each have a static symbol and therefore
     /// are fast.
-    pub fn integer<N: TryInto<usize> + Copy + ToString>(n: N) -> Symbol {
+    pub fn integer<N: TryInto<usize> + Copy + itoa::Integer>(n: N) -> Symbol {
         if let Result::Ok(idx) = n.try_into() {
             if idx < 10 {
                 return Symbol::new(super::SYMBOL_DIGITS_BASE + idx as u32);
             }
         }
-        Symbol::intern(&n.to_string())
+        let mut buffer = itoa::Buffer::new();
+        let printed = buffer.format(n);
+        Symbol::intern(printed)
     }
 }
 
