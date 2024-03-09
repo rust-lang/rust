@@ -201,14 +201,22 @@ pub trait Write {
         impl<W: Write + ?Sized> SpecWriteFmt for &mut W {
             #[inline]
             default fn spec_write_fmt(mut self, args: Arguments<'_>) -> Result {
-                write(&mut self, args)
+                if let Some(s) = args.as_const_str() {
+                    self.write_str(s)
+                } else {
+                    write(&mut self, args)
+                }
             }
         }
 
         impl<W: Write> SpecWriteFmt for &mut W {
             #[inline]
             fn spec_write_fmt(self, args: Arguments<'_>) -> Result {
-                write(self, args)
+                if let Some(s) = args.as_const_str() {
+                    self.write_str(s)
+                } else {
+                    write(self, args)
+                }
             }
         }
 
@@ -429,6 +437,14 @@ impl<'a> Arguments<'a> {
             ([s], []) => Some(s),
             _ => None,
         }
+    }
+
+    /// Same as [`Arguments::as_str`], but will only return `Some(s)` if it can be determined at compile time.
+    #[must_use]
+    #[inline]
+    fn as_const_str(&self) -> Option<&'static str> {
+        let s = self.as_str();
+        if core::intrinsics::is_val_statically_known(s.is_some()) { s } else { None }
     }
 }
 
@@ -1119,14 +1135,8 @@ pub trait UpperExp {
 /// ```
 ///
 /// [`write!`]: crate::write!
-#[inline]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub fn write(output: &mut dyn Write, args: Arguments<'_>) -> Result {
-    if let Some(s) = args.as_str() { output.write_str(s) } else { write_internal(output, args) }
-}
-
-/// Actual implementation of the [`write()`], but without the simple string optimization.
-fn write_internal(output: &mut dyn Write, args: Arguments<'_>) -> Result {
     let mut formatter = Formatter::new(output);
     let mut idx = 0;
 
@@ -1605,8 +1615,9 @@ impl<'a> Formatter<'a> {
     /// assert_eq!(format!("{:0>8}", Foo(2)), "Foo 2");
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
+    #[inline]
     pub fn write_fmt(&mut self, fmt: Arguments<'_>) -> Result {
-        write(self.buf, fmt)
+        if let Some(s) = fmt.as_const_str() { self.buf.write_str(s) } else { write(self.buf, fmt) }
     }
 
     /// Flags for formatting
@@ -2295,8 +2306,13 @@ impl Write for Formatter<'_> {
         self.buf.write_char(c)
     }
 
+    #[inline]
     fn write_fmt(&mut self, args: Arguments<'_>) -> Result {
-        write(self.buf, args)
+        if let Some(s) = args.as_const_str() {
+            self.buf.write_str(s)
+        } else {
+            write(self.buf, args)
+        }
     }
 }
 

@@ -1616,6 +1616,20 @@ extern "C" {
         Name: *const c_char,
     ) -> &'a Value;
 
+    pub fn LLVMRustBuildCallBr<'a>(
+        B: &Builder<'a>,
+        Ty: &'a Type,
+        Fn: &'a Value,
+        DefaultDest: &'a BasicBlock,
+        IndirectDests: *const &'a BasicBlock,
+        NumIndirectDests: c_uint,
+        Args: *const &'a Value,
+        NumArgs: c_uint,
+        OpBundles: *const &OperandBundleDef<'a>,
+        NumOpBundles: c_uint,
+        Name: *const c_char,
+    ) -> &'a Value;
+
     pub fn LLVMRustSetFastMath(Instr: &Value);
     pub fn LLVMRustSetAlgebraicMath(Instr: &Value);
     pub fn LLVMRustSetAllowReassoc(Instr: &Value);

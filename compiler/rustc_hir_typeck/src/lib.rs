@@ -61,7 +61,7 @@ use rustc_hir::{HirIdMap, Node};
 use rustc_hir_analysis::astconv::AstConv;
 use rustc_hir_analysis::check::check_abi;
 use rustc_infer::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
-use rustc_infer::traits::ObligationInspector;
+use rustc_infer::traits::{ObligationCauseCode, ObligationInspector, WellFormedLoc};
 use rustc_middle::query::Providers;
 use rustc_middle::traits;
 use rustc_middle::ty::{self, Ty, TyCtxt};
@@ -253,6 +253,10 @@ fn typeck_with_fallback<'tcx>(
         let expected_type = expected_type.unwrap_or_else(fallback);
 
         let expected_type = fcx.normalize(body.value.span, expected_type);
+
+        let wf_code = ObligationCauseCode::WellFormed(Some(WellFormedLoc::Ty(def_id)));
+        fcx.register_wf_obligation(expected_type.into(), body.value.span, wf_code);
+
         fcx.require_type_is_sized(expected_type, body.value.span, traits::ConstSized);
 
         // Gather locals in statics (because of block expressions).

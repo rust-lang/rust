@@ -25,22 +25,6 @@ help: consider using one of the available lifetimes here
 LL | type C<'a, 'b> = <A<'a> as Trait<'lifetime>>::Bar;
    |                                 +++++++++++
 
-error[E0107]: missing generics for associated type `Trait::Bar`
-  --> $DIR/missing-lifetime-in-alias.rs:27:36
-   |
-LL | type C<'a, 'b> = <A<'a> as Trait>::Bar;
-   |                                    ^^^ expected 1 lifetime argument
-   |
-note: associated type defined here, with 1 lifetime parameter: `'b`
-  --> $DIR/missing-lifetime-in-alias.rs:4:10
-   |
-LL |     type Bar<'b>
-   |          ^^^ --
-help: add missing lifetime argument
-   |
-LL | type C<'a, 'b> = <A<'a> as Trait>::Bar<'a>;
-   |                                       ++++
-
 error[E0477]: the type `Impl<'a>` does not fulfill the required lifetime
   --> $DIR/missing-lifetime-in-alias.rs:16:20
    |
@@ -59,6 +43,22 @@ help: copy the `where` clause predicates from the trait
    |
 LL |     type Bar<'b> = &'b () where Self: 'b;
    |                           ++++++++++++++
+
+error[E0107]: missing generics for associated type `Trait::Bar`
+  --> $DIR/missing-lifetime-in-alias.rs:27:36
+   |
+LL | type C<'a, 'b> = <A<'a> as Trait>::Bar;
+   |                                    ^^^ expected 1 lifetime argument
+   |
+note: associated type defined here, with 1 lifetime parameter: `'b`
+  --> $DIR/missing-lifetime-in-alias.rs:4:10
+   |
+LL |     type Bar<'b>
+   |          ^^^ --
+help: add missing lifetime argument
+   |
+LL | type C<'a, 'b> = <A<'a> as Trait>::Bar<'a>;
+   |                                       ++++
 
 error: aborting due to 4 previous errors
 

@@ -3,9 +3,9 @@ use crate::{ImplTraitContext, ImplTraitPosition, ParamMode, ResolverAstLoweringE
 use super::errors::{
     AbiSpecifiedMultipleTimes, AttSyntaxOnlyX86, ClobberAbiNotSupported,
     InlineAsmUnsupportedTarget, InvalidAbiClobberAbi, InvalidAsmTemplateModifierConst,
-    InvalidAsmTemplateModifierRegClass, InvalidAsmTemplateModifierRegClassSub,
-    InvalidAsmTemplateModifierSym, InvalidRegister, InvalidRegisterClass, RegisterClassOnlyClobber,
-    RegisterConflict,
+    InvalidAsmTemplateModifierLabel, InvalidAsmTemplateModifierRegClass,
+    InvalidAsmTemplateModifierRegClassSub, InvalidAsmTemplateModifierSym, InvalidRegister,
+    InvalidRegisterClass, RegisterClassOnlyClobber, RegisterConflict,
 };
 use super::LoweringContext;
 
@@ -237,6 +237,18 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                             }
                         }
                     }
+                    InlineAsmOperand::Label { block } => {
+                        if !self.tcx.features().asm_goto {
+                            feature_err(
+                                sess,
+                                sym::asm_goto,
+                                *op_sp,
+                                "label operands for inline assembly are unstable",
+                            )
+                            .emit();
+                        }
+                        hir::InlineAsmOperand::Label { block: self.lower_block(block, false) }
+                    }
                 };
                 (op, self.lower_span(*op_sp))
             })
@@ -296,6 +308,12 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                             op_span: op_sp,
                         });
                     }
+                    hir::InlineAsmOperand::Label { .. } => {
+                        self.dcx().emit_err(InvalidAsmTemplateModifierLabel {
+                            placeholder_span,
+                            op_span: op_sp,
+                        });
+                    }
                 }
             }
         }
@@ -335,7 +353,8 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
 
                         hir::InlineAsmOperand::Const { .. }
                         | hir::InlineAsmOperand::SymFn { .. }
-                        | hir::InlineAsmOperand::SymStatic { .. } => {
+                        | hir::InlineAsmOperand::SymStatic { .. }
+                        | hir::InlineAsmOperand::Label { .. } => {
                             unreachable!("{op:?} is not a register operand");
                         }
                     };

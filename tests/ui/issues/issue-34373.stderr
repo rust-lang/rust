@@ -10,17 +10,11 @@ note: ...which requires expanding type alias `DefaultFoo`...
 LL | type DefaultFoo = Foo;
    |                   ^^^
    = note: ...which again requires computing type of `Foo::T`, completing the cycle
-note: cycle used when collecting item types in top-level module
-  --> $DIR/issue-34373.rs:1:1
+note: cycle used when checking that `Foo` is well-formed
+  --> $DIR/issue-34373.rs:7:1
    |
-LL | / #![allow(warnings)]
-LL | |
-LL | | trait Trait<T> {
-LL | |     fn foo(_: T) {}
-...  |
-LL | | fn main() {
-LL | | }
-   | |_^
+LL | pub struct Foo<T = Box<Trait<DefaultFoo>>>;
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    = note: see https://rustc-dev-guide.rust-lang.org/overview.html#queries and https://rustc-dev-guide.rust-lang.org/query.html for more information
 
 error[E0038]: the trait `Trait` cannot be made into an object

@@ -1,5 +1,6 @@
 use super::potentially_plural_count;
 use crate::errors::{LifetimesOrBoundsMismatchOnTrait, MethodShouldReturnFuture};
+use core::ops::ControlFlow;
 use hir::def_id::{DefId, DefIdMap, LocalDefId};
 use rustc_data_structures::fx::{FxHashSet, FxIndexMap, FxIndexSet};
 use rustc_errors::{codes::*, pluralize, struct_span_code_err, Applicability, ErrorGuaranteed};
@@ -520,14 +521,6 @@ pub(super) fn collect_return_position_impl_trait_in_trait_tys<'tcx>(
         )
         .fold_with(&mut collector);
 
-    if !unnormalized_trait_sig.output().references_error() {
-        debug_assert_ne!(
-            collector.types.len(),
-            0,
-            "expect >1 RPITITs in call to `collect_return_position_impl_trait_in_trait_tys`"
-        );
-    }
-
     let trait_sig = ocx.normalize(&misc_cause, param_env, unnormalized_trait_sig);
     trait_sig.error_reported()?;
     let trait_return_ty = trait_sig.output();
@@ -644,6 +637,13 @@ pub(super) fn collect_return_position_impl_trait_in_trait_tys<'tcx>(
             );
             return Err(emitted);
         }
+    }
+
+    if !unnormalized_trait_sig.output().references_error() {
+        debug_assert!(
+            !collector.types.is_empty(),
+            "expect >0 RPITITs in call to `collect_return_position_impl_trait_in_trait_tys`"
+        );
     }
 
     // FIXME: This has the same issue as #108544, but since this isn't breaking
@@ -1565,24 +1565,24 @@ fn compare_synthetic_generics<'tcx>(
                     let (sig, _) = impl_m.expect_fn();
                     let input_tys = sig.decl.inputs;
 
-                    struct Visitor(Option<Span>, hir::def_id::LocalDefId);
+                    struct Visitor(hir::def_id::LocalDefId);
                     impl<'v> intravisit::Visitor<'v> for Visitor {
-                        fn visit_ty(&mut self, ty: &'v hir::Ty<'v>) {
-                            intravisit::walk_ty(self, ty);
+                        type Result = ControlFlow<Span>;
+                        fn visit_ty(&mut self, ty: &'v hir::Ty<'v>) -> Self::Result {
                             if let hir::TyKind::Path(hir::QPath::Resolved(None, path)) = ty.kind
                                 && let Res::Def(DefKind::TyParam, def_id) = path.res
-                                && def_id == self.1.to_def_id()
+                                && def_id == self.0.to_def_id()
                             {
-                                self.0 = Some(ty.span);
+                                ControlFlow::Break(ty.span)
+                            } else {
+                                intravisit::walk_ty(self, ty)
                             }
                         }
                     }
 
-                    let mut visitor = Visitor(None, impl_def_id);
-                    for ty in input_tys {
-                        intravisit::Visitor::visit_ty(&mut visitor, ty);
-                    }
-                    let span = visitor.0?;
+                    let span = input_tys.iter().find_map(|ty| {
+                        intravisit::Visitor::visit_ty(&mut Visitor(impl_def_id), ty).break_value()
+                    })?;
 
                     let bounds = impl_m.generics.bounds_for_param(impl_def_id).next()?.bounds;
                     let bounds = bounds.first()?.span().to(bounds.last()?.span());

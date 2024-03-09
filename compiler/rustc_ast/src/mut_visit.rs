@@ -1331,6 +1331,7 @@ pub fn noop_visit_inline_asm<T: MutVisitor>(asm: &mut InlineAsm, vis: &mut T) {
             }
             InlineAsmOperand::Const { anon_const } => vis.visit_anon_const(anon_const),
             InlineAsmOperand::Sym { sym } => vis.visit_inline_asm_sym(sym),
+            InlineAsmOperand::Label { block } => vis.visit_block(block),
         }
     }
 }

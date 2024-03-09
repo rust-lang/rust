@@ -23,18 +23,18 @@ impl Qux<'_> for () {}
 
 // This is not supported.
 fn one_hrtb_outlives() -> impl for<'a> Foo<'a, Assoc = impl Sized + 'a> {}
-//~^ ERROR higher kinded lifetime bounds on nested opaque types are not supported yet
+//~^ ERROR `impl Trait` cannot capture higher-ranked lifetime from outer `impl Trait`
 
 // This is not supported.
 fn one_hrtb_trait_param() -> impl for<'a> Foo<'a, Assoc = impl Qux<'a>> {}
-//~^ ERROR higher kinded lifetime bounds on nested opaque types are not supported yet
+//~^ ERROR `impl Trait` cannot capture higher-ranked lifetime from outer `impl Trait`
 
 fn one_hrtb_outlives_uses() -> impl for<'a> Bar<'a, Assoc = impl Sized + 'a> {}
-//~^ ERROR higher kinded lifetime bounds on nested opaque types are not supported yet
+//~^ ERROR `impl Trait` cannot capture higher-ranked lifetime from outer `impl Trait`
 //~| ERROR implementation of `Bar` is not general enough
 
 fn one_hrtb_trait_param_uses() -> impl for<'a> Bar<'a, Assoc = impl Qux<'a>> {}
-//~^ ERROR higher kinded lifetime bounds on nested opaque types are not supported yet
+//~^ ERROR `impl Trait` cannot capture higher-ranked lifetime from outer `impl Trait`
 //~| ERROR: the trait bound `for<'a> &'a (): Qux<'_>` is not satisfied
 
 // This should resolve.

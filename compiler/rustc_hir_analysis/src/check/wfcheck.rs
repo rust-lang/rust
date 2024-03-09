@@ -1,7 +1,9 @@
 use crate::autoderef::Autoderef;
+use crate::collect::CollectItemTypesVisitor;
 use crate::constrained_generic_params::{identify_constrained_generic_params, Parameter};
 use crate::errors;
 
+use hir::intravisit::Visitor;
 use rustc_ast as ast;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexSet};
 use rustc_errors::{codes::*, pluralize, struct_span_code_err, Applicability, ErrorGuaranteed};
@@ -225,6 +227,7 @@ fn check_item<'tcx>(tcx: TyCtxt<'tcx>, item: &'tcx hir::Item<'tcx>) -> Result<()
         ?item.owner_id,
         item.name = ? tcx.def_path_str(def_id)
     );
+    CollectItemTypesVisitor { tcx }.visit_item(item);
 
     let res = match item.kind {
         // Right now we check that every default trait implementation
@@ -336,8 +339,13 @@ fn check_item<'tcx>(tcx: TyCtxt<'tcx>, item: &'tcx hir::Item<'tcx>) -> Result<()
     res
 }
 
-fn check_foreign_item(tcx: TyCtxt<'_>, item: &hir::ForeignItem<'_>) -> Result<(), ErrorGuaranteed> {
+fn check_foreign_item<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    item: &'tcx hir::ForeignItem<'tcx>,
+) -> Result<(), ErrorGuaranteed> {
     let def_id = item.owner_id.def_id;
+
+    CollectItemTypesVisitor { tcx }.visit_foreign_item(item);
 
     debug!(
         ?item.owner_id,
@@ -355,11 +363,13 @@ fn check_foreign_item(tcx: TyCtxt<'_>, item: &hir::ForeignItem<'_>) -> Result<()
     }
 }
 
-fn check_trait_item(
-    tcx: TyCtxt<'_>,
-    trait_item: &hir::TraitItem<'_>,
+fn check_trait_item<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    trait_item: &'tcx hir::TraitItem<'tcx>,
 ) -> Result<(), ErrorGuaranteed> {
     let def_id = trait_item.owner_id.def_id;
+
+    CollectItemTypesVisitor { tcx }.visit_trait_item(trait_item);
 
     let (method_sig, span) = match trait_item.kind {
         hir::TraitItemKind::Fn(ref sig, _) => (Some(sig), trait_item.span),
@@ -895,7 +905,12 @@ fn check_object_unsafe_self_trait_by_name(tcx: TyCtxt<'_>, item: &hir::TraitItem
     }
 }
 
-fn check_impl_item(tcx: TyCtxt<'_>, impl_item: &hir::ImplItem<'_>) -> Result<(), ErrorGuaranteed> {
+fn check_impl_item<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    impl_item: &'tcx hir::ImplItem<'tcx>,
+) -> Result<(), ErrorGuaranteed> {
+    CollectItemTypesVisitor { tcx }.visit_impl_item(impl_item);
+
     let (method_sig, span) = match impl_item.kind {
         hir::ImplItemKind::Fn(ref sig, _) => (Some(sig), impl_item.span),
         // Constrain binding and overflow error spans to `<Ty>` in `type foo = <Ty>`.
