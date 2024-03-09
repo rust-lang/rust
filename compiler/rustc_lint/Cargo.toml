@@ -23,7 +23,6 @@ rustc_span = { path = "../rustc_span" }
 rustc_target = { path = "../rustc_target" }
 rustc_trait_selection = { path = "../rustc_trait_selection" }
 rustc_type_ir = { path = "../rustc_type_ir" }
-smallvec = { version = "1.8.1", features = ["union", "may_dangle"] }
 tracing = "0.1"
 unicode-security = "0.1.0"
 # tidy-alphabetical-end

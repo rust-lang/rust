@@ -1,7 +1,7 @@
 //@ check-pass
 //@ edition:2021
 //@ aux-build:non_local_macro.rs
-//@ rustc-env:CARGO=/usr/bin/cargo
+//@ rustc-env:CARGO_CRATE_NAME=non_local_def
 
 #![feature(inline_const)]
 #![warn(non_local_definitions)]
@@ -244,6 +244,26 @@ fn bad() {
     impl<T> Uto8 for T {}
     //~^ WARN non-local `impl` definition
 }
+
+trait Uto9 {}
+trait Uto10 {}
+const _: u32 = {
+    let _a = || {
+        impl Uto9 for Test {}
+        //~^ WARN non-local `impl` definition
+
+        1
+    };
+
+    type A = [u32; {
+        impl Uto10 for Test {}
+        //~^ WARN non-local `impl` definition
+
+        1
+    }];
+
+    1
+};
 
 struct UwU<T>(T);
 

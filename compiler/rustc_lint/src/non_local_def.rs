@@ -2,8 +2,6 @@ use rustc_hir::{def::DefKind, Body, Item, ItemKind, Node, Path, QPath, TyKind};
 use rustc_span::def_id::{DefId, LOCAL_CRATE};
 use rustc_span::{sym, symbol::kw, ExpnKind, MacroKind};
 
-use smallvec::{smallvec, SmallVec};
-
 use crate::lints::{NonLocalDefinitionsCargoUpdateNote, NonLocalDefinitionsDiag};
 use crate::{LateContext, LateLintPass, LintContext};
 
@@ -85,7 +83,7 @@ impl<'tcx> LateLintPass<'tcx> for NonLocalDefinitions {
             if let Some(def_id) = oexpn.macro_def_id
                 && let ExpnKind::Macro(macro_kind, macro_name) = oexpn.kind
                 && def_id.krate != LOCAL_CRATE
-                && std::env::var_os("CARGO").is_some()
+                && rustc_session::utils::was_invoked_from_cargo()
             {
                 Some(NonLocalDefinitionsCargoUpdateNote {
                     macro_kind: macro_kind.descr(),
@@ -114,25 +112,25 @@ impl<'tcx> LateLintPass<'tcx> for NonLocalDefinitions {
                 // is using local items and so we don't lint on it.
 
                 // We also ignore anon-const in item by including the anon-const
-                // parent as well; and since it's quite uncommon, we use smallvec
-                // to avoid unnecessary heap allocations.
-                let local_parents: SmallVec<[DefId; 1]> = if parent_def_kind == DefKind::Const
+                // parent as well.
+                let parent_parent = if parent_def_kind == DefKind::Const
                     && parent_opt_item_name == Some(kw::Underscore)
                 {
-                    smallvec![parent, cx.tcx.parent(parent)]
+                    Some(cx.tcx.parent(parent))
                 } else {
-                    smallvec![parent]
+                    None
                 };
 
                 let self_ty_has_local_parent = match impl_.self_ty.kind {
                     TyKind::Path(QPath::Resolved(_, ty_path)) => {
-                        path_has_local_parent(ty_path, cx, &*local_parents)
+                        path_has_local_parent(ty_path, cx, parent, parent_parent)
                     }
                     TyKind::TraitObject([principle_poly_trait_ref, ..], _, _) => {
                         path_has_local_parent(
                             principle_poly_trait_ref.trait_ref.path,
                             cx,
-                            &*local_parents,
+                            parent,
+                            parent_parent,
                         )
                     }
                     TyKind::TraitObject([], _, _)
@@ -154,7 +152,7 @@ impl<'tcx> LateLintPass<'tcx> for NonLocalDefinitions {
 
                 let of_trait_has_local_parent = impl_
                     .of_trait
-                    .map(|of_trait| path_has_local_parent(of_trait.path, cx, &*local_parents))
+                    .map(|of_trait| path_has_local_parent(of_trait.path, cx, parent, parent_parent))
                     .unwrap_or(false);
 
                 // If none of them have a local parent (LOGICAL NOR) this means that
@@ -218,6 +216,16 @@ impl<'tcx> LateLintPass<'tcx> for NonLocalDefinitions {
 ///    std::convert::PartialEq<Foo<Bar>>
 ///    ^^^^^^^^^^^^^^^^^^^^^^^
 /// ```
-fn path_has_local_parent(path: &Path<'_>, cx: &LateContext<'_>, local_parents: &[DefId]) -> bool {
-    path.res.opt_def_id().is_some_and(|did| local_parents.contains(&cx.tcx.parent(did)))
+fn path_has_local_parent(
+    path: &Path<'_>,
+    cx: &LateContext<'_>,
+    impl_parent: DefId,
+    impl_parent_parent: Option<DefId>,
+) -> bool {
+    path.res.opt_def_id().is_some_and(|did| {
+        did.is_local() && {
+            let res_parent = cx.tcx.parent(did);
+            res_parent == impl_parent || Some(res_parent) == impl_parent_parent
+        }
+    })
 }
