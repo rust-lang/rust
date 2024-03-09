@@ -1,6 +1,6 @@
 #![allow(nonstandard_style)]
 
-use libc::{c_int, c_void};
+use core::ffi::{c_int, c_void};
 
 #[repr(C)]
 #[derive(Copy, Clone, PartialEq)]

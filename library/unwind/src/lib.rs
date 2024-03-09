@@ -8,6 +8,10 @@
 #![cfg_attr(not(target_env = "msvc"), feature(libc))]
 #![allow(internal_features)]
 
+// Force libc to be included even if unused. This is required by many platforms.
+#[cfg(not(all(windows, target_env = "msvc")))]
+extern crate libc as _;
+
 cfg_if::cfg_if! {
     if #[cfg(target_env = "msvc")] {
         // Windows MSVC no extra unwinder support needed
