@@ -508,7 +508,6 @@ pub trait Machine<'mir, 'tcx: 'mir>: Sized {
     #[inline(always)]
     fn after_local_allocated(
         _ecx: &mut InterpCx<'mir, 'tcx, Self>,
-        _frame: usize,
         _local: mir::Local,
         _mplace: &MPlaceTy<'tcx, Self::Provenance>,
     ) -> InterpResult<'tcx> {

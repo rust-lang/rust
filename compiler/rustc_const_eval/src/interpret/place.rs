@@ -940,7 +940,7 @@ where
                                 mplace.mplace,
                             )?;
                         }
-                        M::after_local_allocated(self, self.frame_idx(), local, &mplace)?;
+                        M::after_local_allocated(self, local, &mplace)?;
                         // Now we can call `access_mut` again, asserting it goes well, and actually
                         // overwrite things. This points to the entire allocation, not just the part
                         // the place refers to, i.e. we do this before we apply `offset`.

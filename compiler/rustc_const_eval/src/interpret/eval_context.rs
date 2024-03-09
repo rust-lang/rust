@@ -1,5 +1,4 @@
 use std::cell::Cell;
-use std::ptr;
 use std::{fmt, mem};
 
 use either::{Either, Left, Right};
@@ -278,9 +277,11 @@ impl<'mir, 'tcx, Prov: Provenance, Extra> Frame<'mir, 'tcx, Prov, Extra> {
         })
     }
 
+    /// Returns the address of the buffer where the locals are stored. This is used by `Place` as a
+    /// sanity check to detect bugs where we mix up which stack frame a place refers to.
     #[inline(always)]
     pub(super) fn locals_addr(&self) -> usize {
-        ptr::addr_of!(self.locals).addr()
+        self.locals.raw.as_ptr().addr()
     }
 }
 
