@@ -30,7 +30,7 @@ pub struct Instance<'tcx> {
     pub args: GenericArgsRef<'tcx>,
 }
 
-#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
+#[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
 #[derive(TyEncodable, TyDecodable, HashStable, TypeFoldable, TypeVisitable, Lift)]
 pub enum InstanceDef<'tcx> {
     /// A user-defined callable item.
