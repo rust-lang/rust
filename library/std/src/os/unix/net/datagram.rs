@@ -33,7 +33,7 @@ use libc::MSG_NOSIGNAL;
     target_os = "haiku",
     target_os = "nto",
 )))]
-const MSG_NOSIGNAL: libc::c_int = 0x0;
+const MSG_NOSIGNAL: core::ffi::c_int = 0x0;
 
 /// A Unix datagram socket.
 ///
@@ -312,7 +312,7 @@ impl UnixDatagram {
     fn recv_from_flags(
         &self,
         buf: &mut [u8],
-        flags: libc::c_int,
+        flags: core::ffi::c_int,
     ) -> io::Result<(usize, SocketAddr)> {
         let mut count = 0;
         let addr = SocketAddr::new(|addr, len| unsafe {

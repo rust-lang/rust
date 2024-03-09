@@ -11,7 +11,7 @@ use crate::{fmt, io, mem, ptr};
 #[cfg(not(unix))]
 #[allow(non_camel_case_types)]
 mod libc {
-    pub use libc::c_int;
+    pub use core::ffi::c_int;
     pub type socklen_t = u32;
     pub struct sockaddr;
     #[derive(Clone)]

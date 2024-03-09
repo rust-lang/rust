@@ -20,7 +20,7 @@ use crate::sys::net::Socket;
 ))]
 #[allow(non_camel_case_types)]
 mod libc {
-    pub use libc::c_int;
+    pub use core::ffi::c_int;
     pub struct ucred;
     pub struct cmsghdr;
     pub struct sockcred2;

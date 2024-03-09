@@ -48,9 +48,9 @@
 
 use alloc::boxed::Box;
 use core::any::Any;
+use core::ffi::{c_int, c_uint, c_void};
 use core::mem::{self, ManuallyDrop};
 use core::ptr::{addr_of, addr_of_mut};
-use libc::{c_int, c_uint, c_void};
 
 // NOTE(nbdd0121): The `canary` field is part of stable ABI.
 #[repr(C)]
