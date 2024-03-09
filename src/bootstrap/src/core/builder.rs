@@ -19,7 +19,7 @@ use crate::core::build_steps::{check, clean, compile, dist, doc, install, run, s
 use crate::core::config::flags::{Color, Subcommand};
 use crate::core::config::{DryRun, SplitDebuginfo, TargetSelection};
 use crate::prepare_behaviour_dump_dir;
-use crate::utils::cache::{Cache, Interned, INTERNER};
+use crate::utils::cache::Cache;
 use crate::utils::helpers::{self, add_dylib_path, add_link_lib_path, exe, linker_args};
 use crate::utils::helpers::{check_cfg_arg, libdir, linker_flags, output, t, LldThreads};
 use crate::EXTRA_CHECK_CFGS;
@@ -102,7 +102,7 @@ impl RunConfig<'_> {
 
     /// Return a list of crate names selected by `run.paths`.
     #[track_caller]
-    pub fn cargo_crates_in_set(&self) -> Interned<Vec<String>> {
+    pub fn cargo_crates_in_set(&self) -> Vec<String> {
         let mut crates = Vec::new();
         for krate in &self.paths {
             let path = krate.assert_single_path();
@@ -111,7 +111,7 @@ impl RunConfig<'_> {
             };
             crates.push(crate_name.to_string());
         }
-        INTERNER.intern_list(crates)
+        crates
     }
 
     /// Given an `alias` selected by the `Step` and the paths passed on the command line,
@@ -120,7 +120,7 @@ impl RunConfig<'_> {
     /// Normally, people will pass *just* `library` if they pass it.
     /// But it's possible (although strange) to pass something like `library std core`.
     /// Build all crates anyway, as if they hadn't passed the other args.
-    pub fn make_run_crates(&self, alias: Alias) -> Interned<Vec<String>> {
+    pub fn make_run_crates(&self, alias: Alias) -> Vec<String> {
         let has_alias =
             self.paths.iter().any(|set| set.assert_single_path().path.ends_with(alias.as_str()));
         if !has_alias {
@@ -133,7 +133,7 @@ impl RunConfig<'_> {
         };
 
         let crate_names = crates.into_iter().map(|krate| krate.name.to_string()).collect();
-        INTERNER.intern_list(crate_names)
+        crate_names
     }
 }
 
@@ -1062,26 +1062,26 @@ impl<'a> Builder<'a> {
         }
     }
 
-    pub fn sysroot(&self, compiler: Compiler) -> Interned<PathBuf> {
+    pub fn sysroot(&self, compiler: Compiler) -> PathBuf {
         self.ensure(compile::Sysroot::new(compiler))
     }
 
     /// Returns the libdir where the standard library and other artifacts are
     /// found for a compiler's sysroot.
-    pub fn sysroot_libdir(&self, compiler: Compiler, target: TargetSelection) -> Interned<PathBuf> {
+    pub fn sysroot_libdir(&self, compiler: Compiler, target: TargetSelection) -> PathBuf {
         #[derive(Debug, Clone, Hash, PartialEq, Eq)]
         struct Libdir {
             compiler: Compiler,
             target: TargetSelection,
         }
         impl Step for Libdir {
-            type Output = Interned<PathBuf>;
+            type Output = PathBuf;
 
             fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
                 run.never()
             }
 
-            fn run(self, builder: &Builder<'_>) -> Interned<PathBuf> {
+            fn run(self, builder: &Builder<'_>) -> PathBuf {
                 let lib = builder.sysroot_libdir_relative(self.compiler);
                 let sysroot = builder
                     .sysroot(self.compiler)
@@ -1110,7 +1110,7 @@ impl<'a> Builder<'a> {
                     );
                 }
 
-                INTERNER.intern_path(sysroot)
+                sysroot
             }
         }
         self.ensure(Libdir { compiler, target })
