@@ -1141,14 +1141,6 @@ pub(crate) fn repr_nullable_ptr<'tcx>(
             [var_one, var_two] => match (&var_one.fields.raw[..], &var_two.fields.raw[..]) {
                 ([], [field]) | ([field], []) => field.ty(tcx, args),
                 ([field1], [field2]) => {
-                    // TODO: We pass all the checks here although individual enum variants has
-                    // checks for FFI safety even when niche optimized which needs to be
-                    // suppressed. for types like `Result<PhantomData<()>, E>`, PhantomData has
-                    // it's own lint for FFI which needs to be suppressed: `composed only of
-                    // `PhantomData``. This is true for other custom types as well `struct
-                    // Example;` which emits `this struct has unspecified layout` and suggests to
-                    // add `#[repr(C)]` and when that is done, linter emits `this struct has no
-                    // fields`, all under the `improper_ctypes_definitions` lint group
                     let ty1 = field1.ty(tcx, args);
                     let ty2 = field2.ty(tcx, args);
 
@@ -1245,7 +1237,6 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
         args: GenericArgsRef<'tcx>,
     ) -> FfiResult<'tcx> {
         use FfiResult::*;
-
         let transparent_with_all_zst_fields = if def.repr().transparent() {
             if let Some(field) = transparent_newtype_field(self.cx.tcx, variant) {
                 // Transparent newtypes have at most one non-ZST field which needs to be checked..
@@ -1372,27 +1363,29 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
                             return FfiSafe;
                         }
 
-                        // Check for a repr() attribute to specify the size of the
-                        // discriminant.
-                        if !def.repr().c() && !def.repr().transparent() && def.repr().int.is_none()
-                        {
-                            // Special-case types like `Option<extern fn()>` and `Result<extern fn(), ()>`
-                            if repr_nullable_ptr(self.cx.tcx, self.cx.param_env, ty, self.mode)
-                                .is_none()
-                            {
-                                return FfiUnsafe {
-                                    ty,
-                                    reason: fluent::lint_improper_ctypes_enum_repr_reason,
-                                    help: Some(fluent::lint_improper_ctypes_enum_repr_help),
-                                };
-                            }
-                        }
-
                         if def.is_variant_list_non_exhaustive() && !def.did().is_local() {
                             return FfiUnsafe {
                                 ty,
                                 reason: fluent::lint_improper_ctypes_non_exhaustive,
                                 help: None,
+                            };
+                        }
+
+                        // Check for a repr() attribute to specify the size of the
+                        // discriminant.
+                        if !def.repr().c() && !def.repr().transparent() && def.repr().int.is_none()
+                        {
+                            // Special-case types like `Option<extern fn()>` and `Result<extern fn(), ()>`
+                            if let Some(ty) =
+                                repr_nullable_ptr(self.cx.tcx, self.cx.param_env, ty, self.mode)
+                            {
+                                return self.check_type_for_ffi(cache, ty);
+                            }
+
+                            return FfiUnsafe {
+                                ty,
+                                reason: fluent::lint_improper_ctypes_enum_repr_reason,
+                                help: Some(fluent::lint_improper_ctypes_enum_repr_help),
                             };
                         }
 
