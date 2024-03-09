@@ -60,7 +60,7 @@ pub enum PassMode {
     /// attribute. The `byval` argument will use a byte array with the same size as the Rust type
     /// (which ensures that padding is preserved and that we do not rely on LLVM's struct layout),
     /// and will use the alignment specified in `attrs.pointee_align` (if `Some`) or the type's
-    /// alignment, depending on the target's ABI. This means that the alignment will not always
+    /// alignment (if `None`). This means that the alignment will not always
     /// match the Rust type's alignment; see documentation of `make_indirect_byval` for more info.
     ///
     /// `on_stack` cannot be true for unsized arguments, i.e., when `meta_attrs` is `Some`.
