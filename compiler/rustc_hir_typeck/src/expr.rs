@@ -3232,6 +3232,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     }
 
     fn check_expr_asm(&self, asm: &'tcx hir::InlineAsm<'tcx>) -> Ty<'tcx> {
+        let mut diverge = asm.options.contains(ast::InlineAsmOptions::NORETURN);
+
         for (op, _op_sp) in asm.operands {
             match op {
                 hir::InlineAsmOperand::In { expr, .. } => {
@@ -3253,13 +3255,24 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 // be well-formed.
                 hir::InlineAsmOperand::Const { .. } | hir::InlineAsmOperand::SymFn { .. } => {}
                 hir::InlineAsmOperand::SymStatic { .. } => {}
+                hir::InlineAsmOperand::Label { block } => {
+                    let previous_diverges = self.diverges.get();
+
+                    // The label blocks should have unit return value or diverge.
+                    let ty =
+                        self.check_block_with_expected(block, ExpectHasType(self.tcx.types.unit));
+                    if !ty.is_never() {
+                        self.demand_suptype(block.span, self.tcx.types.unit, ty);
+                        diverge = false;
+                    }
+
+                    // We need this to avoid false unreachable warning when a label diverges.
+                    self.diverges.set(previous_diverges);
+                }
             }
         }
-        if asm.options.contains(ast::InlineAsmOptions::NORETURN) {
-            self.tcx.types.never
-        } else {
-            Ty::new_unit(self.tcx)
-        }
+
+        if diverge { self.tcx.types.never } else { self.tcx.types.unit }
     }
 
     fn check_offset_of(

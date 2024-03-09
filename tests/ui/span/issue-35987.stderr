@@ -9,6 +9,20 @@ LL | impl<T: Clone, Add> Add for Foo<T> {
    |                |
    |                found this type parameter
 
-error: aborting due to 1 previous error
+error[E0223]: ambiguous associated type
+  --> $DIR/issue-35987.rs:9:32
+   |
+LL |     fn add(self, rhs: Self) -> Self::Output {
+   |                                ^^^^^^^^^^^^
+   |
+help: use fully-qualified syntax
+   |
+LL |     fn add(self, rhs: Self) -> <Foo<T> as BitOr>::Output {
+   |                                ~~~~~~~~~~~~~~~~~~~~~~~~~
+LL |     fn add(self, rhs: Self) -> <Foo<T> as IntoFuture>::Output {
+   |                                ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-For more information about this error, try `rustc --explain E0404`.
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0223, E0404.
+For more information about an error, try `rustc --explain E0223`.

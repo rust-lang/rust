@@ -1036,8 +1036,8 @@ impl<'tcx> MutVisitor<'tcx> for Integrator<'_, 'tcx> {
             {
                 bug!("False unwinds should have been removed before inlining")
             }
-            TerminatorKind::InlineAsm { ref mut destination, ref mut unwind, .. } => {
-                if let Some(ref mut tgt) = *destination {
+            TerminatorKind::InlineAsm { ref mut targets, ref mut unwind, .. } => {
+                for tgt in targets.iter_mut() {
                     *tgt = self.map_block(*tgt);
                 }
                 *unwind = self.map_unwind(*unwind);

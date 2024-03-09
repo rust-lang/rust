@@ -889,6 +889,12 @@ impl<'a, 'tcx> ThirPrinter<'a, 'tcx> {
                 print_indented!(self, format!("def_id: {:?}", def_id), depth_lvl + 1);
                 print_indented!(self, "}", depth_lvl + 1);
             }
+            InlineAsmOperand::Label { block } => {
+                print_indented!(self, "InlineAsmOperand::Block {", depth_lvl);
+                print_indented!(self, "block:", depth_lvl + 1);
+                self.print_block(*block, depth_lvl + 2);
+                print_indented!(self, "}", depth_lvl + 1);
+            }
         }
     }
 }

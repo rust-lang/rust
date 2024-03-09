@@ -823,6 +823,7 @@ pub fn walk_inline_asm<'a, V: Visitor<'a>>(visitor: &mut V, asm: &'a InlineAsm) 
                 try_visit!(visitor.visit_anon_const(anon_const))
             }
             InlineAsmOperand::Sym { sym } => try_visit!(visitor.visit_inline_asm_sym(sym)),
+            InlineAsmOperand::Label { block } => try_visit!(visitor.visit_block(block)),
         }
     }
     V::Result::output()

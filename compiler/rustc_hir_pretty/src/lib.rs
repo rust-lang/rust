@@ -1265,6 +1265,10 @@ impl<'a> State<'a> {
                     s.space();
                     s.print_qpath(path, true);
                 }
+                hir::InlineAsmOperand::Label { block } => {
+                    s.head("label");
+                    s.print_block(block);
+                }
             },
             AsmArg::Options(opts) => {
                 s.word("options");

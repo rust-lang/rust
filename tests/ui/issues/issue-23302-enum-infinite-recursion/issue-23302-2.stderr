@@ -10,16 +10,11 @@ note: ...which requires const-evaluating + checking `Y::A::{constant#0}`...
 LL |     A = Y::B as isize,
    |         ^^^^^^^^^^^^^
    = note: ...which again requires simplifying constant for the type system `Y::A::{constant#0}`, completing the cycle
-note: cycle used when collecting item types in top-level module
+note: cycle used when checking that `Y` is well-formed
   --> $DIR/issue-23302-2.rs:3:1
    |
-LL | / enum Y {
-LL | |     A = Y::B as isize,
-LL | |     B,
-LL | | }
-LL | |
-LL | | fn main() { }
-   | |_____________^
+LL | enum Y {
+   | ^^^^^^
    = note: see https://rustc-dev-guide.rust-lang.org/overview.html#queries and https://rustc-dev-guide.rust-lang.org/query.html for more information
 
 error: aborting due to 1 previous error

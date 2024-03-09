@@ -451,14 +451,30 @@ extern "C" LLVMTargetMachineRef LLVMRustCreateTargetMachine(
       Options.ObjectFilenameForDebug = OutputObjFile;
   }
   if (!strcmp("zlib", DebugInfoCompression) && llvm::compression::zlib::isAvailable()) {
+#if LLVM_VERSION_GE(19, 0)
+    Options.MCOptions.CompressDebugSections = DebugCompressionType::Zlib;
+#else
     Options.CompressDebugSections = DebugCompressionType::Zlib;
+#endif
   } else if (!strcmp("zstd", DebugInfoCompression) && llvm::compression::zstd::isAvailable()) {
+#if LLVM_VERSION_GE(19, 0)
+    Options.MCOptions.CompressDebugSections = DebugCompressionType::Zstd;
+#else
     Options.CompressDebugSections = DebugCompressionType::Zstd;
+#endif
   } else if (!strcmp("none", DebugInfoCompression)) {
+#if LLVM_VERSION_GE(19, 0)
+    Options.MCOptions.CompressDebugSections = DebugCompressionType::None;
+#else
     Options.CompressDebugSections = DebugCompressionType::None;
+#endif
   }
 
+#if LLVM_VERSION_GE(19, 0)
+  Options.MCOptions.X86RelaxRelocations = RelaxELFRelocations;
+#else
   Options.RelaxELFRelocations = RelaxELFRelocations;
+#endif
   Options.UseInitArray = UseInitArray;
 
 #if LLVM_VERSION_LT(17, 0)

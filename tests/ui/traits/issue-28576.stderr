@@ -1,3 +1,23 @@
+error[E0277]: the size for values of type `Self` cannot be known at compilation time
+  --> $DIR/issue-28576.rs:5:16
+   |
+LL | pub trait Bar: Foo<Assoc=()> {
+   |                ^^^^^^^^^^^^^ doesn't have a size known at compile-time
+   |
+note: required by an implicit `Sized` bound in `Foo`
+  --> $DIR/issue-28576.rs:1:15
+   |
+LL | pub trait Foo<RHS=Self> {
+   |               ^^^^^^^^ required by the implicit `Sized` requirement on this type parameter in `Foo`
+help: consider further restricting `Self`
+   |
+LL | pub trait Bar: Foo<Assoc=()> + Sized {
+   |                              +++++++
+help: consider relaxing the implicit `Sized` restriction
+   |
+LL | pub trait Foo<RHS: ?Sized=Self> {
+   |                  ++++++++
+
 error[E0038]: the trait `Bar` cannot be made into an object
   --> $DIR/issue-28576.rs:9:12
    |
@@ -18,26 +38,6 @@ help: consider using an opaque type instead
    |
 LL |            impl Bar
    |            ~~~~
-
-error[E0277]: the size for values of type `Self` cannot be known at compilation time
-  --> $DIR/issue-28576.rs:5:16
-   |
-LL | pub trait Bar: Foo<Assoc=()> {
-   |                ^^^^^^^^^^^^^ doesn't have a size known at compile-time
-   |
-note: required by an implicit `Sized` bound in `Foo`
-  --> $DIR/issue-28576.rs:1:15
-   |
-LL | pub trait Foo<RHS=Self> {
-   |               ^^^^^^^^ required by the implicit `Sized` requirement on this type parameter in `Foo`
-help: consider further restricting `Self`
-   |
-LL | pub trait Bar: Foo<Assoc=()> + Sized {
-   |                              +++++++
-help: consider relaxing the implicit `Sized` restriction
-   |
-LL | pub trait Foo<RHS: ?Sized=Self> {
-   |                  ++++++++
 
 error[E0277]: the size for values of type `Self` cannot be known at compilation time
   --> $DIR/issue-28576.rs:5:16

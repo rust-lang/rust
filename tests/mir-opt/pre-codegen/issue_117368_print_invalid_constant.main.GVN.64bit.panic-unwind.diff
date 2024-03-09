@@ -43,9 +43,9 @@
 +         _2 = const Option::<Layout>::None;
           StorageLive(_10);
 -         _10 = discriminant(_2);
--         switchInt(move _10) -> [0: bb2, 1: bb3, otherwise: bb5];
+-         switchInt(move _10) -> [0: bb3, 1: bb4, otherwise: bb2];
 +         _10 = const 0_isize;
-+         switchInt(const 0_isize) -> [0: bb2, 1: bb3, otherwise: bb5];
++         switchInt(const 0_isize) -> [0: bb3, 1: bb4, otherwise: bb2];
       }
   
       bb1: {
@@ -68,10 +68,14 @@
       }
   
       bb2: {
-          _11 = option::unwrap_failed() -> unwind continue;
+          unreachable;
       }
   
       bb3: {
+          _11 = option::unwrap_failed() -> unwind continue;
+      }
+  
+      bb4: {
 -         _1 = move ((_2 as Some).0: std::alloc::Layout);
 +         _1 = const Layout {{ size: Indirect { alloc_id: ALLOC0, offset: Size(8 bytes) }: usize, align: std::ptr::Alignment(Scalar(0x0000000000000000): std::ptr::alignment::AlignmentEnum) }};
           StorageDead(_10);
@@ -86,19 +90,15 @@
 +         _7 = const {ALLOC1<imm>: &std::alloc::Global};
           StorageLive(_8);
 -         _8 = _1;
--         _6 = std::alloc::Global::alloc_impl(move _7, move _8, const false) -> [return: bb4, unwind continue];
+-         _6 = std::alloc::Global::alloc_impl(move _7, move _8, const false) -> [return: bb5, unwind continue];
 +         _8 = const Layout {{ size: Indirect { alloc_id: ALLOC0, offset: Size(8 bytes) }: usize, align: std::ptr::Alignment(Scalar(0x0000000000000000): std::ptr::alignment::AlignmentEnum) }};
-+         _6 = std::alloc::Global::alloc_impl(const {ALLOC1<imm>: &std::alloc::Global}, const Layout {{ size: Indirect { alloc_id: ALLOC0, offset: Size(8 bytes) }: usize, align: std::ptr::Alignment(Scalar(0x0000000000000000): std::ptr::alignment::AlignmentEnum) }}, const false) -> [return: bb4, unwind continue];
-      }
-  
-      bb4: {
-          StorageDead(_8);
-          StorageDead(_7);
-          _5 = Result::<NonNull<[u8]>, std::alloc::AllocError>::unwrap(move _6) -> [return: bb1, unwind continue];
++         _6 = std::alloc::Global::alloc_impl(const {ALLOC1<imm>: &std::alloc::Global}, const Layout {{ size: Indirect { alloc_id: ALLOC0, offset: Size(8 bytes) }: usize, align: std::ptr::Alignment(Scalar(0x0000000000000000): std::ptr::alignment::AlignmentEnum) }}, const false) -> [return: bb5, unwind continue];
       }
   
       bb5: {
-          unreachable;
+          StorageDead(_8);
+          StorageDead(_7);
+          _5 = Result::<NonNull<[u8]>, std::alloc::AllocError>::unwrap(move _6) -> [return: bb1, unwind continue];
       }
   }
 + 

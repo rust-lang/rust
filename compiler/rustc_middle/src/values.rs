@@ -131,6 +131,27 @@ impl<'tcx> Value<TyCtxt<'tcx>> for ty::EarlyBinder<ty::Binder<'_, ty::FnSig<'_>>
     }
 }
 
+impl<'tcx> Value<TyCtxt<'tcx>> for &[ty::Variance] {
+    fn from_cycle_error(
+        tcx: TyCtxt<'tcx>,
+        cycle_error: &CycleError,
+        _guar: ErrorGuaranteed,
+    ) -> Self {
+        if let Some(frame) = cycle_error.cycle.get(0)
+            && frame.query.dep_kind == dep_kinds::variances_of
+            && let Some(def_id) = frame.query.def_id
+        {
+            let n = tcx.generics_of(def_id).params.len();
+            vec![ty::Variance::Bivariant; n].leak()
+        } else {
+            span_bug!(
+                cycle_error.usage.as_ref().unwrap().0,
+                "only `variances_of` returns `&[ty::Variance]`"
+            );
+        }
+    }
+}
+
 // Take a cycle of `Q` and try `try_cycle` on every permutation, falling back to `otherwise`.
 fn search_for_cycle_permutation<Q, T>(
     cycle: &[Q],

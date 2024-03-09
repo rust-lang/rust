@@ -13,7 +13,7 @@ impl<'a> Trait<'a> for X {
 }
 
 fn f() -> impl for<'a> Trait<'a, Out = impl Sized + 'a> {
-    //~^ ERROR higher kinded lifetime bounds on nested opaque types are not supported yet
+    //~^ ERROR `impl Trait` cannot capture higher-ranked lifetime from outer `impl Trait`
     X(())
 }
 

@@ -10,12 +10,26 @@ pushd rust
 
 command -v rg >/dev/null 2>&1 || cargo install ripgrep
 
+# FIXME(rust-lang/rust#122196) fix stage0 rmake.rs run-make tests and remove
+# this workaround
+for test in $(ls tests/run-make); do
+  if [[ -e "tests/run-make/$test/rmake.rs" ]]; then
+    rm -r "tests/run-make/$test"
+  fi
+done
+
+# FIXME remove this workaround once ICE tests no longer emit an outdated nightly message
+for test in $(rg -i --files-with-matches "//@(\[.*\])? failure-status: 101" tests/ui); do
+  echo "rm $test"
+  rm $test
+done
+
 rm -r tests/ui/{unsized-locals/,lto/,linkage*} || true
 for test in $(rg --files-with-matches "lto" tests/{codegen-units,ui,incremental}); do
   rm $test
 done
 
-for test in $(rg -i --files-with-matches "//(\[\w+\])?~[^\|]*\s*ERR|// error-pattern:|// build-fail|// run-fail|-Cllvm-args" tests/ui); do
+for test in $(rg -i --files-with-matches "//(\[\w+\])?~[^\|]*\s*ERR|//@ error-pattern:|//@(\[.*\])? build-fail|//@(\[.*\])? run-fail|-Cllvm-args" tests/ui); do
   rm $test
 done
 
@@ -43,8 +57,8 @@ rm tests/ui/proc-macro/allowed-signatures.rs
 rm tests/ui/proc-macro/no-mangle-in-proc-macro-issue-111888.rs
 
 # vendor intrinsics
-rm tests/ui/sse2.rs # CodegenBackend::target_features not yet implemented
 rm tests/ui/simd/array-type.rs # "Index argument for `simd_insert` is not a constant"
+rm tests/ui/asm/x86_64/evex512-implicit-feature.rs # unimplemented AVX512 x86 vendor intrinsic
 
 # exotic linkages
 rm tests/ui/issues/issue-33992.rs # unsupported linkages
@@ -62,14 +76,12 @@ rm -r tests/run-pass-valgrind/unsized-locals
 # misc unimplemented things
 rm tests/ui/intrinsics/intrinsic-nearby.rs # unimplemented nearbyintf32 and nearbyintf64 intrinsics
 rm tests/ui/target-feature/missing-plusminus.rs # error not implemented
-rm tests/ui/fn/dyn-fn-alignment.rs # wants a 256 byte alignment
 rm -r tests/run-make/emit-named-files # requires full --emit support
 rm -r tests/run-make/repr128-dwarf # debuginfo test
 rm -r tests/run-make/split-debuginfo # same
 rm -r tests/run-make/symbols-include-type-name # --emit=asm not supported
 rm -r tests/run-make/target-specs # i686 not supported by Cranelift
 rm -r tests/run-make/mismatching-target-triples # same
-rm tests/ui/asm/x86_64/issue-82869.rs # vector regs in inline asm not yet supported
 rm tests/ui/asm/x86_64/issue-96797.rs # const and sym inline asm operands don't work entirely correctly
 
 # requires LTO
@@ -109,8 +121,6 @@ rm -r tests/run-make/optimization-remarks-dir # remarks are LLVM specific
 rm tests/ui/mir/mir_misc_casts.rs # depends on deduplication of constants
 rm tests/ui/mir/mir_raw_fat_ptr.rs # same
 rm tests/ui/consts/issue-33537.rs # same
-rm tests/ui/layout/valid_range_oob.rs # different ICE message
-rm tests/ui/const-generics/generic_const_exprs/issue-80742.rs # gives error instead of ICE with cg_clif
 
 # rustdoc-clif passes extra args, suppressing the help message when no args are passed
 rm -r tests/run-make/issue-88756-default-output
@@ -119,14 +129,11 @@ rm -r tests/run-make/issue-88756-default-output
 # should work when using ./x.py test the way it is intended
 # ============================================================
 rm -r tests/run-make/remap-path-prefix-dwarf # requires llvm-dwarfdump
-rm -r tests/ui/consts/missing_span_in_backtrace.rs # expects sysroot source to be elsewhere
 
 # genuine bugs
 # ============
 rm tests/incremental/spike-neg1.rs # errors out for some reason
 rm tests/incremental/spike-neg2.rs # same
-
-rm tests/ui/simd/simd-bitmask.rs # simd_bitmask doesn't implement [u*; N] return type
 
 rm -r tests/run-make/issue-51671 # wrong filename given in case of --emit=obj
 rm -r tests/run-make/issue-30063 # same
@@ -145,6 +152,7 @@ rm tests/ui/codegen/subtyping-enforces-type-equality.rs # assert_assignable bug 
 # ======================
 rm tests/ui/backtrace.rs # TODO warning
 rm tests/ui/process/nofile-limit.rs # TODO some AArch64 linking issue
+rm tests/ui/async-await/async-closures/once.rs # FIXME bug in the rustc FnAbi calculation code
 
 rm tests/ui/stdio-is-blocking.rs # really slow with unoptimized libstd
 

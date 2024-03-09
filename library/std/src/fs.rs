@@ -248,10 +248,10 @@ pub struct DirBuilder {
 ///
 /// ```no_run
 /// use std::fs;
-/// use std::net::SocketAddr;
 ///
 /// fn main() -> Result<(), Box<dyn std::error::Error + 'static>> {
-///     let foo: SocketAddr = String::from_utf8_lossy(&fs::read("address.txt")?).parse()?;
+///     let data: Vec<u8> = fs::read("image.jpg")?;
+///     assert_eq!(data[0..3], [0xFF, 0xD8, 0xFF]);
 ///     Ok(())
 /// }
 /// ```
@@ -290,11 +290,11 @@ pub fn read<P: AsRef<Path>>(path: P) -> io::Result<Vec<u8>> {
 ///
 /// ```no_run
 /// use std::fs;
-/// use std::net::SocketAddr;
 /// use std::error::Error;
 ///
 /// fn main() -> Result<(), Box<dyn Error>> {
-///     let foo: SocketAddr = fs::read_to_string("address.txt")?.parse()?;
+///     let message: String = fs::read_to_string("message.txt")?;
+///     println!("{}", message);
 ///     Ok(())
 /// }
 /// ```

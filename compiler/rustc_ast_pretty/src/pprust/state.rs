@@ -1452,6 +1452,10 @@ impl<'a> State<'a> {
                             s.print_path(&sym.path, true, 0);
                         }
                     }
+                    InlineAsmOperand::Label { block } => {
+                        s.head("label");
+                        s.print_block(block);
+                    }
                 }
             }
             AsmArg::ClobberAbi(abi) => {

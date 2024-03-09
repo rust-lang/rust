@@ -1940,18 +1940,6 @@ impl<'tcx> TyCtxt<'tcx> {
         matches!(self.trait_of_item(def_id), Some(trait_id) if self.has_attr(trait_id, sym::const_trait))
     }
 
-    /// Returns the `DefId` of the item within which the `impl Trait` is declared.
-    /// For type-alias-impl-trait this is the `type` alias.
-    /// For impl-trait-in-assoc-type this is the assoc type.
-    /// For return-position-impl-trait this is the function.
-    pub fn impl_trait_parent(self, mut def_id: LocalDefId) -> LocalDefId {
-        // Find the surrounding item (type alias or assoc type)
-        while let DefKind::OpaqueTy = self.def_kind(def_id) {
-            def_id = self.local_parent(def_id);
-        }
-        def_id
-    }
-
     pub fn impl_method_has_trait_impl_trait_tys(self, def_id: DefId) -> bool {
         if self.def_kind(def_id) != DefKind::AssocFn {
             return false;

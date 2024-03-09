@@ -78,7 +78,8 @@ pub(crate) fn codegen_global_asm_item(tcx: TyCtxt<'_>, global_asm: &mut String, 
                         InlineAsmOperand::In { .. }
                         | InlineAsmOperand::Out { .. }
                         | InlineAsmOperand::InOut { .. }
-                        | InlineAsmOperand::SplitInOut { .. } => {
+                        | InlineAsmOperand::SplitInOut { .. }
+                        | InlineAsmOperand::Label { .. } => {
                             span_bug!(op_sp, "invalid operand type for global_asm!")
                         }
                     }

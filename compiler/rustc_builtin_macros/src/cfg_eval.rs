@@ -1,5 +1,6 @@
 use crate::util::{check_builtin_macro_attribute, warn_on_duplicate_attribute};
 
+use core::ops::ControlFlow;
 use rustc_ast as ast;
 use rustc_ast::mut_visit::MutVisitor;
 use rustc_ast::ptr::P;
@@ -87,41 +88,40 @@ fn flat_map_annotatable(
     }
 }
 
-struct CfgFinder {
-    has_cfg_or_cfg_attr: bool,
-}
+fn has_cfg_or_cfg_attr(annotatable: &Annotatable) -> bool {
+    struct CfgFinder;
 
-impl CfgFinder {
-    fn has_cfg_or_cfg_attr(annotatable: &Annotatable) -> bool {
-        let mut finder = CfgFinder { has_cfg_or_cfg_attr: false };
-        match annotatable {
-            Annotatable::Item(item) => finder.visit_item(item),
-            Annotatable::TraitItem(item) => finder.visit_assoc_item(item, visit::AssocCtxt::Trait),
-            Annotatable::ImplItem(item) => finder.visit_assoc_item(item, visit::AssocCtxt::Impl),
-            Annotatable::ForeignItem(item) => finder.visit_foreign_item(item),
-            Annotatable::Stmt(stmt) => finder.visit_stmt(stmt),
-            Annotatable::Expr(expr) => finder.visit_expr(expr),
-            Annotatable::Arm(arm) => finder.visit_arm(arm),
-            Annotatable::ExprField(field) => finder.visit_expr_field(field),
-            Annotatable::PatField(field) => finder.visit_pat_field(field),
-            Annotatable::GenericParam(param) => finder.visit_generic_param(param),
-            Annotatable::Param(param) => finder.visit_param(param),
-            Annotatable::FieldDef(field) => finder.visit_field_def(field),
-            Annotatable::Variant(variant) => finder.visit_variant(variant),
-            Annotatable::Crate(krate) => finder.visit_crate(krate),
-        };
-        finder.has_cfg_or_cfg_attr
-    }
-}
-
-impl<'ast> visit::Visitor<'ast> for CfgFinder {
-    fn visit_attribute(&mut self, attr: &'ast Attribute) {
-        // We want short-circuiting behavior, so don't use the '|=' operator.
-        self.has_cfg_or_cfg_attr = self.has_cfg_or_cfg_attr
-            || attr
+    impl<'ast> visit::Visitor<'ast> for CfgFinder {
+        type Result = ControlFlow<()>;
+        fn visit_attribute(&mut self, attr: &'ast Attribute) -> ControlFlow<()> {
+            if attr
                 .ident()
-                .is_some_and(|ident| ident.name == sym::cfg || ident.name == sym::cfg_attr);
+                .is_some_and(|ident| ident.name == sym::cfg || ident.name == sym::cfg_attr)
+            {
+                ControlFlow::Break(())
+            } else {
+                ControlFlow::Continue(())
+            }
+        }
     }
+
+    let res = match annotatable {
+        Annotatable::Item(item) => CfgFinder.visit_item(item),
+        Annotatable::TraitItem(item) => CfgFinder.visit_assoc_item(item, visit::AssocCtxt::Trait),
+        Annotatable::ImplItem(item) => CfgFinder.visit_assoc_item(item, visit::AssocCtxt::Impl),
+        Annotatable::ForeignItem(item) => CfgFinder.visit_foreign_item(item),
+        Annotatable::Stmt(stmt) => CfgFinder.visit_stmt(stmt),
+        Annotatable::Expr(expr) => CfgFinder.visit_expr(expr),
+        Annotatable::Arm(arm) => CfgFinder.visit_arm(arm),
+        Annotatable::ExprField(field) => CfgFinder.visit_expr_field(field),
+        Annotatable::PatField(field) => CfgFinder.visit_pat_field(field),
+        Annotatable::GenericParam(param) => CfgFinder.visit_generic_param(param),
+        Annotatable::Param(param) => CfgFinder.visit_param(param),
+        Annotatable::FieldDef(field) => CfgFinder.visit_field_def(field),
+        Annotatable::Variant(variant) => CfgFinder.visit_variant(variant),
+        Annotatable::Crate(krate) => CfgFinder.visit_crate(krate),
+    };
+    res.is_break()
 }
 
 impl CfgEval<'_, '_> {
@@ -132,7 +132,7 @@ impl CfgEval<'_, '_> {
     fn configure_annotatable(&mut self, mut annotatable: Annotatable) -> Option<Annotatable> {
         // Tokenizing and re-parsing the `Annotatable` can have a significant
         // performance impact, so try to avoid it if possible
-        if !CfgFinder::has_cfg_or_cfg_attr(&annotatable) {
+        if !has_cfg_or_cfg_attr(&annotatable) {
             return Some(annotatable);
         }
 

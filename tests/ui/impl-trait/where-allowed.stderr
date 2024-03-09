@@ -342,25 +342,6 @@ LL |     let _in_return_in_local_variable = || -> impl Fn() { || {} };
    |
    = note: `impl Trait` is only allowed in arguments and return types of functions and methods
 
-error: defaults for type parameters are only allowed in `struct`, `enum`, `type`, or `trait` definitions
-  --> $DIR/where-allowed.rs:239:7
-   |
-LL | impl <T = impl Debug> T {}
-   |       ^^^^^^^^^^^^^^
-   |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = note: for more information, see issue #36887 <https://github.com/rust-lang/rust/issues/36887>
-   = note: `#[deny(invalid_type_param_default)]` on by default
-
-error: defaults for type parameters are only allowed in `struct`, `enum`, `type`, or `trait` definitions
-  --> $DIR/where-allowed.rs:246:36
-   |
-LL | fn in_method_generic_param_default<T = impl Debug>(_: T) {}
-   |                                    ^^^^^^^^^^^^^^
-   |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = note: for more information, see issue #36887 <https://github.com/rust-lang/rust/issues/36887>
-
 error[E0283]: type annotations needed
   --> $DIR/where-allowed.rs:46:57
    |
@@ -380,6 +361,16 @@ LL | fn in_impl_Fn_return_in_return() -> &'static impl Fn() -> impl Debug { pani
              where A: Tuple, F: Fn<A>, F: ?Sized;
            - impl<Args, F, A> Fn<Args> for Box<F, A>
              where Args: Tuple, F: Fn<Args>, A: Allocator, F: ?Sized;
+
+error: defaults for type parameters are only allowed in `struct`, `enum`, `type`, or `trait` definitions
+  --> $DIR/where-allowed.rs:239:7
+   |
+LL | impl <T = impl Debug> T {}
+   |       ^^^^^^^^^^^^^^
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #36887 <https://github.com/rust-lang/rust/issues/36887>
+   = note: `#[deny(invalid_type_param_default)]` on by default
 
 error[E0118]: no nominal type found for inherent implementation
   --> $DIR/where-allowed.rs:239:1
@@ -427,6 +418,15 @@ LL |     type Out = impl Debug;
    |                ^^^^^^^^^^
    |
    = note: `Out` must be used in combination with a concrete type within the same impl
+
+error: defaults for type parameters are only allowed in `struct`, `enum`, `type`, or `trait` definitions
+  --> $DIR/where-allowed.rs:246:36
+   |
+LL | fn in_method_generic_param_default<T = impl Debug>(_: T) {}
+   |                                    ^^^^^^^^^^^^^^
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #36887 <https://github.com/rust-lang/rust/issues/36887>
 
 error: aborting due to 50 previous errors
 

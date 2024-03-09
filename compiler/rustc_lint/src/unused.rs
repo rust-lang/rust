@@ -20,6 +20,7 @@ use rustc_span::symbol::Symbol;
 use rustc_span::symbol::{kw, sym};
 use rustc_span::{BytePos, Span};
 use std::iter;
+use std::ops::ControlFlow;
 
 declare_lint! {
     /// The `unused_must_use` lint detects unused result of a type flagged as
@@ -753,21 +754,18 @@ trait UnusedDelimLint {
         // fn f(){(print!(á
         // ```
         use rustc_ast::visit::{walk_expr, Visitor};
-        struct ErrExprVisitor {
-            has_error: bool,
-        }
+        struct ErrExprVisitor;
         impl<'ast> Visitor<'ast> for ErrExprVisitor {
-            fn visit_expr(&mut self, expr: &'ast ast::Expr) {
+            type Result = ControlFlow<()>;
+            fn visit_expr(&mut self, expr: &'ast ast::Expr) -> ControlFlow<()> {
                 if let ExprKind::Err(_) = expr.kind {
-                    self.has_error = true;
-                    return;
+                    ControlFlow::Break(())
+                } else {
+                    walk_expr(self, expr)
                 }
-                walk_expr(self, expr)
             }
         }
-        let mut visitor = ErrExprVisitor { has_error: false };
-        visitor.visit_expr(value);
-        if visitor.has_error {
+        if ErrExprVisitor.visit_expr(value).is_break() {
             return;
         }
         let spans = match value.kind {

@@ -762,6 +762,7 @@ rustc_queries! {
         desc { |tcx| "computing the variances of `{}`", tcx.def_path_str(def_id) }
         cache_on_disk_if { def_id.is_local() }
         separate_provide_extern
+        cycle_delay_bug
     }
 
     /// Maps from thee `DefId` of a type to its (inferred) outlives.
@@ -957,10 +958,6 @@ rustc_queries! {
     query check_mod_type_wf(key: LocalModDefId) -> Result<(), ErrorGuaranteed> {
         desc { |tcx| "checking that types are well-formed in {}", describe_as_module(key, tcx) }
         ensure_forwards_result_if_red
-    }
-
-    query collect_mod_item_types(key: LocalModDefId) {
-        desc { |tcx| "collecting item types in {}", describe_as_module(key, tcx) }
     }
 
     /// Caches `CoerceUnsized` kinds for impls on custom types.
@@ -1745,7 +1742,7 @@ rustc_queries! {
         separate_provide_extern
     }
     /// Whether the function is an intrinsic
-    query intrinsic(def_id: DefId) -> Option<rustc_middle::ty::IntrinsicDef> {
+    query intrinsic_raw(def_id: DefId) -> Option<rustc_middle::ty::IntrinsicDef> {
         desc { |tcx| "fetch intrinsic name if `{}` is an intrinsic", tcx.def_path_str(def_id) }
         separate_provide_extern
     }
