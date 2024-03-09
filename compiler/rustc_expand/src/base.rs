@@ -1233,21 +1233,18 @@ pub fn resolve_path(sess: &Session, path: impl Into<PathBuf>, span: Span) -> PRe
     // after macro expansion (that is, they are unhygienic).
     if !path.is_absolute() {
         let callsite = span.source_callsite();
-        let mut result = match sess.source_map().span_to_filename(callsite) {
-            FileName::Real(name) => name
-                .into_local_path()
-                .expect("attempting to resolve a file path in an external file"),
-            FileName::DocTest(path, _) => path,
-            other => {
-                return Err(sess.dcx().create_err(errors::ResolveRelativePath {
-                    span,
-                    path: sess.source_map().filename_for_diagnostics(&other).to_string(),
-                }));
-            }
+        let source_map = sess.source_map();
+        let Some(mut base_path) = source_map.span_to_filename(callsite).into_local_path() else {
+            return Err(sess.dcx().create_err(errors::ResolveRelativePath {
+                span,
+                path: source_map
+                    .filename_for_diagnostics(&source_map.span_to_filename(callsite))
+                    .to_string(),
+            }));
         };
-        result.pop();
-        result.push(path);
-        Ok(result)
+        base_path.pop();
+        base_path.push(path);
+        Ok(base_path)
     } else {
         Ok(path)
     }
@@ -1344,6 +1341,15 @@ pub fn get_single_str_from_tts(
     tts: TokenStream,
     name: &str,
 ) -> Result<Symbol, ErrorGuaranteed> {
+    get_single_str_spanned_from_tts(cx, span, tts, name).map(|(s, _)| s)
+}
+
+pub fn get_single_str_spanned_from_tts(
+    cx: &mut ExtCtxt<'_>,
+    span: Span,
+    tts: TokenStream,
+    name: &str,
+) -> Result<(Symbol, Span), ErrorGuaranteed> {
     let mut p = cx.new_parser_from_tts(tts);
     if p.token == token::Eof {
         let guar = cx.dcx().emit_err(errors::OnlyOneArgument { span, name });
@@ -1355,7 +1361,12 @@ pub fn get_single_str_from_tts(
     if p.token != token::Eof {
         cx.dcx().emit_err(errors::OnlyOneArgument { span, name });
     }
-    expr_to_string(cx, ret, "argument must be a string literal").map(|(s, _)| s)
+    expr_to_spanned_string(cx, ret, "argument must be a string literal")
+        .map_err(|err| match err {
+            Ok((err, _)) => err.emit(),
+            Err(guar) => guar,
+        })
+        .map(|(symbol, _style, span)| (symbol, span))
 }
 
 /// Extracts comma-separated expressions from `tts`.
