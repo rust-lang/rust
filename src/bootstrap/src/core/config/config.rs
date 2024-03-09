@@ -812,8 +812,8 @@ define_config! {
         host: Option<Vec<String>> = "host",
         target: Option<Vec<String>> = "target",
         build_dir: Option<String> = "build-dir",
-        cargo: Option<String> = "cargo",
-        rustc: Option<String> = "rustc",
+        cargo: Option<PathBuf> = "cargo",
+        rustc: Option<PathBuf> = "rustc",
         rustfmt: Option<PathBuf> = "rustfmt",
         docs: Option<bool> = "docs",
         compiler_docs: Option<bool> = "compiler-docs",
@@ -1433,7 +1433,7 @@ impl Config {
             if !flags.skip_stage0_validation {
                 config.check_stage0_version(&rustc, "rustc");
             }
-            PathBuf::from(rustc)
+            rustc
         } else {
             config.download_beta_toolchain();
             config.out.join(config.build.triple).join("stage0/bin/rustc")
@@ -1443,7 +1443,7 @@ impl Config {
             if !flags.skip_stage0_validation {
                 config.check_stage0_version(&cargo, "cargo");
             }
-            PathBuf::from(cargo)
+            cargo
         } else {
             config.download_beta_toolchain();
             config.out.join(config.build.triple).join("stage0/bin/cargo")
@@ -2305,7 +2305,7 @@ impl Config {
     }
 
     // check rustc/cargo version is same or lower with 1 apart from the building one
-    pub fn check_stage0_version(&self, program_path: &str, component_name: &'static str) {
+    pub fn check_stage0_version(&self, program_path: &Path, component_name: &'static str) {
         if self.dry_run() {
             return;
         }
@@ -2316,7 +2316,8 @@ impl Config {
         let stage0_name = stage0_output.next().unwrap();
         if stage0_name != component_name {
             fail(&format!(
-                "Expected to find {component_name} at {program_path} but it claims to be {stage0_name}"
+                "Expected to find {component_name} at {} but it claims to be {stage0_name}",
+                program_path.display()
             ));
         }
 
