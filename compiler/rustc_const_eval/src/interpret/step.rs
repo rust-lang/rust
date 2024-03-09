@@ -264,7 +264,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                         // But we want to disable checks for language UB, because the interpreter
                         // has its own better checks for that.
                         let should_check = match kind {
-                            mir::UbKind::LibraryUb => true,
+                            mir::UbKind::LibraryUb => self.tcx.sess.opts.debug_assertions,
                             mir::UbKind::LanguageUb => false,
                         };
                         Scalar::from_bool(should_check)
