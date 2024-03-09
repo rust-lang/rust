@@ -171,7 +171,7 @@ pub struct DiscoverTestParams {
 
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
-pub enum TestItemIcon {
+pub enum TestItemKind {
     Package,
     Module,
     Test,
@@ -182,7 +182,7 @@ pub enum TestItemIcon {
 pub struct TestItem {
     pub id: String,
     pub label: String,
-    pub icon: TestItemIcon,
+    pub kind: TestItemKind,
     pub can_resolve_children: bool,
     pub parent: Option<String>,
     pub text_document: Option<TextDocumentIdentifier>,

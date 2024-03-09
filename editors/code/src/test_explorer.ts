@@ -85,7 +85,7 @@ export const prepareTestExplorer = (
         };
         const test = testController.createTestItem(
             item.id,
-            `$(${iconToVscodeMap[item.icon]}) ${item.label}`,
+            `$(${iconToVscodeMap[item.kind]}) ${item.label}`,
             uri,
         );
         test.range = range;
@@ -150,6 +150,10 @@ export const prepareTestExplorer = (
                 currentTestRun!.passed(test);
             } else if (results.state.tag === "started") {
                 currentTestRun!.started(test);
+            } else if (results.state.tag === "skipped") {
+                currentTestRun!.skipped(test);
+            } else if (results.state.tag === "enqueued") {
+                currentTestRun!.enqueued(test);
             }
         }),
     );

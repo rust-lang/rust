@@ -779,6 +779,7 @@ impl GlobalState {
             flycheck::CargoTestMessage::Test { name, state } => {
                 let state = match state {
                     flycheck::TestState::Started => lsp_ext::TestState::Started,
+                    flycheck::TestState::Ignored => lsp_ext::TestState::Skipped,
                     flycheck::TestState::Ok => lsp_ext::TestState::Passed,
                     flycheck::TestState::Failed { stdout } => {
                         lsp_ext::TestState::Failed { message: stdout }
