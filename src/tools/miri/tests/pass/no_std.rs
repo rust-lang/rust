@@ -1,4 +1,5 @@
-#![feature(lang_items, start)]
+//@compile-flags: -Cpanic=abort
+#![feature(start)]
 #![no_std]
 
 // Plumbing to let us use `writeln!` to host stdout:
@@ -32,6 +33,3 @@ fn start(_: isize, _: *const *const u8) -> isize {
 fn panic_handler(_: &core::panic::PanicInfo) -> ! {
     loop {}
 }
-
-#[lang = "eh_personality"]
-fn eh_personality() {}

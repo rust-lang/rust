@@ -1,5 +1,6 @@
-#![feature(lang_items, start, core_intrinsics)]
+#![feature(start, core_intrinsics)]
 #![no_std]
+//@compile-flags: -Cpanic=abort
 // windows tls dtors go through libstd right now, thus this test
 // cannot pass. When windows tls dtors go through the special magic
 // windows linker section, we can run this test on windows again.
@@ -36,6 +37,3 @@ fn panic_handler(panic_info: &core::panic::PanicInfo) -> ! {
     writeln!(HostErr, "{panic_info}").ok();
     core::intrinsics::abort(); //~ ERROR: the program aborted execution
 }
-
-#[lang = "eh_personality"]
-fn eh_personality() {}

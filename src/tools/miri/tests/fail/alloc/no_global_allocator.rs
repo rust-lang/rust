@@ -1,7 +1,8 @@
+//@compile-flags: -Cpanic=abort
 //@normalize-stderr-test: "OS `.*`" -> "$$OS"
 // Make sure we pretend the allocation symbols don't exist when there is no allocator
 
-#![feature(lang_items, start)]
+#![feature(start)]
 #![no_std]
 
 extern "Rust" {
@@ -21,6 +22,3 @@ fn start(_: isize, _: *const *const u8) -> isize {
 fn panic_handler(_: &core::panic::PanicInfo) -> ! {
     loop {}
 }
-
-#[lang = "eh_personality"]
-fn eh_personality() {}
