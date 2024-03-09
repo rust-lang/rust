@@ -1,7 +1,9 @@
+use core::ptr::addr_of;
+
 use crate::os::windows::prelude::*;
 
 use crate::borrow::Cow;
-use crate::ffi::{c_void, OsString};
+use crate::ffi::{c_void, OsStr, OsString};
 use crate::fmt;
 use crate::io::{self, BorrowedCursor, Error, IoSlice, IoSliceMut, SeekFrom};
 use crate::mem::{self, MaybeUninit};
@@ -1446,75 +1448,79 @@ pub fn copy(from: &Path, to: &Path) -> io::Result<u64> {
     Ok(size as u64)
 }
 
-#[allow(dead_code)]
-pub fn symlink_junction<P: AsRef<Path>, Q: AsRef<Path>>(
-    original: P,
-    junction: Q,
-) -> io::Result<()> {
-    symlink_junction_inner(original.as_ref(), junction.as_ref())
-}
-
-// Creating a directory junction on windows involves dealing with reparse
-// points and the DeviceIoControl function, and this code is a skeleton of
-// what can be found here:
-//
-// http://www.flexhex.com/docs/articles/hard-links.phtml
-#[allow(dead_code)]
-fn symlink_junction_inner(original: &Path, junction: &Path) -> io::Result<()> {
-    let d = DirBuilder::new();
-    d.mkdir(junction)?;
-
+pub fn junction_point(original: &Path, link: &Path) -> io::Result<()> {
+    // Create and open a new directory in one go.
     let mut opts = OpenOptions::new();
+    opts.create_new(true);
     opts.write(true);
-    opts.custom_flags(c::FILE_FLAG_OPEN_REPARSE_POINT | c::FILE_FLAG_BACKUP_SEMANTICS);
-    let f = File::open(junction, &opts)?;
-    let h = f.as_inner().as_raw_handle();
-    unsafe {
-        let mut data =
-            Align8([MaybeUninit::<u8>::uninit(); c::MAXIMUM_REPARSE_DATA_BUFFER_SIZE as usize]);
-        let data_ptr = data.0.as_mut_ptr();
-        let data_end = data_ptr.add(c::MAXIMUM_REPARSE_DATA_BUFFER_SIZE as usize);
-        let db = data_ptr.cast::<c::REPARSE_MOUNTPOINT_DATA_BUFFER>();
-        // Zero the header to ensure it's fully initialized, including reserved parameters.
-        *db = mem::zeroed();
-        let reparse_target_slice = {
-            let buf_start = ptr::addr_of_mut!((*db).ReparseTarget).cast::<c::WCHAR>();
-            // Compute offset in bytes and then divide so that we round down
-            // rather than hit any UB (admittedly this arithmetic should work
-            // out so that this isn't necessary)
-            let buf_len_bytes = usize::try_from(data_end.byte_offset_from(buf_start)).unwrap();
-            let buf_len_wchars = buf_len_bytes / core::mem::size_of::<c::WCHAR>();
-            core::slice::from_raw_parts_mut(buf_start, buf_len_wchars)
-        };
+    opts.custom_flags(c::FILE_FLAG_BACKUP_SEMANTICS | c::FILE_FLAG_POSIX_SEMANTICS);
+    opts.attributes(c::FILE_ATTRIBUTE_DIRECTORY);
 
-        // FIXME: this conversion is very hacky
-        let iter = br"\??\"
-            .iter()
-            .map(|x| *x as u16)
-            .chain(original.as_os_str().encode_wide())
-            .chain(core::iter::once(0));
-        let mut i = 0;
-        for c in iter {
-            if i >= reparse_target_slice.len() {
-                return Err(crate::io::const_io_error!(
-                    crate::io::ErrorKind::InvalidFilename,
-                    "Input filename is too long"
-                ));
-            }
-            reparse_target_slice[i] = c;
-            i += 1;
+    let d = File::open(link, &opts)?;
+
+    // We need to get an absolute, NT-style path.
+    let path_bytes = original.as_os_str().as_encoded_bytes();
+    let abs_path: Vec<u16> = if path_bytes.starts_with(br"\\?\") || path_bytes.starts_with(br"\??\")
+    {
+        // It's already an absolute path, we just need to convert the prefix to `\??\`
+        let bytes = unsafe { OsStr::from_encoded_bytes_unchecked(&path_bytes[4..]) };
+        r"\??\".encode_utf16().chain(bytes.encode_wide()).collect()
+    } else {
+        // Get an absolute path and then convert the prefix to `\??\`
+        let abs_path = crate::path::absolute(original)?.into_os_string().into_encoded_bytes();
+        if abs_path.len() > 0 && abs_path[1..].starts_with(br":\") {
+            let bytes = unsafe { OsStr::from_encoded_bytes_unchecked(&abs_path) };
+            r"\??\".encode_utf16().chain(bytes.encode_wide()).collect()
+        } else if abs_path.starts_with(br"\\.\") {
+            let bytes = unsafe { OsStr::from_encoded_bytes_unchecked(&abs_path[4..]) };
+            r"\??\".encode_utf16().chain(bytes.encode_wide()).collect()
+        } else if abs_path.starts_with(br"\\") {
+            let bytes = unsafe { OsStr::from_encoded_bytes_unchecked(&abs_path[2..]) };
+            r"\??\UNC\".encode_utf16().chain(bytes.encode_wide()).collect()
+        } else {
+            return Err(io::const_io_error!(io::ErrorKind::InvalidInput, "path is not valid"));
         }
-        (*db).ReparseTag = c::IO_REPARSE_TAG_MOUNT_POINT;
-        (*db).ReparseTargetMaximumLength = (i * 2) as c::WORD;
-        (*db).ReparseTargetLength = ((i - 1) * 2) as c::WORD;
-        (*db).ReparseDataLength = (*db).ReparseTargetLength as c::DWORD + 12;
+    };
+    // Defined inline so we don't have to mess about with variable length buffer.
+    #[repr(C)]
+    pub struct MountPointBuffer {
+        ReparseTag: u32,
+        ReparseDataLength: u16,
+        Reserved: u16,
+        SubstituteNameOffset: u16,
+        SubstituteNameLength: u16,
+        PrintNameOffset: u16,
+        PrintNameLength: u16,
+        PathBuffer: [MaybeUninit<u16>; c::MAXIMUM_REPARSE_DATA_BUFFER_SIZE as usize],
+    }
+    let data_len = 12 + (abs_path.len() * 2);
+    if data_len > u16::MAX as usize {
+        return Err(io::const_io_error!(
+            io::ErrorKind::InvalidInput,
+            "`original` path is too long"
+        ));
+    }
+    let data_len = data_len as u16;
+    let mut header = MountPointBuffer {
+        ReparseTag: c::IO_REPARSE_TAG_MOUNT_POINT,
+        ReparseDataLength: data_len,
+        Reserved: 0,
+        SubstituteNameOffset: 0,
+        SubstituteNameLength: (abs_path.len() * 2) as u16,
+        PrintNameOffset: ((abs_path.len() + 1) * 2) as u16,
+        PrintNameLength: 0,
+        PathBuffer: [MaybeUninit::uninit(); c::MAXIMUM_REPARSE_DATA_BUFFER_SIZE as usize],
+    };
+    unsafe {
+        let ptr = header.PathBuffer.as_mut_ptr();
+        ptr.copy_from(abs_path.as_ptr().cast::<MaybeUninit<u16>>(), abs_path.len());
 
         let mut ret = 0;
         cvt(c::DeviceIoControl(
-            h as *mut _,
+            d.as_raw_handle(),
             c::FSCTL_SET_REPARSE_POINT,
-            data_ptr.cast(),
-            (*db).ReparseDataLength + 8,
+            addr_of!(header).cast::<c_void>(),
+            data_len as u32 + 8,
             ptr::null_mut(),
             0,
             &mut ret,
