@@ -1099,6 +1099,32 @@ fn get_nullable_type<'tcx>(
     })
 }
 
+/// A type is niche_optimization_candiate iff:
+/// - Is a zero-sized type with alignment 1 (a “1-ZST”).
+/// - Has no fields.
+/// - Does not have the #[non_exhaustive] attribute.
+fn is_niche_optimization_candidate<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    param_env: ty::ParamEnv<'tcx>,
+    ty: Ty<'tcx>,
+) -> bool {
+    if !tcx.layout_of(param_env.and(ty)).is_ok_and(|layout| layout.is_1zst()) {
+        return false;
+    }
+
+    match ty.kind() {
+        ty::Adt(ty_def, _) => {
+            let non_exhaustive = ty_def.is_variant_list_non_exhaustive()
+                || ty_def.variants().iter().any(|variant| variant.is_field_list_non_exhaustive());
+            let contains_no_fields = ty_def.all_fields().next().is_none();
+
+            !non_exhaustive && contains_no_fields
+        }
+        ty::Tuple(tys) => tys.is_empty(),
+        _ => false,
+    }
+}
+
 /// Check if this enum can be safely exported based on the "nullable pointer optimization". If it
 /// can, return the type that `ty` can be safely converted to, otherwise return `None`.
 /// Currently restricted to function pointers, boxes, references, `core::num::NonZero`,
@@ -1115,6 +1141,26 @@ pub(crate) fn repr_nullable_ptr<'tcx>(
         let field_ty = match &ty_def.variants().raw[..] {
             [var_one, var_two] => match (&var_one.fields.raw[..], &var_two.fields.raw[..]) {
                 ([], [field]) | ([field], []) => field.ty(tcx, args),
+                ([field1], [field2]) => {
+                    // TODO: We pass all the checks here although individual enum variants has
+                    // checks for FFI safety even when niche optimized which needs to be
+                    // suppressed. for types like `Result<PhantomData<()>, E>`, PhantomData has
+                    // it's own lint for FFI which needs to be suppressed: `composed only of
+                    // `PhantomData``. This is true for other custom types as well `struct
+                    // Example;` which emits `this struct has unspecified layout` and suggests to
+                    // add `#[repr(C)]` and when that is done, linter emits `this struct has no
+                    // fields`, all under the `improper_ctypes_definitions` lint group
+                    let ty1 = field1.ty(tcx, args);
+                    let ty2 = field2.ty(tcx, args);
+
+                    if is_niche_optimization_candidate(tcx, param_env, ty1) {
+                        ty2
+                    } else if is_niche_optimization_candidate(tcx, param_env, ty2) {
+                        ty1
+                    } else {
+                        return None;
+                    }
+                }
                 _ => return None,
             },
             _ => return None,
@@ -1331,7 +1377,7 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
                         // discriminant.
                         if !def.repr().c() && !def.repr().transparent() && def.repr().int.is_none()
                         {
-                            // Special-case types like `Option<extern fn()>`.
+                            // Special-case types like `Option<extern fn()>` and `Result<extern fn(), ()>`
                             if repr_nullable_ptr(self.cx.tcx, self.cx.param_env, ty, self.mode)
                                 .is_none()
                             {
