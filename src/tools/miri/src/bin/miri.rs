@@ -341,7 +341,8 @@ fn main() {
     // (`install_ice_hook` might change `RUST_BACKTRACE`.)
     let env_snapshot = env::vars_os().collect::<Vec<_>>();
 
-    let args = rustc_driver::args::raw_args(&early_dcx).unwrap_or_else(|_| std::process::exit(rustc_driver::EXIT_FAILURE));
+    let args = rustc_driver::args::raw_args(&early_dcx)
+        .unwrap_or_else(|_| std::process::exit(rustc_driver::EXIT_FAILURE));
 
     // If the environment asks us to actually be rustc, then do that.
     if let Some(crate_kind) = env::var_os("MIRI_BE_RUSTC") {
