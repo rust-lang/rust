@@ -253,10 +253,10 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
     ) -> (<Self as BackendTypes>::Value, <Self as BackendTypes>::Value) {
         use rustc_middle::ty::{Int, IntTy::*, Uint, UintTy::*};
 
-        let new_kind = match typ.kind() {
+        let new_kind = match *typ.kind() {
             Int(t @ Isize) => Int(t.normalize(self.tcx.sess.target.pointer_width)),
             Uint(t @ Usize) => Uint(t.normalize(self.tcx.sess.target.pointer_width)),
-            t @ (Uint(_) | Int(_)) => *t,
+            t @ (Uint(_) | Int(_)) => t,
             _ => panic!("tried to get overflow intrinsic for op applied to non-int type"),
         };
 

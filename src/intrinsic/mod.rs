@@ -166,7 +166,9 @@ impl<'a, 'gcc, 'tcx> IntrinsicCallMethods<'tcx> for Builder<'a, 'gcc, 'tcx> {
             sym::volatile_load | sym::unaligned_volatile_load => {
                 let tp_ty = fn_args.type_at(0);
                 let ptr = args[0].immediate();
-                let load = if let PassMode::Cast { cast: ty, pad_i32: _ } = &fn_abi.ret.mode {
+                // The reference was changed to clone to comply to clippy.
+                let load = if let PassMode::Cast { cast: ty, pad_i32: _ } = fn_abi.ret.mode.clone()
+                {
                     let gcc_ty = ty.gcc_type(self);
                     self.volatile_load(gcc_ty, ptr)
                 } else {
@@ -308,17 +310,18 @@ impl<'a, 'gcc, 'tcx> IntrinsicCallMethods<'tcx> for Builder<'a, 'gcc, 'tcx> {
                 let b = args[1].immediate();
                 if layout.size().bytes() == 0 {
                     self.const_bool(true)
-                }
-                /*else if use_integer_compare {
-                    let integer_ty = self.type_ix(layout.size.bits()); // FIXME(antoyo): LLVM creates an integer of 96 bits for [i32; 3], but gcc doesn't support this, so it creates an integer of 128 bits.
-                    let ptr_ty = self.type_ptr_to(integer_ty);
-                    let a_ptr = self.bitcast(a, ptr_ty);
-                    let a_val = self.load(integer_ty, a_ptr, layout.align.abi);
-                    let b_ptr = self.bitcast(b, ptr_ty);
-                    let b_val = self.load(integer_ty, b_ptr, layout.align.abi);
-                    self.icmp(IntPredicate::IntEQ, a_val, b_val)
-                }*/
-                else {
+                    // The else if an immediate neighbor of this block.
+                    // It is moved here to comply to Clippy.
+                    /*else if use_integer_compare {
+                        let integer_ty = self.type_ix(layout.size.bits()); // FIXME(antoyo): LLVM creates an integer of 96 bits for [i32; 3], but gcc doesn't support this, so it creates an integer of 128 bits.
+                        let ptr_ty = self.type_ptr_to(integer_ty);
+                        let a_ptr = self.bitcast(a, ptr_ty);
+                        let a_val = self.load(integer_ty, a_ptr, layout.align.abi);
+                        let b_ptr = self.bitcast(b, ptr_ty);
+                        let b_val = self.load(integer_ty, b_ptr, layout.align.abi);
+                        self.icmp(IntPredicate::IntEQ, a_val, b_val)
+                    }*/
+                } else {
                     let void_ptr_type = self.context.new_type::<*const ()>();
                     let a_ptr = self.bitcast(a, void_ptr_type);
                     let b_ptr = self.bitcast(b, void_ptr_type);
@@ -385,7 +388,8 @@ impl<'a, 'gcc, 'tcx> IntrinsicCallMethods<'tcx> for Builder<'a, 'gcc, 'tcx> {
         };
 
         if !fn_abi.ret.is_ignore() {
-            if let PassMode::Cast { cast: ty, .. } = &fn_abi.ret.mode {
+            // The reference was changed to clone to comply to clippy.
+            if let PassMode::Cast { cast: ty, .. } = fn_abi.ret.mode.clone() {
                 let ptr_llty = self.type_ptr_to(ty.gcc_type(self));
                 let ptr = self.pointercast(result.llval, ptr_llty);
                 self.store(llval, ptr, result.align);
@@ -586,7 +590,7 @@ fn int_type_width_signed<'gcc, 'tcx>(
     ty: Ty<'tcx>,
     cx: &CodegenCx<'gcc, 'tcx>,
 ) -> Option<(u64, bool)> {
-    match ty.kind() {
+    match *ty.kind() {
         ty::Int(t) => Some((
             match t {
                 rustc_middle::ty::IntTy::Isize => u64::from(cx.tcx.sess.target.pointer_width),
