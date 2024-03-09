@@ -7,7 +7,8 @@ cd $1
 # Setting up folders for GCC
 git clone https://github.com/antoyo/gcc gcc-src
 cd gcc-src
-git checkout $(head -1 /scripts/libgccjit.version)
+# This commit hash needs to be updated to use a more recent gcc fork version.
+git checkout 78dc50f0e50e6cd1433149520bd512a4e0eaa1bc
 
 mkdir ../gcc-build ../gcc-install
 cd ../gcc-build
