@@ -25,7 +25,6 @@ pub type UINT = c_uint;
 pub type WCHAR = u16;
 pub type USHORT = c_ushort;
 pub type SIZE_T = usize;
-pub type WORD = u16;
 pub type CHAR = c_char;
 pub type ULONG = c_ulong;
 
@@ -144,16 +143,6 @@ pub struct MOUNT_POINT_REPARSE_BUFFER {
     pub PrintNameOffset: c_ushort,
     pub PrintNameLength: c_ushort,
     pub PathBuffer: WCHAR,
-}
-#[repr(C)]
-pub struct REPARSE_MOUNTPOINT_DATA_BUFFER {
-    pub ReparseTag: DWORD,
-    pub ReparseDataLength: DWORD,
-    pub Reserved: WORD,
-    pub ReparseTargetLength: WORD,
-    pub ReparseTargetMaximumLength: WORD,
-    pub Reserved1: WORD,
-    pub ReparseTarget: WCHAR,
 }
 
 #[repr(C)]
