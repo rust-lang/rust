@@ -101,10 +101,11 @@ pub(crate) fn run_in_thread_pool_with_globals<F: FnOnce() -> R + Send, R: Send>(
     threads: usize,
     f: F,
 ) -> R {
-    use rustc_data_structures::{jobserver, sync::FromDyn};
+    use rustc_data_structures::{defer, jobserver, sync::FromDyn};
     use rustc_middle::ty::tls;
     use rustc_query_impl::QueryCtxt;
-    use rustc_query_system::query::{deadlock, QueryContext};
+    use rustc_query_system::query::{break_query_cycles, QueryContext};
+    use std::process;
 
     let registry = sync::Registry::new(std::num::NonZero::new(threads).unwrap());
 
@@ -128,7 +129,19 @@ pub(crate) fn run_in_thread_pool_with_globals<F: FnOnce() -> R + Send, R: Send>(
             let query_map =
                 FromDyn::from(tls::with(|tcx| QueryCtxt::new(tcx).collect_active_jobs()));
             let registry = rayon_core::Registry::current();
-            thread::spawn(move || deadlock(query_map.into_inner(), &registry));
+            thread::Builder::new()
+                .name("rustc query cycle handler".to_string())
+                .spawn(move || {
+                    let on_panic = defer(|| {
+                        eprintln!("query cycle handler thread panicked, aborting process");
+                        // We need to abort here as we failed to resolve the deadlock,
+                        // otherwise the compiler could just hang,
+                        process::abort();
+                    });
+                    break_query_cycles(query_map.into_inner(), &registry);
+                    on_panic.disable();
+                })
+                .unwrap();
         });
     if let Some(size) = get_stack_size() {
         builder = builder.stack_size(size);
