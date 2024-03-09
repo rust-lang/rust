@@ -2334,6 +2334,14 @@ impl<'tcx> TyCtxt<'tcx> {
         )
     }
 
+    pub fn intrinsic(self, def_id: impl IntoQueryParam<DefId> + Copy) -> Option<ty::IntrinsicDef> {
+        match self.def_kind(def_id) {
+            DefKind::Fn | DefKind::AssocFn => {}
+            _ => return None,
+        }
+        self.intrinsic_raw(def_id)
+    }
+
     pub fn local_def_id_to_hir_id(self, local_def_id: LocalDefId) -> HirId {
         self.opt_local_def_id_to_hir_id(local_def_id).unwrap()
     }

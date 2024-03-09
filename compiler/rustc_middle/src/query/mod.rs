@@ -1742,7 +1742,7 @@ rustc_queries! {
         separate_provide_extern
     }
     /// Whether the function is an intrinsic
-    query intrinsic(def_id: DefId) -> Option<rustc_middle::ty::IntrinsicDef> {
+    query intrinsic_raw(def_id: DefId) -> Option<rustc_middle::ty::IntrinsicDef> {
         desc { |tcx| "fetch intrinsic name if `{}` is an intrinsic", tcx.def_path_str(def_id) }
         separate_provide_extern
     }
