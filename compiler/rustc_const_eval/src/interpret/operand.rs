@@ -661,9 +661,10 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     ) -> InterpResult<'tcx, OpTy<'tcx, M::Provenance>> {
         match place.as_mplace_or_local() {
             Left(mplace) => Ok(mplace.into()),
-            Right((frame, local, offset)) => {
+            Right((local, offset, locals_addr)) => {
                 debug_assert!(place.layout.is_sized()); // only sized locals can ever be `Place::Local`.
-                let base = self.local_to_op(&self.stack()[frame], local, None)?;
+                debug_assert_eq!(locals_addr, self.frame().locals_addr());
+                let base = self.local_to_op(&self.frame(), local, None)?;
                 Ok(match offset {
                     Some(offset) => base.offset(offset, place.layout, self)?,
                     None => {

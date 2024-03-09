@@ -1,4 +1,5 @@
 use std::cell::Cell;
+use std::ptr;
 use std::{fmt, mem};
 
 use either::{Either, Left, Right};
@@ -278,6 +279,11 @@ impl<'mir, 'tcx, Prov: Provenance, Extra> Frame<'mir, 'tcx, Prov, Extra> {
                 mir::ClearCrossCrate::Clear => None,
             }
         })
+    }
+
+    #[inline(always)]
+    pub(super) fn locals_addr(&self) -> usize {
+        ptr::addr_of!(self.locals).addr()
     }
 }
 
@@ -1212,18 +1218,16 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> std::fmt::Debug
 {
     fn fmt(&self, fmt: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self.place {
-            Place::Local { frame, local, offset } => {
+            Place::Local { local, offset, locals_addr } => {
+                debug_assert_eq!(locals_addr, self.ecx.frame().locals_addr());
                 let mut allocs = Vec::new();
                 write!(fmt, "{local:?}")?;
                 if let Some(offset) = offset {
                     write!(fmt, "+{:#x}", offset.bytes())?;
                 }
-                if frame != self.ecx.frame_idx() {
-                    write!(fmt, " ({} frames up)", self.ecx.frame_idx() - frame)?;
-                }
                 write!(fmt, ":")?;
 
-                match self.ecx.stack()[frame].locals[local].value {
+                match self.ecx.frame().locals[local].value {
                     LocalValue::Dead => write!(fmt, " is dead")?,
                     LocalValue::Live(Operand::Immediate(Immediate::Uninit)) => {
                         write!(fmt, " is uninitialized")?
