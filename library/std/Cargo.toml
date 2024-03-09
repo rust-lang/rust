@@ -17,7 +17,6 @@ cfg-if = { version = "1.0", features = ['rustc-dep-of-std'] }
 panic_unwind = { path = "../panic_unwind", optional = true }
 panic_abort = { path = "../panic_abort" }
 core = { path = "../core", public = true }
-libc = { version = "0.2.153", default-features = false, features = ['rustc-dep-of-std'], public = true }
 compiler_builtins = { version = "0.1.105" }
 profiler_builtins = { path = "../profiler_builtins", optional = true }
 unwind = { path = "../unwind" }
@@ -30,6 +29,12 @@ rustc-demangle = { version = "0.1.21", features = ['rustc-dep-of-std'] }
 [target.'cfg(not(all(windows, target_env = "msvc", not(target_vendor = "uwp"))))'.dependencies]
 miniz_oxide = { version = "0.7.0", optional = true, default-features = false }
 addr2line = { version = "0.21.0", optional = true, default-features = false }
+
+[target.'cfg(not(all(windows, target_env = "msvc")))'.dependencies]
+libc = { version = "0.2.153", default-features = false, features = ['rustc-dep-of-std'], public = true }
+
+[target.'cfg(all(windows, target_env = "msvc"))'.dependencies]
+libc = { version = "0.2.153", default-features = false }
 
 [target.'cfg(all(not(target_os = "aix"), not(all(windows, target_env = "msvc", not(target_vendor = "uwp")))))'.dependencies]
 object = { version = "0.32.0", default-features = false, optional = true, features = ['read_core', 'elf', 'macho', 'pe', 'unaligned', 'archive'] }
