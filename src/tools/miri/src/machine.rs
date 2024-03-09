@@ -1287,16 +1287,17 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for MiriMachine<'mir, 'tcx> {
         machine: &mut Self,
         alloc_extra: &mut AllocExtra<'tcx>,
         (alloc_id, prove_extra): (AllocId, Self::ProvenanceExtra),
-        range: AllocRange,
+        size: Size,
+        _align: Align,
     ) -> InterpResult<'tcx> {
         if machine.tracked_alloc_ids.contains(&alloc_id) {
             machine.emit_diagnostic(NonHaltingDiagnostic::FreedAlloc(alloc_id));
         }
         if let Some(data_race) = &mut alloc_extra.data_race {
-            data_race.deallocate(alloc_id, range, machine)?;
+            data_race.deallocate(alloc_id, size, machine)?;
         }
         if let Some(borrow_tracker) = &mut alloc_extra.borrow_tracker {
-            borrow_tracker.before_memory_deallocation(alloc_id, prove_extra, range, machine)?;
+            borrow_tracker.before_memory_deallocation(alloc_id, prove_extra, size, machine)?;
         }
         if let Some((_, deallocated_at)) = machine.allocation_spans.borrow_mut().get_mut(&alloc_id)
         {

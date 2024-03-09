@@ -80,7 +80,7 @@ impl<'tcx> Tree {
         &mut self,
         alloc_id: AllocId,
         prov: ProvenanceExtra,
-        range: AllocRange,
+        size: Size,
         machine: &MiriMachine<'_, 'tcx>,
     ) -> InterpResult<'tcx> {
         // TODO: for now we bail out on wildcard pointers. Eventually we should
@@ -91,7 +91,7 @@ impl<'tcx> Tree {
         };
         let global = machine.borrow_tracker.as_ref().unwrap();
         let span = machine.current_span();
-        self.dealloc(tag, range, global, alloc_id, span)
+        self.dealloc(tag, alloc_range(Size::ZERO, size), global, alloc_id, span)
     }
 
     pub fn expose_tag(&mut self, _tag: BorTag) {

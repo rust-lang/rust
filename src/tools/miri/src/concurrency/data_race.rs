@@ -1071,10 +1071,10 @@ impl VClockAlloc {
     pub fn deallocate<'tcx>(
         &mut self,
         alloc_id: AllocId,
-        range: AllocRange,
+        size: Size,
         machine: &mut MiriMachine<'_, '_>,
     ) -> InterpResult<'tcx> {
-        self.unique_access(alloc_id, range, NaWriteType::Deallocate, machine)
+        self.unique_access(alloc_id, alloc_range(Size::ZERO, size), NaWriteType::Deallocate, machine)
     }
 }
 
