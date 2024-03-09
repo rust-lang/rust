@@ -1,3 +1,6 @@
+//! This module is responsible for managing the absolute addresses that allocations are located at,
+//! and for casting between pointers and integers based on those addresses.
+
 use std::cell::RefCell;
 use std::cmp::max;
 use std::collections::hash_map::Entry;
@@ -96,7 +99,7 @@ trait EvalContextExtPriv<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
     // or `None` if the addr is out of bounds
     fn alloc_id_from_addr(&self, addr: u64) -> Option<AllocId> {
         let ecx = self.eval_context_ref();
-        let global_state = ecx.machine.intptrcast.borrow();
+        let global_state = ecx.machine.alloc_addresses.borrow();
         assert!(global_state.provenance_mode != ProvenanceMode::Strict);
 
         let pos = global_state.int_to_ptr_map.binary_search_by_key(&addr, |(addr, _)| *addr);
@@ -133,7 +136,7 @@ trait EvalContextExtPriv<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
 
     fn addr_from_alloc_id(&self, alloc_id: AllocId) -> InterpResult<'tcx, u64> {
         let ecx = self.eval_context_ref();
-        let mut global_state = ecx.machine.intptrcast.borrow_mut();
+        let mut global_state = ecx.machine.alloc_addresses.borrow_mut();
         let global_state = &mut *global_state;
 
         Ok(match global_state.base_addr.entry(alloc_id) {
@@ -196,7 +199,7 @@ impl<'mir, 'tcx: 'mir> EvalContextExt<'mir, 'tcx> for crate::MiriInterpCx<'mir, 
 pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
     fn expose_ptr(&mut self, alloc_id: AllocId, tag: BorTag) -> InterpResult<'tcx> {
         let ecx = self.eval_context_mut();
-        let global_state = ecx.machine.intptrcast.get_mut();
+        let global_state = ecx.machine.alloc_addresses.get_mut();
         // In strict mode, we don't need this, so we can save some cycles by not tracking it.
         if global_state.provenance_mode == ProvenanceMode::Strict {
             return Ok(());
@@ -207,7 +210,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
             return Ok(());
         }
         trace!("Exposing allocation id {alloc_id:?}");
-        let global_state = ecx.machine.intptrcast.get_mut();
+        let global_state = ecx.machine.alloc_addresses.get_mut();
         global_state.exposed.insert(alloc_id);
         if ecx.machine.borrow_tracker.is_some() {
             ecx.expose_tag(alloc_id, tag)?;
@@ -219,7 +222,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         trace!("Casting {:#x} to a pointer", addr);
 
         let ecx = self.eval_context_ref();
-        let global_state = ecx.machine.intptrcast.borrow();
+        let global_state = ecx.machine.alloc_addresses.borrow();
 
         // Potentially emit a warning.
         match global_state.provenance_mode {

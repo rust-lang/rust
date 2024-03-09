@@ -436,7 +436,7 @@ pub struct MiriMachine<'mir, 'tcx> {
     pub data_race: Option<data_race::GlobalState>,
 
     /// Ptr-int-cast module global data.
-    pub intptrcast: intptrcast::GlobalState,
+    pub alloc_addresses: alloc_addresses::GlobalState,
 
     /// Environment variables set by `setenv`.
     /// Miri does not expose env vars from the host to the emulated program.
@@ -634,7 +634,7 @@ impl<'mir, 'tcx> MiriMachine<'mir, 'tcx> {
             tcx,
             borrow_tracker,
             data_race,
-            intptrcast: RefCell::new(intptrcast::GlobalStateInner::new(config, stack_addr)),
+            alloc_addresses: RefCell::new(alloc_addresses::GlobalStateInner::new(config, stack_addr)),
             // `env_vars` depends on a full interpreter so we cannot properly initialize it yet.
             env_vars: EnvVars::default(),
             main_fn_ret_place: None,
@@ -782,7 +782,7 @@ impl VisitProvenance for MiriMachine<'_, '_> {
             dir_handler,
             borrow_tracker,
             data_race,
-            intptrcast,
+            alloc_addresses,
             file_handler,
             tcx: _,
             isolated_op: _,
@@ -827,7 +827,7 @@ impl VisitProvenance for MiriMachine<'_, '_> {
         file_handler.visit_provenance(visit);
         data_race.visit_provenance(visit);
         borrow_tracker.visit_provenance(visit);
-        intptrcast.visit_provenance(visit);
+        alloc_addresses.visit_provenance(visit);
         main_fn_ret_place.visit_provenance(visit);
         argc.visit_provenance(visit);
         argv.visit_provenance(visit);
@@ -1304,7 +1304,7 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for MiriMachine<'mir, 'tcx> {
         {
             *deallocated_at = Some(machine.current_span());
         }
-        machine.intptrcast.get_mut().free_alloc_id(alloc_id);
+        machine.alloc_addresses.get_mut().free_alloc_id(alloc_id);
         Ok(())
     }
 
