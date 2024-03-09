@@ -284,9 +284,9 @@ impl FileDesc {
         super::weak::weak!(fn preadv(libc::c_int, *const libc::iovec, libc::c_int, off64_t) -> isize);
 
         match preadv.get() {
-            Some(preadv) => {
+            Some(read) => {
                 let ret = cvt(unsafe {
-                    preadv(
+                    read(
                         self.as_raw_fd(),
                         bufs.as_mut_ptr() as *mut libc::iovec as *const libc::iovec,
                         cmp::min(bufs.len(), max_iov()) as libc::c_int,
@@ -477,9 +477,9 @@ impl FileDesc {
         super::weak::weak!(fn pwritev(libc::c_int, *const libc::iovec, libc::c_int, off64_t) -> isize);
 
         match pwritev.get() {
-            Some(pwritev) => {
+            Some(read) => {
                 let ret = cvt(unsafe {
-                    pwritev(
+                    read(
                         self.as_raw_fd(),
                         bufs.as_ptr() as *const libc::iovec,
                         cmp::min(bufs.len(), max_iov()) as libc::c_int,
