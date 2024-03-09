@@ -182,6 +182,18 @@ fn declare_raw_fn<'gcc>(
             .collect();
         #[cfg(not(feature = "master"))]
         let name = mangle_name(name);
+
+        #[cfg(not(feature = "master"))]
+        let func = cx.context.new_function(
+            None,
+            cx.linkage.get(),
+            return_type,
+            &params,
+            name.clone(),
+            variadic,
+        );
+
+        #[cfg(feature = "master")]
         let func =
             cx.context.new_function(None, cx.linkage.get(), return_type, &params, name, variadic);
         cx.functions.borrow_mut().insert(name.to_string(), func);
