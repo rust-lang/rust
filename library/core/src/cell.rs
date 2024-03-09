@@ -434,6 +434,8 @@ impl<T> Cell<T> {
     #[inline]
     #[stable(feature = "move_cell", since = "1.17.0")]
     pub fn swap(&self, other: &Self) {
+        // This function documents that it *will* panic, and intrinsics::is_nonoverlapping doesn't
+        // do the check in const, so trying to use it here would be inviting unnecessary fragility.
         fn is_nonoverlapping<T>(src: *const T, dst: *const T) -> bool {
             let src_usize = src.addr();
             let dst_usize = dst.addr();
