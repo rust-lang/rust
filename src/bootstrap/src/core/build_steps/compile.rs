@@ -27,7 +27,6 @@ use crate::core::builder::crate_description;
 use crate::core::builder::Cargo;
 use crate::core::builder::{Builder, Kind, PathSet, RunConfig, ShouldRun, Step, TaskPath};
 use crate::core::config::{DebuginfoLevel, LlvmLibunwind, RustcLto, TargetSelection};
-use crate::utils::cache::{Interned, INTERNER};
 use crate::utils::helpers::{
     exe, get_clang_cl_resource_dir, is_debug_info, is_dylib, output, symlink_dir, t, up_to_date,
 };
@@ -35,14 +34,14 @@ use crate::LLVM_TOOLS;
 use crate::{CLang, Compiler, DependencyType, GitRepo, Mode};
 use filetime::FileTime;
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct Std {
     pub target: TargetSelection,
     pub compiler: Compiler,
     /// Whether to build only a subset of crates in the standard library.
     ///
     /// This shouldn't be used from other steps; see the comment on [`Rustc`].
-    crates: Interned<Vec<String>>,
+    crates: Vec<String>,
     /// When using download-rustc, we need to use a new build of `std` for running unit tests of Std itself,
     /// but we need to use the downloaded copy of std for linking to rustdoc. Allow this to be overriden by `builder.ensure` from other steps.
     force_recompile: bool,
@@ -559,13 +558,13 @@ pub fn std_cargo(builder: &Builder<'_>, target: TargetSelection, stage: u32, car
     cargo.rustdocflag("-Zcrate-attr=warn(rust_2018_idioms)");
 }
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 struct StdLink {
     pub compiler: Compiler,
     pub target_compiler: Compiler,
     pub target: TargetSelection,
     /// Not actually used; only present to make sure the cache invalidation is correct.
-    crates: Interned<Vec<String>>,
+    crates: Vec<String>,
     /// See [`Std::force_recompile`].
     force_recompile: bool,
 }
@@ -612,7 +611,7 @@ impl Step for StdLink {
             });
             let libdir = sysroot.join(lib).join("rustlib").join(target.triple).join("lib");
             let hostdir = sysroot.join(lib).join("rustlib").join(compiler.host.triple).join("lib");
-            (INTERNER.intern_path(libdir), INTERNER.intern_path(hostdir))
+            (libdir, hostdir)
         } else {
             let libdir = builder.sysroot_libdir(target_compiler, target);
             let hostdir = builder.sysroot_libdir(target_compiler, compiler.host);
@@ -818,7 +817,7 @@ fn cp_rustc_component_to_ci_sysroot(
     }
 }
 
-#[derive(Debug, PartialOrd, Ord, Copy, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, PartialOrd, Ord, Clone, PartialEq, Eq, Hash)]
 pub struct Rustc {
     pub target: TargetSelection,
     pub compiler: Compiler,
@@ -827,7 +826,7 @@ pub struct Rustc {
     /// This should only be requested by the user, not used within rustbuild itself.
     /// Using it within rustbuild can lead to confusing situation where lints are replayed
     /// in two different steps.
-    crates: Interned<Vec<String>>,
+    crates: Vec<String>,
 }
 
 impl Rustc {
@@ -1220,13 +1219,13 @@ fn rustc_llvm_env(builder: &Builder<'_>, cargo: &mut Cargo, target: TargetSelect
     }
 }
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 struct RustcLink {
     pub compiler: Compiler,
     pub target_compiler: Compiler,
     pub target: TargetSelection,
     /// Not actually used; only present to make sure the cache invalidation is correct.
-    crates: Interned<Vec<String>>,
+    crates: Vec<String>,
 }
 
 impl RustcLink {
@@ -1261,11 +1260,11 @@ impl Step for RustcLink {
     }
 }
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct CodegenBackend {
     pub target: TargetSelection,
     pub compiler: Compiler,
-    pub backend: Interned<String>,
+    pub backend: String,
 }
 
 fn needs_codegen_config(run: &RunConfig<'_>) -> bool {
@@ -1284,7 +1283,7 @@ pub(crate) const CODEGEN_BACKEND_PREFIX: &str = "rustc_codegen_";
 fn is_codegen_cfg_needed(path: &TaskPath, run: &RunConfig<'_>) -> bool {
     if path.path.to_str().unwrap().contains(CODEGEN_BACKEND_PREFIX) {
         let mut needs_codegen_backend_config = true;
-        for &backend in run.builder.config.codegen_backends(run.target) {
+        for backend in run.builder.config.codegen_backends(run.target) {
             if path
                 .path
                 .to_str()
@@ -1321,7 +1320,7 @@ impl Step for CodegenBackend {
             return;
         }
 
-        for &backend in run.builder.config.codegen_backends(run.target) {
+        for backend in run.builder.config.codegen_backends(run.target) {
             if backend == "llvm" {
                 continue; // Already built as part of rustc
             }
@@ -1329,7 +1328,7 @@ impl Step for CodegenBackend {
             run.builder.ensure(CodegenBackend {
                 target: run.target,
                 compiler: run.builder.compiler(run.builder.top_stage, run.build_triple()),
-                backend,
+                backend: backend.clone(),
             });
         }
     }
@@ -1394,7 +1393,7 @@ impl Step for CodegenBackend {
                 f.display()
             );
         }
-        let stamp = codegen_backend_stamp(builder, compiler, target, backend);
+        let stamp = codegen_backend_stamp(builder, compiler, target, &backend);
         let codegen_backend = codegen_backend.to_str().unwrap();
         t!(fs::write(stamp, codegen_backend));
     }
@@ -1433,7 +1432,7 @@ fn copy_codegen_backends_to_sysroot(
             continue; // Already built as part of rustc
         }
 
-        let stamp = codegen_backend_stamp(builder, compiler, target, *backend);
+        let stamp = codegen_backend_stamp(builder, compiler, target, backend);
         let dylib = t!(fs::read_to_string(&stamp));
         let file = Path::new(&dylib);
         let filename = file.file_name().unwrap().to_str().unwrap();
@@ -1470,7 +1469,7 @@ fn codegen_backend_stamp(
     builder: &Builder<'_>,
     compiler: Compiler,
     target: TargetSelection,
-    backend: Interned<String>,
+    backend: &str,
 ) -> PathBuf {
     builder
         .cargo_out(compiler, Mode::Codegen, target)
@@ -1508,7 +1507,7 @@ impl Sysroot {
 }
 
 impl Step for Sysroot {
-    type Output = Interned<PathBuf>;
+    type Output = PathBuf;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
         run.never()
@@ -1520,7 +1519,7 @@ impl Step for Sysroot {
     /// That is, the sysroot for the stage0 compiler is not what the compiler
     /// thinks it is by default, but it's the same as the default for stages
     /// 1-3.
-    fn run(self, builder: &Builder<'_>) -> Interned<PathBuf> {
+    fn run(self, builder: &Builder<'_>) -> PathBuf {
         let compiler = self.compiler;
         let host_dir = builder.out.join(compiler.host.triple);
 
@@ -1652,7 +1651,7 @@ impl Step for Sysroot {
             );
         }
 
-        INTERNER.intern_path(sysroot)
+        sysroot
     }
 }
 
@@ -1735,7 +1734,7 @@ impl Step for Assemble {
         // to not fail while linking the artifacts.
         build_compiler.stage = actual_stage;
 
-        for &backend in builder.config.codegen_backends(target_compiler.host) {
+        for backend in builder.config.codegen_backends(target_compiler.host) {
             if backend == "llvm" {
                 continue; // Already built as part of rustc
             }
@@ -1743,7 +1742,7 @@ impl Step for Assemble {
             builder.ensure(CodegenBackend {
                 compiler: build_compiler,
                 target: target_compiler.host,
-                backend,
+                backend: backend.clone(),
             });
         }
 

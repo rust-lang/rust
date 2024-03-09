@@ -608,7 +608,7 @@ mod dist {
                 compiler: Compiler { host, stage: 0 },
                 target: host,
                 mode: Mode::Std,
-                crates: vec![INTERNER.intern_str("std")],
+                crates: vec!["std".to_owned()],
             },]
         );
     }

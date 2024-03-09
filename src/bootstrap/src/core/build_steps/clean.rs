@@ -10,7 +10,6 @@ use std::io::{self, ErrorKind};
 use std::path::Path;
 
 use crate::core::builder::{crate_description, Builder, RunConfig, ShouldRun, Step};
-use crate::utils::cache::Interned;
 use crate::utils::helpers::t;
 use crate::{Build, Compiler, Mode, Subcommand};
 
@@ -44,10 +43,10 @@ impl Step for CleanAll {
 
 macro_rules! clean_crate_tree {
     ( $( $name:ident, $mode:path, $root_crate:literal);+ $(;)? ) => { $(
-        #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+        #[derive(Debug, Clone, PartialEq, Eq, Hash)]
         pub struct $name {
             compiler: Compiler,
-            crates: Interned<Vec<String>>,
+            crates: Vec<String>,
         }
 
         impl Step for $name {
