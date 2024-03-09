@@ -36,6 +36,7 @@ mod inefficient_to_string;
 mod inspect_for_each;
 mod into_iter_on_ref;
 mod is_digit_ascii_radix;
+mod is_empty;
 mod iter_cloned_collect;
 mod iter_count;
 mod iter_filter;
@@ -4044,6 +4045,31 @@ declare_clippy_lint! {
     "calling `.get().is_some()` or `.get().is_none()` instead of `.contains()` or `.contains_key()`"
 }
 
+declare_clippy_lint! {
+    /// ### What it does
+    /// It identifies calls to `.is_empty()` on constant values.
+    ///
+    /// ### Why is this bad?
+    /// String literals and constant values are known at compile time. Checking if they
+    /// are empty will always return the same value. This might not be the intention of
+    /// the expression.
+    ///
+    /// ### Example
+    /// ```no_run
+    /// let value = "";
+    /// if value.is_empty() {
+    ///     println!("the string is empty");
+    /// }
+    /// ```
+    /// Use instead:
+    /// ```no_run
+    /// println!("the string is empty");
+    /// ```
+    #[clippy::version = "1.78.0"]
+    pub CONST_IS_EMPTY,
+    suspicious,
+    "is_empty() called on strings known at compile time"
+}
 pub struct Methods {
     avoid_breaking_exported_api: bool,
     msrv: Msrv,
@@ -4092,6 +4118,7 @@ impl_lint_pass!(Methods => [
     CLONE_ON_COPY,
     CLONE_ON_REF_PTR,
     COLLAPSIBLE_STR_REPLACE,
+    CONST_IS_EMPTY,
     ITER_OVEREAGER_CLONED,
     CLONED_INSTEAD_OF_COPIED,
     FLAT_MAP_OPTION,
@@ -4445,7 +4472,7 @@ impl Methods {
                 ("as_deref" | "as_deref_mut", []) => {
                     needless_option_as_deref::check(cx, expr, recv, name);
                 },
-                ("as_bytes" | "is_empty", []) => {
+                ("as_bytes", []) => {
                     if let Some(("as_str", recv, [], as_str_span, _)) = method_call(recv) {
                         redundant_as_str::check(cx, expr, recv, as_str_span, span);
                     }
@@ -4618,6 +4645,12 @@ impl Methods {
                 ("get_or_insert_with", [arg]) => unnecessary_lazy_eval::check(cx, expr, recv, arg, "get_or_insert"),
                 ("hash", [arg]) => {
                     unit_hash::check(cx, expr, recv, arg);
+                },
+                ("is_empty", []) => {
+                    if let Some(("as_str", recv, [], as_str_span, _)) = method_call(recv) {
+                        redundant_as_str::check(cx, expr, recv, as_str_span, span);
+                    }
+                    is_empty::check(cx, expr, recv);
                 },
                 ("is_file", []) => filetype_is_file::check(cx, expr, recv),
                 ("is_digit", [radix]) => is_digit_ascii_radix::check(cx, expr, recv, radix, &self.msrv),
