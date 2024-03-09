@@ -5,8 +5,8 @@ use rustc_data_structures::fx::FxIndexSet;
 use rustc_infer::infer::type_variable::TypeVariableOrigin;
 use rustc_middle::mir::*;
 use rustc_middle::thir::{self, *};
-use rustc_middle::ty;
 use rustc_middle::ty::TypeVisitableExt;
+use rustc_middle::ty::{self, Ty};
 
 impl<'a, 'tcx> Builder<'a, 'tcx> {
     pub(crate) fn field_match_pairs<'pat>(
@@ -249,10 +249,15 @@ impl<'pat, 'tcx> MatchPair<'pat, 'tcx> {
                 default_irrefutable()
             }
 
-            PatKind::DerefPattern { .. } => {
-                // FIXME(deref_patterns)
-                // Treat it like a wildcard for now.
-                default_irrefutable()
+            PatKind::DerefPattern { ref subpattern } => {
+                // Create a new temporary for each deref pattern.
+                // FIXME(deref_patterns): dedup temporaries to avoid multiple `deref()` calls?
+                let temp = cx.temp(
+                    Ty::new_imm_ref(cx.tcx, cx.tcx.lifetimes.re_erased, subpattern.ty),
+                    pattern.span,
+                );
+                subpairs.push(MatchPair::new(PlaceBuilder::from(temp).deref(), subpattern, cx));
+                TestCase::Deref { temp }
             }
         };
 
