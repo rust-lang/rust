@@ -9,7 +9,7 @@ use crate::ty::fold::{FallibleTypeFolder, TypeFoldable};
 use crate::ty::print::{pretty_print_const, with_no_trimmed_paths};
 use crate::ty::print::{FmtPrinter, Printer};
 use crate::ty::visit::TypeVisitableExt;
-use crate::ty::{self, List, Ty, TyCtxt};
+use crate::ty::{self, Instance, List, Ty, TyCtxt};
 use crate::ty::{AdtDef, InstanceDef, UserTypeAnnotationIndex};
 use crate::ty::{GenericArg, GenericArgsRef};
 
@@ -375,6 +375,9 @@ pub struct Body<'tcx> {
     /// We hold in this field all the constants we are not able to evaluate yet.
     pub required_consts: Vec<ConstOperand<'tcx>>,
 
+    /// Functions that need to monomorphize successfully for this MIR to be well-formed.
+    pub required_fns: Vec<Instance<'tcx>>,
+
     /// Does this body use generic parameters. This is used for the `ConstEvaluatable` check.
     ///
     /// Note that this does not actually mean that this body is not computable right now.
@@ -445,6 +448,7 @@ impl<'tcx> Body<'tcx> {
             var_debug_info,
             span,
             required_consts: Vec::new(),
+            required_fns: Vec::new(),
             is_polymorphic: false,
             injection_phase: None,
             tainted_by_errors,
@@ -473,6 +477,7 @@ impl<'tcx> Body<'tcx> {
             spread_arg: None,
             span: DUMMY_SP,
             required_consts: Vec::new(),
+            required_fns: Vec::new(),
             var_debug_info: Vec::new(),
             is_polymorphic: false,
             injection_phase: None,

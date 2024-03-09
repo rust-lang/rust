@@ -344,11 +344,14 @@ fn mir_promoted(
     }
 
     let mut required_consts = Vec::new();
-    let mut required_consts_visitor = RequiredConstsVisitor::new(&mut required_consts);
+    let mut required_fns = Vec::new();
+    let mut required_consts_visitor =
+        RequiredConstsVisitor::new(tcx, &body, &mut required_consts, &mut required_fns);
     for (bb, bb_data) in traversal::reverse_postorder(&body) {
         required_consts_visitor.visit_basic_block_data(bb, bb_data);
     }
     body.required_consts = required_consts;
+    body.required_fns = required_fns;
 
     // What we need to run borrowck etc.
     let promote_pass = promote_consts::PromoteTemps::default();
