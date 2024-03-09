@@ -497,6 +497,7 @@ dependencies = [
  "regex",
  "rustc_version",
  "smallvec",
+ "tempfile",
  "ui_test",
 ]
 
