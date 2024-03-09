@@ -1114,8 +1114,7 @@ fn is_niche_optimization_candidate<'tcx>(
 
     match ty.kind() {
         ty::Adt(ty_def, _) => {
-            let non_exhaustive = ty_def.is_variant_list_non_exhaustive()
-                || ty_def.variants().iter().any(|variant| variant.is_field_list_non_exhaustive());
+            let non_exhaustive = ty_def.is_variant_list_non_exhaustive();
             let contains_no_fields = ty_def.all_fields().next().is_none();
 
             !non_exhaustive && contains_no_fields
