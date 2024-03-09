@@ -83,6 +83,7 @@ rm -r tests/run-make/symbols-include-type-name # --emit=asm not supported
 rm -r tests/run-make/target-specs # i686 not supported by Cranelift
 rm -r tests/run-make/mismatching-target-triples # same
 rm tests/ui/asm/x86_64/issue-96797.rs # const and sym inline asm operands don't work entirely correctly
+rm tests/ui/asm/x86_64/goto.rs # inline asm labels not supported
 
 # requires LTO
 rm -r tests/run-make/cdylib
