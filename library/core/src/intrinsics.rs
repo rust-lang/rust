@@ -2695,6 +2695,19 @@ pub unsafe fn vtable_size(_ptr: *const ()) -> usize {
     unreachable!()
 }
 
+/// Retag a box pointer as part of casting it to a raw pointer. This is the `Box` equivalent of
+/// `(x: &mut T) as *mut T`. The input pointer must be the pointer of a `Box` (passed as raw pointer
+/// to avoid all questions around move semantics and custom allocators), and `A` must be the `Box`'s
+/// allocator.
+#[unstable(feature = "core_intrinsics", issue = "none")]
+#[rustc_nounwind]
+#[cfg_attr(not(bootstrap), rustc_intrinsic)]
+#[cfg_attr(bootstrap, inline)]
+pub unsafe fn retag_box_to_raw<T: ?Sized, A>(ptr: *mut T) -> *mut T {
+    // Miri needs to adjust the provenance, but for regular codegen this is not needed
+    ptr
+}
+
 // Some functions are defined here because they accidentally got made
 // available in this module on stable. See <https://github.com/rust-lang/rust/issues/15702>.
 // (`transmute` also falls into this category, but it cannot be wrapped due to the
@@ -3120,6 +3133,7 @@ pub(crate) const fn miri_promise_symbolic_alignment(ptr: *const (), align: usize
 
     const fn compiletime(_ptr: *const (), _align: usize) {}
 
+    #[cfg_attr(not(bootstrap), allow(unused_unsafe))] // on bootstrap bump, remove unsafe block
     // SAFETY: the extra behavior at runtime is for UB checks only.
     unsafe {
         const_eval_select((ptr, align), compiletime, runtime);

@@ -667,7 +667,7 @@ impl<'a> Parser<'a> {
         {
             err.note("you may be trying to write a c-string literal");
             err.note("c-string literals require Rust 2021 or later");
-            HelpUseLatestEdition::new().add_to_diagnostic(&mut err);
+            err.subdiagnostic(self.dcx(), HelpUseLatestEdition::new());
         }
 
         // `pub` may be used for an item or `pub(crate)`

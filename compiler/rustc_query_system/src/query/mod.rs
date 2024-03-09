@@ -3,7 +3,7 @@ pub use self::plumbing::*;
 
 mod job;
 #[cfg(parallel_compiler)]
-pub use self::job::deadlock;
+pub use self::job::break_query_cycles;
 pub use self::job::{
     print_query_stack, report_cycle, QueryInfo, QueryJob, QueryJobId, QueryJobInfo, QueryMap,
 };

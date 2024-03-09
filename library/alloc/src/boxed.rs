@@ -155,6 +155,7 @@ use core::error::Error;
 use core::fmt;
 use core::future::Future;
 use core::hash::{Hash, Hasher};
+use core::intrinsics::retag_box_to_raw;
 use core::iter::FusedIterator;
 use core::marker::Tuple;
 use core::marker::Unsize;
@@ -1110,8 +1111,16 @@ impl<T: ?Sized, A: Allocator> Box<T, A> {
     #[unstable(feature = "allocator_api", issue = "32838")]
     #[inline]
     pub fn into_raw_with_allocator(b: Self) -> (*mut T, A) {
-        let (leaked, alloc) = Box::into_unique(b);
-        (leaked.as_ptr(), alloc)
+        // This is the transition point from `Box` to raw pointers. For Stacked Borrows, these casts
+        // are relevant -- if this is a global allocator Box and we just get the pointer from `b.0`,
+        // it will have `Unique` permission, which is not what we want from a raw pointer. We could
+        // fix that by going through `&mut`, but then if this is *not* a global allocator Box, we'd
+        // be adding uniqueness assertions that we do not want. So for Miri's sake we pass this
+        // pointer through an intrinsic for box-to-raw casts, which can do the right thing wrt the
+        // aliasing model.
+        let b = mem::ManuallyDrop::new(b);
+        let alloc = unsafe { ptr::read(&b.1) };
+        (unsafe { retag_box_to_raw::<T, A>(b.0.as_ptr()) }, alloc)
     }
 
     #[unstable(
@@ -1122,13 +1131,8 @@ impl<T: ?Sized, A: Allocator> Box<T, A> {
     #[inline]
     #[doc(hidden)]
     pub fn into_unique(b: Self) -> (Unique<T>, A) {
-        // Box is recognized as a "unique pointer" by Stacked Borrows, but internally it is a
-        // raw pointer for the type system. Turning it directly into a raw pointer would not be
-        // recognized as "releasing" the unique pointer to permit aliased raw accesses,
-        // so all raw pointer methods have to go through `Box::leak`. Turning *that* to a raw pointer
-        // behaves correctly.
-        let alloc = unsafe { ptr::read(&b.1) };
-        (Unique::from(Box::leak(b)), alloc)
+        let (ptr, alloc) = Box::into_raw_with_allocator(b);
+        unsafe { (Unique::from(&mut *ptr), alloc) }
     }
 
     /// Returns a reference to the underlying allocator.
@@ -1184,7 +1188,7 @@ impl<T: ?Sized, A: Allocator> Box<T, A> {
     where
         A: 'a,
     {
-        unsafe { &mut *mem::ManuallyDrop::new(b).0.as_ptr() }
+        unsafe { &mut *Box::into_raw(b) }
     }
 
     /// Converts a `Box<T>` into a `Pin<Box<T>>`. If `T` does not implement [`Unpin`], then

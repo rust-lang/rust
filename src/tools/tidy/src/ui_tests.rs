@@ -99,7 +99,8 @@ fn check_entries(tests_path: &Path, bad: &mut bool) {
     }
 }
 
-pub fn check(path: &Path, bless: bool, bad: &mut bool) {
+pub fn check(root_path: &Path, bless: bool, bad: &mut bool) {
+    let path = &root_path.join("tests");
     check_entries(&path, bad);
 
     // the list of files in ui tests that are allowed to start with `issue-XXXX`
@@ -193,7 +194,7 @@ pub fn check(path: &Path, bless: bool, bad: &mut bool) {
 */
 [
 "#;
-        let tidy_src = std::env::current_dir().unwrap().join("src/tools/tidy/src");
+        let tidy_src = root_path.join("src/tools/tidy/src");
         // instead of overwriting the file, recreate it and use an "atomic rename"
         // so we don't bork things on panic or a contributor using Ctrl+C
         let blessed_issues_path = tidy_src.join("issues_blessed.txt");

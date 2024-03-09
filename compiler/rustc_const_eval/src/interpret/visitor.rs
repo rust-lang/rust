@@ -3,7 +3,7 @@
 
 use rustc_index::IndexVec;
 use rustc_middle::mir::interpret::InterpResult;
-use rustc_middle::ty;
+use rustc_middle::ty::{self, Ty};
 use rustc_target::abi::FieldIdx;
 use rustc_target::abi::{FieldsShape, VariantIdx, Variants};
 
@@ -47,10 +47,10 @@ pub trait ValueVisitor<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>>: Sized {
         Ok(())
     }
     /// Visits the given value as the pointer of a `Box`. There is nothing to recurse into.
-    /// The type of `v` will be a raw pointer, but this is a field of `Box<T>` and the
-    /// pointee type is the actual `T`.
+    /// The type of `v` will be a raw pointer to `T`, but this is a field of `Box<T>` and the
+    /// pointee type is the actual `T`. `box_ty` provides the full type of the `Box` itself.
     #[inline(always)]
-    fn visit_box(&mut self, _v: &Self::V) -> InterpResult<'tcx> {
+    fn visit_box(&mut self, _box_ty: Ty<'tcx>, _v: &Self::V) -> InterpResult<'tcx> {
         Ok(())
     }
 
@@ -144,7 +144,7 @@ pub trait ValueVisitor<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>>: Sized {
                 assert_eq!(nonnull_ptr.layout().fields.count(), 1);
                 let raw_ptr = self.ecx().project_field(&nonnull_ptr, 0)?; // the actual raw ptr
                 // ... whose only field finally is a raw ptr we can dereference.
-                self.visit_box(&raw_ptr)?;
+                self.visit_box(ty, &raw_ptr)?;
 
                 // The second `Box` field is the allocator, which we recursively check for validity
                 // like in regular structs.
