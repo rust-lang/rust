@@ -38,14 +38,16 @@ impl<'a, 'b, 'tcx> DefCollector<'a, 'b, 'tcx> {
             "create_def(node_id={:?}, def_kind={:?}, parent_def={:?})",
             node_id, def_kind, parent_def
         );
-        self.resolver.create_def(
-            parent_def,
-            node_id,
-            name,
-            def_kind,
-            self.expansion.to_expn_id(),
-            span.with_parent(None),
-        )
+        self.resolver
+            .create_def(
+                parent_def,
+                node_id,
+                name,
+                def_kind,
+                self.expansion.to_expn_id(),
+                span.with_parent(None),
+            )
+            .def_id()
     }
 
     fn with_parent<F: FnOnce(&mut Self)>(&mut self, parent_def: LocalDefId, f: F) {

@@ -201,14 +201,22 @@ pub trait Write {
         impl<W: Write + ?Sized> SpecWriteFmt for &mut W {
             #[inline]
             default fn spec_write_fmt(mut self, args: Arguments<'_>) -> Result {
-                write(&mut self, args)
+                if let Some(s) = args.as_const_str() {
+                    self.write_str(s)
+                } else {
+                    write(&mut self, args)
+                }
             }
         }
 
         impl<W: Write> SpecWriteFmt for &mut W {
             #[inline]
             fn spec_write_fmt(self, args: Arguments<'_>) -> Result {
-                write(self, args)
+                if let Some(s) = args.as_const_str() {
+                    self.write_str(s)
+                } else {
+                    write(self, args)
+                }
             }
         }
 
@@ -430,6 +438,14 @@ impl<'a> Arguments<'a> {
             _ => None,
         }
     }
+
+    /// Same as [`Arguments::as_str`], but will only return `Some(s)` if it can be determined at compile time.
+    #[must_use]
+    #[inline]
+    fn as_const_str(&self) -> Option<&'static str> {
+        let s = self.as_str();
+        if core::intrinsics::is_val_statically_known(s.is_some()) { s } else { None }
+    }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -632,6 +648,23 @@ pub use macros::Debug;
 /// [module]: ../../std/fmt/index.html
 /// [tostring]: ../../std/string/trait.ToString.html
 /// [tostring_function]: ../../std/string/trait.ToString.html#tymethod.to_string
+///
+/// # Internationalization
+///
+/// Because a type can only have one `Display` implementation, it is often preferable
+/// to only implement `Display` when there is a single most "obvious" way that
+/// values can be formatted as text. This could mean formatting according to the
+/// "invariant" culture and "undefined" locale, or it could mean that the type
+/// display is designed for a specific culture/locale, such as developer logs.
+///
+/// If not all values have a justifiably canonical textual format or if you want
+/// to support alternative formats not covered by the standard set of possible
+/// [formatting traits], the most flexible approach is display adapters: methods
+/// like [`str::escape_default`] or [`Path::display`] which create a wrapper
+/// implementing `Display` to output the specific display format.
+///
+/// [formatting traits]: ../../std/fmt/index.html#formatting-traits
+/// [`Path::display`]: ../../std/path/struct.Path.html#method.display
 ///
 /// # Examples
 ///
@@ -1582,8 +1615,9 @@ impl<'a> Formatter<'a> {
     /// assert_eq!(format!("{:0>8}", Foo(2)), "Foo 2");
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
+    #[inline]
     pub fn write_fmt(&mut self, fmt: Arguments<'_>) -> Result {
-        write(self.buf, fmt)
+        if let Some(s) = fmt.as_const_str() { self.buf.write_str(s) } else { write(self.buf, fmt) }
     }
 
     /// Flags for formatting
@@ -2272,8 +2306,13 @@ impl Write for Formatter<'_> {
         self.buf.write_char(c)
     }
 
+    #[inline]
     fn write_fmt(&mut self, args: Arguments<'_>) -> Result {
-        write(self.buf, args)
+        if let Some(s) = args.as_const_str() {
+            self.buf.write_str(s)
+        } else {
+            write(self.buf, args)
+        }
     }
 }
 

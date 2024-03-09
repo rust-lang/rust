@@ -15,7 +15,7 @@ pub(super) trait EvalContextExt<'mir, 'tcx: 'mir>:
         link_name: Symbol,
         abi: Abi,
         args: &[OpTy<'tcx, Provenance>],
-        dest: &PlaceTy<'tcx, Provenance>,
+        dest: &MPlaceTy<'tcx, Provenance>,
     ) -> InterpResult<'tcx, EmulateForeignItemResult> {
         let this = self.eval_context_mut();
         this.expect_target_feature_for_intrinsic(link_name, "sse3")?;

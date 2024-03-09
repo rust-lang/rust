@@ -451,6 +451,15 @@ impl Config {
         self.target_cfg().panic == PanicStrategy::Unwind
     }
 
+    pub fn has_threads(&self) -> bool {
+        // Wasm targets don't have threads unless `-threads` is in the target
+        // name, such as `wasm32-wasip1-threads`.
+        if self.target.starts_with("wasm") {
+            return self.target.contains("threads");
+        }
+        true
+    }
+
     pub fn has_asm_support(&self) -> bool {
         static ASM_SUPPORTED_ARCHS: &[&str] = &[
             "x86", "x86_64", "arm", "aarch64", "riscv32",

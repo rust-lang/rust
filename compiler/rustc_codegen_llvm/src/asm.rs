@@ -28,7 +28,8 @@ impl<'ll, 'tcx> AsmBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
         options: InlineAsmOptions,
         line_spans: &[Span],
         instance: Instance<'_>,
-        dest_catch_funclet: Option<(Self::BasicBlock, Self::BasicBlock, Option<&Self::Funclet>)>,
+        dest: Option<Self::BasicBlock>,
+        catch_funclet: Option<(Self::BasicBlock, Option<&Self::Funclet>)>,
     ) {
         let asm_arch = self.tcx.sess.asm_arch.unwrap();
 
@@ -165,6 +166,7 @@ impl<'ll, 'tcx> AsmBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
         }
 
         // Build the template string
+        let mut labels = vec![];
         let mut template_str = String::new();
         for piece in template {
             match *piece {
@@ -204,6 +206,11 @@ impl<'ll, 'tcx> AsmBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
                         | InlineAsmOperandRef::SymStatic { .. } => {
                             // Only emit the raw symbol name
                             template_str.push_str(&format!("${{{}:c}}", op_idx[&operand_idx]));
+                        }
+                        InlineAsmOperandRef::Label { label } => {
+                            template_str.push_str(&format!("${{{}:l}}", constraints.len()));
+                            constraints.push("!i".to_owned());
+                            labels.push(label);
                         }
                     }
                 }
@@ -292,12 +299,14 @@ impl<'ll, 'tcx> AsmBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
             &constraints.join(","),
             &inputs,
             output_type,
+            &labels,
             volatile,
             alignstack,
             dialect,
             line_spans,
             options.contains(InlineAsmOptions::MAY_UNWIND),
-            dest_catch_funclet,
+            dest,
+            catch_funclet,
         )
         .unwrap_or_else(|| span_bug!(line_spans[0], "LLVM asm constraint validation failed"));
 
@@ -317,7 +326,7 @@ impl<'ll, 'tcx> AsmBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
         attributes::apply_to_callsite(result, llvm::AttributePlace::Function, &{ attrs });
 
         // Switch to the 'normal' basic block if we did an `invoke` instead of a `call`
-        if let Some((dest, _, _)) = dest_catch_funclet {
+        if let Some(dest) = dest {
             self.switch_to_block(dest);
         }
 
@@ -415,16 +424,14 @@ pub(crate) fn inline_asm_call<'ll>(
     cons: &str,
     inputs: &[&'ll Value],
     output: &'ll llvm::Type,
+    labels: &[&'ll llvm::BasicBlock],
     volatile: bool,
     alignstack: bool,
     dia: llvm::AsmDialect,
     line_spans: &[Span],
     unwind: bool,
-    dest_catch_funclet: Option<(
-        &'ll llvm::BasicBlock,
-        &'ll llvm::BasicBlock,
-        Option<&Funclet<'ll>>,
-    )>,
+    dest: Option<&'ll llvm::BasicBlock>,
+    catch_funclet: Option<(&'ll llvm::BasicBlock, Option<&Funclet<'ll>>)>,
 ) -> Option<&'ll Value> {
     let volatile = if volatile { llvm::True } else { llvm::False };
     let alignstack = if alignstack { llvm::True } else { llvm::False };
@@ -457,8 +464,11 @@ pub(crate) fn inline_asm_call<'ll>(
                 can_throw,
             );
 
-            let call = if let Some((dest, catch, funclet)) = dest_catch_funclet {
-                bx.invoke(fty, None, None, v, inputs, dest, catch, funclet)
+            let call = if !labels.is_empty() {
+                assert!(catch_funclet.is_none());
+                bx.callbr(fty, None, None, v, inputs, dest.unwrap(), labels, None)
+            } else if let Some((catch, funclet)) = catch_funclet {
+                bx.invoke(fty, None, None, v, inputs, dest.unwrap(), catch, funclet)
             } else {
                 bx.call(fty, None, None, v, inputs, None)
             };

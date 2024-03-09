@@ -1,4 +1,10 @@
-error[E0657]: `impl Trait` can only capture lifetimes bound at the fn or impl level
+error[E0657]: `impl Trait` cannot capture higher-ranked lifetime from `dyn` type
+  --> $DIR/implicit-capture-late.rs:10:55
+   |
+LL | fn foo(x: Vec<i32>) -> Box<dyn for<'a> Deref<Target = impl ?Sized>> {
+   |                                                       ^^^^^^^^^^^ `impl Trait` implicitly captures all lifetimes in scope
+   |
+note: lifetime declared here
   --> $DIR/implicit-capture-late.rs:10:36
    |
 LL | fn foo(x: Vec<i32>) -> Box<dyn for<'a> Deref<Target = impl ?Sized>> {

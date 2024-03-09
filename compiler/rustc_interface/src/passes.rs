@@ -44,9 +44,9 @@ use std::{env, fs, iter};
 
 pub fn parse<'a>(sess: &'a Session) -> PResult<'a, ast::Crate> {
     let krate = sess.time("parse_crate", || match &sess.io.input {
-        Input::File(file) => parse_crate_from_file(file, &sess.parse_sess),
+        Input::File(file) => parse_crate_from_file(file, &sess.psess),
         Input::Str { input, name } => {
-            parse_crate_from_source_str(name.clone(), input.clone(), &sess.parse_sess)
+            parse_crate_from_source_str(name.clone(), input.clone(), &sess.psess)
         }
     })?;
 
@@ -205,7 +205,7 @@ fn configure_and_expand(
 
         // The rest is error reporting
 
-        sess.parse_sess.buffered_lints.with_lock(|buffered_lints: &mut Vec<BufferedEarlyLint>| {
+        sess.psess.buffered_lints.with_lock(|buffered_lints: &mut Vec<BufferedEarlyLint>| {
             buffered_lints.append(&mut ecx.buffered_early_lint);
         });
 
@@ -280,7 +280,7 @@ fn configure_and_expand(
 
 fn early_lint_checks(tcx: TyCtxt<'_>, (): ()) {
     let sess = tcx.sess;
-    let (resolver, krate) = &*tcx.resolver_for_lowering(()).borrow();
+    let (resolver, krate) = &*tcx.resolver_for_lowering().borrow();
     let mut lint_buffer = resolver.lint_buffer.steal();
 
     if sess.opts.unstable_opts.input_stats {
@@ -297,7 +297,7 @@ fn early_lint_checks(tcx: TyCtxt<'_>, (): ()) {
     });
 
     // Add all buffered lints from the `ParseSess` to the `Session`.
-    sess.parse_sess.buffered_lints.with_lock(|buffered_lints| {
+    sess.psess.buffered_lints.with_lock(|buffered_lints| {
         info!("{} parse sess buffered_lints", buffered_lints.len());
         for early_lint in buffered_lints.drain(..) {
             lint_buffer.add_early_lint(early_lint);
@@ -305,7 +305,7 @@ fn early_lint_checks(tcx: TyCtxt<'_>, (): ()) {
     });
 
     // Gate identifiers containing invalid Unicode codepoints that were recovered during lexing.
-    sess.parse_sess.bad_unicode_identifiers.with_lock(|identifiers| {
+    sess.psess.bad_unicode_identifiers.with_lock(|identifiers| {
         for (ident, mut spans) in identifiers.drain(..) {
             spans.sort();
             if ident == sym::ferris {
@@ -422,7 +422,7 @@ fn write_out_deps(tcx: TyCtxt<'_>, outputs: &OutputFilenames, out_filenames: &[P
 
         // Account for explicitly marked-to-track files
         // (e.g. accessed in proc macros).
-        let file_depinfo = sess.parse_sess.file_depinfo.borrow();
+        let file_depinfo = sess.psess.file_depinfo.borrow();
 
         let normalize_path = |path: PathBuf| {
             let file = FileName::from(path);
@@ -485,7 +485,7 @@ fn write_out_deps(tcx: TyCtxt<'_>, outputs: &OutputFilenames, out_filenames: &[P
             }
 
             // Emit special comments with information about accessed environment variables.
-            let env_depinfo = sess.parse_sess.env_depinfo.borrow();
+            let env_depinfo = sess.psess.env_depinfo.borrow();
             if !env_depinfo.is_empty() {
                 // We will soon sort, so the initial order does not matter.
                 #[allow(rustc::potential_query_instability)]
@@ -531,10 +531,10 @@ fn write_out_deps(tcx: TyCtxt<'_>, outputs: &OutputFilenames, out_filenames: &[P
     }
 }
 
-fn resolver_for_lowering<'tcx>(
+fn resolver_for_lowering_raw<'tcx>(
     tcx: TyCtxt<'tcx>,
     (): (),
-) -> &'tcx Steal<(ty::ResolverAstLowering, Lrc<ast::Crate>)> {
+) -> (&'tcx Steal<(ty::ResolverAstLowering, Lrc<ast::Crate>)>, &'tcx ty::ResolverGlobalCtxt) {
     let arenas = Resolver::arenas();
     let _ = tcx.registered_tools(()); // Uses `crate_for_resolver`.
     let (krate, pre_configured_attrs) = tcx.crate_for_resolver(()).steal();
@@ -549,16 +549,15 @@ fn resolver_for_lowering<'tcx>(
         ast_lowering: untracked_resolver_for_lowering,
     } = resolver.into_outputs();
 
-    let feed = tcx.feed_unit_query();
-    feed.resolutions(tcx.arena.alloc(untracked_resolutions));
-    tcx.arena.alloc(Steal::new((untracked_resolver_for_lowering, Lrc::new(krate))))
+    let resolutions = tcx.arena.alloc(untracked_resolutions);
+    (tcx.arena.alloc(Steal::new((untracked_resolver_for_lowering, Lrc::new(krate)))), resolutions)
 }
 
 pub(crate) fn write_dep_info(tcx: TyCtxt<'_>) {
     // Make sure name resolution and macro expansion is run for
     // the side-effect of providing a complete set of all
     // accessed files and env vars.
-    let _ = tcx.resolver_for_lowering(());
+    let _ = tcx.resolver_for_lowering();
 
     let sess = tcx.sess;
     let _timer = sess.timer("write_dep_info");
@@ -607,7 +606,10 @@ pub static DEFAULT_QUERY_PROVIDERS: LazyLock<Providers> = LazyLock::new(|| {
     let providers = &mut Providers::default();
     providers.analysis = analysis;
     providers.hir_crate = rustc_ast_lowering::lower_to_hir;
-    providers.resolver_for_lowering = resolver_for_lowering;
+    providers.resolver_for_lowering_raw = resolver_for_lowering_raw;
+    providers.stripped_cfg_items =
+        |tcx, _| tcx.arena.alloc_from_iter(tcx.resolutions(()).stripped_cfg_items.steal());
+    providers.resolutions = |tcx, ()| tcx.resolver_for_lowering_raw(()).1;
     providers.early_lint_checks = early_lint_checks;
     proc_macro_decls::provide(providers);
     rustc_const_eval::provide(providers);
@@ -686,6 +688,11 @@ pub fn create_global_ctxt<'tcx>(
 /// Runs the type-checking, region checking and other miscellaneous analysis
 /// passes on the crate.
 fn analysis(tcx: TyCtxt<'_>, (): ()) -> Result<()> {
+    if tcx.sess.opts.unstable_opts.hir_stats {
+        rustc_passes::hir_stats::print_hir_stats(tcx);
+    }
+
+    #[cfg(debug_assertions)]
     rustc_passes::hir_id_validator::check_crate(tcx);
 
     let sess = tcx.sess;
@@ -956,7 +963,7 @@ fn get_recursion_limit(krate_attrs: &[ast::Attribute], sess: &Session) -> Limit 
         // `check_builtin_attribute`), but by the time that runs the macro
         // is expanded, and it doesn't give an error.
         validate_attr::emit_fatal_malformed_builtin_attribute(
-            &sess.parse_sess,
+            &sess.psess,
             attr,
             sym::recursion_limit,
         );

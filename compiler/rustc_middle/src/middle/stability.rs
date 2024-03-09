@@ -16,7 +16,7 @@ use rustc_hir::def_id::{DefId, LocalDefId, LocalDefIdMap};
 use rustc_hir::{self as hir, HirId};
 use rustc_middle::ty::print::with_no_trimmed_paths;
 use rustc_session::lint::builtin::{DEPRECATED, DEPRECATED_IN_FUTURE, SOFT_UNSTABLE};
-use rustc_session::lint::{BuiltinLintDiagnostics, Level, Lint, LintBuffer};
+use rustc_session::lint::{BuiltinLintDiag, Level, Lint, LintBuffer};
 use rustc_session::parse::feature_err_issue;
 use rustc_session::Session;
 use rustc_span::symbol::{sym, Symbol};
@@ -199,7 +199,7 @@ pub fn early_report_deprecation(
         return;
     }
 
-    let diag = BuiltinLintDiagnostics::DeprecatedMacro(suggestion, span);
+    let diag = BuiltinLintDiag::DeprecatedMacro(suggestion, span);
     lint_buffer.buffer_lint_with_diagnostic(lint, node_id, span, message, diag);
 }
 
@@ -269,7 +269,7 @@ fn suggestion_for_allocator_api(
     if feature == sym::allocator_api {
         if let Some(trait_) = tcx.opt_parent(def_id) {
             if tcx.is_diagnostic_item(sym::Vec, trait_) {
-                let sm = tcx.sess.parse_sess.source_map();
+                let sm = tcx.sess.psess.source_map();
                 let inner_types = sm.span_extend_to_prev_char(span, '<', true);
                 if let Ok(snippet) = sm.span_to_snippet(inner_types) {
                     return Some((

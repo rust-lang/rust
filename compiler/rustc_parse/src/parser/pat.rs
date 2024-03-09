@@ -470,7 +470,7 @@ impl<'a> Parser<'a> {
             self.parse_pat_range_to(form)? // `..=X`, `...X`, or `..X`.
         } else if self.eat(&token::Not) {
             // Parse `!`
-            self.sess.gated_spans.gate(sym::never_patterns, self.prev_token.span);
+            self.psess.gated_spans.gate(sym::never_patterns, self.prev_token.span);
             PatKind::Never
         } else if self.eat_keyword(kw::Underscore) {
             // Parse `_`
@@ -843,8 +843,8 @@ impl<'a> Parser<'a> {
         let mut err = self.dcx().struct_span_err(self.token.span, msg);
         err.span_label(self.token.span, format!("expected {expected}"));
 
-        let sp = self.sess.source_map().start_point(self.token.span);
-        if let Some(sp) = self.sess.ambiguous_block_expr_parse.borrow().get(&sp) {
+        let sp = self.psess.source_map().start_point(self.token.span);
+        if let Some(sp) = self.psess.ambiguous_block_expr_parse.borrow().get(&sp) {
             err.subdiagnostic(self.dcx(), ExprParenthesesNeeded::surrounding(*sp));
         }
 
@@ -1067,7 +1067,7 @@ impl<'a> Parser<'a> {
     fn parse_pat_struct(&mut self, qself: Option<P<QSelf>>, path: Path) -> PResult<'a, PatKind> {
         if qself.is_some() {
             // Feature gate the use of qualified paths in patterns
-            self.sess.gated_spans.gate(sym::more_qualified_paths, path.span);
+            self.psess.gated_spans.gate(sym::more_qualified_paths, path.span);
         }
         self.bump();
         let (fields, etc) = self.parse_pat_fields().unwrap_or_else(|mut e| {
@@ -1096,7 +1096,7 @@ impl<'a> Parser<'a> {
             )
         })?;
         if qself.is_some() {
-            self.sess.gated_spans.gate(sym::more_qualified_paths, path.span);
+            self.psess.gated_spans.gate(sym::more_qualified_paths, path.span);
         }
         Ok(PatKind::TupleStruct(qself, path, fields))
     }
@@ -1143,7 +1143,7 @@ impl<'a> Parser<'a> {
             Ok(PatKind::Ident(BindingAnnotation::NONE, Ident::new(kw::Box, box_span), sub))
         } else {
             let pat = self.parse_pat_with_range_pat(false, None, None)?;
-            self.sess.gated_spans.gate(sym::box_patterns, box_span.to(self.prev_token.span));
+            self.psess.gated_spans.gate(sym::box_patterns, box_span.to(self.prev_token.span));
             Ok(PatKind::Box(pat))
         }
     }
@@ -1192,15 +1192,15 @@ impl<'a> Parser<'a> {
                         .look_ahead(1, |t| if *t == token::Comma { Some(t.clone()) } else { None })
                     {
                         let nw_span = self
-                            .sess
+                            .psess
                             .source_map()
                             .span_extend_to_line(comma_tok.span)
                             .trim_start(comma_tok.span.shrink_to_lo())
-                            .map(|s| self.sess.source_map().span_until_non_whitespace(s));
+                            .map(|s| self.psess.source_map().span_until_non_whitespace(s));
                         first_etc_and_maybe_comma_span = nw_span.map(|s| etc_sp.to(s));
                     } else {
                         first_etc_and_maybe_comma_span =
-                            Some(self.sess.source_map().span_until_non_whitespace(etc_sp));
+                            Some(self.psess.source_map().span_until_non_whitespace(etc_sp));
                     }
                 }
 
@@ -1218,7 +1218,8 @@ impl<'a> Parser<'a> {
                 let mut comma_sp = None;
                 if self.token == token::Comma {
                     // Issue #49257
-                    let nw_span = self.sess.source_map().span_until_non_whitespace(self.token.span);
+                    let nw_span =
+                        self.psess.source_map().span_until_non_whitespace(self.token.span);
                     etc_sp = etc_sp.to(nw_span);
                     err.span_label(
                         etc_sp,

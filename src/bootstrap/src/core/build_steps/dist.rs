@@ -129,6 +129,7 @@ pub struct RustcDocs {
 impl Step for RustcDocs {
     type Output = Option<GeneratedTarball>;
     const DEFAULT: bool = true;
+    const ONLY_HOSTS: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
         let builder = run.builder;
@@ -2035,10 +2036,26 @@ fn install_llvm_file(
         // If we have a symlink like libLLVM-18.so -> libLLVM.so.18.1, install the target of the
         // symlink, which is what will actually get loaded at runtime.
         builder.install(&t!(fs::canonicalize(source)), destination, 0o644);
+
+        let full_dest = destination.join(source.file_name().unwrap());
         if install_symlink {
-            // If requested, also install the symlink. This is used by download-ci-llvm.
-            let full_dest = destination.join(source.file_name().unwrap());
+            // For download-ci-llvm, also install the symlink, to match what LLVM does. Using a
+            // symlink is fine here, as this is not a rustup component.
             builder.copy(&source, &full_dest);
+        } else {
+            // Otherwise, replace the symlink with an equivalent linker script. This is used when
+            // projects like miri link against librustc_driver.so. We don't use a symlink, as
+            // these are not allowed inside rustup components.
+            let link = t!(fs::read_link(source));
+            let mut linker_script = t!(fs::File::create(full_dest));
+            t!(write!(linker_script, "INPUT({})\n", link.display()));
+
+            // We also want the linker script to have the same mtime as the source, otherwise it
+            // can trigger rebuilds.
+            let meta = t!(fs::metadata(source));
+            if let Ok(mtime) = meta.modified() {
+                t!(linker_script.set_modified(mtime));
+            }
         }
     } else {
         builder.install(&source, destination, 0o644);

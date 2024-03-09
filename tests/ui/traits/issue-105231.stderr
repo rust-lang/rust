@@ -3,7 +3,7 @@ error[E0072]: recursive types `A` and `B` have infinite size
    |
 LL | struct A<T>(B<T>);
    | ^^^^^^^^^^^ ---- recursive without indirection
-LL |
+...
 LL | struct B<T>(A<A<T>>);
    | ^^^^^^^^^^^ ------- recursive without indirection
    |
@@ -11,19 +11,38 @@ help: insert some indirection (e.g., a `Box`, `Rc`, or `&`) to break the cycle
    |
 LL ~ struct A<T>(Box<B<T>>);
 LL |
+LL |
 LL ~ struct B<T>(Box<A<A<T>>>);
    |
+
+error[E0392]: type parameter `T` is never used
+  --> $DIR/issue-105231.rs:2:10
+   |
+LL | struct A<T>(B<T>);
+   |          ^ unused type parameter
+   |
+   = help: consider removing `T`, referring to it in a field, or using a marker such as `PhantomData`
+   = help: if you intended `T` to be a const parameter, use `const T: /* Type */` instead
+
+error[E0392]: type parameter `T` is never used
+  --> $DIR/issue-105231.rs:5:10
+   |
+LL | struct B<T>(A<A<T>>);
+   |          ^ unused type parameter
+   |
+   = help: consider removing `T`, referring to it in a field, or using a marker such as `PhantomData`
+   = help: if you intended `T` to be a const parameter, use `const T: /* Type */` instead
 
 error[E0275]: overflow evaluating the requirement `A<A<A<A<A<A<A<...>>>>>>>: Send`
    |
    = help: consider increasing the recursion limit by adding a `#![recursion_limit = "256"]` attribute to your crate (`issue_105231`)
 note: required because it appears within the type `B<A<A<A<A<A<A<A<A<A<A<A<A<A<A<A<A<A<A<A<A<A<A<A<A<A<A<A<A<A<A<A<A<A<A<A<A<A<A<A<A<A<A<A<A<A<A<A<A<A<A<A<A<A<A<A<A<A<A<A<A<A<A<A<u8>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>`
-  --> $DIR/issue-105231.rs:4:8
+  --> $DIR/issue-105231.rs:5:8
    |
 LL | struct B<T>(A<A<T>>);
    |        ^
 
-error: aborting due to 2 previous errors
+error: aborting due to 4 previous errors
 
-Some errors have detailed explanations: E0072, E0275.
+Some errors have detailed explanations: E0072, E0275, E0392.
 For more information about an error, try `rustc --explain E0072`.

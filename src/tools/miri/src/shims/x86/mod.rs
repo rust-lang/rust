@@ -29,7 +29,7 @@ pub(super) trait EvalContextExt<'mir, 'tcx: 'mir>:
         link_name: Symbol,
         abi: Abi,
         args: &[OpTy<'tcx, Provenance>],
-        dest: &PlaceTy<'tcx, Provenance>,
+        dest: &MPlaceTy<'tcx, Provenance>,
     ) -> InterpResult<'tcx, EmulateForeignItemResult> {
         let this = self.eval_context_mut();
         // Prefix should have already been checked.
@@ -286,11 +286,11 @@ fn bin_op_simd_float_first<'tcx, F: rustc_apfloat::Float>(
     which: FloatBinOp,
     left: &OpTy<'tcx, Provenance>,
     right: &OpTy<'tcx, Provenance>,
-    dest: &PlaceTy<'tcx, Provenance>,
+    dest: &MPlaceTy<'tcx, Provenance>,
 ) -> InterpResult<'tcx, ()> {
     let (left, left_len) = this.operand_to_simd(left)?;
     let (right, right_len) = this.operand_to_simd(right)?;
-    let (dest, dest_len) = this.place_to_simd(dest)?;
+    let (dest, dest_len) = this.mplace_to_simd(dest)?;
 
     assert_eq!(dest_len, left_len);
     assert_eq!(dest_len, right_len);
@@ -317,11 +317,11 @@ fn bin_op_simd_float_all<'tcx, F: rustc_apfloat::Float>(
     which: FloatBinOp,
     left: &OpTy<'tcx, Provenance>,
     right: &OpTy<'tcx, Provenance>,
-    dest: &PlaceTy<'tcx, Provenance>,
+    dest: &MPlaceTy<'tcx, Provenance>,
 ) -> InterpResult<'tcx, ()> {
     let (left, left_len) = this.operand_to_simd(left)?;
     let (right, right_len) = this.operand_to_simd(right)?;
-    let (dest, dest_len) = this.place_to_simd(dest)?;
+    let (dest, dest_len) = this.mplace_to_simd(dest)?;
 
     assert_eq!(dest_len, left_len);
     assert_eq!(dest_len, right_len);
@@ -414,10 +414,10 @@ fn unary_op_ss<'tcx>(
     this: &mut crate::MiriInterpCx<'_, 'tcx>,
     which: FloatUnaryOp,
     op: &OpTy<'tcx, Provenance>,
-    dest: &PlaceTy<'tcx, Provenance>,
+    dest: &MPlaceTy<'tcx, Provenance>,
 ) -> InterpResult<'tcx, ()> {
     let (op, op_len) = this.operand_to_simd(op)?;
-    let (dest, dest_len) = this.place_to_simd(dest)?;
+    let (dest, dest_len) = this.mplace_to_simd(dest)?;
 
     assert_eq!(dest_len, op_len);
 
@@ -437,10 +437,10 @@ fn unary_op_ps<'tcx>(
     this: &mut crate::MiriInterpCx<'_, 'tcx>,
     which: FloatUnaryOp,
     op: &OpTy<'tcx, Provenance>,
-    dest: &PlaceTy<'tcx, Provenance>,
+    dest: &MPlaceTy<'tcx, Provenance>,
 ) -> InterpResult<'tcx, ()> {
     let (op, op_len) = this.operand_to_simd(op)?;
-    let (dest, dest_len) = this.place_to_simd(dest)?;
+    let (dest, dest_len) = this.mplace_to_simd(dest)?;
 
     assert_eq!(dest_len, op_len);
 
@@ -462,11 +462,11 @@ fn round_first<'tcx, F: rustc_apfloat::Float>(
     left: &OpTy<'tcx, Provenance>,
     right: &OpTy<'tcx, Provenance>,
     rounding: &OpTy<'tcx, Provenance>,
-    dest: &PlaceTy<'tcx, Provenance>,
+    dest: &MPlaceTy<'tcx, Provenance>,
 ) -> InterpResult<'tcx, ()> {
     let (left, left_len) = this.operand_to_simd(left)?;
     let (right, right_len) = this.operand_to_simd(right)?;
-    let (dest, dest_len) = this.place_to_simd(dest)?;
+    let (dest, dest_len) = this.mplace_to_simd(dest)?;
 
     assert_eq!(dest_len, left_len);
     assert_eq!(dest_len, right_len);
@@ -492,10 +492,10 @@ fn round_all<'tcx, F: rustc_apfloat::Float>(
     this: &mut crate::MiriInterpCx<'_, 'tcx>,
     op: &OpTy<'tcx, Provenance>,
     rounding: &OpTy<'tcx, Provenance>,
-    dest: &PlaceTy<'tcx, Provenance>,
+    dest: &MPlaceTy<'tcx, Provenance>,
 ) -> InterpResult<'tcx, ()> {
     let (op, op_len) = this.operand_to_simd(op)?;
-    let (dest, dest_len) = this.place_to_simd(dest)?;
+    let (dest, dest_len) = this.mplace_to_simd(dest)?;
 
     assert_eq!(dest_len, op_len);
 
@@ -544,10 +544,10 @@ fn convert_float_to_int<'tcx>(
     this: &mut crate::MiriInterpCx<'_, 'tcx>,
     op: &OpTy<'tcx, Provenance>,
     rnd: rustc_apfloat::Round,
-    dest: &PlaceTy<'tcx, Provenance>,
+    dest: &MPlaceTy<'tcx, Provenance>,
 ) -> InterpResult<'tcx, ()> {
     let (op, op_len) = this.operand_to_simd(op)?;
-    let (dest, dest_len) = this.place_to_simd(dest)?;
+    let (dest, dest_len) = this.mplace_to_simd(dest)?;
 
     // Output must be *signed* integers.
     assert!(matches!(dest.layout.field(this, 0).ty.kind(), ty::Int(_)));
@@ -587,7 +587,7 @@ fn split_simd_to_128bit_chunks<'tcx>(
     this: &mut crate::MiriInterpCx<'_, 'tcx>,
     left: &OpTy<'tcx, Provenance>,
     right: &OpTy<'tcx, Provenance>,
-    dest: &PlaceTy<'tcx, Provenance>,
+    dest: &MPlaceTy<'tcx, Provenance>,
 ) -> InterpResult<
     'tcx,
     (u64, u64, MPlaceTy<'tcx, Provenance>, MPlaceTy<'tcx, Provenance>, MPlaceTy<'tcx, Provenance>),
@@ -597,7 +597,7 @@ fn split_simd_to_128bit_chunks<'tcx>(
 
     let (left, left_len) = this.operand_to_simd(left)?;
     let (right, right_len) = this.operand_to_simd(right)?;
-    let (dest, dest_len) = this.place_to_simd(dest)?;
+    let (dest, dest_len) = this.mplace_to_simd(dest)?;
 
     assert_eq!(dest_len, left_len);
     assert_eq!(dest_len, right_len);
@@ -636,7 +636,7 @@ fn horizontal_bin_op<'tcx>(
     saturating: bool,
     left: &OpTy<'tcx, Provenance>,
     right: &OpTy<'tcx, Provenance>,
-    dest: &PlaceTy<'tcx, Provenance>,
+    dest: &MPlaceTy<'tcx, Provenance>,
 ) -> InterpResult<'tcx, ()> {
     let (num_chunks, items_per_chunk, left, right, dest) =
         split_simd_to_128bit_chunks(this, left, right, dest)?;
@@ -684,7 +684,7 @@ fn conditional_dot_product<'tcx>(
     left: &OpTy<'tcx, Provenance>,
     right: &OpTy<'tcx, Provenance>,
     imm: &OpTy<'tcx, Provenance>,
-    dest: &PlaceTy<'tcx, Provenance>,
+    dest: &MPlaceTy<'tcx, Provenance>,
 ) -> InterpResult<'tcx, ()> {
     let (num_chunks, items_per_chunk, left, right, dest) =
         split_simd_to_128bit_chunks(this, left, right, dest)?;

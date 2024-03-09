@@ -1,6 +1,6 @@
 use crate::error::{TranslateError, TranslateErrorKind};
 use crate::snippet::Style;
-use crate::{DiagArg, DiagnosticMessage, FluentBundle};
+use crate::{DiagArg, DiagMessage, FluentBundle};
 use rustc_data_structures::sync::Lrc;
 pub use rustc_error_messages::FluentArgs;
 use std::borrow::Cow;
@@ -37,10 +37,10 @@ pub trait Translate {
     /// unavailable for the requested locale.
     fn fallback_fluent_bundle(&self) -> &FluentBundle;
 
-    /// Convert `DiagnosticMessage`s to a string, performing translation if necessary.
+    /// Convert `DiagMessage`s to a string, performing translation if necessary.
     fn translate_messages(
         &self,
-        messages: &[(DiagnosticMessage, Style)],
+        messages: &[(DiagMessage, Style)],
         args: &FluentArgs<'_>,
     ) -> Cow<'_, str> {
         Cow::Owned(
@@ -51,18 +51,18 @@ pub trait Translate {
         )
     }
 
-    /// Convert a `DiagnosticMessage` to a string, performing translation if necessary.
+    /// Convert a `DiagMessage` to a string, performing translation if necessary.
     fn translate_message<'a>(
         &'a self,
-        message: &'a DiagnosticMessage,
+        message: &'a DiagMessage,
         args: &'a FluentArgs<'_>,
     ) -> Result<Cow<'_, str>, TranslateError<'_>> {
         trace!(?message, ?args);
         let (identifier, attr) = match message {
-            DiagnosticMessage::Str(msg) | DiagnosticMessage::Translated(msg) => {
+            DiagMessage::Str(msg) | DiagMessage::Translated(msg) => {
                 return Ok(Cow::Borrowed(msg));
             }
-            DiagnosticMessage::FluentIdentifier(identifier, attr) => (identifier, attr),
+            DiagMessage::FluentIdentifier(identifier, attr) => (identifier, attr),
         };
         let translate_with_bundle =
             |bundle: &'a FluentBundle| -> Result<Cow<'_, str>, TranslateError<'_>> {

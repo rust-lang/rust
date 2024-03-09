@@ -39,7 +39,7 @@ pub use codes::*;
 pub use diagnostic::{
     AddToDiagnostic, BugAbort, DecorateLint, Diag, DiagArg, DiagArgMap, DiagArgName, DiagArgValue,
     DiagInner, DiagStyledString, EmissionGuarantee, FatalAbort, IntoDiagnostic, IntoDiagnosticArg,
-    StringPart, Subdiag, SubdiagnosticMessageOp,
+    StringPart, Subdiag, SubdiagMessageOp,
 };
 pub use diagnostic_impls::{
     DiagArgFromDisplay, DiagSymbolList, ExpectedLifetimeParameter, IndicateAnonymousLifetime,
@@ -47,8 +47,8 @@ pub use diagnostic_impls::{
 };
 pub use emitter::ColorConfig;
 pub use rustc_error_messages::{
-    fallback_fluent_bundle, fluent_bundle, DelayDm, DiagnosticMessage, FluentBundle,
-    LanguageIdentifier, LazyFallbackBundle, MultiSpan, SpanLabel, SubdiagnosticMessage,
+    fallback_fluent_bundle, fluent_bundle, DelayDm, DiagMessage, FluentBundle, LanguageIdentifier,
+    LazyFallbackBundle, MultiSpan, SpanLabel, SubdiagMessage,
 };
 pub use rustc_lint_defs::{pluralize, Applicability};
 pub use rustc_span::fatal_error::{FatalError, FatalErrorMarker};
@@ -63,7 +63,7 @@ use emitter::{is_case_difference, DynEmitter, Emitter};
 use registry::Registry;
 use rustc_data_structures::fx::{FxHashSet, FxIndexMap, FxIndexSet};
 use rustc_data_structures::stable_hasher::{Hash128, StableHasher};
-use rustc_data_structures::sync::Lock;
+use rustc_data_structures::sync::{Lock, Lrc};
 use rustc_data_structures::AtomicRef;
 use rustc_lint_defs::LintExpectationId;
 use rustc_span::source_map::SourceMap;
@@ -154,7 +154,7 @@ pub struct CodeSuggestion {
     /// ]
     /// ```
     pub substitutions: Vec<Substitution>,
-    pub msg: DiagnosticMessage,
+    pub msg: DiagMessage,
     /// Visual representation of this suggestion.
     pub style: SuggestionStyle,
     /// Whether or not the suggestion is approximate
@@ -606,37 +606,62 @@ impl DiagCtxt {
     }
 
     pub fn new(emitter: Box<DynEmitter>) -> Self {
-        Self {
-            inner: Lock::new(DiagCtxtInner {
-                flags: DiagCtxtFlags { can_emit_warnings: true, ..Default::default() },
-                err_guars: Vec::new(),
-                lint_err_guars: Vec::new(),
-                delayed_bugs: Vec::new(),
-                deduplicated_err_count: 0,
-                deduplicated_warn_count: 0,
-                emitter,
-                must_produce_diag: false,
-                has_printed: false,
-                suppressed_expected_diag: false,
-                taught_diagnostics: Default::default(),
-                emitted_diagnostic_codes: Default::default(),
-                emitted_diagnostics: Default::default(),
-                stashed_diagnostics: Default::default(),
-                future_breakage_diagnostics: Vec::new(),
-                check_unstable_expect_diagnostics: false,
-                unstable_expect_diagnostics: Vec::new(),
-                fulfilled_expectations: Default::default(),
-                ice_file: None,
-            }),
-        }
+        Self { inner: Lock::new(DiagCtxtInner::new(emitter)) }
     }
 
-    /// Translate `message` eagerly with `args` to `SubdiagnosticMessage::Eager`.
+    pub fn make_silent(&mut self, fallback_bundle: LazyFallbackBundle, fatal_note: Option<String>) {
+        self.wrap_emitter(|old_dcx| {
+            Box::new(emitter::SilentEmitter {
+                fallback_bundle,
+                fatal_dcx: DiagCtxt { inner: Lock::new(old_dcx) },
+                fatal_note,
+            })
+        });
+    }
+
+    fn wrap_emitter<F>(&mut self, f: F)
+    where
+        F: FnOnce(DiagCtxtInner) -> Box<DynEmitter>,
+    {
+        // A empty type that implements `Emitter` so that a `DiagCtxtInner` can be constructed
+        // to temporarily swap in place of the real one, which will be used in constructing
+        // its replacement.
+        struct FalseEmitter;
+
+        impl Emitter for FalseEmitter {
+            fn emit_diagnostic(&mut self, _: DiagInner) {
+                unimplemented!("false emitter must only used during `wrap_emitter`")
+            }
+
+            fn source_map(&self) -> Option<&Lrc<SourceMap>> {
+                unimplemented!("false emitter must only used during `wrap_emitter`")
+            }
+        }
+
+        impl translation::Translate for FalseEmitter {
+            fn fluent_bundle(&self) -> Option<&Lrc<FluentBundle>> {
+                unimplemented!("false emitter must only used during `wrap_emitter`")
+            }
+
+            fn fallback_fluent_bundle(&self) -> &FluentBundle {
+                unimplemented!("false emitter must only used during `wrap_emitter`")
+            }
+        }
+
+        let mut inner = self.inner.borrow_mut();
+        let mut prev_dcx = DiagCtxtInner::new(Box::new(FalseEmitter));
+        std::mem::swap(&mut *inner, &mut prev_dcx);
+        let new_emitter = f(prev_dcx);
+        let mut new_dcx = DiagCtxtInner::new(new_emitter);
+        std::mem::swap(&mut *inner, &mut new_dcx);
+    }
+
+    /// Translate `message` eagerly with `args` to `SubdiagMessage::Eager`.
     pub fn eagerly_translate<'a>(
         &self,
-        message: DiagnosticMessage,
+        message: DiagMessage,
         args: impl Iterator<Item = DiagArg<'a>>,
-    ) -> SubdiagnosticMessage {
+    ) -> SubdiagMessage {
         let inner = self.inner.borrow();
         inner.eagerly_translate(message, args)
     }
@@ -644,7 +669,7 @@ impl DiagCtxt {
     /// Translate `message` eagerly with `args` to `String`.
     pub fn eagerly_translate_to_string<'a>(
         &self,
-        message: DiagnosticMessage,
+        message: DiagMessage,
         args: impl Iterator<Item = DiagArg<'a>>,
     ) -> String {
         let inner = self.inner.borrow();
@@ -904,7 +929,7 @@ impl DiagCtxt {
                 // configuration like `--cap-lints allow --force-warn bare_trait_objects`.
                 inner.emit_diagnostic(DiagInner::new(
                     ForceWarning(None),
-                    DiagnosticMessage::Str(warnings),
+                    DiagMessage::Str(warnings),
                 ));
             }
             (_, 0) => {
@@ -1076,32 +1101,36 @@ impl DiagCtxt {
 // Functions beginning with `struct_`/`create_` create a diagnostic. Other
 // functions create and emit a diagnostic all in one go.
 impl DiagCtxt {
-    // No `#[rustc_lint_diagnostics]` because bug messages aren't user-facing.
+    // No `#[rustc_lint_diagnostics]` and no `impl Into<DiagMessage>` because bug messages aren't
+    // user-facing.
     #[track_caller]
-    pub fn struct_bug(&self, msg: impl Into<DiagnosticMessage>) -> Diag<'_, BugAbort> {
-        Diag::new(self, Bug, msg)
+    pub fn struct_bug(&self, msg: impl Into<Cow<'static, str>>) -> Diag<'_, BugAbort> {
+        Diag::new(self, Bug, msg.into())
     }
 
-    // No `#[rustc_lint_diagnostics]` because bug messages aren't user-facing.
+    // No `#[rustc_lint_diagnostics]` and no `impl Into<DiagMessage>` because bug messages aren't
+    // user-facing.
     #[track_caller]
-    pub fn bug(&self, msg: impl Into<DiagnosticMessage>) -> ! {
+    pub fn bug(&self, msg: impl Into<Cow<'static, str>>) -> ! {
         self.struct_bug(msg).emit()
     }
 
-    // No `#[rustc_lint_diagnostics]` because bug messages aren't user-facing.
+    // No `#[rustc_lint_diagnostics]` and no `impl Into<DiagMessage>` because bug messages aren't
+    // user-facing.
     #[track_caller]
     pub fn struct_span_bug(
         &self,
         span: impl Into<MultiSpan>,
-        msg: impl Into<DiagnosticMessage>,
+        msg: impl Into<Cow<'static, str>>,
     ) -> Diag<'_, BugAbort> {
         self.struct_bug(msg).with_span(span)
     }
 
-    // No `#[rustc_lint_diagnostics]` because bug messages aren't user-facing.
+    // No `#[rustc_lint_diagnostics]` and no `impl Into<DiagMessage>` because bug messages aren't
+    // user-facing.
     #[track_caller]
-    pub fn span_bug(&self, span: impl Into<MultiSpan>, msg: impl Into<DiagnosticMessage>) -> ! {
-        self.struct_span_bug(span, msg).emit()
+    pub fn span_bug(&self, span: impl Into<MultiSpan>, msg: impl Into<Cow<'static, str>>) -> ! {
+        self.struct_span_bug(span, msg.into()).emit()
     }
 
     #[track_caller]
@@ -1116,13 +1145,13 @@ impl DiagCtxt {
 
     #[rustc_lint_diagnostics]
     #[track_caller]
-    pub fn struct_fatal(&self, msg: impl Into<DiagnosticMessage>) -> Diag<'_, FatalAbort> {
+    pub fn struct_fatal(&self, msg: impl Into<DiagMessage>) -> Diag<'_, FatalAbort> {
         Diag::new(self, Fatal, msg)
     }
 
     #[rustc_lint_diagnostics]
     #[track_caller]
-    pub fn fatal(&self, msg: impl Into<DiagnosticMessage>) -> ! {
+    pub fn fatal(&self, msg: impl Into<DiagMessage>) -> ! {
         self.struct_fatal(msg).emit()
     }
 
@@ -1131,14 +1160,14 @@ impl DiagCtxt {
     pub fn struct_span_fatal(
         &self,
         span: impl Into<MultiSpan>,
-        msg: impl Into<DiagnosticMessage>,
+        msg: impl Into<DiagMessage>,
     ) -> Diag<'_, FatalAbort> {
         self.struct_fatal(msg).with_span(span)
     }
 
     #[rustc_lint_diagnostics]
     #[track_caller]
-    pub fn span_fatal(&self, span: impl Into<MultiSpan>, msg: impl Into<DiagnosticMessage>) -> ! {
+    pub fn span_fatal(&self, span: impl Into<MultiSpan>, msg: impl Into<DiagMessage>) -> ! {
         self.struct_span_fatal(span, msg).emit()
     }
 
@@ -1174,13 +1203,13 @@ impl DiagCtxt {
     // FIXME: This method should be removed (every error should have an associated error code).
     #[rustc_lint_diagnostics]
     #[track_caller]
-    pub fn struct_err(&self, msg: impl Into<DiagnosticMessage>) -> Diag<'_> {
+    pub fn struct_err(&self, msg: impl Into<DiagMessage>) -> Diag<'_> {
         Diag::new(self, Error, msg)
     }
 
     #[rustc_lint_diagnostics]
     #[track_caller]
-    pub fn err(&self, msg: impl Into<DiagnosticMessage>) -> ErrorGuaranteed {
+    pub fn err(&self, msg: impl Into<DiagMessage>) -> ErrorGuaranteed {
         self.struct_err(msg).emit()
     }
 
@@ -1189,7 +1218,7 @@ impl DiagCtxt {
     pub fn struct_span_err(
         &self,
         span: impl Into<MultiSpan>,
-        msg: impl Into<DiagnosticMessage>,
+        msg: impl Into<DiagMessage>,
     ) -> Diag<'_> {
         self.struct_err(msg).with_span(span)
     }
@@ -1199,7 +1228,7 @@ impl DiagCtxt {
     pub fn span_err(
         &self,
         span: impl Into<MultiSpan>,
-        msg: impl Into<DiagnosticMessage>,
+        msg: impl Into<DiagMessage>,
     ) -> ErrorGuaranteed {
         self.struct_span_err(span, msg).emit()
     }
@@ -1215,35 +1244,39 @@ impl DiagCtxt {
     }
 
     /// Ensures that an error is printed. See `Level::DelayedBug`.
-    // No `#[rustc_lint_diagnostics]` because bug messages aren't user-facing.
+    //
+    // No `#[rustc_lint_diagnostics]` and no `impl Into<DiagMessage>` because bug messages aren't
+    // user-facing.
     #[track_caller]
-    pub fn delayed_bug(&self, msg: impl Into<DiagnosticMessage>) -> ErrorGuaranteed {
-        Diag::<ErrorGuaranteed>::new(self, DelayedBug, msg).emit()
+    pub fn delayed_bug(&self, msg: impl Into<Cow<'static, str>>) -> ErrorGuaranteed {
+        Diag::<ErrorGuaranteed>::new(self, DelayedBug, msg.into()).emit()
     }
 
     /// Ensures that an error is printed. See `Level::DelayedBug`.
     ///
     /// Note: this function used to be called `delay_span_bug`. It was renamed
     /// to match similar functions like `span_err`, `span_warn`, etc.
-    // No `#[rustc_lint_diagnostics]` because bug messages aren't user-facing.
+    //
+    // No `#[rustc_lint_diagnostics]` and no `impl Into<DiagMessage>` because bug messages aren't
+    // user-facing.
     #[track_caller]
     pub fn span_delayed_bug(
         &self,
         sp: impl Into<MultiSpan>,
-        msg: impl Into<DiagnosticMessage>,
+        msg: impl Into<Cow<'static, str>>,
     ) -> ErrorGuaranteed {
-        Diag::<ErrorGuaranteed>::new(self, DelayedBug, msg).with_span(sp).emit()
+        Diag::<ErrorGuaranteed>::new(self, DelayedBug, msg.into()).with_span(sp).emit()
     }
 
     #[rustc_lint_diagnostics]
     #[track_caller]
-    pub fn struct_warn(&self, msg: impl Into<DiagnosticMessage>) -> Diag<'_, ()> {
+    pub fn struct_warn(&self, msg: impl Into<DiagMessage>) -> Diag<'_, ()> {
         Diag::new(self, Warning, msg)
     }
 
     #[rustc_lint_diagnostics]
     #[track_caller]
-    pub fn warn(&self, msg: impl Into<DiagnosticMessage>) {
+    pub fn warn(&self, msg: impl Into<DiagMessage>) {
         self.struct_warn(msg).emit()
     }
 
@@ -1252,14 +1285,14 @@ impl DiagCtxt {
     pub fn struct_span_warn(
         &self,
         span: impl Into<MultiSpan>,
-        msg: impl Into<DiagnosticMessage>,
+        msg: impl Into<DiagMessage>,
     ) -> Diag<'_, ()> {
         self.struct_warn(msg).with_span(span)
     }
 
     #[rustc_lint_diagnostics]
     #[track_caller]
-    pub fn span_warn(&self, span: impl Into<MultiSpan>, msg: impl Into<DiagnosticMessage>) {
+    pub fn span_warn(&self, span: impl Into<MultiSpan>, msg: impl Into<DiagMessage>) {
         self.struct_span_warn(span, msg).emit()
     }
 
@@ -1275,13 +1308,13 @@ impl DiagCtxt {
 
     #[rustc_lint_diagnostics]
     #[track_caller]
-    pub fn struct_note(&self, msg: impl Into<DiagnosticMessage>) -> Diag<'_, ()> {
+    pub fn struct_note(&self, msg: impl Into<DiagMessage>) -> Diag<'_, ()> {
         Diag::new(self, Note, msg)
     }
 
     #[rustc_lint_diagnostics]
     #[track_caller]
-    pub fn note(&self, msg: impl Into<DiagnosticMessage>) {
+    pub fn note(&self, msg: impl Into<DiagMessage>) {
         self.struct_note(msg).emit()
     }
 
@@ -1290,14 +1323,14 @@ impl DiagCtxt {
     pub fn struct_span_note(
         &self,
         span: impl Into<MultiSpan>,
-        msg: impl Into<DiagnosticMessage>,
+        msg: impl Into<DiagMessage>,
     ) -> Diag<'_, ()> {
         self.struct_note(msg).with_span(span)
     }
 
     #[rustc_lint_diagnostics]
     #[track_caller]
-    pub fn span_note(&self, span: impl Into<MultiSpan>, msg: impl Into<DiagnosticMessage>) {
+    pub fn span_note(&self, span: impl Into<MultiSpan>, msg: impl Into<DiagMessage>) {
         self.struct_span_note(span, msg).emit()
     }
 
@@ -1313,19 +1346,19 @@ impl DiagCtxt {
 
     #[rustc_lint_diagnostics]
     #[track_caller]
-    pub fn struct_help(&self, msg: impl Into<DiagnosticMessage>) -> Diag<'_, ()> {
+    pub fn struct_help(&self, msg: impl Into<DiagMessage>) -> Diag<'_, ()> {
         Diag::new(self, Help, msg)
     }
 
     #[rustc_lint_diagnostics]
     #[track_caller]
-    pub fn struct_failure_note(&self, msg: impl Into<DiagnosticMessage>) -> Diag<'_, ()> {
+    pub fn struct_failure_note(&self, msg: impl Into<DiagMessage>) -> Diag<'_, ()> {
         Diag::new(self, FailureNote, msg)
     }
 
     #[rustc_lint_diagnostics]
     #[track_caller]
-    pub fn struct_allow(&self, msg: impl Into<DiagnosticMessage>) -> Diag<'_, ()> {
+    pub fn struct_allow(&self, msg: impl Into<DiagMessage>) -> Diag<'_, ()> {
         Diag::new(self, Allow, msg)
     }
 
@@ -1333,7 +1366,7 @@ impl DiagCtxt {
     #[track_caller]
     pub fn struct_expect(
         &self,
-        msg: impl Into<DiagnosticMessage>,
+        msg: impl Into<DiagMessage>,
         id: LintExpectationId,
     ) -> Diag<'_, ()> {
         Diag::new(self, Expect(id), msg)
@@ -1345,6 +1378,30 @@ impl DiagCtxt {
 // `DiagCtxt::foo()` just borrows `inner` and forwards a call to
 // `DiagCtxtInner::foo`.
 impl DiagCtxtInner {
+    fn new(emitter: Box<DynEmitter>) -> Self {
+        Self {
+            flags: DiagCtxtFlags { can_emit_warnings: true, ..Default::default() },
+            err_guars: Vec::new(),
+            lint_err_guars: Vec::new(),
+            delayed_bugs: Vec::new(),
+            deduplicated_err_count: 0,
+            deduplicated_warn_count: 0,
+            emitter,
+            must_produce_diag: false,
+            has_printed: false,
+            suppressed_expected_diag: false,
+            taught_diagnostics: Default::default(),
+            emitted_diagnostic_codes: Default::default(),
+            emitted_diagnostics: Default::default(),
+            stashed_diagnostics: Default::default(),
+            future_breakage_diagnostics: Vec::new(),
+            check_unstable_expect_diagnostics: false,
+            unstable_expect_diagnostics: Vec::new(),
+            fulfilled_expectations: Default::default(),
+            ice_file: None,
+        }
+    }
+
     /// Emit all stashed diagnostics.
     fn emit_stashed_diagnostics(&mut self) -> Option<ErrorGuaranteed> {
         let mut guar = None;
@@ -1553,19 +1610,19 @@ impl DiagCtxtInner {
         self.has_errors().or_else(|| self.delayed_bugs.get(0).map(|(_, guar)| guar).copied())
     }
 
-    /// Translate `message` eagerly with `args` to `SubdiagnosticMessage::Eager`.
+    /// Translate `message` eagerly with `args` to `SubdiagMessage::Eager`.
     pub fn eagerly_translate<'a>(
         &self,
-        message: DiagnosticMessage,
+        message: DiagMessage,
         args: impl Iterator<Item = DiagArg<'a>>,
-    ) -> SubdiagnosticMessage {
-        SubdiagnosticMessage::Translated(Cow::from(self.eagerly_translate_to_string(message, args)))
+    ) -> SubdiagMessage {
+        SubdiagMessage::Translated(Cow::from(self.eagerly_translate_to_string(message, args)))
     }
 
     /// Translate `message` eagerly with `args` to `String`.
     pub fn eagerly_translate_to_string<'a>(
         &self,
-        message: DiagnosticMessage,
+        message: DiagMessage,
         args: impl Iterator<Item = DiagArg<'a>>,
     ) -> String {
         let args = crate::translation::to_fluent_args(args);
@@ -1575,8 +1632,8 @@ impl DiagCtxtInner {
     fn eagerly_translate_for_subdiag(
         &self,
         diag: &DiagInner,
-        msg: impl Into<SubdiagnosticMessage>,
-    ) -> SubdiagnosticMessage {
+        msg: impl Into<SubdiagMessage>,
+    ) -> SubdiagMessage {
         let msg = diag.subdiagnostic_message_to_diagnostic_message(msg);
         self.eagerly_translate(msg, diag.args.iter())
     }

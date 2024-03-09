@@ -161,6 +161,7 @@ pub struct Config {
     pub vendor: bool,
     pub target_config: HashMap<TargetSelection, Target>,
     pub full_bootstrap: bool,
+    pub bootstrap_cache_path: Option<PathBuf>,
     pub extended: bool,
     pub tools: Option<HashSet<String>>,
     pub sanitizers: bool,
@@ -827,6 +828,7 @@ define_config! {
         locked_deps: Option<bool> = "locked-deps",
         vendor: Option<bool> = "vendor",
         full_bootstrap: Option<bool> = "full-bootstrap",
+        bootstrap_cache_path: Option<PathBuf> = "bootstrap-cache-path",
         extended: Option<bool> = "extended",
         tools: Option<HashSet<String>> = "tools",
         verbose: Option<usize> = "verbose",
@@ -1389,6 +1391,7 @@ impl Config {
             locked_deps,
             vendor,
             full_bootstrap,
+            bootstrap_cache_path,
             extended,
             tools,
             verbose,
@@ -1477,6 +1480,7 @@ impl Config {
         config.reuse = reuse.map(PathBuf::from);
         config.submodules = submodules;
         config.android_ndk = android_ndk;
+        config.bootstrap_cache_path = bootstrap_cache_path;
         set(&mut config.low_priority, low_priority);
         set(&mut config.compiler_docs, compiler_docs);
         set(&mut config.library_docs_private_items, library_docs_private_items);

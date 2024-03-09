@@ -1,41 +1,4 @@
 error[E0782]: trait objects must include the `dyn` keyword
-  --> $DIR/suggest-blanket-impl-local-trait.rs:13:24
-   |
-LL | impl LocalTraitTwo for LocalTraitOne {}
-   |                        ^^^^^^^^^^^^^
-   |
-help: add `dyn` keyword before this trait
-   |
-LL | impl LocalTraitTwo for dyn LocalTraitOne {}
-   |                        +++
-help: alternatively use a blanket implementation to implement `LocalTraitTwo` for all types that also implement `LocalTraitOne`
-   |
-LL | impl<T: LocalTraitOne> LocalTraitTwo for T {}
-   |     ++++++++++++++++++                   ~
-
-error[E0782]: trait objects must include the `dyn` keyword
-  --> $DIR/suggest-blanket-impl-local-trait.rs:18:23
-   |
-LL | impl fmt::Display for LocalTraitOne {
-   |                       ^^^^^^^^^^^^^
-   |
-help: add `dyn` keyword before this trait
-   |
-LL | impl fmt::Display for dyn LocalTraitOne {
-   |                       +++
-
-error[E0782]: trait objects must include the `dyn` keyword
-  --> $DIR/suggest-blanket-impl-local-trait.rs:26:23
-   |
-LL | impl fmt::Display for LocalTraitTwo + Send {
-   |                       ^^^^^^^^^^^^^^^^^^^^
-   |
-help: add `dyn` keyword before this trait
-   |
-LL | impl fmt::Display for dyn LocalTraitTwo + Send {
-   |                       +++
-
-error[E0782]: trait objects must include the `dyn` keyword
   --> $DIR/suggest-blanket-impl-local-trait.rs:34:24
    |
 LL | impl LocalTraitOne for fmt::Display {}
@@ -66,6 +29,21 @@ LL | impl<T: fmt::Display + Send> LocalTraitOne for T {}
    |     ++++++++++++++++++++++++                   ~
 
 error[E0782]: trait objects must include the `dyn` keyword
+  --> $DIR/suggest-blanket-impl-local-trait.rs:13:24
+   |
+LL | impl LocalTraitTwo for LocalTraitOne {}
+   |                        ^^^^^^^^^^^^^
+   |
+help: add `dyn` keyword before this trait
+   |
+LL | impl LocalTraitTwo for dyn LocalTraitOne {}
+   |                        +++
+help: alternatively use a blanket implementation to implement `LocalTraitTwo` for all types that also implement `LocalTraitOne`
+   |
+LL | impl<T: LocalTraitOne> LocalTraitTwo for T {}
+   |     ++++++++++++++++++                   ~
+
+error[E0782]: trait objects must include the `dyn` keyword
   --> $DIR/suggest-blanket-impl-local-trait.rs:46:29
    |
 LL | impl<E> GenericTrait<E> for LocalTraitOne {}
@@ -79,6 +57,28 @@ help: alternatively use a blanket implementation to implement `GenericTrait<E>` 
    |
 LL | impl<E, T: LocalTraitOne> GenericTrait<E> for T {}
    |       ++++++++++++++++++                      ~
+
+error[E0782]: trait objects must include the `dyn` keyword
+  --> $DIR/suggest-blanket-impl-local-trait.rs:18:23
+   |
+LL | impl fmt::Display for LocalTraitOne {
+   |                       ^^^^^^^^^^^^^
+   |
+help: add `dyn` keyword before this trait
+   |
+LL | impl fmt::Display for dyn LocalTraitOne {
+   |                       +++
+
+error[E0782]: trait objects must include the `dyn` keyword
+  --> $DIR/suggest-blanket-impl-local-trait.rs:26:23
+   |
+LL | impl fmt::Display for LocalTraitTwo + Send {
+   |                       ^^^^^^^^^^^^^^^^^^^^
+   |
+help: add `dyn` keyword before this trait
+   |
+LL | impl fmt::Display for dyn LocalTraitTwo + Send {
+   |                       +++
 
 error[E0782]: trait objects must include the `dyn` keyword
   --> $DIR/suggest-blanket-impl-local-trait.rs:53:35

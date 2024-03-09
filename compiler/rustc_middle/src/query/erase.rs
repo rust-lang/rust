@@ -177,8 +177,8 @@ impl EraseType for Option<mir::DestructuredConstant<'_>> {
     type Result = [u8; size_of::<Option<mir::DestructuredConstant<'static>>>()];
 }
 
-impl EraseType for Option<ty::EarlyBinder<ty::ImplTraitHeader<'_>>> {
-    type Result = [u8; size_of::<Option<ty::EarlyBinder<ty::ImplTraitHeader<'static>>>>()];
+impl EraseType for Option<ty::ImplTraitHeader<'_>> {
+    type Result = [u8; size_of::<Option<ty::ImplTraitHeader<'static>>>()];
 }
 
 impl EraseType for Option<ty::EarlyBinder<Ty<'_>>> {
@@ -241,7 +241,7 @@ trivial! {
     Option<rustc_target::abi::FieldIdx>,
     Option<rustc_target::spec::PanicStrategy>,
     Option<usize>,
-    Option<rustc_span::Symbol>,
+    Option<rustc_middle::ty::IntrinsicDef>,
     Result<(), rustc_errors::ErrorGuaranteed>,
     Result<(), rustc_middle::traits::query::NoSolution>,
     Result<rustc_middle::traits::EvaluationResult, rustc_middle::traits::OverflowError>,

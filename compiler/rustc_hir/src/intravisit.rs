@@ -65,8 +65,7 @@
 //! example coroutine inference, and possibly also HIR borrowck.
 
 use crate::hir::*;
-use rustc_ast::visit::VisitorResult;
-use rustc_ast::{try_visit, visit_opt, walk_list};
+use rustc_ast::visit::{try_visit, visit_opt, walk_list, VisitorResult};
 use rustc_ast::{Attribute, Label};
 use rustc_span::def_id::LocalDefId;
 use rustc_span::symbol::{Ident, Symbol};
@@ -1290,6 +1289,7 @@ pub fn walk_inline_asm<'v, V: Visitor<'v>>(
             InlineAsmOperand::SymStatic { path, .. } => {
                 try_visit!(visitor.visit_qpath(path, id, *op_sp));
             }
+            InlineAsmOperand::Label { block } => try_visit!(visitor.visit_block(block)),
         }
     }
     V::Result::output()

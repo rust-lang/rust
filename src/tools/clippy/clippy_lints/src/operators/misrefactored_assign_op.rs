@@ -21,9 +21,8 @@ pub(super) fn check<'tcx>(
         // lhs op= l op r
         if eq_expr_value(cx, lhs, l) {
             lint_misrefactored_assign_op(cx, expr, op, rhs, lhs, r);
-        }
-        // lhs op= l commutative_op r
-        if is_commutative(op) && eq_expr_value(cx, lhs, r) {
+        } else if is_commutative(op) && eq_expr_value(cx, lhs, r) {
+            // lhs op= l commutative_op r
             lint_misrefactored_assign_op(cx, expr, op, rhs, lhs, l);
         }
     }

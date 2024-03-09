@@ -2,7 +2,7 @@
 
 use rustc_ast::ParamKindOrd;
 use rustc_errors::{
-    codes::*, AddToDiagnostic, Applicability, Diag, EmissionGuarantee, SubdiagnosticMessageOp,
+    codes::*, AddToDiagnostic, Applicability, Diag, EmissionGuarantee, SubdiagMessageOp,
 };
 use rustc_macros::{Diagnostic, Subdiagnostic};
 use rustc_span::{symbol::Ident, Span, Symbol};
@@ -374,7 +374,7 @@ pub struct EmptyLabelManySpans(pub Vec<Span>);
 
 // The derive for `Vec<Span>` does multiple calls to `span_label`, adding commas between each
 impl AddToDiagnostic for EmptyLabelManySpans {
-    fn add_to_diagnostic_with<G: EmissionGuarantee, F: SubdiagnosticMessageOp<G>>(
+    fn add_to_diagnostic_with<G: EmissionGuarantee, F: SubdiagMessageOp<G>>(
         self,
         diag: &mut Diag<'_, G>,
         _: F,
@@ -743,7 +743,7 @@ pub struct StableFeature {
 }
 
 impl AddToDiagnostic for StableFeature {
-    fn add_to_diagnostic_with<G: EmissionGuarantee, F: SubdiagnosticMessageOp<G>>(
+    fn add_to_diagnostic_with<G: EmissionGuarantee, F: SubdiagMessageOp<G>>(
         self,
         diag: &mut Diag<'_, G>,
         _: F,

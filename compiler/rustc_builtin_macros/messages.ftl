@@ -19,6 +19,8 @@ builtin_macros_asm_expected_other = expected operand, {$is_global_asm ->
 
 builtin_macros_asm_explicit_register_name = explicit register arguments cannot have names
 
+builtin_macros_asm_mayunwind = asm labels are not allowed with the `may_unwind` option
+
 builtin_macros_asm_modifier_invalid = asm template modifier must be a single character
 
 builtin_macros_asm_mutually_exclusive = the `{$opt1}` and `{$opt2}` options are mutually exclusive

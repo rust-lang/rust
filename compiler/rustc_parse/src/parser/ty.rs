@@ -397,7 +397,7 @@ impl<'a> Parser<'a> {
         let (fields, _recovered) =
             self.parse_record_struct_body(if is_union { "union" } else { "struct" }, lo, false)?;
         let span = lo.to(self.prev_token.span);
-        self.sess.gated_spans.gate(sym::unnamed_fields, span);
+        self.psess.gated_spans.gate(sym::unnamed_fields, span);
         let id = ast::DUMMY_NODE_ID;
         let kind =
             if is_union { TyKind::AnonUnion(id, fields) } else { TyKind::AnonStruct(id, fields) };
@@ -694,7 +694,7 @@ impl<'a> Parser<'a> {
 
         // parse dyn* types
         let syntax = if self.eat(&TokenKind::BinOp(token::Star)) {
-            self.sess.gated_spans.gate(sym::dyn_star, lo.to(self.prev_token.span));
+            self.psess.gated_spans.gate(sym::dyn_star, lo.to(self.prev_token.span));
             TraitObjectSyntax::DynStar
         } else {
             TraitObjectSyntax::Dyn
@@ -874,10 +874,10 @@ impl<'a> Parser<'a> {
             let tilde = self.prev_token.span;
             self.expect_keyword(kw::Const)?;
             let span = tilde.to(self.prev_token.span);
-            self.sess.gated_spans.gate(sym::const_trait_impl, span);
+            self.psess.gated_spans.gate(sym::const_trait_impl, span);
             BoundConstness::Maybe(span)
         } else if self.eat_keyword(kw::Const) {
-            self.sess.gated_spans.gate(sym::const_trait_impl, self.prev_token.span);
+            self.psess.gated_spans.gate(sym::const_trait_impl, self.prev_token.span);
             BoundConstness::Always(self.prev_token.span)
         } else {
             BoundConstness::Never
@@ -886,7 +886,7 @@ impl<'a> Parser<'a> {
         let asyncness = if self.token.uninterpolated_span().at_least_rust_2018()
             && self.eat_keyword(kw::Async)
         {
-            self.sess.gated_spans.gate(sym::async_closure, self.prev_token.span);
+            self.psess.gated_spans.gate(sym::async_closure, self.prev_token.span);
             BoundAsyncness::Async(self.prev_token.span)
         } else if self.may_recover()
             && self.token.uninterpolated_span().is_rust_2015()
@@ -897,7 +897,7 @@ impl<'a> Parser<'a> {
                 span: self.prev_token.span,
                 help: HelpUseLatestEdition::new(),
             });
-            self.sess.gated_spans.gate(sym::async_closure, self.prev_token.span);
+            self.psess.gated_spans.gate(sym::async_closure, self.prev_token.span);
             BoundAsyncness::Async(self.prev_token.span)
         } else {
             BoundAsyncness::Normal
@@ -906,7 +906,7 @@ impl<'a> Parser<'a> {
         let polarity = if self.eat(&token::Question) {
             BoundPolarity::Maybe(self.prev_token.span)
         } else if self.eat(&token::Not) {
-            self.sess.gated_spans.gate(sym::negative_bounds, self.prev_token.span);
+            self.psess.gated_spans.gate(sym::negative_bounds, self.prev_token.span);
             BoundPolarity::Negative(self.prev_token.span)
         } else {
             BoundPolarity::Positive

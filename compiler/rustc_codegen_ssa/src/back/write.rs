@@ -16,8 +16,8 @@ use rustc_data_structures::sync::Lrc;
 use rustc_errors::emitter::Emitter;
 use rustc_errors::translation::Translate;
 use rustc_errors::{
-    Diag, DiagArgMap, DiagCtxt, DiagnosticMessage, ErrCode, FatalError, FluentBundle, Level,
-    MultiSpan, Style,
+    Diag, DiagArgMap, DiagCtxt, DiagMessage, ErrCode, FatalError, FluentBundle, Level, MultiSpan,
+    Style,
 };
 use rustc_fs_util::link_or_copy;
 use rustc_hir::def_id::{CrateNum, LOCAL_CRATE};
@@ -1004,9 +1004,9 @@ pub(crate) enum Message<B: WriteBackendMethods> {
 /// process another codegen unit.
 pub struct CguMessage;
 
-// A cut-down version of `rustc_errors::Diagnostic` that impls `Send`, which
+// A cut-down version of `rustc_errors::DiagInner` that impls `Send`, which
 // can be used to send diagnostics from codegen threads to the main thread.
-// It's missing the following fields from `rustc_errors::Diagnostic`.
+// It's missing the following fields from `rustc_errors::DiagInner`.
 // - `span`: it doesn't impl `Send`.
 // - `suggestions`: it doesn't impl `Send`, and isn't used for codegen
 //   diagnostics.
@@ -1015,18 +1015,18 @@ pub struct CguMessage;
 // - `emitted_at`: not used for codegen diagnostics.
 struct Diagnostic {
     level: Level,
-    messages: Vec<(DiagnosticMessage, Style)>,
+    messages: Vec<(DiagMessage, Style)>,
     code: Option<ErrCode>,
     children: Vec<Subdiagnostic>,
     args: DiagArgMap,
 }
 
-// A cut-down version of `rustc_errors::SubDiagnostic` that impls `Send`. It's
-// missing the following fields from `rustc_errors::SubDiagnostic`.
+// A cut-down version of `rustc_errors::Subdiag` that impls `Send`. It's
+// missing the following fields from `rustc_errors::Subdiag`.
 // - `span`: it doesn't impl `Send`.
 pub struct Subdiagnostic {
     level: Level,
-    messages: Vec<(DiagnosticMessage, Style)>,
+    messages: Vec<(DiagMessage, Style)>,
 }
 
 #[derive(PartialEq, Clone, Copy, Debug)]

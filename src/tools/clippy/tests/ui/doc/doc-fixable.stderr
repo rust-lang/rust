@@ -341,5 +341,16 @@ help: try
 LL | /// There is no try (do() or `do_not()`).
    |                              ~~~~~~~~~~
 
-error: aborting due to 31 previous errors
+error: item in documentation is missing backticks
+  --> tests/ui/doc/doc-fixable.rs:234:5
+   |
+LL | /// ABes
+   |     ^^^^
+   |
+help: try
+   |
+LL | /// `ABes`
+   |     ~~~~~~
+
+error: aborting due to 32 previous errors
 

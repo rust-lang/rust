@@ -3,7 +3,7 @@ use std::fmt::Debug;
 
 fn a() -> impl Fn(&u8) -> impl Debug + '_ {
     //~^ ERROR ambiguous `+` in a type
-    //~| ERROR higher kinded lifetime bounds on nested opaque types are not supported yet
+    //~| ERROR cannot capture higher-ranked lifetime from outer `impl Trait`
     |x| x
     //~^ ERROR lifetime may not live long enough
 }

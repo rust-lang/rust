@@ -48,17 +48,11 @@ note: ...which requires computing type of `S::S`...
 LL | struct S<const S: (), const S: S = { S }>;
    |                                ^
    = note: ...which again requires computing type of `S`, completing the cycle
-note: cycle used when collecting item types in top-level module
-  --> $DIR/issue-103790.rs:1:1
+note: cycle used when checking that `S` is well-formed
+  --> $DIR/issue-103790.rs:4:1
    |
-LL | / #![feature(generic_const_exprs)]
-LL | | #![allow(incomplete_features)]
-LL | |
-LL | | struct S<const S: (), const S: S = { S }>;
-...  |
-LL | |
-LL | | fn main() {}
-   | |____________^
+LL | struct S<const S: (), const S: S = { S }>;
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    = note: see https://rustc-dev-guide.rust-lang.org/overview.html#queries and https://rustc-dev-guide.rust-lang.org/query.html for more information
 
 error: `()` is forbidden as the type of a const generic parameter

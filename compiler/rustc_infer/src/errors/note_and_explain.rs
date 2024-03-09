@@ -1,8 +1,6 @@
 use crate::fluent_generated as fluent;
 use crate::infer::error_reporting::nice_region_error::find_anon_type;
-use rustc_errors::{
-    AddToDiagnostic, Diag, EmissionGuarantee, IntoDiagnosticArg, SubdiagnosticMessageOp,
-};
+use rustc_errors::{AddToDiagnostic, Diag, EmissionGuarantee, IntoDiagnosticArg, SubdiagMessageOp};
 use rustc_middle::ty::{self, TyCtxt};
 use rustc_span::{symbol::kw, Span};
 
@@ -162,7 +160,7 @@ impl RegionExplanation<'_> {
 }
 
 impl AddToDiagnostic for RegionExplanation<'_> {
-    fn add_to_diagnostic_with<G: EmissionGuarantee, F: SubdiagnosticMessageOp<G>>(
+    fn add_to_diagnostic_with<G: EmissionGuarantee, F: SubdiagMessageOp<G>>(
         self,
         diag: &mut Diag<'_, G>,
         f: F,

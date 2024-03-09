@@ -20,7 +20,7 @@ use rustc_data_structures::unord::UnordMap;
 use rustc_errors::{Applicability, Diag, ErrorGuaranteed, StashKey};
 use rustc_hir as hir;
 use rustc_hir::def::DefKind;
-use rustc_hir::def_id::{DefId, LocalDefId, LocalModDefId};
+use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::intravisit::{self, Visitor};
 use rustc_hir::{GenericParamKind, Node};
 use rustc_infer::infer::{InferCtxt, TyCtxtInferExt};
@@ -52,11 +52,6 @@ mod resolve_bound_vars;
 mod type_of;
 
 ///////////////////////////////////////////////////////////////////////////
-// Main entry point
-
-fn collect_mod_item_types(tcx: TyCtxt<'_>, module_def_id: LocalModDefId) {
-    tcx.hir().visit_item_likes_in_module(module_def_id, &mut CollectItemTypesVisitor { tcx });
-}
 
 pub fn provide(providers: &mut Providers) {
     resolve_bound_vars::provide(providers);
@@ -82,7 +77,6 @@ pub fn provide(providers: &mut Providers) {
         impl_trait_header,
         coroutine_kind,
         coroutine_for_closure,
-        collect_mod_item_types,
         is_type_alias_impl_trait,
         find_field,
         ..*providers
@@ -155,8 +149,8 @@ impl<'v> Visitor<'v> for HirPlaceholderCollector {
     }
 }
 
-struct CollectItemTypesVisitor<'tcx> {
-    tcx: TyCtxt<'tcx>,
+pub struct CollectItemTypesVisitor<'tcx> {
+    pub tcx: TyCtxt<'tcx>,
 }
 
 /// If there are any placeholder types (`_`), emit an error explaining that this is not allowed
@@ -791,7 +785,12 @@ fn convert_enum_variant_types(tcx: TyCtxt<'_>, def_id: DefId) {
 }
 
 fn find_field(tcx: TyCtxt<'_>, (def_id, ident): (DefId, Ident)) -> Option<FieldIdx> {
-    tcx.adt_def(def_id).non_enum_variant().fields.iter_enumerated().find_map(|(idx, field)| {
+    let adt = tcx.adt_def(def_id);
+    if adt.is_enum() {
+        return None;
+    }
+
+    adt.non_enum_variant().fields.iter_enumerated().find_map(|(idx, field)| {
         if field.is_unnamed() {
             let field_ty = tcx.type_of(field.did).instantiate_identity();
             let adt_def = field_ty.ty_adt_def().expect("expect Adt for unnamed field");
@@ -1514,10 +1513,7 @@ fn suggest_impl_trait<'tcx>(
     None
 }
 
-fn impl_trait_header(
-    tcx: TyCtxt<'_>,
-    def_id: LocalDefId,
-) -> Option<ty::EarlyBinder<ty::ImplTraitHeader<'_>>> {
+fn impl_trait_header(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Option<ty::ImplTraitHeader<'_>> {
     let icx = ItemCtxt::new(tcx, def_id);
     let item = tcx.hir().expect_item(def_id);
     let impl_ = item.expect_impl();
@@ -1553,11 +1549,11 @@ fn impl_trait_header(
             } else {
                 icx.astconv().instantiate_mono_trait_ref(ast_trait_ref, selfty)
             };
-            ty::EarlyBinder::bind(ty::ImplTraitHeader {
-                trait_ref,
+            ty::ImplTraitHeader {
+                trait_ref: ty::EarlyBinder::bind(trait_ref),
                 unsafety: impl_.unsafety,
                 polarity: polarity_of_impl(tcx, def_id,  impl_, item.span)
-            })
+            }
         })
 }
 

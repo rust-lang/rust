@@ -30,9 +30,11 @@ pub use adt::*;
 pub use assoc::*;
 pub use generic_args::*;
 pub use generics::*;
+pub use intrinsic::IntrinsicDef;
 use rustc_ast as ast;
+use rustc_ast::expand::StrippedCfgItem;
 use rustc_ast::node_id::NodeMap;
-pub use rustc_ast_ir::{Movability, Mutability};
+pub use rustc_ast_ir::{try_visit, Movability, Mutability};
 use rustc_attr as attr;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexMap, FxIndexSet};
 use rustc_data_structures::intern::Interned;
@@ -63,7 +65,6 @@ use std::hash::{Hash, Hasher};
 use std::marker::PhantomData;
 use std::mem;
 use std::num::NonZero;
-use std::ops::ControlFlow;
 use std::ptr::NonNull;
 use std::{fmt, str};
 
@@ -85,7 +86,8 @@ pub use self::consts::{
     Const, ConstData, ConstInt, ConstKind, Expr, ScalarInt, UnevaluatedConst, ValTree,
 };
 pub use self::context::{
-    tls, CtxtInterners, DeducedParamAttrs, FreeRegionInfo, GlobalCtxt, Lift, TyCtxt, TyCtxtFeed,
+    tls, CtxtInterners, DeducedParamAttrs, Feed, FreeRegionInfo, GlobalCtxt, Lift, TyCtxt,
+    TyCtxtFeed,
 };
 pub use self::instance::{Instance, InstanceDef, ShortInstance, UnusedGenericParams};
 pub use self::list::List;
@@ -149,6 +151,7 @@ mod generic_args;
 mod generics;
 mod impls_ty;
 mod instance;
+mod intrinsic;
 mod list;
 mod opaque_types;
 mod parameterized;
@@ -188,6 +191,7 @@ pub struct ResolverGlobalCtxt {
     pub doc_link_resolutions: FxHashMap<LocalDefId, DocLinkResMap>,
     pub doc_link_traits_in_scope: FxHashMap<LocalDefId, Vec<DefId>>,
     pub all_macro_rules: FxHashMap<Symbol, Res<ast::NodeId>>,
+    pub stripped_cfg_items: Steal<Vec<StrippedCfgItem>>,
 }
 
 /// Resolutions that should only be used for lowering.
@@ -249,9 +253,9 @@ pub struct ImplHeader<'tcx> {
     pub predicates: Vec<Predicate<'tcx>>,
 }
 
-#[derive(Copy, Clone, Debug, TypeFoldable, TypeVisitable, TyEncodable, TyDecodable, HashStable)]
+#[derive(Copy, Clone, Debug, TyEncodable, TyDecodable, HashStable)]
 pub struct ImplTraitHeader<'tcx> {
-    pub trait_ref: ty::TraitRef<'tcx>,
+    pub trait_ref: ty::EarlyBinder<ty::TraitRef<'tcx>>,
     pub polarity: ImplPolarity,
     pub unsafety: hir::Unsafety,
 }
@@ -597,7 +601,7 @@ impl<'tcx> TypeFoldable<TyCtxt<'tcx>> for Term<'tcx> {
 }
 
 impl<'tcx> TypeVisitable<TyCtxt<'tcx>> for Term<'tcx> {
-    fn visit_with<V: TypeVisitor<TyCtxt<'tcx>>>(&self, visitor: &mut V) -> ControlFlow<V::BreakTy> {
+    fn visit_with<V: TypeVisitor<TyCtxt<'tcx>>>(&self, visitor: &mut V) -> V::Result {
         self.unpack().visit_with(visitor)
     }
 }
@@ -1041,8 +1045,8 @@ impl<'tcx> TypeFoldable<TyCtxt<'tcx>> for ParamEnv<'tcx> {
 }
 
 impl<'tcx> TypeVisitable<TyCtxt<'tcx>> for ParamEnv<'tcx> {
-    fn visit_with<V: TypeVisitor<TyCtxt<'tcx>>>(&self, visitor: &mut V) -> ControlFlow<V::BreakTy> {
-        self.caller_bounds().visit_with(visitor)?;
+    fn visit_with<V: TypeVisitor<TyCtxt<'tcx>>>(&self, visitor: &mut V) -> V::Result {
+        try_visit!(self.caller_bounds().visit_with(visitor));
         self.reveal().visit_with(visitor)
     }
 }
@@ -1623,12 +1627,15 @@ impl<'tcx> TyCtxt<'tcx> {
         def_id1: DefId,
         def_id2: DefId,
     ) -> Option<ImplOverlapKind> {
-        let impl1 = self.impl_trait_header(def_id1).unwrap().instantiate_identity();
-        let impl2 = self.impl_trait_header(def_id2).unwrap().instantiate_identity();
+        let impl1 = self.impl_trait_header(def_id1).unwrap();
+        let impl2 = self.impl_trait_header(def_id2).unwrap();
+
+        let trait_ref1 = impl1.trait_ref.skip_binder();
+        let trait_ref2 = impl2.trait_ref.skip_binder();
 
         // If either trait impl references an error, they're allowed to overlap,
         // as one of them essentially doesn't exist.
-        if impl1.references_error() || impl2.references_error() {
+        if trait_ref1.references_error() || trait_ref2.references_error() {
             return Some(ImplOverlapKind::Permitted { marker: false });
         }
 
@@ -1649,7 +1656,7 @@ impl<'tcx> TyCtxt<'tcx> {
         let is_marker_overlap = {
             let is_marker_impl =
                 |trait_ref: TraitRef<'_>| -> bool { self.trait_def(trait_ref.def_id).is_marker };
-            is_marker_impl(impl1.trait_ref) && is_marker_impl(impl2.trait_ref)
+            is_marker_impl(trait_ref1) && is_marker_impl(trait_ref2)
         };
 
         if is_marker_overlap {
@@ -1931,18 +1938,6 @@ impl<'tcx> TyCtxt<'tcx> {
     #[inline]
     pub fn is_const_default_method(self, def_id: DefId) -> bool {
         matches!(self.trait_of_item(def_id), Some(trait_id) if self.has_attr(trait_id, sym::const_trait))
-    }
-
-    /// Returns the `DefId` of the item within which the `impl Trait` is declared.
-    /// For type-alias-impl-trait this is the `type` alias.
-    /// For impl-trait-in-assoc-type this is the assoc type.
-    /// For return-position-impl-trait this is the function.
-    pub fn impl_trait_parent(self, mut def_id: LocalDefId) -> LocalDefId {
-        // Find the surrounding item (type alias or assoc type)
-        while let DefKind::OpaqueTy = self.def_kind(def_id) {
-            def_id = self.local_parent(def_id);
-        }
-        def_id
     }
 
     pub fn impl_method_has_trait_impl_trait_tys(self, def_id: DefId) -> bool {

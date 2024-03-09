@@ -12,7 +12,7 @@ LL | |             }
 LL | |         }
    | |_________^
    |
-  ::: $DIR/nested-macro-rules.rs:21:5
+  ::: $DIR/nested-macro-rules.rs:23:5
    |
 LL |       nested_macro_rules::outer_macro!(SecondStruct, SecondAttrStruct);
    |       ---------------------------------------------------------------- in this macro invocation
@@ -21,7 +21,11 @@ LL |       nested_macro_rules::outer_macro!(SecondStruct, SecondAttrStruct);
    = note: a `macro_rules!` definition is non-local if it is nested inside an item and has a `#[macro_export]` attribute
    = note: one exception to the rule are anon-const (`const _: () = { ... }`) at top-level module
    = note: this lint may become deny-by-default in the edition 2024 and higher, see the tracking issue <https://github.com/rust-lang/rust/issues/120363>
-   = note: `#[warn(non_local_definitions)]` on by default
+note: the lint level is defined here
+  --> $DIR/nested-macro-rules.rs:8:9
+   |
+LL | #![warn(non_local_definitions)]
+   |         ^^^^^^^^^^^^^^^^^^^^^
 
 warning: 1 warning emitted
 

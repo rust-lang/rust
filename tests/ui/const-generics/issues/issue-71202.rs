@@ -25,7 +25,7 @@ impl<T: Copy> DataHolder<T> {
         }
 
         <IsCopy<T>>::VALUE
-    } as usize] = [];
+    } as usize] = []; //~ ERROR unconstrained generic constant
 }
 
 fn main() {}

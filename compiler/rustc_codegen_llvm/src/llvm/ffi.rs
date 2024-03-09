@@ -56,6 +56,7 @@ pub enum LLVMMachineType {
     AMD64 = 0x8664,
     I386 = 0x14c,
     ARM64 = 0xaa64,
+    ARM64EC = 0xa641,
     ARM = 0x01c0,
 }
 
@@ -1610,6 +1611,20 @@ extern "C" {
         NumArgs: c_uint,
         Then: &'a BasicBlock,
         Catch: &'a BasicBlock,
+        OpBundles: *const &OperandBundleDef<'a>,
+        NumOpBundles: c_uint,
+        Name: *const c_char,
+    ) -> &'a Value;
+
+    pub fn LLVMRustBuildCallBr<'a>(
+        B: &Builder<'a>,
+        Ty: &'a Type,
+        Fn: &'a Value,
+        DefaultDest: &'a BasicBlock,
+        IndirectDests: *const &'a BasicBlock,
+        NumIndirectDests: c_uint,
+        Args: *const &'a Value,
+        NumArgs: c_uint,
         OpBundles: *const &OperandBundleDef<'a>,
         NumOpBundles: c_uint,
         Name: *const c_char,

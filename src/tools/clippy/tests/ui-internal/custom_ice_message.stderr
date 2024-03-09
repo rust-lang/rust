@@ -4,11 +4,14 @@ note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
 
 error: the compiler unexpectedly panicked. this is a bug.
 
-note: we would appreciate a bug report: https://github.com/rust-lang/rust-clippy/issues/new?template=ice.yml
+note: it seems that this compiler <version> is outdated, a newer nightly should have been released in the mean time
+  |
+  = note: please consider running `rustup update nightly` to update the nightly channel and check if this problem still persists
+  = note: if the problem still persists, we would appreciate a bug report: https://github.com/rust-lang/rust-clippy/issues/new?template=ice.yml
 
 note: rustc <version> running on <target>
 
-note: compiler flags: -Z ui-testing
+note: compiler flags: -Z ui-testing -Z deduplicate-diagnostics=no
 
 note: Clippy version: foo
 

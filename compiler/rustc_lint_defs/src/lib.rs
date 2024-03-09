@@ -8,7 +8,7 @@ use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
 use rustc_data_structures::stable_hasher::{
     HashStable, StableCompare, StableHasher, ToStableHashKey,
 };
-use rustc_error_messages::{DiagnosticMessage, MultiSpan};
+use rustc_error_messages::{DiagMessage, MultiSpan};
 use rustc_hir::HashStableContext;
 use rustc_hir::HirId;
 use rustc_span::edition::Edition;
@@ -569,7 +569,7 @@ pub struct AmbiguityErrorDiag {
 // This could be a closure, but then implementing derive trait
 // becomes hacky (and it gets allocated).
 #[derive(Debug)]
-pub enum BuiltinLintDiagnostics {
+pub enum BuiltinLintDiag {
     Normal,
     AbsPathWithModule(Span),
     ProcMacroDeriveResolutionFallback(Span),
@@ -674,7 +674,7 @@ pub struct BufferedEarlyLint {
     pub span: MultiSpan,
 
     /// The lint message.
-    pub msg: DiagnosticMessage,
+    pub msg: DiagMessage,
 
     /// The `NodeId` of the AST node that generated the lint.
     pub node_id: NodeId,
@@ -684,7 +684,7 @@ pub struct BufferedEarlyLint {
     pub lint_id: LintId,
 
     /// Customization of the `Diag<'_>` for the lint.
-    pub diagnostic: BuiltinLintDiagnostics,
+    pub diagnostic: BuiltinLintDiag,
 }
 
 #[derive(Default, Debug)]
@@ -703,8 +703,8 @@ impl LintBuffer {
         lint: &'static Lint,
         node_id: NodeId,
         span: MultiSpan,
-        msg: impl Into<DiagnosticMessage>,
-        diagnostic: BuiltinLintDiagnostics,
+        msg: impl Into<DiagMessage>,
+        diagnostic: BuiltinLintDiag,
     ) {
         let lint_id = LintId::of(lint);
         let msg = msg.into();
@@ -721,9 +721,9 @@ impl LintBuffer {
         lint: &'static Lint,
         id: NodeId,
         sp: impl Into<MultiSpan>,
-        msg: impl Into<DiagnosticMessage>,
+        msg: impl Into<DiagMessage>,
     ) {
-        self.add_lint(lint, id, sp.into(), msg, BuiltinLintDiagnostics::Normal)
+        self.add_lint(lint, id, sp.into(), msg, BuiltinLintDiag::Normal)
     }
 
     pub fn buffer_lint_with_diagnostic(
@@ -731,8 +731,8 @@ impl LintBuffer {
         lint: &'static Lint,
         id: NodeId,
         sp: impl Into<MultiSpan>,
-        msg: impl Into<DiagnosticMessage>,
-        diagnostic: BuiltinLintDiagnostics,
+        msg: impl Into<DiagMessage>,
+        diagnostic: BuiltinLintDiag,
     ) {
         self.add_lint(lint, id, sp.into(), msg, diagnostic)
     }

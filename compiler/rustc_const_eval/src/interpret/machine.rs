@@ -196,7 +196,7 @@ pub trait Machine<'mir, 'tcx: 'mir>: Sized {
         instance: ty::Instance<'tcx>,
         abi: CallAbi,
         args: &[FnArg<'tcx, Self::Provenance>],
-        destination: &PlaceTy<'tcx, Self::Provenance>,
+        destination: &MPlaceTy<'tcx, Self::Provenance>,
         target: Option<mir::BasicBlock>,
         unwind: mir::UnwindAction,
     ) -> InterpResult<'tcx, Option<(&'mir mir::Body<'tcx>, ty::Instance<'tcx>)>>;
@@ -208,7 +208,7 @@ pub trait Machine<'mir, 'tcx: 'mir>: Sized {
         fn_val: Self::ExtraFnVal,
         abi: CallAbi,
         args: &[FnArg<'tcx, Self::Provenance>],
-        destination: &PlaceTy<'tcx, Self::Provenance>,
+        destination: &MPlaceTy<'tcx, Self::Provenance>,
         target: Option<mir::BasicBlock>,
         unwind: mir::UnwindAction,
     ) -> InterpResult<'tcx>;
@@ -219,7 +219,7 @@ pub trait Machine<'mir, 'tcx: 'mir>: Sized {
         ecx: &mut InterpCx<'mir, 'tcx, Self>,
         instance: ty::Instance<'tcx>,
         args: &[OpTy<'tcx, Self::Provenance>],
-        destination: &PlaceTy<'tcx, Self::Provenance>,
+        destination: &MPlaceTy<'tcx, Self::Provenance>,
         target: Option<mir::BasicBlock>,
         unwind: mir::UnwindAction,
     ) -> InterpResult<'tcx>;
@@ -374,11 +374,17 @@ pub trait Machine<'mir, 'tcx: 'mir>: Sized {
         kind: Option<MemoryKind<Self::MemoryKind>>,
     ) -> InterpResult<'tcx, Cow<'b, Allocation<Self::Provenance, Self::AllocExtra, Self::Bytes>>>;
 
+    /// Evaluate the inline assembly.
+    ///
+    /// This should take care of jumping to the next block (one of `targets`) when asm goto
+    /// is triggered, `targets[0]` when the assembly falls through, or diverge in case of
+    /// `InlineAsmOptions::NORETURN` being set.
     fn eval_inline_asm(
         _ecx: &mut InterpCx<'mir, 'tcx, Self>,
         _template: &'tcx [InlineAsmTemplatePiece],
         _operands: &[mir::InlineAsmOperand<'tcx>],
         _options: InlineAsmOptions,
+        _targets: &[mir::BasicBlock],
     ) -> InterpResult<'tcx> {
         throw_unsup_format!("inline assembly is not supported")
     }
@@ -466,11 +472,11 @@ pub trait Machine<'mir, 'tcx: 'mir>: Sized {
     /// argument/return value was actually copied or passed in-place..
     fn protect_in_place_function_argument(
         ecx: &mut InterpCx<'mir, 'tcx, Self>,
-        place: &PlaceTy<'tcx, Self::Provenance>,
+        mplace: &MPlaceTy<'tcx, Self::Provenance>,
     ) -> InterpResult<'tcx> {
         // Without an aliasing model, all we can do is put `Uninit` into the place.
         // Conveniently this also ensures that the place actually points to suitable memory.
-        ecx.write_uninit(place)
+        ecx.write_uninit(mplace)
     }
 
     /// Called immediately before a new stack frame gets pushed.
@@ -584,7 +590,7 @@ pub macro compile_time_machine(<$mir: lifetime, $tcx: lifetime>) {
         fn_val: !,
         _abi: CallAbi,
         _args: &[FnArg<$tcx>],
-        _destination: &PlaceTy<$tcx, Self::Provenance>,
+        _destination: &MPlaceTy<$tcx, Self::Provenance>,
         _target: Option<mir::BasicBlock>,
         _unwind: mir::UnwindAction,
     ) -> InterpResult<$tcx> {

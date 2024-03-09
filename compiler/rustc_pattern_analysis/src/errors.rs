@@ -1,4 +1,4 @@
-use rustc_errors::{AddToDiagnostic, Diag, EmissionGuarantee, SubdiagnosticMessageOp};
+use rustc_errors::{AddToDiagnostic, Diag, EmissionGuarantee, SubdiagMessageOp};
 use rustc_macros::{LintDiagnostic, Subdiagnostic};
 use rustc_middle::thir::Pat;
 use rustc_middle::ty::Ty;
@@ -62,7 +62,7 @@ pub struct Overlap<'tcx> {
 }
 
 impl<'tcx> AddToDiagnostic for Overlap<'tcx> {
-    fn add_to_diagnostic_with<G: EmissionGuarantee, F: SubdiagnosticMessageOp<G>>(
+    fn add_to_diagnostic_with<G: EmissionGuarantee, F: SubdiagMessageOp<G>>(
         self,
         diag: &mut Diag<'_, G>,
         _: F,
@@ -72,6 +72,57 @@ impl<'tcx> AddToDiagnostic for Overlap<'tcx> {
         // FIXME(mejrs) unfortunately `#[derive(LintDiagnostic)]`
         // does not support `#[subdiagnostic(eager)]`...
         let message = format!("this range overlaps on `{range}`...");
+        diag.span_label(span, message);
+    }
+}
+
+#[derive(LintDiagnostic)]
+#[diag(pattern_analysis_excluside_range_missing_max)]
+pub struct ExclusiveRangeMissingMax<'tcx> {
+    #[label]
+    #[suggestion(code = "{suggestion}", applicability = "maybe-incorrect")]
+    /// This is an exclusive range that looks like `lo..max` (i.e. doesn't match `max`).
+    pub first_range: Span,
+    /// Suggest `lo..=max` instead.
+    pub suggestion: String,
+    pub max: Pat<'tcx>,
+}
+
+#[derive(LintDiagnostic)]
+#[diag(pattern_analysis_excluside_range_missing_gap)]
+pub struct ExclusiveRangeMissingGap<'tcx> {
+    #[label]
+    #[suggestion(code = "{suggestion}", applicability = "maybe-incorrect")]
+    /// This is an exclusive range that looks like `lo..gap` (i.e. doesn't match `gap`).
+    pub first_range: Span,
+    pub gap: Pat<'tcx>,
+    /// Suggest `lo..=gap` instead.
+    pub suggestion: String,
+    #[subdiagnostic]
+    /// All these ranges skipped over `gap` which we think is probably a mistake.
+    pub gap_with: Vec<GappedRange<'tcx>>,
+}
+
+pub struct GappedRange<'tcx> {
+    pub span: Span,
+    pub gap: Pat<'tcx>,
+    pub first_range: Pat<'tcx>,
+}
+
+impl<'tcx> AddToDiagnostic for GappedRange<'tcx> {
+    fn add_to_diagnostic_with<G: EmissionGuarantee, F: SubdiagMessageOp<G>>(
+        self,
+        diag: &mut Diag<'_, G>,
+        _: F,
+    ) {
+        let GappedRange { span, gap, first_range } = self;
+
+        // FIXME(mejrs) unfortunately `#[derive(LintDiagnostic)]`
+        // does not support `#[subdiagnostic(eager)]`...
+        let message = format!(
+            "this could appear to continue range `{first_range}`, but `{gap}` isn't matched by \
+            either of them"
+        );
         diag.span_label(span, message);
     }
 }

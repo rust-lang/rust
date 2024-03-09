@@ -30,21 +30,46 @@ mod util;
 use std::borrow::Borrow;
 use std::mem;
 
+/// Arguments to [`Builder::then_else_break_inner`] that are usually forwarded
+/// to recursive invocations.
+#[derive(Clone, Copy)]
+struct ThenElseArgs {
+    /// Used as the temp scope for lowering `expr`. If absent (for match guards),
+    /// `self.local_scope()` is used.
+    temp_scope_override: Option<region::Scope>,
+    variable_source_info: SourceInfo,
+    /// Forwarded to [`Builder::lower_let_expr`] when lowering [`ExprKind::Let`].
+    /// When false (for match guards), `let` bindings won't be declared.
+    declare_let_bindings: bool,
+}
+
 impl<'a, 'tcx> Builder<'a, 'tcx> {
     /// Lowers a condition in a way that ensures that variables bound in any let
     /// expressions are definitely initialized in the if body.
     ///
-    /// If `declare_bindings` is false then variables created in `let`
+    /// If `declare_let_bindings` is false then variables created in `let`
     /// expressions will not be declared. This is for if let guards on arms with
     /// an or pattern, where the guard is lowered multiple times.
     pub(crate) fn then_else_break(
         &mut self,
-        mut block: BasicBlock,
+        block: BasicBlock,
         expr_id: ExprId,
         temp_scope_override: Option<region::Scope>,
-        break_scope: region::Scope,
         variable_source_info: SourceInfo,
-        declare_bindings: bool,
+        declare_let_bindings: bool,
+    ) -> BlockAnd<()> {
+        self.then_else_break_inner(
+            block,
+            expr_id,
+            ThenElseArgs { temp_scope_override, variable_source_info, declare_let_bindings },
+        )
+    }
+
+    fn then_else_break_inner(
+        &mut self,
+        block: BasicBlock, // Block that the condition and branch will be lowered into
+        expr_id: ExprId,   // Condition expression to lower
+        args: ThenElseArgs,
     ) -> BlockAnd<()> {
         let this = self;
         let expr = &this.thir[expr_id];
@@ -52,54 +77,32 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
         match expr.kind {
             ExprKind::LogicalOp { op: LogicalOp::And, lhs, rhs } => {
-                let lhs_then_block = unpack!(this.then_else_break(
-                    block,
-                    lhs,
-                    temp_scope_override,
-                    break_scope,
-                    variable_source_info,
-                    declare_bindings,
-                ));
-
-                let rhs_then_block = unpack!(this.then_else_break(
-                    lhs_then_block,
-                    rhs,
-                    temp_scope_override,
-                    break_scope,
-                    variable_source_info,
-                    declare_bindings,
-                ));
-
+                let lhs_then_block = unpack!(this.then_else_break_inner(block, lhs, args));
+                let rhs_then_block = unpack!(this.then_else_break_inner(lhs_then_block, rhs, args));
                 rhs_then_block.unit()
             }
             ExprKind::LogicalOp { op: LogicalOp::Or, lhs, rhs } => {
                 let local_scope = this.local_scope();
                 let (lhs_success_block, failure_block) =
                     this.in_if_then_scope(local_scope, expr_span, |this| {
-                        this.then_else_break(
+                        this.then_else_break_inner(
                             block,
                             lhs,
-                            temp_scope_override,
-                            local_scope,
-                            variable_source_info,
-                            true,
+                            ThenElseArgs { declare_let_bindings: true, ..args },
                         )
                     });
-                let rhs_success_block = unpack!(this.then_else_break(
+                let rhs_success_block = unpack!(this.then_else_break_inner(
                     failure_block,
                     rhs,
-                    temp_scope_override,
-                    break_scope,
-                    variable_source_info,
-                    true,
+                    ThenElseArgs { declare_let_bindings: true, ..args },
                 ));
 
                 // Make the LHS and RHS success arms converge to a common block.
                 // (We can't just make LHS goto RHS, because `rhs_success_block`
                 // might contain statements that we don't want on the LHS path.)
                 let success_block = this.cfg.start_new_block();
-                this.cfg.goto(lhs_success_block, variable_source_info, success_block);
-                this.cfg.goto(rhs_success_block, variable_source_info, success_block);
+                this.cfg.goto(lhs_success_block, args.variable_source_info, success_block);
+                this.cfg.goto(rhs_success_block, args.variable_source_info, success_block);
                 success_block.unit()
             }
             ExprKind::Unary { op: UnOp::Not, arg } => {
@@ -111,50 +114,33 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                         if this.tcx.sess.instrument_coverage() {
                             this.cfg.push_coverage_span_marker(block, this.source_info(expr_span));
                         }
-                        this.then_else_break(
+                        this.then_else_break_inner(
                             block,
                             arg,
-                            temp_scope_override,
-                            local_scope,
-                            variable_source_info,
-                            true,
+                            ThenElseArgs { declare_let_bindings: true, ..args },
                         )
                     });
-                this.break_for_else(success_block, break_scope, variable_source_info);
+                this.break_for_else(success_block, args.variable_source_info);
                 failure_block.unit()
             }
             ExprKind::Scope { region_scope, lint_level, value } => {
                 let region_scope = (region_scope, this.source_info(expr_span));
                 this.in_scope(region_scope, lint_level, |this| {
-                    this.then_else_break(
-                        block,
-                        value,
-                        temp_scope_override,
-                        break_scope,
-                        variable_source_info,
-                        declare_bindings,
-                    )
+                    this.then_else_break_inner(block, value, args)
                 })
             }
-            ExprKind::Use { source } => this.then_else_break(
-                block,
-                source,
-                temp_scope_override,
-                break_scope,
-                variable_source_info,
-                declare_bindings,
-            ),
+            ExprKind::Use { source } => this.then_else_break_inner(block, source, args),
             ExprKind::Let { expr, ref pat } => this.lower_let_expr(
                 block,
                 expr,
                 pat,
-                break_scope,
-                Some(variable_source_info.scope),
-                variable_source_info.span,
-                declare_bindings,
+                Some(args.variable_source_info.scope),
+                args.variable_source_info.span,
+                args.declare_let_bindings,
             ),
             _ => {
-                let temp_scope = temp_scope_override.unwrap_or_else(|| this.local_scope());
+                let mut block = block;
+                let temp_scope = args.temp_scope_override.unwrap_or_else(|| this.local_scope());
                 let mutability = Mutability::Mut;
                 let place =
                     unpack!(block = this.as_temp(block, Some(temp_scope), expr_id, mutability));
@@ -166,7 +152,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
                 let source_info = this.source_info(expr_span);
                 this.cfg.terminate(block, source_info, term);
-                this.break_for_else(else_block, break_scope, source_info);
+                this.break_for_else(else_block, source_info);
 
                 then_block.unit()
             }
@@ -1907,7 +1893,6 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         mut block: BasicBlock,
         expr_id: ExprId,
         pat: &Pat<'tcx>,
-        else_target: region::Scope,
         source_scope: Option<SourceScope>,
         span: Span,
         declare_bindings: bool,
@@ -1929,7 +1914,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         let expr_place = expr_place_builder.try_to_place(self);
         let opt_expr_place = expr_place.as_ref().map(|place| (Some(place), expr_span));
         let otherwise_post_guard_block = otherwise_candidate.pre_binding_block.unwrap();
-        self.break_for_else(otherwise_post_guard_block, else_target, self.source_info(expr_span));
+        self.break_for_else(otherwise_post_guard_block, self.source_info(expr_span));
 
         if declare_bindings {
             self.declare_bindings(source_scope, pat.span.to(span), pat, None, opt_expr_place);
@@ -2105,10 +2090,9 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     this.then_else_break(
                         block,
                         guard,
-                        None,
-                        match_scope,
+                        None, // Use `self.local_scope()` as the temp scope
                         this.source_info(arm.span),
-                        false,
+                        false, // For guards, `let` bindings are declared separately
                     )
                 });
 
@@ -2439,7 +2423,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 None,
                 true,
             );
-            this.break_for_else(failure, *let_else_scope, this.source_info(initializer_span));
+            this.break_for_else(failure, this.source_info(initializer_span));
             matching.unit()
         });
         matching.and(failure)

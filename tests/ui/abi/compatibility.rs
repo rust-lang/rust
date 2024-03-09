@@ -39,13 +39,13 @@
 //@ revisions: loongarch64
 //@[loongarch64] compile-flags: --target loongarch64-unknown-linux-gnu
 //@[loongarch64] needs-llvm-components: loongarch
-//@[loongarch64] min-llvm-version: 17
+//@[loongarch64] min-llvm-version: 18
 //@ revisions: wasm
 //@[wasm] compile-flags: --target wasm32-unknown-unknown
 //@[wasm] needs-llvm-components: webassembly
-//@ revisions: wasi
-//@[wasi] compile-flags: --target wasm32-wasi
-//@[wasi] needs-llvm-components: webassembly
+//@ revisions: wasip1
+//@[wasip1] compile-flags: --target wasm32-wasip1
+//@[wasip1] needs-llvm-components: webassembly
 //@ revisions: bpf
 //@[bpf] compile-flags: --target bpfeb-unknown-none
 //@[bpf] needs-llvm-components: bpf
@@ -160,6 +160,7 @@ mod prelude {
         pub _marker: PhantomData<T>,
     }
 
+    #[lang = "global_alloc_ty"]
     pub struct Global;
 
     #[lang = "owned_box"]

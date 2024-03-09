@@ -114,6 +114,7 @@ fn find_item(id: ItemId, ctxt: &mut EntryContext<'_>) {
     }
 }
 
+#[allow(rustc::untranslatable_diagnostic)] // FIXME: make this translatable
 fn configure_main(tcx: TyCtxt<'_>, visitor: &EntryContext<'_>) -> Option<(DefId, EntryFnType)> {
     if let Some((def_id, _)) = visitor.start_fn {
         Some((def_id.to_def_id(), EntryFnType::Start))

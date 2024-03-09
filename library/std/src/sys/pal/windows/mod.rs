@@ -17,6 +17,8 @@ pub mod args;
 pub mod c;
 pub mod env;
 pub mod fs;
+#[cfg(not(target_vendor = "win7"))]
+pub mod futex;
 pub mod handle;
 pub mod io;
 pub mod net;

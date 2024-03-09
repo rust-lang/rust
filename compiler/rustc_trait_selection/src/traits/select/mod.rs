@@ -42,7 +42,7 @@ use rustc_middle::ty::_match::MatchAgainstFreshVars;
 use rustc_middle::ty::abstract_const::NotConstEvaluatable;
 use rustc_middle::ty::relate::TypeRelation;
 use rustc_middle::ty::GenericArgsRef;
-use rustc_middle::ty::{self, EarlyBinder, PolyProjectionPredicate, ToPolyTraitRef, ToPredicate};
+use rustc_middle::ty::{self, PolyProjectionPredicate, ToPolyTraitRef, ToPredicate};
 use rustc_middle::ty::{Ty, TyCtxt, TypeFoldable, TypeVisitableExt};
 use rustc_span::symbol::sym;
 use rustc_span::Symbol;
@@ -2441,7 +2441,7 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
     fn match_impl(
         &mut self,
         impl_def_id: DefId,
-        impl_trait_header: EarlyBinder<ty::ImplTraitHeader<'tcx>>,
+        impl_trait_header: ty::ImplTraitHeader<'tcx>,
         obligation: &PolyTraitObligation<'tcx>,
     ) -> Result<Normalized<'tcx, GenericArgsRef<'tcx>>, ()> {
         let placeholder_obligation =
@@ -2450,8 +2450,8 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
 
         let impl_args = self.infcx.fresh_args_for_item(obligation.cause.span, impl_def_id);
 
-        let impl_trait_header = impl_trait_header.instantiate(self.tcx(), impl_args);
-        if impl_trait_header.references_error() {
+        let trait_ref = impl_trait_header.trait_ref.instantiate(self.tcx(), impl_args);
+        if trait_ref.references_error() {
             return Err(());
         }
 
@@ -2464,7 +2464,7 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
                     obligation.param_env,
                     obligation.cause.clone(),
                     obligation.recursion_depth + 1,
-                    impl_trait_header.trait_ref,
+                    trait_ref,
                 )
             });
 

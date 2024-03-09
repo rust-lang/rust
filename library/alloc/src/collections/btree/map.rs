@@ -624,6 +624,7 @@ impl<K, V> BTreeMap<K, V> {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     #[rustc_const_stable(feature = "const_btree_new", since = "1.66.0")]
+    #[inline]
     #[must_use]
     pub const fn new() -> BTreeMap<K, V> {
         BTreeMap { root: None, length: 0, alloc: ManuallyDrop::new(Global), _marker: PhantomData }

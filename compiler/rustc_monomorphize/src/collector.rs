@@ -446,7 +446,8 @@ fn collect_items_rec<'tcx>(
                         hir::InlineAsmOperand::In { .. }
                         | hir::InlineAsmOperand::Out { .. }
                         | hir::InlineAsmOperand::InOut { .. }
-                        | hir::InlineAsmOperand::SplitInOut { .. } => {
+                        | hir::InlineAsmOperand::SplitInOut { .. }
+                        | hir::InlineAsmOperand::Label { .. } => {
                             span_bug!(*op_sp, "invalid operand type for global_asm!")
                         }
                     }
@@ -1019,6 +1020,11 @@ fn should_codegen_locally<'tcx>(tcx: TyCtxt<'tcx>, instance: &Instance<'tcx>) ->
         return false;
     }
 
+    if tcx.intrinsic(def_id).is_some_and(|i| i.must_be_overridden) {
+        // These are implemented by backends directly and have no meaningful body.
+        return false;
+    }
+
     if def_id.is_local() {
         // Local items cannot be referred to locally without monomorphizing them locally.
         return true;
@@ -1356,7 +1362,7 @@ fn create_mono_items_for_default_impls<'tcx>(
         return;
     };
 
-    if matches!(impl_.skip_binder().polarity, ty::ImplPolarity::Negative) {
+    if matches!(impl_.polarity, ty::ImplPolarity::Negative) {
         return;
     }
 
@@ -1380,7 +1386,7 @@ fn create_mono_items_for_default_impls<'tcx>(
         }
     };
     let impl_args = GenericArgs::for_item(tcx, item.owner_id.to_def_id(), only_region_params);
-    let trait_ref = impl_.instantiate(tcx, impl_args).trait_ref;
+    let trait_ref = impl_.trait_ref.instantiate(tcx, impl_args);
 
     // Unlike 'lazy' monomorphization that begins by collecting items transitively
     // called by `main` or other global items, when eagerly monomorphizing impl

@@ -375,7 +375,7 @@ macro_rules! define_tables {
 
 define_tables! {
 - defaulted:
-    intrinsic: Table<DefIndex, Option<LazyValue<Symbol>>>,
+    intrinsic: Table<DefIndex, Option<LazyValue<ty::IntrinsicDef>>>,
     is_macro_rules: Table<DefIndex, bool>,
     is_type_alias_impl_trait: Table<DefIndex, bool>,
     type_alias_is_lazy: Table<DefIndex, bool>,
@@ -423,7 +423,7 @@ define_tables! {
     variances_of: Table<DefIndex, LazyArray<ty::Variance>>,
     fn_sig: Table<DefIndex, LazyValue<ty::EarlyBinder<ty::PolyFnSig<'static>>>>,
     codegen_fn_attrs: Table<DefIndex, LazyValue<CodegenFnAttrs>>,
-    impl_trait_header: Table<DefIndex, LazyValue<ty::EarlyBinder<ty::ImplTraitHeader<'static>>>>,
+    impl_trait_header: Table<DefIndex, LazyValue<ty::ImplTraitHeader<'static>>>,
     const_param_default: Table<DefIndex, LazyValue<ty::EarlyBinder<rustc_middle::ty::Const<'static>>>>,
     object_lifetime_default: Table<DefIndex, LazyValue<ObjectLifetimeDefault>>,
     optimized_mir: Table<DefIndex, LazyValue<mir::Body<'static>>>,
@@ -530,11 +530,13 @@ impl SpanTag {
         SpanTag(data)
     }
 
-    fn indirect(relative: bool) -> SpanTag {
+    fn indirect(relative: bool, length_bytes: u8) -> SpanTag {
         let mut tag = SpanTag(SpanKind::Indirect as u8);
         if relative {
             tag.0 |= 0b100;
         }
+        assert!(length_bytes <= 8);
+        tag.0 |= length_bytes << 3;
         tag
     }
 

@@ -562,7 +562,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 // and so forth that we need to.
                 let impl_trait_header = self.tcx().impl_trait_header(impl_def_id).unwrap();
                 if !drcx
-                    .args_may_unify(obligation_args, impl_trait_header.skip_binder().trait_ref.args)
+                    .args_may_unify(obligation_args, impl_trait_header.trait_ref.skip_binder().args)
                 {
                     return;
                 }
@@ -577,7 +577,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 if self.reject_fn_ptr_impls(
                     impl_def_id,
                     obligation,
-                    impl_trait_header.skip_binder().trait_ref.self_ty(),
+                    impl_trait_header.trait_ref.skip_binder().self_ty(),
                 ) {
                     return;
                 }

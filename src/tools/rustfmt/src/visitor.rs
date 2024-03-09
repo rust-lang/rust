@@ -71,7 +71,7 @@ impl SnippetProvider {
 
 pub(crate) struct FmtVisitor<'a> {
     parent_context: Option<&'a RewriteContext<'a>>,
-    pub(crate) parse_sess: &'a ParseSess,
+    pub(crate) psess: &'a ParseSess,
     pub(crate) buffer: String,
     pub(crate) last_pos: BytePos,
     // FIXME: use an RAII util or closure for indenting
@@ -113,10 +113,7 @@ impl<'b, 'a: 'b> FmtVisitor<'a> {
     }
 
     fn visit_stmt(&mut self, stmt: &Stmt<'_>, include_empty_semi: bool) {
-        debug!(
-            "visit_stmt: {}",
-            self.parse_sess.span_to_debug_info(stmt.span())
-        );
+        debug!("visit_stmt: {}", self.psess.span_to_debug_info(stmt.span()));
 
         if stmt.is_empty() {
             // If the statement is empty, just skip over it. Before that, make sure any comment
@@ -217,10 +214,7 @@ impl<'b, 'a: 'b> FmtVisitor<'a> {
         inner_attrs: Option<&[ast::Attribute]>,
         has_braces: bool,
     ) {
-        debug!(
-            "visit_block: {}",
-            self.parse_sess.span_to_debug_info(b.span),
-        );
+        debug!("visit_block: {}", self.psess.span_to_debug_info(b.span));
 
         // Check if this block has braces.
         let brace_compensation = BytePos(if has_braces { 1 } else { 0 });
@@ -744,10 +738,10 @@ impl<'b, 'a: 'b> FmtVisitor<'a> {
         // do not take into account the lines with attributes as part of the skipped range
         let attrs_end = attrs
             .iter()
-            .map(|attr| self.parse_sess.line_of_byte_pos(attr.span.hi()))
+            .map(|attr| self.psess.line_of_byte_pos(attr.span.hi()))
             .max()
             .unwrap_or(1);
-        let first_line = self.parse_sess.line_of_byte_pos(main_span.lo());
+        let first_line = self.psess.line_of_byte_pos(main_span.lo());
         // Statement can start after some newlines and/or spaces
         // or it can be on the same line as the last attribute.
         // So here we need to take a minimum between the two.
@@ -758,8 +752,8 @@ impl<'b, 'a: 'b> FmtVisitor<'a> {
     }
 
     pub(crate) fn from_context(ctx: &'a RewriteContext<'_>) -> FmtVisitor<'a> {
-        let mut visitor = FmtVisitor::from_parse_sess(
-            ctx.parse_sess,
+        let mut visitor = FmtVisitor::from_psess(
+            ctx.psess,
             ctx.config,
             ctx.snippet_provider,
             ctx.report.clone(),
@@ -769,8 +763,8 @@ impl<'b, 'a: 'b> FmtVisitor<'a> {
         visitor
     }
 
-    pub(crate) fn from_parse_sess(
-        parse_session: &'a ParseSess,
+    pub(crate) fn from_psess(
+        psess: &'a ParseSess,
         config: &'a Config,
         snippet_provider: &'a SnippetProvider,
         report: FormatReport,
@@ -786,7 +780,7 @@ impl<'b, 'a: 'b> FmtVisitor<'a> {
         skip_context.macros.extend(macro_names);
         FmtVisitor {
             parent_context: None,
-            parse_sess: parse_session,
+            psess,
             buffer: String::with_capacity(snippet_provider.big_snippet.len() * 2),
             last_pos: BytePos(0),
             block_indent: Indent::empty(),
@@ -814,12 +808,12 @@ impl<'b, 'a: 'b> FmtVisitor<'a> {
     pub(crate) fn visit_attrs(&mut self, attrs: &[ast::Attribute], style: ast::AttrStyle) -> bool {
         for attr in attrs {
             if attr.has_name(depr_skip_annotation()) {
-                let file_name = self.parse_sess.span_to_filename(attr.span);
+                let file_name = self.psess.span_to_filename(attr.span);
                 self.report.append(
                     file_name,
                     vec![FormattingError::from_span(
                         attr.span,
-                        self.parse_sess,
+                        self.psess,
                         ErrorKind::DeprecatedAttr,
                     )],
                 );
@@ -828,12 +822,12 @@ impl<'b, 'a: 'b> FmtVisitor<'a> {
                     ast::AttrKind::Normal(ref normal)
                         if self.is_unknown_rustfmt_attr(&normal.item.path.segments) =>
                     {
-                        let file_name = self.parse_sess.span_to_filename(attr.span);
+                        let file_name = self.psess.span_to_filename(attr.span);
                         self.report.append(
                             file_name,
                             vec![FormattingError::from_span(
                                 attr.span,
-                                self.parse_sess,
+                                self.psess,
                                 ErrorKind::BadAttr,
                             )],
                         );
@@ -1007,7 +1001,7 @@ impl<'b, 'a: 'b> FmtVisitor<'a> {
 
     pub(crate) fn get_context(&self) -> RewriteContext<'_> {
         RewriteContext {
-            parse_sess: self.parse_sess,
+            psess: self.psess,
             config: self.config,
             inside_macro: Rc::new(Cell::new(false)),
             use_block: Cell::new(false),

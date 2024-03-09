@@ -5,7 +5,7 @@ trait Dummy { }
 
 fn test50() {
     assert_send::<&'static dyn Dummy>();
-    //~^ ERROR `(dyn Dummy + 'static)` cannot be shared between threads safely [E0277]
+    //~^ ERROR `&'static (dyn Dummy + 'static)` cannot be sent between threads safely [E0277]
 }
 
 fn test53() {

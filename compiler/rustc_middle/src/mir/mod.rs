@@ -14,9 +14,7 @@ use crate::ty::{AdtDef, InstanceDef, UserTypeAnnotationIndex};
 use crate::ty::{GenericArg, GenericArgsRef};
 
 use rustc_data_structures::captures::Captures;
-use rustc_errors::{
-    DiagArgName, DiagArgValue, DiagnosticMessage, ErrorGuaranteed, IntoDiagnosticArg,
-};
+use rustc_errors::{DiagArgName, DiagArgValue, DiagMessage, ErrorGuaranteed, IntoDiagnosticArg};
 use rustc_hir::def::{CtorKind, Namespace};
 use rustc_hir::def_id::{DefId, CRATE_DEF_ID};
 use rustc_hir::{self, CoroutineDesugaring, CoroutineKind, ImplicitSelfKind};
@@ -1718,13 +1716,13 @@ mod size_asserts {
     use super::*;
     use rustc_data_structures::static_assert_size;
     // tidy-alphabetical-start
-    static_assert_size!(BasicBlockData<'_>, 136);
+    static_assert_size!(BasicBlockData<'_>, 144);
     static_assert_size!(LocalDecl<'_>, 40);
     static_assert_size!(SourceScopeData<'_>, 72);
     static_assert_size!(Statement<'_>, 32);
     static_assert_size!(StatementKind<'_>, 16);
-    static_assert_size!(Terminator<'_>, 104);
-    static_assert_size!(TerminatorKind<'_>, 88);
+    static_assert_size!(Terminator<'_>, 112);
+    static_assert_size!(TerminatorKind<'_>, 96);
     static_assert_size!(VarDebugInfo<'_>, 88);
     // tidy-alphabetical-end
 }

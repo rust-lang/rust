@@ -234,6 +234,9 @@
 //@ revisions: loongarch64_unknown_linux_gnu
 //@ [loongarch64_unknown_linux_gnu] compile-flags: --target loongarch64-unknown-linux-gnu
 //@ [loongarch64_unknown_linux_gnu] needs-llvm-components: loongarch
+//@ revisions: loongarch64_unknown_linux_musl
+//@ [loongarch64_unknown_linux_musl] compile-flags: --target loongarch64-unknown-linux-musl
+//@ [loongarch64_unknown_linux_musl] needs-llvm-components: loongarch
 //@ revisions: loongarch64_unknown_none
 //@ [loongarch64_unknown_none] compile-flags: --target loongarch64-unknown-none
 //@ [loongarch64_unknown_none] needs-llvm-components: loongarch
@@ -486,6 +489,9 @@
 //@ revisions: wasm32_wasi
 //@ [wasm32_wasi] compile-flags: --target wasm32-wasi
 //@ [wasm32_wasi] needs-llvm-components: webassembly
+//@ revisions: wasm32_wasip1
+//@ [wasm32_wasip1] compile-flags: --target wasm32-wasip1
+//@ [wasm32_wasip1] needs-llvm-components: webassembly
 //@ revisions: wasm32_wasi_preview1_threads
 //@ [wasm32_wasi_preview1_threads] compile-flags: --target wasm32-wasi-preview1-threads
 //@ [wasm32_wasi_preview1_threads] needs-llvm-components: webassembly

@@ -174,17 +174,13 @@ struct ImplTraitInTraitFinder<'a, 'tcx> {
 }
 
 impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for ImplTraitInTraitFinder<'_, 'tcx> {
-    fn visit_binder<T: TypeVisitable<TyCtxt<'tcx>>>(
-        &mut self,
-        binder: &ty::Binder<'tcx, T>,
-    ) -> std::ops::ControlFlow<Self::BreakTy> {
+    fn visit_binder<T: TypeVisitable<TyCtxt<'tcx>>>(&mut self, binder: &ty::Binder<'tcx, T>) {
         self.depth.shift_in(1);
-        let binder = binder.super_visit_with(self);
+        binder.super_visit_with(self);
         self.depth.shift_out(1);
-        binder
     }
 
-    fn visit_ty(&mut self, ty: Ty<'tcx>) -> std::ops::ControlFlow<Self::BreakTy> {
+    fn visit_ty(&mut self, ty: Ty<'tcx>) {
         if let ty::Alias(ty::Projection, unshifted_alias_ty) = *ty.kind()
             && let Some(
                 ty::ImplTraitInTraitData::Trait { fn_def_id, .. }
@@ -259,10 +255,9 @@ fn issue33140_self_ty(tcx: TyCtxt<'_>, def_id: DefId) -> Option<EarlyBinder<Ty<'
 
     let impl_ = tcx
         .impl_trait_header(def_id)
-        .unwrap_or_else(|| bug!("issue33140_self_ty called on inherent impl {:?}", def_id))
-        .skip_binder();
+        .unwrap_or_else(|| bug!("issue33140_self_ty called on inherent impl {:?}", def_id));
 
-    let trait_ref = impl_.trait_ref;
+    let trait_ref = impl_.trait_ref.skip_binder();
     debug!("issue33140_self_ty({:?}), trait-ref={:?}", def_id, trait_ref);
 
     let is_marker_like = impl_.polarity == ty::ImplPolarity::Positive

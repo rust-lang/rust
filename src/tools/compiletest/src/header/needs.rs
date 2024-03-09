@@ -85,6 +85,11 @@ pub(super) fn handle_needs(
             ignore_reason: "ignored when running the resulting test binaries is disabled",
         },
         Need {
+            name: "needs-threads",
+            condition: config.has_threads(),
+            ignore_reason: "ignored on targets without threading support",
+        },
+        Need {
             name: "needs-unwind",
             condition: config.can_unwind(),
             ignore_reason: "ignored on targets without unwinding support",

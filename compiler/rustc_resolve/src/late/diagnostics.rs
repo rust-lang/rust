@@ -224,13 +224,13 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
             let item_ident = path.last().unwrap().ident;
             let item_span = item_ident.span;
             let (mod_prefix, mod_str, module, suggestion) = if path.len() == 1 {
-                debug!(?self.diagnostic_metadata.current_impl_items);
-                debug!(?self.diagnostic_metadata.current_function);
+                debug!(?self.diag_metadata.current_impl_items);
+                debug!(?self.diag_metadata.current_function);
                 let suggestion = if self.current_trait_ref.is_none()
-                    && let Some((fn_kind, _)) = self.diagnostic_metadata.current_function
+                    && let Some((fn_kind, _)) = self.diag_metadata.current_function
                     && let Some(FnCtxt::Assoc(_)) = fn_kind.ctxt()
                     && let FnKind::Fn(_, _, sig, ..) = fn_kind
-                    && let Some(items) = self.diagnostic_metadata.current_impl_items
+                    && let Some(items) = self.diag_metadata.current_impl_items
                     && let Some(item) = items.iter().find(|i| {
                         i.ident.name == item_str.name
                             // Don't suggest if the item is in Fn signature arguments (#112590).
@@ -501,7 +501,7 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
         err: &mut Diag<'_>,
         base_error: &BaseError,
     ) {
-        let Some(ty) = self.diagnostic_metadata.current_type_path else {
+        let Some(ty) = self.diag_metadata.current_type_path else {
             return;
         };
         let TyKind::Path(_, path) = &ty.kind else {
@@ -555,7 +555,7 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
             );
             if !self.self_value_is_available(path[0].ident.span) {
                 if let Some((FnKind::Fn(_, _, sig, ..), fn_span)) =
-                    &self.diagnostic_metadata.current_function
+                    &self.diag_metadata.current_function
                 {
                     let (span, sugg) = if let Some(param) = sig.decl.inputs.get(0) {
                         (param.span.shrink_to_lo(), "&self, ")
@@ -805,7 +805,7 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
         ) = (source, res, is_macro)
         {
             if let Some(bounds @ [first_bound, .., last_bound]) =
-                self.diagnostic_metadata.current_trait_object
+                self.diag_metadata.current_trait_object
             {
                 fallback = true;
                 let spans: Vec<Span> = bounds
@@ -880,7 +880,7 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
         let typo_sugg = typo_sugg.to_opt_suggestion();
         if !self.r.add_typo_suggestion(err, typo_sugg, ident_span) {
             fallback = true;
-            match self.diagnostic_metadata.current_let_binding {
+            match self.diag_metadata.current_let_binding {
                 Some((pat_sp, Some(ty_sp), None))
                     if ty_sp.contains(base_error.span) && base_error.could_be_expr =>
                 {
@@ -962,7 +962,7 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
                                     Applicability::MaybeIncorrect,
                                 );
                                 // Do not lint against unused label when we suggest them.
-                                self.diagnostic_metadata.unused_labels.remove(node_id);
+                                self.diag_metadata.unused_labels.remove(node_id);
                             }
                         }
                     }
@@ -993,7 +993,7 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
         }
         err.code(E0411);
         err.span_label(span, "`Self` is only available in impls, traits, and type definitions");
-        if let Some(item_kind) = self.diagnostic_metadata.current_item {
+        if let Some(item_kind) = self.diag_metadata.current_item {
             if !item_kind.ident.span.is_dummy() {
                 err.span_label(
                     item_kind.ident.span,
@@ -1031,7 +1031,7 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
             },
         );
         let is_assoc_fn = self.self_type_is_available();
-        if let Some((fn_kind, span)) = &self.diagnostic_metadata.current_function {
+        if let Some((fn_kind, span)) = &self.diag_metadata.current_function {
             // The current function has a `self` parameter, but we were unable to resolve
             // a reference to `self`. This can only happen if the `self` identifier we
             // are resolving came from a different hygiene context.
@@ -1077,7 +1077,7 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
                     );
                 }
             }
-        } else if let Some(item_kind) = self.diagnostic_metadata.current_item {
+        } else if let Some(item_kind) = self.diag_metadata.current_item {
             err.span_label(
                 item_kind.ident.span,
                 format!(
@@ -1095,7 +1095,7 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
         err: &mut Diag<'_>,
         path: &[Segment],
     ) {
-        let Some(pat) = self.diagnostic_metadata.current_pat else { return };
+        let Some(pat) = self.diag_metadata.current_pat else { return };
         let (bound, side, range) = match &pat.kind {
             ast::PatKind::Range(Some(bound), None, range) => (bound, Side::Start, range),
             ast::PatKind::Range(None, Some(bound), range) => (bound, Side::End, range),
@@ -1137,7 +1137,7 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
         span: Span,
     ) {
         if let Some((trait_ref, self_ty)) =
-            self.diagnostic_metadata.currently_processing_impl_trait.clone()
+            self.diag_metadata.currently_processing_impl_trait.clone()
             && let TyKind::Path(_, self_ty_path) = &self_ty.kind
             && let PathResult::Module(ModuleOrUniformRoot::Module(module)) =
                 self.resolve_path(&Segment::from_path(self_ty_path), Some(TypeNS), None)
@@ -1158,7 +1158,7 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
     }
 
     fn suggest_bare_struct_literal(&mut self, err: &mut Diag<'_>) {
-        if let Some(span) = self.diagnostic_metadata.current_block_could_be_bare_struct_literal {
+        if let Some(span) = self.diag_metadata.current_block_could_be_bare_struct_literal {
             err.multipart_suggestion(
                 "you might have meant to write a `struct` literal",
                 vec![
@@ -1195,7 +1195,7 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
             _ => return,
         };
 
-        let Some(item) = self.diagnostic_metadata.current_item else { return };
+        let Some(item) = self.diag_metadata.current_item else { return };
         let Some(generics) = item.kind.generics() else { return };
 
         let param = generics.params.iter().find_map(|param| {
@@ -1230,7 +1230,7 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
     ) -> bool {
         if let PathSource::Expr(_) = source
             && let Some(Expr { span: expr_span, kind: ExprKind::Assign(lhs, _, _), .. }) =
-                self.diagnostic_metadata.in_if_condition
+                self.diag_metadata.in_if_condition
         {
             // Icky heuristic so we don't suggest:
             // `if (i + 2) = 2` => `if let (i + 2) = 2` (approximately pattern)
@@ -1287,7 +1287,7 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
                 bound_generic_params,
                 bounds,
                 span,
-            })) = self.diagnostic_metadata.current_where_predicate
+            })) = self.diag_metadata.current_where_predicate
             {
                 if !bound_generic_params.is_empty() {
                     return false;
@@ -2015,7 +2015,7 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
         // Fields are generally expected in the same contexts as locals.
         if filter_fn(Res::Local(ast::DUMMY_NODE_ID)) {
             if let Some(node_id) =
-                self.diagnostic_metadata.current_self_type.as_ref().and_then(extract_node_id)
+                self.diag_metadata.current_self_type.as_ref().and_then(extract_node_id)
             {
                 // Look for a field with the same name in the current self_type.
                 if let Some(resolution) = self.r.partial_res_map.get(&node_id) {
@@ -2035,7 +2035,7 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
             }
         }
 
-        if let Some(items) = self.diagnostic_metadata.current_trait_assoc_items {
+        if let Some(items) = self.diag_metadata.current_trait_assoc_items {
             for assoc_item in items {
                 if assoc_item.ident == ident {
                     return Some(match &assoc_item.kind {
@@ -2250,8 +2250,7 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
     // try to give a suggestion for this pattern: `name = blah`, which is common in other languages
     // suggest `let name = blah` to introduce a new binding
     fn let_binding_suggestion(&mut self, err: &mut Diag<'_>, ident_span: Span) -> bool {
-        if let Some(Expr { kind: ExprKind::Assign(lhs, ..), .. }) =
-            self.diagnostic_metadata.in_assignment
+        if let Some(Expr { kind: ExprKind::Assign(lhs, ..), .. }) = self.diag_metadata.in_assignment
             && let ast::ExprKind::Path(None, ref path) = lhs.kind
         {
             if !ident_span.from_expansion() {
@@ -2502,10 +2501,10 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
         let mut iter = ident.chars().map(|c| c.is_uppercase());
         let single_uppercase_char =
             matches!(iter.next(), Some(true)) && matches!(iter.next(), None);
-        if !self.diagnostic_metadata.currently_processing_generic_args && !single_uppercase_char {
+        if !self.diag_metadata.currently_processing_generic_args && !single_uppercase_char {
             return None;
         }
-        match (self.diagnostic_metadata.current_item, single_uppercase_char, self.diagnostic_metadata.currently_processing_generic_args) {
+        match (self.diag_metadata.current_item, single_uppercase_char, self.diag_metadata.currently_processing_generic_args) {
             (Some(Item { kind: ItemKind::Fn(..), ident, .. }), _, _) if ident.name == sym::main => {
                 // Ignore `fn main()` as we don't want to suggest `fn main<T>()`
             }
@@ -2658,7 +2657,7 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
                         param.id,
                         param.ident.span,
                         format!("lifetime parameter `{}` only used once", param.ident),
-                        lint::BuiltinLintDiagnostics::SingleUseLifetime {
+                        lint::BuiltinLintDiag::SingleUseLifetime {
                             param_span: param.ident.span,
                             use_span: Some((use_span, elidable)),
                             deletion_span,
@@ -2676,7 +2675,7 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
                             param.id,
                             param.ident.span,
                             format!("lifetime parameter `{}` never used", param.ident),
-                            lint::BuiltinLintDiagnostics::SingleUseLifetime {
+                            lint::BuiltinLintDiag::SingleUseLifetime {
                                 param_span: param.ident.span,
                                 use_span: None,
                                 deletion_span,
@@ -3079,7 +3078,7 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
                             || lt.kind == MissingLifetimeKind::Underscore)
                     {
                         let pre = if lt.kind == MissingLifetimeKind::Ampersand
-                            && let Some((kind, _span)) = self.diagnostic_metadata.current_function
+                            && let Some((kind, _span)) = self.diag_metadata.current_function
                             && let FnKind::Fn(_, _, sig, _, _, _) = kind
                             && !sig.decl.inputs.is_empty()
                             && let sugg = sig
@@ -3120,7 +3119,7 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
                             "...or alternatively, you might want"
                         } else if (lt.kind == MissingLifetimeKind::Ampersand
                             || lt.kind == MissingLifetimeKind::Underscore)
-                            && let Some((kind, _span)) = self.diagnostic_metadata.current_function
+                            && let Some((kind, _span)) = self.diag_metadata.current_function
                             && let FnKind::Fn(_, _, sig, _, _, _) = kind
                             && let ast::FnRetTy::Ty(ret_ty) = &sig.decl.output
                             && !sig.decl.inputs.is_empty()
@@ -3180,7 +3179,7 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
                         };
                         let mut owned_sugg = lt.kind == MissingLifetimeKind::Ampersand;
                         let mut sugg = vec![(lt.span, String::new())];
-                        if let Some((kind, _span)) = self.diagnostic_metadata.current_function
+                        if let Some((kind, _span)) = self.diag_metadata.current_function
                             && let FnKind::Fn(_, _, sig, _, _, _) = kind
                             && let ast::FnRetTy::Ty(ty) = &sig.decl.output
                         {

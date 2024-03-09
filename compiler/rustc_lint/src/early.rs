@@ -17,8 +17,8 @@
 use crate::context::{EarlyContext, LintContext, LintStore};
 use crate::passes::{EarlyLintPass, EarlyLintPassObject};
 use rustc_ast::ptr::P;
-use rustc_ast::visit::{self as ast_visit, Visitor};
-use rustc_ast::{self as ast, walk_list, HasAttrs};
+use rustc_ast::visit::{self as ast_visit, walk_list, Visitor};
+use rustc_ast::{self as ast, HasAttrs};
 use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_feature::Features;
 use rustc_middle::ty::RegisteredTools;

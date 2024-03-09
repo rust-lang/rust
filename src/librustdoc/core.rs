@@ -263,7 +263,7 @@ pub(crate) fn create_config(
         file_loader: None,
         locale_resources: rustc_driver::DEFAULT_LOCALE_RESOURCES,
         lint_caps,
-        parse_sess_created: None,
+        psess_created: None,
         hash_untracked_state: None,
         register_lints: Some(Box::new(crate::lint::register_lints)),
         override_queries: Some(|_sess, providers| {
@@ -314,20 +314,9 @@ pub(crate) fn run_global_ctxt(
     // typeck function bodies or run the default rustc lints.
     // (see `override_queries` in the `config`)
 
-    // HACK(jynelson) this calls an _extremely_ limited subset of `typeck`
-    // and might break if queries change their assumptions in the future.
-    tcx.sess.time("type_collecting", || {
-        tcx.hir().for_each_module(|module| tcx.ensure().collect_mod_item_types(module))
-    });
-
     // NOTE: These are copy/pasted from typeck/lib.rs and should be kept in sync with those changes.
     let _ = tcx.sess.time("wf_checking", || {
         tcx.hir().try_par_for_each_module(|module| tcx.ensure().check_mod_type_wf(module))
-    });
-    tcx.sess.time("item_types_checking", || {
-        tcx.hir().for_each_module(|module| {
-            let _ = tcx.ensure().check_mod_type_wf(module);
-        });
     });
 
     if let Some(guar) = tcx.dcx().has_errors() {

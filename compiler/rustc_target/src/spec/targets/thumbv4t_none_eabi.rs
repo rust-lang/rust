@@ -15,6 +15,7 @@ use crate::spec::{cvs, FramePointer};
 pub fn target() -> Target {
     Target {
         llvm_target: "thumbv4t-none-eabi".into(),
+        description: None,
         pointer_width: 32,
         arch: "arm".into(),
         /* Data layout args are '-' separated:

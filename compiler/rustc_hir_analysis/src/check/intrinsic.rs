@@ -7,7 +7,7 @@ use crate::errors::{
     WrongNumberOfGenericArgumentsToIntrinsic,
 };
 
-use rustc_errors::{codes::*, struct_span_code_err, DiagnosticMessage};
+use rustc_errors::{codes::*, struct_span_code_err, DiagMessage};
 use rustc_hir as hir;
 use rustc_middle::traits::{ObligationCause, ObligationCauseCode};
 use rustc_middle::ty::{self, Ty, TyCtxt};
@@ -132,14 +132,15 @@ pub fn intrinsic_operation_unsafety(tcx: TyCtxt<'_>, intrinsic_id: LocalDefId) -
         | sym::fsub_algebraic
         | sym::fmul_algebraic
         | sym::fdiv_algebraic
-        | sym::frem_algebraic => hir::Unsafety::Normal,
+        | sym::frem_algebraic
+        | sym::const_eval_select => hir::Unsafety::Normal,
         _ => hir::Unsafety::Unsafe,
     };
 
     if has_safe_attr != is_in_list {
         tcx.dcx().struct_span_err(
             tcx.def_span(intrinsic_id),
-            DiagnosticMessage::from(format!(
+            DiagMessage::from(format!(
                 "intrinsic safety mismatch between list of intrinsics within the compiler and core library intrinsics for intrinsic `{}`",
                 tcx.item_name(intrinsic_id.into())
             )
@@ -247,7 +248,6 @@ pub fn check_intrinsic_type(
                 ],
                 Ty::new_unit(tcx),
             ),
-            sym::drop_in_place => (1, 0, vec![Ty::new_mut_ptr(tcx, param(0))], Ty::new_unit(tcx)),
             sym::needs_drop => (1, 0, vec![], tcx.types.bool),
 
             sym::type_name => (1, 0, vec![], Ty::new_static_str(tcx)),

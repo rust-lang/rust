@@ -242,7 +242,7 @@ impl<'a> DerefMut for SnapshotParser<'a> {
 
 impl<'a> Parser<'a> {
     pub fn dcx(&self) -> &'a DiagCtxt {
-        &self.sess.dcx
+        &self.psess.dcx
     }
 
     /// Replace `self` with `snapshot.parser`.
@@ -257,7 +257,7 @@ impl<'a> Parser<'a> {
     }
 
     pub(super) fn span_to_snippet(&self, span: Span) -> Result<String, SpanSnippetError> {
-        self.sess.source_map().span_to_snippet(span)
+        self.psess.source_map().span_to_snippet(span)
     }
 
     /// Emits an error with suggestions if an identifier was expected but not found.
@@ -364,7 +364,7 @@ impl<'a> Parser<'a> {
 
                             if !self.look_ahead(1, |t| *t == token::Lt)
                                 && let Ok(snippet) =
-                                    self.sess.source_map().span_to_snippet(generic.span)
+                                    self.psess.source_map().span_to_snippet(generic.span)
                             {
                                 err.multipart_suggestion_verbose(
                                         format!("place the generic parameter name after the {ident_name} name"),
@@ -489,7 +489,7 @@ impl<'a> Parser<'a> {
         expected.sort_by_cached_key(|x| x.to_string());
         expected.dedup();
 
-        let sm = self.sess.source_map();
+        let sm = self.psess.source_map();
 
         // Special-case "expected `;`" errors.
         if expected.contains(&TokenType::Token(token::Semi)) {
@@ -822,7 +822,7 @@ impl<'a> Parser<'a> {
                 // #[cfg(..)]
                 // other_expr
                 // So we suggest using `if cfg!(..) { expr } else if cfg!(..) { other_expr }`.
-                let margin = self.sess.source_map().span_to_margin(next_expr.span).unwrap_or(0);
+                let margin = self.psess.source_map().span_to_margin(next_expr.span).unwrap_or(0);
                 let sugg = vec![
                     (attr.span.with_hi(segment.span().hi()), "if cfg!".to_string()),
                     (args_span.shrink_to_hi().with_hi(attr.span.hi()), " {".to_string()),
@@ -850,7 +850,7 @@ impl<'a> Parser<'a> {
     }
 
     fn check_too_many_raw_str_terminators(&mut self, err: &mut Diag<'_>) -> bool {
-        let sm = self.sess.source_map();
+        let sm = self.psess.source_map();
         match (&self.prev_token.kind, &self.token.kind) {
             (
                 TokenKind::Literal(Lit {
@@ -935,7 +935,7 @@ impl<'a> Parser<'a> {
                         // expand `before` so that we take care of module path such as:
                         // `foo::Bar { ... } `
                         // we expect to suggest `(foo::Bar { ... })` instead of `foo::(Bar { ... })`
-                        let sm = self.sess.source_map();
+                        let sm = self.psess.source_map();
                         let before = maybe_struct_name.span.shrink_to_lo();
                         if let Ok(extend_before) = sm.span_extend_prev_while(before, |t| {
                             t.is_alphanumeric() || t == ':' || t == '_'
@@ -1872,7 +1872,7 @@ impl<'a> Parser<'a> {
         );
         let mut err = self.dcx().struct_span_err(sp, msg);
         let label_exp = format!("expected `{token_str}`");
-        let sm = self.sess.source_map();
+        let sm = self.psess.source_map();
         if !sm.is_multiline(prev_sp.until(sp)) {
             // When the spans are in the same line, it means that the only content
             // between them is whitespace, point only at the found token.
@@ -1893,7 +1893,7 @@ impl<'a> Parser<'a> {
 
     pub(super) fn recover_colon_as_semi(&mut self) -> bool {
         let line_idx = |span: Span| {
-            self.sess
+            self.psess
                 .source_map()
                 .span_to_lines(span)
                 .ok()
@@ -1906,7 +1906,7 @@ impl<'a> Parser<'a> {
         {
             self.dcx().emit_err(ColonAsSemi {
                 span: self.token.span,
-                type_ascription: self.sess.unstable_features.is_nightly_build().then_some(()),
+                type_ascription: self.psess.unstable_features.is_nightly_build().then_some(()),
             });
             self.bump();
             return true;
@@ -2357,8 +2357,8 @@ impl<'a> Parser<'a> {
             ),
         };
         let mut err = self.dcx().struct_span_err(span, msg);
-        let sp = self.sess.source_map().start_point(self.token.span);
-        if let Some(sp) = self.sess.ambiguous_block_expr_parse.borrow().get(&sp) {
+        let sp = self.psess.source_map().start_point(self.token.span);
+        if let Some(sp) = self.psess.ambiguous_block_expr_parse.borrow().get(&sp) {
             err.subdiagnostic(self.dcx(), ExprParenthesesNeeded::surrounding(*sp));
         }
         err.span_label(span, "expected expression");
@@ -2539,7 +2539,7 @@ impl<'a> Parser<'a> {
         };
 
         let ident = param.ident.to_string();
-        let sugg = match (ty_generics, self.sess.source_map().span_to_snippet(param.span())) {
+        let sugg = match (ty_generics, self.psess.source_map().span_to_snippet(param.span())) {
             (Some(Generics { params, span: impl_generics, .. }), Ok(snippet)) => {
                 Some(match &params[..] {
                     [] => UnexpectedConstParamDeclarationSugg::AddParam {

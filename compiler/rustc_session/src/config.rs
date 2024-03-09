@@ -1,6 +1,8 @@
 //! Contains infrastructure for configuring the compiler, including parsing
 //! command-line options.
 
+#![allow(rustc::untranslatable_diagnostic)] // FIXME: make this translatable
+
 pub use crate::options::*;
 
 use crate::errors::FileWriteFail;
@@ -146,8 +148,10 @@ pub enum LtoCli {
 /// unless the function has type parameters.
 #[derive(Clone, Copy, PartialEq, Hash, Debug)]
 pub enum InstrumentCoverage {
-    /// Default `-C instrument-coverage` or `-C instrument-coverage=statement`
-    All,
+    /// `-C instrument-coverage=no` (or `off`, `false` etc.)
+    No,
+    /// `-C instrument-coverage` or `-C instrument-coverage=yes`
+    Yes,
     /// Additionally, instrument branches and output branch coverage.
     /// `-Zunstable-options -C instrument-coverage=branch`
     Branch,
@@ -155,8 +159,6 @@ pub enum InstrumentCoverage {
     ExceptUnusedGenerics,
     /// `-Zunstable-options -C instrument-coverage=except-unused-functions`
     ExceptUnusedFunctions,
-    /// `-C instrument-coverage=off` (or `no`, etc.)
-    Off,
 }
 
 /// Settings for `-Z instrument-xray` flag.
@@ -2468,9 +2470,7 @@ pub fn parse_externs(
             ));
             let adjusted_name = name.replace('-', "_");
             if is_ascii_ident(&adjusted_name) {
-                // FIXME: make this translatable
-                #[allow(rustc::diagnostic_outside_of_impl)]
-                #[allow(rustc::untranslatable_diagnostic)]
+                #[allow(rustc::diagnostic_outside_of_impl)] // FIXME
                 error.help(format!(
                     "consider replacing the dashes with underscores: `{adjusted_name}`"
                 ));
@@ -2722,7 +2722,7 @@ pub fn build_session_options(early_dcx: &mut EarlyDiagCtxt, matches: &getopts::M
     // This is what prevents them from being used on stable compilers.
     match cg.instrument_coverage {
         // Stable values:
-        InstrumentCoverage::All | InstrumentCoverage::Off => {}
+        InstrumentCoverage::Yes | InstrumentCoverage::No => {}
         // Unstable values:
         InstrumentCoverage::Branch
         | InstrumentCoverage::ExceptUnusedFunctions
@@ -2736,7 +2736,7 @@ pub fn build_session_options(early_dcx: &mut EarlyDiagCtxt, matches: &getopts::M
         }
     }
 
-    if cg.instrument_coverage != InstrumentCoverage::Off {
+    if cg.instrument_coverage != InstrumentCoverage::No {
         if cg.profile_generate.enabled() || cg.profile_use.is_some() {
             early_dcx.early_fatal(
                 "option `-C instrument-coverage` is not compatible with either `-C profile-use` \

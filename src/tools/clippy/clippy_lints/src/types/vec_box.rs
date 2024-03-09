@@ -1,10 +1,9 @@
 use clippy_utils::diagnostics::span_lint_and_sugg;
-use clippy_utils::paths::ALLOCATOR_GLOBAL;
+use clippy_utils::last_path_segment;
 use clippy_utils::source::snippet;
-use clippy_utils::{last_path_segment, match_def_path};
 use rustc_errors::Applicability;
 use rustc_hir::def_id::DefId;
-use rustc_hir::{self as hir, GenericArg, QPath, TyKind};
+use rustc_hir::{self as hir, GenericArg, LangItem, QPath, TyKind};
 use rustc_hir_analysis::hir_ty_to_ty;
 use rustc_lint::LateContext;
 use rustc_middle::ty::layout::LayoutOf;
@@ -50,7 +49,7 @@ pub(super) fn check<'tcx>(
                 (None, Some(GenericArg::Type(inner))) | (Some(GenericArg::Type(inner)), None) => {
                     if let TyKind::Path(path) = inner.kind
                         && let Some(did) = cx.qpath_res(&path, inner.hir_id).opt_def_id() {
-                        match_def_path(cx, did, &ALLOCATOR_GLOBAL)
+                        cx.tcx.lang_items().get(LangItem::GlobalAlloc) == Some(did)
                     } else {
                         false
                     }

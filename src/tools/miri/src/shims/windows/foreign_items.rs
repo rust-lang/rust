@@ -27,7 +27,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         link_name: Symbol,
         abi: Abi,
         args: &[OpTy<'tcx, Provenance>],
-        dest: &PlaceTy<'tcx, Provenance>,
+        dest: &MPlaceTy<'tcx, Provenance>,
     ) -> InterpResult<'tcx, EmulateForeignItemResult> {
         let this = self.eval_context_mut();
 
@@ -365,6 +365,12 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                     this.check_shim(abi, Abi::System { unwind: false }, link_name, args)?;
 
                 this.WakeByAddressSingle(ptr_op)?;
+            }
+            "WakeByAddressAll" => {
+                let [ptr_op] =
+                    this.check_shim(abi, Abi::System { unwind: false }, link_name, args)?;
+
+                this.WakeByAddressAll(ptr_op)?;
             }
 
             // Dynamic symbol loading

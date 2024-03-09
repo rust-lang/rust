@@ -1,5 +1,5 @@
 error: `#[target_feature(..)]` cannot be applied to safe trait method
-  --> $DIR/trait-impl.rs:22:5
+  --> $DIR/trait-impl.rs:13:5
    |
 LL |     #[target_feature(enable = "sse2")]
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ cannot be applied to safe trait method
@@ -8,7 +8,7 @@ LL |     fn foo(&self) {}
    |     ------------- not an `unsafe` function
 
 error: `#[target_feature(..)]` cannot be applied to safe trait method
-  --> $DIR/trait-impl.rs:13:5
+  --> $DIR/trait-impl.rs:22:5
    |
 LL |     #[target_feature(enable = "sse2")]
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ cannot be applied to safe trait method

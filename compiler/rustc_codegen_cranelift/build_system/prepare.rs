@@ -1,5 +1,6 @@
 use std::ffi::OsStr;
 use std::fs;
+use std::hash::{Hash, Hasher};
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
@@ -71,7 +72,11 @@ fn hash_file(file: &std::path::Path) -> u64 {
     let contents = std::fs::read(file).unwrap();
     #[allow(deprecated)]
     let mut hasher = std::hash::SipHasher::new();
-    std::hash::Hash::hash(&contents, &mut hasher);
+    // The following is equivalent to
+    //   std::hash::Hash::hash(&contents, &mut hasher);
+    // but gives the same result independent of host byte order.
+    hasher.write_usize(contents.len().to_le());
+    Hash::hash_slice(&contents, &mut hasher);
     std::hash::Hasher::finish(&hasher)
 }
 
@@ -80,16 +85,26 @@ fn hash_dir(dir: &std::path::Path) -> u64 {
     for entry in std::fs::read_dir(dir).unwrap() {
         let entry = entry.unwrap();
         if entry.file_type().unwrap().is_dir() {
-            sub_hashes
-                .insert(entry.file_name().to_str().unwrap().to_owned(), hash_dir(&entry.path()));
+            sub_hashes.insert(
+                entry.file_name().to_str().unwrap().to_owned(),
+                hash_dir(&entry.path()).to_le(),
+            );
         } else {
-            sub_hashes
-                .insert(entry.file_name().to_str().unwrap().to_owned(), hash_file(&entry.path()));
+            sub_hashes.insert(
+                entry.file_name().to_str().unwrap().to_owned(),
+                hash_file(&entry.path()).to_le(),
+            );
         }
     }
     #[allow(deprecated)]
     let mut hasher = std::hash::SipHasher::new();
-    std::hash::Hash::hash(&sub_hashes, &mut hasher);
+    // The following is equivalent to
+    //   std::hash::Hash::hash(&sub_hashes, &mut hasher);
+    // but gives the same result independent of host byte order.
+    hasher.write_usize(sub_hashes.len().to_le());
+    for elt in sub_hashes {
+        elt.hash(&mut hasher);
+    }
     std::hash::Hasher::finish(&hasher)
 }
 

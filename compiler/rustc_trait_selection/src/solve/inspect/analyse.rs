@@ -1,15 +1,16 @@
-/// An infrastructure to mechanically analyse proof trees.
-///
-/// It is unavoidable that this representation is somewhat
-/// lossy as it should hide quite a few semantically relevant things,
-/// e.g. canonicalization and the order of nested goals.
-///
-/// @lcnr: However, a lot of the weirdness here is not strictly necessary
-/// and could be improved in the future. This is mostly good enough for
-/// coherence right now and was annoying to implement, so I am leaving it
-/// as is until we start using it for something else.
-use std::ops::ControlFlow;
+//! An infrastructure to mechanically analyse proof trees.
+//!
+//! It is unavoidable that this representation is somewhat
+//! lossy as it should hide quite a few semantically relevant things,
+//! e.g. canonicalization and the order of nested goals.
+//!
+//! @lcnr: However, a lot of the weirdness here is not strictly necessary
+//! and could be improved in the future. This is mostly good enough for
+//! coherence right now and was annoying to implement, so I am leaving it
+//! as is until we start using it for something else.
 
+use rustc_ast_ir::try_visit;
+use rustc_ast_ir::visit::VisitorResult;
 use rustc_infer::infer::InferCtxt;
 use rustc_middle::traits::query::NoSolution;
 use rustc_middle::traits::solve::{inspect, QueryResult};
@@ -53,10 +54,7 @@ impl<'a, 'tcx> InspectCandidate<'a, 'tcx> {
     /// to also use it to compute the most relevant goal
     /// for fulfillment errors. Will do that once we actually
     /// need it.
-    pub fn visit_nested<V: ProofTreeVisitor<'tcx>>(
-        &self,
-        visitor: &mut V,
-    ) -> ControlFlow<V::BreakTy> {
+    pub fn visit_nested<V: ProofTreeVisitor<'tcx>>(&self, visitor: &mut V) -> V::Result {
         // HACK: An arbitrary cutoff to avoid dealing with overflow and cycles.
         if self.goal.depth <= 10 {
             let infcx = self.goal.infcx;
@@ -75,17 +73,18 @@ impl<'a, 'tcx> InspectCandidate<'a, 'tcx> {
                 for &goal in &instantiated_goals {
                     let (_, proof_tree) = infcx.evaluate_root_goal(goal, GenerateProofTree::Yes);
                     let proof_tree = proof_tree.unwrap();
-                    visitor.visit_goal(&InspectGoal::new(
+                    try_visit!(visitor.visit_goal(&InspectGoal::new(
                         infcx,
                         self.goal.depth + 1,
                         &proof_tree,
-                    ))?;
+                    )));
                 }
 
-                ControlFlow::Continue(())
-            })?;
+                V::Result::output()
+            })
+        } else {
+            V::Result::output()
         }
-        ControlFlow::Continue(())
     }
 }
 
@@ -202,9 +201,9 @@ impl<'a, 'tcx> InspectGoal<'a, 'tcx> {
 
 /// The public API to interact with proof trees.
 pub trait ProofTreeVisitor<'tcx> {
-    type BreakTy;
+    type Result: VisitorResult = ();
 
-    fn visit_goal(&mut self, goal: &InspectGoal<'_, 'tcx>) -> ControlFlow<Self::BreakTy>;
+    fn visit_goal(&mut self, goal: &InspectGoal<'_, 'tcx>) -> Self::Result;
 }
 
 #[extension(pub trait ProofTreeInferCtxtExt<'tcx>)]
@@ -213,7 +212,7 @@ impl<'tcx> InferCtxt<'tcx> {
         &self,
         goal: Goal<'tcx, ty::Predicate<'tcx>>,
         visitor: &mut V,
-    ) -> ControlFlow<V::BreakTy> {
+    ) -> V::Result {
         self.probe(|_| {
             let (_, proof_tree) = self.evaluate_root_goal(goal, GenerateProofTree::Yes);
             let proof_tree = proof_tree.unwrap();

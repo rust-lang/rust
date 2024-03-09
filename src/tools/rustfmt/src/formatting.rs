@@ -79,7 +79,7 @@ fn should_skip_module<T: FormatHandler>(
     // FIXME(calebcartwright) - we need to determine how we'll handle the
     // `format_generated_files` option with stdin based input.
     if !input_is_stdin && !config.format_generated_files() {
-        let source_file = context.parse_session.span_to_file_contents(module.span);
+        let source_file = context.psess.span_to_file_contents(module.span);
         let src = source_file.src.as_ref().expect("SourceFile without src");
 
         if is_generated_file(src) {
@@ -109,8 +109,8 @@ fn format_project<T: FormatHandler>(
     let main_file = input.file_name();
     let input_is_stdin = main_file == FileName::Stdin;
 
-    let parse_session = ParseSess::new(config)?;
-    if config.skip_children() && parse_session.ignore_file(&main_file) {
+    let psess = ParseSess::new(config)?;
+    if config.skip_children() && psess.ignore_file(&main_file) {
         return Ok(FormatReport::new());
     }
 
@@ -118,7 +118,7 @@ fn format_project<T: FormatHandler>(
     let mut report = FormatReport::new();
     let directory_ownership = input.to_directory_ownership();
 
-    let krate = match Parser::parse_crate(input, &parse_session) {
+    let krate = match Parser::parse_crate(input, &psess) {
         Ok(krate) => krate,
         // Surface parse error via Session (errors are merged there from report)
         Err(e) => {
@@ -131,9 +131,9 @@ fn format_project<T: FormatHandler>(
         }
     };
 
-    let mut context = FormatContext::new(&krate, report, parse_session, config, handler);
+    let mut context = FormatContext::new(&krate, report, psess, config, handler);
     let files = modules::ModResolver::new(
-        &context.parse_session,
+        &context.psess,
         directory_ownership.unwrap_or(DirectoryOwnership::UnownedViaBlock),
         !input_is_stdin && !config.skip_children(),
     )
@@ -148,16 +148,11 @@ fn format_project<T: FormatHandler>(
     timer = timer.done_parsing();
 
     // Suppress error output if we have to do any further parsing.
-    context.parse_session.set_silent_emitter();
+    context.psess.set_silent_emitter();
 
     for (path, module) in files {
         if input_is_stdin && contains_skip(module.attrs()) {
-            return echo_back_stdin(
-                context
-                    .parse_session
-                    .snippet_provider(module.span)
-                    .entire_snippet(),
-            );
+            return echo_back_stdin(context.psess.snippet_provider(module.span).entire_snippet());
         }
         should_emit_verbose(input_is_stdin, config, || println!("Formatting {}", path));
         context.format_file(path, &module, is_macro_def)?;
@@ -179,7 +174,7 @@ fn format_project<T: FormatHandler>(
 struct FormatContext<'a, T: FormatHandler> {
     krate: &'a ast::Crate,
     report: FormatReport,
-    parse_session: ParseSess,
+    psess: ParseSess,
     config: &'a Config,
     handler: &'a mut T,
 }
@@ -188,21 +183,21 @@ impl<'a, T: FormatHandler + 'a> FormatContext<'a, T> {
     fn new(
         krate: &'a ast::Crate,
         report: FormatReport,
-        parse_session: ParseSess,
+        psess: ParseSess,
         config: &'a Config,
         handler: &'a mut T,
     ) -> Self {
         FormatContext {
             krate,
             report,
-            parse_session,
+            psess,
             config,
             handler,
         }
     }
 
     fn ignore_file(&self, path: &FileName) -> bool {
-        self.parse_session.ignore_file(path)
+        self.psess.ignore_file(path)
     }
 
     // Formats a single file/module.
@@ -212,9 +207,9 @@ impl<'a, T: FormatHandler + 'a> FormatContext<'a, T> {
         module: &Module<'_>,
         is_macro_def: bool,
     ) -> Result<(), ErrorKind> {
-        let snippet_provider = self.parse_session.snippet_provider(module.span);
-        let mut visitor = FmtVisitor::from_parse_sess(
-            &self.parse_session,
+        let snippet_provider = self.psess.snippet_provider(module.span);
+        let mut visitor = FmtVisitor::from_psess(
+            &self.psess,
             self.config,
             &snippet_provider,
             self.report.clone(),
@@ -257,7 +252,7 @@ impl<'a, T: FormatHandler + 'a> FormatContext<'a, T> {
             .add_non_formatted_ranges(visitor.skipped_range.borrow().clone());
 
         self.handler.handle_formatted_file(
-            &self.parse_session,
+            &self.psess,
             path,
             visitor.buffer.to_owned(),
             &mut self.report,
@@ -269,7 +264,7 @@ impl<'a, T: FormatHandler + 'a> FormatContext<'a, T> {
 trait FormatHandler {
     fn handle_formatted_file(
         &mut self,
-        parse_session: &ParseSess,
+        psess: &ParseSess,
         path: FileName,
         result: String,
         report: &mut FormatReport,
@@ -280,14 +275,14 @@ impl<'b, T: Write + 'b> FormatHandler for Session<'b, T> {
     // Called for each formatted file.
     fn handle_formatted_file(
         &mut self,
-        parse_session: &ParseSess,
+        psess: &ParseSess,
         path: FileName,
         result: String,
         report: &mut FormatReport,
     ) -> Result<(), ErrorKind> {
         if let Some(ref mut out) = self.out {
             match source_file::write_file(
-                Some(parse_session),
+                Some(psess),
                 &path,
                 &result,
                 out,
@@ -318,17 +313,13 @@ pub(crate) struct FormattingError {
 }
 
 impl FormattingError {
-    pub(crate) fn from_span(
-        span: Span,
-        parse_sess: &ParseSess,
-        kind: ErrorKind,
-    ) -> FormattingError {
+    pub(crate) fn from_span(span: Span, psess: &ParseSess, kind: ErrorKind) -> FormattingError {
         FormattingError {
-            line: parse_sess.line_of_byte_pos(span.lo()),
+            line: psess.line_of_byte_pos(span.lo()),
             is_comment: kind.is_comment(),
             kind,
             is_string: false,
-            line_buffer: parse_sess.span_to_first_line_string(span),
+            line_buffer: psess.span_to_first_line_string(span),
         }
     }
 

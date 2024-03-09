@@ -1,23 +1,25 @@
-pub use self::at::DefineOpaqueTypes;
-pub use self::freshen::TypeFreshener;
-pub use self::lexical_region_resolve::RegionResolutionError;
-pub use self::BoundRegionConversionTime::*;
-pub use self::RegionVariableOrigin::*;
-pub use self::SubregionOrigin::*;
-pub use self::ValuePairs::*;
+pub use at::DefineOpaqueTypes;
+pub use freshen::TypeFreshener;
+pub use lexical_region_resolve::RegionResolutionError;
+pub use relate::combine::CombineFields;
 pub use relate::combine::ObligationEmittingRelation;
-use rustc_data_structures::captures::Captures;
-use rustc_data_structures::undo_log::UndoLogs;
-use rustc_middle::infer::unify_key::EffectVarValue;
-use rustc_middle::infer::unify_key::{ConstVidKey, EffectVidKey};
-
-use self::opaque_types::OpaqueTypeStorage;
-pub(crate) use self::undo_log::{InferCtxtUndoLogs, Snapshot, UndoLog};
+pub use relate::StructurallyRelateAliases;
+pub use rustc_middle::ty::IntVarValue;
+pub use BoundRegionConversionTime::*;
+pub use RegionVariableOrigin::*;
+pub use SubregionOrigin::*;
+pub use ValuePairs::*;
 
 use crate::traits::{
     self, ObligationCause, ObligationInspector, PredicateObligations, TraitEngine, TraitEngineExt,
 };
-
+use error_reporting::TypeErrCtxt;
+use free_regions::RegionRelations;
+use lexical_region_resolve::LexicalRegionResolutions;
+use opaque_types::OpaqueTypeStorage;
+use region_constraints::{GenericKind, VarInfos, VerifyBound};
+use region_constraints::{RegionConstraintCollector, RegionConstraintStorage};
+use rustc_data_structures::captures::Captures;
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::sync::Lrc;
@@ -27,7 +29,9 @@ use rustc_errors::{Diag, DiagCtxt, ErrorGuaranteed};
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_middle::infer::canonical::{Canonical, CanonicalVarValues};
 use rustc_middle::infer::unify_key::ConstVariableValue;
+use rustc_middle::infer::unify_key::EffectVarValue;
 use rustc_middle::infer::unify_key::{ConstVariableOrigin, ConstVariableOriginKind, ToType};
+use rustc_middle::infer::unify_key::{ConstVidKey, EffectVidKey};
 use rustc_middle::mir::interpret::{ErrorHandled, EvalToValTreeResult};
 use rustc_middle::mir::ConstraintCategory;
 use rustc_middle::traits::{select, DefiningAnchor};
@@ -36,33 +40,21 @@ use rustc_middle::ty::fold::BoundVarReplacerDelegate;
 use rustc_middle::ty::fold::{TypeFoldable, TypeFolder, TypeSuperFoldable};
 use rustc_middle::ty::relate::RelateResult;
 use rustc_middle::ty::visit::TypeVisitableExt;
-pub use rustc_middle::ty::IntVarValue;
 use rustc_middle::ty::{self, GenericParamDefKind, InferConst, InferTy, Ty, TyCtxt};
 use rustc_middle::ty::{ConstVid, EffectVid, FloatVid, IntVid, TyVid};
 use rustc_middle::ty::{GenericArg, GenericArgKind, GenericArgs, GenericArgsRef};
 use rustc_span::symbol::Symbol;
 use rustc_span::Span;
-
+use snapshot::undo_log::InferCtxtUndoLogs;
 use std::cell::{Cell, RefCell};
 use std::fmt;
-
-use self::error_reporting::TypeErrCtxt;
-use self::free_regions::RegionRelations;
-use self::lexical_region_resolve::LexicalRegionResolutions;
-use self::region_constraints::{GenericKind, VarInfos, VerifyBound};
-use self::region_constraints::{
-    RegionConstraintCollector, RegionConstraintStorage, RegionSnapshot,
-};
-pub use self::relate::combine::CombineFields;
-pub use self::relate::StructurallyRelateAliases;
-use self::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
+use type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
 
 pub mod at;
 pub mod canonical;
 pub mod error_reporting;
 pub mod free_regions;
 mod freshen;
-mod fudge;
 mod lexical_region_resolve;
 pub mod opaque_types;
 pub mod outlives;
@@ -70,8 +62,8 @@ mod projection;
 pub mod region_constraints;
 mod relate;
 pub mod resolve;
+pub(crate) mod snapshot;
 pub mod type_variable;
-mod undo_log;
 
 #[must_use]
 #[derive(Debug)]
@@ -738,13 +730,6 @@ impl<'tcx> InferOk<'tcx, ()> {
     }
 }
 
-#[must_use = "once you start a snapshot, you should always consume it"]
-pub struct CombinedSnapshot<'tcx> {
-    undo_snapshot: Snapshot<'tcx>,
-    region_constraints_snapshot: RegionSnapshot,
-    universe: ty::UniverseIndex,
-}
-
 impl<'tcx> InferCtxt<'tcx> {
     pub fn dcx(&self) -> &'tcx DiagCtxt {
         self.tcx.dcx()
@@ -840,90 +825,6 @@ impl<'tcx> InferCtxt<'tcx> {
             obligations: PredicateObligations::new(),
             define_opaque_types,
         }
-    }
-
-    pub fn in_snapshot(&self) -> bool {
-        UndoLogs::<UndoLog<'tcx>>::in_snapshot(&self.inner.borrow_mut().undo_log)
-    }
-
-    pub fn num_open_snapshots(&self) -> usize {
-        UndoLogs::<UndoLog<'tcx>>::num_open_snapshots(&self.inner.borrow_mut().undo_log)
-    }
-
-    fn start_snapshot(&self) -> CombinedSnapshot<'tcx> {
-        debug!("start_snapshot()");
-
-        let mut inner = self.inner.borrow_mut();
-
-        CombinedSnapshot {
-            undo_snapshot: inner.undo_log.start_snapshot(),
-            region_constraints_snapshot: inner.unwrap_region_constraints().start_snapshot(),
-            universe: self.universe(),
-        }
-    }
-
-    #[instrument(skip(self, snapshot), level = "debug")]
-    fn rollback_to(&self, snapshot: CombinedSnapshot<'tcx>) {
-        let CombinedSnapshot { undo_snapshot, region_constraints_snapshot, universe } = snapshot;
-
-        self.universe.set(universe);
-
-        let mut inner = self.inner.borrow_mut();
-        inner.rollback_to(undo_snapshot);
-        inner.unwrap_region_constraints().rollback_to(region_constraints_snapshot);
-    }
-
-    #[instrument(skip(self, snapshot), level = "debug")]
-    fn commit_from(&self, snapshot: CombinedSnapshot<'tcx>) {
-        let CombinedSnapshot { undo_snapshot, region_constraints_snapshot: _, universe: _ } =
-            snapshot;
-
-        self.inner.borrow_mut().commit(undo_snapshot);
-    }
-
-    /// Execute `f` and commit the bindings if closure `f` returns `Ok(_)`.
-    #[instrument(skip(self, f), level = "debug")]
-    pub fn commit_if_ok<T, E, F>(&self, f: F) -> Result<T, E>
-    where
-        F: FnOnce(&CombinedSnapshot<'tcx>) -> Result<T, E>,
-    {
-        let snapshot = self.start_snapshot();
-        let r = f(&snapshot);
-        debug!("commit_if_ok() -- r.is_ok() = {}", r.is_ok());
-        match r {
-            Ok(_) => {
-                self.commit_from(snapshot);
-            }
-            Err(_) => {
-                self.rollback_to(snapshot);
-            }
-        }
-        r
-    }
-
-    /// Execute `f` then unroll any bindings it creates.
-    #[instrument(skip(self, f), level = "debug")]
-    pub fn probe<R, F>(&self, f: F) -> R
-    where
-        F: FnOnce(&CombinedSnapshot<'tcx>) -> R,
-    {
-        let snapshot = self.start_snapshot();
-        let r = f(&snapshot);
-        self.rollback_to(snapshot);
-        r
-    }
-
-    /// Scan the constraints produced since `snapshot` and check whether
-    /// we added any region constraints.
-    pub fn region_constraints_added_in_snapshot(&self, snapshot: &CombinedSnapshot<'tcx>) -> bool {
-        self.inner
-            .borrow_mut()
-            .unwrap_region_constraints()
-            .region_constraints_added_in_snapshot(&snapshot.undo_snapshot)
-    }
-
-    pub fn opaque_types_added_in_snapshot(&self, snapshot: &CombinedSnapshot<'tcx>) -> bool {
-        self.inner.borrow().undo_log.opaque_types_in_snapshot(&snapshot.undo_snapshot)
     }
 
     pub fn can_sub<T>(&self, param_env: ty::ParamEnv<'tcx>, expected: T, actual: T) -> bool

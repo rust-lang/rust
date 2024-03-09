@@ -1,137 +1,137 @@
 error: unreachable pattern
-  --> $DIR/reachability.rs:18:17
+  --> $DIR/reachability.rs:19:17
    |
 LL |     m!(0u8, 42, 42);
    |                 ^^
    |
 note: the lint level is defined here
-  --> $DIR/reachability.rs:3:9
+  --> $DIR/reachability.rs:4:9
    |
 LL | #![deny(unreachable_patterns)]
    |         ^^^^^^^^^^^^^^^^^^^^
 
 error: unreachable pattern
-  --> $DIR/reachability.rs:22:22
+  --> $DIR/reachability.rs:23:22
    |
 LL |     m!(0u8, 20..=30, 20);
    |                      ^^
 
 error: unreachable pattern
-  --> $DIR/reachability.rs:23:22
+  --> $DIR/reachability.rs:24:22
    |
 LL |     m!(0u8, 20..=30, 21);
    |                      ^^
 
 error: unreachable pattern
-  --> $DIR/reachability.rs:24:22
+  --> $DIR/reachability.rs:25:22
    |
 LL |     m!(0u8, 20..=30, 25);
    |                      ^^
 
 error: unreachable pattern
-  --> $DIR/reachability.rs:25:22
+  --> $DIR/reachability.rs:26:22
    |
 LL |     m!(0u8, 20..=30, 29);
    |                      ^^
 
 error: unreachable pattern
-  --> $DIR/reachability.rs:26:22
+  --> $DIR/reachability.rs:27:22
    |
 LL |     m!(0u8, 20..=30, 30);
    |                      ^^
 
 error: unreachable pattern
-  --> $DIR/reachability.rs:29:21
+  --> $DIR/reachability.rs:30:21
    |
 LL |     m!(0u8, 20..30, 20);
    |                     ^^
 
 error: unreachable pattern
-  --> $DIR/reachability.rs:30:21
+  --> $DIR/reachability.rs:31:21
    |
 LL |     m!(0u8, 20..30, 21);
    |                     ^^
 
 error: unreachable pattern
-  --> $DIR/reachability.rs:31:21
+  --> $DIR/reachability.rs:32:21
    |
 LL |     m!(0u8, 20..30, 25);
    |                     ^^
 
 error: unreachable pattern
-  --> $DIR/reachability.rs:32:21
+  --> $DIR/reachability.rs:33:21
    |
 LL |     m!(0u8, 20..30, 29);
    |                     ^^
 
 error: unreachable pattern
-  --> $DIR/reachability.rs:36:22
+  --> $DIR/reachability.rs:37:22
    |
 LL |     m!(0u8, 20..=30, 20..=30);
    |                      ^^^^^^^
 
 error: unreachable pattern
-  --> $DIR/reachability.rs:37:22
+  --> $DIR/reachability.rs:38:22
    |
 LL |     m!(0u8, 20.. 30, 20.. 30);
    |                      ^^^^^^^
 
 error: unreachable pattern
-  --> $DIR/reachability.rs:38:22
+  --> $DIR/reachability.rs:39:22
    |
 LL |     m!(0u8, 20..=30, 20.. 30);
    |                      ^^^^^^^
 
 error: unreachable pattern
-  --> $DIR/reachability.rs:40:22
+  --> $DIR/reachability.rs:41:22
    |
 LL |     m!(0u8, 20..=30, 21..=30);
    |                      ^^^^^^^
 
 error: unreachable pattern
-  --> $DIR/reachability.rs:41:22
+  --> $DIR/reachability.rs:42:22
    |
 LL |     m!(0u8, 20..=30, 20..=29);
    |                      ^^^^^^^
 
 error: unreachable pattern
-  --> $DIR/reachability.rs:43:24
+  --> $DIR/reachability.rs:44:24
    |
 LL |     m!('a', 'A'..='z', 'a'..='z');
    |                        ^^^^^^^^^
 
 error: unreachable pattern
-  --> $DIR/reachability.rs:50:9
+  --> $DIR/reachability.rs:51:9
    |
 LL |         5..=8 => {},
    |         ^^^^^
 
 error: unreachable pattern
-  --> $DIR/reachability.rs:56:9
+  --> $DIR/reachability.rs:57:9
    |
 LL |         5..15 => {},
    |         ^^^^^
 
 error: unreachable pattern
-  --> $DIR/reachability.rs:63:9
+  --> $DIR/reachability.rs:64:9
    |
 LL |         5..25 => {},
    |         ^^^^^
 
 error: unreachable pattern
-  --> $DIR/reachability.rs:71:9
+  --> $DIR/reachability.rs:72:9
    |
 LL |         5..25 => {},
    |         ^^^^^
 
 error: unreachable pattern
-  --> $DIR/reachability.rs:77:9
+  --> $DIR/reachability.rs:78:9
    |
 LL |         5..15 => {},
    |         ^^^^^
 
 error: unreachable pattern
-  --> $DIR/reachability.rs:84:9
+  --> $DIR/reachability.rs:85:9
    |
 LL |         _ => {},
    |         - matches any value
@@ -139,19 +139,19 @@ LL |         '\u{D7FF}'..='\u{E000}' => {},
    |         ^^^^^^^^^^^^^^^^^^^^^^^ unreachable pattern
 
 error: unreachable pattern
-  --> $DIR/reachability.rs:89:9
+  --> $DIR/reachability.rs:90:9
    |
 LL |         '\u{D7FF}'..='\u{E000}' => {},
    |         ^^^^^^^^^^^^^^^^^^^^^^^
 
 error: unreachable pattern
-  --> $DIR/reachability.rs:105:9
+  --> $DIR/reachability.rs:106:9
    |
 LL |         &FOO => {}
    |         ^^^^
 
 error: unreachable pattern
-  --> $DIR/reachability.rs:106:9
+  --> $DIR/reachability.rs:107:9
    |
 LL |         BAR => {}
    |         ^^^

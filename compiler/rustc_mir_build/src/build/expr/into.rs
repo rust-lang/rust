@@ -58,52 +58,60 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 this.thir[scrutinee].span,
             ),
             ExprKind::If { cond, then, else_opt, if_then_scope } => {
-                let then_blk;
                 let then_span = this.thir[then].span;
                 let then_source_info = this.source_info(then_span);
                 let condition_scope = this.local_scope();
 
-                let mut else_blk = unpack!(
-                    then_blk = this.in_scope(
-                        (if_then_scope, then_source_info),
-                        LintLevel::Inherited,
-                        |this| {
-                            let source_info = if this.is_let(cond) {
-                                let variable_scope =
-                                    this.new_source_scope(then_span, LintLevel::Inherited, None);
-                                this.source_scope = variable_scope;
-                                SourceInfo { span: then_span, scope: variable_scope }
-                            } else {
-                                this.source_info(then_span)
-                            };
-                            let (then_block, else_block) =
-                                this.in_if_then_scope(condition_scope, then_span, |this| {
-                                    let then_blk = unpack!(this.then_else_break(
-                                        block,
-                                        cond,
-                                        Some(condition_scope),
-                                        condition_scope,
-                                        source_info,
-                                        true,
-                                    ));
+                let then_and_else_blocks = this.in_scope(
+                    (if_then_scope, then_source_info),
+                    LintLevel::Inherited,
+                    |this| {
+                        // FIXME: Does this need extra logic to handle let-chains?
+                        let source_info = if this.is_let(cond) {
+                            let variable_scope =
+                                this.new_source_scope(then_span, LintLevel::Inherited, None);
+                            this.source_scope = variable_scope;
+                            SourceInfo { span: then_span, scope: variable_scope }
+                        } else {
+                            this.source_info(then_span)
+                        };
 
-                                    this.expr_into_dest(destination, then_blk, then)
-                                });
-                            then_block.and(else_block)
-                        },
-                    )
+                        // Lower the condition, and have it branch into `then` and `else` blocks.
+                        let (then_block, else_block) =
+                            this.in_if_then_scope(condition_scope, then_span, |this| {
+                                let then_blk = unpack!(this.then_else_break(
+                                    block,
+                                    cond,
+                                    Some(condition_scope), // Temp scope
+                                    source_info,
+                                    true, // Declare `let` bindings normally
+                                ));
+
+                                // Lower the `then` arm into its block.
+                                this.expr_into_dest(destination, then_blk, then)
+                            });
+
+                        // Pack `(then_block, else_block)` into `BlockAnd<BasicBlock>`.
+                        then_block.and(else_block)
+                    },
                 );
 
-                else_blk = if let Some(else_opt) = else_opt {
-                    unpack!(this.expr_into_dest(destination, else_blk, else_opt))
+                // Unpack `BlockAnd<BasicBlock>` into `(then_blk, else_blk)`.
+                let (then_blk, mut else_blk);
+                else_blk = unpack!(then_blk = then_and_else_blocks);
+
+                // If there is an `else` arm, lower it into `else_blk`.
+                if let Some(else_expr) = else_opt {
+                    unpack!(else_blk = this.expr_into_dest(destination, else_blk, else_expr));
                 } else {
-                    // Body of the `if` expression without an `else` clause must return `()`, thus
-                    // we implicitly generate an `else {}` if it is not specified.
+                    // There is no `else` arm, so we know both arms have type `()`.
+                    // Generate the implicit `else {}` by assigning unit.
                     let correct_si = this.source_info(expr_span.shrink_to_hi());
                     this.cfg.push_assign_unit(else_blk, correct_si, destination, this.tcx);
-                    else_blk
-                };
+                }
 
+                // The `then` and `else` arms have been lowered into their respective
+                // blocks, so make both of them meet up in a new block.
                 let join_block = this.cfg.start_new_block();
                 this.cfg.goto(then_blk, source_info, join_block);
                 this.cfg.goto(else_blk, source_info, join_block);
@@ -146,9 +154,10 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                         this.then_else_break(
                             block,
                             lhs,
-                            Some(condition_scope),
-                            condition_scope,
+                            Some(condition_scope), // Temp scope
                             source_info,
+                            // This flag controls how inner `let` expressions are lowered,
+                            // but either way there shouldn't be any of those in here.
                             true,
                         )
                     });
@@ -374,6 +383,14 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 line_spans,
             }) => {
                 use rustc_middle::{mir, thir};
+
+                let destination_block = this.cfg.start_new_block();
+                let mut targets = if options.contains(InlineAsmOptions::NORETURN) {
+                    vec![]
+                } else {
+                    vec![destination_block]
+                };
+
                 let operands = operands
                     .into_iter()
                     .map(|op| match *op {
@@ -429,14 +446,28 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                         thir::InlineAsmOperand::SymStatic { def_id } => {
                             mir::InlineAsmOperand::SymStatic { def_id }
                         }
+                        thir::InlineAsmOperand::Label { block } => {
+                            let target = this.cfg.start_new_block();
+                            let target_index = targets.len();
+                            targets.push(target);
+
+                            let tmp = this.get_unit_temp();
+                            let target = unpack!(this.ast_block(tmp, target, block, source_info));
+                            this.cfg.terminate(
+                                target,
+                                source_info,
+                                TerminatorKind::Goto { target: destination_block },
+                            );
+
+                            mir::InlineAsmOperand::Label { target_index }
+                        }
                     })
                     .collect();
 
-                if !options.contains(InlineAsmOptions::NORETURN) {
+                if !expr.ty.is_never() {
                     this.cfg.push_assign_unit(block, source_info, destination, this.tcx);
                 }
 
-                let destination_block = this.cfg.start_new_block();
                 this.cfg.terminate(
                     block,
                     source_info,
@@ -445,11 +476,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                         operands,
                         options,
                         line_spans,
-                        destination: if options.contains(InlineAsmOptions::NORETURN) {
-                            None
-                        } else {
-                            Some(destination_block)
-                        },
+                        targets,
                         unwind: if options.contains(InlineAsmOptions::MAY_UNWIND) {
                             UnwindAction::Continue
                         } else {

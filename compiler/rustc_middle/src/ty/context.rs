@@ -39,11 +39,11 @@ use rustc_data_structures::profiling::SelfProfilerRef;
 use rustc_data_structures::sharded::{IntoPointer, ShardedHashMap};
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_data_structures::steal::Steal;
-use rustc_data_structures::sync::{self, FreezeReadGuard, Lock, WorkerLocal};
+use rustc_data_structures::sync::{self, FreezeReadGuard, Lock, Lrc, WorkerLocal};
 #[cfg(parallel_compiler)]
 use rustc_data_structures::sync::{DynSend, DynSync};
 use rustc_data_structures::unord::UnordSet;
-use rustc_errors::{DecorateLint, Diag, DiagCtxt, DiagnosticMessage, ErrorGuaranteed, MultiSpan};
+use rustc_errors::{DecorateLint, Diag, DiagCtxt, DiagMessage, ErrorGuaranteed, MultiSpan};
 use rustc_hir as hir;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{CrateNum, DefId, LocalDefId, LOCAL_CRATE};
@@ -60,7 +60,7 @@ use rustc_session::config::CrateType;
 use rustc_session::cstore::{CrateStoreDyn, Untracked};
 use rustc_session::lint::Lint;
 use rustc_session::{Limit, MetadataKind, Session};
-use rustc_span::def_id::{DefPathHash, StableCrateId};
+use rustc_span::def_id::{DefPathHash, StableCrateId, CRATE_DEF_ID};
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
 use rustc_span::{Span, DUMMY_SP};
 use rustc_target::abi::{FieldIdx, Layout, LayoutS, TargetDataLayout, VariantIdx};
@@ -74,6 +74,7 @@ use std::cmp::Ordering;
 use std::fmt;
 use std::hash::{Hash, Hasher};
 use std::iter;
+use std::marker::PhantomData;
 use std::mem;
 use std::ops::{Bound, Deref};
 
@@ -129,27 +130,6 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
 
     fn mk_canonical_var_infos(self, infos: &[ty::CanonicalVarInfo<Self>]) -> Self::CanonicalVars {
         self.mk_canonical_var_infos(infos)
-    }
-
-    fn mk_bound_ty(self, debruijn: ty::DebruijnIndex, var: ty::BoundVar) -> Self::Ty {
-        Ty::new_bound(self, debruijn, ty::BoundTy { var, kind: ty::BoundTyKind::Anon })
-    }
-
-    fn mk_bound_region(self, debruijn: ty::DebruijnIndex, var: ty::BoundVar) -> Self::Region {
-        Region::new_bound(
-            self,
-            debruijn,
-            ty::BoundRegion { var, kind: ty::BoundRegionKind::BrAnon },
-        )
-    }
-
-    fn mk_bound_const(
-        self,
-        debruijn: ty::DebruijnIndex,
-        var: ty::BoundVar,
-        ty: Self::Ty,
-    ) -> Self::Const {
-        Const::new_bound(self, debruijn, var, ty)
     }
 }
 
@@ -519,14 +499,55 @@ pub struct TyCtxtFeed<'tcx, KEY: Copy> {
     key: KEY,
 }
 
+/// Never return a `Feed` from a query. Only queries that create a `DefId` are
+/// allowed to feed queries for that `DefId`.
+impl<KEY: Copy, CTX> !HashStable<CTX> for TyCtxtFeed<'_, KEY> {}
+
+/// The same as `TyCtxtFeed`, but does not contain a `TyCtxt`.
+/// Use this to pass around when you have a `TyCtxt` elsewhere.
+/// Just an optimization to save space and not store hundreds of
+/// `TyCtxtFeed` in the resolver.
+#[derive(Copy, Clone)]
+pub struct Feed<'tcx, KEY: Copy> {
+    _tcx: PhantomData<TyCtxt<'tcx>>,
+    // Do not allow direct access, as downstream code must not mutate this field.
+    key: KEY,
+}
+
+/// Never return a `Feed` from a query. Only queries that create a `DefId` are
+/// allowed to feed queries for that `DefId`.
+impl<KEY: Copy, CTX> !HashStable<CTX> for Feed<'_, KEY> {}
+
+impl<T: fmt::Debug + Copy> fmt::Debug for Feed<'_, T> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        self.key.fmt(f)
+    }
+}
+
+/// Some workarounds to use cases that cannot use `create_def`.
+/// Do not add new ways to create `TyCtxtFeed` without consulting
+/// with T-compiler and making an analysis about why your addition
+/// does not cause incremental compilation issues.
 impl<'tcx> TyCtxt<'tcx> {
+    /// Can only be fed before queries are run, and is thus exempt from any
+    /// incremental issues. Do not use except for the initial query feeding.
     pub fn feed_unit_query(self) -> TyCtxtFeed<'tcx, ()> {
+        self.dep_graph.assert_ignored();
         TyCtxtFeed { tcx: self, key: () }
     }
+
+    /// Can only be fed before queries are run, and is thus exempt from any
+    /// incremental issues. Do not use except for the initial query feeding.
     pub fn feed_local_crate(self) -> TyCtxtFeed<'tcx, CrateNum> {
+        self.dep_graph.assert_ignored();
         TyCtxtFeed { tcx: self, key: LOCAL_CRATE }
     }
-    pub fn feed_local_def_id(self, key: LocalDefId) -> TyCtxtFeed<'tcx, LocalDefId> {
+
+    /// Only used in the resolver to register the `CRATE_DEF_ID` `DefId` and feed
+    /// some queries for it. It will panic if used twice.
+    pub fn create_local_crate_def_id(self, span: Span) -> TyCtxtFeed<'tcx, LocalDefId> {
+        let key = self.untracked().source_span.push(span);
+        assert_eq!(key, CRATE_DEF_ID);
         TyCtxtFeed { tcx: self, key }
     }
 
@@ -543,6 +564,23 @@ impl<'tcx, KEY: Copy> TyCtxtFeed<'tcx, KEY> {
     #[inline(always)]
     pub fn key(&self) -> KEY {
         self.key
+    }
+
+    #[inline(always)]
+    pub fn downgrade(self) -> Feed<'tcx, KEY> {
+        Feed { _tcx: PhantomData, key: self.key }
+    }
+}
+
+impl<'tcx, KEY: Copy> Feed<'tcx, KEY> {
+    #[inline(always)]
+    pub fn key(&self) -> KEY {
+        self.key
+    }
+
+    #[inline(always)]
+    pub fn upgrade(self, tcx: TyCtxt<'tcx>) -> TyCtxtFeed<'tcx, KEY> {
+        TyCtxtFeed { tcx, key: self.key }
     }
 }
 
@@ -1088,7 +1126,7 @@ impl<'tcx> TyCtxt<'tcx> {
         // needs to be re-evaluated.
         self.dep_graph.read_index(DepNodeIndex::FOREVER_RED_NODE);
 
-        let feed = self.feed_local_def_id(def_id);
+        let feed = TyCtxtFeed { tcx: self, key: def_id };
         feed.def_kind(def_kind);
         // Unique types created for closures participate in type privacy checking.
         // They have visibilities inherited from the module they are defined in.
@@ -1216,7 +1254,7 @@ impl<'tcx> TyCtxt<'tcx> {
             if self.def_kind(scope) == DefKind::OpaqueTy {
                 // Lifetime params of opaque types are synthetic and thus irrelevant to
                 // diagnostics. Map them back to their origin!
-                region = self.map_rpit_lifetime_to_fn_lifetime(def_id);
+                region = self.map_opaque_lifetime_to_parent_lifetime(def_id);
                 continue;
             }
             break (scope, ty::BrNamed(def_id.into(), self.item_name(def_id.into())));
@@ -2118,7 +2156,7 @@ impl<'tcx> TyCtxt<'tcx> {
         lint: &'static Lint,
         hir_id: HirId,
         span: impl Into<MultiSpan>,
-        msg: impl Into<DiagnosticMessage>,
+        msg: impl Into<DiagMessage>,
         decorate: impl for<'a, 'b> FnOnce(&'b mut Diag<'a, ()>),
     ) {
         let (level, src) = self.lint_level_at_node(lint, hir_id);
@@ -2148,7 +2186,7 @@ impl<'tcx> TyCtxt<'tcx> {
         self,
         lint: &'static Lint,
         id: HirId,
-        msg: impl Into<DiagnosticMessage>,
+        msg: impl Into<DiagMessage>,
         decorate: impl for<'a, 'b> FnOnce(&'b mut Diag<'a, ()>),
     ) {
         let (level, src) = self.lint_level_at_node(lint, id);
@@ -2181,31 +2219,31 @@ impl<'tcx> TyCtxt<'tcx> {
         )
     }
 
-    /// Given the def-id of an early-bound lifetime on an RPIT corresponding to
+    /// Given the def-id of an early-bound lifetime on an opaque corresponding to
     /// a duplicated captured lifetime, map it back to the early- or late-bound
     /// lifetime of the function from which it originally as captured. If it is
     /// a late-bound lifetime, this will represent the liberated (`ReLateParam`) lifetime
     /// of the signature.
     // FIXME(RPITIT): if we ever synthesize new lifetimes for RPITITs and not just
     // re-use the generics of the opaque, this function will need to be tweaked slightly.
-    pub fn map_rpit_lifetime_to_fn_lifetime(
+    pub fn map_opaque_lifetime_to_parent_lifetime(
         self,
-        mut rpit_lifetime_param_def_id: LocalDefId,
+        mut opaque_lifetime_param_def_id: LocalDefId,
     ) -> ty::Region<'tcx> {
         debug_assert!(
-            matches!(self.def_kind(rpit_lifetime_param_def_id), DefKind::LifetimeParam),
-            "{rpit_lifetime_param_def_id:?} is a {}",
-            self.def_descr(rpit_lifetime_param_def_id.to_def_id())
+            matches!(self.def_kind(opaque_lifetime_param_def_id), DefKind::LifetimeParam),
+            "{opaque_lifetime_param_def_id:?} is a {}",
+            self.def_descr(opaque_lifetime_param_def_id.to_def_id())
         );
 
         loop {
-            let parent = self.local_parent(rpit_lifetime_param_def_id);
+            let parent = self.local_parent(opaque_lifetime_param_def_id);
             let hir::OpaqueTy { lifetime_mapping, .. } =
                 self.hir_node_by_def_id(parent).expect_item().expect_opaque_ty();
 
             let Some((lifetime, _)) = lifetime_mapping
                 .iter()
-                .find(|(_, duplicated_param)| *duplicated_param == rpit_lifetime_param_def_id)
+                .find(|(_, duplicated_param)| *duplicated_param == opaque_lifetime_param_def_id)
             else {
                 bug!("duplicated lifetime param should be present");
             };
@@ -2218,7 +2256,7 @@ impl<'tcx> TyCtxt<'tcx> {
                     // of the opaque we mapped from. Continue mapping.
                     if matches!(self.def_kind(new_parent), DefKind::OpaqueTy) {
                         debug_assert_eq!(self.parent(parent.to_def_id()), new_parent);
-                        rpit_lifetime_param_def_id = ebv.expect_local();
+                        opaque_lifetime_param_def_id = ebv.expect_local();
                         continue;
                     }
 
@@ -2296,6 +2334,14 @@ impl<'tcx> TyCtxt<'tcx> {
         )
     }
 
+    pub fn intrinsic(self, def_id: impl IntoQueryParam<DefId> + Copy) -> Option<ty::IntrinsicDef> {
+        match self.def_kind(def_id) {
+            DefKind::Fn | DefKind::AssocFn => {}
+            _ => return None,
+        }
+        self.intrinsic_raw(def_id)
+    }
+
     pub fn local_def_id_to_hir_id(self, local_def_id: LocalDefId) -> HirId {
         self.opt_local_def_id_to_hir_id(local_def_id).unwrap()
     }
@@ -2325,18 +2371,21 @@ impl<'tcx> TyCtxt<'tcx> {
         self.resolutions(()).module_children.get(&def_id).map_or(&[], |v| &v[..])
     }
 
+    pub fn resolver_for_lowering(self) -> &'tcx Steal<(ty::ResolverAstLowering, Lrc<ast::Crate>)> {
+        self.resolver_for_lowering_raw(()).0
+    }
+
     /// Given an `impl_id`, return the trait it implements.
     /// Return `None` if this is an inherent impl.
     pub fn impl_trait_ref(
         self,
         def_id: impl IntoQueryParam<DefId>,
     ) -> Option<ty::EarlyBinder<ty::TraitRef<'tcx>>> {
-        Some(self.impl_trait_header(def_id)?.map_bound(|h| h.trait_ref))
+        Some(self.impl_trait_header(def_id)?.trait_ref)
     }
 
     pub fn impl_polarity(self, def_id: impl IntoQueryParam<DefId>) -> ty::ImplPolarity {
-        self.impl_trait_header(def_id)
-            .map_or(ty::ImplPolarity::Positive, |h| h.skip_binder().polarity)
+        self.impl_trait_header(def_id).map_or(ty::ImplPolarity::Positive, |h| h.polarity)
     }
 }
 

@@ -1,5 +1,6 @@
 //! Compute the binary representation of a type
 
+use std::borrow::Cow;
 use std::fmt;
 
 use base_db::salsa::Cycle;
@@ -114,8 +115,8 @@ struct LayoutCx<'a> {
 impl<'a> LayoutCalculator for LayoutCx<'a> {
     type TargetDataLayoutRef = &'a TargetDataLayout;
 
-    fn delayed_bug(&self, txt: String) {
-        never!("{}", txt);
+    fn delayed_bug(&self, txt: impl Into<Cow<'static, str>>) {
+        never!("{}", txt.into());
     }
 
     fn current_data_layout(&self) -> &'a TargetDataLayout {

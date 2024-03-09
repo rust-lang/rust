@@ -66,7 +66,7 @@ pub(crate) fn parse_external_mod(
         }
 
         // Actually parse the external file as a module.
-        let mut parser = new_parser_from_file(&sess.parse_sess, &mp.file_path, Some(span));
+        let mut parser = new_parser_from_file(&sess.psess, &mp.file_path, Some(span));
         let (inner_attrs, items, inner_span) =
             parser.parse_mod(&token::Eof).map_err(|err| ModError::ParserError(err))?;
         attrs.extend(inner_attrs);
@@ -157,7 +157,7 @@ fn mod_file_path<'a>(
         DirOwnership::Owned { relative } => relative,
         DirOwnership::UnownedViaBlock => None,
     };
-    let result = default_submod_path(&sess.parse_sess, ident, relative, dir_path);
+    let result = default_submod_path(&sess.psess, ident, relative, dir_path);
     match dir_ownership {
         DirOwnership::Owned { .. } => result,
         DirOwnership::UnownedViaBlock => Err(ModError::ModInBlock(match result {
@@ -185,11 +185,7 @@ fn mod_file_path_from_attr(
         // complexity). Usually bad forms are checked in AstValidator (via
         // `check_builtin_attribute`), but by the time that runs the macro
         // is expanded, and it doesn't give an error.
-        validate_attr::emit_fatal_malformed_builtin_attribute(
-            &sess.parse_sess,
-            first_path,
-            sym::path,
-        );
+        validate_attr::emit_fatal_malformed_builtin_attribute(&sess.psess, first_path, sym::path);
     };
 
     let path_str = path_sym.as_str();
@@ -207,7 +203,7 @@ fn mod_file_path_from_attr(
 /// Returns a path to a module.
 // Public for rustfmt usage.
 pub fn default_submod_path<'a>(
-    sess: &'a ParseSess,
+    psess: &'a ParseSess,
     ident: Ident,
     relative: Option<Ident>,
     dir_path: &Path,
@@ -229,8 +225,8 @@ pub fn default_submod_path<'a>(
         format!("{}{}{}mod.rs", relative_prefix, ident.name, path::MAIN_SEPARATOR);
     let default_path = dir_path.join(&default_path_str);
     let secondary_path = dir_path.join(&secondary_path_str);
-    let default_exists = sess.source_map().file_exists(&default_path);
-    let secondary_exists = sess.source_map().file_exists(&secondary_path);
+    let default_exists = psess.source_map().file_exists(&default_path);
+    let secondary_exists = psess.source_map().file_exists(&secondary_path);
 
     match (default_exists, secondary_exists) {
         (true, false) => Ok(ModulePathSuccess {

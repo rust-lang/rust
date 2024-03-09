@@ -683,20 +683,23 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         self.cfg.start_new_block().unit()
     }
 
-    pub(crate) fn break_for_else(
-        &mut self,
-        block: BasicBlock,
-        target: region::Scope,
-        source_info: SourceInfo,
-    ) {
-        let scope_index = self.scopes.scope_index(target, source_info.span);
+    /// Sets up the drops for breaking from `block` due to an `if` condition
+    /// that turned out to be false.
+    ///
+    /// Must be called in the context of [`Builder::in_if_then_scope`], so that
+    /// there is an if-then scope to tell us what the target scope is.
+    pub(crate) fn break_for_else(&mut self, block: BasicBlock, source_info: SourceInfo) {
         let if_then_scope = self
             .scopes
             .if_then_scope
-            .as_mut()
+            .as_ref()
             .unwrap_or_else(|| span_bug!(source_info.span, "no if-then scope found"));
 
-        assert_eq!(if_then_scope.region_scope, target, "breaking to incorrect scope");
+        let target = if_then_scope.region_scope;
+        let scope_index = self.scopes.scope_index(target, source_info.span);
+
+        // Upgrade `if_then_scope` to `&mut`.
+        let if_then_scope = self.scopes.if_then_scope.as_mut().expect("upgrading & to &mut");
 
         let mut drop_idx = ROOT_NODE;
         let drops = &mut if_then_scope.else_drops;

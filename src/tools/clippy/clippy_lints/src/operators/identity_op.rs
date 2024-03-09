@@ -42,7 +42,7 @@ pub(crate) fn check<'tcx>(
 
     match op {
         BinOpKind::Add | BinOpKind::BitOr | BinOpKind::BitXor => {
-            check_op(
+            let _ = check_op(
                 cx,
                 left,
                 0,
@@ -50,8 +50,7 @@ pub(crate) fn check<'tcx>(
                 peeled_right_span,
                 needs_parenthesis(cx, expr, right),
                 right_is_coerced_to_value,
-            );
-            check_op(
+            ) || check_op(
                 cx,
                 right,
                 0,
@@ -62,7 +61,7 @@ pub(crate) fn check<'tcx>(
             );
         },
         BinOpKind::Shl | BinOpKind::Shr | BinOpKind::Sub => {
-            check_op(
+            let _ = check_op(
                 cx,
                 right,
                 0,
@@ -73,7 +72,7 @@ pub(crate) fn check<'tcx>(
             );
         },
         BinOpKind::Mul => {
-            check_op(
+            let _ = check_op(
                 cx,
                 left,
                 1,
@@ -81,8 +80,7 @@ pub(crate) fn check<'tcx>(
                 peeled_right_span,
                 needs_parenthesis(cx, expr, right),
                 right_is_coerced_to_value,
-            );
-            check_op(
+            ) || check_op(
                 cx,
                 right,
                 1,
@@ -92,17 +90,19 @@ pub(crate) fn check<'tcx>(
                 left_is_coerced_to_value,
             );
         },
-        BinOpKind::Div => check_op(
-            cx,
-            right,
-            1,
-            expr.span,
-            peeled_left_span,
-            Parens::Unneeded,
-            left_is_coerced_to_value,
-        ),
+        BinOpKind::Div => {
+            let _ = check_op(
+                cx,
+                right,
+                1,
+                expr.span,
+                peeled_left_span,
+                Parens::Unneeded,
+                left_is_coerced_to_value,
+            );
+        },
         BinOpKind::BitAnd => {
-            check_op(
+            let _ = check_op(
                 cx,
                 left,
                 -1,
@@ -110,8 +110,7 @@ pub(crate) fn check<'tcx>(
                 peeled_right_span,
                 needs_parenthesis(cx, expr, right),
                 right_is_coerced_to_value,
-            );
-            check_op(
+            ) || check_op(
                 cx,
                 right,
                 -1,
@@ -201,12 +200,12 @@ fn check_remainder(cx: &LateContext<'_>, left: &Expr<'_>, right: &Expr<'_>, span
     }
 }
 
-fn check_op(cx: &LateContext<'_>, e: &Expr<'_>, m: i8, span: Span, arg: Span, parens: Parens, is_erased: bool) {
+fn check_op(cx: &LateContext<'_>, e: &Expr<'_>, m: i8, span: Span, arg: Span, parens: Parens, is_erased: bool) -> bool {
     if let Some(Constant::Int(v)) = constant_simple(cx, cx.typeck_results(), e).map(Constant::peel_refs) {
         let check = match *cx.typeck_results().expr_ty(e).peel_refs().kind() {
             ty::Int(ity) => unsext(cx.tcx, -1_i128, ity),
             ty::Uint(uty) => clip(cx.tcx, !0, uty),
-            _ => return,
+            _ => return false,
         };
         if match m {
             0 => v == 0,
@@ -215,8 +214,10 @@ fn check_op(cx: &LateContext<'_>, e: &Expr<'_>, m: i8, span: Span, arg: Span, pa
             _ => unreachable!(),
         } {
             span_ineffective_operation(cx, span, arg, parens, is_erased);
+            return true;
         }
     }
+    false
 }
 
 fn span_ineffective_operation(

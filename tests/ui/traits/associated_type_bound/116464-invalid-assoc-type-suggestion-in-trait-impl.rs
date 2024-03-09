@@ -20,6 +20,7 @@ impl<T, S> Trait<T, S> for () {}
 fn func<T: Trait<u32, String>>(t: T) -> impl Trait<(), i32> {
 //~^ ERROR trait takes 1 generic argument but 2 generic arguments were supplied
 //~| ERROR trait takes 1 generic argument but 2 generic arguments were supplied
+//~| ERROR type annotations needed
     3
 }
 

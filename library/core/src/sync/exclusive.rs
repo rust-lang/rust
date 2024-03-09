@@ -19,7 +19,7 @@ use core::task::{Context, Poll};
 ///
 /// Certain constructs like [`Future`]s can only be used with _exclusive_ access,
 /// and are often `Send` but not `Sync`, so `Exclusive` can be used as hint to the
-/// rust compiler that something is `Sync` in practice.
+/// Rust compiler that something is `Sync` in practice.
 ///
 /// ## Examples
 /// Using a non-`Sync` future prevents the wrapping struct from being `Sync`

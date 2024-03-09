@@ -1,5 +1,4 @@
 use rustc_errors::ErrorGuaranteed;
-use rustc_hir::def::DefKind;
 use rustc_hir::def_id::DefId;
 use rustc_infer::infer::TyCtxtInferExt;
 use rustc_middle::query::Providers;
@@ -28,8 +27,7 @@ fn resolve_instance<'tcx>(
             tcx.normalize_erasing_regions(param_env, args),
         )
     } else {
-        let def = if matches!(tcx.def_kind(def_id), DefKind::Fn) && tcx.intrinsic(def_id).is_some()
-        {
+        let def = if tcx.intrinsic(def_id).is_some() {
             debug!(" => intrinsic");
             ty::InstanceDef::Intrinsic(def_id)
         } else if Some(def_id) == tcx.lang_items().drop_in_place_fn() {

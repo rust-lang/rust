@@ -27,7 +27,7 @@ use rustc_middle::ty::{TyCtxt, Visibility};
 use rustc_session::lint::builtin::UNKNOWN_OR_MALFORMED_DIAGNOSTIC_ATTRIBUTES;
 use rustc_session::lint::builtin::{LEGACY_DERIVE_HELPERS, SOFT_UNSTABLE};
 use rustc_session::lint::builtin::{UNUSED_MACROS, UNUSED_MACRO_RULES};
-use rustc_session::lint::BuiltinLintDiagnostics;
+use rustc_session::lint::BuiltinLintDiag;
 use rustc_session::parse::feature_err;
 use rustc_span::edition::Edition;
 use rustc_span::hygiene::{self, ExpnData, ExpnKind, LocalExpnId};
@@ -590,7 +590,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                 _ => unreachable!(),
             };
             if soft_custom_inner_attributes_gate {
-                self.tcx.sess.parse_sess.buffer_lint(SOFT_UNSTABLE, path.span, node_id, msg);
+                self.tcx.sess.psess.buffer_lint(SOFT_UNSTABLE, path.span, node_id, msg);
             } else {
                 feature_err(&self.tcx.sess, sym::custom_inner_attributes, path.span, msg).emit();
             }
@@ -601,7 +601,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             && path.segments[0].ident.name == sym::diagnostic
             && path.segments[1].ident.name != sym::on_unimplemented
         {
-            self.tcx.sess.parse_sess.buffer_lint(
+            self.tcx.sess.psess.buffer_lint(
                 UNKNOWN_OR_MALFORMED_DIAGNOSTIC_ATTRIBUTES,
                 path.segments[1].span(),
                 node_id,
@@ -810,7 +810,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                             node_id,
                             ident.span,
                             "derive helper attribute is used before it is introduced",
-                            BuiltinLintDiagnostics::LegacyDeriveHelpers(binding.span),
+                            BuiltinLintDiag::LegacyDeriveHelpers(binding.span),
                         );
                     }
                 }

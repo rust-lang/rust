@@ -24,7 +24,7 @@ use crate::errors::{LongRunning, LongRunningWarn};
 use crate::fluent_generated as fluent;
 use crate::interpret::{
     self, compile_time_machine, AllocId, AllocRange, ConstAllocation, CtfeProvenance, FnArg, FnVal,
-    Frame, ImmTy, InterpCx, InterpResult, OpTy, PlaceTy, Pointer, PointerArithmetic, Scalar,
+    Frame, ImmTy, InterpCx, InterpResult, MPlaceTy, OpTy, Pointer, PointerArithmetic, Scalar,
 };
 
 use super::error::*;
@@ -219,7 +219,7 @@ impl<'mir, 'tcx: 'mir> CompileTimeEvalContext<'mir, 'tcx> {
         &mut self,
         instance: ty::Instance<'tcx>,
         args: &[FnArg<'tcx>],
-        dest: &PlaceTy<'tcx>,
+        dest: &MPlaceTy<'tcx>,
         ret: Option<mir::BasicBlock>,
     ) -> InterpResult<'tcx, Option<ty::Instance<'tcx>>> {
         let def_id = instance.def_id();
@@ -227,7 +227,7 @@ impl<'mir, 'tcx: 'mir> CompileTimeEvalContext<'mir, 'tcx> {
         if self.tcx.has_attr(def_id, sym::rustc_const_panic_str)
             || Some(def_id) == self.tcx.lang_items().begin_panic_fn()
         {
-            let args = self.copy_fn_args(args)?;
+            let args = self.copy_fn_args(args);
             // &str or &&str
             assert!(args.len() == 1);
 
@@ -254,7 +254,7 @@ impl<'mir, 'tcx: 'mir> CompileTimeEvalContext<'mir, 'tcx> {
 
             return Ok(Some(new_instance));
         } else if Some(def_id) == self.tcx.lang_items().align_offset_fn() {
-            let args = self.copy_fn_args(args)?;
+            let args = self.copy_fn_args(args);
             // For align_offset, we replace the function call if the pointer has no address.
             match self.align_offset(instance, &args, dest, ret)? {
                 ControlFlow::Continue(()) => return Ok(Some(instance)),
@@ -280,7 +280,7 @@ impl<'mir, 'tcx: 'mir> CompileTimeEvalContext<'mir, 'tcx> {
         &mut self,
         instance: ty::Instance<'tcx>,
         args: &[OpTy<'tcx>],
-        dest: &PlaceTy<'tcx>,
+        dest: &MPlaceTy<'tcx>,
         ret: Option<mir::BasicBlock>,
     ) -> InterpResult<'tcx, ControlFlow<()>> {
         assert_eq!(args.len(), 2);
@@ -410,7 +410,7 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for CompileTimeInterpreter<'mir,
         orig_instance: ty::Instance<'tcx>,
         _abi: CallAbi,
         args: &[FnArg<'tcx>],
-        dest: &PlaceTy<'tcx>,
+        dest: &MPlaceTy<'tcx>,
         ret: Option<mir::BasicBlock>,
         _unwind: mir::UnwindAction, // unwinding is not supported in consts
     ) -> InterpResult<'tcx, Option<(&'mir mir::Body<'tcx>, ty::Instance<'tcx>)>> {
@@ -455,7 +455,7 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for CompileTimeInterpreter<'mir,
         ecx: &mut InterpCx<'mir, 'tcx, Self>,
         instance: ty::Instance<'tcx>,
         args: &[OpTy<'tcx>],
-        dest: &PlaceTy<'tcx, Self::Provenance>,
+        dest: &MPlaceTy<'tcx, Self::Provenance>,
         target: Option<mir::BasicBlock>,
         _unwind: mir::UnwindAction,
     ) -> InterpResult<'tcx> {

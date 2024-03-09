@@ -1,5 +1,5 @@
 warning: non-local `impl` definition, they should be avoided as they go against expectation
-  --> $DIR/non_local_definitions.rs:36:5
+  --> $DIR/non_local_definitions.rs:37:5
    |
 LL | const Z: () = {
    |       - help: use a const-anon item to suppress this lint: `_`
@@ -11,10 +11,14 @@ LL |     impl Uto for &Test {}
    = note: an `impl` definition is non-local if it is nested inside an item and neither the type nor the trait are at the same nesting level as the `impl` block
    = note: one exception to the rule are anon-const (`const _: () = { ... }`) at top-level module and anon-const at the same nesting as the trait or type
    = note: this lint may become deny-by-default in the edition 2024 and higher, see the tracking issue <https://github.com/rust-lang/rust/issues/120363>
-   = note: `#[warn(non_local_definitions)]` on by default
+note: the lint level is defined here
+  --> $DIR/non_local_definitions.rs:7:9
+   |
+LL | #![warn(non_local_definitions)]
+   |         ^^^^^^^^^^^^^^^^^^^^^
 
 warning: non-local `impl` definition, they should be avoided as they go against expectation
-  --> $DIR/non_local_definitions.rs:46:5
+  --> $DIR/non_local_definitions.rs:47:5
    |
 LL |     impl Uto for *mut Test {}
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -25,7 +29,7 @@ LL |     impl Uto for *mut Test {}
    = note: this lint may become deny-by-default in the edition 2024 and higher, see the tracking issue <https://github.com/rust-lang/rust/issues/120363>
 
 warning: non-local `impl` definition, they should be avoided as they go against expectation
-  --> $DIR/non_local_definitions.rs:54:9
+  --> $DIR/non_local_definitions.rs:55:9
    |
 LL |         impl Uto for Test {}
    |         ^^^^^^^^^^^^^^^^^^^^
@@ -36,7 +40,7 @@ LL |         impl Uto for Test {}
    = note: this lint may become deny-by-default in the edition 2024 and higher, see the tracking issue <https://github.com/rust-lang/rust/issues/120363>
 
 warning: non-local `impl` definition, they should be avoided as they go against expectation
-  --> $DIR/non_local_definitions.rs:63:5
+  --> $DIR/non_local_definitions.rs:64:5
    |
 LL |     impl Uto2 for Test {}
    |     ^^^^^^^^^^^^^^^^^^^^^
@@ -47,7 +51,7 @@ LL |     impl Uto2 for Test {}
    = note: this lint may become deny-by-default in the edition 2024 and higher, see the tracking issue <https://github.com/rust-lang/rust/issues/120363>
 
 warning: non-local `impl` definition, they should be avoided as they go against expectation
-  --> $DIR/non_local_definitions.rs:71:5
+  --> $DIR/non_local_definitions.rs:72:5
    |
 LL |     impl Uto3 for Test {}
    |     ^^^^^^^^^^^^^^^^^^^^^
@@ -58,7 +62,7 @@ LL |     impl Uto3 for Test {}
    = note: this lint may become deny-by-default in the edition 2024 and higher, see the tracking issue <https://github.com/rust-lang/rust/issues/120363>
 
 warning: non-local `macro_rules!` definition, they should be avoided as they go against expectation
-  --> $DIR/non_local_definitions.rs:75:5
+  --> $DIR/non_local_definitions.rs:76:5
    |
 LL |     macro_rules! m0 { () => { } };
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -69,7 +73,7 @@ LL |     macro_rules! m0 { () => { } };
    = note: this lint may become deny-by-default in the edition 2024 and higher, see the tracking issue <https://github.com/rust-lang/rust/issues/120363>
 
 warning: non-local `macro_rules!` definition, they should be avoided as they go against expectation
-  --> $DIR/non_local_definitions.rs:87:5
+  --> $DIR/non_local_definitions.rs:88:5
    |
 LL |     macro_rules! m { () => { } };
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -80,7 +84,7 @@ LL |     macro_rules! m { () => { } };
    = note: this lint may become deny-by-default in the edition 2024 and higher, see the tracking issue <https://github.com/rust-lang/rust/issues/120363>
 
 warning: non-local `impl` definition, they should be avoided as they go against expectation
-  --> $DIR/non_local_definitions.rs:90:5
+  --> $DIR/non_local_definitions.rs:91:5
    |
 LL | /     impl Test {
 LL | |
@@ -94,7 +98,7 @@ LL | |     }
    = note: this lint may become deny-by-default in the edition 2024 and higher, see the tracking issue <https://github.com/rust-lang/rust/issues/120363>
 
 warning: non-local `impl` definition, they should be avoided as they go against expectation
-  --> $DIR/non_local_definitions.rs:96:9
+  --> $DIR/non_local_definitions.rs:97:9
    |
 LL | /         impl Test {
 LL | |
@@ -108,7 +112,7 @@ LL | |         }
    = note: this lint may become deny-by-default in the edition 2024 and higher, see the tracking issue <https://github.com/rust-lang/rust/issues/120363>
 
 warning: non-local `impl` definition, they should be avoided as they go against expectation
-  --> $DIR/non_local_definitions.rs:105:9
+  --> $DIR/non_local_definitions.rs:106:9
    |
 LL | /         impl Test {
 LL | |
@@ -122,7 +126,7 @@ LL | |         }
    = note: this lint may become deny-by-default in the edition 2024 and higher, see the tracking issue <https://github.com/rust-lang/rust/issues/120363>
 
 warning: non-local `impl` definition, they should be avoided as they go against expectation
-  --> $DIR/non_local_definitions.rs:114:9
+  --> $DIR/non_local_definitions.rs:115:9
    |
 LL | /         impl Test {
 LL | |
@@ -136,7 +140,7 @@ LL | |         }
    = note: this lint may become deny-by-default in the edition 2024 and higher, see the tracking issue <https://github.com/rust-lang/rust/issues/120363>
 
 warning: non-local `impl` definition, they should be avoided as they go against expectation
-  --> $DIR/non_local_definitions.rs:122:5
+  --> $DIR/non_local_definitions.rs:123:5
    |
 LL | /     impl Display for Test {
 LL | |
@@ -152,7 +156,7 @@ LL | |     }
    = note: this lint may become deny-by-default in the edition 2024 and higher, see the tracking issue <https://github.com/rust-lang/rust/issues/120363>
 
 warning: non-local `impl` definition, they should be avoided as they go against expectation
-  --> $DIR/non_local_definitions.rs:129:5
+  --> $DIR/non_local_definitions.rs:130:5
    |
 LL |     impl dyn Uto5 {}
    |     ^^^^^^^^^^^^^^^^
@@ -163,7 +167,7 @@ LL |     impl dyn Uto5 {}
    = note: this lint may become deny-by-default in the edition 2024 and higher, see the tracking issue <https://github.com/rust-lang/rust/issues/120363>
 
 warning: non-local `impl` definition, they should be avoided as they go against expectation
-  --> $DIR/non_local_definitions.rs:132:5
+  --> $DIR/non_local_definitions.rs:133:5
    |
 LL |     impl<T: Uto5> Uto5 for Vec<T> { }
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -174,7 +178,7 @@ LL |     impl<T: Uto5> Uto5 for Vec<T> { }
    = note: this lint may become deny-by-default in the edition 2024 and higher, see the tracking issue <https://github.com/rust-lang/rust/issues/120363>
 
 warning: non-local `impl` definition, they should be avoided as they go against expectation
-  --> $DIR/non_local_definitions.rs:135:5
+  --> $DIR/non_local_definitions.rs:136:5
    |
 LL |     impl Uto5 for &dyn Uto5 {}
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -185,7 +189,7 @@ LL |     impl Uto5 for &dyn Uto5 {}
    = note: this lint may become deny-by-default in the edition 2024 and higher, see the tracking issue <https://github.com/rust-lang/rust/issues/120363>
 
 warning: non-local `impl` definition, they should be avoided as they go against expectation
-  --> $DIR/non_local_definitions.rs:138:5
+  --> $DIR/non_local_definitions.rs:139:5
    |
 LL |     impl Uto5 for *mut Test {}
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -196,7 +200,7 @@ LL |     impl Uto5 for *mut Test {}
    = note: this lint may become deny-by-default in the edition 2024 and higher, see the tracking issue <https://github.com/rust-lang/rust/issues/120363>
 
 warning: non-local `impl` definition, they should be avoided as they go against expectation
-  --> $DIR/non_local_definitions.rs:141:5
+  --> $DIR/non_local_definitions.rs:142:5
    |
 LL |     impl Uto5 for *mut [Test] {}
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -207,7 +211,7 @@ LL |     impl Uto5 for *mut [Test] {}
    = note: this lint may become deny-by-default in the edition 2024 and higher, see the tracking issue <https://github.com/rust-lang/rust/issues/120363>
 
 warning: non-local `impl` definition, they should be avoided as they go against expectation
-  --> $DIR/non_local_definitions.rs:144:5
+  --> $DIR/non_local_definitions.rs:145:5
    |
 LL |     impl Uto5 for [Test; 8] {}
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -218,7 +222,7 @@ LL |     impl Uto5 for [Test; 8] {}
    = note: this lint may become deny-by-default in the edition 2024 and higher, see the tracking issue <https://github.com/rust-lang/rust/issues/120363>
 
 warning: non-local `impl` definition, they should be avoided as they go against expectation
-  --> $DIR/non_local_definitions.rs:147:5
+  --> $DIR/non_local_definitions.rs:148:5
    |
 LL |     impl Uto5 for (Test,) {}
    |     ^^^^^^^^^^^^^^^^^^^^^^^^
@@ -229,7 +233,7 @@ LL |     impl Uto5 for (Test,) {}
    = note: this lint may become deny-by-default in the edition 2024 and higher, see the tracking issue <https://github.com/rust-lang/rust/issues/120363>
 
 warning: non-local `impl` definition, they should be avoided as they go against expectation
-  --> $DIR/non_local_definitions.rs:150:5
+  --> $DIR/non_local_definitions.rs:151:5
    |
 LL |     impl Uto5 for fn(Test) -> () {}
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -240,7 +244,7 @@ LL |     impl Uto5 for fn(Test) -> () {}
    = note: this lint may become deny-by-default in the edition 2024 and higher, see the tracking issue <https://github.com/rust-lang/rust/issues/120363>
 
 warning: non-local `impl` definition, they should be avoided as they go against expectation
-  --> $DIR/non_local_definitions.rs:153:5
+  --> $DIR/non_local_definitions.rs:154:5
    |
 LL |     impl Uto5 for fn() -> Test {}
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -251,7 +255,7 @@ LL |     impl Uto5 for fn() -> Test {}
    = note: this lint may become deny-by-default in the edition 2024 and higher, see the tracking issue <https://github.com/rust-lang/rust/issues/120363>
 
 warning: non-local `impl` definition, they should be avoided as they go against expectation
-  --> $DIR/non_local_definitions.rs:157:9
+  --> $DIR/non_local_definitions.rs:158:9
    |
 LL |         impl Uto5 for Test {}
    |         ^^^^^^^^^^^^^^^^^^^^^
@@ -262,7 +266,7 @@ LL |         impl Uto5 for Test {}
    = note: this lint may become deny-by-default in the edition 2024 and higher, see the tracking issue <https://github.com/rust-lang/rust/issues/120363>
 
 warning: non-local `impl` definition, they should be avoided as they go against expectation
-  --> $DIR/non_local_definitions.rs:164:9
+  --> $DIR/non_local_definitions.rs:165:9
    |
 LL |         impl Uto5 for &Test {}
    |         ^^^^^^^^^^^^^^^^^^^^^^
@@ -273,7 +277,7 @@ LL |         impl Uto5 for &Test {}
    = note: this lint may become deny-by-default in the edition 2024 and higher, see the tracking issue <https://github.com/rust-lang/rust/issues/120363>
 
 warning: non-local `impl` definition, they should be avoided as they go against expectation
-  --> $DIR/non_local_definitions.rs:171:9
+  --> $DIR/non_local_definitions.rs:172:9
    |
 LL |         impl Uto5 for &(Test,) {}
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -284,7 +288,7 @@ LL |         impl Uto5 for &(Test,) {}
    = note: this lint may become deny-by-default in the edition 2024 and higher, see the tracking issue <https://github.com/rust-lang/rust/issues/120363>
 
 warning: non-local `impl` definition, they should be avoided as they go against expectation
-  --> $DIR/non_local_definitions.rs:178:9
+  --> $DIR/non_local_definitions.rs:179:9
    |
 LL |         impl Uto5 for &(Test,Test) {}
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -295,7 +299,7 @@ LL |         impl Uto5 for &(Test,Test) {}
    = note: this lint may become deny-by-default in the edition 2024 and higher, see the tracking issue <https://github.com/rust-lang/rust/issues/120363>
 
 warning: non-local `impl` definition, they should be avoided as they go against expectation
-  --> $DIR/non_local_definitions.rs:186:5
+  --> $DIR/non_local_definitions.rs:187:5
    |
 LL |     impl Uto5 for *mut InsideMain {}
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -306,7 +310,7 @@ LL |     impl Uto5 for *mut InsideMain {}
    = note: this lint may become deny-by-default in the edition 2024 and higher, see the tracking issue <https://github.com/rust-lang/rust/issues/120363>
 
 warning: non-local `impl` definition, they should be avoided as they go against expectation
-  --> $DIR/non_local_definitions.rs:188:5
+  --> $DIR/non_local_definitions.rs:189:5
    |
 LL |     impl Uto5 for *mut [InsideMain] {}
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -317,7 +321,7 @@ LL |     impl Uto5 for *mut [InsideMain] {}
    = note: this lint may become deny-by-default in the edition 2024 and higher, see the tracking issue <https://github.com/rust-lang/rust/issues/120363>
 
 warning: non-local `impl` definition, they should be avoided as they go against expectation
-  --> $DIR/non_local_definitions.rs:190:5
+  --> $DIR/non_local_definitions.rs:191:5
    |
 LL |     impl Uto5 for [InsideMain; 8] {}
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -328,7 +332,7 @@ LL |     impl Uto5 for [InsideMain; 8] {}
    = note: this lint may become deny-by-default in the edition 2024 and higher, see the tracking issue <https://github.com/rust-lang/rust/issues/120363>
 
 warning: non-local `impl` definition, they should be avoided as they go against expectation
-  --> $DIR/non_local_definitions.rs:192:5
+  --> $DIR/non_local_definitions.rs:193:5
    |
 LL |     impl Uto5 for (InsideMain,) {}
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -339,7 +343,7 @@ LL |     impl Uto5 for (InsideMain,) {}
    = note: this lint may become deny-by-default in the edition 2024 and higher, see the tracking issue <https://github.com/rust-lang/rust/issues/120363>
 
 warning: non-local `impl` definition, they should be avoided as they go against expectation
-  --> $DIR/non_local_definitions.rs:194:5
+  --> $DIR/non_local_definitions.rs:195:5
    |
 LL |     impl Uto5 for fn(InsideMain) -> () {}
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -350,7 +354,7 @@ LL |     impl Uto5 for fn(InsideMain) -> () {}
    = note: this lint may become deny-by-default in the edition 2024 and higher, see the tracking issue <https://github.com/rust-lang/rust/issues/120363>
 
 warning: non-local `impl` definition, they should be avoided as they go against expectation
-  --> $DIR/non_local_definitions.rs:196:5
+  --> $DIR/non_local_definitions.rs:197:5
    |
 LL |     impl Uto5 for fn() -> InsideMain {}
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -361,7 +365,7 @@ LL |     impl Uto5 for fn() -> InsideMain {}
    = note: this lint may become deny-by-default in the edition 2024 and higher, see the tracking issue <https://github.com/rust-lang/rust/issues/120363>
 
 warning: non-local `impl` definition, they should be avoided as they go against expectation
-  --> $DIR/non_local_definitions.rs:210:9
+  --> $DIR/non_local_definitions.rs:211:9
    |
 LL | /         impl Display for InsideMain {
 LL | |
@@ -377,7 +381,7 @@ LL | |         }
    = note: this lint may become deny-by-default in the edition 2024 and higher, see the tracking issue <https://github.com/rust-lang/rust/issues/120363>
 
 warning: non-local `impl` definition, they should be avoided as they go against expectation
-  --> $DIR/non_local_definitions.rs:217:9
+  --> $DIR/non_local_definitions.rs:218:9
    |
 LL | /         impl InsideMain {
 LL | |
@@ -394,7 +398,7 @@ LL | |         }
    = note: this lint may become deny-by-default in the edition 2024 and higher, see the tracking issue <https://github.com/rust-lang/rust/issues/120363>
 
 warning: non-local `macro_rules!` definition, they should be avoided as they go against expectation
-  --> $DIR/non_local_definitions.rs:221:17
+  --> $DIR/non_local_definitions.rs:222:17
    |
 LL |                 macro_rules! m2 { () => { } };
    |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -405,7 +409,7 @@ LL |                 macro_rules! m2 { () => { } };
    = note: this lint may become deny-by-default in the edition 2024 and higher, see the tracking issue <https://github.com/rust-lang/rust/issues/120363>
 
 warning: non-local `impl` definition, they should be avoided as they go against expectation
-  --> $DIR/non_local_definitions.rs:231:5
+  --> $DIR/non_local_definitions.rs:232:5
    |
 LL |     impl<T: Uto6> Uto3 for Vec<T> { }
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -416,7 +420,7 @@ LL |     impl<T: Uto6> Uto3 for Vec<T> { }
    = note: this lint may become deny-by-default in the edition 2024 and higher, see the tracking issue <https://github.com/rust-lang/rust/issues/120363>
 
 warning: non-local `impl` definition, they should be avoided as they go against expectation
-  --> $DIR/non_local_definitions.rs:240:5
+  --> $DIR/non_local_definitions.rs:241:5
    |
 LL |     impl Uto7 for Test where Local: std::any::Any {}
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -427,7 +431,7 @@ LL |     impl Uto7 for Test where Local: std::any::Any {}
    = note: this lint may become deny-by-default in the edition 2024 and higher, see the tracking issue <https://github.com/rust-lang/rust/issues/120363>
 
 warning: non-local `impl` definition, they should be avoided as they go against expectation
-  --> $DIR/non_local_definitions.rs:243:5
+  --> $DIR/non_local_definitions.rs:244:5
    |
 LL |     impl<T> Uto8 for T {}
    |     ^^^^^^^^^^^^^^^^^^^^^
@@ -438,7 +442,7 @@ LL |     impl<T> Uto8 for T {}
    = note: this lint may become deny-by-default in the edition 2024 and higher, see the tracking issue <https://github.com/rust-lang/rust/issues/120363>
 
 warning: non-local `impl` definition, they should be avoided as they go against expectation
-  --> $DIR/non_local_definitions.rs:252:5
+  --> $DIR/non_local_definitions.rs:253:5
    |
 LL | /     impl Default for UwU<OwO> {
 LL | |
@@ -454,7 +458,7 @@ LL | |     }
    = note: this lint may become deny-by-default in the edition 2024 and higher, see the tracking issue <https://github.com/rust-lang/rust/issues/120363>
 
 warning: non-local `impl` definition, they should be avoided as they go against expectation
-  --> $DIR/non_local_definitions.rs:263:5
+  --> $DIR/non_local_definitions.rs:264:5
    |
 LL | /     impl From<Cat> for () {
 LL | |
@@ -470,7 +474,7 @@ LL | |     }
    = note: this lint may become deny-by-default in the edition 2024 and higher, see the tracking issue <https://github.com/rust-lang/rust/issues/120363>
 
 warning: non-local `impl` definition, they should be avoided as they go against expectation
-  --> $DIR/non_local_definitions.rs:272:5
+  --> $DIR/non_local_definitions.rs:273:5
    |
 LL | /     impl AsRef<Cat> for () {
 LL | |
@@ -484,7 +488,7 @@ LL | |     }
    = note: this lint may become deny-by-default in the edition 2024 and higher, see the tracking issue <https://github.com/rust-lang/rust/issues/120363>
 
 warning: non-local `impl` definition, they should be avoided as they go against expectation
-  --> $DIR/non_local_definitions.rs:283:5
+  --> $DIR/non_local_definitions.rs:284:5
    |
 LL | /     impl PartialEq<B> for G {
 LL | |
@@ -500,7 +504,7 @@ LL | |     }
    = note: this lint may become deny-by-default in the edition 2024 and higher, see the tracking issue <https://github.com/rust-lang/rust/issues/120363>
 
 warning: non-local `impl` definition, they should be avoided as they go against expectation
-  --> $DIR/non_local_definitions.rs:300:5
+  --> $DIR/non_local_definitions.rs:301:5
    |
 LL | /     impl PartialEq<Dog> for &Dog {
 LL | |
@@ -516,7 +520,7 @@ LL | |     }
    = note: this lint may become deny-by-default in the edition 2024 and higher, see the tracking issue <https://github.com/rust-lang/rust/issues/120363>
 
 warning: non-local `impl` definition, they should be avoided as they go against expectation
-  --> $DIR/non_local_definitions.rs:307:5
+  --> $DIR/non_local_definitions.rs:308:5
    |
 LL | /     impl PartialEq<()> for Dog {
 LL | |
@@ -532,7 +536,7 @@ LL | |     }
    = note: this lint may become deny-by-default in the edition 2024 and higher, see the tracking issue <https://github.com/rust-lang/rust/issues/120363>
 
 warning: non-local `impl` definition, they should be avoided as they go against expectation
-  --> $DIR/non_local_definitions.rs:314:5
+  --> $DIR/non_local_definitions.rs:315:5
    |
 LL | /     impl PartialEq<()> for &Dog {
 LL | |
@@ -548,7 +552,7 @@ LL | |     }
    = note: this lint may become deny-by-default in the edition 2024 and higher, see the tracking issue <https://github.com/rust-lang/rust/issues/120363>
 
 warning: non-local `impl` definition, they should be avoided as they go against expectation
-  --> $DIR/non_local_definitions.rs:321:5
+  --> $DIR/non_local_definitions.rs:322:5
    |
 LL | /     impl PartialEq<Dog> for () {
 LL | |
@@ -564,7 +568,7 @@ LL | |     }
    = note: this lint may become deny-by-default in the edition 2024 and higher, see the tracking issue <https://github.com/rust-lang/rust/issues/120363>
 
 warning: non-local `impl` definition, they should be avoided as they go against expectation
-  --> $DIR/non_local_definitions.rs:343:5
+  --> $DIR/non_local_definitions.rs:344:5
    |
 LL | /     impl From<Wrap<Wrap<Lion>>> for () {
 LL | |
@@ -580,7 +584,7 @@ LL | |     }
    = note: this lint may become deny-by-default in the edition 2024 and higher, see the tracking issue <https://github.com/rust-lang/rust/issues/120363>
 
 warning: non-local `impl` definition, they should be avoided as they go against expectation
-  --> $DIR/non_local_definitions.rs:350:5
+  --> $DIR/non_local_definitions.rs:351:5
    |
 LL | /     impl From<()> for Wrap<Lion> {
 LL | |
@@ -596,7 +600,7 @@ LL | |     }
    = note: this lint may become deny-by-default in the edition 2024 and higher, see the tracking issue <https://github.com/rust-lang/rust/issues/120363>
 
 warning: non-local `impl` definition, they should be avoided as they go against expectation
-  --> $DIR/non_local_definitions.rs:363:13
+  --> $DIR/non_local_definitions.rs:364:13
    |
 LL |             impl MacroTrait for OutsideStruct {}
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -611,7 +615,7 @@ LL | m!();
    = note: this warning originates in the macro `m` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 warning: non-local `impl` definition, they should be avoided as they go against expectation
-  --> $DIR/non_local_definitions.rs:373:1
+  --> $DIR/non_local_definitions.rs:374:1
    |
 LL | non_local_macro::non_local_impl!(CargoUpdate);
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -624,7 +628,7 @@ LL | non_local_macro::non_local_impl!(CargoUpdate);
    = note: this warning originates in the macro `non_local_macro::non_local_impl` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 warning: non-local `macro_rules!` definition, they should be avoided as they go against expectation
-  --> $DIR/non_local_definitions.rs:376:1
+  --> $DIR/non_local_definitions.rs:377:1
    |
 LL | non_local_macro::non_local_macro_rules!(my_macro);
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

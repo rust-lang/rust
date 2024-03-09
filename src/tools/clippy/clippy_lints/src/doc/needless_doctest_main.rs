@@ -48,9 +48,9 @@ pub fn check(
                 let dcx = DiagCtxt::new(Box::new(emitter)).disable_warnings();
                 #[expect(clippy::arc_with_non_send_sync)] // `Lrc` is expected by with_dcx
                 let sm = Lrc::new(SourceMap::new(FilePathMapping::empty()));
-                let sess = ParseSess::with_dcx(dcx, sm);
+                let psess = ParseSess::with_dcx(dcx, sm);
 
-                let mut parser = match maybe_new_parser_from_source_str(&sess, filename, code) {
+                let mut parser = match maybe_new_parser_from_source_str(&psess, filename, code) {
                     Ok(p) => p,
                     Err(errs) => {
                         errs.into_iter().for_each(Diag::cancel);

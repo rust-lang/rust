@@ -1,7 +1,9 @@
 use crate::autoderef::Autoderef;
+use crate::collect::CollectItemTypesVisitor;
 use crate::constrained_generic_params::{identify_constrained_generic_params, Parameter};
 use crate::errors;
 
+use hir::intravisit::Visitor;
 use rustc_ast as ast;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexSet};
 use rustc_errors::{codes::*, pluralize, struct_span_code_err, Applicability, ErrorGuaranteed};
@@ -225,6 +227,7 @@ fn check_item<'tcx>(tcx: TyCtxt<'tcx>, item: &'tcx hir::Item<'tcx>) -> Result<()
         ?item.owner_id,
         item.name = ? tcx.def_path_str(def_id)
     );
+    CollectItemTypesVisitor { tcx }.visit_item(item);
 
     let res = match item.kind {
         // Right now we check that every default trait implementation
@@ -247,7 +250,9 @@ fn check_item<'tcx>(tcx: TyCtxt<'tcx>, item: &'tcx hir::Item<'tcx>) -> Result<()
         hir::ItemKind::Impl(impl_) => {
             let header = tcx.impl_trait_header(def_id);
             let is_auto = header
-                .is_some_and(|header| tcx.trait_is_auto(header.skip_binder().trait_ref.def_id));
+                .is_some_and(|header| tcx.trait_is_auto(header.trait_ref.skip_binder().def_id));
+
+            crate::impl_wf_check::check_impl_wf(tcx, def_id)?;
             let mut res = Ok(());
             if let (hir::Defaultness::Default { .. }, true) = (impl_.defaultness, is_auto) {
                 let sp = impl_.of_trait.as_ref().map_or(item.span, |t| t.path.span);
@@ -259,7 +264,7 @@ fn check_item<'tcx>(tcx: TyCtxt<'tcx>, item: &'tcx hir::Item<'tcx>) -> Result<()
                     .emit());
             }
             // We match on both `ty::ImplPolarity` and `ast::ImplPolarity` just to get the `!` span.
-            match header.map(|h| h.skip_binder().polarity) {
+            match header.map(|h| h.polarity) {
                 // `None` means this is an inherent impl
                 Some(ty::ImplPolarity::Positive) | None => {
                     res = res.and(check_impl(tcx, item, impl_.self_ty, &impl_.of_trait));
@@ -296,31 +301,31 @@ fn check_item<'tcx>(tcx: TyCtxt<'tcx>, item: &'tcx hir::Item<'tcx>) -> Result<()
         hir::ItemKind::Const(ty, ..) => {
             check_item_type(tcx, def_id, ty.span, UnsizedHandling::Forbid)
         }
-        hir::ItemKind::Struct(_, ast_generics) => {
+        hir::ItemKind::Struct(_, hir_generics) => {
             let res = check_type_defn(tcx, item, false);
-            check_variances_for_type_defn(tcx, item, ast_generics);
+            check_variances_for_type_defn(tcx, item, hir_generics);
             res
         }
-        hir::ItemKind::Union(_, ast_generics) => {
+        hir::ItemKind::Union(_, hir_generics) => {
             let res = check_type_defn(tcx, item, true);
-            check_variances_for_type_defn(tcx, item, ast_generics);
+            check_variances_for_type_defn(tcx, item, hir_generics);
             res
         }
-        hir::ItemKind::Enum(_, ast_generics) => {
+        hir::ItemKind::Enum(_, hir_generics) => {
             let res = check_type_defn(tcx, item, true);
-            check_variances_for_type_defn(tcx, item, ast_generics);
+            check_variances_for_type_defn(tcx, item, hir_generics);
             res
         }
         hir::ItemKind::Trait(..) => check_trait(tcx, item),
         hir::ItemKind::TraitAlias(..) => check_trait(tcx, item),
         // `ForeignItem`s are handled separately.
         hir::ItemKind::ForeignMod { .. } => Ok(()),
-        hir::ItemKind::TyAlias(hir_ty, ast_generics) => {
+        hir::ItemKind::TyAlias(hir_ty, hir_generics) => {
             if tcx.type_alias_is_lazy(item.owner_id) {
                 // Bounds of lazy type aliases and of eager ones that contain opaque types are respected.
                 // E.g: `type X = impl Trait;`, `type X = (impl Trait, Y);`.
                 let res = check_item_type(tcx, def_id, hir_ty.span, UnsizedHandling::Allow);
-                check_variances_for_type_defn(tcx, item, ast_generics);
+                check_variances_for_type_defn(tcx, item, hir_generics);
                 res
             } else {
                 Ok(())
@@ -334,8 +339,13 @@ fn check_item<'tcx>(tcx: TyCtxt<'tcx>, item: &'tcx hir::Item<'tcx>) -> Result<()
     res
 }
 
-fn check_foreign_item(tcx: TyCtxt<'_>, item: &hir::ForeignItem<'_>) -> Result<(), ErrorGuaranteed> {
+fn check_foreign_item<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    item: &'tcx hir::ForeignItem<'tcx>,
+) -> Result<(), ErrorGuaranteed> {
     let def_id = item.owner_id.def_id;
+
+    CollectItemTypesVisitor { tcx }.visit_foreign_item(item);
 
     debug!(
         ?item.owner_id,
@@ -353,11 +363,13 @@ fn check_foreign_item(tcx: TyCtxt<'_>, item: &hir::ForeignItem<'_>) -> Result<()
     }
 }
 
-fn check_trait_item(
-    tcx: TyCtxt<'_>,
-    trait_item: &hir::TraitItem<'_>,
+fn check_trait_item<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    trait_item: &'tcx hir::TraitItem<'tcx>,
 ) -> Result<(), ErrorGuaranteed> {
     let def_id = trait_item.owner_id.def_id;
+
+    CollectItemTypesVisitor { tcx }.visit_trait_item(trait_item);
 
     let (method_sig, span) = match trait_item.kind {
         hir::TraitItemKind::Fn(ref sig, _) => (Some(sig), trait_item.span),
@@ -809,9 +821,7 @@ impl<'tcx> GATArgsCollector<'tcx> {
 }
 
 impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for GATArgsCollector<'tcx> {
-    type BreakTy = !;
-
-    fn visit_ty(&mut self, t: Ty<'tcx>) -> ControlFlow<Self::BreakTy> {
+    fn visit_ty(&mut self, t: Ty<'tcx>) {
         match t.kind() {
             ty::Alias(ty::Projection, p) if p.def_id == self.gat => {
                 for (idx, arg) in p.args.iter().enumerate() {
@@ -895,7 +905,12 @@ fn check_object_unsafe_self_trait_by_name(tcx: TyCtxt<'_>, item: &hir::TraitItem
     }
 }
 
-fn check_impl_item(tcx: TyCtxt<'_>, impl_item: &hir::ImplItem<'_>) -> Result<(), ErrorGuaranteed> {
+fn check_impl_item<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    impl_item: &'tcx hir::ImplItem<'tcx>,
+) -> Result<(), ErrorGuaranteed> {
+    CollectItemTypesVisitor { tcx }.visit_impl_item(impl_item);
+
     let (method_sig, span) = match impl_item.kind {
         hir::ImplItemKind::Fn(ref sig, _) => (Some(sig), impl_item.span),
         // Constrain binding and overflow error spans to `<Ty>` in `type foo = <Ty>`.
@@ -1277,16 +1292,16 @@ fn check_item_type(
     })
 }
 
-#[instrument(level = "debug", skip(tcx, ast_self_ty, ast_trait_ref))]
+#[instrument(level = "debug", skip(tcx, hir_self_ty, hir_trait_ref))]
 fn check_impl<'tcx>(
     tcx: TyCtxt<'tcx>,
     item: &'tcx hir::Item<'tcx>,
-    ast_self_ty: &hir::Ty<'_>,
-    ast_trait_ref: &Option<hir::TraitRef<'_>>,
+    hir_self_ty: &hir::Ty<'_>,
+    hir_trait_ref: &Option<hir::TraitRef<'_>>,
 ) -> Result<(), ErrorGuaranteed> {
     enter_wf_checking_ctxt(tcx, item.span, item.owner_id.def_id, |wfcx| {
-        match ast_trait_ref {
-            Some(ast_trait_ref) => {
+        match hir_trait_ref {
+            Some(hir_trait_ref) => {
                 // `#[rustc_reservation_impl]` impls are not real impls and
                 // therefore don't need to be WF (the trait's `Self: Trait` predicate
                 // won't hold).
@@ -1294,8 +1309,9 @@ fn check_impl<'tcx>(
                 // Avoid bogus "type annotations needed `Foo: Bar`" errors on `impl Bar for Foo` in case
                 // other `Foo` impls are incoherent.
                 tcx.ensure().coherent_trait(trait_ref.def_id)?;
+                let trait_span = hir_trait_ref.path.span;
                 let trait_ref = wfcx.normalize(
-                    ast_trait_ref.path.span,
+                    trait_span,
                     Some(WellFormedLoc::Ty(item.hir_id().expect_owner().def_id)),
                     trait_ref,
                 );
@@ -1306,14 +1322,23 @@ fn check_impl<'tcx>(
                     wfcx.param_env,
                     wfcx.body_def_id,
                     trait_pred,
-                    ast_trait_ref.path.span,
+                    trait_span,
                     item,
                 );
                 for obligation in &mut obligations {
+                    if obligation.cause.span != trait_span {
+                        // We already have a better span.
+                        continue;
+                    }
                     if let Some(pred) = obligation.predicate.to_opt_poly_trait_pred()
-                        && pred.self_ty().skip_binder() == trait_ref.self_ty()
+                        && pred.skip_binder().self_ty() == trait_ref.self_ty()
                     {
-                        obligation.cause.span = ast_self_ty.span;
+                        obligation.cause.span = hir_self_ty.span;
+                    }
+                    if let Some(pred) = obligation.predicate.to_opt_poly_projection_pred()
+                        && pred.skip_binder().self_ty() == trait_ref.self_ty()
+                    {
+                        obligation.cause.span = hir_self_ty.span;
                     }
                 }
                 debug!(?obligations);
@@ -1327,7 +1352,7 @@ fn check_impl<'tcx>(
                     self_ty,
                 );
                 wfcx.register_wf_obligation(
-                    ast_self_ty.span,
+                    hir_self_ty.span,
                     Some(WellFormedLoc::Ty(item.hir_id().expect_owner().def_id)),
                     self_ty.into(),
                 );
@@ -1456,20 +1481,19 @@ fn check_where_clauses<'tcx>(wfcx: &WfCheckingCtxt<'_, 'tcx>, span: Span, def_id
                 params: FxHashSet<u32>,
             }
             impl<'tcx> ty::visit::TypeVisitor<TyCtxt<'tcx>> for CountParams {
-                type BreakTy = ();
-
-                fn visit_ty(&mut self, t: Ty<'tcx>) -> ControlFlow<Self::BreakTy> {
+                type Result = ControlFlow<()>;
+                fn visit_ty(&mut self, t: Ty<'tcx>) -> Self::Result {
                     if let ty::Param(param) = t.kind() {
                         self.params.insert(param.index);
                     }
                     t.super_visit_with(self)
                 }
 
-                fn visit_region(&mut self, _: ty::Region<'tcx>) -> ControlFlow<Self::BreakTy> {
+                fn visit_region(&mut self, _: ty::Region<'tcx>) -> Self::Result {
                     ControlFlow::Break(())
                 }
 
-                fn visit_const(&mut self, c: ty::Const<'tcx>) -> ControlFlow<Self::BreakTy> {
+                fn visit_const(&mut self, c: ty::Const<'tcx>) -> Self::Result {
                     if let ty::ConstKind::Param(param) = c.kind() {
                         self.params.insert(param.index);
                     }

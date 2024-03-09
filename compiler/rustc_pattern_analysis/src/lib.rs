@@ -70,14 +70,8 @@ use rustc_middle::ty::Ty;
 use rustc_span::ErrorGuaranteed;
 
 use crate::constructor::{Constructor, ConstructorSet, IntRange};
-#[cfg(feature = "rustc")]
-use crate::lints::lint_nonexhaustive_missing_variants;
 use crate::pat::DeconstructedPat;
 use crate::pat_column::PatternColumn;
-#[cfg(feature = "rustc")]
-use crate::rustc::RustcMatchCheckCtxt;
-#[cfg(feature = "rustc")]
-use crate::usefulness::{compute_match_usefulness, ValidityConstraint};
 
 pub trait Captures<'a> {}
 impl<'a, T: ?Sized> Captures<'a> for T {}
@@ -145,6 +139,18 @@ pub trait TypeCx: Sized + fmt::Debug {
 
     /// The maximum pattern complexity limit was reached.
     fn complexity_exceeded(&self) -> Result<(), Self::Error>;
+
+    /// Lint that there is a gap `gap` between `pat` and all of `gapped_with` such that the gap is
+    /// not matched by another range. If `gapped_with` is empty, then `gap` is `T::MAX`. We only
+    /// detect singleton gaps.
+    /// The default implementation does nothing.
+    fn lint_non_contiguous_range_endpoints(
+        &self,
+        _pat: &DeconstructedPat<Self>,
+        _gap: IntRange,
+        _gapped_with: &[&DeconstructedPat<Self>],
+    ) {
+    }
 }
 
 /// The arm of a match expression.
@@ -167,11 +173,14 @@ impl<'p, Cx: TypeCx> Copy for MatchArm<'p, Cx> {}
 /// useful, and runs some lints.
 #[cfg(feature = "rustc")]
 pub fn analyze_match<'p, 'tcx>(
-    tycx: &RustcMatchCheckCtxt<'p, 'tcx>,
+    tycx: &rustc::RustcMatchCheckCtxt<'p, 'tcx>,
     arms: &[rustc::MatchArm<'p, 'tcx>],
     scrut_ty: Ty<'tcx>,
     pattern_complexity_limit: Option<usize>,
 ) -> Result<rustc::UsefulnessReport<'p, 'tcx>, ErrorGuaranteed> {
+    use lints::lint_nonexhaustive_missing_variants;
+    use usefulness::{compute_match_usefulness, ValidityConstraint};
+
     let scrut_ty = tycx.reveal_opaque_ty(scrut_ty);
     let scrut_validity = ValidityConstraint::from_bool(tycx.known_valid_scrutinee);
     let report =

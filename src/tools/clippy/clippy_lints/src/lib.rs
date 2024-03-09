@@ -80,6 +80,7 @@ mod as_conversions;
 mod asm_syntax;
 mod assertions_on_constants;
 mod assertions_on_result_states;
+mod assigning_clones;
 mod async_yields_async;
 mod attrs;
 mod await_holding_invalid;
@@ -1118,6 +1119,7 @@ pub fn register_lints(store: &mut rustc_lint::LintStore, conf: &'static Conf) {
     store.register_late_pass(move |_| Box::new(incompatible_msrv::IncompatibleMsrv::new(msrv())));
     store.register_late_pass(|_| Box::new(to_string_trait_impl::ToStringTraitImpl));
     store.register_early_pass(|| Box::new(multiple_bound_locations::MultipleBoundLocations));
+    store.register_late_pass(|_| Box::new(assigning_clones::AssigningClones));
     // add lints here, do not remove this comment, it's used in `new_lint`
 }
 

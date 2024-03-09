@@ -1,3 +1,11 @@
+pattern_analysis_excluside_range_missing_gap = multiple ranges are one apart
+    .label = this range doesn't match `{$gap}` because `..` is an exclusive range
+    .suggestion = use an inclusive range instead
+
+pattern_analysis_excluside_range_missing_max = exclusive range missing `{$max}`
+    .label = this range doesn't match `{$max}` because `..` is an exclusive range
+    .suggestion = use an inclusive range instead
+
 pattern_analysis_non_exhaustive_omitted_pattern = some variants are not matched explicitly
     .help = ensure that all variants are matched explicitly by adding the suggested match arms
     .note = the matched value is of type `{$scrut_ty}` and the `non_exhaustive_omitted_patterns` attribute was found

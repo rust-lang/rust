@@ -1538,6 +1538,58 @@ impl<'a, 'll, 'tcx> Builder<'a, 'll, 'tcx> {
         }
     }
 
+    pub(crate) fn callbr(
+        &mut self,
+        llty: &'ll Type,
+        fn_attrs: Option<&CodegenFnAttrs>,
+        fn_abi: Option<&FnAbi<'tcx, Ty<'tcx>>>,
+        llfn: &'ll Value,
+        args: &[&'ll Value],
+        default_dest: &'ll BasicBlock,
+        indirect_dest: &[&'ll BasicBlock],
+        funclet: Option<&Funclet<'ll>>,
+    ) -> &'ll Value {
+        debug!("invoke {:?} with args ({:?})", llfn, args);
+
+        let args = self.check_call("callbr", llty, llfn, args);
+        let funclet_bundle = funclet.map(|funclet| funclet.bundle());
+        let funclet_bundle = funclet_bundle.as_ref().map(|b| &*b.raw);
+        let mut bundles: SmallVec<[_; 2]> = SmallVec::new();
+        if let Some(funclet_bundle) = funclet_bundle {
+            bundles.push(funclet_bundle);
+        }
+
+        // Emit CFI pointer type membership test
+        self.cfi_type_test(fn_attrs, fn_abi, llfn);
+
+        // Emit KCFI operand bundle
+        let kcfi_bundle = self.kcfi_operand_bundle(fn_attrs, fn_abi, llfn);
+        let kcfi_bundle = kcfi_bundle.as_ref().map(|b| &*b.raw);
+        if let Some(kcfi_bundle) = kcfi_bundle {
+            bundles.push(kcfi_bundle);
+        }
+
+        let callbr = unsafe {
+            llvm::LLVMRustBuildCallBr(
+                self.llbuilder,
+                llty,
+                llfn,
+                default_dest,
+                indirect_dest.as_ptr(),
+                indirect_dest.len() as c_uint,
+                args.as_ptr(),
+                args.len() as c_uint,
+                bundles.as_ptr(),
+                bundles.len() as c_uint,
+                UNNAMED,
+            )
+        };
+        if let Some(fn_abi) = fn_abi {
+            fn_abi.apply_attrs_callsite(self, callbr);
+        }
+        callbr
+    }
+
     // Emits CFI pointer type membership tests.
     fn cfi_type_test(
         &mut self,

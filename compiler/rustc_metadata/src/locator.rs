@@ -1077,7 +1077,7 @@ impl CrateError {
                         crate_rejections,
                     });
                 } else {
-                    dcx.emit_err(errors::CannotFindCrate {
+                    let error = errors::CannotFindCrate {
                         span,
                         crate_name,
                         add_info,
@@ -1091,11 +1091,18 @@ impl CrateError {
                         profiler_runtime: Symbol::intern(&sess.opts.unstable_opts.profiler_runtime),
                         locator_triple: locator.triple,
                         is_ui_testing: sess.opts.unstable_opts.ui_testing,
-                    });
+                    };
+                    // The diagnostic for missing core is very good, but it is followed by a lot of
+                    // other diagnostics that do not add information.
+                    if missing_core {
+                        dcx.emit_fatal(error);
+                    } else {
+                        dcx.emit_err(error);
+                    }
                 }
             }
             CrateError::NotFound(crate_name) => {
-                dcx.emit_err(errors::CannotFindCrate {
+                let error = errors::CannotFindCrate {
                     span,
                     crate_name,
                     add_info: String::new(),
@@ -1105,7 +1112,14 @@ impl CrateError {
                     profiler_runtime: Symbol::intern(&sess.opts.unstable_opts.profiler_runtime),
                     locator_triple: sess.opts.target_triple.clone(),
                     is_ui_testing: sess.opts.unstable_opts.ui_testing,
-                });
+                };
+                // The diagnostic for missing core is very good, but it is followed by a lot of
+                // other diagnostics that do not add information.
+                if missing_core {
+                    dcx.emit_fatal(error);
+                } else {
+                    dcx.emit_err(error);
+                }
             }
         }
     }

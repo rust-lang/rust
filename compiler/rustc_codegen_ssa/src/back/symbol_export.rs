@@ -81,6 +81,10 @@ fn reachable_non_generics_provider(tcx: TyCtxt<'_>, _: LocalCrate) -> DefIdMap<S
                 return library.kind.is_statically_included().then_some(def_id);
             }
 
+            if tcx.intrinsic(def_id).is_some_and(|i| i.must_be_overridden) {
+                return None;
+            }
+
             // Only consider nodes that actually have exported symbols.
             match tcx.def_kind(def_id) {
                 DefKind::Fn | DefKind::Static(_) => {}
@@ -563,9 +567,10 @@ pub fn linking_symbol_name_for_instance_in_crate<'tcx>(
         return undecorated;
     }
 
-    let x86 = match &target.arch[..] {
-        "x86" => true,
-        "x86_64" => false,
+    let prefix = match &target.arch[..] {
+        "x86" => Some('_'),
+        "x86_64" => None,
+        "arm64ec" => Some('#'),
         // Only x86/64 use symbol decorations.
         _ => return undecorated,
     };
@@ -602,8 +607,8 @@ pub fn linking_symbol_name_for_instance_in_crate<'tcx>(
         Conv::X86Stdcall => ("_", "@"),
         Conv::X86VectorCall => ("", "@@"),
         _ => {
-            if x86 {
-                undecorated.insert(0, '_');
+            if let Some(prefix) = prefix {
+                undecorated.insert(0, prefix);
             }
             return undecorated;
         }

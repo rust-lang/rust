@@ -1,5 +1,3 @@
-#![feature(diagnostic_namespace)]
-
 #[diagnostic::on_unimplemented(unsupported = "foo")]
 //~^WARN malformed `on_unimplemented` attribute
 //~|WARN malformed `on_unimplemented` attribute

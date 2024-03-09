@@ -48,8 +48,11 @@ impl<T: ?Sized> *const T {
             }
         }
 
+        #[cfg_attr(not(bootstrap), allow(unused_unsafe))] // on bootstrap bump, remove unsafe block
         // SAFETY: The two versions are equivalent at runtime.
-        unsafe { const_eval_select((self as *const u8,), const_impl, runtime_impl) }
+        unsafe {
+            const_eval_select((self as *const u8,), const_impl, runtime_impl)
+        }
     }
 
     /// Casts to a pointer of another type.
@@ -806,6 +809,7 @@ impl<T: ?Sized> *const T {
     where
         T: Sized,
     {
+        #[cfg_attr(not(bootstrap), allow(unused_unsafe))] // on bootstrap bump, remove unsafe block
         // SAFETY: The comparison has no side-effects, and the intrinsic
         // does this check internally in the CTFE implementation.
         unsafe {
@@ -1322,9 +1326,7 @@ impl<T: ?Sized> *const T {
     /// `align`.
     ///
     /// If it is not possible to align the pointer, the implementation returns
-    /// `usize::MAX`. It is permissible for the implementation to *always*
-    /// return `usize::MAX`. Only your algorithm's performance can depend
-    /// on getting a usable offset here, not its correctness.
+    /// `usize::MAX`.
     ///
     /// The offset is expressed in number of `T` elements, and not bytes. The value returned can be
     /// used with the `wrapping_add` method.
@@ -1332,6 +1334,15 @@ impl<T: ?Sized> *const T {
     /// There are no guarantees whatsoever that offsetting the pointer will not overflow or go
     /// beyond the allocation that the pointer points into. It is up to the caller to ensure that
     /// the returned offset is correct in all terms other than alignment.
+    ///
+    /// When this is called during compile-time evaluation (which is unstable), the implementation
+    /// may return `usize::MAX` in cases where that can never happen at runtime. This is because the
+    /// actual alignment of pointers is not known yet during compile-time, so an offset with
+    /// guaranteed alignment can sometimes not be computed. For example, a buffer declared as `[u8;
+    /// N]` might be allocated at an odd or an even address, but at compile-time this is not yet
+    /// known, so the execution has to be correct for either choice. It is therefore impossible to
+    /// find an offset that is guaranteed to be 2-aligned. (This behavior is subject to change, as usual
+    /// for unstable APIs.)
     ///
     /// # Panics
     ///
@@ -1623,8 +1634,11 @@ impl<T: ?Sized> *const T {
             ptr.align_offset(align) == 0
         }
 
+        #[cfg_attr(not(bootstrap), allow(unused_unsafe))] // on bootstrap bump, remove unsafe block
         // SAFETY: The two versions are equivalent at runtime.
-        unsafe { const_eval_select((self.cast::<()>(), align), const_impl, runtime_impl) }
+        unsafe {
+            const_eval_select((self.cast::<()>(), align), const_impl, runtime_impl)
+        }
     }
 }
 

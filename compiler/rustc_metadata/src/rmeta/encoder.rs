@@ -172,11 +172,19 @@ impl<'a, 'tcx> SpanEncoder for EncodeContext<'a, 'tcx> {
                 // previously saved offset must be smaller than the current position.
                 let offset = self.opaque.position() - last_location;
                 if offset < last_location {
-                    SpanTag::indirect(true).encode(self);
-                    offset.encode(self);
+                    let needed = bytes_needed(offset);
+                    SpanTag::indirect(true, needed as u8).encode(self);
+                    self.opaque.write_with(|dest| {
+                        *dest = offset.to_le_bytes();
+                        needed
+                    });
                 } else {
-                    SpanTag::indirect(false).encode(self);
-                    last_location.encode(self);
+                    let needed = bytes_needed(last_location);
+                    SpanTag::indirect(false, needed as u8).encode(self);
+                    self.opaque.write_with(|dest| {
+                        *dest = last_location.to_le_bytes();
+                        needed
+                    });
                 }
             }
             Entry::Vacant(v) => {
@@ -210,6 +218,10 @@ impl<'a, 'tcx> SpanEncoder for EncodeContext<'a, 'tcx> {
             }
         }
     }
+}
+
+fn bytes_needed(n: usize) -> usize {
+    (usize::BITS - n.leading_zeros()).div_ceil(u8::BITS) as usize
 }
 
 impl<'a, 'tcx> Encodable<EncodeContext<'a, 'tcx>> for SpanData {
@@ -1053,11 +1065,14 @@ fn should_encode_mir(
         // Full-fledged functions + closures
         DefKind::AssocFn | DefKind::Fn | DefKind::Closure => {
             let generics = tcx.generics_of(def_id);
-            let opt = tcx.sess.opts.unstable_opts.always_encode_mir
+            let mut opt = tcx.sess.opts.unstable_opts.always_encode_mir
                 || (tcx.sess.opts.output_types.should_codegen()
                     && reachable_set.contains(&def_id)
                     && (generics.requires_monomorphization(tcx)
                         || tcx.cross_crate_inlinable(def_id)));
+            if let Some(intrinsic) = tcx.intrinsic(def_id) {
+                opt &= !intrinsic.must_be_overridden;
+            }
             // The function has a `const` modifier or is in a `#[const_trait]`.
             let is_const_fn = tcx.is_const_fn_raw(def_id.to_def_id())
                 || tcx.is_const_default_method(def_id.to_def_id());
@@ -1409,9 +1424,9 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             if let DefKind::Fn | DefKind::AssocFn = def_kind {
                 self.tables.asyncness.set_some(def_id.index, tcx.asyncness(def_id));
                 record_array!(self.tables.fn_arg_names[def_id] <- tcx.fn_arg_names(def_id));
-                if let Some(name) = tcx.intrinsic(def_id) {
-                    record!(self.tables.intrinsic[def_id] <- name);
-                }
+            }
+            if let Some(name) = tcx.intrinsic(def_id) {
+                record!(self.tables.intrinsic[def_id] <- name);
             }
             if let DefKind::TyParam = def_kind {
                 let default = self.tcx.object_lifetime_default(def_id);
@@ -1789,7 +1804,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             let stability = tcx.lookup_stability(CRATE_DEF_ID);
             let macros =
                 self.lazy_array(tcx.resolutions(()).proc_macros.iter().map(|p| p.local_def_index));
-            for (i, span) in self.tcx.sess.parse_sess.proc_macro_quoted_spans() {
+            for (i, span) in self.tcx.sess.psess.proc_macro_quoted_spans() {
                 let span = self.lazy(span);
                 self.tables.proc_macro_quoted_spans.set_some(i, span);
             }
@@ -1978,9 +1993,8 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
 
             if of_trait && let Some(header) = tcx.impl_trait_header(def_id) {
                 record!(self.tables.impl_trait_header[def_id] <- header);
-                let trait_ref = header.map_bound(|h| h.trait_ref);
 
-                let trait_ref = trait_ref.instantiate_identity();
+                let trait_ref = header.trait_ref.instantiate_identity();
                 let simplified_self_ty = fast_reject::simplify_type(
                     self.tcx,
                     trait_ref.self_ty(),

@@ -1,8 +1,10 @@
-error[E0277]: the trait bound `dyn Iterator<Item = &'a mut u8>: IntoIterator` is not satisfied
+error[E0277]: `dyn Iterator<Item = &'a mut u8>` is not an iterator
   --> $DIR/issue-20605.rs:5:17
    |
 LL |     for item in *things { *item = 0 }
-   |                 ^^^^^^^ the trait `IntoIterator` is not implemented for `dyn Iterator<Item = &'a mut u8>`
+   |                 ^^^^^^^ `dyn Iterator<Item = &'a mut u8>` is not an iterator
+   |
+   = help: the trait `IntoIterator` is not implemented for `dyn Iterator<Item = &'a mut u8>`
 
 error: the type `<dyn Iterator<Item = &'a mut u8> as IntoIterator>::IntoIter` is not well-formed
   --> $DIR/issue-20605.rs:5:17

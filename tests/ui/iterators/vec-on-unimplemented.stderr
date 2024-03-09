@@ -1,14 +1,13 @@
-error[E0599]: `Vec<bool>` is not an iterator
-  --> $DIR/vec-on-unimplemented.rs:2:23
+error[E0599]: no method named `map` found for struct `Vec<bool>` in the current scope
+  --> $DIR/vec-on-unimplemented.rs:3:31
    |
-LL |     vec![true, false].map(|v| !v).collect::<Vec<_>>();
-   |                       ^^^ `Vec<bool>` is not an iterator; try calling `.into_iter()` or `.iter()`
+LL |     let _ = vec![true, false].map(|v| !v).collect::<Vec<_>>();
+   |                               ^^^ `Vec<bool>` is not an iterator
    |
-   = note: the following trait bounds were not satisfied:
-           `Vec<bool>: Iterator`
-           which is required by `&mut Vec<bool>: Iterator`
-           `[bool]: Iterator`
-           which is required by `&mut [bool]: Iterator`
+help: call `.into_iter()` first
+   |
+LL |     let _ = vec![true, false].into_iter().map(|v| !v).collect::<Vec<_>>();
+   |                               ++++++++++++
 
 error: aborting due to 1 previous error
 

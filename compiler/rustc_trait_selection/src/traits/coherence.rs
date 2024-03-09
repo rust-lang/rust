@@ -26,7 +26,6 @@ use rustc_infer::traits::{util, FulfillmentErrorCode, TraitEngine, TraitEngineEx
 use rustc_middle::traits::query::NoSolution;
 use rustc_middle::traits::solve::{CandidateSource, Certainty, Goal};
 use rustc_middle::traits::specialization_graph::OverlapMode;
-use rustc_middle::traits::DefiningAnchor;
 use rustc_middle::ty::fast_reject::{DeepRejectCtxt, TreatParams};
 use rustc_middle::ty::visit::{TypeVisitable, TypeVisitableExt};
 use rustc_middle::ty::{self, Ty, TyCtxt, TypeSuperVisitable, TypeVisitor};
@@ -207,7 +206,6 @@ fn overlap<'tcx>(
 
     let infcx = tcx
         .infer_ctxt()
-        .with_opaque_type_inference(DefiningAnchor::Bubble)
         .skip_leak_check(skip_leak_check.is_yes())
         .intercrate(true)
         .with_next_trait_solver(tcx.next_trait_solver_in_coherence())
@@ -474,7 +472,7 @@ fn plug_infer_with_placeholders<'tcx>(
     }
 
     impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for PlugInferWithPlaceholder<'_, 'tcx> {
-        fn visit_ty(&mut self, ty: Ty<'tcx>) -> ControlFlow<Self::BreakTy> {
+        fn visit_ty(&mut self, ty: Ty<'tcx>) {
             let ty = self.infcx.shallow_resolve(ty);
             if ty.is_ty_var() {
                 let Ok(InferOk { value: (), obligations }) =
@@ -496,13 +494,12 @@ fn plug_infer_with_placeholders<'tcx>(
                     bug!("we always expect to be able to plug an infer var with placeholder")
                 };
                 assert_eq!(obligations, &[]);
-                ControlFlow::Continue(())
             } else {
-                ty.super_visit_with(self)
+                ty.super_visit_with(self);
             }
         }
 
-        fn visit_const(&mut self, ct: ty::Const<'tcx>) -> ControlFlow<Self::BreakTy> {
+        fn visit_const(&mut self, ct: ty::Const<'tcx>) {
             let ct = self.infcx.shallow_resolve(ct);
             if ct.is_ct_infer() {
                 let Ok(InferOk { value: (), obligations }) =
@@ -519,13 +516,12 @@ fn plug_infer_with_placeholders<'tcx>(
                     bug!("we always expect to be able to plug an infer var with placeholder")
                 };
                 assert_eq!(obligations, &[]);
-                ControlFlow::Continue(())
             } else {
-                ct.super_visit_with(self)
+                ct.super_visit_with(self);
             }
         }
 
-        fn visit_region(&mut self, r: ty::Region<'tcx>) -> ControlFlow<Self::BreakTy> {
+        fn visit_region(&mut self, r: ty::Region<'tcx>) {
             if let ty::ReVar(vid) = *r {
                 let r = self
                     .infcx
@@ -555,7 +551,6 @@ fn plug_infer_with_placeholders<'tcx>(
                     assert_eq!(obligations, &[]);
                 }
             }
-            ControlFlow::Continue(())
         }
     }
 
@@ -868,12 +863,12 @@ impl<'tcx, F, E> TypeVisitor<TyCtxt<'tcx>> for OrphanChecker<'tcx, F>
 where
     F: FnMut(Ty<'tcx>) -> Result<Ty<'tcx>, E>,
 {
-    type BreakTy = OrphanCheckEarlyExit<'tcx, E>;
-    fn visit_region(&mut self, _r: ty::Region<'tcx>) -> ControlFlow<Self::BreakTy> {
+    type Result = ControlFlow<OrphanCheckEarlyExit<'tcx, E>>;
+    fn visit_region(&mut self, _r: ty::Region<'tcx>) -> Self::Result {
         ControlFlow::Continue(())
     }
 
-    fn visit_ty(&mut self, ty: Ty<'tcx>) -> ControlFlow<Self::BreakTy> {
+    fn visit_ty(&mut self, ty: Ty<'tcx>) -> Self::Result {
         // Need to lazily normalize here in with `-Znext-solver=coherence`.
         let ty = match (self.lazily_normalize_ty)(ty) {
             Ok(ty) => ty,
@@ -996,7 +991,7 @@ where
     /// As these should be quite rare as const arguments and especially rare as impl
     /// parameters, allowing uncovered const parameters in impls seems more useful
     /// than allowing `impl<T> Trait<local_fn_ptr, T> for i32` to compile.
-    fn visit_const(&mut self, _c: ty::Const<'tcx>) -> ControlFlow<Self::BreakTy> {
+    fn visit_const(&mut self, _c: ty::Const<'tcx>) -> Self::Result {
         ControlFlow::Continue(())
     }
 }
@@ -1026,18 +1021,17 @@ struct AmbiguityCausesVisitor<'a, 'tcx> {
 }
 
 impl<'a, 'tcx> ProofTreeVisitor<'tcx> for AmbiguityCausesVisitor<'a, 'tcx> {
-    type BreakTy = !;
-    fn visit_goal(&mut self, goal: &InspectGoal<'_, 'tcx>) -> ControlFlow<Self::BreakTy> {
+    fn visit_goal(&mut self, goal: &InspectGoal<'_, 'tcx>) {
         let infcx = goal.infcx();
         for cand in goal.candidates() {
-            cand.visit_nested(self)?;
+            cand.visit_nested(self);
         }
         // When searching for intercrate ambiguity causes, we only need to look
         // at ambiguous goals, as for others the coherence unknowable candidate
         // was irrelevant.
         match goal.result() {
             Ok(Certainty::Maybe(_)) => {}
-            Ok(Certainty::Yes) | Err(NoSolution) => return ControlFlow::Continue(()),
+            Ok(Certainty::Yes) | Err(NoSolution) => return,
         }
 
         let Goal { param_env, predicate } = goal.goal();
@@ -1054,7 +1048,7 @@ impl<'a, 'tcx> ProofTreeVisitor<'tcx> for AmbiguityCausesVisitor<'a, 'tcx> {
             {
                 proj.projection_ty.trait_ref(infcx.tcx)
             }
-            _ => return ControlFlow::Continue(()),
+            _ => return,
         };
 
         // Add ambiguity causes for reservation impls.
@@ -1154,8 +1148,6 @@ impl<'a, 'tcx> ProofTreeVisitor<'tcx> for AmbiguityCausesVisitor<'a, 'tcx> {
         if let Some(ambiguity_cause) = ambiguity_cause {
             self.causes.insert(ambiguity_cause);
         }
-
-        ControlFlow::Continue(())
     }
 }
 

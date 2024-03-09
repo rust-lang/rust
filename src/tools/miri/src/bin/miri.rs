@@ -342,6 +342,8 @@ fn main() {
     // (`install_ice_hook` might change `RUST_BACKTRACE`.)
     let env_snapshot = env::vars_os().collect::<Vec<_>>();
 
+    let args = rustc_driver::args::raw_args(&early_dcx).unwrap_or_else(|_| std::process::exit(rustc_driver::EXIT_FAILURE));
+
     // If the environment asks us to actually be rustc, then do that.
     if let Some(crate_kind) = env::var_os("MIRI_BE_RUSTC") {
         // Earliest rustc setup.
@@ -359,7 +361,7 @@ fn main() {
 
         // We cannot use `rustc_driver::main` as we need to adjust the CLI arguments.
         run_compiler(
-            env::args().collect(),
+            args,
             target_crate,
             &mut MiriBeRustCompilerCalls { target_crate },
             using_internal_features,
@@ -382,7 +384,7 @@ fn main() {
 
     // If user has explicitly enabled/disabled isolation
     let mut isolation_enabled: Option<bool> = None;
-    for arg in env::args() {
+    for arg in args {
         if rustc_args.is_empty() {
             // Very first arg: binary name.
             rustc_args.push(arg);

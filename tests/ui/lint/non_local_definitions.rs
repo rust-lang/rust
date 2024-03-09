@@ -4,6 +4,7 @@
 //@ rustc-env:CARGO=/usr/bin/cargo
 
 #![feature(inline_const)]
+#![warn(non_local_definitions)]
 
 extern crate non_local_macro;
 

@@ -1,4 +1,4 @@
-use crate::{errors, structured_errors::StructuredDiagnostic};
+use crate::{errors, structured_errors::StructuredDiag};
 use rustc_errors::{codes::*, Diag};
 use rustc_middle::ty::{Ty, TypeVisitableExt};
 use rustc_session::Session;
@@ -11,7 +11,7 @@ pub struct SizedUnsizedCast<'tcx> {
     pub cast_ty: String,
 }
 
-impl<'tcx> StructuredDiagnostic<'tcx> for SizedUnsizedCast<'tcx> {
+impl<'tcx> StructuredDiag<'tcx> for SizedUnsizedCast<'tcx> {
     fn session(&self) -> &Session {
         self.sess
     }

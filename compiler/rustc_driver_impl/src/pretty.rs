@@ -229,7 +229,7 @@ impl<'tcx> PrintExtra<'tcx> {
     {
         match self {
             PrintExtra::AfterParsing { krate, .. } => f(krate),
-            PrintExtra::NeedsAstMap { tcx } => f(&tcx.resolver_for_lowering(()).borrow().1),
+            PrintExtra::NeedsAstMap { tcx } => f(&tcx.resolver_for_lowering().borrow().1),
         }
     }
 
@@ -260,7 +260,7 @@ pub fn print<'tcx>(sess: &Session, ppm: PpMode, ex: PrintExtra<'tcx>) {
                 ExpandedIdentified => Box::new(AstIdentifiedAnn),
                 ExpandedHygiene => Box::new(AstHygieneAnn { sess }),
             };
-            let parse = &sess.parse_sess;
+            let psess = &sess.psess;
             let is_expanded = ppm.needs_ast_map();
             ex.with_krate(|krate| {
                 pprust_ast::print_crate(
@@ -270,8 +270,8 @@ pub fn print<'tcx>(sess: &Session, ppm: PpMode, ex: PrintExtra<'tcx>) {
                     src,
                     &*annotation,
                     is_expanded,
-                    parse.edition,
-                    &sess.parse_sess.attr_id_generator,
+                    psess.edition,
+                    &sess.psess.attr_id_generator,
                 )
             })
         }
@@ -281,7 +281,7 @@ pub fn print<'tcx>(sess: &Session, ppm: PpMode, ex: PrintExtra<'tcx>) {
         }
         AstTreeExpanded => {
             debug!("pretty-printing expanded AST");
-            format!("{:#?}", ex.tcx().resolver_for_lowering(()).borrow().1)
+            format!("{:#?}", ex.tcx().resolver_for_lowering().borrow().1)
         }
         Hir(s) => {
             debug!("pretty printing HIR {:?}", s);

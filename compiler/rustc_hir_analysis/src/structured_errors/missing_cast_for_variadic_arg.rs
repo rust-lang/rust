@@ -1,4 +1,4 @@
-use crate::{errors, structured_errors::StructuredDiagnostic};
+use crate::{errors, structured_errors::StructuredDiag};
 use rustc_errors::{codes::*, Diag};
 use rustc_middle::ty::{Ty, TypeVisitableExt};
 use rustc_session::Session;
@@ -11,7 +11,7 @@ pub struct MissingCastForVariadicArg<'tcx, 's> {
     pub cast_ty: &'s str,
 }
 
-impl<'tcx> StructuredDiagnostic<'tcx> for MissingCastForVariadicArg<'tcx, '_> {
+impl<'tcx> StructuredDiag<'tcx> for MissingCastForVariadicArg<'tcx, '_> {
     fn session(&self) -> &Session {
         self.sess
     }
