@@ -36,14 +36,19 @@ fn docs_link(diag: &mut Diag<'_, ()>, lint: &'static Lint) {
 /// Usually it's nicer to provide more context for lint messages.
 /// Be sure the output is understandable when you use this method.
 ///
-/// NOTE: only lint-level attributes at the `LintPass::check_*` node from which you are calling this
-/// will be considered.
-/// This can be confusing if the given span is at a different place, because users won't know where
-/// `#[allow]` or `#[expect]` attributes need to be placed.
+/// NOTE: Lint emissions are always bound to a node in the HIR, which is used to determine
+/// the lint level.
+/// For the `span_lint` function, the node that was passed into the `LintPass::check_*` function is
+/// used.
 ///
-/// This can happen if, for example, you are in `LintPass::check_block` and you are emitting a lint
-/// for a particular expression within that block.
-/// In those cases, consider using [`span_lint_hir`], and pass the `HirId` of that expression.
+/// If you're emitting the lint at the span of a different node than the one provided by the
+/// `LintPass::check_*` function, consider using [`span_lint_hir`] instead.
+/// This is needed for `#[allow]` and `#[expect]` attributes to work on the node
+/// highlighted in the displayed warning.
+///
+/// If you're unsure which function you should use, you can test if the `#[allow]` attribute works
+/// where you would expect it to.
+/// If it doesn't, you likely need to use [`span_lint_hir`] instead.
 ///
 /// # Example
 ///
@@ -70,14 +75,19 @@ pub fn span_lint<T: LintContext>(cx: &T, lint: &'static Lint, sp: impl Into<Mult
 ///
 /// If you change the signature, remember to update the internal lint `CollapsibleCalls`
 ///
-/// NOTE: only lint-level attributes at the `LintPass::check_*` node from which you are calling this
-/// will be considered.
-/// This can be confusing if the given span is at a different place, because users won't know where
-/// `#[allow]` or `#[expect]` attributes need to be placed.
+/// NOTE: Lint emissions are always bound to a node in the HIR, which is used to determine
+/// the lint level.
+/// For the `span_lint_and_help` function, the node that was passed into the `LintPass::check_*`
+/// function is used.
 ///
-/// This can happen if, for example, you are in `LintPass::check_block` and you are emitting a lint
-/// for a particular expression within that block.
-/// In those cases, consider using [`span_lint_hir`], and pass the `HirId` of that expression.
+/// If you're emitting the lint at the span of a different node than the one provided by the
+/// `LintPass::check_*` function, consider using [`span_lint_hir_and_then`] instead.
+/// This is needed for `#[allow]` and `#[expect]` attributes to work on the node
+/// highlighted in the displayed warning.
+///
+/// If you're unsure which function you should use, you can test if the `#[allow]` attribute works
+/// where you would expect it to.
+/// If it doesn't, you likely need to use [`span_lint_hir_and_then`] instead.
 ///
 /// # Example
 ///
@@ -117,14 +127,19 @@ pub fn span_lint_and_help<T: LintContext>(
 ///
 /// If you change the signature, remember to update the internal lint `CollapsibleCalls`
 ///
-/// NOTE: only lint-level attributes at the `LintPass::check_*` node from which you are calling this
-/// will be considered.
-/// This can be confusing if the given span is at a different place, because users won't know where
-/// `#[allow]` or `#[expect]` attributes need to be placed.
+/// NOTE: Lint emissions are always bound to a node in the HIR, which is used to determine
+/// the lint level.
+/// For the `span_lint_and_note` function, the node that was passed into the `LintPass::check_*`
+/// function is used.
 ///
-/// This can happen if, for example, you are in `LintPass::check_block` and you are emitting a lint
-/// for a particular expression within that block.
-/// In those cases, consider using [`span_lint_hir`], and pass the `HirId` of that expression.
+/// If you're emitting the lint at the span of a different node than the one provided by the
+/// `LintPass::check_*` function, consider using [`span_lint_hir_and_then`] instead.
+/// This is needed for `#[allow]` and `#[expect]` attributes to work on the node
+/// highlighted in the displayed warning.
+///
+/// If you're unsure which function you should use, you can test if the `#[allow]` attribute works
+/// where you would expect it to.
+/// If it doesn't, you likely need to use [`span_lint_hir_and_then`] instead.
 ///
 /// # Example
 ///
@@ -167,14 +182,19 @@ pub fn span_lint_and_note<T: LintContext>(
 /// If you need to customize your lint output a lot, use this function.
 /// If you change the signature, remember to update the internal lint `CollapsibleCalls`
 ///
-/// NOTE: only lint-level attributes at the `LintPass::check_*` node from which you are calling this
-/// will be considered.
-/// This can be confusing if the given span is at a different place, because users won't know where
-/// `#[allow]` or `#[expect]` attributes need to be placed.
+/// NOTE: Lint emissions are always bound to a node in the HIR, which is used to determine
+/// the lint level.
+/// For the `span_lint_and_then` function, the node that was passed into the `LintPass::check_*`
+/// function is used.
 ///
-/// This can happen if, for example, you are in `LintPass::check_block` and you are emitting a lint
-/// for a particular expression within that block.
-/// In those cases, consider using [`span_lint_hir`], and pass the `HirId` of that expression.
+/// If you're emitting the lint at the span of a different node than the one provided by the
+/// `LintPass::check_*` function, consider using [`span_lint_hir_and_then`] instead.
+/// This is needed for `#[allow]` and `#[expect]` attributes to work on the node
+/// highlighted in the displayed warning.
+///
+/// If you're unsure which function you should use, you can test if the `#[allow]` attribute works
+/// where you would expect it to.
+/// If it doesn't, you likely need to use [`span_lint_hir_and_then`] instead.
 pub fn span_lint_and_then<C, S, F>(cx: &C, lint: &'static Lint, sp: S, msg: &str, f: F)
 where
     C: LintContext,
@@ -188,8 +208,10 @@ where
     });
 }
 
-/// Like [`span_lint`], but allows providing the `HirId` of the node that caused us to emit this
-/// lint.
+/// Like [`span_lint`], but emits the lint at the node identified by the given `HirId`.
+///
+/// This is in contrast to [`span_lint`], which always emits the lint at the node that was last
+/// passed to the `LintPass::check_*` function.
 ///
 /// The `HirId` is used for checking lint level attributes and to fulfill lint expectations defined
 /// via the `#[expect]` attribute.
@@ -217,8 +239,10 @@ pub fn span_lint_hir(cx: &LateContext<'_>, lint: &'static Lint, hir_id: HirId, s
     });
 }
 
-/// Like [`span_lint_and_then`], but allows providing the `HirId` of the node that caused us to emit
-/// this lint.
+/// Like [`span_lint_and_then`], but emits the lint at the node identified by the given `HirId`.
+///
+/// This is in contrast to [`span_lint_and_then`], which always emits the lint at the node that was
+/// last passed to the `LintPass::check_*` function.
 ///
 /// The `HirId` is used for checking lint level attributes and to fulfill lint expectations defined
 /// via the `#[expect]` attribute.
@@ -262,14 +286,19 @@ pub fn span_lint_hir_and_then(
 ///
 /// If you change the signature, remember to update the internal lint `CollapsibleCalls`
 ///
-/// NOTE: only lint-level attributes at the `LintPass::check_*` node from which you are calling this
-/// will be considered.
-/// This can be confusing if the given span is at a different place, because users won't know where
-/// `#[allow]` or `#[expect]` attributes need to be placed.
+/// NOTE: Lint emissions are always bound to a node in the HIR, which is used to determine
+/// the lint level.
+/// For the `span_lint_and_sugg` function, the node that was passed into the `LintPass::check_*`
+/// function is used.
 ///
-/// This can happen if, for example, you are in `LintPass::check_block` and you are emitting a lint
-/// for a particular expression within that block.
-/// In those cases, consider using [`span_lint_hir`], and pass the `HirId` of that expression.
+/// If you're emitting the lint at the span of a different node than the one provided by the
+/// `LintPass::check_*` function, consider using [`span_lint_hir_and_then`] instead.
+/// This is needed for `#[allow]` and `#[expect]` attributes to work on the node
+/// highlighted in the displayed warning.
+///
+/// If you're unsure which function you should use, you can test if the `#[allow]` attribute works
+/// where you would expect it to.
+/// If it doesn't, you likely need to use [`span_lint_hir_and_then`] instead.
 ///
 /// # Example
 ///
