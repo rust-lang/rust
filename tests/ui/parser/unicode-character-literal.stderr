@@ -12,7 +12,7 @@ LL |     let _spade = '♠️';
 help: if you meant to write a `str` literal, use double quotes
    |
 LL |     let _spade = "♠️";
-   |                  ~~~
+   |                  ~ ~
 
 error: character literal may only contain one codepoint
   --> $DIR/unicode-character-literal.rs:12:14
@@ -28,7 +28,7 @@ LL |     let _s = 'ṩ̂̊';
 help: if you meant to write a `str` literal, use double quotes
    |
 LL |     let _s = "ṩ̂̊";
-   |              ~~~
+   |              ~ ~
 
 error: character literal may only contain one codepoint
   --> $DIR/unicode-character-literal.rs:17:14

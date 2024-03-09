@@ -18,7 +18,7 @@ LL |     let v: Vec(&str) = vec!['1', '2'];
 help: if you meant to write a `str` literal, use double quotes
    |
 LL |     let v: Vec(&str) = vec!["1", '2'];
-   |                             ~~~
+   |                             ~ ~
 
 error: aborting due to 2 previous errors
 

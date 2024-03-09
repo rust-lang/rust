@@ -2078,16 +2078,10 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                 // If a string was expected and the found expression is a character literal,
                 // perhaps the user meant to write `"s"` to specify a string literal.
                 (ty::Ref(_, r, _), ty::Char) if r.is_str() => {
-                    if let Ok(code) = self.tcx.sess().source_map().span_to_snippet(span) {
-                        if let Some(code) =
-                            code.strip_prefix('\'').and_then(|s| s.strip_suffix('\''))
-                        {
-                            suggestions.push(TypeErrorAdditionalDiags::MeantStrLiteral {
-                                span,
-                                code: escape_literal(code),
-                            })
-                        }
-                    }
+                    suggestions.push(TypeErrorAdditionalDiags::MeantStrLiteral {
+                        start: span.with_hi(span.lo() + BytePos(1)),
+                        end: span.with_lo(span.hi() - BytePos(1)),
+                    })
                 }
                 // For code `if Some(..) = expr `, the type mismatch may be expected `bool` but found `()`,
                 // we try to suggest to add the missing `let` for `if let Some(..) = expr`

@@ -2216,11 +2216,20 @@ pub enum MoreThanOneCharSugg {
         ch: String,
     },
     #[suggestion(parse_use_double_quotes, code = "{sugg}", applicability = "machine-applicable")]
-    Quotes {
+    QuotesFull {
         #[primary_span]
         span: Span,
         is_byte: bool,
         sugg: String,
+    },
+    #[multipart_suggestion(parse_use_double_quotes, applicability = "machine-applicable")]
+    Quotes {
+        #[suggestion_part(code = "{prefix}\"")]
+        start: Span,
+        #[suggestion_part(code = "\"")]
+        end: Span,
+        is_byte: bool,
+        prefix: &'static str,
     },
 }
 
