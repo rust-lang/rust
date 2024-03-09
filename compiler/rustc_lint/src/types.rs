@@ -1102,22 +1102,24 @@ fn get_nullable_type<'tcx>(
 /// A type is niche_optimization_candiate iff:
 /// - Is a zero-sized type with alignment 1 (a “1-ZST”).
 /// - Has no fields.
-/// - Does not have the #[non_exhaustive] attribute.
+/// - Does not have the `#[non_exhaustive]` attribute.
 fn is_niche_optimization_candidate<'tcx>(
     tcx: TyCtxt<'tcx>,
     param_env: ty::ParamEnv<'tcx>,
     ty: Ty<'tcx>,
 ) -> bool {
-    if !tcx.layout_of(param_env.and(ty)).is_ok_and(|layout| layout.is_1zst()) {
+    if tcx.layout_of(param_env.and(ty)).is_ok_and(|layout| !layout.is_1zst()) {
         return false;
     }
 
     match ty.kind() {
         ty::Adt(ty_def, _) => {
             let non_exhaustive = ty_def.is_variant_list_non_exhaustive();
-            let contains_no_fields = ty_def.all_fields().next().is_none();
+            // Should single-variant enums be allowed?
+            let empty = (ty_def.is_struct() && ty_def.all_fields().next().is_none())
+                || (ty_def.is_enum() && ty_def.variants().is_empty());
 
-            !non_exhaustive && contains_no_fields
+            !non_exhaustive && empty
         }
         ty::Tuple(tys) => tys.is_empty(),
         _ => false,

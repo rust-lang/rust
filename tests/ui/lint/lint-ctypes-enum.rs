@@ -122,6 +122,7 @@ extern "C" {
     fn result_phantom_t(x: Result<num::NonZero<u8>, std::marker::PhantomData<()>>);
     fn result_1zst_exhaustive_no_variant_t(x: Result<num::NonZero<u8>, Z>);
     fn result_1zst_exhaustive_single_variant_t(x: Result<num::NonZero<u8>, U>);
+    //~^ ERROR `extern` block uses type
     fn result_1zst_exhaustive_multiple_variant_t(x: Result<num::NonZero<u8>, B>);
     //~^ ERROR `extern` block uses type
     fn result_1zst_non_exhaustive_no_variant_t(x: Result<num::NonZero<u8>, NonExhaustive>);
@@ -159,6 +160,7 @@ extern "C" {
     fn result_phantom_e(x: Result<num::NonZero<u8>, std::marker::PhantomData<()>>);
     fn result_1zst_exhaustive_no_variant_e(x: Result<Z, num::NonZero<u8>>);
     fn result_1zst_exhaustive_single_variant_e(x: Result<U, num::NonZero<u8>>);
+    //~^ ERROR `extern` block uses type
     fn result_1zst_exhaustive_multiple_variant_e(x: Result<B, num::NonZero<u8>>);
     //~^ ERROR `extern` block uses type
     fn result_1zst_non_exhaustive_no_variant_e(x: Result<NonExhaustive, num::NonZero<u8>>);
