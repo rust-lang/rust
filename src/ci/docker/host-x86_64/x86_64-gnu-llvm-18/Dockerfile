@@ -1,4 +1,4 @@
-FROM ubuntu:23.10
+FROM ubuntu:24.04
 
 ARG DEBIAN_FRONTEND=noninteractive
 
@@ -15,8 +15,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
   cmake \
   sudo \
   gdb \
-  llvm-17-tools \
-  llvm-17-dev \
+  llvm-18-tools \
+  llvm-18-dev \
   libedit-dev \
   libssl-dev \
   pkg-config \
@@ -30,8 +30,9 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 # Note: libgccjit needs to match the default gcc version for the linker to find it.
 
 # Install powershell (universal package) so we can test x.ps1 on Linux
+# FIXME: need a "universal" version that supports libicu74, but for now it still works to ignore that dep.
 RUN curl -sL "https://github.com/PowerShell/PowerShell/releases/download/v7.3.1/powershell_7.3.1-1.deb_amd64.deb" > powershell.deb && \
-    dpkg -i powershell.deb && \
+    dpkg --ignore-depends=libicu72 -i powershell.deb && \
     rm -f powershell.deb
 
 COPY scripts/sccache.sh /scripts/
@@ -42,14 +43,10 @@ RUN sh /scripts/sccache.sh
 ENV NO_DOWNLOAD_CI_LLVM 1
 ENV EXTERNAL_LLVM 1
 
-# This is not the latest LLVM version, so some components required by tests may
-# be missing.
-ENV IS_NOT_LATEST_LLVM 1
-
 # Using llvm-link-shared due to libffi issues -- see #34486
 ENV RUST_CONFIGURE_ARGS \
       --build=x86_64-unknown-linux-gnu \
-      --llvm-root=/usr/lib/llvm-17 \
+      --llvm-root=/usr/lib/llvm-18 \
       --enable-llvm-link-shared \
       --set rust.thin-lto-import-instr-limit=10
 
