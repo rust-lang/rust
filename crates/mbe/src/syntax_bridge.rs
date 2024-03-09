@@ -675,13 +675,8 @@ impl<SpanMap, S> Converter<SpanMap, S> {
                                 }
                             }
                         }
-                    } else {
-                        match token {
-                            syntax::NodeOrToken::Token(token) => {
-                                return Some(token);
-                            }
-                            _ => (),
-                        }
+                    } else if let syntax::NodeOrToken::Token(token) = token {
+                        return Some(token);
                     }
                 }
                 WalkEvent::Leave(ele) => {
