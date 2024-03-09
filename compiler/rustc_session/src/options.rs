@@ -1674,7 +1674,9 @@ options! {
         "print high-level information about incremental reuse (or the lack thereof) \
         (default: no)"),
     incremental_verify_ich: bool = (false, parse_bool, [UNTRACKED],
-        "verify incr. comp. hashes of green query instances (default: no)"),
+        "verify extended properties for incr. comp. (default: no):
+        - hashes of green query instances
+        - hash collisions of query keys"),
     inline_in_all_cgus: Option<bool> = (None, parse_opt_bool, [TRACKED],
         "control whether `#[inline]` functions are in all CGUs"),
     inline_llvm: bool = (true, parse_bool, [TRACKED],
