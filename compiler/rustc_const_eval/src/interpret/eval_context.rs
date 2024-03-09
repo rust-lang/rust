@@ -648,7 +648,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     }
 
     #[inline(always)]
-    pub fn layout_of_local(
+    pub(super) fn layout_of_local(
         &self,
         frame: &Frame<'mir, 'tcx, M::Provenance, M::FrameExtra>,
         local: mir::Local,
@@ -899,7 +899,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         // Copy return value. Must of course happen *before* we deallocate the locals.
         let copy_ret_result = if !unwinding {
             let op = self
-                .local_to_op(self.frame(), mir::RETURN_PLACE, None)
+                .local_to_op(mir::RETURN_PLACE, None)
                 .expect("return place should always be live");
             let dest = self.frame().return_place.clone();
             let err = if self.stack().len() == 1 {

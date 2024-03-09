@@ -506,21 +506,21 @@ where
         Ok((mplace, len))
     }
 
+    /// Turn a local in the current frame into a place.
     pub fn local_to_place(
         &self,
-        frame: usize,
         local: mir::Local,
     ) -> InterpResult<'tcx, PlaceTy<'tcx, M::Provenance>> {
         // Other parts of the system rely on `Place::Local` never being unsized.
         // So we eagerly check here if this local has an MPlace, and if yes we use it.
-        let frame_ref = &self.stack()[frame];
-        let layout = self.layout_of_local(frame_ref, local, None)?;
+        let frame = self.frame();
+        let layout = self.layout_of_local(frame, local, None)?;
         let place = if layout.is_sized() {
             // We can just always use the `Local` for sized values.
-            Place::Local { local, offset: None, locals_addr: frame_ref.locals_addr() }
+            Place::Local { local, offset: None, locals_addr: frame.locals_addr() }
         } else {
             // Unsized `Local` isn't okay (we cannot store the metadata).
-            match frame_ref.locals[local].access()? {
+            match frame.locals[local].access()? {
                 Operand::Immediate(_) => bug!(),
                 Operand::Indirect(mplace) => Place::Ptr(*mplace),
             }
@@ -535,7 +535,7 @@ where
         &self,
         mir_place: mir::Place<'tcx>,
     ) -> InterpResult<'tcx, PlaceTy<'tcx, M::Provenance>> {
-        let mut place = self.local_to_place(self.frame_idx(), mir_place.local)?;
+        let mut place = self.local_to_place(mir_place.local)?;
         // Using `try_fold` turned out to be bad for performance, hence the loop.
         for elem in mir_place.projection.iter() {
             place = self.project(&place, elem)?
