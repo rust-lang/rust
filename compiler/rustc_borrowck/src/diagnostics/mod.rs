@@ -1226,20 +1226,20 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                             {
                                 let msg = match &errors[..] {
                                     [] => "you can `clone` the value and consume it, but this \
-                                            might not be your desired behavior"
+                                           might not be your desired behavior"
                                         .to_string(),
                                     [error] => {
                                         format!(
-                                            "you could `clone` the value and consume it, if \
-                                                the `{}` trait bound could be satisfied",
+                                            "you could `clone` the value and consume it, if the \
+                                             `{}` trait bound could be satisfied",
                                             error.obligation.predicate,
                                         )
                                     }
                                     [errors @ .., last] => {
                                         format!(
-                                            "you could `clone` the value and consume it, if \
-                                                the following trait bounds could be satisfied: {} \
-                                                and `{}`",
+                                            "you could `clone` the value and consume it, if the \
+                                             following trait bounds could be satisfied: \
+                                             {} and `{}`",
                                             errors
                                                 .iter()
                                                 .map(|e| format!("`{}`", e.obligation.predicate))
