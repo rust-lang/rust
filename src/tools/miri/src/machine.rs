@@ -1333,7 +1333,7 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for MiriMachine<'mir, 'tcx> {
         // If we have a borrow tracker, we also have it set up protection so that all reads *and
         // writes* during this call are insta-UB.
         let protected_place = if ecx.machine.borrow_tracker.is_some() {
-            ecx.protect_place(&place)?.into()
+            ecx.protect_place(place)?
         } else {
             // No borrow tracker.
             place.clone()
