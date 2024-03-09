@@ -202,7 +202,6 @@ LL |       offset_of!(((u8, u16), (u32, u16, u8)), 0.2);
    | |     in this macro invocation
 LL | |     offset_of!(((u8, u16), (u32, u16, u8)), 1.2);
 LL | |     offset_of!(((u8, u16), (u32, u16, u8)), 1.2.0);
-LL | |
 ...  |
    |
    = note: this error originates in the macro `offset_of` (in Nightly builds, run with -Z macro-backtrace for more info)
