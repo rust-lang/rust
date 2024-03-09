@@ -67,6 +67,7 @@ declare_lint_pass! {
         MISSING_FRAGMENT_SPECIFIER,
         MUST_NOT_SUSPEND,
         NAMED_ARGUMENTS_USED_POSITIONALLY,
+        NON_CONTIGUOUS_RANGE_ENDPOINTS,
         NON_EXHAUSTIVE_OMITTED_PATTERNS,
         ORDER_DEPENDENT_TRAIT_OBJECTS,
         OVERLAPPING_RANGE_ENDPOINTS,
@@ -810,6 +811,36 @@ declare_lint! {
     pub OVERLAPPING_RANGE_ENDPOINTS,
     Warn,
     "detects range patterns with overlapping endpoints"
+}
+
+declare_lint! {
+    /// The `non_contiguous_range_endpoints` lint detects likely off-by-one errors when using
+    /// exclusive [range patterns].
+    ///
+    /// [range patterns]: https://doc.rust-lang.org/nightly/reference/patterns.html#range-patterns
+    ///
+    /// ### Example
+    ///
+    /// ```rust
+    /// # #![feature(exclusive_range_pattern)]
+    /// let x = 123u32;
+    /// match x {
+    ///     0..100 => { println!("small"); }
+    ///     101..1000 => { println!("large"); }
+    ///     _ => { println!("larger"); }
+    /// }
+    /// ```
+    ///
+    /// {{produces}}
+    ///
+    /// ### Explanation
+    ///
+    /// It is likely a mistake to have range patterns in a match expression that miss out a single
+    /// number. Check that the beginning and end values are what you expect, and keep in mind that
+    /// with `..=` the right bound is inclusive, and with `..` it is exclusive.
+    pub NON_CONTIGUOUS_RANGE_ENDPOINTS,
+    Warn,
+    "detects off-by-one errors with exclusive range patterns"
 }
 
 declare_lint! {
