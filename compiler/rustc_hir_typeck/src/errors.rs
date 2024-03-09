@@ -11,7 +11,7 @@ use rustc_middle::ty::Ty;
 use rustc_span::{
     edition::{Edition, LATEST_STABLE_EDITION},
     symbol::Ident,
-    Span,
+    Span, Symbol,
 };
 
 #[derive(Diagnostic)]
@@ -613,4 +613,11 @@ pub struct SuggestConvertViaMethod<'tcx> {
     pub sugg: String,
     pub expected: Ty<'tcx>,
     pub found: Ty<'tcx>,
+}
+
+#[derive(Subdiagnostic)]
+#[note(hir_typeck_note_caller_chooses_ty_for_ty_param)]
+pub struct NoteCallerChoosesTyForTyParam<'tcx> {
+    pub ty_param_name: Symbol,
+    pub found_ty: Ty<'tcx>,
 }
