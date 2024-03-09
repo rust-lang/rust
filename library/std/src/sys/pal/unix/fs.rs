@@ -109,6 +109,60 @@ use libc::{dirent64, fstat64, ftruncate64, lseek64, lstat64, off64_t, open64, st
 
 pub use crate::sys_common::fs::try_exists;
 
+pub(crate) mod fs_imp {
+    use crate::io;
+    use crate::path::AsPath;
+    use crate::path::PathBuf;
+    use crate::sys::fs;
+    pub(crate) use crate::sys::fs::{
+        DirBuilder, DirEntry, File, FileAttr, FilePermissions, FileTimes, FileType, OpenOptions,
+        ReadDir,
+    };
+
+    pub(crate) fn remove_file<P: AsPath>(path: P) -> io::Result<()> {
+        path.with_path(fs::unlink)
+    }
+    pub(crate) fn symlink_metadata<P: AsPath>(path: P) -> io::Result<FileAttr> {
+        path.with_path(|path| fs::lstat(path))
+    }
+    pub(crate) fn metadata<P: AsPath>(path: P) -> io::Result<FileAttr> {
+        path.with_path(|path| fs::stat(path))
+    }
+    pub(crate) fn rename<P: AsPath, Q: AsPath>(from: P, to: Q) -> io::Result<()> {
+        from.with_path(|from| to.with_path(|to| fs::rename(from, to)))
+    }
+    pub(crate) fn hard_link<P: AsPath, Q: AsPath>(original: P, link: Q) -> io::Result<()> {
+        original.with_path(|original| link.with_path(|link| fs::link(original, link)))
+    }
+    pub(crate) fn soft_link<P: AsPath, Q: AsPath>(original: P, link: Q) -> io::Result<()> {
+        original.with_path(|original| link.with_path(|link| fs::symlink(original, link)))
+    }
+    pub(crate) fn remove_dir<P: AsPath>(path: P) -> io::Result<()> {
+        path.with_path(fs::rmdir)
+    }
+    pub(crate) fn read_dir<P: AsPath>(path: P) -> io::Result<ReadDir> {
+        path.with_path(fs::readdir)
+    }
+    pub(crate) fn set_permissions<P: AsPath>(path: P, perms: FilePermissions) -> io::Result<()> {
+        path.with_path(|path| fs::set_perm(path, perms))
+    }
+    pub(crate) fn copy<P: AsPath, Q: AsPath>(from: P, to: Q) -> io::Result<u64> {
+        from.with_path(|from| to.with_path(|to| fs::copy(from, to)))
+    }
+    pub(crate) fn canonicalize<P: AsPath>(path: P) -> io::Result<PathBuf> {
+        path.with_path(fs::canonicalize)
+    }
+    pub(crate) fn remove_dir_all<P: AsPath>(path: P) -> io::Result<()> {
+        path.with_path(fs::remove_dir_all)
+    }
+    pub(crate) fn read_link<P: AsPath>(path: P) -> io::Result<PathBuf> {
+        path.with_path(fs::readlink)
+    }
+    pub(crate) fn try_exists<P: AsPath>(path: P) -> io::Result<bool> {
+        path.with_path(fs::try_exists)
+    }
+}
+
 pub struct File(FileDesc);
 
 // FIXME: This should be available on Linux with all `target_env`.
@@ -1117,11 +1171,7 @@ impl OpenOptions {
 }
 
 impl File {
-    pub fn open(path: &Path, opts: &OpenOptions) -> io::Result<File> {
-        run_path_with_cstr(path, &|path| File::open_c(path, opts))
-    }
-
-    pub fn open_c(path: &CStr, opts: &OpenOptions) -> io::Result<File> {
+    pub fn open_native(path: &CStr, opts: &OpenOptions) -> io::Result<File> {
         let flags = libc::O_CLOEXEC
             | opts.get_access_mode()?
             | opts.get_creation_mode()?

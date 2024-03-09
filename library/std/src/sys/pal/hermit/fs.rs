@@ -7,14 +7,65 @@ use crate::io::{self, Error, ErrorKind};
 use crate::io::{BorrowedCursor, IoSlice, IoSliceMut, SeekFrom};
 use crate::os::hermit::io::{AsFd, AsRawFd, BorrowedFd, FromRawFd, IntoRawFd, RawFd};
 use crate::path::{Path, PathBuf};
-use crate::sys::common::small_c_string::run_path_with_cstr;
 use crate::sys::cvt;
 use crate::sys::time::SystemTime;
 use crate::sys::unsupported;
 use crate::sys_common::{AsInner, AsInnerMut, FromInner, IntoInner};
 
-pub use crate::sys_common::fs::{copy, try_exists};
 //pub use crate::sys_common::fs::remove_dir_all;
+
+pub(crate) mod fs_imp {
+    pub(crate) use super::{
+        DirBuilder, DirEntry, File, FileAttr, FilePermissions, FileTimes, FileType, OpenOptions,
+        ReadDir,
+    };
+    use crate::io;
+    use crate::path::{AsPath, PathBuf};
+    use crate::sys::unsupported;
+
+    pub(crate) fn remove_file<P: AsPath>(_path: P) -> io::Result<()> {
+        unsupported()
+    }
+    pub(crate) fn symlink_metadata<P: AsPath>(_path: P) -> io::Result<FileAttr> {
+        unsupported()
+    }
+    pub(crate) fn metadata<P: AsPath>(_path: P) -> io::Result<FileAttr> {
+        unsupported()
+    }
+    pub(crate) fn rename<P: AsPath, Q: AsPath>(_from: P, _to: Q) -> io::Result<()> {
+        unsupported()
+    }
+    pub(crate) fn hard_link<P: AsPath, Q: AsPath>(_original: P, _link: Q) -> io::Result<()> {
+        unsupported()
+    }
+    pub(crate) fn soft_link<P: AsPath, Q: AsPath>(_original: P, _link: Q) -> io::Result<()> {
+        unsupported()
+    }
+    pub(crate) fn remove_dir<P: AsPath>(_path: P) -> io::Result<()> {
+        unsupported()
+    }
+    pub(crate) fn read_dir<P: AsPath>(_path: P) -> io::Result<ReadDir> {
+        unsupported()
+    }
+    pub(crate) fn set_permissions<P: AsPath>(_path: P, _perms: FilePermissions) -> io::Result<()> {
+        unsupported()
+    }
+    pub(crate) fn copy<P: AsPath, Q: AsPath>(_from: P, _to: Q) -> io::Result<u64> {
+        unsupported()
+    }
+    pub(crate) fn canonicalize<P: AsPath>(_path: P) -> io::Result<PathBuf> {
+        unsupported()
+    }
+    pub(crate) fn remove_dir_all<P: AsPath>(_path: P) -> io::Result<()> {
+        unsupported()
+    }
+    pub(crate) fn read_link<P: AsPath>(_path: P) -> io::Result<PathBuf> {
+        unsupported()
+    }
+    pub(crate) fn try_exists<P: AsPath>(_path: P) -> io::Result<bool> {
+        unsupported()
+    }
+}
 
 #[derive(Debug)]
 pub struct File(FileDesc);
@@ -268,11 +319,7 @@ impl OpenOptions {
 }
 
 impl File {
-    pub fn open(path: &Path, opts: &OpenOptions) -> io::Result<File> {
-        run_path_with_cstr(path, &|path| File::open_c(&path, opts))
-    }
-
-    pub fn open_c(path: &CStr, opts: &OpenOptions) -> io::Result<File> {
+    pub fn open_native(path: &CStr, opts: &OpenOptions) -> io::Result<File> {
         let mut flags = opts.get_access_mode()?;
         flags = flags | opts.get_creation_mode()?;
 
@@ -414,53 +461,4 @@ impl FromRawFd for File {
     unsafe fn from_raw_fd(raw_fd: RawFd) -> Self {
         Self(FromRawFd::from_raw_fd(raw_fd))
     }
-}
-
-pub fn readdir(_p: &Path) -> io::Result<ReadDir> {
-    unsupported()
-}
-
-pub fn unlink(path: &Path) -> io::Result<()> {
-    run_path_with_cstr(path, &|path| cvt(unsafe { abi::unlink(path.as_ptr()) }).map(|_| ()))
-}
-
-pub fn rename(_old: &Path, _new: &Path) -> io::Result<()> {
-    unsupported()
-}
-
-pub fn set_perm(_p: &Path, perm: FilePermissions) -> io::Result<()> {
-    match perm.0 {}
-}
-
-pub fn rmdir(_p: &Path) -> io::Result<()> {
-    unsupported()
-}
-
-pub fn remove_dir_all(_path: &Path) -> io::Result<()> {
-    //unsupported()
-    Ok(())
-}
-
-pub fn readlink(_p: &Path) -> io::Result<PathBuf> {
-    unsupported()
-}
-
-pub fn symlink(_original: &Path, _link: &Path) -> io::Result<()> {
-    unsupported()
-}
-
-pub fn link(_original: &Path, _link: &Path) -> io::Result<()> {
-    unsupported()
-}
-
-pub fn stat(_p: &Path) -> io::Result<FileAttr> {
-    unsupported()
-}
-
-pub fn lstat(_p: &Path) -> io::Result<FileAttr> {
-    unsupported()
-}
-
-pub fn canonicalize(_p: &Path) -> io::Result<PathBuf> {
-    unsupported()
 }

@@ -8,7 +8,7 @@ use super::platform::fs::MetadataExt as _;
 use crate::fs::{self, OpenOptions, Permissions};
 use crate::io;
 use crate::os::unix::io::{AsFd, AsRawFd};
-use crate::path::Path;
+use crate::path::{AsPath, Path};
 use crate::sys;
 use crate::sys_common::{AsInner, AsInnerMut, FromInner};
 // Used for `File::read` on intra-doc links
@@ -954,8 +954,8 @@ impl DirEntryExt2 for fs::DirEntry {
 /// }
 /// ```
 #[stable(feature = "symlink", since = "1.1.0")]
-pub fn symlink<P: AsRef<Path>, Q: AsRef<Path>>(original: P, link: Q) -> io::Result<()> {
-    sys::fs::symlink(original.as_ref(), link.as_ref())
+pub fn symlink<P: AsPath, Q: AsPath>(original: P, link: Q) -> io::Result<()> {
+    sys::fs::fs_imp::soft_link(original, link)
 }
 
 /// Unix-specific extensions to [`fs::DirBuilder`].

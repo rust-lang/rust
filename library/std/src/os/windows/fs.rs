@@ -6,7 +6,7 @@
 
 use crate::fs::{self, Metadata, OpenOptions};
 use crate::io;
-use crate::path::Path;
+use crate::path::AsPath;
 use crate::sealed::Sealed;
 use crate::sys;
 use crate::sys_common::{AsInner, AsInnerMut, IntoInner};
@@ -578,8 +578,9 @@ impl FileTimesExt for fs::FileTimes {
 ///
 /// [symlink-security]: https://docs.microsoft.com/en-us/windows/security/threat-protection/security-policy-settings/create-symbolic-links
 #[stable(feature = "symlink", since = "1.1.0")]
-pub fn symlink_file<P: AsRef<Path>, Q: AsRef<Path>>(original: P, link: Q) -> io::Result<()> {
-    sys::fs::symlink_inner(original.as_ref(), link.as_ref(), false)
+pub fn symlink_file<P: AsPath, Q: AsPath>(original: P, link: Q) -> io::Result<()> {
+    original
+        .with_path(|original| link.with_path(|link| sys::fs::symlink_inner(original, link, false)))
 }
 
 /// Creates a new symlink to a directory on the filesystem.
@@ -617,6 +618,7 @@ pub fn symlink_file<P: AsRef<Path>, Q: AsRef<Path>>(original: P, link: Q) -> io:
 ///
 /// [symlink-security]: https://docs.microsoft.com/en-us/windows/security/threat-protection/security-policy-settings/create-symbolic-links
 #[stable(feature = "symlink", since = "1.1.0")]
-pub fn symlink_dir<P: AsRef<Path>, Q: AsRef<Path>>(original: P, link: Q) -> io::Result<()> {
-    sys::fs::symlink_inner(original.as_ref(), link.as_ref(), true)
+pub fn symlink_dir<P: AsPath, Q: AsPath>(original: P, link: Q) -> io::Result<()> {
+    original
+        .with_path(|original| link.with_path(|link| sys::fs::symlink_inner(original, link, true)))
 }

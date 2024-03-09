@@ -17,7 +17,58 @@ use crate::sys::time::SystemTime;
 use crate::sys::unsupported;
 use crate::sys_common::{AsInner, FromInner, IntoInner};
 
-pub use crate::sys_common::fs::try_exists;
+pub(crate) mod fs_imp {
+    pub(crate) use super::{
+        DirBuilder, DirEntry, File, FileAttr, FilePermissions, FileTimes, FileType, OpenOptions,
+        ReadDir,
+    };
+    use crate::io;
+    use crate::path::AsPath;
+    use crate::path::PathBuf;
+
+    pub(crate) fn remove_file<P: AsPath>(path: P) -> io::Result<()> {
+        path.with_native_path(super::unlink)
+    }
+    pub(crate) fn symlink_metadata<P: AsPath>(path: P) -> io::Result<FileAttr> {
+        path.with_native_path(|path| super::lstat(path))
+    }
+    pub(crate) fn metadata<P: AsPath>(path: P) -> io::Result<FileAttr> {
+        path.with_native_path(|path| super::stat(path))
+    }
+    pub(crate) fn rename<P: AsPath, Q: AsPath>(from: P, to: Q) -> io::Result<()> {
+        to.with_path(|to| from.with_native_path(|from| super::rename(from, to)))
+    }
+    pub(crate) fn hard_link<P: AsPath, Q: AsPath>(original: P, link: Q) -> io::Result<()> {
+        link.with_path(|link| original.with_native_path(|original| super::link(original, link)))
+    }
+    pub(crate) fn soft_link<P: AsPath, Q: AsPath>(original: P, link: Q) -> io::Result<()> {
+        original.with_path(|original| link.with_native_path(|link| super::symlink(original, link)))
+    }
+    pub(crate) fn remove_dir<P: AsPath>(path: P) -> io::Result<()> {
+        path.with_native_path(super::rmdir)
+    }
+    pub(crate) fn read_dir<P: AsPath>(path: P) -> io::Result<ReadDir> {
+        path.with_path(super::readdir)
+    }
+    pub(crate) fn set_permissions<P: AsPath>(path: P, perms: FilePermissions) -> io::Result<()> {
+        path.with_path(|path| super::set_perm(path, perms))
+    }
+    pub(crate) fn copy<P: AsPath, Q: AsPath>(from: P, to: Q) -> io::Result<u64> {
+        from.with_path(|from| to.with_path(|to| super::copy(from, to)))
+    }
+    pub(crate) fn canonicalize<P: AsPath>(path: P) -> io::Result<PathBuf> {
+        path.with_path(super::canonicalize)
+    }
+    pub(crate) fn remove_dir_all<P: AsPath>(path: P) -> io::Result<()> {
+        path.with_path(super::remove_dir_all)
+    }
+    pub(crate) fn read_link<P: AsPath>(path: P) -> io::Result<PathBuf> {
+        path.with_native_path(super::readlink)
+    }
+    pub(crate) fn try_exists<P: AsPath>(path: P) -> io::Result<bool> {
+        path.with_path(crate::sys_common::fs::try_exists)
+    }
+}
 
 pub struct File {
     fd: WasiFd,
@@ -398,7 +449,7 @@ impl OpenOptions {
 }
 
 impl File {
-    pub fn open(path: &Path, opts: &OpenOptions) -> io::Result<File> {
+    pub fn open_native(path: &CStr, opts: &OpenOptions) -> io::Result<File> {
         let (dir, file) = open_parent(path)?;
         open_at(&dir, &file, opts)
     }
@@ -548,8 +599,10 @@ impl DirBuilder {
     }
 
     pub fn mkdir(&self, p: &Path) -> io::Result<()> {
-        let (dir, file) = open_parent(p)?;
-        dir.create_directory(osstr2str(file.as_ref())?)
+        run_path_with_cstr(p, &|p| {
+            let (dir, file) = open_parent(p)?;
+            dir.create_directory(osstr2str(file.as_ref())?)
+        })
     }
 }
 
@@ -563,18 +616,18 @@ pub fn readdir(p: &Path) -> io::Result<ReadDir> {
     let mut opts = OpenOptions::new();
     opts.directory(true);
     opts.read(true);
-    let dir = File::open(p, &opts)?;
+    let dir = run_path_with_cstr(p, &|p| File::open_native(p, &opts))?;
     Ok(ReadDir::new(dir, p.to_path_buf()))
 }
 
-pub fn unlink(p: &Path) -> io::Result<()> {
+pub fn unlink(p: &CStr) -> io::Result<()> {
     let (dir, file) = open_parent(p)?;
     dir.unlink_file(osstr2str(file.as_ref())?)
 }
 
-pub fn rename(old: &Path, new: &Path) -> io::Result<()> {
+pub fn rename(old: &CStr, new: &Path) -> io::Result<()> {
     let (old, old_file) = open_parent(old)?;
-    let (new, new_file) = open_parent(new)?;
+    let (new, new_file) = run_path_with_cstr(new, &|new| open_parent(new))?;
     old.rename(osstr2str(old_file.as_ref())?, &new, osstr2str(new_file.as_ref())?)
 }
 
@@ -584,12 +637,12 @@ pub fn set_perm(_p: &Path, _perm: FilePermissions) -> io::Result<()> {
     unsupported()
 }
 
-pub fn rmdir(p: &Path) -> io::Result<()> {
+pub fn rmdir(p: &CStr) -> io::Result<()> {
     let (dir, file) = open_parent(p)?;
     dir.remove_directory(osstr2str(file.as_ref())?)
 }
 
-pub fn readlink(p: &Path) -> io::Result<PathBuf> {
+pub fn readlink(p: &CStr) -> io::Result<PathBuf> {
     let (dir, file) = open_parent(p)?;
     read_link(&dir, &file)
 }
@@ -625,24 +678,24 @@ fn read_link(fd: &WasiFd, file: &Path) -> io::Result<PathBuf> {
     }
 }
 
-pub fn symlink(original: &Path, link: &Path) -> io::Result<()> {
+pub fn symlink(original: &Path, link: &CStr) -> io::Result<()> {
     let (link, link_file) = open_parent(link)?;
     link.symlink(osstr2str(original.as_ref())?, osstr2str(link_file.as_ref())?)
 }
 
-pub fn link(original: &Path, link: &Path) -> io::Result<()> {
+pub fn link(original: &CStr, link: &Path) -> io::Result<()> {
     let (original, original_file) = open_parent(original)?;
-    let (link, link_file) = open_parent(link)?;
+    let (link, link_file) = run_path_with_cstr(link, &|link| open_parent(link))?;
     // Pass 0 as the flags argument, meaning don't follow symlinks.
     original.link(0, osstr2str(original_file.as_ref())?, &link, osstr2str(link_file.as_ref())?)
 }
 
-pub fn stat(p: &Path) -> io::Result<FileAttr> {
+pub fn stat(p: &CStr) -> io::Result<FileAttr> {
     let (dir, file) = open_parent(p)?;
     metadata_at(&dir, wasi::LOOKUPFLAGS_SYMLINK_FOLLOW, &file)
 }
 
-pub fn lstat(p: &Path) -> io::Result<FileAttr> {
+pub fn lstat(p: &CStr) -> io::Result<FileAttr> {
     let (dir, file) = open_parent(p)?;
     metadata_at(&dir, 0, &file)
 }
@@ -697,53 +750,51 @@ fn open_at(fd: &WasiFd, path: &Path, opts: &OpenOptions) -> io::Result<File> {
 ///
 /// Note that this can fail if `p` doesn't look like it can be opened relative
 /// to any pre-opened file descriptor.
-fn open_parent(p: &Path) -> io::Result<(ManuallyDrop<WasiFd>, PathBuf)> {
-    run_path_with_cstr(p, &|p| {
-        let mut buf = Vec::<u8>::with_capacity(512);
-        loop {
-            unsafe {
-                let mut relative_path = buf.as_ptr().cast();
-                let mut abs_prefix = ptr::null();
-                let fd = __wasilibc_find_relpath(
-                    p.as_ptr(),
-                    &mut abs_prefix,
-                    &mut relative_path,
-                    buf.capacity(),
-                );
-                if fd == -1 {
-                    if io::Error::last_os_error().raw_os_error() == Some(libc::ENOMEM) {
-                        // Trigger the internal buffer resizing logic of `Vec` by requiring
-                        // more space than the current capacity.
-                        let cap = buf.capacity();
-                        buf.set_len(cap);
-                        buf.reserve(1);
-                        continue;
-                    }
-                    let msg = format!(
-                        "failed to find a pre-opened file descriptor \
-                     through which {:?} could be opened",
-                        p
-                    );
-                    return Err(io::Error::new(io::ErrorKind::Uncategorized, msg));
+fn open_parent(p: &CStr) -> io::Result<(ManuallyDrop<WasiFd>, PathBuf)> {
+    let mut buf = Vec::<u8>::with_capacity(512);
+    loop {
+        unsafe {
+            let mut relative_path = buf.as_ptr().cast();
+            let mut abs_prefix = ptr::null();
+            let fd = __wasilibc_find_relpath(
+                p.as_ptr(),
+                &mut abs_prefix,
+                &mut relative_path,
+                buf.capacity(),
+            );
+            if fd == -1 {
+                if io::Error::last_os_error().raw_os_error() == Some(libc::ENOMEM) {
+                    // Trigger the internal buffer resizing logic of `Vec` by requiring
+                    // more space than the current capacity.
+                    let cap = buf.capacity();
+                    buf.set_len(cap);
+                    buf.reserve(1);
+                    continue;
                 }
-                let relative = CStr::from_ptr(relative_path).to_bytes().to_vec();
-
-                return Ok((
-                    ManuallyDrop::new(WasiFd::from_raw_fd(fd as c_int)),
-                    PathBuf::from(OsString::from_vec(relative)),
-                ));
+                let msg = format!(
+                    "failed to find a pre-opened file descriptor \
+                    through which {:?} could be opened",
+                    p
+                );
+                return Err(io::Error::new(io::ErrorKind::Uncategorized, msg));
             }
-        }
+            let relative = CStr::from_ptr(relative_path).to_bytes().to_vec();
 
-        extern "C" {
-            pub fn __wasilibc_find_relpath(
-                path: *const libc::c_char,
-                abs_prefix: *mut *const libc::c_char,
-                relative_path: *mut *const libc::c_char,
-                relative_path_len: libc::size_t,
-            ) -> libc::c_int;
+            return Ok((
+                ManuallyDrop::new(WasiFd::from_raw_fd(fd as c_int)),
+                PathBuf::from(OsString::from_vec(relative)),
+            ));
         }
-    })
+    }
+
+    extern "C" {
+        pub fn __wasilibc_find_relpath(
+            path: *const libc::c_char,
+            abs_prefix: *mut *const libc::c_char,
+            relative_path: *mut *const libc::c_char,
+            relative_path_len: libc::size_t,
+        ) -> libc::c_int;
+    }
 }
 
 pub fn osstr2str(f: &OsStr) -> io::Result<&str> {
@@ -761,7 +812,7 @@ pub fn copy(from: &Path, to: &Path) -> io::Result<u64> {
 }
 
 pub fn remove_dir_all(path: &Path) -> io::Result<()> {
-    let (parent, path) = open_parent(path)?;
+    let (parent, path) = run_path_with_cstr(path, &|path| open_parent(path))?;
     remove_dir_all_recursive(&parent, &path)
 }
 

@@ -86,7 +86,9 @@ use crate::sync::Arc;
 
 use crate::ffi::{os_str, OsStr, OsString};
 use crate::sys;
-use crate::sys::path::{is_sep_byte, is_verbatim_sep, parse_prefix, MAIN_SEP_STR};
+use crate::sys::path::{
+    is_sep_byte, is_verbatim_sep, parse_prefix, NativePath as NativePathImpl, MAIN_SEP_STR,
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 // GENERAL NOTES
@@ -1107,6 +1109,55 @@ impl FusedIterator for Ancestors<'_> {}
 ////////////////////////////////////////////////////////////////////////////////
 // Basic types and traits
 ////////////////////////////////////////////////////////////////////////////////
+
+/// Represents a path in a form native to the OS.
+#[derive(Debug)]
+#[repr(transparent)]
+#[unstable(feature = "fs_native_path", issue = "108979")]
+pub struct NativePath(pub(crate) NativePathImpl);
+
+#[unstable(feature = "sealed", issue = "none")]
+impl crate::sealed::Sealed for NativePath {}
+#[unstable(feature = "sealed", issue = "none")]
+impl crate::sealed::Sealed for &NativePath {}
+
+/// # Stable use
+///
+/// Functions that need a filesystem path will often accept any type that implements [`AsRef<Path>`].
+///
+/// These types include [`Path`], [`OsStr`] and [`str`] as well as their owned
+/// counterparts [`PathBuf`], [`OsString`] and [`String`].
+///
+/// You can also implement you own [`AsRef<Path>`] for your own types and they'll
+/// automatically work for filesystem functions.
+///
+/// ## Example
+///
+/// ```no_run
+/// use std::ffi::OsStr;
+/// use std::path::Path;
+/// use std::fs;
+///
+/// // These are all equivalent.
+/// let metadata = fs::metadata("path/to/file")?;
+/// let metadata = fs::metadata(Path::new("path/to/file"))?;
+/// let metadata = fs::metadata(OsStr::new("path/to/file"))?;
+/// # Ok::<(), std::io::Error>(())
+/// ```
+///
+/// # Unstable use
+///
+/// The `AsPath` trait can also be used with [`NativePath`] to pass platform
+/// native paths more directly to system APIs.
+#[unstable(feature = "fs_native_path", issue = "108979")]
+pub trait AsPath {
+    #[doc(hidden)]
+    #[unstable(feature = "fs_native_path_internals", issue = "none")]
+    fn with_path<T, F: FnOnce(&Path) -> io::Result<T>>(self, f: F) -> io::Result<T>;
+    #[doc(hidden)]
+    #[unstable(feature = "fs_native_path_internals", issue = "none")]
+    fn with_native_path<T, F: Fn(&NativePathImpl) -> io::Result<T>>(self, f: F) -> io::Result<T>;
+}
 
 /// An owned, mutable path (akin to [`String`]).
 ///

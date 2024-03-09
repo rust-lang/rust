@@ -1,11 +1,13 @@
-error[E0277]: the trait bound `Option<&str>: AsRef<Path>` is not satisfied
+error[E0277]: the trait bound `Option<&str>: AsPath` is not satisfied
   --> $DIR/issue-72442.rs:12:36
    |
 LL |             let mut f = File::open(path.to_str())?;
-   |                         ---------- ^^^^^^^^^^^^^ the trait `AsRef<Path>` is not implemented for `Option<&str>`
+   |                         ---------- ^^^^^^^^^^^^^ the trait `AsRef<Path>` is not implemented for `Option<&str>`, which is required by `Option<&str>: AsPath`
    |                         |
    |                         required by a bound introduced by this call
    |
+   = help: the trait `AsPath` is implemented for `&NativePath`
+   = note: required for `Option<&str>` to implement `AsPath`
 note: required by a bound in `File::open`
   --> $SRC_DIR/std/src/fs.rs:LL:COL
 help: consider removing this method call, as the receiver has type `&Path` and `&Path: AsRef<Path>` trivially holds
