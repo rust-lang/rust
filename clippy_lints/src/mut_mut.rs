@@ -35,9 +35,34 @@ impl<'tcx> LateLintPass<'tcx> for MutMut {
     }
 
     fn check_ty(&mut self, cx: &LateContext<'tcx>, ty: &'tcx hir::Ty<'_>) {
-        use rustc_hir::intravisit::Visitor;
+        if in_external_macro(cx.sess(), ty.span) {
+            return;
+        }
 
-        MutVisitor { cx }.visit_ty(ty);
+        if let hir::TyKind::Ref(
+            _,
+            hir::MutTy {
+                ty: pty,
+                mutbl: hir::Mutability::Mut,
+            },
+        ) = ty.kind
+        {
+            if let hir::TyKind::Ref(
+                _,
+                hir::MutTy {
+                    mutbl: hir::Mutability::Mut,
+                    ..
+                },
+            ) = pty.kind
+            {
+                span_lint(
+                    cx,
+                    MUT_MUT,
+                    ty.span,
+                    "generally you want to avoid `&mut &mut _` if possible",
+                );
+            }
+        }
     }
 }
 
@@ -79,38 +104,5 @@ impl<'a, 'tcx> intravisit::Visitor<'tcx> for MutVisitor<'a, 'tcx> {
                 }
             }
         }
-    }
-
-    fn visit_ty(&mut self, ty: &'tcx hir::Ty<'_>) {
-        if in_external_macro(self.cx.sess(), ty.span) {
-            return;
-        }
-
-        if let hir::TyKind::Ref(
-            _,
-            hir::MutTy {
-                ty: pty,
-                mutbl: hir::Mutability::Mut,
-            },
-        ) = ty.kind
-        {
-            if let hir::TyKind::Ref(
-                _,
-                hir::MutTy {
-                    mutbl: hir::Mutability::Mut,
-                    ..
-                },
-            ) = pty.kind
-            {
-                span_lint(
-                    self.cx,
-                    MUT_MUT,
-                    ty.span,
-                    "generally you want to avoid `&mut &mut _` if possible",
-                );
-            }
-        }
-
-        intravisit::walk_ty(self, ty);
     }
 }
