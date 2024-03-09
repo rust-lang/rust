@@ -17,8 +17,8 @@ use rustc_middle::mir::interpret::{
     ExpectedKind, InterpError, InvalidMetaKind, Misalignment, PointerKind, Provenance,
     ValidationErrorInfo, ValidationErrorKind, ValidationErrorKind::*,
 };
-use rustc_middle::ty;
 use rustc_middle::ty::layout::{LayoutOf, TyAndLayout};
+use rustc_middle::ty::{self, Ty};
 use rustc_span::symbol::{sym, Symbol};
 use rustc_target::abi::{
     Abi, FieldIdx, Scalar as ScalarAbi, Size, VariantIdx, Variants, WrappingRange,
@@ -783,7 +783,11 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValueVisitor<'mir, 'tcx, M>
     }
 
     #[inline]
-    fn visit_box(&mut self, op: &OpTy<'tcx, M::Provenance>) -> InterpResult<'tcx> {
+    fn visit_box(
+        &mut self,
+        _box_ty: Ty<'tcx>,
+        op: &OpTy<'tcx, M::Provenance>,
+    ) -> InterpResult<'tcx> {
         self.check_safe_pointer(op, PointerKind::Box)?;
         Ok(())
     }

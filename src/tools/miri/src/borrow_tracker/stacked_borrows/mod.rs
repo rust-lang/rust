@@ -865,6 +865,24 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         this.sb_retag_reference(val, new_perm, RetagInfo { cause, in_field: false })
     }
 
+    fn sb_retag_box_to_raw(
+        &mut self,
+        val: &ImmTy<'tcx, Provenance>,
+        alloc_ty: Ty<'tcx>,
+    ) -> InterpResult<'tcx, ImmTy<'tcx, Provenance>> {
+        let this = self.eval_context_mut();
+        let is_global_alloc = alloc_ty.ty_adt_def().is_some_and(|adt| {
+            let global_alloc = this.tcx.require_lang_item(rustc_hir::LangItem::GlobalAlloc, None);
+            adt.did() == global_alloc
+        });
+        if is_global_alloc {
+            // Retag this as-if it was a mutable reference.
+            this.sb_retag_ptr_value(RetagKind::Raw, val)
+        } else {
+            Ok(val.clone())
+        }
+    }
+
     fn sb_retag_place_contents(
         &mut self,
         kind: RetagKind,
@@ -916,10 +934,18 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                 self.ecx
             }
 
-            fn visit_box(&mut self, place: &PlaceTy<'tcx, Provenance>) -> InterpResult<'tcx> {
-                // Boxes get a weak protectors, since they may be deallocated.
-                let new_perm = NewPermission::from_box_ty(place.layout.ty, self.kind, self.ecx);
-                self.retag_ptr_inplace(place, new_perm)
+            fn visit_box(
+                &mut self,
+                box_ty: Ty<'tcx>,
+                place: &PlaceTy<'tcx, Provenance>,
+            ) -> InterpResult<'tcx> {
+                // Only boxes for the global allocator get any special treatment.
+                if box_ty.is_box_global(*self.ecx.tcx) {
+                    // Boxes get a weak protectors, since they may be deallocated.
+                    let new_perm = NewPermission::from_box_ty(place.layout.ty, self.kind, self.ecx);
+                    self.retag_ptr_inplace(place, new_perm)?;
+                }
+                Ok(())
             }
 
             fn visit_value(&mut self, place: &PlaceTy<'tcx, Provenance>) -> InterpResult<'tcx> {
