@@ -2799,6 +2799,10 @@ pub(crate) use assert_unsafe_precondition;
 
 /// Checks whether `ptr` is properly aligned with respect to
 /// `align_of::<T>()`.
+///
+/// In `const` this is approximate and can fail spuriously. It is primarily intended
+/// for `assert_unsafe_precondition!` with `check_language_ub`, in which case the
+/// check is anyway not executed in `const`.
 #[inline]
 pub(crate) const fn is_aligned_and_not_null(ptr: *const (), align: usize) -> bool {
     !ptr.is_null() && ptr.is_aligned_to(align)
@@ -2813,10 +2817,10 @@ pub(crate) const fn is_valid_allocation_size(size: usize, len: usize) -> bool {
 /// Checks whether the regions of memory starting at `src` and `dst` of size
 /// `count * size` do *not* overlap.
 ///
-/// # Safety
-/// This function must only be called such that if it returns false, we will execute UB.
+/// Note that in const-eval this function just returns `true` and therefore must
+/// only be used with `assert_unsafe_precondition!`, similar to `is_aligned_and_not_null`.
 #[inline]
-pub(crate) const unsafe fn is_nonoverlapping(
+pub(crate) const fn is_nonoverlapping(
     src: *const (),
     dst: *const (),
     size: usize,
@@ -2842,7 +2846,7 @@ pub(crate) const unsafe fn is_nonoverlapping(
         true
     }
 
-    #[cfg_attr(not(bootstrap), allow(unused_unsafe))]
+    #[cfg_attr(not(bootstrap), allow(unused_unsafe))] // on bootstrap bump, remove unsafe block
     // SAFETY: This function's precondition is equivalent to that of `const_eval_select`.
     // Programs which do not execute UB will only see this function return `true`, which makes the
     // const and runtime implementation indistinguishable.
@@ -2962,8 +2966,7 @@ pub const unsafe fn copy_nonoverlapping<T>(src: *const T, dst: *mut T, count: us
         ) =>
         is_aligned_and_not_null(src, align)
             && is_aligned_and_not_null(dst, align)
-            // SAFETY: If this returns false, we're about to execute UB.
-            && unsafe { is_nonoverlapping(src, dst, size, count) }
+            && is_nonoverlapping(src, dst, size, count)
     );
 
     // SAFETY: the safety contract for `copy_nonoverlapping` must be

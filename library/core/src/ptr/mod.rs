@@ -1032,8 +1032,7 @@ pub const unsafe fn swap_nonoverlapping<T>(x: *mut T, y: *mut T, count: usize) {
         ) =>
         is_aligned_and_not_null(x, align)
             && is_aligned_and_not_null(y, align)
-            // SAFETY: If this returns false, we're about to execute UB.
-            && unsafe { is_nonoverlapping(x, y, size, count) }
+            && is_nonoverlapping(x, y, size, count)
     );
 
     // Split up the slice into small power-of-two-sized chunks that LLVM is able
