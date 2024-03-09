@@ -36,6 +36,15 @@ fn docs_link(diag: &mut Diag<'_, ()>, lint: &'static Lint) {
 /// Usually it's nicer to provide more context for lint messages.
 /// Be sure the output is understandable when you use this method.
 ///
+/// NOTE: only lint-level attributes at the `LintPass::check_*` node from which you are calling this
+/// will be considered.
+/// This can be confusing if the given span is at a different place, because users won't know where
+/// `#[allow]` or `#[expect]` attributes need to be placed.
+///
+/// This can happen if, for example, you are in `LintPass::check_block` and you are emitting a lint
+/// for a particular expression within that block.
+/// In those cases, consider using [`span_lint_hir`], and pass the `HirId` of that expression.
+///
 /// # Example
 ///
 /// ```ignore
@@ -60,6 +69,15 @@ pub fn span_lint<T: LintContext>(cx: &T, lint: &'static Lint, sp: impl Into<Mult
 /// The `help` message can be optionally attached to a `Span`.
 ///
 /// If you change the signature, remember to update the internal lint `CollapsibleCalls`
+///
+/// NOTE: only lint-level attributes at the `LintPass::check_*` node from which you are calling this
+/// will be considered.
+/// This can be confusing if the given span is at a different place, because users won't know where
+/// `#[allow]` or `#[expect]` attributes need to be placed.
+///
+/// This can happen if, for example, you are in `LintPass::check_block` and you are emitting a lint
+/// for a particular expression within that block.
+/// In those cases, consider using [`span_lint_hir`], and pass the `HirId` of that expression.
 ///
 /// # Example
 ///
@@ -98,6 +116,15 @@ pub fn span_lint_and_help<T: LintContext>(
 /// and is attached to a specific span:
 ///
 /// If you change the signature, remember to update the internal lint `CollapsibleCalls`
+///
+/// NOTE: only lint-level attributes at the `LintPass::check_*` node from which you are calling this
+/// will be considered.
+/// This can be confusing if the given span is at a different place, because users won't know where
+/// `#[allow]` or `#[expect]` attributes need to be placed.
+///
+/// This can happen if, for example, you are in `LintPass::check_block` and you are emitting a lint
+/// for a particular expression within that block.
+/// In those cases, consider using [`span_lint_hir`], and pass the `HirId` of that expression.
 ///
 /// # Example
 ///
@@ -139,6 +166,15 @@ pub fn span_lint_and_note<T: LintContext>(
 ///
 /// If you need to customize your lint output a lot, use this function.
 /// If you change the signature, remember to update the internal lint `CollapsibleCalls`
+///
+/// NOTE: only lint-level attributes at the `LintPass::check_*` node from which you are calling this
+/// will be considered.
+/// This can be confusing if the given span is at a different place, because users won't know where
+/// `#[allow]` or `#[expect]` attributes need to be placed.
+///
+/// This can happen if, for example, you are in `LintPass::check_block` and you are emitting a lint
+/// for a particular expression within that block.
+/// In those cases, consider using [`span_lint_hir`], and pass the `HirId` of that expression.
 pub fn span_lint_and_then<C, S, F>(cx: &C, lint: &'static Lint, sp: S, msg: &str, f: F)
 where
     C: LintContext,
@@ -155,22 +191,25 @@ where
 /// Like [`span_lint`], but allows providing the `HirId` of the node that caused us to emit this
 /// lint.
 ///
-/// The `HirId` is used for checking lint level attributes.
+/// The `HirId` is used for checking lint level attributes and to fulfill lint expectations defined
+/// via the `#[expect]` attribute.
 ///
 /// For example:
 /// ```ignore
-/// fn f() { /* '1 */
+/// fn f() { /* <node_1> */
 ///
 ///     #[allow(clippy::some_lint)]
-///     let _x = /* '2 */;
+///     let _x = /* <expr_1> */;
 /// }
 /// ```
-/// If `some_lint` does its analysis in `LintPass::check_fn` (at `'1`) and emits a lint at `'2`
-/// using [`span_lint`], then allowing the lint at `'2` as attempted in the snippet will not work!
+/// If `some_lint` does its analysis in `LintPass::check_fn` (at `<node_1>`) and emits a lint at
+/// `<expr_1>` using [`span_lint`], then allowing the lint at `<expr_1>` as attempted in the snippet
+/// will not work!
 /// Even though that is where the warning points at, which would be confusing to users.
 ///
-/// Instead, use this function and also pass the `HirId` of the node at `'2`, which will let the
-/// compiler check lint level attributes at `'2` as one would expect, and the `#[allow]` will work.
+/// Instead, use this function and also pass the `HirId` of `<expr_1>`, which will let
+/// the compiler check lint level attributes at the place of the expression and
+/// the `#[allow]` will work.
 pub fn span_lint_hir(cx: &LateContext<'_>, lint: &'static Lint, hir_id: HirId, sp: Span, msg: &str) {
     #[expect(clippy::disallowed_methods)]
     cx.tcx.node_span_lint(lint, hir_id, sp, msg.to_string(), |diag| {
@@ -181,22 +220,25 @@ pub fn span_lint_hir(cx: &LateContext<'_>, lint: &'static Lint, hir_id: HirId, s
 /// Like [`span_lint_and_then`], but allows providing the `HirId` of the node that caused us to emit
 /// this lint.
 ///
-/// The `HirId` is used for checking lint level attributes.
+/// The `HirId` is used for checking lint level attributes and to fulfill lint expectations defined
+/// via the `#[expect]` attribute.
 ///
 /// For example:
 /// ```ignore
-/// fn f() { /* '1 */
+/// fn f() { /* <node_1> */
 ///
 ///     #[allow(clippy::some_lint)]
-///     let _x = /* '2 */;
+///     let _x = /* <expr_1> */;
 /// }
 /// ```
-/// If `some_lint` does its analysis in `LintPass::check_fn` (at `'1`) and emits a lint at `'2`
-/// using [`span_lint_and_then`], then allowing the lint at `'2` as attempted in the snippet will
-/// not work! Even though that is where the warning points at, which would be confusing to users.
+/// If `some_lint` does its analysis in `LintPass::check_fn` (at `<node_1>`) and emits a lint at
+/// `<expr_1>` using [`span_lint`], then allowing the lint at `<expr_1>` as attempted in the snippet
+/// will not work!
+/// Even though that is where the warning points at, which would be confusing to users.
 ///
-/// Instead, use this function and also pass the `HirId` of the node at `'2`, which will let the
-/// compiler check lint level attributes at `'2` as one would expect, and the `#[allow]` will work.
+/// Instead, use this function and also pass the `HirId` of `<expr_1>`, which will let
+/// the compiler check lint level attributes at the place of the expression and
+/// the `#[allow]` will work.
 pub fn span_lint_hir_and_then(
     cx: &LateContext<'_>,
     lint: &'static Lint,
@@ -219,6 +261,15 @@ pub fn span_lint_hir_and_then(
 /// 2)"`.
 ///
 /// If you change the signature, remember to update the internal lint `CollapsibleCalls`
+///
+/// NOTE: only lint-level attributes at the `LintPass::check_*` node from which you are calling this
+/// will be considered.
+/// This can be confusing if the given span is at a different place, because users won't know where
+/// `#[allow]` or `#[expect]` attributes need to be placed.
+///
+/// This can happen if, for example, you are in `LintPass::check_block` and you are emitting a lint
+/// for a particular expression within that block.
+/// In those cases, consider using [`span_lint_hir`], and pass the `HirId` of that expression.
 ///
 /// # Example
 ///
