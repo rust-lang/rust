@@ -510,11 +510,11 @@ impl Command {
         let miri_flags = flagsplit(&miri_flags);
         let toolchain = &e.toolchain;
         let extra_flags = &e.cargo_extra_flags;
-        let edition_flags = (!have_edition).then_some("--edition=2021"); // keep in sync with `compiletest.rs`.`
+        let edition_flags = (!have_edition).then_some("--edition=2021"); // keep in sync with `tests/ui.rs`.`
         if dep {
             cmd!(
                 e.sh,
-                "cargo +{toolchain} --quiet test --test compiletest {extra_flags...} --manifest-path {miri_manifest} -- --miri-run-dep-mode {miri_flags...} {edition_flags...} {flags...}"
+                "cargo +{toolchain} --quiet test {extra_flags...} --manifest-path {miri_manifest} --test ui -- --miri-run-dep-mode {miri_flags...} {edition_flags...} {flags...}"
             ).quiet().run()?;
         } else {
             cmd!(

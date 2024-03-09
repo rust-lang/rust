@@ -53,7 +53,7 @@ tempfile = "3"
 rustc_private = true
 
 [[test]]
-name = "compiletest"
+name = "ui"
 harness = false
 
 [features]

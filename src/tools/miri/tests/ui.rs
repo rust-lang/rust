@@ -241,7 +241,7 @@ fn main() -> Result<()> {
     ui_test::color_eyre::install()?;
 
     let target = get_target();
-    let tmpdir = tempfile::Builder::new().prefix("miri-compiletest-").tempdir()?;
+    let tmpdir = tempfile::Builder::new().prefix("miri-uitest-").tempdir()?;
 
     let mut args = std::env::args_os();
 
