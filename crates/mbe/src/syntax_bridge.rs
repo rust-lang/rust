@@ -9,7 +9,6 @@ use syntax::{
     SyntaxKind::*,
     SyntaxNode, SyntaxToken, SyntaxTreeBuilder, TextRange, TextSize, WalkEvent, T,
 };
-use tracing::info;
 use tt::{
     buffer::{Cursor, TokenBuffer},
     Span,

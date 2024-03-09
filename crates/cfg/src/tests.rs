@@ -1,7 +1,10 @@
 use arbitrary::{Arbitrary, Unstructured};
 use expect_test::{expect, Expect};
 use mbe::{syntax_node_to_token_tree, DummyTestSpanMap, DUMMY};
-use syntax::{ast, AstNode};
+use syntax::{
+    ast::{self, Attr},
+    AstNode, SourceFile,
+};
 
 use crate::{CfgAtom, CfgExpr, CfgOptions, DnfExpr};
 
@@ -11,6 +14,22 @@ fn assert_parse_result(input: &str, expected: CfgExpr) {
     let tt = syntax_node_to_token_tree(tt.syntax(), DummyTestSpanMap, DUMMY);
     let cfg = CfgExpr::parse(&tt);
     assert_eq!(cfg, expected);
+}
+fn check_dnf_from_syntax(input: &str, expect: Expect) {
+    let parse = SourceFile::parse(input);
+    let node = match parse.tree().syntax().descendants().find_map(Attr::cast) {
+        Some(it) => it,
+        None => {
+            let node = std::any::type_name::<Attr>();
+            panic!("Failed to make ast node `{node}` from text {input}")
+        }
+    };
+    let node = node.clone_subtree();
+    assert_eq!(node.syntax().text_range().start(), 0.into());
+
+    let cfg = CfgExpr::parse_from_attr_meta(node.meta().unwrap()).unwrap();
+    let actual = format!("#![cfg({})]", DnfExpr::new(cfg));
+    expect.assert_eq(&actual);
 }
 
 fn check_dnf(input: &str, expect: Expect) {
@@ -85,6 +104,11 @@ fn smoke() {
     check_dnf("#![cfg(any(a, b))]", expect![[r#"#![cfg(any(a, b))]"#]]);
 
     check_dnf("#![cfg(not(a))]", expect![[r#"#![cfg(not(a))]"#]]);
+}
+#[test]
+fn cfg_from_attr() {
+    check_dnf_from_syntax(r#"#[cfg(test)]"#, expect![[r#"#![cfg(test)]"#]]);
+    check_dnf_from_syntax(r#"#[cfg(not(never))]"#, expect![[r#"#![cfg(not(never))]"#]]);
 }
 
 #[test]

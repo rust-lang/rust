@@ -1,102 +1,65 @@
-use std::os::windows::process;
-
-use mbe::syntax_node_to_token_tree;
+//! Processes out #[cfg] and #[cfg_attr] attributes from the input for the derive macro
 use rustc_hash::FxHashSet;
 use syntax::{
-    ast::{self, Attr, FieldList, HasAttrs, RecordFieldList, TupleFieldList, Variant, VariantList},
+    ast::{self, Attr, HasAttrs, Meta, VariantList},
     AstNode, SyntaxElement, SyntaxNode, T,
 };
-use tracing::info;
+use tracing::{info, warn};
 
-use crate::{db::ExpandDatabase, span_map::SpanMap, MacroCallLoc};
+use crate::{db::ExpandDatabase, MacroCallKind, MacroCallLoc};
 
-fn check_cfg_attr(
-    attr: &Attr,
-    loc: &MacroCallLoc,
-    span_map: &SpanMap,
-    db: &dyn ExpandDatabase,
-) -> Option<bool> {
-    attr.simple_name().as_deref().map(|v| v == "cfg")?;
-    info!("Checking cfg attr {:?}", attr);
-    let Some(tt) = attr.token_tree() else {
-        info!("cfg attr has no expr {:?}", attr);
-        return Some(true);
-    };
-    info!("Checking cfg {:?}", tt);
-    let tt = tt.syntax().clone();
-    // Convert to a tt::Subtree
-    let tt = syntax_node_to_token_tree(&tt, span_map, loc.call_site);
-    let cfg = cfg::CfgExpr::parse(&tt);
+fn check_cfg_attr(attr: &Attr, loc: &MacroCallLoc, db: &dyn ExpandDatabase) -> Option<bool> {
+    if !attr.simple_name().as_deref().map(|v| v == "cfg")? {
+        return None;
+    }
+    info!("Evaluating cfg {}", attr);
+    let cfg = cfg::CfgExpr::parse_from_attr_meta(attr.meta()?)?;
+    info!("Checking cfg {:?}", cfg);
     let enabled = db.crate_graph()[loc.krate].cfg_options.check(&cfg) != Some(false);
     Some(enabled)
 }
-enum CfgAttrResult {
-    Enabled(Attr),
-    Disabled,
-}
 
-fn check_cfg_attr_attr(
-    attr: &Attr,
-    loc: &MacroCallLoc,
-    span_map: &SpanMap,
-    db: &dyn ExpandDatabase,
-) -> Option<CfgAttrResult> {
-    attr.simple_name().as_deref().map(|v| v == "cfg_attr")?;
-    info!("Checking cfg_attr attr {:?}", attr);
-    let Some(tt) = attr.token_tree() else {
-        info!("cfg_attr attr has no expr {:?}", attr);
+fn check_cfg_attr_attr(attr: &Attr, loc: &MacroCallLoc, db: &dyn ExpandDatabase) -> Option<bool> {
+    if !attr.simple_name().as_deref().map(|v| v == "cfg_attr")? {
         return None;
-    };
-    info!("Checking cfg_attr {:?}", tt);
-    let tt = tt.syntax().clone();
-    // Convert to a tt::Subtree
-    let tt = syntax_node_to_token_tree(&tt, span_map, loc.call_site);
-    let cfg = cfg::CfgExpr::parse(&tt);
-    let enabled = db.crate_graph()[loc.krate].cfg_options.check(&cfg) != Some(false);
-    if enabled {
-        // FIXME: Add the internal attribute
-        Some(CfgAttrResult::Enabled(attr.clone()))
-    } else {
-        Some(CfgAttrResult::Disabled)
     }
+    info!("Evaluating cfg_attr {}", attr);
+
+    let cfg_expr = cfg::CfgExpr::parse_from_attr_meta(attr.meta()?)?;
+    info!("Checking cfg_attr {:?}", cfg_expr);
+    let enabled = db.crate_graph()[loc.krate].cfg_options.check(&cfg_expr) != Some(false);
+    Some(enabled)
 }
 
 fn process_has_attrs_with_possible_comma<I: HasAttrs>(
     items: impl Iterator<Item = I>,
     loc: &MacroCallLoc,
-    span_map: &SpanMap,
     db: &dyn ExpandDatabase,
-    res: &mut FxHashSet<SyntaxElement>,
+    remove: &mut FxHashSet<SyntaxElement>,
 ) -> Option<()> {
     for item in items {
         let field_attrs = item.attrs();
         'attrs: for attr in field_attrs {
-            let Some(enabled) = check_cfg_attr(&attr, loc, span_map, db) else {
-                continue;
-            };
-            if enabled {
-                //FIXME: Should we remove the cfg_attr?
-            } else {
-                info!("censoring type {:?}", item.syntax());
-                res.insert(item.syntax().clone().into());
-                // We need to remove the , as well
-                if let Some(comma) = item.syntax().next_sibling_or_token() {
-                    if comma.kind() == T![,] {
-                        res.insert(comma.into());
-                    }
-                }
-                break 'attrs;
-            }
-            let Some(attr_result) = check_cfg_attr_attr(&attr, loc, span_map, db) else {
-                continue;
-            };
-            match attr_result {
-                CfgAttrResult::Enabled(attr) => {
-                    //FIXME: Replace the attribute with the internal attribute
-                }
-                CfgAttrResult::Disabled => {
+            if let Some(enabled) = check_cfg_attr(&attr, loc, db) {
+                // Rustc does not strip the attribute if it is enabled. So we will will leave it
+                if !enabled {
                     info!("censoring type {:?}", item.syntax());
-                    res.insert(attr.syntax().clone().into());
+                    remove.insert(item.syntax().clone().into());
+                    // We need to remove the , as well
+                    add_comma(&item, remove);
+                    break 'attrs;
+                }
+            };
+
+            if let Some(enabled) = check_cfg_attr_attr(&attr, loc, db) {
+                if enabled {
+                    info!("Removing cfg_attr tokens {:?}", attr);
+                    let meta = attr.meta()?;
+                    let removes_from_cfg_attr = remove_tokens_within_cfg_attr(meta)?;
+                    remove.extend(removes_from_cfg_attr);
+                } else {
+                    info!("censoring type cfg_attr {:?}", item.syntax());
+                    remove.insert(attr.syntax().clone().into());
                     continue;
                 }
             }
@@ -104,75 +67,130 @@ fn process_has_attrs_with_possible_comma<I: HasAttrs>(
     }
     Some(())
 }
+
+fn remove_tokens_within_cfg_attr(meta: Meta) -> Option<FxHashSet<SyntaxElement>> {
+    let mut remove: FxHashSet<SyntaxElement> = FxHashSet::default();
+    info!("Enabling attribute {}", meta);
+    let meta_path = meta.path()?;
+    info!("Removing {:?}", meta_path.syntax());
+    remove.insert(meta_path.syntax().clone().into());
+
+    let meta_tt = meta.token_tree()?;
+    info!("meta_tt {}", meta_tt);
+    // Remove the left paren
+    remove.insert(meta_tt.l_paren_token()?.into());
+    let mut found_comma = false;
+    for tt in meta_tt.token_trees_and_tokens().skip(1) {
+        info!("Checking {:?}", tt);
+        // Check if it is a subtree or a token. If it is a token check if it is a comma. If so, remove it and break.
+        match tt {
+            syntax::NodeOrToken::Node(node) => {
+                // Remove the entire subtree
+                remove.insert(node.syntax().clone().into());
+            }
+            syntax::NodeOrToken::Token(token) => {
+                if token.kind() == T![,] {
+                    found_comma = true;
+                    remove.insert(token.into());
+                    break;
+                }
+                remove.insert(token.into());
+            }
+        }
+    }
+    if !found_comma {
+        warn!("No comma found in {}", meta_tt);
+        return None;
+    }
+    // Remove the right paren
+    remove.insert(meta_tt.r_paren_token()?.into());
+    Some(remove)
+}
+fn add_comma(item: &impl AstNode, res: &mut FxHashSet<SyntaxElement>) {
+    if let Some(comma) = item.syntax().next_sibling_or_token().filter(|it| it.kind() == T![,]) {
+        res.insert(comma);
+    }
+}
 fn process_enum(
     variants: VariantList,
     loc: &MacroCallLoc,
-    span_map: &SpanMap,
     db: &dyn ExpandDatabase,
-    res: &mut FxHashSet<SyntaxElement>,
+    remove: &mut FxHashSet<SyntaxElement>,
 ) -> Option<()> {
-    for variant in variants.variants() {
-        'attrs: for attr in variant.attrs() {
-            if !check_cfg_attr(&attr, loc, span_map, db)? {
-                info!("censoring variant {:?}", variant.syntax());
-                res.insert(variant.syntax().clone().into());
-                if let Some(comma) = variant.syntax().next_sibling_or_token() {
-                    if comma.kind() == T![,] {
-                        res.insert(comma.into());
-                    }
+    'variant: for variant in variants.variants() {
+        for attr in variant.attrs() {
+            if let Some(enabled) = check_cfg_attr(&attr, loc, db) {
+                // Rustc does not strip the attribute if it is enabled. So we will will leave it
+                if !enabled {
+                    info!("censoring type {:?}", variant.syntax());
+                    remove.insert(variant.syntax().clone().into());
+                    // We need to remove the , as well
+                    add_comma(&variant, remove);
+                    continue 'variant;
                 }
-                break 'attrs;
+            };
+
+            if let Some(enabled) = check_cfg_attr_attr(&attr, loc, db) {
+                if enabled {
+                    info!("Removing cfg_attr tokens {:?}", attr);
+                    let meta = attr.meta()?;
+                    let removes_from_cfg_attr = remove_tokens_within_cfg_attr(meta)?;
+                    remove.extend(removes_from_cfg_attr);
+                } else {
+                    info!("censoring type cfg_attr {:?}", variant.syntax());
+                    remove.insert(attr.syntax().clone().into());
+                    continue;
+                }
             }
         }
         if let Some(fields) = variant.field_list() {
             match fields {
                 ast::FieldList::RecordFieldList(fields) => {
-                    process_has_attrs_with_possible_comma(fields.fields(), loc, span_map, db, res)?;
+                    process_has_attrs_with_possible_comma(fields.fields(), loc, db, remove)?;
                 }
                 ast::FieldList::TupleFieldList(fields) => {
-                    process_has_attrs_with_possible_comma(fields.fields(), loc, span_map, db, res)?;
+                    process_has_attrs_with_possible_comma(fields.fields(), loc, db, remove)?;
                 }
             }
         }
     }
     Some(())
 }
-/// Handle 
+
 pub(crate) fn process_cfg_attrs(
     node: &SyntaxNode,
     loc: &MacroCallLoc,
-    span_map: &SpanMap,
     db: &dyn ExpandDatabase,
 ) -> Option<FxHashSet<SyntaxElement>> {
+    // FIXME: #[cfg_eval] is not implemented. But it is not stable yet
+    if !matches!(loc.kind, MacroCallKind::Derive { .. }) {
+        return None;
+    }
     let mut res = FxHashSet::default();
+
     let item = ast::Item::cast(node.clone())?;
     match item {
         ast::Item::Struct(it) => match it.field_list()? {
             ast::FieldList::RecordFieldList(fields) => {
-                process_has_attrs_with_possible_comma(
-                    fields.fields(),
-                    loc,
-                    span_map,
-                    db,
-                    &mut res,
-                )?;
+                process_has_attrs_with_possible_comma(fields.fields(), loc, db, &mut res)?;
             }
             ast::FieldList::TupleFieldList(fields) => {
-                process_has_attrs_with_possible_comma(
-                    fields.fields(),
-                    loc,
-                    span_map,
-                    db,
-                    &mut res,
-                )?;
+                process_has_attrs_with_possible_comma(fields.fields(), loc, db, &mut res)?;
             }
         },
         ast::Item::Enum(it) => {
-            process_enum(it.variant_list()?, loc, span_map, db, &mut res)?;
+            process_enum(it.variant_list()?, loc, db, &mut res)?;
         }
-        // FIXME: Implement for other items
+        ast::Item::Union(it) => {
+            process_has_attrs_with_possible_comma(
+                it.record_field_list()?.fields(),
+                loc,
+                db,
+                &mut res,
+            )?;
+        }
+        // FIXME: Implement for other items if necessary. As we do not support #[cfg_eval] yet, we do not need to implement it for now
         _ => {}
     }
-
     Some(res)
 }

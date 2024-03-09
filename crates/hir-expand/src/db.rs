@@ -7,10 +7,9 @@ use mbe::{syntax_node_to_token_tree, ValueResult};
 use rustc_hash::FxHashSet;
 use span::{AstIdMap, SyntaxContextData, SyntaxContextId};
 use syntax::{
-    ast::{self, Attr, HasAttrs},
+    ast::{self, HasAttrs},
     AstNode, Parse, SyntaxElement, SyntaxError, SyntaxNode, SyntaxToken, T,
 };
-use tracing::info;
 use triomphe::Arc;
 
 use crate::{
@@ -410,7 +409,8 @@ fn macro_arg(
             ),
             MacroCallKind::Derive { .. } | MacroCallKind::Attr { .. } => {
                 let censor = censor_for_macro_input(&loc, &syntax);
-                let censor_cfg = censor_cfg_elements(&syntax, &loc, &map, db);
+                let censor_cfg =
+                    cfg_process::process_cfg_attrs(&syntax, &loc, db).unwrap_or_default();
                 let mut fixups = fixup::fixup_syntax(map.as_ref(), &syntax, loc.call_site);
                 fixups.append.retain(|it, _| match it {
                     syntax::NodeOrToken::Token(_) => true,
@@ -461,14 +461,7 @@ fn macro_arg(
         }
     }
 }
-fn censor_cfg_elements(
-    node: &SyntaxNode,
-    loc: &MacroCallLoc,
-    span_map: &SpanMap,
-    db: &dyn ExpandDatabase,
-) -> FxHashSet<SyntaxElement> {
-    cfg_process::process_cfg_attrs(node, loc, span_map, db).unwrap_or_default()
-}
+
 // FIXME: Censoring info should be calculated by the caller! Namely by name resolution
 /// Certain macro calls expect some nodes in the input to be preprocessed away, namely:
 /// - derives expect all `#[derive(..)]` invocations up to the currently invoked one to be stripped
