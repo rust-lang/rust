@@ -1,0 +1,12 @@
+error[E0381]: used binding isn't initialized
+  --> $DIR/bindings.rs:8:14
+   |
+LL |         box [x] => assert_eq!(x, 1),
+   |         -----^-
+   |         |    |
+   |         |    value used here but it isn't initialized
+   |         binding declared here but left uninitialized
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0381`.

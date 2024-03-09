@@ -465,6 +465,7 @@ impl<'p, 'tcx: 'p> RustcPatCtxt<'p, 'tcx> {
             PatKind::DerefPattern { .. } => {
                 // FIXME(deref_patterns): At least detect that `box _` is irrefutable.
                 fields = vec![];
+                arity = 0;
                 ctor = Opaque(OpaqueId::new());
             }
             PatKind::Leaf { subpatterns } | PatKind::Variant { subpatterns, .. } => {

@@ -4,6 +4,8 @@
 
 use std::rc::Rc;
 
+struct Struct;
+
 fn main() {
     let vec: Vec<u32> = Vec::new();
     match vec {
@@ -22,10 +24,12 @@ fn main() {
         box (1..) => {}
         _ => {}
     }
-    // FIXME(deref_patterns): fails to typecheck because `"foo"` has type &str but deref creates a
-    // place of type `str`.
-    // match "foo".to_string() {
-    //     box "foo" => {}
-    //     _ => {}
-    // }
+    let _: &Struct = match &Rc::new(Struct) {
+        box x => x,
+        _ => unreachable!(),
+    };
+    let _: &[Struct] = match &Rc::new(vec![Struct]) {
+        box (box x) => x,
+        _ => unreachable!(),
+    };
 }
