@@ -1,5 +1,3 @@
-//@compile-flags: -Zdeduplicate-diagnostics=yes
-
 #![deny(clippy::option_option)]
 #![allow(clippy::unnecessary_wraps)]
 
