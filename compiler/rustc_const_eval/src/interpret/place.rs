@@ -624,7 +624,6 @@ where
                     dest.force_mplace(self)?
                 } else {
                     debug_assert_eq!(locals_addr, self.frame().locals_addr());
-                    M::before_access_local_mut(self, self.frame_idx(), local)?;
                     match self.frame_mut().locals[local].access_mut()? {
                         Operand::Immediate(local_val) => {
                             // Local can be updated in-place.
@@ -740,7 +739,6 @@ where
                     dest.force_mplace(self)?
                 } else {
                     debug_assert_eq!(locals_addr, self.frame().locals_addr());
-                    M::before_access_local_mut(self, self.frame_idx(), local)?;
                     match self.frame_mut().locals[local].access_mut()? {
                         Operand::Immediate(local) => {
                             *local = Immediate::Uninit;
@@ -921,7 +919,6 @@ where
         let mplace = match place.place {
             Place::Local { local, offset, locals_addr } => {
                 debug_assert_eq!(locals_addr, self.frame().locals_addr());
-                M::before_access_local_mut(self, self.frame_idx(), local)?;
                 let whole_local = match self.frame_mut().locals[local].access_mut()? {
                     &mut Operand::Immediate(local_val) => {
                         // We need to make an allocation.

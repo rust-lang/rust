@@ -221,9 +221,6 @@ impl<'tcx, Prov: Provenance> LocalState<'tcx, Prov> {
 
     /// Overwrite the local. If the local can be overwritten in place, return a reference
     /// to do so; otherwise return the `MemPlace` to consult instead.
-    ///
-    /// Note: Before calling this, call the `before_access_local_mut` machine hook! You may be
-    /// invalidating machine invariants otherwise!
     #[inline(always)]
     pub(super) fn access_mut(&mut self) -> InterpResult<'tcx, &mut Operand<Prov>> {
         match &mut self.value {
