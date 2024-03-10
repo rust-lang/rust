@@ -7,8 +7,8 @@ otherwise be printed to stderr.
 
 To get diagnostics from the compiler,
 configure [`rustc_interface::Config`] to output diagnostic to a buffer,
-and run [`TyCtxt.analysis`]. The following was tested
-with <!-- date-check: september 2024 --> `nightly-2024-09-16`:
+and run [`TyCtxt.analysis`].
+The following was tested with <!-- date-check: september 2024 --> `nightly-2024-09-16`:
 
 ```rust
 {{#include ../examples/rustc-driver-getting-diagnostics.rs}}
