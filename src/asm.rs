@@ -114,7 +114,8 @@ impl<'a, 'gcc, 'tcx> AsmBuilderMethods<'tcx> for Builder<'a, 'gcc, 'tcx> {
         options: InlineAsmOptions,
         span: &[Span],
         instance: Instance<'_>,
-        _dest_catch_funclet: Option<(Self::BasicBlock, Self::BasicBlock, Option<&Self::Funclet>)>,
+        dest: Option<Self::BasicBlock>,
+        _dest_catch_funclet: Option<(Self::BasicBlock, Option<&Self::Funclet>)>,
     ) {
         if options.contains(InlineAsmOptions::MAY_UNWIND) {
             self.sess().dcx().create_err(UnwindingInlineAsm { span: span[0] }).emit();
@@ -131,6 +132,10 @@ impl<'a, 'gcc, 'tcx> AsmBuilderMethods<'tcx> for Builder<'a, 'gcc, 'tcx> {
         // GCC index of an input operand equals its position in the array
         // added to `outputs.len()`
         let mut inputs = vec![];
+
+        // GCC index of a label equals its position in the array added to
+        // `outputs.len() + inputs.len()`.
+        let mut labels = vec![];
 
         // Clobbers collected from `out("explicit register") _` and `inout("expl_reg") var => _`
         let mut clobbers = vec![];
@@ -283,6 +288,10 @@ impl<'a, 'gcc, 'tcx> AsmBuilderMethods<'tcx> for Builder<'a, 'gcc, 'tcx> {
                     constants_len +=
                         self.tcx.symbol_name(Instance::mono(self.tcx, def_id)).name.len();
                 }
+
+                InlineAsmOperandRef::Label { label } => {
+                    labels.push(label);
+                }
             }
         }
 
@@ -381,6 +390,10 @@ impl<'a, 'gcc, 'tcx> AsmBuilderMethods<'tcx> for Builder<'a, 'gcc, 'tcx> {
                 InlineAsmOperandRef::Const { .. } => {
                     // processed in the previous pass
                 }
+
+                InlineAsmOperandRef::Label { .. } => {
+                    // processed in the previous pass
+                }
             }
         }
 
@@ -470,6 +483,13 @@ impl<'a, 'gcc, 'tcx> AsmBuilderMethods<'tcx> for Builder<'a, 'gcc, 'tcx> {
                         InlineAsmOperandRef::Const { ref string } => {
                             template_str.push_str(string);
                         }
+
+                        InlineAsmOperandRef::Label { label } => {
+                            let label_gcc_index =
+                                labels.iter().position(|&l| l == label).expect("wrong rust index");
+                            let gcc_index = label_gcc_index + outputs.len() + inputs.len();
+                            push_to_template(Some('l'), gcc_index);
+                        }
                     }
                 }
             }
@@ -482,7 +502,12 @@ impl<'a, 'gcc, 'tcx> AsmBuilderMethods<'tcx> for Builder<'a, 'gcc, 'tcx> {
         // 4. Generate Extended Asm block
 
         let block = self.llbb();
-        let extended_asm = block.add_extended_asm(None, &template_str);
+        let extended_asm = if let Some(dest) = dest {
+            assert!(!labels.is_empty());
+            block.end_with_extended_asm_goto(None, &template_str, &labels, Some(dest))
+        } else {
+            block.add_extended_asm(None, &template_str)
+        };
 
         for op in &outputs {
             extended_asm.add_output_operand(None, &op.to_constraint(), op.tmp_var);
@@ -510,7 +535,7 @@ impl<'a, 'gcc, 'tcx> AsmBuilderMethods<'tcx> for Builder<'a, 'gcc, 'tcx> {
         if !options.contains(InlineAsmOptions::NOSTACK) {
             // TODO(@Commeownist): figure out how to align stack
         }
-        if options.contains(InlineAsmOptions::NORETURN) {
+        if dest.is_none() && options.contains(InlineAsmOptions::NORETURN) {
             let builtin_unreachable = self.context.get_builtin_function("__builtin_unreachable");
             let builtin_unreachable: RValue<'gcc> =
                 unsafe { std::mem::transmute(builtin_unreachable) };
