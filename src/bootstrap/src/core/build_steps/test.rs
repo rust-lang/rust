@@ -1549,6 +1549,8 @@ impl Step for MirOpt {
             })
         };
 
+        run(self.target);
+
         if builder.config.cmd.bless() {
             // All that we really need to do is cover all combinations of 32/64-bit and unwind/abort,
             // but while we're at it we might as well flex our cross-compilation support. This
@@ -1567,8 +1569,6 @@ impl Step for MirOpt {
                 });
                 run(panic_abort_target);
             }
-        } else {
-            run(self.target);
         }
     }
 }
