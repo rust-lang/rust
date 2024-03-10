@@ -1,5 +1,3 @@
-//@ check-pass
-
 // Some trait with a function that returns a slice:
 pub trait AsSlice {
     type Element;
@@ -24,6 +22,7 @@ impl<Cont> A<Cont> {
         Self: AsSlice<Element = Coef>,
     {
         self.as_ref_a().as_ref_a();
+        //~^ ERROR no method named `as_ref_a` found for struct `A<&[Coef]>` in the current scope
     }
 
     pub fn as_ref_a<Coef>(&self) -> A<&[<Self as AsSlice>::Element]>

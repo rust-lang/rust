@@ -70,7 +70,7 @@ LL |     x.cmp(&x);
            which is required by `Box<dyn T>: Iterator`
            `dyn T: Ord`
            which is required by `Box<dyn T>: Ord`
-           `Box<dyn T>: Iterator`
+           `dyn T: Iterator`
            which is required by `&mut Box<dyn T>: Iterator`
            `dyn T: Iterator`
            which is required by `&mut dyn T: Iterator`
