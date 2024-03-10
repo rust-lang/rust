@@ -24,12 +24,12 @@
 // lldb-command:run
 
 // lldb-command:print xxx
-// lldbg-check:[...]$0 = 12345
+// lldbg-check:[...] 12345
 // lldbr-check:(u32) xxx = 12345
 // lldb-command:continue
 
 // lldb-command:print yyy
-// lldbg-check:[...]$1 = 67890
+// lldbg-check:[...] 67890
 // lldbr-check:(u64) yyy = 67890
 // lldb-command:continue
 

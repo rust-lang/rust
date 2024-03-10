@@ -20,10 +20,10 @@
 // lldb-command: run
 
 // lldb-command: fr v empty_string
-// lldb-check:[...]empty_string = "" { vec = size=0 }
+// lldb-check:[...] empty_string = "" { vec = size=0 }
 
 // lldb-command: fr v empty_str
-// lldb-check:[...]empty_str = "" { data_ptr = [...] length = 0 }
+// lldb-check:[...] empty_str = "" { data_ptr = [...] length = 0 }
 
 fn main() {
     let empty_string = String::new();

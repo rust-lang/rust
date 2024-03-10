@@ -26,22 +26,22 @@
 
 // lldb-command:run
 // lldb-command:print test
-// lldbg-check:(captured_fields_1::main::{closure_env#0}) $0 = { _ref__my_ref__my_field1 = 0x[...] }
+// lldbg-check:(captured_fields_1::main::{closure_env#0}) { _ref__my_ref__my_field1 = 0x[...] }
 // lldb-command:continue
 // lldb-command:print test
-// lldbg-check:(captured_fields_1::main::{closure_env#1}) $1 = { _ref__my_ref__my_field2 = 0x[...] }
+// lldbg-check:(captured_fields_1::main::{closure_env#1}) { _ref__my_ref__my_field2 = 0x[...] }
 // lldb-command:continue
 // lldb-command:print test
-// lldbg-check:(captured_fields_1::main::{closure_env#2}) $2 = { _ref__my_ref = 0x[...] }
+// lldbg-check:(captured_fields_1::main::{closure_env#2}) { _ref__my_ref = 0x[...] }
 // lldb-command:continue
 // lldb-command:print test
-// lldbg-check:(captured_fields_1::main::{closure_env#3}) $3 = { my_ref = 0x[...] }
+// lldbg-check:(captured_fields_1::main::{closure_env#3}) { my_ref = 0x[...] }
 // lldb-command:continue
 // lldb-command:print test
-// lldbg-check:(captured_fields_1::main::{closure_env#4}) $4 = { my_var__my_field2 = 22 }
+// lldbg-check:(captured_fields_1::main::{closure_env#4}) { my_var__my_field2 = 22 }
 // lldb-command:continue
 // lldb-command:print test
-// lldbg-check:(captured_fields_1::main::{closure_env#5}) $5 = { my_var = { my_field1 = 11 my_field2 = 22 } }
+// lldbg-check:(captured_fields_1::main::{closure_env#5}) { my_var = { my_field1 = 11 my_field2 = 22 } }
 // lldb-command:continue
 
 #![allow(unused)]

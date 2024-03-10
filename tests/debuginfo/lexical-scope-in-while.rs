@@ -68,69 +68,69 @@
 
 // FIRST ITERATION
 // lldb-command:print x
-// lldbg-check:[...]$0 = 0
+// lldbg-check:[...] 0
 // lldbr-check:(i32) x = 0
 // lldb-command:continue
 
 // lldb-command:print x
-// lldbg-check:[...]$1 = 1
+// lldbg-check:[...] 1
 // lldbr-check:(i32) x = 1
 // lldb-command:continue
 
 // lldb-command:print x
-// lldbg-check:[...]$2 = 101
+// lldbg-check:[...] 101
 // lldbr-check:(i32) x = 101
 // lldb-command:continue
 
 // lldb-command:print x
-// lldbg-check:[...]$3 = 101
+// lldbg-check:[...] 101
 // lldbr-check:(i32) x = 101
 // lldb-command:continue
 
 // lldb-command:print x
-// lldbg-check:[...]$4 = -987
+// lldbg-check:[...] -987
 // lldbr-check:(i32) x = -987
 // lldb-command:continue
 
 // lldb-command:print x
-// lldbg-check:[...]$5 = 101
+// lldbg-check:[...] 101
 // lldbr-check:(i32) x = 101
 // lldb-command:continue
 
 
 // SECOND ITERATION
 // lldb-command:print x
-// lldbg-check:[...]$6 = 1
+// lldbg-check:[...] 1
 // lldbr-check:(i32) x = 1
 // lldb-command:continue
 
 // lldb-command:print x
-// lldbg-check:[...]$7 = 2
+// lldbg-check:[...] 2
 // lldbr-check:(i32) x = 2
 // lldb-command:continue
 
 // lldb-command:print x
-// lldbg-check:[...]$8 = 102
+// lldbg-check:[...] 102
 // lldbr-check:(i32) x = 102
 // lldb-command:continue
 
 // lldb-command:print x
-// lldbg-check:[...]$9 = 102
+// lldbg-check:[...] 102
 // lldbr-check:(i32) x = 102
 // lldb-command:continue
 
 // lldb-command:print x
-// lldbg-check:[...]$10 = -987
+// lldbg-check:[...] -987
 // lldbr-check:(i32) x = -987
 // lldb-command:continue
 
 // lldb-command:print x
-// lldbg-check:[...]$11 = 102
+// lldbg-check:[...] 102
 // lldbr-check:(i32) x = 102
 // lldb-command:continue
 
 // lldb-command:print x
-// lldbg-check:[...]$12 = 2
+// lldbg-check:[...] 2
 // lldbr-check:(i32) x = 2
 // lldb-command:continue
 

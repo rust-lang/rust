@@ -64,47 +64,47 @@
 
 // STACK BY REF
 // lldb-command:print *self
-// lldb-check:[...]$0 = Variant2(117901063)
+// lldb-check:[...] Variant2(117901063)
 // lldb-command:print arg1
-// lldb-check:[...]$1 = -1
+// lldb-check:[...] -1
 // lldb-command:print arg2
-// lldb-check:[...]$2 = -2
+// lldb-check:[...] -2
 // lldb-command:continue
 
 // STACK BY VAL
 // lldb-command:print self
-// lldb-check:[...]$3 = Variant2(117901063)
+// lldb-check:[...] Variant2(117901063)
 // lldb-command:print arg1
-// lldb-check:[...]$4 = -3
+// lldb-check:[...] -3
 // lldb-command:print arg2
-// lldb-check:[...]$5 = -4
+// lldb-check:[...] -4
 // lldb-command:continue
 
 // OWNED BY REF
 // lldb-command:print *self
-// lldb-check:[...]$6 = Variant1 { x: 1799, y: 1799 }
+// lldb-check:[...] Variant1 { x: 1799, y: 1799 }
 // lldb-command:print arg1
-// lldb-check:[...]$7 = -5
+// lldb-check:[...] -5
 // lldb-command:print arg2
-// lldb-check:[...]$8 = -6
+// lldb-check:[...] -6
 // lldb-command:continue
 
 // OWNED BY VAL
 // lldb-command:print self
-// lldb-check:[...]$9 = Variant1 { x: 1799, y: 1799 }
+// lldb-check:[...] Variant1 { x: 1799, y: 1799 }
 // lldb-command:print arg1
-// lldb-check:[...]$10 = -7
+// lldb-check:[...] -7
 // lldb-command:print arg2
-// lldb-check:[...]$11 = -8
+// lldb-check:[...] -8
 // lldb-command:continue
 
 // OWNED MOVED
 // lldb-command:print *self
-// lldb-check:[...]$12 = Variant1 { x: 1799, y: 1799 }
+// lldb-check:[...] Variant1 { x: 1799, y: 1799 }
 // lldb-command:print arg1
-// lldb-check:[...]$13 = -9
+// lldb-check:[...] -9
 // lldb-command:print arg2
-// lldb-check:[...]$14 = -10
+// lldb-check:[...] -10
 // lldb-command:continue
 
 #![feature(omit_gdb_pretty_printer_section)]

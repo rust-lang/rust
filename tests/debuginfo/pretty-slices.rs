@@ -21,16 +21,16 @@
 // lldb-command: run
 
 // lldb-command: print slice
-// lldb-check: (&[i32]) $0 = size=3 { [0] = 0 [1] = 1 [2] = 2 }
+// lldb-check: (&[i32]) size=3 { [0] = 0 [1] = 1 [2] = 2 }
 
 // lldb-command: print mut_slice
-// lldb-check: (&mut [i32]) $1 = size=4 { [0] = 2 [1] = 3 [2] = 5 [3] = 7 }
+// lldb-check: (&mut [i32]) size=4 { [0] = 2 [1] = 3 [2] = 5 [3] = 7 }
 
 // lldb-command: print str_slice
-// lldb-check: (&str) $2 = "string slice" { data_ptr = [...] length = 12 }
+// lldb-check: (&str) "string slice" { data_ptr = [...] length = 12 }
 
 // lldb-command: print mut_str_slice
-// lldb-check: (&mut str) $3 = "mutable string slice" { data_ptr = [...] length = 20 }
+// lldb-check: (&mut str) "mutable string slice" { data_ptr = [...] length = 20 }
 
 fn b() {}
 

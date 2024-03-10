@@ -45,25 +45,25 @@
 // lldb-command: run
 
 // lldb-command: print slice
-// lldb-check:[...]$0 = &[0, 1, 2, 3]
+// lldb-check:[...] &[0, 1, 2, 3]
 
 // lldb-command: print vec
-// lldb-check:[...]$1 = vec![4, 5, 6, 7]
+// lldb-check:[...] vec![4, 5, 6, 7]
 
 // lldb-command: print str_slice
-// lldb-check:[...]$2 = "IAMA string slice!"
+// lldb-check:[...] "IAMA string slice!"
 
 // lldb-command: print string
-// lldb-check:[...]$3 = "IAMA string!"
+// lldb-check:[...] "IAMA string!"
 
 // lldb-command: print some
-// lldb-check:[...]$4 = Some(8)
+// lldb-check:[...] Some(8)
 
 // lldb-command: print none
-// lldb-check:[...]$5 = None
+// lldb-check:[...] None
 
 // lldb-command: print os_string
-// lldb-check:[...]$6 = "IAMA OS string 😃"[...]
+// lldb-check:[...] "IAMA OS string 😃"[...]
 
 // === CDB TESTS ==================================================================================
 
