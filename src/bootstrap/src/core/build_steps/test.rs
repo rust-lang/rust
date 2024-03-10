@@ -2580,6 +2580,12 @@ impl Step for Crate {
         // we're working with automatically.
         let compiler = builder.compiler_for(compiler.stage, compiler.host, target);
 
+        // During cross compilations, sysroot for the target may not be available.
+        // Ensure that it is prepared.
+        if builder.config.build != target {
+            builder.ensure(compile::Rustc::new(compiler, target));
+        }
+
         let mut cargo = builder::Cargo::new(
             builder,
             compiler,
