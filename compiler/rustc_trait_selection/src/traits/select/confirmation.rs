@@ -28,7 +28,7 @@ use crate::traits::{
     BuiltinDerivedObligation, ImplDerivedObligation, ImplDerivedObligationCause, ImplSource,
     ImplSourceUserDefinedData, Normalized, Obligation, ObligationCause, PolyTraitObligation,
     PredicateObligation, Selection, SelectionError, SignatureMismatch, TraitNotObjectSafe,
-    Unimplemented,
+    TraitObligation, Unimplemented,
 };
 
 use super::BuiltinImplConditions;
@@ -693,12 +693,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         )
         .map_bound(|(trait_ref, _)| trait_ref);
 
-        let mut nested = self.equate_trait_refs(
-            &obligation.cause,
-            obligation.param_env,
-            placeholder_predicate.trait_ref,
-            trait_ref,
-        )?;
+        let mut nested =
+            self.equate_trait_refs(obligation.with(tcx, placeholder_predicate), trait_ref)?;
         let cause = obligation.derived_cause(BuiltinDerivedObligation);
 
         // Confirm the `type Output: Sized;` bound that is present on `FnOnce`
@@ -764,9 +760,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         );
 
         let nested = self.equate_trait_refs(
-            &obligation.cause,
-            obligation.param_env,
-            placeholder_predicate.trait_ref,
+            obligation.with(self.tcx(), placeholder_predicate),
             ty::Binder::dummy(trait_ref),
         )?;
         debug!(?trait_ref, ?nested, "coroutine candidate obligations");
@@ -796,9 +790,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         );
 
         let nested = self.equate_trait_refs(
-            &obligation.cause,
-            obligation.param_env,
-            placeholder_predicate.trait_ref,
+            obligation.with(self.tcx(), placeholder_predicate),
             ty::Binder::dummy(trait_ref),
         )?;
         debug!(?trait_ref, ?nested, "future candidate obligations");
@@ -828,9 +820,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         );
 
         let nested = self.equate_trait_refs(
-            &obligation.cause,
-            obligation.param_env,
-            placeholder_predicate.trait_ref,
+            obligation.with(self.tcx(), placeholder_predicate),
             ty::Binder::dummy(trait_ref),
         )?;
         debug!(?trait_ref, ?nested, "iterator candidate obligations");
@@ -860,9 +850,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         );
 
         let nested = self.equate_trait_refs(
-            &obligation.cause,
-            obligation.param_env,
-            placeholder_predicate.trait_ref,
+            obligation.with(self.tcx(), placeholder_predicate),
             ty::Binder::dummy(trait_ref),
         )?;
         debug!(?trait_ref, ?nested, "iterator candidate obligations");
@@ -898,12 +886,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             }
         };
 
-        self.equate_trait_refs(
-            &obligation.cause,
-            obligation.param_env,
-            placeholder_predicate.trait_ref,
-            trait_ref,
-        )
+        self.equate_trait_refs(obligation.with(self.tcx(), placeholder_predicate), trait_ref)
     }
 
     #[instrument(skip(self), level = "debug")]
@@ -981,12 +964,9 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             _ => bug!("expected callable type for AsyncFn candidate"),
         };
 
-        nested.extend(self.equate_trait_refs(
-            &obligation.cause,
-            obligation.param_env,
-            placeholder_predicate.trait_ref,
-            trait_ref,
-        )?);
+        nested.extend(
+            self.equate_trait_refs(obligation.with(tcx, placeholder_predicate), trait_ref)?,
+        );
 
         let goal_kind =
             self.tcx().async_fn_trait_kind_from_def_id(obligation.predicate.def_id()).unwrap();
@@ -1041,13 +1021,11 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
     #[instrument(skip(self), level = "trace")]
     fn equate_trait_refs(
         &mut self,
-        cause: &ObligationCause<'tcx>,
-        param_env: ty::ParamEnv<'tcx>,
-        obligation_trait_ref: ty::TraitRef<'tcx>,
+        obligation: TraitObligation<'tcx>,
         found_trait_ref: ty::PolyTraitRef<'tcx>,
     ) -> Result<Vec<PredicateObligation<'tcx>>, SelectionError<'tcx>> {
         let found_trait_ref = self.infcx.instantiate_binder_with_fresh_vars(
-            cause.span,
+            obligation.cause.span,
             HigherRankedType,
             found_trait_ref,
         );
@@ -1056,16 +1034,16 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             ensure_sufficient_stack(|| {
                 normalize_with_depth(
                     self,
-                    param_env,
-                    cause.clone(),
-                    0,
-                    (obligation_trait_ref, found_trait_ref),
+                    obligation.param_env,
+                    obligation.cause.clone(),
+                    obligation.recursion_depth + 1,
+                    (obligation.predicate.trait_ref, found_trait_ref),
                 )
             });
 
         // needed to define opaque types for tests/ui/type-alias-impl-trait/assoc-projection-ice.rs
         self.infcx
-            .at(&cause, param_env)
+            .at(&obligation.cause, obligation.param_env)
             .eq(DefineOpaqueTypes::Yes, obligation_trait_ref, found_trait_ref)
             .map(|InferOk { mut obligations, .. }| {
                 obligations.extend(nested);

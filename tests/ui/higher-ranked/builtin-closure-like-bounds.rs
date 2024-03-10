@@ -2,6 +2,13 @@
 //@ compile-flags: -Zunstable-options
 //@ revisions: current next
 //@[next] compile-flags: -Znext-solver
+//@ check-pass
+
+// Makes sure that we support closure/coroutine goals where the signature of
+// the item references higher-ranked lifetimes from the *predicate* binder,
+// not its own internal signature binder.
+//
+// This was fixed in <https://github.com/rust-lang/rust/pull/122267>.
 
 #![feature(unboxed_closures, gen_blocks)]
 
