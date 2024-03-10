@@ -1,3 +1,5 @@
+//! [`CStr`] and its related types.
+
 use crate::cmp::Ordering;
 use crate::error::Error;
 use crate::ffi::c_char;
@@ -9,15 +11,20 @@ use crate::slice;
 use crate::slice::memchr;
 use crate::str;
 
+// FIXME: because this is doc(inline)d, we *have* to use intra-doc links because the actual link
+//   depends on where the item is being documented. however, since this is libcore, we can't
+//   actually reference libstd or liballoc in intra-doc links. so, the best we can do is remove the
+//   links to `CString` and `String` for now until a solution is developed
+
 /// Representation of a borrowed C string.
 ///
 /// This type represents a borrowed reference to a nul-terminated
 /// array of bytes. It can be constructed safely from a <code>&[[u8]]</code>
 /// slice, or unsafely from a raw `*const c_char`. It can then be
 /// converted to a Rust <code>&[str]</code> by performing UTF-8 validation, or
-/// into an owned [`CString`].
+/// into an owned `CString`.
 ///
-/// `&CStr` is to [`CString`] as <code>&[str]</code> is to [`String`]: the former
+/// `&CStr` is to `CString` as <code>&[str]</code> is to `String`: the former
 /// in each pair are borrowed references; the latter are owned
 /// strings.
 ///
@@ -25,9 +32,6 @@ use crate::str;
 /// notwithstanding) and is not recommended to be placed in the signatures of FFI functions.
 /// Instead, safe wrappers of FFI functions may leverage the unsafe [`CStr::from_ptr`] constructor
 /// to provide a safe interface to other consumers.
-///
-/// [`CString`]: ../../std/ffi/struct.CString.html
-/// [`String`]: ../../std/string/struct.String.html
 ///
 /// # Examples
 ///
@@ -125,10 +129,13 @@ enum FromBytesWithNulErrorKind {
     NotNulTerminated,
 }
 
+// FIXME: const stability attributes should not be required here, I think
 impl FromBytesWithNulError {
+    #[rustc_const_stable(feature = "const_cstr_methods", since = "1.72.0")]
     const fn interior_nul(pos: usize) -> FromBytesWithNulError {
         FromBytesWithNulError { kind: FromBytesWithNulErrorKind::InteriorNul(pos) }
     }
+    #[rustc_const_stable(feature = "const_cstr_methods", since = "1.72.0")]
     const fn not_nul_terminated() -> FromBytesWithNulError {
         FromBytesWithNulError { kind: FromBytesWithNulErrorKind::NotNulTerminated }
     }
