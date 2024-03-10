@@ -302,9 +302,6 @@ passes_export_name =
     attribute should be applied to a free function, impl method or static
     .label = not a free function, impl method or static
 
-passes_expr_not_allowed_in_context =
-    {$expr} is not allowed in a `{$context}`
-
 passes_extern_main =
     the `main` function cannot be declared in an `extern` block
 
@@ -405,8 +402,6 @@ passes_lang_item_on_incorrect_target =
     `{$name}` language item must be applied to a {$expected_target}
     .label = attribute should be applied to a {$expected_target}, not a {$actual_target}
 
-passes_layout =
-    layout error: {$layout_error}
 passes_layout_abi =
     abi: {$abi}
 passes_layout_align =
