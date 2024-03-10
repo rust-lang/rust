@@ -31,12 +31,8 @@ use hir_expand::name::Name;
 
 #[salsa::query_group(HirDatabaseStorage)]
 pub trait HirDatabase: DefDatabase + Upcast<dyn DefDatabase> {
-    #[salsa::invoke(infer_wait)]
-    #[salsa::transparent]
-    fn infer(&self, def: DefWithBodyId) -> Arc<InferenceResult>;
-
     #[salsa::invoke(crate::infer::infer_query)]
-    fn infer_query(&self, def: DefWithBodyId) -> Arc<InferenceResult>;
+    fn infer(&self, def: DefWithBodyId) -> Arc<InferenceResult>;
 
     // region:mir
 
@@ -258,17 +254,8 @@ pub trait HirDatabase: DefDatabase + Upcast<dyn DefDatabase> {
         env: Arc<TraitEnvironment>,
     ) -> Ty;
 
-    #[salsa::invoke(trait_solve_wait)]
-    #[salsa::transparent]
-    fn trait_solve(
-        &self,
-        krate: CrateId,
-        block: Option<BlockId>,
-        goal: crate::Canonical<crate::InEnvironment<crate::Goal>>,
-    ) -> Option<crate::Solution>;
-
     #[salsa::invoke(crate::traits::trait_solve_query)]
-    fn trait_solve_query(
+    fn trait_solve(
         &self,
         krate: CrateId,
         block: Option<BlockId>,
@@ -282,38 +269,6 @@ pub trait HirDatabase: DefDatabase + Upcast<dyn DefDatabase> {
         block: Option<BlockId>,
         env: chalk_ir::Environment<Interner>,
     ) -> chalk_ir::ProgramClauses<Interner>;
-}
-
-fn infer_wait(db: &dyn HirDatabase, def: DefWithBodyId) -> Arc<InferenceResult> {
-    let detail = match def {
-        DefWithBodyId::FunctionId(it) => db.function_data(it).name.display(db.upcast()).to_string(),
-        DefWithBodyId::StaticId(it) => {
-            db.static_data(it).name.clone().display(db.upcast()).to_string()
-        }
-        DefWithBodyId::ConstId(it) => db
-            .const_data(it)
-            .name
-            .clone()
-            .unwrap_or_else(Name::missing)
-            .display(db.upcast())
-            .to_string(),
-        DefWithBodyId::VariantId(it) => {
-            db.enum_variant_data(it).name.display(db.upcast()).to_string()
-        }
-        DefWithBodyId::InTypeConstId(it) => format!("in type const {it:?}"),
-    };
-    let _p = tracing::span!(tracing::Level::INFO, "infer:wait", ?detail).entered();
-    db.infer_query(def)
-}
-
-fn trait_solve_wait(
-    db: &dyn HirDatabase,
-    krate: CrateId,
-    block: Option<BlockId>,
-    goal: crate::Canonical<crate::InEnvironment<crate::Goal>>,
-) -> Option<crate::Solution> {
-    let _p = tracing::span!(tracing::Level::INFO, "trait_solve::wait").entered();
-    db.trait_solve_query(krate, block, goal)
 }
 
 #[test]

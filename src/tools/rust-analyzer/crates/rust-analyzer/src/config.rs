@@ -311,6 +311,8 @@ config_data! {
         /// Map of prefixes to be substituted when parsing diagnostic file paths.
         /// This should be the reverse mapping of what is passed to `rustc` as `--remap-path-prefix`.
         diagnostics_remapPrefix: FxHashMap<String, String> = "{}",
+        /// Whether to run additional style lints.
+        diagnostics_styleLints_enable: bool =    "false",
         /// List of warnings that should be displayed with hint severity.
         ///
         /// The warnings will be indicated by faded text or three dots in code
@@ -374,6 +376,9 @@ config_data! {
         hover_memoryLayout_offset: Option<MemoryLayoutHoverRenderKindDef> = "\"hexadecimal\"",
         /// How to render the size information in a memory layout hover.
         hover_memoryLayout_size: Option<MemoryLayoutHoverRenderKindDef> = "\"both\"",
+
+        /// How many associated items of a trait to display when hovering a trait.
+        hover_show_traitAssocItems: Option<usize> = "null",
 
         /// Whether to enforce the import granularity setting for all files. If set to false rust-analyzer will try to keep import styles consistent per file.
         imports_granularity_enforce: bool              = "false",
@@ -517,7 +522,6 @@ config_data! {
 
         /// Exclude tests from find-all-references.
         references_excludeTests: bool = "false",
-
 
         /// Command to be executed instead of 'cargo' for runnables.
         runnables_command: Option<String> = "null",
@@ -1142,6 +1146,10 @@ impl Config {
         self.experimental("colorDiagnosticOutput")
     }
 
+    pub fn test_explorer(&self) -> bool {
+        self.experimental("testExplorer")
+    }
+
     pub fn publish_diagnostics(&self) -> bool {
         self.data.diagnostics_enable
     }
@@ -1160,6 +1168,7 @@ impl Config {
             insert_use: self.insert_use_config(),
             prefer_no_std: self.data.imports_preferNoStd,
             prefer_prelude: self.data.imports_preferPrelude,
+            style_lints: self.data.diagnostics_styleLints_enable,
         }
     }
 
@@ -1680,6 +1689,7 @@ impl Config {
                 }
             },
             keywords: self.data.hover_documentation_keywords_enable,
+            max_trait_assoc_items_count: self.data.hover_show_traitAssocItems,
         }
     }
 

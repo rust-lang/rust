@@ -170,7 +170,7 @@ fn type_bound(p: &mut Parser<'_>) -> bool {
                 _ => (),
             }
             if paths::is_use_path_start(p) {
-                types::path_type_(p, false);
+                types::path_type_bounds(p, false);
             } else {
                 m.abandon(p);
                 return false;

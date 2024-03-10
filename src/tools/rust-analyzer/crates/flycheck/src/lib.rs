@@ -2,28 +2,30 @@
 //! another compatible command (f.x. clippy) in a background thread and provide
 //! LSP diagnostics based on the output of the command.
 
+// FIXME: This crate now handles running `cargo test` needed in the test explorer in
+// addition to `cargo check`. Either split it into 3 crates (one for test, one for check
+// and one common utilities) or change its name and docs to reflect the current state.
+
 #![warn(rust_2018_idioms, unused_lifetimes)]
 
-use std::{
-    ffi::OsString,
-    fmt, io,
-    path::PathBuf,
-    process::{ChildStderr, ChildStdout, Command, Stdio},
-    time::Duration,
-};
+use std::{fmt, io, path::PathBuf, process::Command, time::Duration};
 
-use command_group::{CommandGroup, GroupChild};
 use crossbeam_channel::{never, select, unbounded, Receiver, Sender};
 use paths::{AbsPath, AbsPathBuf};
 use rustc_hash::FxHashMap;
 use serde::Deserialize;
-use stdx::process::streaming_output;
 
 pub use cargo_metadata::diagnostic::{
     Applicability, Diagnostic, DiagnosticCode, DiagnosticLevel, DiagnosticSpan,
     DiagnosticSpanMacroExpansion,
 };
 use toolchain::Tool;
+
+mod command;
+mod test_runner;
+
+use command::{CommandHandle, ParseFromLine};
+pub use test_runner::{CargoTestHandle, CargoTestMessage, TestState};
 
 #[derive(Copy, Clone, Debug, Default, PartialEq, Eq)]
 pub enum InvocationStrategy {
@@ -181,12 +183,12 @@ struct FlycheckActor {
     /// doesn't provide a way to read sub-process output without blocking, so we
     /// have to wrap sub-processes output handling in a thread and pass messages
     /// back over a channel.
-    command_handle: Option<CommandHandle>,
+    command_handle: Option<CommandHandle<CargoCheckMessage>>,
 }
 
 enum Event {
     RequestStateChange(StateChange),
-    CheckEvent(Option<CargoMessage>),
+    CheckEvent(Option<CargoCheckMessage>),
 }
 
 const SAVED_FILE_PLACEHOLDER: &str = "$saved_file";
@@ -282,7 +284,7 @@ impl FlycheckActor {
                     self.report_progress(Progress::DidFinish(res));
                 }
                 Event::CheckEvent(Some(message)) => match message {
-                    CargoMessage::CompilerArtifact(msg) => {
+                    CargoCheckMessage::CompilerArtifact(msg) => {
                         tracing::trace!(
                             flycheck_id = self.id,
                             artifact = msg.target.name,
@@ -291,7 +293,7 @@ impl FlycheckActor {
                         self.report_progress(Progress::DidCheckCrate(msg.target.name));
                     }
 
-                    CargoMessage::Diagnostic(msg) => {
+                    CargoCheckMessage::Diagnostic(msg) => {
                         tracing::trace!(
                             flycheck_id = self.id,
                             message = msg.message,
@@ -448,159 +450,40 @@ impl FlycheckActor {
     }
 }
 
-struct JodGroupChild(GroupChild);
-
-impl Drop for JodGroupChild {
-    fn drop(&mut self) {
-        _ = self.0.kill();
-        _ = self.0.wait();
-    }
-}
-
-/// A handle to a cargo process used for fly-checking.
-struct CommandHandle {
-    /// The handle to the actual cargo process. As we cannot cancel directly from with
-    /// a read syscall dropping and therefore terminating the process is our best option.
-    child: JodGroupChild,
-    thread: stdx::thread::JoinHandle<io::Result<(bool, String)>>,
-    receiver: Receiver<CargoMessage>,
-    program: OsString,
-    arguments: Vec<OsString>,
-    current_dir: Option<PathBuf>,
-}
-
-impl fmt::Debug for CommandHandle {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_struct("CommandHandle")
-            .field("program", &self.program)
-            .field("arguments", &self.arguments)
-            .field("current_dir", &self.current_dir)
-            .finish()
-    }
-}
-
-impl CommandHandle {
-    fn spawn(mut command: Command) -> std::io::Result<CommandHandle> {
-        command.stdout(Stdio::piped()).stderr(Stdio::piped()).stdin(Stdio::null());
-        let mut child = command.group_spawn().map(JodGroupChild)?;
-
-        let program = command.get_program().into();
-        let arguments = command.get_args().map(|arg| arg.into()).collect::<Vec<OsString>>();
-        let current_dir = command.get_current_dir().map(|arg| arg.to_path_buf());
-
-        let stdout = child.0.inner().stdout.take().unwrap();
-        let stderr = child.0.inner().stderr.take().unwrap();
-
-        let (sender, receiver) = unbounded();
-        let actor = CargoActor::new(sender, stdout, stderr);
-        let thread = stdx::thread::Builder::new(stdx::thread::ThreadIntent::Worker)
-            .name("CommandHandle".to_owned())
-            .spawn(move || actor.run())
-            .expect("failed to spawn thread");
-        Ok(CommandHandle { program, arguments, current_dir, child, thread, receiver })
-    }
-
-    fn cancel(mut self) {
-        let _ = self.child.0.kill();
-        let _ = self.child.0.wait();
-    }
-
-    fn join(mut self) -> io::Result<()> {
-        let _ = self.child.0.kill();
-        let exit_status = self.child.0.wait()?;
-        let (read_at_least_one_message, error) = self.thread.join()?;
-        if read_at_least_one_message || exit_status.success() {
-            Ok(())
-        } else {
-            Err(io::Error::new(io::ErrorKind::Other, format!(
-                "Cargo watcher failed, the command produced no valid metadata (exit code: {exit_status:?}):\n{error}"
-            )))
-        }
-    }
-}
-
-struct CargoActor {
-    sender: Sender<CargoMessage>,
-    stdout: ChildStdout,
-    stderr: ChildStderr,
-}
-
-impl CargoActor {
-    fn new(sender: Sender<CargoMessage>, stdout: ChildStdout, stderr: ChildStderr) -> CargoActor {
-        CargoActor { sender, stdout, stderr }
-    }
-
-    fn run(self) -> io::Result<(bool, String)> {
-        // We manually read a line at a time, instead of using serde's
-        // stream deserializers, because the deserializer cannot recover
-        // from an error, resulting in it getting stuck, because we try to
-        // be resilient against failures.
-        //
-        // Because cargo only outputs one JSON object per line, we can
-        // simply skip a line if it doesn't parse, which just ignores any
-        // erroneous output.
-
-        let mut stdout_errors = String::new();
-        let mut stderr_errors = String::new();
-        let mut read_at_least_one_stdout_message = false;
-        let mut read_at_least_one_stderr_message = false;
-        let process_line = |line: &str, error: &mut String| {
-            // Try to deserialize a message from Cargo or Rustc.
-            let mut deserializer = serde_json::Deserializer::from_str(line);
-            deserializer.disable_recursion_limit();
-            if let Ok(message) = JsonMessage::deserialize(&mut deserializer) {
-                match message {
-                    // Skip certain kinds of messages to only spend time on what's useful
-                    JsonMessage::Cargo(message) => match message {
-                        cargo_metadata::Message::CompilerArtifact(artifact) if !artifact.fresh => {
-                            self.sender.send(CargoMessage::CompilerArtifact(artifact)).unwrap();
-                        }
-                        cargo_metadata::Message::CompilerMessage(msg) => {
-                            self.sender.send(CargoMessage::Diagnostic(msg.message)).unwrap();
-                        }
-                        _ => (),
-                    },
-                    JsonMessage::Rustc(message) => {
-                        self.sender.send(CargoMessage::Diagnostic(message)).unwrap();
-                    }
-                }
-                return true;
-            }
-
-            error.push_str(line);
-            error.push('\n');
-            false
-        };
-        let output = streaming_output(
-            self.stdout,
-            self.stderr,
-            &mut |line| {
-                if process_line(line, &mut stdout_errors) {
-                    read_at_least_one_stdout_message = true;
-                }
-            },
-            &mut |line| {
-                if process_line(line, &mut stderr_errors) {
-                    read_at_least_one_stderr_message = true;
-                }
-            },
-        );
-
-        let read_at_least_one_message =
-            read_at_least_one_stdout_message || read_at_least_one_stderr_message;
-        let mut error = stdout_errors;
-        error.push_str(&stderr_errors);
-        match output {
-            Ok(_) => Ok((read_at_least_one_message, error)),
-            Err(e) => Err(io::Error::new(e.kind(), format!("{e:?}: {error}"))),
-        }
-    }
-}
-
 #[allow(clippy::large_enum_variant)]
-enum CargoMessage {
+enum CargoCheckMessage {
     CompilerArtifact(cargo_metadata::Artifact),
     Diagnostic(Diagnostic),
+}
+
+impl ParseFromLine for CargoCheckMessage {
+    fn from_line(line: &str, error: &mut String) -> Option<Self> {
+        let mut deserializer = serde_json::Deserializer::from_str(line);
+        deserializer.disable_recursion_limit();
+        if let Ok(message) = JsonMessage::deserialize(&mut deserializer) {
+            return match message {
+                // Skip certain kinds of messages to only spend time on what's useful
+                JsonMessage::Cargo(message) => match message {
+                    cargo_metadata::Message::CompilerArtifact(artifact) if !artifact.fresh => {
+                        Some(CargoCheckMessage::CompilerArtifact(artifact))
+                    }
+                    cargo_metadata::Message::CompilerMessage(msg) => {
+                        Some(CargoCheckMessage::Diagnostic(msg.message))
+                    }
+                    _ => None,
+                },
+                JsonMessage::Rustc(message) => Some(CargoCheckMessage::Diagnostic(message)),
+            };
+        }
+
+        error.push_str(line);
+        error.push('\n');
+        None
+    }
+
+    fn from_eof() -> Option<Self> {
+        None
+    }
 }
 
 #[derive(Deserialize)]

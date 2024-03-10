@@ -406,7 +406,12 @@ pub(super) fn definition(
     config: &HoverConfig,
 ) -> Markup {
     let mod_path = definition_mod_path(db, &def);
-    let label = def.label(db);
+    let label = match def {
+        Definition::Trait(trait_) => {
+            trait_.display_limited(db, config.max_trait_assoc_items_count).to_string()
+        }
+        _ => def.label(db),
+    };
     let docs = def.docs(db, famous_defs);
     let value = (|| match def {
         Definition::Variant(it) => {

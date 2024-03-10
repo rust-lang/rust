@@ -147,7 +147,7 @@ pub(super) fn atom_expr(
         T![async] if la == T![move] && p.nth(2) == T!['{'] => {
             let m = p.start();
             p.bump(T![async]);
-            p.eat(T![move]);
+            p.bump(T![move]);
             stmt_list(p);
             m.complete(p, BLOCK_EXPR)
         }
@@ -390,8 +390,7 @@ fn if_expr(p: &mut Parser<'_>) -> CompletedMarker {
     p.bump(T![if]);
     expr_no_struct(p);
     block_expr(p);
-    if p.at(T![else]) {
-        p.bump(T![else]);
+    if p.eat(T![else]) {
         if p.at(T![if]) {
             if_expr(p);
         } else {

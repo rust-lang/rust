@@ -23,7 +23,6 @@ tracing.workspace = true
 stdx.workspace = true
 syntax.workspace = true
 text-edit.workspace = true
-profile.workspace = true
 ide-db.workspace = true
 hir.workspace = true
 
@@ -33,10 +32,6 @@ expect-test = "1.4.0"
 # local deps
 test-utils.workspace = true
 test-fixture.workspace = true
-sourcegen.workspace = true
-
-[features]
-in-rust-tree = []
 
 [lints]
 workspace = true

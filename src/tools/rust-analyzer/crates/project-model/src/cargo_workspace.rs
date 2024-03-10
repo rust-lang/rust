@@ -1,8 +1,8 @@
 //! See [`CargoWorkspace`].
 
+use std::ops;
 use std::path::PathBuf;
 use std::str::from_utf8;
-use std::{ops, process::Command};
 
 use anyhow::Context;
 use base_db::Edition;
@@ -243,8 +243,11 @@ impl CargoWorkspace {
     ) -> anyhow::Result<cargo_metadata::Metadata> {
         let targets = find_list_of_build_targets(config, cargo_toml, sysroot);
 
+        let cargo = Sysroot::tool(sysroot, Tool::Cargo);
         let mut meta = MetadataCommand::new();
-        meta.cargo_path(Tool::Cargo.path());
+        meta.cargo_path(cargo.get_program());
+        cargo.get_envs().for_each(|(var, val)| _ = meta.env(var, val.unwrap_or_default()));
+        config.extra_env.iter().for_each(|(var, val)| _ = meta.env(var, val));
         meta.manifest_path(cargo_toml.to_path_buf());
         match &config.features {
             CargoFeatures::All => {
@@ -291,10 +294,7 @@ impl CargoWorkspace {
         progress("metadata".to_owned());
 
         (|| -> Result<cargo_metadata::Metadata, cargo_metadata::Error> {
-            let mut command = meta.cargo_command();
-            Sysroot::set_rustup_toolchain_env(&mut command, sysroot);
-            command.envs(&config.extra_env);
-            let output = command.output()?;
+            let output = meta.cargo_command().output()?;
             if !output.status.success() {
                 return Err(cargo_metadata::Error::CargoMetadata {
                     stderr: String::from_utf8(output.stderr)?,
@@ -501,7 +501,7 @@ fn rustc_discover_host_triple(
     extra_env: &FxHashMap<String, String>,
     sysroot: Option<&Sysroot>,
 ) -> Option<String> {
-    let mut rustc = Sysroot::rustc(sysroot);
+    let mut rustc = Sysroot::tool(sysroot, Tool::Rustc);
     rustc.envs(extra_env);
     rustc.current_dir(cargo_toml.parent()).arg("-vV");
     tracing::debug!("Discovering host platform by {:?}", rustc);
@@ -529,8 +529,7 @@ fn cargo_config_build_target(
     extra_env: &FxHashMap<String, String>,
     sysroot: Option<&Sysroot>,
 ) -> Vec<String> {
-    let mut cargo_config = Command::new(Tool::Cargo.path());
-    Sysroot::set_rustup_toolchain_env(&mut cargo_config, sysroot);
+    let mut cargo_config = Sysroot::tool(sysroot, Tool::Cargo);
     cargo_config.envs(extra_env);
     cargo_config
         .current_dir(cargo_toml.parent())

@@ -71,8 +71,7 @@ impl WorkspaceBuildScripts {
                 cmd
             }
             _ => {
-                let mut cmd = Command::new(Tool::Cargo.path());
-                Sysroot::set_rustup_toolchain_env(&mut cmd, sysroot);
+                let mut cmd = Sysroot::tool(sysroot, Tool::Cargo);
 
                 cmd.args(["check", "--quiet", "--workspace", "--message-format=json"]);
                 cmd.args(&config.extra_args);
@@ -430,8 +429,7 @@ impl WorkspaceBuildScripts {
         }
         let res = (|| {
             let target_libdir = (|| {
-                let mut cargo_config = Command::new(Tool::Cargo.path());
-                Sysroot::set_rustup_toolchain_env(&mut cargo_config, sysroot);
+                let mut cargo_config = Sysroot::tool(sysroot, Tool::Cargo);
                 cargo_config.envs(extra_env);
                 cargo_config
                     .current_dir(current_dir)
@@ -440,7 +438,7 @@ impl WorkspaceBuildScripts {
                 if let Ok(it) = utf8_stdout(cargo_config) {
                     return Ok(it);
                 }
-                let mut cmd = Sysroot::rustc(sysroot);
+                let mut cmd = Sysroot::tool(sysroot, Tool::Rustc);
                 cmd.envs(extra_env);
                 cmd.args(["--print", "target-libdir"]);
                 utf8_stdout(cmd)

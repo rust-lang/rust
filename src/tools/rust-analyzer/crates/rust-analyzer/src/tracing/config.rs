@@ -4,13 +4,10 @@
 use std::io;
 
 use anyhow::Context;
-use tracing::{level_filters::LevelFilter, Level};
+use tracing::level_filters::LevelFilter;
 use tracing_subscriber::{
-    filter::{self, Targets},
-    fmt::{format::FmtSpan, MakeWriter},
-    layer::SubscriberExt,
-    util::SubscriberInitExt,
-    Layer, Registry,
+    filter::Targets, fmt::MakeWriter, layer::SubscriberExt, util::SubscriberInitExt, Layer,
+    Registry,
 };
 use tracing_tree::HierarchicalLayer;
 
@@ -50,10 +47,7 @@ where
 
         let writer = self.writer;
 
-        let ra_fmt_layer = tracing_subscriber::fmt::layer()
-            .with_span_events(FmtSpan::CLOSE)
-            .with_writer(writer)
-            .with_filter(filter);
+        let ra_fmt_layer = tracing_subscriber::fmt::layer().with_writer(writer).with_filter(filter);
 
         let mut chalk_layer = None;
         if let Some(chalk_filter) = self.chalk_filter {
@@ -74,32 +68,7 @@ where
             );
         };
 
-        let mut profiler_layer = None;
-        if let Some(spec) = self.profile_filter {
-            let (write_filter, allowed_names) = hprof::WriteFilter::from_spec(&spec);
-
-            // this filter the first pass for `tracing`: these are all the "profiling" spans, but things like
-            // span depth or duration are not filtered here: that only occurs at write time.
-            let profile_filter = filter::filter_fn(move |metadata| {
-                let allowed = match &allowed_names {
-                    Some(names) => names.contains(metadata.name()),
-                    None => true,
-                };
-
-                metadata.is_span()
-                    && allowed
-                    && metadata.level() >= &Level::INFO
-                    && !metadata.target().starts_with("salsa")
-                    && !metadata.target().starts_with("chalk")
-            });
-
-            let layer = hprof::SpanTree::default()
-                .aggregate(true)
-                .spec_filter(write_filter)
-                .with_filter(profile_filter);
-
-            profiler_layer = Some(layer);
-        }
+        let profiler_layer = self.profile_filter.map(|spec| hprof::layer(&spec));
 
         Registry::default().with(ra_fmt_layer).with(chalk_layer).with(profiler_layer).try_init()?;
 

@@ -38,10 +38,11 @@ use crate::{
     db::HirDatabase,
     semantics::source_to_def::{ChildContainer, SourceToDefCache, SourceToDefCtx},
     source_analyzer::{resolve_hir_path, SourceAnalyzer},
-    Access, Adjust, Adjustment, AutoBorrow, BindingMode, BuiltinAttr, Callable, ConstParam, Crate,
-    DeriveHelper, Field, Function, HasSource, HirFileId, Impl, InFile, Label, LifetimeParam, Local,
-    Macro, Module, ModuleDef, Name, OverloadedDeref, Path, ScopeDef, Struct, ToolModule, Trait,
-    TupleField, Type, TypeAlias, TypeParam, VariantDef,
+    Access, Adjust, Adjustment, Adt, AutoBorrow, BindingMode, BuiltinAttr, Callable, Const,
+    ConstParam, Crate, DeriveHelper, Enum, Field, Function, HasSource, HirFileId, Impl, InFile,
+    Label, LifetimeParam, Local, Macro, Module, ModuleDef, Name, OverloadedDeref, Path, ScopeDef,
+    Static, Struct, ToolModule, Trait, TraitAlias, TupleField, Type, TypeAlias, TypeParam, Union,
+    Variant, VariantDef,
 };
 
 pub enum DescendPreference {
@@ -223,20 +224,68 @@ impl<'db, DB: HirDatabase> Semantics<'db, DB> {
         self.imp.resolve_variant(record_lit).map(VariantDef::from)
     }
 
-    pub fn to_module_def(&self, file: FileId) -> Option<Module> {
-        self.imp.to_module_def(file).next()
+    pub fn file_to_module_def(&self, file: FileId) -> Option<Module> {
+        self.imp.file_to_module_defs(file).next()
     }
 
-    pub fn to_module_defs(&self, file: FileId) -> impl Iterator<Item = Module> {
-        self.imp.to_module_def(file)
+    pub fn file_to_module_defs(&self, file: FileId) -> impl Iterator<Item = Module> {
+        self.imp.file_to_module_defs(file)
+    }
+
+    pub fn to_adt_def(&self, a: &ast::Adt) -> Option<Adt> {
+        self.imp.to_def(a).map(Adt::from)
+    }
+
+    pub fn to_const_def(&self, c: &ast::Const) -> Option<Const> {
+        self.imp.to_def(c).map(Const::from)
+    }
+
+    pub fn to_enum_def(&self, e: &ast::Enum) -> Option<Enum> {
+        self.imp.to_def(e).map(Enum::from)
+    }
+
+    pub fn to_enum_variant_def(&self, v: &ast::Variant) -> Option<Variant> {
+        self.imp.to_def(v).map(Variant::from)
+    }
+
+    pub fn to_fn_def(&self, f: &ast::Fn) -> Option<Function> {
+        self.imp.to_def(f).map(Function::from)
+    }
+
+    pub fn to_impl_def(&self, i: &ast::Impl) -> Option<Impl> {
+        self.imp.to_def(i).map(Impl::from)
+    }
+
+    pub fn to_macro_def(&self, m: &ast::Macro) -> Option<Macro> {
+        self.imp.to_def(m).map(Macro::from)
+    }
+
+    pub fn to_module_def(&self, m: &ast::Module) -> Option<Module> {
+        self.imp.to_def(m).map(Module::from)
+    }
+
+    pub fn to_static_def(&self, s: &ast::Static) -> Option<Static> {
+        self.imp.to_def(s).map(Static::from)
     }
 
     pub fn to_struct_def(&self, s: &ast::Struct) -> Option<Struct> {
         self.imp.to_def(s).map(Struct::from)
     }
 
-    pub fn to_impl_def(&self, i: &ast::Impl) -> Option<Impl> {
-        self.imp.to_def(i).map(Impl::from)
+    pub fn to_trait_alias_def(&self, t: &ast::TraitAlias) -> Option<TraitAlias> {
+        self.imp.to_def(t).map(TraitAlias::from)
+    }
+
+    pub fn to_trait_def(&self, t: &ast::Trait) -> Option<Trait> {
+        self.imp.to_def(t).map(Trait::from)
+    }
+
+    pub fn to_type_alias_def(&self, t: &ast::TypeAlias) -> Option<TypeAlias> {
+        self.imp.to_def(t).map(TypeAlias::from)
+    }
+
+    pub fn to_union_def(&self, u: &ast::Union) -> Option<Union> {
+        self.imp.to_def(u).map(Union::from)
     }
 }
 
@@ -1024,7 +1073,7 @@ impl<'db> SemanticsImpl<'db> {
 
     pub fn resolve_type(&self, ty: &ast::Type) -> Option<Type> {
         let analyze = self.analyze(ty.syntax())?;
-        let ctx = LowerCtx::with_file_id(self.db.upcast(), analyze.file_id);
+        let ctx = LowerCtx::new(self.db.upcast(), analyze.file_id);
         let ty = hir_ty::TyLoweringContext::new_maybe_unowned(
             self.db,
             &analyze.resolver,
@@ -1036,8 +1085,7 @@ impl<'db> SemanticsImpl<'db> {
 
     pub fn resolve_trait(&self, path: &ast::Path) -> Option<Trait> {
         let analyze = self.analyze(path.syntax())?;
-        let span_map = self.db.span_map(analyze.file_id);
-        let ctx = LowerCtx::with_span_map(self.db.upcast(), span_map);
+        let ctx = LowerCtx::new(self.db.upcast(), analyze.file_id);
         let hir_path = Path::from_src(&ctx, path.clone())?;
         match analyze.resolver.resolve_path_in_type_ns_fully(self.db.upcast(), &hir_path)? {
             TypeNs::TraitId(id) => Some(Trait { id }),
@@ -1241,7 +1289,7 @@ impl<'db> SemanticsImpl<'db> {
         T::to_def(self, src)
     }
 
-    fn to_module_def(&self, file: FileId) -> impl Iterator<Item = Module> {
+    fn file_to_module_defs(&self, file: FileId) -> impl Iterator<Item = Module> {
         self.with_ctx(|ctx| ctx.file_to_def(file)).into_iter().map(Module::from)
     }
 
@@ -1645,7 +1693,7 @@ impl SemanticsScope<'_> {
     /// Resolve a path as-if it was written at the given scope. This is
     /// necessary a heuristic, as it doesn't take hygiene into account.
     pub fn speculative_resolve(&self, path: &ast::Path) -> Option<PathResolution> {
-        let ctx = LowerCtx::with_file_id(self.db.upcast(), self.file_id);
+        let ctx = LowerCtx::new(self.db.upcast(), self.file_id);
         let path = Path::from_src(&ctx, path.clone())?;
         resolve_hir_path(self.db, &self.resolver, &path)
     }

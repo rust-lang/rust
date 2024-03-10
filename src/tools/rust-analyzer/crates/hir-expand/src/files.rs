@@ -252,7 +252,7 @@ impl InFile<&SyntaxNode> {
             map_node_range_up(db, &db.expansion_span_map(file_id), self.value.text_range())?;
 
         // FIXME: Figure out an API that makes proper use of ctx, this only exists to
-        // keep pre-token map rewrite behaviour.
+        // keep pre-token map rewrite behavior.
         if !ctx.is_root() {
             return None;
         }

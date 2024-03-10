@@ -70,8 +70,7 @@ pub(super) fn item_or_macro(p: &mut Parser<'_>, stop_on_r_curly: bool) {
     // macro_rules! {};
     // macro_rules! ()
     // macro_rules! []
-    let no_ident = p.at_contextual_kw(T![macro_rules]) && p.nth_at(1, BANG) && !p.nth_at(2, IDENT);
-    if paths::is_use_path_start(p) || no_ident {
+    if paths::is_use_path_start(p) {
         macro_call(p, m);
         return;
     }
@@ -156,27 +155,19 @@ pub(super) fn opt_item(p: &mut Parser<'_>, m: Marker) -> Result<(), Marker> {
             // impl T for Foo {
             //     default async fn foo() {}
             // }
-            T![async] => {
-                let mut maybe_fn = p.nth(2);
-                let is_unsafe = if matches!(maybe_fn, T![unsafe]) {
-                    // test default_async_unsafe_fn
-                    // impl T for Foo {
-                    //     default async unsafe fn foo() {}
-                    // }
-                    maybe_fn = p.nth(3);
-                    true
-                } else {
-                    false
-                };
+            T![async]
+                if p.nth_at(2, T![fn]) || (p.nth_at(2, T![unsafe]) && p.nth_at(3, T![fn])) =>
+            {
+                p.bump_remap(T![default]);
+                p.bump(T![async]);
 
-                if matches!(maybe_fn, T![fn]) {
-                    p.bump_remap(T![default]);
-                    p.bump(T![async]);
-                    if is_unsafe {
-                        p.bump(T![unsafe]);
-                    }
-                    has_mods = true;
-                }
+                // test default_async_unsafe_fn
+                // impl T for Foo {
+                //     default async unsafe fn foo() {}
+                // }
+                p.eat(T![unsafe]);
+
+                has_mods = true;
             }
             _ => (),
         }
@@ -419,11 +410,9 @@ fn fn_(p: &mut Parser<'_>, m: Marker) {
     // fn foo<T>() where T: Copy {}
     generic_params::opt_where_clause(p);
 
-    if p.at(T![;]) {
-        // test fn_decl
-        // trait T { fn foo(); }
-        p.bump(T![;]);
-    } else {
+    // test fn_decl
+    // trait T { fn foo(); }
+    if !p.eat(T![;]) {
         expressions::block_expr(p);
     }
     m.complete(p, FN);

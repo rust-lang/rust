@@ -1498,6 +1498,32 @@ pub(crate) fn code_lens(
     Ok(())
 }
 
+pub(crate) fn test_item(
+    snap: &GlobalStateSnapshot,
+    test_item: ide::TestItem,
+    line_index: Option<&LineIndex>,
+) -> lsp_ext::TestItem {
+    lsp_ext::TestItem {
+        id: test_item.id,
+        label: test_item.label,
+        kind: match test_item.kind {
+            ide::TestItemKind::Crate => lsp_ext::TestItemKind::Package,
+            ide::TestItemKind::Module => lsp_ext::TestItemKind::Module,
+            ide::TestItemKind::Function => lsp_ext::TestItemKind::Test,
+        },
+        can_resolve_children: matches!(
+            test_item.kind,
+            ide::TestItemKind::Crate | ide::TestItemKind::Module
+        ),
+        parent: test_item.parent,
+        text_document: test_item
+            .file
+            .map(|f| lsp_types::TextDocumentIdentifier { uri: url(snap, f) }),
+        range: line_index.and_then(|l| Some(range(l, test_item.text_range?))),
+        runnable: test_item.runnable.and_then(|r| runnable(snap, r).ok()),
+    }
+}
+
 pub(crate) mod command {
     use ide::{FileRange, NavigationTarget};
     use serde_json::to_value;

@@ -2,18 +2,18 @@
 //! and lints from rustc, rustdoc, and clippy.
 use std::{borrow::Cow, fs, path::Path};
 
-use itertools::Itertools;
 use stdx::format_to;
-use test_utils::project_root;
 use xshell::{cmd, Shell};
+
+use crate::{
+    codegen::{add_preamble, ensure_file_contents, list_files, reformat},
+    project_root,
+};
 
 const DESTINATION: &str = "crates/ide-db/src/generated/lints.rs";
 
-/// This clones rustc repo, and so is not worth to keep up-to-date. We update
-/// manually by un-ignoring the test from time to time.
-#[test]
-#[ignore]
-fn sourcegen_lint_completions() {
+/// This clones rustc repo, and so is not worth to keep up-to-date on a constant basis.
+pub(crate) fn generate(check: bool) {
     let sh = &Shell::new().unwrap();
 
     let rust_repo = project_root().join("./target/rust");
@@ -73,10 +73,10 @@ pub struct LintGroup {
     .unwrap();
     generate_descriptor_clippy(&mut contents, &lints_json);
 
-    let contents = sourcegen::add_preamble("sourcegen_lints", sourcegen::reformat(contents));
+    let contents = add_preamble("sourcegen_lints", reformat(contents));
 
     let destination = project_root().join(DESTINATION);
-    sourcegen::ensure_file_contents(destination.as_path(), &contents);
+    ensure_file_contents(destination.as_path(), &contents, check);
 }
 
 /// Parses the output of `rustdoc -Whelp` and prints `Lint` and `LintGroup` constants into `buf`.
@@ -130,10 +130,9 @@ fn generate_lint_descriptor(sh: &Shell, buf: &mut String) {
         )
     });
 
-    let lints = lints
-        .chain(lint_groups)
-        .sorted_by(|(ident, ..), (ident2, ..)| ident.cmp(ident2))
-        .collect::<Vec<_>>();
+    let mut lints = lints.chain(lint_groups).collect::<Vec<_>>();
+    lints.sort_by(|(ident, ..), (ident2, ..)| ident.cmp(ident2));
+
     for (name, description, ..) in &lints {
         push_lint_completion(buf, &name.replace('-', "_"), description);
     }
@@ -177,10 +176,8 @@ fn generate_lint_descriptor(sh: &Shell, buf: &mut String) {
             )
         });
 
-    let lints_rustdoc = lints_rustdoc
-        .chain(lint_groups_rustdoc)
-        .sorted_by(|(ident, ..), (ident2, ..)| ident.cmp(ident2))
-        .collect::<Vec<_>>();
+    let mut lints_rustdoc = lints_rustdoc.chain(lint_groups_rustdoc).collect::<Vec<_>>();
+    lints_rustdoc.sort_by(|(ident, ..), (ident2, ..)| ident.cmp(ident2));
 
     for (name, description, ..) in &lints_rustdoc {
         push_lint_completion(buf, &name.replace('-', "_"), description)
@@ -212,7 +209,7 @@ fn find_and_slice<'a>(i: &'a str, p: &str) -> &'a str {
 fn generate_feature_descriptor(buf: &mut String, src_dir: &Path) {
     let mut features = ["language-features", "library-features"]
         .into_iter()
-        .flat_map(|it| sourcegen::list_files(&src_dir.join(it)))
+        .flat_map(|it| list_files(&src_dir.join(it)))
         // Get all `.md` files
         .filter(|path| path.extension() == Some("md".as_ref()))
         .map(|path| {
@@ -302,7 +299,7 @@ fn generate_descriptor_clippy(buf: &mut String, path: &Path) {
         let children = children.iter().map(|id| format!("clippy::{id}")).collect::<Vec<_>>();
         if !children.is_empty() {
             let lint_ident = format!("clippy::{id}");
-            let description = format!("lint group for: {}", children.iter().join(", "));
+            let description = format!("lint group for: {}", children.join(", "));
             push_lint_group(buf, &lint_ident, &description, &children);
         }
     }
@@ -331,7 +328,10 @@ fn push_lint_group(buf: &mut String, label: &str, description: &str, children: &
 
     push_lint_completion(buf, label, description);
 
-    let children = format!("&[{}]", children.iter().map(|it| format!("\"{it}\"")).join(", "));
+    let children = format!(
+        "&[{}]",
+        children.iter().map(|it| format!("\"{it}\"")).collect::<Vec<_>>().join(", ")
+    );
     format_to!(
         buf,
         r###"

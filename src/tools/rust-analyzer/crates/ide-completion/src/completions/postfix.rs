@@ -258,7 +258,7 @@ pub(crate) fn complete_postfix(
 }
 
 fn get_receiver_text(receiver: &ast::Expr, receiver_is_ambiguous_float_literal: bool) -> String {
-    let text = if receiver_is_ambiguous_float_literal {
+    let mut text = if receiver_is_ambiguous_float_literal {
         let text = receiver.syntax().text();
         let without_dot = ..text.len() - TextSize::of('.');
         text.slice(without_dot).to_string()
@@ -267,12 +267,18 @@ fn get_receiver_text(receiver: &ast::Expr, receiver_is_ambiguous_float_literal: 
     };
 
     // The receiver texts should be interpreted as-is, as they are expected to be
-    // normal Rust expressions. We escape '\' and '$' so they don't get treated as
-    // snippet-specific constructs.
-    //
-    // Note that we don't need to escape the other characters that can be escaped,
-    // because they wouldn't be treated as snippet-specific constructs without '$'.
-    text.replace('\\', "\\\\").replace('$', "\\$")
+    // normal Rust expressions.
+    escape_snippet_bits(&mut text);
+    text
+}
+
+/// Escapes `\` and `$` so that they don't get interpreted as snippet-specific constructs.
+///
+/// Note that we don't need to escape the other characters that can be escaped,
+/// because they wouldn't be treated as snippet-specific constructs without '$'.
+fn escape_snippet_bits(text: &mut String) {
+    stdx::replace(text, '\\', "\\\\");
+    stdx::replace(text, '$', "\\$");
 }
 
 fn include_references(initial_element: &ast::Expr) -> (ast::Expr, ast::Expr) {

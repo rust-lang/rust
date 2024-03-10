@@ -597,25 +597,35 @@ fn bang(never: !) {
 
     #[test]
     fn unknown_type() {
-        cov_mark::check_count!(validate_match_bailed_out, 1);
-
-        check_diagnostics(
+        check_diagnostics_no_bails(
             r#"
 enum Option<T> { Some(T), None }
 
 #[allow(unused)]
 fn main() {
     // `Never` is deliberately not defined so that it's an uninferred type.
+    // We ignore these to avoid triggering bugs in the analysis.
     match Option::<Never>::None {
         None => (),
         Some(never) => match never {},
     }
     match Option::<Never>::None {
-        //^^^^^^^^^^^^^^^^^^^^^ error: missing match arm: `None` not covered
         Option::Some(_never) => {},
     }
 }
 "#,
+        );
+    }
+
+    #[test]
+    fn arity_mismatch_issue_16746() {
+        check_diagnostics_with_disabled(
+            r#"
+fn main() {
+    let (a, ) = (0, 0);
+}
+"#,
+            &["E0308"],
         );
     }
 

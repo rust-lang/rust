@@ -85,7 +85,6 @@ force-always-assert = ["always-assert/force"]
 sysroot-abi = []
 in-rust-tree = [
     "sysroot-abi",
-    "ide/in-rust-tree",
     "syntax/in-rust-tree",
     "parser/in-rust-tree",
     "hir/in-rust-tree",

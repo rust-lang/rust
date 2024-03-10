@@ -510,6 +510,11 @@
                     "default": true,
                     "type": "boolean"
                 },
+                "rust-analyzer.testExplorer": {
+                    "markdownDescription": "Whether to show the test explorer.",
+                    "default": false,
+                    "type": "boolean"
+                },
                 "$generated-start": {},
                 "rust-analyzer.assist.emitMustUse": {
                     "markdownDescription": "Whether to insert #[must_use] when generating `as_` methods\nfor enum variants.",
@@ -948,6 +953,11 @@
                     "default": {},
                     "type": "object"
                 },
+                "rust-analyzer.diagnostics.styleLints.enable": {
+                    "markdownDescription": "Whether to run additional style lints.",
+                    "default": false,
+                    "type": "boolean"
+                },
                 "rust-analyzer.diagnostics.warningsAsHint": {
                     "markdownDescription": "List of warnings that should be displayed with hint severity.\n\nThe warnings will be indicated by faded text or three dots in code\nand will not show up in the `Problems Panel`.",
                     "default": [],
@@ -1133,6 +1143,15 @@
                             ]
                         }
                     ]
+                },
+                "rust-analyzer.hover.show.traitAssocItems": {
+                    "markdownDescription": "How many associated items of a trait to display when hovering a trait.",
+                    "default": null,
+                    "type": [
+                        "null",
+                        "integer"
+                    ],
+                    "minimum": 0
                 },
                 "rust-analyzer.imports.granularity.enforce": {
                     "markdownDescription": "Whether to enforce the import granularity setting for all files. If set to false rust-analyzer will try to keep import styles consistent per file.",
