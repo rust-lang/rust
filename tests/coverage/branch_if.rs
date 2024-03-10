@@ -1,6 +1,6 @@
 #![feature(coverage_attribute)]
 //@ edition: 2021
-
+//@ compile-flags: -Zunstable-options -Cinstrument-coverage=branch
 //@ llvm-cov-flags: --show-branches=count
 
 macro_rules! no_merge {

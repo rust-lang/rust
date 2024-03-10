@@ -1,6 +1,6 @@
    LL|       |#![feature(coverage_attribute)]
    LL|       |//@ edition: 2021
-   LL|       |
+   LL|       |//@ compile-flags: -Zunstable-options -Cinstrument-coverage=branch
    LL|       |//@ llvm-cov-flags: --show-branches=count
    LL|       |
    LL|       |macro_rules! no_merge {
@@ -13,16 +13,28 @@
    LL|      3|    no_merge!();
    LL|       |
    LL|      3|    if a {
+  ------------------
+  |  Branch (LL:8): [True: 2, False: 1]
+  ------------------
    LL|      2|        say("a")
    LL|      1|    }
    LL|      3|    if !a {
+  ------------------
+  |  Branch (LL:8): [True: 1, False: 2]
+  ------------------
    LL|      1|        say("not a");
    LL|      2|    }
    LL|      3|    if !!a {
+  ------------------
+  |  Branch (LL:8): [True: 2, False: 1]
+  ------------------
    LL|      2|        say("not not a");
    LL|      2|    }
                    ^1
    LL|      3|    if !!!a {
+  ------------------
+  |  Branch (LL:8): [True: 1, False: 2]
+  ------------------
    LL|      1|        say("not not not a");
    LL|      2|    }
    LL|      3|}
@@ -31,13 +43,22 @@
    LL|      3|    no_merge!();
    LL|       |
    LL|      3|    if !(a as bool) {
+  ------------------
+  |  Branch (LL:8): [True: 1, False: 2]
+  ------------------
    LL|      1|        say("not (a as bool)");
    LL|      2|    }
    LL|      3|    if !!(a as bool) {
+  ------------------
+  |  Branch (LL:8): [True: 2, False: 1]
+  ------------------
    LL|      2|        say("not not (a as bool)");
    LL|      2|    }
                    ^1
    LL|      3|    if !!!(a as bool) {
+  ------------------
+  |  Branch (LL:8): [True: 1, False: 2]
+  ------------------
    LL|      1|        say("not not (a as bool)");
    LL|      2|    }
    LL|      3|}
@@ -47,6 +68,10 @@
    LL|       |
    LL|     15|    if a && b {
                           ^12
+  ------------------
+  |  Branch (LL:8): [True: 12, False: 3]
+  |  Branch (LL:13): [True: 8, False: 4]
+  ------------------
    LL|      8|        say("both");
    LL|      8|    } else {
    LL|      7|        say("not both");
@@ -58,6 +83,10 @@
    LL|       |
    LL|     15|    if a || b {
                           ^3
+  ------------------
+  |  Branch (LL:8): [True: 12, False: 3]
+  |  Branch (LL:13): [True: 2, False: 1]
+  ------------------
    LL|     14|        say("either");
    LL|     14|    } else {
    LL|      1|        say("neither");
