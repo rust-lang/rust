@@ -665,6 +665,7 @@ compiler-team-contributors = [
     "@Nadrieril",
     "@nnethercote",
     "@fmease",
+    "@fee1-dead",
 ]
 compiler = [
     "compiler-team",
