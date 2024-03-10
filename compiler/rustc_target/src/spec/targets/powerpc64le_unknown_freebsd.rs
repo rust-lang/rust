@@ -9,7 +9,12 @@ pub fn target() -> Target {
 
     Target {
         llvm_target: "powerpc64le-unknown-freebsd".into(),
-        description: None,
+        metadata: crate::spec::TargetMetadata {
+            description: None,
+            tier: None,
+            host_tools: None,
+            std: None,
+        },
         pointer_width: 64,
         data_layout: "e-m:e-Fn32-i64:64-n32:64".into(),
         arch: "powerpc64".into(),

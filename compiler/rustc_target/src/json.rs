@@ -2,7 +2,9 @@ use std::borrow::Cow;
 use std::collections::BTreeMap;
 
 pub use serde_json::Value as Json;
-use serde_json::{Map, Number};
+use serde_json::{json, Map, Number};
+
+use crate::spec::TargetMetadata;
 
 pub trait ToJson {
     fn to_json(&self) -> Json;
@@ -118,5 +120,16 @@ impl ToJson for crate::abi::call::Conv {
             }
         };
         Json::String(s.to_owned())
+    }
+}
+
+impl ToJson for TargetMetadata {
+    fn to_json(&self) -> Json {
+        json!({
+            "description": self.description,
+            "tier": self.tier,
+            "host_tools": self.host_tools,
+            "std": self.std,
+        })
     }
 }
