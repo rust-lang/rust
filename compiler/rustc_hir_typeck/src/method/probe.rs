@@ -21,7 +21,7 @@ use rustc_middle::ty::fast_reject::{simplify_type, TreatParams};
 use rustc_middle::ty::AssocItem;
 use rustc_middle::ty::GenericParamDefKind;
 use rustc_middle::ty::ToPredicate;
-use rustc_middle::ty::{self, ParamEnvAnd, Ty, TyCtxt, TypeFoldable, TypeVisitableExt};
+use rustc_middle::ty::{self, ParamEnvAnd, Ty, TyCtxt, TypeVisitableExt};
 use rustc_middle::ty::{GenericArgs, GenericArgsRef};
 use rustc_session::lint;
 use rustc_span::def_id::DefId;
@@ -738,7 +738,6 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
             }
 
             let (impl_ty, impl_args) = self.impl_ty_and_args(impl_def_id);
-            let impl_ty = impl_ty.instantiate(self.tcx, impl_args);
 
             debug!("impl_ty: {:?}", impl_ty);
 
@@ -811,7 +810,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
                 return;
             }
 
-            let new_trait_ref = this.instantiate_bound_regions_with_erased(new_trait_ref);
+            let new_trait_ref = this.tcx.instantiate_bound_regions_with_erased(new_trait_ref);
 
             let (xform_self_ty, xform_ret_ty) =
                 this.xform_self_ty(item, new_trait_ref.self_ty(), new_trait_ref.args);
@@ -922,27 +921,12 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
         }
     }
 
-    fn matches_return_type(
-        &self,
-        method: ty::AssocItem,
-        self_ty: Option<Ty<'tcx>>,
-        expected: Ty<'tcx>,
-    ) -> bool {
+    fn matches_return_type(&self, method: ty::AssocItem, expected: Ty<'tcx>) -> bool {
         match method.kind {
             ty::AssocKind::Fn => self.probe(|_| {
                 let args = self.fresh_args_for_item(self.span, method.def_id);
                 let fty = self.tcx.fn_sig(method.def_id).instantiate(self.tcx, args);
                 let fty = self.instantiate_binder_with_fresh_vars(self.span, infer::FnCall, fty);
-
-                if let Some(self_ty) = self_ty {
-                    if self
-                        .at(&ObligationCause::dummy(), self.param_env)
-                        .sup(DefineOpaqueTypes::No, fty.inputs()[0], self_ty)
-                        .is_err()
-                    {
-                        return false;
-                    }
-                }
                 self.can_sub(self.param_env, fty.output(), expected)
             }),
             _ => false,
@@ -1033,7 +1017,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
             .filter(|candidate| candidate_filter(&candidate.item))
             .filter(|candidate| {
                 if let Some(return_ty) = self.return_type {
-                    self.matches_return_type(candidate.item, None, return_ty)
+                    self.matches_return_type(candidate.item, return_ty)
                 } else {
                     true
                 }
@@ -1890,40 +1874,13 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
             fn_sig.instantiate(self.tcx, args)
         };
 
-        self.instantiate_bound_regions_with_erased(xform_fn_sig)
+        self.tcx.instantiate_bound_regions_with_erased(xform_fn_sig)
     }
 
     /// Gets the type of an impl and generate generic parameters with inference vars.
-    fn impl_ty_and_args(
-        &self,
-        impl_def_id: DefId,
-    ) -> (ty::EarlyBinder<Ty<'tcx>>, GenericArgsRef<'tcx>) {
-        (self.tcx.type_of(impl_def_id), self.fresh_args_for_item(self.span, impl_def_id))
-    }
-
-    /// Replaces late-bound-regions bound by `value` with `'static` using
-    /// `ty::instantiate_bound_regions_with_erased`.
-    ///
-    /// This is only a reasonable thing to do during the *probe* phase, not the *confirm* phase, of
-    /// method matching. It is reasonable during the probe phase because we don't consider region
-    /// relationships at all. Therefore, we can just replace all the region variables with 'static
-    /// rather than creating fresh region variables. This is nice for two reasons:
-    ///
-    /// 1. Because the numbers of the region variables would otherwise be fairly unique to this
-    ///    particular method call, it winds up creating fewer types overall, which helps for memory
-    ///    usage. (Admittedly, this is a rather small effect, though measurable.)
-    ///
-    /// 2. It makes it easier to deal with higher-ranked trait bounds, because we can replace any
-    ///    late-bound regions with 'static. Otherwise, if we were going to replace late-bound
-    ///    regions with actual region variables as is proper, we'd have to ensure that the same
-    ///    region got replaced with the same variable, which requires a bit more coordination
-    ///    and/or tracking the instantiations and
-    ///    so forth.
-    fn instantiate_bound_regions_with_erased<T>(&self, value: ty::Binder<'tcx, T>) -> T
-    where
-        T: TypeFoldable<TyCtxt<'tcx>>,
-    {
-        self.tcx.instantiate_bound_regions_with_erased(value)
+    fn impl_ty_and_args(&self, impl_def_id: DefId) -> (Ty<'tcx>, GenericArgsRef<'tcx>) {
+        let args = self.fresh_args_for_item(self.span, impl_def_id);
+        (self.tcx.type_of(impl_def_id).instantiate(self.tcx, args), args)
     }
 
     /// Determine if the given associated item type is relevant in the current context.
