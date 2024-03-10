@@ -13,10 +13,20 @@ use crate::fmt;
 use crate::marker::PhantomData;
 use crate::ops::{Deref, DerefMut};
 
+#[doc(no_inline)]
 #[stable(feature = "core_c_str", since = "1.64.0")]
-pub use self::c_str::{CStr, FromBytesUntilNulError, FromBytesWithNulError};
+pub use self::c_str::FromBytesWithNulError;
 
-mod c_str;
+#[doc(no_inline)]
+#[stable(feature = "cstr_from_bytes_until_nul", since = "1.69.0")]
+pub use self::c_str::FromBytesUntilNulError;
+
+#[doc(inline)]
+#[stable(feature = "core_c_str", since = "1.64.0")]
+pub use self::c_str::CStr;
+
+#[unstable(feature = "c_str_module", issue = "112134")]
+pub mod c_str;
 
 macro_rules! type_alias {
     {
