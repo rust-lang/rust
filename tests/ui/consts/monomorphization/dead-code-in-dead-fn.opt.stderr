@@ -1,8 +1,8 @@
-error[E0080]: evaluation of `PrintName::<i32>::VOID` failed
-  --> $DIR/unused-broken-const-late.rs:8:22
+error[E0080]: evaluation of `Fail::<i32>::C` failed
+  --> $DIR/dead-code-in-dead-fn.rs:9:19
    |
-LL |     const VOID: () = panic!();
-   |                      ^^^^^^^^ the evaluated program panicked at 'explicit panic', $DIR/unused-broken-const-late.rs:8:22
+LL |     const C: () = panic!();
+   |                   ^^^^^^^^ the evaluated program panicked at 'explicit panic', $DIR/dead-code-in-dead-fn.rs:9:19
    |
    = note: this error originates in the macro `$crate::panic::panic_2015` which comes from the expansion of the macro `panic` (in Nightly builds, run with -Z macro-backtrace for more info)
 
