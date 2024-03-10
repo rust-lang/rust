@@ -1857,6 +1857,7 @@ impl<T> Option<&T> {
     /// let copied = opt_x.copied();
     /// assert_eq!(copied, Some(12));
     /// ```
+    #[inline]
     #[must_use = "`self` will be dropped if the result is not used"]
     #[stable(feature = "copied", since = "1.35.0")]
     #[rustc_const_unstable(feature = "const_option", issue = "67441")]
@@ -1884,6 +1885,7 @@ impl<T> Option<&T> {
     /// let cloned = opt_x.cloned();
     /// assert_eq!(cloned, Some(12));
     /// ```
+    #[inline]
     #[must_use = "`self` will be dropped if the result is not used"]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn cloned(self) -> Option<T>
@@ -1910,6 +1912,7 @@ impl<T> Option<&mut T> {
     /// let copied = opt_x.copied();
     /// assert_eq!(copied, Some(12));
     /// ```
+    #[inline]
     #[must_use = "`self` will be dropped if the result is not used"]
     #[stable(feature = "copied", since = "1.35.0")]
     #[rustc_const_unstable(feature = "const_option_ext", issue = "91930")]
@@ -1935,6 +1938,7 @@ impl<T> Option<&mut T> {
     /// let cloned = opt_x.cloned();
     /// assert_eq!(cloned, Some(12));
     /// ```
+    #[inline]
     #[must_use = "`self` will be dropped if the result is not used"]
     #[stable(since = "1.26.0", feature = "option_ref_mut_cloned")]
     pub fn cloned(self) -> Option<T>
