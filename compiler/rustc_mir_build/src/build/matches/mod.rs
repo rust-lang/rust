@@ -214,9 +214,51 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     ///
     /// ## False edges
     ///
-    /// We don't want to have the exact structure of the decision tree be
-    /// visible through borrow checking. False edges ensure that the CFG as
-    /// seen by borrow checking doesn't encode this. False edges are added:
+    /// We don't want to have the exact structure of the decision tree be visible through borrow
+    /// checking. Specifically we want borrowck to think that:
+    /// - at any point, any or none of the patterns and guards seen so far may have been tested;
+    /// - after the match, any of the patterns may have matched.
+    ///
+    /// For example, all of these would fail to error if borrowck could see the real CFG (examples
+    /// taken from `tests/ui/nll/match-cfg-fake-edges.rs`):
+    /// ```ignore (too many errors, this is already in the test suite)
+    /// let x = String::new();
+    /// let _ = match true {
+    ///     _ => {},
+    ///     _ => drop(x),
+    /// };
+    /// // Borrowck must not know the second arm is never run.
+    /// drop(x); //~ ERROR use of moved value
+    ///
+    /// let x;
+    /// # let y = true;
+    /// match y {
+    ///     _ if { x = 2; true } => {},
+    ///     // Borrowck must not know the guard is always run.
+    ///     _ => drop(x), //~ ERROR used binding `x` is possibly-uninitialized
+    /// };
+    ///
+    /// let x = String::new();
+    /// # let y = true;
+    /// match y {
+    ///     false if { drop(x); true } => {},
+    ///     // Borrowck must not know the guard is not run in the `true` case.
+    ///     true => drop(x), //~ ERROR use of moved value: `x`
+    ///     false => {},
+    /// };
+    ///
+    /// # let mut y = (true, true);
+    /// let r = &mut y.1;
+    /// match y {
+    ///     //~^ ERROR cannot use `y.1` because it was mutably borrowed
+    ///     (false, true) => {}
+    ///     // Borrowck must not know we don't test `y.1` when `y.0` is `true`.
+    ///     (true, _) => drop(r),
+    ///     (false, _) => {}
+    /// };
+    /// ```
+    ///
+    /// To ensure this, we add false edges:
     ///
     /// * From each pre-binding block to the next pre-binding block.
     /// * From each otherwise block to the next pre-binding block.
