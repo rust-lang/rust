@@ -115,7 +115,7 @@ impl<'a, 'gcc, 'tcx> AsmBuilderMethods<'tcx> for Builder<'a, 'gcc, 'tcx> {
         span: &[Span],
         instance: Instance<'_>,
         dest: Option<Self::BasicBlock>,
-        _catch_funclet: Option<(Self::BasicBlock, Option<&Self::Funclet>)>,
+        _dest_catch_funclet: Option<(Self::BasicBlock, Option<&Self::Funclet>)>,
     ) {
         if options.contains(InlineAsmOptions::MAY_UNWIND) {
             self.sess().dcx().create_err(UnwindingInlineAsm { span: span[0] }).emit();
