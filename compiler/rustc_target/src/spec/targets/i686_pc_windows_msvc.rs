@@ -24,7 +24,7 @@ pub fn target() -> Target {
     Target {
         llvm_target: "i686-pc-windows-msvc".into(),
         metadata: crate::spec::TargetMetadata {
-            description: Some("32-bit MSVC (Windows 7+)".into()),
+            description: Some("32-bit MSVC (Windows 10+)".into()),
             tier: Some(1),
             host_tools: Some(true),
             std: Some(true),
