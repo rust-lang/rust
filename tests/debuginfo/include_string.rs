@@ -16,13 +16,13 @@
 // lldb-command:run
 
 // lldb-command:print string1.length
-// lldbg-check:[...]$0 = 48
+// lldbg-check:[...] 48
 // lldbr-check:(usize) length = 48
 // lldb-command:print string2.length
-// lldbg-check:[...]$1 = 49
+// lldbg-check:[...] 49
 // lldbr-check:(usize) length = 49
 // lldb-command:print string3.length
-// lldbg-check:[...]$2 = 50
+// lldbg-check:[...] 50
 // lldbr-check:(usize) length = 50
 
 // lldb-command:continue

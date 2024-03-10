@@ -48,34 +48,34 @@
 // lldb-command:run
 
 // lldb-command:print some
-// lldb-check:[...]$0 = Some(&0x12345678)
+// lldb-check:[...] Some(&0x12345678)
 
 // lldb-command:print none
-// lldb-check:[...]$1 = None
+// lldb-check:[...] None
 
 // lldb-command:print full
-// lldb-check:[...]$2 = Full(454545, &0x87654321, 9988)
+// lldb-check:[...] Full(454545, &0x87654321, 9988)
 
 // lldb-command:print empty
-// lldb-check:[...]$3 = Empty
+// lldb-check:[...] Empty
 
 // lldb-command:print droid
-// lldb-check:[...]$4 = Droid { id: 675675, range: 10000001, internals: &0x43218765 }
+// lldb-check:[...] Droid { id: 675675, range: 10000001, internals: &0x43218765 }
 
 // lldb-command:print void_droid
-// lldb-check:[...]$5 = Void
+// lldb-check:[...] Void
 
 // lldb-command:print some_str
-// lldb-check:[...]$6 = Some("abc")
+// lldb-check:[...] Some("abc")
 
 // lldb-command:print none_str
-// lldb-check:[...]$7 = None
+// lldb-check:[...] None
 
 // lldb-command:print nested_non_zero_yep
-// lldb-check:[...]$8 = Yep(10.5, NestedNonZeroField { a: 10, b: 20, c: &[...] })
+// lldb-check:[...] Yep(10.5, NestedNonZeroField { a: 10, b: 20, c: &[...] })
 
 // lldb-command:print nested_non_zero_nope
-// lldb-check:[...]$9 = Nope
+// lldb-check:[...] Nope
 
 
 #![feature(omit_gdb_pretty_printer_section)]

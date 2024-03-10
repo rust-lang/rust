@@ -36,32 +36,32 @@
 // lldb-command:run
 
 // lldb-command:print x
-// lldbg-check:[...]$0 = false
+// lldbg-check:[...] false
 // lldbr-check:(bool) x = false
 // lldb-command:continue
 
 // lldb-command:print x
-// lldbg-check:[...]$1 = false
+// lldbg-check:[...] false
 // lldbr-check:(bool) x = false
 // lldb-command:continue
 
 // lldb-command:print x
-// lldbg-check:[...]$2 = 1000
+// lldbg-check:[...] 1000
 // lldbr-check:(isize) x = 1000
 // lldb-command:continue
 
 // lldb-command:print x
-// lldbg-check:[...]$3 = 2.5
+// lldbg-check:[...] 2.5
 // lldbr-check:(f64) x = 2.5
 // lldb-command:continue
 
 // lldb-command:print x
-// lldbg-check:[...]$4 = true
+// lldbg-check:[...] true
 // lldbr-check:(bool) x = true
 // lldb-command:continue
 
 // lldb-command:print x
-// lldbg-check:[...]$5 = false
+// lldbg-check:[...] false
 // lldbr-check:(bool) x = false
 // lldb-command:continue
 
