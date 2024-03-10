@@ -485,9 +485,8 @@ impl<'a, 'gcc, 'tcx> AsmBuilderMethods<'tcx> for Builder<'a, 'gcc, 'tcx> {
                         }
 
                         InlineAsmOperandRef::Label { label } => {
-                            let label_gcc_index = labels.iter()
-                                .position(|&l| l == label)
-                                .expect("wrong rust index");
+                            let label_gcc_index =
+                                labels.iter().position(|&l| l == label).expect("wrong rust index");
                             let gcc_index = label_gcc_index + outputs.len() + inputs.len();
                             push_to_template(Some('l'), gcc_index);
                         }
@@ -538,9 +537,8 @@ impl<'a, 'gcc, 'tcx> AsmBuilderMethods<'tcx> for Builder<'a, 'gcc, 'tcx> {
         }
         if dest.is_none() && options.contains(InlineAsmOptions::NORETURN) {
             let builtin_unreachable = self.context.get_builtin_function("__builtin_unreachable");
-            let builtin_unreachable: RValue<'gcc> = unsafe {
-                std::mem::transmute(builtin_unreachable)
-            };
+            let builtin_unreachable: RValue<'gcc> =
+                unsafe { std::mem::transmute(builtin_unreachable) };
             self.call(self.type_void(), None, None, builtin_unreachable, &[], None);
         }
 
