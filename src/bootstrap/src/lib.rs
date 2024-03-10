@@ -171,9 +171,11 @@ pub struct Build {
     doc_tests: DocTests,
     verbosity: usize,
 
-    // Targets for which to build
+    /// Build triple for the pre-compiled snapshot compiler.
     build: TargetSelection,
+    /// Which triples to produce a compiler toolchain for.
     hosts: Vec<TargetSelection>,
+    /// Which triples to build libraries (core/alloc/std/test/proc_macro) for.
     targets: Vec<TargetSelection>,
 
     initial_rustc: PathBuf,
