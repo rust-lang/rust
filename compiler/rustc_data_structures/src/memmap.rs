@@ -18,8 +18,14 @@ impl Mmap {
     /// However in practice most callers do not ensure this, so uses of this function are likely unsound.
     #[inline]
     pub unsafe fn map(file: File) -> io::Result<Self> {
-        // Safety: the caller must ensure that this is safe.
-        unsafe { memmap2::Mmap::map(&file).map(Mmap) }
+        // By default, memmap2 creates shared mappings, implying that we could see updates to the
+        // file through the mapping. That would violate our precondition; so by requesting a
+        // map_copy_read_only we do not lose anything.
+        // This mapping mode also improves our support for filesystems such as cacheless virtiofs.
+        // For more details see https://github.com/rust-lang/rust/issues/122262
+        //
+        // SAFETY: The caller must ensure that this is safe.
+        unsafe { memmap2::MmapOptions::new().map_copy_read_only(&file).map(Mmap) }
     }
 }
 
