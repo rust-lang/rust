@@ -1,0 +1,50 @@
+error: couldn't read `$DIR/include-macros/file.txt`: $FILE_NOT_FOUND_MSG (os error 2)
+  --> $DIR/parent_dir.rs:4:13
+   |
+LL |     let _ = include_str!("include-macros/file.txt");
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: this error originates in the macro `include_str` (in Nightly builds, run with -Z macro-backtrace for more info)
+help: there is a file with the same name in a different directory
+   |
+LL |     let _ = include_str!("file.txt");
+   |                          ~~~~~~~~~~
+
+error: couldn't read `$DIR/hello.rs`: $FILE_NOT_FOUND_MSG (os error 2)
+  --> $DIR/parent_dir.rs:6:13
+   |
+LL |     let _ = include_str!("hello.rs");
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: this error originates in the macro `include_str` (in Nightly builds, run with -Z macro-backtrace for more info)
+help: there is a file with the same name in a different directory
+   |
+LL |     let _ = include_str!("../hello.rs");
+   |                          ~~~~~~~~~~~~~
+
+error: couldn't read `$DIR/../../data.bin`: $FILE_NOT_FOUND_MSG (os error 2)
+  --> $DIR/parent_dir.rs:8:13
+   |
+LL |     let _ = include_bytes!("../../data.bin");
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: this error originates in the macro `include_bytes` (in Nightly builds, run with -Z macro-backtrace for more info)
+help: there is a file with the same name in a different directory
+   |
+LL |     let _ = include_bytes!("data.bin");
+   |                            ~~~~~~~~~~
+
+error: couldn't read `$DIR/tests/ui/include-macros/file.txt`: $FILE_NOT_FOUND_MSG (os error 2)
+  --> $DIR/parent_dir.rs:10:13
+   |
+LL |     let _ = include_str!("tests/ui/include-macros/file.txt");
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: this error originates in the macro `include_str` (in Nightly builds, run with -Z macro-backtrace for more info)
+help: there is a file with the same name in a different directory
+   |
+LL |     let _ = include_str!("file.txt");
+   |                          ~~~~~~~~~~
+
+error: aborting due to 4 previous errors
+
