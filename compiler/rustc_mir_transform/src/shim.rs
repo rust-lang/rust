@@ -1023,17 +1023,12 @@ fn build_async_destructor_ctor_shim<'tcx>(
     def_id: DefId,
     self_ty: Ty<'tcx>,
 ) -> Body<'tcx> {
-    // FIXME: implement cleanup branches
+    let mut builder = AsyncDestructorCtorShimBuilder::new(tcx, def_id, self_ty);
 
-    let span = tcx.def_span(def_id);
-    let Some(sig) = tcx.fn_sig(def_id).instantiate(tcx, &[self_ty.into()]).no_bound_vars() else {
-        span_bug!(span, "async_drop_in_place_raw with bound vars for `{self_ty}`");
-    };
-
+    let source_info = builder.source_info;
+    let span = builder.span;
     let param_env = tcx.param_env_reveal_all_normalized(def_id);
-    let source_info = SourceInfo::outermost(span);
 
-    let mut locals = local_decls_for_sig(&sig, span);
     let return_local = Local::new(0);
     let self_ptr = Local::new(1);
 
@@ -1139,39 +1134,18 @@ fn build_async_destructor_ctor_shim<'tcx>(
     };
 
     let return_bb;
-    let mut blocks;
+    let mut blocks = &mut builder.bbs;
     match strategy {
         GlueStrategy::Empty => {
-            let ready_unit_fn = tcx.require_lang_item(LangItem::FutureReadyUnitCtor, Some(span));
-
-            blocks = IndexVec::from_elem_n(BasicBlockData::new(None), 2);
-            let ready_unit_bb = BasicBlock::new(0);
-            return_bb = BasicBlock::new(1);
-
-            blocks[ready_unit_bb].terminator = Some(Terminator {
-                source_info,
-                kind: TerminatorKind::Call {
-                    func: Operand::function_handle(
-                        tcx,
-                        ready_unit_fn,
-                        [/* HOST */ tcx.consts.false_.into()],
-                        span,
-                    ),
-                    args: Vec::new(),
-                    destination: return_local.into(),
-                    target: Some(return_bb),
-                    unwind: UnwindAction::Continue,
-                    call_source: CallSource::Misc,
-                    fn_span: span,
-                },
-            });
+            builder.ready_unit();
+            return builder.return_();
         }
 
         GlueStrategy::AsyncDropProjection => {
             let surface_async_drop_in_place_fn =
                 tcx.require_lang_item(LangItem::SurfaceAsyncDropInPlace, Some(span));
 
-            blocks = IndexVec::from_elem_n(BasicBlockData::new(None), 2);
+            *blocks = IndexVec::from_elem_n(BasicBlockData::new(None), 2);
             let surface_async_drop_in_place_bb = BasicBlock::new(0);
             return_bb = BasicBlock::new(1);
 
@@ -1181,7 +1155,7 @@ fn build_async_destructor_ctor_shim<'tcx>(
                     func: Operand::function_handle(
                         tcx,
                         surface_async_drop_in_place_fn,
-                        [self_ty.into()],
+                        iter::once(self_ty.into()),
                         span,
                     ),
                     args: vec![respan(span, Operand::Move(self_ptr.into()))],
@@ -1198,13 +1172,14 @@ fn build_async_destructor_ctor_shim<'tcx>(
             let slice_async_destructor_fn =
                 tcx.require_lang_item(LangItem::SliceAsyncDestructorCtor, Some(span));
 
-            blocks = IndexVec::from_elem_n(BasicBlockData::new(None), 2);
+            *blocks = IndexVec::from_elem_n(BasicBlockData::new(None), 2);
             let slice_async_destructor_bb = BasicBlock::new(0);
             return_bb = BasicBlock::new(1);
 
             let slice_ptr = if is_array {
                 let slice_ptr_ty = Ty::new_mut_ptr(tcx, Ty::new_slice(tcx, elem_ty));
-                let slice_ptr = locals.push(LocalDecl::with_source_info(slice_ptr_ty, source_info));
+                let slice_ptr =
+                    builder.locals.push(LocalDecl::with_source_info(slice_ptr_ty, source_info));
 
                 blocks[slice_async_destructor_bb].statements = vec![
                     Statement { source_info, kind: StatementKind::StorageLive(slice_ptr) },
@@ -1231,7 +1206,7 @@ fn build_async_destructor_ctor_shim<'tcx>(
                     func: Operand::function_handle(
                         tcx,
                         slice_async_destructor_fn,
-                        [elem_ty.into(), /* HOST */ tcx.consts.false_.into()],
+                        iter::once(elem_ty.into()),
                         span,
                     ),
                     args: vec![respan(span, Operand::Move(slice_ptr.into()))],
@@ -1264,18 +1239,18 @@ fn build_async_destructor_ctor_shim<'tcx>(
                 tcx.type_of(tcx.require_lang_item(LangItem::FutureChain, Some(span)));
             let future_chain_fn = tcx.require_lang_item(LangItem::FutureChainCtor, Some(span));
 
-            locals.raw.reserve(
+            builder.locals.raw.reserve(
                 1 + LOCALS_PER_ELEM * elem_count + if has_surface_async_drop { 2 } else { 0 },
             );
 
             // this local is right before element locals
             let ready_unit_local =
-                locals.push(LocalDecl::with_source_info(ready_unit_ty, source_info));
+                builder.locals.push(LocalDecl::with_source_info(ready_unit_ty, source_info));
 
-            let locals_base = locals.len();
+            let locals_base = builder.locals.len();
             let mut last_chain_ty = ready_unit_ty;
             // Creating temproraries to store intermediate futuresh
-            locals.extend(
+            builder.locals.extend(
                 elem_tys
                     .iter()
                     .rev()
@@ -1292,7 +1267,7 @@ fn build_async_destructor_ctor_shim<'tcx>(
                     .map(|ty| LocalDecl::with_source_info(ty, source_info)),
             );
 
-            blocks =
+            *blocks =
                 IndexVec::from_elem_n(BasicBlockData::new(None), 4 + BBS_PER_ELEM * elem_count);
             let ready_unit_bb = BasicBlock::new(0);
             let bbs_base = 1;
@@ -1345,12 +1320,7 @@ fn build_async_destructor_ctor_shim<'tcx>(
             blocks[ready_unit_bb].terminator = Some(Terminator {
                 source_info,
                 kind: TerminatorKind::Call {
-                    func: Operand::function_handle(
-                        tcx,
-                        ready_unit_fn,
-                        [/* HOST */ tcx.consts.false_.into()],
-                        span,
-                    ),
+                    func: Operand::function_handle(tcx, ready_unit_fn, iter::empty(), span),
                     args: Vec::new(),
                     destination: ready_unit_local.into(),
                     target: Some(chain_nodes().next().unwrap().deferred_dtor_bb),
@@ -1391,7 +1361,7 @@ fn build_async_destructor_ctor_shim<'tcx>(
                         func: Operand::function_handle(
                             tcx,
                             deferred_async_drop_fn,
-                            [node.elem_ty.into(), /* HOST */ tcx.consts.false_.into()],
+                            iter::once(node.elem_ty.into()),
                             span,
                         ),
                         args: vec![respan(span, Operand::Move(node.elem_ptr_local.into()))],
@@ -1417,9 +1387,8 @@ fn build_async_destructor_ctor_shim<'tcx>(
                             tcx,
                             future_chain_fn,
                             [
-                                locals[node.deferred_dtor_local].ty.into(),
-                                locals[node.previous_chain_local].ty.into(),
-                                /* HOST */ tcx.consts.false_.into(),
+                                builder.locals[node.deferred_dtor_local].ty.into(),
+                                builder.locals[node.previous_chain_local].ty.into(),
                             ],
                             span,
                         ),
@@ -1466,11 +1435,11 @@ fn build_async_destructor_ctor_shim<'tcx>(
                 );
 
                 let async_dropper_local =
-                    locals.push(LocalDecl::with_source_info(async_dropper_ty, source_info));
+                    builder.locals.push(LocalDecl::with_source_info(async_dropper_ty, source_info));
                 let surface_chain_ty = future_chain_ty
                     .instantiate(tcx, &[async_dropper_ty.into(), last_chain_ty.into()]);
                 let surface_chain_local =
-                    locals.push(LocalDecl::with_source_info(surface_chain_ty, source_info));
+                    builder.locals.push(LocalDecl::with_source_info(surface_chain_ty, source_info));
 
                 blocks[maybe_async_dropper_bb].statements = vec![Statement {
                     source_info,
@@ -1482,7 +1451,7 @@ fn build_async_destructor_ctor_shim<'tcx>(
                         func: Operand::function_handle(
                             tcx,
                             surface_async_drop_fn,
-                            [self_ty.into()],
+                            iter::once(self_ty.into()),
                             span,
                         ),
                         args: vec![respan(span, Operand::Move(self_ptr.into()))],
@@ -1504,11 +1473,7 @@ fn build_async_destructor_ctor_shim<'tcx>(
                         func: Operand::function_handle(
                             tcx,
                             future_chain_fn,
-                            [
-                                async_dropper_ty.into(),
-                                last_chain_ty.into(),
-                                /* HOST */ tcx.consts.false_.into(),
-                            ],
+                            [async_dropper_ty.into(), last_chain_ty.into()],
                             span,
                         ),
                         args: vec![
@@ -1566,10 +1531,11 @@ fn build_async_destructor_ctor_shim<'tcx>(
         }
     }
 
-    blocks[return_bb].terminator = Some(Terminator { source_info, kind: TerminatorKind::Return });
+    builder.bbs[return_bb].terminator =
+        Some(Terminator { source_info, kind: TerminatorKind::Return });
 
     let source = MirSource::from_instance(ty::InstanceDef::AsyncDropGlueCtorShim(def_id, self_ty));
-    new_body(source, blocks, locals, sig.inputs().len(), span)
+    new_body(source, builder.bbs, builder.locals, ASYNC_DESTRUCTOR_CTOR_ARG_COUNT, span)
 }
 
 const ASYNC_DESTRUCTOR_CTOR_ARG_COUNT: usize = 1;

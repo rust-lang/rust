@@ -125,7 +125,7 @@ struct SliceAsyncDestuctor<T> {
 }
 
 #[lang = "slice_async_destructor_ctor"]
-const unsafe fn slice_async_destructor<T>(inner: *mut [T]) -> SliceAsyncDestuctor<T> {
+unsafe fn slice_async_destructor<T>(inner: *mut [T]) -> SliceAsyncDestuctor<T> {
     SliceAsyncDestuctor {
         // SAFETY: We call this funtion from async drop
         //   `async_drop_in_place_raw` which has the same safety requirements
@@ -201,7 +201,7 @@ impl<T> Future for DeferredAsyncDrop<T> {
 /// Same as [`async_drop_in_place`], but creation of the pinned mutable
 /// reference is deferred until first [`DeferredAsyncDrop::poll`] call.
 #[lang = "deferred_async_drop_ctor"]
-const unsafe fn deferred_async_drop<T>(item: *mut T) -> DeferredAsyncDrop<T> {
+unsafe fn deferred_async_drop<T>(item: *mut T) -> DeferredAsyncDrop<T> {
     DeferredAsyncDrop::Init {
         // SAFETY: Guaranteed by current function's safety requirements
         ptr: unsafe { ptr::NonNull::new_unchecked(item) },
@@ -246,7 +246,7 @@ where
 }
 
 #[lang = "future_chain_ctor"]
-const fn chain<F1, F2>(first: F1, second: F2) -> Chain<F1, F2> {
+fn chain<F1, F2>(first: F1, second: F2) -> Chain<F1, F2> {
     Chain { first: Some(first), second }
 }
 
@@ -264,6 +264,6 @@ impl Future for ReadyUnit {
 }
 
 #[lang = "future_ready_unit_ctor"]
-const fn ready_unit() -> ReadyUnit {
+fn ready_unit() -> ReadyUnit {
     ReadyUnit
 }
