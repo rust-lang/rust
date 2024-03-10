@@ -12,7 +12,7 @@
 //! sort of test: for example, testing which variant an enum is, or
 //! testing a value against a constant.
 
-use crate::build::matches::{DerefTemporary, MatchPair, PatternExtraData, TestCase};
+use crate::build::matches::{MatchPair, PatternExtraData, TestCase};
 use crate::build::Builder;
 
 use std::mem;
@@ -44,17 +44,6 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         // after any bindings in `pat`. This doesn't work for or-patterns: the current structure of
         // match lowering forces us to lower bindings inside or-patterns last.
         for mut match_pair in mem::take(match_pairs) {
-            if let TestCase::Deref { temp } = &match_pair.test_case {
-                // Re-establish these temporaries after matching the candidate in case we have
-                // bindings that depend on them.
-                extra_data.deref_temps.push(DerefTemporary {
-                    place: match_pair.place.to_place(self),
-                    temp: *temp,
-                    ty: match_pair.pattern.ty,
-                    span: match_pair.pattern.span,
-                });
-            }
-
             self.simplify_match_pairs(&mut match_pair.subpairs, extra_data);
             if let TestCase::Irrefutable { binding, ascription } = match_pair.test_case {
                 if let Some(binding) = binding {

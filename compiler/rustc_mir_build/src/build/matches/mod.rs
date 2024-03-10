@@ -993,17 +993,6 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     }
 }
 
-/// A temporary that must be set like `let temp = Deref::deref(&place)` after the candidate
-/// `pre_binding_block`. This is because fake edges prevent us from keeping the temporaries we set
-/// up while testing which branch to take.
-#[derive(Debug, Copy, Clone)]
-struct DerefTemporary<'tcx> {
-    place: Place<'tcx>,
-    temp: Place<'tcx>,
-    ty: Ty<'tcx>,
-    span: Span,
-}
-
 /// Data extracted from a pattern that doesn't affect which branch is taken. Collected during
 /// pattern simplification and not mutated later.
 #[derive(Debug, Clone, Default)]
@@ -1016,15 +1005,12 @@ struct PatternExtraData<'tcx> {
 
     /// Types that must be asserted.
     ascriptions: Vec<Ascription<'tcx>>,
-
-    /// Temporaries that must be set up in order.
-    deref_temps: Vec<DerefTemporary<'tcx>>,
 }
 
 impl<'tcx> PatternExtraData<'tcx> {
     fn is_empty(&self) -> bool {
         // FIXME(deref_patterns): can we merge trivial subcandidates that use deref patterns?
-        self.bindings.is_empty() && self.ascriptions.is_empty() && self.deref_temps.is_empty()
+        self.bindings.is_empty() && self.ascriptions.is_empty()
     }
 }
 
@@ -1051,7 +1037,6 @@ impl<'tcx, 'pat> FlatPat<'pat, 'tcx> {
                 span: pattern.span,
                 bindings: Vec::new(),
                 ascriptions: Vec::new(),
-                deref_temps: Vec::new(),
             },
         };
         cx.simplify_match_pairs(&mut flat_pat.match_pairs, &mut flat_pat.extra_data);
@@ -2096,23 +2081,6 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 candidate_source_info,
             );
             block = fresh_block;
-        }
-
-        for d in collected_data.iter() {
-            for deref_call in d.deref_temps.iter() {
-                // Re-establish `Deref::deref` temporaries because false edges trick borrowck into
-                // believing they may not be initialized.
-                let next_block = self.cfg.start_new_block();
-                self.call_deref(
-                    block,
-                    next_block,
-                    deref_call.place,
-                    deref_call.ty,
-                    deref_call.temp,
-                    deref_call.span,
-                );
-                block = next_block;
-            }
         }
 
         self.ascribe_types(block, collected_data.iter().flat_map(|d| &d.ascriptions).cloned());
