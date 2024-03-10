@@ -5,7 +5,6 @@ use core::cmp;
 use core::hint;
 use core::mem::{self, ManuallyDrop, MaybeUninit, SizedTypeProperties};
 use core::ptr::{self, NonNull, Unique};
-use core::slice;
 
 #[cfg(not(no_global_oom_handling))]
 use crate::alloc::handle_alloc_error;
@@ -192,7 +191,7 @@ impl<T, A: Allocator> RawVec<T, A> {
 
         let me = ManuallyDrop::new(self);
         unsafe {
-            let slice = slice::from_raw_parts_mut(me.ptr() as *mut MaybeUninit<T>, len);
+            let slice = ptr::slice_from_raw_parts_mut(me.ptr() as *mut MaybeUninit<T>, len);
             Box::from_raw_in(slice, ptr::read(&me.alloc))
         }
     }
