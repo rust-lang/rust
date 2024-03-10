@@ -74,3 +74,5 @@ tests/ui/simd/repr_packed.rs
 tests/ui/async-await/in-trait/dont-project-to-specializable-projection.rs
 tests/ui/consts/try-operator.rs
 tests/ui/coroutine/unwind-abort-mix.rs
+tests/ui/type-alias-impl-trait/rpit_tait_equality_in_canonical_query.rs
+tests/ui/impl-trait/equality-in-canonical-query.rs
