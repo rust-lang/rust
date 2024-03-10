@@ -2629,7 +2629,7 @@ pub const fn is_val_statically_known<T: Copy>(_arg: T) -> bool {
 }
 
 /// Returns whether we should check for library UB. This evaluate to the value of `cfg!(debug_assertions)`
-/// during monomorphization.
+/// during monomorphization. It's available when using `rustc_preserve_ub_checks` or `debug_assertions`.
 ///
 /// This intrinsic is evaluated after monomorphization, and therefore branching on this value can
 /// be used to implement debug assertions that are included in the precompiled standard library,
@@ -2648,7 +2648,7 @@ pub(crate) const fn check_library_ub() -> bool {
 }
 
 /// Returns whether we should check for language UB. This evaluate to the value of `cfg!(debug_assertions)`
-/// during monomorphization.
+/// during monomorphization. It's available when using `rustc_preserve_ub_checks` or `debug_assertions`.
 ///
 /// Since checks implemented at the source level must come strictly before the operation that
 /// executes UB, if we enabled language UB checks in const-eval/Miri we would miss out on the

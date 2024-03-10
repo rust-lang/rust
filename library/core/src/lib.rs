@@ -94,6 +94,7 @@
 ))]
 #![no_core]
 #![rustc_coherence_is_core]
+#![cfg_attr(not(bootstrap), rustc_preserve_ub_checks)]
 //
 // Lints:
 #![deny(rust_2021_incompatible_or_patterns)]
