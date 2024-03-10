@@ -1549,7 +1549,7 @@ impl Step for MirOpt {
             })
         };
 
-        if builder.config.cmd.bless() {
+        if builder.config.keep_stage_std.is_empty() {
             // All that we really need to do is cover all combinations of 32/64-bit and unwind/abort,
             // but while we're at it we might as well flex our cross-compilation support. This
             // selection covers all our tier 1 operating systems and architectures using only tier
@@ -1568,6 +1568,7 @@ impl Step for MirOpt {
                 run(panic_abort_target);
             }
         } else {
+            // If we're keeping a std stage, only run tests for this target.
             run(self.target);
         }
     }
