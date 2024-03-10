@@ -1495,7 +1495,7 @@ impl<'test> TestCx<'test> {
             "^(core::([a-z_]+::)+)Ref<.+>$",
             "^(core::([a-z_]+::)+)RefMut<.+>$",
             "^(core::([a-z_]+::)+)RefCell<.+>$",
-            "^core::num::([a-z_]+::)*NonZero<.+>$",
+            "^(core::([a-z_]+::)+)NonZero<.+>$",
         ];
 
         // In newer versions of lldb, persistent results (the `$N =` part at the start of
