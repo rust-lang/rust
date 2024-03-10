@@ -181,14 +181,6 @@ infer_more_targeted = {$has_param_name ->
 
 infer_msl_introduces_static = introduces a `'static` lifetime requirement
 infer_msl_unmet_req = because this has an unmet lifetime requirement
-infer_need_type_info_in_coroutine =
-    type inside {$coroutine_kind ->
-    [async_block] `async` block
-    [async_closure] `async` closure
-    [async_fn] `async fn` body
-    *[coroutine] coroutine
-    } must be known in this context
-
 
 infer_nothing = {""}
 
