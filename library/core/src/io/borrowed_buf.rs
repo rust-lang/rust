@@ -139,9 +139,11 @@ impl<'data> BorrowedBuf<'data> {
     }
 }
 
-/// A writeable view of the unfilled portion of a [`BorrowedBuf`](BorrowedBuf).
+/// A writeable view of the unfilled portion of a [`BorrowedBuf`].
 ///
-/// Provides access to the initialized and uninitialized parts of the underlying `BorrowedBuf`.
+/// The unfilled portion consists of an initialized and an uninitialized part; see [`BorrowedBuf`]
+/// for details.
+///
 /// Data can be written directly to the cursor by using [`append`](BorrowedCursor::append) or
 /// indirectly by getting a slice of part or all of the cursor and writing into the slice. In the
 /// indirect case, the caller must call [`advance`](BorrowedCursor::advance) after writing to inform
