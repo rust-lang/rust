@@ -228,7 +228,6 @@ impl AutoDiffAttrs {
     }
 
     pub fn is_source(&self) -> bool {
-        dbg!(&self);
         match self.mode {
             DiffMode::Source => true,
             _ => false,

@@ -1,4 +1,15 @@
+#![allow(unused_imports)]
+#![allow(unused_variables)]
 use crate::llvm::LLVMGetFirstBasicBlock;
+use crate::llvm::LLVMRustEraseInstBefore;
+use crate::llvm::LLVMRustHasDbgMetadata;
+use crate::llvm::LLVMRustHasMetadata;
+use crate::llvm::LLVMRustRemoveFncAttr;
+use crate::llvm::LLVMMetadataAsValue;
+use crate::llvm::LLVMRustGetLastInstruction;
+use crate::llvm::LLVMRustDIGetInstMetadata;
+use crate::llvm::LLVMRustDIGetInstMetadataOfTy;
+use crate::llvm::LLVMRustgetFirstNonPHIOrDbgOrLifetime;
 use crate::llvm::LLVMRustGetTerminator;
 use crate::llvm::LLVMRustEraseInstFromParent;
 use crate::llvm::LLVMRustEraseBBFromParent;
@@ -35,6 +46,8 @@ use crate::typetree::to_enzyme_typetree;
 use crate::DiffTypeTree;
 use crate::LlvmCodegenBackend;
 use crate::ModuleLlvm;
+use llvm::LLVMRustDISetInstMetadata;
+//use llvm::LLVMGetValueName2;
 use llvm::{
     LLVMRustLLVMHasZlibCompressionForDebugSymbols, LLVMRustLLVMHasZstdCompressionForDebugSymbols, LLVMGetNextBasicBlock,
 };
@@ -542,6 +555,9 @@ pub(crate) unsafe fn llvm_optimize(
     // RIP compile time.
     // let unroll_loops =
     //     opt_level != config::OptLevel::Size && opt_level != config::OptLevel::SizeMin;
+
+
+
     let _unroll_loops =
         opt_level != config::OptLevel::Size && opt_level != config::OptLevel::SizeMin;
     let unroll_loops = false;
@@ -673,89 +689,86 @@ fn get_params(fnc: &Value) -> Vec<&Value> {
 //18:                                               ; preds = %18, %3
 //  br label %18, !dbg !13687
 
-#[allow(unused_variables)]
-#[allow(unused)]
-unsafe fn cleanup<'a>(fnc: &'a Value) {
+
+unsafe fn create_call<'a>(tgt: &'a Value, src: &'a Value, rev_mode: bool,
+    llmod: &'a llvm::Module, llcx: &llvm::Context) {
    // first, remove all calls from fnc
-   let bb = LLVMGetFirstBasicBlock(fnc);
+   let bb = LLVMGetFirstBasicBlock(tgt);
    let bb2 = LLVMGetNextBasicBlock(bb);
    let br = LLVMRustGetTerminator(bb);
    LLVMRustEraseInstFromParent(br);
-
    LLVMRustEraseBBFromParent(bb2);
-   //LLVMEraseFromParent(bb);
-   dbg!(&fnc);
-   //let bb2 = LLVMGet
-   //LLVMEraseFromParent
 
-}
+   // now add a call to inner.
+    // append call to src at end of bb.
+    let f_ty = LLVMRustGetFunctionType(src);
 
-// TODO: Here we could start adding length checks for the shaddow args.
-unsafe fn create_wrapper<'a>(
-    llmod: &'a llvm::Module,
-    fnc: &'a Value,
-    u_type: &Type,
-    fnc_name: String,
-) -> (&'a Value, &'a BasicBlock, Vec<&'a Value>, Vec<&'a Value>, CString) {
-    let context = LLVMGetModuleContext(llmod);
-    let inner_fnc_name = "inner_".to_string() + &fnc_name;
-    let c_inner_fnc_name = CString::new(inner_fnc_name.clone()).unwrap();
-    LLVMSetValueName2(fnc, c_inner_fnc_name.as_ptr(), inner_fnc_name.len() as usize);
-
-    let c_outer_fnc_name = CString::new(fnc_name).unwrap();
-    //let u_type = LLVMGetReturnType(u_type);
-    let outer_fnc: &Value =
-        LLVMAddFunction(llmod, c_outer_fnc_name.as_ptr(), u_type);
-
-    let entry = "fnc_entry".to_string();
-    let c_entry = CString::new(entry).unwrap();
-    let basic_block = LLVMAppendBasicBlockInContext(context, outer_fnc, c_entry.as_ptr());
-
-    let outer_params: Vec<&Value> = get_params(outer_fnc);
-    let inner_params: Vec<&Value> = get_params(fnc);
-
-    (outer_fnc, basic_block, outer_params, inner_params, c_inner_fnc_name)
-}
-
-pub(crate) unsafe fn extract_return_type<'a>(
-    llmod: &'a llvm::Module,
-    fnc: &'a Value,
-    u_type: &Type,
-    fnc_name: String,
-) -> &'a Value {
-    let f_ty = LLVMRustGetFunctionType(fnc);
-    let context = llvm::LLVMGetModuleContext(llmod);
-
-    let inner_param_num = LLVMCountParams(fnc);
-    let (outer_fnc, outer_bb, mut outer_args, _inner_args, c_inner_fnc_name) =
-        create_wrapper(llmod, fnc, u_type, fnc_name);
+    let inner_param_num = LLVMCountParams(src);
+    let mut outer_args: Vec<&Value> = get_params(tgt);
 
     if inner_param_num as usize != outer_args.len() {
-        panic!("Args len shouldn't differ. Please report this.");
+        panic!("Args len shouldn't differ. Please report this. {} : {}", inner_param_num, outer_args.len());
     }
 
-    let builder = LLVMCreateBuilderInContext(context);
-    LLVMPositionBuilderAtEnd(builder, outer_bb);
-    let struct_ret = LLVMBuildCall2(
+    let inner_fnc_name = llvm::get_value_name(src);
+    let c_inner_fnc_name = CString::new(inner_fnc_name).unwrap();
+
+    let builder = LLVMCreateBuilderInContext(llcx);
+    let last_inst = LLVMRustGetLastInstruction(bb).unwrap();
+    LLVMPositionBuilderAtEnd(builder, bb);
+    let mut struct_ret = LLVMBuildCall2(
         builder,
         f_ty,
-        fnc,
+        src,
         outer_args.as_mut_ptr(),
         outer_args.len(),
         c_inner_fnc_name.as_ptr(),
     );
 
-    // We can use an arbitrary name here, since it will be used to store a tmp value.
-    let inner_grad_name = "foo".to_string();
-    let c_inner_grad_name = CString::new(inner_grad_name).unwrap();
-    let struct_ret = LLVMBuildExtractValue(builder, struct_ret, 0, c_inner_grad_name.as_ptr());
+
+    // Add dummy dbg info to our newly generated call, if we have any.
+    let inst = LLVMRustgetFirstNonPHIOrDbgOrLifetime(bb).unwrap();
+    let md_ty = llvm::LLVMGetMDKindIDInContext(
+            llcx,
+            "dbg".as_ptr() as *const c_char,
+            "dbg".len() as c_uint,
+        );
+
+    if LLVMRustHasMetadata(last_inst, md_ty) {
+        let md = LLVMRustDIGetInstMetadata(last_inst);
+        let md_val = LLVMMetadataAsValue(llcx, md);
+        let md2 = llvm::LLVMSetMetadata(struct_ret, md_ty, md_val);
+    } else {
+        dbg!("No dbg info");
+        dbg!(&inst);
+    }
+
+    // Our placeholder originally ended with `loop {}`, and therefore got the noreturn fnc attr.
+    // This is not true anymore, so we remove it.
+    LLVMRustRemoveFncAttr(tgt, AttributeKind::NoReturn);
+
+    dbg!(&tgt);
+
+    // Now clean up placeholder code.
+    LLVMRustEraseInstBefore(bb, last_inst);
+
+    let f_return_type = LLVMGetReturnType(LLVMGlobalGetValueType(src));
+    let void_type = LLVMVoidTypeInContext(llcx);
+    // Now unwrap the struct_ret if it's actually a struct
+    if rev_mode && f_return_type != void_type {
+        let num_elem_in_ret_struct = LLVMCountStructElementTypes(f_return_type);
+        if num_elem_in_ret_struct == 1 {
+            let inner_grad_name = "foo".to_string();
+            let c_inner_grad_name = CString::new(inner_grad_name).unwrap();
+            struct_ret = LLVMBuildExtractValue(builder, struct_ret, 0, c_inner_grad_name.as_ptr());
+        }
+    }
     let _ret = LLVMBuildRet(builder, struct_ret);
-    let _terminator = LLVMGetBasicBlockTerminator(outer_bb);
     LLVMDisposeBuilder(builder);
+
+    dbg!(&tgt);
     let _fnc_ok =
-        LLVMVerifyFunction(outer_fnc, llvm::LLVMVerifierFailureAction::LLVMAbortProcessAction);
-    dbg!(&outer_fnc);
-    outer_fnc
+        LLVMVerifyFunction(tgt, llvm::LLVMVerifierFailureAction::LLVMAbortProcessAction);
 }
 
 // As unsafe as it can be.
@@ -805,8 +818,6 @@ pub(crate) unsafe fn enzyme_ad(
             ));
         }
     };
-    dbg!(&target_fnc);
-    cleanup(target_fnc);
     let src_num_args = llvm::LLVMCountParams(src_fnc);
     let target_num_args = llvm::LLVMCountParams(target_fnc);
     // A really simple check
@@ -866,22 +877,14 @@ pub(crate) unsafe fn enzyme_ad(
     let f_return_type = LLVMGetReturnType(LLVMGlobalGetValueType(res));
 
     let void_type = LLVMVoidTypeInContext(llcx);
-    if item.attrs.mode == DiffMode::Reverse && f_return_type != void_type {
-        let num_elem_in_ret_struct = LLVMCountStructElementTypes(f_return_type);
-        if num_elem_in_ret_struct == 1 {
-
-            let u_type = LLVMRustGetFunctionType(target_fnc);
-            res = extract_return_type(llmod, res, u_type, rust_name2.clone()); // TODO: check if name or name2
-        }
-    }
-    LLVMSetValueName2(res, name2.as_ptr(), rust_name2.len());
-    LLVMReplaceAllUsesWith(target_fnc, res);
-    LLVMDeleteFunction(target_fnc);
+    let rev_mode = item.attrs.mode == DiffMode::Reverse;
+    create_call(target_fnc, res, rev_mode, llmod, llcx);
     // TODO: implement drop for wrapper type?
     FreeTypeAnalysis(type_analysis);
 
     Ok(())
 }
+
 
 pub(crate) unsafe fn differentiate(
     module: &ModuleCodegen<ModuleLlvm>,

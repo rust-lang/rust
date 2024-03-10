@@ -800,6 +800,84 @@ extern "C" bool LLVMRustHasModuleFlag(LLVMModuleRef M, const char *Name,
   return unwrap(M)->getModuleFlag(StringRef(Name, Len)) != nullptr;
 }
 
+extern "C" LLVMValueRef
+LLVMRustgetFirstNonPHIOrDbgOrLifetime(LLVMBasicBlockRef BB) {
+  if (auto *I = unwrap(BB)->getFirstNonPHIOrDbgOrLifetime())
+    return wrap(I);
+  return nullptr;
+}
+
+// pub fn LLVMRustGetLastInstruction<'a>(BB: &BasicBlock) -> Option<&'a Value>;
+extern "C" LLVMValueRef LLVMRustGetLastInstruction(LLVMBasicBlockRef BB) {
+  auto Point = unwrap(BB)->rbegin();
+  if (Point != unwrap(BB)->rend())
+    return wrap(&*Point);
+  return nullptr;
+}
+
+extern "C" void LLVMRustEraseInstBefore(LLVMBasicBlockRef bb, LLVMValueRef I) {
+  auto &BB = *unwrap(bb);
+  auto &Inst = *unwrap<Instruction>(I);
+  auto It = BB.begin();
+  while (&*It != &Inst)
+    ++It;
+  assert(It != BB.end());
+  // Delete in rev order to ensure no dangling references.
+  while (It != BB.begin()) {
+    auto Prev = std::prev(It);
+    It->eraseFromParent();
+    It = Prev;
+  }
+  It->eraseFromParent();
+}
+
+extern "C" bool LLVMRustHasMetadata(LLVMValueRef inst, unsigned kindID) {
+  if (auto *I = dyn_cast<Instruction>(unwrap<Value>(inst))) {
+    return I->hasMetadata(kindID);
+  }
+  return false;
+}
+
+extern "C" bool LLVMRustHasDbgMetadata(LLVMValueRef inst) {
+  if (auto *I = dyn_cast<Instruction>(unwrap<Value>(inst))) {
+    return false;
+    // return I->hasDbgValues();
+  }
+  return false;
+}
+
+extern "C" void LLVMRustRemoveFncAttr(LLVMValueRef F,
+                                      LLVMRustAttribute RustAttr) {
+  if (auto *Fn = dyn_cast<Function>(unwrap<Value>(F))) {
+    Fn->removeFnAttr(fromRust(RustAttr));
+  }
+}
+
+extern "C" LLVMMetadataRef LLVMRustDIGetInstMetadata(LLVMValueRef x) {
+  if (auto *I = dyn_cast<Instruction>(unwrap<Value>(x))) {
+    // auto *MD = I->getMetadata(LLVMContext::MD_dbg);
+    auto *MD = I->getDebugLoc().getAsMDNode();
+    return wrap(MD);
+  }
+  return nullptr;
+}
+
+extern "C" LLVMMetadataRef LLVMRustDIGetInstMetadataOfTy(LLVMValueRef x,
+                                                         unsigned kindID) {
+  if (auto *I = dyn_cast<Instruction>(unwrap<Value>(x))) {
+    auto *MD = I->getMetadata(kindID);
+    return wrap(MD);
+  }
+  return nullptr;
+}
+
+extern "C" void LLVMRustDISetInstMetadata(LLVMValueRef Inst,
+                                          LLVMMetadataRef Desc) {
+  if (auto *I = dyn_cast<Instruction>(unwrap<Value>(Inst))) {
+    I->setMetadata(LLVMContext::MD_dbg, unwrap<MDNode>(Desc));
+  }
+}
+
 extern "C" void LLVMRustGlobalAddMetadata(
     LLVMValueRef Global, unsigned Kind, LLVMMetadataRef MD) {
   unwrap<GlobalObject>(Global)->addMetadata(Kind, *unwrap<MDNode>(MD));

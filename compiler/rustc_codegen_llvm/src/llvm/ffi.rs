@@ -989,6 +989,15 @@ extern "C" {
     // EraseFromParent doesn't exist :(
     //pub fn LLVMEraseFromParent(BB: &BasicBlock) -> &Value;
     // Enzyme
+    pub fn LLVMRustRemoveFncAttr(V: &Value, attr: AttributeKind);
+    pub fn LLVMRustHasDbgMetadata(I: &Value) -> bool;
+    pub fn LLVMRustHasMetadata(I: &Value, KindID: c_uint) -> bool;
+    pub fn LLVMRustEraseInstBefore(BB: &BasicBlock, I: &Value);
+    pub fn LLVMRustgetFirstNonPHIOrDbgOrLifetime<'a>(BB: &BasicBlock) -> Option<&'a Value>;
+    pub fn LLVMRustGetLastInstruction<'a>(BB: &BasicBlock) -> Option<&'a Value>;
+    pub fn LLVMRustDIGetInstMetadataOfTy(I: &Value, KindID: c_uint) -> &Metadata;
+    pub fn LLVMRustDIGetInstMetadata(I: &Value) -> &Metadata;
+    pub fn LLVMRustDISetInstMetadata<'a>(I: &Value, MD: &'a Metadata);
     pub fn LLVMRustEraseBBFromParent(B: &BasicBlock);
     pub fn LLVMRustEraseInstFromParent(V: &Value);
     pub fn LLVMRustGetTerminator<'a>(B: &BasicBlock) -> &'a Value;
