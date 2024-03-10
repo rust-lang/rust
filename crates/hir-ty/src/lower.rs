@@ -382,7 +382,7 @@ impl<'a> TyLoweringContext<'a> {
                             list_params,
                             const_params,
                             _impl_trait_params,
-                            lifetime_params,
+                            _lifetime_params,
                         ) = if let Some(def) = self.resolver.generic_def() {
                             let generics = generics(self.db.upcast(), def);
                             generics.provenance_split()
@@ -391,11 +391,7 @@ impl<'a> TyLoweringContext<'a> {
                         };
                         TyKind::BoundVar(BoundVar::new(
                             self.in_binders,
-                            idx as usize
-                                + self_params
-                                + list_params
-                                + const_params
-                                + lifetime_params,
+                            idx as usize + self_params + list_params + const_params,
                         ))
                         .intern(Interner)
                     }
@@ -869,11 +865,17 @@ impl<'a> TyLoweringContext<'a> {
             let expected_num = if generic_args.has_self_type {
                 self_params + type_params + const_params + lifetime_params
             } else {
-                type_params + const_params
+                type_params + const_params + lifetime_params
             };
             let skip = if generic_args.has_self_type && self_params == 0 { 1 } else { 0 };
             // if args are provided, it should be all of them, but we can't rely on that
-            for arg in generic_args.args.iter().skip(skip).take(expected_num) {
+            for arg in generic_args
+                .args
+                .iter()
+                .filter(|arg| !matches!(arg, GenericArg::Lifetime(_)))
+                .skip(skip)
+                .take(expected_num)
+            {
                 if let Some(id) = def_generic_iter.next() {
                     if let Some(x) = generic_arg_to_chalk(
                         self.db,
@@ -889,6 +891,34 @@ impl<'a> TyLoweringContext<'a> {
                     } else {
                         // we just filtered them out
                         never!("Unexpected lifetime argument");
+                    }
+                }
+            }
+
+            for arg in generic_args
+                .args
+                .iter()
+                .filter(|arg| matches!(arg, GenericArg::Lifetime(_)))
+                .skip(skip)
+                .take(expected_num)
+            {
+                // Taking into the fact that def_generic_iter will always have lifetimes at the end
+                // Should have some test cases tho to test this behaviour more properly
+                if let Some(id) = def_generic_iter.next() {
+                    if let Some(x) = generic_arg_to_chalk(
+                        self.db,
+                        id,
+                        arg,
+                        &mut (),
+                        |_, type_ref| self.lower_ty(type_ref),
+                        |_, const_ref, ty| self.lower_const(const_ref, ty),
+                        |_, lifetime_ref| self.lower_lifetime(lifetime_ref),
+                    ) {
+                        had_explicit_args = true;
+                        substs.push(dbg!(x));
+                    } else {
+                        // Never return a None explictly
+                        never!("Unexpectd None by generic_arg_to_chalk");
                     }
                 }
             }
