@@ -9,17 +9,23 @@ impl<T> Fail<T> {
     const C: () = panic!(); //~ERROR evaluation of `Fail::<i32>::C` failed
 }
 
-// This function is not actually called, but it is mentioned in dead code in a function that is
+trait MyTrait {
+    fn not_called(&self);
+}
+
+// This function is not actually called, but it is mentioned in a vtable in a function that is
 // called. Make sure we still find this error.
-#[inline(never)]
-fn not_called<T>() {
-    let _ = Fail::<T>::C;
+impl<T> MyTrait for Vec<T> {
+    fn not_called(&self) {
+        let _ = Fail::<T>::C;
+    }
 }
 
 #[inline(never)]
 fn called<T>() {
     if false {
-        not_called::<T>();
+        let v: Vec<T> = Vec::new();
+        let gen_vtable: &dyn MyTrait = &v;
     }
 }
 

@@ -9,20 +9,22 @@ impl<T> Fail<T> {
     const C: () = panic!(); //~ERROR evaluation of `Fail::<i32>::C` failed
 }
 
-// This function is not actually called, but it is mentioned in dead code in a function that is
-// called. Make sure we still find this error.
-#[inline(never)]
-fn not_called<T>() {
-    let _ = Fail::<T>::C;
+// This function is not actually called, but is mentioned implicitly as destructor in dead code in a
+// function that is called. Make sure we still find this error.
+impl<T> Drop for Fail<T> {
+    fn drop(&mut self) {
+        let _ = Fail::<T>::C;
+    }
 }
 
 #[inline(never)]
-fn called<T>() {
+fn called<T>(x: T) {
     if false {
-        not_called::<T>();
+        let v = Fail(x);
+        drop(v);
     }
 }
 
 pub fn main() {
-    called::<i32>();
+    called::<i32>(0);
 }
