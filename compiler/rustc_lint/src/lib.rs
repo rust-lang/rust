@@ -303,8 +303,8 @@ fn register_builtins(store: &mut LintStore) {
         BARE_TRAIT_OBJECTS,
         UNUSED_EXTERN_CRATES,
         ELLIPSIS_INCLUSIVE_RANGE_PATTERNS,
-        ELIDED_LIFETIMES_IN_PATHS_TIED,
-        ELIDED_LIFETIMES_IN_PATHS_UNTIED,
+        TIED_LIFETIMES_HIDDEN_IN_PATHS,
+        UNTIED_LIFETIMES_HIDDEN_IN_PATHS,
         EXPLICIT_OUTLIVES_REQUIREMENTS,
         // FIXME(#52665, #47816) not always applicable and not all
         // macros are ready for this yet.
@@ -315,9 +315,9 @@ fn register_builtins(store: &mut LintStore) {
     );
 
     add_lint_group!(
-        "elided_lifetimes_in_paths",
-        ELIDED_LIFETIMES_IN_PATHS_TIED,
-        ELIDED_LIFETIMES_IN_PATHS_UNTIED,
+        "lifetimes_hidden_in_paths",
+        TIED_LIFETIMES_HIDDEN_IN_PATHS,
+        UNTIED_LIFETIMES_HIDDEN_IN_PATHS,
     );
 
     // Register renamed and removed lints.
@@ -336,7 +336,8 @@ fn register_builtins(store: &mut LintStore) {
     store.register_renamed("static_mut_ref", "static_mut_refs");
 
     // Register renamed lint groups
-    store.register_renamed_group("elided_lifetime_in_path", "elided_lifetimes_in_paths");
+    store.register_renamed_group("elided_lifetime_in_path", "lifetimes_hidden_in_paths");
+    store.register_renamed_group("elided_lifetimes_in_paths", "lifetimes_hidden_in_paths");
 
     // These were moved to tool lints, but rustc still sees them when compiling normally, before
     // tool lints are registered, so `check_tool_name_for_backwards_compat` doesn't work. Use

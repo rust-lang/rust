@@ -1,7 +1,7 @@
 //@revisions: tied untied
 
-#![cfg_attr(tied, deny(elided_lifetimes_in_paths_tied))]
-#![cfg_attr(untied, deny(elided_lifetimes_in_paths_untied))]
+#![cfg_attr(tied, deny(tied_lifetimes_hidden_in_paths))]
+#![cfg_attr(untied, deny(untied_lifetimes_hidden_in_paths))]
 
 struct ContainsLifetime<'a>(&'a u8);
 
