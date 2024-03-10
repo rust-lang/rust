@@ -1,5 +1,5 @@
 //@ revisions: linux apple windows
-//@ compile-flags: -C no-prepopulate-passes
+//@ compile-flags: -O -C no-prepopulate-passes
 
 //@[linux] compile-flags: --target x86_64-unknown-linux-gnu
 //@[linux] needs-llvm-components: x86

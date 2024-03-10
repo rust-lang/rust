@@ -1,8 +1,9 @@
 //@ revisions: mips64 mips64el
+//@ compile-flags: -O -C no-prepopulate-passes
 
-//@[mips64] compile-flags: -C no-prepopulate-passes --target mips64-unknown-linux-gnuabi64
+//@[mips64] compile-flags: --target mips64-unknown-linux-gnuabi64
 //@[mips64] needs-llvm-components: mips
-//@[mips64el] compile-flags: -C no-prepopulate-passes --target mips64el-unknown-linux-gnuabi64
+//@[mips64el] compile-flags: --target mips64el-unknown-linux-gnuabi64
 //@[mips64el] needs-llvm-components: mips
 
 // See ./transparent.rs
