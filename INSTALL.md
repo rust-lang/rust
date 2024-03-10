@@ -145,6 +145,15 @@ toolchain.
 
 1. Download the latest [MSYS2 installer][msys2] and go through the installer.
 
+2. Download and install [Git for Windows](https://git-scm.com/download/win).
+   Make sure that it's in your Windows PATH. To enable access to it from within
+   MSYS2, edit the relevant `mingw[32|64].ini` file in your MSYS2 installation
+   directory and uncomment the line `MSYS2_PATH_TYPE=inherit`.
+
+   You could install and use MSYS2's version of git instead with `pacman`,
+   however this is not recommended as it's excrutiatingly slow, and not frequently
+   tested for compatability.
+
 2. Start a MINGW64 or MINGW32 shell (depending on whether you want 32-bit
    or 64-bit Rust) either from your start menu, or by running `mingw64.exe`
    or `mingw32.exe` from your MSYS2 installation directory (e.g. `C:\msys64`).
@@ -160,8 +169,7 @@ toolchain.
    # Note that it is important that you do **not** use the 'python2', 'cmake',
    # and 'ninja' packages from the 'msys2' subsystem.
    # The build has historically been known to fail with these packages.
-   pacman -S git \
-               make \
+   pacman -S make \
                diffutils \
                tar \
                mingw-w64-x86_64-python \
@@ -176,11 +184,9 @@ toolchain.
    python x.py setup dist && python x.py build && python x.py install
    ```
 
-If you want to use the native versions of Git, Python, or CMake you can remove
-them from the above pacman command and install them from another source. Make
-sure that they're in your Windows PATH, and edit the relevant `mingw[32|64].ini`
-file in your MSYS2 installation directory by uncommenting the line
-`MSYS2_PATH_TYPE=inherit` to include them in your MSYS2 PATH.
+If you want to try the native Windows versions of Python or CMake, you can remove
+them from the above pacman command and install them from another source. Follow
+the instructions in step 2 to get them on PATH.
 
 Using Windows native Python can be helpful if you get errors when building LLVM.
 You may also want to use Git for Windows, as it is often *much* faster. Turning
