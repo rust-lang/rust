@@ -74,22 +74,30 @@ LL | struct Struct {
 error[E0599]: the method `test` exists for struct `Foo<Vec<Enum>, Instant>`, but its trait bounds were not satisfied
   --> $DIR/derive-trait-for-method-call.rs:40:15
    |
+LL | enum Enum {
+   | --------- doesn't satisfy `Enum: Clone`
+...
 LL | struct Foo<X, Y> (X, Y);
    | ---------------- method `test` not found for this struct
 ...
 LL |     let y = x.test();
    |               ^^^^ method cannot be called on `Foo<Vec<Enum>, Instant>` due to unsatisfied trait bounds
    |
-note: the following trait bounds were not satisfied:
-      `Instant: Default`
-      `Vec<Enum>: Clone`
-  --> $DIR/derive-trait-for-method-call.rs:20:9
+note: trait bound `Instant: Default` was not satisfied
+  --> $DIR/derive-trait-for-method-call.rs:20:40
    |
 LL | impl<X: Clone + Default + , Y: Clone + Default> Foo<X, Y> {
-   |         ^^^^^                          ^^^^^^^  ---------
-   |         |                              |
-   |         |                              unsatisfied trait bound introduced here
-   |         unsatisfied trait bound introduced here
+   |                                        ^^^^^^^  ---------
+   |                                        |
+   |                                        unsatisfied trait bound introduced here
+   = note: the following trait bounds were not satisfied:
+           `Enum: Clone`
+           which is required by `Vec<Enum>: Clone`
+help: consider annotating `Enum` with `#[derive(Clone)]`
+   |
+LL + #[derive(Clone)]
+LL | enum Enum {
+   |
 
 error: aborting due to 3 previous errors
 

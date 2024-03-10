@@ -1,0 +1,17 @@
+error[E0599]: no method named `as_ref_a` found for struct `A<&[Coef]>` in the current scope
+  --> $DIR/issue-85671.rs:24:25
+   |
+LL | pub struct A<Cont>(Cont);
+   | ------------------ method `as_ref_a` not found for this struct
+...
+LL |         self.as_ref_a().as_ref_a();
+   |         ----            ^^^^^^^^ method not found in `A<&[Coef]>`
+   |         |
+   |         method `as_ref_a` is available on `&A<Cont>`
+   |
+   = note: the method was found for
+           - `A<Cont>`
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0599`.

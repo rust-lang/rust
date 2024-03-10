@@ -6,6 +6,7 @@ LL |     let _result = &mut Ok(42).as_deref_mut();
    |
    = note: the following trait bounds were not satisfied:
            `{integer}: Deref`
+           which is required by `<{integer} as Deref>::Target = _`
 
 error: aborting due to 1 previous error
 
