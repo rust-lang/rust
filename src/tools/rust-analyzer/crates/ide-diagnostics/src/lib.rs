@@ -227,6 +227,7 @@ pub struct DiagnosticsConfig {
     pub disable_experimental: bool,
     pub disabled: FxHashSet<String>,
     pub expr_fill_default: ExprFillDefaultMode,
+    pub style_lints: bool,
     // FIXME: We may want to include a whole `AssistConfig` here
     pub insert_use: InsertUseConfig,
     pub prefer_no_std: bool,
@@ -245,6 +246,7 @@ impl DiagnosticsConfig {
             disable_experimental: Default::default(),
             disabled: Default::default(),
             expr_fill_default: Default::default(),
+            style_lints: true,
             insert_use: InsertUseConfig {
                 granularity: ImportGranularity::Preserve,
                 enforce_granularity: false,
@@ -299,7 +301,7 @@ pub fn diagnostics(
     let mut res = Vec::new();
 
     // [#34344] Only take first 128 errors to prevent slowing down editor/ide, the number 128 is chosen arbitrarily.
-    res.extend(parse.errors().iter().take(128).map(|err| {
+    res.extend(parse.errors().into_iter().take(128).map(|err| {
         Diagnostic::new(
             DiagnosticCode::RustcHardError("syntax-error"),
             format!("Syntax Error: {err}"),
@@ -315,7 +317,7 @@ pub fn diagnostics(
         handlers::json_is_not_rust::json_in_items(&sema, &mut res, file_id, &node, config);
     }
 
-    let module = sema.to_module_def(file_id);
+    let module = sema.file_to_module_def(file_id);
 
     let ctx = DiagnosticsContext { config, sema, resolve };
     if module.is_none() {
@@ -324,7 +326,7 @@ pub fn diagnostics(
 
     let mut diags = Vec::new();
     if let Some(m) = module {
-        m.diagnostics(db, &mut diags);
+        m.diagnostics(db, &mut diags, config.style_lints);
     }
 
     for diag in diags {

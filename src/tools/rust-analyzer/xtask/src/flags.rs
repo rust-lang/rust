@@ -52,6 +52,11 @@ xflags::xflags! {
         cmd bb {
             required suffix: String
         }
+
+        cmd codegen {
+            optional codegen_type: CodegenType
+            optional --check
+        }
     }
 }
 
@@ -73,8 +78,36 @@ pub enum XtaskCmd {
     PublishReleaseNotes(PublishReleaseNotes),
     Metrics(Metrics),
     Bb(Bb),
+    Codegen(Codegen),
 }
 
+#[derive(Debug)]
+pub struct Codegen {
+    pub check: bool,
+    pub codegen_type: Option<CodegenType>,
+}
+
+#[derive(Debug, Default)]
+pub enum CodegenType {
+    #[default]
+    All,
+    AssistsDocTests,
+    DiagnosticsDocs,
+    LintDefinitions,
+}
+
+impl FromStr for CodegenType {
+    type Err = String;
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            "all" => Ok(Self::All),
+            "assists-doc-tests" => Ok(Self::AssistsDocTests),
+            "diagnostics-docs" => Ok(Self::DiagnosticsDocs),
+            "lints-definitions" => Ok(Self::LintDefinitions),
+            _ => Err("Invalid option".to_owned()),
+        }
+    }
+}
 #[derive(Debug)]
 pub struct Install {
     pub client: bool,

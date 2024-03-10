@@ -13,7 +13,6 @@ use cfg::{CfgExpr, CfgOptions};
 use either::Either;
 use hir_expand::{name::Name, HirFileId, InFile};
 use la_arena::{Arena, ArenaMap};
-use profile::Count;
 use rustc_hash::FxHashMap;
 use syntax::{ast, AstPtr, SyntaxNodePtr};
 use triomphe::Arc;
@@ -51,7 +50,6 @@ pub struct Body {
     pub body_expr: ExprId,
     /// Block expressions in this body that may contain inner items.
     block_scopes: Vec<BlockId>,
-    _c: Count<Self>,
 }
 
 pub type ExprPtr = AstPtr<ast::Expr>;
@@ -216,7 +214,6 @@ impl Body {
 
     fn shrink_to_fit(&mut self) {
         let Self {
-            _c: _,
             body_expr: _,
             block_scopes,
             exprs,
@@ -300,7 +297,6 @@ impl Default for Body {
             params: Default::default(),
             block_scopes: Default::default(),
             binding_owners: Default::default(),
-            _c: Default::default(),
         }
     }
 }

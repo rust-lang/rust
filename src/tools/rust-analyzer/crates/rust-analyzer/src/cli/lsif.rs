@@ -7,11 +7,7 @@ use ide::{
     Analysis, AnalysisHost, FileId, FileRange, MonikerKind, PackageInformation, RootDatabase,
     StaticIndex, StaticIndexedFile, TokenId, TokenStaticData,
 };
-use ide_db::{
-    base_db::salsa::{self, ParallelDatabase},
-    line_index::WideEncoding,
-    LineIndexDatabase,
-};
+use ide_db::{line_index::WideEncoding, LineIndexDatabase};
 use load_cargo::{load_workspace, LoadCargoConfig, ProcMacroServerChoice};
 use lsp_types::lsif;
 use project_model::{CargoConfig, ProjectManifest, ProjectWorkspace, RustLibSource};
@@ -24,14 +20,6 @@ use crate::{
     lsp::to_proto,
     version::version,
 };
-
-/// Need to wrap Snapshot to provide `Clone` impl for `map_with`
-struct Snap<DB>(DB);
-impl<DB: ParallelDatabase> Clone for Snap<salsa::Snapshot<DB>> {
-    fn clone(&self) -> Snap<salsa::Snapshot<DB>> {
-        Snap(self.0.snapshot())
-    }
-}
 
 struct LsifManager<'a> {
     count: i32,

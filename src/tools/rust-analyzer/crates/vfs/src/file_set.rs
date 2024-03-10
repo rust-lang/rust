@@ -123,6 +123,11 @@ impl FileSetConfig {
         self.n_file_sets
     }
 
+    /// Get the lexicographically ordered vector of the underlying map.
+    pub fn roots(&self) -> Vec<(Vec<u8>, u64)> {
+        self.map.stream().into_byte_vec()
+    }
+
     /// Returns the set index for the given `path`.
     ///
     /// `scratch_space` is used as a buffer and will be entirely replaced.

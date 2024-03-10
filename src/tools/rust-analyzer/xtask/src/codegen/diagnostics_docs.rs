@@ -2,22 +2,26 @@
 
 use std::{fmt, fs, io, path::PathBuf};
 
-use sourcegen::project_root;
+use crate::{
+    codegen::{add_preamble, list_rust_files, CommentBlock, Location},
+    project_root,
+};
 
-#[test]
-fn sourcegen_diagnostic_docs() {
+pub(crate) fn generate(check: bool) {
     let diagnostics = Diagnostic::collect().unwrap();
-    let contents =
-        diagnostics.into_iter().map(|it| it.to_string()).collect::<Vec<_>>().join("\n\n");
-    let contents = sourcegen::add_preamble("sourcegen_diagnostic_docs", contents);
-    let dst = project_root().join("docs/user/generated_diagnostic.adoc");
-    fs::write(dst, contents).unwrap();
+    if !check {
+        let contents =
+            diagnostics.into_iter().map(|it| it.to_string()).collect::<Vec<_>>().join("\n\n");
+        let contents = add_preamble("sourcegen_diagnostic_docs", contents);
+        let dst = project_root().join("docs/user/generated_diagnostic.adoc");
+        fs::write(dst, contents).unwrap();
+    }
 }
 
 #[derive(Debug)]
 struct Diagnostic {
     id: String,
-    location: sourcegen::Location,
+    location: Location,
     doc: String,
 }
 
@@ -26,7 +30,7 @@ impl Diagnostic {
         let handlers_dir = project_root().join("crates/ide-diagnostics/src/handlers");
 
         let mut res = Vec::new();
-        for path in sourcegen::list_rust_files(&handlers_dir) {
+        for path in list_rust_files(&handlers_dir) {
             collect_file(&mut res, path)?;
         }
         res.sort_by(|lhs, rhs| lhs.id.cmp(&rhs.id));
@@ -34,7 +38,7 @@ impl Diagnostic {
 
         fn collect_file(acc: &mut Vec<Diagnostic>, path: PathBuf) -> io::Result<()> {
             let text = fs::read_to_string(&path)?;
-            let comment_blocks = sourcegen::CommentBlock::extract("Diagnostic", &text);
+            let comment_blocks = CommentBlock::extract("Diagnostic", &text);
 
             for block in comment_blocks {
                 let id = block.id;
@@ -42,7 +46,7 @@ impl Diagnostic {
                     panic!("invalid diagnostic name: {id:?}:\n  {msg}")
                 }
                 let doc = block.contents.join("\n");
-                let location = sourcegen::Location { file: path.clone(), line: block.line };
+                let location = Location { file: path.clone(), line: block.line };
                 acc.push(Diagnostic { id, location, doc })
             }
 

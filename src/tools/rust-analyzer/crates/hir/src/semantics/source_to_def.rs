@@ -118,7 +118,7 @@ pub(super) struct SourceToDefCtx<'a, 'b> {
 
 impl SourceToDefCtx<'_, '_> {
     pub(super) fn file_to_def(&self, file: FileId) -> SmallVec<[ModuleId; 1]> {
-        let _p = tracing::span!(tracing::Level::INFO, "SourceBinder::to_module_def");
+        let _p = tracing::span!(tracing::Level::INFO, "SourceBinder::file_to_module_def");
         let mut mods = SmallVec::new();
         for &crate_id in self.db.relevant_crates(file).iter() {
             // FIXME: inner items
