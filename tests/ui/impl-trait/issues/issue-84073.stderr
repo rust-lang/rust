@@ -1,9 +1,29 @@
-error[E0275]: overflow assigning `_` to `Option<_>`
-  --> $DIR/issue-84073.rs:32:22
+error[E0599]: the method `when` exists for struct `RaceBuilder<_, Never<_>>`, but its trait bounds were not satisfied
+  --> $DIR/issue-84073.rs:32:27
    |
+LL | pub struct Never<T>(PhantomData<T>);
+   | ------------------- doesn't satisfy `Never<_>: StatefulFuture<Option<_>>`
+...
+LL | pub struct RaceBuilder<F, S> {
+   | ---------------------------- method `when` not found for this struct
+...
 LL |     Race::new(|race| race.when());
-   |                      ^^^^
+   |                           ^^^^ method cannot be called on `RaceBuilder<_, Never<_>>` due to unsatisfied trait bounds
+   |
+note: trait bound `Never<_>: StatefulFuture<Option<_>>` was not satisfied
+  --> $DIR/issue-84073.rs:14:8
+   |
+LL | impl<T, F> RaceBuilder<T, F>
+   |            -----------------
+LL | where
+LL |     F: StatefulFuture<Option<T>>,
+   |        ^^^^^^^^^^^^^^^^^^^^^^^^^ unsatisfied trait bound introduced here
+note: the trait `StatefulFuture` must be implemented
+  --> $DIR/issue-84073.rs:3:1
+   |
+LL | pub trait StatefulFuture<S> {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: aborting due to 1 previous error
 
-For more information about this error, try `rustc --explain E0275`.
+For more information about this error, try `rustc --explain E0599`.

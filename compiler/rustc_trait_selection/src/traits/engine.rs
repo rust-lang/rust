@@ -129,6 +129,19 @@ impl<'a, 'tcx> ObligationCtxt<'a, 'tcx> {
             .map(|infer_ok| self.register_infer_ok_obligations(infer_ok))
     }
 
+    pub fn eq_no_opaques<T: ToTrace<'tcx>>(
+        &self,
+        cause: &ObligationCause<'tcx>,
+        param_env: ty::ParamEnv<'tcx>,
+        expected: T,
+        actual: T,
+    ) -> Result<(), TypeError<'tcx>> {
+        self.infcx
+            .at(cause, param_env)
+            .eq(DefineOpaqueTypes::No, expected, actual)
+            .map(|infer_ok| self.register_infer_ok_obligations(infer_ok))
+    }
+
     /// Checks whether `expected` is a subtype of `actual`: `expected <: actual`.
     pub fn sub<T: ToTrace<'tcx>>(
         &self,

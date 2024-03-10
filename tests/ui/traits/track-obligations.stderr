@@ -2,7 +2,10 @@ error[E0599]: the method `check` exists for struct `Client<()>`, but its trait b
   --> $DIR/track-obligations.rs:83:16
    |
 LL | struct ALayer<C>(C);
-   | ---------------- doesn't satisfy `<_ as Layer<()>>::Service = <ALayer<()> as ParticularServiceLayer<()>>::Service` or `ALayer<()>: ParticularServiceLayer<()>`
+   | ---------------- doesn't satisfy `ALayer<()>: ParticularServiceLayer<()>`
+...
+LL | struct AService;
+   | --------------- doesn't satisfy `<AService as Service<Req>>::Response = Res`
 ...
 LL | struct Client<C>(C);
    | ---------------- method `check` not found for this struct
@@ -10,27 +13,14 @@ LL | struct Client<C>(C);
 LL |     Client(()).check();
    |                ^^^^^ method cannot be called on `Client<()>` due to unsatisfied trait bounds
    |
-note: trait bound `<ALayer<()> as Layer<()>>::Service = <ALayer<()> as ParticularServiceLayer<()>>::Service` was not satisfied
-  --> $DIR/track-obligations.rs:35:14
+note: trait bound `<AService as Service<Req>>::Response = Res` was not satisfied
+  --> $DIR/track-obligations.rs:24:21
    |
-LL | pub trait ParticularServiceLayer<C>:
-   |           ----------------------
-LL |     Layer<C, Service = <Self as ParticularServiceLayer<C>>::Service>
-   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ unsatisfied trait bound introduced here
-note: trait bound `ALayer<()>: ParticularServiceLayer<()>` was not satisfied
-  --> $DIR/track-obligations.rs:71:16
-   |
-LL | impl<C> Client<C>
-   |         ---------
+LL | impl<T> ParticularService for T
+   |         -----------------     -
 LL | where
-LL |     ALayer<C>: ParticularServiceLayer<C>,
-   |                ^^^^^^^^^^^^^^^^^^^^^^^^^ unsatisfied trait bound introduced here
-note: the trait `ParticularServiceLayer` must be implemented
-  --> $DIR/track-obligations.rs:34:1
-   |
-LL | / pub trait ParticularServiceLayer<C>:
-LL | |     Layer<C, Service = <Self as ParticularServiceLayer<C>>::Service>
-   | |____________________________________________________________________^
+LL |     T: Service<Req, Response = Res>,
+   |                     ^^^^^^^^^^^^^^ unsatisfied trait bound introduced here
 
 error[E0271]: type mismatch resolving `<AService as Service<Req>>::Response == Res`
   --> $DIR/track-obligations.rs:87:11

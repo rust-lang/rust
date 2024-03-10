@@ -6,8 +6,6 @@ LL |     this.is_subset(other)
    |
    = note: the following trait bounds were not satisfied:
            `T: Eq`
-           `T: PartialEq`
-           which is required by `T: Eq`
            `T: Hash`
 help: consider restricting the type parameters to satisfy the trait bounds
    |

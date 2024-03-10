@@ -31,13 +31,12 @@ use rustc_span::edit_distance::{
 };
 use rustc_span::symbol::sym;
 use rustc_span::{symbol::Ident, Span, Symbol, DUMMY_SP};
-use rustc_trait_selection::traits::query::evaluate_obligation::InferCtxtExt;
 use rustc_trait_selection::traits::query::method_autoderef::MethodAutoderefBadTy;
 use rustc_trait_selection::traits::query::method_autoderef::{
     CandidateStep, MethodAutoderefStepsResult,
 };
 use rustc_trait_selection::traits::query::CanonicalTyGoal;
-use rustc_trait_selection::traits::NormalizeExt;
+use rustc_trait_selection::traits::ObligationCtxt;
 use rustc_trait_selection::traits::{self, ObligationCause};
 use std::cell::RefCell;
 use std::cmp::max;
@@ -99,39 +98,6 @@ impl<'a, 'tcx> Deref for ProbeContext<'a, 'tcx> {
 
 #[derive(Debug, Clone)]
 pub(crate) struct Candidate<'tcx> {
-    // Candidates are (I'm not quite sure, but they are mostly) basically
-    // some metadata on top of a `ty::AssocItem` (without args).
-    //
-    // However, method probing wants to be able to evaluate the predicates
-    // for a function with the args applied - for example, if a function
-    // has `where Self: Sized`, we don't want to consider it unless `Self`
-    // is actually `Sized`, and similarly, return-type suggestions want
-    // to consider the "actual" return type.
-    //
-    // The way this is handled is through `xform_self_ty`. It contains
-    // the receiver type of this candidate, but `xform_self_ty`,
-    // `xform_ret_ty` and `kind` (which contains the predicates) have the
-    // generic parameters of this candidate instantiated with the *same set*
-    // of inference variables, which acts as some weird sort of "query".
-    //
-    // When we check out a candidate, we require `xform_self_ty` to be
-    // a subtype of the passed-in self-type, and this equates the type
-    // variables in the rest of the fields.
-    //
-    // For example, if we have this candidate:
-    // ```
-    //    trait Foo {
-    //        fn foo(&self) where Self: Sized;
-    //    }
-    // ```
-    //
-    // Then `xform_self_ty` will be `&'erased ?X` and `kind` will contain
-    // the predicate `?X: Sized`, so if we are evaluating `Foo` for a
-    // the receiver `&T`, we'll do the subtyping which will make `?X`
-    // get the right value, then when we evaluate the predicate we'll check
-    // if `T: Sized`.
-    xform_self_ty: Ty<'tcx>,
-    xform_ret_ty: Option<Ty<'tcx>>,
     pub(crate) item: ty::AssocItem,
     pub(crate) kind: CandidateKind<'tcx>,
     pub(crate) import_ids: SmallVec<[LocalDefId; 1]>,
@@ -139,17 +105,10 @@ pub(crate) struct Candidate<'tcx> {
 
 #[derive(Debug, Clone)]
 pub(crate) enum CandidateKind<'tcx> {
-    InherentImplCandidate(
-        GenericArgsRef<'tcx>,
-        // Normalize obligations
-        Vec<traits::PredicateObligation<'tcx>>,
-    ),
-    ObjectCandidate,
-    TraitCandidate(ty::TraitRef<'tcx>),
-    WhereClauseCandidate(
-        // Trait
-        ty::PolyTraitRef<'tcx>,
-    ),
+    InherentImplCandidate(DefId),
+    ObjectCandidate(ty::PolyTraitRef<'tcx>),
+    TraitCandidate(ty::PolyTraitRef<'tcx>),
+    WhereClauseCandidate(ty::PolyTraitRef<'tcx>),
 }
 
 #[derive(Debug, PartialEq, Eq, Copy, Clone)]
@@ -736,41 +695,10 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
                 self.record_static_candidate(CandidateSource::Impl(impl_def_id));
                 continue;
             }
-
-            let (impl_ty, impl_args) = self.impl_ty_and_args(impl_def_id);
-
-            debug!("impl_ty: {:?}", impl_ty);
-
-            // Determine the receiver type that the method itself expects.
-            let (xform_self_ty, xform_ret_ty) = self.xform_self_ty(item, impl_ty, impl_args);
-            debug!("xform_self_ty: {:?}, xform_ret_ty: {:?}", xform_self_ty, xform_ret_ty);
-
-            // We can't use `FnCtxt::normalize` as it will pollute the
-            // fcx's fulfillment context after this probe is over.
-            //
-            // Note: we only normalize `xform_self_ty` here since the normalization
-            // of the return type can lead to inference results that prohibit
-            // valid candidates from being found, see issue #85671
-            //
-            // FIXME Postponing the normalization of the return type likely only hides a deeper bug,
-            // which might be caused by the `param_env` itself. The clauses of the `param_env`
-            // maybe shouldn't include `Param`s, but rather fresh variables or be canonicalized,
-            // see issue #89650
-            let cause = traits::ObligationCause::misc(self.span, self.body_id);
-            let InferOk { value: xform_self_ty, obligations } =
-                self.fcx.at(&cause, self.param_env).normalize(xform_self_ty);
-
-            debug!(
-                "assemble_inherent_impl_probe after normalization: xform_self_ty = {:?}/{:?}",
-                xform_self_ty, xform_ret_ty
-            );
-
             self.push_candidate(
                 Candidate {
-                    xform_self_ty,
-                    xform_ret_ty,
                     item,
-                    kind: InherentImplCandidate(impl_args, obligations),
+                    kind: InherentImplCandidate(impl_def_id),
                     import_ids: smallvec![],
                 },
                 true,
@@ -802,26 +730,8 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
         // a `&self` method will wind up with an argument type like `&dyn Trait`.
         let trait_ref = principal.with_self_ty(self.tcx, self_ty);
         self.elaborate_bounds(iter::once(trait_ref), |this, new_trait_ref, item| {
-            if new_trait_ref.has_non_region_bound_vars() {
-                this.dcx().span_delayed_bug(
-                    this.span,
-                    "tried to select method from HRTB with non-lifetime bound vars",
-                );
-                return;
-            }
-
-            let new_trait_ref = this.tcx.instantiate_bound_regions_with_erased(new_trait_ref);
-
-            let (xform_self_ty, xform_ret_ty) =
-                this.xform_self_ty(item, new_trait_ref.self_ty(), new_trait_ref.args);
             this.push_candidate(
-                Candidate {
-                    xform_self_ty,
-                    xform_ret_ty,
-                    item,
-                    kind: ObjectCandidate,
-                    import_ids: smallvec![],
-                },
+                Candidate { item, kind: ObjectCandidate(new_trait_ref), import_ids: smallvec![] },
                 true,
             );
         });
@@ -852,19 +762,8 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
         });
 
         self.elaborate_bounds(bounds, |this, poly_trait_ref, item| {
-            let trait_ref = this.instantiate_binder_with_fresh_vars(
-                this.span,
-                infer::BoundRegionConversionTime::FnCall,
-                poly_trait_ref,
-            );
-
-            let (xform_self_ty, xform_ret_ty) =
-                this.xform_self_ty(item, trait_ref.self_ty(), trait_ref.args);
-
             this.push_candidate(
                 Candidate {
-                    xform_self_ty,
-                    xform_ret_ty,
                     item,
                     kind: WhereClauseCandidate(poly_trait_ref),
                     import_ids: smallvec![],
@@ -955,21 +854,11 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
                             bound_trait_ref.def_id(),
                         ));
                     } else {
-                        let new_trait_ref = self.instantiate_binder_with_fresh_vars(
-                            self.span,
-                            infer::BoundRegionConversionTime::FnCall,
-                            bound_trait_ref,
-                        );
-
-                        let (xform_self_ty, xform_ret_ty) =
-                            self.xform_self_ty(item, new_trait_ref.self_ty(), new_trait_ref.args);
                         self.push_candidate(
                             Candidate {
-                                xform_self_ty,
-                                xform_ret_ty,
                                 item,
                                 import_ids: import_ids.clone(),
-                                kind: TraitCandidate(new_trait_ref),
+                                kind: TraitCandidate(bound_trait_ref),
                             },
                             false,
                         );
@@ -988,16 +877,11 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
                     self.record_static_candidate(CandidateSource::Trait(trait_def_id));
                     continue;
                 }
-
-                let (xform_self_ty, xform_ret_ty) =
-                    self.xform_self_ty(item, trait_ref.self_ty(), trait_args);
                 self.push_candidate(
                     Candidate {
-                        xform_self_ty,
-                        xform_ret_ty,
                         item,
                         import_ids: import_ids.clone(),
-                        kind: TraitCandidate(trait_ref),
+                        kind: TraitCandidate(ty::Binder::dummy(trait_ref)),
                     },
                     false,
                 );
@@ -1430,16 +1314,20 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
 
     fn candidate_source(&self, candidate: &Candidate<'tcx>, self_ty: Ty<'tcx>) -> CandidateSource {
         match candidate.kind {
-            InherentImplCandidate(..) => {
+            InherentImplCandidate(_) => {
                 CandidateSource::Impl(candidate.item.container_id(self.tcx))
             }
-            ObjectCandidate | WhereClauseCandidate(_) => {
+            ObjectCandidate(_) | WhereClauseCandidate(_) => {
                 CandidateSource::Trait(candidate.item.container_id(self.tcx))
             }
             TraitCandidate(trait_ref) => self.probe(|_| {
+                let trait_ref =
+                    self.instantiate_binder_with_fresh_vars(self.span, infer::FnCall, trait_ref);
+                let (xform_self_ty, _) =
+                    self.xform_self_ty(candidate.item, trait_ref.self_ty(), trait_ref.args);
                 let _ = self.at(&ObligationCause::dummy(), self.param_env).sup(
                     DefineOpaqueTypes::No,
-                    candidate.xform_self_ty,
+                    xform_self_ty,
                     self_ty,
                 );
                 match self.select_trait_candidate(trait_ref) {
@@ -1466,54 +1354,38 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
     ) -> ProbeResult {
         debug!("consider_probe: self_ty={:?} probe={:?}", self_ty, probe);
 
-        self.probe(|_| {
-            // First check that the self type can be related.
-            let sub_obligations = match self.at(&ObligationCause::dummy(), self.param_env).sup(
-                DefineOpaqueTypes::No,
-                probe.xform_self_ty,
-                self_ty,
-            ) {
-                Ok(InferOk { obligations, value: () }) => obligations,
-                Err(err) => {
-                    debug!("--> cannot relate self-types {:?}", err);
-                    return ProbeResult::NoMatch;
-                }
-            };
+        self.probe(|snapshot| {
+            let outer_universe = self.universe();
 
             let mut result = ProbeResult::Match;
-            let mut xform_ret_ty = probe.xform_ret_ty;
-            debug!(?xform_ret_ty);
+            let cause = &self.misc(self.span);
+            let ocx = ObligationCtxt::new(self);
 
-            let cause = traits::ObligationCause::misc(self.span, self.body_id);
+            let mut trait_predicate = None;
+            let (mut xform_self_ty, mut xform_ret_ty);
 
-            let mut parent_pred = None;
-
-            // If so, impls may carry other conditions (e.g., where
-            // clauses) that must be considered. Make sure that those
-            // match as well (or at least may match, sometimes we
-            // don't have enough information to fully evaluate).
             match probe.kind {
-                InherentImplCandidate(args, ref ref_obligations) => {
-                    // `xform_ret_ty` hasn't been normalized yet, only `xform_self_ty`,
-                    // see the reasons mentioned in the comments in `assemble_inherent_impl_probe`
-                    // for why this is necessary
-                    let InferOk {
-                        value: normalized_xform_ret_ty,
-                        obligations: normalization_obligations,
-                    } = self.fcx.at(&cause, self.param_env).normalize(xform_ret_ty);
-                    xform_ret_ty = normalized_xform_ret_ty;
-                    debug!("xform_ret_ty after normalization: {:?}", xform_ret_ty);
-
+                InherentImplCandidate(impl_def_id) => {
+                    let (impl_ty, impl_args) = self.impl_ty_and_args(impl_def_id);
+                    (xform_self_ty, xform_ret_ty) =
+                        self.xform_self_ty(probe.item, impl_ty, impl_args);
+                    xform_self_ty = ocx.normalize(cause, self.param_env, xform_self_ty);
+                    // FIXME: Weirdly, we normalize the ret ty in this candidate, but no other candidates.
+                    xform_ret_ty = ocx.normalize(cause, self.param_env, xform_ret_ty);
+                    match ocx.eq_no_opaques(cause, self.param_env, xform_self_ty, self_ty) {
+                        Ok(()) => {}
+                        Err(err) => {
+                            debug!("--> cannot relate self-types {:?}", err);
+                            return ProbeResult::NoMatch;
+                        }
+                    }
                     // Check whether the impl imposes obligations we have to worry about.
                     let impl_def_id = probe.item.container_id(self.tcx);
-                    let impl_bounds = self.tcx.predicates_of(impl_def_id);
-                    let impl_bounds = impl_bounds.instantiate(self.tcx, args);
-
-                    let InferOk { value: impl_bounds, obligations: norm_obligations } =
-                        self.fcx.at(&cause, self.param_env).normalize(impl_bounds);
-
+                    let impl_bounds =
+                        self.tcx.predicates_of(impl_def_id).instantiate(self.tcx, impl_args);
+                    let impl_bounds = ocx.normalize(cause, self.param_env, impl_bounds);
                     // Convert the bounds into obligations.
-                    let impl_obligations = traits::predicates_for_generics(
+                    ocx.register_obligations(traits::predicates_for_generics(
                         |idx, span| {
                             let code = if span.is_dummy() {
                                 traits::ExprItemObligation(impl_def_id, self.scope_expr_id, idx)
@@ -1529,106 +1401,56 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
                         },
                         self.param_env,
                         impl_bounds,
-                    );
-
-                    let candidate_obligations = impl_obligations
-                        .chain(norm_obligations)
-                        .chain(ref_obligations.iter().cloned())
-                        .chain(normalization_obligations);
-
-                    // Evaluate those obligations to see if they might possibly hold.
-                    for o in candidate_obligations {
-                        let o = self.resolve_vars_if_possible(o);
-                        if !self.predicate_may_hold(&o) {
-                            result = ProbeResult::NoMatch;
-                            let parent_o = o.clone();
-                            let implied_obligations = traits::elaborate(self.tcx, vec![o]);
-                            for o in implied_obligations {
-                                let parent = if o == parent_o {
-                                    None
-                                } else {
-                                    if o.predicate.to_opt_poly_trait_pred().map(|p| p.def_id())
-                                        == self.tcx.lang_items().sized_trait()
-                                    {
-                                        // We don't care to talk about implicit `Sized` bounds.
-                                        continue;
-                                    }
-                                    Some(parent_o.predicate)
-                                };
-                                if !self.predicate_may_hold(&o) {
-                                    possibly_unsatisfied_predicates.push((
-                                        o.predicate,
-                                        parent,
-                                        Some(o.cause),
-                                    ));
-                                }
-                            }
-                        }
-                    }
+                    ));
                 }
-
-                ObjectCandidate | WhereClauseCandidate(..) => {
-                    // These have no additional conditions to check.
-                }
-
-                TraitCandidate(trait_ref) => {
+                TraitCandidate(poly_trait_ref) => {
+                    // Some trait methods are excluded for arrays before 2021.
+                    // (`array.into_iter()` wants a slice iterator for compatibility.)
                     if let Some(method_name) = self.method_name {
-                        // Some trait methods are excluded for arrays before 2021.
-                        // (`array.into_iter()` wants a slice iterator for compatibility.)
                         if self_ty.is_array() && !method_name.span.at_least_rust_2021() {
-                            let trait_def = self.tcx.trait_def(trait_ref.def_id);
+                            let trait_def = self.tcx.trait_def(poly_trait_ref.def_id());
                             if trait_def.skip_array_during_method_dispatch {
                                 return ProbeResult::NoMatch;
                             }
                         }
                     }
-                    let predicate = ty::Binder::dummy(trait_ref).to_predicate(self.tcx);
-                    parent_pred = Some(predicate);
-                    let obligation =
-                        traits::Obligation::new(self.tcx, cause.clone(), self.param_env, predicate);
-                    if !self.predicate_may_hold(&obligation) {
-                        result = ProbeResult::NoMatch;
-                        if self.probe(|_| {
-                            match self.select_trait_candidate(trait_ref) {
-                                Err(_) => return true,
-                                Ok(Some(impl_source))
-                                    if !impl_source.borrow_nested_obligations().is_empty() =>
-                                {
-                                    for obligation in impl_source.borrow_nested_obligations() {
-                                        // Determine exactly which obligation wasn't met, so
-                                        // that we can give more context in the error.
-                                        if !self.predicate_may_hold(obligation) {
-                                            let nested_predicate =
-                                                self.resolve_vars_if_possible(obligation.predicate);
-                                            let predicate =
-                                                self.resolve_vars_if_possible(predicate);
-                                            let p = if predicate == nested_predicate {
-                                                // Avoid "`MyStruct: Foo` which is required by
-                                                // `MyStruct: Foo`" in E0599.
-                                                None
-                                            } else {
-                                                Some(predicate)
-                                            };
-                                            possibly_unsatisfied_predicates.push((
-                                                nested_predicate,
-                                                p,
-                                                Some(obligation.cause.clone()),
-                                            ));
-                                        }
-                                    }
-                                }
-                                _ => {
-                                    // Some nested subobligation of this predicate
-                                    // failed.
-                                    let predicate = self.resolve_vars_if_possible(predicate);
-                                    possibly_unsatisfied_predicates.push((predicate, None, None));
-                                }
-                            }
-                            false
-                        }) {
-                            // This candidate's primary obligation doesn't even
-                            // select - don't bother registering anything in
-                            // `potentially_unsatisfied_predicates`.
+
+                    let trait_ref = self.instantiate_binder_with_fresh_vars(
+                        self.span,
+                        infer::FnCall,
+                        poly_trait_ref,
+                    );
+                    (xform_self_ty, xform_ret_ty) =
+                        self.xform_self_ty(probe.item, trait_ref.self_ty(), trait_ref.args);
+                    xform_self_ty = ocx.normalize(cause, self.param_env, xform_self_ty);
+                    match ocx.eq_no_opaques(cause, self.param_env, xform_self_ty, self_ty) {
+                        Ok(()) => {}
+                        Err(err) => {
+                            debug!("--> cannot relate self-types {:?}", err);
+                            return ProbeResult::NoMatch;
+                        }
+                    }
+                    ocx.register_obligation(traits::Obligation::new(
+                        self.tcx,
+                        cause.clone(),
+                        self.param_env,
+                        ty::Binder::dummy(trait_ref),
+                    ));
+                    trait_predicate = Some(ty::Binder::dummy(trait_ref).to_predicate(self.tcx));
+                }
+                ObjectCandidate(poly_trait_ref) | WhereClauseCandidate(poly_trait_ref) => {
+                    let trait_ref = self.instantiate_binder_with_fresh_vars(
+                        self.span,
+                        infer::FnCall,
+                        poly_trait_ref,
+                    );
+                    (xform_self_ty, xform_ret_ty) =
+                        self.xform_self_ty(probe.item, trait_ref.self_ty(), trait_ref.args);
+                    xform_self_ty = ocx.normalize(cause, self.param_env, xform_self_ty);
+                    match ocx.eq_no_opaques(cause, self.param_env, xform_self_ty, self_ty) {
+                        Ok(()) => {}
+                        Err(err) => {
+                            debug!("--> cannot relate self-types {:?}", err);
                             return ProbeResult::NoMatch;
                         }
                     }
@@ -1636,11 +1458,22 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
             }
 
             // Evaluate those obligations to see if they might possibly hold.
-            for o in sub_obligations {
-                let o = self.resolve_vars_if_possible(o);
-                if !self.predicate_may_hold(&o) {
-                    result = ProbeResult::NoMatch;
-                    possibly_unsatisfied_predicates.push((o.predicate, parent_pred, Some(o.cause)));
+            for error in ocx.select_where_possible() {
+                result = ProbeResult::NoMatch;
+                if let Some(trait_predicate) = trait_predicate
+                    && self.resolve_vars_if_possible(error.obligation.predicate)
+                        == self.resolve_vars_if_possible(trait_predicate)
+                {
+                    // Don't report possibly unsatisfied predicates if the root
+                    // trait obligation from a `TraitCandidate` is unsatisfied.
+                    // That just means the candidate doesn't hold.
+                } else {
+                    possibly_unsatisfied_predicates.push((
+                        error.obligation.predicate,
+                        Some(error.root_obligation.predicate)
+                            .filter(|predicate| *predicate != error.obligation.predicate),
+                        Some(error.obligation.cause),
+                    ));
                 }
             }
 
@@ -1652,36 +1485,32 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
                 // We don't normalize the other candidates for perf/backwards-compat reasons...
                 // but `self.return_type` is only set on the diagnostic-path, so we
                 // should be okay doing it here.
-                if !matches!(probe.kind, InherentImplCandidate(..)) {
-                    let InferOk {
-                        value: normalized_xform_ret_ty,
-                        obligations: normalization_obligations,
-                    } = self.fcx.at(&cause, self.param_env).normalize(xform_ret_ty);
-                    xform_ret_ty = normalized_xform_ret_ty;
-                    debug!("xform_ret_ty after normalization: {:?}", xform_ret_ty);
-                    // Evaluate those obligations to see if they might possibly hold.
-                    for o in normalization_obligations {
-                        let o = self.resolve_vars_if_possible(o);
-                        if !self.predicate_may_hold(&o) {
-                            result = ProbeResult::NoMatch;
-                            possibly_unsatisfied_predicates.push((
-                                o.predicate,
-                                None,
-                                Some(o.cause),
-                            ));
-                        }
-                    }
+                if !matches!(probe.kind, InherentImplCandidate(_)) {
+                    xform_ret_ty = ocx.normalize(&cause, self.param_env, xform_ret_ty);
                 }
 
                 debug!("comparing return_ty {:?} with xform ret ty {:?}", return_ty, xform_ret_ty);
-                if let ProbeResult::Match = result
-                    && self
-                        .at(&ObligationCause::dummy(), self.param_env)
-                        .sup(DefineOpaqueTypes::No, return_ty, xform_ret_ty)
-                        .is_err()
-                {
-                    result = ProbeResult::BadReturnType;
+                match ocx.sup(cause, self.param_env, return_ty, xform_ret_ty) {
+                    Ok(()) => {}
+                    Err(_) => {
+                        result = ProbeResult::BadReturnType;
+                    }
                 }
+
+                // Evaluate those obligations to see if they might possibly hold.
+                for error in ocx.select_where_possible() {
+                    result = ProbeResult::NoMatch;
+                    possibly_unsatisfied_predicates.push((
+                        error.obligation.predicate,
+                        Some(error.root_obligation.predicate)
+                            .filter(|predicate| *predicate != error.obligation.predicate),
+                        Some(error.root_obligation.cause),
+                    ));
+                }
+            }
+
+            if let Err(_) = self.leak_check(outer_universe, Some(snapshot)) {
+                result = ProbeResult::NoMatch;
             }
 
             result
@@ -2004,10 +1833,10 @@ impl<'tcx> Candidate<'tcx> {
         Pick {
             item: self.item,
             kind: match self.kind {
-                InherentImplCandidate(..) => InherentImplPick,
-                ObjectCandidate => ObjectPick,
+                InherentImplCandidate(_) => InherentImplPick,
+                ObjectCandidate(_) => ObjectPick,
                 TraitCandidate(_) => TraitPick,
-                WhereClauseCandidate(ref trait_ref) => {
+                WhereClauseCandidate(trait_ref) => {
                     // Only trait derived from where-clauses should
                     // appear here, so they should not contain any
                     // inference variables or other artifacts. This
@@ -2018,7 +1847,7 @@ impl<'tcx> Candidate<'tcx> {
                             && !trait_ref.skip_binder().args.has_placeholders()
                     );
 
-                    WhereClausePick(*trait_ref)
+                    WhereClausePick(trait_ref)
                 }
             },
             import_ids: self.import_ids.clone(),

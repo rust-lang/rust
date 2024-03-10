@@ -9,9 +9,9 @@ LL |         _ => match A::partial_cmp() {},
    |
    = note: the following trait bounds were not satisfied:
            `A: PartialOrd<_>`
-           which is required by `&A: PartialOrd<&_>`
+           which is required by `&A: PartialOrd<_>`
            `A: PartialOrd<_>`
-           which is required by `&mut A: PartialOrd<&mut _>`
+           which is required by `&mut A: PartialOrd<_>`
            `A: Iterator`
            which is required by `&mut A: Iterator`
 note: the trait `Iterator` must be implemented
