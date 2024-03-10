@@ -101,7 +101,7 @@
           StorageDead(_6);
           StorageDead(_5);
           StorageLive(_10);
-          _10 = const _;
+          _10 = const main::SMALL_VAL;
           StorageLive(_7);
 -         _7 = (_10.0: f32);
 +         _7 = const 4f32;
@@ -139,7 +139,7 @@
           StorageDead(_17);
           StorageDead(_16);
           StorageLive(_22);
-          _22 = const _;
+          _22 = const main::BIG_VAL;
           StorageLive(_19);
 -         _19 = (_22.0: f32);
 +         _19 = const 25f32;

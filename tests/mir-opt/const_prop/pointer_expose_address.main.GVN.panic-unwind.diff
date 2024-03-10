@@ -17,7 +17,7 @@
 +         nop;
           StorageLive(_2);
           StorageLive(_3);
-          _3 = const _;
+          _3 = const main::FOO;
           _2 = &raw const (*_3);
           _1 = move _2 as usize (PointerExposeAddress);
           StorageDead(_2);

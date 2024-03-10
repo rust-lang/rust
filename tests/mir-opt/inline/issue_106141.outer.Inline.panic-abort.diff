@@ -8,7 +8,7 @@
 +         let mut _2: bool;
 +         let mut _3: bool;
 +         scope 2 {
-+             debug buffer => const _;
++             debug buffer => const inner::promoted[0];
 +             scope 3 {
 +                 debug index => _0;
 +             }
@@ -19,7 +19,7 @@
 -         _0 = inner() -> [return: bb1, unwind unreachable];
 +         StorageLive(_1);
 +         StorageLive(_2);
-+         _1 = const _;
++         _1 = const inner::promoted[0];
 +         _0 = index() -> [return: bb1, unwind unreachable];
       }
   

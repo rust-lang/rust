@@ -336,7 +336,7 @@
           StorageLive(_54);
           StorageLive(_55);
           _55 = _1;
--         _54 = BitAnd(move _55, const _);
+-         _54 = BitAnd(move _55, const core::num::<impl u64>::MAX);
 +         _54 = _1;
           StorageDead(_55);
 -         _53 = opaque::<u64>(move _54) -> [return: bb23, unwind continue];
@@ -364,7 +364,7 @@
           StorageLive(_60);
           StorageLive(_61);
           _61 = _1;
--         _60 = BitOr(move _61, const _);
+-         _60 = BitOr(move _61, const core::num::<impl u64>::MAX);
 +         _60 = const u64::MAX;
           StorageDead(_61);
 -         _59 = opaque::<u64>(move _60) -> [return: bb25, unwind continue];
