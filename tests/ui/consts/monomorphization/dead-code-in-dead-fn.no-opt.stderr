@@ -7,10 +7,6 @@ LL |     const C: () = panic!();
    = note: this error originates in the macro `$crate::panic::panic_2015` which comes from the expansion of the macro `panic` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 note: the above error was encountered while instantiating `fn not_called::<i32>`
-  --> $DIR/dead-code-in-dead-fn.rs:22:9
-   |
-LL |         not_called::<T>();
-   |         ^^^^^^^^^^^^^^^^^
 
 error: aborting due to 1 previous error
 

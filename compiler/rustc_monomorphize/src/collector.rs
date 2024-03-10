@@ -345,7 +345,7 @@ fn collect_items_rec<'tcx>(
         return;
     }
 
-    let mut used_items = Vec::new();
+    let mut used_items = MonoItems::new();
     let recursion_depth_reset;
 
     // Post-monomorphization errors MVP
@@ -734,6 +734,17 @@ impl<'a, 'tcx> MirUsedCollector<'a, 'tcx> {
 }
 
 impl<'a, 'tcx> MirVisitor<'tcx> for MirUsedCollector<'a, 'tcx> {
+    fn visit_body(&mut self, body: &mir::Body<'tcx>) {
+        for item in &body.required_items {
+            // All these also need monomorphization to ensure that if that leads to error, we find
+            // those errors.
+            let item = self.monomorphize(*item);
+            visit_required_item(self.tcx, item, self.output);
+        }
+
+        self.super_body(body);
+    }
+
     fn visit_rvalue(&mut self, rvalue: &mir::Rvalue<'tcx>, location: Location) {
         debug!("visiting rvalue {:?}", *rvalue);
 
@@ -913,6 +924,25 @@ impl<'a, 'tcx> MirVisitor<'tcx> for MirUsedCollector<'a, 'tcx> {
         self.super_operand(operand, location);
         self.check_operand_move_size(operand, location);
     }
+}
+
+fn visit_required_item<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    item: mir::RequiredItem<'tcx>,
+    output: &mut MonoItems<'tcx>,
+) {
+    let instance = match item {
+        mir::RequiredItem::Fn(def_id, args) => {
+            Instance::expect_resolve(tcx, ty::ParamEnv::reveal_all(), def_id, args)
+        }
+        mir::RequiredItem::Drop(ty) => Instance::resolve_drop_in_place(tcx, ty),
+    };
+    // We pretend this is a direct call, just to make sure this is visited at all.
+    // "indirect" would mean we also generate some shims, but we don't care about the
+    // generated code, just about the side-effect of code generation causing errors, so we
+    // can skip the shims.
+    // FIXME: track the span so that we can show it here.
+    visit_instance_use(tcx, instance, /*is_direct_call*/ true, DUMMY_SP, output);
 }
 
 fn visit_drop_use<'tcx>(
