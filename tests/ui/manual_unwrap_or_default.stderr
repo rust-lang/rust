@@ -1,5 +1,5 @@
 error: match can be simplified with `.unwrap_or_default()`
-  --> tests/ui/match_option_and_default.rs:6:5
+  --> tests/ui/manual_unwrap_or_default.rs:6:5
    |
 LL | /     match x {
 LL | |
@@ -8,11 +8,11 @@ LL | |         None => Vec::default(),
 LL | |     };
    | |_____^ help: replace it with: `x.unwrap_or_default()`
    |
-   = note: `-D clippy::match-option-and-default` implied by `-D warnings`
-   = help: to override `-D warnings` add `#[allow(clippy::match_option_and_default)]`
+   = note: `-D clippy::manual-unwrap-or-default` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::manual_unwrap_or_default)]`
 
 error: match can be simplified with `.unwrap_or_default()`
-  --> tests/ui/match_option_and_default.rs:13:5
+  --> tests/ui/manual_unwrap_or_default.rs:13:5
    |
 LL | /     match x {
 LL | |
@@ -22,7 +22,7 @@ LL | |     };
    | |_____^ help: replace it with: `x.unwrap_or_default()`
 
 error: match can be simplified with `.unwrap_or_default()`
-  --> tests/ui/match_option_and_default.rs:20:5
+  --> tests/ui/manual_unwrap_or_default.rs:20:5
    |
 LL | /     match x {
 LL | |
@@ -32,7 +32,7 @@ LL | |     };
    | |_____^ help: replace it with: `x.unwrap_or_default()`
 
 error: match can be simplified with `.unwrap_or_default()`
-  --> tests/ui/match_option_and_default.rs:27:5
+  --> tests/ui/manual_unwrap_or_default.rs:27:5
    |
 LL | /     match x {
 LL | |
@@ -42,7 +42,7 @@ LL | |     };
    | |_____^ help: replace it with: `x.unwrap_or_default()`
 
 error: if let can be simplified with `.unwrap_or_default()`
-  --> tests/ui/match_option_and_default.rs:34:5
+  --> tests/ui/manual_unwrap_or_default.rs:34:5
    |
 LL | /     if let Some(v) = x {
 LL | |

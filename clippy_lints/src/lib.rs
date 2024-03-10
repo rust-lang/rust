@@ -211,8 +211,8 @@ mod manual_retain;
 mod manual_slice_size_calculation;
 mod manual_string_new;
 mod manual_strip;
+mod manual_unwrap_or_default;
 mod map_unit_fn;
-mod match_option_and_default;
 mod match_result_ok;
 mod matches;
 mod mem_replace;
@@ -1123,7 +1123,7 @@ pub fn register_lints(store: &mut rustc_lint::LintStore, conf: &'static Conf) {
     store.register_early_pass(|| Box::new(multiple_bound_locations::MultipleBoundLocations));
     store.register_late_pass(|_| Box::new(assigning_clones::AssigningClones));
     store.register_late_pass(|_| Box::new(zero_repeat_side_effects::ZeroRepeatSideEffects));
-    store.register_late_pass(|_| Box::new(match_option_and_default::MatchOptionAndDefault));
+    store.register_late_pass(|_| Box::new(manual_unwrap_or_default::ManualUnwrapOrDefault));
     // add lints here, do not remove this comment, it's used in `new_lint`
 }
 

@@ -1,4 +1,4 @@
-#![warn(clippy::match_option_and_default)]
+#![warn(clippy::manual_unwrap_or_default)]
 #![allow(clippy::unnecessary_literal_unwrap)]
 
 fn main() {

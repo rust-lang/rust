@@ -42,12 +42,12 @@ declare_clippy_lint! {
     /// let y: Vec<String> = x.unwrap_or_default();
     /// ```
     #[clippy::version = "1.78.0"]
-    pub MATCH_OPTION_AND_DEFAULT,
+    pub MANUAL_UNWRAP_OR_DEFAULT,
     suspicious,
     "check if a `match` or `if let` can be simplified with `unwrap_or_default`"
 }
 
-declare_lint_pass!(MatchOptionAndDefault => [MATCH_OPTION_AND_DEFAULT]);
+declare_lint_pass!(ManualUnwrapOrDefault => [MANUAL_UNWRAP_OR_DEFAULT]);
 
 fn get_some<'tcx>(cx: &LateContext<'tcx>, pat: &Pat<'tcx>) -> Option<HirId> {
     if let PatKind::TupleStruct(QPath::Resolved(_, path), &[pat], _) = pat.kind
@@ -123,13 +123,12 @@ fn handle_match<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>) -> bool {
         && local_id == binding_id
         // We now check the `None` arm is calling a method equivalent to `Default::default`.
         && let body_none = body_none.peel_blocks()
-        && let ExprKind::Call(_, &[]) = body_none.kind
         && is_default_equivalent(cx, body_none)
         && let Some(match_expr_snippet) = snippet_opt(cx, match_expr.span)
     {
         span_lint_and_sugg(
             cx,
-            MATCH_OPTION_AND_DEFAULT,
+            MANUAL_UNWRAP_OR_DEFAULT,
             expr.span,
             "match can be simplified with `.unwrap_or_default()`",
             "replace it with",
@@ -155,13 +154,12 @@ fn handle_if_let<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>) {
         && local_id == binding_id
         // We now check the `None` arm is calling a method equivalent to `Default::default`.
         && let body_else = else_expr.peel_blocks()
-        && let ExprKind::Call(_, &[]) = body_else.kind
         && is_default_equivalent(cx, body_else)
         && let Some(if_let_expr_snippet) = snippet_opt(cx, let_.init.span)
     {
         span_lint_and_sugg(
             cx,
-            MATCH_OPTION_AND_DEFAULT,
+            MANUAL_UNWRAP_OR_DEFAULT,
             expr.span,
             "if let can be simplified with `.unwrap_or_default()`",
             "replace it with",
@@ -171,7 +169,7 @@ fn handle_if_let<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>) {
     }
 }
 
-impl<'tcx> LateLintPass<'tcx> for MatchOptionAndDefault {
+impl<'tcx> LateLintPass<'tcx> for ManualUnwrapOrDefault {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>) {
         if expr.span.from_expansion() {
             return;
