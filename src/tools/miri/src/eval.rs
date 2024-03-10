@@ -94,8 +94,6 @@ pub struct MiriConfig {
     pub unique_is_unique: bool,
     /// Controls alignment checking.
     pub check_alignment: AlignmentCheck,
-    /// Controls function [ABI](Abi) checking.
-    pub check_abi: bool,
     /// Action for an op requiring communication with the host.
     pub isolated_op: IsolatedOp,
     /// Determines if memory leaks should be ignored.
@@ -162,7 +160,6 @@ impl Default for MiriConfig {
             borrow_tracker: Some(BorrowTrackerMethod::StackedBorrows),
             unique_is_unique: false,
             check_alignment: AlignmentCheck::Int,
-            check_abi: true,
             isolated_op: IsolatedOp::Reject(RejectOpWith::Abort),
             ignore_leaks: false,
             forwarded_env_vars: vec![],
@@ -394,7 +391,7 @@ pub fn create_ecx<'mir, 'tcx: 'mir>(
                     argv,
                     Scalar::from_u8(sigpipe).into(),
                 ],
-                Some(&ret_place.into()),
+                Some(&ret_place),
                 StackPopCleanup::Root { cleanup: true },
             )?;
         }
@@ -403,7 +400,7 @@ pub fn create_ecx<'mir, 'tcx: 'mir>(
                 entry_instance,
                 Abi::Rust,
                 &[argc.into(), argv],
-                Some(&ret_place.into()),
+                Some(&ret_place),
                 StackPopCleanup::Root { cleanup: true },
             )?;
         }

@@ -1,6 +1,8 @@
 use std::cmp;
+use std::collections::BTreeSet;
 use std::iter;
 use std::num::NonZero;
+use std::sync::Mutex;
 use std::time::Duration;
 
 use rustc_apfloat::ieee::{Double, Single};
@@ -387,7 +389,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         let this = self.eval_context_mut();
         let param_env = ty::ParamEnv::reveal_all(); // in Miri this is always the param_env we use... and this.param_env is private.
         let callee_abi = f.ty(*this.tcx, param_env).fn_sig(*this.tcx).abi();
-        if this.machine.enforce_abi && callee_abi != caller_abi {
+        if callee_abi != caller_abi {
             throw_ub_format!(
                 "calling a function with ABI {} using caller ABI {}",
                 callee_abi.name(),
@@ -399,7 +401,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         let mir = this.load_mir(f.def, None)?;
         let dest = match dest {
             Some(dest) => dest.clone(),
-            None => MPlaceTy::fake_alloc_zst(this.layout_of(mir.return_ty())?).into(),
+            None => MPlaceTy::fake_alloc_zst(this.layout_of(mir.return_ty())?),
         };
         this.push_stack_frame(f, mir, &dest, stack_pop)?;
 
@@ -603,9 +605,18 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         match reject_with {
             RejectOpWith::Abort => isolation_abort_error(op_name),
             RejectOpWith::WarningWithoutBacktrace => {
-                this.tcx
-                    .dcx()
-                    .warn(format!("{op_name} was made to return an error due to isolation"));
+                // This exists to reduce verbosity; make sure we emit the warning at most once per
+                // operation.
+                static EMITTED_WARNINGS: Mutex<BTreeSet<String>> = Mutex::new(BTreeSet::new());
+
+                let mut emitted_warnings = EMITTED_WARNINGS.lock().unwrap();
+                if !emitted_warnings.contains(op_name) {
+                    // First time we are seeing this.
+                    emitted_warnings.insert(op_name.to_owned());
+                    this.tcx
+                        .dcx()
+                        .warn(format!("{op_name} was made to return an error due to isolation"));
+                }
                 Ok(())
             }
             RejectOpWith::Warning => {
@@ -945,7 +956,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
 
     /// Check that the ABI is what we expect.
     fn check_abi<'a>(&self, abi: Abi, exp_abi: Abi) -> InterpResult<'a, ()> {
-        if self.eval_context_ref().machine.enforce_abi && abi != exp_abi {
+        if abi != exp_abi {
             throw_ub_format!(
                 "calling a function with ABI {} using caller ABI {}",
                 exp_abi.name(),
@@ -1091,20 +1102,17 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
             }
         }
 
-        let (val, status) = match src.layout.ty.kind() {
-            // f32
-            ty::Float(FloatTy::F32) =>
+        let ty::Float(fty) = src.layout.ty.kind() else {
+            bug!("float_to_int_checked: non-float input type {}", src.layout.ty)
+        };
+
+        let (val, status) = match fty {
+            FloatTy::F16 => unimplemented!("f16_f128"),
+            FloatTy::F32 =>
                 float_to_int_inner::<Single>(this, src.to_scalar().to_f32()?, cast_to, round),
-            // f64
-            ty::Float(FloatTy::F64) =>
+            FloatTy::F64 =>
                 float_to_int_inner::<Double>(this, src.to_scalar().to_f64()?, cast_to, round),
-            // Nothing else
-            _ =>
-                span_bug!(
-                    this.cur_span(),
-                    "attempted float-to-int conversion with non-float input type {}",
-                    src.layout.ty,
-                ),
+            FloatTy::F128 => unimplemented!("f16_f128"),
         };
 
         if status.intersects(

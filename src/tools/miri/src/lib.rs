@@ -49,8 +49,12 @@
 // Needed for rustdoc from bootstrap (with `-Znormalize-docs`).
 #![recursion_limit = "256"]
 
-extern crate either; // the one from rustc
+// Some "regular" crates we want to share with rustc
+extern crate either;
+#[macro_use]
+extern crate tracing;
 
+// The rustc crates we need
 extern crate rustc_apfloat;
 extern crate rustc_ast;
 extern crate rustc_const_eval;
@@ -63,11 +67,8 @@ extern crate rustc_middle;
 extern crate rustc_session;
 extern crate rustc_span;
 extern crate rustc_target;
-#[macro_use]
-extern crate tracing;
-
-// Necessary to pull in object code as the rest of the rustc crates are shipped only as rmeta
-// files.
+// Linking `rustc_driver` pulls in the required  object code as the rest of the rustc crates are
+// shipped only as rmeta files.
 #[allow(unused_extern_crates)]
 extern crate rustc_driver;
 
@@ -143,4 +144,7 @@ pub const MIRI_DEFAULT_ARGS: &[&str] = &[
     "-Zmir-keep-place-mention",
     "-Zmir-opt-level=0",
     "-Zmir-enable-passes=-CheckAlignment",
+    // Deduplicating diagnostics means we miss events when tracking what happens during an
+    // execution. Let's not do that.
+    "-Zdeduplicate-diagnostics=no",
 ];

@@ -462,9 +462,6 @@ pub struct MiriMachine<'mir, 'tcx> {
     /// Whether to enforce the validity invariant.
     pub(crate) validate: bool,
 
-    /// Whether to enforce [ABI](Abi) of function calls.
-    pub(crate) enforce_abi: bool,
-
     /// The table of file descriptors.
     pub(crate) file_handler: shims::unix::FileHandler,
     /// The table of directory descriptors.
@@ -643,7 +640,6 @@ impl<'mir, 'tcx> MiriMachine<'mir, 'tcx> {
             tls: TlsData::default(),
             isolated_op: config.isolated_op,
             validate: config.validate,
-            enforce_abi: config.check_abi,
             file_handler: FileHandler::new(config.mute_stdout_stderr),
             dir_handler: Default::default(),
             layouts,
@@ -786,7 +782,6 @@ impl VisitProvenance for MiriMachine<'_, '_> {
             tcx: _,
             isolated_op: _,
             validate: _,
-            enforce_abi: _,
             clock: _,
             layouts: _,
             static_roots: _,
@@ -934,8 +929,8 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for MiriMachine<'mir, 'tcx> {
     }
 
     #[inline(always)]
-    fn enforce_abi(ecx: &MiriInterpCx<'mir, 'tcx>) -> bool {
-        ecx.machine.enforce_abi
+    fn enforce_abi(_ecx: &MiriInterpCx<'mir, 'tcx>) -> bool {
+        true
     }
 
     #[inline(always)]
@@ -1338,7 +1333,7 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for MiriMachine<'mir, 'tcx> {
         // If we have a borrow tracker, we also have it set up protection so that all reads *and
         // writes* during this call are insta-UB.
         let protected_place = if ecx.machine.borrow_tracker.is_some() {
-            ecx.protect_place(&place)?.into()
+            ecx.protect_place(place)?
         } else {
             // No borrow tracker.
             place.clone()
@@ -1447,13 +1442,17 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for MiriMachine<'mir, 'tcx> {
         if ecx.machine.borrow_tracker.is_some() {
             ecx.on_stack_pop(frame)?;
         }
+        // tracing-tree can autoamtically annotate scope changes, but it gets very confused by our
+        // concurrency and what it prints is just plain wrong. So we print our own information
+        // instead. (Cc https://github.com/rust-lang/miri/issues/2266)
+        info!("Leaving {}", ecx.frame().instance);
         Ok(())
     }
 
     #[inline(always)]
     fn after_stack_pop(
         ecx: &mut InterpCx<'mir, 'tcx, Self>,
-        mut frame: Frame<'mir, 'tcx, Provenance, FrameExtra<'tcx>>,
+        frame: Frame<'mir, 'tcx, Provenance, FrameExtra<'tcx>>,
         unwinding: bool,
     ) -> InterpResult<'tcx, StackPopJump> {
         if frame.extra.is_user_relevant {
@@ -1463,10 +1462,20 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for MiriMachine<'mir, 'tcx> {
             // user-relevant frame and restore that here.)
             ecx.active_thread_mut().recompute_top_user_relevant_frame();
         }
-        let timing = frame.extra.timing.take();
-        let res = ecx.handle_stack_pop_unwind(frame.extra, unwinding);
-        if let Some(profiler) = ecx.machine.profiler.as_ref() {
-            profiler.finish_recording_interval_event(timing.unwrap());
+        let res = {
+            // Move `frame`` into a sub-scope so we control when it will be dropped.
+            let mut frame = frame;
+            let timing = frame.extra.timing.take();
+            let res = ecx.handle_stack_pop_unwind(frame.extra, unwinding);
+            if let Some(profiler) = ecx.machine.profiler.as_ref() {
+                profiler.finish_recording_interval_event(timing.unwrap());
+            }
+            res
+        };
+        // Needs to be done after dropping frame to show up on the right nesting level.
+        // (Cc https://github.com/rust-lang/miri/issues/2266)
+        if !ecx.active_thread_stack().is_empty() {
+            info!("Continuing in {}", ecx.frame().instance);
         }
         res
     }

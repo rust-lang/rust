@@ -8,6 +8,11 @@
     rustc::untranslatable_diagnostic
 )]
 
+// Some "regular" crates we want to share with rustc
+#[macro_use]
+extern crate tracing;
+
+// The rustc crates we need
 extern crate rustc_data_structures;
 extern crate rustc_driver;
 extern crate rustc_hir;
@@ -16,8 +21,6 @@ extern crate rustc_log;
 extern crate rustc_metadata;
 extern crate rustc_middle;
 extern crate rustc_session;
-#[macro_use]
-extern crate tracing;
 
 use std::env::{self, VarError};
 use std::num::NonZero;
@@ -202,15 +205,11 @@ fn rustc_logger_config() -> rustc_log::LoggerConfig {
             // rustc traced, but you can also do `MIRI_LOG=miri=trace,rustc_const_eval::interpret=debug`.
             if tracing::Level::from_str(&var).is_ok() {
                 cfg.filter = Ok(format!(
-                    "rustc_middle::mir::interpret={var},rustc_const_eval::interpret={var}"
+                    "rustc_middle::mir::interpret={var},rustc_const_eval::interpret={var},miri={var}"
                 ));
             } else {
                 cfg.filter = Ok(var);
             }
-        }
-        // Enable verbose entry/exit logging by default if MIRI_LOG is set.
-        if matches!(cfg.verbose_entry_exit, Err(VarError::NotPresent)) {
-            cfg.verbose_entry_exit = Ok(format!("1"));
         }
     }
 
@@ -342,7 +341,8 @@ fn main() {
     // (`install_ice_hook` might change `RUST_BACKTRACE`.)
     let env_snapshot = env::vars_os().collect::<Vec<_>>();
 
-    let args = rustc_driver::args::raw_args(&early_dcx).unwrap_or_else(|_| std::process::exit(rustc_driver::EXIT_FAILURE));
+    let args = rustc_driver::args::raw_args(&early_dcx)
+        .unwrap_or_else(|_| std::process::exit(rustc_driver::EXIT_FAILURE));
 
     // If the environment asks us to actually be rustc, then do that.
     if let Some(crate_kind) = env::var_os("MIRI_BE_RUSTC") {
@@ -408,17 +408,11 @@ fn main() {
             miri_config.check_alignment = miri::AlignmentCheck::None;
         } else if arg == "-Zmiri-symbolic-alignment-check" {
             miri_config.check_alignment = miri::AlignmentCheck::Symbolic;
-        } else if arg == "-Zmiri-check-number-validity" {
-            eprintln!(
-                "WARNING: the flag `-Zmiri-check-number-validity` no longer has any effect \
-                        since it is now enabled by default"
-            );
         } else if arg == "-Zmiri-disable-abi-check" {
             eprintln!(
-                "WARNING: the flag `-Zmiri-disable-abi-check` is deprecated and planned to be removed.\n\
-                If you have a use-case for it, please file an issue."
+                "WARNING: the flag `-Zmiri-disable-abi-check` no longer has any effect; \
+                    ABI checks cannot be disabled any more"
             );
-            miri_config.check_abi = false;
         } else if arg == "-Zmiri-disable-isolation" {
             if matches!(isolation_enabled, Some(true)) {
                 show_error!(
@@ -459,8 +453,6 @@ fn main() {
             miri_config.collect_leak_backtraces = false;
         } else if arg == "-Zmiri-panic-on-unsupported" {
             miri_config.panic_on_unsupported = true;
-        } else if arg == "-Zmiri-tag-raw-pointers" {
-            eprintln!("WARNING: `-Zmiri-tag-raw-pointers` has no effect; it is enabled by default");
         } else if arg == "-Zmiri-strict-provenance" {
             miri_config.provenance_mode = ProvenanceMode::Strict;
         } else if arg == "-Zmiri-permissive-provenance" {
@@ -476,10 +468,6 @@ fn main() {
                 "scalar" => RetagFields::OnlyScalar,
                 _ => show_error!("`-Zmiri-retag-fields` can only be `all`, `none`, or `scalar`"),
             };
-        } else if arg == "-Zmiri-track-raw-pointers" {
-            eprintln!(
-                "WARNING: `-Zmiri-track-raw-pointers` has no effect; it is enabled by default"
-            );
         } else if let Some(param) = arg.strip_prefix("-Zmiri-seed=") {
             if miri_config.seed.is_some() {
                 show_error!("Cannot specify -Zmiri-seed multiple times!");

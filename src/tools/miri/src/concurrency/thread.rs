@@ -445,10 +445,13 @@ impl<'mir, 'tcx: 'mir> ThreadManager<'mir, 'tcx> {
 
     /// Set an active thread and return the id of the thread that was active before.
     fn set_active_thread_id(&mut self, id: ThreadId) -> ThreadId {
-        let active_thread_id = self.active_thread;
-        self.active_thread = id;
-        assert!(self.active_thread.index() < self.threads.len());
-        active_thread_id
+        assert!(id.index() < self.threads.len());
+        info!(
+            "---------- Now executing on thread `{}` (previous: `{}`) ----------------------------------------",
+            self.get_thread_display_name(id),
+            self.get_thread_display_name(self.active_thread)
+        );
+        std::mem::replace(&mut self.active_thread, id)
     }
 
     /// Get the id of the currently active thread.
@@ -735,6 +738,11 @@ impl<'mir, 'tcx: 'mir> ThreadManager<'mir, 'tcx> {
         for (id, thread) in threads {
             debug_assert_ne!(self.active_thread, id);
             if thread.state == ThreadState::Enabled {
+                info!(
+                    "---------- Now executing on thread `{}` (previous: `{}`) ----------------------------------------",
+                    self.get_thread_display_name(id),
+                    self.get_thread_display_name(self.active_thread)
+                );
                 self.active_thread = id;
                 break;
             }
@@ -882,7 +890,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
             instance,
             start_abi,
             &[*func_arg],
-            Some(&ret_place.into()),
+            Some(&ret_place),
             StackPopCleanup::Root { cleanup: true },
         )?;
 

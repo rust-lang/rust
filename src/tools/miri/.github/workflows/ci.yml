@@ -187,7 +187,7 @@ jobs:
         run: RUSTFLAGS="--cap-lints warn" cargo +stable install josh-proxy --git https://github.com/josh-project/josh --tag r22.12.06
       - name: setup bot git name and email
         run: |
-          git config --global user.name 'The Miri Conjob Bot'
+          git config --global user.name 'The Miri Cronjob Bot'
           git config --global user.email 'miri@cron.bot'
       - name: get changes from rustc
         run: ./miri rustc-pull

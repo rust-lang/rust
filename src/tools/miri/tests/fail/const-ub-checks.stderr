@@ -10,6 +10,14 @@ note: erroneous constant encountered
 LL |     let _x = UNALIGNED_READ;
    |              ^^^^^^^^^^^^^^
 
+note: erroneous constant encountered
+  --> $DIR/const-ub-checks.rs:LL:CC
+   |
+LL |     let _x = UNALIGNED_READ;
+   |              ^^^^^^^^^^^^^^
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
 error: aborting due to 1 previous error
 
 For more information about this error, try `rustc --explain E0080`.

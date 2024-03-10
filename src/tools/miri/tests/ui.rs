@@ -79,13 +79,6 @@ fn test_config(target: &str, path: &str, mode: Mode, with_dependencies: bool) ->
         program.args.push(flag);
     }
 
-    // Add a test env var to do environment communication tests.
-    program.envs.push(("MIRI_ENV_VAR_TEST".into(), Some("0".into())));
-
-    // Let the tests know where to store temp files (they might run for a different target, which can make this hard to find).
-    let miri_temp = env::var_os("MIRI_TEMP").unwrap_or_else(|| env::temp_dir().into());
-    program.envs.push(("MIRI_TEMP".into(), Some(miri_temp)));
-
     let mut config = Config {
         target: Some(target.to_owned()),
         stderr_filters: STDERR.clone(),
@@ -116,8 +109,20 @@ fn test_config(target: &str, path: &str, mode: Mode, with_dependencies: bool) ->
     config
 }
 
-fn run_tests(mode: Mode, path: &str, target: &str, with_dependencies: bool) -> Result<()> {
+fn run_tests(
+    mode: Mode,
+    path: &str,
+    target: &str,
+    with_dependencies: bool,
+    tmpdir: &Path,
+) -> Result<()> {
     let mut config = test_config(target, path, mode, with_dependencies);
+
+    // Add a test env var to do environment communication tests.
+    config.program.envs.push(("MIRI_ENV_VAR_TEST".into(), Some("0".into())));
+
+    // Let the tests know where to store temp files (they might run for a different target, which can make this hard to find).
+    config.program.envs.push(("MIRI_TEMP".into(), Some(tmpdir.to_owned().into())));
 
     // Handle command-line arguments.
     let args = ui_test::Args::test()?;
@@ -211,7 +216,13 @@ enum Dependencies {
 
 use Dependencies::*;
 
-fn ui(mode: Mode, path: &str, target: &str, with_dependencies: Dependencies) -> Result<()> {
+fn ui(
+    mode: Mode,
+    path: &str,
+    target: &str,
+    with_dependencies: Dependencies,
+    tmpdir: &Path,
+) -> Result<()> {
     let msg = format!("## Running ui tests in {path} against miri for {target}");
     eprintln!("{}", msg.green().bold());
 
@@ -219,7 +230,7 @@ fn ui(mode: Mode, path: &str, target: &str, with_dependencies: Dependencies) -> 
         WithDependencies => true,
         WithoutDependencies => false,
     };
-    run_tests(mode, path, target, with_dependencies)
+    run_tests(mode, path, target, with_dependencies, tmpdir)
 }
 
 fn get_target() -> String {
@@ -230,6 +241,7 @@ fn main() -> Result<()> {
     ui_test::color_eyre::install()?;
 
     let target = get_target();
+    let tmpdir = tempfile::Builder::new().prefix("miri-uitest-").tempdir()?;
 
     let mut args = std::env::args_os();
 
@@ -240,28 +252,31 @@ fn main() -> Result<()> {
         }
     }
 
-    ui(Mode::Pass, "tests/pass", &target, WithoutDependencies)?;
-    ui(Mode::Pass, "tests/pass-dep", &target, WithDependencies)?;
-    ui(Mode::Panic, "tests/panic", &target, WithDependencies)?;
+    ui(Mode::Pass, "tests/pass", &target, WithoutDependencies, tmpdir.path())?;
+    ui(Mode::Pass, "tests/pass-dep", &target, WithDependencies, tmpdir.path())?;
+    ui(Mode::Panic, "tests/panic", &target, WithDependencies, tmpdir.path())?;
     ui(
         Mode::Fail { require_patterns: true, rustfix: RustfixMode::Disabled },
         "tests/fail",
         &target,
         WithoutDependencies,
+        tmpdir.path(),
     )?;
     ui(
         Mode::Fail { require_patterns: true, rustfix: RustfixMode::Disabled },
         "tests/fail-dep",
         &target,
         WithDependencies,
+        tmpdir.path(),
     )?;
     if cfg!(target_os = "linux") {
-        ui(Mode::Pass, "tests/extern-so/pass", &target, WithoutDependencies)?;
+        ui(Mode::Pass, "tests/extern-so/pass", &target, WithoutDependencies, tmpdir.path())?;
         ui(
             Mode::Fail { require_patterns: true, rustfix: RustfixMode::Disabled },
             "tests/extern-so/fail",
             &target,
             WithoutDependencies,
+            tmpdir.path(),
         )?;
     }
 

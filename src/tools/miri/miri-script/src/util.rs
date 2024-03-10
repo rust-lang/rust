@@ -1,7 +1,7 @@
 use std::ffi::{OsStr, OsString};
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
-use anyhow::{Context, Result};
+use anyhow::{anyhow, Context, Result};
 use dunce::canonicalize;
 use path_macro::path;
 use xshell::{cmd, Shell};
@@ -143,6 +143,50 @@ impl MiriEnv {
             "cargo +{toolchain} test {cargo_extra_flags...} --manifest-path {manifest_path} {args...}"
         )
         .run()?;
+        Ok(())
+    }
+
+    /// Receives an iterator of files.
+    /// Will format each file with the miri rustfmt config.
+    /// Does not recursively format modules.
+    pub fn format_files(
+        &self,
+        files: impl Iterator<Item = Result<PathBuf, walkdir::Error>>,
+        toolchain: &str,
+        config_path: &Path,
+        flags: &[OsString],
+    ) -> anyhow::Result<()> {
+        use itertools::Itertools;
+
+        let mut first = true;
+
+        // Format in batches as not all our files fit into Windows' command argument limit.
+        for batch in &files.chunks(256) {
+            // Build base command.
+            let mut cmd = cmd!(
+                self.sh,
+                "rustfmt +{toolchain} --edition=2021 --config-path {config_path} --unstable-features --skip-children {flags...}"
+            );
+            if first {
+                // Log an abbreviating command, and only once.
+                eprintln!("$ {cmd} ...");
+                first = false;
+            }
+            // Add files.
+            for file in batch {
+                // Make it a relative path so that on platforms with extremely tight argument
+                // limits (like Windows), we become immune to someone cloning the repo
+                // 50 directories deep.
+                let file = file?;
+                let file = file.strip_prefix(&self.miri_dir)?;
+                cmd = cmd.arg(file);
+            }
+
+            // Run rustfmt.
+            // We want our own error message, repeating the command is too much.
+            cmd.quiet().run().map_err(|_| anyhow!("`rustfmt` failed"))?;
+        }
+
         Ok(())
     }
 }

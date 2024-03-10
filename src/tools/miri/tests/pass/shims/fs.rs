@@ -295,7 +295,7 @@ fn test_canonicalize() {
     drop(File::create(&path).unwrap());
 
     let p = canonicalize(format!("{}/./test_file", dir_path.to_string_lossy())).unwrap();
-    assert_eq!(p.to_string_lossy().find('.'), None);
+    assert_eq!(p.to_string_lossy().find("/./"), None);
 
     remove_dir_all(&dir_path).unwrap();
 }

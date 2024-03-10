@@ -45,6 +45,7 @@ ui_test = "0.21.1"
 rustc_version = "0.4"
 regex = "1.5.5"
 lazy_static = "1.4.0"
+tempfile = "3"
 
 [package.metadata.rust-analyzer]
 # This crate uses #[feature(rustc_private)].
@@ -52,7 +53,7 @@ lazy_static = "1.4.0"
 rustc_private = true
 
 [[test]]
-name = "compiletest"
+name = "ui"
 harness = false
 
 [features]

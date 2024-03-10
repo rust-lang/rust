@@ -287,13 +287,14 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                     _ => bug!(),
                 };
                 let float_finite = |x: &ImmTy<'tcx, _>| -> InterpResult<'tcx, bool> {
-                    Ok(match x.layout.ty.kind() {
-                        ty::Float(FloatTy::F32) => x.to_scalar().to_f32()?.is_finite(),
-                        ty::Float(FloatTy::F64) => x.to_scalar().to_f64()?.is_finite(),
-                        _ => bug!(
-                            "`{intrinsic_name}` called with non-float input type {ty:?}",
-                            ty = x.layout.ty,
-                        ),
+                    let ty::Float(fty) = x.layout.ty.kind() else {
+                        bug!("float_finite: non-float input type {}", x.layout.ty)
+                    };
+                    Ok(match fty {
+                        FloatTy::F16 => unimplemented!("f16_f128"),
+                        FloatTy::F32 => x.to_scalar().to_f32()?.is_finite(),
+                        FloatTy::F64 => x.to_scalar().to_f64()?.is_finite(),
+                        FloatTy::F128 => unimplemented!("f16_f128"),
                     })
                 };
                 match (float_finite(&a)?, float_finite(&b)?) {
