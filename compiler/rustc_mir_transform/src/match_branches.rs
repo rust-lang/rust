@@ -37,11 +37,11 @@ impl<'tcx> MirPass<'tcx> for MatchBranchSimplification {
                 _ => continue,
             };
 
-            if SimplifyToIf.simplify(tcx, body, bb_idx, param_env) {
+            if SimplifyToIf.simplify(tcx, body, bb_idx, param_env).is_some() {
                 should_cleanup = true;
                 continue;
             }
-            if SimplifyToExp::default().simplify(tcx, body, bb_idx, param_env) {
+            if SimplifyToExp::default().simplify(tcx, body, bb_idx, param_env).is_some() {
                 should_cleanup = true;
                 continue;
             }
@@ -62,7 +62,7 @@ trait SimplifyMatch<'tcx> {
         body: &mut Body<'tcx>,
         switch_bb_idx: BasicBlock,
         param_env: ParamEnv<'tcx>,
-    ) -> bool {
+    ) -> Option<()> {
         let bbs = &body.basic_blocks;
         let (discr, targets) = match bbs[switch_bb_idx].terminator().kind {
             TerminatorKind::SwitchInt { ref discr, ref targets, .. } => (discr, targets),
@@ -70,9 +70,7 @@ trait SimplifyMatch<'tcx> {
         };
 
         let discr_ty = discr.ty(body.local_decls(), tcx);
-        if !self.can_simplify(tcx, targets, param_env, bbs, discr_ty) {
-            return false;
-        }
+        self.can_simplify(tcx, targets, param_env, bbs, discr_ty)?;
 
         let mut patch = MirPatch::new(body);
 
@@ -92,7 +90,7 @@ trait SimplifyMatch<'tcx> {
         patch.add_statement(parent_end, StatementKind::StorageDead(discr_local));
         patch.patch_terminator(switch_bb_idx, bbs[first].terminator().kind.clone());
         patch.apply(body);
-        true
+        Some(())
     }
 
     /// Check that the BBs to be simplified satisfies all distinct and
@@ -105,7 +103,7 @@ trait SimplifyMatch<'tcx> {
         param_env: ParamEnv<'tcx>,
         bbs: &IndexSlice<BasicBlock, BasicBlockData<'tcx>>,
         discr_ty: Ty<'tcx>,
-    ) -> bool;
+    ) -> Option<()>;
 
     fn new_stmts(
         &self,
@@ -161,19 +159,19 @@ impl<'tcx> SimplifyMatch<'tcx> for SimplifyToIf {
         param_env: ParamEnv<'tcx>,
         bbs: &IndexSlice<BasicBlock, BasicBlockData<'tcx>>,
         _discr_ty: Ty<'tcx>,
-    ) -> bool {
+    ) -> Option<()> {
         if targets.iter().len() != 1 {
-            return false;
+            return None;
         }
         // We require that the possible target blocks all be distinct.
         let (_, first) = targets.iter().next().unwrap();
         let second = targets.otherwise();
         if first == second {
-            return false;
+            return None;
         }
         // Check that destinations are identical, and if not, then don't optimize this block
         if bbs[first].terminator().kind != bbs[second].terminator().kind {
-            return false;
+            return None;
         }
 
         // Check that blocks are assignments of consts to the same place or same statement,
@@ -181,7 +179,7 @@ impl<'tcx> SimplifyMatch<'tcx> for SimplifyToIf {
         let first_stmts = &bbs[first].statements;
         let second_stmts = &bbs[second].statements;
         if first_stmts.len() != second_stmts.len() {
-            return false;
+            return None;
         }
         for (f, s) in iter::zip(first_stmts, second_stmts) {
             match (&f.kind, &s.kind) {
@@ -199,10 +197,10 @@ impl<'tcx> SimplifyMatch<'tcx> for SimplifyToIf {
                     && s_c.const_.try_eval_bool(tcx, param_env).is_some() => {}
 
                 // Otherwise we cannot optimize. Try another block.
-                _ => return false,
+                _ => return None,
             }
         }
-        true
+        Some(())
     }
 
     fn new_stmts(
@@ -340,16 +338,16 @@ impl<'tcx> SimplifyMatch<'tcx> for SimplifyToExp {
         param_env: ParamEnv<'tcx>,
         bbs: &IndexSlice<BasicBlock, BasicBlockData<'tcx>>,
         discr_ty: Ty<'tcx>,
-    ) -> bool {
+    ) -> Option<()> {
         if targets.iter().len() < 2 || targets.iter().len() > 64 {
-            return false;
+            return None;
         }
         // We require that the possible target blocks all be distinct.
         if !targets.is_distinct() {
-            return false;
+            return None;
         }
         if !bbs[targets.otherwise()].is_empty_unreachable() {
-            return false;
+            return None;
         }
         let mut target_iter = targets.iter();
         let (first_val, first_target) = target_iter.next().unwrap();
@@ -359,7 +357,7 @@ impl<'tcx> SimplifyMatch<'tcx> for SimplifyToExp {
             .iter()
             .all(|(_, other_target)| first_terminator_kind == &bbs[other_target].terminator().kind)
         {
-            return false;
+            return None;
         }
 
         let discr_size = tcx.layout_of(param_env.and(discr_ty)).unwrap().size;
@@ -367,7 +365,7 @@ impl<'tcx> SimplifyMatch<'tcx> for SimplifyToExp {
         let (second_val, second_target) = target_iter.next().unwrap();
         let second_stmts = &bbs[second_target].statements;
         if first_stmts.len() != second_stmts.len() {
-            return false;
+            return None;
         }
 
         fn int_equal(l: ScalarInt, r: impl Into<u128>, size: Size) -> bool {
@@ -412,13 +410,13 @@ impl<'tcx> SimplifyMatch<'tcx> for SimplifyToExp {
                             }
                         }
                         _ => {
-                            return false;
+                            return None;
                         }
                     }
                 }
 
                 // Otherwise we cannot optimize. Try another block.
-                _ => return false,
+                _ => return None,
             };
             compare_types.push(compare_type);
         }
@@ -427,7 +425,7 @@ impl<'tcx> SimplifyMatch<'tcx> for SimplifyToExp {
         for (other_val, other_target) in target_iter {
             let other_stmts = &bbs[other_target].statements;
             if compare_types.len() != other_stmts.len() {
-                return false;
+                return None;
             }
             for (f, s) in iter::zip(&compare_types, other_stmts) {
                 match (*f, &s.kind) {
@@ -443,7 +441,7 @@ impl<'tcx> SimplifyMatch<'tcx> for SimplifyToExp {
                         StatementKind::Assign(box (lhs_s, Rvalue::Use(Operand::Constant(s_c)))),
                     ) if lhs_f == lhs_s && s_c.const_.ty() == f_ty => {
                         let Some(f) = s_c.const_.try_eval_scalar_int(tcx, param_env) else {
-                            return false;
+                            return None;
                         };
                         if is_signed
                             && s_c.const_.ty().is_signed()
@@ -454,14 +452,14 @@ impl<'tcx> SimplifyMatch<'tcx> for SimplifyToExp {
                         if Some(f) == ScalarInt::try_from_uint(other_val, f.size()) {
                             continue;
                         }
-                        return false;
+                        return None;
                     }
-                    _ => return false,
+                    _ => return None,
                 }
             }
         }
         self.transfrom_types = compare_types.into_iter().map(|c| c.into()).collect();
-        true
+        Some(())
     }
 
     fn new_stmts(
