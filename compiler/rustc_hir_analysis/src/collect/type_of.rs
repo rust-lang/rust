@@ -1,4 +1,3 @@
-use core::ops::ControlFlow;
 use rustc_errors::{Applicability, StashKey};
 use rustc_hir as hir;
 use rustc_hir::def_id::{DefId, LocalDefId};
@@ -671,21 +670,8 @@ fn check_feature_inherent_assoc_ty(tcx: TyCtxt<'_>, span: Span) {
     }
 }
 
-pub fn type_alias_is_lazy<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalDefId) -> bool {
-    use hir::intravisit::Visitor;
-    if tcx.features().lazy_type_alias {
-        return true;
-    }
-    struct HasTait;
-    impl<'tcx> Visitor<'tcx> for HasTait {
-        type Result = ControlFlow<()>;
-        fn visit_ty(&mut self, t: &'tcx hir::Ty<'tcx>) -> Self::Result {
-            if let hir::TyKind::OpaqueDef(..) = t.kind {
-                ControlFlow::Break(())
-            } else {
-                hir::intravisit::walk_ty(self, t)
-            }
-        }
-    }
-    HasTait.visit_ty(tcx.hir().expect_item(def_id).expect_ty_alias().0).is_break()
+pub fn type_alias_is_lazy<'tcx>(_: TyCtxt<'tcx>, _: LocalDefId) -> bool {
+    // [[[[ /!\ CRATER-ONLY /!\ ]]]]
+    //      All type aliases are lazy.
+    true
 }

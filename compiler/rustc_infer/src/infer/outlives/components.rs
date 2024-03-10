@@ -138,7 +138,7 @@ fn compute_components<'tcx>(
             // trait-ref. Therefore, if we see any higher-ranked regions,
             // we simply fallback to the most restrictive rule, which
             // requires that `Pi: 'a` for all `i`.
-            ty::Alias(_, alias_ty) => {
+            ty::Alias(ty::Projection | ty::Inherent | ty::Opaque, alias_ty) => {
                 if !alias_ty.has_escaping_bound_vars() {
                     // best case: no escaping regions, so push the
                     // projection and skip the subtree (thus generating no
@@ -178,6 +178,7 @@ fn compute_components<'tcx>(
             ty::Float(..) |       // OutlivesScalar
             ty::Never |           // ...
             ty::Adt(..) |         // OutlivesNominalType
+            ty::Alias(ty::Weak, _) |
             ty::Foreign(..) |     // OutlivesNominalType
             ty::Str |             // OutlivesScalar (ish)
             ty::Slice(..) |       // ...

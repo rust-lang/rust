@@ -203,7 +203,8 @@ where
                     }
                 }
             }
-            ty::Alias(kind @ (ty::Inherent | ty::Weak | ty::Projection), data) => {
+            // [[[[ /!\ CRATER-ONLY /!\ ]]]]
+            ty::Alias(kind @ (ty::Inherent | ty::Projection), data) => {
                 if V::SKIP_ASSOC_TYS {
                     // Visitors searching for minimal visibility/reachability want to
                     // conservatively approximate associated types like `Type::Alias`
@@ -233,6 +234,10 @@ where
                         data.args.iter().try_for_each(|arg| arg.visit_with(self).branch()),
                     )
                 };
+            }
+            // [[[[ /!\ CRATER-ONLY /!\ ]]]]
+            ty::Alias(ty::Weak, _) => {
+                return V::Result::output();
             }
             ty::Dynamic(predicates, ..) => {
                 // All traits in the list are considered the "primary" part of the type

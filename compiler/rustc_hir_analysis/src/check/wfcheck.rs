@@ -321,15 +321,18 @@ fn check_item<'tcx>(tcx: TyCtxt<'tcx>, item: &'tcx hir::Item<'tcx>) -> Result<()
         // `ForeignItem`s are handled separately.
         hir::ItemKind::ForeignMod { .. } => Ok(()),
         hir::ItemKind::TyAlias(hir_ty, hir_generics) => {
-            if tcx.type_alias_is_lazy(item.owner_id) {
-                // Bounds of lazy type aliases and of eager ones that contain opaque types are respected.
-                // E.g: `type X = impl Trait;`, `type X = (impl Trait, Y);`.
-                let res = check_item_type(tcx, def_id, hir_ty.span, UnsizedHandling::Allow);
-                check_variances_for_type_defn(tcx, item, hir_generics);
-                res
+            // [[[[ /!\ CRATER-ONLY /!\ ]]]]
+            //      Do not check the watered-down version of lazy type aliases for well-formedness.
+            let ty = tcx.type_of(item.owner_id).instantiate_identity();
+            let result = if !ty.references_error() && ty.has_opaque_types() {
+                check_item_type(tcx, def_id, hir_ty.span, UnsizedHandling::Allow)
             } else {
                 Ok(())
+            };
+            if tcx.type_alias_is_lazy(item.owner_id) {
+                check_variances_for_type_defn(tcx, item, hir_generics);
             }
+            result
         }
         _ => Ok(()),
     };
@@ -1842,6 +1845,11 @@ fn check_variances_for_type_defn<'tcx>(
     let ty_predicates = tcx.predicates_of(item.owner_id);
     assert_eq!(ty_predicates.parent, None);
     let variances = tcx.variances_of(item.owner_id);
+
+    if let ItemKind::TyAlias(..) = item.kind {
+        // [[[[ /!\ CRATER-ONLY /!\ ]]]]
+        return;
+    }
 
     let mut constrained_parameters: FxHashSet<_> = variances
         .iter()
