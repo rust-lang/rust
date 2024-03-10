@@ -506,13 +506,13 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             traverse_candidate(
                 candidate,
                 &mut Vec::new(),
-                &mut |leaf_candidate, parent_bindings| {
+                &mut |leaf_candidate, parent_data| {
                     if let Some(arm) = arm {
                         self.clear_top_scope(arm.scope);
                     }
                     let binding_end = self.bind_and_guard_matched_candidate(
                         leaf_candidate,
-                        parent_bindings,
+                        parent_data,
                         fake_borrow_temps,
                         scrutinee_span,
                         arm_match_scope,
@@ -524,12 +524,12 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     }
                     self.cfg.goto(binding_end, outer_source_info, target_block);
                 },
-                |inner_candidate, parent_bindings| {
-                    parent_bindings.push((inner_candidate.bindings, inner_candidate.ascriptions));
+                |inner_candidate, parent_data| {
+                    parent_data.push(inner_candidate.extra_data);
                     inner_candidate.subcandidates.into_iter()
                 },
-                |parent_bindings| {
-                    parent_bindings.pop();
+                |parent_data| {
+                    parent_data.pop();
                 },
             );
 
@@ -651,7 +651,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         if set_match_place {
             let mut next = Some(&candidate);
             while let Some(candidate_ref) = next.take() {
-                for binding in &candidate_ref.bindings {
+                for binding in &candidate_ref.extra_data.bindings {
                     let local = self.var_local_id(binding.var_id, OutsideGuard);
                     // `try_to_place` may fail if it is unable to resolve the given
                     // `PlaceBuilder` inside a closure. In this case, we don't want to include
@@ -924,22 +924,35 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     }
 }
 
-/// A pattern in a form suitable for generating code.
+/// Data extracted from a pattern that doesn't affect which branch is taken. Collected during
+/// pattern simplification and not mutated later.
 #[derive(Debug, Clone)]
-struct FlatPat<'pat, 'tcx> {
+struct PatternExtraData<'tcx> {
     /// [`Span`] of the original pattern.
     span: Span,
 
+    /// Bindings that must be established.
+    bindings: Vec<Binding<'tcx>>,
+
+    /// Types that must be asserted.
+    ascriptions: Vec<Ascription<'tcx>>,
+}
+
+impl<'tcx> PatternExtraData<'tcx> {
+    fn is_empty(&self) -> bool {
+        self.bindings.is_empty() && self.ascriptions.is_empty()
+    }
+}
+
+/// A pattern in a form suitable for generating code.
+#[derive(Debug, Clone)]
+struct FlatPat<'pat, 'tcx> {
     /// To match the pattern, all of these must be satisfied...
     // Invariant: all the `MatchPair`s are recursively simplified.
     // Invariant: or-patterns must be sorted to the end.
     match_pairs: Vec<MatchPair<'pat, 'tcx>>,
 
-    /// ...these bindings established...
-    bindings: Vec<Binding<'tcx>>,
-
-    /// ...and these types asserted.
-    ascriptions: Vec<Ascription<'tcx>>,
+    extra_data: PatternExtraData<'tcx>,
 }
 
 impl<'tcx, 'pat> FlatPat<'pat, 'tcx> {
@@ -948,42 +961,37 @@ impl<'tcx, 'pat> FlatPat<'pat, 'tcx> {
         pattern: &'pat Pat<'tcx>,
         cx: &mut Builder<'_, 'tcx>,
     ) -> Self {
-        let mut match_pairs = vec![MatchPair::new(place, pattern, cx)];
-        let mut bindings = Vec::new();
-        let mut ascriptions = Vec::new();
-
-        cx.simplify_match_pairs(&mut match_pairs, &mut bindings, &mut ascriptions);
-
-        FlatPat { span: pattern.span, match_pairs, bindings, ascriptions }
+        let mut flat_pat = FlatPat {
+            match_pairs: vec![MatchPair::new(place, pattern, cx)],
+            extra_data: PatternExtraData {
+                span: pattern.span,
+                bindings: Vec::new(),
+                ascriptions: Vec::new(),
+            },
+        };
+        cx.simplify_match_pairs(&mut flat_pat.match_pairs, &mut flat_pat.extra_data);
+        flat_pat
     }
 }
 
 #[derive(Debug)]
 struct Candidate<'pat, 'tcx> {
-    /// [`Span`] of the original pattern that gave rise to this candidate.
-    span: Span,
-
-    /// Whether this `Candidate` has a guard.
-    has_guard: bool,
-
-    /// All of these must be satisfied...
+    /// For the candidate to match, all of these must be satisfied...
     // Invariant: all the `MatchPair`s are recursively simplified.
     // Invariant: or-patterns must be sorted at the end.
     match_pairs: Vec<MatchPair<'pat, 'tcx>>,
 
-    /// ...these bindings established...
-    // Invariant: not mutated after candidate creation.
-    bindings: Vec<Binding<'tcx>>,
-
-    /// ...and these types asserted...
-    // Invariant: not mutated after candidate creation.
-    ascriptions: Vec<Ascription<'tcx>>,
-
     /// ...and if this is non-empty, one of these subcandidates also has to match...
     subcandidates: Vec<Candidate<'pat, 'tcx>>,
 
-    /// ...and the guard must be evaluated; if it's `false` then branch to `otherwise_block`.
+    /// ...and the guard must be evaluated if there is one.
+    has_guard: bool,
+
+    /// If the guard is `false` then branch to `otherwise_block`.
     otherwise_block: Option<BasicBlock>,
+
+    /// If the candidate matches, bindings and ascriptions must be established.
+    extra_data: PatternExtraData<'tcx>,
 
     /// The block before the `bindings` have been established.
     pre_binding_block: Option<BasicBlock>,
@@ -1003,10 +1011,8 @@ impl<'tcx, 'pat> Candidate<'pat, 'tcx> {
 
     fn from_flat_pat(flat_pat: FlatPat<'pat, 'tcx>, has_guard: bool) -> Self {
         Candidate {
-            span: flat_pat.span,
             match_pairs: flat_pat.match_pairs,
-            bindings: flat_pat.bindings,
-            ascriptions: flat_pat.ascriptions,
+            extra_data: flat_pat.extra_data,
             has_guard,
             subcandidates: Vec::new(),
             otherwise_block: None,
@@ -1518,9 +1524,8 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             self.merge_trivial_subcandidates(subcandidate, source_info);
 
             // FIXME(or_patterns; matthewjasper) Try to be more aggressive here.
-            can_merge &= subcandidate.subcandidates.is_empty()
-                && subcandidate.bindings.is_empty()
-                && subcandidate.ascriptions.is_empty();
+            can_merge &=
+                subcandidate.subcandidates.is_empty() && subcandidate.extra_data.is_empty();
         }
 
         if can_merge {
@@ -1943,7 +1948,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     fn bind_and_guard_matched_candidate<'pat>(
         &mut self,
         candidate: Candidate<'pat, 'tcx>,
-        parent_bindings: &[(Vec<Binding<'tcx>>, Vec<Ascription<'tcx>>)],
+        parent_data: &[PatternExtraData<'tcx>],
         fake_borrows: &[(Place<'tcx>, Local)],
         scrutinee_span: Span,
         arm_match_scope: Option<(&Arm<'tcx>, region::Scope)>,
@@ -1954,7 +1959,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
         debug_assert!(candidate.match_pairs.is_empty());
 
-        let candidate_source_info = self.source_info(candidate.span);
+        let candidate_source_info = self.source_info(candidate.extra_data.span);
 
         let mut block = candidate.pre_binding_block.unwrap();
 
@@ -1971,11 +1976,11 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
         self.ascribe_types(
             block,
-            parent_bindings
+            parent_data
                 .iter()
-                .flat_map(|(_, ascriptions)| ascriptions)
+                .flat_map(|d| &d.ascriptions)
                 .cloned()
-                .chain(candidate.ascriptions),
+                .chain(candidate.extra_data.ascriptions),
         );
 
         // rust-lang/rust#27282: The `autoref` business deserves some
@@ -2063,10 +2068,8 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             && let Some(guard) = arm.guard
         {
             let tcx = self.tcx;
-            let bindings = parent_bindings
-                .iter()
-                .flat_map(|(bindings, _)| bindings)
-                .chain(&candidate.bindings);
+            let bindings =
+                parent_data.iter().flat_map(|d| &d.bindings).chain(&candidate.extra_data.bindings);
 
             self.bind_matched_candidate_for_guard(block, schedule_drops, bindings.clone());
             let guard_frame = GuardFrame {
@@ -2144,10 +2147,10 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             // ```
             //
             // and that is clearly not correct.
-            let by_value_bindings = parent_bindings
+            let by_value_bindings = parent_data
                 .iter()
-                .flat_map(|(bindings, _)| bindings)
-                .chain(&candidate.bindings)
+                .flat_map(|d| &d.bindings)
+                .chain(&candidate.extra_data.bindings)
                 .filter(|binding| matches!(binding.binding_mode, BindingMode::ByValue));
             // Read all of the by reference bindings to ensure that the
             // place they refer to can't be modified by the guard.
@@ -2172,10 +2175,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             self.bind_matched_candidate_for_arm_body(
                 block,
                 schedule_drops,
-                parent_bindings
-                    .iter()
-                    .flat_map(|(bindings, _)| bindings)
-                    .chain(&candidate.bindings),
+                parent_data.iter().flat_map(|d| &d.bindings).chain(&candidate.extra_data.bindings),
                 storages_alive,
             );
             block
