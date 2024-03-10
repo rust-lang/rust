@@ -1,5 +1,5 @@
 error: malformed `unix_sigpipe` attribute input
-  --> $DIR/unix_sigpipe-list.rs:3:1
+  --> $DIR/unix_sigpipe-ident-list.rs:3:1
    |
 LL | #[unix_sigpipe(sig_dfl)]
    | ^^^^^^^^^^^^^^^^^^^^^^^^ help: must be of the form: `#[unix_sigpipe = "inherit|sig_ign|sig_dfl"]`
