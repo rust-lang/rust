@@ -842,7 +842,7 @@ impl Step for Enzyme {
         }
         let target = self.target;
 
-        let LlvmResult { llvm_config, .. } = builder.ensure(Llvm { target: self.target });
+        let LlvmResult { llvm_config, llvm_cmake_dir } = builder.ensure(Llvm { target });
 
         let out_dir = builder.enzyme_out(target);
         let done_stamp = out_dir.join("enzyme-finished-building");
@@ -874,7 +874,7 @@ impl Step for Enzyme {
             .env("LLVM_CONFIG_REAL", &llvm_config)
             .define("LLVM_ENABLE_ASSERTIONS", "ON")
             .define("ENZYME_EXTERNAL_SHARED_LIB", "OFF")
-            .define("LLVM_DIR", builder.llvm_out(target));
+            .define("LLVM_DIR", &llvm_cmake_dir);
 
         cfg.build();
 
