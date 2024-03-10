@@ -13,7 +13,6 @@ tests/ui/sepcomp/sepcomp-extern.rs
 tests/ui/sepcomp/sepcomp-fns-backwards.rs
 tests/ui/sepcomp/sepcomp-fns.rs
 tests/ui/sepcomp/sepcomp-statics.rs
-tests/ui/simd/intrinsic/generic-arithmetic-pass.rs
 tests/ui/asm/x86_64/may_unwind.rs
 tests/ui/backtrace.rs
 tests/ui/catch-unwind-bang.rs
@@ -49,7 +48,6 @@ tests/ui/rfcs/rfc-1857-stabilize-drop-order/drop-order.rs
 tests/ui/rfcs/rfc-2091-track-caller/std-panic-locations.rs
 tests/ui/simd/issue-17170.rs
 tests/ui/simd/issue-39720.rs
-tests/ui/simd/issue-89193.rs
 tests/ui/statics/issue-91050-1.rs
 tests/ui/statics/issue-91050-2.rs
 tests/ui/alloc-error/default-alloc-error-hook.rs
@@ -57,7 +55,6 @@ tests/ui/coroutine/panic-safe.rs
 tests/ui/issues/issue-14875.rs
 tests/ui/issues/issue-29948.rs
 tests/ui/panics/nested_panic_caught.rs
-tests/ui/simd/intrinsic/generic-bswap-byte.rs
 tests/ui/const_prop/ice-issue-111353.rs
 tests/ui/process/println-with-broken-pipe.rs
 tests/ui/panic-runtime/lto-abort.rs
@@ -72,3 +69,8 @@ tests/ui/async-await/deep-futures-are-freeze.rs
 tests/ui/closures/capture-unsized-by-ref.rs
 tests/ui/coroutine/resume-after-return.rs
 tests/ui/macros/rfc-2011-nicer-assert-messages/all-expr-kinds.rs
+tests/ui/simd/masked-load-store.rs
+tests/ui/simd/repr_packed.rs
+tests/ui/async-await/in-trait/dont-project-to-specializable-projection.rs
+tests/ui/consts/try-operator.rs
+tests/ui/coroutine/unwind-abort-mix.rs

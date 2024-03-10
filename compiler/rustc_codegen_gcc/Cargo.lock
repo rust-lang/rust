@@ -24,6 +24,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b4682ae6287fcf752ecaabbfcc7b6f9b72aa33933dc23a554d853aea8eea8635"
 
 [[package]]
+name = "boml"
+version = "0.3.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "85fdb93f04c73bff54305fa437ffea5449c41edcaadfe882f35836206b166ac5"
+
+[[package]]
 name = "cc"
 version = "1.0.79"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -64,9 +70,9 @@ checksum = "6999dc1837253364c2ebb0704ba97994bd874e8f195d665c50b7548f6ea92764"
 
 [[package]]
 name = "fm"
-version = "0.1.4"
+version = "0.2.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "68fda3cff2cce84c19e5dfa5179a4b35d2c0f18b893f108002b8a6a54984acca"
+checksum = "21bcf4db620a804cf7e9d84fbcb5d4ac83a8c43396203b2507d62ea31814dfd4"
 dependencies = [
  "regex",
 ]
@@ -74,7 +80,7 @@ dependencies = [
 [[package]]
 name = "gccjit"
 version = "1.0.0"
-source = "git+https://github.com/antoyo/gccjit.rs#6e290f25b1d1edab5ae9ace486fd2dc8c08d6421"
+source = "git+https://github.com/antoyo/gccjit.rs#9f8f67edc006d543b17529a001803ffece48349e"
 dependencies = [
  "gccjit_sys",
 ]
@@ -82,7 +88,7 @@ dependencies = [
 [[package]]
 name = "gccjit_sys"
 version = "0.0.1"
-source = "git+https://github.com/antoyo/gccjit.rs#6e290f25b1d1edab5ae9ace486fd2dc8c08d6421"
+source = "git+https://github.com/antoyo/gccjit.rs#9f8f67edc006d543b17529a001803ffece48349e"
 dependencies = [
  "libc",
 ]
@@ -104,9 +110,9 @@ checksum = "fed44880c466736ef9a5c5b5facefb5ed0785676d0c02d612db14e54f0d84286"
 
 [[package]]
 name = "lang_tester"
-version = "0.3.13"
+version = "0.8.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "96bd995a092cac79868250589869b5a5d656b02a02bd74c8ebdc566dc7203090"
+checksum = "9af8149dbb3ed7d8e529fcb141fe033b1c26ed54cbffc6762d3a86483c485d23"
 dependencies = [
  "fm",
  "getopts",
@@ -185,6 +191,7 @@ checksum = "436b050e76ed2903236f032a59761c1eb99e1b0aead2c257922771dab1fc8c78"
 name = "rustc_codegen_gcc"
 version = "0.1.0"
 dependencies = [
+ "boml",
  "gccjit",
  "lang_tester",
  "object",
