@@ -1,5 +1,5 @@
 error[E0004]: non-exhaustive patterns: `u8::MAX` not covered
-  --> $DIR/exhaustiveness.rs:47:8
+  --> $DIR/exhaustiveness.rs:48:8
    |
 LL |     m!(0u8, 0..255);
    |        ^^^ pattern `u8::MAX` not covered
@@ -11,7 +11,7 @@ LL |         match $s { $($t)+ => {}, u8::MAX => todo!() }
    |                                ++++++++++++++++++++
 
 error[E0004]: non-exhaustive patterns: `u8::MAX` not covered
-  --> $DIR/exhaustiveness.rs:48:8
+  --> $DIR/exhaustiveness.rs:49:8
    |
 LL |     m!(0u8, 0..=254);
    |        ^^^ pattern `u8::MAX` not covered
@@ -23,7 +23,7 @@ LL |         match $s { $($t)+ => {}, u8::MAX => todo!() }
    |                                ++++++++++++++++++++
 
 error[E0004]: non-exhaustive patterns: `0_u8` not covered
-  --> $DIR/exhaustiveness.rs:49:8
+  --> $DIR/exhaustiveness.rs:50:8
    |
 LL |     m!(0u8, 1..=255);
    |        ^^^ pattern `0_u8` not covered
@@ -35,7 +35,7 @@ LL |         match $s { $($t)+ => {}, 0_u8 => todo!() }
    |                                +++++++++++++++++
 
 error[E0004]: non-exhaustive patterns: `42_u8` not covered
-  --> $DIR/exhaustiveness.rs:50:8
+  --> $DIR/exhaustiveness.rs:51:8
    |
 LL |     m!(0u8, 0..42 | 43..=255);
    |        ^^^ pattern `42_u8` not covered
@@ -47,7 +47,7 @@ LL |         match $s { $($t)+ => {}, 42_u8 => todo!() }
    |                                ++++++++++++++++++
 
 error[E0004]: non-exhaustive patterns: `i8::MAX` not covered
-  --> $DIR/exhaustiveness.rs:51:8
+  --> $DIR/exhaustiveness.rs:52:8
    |
 LL |     m!(0i8, -128..127);
    |        ^^^ pattern `i8::MAX` not covered
@@ -59,7 +59,7 @@ LL |         match $s { $($t)+ => {}, i8::MAX => todo!() }
    |                                ++++++++++++++++++++
 
 error[E0004]: non-exhaustive patterns: `i8::MAX` not covered
-  --> $DIR/exhaustiveness.rs:52:8
+  --> $DIR/exhaustiveness.rs:53:8
    |
 LL |     m!(0i8, -128..=126);
    |        ^^^ pattern `i8::MAX` not covered
@@ -71,7 +71,7 @@ LL |         match $s { $($t)+ => {}, i8::MAX => todo!() }
    |                                ++++++++++++++++++++
 
 error[E0004]: non-exhaustive patterns: `i8::MIN` not covered
-  --> $DIR/exhaustiveness.rs:53:8
+  --> $DIR/exhaustiveness.rs:54:8
    |
 LL |     m!(0i8, -127..=127);
    |        ^^^ pattern `i8::MIN` not covered
@@ -83,7 +83,7 @@ LL |         match $s { $($t)+ => {}, i8::MIN => todo!() }
    |                                ++++++++++++++++++++
 
 error[E0004]: non-exhaustive patterns: `0_i8` not covered
-  --> $DIR/exhaustiveness.rs:54:11
+  --> $DIR/exhaustiveness.rs:55:11
    |
 LL |     match 0i8 {
    |           ^^^ pattern `0_i8` not covered
@@ -96,7 +96,7 @@ LL +         0_i8 => todo!()
    |
 
 error[E0004]: non-exhaustive patterns: `u128::MAX` not covered
-  --> $DIR/exhaustiveness.rs:59:8
+  --> $DIR/exhaustiveness.rs:60:8
    |
 LL |     m!(0u128, 0..=ALMOST_MAX);
    |        ^^^^^ pattern `u128::MAX` not covered
@@ -108,7 +108,7 @@ LL |         match $s { $($t)+ => {}, u128::MAX => todo!() }
    |                                ++++++++++++++++++++++
 
 error[E0004]: non-exhaustive patterns: `5_u128..=u128::MAX` not covered
-  --> $DIR/exhaustiveness.rs:60:8
+  --> $DIR/exhaustiveness.rs:61:8
    |
 LL |     m!(0u128, 0..=4);
    |        ^^^^^ pattern `5_u128..=u128::MAX` not covered
@@ -120,7 +120,7 @@ LL |         match $s { $($t)+ => {}, 5_u128..=u128::MAX => todo!() }
    |                                +++++++++++++++++++++++++++++++
 
 error[E0004]: non-exhaustive patterns: `0_u128` not covered
-  --> $DIR/exhaustiveness.rs:61:8
+  --> $DIR/exhaustiveness.rs:62:8
    |
 LL |     m!(0u128, 1..=u128::MAX);
    |        ^^^^^ pattern `0_u128` not covered
@@ -132,7 +132,7 @@ LL |         match $s { $($t)+ => {}, 0_u128 => todo!() }
    |                                +++++++++++++++++++
 
 error[E0004]: non-exhaustive patterns: `(126_u8..=127_u8, false)` not covered
-  --> $DIR/exhaustiveness.rs:69:11
+  --> $DIR/exhaustiveness.rs:70:11
    |
 LL |     match (0u8, true) {
    |           ^^^^^^^^^^^ pattern `(126_u8..=127_u8, false)` not covered

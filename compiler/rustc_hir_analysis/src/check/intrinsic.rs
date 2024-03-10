@@ -127,7 +127,8 @@ pub fn intrinsic_operation_unsafety(tcx: TyCtxt<'_>, intrinsic_id: LocalDefId) -
         | sym::variant_count
         | sym::is_val_statically_known
         | sym::ptr_mask
-        | sym::debug_assertions
+        | sym::check_language_ub
+        | sym::check_library_ub
         | sym::fadd_algebraic
         | sym::fsub_algebraic
         | sym::fmul_algebraic
@@ -584,7 +585,7 @@ pub fn check_intrinsic_type(
                 (0, 0, vec![Ty::new_imm_ptr(tcx, Ty::new_unit(tcx))], tcx.types.usize)
             }
 
-            sym::debug_assertions => (0, 1, Vec::new(), tcx.types.bool),
+            sym::check_language_ub | sym::check_library_ub => (0, 1, Vec::new(), tcx.types.bool),
 
             sym::simd_eq
             | sym::simd_ne
@@ -656,6 +657,10 @@ pub fn check_intrinsic_type(
             | sym::simd_reduce_max => (2, 0, vec![param(0)], param(1)),
             sym::simd_shuffle => (3, 0, vec![param(0), param(0), param(1)], param(2)),
             sym::simd_shuffle_generic => (2, 1, vec![param(0), param(0)], param(1)),
+
+            sym::retag_box_to_raw => {
+                (2, 0, vec![Ty::new_mut_ptr(tcx, param(0))], Ty::new_mut_ptr(tcx, param(0)))
+            }
 
             other => {
                 tcx.dcx().emit_err(UnrecognizedIntrinsicFunction { span, name: other });

@@ -392,6 +392,15 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         }
     }
 
+    fn tb_retag_box_to_raw(
+        &mut self,
+        val: &ImmTy<'tcx, Provenance>,
+        _alloc_ty: Ty<'tcx>,
+    ) -> InterpResult<'tcx, ImmTy<'tcx, Provenance>> {
+        // Casts to raw pointers are NOPs in Tree Borrows.
+        Ok(val.clone())
+    }
+
     /// Retag all pointers that are stored in this place.
     fn tb_retag_place_contents(
         &mut self,
@@ -441,14 +450,22 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
             /// Regardless of how `Unique` is handled, Boxes are always reborrowed.
             /// When `Unique` is also reborrowed, then it behaves exactly like `Box`
             /// except for the fact that `Box` has a non-zero-sized reborrow.
-            fn visit_box(&mut self, place: &PlaceTy<'tcx, Provenance>) -> InterpResult<'tcx> {
-                let new_perm = NewPermission::from_unique_ty(
-                    place.layout.ty,
-                    self.kind,
-                    self.ecx,
-                    /* zero_size */ false,
-                );
-                self.retag_ptr_inplace(place, new_perm)
+            fn visit_box(
+                &mut self,
+                box_ty: Ty<'tcx>,
+                place: &PlaceTy<'tcx, Provenance>,
+            ) -> InterpResult<'tcx> {
+                // Only boxes for the global allocator get any special treatment.
+                if box_ty.is_box_global(*self.ecx.tcx) {
+                    let new_perm = NewPermission::from_unique_ty(
+                        place.layout.ty,
+                        self.kind,
+                        self.ecx,
+                        /* zero_size */ false,
+                    );
+                    self.retag_ptr_inplace(place, new_perm)?;
+                }
+                Ok(())
             }
 
             fn visit_value(&mut self, place: &PlaceTy<'tcx, Provenance>) -> InterpResult<'tcx> {

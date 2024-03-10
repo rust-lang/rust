@@ -58,11 +58,10 @@
           _7 = const 1_usize;
           _6 = const {0x1 as *mut [bool; 0]};
           StorageDead(_7);
-          StorageLive(_10);
           StorageLive(_11);
           StorageLive(_8);
-          _8 = cfg!(debug_assertions);
-          switchInt(move _8) -> [0: bb4, otherwise: bb3];
+          _8 = UbCheck(LanguageUb);
+          switchInt(move _8) -> [0: bb5, otherwise: bb3];
       }
   
       bb1: {
@@ -75,16 +74,21 @@
       }
   
       bb3: {
+          StorageLive(_10);
           _10 = const {0x1 as *mut ()};
           _9 = NonNull::<T>::new_unchecked::precondition_check(const {0x1 as *mut ()}) -> [return: bb4, unwind unreachable];
       }
   
       bb4: {
+          StorageDead(_10);
+          goto -> bb5;
+      }
+  
+      bb5: {
           StorageDead(_8);
           _11 = const {0x1 as *const [bool; 0]};
           _5 = const NonNull::<[bool; 0]> {{ pointer: {0x1 as *const [bool; 0]} }};
           StorageDead(_11);
-          StorageDead(_10);
           StorageDead(_6);
           _4 = const Unique::<[bool; 0]> {{ pointer: NonNull::<[bool; 0]> {{ pointer: {0x1 as *const [bool; 0]} }}, _marker: PhantomData::<[bool; 0]> }};
           StorageDead(_5);

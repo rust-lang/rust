@@ -251,13 +251,19 @@ impl<'tcx> Stable<'tcx> for mir::NullOp<'tcx> {
     type T = stable_mir::mir::NullOp;
     fn stable(&self, tables: &mut Tables<'_>) -> Self::T {
         use rustc_middle::mir::NullOp::*;
+        use rustc_middle::mir::UbKind;
         match self {
             SizeOf => stable_mir::mir::NullOp::SizeOf,
             AlignOf => stable_mir::mir::NullOp::AlignOf,
             OffsetOf(indices) => stable_mir::mir::NullOp::OffsetOf(
                 indices.iter().map(|idx| idx.stable(tables)).collect(),
             ),
-            DebugAssertions => stable_mir::mir::NullOp::DebugAssertions,
+            UbCheck(UbKind::LanguageUb) => {
+                stable_mir::mir::NullOp::UbCheck(stable_mir::mir::UbKind::LanguageUb)
+            }
+            UbCheck(UbKind::LibraryUb) => {
+                stable_mir::mir::NullOp::UbCheck(stable_mir::mir::UbKind::LibraryUb)
+            }
         }
     }
 }

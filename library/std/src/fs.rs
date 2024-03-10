@@ -261,7 +261,7 @@ pub fn read<P: AsRef<Path>>(path: P) -> io::Result<Vec<u8>> {
         let mut file = File::open(path)?;
         let size = file.metadata().map(|m| m.len() as usize).ok();
         let mut bytes = Vec::new();
-        bytes.try_reserve_exact(size.unwrap_or(0)).map_err(|_| io::ErrorKind::OutOfMemory)?;
+        bytes.try_reserve_exact(size.unwrap_or(0))?;
         io::default_read_to_end(&mut file, &mut bytes, size)?;
         Ok(bytes)
     }
@@ -304,7 +304,7 @@ pub fn read_to_string<P: AsRef<Path>>(path: P) -> io::Result<String> {
         let mut file = File::open(path)?;
         let size = file.metadata().map(|m| m.len() as usize).ok();
         let mut string = String::new();
-        string.try_reserve_exact(size.unwrap_or(0)).map_err(|_| io::ErrorKind::OutOfMemory)?;
+        string.try_reserve_exact(size.unwrap_or(0))?;
         io::default_read_to_string(&mut file, &mut string, size)?;
         Ok(string)
     }
@@ -777,14 +777,14 @@ impl Read for &File {
     // Reserves space in the buffer based on the file size when available.
     fn read_to_end(&mut self, buf: &mut Vec<u8>) -> io::Result<usize> {
         let size = buffer_capacity_required(self);
-        buf.try_reserve(size.unwrap_or(0)).map_err(|_| io::ErrorKind::OutOfMemory)?;
+        buf.try_reserve(size.unwrap_or(0))?;
         io::default_read_to_end(self, buf, size)
     }
 
     // Reserves space in the buffer based on the file size when available.
     fn read_to_string(&mut self, buf: &mut String) -> io::Result<usize> {
         let size = buffer_capacity_required(self);
-        buf.try_reserve(size.unwrap_or(0)).map_err(|_| io::ErrorKind::OutOfMemory)?;
+        buf.try_reserve(size.unwrap_or(0))?;
         io::default_read_to_string(self, buf, size)
     }
 }

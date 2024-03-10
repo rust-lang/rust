@@ -422,7 +422,7 @@ pub trait AsHandle {
 }
 
 #[stable(feature = "io_safety", since = "1.63.0")]
-impl<T: AsHandle> AsHandle for &T {
+impl<T: AsHandle + ?Sized> AsHandle for &T {
     #[inline]
     fn as_handle(&self) -> BorrowedHandle<'_> {
         T::as_handle(self)
@@ -430,7 +430,7 @@ impl<T: AsHandle> AsHandle for &T {
 }
 
 #[stable(feature = "io_safety", since = "1.63.0")]
-impl<T: AsHandle> AsHandle for &mut T {
+impl<T: AsHandle + ?Sized> AsHandle for &mut T {
     #[inline]
     fn as_handle(&self) -> BorrowedHandle<'_> {
         T::as_handle(self)
@@ -450,7 +450,7 @@ impl<T: AsHandle> AsHandle for &mut T {
 /// impl MyTrait for Box<File> {}
 /// # }
 /// ```
-impl<T: AsHandle> AsHandle for crate::sync::Arc<T> {
+impl<T: AsHandle + ?Sized> AsHandle for crate::sync::Arc<T> {
     #[inline]
     fn as_handle(&self) -> BorrowedHandle<'_> {
         (**self).as_handle()
@@ -458,7 +458,7 @@ impl<T: AsHandle> AsHandle for crate::sync::Arc<T> {
 }
 
 #[stable(feature = "as_windows_ptrs", since = "1.71.0")]
-impl<T: AsHandle> AsHandle for crate::rc::Rc<T> {
+impl<T: AsHandle + ?Sized> AsHandle for crate::rc::Rc<T> {
     #[inline]
     fn as_handle(&self) -> BorrowedHandle<'_> {
         (**self).as_handle()
@@ -466,7 +466,7 @@ impl<T: AsHandle> AsHandle for crate::rc::Rc<T> {
 }
 
 #[stable(feature = "as_windows_ptrs", since = "1.71.0")]
-impl<T: AsHandle> AsHandle for Box<T> {
+impl<T: AsHandle + ?Sized> AsHandle for Box<T> {
     #[inline]
     fn as_handle(&self) -> BorrowedHandle<'_> {
         (**self).as_handle()

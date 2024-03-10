@@ -1019,25 +1019,21 @@ pub const unsafe fn swap_nonoverlapping<T>(x: *mut T, y: *mut T, count: usize) {
         };
     }
 
-    #[cfg_attr(not(bootstrap), allow(unused_unsafe))] // on bootstrap bump, remove unsafe block
-    // SAFETY: the caller must guarantee that `x` and `y` are
-    // valid for writes and properly aligned.
-    unsafe {
-        assert_unsafe_precondition!(
-            "ptr::swap_nonoverlapping requires that both pointer arguments are aligned and non-null \
-            and the specified memory ranges do not overlap",
-            (
-                x: *mut () = x as *mut (),
-                y: *mut () = y as *mut (),
-                size: usize = size_of::<T>(),
-                align: usize = align_of::<T>(),
-                count: usize = count,
-            ) =>
-            is_aligned_and_not_null(x, align)
-                && is_aligned_and_not_null(y, align)
-                && is_nonoverlapping(x, y, size, count)
-        );
-    }
+    assert_unsafe_precondition!(
+        check_language_ub,
+        "ptr::swap_nonoverlapping requires that both pointer arguments are aligned and non-null \
+        and the specified memory ranges do not overlap",
+        (
+            x: *mut () = x as *mut (),
+            y: *mut () = y as *mut (),
+            size: usize = size_of::<T>(),
+            align: usize = align_of::<T>(),
+            count: usize = count,
+        ) =>
+        is_aligned_and_not_null(x, align)
+            && is_aligned_and_not_null(y, align)
+            && is_nonoverlapping(x, y, size, count)
+    );
 
     // Split up the slice into small power-of-two-sized chunks that LLVM is able
     // to vectorize (unless it's a special type with more-than-pointer alignment,
@@ -1125,6 +1121,7 @@ pub const unsafe fn replace<T>(dst: *mut T, mut src: T) -> T {
     // allocated object.
     unsafe {
         assert_unsafe_precondition!(
+            check_language_ub,
             "ptr::replace requires that the pointer argument is aligned and non-null",
             (
                 addr: *const () = dst as *const (),
@@ -1277,6 +1274,7 @@ pub const unsafe fn read<T>(src: *const T) -> T {
     unsafe {
         #[cfg(debug_assertions)] // Too expensive to always enable (for now?)
         assert_unsafe_precondition!(
+            check_language_ub,
             "ptr::read requires that the pointer argument is aligned and non-null",
             (
                 addr: *const () = src as *const (),
@@ -1485,6 +1483,7 @@ pub const unsafe fn write<T>(dst: *mut T, src: T) {
     unsafe {
         #[cfg(debug_assertions)] // Too expensive to always enable (for now?)
         assert_unsafe_precondition!(
+            check_language_ub,
             "ptr::write requires that the pointer argument is aligned and non-null",
             (
                 addr: *mut () = dst as *mut (),
@@ -1656,6 +1655,7 @@ pub unsafe fn read_volatile<T>(src: *const T) -> T {
     // SAFETY: the caller must uphold the safety contract for `volatile_load`.
     unsafe {
         assert_unsafe_precondition!(
+            check_language_ub,
             "ptr::read_volatile requires that the pointer argument is aligned and non-null",
             (
                 addr: *const () = src as *const (),
@@ -1734,6 +1734,7 @@ pub unsafe fn write_volatile<T>(dst: *mut T, src: T) {
     // SAFETY: the caller must uphold the safety contract for `volatile_store`.
     unsafe {
         assert_unsafe_precondition!(
+            check_language_ub,
             "ptr::write_volatile requires that the pointer argument is aligned and non-null",
             (
                 addr: *mut () = dst as *mut (),

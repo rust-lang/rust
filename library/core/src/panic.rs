@@ -139,43 +139,6 @@ pub macro unreachable_2021 {
     ),
 }
 
-/// Like `assert_unsafe_precondition!` the defining features of this macro are that its
-/// checks are enabled when they are monomorphized with debug assertions enabled, and upon failure
-/// a non-unwinding panic is launched so that failures cannot compromise unwind safety.
-///
-/// But there are many differences from `assert_unsafe_precondition!`. This macro does not use
-/// `const_eval_select` internally, and therefore it is sound to call this with an expression
-/// that evaluates to `false`. Also unlike `assert_unsafe_precondition!` the condition being
-/// checked here is not put in an outlined function. If the check compiles to a lot of IR, this
-/// can cause code bloat if the check is monomorphized many times. But it also means that the checks
-/// from this macro can be deduplicated or otherwise optimized out.
-///
-/// In general, this macro should be used to check all public-facing preconditions. But some
-/// preconditions may be called too often or instantiated too often to make the overhead of the
-/// checks tolerable. In such cases, place `#[cfg(debug_assertions)]` on the macro call. That will
-/// disable the check in our precompiled standard library, but if a user wishes, they can still
-/// enable the check by recompiling the standard library with debug assertions enabled.
-#[doc(hidden)]
-#[unstable(feature = "panic_internals", issue = "none")]
-#[allow_internal_unstable(panic_internals, delayed_debug_assertions)]
-#[rustc_macro_transparency = "semitransparent"]
-pub macro debug_assert_nounwind {
-    ($cond:expr $(,)?) => {
-        if $crate::intrinsics::debug_assertions() {
-            if !$cond {
-                $crate::panicking::panic_nounwind($crate::concat!("assertion failed: ", $crate::stringify!($cond)));
-            }
-        }
-    },
-    ($cond:expr, $message:expr) => {
-        if $crate::intrinsics::debug_assertions() {
-            if !$cond {
-                $crate::panicking::panic_nounwind($message);
-            }
-        }
-    },
-}
-
 /// An internal trait used by std to pass data from std to `panic_unwind` and
 /// other panic runtimes. Not intended to be stabilized any time soon, do not
 /// use.

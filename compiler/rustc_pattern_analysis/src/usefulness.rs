@@ -1489,7 +1489,7 @@ impl<Cx: TypeCx> WitnessMatrix<Cx> {
 /// We can however get false negatives because exhaustiveness does not explore all cases. See the
 /// section on relevancy at the top of the file.
 fn collect_overlapping_range_endpoints<'p, Cx: TypeCx>(
-    mcx: &mut UsefulnessCtxt<'_, Cx>,
+    cx: &Cx,
     overlap_range: IntRange,
     matrix: &Matrix<'p, Cx>,
     specialized_matrix: &Matrix<'p, Cx>,
@@ -1522,11 +1522,11 @@ fn collect_overlapping_range_endpoints<'p, Cx: TypeCx>(
                     .map(|&(_, pat)| pat)
                     .collect();
                 if !overlaps_with.is_empty() {
-                    mcx.tycx.lint_overlapping_range_endpoints(pat, overlap_range, &overlaps_with);
+                    cx.lint_overlapping_range_endpoints(pat, overlap_range, &overlaps_with);
                 }
             }
             suffixes.push((child_row_id, pat))
-        } else if this_range.hi == overlap.plus_one() {
+        } else if Some(this_range.hi) == overlap.plus_one() {
             // `this_range` looks like `this_range.lo..=overlap`; it overlaps with any
             // ranges that look like `overlap..=hi`.
             if !suffixes.is_empty() {
@@ -1538,11 +1538,38 @@ fn collect_overlapping_range_endpoints<'p, Cx: TypeCx>(
                     .map(|&(_, pat)| pat)
                     .collect();
                 if !overlaps_with.is_empty() {
-                    mcx.tycx.lint_overlapping_range_endpoints(pat, overlap_range, &overlaps_with);
+                    cx.lint_overlapping_range_endpoints(pat, overlap_range, &overlaps_with);
                 }
             }
             prefixes.push((child_row_id, pat))
         }
+    }
+}
+
+/// Collect ranges that have a singleton gap between them.
+fn collect_non_contiguous_range_endpoints<'p, Cx: TypeCx>(
+    cx: &Cx,
+    gap_range: &IntRange,
+    matrix: &Matrix<'p, Cx>,
+) {
+    let gap = gap_range.lo;
+    // Ranges that look like `lo..gap`.
+    let mut onebefore: SmallVec<[_; 1]> = Default::default();
+    // Ranges that start on `gap+1` or singletons `gap+1`.
+    let mut oneafter: SmallVec<[_; 1]> = Default::default();
+    // Look through the column for ranges near the gap.
+    for pat in matrix.heads() {
+        let PatOrWild::Pat(pat) = pat else { continue };
+        let Constructor::IntRange(this_range) = pat.ctor() else { continue };
+        if gap == this_range.hi {
+            onebefore.push(pat)
+        } else if gap.plus_one() == Some(this_range.lo) {
+            oneafter.push(pat)
+        }
+    }
+
+    for pat_before in onebefore {
+        cx.lint_non_contiguous_range_endpoints(pat_before, *gap_range, oneafter.as_slice());
     }
 }
 
@@ -1626,11 +1653,22 @@ fn compute_exhaustiveness_and_usefulness<'a, 'p, Cx: TypeCx>(
                 && spec_matrix.rows.len() >= 2
                 && spec_matrix.rows.iter().any(|row| !row.intersects.is_empty())
             {
-                collect_overlapping_range_endpoints(mcx, overlap_range, matrix, &spec_matrix);
+                collect_overlapping_range_endpoints(mcx.tycx, overlap_range, matrix, &spec_matrix);
             }
         }
 
         matrix.unspecialize(spec_matrix);
+    }
+
+    // Detect singleton gaps between ranges.
+    if missing_ctors.iter().any(|c| matches!(c, Constructor::IntRange(..))) {
+        for missing in &missing_ctors {
+            if let Constructor::IntRange(gap) = missing {
+                if gap.is_singleton() {
+                    collect_non_contiguous_range_endpoints(mcx.tycx, gap, matrix);
+                }
+            }
+        }
     }
 
     // Record usefulness in the patterns.

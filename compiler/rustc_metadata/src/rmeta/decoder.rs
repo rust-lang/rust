@@ -684,13 +684,25 @@ impl<'a, 'tcx, I: Idx, T> Decodable<DecodeContext<'a, 'tcx>> for LazyTable<I, T>
 implement_ty_decoder!(DecodeContext<'a, 'tcx>);
 
 impl MetadataBlob {
-    pub(crate) fn is_compatible(&self) -> bool {
-        self.blob().starts_with(METADATA_HEADER)
-    }
+    pub(crate) fn check_compatibility(
+        &self,
+        cfg_version: &'static str,
+    ) -> Result<(), Option<String>> {
+        if !self.blob().starts_with(METADATA_HEADER) {
+            if self.blob().starts_with(b"rust") {
+                return Err(Some("<unknown rustc version>".to_owned()));
+            }
+            return Err(None);
+        }
 
-    pub(crate) fn get_rustc_version(&self) -> String {
-        LazyValue::<String>::from_position(NonZero::new(METADATA_HEADER.len() + 8).unwrap())
-            .decode(self)
+        let found_version =
+            LazyValue::<String>::from_position(NonZero::new(METADATA_HEADER.len() + 8).unwrap())
+                .decode(self);
+        if rustc_version(cfg_version) != found_version {
+            return Err(Some(found_version));
+        }
+
+        Ok(())
     }
 
     fn root_pos(&self) -> NonZero<usize> {

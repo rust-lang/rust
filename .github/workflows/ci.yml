@@ -315,6 +315,10 @@ jobs:
           - name: x86_64-gnu-distcheck
             os: ubuntu-20.04-8core-32gb
             env: {}
+          - name: x86_64-gnu-llvm-18
+            env:
+              RUST_BACKTRACE: 1
+            os: ubuntu-20.04-8core-32gb
           - name: x86_64-gnu-llvm-17
             env:
               RUST_BACKTRACE: 1

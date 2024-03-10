@@ -544,30 +544,33 @@ fn close_readwrite_smoke() {
 }
 
 #[test]
+// FIXME: https://github.com/fortanix/rust-sgx/issues/110
 #[cfg_attr(target_env = "sgx", ignore)]
+// On windows, shutdown will not wake up blocking I/O operations.
+#[cfg_attr(windows, ignore)]
 fn close_read_wakes_up() {
     each_ip(&mut |addr| {
-        let a = t!(TcpListener::bind(&addr));
-        let (tx1, rx) = channel::<()>();
+        let listener = t!(TcpListener::bind(&addr));
         let _t = thread::spawn(move || {
-            let _s = t!(a.accept());
-            let _ = rx.recv();
+            let (stream, _) = t!(listener.accept());
+            stream
         });
 
-        let s = t!(TcpStream::connect(&addr));
-        let s2 = t!(s.try_clone());
-        let (tx, rx) = channel();
-        let _t = thread::spawn(move || {
-            let mut s2 = s2;
-            assert_eq!(t!(s2.read(&mut [0])), 0);
-            tx.send(()).unwrap();
-        });
-        // this should wake up the child thread
-        t!(s.shutdown(Shutdown::Read));
+        let mut stream = t!(TcpStream::connect(&addr));
+        let stream2 = t!(stream.try_clone());
 
-        // this test will never finish if the child doesn't wake up
-        rx.recv().unwrap();
-        drop(tx1);
+        let _t = thread::spawn(move || {
+            let stream2 = stream2;
+
+            // to make it more likely that `read` happens before `shutdown`
+            thread::sleep(Duration::from_millis(1000));
+
+            // this should wake up the reader up
+            t!(stream2.shutdown(Shutdown::Read));
+        });
+
+        // this `read` should get interrupted by `shutdown`
+        assert_eq!(t!(stream.read(&mut [0])), 0);
     })
 }
 

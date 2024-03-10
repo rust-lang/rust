@@ -639,7 +639,7 @@ impl Rvalue {
             Rvalue::NullaryOp(NullOp::SizeOf | NullOp::AlignOf | NullOp::OffsetOf(..), _) => {
                 Ok(Ty::usize_ty())
             }
-            Rvalue::NullaryOp(NullOp::DebugAssertions, _) => Ok(Ty::bool_ty()),
+            Rvalue::NullaryOp(NullOp::UbCheck(_), _) => Ok(Ty::bool_ty()),
             Rvalue::Aggregate(ak, ops) => match *ak {
                 AggregateKind::Array(ty) => Ty::try_new_array(ty, ops.len() as u64),
                 AggregateKind::Tuple => Ok(Ty::new_tuple(
@@ -1007,7 +1007,13 @@ pub enum NullOp {
     /// Returns the offset of a field.
     OffsetOf(Vec<(VariantIdx, FieldIdx)>),
     /// cfg!(debug_assertions), but at codegen time
-    DebugAssertions,
+    UbCheck(UbKind),
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub enum UbKind {
+    LanguageUb,
+    LibraryUb,
 }
 
 impl Operand {
