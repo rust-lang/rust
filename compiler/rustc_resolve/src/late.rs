@@ -4304,6 +4304,13 @@ impl<'a: 'ast, 'b, 'ast, 'tcx> LateResolutionVisitor<'a, 'b, 'ast, 'tcx> {
             }
 
             ExprKind::Struct(ref se) => {
+                // FIXME(fmease): Add a comment maybe.
+                if se.path == kw::Empty
+                    && self.r.dcx().has_stashed_diagnostic(expr.span, StashKey::StructLitNoType)
+                {
+                    return;
+                }
+
                 self.smart_resolve_path(expr.id, &se.qself, &se.path, PathSource::Struct);
                 // This is the same as `visit::walk_expr(self, expr);`, but we want to pass the
                 // parent in for accurate suggestions when encountering `Foo { bar }` that should

@@ -1505,6 +1505,10 @@ impl<'a> Parser<'a> {
             } else if this.check_keyword(kw::Let) {
                 this.parse_expr_let(restrictions)
             } else if this.eat_keyword(kw::Underscore) {
+                if let Some(expr) = this.maybe_recover_bad_struct_literal_path()? {
+                    return Ok(expr);
+                }
+
                 Ok(this.mk_expr(this.prev_token.span, ExprKind::Underscore))
             } else if this.token.uninterpolated_span().at_least_rust_2018() {
                 // `Span::at_least_rust_2018()` is somewhat expensive; don't get it repeatedly.
@@ -3718,6 +3722,28 @@ impl<'a> Parser<'a> {
             span: self.token.span,
             eq: field_name.span.shrink_to_hi().to(self.token.span),
         });
+    }
+
+    fn maybe_recover_bad_struct_literal_path(&mut self) -> PResult<'a, Option<P<Expr>>> {
+        if self.may_recover()
+            && self.check_noexpect(&token::OpenDelim(Delimiter::Brace))
+            && (!self.restrictions.contains(Restrictions::NO_STRUCT_LITERAL)
+                || self.is_certainly_not_a_block())
+        {
+            let span = self.prev_token.span;
+            self.bump();
+
+            let expr =
+                self.parse_expr_struct(None, Path::from_ident(Ident::new(kw::Empty, span)), false)?;
+
+            self.dcx()
+                .create_err(errors::StructLiteralPlaceholderPath { span: expr.span })
+                .stash(expr.span, StashKey::StructLitNoType);
+
+            Ok(Some(expr))
+        } else {
+            Ok(None)
+        }
     }
 
     fn err_dotdotdot_syntax(&self, span: Span) {

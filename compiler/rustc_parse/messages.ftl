@@ -708,6 +708,11 @@ parse_struct_literal_needing_parens =
 parse_struct_literal_not_allowed_here = struct literals are not allowed here
     .suggestion = surround the struct literal with parentheses
 
+parse_struct_literal_placeholder_path =
+    the placeholder `_` is not allowed for the path in struct literals
+    .label = not allowed in struct literals
+    .suggestion = replace it with an appropriate type
+
 parse_suffixed_literal_in_attribute = suffixed literals are not allowed in attributes
     .help = instead of using a suffixed literal (`1u8`, `1.0f32`, etc.), use an unsuffixed version (`1`, `1.0`, etc.)
 

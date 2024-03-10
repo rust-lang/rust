@@ -1640,6 +1640,40 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         fields: &'tcx [hir::ExprField<'tcx>],
         base_expr: &'tcx Option<&'tcx hir::Expr<'tcx>>,
     ) -> Ty<'tcx> {
+        // FIXME(fmease): Move this into separate method.
+        // FIXME(fmease): This doesn't get called given `(_ { x: () }).x` (`hir::Field`).
+        //                Figure out why.
+        if let QPath::Resolved(None, hir::Path { res: Res::Err, segments, .. }) = qpath
+            && let [segment] = segments
+            && segment.ident.name == kw::Empty
+            && let Expectation::ExpectHasType(ty) = expected
+            && ty.is_adt()
+            && let Some(guar) = self.dcx().try_steal_modify_and_emit_err(
+                expr.span,
+                StashKey::StructLitNoType,
+                |err| {
+                    // The parser provided a sub-optimal `HasPlaceholders` suggestion for the type.
+                    // We are typeck and have the real type, so remove that and suggest the actual type.
+                    if let Ok(suggestions) = &mut err.suggestions {
+                        suggestions.clear();
+                    }
+
+                    err.span_suggestion(
+                        qpath.span(),
+                        // FIXME(fmease): Make this translatable.
+                        "replace it with the correct type",
+                        // FIXME(fmease): This doesn't qualify paths within the type appropriately.
+                        // FIXME(fmease): This doesn't use turbofish when emitting generic args.
+                        // FIXME(fmease): Make the type suggestable.
+                        ty.to_string(),
+                        Applicability::MaybeIncorrect,
+                    );
+                },
+            )
+        {
+            return Ty::new_error(self.tcx, guar);
+        }
+
         // Find the relevant variant
         let (variant, adt_ty) = match self.check_struct_path(qpath, expr.hir_id) {
             Ok(data) => data,

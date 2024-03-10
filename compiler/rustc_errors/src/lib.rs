@@ -507,6 +507,7 @@ struct DiagCtxtInner {
 #[derive(Copy, Clone, PartialEq, Eq, Hash)]
 pub enum StashKey {
     ItemNoType,
+    StructLitNoType,
     UnderscoreForArrayLengths,
     EarlySyntaxWarning,
     CallIntoMethod,

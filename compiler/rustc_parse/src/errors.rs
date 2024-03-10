@@ -2974,3 +2974,12 @@ pub(crate) struct AsyncImpl {
     #[primary_span]
     pub span: Span,
 }
+
+#[derive(Diagnostic)]
+#[diag(parse_struct_literal_placeholder_path)]
+pub(crate) struct StructLiteralPlaceholderPath {
+    #[primary_span]
+    #[label]
+    #[suggestion(applicability = "has-placeholders", code = "/*Type*/")]
+    pub span: Span,
+}
