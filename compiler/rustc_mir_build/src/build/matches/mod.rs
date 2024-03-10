@@ -207,9 +207,9 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     /// - at any point, any or none of the patterns and guards seen so far may have been tested;
     /// - after the match, any of the patterns may have matched.
     ///
-    /// For example, all of these would fail to error if borrowck could see the real CFG (taken from
-    /// `tests/ui/nll/match-cfg-fake-edges.rs`):
-    /// ```rust,ignore(too many errors)
+    /// For example, all of these would fail to error if borrowck could see the real CFG (examples
+    /// taken from `tests/ui/nll/match-cfg-fake-edges.rs`):
+    /// ```ignore (too many errors, this is already in the test suite)
     /// let x = String::new();
     /// let _ = match true {
     ///     _ => {},
@@ -246,10 +246,33 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     /// };
     /// ```
     ///
-    /// To ensure this, we add false edges:
+    /// We add false edges to act as if we were naively matching each arm in order. What we need is
+    /// a (fake) path from each candidate to the next, specifically from candidate C's pre-binding
+    /// block to next candidate D's pre-binding block. For maximum precision (needed for deref
+    /// patterns), we choose the earliest node on D's success path that doesn't also lead to C (to
+    /// avoid loops).
     ///
-    /// * From each pre-binding block to the next pre-binding block.
-    /// * From each otherwise block to the next pre-binding block.
+    /// This turns out to be easy to compute: that block is the `start_block` of the first call to
+    /// `match_candidates` where D is the first candidate in the list.
+    ///
+    /// For example:
+    /// ```rust
+    /// # let (x, y) = (true, true);
+    /// match (x, y) {
+    ///   (true, true) => 1,
+    ///   (false, true) => 2,
+    ///   (true, false) => 3,
+    ///   _ => 4,
+    /// }
+    /// # ;
+    /// ```
+    /// In this example, the pre-binding block of arm 1 has a false edge to the block for result
+    /// `false` of the first test on `x`. The other arms have false edges to the pre-binding blocks
+    /// of the next arm.
+    ///
+    /// On top of this, we also add a false edge from the otherwise_block of each guard to the
+    /// aforementioned start block of the next candidate, to ensure borrock doesn't rely on which
+    /// guards may have run.
     #[instrument(level = "debug", skip(self, arms))]
     pub(crate) fn match_expr(
         &mut self,
@@ -396,7 +419,8 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         for candidate in candidates {
             candidate.visit_leaves(|leaf_candidate| {
                 if let Some(ref mut prev) = previous_candidate {
-                    prev.next_candidate_pre_binding_block = leaf_candidate.pre_binding_block;
+                    assert!(leaf_candidate.false_edge_start_block.is_some());
+                    prev.next_candidate_start_block = leaf_candidate.false_edge_start_block;
                 }
                 previous_candidate = Some(leaf_candidate);
             });
@@ -1060,8 +1084,12 @@ struct Candidate<'pat, 'tcx> {
 
     /// The block before the `bindings` have been established.
     pre_binding_block: Option<BasicBlock>,
-    /// The pre-binding block of the next candidate.
-    next_candidate_pre_binding_block: Option<BasicBlock>,
+
+    /// The earliest block that has only candidates >= this one as descendents. Used for false
+    /// edges, see the doc for [`Builder::match_expr`].
+    false_edge_start_block: Option<BasicBlock>,
+    /// The `false_edge_start_block` of the next candidate.
+    next_candidate_start_block: Option<BasicBlock>,
 }
 
 impl<'tcx, 'pat> Candidate<'pat, 'tcx> {
@@ -1083,7 +1111,8 @@ impl<'tcx, 'pat> Candidate<'pat, 'tcx> {
             or_span: None,
             otherwise_block: None,
             pre_binding_block: None,
-            next_candidate_pre_binding_block: None,
+            false_edge_start_block: None,
+            next_candidate_start_block: None,
         }
     }
 
@@ -1379,6 +1408,12 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         otherwise_block: BasicBlock,
         candidates: &mut [&mut Candidate<'_, 'tcx>],
     ) {
+        if let [first, ..] = candidates {
+            if first.false_edge_start_block.is_none() {
+                first.false_edge_start_block = Some(start_block);
+            }
+        }
+
         match candidates {
             [] => {
                 // If there are no candidates that still need testing, we're done. Since all matches are
@@ -1599,6 +1634,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             .into_iter()
             .map(|flat_pat| Candidate::from_flat_pat(flat_pat, candidate.has_guard))
             .collect();
+        candidate.subcandidates[0].false_edge_start_block = candidate.false_edge_start_block;
     }
 
     /// Try to merge all of the subcandidates of the given candidate into one. This avoids
@@ -1617,6 +1653,10 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         if can_merge {
             let any_matches = self.cfg.start_new_block();
             let source_info = self.source_info(candidate.or_span.unwrap());
+            if candidate.false_edge_start_block.is_none() {
+                candidate.false_edge_start_block =
+                    candidate.subcandidates[0].false_edge_start_block;
+            }
             for subcandidate in mem::take(&mut candidate.subcandidates) {
                 let or_block = subcandidate.pre_binding_block.unwrap();
                 self.cfg.goto(or_block, source_info, any_matches);
@@ -2047,12 +2087,12 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
         let mut block = candidate.pre_binding_block.unwrap();
 
-        if candidate.next_candidate_pre_binding_block.is_some() {
+        if candidate.next_candidate_start_block.is_some() {
             let fresh_block = self.cfg.start_new_block();
             self.false_edges(
                 block,
                 fresh_block,
-                candidate.next_candidate_pre_binding_block,
+                candidate.next_candidate_start_block,
                 candidate_source_info,
             );
             block = fresh_block;
@@ -2210,7 +2250,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             self.false_edges(
                 otherwise_post_guard_block,
                 otherwise_block,
-                candidate.next_candidate_pre_binding_block,
+                candidate.next_candidate_start_block,
                 source_info,
             );
 
