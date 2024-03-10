@@ -542,13 +542,14 @@ impl<'tcx> assembly::GoalKind<'tcx> for NormalizesTo<'tcx> {
                 | ty::Coroutine(..)
                 | ty::CoroutineWitness(..)
                 | ty::Never
-                | ty::Foreign(..) => tcx.types.unit,
+                | ty::Foreign(..)
+                | ty::Dynamic(_, _, ty::DynStar) => tcx.types.unit,
 
                 ty::Error(e) => Ty::new_error(tcx, *e),
 
                 ty::Str | ty::Slice(_) => tcx.types.usize,
 
-                ty::Dynamic(_, _, _) => {
+                ty::Dynamic(_, _, ty::Dyn) => {
                     let dyn_metadata = tcx.require_lang_item(LangItem::DynMetadata, None);
                     tcx.type_of(dyn_metadata)
                         .instantiate(tcx, &[ty::GenericArg::from(goal.predicate.self_ty())])
