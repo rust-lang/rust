@@ -24,6 +24,7 @@ import { PersistentState } from "./persistent_state";
 import { bootstrap } from "./bootstrap";
 import type { RustAnalyzerExtensionApi } from "./main";
 import type { JsonProject } from "./rust_project";
+import { prepareTestExplorer } from "./test_explorer";
 
 // We only support local folders, not eg. Live Share (`vlsl:` scheme), so don't activate if
 // only those are in use. We use "Empty" to represent these scenarios
@@ -74,6 +75,7 @@ export class Ctx implements RustAnalyzerExtensionApi {
     private _client: lc.LanguageClient | undefined;
     private _serverPath: string | undefined;
     private traceOutputChannel: vscode.OutputChannel | undefined;
+    private testController: vscode.TestController | undefined;
     private outputChannel: vscode.OutputChannel | undefined;
     private clientSubscriptions: Disposable[];
     private state: PersistentState;
@@ -102,14 +104,20 @@ export class Ctx implements RustAnalyzerExtensionApi {
         workspace: Workspace,
     ) {
         extCtx.subscriptions.push(this);
+        this.config = new Config(extCtx);
         this.statusBar = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left);
+        if (this.config.testExplorer) {
+            this.testController = vscode.tests.createTestController(
+                "rustAnalyzerTestController",
+                "Rust Analyzer test controller",
+            );
+        }
         this.workspace = workspace;
         this.clientSubscriptions = [];
         this.commandDisposables = [];
         this.commandFactories = commandFactories;
         this.unlinkedFiles = [];
         this.state = new PersistentState(extCtx.globalState);
-        this.config = new Config(extCtx);
 
         this.updateCommands("disable");
         this.setServerStatus({
@@ -120,6 +128,7 @@ export class Ctx implements RustAnalyzerExtensionApi {
     dispose() {
         this.config.dispose();
         this.statusBar.dispose();
+        this.testController?.dispose();
         void this.disposeClient();
         this.commandDisposables.forEach((disposable) => disposable.dispose());
     }
@@ -264,6 +273,9 @@ export class Ctx implements RustAnalyzerExtensionApi {
         await client.start();
         this.updateCommands();
 
+        if (this.testController) {
+            prepareTestExplorer(this, this.testController, client);
+        }
         if (this.config.showDependenciesExplorer) {
             this.prepareTreeDependenciesView(client);
         }
@@ -491,7 +503,7 @@ export class Ctx implements RustAnalyzerExtensionApi {
         this.extCtx.subscriptions.push(d);
     }
 
-    private pushClientCleanup(d: Disposable) {
+    pushClientCleanup(d: Disposable) {
         this.clientSubscriptions.push(d);
     }
 }

@@ -4,23 +4,17 @@ use span::{MacroCallId, Span};
 use crate::{db::ExpandDatabase, name, tt, ExpandResult, MacroCallKind};
 
 macro_rules! register_builtin {
-    ($expand_fn:ident: $(($name:ident, $variant:ident) => $expand:ident),* ) => {
+    ($(($name:ident, $variant:ident) => $expand:ident),* ) => {
         #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
         pub enum BuiltinAttrExpander {
             $($variant),*
         }
 
         impl BuiltinAttrExpander {
-            pub fn $expand_fn(
-                &self,
-                db: &dyn ExpandDatabase,
-                id: MacroCallId,
-                tt: &tt::Subtree,
-            ) -> ExpandResult<tt::Subtree> {
-                let expander = match *self {
+            pub fn expander(&self) -> fn (&dyn ExpandDatabase, MacroCallId, &tt::Subtree) -> ExpandResult<tt::Subtree>  {
+                match *self {
                     $( BuiltinAttrExpander::$variant => $expand, )*
-                };
-                expander(db, id, tt)
+                }
             }
 
             fn find_by_name(name: &name::Name) -> Option<Self> {
@@ -35,6 +29,15 @@ macro_rules! register_builtin {
 }
 
 impl BuiltinAttrExpander {
+    pub fn expand(
+        &self,
+        db: &dyn ExpandDatabase,
+        id: MacroCallId,
+        tt: &tt::Subtree,
+    ) -> ExpandResult<tt::Subtree> {
+        self.expander()(db, id, tt)
+    }
+
     pub fn is_derive(self) -> bool {
         matches!(self, BuiltinAttrExpander::Derive | BuiltinAttrExpander::DeriveConst)
     }
@@ -46,7 +49,7 @@ impl BuiltinAttrExpander {
     }
 }
 
-register_builtin! { expand:
+register_builtin! {
     (bench, Bench) => dummy_attr_expand,
     (cfg, Cfg) => dummy_attr_expand,
     (cfg_attr, CfgAttr) => dummy_attr_expand,

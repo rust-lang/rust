@@ -611,8 +611,10 @@ mod tests {
         let parsed_path_file = syntax::SourceFile::parse(&format!("use {path};"));
         let ast_path =
             parsed_path_file.syntax_node().descendants().find_map(syntax::ast::Path::cast).unwrap();
-        let mod_path =
-            ModPath::from_src(&db, ast_path, db.span_map(pos.file_id.into()).as_ref()).unwrap();
+        let mod_path = ModPath::from_src(&db, ast_path, &mut |range| {
+            db.span_map(pos.file_id.into()).as_ref().span_for_range(range).ctx
+        })
+        .unwrap();
 
         let def_map = module.def_map(&db);
         let resolved = def_map

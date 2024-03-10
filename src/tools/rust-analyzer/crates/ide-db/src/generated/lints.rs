@@ -22,6 +22,10 @@ pub const DEFAULT_LINTS: &[Lint] = &[
         description: r##"detects certain glob imports that require reporting an ambiguity error"##,
     },
     Lint { label: "ambiguous_glob_reexports", description: r##"ambiguous glob re-exports"## },
+    Lint {
+        label: "ambiguous_wide_pointer_comparisons",
+        description: r##"detects ambiguous wide pointer comparisons"##,
+    },
     Lint { label: "anonymous_parameters", description: r##"detects anonymous parameters"## },
     Lint { label: "arithmetic_overflow", description: r##"arithmetic operation overflows"## },
     Lint {
@@ -67,10 +71,6 @@ pub const DEFAULT_LINTS: &[Lint] = &[
         description: r##"distinct impls distinguished only by the leak-check code"##,
     },
     Lint {
-        label: "coinductive_overlap_in_coherence",
-        description: r##"impls that are not considered to overlap may be considered to overlap in the future"##,
-    },
-    Lint {
         label: "conflicting_repr_hints",
         description: r##"conflicts between `#[repr(..)]` hints that were previously accepted and used in practice"##,
     },
@@ -85,10 +85,6 @@ pub const DEFAULT_LINTS: &[Lint] = &[
     Lint {
         label: "const_item_mutation",
         description: r##"detects attempts to mutate a `const` item"##,
-    },
-    Lint {
-        label: "const_patterns_without_partial_eq",
-        description: r##"constant in pattern does not implement `PartialEq`"##,
     },
     Lint { label: "dead_code", description: r##"detect unused, unexported items"## },
     Lint { label: "deprecated", description: r##"detects use of deprecated items"## },
@@ -176,7 +172,7 @@ pub const DEFAULT_LINTS: &[Lint] = &[
     },
     Lint {
         label: "future_incompatible",
-        description: r##"lint group for: deref-into-dyn-supertrait, ambiguous-associated-items, ambiguous-glob-imports, byte-slice-in-packed-struct-with-derive, cenum-impl-drop-cast, coherence-leak-check, coinductive-overlap-in-coherence, conflicting-repr-hints, const-evaluatable-unchecked, const-patterns-without-partial-eq, deprecated-cfg-attr-crate-type-name, elided-lifetimes-in-associated-constant, forbidden-lint-groups, ill-formed-attribute-input, illegal-floating-point-literal-pattern, implied-bounds-entailment, indirect-structural-match, invalid-doc-attributes, invalid-type-param-default, late-bound-lifetime-arguments, legacy-derive-helpers, macro-expanded-macro-exports-accessed-by-absolute-paths, missing-fragment-specifier, nontrivial-structural-match, order-dependent-trait-objects, patterns-in-fns-without-body, pointer-structural-match, proc-macro-back-compat, proc-macro-derive-resolution-fallback, pub-use-of-private-extern-crate, repr-transparent-external-private-fields, semicolon-in-expressions-from-macros, soft-unstable, suspicious-auto-trait-impls, uninhabited-static, unstable-name-collisions, unstable-syntax-pre-expansion, unsupported-calling-conventions, where-clauses-object-safety"##,
+        description: r##"lint group for: deref-into-dyn-supertrait, ambiguous-associated-items, ambiguous-glob-imports, byte-slice-in-packed-struct-with-derive, cenum-impl-drop-cast, coherence-leak-check, conflicting-repr-hints, const-evaluatable-unchecked, deprecated-cfg-attr-crate-type-name, elided-lifetimes-in-associated-constant, forbidden-lint-groups, ill-formed-attribute-input, indirect-structural-match, invalid-doc-attributes, invalid-type-param-default, late-bound-lifetime-arguments, legacy-derive-helpers, macro-expanded-macro-exports-accessed-by-absolute-paths, missing-fragment-specifier, order-dependent-trait-objects, patterns-in-fns-without-body, pointer-structural-match, proc-macro-back-compat, proc-macro-derive-resolution-fallback, pub-use-of-private-extern-crate, repr-transparent-external-private-fields, semicolon-in-expressions-from-macros, soft-unstable, uninhabited-static, unstable-name-collisions, unstable-syntax-pre-expansion, unsupported-calling-conventions, where-clauses-object-safety, writes-through-immutable-pointer"##,
     },
     Lint {
         label: "fuzzy_provenance_casts",
@@ -189,14 +185,6 @@ pub const DEFAULT_LINTS: &[Lint] = &[
     Lint {
         label: "ill_formed_attribute_input",
         description: r##"ill-formed attribute inputs that were previously accepted and used in practice"##,
-    },
-    Lint {
-        label: "illegal_floating_point_literal_pattern",
-        description: r##"floating-point literals cannot be used in patterns"##,
-    },
-    Lint {
-        label: "implied_bounds_entailment",
-        description: r##"impl method assumes more implied bounds than its corresponding trait method"##,
     },
     Lint {
         label: "improper_ctypes",
@@ -372,6 +360,7 @@ pub const DEFAULT_LINTS: &[Lint] = &[
         label: "non_fmt_panics",
         description: r##"detect single-argument panic!() invocations in which the argument is not a format string"##,
     },
+    Lint { label: "non_local_definitions", description: r##"checks for non-local definitions"## },
     Lint {
         label: "non_shorthand_field_patterns",
         description: r##"using `Struct { x: x }` instead of `Struct { x }` in a pattern"##,
@@ -387,10 +376,6 @@ pub const DEFAULT_LINTS: &[Lint] = &[
     Lint {
         label: "nonstandard_style",
         description: r##"lint group for: non-camel-case-types, non-snake-case, non-upper-case-globals"##,
-    },
-    Lint {
-        label: "nontrivial_structural_match",
-        description: r##"constant used in pattern of non-structural-match type and the constant's initializer expression contains values of non-structural-match types"##,
     },
     Lint {
         label: "noop_method_call",
@@ -483,6 +468,10 @@ pub const DEFAULT_LINTS: &[Lint] = &[
         description: r##"detects the usage of trait methods which are ambiguous with traits added to the prelude in future editions"##,
     },
     Lint {
+        label: "rust_2024_compatibility",
+        description: r##"lint group for: static-mut-refs, unsafe-op-in-unsafe-fn"##,
+    },
+    Lint {
         label: "semicolon_in_expressions_from_macros",
         description: r##"trailing semicolon in macro body used as expression"##,
     },
@@ -501,6 +490,10 @@ pub const DEFAULT_LINTS: &[Lint] = &[
     Lint {
         label: "stable_features",
         description: r##"stable features found in `#[feature]` directive"##,
+    },
+    Lint {
+        label: "static_mut_refs",
+        description: r##"shared references or mutable references of mutable static is discouraged"##,
     },
     Lint {
         label: "suspicious_double_ref_op",
@@ -576,6 +569,10 @@ pub const DEFAULT_LINTS: &[Lint] = &[
     },
     Lint { label: "uninhabited_static", description: r##"uninhabited static"## },
     Lint {
+        label: "unit_bindings",
+        description: r##"binding is useless because it has the unit `()` type"##,
+    },
+    Lint {
         label: "unknown_crate_types",
         description: r##"unknown crate type found in `#[crate_type]` directive"##,
     },
@@ -606,10 +603,7 @@ pub const DEFAULT_LINTS: &[Lint] = &[
         label: "unsafe_op_in_unsafe_fn",
         description: r##"unsafe operations in unsafe functions without an explicit unsafe block are deprecated"##,
     },
-    Lint {
-        label: "unstable_features",
-        description: r##"enabling unstable features (deprecated. do not use)"##,
-    },
+    Lint { label: "unstable_features", description: r##"enabling unstable features"## },
     Lint {
         label: "unstable_name_collisions",
         description: r##"detects name collision with an existing but unstable method"##,
@@ -695,10 +689,6 @@ pub const DEFAULT_LINTS: &[Lint] = &[
         label: "unused_results",
         description: r##"unused result of an expression in a statement"##,
     },
-    Lint {
-        label: "unused_tuple_struct_fields",
-        description: r##"detects tuple struct fields that are never read"##,
-    },
     Lint { label: "unused_unsafe", description: r##"unnecessary use of an `unsafe` block"## },
     Lint {
         label: "unused_variables",
@@ -732,13 +722,17 @@ pub const DEFAULT_LINTS: &[Lint] = &[
         label: "while_true",
         description: r##"suggest using `loop { }` instead of `while true { }`"##,
     },
+    Lint {
+        label: "writes_through_immutable_pointer",
+        description: r##"shared references are immutable, and pointers derived from them must not be written to"##,
+    },
 ];
 
 pub const DEFAULT_LINT_GROUPS: &[LintGroup] = &[
     LintGroup {
         lint: Lint {
             label: "future_incompatible",
-            description: r##"lint group for: deref-into-dyn-supertrait, ambiguous-associated-items, ambiguous-glob-imports, byte-slice-in-packed-struct-with-derive, cenum-impl-drop-cast, coherence-leak-check, coinductive-overlap-in-coherence, conflicting-repr-hints, const-evaluatable-unchecked, const-patterns-without-partial-eq, deprecated-cfg-attr-crate-type-name, elided-lifetimes-in-associated-constant, forbidden-lint-groups, ill-formed-attribute-input, illegal-floating-point-literal-pattern, implied-bounds-entailment, indirect-structural-match, invalid-doc-attributes, invalid-type-param-default, late-bound-lifetime-arguments, legacy-derive-helpers, macro-expanded-macro-exports-accessed-by-absolute-paths, missing-fragment-specifier, nontrivial-structural-match, order-dependent-trait-objects, patterns-in-fns-without-body, pointer-structural-match, proc-macro-back-compat, proc-macro-derive-resolution-fallback, pub-use-of-private-extern-crate, repr-transparent-external-private-fields, semicolon-in-expressions-from-macros, soft-unstable, suspicious-auto-trait-impls, uninhabited-static, unstable-name-collisions, unstable-syntax-pre-expansion, unsupported-calling-conventions, where-clauses-object-safety"##,
+            description: r##"lint group for: deref-into-dyn-supertrait, ambiguous-associated-items, ambiguous-glob-imports, byte-slice-in-packed-struct-with-derive, cenum-impl-drop-cast, coherence-leak-check, conflicting-repr-hints, const-evaluatable-unchecked, deprecated-cfg-attr-crate-type-name, elided-lifetimes-in-associated-constant, forbidden-lint-groups, ill-formed-attribute-input, indirect-structural-match, invalid-doc-attributes, invalid-type-param-default, late-bound-lifetime-arguments, legacy-derive-helpers, macro-expanded-macro-exports-accessed-by-absolute-paths, missing-fragment-specifier, order-dependent-trait-objects, patterns-in-fns-without-body, pointer-structural-match, proc-macro-back-compat, proc-macro-derive-resolution-fallback, pub-use-of-private-extern-crate, repr-transparent-external-private-fields, semicolon-in-expressions-from-macros, soft-unstable, uninhabited-static, unstable-name-collisions, unstable-syntax-pre-expansion, unsupported-calling-conventions, where-clauses-object-safety, writes-through-immutable-pointer"##,
         },
         children: &[
             "deref_into_dyn_supertrait",
@@ -747,16 +741,12 @@ pub const DEFAULT_LINT_GROUPS: &[LintGroup] = &[
             "byte_slice_in_packed_struct_with_derive",
             "cenum_impl_drop_cast",
             "coherence_leak_check",
-            "coinductive_overlap_in_coherence",
             "conflicting_repr_hints",
             "const_evaluatable_unchecked",
-            "const_patterns_without_partial_eq",
             "deprecated_cfg_attr_crate_type_name",
             "elided_lifetimes_in_associated_constant",
             "forbidden_lint_groups",
             "ill_formed_attribute_input",
-            "illegal_floating_point_literal_pattern",
-            "implied_bounds_entailment",
             "indirect_structural_match",
             "invalid_doc_attributes",
             "invalid_type_param_default",
@@ -764,7 +754,6 @@ pub const DEFAULT_LINT_GROUPS: &[LintGroup] = &[
             "legacy_derive_helpers",
             "macro_expanded_macro_exports_accessed_by_absolute_paths",
             "missing_fragment_specifier",
-            "nontrivial_structural_match",
             "order_dependent_trait_objects",
             "patterns_in_fns_without_body",
             "pointer_structural_match",
@@ -779,6 +768,7 @@ pub const DEFAULT_LINT_GROUPS: &[LintGroup] = &[
             "unstable_syntax_pre_expansion",
             "unsupported_calling_conventions",
             "where_clauses_object_safety",
+            "writes_through_immutable_pointer",
         ],
     },
     LintGroup {
@@ -835,6 +825,13 @@ pub const DEFAULT_LINT_GROUPS: &[LintGroup] = &[
             "array_into_iter",
             "non_fmt_panics",
         ],
+    },
+    LintGroup {
+        lint: Lint {
+            label: "rust_2024_compatibility",
+            description: r##"lint group for: static-mut-refs, unsafe-op-in-unsafe-fn"##,
+        },
+        children: &["static_mut_refs", "unsafe_op_in_unsafe_fn"],
     },
     LintGroup {
         lint: Lint {
@@ -1730,9 +1727,17 @@ The tracking issue for this feature is: [#110011]
         label: "async_fn_traits",
         description: r##"# `async_fn_traits`
 
-This feature has no tracking issue, and is therefore likely internal to the compiler, not being intended for general use.
+See Also: [`fn_traits`](../library-features/fn-traits.md)
 
-------------------------
+----
+
+The `async_fn_traits` feature allows for implementation of the [`AsyncFn*`] traits
+for creating custom closure-like types that return futures.
+
+[`AsyncFn*`]: ../../std/ops/trait.AsyncFn.html
+
+The main difference to the `Fn*` family of traits is that `AsyncFn` can return a future
+that borrows from itself (`FnOnce::Output` has no lifetime parameters, while `AsyncFn::CallFuture` does).
 "##,
     },
     Lint {
@@ -2371,17 +2376,6 @@ fn b() {
 The tracking issue for this feature is: [#89653]
 
 [#89653]: https://github.com/rust-lang/rust/issues/89653
-
-------------------------
-"##,
-    },
-    Lint {
-        label: "cfg_target_abi",
-        description: r##"# `cfg_target_abi`
-
-The tracking issue for this feature is: [#80970]
-
-[#80970]: https://github.com/rust-lang/rust/issues/80970
 
 ------------------------
 "##,
@@ -3132,6 +3126,17 @@ This feature has no tracking issue, and is therefore likely internal to the comp
 "##,
     },
     Lint {
+        label: "const_intrinsic_copy",
+        description: r##"# `const_intrinsic_copy`
+
+The tracking issue for this feature is: [#80697]
+
+[#80697]: https://github.com/rust-lang/rust/issues/80697
+
+------------------------
+"##,
+    },
+    Lint {
         label: "const_intrinsic_forget",
         description: r##"# `const_intrinsic_forget`
 
@@ -3300,6 +3305,17 @@ The tracking issue for this feature is: [#110840]
 "##,
     },
     Lint {
+        label: "const_ops",
+        description: r##"# `const_ops`
+
+The tracking issue for this feature is: [#90080]
+
+[#90080]: https://github.com/rust-lang/rust/issues/90080
+
+------------------------
+"##,
+    },
+    Lint {
         label: "const_option",
         description: r##"# `const_option`
 
@@ -3438,6 +3454,17 @@ The tracking issue for this feature is: [#53020]
 The tracking issue for this feature is: [#80384]
 
 [#80384]: https://github.com/rust-lang/rust/issues/80384
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "const_refs_to_static",
+        description: r##"# `const_refs_to_static`
+
+The tracking issue for this feature is: [#119618]
+
+[#119618]: https://github.com/rust-lang/rust/issues/119618
 
 ------------------------
 "##,
@@ -4255,6 +4282,15 @@ The tracking issue for this feature is: [#27336]
 "##,
     },
     Lint {
+        label: "delayed_debug_assertions",
+        description: r##"# `delayed_debug_assertions`
+
+This feature has no tracking issue, and is therefore likely internal to the compiler, not being intended for general use.
+
+------------------------
+"##,
+    },
+    Lint {
         label: "deprecated_safe",
         description: r##"# `deprecated_safe`
 
@@ -4635,12 +4671,36 @@ The tracking issue for this feature is: [#57391]
 "##,
     },
     Lint {
+        label: "duration_constructors",
+        description: r##"# `duration_constructors`
+
+The tracking issue for this feature is: [#120301]
+
+[#120301]: https://github.com/rust-lang/rust/issues/120301
+
+------------------------
+
+Add the methods `from_mins`, `from_hours` and `from_days` to `Duration`.
+"##,
+    },
+    Lint {
         label: "duration_consts_float",
         description: r##"# `duration_consts_float`
 
 The tracking issue for this feature is: [#72440]
 
 [#72440]: https://github.com/rust-lang/rust/issues/72440
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "duration_units",
+        description: r##"# `duration_units`
+
+The tracking issue for this feature is: [#120301]
+
+[#120301]: https://github.com/rust-lang/rust/issues/120301
 
 ------------------------
 "##,
@@ -5654,12 +5714,61 @@ raw pointers in intra-doc links are unstable until it does.
 
 The tracking issue for this feature is: None.
 
-Intrinsics are never intended to be stable directly, but intrinsics are often
+Intrinsics are rarely intended to be stable directly, but are usually
 exported in some sort of stable manner. Prefer using the stable interfaces to
 the intrinsic directly when you can.
 
 ------------------------
 
+
+## Intrinsics with fallback logic
+
+Many intrinsics can be written in pure rust, albeit inefficiently or without supporting
+some features that only exist on some backends. Backends can simply not implement those
+intrinsics without causing any code miscompilations or failures to compile.
+All intrinsic fallback bodies are automatically made cross-crate inlineable (like `#[inline]`)
+by the codegen backend, but not the MIR inliner.
+
+```rust
+#![feature(rustc_attrs, effects)]
+#![allow(internal_features)]
+
+#[rustc_intrinsic]
+const unsafe fn const_deallocate(_ptr: *mut u8, _size: usize, _align: usize) {}
+```
+
+Since these are just regular functions, it is perfectly ok to create the intrinsic twice:
+
+```rust
+#![feature(rustc_attrs, effects)]
+#![allow(internal_features)]
+
+#[rustc_intrinsic]
+const unsafe fn const_deallocate(_ptr: *mut u8, _size: usize, _align: usize) {}
+
+mod foo {
+    #[rustc_intrinsic]
+    const unsafe fn const_deallocate(_ptr: *mut u8, _size: usize, _align: usize) {
+        panic!("noisy const dealloc")
+    }
+}
+
+```
+
+The behaviour on backends that override the intrinsic is exactly the same. On other
+backends, the intrinsic behaviour depends on which implementation is called, just like
+with any regular function.
+
+## Intrinsics lowered to MIR instructions
+
+Various intrinsics have native MIR operations that they correspond to. Instead of requiring
+backends to implement both the intrinsic and the MIR operation, the `lower_intrinsics` pass
+will convert the calls to the MIR operation. Backends do not need to know about these intrinsics
+at all.
+
+## Intrinsics without fallback logic
+
+These must be implemented by all backends.
 
 These are imported as if they were FFI functions, with the special
 `rust-intrinsic` ABI. For example, if one was in a freestanding
@@ -5679,7 +5788,8 @@ extern "rust-intrinsic" {
 }
 ```
 
-As with any other FFI functions, these are always `unsafe` to call.
+As with any other FFI functions, these are by default always `unsafe` to call.
+You can add `#[rustc_safe_intrinsic]` to the intrinsic to make it safe to call.
 "##,
     },
     Lint {
@@ -5753,6 +5863,17 @@ The tracking issue for this feature is: [#113744]
 The tracking issue for this feature is: [#101288]
 
 [#101288]: https://github.com/rust-lang/rust/issues/101288
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "is_riscv_feature_detected",
+        description: r##"# `is_riscv_feature_detected`
+
+The tracking issue for this feature is: [#111192]
+
+[#111192]: https://github.com/rust-lang/rust/issues/111192
 
 ------------------------
 "##,
@@ -5931,6 +6052,17 @@ The tracking issue for this feature is: [#94047]
 The tracking issue for this feature is: [#87053]
 
 [#87053]: https://github.com/rust-lang/rust/issues/87053
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "lahfsahf_target_feature",
+        description: r##"# `lahfsahf_target_feature`
+
+The tracking issue for this feature is: [#44839]
+
+[#44839]: https://github.com/rust-lang/rust/issues/44839
 
 ------------------------
 "##,
@@ -6259,6 +6391,17 @@ The tracking issue for this feature is: [#82971]
 "##,
     },
     Lint {
+        label: "local_waker",
+        description: r##"# `local_waker`
+
+The tracking issue for this feature is: [#118959]
+
+[#118959]: https://github.com/rust-lang/rust/issues/118959
+
+------------------------
+"##,
+    },
+    Lint {
         label: "log_syntax",
         description: r##"# `log_syntax`
 
@@ -6320,6 +6463,17 @@ The tracking issue for this feature is: [#97601]
 The tracking issue for this feature is: [#82766]
 
 [#82766]: https://github.com/rust-lang/rust/issues/82766
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "mapped_lock_guards",
+        description: r##"# `mapped_lock_guards`
+
+The tracking issue for this feature is: [#117108]
+
+[#117108]: https://github.com/rust-lang/rust/issues/117108
 
 ------------------------
 "##,
@@ -6533,17 +6687,6 @@ This feature has no tracking issue, and is therefore likely internal to the comp
 The tracking issue for this feature is: [#83310]
 
 [#83310]: https://github.com/rust-lang/rust/issues/83310
-
-------------------------
-"##,
-    },
-    Lint {
-        label: "mutex_unlock",
-        description: r##"# `mutex_unlock`
-
-The tracking issue for this feature is: [#81872]
-
-[#81872]: https://github.com/rust-lang/rust/issues/81872
 
 ------------------------
 "##,
@@ -6976,6 +7119,17 @@ The tracking issue for this feature is: [#70086]
 "##,
     },
     Lint {
+        label: "os_str_display",
+        description: r##"# `os_str_display`
+
+The tracking issue for this feature is: [#120048]
+
+[#120048]: https://github.com/rust-lang/rust/issues/120048
+
+------------------------
+"##,
+    },
+    Lint {
         label: "os_str_slice",
         description: r##"# `os_str_slice`
 
@@ -7106,6 +7260,15 @@ The tracking issue for this feature is: [#27721]
 "##,
     },
     Lint {
+        label: "pattern_complexity",
+        description: r##"# `pattern_complexity`
+
+This feature has no tracking issue, and is therefore likely internal to the compiler, not being intended for general use.
+
+------------------------
+"##,
+    },
+    Lint {
         label: "peer_credentials_unix_socket",
         description: r##"# `peer_credentials_unix_socket`
 
@@ -7123,17 +7286,6 @@ The tracking issue for this feature is: [#42839]
 The tracking issue for this feature is: [#86918]
 
 [#86918]: https://github.com/rust-lang/rust/issues/86918
-
-------------------------
-"##,
-    },
-    Lint {
-        label: "platform_intrinsics",
-        description: r##"# `platform_intrinsics`
-
-The tracking issue for this feature is: [#27731]
-
-[#27731]: https://github.com/rust-lang/rust/issues/27731
 
 ------------------------
 "##,
@@ -7184,7 +7336,9 @@ The tracking issue for this feature is: [#44839]
         label: "prelude_2024",
         description: r##"# `prelude_2024`
 
-This feature has no tracking issue, and is therefore likely internal to the compiler, not being intended for general use.
+The tracking issue for this feature is: [#121042]
+
+[#121042]: https://github.com/rust-lang/rust/issues/121042
 
 ------------------------
 "##,
@@ -7194,6 +7348,17 @@ This feature has no tracking issue, and is therefore likely internal to the comp
         description: r##"# `prelude_import`
 
 This feature has no tracking issue, and is therefore likely internal to the compiler, not being intended for general use.
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "prfchw_target_feature",
+        description: r##"# `prfchw_target_feature`
+
+The tracking issue for this feature is: [#44839]
+
+[#44839]: https://github.com/rust-lang/rust/issues/44839
 
 ------------------------
 "##,
@@ -7506,6 +7671,17 @@ The tracking issue for this feature is: [#101196]
         description: r##"# `receiver_trait`
 
 This feature has no tracking issue, and is therefore likely internal to the compiler, not being intended for general use.
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "reentrant_lock",
+        description: r##"# `reentrant_lock`
+
+The tracking issue for this feature is: [#121440]
+
+[#121440]: https://github.com/rust-lang/rust/issues/121440
 
 ------------------------
 "##,
@@ -8181,23 +8357,45 @@ This feature has no tracking issue, and is therefore likely internal to the comp
 "##,
     },
     Lint {
+        label: "stdarch_arm_feature_detection",
+        description: r##"# `stdarch_arm_feature_detection`
+
+The tracking issue for this feature is: [#111190]
+
+[#111190]: https://github.com/rust-lang/rust/issues/111190
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "stdarch_mips_feature_detection",
+        description: r##"# `stdarch_mips_feature_detection`
+
+The tracking issue for this feature is: [#111188]
+
+[#111188]: https://github.com/rust-lang/rust/issues/111188
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "stdarch_powerpc_feature_detection",
+        description: r##"# `stdarch_powerpc_feature_detection`
+
+The tracking issue for this feature is: [#111191]
+
+[#111191]: https://github.com/rust-lang/rust/issues/111191
+
+------------------------
+"##,
+    },
+    Lint {
         label: "stdio_makes_pipe",
         description: r##"# `stdio_makes_pipe`
 
 The tracking issue for this feature is: [#98288]
 
 [#98288]: https://github.com/rust-lang/rust/issues/98288
-
-------------------------
-"##,
-    },
-    Lint {
-        label: "stdsimd",
-        description: r##"# `stdsimd`
-
-The tracking issue for this feature is: [#48556]
-
-[#48556]: https://github.com/rust-lang/rust/issues/48556
 
 ------------------------
 "##,
@@ -8458,6 +8656,17 @@ The tracking issue for this feature is: [#69098]
 The tracking issue for this feature is: [#44839]
 
 [#44839]: https://github.com/rust-lang/rust/issues/44839
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "tcp_deferaccept",
+        description: r##"# `tcp_deferaccept`
+
+The tracking issue for this feature is: [#119639]
+
+[#119639]: https://github.com/rust-lang/rust/issues/119639
 
 ------------------------
 "##,
@@ -10151,7 +10360,7 @@ table:
     },
     Lint {
         label: "clippy::blocks_in_conditions",
-        description: r##"Checks for `if` conditions that use blocks containing an
+        description: r##"Checks for `if` and `match` conditions that use blocks containing an
 expression, statements or conditions that use closures with blocks."##,
     },
     Lint {
@@ -10455,6 +10664,12 @@ See [RFC0212](https://github.com/rust-lang/rfcs/blob/master/text/0212-restore-in
 with `#[rustfmt::skip]`."##,
     },
     Lint {
+        label: "clippy::deprecated_clippy_cfg_attr",
+        description: r##"Checks for `#[cfg_attr(feature = cargo-clippy, ...)]` and for
+`#[cfg(feature = cargo-clippy)]` and suggests to replace it with
+`#[cfg_attr(clippy, ...)]` or `#[cfg(clippy)]`."##,
+    },
+    Lint {
         label: "clippy::deprecated_semver",
         description: r##"Checks for `#[deprecated]` annotations with a `since`
 field that is not a valid semantic version. Also allows TBD to signal
@@ -10596,6 +10811,7 @@ eagerly (e.g. using `bool::then_some`)."##,
         description: r##"Checks for usage of if expressions with an `else if` branch,
 but without a final `else` branch."##,
     },
+    Lint { label: "clippy::empty_docs", description: r##"Detects documentation that is empty."## },
     Lint {
         label: "clippy::empty_drop",
         description: r##"Checks for empty `Drop` implementations."##,
@@ -11352,6 +11568,7 @@ cannot be represented as the underlying type without loss."##,
         description: r##"Checks for usage of `std::mem::size_of::<T>() * 8` when
 `T::BITS` is available."##,
     },
+    Lint { label: "clippy::manual_c_str_literals", description: r##""## },
     Lint {
         label: "clippy::manual_clamp",
         description: r##"Identifies good opportunities for a clamp function from std or core, and suggests using it."##,
@@ -11727,6 +11944,10 @@ rather than globally."##,
         description: r##"Warns for mistyped suffix in literals"##,
     },
     Lint {
+        label: "clippy::mixed_attributes_style",
+        description: r##"Checks that an item has only one kind of attributes."##,
+    },
+    Lint {
         label: "clippy::mixed_case_hex_literals",
         description: r##"Warns on hexadecimal literals with mixed-case letter
 digits."##,
@@ -11758,6 +11979,10 @@ containing module's name."##,
 one."##,
     },
     Lint { label: "clippy::multi_assignments", description: r##"Checks for nested assignments."## },
+    Lint {
+        label: "clippy::multiple_bound_locations",
+        description: r##"Check if a generic is defined both in the bound predicate and in the `where` clause."##,
+    },
     Lint {
         label: "clippy::multiple_crate_versions",
         description: r##"Checks to see if multiple versions of a crate are being
@@ -12331,8 +12556,8 @@ in `vec![elem; len]`"##,
     Lint {
         label: "clippy::read_line_without_trim",
         description: r##"Looks for calls to [`Stdin::read_line`] to read a line from the standard input
-into a string, then later attempting to parse this string into a type without first trimming it, which will
-always fail because the string has a trailing newline in it."##,
+into a string, then later attempting to use that string for an operation that will never
+work for strings with a trailing newline character in it (e.g. parsing into a `i32`)."##,
     },
     Lint {
         label: "clippy::read_zero_byte_vec",
@@ -12438,6 +12663,11 @@ do not change the type."##,
     Lint {
         label: "clippy::redundant_type_annotations",
         description: r##"Warns about needless / redundant type annotations."##,
+    },
+    Lint {
+        label: "clippy::ref_as_ptr",
+        description: r##"Checks for casts of references to pointer using `as`
+and suggests `std::ptr::from_ref` and `std::ptr::from_mut` instead."##,
     },
     Lint {
         label: "clippy::ref_binding_to_reference",
@@ -13092,6 +13322,11 @@ as returning a large `T` directly may be detrimental to performance."##,
 literals to float types and casts between raw pointers without changing type or constness."##,
     },
     Lint {
+        label: "clippy::unnecessary_clippy_cfg",
+        description: r##"Checks for `#[cfg_attr(clippy, allow(clippy::lint))]`
+and suggests to replace it with `#[allow(clippy::lint)]`."##,
+    },
+    Lint {
         label: "clippy::unnecessary_fallible_conversions",
         description: r##"Checks for calls to `TryInto::try_into` and `TryFrom::try_from` when their infallible counterparts
 could be used."##,
@@ -13113,6 +13348,10 @@ find or map operations and suggests the appropriate option."##,
         description: r##"Checks for usage of `fold` when a more succinct alternative exists.
 Specifically, this checks for `fold`s which could be replaced by `any`, `all`,
 `sum` or `product`."##,
+    },
+    Lint {
+        label: "clippy::unnecessary_get_then_check",
+        description: r##"Checks the usage of `.get().is_some()` or `.get().is_none()` on std map types."##,
     },
     Lint {
         label: "clippy::unnecessary_join",
@@ -13825,7 +14064,7 @@ pub const CLIPPY_LINT_GROUPS: &[LintGroup] = &[
     LintGroup {
         lint: Lint {
             label: "clippy::pedantic",
-            description: r##"lint group for: clippy::bool_to_int_with_if, clippy::borrow_as_ptr, clippy::case_sensitive_file_extension_comparisons, clippy::cast_lossless, clippy::cast_possible_truncation, clippy::cast_possible_wrap, clippy::cast_precision_loss, clippy::cast_ptr_alignment, clippy::cast_sign_loss, clippy::checked_conversions, clippy::cloned_instead_of_copied, clippy::copy_iterator, clippy::default_trait_access, clippy::doc_link_with_quotes, clippy::doc_markdown, clippy::empty_enum, clippy::enum_glob_use, clippy::expl_impl_clone_on_copy, clippy::explicit_deref_methods, clippy::explicit_into_iter_loop, clippy::explicit_iter_loop, clippy::filter_map_next, clippy::flat_map_option, clippy::float_cmp, clippy::fn_params_excessive_bools, clippy::from_iter_instead_of_collect, clippy::if_not_else, clippy::ignored_unit_patterns, clippy::implicit_clone, clippy::implicit_hasher, clippy::inconsistent_struct_constructor, clippy::index_refutable_slice, clippy::inefficient_to_string, clippy::inline_always, clippy::into_iter_without_iter, clippy::invalid_upcast_comparisons, clippy::items_after_statements, clippy::iter_filter_is_ok, clippy::iter_filter_is_some, clippy::iter_not_returning_iterator, clippy::iter_without_into_iter, clippy::large_digit_groups, clippy::large_futures, clippy::large_stack_arrays, clippy::large_types_passed_by_value, clippy::linkedlist, clippy::macro_use_imports, clippy::manual_assert, clippy::manual_instant_elapsed, clippy::manual_is_variant_and, clippy::manual_let_else, clippy::manual_ok_or, clippy::manual_string_new, clippy::many_single_char_names, clippy::map_unwrap_or, clippy::match_bool, clippy::match_on_vec_items, clippy::match_same_arms, clippy::match_wild_err_arm, clippy::match_wildcard_for_single_variants, clippy::maybe_infinite_iter, clippy::mismatching_type_param_order, clippy::missing_errors_doc, clippy::missing_fields_in_debug, clippy::missing_panics_doc, clippy::module_name_repetitions, clippy::must_use_candidate, clippy::mut_mut, clippy::naive_bytecount, clippy::needless_bitwise_bool, clippy::needless_continue, clippy::needless_for_each, clippy::needless_pass_by_value, clippy::needless_raw_string_hashes, clippy::no_effect_underscore_binding, clippy::no_mangle_with_rust_abi, clippy::option_as_ref_cloned, clippy::option_option, clippy::ptr_as_ptr, clippy::ptr_cast_constness, clippy::pub_underscore_fields, clippy::range_minus_one, clippy::range_plus_one, clippy::redundant_closure_for_method_calls, clippy::redundant_else, clippy::ref_binding_to_reference, clippy::ref_option_ref, clippy::return_self_not_must_use, clippy::same_functions_in_if_condition, clippy::semicolon_if_nothing_returned, clippy::should_panic_without_expect, clippy::similar_names, clippy::single_match_else, clippy::stable_sort_primitive, clippy::str_split_at_newline, clippy::string_add_assign, clippy::struct_excessive_bools, clippy::struct_field_names, clippy::too_many_lines, clippy::transmute_ptr_to_ptr, clippy::trivially_copy_pass_by_ref, clippy::unchecked_duration_subtraction, clippy::unicode_not_nfc, clippy::uninlined_format_args, clippy::unnecessary_box_returns, clippy::unnecessary_join, clippy::unnecessary_wraps, clippy::unnested_or_patterns, clippy::unreadable_literal, clippy::unsafe_derive_deserialize, clippy::unused_async, clippy::unused_self, clippy::used_underscore_binding, clippy::verbose_bit_mask, clippy::wildcard_imports, clippy::zero_sized_map_values"##,
+            description: r##"lint group for: clippy::bool_to_int_with_if, clippy::borrow_as_ptr, clippy::case_sensitive_file_extension_comparisons, clippy::cast_lossless, clippy::cast_possible_truncation, clippy::cast_possible_wrap, clippy::cast_precision_loss, clippy::cast_ptr_alignment, clippy::cast_sign_loss, clippy::checked_conversions, clippy::cloned_instead_of_copied, clippy::copy_iterator, clippy::default_trait_access, clippy::doc_link_with_quotes, clippy::doc_markdown, clippy::empty_enum, clippy::enum_glob_use, clippy::expl_impl_clone_on_copy, clippy::explicit_deref_methods, clippy::explicit_into_iter_loop, clippy::explicit_iter_loop, clippy::filter_map_next, clippy::flat_map_option, clippy::float_cmp, clippy::fn_params_excessive_bools, clippy::from_iter_instead_of_collect, clippy::if_not_else, clippy::ignored_unit_patterns, clippy::implicit_clone, clippy::implicit_hasher, clippy::inconsistent_struct_constructor, clippy::index_refutable_slice, clippy::inefficient_to_string, clippy::inline_always, clippy::into_iter_without_iter, clippy::invalid_upcast_comparisons, clippy::items_after_statements, clippy::iter_filter_is_ok, clippy::iter_filter_is_some, clippy::iter_not_returning_iterator, clippy::iter_without_into_iter, clippy::large_digit_groups, clippy::large_futures, clippy::large_stack_arrays, clippy::large_types_passed_by_value, clippy::linkedlist, clippy::macro_use_imports, clippy::manual_assert, clippy::manual_c_str_literals, clippy::manual_instant_elapsed, clippy::manual_is_variant_and, clippy::manual_let_else, clippy::manual_ok_or, clippy::manual_string_new, clippy::many_single_char_names, clippy::map_unwrap_or, clippy::match_bool, clippy::match_on_vec_items, clippy::match_same_arms, clippy::match_wild_err_arm, clippy::match_wildcard_for_single_variants, clippy::maybe_infinite_iter, clippy::mismatching_type_param_order, clippy::missing_errors_doc, clippy::missing_fields_in_debug, clippy::missing_panics_doc, clippy::module_name_repetitions, clippy::must_use_candidate, clippy::mut_mut, clippy::naive_bytecount, clippy::needless_bitwise_bool, clippy::needless_continue, clippy::needless_for_each, clippy::needless_pass_by_value, clippy::needless_raw_string_hashes, clippy::no_effect_underscore_binding, clippy::no_mangle_with_rust_abi, clippy::option_as_ref_cloned, clippy::option_option, clippy::ptr_as_ptr, clippy::ptr_cast_constness, clippy::pub_underscore_fields, clippy::range_minus_one, clippy::range_plus_one, clippy::redundant_closure_for_method_calls, clippy::redundant_else, clippy::ref_as_ptr, clippy::ref_binding_to_reference, clippy::ref_option_ref, clippy::return_self_not_must_use, clippy::same_functions_in_if_condition, clippy::semicolon_if_nothing_returned, clippy::should_panic_without_expect, clippy::similar_names, clippy::single_match_else, clippy::stable_sort_primitive, clippy::str_split_at_newline, clippy::string_add_assign, clippy::struct_excessive_bools, clippy::struct_field_names, clippy::too_many_lines, clippy::transmute_ptr_to_ptr, clippy::trivially_copy_pass_by_ref, clippy::unchecked_duration_subtraction, clippy::unicode_not_nfc, clippy::uninlined_format_args, clippy::unnecessary_box_returns, clippy::unnecessary_join, clippy::unnecessary_wraps, clippy::unnested_or_patterns, clippy::unreadable_literal, clippy::unsafe_derive_deserialize, clippy::unused_async, clippy::unused_self, clippy::used_underscore_binding, clippy::verbose_bit_mask, clippy::wildcard_imports, clippy::zero_sized_map_values"##,
         },
         children: &[
             "clippy::bool_to_int_with_if",
@@ -13876,6 +14115,7 @@ pub const CLIPPY_LINT_GROUPS: &[LintGroup] = &[
             "clippy::linkedlist",
             "clippy::macro_use_imports",
             "clippy::manual_assert",
+            "clippy::manual_c_str_literals",
             "clippy::manual_instant_elapsed",
             "clippy::manual_is_variant_and",
             "clippy::manual_let_else",
@@ -13913,6 +14153,7 @@ pub const CLIPPY_LINT_GROUPS: &[LintGroup] = &[
             "clippy::range_plus_one",
             "clippy::redundant_closure_for_method_calls",
             "clippy::redundant_else",
+            "clippy::ref_as_ptr",
             "clippy::ref_binding_to_reference",
             "clippy::ref_option_ref",
             "clippy::return_self_not_must_use",
@@ -14257,7 +14498,7 @@ pub const CLIPPY_LINT_GROUPS: &[LintGroup] = &[
     LintGroup {
         lint: Lint {
             label: "clippy::suspicious",
-            description: r##"lint group for: clippy::almost_complete_range, clippy::arc_with_non_send_sync, clippy::await_holding_invalid_type, clippy::await_holding_lock, clippy::await_holding_refcell_ref, clippy::blanket_clippy_restriction_lints, clippy::cast_abs_to_unsigned, clippy::cast_enum_constructor, clippy::cast_enum_truncation, clippy::cast_nan_to_int, clippy::cast_slice_from_raw_parts, clippy::crate_in_macro_def, clippy::drop_non_drop, clippy::duplicate_mod, clippy::empty_loop, clippy::float_equality_without_abs, clippy::forget_non_drop, clippy::four_forward_slashes, clippy::from_raw_with_void_ptr, clippy::incompatible_msrv, clippy::ineffective_open_options, clippy::iter_out_of_bounds, clippy::join_absolute_paths, clippy::let_underscore_future, clippy::lines_filter_map_ok, clippy::maybe_misused_cfg, clippy::misnamed_getters, clippy::misrefactored_assign_op, clippy::multi_assignments, clippy::mut_range_bound, clippy::mutable_key_type, clippy::no_effect_replace, clippy::non_canonical_clone_impl, clippy::non_canonical_partial_ord_impl, clippy::octal_escapes, clippy::path_ends_with_ext, clippy::permissions_set_readonly_false, clippy::print_in_format_impl, clippy::rc_clone_in_vec_init, clippy::repeat_vec_with_capacity, clippy::single_range_in_vec_init, clippy::size_of_ref, clippy::suspicious_arithmetic_impl, clippy::suspicious_assignment_formatting, clippy::suspicious_command_arg_space, clippy::suspicious_doc_comments, clippy::suspicious_else_formatting, clippy::suspicious_map, clippy::suspicious_op_assign_impl, clippy::suspicious_open_options, clippy::suspicious_to_owned, clippy::suspicious_unary_op_formatting, clippy::swap_ptr_to_ref, clippy::test_attr_in_doctest, clippy::type_id_on_box, clippy::unconditional_recursion, clippy::unnecessary_result_map_or_else"##,
+            description: r##"lint group for: clippy::almost_complete_range, clippy::arc_with_non_send_sync, clippy::await_holding_invalid_type, clippy::await_holding_lock, clippy::await_holding_refcell_ref, clippy::blanket_clippy_restriction_lints, clippy::cast_abs_to_unsigned, clippy::cast_enum_constructor, clippy::cast_enum_truncation, clippy::cast_nan_to_int, clippy::cast_slice_from_raw_parts, clippy::crate_in_macro_def, clippy::deprecated_clippy_cfg_attr, clippy::drop_non_drop, clippy::duplicate_mod, clippy::empty_docs, clippy::empty_loop, clippy::float_equality_without_abs, clippy::forget_non_drop, clippy::four_forward_slashes, clippy::from_raw_with_void_ptr, clippy::incompatible_msrv, clippy::ineffective_open_options, clippy::iter_out_of_bounds, clippy::join_absolute_paths, clippy::let_underscore_future, clippy::lines_filter_map_ok, clippy::maybe_misused_cfg, clippy::misnamed_getters, clippy::misrefactored_assign_op, clippy::mixed_attributes_style, clippy::multi_assignments, clippy::multiple_bound_locations, clippy::mut_range_bound, clippy::mutable_key_type, clippy::no_effect_replace, clippy::non_canonical_clone_impl, clippy::non_canonical_partial_ord_impl, clippy::octal_escapes, clippy::path_ends_with_ext, clippy::permissions_set_readonly_false, clippy::print_in_format_impl, clippy::rc_clone_in_vec_init, clippy::repeat_vec_with_capacity, clippy::single_range_in_vec_init, clippy::size_of_ref, clippy::suspicious_arithmetic_impl, clippy::suspicious_assignment_formatting, clippy::suspicious_command_arg_space, clippy::suspicious_doc_comments, clippy::suspicious_else_formatting, clippy::suspicious_map, clippy::suspicious_op_assign_impl, clippy::suspicious_open_options, clippy::suspicious_to_owned, clippy::suspicious_unary_op_formatting, clippy::swap_ptr_to_ref, clippy::test_attr_in_doctest, clippy::type_id_on_box, clippy::unconditional_recursion, clippy::unnecessary_clippy_cfg, clippy::unnecessary_get_then_check, clippy::unnecessary_result_map_or_else"##,
         },
         children: &[
             "clippy::almost_complete_range",
@@ -14272,8 +14513,10 @@ pub const CLIPPY_LINT_GROUPS: &[LintGroup] = &[
             "clippy::cast_nan_to_int",
             "clippy::cast_slice_from_raw_parts",
             "clippy::crate_in_macro_def",
+            "clippy::deprecated_clippy_cfg_attr",
             "clippy::drop_non_drop",
             "clippy::duplicate_mod",
+            "clippy::empty_docs",
             "clippy::empty_loop",
             "clippy::float_equality_without_abs",
             "clippy::forget_non_drop",
@@ -14288,7 +14531,9 @@ pub const CLIPPY_LINT_GROUPS: &[LintGroup] = &[
             "clippy::maybe_misused_cfg",
             "clippy::misnamed_getters",
             "clippy::misrefactored_assign_op",
+            "clippy::mixed_attributes_style",
             "clippy::multi_assignments",
+            "clippy::multiple_bound_locations",
             "clippy::mut_range_bound",
             "clippy::mutable_key_type",
             "clippy::no_effect_replace",
@@ -14316,6 +14561,8 @@ pub const CLIPPY_LINT_GROUPS: &[LintGroup] = &[
             "clippy::test_attr_in_doctest",
             "clippy::type_id_on_box",
             "clippy::unconditional_recursion",
+            "clippy::unnecessary_clippy_cfg",
+            "clippy::unnecessary_get_then_check",
             "clippy::unnecessary_result_map_or_else",
         ],
     },

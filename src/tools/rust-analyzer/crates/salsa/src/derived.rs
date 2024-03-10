@@ -136,7 +136,7 @@ where
     ) -> std::fmt::Result {
         let slot_map = self.slot_map.read();
         let key = slot_map.get_index(index as usize).unwrap().0;
-        write!(fmt, "{}({:?})", Q::QUERY_NAME, key)
+        write!(fmt, "{}::{}({:?})", std::any::type_name::<Q>(), Q::QUERY_NAME, key)
     }
 
     fn maybe_changed_after(
@@ -146,13 +146,13 @@ where
         revision: Revision,
     ) -> bool {
         debug_assert!(revision < db.salsa_runtime().current_revision());
-        let read = self.slot_map.read();
-        let Some((key, slot)) = read.get_index(index as usize) else {
-            return false;
+        let (key, slot) = {
+            let read = self.slot_map.read();
+            let Some((key, slot)) = read.get_index(index as usize) else {
+                return false;
+            };
+            (key.clone(), slot.clone())
         };
-        let (key, slot) = (key.clone(), slot.clone());
-        // note: this drop is load-bearing. removing it would causes deadlocks.
-        drop(read);
         slot.maybe_changed_after(db, revision, &key)
     }
 

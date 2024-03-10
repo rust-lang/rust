@@ -30,6 +30,7 @@ pub(crate) fn remove_unnecessary_else(
         "remove unnecessary else block",
         display_range,
     )
+    .experimental()
     .with_fixes(fixes(ctx, d))
 }
 

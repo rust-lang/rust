@@ -7,8 +7,8 @@ use std::{collections::hash_map::Entry, time::Instant};
 
 use crossbeam_channel::{unbounded, Receiver, Sender};
 use flycheck::FlycheckHandle;
-use hir::Change;
-use ide::{Analysis, AnalysisHost, Cancellable, FileId};
+use hir::ChangeWithProcMacros;
+use ide::{Analysis, AnalysisHost, Cancellable, FileId, SourceRootId};
 use ide_db::base_db::{CrateId, ProcMacroPaths};
 use load_cargo::SourceRootConfig;
 use lsp_types::{SemanticTokens, Url};
@@ -66,6 +66,8 @@ pub(crate) struct GlobalState {
     pub(crate) diagnostics: DiagnosticCollection,
     pub(crate) mem_docs: MemDocs,
     pub(crate) source_root_config: SourceRootConfig,
+    /// A mapping that maps a local source root's `SourceRootId` to it parent's `SourceRootId`, if it has one.
+    pub(crate) local_roots_parent_map: FxHashMap<SourceRootId, SourceRootId>,
     pub(crate) semantic_tokens_cache: Arc<Mutex<FxHashMap<Url, SemanticTokens>>>,
 
     // status
@@ -82,6 +84,9 @@ pub(crate) struct GlobalState {
     pub(crate) flycheck_sender: Sender<flycheck::Message>,
     pub(crate) flycheck_receiver: Receiver<flycheck::Message>,
     pub(crate) last_flycheck_error: Option<String>,
+
+    // Test explorer
+    pub(crate) test_run_session: Option<flycheck::CargoTestHandle>,
 
     // VFS
     pub(crate) loader: Handle<Box<dyn vfs::loader::Handle>, Receiver<vfs::loader::Message>>,
@@ -201,6 +206,7 @@ impl GlobalState {
             send_hint_refresh_query: false,
             last_reported_status: None,
             source_root_config: SourceRootConfig::default(),
+            local_roots_parent_map: FxHashMap::default(),
             config_errors: Default::default(),
 
             proc_macro_clients: Arc::from_iter([]),
@@ -211,6 +217,8 @@ impl GlobalState {
             flycheck_sender,
             flycheck_receiver,
             last_flycheck_error: None,
+
+            test_run_session: None,
 
             vfs: Arc::new(RwLock::new((vfs::Vfs::default(), IntMap::default()))),
             vfs_config_version: 0,
@@ -238,7 +246,7 @@ impl GlobalState {
 
         let mut file_changes = FxHashMap::<_, (bool, ChangedFile)>::default();
         let (change, modified_rust_files, workspace_structure_change) = {
-            let mut change = Change::new();
+            let mut change = ChangeWithProcMacros::new();
             let mut guard = self.vfs.write();
             let changed_files = guard.0.take_changes();
             if changed_files.is_empty() {
@@ -297,7 +305,7 @@ impl GlobalState {
             let mut bytes = vec![];
             let mut modified_rust_files = vec![];
             for file in changed_files {
-                let vfs_path = &vfs.file_path(file.file_id);
+                let vfs_path = vfs.file_path(file.file_id);
                 if let Some(path) = vfs_path.as_path() {
                     let path = path.to_path_buf();
                     if reload::should_refresh_for_change(&path, file.kind()) {
@@ -481,7 +489,7 @@ impl GlobalStateSnapshot {
     }
 
     pub(crate) fn anchored_path(&self, path: &AnchoredPathBuf) -> Url {
-        let mut base = self.vfs_read().file_path(path.anchor);
+        let mut base = self.vfs_read().file_path(path.anchor).clone();
         base.pop();
         let path = base.join(&path.path).unwrap();
         let path = path.as_path().unwrap();
@@ -489,7 +497,7 @@ impl GlobalStateSnapshot {
     }
 
     pub(crate) fn file_id_to_file_path(&self, file_id: FileId) -> vfs::VfsPath {
-        self.vfs_read().file_path(file_id)
+        self.vfs_read().file_path(file_id).clone()
     }
 
     pub(crate) fn cargo_target_for_crate_root(
@@ -497,7 +505,7 @@ impl GlobalStateSnapshot {
         crate_id: CrateId,
     ) -> Option<(&CargoWorkspace, Target)> {
         let file_id = self.analysis.crate_root(crate_id).ok()?;
-        let path = self.vfs_read().file_path(file_id);
+        let path = self.vfs_read().file_path(file_id).clone();
         let path = path.as_path()?;
         self.workspaces.iter().find_map(|ws| match ws {
             ProjectWorkspace::Cargo { cargo, .. } => {

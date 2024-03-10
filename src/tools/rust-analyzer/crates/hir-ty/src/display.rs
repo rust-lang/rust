@@ -63,6 +63,7 @@ pub struct HirFormatter<'a> {
     buf: String,
     curr_size: usize,
     pub(crate) max_size: Option<usize>,
+    pub entity_limit: Option<usize>,
     omit_verbose_types: bool,
     closure_style: ClosureStyle,
     display_target: DisplayTarget,
@@ -86,6 +87,7 @@ pub trait HirDisplay {
         &'a self,
         db: &'a dyn HirDatabase,
         max_size: Option<usize>,
+        limited_size: Option<usize>,
         omit_verbose_types: bool,
         display_target: DisplayTarget,
         closure_style: ClosureStyle,
@@ -101,6 +103,7 @@ pub trait HirDisplay {
             db,
             t: self,
             max_size,
+            limited_size,
             omit_verbose_types,
             display_target,
             closure_style,
@@ -117,6 +120,7 @@ pub trait HirDisplay {
             db,
             t: self,
             max_size: None,
+            limited_size: None,
             omit_verbose_types: false,
             closure_style: ClosureStyle::ImplFn,
             display_target: DisplayTarget::Diagnostics,
@@ -137,6 +141,28 @@ pub trait HirDisplay {
             db,
             t: self,
             max_size,
+            limited_size: None,
+            omit_verbose_types: true,
+            closure_style: ClosureStyle::ImplFn,
+            display_target: DisplayTarget::Diagnostics,
+        }
+    }
+
+    /// Returns a `Display`able type that is human-readable and tries to limit the number of items inside.
+    /// Use this for showing definitions which may contain too many items, like `trait`, `struct`, `enum`
+    fn display_limited<'a>(
+        &'a self,
+        db: &'a dyn HirDatabase,
+        limited_size: Option<usize>,
+    ) -> HirDisplayWrapper<'a, Self>
+    where
+        Self: Sized,
+    {
+        HirDisplayWrapper {
+            db,
+            t: self,
+            max_size: None,
+            limited_size,
             omit_verbose_types: true,
             closure_style: ClosureStyle::ImplFn,
             display_target: DisplayTarget::Diagnostics,
@@ -158,6 +184,7 @@ pub trait HirDisplay {
             buf: String::with_capacity(20),
             curr_size: 0,
             max_size: None,
+            entity_limit: None,
             omit_verbose_types: false,
             closure_style: ClosureStyle::ImplFn,
             display_target: DisplayTarget::SourceCode { module_id, allow_opaque },
@@ -178,6 +205,7 @@ pub trait HirDisplay {
             db,
             t: self,
             max_size: None,
+            limited_size: None,
             omit_verbose_types: false,
             closure_style: ClosureStyle::ImplFn,
             display_target: DisplayTarget::Test,
@@ -295,6 +323,7 @@ pub struct HirDisplayWrapper<'a, T> {
     db: &'a dyn HirDatabase,
     t: &'a T,
     max_size: Option<usize>,
+    limited_size: Option<usize>,
     omit_verbose_types: bool,
     closure_style: ClosureStyle,
     display_target: DisplayTarget,
@@ -323,6 +352,7 @@ impl<T: HirDisplay> HirDisplayWrapper<'_, T> {
             buf: String::with_capacity(20),
             curr_size: 0,
             max_size: self.max_size,
+            entity_limit: self.limited_size,
             omit_verbose_types: self.omit_verbose_types,
             display_target: self.display_target,
             closure_style: self.closure_style,
@@ -1751,10 +1781,7 @@ impl HirDisplay for TypeRef {
                 f.write_joined(bounds, " + ")?;
             }
             TypeRef::Macro(macro_call) => {
-                let ctx = hir_def::lower::LowerCtx::with_span_map(
-                    f.db.upcast(),
-                    f.db.span_map(macro_call.file_id),
-                );
+                let ctx = hir_def::lower::LowerCtx::new(f.db.upcast(), macro_call.file_id);
                 let macro_call = macro_call.to_node(f.db.upcast());
                 match macro_call.path() {
                     Some(path) => match Path::from_src(&ctx, path) {
