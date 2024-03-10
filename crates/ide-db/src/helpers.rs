@@ -64,7 +64,7 @@ pub fn visit_file_defs(
     cb: &mut dyn FnMut(Definition),
 ) {
     let db = sema.db;
-    let module = match sema.to_module_def(file_id) {
+    let module = match sema.file_to_module_def(file_id) {
         Some(it) => it,
         None => return,
     };

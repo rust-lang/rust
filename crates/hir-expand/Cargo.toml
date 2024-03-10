@@ -28,7 +28,6 @@ intern.workspace = true
 base-db.workspace = true
 cfg.workspace = true
 syntax.workspace = true
-profile.workspace = true
 tt.workspace = true
 mbe.workspace = true
 limit.workspace = true

@@ -724,7 +724,10 @@ pub fn record_pat_field_list(
 ) -> ast::RecordPatFieldList {
     let mut fields = fields.into_iter().join(", ");
     if let Some(rest_pat) = rest_pat {
-        format_to!(fields, ", {rest_pat}");
+        if !fields.is_empty() {
+            fields.push_str(", ");
+        }
+        format_to!(fields, "{rest_pat}");
     }
     ast_from_text(&format!("fn f(S {{ {fields} }}: ()))"))
 }

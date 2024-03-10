@@ -189,7 +189,7 @@ fn _format(
     let &crate_id = db.relevant_crates(file_id).iter().next()?;
     let edition = db.crate_graph()[crate_id].edition;
 
-    let mut cmd = std::process::Command::new(toolchain::rustfmt());
+    let mut cmd = std::process::Command::new(toolchain::Tool::Rustfmt.path());
     cmd.arg("--edition");
     cmd.arg(edition.to_string());
 
@@ -308,8 +308,8 @@ f$0oo!();
             expect![[r#"
                 foo!
                 fn some_thing() -> u32 {
-                  let a = 0;
-                  a+10
+                    let a = 0;
+                    a+10
                 }"#]],
         );
     }
@@ -342,13 +342,13 @@ fn main() {
             expect![[r#"
                 match_ast!
                 {
-                  if let Some(it) = ast::TraitDef::cast(container.clone()){}
-                  else if let Some(it) = ast::ImplDef::cast(container.clone()){}
-                  else {
-                    {
-                      continue
+                    if let Some(it) = ast::TraitDef::cast(container.clone()){}
+                    else if let Some(it) = ast::ImplDef::cast(container.clone()){}
+                    else {
+                        {
+                            continue
+                        }
                     }
-                  }
                 }"#]],
         );
     }
@@ -397,12 +397,12 @@ fn main() {
             expect![[r#"
                 foo!
                 {
-                  macro_rules! bar {
-                    () => {
-                      42
+                    macro_rules! bar {
+                        () => {
+                            42
+                        }
                     }
-                  }
-                  42
+                    42
                 }"#]],
         );
     }
@@ -482,16 +482,16 @@ struct Foo {}
             expect![[r#"
                 Clone
                 impl < >$crate::clone::Clone for Foo< >where {
-                  fn clone(&self) -> Self {
-                    match self {
-                      Foo{}
-                       => Foo{}
-                      ,
+                    fn clone(&self) -> Self {
+                        match self {
+                            Foo{}
+                             => Foo{}
+                            ,
 
-                      }
-                  }
+                            }
+                    }
 
-                  }"#]],
+                    }"#]],
         );
     }
 
@@ -534,16 +534,16 @@ struct Foo {}
             expect![[r#"
                 Clone
                 impl < >$crate::clone::Clone for Foo< >where {
-                  fn clone(&self) -> Self {
-                    match self {
-                      Foo{}
-                       => Foo{}
-                      ,
+                    fn clone(&self) -> Self {
+                        match self {
+                            Foo{}
+                             => Foo{}
+                            ,
 
-                      }
-                  }
+                            }
+                    }
 
-                  }"#]],
+                    }"#]],
         );
     }
 }

@@ -29,9 +29,6 @@
 //!
 //! In general, any item in the `ItemTree` stores its `AstId`, which allows mapping it back to its
 //! surface syntax.
-//!
-//! Note that we cannot store [`span::Span`]s inside of this, as typing in an item invalidates its
-//! encompassing span!
 
 mod lower;
 mod pretty;
@@ -50,7 +47,6 @@ use either::Either;
 use hir_expand::{attrs::RawAttrs, name::Name, ExpandTo, HirFileId, InFile};
 use intern::Interned;
 use la_arena::{Arena, Idx, IdxRange, RawIdx};
-use profile::Count;
 use rustc_hash::FxHashMap;
 use smallvec::SmallVec;
 use span::{AstIdNode, FileAstId, Span};
@@ -94,8 +90,6 @@ impl fmt::Debug for RawVisibilityId {
 /// The item tree of a source file.
 #[derive(Debug, Default, Eq, PartialEq)]
 pub struct ItemTree {
-    _c: Count<Self>,
-
     top_level: SmallVec<[ModItem; 1]>,
     attrs: FxHashMap<AttrOwner, RawAttrs>,
 
@@ -263,14 +257,6 @@ impl ItemVisibilities {
     }
 }
 
-static VIS_PUB: RawVisibility = RawVisibility::Public;
-static VIS_PRIV_IMPLICIT: RawVisibility =
-    RawVisibility::Module(ModPath::from_kind(PathKind::Super(0)), VisibilityExplicitness::Implicit);
-static VIS_PRIV_EXPLICIT: RawVisibility =
-    RawVisibility::Module(ModPath::from_kind(PathKind::Super(0)), VisibilityExplicitness::Explicit);
-static VIS_PUB_CRATE: RawVisibility =
-    RawVisibility::Module(ModPath::from_kind(PathKind::Crate), VisibilityExplicitness::Explicit);
-
 #[derive(Default, Debug, Eq, PartialEq)]
 struct ItemTreeData {
     uses: Arena<Use>,
@@ -403,7 +389,7 @@ impl TreeId {
 
     pub(crate) fn item_tree(&self, db: &dyn DefDatabase) -> Arc<ItemTree> {
         match self.block {
-            Some(block) => db.block_item_tree_query(block),
+            Some(block) => db.block_item_tree(block),
             None => db.file_item_tree(self.file),
         }
     }
@@ -562,6 +548,20 @@ impl_index!(fields: Field, variants: Variant, params: Param);
 impl Index<RawVisibilityId> for ItemTree {
     type Output = RawVisibility;
     fn index(&self, index: RawVisibilityId) -> &Self::Output {
+        static VIS_PUB: RawVisibility = RawVisibility::Public;
+        static VIS_PRIV_IMPLICIT: RawVisibility = RawVisibility::Module(
+            ModPath::from_kind(PathKind::Super(0)),
+            VisibilityExplicitness::Implicit,
+        );
+        static VIS_PRIV_EXPLICIT: RawVisibility = RawVisibility::Module(
+            ModPath::from_kind(PathKind::Super(0)),
+            VisibilityExplicitness::Explicit,
+        );
+        static VIS_PUB_CRATE: RawVisibility = RawVisibility::Module(
+            ModPath::from_kind(PathKind::Crate),
+            VisibilityExplicitness::Explicit,
+        );
+
         match index {
             RawVisibilityId::PRIV_IMPLICIT => &VIS_PRIV_IMPLICIT,
             RawVisibilityId::PRIV_EXPLICIT => &VIS_PRIV_EXPLICIT,
@@ -821,11 +821,13 @@ impl Use {
         // Note: The AST unwraps are fine, since if they fail we should have never obtained `index`.
         let ast = InFile::new(file_id, self.ast_id).to_node(db.upcast());
         let ast_use_tree = ast.use_tree().expect("missing `use_tree`");
-        let span_map = db.span_map(file_id);
-        let (_, source_map) = lower::lower_use_tree(db, span_map.as_ref(), ast_use_tree)
-            .expect("failed to lower use tree");
+        let (_, source_map) = lower::lower_use_tree(db, ast_use_tree, &mut |range| {
+            db.span_map(file_id).span_for_range(range).ctx
+        })
+        .expect("failed to lower use tree");
         source_map[index].clone()
     }
+
     /// Maps a `UseTree` contained in this import back to its AST node.
     pub fn use_tree_source_map(
         &self,
@@ -836,10 +838,11 @@ impl Use {
         // Note: The AST unwraps are fine, since if they fail we should have never obtained `index`.
         let ast = InFile::new(file_id, self.ast_id).to_node(db.upcast());
         let ast_use_tree = ast.use_tree().expect("missing `use_tree`");
-        let span_map = db.span_map(file_id);
-        lower::lower_use_tree(db, span_map.as_ref(), ast_use_tree)
-            .expect("failed to lower use tree")
-            .1
+        lower::lower_use_tree(db, ast_use_tree, &mut |range| {
+            db.span_map(file_id).span_for_range(range).ctx
+        })
+        .expect("failed to lower use tree")
+        .1
     }
 }
 
@@ -871,25 +874,19 @@ impl UseTree {
             prefix: Option<ModPath>,
             path: &ModPath,
         ) -> Option<(ModPath, ImportKind)> {
-            match (prefix, &path.kind) {
+            match (prefix, path.kind) {
                 (None, _) => Some((path.clone(), ImportKind::Plain)),
                 (Some(mut prefix), PathKind::Plain) => {
-                    for segment in path.segments() {
-                        prefix.push_segment(segment.clone());
-                    }
+                    prefix.extend(path.segments().iter().cloned());
                     Some((prefix, ImportKind::Plain))
                 }
-                (Some(mut prefix), PathKind::Super(n))
-                    if *n > 0 && prefix.segments().is_empty() =>
-                {
+                (Some(mut prefix), PathKind::Super(n)) if n > 0 && prefix.segments().is_empty() => {
                     // `super::super` + `super::rest`
                     match &mut prefix.kind {
                         PathKind::Super(m) => {
                             cov_mark::hit!(concat_super_mod_paths);
-                            *m += *n;
-                            for segment in path.segments() {
-                                prefix.push_segment(segment.clone());
-                            }
+                            *m += n;
+                            prefix.extend(path.segments().iter().cloned());
                             Some((prefix, ImportKind::Plain))
                         }
                         _ => None,
@@ -963,10 +960,10 @@ impl ModItem {
             | ModItem::Mod(_)
             | ModItem::MacroRules(_)
             | ModItem::Macro2(_) => None,
-            ModItem::MacroCall(call) => Some(AssocItem::MacroCall(*call)),
-            ModItem::Const(konst) => Some(AssocItem::Const(*konst)),
-            ModItem::TypeAlias(alias) => Some(AssocItem::TypeAlias(*alias)),
-            ModItem::Function(func) => Some(AssocItem::Function(*func)),
+            &ModItem::MacroCall(call) => Some(AssocItem::MacroCall(call)),
+            &ModItem::Const(konst) => Some(AssocItem::Const(konst)),
+            &ModItem::TypeAlias(alias) => Some(AssocItem::TypeAlias(alias)),
+            &ModItem::Function(func) => Some(AssocItem::Function(func)),
         }
     }
 

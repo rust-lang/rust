@@ -635,7 +635,7 @@ impl Printer<'_> {
     fn print_literal_or_const(&mut self, literal_or_const: &LiteralOrConst) {
         match literal_or_const {
             LiteralOrConst::Literal(l) => self.print_literal(l),
-            LiteralOrConst::Const(c) => self.print_path(c),
+            LiteralOrConst::Const(c) => self.print_pat(*c),
         }
     }
 

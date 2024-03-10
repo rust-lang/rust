@@ -15,6 +15,7 @@ doctest = false
 drop_bomb = "0.1.5"
 ra-ap-rustc_lexer.workspace = true
 limit.workspace = true
+tracing = { workspace = true, optional = true }
 
 [dev-dependencies]
 expect-test = "1.4.0"
@@ -23,6 +24,7 @@ stdx.workspace = true
 sourcegen.workspace = true
 
 [features]
+default = ["tracing"]
 in-rust-tree = []
 
 [lints]

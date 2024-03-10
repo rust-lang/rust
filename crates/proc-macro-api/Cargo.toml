@@ -12,13 +12,7 @@ rust-version.workspace = true
 doctest = false
 
 [dependencies]
-object = { version = "0.32.0", default-features = false, features = [
-    "std",
-    "read_core",
-    "elf",
-    "macho",
-    "pe",
-] }
+object.workspace = true
 serde.workspace = true
 serde_json = { workspace = true, features = ["unbounded_depth"] }
 tracing.workspace = true
@@ -32,7 +26,6 @@ indexmap = "2.1.0"
 paths.workspace = true
 tt.workspace = true
 stdx.workspace = true
-profile.workspace = true
 text-size.workspace = true
 span.workspace = true
 # Ideally this crate would not depend on salsa things, but we need span information here which wraps

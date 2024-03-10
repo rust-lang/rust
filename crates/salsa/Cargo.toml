@@ -28,7 +28,6 @@ salsa-macros = { version = "0.0.0", path = "salsa-macros" }
 [dev-dependencies]
 linked-hash-map = "0.5.6"
 rand = "0.8.5"
-test-log = "0.2.14"
 expect-test = "1.4.0"
 dissimilar = "1.0.7"
 

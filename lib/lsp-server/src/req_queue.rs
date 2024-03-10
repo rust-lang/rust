@@ -37,7 +37,7 @@ impl<I> Incoming<I> {
     }
 
     pub fn cancel(&mut self, id: RequestId) -> Option<Response> {
-        let _data = self.complete(id.clone())?;
+        let _data = self.complete(&id)?;
         let error = ResponseError {
             code: ErrorCode::RequestCanceled as i32,
             message: "canceled by client".to_owned(),
@@ -46,8 +46,8 @@ impl<I> Incoming<I> {
         Some(Response { id, result: None, error: Some(error) })
     }
 
-    pub fn complete(&mut self, id: RequestId) -> Option<I> {
-        self.pending.remove(&id)
+    pub fn complete(&mut self, id: &RequestId) -> Option<I> {
+        self.pending.remove(id)
     }
 
     pub fn is_completed(&self, id: &RequestId) -> bool {

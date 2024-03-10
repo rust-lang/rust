@@ -3,10 +3,15 @@
 use std::{fmt, fs, path::Path};
 
 use stdx::format_to_acc;
-use test_utils::project_root;
 
-#[test]
-fn sourcegen_assists_docs() {
+use crate::{
+    codegen::{
+        add_preamble, ensure_file_contents, list_rust_files, reformat, CommentBlock, Location,
+    },
+    project_root,
+};
+
+pub(crate) fn generate(check: bool) {
     let assists = Assist::collect();
 
     {
@@ -40,10 +45,11 @@ r#####"
                 buf.push_str(&test)
             }
         }
-        let buf = sourcegen::add_preamble("sourcegen_assists_docs", sourcegen::reformat(buf));
-        sourcegen::ensure_file_contents(
+        let buf = add_preamble("sourcegen_assists_docs", reformat(buf));
+        ensure_file_contents(
             &project_root().join("crates/ide-assists/src/tests/generated.rs"),
             &buf,
+            check,
         );
     }
 
@@ -52,7 +58,7 @@ r#####"
         // git repo. Instead, `cargo xtask release` runs this test before making
         // a release.
 
-        let contents = sourcegen::add_preamble(
+        let contents = add_preamble(
             "sourcegen_assists_docs",
             assists.into_iter().map(|it| it.to_string()).collect::<Vec<_>>().join("\n\n"),
         );
@@ -71,7 +77,7 @@ struct Section {
 #[derive(Debug)]
 struct Assist {
     id: String,
-    location: sourcegen::Location,
+    location: Location,
     sections: Vec<Section>,
 }
 
@@ -80,7 +86,7 @@ impl Assist {
         let handlers_dir = project_root().join("crates/ide-assists/src/handlers");
 
         let mut res = Vec::new();
-        for path in sourcegen::list_rust_files(&handlers_dir) {
+        for path in list_rust_files(&handlers_dir) {
             collect_file(&mut res, path.as_path());
         }
         res.sort_by(|lhs, rhs| lhs.id.cmp(&rhs.id));
@@ -88,7 +94,7 @@ impl Assist {
 
         fn collect_file(acc: &mut Vec<Assist>, path: &Path) {
             let text = fs::read_to_string(path).unwrap();
-            let comment_blocks = sourcegen::CommentBlock::extract("Assist", &text);
+            let comment_blocks = CommentBlock::extract("Assist", &text);
 
             for block in comment_blocks {
                 let id = block.id;
@@ -97,7 +103,7 @@ impl Assist {
                     "invalid assist id: {id:?}"
                 );
                 let mut lines = block.contents.iter().peekable();
-                let location = sourcegen::Location { file: path.to_path_buf(), line: block.line };
+                let location = Location { file: path.to_path_buf(), line: block.line };
                 let mut assist = Assist { id, location, sections: Vec::new() };
 
                 while lines.peek().is_some() {

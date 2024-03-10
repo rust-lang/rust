@@ -9,7 +9,6 @@ use crate::{
     db::ExpandDatabase,
     hygiene::{marks_rev, SyntaxContextExt, Transparency},
     name::{known, AsName, Name},
-    span_map::SpanMapRef,
     tt,
 };
 use base_db::CrateId;
@@ -49,9 +48,9 @@ impl ModPath {
     pub fn from_src(
         db: &dyn ExpandDatabase,
         path: ast::Path,
-        span_map: SpanMapRef<'_>,
+        span_for_range: &mut dyn FnMut(::tt::TextRange) -> SyntaxContextId,
     ) -> Option<ModPath> {
-        convert_path(db, path, span_map)
+        convert_path(db, path, span_for_range)
     }
 
     pub fn from_tt(db: &dyn ExpandDatabase, tt: &[tt::TokenTree]) -> Option<ModPath> {
@@ -144,6 +143,12 @@ impl ModPath {
     }
 }
 
+impl Extend<Name> for ModPath {
+    fn extend<T: IntoIterator<Item = Name>>(&mut self, iter: T) {
+        self.segments.extend(iter);
+    }
+}
+
 struct Display<'a> {
     db: &'a dyn ExpandDatabase,
     path: &'a ModPath,
@@ -215,7 +220,7 @@ fn display_fmt_path(
 fn convert_path(
     db: &dyn ExpandDatabase,
     path: ast::Path,
-    span_map: SpanMapRef<'_>,
+    span_for_range: &mut dyn FnMut(::tt::TextRange) -> SyntaxContextId,
 ) -> Option<ModPath> {
     let mut segments = path.segments();
 
@@ -224,12 +229,9 @@ fn convert_path(
         ast::PathSegmentKind::Name(name_ref) => {
             if name_ref.text() == "$crate" {
                 ModPath::from_kind(
-                    resolve_crate_root(
-                        db,
-                        span_map.span_for_range(name_ref.syntax().text_range()).ctx,
-                    )
-                    .map(PathKind::DollarCrate)
-                    .unwrap_or(PathKind::Crate),
+                    resolve_crate_root(db, span_for_range(name_ref.syntax().text_range()))
+                        .map(PathKind::DollarCrate)
+                        .unwrap_or(PathKind::Crate),
                 )
             } else {
                 let mut res = ModPath::from_kind(
@@ -283,7 +285,7 @@ fn convert_path(
     // We follow what it did anyway :)
     if mod_path.segments.len() == 1 && mod_path.kind == PathKind::Plain {
         if let Some(_macro_call) = path.syntax().parent().and_then(ast::MacroCall::cast) {
-            let syn_ctx = span_map.span_for_range(segment.syntax().text_range()).ctx;
+            let syn_ctx = span_for_range(segment.syntax().text_range());
             if let Some(macro_call_id) = db.lookup_intern_syntax_context(syn_ctx).outer_expn {
                 if db.lookup_intern_macro_call(macro_call_id).def.local_inner {
                     mod_path.kind = match resolve_crate_root(db, syn_ctx) {

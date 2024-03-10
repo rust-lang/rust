@@ -48,7 +48,7 @@ fn type_with_bounds_cond(p: &mut Parser<'_>, allow_bounds: bool) {
         T![impl] => impl_trait_type(p),
         T![dyn] => dyn_trait_type(p),
         // Some path types are not allowed to have bounds (no plus)
-        T![<] => path_type_(p, allow_bounds),
+        T![<] => path_type_bounds(p, allow_bounds),
         _ if paths::is_path_start(p) => path_or_macro_type_(p, allow_bounds),
         LIFETIME_IDENT if p.nth_at(1, T![+]) => bare_dyn_trait_type(p),
         _ => {
@@ -294,7 +294,7 @@ fn bare_dyn_trait_type(p: &mut Parser<'_>) {
 // type C = self::Foo;
 // type D = super::Foo;
 pub(super) fn path_type(p: &mut Parser<'_>) {
-    path_type_(p, true);
+    path_type_bounds(p, true);
 }
 
 // test macro_call_type
@@ -323,7 +323,7 @@ fn path_or_macro_type_(p: &mut Parser<'_>, allow_bounds: bool) {
     }
 }
 
-pub(super) fn path_type_(p: &mut Parser<'_>, allow_bounds: bool) {
+pub(super) fn path_type_bounds(p: &mut Parser<'_>, allow_bounds: bool) {
     assert!(paths::is_path_start(p));
     let m = p.start();
     paths::type_path(p);

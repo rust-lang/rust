@@ -50,6 +50,7 @@ mod static_index;
 mod status;
 mod syntax_highlighting;
 mod syntax_tree;
+mod test_explorer;
 mod typing;
 mod view_crate_graph;
 mod view_hir;
@@ -61,7 +62,7 @@ use std::ffi::OsStr;
 
 use cfg::CfgOptions;
 use fetch_crates::CrateInfo;
-use hir::Change;
+use hir::ChangeWithProcMacros;
 use ide_db::{
     base_db::{
         salsa::{self, ParallelDatabase},
@@ -108,6 +109,7 @@ pub use crate::{
         tags::{Highlight, HlMod, HlMods, HlOperator, HlPunct, HlTag},
         HighlightConfig, HlRange,
     },
+    test_explorer::{TestItem, TestItemKind},
 };
 pub use hir::Semantics;
 pub use ide_assists::{
@@ -184,7 +186,7 @@ impl AnalysisHost {
 
     /// Applies changes to the current state of the world. If there are
     /// outstanding snapshots, they will be canceled.
-    pub fn apply_change(&mut self, change: Change) {
+    pub fn apply_change(&mut self, change: ChangeWithProcMacros) {
         self.db.apply_change(change);
     }
 
@@ -239,7 +241,7 @@ impl Analysis {
         file_set.insert(file_id, VfsPath::new_virtual_path("/main.rs".to_owned()));
         let source_root = SourceRoot::new_local(file_set);
 
-        let mut change = Change::new();
+        let mut change = ChangeWithProcMacros::new();
         change.set_roots(vec![source_root]);
         let mut crate_graph = CrateGraph::default();
         // FIXME: cfg options
@@ -338,6 +340,18 @@ impl Analysis {
 
     pub fn view_item_tree(&self, file_id: FileId) -> Cancellable<String> {
         self.with_db(|db| view_item_tree::view_item_tree(db, file_id))
+    }
+
+    pub fn discover_test_roots(&self) -> Cancellable<Vec<TestItem>> {
+        self.with_db(test_explorer::discover_test_roots)
+    }
+
+    pub fn discover_tests_in_crate_by_test_id(&self, crate_id: &str) -> Cancellable<Vec<TestItem>> {
+        self.with_db(|db| test_explorer::discover_tests_in_crate_by_test_id(db, crate_id))
+    }
+
+    pub fn discover_tests_in_crate(&self, crate_id: CrateId) -> Cancellable<Vec<TestItem>> {
+        self.with_db(|db| test_explorer::discover_tests_in_crate(db, crate_id))
     }
 
     /// Renders the crate graph to GraphViz "dot" syntax.
