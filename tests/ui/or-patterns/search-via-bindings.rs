@@ -42,6 +42,23 @@ fn search_old_style(target: (bool, bool, bool)) -> u32 {
     }
 }
 
+// Check that a dummy or-pattern also leads to running the guard multiple times.
+fn search_with_dummy(target: (bool, bool)) -> u32 {
+    let x = ((false, true), (false, true), ());
+    let mut guard_count = 0;
+    match x {
+        ((a, _) | (_, a), (b, _) | (_, b), _ | _)
+            if {
+                guard_count += 1;
+                (a, b) == target
+            } =>
+        {
+            guard_count
+        }
+        _ => unreachable!(),
+    }
+}
+
 fn main() {
     assert_eq!(search((false, false, false)), 1);
     assert_eq!(search((false, false, true)), 2);
@@ -60,4 +77,9 @@ fn main() {
     assert_eq!(search_old_style((true, false, true)), 6);
     assert_eq!(search_old_style((true, true, false)), 7);
     assert_eq!(search_old_style((true, true, true)), 8);
+
+    assert_eq!(search_with_dummy((false, false)), 1);
+    assert_eq!(search_with_dummy((false, true)), 3);
+    assert_eq!(search_with_dummy((true, false)), 5);
+    assert_eq!(search_with_dummy((true, true)), 7);
 }
