@@ -180,19 +180,19 @@ pub unsafe trait SliceIndex<T: ?Sized>: private_slice_index::Sealed {
     #[unstable(feature = "slice_index_methods", issue = "none")]
     fn get_mut(self, slice: &mut T) -> Option<&mut Self::Output>;
 
-    /// Returns a shared reference to the output at this location, without
+    /// Returns a pointer to the output at this location, without
     /// performing any bounds checking.
     /// Calling this method with an out-of-bounds index or a dangling `slice` pointer
-    /// is *[undefined behavior]* even if the resulting reference is not used.
+    /// is *[undefined behavior]* even if the resulting pointer is not used.
     ///
     /// [undefined behavior]: https://doc.rust-lang.org/reference/behavior-considered-undefined.html
     #[unstable(feature = "slice_index_methods", issue = "none")]
     unsafe fn get_unchecked(self, slice: *const T) -> *const Self::Output;
 
-    /// Returns a mutable reference to the output at this location, without
+    /// Returns a mutable pointer to the output at this location, without
     /// performing any bounds checking.
     /// Calling this method with an out-of-bounds index or a dangling `slice` pointer
-    /// is *[undefined behavior]* even if the resulting reference is not used.
+    /// is *[undefined behavior]* even if the resulting pointer is not used.
     ///
     /// [undefined behavior]: https://doc.rust-lang.org/reference/behavior-considered-undefined.html
     #[unstable(feature = "slice_index_methods", issue = "none")]

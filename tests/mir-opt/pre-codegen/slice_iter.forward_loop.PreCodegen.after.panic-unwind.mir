@@ -91,7 +91,7 @@ fn forward_loop(_1: &[T], _2: impl Fn(&T)) -> () {
         StorageDead(_5);
         StorageLive(_11);
         StorageLive(_8);
-        _8 = const _;
+        _8 = const <T as std::mem::SizedTypeProperties>::IS_ZST;
         switchInt(move _8) -> [0: bb1, otherwise: bb2];
     }
 

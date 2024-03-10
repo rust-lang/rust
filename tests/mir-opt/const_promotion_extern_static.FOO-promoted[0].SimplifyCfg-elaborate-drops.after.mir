@@ -1,6 +1,6 @@
 // MIR for `FOO::promoted[0]` after SimplifyCfg-elaborate-drops
 
-promoted[0] in FOO: &[&i32; 1] = {
+const FOO::promoted[0]: &[&i32; 1] = {
     let mut _0: &[&i32; 1];
     let mut _1: [&i32; 1];
     let mut _2: &i32;

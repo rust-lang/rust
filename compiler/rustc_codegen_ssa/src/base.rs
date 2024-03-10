@@ -467,16 +467,12 @@ pub fn maybe_create_entry_wrapper<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
 
         let (start_fn, start_ty, args) = if let EntryFnType::Main { sigpipe } = entry_type {
             let start_def_id = cx.tcx().require_lang_item(LangItem::Start, None);
-            let start_fn = cx.get_fn_addr(
-                ty::Instance::resolve(
-                    cx.tcx(),
-                    ty::ParamEnv::reveal_all(),
-                    start_def_id,
-                    cx.tcx().mk_args(&[main_ret_ty.into()]),
-                )
-                .unwrap()
-                .unwrap(),
-            );
+            let start_fn = cx.get_fn_addr(ty::Instance::expect_resolve(
+                cx.tcx(),
+                ty::ParamEnv::reveal_all(),
+                start_def_id,
+                cx.tcx().mk_args(&[main_ret_ty.into()]),
+            ));
 
             let i8_ty = cx.type_i8();
             let arg_sigpipe = bx.const_u8(sigpipe);

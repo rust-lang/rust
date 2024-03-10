@@ -109,7 +109,7 @@ fn array_casts() -> () {
         _15 = (*_16);
         _14 = &_15;
         StorageLive(_18);
-        _34 = const _;
+        _34 = const array_casts::promoted[0];
         Retag(_34);
         _18 = &(*_34);
         _13 = (move _14, move _18);

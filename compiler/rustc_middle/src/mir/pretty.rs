@@ -496,7 +496,7 @@ fn write_mir_sig(tcx: TyCtxt<'_>, body: &Body<'_>, w: &mut dyn io::Write) -> io:
         _ => tcx.is_closure_like(def_id),
     };
     match (kind, body.source.promoted) {
-        (_, Some(i)) => write!(w, "{i:?} in ")?,
+        (_, Some(_)) => write!(w, "const ")?, // promoteds are the closest to consts
         (DefKind::Const | DefKind::AssocConst, _) => write!(w, "const ")?,
         (DefKind::Static(hir::Mutability::Not), _) => write!(w, "static ")?,
         (DefKind::Static(hir::Mutability::Mut), _) => write!(w, "static mut ")?,
@@ -508,6 +508,9 @@ fn write_mir_sig(tcx: TyCtxt<'_>, body: &Body<'_>, w: &mut dyn io::Write) -> io:
     ty::print::with_forced_impl_filename_line! {
         // see notes on #41697 elsewhere
         write!(w, "{}", tcx.def_path_str(def_id))?
+    }
+    if let Some(p) = body.source.promoted {
+        write!(w, "::{p:?}")?;
     }
 
     if body.source.promoted.is_none() && is_function {
