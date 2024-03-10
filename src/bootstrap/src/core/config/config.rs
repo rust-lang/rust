@@ -264,7 +264,7 @@ pub struct Config {
     pub rustc_default_linker: Option<String>,
     pub rust_optimize_tests: bool,
     pub rust_dist_src: bool,
-    pub rust_codegen_backends: Vec<Interned<String>>,
+    pub rust_codegen_backends: Vec<String>,
     pub rust_verify_llvm_ir: bool,
     pub rust_thin_lto_import_instr_limit: Option<u32>,
     pub rust_remap_debuginfo: bool,
@@ -458,6 +458,8 @@ impl std::str::FromStr for RustcLto {
 }
 
 #[derive(Copy, Clone, Default, PartialEq, Eq, PartialOrd, Ord, Hash)]
+// N.B.: This type is used everywhere, and the entire codebase relies on it being Copy.
+// Making !Copy is highly nontrivial!
 pub struct TargetSelection {
     pub triple: Interned<String>,
     file: Option<Interned<String>>,
@@ -580,7 +582,7 @@ pub struct Target {
     pub wasi_root: Option<PathBuf>,
     pub qemu_rootfs: Option<PathBuf>,
     pub no_std: bool,
-    pub codegen_backends: Option<Vec<Interned<String>>>,
+    pub codegen_backends: Option<Vec<String>>,
 }
 
 impl Target {
@@ -1163,7 +1165,7 @@ impl Config {
             channel: "dev".to_string(),
             codegen_tests: true,
             rust_dist_src: true,
-            rust_codegen_backends: vec![INTERNER.intern_str("llvm")],
+            rust_codegen_backends: vec!["llvm".to_owned()],
             deny_warnings: true,
             bindir: "bin".into(),
             dist_include_mingw_linker: true,
@@ -1693,7 +1695,7 @@ impl Config {
                         }
                     }
 
-                    INTERNER.intern_str(s)
+                    s.clone()
                 }).collect();
             }
 
@@ -1880,7 +1882,7 @@ impl Config {
                             }
                         }
 
-                        INTERNER.intern_str(s)
+                        s.clone()
                     }).collect());
                 }
 
@@ -2267,7 +2269,7 @@ impl Config {
     }
 
     pub fn llvm_enabled(&self, target: TargetSelection) -> bool {
-        self.codegen_backends(target).contains(&INTERNER.intern_str("llvm"))
+        self.codegen_backends(target).contains(&"llvm".to_owned())
     }
 
     pub fn llvm_libunwind(&self, target: TargetSelection) -> LlvmLibunwind {
@@ -2286,14 +2288,14 @@ impl Config {
         self.submodules.unwrap_or(rust_info.is_managed_git_subrepository())
     }
 
-    pub fn codegen_backends(&self, target: TargetSelection) -> &[Interned<String>] {
+    pub fn codegen_backends(&self, target: TargetSelection) -> &[String] {
         self.target_config
             .get(&target)
             .and_then(|cfg| cfg.codegen_backends.as_deref())
             .unwrap_or(&self.rust_codegen_backends)
     }
 
-    pub fn default_codegen_backend(&self, target: TargetSelection) -> Option<Interned<String>> {
+    pub fn default_codegen_backend(&self, target: TargetSelection) -> Option<String> {
         self.codegen_backends(target).first().cloned()
     }
 

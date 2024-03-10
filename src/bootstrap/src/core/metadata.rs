@@ -3,7 +3,6 @@ use std::process::Command;
 
 use serde_derive::Deserialize;
 
-use crate::utils::cache::INTERNER;
 use crate::utils::helpers::output;
 use crate::{t, Build, Crate};
 
@@ -43,19 +42,19 @@ struct Target {
 pub fn build(build: &mut Build) {
     for package in workspace_members(build) {
         if package.source.is_none() {
-            let name = INTERNER.intern_string(package.name);
+            let name = package.name;
             let mut path = PathBuf::from(package.manifest_path);
             path.pop();
             let deps = package
                 .dependencies
                 .into_iter()
                 .filter(|dep| dep.source.is_none())
-                .map(|dep| INTERNER.intern_string(dep.name))
+                .map(|dep| dep.name)
                 .collect();
             let has_lib = package.targets.iter().any(|t| t.kind.iter().any(|k| k == "lib"));
-            let krate = Crate { name, deps, path, has_lib };
+            let krate = Crate { name: name.clone(), deps, path, has_lib };
             let relative_path = krate.local_path(build);
-            build.crates.insert(name, krate);
+            build.crates.insert(name.clone(), krate);
             let existing_path = build.crate_paths.insert(relative_path, name);
             assert!(
                 existing_path.is_none(),
