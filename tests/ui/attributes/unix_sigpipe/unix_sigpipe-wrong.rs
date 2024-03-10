@@ -1,4 +1,6 @@
-#![feature(unix_sigpipe)]
+//@ revisions: with_feature without_feature
 
-#[unix_sigpipe = "wrong"] //~ error: valid values for `#[unix_sigpipe = "..."]` are `inherit`, `sig_ign`, or `sig_dfl`
+#![cfg_attr(with_feature, feature(unix_sigpipe))]
+
+#[unix_sigpipe = "wrong"] //~ error: the only valid variant of the `unix_sigpipe` attribute is `#[unix_sigpipe = "sig_dfl"]
 fn main() {}

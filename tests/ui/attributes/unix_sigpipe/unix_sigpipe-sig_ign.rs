@@ -1,9 +1,11 @@
-//@ run-pass
+//@ revisions: with_feature without_feature
+//@ [with_feature]run-pass
+//@ [without_feature]check-fail
 //@ aux-build:sigpipe-utils.rs
 
-#![feature(unix_sigpipe)]
+#![cfg_attr(with_feature, feature(unix_sigpipe))]
 
-#[unix_sigpipe = "sig_ign"]
+#[unix_sigpipe = "sig_ign"] //[without_feature]~ the `#[unix_sigpipe = "sig_ign"]` attribute is an experimental feature
 fn main() {
     extern crate sigpipe_utils;
 

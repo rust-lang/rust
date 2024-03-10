@@ -1,9 +1,11 @@
-//@ run-pass
+//@ revisions: with_feature without_feature
+//@ [with_feature]run-pass
+//@ [without_feature]check-fail
 //@ aux-build:sigpipe-utils.rs
 
-#![feature(unix_sigpipe)]
+#![cfg_attr(with_feature, feature(unix_sigpipe))]
 
-#[unix_sigpipe = "inherit"]
+#[unix_sigpipe = "inherit"] //[without_feature]~ ERROR the `#[unix_sigpipe = "inherit"]` attribute is an experimental feature
 fn main() {
     extern crate sigpipe_utils;
 

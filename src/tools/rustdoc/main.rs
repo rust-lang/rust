@@ -1,4 +1,4 @@
-#![feature(unix_sigpipe)]
+#![cfg_attr(bootstrap, feature(unix_sigpipe))]
 
 #[unix_sigpipe = "sig_dfl"]
 fn main() {

@@ -1,0 +1,14 @@
+error: multiple `unix_sigpipe` attributes
+  --> $DIR/unix_sigpipe-different-duplicates.rs:6:1
+   |
+LL | #[unix_sigpipe = "sig_ign"]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: remove this attribute
+   |
+note: attribute also specified here
+  --> $DIR/unix_sigpipe-different-duplicates.rs:5:1
+   |
+LL | #[unix_sigpipe = "sig_dfl"]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 1 previous error
+

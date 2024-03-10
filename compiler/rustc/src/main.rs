@@ -1,4 +1,4 @@
-#![feature(unix_sigpipe)]
+#![cfg_attr(bootstrap, feature(unix_sigpipe))]
 
 // A note about jemalloc: rustc uses jemalloc when built for CI and
 // distribution. The obvious way to do this is with the `#[global_allocator]`

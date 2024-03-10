@@ -1,0 +1,15 @@
+error: malformed `unix_sigpipe` attribute input
+  --> $DIR/unix_sigpipe-list.rs:5:1
+   |
+LL | #[unix_sigpipe(sig_dfl)]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: the following are the possible correct uses
+   |
+LL | #[unix_sigpipe = "inherit|sig_ign|sig_dfl"]
+   | ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+LL | #[unix_sigpipe]
+   | ~~~~~~~~~~~~~~~
+
+error: aborting due to 1 previous error
+
