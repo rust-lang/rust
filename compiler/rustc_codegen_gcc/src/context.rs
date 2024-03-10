@@ -473,14 +473,12 @@ impl<'gcc, 'tcx> MiscMethods<'tcx> for CodegenCx<'gcc, 'tcx> {
         let tcx = self.tcx;
         let func = match tcx.lang_items().eh_personality() {
             Some(def_id) if !wants_msvc_seh(self.sess()) => {
-                let instance = ty::Instance::resolve(
+                let instance = ty::Instance::expect_resolve(
                     tcx,
                     ty::ParamEnv::reveal_all(),
                     def_id,
                     ty::List::empty(),
-                )
-                .unwrap()
-                .unwrap();
+                );
 
                 let symbol_name = tcx.symbol_name(instance).name;
                 let fn_abi = self.fn_abi_of_instance(instance, ty::List::empty());

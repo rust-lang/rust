@@ -1339,14 +1339,12 @@ impl<'v> RootCollector<'_, 'v> {
             main_ret_ty.no_bound_vars().unwrap(),
         );
 
-        let start_instance = Instance::resolve(
+        let start_instance = Instance::expect_resolve(
             self.tcx,
             ty::ParamEnv::reveal_all(),
             start_def_id,
             self.tcx.mk_args(&[main_ret_ty.into()]),
-        )
-        .unwrap()
-        .unwrap();
+        );
 
         self.output.push(create_fn_mono_item(self.tcx, start_instance, DUMMY_SP));
     }
