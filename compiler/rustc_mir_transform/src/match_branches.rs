@@ -269,9 +269,12 @@ struct SimplifyToExp {
 
 #[derive(Clone, Copy)]
 enum CompareType<'tcx, 'a> {
+    /// Identical statements.
     Same(&'a StatementKind<'tcx>),
+    /// Assignment statements have the same value.
     Eq(&'a Place<'tcx>, Ty<'tcx>, ScalarInt),
-    Discr(&'a Place<'tcx>, Ty<'tcx>, bool),
+    /// Enum variant comparison type.
+    Discr { place: &'a Place<'tcx>, ty: Ty<'tcx>, is_signed: bool },
 }
 
 enum TransfromType {
@@ -285,7 +288,7 @@ impl From<CompareType<'_, '_>> for TransfromType {
         match compare_type {
             CompareType::Same(_) => TransfromType::Same,
             CompareType::Eq(_, _, _) => TransfromType::Eq,
-            CompareType::Discr(_, _, _) => TransfromType::Discr,
+            CompareType::Discr { .. } => TransfromType::Discr,
         }
     }
 }
@@ -402,11 +405,11 @@ impl<'tcx> SimplifyMatch<'tcx> for SimplifyToExp {
                                     && Some(s)
                                         == ScalarInt::try_from_uint(second_val, s.size())) =>
                         {
-                            CompareType::Discr(
-                                lhs_f,
-                                f_c.const_.ty(),
-                                f_c.const_.ty().is_signed() || discr_ty.is_signed(),
-                            )
+                            CompareType::Discr {
+                                place: lhs_f,
+                                ty: f_c.const_.ty(),
+                                is_signed: f_c.const_.ty().is_signed() || discr_ty.is_signed(),
+                            }
                         }
                         _ => {
                             return false;
@@ -436,7 +439,7 @@ impl<'tcx> SimplifyMatch<'tcx> for SimplifyToExp {
                         && s_c.const_.ty() == f_ty
                         && s_c.const_.try_eval_scalar_int(tcx, param_env) == Some(val) => {}
                     (
-                        CompareType::Discr(lhs_f, f_ty, is_signed),
+                        CompareType::Discr { place: lhs_f, ty: f_ty, is_signed },
                         StatementKind::Assign(box (lhs_s, Rvalue::Use(Operand::Constant(s_c)))),
                     ) if lhs_f == lhs_s && s_c.const_.ty() == f_ty => {
                         let Some(f) = s_c.const_.try_eval_scalar_int(tcx, param_env) else {
