@@ -8,12 +8,10 @@ use crate::core::builder::{
     self, crate_description, Alias, Builder, Kind, RunConfig, ShouldRun, Step,
 };
 use crate::core::config::TargetSelection;
-use crate::utils::cache::Interned;
-use crate::INTERNER;
 use crate::{Compiler, Mode, Subcommand};
 use std::path::{Path, PathBuf};
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Std {
     pub target: TargetSelection,
     /// Whether to build only a subset of crates.
@@ -21,7 +19,7 @@ pub struct Std {
     /// This shouldn't be used from other steps; see the comment on [`compile::Rustc`].
     ///
     /// [`compile::Rustc`]: crate::core::build_steps::compile::Rustc
-    crates: Interned<Vec<String>>,
+    crates: Vec<String>,
 }
 
 /// Returns args for the subcommand itself (not for cargo)
@@ -89,7 +87,7 @@ fn cargo_subcommand(kind: Kind) -> &'static str {
 
 impl Std {
     pub fn new(target: TargetSelection) -> Self {
-        Self { target, crates: INTERNER.intern_list(vec![]) }
+        Self { target, crates: vec![] }
     }
 }
 
@@ -204,7 +202,7 @@ impl Step for Std {
     }
 }
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Rustc {
     pub target: TargetSelection,
     /// Whether to build only a subset of crates.
@@ -212,7 +210,7 @@ pub struct Rustc {
     /// This shouldn't be used from other steps; see the comment on [`compile::Rustc`].
     ///
     /// [`compile::Rustc`]: crate::core::build_steps::compile::Rustc
-    crates: Interned<Vec<String>>,
+    crates: Vec<String>,
 }
 
 impl Rustc {
@@ -222,7 +220,7 @@ impl Rustc {
             .into_iter()
             .map(|krate| krate.name.to_string())
             .collect();
-        Self { target, crates: INTERNER.intern_list(crates) }
+        Self { target, crates }
     }
 }
 
@@ -305,10 +303,10 @@ impl Step for Rustc {
     }
 }
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct CodegenBackend {
     pub target: TargetSelection,
-    pub backend: Interned<String>,
+    pub backend: &'static str,
 }
 
 impl Step for CodegenBackend {
@@ -321,14 +319,14 @@ impl Step for CodegenBackend {
     }
 
     fn make_run(run: RunConfig<'_>) {
-        for &backend in &[INTERNER.intern_str("cranelift"), INTERNER.intern_str("gcc")] {
+        for &backend in &["cranelift", "gcc"] {
             run.builder.ensure(CodegenBackend { target: run.target, backend });
         }
     }
 
     fn run(self, builder: &Builder<'_>) {
         // FIXME: remove once https://github.com/rust-lang/rust/issues/112393 is resolved
-        if builder.build.config.vendor && &self.backend == "gcc" {
+        if builder.build.config.vendor && self.backend == "gcc" {
             println!("Skipping checking of `rustc_codegen_gcc` with vendoring enabled.");
             return;
         }
@@ -552,7 +550,7 @@ fn codegen_backend_stamp(
     builder: &Builder<'_>,
     compiler: Compiler,
     target: TargetSelection,
-    backend: Interned<String>,
+    backend: &str,
 ) -> PathBuf {
     builder
         .cargo_out(compiler, Mode::Codegen, target)
