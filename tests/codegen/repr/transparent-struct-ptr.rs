@@ -1,23 +1,36 @@
-//@ revisions: x32 x64 sparc sparc64
+//@ revisions: i686-linux i686-freebsd x64-linux x64-apple wasm32
 //@ compile-flags: -O -C no-prepopulate-passes
-//
-//@[x32] only-x86
-//@[x64] only-x86_64
-//@[sparc] only-sparc
-//@[sparc64] only-sparc64
-//@ ignore-windows
+
+//@[i686-linux] compile-flags: --target i686-unknown-linux-gnu
+//@[i686-linux] needs-llvm-components: x86
+//@[i686-freebsd] compile-flags: --target i686-unknown-freebsd
+//@[i686-freebsd] needs-llvm-components: x86
+//@[x64-linux] compile-flags: --target x86_64-unknown-linux-gnu
+//@[x64-linux] needs-llvm-components: x86
+//@[x64-apple] compile-flags: --target x86_64-apple-darwin
+//@[x64-apple] needs-llvm-components: x86
+//@[wasm32] compile-flags: --target wasm32-wasi
+//@[wasm32] needs-llvm-components: webassembly
+
 // See ./transparent.rs
 // Some platforms pass large aggregates using immediate arrays in LLVMIR
 // Other platforms pass large aggregates using struct pointer in LLVMIR
 // This covers the "struct pointer" case.
 
+#![feature(no_core, lang_items, transparent_unions)]
+#![crate_type = "lib"]
+#![no_std]
+#![no_core]
 
-#![feature(transparent_unions)]
+#[lang="sized"] trait Sized { }
+#[lang="freeze"] trait Freeze { }
+#[lang="copy"] trait Copy { }
 
-#![crate_type="lib"]
+impl Copy for [u32; 16] {}
+impl Copy for BigS {}
+impl Copy for BigU {}
 
 
-#[derive(Clone, Copy)]
 #[repr(C)]
 pub struct BigS([u32; 16]);
 
@@ -51,7 +64,6 @@ pub extern "C" fn test_TuBigS(_: TuBigS) -> TuBigS { loop {} }
 pub extern "C" fn test_TeBigS(_: TeBigS) -> TeBigS { loop {} }
 
 
-#[derive(Clone, Copy)]
 #[repr(C)]
 pub union BigU {
     foo: [u32; 16],
