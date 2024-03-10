@@ -156,13 +156,13 @@ fn sigpipe(tcx: TyCtxt<'_>, def_id: DefId) -> u8 {
             (Some(sym::inherit), None) => sigpipe::INHERIT,
             (Some(sym::sig_ign), None) => sigpipe::SIG_IGN,
             (Some(sym::sig_dfl), None) => sigpipe::SIG_DFL,
-            (_, Some(_)) => {
-                // Keep going so that `fn emit_malformed_attribute()` can print
-                // an excellent error message
+            (Some(_), None) => {
+                tcx.dcx().emit_err(UnixSigpipeValues { span: attr.span });
                 sigpipe::DEFAULT
             }
             _ => {
-                tcx.dcx().emit_err(UnixSigpipeValues { span: attr.span });
+                // Keep going so that `fn emit_malformed_attribute()` can print
+                // an excellent error message
                 sigpipe::DEFAULT
             }
         }
