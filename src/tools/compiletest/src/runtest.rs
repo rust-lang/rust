@@ -83,10 +83,10 @@ fn disable_error_reporting<F: FnOnce() -> R, R>(f: F) -> R {
 
 /// The platform-specific library name
 fn get_lib_name(lib: &str, dylib: bool) -> String {
-    // In some casess (e.g. MUSL), we build a static
+    // In some cases (e.g. MUSL), we build a static
     // library, rather than a dynamic library.
     // In this case, the only path we can pass
-    // with '--extern-meta' is the '.lib' file
+    // with '--extern-meta' is the '.rlib' file
     if !dylib {
         return format!("lib{}.rlib", lib);
     }
