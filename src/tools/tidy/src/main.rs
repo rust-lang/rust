@@ -102,7 +102,7 @@ fn main() {
         check!(tests_placement, &root_path);
         check!(tests_revision_unpaired_stdout_stderr, &tests_path);
         check!(debug_artifacts, &tests_path);
-        check!(ui_tests, &tests_path, bless);
+        check!(ui_tests, &root_path, bless);
         check!(mir_opt_tests, &tests_path, bless);
         check!(rustdoc_gui_tests, &tests_path);
         check!(rustdoc_css_themes, &librustdoc_path);

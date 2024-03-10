@@ -20,11 +20,9 @@ use crate::os::unix::fs::symlink as symlink_dir;
 #[cfg(unix)]
 use crate::os::unix::fs::symlink as symlink_file;
 #[cfg(unix)]
-use crate::os::unix::fs::symlink as symlink_junction;
+use crate::os::unix::fs::symlink as junction_point;
 #[cfg(windows)]
-use crate::os::windows::fs::{symlink_dir, symlink_file, OpenOptionsExt};
-#[cfg(windows)]
-use crate::sys::fs::symlink_junction;
+use crate::os::windows::fs::{junction_point, symlink_dir, symlink_file, OpenOptionsExt};
 #[cfg(target_os = "macos")]
 use crate::sys::weak::weak;
 
@@ -598,7 +596,7 @@ fn recursive_rmdir() {
     check!(fs::create_dir_all(&dtt));
     check!(fs::create_dir_all(&d2));
     check!(check!(File::create(&canary)).write(b"foo"));
-    check!(symlink_junction(&d2, &dt.join("d2")));
+    check!(junction_point(&d2, &dt.join("d2")));
     let _ = symlink_file(&canary, &d1.join("canary"));
     check!(fs::remove_dir_all(&d1));
 
@@ -615,7 +613,7 @@ fn recursive_rmdir_of_symlink() {
     let canary = dir.join("do_not_delete");
     check!(fs::create_dir_all(&dir));
     check!(check!(File::create(&canary)).write(b"foo"));
-    check!(symlink_junction(&dir, &link));
+    check!(junction_point(&dir, &link));
     check!(fs::remove_dir_all(&link));
 
     assert!(!link.is_dir());
@@ -1403,7 +1401,7 @@ fn create_dir_all_with_junctions() {
 
     fs::create_dir(&target).unwrap();
 
-    check!(symlink_junction(&target, &junction));
+    check!(junction_point(&target, &junction));
     check!(fs::create_dir_all(&b));
     // the junction itself is not a directory, but `is_dir()` on a Path
     // follows links

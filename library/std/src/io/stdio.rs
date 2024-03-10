@@ -453,6 +453,32 @@ impl Read for Stdin {
     }
 }
 
+#[stable(feature = "read_shared_stdin", since = "CURRENT_RUSTC_VERSION")]
+impl Read for &Stdin {
+    fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
+        self.lock().read(buf)
+    }
+    fn read_buf(&mut self, buf: BorrowedCursor<'_>) -> io::Result<()> {
+        self.lock().read_buf(buf)
+    }
+    fn read_vectored(&mut self, bufs: &mut [IoSliceMut<'_>]) -> io::Result<usize> {
+        self.lock().read_vectored(bufs)
+    }
+    #[inline]
+    fn is_read_vectored(&self) -> bool {
+        self.lock().is_read_vectored()
+    }
+    fn read_to_end(&mut self, buf: &mut Vec<u8>) -> io::Result<usize> {
+        self.lock().read_to_end(buf)
+    }
+    fn read_to_string(&mut self, buf: &mut String) -> io::Result<usize> {
+        self.lock().read_to_string(buf)
+    }
+    fn read_exact(&mut self, buf: &mut [u8]) -> io::Result<()> {
+        self.lock().read_exact(buf)
+    }
+}
+
 // only used by platform-dependent io::copy specializations, i.e. unused on some platforms
 #[cfg(any(target_os = "linux", target_os = "android"))]
 impl StdinLock<'_> {

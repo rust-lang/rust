@@ -29,5 +29,5 @@ rustc = [
 
 [dev-dependencies]
 # tidy-alphabetical-start
-itertools = "0.11"
+itertools = "0.12"
 # tidy-alphabetical-end

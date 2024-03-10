@@ -2008,13 +2008,10 @@ impl<'tcx> Ty<'tcx> {
                     // Single-argument Box is always global. (for "minicore" tests)
                     return true;
                 };
-                if let Some(alloc_adt) = alloc.expect_ty().ty_adt_def() {
+                alloc.expect_ty().ty_adt_def().is_some_and(|alloc_adt| {
                     let global_alloc = tcx.require_lang_item(LangItem::GlobalAlloc, None);
                     alloc_adt.did() == global_alloc
-                } else {
-                    // Allocator is not an ADT...
-                    false
-                }
+                })
             }
             _ => false,
         }

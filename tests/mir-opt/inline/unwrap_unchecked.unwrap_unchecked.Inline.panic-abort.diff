@@ -37,7 +37,7 @@
 + 
 +     bb2: {
 +         StorageLive(_4);
-+         _4 = cfg!(debug_assertions);
++         _4 = UbCheck(LanguageUb);
 +         assume(_4);
 +         _5 = unreachable_unchecked::precondition_check() -> [return: bb1, unwind unreachable];
 +     }

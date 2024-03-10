@@ -83,6 +83,18 @@ impl From<alloc::ffi::NulError> for Error {
     }
 }
 
+#[stable(feature = "io_error_from_try_reserve", since = "CURRENT_RUSTC_VERSION")]
+impl From<alloc::collections::TryReserveError> for Error {
+    /// Converts `TryReserveError` to an error with [`ErrorKind::OutOfMemory`].
+    ///
+    /// `TryReserveError` won't be available as the error `source()`,
+    /// but this may change in the future.
+    fn from(_: alloc::collections::TryReserveError) -> Error {
+        // ErrorData::Custom allocates, which isn't great for handling OOM errors.
+        ErrorKind::OutOfMemory.into()
+    }
+}
+
 // Only derive debug in tests, to make sure it
 // doesn't accidentally get printed.
 #[cfg_attr(test, derive(Debug))]

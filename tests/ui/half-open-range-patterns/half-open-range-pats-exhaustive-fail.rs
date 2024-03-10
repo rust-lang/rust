@@ -1,6 +1,7 @@
 // Test various non-exhaustive matches for `X..`, `..=X` and `..X` ranges.
 
 #![feature(exclusive_range_pattern)]
+#![allow(non_contiguous_range_endpoints)]
 
 fn main() {}
 

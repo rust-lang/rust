@@ -7,6 +7,7 @@ use rustc_middle::ty::GenericArgsRef;
 use rustc_middle::ty::{self, Instance, TyCtxt, TypeVisitableExt};
 use rustc_span::sym;
 use rustc_trait_selection::traits;
+use rustc_type_ir::ClosureKind;
 use traits::{translate_args, Reveal};
 
 use crate::errors::UnexpectedFnPtrAssociatedItem;
@@ -296,23 +297,25 @@ fn resolve_associated_item<'tcx>(
             {
                 match *rcvr_args.type_at(0).kind() {
                     ty::CoroutineClosure(coroutine_closure_def_id, args) => {
-                        // If we're computing `AsyncFnOnce`/`AsyncFnMut` for a by-ref closure,
-                        // or `AsyncFnOnce` for a by-mut closure, then construct a new body that
-                        // has the right return types.
-                        //
-                        // Specifically, `AsyncFnMut` for a by-ref coroutine-closure just needs
-                        // to have its input and output types fixed (`&mut self` and returning
-                        // `i16` coroutine kind).
-                        if target_kind > args.as_coroutine_closure().kind() {
-                            Some(Instance {
-                                def: ty::InstanceDef::ConstructCoroutineInClosureShim {
-                                    coroutine_closure_def_id,
-                                    target_kind,
-                                },
-                                args,
-                            })
-                        } else {
-                            Some(Instance::new(coroutine_closure_def_id, args))
+                        match (target_kind, args.as_coroutine_closure().kind()) {
+                            (ClosureKind::FnOnce | ClosureKind::FnMut, ClosureKind::Fn)
+                            | (ClosureKind::FnOnce, ClosureKind::FnMut) => {
+                                // If we're computing `AsyncFnOnce`/`AsyncFnMut` for a by-ref closure,
+                                // or `AsyncFnOnce` for a by-mut closure, then construct a new body that
+                                // has the right return types.
+                                //
+                                // Specifically, `AsyncFnMut` for a by-ref coroutine-closure just needs
+                                // to have its input and output types fixed (`&mut self` and returning
+                                // `i16` coroutine kind).
+                                Some(Instance {
+                                    def: ty::InstanceDef::ConstructCoroutineInClosureShim {
+                                        coroutine_closure_def_id,
+                                        target_kind,
+                                    },
+                                    args,
+                                })
+                            }
+                            _ => Some(Instance::new(coroutine_closure_def_id, args)),
                         }
                     }
                     ty::Closure(closure_def_id, args) => {

@@ -58,7 +58,15 @@ error: unconstrained generic constant `{const expr}`
 LL |     foo::<_, L>([(); L + 1 + L]);
    |     ^^^^^^^^^^^
 
-error: aborting due to 5 previous errors
+error: unconstrained generic constant `{const expr}`
+  --> $DIR/issue_114151.rs:17:5
+   |
+LL |     foo::<_, L>([(); L + 1 + L]);
+   |     ^^^^^^^^^^^
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error: aborting due to 6 previous errors
 
 Some errors have detailed explanations: E0107, E0308.
 For more information about an error, try `rustc --explain E0107`.

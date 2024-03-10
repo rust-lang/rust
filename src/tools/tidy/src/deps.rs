@@ -209,7 +209,6 @@ const PERMITTED_RUSTC_DEPENDENCIES: &[&str] = &[
     "cc",
     "cfg-if",
     "compiler_builtins",
-    "convert_case", // dependency of derive_more
     "cpufeatures",
     "crc32fast",
     "crossbeam-channel",

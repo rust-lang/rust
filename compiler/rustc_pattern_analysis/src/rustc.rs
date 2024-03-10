@@ -8,7 +8,7 @@ use rustc_index::{Idx, IndexVec};
 use rustc_middle::middle::stability::EvalResult;
 use rustc_middle::mir::interpret::Scalar;
 use rustc_middle::mir::{self, Const};
-use rustc_middle::thir::{FieldPat, Pat, PatKind, PatRange, PatRangeBoundary};
+use rustc_middle::thir::{self, FieldPat, Pat, PatKind, PatRange, PatRangeBoundary};
 use rustc_middle::ty::layout::IntegerExt;
 use rustc_middle::ty::{self, FieldDef, OpaqueTypeKey, Ty, TyCtxt, TypeVisitableExt, VariantDef};
 use rustc_session::lint;
@@ -718,12 +718,12 @@ impl<'p, 'tcx: 'p> RustcMatchCheckCtxt<'p, 'tcx> {
                 let value = mir::Const::from_ty_const(c, cx.tcx);
                 lo = PatRangeBoundary::Finite(value);
             }
-            let hi = if matches!(range.hi, Finite(0)) {
+            let hi = if let Some(hi) = range.hi.minus_one() {
+                hi
+            } else {
                 // The range encodes `..ty::MIN`, so we can't convert it to an inclusive range.
                 end = rustc_hir::RangeEnd::Excluded;
                 range.hi
-            } else {
-                range.hi.minus_one()
             };
             let hi = cx.hoist_pat_range_bdy(hi, ty);
             PatKind::Range(Box::new(PatRange { lo, hi, end, ty: ty.inner() }))
@@ -899,6 +899,70 @@ impl<'p, 'tcx: 'p> TypeCx for RustcMatchCheckCtxt<'p, 'tcx> {
     fn complexity_exceeded(&self) -> Result<(), Self::Error> {
         let span = self.whole_match_span.unwrap_or(self.scrut_span);
         Err(self.tcx.dcx().span_err(span, "reached pattern complexity limit"))
+    }
+
+    fn lint_non_contiguous_range_endpoints(
+        &self,
+        pat: &crate::pat::DeconstructedPat<Self>,
+        gap: IntRange,
+        gapped_with: &[&crate::pat::DeconstructedPat<Self>],
+    ) {
+        let Some(&thir_pat) = pat.data() else { return };
+        let thir::PatKind::Range(range) = &thir_pat.kind else { return };
+        // Only lint when the left range is an exclusive range.
+        if range.end != rustc_hir::RangeEnd::Excluded {
+            return;
+        }
+        // `pat` is an exclusive range like `lo..gap`. `gapped_with` contains ranges that start with
+        // `gap+1`.
+        let suggested_range: thir::Pat<'_> = {
+            // Suggest `lo..=gap` instead.
+            let mut suggested_range = thir_pat.clone();
+            let thir::PatKind::Range(range) = &mut suggested_range.kind else { unreachable!() };
+            range.end = rustc_hir::RangeEnd::Included;
+            suggested_range
+        };
+        let gap_as_pat = self.hoist_pat_range(&gap, *pat.ty());
+        if gapped_with.is_empty() {
+            // If `gapped_with` is empty, `gap == T::MAX`.
+            self.tcx.emit_node_span_lint(
+                lint::builtin::NON_CONTIGUOUS_RANGE_ENDPOINTS,
+                self.match_lint_level,
+                thir_pat.span,
+                errors::ExclusiveRangeMissingMax {
+                    // Point at this range.
+                    first_range: thir_pat.span,
+                    // That's the gap that isn't covered.
+                    max: gap_as_pat.clone(),
+                    // Suggest `lo..=max` instead.
+                    suggestion: suggested_range.to_string(),
+                },
+            );
+        } else {
+            self.tcx.emit_node_span_lint(
+                lint::builtin::NON_CONTIGUOUS_RANGE_ENDPOINTS,
+                self.match_lint_level,
+                thir_pat.span,
+                errors::ExclusiveRangeMissingGap {
+                    // Point at this range.
+                    first_range: thir_pat.span,
+                    // That's the gap that isn't covered.
+                    gap: gap_as_pat.clone(),
+                    // Suggest `lo..=gap` instead.
+                    suggestion: suggested_range.to_string(),
+                    // All these ranges skipped over `gap` which we think is probably a
+                    // mistake.
+                    gap_with: gapped_with
+                        .iter()
+                        .map(|pat| errors::GappedRange {
+                            span: pat.data().unwrap().span,
+                            gap: gap_as_pat.clone(),
+                            first_range: thir_pat.clone(),
+                        })
+                        .collect(),
+                },
+            );
+        }
     }
 }
 
