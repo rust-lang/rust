@@ -398,6 +398,8 @@ impl ConfigInfo {
             .display()
             .to_string();
         if let Some(backend) = &self.backend {
+            // This option is only used in the rust compiler testsuite. The sysroot is handled
+            // by its build system directly so no need to set it ourselves.
             rustflags.push(format!("-Zcodegen-backend={}", backend));
         } else {
             rustflags.extend_from_slice(&[
