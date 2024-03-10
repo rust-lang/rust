@@ -51,7 +51,7 @@ mod imp {
     #[cfg(all(target_os = "linux", target_env = "gnu"))]
     use libc::{mmap64, munmap};
     use libc::{sigaction, sighandler_t, SA_ONSTACK, SA_SIGINFO, SIGBUS, SIG_DFL};
-    use libc::{sigaltstack, SIGSTKSZ, SS_DISABLE};
+    use libc::{sigaltstack, SS_DISABLE};
     use libc::{MAP_ANON, MAP_PRIVATE, PROT_NONE, PROT_READ, PROT_WRITE, SIGSEGV};
 
     use crate::sync::atomic::{AtomicBool, AtomicPtr, Ordering};
@@ -130,7 +130,7 @@ mod imp {
         drop_handler(MAIN_ALTSTACK.load(Ordering::Relaxed));
     }
 
-    unsafe fn get_stackp() -> *mut libc::c_void {
+    unsafe fn get_stack() -> libc::stack_t {
         // OpenBSD requires this flag for stack mapping
         // otherwise the said mapping will fail as a no-op on most systems
         // and has a different meaning on FreeBSD
@@ -148,20 +148,28 @@ mod imp {
             target_os = "dragonfly",
         )))]
         let flags = MAP_PRIVATE | MAP_ANON;
-        let stackp =
-            mmap64(ptr::null_mut(), SIGSTKSZ + page_size(), PROT_READ | PROT_WRITE, flags, -1, 0);
+
+        let sigstack_size = sigstack_size();
+        let page_size = page_size();
+
+        let stackp = mmap64(
+            ptr::null_mut(),
+            sigstack_size + page_size,
+            PROT_READ | PROT_WRITE,
+            flags,
+            -1,
+            0,
+        );
         if stackp == MAP_FAILED {
             panic!("failed to allocate an alternative stack: {}", io::Error::last_os_error());
         }
-        let guard_result = libc::mprotect(stackp, page_size(), PROT_NONE);
+        let guard_result = libc::mprotect(stackp, page_size, PROT_NONE);
         if guard_result != 0 {
             panic!("failed to set up alternative stack guard page: {}", io::Error::last_os_error());
         }
-        stackp.add(page_size())
-    }
+        let stackp = stackp.add(page_size);
 
-    unsafe fn get_stack() -> libc::stack_t {
-        libc::stack_t { ss_sp: get_stackp(), ss_flags: 0, ss_size: SIGSTKSZ }
+        libc::stack_t { ss_sp: stackp, ss_flags: 0, ss_size: sigstack_size }
     }
 
     pub unsafe fn make_handler() -> Handler {
@@ -182,6 +190,8 @@ mod imp {
 
     pub unsafe fn drop_handler(data: *mut libc::c_void) {
         if !data.is_null() {
+            let sigstack_size = sigstack_size();
+            let page_size = page_size();
             let stack = libc::stack_t {
                 ss_sp: ptr::null_mut(),
                 ss_flags: SS_DISABLE,
@@ -189,13 +199,31 @@ mod imp {
                 // UNIX2003 which returns ENOMEM when disabling a stack while
                 // passing ss_size smaller than MINSIGSTKSZ. According to POSIX
                 // both ss_sp and ss_size should be ignored in this case.
-                ss_size: SIGSTKSZ,
+                ss_size: sigstack_size,
             };
             sigaltstack(&stack, ptr::null_mut());
             // We know from `get_stackp` that the alternate stack we installed is part of a mapping
             // that started one page earlier, so walk back a page and unmap from there.
-            munmap(data.sub(page_size()), SIGSTKSZ + page_size());
+            munmap(data.sub(page_size), sigstack_size + page_size);
         }
+    }
+
+    /// Modern kernels on modern hardware can have dynamic signal stack sizes.
+    #[cfg(any(target_os = "linux", target_os = "android"))]
+    fn sigstack_size() -> usize {
+        // FIXME: reuse const from libc when available?
+        const AT_MINSIGSTKSZ: crate::ffi::c_ulong = 51;
+        let dynamic_sigstksz = unsafe { libc::getauxval(AT_MINSIGSTKSZ) };
+        // If getauxval couldn't find the entry, it returns 0,
+        // so take the higher of the "constant" and auxval.
+        // This transparently supports older kernels which don't provide AT_MINSIGSTKSZ
+        libc::SIGSTKSZ.max(dynamic_sigstksz as _)
+    }
+
+    /// Not all OS support hardware where this is needed.
+    #[cfg(not(any(target_os = "linux", target_os = "android")))]
+    fn sigstack_size() -> usize {
+        libc::SIGSTKSZ
     }
 }
 
