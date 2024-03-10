@@ -40,7 +40,7 @@ fn checked_shl(_1: u32, _2: u32) -> Option<u32> {
         _3 = BitAnd(_2, const 31_u32);
         _4 = ShlUnchecked(_1, _3);
         StorageDead(_3);
-        _5 = Ge(_2, const _);
+        _5 = Ge(_2, const core::num::<impl u32>::BITS);
         StorageLive(_6);
         _6 = unlikely(move _5) -> [return: bb1, unwind unreachable];
     }

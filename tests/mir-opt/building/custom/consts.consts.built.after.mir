@@ -10,9 +10,9 @@ fn consts() -> () {
 
     bb0: {
         _1 = const 5_u8;
-        _2 = const _;
+        _2 = const consts::<C>::{constant#0};
         _3 = const C;
-        _4 = const _;
+        _4 = const D;
         _5 = consts::<10>;
         return;
     }

@@ -25,7 +25,7 @@
 +         StorageLive(_4);
 +         StorageLive(_5);
 +         nop;
-          _1 = const _;
+          _1 = const constant::U;
 +         _4 = move (_1.0: usize);
 +         _5 = move (_1.1: u8);
           StorageLive(_2);

@@ -129,7 +129,7 @@ fn main() -> () {
         _20 = &_21;
         StorageLive(_22);
         StorageLive(_23);
-        _28 = const _;
+        _28 = const main::promoted[0];
         Retag(_28);
         _23 = &(*_28);
         _22 = &(*_23);

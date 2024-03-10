@@ -41,7 +41,7 @@
           StorageLive(_5);
           StorageLive(_6);
           StorageLive(_7);
-          _19 = const _;
+          _19 = const discriminant::<T>::promoted[2];
           _7 = &(*_19);
           _6 = &(*_7);
 -         _5 = discriminant_value::<i32>(move _6) -> [return: bb2, unwind unreachable];
@@ -56,7 +56,7 @@
           StorageLive(_9);
           StorageLive(_10);
           StorageLive(_11);
-          _18 = const _;
+          _18 = const discriminant::<T>::promoted[1];
           _11 = &(*_18);
           _10 = &(*_11);
 -         _9 = discriminant_value::<()>(move _10) -> [return: bb3, unwind unreachable];
@@ -71,7 +71,7 @@
           StorageLive(_13);
           StorageLive(_14);
           StorageLive(_15);
-          _17 = const _;
+          _17 = const discriminant::<T>::promoted[0];
           _15 = &(*_17);
           _14 = &(*_15);
 -         _13 = discriminant_value::<E>(move _14) -> [return: bb4, unwind unreachable];

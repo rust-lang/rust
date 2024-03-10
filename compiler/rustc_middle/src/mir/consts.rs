@@ -7,6 +7,7 @@ use rustc_target::abi::{HasDataLayout, Size};
 
 use crate::mir::interpret::{alloc_range, AllocId, ConstAllocation, ErrorHandled, Scalar};
 use crate::mir::{pretty_print_const_value, Promoted};
+use crate::ty::print::with_no_trimmed_paths;
 use crate::ty::GenericArgsRef;
 use crate::ty::ScalarInt;
 use crate::ty::{self, print::pretty_print_const, Ty, TyCtxt};
@@ -489,9 +490,18 @@ impl<'tcx> Display for Const<'tcx> {
             Const::Ty(c) => pretty_print_const(c, fmt, true),
             Const::Val(val, ty) => pretty_print_const_value(val, ty, fmt),
             // FIXME(valtrees): Correctly print mir constants.
-            Const::Unevaluated(..) => {
-                fmt.write_str("_")?;
-                Ok(())
+            Const::Unevaluated(c, _ty) => {
+                ty::tls::with(move |tcx| {
+                    let c = tcx.lift(c).unwrap();
+                    // Matches `GlobalId` printing.
+                    let instance =
+                        with_no_trimmed_paths!(tcx.def_path_str_with_args(c.def, c.args));
+                    write!(fmt, "{instance}")?;
+                    if let Some(promoted) = c.promoted {
+                        write!(fmt, "::{promoted:?}")?;
+                    }
+                    Ok(())
+                })
             }
         }
     }

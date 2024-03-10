@@ -17,7 +17,7 @@
       bb0: {
           StorageLive(_2);
           StorageLive(_3);
-          _5 = const _;
+          _5 = const f::promoted[0];
           _3 = &(*_5);
           _2 = ((*_3).1: E);
           StorageLive(_1);
