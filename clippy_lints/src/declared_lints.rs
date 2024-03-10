@@ -310,6 +310,7 @@ pub(crate) static LINTS: &[&crate::LintInfo] = &[
     crate::manual_slice_size_calculation::MANUAL_SLICE_SIZE_CALCULATION_INFO,
     crate::manual_string_new::MANUAL_STRING_NEW_INFO,
     crate::manual_strip::MANUAL_STRIP_INFO,
+    crate::manual_unwrap_or_default::MANUAL_UNWRAP_OR_DEFAULT_INFO,
     crate::map_unit_fn::OPTION_MAP_UNIT_FN_INFO,
     crate::map_unit_fn::RESULT_MAP_UNIT_FN_INFO,
     crate::match_result_ok::MATCH_RESULT_OK_INFO,
