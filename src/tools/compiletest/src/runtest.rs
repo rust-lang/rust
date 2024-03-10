@@ -82,21 +82,22 @@ fn disable_error_reporting<F: FnOnce() -> R, R>(f: F) -> R {
 }
 
 /// The platform-specific library name
-fn get_lib_name(lib: &str, dylib: bool) -> String {
-    // In some cases (e.g. MUSL), we build a static
-    // library, rather than a dynamic library.
-    // In this case, the only path we can pass
-    // with '--extern-meta' is the '.rlib' file
-    if !dylib {
-        return format!("lib{}.rlib", lib);
-    }
-
-    if cfg!(windows) {
-        format!("{}.dll", lib)
-    } else if cfg!(target_os = "macos") {
-        format!("lib{}.dylib", lib)
-    } else {
-        format!("lib{}.so", lib)
+fn get_lib_name(lib: &str, aux_type: AuxType) -> String {
+    match aux_type {
+        // In some cases (e.g. MUSL), we build a static
+        // library, rather than a dynamic library.
+        // In this case, the only path we can pass
+        // with '--extern-meta' is the '.rlib' file
+        AuxType::Lib => format!("lib{}.rlib", lib),
+        AuxType::Dylib => {
+            if cfg!(windows) {
+                format!("{}.dll", lib)
+            } else if cfg!(target_os = "macos") {
+                format!("lib{}.dylib", lib)
+            } else {
+                format!("lib{}.so", lib)
+            }
+        }
     }
 }
 
@@ -2107,9 +2108,9 @@ impl<'test> TestCx<'test> {
         }
 
         for (aux_name, aux_path) in &self.props.aux_crates {
-            let is_dylib = self.build_auxiliary(of, &aux_path, &aux_dir);
+            let aux_type = self.build_auxiliary(of, &aux_path, &aux_dir);
             let lib_name =
-                get_lib_name(&aux_path.trim_end_matches(".rs").replace('-', "_"), is_dylib);
+                get_lib_name(&aux_path.trim_end_matches(".rs").replace('-', "_"), aux_type);
             rustc.arg("--extern").arg(format!("{}={}/{}", aux_name, aux_dir.display(), lib_name));
         }
     }
@@ -2131,7 +2132,7 @@ impl<'test> TestCx<'test> {
     /// Builds an aux dependency.
     ///
     /// Returns whether or not it is a dylib.
-    fn build_auxiliary(&self, of: &TestPaths, source_path: &str, aux_dir: &Path) -> bool {
+    fn build_auxiliary(&self, of: &TestPaths, source_path: &str, aux_dir: &Path) -> AuxType {
         let aux_testpaths = self.compute_aux_test_paths(of, source_path);
         let aux_props = self.props.from_aux_file(&aux_testpaths.file, self.revision, self.config);
         let aux_output = TargetLocation::ThisDirectory(aux_dir.to_path_buf());
@@ -2159,8 +2160,8 @@ impl<'test> TestCx<'test> {
         }
         aux_rustc.envs(aux_props.rustc_env.clone());
 
-        let (dylib, crate_type) = if aux_props.no_prefer_dynamic {
-            (true, None)
+        let (aux_type, crate_type) = if aux_props.no_prefer_dynamic {
+            (AuxType::Dylib, None)
         } else if self.config.target.contains("emscripten")
             || (self.config.target.contains("musl")
                 && !aux_props.force_host
@@ -2185,9 +2186,9 @@ impl<'test> TestCx<'test> {
             // Coverage tests want static linking by default so that coverage
             // mappings in auxiliary libraries can be merged into the final
             // executable.
-            (false, Some("lib"))
+            (AuxType::Lib, Some("lib"))
         } else {
-            (true, Some("dylib"))
+            (AuxType::Dylib, Some("dylib"))
         };
 
         if let Some(crate_type) = crate_type {
@@ -2211,7 +2212,7 @@ impl<'test> TestCx<'test> {
                 &auxres,
             );
         }
-        dylib
+        aux_type
     }
 
     fn read2_abbreviated(&self, child: Child) -> (Output, Truncated) {
@@ -4825,4 +4826,9 @@ enum AllowUnused {
 enum LinkToAux {
     Yes,
     No,
+}
+
+enum AuxType {
+    Lib,
+    Dylib,
 }
