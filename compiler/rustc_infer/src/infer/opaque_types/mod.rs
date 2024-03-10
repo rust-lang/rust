@@ -610,6 +610,15 @@ impl<'tcx> InferCtxt<'tcx> {
             ty::ClauseKind::WellFormed(hidden_ty.into()),
         ));
 
+        // This enforces the region obligations that link the bivariant
+        // lifetimes of an opaque to their invariant copies.
+        obligations.push(traits::Obligation::new(
+            tcx,
+            cause.clone(),
+            param_env,
+            ty::ClauseKind::WellFormed(Ty::new_opaque(self.tcx, def_id, args).into()),
+        ));
+
         let item_bounds = tcx.explicit_item_bounds(def_id);
         for (predicate, _) in item_bounds.iter_instantiated_copied(tcx, args) {
             let predicate = predicate.fold_with(&mut BottomUpFolder {
