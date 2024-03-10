@@ -82,7 +82,7 @@ fn disable_error_reporting<F: FnOnce() -> R, R>(f: F) -> R {
 }
 
 /// The platform-specific library name
-pub fn get_lib_name(lib: &str, dylib: bool) -> String {
+fn get_lib_name(lib: &str, dylib: bool) -> String {
     // In some casess (e.g. MUSL), we build a static
     // library, rather than a dynamic library.
     // In this case, the only path we can pass
