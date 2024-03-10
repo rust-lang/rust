@@ -23,7 +23,7 @@ fn main() {
     // CHECK: [[c]] = const 3_i32;
     let c = a + b;
 
-    // CHECK: [[d]] = const _;
+    // CHECK: [[d]] = const core::num::<impl i32>::MAX;
     let d = i32::MAX;
 
     // CHECK: assert(!const true,

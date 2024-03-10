@@ -7,7 +7,7 @@
       }
   
       bb0: {
--         _0 = const _ as char (Transmute);
+-         _0 = const core::num::<impl i32>::MAX as char (Transmute);
 +         _0 = const {transmute(0x7fffffff): char};
           return;
       }

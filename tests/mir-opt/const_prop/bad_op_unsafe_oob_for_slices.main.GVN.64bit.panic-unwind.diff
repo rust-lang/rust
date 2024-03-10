@@ -25,7 +25,7 @@
           StorageLive(_1);
           StorageLive(_2);
           StorageLive(_3);
-          _9 = const _;
+          _9 = const main::promoted[0];
           _3 = &(*_9);
           _2 = &raw const (*_3);
           _1 = move _2 as *const [i32] (PointerCoercion(Unsize));

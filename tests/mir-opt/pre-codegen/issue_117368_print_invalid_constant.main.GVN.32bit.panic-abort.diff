@@ -81,7 +81,7 @@
           StorageLive(_5);
           StorageLive(_6);
           StorageLive(_7);
-          _9 = const _;
+          _9 = const main::promoted[0];
 -         _7 = _9;
 +         _7 = const {ALLOC1<imm>: &std::alloc::Global};
           StorageLive(_8);
