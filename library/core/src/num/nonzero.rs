@@ -328,8 +328,9 @@ where
                 // SAFETY: The caller guarantees that `n` is non-zero, so this is unreachable.
                 unsafe {
                     intrinsics::assert_unsafe_precondition!(
-                      "NonZero::new_unchecked requires the argument to be non-zero",
-                      () => false,
+                        check_language_ub,
+                        "NonZero::new_unchecked requires the argument to be non-zero",
+                        () => false,
                     );
                     intrinsics::unreachable()
                 }
@@ -367,8 +368,9 @@ where
                 // SAFETY: The caller guarantees that `n` references a value that is non-zero, so this is unreachable.
                 unsafe {
                     intrinsics::assert_unsafe_precondition!(
-                      "NonZero::from_mut_unchecked requires the argument to dereference as non-zero",
-                      () => false,
+                        check_library_ub,
+                        "NonZero::from_mut_unchecked requires the argument to dereference as non-zero",
+                        () => false,
                     );
                     intrinsics::unreachable()
                 }

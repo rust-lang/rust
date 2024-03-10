@@ -1,4 +1,6 @@
 use crate::convert::{TryFrom, TryInto};
+#[cfg(debug_assertions)]
+use crate::intrinsics::assert_unsafe_precondition;
 use crate::num::NonZero;
 use crate::{cmp, fmt, hash, mem, num};
 
@@ -77,9 +79,10 @@ impl Alignment {
     #[inline]
     pub const unsafe fn new_unchecked(align: usize) -> Self {
         #[cfg(debug_assertions)]
-        crate::panic::debug_assert_nounwind!(
-            align.is_power_of_two(),
-            "Alignment::new_unchecked requires a power of two"
+        assert_unsafe_precondition!(
+            check_language_ub,
+            "Alignment::new_unchecked requires a power of two",
+            (align: usize = align) => align.is_power_of_two()
         );
 
         // SAFETY: By precondition, this must be a power of two, and

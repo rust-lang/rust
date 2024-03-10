@@ -48,7 +48,8 @@ impl<T: ?Sized> *const T {
             }
         }
 
-        #[cfg_attr(not(bootstrap), allow(unused_unsafe))] // on bootstrap bump, remove unsafe block
+        // on bootstrap bump, remove unsafe block
+        #[cfg_attr(not(bootstrap), allow(unused_unsafe))]
         // SAFETY: The two versions are equivalent at runtime.
         unsafe {
             const_eval_select((self as *const u8,), const_impl, runtime_impl)
@@ -809,18 +810,31 @@ impl<T: ?Sized> *const T {
     where
         T: Sized,
     {
-        #[cfg_attr(not(bootstrap), allow(unused_unsafe))] // on bootstrap bump, remove unsafe block
-        // SAFETY: The comparison has no side-effects, and the intrinsic
-        // does this check internally in the CTFE implementation.
-        unsafe {
-            assert_unsafe_precondition!(
-                "ptr::sub_ptr requires `self >= origin`",
-                (
-                    this: *const () = self as *const (),
-                    origin: *const () = origin as *const (),
-                ) => this >= origin
-            )
-        };
+        const fn runtime_ptr_ge(this: *const (), origin: *const ()) -> bool {
+            fn runtime(this: *const (), origin: *const ()) -> bool {
+                this >= origin
+            }
+            const fn comptime(_: *const (), _: *const ()) -> bool {
+                true
+            }
+
+            #[cfg_attr(not(bootstrap), allow(unused_unsafe))]
+            // on bootstrap bump, remove unsafe block
+            // SAFETY: This function is only used to provide the same check that the const eval
+            // interpreter does at runtime.
+            unsafe {
+                intrinsics::const_eval_select((this, origin), comptime, runtime)
+            }
+        }
+
+        assert_unsafe_precondition!(
+            check_language_ub,
+            "ptr::sub_ptr requires `self >= origin`",
+            (
+                this: *const () = self as *const (),
+                origin: *const () = origin as *const (),
+            ) => runtime_ptr_ge(this, origin)
+        );
 
         let pointee_size = mem::size_of::<T>();
         assert!(0 < pointee_size && pointee_size <= isize::MAX as usize);
