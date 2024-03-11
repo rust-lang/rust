@@ -498,8 +498,10 @@ fn write_mir_sig(tcx: TyCtxt<'_>, body: &Body<'_>, w: &mut dyn io::Write) -> io:
     match (kind, body.source.promoted) {
         (_, Some(_)) => write!(w, "const ")?, // promoteds are the closest to consts
         (DefKind::Const | DefKind::AssocConst, _) => write!(w, "const ")?,
-        (DefKind::Static { mt: hir::Mutability::Not, nested: false }, _) => write!(w, "static ")?,
-        (DefKind::Static { mt: hir::Mutability::Mut, nested: false }, _) => {
+        (DefKind::Static { mutability: hir::Mutability::Not, nested: false }, _) => {
+            write!(w, "static ")?
+        }
+        (DefKind::Static { mutability: hir::Mutability::Mut, nested: false }, _) => {
             write!(w, "static mut ")?
         }
         (_, _) if is_function => write!(w, "fn ")?,

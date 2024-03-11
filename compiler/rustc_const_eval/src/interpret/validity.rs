@@ -484,11 +484,11 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValidityVisitor<'rt, 'mir, '
                         // Return alloc mutability. For "root" statics we look at the type to account for interior
                         // mutability; for nested statics we have no type and directly use the annotated mutability.
                         match self.ecx.tcx.def_kind(did) {
-                            DefKind::Static { mt: Mutability::Mut, .. } => Mutability::Mut,
-                            DefKind::Static { mt: Mutability::Not, nested: true } => {
+                            DefKind::Static { mutability: Mutability::Mut, .. } => Mutability::Mut,
+                            DefKind::Static { mutability: Mutability::Not, nested: true } => {
                                 Mutability::Not
                             }
-                            DefKind::Static { mt: Mutability::Not, nested: false }
+                            DefKind::Static { mutability: Mutability::Not, nested: false }
                                 if !self
                                     .ecx
                                     .tcx

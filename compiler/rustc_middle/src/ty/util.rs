@@ -621,7 +621,11 @@ impl<'tcx> TyCtxt<'tcx> {
 
     #[inline]
     pub fn static_mutability(self, def_id: DefId) -> Option<hir::Mutability> {
-        if let DefKind::Static { mt, .. } = self.def_kind(def_id) { Some(mt) } else { None }
+        if let DefKind::Static { mutability, .. } = self.def_kind(def_id) {
+            Some(mutability)
+        } else {
+            None
+        }
     }
 
     /// Returns `true` if this is a `static` item with the `#[thread_local]` attribute.

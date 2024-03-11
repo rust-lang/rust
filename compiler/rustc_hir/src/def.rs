@@ -77,7 +77,7 @@ pub enum DefKind {
     ConstParam,
     Static {
         /// Whether it's a `static mut` or just a `static`.
-        mt: ast::Mutability,
+        mutability: ast::Mutability,
         /// Whether it's an anonymous static generated for nested allocations.
         nested: bool,
     },
