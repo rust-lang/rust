@@ -1774,6 +1774,21 @@ fn test() {
 }
 
 #[test]
+fn deref_into_inference_var() {
+    check_types(
+        r#"
+//- minicore:deref
+struct A<T>(T);
+impl core::ops::Deref for A<u32> {}
+impl A<i32> { fn foo(&self) {} }
+fn main() {
+    A(0).foo();
+  //^^^^^^^^^^ ()
+}
+"#,
+    );
+}
+#[test]
 fn receiver_adjustment_autoref() {
     check(
         r#"

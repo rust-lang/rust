@@ -4037,7 +4037,7 @@ impl Type {
 
         let canonical_ty =
             Canonical { value: self.ty.clone(), binders: CanonicalVarKinds::empty(Interner) };
-        method_resolution::implements_trait(&canonical_ty, db, self.env.clone(), trait_)
+        method_resolution::implements_trait(&canonical_ty, db, &self.env, trait_)
     }
 
     /// Checks that particular type `ty` implements `std::ops::FnOnce`.
@@ -4052,12 +4052,7 @@ impl Type {
 
         let canonical_ty =
             Canonical { value: self.ty.clone(), binders: CanonicalVarKinds::empty(Interner) };
-        method_resolution::implements_trait_unique(
-            &canonical_ty,
-            db,
-            self.env.clone(),
-            fnonce_trait,
-        )
+        method_resolution::implements_trait_unique(&canonical_ty, db, &self.env, fnonce_trait)
     }
 
     // FIXME: Find better API that also handles const generics

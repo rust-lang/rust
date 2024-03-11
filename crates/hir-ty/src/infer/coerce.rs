@@ -647,7 +647,7 @@ impl InferenceTable<'_> {
         let goal: InEnvironment<DomainGoal> =
             InEnvironment::new(&self.trait_env.env, coerce_unsized_tref.cast(Interner));
 
-        let canonicalized = self.canonicalize(goal);
+        let canonicalized = self.canonicalize_with_free_vars(goal);
 
         // FIXME: rustc's coerce_unsized is more specialized -- it only tries to
         // solve `CoerceUnsized` and `Unsize` goals at this point and leaves the
