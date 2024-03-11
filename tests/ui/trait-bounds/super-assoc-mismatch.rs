@@ -6,6 +6,8 @@ impl Super for () {
 }
 trait Sub: Super<Assoc = u16> {}
 
+// direct impls (no nested obligations):
+
 trait BoundOnSelf: Sub {}
 impl BoundOnSelf for () {}
 //~^ ERROR the trait bound `(): Sub` is not satisfied
@@ -25,13 +27,45 @@ impl BoundOnAssoc for () {
 trait BoundOnGat where Self::Assoc<u8>: Sub {
     type Assoc<T>;
 }
-impl BoundOnGat for u8 {
+impl BoundOnGat for () {
     type Assoc<T> = ();
     //~^ ERROR the trait bound `(): Sub` is not satisfied
 }
 
 fn trivial_bound() where (): Sub {}
 //~^ ERROR the trait bound `(): Sub` is not satisfied
+
+// blanket impls with nested obligations:
+
+struct Wrapper<T>(T);
+impl<T: Super> Super for Wrapper<T> {
+    type Assoc = T::Assoc;
+}
+impl<T: Sub> Sub for Wrapper<T> {}
+
+impl BoundOnSelf for Wrapper<()> {}
+//~^ ERROR the trait bound `(): Sub` is not satisfied
+//~| ERROR type mismatch resolving `<Wrapper<()> as Super>::Assoc == u16
+
+impl BoundOnParam<Wrapper<()>> for Wrapper<()> {}
+//~^ ERROR the trait bound `(): Sub` is not satisfied
+//~| ERROR type mismatch resolving `<Wrapper<()> as Super>::Assoc == u16
+
+impl BoundOnAssoc for Wrapper<()> {
+    type Assoc = Wrapper<()>;
+    //~^ ERROR the trait bound `(): Sub` is not satisfied
+    //~| ERROR type mismatch resolving `<Wrapper<()> as Super>::Assoc == u16
+}
+
+impl BoundOnGat for Wrapper<()> {
+    type Assoc<T> = Wrapper<()>;
+    //~^ ERROR the trait bound `(): Sub` is not satisfied
+    //~| ERROR type mismatch resolving `<Wrapper<()> as Super>::Assoc == u16
+}
+
+fn trivial_bound_wrapper() where Wrapper<()>: Sub {}
+//~^ ERROR the trait bound `(): Sub` is not satisfied
+//~| ERROR type mismatch resolving `<Wrapper<()> as Super>::Assoc == u16
 
 // The following is an edge case where the unsatisfied projection predicate
 // `<<u8 as MultiAssoc>::Assoc1<()> as SuperGeneric<u16>>::Assoc == <u8 as MultiAssoc>::Assoc2`
