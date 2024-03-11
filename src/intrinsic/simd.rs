@@ -531,7 +531,6 @@ pub fn generic_simd_intrinsic<'a, 'gcc, 'tcx>(
         let sign_shift = bx.context.new_rvalue_from_int(elem_type, elem_size as i32 - 1);
         let one = bx.context.new_rvalue_one(elem_type);
 
-        let mut shift = 0;
         for i in 0..in_len {
             let elem =
                 bx.extract_element(vector, bx.context.new_rvalue_from_int(bx.int_type, i as i32));
@@ -539,8 +538,7 @@ pub fn generic_simd_intrinsic<'a, 'gcc, 'tcx>(
             let masked = shifted & one;
             result = result
                 | (bx.context.new_cast(None, masked, result_type)
-                    << bx.context.new_rvalue_from_int(result_type, shift));
-            shift += 1;
+                    << bx.context.new_rvalue_from_int(result_type, i as i32));
         }
 
         match *ret_ty.kind() {
