@@ -30,7 +30,7 @@ extern crate rustc_span;
     any(target_os = "linux", target_os = "macos"),
     any(target_arch = "x86_64", target_arch = "x86", target_arch = "aarch64"),
 ))]
-extern crate tikv_jemalloc_sys as _;
+extern crate libmimalloc_sys as _;
 
 mod log;
 
