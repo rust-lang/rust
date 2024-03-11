@@ -141,4 +141,9 @@ pub const CONFIG_CHANGE_HISTORY: &[ChangeInfo] = &[
         severity: ChangeSeverity::Info,
         summary: "A new `boostrap-cache-path` option has been introduced which can be utilized to modify the cache path for bootstrap.",
     },
+    ChangeInfo {
+        change_id: 122108,
+        severity: ChangeSeverity::Info,
+        summary: "a new `target.*.runner` option is available to specify a wrapper executable required to run tests for a target",
+    },
 ];

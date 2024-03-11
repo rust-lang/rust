@@ -1971,6 +1971,8 @@ NOTE: if you're sure you want to do this, please open an issue as to why. In the
 
         if builder.remote_tested(target) {
             cmd.arg("--remote-test-client").arg(builder.tool_exe(Tool::RemoteTestClient));
+        } else if let Some(tool) = builder.runner(target) {
+            cmd.arg("--runner").arg(tool);
         }
 
         if suite != "mir-opt" {
@@ -2523,6 +2525,8 @@ fn prepare_cargo_test(
             format!("CARGO_TARGET_{}_RUNNER", envify(&target.triple)),
             format!("{} run 0", builder.tool_exe(Tool::RemoteTestClient).display()),
         );
+    } else if let Some(tool) = builder.runner(target) {
+        cargo.env(format!("CARGO_TARGET_{}_RUNNER", envify(&target.triple)), tool);
     }
 
     cargo

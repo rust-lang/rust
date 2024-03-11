@@ -842,6 +842,17 @@
 # See that option for more info.
 #codegen-backends = rust.codegen-backends (array)
 
+# This is a "runner" to pass to `compiletest` when executing tests. Tests will
+# execute this tool where the binary-to-test is passed as an argument. Can
+# be useful for situations such as when WebAssembly is being tested and a
+# runtime needs to be configured. This value is similar to
+# Cargo's `CARGO_$target_RUNNER` configuration.
+#
+# This configuration is a space-separated list of arguments so `foo bar` would
+# execute the program `foo` with the first argument as `bar` and the second
+# argument as the test binary.
+#runner = <none> (string)
+
 # =============================================================================
 # Distribution options
 #
