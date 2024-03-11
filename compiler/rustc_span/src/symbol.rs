@@ -864,6 +864,7 @@ symbols! {
         format_placeholder,
         format_unsafe_arg,
         freeze,
+        freeze_impls,
         freg,
         frem_algebraic,
         frem_fast,
