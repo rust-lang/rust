@@ -79,37 +79,6 @@ fn anon_const_type_of<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalDefId) -> Ty<'tcx> {
                 .expect("const parameter types cannot be generic");
         }
 
-        Node::TypeBinding(binding @ &TypeBinding { hir_id: binding_id, .. })
-            if let Node::TraitRef(trait_ref) = tcx.parent_hir_node(binding_id) =>
-        {
-            let Some(trait_def_id) = trait_ref.trait_def_id() else {
-                return Ty::new_error_with_message(
-                    tcx,
-                    tcx.def_span(def_id),
-                    "Could not find trait",
-                );
-            };
-            let assoc_items = tcx.associated_items(trait_def_id);
-            let assoc_item = assoc_items.find_by_name_and_kind(
-                tcx,
-                binding.ident,
-                ty::AssocKind::Const,
-                def_id.to_def_id(),
-            );
-            return if let Some(assoc_item) = assoc_item {
-                tcx.type_of(assoc_item.def_id)
-                    .no_bound_vars()
-                    .expect("const parameter types cannot be generic")
-            } else {
-                // FIXME(associated_const_equality): add a useful error message here.
-                Ty::new_error_with_message(
-                    tcx,
-                    tcx.def_span(def_id),
-                    "Could not find associated const on trait",
-                )
-            };
-        }
-
         // This match arm is for when the def_id appears in a GAT whose
         // path can't be resolved without typechecking e.g.
         //
