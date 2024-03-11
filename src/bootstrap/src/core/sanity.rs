@@ -15,6 +15,7 @@ use std::fs;
 use std::path::PathBuf;
 use std::process::Command;
 
+use crate::builder::Kind;
 use crate::core::config::Target;
 use crate::utils::helpers::output;
 use crate::Build;
@@ -63,6 +64,8 @@ impl Finder {
 pub fn check(build: &mut Build) {
     let mut skip_target_sanity =
         env::var_os("BOOTSTRAP_SKIP_TARGET_SANITY").is_some_and(|s| s == "1" || s == "true");
+
+    skip_target_sanity |= build.config.cmd.kind() == Kind::Check;
 
     // Skip target sanity checks when we are doing anything with mir-opt tests or Miri
     let skipped_paths = [OsStr::new("mir-opt"), OsStr::new("miri")];
@@ -169,11 +172,8 @@ than building it.
             continue;
         }
 
-        // Some environments don't want or need these tools, such as when testing Miri.
-        // FIXME: it would be better to refactor this code to split necessary setup from pure sanity
-        // checks, and have a regular flag for skipping the latter. Also see
-        // <https://github.com/rust-lang/rust/pull/103569#discussion_r1008741742>.
-        if skip_target_sanity {
+        // skip check for cross-targets
+        if skip_target_sanity && target != &build.build {
             continue;
         }
 
@@ -215,11 +215,8 @@ than building it.
             panic!("All the *-none-* and nvptx* targets are no-std targets")
         }
 
-        // Some environments don't want or need these tools, such as when testing Miri.
-        // FIXME: it would be better to refactor this code to split necessary setup from pure sanity
-        // checks, and have a regular flag for skipping the latter. Also see
-        // <https://github.com/rust-lang/rust/pull/103569#discussion_r1008741742>.
-        if skip_target_sanity {
+        // skip check for cross-targets
+        if skip_target_sanity && target != &build.build {
             continue;
         }
 

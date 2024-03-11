@@ -461,7 +461,7 @@ impl<'test> TestCx<'test> {
         }
 
         let mut new_config = self.config.clone();
-        new_config.runtool = new_config.valgrind_path.clone();
+        new_config.runner = new_config.valgrind_path.clone();
         let new_cx = TestCx { config: &new_config, ..*self };
         proc_res = new_cx.exec_compiled_test();
 
@@ -2647,7 +2647,7 @@ impl<'test> TestCx<'test> {
     fn make_run_args(&self) -> ProcArgs {
         // If we've got another tool to run under (valgrind),
         // then split apart its command
-        let mut args = self.split_maybe_args(&self.config.runtool);
+        let mut args = self.split_maybe_args(&self.config.runner);
 
         // If this is emscripten, then run tests under nodejs
         if self.config.target.contains("emscripten") {

@@ -409,9 +409,8 @@ impl LateLintPass<'_> for Diagnostics {
             }
         };
 
-        // Does the callee have a `impl Into<{D,Subd}iagMessage>` parameter? (There should be at
-        // most one.)
-        let mut impl_into_diagnostic_message_param = None;
+        // Does the callee have one or more `impl Into<{D,Subd}iagMessage>` parameters?
+        let mut impl_into_diagnostic_message_params = vec![];
         let fn_sig = cx.tcx.fn_sig(def_id).instantiate_identity().skip_binder();
         let predicates = cx.tcx.predicates_of(def_id).instantiate_identity(cx.tcx).predicates;
         for (i, &param_ty) in fn_sig.inputs().iter().enumerate() {
@@ -425,20 +424,14 @@ impl LateLintPass<'_> for Diagnostics {
                         && let ty1 = trait_ref.args.type_at(1)
                         && is_diag_message(ty1)
                     {
-                        if impl_into_diagnostic_message_param.is_some() {
-                            cx.tcx.dcx().span_bug(
-                                span,
-                                "can't handle multiple `impl Into<{D,Sub}iagMessage>` params",
-                            );
-                        }
-                        impl_into_diagnostic_message_param = Some((i, p.name));
+                        impl_into_diagnostic_message_params.push((i, p.name));
                     }
                 }
             }
         }
 
         // Is the callee interesting?
-        if !has_attr && impl_into_diagnostic_message_param.is_none() {
+        if !has_attr && impl_into_diagnostic_message_params.is_empty() {
             return;
         }
 
@@ -481,7 +474,7 @@ impl LateLintPass<'_> for Diagnostics {
         // Calls to methods with an `impl Into<{D,Subd}iagMessage>` parameter must be passed an arg
         // with type `{D,Subd}iagMessage` or `impl Into<{D,Subd}iagMessage>`. Otherwise, emit an
         // `UNTRANSLATABLE_DIAGNOSTIC` lint.
-        if let Some((param_i, param_i_p_name)) = impl_into_diagnostic_message_param {
+        for (param_i, param_i_p_name) in impl_into_diagnostic_message_params {
             // Is the arg type `{Sub,D}iagMessage`or `impl Into<{Sub,D}iagMessage>`?
             let arg_ty = call_tys[param_i];
             let is_translatable = is_diag_message(arg_ty)

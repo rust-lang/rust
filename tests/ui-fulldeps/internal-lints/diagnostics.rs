@@ -15,7 +15,7 @@ extern crate rustc_span;
 
 use rustc_errors::{
     Diag, DiagCtxt, DiagInner, DiagMessage, Diagnostic, EmissionGuarantee, Level, LintDiagnostic,
-    SubdiagMessageOp, Subdiagnostic,
+    SubdiagMessageOp, SubdiagMessage, Subdiagnostic,
 };
 use rustc_macros::{Diagnostic, Subdiagnostic};
 use rustc_span::Span;
@@ -114,9 +114,15 @@ pub fn make_diagnostics<'a>(dcx: &'a DiagCtxt) {
 
 // Check that `rustc_lint_diagnostics`-annotated functions aren't themselves linted for
 // `diagnostic_outside_of_impl`.
-
 #[rustc_lint_diagnostics]
 pub fn skipped_because_of_annotation<'a>(dcx: &'a DiagCtxt) {
     #[allow(rustc::untranslatable_diagnostic)]
     let _diag = dcx.struct_err("untranslatable diagnostic"); // okay!
+}
+
+// Check that multiple translatable params are allowed in a single function (at one point they
+// weren't).
+fn f(_x: impl Into<DiagMessage>, _y: impl Into<SubdiagMessage>) {}
+fn g() {
+    f(crate::fluent_generated::no_crate_example, crate::fluent_generated::no_crate_example);
 }

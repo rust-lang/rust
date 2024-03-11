@@ -110,12 +110,13 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
     #[allow(non_snake_case, clippy::arithmetic_side_effects)]
     fn GetSystemTimeAsFileTime(
         &mut self,
+        shim_name: &str,
         LPFILETIME_op: &OpTy<'tcx, Provenance>,
     ) -> InterpResult<'tcx> {
         let this = self.eval_context_mut();
 
-        this.assert_target_os("windows", "GetSystemTimeAsFileTime");
-        this.check_no_isolation("`GetSystemTimeAsFileTime`")?;
+        this.assert_target_os("windows", shim_name);
+        this.check_no_isolation(shim_name)?;
 
         let filetime = this.deref_pointer_as(LPFILETIME_op, this.windows_ty_layout("FILETIME"))?;
 

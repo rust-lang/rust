@@ -1354,6 +1354,17 @@ impl Build {
             || env::var_os("TEST_DEVICE_ADDR").is_some()
     }
 
+    /// Returns an optional "runner" to pass to `compiletest` when executing
+    /// test binaries.
+    ///
+    /// An example of this would be a WebAssembly runtime when testing the wasm
+    /// targets.
+    fn runner(&self, target: TargetSelection) -> Option<String> {
+        let target = self.config.target_config.get(&target)?;
+        let runner = target.runner.as_ref()?;
+        Some(runner.to_owned())
+    }
+
     /// Returns the root of the "rootfs" image that this target will be using,
     /// if one was configured.
     ///

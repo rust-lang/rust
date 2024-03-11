@@ -266,8 +266,10 @@ pub struct Config {
     pub logfile: Option<PathBuf>,
 
     /// A command line to prefix program execution with,
-    /// for running under valgrind
-    pub runtool: Option<String>,
+    /// for running under valgrind for example.
+    ///
+    /// Similar to `CARGO_*_RUNNER` configuration.
+    pub runner: Option<String>,
 
     /// Flags to pass to the compiler when building for the host
     pub host_rustcflags: Vec<String>,
