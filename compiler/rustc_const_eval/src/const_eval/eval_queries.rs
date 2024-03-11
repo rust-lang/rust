@@ -396,16 +396,9 @@ fn eval_in_interpreter<'mir, 'tcx, R: InterpretationResult<'tcx>>(
         }
         Ok(mplace) => {
             // Since evaluation had no errors, validate the resulting constant.
+            const_validate_mplace(&ecx, &mplace, cid)?;
 
-            let res = const_validate_mplace(&ecx, &mplace, cid);
-
-            // Validation failed, report an error.
-            if let Err(error) = res {
-                let alloc_id = mplace.ptr().provenance.unwrap().alloc_id();
-                Err(const_report_error(&ecx, error, alloc_id))
-            } else {
-                Ok(R::make_result(mplace, ecx))
-            }
+            Ok(R::make_result(mplace, ecx))
         }
     }
 }
@@ -415,7 +408,8 @@ pub fn const_validate_mplace<'mir, 'tcx>(
     ecx: &InterpCx<'mir, 'tcx, CompileTimeInterpreter<'mir, 'tcx>>,
     mplace: &MPlaceTy<'tcx>,
     cid: GlobalId<'tcx>,
-) -> InterpResult<'tcx> {
+) -> Result<(), ErrorHandled> {
+    let alloc_id = mplace.ptr().provenance.unwrap().alloc_id();
     let mut ref_tracking = RefTracking::new(mplace.clone());
     let mut inner = false;
     while let Some((mplace, path)) = ref_tracking.todo.pop() {
@@ -429,7 +423,8 @@ pub fn const_validate_mplace<'mir, 'tcx>(
                 CtfeValidationMode::Const { allow_immutable_unsafe_cell: !inner }
             }
         };
-        ecx.const_validate_operand(&mplace.into(), path, &mut ref_tracking, mode)?;
+        ecx.const_validate_operand(&mplace.into(), path, &mut ref_tracking, mode)
+            .map_err(|error| const_report_error(&ecx, error, alloc_id))?;
         inner = true;
     }
 
