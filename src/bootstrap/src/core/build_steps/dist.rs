@@ -1009,6 +1009,8 @@ impl Step for PlainSourceTarball {
                 .arg("--sync")
                 .arg(builder.src.join("./compiler/rustc_codegen_cranelift/Cargo.toml"))
                 .arg("--sync")
+                .arg(builder.src.join("./compiler/rustc_codegen_gcc/Cargo.toml"))
+                .arg("--sync")
                 .arg(builder.src.join("./src/bootstrap/Cargo.toml"))
                 // Will read the libstd Cargo.toml
                 // which uses the unstable `public-dependency` feature.
