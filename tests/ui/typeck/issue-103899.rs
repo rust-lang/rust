@@ -1,7 +1,11 @@
-//@ check-fail
-//@ failure-status: 101
-//@ dont-check-compiler-stderr
-//@ known-bug: #103899
+//@ revisions: current next
+//@[next] compile-flags: -Znext-solver
+//@[next] check-pass
+//@ ignore-compare-mode-next-solver (explicit revisions)
+//@[current] check-fail
+//@[current] failure-status: 101
+//@[current] dont-check-compiler-stderr
+//@[current] known-bug: #103899
 
 trait BaseWithAssoc {
     type Assoc;
