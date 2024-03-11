@@ -3183,8 +3183,8 @@ declare_clippy_lint! {
 declare_clippy_lint! {
     /// ### What it does
     ///
-    /// Checks an argument of `seek` method of `Seek` trait
-    /// and if it start seek from `SeekFrom::Current(0)`, suggests `stream_position` instead.
+    /// Checks if the `seek` method of the `Seek` trait is called with `SeekFrom::Current(0)`,
+    /// and if it is, suggests using `stream_position` instead.
     ///
     /// ### Why is this bad?
     ///
