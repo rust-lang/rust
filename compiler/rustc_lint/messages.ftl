@@ -186,7 +186,7 @@ lint_deprecated_lint_name =
     .help = change it to {$replace}
 
 lint_diag_out_of_impl =
-    diagnostics should only be created in `IntoDiagnostic`/`AddToDiagnostic` impls
+    diagnostics should only be created in `Diagnostic`/`Subdiagnostic`/`LintDiagnostic` impls
 
 lint_drop_glue =
     types that do not implement `Drop` can still have drop glue, consider instead using `{$needs_drop}` to detect whether a type is trivially dropped

@@ -118,7 +118,7 @@ decl_derive!(
         suggestion,
         suggestion_short,
         suggestion_hidden,
-        suggestion_verbose)] => diagnostics::session_diagnostic_derive
+        suggestion_verbose)] => diagnostics::diagnostic_derive
 );
 decl_derive!(
     [LintDiagnostic, attributes(
@@ -156,5 +156,5 @@ decl_derive!(
         skip_arg,
         primary_span,
         suggestion_part,
-        applicability)] => diagnostics::session_subdiagnostic_derive
+        applicability)] => diagnostics::subdiagnostic_derive
 );

@@ -351,15 +351,14 @@ declare_tool_lint! {
 
 declare_tool_lint! {
     /// The `diagnostic_outside_of_impl` lint detects calls to functions annotated with
-    /// `#[rustc_lint_diagnostics]` that are outside an `IntoDiagnostic`, `AddToDiagnostic`, or
-    /// `DecorateLint` impl, or a `#[derive(Diagnostic)]`, `#[derive(Subdiagnostic)]`,
-    /// `#[derive(DecorateLint)]` expansion.
+    /// `#[rustc_lint_diagnostics]` that are outside an `Diagnostic`, `Subdiagnostic`, or
+    /// `LintDiagnostic` impl (either hand-written or derived).
     ///
     /// More details on diagnostics implementations can be found
     /// [here](https://rustc-dev-guide.rust-lang.org/diagnostics/diagnostic-structs.html).
     pub rustc::DIAGNOSTIC_OUTSIDE_OF_IMPL,
     Deny,
-    "prevent creation of diagnostics outside of `IntoDiagnostic`/`AddToDiagnostic` impls",
+    "prevent diagnostic creation outside of `Diagnostic`/`Subdiagnostic`/`LintDiagnostic` impls",
     report_in_external_macro: true
 }
 
@@ -455,7 +454,7 @@ impl LateLintPass<'_> for Diagnostics {
         }
 
         // Calls to `#[rustc_lint_diagnostics]`-marked functions should only occur:
-        // - inside an impl of `IntoDiagnostic`, `AddToDiagnostic`, or `DecorateLint`, or
+        // - inside an impl of `Diagnostic`, `Subdiagnostic`, or `LintDiagnostic`, or
         // - inside a parent function that is itself marked with `#[rustc_lint_diagnostics]`.
         //
         // Otherwise, emit a `DIAGNOSTIC_OUTSIDE_OF_IMPL` lint.
@@ -467,10 +466,7 @@ impl LateLintPass<'_> for Diagnostics {
                     && let Impl { of_trait: Some(of_trait), .. } = impl_
                     && let Some(def_id) = of_trait.trait_def_id()
                     && let Some(name) = cx.tcx.get_diagnostic_name(def_id)
-                    && matches!(
-                        name,
-                        sym::IntoDiagnostic | sym::AddToDiagnostic | sym::DecorateLint
-                    )
+                    && matches!(name, sym::Diagnostic | sym::Subdiagnostic | sym::LintDiagnostic)
                 {
                     is_inside_appropriate_impl = true;
                     break;

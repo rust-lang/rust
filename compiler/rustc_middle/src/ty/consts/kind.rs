@@ -14,9 +14,9 @@ pub struct UnevaluatedConst<'tcx> {
     pub args: GenericArgsRef<'tcx>,
 }
 
-impl rustc_errors::IntoDiagnosticArg for UnevaluatedConst<'_> {
-    fn into_diagnostic_arg(self) -> rustc_errors::DiagArgValue {
-        format!("{self:?}").into_diagnostic_arg()
+impl rustc_errors::IntoDiagArg for UnevaluatedConst<'_> {
+    fn into_diag_arg(self) -> rustc_errors::DiagArgValue {
+        format!("{self:?}").into_diag_arg()
     }
 }
 

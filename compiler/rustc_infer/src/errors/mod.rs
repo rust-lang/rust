@@ -1,7 +1,7 @@
 use hir::GenericParamKind;
 use rustc_errors::{
-    codes::*, AddToDiagnostic, Applicability, Diag, DiagMessage, DiagStyledString,
-    EmissionGuarantee, IntoDiagnosticArg, MultiSpan, SubdiagMessageOp,
+    codes::*, Applicability, Diag, DiagMessage, DiagStyledString, EmissionGuarantee, IntoDiagArg,
+    MultiSpan, SubdiagMessageOp, Subdiagnostic,
 };
 use rustc_hir as hir;
 use rustc_hir::FnRetTy;
@@ -224,8 +224,8 @@ pub enum RegionOriginNote<'a> {
     },
 }
 
-impl AddToDiagnostic for RegionOriginNote<'_> {
-    fn add_to_diagnostic_with<G: EmissionGuarantee, F: SubdiagMessageOp<G>>(
+impl Subdiagnostic for RegionOriginNote<'_> {
+    fn add_to_diag_with<G: EmissionGuarantee, F: SubdiagMessageOp<G>>(
         self,
         diag: &mut Diag<'_, G>,
         _f: F,
@@ -289,8 +289,8 @@ pub enum LifetimeMismatchLabels {
     },
 }
 
-impl AddToDiagnostic for LifetimeMismatchLabels {
-    fn add_to_diagnostic_with<G: EmissionGuarantee, F: SubdiagMessageOp<G>>(
+impl Subdiagnostic for LifetimeMismatchLabels {
+    fn add_to_diag_with<G: EmissionGuarantee, F: SubdiagMessageOp<G>>(
         self,
         diag: &mut Diag<'_, G>,
         _f: F,
@@ -337,8 +337,8 @@ pub struct AddLifetimeParamsSuggestion<'a> {
     pub add_note: bool,
 }
 
-impl AddToDiagnostic for AddLifetimeParamsSuggestion<'_> {
-    fn add_to_diagnostic_with<G: EmissionGuarantee, F: SubdiagMessageOp<G>>(
+impl Subdiagnostic for AddLifetimeParamsSuggestion<'_> {
+    fn add_to_diag_with<G: EmissionGuarantee, F: SubdiagMessageOp<G>>(
         self,
         diag: &mut Diag<'_, G>,
         _f: F,
@@ -439,8 +439,8 @@ pub struct IntroducesStaticBecauseUnmetLifetimeReq {
     pub binding_span: Span,
 }
 
-impl AddToDiagnostic for IntroducesStaticBecauseUnmetLifetimeReq {
-    fn add_to_diagnostic_with<G: EmissionGuarantee, F: SubdiagMessageOp<G>>(
+impl Subdiagnostic for IntroducesStaticBecauseUnmetLifetimeReq {
+    fn add_to_diag_with<G: EmissionGuarantee, F: SubdiagMessageOp<G>>(
         mut self,
         diag: &mut Diag<'_, G>,
         _f: F,
@@ -537,11 +537,11 @@ pub enum TyOrSig<'tcx> {
     ClosureSig(Highlighted<'tcx, Binder<'tcx, FnSig<'tcx>>>),
 }
 
-impl IntoDiagnosticArg for TyOrSig<'_> {
-    fn into_diagnostic_arg(self) -> rustc_errors::DiagArgValue {
+impl IntoDiagArg for TyOrSig<'_> {
+    fn into_diag_arg(self) -> rustc_errors::DiagArgValue {
         match self {
-            TyOrSig::Ty(ty) => ty.into_diagnostic_arg(),
-            TyOrSig::ClosureSig(sig) => sig.into_diagnostic_arg(),
+            TyOrSig::Ty(ty) => ty.into_diag_arg(),
+            TyOrSig::ClosureSig(sig) => sig.into_diag_arg(),
         }
     }
 }
@@ -758,8 +758,8 @@ pub struct ConsiderBorrowingParamHelp {
     pub spans: Vec<Span>,
 }
 
-impl AddToDiagnostic for ConsiderBorrowingParamHelp {
-    fn add_to_diagnostic_with<G: EmissionGuarantee, F: SubdiagMessageOp<G>>(
+impl Subdiagnostic for ConsiderBorrowingParamHelp {
+    fn add_to_diag_with<G: EmissionGuarantee, F: SubdiagMessageOp<G>>(
         self,
         diag: &mut Diag<'_, G>,
         f: F,
@@ -803,8 +803,8 @@ pub struct DynTraitConstraintSuggestion {
     pub ident: Ident,
 }
 
-impl AddToDiagnostic for DynTraitConstraintSuggestion {
-    fn add_to_diagnostic_with<G: EmissionGuarantee, F: SubdiagMessageOp<G>>(
+impl Subdiagnostic for DynTraitConstraintSuggestion {
+    fn add_to_diag_with<G: EmissionGuarantee, F: SubdiagMessageOp<G>>(
         self,
         diag: &mut Diag<'_, G>,
         f: F,
@@ -850,8 +850,8 @@ pub struct ReqIntroducedLocations {
     pub add_label: bool,
 }
 
-impl AddToDiagnostic for ReqIntroducedLocations {
-    fn add_to_diagnostic_with<G: EmissionGuarantee, F: SubdiagMessageOp<G>>(
+impl Subdiagnostic for ReqIntroducedLocations {
+    fn add_to_diag_with<G: EmissionGuarantee, F: SubdiagMessageOp<G>>(
         mut self,
         diag: &mut Diag<'_, G>,
         f: F,
@@ -873,8 +873,8 @@ pub struct MoreTargeted {
     pub ident: Symbol,
 }
 
-impl AddToDiagnostic for MoreTargeted {
-    fn add_to_diagnostic_with<G: EmissionGuarantee, F: SubdiagMessageOp<G>>(
+impl Subdiagnostic for MoreTargeted {
+    fn add_to_diag_with<G: EmissionGuarantee, F: SubdiagMessageOp<G>>(
         self,
         diag: &mut Diag<'_, G>,
         _f: F,
@@ -1296,8 +1296,8 @@ pub struct SuggestTuplePatternMany {
     pub compatible_variants: Vec<String>,
 }
 
-impl AddToDiagnostic for SuggestTuplePatternMany {
-    fn add_to_diagnostic_with<G: EmissionGuarantee, F: SubdiagMessageOp<G>>(
+impl Subdiagnostic for SuggestTuplePatternMany {
+    fn add_to_diag_with<G: EmissionGuarantee, F: SubdiagMessageOp<G>>(
         self,
         diag: &mut Diag<'_, G>,
         f: F,

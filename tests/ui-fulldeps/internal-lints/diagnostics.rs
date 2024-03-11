@@ -14,8 +14,8 @@ extern crate rustc_session;
 extern crate rustc_span;
 
 use rustc_errors::{
-    AddToDiagnostic, DecorateLint, Diag, DiagCtxt, DiagInner, DiagMessage, EmissionGuarantee,
-    IntoDiagnostic, Level, SubdiagMessageOp,
+    Diag, DiagCtxt, DiagInner, DiagMessage, Diagnostic, EmissionGuarantee, Level, LintDiagnostic,
+    SubdiagMessageOp, Subdiagnostic,
 };
 use rustc_macros::{Diagnostic, Subdiagnostic};
 use rustc_span::Span;
@@ -36,27 +36,27 @@ struct Note {
     span: Span,
 }
 
-pub struct UntranslatableInIntoDiagnostic;
+pub struct UntranslatableInDiagnostic;
 
-impl<'a, G: EmissionGuarantee> IntoDiagnostic<'a, G> for UntranslatableInIntoDiagnostic {
-    fn into_diagnostic(self, dcx: &'a DiagCtxt, level: Level) -> Diag<'a, G> {
+impl<'a, G: EmissionGuarantee> Diagnostic<'a, G> for UntranslatableInDiagnostic {
+    fn into_diag(self, dcx: &'a DiagCtxt, level: Level) -> Diag<'a, G> {
         Diag::new(dcx, level, "untranslatable diagnostic")
         //~^ ERROR diagnostics should be created using translatable messages
     }
 }
 
-pub struct TranslatableInIntoDiagnostic;
+pub struct TranslatableInDiagnostic;
 
-impl<'a, G: EmissionGuarantee> IntoDiagnostic<'a, G> for TranslatableInIntoDiagnostic {
-    fn into_diagnostic(self, dcx: &'a DiagCtxt, level: Level) -> Diag<'a, G> {
+impl<'a, G: EmissionGuarantee> Diagnostic<'a, G> for TranslatableInDiagnostic {
+    fn into_diag(self, dcx: &'a DiagCtxt, level: Level) -> Diag<'a, G> {
         Diag::new(dcx, level, crate::fluent_generated::no_crate_example)
     }
 }
 
-pub struct UntranslatableInAddToDiagnostic;
+pub struct UntranslatableInAddtoDiag;
 
-impl AddToDiagnostic for UntranslatableInAddToDiagnostic {
-    fn add_to_diagnostic_with<G: EmissionGuarantee, F: SubdiagMessageOp<G>>(
+impl Subdiagnostic for UntranslatableInAddtoDiag {
+    fn add_to_diag_with<G: EmissionGuarantee, F: SubdiagMessageOp<G>>(
         self,
         diag: &mut Diag<'_, G>,
         f: F,
@@ -66,10 +66,10 @@ impl AddToDiagnostic for UntranslatableInAddToDiagnostic {
     }
 }
 
-pub struct TranslatableInAddToDiagnostic;
+pub struct TranslatableInAddtoDiag;
 
-impl AddToDiagnostic for TranslatableInAddToDiagnostic {
-    fn add_to_diagnostic_with<G: EmissionGuarantee, F: SubdiagMessageOp<G>>(
+impl Subdiagnostic for TranslatableInAddtoDiag {
+    fn add_to_diag_with<G: EmissionGuarantee, F: SubdiagMessageOp<G>>(
         self,
         diag: &mut Diag<'_, G>,
         f: F,
@@ -78,9 +78,9 @@ impl AddToDiagnostic for TranslatableInAddToDiagnostic {
     }
 }
 
-pub struct UntranslatableInDecorateLint;
+pub struct UntranslatableInLintDiagnostic;
 
-impl<'a> DecorateLint<'a, ()> for UntranslatableInDecorateLint {
+impl<'a> LintDiagnostic<'a, ()> for UntranslatableInLintDiagnostic {
     fn decorate_lint<'b, >(self, diag: &'b mut Diag<'a, ()>) {
         diag.note("untranslatable diagnostic");
         //~^ ERROR diagnostics should be created using translatable messages
@@ -91,9 +91,9 @@ impl<'a> DecorateLint<'a, ()> for UntranslatableInDecorateLint {
     }
 }
 
-pub struct TranslatableInDecorateLint;
+pub struct TranslatableInLintDiagnostic;
 
-impl<'a> DecorateLint<'a, ()> for TranslatableInDecorateLint {
+impl<'a> LintDiagnostic<'a, ()> for TranslatableInLintDiagnostic {
     fn decorate_lint<'b>(self, diag: &'b mut Diag<'a, ()>) {
         diag.note(crate::fluent_generated::no_crate_note);
     }
@@ -105,10 +105,10 @@ impl<'a> DecorateLint<'a, ()> for TranslatableInDecorateLint {
 
 pub fn make_diagnostics<'a>(dcx: &'a DiagCtxt) {
     let _diag = dcx.struct_err(crate::fluent_generated::no_crate_example);
-    //~^ ERROR diagnostics should only be created in `IntoDiagnostic`/`AddToDiagnostic` impls
+    //~^ ERROR diagnostics should only be created in `Diagnostic`/`Subdiagnostic`/`LintDiagnostic` impls
 
     let _diag = dcx.struct_err("untranslatable diagnostic");
-    //~^ ERROR diagnostics should only be created in `IntoDiagnostic`/`AddToDiagnostic` impls
+    //~^ ERROR diagnostics should only be created in `Diagnostic`/`Subdiagnostic`/`LintDiagnostic` impls
     //~^^ ERROR diagnostics should be created using translatable messages
 }
 

@@ -9,7 +9,7 @@ use crate::ty::{self, Lift, List, ParamConst, Ty, TyCtxt};
 use rustc_ast_ir::visit::VisitorResult;
 use rustc_ast_ir::walk_visitable_list;
 use rustc_data_structures::intern::Interned;
-use rustc_errors::{DiagArgValue, IntoDiagnosticArg};
+use rustc_errors::{DiagArgValue, IntoDiagArg};
 use rustc_hir::def_id::DefId;
 use rustc_macros::HashStable;
 use rustc_serialize::{Decodable, Encodable};
@@ -57,9 +57,9 @@ unsafe impl<'tcx> Sync for GenericArg<'tcx> where
 {
 }
 
-impl<'tcx> IntoDiagnosticArg for GenericArg<'tcx> {
-    fn into_diagnostic_arg(self) -> DiagArgValue {
-        self.to_string().into_diagnostic_arg()
+impl<'tcx> IntoDiagArg for GenericArg<'tcx> {
+    fn into_diag_arg(self) -> DiagArgValue {
+        self.to_string().into_diag_arg()
     }
 }
 

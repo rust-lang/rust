@@ -1,4 +1,4 @@
-use rustc_errors::{Diag, DiagCtxt, EmissionGuarantee, IntoDiagnostic, Level};
+use rustc_errors::{Diag, DiagCtxt, Diagnostic, EmissionGuarantee, Level};
 use rustc_macros::{Diagnostic, Subdiagnostic};
 use rustc_span::Span;
 
@@ -89,8 +89,8 @@ pub(crate) struct TargetFeatureDisableOrEnable<'a> {
 #[help(codegen_gcc_missing_features)]
 pub(crate) struct MissingFeatures;
 
-impl<G: EmissionGuarantee> IntoDiagnostic<'_, G> for TargetFeatureDisableOrEnable<'_> {
-    fn into_diagnostic(self, dcx: &'_ DiagCtxt, level: Level) -> Diag<'_, G> {
+impl<G: EmissionGuarantee> Diagnostic<'_, G> for TargetFeatureDisableOrEnable<'_> {
+    fn into_diag(self, dcx: &'_ DiagCtxt, level: Level) -> Diag<'_, G> {
         let mut diag = Diag::new(dcx, level, fluent::codegen_gcc_target_feature_disable_or_enable);
         if let Some(span) = self.span {
             diag.span(span);

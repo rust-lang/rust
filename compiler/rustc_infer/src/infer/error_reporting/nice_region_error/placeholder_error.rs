@@ -8,7 +8,7 @@ use crate::infer::ValuePairs;
 use crate::infer::{SubregionOrigin, TypeTrace};
 use crate::traits::{ObligationCause, ObligationCauseCode};
 use rustc_data_structures::intern::Interned;
-use rustc_errors::{Diag, IntoDiagnosticArg};
+use rustc_errors::{Diag, IntoDiagArg};
 use rustc_hir::def::Namespace;
 use rustc_hir::def_id::DefId;
 use rustc_middle::ty::error::ExpectedFound;
@@ -26,11 +26,11 @@ pub struct Highlighted<'tcx, T> {
     value: T,
 }
 
-impl<'tcx, T> IntoDiagnosticArg for Highlighted<'tcx, T>
+impl<'tcx, T> IntoDiagArg for Highlighted<'tcx, T>
 where
     T: for<'a> Print<'tcx, FmtPrinter<'a, 'tcx>>,
 {
-    fn into_diagnostic_arg(self) -> rustc_errors::DiagArgValue {
+    fn into_diag_arg(self) -> rustc_errors::DiagArgValue {
         rustc_errors::DiagArgValue::Str(self.to_string().into())
     }
 }
