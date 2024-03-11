@@ -283,6 +283,32 @@ impl<'mir, 'tcx, Prov: Provenance, Extra> Frame<'mir, 'tcx, Prov, Extra> {
     pub(super) fn locals_addr(&self) -> usize {
         self.locals.raw.as_ptr().addr()
     }
+
+    #[must_use]
+    pub fn generate_stacktrace_from_stack(stack: &[Self]) -> Vec<FrameInfo<'tcx>> {
+        let mut frames = Vec::new();
+        // This deliberately does *not* honor `requires_caller_location` since it is used for much
+        // more than just panics.
+        for frame in stack.iter().rev() {
+            let span = match frame.loc {
+                Left(loc) => {
+                    // If the stacktrace passes through MIR-inlined source scopes, add them.
+                    let mir::SourceInfo { mut span, scope } = *frame.body.source_info(loc);
+                    let mut scope_data = &frame.body.source_scopes[scope];
+                    while let Some((instance, call_span)) = scope_data.inlined {
+                        frames.push(FrameInfo { span, instance });
+                        span = call_span;
+                        scope_data = &frame.body.source_scopes[scope_data.parent_scope.unwrap()];
+                    }
+                    span
+                }
+                Right(span) => span,
+            };
+            frames.push(FrameInfo { span, instance: frame.instance });
+        }
+        trace!("generate stacktrace: {:#?}", frames);
+        frames
+    }
 }
 
 // FIXME: only used by miri, should be removed once translatable.
@@ -1171,36 +1197,8 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     }
 
     #[must_use]
-    pub fn generate_stacktrace_from_stack(
-        stack: &[Frame<'mir, 'tcx, M::Provenance, M::FrameExtra>],
-    ) -> Vec<FrameInfo<'tcx>> {
-        let mut frames = Vec::new();
-        // This deliberately does *not* honor `requires_caller_location` since it is used for much
-        // more than just panics.
-        for frame in stack.iter().rev() {
-            let span = match frame.loc {
-                Left(loc) => {
-                    // If the stacktrace passes through MIR-inlined source scopes, add them.
-                    let mir::SourceInfo { mut span, scope } = *frame.body.source_info(loc);
-                    let mut scope_data = &frame.body.source_scopes[scope];
-                    while let Some((instance, call_span)) = scope_data.inlined {
-                        frames.push(FrameInfo { span, instance });
-                        span = call_span;
-                        scope_data = &frame.body.source_scopes[scope_data.parent_scope.unwrap()];
-                    }
-                    span
-                }
-                Right(span) => span,
-            };
-            frames.push(FrameInfo { span, instance: frame.instance });
-        }
-        trace!("generate stacktrace: {:#?}", frames);
-        frames
-    }
-
-    #[must_use]
     pub fn generate_stacktrace(&self) -> Vec<FrameInfo<'tcx>> {
-        Self::generate_stacktrace_from_stack(self.stack())
+        Frame::generate_stacktrace_from_stack(self.stack())
     }
 }
 

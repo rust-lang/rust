@@ -8,9 +8,9 @@ use rustc_middle::ty::TyCtxt;
 use rustc_middle::ty::{layout::LayoutError, ConstInt};
 use rustc_span::{Span, Symbol, DUMMY_SP};
 
-use super::{CompileTimeInterpreter, InterpCx};
+use super::CompileTimeInterpreter;
 use crate::errors::{self, FrameNote, ReportErrorExt};
-use crate::interpret::{ErrorHandled, InterpError, InterpErrorInfo, MachineStopType};
+use crate::interpret::{ErrorHandled, Frame, InterpError, InterpErrorInfo, MachineStopType};
 
 /// The CTFE machine has some custom error kinds.
 #[derive(Clone, Debug)]
@@ -63,10 +63,7 @@ pub fn get_span_and_frames<'tcx, 'mir>(
 where
     'tcx: 'mir,
 {
-    let mut stacktrace =
-        InterpCx::<CompileTimeInterpreter<'mir, 'tcx>>::generate_stacktrace_from_stack(
-            &machine.stack,
-        );
+    let mut stacktrace = Frame::generate_stacktrace_from_stack(&machine.stack);
     // Filter out `requires_caller_location` frames.
     stacktrace.retain(|frame| !frame.instance.def.requires_caller_location(*tcx));
     let span = stacktrace.first().map(|f| f.span).unwrap_or(tcx.span);
