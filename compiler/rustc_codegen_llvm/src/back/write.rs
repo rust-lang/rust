@@ -692,12 +692,11 @@ fn get_params(fnc: &Value) -> Vec<&Value> {
 
 unsafe fn create_call<'a>(tgt: &'a Value, src: &'a Value, rev_mode: bool,
     llmod: &'a llvm::Module, llcx: &llvm::Context) {
+    dbg!(&tgt);
    // first, remove all calls from fnc
    let bb = LLVMGetFirstBasicBlock(tgt);
-   let bb2 = LLVMGetNextBasicBlock(bb);
    let br = LLVMRustGetTerminator(bb);
    LLVMRustEraseInstFromParent(br);
-   LLVMRustEraseBBFromParent(bb2);
 
    // now add a call to inner.
     // append call to src at end of bb.
@@ -745,7 +744,7 @@ unsafe fn create_call<'a>(tgt: &'a Value, src: &'a Value, rev_mode: bool,
 
     // Our placeholder originally ended with `loop {}`, and therefore got the noreturn fnc attr.
     // This is not true anymore, so we remove it.
-    LLVMRustRemoveFncAttr(tgt, AttributeKind::NoReturn);
+    //LLVMRustRemoveFncAttr(tgt, AttributeKind::NoReturn);
 
     dbg!(&tgt);
 
