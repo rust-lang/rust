@@ -15,6 +15,7 @@ use ide::{
 };
 use ide_db::rust_doc::format_docs;
 use itertools::Itertools;
+use semver::VersionReq;
 use serde_json::to_value;
 use vfs::AbsPath;
 
@@ -446,7 +447,15 @@ pub(crate) fn inlay_hint(
     let needs_resolve = inlay_hint.needs_resolve;
     let (label, tooltip, mut something_to_resolve) =
         inlay_hint_label(snap, fields_to_resolve, needs_resolve, inlay_hint.label)?;
-    let text_edits = if needs_resolve && fields_to_resolve.resolve_text_edits {
+
+    let text_edits = if snap
+        .config
+        .visual_studio_code_version()
+        // https://github.com/microsoft/vscode/issues/193124
+        .map_or(true, |version| VersionReq::parse(">=1.86.0").unwrap().matches(version))
+        && needs_resolve
+        && fields_to_resolve.resolve_text_edits
+    {
         something_to_resolve |= inlay_hint.text_edit.is_some();
         None
     } else {
