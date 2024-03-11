@@ -438,7 +438,6 @@ impl<'a> InferenceTable<'a> {
     where
         T: HasInterner<Interner = Interner> + TypeFoldable<Interner>,
     {
-        // TODO check this vec here
         self.resolve_with_fallback_inner(&mut Vec::new(), t, &fallback)
     }
 
