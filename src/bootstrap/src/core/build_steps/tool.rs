@@ -795,6 +795,7 @@ tool_extended!((self, builder),
     Rls, "src/tools/rls", "rls", stable=true, tool_std=true;
     RustDemangler, "src/tools/rust-demangler", "rust-demangler", stable=false, tool_std=true;
     Rustfmt, "src/tools/rustfmt", "rustfmt", stable=true, add_bins_to_sysroot = ["rustfmt", "cargo-fmt"];
+    LlvmBitcodeLinker, "src/tools/llvm-bitcode-linker", "llvm-bitcode-linker", stable=false, add_bins_to_sysroot = ["llvm-bitcode-linker"];
 );
 
 impl<'a> Builder<'a> {

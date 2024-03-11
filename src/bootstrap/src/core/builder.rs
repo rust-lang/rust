@@ -763,6 +763,7 @@ impl<'a> Builder<'a> {
                 tool::RustdocGUITest,
                 tool::OptimizedDist,
                 tool::CoverageDump,
+                tool::LlvmBitcodeLinker
             ),
             Kind::Check | Kind::Clippy | Kind::Fix => describe!(
                 check::Std,

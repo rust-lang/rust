@@ -153,6 +153,7 @@ pub fn get_linker<'a>(
         LinkerFlavor::Msvc(..) => Box::new(MsvcLinker { cmd, sess }) as Box<dyn Linker>,
         LinkerFlavor::EmCc => Box::new(EmLinker { cmd, sess }) as Box<dyn Linker>,
         LinkerFlavor::Bpf => Box::new(BpfLinker { cmd, sess }) as Box<dyn Linker>,
+        LinkerFlavor::Llbc => Box::new(LlbcLinker { cmd, sess }) as Box<dyn Linker>,
         LinkerFlavor::Ptx => Box::new(PtxLinker { cmd, sess }) as Box<dyn Linker>,
     }
 }
@@ -1824,7 +1825,7 @@ impl<'a> Linker for PtxLinker<'a> {
             }
 
             Lto::No => {}
-        };
+        }
     }
 
     fn output_filename(&mut self, path: &Path) {
@@ -1856,6 +1857,104 @@ impl<'a> Linker for PtxLinker<'a> {
     fn ehcont_guard(&mut self) {}
 
     fn export_symbols(&mut self, _tmpdir: &Path, _crate_type: CrateType, _symbols: &[String]) {}
+
+    fn subsystem(&mut self, _subsystem: &str) {}
+
+    fn linker_plugin_lto(&mut self) {}
+}
+
+/// The `self-contained` LLVM bitcode linker
+pub struct LlbcLinker<'a> {
+    cmd: Command,
+    sess: &'a Session,
+}
+
+impl<'a> Linker for LlbcLinker<'a> {
+    fn cmd(&mut self) -> &mut Command {
+        &mut self.cmd
+    }
+
+    fn set_output_kind(&mut self, _output_kind: LinkOutputKind, _out_filename: &Path) {}
+
+    fn link_dylib_by_name(&mut self, _name: &str, _verbatim: bool, _as_needed: bool) {
+        panic!("external dylibs not supported")
+    }
+
+    fn link_staticlib_by_name(
+        &mut self,
+        _name: &str,
+        _verbatim: bool,
+        _whole_archive: bool,
+        _search_paths: &SearchPaths,
+    ) {
+        panic!("staticlibs not supported")
+    }
+
+    fn link_staticlib_by_path(&mut self, path: &Path, _whole_archive: bool) {
+        self.cmd.arg(path);
+    }
+
+    fn include_path(&mut self, path: &Path) {
+        self.cmd.arg("-L").arg(path);
+    }
+
+    fn debuginfo(&mut self, _strip: Strip, _: &[PathBuf]) {
+        self.cmd.arg("--debug");
+    }
+
+    fn add_object(&mut self, path: &Path) {
+        self.cmd.arg(path);
+    }
+
+    fn optimize(&mut self) {
+        match self.sess.opts.optimize {
+            OptLevel::No => "-O0",
+            OptLevel::Less => "-O1",
+            OptLevel::Default => "-O2",
+            OptLevel::Aggressive => "-O3",
+            OptLevel::Size => "-Os",
+            OptLevel::SizeMin => "-Oz",
+        };
+    }
+
+    fn output_filename(&mut self, path: &Path) {
+        self.cmd.arg("-o").arg(path);
+    }
+
+    fn framework_path(&mut self, _path: &Path) {
+        panic!("frameworks not supported")
+    }
+
+    fn full_relro(&mut self) {}
+
+    fn partial_relro(&mut self) {}
+
+    fn no_relro(&mut self) {}
+
+    fn gc_sections(&mut self, _keep_metadata: bool) {}
+
+    fn no_gc_sections(&mut self) {}
+
+    fn pgo_gen(&mut self) {}
+
+    fn no_crt_objects(&mut self) {}
+
+    fn no_default_libraries(&mut self) {}
+
+    fn control_flow_guard(&mut self) {}
+
+    fn ehcont_guard(&mut self) {}
+
+    fn export_symbols(&mut self, _tmpdir: &Path, _crate_type: CrateType, symbols: &[String]) {
+        match _crate_type {
+            CrateType::Cdylib => {
+                for sym in symbols {
+                    self.cmd.arg("--export-symbol").arg(sym);
+                }
+            }
+            _ => (),
+        }
+    }
 
     fn subsystem(&mut self, _subsystem: &str) {}
 

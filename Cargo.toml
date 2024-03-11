@@ -34,6 +34,7 @@ members = [
   "src/tools/expand-yaml-anchors",
   "src/tools/jsondocck",
   "src/tools/jsondoclint",
+  "src/tools/llvm-bitcode-linker",
   "src/tools/html-checker",
   "src/tools/bump-stage0",
   "src/tools/replace-version-placeholder",

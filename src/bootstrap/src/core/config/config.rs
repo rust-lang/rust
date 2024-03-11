@@ -236,6 +236,7 @@ pub struct Config {
     pub lld_mode: LldMode,
     pub lld_enabled: bool,
     pub llvm_tools_enabled: bool,
+    pub llvm_bitcode_linker_enabled: bool,
 
     pub llvm_cflags: Option<String>,
     pub llvm_cxxflags: Option<String>,
@@ -1099,6 +1100,7 @@ define_config! {
         dist_src: Option<bool> = "dist-src",
         save_toolstates: Option<String> = "save-toolstates",
         codegen_backends: Option<Vec<String>> = "codegen-backends",
+        llvm_bitcode_linker: Option<bool> = "llvm-bitcode-linker",
         lld: Option<bool> = "lld",
         lld_mode: Option<LldMode> = "use-lld",
         llvm_tools: Option<bool> = "llvm-tools",
@@ -1571,6 +1573,7 @@ impl Config {
                 codegen_backends,
                 lld,
                 llvm_tools,
+                llvm_bitcode_linker,
                 deny_warnings,
                 backtrace_on_ice,
                 verify_llvm_ir,
@@ -1650,6 +1653,7 @@ impl Config {
             }
             set(&mut config.lld_mode, lld_mode);
             set(&mut config.lld_enabled, lld);
+            set(&mut config.llvm_bitcode_linker_enabled, llvm_bitcode_linker);
 
             if matches!(config.lld_mode, LldMode::SelfContained)
                 && !config.lld_enabled

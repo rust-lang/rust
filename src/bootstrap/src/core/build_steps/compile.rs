@@ -1843,6 +1843,16 @@ impl Step for Assemble {
             }
         }
 
+        if builder.config.llvm_bitcode_linker_enabled {
+            let src_path = builder.ensure(crate::core::build_steps::tool::LlvmBitcodeLinker {
+                compiler: build_compiler,
+                target: target_compiler.host,
+                extra_features: vec![],
+            });
+            let tool_exe = exe("llvm-bitcode-linker", target_compiler.host);
+            builder.copy(&src_path, &libdir_bin.join(&tool_exe));
+        }
+
         // Ensure that `libLLVM.so` ends up in the newly build compiler directory,
         // so that it can be found when the newly built `rustc` is run.
         dist::maybe_install_llvm_runtime(builder, target_compiler.host, &sysroot);

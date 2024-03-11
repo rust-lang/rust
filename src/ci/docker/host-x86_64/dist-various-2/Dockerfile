@@ -135,7 +135,7 @@ ENV TARGETS=$TARGETS,x86_64-unknown-uefi
 # Luckily one of the folders is /usr/local/include so symlink /usr/include/x86_64-linux-gnu/asm there
 RUN ln -s /usr/include/x86_64-linux-gnu/asm /usr/local/include/asm
 
-ENV RUST_CONFIGURE_ARGS --enable-extended --enable-lld --disable-docs \
+ENV RUST_CONFIGURE_ARGS --enable-extended --enable-lld --enable-llvm-bitcode-linker --disable-docs \
   --set target.wasm32-wasi.wasi-root=/wasm32-wasip1 \
   --set target.wasm32-wasip1.wasi-root=/wasm32-wasip1 \
   --set target.wasm32-wasi-preview1-threads.wasi-root=/wasm32-wasi-preview1-threads \
