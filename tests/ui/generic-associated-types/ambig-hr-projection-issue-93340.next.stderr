@@ -20,8 +20,6 @@ error[E0275]: overflow evaluating the requirement `impl for<'a, 'b> Fn(<A as Sca
    |
 LL |     cmp_eq
    |     ^^^^^^
-   |
-   = help: consider increasing the recursion limit by adding a `#![recursion_limit = "256"]` attribute to your crate (`ambig_hr_projection_issue_93340`)
 
 error[E0275]: overflow evaluating the requirement `impl for<'a, 'b> Fn(<A as Scalar>::RefType<'a>, <B as Scalar>::RefType<'b>) -> O == for<'a, 'b> fn(..., ...) -> ... {cmp_eq::<..., ..., ...>}`
   --> $DIR/ambig-hr-projection-issue-93340.rs:16:5
@@ -29,7 +27,6 @@ error[E0275]: overflow evaluating the requirement `impl for<'a, 'b> Fn(<A as Sca
 LL |     cmp_eq
    |     ^^^^^^
    |
-   = help: consider increasing the recursion limit by adding a `#![recursion_limit = "256"]` attribute to your crate (`ambig_hr_projection_issue_93340`)
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 error[E0275]: overflow evaluating the requirement `for<'a, 'b> fn(<O as Scalar>::RefType<'a>, <_ as Scalar>::RefType<'b>) -> _ {cmp_eq::<O, ..., ...>} <: ...`
@@ -44,8 +41,6 @@ LL | |
 LL | |
 LL | | }
    | |_^
-   |
-   = help: consider increasing the recursion limit by adding a `#![recursion_limit = "256"]` attribute to your crate (`ambig_hr_projection_issue_93340`)
 
 error: aborting due to 4 previous errors
 
