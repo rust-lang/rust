@@ -217,6 +217,8 @@ where
         match cls_or_mem {
             Err(Memory) => {
                 if is_arg {
+                    // The x86_64 ABI doesn't have any special requirements for `byval` alignment,
+                    // the type's alignment is always used.
                     arg.make_indirect_byval(None);
                 } else {
                     // `sret` parameter thus one less integer register available
