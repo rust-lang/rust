@@ -844,7 +844,6 @@
 "ui/coroutine/issue-91477.rs",
 "ui/coroutine/issue-93161.rs",
 "ui/cross-crate/issue-64872/issue-64872.rs",
-"ui/cycle-trait/issue-12511.rs",
 "ui/debuginfo/issue-105386-debuginfo-ub.rs",
 "ui/deprecation/issue-66340-deprecated-attr-non-meta-grammar.rs",
 "ui/deprecation/issue-84637-deprecated-associated-function.rs",
