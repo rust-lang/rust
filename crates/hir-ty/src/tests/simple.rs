@@ -2121,6 +2121,7 @@ async fn main() {
         "#,
         expect![[r#"
             16..193 '{     ...2 }; }': ()
+            16..193 '{     ...2 }; }': impl Future<Output = ()>
             26..27 'x': i32
             30..43 'unsafe { 92 }': i32
             39..41 '92': i32
@@ -2130,6 +2131,8 @@ async fn main() {
             65..83 'async ....await': ()
             73..75 '()': ()
             95..96 'z': ControlFlow<(), ()>
+            130..140 'try { () }': ControlFlow<(), ()>
+            130..140 'try { () }': fn from_output<ControlFlow<(), ()>>(<ControlFlow<(), ()> as Try>::Output) -> ControlFlow<(), ()>
             130..140 'try { () }': ControlFlow<(), ()>
             136..138 '()': ()
             150..151 'w': i32
