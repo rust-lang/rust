@@ -348,6 +348,7 @@ pub enum SymbolKind {
     LifetimeParam,
     Local,
     Macro,
+    ProcMacro,
     Module,
     SelfParam,
     SelfType,
@@ -366,9 +367,8 @@ pub enum SymbolKind {
 impl From<hir::MacroKind> for SymbolKind {
     fn from(it: hir::MacroKind) -> Self {
         match it {
-            hir::MacroKind::Declarative | hir::MacroKind::BuiltIn | hir::MacroKind::ProcMacro => {
-                SymbolKind::Macro
-            }
+            hir::MacroKind::Declarative | hir::MacroKind::BuiltIn => SymbolKind::Macro,
+            hir::MacroKind::ProcMacro => SymbolKind::ProcMacro,
             hir::MacroKind::Derive => SymbolKind::Derive,
             hir::MacroKind::Attr => SymbolKind::Attribute,
         }
@@ -381,6 +381,7 @@ impl From<hir::ModuleDefId> for SymbolKind {
             hir::ModuleDefId::ConstId(..) => SymbolKind::Const,
             hir::ModuleDefId::EnumVariantId(..) => SymbolKind::Variant,
             hir::ModuleDefId::FunctionId(..) => SymbolKind::Function,
+            hir::ModuleDefId::MacroId(hir::MacroId::ProcMacroId(..)) => SymbolKind::ProcMacro,
             hir::ModuleDefId::MacroId(..) => SymbolKind::Macro,
             hir::ModuleDefId::ModuleId(..) => SymbolKind::Module,
             hir::ModuleDefId::StaticId(..) => SymbolKind::Static,

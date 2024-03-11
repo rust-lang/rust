@@ -369,6 +369,7 @@ impl CompletionItemKind {
                 SymbolKind::LifetimeParam => "lt",
                 SymbolKind::Local => "lc",
                 SymbolKind::Macro => "ma",
+                SymbolKind::ProcMacro => "pm",
                 SymbolKind::Module => "md",
                 SymbolKind::SelfParam => "sp",
                 SymbolKind::SelfType => "sy",
