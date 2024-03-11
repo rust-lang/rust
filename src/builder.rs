@@ -225,7 +225,7 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
 
         let mut on_stack_param_indices = FxHashSet::default();
         if let Some(indices) = self.on_stack_params.borrow().get(&gcc_func) {
-            on_stack_param_indices = indices.clone();
+            on_stack_param_indices.clone_from(indices);
         }
 
         if all_args_match {

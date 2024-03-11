@@ -279,9 +279,9 @@ impl<'gcc, 'tcx> DebugInfoMethods<'tcx> for CodegenCx<'gcc, 'tcx> {
     ) -> Self::DILocation {
         let pos = span.lo();
         let DebugLoc { file, line, col } = self.lookup_debug_loc(pos);
-        let loc = match &file.name {
-            rustc_span::FileName::Real(ref name) => match &name {
-                rustc_span::RealFileName::LocalPath(ref name) => {
+        let loc = match file.name {
+            rustc_span::FileName::Real(ref name) => match name.clone() {
+                rustc_span::RealFileName::LocalPath(name) => {
                     if let Some(name) = name.to_str() {
                         self.context.new_location(name, line as i32, col as i32)
                     } else {
