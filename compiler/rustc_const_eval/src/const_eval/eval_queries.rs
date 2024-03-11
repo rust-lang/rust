@@ -282,7 +282,7 @@ pub fn eval_static_initializer_provider<'tcx>(
 
     let instance = ty::Instance::mono(tcx, def_id.to_def_id());
     let cid = rustc_middle::mir::interpret::GlobalId { instance, promoted: None };
-    let mut ecx = InterpCx::new(
+    let ecx = InterpCx::new(
         tcx,
         tcx.def_span(def_id),
         ty::ParamEnv::reveal_all(),
@@ -290,7 +290,7 @@ pub fn eval_static_initializer_provider<'tcx>(
         // they do not have to behave "as if" they were evaluated at runtime.
         CompileTimeInterpreter::new(CanAccessMutGlobal::Yes, CheckAlignment::Error),
     );
-    eval_in_interpreter(&mut ecx, cid, true)
+    eval_in_interpreter(ecx, cid, true)
 }
 
 pub trait InterpretationResult<'tcx> {
@@ -299,14 +299,14 @@ pub trait InterpretationResult<'tcx> {
     /// evaluation query.
     fn make_result<'mir>(
         mplace: MPlaceTy<'tcx>,
-        ecx: &mut InterpCx<'mir, 'tcx, CompileTimeInterpreter<'mir, 'tcx>>,
+        ecx: InterpCx<'mir, 'tcx, CompileTimeInterpreter<'mir, 'tcx>>,
     ) -> Self;
 }
 
 impl<'tcx> InterpretationResult<'tcx> for ConstAlloc<'tcx> {
     fn make_result<'mir>(
         mplace: MPlaceTy<'tcx>,
-        _ecx: &mut InterpCx<'mir, 'tcx, CompileTimeInterpreter<'mir, 'tcx>>,
+        _ecx: InterpCx<'mir, 'tcx, CompileTimeInterpreter<'mir, 'tcx>>,
     ) -> Self {
         ConstAlloc { alloc_id: mplace.ptr().provenance.unwrap().alloc_id(), ty: mplace.layout.ty }
     }
@@ -339,7 +339,7 @@ pub fn eval_to_allocation_raw_provider<'tcx>(
     let def = cid.instance.def.def_id();
     let is_static = tcx.is_static(def);
 
-    let mut ecx = InterpCx::new(
+    let ecx = InterpCx::new(
         tcx,
         tcx.def_span(def),
         key.param_env,
@@ -349,11 +349,11 @@ pub fn eval_to_allocation_raw_provider<'tcx>(
         // so we have to reject reading mutable global memory.
         CompileTimeInterpreter::new(CanAccessMutGlobal::from(is_static), CheckAlignment::Error),
     );
-    eval_in_interpreter(&mut ecx, cid, is_static)
+    eval_in_interpreter(ecx, cid, is_static)
 }
 
 fn eval_in_interpreter<'mir, 'tcx, R: InterpretationResult<'tcx>>(
-    ecx: &mut InterpCx<'mir, 'tcx, CompileTimeInterpreter<'mir, 'tcx>>,
+    mut ecx: InterpCx<'mir, 'tcx, CompileTimeInterpreter<'mir, 'tcx>>,
     cid: GlobalId<'tcx>,
     is_static: bool,
 ) -> Result<R, ErrorHandled> {
@@ -361,7 +361,7 @@ fn eval_in_interpreter<'mir, 'tcx, R: InterpretationResult<'tcx>>(
     debug_assert_eq!(is_static, ecx.tcx.static_mutability(cid.instance.def_id()).is_some());
 
     let res = ecx.load_mir(cid.instance.def, cid.promoted);
-    match res.and_then(|body| eval_body_using_ecx(ecx, cid, body)) {
+    match res.and_then(|body| eval_body_using_ecx(&mut ecx, cid, body)) {
         Err(error) => {
             let (error, backtrace) = error.into_parts();
             backtrace.print_backtrace();
