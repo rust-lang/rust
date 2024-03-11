@@ -344,6 +344,7 @@ compat_fn_with_fallback! {
 
     // >= Win8 / Server 2012
     // https://docs.microsoft.com/en-us/windows/win32/api/sysinfoapi/nf-sysinfoapi-getsystemtimepreciseasfiletime
+    #[cfg(target_vendor = "win7")]
     pub fn GetSystemTimePreciseAsFileTime(lpsystemtimeasfiletime: *mut FILETIME) -> () {
         GetSystemTimeAsFileTime(lpsystemtimeasfiletime)
     }
