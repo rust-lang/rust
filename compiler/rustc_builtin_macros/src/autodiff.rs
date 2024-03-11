@@ -80,10 +80,16 @@ pub fn expand(
     dbg!(&x);
     let span = ecx.with_def_site_ctxt(expand_span);
 
+    let n_active: u32 = x.input_activity.iter()
+        .filter(|a| **a == DiffActivity::Active || **a == DiffActivity::ActiveOnly)
+        .count() as u32;
     let (d_sig, new_args, idents) = gen_enzyme_decl(ecx, &sig, &x, span);
     let new_decl_span = d_sig.span;
     let d_body = gen_enzyme_body(
         ecx,
+        n_active,
+        &sig,
+        &d_sig,
         primal,
         &new_args,
         span,
@@ -184,6 +190,9 @@ fn assure_mut_ref(ty: &ast::Ty) -> ast::Ty {
 #[cfg(llvm_enzyme)]
 fn gen_enzyme_body(
     ecx: &ExtCtxt<'_>,
+    n_active: u32,
+    sig: &ast::FnSig,
+    d_sig: &ast::FnSig,
     primal: Ident,
     new_names: &[String],
     span: Span,
@@ -192,6 +201,7 @@ fn gen_enzyme_body(
     idents: Vec<Ident>,
 ) -> P<ast::Block> {
     let blackbox_path = ecx.std_path(&[Symbol::intern("hint"), Symbol::intern("black_box")]);
+    //let default_path = ecx.def_site_path(&[Symbol::intern("f32"), Symbol::intern("default")]);
     let empty_loop_block = ecx.block(span, ThinVec::new());
     let noop = ast::InlineAsm {
         template: vec![ast::InlineAsmTemplatePiece::String("NOP".to_string())],
@@ -212,13 +222,13 @@ fn gen_enzyme_body(
         could_be_bare_literal: false,
     };
     let unsf_expr = ecx.expr_block(P(unsf_block));
-    let loop_expr = ecx.expr_loop(span, empty_loop_block);
+    let _loop_expr = ecx.expr_loop(span, empty_loop_block);
     let blackbox_call_expr = ecx.expr_path(ecx.path(span, blackbox_path));
+    //let default_call_expr = ecx.expr_path(ecx.path(span, default_path));
     let primal_call = gen_primal_call(ecx, span, primal, idents);
     // create ::core::hint::black_box(array(arr));
     let black_box_primal_call =
         ecx.expr_call(new_decl_span, blackbox_call_expr.clone(), thin_vec![primal_call.clone()]);
-
     // create ::core::hint::black_box((grad_arr, tang_y));
     let tup_args = new_names
         .iter()
@@ -233,9 +243,83 @@ fn gen_enzyme_body(
 
     let mut body = ecx.block(span, ThinVec::new());
     body.stmts.push(ecx.stmt_semi(unsf_expr));
-    body.stmts.push(ecx.stmt_semi(black_box_primal_call));
+    body.stmts.push(ecx.stmt_semi(black_box_primal_call.clone()));
     body.stmts.push(ecx.stmt_semi(black_box_remaining_args));
-    body.stmts.push(ecx.stmt_expr(loop_expr));
+
+
+    if !d_sig.decl.output.has_ret() {
+        // there is no return type that we have to match, () works fine.
+        return body;
+    }
+
+    let primal_ret = sig.decl.output.has_ret();
+
+    if primal_ret && n_active == 0 {
+        // We only have the primal ret.
+        body.stmts.push(ecx.stmt_expr(black_box_primal_call.clone()));
+        return body;
+    }
+
+    if !primal_ret && n_active == 1 {
+        // Again no tuple return, so return default float val.
+        let ty = match d_sig.decl.output {
+            FnRetTy::Ty(ref ty) => ty.clone(),
+            FnRetTy::Default(span) => {
+                panic!("Did not expect Default ret ty: {:?}", span);
+            }
+        };
+        let arg = ty.kind.is_simple_path().unwrap();
+        let sl: Vec<Symbol> = vec![arg, Symbol::intern("default")];
+        let tmp = ecx.def_site_path(&sl);
+        let default_call_expr = ecx.expr_path(ecx.path(span, tmp));
+        let default_call_expr = ecx.expr_call(new_decl_span, default_call_expr, thin_vec![]);
+        body.stmts.push(ecx.stmt_expr(default_call_expr));
+        return body;
+    }
+
+    let mut exprs = ThinVec::<P::<ast::Expr>>::new();
+    if primal_ret {
+        // We have both primal ret and active floats.
+        // primal ret is first, by construction.
+        exprs.push(primal_call.clone());
+    }
+
+    // Now construct default placeholder for each active float.
+    // Is there something nicer than f32::default() and f64::default()?
+    let mut d_ret_ty = match d_sig.decl.output {
+        FnRetTy::Ty(ref ty) => ty.clone(),
+        FnRetTy::Default(span) => {
+            panic!("Did not expect Default ret ty: {:?}", span);
+        }
+    };
+    let mut d_ret_ty = match d_ret_ty.kind {
+        TyKind::Tup(ref mut tys) => {
+            tys.clone()
+        }
+        _ => {
+            // We messed up construction of d_sig
+            panic!("Did not expect non-tuple ret ty: {:?}", d_ret_ty);
+        }
+    };
+    if primal_ret {
+        // We have extra handling above for the primal ret
+        d_ret_ty = d_ret_ty[1..].to_vec().into();
+    }
+
+    for arg in d_ret_ty.iter() {
+        let arg = arg.kind.is_simple_path().unwrap();
+        let sl: Vec<Symbol> = vec![arg, Symbol::intern("default")];
+        let tmp = ecx.def_site_path(&sl);
+        let default_call_expr = ecx.expr_path(ecx.path(span, tmp));
+        let default_call_expr = ecx.expr_call(new_decl_span, default_call_expr, thin_vec![]);
+        exprs.push(default_call_expr);
+    };
+
+    let ret_tuple: P<ast::Expr> = ecx.expr_tuple(span, exprs);
+    let ret = ecx.expr_call(new_decl_span, blackbox_call_expr.clone(), thin_vec![ret_tuple]);
+    body.stmts.push(ecx.stmt_expr(ret));
+    //body.stmts.push(ecx.stmt_expr(ret_tuple));
+
     body
 }
 
@@ -258,7 +342,7 @@ fn gen_primal_call(
 // zero-initialized by Enzyme). Active arguments are not handled yet.
 // Each argument of the primal function (and the return type if existing) must be annotated with an
 // activity.
-//#[cfg(llvm_enzyme)]
+#[cfg(llvm_enzyme)]
 fn gen_enzyme_decl(
     ecx: &ExtCtxt<'_>,
     sig: &ast::FnSig,
