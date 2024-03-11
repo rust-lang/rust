@@ -1,6 +1,6 @@
 #![feature(
     no_core, lang_items, intrinsics, unboxed_closures, type_ascription, extern_types,
-    decl_macro, rustc_attrs, transparent_unions, auto_traits,
+    decl_macro, rustc_attrs, transparent_unions, auto_traits, freeze_impls,
     thread_local
 )]
 #![no_core]
