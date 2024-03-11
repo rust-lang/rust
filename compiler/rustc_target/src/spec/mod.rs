@@ -2070,6 +2070,14 @@ pub struct TargetOptions {
     /// Default number of codegen units to use in debug mode
     pub default_codegen_units: Option<u64>,
 
+    /// Default codegen backend used for this target. Defaults to `None`.
+    ///
+    /// If `None`, then `CFG_DEFAULT_CODEGEN_BACKEND` environmental variable captured when
+    /// compiling `rustc` will be used instead (or llvm if it is not set).
+    ///
+    /// N.B. when *using* the compiler, backend can always be overriden with `-Zcodegen-backend`.
+    pub default_codegen_backend: Option<StaticCow<str>>,
+
     /// Whether to generate trap instructions in places where optimization would
     /// otherwise produce control flow that falls through into unrelated memory.
     pub trap_unreachable: bool,
@@ -2376,6 +2384,7 @@ impl Default for TargetOptions {
             stack_probes: StackProbeType::None,
             min_global_align: None,
             default_codegen_units: None,
+            default_codegen_backend: None,
             trap_unreachable: true,
             requires_lto: false,
             singlethread: false,
