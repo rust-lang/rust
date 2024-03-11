@@ -226,7 +226,7 @@ fn check_static_inhabited(tcx: TyCtxt<'_>, def_id: LocalDefId) {
         Ok(l) => l,
         // Foreign statics that overflow their allowed size should emit an error
         Err(LayoutError::SizeOverflow(_))
-            if matches!(tcx.def_kind(def_id), DefKind::Static{..}
+            if matches!(tcx.def_kind(def_id), DefKind::Static{ .. }
                 if tcx.def_kind(tcx.local_parent(def_id)) == DefKind::ForeignMod) =>
         {
             tcx.dcx().emit_err(errors::TooLargeStatic { span });
