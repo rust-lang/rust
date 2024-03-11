@@ -92,6 +92,8 @@ unsafe impl Allocator for MyAllocator {
     }
 
     unsafe fn deallocate(&self, ptr: NonNull<u8>, _layout: Layout) {
+        // Make sure accesses via `self` don't disturb anything.
+        let _val = self.bins[0].top.get();
         // Since manually finding the corresponding bin of `ptr` is very expensive,
         // doing pointer arithmetics is preferred.
         // But this means we access `top` via `ptr` rather than `self`!
@@ -101,22 +103,30 @@ unsafe impl Allocator for MyAllocator {
         if self.thread_id == thread_id {
             unsafe { (*their_bin).push(ptr) };
         } else {
-            todo!("Deallocating from another thread")
+            todo!("Deallocating from another thread");
         }
+        // Make sure we can also still access this via `self` after the rest is done.
+        let _val = self.bins[0].top.get();
     }
 }
 
 // Make sure to involve `Box` in allocating these,
 // as that's where `noalias` may come from.
-fn v<T, A: Allocator>(t: T, a: A) -> Vec<T, A> {
+fn v1<T, A: Allocator>(t: T, a: A) -> Vec<T, A> {
     (Box::new_in([t], a) as Box<[T], A>).into_vec()
+}
+fn v2<T, A: Allocator>(t: T, a: A) -> Vec<T, A> {
+    let v = v1(t, a);
+    // There was a bug in `into_boxed_slice` that caused aliasing issues,
+    // so round-trip through that as well.
+    v.into_boxed_slice().into_vec()
 }
 
 fn main() {
     assert!(mem::size_of::<MyBin>() <= 128); // if it grows bigger, the trick to access the "header" no longer works
     let my_alloc = MyAllocator::new();
-    let a = v(1usize, &my_alloc);
-    let b = v(2usize, &my_alloc);
+    let a = v1(1usize, &my_alloc);
+    let b = v2(2usize, &my_alloc);
     assert_eq!(a[0] + 1, b[0]);
     assert_eq!(addr_of!(a[0]).wrapping_add(1), addr_of!(b[0]));
     drop((a, b));
