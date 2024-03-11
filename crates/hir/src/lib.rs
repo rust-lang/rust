@@ -3628,15 +3628,40 @@ impl Impl {
                     .filter(filter),
             );
         }
+
+        if let Some(block) =
+            ty.adt_id(Interner).and_then(|def| def.0.module(db.upcast()).containing_block())
+        {
+            if let Some(inherent_impls) = db.inherent_impls_in_block(block) {
+                all.extend(
+                    inherent_impls.for_self_ty(&ty).iter().cloned().map(Self::from).filter(filter),
+                );
+            }
+            if let Some(trait_impls) = db.trait_impls_in_block(block) {
+                all.extend(
+                    trait_impls
+                        .for_self_ty_without_blanket_impls(fp)
+                        .map(Self::from)
+                        .filter(filter),
+                );
+            }
+        }
+
         all
     }
 
     pub fn all_for_trait(db: &dyn HirDatabase, trait_: Trait) -> Vec<Impl> {
-        let krate = trait_.module(db).krate();
+        let module = trait_.module(db);
+        let krate = module.krate();
         let mut all = Vec::new();
         for Crate { id } in krate.transitive_reverse_dependencies(db) {
             let impls = db.trait_impls_in_crate(id);
             all.extend(impls.for_trait(trait_.id).map(Self::from))
+        }
+        if let Some(block) = module.id.containing_block() {
+            if let Some(trait_impls) = db.trait_impls_in_block(block) {
+                all.extend(trait_impls.for_trait(trait_.id).map(Self::from));
+            }
         }
         all
     }
