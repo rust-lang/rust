@@ -413,7 +413,7 @@ fn main() {
 fn main() {
     return;
     let mut x = 2;
-      //^^^^^ warn: unused variable
+      //^^^^^ 💡 warn: unused variable
     &mut x;
 }
 "#,
@@ -423,7 +423,7 @@ fn main() {
 fn main() {
     loop {}
     let mut x = 2;
-      //^^^^^ warn: unused variable
+      //^^^^^ 💡 warn: unused variable
     &mut x;
 }
 "#,
@@ -444,7 +444,7 @@ fn main(b: bool) {
         g();
     }
     let mut x = 2;
-      //^^^^^ warn: unused variable
+      //^^^^^ 💡 warn: unused variable
     &mut x;
 }
 "#,
@@ -459,7 +459,7 @@ fn main(b: bool) {
         return;
     }
     let mut x = 2;
-      //^^^^^ warn: unused variable
+      //^^^^^ 💡 warn: unused variable
     &mut x;
 }
 "#,
@@ -789,7 +789,7 @@ fn f() {
                //^^ 💡 error: cannot mutate immutable variable `x`
     _ = (x, y);
     let x = Foo;
-      //^ warn: unused variable
+      //^ 💡 warn: unused variable
     let x = Foo;
     let y: &mut (i32, u8) = &mut x;
                           //^^^^^^ 💡 error: cannot mutate immutable variable `x`
