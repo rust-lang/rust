@@ -8,6 +8,27 @@ LL | #![feature(non_lifetime_binders)]
    = note: `#[warn(incomplete_features)]` on by default
 
 error[E0309]: the placeholder type `!1_"F"` may not live long enough
+  --> $DIR/type-match-with-late-bound.rs:8:1
+   |
+LL |   async fn walk2<'a, T: 'a>(_: T)
+   |   ^              -- the placeholder type `!1_"F"` must be valid for the lifetime `'a` as defined here...
+   |  _|
+   | |
+LL | | where
+LL | |     for<F> F: 'a,
+   | |_________________^ ...so that the type `F` will meet its required lifetime bounds...
+   |
+note: ...that is required by this bound
+  --> $DIR/type-match-with-late-bound.rs:10:15
+   |
+LL |     for<F> F: 'a,
+   |               ^^
+help: consider adding an explicit lifetime bound
+   |
+LL |     for<F> F: 'a, !1_"F": 'a
+   |                 ~~~~~~~~~~~~
+
+error[E0309]: the placeholder type `!1_"F"` may not live long enough
   --> $DIR/type-match-with-late-bound.rs:11:1
    |
 LL | async fn walk2<'a, T: 'a>(_: T)
@@ -35,6 +56,6 @@ help: consider adding an explicit lifetime bound
 LL |     for<F> F: 'a, !2_"F": 'a
    |                 ~~~~~~~~~~~~
 
-error: aborting due to 2 previous errors; 1 warning emitted
+error: aborting due to 3 previous errors; 1 warning emitted
 
 For more information about this error, try `rustc --explain E0309`.
