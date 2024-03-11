@@ -250,8 +250,9 @@ fn chain<F1, F2>(first: F1, second: F2) -> Chain<F1, F2> {
     Chain { first: Some(first), second }
 }
 
-/// Used for trivial cases like scalar types and to guarantee idempotency
-/// of awaiting some async destructor.
+/// Used for nop async destructors. We don't use [`core::future::Ready`]
+/// because it panics after its second poll, which could be potentially
+/// bad if that would happen during the cleanup.
 #[lang = "future_ready_unit"]
 struct ReadyUnit;
 
