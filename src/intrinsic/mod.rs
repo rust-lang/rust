@@ -39,10 +39,7 @@ use crate::context::CodegenCx;
 use crate::intrinsic::simd::generic_simd_intrinsic;
 use crate::type_of::LayoutGccExt;
 
-fn get_simple_intrinsic<'gcc>(
-    cx: &CodegenCx<'gcc, '_>,
-    name: Symbol,
-) -> Option<Function<'gcc>> {
+fn get_simple_intrinsic<'gcc>(cx: &CodegenCx<'gcc, '_>, name: Symbol) -> Option<Function<'gcc>> {
     let gcc_name = match name {
         sym::sqrtf32 => "sqrtf",
         sym::sqrtf64 => "sqrt",
@@ -586,10 +583,7 @@ impl<'gcc, 'tcx> ArgAbiExt<'gcc, 'tcx> for ArgAbi<'tcx, Ty<'tcx>> {
     }
 }
 
-fn int_type_width_signed<'tcx>(
-    ty: Ty<'tcx>,
-    cx: &CodegenCx<'_, 'tcx>,
-) -> Option<(u64, bool)> {
+fn int_type_width_signed<'tcx>(ty: Ty<'tcx>, cx: &CodegenCx<'_, 'tcx>) -> Option<(u64, bool)> {
     match *ty.kind() {
         ty::Int(t) => Some((
             match t {

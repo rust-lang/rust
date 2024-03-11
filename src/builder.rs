@@ -506,10 +506,7 @@ impl<'gcc, 'tcx> BackendTypes for Builder<'_, 'gcc, 'tcx> {
     type DIVariable = <CodegenCx<'gcc, 'tcx> as BackendTypes>::DIVariable;
 }
 
-fn set_rvalue_location<'gcc>(
-    bx: &mut Builder<'_, 'gcc, '_>,
-    rvalue: RValue<'gcc>,
-) -> RValue<'gcc> {
+fn set_rvalue_location<'gcc>(bx: &mut Builder<'_, 'gcc, '_>, rvalue: RValue<'gcc>) -> RValue<'gcc> {
     if bx.location.is_some() {
         #[cfg(feature = "master")]
         rvalue.set_location(bx.location.unwrap());
