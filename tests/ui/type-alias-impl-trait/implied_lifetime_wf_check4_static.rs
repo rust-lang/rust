@@ -15,7 +15,6 @@ where
     Ty<A>: 'static,
 {
     assert_static::<A>()
-    //~^ ERROR: the parameter type `A` may not live long enough
 }
 
 fn main() {}
