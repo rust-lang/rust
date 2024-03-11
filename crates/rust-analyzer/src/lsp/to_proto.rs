@@ -15,6 +15,7 @@ use ide::{
 };
 use ide_db::rust_doc::format_docs;
 use itertools::Itertools;
+use semver::VersionReq;
 use serde_json::to_value;
 use vfs::AbsPath;
 
@@ -443,17 +444,24 @@ pub(crate) fn inlay_hint(
     file_id: FileId,
     inlay_hint: InlayHint,
 ) -> Cancellable<lsp_types::InlayHint> {
-    let is_visual_studio_code = snap.config.is_visual_studio_code();
     let needs_resolve = inlay_hint.needs_resolve;
     let (label, tooltip, mut something_to_resolve) =
         inlay_hint_label(snap, fields_to_resolve, needs_resolve, inlay_hint.label)?;
-    let text_edits =
-        if !is_visual_studio_code && needs_resolve && fields_to_resolve.resolve_text_edits {
-            something_to_resolve |= inlay_hint.text_edit.is_some();
-            None
-        } else {
-            inlay_hint.text_edit.map(|it| text_edit_vec(line_index, it))
-        };
+
+    let text_edits = if snap
+        .config
+        .visual_studio_code_version()
+        // https://github.com/microsoft/vscode/issues/193124
+        .map_or(true, |version| VersionReq::parse(">=1.86.0").unwrap().matches(version))
+        && needs_resolve
+        && fields_to_resolve.resolve_text_edits
+    {
+        something_to_resolve |= inlay_hint.text_edit.is_some();
+        None
+    } else {
+        inlay_hint.text_edit.map(|it| text_edit_vec(line_index, it))
+    };
+
     let data = if needs_resolve && something_to_resolve {
         Some(to_value(lsp_ext::InlayHintResolveData { file_id: file_id.index() }).unwrap())
     } else {
