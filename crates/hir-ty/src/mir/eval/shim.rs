@@ -1,6 +1,6 @@
 //! Interpret intrinsics, lang items and `extern "C"` wellknown functions which their implementation
 //! is not available.
-
+//!
 use std::cmp;
 
 use chalk_ir::TyKind;

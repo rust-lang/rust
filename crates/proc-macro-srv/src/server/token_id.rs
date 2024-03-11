@@ -14,7 +14,7 @@ use crate::server::{
 mod tt {
     pub use proc_macro_api::msg::TokenId;
 
-    pub use ::tt::*;
+    pub use tt::*;
 
     pub type Subtree = ::tt::Subtree<TokenId>;
     pub type TokenTree = ::tt::TokenTree<TokenId>;

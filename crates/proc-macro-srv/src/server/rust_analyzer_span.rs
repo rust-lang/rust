@@ -10,16 +10,16 @@ use std::{
     ops::{Bound, Range},
 };
 
-use ::tt::{TextRange, TextSize};
 use proc_macro::bridge::{self, server};
 use span::{Span, FIXUP_ERASED_FILE_AST_ID_MARKER};
+use tt::{TextRange, TextSize};
 
 use crate::server::{
     delim_to_external, delim_to_internal, literal_with_stringify_parts,
     token_stream::TokenStreamBuilder, Symbol, SymbolInternerRef, SYMBOL_INTERNER,
 };
 mod tt {
-    pub use ::tt::*;
+    pub use tt::*;
 
     pub type Subtree = ::tt::Subtree<super::Span>;
     pub type TokenTree = ::tt::TokenTree<super::Span>;

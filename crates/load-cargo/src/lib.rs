@@ -419,13 +419,9 @@ impl ProcMacroExpander for Expander {
 #[cfg(test)]
 mod tests {
     use ide_db::base_db::SourceDatabase;
+    use vfs::file_set::FileSetConfigBuilder;
 
     use super::*;
-
-    use ide_db::base_db::SourceRootId;
-    use vfs::{file_set::FileSetConfigBuilder, VfsPath};
-
-    use crate::SourceRootConfig;
 
     #[test]
     fn test_loading_rust_analyzer() {
