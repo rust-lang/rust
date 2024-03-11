@@ -274,7 +274,9 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
 
         let goal =
             goal.with(self.tcx(), goal.predicate.with_self_ty(self.tcx(), normalized_self_ty));
-        debug_assert_eq!(goal, self.resolve_vars_if_possible(goal));
+        // Vars that show up in the rest of the goal substs may have been constrained by
+        // normalizing the self type as well, since type variables are not uniquified.
+        let goal = self.resolve_vars_if_possible(goal);
 
         let mut candidates = vec![];
 
