@@ -561,7 +561,7 @@ pattern for matching a `macro` definition as `$( $lhs:tt => $rhs:tt );+`. In
 other words, a `macro_rules` definition should have in its body at least one
 occurrence of a token tree followed by `=>` followed by another token tree.
 When the compiler comes to a `macro_rules` definition, it uses this pattern to
-match the two token trees per rule in the definition of the `macro`, _thereby
+match the two token trees per the rules of the definition of the `macro`, _thereby
 utilizing the `macro` parser itself_. In our example definition, the
 metavariable `$lhs` would match the patterns of both arms: `(print
 $mvar:ident)` and `(print twice $mvar:ident)`. And `$rhs` would match the
