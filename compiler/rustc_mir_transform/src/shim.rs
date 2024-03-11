@@ -1023,519 +1023,7 @@ fn build_async_destructor_ctor_shim<'tcx>(
     def_id: DefId,
     self_ty: Ty<'tcx>,
 ) -> Body<'tcx> {
-    let mut builder = AsyncDestructorCtorShimBuilder::new(tcx, def_id, self_ty);
-
-    let source_info = builder.source_info;
-    let span = builder.span;
-    let param_env = tcx.param_env_reveal_all_normalized(def_id);
-
-    let return_local = Local::new(0);
-    let self_ptr = Local::new(1);
-
-    #[derive(Clone, Copy)]
-    enum GlueStrategy<'tcx> {
-        /// Empty strategy should generate this:
-        ///
-        /// ```ignore (illustrative)
-        /// ready_unit()
-        /// ```
-        Empty,
-
-        /// AsyncDropProjection strategy should generate this:
-        ///
-        /// ```ignore (illustrative)
-        /// surface_async_drop_in_place(to_drop)
-        /// ```
-        AsyncDropProjection,
-
-        /// Slice strategy should generate this:
-        ///
-        /// ```ignore (illustrative)
-        /// // unsizes array into a slice when needed
-        /// slice_async_destructor(to_drop)
-        /// ```
-        Slice { elem_ty: Ty<'tcx>, is_array: bool },
-
-        /// Chain strategy should generate something like this:
-        ///
-        /// ```ignore (illustrative)
-        /// chain(
-        ///     // Inserted only if surface AsyncDrop is implemented
-        ///     surface_async_drop_in_place(to_drop),
-        ///     chain(
-        ///         // We defer async drop of fields to defer creation of
-        ///         // mutable references not too early for the aliasing
-        ///         // model
-        ///         deferred_async_drop(addr_of_mut!((*to_drop).0)),
-        ///         chain(
-        ///             deferred_async_drop(addr_of_mut!((*to_drop).1)),
-        ///             chain(
-        ///                deferred_async_drop(addr_of_mut!((*to_drop).2)),
-        ///                ready_unit(), // for idempotency
-        ///             ),
-        ///         ),
-        ///     ),
-        /// )
-        /// ```
-        Chain { elem_tys: &'tcx ty::List<Ty<'tcx>>, has_surface_async_drop: bool },
-    }
-
-    let strategy = match *self_ty.kind() {
-        kind @ (ty::Array(elem_ty, _) | ty::Slice(elem_ty)) => {
-            GlueStrategy::Slice { is_array: matches!(kind, ty::Array(..)), elem_ty }
-        }
-
-        ty::Tuple(elem_tys) if elem_tys.is_empty() => GlueStrategy::Empty,
-        ty::Tuple(elem_tys) => {
-            GlueStrategy::Chain { elem_tys, has_surface_async_drop: false }
-        }
-        ty::Adt(adt_def, args) if adt_def.is_struct() => {
-            debug_assert_eq!(adt_def.variants().len(), 1);
-            GlueStrategy::Chain {
-                elem_tys: tcx.mk_type_list_from_iter(
-                    adt_def.variant(VariantIdx::new(0)).fields.iter().map(|f| f.ty(tcx, args)),
-                ),
-                has_surface_async_drop: self_ty.is_async_drop(tcx, param_env),
-            }
-        }
-
-        ty::Foreign(_)
-        // TODO: implement enums, disallow unions
-        | ty::Adt(_, _)
-        | ty::Dynamic(_, _, _)
-        | ty::Closure(_, _)
-        | ty::CoroutineClosure(_, _)
-        | ty::Coroutine(_, _)
-        | ty::CoroutineWitness(_, _)
-        | ty::Alias(_, _)
-        | ty::Param(_)
-        | ty::Bound(_, _)
-        | ty::Placeholder(_)
-        | ty::Infer(_)
-        | ty::Error(_) => {
-            if self_ty.is_async_drop(tcx, param_env) {
-                GlueStrategy::AsyncDropProjection
-            } else {
-                GlueStrategy::Empty
-            }
-        }
-
-        ty::Bool
-        | ty::Char
-        | ty::Int(_)
-        | ty::Uint(_)
-        | ty::Float(_)
-        | ty::Str
-        | ty::RawPtr(_)
-        | ty::Ref(_, _, _)
-        | ty::FnDef(_, _)
-        | ty::FnPtr(_)
-        | ty::Never => GlueStrategy::Empty,
-    };
-
-    let return_bb;
-    let mut blocks = &mut builder.bbs;
-    match strategy {
-        GlueStrategy::Empty => {
-            builder.ready_unit();
-            return builder.return_();
-        }
-
-        GlueStrategy::AsyncDropProjection => {
-            let surface_async_drop_in_place_fn =
-                tcx.require_lang_item(LangItem::SurfaceAsyncDropInPlace, Some(span));
-
-            *blocks = IndexVec::from_elem_n(BasicBlockData::new(None), 2);
-            let surface_async_drop_in_place_bb = BasicBlock::new(0);
-            return_bb = BasicBlock::new(1);
-
-            blocks[surface_async_drop_in_place_bb].terminator = Some(Terminator {
-                source_info,
-                kind: TerminatorKind::Call {
-                    func: Operand::function_handle(
-                        tcx,
-                        surface_async_drop_in_place_fn,
-                        iter::once(self_ty.into()),
-                        span,
-                    ),
-                    args: vec![respan(span, Operand::Move(self_ptr.into()))],
-                    destination: return_local.into(),
-                    target: Some(return_bb),
-                    unwind: UnwindAction::Continue,
-                    call_source: CallSource::Misc,
-                    fn_span: span,
-                },
-            });
-        }
-
-        GlueStrategy::Slice { elem_ty, is_array } => {
-            let slice_async_destructor_fn =
-                tcx.require_lang_item(LangItem::SliceAsyncDestructorCtor, Some(span));
-
-            *blocks = IndexVec::from_elem_n(BasicBlockData::new(None), 2);
-            let slice_async_destructor_bb = BasicBlock::new(0);
-            return_bb = BasicBlock::new(1);
-
-            let slice_ptr = if is_array {
-                let slice_ptr_ty = Ty::new_mut_ptr(tcx, Ty::new_slice(tcx, elem_ty));
-                let slice_ptr =
-                    builder.locals.push(LocalDecl::with_source_info(slice_ptr_ty, source_info));
-
-                blocks[slice_async_destructor_bb].statements = vec![
-                    Statement { source_info, kind: StatementKind::StorageLive(slice_ptr) },
-                    Statement {
-                        source_info,
-                        kind: StatementKind::Assign(Box::new((
-                            slice_ptr.into(),
-                            Rvalue::Cast(
-                                CastKind::PointerCoercion(PointerCoercion::Unsize),
-                                Operand::Move(self_ptr.into()),
-                                slice_ptr_ty,
-                            ),
-                        ))),
-                    },
-                ];
-                slice_ptr
-            } else {
-                self_ptr
-            };
-
-            blocks[slice_async_destructor_bb].terminator = Some(Terminator {
-                source_info,
-                kind: TerminatorKind::Call {
-                    func: Operand::function_handle(
-                        tcx,
-                        slice_async_destructor_fn,
-                        iter::once(elem_ty.into()),
-                        span,
-                    ),
-                    args: vec![respan(span, Operand::Move(slice_ptr.into()))],
-                    destination: return_local.into(),
-                    target: Some(return_bb),
-                    unwind: UnwindAction::Continue,
-                    call_source: CallSource::Misc,
-                    fn_span: span,
-                },
-            });
-
-            if is_array {
-                blocks[return_bb].statements =
-                    vec![Statement { source_info, kind: StatementKind::StorageDead(slice_ptr) }];
-            }
-        }
-
-        GlueStrategy::Chain { has_surface_async_drop, elem_tys } => {
-            let elem_count = elem_tys.len();
-
-            let ready_unit_ty = tcx
-                .type_of(tcx.require_lang_item(LangItem::FutureReadyUnit, Some(span)))
-                .instantiate_identity();
-            let ready_unit_fn = tcx.require_lang_item(LangItem::FutureReadyUnitCtor, Some(span));
-            let deferred_async_drop_ty =
-                tcx.type_of(tcx.require_lang_item(LangItem::DeferredAsyncDrop, Some(span)));
-            let deferred_async_drop_fn =
-                tcx.require_lang_item(LangItem::DeferredAsyncDropCtor, Some(span));
-            let future_chain_ty =
-                tcx.type_of(tcx.require_lang_item(LangItem::FutureChain, Some(span)));
-            let future_chain_fn = tcx.require_lang_item(LangItem::FutureChainCtor, Some(span));
-
-            builder.locals.raw.reserve(
-                1 + LOCALS_PER_ELEM * elem_count + if has_surface_async_drop { 2 } else { 0 },
-            );
-
-            // this local is right before element locals
-            let ready_unit_local =
-                builder.locals.push(LocalDecl::with_source_info(ready_unit_ty, source_info));
-
-            let locals_base = builder.locals.len();
-            let mut last_chain_ty = ready_unit_ty;
-            // Creating temproraries to store intermediate futuresh
-            builder.locals.extend(
-                elem_tys
-                    .iter()
-                    .rev()
-                    .flat_map(|elem_ty| -> [Ty<'tcx>; LOCALS_PER_ELEM] {
-                        let elem_ptr_ty = Ty::new_mut_ptr(tcx, elem_ty);
-                        let deferred_async_drop_ty =
-                            deferred_async_drop_ty.instantiate(tcx, &[elem_ty.into()]);
-                        last_chain_ty = future_chain_ty.instantiate(
-                            tcx,
-                            &[deferred_async_drop_ty.into(), last_chain_ty.into()],
-                        );
-                        [elem_ptr_ty, deferred_async_drop_ty, last_chain_ty]
-                    })
-                    .map(|ty| LocalDecl::with_source_info(ty, source_info)),
-            );
-
-            *blocks =
-                IndexVec::from_elem_n(BasicBlockData::new(None), 4 + BBS_PER_ELEM * elem_count);
-            let ready_unit_bb = BasicBlock::new(0);
-            let bbs_base = 1;
-            // this basic block is right after element basic blocks,
-            // thus is targeted by the last basic block of the chain
-            // construction
-            let maybe_async_dropper_bb = BasicBlock::new(blocks.len() - 3);
-            let maybe_surface_chain_bb = BasicBlock::new(blocks.len() - 2);
-            return_bb = BasicBlock::new(blocks.len() - 1);
-
-            #[derive(Clone, Copy)]
-            struct ChainNode<'tcx> {
-                field: FieldIdx,
-                elem_ty: Ty<'tcx>,
-
-                elem_ptr_local: Local,
-                deferred_dtor_local: Local,
-                chain_local: Local,
-                previous_chain_local: Local,
-
-                deferred_dtor_bb: BasicBlock,
-                future_chain_bb: BasicBlock,
-                goto_bb: BasicBlock,
-                next_bb: BasicBlock,
-            }
-
-            const LOCALS_PER_ELEM: usize = 3;
-            const BBS_PER_ELEM: usize = 3;
-
-            debug_assert_eq!(ready_unit_local, Local::new(locals_base - 1));
-            let chain_nodes = || {
-                elem_tys.iter().rev().enumerate().map(|(i, elem_ty)| ChainNode {
-                    field: FieldIdx::new(elem_count - i - 1),
-                    elem_ty,
-
-                    previous_chain_local: Local::new(locals_base + LOCALS_PER_ELEM * i - 1),
-                    elem_ptr_local: Local::new(locals_base + LOCALS_PER_ELEM * i),
-                    deferred_dtor_local: Local::new(locals_base + LOCALS_PER_ELEM * i + 1),
-                    chain_local: Local::new(locals_base + LOCALS_PER_ELEM * i + 2),
-
-                    deferred_dtor_bb: BasicBlock::new(bbs_base + BBS_PER_ELEM * i),
-                    future_chain_bb: BasicBlock::new(bbs_base + BBS_PER_ELEM * i + 1),
-                    goto_bb: BasicBlock::new(bbs_base + BBS_PER_ELEM * i + 2),
-                    next_bb: BasicBlock::new(bbs_base + BBS_PER_ELEM * i + 3),
-                })
-            };
-
-            blocks[ready_unit_bb].statements =
-                vec![Statement { source_info, kind: StatementKind::StorageLive(ready_unit_local) }];
-            blocks[ready_unit_bb].terminator = Some(Terminator {
-                source_info,
-                kind: TerminatorKind::Call {
-                    func: Operand::function_handle(tcx, ready_unit_fn, iter::empty(), span),
-                    args: Vec::new(),
-                    destination: ready_unit_local.into(),
-                    target: Some(chain_nodes().next().unwrap().deferred_dtor_bb),
-                    unwind: UnwindAction::Continue,
-                    call_source: CallSource::Misc,
-                    fn_span: span,
-                },
-            });
-
-            chain_nodes().for_each(|node| {
-                blocks[node.deferred_dtor_bb].statements = vec![
-                    Statement {
-                        source_info,
-                        kind: StatementKind::StorageLive(node.elem_ptr_local),
-                    },
-                    Statement {
-                        source_info,
-                        kind: StatementKind::Assign(Box::new((
-                            node.elem_ptr_local.into(),
-                            Rvalue::AddressOf(
-                                Mutability::Mut,
-                                tcx.mk_place_field(
-                                    tcx.mk_place_deref(self_ptr.into()),
-                                    node.field,
-                                    node.elem_ty,
-                                ),
-                            ),
-                        ))),
-                    },
-                    Statement {
-                        source_info,
-                        kind: StatementKind::StorageLive(node.deferred_dtor_local),
-                    },
-                ];
-                blocks[node.deferred_dtor_bb].terminator = Some(Terminator {
-                    source_info,
-                    kind: TerminatorKind::Call {
-                        func: Operand::function_handle(
-                            tcx,
-                            deferred_async_drop_fn,
-                            iter::once(node.elem_ty.into()),
-                            span,
-                        ),
-                        args: vec![respan(span, Operand::Move(node.elem_ptr_local.into()))],
-                        destination: node.deferred_dtor_local.into(),
-                        target: Some(node.future_chain_bb),
-                        unwind: UnwindAction::Continue,
-                        call_source: CallSource::Misc,
-                        fn_span: span,
-                    },
-                });
-
-                blocks[node.future_chain_bb].statements = vec![
-                    Statement {
-                        source_info,
-                        kind: StatementKind::StorageDead(node.elem_ptr_local),
-                    },
-                    Statement { source_info, kind: StatementKind::StorageLive(node.chain_local) },
-                ];
-                blocks[node.future_chain_bb].terminator = Some(Terminator {
-                    source_info,
-                    kind: TerminatorKind::Call {
-                        func: Operand::function_handle(
-                            tcx,
-                            future_chain_fn,
-                            [
-                                builder.locals[node.deferred_dtor_local].ty.into(),
-                                builder.locals[node.previous_chain_local].ty.into(),
-                            ],
-                            span,
-                        ),
-                        args: vec![
-                            respan(span, Operand::Move(node.deferred_dtor_local.into())),
-                            respan(span, Operand::Move(node.previous_chain_local.into())),
-                        ],
-                        destination: node.chain_local.into(),
-                        target: Some(node.goto_bb),
-                        unwind: UnwindAction::Continue,
-                        call_source: CallSource::Misc,
-                        fn_span: span,
-                    },
-                });
-
-                blocks[node.goto_bb].statements = vec![
-                    Statement {
-                        source_info,
-                        kind: StatementKind::StorageDead(node.deferred_dtor_local),
-                    },
-                    Statement {
-                        source_info,
-                        kind: StatementKind::StorageDead(node.previous_chain_local),
-                    },
-                ];
-                blocks[node.goto_bb].terminator = Some(Terminator {
-                    source_info,
-                    kind: TerminatorKind::Goto { target: node.next_bb },
-                });
-            });
-
-            let last_chain_local = chain_nodes().next_back().unwrap().chain_local;
-
-            if has_surface_async_drop {
-                let surface_async_drop_fn =
-                    tcx.require_lang_item(LangItem::SurfaceAsyncDropInPlace, Some(span));
-
-                let async_dropper_ty = Ty::new_projection(
-                    tcx,
-                    tcx.associated_item_def_ids(
-                        tcx.require_lang_item(LangItem::AsyncDrop, Some(span)),
-                    )[0],
-                    [ty::GenericArg::from(self_ty), tcx.lifetimes.re_erased.into()],
-                );
-
-                let async_dropper_local =
-                    builder.locals.push(LocalDecl::with_source_info(async_dropper_ty, source_info));
-                let surface_chain_ty = future_chain_ty
-                    .instantiate(tcx, &[async_dropper_ty.into(), last_chain_ty.into()]);
-                let surface_chain_local =
-                    builder.locals.push(LocalDecl::with_source_info(surface_chain_ty, source_info));
-
-                blocks[maybe_async_dropper_bb].statements = vec![Statement {
-                    source_info,
-                    kind: StatementKind::StorageLive(async_dropper_local),
-                }];
-                blocks[maybe_async_dropper_bb].terminator = Some(Terminator {
-                    source_info,
-                    kind: TerminatorKind::Call {
-                        func: Operand::function_handle(
-                            tcx,
-                            surface_async_drop_fn,
-                            iter::once(self_ty.into()),
-                            span,
-                        ),
-                        args: vec![respan(span, Operand::Move(self_ptr.into()))],
-                        destination: async_dropper_local.into(),
-                        target: Some(maybe_surface_chain_bb),
-                        unwind: UnwindAction::Continue,
-                        call_source: CallSource::Misc,
-                        fn_span: span,
-                    },
-                });
-
-                blocks[maybe_surface_chain_bb].statements = vec![Statement {
-                    source_info,
-                    kind: StatementKind::StorageLive(surface_chain_local),
-                }];
-                blocks[maybe_surface_chain_bb].terminator = Some(Terminator {
-                    source_info,
-                    kind: TerminatorKind::Call {
-                        func: Operand::function_handle(
-                            tcx,
-                            future_chain_fn,
-                            [async_dropper_ty.into(), last_chain_ty.into()],
-                            span,
-                        ),
-                        args: vec![
-                            respan(span, Operand::Move(async_dropper_local.into())),
-                            respan(span, Operand::Move(last_chain_local.into())),
-                        ],
-                        destination: surface_chain_local.into(),
-                        target: Some(return_bb),
-                        unwind: UnwindAction::Continue,
-                        call_source: CallSource::Misc,
-                        fn_span: span,
-                    },
-                });
-
-                blocks[return_bb].statements = vec![
-                    Statement {
-                        source_info,
-                        kind: StatementKind::StorageDead(async_dropper_local),
-                    },
-                    Statement { source_info, kind: StatementKind::StorageDead(last_chain_local) },
-                    Statement {
-                        source_info,
-                        kind: StatementKind::Assign(Box::new((
-                            return_local.into(),
-                            Rvalue::Use(Operand::Move(surface_chain_local.into())),
-                        ))),
-                    },
-                    Statement {
-                        source_info,
-                        kind: StatementKind::StorageDead(surface_chain_local),
-                    },
-                ];
-            } else {
-                blocks[maybe_async_dropper_bb].terminator = Some(Terminator {
-                    source_info,
-                    kind: TerminatorKind::Goto { target: maybe_surface_chain_bb },
-                });
-
-                blocks[maybe_surface_chain_bb].terminator = Some(Terminator {
-                    source_info,
-                    kind: TerminatorKind::Goto { target: return_bb },
-                });
-
-                blocks[return_bb].statements = vec![
-                    Statement {
-                        source_info,
-                        kind: StatementKind::Assign(Box::new((
-                            return_local.into(),
-                            Rvalue::Use(Operand::Move(last_chain_local.into())),
-                        ))),
-                    },
-                    Statement { source_info, kind: StatementKind::StorageDead(last_chain_local) },
-                ];
-            }
-        }
-    }
-
-    builder.bbs[return_bb].terminator =
-        Some(Terminator { source_info, kind: TerminatorKind::Return });
-
-    let source = MirSource::from_instance(ty::InstanceDef::AsyncDropGlueCtorShim(def_id, self_ty));
-    new_body(source, builder.bbs, builder.locals, ASYNC_DESTRUCTOR_CTOR_ARG_COUNT, span)
+    AsyncDestructorCtorShimBuilder::new(tcx, def_id, self_ty).build()
 }
 
 const ASYNC_DESTRUCTOR_CTOR_ARG_COUNT: usize = 1;
@@ -1554,8 +1042,11 @@ struct AsyncDestructorCtorShimBuilder<'tcx> {
     bbs: IndexVec<BasicBlock, BasicBlockData<'tcx>>,
 
     // Cached stuff
-    chain_combinator: Option<(DefId, EarlyBinder<Ty<'tcx>>)>,
     ready_unit: Option<(DefId, Ty<'tcx>)>,
+    surface_combinator: Option<(DefId, DefId)>,
+    slice_combinator: Option<(DefId, EarlyBinder<Ty<'tcx>>)>,
+    deferred_combinator: Option<(DefId, EarlyBinder<Ty<'tcx>>)>,
+    chain_combinator: Option<(DefId, EarlyBinder<Ty<'tcx>>)>,
 }
 
 impl<'tcx> AsyncDestructorCtorShimBuilder<'tcx> {
@@ -1584,9 +1075,120 @@ impl<'tcx> AsyncDestructorCtorShimBuilder<'tcx> {
             locals,
             bbs: IndexVec::from([BasicBlockData::new(None)]),
 
-            chain_combinator: None,
             ready_unit: None,
+            surface_combinator: None,
+            slice_combinator: None,
+            deferred_combinator: None,
+            chain_combinator: None,
         }
+    }
+
+    fn build(self) -> Body<'tcx> {
+        let (tcx, def_id, self_ty) = (self.tcx, self.def_id, self.self_ty);
+        let defer_param_env = || tcx.param_env_reveal_all_normalized(def_id);
+
+        match self_ty.kind() {
+            ty::Array(elem_ty, _) => {
+                self.build_slice(true, *elem_ty)
+            }
+            ty::Slice(elem_ty) => {
+                self.build_slice(false, *elem_ty)
+            }
+
+            ty::Tuple(elem_tys) => {
+                self.build_chain(false, elem_tys.iter())
+            }
+            ty::Adt(adt_def, args) if adt_def.is_struct() => {
+                debug_assert_eq!(adt_def.variants().len(), 1);
+                let has_surface_async_drop = self_ty.is_async_drop(tcx, defer_param_env());
+                let field_tys = adt_def.variant(VariantIdx::new(0)).fields.iter().map(|f| f.ty(tcx, args));
+                self.build_chain(has_surface_async_drop, field_tys)
+            }
+
+            ty::Foreign(_)
+            // TODO: implement enums, disallow unions
+            | ty::Adt(_, _)
+            | ty::Dynamic(_, _, _)
+            | ty::Closure(_, _)
+            | ty::CoroutineClosure(_, _)
+            | ty::Coroutine(_, _)
+            | ty::CoroutineWitness(_, _)
+            | ty::Alias(_, _)
+            | ty::Param(_)
+            | ty::Bound(_, _)
+            | ty::Placeholder(_)
+            | ty::Infer(_)
+            | ty::Error(_) => {
+                if self_ty.is_async_drop(tcx, defer_param_env()) {
+                    self.build_surface()
+                } else {
+                    self.build_ready_unit()
+                }
+            }
+
+            ty::Bool
+            | ty::Char
+            | ty::Int(_)
+            | ty::Uint(_)
+            | ty::Float(_)
+            | ty::Str
+            | ty::RawPtr(_)
+            | ty::Ref(_, _, _)
+            | ty::FnDef(_, _)
+            | ty::FnPtr(_)
+            | ty::Never => self.build_ready_unit(),
+        }
+    }
+
+    fn build_ready_unit(mut self) -> Body<'tcx> {
+        self.combine_ready_unit();
+        self.return_()
+    }
+
+    fn build_surface(mut self) -> Body<'tcx> {
+        self.put_self();
+        self.combine_surface();
+        self.return_()
+    }
+
+    fn build_slice(mut self, is_array: bool, elem_ty: Ty<'tcx>) -> Body<'tcx> {
+        if is_array {
+            self.put_array_as_slice(elem_ty)
+        } else {
+            self.put_slice(elem_ty)
+        }
+        self.combine_slice();
+        self.return_()
+    }
+
+    fn build_chain<I>(mut self, has_surface_async_drop: bool, elem_tys: I) -> Body<'tcx>
+    where
+        I: Iterator<Item = Ty<'tcx>>,
+    {
+        if has_surface_async_drop {
+            self.put_self();
+            self.combine_surface();
+        }
+
+        let elem_count = elem_tys
+            .enumerate()
+            .map(|(i, elem_ty)| {
+                self.put_field(FieldIdx::new(i), elem_ty);
+                self.combine_deferred();
+            })
+            .count();
+
+        self.combine_ready_unit();
+
+        for _ in 0..elem_count {
+            self.combine_chain();
+        }
+
+        if has_surface_async_drop {
+            self.combine_chain();
+        }
+
+        self.return_()
     }
 
     fn put_self(&mut self) {
@@ -1613,20 +1215,87 @@ impl<'tcx> AsyncDestructorCtorShimBuilder<'tcx> {
         self.stack.push((local, self.self_ty));
     }
 
+    fn put_array_as_slice(&mut self, elem_ty: Ty<'tcx>) {
+        let last_bb = &mut self.bbs[self.last_bb];
+        debug_assert!(last_bb.terminator.is_none());
+
+        let slice_ptr = {
+            let slice_ptr_ty = Ty::new_mut_ptr(self.tcx, Ty::new_slice(self.tcx, elem_ty));
+            let slice_ptr =
+                self.locals.push(LocalDecl::with_source_info(slice_ptr_ty, self.source_info));
+            let self_ptr = Local::new(1);
+
+            last_bb.statements.extend_from_slice(&[
+                Statement {
+                    source_info: self.source_info,
+                    kind: StatementKind::StorageLive(slice_ptr),
+                },
+                Statement {
+                    source_info: self.source_info,
+                    kind: StatementKind::Assign(Box::new((
+                        slice_ptr.into(),
+                        Rvalue::Cast(
+                            CastKind::PointerCoercion(PointerCoercion::Unsize),
+                            Operand::Copy(self_ptr.into()),
+                            slice_ptr_ty,
+                        ),
+                    ))),
+                },
+            ]);
+            slice_ptr
+        };
+
+        // We use pointee types so that they are used for instantiation
+        // of combinators
+        self.stack.push((slice_ptr, elem_ty));
+    }
+
+    fn put_slice(&mut self, elem_ty: Ty<'tcx>) {
+        let last_bb = &mut self.bbs[self.last_bb];
+        debug_assert!(last_bb.terminator.is_none());
+
+        let self_ptr = Local::new(1);
+        // We need to create a new local to be able to "consume" it with
+        // a combinator
+        let slice_ptr = self.locals.push(self.locals[self_ptr].clone());
+        last_bb.statements.extend_from_slice(&[
+            Statement {
+                source_info: self.source_info,
+                kind: StatementKind::StorageLive(slice_ptr),
+            },
+            Statement {
+                source_info: self.source_info,
+                kind: StatementKind::Assign(Box::new((
+                    slice_ptr.into(),
+                    Rvalue::Use(Operand::Copy(self_ptr.into())),
+                ))),
+            },
+        ]);
+
+        // We use pointee types so that they are used for instantiation
+        // of combinators
+        self.stack.push((slice_ptr, elem_ty));
+    }
+
     fn put_field(&mut self, field: FieldIdx, ty: Ty<'tcx>) {
         let last_bb = &mut self.bbs[self.last_bb];
         debug_assert!(last_bb.terminator.is_none());
 
+        let field_ptr_ty = Ty::new_mut_ptr(self.tcx, ty);
         // We need to create a new local to be able to "consume" it with
         // a combinator
-        let local = self.locals.push(LocalDecl::with_source_info(ty, self.source_info));
+        let field_ptr =
+            self.locals.push(LocalDecl::with_source_info(field_ptr_ty, self.source_info));
         let self_ptr = Local::new(1);
         last_bb.statements.extend_from_slice(&[
-            Statement { source_info: self.source_info, kind: StatementKind::StorageLive(local) },
+            Statement {
+                source_info: self.source_info,
+                kind: StatementKind::StorageLive(field_ptr),
+            },
             Statement {
                 source_info: self.source_info,
                 kind: StatementKind::Assign(Box::new((
-                    local.into(),
+                    field_ptr.into(),
                     Rvalue::AddressOf(
                         Mutability::Mut,
                         self.tcx.mk_place_field(
@@ -1641,10 +1310,10 @@ impl<'tcx> AsyncDestructorCtorShimBuilder<'tcx> {
 
         // We use pointee types so that they are used for instantiation
         // of combinators
-        self.stack.push((local, ty));
+        self.stack.push((field_ptr, ty));
     }
 
-    fn ready_unit(&mut self) {
+    fn combine_ready_unit(&mut self) {
         let tcx = self.tcx;
         let (function, ty) = *self.ready_unit.get_or_insert_with(|| {
             (
@@ -1656,7 +1325,47 @@ impl<'tcx> AsyncDestructorCtorShimBuilder<'tcx> {
         self.apply_combinator::<0, _>(function, |_, _| ty)
     }
 
-    fn chain(&mut self) {
+    fn combine_surface(&mut self) {
+        let tcx = self.tcx;
+        let (function, ty) = *self.surface_combinator.get_or_insert_with(|| {
+            (
+                tcx.require_lang_item(LangItem::SurfaceAsyncDropInPlace, Some(self.span)),
+                tcx.associated_item_def_ids(
+                    tcx.require_lang_item(LangItem::AsyncDrop, Some(self.span)),
+                )[0],
+            )
+        });
+        self.apply_combinator_with_ty_trailing_args::<2, _>(
+            1,
+            function,
+            |tcx, args| Ty::new_projection(tcx, ty, args.iter().copied()),
+            &[tcx.lifetimes.re_static.into()],
+        )
+    }
+
+    fn combine_slice(&mut self) {
+        let tcx = self.tcx;
+        let (function, ty) = *self.slice_combinator.get_or_insert_with(|| {
+            (
+                tcx.require_lang_item(LangItem::SliceAsyncDestructorCtor, Some(self.span)),
+                tcx.type_of(tcx.require_lang_item(LangItem::SliceAsyncDestructor, Some(self.span))),
+            )
+        });
+        self.apply_combinator::<1, _>(function, |tcx, args| ty.instantiate(tcx, args))
+    }
+
+    fn combine_deferred(&mut self) {
+        let tcx = self.tcx;
+        let (function, ty) = *self.deferred_combinator.get_or_insert_with(|| {
+            (
+                tcx.require_lang_item(LangItem::DeferredAsyncDropCtor, Some(self.span)),
+                tcx.type_of(tcx.require_lang_item(LangItem::DeferredAsyncDrop, Some(self.span))),
+            )
+        });
+        self.apply_combinator::<1, _>(function, |tcx, args| ty.instantiate(tcx, args))
+    }
+
+    fn combine_chain(&mut self) {
         let tcx = self.tcx;
         let (function, ty) = *self.chain_combinator.get_or_insert_with(|| {
             (
@@ -1703,21 +1412,38 @@ impl<'tcx> AsyncDestructorCtorShimBuilder<'tcx> {
         new_body(source, self.bbs, self.locals, ASYNC_DESTRUCTOR_CTOR_ARG_COUNT, self.span)
     }
 
-    fn apply_combinator<const ARITY: usize, F>(&mut self, function: DefId, mut ty_combinator: F)
+    fn apply_combinator<const ARITY: usize, F>(&mut self, function: DefId, ty_combinator: F)
     where
         F: FnMut(TyCtxt<'tcx>, &[ty::GenericArg<'tcx>]) -> Ty<'tcx>,
     {
-        let operands = self
-            .stack
-            .last_chunk::<ARITY>()
-            .expect("async destructor ctor shim combinator tried to consume too many items");
+        self.apply_combinator_with_ty_trailing_args::<ARITY, F>(ARITY, function, ty_combinator, &[])
+    }
 
-        let generic_args = operands.each_ref().map(|&(_, t)| t.into());
-        let dest_ty = ty_combinator(self.tcx, &generic_args);
+    fn apply_combinator_with_ty_trailing_args<const ARG_COUNT: usize, F>(
+        &mut self,
+        arity: usize,
+        function: DefId,
+        mut ty_combinator: F,
+        ty_trailing_args: &[ty::GenericArg<'tcx>],
+    ) where
+        F: FnMut(TyCtxt<'tcx>, &[ty::GenericArg<'tcx>]) -> Ty<'tcx>,
+    {
+        debug_assert_eq!(arity + ty_trailing_args.len(), ARG_COUNT);
+
+        let operands = &self.stack[self
+            .stack
+            .len()
+            .checked_sub(arity)
+            .expect("async destructor ctor shim combinator tried to consume too many items")..];
+
+        let fn_generic_args = || operands.iter().map(|&(_, t)| t.into());
+        let mut ty_generic_args = fn_generic_args().chain(ty_trailing_args.iter().copied());
+        let ty_generic_args = [(); ARG_COUNT].map(|()| ty_generic_args.next().unwrap());
+        let dest_ty = ty_combinator(self.tcx, &ty_generic_args);
 
         let target = self.bbs.push(BasicBlockData {
             statements: {
-                let mut stmts = Vec::with_capacity(ARITY + 1);
+                let mut stmts = Vec::with_capacity(arity + 1);
                 stmts.extend(operands.iter().map(|&(l, _)| Statement {
                     source_info: self.source_info,
                     kind: StatementKind::StorageDead(l),
@@ -1742,7 +1468,7 @@ impl<'tcx> AsyncDestructorCtorShimBuilder<'tcx> {
         last_bb.terminator = Some(Terminator {
             source_info: self.source_info,
             kind: TerminatorKind::Call {
-                func: Operand::function_handle(self.tcx, function, generic_args, self.span),
+                func: Operand::function_handle(self.tcx, function, fn_generic_args(), self.span),
                 args,
                 destination: dest.into(),
                 target: Some(target),
@@ -1753,7 +1479,7 @@ impl<'tcx> AsyncDestructorCtorShimBuilder<'tcx> {
             },
         });
 
-        drop(self.stack.drain(self.stack.len() - ARITY..));
+        drop(self.stack.drain(self.stack.len() - arity..));
         self.stack.push((dest, dest_ty));
         self.last_bb = target;
     }
