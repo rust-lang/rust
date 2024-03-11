@@ -77,8 +77,8 @@ pub struct CodegenCx<'ll, 'tcx> {
     /// See <https://llvm.org/docs/LangRef.html#the-llvm-compiler-used-global-variable> for details
     pub compiler_used_statics: RefCell<Vec<&'ll Value>>,
 
-    /// Mapping of non-scalar types to llvm types and field remapping if needed.
-    pub type_lowering: RefCell<FxHashMap<(Ty<'tcx>, Option<VariantIdx>), TypeLowering<'ll>>>,
+    /// Mapping of non-scalar types to llvm types.
+    pub type_lowering: RefCell<FxHashMap<(Ty<'tcx>, Option<VariantIdx>), &'ll Type>>,
 
     /// Mapping of scalar types to llvm types.
     pub scalar_lltypes: RefCell<FxHashMap<Ty<'tcx>, &'ll Type>>,
@@ -103,15 +103,6 @@ pub struct CodegenCx<'ll, 'tcx> {
     /// `global_asm!` needs to be able to find this new global so that it can
     /// compute the correct mangled symbol name to insert into the asm.
     pub renamed_statics: RefCell<FxHashMap<DefId, &'ll Value>>,
-}
-
-pub struct TypeLowering<'ll> {
-    /// Associated LLVM type
-    pub lltype: &'ll Type,
-
-    /// If padding is used the slice maps fields from source order
-    /// to llvm order.
-    pub field_remapping: Option<SmallVec<[u32; 4]>>,
 }
 
 fn to_llvm_tls_model(tls_model: TlsModel) -> llvm::ThreadLocalMode {
