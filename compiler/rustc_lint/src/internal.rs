@@ -606,7 +606,7 @@ impl EarlyLintPass for ImplicitSysrootCrateImport {
             crate_name.starts_with("rustc_")
                 || matches!(
                     crate_name,
-                    "test" | "self" | "core" | "alloc" | "std" | "proc_macro" | "tikv_jemalloc_sys"
+                    "test" | "self" | "core" | "alloc" | "std" | "proc_macro" | "libmimalloc_sys"
                 )
         }
 

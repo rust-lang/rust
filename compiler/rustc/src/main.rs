@@ -25,7 +25,7 @@ use std::process::ExitCode;
 // cannot use the sized deallocation APIs (`sdallocx`) that jemalloc provides.
 // It's unclear how much performance is lost because of this.
 //
-// NOTE: Even though Cargo passes `--extern` with `tikv_jemalloc_sys`, we still need to `use` the
+// NOTE: Even though Cargo passes `--extern` with `libmimalloc_sys`, we still need to `use` the
 // crate for the compiler to see the `#[used]`, see https://github.com/rust-lang/rust/issues/64402.
 // This is similarly required if we used a crate with `#[global_allocator]`.
 //
@@ -38,7 +38,7 @@ use std::process::ExitCode;
 // https://github.com/rust-lang/rust/commit/b90cfc887c31c3e7a9e6d462e2464db1fe506175#diff-43914724af6e464c1da2171e4a9b6c7e607d5bc1203fa95c0ab85be4122605ef
 // for an example of how to do so.
 #[cfg(feature = "jemalloc")]
-use tikv_jemalloc_sys as _;
+use libmimalloc_sys as _;
 
 fn main() -> ExitCode {
     rustc_driver::main()
