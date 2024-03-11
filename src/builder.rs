@@ -256,8 +256,8 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
                         actual_val.dereference(self.location).to_rvalue()
                     } else {
                         assert!(
-                            !((actual_ty.is_vector() && !expected_ty.is_vector())
-                                || (!actual_ty.is_vector() && expected_ty.is_vector())),
+                            (!expected_ty.is_vector() || actual_ty.is_vector())
+                                && (expected_ty.is_vector() || !actual_ty.is_vector()),
                             "{:?} ({}) -> {:?} ({}), index: {:?}[{}]",
                             actual_ty,
                             actual_ty.is_vector(),
