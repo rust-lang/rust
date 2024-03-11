@@ -251,7 +251,7 @@ impl DefKind {
             | DefKind::TyParam
             | DefKind::ExternCrate => DefPathData::TypeNs(name),
             // It's not exactly an anon const, but wrt DefPathData, there
-            // is not difference.
+            // is no difference.
             DefKind::Static { nested: true, .. } => DefPathData::AnonConst,
             DefKind::Fn
             | DefKind::Const

@@ -232,7 +232,7 @@ impl<'ll> CodegenCx<'ll, '_> {
         trace!(?instance);
 
         let DefKind::Static { nested, .. } = self.tcx.def_kind(def_id) else { bug!() };
-        // Nested statics do not have a type, so pick a random type and let `define_static` figure out
+        // Nested statics do not have a type, so pick a dummy type and let `codegen_static` figure out
         // the llvm type from the actual evaluated initializer.
         let llty = if nested {
             self.type_i8()
@@ -415,8 +415,7 @@ impl<'ll> CodegenCx<'ll, '_> {
                 llvm::LLVMRustSetDSOLocal(g, true);
             }
 
-            // As an optimization, all shared statics which do not have interior
-            // mutability are placed into read-only memory.
+            // Forward the allocation's mutability (picked by the const interner) to LLVM.
             if alloc.mutability.is_not() {
                 llvm::LLVMSetGlobalConstant(g, llvm::True);
             }

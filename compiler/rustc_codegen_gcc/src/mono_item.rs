@@ -26,7 +26,7 @@ impl<'gcc, 'tcx> PreDefineMethods<'tcx> for CodegenCx<'gcc, 'tcx> {
         let attrs = self.tcx.codegen_fn_attrs(def_id);
         let instance = Instance::mono(self.tcx, def_id);
         let DefKind::Static { nested, .. } = self.tcx.def_kind(def_id) else { bug!() };
-        // Nested statics do not have a type, so pick a random type and let `define_static` figure out
+        // Nested statics do not have a type, so pick a dummy type and let `codegen_static` figure out
         // the gcc type from the actual evaluated initializer.
         let ty = if nested {
             self.tcx.types.unit
