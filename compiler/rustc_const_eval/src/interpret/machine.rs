@@ -391,6 +391,8 @@ pub trait Machine<'mir, 'tcx: 'mir>: Sized {
 
     /// Hook for performing extra checks on a memory read access.
     ///
+    /// This will *not* be called during validation!
+    ///
     /// Takes read-only access to the allocation so we can keep all the memory read
     /// operations take `&self`. Use a `RefCell` in `AllocExtra` if you
     /// need to mutate.
@@ -409,6 +411,8 @@ pub trait Machine<'mir, 'tcx: 'mir>: Sized {
 
     /// Hook for performing extra checks on any memory read access,
     /// that involves an allocation, even ZST reads.
+    ///
+    /// This will *not* be called during validation!
     ///
     /// Used to prevent statics from self-initializing by reading from their own memory
     /// as it is being initialized.
