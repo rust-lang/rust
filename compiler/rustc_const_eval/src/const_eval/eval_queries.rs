@@ -290,10 +290,36 @@ pub fn eval_static_initializer_provider<'tcx>(
         // they do not have to behave "as if" they were evaluated at runtime.
         CompileTimeInterpreter::new(CanAccessMutGlobal::Yes, CheckAlignment::Error),
     );
-    let alloc_id = eval_in_interpreter(&mut ecx, cid, true)?.alloc_id;
-    let alloc = take_static_root_alloc(&mut ecx, alloc_id);
-    let alloc = tcx.mk_const_alloc(alloc);
-    Ok(alloc)
+    eval_in_interpreter(&mut ecx, cid, true)
+}
+
+trait InterpretationResult<'tcx> {
+    /// This function takes the place where the result of the evaluation is stored
+    /// and prepares it for returning it in the appropriate format needed by the specific
+    /// evaluation query.
+    fn make_result<'mir>(
+        mplace: MPlaceTy<'tcx>,
+        ecx: &mut InterpCx<'mir, 'tcx, CompileTimeInterpreter<'mir, 'tcx>>,
+    ) -> Self;
+}
+
+impl<'tcx> InterpretationResult<'tcx> for mir::interpret::ConstAllocation<'tcx> {
+    fn make_result<'mir>(
+        mplace: MPlaceTy<'tcx>,
+        ecx: &mut InterpCx<'mir, 'tcx, CompileTimeInterpreter<'mir, 'tcx>>,
+    ) -> Self {
+        let alloc = take_static_root_alloc(ecx, mplace.ptr().provenance.unwrap().alloc_id());
+        ecx.tcx.mk_const_alloc(alloc)
+    }
+}
+
+impl<'tcx> InterpretationResult<'tcx> for ConstAlloc<'tcx> {
+    fn make_result<'mir>(
+        mplace: MPlaceTy<'tcx>,
+        _ecx: &mut InterpCx<'mir, 'tcx, CompileTimeInterpreter<'mir, 'tcx>>,
+    ) -> Self {
+        ConstAlloc { alloc_id: mplace.ptr().provenance.unwrap().alloc_id(), ty: mplace.layout.ty }
+    }
 }
 
 #[instrument(skip(tcx), level = "debug")]
@@ -336,11 +362,11 @@ pub fn eval_to_allocation_raw_provider<'tcx>(
     eval_in_interpreter(&mut ecx, cid, is_static)
 }
 
-pub fn eval_in_interpreter<'mir, 'tcx>(
+fn eval_in_interpreter<'mir, 'tcx, R: InterpretationResult<'tcx>>(
     ecx: &mut InterpCx<'mir, 'tcx, CompileTimeInterpreter<'mir, 'tcx>>,
     cid: GlobalId<'tcx>,
     is_static: bool,
-) -> ::rustc_middle::mir::interpret::EvalToAllocationRawResult<'tcx> {
+) -> Result<R, ErrorHandled> {
     // `is_static` just means "in static", it could still be a promoted!
     debug_assert_eq!(is_static, ecx.tcx.static_mutability(cid.instance.def_id()).is_some());
 
@@ -383,14 +409,12 @@ pub fn eval_in_interpreter<'mir, 'tcx>(
 
             let res = const_validate_mplace(&ecx, &mplace, cid);
 
-            let alloc_id = mplace.ptr().provenance.unwrap().alloc_id();
-
             // Validation failed, report an error.
             if let Err(error) = res {
+                let alloc_id = mplace.ptr().provenance.unwrap().alloc_id();
                 Err(const_report_error(&ecx, error, alloc_id))
             } else {
-                // Convert to raw constant
-                Ok(ConstAlloc { alloc_id, ty: mplace.layout.ty })
+                Ok(R::make_result(mplace, ecx))
             }
         }
     }
