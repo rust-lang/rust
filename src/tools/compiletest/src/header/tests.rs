@@ -285,6 +285,7 @@ fn ignore_target() {
     assert!(check_ignore(&config, "//@ ignore-x86_64-unknown-linux-gnu"));
     assert!(check_ignore(&config, "//@ ignore-x86_64"));
     assert!(check_ignore(&config, "//@ ignore-linux"));
+    assert!(check_ignore(&config, "//@ ignore-unix"));
     assert!(check_ignore(&config, "//@ ignore-gnu"));
     assert!(check_ignore(&config, "//@ ignore-64bit"));
 
@@ -300,6 +301,7 @@ fn only_target() {
 
     assert!(check_ignore(&config, "//@ only-x86"));
     assert!(check_ignore(&config, "//@ only-linux"));
+    assert!(check_ignore(&config, "//@ only-unix"));
     assert!(check_ignore(&config, "//@ only-msvc"));
     assert!(check_ignore(&config, "//@ only-32bit"));
 
