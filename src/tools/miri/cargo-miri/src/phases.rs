@@ -95,7 +95,7 @@ pub fn phase_cargo_miri(mut args: impl Iterator<Item = String>) {
     let target = get_arg_flag_value("--target");
     let target = target.as_ref().unwrap_or(host);
 
-    // If cleaning the the target directory & sysroot cache,
+    // If cleaning the target directory & sysroot cache,
     // delete them then exit. There is no reason to setup a new
     // sysroot in this execution.
     if let MiriCommand::Clean = subcommand {
