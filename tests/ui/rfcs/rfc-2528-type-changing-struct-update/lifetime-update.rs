@@ -1,5 +1,4 @@
 #![feature(type_changing_struct_update)]
-#![allow(incomplete_features)]
 
 #[derive(Clone)]
 struct Machine<'a, S> {

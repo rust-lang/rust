@@ -1,5 +1,5 @@
 error[E0308]: mismatched types
-  --> $DIR/default-body-type-err-2.rs:7:9
+  --> $DIR/default-body-type-err-2.rs:5:9
    |
 LL |     async fn woopsie_async(&self) -> String {
    |                                      ------ expected `String` because of return type

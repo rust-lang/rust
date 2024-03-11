@@ -1,5 +1,5 @@
 error[E0053]: method `owo` has an incompatible type for trait
-  --> $DIR/method-signature-matches.rs:13:15
+  --> $DIR/method-signature-matches.rs:11:15
    |
 LL |     fn owo(_: u8) {}
    |               ^^
@@ -8,7 +8,7 @@ LL |     fn owo(_: u8) {}
    |               help: change the parameter type to match the trait: `()`
    |
 note: type in trait
-  --> $DIR/method-signature-matches.rs:8:15
+  --> $DIR/method-signature-matches.rs:6:15
    |
 LL |     fn owo(x: ()) -> impl Sized;
    |               ^^
