@@ -862,8 +862,8 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     // so offsetting a pointer to ZST is a noop.
                     lhs
                 } else {
-                    let llty = bx.cx().backend_type(pointee_layout);
-                    bx.inbounds_gep(llty, lhs, &[rhs])
+                    let elem_sized_type = bx.type_array(bx.type_i8(), pointee_layout.size.bytes());
+                    bx.inbounds_gep(elem_sized_type, lhs, &[rhs])
                 }
             }
             mir::BinOp::Shl => common::build_masked_lshift(bx, lhs, rhs),

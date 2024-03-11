@@ -2378,7 +2378,8 @@ fn generic_simd_intrinsic<'ll, 'tcx>(
         }
         let offsets = args[1].immediate();
 
-        return Ok(bx.gep(bx.backend_type(layout), ptrs, &[offsets]));
+        let elem_sized_type = bx.type_array(bx.type_i8(), layout.size.bytes());
+        return Ok(bx.gep(elem_sized_type, ptrs, &[offsets]));
     }
 
     if name == sym::simd_saturating_add || name == sym::simd_saturating_sub {
