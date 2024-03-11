@@ -4,6 +4,9 @@ use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_middle::ty::{TypeSuperVisitable, TypeVisitor};
 use std::ops::ControlFlow;
 
+/// Check for leaking inference variables and placeholders
+/// from snapshot. This is only used if `debug_assertions`
+/// are enabled.
 pub struct HasSnapshotLeaksVisitor {
     universe: ty::UniverseIndex,
     variable_lengths: VariableLengths,

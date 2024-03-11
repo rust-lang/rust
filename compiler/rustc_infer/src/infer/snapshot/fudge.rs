@@ -98,6 +98,12 @@ impl<'tcx> InferCtxt<'tcx> {
     }
 }
 
+/// To avoid leaking inference variables from snapshots, fudge inference
+/// by replacing inference variables from the snapshot with fresh ones
+/// created outside of it.
+///
+/// To see how this works, check out the documentation of the [`FudgeInference`]
+/// wrapper used by [`fn InferCtxt::fudge_inference_if_ok`].
 #[macro_export]
 macro_rules! fudge_vars_no_snapshot_leaks {
     ($tcx:lifetime, $t:ty) => {
@@ -136,13 +142,22 @@ macro_rules! fudge_vars_no_snapshot_leaks {
     };
 }
 
+/// When rolling back a snapshot, replaces inference variables in `T` created
+/// during the snapshot with new inference variables created afterwards.
 struct FudgeInference<T>(T);
 impl<'tcx, T: TypeFoldable<TyCtxt<'tcx>>> NoSnapshotLeaks<'tcx> for FudgeInference<T> {
     type StartData = VariableLengths;
     type EndData = (T, Option<InferenceFudgeData>);
+
+    /// Store which inference variables already exist at the start
+    /// of the snapshot.
     fn snapshot_start_data(infcx: &InferCtxt<'tcx>) -> Self::StartData {
         infcx.variable_lengths()
     }
+    /// At the end of the snapshot, fetch the metadata for all variables
+    /// created during the snapshot. As these variables get discarded during
+    /// rollback, we have to get this information before rollback and use it
+    /// to create new inference variables after.
     fn end_of_snapshot(
         infcx: &InferCtxt<'tcx>,
         FudgeInference(value): FudgeInference<T>,
@@ -154,6 +169,9 @@ impl<'tcx, T: TypeFoldable<TyCtxt<'tcx>>> NoSnapshotLeaks<'tcx> for FudgeInferen
             (value, None)
         }
     }
+    /// Using the metadata fetched in `fn end_of_snapshot`, replace all leaking
+    /// inference variables with new ones, reusing the metadata of the leaked
+    /// variables.
     fn avoid_leaks(infcx: &InferCtxt<'tcx>, (value, fudge_data): Self::EndData) -> Self {
         if let Some(fudge_data) = fudge_data {
             FudgeInference(fudge_data.fudge_inference(infcx, value))
@@ -163,6 +181,8 @@ impl<'tcx, T: TypeFoldable<TyCtxt<'tcx>>> NoSnapshotLeaks<'tcx> for FudgeInferen
     }
 }
 
+/// At the end of a snpashot, right before rollback, remember all newly created
+/// inference variables and their metadata.
 pub struct InferenceFudgeData {
     type_vars: (Range<TyVid>, Vec<TypeVariableOrigin>),
     int_vars: Range<IntVid>,
@@ -210,6 +230,10 @@ impl InferenceFudgeData {
     }
 }
 
+/// Using the `InferenceFudgeData` created right before rollback, replace
+/// all leaked inference variables of the snapshot with newly created ones.
+///
+/// This is used after the snapshot has already been rolled back.
 struct InferenceFudger<'a, 'tcx> {
     infcx: &'a InferCtxt<'tcx>,
     data: InferenceFudgeData,

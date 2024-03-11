@@ -138,6 +138,22 @@ pub struct VariableLengths {
     const_vars: usize,
 }
 
+/// When rolling back a snapshot, we discard all inference constraints
+/// added during that snapshot. We also completely remove any inference
+/// variables created during the snapshot. Leaking these inference
+/// variables from the snapshot and later using them can then result
+/// either in an ICE or even accidentally reuse a newly created, totally
+/// separate, inference variable.
+///
+/// To avoid this we make sure that when rolling back snapshots in
+///  `fn probe` and `fn commit_if_ok` we do not return any inference
+/// variables created during this snapshot.
+///
+/// This has a fairly involved setup as we previously did not check this
+/// and now rely on leaking inference variables, e.g. via `TypeError`.
+/// To still avoid ICE we now "fudge inference" in these cases, replacing
+/// any newly created inference variables from inside the snapshot with
+/// new inference variables created outside of it.
 pub trait NoSnapshotLeaks<'tcx> {
     type StartData;
     type EndData;
@@ -150,6 +166,16 @@ pub trait NoSnapshotLeaks<'tcx> {
     fn avoid_leaks(infcx: &InferCtxt<'tcx>, data: Self::EndData) -> Self;
 }
 
+/// A trait implemented by types which cannot contain any inference variables
+/// which could be leaked. The [`NoSnapshotLeaks`] impl for these types is
+/// trivial.
+///
+/// You can mostly think of this as if it is an auto-trait with negative
+/// impls for `Region`, `Ty` and `Const` and a positive impl for `Canonical`.
+/// Actually using an auto-trait instead of manually implementing it for
+/// all types of interest results in overlaps during coherence. Not using
+/// auto-traits will also make it easier to share this code with Rust Analyzer
+/// in the future, as they want to avoid any unstable features.
 pub trait TrivialNoSnapshotLeaks<'tcx> {}
 impl<'tcx, T: TrivialNoSnapshotLeaks<'tcx>> NoSnapshotLeaks<'tcx> for T {
     type StartData = ();
