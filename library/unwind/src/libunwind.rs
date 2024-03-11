@@ -91,7 +91,7 @@ pub struct _Unwind_Exception {
 pub enum _Unwind_Context {}
 
 pub type _Unwind_Exception_Cleanup_Fn =
-    extern "C" fn(unwind_code: _Unwind_Reason_Code, exception: *mut _Unwind_Exception);
+    Option<extern "C" fn(unwind_code: _Unwind_Reason_Code, exception: *mut _Unwind_Exception)>;
 
 // FIXME: The `#[link]` attributes on `extern "C"` block marks those symbols declared in
 // the block are reexported in dylib build of std. This is needed when build rustc with

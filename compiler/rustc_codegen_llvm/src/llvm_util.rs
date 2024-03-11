@@ -5,6 +5,7 @@ use crate::errors::{
 };
 use crate::llvm;
 use libc::c_int;
+use rustc_codegen_ssa::base::wants_wasm_eh;
 use rustc_codegen_ssa::traits::PrintBackendInfo;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::small_c_str::SmallCStr;
@@ -96,6 +97,10 @@ unsafe fn configure_llvm(sess: &Session) {
             MergeFunctions::Aliases => {
                 add("-mergefunc-use-aliases", false);
             }
+        }
+
+        if wants_wasm_eh(sess) {
+            add("-wasm-enable-eh", false);
         }
 
         if sess.target.os == "emscripten" && sess.panic_strategy() == PanicStrategy::Unwind {
@@ -522,6 +527,10 @@ pub(crate) fn global_llvm_features(sess: &Session, diagnostics: bool) -> Vec<Str
             .filter(|v| !v.is_empty() && backend_feature_name(sess, v).is_some())
             .map(String::from),
     );
+
+    if wants_wasm_eh(sess) && sess.panic_strategy() == PanicStrategy::Unwind {
+        features.push("+exception-handling".into());
+    }
 
     // -Ctarget-features
     let supported_features = sess.target.supported_target_features();
