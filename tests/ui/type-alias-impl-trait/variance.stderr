@@ -1,3 +1,69 @@
+error: [*, o]
+  --> $DIR/variance.rs:8:29
+   |
+LL | type NotCapturedEarly<'a> = impl Sized;
+   |                             ^^^^^^^^^^
+
+error: [*, o]
+  --> $DIR/variance.rs:11:26
+   |
+LL | type CapturedEarly<'a> = impl Sized + Captures<'a>;
+   |                          ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: [*, o, o]
+  --> $DIR/variance.rs:14:56
+   |
+LL | type NotCapturedLate<'a> = dyn for<'b> Iterator<Item = impl Sized>;
+   |                                                        ^^^^^^^^^^
+
+error: [*, o, o]
+  --> $DIR/variance.rs:18:49
+   |
+LL | type Captured<'a> = dyn for<'b> Iterator<Item = impl Sized + Captures<'a>>;
+   |                                                 ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: [*, *, o, o, o]
+  --> $DIR/variance.rs:22:27
+   |
+LL | type Bar<'a, 'b: 'b, T> = impl Sized;
+   |                           ^^^^^^^^^^
+
+error: [*, *, o, o]
+  --> $DIR/variance.rs:34:32
+   |
+LL |     type ImplicitCapture<'a> = impl Sized;
+   |                                ^^^^^^^^^^
+
+error: [*, *, o, o]
+  --> $DIR/variance.rs:37:42
+   |
+LL |     type ExplicitCaptureFromHeader<'a> = impl Sized + Captures<'i>;
+   |                                          ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: [*, *, o, o]
+  --> $DIR/variance.rs:40:39
+   |
+LL |     type ExplicitCaptureFromGat<'a> = impl Sized + Captures<'a>;
+   |                                       ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: [*, *, o, o]
+  --> $DIR/variance.rs:45:32
+   |
+LL |     type ImplicitCapture<'a> = impl Sized;
+   |                                ^^^^^^^^^^
+
+error: [*, *, o, o]
+  --> $DIR/variance.rs:48:42
+   |
+LL |     type ExplicitCaptureFromHeader<'a> = impl Sized + Captures<'i>;
+   |                                          ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: [*, *, o, o]
+  --> $DIR/variance.rs:51:39
+   |
+LL |     type ExplicitCaptureFromGat<'a> = impl Sized + Captures<'a>;
+   |                                       ^^^^^^^^^^^^^^^^^^^^^^^^^
+
 error[E0657]: `impl Trait` cannot capture higher-ranked lifetime from `dyn` type
   --> $DIR/variance.rs:14:56
    |
@@ -109,72 +175,6 @@ LL |     type ExplicitCaptureFromGat<'a> = impl Sized + Captures<'a>;
    |                                       ^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: `ExplicitCaptureFromGat` must be used in combination with a concrete type within the same impl
-
-error: [*, o]
-  --> $DIR/variance.rs:8:29
-   |
-LL | type NotCapturedEarly<'a> = impl Sized;
-   |                             ^^^^^^^^^^
-
-error: [*, o]
-  --> $DIR/variance.rs:11:26
-   |
-LL | type CapturedEarly<'a> = impl Sized + Captures<'a>;
-   |                          ^^^^^^^^^^^^^^^^^^^^^^^^^
-
-error: [*, o, o]
-  --> $DIR/variance.rs:14:56
-   |
-LL | type NotCapturedLate<'a> = dyn for<'b> Iterator<Item = impl Sized>;
-   |                                                        ^^^^^^^^^^
-
-error: [*, o, o]
-  --> $DIR/variance.rs:18:49
-   |
-LL | type Captured<'a> = dyn for<'b> Iterator<Item = impl Sized + Captures<'a>>;
-   |                                                 ^^^^^^^^^^^^^^^^^^^^^^^^^
-
-error: [*, *, o, o, o]
-  --> $DIR/variance.rs:22:27
-   |
-LL | type Bar<'a, 'b: 'b, T> = impl Sized;
-   |                           ^^^^^^^^^^
-
-error: [*, *, o, o]
-  --> $DIR/variance.rs:34:32
-   |
-LL |     type ImplicitCapture<'a> = impl Sized;
-   |                                ^^^^^^^^^^
-
-error: [*, *, o, o]
-  --> $DIR/variance.rs:37:42
-   |
-LL |     type ExplicitCaptureFromHeader<'a> = impl Sized + Captures<'i>;
-   |                                          ^^^^^^^^^^^^^^^^^^^^^^^^^
-
-error: [*, *, o, o]
-  --> $DIR/variance.rs:40:39
-   |
-LL |     type ExplicitCaptureFromGat<'a> = impl Sized + Captures<'a>;
-   |                                       ^^^^^^^^^^^^^^^^^^^^^^^^^
-
-error: [*, *, o, o]
-  --> $DIR/variance.rs:45:32
-   |
-LL |     type ImplicitCapture<'a> = impl Sized;
-   |                                ^^^^^^^^^^
-
-error: [*, *, o, o]
-  --> $DIR/variance.rs:48:42
-   |
-LL |     type ExplicitCaptureFromHeader<'a> = impl Sized + Captures<'i>;
-   |                                          ^^^^^^^^^^^^^^^^^^^^^^^^^
-
-error: [*, *, o, o]
-  --> $DIR/variance.rs:51:39
-   |
-LL |     type ExplicitCaptureFromGat<'a> = impl Sized + Captures<'a>;
-   |                                       ^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: aborting due to 24 previous errors
 

@@ -1,3 +1,16 @@
+error[E0381]: used binding `xs` isn't initialized
+  --> $DIR/issue-77910-1.rs:3:5
+   |
+LL |     let xs;
+   |         -- binding declared here but left uninitialized
+LL |     xs
+   |     ^^ `xs` used here but it isn't initialized
+   |
+help: consider assigning a value
+   |
+LL |     let xs = todo!();
+   |            +++++++++
+
 error[E0369]: binary operation `==` cannot be applied to type `for<'a> fn(&'a i32) -> &'a i32 {foo}`
   --> $DIR/issue-77910-1.rs:8:5
    |
@@ -21,19 +34,6 @@ LL |     assert_eq!(foo, y);
    = help: the trait `Debug` is not implemented for fn item `for<'a> fn(&'a i32) -> &'a i32 {foo}`
    = help: use parentheses to call this function: `foo(/* &i32 */)`
    = note: this error originates in the macro `assert_eq` (in Nightly builds, run with -Z macro-backtrace for more info)
-
-error[E0381]: used binding `xs` isn't initialized
-  --> $DIR/issue-77910-1.rs:3:5
-   |
-LL |     let xs;
-   |         -- binding declared here but left uninitialized
-LL |     xs
-   |     ^^ `xs` used here but it isn't initialized
-   |
-help: consider assigning a value
-   |
-LL |     let xs = todo!();
-   |            +++++++++
 
 error: aborting due to 3 previous errors
 

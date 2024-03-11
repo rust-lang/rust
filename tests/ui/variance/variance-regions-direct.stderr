@@ -1,11 +1,3 @@
-error[E0392]: lifetime parameter `'a` is never used
-  --> $DIR/variance-regions-direct.rs:52:14
-   |
-LL | struct Test7<'a> {
-   |              ^^ unused lifetime parameter
-   |
-   = help: consider removing `'a`, referring to it in a field, or using a marker such as `PhantomData`
-
 error: [+, +, +]
   --> $DIR/variance-regions-direct.rs:9:1
    |
@@ -47,6 +39,14 @@ error: [-, +, o]
    |
 LL | enum Test8<'a, 'b, 'c:'b> {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0392]: lifetime parameter `'a` is never used
+  --> $DIR/variance-regions-direct.rs:52:14
+   |
+LL | struct Test7<'a> {
+   |              ^^ unused lifetime parameter
+   |
+   = help: consider removing `'a`, referring to it in a field, or using a marker such as `PhantomData`
 
 error: aborting due to 8 previous errors
 

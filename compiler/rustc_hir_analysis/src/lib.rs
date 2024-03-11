@@ -98,7 +98,6 @@ mod outlives;
 pub mod structured_errors;
 mod variance;
 
-use rustc_errors::ErrorGuaranteed;
 use rustc_hir as hir;
 use rustc_middle::middle;
 use rustc_middle::query::Providers;
@@ -156,11 +155,13 @@ pub fn provide(providers: &mut Providers) {
     hir_wf_check::provide(providers);
 }
 
-pub fn check_crate(tcx: TyCtxt<'_>) -> Result<(), ErrorGuaranteed> {
+pub fn check_crate(tcx: TyCtxt<'_>) {
     let _prof_timer = tcx.sess.timer("type_check_crate");
 
     if tcx.features().rustc_attrs {
-        tcx.sess.time("outlives_testing", || outlives::test::test_inferred_outlives(tcx))?;
+        tcx.sess.time("outlives_testing", || outlives::test::test_inferred_outlives(tcx));
+        tcx.sess.time("variance_testing", || variance::test::test_variance(tcx));
+        collect::test_opaque_hidden_types(tcx);
     }
 
     tcx.sess.time("coherence_checking", || {
@@ -176,14 +177,6 @@ pub fn check_crate(tcx: TyCtxt<'_>) -> Result<(), ErrorGuaranteed> {
         let _ = tcx.ensure().crate_inherent_impls_overlap_check(());
     });
 
-    if tcx.features().rustc_attrs {
-        tcx.sess.time("variance_testing", || variance::test::test_variance(tcx))?;
-    }
-
-    if tcx.features().rustc_attrs {
-        collect::test_opaque_hidden_types(tcx)?;
-    }
-
     // Make sure we evaluate all static and (non-associated) const items, even if unused.
     // If any of these fail to evaluate, we do not want this crate to pass compilation.
     tcx.hir().par_body_owners(|item_def_id| {
@@ -198,21 +191,6 @@ pub fn check_crate(tcx: TyCtxt<'_>) -> Result<(), ErrorGuaranteed> {
     // Freeze definitions as we don't add new ones at this point. This improves performance by
     // allowing lock-free access to them.
     tcx.untracked().definitions.freeze();
-
-    // FIXME: Remove this when we implement creating `DefId`s
-    // for anon constants during their parents' typeck.
-    // Typeck all body owners in parallel will produce queries
-    // cycle errors because it may typeck on anon constants directly.
-    tcx.hir().par_body_owners(|item_def_id| {
-        let def_kind = tcx.def_kind(item_def_id);
-        if !matches!(def_kind, DefKind::AnonConst) {
-            tcx.ensure().typeck(item_def_id);
-        }
-    });
-
-    tcx.ensure().check_unused_traits(());
-
-    Ok(())
 }
 
 /// A quasi-deprecated helper used in rustdoc and clippy to get
