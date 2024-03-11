@@ -79,7 +79,7 @@ Macro-expansion, `AST`-validation, name-resolution, and early linting also take
 place during the lexing and parsing stage.
 
 The [`rustc_ast::ast`]::{[`Crate`], [`Expr`], [`Pat`], ...} `AST` nodes are
-returned from the parser while the standard [`DiagnosticBuilder`] API is used
+returned from the parser while the standard [`Diag`] API is used
 for error handling. Generally Rust's compiler will try to recover from errors
 by parsing a superset of Rust's grammar, while also emitting an error type.
 
@@ -137,7 +137,7 @@ the final binary.
 [`bump`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_parse/parser/struct.Parser.html#method.bump
 [`check`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_parse/parser/struct.Parser.html#method.check
 [`Crate`]: https://doc.rust-lang.org/beta/nightly-rustc/rustc_ast/ast/struct.Crate.html
-[`DiagnosticBuilder`]: https://doc.rust-lang.org/beta/nightly-rustc/rustc_errors/struct.DiagnosticBuilder.html
+[`diag`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_errors/struct.Diag.html
 [`eat`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_parse/parser/struct.Parser.html#method.eat
 [`expect`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_parse/parser/struct.Parser.html#method.expect
 [`Expr`]: https://doc.rust-lang.org/beta/nightly-rustc/rustc_ast/ast/struct.Expr.html

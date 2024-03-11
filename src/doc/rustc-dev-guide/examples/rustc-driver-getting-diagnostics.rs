@@ -10,7 +10,7 @@ extern crate rustc_session;
 extern crate rustc_span;
 
 use rustc_errors::{
-    emitter::Emitter, registry, translation::Translate, DiagCtxt, Diagnostic, FluentBundle,
+    emitter::Emitter, registry, translation::Translate, DiagCtxt, DiagInner, FluentBundle,
 };
 use rustc_session::config;
 use rustc_span::source_map::SourceMap;
@@ -22,7 +22,7 @@ use std::{
 
 struct DebugEmitter {
     source_map: Arc<SourceMap>,
-    diagnostics: Arc<Mutex<Vec<Diagnostic>>>,
+    diagnostics: Arc<Mutex<Vec<DiagInner>>>,
 }
 
 impl Translate for DebugEmitter {
@@ -36,7 +36,7 @@ impl Translate for DebugEmitter {
 }
 
 impl Emitter for DebugEmitter {
-    fn emit_diagnostic(&mut self, diag: &Diagnostic) {
+    fn emit_diagnostic(&mut self, diag: &DiagInner) {
         self.diagnostics.lock().unwrap().push(diag.clone());
     }
 
@@ -52,7 +52,7 @@ fn main() {
         .output()
         .unwrap();
     let sysroot = str::from_utf8(&out.stdout).unwrap().trim();
-    let buffer: Arc<Mutex<Vec<Diagnostic>>> = Arc::default();
+    let buffer: Arc<Mutex<Vec<DiagInner>>> = Arc::default();
     let diagnostics = buffer.clone();
     let config = rustc_interface::Config {
         opts: config::Options {

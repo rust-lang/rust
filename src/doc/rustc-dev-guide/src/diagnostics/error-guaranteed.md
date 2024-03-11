@@ -30,4 +30,4 @@ Thankfully, in most cases, it should be statically impossible to abuse
 
 [errorguar]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_errors/struct.ErrorGuaranteed.html
 [rerrors]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_errors/index.html
-[emit]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_errors/diagnostic_builder/struct.DiagnosticBuilder.html#method.emit
+[emit]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_errors/struct.diag.html#method.emit

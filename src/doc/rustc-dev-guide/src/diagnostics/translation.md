@@ -12,8 +12,8 @@ There are two ways of writing translatable diagnostics:
    deciding to emit subdiagnostics and can therefore be represented as
    diagnostic structs). See [the diagnostic and subdiagnostic structs
    documentation](./diagnostic-structs.md).
-2. Using typed identifiers with `DiagnosticBuilder` APIs (in
-   `IntoDiagnostic` or `AddToDiagnostic` or `DecorateLint` implementations).
+2. Using typed identifiers with `Diag` APIs (in
+   `Diagnostic` or `Subdiagnostic` or `LintDiagnostic` implementations).
 
 When adding or changing a translatable diagnostic,
 you don't need to worry about the translations.
@@ -113,28 +113,28 @@ translation.
 ### Messages
 
 All of rustc's traditional diagnostic APIs (e.g. `struct_span_err` or `note`)
-take any message that can be converted into a `DiagnosticMessage` (or
-`SubdiagnosticMessage`).
+take any message that can be converted into a `DiagMessage` (or
+`SubdiagMessage`).
 
-[`rustc_error_messages::DiagnosticMessage`] can represent legacy non-translatable
+[`rustc_error_messages::DiagMessage`] can represent legacy non-translatable
 diagnostic messages and translatable messages. Non-translatable messages are
 just `String`s. Translatable messages are just a `&'static str` with the
 identifier of the Fluent message (sometimes with an additional `&'static str`
 with an attribute).
 
-`DiagnosticMessage` never needs to be interacted with directly:
-`DiagnosticMessage` constants are created for each diagnostic message in a
-Fluent resource (described in more detail below), or `DiagnosticMessage`s will
+`DiagMessage` never needs to be interacted with directly:
+`DiagMessage` constants are created for each diagnostic message in a
+Fluent resource (described in more detail below), or `DiagMessage`s will
 either be created in the macro-generated code of a diagnostic derive.
 
-`rustc_error_messages::SubdiagnosticMessage` is similar, it can correspond to a
+`rustc_error_messages::SubdiagMessage` is similar, it can correspond to a
 legacy non-translatable diagnostic message or the name of an attribute to a
-Fluent message. Translatable `SubdiagnosticMessage`s must be combined with a
-`DiagnosticMessage` (using `DiagnosticMessage::with_subdiagnostic_message`) to
+Fluent message. Translatable `SubdiagMessage`s must be combined with a
+`DiagMessage` (using `DiagMessage::with_subdiagnostic_message`) to
 be emitted (an attribute name on its own is meaningless without a corresponding
-message identifier, which is what `DiagnosticMessage` provides).
+message identifier, which is what `DiagMessage` provides).
 
-Both `DiagnosticMessage` and `SubdiagnosticMessage` implement `Into` for any
+Both `DiagMessage` and `SubdiagMessage` implement `Into` for any
 type that can be converted into a string, and converts these into
 non-translatable diagnostics - this keeps all existing diagnostic calls
 working.
@@ -148,8 +148,8 @@ Diagnostics have a `set_arg` function that can be used to provide this
 additional context to a diagnostic.
 
 Arguments have both a name (e.g. "what" in the earlier example) and a value.
-Argument values are represented using the `DiagnosticArgValue` type, which is
-just a string or a number. rustc types can implement `IntoDiagnosticArg` with
+Argument values are represented using the `DiagArgValue` type, which is
+just a string or a number. rustc types can implement `IntoDiagArg` with
 conversion into a string or a number, and common types like `Ty<'tcx>` already
 have such implementations.
 
@@ -167,7 +167,7 @@ accessing the fallback and primary fluent bundles (`fallback_fluent_bundle` and
 `fluent_bundle` respectively).
 
 `Emitter` also has member functions with default implementations for performing
-translation of a `DiagnosticMessage` using the results of
+translation of a `DiagMessage` using the results of
 `fallback_fluent_bundle` and `fluent_bundle`.
 
 All of the emitters in rustc load the fallback Fluent bundle lazily, only
@@ -201,4 +201,4 @@ files are malformed, or a message is duplicated in multiple resources.
 [Fluent]: https://projectfluent.org
 [`compiler/rustc_borrowck/messages.ftl`]: https://github.com/rust-lang/rust/blob/HEAD/compiler/rustc_borrowck/messages.ftl
 [`compiler/rustc_parse/messages.ftl`]: https://github.com/rust-lang/rust/blob/HEAD/compiler/rustc_parse/messages.ftl
-[`rustc_error_messages::DiagnosticMessage`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_error_messages/enum.DiagnosticMessage.html
+[`rustc_error_messages::DiagMessage`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_error_messages/enum.DiagMessage.html

@@ -1,16 +1,16 @@
 # Diagnostic and subdiagnostic structs
-rustc has three diagnostic derives that can be used to create simple diagnostics,
-which are recommended to be used when they are applicable:
-`#[derive(Diagnostic)]`, `#[derive(LintDiagnostic)]`, and `#[derive(Subdiagnostic)]`.
-
-Diagnostics created with the derive macros can be translated into different
-languages and each has a slug that uniquely identifies the diagnostic.
-
-## `#[derive(Diagnostic)]` and `#[derive(LintDiagnostic)]`
-Instead of using the `DiagnosticBuilder` API to create and emit diagnostics,
-these derives can be used. They are only applicable for simple diagnostics that
+rustc has three diagnostic traits that can be used to create diagnostics:
+`Diagnostic`, `LintDiagnostic`, and `Subdiagnostic`. For simple diagnostics,
+instead of using the `Diag` API to create and emit diagnostics,
+derived impls can be used. They are only suitable for simple diagnostics that
 don't require much logic in deciding whether or not to add additional
 subdiagnostics.
+
+Such diagnostic can be translated into
+different languages and each has a slug that uniquely identifies the
+diagnostic.
+
+## `#[derive(Diagnostic)]` and `#[derive(LintDiagnostic)]`
 
 Consider the [definition][defn] of the "field already declared" diagnostic
 shown below:
@@ -28,14 +28,14 @@ pub struct FieldAlreadyDeclared {
 }
 ```
 
-`Diagnostic` can only be applied to structs and enums. 
+`Diagnostic` can only be derived on structs and enums. 
 Attributes that are placed on the type for structs are placed on each 
 variants for enums (or vice versa). Each `Diagnostic` has to have one
 attribute, `#[diag(...)]`, applied to the struct or each enum variant.
 
 If an error has an error code (e.g. "E0624"), then that can be specified using
 the `code` sub-attribute. Specifying a `code` isn't mandatory, but if you are
-porting a diagnostic that uses `DiagnosticBuilder` to use `Diagnostic`
+porting a diagnostic that uses `Diag` to use `Diagnostic`
 then you should keep the code if there was one.
 
 `#[diag(..)]` must provide a slug as the first positional argument (a path to an
@@ -110,13 +110,12 @@ the value of the `field_name` field of the struct), not a Fluent identifier.
 cannot be used when the field's type contains an `Applicability`.
 
 In the end, the `Diagnostic` derive will generate an implementation of
-`IntoDiagnostic` that looks like the following:
+`Diagnostic` that looks like the following:
 
 ```rust,ignore
-impl<'a, G: EmissionGuarantee> IntoDiagnostic<'a> for FieldAlreadyDeclared {
-    fn into_diagnostic(self, dcx: &'a DiagCtxt, level: Level) -> DiagnosticBuilder<'a, G> {
-        let mut diag =
-            DiagnosticBuilder::new(dcx, level, fluent::hir_analysis_field_already_declared);
+impl<'a, G: EmissionGuarantee> Diagnostic<'a> for FieldAlreadyDeclared {
+    fn into_diag(self, dcx: &'a DiagCtxt, level: Level) -> Diag<'a, G> {
+        let mut diag = Diag::new(dcx, level, fluent::hir_analysis_field_already_declared);
         diag.set_span(self.span);
         diag.span_label(
             self.span,
@@ -208,7 +207,7 @@ following attributes:
     - String which must be one of `machine-applicable`, `maybe-incorrect`,
       `has-placeholders` or `unspecified`.
 - `#[subdiagnostic]`
-  - _Applied to a type that implements `AddToDiagnostic` (from
+  - _Applied to a type that implements `Subdiagnostic` (from
     `#[derive(Subdiagnostic)]`)._
   - Adds the subdiagnostic represented by the subdiagnostic struct.
 - `#[primary_span]` (_Optional_)
@@ -246,7 +245,7 @@ pub enum ExpectedReturnTypeLabel<'tcx> {
 }
 ```
 
-Like `Diagnostic`, `Subdiagnostic` can be applied to structs or
+Like `Diagnostic`, `Subdiagnostic` can be derived for structs or
 enums. Attributes that are placed on the type for structs are placed on each
 variants for enums (or vice versa). Each `Subdiagnostic` should have one
 attribute applied to the struct or each variant, one of:
@@ -307,12 +306,12 @@ Applicabilities can also be specified as a field (of type `Applicability`)
 using the `#[applicability]` attribute.
 
 In the end, the `Subdiagnostic` derive will generate an implementation
-of `AddToDiagnostic` that looks like the following:
+of `Subdiagnostic` that looks like the following:
 
 ```rust
-impl<'tcx> AddToDiagnostic for ExpectedReturnTypeLabel<'tcx> {
-    fn add_to_diagnostic(self, diag: &mut rustc_errors::Diagnostic) {
-        use rustc_errors::{Applicability, IntoDiagnosticArg};
+impl<'tcx> Subdiagnostic for ExpectedReturnTypeLabel<'tcx> {
+    fn add_to_diag(self, diag: &mut rustc_errors::Diagnostic) {
+        use rustc_errors::{Applicability, IntoDiagArg};
         match self {
             ExpectedReturnTypeLabel::Unit { span } => {
                 diag.span_label(span, rustc_errors::fluent::hir_analysis_expected_default_return_type)
@@ -321,7 +320,6 @@ impl<'tcx> AddToDiagnostic for ExpectedReturnTypeLabel<'tcx> {
                 diag.set_arg("expected", expected);
                 diag.span_label(span, rustc_errors::fluent::hir_analysis_expected_return_type)
             }
-
         }
     }
 }
