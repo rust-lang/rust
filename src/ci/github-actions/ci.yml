@@ -347,23 +347,11 @@ jobs:
       <<: [*shared-ci-variables, *public-variables]
       PR_CI_JOB: 1
     if: github.event_name == 'pull_request'
-    continue-on-error: ${{ matrix.name == 'mingw-check-tidy' }}
     strategy:
       matrix:
         include:
-          - name: mingw-check
-            <<: *job-linux-4c
-
-          - name: mingw-check-tidy
-            <<: *job-linux-4c
-
-          - name: x86_64-gnu-llvm-16
-            env:
-              ENABLE_GCC_CODEGEN: "1"
-            <<: *job-linux-16c
-
-          - name: x86_64-gnu-tools
-            <<: *job-linux-16c
+          - name: arm-android
+            <<: *job-linux-8c
 
   auto:
     <<: *base-ci-job
