@@ -1,23 +1,23 @@
 error[E0275]: overflow evaluating the requirement `<T as Trait>::Assoc: Trait`
-  --> $DIR/normalize-param-env-4.rs:18:26
+  --> $DIR/normalize-param-env-4.rs:19:26
    |
 LL |     <T as Trait>::Assoc: Trait,
    |                          ^^^^^
 
 error[E0275]: overflow evaluating the requirement `<T as Trait>::Assoc well-formed`
-  --> $DIR/normalize-param-env-4.rs:18:26
+  --> $DIR/normalize-param-env-4.rs:19:26
    |
 LL |     <T as Trait>::Assoc: Trait,
    |                          ^^^^^
 
 error[E0275]: overflow evaluating the requirement `T: Trait`
-  --> $DIR/normalize-param-env-4.rs:31:19
+  --> $DIR/normalize-param-env-4.rs:32:19
    |
 LL |     impls_trait::<T>();
    |                   ^
    |
 note: required by a bound in `impls_trait`
-  --> $DIR/normalize-param-env-4.rs:14:19
+  --> $DIR/normalize-param-env-4.rs:15:19
    |
 LL | fn impls_trait<T: Trait>() {}
    |                   ^^^^^ required by this bound in `impls_trait`

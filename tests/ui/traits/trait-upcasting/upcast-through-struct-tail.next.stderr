@@ -1,5 +1,5 @@
 error[E0658]: cannot cast `dyn A` to `dyn B`, trait upcasting coercion is experimental
-  --> $DIR/upcast-through-struct-tail.rs:10:5
+  --> $DIR/upcast-through-struct-tail.rs:11:5
    |
 LL |     x
    |     ^

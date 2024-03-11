@@ -1,5 +1,5 @@
 error[E0282]: type annotations needed
-  --> $DIR/infer-signature-from-impl.rs:17:16
+  --> $DIR/infer-signature-from-impl.rs:18:16
    |
 LL |     needs_foo(|x| {
    |                ^

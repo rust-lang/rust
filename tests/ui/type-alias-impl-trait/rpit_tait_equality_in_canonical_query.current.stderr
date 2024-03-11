@@ -8,13 +8,13 @@ error: internal compiler error: {OpaqueTypeKey { def_id: DefId(get_rpit::{opaque
            
 
 error: internal compiler error: error performing ParamEnvAnd { param_env: ParamEnv { caller_bounds: [], reveal: UserFacing }, value: ProvePredicate { predicate: Binder { value: ProjectionPredicate(AliasTy { args: [FnDef(DefId(get_rpit), []), ()], def_id: DefId(ops::function::FnOnce::Output) }, Term::Ty(Alias(Opaque, AliasTy { args: [], def_id: DefId(Opaque::{opaque#0}) }))), bound_vars: [] } } }
-  --> $DIR/rpit_tait_equality_in_canonical_query.rs:31:5
+  --> $DIR/rpit_tait_equality_in_canonical_query.rs:32:5
    |
 LL |     query(get_rpit);
    |     ^^^^^^^^^^^^^^^
    |
 
-  --> $DIR/rpit_tait_equality_in_canonical_query.rs:31:5
+  --> $DIR/rpit_tait_equality_in_canonical_query.rs:32:5
    |
 LL |     query(get_rpit);
    |     ^^^^^^^^^^^^^^^
