@@ -8,5 +8,6 @@ crate-type = ["dylib"]
 
 [dependencies]
 # tidy-alphabetical-start
+mimalloc = "0.1.39"
 rustc_driver_impl = { path = "../rustc_driver_impl" }
 # tidy-alphabetical-end

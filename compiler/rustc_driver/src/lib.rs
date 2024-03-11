@@ -5,4 +5,7 @@
 #![feature(rustdoc_internals)]
 #![doc(rust_logo)]
 
+#[global_allocator]
+static GLOBAL: mimalloc::MiMalloc = mimalloc::MiMalloc;
+
 pub use rustc_driver_impl::*;
