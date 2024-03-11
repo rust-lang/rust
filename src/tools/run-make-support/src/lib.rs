@@ -45,6 +45,12 @@ impl RustcInvocationBuilder {
         self
     }
 
+    pub fn arg_path(&mut self, path: &[&str]) -> &mut RustcInvocationBuilder {
+        let path_buf = path.iter().collect::<PathBuf>();
+        self.cmd.arg(path_buf.to_str().unwrap());
+        self
+    }
+
     #[track_caller]
     pub fn run(&mut self) -> Output {
         let caller_location = std::panic::Location::caller();
