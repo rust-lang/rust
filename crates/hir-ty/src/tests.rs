@@ -12,7 +12,7 @@ mod traits;
 
 use std::env;
 
-use base_db::{FileRange, SourceDatabaseExt};
+use base_db::{FileRange, SourceDatabaseExt2 as _};
 use expect_test::Expect;
 use hir_def::{
     body::{Body, BodySourceMap, SyntheticSyntax},
@@ -584,7 +584,7 @@ fn salsa_bug() {
         }
     ";
 
-    db.set_file_text(pos.file_id, Arc::from(new_text));
+    db.set_file_text(pos.file_id, new_text);
 
     let module = db.module_for_file(pos.file_id);
     let crate_def_map = module.def_map(&db);

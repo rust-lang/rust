@@ -330,7 +330,7 @@ impl GlobalState {
                         // FIXME: Consider doing normalization in the `vfs` instead? That allows
                         // getting rid of some locking
                         let (text, line_endings) = LineEndings::normalize(text);
-                        (Arc::from(text), line_endings)
+                        (text, line_endings)
                     })
                 } else {
                     None
