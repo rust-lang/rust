@@ -1,6 +1,7 @@
 // check that the `for<T> T: From<!>` impl is reserved
 
 //@ revisions: current next
+//@ ignore-compare-mode-next-solver (explicit revisions)
 //@[next] compile-flags: -Znext-solver=coherence
 
 #![feature(never_type)]
