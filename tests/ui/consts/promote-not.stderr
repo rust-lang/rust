@@ -1,5 +1,5 @@
 error[E0716]: temporary value dropped while borrowed
-  --> $DIR/promote-not.rs:8:50
+  --> $DIR/promote-not.rs:9:50
    |
 LL | static mut TEST1: Option<&mut [i32]> = Some(&mut [1, 2, 3]);
    |                                        ----------^^^^^^^^^-
@@ -9,7 +9,7 @@ LL | static mut TEST1: Option<&mut [i32]> = Some(&mut [1, 2, 3]);
    |                                        using this value as a static requires that borrow lasts for `'static`
 
 error[E0716]: temporary value dropped while borrowed
-  --> $DIR/promote-not.rs:11:18
+  --> $DIR/promote-not.rs:12:18
    |
 LL |     let x = &mut [1,2,3];
    |                  ^^^^^^^ creates a temporary value which is freed while still in use
@@ -19,7 +19,7 @@ LL | };
    | - temporary value is freed at the end of this statement
 
 error[E0716]: temporary value dropped while borrowed
-  --> $DIR/promote-not.rs:33:29
+  --> $DIR/promote-not.rs:34:29
    |
 LL |     let _x: &'static i32 = &unsafe { U { x: 0 }.x };
    |             ------------    ^^^^^^^^^^^^^^^^^^^^^^^ creates a temporary value which is freed while still in use
@@ -29,7 +29,7 @@ LL | };
    | - temporary value is freed at the end of this statement
 
 error[E0716]: temporary value dropped while borrowed
-  --> $DIR/promote-not.rs:39:29
+  --> $DIR/promote-not.rs:40:29
    |
 LL |     let _val: &'static _ = &(Cell::new(1), 2).1;
    |               ----------    ^^^^^^^^^^^^^^^^^ creates a temporary value which is freed while still in use
@@ -38,8 +38,17 @@ LL |     let _val: &'static _ = &(Cell::new(1), 2).1;
 LL | };
    | - temporary value is freed at the end of this statement
 
+error[E0493]: destructor of `String` cannot be evaluated at compile-time
+  --> $DIR/promote-not.rs:47:14
+   |
+LL |     let x = &String::new();
+   |              ^^^^^^^^^^^^^ the destructor for this type cannot be evaluated in constants
+...
+LL | };
+   | - value is dropped here
+
 error[E0716]: temporary value dropped while borrowed
-  --> $DIR/promote-not.rs:20:32
+  --> $DIR/promote-not.rs:21:32
    |
 LL |         let _x: &'static () = &foo();
    |                 -----------    ^^^^^ creates a temporary value which is freed while still in use
@@ -49,7 +58,7 @@ LL |     }
    |     - temporary value is freed at the end of this statement
 
 error[E0716]: temporary value dropped while borrowed
-  --> $DIR/promote-not.rs:28:29
+  --> $DIR/promote-not.rs:29:29
    |
 LL |     let _x: &'static i32 = &unsafe { U { x: 0 }.x };
    |             ------------    ^^^^^^^^^^^^^^^^^^^^^^^ creates a temporary value which is freed while still in use
@@ -59,7 +68,7 @@ LL | }
    | - temporary value is freed at the end of this statement
 
 error[E0716]: temporary value dropped while borrowed
-  --> $DIR/promote-not.rs:46:29
+  --> $DIR/promote-not.rs:56:29
    |
 LL |     let _val: &'static _ = &(Cell::new(1), 2).0;
    |               ----------    ^^^^^^^^^^^^^^^^^ creates a temporary value which is freed while still in use
@@ -70,7 +79,7 @@ LL | }
    | - temporary value is freed at the end of this statement
 
 error[E0716]: temporary value dropped while borrowed
-  --> $DIR/promote-not.rs:47:29
+  --> $DIR/promote-not.rs:57:29
    |
 LL |     let _val: &'static _ = &(Cell::new(1), 2).1;
    |               ----------    ^^^^^^^^^^^^^^^^^ creates a temporary value which is freed while still in use
@@ -81,7 +90,7 @@ LL | }
    | - temporary value is freed at the end of this statement
 
 error[E0716]: temporary value dropped while borrowed
-  --> $DIR/promote-not.rs:50:29
+  --> $DIR/promote-not.rs:60:29
    |
 LL |     let _val: &'static _ = &(1/0);
    |               ----------    ^^^^^ creates a temporary value which is freed while still in use
@@ -92,7 +101,7 @@ LL | }
    | - temporary value is freed at the end of this statement
 
 error[E0716]: temporary value dropped while borrowed
-  --> $DIR/promote-not.rs:51:29
+  --> $DIR/promote-not.rs:61:29
    |
 LL |     let _val: &'static _ = &(1/(1-1));
    |               ----------    ^^^^^^^^^ creates a temporary value which is freed while still in use
@@ -103,7 +112,7 @@ LL | }
    | - temporary value is freed at the end of this statement
 
 error[E0716]: temporary value dropped while borrowed
-  --> $DIR/promote-not.rs:52:29
+  --> $DIR/promote-not.rs:62:29
    |
 LL |     let _val: &'static _ = &((1+1)/(1-1));
    |               ----------    ^^^^^^^^^^^^^ creates a temporary value which is freed while still in use
@@ -114,7 +123,7 @@ LL | }
    | - temporary value is freed at the end of this statement
 
 error[E0716]: temporary value dropped while borrowed
-  --> $DIR/promote-not.rs:53:29
+  --> $DIR/promote-not.rs:63:29
    |
 LL |     let _val: &'static _ = &(i32::MIN/-1);
    |               ----------    ^^^^^^^^^^^^^ creates a temporary value which is freed while still in use
@@ -125,7 +134,7 @@ LL | }
    | - temporary value is freed at the end of this statement
 
 error[E0716]: temporary value dropped while borrowed
-  --> $DIR/promote-not.rs:54:29
+  --> $DIR/promote-not.rs:64:29
    |
 LL |     let _val: &'static _ = &(i32::MIN/(0-1));
    |               ----------    ^^^^^^^^^^^^^^^^ creates a temporary value which is freed while still in use
@@ -136,7 +145,7 @@ LL | }
    | - temporary value is freed at the end of this statement
 
 error[E0716]: temporary value dropped while borrowed
-  --> $DIR/promote-not.rs:55:29
+  --> $DIR/promote-not.rs:65:29
    |
 LL |     let _val: &'static _ = &(-128i8/-1);
    |               ----------    ^^^^^^^^^^^ creates a temporary value which is freed while still in use
@@ -147,7 +156,7 @@ LL | }
    | - temporary value is freed at the end of this statement
 
 error[E0716]: temporary value dropped while borrowed
-  --> $DIR/promote-not.rs:56:29
+  --> $DIR/promote-not.rs:66:29
    |
 LL |     let _val: &'static _ = &(1%0);
    |               ----------    ^^^^^ creates a temporary value which is freed while still in use
@@ -158,7 +167,7 @@ LL | }
    | - temporary value is freed at the end of this statement
 
 error[E0716]: temporary value dropped while borrowed
-  --> $DIR/promote-not.rs:57:29
+  --> $DIR/promote-not.rs:67:29
    |
 LL |     let _val: &'static _ = &(1%(1-1));
    |               ----------    ^^^^^^^^^ creates a temporary value which is freed while still in use
@@ -169,7 +178,7 @@ LL | }
    | - temporary value is freed at the end of this statement
 
 error[E0716]: temporary value dropped while borrowed
-  --> $DIR/promote-not.rs:58:29
+  --> $DIR/promote-not.rs:68:29
    |
 LL |     let _val: &'static _ = &([1,2,3][4]+1);
    |               ----------    ^^^^^^^^^^^^^^ creates a temporary value which is freed while still in use
@@ -180,7 +189,7 @@ LL | }
    | - temporary value is freed at the end of this statement
 
 error[E0716]: temporary value dropped while borrowed
-  --> $DIR/promote-not.rs:61:29
+  --> $DIR/promote-not.rs:72:29
    |
 LL |     let _val: &'static _ = &TEST_DROP;
    |               ----------    ^^^^^^^^^ creates a temporary value which is freed while still in use
@@ -191,7 +200,7 @@ LL | }
    | - temporary value is freed at the end of this statement
 
 error[E0716]: temporary value dropped while borrowed
-  --> $DIR/promote-not.rs:63:29
+  --> $DIR/promote-not.rs:74:29
    |
 LL |     let _val: &'static _ = &&TEST_DROP;
    |               ----------    ^^^^^^^^^^ creates a temporary value which is freed while still in use
@@ -202,7 +211,7 @@ LL | }
    | - temporary value is freed at the end of this statement
 
 error[E0716]: temporary value dropped while borrowed
-  --> $DIR/promote-not.rs:63:30
+  --> $DIR/promote-not.rs:74:30
    |
 LL |     let _val: &'static _ = &&TEST_DROP;
    |               ----------     ^^^^^^^^^ creates a temporary value which is freed while still in use
@@ -213,7 +222,7 @@ LL | }
    | - temporary value is freed at the end of this statement
 
 error[E0716]: temporary value dropped while borrowed
-  --> $DIR/promote-not.rs:66:29
+  --> $DIR/promote-not.rs:77:29
    |
 LL |     let _val: &'static _ = &(&TEST_DROP,);
    |               ----------    ^^^^^^^^^^^^^ creates a temporary value which is freed while still in use
@@ -224,7 +233,7 @@ LL | }
    | - temporary value is freed at the end of this statement
 
 error[E0716]: temporary value dropped while borrowed
-  --> $DIR/promote-not.rs:66:31
+  --> $DIR/promote-not.rs:77:31
    |
 LL |     let _val: &'static _ = &(&TEST_DROP,);
    |               ----------      ^^^^^^^^^ creates a temporary value which is freed while still in use
@@ -235,7 +244,7 @@ LL | }
    | - temporary value is freed at the end of this statement
 
 error[E0716]: temporary value dropped while borrowed
-  --> $DIR/promote-not.rs:69:29
+  --> $DIR/promote-not.rs:80:29
    |
 LL |     let _val: &'static _ = &[&TEST_DROP; 1];
    |               ----------    ^^^^^^^^^^^^^^^ creates a temporary value which is freed while still in use
@@ -246,7 +255,7 @@ LL | }
    | - temporary value is freed at the end of this statement
 
 error[E0716]: temporary value dropped while borrowed
-  --> $DIR/promote-not.rs:69:31
+  --> $DIR/promote-not.rs:80:31
    |
 LL |     let _val: &'static _ = &[&TEST_DROP; 1];
    |               ----------      ^^^^^^^^^    - temporary value is freed at the end of this statement
@@ -254,6 +263,18 @@ LL |     let _val: &'static _ = &[&TEST_DROP; 1];
    |               |               creates a temporary value which is freed while still in use
    |               type annotation requires that borrow lasts for `'static`
 
-error: aborting due to 24 previous errors
+error[E0716]: temporary value dropped while borrowed
+  --> $DIR/promote-not.rs:89:26
+   |
+LL |     let x: &'static _ = &UnionWithCell { f1: 0 };
+   |            ----------    ^^^^^^^^^^^^^^^^^^^^^^^ creates a temporary value which is freed while still in use
+   |            |
+   |            type annotation requires that borrow lasts for `'static`
+LL |
+LL | }
+   | - temporary value is freed at the end of this statement
 
-For more information about this error, try `rustc --explain E0716`.
+error: aborting due to 26 previous errors
+
+Some errors have detailed explanations: E0493, E0716.
+For more information about an error, try `rustc --explain E0493`.
