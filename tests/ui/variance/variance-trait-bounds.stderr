@@ -1,27 +1,3 @@
-error: [+, +]
-  --> $DIR/variance-trait-bounds.rs:16:1
-   |
-LL | struct TestStruct<U,T:Setter<U>> {
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-error: [*, +]
-  --> $DIR/variance-trait-bounds.rs:21:1
-   |
-LL | enum TestEnum<U,T:Setter<U>> {
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-error: [*, +]
-  --> $DIR/variance-trait-bounds.rs:27:1
-   |
-LL | struct TestContraStruct<U,T:Setter<U>> {
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-error: [*, +]
-  --> $DIR/variance-trait-bounds.rs:33:1
-   |
-LL | struct TestBox<U,T:Getter<U>+Setter<U>> {
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
 error[E0392]: type parameter `U` is never used
   --> $DIR/variance-trait-bounds.rs:21:15
    |
@@ -48,6 +24,30 @@ LL | struct TestBox<U,T:Getter<U>+Setter<U>> {
    |
    = help: consider removing `U`, referring to it in a field, or using a marker such as `PhantomData`
    = help: if you intended `U` to be a const parameter, use `const U: /* Type */` instead
+
+error: [+, +]
+  --> $DIR/variance-trait-bounds.rs:16:1
+   |
+LL | struct TestStruct<U,T:Setter<U>> {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: [*, +]
+  --> $DIR/variance-trait-bounds.rs:21:1
+   |
+LL | enum TestEnum<U,T:Setter<U>> {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: [*, +]
+  --> $DIR/variance-trait-bounds.rs:27:1
+   |
+LL | struct TestContraStruct<U,T:Setter<U>> {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: [*, +]
+  --> $DIR/variance-trait-bounds.rs:33:1
+   |
+LL | struct TestBox<U,T:Getter<U>+Setter<U>> {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: aborting due to 7 previous errors
 
