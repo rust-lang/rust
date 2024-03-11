@@ -38,6 +38,14 @@ pub struct RustcLibRequired<'a> {
 #[help]
 pub struct CrateDepMultiple {
     pub crate_name: Symbol,
+    #[subdiagnostic]
+    pub non_static_deps: Vec<NonStaticCrateDep>,
+}
+
+#[derive(Subdiagnostic)]
+#[note(metadata_crate_dep_not_static)]
+pub struct NonStaticCrateDep {
+    pub crate_name: Symbol,
 }
 
 #[derive(Diagnostic)]
