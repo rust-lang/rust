@@ -1743,11 +1743,9 @@ impl TargetWarnings {
 pub struct Target {
     /// Target triple to pass to LLVM.
     pub llvm_target: StaticCow<str>,
-    /// A short description of the target including platform requirements,
-    /// for example "64-bit Linux (kernel 3.2+, glibc 2.17+)".
-    /// Optional for now, intended to be required in the future.
-    /// Part of #120745.
-    pub description: Option<StaticCow<str>>,
+    /// Metadata about a target, for example the description or tier.
+    /// Used for generating target documentation.
+    pub metadata: TargetMetadata,
     /// Number of bits in a pointer. Influences the `target_pointer_width` `cfg` variable.
     pub pointer_width: u32,
     /// Architecture to use for ABI considerations. Valid options include: "x86",
@@ -1757,6 +1755,23 @@ pub struct Target {
     pub data_layout: StaticCow<str>,
     /// Optional settings with defaults.
     pub options: TargetOptions,
+}
+
+/// Metadata about a target like the description or tier.
+/// Part of #120745.
+/// All fields are optional for now, but intended to be required in the future.
+#[derive(Default, PartialEq, Clone, Debug)]
+pub struct TargetMetadata {
+    /// A short description of the target including platform requirements,
+    /// for example "64-bit Linux (kernel 3.2+, glibc 2.17+)".
+    pub description: Option<StaticCow<str>>,
+    /// The tier of the target. 1, 2 or 3.
+    pub tier: Option<u64>,
+    /// Whether the Rust project ships host tools for a target.
+    pub host_tools: Option<bool>,
+    /// Whether a target has the `std` library. This is usually true for targets running
+    /// on an operating system.
+    pub std: Option<bool>,
 }
 
 impl Target {
@@ -2549,7 +2564,7 @@ impl Target {
 
         let mut base = Target {
             llvm_target: get_req_field("llvm-target")?.into(),
-            description: get_req_field("description").ok().map(Into::into),
+            metadata: Default::default(),
             pointer_width: get_req_field("target-pointer-width")?
                 .parse::<u32>()
                 .map_err(|_| "target-pointer-width must be an integer".to_string())?,
@@ -2557,6 +2572,22 @@ impl Target {
             arch: get_req_field("arch")?.into(),
             options: Default::default(),
         };
+
+        // FIXME: This doesn't properly validate anything and just ignores the data if it's invalid.
+        // That's okay for now, the only use of this is when generating docs, which we don't do for
+        // custom targets.
+        if let Some(Json::Object(mut metadata)) = obj.remove("metadata") {
+            base.metadata.description = metadata
+                .remove("description")
+                .and_then(|desc| desc.as_str().map(|desc| desc.to_owned().into()));
+            base.metadata.tier = metadata
+                .remove("tier")
+                .and_then(|tier| tier.as_u64())
+                .filter(|tier| (1..=3).contains(tier));
+            base.metadata.host_tools =
+                metadata.remove("host_tools").and_then(|host| host.as_bool());
+            base.metadata.std = metadata.remove("std").and_then(|host| host.as_bool());
+        }
 
         let mut incorrect_type = vec![];
 
@@ -3253,7 +3284,7 @@ impl ToJson for Target {
         }
 
         target_val!(llvm_target);
-        target_val!(description);
+        target_val!(metadata);
         d.insert("target-pointer-width".to_string(), self.pointer_width.to_string().to_json());
         target_val!(arch);
         target_val!(data_layout);

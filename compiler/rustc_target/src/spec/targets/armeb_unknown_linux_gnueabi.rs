@@ -4,7 +4,12 @@ use crate::spec::{base, Target, TargetOptions};
 pub fn target() -> Target {
     Target {
         llvm_target: "armeb-unknown-linux-gnueabi".into(),
-        description: None,
+        metadata: crate::spec::TargetMetadata {
+            description: None,
+            tier: None,
+            host_tools: None,
+            std: None,
+        },
         pointer_width: 32,
         data_layout: "E-m:e-p:32:32-Fi8-i64:64-v128:64:128-a:0:32-n32-S64".into(),
         arch: "arm".into(),
