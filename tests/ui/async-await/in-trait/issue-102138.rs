@@ -1,8 +1,6 @@
 //@ check-pass
 //@ edition:2021
 
-#![allow(incomplete_features)]
-
 use std::future::Future;
 
 async fn yield_now() {}

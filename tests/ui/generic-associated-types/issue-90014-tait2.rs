@@ -6,7 +6,6 @@
 //@ error-pattern: expected generic lifetime parameter, found `'a`
 
 #![feature(type_alias_impl_trait)]
-#![allow(incomplete_features)]
 
 use std::future::Future;
 

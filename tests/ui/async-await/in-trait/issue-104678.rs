@@ -1,8 +1,6 @@
 //@ edition:2021
 //@ check-pass
 
-#![allow(incomplete_features)]
-
 use std::future::Future;
 pub trait Pool {
     type Conn;

@@ -1,7 +1,5 @@
 //@ edition: 2021
 
-#![allow(incomplete_features)]
-
 trait MyTrait {
     async fn foo(&self) -> i32;
 }
