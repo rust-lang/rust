@@ -484,7 +484,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
         match target {
             Target::Fn => true,
             _ => {
-                self.tcx.sess.emit_err(errors::AttrShouldBeAppliedToFn {
+                self.dcx().emit_err(errors::AttrShouldBeAppliedToFn {
                     attr_span: attr.span,
                     defn_span: span,
                     on_crate: hir_id == CRATE_HIR_ID,
