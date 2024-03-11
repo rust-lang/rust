@@ -196,12 +196,24 @@ pub fn add_feature_diagnostics_for_issue<G: EmissionGuarantee>(
     }
 }
 
+/// Config cache that tries to combine expected cfgs and enabled cfgs.
+///
+/// If a config is found, this means it is definitely an expected config
+/// and the value represents whenever that config is enabled.
+///
+/// If a config is not found, it doesn't imply anything! The config still may
+/// be enabled and it may also be expected. You should only rely on the
+/// cache having a config and not "NOT having it". You should always fallback
+/// to a manual lookup in `ParseSess::config` and `ParseSess::check_cfg`.
+pub type CfgCache = FxHashMap<(Symbol, Option<Symbol>), bool>;
+
 /// Info about a parsing session.
 pub struct ParseSess {
     pub dcx: DiagCtxt,
     pub unstable_features: UnstableFeatures,
     pub config: Cfg,
     pub check_config: CheckCfg,
+    pub config_cache: CfgCache,
     pub edition: Edition,
     /// Places where raw identifiers were used. This is used to avoid complaining about idents
     /// clashing with keywords in new editions.
@@ -250,6 +262,7 @@ impl ParseSess {
             unstable_features: UnstableFeatures::from_environment(None),
             config: Cfg::default(),
             check_config: CheckCfg::default(),
+            config_cache: CfgCache::default(),
             edition: ExpnId::root().expn_data().edition,
             raw_identifier_spans: Default::default(),
             bad_unicode_identifiers: Lock::new(Default::default()),

@@ -17,7 +17,7 @@ use rustc_query_impl::QueryCtxt;
 use rustc_query_system::query::print_query_stack;
 use rustc_session::config::{self, Cfg, CheckCfg, ExpectedValues, Input, OutFileName};
 use rustc_session::filesearch::sysroot_candidates;
-use rustc_session::parse::ParseSess;
+use rustc_session::parse::{CfgCache, ParseSess};
 use rustc_session::{lint, CompilerIO, EarlyDiagCtxt, Session};
 use rustc_span::source_map::FileLoader;
 use rustc_span::symbol::sym;
@@ -260,6 +260,35 @@ pub(crate) fn parse_check_cfg(dcx: &DiagCtxt, specs: Vec<String>) -> CheckCfg {
     check_cfg
 }
 
+/// Create the config cache of `--cfg` and `--check-cfg` for internal use.
+///
+/// The cache is used to reduce the number of hashmap lookups by
+/// pre-computing the maximum possible configs[^1] from `--check-cfg` and `--cfg`.
+///
+/// It heavily favours expected cfgs (if any are provided), since if the
+/// user provides a list of expected cfgs, they are likely to care more
+/// about expected cfgs than unexpected cfgs.
+///
+/// [^1]: See [`CfgCache`] for an explanation of "maximum possible".
+fn config_cache(config: &Cfg, check_cfg: &CheckCfg) -> CfgCache {
+    let mut config_cache = CfgCache::default();
+
+    if check_cfg.expecteds.is_empty() {
+        config_cache.extend(config.iter().map(|cfg| (*cfg, true)));
+    } else {
+        #[allow(rustc::potential_query_instability)]
+        for (name, expected) in &check_cfg.expecteds {
+            if let ExpectedValues::Some(values) = expected {
+                config_cache.extend(
+                    values.iter().map(|value| ((*name, *value), config.contains(&(*name, *value)))),
+                );
+            }
+        }
+    }
+
+    config_cache
+}
+
 /// The compiler configuration
 pub struct Config {
     /// Command line options
@@ -401,6 +430,8 @@ pub fn run_compiler<R: Send>(config: Config, f: impl FnOnce(&Compiler) -> R + Se
             let mut check_cfg = parse_check_cfg(&sess.dcx(), config.crate_check_cfg);
             check_cfg.fill_well_known(&sess.target);
             sess.psess.check_config = check_cfg;
+
+            sess.psess.config_cache = config_cache(&sess.psess.config, &sess.psess.check_config);
 
             if let Some(psess_created) = config.psess_created {
                 psess_created(&mut sess.psess);

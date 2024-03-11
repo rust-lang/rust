@@ -525,38 +525,40 @@ pub fn cfg_matches(
 ) -> bool {
     eval_condition(cfg, sess, features, &mut |cfg| {
         try_gate_cfg(cfg.name, cfg.span, sess, features);
-        match sess.psess.check_config.expecteds.get(&cfg.name) {
-            Some(ExpectedValues::Some(values)) if !values.contains(&cfg.value) => {
-                sess.psess.buffer_lint_with_diagnostic(
-                    UNEXPECTED_CFGS,
-                    cfg.span,
-                    lint_node_id,
-                    if let Some(value) = cfg.value {
-                        format!("unexpected `cfg` condition value: `{value}`")
-                    } else {
-                        format!("unexpected `cfg` condition value: (none)")
-                    },
-                    BuiltinLintDiag::UnexpectedCfgValue(
-                        (cfg.name, cfg.name_span),
-                        cfg.value.map(|v| (v, cfg.value_span.unwrap())),
-                    ),
-                );
+        sess.psess.config_cache.get(&(cfg.name, cfg.value)).copied().unwrap_or_else(|| {
+            match sess.psess.check_config.expecteds.get(&cfg.name) {
+                Some(ExpectedValues::Some(values)) if !values.contains(&cfg.value) => {
+                    sess.psess.buffer_lint_with_diagnostic(
+                        UNEXPECTED_CFGS,
+                        cfg.span,
+                        lint_node_id,
+                        if let Some(value) = cfg.value {
+                            format!("unexpected `cfg` condition value: `{value}`")
+                        } else {
+                            format!("unexpected `cfg` condition value: (none)")
+                        },
+                        BuiltinLintDiag::UnexpectedCfgValue(
+                            (cfg.name, cfg.name_span),
+                            cfg.value.map(|v| (v, cfg.value_span.unwrap())),
+                        ),
+                    );
+                }
+                None if sess.psess.check_config.exhaustive_names => {
+                    sess.psess.buffer_lint_with_diagnostic(
+                        UNEXPECTED_CFGS,
+                        cfg.span,
+                        lint_node_id,
+                        format!("unexpected `cfg` condition name: `{}`", cfg.name),
+                        BuiltinLintDiag::UnexpectedCfgName(
+                            (cfg.name, cfg.name_span),
+                            cfg.value.map(|v| (v, cfg.value_span.unwrap())),
+                        ),
+                    );
+                }
+                _ => { /* not unexpected */ }
             }
-            None if sess.psess.check_config.exhaustive_names => {
-                sess.psess.buffer_lint_with_diagnostic(
-                    UNEXPECTED_CFGS,
-                    cfg.span,
-                    lint_node_id,
-                    format!("unexpected `cfg` condition name: `{}`", cfg.name),
-                    BuiltinLintDiag::UnexpectedCfgName(
-                        (cfg.name, cfg.name_span),
-                        cfg.value.map(|v| (v, cfg.value_span.unwrap())),
-                    ),
-                );
-            }
-            _ => { /* not unexpected */ }
-        }
-        sess.psess.config.contains(&(cfg.name, cfg.value))
+            sess.psess.config.contains(&(cfg.name, cfg.value))
+        })
     })
 }
 
