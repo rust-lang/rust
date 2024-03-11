@@ -1,0 +1,16 @@
+error: expected type, found `1`
+  --> $DIR/diagnostics-parenthesized-type-arguments-issue-120892-3.rs:5:19
+   |
+LL |             Foo::(1, 2) => {},
+   |                ---^ expected type
+   |                |
+   |                while parsing this parenthesized list of type arguments starting here
+   |
+help: consider removing the `::` here to turn this into a tuple struct pattern
+   |
+LL -             Foo::(1, 2) => {},
+LL +             Foo(1, 2) => {},
+   |
+
+error: aborting due to 1 previous error
+
