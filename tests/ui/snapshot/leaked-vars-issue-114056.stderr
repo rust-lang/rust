@@ -1,0 +1,27 @@
+error[E0599]: the method `partial_cmp` exists for reference `&P<Q>`, but its trait bounds were not satisfied
+  --> $DIR/leaked-vars-issue-114056.rs:5:14
+   |
+LL | struct P<Q>(Q);
+   | ----------- doesn't satisfy `P<Q>: Iterator` or `P<Q>: PartialOrd<_>`
+...
+LL |         self.partial_cmp(())
+   |              ^^^^^^^^^^^ method cannot be called on `&P<Q>` due to unsatisfied trait bounds
+   |
+   = note: the following trait bounds were not satisfied:
+           `P<Q>: PartialOrd<_>`
+           which is required by `&P<Q>: PartialOrd<&_>`
+           `&P<Q>: Iterator`
+           which is required by `&mut &P<Q>: Iterator`
+           `P<Q>: Iterator`
+           which is required by `&mut P<Q>: Iterator`
+note: the trait `Iterator` must be implemented
+  --> $SRC_DIR/core/src/iter/traits/iterator.rs:LL:COL
+help: consider annotating `P<Q>` with `#[derive(PartialEq, PartialOrd)]`
+   |
+LL + #[derive(PartialEq, PartialOrd)]
+LL | struct P<Q>(Q);
+   |
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0599`.
