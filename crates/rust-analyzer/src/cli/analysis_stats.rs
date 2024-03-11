@@ -279,7 +279,8 @@ impl flags::AnalysisStats {
         let mut all = 0;
         let mut fail = 0;
         for &a in adts {
-            if db.generic_params(a.into()).iter().next().is_some() {
+            let generic_params = db.generic_params(a.into());
+            if generic_params.iter().next().is_some() || generic_params.iter_lt().next().is_some() {
                 // Data types with generics don't have layout.
                 continue;
             }

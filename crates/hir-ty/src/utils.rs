@@ -480,10 +480,10 @@ impl Generics {
                     crate::to_placeholder_idx(db, id.into()).to_ty(Interner).cast(Interner)
                 }
                 GenericParamId::ConstParamId(id) => crate::to_placeholder_idx(db, id.into())
-                    .to_const(Interner, db.const_param_ty(id.into()))
+                    .to_const(Interner, db.const_param_ty(id))
                     .cast(Interner),
                 GenericParamId::LifetimeParamId(id) => {
-                    crate::lt_to_placeholder_idx(db, id.into()).to_lifetime(Interner).cast(Interner)
+                    crate::lt_to_placeholder_idx(db, id).to_lifetime(Interner).cast(Interner)
                 }
             }),
         )

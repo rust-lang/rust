@@ -1784,7 +1784,7 @@ pub(crate) fn generic_defaults_query(
                 };
 
                 let mut val = p.default.as_ref().map_or_else(
-                    || unknown_const_as_generic(db.const_param_ty(id.into())),
+                    || unknown_const_as_generic(db.const_param_ty(id)),
                     |c| {
                         let c = ctx.lower_const(c, ctx.lower_ty(&p.ty));
                         c.cast(Interner)
