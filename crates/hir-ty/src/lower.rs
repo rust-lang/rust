@@ -915,10 +915,10 @@ impl<'a> TyLoweringContext<'a> {
                         |_, lifetime_ref| self.lower_lifetime(lifetime_ref),
                     ) {
                         had_explicit_args = true;
-                        substs.push(dbg!(x));
+                        substs.push(x);
                     } else {
-                        // Never return a None explictly
-                        never!("Unexpectd None by generic_arg_to_chalk");
+                        // Never return a None explicitly
+                        never!("Unexpected None by generic_arg_to_chalk");
                     }
                 }
             }

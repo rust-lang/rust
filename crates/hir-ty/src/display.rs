@@ -1316,8 +1316,7 @@ fn hir_fmt_generics(
     generic_def: Option<hir_def::GenericDefId>,
 ) -> Result<(), HirDisplayError> {
     let db = f.db;
-    let lifetime_args_count = generic_def.map_or(0, |g| db.generic_params(g).lifetimes.len());
-    if parameters.len(Interner) + lifetime_args_count > 0 {
+    if parameters.len(Interner) > 0 {
         let parameters_to_write = if f.display_target.is_source_code() || f.omit_verbose_types() {
             match generic_def
                 .map(|generic_def_id| db.generic_defaults(generic_def_id))
@@ -1343,6 +1342,11 @@ fn hir_fmt_generics(
                                 return true;
                             }
                         }
+                        if parameter.lifetime(Interner).map(|it| it.data(Interner))
+                            == Some(&crate::LifetimeData::Static)
+                        {
+                            return true;
+                        }
                         let default_parameter = match default_parameters.get(i) {
                             Some(it) => it,
                             None => return true,
@@ -1363,16 +1367,9 @@ fn hir_fmt_generics(
         } else {
             parameters.as_slice(Interner)
         };
-        if !parameters_to_write.is_empty() || lifetime_args_count != 0 {
+        if !parameters_to_write.is_empty() {
             write!(f, "<")?;
             let mut first = true;
-            for _ in 0..lifetime_args_count {
-                if !first {
-                    write!(f, ", ")?;
-                }
-                first = false;
-                write!(f, "'_")?;
-            }
             for generic_arg in parameters_to_write {
                 if !first {
                     write!(f, ", ")?;
