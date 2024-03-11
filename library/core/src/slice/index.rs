@@ -704,8 +704,7 @@ where
 {
     let len = bounds.end;
 
-    let start: ops::Bound<&usize> = range.start_bound();
-    let start = match start {
+    let start = match range.start_bound() {
         ops::Bound::Included(&start) => start,
         ops::Bound::Excluded(start) => {
             start.checked_add(1).unwrap_or_else(|| slice_start_index_overflow_fail())
@@ -713,8 +712,7 @@ where
         ops::Bound::Unbounded => 0,
     };
 
-    let end: ops::Bound<&usize> = range.end_bound();
-    let end = match end {
+    let end = match range.end_bound() {
         ops::Bound::Included(end) => {
             end.checked_add(1).unwrap_or_else(|| slice_end_index_overflow_fail())
         }
@@ -730,6 +728,59 @@ where
     }
 
     ops::Range { start, end }
+}
+
+/// Performs bounds-checking of a range without panicking.
+///
+/// This is a version of [`range`] that returns [`None`] instead of panicking.
+///
+/// # Examples
+///
+/// ```
+/// #![feature(slice_range)]
+///
+/// use std::slice;
+///
+/// let v = [10, 40, 30];
+/// assert_eq!(Some(1..2), slice::try_range(1..2, ..v.len()));
+/// assert_eq!(Some(0..2), slice::try_range(..2, ..v.len()));
+/// assert_eq!(Some(1..3), slice::try_range(1.., ..v.len()));
+/// ```
+///
+/// Returns [`None`] when [`Index::index`] would panic:
+///
+/// ```
+/// #![feature(slice_range)]
+///
+/// use std::slice;
+///
+/// assert_eq!(None, slice::try_range(2..1, ..3));
+/// assert_eq!(None, slice::try_range(1..4, ..3));
+/// assert_eq!(None, slice::try_range(1..=usize::MAX, ..3));
+/// ```
+///
+/// [`Index::index`]: ops::Index::index
+#[unstable(feature = "slice_range", issue = "76393")]
+#[must_use]
+pub fn try_range<R>(range: R, bounds: ops::RangeTo<usize>) -> Option<ops::Range<usize>>
+where
+    R: ops::RangeBounds<usize>,
+{
+    let len = bounds.end;
+
+    let start = match range.start_bound() {
+        ops::Bound::Included(&start) => start,
+        ops::Bound::Excluded(start) => start.checked_add(1)?,
+        ops::Bound::Unbounded => 0,
+    };
+
+    let end = match range.end_bound() {
+        ops::Bound::Included(end) => end.checked_add(1)?,
+        ops::Bound::Excluded(&end) => end,
+        ops::Bound::Unbounded => len,
+    };
+
+    if start > end || end > len { None } else { Some(ops::Range { start, end }) }
 }
 
 /// Convert pair of `ops::Bound`s into `ops::Range` without performing any bounds checking and (in debug) overflow checking
