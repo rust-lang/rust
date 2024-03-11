@@ -331,9 +331,11 @@ a code location and [`SyntaxContext`][sc]. Likewise, an [`Ident`] is just an int
 [am]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_span/hygiene/struct.SyntaxContext.html#method.apply_mark
 
 For built-in `macro`s, we use the context:
-`SyntaxContext::empty().apply_mark(expn_id)`, and such `macro`s are considered to
-be defined at the hierarchy root. We do the same for `proc macro`s because we
-haven't implemented cross-crate hygiene yet.
+[`SyntaxContext::empty().apply_mark(expn_id)`], and such `macro`s are
+considered to be defined at the hierarchy root. We do the same for `proc
+macro`s because we haven't implemented cross-crate hygiene yet.
+
+[`SyntaxContext::empty().apply_mark(expn_id)`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_span/hygiene/struct.SyntaxContext.html#method.apply_mark
 
 If the token had context `X` before being produced by a `macro` then after being
 produced by the `macro` it has context `X -> macro_id`. Here are some examples:
@@ -346,11 +348,10 @@ macro m() { ident }
 m!();
 ```
 
-Here `ident` originally has context [`SyntaxContext::root`][scr]. `ident` has
+Here `ident` which initially has context [`SyntaxContext::root`][scr] has
 context `ROOT -> id(m)` after it's produced by `m`.
 
 [scr]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_span/hygiene/struct.SyntaxContext.html#method.root
-
 
 Example 1:
 
@@ -360,7 +361,8 @@ macro m() { macro n() { ident } }
 m!();
 n!();
 ```
-In this example the `ident` has context `ROOT` originally, then `ROOT -> id(m)`
+
+In this example the `ident` has context `ROOT` initially, then `ROOT -> id(m)`
 after the first expansion, then `ROOT -> id(m) -> id(n)`.
 
 Example 2:
@@ -377,11 +379,11 @@ m!(foo);
 After all expansions, `foo` has context `ROOT -> id(n)` and `bar` has context
 `ROOT -> id(m) -> id(n)`.
 
-Finally, one last thing to mention is that currently, this hierarchy is subject
-to the ["context transplantation hack"][hack]. Basically, the more modern (and
-experimental) `macro` `macro`s have stronger hygiene than the older MBE system,
-but this can result in weird interactions between the two. The hack is intended
-to make things "just work" for now.
+Currently this hierarchy for tracking `macro` definitions is subject to the
+so-called ["context transplantation hack"][hack]. Modern (i.e. experimental)
+`macro`s have stronger hygiene than the legacy "Macros By Example" (`MBE`)
+system which can result in weird interactions between the two. The hack is
+intended to make things "just work" for now.
 
 [`ExpnId`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_span/hygiene/struct.ExpnId.html
 [hack]: https://github.com/rust-lang/rust/pull/51762#issuecomment-401400732
@@ -390,7 +392,8 @@ to make things "just work" for now.
 
 The third and final hierarchy tracks the location of `macro` invocations.
 
-In this hierarchy [`ExpnData::call_site`][callsite] is the child -> parent link.
+In this hierarchy [`ExpnData::call_site`][callsite] is the `child -> parent`
+link.
 
 [callsite]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_span/hygiene/struct.ExpnData.html#structfield.call_site
 
@@ -420,20 +423,22 @@ Above, we saw how the output of a `macro` is integrated into the `AST` for a cra
 and we also saw how the hygiene data for a crate is generated. But how do we
 actually produce the output of a `macro`? It depends on the type of `macro`.
 
-There are two types of `macro`s in Rust:
-`macro_rules!` `macro`s (a.k.a. "Macros By Example" (MBE)) and procedural `macro`s
-(or "proc `macro`s"; including custom derives). During the parsing phase, the normal
-Rust parser will set aside the contents of `macro`s and their invocations. Later,
-`macro`s are expanded using these portions of the code.
+There are two types of `macro`s in Rust: 
+  1. `macro_rules!` macros, and,
+  2. procedural `macro`s (`proc macro`s); including custom derives. 
+  
+During the parsing phase, the normal Rust parser will set aside the contents of
+`macro`s and their invocations. Later, `macro`s are expanded using these
+portions of the code.
 
 Some important data structures/interfaces here:
 - [`SyntaxExtension`] - a lowered `macro` representation, contains its expander
-  function, which transforms a `TokenStream` or `AST` into another `TokenStream`
-  or `AST` + some additional data like stability, or a list of unstable features
-  allowed inside the `macro`.
+  function, which transforms a [`TokenStream`] or `AST` into another
+  [`TokenStream`] or `AST` + some additional data like stability, or a list of
+  unstable features allowed inside the `macro`.
 - [`SyntaxExtensionKind`] - expander functions may have several different
   signatures (take one token stream, or two, or a piece of `AST`, etc). This is
-  an enum that lists them.
+  an `enum` that lists them.
 - [`BangProcMacro`]/[`TTMacroExpander`]/[`AttrProcMacro`]/[`MultiItemModifier`] -
   `trait`s representing the expander function signatures.
 
@@ -446,17 +451,14 @@ Some important data structures/interfaces here:
 
 ## Macros By Example
 
-MBEs have their own parser distinct from the normal Rust parser. When `macro`s
-are expanded, we may invoke the MBE parser to parse and expand a `macro`.  The
-MBE parser, in turn, may call the normal Rust parser when it needs to bind a
-metavariable (e.g.  `$my_expr`) while parsing the contents of a `macro`
+`MBE`s have their own parser distinct from the Rust parser. When `macro`s are
+expanded, we may invoke the `MBE` parser to parse and expand a `macro`.  The
+`MBE` parser, in turn, may call the Rust parser when it needs to bind a
+metavariable (e.g. `$my_expr`) while parsing the contents of a `macro`
 invocation. The code for `macro` expansion is in
 [`compiler/rustc_expand/src/mbe/`][code_dir].
 
 ### Example
-
-It's helpful to have an example to refer to. For the remainder of this chapter,
-whenever we refer to the "example _definition_", we mean the following:
 
 ```rust,ignore
 macro_rules! printer {
@@ -470,41 +472,41 @@ macro_rules! printer {
 }
 ```
 
-`$mvar` is called a _metavariable_. Unlike normal variables, rather than
-binding to a value in a computation, a metavariable binds _at compile time_ to
-a tree of _tokens_.  A _token_ is a single "unit" of the grammar, such as an
+Here `$mvar` is called a _metavariable_. Unlike normal variables, rather than
+binding to a value _at runtime_, a metavariable binds _at compile time_ to a
+tree of _tokens_.  A _token_ is a single "unit" of the grammar, such as an
 identifier (e.g. `foo`) or punctuation (e.g. `=>`). There are also other
-special tokens, such as `EOF`, which indicates that there are no more tokens.
-Token trees resulting from paired parentheses-like characters (`(`...`)`,
-`[`...`]`, and `{`...`}`) – they include the open and close and all the tokens
-in between (we do require that parentheses-like characters be balanced). Having
-`macro` expansion operate on token streams rather than the raw bytes of a source
-file abstracts away a lot of complexity. The `macro` expander (and much of the
-rest of the compiler) doesn't really care that much about the exact line and
-column of some syntactic construct in the code; it cares about what constructs
-are used in the code. Using tokens allows us to care about _what_ without
-worrying about _where_. For more information about tokens, see the
-[Parsing][parsing] chapter of this book.
-
-Whenever we refer to the "example _invocation_", we mean the following snippet:
+special tokens, such as `EOF`, which its self indicates that there are no more
+tokens. There are token trees resulting from the paired parentheses-like
+characters (`(`...`)`, `[`...`]`, and `{`...`}`) – they include the open and
+close and all the tokens in between (Rust requires that parentheses-like
+characters be balanced). Having `macro` expansion operate on token streams
+rather than the raw bytes of a source-file abstracts away a lot of complexity.
+The `macro` expander (and much of the rest of the compiler) doesn't consider
+the exact line and column of some syntactic construct in the code; it considers
+which constructs are used in the code. Using tokens allows us to care about
+_what_ without worrying about _where_. For more information about tokens, see
+the [Parsing][parsing] chapter of this book.
 
 ```rust,ignore
-printer!(print foo); // Assume `foo` is a variable defined somewhere else...
+printer!(print foo); // `foo` is a variable
 ```
 
 The process of expanding the `macro` invocation into the syntax tree
-`println!("{}", foo)` and then expanding that into a call to `Display::fmt` is
-called _`macro` expansion_, and it is the topic of this chapter.
+`println!("{}", foo)` and then expanding the syntax tree into a call to
+`Display::fmt` is one common example of _`macro` expansion_.
 
 ### The MBE parser
 
-There are two parts to MBE expansion: parsing the definition and parsing the
-invocations. Interestingly, both are done by the `macro` parser.
+There are two parts to `MBE` expansion done by the `macro` parser: 
+  1. parsing the definition, and,
+  2. parsing the invocations. 
 
-Basically, the MBE parser is like an NFA-based regex parser. It uses an
-algorithm similar in spirit to the [Earley parsing
-algorithm](https://en.wikipedia.org/wiki/Earley_parser). The `macro` parser is
-defined in [`compiler/rustc_expand/src/mbe/macro_parser.rs`][code_mp].
+We think of the `MBE` parser as a nondeterministic finite automaton (NFA) based
+regex parser since it uses an algorithm similar in spirit to the [Earley
+parsing algorithm](https://en.wikipedia.org/wiki/Earley_parser). The `macro`
+parser is defined in
+[`compiler/rustc_expand/src/mbe/macro_parser.rs`][code_mp].
 
 The interface of the `macro` parser is as follows (this is slightly simplified):
 
@@ -518,64 +520,67 @@ fn parse_tt(
 
 We use these items in `macro` parser:
 
-- `parser` is a reference to the state of a normal Rust parser, including the
-  token stream and parsing session. The token stream is what we are about to
-  ask the MBE parser to parse. We will consume the raw stream of tokens and
-  output a binding of metavariables to corresponding token trees. The parsing
-  session can be used to report parser errors.
-- `matcher` is a sequence of `MatcherLoc`s that we want to match
+- a `parser` variable is a reference to the state of a normal Rust parser,
+  including the token stream and parsing session. The token stream is what we
+  are about to ask the `MBE` parser to parse. We will consume the raw stream of
+  tokens and output a binding of metavariables to corresponding token trees.
+  The parsing session can be used to report parser errors.
+- a `matcher` variable is a sequence of [`MatcherLoc`]s that we want to match
   the token stream against. They're converted from token trees before matching.
 
-In the analogy of a regex parser, the token stream is the input and we are matching it
-against the pattern `matcher`. Using our examples, the token stream could be the stream of
-tokens containing the inside of the example invocation `print foo`, while `matcher`
-might be the sequence of token (trees) `print $mvar:ident`.
+[`MatcherLoc`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_expand/mbe/macro_parser/enum.MatcherLoc.html
+
+In the analogy of a regex parser, the token stream is the input and we are
+matching it against the pattern defined by `matcher`. Using our examples, the
+token stream could be the stream of tokens containing the inside of the example
+invocation `print foo`, while `matcher` might be the sequence of token (trees)
+`print $mvar:ident`.
 
 The output of the parser is a [`ParseResult`], which indicates which of
 three cases has occurred:
 
-- Success: the token stream matches the given `matcher`, and we have produced a binding
-  from metavariables to the corresponding token trees.
-- Failure: the token stream does not match `matcher`. This results in an error message such as
-  "No rule expected token _blah_".
-- Error: some fatal error has occurred _in the parser_. For example, this
-  happens if there is more than one pattern match, since that indicates
-  the `macro` is ambiguous.
+- **Success**: the token stream matches the given `matcher` and we have produced a
+  binding from metavariables to the corresponding token trees.
+- **Failure**: the token stream does not match `matcher` and results in an error
+  message such as "No rule expected token ...".
+- **Error**: some fatal error has occurred _in the parser_. For example, this
+  happens if there is more than one pattern match, since that indicates the
+  `macro` is ambiguous.
 
 The full interface is defined [here][code_parse_int].
 
-The `macro` parser does pretty much exactly the same as a normal regex parser with
-one exception: in order to parse different types of metavariables, such as
-`ident`, `block`, `expr`, etc., the `macro` parser must sometimes call back to the
-normal Rust parser.
+The `macro` parser does pretty much exactly the same as a normal regex parser
+with one exception: in order to parse different types of metavariables, such as
+`ident`, `block`, `expr`, etc., the `macro` parser must call back to the normal
+Rust parser. Both the definition and invocation of `macro`s are parsed using
+the parser in a process which is non-intuitively self-referential. 
 
-As mentioned above, both definitions and invocations of `macro`s are parsed using
-the `macro` parser. This is extremely non-intuitive and self-referential. The code
-to parse `macro` _definitions_ is in
-[`compiler/rustc_expand/src/mbe/macro_rules.rs`][code_mr]. It defines the pattern for
-matching for a `macro` definition as `$( $lhs:tt => $rhs:tt );+`. In other words,
-a `macro_rules` definition should have in its body at least one occurrence of a
-token tree followed by `=>` followed by another token tree. When the compiler
-comes to a `macro_rules` definition, it uses this pattern to match the two token
-trees per rule in the definition of the `macro` _using the `macro` parser itself_.
-In our example definition, the metavariable `$lhs` would match the patterns of
-both arms: `(print $mvar:ident)` and `(print twice $mvar:ident)`.  And `$rhs`
-would match the bodies of both arms: `{ println!("{}", $mvar); }` and `{
-println!("{}", $mvar); println!("{}", $mvar); }`. The parser would keep this
-knowledge around for when it needs to expand a `macro` invocation.
+The code to parse `macro` _definitions_ is in
+[`compiler/rustc_expand/src/mbe/macro_rules.rs`][code_mr]. It defines the
+pattern for matching a `macro` definition as `$( $lhs:tt => $rhs:tt );+`. In
+other words, a `macro_rules` definition should have in its body at least one
+occurrence of a token tree followed by `=>` followed by another token tree.
+When the compiler comes to a `macro_rules` definition, it uses this pattern to
+match the two token trees per rule in the definition of the `macro`, _thereby
+utilizing the `macro` parser itself_. In our example definition, the
+metavariable `$lhs` would match the patterns of both arms: `(print
+$mvar:ident)` and `(print twice $mvar:ident)`. And `$rhs` would match the
+bodies of both arms: `{ println!("{}", $mvar); }` and `{ println!("{}", $mvar);
+println!("{}", $mvar); }`. The parser keeps this knowledge around for when it
+needs to expand a `macro` invocation.
 
 When the compiler comes to a `macro` invocation, it parses that invocation using
-the same NFA-based `macro` parser that is described above. However, the matcher
+a NFA-based `macro` parser described above. However, the `matcher` variable
 used is the first token tree (`$lhs`) extracted from the arms of the `macro`
 _definition_. Using our example, we would try to match the token stream `print
-foo` from the invocation against the matchers `print $mvar:ident` and `print
-twice $mvar:ident` that we previously extracted from the definition.  The
+foo` from the invocation against the `matcher`s `print $mvar:ident` and `print
+twice $mvar:ident` that we previously extracted from the definition. The
 algorithm is exactly the same, but when the `macro` parser comes to a place in the
-current matcher where it needs to match a _non-terminal_ (e.g. `$mvar:ident`),
+current `matcher` where it needs to match a _non-terminal_ (e.g. `$mvar:ident`),
 it calls back to the normal Rust parser to get the contents of that
 non-terminal. In this case, the Rust parser would look for an `ident` token,
 which it finds (`foo`) and returns to the `macro` parser. Then, the `macro` parser
-proceeds in parsing as normal. Also, note that exactly one of the matchers from
+proceeds in parsing as normal. Also, note that exactly one of the `matcher`s from
 the various arms should match the invocation; if there is more than one match,
 the parse is ambiguous, while if there are no matches at all, there is a syntax
 error.
@@ -583,32 +588,21 @@ error.
 For more information about the `macro` parser's implementation, see the comments
 in [`compiler/rustc_expand/src/mbe/macro_parser.rs`][code_mp].
 
-### `macro`s and Macros 2.0
-
-There is an old and mostly undocumented effort to improve the MBE system, give
-it more hygiene-related features, better scoping and visibility rules, etc. There
-hasn't been a lot of work on this recently, unfortunately. Internally, `macro`
-`macro`s use the same machinery as today's MBEs; they just have additional
-syntactic sugar and are allowed to be in namespaces.
-
 ## Procedural Macros
 
-Procedural `macro`s are also expanded during parsing, as mentioned above.
-However, they use a rather different mechanism. Rather than having a parser in
-the compiler, procedural `macro`s are implemented as custom, third-party crates.
-The compiler will compile the proc `macro` crate and specially annotated
-functions in them (i.e. the proc `macro` itself), passing them a stream of tokens.
+Procedural `macro`s are also expanded during parsing. However, rather than
+having a parser in the compiler, `proc macro`s are implemented as custom,
+third-party crates. The compiler will compile the `proc macro` crate and
+specially annotated functions in them (i.e. the `proc macro` itself), passing
+them a stream of tokens. A `proc macro` can then transform the token stream and
+output a new token stream, which is synthesized into the `AST`.
 
-The proc `macro` can then transform the token stream and output a new token
-stream, which is synthesized into the `AST`.
-
-It's worth noting that the token stream type used by proc `macro`s is _stable_,
-so `rustc` does not use it internally (since our internal data structures are
-unstable). The compiler's token stream is
-[`rustc_ast::tokenstream::TokenStream`][rustcts], as previously. This is
-converted into the stable [`proc_macro::TokenStream`][stablets] and back in
+The token stream type used by `proc macro`s is _stable_, so `rustc` does not
+use it internally. The compiler's (unstable) token stream is defined in
+[`rustc_ast::tokenstream::TokenStream`][rustcts]. This is converted into the
+stable [`proc_macro::TokenStream`][stablets] and back in
 [`rustc_expand::proc_macro`][pm] and [`rustc_expand::proc_macro_server`][pms].
-Because the Rust ABI is unstable, we use the C ABI for this conversion.
+Since the Rust ABI is currently unstable, we use the C ABI for this conversion.
 
 [tsmod]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_ast/tokenstream/index.html
 [rustcts]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_ast/tokenstream/struct.TokenStream.html
@@ -617,10 +611,17 @@ Because the Rust ABI is unstable, we use the C ABI for this conversion.
 [pms]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_expand/proc_macro_server/index.html
 [`ParseResult`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_expand/mbe/macro_parser/enum.ParseResult.html
 
-TODO: more here. [#1160](https://github.com/rust-lang/rustc-dev-guide/issues/1160)
+<!-- TODO(rylev): more here. [#1160](https://github.com/rust-lang/rustc-dev-guide/issues/1160) -->
 
 ### Custom Derive
 
-Custom derives are a special type of proc `macro`.
+Custom derives are a special type of `proc macro`.
 
-TODO: more? [#1160](https://github.com/rust-lang/rustc-dev-guide/issues/1160)
+### Macros By Example and Macros 2.0
+
+There is an legacy and mostly undocumented effort to improve the `MBE` system
+by giving it more hygiene-related features, better scoping and visibility
+rules, etc. Internally this uses the same machinery as today's `MBE`s with some
+additional syntactic sugar and are allowed to be in namespaces.
+
+<!-- TODO(rylev): more? [#1160](https://github.com/rust-lang/rustc-dev-guide/issues/1160) -->
