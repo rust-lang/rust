@@ -6,6 +6,7 @@
 //! have a situation where the RPIT gets constrained outside its anchor.
 
 //@ revisions: current next
+//@ ignore-compare-mode-next-solver (explicit revisions)
 //@[next] compile-flags: -Znext-solver
 //@[next] check-pass
 

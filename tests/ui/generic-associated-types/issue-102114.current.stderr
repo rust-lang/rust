@@ -1,5 +1,5 @@
 error[E0049]: type `B` has 1 type parameter but its trait declaration has 0 type parameters
-  --> $DIR/issue-102114.rs:14:12
+  --> $DIR/issue-102114.rs:15:12
    |
 LL |     type B<'b>;
    |            -- expected 0 type parameters
