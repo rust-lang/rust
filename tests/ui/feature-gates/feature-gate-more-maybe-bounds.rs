@@ -11,7 +11,7 @@ fn foo(_: Box<dyn Trait1 + ?Trait2>) {}
 //~^  ERROR `?Trait` is not permitted in trait object types
 fn bar<T: ?Trait1 + ?Trait2>(_: T) {}
 //~^ ERROR type parameter has more than one relaxed default bound, only one is supported
-//~| WARN relaxing a default bound only does something for `?Sized`; all other traits are not bound by default
-//~| WARN relaxing a default bound only does something for `?Sized`; all other traits are not bound by default
+//~| WARN relaxing a default bound only does something for `?Sized` and `experimental_default_bounds`; all other traits are not bound by default
+//~| WARN relaxing a default bound only does something for `?Sized` and `experimental_default_bounds`; all other traits are not bound by default
 
 fn main() {}

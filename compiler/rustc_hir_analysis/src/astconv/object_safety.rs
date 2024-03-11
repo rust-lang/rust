@@ -56,6 +56,20 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             }
         }
 
+        let ast_bounds: Vec<_> = hir_trait_bounds
+            .iter()
+            .map(|&(trait_ref, polarity)| hir::GenericBound::Trait(trait_ref, polarity))
+            .collect();
+
+        self.add_implicit_traits_with_filter(
+            &mut bounds,
+            dummy_self,
+            &ast_bounds,
+            None,
+            span,
+            |tr| tr != hir::LangItem::Sized,
+        );
+
         let mut trait_bounds = vec![];
         let mut projection_bounds = vec![];
         for (pred, span) in bounds.clauses() {

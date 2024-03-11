@@ -956,25 +956,32 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
 
         let mut traits = FxIndexMap::default();
         let mut fn_traits = FxIndexMap::default();
-        let mut has_sized_bound = false;
-        let mut has_negative_sized_bound = false;
+        let mut default_trait_bounds = FxHashSet::default();
+        let mut default_negative_trait_bounds = FxHashSet::default();
         let mut lifetimes = SmallVec::<[ty::Region<'tcx>; 1]>::new();
 
-        for (predicate, _) in bounds.iter_instantiated_copied(tcx, args) {
+        'pred: for (predicate, _) in bounds.iter_instantiated_copied(tcx, args) {
             let bound_predicate = predicate.kind();
 
             match bound_predicate.skip_binder() {
                 ty::ClauseKind::Trait(pred) => {
                     let trait_ref = bound_predicate.rebind(pred.trait_ref);
 
-                    // Don't print `+ Sized`, but rather `+ ?Sized` if absent.
-                    if Some(trait_ref.def_id()) == tcx.lang_items().sized_trait() {
-                        match pred.polarity {
-                            ty::ImplPolarity::Positive | ty::ImplPolarity::Reservation => {
-                                has_sized_bound = true;
-                                continue;
+                    // Don't print implicit bounds.
+                    for default_trait in tcx.default_traits() {
+                        let lang_item_id = tcx.lang_items().get(*default_trait);
+                        if let Some(default_trait_id) = lang_item_id
+                            && trait_ref.def_id() == default_trait_id
+                        {
+                            match pred.polarity {
+                                ty::ImplPolarity::Positive | ty::ImplPolarity::Reservation => {
+                                    default_trait_bounds.insert(*default_trait);
+                                    continue 'pred;
+                                }
+                                ty::ImplPolarity::Negative => {
+                                    default_negative_trait_bounds.insert(*default_trait);
+                                }
                             }
-                            ty::ImplPolarity::Negative => has_negative_sized_bound = true,
                         }
                     }
 
@@ -1012,7 +1019,8 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
 
         let mut first = true;
         // Insert parenthesis around (Fn(A, B) -> C) if the opaque ty has more than one other trait
-        let paren_needed = fn_traits.len() > 1 || traits.len() > 0 || !has_sized_bound;
+        let paren_needed =
+            fn_traits.len() > 1 || traits.len() > 0 || default_trait_bounds.is_empty();
 
         for (fn_once_trait_ref, entry) in fn_traits {
             write!(self, "{}", if first { "" } else { " + " })?;
@@ -1158,16 +1166,30 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
             })?;
         }
 
-        let add_sized = has_sized_bound && (first || has_negative_sized_bound);
-        let add_maybe_sized = !has_sized_bound && !has_negative_sized_bound;
-        if add_sized || add_maybe_sized {
-            if !first {
-                write!(self, " + ")?;
+        for default_trait in tcx.default_traits() {
+            if tcx.lang_items().get(*default_trait).is_none() {
+                // default bounds weren't generated
+                continue;
             }
-            if add_maybe_sized {
-                write!(self, "?")?;
+
+            let has_default_bound = default_trait_bounds.contains(default_trait);
+            let has_negative_default_bound = default_negative_trait_bounds.contains(default_trait);
+
+            let add_bound = has_default_bound && (first || has_negative_default_bound);
+            let add_maybe_bound = !has_default_bound && !has_negative_default_bound;
+
+            if add_bound || add_maybe_bound {
+                if !first {
+                    write!(self, " + ")?;
+                } else {
+                    first = false;
+                }
+
+                if add_maybe_bound {
+                    write!(self, "?")?;
+                }
+                write!(self, "{}", default_trait.variant_name())?;
             }
-            write!(self, "Sized")?;
         }
 
         if !with_forced_trimmed_paths() {
@@ -1382,6 +1404,11 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
         auto_traits.sort_by_cached_key(|did| with_no_trimmed_paths!(self.tcx().def_path_str(*did)));
 
         for def_id in auto_traits {
+            if self.tcx().is_default_trait(def_id)
+                && self.tcx().lang_items().sized_trait() != Some(def_id)
+            {
+                continue;
+            }
             if !first {
                 p!(" + ");
             }

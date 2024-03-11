@@ -1369,6 +1369,12 @@ impl<'tcx> ParamTy {
         ParamTy { index, name }
     }
 
+    // Dummy param which is used for proving object safety.
+    // See `receiver_is_dispatchable`.
+    pub fn dummy() -> Self {
+        ParamTy::new(u32::MAX, Symbol::intern("RustaceansAreAwesome"))
+    }
+
     pub fn for_def(def: &ty::GenericParamDef) -> ParamTy {
         ParamTy::new(def.index, def.name)
     }

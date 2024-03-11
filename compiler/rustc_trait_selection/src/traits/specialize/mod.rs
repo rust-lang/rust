@@ -530,9 +530,15 @@ pub(crate) fn to_pretty_impl_header(tcx: TyCtxt<'_>, impl_def_id: DefId) -> Opti
 
     for (p, _) in predicates {
         if let Some(poly_trait_ref) = p.as_trait_clause() {
-            if Some(poly_trait_ref.def_id()) == sized_trait {
+            let poly_trait_id = poly_trait_ref.def_id();
+            if Some(poly_trait_id) == sized_trait {
                 // FIXME(#120456) - is `swap_remove` correct?
                 types_without_default_bounds.swap_remove(&poly_trait_ref.self_ty().skip_binder());
+                continue;
+            }
+            if tcx.is_default_trait(poly_trait_id) {
+                // Do not emit other default traits because there are no yet
+                // relaxed bounds for them.
                 continue;
             }
         }

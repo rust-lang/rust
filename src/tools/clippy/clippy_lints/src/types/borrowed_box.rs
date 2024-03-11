@@ -84,15 +84,14 @@ fn is_any_trait(cx: &LateContext<'_>, t: &hir::Ty<'_>) -> bool {
     if let TyKind::TraitObject(traits, ..) = t.kind {
         return traits
             .iter()
-            .find(|(bound, _)| {
+            .any(|(bound, _)| {
                 if let Some(trait_did) = bound.trait_ref.trait_def_id()
                     && cx.tcx.is_diagnostic_item(sym::Any, trait_did)
                 {
                     return true;
                 }
                 false
-            })
-            .is_some();
+            });
     }
 
     false

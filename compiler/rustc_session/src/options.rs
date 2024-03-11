@@ -1643,6 +1643,8 @@ options! {
         "emit a section containing stack size metadata (default: no)"),
     emit_thin_lto: bool = (true, parse_bool, [TRACKED],
         "emit the bc module with thin LTO info (default: yes)"),
+    experimental_default_bounds: bool = (false, parse_bool, [TRACKED],
+        "enable default bounds for experimental group of auto traits"),
     export_executable_symbols: bool = (false, parse_bool, [TRACKED],
         "export symbols from executables, as if they were dynamic libraries"),
     extra_const_ub_checks: bool = (false, parse_bool, [TRACKED],
