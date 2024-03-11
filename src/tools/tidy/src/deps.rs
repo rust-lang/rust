@@ -324,6 +324,7 @@ const PERMITTED_RUSTC_DEPENDENCIES: &[&str] = &[
     "fallible-iterator", // dependency of `thorin`
     "fastrand",
     "find-msvc-tools",
+    "fjall",
     "flate2",
     "fluent-bundle",
     "fluent-langneg",
@@ -441,7 +442,6 @@ const PERMITTED_RUSTC_DEPENDENCIES: &[&str] = &[
     "thiserror-impl",
     "thorin-dwp",
     "thread_local",
-    "tikv-jemalloc-sys",
     "tinystr",
     "tinyvec",
     "tinyvec_macros",
