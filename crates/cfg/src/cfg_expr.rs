@@ -2,12 +2,8 @@
 //!
 //! See: <https://doc.rust-lang.org/reference/conditional-compilation.html#conditional-compilation>
 
-use std::{fmt, iter::Peekable, slice::Iter as SliceIter};
+use std::{fmt, slice::Iter as SliceIter};
 
-use syntax::{
-    ast::{self, Meta},
-    NodeOrToken,
-};
 use tt::SmolStr;
 
 /// A simple configuration value passed in from the outside.
@@ -51,12 +47,7 @@ impl CfgExpr {
     pub fn parse<S>(tt: &tt::Subtree<S>) -> CfgExpr {
         next_cfg_expr(&mut tt.token_trees.iter()).unwrap_or(CfgExpr::Invalid)
     }
-    /// Parses a `cfg` attribute from the meta
-    pub fn parse_from_attr_meta(meta: Meta) -> Option<CfgExpr> {
-        let tt = meta.token_tree()?;
-        let mut iter = tt.token_trees_and_tokens().skip(1).peekable();
-        next_cfg_expr_from_syntax(&mut iter)
-    }
+
     /// Fold the cfg by querying all basic `Atom` and `KeyValue` predicates.
     pub fn fold(&self, query: &dyn Fn(&CfgAtom) -> bool) -> Option<bool> {
         match self {
@@ -72,70 +63,6 @@ impl CfgExpr {
         }
     }
 }
-fn next_cfg_expr_from_syntax<I>(iter: &mut Peekable<I>) -> Option<CfgExpr>
-where
-    I: Iterator<Item = NodeOrToken<ast::TokenTree, syntax::SyntaxToken>>,
-{
-    let name = match iter.next() {
-        None => return None,
-        Some(NodeOrToken::Token(element)) => match element.kind() {
-            syntax::T![ident] => SmolStr::new(element.text()),
-            _ => return Some(CfgExpr::Invalid),
-        },
-        Some(_) => return Some(CfgExpr::Invalid),
-    };
-    let result = match name.as_str() {
-        "all" | "any" | "not" => {
-            let mut preds = Vec::new();
-            let Some(NodeOrToken::Node(tree)) = iter.next() else {
-                return Some(CfgExpr::Invalid);
-            };
-            let mut tree_iter = tree.token_trees_and_tokens().skip(1).peekable();
-            while tree_iter
-                .peek()
-                .filter(
-                    |element| matches!(element, NodeOrToken::Token(token) if (token.kind() != syntax::T![')'])),
-                )
-                .is_some()
-            {
-                let pred = next_cfg_expr_from_syntax(&mut tree_iter);
-                if let Some(pred) = pred {
-                    preds.push(pred);
-                }
-            }
-            let group = match name.as_str() {
-                "all" => CfgExpr::All(preds),
-                "any" => CfgExpr::Any(preds),
-                "not" => CfgExpr::Not(Box::new(preds.pop().unwrap_or(CfgExpr::Invalid))),
-                _ => unreachable!(),
-            };
-            Some(group)
-        }
-        _ => match iter.peek() {
-            Some(NodeOrToken::Token(element)) if (element.kind() == syntax::T![=]) => {
-                iter.next();
-                match iter.next() {
-                    Some(NodeOrToken::Token(value_token))
-                        if (value_token.kind() == syntax::SyntaxKind::STRING) =>
-                    {
-                        let value = value_token.text();
-                        let value = SmolStr::new(value.trim_matches('"'));
-                        Some(CfgExpr::Atom(CfgAtom::KeyValue { key: name, value }))
-                    }
-                    _ => None,
-                }
-            }
-            _ => Some(CfgExpr::Atom(CfgAtom::Flag(name))),
-        },
-    };
-    if let Some(NodeOrToken::Token(element)) = iter.peek() {
-        if element.kind() == syntax::T![,] {
-            iter.next();
-        }
-    }
-    result
-}
-
 fn next_cfg_expr<S>(it: &mut SliceIter<'_, tt::TokenTree<S>>) -> Option<CfgExpr> {
     let name = match it.next() {
         None => return None,

@@ -151,12 +151,16 @@ pub fn expand_speculative(
         ),
         MacroCallKind::Derive { .. } | MacroCallKind::Attr { .. } => {
             let censor = censor_for_macro_input(&loc, speculative_args);
+            let censor_cfg =
+                cfg_process::process_cfg_attrs(speculative_args, &loc, db).unwrap_or_default();
             let mut fixups = fixup::fixup_syntax(span_map, speculative_args, loc.call_site);
             fixups.append.retain(|it, _| match it {
                 syntax::NodeOrToken::Token(_) => true,
-                it => !censor.contains(it),
+                it => !censor.contains(it) && !censor_cfg.contains(it),
             });
             fixups.remove.extend(censor);
+            fixups.remove.extend(censor_cfg);
+
             (
                 mbe::syntax_node_to_token_tree_modified(
                     speculative_args,

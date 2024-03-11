@@ -16,7 +16,6 @@ rustc-hash.workspace = true
 
 # locals deps
 tt.workspace = true
-syntax.workspace = true
 
 [dev-dependencies]
 expect-test = "1.4.1"
@@ -29,6 +28,7 @@ derive_arbitrary = "1.3.2"
 
 # local deps
 mbe.workspace = true
+syntax.workspace = true
 
 [lints]
 workspace = true

@@ -1,10 +1,14 @@
 //! Processes out #[cfg] and #[cfg_attr] attributes from the input for the derive macro
+use std::iter::Peekable;
+
+use cfg::{CfgAtom, CfgExpr};
 use rustc_hash::FxHashSet;
 use syntax::{
     ast::{self, Attr, HasAttrs, Meta, VariantList},
-    AstNode, SyntaxElement, SyntaxNode, T,
+    AstNode, NodeOrToken, SyntaxElement, SyntaxNode, T,
 };
 use tracing::{debug, warn};
+use tt::SmolStr;
 
 use crate::{db::ExpandDatabase, MacroCallKind, MacroCallLoc};
 
@@ -13,7 +17,7 @@ fn check_cfg_attr(attr: &Attr, loc: &MacroCallLoc, db: &dyn ExpandDatabase) -> O
         return None;
     }
     debug!("Evaluating cfg {}", attr);
-    let cfg = cfg::CfgExpr::parse_from_attr_meta(attr.meta()?)?;
+    let cfg = parse_from_attr_meta(attr.meta()?)?;
     debug!("Checking cfg {:?}", cfg);
     let enabled = db.crate_graph()[loc.krate].cfg_options.check(&cfg) != Some(false);
     Some(enabled)
@@ -24,7 +28,7 @@ fn check_cfg_attr_attr(attr: &Attr, loc: &MacroCallLoc, db: &dyn ExpandDatabase)
         return None;
     }
     debug!("Evaluating cfg_attr {}", attr);
-    let cfg_expr = cfg::CfgExpr::parse_from_attr_meta(attr.meta()?)?;
+    let cfg_expr = parse_from_attr_meta(attr.meta()?)?;
     debug!("Checking cfg_attr {:?}", cfg_expr);
     let enabled = db.crate_graph()[loc.krate].cfg_options.check(&cfg_expr) != Some(false);
     Some(enabled)
@@ -43,7 +47,7 @@ fn process_has_attrs_with_possible_comma<I: HasAttrs>(
                 debug!("censoring type {:?}", item.syntax());
                 remove.insert(item.syntax().clone().into());
                 // We need to remove the , as well
-                add_comma(&item, remove);
+                remove_possible_comma(&item, remove);
                 break 'attrs;
             }
 
@@ -63,7 +67,18 @@ fn process_has_attrs_with_possible_comma<I: HasAttrs>(
     }
     Some(())
 }
-
+#[derive(Debug, PartialEq, Eq, Clone, Copy)]
+enum CfgExprStage {
+    /// Stripping the CFGExpr part of the attribute
+    StrippigCfgExpr,
+    /// Found the comma after the CFGExpr. Will keep all tokens until the next comma or the end of the attribute
+    FoundComma,
+    /// Everything following the attribute. This could be another attribute or the end of the attribute.
+    // FIXME: cfg_attr with multiple attributes will not be handled correctly. We will only keep the first attribute
+    // Related Issue: https://github.com/rust-lang/rust-analyzer/issues/10110
+    EverythingElse,
+}
+/// This function creates its own set of tokens to remove. To help prevent malformed syntax as input.
 fn remove_tokens_within_cfg_attr(meta: Meta) -> Option<FxHashSet<SyntaxElement>> {
     let mut remove: FxHashSet<SyntaxElement> = FxHashSet::default();
     debug!("Enabling attribute {}", meta);
@@ -73,36 +88,44 @@ fn remove_tokens_within_cfg_attr(meta: Meta) -> Option<FxHashSet<SyntaxElement>>
 
     let meta_tt = meta.token_tree()?;
     debug!("meta_tt {}", meta_tt);
-    // Remove the left paren
-    remove.insert(meta_tt.l_paren_token()?.into());
-    let mut found_comma = false;
-    for tt in meta_tt.token_trees_and_tokens().skip(1) {
-        debug!("Checking {:?}", tt);
-        // Check if it is a subtree or a token. If it is a token check if it is a comma. If so, remove it and break.
-        match tt {
-            syntax::NodeOrToken::Node(node) => {
-                // Remove the entire subtree
+    let mut stage = CfgExprStage::StrippigCfgExpr;
+    for tt in meta_tt.token_trees_and_tokens() {
+        debug!("Checking {:?}. Stage: {:?}", tt, stage);
+        match (stage, tt) {
+            (CfgExprStage::StrippigCfgExpr, syntax::NodeOrToken::Node(node)) => {
                 remove.insert(node.syntax().clone().into());
             }
-            syntax::NodeOrToken::Token(token) => {
+            (CfgExprStage::StrippigCfgExpr, syntax::NodeOrToken::Token(token)) => {
                 if token.kind() == T![,] {
-                    found_comma = true;
-                    remove.insert(token.into());
-                    break;
+                    stage = CfgExprStage::FoundComma;
                 }
                 remove.insert(token.into());
             }
+            (CfgExprStage::FoundComma, syntax::NodeOrToken::Token(token))
+                if (token.kind() == T![,] || token.kind() == T![')']) =>
+            {
+                // The end of the attribute or separator for the next attribute
+                stage = CfgExprStage::EverythingElse;
+                remove.insert(token.into());
+            }
+            (CfgExprStage::EverythingElse, syntax::NodeOrToken::Node(node)) => {
+                remove.insert(node.syntax().clone().into());
+            }
+            (CfgExprStage::EverythingElse, syntax::NodeOrToken::Token(token)) => {
+                remove.insert(token.into());
+            }
+            // This is an actual attribute
+            _ => {}
         }
     }
-    if !found_comma {
-        warn!("No comma found in {}", meta_tt);
+    if stage != CfgExprStage::EverythingElse {
+        warn!("Invalid cfg_attr attribute. {:?}", meta_tt);
         return None;
     }
-    // Remove the right paren
-    remove.insert(meta_tt.r_paren_token()?.into());
     Some(remove)
 }
-fn add_comma(item: &impl AstNode, res: &mut FxHashSet<SyntaxElement>) {
+/// Removes a possible comma after the [AstNode]
+fn remove_possible_comma(item: &impl AstNode, res: &mut FxHashSet<SyntaxElement>) {
     if let Some(comma) = item.syntax().next_sibling_or_token().filter(|it| it.kind() == T![,]) {
         res.insert(comma);
     }
@@ -120,7 +143,7 @@ fn process_enum(
                 debug!("censoring type {:?}", variant.syntax());
                 remove.insert(variant.syntax().clone().into());
                 // We need to remove the , as well
-                add_comma(&variant, remove);
+                remove_possible_comma(&variant, remove);
                 continue 'variant;
             };
 
@@ -201,4 +224,104 @@ pub(crate) fn process_cfg_attrs(
         _ => {}
     }
     Some(remove)
+}
+/// Parses a `cfg` attribute from the meta
+fn parse_from_attr_meta(meta: Meta) -> Option<CfgExpr> {
+    let tt = meta.token_tree()?;
+    let mut iter = tt.token_trees_and_tokens().skip(1).peekable();
+    next_cfg_expr_from_syntax(&mut iter)
+}
+
+fn next_cfg_expr_from_syntax<I>(iter: &mut Peekable<I>) -> Option<CfgExpr>
+where
+    I: Iterator<Item = NodeOrToken<ast::TokenTree, syntax::SyntaxToken>>,
+{
+    let name = match iter.next() {
+        None => return None,
+        Some(NodeOrToken::Token(element)) => match element.kind() {
+            syntax::T![ident] => SmolStr::new(element.text()),
+            _ => return Some(CfgExpr::Invalid),
+        },
+        Some(_) => return Some(CfgExpr::Invalid),
+    };
+    let result = match name.as_str() {
+        "all" | "any" | "not" => {
+            let mut preds = Vec::new();
+            let Some(NodeOrToken::Node(tree)) = iter.next() else {
+                return Some(CfgExpr::Invalid);
+            };
+            let mut tree_iter = tree.token_trees_and_tokens().skip(1).peekable();
+            while tree_iter
+                .peek()
+                .filter(
+                    |element| matches!(element, NodeOrToken::Token(token) if (token.kind() != syntax::T![')'])),
+                )
+                .is_some()
+            {
+                let pred = next_cfg_expr_from_syntax(&mut tree_iter);
+                if let Some(pred) = pred {
+                    preds.push(pred);
+                }
+            }
+            let group = match name.as_str() {
+                "all" => CfgExpr::All(preds),
+                "any" => CfgExpr::Any(preds),
+                "not" => CfgExpr::Not(Box::new(preds.pop().unwrap_or(CfgExpr::Invalid))),
+                _ => unreachable!(),
+            };
+            Some(group)
+        }
+        _ => match iter.peek() {
+            Some(NodeOrToken::Token(element)) if (element.kind() == syntax::T![=]) => {
+                iter.next();
+                match iter.next() {
+                    Some(NodeOrToken::Token(value_token))
+                        if (value_token.kind() == syntax::SyntaxKind::STRING) =>
+                    {
+                        let value = value_token.text();
+                        let value = SmolStr::new(value.trim_matches('"'));
+                        Some(CfgExpr::Atom(CfgAtom::KeyValue { key: name, value }))
+                    }
+                    _ => None,
+                }
+            }
+            _ => Some(CfgExpr::Atom(CfgAtom::Flag(name))),
+        },
+    };
+    if let Some(NodeOrToken::Token(element)) = iter.peek() {
+        if element.kind() == syntax::T![,] {
+            iter.next();
+        }
+    }
+    result
+}
+#[cfg(test)]
+mod tests {
+    use cfg::DnfExpr;
+    use expect_test::{expect, Expect};
+    use syntax::{ast::Attr, AstNode, SourceFile};
+
+    use crate::cfg_process::parse_from_attr_meta;
+
+    fn check_dnf_from_syntax(input: &str, expect: Expect) {
+        let parse = SourceFile::parse(input);
+        let node = match parse.tree().syntax().descendants().find_map(Attr::cast) {
+            Some(it) => it,
+            None => {
+                let node = std::any::type_name::<Attr>();
+                panic!("Failed to make ast node `{node}` from text {input}")
+            }
+        };
+        let node = node.clone_subtree();
+        assert_eq!(node.syntax().text_range().start(), 0.into());
+
+        let cfg = parse_from_attr_meta(node.meta().unwrap()).unwrap();
+        let actual = format!("#![cfg({})]", DnfExpr::new(cfg));
+        expect.assert_eq(&actual);
+    }
+    #[test]
+    fn cfg_from_attr() {
+        check_dnf_from_syntax(r#"#[cfg(test)]"#, expect![[r#"#![cfg(test)]"#]]);
+        check_dnf_from_syntax(r#"#[cfg(not(never))]"#, expect![[r#"#![cfg(not(never))]"#]]);
+    }
 }
