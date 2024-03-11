@@ -203,14 +203,29 @@ const ROOT_NODE: DropIdx = DropIdx::from_u32(0);
 /// in `build_mir`.
 #[derive(Debug)]
 struct DropTree {
-    /// Drops in the tree.
-    drops: IndexVec<DropIdx, (DropData, DropIdx)>,
-    /// Map for finding the inverse of the `next_drop` relation:
-    ///
-    /// `previous_drops[(drops[i].1, drops[i].0.local, drops[i].0.kind)] == i`
-    previous_drops: FxHashMap<(DropIdx, Local, DropKind), DropIdx>,
+    /// Nodes in the drop tree, containing drop data and a link to the next node.
+    drops: IndexVec<DropIdx, DropNode>,
+    /// Map for finding the index of an existing node, given its contents.
+    existing_drops_map: FxHashMap<DropNodeKey, DropIdx>,
     /// Edges into the `DropTree` that need to be added once it's lowered.
     entry_points: Vec<(DropIdx, BasicBlock)>,
+}
+
+/// A single node in the drop tree.
+#[derive(Debug)]
+struct DropNode {
+    /// Info about the drop to be performed at this node in the drop tree.
+    data: DropData,
+    /// Index of the "next" drop to perform (in drop order, not declaration order).
+    next: DropIdx,
+}
+
+/// Subset of [`DropNode`] used for reverse lookup in a hash table.
+#[derive(Debug, PartialEq, Eq, Hash)]
+struct DropNodeKey {
+    next: DropIdx,
+    local: Local,
+    kind: DropKind,
 }
 
 impl Scope {
@@ -247,7 +262,7 @@ trait DropTreeBuilder<'tcx> {
 
     /// Links a block outside the drop tree, `from`, to the block `to` inside
     /// the drop tree.
-    fn add_entry(cfg: &mut CFG<'tcx>, from: BasicBlock, to: BasicBlock);
+    fn link_entry_point(cfg: &mut CFG<'tcx>, from: BasicBlock, to: BasicBlock);
 }
 
 impl DropTree {
@@ -258,20 +273,29 @@ impl DropTree {
         let fake_source_info = SourceInfo::outermost(DUMMY_SP);
         let fake_data =
             DropData { source_info: fake_source_info, local: Local::MAX, kind: DropKind::Storage };
-        let drop_idx = DropIdx::MAX;
-        let drops = IndexVec::from_elem_n((fake_data, drop_idx), 1);
-        Self { drops, entry_points: Vec::new(), previous_drops: FxHashMap::default() }
+        let drops = IndexVec::from_raw(vec![DropNode { data: fake_data, next: DropIdx::MAX }]);
+        Self { drops, entry_points: Vec::new(), existing_drops_map: FxHashMap::default() }
     }
 
-    fn add_drop(&mut self, drop: DropData, next: DropIdx) -> DropIdx {
+    /// Adds a node to the drop tree, consisting of drop data and the index of
+    /// the "next" drop (in drop order), which could be the sentinel [`ROOT_NODE`].
+    ///
+    /// If there is already an equivalent node in the tree, nothing is added, and
+    /// that node's index is returned. Otherwise, the new node's index is returned.
+    fn add_drop(&mut self, data: DropData, next: DropIdx) -> DropIdx {
         let drops = &mut self.drops;
         *self
-            .previous_drops
-            .entry((next, drop.local, drop.kind))
-            .or_insert_with(|| drops.push((drop, next)))
+            .existing_drops_map
+            .entry(DropNodeKey { next, local: data.local, kind: data.kind })
+            // Create a new node, and also add its index to the map.
+            .or_insert_with(|| drops.push(DropNode { data, next }))
     }
 
-    fn add_entry(&mut self, from: BasicBlock, to: DropIdx) {
+    /// Registers `from` as an entry point to this drop tree, at `to`.
+    ///
+    /// During [`Self::build_mir`], `from` will be linked to the corresponding
+    /// block within the drop tree.
+    fn add_entry_point(&mut self, from: BasicBlock, to: DropIdx) {
         debug_assert!(to < self.drops.next_index());
         self.entry_points.push((to, from));
     }
@@ -326,13 +350,13 @@ impl DropTree {
         let entry_points = &mut self.entry_points;
         entry_points.sort();
 
-        for (drop_idx, drop_data) in self.drops.iter_enumerated().rev() {
+        for (drop_idx, drop_node) in self.drops.iter_enumerated().rev() {
             if entry_points.last().is_some_and(|entry_point| entry_point.0 == drop_idx) {
                 let block = *blocks[drop_idx].get_or_insert_with(|| T::make_block(cfg));
                 needs_block[drop_idx] = Block::Own;
                 while entry_points.last().is_some_and(|entry_point| entry_point.0 == drop_idx) {
                     let entry_block = entry_points.pop().unwrap().1;
-                    T::add_entry(cfg, entry_block, block);
+                    T::link_entry_point(cfg, entry_block, block);
                 }
             }
             match needs_block[drop_idx] {
@@ -344,10 +368,10 @@ impl DropTree {
                     blocks[drop_idx] = blocks[pred];
                 }
             }
-            if let DropKind::Value = drop_data.0.kind {
-                needs_block[drop_data.1] = Block::Own;
+            if let DropKind::Value = drop_node.data.kind {
+                needs_block[drop_node.next] = Block::Own;
             } else if drop_idx != ROOT_NODE {
-                match &mut needs_block[drop_data.1] {
+                match &mut needs_block[drop_node.next] {
                     pred @ Block::None => *pred = Block::Shares(drop_idx),
                     pred @ Block::Shares(_) => *pred = Block::Own,
                     Block::Own => (),
@@ -364,34 +388,35 @@ impl DropTree {
         cfg: &mut CFG<'tcx>,
         blocks: &IndexSlice<DropIdx, Option<BasicBlock>>,
     ) {
-        for (drop_idx, drop_data) in self.drops.iter_enumerated().rev() {
+        for (drop_idx, drop_node) in self.drops.iter_enumerated().rev() {
             let Some(block) = blocks[drop_idx] else { continue };
-            match drop_data.0.kind {
+            match drop_node.data.kind {
                 DropKind::Value => {
                     let terminator = TerminatorKind::Drop {
-                        target: blocks[drop_data.1].unwrap(),
+                        target: blocks[drop_node.next].unwrap(),
                         // The caller will handle this if needed.
                         unwind: UnwindAction::Terminate(UnwindTerminateReason::InCleanup),
-                        place: drop_data.0.local.into(),
+                        place: drop_node.data.local.into(),
                         replace: false,
                     };
-                    cfg.terminate(block, drop_data.0.source_info, terminator);
+                    cfg.terminate(block, drop_node.data.source_info, terminator);
                 }
                 // Root nodes don't correspond to a drop.
                 DropKind::Storage if drop_idx == ROOT_NODE => {}
                 DropKind::Storage => {
                     let stmt = Statement {
-                        source_info: drop_data.0.source_info,
-                        kind: StatementKind::StorageDead(drop_data.0.local),
+                        source_info: drop_node.data.source_info,
+                        kind: StatementKind::StorageDead(drop_node.data.local),
                     };
                     cfg.push(block, stmt);
-                    let target = blocks[drop_data.1].unwrap();
+                    let target = blocks[drop_node.next].unwrap();
                     if target != block {
                         // Diagnostics don't use this `Span` but debuginfo
                         // might. Since we don't want breakpoints to be placed
                         // here, especially when this is on an unwind path, we
                         // use `DUMMY_SP`.
-                        let source_info = SourceInfo { span: DUMMY_SP, ..drop_data.0.source_info };
+                        let source_info =
+                            SourceInfo { span: DUMMY_SP, ..drop_node.data.source_info };
                         let terminator = TerminatorKind::Goto { target };
                         cfg.terminate(block, source_info, terminator);
                     }
@@ -673,11 +698,12 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             .flat_map(|scope| &scope.drops)
             .fold(ROOT_NODE, |drop_idx, &drop| drops.add_drop(drop, drop_idx));
 
-        drops.add_entry(block, drop_idx);
+        drops.add_entry_point(block, drop_idx);
 
         // `build_drop_trees` doesn't have access to our source_info, so we
         // create a dummy terminator now. `TerminatorKind::UnwindResume` is used
         // because MIR type checking will panic if it hasn't been overwritten.
+        // (See `<ExitScopes as DropTreeBuilder>::link_entry_point`.)
         self.cfg.terminate(block, source_info, TerminatorKind::UnwindResume);
 
         self.cfg.start_new_block().unit()
@@ -708,11 +734,12 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 drop_idx = drops.add_drop(*drop, drop_idx);
             }
         }
-        drops.add_entry(block, drop_idx);
+        drops.add_entry_point(block, drop_idx);
 
         // `build_drop_trees` doesn't have access to our source_info, so we
         // create a dummy terminator now. `TerminatorKind::UnwindResume` is used
         // because MIR type checking will panic if it hasn't been overwritten.
+        // (See `<ExitScopes as DropTreeBuilder>::link_entry_point`.)
         self.cfg.terminate(block, source_info, TerminatorKind::UnwindResume);
     }
 
@@ -1119,7 +1146,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         );
 
         let next_drop = self.diverge_cleanup();
-        self.scopes.unwind_drops.add_entry(start, next_drop);
+        self.scopes.unwind_drops.add_entry_point(start, next_drop);
     }
 
     /// Sets up a path that performs all required cleanup for dropping a
@@ -1153,7 +1180,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             scope.cached_coroutine_drop_block = Some(cached_drop);
         }
 
-        self.scopes.coroutine_drops.add_entry(yield_block, cached_drop);
+        self.scopes.coroutine_drops.add_entry_point(yield_block, cached_drop);
     }
 
     /// Utility function for *non*-scope code to build their own drops
@@ -1274,9 +1301,9 @@ fn build_scope_drops<'tcx>(
                 // `unwind_to` should drop the value that we're about to
                 // schedule. If dropping this value panics, then we continue
                 // with the *next* value on the unwind path.
-                debug_assert_eq!(unwind_drops.drops[unwind_to].0.local, drop_data.local);
-                debug_assert_eq!(unwind_drops.drops[unwind_to].0.kind, drop_data.kind);
-                unwind_to = unwind_drops.drops[unwind_to].1;
+                debug_assert_eq!(unwind_drops.drops[unwind_to].data.local, drop_data.local);
+                debug_assert_eq!(unwind_drops.drops[unwind_to].data.kind, drop_data.kind);
+                unwind_to = unwind_drops.drops[unwind_to].next;
 
                 // If the operand has been moved, and we are not on an unwind
                 // path, then don't generate the drop. (We only take this into
@@ -1286,7 +1313,7 @@ fn build_scope_drops<'tcx>(
                     continue;
                 }
 
-                unwind_drops.add_entry(block, unwind_to);
+                unwind_drops.add_entry_point(block, unwind_to);
 
                 let next = cfg.start_new_block();
                 cfg.terminate(
@@ -1303,9 +1330,9 @@ fn build_scope_drops<'tcx>(
             }
             DropKind::Storage => {
                 if storage_dead_on_unwind {
-                    debug_assert_eq!(unwind_drops.drops[unwind_to].0.local, drop_data.local);
-                    debug_assert_eq!(unwind_drops.drops[unwind_to].0.kind, drop_data.kind);
-                    unwind_to = unwind_drops.drops[unwind_to].1;
+                    debug_assert_eq!(unwind_drops.drops[unwind_to].data.local, drop_data.local);
+                    debug_assert_eq!(unwind_drops.drops[unwind_to].data.kind, drop_data.kind);
+                    unwind_to = unwind_drops.drops[unwind_to].next;
                 }
                 // Only temps and vars need their storage dead.
                 assert!(local.index() > arg_count);
@@ -1335,30 +1362,31 @@ impl<'a, 'tcx: 'a> Builder<'a, 'tcx> {
         let is_coroutine = self.coroutine.is_some();
 
         // Link the exit drop tree to unwind drop tree.
-        if drops.drops.iter().any(|(drop, _)| drop.kind == DropKind::Value) {
+        if drops.drops.iter().any(|drop_node| drop_node.data.kind == DropKind::Value) {
             let unwind_target = self.diverge_cleanup_target(else_scope, span);
             let mut unwind_indices = IndexVec::from_elem_n(unwind_target, 1);
-            for (drop_idx, drop_data) in drops.drops.iter_enumerated().skip(1) {
-                match drop_data.0.kind {
+            for (drop_idx, drop_node) in drops.drops.iter_enumerated().skip(1) {
+                match drop_node.data.kind {
                     DropKind::Storage => {
                         if is_coroutine {
                             let unwind_drop = self
                                 .scopes
                                 .unwind_drops
-                                .add_drop(drop_data.0, unwind_indices[drop_data.1]);
+                                .add_drop(drop_node.data, unwind_indices[drop_node.next]);
                             unwind_indices.push(unwind_drop);
                         } else {
-                            unwind_indices.push(unwind_indices[drop_data.1]);
+                            unwind_indices.push(unwind_indices[drop_node.next]);
                         }
                     }
                     DropKind::Value => {
                         let unwind_drop = self
                             .scopes
                             .unwind_drops
-                            .add_drop(drop_data.0, unwind_indices[drop_data.1]);
-                        self.scopes
-                            .unwind_drops
-                            .add_entry(blocks[drop_idx].unwrap(), unwind_indices[drop_data.1]);
+                            .add_drop(drop_node.data, unwind_indices[drop_node.next]);
+                        self.scopes.unwind_drops.add_entry_point(
+                            blocks[drop_idx].unwrap(),
+                            unwind_indices[drop_node.next],
+                        );
                         unwind_indices.push(unwind_drop);
                     }
                 }
@@ -1408,10 +1436,10 @@ impl<'a, 'tcx: 'a> Builder<'a, 'tcx> {
         // prevent drop elaboration from creating drop flags that would have
         // to be captured by the coroutine. I'm not sure how important this
         // optimization is, but it is here.
-        for (drop_idx, drop_data) in drops.drops.iter_enumerated() {
-            if let DropKind::Value = drop_data.0.kind {
-                debug_assert!(drop_data.1 < drops.drops.next_index());
-                drops.entry_points.push((drop_data.1, blocks[drop_idx].unwrap()));
+        for (drop_idx, drop_node) in drops.drops.iter_enumerated() {
+            if let DropKind::Value = drop_node.data.kind {
+                debug_assert!(drop_node.next < drops.drops.next_index());
+                drops.entry_points.push((drop_node.next, blocks[drop_idx].unwrap()));
             }
         }
         Self::build_unwind_tree(cfg, drops, fn_span, resume_block);
@@ -1442,8 +1470,16 @@ impl<'tcx> DropTreeBuilder<'tcx> for ExitScopes {
     fn make_block(cfg: &mut CFG<'tcx>) -> BasicBlock {
         cfg.start_new_block()
     }
-    fn add_entry(cfg: &mut CFG<'tcx>, from: BasicBlock, to: BasicBlock) {
-        cfg.block_data_mut(from).terminator_mut().kind = TerminatorKind::Goto { target: to };
+    fn link_entry_point(cfg: &mut CFG<'tcx>, from: BasicBlock, to: BasicBlock) {
+        // There should be an existing terminator with real source info and a
+        // dummy TerminatorKind. Replace it with a proper goto.
+        // (The dummy is added by `break_scope` and `break_for_else`.)
+        let term = cfg.block_data_mut(from).terminator_mut();
+        if let TerminatorKind::UnwindResume = term.kind {
+            term.kind = TerminatorKind::Goto { target: to };
+        } else {
+            span_bug!(term.source_info.span, "unexpected dummy terminator kind: {:?}", term.kind);
+        }
     }
 }
 
@@ -1453,7 +1489,7 @@ impl<'tcx> DropTreeBuilder<'tcx> for CoroutineDrop {
     fn make_block(cfg: &mut CFG<'tcx>) -> BasicBlock {
         cfg.start_new_block()
     }
-    fn add_entry(cfg: &mut CFG<'tcx>, from: BasicBlock, to: BasicBlock) {
+    fn link_entry_point(cfg: &mut CFG<'tcx>, from: BasicBlock, to: BasicBlock) {
         let term = cfg.block_data_mut(from).terminator_mut();
         if let TerminatorKind::Yield { ref mut drop, .. } = term.kind {
             *drop = Some(to);
@@ -1473,7 +1509,7 @@ impl<'tcx> DropTreeBuilder<'tcx> for Unwind {
     fn make_block(cfg: &mut CFG<'tcx>) -> BasicBlock {
         cfg.start_new_cleanup_block()
     }
-    fn add_entry(cfg: &mut CFG<'tcx>, from: BasicBlock, to: BasicBlock) {
+    fn link_entry_point(cfg: &mut CFG<'tcx>, from: BasicBlock, to: BasicBlock) {
         let term = &mut cfg.block_data_mut(from).terminator_mut();
         match &mut term.kind {
             TerminatorKind::Drop { unwind, .. } => {
