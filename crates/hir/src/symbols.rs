@@ -165,7 +165,6 @@ impl<'a> SymbolCollector<'a> {
         // Record renamed imports.
         // FIXME: In case it imports multiple items under different namespaces we just pick one arbitrarily
         // for now.
-        // FIXME: This parses!
         for id in scope.imports() {
             let source = id.import.child_source(self.db.upcast());
             let Some(use_tree_src) = source.value.get(id.idx) else { continue };
@@ -196,7 +195,7 @@ impl<'a> SymbolCollector<'a> {
             });
         }
 
-        for const_id in scope.unnamed_consts(self.db.upcast()) {
+        for const_id in scope.unnamed_consts() {
             self.collect_from_body(const_id);
         }
 

@@ -213,7 +213,7 @@ impl TraitImpls {
 
             // To better support custom derives, collect impls in all unnamed const items.
             // const _: () = { ... };
-            for konst in module_data.scope.unnamed_consts(db.upcast()) {
+            for konst in module_data.scope.unnamed_consts() {
                 let body = db.body(konst.into());
                 for (_, block_def_map) in body.blocks(db.upcast()) {
                     Self::collect_def_map(db, map, &block_def_map);
@@ -337,7 +337,7 @@ impl InherentImpls {
 
             // To better support custom derives, collect impls in all unnamed const items.
             // const _: () = { ... };
-            for konst in module_data.scope.unnamed_consts(db.upcast()) {
+            for konst in module_data.scope.unnamed_consts() {
                 let body = db.body(konst.into());
                 for (_, block_def_map) in body.blocks(db.upcast()) {
                     self.collect_def_map(db, &block_def_map);

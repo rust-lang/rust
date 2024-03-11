@@ -754,7 +754,7 @@ impl Module {
         scope
             .declarations()
             .map(ModuleDef::from)
-            .chain(scope.unnamed_consts(db.upcast()).map(|id| ModuleDef::Const(Const::from(id))))
+            .chain(scope.unnamed_consts().map(|id| ModuleDef::Const(Const::from(id))))
             .collect()
     }
 
