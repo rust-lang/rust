@@ -1,5 +1,5 @@
 warning: the feature `lazy_type_alias` is incomplete and may not be safe to use and/or cause compiler crashes
-  --> $DIR/coerce-behind-lazy.rs:5:12
+  --> $DIR/coerce-behind-lazy.rs:6:12
    |
 LL | #![feature(lazy_type_alias)]
    |            ^^^^^^^^^^^^^^^

@@ -30,7 +30,7 @@ type QualifResults<'mir, 'tcx, Q> =
     rustc_mir_dataflow::ResultsCursor<'mir, 'tcx, FlowSensitiveAnalysis<'mir, 'mir, 'tcx, Q>>;
 
 #[derive(Default)]
-pub struct Qualifs<'mir, 'tcx> {
+pub(crate) struct Qualifs<'mir, 'tcx> {
     has_mut_interior: Option<QualifResults<'mir, 'tcx, HasMutInterior>>,
     needs_drop: Option<QualifResults<'mir, 'tcx, NeedsDrop>>,
     needs_non_const_drop: Option<QualifResults<'mir, 'tcx, NeedsNonConstDrop>>,

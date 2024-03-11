@@ -123,6 +123,8 @@ pub enum LinkerFlavor {
     Bpf,
     /// Linker tool for Nvidia PTX.
     Ptx,
+    /// LLVM bitcode linker that can be used as a `self-contained` linker
+    Llbc,
 }
 
 /// Linker flavors available externally through command line (`-Clinker-flavor`)
@@ -141,6 +143,7 @@ pub enum LinkerFlavorCli {
     EmCc,
     Bpf,
     Ptx,
+    Llbc,
 
     // Legacy stable values
     Gcc,
@@ -160,6 +163,7 @@ impl LinkerFlavorCli {
             | LinkerFlavorCli::Msvc(Lld::Yes)
             | LinkerFlavorCli::EmCc
             | LinkerFlavorCli::Bpf
+            | LinkerFlavorCli::Llbc
             | LinkerFlavorCli::Ptx => true,
             LinkerFlavorCli::Gcc
             | LinkerFlavorCli::Ld
@@ -219,6 +223,7 @@ impl LinkerFlavor {
             LinkerFlavorCli::Msvc(lld) => LinkerFlavor::Msvc(lld),
             LinkerFlavorCli::EmCc => LinkerFlavor::EmCc,
             LinkerFlavorCli::Bpf => LinkerFlavor::Bpf,
+            LinkerFlavorCli::Llbc => LinkerFlavor::Llbc,
             LinkerFlavorCli::Ptx => LinkerFlavor::Ptx,
 
             // Below: legacy stable values
@@ -258,6 +263,7 @@ impl LinkerFlavor {
             LinkerFlavor::Msvc(..) => LinkerFlavorCli::Msvc(Lld::No),
             LinkerFlavor::EmCc => LinkerFlavorCli::Em,
             LinkerFlavor::Bpf => LinkerFlavorCli::Bpf,
+            LinkerFlavor::Llbc => LinkerFlavorCli::Llbc,
             LinkerFlavor::Ptx => LinkerFlavorCli::Ptx,
         }
     }
@@ -272,6 +278,7 @@ impl LinkerFlavor {
             LinkerFlavor::Msvc(lld) => LinkerFlavorCli::Msvc(lld),
             LinkerFlavor::EmCc => LinkerFlavorCli::EmCc,
             LinkerFlavor::Bpf => LinkerFlavorCli::Bpf,
+            LinkerFlavor::Llbc => LinkerFlavorCli::Llbc,
             LinkerFlavor::Ptx => LinkerFlavorCli::Ptx,
         }
     }
@@ -286,6 +293,7 @@ impl LinkerFlavor {
             LinkerFlavorCli::Msvc(lld) => (Some(Cc::No), Some(lld)),
             LinkerFlavorCli::EmCc => (Some(Cc::Yes), Some(Lld::Yes)),
             LinkerFlavorCli::Bpf | LinkerFlavorCli::Ptx => (None, None),
+            LinkerFlavorCli::Llbc => (None, None),
 
             // Below: legacy stable values
             LinkerFlavorCli::Gcc => (Some(Cc::Yes), None),
@@ -340,7 +348,7 @@ impl LinkerFlavor {
             LinkerFlavor::WasmLld(cc) => LinkerFlavor::WasmLld(cc_hint.unwrap_or(cc)),
             LinkerFlavor::Unix(cc) => LinkerFlavor::Unix(cc_hint.unwrap_or(cc)),
             LinkerFlavor::Msvc(lld) => LinkerFlavor::Msvc(lld_hint.unwrap_or(lld)),
-            LinkerFlavor::EmCc | LinkerFlavor::Bpf | LinkerFlavor::Ptx => self,
+            LinkerFlavor::EmCc | LinkerFlavor::Bpf | LinkerFlavor::Llbc | LinkerFlavor::Ptx => self,
         }
     }
 
@@ -355,8 +363,8 @@ impl LinkerFlavor {
     pub fn check_compatibility(self, cli: LinkerFlavorCli) -> Option<String> {
         let compatible = |cli| {
             // The CLI flavor should be compatible with the target if:
-            // 1. they are counterparts: they have the same principal flavor.
             match (self, cli) {
+                // 1. they are counterparts: they have the same principal flavor.
                 (LinkerFlavor::Gnu(..), LinkerFlavorCli::Gnu(..))
                 | (LinkerFlavor::Darwin(..), LinkerFlavorCli::Darwin(..))
                 | (LinkerFlavor::WasmLld(..), LinkerFlavorCli::WasmLld(..))
@@ -364,11 +372,14 @@ impl LinkerFlavor {
                 | (LinkerFlavor::Msvc(..), LinkerFlavorCli::Msvc(..))
                 | (LinkerFlavor::EmCc, LinkerFlavorCli::EmCc)
                 | (LinkerFlavor::Bpf, LinkerFlavorCli::Bpf)
+                | (LinkerFlavor::Llbc, LinkerFlavorCli::Llbc)
                 | (LinkerFlavor::Ptx, LinkerFlavorCli::Ptx) => return true,
+                // 2. The linker flavor is independent of target and compatible
+                (LinkerFlavor::Ptx, LinkerFlavorCli::Llbc) => return true,
                 _ => {}
             }
 
-            // 2. or, the flavor is legacy and survives this roundtrip.
+            // 3. or, the flavor is legacy and survives this roundtrip.
             cli == self.with_cli_hints(cli).to_cli()
         };
         (!compatible(cli)).then(|| {
@@ -387,6 +398,7 @@ impl LinkerFlavor {
             | LinkerFlavor::Unix(..)
             | LinkerFlavor::EmCc
             | LinkerFlavor::Bpf
+            | LinkerFlavor::Llbc
             | LinkerFlavor::Ptx => LldFlavor::Ld,
             LinkerFlavor::Darwin(..) => LldFlavor::Ld64,
             LinkerFlavor::WasmLld(..) => LldFlavor::Wasm,
@@ -412,6 +424,7 @@ impl LinkerFlavor {
             | LinkerFlavor::Msvc(_)
             | LinkerFlavor::Unix(_)
             | LinkerFlavor::Bpf
+            | LinkerFlavor::Llbc
             | LinkerFlavor::Ptx => false,
         }
     }
@@ -431,6 +444,7 @@ impl LinkerFlavor {
             | LinkerFlavor::Msvc(_)
             | LinkerFlavor::Unix(_)
             | LinkerFlavor::Bpf
+            | LinkerFlavor::Llbc
             | LinkerFlavor::Ptx => false,
         }
     }
@@ -480,6 +494,7 @@ linker_flavor_cli_impls! {
     (LinkerFlavorCli::Msvc(Lld::No)) "msvc"
     (LinkerFlavorCli::EmCc) "em-cc"
     (LinkerFlavorCli::Bpf) "bpf"
+    (LinkerFlavorCli::Llbc) "llbc"
     (LinkerFlavorCli::Ptx) "ptx"
 
     // Legacy stable flavors
@@ -2070,6 +2085,14 @@ pub struct TargetOptions {
     /// Default number of codegen units to use in debug mode
     pub default_codegen_units: Option<u64>,
 
+    /// Default codegen backend used for this target. Defaults to `None`.
+    ///
+    /// If `None`, then `CFG_DEFAULT_CODEGEN_BACKEND` environmental variable captured when
+    /// compiling `rustc` will be used instead (or llvm if it is not set).
+    ///
+    /// N.B. when *using* the compiler, backend can always be overriden with `-Zcodegen-backend`.
+    pub default_codegen_backend: Option<StaticCow<str>>,
+
     /// Whether to generate trap instructions in places where optimization would
     /// otherwise produce control flow that falls through into unrelated memory.
     pub trap_unreachable: bool,
@@ -2220,6 +2243,7 @@ fn add_link_args_iter(
         | LinkerFlavor::Unix(..)
         | LinkerFlavor::EmCc
         | LinkerFlavor::Bpf
+        | LinkerFlavor::Llbc
         | LinkerFlavor::Ptx => {}
     }
 }
@@ -2376,6 +2400,7 @@ impl Default for TargetOptions {
             stack_probes: StackProbeType::None,
             min_global_align: None,
             default_codegen_units: None,
+            default_codegen_backend: None,
             trap_unreachable: true,
             requires_lto: false,
             singlethread: false,

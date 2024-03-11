@@ -1,3 +1,4 @@
+use crate::spec::LinkSelfContainedDefault;
 use crate::spec::{LinkerFlavor, MergeFunctions, PanicStrategy, Target, TargetOptions};
 
 pub fn target() -> Target {
@@ -51,6 +52,9 @@ pub fn target() -> Target {
 
             // The LLVM backend does not support stack canaries for this target
             supports_stack_protector: false,
+
+            // Support using `self-contained` linkers like the llvm-bitcode-linker
+            link_self_contained: LinkSelfContainedDefault::True,
 
             ..Default::default()
         },

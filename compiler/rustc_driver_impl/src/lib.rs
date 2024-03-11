@@ -37,7 +37,7 @@ use rustc_session::config::{nightly_options, CG_OPTIONS, Z_OPTIONS};
 use rustc_session::config::{ErrorOutputType, Input, OutFileName, OutputType};
 use rustc_session::getopts::{self, Matches};
 use rustc_session::lint::{Lint, LintId};
-use rustc_session::{config, EarlyDiagCtxt, Session};
+use rustc_session::{config, filesearch, EarlyDiagCtxt, Session};
 use rustc_span::def_id::LOCAL_CRATE;
 use rustc_span::source_map::FileLoader;
 use rustc_span::symbol::sym;
@@ -887,7 +887,11 @@ pub fn version_at_macro_invocation(
 
         let debug_flags = matches.opt_strs("Z");
         let backend_name = debug_flags.iter().find_map(|x| x.strip_prefix("codegen-backend="));
-        get_codegen_backend(early_dcx, &None, backend_name).print_version();
+        let opts = config::Options::default();
+        let sysroot = filesearch::materialize_sysroot(opts.maybe_sysroot.clone());
+        let target = config::build_target_config(early_dcx, &opts, None, &sysroot);
+
+        get_codegen_backend(early_dcx, &sysroot, backend_name, &target).print_version();
     }
 }
 
@@ -1092,7 +1096,12 @@ pub fn describe_flag_categories(early_dcx: &EarlyDiagCtxt, matches: &Matches) ->
 
     if cg_flags.iter().any(|x| *x == "passes=list") {
         let backend_name = debug_flags.iter().find_map(|x| x.strip_prefix("codegen-backend="));
-        get_codegen_backend(early_dcx, &None, backend_name).print_passes();
+
+        let opts = config::Options::default();
+        let sysroot = filesearch::materialize_sysroot(opts.maybe_sysroot.clone());
+        let target = config::build_target_config(early_dcx, &opts, None, &sysroot);
+
+        get_codegen_backend(early_dcx, &sysroot, backend_name, &target).print_passes();
         return true;
     }
 

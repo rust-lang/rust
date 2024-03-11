@@ -20,9 +20,13 @@ impl<'a, 'tcx> VirtualIndex {
         ty: Ty<'tcx>,
         fn_abi: &FnAbi<'tcx, Ty<'tcx>>,
     ) -> Bx::Value {
-        // Load the data pointer from the object.
+        // Load the function pointer from the object.
         debug!("get_fn({llvtable:?}, {ty:?}, {self:?})");
+
         let llty = bx.fn_ptr_backend_type(fn_abi);
+        let ptr_size = bx.data_layout().pointer_size;
+        let ptr_align = bx.data_layout().pointer_align.abi;
+        let vtable_byte_offset = self.0 * ptr_size.bytes();
 
         if bx.cx().sess().opts.unstable_opts.virtual_function_elimination
             && bx.cx().sess().lto() == Lto::Fat
@@ -30,12 +34,10 @@ impl<'a, 'tcx> VirtualIndex {
             let typeid = bx
                 .typeid_metadata(typeid_for_trait_ref(bx.tcx(), expect_dyn_trait_in_self(ty)))
                 .unwrap();
-            let vtable_byte_offset = self.0 * bx.data_layout().pointer_size.bytes();
             let func = bx.type_checked_load(llvtable, vtable_byte_offset, typeid);
             func
         } else {
-            let ptr_align = bx.tcx().data_layout.pointer_align.abi;
-            let gep = bx.inbounds_gep(llty, llvtable, &[bx.const_usize(self.0)]);
+            let gep = bx.inbounds_ptradd(llvtable, bx.const_usize(vtable_byte_offset));
             let ptr = bx.load(llty, gep, ptr_align);
             bx.nonnull_metadata(ptr);
             // VTable loads are invariant.
@@ -53,9 +55,12 @@ impl<'a, 'tcx> VirtualIndex {
         debug!("get_int({:?}, {:?})", llvtable, self);
 
         let llty = bx.type_isize();
-        let usize_align = bx.tcx().data_layout.pointer_align.abi;
-        let gep = bx.inbounds_gep(llty, llvtable, &[bx.const_usize(self.0)]);
-        let ptr = bx.load(llty, gep, usize_align);
+        let ptr_size = bx.data_layout().pointer_size;
+        let ptr_align = bx.data_layout().pointer_align.abi;
+        let vtable_byte_offset = self.0 * ptr_size.bytes();
+
+        let gep = bx.inbounds_ptradd(llvtable, bx.const_usize(vtable_byte_offset));
+        let ptr = bx.load(llty, gep, ptr_align);
         // VTable loads are invariant.
         bx.set_invariant_load(ptr);
         ptr

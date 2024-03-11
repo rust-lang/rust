@@ -1,11 +1,11 @@
 error[E0277]: `()` cannot be safely transmuted into `u8`
-  --> $DIR/unit.rs:30:35
+  --> $DIR/unit.rs:31:35
    |
 LL |     assert::is_transmutable::<(), u8>();
    |                                   ^^ The size of `()` is smaller than the size of `u8`
    |
 note: required by a bound in `is_transmutable`
-  --> $DIR/unit.rs:15:14
+  --> $DIR/unit.rs:16:14
    |
 LL |       pub fn is_transmutable<Src, Dst>()
    |              --------------- required by a bound in this function

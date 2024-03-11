@@ -146,4 +146,9 @@ pub const CONFIG_CHANGE_HISTORY: &[ChangeInfo] = &[
         severity: ChangeSeverity::Info,
         summary: "a new `target.*.runner` option is available to specify a wrapper executable required to run tests for a target",
     },
+    ChangeInfo {
+        change_id: 117458,
+        severity: ChangeSeverity::Info,
+        summary: "New option `rust.llvm-bitcode-linker` that will build the llvm-bitcode-linker.",
+    },
 ];

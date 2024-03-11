@@ -679,6 +679,10 @@
 # sysroot.
 #llvm-tools = true
 
+# Indicates whether the `self-contained` llvm-bitcode-linker, will be made available
+# in the sysroot
+#llvm-bitcode-linker = false
+
 # Whether to deny warnings in crates
 #deny-warnings = true
 

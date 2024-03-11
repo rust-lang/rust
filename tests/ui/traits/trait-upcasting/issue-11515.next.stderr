@@ -1,5 +1,5 @@
 error[E0658]: cannot cast `dyn Fn()` to `dyn FnMut()`, trait upcasting coercion is experimental
-  --> $DIR/issue-11515.rs:10:38
+  --> $DIR/issue-11515.rs:11:38
    |
 LL |     let test = Box::new(Test { func: closure });
    |                                      ^^^^^^^

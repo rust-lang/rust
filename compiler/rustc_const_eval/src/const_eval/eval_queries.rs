@@ -380,16 +380,12 @@ pub fn eval_in_interpreter<'mir, 'tcx>(
         }
         Ok(mplace) => {
             // Since evaluation had no errors, validate the resulting constant.
-
-            // Temporarily allow access to the static_root_alloc_id for the purpose of validation.
-            let static_root_alloc_id = ecx.machine.static_root_alloc_id.take();
-            let validation = const_validate_mplace(&ecx, &mplace, cid);
-            ecx.machine.static_root_alloc_id = static_root_alloc_id;
+            let res = const_validate_mplace(&ecx, &mplace, cid);
 
             let alloc_id = mplace.ptr().provenance.unwrap().alloc_id();
 
             // Validation failed, report an error.
-            if let Err(error) = validation {
+            if let Err(error) = res {
                 Err(const_report_error(&ecx, error, alloc_id))
             } else {
                 // Convert to raw constant
@@ -412,10 +408,10 @@ pub fn const_validate_mplace<'mir, 'tcx>(
             _ if cid.promoted.is_some() => CtfeValidationMode::Promoted,
             Some(mutbl) => CtfeValidationMode::Static { mutbl }, // a `static`
             None => {
-                // In normal `const` (not promoted), the outermost allocation is always only copied,
-                // so having `UnsafeCell` in there is okay despite them being in immutable memory.
-                let allow_immutable_unsafe_cell = cid.promoted.is_none() && !inner;
-                CtfeValidationMode::Const { allow_immutable_unsafe_cell }
+                // This is a normal `const` (not promoted).
+                // The outermost allocation is always only copied, so having `UnsafeCell` in there
+                // is okay despite them being in immutable memory.
+                CtfeValidationMode::Const { allow_immutable_unsafe_cell: !inner }
             }
         };
         ecx.const_validate_operand(&mplace.into(), path, &mut ref_tracking, mode)?;
