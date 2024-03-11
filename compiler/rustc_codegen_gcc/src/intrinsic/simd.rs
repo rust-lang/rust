@@ -11,7 +11,7 @@ use rustc_codegen_ssa::diagnostics::ExpectedPointerMutability;
 use rustc_codegen_ssa::diagnostics::InvalidMonomorphization;
 use rustc_codegen_ssa::mir::operand::OperandRef;
 use rustc_codegen_ssa::mir::place::PlaceRef;
-use rustc_codegen_ssa::traits::{BaseTypeCodegenMethods, BuilderMethods, LayoutTypeCodegenMethods};
+use rustc_codegen_ssa::traits::{BaseTypeCodegenMethods, BuilderMethods};
 #[cfg(feature = "master")]
 use rustc_hir as hir;
 use rustc_middle::mir::BinOp;
@@ -671,7 +671,6 @@ pub fn generic_simd_intrinsic<'a, 'gcc, 'tcx>(
             );
         }
 
-        let pointee_type = bx.backend_type(layout);
         let pointers = args[0].immediate();
         let offsets = args[1].immediate();
         let elem_type = llret_ty.dyncast_vector().expect("vector return type").get_element_type();
@@ -680,7 +679,7 @@ pub fn generic_simd_intrinsic<'a, 'gcc, 'tcx>(
                 let index = bx.context.new_rvalue_from_long(bx.usize_type, i as _);
                 let pointer = bx.extract_element(pointers, index);
                 let offset = bx.extract_element(offsets, index);
-                let pointer = bx.gep(pointee_type, pointer, &[offset]);
+                let pointer = bx.gep(layout.size, pointer, offset);
                 // GCC has no pointer vectors, so the lanes are `usize`.
                 bx.ptrtoint(pointer, elem_type)
             })
