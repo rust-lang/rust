@@ -36,14 +36,14 @@ handled in [`rustc_expand::config`][cfg].
 Firstly, expansion happens at the crate level. Given a raw source code for
 a crate, the compiler will produce a massive `AST` with all `macro`s expanded, all
 modules inlined, etc. The primary entry point for this process is the
-[`MacroExpander::fully_expand_fragment()`][fef] method. With few exceptions, we
+[`MacroExpander::fully_expand_fragment`][fef] method. With few exceptions, we
 use this method on the whole crate (see ["Eager Expansion"](#eager-expansion)
 below for more detailed discussion of edge case expansion issues).
 
 [`rustc_builtin_macros`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_builtin_macros/index.html
 [reb]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_expand/build/index.html
 
-At a high level, [`fully_expand_fragment()`][fef] works in iterations. We keep a
+At a high level, [`fully_expand_fragment`][fef] works in iterations. We keep a
 queue of unresolved `macro` invocations (i.e. `macro`s we haven't found the
 definition of yet). We repeatedly try to pick a `macro` from the queue, resolve
 it, expand it, and integrate it back. If we can't make progress in an
@@ -67,7 +67,7 @@ iteration, this represents a compile error.  Here is the [algorithm][original]:
          each of which are a token (punctuation, identifier, or literal) or a
          delimited group (anything inside `()`/`[]`/`{}`)).
          - At this point, we know everything about the `macro` itself and can
-           call [`set_expn_data()`] to fill in its properties in the global
+           call [`set_expn_data`] to fill in its properties in the global
            data; that is the [hygiene] data associated with [`ExpnId`] (see
            [Hygiene][hybelow] below).
       2. Integrate that piece of `AST` into the currently-existing though
@@ -88,7 +88,7 @@ iteration, this represents a compile error.  Here is the [algorithm][original]:
            - Names are put into modules (from the resolver's point of
              view) by [`BuildReducedGraphVisitor`].
       3. After expanding a single `macro` and integrating its output, continue
-         to the next iteration of [`fully_expand_fragment()`][fef].
+         to the next iteration of [`fully_expand_fragment`][fef].
    5. If it's not resolved:
       1. Put the `macro` back in the queue.
       2. Continue to next iteration...
@@ -100,7 +100,7 @@ iteration, this represents a compile error.  Here is the [algorithm][original]:
 [`ExpnId`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_span/hygiene/struct.ExpnId.html
 [`InvocationCollector`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_expand/expand/struct.InvocationCollector.html
 [`NodeId`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_ast/node_id/struct.NodeId.html
-[`set_expn_data()`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_span/hygiene/struct.LocalExpnId.html#method.set_expn_data
+[`set_expn_data`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_span/hygiene/struct.LocalExpnId.html#method.set_expn_data
 [`SyntaxContext`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_span/hygiene/struct.SyntaxContext.html
 [`TokenStream`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_ast/tokenstream/struct.TokenStream.html
 [defpath]: hir.md#identifiers-in-the-hir
@@ -262,7 +262,7 @@ crate.
 All of these hierarchies need some sort of "`macro` ID" to identify individual
 elements in the chain of expansions. This ID is [`ExpnId`].  All `macro`s receive
 an integer ID, assigned continuously starting from 0 as we discover new `macro`
-calls.  All hierarchies start at [`ExpnId::root()`][rootid], which is its own
+calls.  All hierarchies start at [`ExpnId::root`][rootid], which is its own
 parent.
 
 The [`rustc_span::hygiene`][hy] library contains all of the hygiene-related algorithms
@@ -346,7 +346,7 @@ macro m() { ident }
 m!();
 ```
 
-Here `ident` originally has context [`SyntaxContext::root()`][scr]. `ident` has
+Here `ident` originally has context [`SyntaxContext::root`][scr]. `ident` has
 context `ROOT -> id(m)` after it's produced by `m`.
 
 [scr]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_span/hygiene/struct.SyntaxContext.html#method.root
