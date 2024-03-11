@@ -2928,6 +2928,8 @@ declare_lint! {
     /// }
     /// ```
     ///
+    /// {{produces}}
+    ///
     /// ### Explanation
     ///
     /// In the 1.77 release, the const evaluation machinery adopted some
