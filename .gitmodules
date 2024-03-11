@@ -33,7 +33,6 @@
 [submodule "src/llvm-project"]
 	path = src/llvm-project
 	url = https://github.com/SupernaviX/llvm-project.git
-	branch = v810
 	shallow = true
 [submodule "src/doc/embedded-book"]
 	path = src/doc/embedded-book
