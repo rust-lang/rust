@@ -1320,6 +1320,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "fjall"
+version = "0.1.0"
+source = "git+https://github.com/Zoxc/fjall.git#0f8f8a43ac60eb762268b0408d99d650609be0e8"
+dependencies = [
+ "bitflags 2.5.0",
+ "libc",
+ "sptr",
+ "windows-sys 0.52.0",
+]
+
+[[package]]
 name = "flate2"
 version = "1.0.28"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2205,7 +2216,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0c2a198fb6b0eada2a8df47933734e6d35d350665a33a3593d7164fa52c75c19"
 dependencies = [
  "cfg-if",
- "windows-targets 0.52.4",
+ "windows-targets 0.48.5",
 ]
 
 [[package]]
@@ -3387,7 +3398,7 @@ checksum = "08d43f7aa6b08d49f382cde6a7982047c3426db949b1424bc4b7ec9ae12c6ce2"
 name = "rustc-main"
 version = "0.0.0"
 dependencies = [
- "jemalloc-sys",
+ "fjall",
  "rustc_codegen_ssa",
  "rustc_driver",
  "rustc_driver_impl",
@@ -3777,6 +3788,7 @@ dependencies = [
 name = "rustc_driver"
 version = "0.0.0"
 dependencies = [
+ "fjall",
  "rustc_driver_impl",
 ]
 
@@ -5177,6 +5189,12 @@ dependencies = [
  "thiserror",
  "uuid",
 ]
+
+[[package]]
+name = "sptr"
+version = "0.3.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "3b9b39299b249ad65f3b7e96443bad61c02ca5cd3589f46cb6d610a0fd6c0d6a"
 
 [[package]]
 name = "stable_deref_trait"
