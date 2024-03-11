@@ -1060,27 +1060,26 @@ fn iterate_method_candidates_by_receiver(
     name: Option<&Name>,
     mut callback: &mut dyn FnMut(ReceiverAdjustments, AssocItemId, bool) -> ControlFlow<()>,
 ) -> ControlFlow<()> {
+    let receiver_ty = table.instantiate_canonical(receiver_ty.clone());
+    // We're looking for methods with *receiver* type receiver_ty. These could
+    // be found in any of the derefs of receiver_ty, so we have to go through
+    // that, including raw derefs.
     table.run_in_snapshot(|table| {
-        let receiver_ty = table.instantiate_canonical(receiver_ty.clone());
-        // We're looking for methods with *receiver* type receiver_ty. These could
-        // be found in any of the derefs of receiver_ty, so we have to go through
-        // that, including raw derefs.
-        table.run_in_snapshot(|table| {
-            let mut autoderef = autoderef::Autoderef::new(table, receiver_ty.clone(), true);
-            while let Some((self_ty, _)) = autoderef.next() {
-                iterate_inherent_methods(
-                    &self_ty,
-                    autoderef.table,
-                    name,
-                    Some(&receiver_ty),
-                    Some(receiver_adjustments.clone()),
-                    visible_from_module,
-                    &mut callback,
-                )?
-            }
-            ControlFlow::Continue(())
-        })?;
-
+        let mut autoderef = autoderef::Autoderef::new(table, receiver_ty.clone(), true);
+        while let Some((self_ty, _)) = autoderef.next() {
+            iterate_inherent_methods(
+                &self_ty,
+                autoderef.table,
+                name,
+                Some(&receiver_ty),
+                Some(receiver_adjustments.clone()),
+                visible_from_module,
+                &mut callback,
+            )?
+        }
+        ControlFlow::Continue(())
+    })?;
+    table.run_in_snapshot(|table| {
         let mut autoderef = autoderef::Autoderef::new(table, receiver_ty.clone(), true);
         while let Some((self_ty, _)) = autoderef.next() {
             iterate_trait_method_candidates(

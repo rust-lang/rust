@@ -57,27 +57,34 @@ pub(crate) fn unresolved_field(
 }
 
 fn fixes(ctx: &DiagnosticsContext<'_>, d: &hir::UnresolvedField) -> Option<Vec<Assist>> {
-    let mut fixes = if d.method_with_same_name_exists { method_fix(ctx, &d.expr) } else { None };
-    if let Some(fix) = add_field_fix(ctx, d) {
-        fixes.get_or_insert_with(Vec::new).extend(fix);
+    let mut fixes = Vec::new();
+    if d.method_with_same_name_exists {
+        fixes.extend(method_fix(ctx, &d.expr));
     }
-    fixes
+    fixes.extend(field_fix(ctx, d));
+    if fixes.is_empty() {
+        None
+    } else {
+        Some(fixes)
+    }
 }
 
-fn add_field_fix(ctx: &DiagnosticsContext<'_>, d: &hir::UnresolvedField) -> Option<Vec<Assist>> {
+// FIXME: Add Snippet Support
+fn field_fix(ctx: &DiagnosticsContext<'_>, d: &hir::UnresolvedField) -> Option<Assist> {
     // Get the FileRange of the invalid field access
     let root = ctx.sema.db.parse_or_expand(d.expr.file_id);
     let expr = d.expr.value.to_node(&root);
 
     let error_range = ctx.sema.original_range_opt(expr.syntax())?;
+    let field_name = d.name.as_str()?;
     // Convert the receiver to an ADT
-    let adt = d.receiver.as_adt()?;
+    let adt = d.receiver.strip_references().as_adt()?;
     let target_module = adt.module(ctx.sema.db);
 
     let suggested_type =
         if let Some(new_field_type) = ctx.sema.type_of_expr(&expr).map(|v| v.adjusted()) {
             let display =
-                new_field_type.display_source_code(ctx.sema.db, target_module.into(), true).ok();
+                new_field_type.display_source_code(ctx.sema.db, target_module.into(), false).ok();
             make::ty(display.as_deref().unwrap_or("()"))
         } else {
             make::ty("()")
@@ -86,9 +93,6 @@ fn add_field_fix(ctx: &DiagnosticsContext<'_>, d: &hir::UnresolvedField) -> Opti
     if !is_editable_crate(target_module.krate(), ctx.sema.db) {
         return None;
     }
-
-    // FIXME: Add Snippet Support
-    let field_name = d.name.as_str()?;
 
     match adt {
         Adt::Struct(adt_struct) => {
@@ -100,13 +104,14 @@ fn add_field_fix(ctx: &DiagnosticsContext<'_>, d: &hir::UnresolvedField) -> Opti
         _ => None,
     }
 }
+
 fn add_variant_to_union(
     ctx: &DiagnosticsContext<'_>,
     adt_union: Union,
     field_name: &str,
     suggested_type: Type,
     error_range: FileRange,
-) -> Option<Vec<Assist>> {
+) -> Option<Assist> {
     let adt_source = adt_union.source(ctx.sema.db)?;
     let adt_syntax = adt_source.syntax();
     let Some(field_list) = adt_source.value.record_field_list() else {
@@ -120,22 +125,23 @@ fn add_variant_to_union(
 
     let mut src_change_builder = SourceChangeBuilder::new(range.file_id);
     src_change_builder.insert(offset, record_field);
-    Some(vec![Assist {
+    Some(Assist {
         id: AssistId("add-variant-to-union", AssistKind::QuickFix),
         label: Label::new("Add field to union".to_owned()),
         group: None,
         target: error_range.range,
         source_change: Some(src_change_builder.finish()),
         trigger_signature_help: false,
-    }])
+    })
 }
+
 fn add_field_to_struct_fix(
     ctx: &DiagnosticsContext<'_>,
     adt_struct: Struct,
     field_name: &str,
     suggested_type: Type,
     error_range: FileRange,
-) -> Option<Vec<Assist>> {
+) -> Option<Assist> {
     let struct_source = adt_struct.source(ctx.sema.db)?;
     let struct_syntax = struct_source.syntax();
     let struct_range = struct_syntax.original_file_range(ctx.sema.db);
@@ -162,14 +168,14 @@ fn add_field_to_struct_fix(
 
             // FIXME: Allow for choosing a visibility modifier see https://github.com/rust-lang/rust-analyzer/issues/11563
             src_change_builder.insert(offset, record_field);
-            Some(vec![Assist {
+            Some(Assist {
                 id: AssistId("add-field-to-record-struct", AssistKind::QuickFix),
                 label: Label::new("Add field to Record Struct".to_owned()),
                 group: None,
                 target: error_range.range,
                 source_change: Some(src_change_builder.finish()),
                 trigger_signature_help: false,
-            }])
+            })
         }
         None => {
             // Add a field list to the Unit Struct
@@ -193,14 +199,14 @@ fn add_field_to_struct_fix(
             }
             src_change_builder.replace(semi_colon.text_range(), record_field_list.to_string());
 
-            Some(vec![Assist {
+            Some(Assist {
                 id: AssistId("convert-unit-struct-to-record-struct", AssistKind::QuickFix),
                 label: Label::new("Convert Unit Struct to Record Struct and add field".to_owned()),
                 group: None,
                 target: error_range.range,
                 source_change: Some(src_change_builder.finish()),
                 trigger_signature_help: false,
-            }])
+            })
         }
         Some(FieldList::TupleFieldList(_tuple)) => {
             // FIXME: Add support for Tuple Structs. Tuple Structs are not sent to this diagnostic
@@ -208,6 +214,7 @@ fn add_field_to_struct_fix(
         }
     }
 }
+
 /// Used to determine the layout of the record field in the struct.
 fn record_field_layout(
     visibility: Option<Visibility>,
@@ -242,15 +249,16 @@ fn record_field_layout(
 
     Some((offset, format!("{comma}{indent}{record_field}{trailing_new_line}")))
 }
+
 // FIXME: We should fill out the call here, move the cursor and trigger signature help
 fn method_fix(
     ctx: &DiagnosticsContext<'_>,
     expr_ptr: &InFile<AstPtr<ast::Expr>>,
-) -> Option<Vec<Assist>> {
+) -> Option<Assist> {
     let root = ctx.sema.db.parse_or_expand(expr_ptr.file_id);
     let expr = expr_ptr.value.to_node(&root);
     let FileRange { range, file_id } = ctx.sema.original_range_opt(expr.syntax())?;
-    Some(vec![Assist {
+    Some(Assist {
         id: AssistId("expected-field-found-method-call-fix", AssistKind::QuickFix),
         label: Label::new("Use parentheses to call the method".to_owned()),
         group: None,
@@ -260,7 +268,7 @@ fn method_fix(
             TextEdit::insert(range.end(), "()".to_owned()),
         )),
         trigger_signature_help: false,
-    }])
+    })
 }
 #[cfg(test)]
 mod tests {
