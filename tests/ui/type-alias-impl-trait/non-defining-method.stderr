@@ -10,6 +10,14 @@ note: for this opaque type
 LL |     type Bar<T> = impl Sized;
    |                   ^^^^^^^^^^
 
-error: aborting due to 1 previous error
+error[E0792]: expected generic type parameter, found `u32`
+  --> $DIR/non-defining-method.rs:16:32
+   |
+LL |     type Bar<T> = impl Sized;
+   |              - this generic parameter must be used with a generic type parameter
+LL |     fn foo() -> Self::Bar<u32> {}
+   |                                ^^
+
+error: aborting due to 2 previous errors
 
 For more information about this error, try `rustc --explain E0792`.

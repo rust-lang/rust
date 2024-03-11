@@ -150,9 +150,6 @@ impl<'tcx> InferCtxt<'tcx> {
                         }
                     }
                     DefiningAnchor::Bubble => {}
-                    DefiningAnchor::Error => {
-                        return None;
-                    }
                 }
                 if let ty::Alias(ty::Opaque, ty::AliasTy { def_id: b_def_id, .. }) = *b.kind() {
                     // We could accept this, but there are various ways to handle this situation, and we don't
@@ -378,28 +375,14 @@ impl<'tcx> InferCtxt<'tcx> {
     /// in its defining scope.
     #[instrument(skip(self), level = "trace", ret)]
     pub fn opaque_type_origin(&self, def_id: LocalDefId) -> Option<OpaqueTyOrigin> {
-        let opaque_hir_id = self.tcx.local_def_id_to_hir_id(def_id);
-        let parent_def_id = match self.defining_use_anchor {
-            DefiningAnchor::Bubble | DefiningAnchor::Error => return None,
+        let defined_opaque_types = match self.defining_use_anchor {
+            DefiningAnchor::Bubble => return None,
             DefiningAnchor::Bind(bind) => bind,
         };
 
         let origin = self.tcx.opaque_type_origin(def_id);
-        let in_definition_scope = match origin {
-            // Async `impl Trait`
-            hir::OpaqueTyOrigin::AsyncFn(parent) => parent == parent_def_id,
-            // Anonymous `impl Trait`
-            hir::OpaqueTyOrigin::FnReturn(parent) => parent == parent_def_id,
-            // Named `type Foo = impl Bar;`
-            hir::OpaqueTyOrigin::TyAlias { in_assoc_ty, .. } => {
-                if in_assoc_ty {
-                    self.tcx.opaque_types_defined_by(parent_def_id).contains(&def_id)
-                } else {
-                    may_define_opaque_type(self.tcx, parent_def_id, opaque_hir_id)
-                }
-            }
-        };
-        in_definition_scope.then_some(origin)
+
+        defined_opaque_types.contains(&def_id).then_some(origin)
     }
 }
 
@@ -655,44 +638,4 @@ impl<'tcx> InferCtxt<'tcx> {
             ));
         }
     }
-}
-
-/// Returns `true` if `opaque_hir_id` is a sibling or a child of a sibling of `def_id`.
-///
-/// Example:
-/// ```ignore UNSOLVED (is this a bug?)
-/// # #![feature(type_alias_impl_trait)]
-/// pub mod foo {
-///     pub mod bar {
-///         pub trait Bar { /* ... */ }
-///         pub type Baz = impl Bar;
-///
-///         # impl Bar for () {}
-///         fn f1() -> Baz { /* ... */ }
-///     }
-///     fn f2() -> bar::Baz { /* ... */ }
-/// }
-/// ```
-///
-/// Here, `def_id` is the `LocalDefId` of the defining use of the opaque type (e.g., `f1` or `f2`),
-/// and `opaque_hir_id` is the `HirId` of the definition of the opaque type `Baz`.
-/// For the above example, this function returns `true` for `f1` and `false` for `f2`.
-fn may_define_opaque_type(tcx: TyCtxt<'_>, def_id: LocalDefId, opaque_hir_id: hir::HirId) -> bool {
-    let mut hir_id = tcx.local_def_id_to_hir_id(def_id);
-
-    // Named opaque types can be defined by any siblings or children of siblings.
-    let scope = tcx.hir().get_defining_scope(opaque_hir_id);
-    // We walk up the node tree until we hit the root or the scope of the opaque type.
-    while hir_id != scope && hir_id != hir::CRATE_HIR_ID {
-        hir_id = tcx.hir().get_parent_item(hir_id).into();
-    }
-    // Syntactically, we are allowed to define the concrete type if:
-    let res = hir_id == scope;
-    trace!(
-        "may_define_opaque_type(def={:?}, opaque_node={:?}) = {}",
-        tcx.hir_node(hir_id),
-        tcx.hir_node(opaque_hir_id),
-        res
-    );
-    res
 }

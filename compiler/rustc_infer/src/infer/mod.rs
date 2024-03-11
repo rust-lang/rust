@@ -242,9 +242,10 @@ pub struct InferCtxt<'tcx> {
     /// short lived InferCtxt within queries. The opaque type obligations are forwarded
     /// to the outside until the end up in an `InferCtxt` for typeck or borrowck.
     ///
-    /// Its default value is `DefiningAnchor::Error`, this way it is easier to catch errors that
+    /// Its default value is `DefiningAnchor::Bind(&[])`, which means no opaque types may be defined.
+    /// This way it is easier to catch errors that
     /// might come up during inference or typeck.
-    pub defining_use_anchor: DefiningAnchor,
+    pub defining_use_anchor: DefiningAnchor<'tcx>,
 
     /// Whether this inference context should care about region obligations in
     /// the root universe. Most notably, this is used during hir typeck as region
@@ -605,7 +606,7 @@ impl fmt::Display for FixupError {
 /// Used to configure inference contexts before their creation.
 pub struct InferCtxtBuilder<'tcx> {
     tcx: TyCtxt<'tcx>,
-    defining_use_anchor: DefiningAnchor,
+    defining_use_anchor: DefiningAnchor<'tcx>,
     considering_regions: bool,
     skip_leak_check: bool,
     /// Whether we are in coherence mode.
@@ -620,7 +621,7 @@ impl<'tcx> TyCtxt<'tcx> {
     fn infer_ctxt(self) -> InferCtxtBuilder<'tcx> {
         InferCtxtBuilder {
             tcx: self,
-            defining_use_anchor: DefiningAnchor::Error,
+            defining_use_anchor: DefiningAnchor::Bind(ty::List::empty()),
             considering_regions: true,
             skip_leak_check: false,
             intercrate: false,
@@ -636,7 +637,7 @@ impl<'tcx> InferCtxtBuilder<'tcx> {
     /// It is only meant to be called in two places, for typeck
     /// (via `Inherited::build`) and for the inference context used
     /// in mir borrowck.
-    pub fn with_opaque_type_inference(mut self, defining_use_anchor: DefiningAnchor) -> Self {
+    pub fn with_opaque_type_inference(mut self, defining_use_anchor: DefiningAnchor<'tcx>) -> Self {
         self.defining_use_anchor = defining_use_anchor;
         self
     }
@@ -1208,13 +1209,11 @@ impl<'tcx> InferCtxt<'tcx> {
 
     #[instrument(level = "debug", skip(self), ret)]
     pub fn take_opaque_types(&self) -> opaque_types::OpaqueTypeMap<'tcx> {
-        debug_assert_ne!(self.defining_use_anchor, DefiningAnchor::Error);
         std::mem::take(&mut self.inner.borrow_mut().opaque_type_storage.opaque_types)
     }
 
     #[instrument(level = "debug", skip(self), ret)]
     pub fn clone_opaque_types(&self) -> opaque_types::OpaqueTypeMap<'tcx> {
-        debug_assert_ne!(self.defining_use_anchor, DefiningAnchor::Error);
         self.inner.borrow().opaque_type_storage.opaque_types.clone()
     }
 
