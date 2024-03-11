@@ -95,11 +95,13 @@ impl<'ll> BackendTypes for CodegenCx<'ll, '_> {
 
 impl<'ll> CodegenCx<'ll, '_> {
     pub fn const_array(&self, ty: &'ll Type, elts: &[&'ll Value]) -> &'ll Value {
-        unsafe { llvm::LLVMConstArray(ty, elts.as_ptr(), elts.len() as c_uint) }
+        let len = u64::try_from(elts.len()).expect("LLVMConstArray2 elements len overflow");
+        unsafe { llvm::LLVMConstArray2(ty, elts.as_ptr(), len) }
     }
 
     pub fn const_vector(&self, elts: &[&'ll Value]) -> &'ll Value {
-        unsafe { llvm::LLVMConstVector(elts.as_ptr(), elts.len() as c_uint) }
+        let len = c_uint::try_from(elts.len()).expect("LLVMConstVector elements len overflow");
+        unsafe { llvm::LLVMConstVector(elts.as_ptr(), len) }
     }
 
     pub fn const_bytes(&self, bytes: &[u8]) -> &'ll Value {
@@ -108,8 +110,8 @@ impl<'ll> CodegenCx<'ll, '_> {
 
     pub fn const_get_elt(&self, v: &'ll Value, idx: u64) -> &'ll Value {
         unsafe {
-            assert_eq!(idx as c_uint as u64, idx);
-            let r = llvm::LLVMGetAggregateElement(v, idx as c_uint).unwrap();
+            let idx = c_uint::try_from(idx).expect("LLVMGetAggregateElement index overflow");
+            let r = llvm::LLVMGetAggregateElement(v, idx).unwrap();
 
             debug!("const_get_elt(v={:?}, idx={}, r={:?})", v, idx, r);
 
@@ -329,7 +331,7 @@ pub fn val_ty(v: &Value) -> &Type {
 pub fn bytes_in_context<'ll>(llcx: &'ll llvm::Context, bytes: &[u8]) -> &'ll Value {
     unsafe {
         let ptr = bytes.as_ptr() as *const c_char;
-        llvm::LLVMConstStringInContext(llcx, ptr, bytes.len() as c_uint, True)
+        llvm::LLVMConstStringInContext2(llcx, ptr, bytes.len(), True)
     }
 }
 
@@ -338,9 +340,8 @@ pub fn struct_in_context<'ll>(
     elts: &[&'ll Value],
     packed: bool,
 ) -> &'ll Value {
-    unsafe {
-        llvm::LLVMConstStructInContext(llcx, elts.as_ptr(), elts.len() as c_uint, packed as Bool)
-    }
+    let len = c_uint::try_from(elts.len()).expect("LLVMConstStructInContext elements len overflow");
+    unsafe { llvm::LLVMConstStructInContext(llcx, elts.as_ptr(), len, packed as Bool) }
 }
 
 #[inline]

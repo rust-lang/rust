@@ -936,10 +936,16 @@ extern "C" {
     pub fn LLVMConstReal(RealTy: &Type, N: f64) -> &Value;
 
     // Operations on composite constants
-    pub fn LLVMConstStringInContext(
+    pub fn LLVMConstArray2<'a>(
+        ElementTy: &'a Type,
+        ConstantVals: *const &'a Value,
+        Length: u64,
+    ) -> &'a Value;
+    pub fn LLVMArrayType2(ElementType: &Type, ElementCount: u64) -> &Type;
+    pub fn LLVMConstStringInContext2(
         C: &Context,
         Str: *const c_char,
-        Length: c_uint,
+        Length: size_t,
         DontNullTerminate: Bool,
     ) -> &Value;
     pub fn LLVMConstStructInContext<'a>(
@@ -947,14 +953,6 @@ extern "C" {
         ConstantVals: *const &'a Value,
         Count: c_uint,
         Packed: Bool,
-    ) -> &'a Value;
-
-    // FIXME: replace with LLVMConstArray2 when bumped minimal version to llvm-17
-    // https://github.com/llvm/llvm-project/commit/35276f16e5a2cae0dfb49c0fbf874d4d2f177acc
-    pub fn LLVMConstArray<'a>(
-        ElementTy: &'a Type,
-        ConstantVals: *const &'a Value,
-        Length: c_uint,
     ) -> &'a Value;
     pub fn LLVMConstVector(ScalarConstantVals: *const &Value, Size: c_uint) -> &Value;
 
@@ -1529,9 +1527,6 @@ extern "C" {
 
     /// See llvm::LLVMTypeKind::getTypeID.
     pub fn LLVMRustGetTypeKind(Ty: &Type) -> TypeKind;
-
-    // Operations on array, pointer, and vector types (sequence types)
-    pub fn LLVMRustArrayType(ElementType: &Type, ElementCount: u64) -> &Type;
 
     // Operations on all values
     pub fn LLVMRustGlobalAddMetadata<'a>(Val: &'a Value, KindID: c_uint, Metadata: &'a Metadata);
