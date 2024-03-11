@@ -56,8 +56,8 @@ use hir_def::{
     AssocItemId, AssocItemLoc, AttrDefId, ConstId, ConstParamId, CrateRootModuleId, DefWithBodyId,
     EnumId, EnumVariantId, ExternCrateId, FunctionId, GenericDefId, GenericParamId, HasModule,
     ImplId, InTypeConstId, ItemContainerId, LifetimeParamId, LocalFieldId, Lookup, MacroExpander,
-    MacroId, ModuleId, StaticId, StructId, TraitAliasId, TraitId, TupleId, TypeAliasId,
-    TypeOrConstParamId, TypeParamId, UnionId,
+    ModuleId, StaticId, StructId, TraitAliasId, TraitId, TupleId, TypeAliasId, TypeOrConstParamId,
+    TypeParamId, UnionId,
 };
 use hir_expand::{attrs::collect_attrs, name::name, proc_macro::ProcMacroKind, MacroCallKind};
 use hir_ty::{
@@ -122,7 +122,7 @@ pub use {
         visibility::Visibility,
         // FIXME: This is here since some queries take it as input that are used
         // outside of hir.
-        {AdtId, ModuleDefId},
+        {AdtId, MacroId, ModuleDefId},
     },
     hir_expand::{
         attrs::{Attr, AttrId},

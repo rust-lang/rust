@@ -57,6 +57,7 @@ pub(crate) fn symbol_kind(symbol_kind: SymbolKind) -> lsp_types::SymbolKind {
         SymbolKind::Variant => lsp_types::SymbolKind::ENUM_MEMBER,
         SymbolKind::Trait | SymbolKind::TraitAlias => lsp_types::SymbolKind::INTERFACE,
         SymbolKind::Macro
+        | SymbolKind::ProcMacro
         | SymbolKind::BuiltinAttr
         | SymbolKind::Attribute
         | SymbolKind::Derive
@@ -139,6 +140,7 @@ pub(crate) fn completion_item_kind(
             SymbolKind::LifetimeParam => lsp_types::CompletionItemKind::TYPE_PARAMETER,
             SymbolKind::Local => lsp_types::CompletionItemKind::VARIABLE,
             SymbolKind::Macro => lsp_types::CompletionItemKind::FUNCTION,
+            SymbolKind::ProcMacro => lsp_types::CompletionItemKind::FUNCTION,
             SymbolKind::Module => lsp_types::CompletionItemKind::MODULE,
             SymbolKind::SelfParam => lsp_types::CompletionItemKind::VALUE,
             SymbolKind::SelfType => lsp_types::CompletionItemKind::TYPE_PARAMETER,
@@ -675,6 +677,7 @@ fn semantic_token_type_and_modifiers(
             SymbolKind::Trait => semantic_tokens::INTERFACE,
             SymbolKind::TraitAlias => semantic_tokens::INTERFACE,
             SymbolKind::Macro => semantic_tokens::MACRO,
+            SymbolKind::ProcMacro => semantic_tokens::PROC_MACRO,
             SymbolKind::BuiltinAttr => semantic_tokens::BUILTIN_ATTRIBUTE,
             SymbolKind::ToolModule => semantic_tokens::TOOL_MODULE,
         },
@@ -728,6 +731,7 @@ fn semantic_token_type_and_modifiers(
             HlMod::IntraDocLink => semantic_tokens::INTRA_DOC_LINK,
             HlMod::Library => semantic_tokens::LIBRARY,
             HlMod::Macro => semantic_tokens::MACRO_MODIFIER,
+            HlMod::ProcMacro => semantic_tokens::PROC_MACRO_MODIFIER,
             HlMod::Mutable => semantic_tokens::MUTABLE,
             HlMod::Public => semantic_tokens::PUBLIC,
             HlMod::Reference => semantic_tokens::REFERENCE,

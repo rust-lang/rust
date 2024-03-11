@@ -1236,6 +1236,11 @@ impl<'db> SemanticsImpl<'db> {
         sa.resolve_macro_call(self.db, macro_call)
     }
 
+    pub fn is_proc_macro_call(&self, macro_call: &ast::MacroCall) -> bool {
+        self.resolve_macro_call(macro_call)
+            .map_or(false, |m| matches!(m.id, MacroId::ProcMacroId(..)))
+    }
+
     pub fn is_unsafe_macro_call(&self, macro_call: &ast::MacroCall) -> bool {
         let sa = match self.analyze(macro_call.syntax()) {
             Some(it) => it,

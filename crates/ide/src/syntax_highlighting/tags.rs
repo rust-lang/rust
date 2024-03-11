@@ -75,6 +75,7 @@ pub enum HlMod {
     Library,
     /// Used to differentiate individual elements within macro calls.
     Macro,
+    ProcMacro,
     /// Mutable binding.
     Mutable,
     /// Used for public items.
@@ -146,6 +147,7 @@ impl HlTag {
                 SymbolKind::LifetimeParam => "lifetime",
                 SymbolKind::Local => "variable",
                 SymbolKind::Macro => "macro",
+                SymbolKind::ProcMacro => "proc_macro",
                 SymbolKind::Module => "module",
                 SymbolKind::SelfParam => "self_keyword",
                 SymbolKind::SelfType => "self_type_keyword",
@@ -219,6 +221,7 @@ impl HlMod {
         HlMod::IntraDocLink,
         HlMod::Library,
         HlMod::Macro,
+        HlMod::ProcMacro,
         HlMod::Mutable,
         HlMod::Public,
         HlMod::Reference,
@@ -243,6 +246,7 @@ impl HlMod {
             HlMod::IntraDocLink => "intra_doc_link",
             HlMod::Library => "library",
             HlMod::Macro => "macro",
+            HlMod::ProcMacro => "proc_macro",
             HlMod::Mutable => "mutable",
             HlMod::Public => "public",
             HlMod::Reference => "reference",
