@@ -18,9 +18,9 @@ use crate::errors;
 use crate::errors::ConstEvalError;
 use crate::interpret::eval_nullary_intrinsic;
 use crate::interpret::{
-    create_static_alloc, intern_const_alloc_recursive, take_static_root_alloc, CtfeValidationMode,
-    GlobalId, Immediate, InternKind, InterpCx, InterpError, InterpResult, MPlaceTy, MemoryKind,
-    OpTy, RefTracking, StackPopCleanup,
+    create_static_alloc, intern_const_alloc_recursive, CtfeValidationMode, GlobalId, Immediate,
+    InternKind, InterpCx, InterpError, InterpResult, MPlaceTy, MemoryKind, OpTy, RefTracking,
+    StackPopCleanup,
 };
 
 // Returns a pointer to where the result lives
@@ -293,7 +293,7 @@ pub fn eval_static_initializer_provider<'tcx>(
     eval_in_interpreter(&mut ecx, cid, true)
 }
 
-trait InterpretationResult<'tcx> {
+pub trait InterpretationResult<'tcx> {
     /// This function takes the place where the result of the evaluation is stored
     /// and prepares it for returning it in the appropriate format needed by the specific
     /// evaluation query.
@@ -301,16 +301,6 @@ trait InterpretationResult<'tcx> {
         mplace: MPlaceTy<'tcx>,
         ecx: &mut InterpCx<'mir, 'tcx, CompileTimeInterpreter<'mir, 'tcx>>,
     ) -> Self;
-}
-
-impl<'tcx> InterpretationResult<'tcx> for mir::interpret::ConstAllocation<'tcx> {
-    fn make_result<'mir>(
-        mplace: MPlaceTy<'tcx>,
-        ecx: &mut InterpCx<'mir, 'tcx, CompileTimeInterpreter<'mir, 'tcx>>,
-    ) -> Self {
-        let alloc = take_static_root_alloc(ecx, mplace.ptr().provenance.unwrap().alloc_id());
-        ecx.tcx.mk_const_alloc(alloc)
-    }
 }
 
 impl<'tcx> InterpretationResult<'tcx> for ConstAlloc<'tcx> {
