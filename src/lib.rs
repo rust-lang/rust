@@ -270,7 +270,7 @@ impl CodegenBackend for GccCodegenBackend {
     }
 }
 
-fn new_context<'gcc, 'tcx>(tcx: TyCtxt<'tcx>) -> Context<'gcc> {
+fn new_context<'gcc>(tcx: TyCtxt<'_>) -> Context<'gcc> {
     let context = Context::default();
     if tcx.sess.target.arch == "x86" || tcx.sess.target.arch == "x86_64" {
         context.add_command_line_option("-masm=intel");

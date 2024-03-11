@@ -18,8 +18,8 @@ use crate::context::CodegenCx;
 use crate::errors::InvalidMinimumAlignment;
 use crate::type_of::LayoutGccExt;
 
-fn set_global_alignment<'gcc, 'tcx>(
-    cx: &CodegenCx<'gcc, 'tcx>,
+fn set_global_alignment<'gcc>(
+    cx: &CodegenCx<'gcc, '_>,
     gv: LValue<'gcc>,
     mut align: Align,
 ) {

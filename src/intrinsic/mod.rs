@@ -39,8 +39,8 @@ use crate::context::CodegenCx;
 use crate::intrinsic::simd::generic_simd_intrinsic;
 use crate::type_of::LayoutGccExt;
 
-fn get_simple_intrinsic<'gcc, 'tcx>(
-    cx: &CodegenCx<'gcc, 'tcx>,
+fn get_simple_intrinsic<'gcc>(
+    cx: &CodegenCx<'gcc, '_>,
     name: Symbol,
 ) -> Option<Function<'gcc>> {
     let gcc_name = match name {
@@ -586,9 +586,9 @@ impl<'gcc, 'tcx> ArgAbiExt<'gcc, 'tcx> for ArgAbi<'tcx, Ty<'tcx>> {
     }
 }
 
-fn int_type_width_signed<'gcc, 'tcx>(
+fn int_type_width_signed<'tcx>(
     ty: Ty<'tcx>,
-    cx: &CodegenCx<'gcc, 'tcx>,
+    cx: &CodegenCx<'_, 'tcx>,
 ) -> Option<(u64, bool)> {
     match *ty.kind() {
         ty::Int(t) => Some((
@@ -1099,8 +1099,8 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
     }
 }
 
-fn try_intrinsic<'a, 'b, 'gcc, 'tcx>(
-    bx: &'b mut Builder<'a, 'gcc, 'tcx>,
+fn try_intrinsic<'gcc>(
+    bx: &mut Builder<'_, 'gcc, '_>,
     try_func: RValue<'gcc>,
     data: RValue<'gcc>,
     _catch_func: RValue<'gcc>,

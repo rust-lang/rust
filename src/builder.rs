@@ -506,8 +506,8 @@ impl<'gcc, 'tcx> BackendTypes for Builder<'_, 'gcc, 'tcx> {
     type DIVariable = <CodegenCx<'gcc, 'tcx> as BackendTypes>::DIVariable;
 }
 
-fn set_rvalue_location<'a, 'gcc, 'tcx>(
-    bx: &mut Builder<'a, 'gcc, 'tcx>,
+fn set_rvalue_location<'gcc>(
+    bx: &mut Builder<'_, 'gcc, '_>,
     rvalue: RValue<'gcc>,
 ) -> RValue<'gcc> {
     if bx.location.is_some() {
@@ -979,8 +979,8 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
             return OperandRef::zero_sized(place.layout);
         }
 
-        fn scalar_load_metadata<'a, 'gcc, 'tcx>(
-            bx: &mut Builder<'a, 'gcc, 'tcx>,
+        fn scalar_load_metadata<'gcc>(
+            bx: &mut Builder<'_, 'gcc, '_>,
             load: RValue<'gcc>,
             scalar: &abi::Scalar,
         ) {

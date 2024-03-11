@@ -5,8 +5,8 @@ use rustc_codegen_ssa::traits::BuilderMethods;
 
 use crate::{builder::Builder, context::CodegenCx};
 
-pub fn adjust_intrinsic_arguments<'a, 'b, 'gcc, 'tcx>(
-    builder: &Builder<'a, 'gcc, 'tcx>,
+pub fn adjust_intrinsic_arguments<'b, 'gcc>(
+    builder: &Builder<'_, 'gcc, '_>,
     gcc_func: FunctionPtrType<'gcc>,
     mut args: Cow<'b, [RValue<'gcc>]>,
     func_name: &str,
@@ -479,8 +479,8 @@ pub fn adjust_intrinsic_arguments<'a, 'b, 'gcc, 'tcx>(
     args
 }
 
-pub fn adjust_intrinsic_return_value<'a, 'gcc, 'tcx>(
-    builder: &Builder<'a, 'gcc, 'tcx>,
+pub fn adjust_intrinsic_return_value<'gcc>(
+    builder: &Builder<'_, 'gcc, '_>,
     mut return_value: RValue<'gcc>,
     func_name: &str,
     args: &[RValue<'gcc>],
@@ -628,7 +628,7 @@ pub fn intrinsic<'gcc, 'tcx>(name: &str, cx: &CodegenCx<'gcc, 'tcx>) -> Function
 }
 
 #[cfg(feature = "master")]
-pub fn intrinsic<'gcc, 'tcx>(name: &str, cx: &CodegenCx<'gcc, 'tcx>) -> Function<'gcc> {
+pub fn intrinsic<'gcc>(name: &str, cx: &CodegenCx<'gcc, '_>) -> Function<'gcc> {
     if name == "llvm.prefetch" {
         let gcc_name = "__builtin_prefetch";
         let func = cx.context.get_builtin_function(gcc_name);
