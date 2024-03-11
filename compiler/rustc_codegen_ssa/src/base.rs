@@ -165,14 +165,11 @@ pub fn unsized_info<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
                 cx.tcx().vtable_trait_upcasting_coercion_new_vptr_slot((source, target));
 
             if let Some(entry_idx) = vptr_entry_idx {
-                let ptr_ty = cx.type_ptr();
-                let ptr_align = cx.tcx().data_layout.pointer_align.abi;
-                let gep = bx.inbounds_gep(
-                    ptr_ty,
-                    old_info,
-                    &[bx.const_usize(u64::try_from(entry_idx).unwrap())],
-                );
-                let new_vptr = bx.load(ptr_ty, gep, ptr_align);
+                let ptr_size = bx.data_layout().pointer_size;
+                let ptr_align = bx.data_layout().pointer_align.abi;
+                let vtable_byte_offset = u64::try_from(entry_idx).unwrap() * ptr_size.bytes();
+                let gep = bx.inbounds_ptradd(old_info, bx.const_usize(vtable_byte_offset));
+                let new_vptr = bx.load(bx.type_ptr(), gep, ptr_align);
                 bx.nonnull_metadata(new_vptr);
                 // VTable loads are invariant.
                 bx.set_invariant_load(new_vptr);

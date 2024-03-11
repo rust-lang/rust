@@ -25,9 +25,9 @@ struct Dst<T: ?Sized> {
 pub fn dst_dyn_trait_offset(s: &Dst<dyn Drop>) -> &dyn Drop {
 // The alignment of dyn trait is unknown, so we compute the offset based on align from the vtable.
 
-// CHECK: [[SIZE_PTR:%[0-9]+]] = getelementptr inbounds {{.+}} [[VTABLE_PTR]]
+// CHECK: [[SIZE_PTR:%[0-9]+]] = getelementptr inbounds i8, ptr [[VTABLE_PTR]]
 // CHECK: load [[USIZE]], ptr [[SIZE_PTR]]
-// CHECK: [[ALIGN_PTR:%[0-9]+]] = getelementptr inbounds {{.+}} [[VTABLE_PTR]]
+// CHECK: [[ALIGN_PTR:%[0-9]+]] = getelementptr inbounds i8, ptr [[VTABLE_PTR]]
 // CHECK: load [[USIZE]], ptr [[ALIGN_PTR]]
 
 // CHECK: getelementptr inbounds i8, ptr [[DATA_PTR]]
