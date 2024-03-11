@@ -8,6 +8,7 @@
 
 use std::assert_matches::assert_matches;
 use std::borrow::Cow;
+use std::cell::Cell;
 use std::collections::VecDeque;
 use std::fmt;
 use std::ptr;
@@ -111,6 +112,11 @@ pub struct Memory<'mir, 'tcx, M: Machine<'mir, 'tcx>> {
     /// that do not exist any more.
     // FIXME: this should not be public, but interning currently needs access to it
     pub(super) dead_alloc_map: FxIndexMap<AllocId, (Size, Align)>,
+
+    /// This stores whether we are currently doing reads purely for the purpose of validation.
+    /// Those reads do not trigger the machine's hooks for memory reads.
+    /// Needless to say, this must only be set with great care!
+    validation_in_progress: Cell<bool>,
 }
 
 /// A reference to some allocation that was already bounds-checked for the given region
@@ -137,6 +143,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
             alloc_map: M::MemoryMap::default(),
             extra_fn_ptr_map: FxIndexMap::default(),
             dead_alloc_map: FxIndexMap::default(),
+            validation_in_progress: Cell::new(false),
         }
     }
 
@@ -624,10 +631,12 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             size,
             CheckInAllocMsg::MemoryAccessTest,
             |alloc_id, offset, prov| {
-                // We want to call the hook on *all* accesses that involve an AllocId,
-                // including zero-sized accesses. That means we have to do it here
-                // rather than below in the `Some` branch.
-                M::before_alloc_read(self, alloc_id)?;
+                if !self.memory.validation_in_progress.get() {
+                    // We want to call the hook on *all* accesses that involve an AllocId,
+                    // including zero-sized accesses. That means we have to do it here
+                    // rather than below in the `Some` branch.
+                    M::before_alloc_read(self, alloc_id)?;
+                }
                 let alloc = self.get_alloc_raw(alloc_id)?;
                 Ok((alloc.size(), alloc.align, (alloc_id, offset, prov, alloc)))
             },
@@ -635,7 +644,15 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
 
         if let Some((alloc_id, offset, prov, alloc)) = ptr_and_alloc {
             let range = alloc_range(offset, size);
-            M::before_memory_read(self.tcx, &self.machine, &alloc.extra, (alloc_id, prov), range)?;
+            if !self.memory.validation_in_progress.get() {
+                M::before_memory_read(
+                    self.tcx,
+                    &self.machine,
+                    &alloc.extra,
+                    (alloc_id, prov),
+                    range,
+                )?;
+            }
             Ok(Some(AllocRef { alloc, range, tcx: *self.tcx, alloc_id }))
         } else {
             Ok(None)
@@ -909,6 +926,21 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             }
         })
     }
+
+    /// Runs the close in "validation" mode, which means the machine's memory read hooks will be
+    /// suppressed. Needless to say, this must only be set with great care! Cannot be nested.
+    pub(super) fn run_for_validation<R>(&self, f: impl FnOnce() -> R) -> R {
+        assert!(
+            self.memory.validation_in_progress.replace(true) == false,
+            "`validation_in_progress` was already set"
+        );
+        let res = f();
+        assert!(
+            self.memory.validation_in_progress.replace(false) == true,
+            "`validation_in_progress` was unset by someone else"
+        );
+        res
+    }
 }
 
 #[doc(hidden)]
@@ -1154,6 +1186,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         };
         let src_alloc = self.get_alloc_raw(src_alloc_id)?;
         let src_range = alloc_range(src_offset, size);
+        assert!(!self.memory.validation_in_progress.get(), "we can't be copying during validation");
         M::before_memory_read(
             tcx,
             &self.machine,

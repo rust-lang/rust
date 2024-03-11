@@ -380,16 +380,12 @@ pub fn eval_in_interpreter<'mir, 'tcx>(
         }
         Ok(mplace) => {
             // Since evaluation had no errors, validate the resulting constant.
-
-            // Temporarily allow access to the static_root_alloc_id for the purpose of validation.
-            let static_root_alloc_id = ecx.machine.static_root_alloc_id.take();
-            let validation = const_validate_mplace(&ecx, &mplace, cid);
-            ecx.machine.static_root_alloc_id = static_root_alloc_id;
+            let res = const_validate_mplace(&ecx, &mplace, cid);
 
             let alloc_id = mplace.ptr().provenance.unwrap().alloc_id();
 
             // Validation failed, report an error.
-            if let Err(error) = validation {
+            if let Err(error) = res {
                 Err(const_report_error(&ecx, error, alloc_id))
             } else {
                 // Convert to raw constant
