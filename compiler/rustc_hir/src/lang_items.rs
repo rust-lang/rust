@@ -166,8 +166,8 @@ language_item_table! {
     AsyncDestruct,           sym::async_destruct,      async_destruct_trait,       Target::Trait,          GenericRequirement::Exact(0);
     AsyncDropInPlace,        sym::async_drop_in_place, async_drop_in_place_fn,     Target::Fn,             GenericRequirement::Exact(1);
     SurfaceAsyncDropInPlace, sym::surface_async_drop_in_place, surface_async_drop_in_place_fn, Target::Fn, GenericRequirement::Exact(1);
-    SliceAsyncDestructor,    sym::slice_async_destructor, slice_async_destructor_ty, Target::Struct,       GenericRequirement::Exact(1);
-    SliceAsyncDestructorCtor, sym::slice_async_destructor_ctor, slice_async_destructor_fn, Target::Fn,     GenericRequirement::Exact(1);
+    AsyncDropSlice,          sym::async_drop_slice,    async_drop_slice_ty,        Target::Struct,         GenericRequirement::Exact(1);
+    AsyncDropSliceCtor,      sym::async_drop_slice_ctor, async_drop_slice_fn,      Target::Fn,             GenericRequirement::Exact(1);
     DeferredAsyncDrop,       sym::deferred_async_drop, deferred_async_drop_type,   Target::Enum,           GenericRequirement::Exact(1);
     DeferredAsyncDropCtor,   sym::deferred_async_drop_ctor, deferred_async_drop_fn, Target::Fn,            GenericRequirement::Exact(1);
     FutureChain,             sym::future_chain,        future_chain_type,          Target::Struct,         GenericRequirement::Exact(2);

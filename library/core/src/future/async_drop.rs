@@ -117,16 +117,16 @@ unsafe fn surface_async_drop_in_place<T: AsyncDrop>(
 }
 
 /// Async destructor for arrays and slices
-#[lang = "slice_async_destructor"]
-struct SliceAsyncDestuctor<T> {
+#[lang = "async_drop_slice"]
+struct Slice<T> {
     left_slice: ptr::NonNull<[T]>,
     elem_dtor: Option<AsyncDropInPlace<T>>,
     _pinned: PhantomPinned,
 }
 
-#[lang = "slice_async_destructor_ctor"]
-unsafe fn slice_async_destructor<T>(inner: *mut [T]) -> SliceAsyncDestuctor<T> {
-    SliceAsyncDestuctor {
+#[lang = "async_drop_slice_ctor"]
+unsafe fn slice<T>(inner: *mut [T]) -> Slice<T> {
+    Slice {
         // SAFETY: We call this funtion from async drop
         //   `async_drop_in_place_raw` which has the same safety requirements
         left_slice: unsafe { ptr::NonNull::new_unchecked(inner) },
@@ -135,7 +135,7 @@ unsafe fn slice_async_destructor<T>(inner: *mut [T]) -> SliceAsyncDestuctor<T> {
     }
 }
 
-impl<T> Future for SliceAsyncDestuctor<T> {
+impl<T> Future for Slice<T> {
     type Output = ();
 
     fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {

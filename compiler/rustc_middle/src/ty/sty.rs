@@ -2318,7 +2318,7 @@ impl<'tcx> Ty<'tcx> {
     pub fn async_destructor_ty(self, tcx: TyCtxt<'tcx>, param_env: ParamEnv<'tcx>) -> Ty<'tcx> {
         match *self.kind() {
             ty::Array(elem_ty, _) | ty::Slice(elem_ty) => tcx
-                .type_of(tcx.require_lang_item(hir::LangItem::SliceAsyncDestructor, None))
+                .type_of(tcx.require_lang_item(hir::LangItem::AsyncDropSlice, None))
                 .instantiate(tcx, &[elem_ty.into()]),
 
             ty::Param(_) | ty::Alias(..) | ty::Infer(ty::TyVar(_)) => {

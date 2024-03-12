@@ -1354,8 +1354,8 @@ impl<'tcx> AsyncDestructorCtorShimBuilder<'tcx> {
         let tcx = self.tcx;
         let (function, ty) = *self.slice_combinator.get_or_insert_with(|| {
             (
-                tcx.require_lang_item(LangItem::SliceAsyncDestructorCtor, Some(self.span)),
-                tcx.type_of(tcx.require_lang_item(LangItem::SliceAsyncDestructor, Some(self.span))),
+                tcx.require_lang_item(LangItem::AsyncDropSliceCtor, Some(self.span)),
+                tcx.type_of(tcx.require_lang_item(LangItem::AsyncDropSlice, Some(self.span))),
             )
         });
         self.apply_combinator::<1, _>(function, |tcx, args| ty.instantiate(tcx, args))
