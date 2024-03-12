@@ -14,7 +14,7 @@ use rustc_data_structures::fx::FxHashSet;
 use rustc_hir as hir;
 use rustc_hir::intravisit::{self, Visitor};
 use rustc_hir::{AnonConst, Expr};
-use rustc_lint::{LateContext, LateLintPass};
+use rustc_lint::{LateContext, LateLintPass, LintContext};
 use rustc_middle::hir::nested_filter;
 use rustc_middle::lint::in_external_macro;
 use rustc_middle::ty;
@@ -538,7 +538,16 @@ fn check_attrs(cx: &LateContext<'_>, valid_idents: &FxHashSet<String>, attrs: &[
 
     suspicious_doc_comments::check(cx, attrs);
 
-    let (fragments, _) = attrs_to_doc_fragments(attrs.iter().map(|attr| (attr, None)), true);
+    let (fragments, _) = attrs_to_doc_fragments(
+        attrs.iter().filter_map(|attr| {
+            if in_external_macro(cx.sess(), attr.span) {
+                None
+            } else {
+                Some((attr, None))
+            }
+        }),
+        true,
+    );
     let mut doc = fragments.iter().fold(String::new(), |mut acc, fragment| {
         add_doc_fragment(&mut acc, fragment);
         acc

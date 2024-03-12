@@ -163,3 +163,16 @@ pub fn rewrite_struct(_args: TokenStream, input: TokenStream) -> TokenStream {
 
     quote!(#item_struct).into()
 }
+
+#[proc_macro_attribute]
+pub fn with_empty_docs(_attr: TokenStream, input: TokenStream) -> TokenStream {
+    let item = parse_macro_input!(input as syn::Item);
+    let attrs: Vec<syn::Attribute> = vec![];
+    let doc_comment = "";
+    quote! {
+        #(#attrs)*
+        #[doc = #doc_comment]
+        #item
+    }
+    .into()
+}
