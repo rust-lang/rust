@@ -425,6 +425,8 @@ symbols! {
         async_closure,
         async_destruct,
         async_drop,
+        async_drop_fuse,
+        async_drop_fuse_ctor,
         async_drop_in_place,
         async_drop_nop,
         async_drop_nop_ctor,

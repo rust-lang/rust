@@ -2365,6 +2365,9 @@ impl<'tcx> Ty<'tcx> {
             | ty::Never
             | ty::Error(_)
             | ty::Coroutine(..) => {
+                // TODO: This branch should emit a bug for some cases
+                //   or be implemented for other cases
+
                 // This condition is conservative, evaluating to false
                 // in some unclear cases. However `AsyncDrop` as with
                 // `Drop` impl must not contain any new bounds that
@@ -2372,15 +2375,17 @@ impl<'tcx> Ty<'tcx> {
                 // ambiguous with any parameters.
                 // FIXME: Add same restrictions on AsyncDrop impls as with Drop impls
                 if self.is_async_drop(tcx, param_env) {
-                    // TODO: this is problematic as it may not guarantee
-                    //   that this future is fused (`Future::poll` returns
-                    //   `Poll::Ready(())` after the first return of
-                    //   `Poll::Ready`)
-                    let assoc_items = tcx.associated_item_def_ids(
-                        tcx.require_lang_item(hir::LangItem::AsyncDrop, None),
-                    );
+                    let assoc_items = tcx
+                        .associated_item_def_ids(tcx.require_lang_item(LangItem::AsyncDrop, None));
                     // FIXME: Should this lifetime be `'static` or erased?
-                    Ty::new_projection(tcx, assoc_items[0], [tcx.lifetimes.re_static])
+                    let dropper_ty = Ty::new_projection(
+                        tcx,
+                        assoc_items[0],
+                        [ty::GenericArg::from(self), tcx.lifetimes.re_static.into()],
+                    );
+
+                    tcx.type_of(tcx.require_lang_item(LangItem::AsyncDropFuse, None))
+                        .instantiate(tcx, &[dropper_ty.into()])
                 } else {
                     tcx.type_of(tcx.require_lang_item(LangItem::AsyncDropNop, None))
                         .instantiate_identity()

@@ -1050,6 +1050,7 @@ struct AsyncDestructorCtorShimBuilder<'tcx> {
 
     // Cached stuff
     nop: Option<(DefId, Ty<'tcx>)>,
+    fuse_combinator: Option<(DefId, EarlyBinder<Ty<'tcx>>)>,
     surface_combinator: Option<(DefId, DefId)>,
     slice_combinator: Option<(DefId, EarlyBinder<Ty<'tcx>>)>,
     deferred_combinator: Option<(DefId, EarlyBinder<Ty<'tcx>>)>,
@@ -1083,6 +1084,7 @@ impl<'tcx> AsyncDestructorCtorShimBuilder<'tcx> {
             bbs: IndexVec::from([BasicBlockData::new(None)]),
 
             nop: None,
+            fuse_combinator: None,
             surface_combinator: None,
             slice_combinator: None,
             deferred_combinator: None,
@@ -1131,7 +1133,7 @@ impl<'tcx> AsyncDestructorCtorShimBuilder<'tcx> {
             | ty::Infer(_)
             | ty::Error(_) => {
                 if self_ty.is_async_drop(tcx, defer_param_env()) {
-                    self.build_surface()
+                    self.build_fused_surface()
                 } else {
                     self.build_nop()
                 }
@@ -1156,9 +1158,10 @@ impl<'tcx> AsyncDestructorCtorShimBuilder<'tcx> {
         self.return_()
     }
 
-    fn build_surface(mut self) -> Body<'tcx> {
+    fn build_fused_surface(mut self) -> Body<'tcx> {
         self.put_self();
         self.combine_surface();
+        self.combine_fuse();
         self.return_()
     }
 
@@ -1361,6 +1364,17 @@ impl<'tcx> AsyncDestructorCtorShimBuilder<'tcx> {
             |tcx, args| Ty::new_projection(tcx, ty, args.iter().copied()),
             &[tcx.lifetimes.re_static.into()],
         )
+    }
+
+    fn combine_fuse(&mut self) {
+        let tcx = self.tcx;
+        let (function, ty) = *self.fuse_combinator.get_or_insert_with(|| {
+            (
+                tcx.require_lang_item(LangItem::AsyncDropFuseCtor, Some(self.span)),
+                tcx.type_of(tcx.require_lang_item(LangItem::AsyncDropFuse, Some(self.span))),
+            )
+        });
+        self.apply_combinator::<1, _>(function, |tcx, args| ty.instantiate(tcx, args))
     }
 
     fn combine_slice(&mut self) {

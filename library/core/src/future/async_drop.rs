@@ -10,6 +10,7 @@ use crate::task::{ready, Context, Poll};
 
 /// Asynchronously drops a value by running `AsyncDrop::async_drop`
 /// on a value and its fields recursively.
+// TODO: fuse the output future
 #[unstable(feature = "async_drop", issue = "none")]
 pub async fn async_drop<T>(value: T) {
     let mut value = MaybeUninit::new(value);
@@ -114,6 +115,38 @@ unsafe fn surface_async_drop_in_place<T: AsyncDrop>(
     // SAFETY: We call this from async drop `async_drop_in_place_raw`
     //   which has the same safety requirements
     unsafe { <T as AsyncDrop>::async_drop(Pin::new_unchecked(&mut *ptr)) }
+}
+
+/// Wraps a future to continue outputing `Poll::Ready(())` once after
+/// wrapped future completes by returning `Poll::Ready(())` on poll. This
+/// is useful for constructing async destructors to guarantee this
+/// "fuse" property
+#[lang = "async_drop_fuse"]
+struct Fuse<T> {
+    inner: Option<T>,
+}
+
+#[lang = "async_drop_fuse_ctor"]
+fn fuse<T>(inner: T) -> Fuse<T> {
+    Fuse { inner: Some(inner) }
+}
+
+impl<T> Future for Fuse<T>
+where
+    T: Future<Output = ()>,
+{
+    type Output = ();
+
+    fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
+        unsafe {
+            let this = self.get_unchecked_mut();
+            if let Some(inner) = &mut this.inner {
+                ready!(Pin::new_unchecked(inner).poll(cx));
+                this.inner = None;
+            }
+        }
+        Poll::Ready(())
+    }
 }
 
 /// Async destructor for arrays and slices
