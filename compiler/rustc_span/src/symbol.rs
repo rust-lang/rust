@@ -353,6 +353,7 @@ symbols! {
         abi_vectorcall,
         abi_x86_interrupt,
         abort,
+        absurd,
         add,
         add_assign,
         add_with_overflow,
