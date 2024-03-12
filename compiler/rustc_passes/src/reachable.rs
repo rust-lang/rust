@@ -16,7 +16,8 @@ use rustc_middle::middle::codegen_fn_attrs::{CodegenFnAttrFlags, CodegenFnAttrs}
 use rustc_middle::middle::privacy::{self, Level};
 use rustc_middle::mir::interpret::{ConstAllocation, GlobalAlloc};
 use rustc_middle::query::Providers;
-use rustc_middle::ty::{self, TyCtxt};
+use rustc_middle::ty::{self, ExistentialTraitRef, TyCtxt};
+use rustc_privacy::DefIdVisitor;
 use rustc_session::config::CrateType;
 use rustc_target::spec::abi::Abi;
 
@@ -272,13 +273,22 @@ impl<'tcx> ReachableContext<'tcx> {
                     self.propagate_item(Res::Def(self.tcx.def_kind(def_id), def_id))
                 }
                 GlobalAlloc::Function(instance) => {
+                    // Manually visit to actually see the instance's `DefId`. Type visitors won't see it
                     self.propagate_item(Res::Def(
                         self.tcx.def_kind(instance.def_id()),
                         instance.def_id(),
-                    ))
-                    // TODO: walk generic args
+                    ));
+                    self.visit(instance.args);
                 }
-                GlobalAlloc::VTable(ty, trait_ref) => todo!("{ty:?}, {trait_ref:?}"),
+                GlobalAlloc::VTable(ty, trait_ref) => {
+                    self.visit(ty);
+                    // Manually visit to actually see the trait's `DefId`. Type visitors won't see it
+                    if let Some(trait_ref) = trait_ref {
+                        let ExistentialTraitRef { def_id, args } = trait_ref.skip_binder();
+                        self.visit_def_id(def_id, "", &"");
+                        self.visit(args);
+                    }
+                }
                 GlobalAlloc::Memory(alloc) => self.propagate_from_alloc(alloc),
             }
         }
@@ -315,6 +325,23 @@ impl<'tcx> ReachableContext<'tcx> {
                 }
             }
         }
+    }
+}
+
+impl<'tcx> DefIdVisitor<'tcx> for ReachableContext<'tcx> {
+    type Result = ();
+
+    fn tcx(&self) -> TyCtxt<'tcx> {
+        self.tcx
+    }
+
+    fn visit_def_id(
+        &mut self,
+        def_id: DefId,
+        _kind: &str,
+        _descr: &dyn std::fmt::Display,
+    ) -> Self::Result {
+        self.propagate_item(Res::Def(self.tcx.def_kind(def_id), def_id))
     }
 }
 

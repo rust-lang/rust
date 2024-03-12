@@ -67,7 +67,7 @@ impl<'tcx> fmt::Display for LazyDefPathStr<'tcx> {
 /// First, it doesn't have overridable `fn visit_trait_ref`, so we have to catch trait `DefId`s
 /// manually. Second, it doesn't visit some type components like signatures of fn types, or traits
 /// in `impl Trait`, see individual comments in `DefIdVisitorSkeleton::visit_ty`.
-trait DefIdVisitor<'tcx> {
+pub trait DefIdVisitor<'tcx> {
     type Result: VisitorResult = ();
     const SHALLOW: bool = false;
     const SKIP_ASSOC_TYS: bool = false;
@@ -98,7 +98,7 @@ trait DefIdVisitor<'tcx> {
     }
 }
 
-struct DefIdVisitorSkeleton<'v, 'tcx, V: ?Sized> {
+pub struct DefIdVisitorSkeleton<'v, 'tcx, V: ?Sized> {
     def_id_visitor: &'v mut V,
     visited_opaque_tys: FxHashSet<DefId>,
     dummy: PhantomData<TyCtxt<'tcx>>,
