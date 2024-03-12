@@ -2059,7 +2059,7 @@ impl Config {
         if self.dry_run() {
             return Ok(());
         }
-        self.verbose(&format!("running: {cmd:?}"));
+        self.verbose(|| println!("running: {cmd:?}"));
         build_helper::util::try_run(cmd, self.is_verbose())
     }
 
@@ -2246,9 +2246,10 @@ impl Config {
         }
     }
 
-    pub fn verbose(&self, msg: &str) {
+    /// Runs a function if verbosity is greater than 0
+    pub fn verbose(&self, f: impl Fn()) {
         if self.verbose > 0 {
-            println!("{msg}");
+            f()
         }
     }
 

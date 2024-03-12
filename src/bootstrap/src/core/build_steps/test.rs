@@ -551,7 +551,7 @@ impl Miri {
         if builder.config.dry_run() {
             String::new()
         } else {
-            builder.verbose(&format!("running: {cargo:?}"));
+            builder.verbose(|| println!("running: {cargo:?}"));
             let out =
                 cargo.output().expect("We already ran `cargo miri setup` before and that worked");
             assert!(out.status.success(), "`cargo miri setup` returned with non-0 exit code");
@@ -559,7 +559,7 @@ impl Miri {
             let stdout = String::from_utf8(out.stdout)
                 .expect("`cargo miri setup` stdout is not valid UTF-8");
             let sysroot = stdout.trim_end();
-            builder.verbose(&format!("`cargo miri setup --print-sysroot` said: {sysroot:?}"));
+            builder.verbose(|| println!("`cargo miri setup --print-sysroot` said: {sysroot:?}"));
             sysroot.to_owned()
         }
     }
@@ -2326,7 +2326,7 @@ fn markdown_test(builder: &Builder<'_>, compiler: Compiler, markdown: &Path) -> 
         }
     }
 
-    builder.verbose(&format!("doc tests for: {}", markdown.display()));
+    builder.verbose(|| println!("doc tests for: {}", markdown.display()));
     let mut cmd = builder.rustdoc_cmd(compiler);
     builder.add_rust_test_threads(&mut cmd);
     // allow for unstable options such as new editions
