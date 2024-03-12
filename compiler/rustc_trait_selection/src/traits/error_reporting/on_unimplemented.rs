@@ -367,6 +367,23 @@ pub struct UnknownFormatParameterForOnUnimplementedAttr {
     trait_name: Symbol,
 }
 
+#[derive(LintDiagnostic)]
+#[diag(trait_selection_disallowed_positional_argument)]
+#[help]
+pub struct DisallowedPositionalArgument;
+
+#[derive(LintDiagnostic)]
+#[diag(trait_selection_invalid_format_specifier)]
+#[help]
+pub struct InvalidFormatSpecifier;
+
+#[derive(LintDiagnostic)]
+#[diag(trait_selection_wrapped_parser_error)]
+pub struct WrappedParserError {
+    description: String,
+    label: String,
+}
+
 impl<'tcx> OnUnimplementedDirective {
     fn parse(
         tcx: TyCtxt<'tcx>,
@@ -758,64 +775,108 @@ impl<'tcx> OnUnimplementedFormatString {
         let trait_name = tcx.item_name(trait_def_id);
         let generics = tcx.generics_of(item_def_id);
         let s = self.symbol.as_str();
-        let parser = Parser::new(s, None, None, false, ParseMode::Format);
+        let mut parser = Parser::new(s, None, None, false, ParseMode::Format);
         let mut result = Ok(());
-        for token in parser {
+        for token in &mut parser {
             match token {
                 Piece::String(_) => (), // Normal string, no need to check it
-                Piece::NextArgument(a) => match a.position {
-                    Position::ArgumentNamed(s) => {
-                        match Symbol::intern(s) {
-                            // `{ThisTraitsName}` is allowed
-                            s if s == trait_name && !self.is_diagnostic_namespace_variant => (),
-                            s if ALLOWED_FORMAT_SYMBOLS.contains(&s)
-                                && !self.is_diagnostic_namespace_variant =>
-                            {
-                                ()
-                            }
-                            // So is `{A}` if A is a type parameter
-                            s if generics.params.iter().any(|param| param.name == s) => (),
-                            s => {
-                                if self.is_diagnostic_namespace_variant {
-                                    tcx.emit_node_span_lint(
-                                        UNKNOWN_OR_MALFORMED_DIAGNOSTIC_ATTRIBUTES,
-                                        tcx.local_def_id_to_hir_id(item_def_id.expect_local()),
-                                        self.span,
-                                        UnknownFormatParameterForOnUnimplementedAttr {
-                                            argument_name: s,
-                                            trait_name,
-                                        },
-                                    );
-                                } else {
-                                    result = Err(struct_span_code_err!(
-                                        tcx.dcx(),
-                                        self.span,
-                                        E0230,
-                                        "there is no parameter `{}` on {}",
-                                        s,
-                                        if trait_def_id == item_def_id {
-                                            format!("trait `{trait_name}`")
-                                        } else {
-                                            "impl".to_string()
-                                        }
-                                    )
-                                    .emit());
+                Piece::NextArgument(a) => {
+                    let format_spec = a.format;
+                    if self.is_diagnostic_namespace_variant
+                        && (format_spec.ty_span.is_some()
+                            || format_spec.width_span.is_some()
+                            || format_spec.precision_span.is_some()
+                            || format_spec.fill_span.is_some())
+                    {
+                        tcx.emit_node_span_lint(
+                            UNKNOWN_OR_MALFORMED_DIAGNOSTIC_ATTRIBUTES,
+                            tcx.local_def_id_to_hir_id(item_def_id.expect_local()),
+                            self.span,
+                            InvalidFormatSpecifier,
+                        );
+                    }
+                    match a.position {
+                        Position::ArgumentNamed(s) => {
+                            match Symbol::intern(s) {
+                                // `{ThisTraitsName}` is allowed
+                                s if s == trait_name && !self.is_diagnostic_namespace_variant => (),
+                                s if ALLOWED_FORMAT_SYMBOLS.contains(&s)
+                                    && !self.is_diagnostic_namespace_variant =>
+                                {
+                                    ()
+                                }
+                                // So is `{A}` if A is a type parameter
+                                s if generics.params.iter().any(|param| param.name == s) => (),
+                                s => {
+                                    if self.is_diagnostic_namespace_variant {
+                                        tcx.emit_node_span_lint(
+                                            UNKNOWN_OR_MALFORMED_DIAGNOSTIC_ATTRIBUTES,
+                                            tcx.local_def_id_to_hir_id(item_def_id.expect_local()),
+                                            self.span,
+                                            UnknownFormatParameterForOnUnimplementedAttr {
+                                                argument_name: s,
+                                                trait_name,
+                                            },
+                                        );
+                                    } else {
+                                        result = Err(struct_span_code_err!(
+                                            tcx.dcx(),
+                                            self.span,
+                                            E0230,
+                                            "there is no parameter `{}` on {}",
+                                            s,
+                                            if trait_def_id == item_def_id {
+                                                format!("trait `{trait_name}`")
+                                            } else {
+                                                "impl".to_string()
+                                            }
+                                        )
+                                        .emit());
+                                    }
                                 }
                             }
                         }
+                        // `{:1}` and `{}` are not to be used
+                        Position::ArgumentIs(..) | Position::ArgumentImplicitlyIs(_) => {
+                            if self.is_diagnostic_namespace_variant {
+                                tcx.emit_node_span_lint(
+                                    UNKNOWN_OR_MALFORMED_DIAGNOSTIC_ATTRIBUTES,
+                                    tcx.local_def_id_to_hir_id(item_def_id.expect_local()),
+                                    self.span,
+                                    DisallowedPositionalArgument,
+                                );
+                            } else {
+                                let reported = struct_span_code_err!(
+                                    tcx.dcx(),
+                                    self.span,
+                                    E0231,
+                                    "only named generic parameters are allowed"
+                                )
+                                .emit();
+                                result = Err(reported);
+                            }
+                        }
                     }
-                    // `{:1}` and `{}` are not to be used
-                    Position::ArgumentIs(..) | Position::ArgumentImplicitlyIs(_) => {
-                        let reported = struct_span_code_err!(
-                            tcx.dcx(),
-                            self.span,
-                            E0231,
-                            "only named generic parameters are allowed"
-                        )
-                        .emit();
-                        result = Err(reported);
-                    }
-                },
+                }
+            }
+        }
+        // we cannot return errors from processing the format string as hard error here
+        // as the diagnostic namespace gurantees that malformed input cannot cause an error
+        //
+        // if we encounter any error while processing we nevertheless want to show it as warning
+        // so that users are aware that something is not correct
+        for e in parser.errors {
+            if self.is_diagnostic_namespace_variant {
+                tcx.emit_node_span_lint(
+                    UNKNOWN_OR_MALFORMED_DIAGNOSTIC_ATTRIBUTES,
+                    tcx.local_def_id_to_hir_id(item_def_id.expect_local()),
+                    self.span,
+                    WrappedParserError { description: e.description, label: e.label },
+                );
+            } else {
+                let reported =
+                    struct_span_code_err!(tcx.dcx(), self.span, E0231, "{}", e.description,).emit();
+                result = Err(reported);
             }
         }
 
@@ -853,9 +914,9 @@ impl<'tcx> OnUnimplementedFormatString {
         let empty_string = String::new();
 
         let s = self.symbol.as_str();
-        let parser = Parser::new(s, None, None, false, ParseMode::Format);
+        let mut parser = Parser::new(s, None, None, false, ParseMode::Format);
         let item_context = (options.get(&sym::ItemContext)).unwrap_or(&empty_string);
-        parser
+        let constructed_message = (&mut parser)
             .map(|p| match p {
                 Piece::String(s) => s.to_owned(),
                 Piece::NextArgument(a) => match a.position {
@@ -895,9 +956,29 @@ impl<'tcx> OnUnimplementedFormatString {
                             }
                         }
                     }
+                    Position::ArgumentImplicitlyIs(_) if self.is_diagnostic_namespace_variant => {
+                        String::from("{}")
+                    }
+                    Position::ArgumentIs(idx) if self.is_diagnostic_namespace_variant => {
+                        format!("{{{idx}}}")
+                    }
                     _ => bug!("broken on_unimplemented {:?} - bad format arg", self.symbol),
                 },
             })
-            .collect()
+            .collect();
+        // we cannot return errors from processing the format string as hard error here
+        // as the diagnostic namespace gurantees that malformed input cannot cause an error
+        //
+        // if we encounter any error while processing the format string
+        // we don't want to show the potentially half assembled formated string,
+        // therefore we fall back to just showing the input string in this case
+        //
+        // The actual parser errors are emitted earlier
+        // as lint warnings in OnUnimplementedFormatString::verify
+        if self.is_diagnostic_namespace_variant && !parser.errors.is_empty() {
+            String::from(s)
+        } else {
+            constructed_message
+        }
     }
 }
