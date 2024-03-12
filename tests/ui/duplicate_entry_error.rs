@@ -5,7 +5,9 @@
 
 #![feature(lang_items)]
 
-use std::panic::PanicInfo;
+extern crate core;
+
+use core::panic::PanicInfo;
 
 #[lang = "panic_impl"]
 fn panic_impl(info: &PanicInfo) -> ! {

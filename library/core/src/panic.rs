@@ -144,7 +144,7 @@ pub macro unreachable_2021 {
 /// use.
 #[unstable(feature = "std_internals", issue = "none")]
 #[doc(hidden)]
-pub unsafe trait PanicPayload {
+pub unsafe trait PanicPayload: crate::fmt::Display {
     /// Take full ownership of the contents.
     /// The return type is actually `Box<dyn Any + Send>`, but we cannot use `Box` in core.
     ///

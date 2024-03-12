@@ -1,7 +1,14 @@
 //! Panic support for core
 //!
-//! The core library cannot define panicking, but it does *declare* panicking. This
-//! means that the functions inside of core are allowed to panic, but to be
+//! In core, panicking is always done with a message, resulting in a `core::panic::PanicInfo`
+//! containing a `fmt::Arguments`. In std, however, panicking can be done with panic_any, which
+//! throws a `Box<dyn Any>` containing any type of value. Because of this,
+//! `std::panic::PanicHookInfo` is a different type, which contains a `&dyn Any` instead of a
+//! `fmt::Arguments`. std's panic handler will convert the `fmt::Arguments` to a `&dyn Any`
+//! containing either a `&'static str` or `String` containing the formatted message.
+//!
+//! The core library cannot define any panic handler, but it can invoke it.
+//! This means that the functions inside of core are allowed to panic, but to be
 //! useful an upstream crate must define panicking for core to use. The current
 //! interface for panicking is:
 //!
@@ -9,11 +16,6 @@
 //! fn panic_impl(pi: &core::panic::PanicInfo<'_>) -> !
 //! # { loop {} }
 //! ```
-//!
-//! This definition allows for panicking with any general message, but it does not
-//! allow for failing with a `Box<Any>` value. (`PanicInfo` just contains a `&(dyn Any + Send)`,
-//! for which we fill in a dummy value in `PanicInfo::internal_constructor`.)
-//! The reason for this is that core is not allowed to allocate.
 //!
 //! This module contains a few other panicking functions, but these are just the
 //! necessary lang items for the compiler. All panics are funneled through this
@@ -61,8 +63,8 @@ pub const fn panic_fmt(fmt: fmt::Arguments<'_>) -> ! {
         fn panic_impl(pi: &PanicInfo<'_>) -> !;
     }
 
-    let pi = PanicInfo::internal_constructor(
-        Some(&fmt),
+    let pi = PanicInfo::new(
+        fmt,
         Location::caller(),
         /* can_unwind */ true,
         /* force_no_backtrace */ false,
@@ -99,8 +101,8 @@ pub const fn panic_nounwind_fmt(fmt: fmt::Arguments<'_>, force_no_backtrace: boo
         }
 
         // PanicInfo with the `can_unwind` flag set to false forces an abort.
-        let pi = PanicInfo::internal_constructor(
-            Some(&fmt),
+        let pi = PanicInfo::new(
+            fmt,
             Location::caller(),
             /* can_unwind */ false,
             force_no_backtrace,
