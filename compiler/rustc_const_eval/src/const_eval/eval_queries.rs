@@ -24,12 +24,12 @@ use crate::interpret::{
 };
 
 // Returns a pointer to where the result lives
-#[instrument(level = "trace", skip(ecx, body), ret)]
-fn eval_body_using_ecx<'mir, 'tcx>(
+#[instrument(level = "trace", skip(ecx, body))]
+fn eval_body_using_ecx<'mir, 'tcx, R: InterpretationResult<'tcx>>(
     ecx: &mut CompileTimeEvalContext<'mir, 'tcx>,
     cid: GlobalId<'tcx>,
     body: &'mir mir::Body<'tcx>,
-) -> InterpResult<'tcx, MPlaceTy<'tcx>> {
+) -> InterpResult<'tcx, R> {
     trace!(?ecx.param_env);
     let tcx = *ecx.tcx;
     assert!(
@@ -87,7 +87,7 @@ fn eval_body_using_ecx<'mir, 'tcx>(
     // Since evaluation had no errors, validate the resulting constant.
     const_validate_mplace(&ecx, &ret, cid)?;
 
-    Ok(ret)
+    Ok(R::make_result(ret, ecx))
 }
 
 /// The `InterpCx` is only meant to be used to do field and index projections into constants for
@@ -294,14 +294,14 @@ pub trait InterpretationResult<'tcx> {
     /// evaluation query.
     fn make_result<'mir>(
         mplace: MPlaceTy<'tcx>,
-        ecx: InterpCx<'mir, 'tcx, CompileTimeInterpreter<'mir, 'tcx>>,
+        ecx: &mut InterpCx<'mir, 'tcx, CompileTimeInterpreter<'mir, 'tcx>>,
     ) -> Self;
 }
 
 impl<'tcx> InterpretationResult<'tcx> for ConstAlloc<'tcx> {
     fn make_result<'mir>(
         mplace: MPlaceTy<'tcx>,
-        _ecx: InterpCx<'mir, 'tcx, CompileTimeInterpreter<'mir, 'tcx>>,
+        _ecx: &mut InterpCx<'mir, 'tcx, CompileTimeInterpreter<'mir, 'tcx>>,
     ) -> Self {
         ConstAlloc { alloc_id: mplace.ptr().provenance.unwrap().alloc_id(), ty: mplace.layout.ty }
     }
@@ -352,41 +352,33 @@ fn eval_in_interpreter<'tcx, R: InterpretationResult<'tcx>>(
         CompileTimeInterpreter::new(CanAccessMutGlobal::from(is_static), CheckAlignment::Error),
     );
     let res = ecx.load_mir(cid.instance.def, cid.promoted);
-    match res.and_then(|body| eval_body_using_ecx(&mut ecx, cid, body)) {
-        Err(error) => {
-            let (error, backtrace) = error.into_parts();
-            backtrace.print_backtrace();
+    res.and_then(|body| eval_body_using_ecx(&mut ecx, cid, body)).map_err(|error| {
+        let (error, backtrace) = error.into_parts();
+        backtrace.print_backtrace();
 
-            let (kind, instance) = if ecx.tcx.is_static(cid.instance.def_id()) {
-                ("static", String::new())
+        let (kind, instance) = if ecx.tcx.is_static(cid.instance.def_id()) {
+            ("static", String::new())
+        } else {
+            // If the current item has generics, we'd like to enrich the message with the
+            // instance and its args: to show the actual compile-time values, in addition to
+            // the expression, leading to the const eval error.
+            let instance = &cid.instance;
+            if !instance.args.is_empty() {
+                let instance = with_no_trimmed_paths!(instance.to_string());
+                ("const_with_path", instance)
             } else {
-                // If the current item has generics, we'd like to enrich the message with the
-                // instance and its args: to show the actual compile-time values, in addition to
-                // the expression, leading to the const eval error.
-                let instance = &cid.instance;
-                if !instance.args.is_empty() {
-                    let instance = with_no_trimmed_paths!(instance.to_string());
-                    ("const_with_path", instance)
-                } else {
-                    ("const", String::new())
-                }
-            };
+                ("const", String::new())
+            }
+        };
 
-            Err(super::report(
-                *ecx.tcx,
-                error,
-                None,
-                || super::get_span_and_frames(ecx.tcx, ecx.stack()),
-                |span, frames| ConstEvalError {
-                    span,
-                    error_kind: kind,
-                    instance,
-                    frame_notes: frames,
-                },
-            ))
-        }
-        Ok(mplace) => Ok(R::make_result(mplace, ecx)),
-    }
+        super::report(
+            *ecx.tcx,
+            error,
+            None,
+            || super::get_span_and_frames(ecx.tcx, ecx.stack()),
+            |span, frames| ConstEvalError { span, error_kind: kind, instance, frame_notes: frames },
+        )
+    })
 }
 
 #[inline(always)]
