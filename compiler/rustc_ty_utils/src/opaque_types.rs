@@ -240,6 +240,10 @@ impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for OpaqueTypeCollector<'tcx> {
                                 continue;
                             }
 
+                            if !self.seen.insert(assoc.def_id.expect_local()) {
+                                return;
+                            }
+
                             let impl_args = alias_ty.args.rebase_onto(
                                 self.tcx,
                                 impl_trait_ref.def_id,
