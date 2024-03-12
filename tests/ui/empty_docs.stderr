@@ -73,23 +73,5 @@ LL |         ///
    |
    = help: consider removing or filling it
 
-error: empty doc comment
-  --> tests/ui/empty_docs.rs:77:5
-   |
-LL |     #[with_empty_docs]
-   |     ^^^^^^^^^^^^^^^^^^
-   |
-   = help: consider removing or filling it
-   = note: this error originates in the attribute macro `with_empty_docs` (in Nightly builds, run with -Z macro-backtrace for more info)
-
-error: empty doc comment
-  --> tests/ui/empty_docs.rs:82:5
-   |
-LL |     #[with_empty_docs]
-   |     ^^^^^^^^^^^^^^^^^^
-   |
-   = help: consider removing or filling it
-   = note: this error originates in the attribute macro `with_empty_docs` (in Nightly builds, run with -Z macro-backtrace for more info)
-
-error: aborting due to 11 previous errors
+error: aborting due to 9 previous errors
 
