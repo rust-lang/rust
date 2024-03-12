@@ -4,7 +4,7 @@ use crate::{Equivalent, TryReserveError};
 use alloc::borrow::ToOwned;
 use core::fmt;
 use core::hash::{BuildHasher, Hash};
-use core::iter::{Chain, FromIterator, FusedIterator};
+use core::iter::{Chain, FusedIterator};
 use core::ops::{BitAnd, BitOr, BitXor, Sub};
 
 use super::map::{self, DefaultHashBuilder, HashMap, Keys};

@@ -3582,7 +3582,7 @@ impl<T: Clone, A: Allocator + Clone> RawTable<T, A> {
         // cloned so far.
         let mut guard = guard((0, &mut *self), |(index, self_)| {
             if T::NEEDS_DROP {
-                for i in 0..=*index {
+                for i in 0..*index {
                     if self_.is_bucket_full(i) {
                         self_.bucket(i).drop();
                     }
@@ -3596,7 +3596,7 @@ impl<T: Clone, A: Allocator + Clone> RawTable<T, A> {
             to.write(from.as_ref().clone());
 
             // Update the index in case we need to unwind.
-            guard.0 = index;
+            guard.0 = index + 1;
         }
 
         // Successfully cloned all items, no need to clean up.

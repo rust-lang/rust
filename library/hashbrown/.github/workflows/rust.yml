@@ -43,8 +43,6 @@ jobs:
     - env:
         TARGET: ${{ matrix.target }}
         CHANNEL: ${{ matrix.channel }}
-        CROSS: ${{ matrix.target != 'x86_64-unknown-linux-gnu' && '1' || '0' }}
-        NO_STD: ${{ matrix.target == 'thumbv6m-none-eabi' && '1' || '0' }}
       run: sh ci/run.sh
     strategy:
       matrix:
@@ -56,9 +54,10 @@ jobs:
           armv7-unknown-linux-gnueabihf,
           aarch64-unknown-linux-gnu,
           thumbv6m-none-eabi,
-          x86_64-pc-windows-gnu,
+          # Disabled due to issues with cross-rs
+          #x86_64-pc-windows-gnu,
         ]
-        channel: [1.72.0, nightly]
+        channel: [1.74.0, nightly]
         include:
         - os: macos-latest
           target: x86_64-apple-darwin
@@ -68,10 +67,10 @@ jobs:
           channel: nightly
         - os: macos-latest
           target: x86_64-apple-darwin
-          channel: 1.72.0
+          channel: 1.74.0
         - os: windows-latest
           target: x86_64-pc-windows-msvc
-          channel: 1.72.0
+          channel: 1.74.0
         - os: ubuntu-latest
           target: x86_64-unknown-linux-gnu
           channel: beta

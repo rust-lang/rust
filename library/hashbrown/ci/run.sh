@@ -4,18 +4,20 @@ set -ex
 
 : "${TARGET?The TARGET environment variable must be set.}"
 
-if [ "${NO_STD}" = "1" ]; then
-    # Unfortunately serde currently doesn't work without std due to a cargo bug.
-    FEATURES="rustc-internal-api"
-    OP="build"
-else
-    FEATURES="rustc-internal-api,serde,rayon,raw"
-    OP="test"
-fi
-if [ "${CHANNEL}" = "nightly" ]; then
-    FEATURES="${FEATURES},nightly"
-    export RUSTFLAGS="$RUSTFLAGS -D warnings"
-fi
+case "${TARGET}" in
+    x86_64-unknown-linux-gnu|x86_64-apple-darwin|x86_64-pc-windows-msvc)
+        CROSS=0
+        NO_STD=0
+        ;;
+    thumbv6m-none-eabi)
+        CROSS=1
+        NO_STD=1
+        ;;
+    *)
+        CROSS=1
+        NO_STD=0
+        ;;
+esac
 
 CARGO=cargo
 if [ "${CROSS}" = "1" ]; then
@@ -24,6 +26,20 @@ if [ "${CROSS}" = "1" ]; then
 
     cargo install --locked cross
     CARGO=cross
+fi
+
+if [ "${NO_STD}" = "1" ]; then
+    # Unfortunately serde currently doesn't work without std due to a cargo bug.
+    FEATURES="rustc-internal-api"
+    OP="build"
+else
+    FEATURES="rustc-internal-api,serde,rayon,raw"
+    OP="test"
+fi
+
+if [ "${CHANNEL}" = "nightly" ]; then
+    FEATURES="${FEATURES},nightly"
+    export RUSTFLAGS="$RUSTFLAGS -D warnings"
 fi
 
 # Make sure we can compile without the default hasher
