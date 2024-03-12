@@ -23,7 +23,7 @@ use crate::{
 #[derive(Debug, Default)]
 pub(crate) struct SyntaxFixups {
     pub(crate) append: FxHashMap<SyntaxElement, Vec<Leaf>>,
-    pub(crate) remove: FxHashSet<SyntaxNode>,
+    pub(crate) remove: FxHashSet<SyntaxElement>,
     pub(crate) undo_info: SyntaxFixupUndoInfo,
 }
 
@@ -51,7 +51,7 @@ pub(crate) fn fixup_syntax(
     call_site: Span,
 ) -> SyntaxFixups {
     let mut append = FxHashMap::<SyntaxElement, _>::default();
-    let mut remove = FxHashSet::<SyntaxNode>::default();
+    let mut remove = FxHashSet::<SyntaxElement>::default();
     let mut preorder = node.preorder();
     let mut original = Vec::new();
     let dummy_range = FIXUP_DUMMY_RANGE;
@@ -68,7 +68,7 @@ pub(crate) fn fixup_syntax(
 
         let node_range = node.text_range();
         if can_handle_error(&node) && has_error_to_handle(&node) {
-            remove.insert(node.clone());
+            remove.insert(node.clone().into());
             // the node contains an error node, we have to completely replace it by something valid
             let original_tree = mbe::syntax_node_to_token_tree(&node, span_map, call_site);
             let idx = original.len() as u32;

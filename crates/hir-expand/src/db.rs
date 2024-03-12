@@ -8,7 +8,7 @@ use rustc_hash::FxHashSet;
 use span::{AstIdMap, SyntaxContextData, SyntaxContextId};
 use syntax::{
     ast::{self, HasAttrs},
-    AstNode, Parse, SyntaxError, SyntaxNode, SyntaxToken, T,
+    AstNode, Parse, SyntaxElement, SyntaxError, SyntaxNode, SyntaxToken, T,
 };
 use triomphe::Arc;
 
@@ -16,6 +16,7 @@ use crate::{
     attrs::collect_attrs,
     builtin_attr_macro::pseudo_derive_attr_expansion,
     builtin_fn_macro::EagerExpander,
+    cfg_process,
     declarative::DeclarativeMacroExpander,
     fixup::{self, reverse_fixups, SyntaxFixupUndoInfo},
     hygiene::{span_with_call_site_ctxt, span_with_def_site_ctxt, span_with_mixed_site_ctxt},
@@ -150,12 +151,16 @@ pub fn expand_speculative(
         ),
         MacroCallKind::Derive { .. } | MacroCallKind::Attr { .. } => {
             let censor = censor_for_macro_input(&loc, speculative_args);
+            let censor_cfg =
+                cfg_process::process_cfg_attrs(speculative_args, &loc, db).unwrap_or_default();
             let mut fixups = fixup::fixup_syntax(span_map, speculative_args, loc.call_site);
             fixups.append.retain(|it, _| match it {
-                syntax::NodeOrToken::Node(it) => !censor.contains(it),
                 syntax::NodeOrToken::Token(_) => true,
+                it => !censor.contains(it) && !censor_cfg.contains(it),
             });
             fixups.remove.extend(censor);
+            fixups.remove.extend(censor_cfg);
+
             (
                 mbe::syntax_node_to_token_tree_modified(
                     speculative_args,
@@ -408,12 +413,16 @@ fn macro_arg(
             ),
             MacroCallKind::Derive { .. } | MacroCallKind::Attr { .. } => {
                 let censor = censor_for_macro_input(&loc, &syntax);
+                let censor_cfg =
+                    cfg_process::process_cfg_attrs(&syntax, &loc, db).unwrap_or_default();
                 let mut fixups = fixup::fixup_syntax(map.as_ref(), &syntax, loc.call_site);
                 fixups.append.retain(|it, _| match it {
-                    syntax::NodeOrToken::Node(it) => !censor.contains(it),
                     syntax::NodeOrToken::Token(_) => true,
+                    it => !censor.contains(it) && !censor_cfg.contains(it),
                 });
                 fixups.remove.extend(censor);
+                fixups.remove.extend(censor_cfg);
+
                 {
                     let mut tt = mbe::syntax_node_to_token_tree_modified(
                         &syntax,
@@ -461,7 +470,7 @@ fn macro_arg(
 /// Certain macro calls expect some nodes in the input to be preprocessed away, namely:
 /// - derives expect all `#[derive(..)]` invocations up to the currently invoked one to be stripped
 /// - attributes expect the invoking attribute to be stripped
-fn censor_for_macro_input(loc: &MacroCallLoc, node: &SyntaxNode) -> FxHashSet<SyntaxNode> {
+fn censor_for_macro_input(loc: &MacroCallLoc, node: &SyntaxNode) -> FxHashSet<SyntaxElement> {
     // FIXME: handle `cfg_attr`
     (|| {
         let censor = match loc.kind {
@@ -477,7 +486,7 @@ fn censor_for_macro_input(loc: &MacroCallLoc, node: &SyntaxNode) -> FxHashSet<Sy
                     // we need to know about all macro calls for the given ast item here
                     // so we require some kind of mapping...
                     .filter(|attr| attr.simple_name().as_deref() == Some("derive"))
-                    .map(|it| it.syntax().clone())
+                    .map(|it| it.syntax().clone().into())
                     .collect()
             }
             MacroCallKind::Attr { .. } if loc.def.is_attribute_derive() => return None,
@@ -486,7 +495,7 @@ fn censor_for_macro_input(loc: &MacroCallLoc, node: &SyntaxNode) -> FxHashSet<Sy
                 collect_attrs(&ast::Item::cast(node.clone())?)
                     .nth(invoc_attr_index.ast_index())
                     .and_then(|x| Either::left(x.1))
-                    .map(|attr| attr.syntax().clone())
+                    .map(|attr| attr.syntax().clone().into())
                     .into_iter()
                     .collect()
             }
