@@ -91,6 +91,23 @@ fn main() {
         rustc_real
     };
 
+    // Get the name of the crate we're compiling, if any.
+    let crate_name = arg("--crate-name");
+
+    // We want everything statically linked into `rustc_driver`, so remove `-C prefer-dynamic`
+    if crate_name == Some("rustc_driver") && stage != "0" {
+        // Remove `-C prefer-dynamic` to link `std` statically into `rustc_driver`
+        if let Some(pos) = args.iter().enumerate().position(|(i, a)| {
+            a == "-C" && args.get(i + 1).map(|a| a == "prefer-dynamic").unwrap_or(false)
+        }) {
+            args.remove(pos);
+            args.remove(pos);
+        }
+        if let Some(pos) = args.iter().position(|a| a == "-Cprefer-dynamic") {
+            args.remove(pos);
+        }
+    }
+
     let mut cmd = if let Some(wrapper) = env::var_os("RUSTC_WRAPPER_REAL") {
         let mut cmd = Command::new(wrapper);
         cmd.arg(rustc_driver);
@@ -99,9 +116,6 @@ fn main() {
         Command::new(rustc_driver)
     };
     cmd.args(&args).env(dylib_path_var(), env::join_paths(&dylib_path).unwrap());
-
-    // Get the name of the crate we're compiling, if any.
-    let crate_name = arg("--crate-name");
 
     if let Some(crate_name) = crate_name {
         if let Some(target) = env::var_os("RUSTC_TIME") {
