@@ -213,7 +213,7 @@ fn is_super_only_import(segments: &[PathSegment<'_>]) -> bool {
 // Allow skipping imports containing user configured segments,
 // i.e. "...::utils::...::*" if user put `allowed-wildcard-imports = ["utils"]` in `Clippy.toml`
 fn is_allowed_via_config(segments: &[PathSegment<'_>], allowed_segments: &FxHashSet<String>) -> bool {
-    // segment matching need to be exact instead of using 'contains', in case user unintentionaly put
+    // segment matching need to be exact instead of using 'contains', in case user unintentionally put
     // a single character in the config thus skipping most of the warnings.
     segments.iter().any(|seg| allowed_segments.contains(seg.ident.as_str()))
 }

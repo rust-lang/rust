@@ -2848,7 +2848,7 @@ declare_clippy_lint! {
     /// the file is created from scratch, or ensure `truncate` is
     /// called so that the truncation behaviour is explicit. `truncate(true)`
     /// will ensure the file is entirely overwritten with new data, whereas
-    /// `truncate(false)` will explicitely keep the default behavior.
+    /// `truncate(false)` will explicitly keep the default behavior.
     ///
     /// ### Example
     /// ```rust,no_run
