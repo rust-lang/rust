@@ -282,15 +282,7 @@ pub fn eval_static_initializer_provider<'tcx>(
 
     let instance = ty::Instance::mono(tcx, def_id.to_def_id());
     let cid = rustc_middle::mir::interpret::GlobalId { instance, promoted: None };
-    let ecx = InterpCx::new(
-        tcx,
-        tcx.def_span(def_id),
-        ty::ParamEnv::reveal_all(),
-        // Statics (and promoteds inside statics) may access other statics, because unlike consts
-        // they do not have to behave "as if" they were evaluated at runtime.
-        CompileTimeInterpreter::new(CanAccessMutGlobal::Yes, CheckAlignment::Error),
-    );
-    eval_in_interpreter(ecx, cid)
+    eval_in_interpreter(tcx, cid, ty::ParamEnv::reveal_all())
 }
 
 pub trait InterpretationResult<'tcx> {
@@ -335,27 +327,27 @@ pub fn eval_to_allocation_raw_provider<'tcx>(
         trace!("const eval: {:?} ({})", key, instance);
     }
 
-    let cid = key.value;
+    eval_in_interpreter(tcx, key.value, key.param_env)
+}
+
+fn eval_in_interpreter<'tcx, R: InterpretationResult<'tcx>>(
+    tcx: TyCtxt<'tcx>,
+    cid: GlobalId<'tcx>,
+    param_env: ty::ParamEnv<'tcx>,
+) -> Result<R, ErrorHandled> {
     let def = cid.instance.def.def_id();
     let is_static = tcx.is_static(def);
 
-    let ecx = InterpCx::new(
+    let mut ecx = InterpCx::new(
         tcx,
         tcx.def_span(def),
-        key.param_env,
+        param_env,
         // Statics (and promoteds inside statics) may access mutable global memory, because unlike consts
         // they do not have to behave "as if" they were evaluated at runtime.
         // For consts however we want to ensure they behave "as if" they were evaluated at runtime,
         // so we have to reject reading mutable global memory.
         CompileTimeInterpreter::new(CanAccessMutGlobal::from(is_static), CheckAlignment::Error),
     );
-    eval_in_interpreter(ecx, cid)
-}
-
-fn eval_in_interpreter<'mir, 'tcx, R: InterpretationResult<'tcx>>(
-    mut ecx: InterpCx<'mir, 'tcx, CompileTimeInterpreter<'mir, 'tcx>>,
-    cid: GlobalId<'tcx>,
-) -> Result<R, ErrorHandled> {
     let res = ecx.load_mir(cid.instance.def, cid.promoted);
     match res.and_then(|body| eval_body_using_ecx(&mut ecx, cid, body)) {
         Err(error) => {
