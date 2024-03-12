@@ -687,7 +687,6 @@ impl<'tcx> Validator<'_, 'tcx> {
     }
 }
 
-// FIXME(eddyb) remove the differences for promotability in `static`, `const`, `const fn`.
 fn validate_candidates(
     ccx: &ConstCx<'_, '_>,
     temps: &mut IndexSlice<Local, TempState>,
@@ -712,6 +711,10 @@ struct Promoter<'a, 'tcx> {
     /// If true, all nested temps are also kept in the
     /// source MIR, not moved to the promoted MIR.
     keep_original: bool,
+
+    /// If true, add the new const (the promoted) to the required_consts of the parent MIR.
+    /// This is initially false and then set by the visitor when it encounters a `Call` terminator.
+    add_to_required: bool,
 }
 
 impl<'a, 'tcx> Promoter<'a, 'tcx> {
@@ -814,6 +817,10 @@ impl<'a, 'tcx> Promoter<'a, 'tcx> {
                 TerminatorKind::Call {
                     mut func, mut args, call_source: desugar, fn_span, ..
                 } => {
+                    // This promoted involves a function call, so it may fail to evaluate.
+                    // Let's make sure it is added to `required_consts` so that that failure cannot get lost.
+                    self.add_to_required = true;
+
                     self.visit_operand(&mut func, loc);
                     for arg in &mut args {
                         self.visit_operand(&mut arg.node, loc);
@@ -848,7 +855,7 @@ impl<'a, 'tcx> Promoter<'a, 'tcx> {
 
     fn promote_candidate(mut self, candidate: Candidate, next_promoted_id: usize) -> Body<'tcx> {
         let def = self.source.source.def_id();
-        let mut rvalue = {
+        let (mut rvalue, promoted_op) = {
             let promoted = &mut self.promoted;
             let promoted_id = Promoted::new(next_promoted_id);
             let tcx = self.tcx;
@@ -858,11 +865,7 @@ impl<'a, 'tcx> Promoter<'a, 'tcx> {
                 let args = tcx.erase_regions(GenericArgs::identity_for_item(tcx, def));
                 let uneval = mir::UnevaluatedConst { def, args, promoted: Some(promoted_id) };
 
-                Operand::Constant(Box::new(ConstOperand {
-                    span,
-                    user_ty: None,
-                    const_: Const::Unevaluated(uneval, ty),
-                }))
+                ConstOperand { span, user_ty: None, const_: Const::Unevaluated(uneval, ty) }
             };
 
             let blocks = self.source.basic_blocks.as_mut();
@@ -898,22 +901,26 @@ impl<'a, 'tcx> Promoter<'a, 'tcx> {
             let promoted_ref = local_decls.push(promoted_ref);
             assert_eq!(self.temps.push(TempState::Unpromotable), promoted_ref);
 
+            let promoted_operand = promoted_operand(ref_ty, span);
             let promoted_ref_statement = Statement {
                 source_info: statement.source_info,
                 kind: StatementKind::Assign(Box::new((
                     Place::from(promoted_ref),
-                    Rvalue::Use(promoted_operand(ref_ty, span)),
+                    Rvalue::Use(Operand::Constant(Box::new(promoted_operand))),
                 ))),
             };
             self.extra_statements.push((loc, promoted_ref_statement));
 
-            Rvalue::Ref(
-                tcx.lifetimes.re_erased,
-                *borrow_kind,
-                Place {
-                    local: mem::replace(&mut place.local, promoted_ref),
-                    projection: List::empty(),
-                },
+            (
+                Rvalue::Ref(
+                    tcx.lifetimes.re_erased,
+                    *borrow_kind,
+                    Place {
+                        local: mem::replace(&mut place.local, promoted_ref),
+                        projection: List::empty(),
+                    },
+                ),
+                promoted_operand,
             )
         };
 
@@ -925,6 +932,12 @@ impl<'a, 'tcx> Promoter<'a, 'tcx> {
 
         let span = self.promoted.span;
         self.assign(RETURN_PLACE, rvalue, span);
+
+        // Now that we did promotion, we know whether we'll want to add this to `required_consts`.
+        if self.add_to_required {
+            self.source.required_consts.push(promoted_op);
+        }
+
         self.promoted
     }
 }
@@ -984,6 +997,11 @@ fn promote_candidates<'tcx>(
             None,
             body.tainted_by_errors,
         );
+        // We keep `required_consts` of the new MIR body empty. All consts mentioned here have
+        // already been added to the parent MIR's `required_consts` (that is computed before
+        // promotion), and no matter where this promoted const ends up, our parent MIR must be
+        // somewhere in the reachable dependency chain so we can rely on its required consts being
+        // evaluated.
         promoted.phase = MirPhase::Analysis(AnalysisPhase::Initial);
 
         let promoter = Promoter {
@@ -993,6 +1011,7 @@ fn promote_candidates<'tcx>(
             temps: &mut temps,
             extra_statements: &mut extra_statements,
             keep_original: false,
+            add_to_required: false,
         };
 
         let mut promoted = promoter.promote_candidate(candidate, promotions.len());

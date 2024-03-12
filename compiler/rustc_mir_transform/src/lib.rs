@@ -343,6 +343,15 @@ fn mir_promoted(
         body.tainted_by_errors = Some(error_reported);
     }
 
+    // Collect `required_consts` *before* promotion, so if there are any consts being promoted
+    // we still add them to the list in the outer MIR body.
+    let mut required_consts = Vec::new();
+    let mut required_consts_visitor = RequiredConstsVisitor::new(&mut required_consts);
+    for (bb, bb_data) in traversal::reverse_postorder(&body) {
+        required_consts_visitor.visit_basic_block_data(bb, bb_data);
+    }
+    body.required_consts = required_consts;
+
     // What we need to run borrowck etc.
     let promote_pass = promote_consts::PromoteTemps::default();
     pm::run_passes(
@@ -351,14 +360,6 @@ fn mir_promoted(
         &[&promote_pass, &simplify::SimplifyCfg::PromoteConsts, &coverage::InstrumentCoverage],
         Some(MirPhase::Analysis(AnalysisPhase::Initial)),
     );
-
-    // Promotion generates new consts; we run this after promotion to ensure they are accounted for.
-    let mut required_consts = Vec::new();
-    let mut required_consts_visitor = RequiredConstsVisitor::new(&mut required_consts);
-    for (bb, bb_data) in traversal::reverse_postorder(&body) {
-        required_consts_visitor.visit_basic_block_data(bb, bb_data);
-    }
-    body.required_consts = required_consts;
 
     let promoted = promote_pass.promoted_fragments.into_inner();
     (tcx.alloc_steal_mir(body), tcx.alloc_steal_promoted(promoted))
