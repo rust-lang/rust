@@ -1,7 +1,7 @@
 //! Code shared by trait and projection goals for candidate assembly.
 
-use super::{EvalCtxt, SolverMode};
 use crate::solve::GoalSource;
+use crate::solve::{inspect, EvalCtxt, SolverMode};
 use crate::traits::coherence;
 use rustc_hir::def_id::DefId;
 use rustc_infer::traits::query::NoSolution;
@@ -16,6 +16,7 @@ use rustc_middle::ty::{fast_reject, TypeFoldable};
 use rustc_middle::ty::{ToPredicate, TypeVisitableExt};
 use rustc_span::{ErrorGuaranteed, DUMMY_SP};
 use std::fmt::Debug;
+use std::mem;
 
 pub(super) mod structural_traits;
 
@@ -315,20 +316,17 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
     }
 
     fn forced_ambiguity(&mut self, cause: MaybeCause) -> Vec<Candidate<'tcx>> {
-        let source = CandidateSource::BuiltinImpl(BuiltinImplSource::Misc);
-        let certainty = Certainty::Maybe(cause);
         // This may fail if `try_evaluate_added_goals` overflows because it
         // fails to reach a fixpoint but ends up getting an error after
         // running for some additional step.
         //
-        // FIXME: Add a test for this. It seems to be necessary for typenum but
-        // is incredibly hard to minimize as it may rely on being inside of a
-        // trait solver cycle.
-        let result = self.evaluate_added_goals_and_make_canonical_response(certainty);
-        let mut dummy_probe = self.inspect.new_probe();
-        dummy_probe.probe_kind(ProbeKind::TraitCandidate { source, result });
-        self.inspect.finish_probe(dummy_probe);
-        if let Ok(result) = result { vec![Candidate { source, result }] } else { vec![] }
+        // cc trait-system-refactor-initiative#105
+        let source = CandidateSource::BuiltinImpl(BuiltinImplSource::Misc);
+        let certainty = Certainty::Maybe(cause);
+        let result = self
+            .probe_trait_candidate(source)
+            .enter(|this| this.evaluate_added_goals_and_make_canonical_response(certainty));
+        if let Ok(cand) = result { vec![cand] } else { vec![] }
     }
 
     #[instrument(level = "debug", skip_all)]
@@ -813,6 +811,11 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
         goal: Goal<'tcx, G>,
         candidates: &mut Vec<Candidate<'tcx>>,
     ) {
+        // HACK: We temporarily remove the `ProofTreeBuilder` to
+        // avoid adding `Trait` candidates to the candidates used
+        // to prove the current goal.
+        let inspect = mem::replace(&mut self.inspect, inspect::ProofTreeBuilder::new_noop());
+
         let tcx = self.tcx();
         let trait_goal: Goal<'tcx, ty::TraitPredicate<'tcx>> =
             goal.with(tcx, goal.predicate.trait_ref(tcx));
@@ -846,6 +849,7 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
                 }
             }
         }
+        self.inspect = inspect;
     }
 
     /// If there are multiple ways to prove a trait or projection goal, we have

@@ -19,9 +19,12 @@ use rustc_infer::infer::canonical::query_response::make_query_region_constraints
 use rustc_infer::infer::canonical::CanonicalVarValues;
 use rustc_infer::infer::canonical::{CanonicalExt, QueryRegionConstraints};
 use rustc_infer::infer::resolve::EagerResolver;
+use rustc_infer::infer::type_variable::TypeVariableOrigin;
+use rustc_infer::infer::RegionVariableOrigin;
 use rustc_infer::infer::{InferCtxt, InferOk};
 use rustc_infer::traits::solve::NestedNormalizationGoals;
 use rustc_middle::infer::canonical::Canonical;
+use rustc_middle::infer::unify_key::ConstVariableOrigin;
 use rustc_middle::traits::query::NoSolution;
 use rustc_middle::traits::solve::{
     ExternalConstraintsData, MaybeCause, PredefinedOpaquesData, QueryInput,
@@ -29,7 +32,7 @@ use rustc_middle::traits::solve::{
 use rustc_middle::traits::ObligationCause;
 use rustc_middle::ty::{self, BoundVar, GenericArgKind, Ty, TyCtxt, TypeFoldable};
 use rustc_next_trait_solver::canonicalizer::{CanonicalizeMode, Canonicalizer};
-use rustc_span::DUMMY_SP;
+use rustc_span::{Span, DUMMY_SP};
 use std::assert_matches::assert_matches;
 use std::iter;
 use std::ops::Deref;
@@ -374,36 +377,70 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
     }
 }
 
-impl<'tcx> inspect::ProofTreeBuilder<'tcx> {
-    pub fn make_canonical_state<T: TypeFoldable<TyCtxt<'tcx>>>(
-        ecx: &EvalCtxt<'_, 'tcx>,
-        data: T,
-    ) -> inspect::CanonicalState<'tcx, T> {
-        let state = inspect::State { var_values: ecx.var_values, data };
-        let state = state.fold_with(&mut EagerResolver::new(ecx.infcx));
-        Canonicalizer::canonicalize(
-            ecx.infcx,
-            CanonicalizeMode::Response { max_input_universe: ecx.max_input_universe },
-            &mut vec![],
-            state,
-        )
+/// Used by proof trees to be able to recompute intermediate actions while
+/// evaluating a goal. The `var_values` not only include the bound variables
+/// of the query input, but also contain all unconstrained inference vars
+/// created while evaluating this goal.
+pub(in crate::solve) fn make_canonical_state<'tcx, T: TypeFoldable<TyCtxt<'tcx>>>(
+    infcx: &InferCtxt<'tcx>,
+    var_values: &[ty::GenericArg<'tcx>],
+    max_input_universe: ty::UniverseIndex,
+    data: T,
+) -> inspect::CanonicalState<'tcx, T> {
+    let var_values = CanonicalVarValues { var_values: infcx.tcx.mk_args(var_values) };
+    let state = inspect::State { var_values, data };
+    let state = state.fold_with(&mut EagerResolver::new(infcx));
+    Canonicalizer::canonicalize(
+        infcx,
+        CanonicalizeMode::Response { max_input_universe },
+        &mut vec![],
+        state,
+    )
+}
+
+/// Instantiate a `CanonicalState`.
+///
+/// Unlike for query responses, `CanonicalState` also track fresh inference
+/// variables created while evaluating a goal. When creating two separate
+/// `CanonicalState` during a single evaluation both may reference this
+/// fresh inference variable. When instantiating them we now create separate
+/// inference variables for it and have to unify them somehow. We do this
+/// by extending the `var_values` while building the proof tree.
+///
+/// This currently assumes that unifying the var values trivially succeeds.
+/// Adding any inference constraints which weren't present when originally
+/// computing the canonical query can result in bugs.
+pub(in crate::solve) fn instantiate_canonical_state<'tcx, T: TypeFoldable<TyCtxt<'tcx>>>(
+    infcx: &InferCtxt<'tcx>,
+    span: Span,
+    param_env: ty::ParamEnv<'tcx>,
+    orig_values: &mut Vec<ty::GenericArg<'tcx>>,
+    state: inspect::CanonicalState<'tcx, T>,
+) -> T {
+    // In case any fresh inference variables have been created between `state`
+    // and the previous instantiation, extend `orig_values` for it.
+    assert!(orig_values.len() <= state.value.var_values.len());
+    for i in orig_values.len()..state.value.var_values.len() {
+        let unconstrained = match state.value.var_values.var_values[i].unpack() {
+            ty::GenericArgKind::Lifetime(_) => {
+                infcx.next_region_var(RegionVariableOrigin::MiscVariable(span)).into()
+            }
+            ty::GenericArgKind::Type(_) => {
+                infcx.next_ty_var(TypeVariableOrigin { param_def_id: None, span }).into()
+            }
+            ty::GenericArgKind::Const(ct) => infcx
+                .next_const_var(ct.ty(), ConstVariableOrigin { param_def_id: None, span })
+                .into(),
+        };
+
+        orig_values.push(unconstrained);
     }
 
-    /// Instantiate a `CanonicalState`. This assumes that unifying the var values
-    /// trivially succeeds. Adding any inference constraints which weren't present when
-    /// originally computing the canonical query can result in bugs.
-    pub fn instantiate_canonical_state<T: TypeFoldable<TyCtxt<'tcx>>>(
-        infcx: &InferCtxt<'tcx>,
-        param_env: ty::ParamEnv<'tcx>,
-        original_values: &[ty::GenericArg<'tcx>],
-        state: inspect::CanonicalState<'tcx, T>,
-    ) -> T {
-        let instantiation =
-            EvalCtxt::compute_query_response_instantiation_values(infcx, original_values, &state);
+    let instantiation =
+        EvalCtxt::compute_query_response_instantiation_values(infcx, orig_values, &state);
 
-        let inspect::State { var_values, data } = state.instantiate(infcx.tcx, &instantiation);
+    let inspect::State { var_values, data } = state.instantiate(infcx.tcx, &instantiation);
 
-        EvalCtxt::unify_query_var_values(infcx, param_env, original_values, var_values);
-        data
-    }
+    EvalCtxt::unify_query_var_values(infcx, param_env, orig_values, var_values);
+    data
 }

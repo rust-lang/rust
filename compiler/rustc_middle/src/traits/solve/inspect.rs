@@ -102,6 +102,7 @@ pub struct Probe<'tcx> {
     /// What happened inside of this probe in chronological order.
     pub steps: Vec<ProbeStep<'tcx>>,
     pub kind: ProbeKind<'tcx>,
+    pub final_state: CanonicalState<'tcx, ()>,
 }
 
 impl Debug for Probe<'_> {
