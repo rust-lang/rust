@@ -1050,7 +1050,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                     );
                     err.subdiagnostic(self.dcx(), CaptureReasonNote::FnOnceMoveInCall { var_span });
                 }
-                CallKind::Operator { self_arg, .. } => {
+                CallKind::Operator { self_arg, trait_id, .. } => {
                     let self_arg = self_arg.unwrap();
                     err.subdiagnostic(
                         self.dcx(),
@@ -1062,9 +1062,16 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                         },
                     );
                     if self.fn_self_span_reported.insert(fn_span) {
+                        let lang = self.infcx.tcx.lang_items();
                         err.subdiagnostic(
                             self.dcx(),
-                            CaptureReasonNote::LhsMoveByOperator { span: self_arg.span },
+                            if [lang.not_trait(), lang.deref_trait(), lang.neg_trait()]
+                                .contains(&Some(trait_id))
+                            {
+                                CaptureReasonNote::UnOpMoveByOperator { span: self_arg.span }
+                            } else {
+                                CaptureReasonNote::LhsMoveByOperator { span: self_arg.span }
+                            },
                         );
                     }
                 }
