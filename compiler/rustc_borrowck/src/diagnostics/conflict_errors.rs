@@ -987,6 +987,21 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         can_suggest_clone
     }
 
+    pub(crate) fn clone_on_reference(&self, expr: &hir::Expr<'_>) -> Option<Span> {
+        let typeck_results = self.infcx.tcx.typeck(self.mir_def_id());
+        if let hir::ExprKind::MethodCall(segment, rcvr, args, span) = expr.kind
+            && let Some(expr_ty) = typeck_results.node_type_opt(expr.hir_id)
+            && let Some(rcvr_ty) = typeck_results.node_type_opt(rcvr.hir_id)
+            && rcvr_ty == expr_ty
+            && segment.ident.name == sym::clone
+            && args.is_empty()
+        {
+            Some(span)
+        } else {
+            None
+        }
+    }
+
     fn suggest_cloning(&self, err: &mut Diag<'_>, ty: Ty<'tcx>, expr: &hir::Expr<'_>, span: Span) {
         let tcx = self.infcx.tcx;
         // Try to find predicates on *generic params* that would allow copying `ty`
@@ -1652,6 +1667,14 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                 if use_span.is_some() { "here" } else { "as the argument to this call" }
             ),
         );
+    }
+
+    pub(crate) fn find_expr(&self, span: Span) -> Option<&hir::Expr<'_>> {
+        let tcx = self.infcx.tcx;
+        let body_id = tcx.hir_node(self.mir_hir_id()).body_id()?;
+        let mut expr_finder = FindExprBySpan::new(span);
+        expr_finder.visit_expr(tcx.hir().body(body_id).value);
+        expr_finder.result
     }
 
     fn suggest_slice_method_if_applicable(

@@ -1212,13 +1212,21 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                                 .iter_projections()
                                 .any(|(_, elem)| matches!(elem, ProjectionElem::Deref))
                             {
+                                let (start, end) = if let Some(expr) = self.find_expr(move_span)
+                                    && let Some(_) = self.clone_on_reference(expr)
+                                    && let hir::ExprKind::MethodCall(_, rcvr, _, _) = expr.kind
+                                {
+                                    (move_span.shrink_to_lo(), move_span.with_lo(rcvr.span.hi()))
+                                } else {
+                                    (move_span.shrink_to_lo(), move_span.shrink_to_hi())
+                                };
                                 vec![
                                     // We use the fully-qualified path because `.clone()` can
                                     // sometimes choose `<&T as Clone>` instead of `<T as Clone>`
                                     // when going through auto-deref, so this ensures that doesn't
                                     // happen, causing suggestions for `.clone().clone()`.
-                                    (move_span.shrink_to_lo(), format!("<{ty} as Clone>::clone(&")),
-                                    (move_span.shrink_to_hi(), ")".to_string()),
+                                    (start, format!("<{ty} as Clone>::clone(&")),
+                                    (end, ")".to_string()),
                                 ]
                             } else {
                                 vec![(move_span.shrink_to_hi(), ".clone()".to_string())]
