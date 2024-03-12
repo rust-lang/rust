@@ -3,7 +3,6 @@ use crate::errors::CtorIsPrivate;
 use crate::method::{self, MethodCallee, SelfSource};
 use crate::rvalue_scopes;
 use crate::{BreakableCtxt, Diverges, Expectation, FnCtxt, LoweredTy};
-use rustc_data_structures::captures::Captures;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::{Applicability, Diag, ErrorGuaranteed, MultiSpan, StashKey};
 use rustc_hir as hir;
@@ -634,64 +633,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         // method returns &T, but the type as visible to user is T, so deref
         ret_ty.builtin_deref(true).unwrap()
-    }
-
-    #[instrument(skip(self), level = "debug")]
-    fn self_type_matches_expected_vid(&self, self_ty: Ty<'tcx>, expected_vid: ty::TyVid) -> bool {
-        let self_ty = self.shallow_resolve(self_ty);
-        debug!(?self_ty);
-
-        match *self_ty.kind() {
-            ty::Infer(ty::TyVar(found_vid)) => {
-                let found_vid = self.root_var(found_vid);
-                debug!("self_type_matches_expected_vid - found_vid={:?}", found_vid);
-                expected_vid == found_vid
-            }
-            _ => false,
-        }
-    }
-
-    #[instrument(skip(self), level = "debug")]
-    pub(in super::super) fn obligations_for_self_ty<'b>(
-        &'b self,
-        self_ty: ty::TyVid,
-    ) -> impl DoubleEndedIterator<Item = traits::PredicateObligation<'tcx>> + Captures<'tcx> + 'b
-    {
-        let ty_var_root = self.root_var(self_ty);
-        trace!("pending_obligations = {:#?}", self.fulfillment_cx.borrow().pending_obligations());
-
-        self.fulfillment_cx.borrow().pending_obligations().into_iter().filter_map(
-            move |obligation| match &obligation.predicate.kind().skip_binder() {
-                ty::PredicateKind::Clause(ty::ClauseKind::Projection(data))
-                    if self.self_type_matches_expected_vid(
-                        data.projection_ty.self_ty(),
-                        ty_var_root,
-                    ) =>
-                {
-                    Some(obligation)
-                }
-                ty::PredicateKind::Clause(ty::ClauseKind::Trait(data))
-                    if self.self_type_matches_expected_vid(data.self_ty(), ty_var_root) =>
-                {
-                    Some(obligation)
-                }
-
-                ty::PredicateKind::Clause(ty::ClauseKind::Trait(..))
-                | ty::PredicateKind::Clause(ty::ClauseKind::Projection(..))
-                | ty::PredicateKind::Clause(ty::ClauseKind::ConstArgHasType(..))
-                | ty::PredicateKind::Subtype(..)
-                | ty::PredicateKind::Coerce(..)
-                | ty::PredicateKind::Clause(ty::ClauseKind::RegionOutlives(..))
-                | ty::PredicateKind::Clause(ty::ClauseKind::TypeOutlives(..))
-                | ty::PredicateKind::Clause(ty::ClauseKind::WellFormed(..))
-                | ty::PredicateKind::ObjectSafe(..)
-                | ty::PredicateKind::NormalizesTo(..)
-                | ty::PredicateKind::AliasRelate(..)
-                | ty::PredicateKind::Clause(ty::ClauseKind::ConstEvaluatable(..))
-                | ty::PredicateKind::ConstEquate(..)
-                | ty::PredicateKind::Ambiguous => None,
-            },
-        )
     }
 
     pub(in super::super) fn type_var_is_sized(&self, self_ty: ty::TyVid) -> bool {
