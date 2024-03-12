@@ -1324,8 +1324,8 @@ impl<'tcx> AsyncDestructorCtorShimBuilder<'tcx> {
         let tcx = self.tcx;
         let (function, ty) = *self.ready_unit.get_or_insert_with(|| {
             (
-                tcx.require_lang_item(LangItem::FutureReadyUnitCtor, Some(self.span)),
-                tcx.type_of(tcx.require_lang_item(LangItem::FutureReadyUnit, Some(self.span)))
+                tcx.require_lang_item(LangItem::AsyncDropNopCtor, Some(self.span)),
+                tcx.type_of(tcx.require_lang_item(LangItem::AsyncDropNop, Some(self.span)))
                     .instantiate_identity(),
             )
         });

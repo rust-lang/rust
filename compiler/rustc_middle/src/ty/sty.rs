@@ -2348,7 +2348,7 @@ impl<'tcx> Ty<'tcx> {
             | ty::FnDef(..)
             | ty::FnPtr(..)
             | ty::Infer(IntVar(_) | FloatVar(_)) => tcx
-                .type_of(tcx.require_lang_item(LangItem::FutureReadyUnit, None))
+                .type_of(tcx.require_lang_item(LangItem::AsyncDropNop, None))
                 .instantiate_identity(),
 
             ty::Adt(..)
@@ -2376,7 +2376,7 @@ impl<'tcx> Ty<'tcx> {
                     // FIXME: Should this lifetime be `'static` or erased?
                     Ty::new_projection(tcx, assoc_items[0], [tcx.lifetimes.re_static])
                 } else {
-                    tcx.type_of(tcx.require_lang_item(LangItem::FutureReadyUnit, None))
+                    tcx.type_of(tcx.require_lang_item(LangItem::AsyncDropNop, None))
                         .instantiate_identity()
                 }
             }
@@ -2414,7 +2414,7 @@ impl<'tcx> Ty<'tcx> {
                 )
             }))
             .fold(
-                tcx.type_of(tcx.require_lang_item(hir::LangItem::FutureReadyUnit, None))
+                tcx.type_of(tcx.require_lang_item(hir::LangItem::AsyncDropNop, None))
                     .instantiate_identity(),
                 |dtor, ty| future_chain.instantiate(tcx, &[ty.into(), dtor.into()]),
             )

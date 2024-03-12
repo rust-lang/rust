@@ -172,8 +172,8 @@ language_item_table! {
     DeferredAsyncDropCtor,   sym::deferred_async_drop_ctor, deferred_async_drop_fn, Target::Fn,            GenericRequirement::Exact(1);
     FutureChain,             sym::future_chain,        future_chain_type,          Target::Struct,         GenericRequirement::Exact(2);
     FutureChainCtor,         sym::future_chain_ctor,   future_chain_ctor,          Target::Fn,             GenericRequirement::Exact(2);
-    FutureReadyUnit,         sym::future_ready_unit,   future_ready_unit_type,     Target::Struct,         GenericRequirement::Exact(0);
-    FutureReadyUnitCtor,     sym::future_ready_unit_ctor, future_ready_unit_ctor,  Target::Fn,             GenericRequirement::Exact(0);
+    AsyncDropNop,            sym::async_drop_nop,      async_drop_nop_type,        Target::Struct,         GenericRequirement::Exact(0);
+    AsyncDropNopCtor,        sym::async_drop_nop_ctor, async_drop_nop_ctor,        Target::Fn,             GenericRequirement::Exact(0);
 
     CoerceUnsized,           sym::coerce_unsized,      coerce_unsized_trait,       Target::Trait,          GenericRequirement::Minimum(1);
     DispatchFromDyn,         sym::dispatch_from_dyn,   dispatch_from_dyn_trait,    Target::Trait,          GenericRequirement::Minimum(1);

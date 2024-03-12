@@ -253,10 +253,10 @@ fn chain<F1, F2>(first: F1, second: F2) -> Chain<F1, F2> {
 /// Used for nop async destructors. We don't use [`core::future::Ready`]
 /// because it panics after its second poll, which could be potentially
 /// bad if that would happen during the cleanup.
-#[lang = "future_ready_unit"]
-struct ReadyUnit;
+#[lang = "async_drop_nop"]
+struct Nop;
 
-impl Future for ReadyUnit {
+impl Future for Nop {
     type Output = ();
 
     fn poll(self: Pin<&mut Self>, _: &mut Context<'_>) -> Poll<Self::Output> {
@@ -264,7 +264,7 @@ impl Future for ReadyUnit {
     }
 }
 
-#[lang = "future_ready_unit_ctor"]
-fn ready_unit() -> ReadyUnit {
-    ReadyUnit
+#[lang = "async_drop_nop_ctor"]
+fn nop() -> Nop {
+    Nop
 }
