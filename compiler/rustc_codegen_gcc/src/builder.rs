@@ -14,7 +14,7 @@ use rustc_codegen_ssa::common::{
 use rustc_codegen_ssa::mir::operand::{OperandRef, OperandValue};
 use rustc_codegen_ssa::mir::place::PlaceRef;
 use rustc_codegen_ssa::traits::{
-    BackendTypes, BaseTypeMethods, BuilderMethods, ConstMethods, HasCodegen, LayoutTypeMethods,
+    BackendTypes, BaseTypeMethods, BuilderMethods, ConstMethods, HasCodegen,
     OverflowOp, StaticBuilderMethods,
 };
 use rustc_codegen_ssa::MemFlags;
@@ -1067,7 +1067,7 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
         cg_elem.val.store(self, PlaceRef::new_sized_aligned(current_val, cg_elem.layout, align));
 
         let next = self.inbounds_gep(
-            self.backend_type(cg_elem.layout),
+            self.type_array(self.type_i8(), cg_elem.layout.size.bytes()),
             current.to_rvalue(),
             &[self.const_usize(1)],
         );
