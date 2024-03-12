@@ -28,10 +28,6 @@ static SOME_STRUCT: &SomeStruct = &SomeStruct {
     f: &id,
     //~^ ERROR mismatched types
     //~| ERROR mismatched types
-    //~| ERROR mismatched types
-    //~| ERROR mismatched types
-    //~| ERROR implementation of `Fn` is not general enough
-    //~| ERROR implementation of `Fn` is not general enough
     //~| ERROR implementation of `Fn` is not general enough
     //~| ERROR implementation of `Fn` is not general enough
 };
