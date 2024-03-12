@@ -11,7 +11,7 @@ This chapter is about the process of expanding those `macro`s iteratively until
 we have a complete [*Abstract Syntax Tree* (`AST`)][ast] for our crate with no
 unexpanded `macro`s (or a compile error).
 
-[ast]: https://en.wikipedia.org/wiki/Abstract_syntax_tree
+[ast]: ./ast-validation.md
 [`rustc_ast`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_ast/index.html
 [`rustc_expand`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_expand/index.html
 [`rustc_builtin_macros`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_builtin_macros/index.html
