@@ -1,5 +1,4 @@
 //@ run-pass
-//@ ignore-wasm32-bare no env vars
 
 use std::env::*;
 

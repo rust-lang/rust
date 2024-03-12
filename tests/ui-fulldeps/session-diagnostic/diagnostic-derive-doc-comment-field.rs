@@ -1,6 +1,6 @@
 //@ check-fail
 // Tests that a doc comment will not preclude a field from being considered a diagnostic argument
-//@ normalize-stderr-test "the following other types implement trait `IntoDiagnosticArg`:(?:.*\n){0,9}\s+and \d+ others" -> "normalized in stderr"
+//@ normalize-stderr-test "the following other types implement trait `IntoDiagArg`:(?:.*\n){0,9}\s+and \d+ others" -> "normalized in stderr"
 //@ normalize-stderr-test "(COMPILER_DIR/.*\.rs):[0-9]+:[0-9]+" -> "$1:LL:CC"
 
 // The proc_macro2 crate handles spans differently when on beta/stable release rather than nightly,
@@ -25,7 +25,7 @@ use rustc_span::Span;
 
 rustc_fluent_macro::fluent_messages! { "./example.ftl" }
 
-struct NotIntoDiagnosticArg;
+struct NotIntoDiagArg;
 
 #[derive(Diagnostic)]
 #[diag(no_crate_example)]
@@ -33,8 +33,8 @@ struct Test {
     #[primary_span]
     span: Span,
     /// A doc comment
-    arg: NotIntoDiagnosticArg,
-    //~^ ERROR the trait bound `NotIntoDiagnosticArg: IntoDiagnosticArg` is not satisfied
+    arg: NotIntoDiagArg,
+    //~^ ERROR the trait bound `NotIntoDiagArg: IntoDiagArg` is not satisfied
 }
 
 #[derive(Subdiagnostic)]
@@ -43,6 +43,6 @@ struct SubTest {
     #[primary_span]
     span: Span,
     /// A doc comment
-    arg: NotIntoDiagnosticArg,
-    //~^ ERROR the trait bound `NotIntoDiagnosticArg: IntoDiagnosticArg` is not satisfied
+    arg: NotIntoDiagArg,
+    //~^ ERROR the trait bound `NotIntoDiagArg: IntoDiagArg` is not satisfied
 }

@@ -9,7 +9,12 @@ pub fn target() -> Target {
 
     Target {
         llvm_target: "sparc64-unknown-netbsd".into(),
-        description: None,
+        metadata: crate::spec::TargetMetadata {
+            description: None,
+            tier: None,
+            host_tools: None,
+            std: None,
+        },
         pointer_width: 64,
         data_layout: "E-m:e-i64:64-n32:64-S128".into(),
         arch: "sparc64".into(),

@@ -46,16 +46,24 @@ pub enum PassMode {
     ///
     /// The argument has a layout abi of `ScalarPair`.
     Pair(ArgAttributes, ArgAttributes),
-    /// Pass the argument after casting it. See the `CastTarget` docs for details. The bool
-    /// indicates if a `Reg::i32()` dummy argument is emitted before the real argument.
+    /// Pass the argument after casting it. See the `CastTarget` docs for details.
+    ///
+    /// `pad_i32` indicates if a `Reg::i32()` dummy argument is emitted before the real argument.
     Cast { pad_i32: bool, cast: Box<CastTarget> },
     /// Pass the argument indirectly via a hidden pointer.
+    ///
     /// The `meta_attrs` value, if any, is for the metadata (vtable or length) of an unsized
     /// argument. (This is the only mode that supports unsized arguments.)
+    ///
     /// `on_stack` defines that the value should be passed at a fixed stack offset in accordance to
     /// the ABI rather than passed using a pointer. This corresponds to the `byval` LLVM argument
-    /// attribute (using the Rust type of this argument). `on_stack` cannot be true for unsized
-    /// arguments, i.e., when `meta_attrs` is `Some`.
+    /// attribute. The `byval` argument will use a byte array with the same size as the Rust type
+    /// (which ensures that padding is preserved and that we do not rely on LLVM's struct layout),
+    /// and will use the alignment specified in `attrs.pointee_align` (if `Some`) or the type's
+    /// alignment (if `None`). This means that the alignment will not always
+    /// match the Rust type's alignment; see documentation of `make_indirect_byval` for more info.
+    ///
+    /// `on_stack` cannot be true for unsized arguments, i.e., when `meta_attrs` is `Some`.
     Indirect { attrs: ArgAttributes, meta_attrs: Option<ArgAttributes>, on_stack: bool },
 }
 
@@ -596,6 +604,8 @@ impl<'a, Ty> ArgAbi<'a, Ty> {
         }
     }
 
+    /// Pass this argument indirectly, by passing a (thin or fat) pointer to the argument instead.
+    /// This is valid for both sized and unsized arguments.
     pub fn make_indirect(&mut self) {
         match self.mode {
             PassMode::Direct(_) | PassMode::Pair(_, _) => {
@@ -609,7 +619,26 @@ impl<'a, Ty> ArgAbi<'a, Ty> {
         }
     }
 
+    /// Pass this argument indirectly, by placing it at a fixed stack offset.
+    /// This corresponds to the `byval` LLVM argument attribute.
+    /// This is only valid for sized arguments.
+    ///
+    /// `byval_align` specifies the alignment of the `byval` stack slot, which does not need to
+    /// correspond to the type's alignment. This will be `Some` if the target's ABI specifies that
+    /// stack slots used for arguments passed by-value have specific alignment requirements which
+    /// differ from the alignment used in other situations.
+    ///
+    /// If `None`, the type's alignment is used.
+    ///
+    /// If the resulting alignment differs from the type's alignment,
+    /// the argument will be copied to an alloca with sufficient alignment,
+    /// either in the caller (if the type's alignment is lower than the byval alignment)
+    /// or in the callee† (if the type's alignment is higher than the byval alignment),
+    /// to ensure that Rust code never sees an underaligned pointer.
+    ///
+    /// † This is currently broken, see <https://github.com/rust-lang/rust/pull/122212>.
     pub fn make_indirect_byval(&mut self, byval_align: Option<Align>) {
+        assert!(!self.layout.is_unsized(), "used byval ABI for unsized layout");
         self.make_indirect();
         match self.mode {
             PassMode::Indirect { ref mut attrs, meta_attrs: _, ref mut on_stack } => {

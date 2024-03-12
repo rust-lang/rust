@@ -17,6 +17,7 @@ use crate::traits;
 use crate::ty::GenericArgsRef;
 use crate::ty::{self, AdtDef, Ty};
 use rustc_data_structures::fx::FxHashMap;
+use rustc_hir::def_id::LocalDefId;
 use rustc_middle::ty::TyCtxt;
 use rustc_serialize::{Decodable, Encodable};
 use rustc_span::Span;
@@ -428,6 +429,15 @@ impl<'tcx, D: TyDecoder<I = TyCtxt<'tcx>>> RefDecodable<'tcx, D> for ty::List<Fi
         decoder
             .interner()
             .mk_fields_from_iter((0..len).map::<FieldIdx, _>(|_| Decodable::decode(decoder)))
+    }
+}
+
+impl<'tcx, D: TyDecoder<I = TyCtxt<'tcx>>> RefDecodable<'tcx, D> for ty::List<LocalDefId> {
+    fn decode(decoder: &mut D) -> &'tcx Self {
+        let len = decoder.read_usize();
+        decoder.interner().mk_local_def_ids_from_iter(
+            (0..len).map::<LocalDefId, _>(|_| Decodable::decode(decoder)),
+        )
     }
 }
 

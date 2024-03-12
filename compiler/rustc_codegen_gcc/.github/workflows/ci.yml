@@ -19,8 +19,8 @@ jobs:
       fail-fast: false
       matrix:
         libgccjit_version:
-          - { gcc: "libgccjit.so", artifacts_branch: "master" }
-          - { gcc: "libgccjit_without_int128.so", artifacts_branch: "master-without-128bit-integers" }
+          - { gcc: "gcc-13.deb" }
+          - { gcc: "gcc-13-without-int128.deb" }
         commands: [
           "--mini-tests",
           "--std-tests",
@@ -32,60 +32,39 @@ jobs:
           "--extended-regex-tests",
           "--test-successful-rustc --nb-parts 2 --current-part 0",
           "--test-successful-rustc --nb-parts 2 --current-part 1",
+          "--projects",
         ]
 
     steps:
     - uses: actions/checkout@v3
 
+    # `rustup show` installs from rust-toolchain.toml
+    - name: Setup rust toolchain
+      run: rustup show
+
+    - name: Setup rust cache
+      uses: Swatinem/rust-cache@v2
+
     - name: Install packages
       # `llvm-14-tools` is needed to install the `FileCheck` binary which is used for asm tests.
       run: sudo apt-get install ninja-build ripgrep llvm-14-tools
 
+    - name: Install rustfmt
+      run: rustup component add rustfmt
+
     - name: Download artifact
-      uses: dawidd6/action-download-artifact@v2
-      with:
-          workflow: main.yml
-          name: gcc-13
-          path: gcc-13
-          repo: antoyo/gcc
-          branch: ${{ matrix.libgccjit_version.artifacts_branch }}
-          event: push
-          search_artifacts: true # Because, instead, the action only check the last job ran and that won't work since we want multiple artifacts.
+      run: curl -LO https://github.com/antoyo/gcc/releases/latest/download/${{ matrix.libgccjit_version.gcc }}
 
     - name: Setup path to libgccjit
       run: |
-          sudo dpkg --force-overwrite -i gcc-13/gcc-13.deb
-          echo /usr/lib/ > gcc_path
+          sudo dpkg --force-overwrite -i ${{ matrix.libgccjit_version.gcc }}
+          echo 'gcc-path = "/usr/lib/"' > config.toml
 
     - name: Set env
       run: |
-        echo "LIBRARY_PATH=$(cat gcc_path)" >> $GITHUB_ENV
-        echo "LD_LIBRARY_PATH=$(cat gcc_path)" >> $GITHUB_ENV
         echo "workspace="$GITHUB_WORKSPACE >> $GITHUB_ENV
-
-    - name: Cache cargo installed crates
-      uses: actions/cache@v3
-      with:
-        path: ~/.cargo/bin
-        key: cargo-installed-crates2-ubuntu-latest
-
-    - name: Cache cargo registry
-      uses: actions/cache@v3
-      with:
-        path: ~/.cargo/registry
-        key: ${{ runner.os }}-cargo-registry2-${{ hashFiles('**/Cargo.lock') }}
-
-    - name: Cache cargo index
-      uses: actions/cache@v3
-      with:
-        path: ~/.cargo/git
-        key: ${{ runner.os }}-cargo-index-${{ hashFiles('**/Cargo.lock') }}
-
-    - name: Cache cargo target dir
-      uses: actions/cache@v3
-      with:
-        path: target
-        key: ${{ runner.os }}-cargo-build-target-${{ hashFiles('rust-toolchain') }}
+        echo "LIBRARY_PATH=/usr/lib" >> $GITHUB_ENV
+        echo "LD_LIBRARY_PATH=/usr/lib" >> $GITHUB_ENV
 
     #- name: Cache rust repository
       ## We only clone the rust repository for rustc tests
@@ -99,11 +78,9 @@ jobs:
     - name: Build
       run: |
         ./y.sh prepare --only-libcore
-        # TODO: remove --features master when it is back to the default.
-        ./y.sh build --features master
-        # TODO: remove --features master when it is back to the default.
-        cargo test --features master
-        ./clean_all.sh
+        ./y.sh build
+        cargo test
+        ./y.sh clean all
 
     - name: Prepare dependencies
       run: |
@@ -111,23 +88,27 @@ jobs:
         git config --global user.name "User"
         ./y.sh prepare
 
-    # Compile is a separate step, as the actions-rs/cargo action supports error annotations
-    - name: Compile
-      uses: actions-rs/cargo@v1.0.3
-      with:
-        command: build
-        args: --release
-
     - name: Add more failing tests because the sysroot is not compiled with LTO
-      run: cat failing-non-lto-tests.txt >> failing-ui-tests.txt
+      run: cat tests/failing-non-lto-tests.txt >> tests/failing-ui-tests.txt
 
     - name: Run tests
       run: |
-        # TODO: remove --features master when it is back to the default.
-        ./test.sh --features master --release --clean --build-sysroot ${{ matrix.commands }}
+        ./y.sh test --release --clean --build-sysroot ${{ matrix.commands }}
+
+    - name: Check formatting
+      run: cargo fmt -- --check
 
   duplicates:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
       - run: python tools/check_intrinsics_duplicates.py
+
+  build_system:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Test build system
+        run: |
+          cd build_system
+          cargo test

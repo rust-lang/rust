@@ -2,6 +2,7 @@
 //@ edition:2021
 //@ build-pass
 //@ revisions: current next
+//@ ignore-compare-mode-next-solver (explicit revisions)
 //@[next] compile-flags: -Znext-solver
 
 #![feature(async_closure)]

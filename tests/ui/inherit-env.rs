@@ -1,6 +1,5 @@
 //@ run-pass
-//@ ignore-emscripten
-//@ ignore-wasm32
+//@ ignore-wasm32 no subprocess support
 //@ ignore-sgx no processes
 
 use std::env;

@@ -26,7 +26,7 @@
   
       bb0: {
 -         StorageLive(_2);
--         _2 = const _ as usize (IntToInt);
+-         _2 = const core::num::<impl u64>::MAX as usize (IntToInt);
 +         nop;
 +         _2 = const usize::MAX;
           StorageLive(_3);

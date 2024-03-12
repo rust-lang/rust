@@ -15,7 +15,12 @@ pub fn target() -> Target {
         // MACOSX_DEPLOYMENT_TARGET. To enable cross-language LTO to work
         // correctly, we do too.
         llvm_target: macos_llvm_target(arch).into(),
-        description: None,
+        metadata: crate::spec::TargetMetadata {
+            description: None,
+            tier: None,
+            host_tools: None,
+            std: None,
+        },
         pointer_width: 64,
         data_layout: "e-m:o-i64:64-i128:128-n32:64-S128".into(),
         arch: arch.target_arch(),

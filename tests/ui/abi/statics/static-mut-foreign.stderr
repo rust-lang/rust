@@ -1,5 +1,5 @@
 warning: creating a shared reference to mutable static is discouraged
-  --> $DIR/static-mut-foreign.rs:35:18
+  --> $DIR/static-mut-foreign.rs:33:18
    |
 LL |     static_bound(&rust_dbg_static_mut);
    |                  ^^^^^^^^^^^^^^^^^^^^ shared reference to mutable static
@@ -14,7 +14,7 @@ LL |     static_bound(addr_of!(rust_dbg_static_mut));
    |                  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 warning: creating a mutable reference to mutable static is discouraged
-  --> $DIR/static-mut-foreign.rs:37:22
+  --> $DIR/static-mut-foreign.rs:35:22
    |
 LL |     static_bound_set(&mut rust_dbg_static_mut);
    |                      ^^^^^^^^^^^^^^^^^^^^^^^^ mutable reference to mutable static

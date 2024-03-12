@@ -1364,10 +1364,16 @@ impl<'ctx> MirLowerCtx<'ctx> {
         match loc {
             LiteralOrConst::Literal(l) => self.lower_literal_to_operand(ty, l),
             LiteralOrConst::Const(c) => {
-                let unresolved_name = || MirLowerError::unresolved_path(self.db, c);
+                let c = match &self.body.pats[*c] {
+                    Pat::Path(p) => p,
+                    _ => not_supported!(
+                        "only `char` and numeric types are allowed in range patterns"
+                    ),
+                };
+                let unresolved_name = || MirLowerError::unresolved_path(self.db, c.as_ref());
                 let resolver = self.owner.resolver(self.db.upcast());
                 let pr = resolver
-                    .resolve_path_in_value_ns(self.db.upcast(), c)
+                    .resolve_path_in_value_ns(self.db.upcast(), c.as_ref())
                     .ok_or_else(unresolved_name)?;
                 match pr {
                     ResolveValueResult::ValueNs(v, _) => {

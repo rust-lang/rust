@@ -2,8 +2,8 @@ use clippy_utils::ty::{has_iter_method, implements_trait};
 use clippy_utils::{get_parent_expr, is_integer_const, path_to_local, path_to_local_id, sugg};
 use rustc_ast::ast::{LitIntType, LitKind};
 use rustc_errors::Applicability;
-use rustc_hir::intravisit::{walk_expr, walk_local, walk_pat, walk_stmt, Visitor};
-use rustc_hir::{BinOpKind, BorrowKind, Expr, ExprKind, HirId, HirIdMap, Local, Mutability, Pat, PatKind, Stmt};
+use rustc_hir::intravisit::{walk_expr, walk_local, Visitor};
+use rustc_hir::{BinOpKind, BorrowKind, Expr, ExprKind, HirId, HirIdMap, Local, Mutability, PatKind};
 use rustc_lint::LateContext;
 use rustc_middle::hir::nested_filter;
 use rustc_middle::ty::{self, Ty};
@@ -251,62 +251,6 @@ fn is_loop(expr: &Expr<'_>) -> bool {
 
 fn is_conditional(expr: &Expr<'_>) -> bool {
     matches!(expr.kind, ExprKind::If(..) | ExprKind::Match(..))
-}
-
-#[derive(PartialEq, Eq)]
-pub(super) enum Nesting {
-    Unknown,     // no nesting detected yet
-    RuledOut,    // the iterator is initialized or assigned within scope
-    LookFurther, // no nesting detected, no further walk required
-}
-
-use self::Nesting::{LookFurther, RuledOut, Unknown};
-
-pub(super) struct LoopNestVisitor {
-    pub(super) hir_id: HirId,
-    pub(super) iterator: HirId,
-    pub(super) nesting: Nesting,
-}
-
-impl<'tcx> Visitor<'tcx> for LoopNestVisitor {
-    fn visit_stmt(&mut self, stmt: &'tcx Stmt<'_>) {
-        if stmt.hir_id == self.hir_id {
-            self.nesting = LookFurther;
-        } else if self.nesting == Unknown {
-            walk_stmt(self, stmt);
-        }
-    }
-
-    fn visit_expr(&mut self, expr: &'tcx Expr<'_>) {
-        if self.nesting != Unknown {
-            return;
-        }
-        if expr.hir_id == self.hir_id {
-            self.nesting = LookFurther;
-            return;
-        }
-        match expr.kind {
-            ExprKind::Assign(path, _, _) | ExprKind::AssignOp(_, path, _) => {
-                if path_to_local_id(path, self.iterator) {
-                    self.nesting = RuledOut;
-                }
-            },
-            _ => walk_expr(self, expr),
-        }
-    }
-
-    fn visit_pat(&mut self, pat: &'tcx Pat<'_>) {
-        if self.nesting != Unknown {
-            return;
-        }
-        if let PatKind::Binding(_, id, ..) = pat.kind {
-            if id == self.iterator {
-                self.nesting = RuledOut;
-                return;
-            }
-        }
-        walk_pat(self, pat);
-    }
 }
 
 /// If `arg` was the argument to a `for` loop, return the "cleanest" way of writing the

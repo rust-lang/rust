@@ -24,6 +24,7 @@ use rustc_span::symbol::Symbol;
 use rustc_target::spec::crt_objects::CrtObjects;
 use rustc_target::spec::LinkSelfContainedComponents;
 use rustc_target::spec::LinkSelfContainedDefault;
+use rustc_target::spec::LinkerFlavorCli;
 use rustc_target::spec::{Cc, LinkOutputKind, LinkerFlavor, Lld, PanicStrategy};
 use rustc_target::spec::{RelocModel, RelroLevel, SanitizerSet, SplitDebuginfo};
 
@@ -1350,6 +1351,7 @@ pub fn linker_and_flavor(sess: &Session) -> (PathBuf, LinkerFlavor) {
                         }
                     }
                     LinkerFlavor::Bpf => "bpf-linker",
+                    LinkerFlavor::Llbc => "llvm-bitcode-linker",
                     LinkerFlavor::Ptx => "rust-ptx-linker",
                 }),
                 flavor,
@@ -1367,8 +1369,17 @@ pub fn linker_and_flavor(sess: &Session) -> (PathBuf, LinkerFlavor) {
 
     // linker and linker flavor specified via command line have precedence over what the target
     // specification specifies
-    let linker_flavor =
-        sess.opts.cg.linker_flavor.map(|flavor| sess.target.linker_flavor.with_cli_hints(flavor));
+    let linker_flavor = match sess.opts.cg.linker_flavor {
+        // The linker flavors that are non-target specific can be directly translated to LinkerFlavor
+        Some(LinkerFlavorCli::Llbc) => Some(LinkerFlavor::Llbc),
+        Some(LinkerFlavorCli::Ptx) => Some(LinkerFlavor::Ptx),
+        // The linker flavors that corresponds to targets needs logic that keeps the base LinkerFlavor
+        _ => sess
+            .opts
+            .cg
+            .linker_flavor
+            .map(|flavor| sess.target.linker_flavor.with_cli_hints(flavor)),
+    };
     if let Some(ret) = infer_from(sess, sess.opts.cg.linker.clone(), linker_flavor) {
         return ret;
     }
@@ -2338,8 +2349,12 @@ fn add_order_independent_options(
         });
     }
 
-    if flavor == LinkerFlavor::Ptx {
-        // Provide the linker with fallback to internal `target-cpu`.
+    if flavor == LinkerFlavor::Llbc {
+        cmd.arg("--target");
+        cmd.arg(sess.target.llvm_target.as_ref());
+        cmd.arg("--target-cpu");
+        cmd.arg(&codegen_results.crate_info.target_cpu);
+    } else if flavor == LinkerFlavor::Ptx {
         cmd.arg("--fallback-arch");
         cmd.arg(&codegen_results.crate_info.target_cpu);
     } else if flavor == LinkerFlavor::Bpf {

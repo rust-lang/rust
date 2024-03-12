@@ -61,7 +61,7 @@
           StorageLive(_3);
           StorageLive(_4);
           StorageLive(_5);
-          _44 = const _;
+          _44 = const wide_ptr_provenance::promoted[1];
           _5 = &(*_44);
           _4 = &(*_5);
           _3 = move _4 as &dyn std::marker::Send (PointerCoercion(Unsize));
@@ -79,7 +79,7 @@
           StorageLive(_9);
           StorageLive(_10);
           StorageLive(_11);
-          _43 = const _;
+          _43 = const wide_ptr_provenance::promoted[0];
           _11 = &(*_43);
           _10 = &(*_11);
           _9 = move _10 as &dyn std::marker::Send (PointerCoercion(Unsize));

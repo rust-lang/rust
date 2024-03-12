@@ -8,10 +8,10 @@ use crate::thread;
 use crate::time::Duration;
 
 #[cfg(target_os = "android")]
-use crate::os::android::net::SocketAddrExt;
+use crate::os::android::net::{SocketAddrExt, UnixSocketExt};
 
 #[cfg(target_os = "linux")]
-use crate::os::linux::net::SocketAddrExt;
+use crate::os::linux::net::{SocketAddrExt, UnixSocketExt};
 
 macro_rules! or_panic {
     ($e:expr) => {

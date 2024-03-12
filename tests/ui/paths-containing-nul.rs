@@ -1,8 +1,7 @@
 //@ run-pass
 
 #![allow(deprecated)]
-//@ ignore-wasm32-bare no files or I/O
-//@ ignore-emscripten no files
+//@ ignore-wasm32 no cwd
 //@ ignore-sgx no files
 
 use std::fs;

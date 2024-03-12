@@ -424,7 +424,10 @@ impl<'ll, 'tcx> FnAbiLlvmExt<'ll, 'tcx> for FnAbi<'tcx, Ty<'tcx>> {
             PassMode::Indirect { attrs, meta_attrs: _, on_stack } => {
                 assert!(!on_stack);
                 let i = apply(attrs);
-                let sret = llvm::CreateStructRetAttr(cx.llcx, self.ret.layout.llvm_type(cx));
+                let sret = llvm::CreateStructRetAttr(
+                    cx.llcx,
+                    cx.type_array(cx.type_i8(), self.ret.layout.size.bytes()),
+                );
                 attributes::apply_to_llfn(llfn, llvm::AttributePlace::Argument(i), &[sret]);
             }
             PassMode::Cast { cast, pad_i32: _ } => {
@@ -437,7 +440,10 @@ impl<'ll, 'tcx> FnAbiLlvmExt<'ll, 'tcx> for FnAbi<'tcx, Ty<'tcx>> {
                 PassMode::Ignore => {}
                 PassMode::Indirect { attrs, meta_attrs: None, on_stack: true } => {
                     let i = apply(attrs);
-                    let byval = llvm::CreateByValAttr(cx.llcx, arg.layout.llvm_type(cx));
+                    let byval = llvm::CreateByValAttr(
+                        cx.llcx,
+                        cx.type_array(cx.type_i8(), arg.layout.size.bytes()),
+                    );
                     attributes::apply_to_llfn(llfn, llvm::AttributePlace::Argument(i), &[byval]);
                 }
                 PassMode::Direct(attrs)
@@ -486,7 +492,10 @@ impl<'ll, 'tcx> FnAbiLlvmExt<'ll, 'tcx> for FnAbi<'tcx, Ty<'tcx>> {
             PassMode::Indirect { attrs, meta_attrs: _, on_stack } => {
                 assert!(!on_stack);
                 let i = apply(bx.cx, attrs);
-                let sret = llvm::CreateStructRetAttr(bx.cx.llcx, self.ret.layout.llvm_type(bx));
+                let sret = llvm::CreateStructRetAttr(
+                    bx.cx.llcx,
+                    bx.cx.type_array(bx.cx.type_i8(), self.ret.layout.size.bytes()),
+                );
                 attributes::apply_to_callsite(callsite, llvm::AttributePlace::Argument(i), &[sret]);
             }
             PassMode::Cast { cast, pad_i32: _ } => {
@@ -513,7 +522,10 @@ impl<'ll, 'tcx> FnAbiLlvmExt<'ll, 'tcx> for FnAbi<'tcx, Ty<'tcx>> {
                 PassMode::Ignore => {}
                 PassMode::Indirect { attrs, meta_attrs: None, on_stack: true } => {
                     let i = apply(bx.cx, attrs);
-                    let byval = llvm::CreateByValAttr(bx.cx.llcx, arg.layout.llvm_type(bx));
+                    let byval = llvm::CreateByValAttr(
+                        bx.cx.llcx,
+                        bx.cx.type_array(bx.cx.type_i8(), arg.layout.size.bytes()),
+                    );
                     attributes::apply_to_callsite(
                         callsite,
                         llvm::AttributePlace::Argument(i),

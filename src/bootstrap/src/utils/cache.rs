@@ -194,17 +194,6 @@ impl Interner {
     pub fn intern_str(&self, s: &str) -> Interned<String> {
         self.strs.lock().unwrap().intern_borrow(s)
     }
-    pub fn intern_string(&self, s: String) -> Interned<String> {
-        self.strs.lock().unwrap().intern(s)
-    }
-
-    pub fn intern_path(&self, s: PathBuf) -> Interned<PathBuf> {
-        self.paths.lock().unwrap().intern(s)
-    }
-
-    pub fn intern_list(&self, v: Vec<String>) -> Interned<Vec<String>> {
-        self.lists.lock().unwrap().intern(v)
-    }
 }
 
 pub static INTERNER: Lazy<Interner> = Lazy::new(Interner::default);

@@ -1,5 +1,5 @@
 error[E0733]: recursion in a coroutine requires boxing
-  --> $DIR/recursive-coroutine-indirect.rs:10:5
+  --> $DIR/recursive-coroutine-indirect.rs:11:5
    |
 LL |     move || {
    |     ^^^^^^^

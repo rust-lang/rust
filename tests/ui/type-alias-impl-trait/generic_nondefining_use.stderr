@@ -31,15 +31,6 @@ note: for this opaque type
 LL | type OneLifetime<'a> = impl Debug;
    |                        ^^^^^^^^^^
 
-error[E0792]: expected generic lifetime parameter, found `'static`
-  --> $DIR/generic_nondefining_use.rs:23:5
-   |
-LL | type OneLifetime<'a> = impl Debug;
-   |                  -- cannot use static lifetime; use a bound lifetime instead or remove the lifetime parameter from the opaque type
-...
-LL |     6u32
-   |     ^^^^
-
 error[E0792]: non-defining opaque type use in defining scope
   --> $DIR/generic_nondefining_use.rs:27:24
    |
@@ -51,6 +42,15 @@ note: for this opaque type
    |
 LL | type OneConst<const X: usize> = impl Debug;
    |                                 ^^^^^^^^^^
+
+error[E0792]: expected generic lifetime parameter, found `'static`
+  --> $DIR/generic_nondefining_use.rs:23:5
+   |
+LL | type OneLifetime<'a> = impl Debug;
+   |                  -- cannot use static lifetime; use a bound lifetime instead or remove the lifetime parameter from the opaque type
+...
+LL |     6u32
+   |     ^^^^
 
 error[E0792]: expected generic constant parameter, found `123`
   --> $DIR/generic_nondefining_use.rs:29:5

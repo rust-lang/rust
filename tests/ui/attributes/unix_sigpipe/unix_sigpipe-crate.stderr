@@ -1,7 +1,7 @@
 error: `unix_sigpipe` attribute cannot be used at crate level
   --> $DIR/unix_sigpipe-crate.rs:2:1
    |
-LL | #![unix_sigpipe = "inherit"]
+LL | #![unix_sigpipe = "sig_dfl"]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 LL |
 LL | fn main() {}
@@ -9,8 +9,8 @@ LL | fn main() {}
    |
 help: perhaps you meant to use an outer attribute
    |
-LL - #![unix_sigpipe = "inherit"]
-LL + #[unix_sigpipe = "inherit"]
+LL - #![unix_sigpipe = "sig_dfl"]
+LL + #[unix_sigpipe = "sig_dfl"]
    |
 
 error: aborting due to 1 previous error

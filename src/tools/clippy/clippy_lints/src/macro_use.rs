@@ -30,12 +30,6 @@ declare_clippy_lint! {
     "#[macro_use] is no longer needed"
 }
 
-#[derive(Clone, Debug, PartialEq, Eq)]
-struct PathAndSpan {
-    path: String,
-    span: Span,
-}
-
 /// `MacroRefData` includes the name of the macro.
 #[derive(Debug, Clone)]
 pub struct MacroRefData {

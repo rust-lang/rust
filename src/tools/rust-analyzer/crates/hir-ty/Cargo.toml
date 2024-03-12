@@ -45,7 +45,6 @@ intern.workspace = true
 hir-def.workspace = true
 hir-expand.workspace = true
 base-db.workspace = true
-profile.workspace = true
 syntax.workspace = true
 limit.workspace = true
 

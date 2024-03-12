@@ -4,3 +4,4 @@ version = "0.0.0"
 edition = "2021"
 
 [dependencies]
+wasmparser = "0.118.2"

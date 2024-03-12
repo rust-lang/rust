@@ -5,7 +5,6 @@ extend-exclude = [
     "crates/parser/test_data/lexer/err/",
     "crates/project-model/test_data/",
 ]
-ignore-hidden = false
 
 [default]
 extend-ignore-re = [

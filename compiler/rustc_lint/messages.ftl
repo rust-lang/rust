@@ -186,7 +186,7 @@ lint_deprecated_lint_name =
     .help = change it to {$replace}
 
 lint_diag_out_of_impl =
-    diagnostics should only be created in `IntoDiagnostic`/`AddToDiagnostic` impls
+    diagnostics should only be created in `Diagnostic`/`Subdiagnostic`/`LintDiagnostic` impls
 
 lint_drop_glue =
     types that do not implement `Drop` can still have drop glue, consider instead using `{$needs_drop}` to detect whether a type is trivially dropped
@@ -561,8 +561,6 @@ lint_suspicious_double_ref_clone =
 
 lint_suspicious_double_ref_deref =
     using `.deref()` on a double reference, which returns `{$ty}` instead of dereferencing the inner type
-
-lint_trivial_untranslatable_diag = diagnostic with static strings only
 
 lint_ty_qualified = usage of qualified `ty::{$ty}`
     .suggestion = try importing it and using it unqualified

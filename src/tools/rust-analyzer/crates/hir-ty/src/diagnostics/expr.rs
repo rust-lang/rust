@@ -60,12 +60,17 @@ pub enum BodyValidationDiagnostic {
 }
 
 impl BodyValidationDiagnostic {
-    pub fn collect(db: &dyn HirDatabase, owner: DefWithBodyId) -> Vec<BodyValidationDiagnostic> {
+    pub fn collect(
+        db: &dyn HirDatabase,
+        owner: DefWithBodyId,
+        validate_lints: bool,
+    ) -> Vec<BodyValidationDiagnostic> {
         let _p =
             tracing::span!(tracing::Level::INFO, "BodyValidationDiagnostic::collect").entered();
         let infer = db.infer(owner);
         let body = db.body(owner);
-        let mut validator = ExprValidator { owner, body, infer, diagnostics: Vec::new() };
+        let mut validator =
+            ExprValidator { owner, body, infer, diagnostics: Vec::new(), validate_lints };
         validator.validate_body(db);
         validator.diagnostics
     }
@@ -76,6 +81,7 @@ struct ExprValidator {
     body: Arc<Body>,
     infer: Arc<InferenceResult>,
     diagnostics: Vec<BodyValidationDiagnostic>,
+    validate_lints: bool,
 }
 
 impl ExprValidator {
@@ -139,6 +145,9 @@ impl ExprValidator {
         expr: &Expr,
         filter_map_next_checker: &mut Option<FilterMapNextChecker>,
     ) {
+        if !self.validate_lints {
+            return;
+        }
         // Check that the number of arguments matches the number of parameters.
 
         if self.infer.expr_type_mismatches().next().is_some() {
@@ -173,7 +182,7 @@ impl ExprValidator {
         db: &dyn HirDatabase,
     ) {
         let scrut_ty = &self.infer[scrutinee_expr];
-        if scrut_ty.is_unknown() {
+        if scrut_ty.contains_unknown() {
             return;
         }
 
@@ -230,6 +239,7 @@ impl ExprValidator {
             m_arms.as_slice(),
             scrut_ty.clone(),
             ValidityConstraint::ValidOnly,
+            None,
         ) {
             Ok(report) => report,
             Err(()) => return,
@@ -257,6 +267,9 @@ impl ExprValidator {
             };
             let Some(initializer) = initializer else { continue };
             let ty = &self.infer[initializer];
+            if ty.contains_unknown() {
+                continue;
+            }
 
             let mut have_errors = false;
             let deconstructed_pat = self.lower_pattern(&cx, pat, db, &mut have_errors);
@@ -274,6 +287,7 @@ impl ExprValidator {
                 &[match_arm],
                 ty.clone(),
                 ValidityConstraint::ValidOnly,
+                None,
             ) {
                 Ok(v) => v,
                 Err(e) => {
@@ -308,6 +322,9 @@ impl ExprValidator {
     }
 
     fn check_for_trailing_return(&mut self, body_expr: ExprId, body: &Body) {
+        if !self.validate_lints {
+            return;
+        }
         match &body.exprs[body_expr] {
             Expr::Block { statements, tail, .. } => {
                 let last_stmt = tail.or_else(|| match statements.last()? {
@@ -340,6 +357,9 @@ impl ExprValidator {
     }
 
     fn check_for_unnecessary_else(&mut self, id: ExprId, expr: &Expr, db: &dyn HirDatabase) {
+        if !self.validate_lints {
+            return;
+        }
         if let Expr::If { condition: _, then_branch, else_branch } = expr {
             if else_branch.is_none() {
                 return;

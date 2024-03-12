@@ -10,7 +10,6 @@ use hir_expand::{
     ExpandError, InFile,
 };
 use intern::Interned;
-use profile::Count;
 use rustc_hash::FxHashMap;
 use smallvec::SmallVec;
 use span::AstIdMap;
@@ -76,7 +75,6 @@ pub(super) fn lower(
             params: Vec::new(),
             body_expr: dummy_expr_id(),
             block_scopes: Vec::new(),
-            _c: Count::new(),
         },
         expander,
         current_try_block_label: None,
@@ -705,7 +703,8 @@ impl ExprCollector<'_> {
         let Some(try_from_output) = LangItem::TryTraitFromOutput.path(self.db, self.krate) else {
             return self.collect_block(e);
         };
-        let label = self.alloc_label_desugared(Label { name: Name::generate_new_name() });
+        let label = self
+            .alloc_label_desugared(Label { name: Name::generate_new_name(self.body.labels.len()) });
         let old_label = self.current_try_block_label.replace(label);
 
         let (btail, expr_id) = self.with_labeled_rib(label, |this| {
@@ -842,7 +841,7 @@ impl ExprCollector<'_> {
                 this.collect_expr_opt(e.loop_body().map(|it| it.into()))
             }),
         };
-        let iter_name = Name::generate_new_name();
+        let iter_name = Name::generate_new_name(self.body.exprs.len());
         let iter_expr = self.alloc_expr(Expr::Path(Path::from(iter_name.clone())), syntax_ptr);
         let iter_expr_mut = self.alloc_expr(
             Expr::Ref { expr: iter_expr, rawness: Rawness::Ref, mutability: Mutability::Mut },
@@ -903,7 +902,7 @@ impl ExprCollector<'_> {
             Expr::Call { callee: try_branch, args: Box::new([operand]), is_assignee_expr: false },
             syntax_ptr,
         );
-        let continue_name = Name::generate_new_name();
+        let continue_name = Name::generate_new_name(self.body.bindings.len());
         let continue_binding =
             self.alloc_binding(continue_name.clone(), BindingAnnotation::Unannotated);
         let continue_bpat =
@@ -918,7 +917,7 @@ impl ExprCollector<'_> {
             guard: None,
             expr: self.alloc_expr(Expr::Path(Path::from(continue_name)), syntax_ptr),
         };
-        let break_name = Name::generate_new_name();
+        let break_name = Name::generate_new_name(self.body.bindings.len());
         let break_binding = self.alloc_binding(break_name.clone(), BindingAnnotation::Unannotated);
         let break_bpat = self.alloc_pat_desugared(Pat::Bind { id: break_binding, subpat: None });
         self.add_definition_to_binding(break_binding, break_bpat);
@@ -1415,16 +1414,10 @@ impl ExprCollector<'_> {
                         ast::Pat::LiteralPat(it) => {
                             Some(Box::new(LiteralOrConst::Literal(pat_literal_to_hir(it)?.0)))
                         }
-                        ast::Pat::IdentPat(p) => {
-                            let name =
-                                p.name().map(|nr| nr.as_name()).unwrap_or_else(Name::missing);
-                            Some(Box::new(LiteralOrConst::Const(name.into())))
+                        pat @ (ast::Pat::IdentPat(_) | ast::Pat::PathPat(_)) => {
+                            let subpat = self.collect_pat(pat.clone(), binding_list);
+                            Some(Box::new(LiteralOrConst::Const(subpat)))
                         }
-                        ast::Pat::PathPat(p) => p
-                            .path()
-                            .and_then(|path| self.expander.parse_path(self.db, path))
-                            .map(LiteralOrConst::Const)
-                            .map(Box::new),
                         _ => None,
                     })
                 };

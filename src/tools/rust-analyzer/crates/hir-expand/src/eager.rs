@@ -27,7 +27,6 @@ use crate::{
     ast::{self, AstNode},
     db::ExpandDatabase,
     mod_path::ModPath,
-    span_map::SpanMapRef,
     EagerCallInfo, ExpandError, ExpandResult, ExpandTo, ExpansionSpanMap, InFile, Intern,
     MacroCallId, MacroCallKind, MacroCallLoc, MacroDefId, MacroDefKind,
 };
@@ -155,10 +154,9 @@ fn eager_macro_recur(
             }
         };
 
-        let def = match call
-            .path()
-            .and_then(|path| ModPath::from_src(db, path, SpanMapRef::ExpansionSpanMap(span_map)))
-        {
+        let def = match call.path().and_then(|path| {
+            ModPath::from_src(db, path, &mut |range| span_map.span_at(range.start()).ctx)
+        }) {
             Some(path) => match macro_resolver(path.clone()) {
                 Some(def) => def,
                 None => {

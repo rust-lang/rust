@@ -16,7 +16,7 @@ use crate::{
 use rustc_ast as ast;
 use rustc_ast_pretty::pprust;
 use rustc_data_structures::fx::FxIndexMap;
-use rustc_errors::{DecorateLint, Diag, DiagMessage, MultiSpan};
+use rustc_errors::{Diag, DiagMessage, LintDiagnostic, MultiSpan};
 use rustc_feature::{Features, GateIssue};
 use rustc_hir as hir;
 use rustc_hir::intravisit::{self, Visitor};
@@ -1119,7 +1119,7 @@ impl<'s, P: LintLevelsProvider> LintLevelsBuilder<'s, P> {
         &self,
         lint: &'static Lint,
         span: MultiSpan,
-        decorate: impl for<'a> DecorateLint<'a, ()>,
+        decorate: impl for<'a> LintDiagnostic<'a, ()>,
     ) {
         let (level, src) = self.lint_level(lint);
         lint_level(self.sess, lint, level, src, Some(span), decorate.msg(), |lint| {
@@ -1128,7 +1128,7 @@ impl<'s, P: LintLevelsProvider> LintLevelsBuilder<'s, P> {
     }
 
     #[track_caller]
-    pub fn emit_lint(&self, lint: &'static Lint, decorate: impl for<'a> DecorateLint<'a, ()>) {
+    pub fn emit_lint(&self, lint: &'static Lint, decorate: impl for<'a> LintDiagnostic<'a, ()>) {
         let (level, src) = self.lint_level(lint);
         lint_level(self.sess, lint, level, src, None, decorate.msg(), |lint| {
             decorate.decorate_lint(lint);

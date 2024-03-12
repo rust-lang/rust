@@ -16,7 +16,7 @@ use rustc_middle::traits::solve::{
     CanonicalInput, CanonicalResponse, Certainty, IsNormalizesToHack, PredefinedOpaques,
     PredefinedOpaquesData, QueryResult,
 };
-use rustc_middle::traits::{specialization_graph, DefiningAnchor};
+use rustc_middle::traits::specialization_graph;
 use rustc_middle::ty::{
     self, InferCtxtLike, OpaqueTypeKey, Ty, TyCtxt, TypeFoldable, TypeSuperVisitable,
     TypeVisitable, TypeVisitableExt, TypeVisitor,
@@ -258,10 +258,7 @@ impl<'a, 'tcx> EvalCtxt<'a, 'tcx> {
         // instead of taking them. This would cause an ICE here, since we have
         // assertions against dropping an `InferCtxt` without taking opaques.
         // FIXME: Once we remove support for the old impl we can remove this.
-        if input.anchor != DefiningAnchor::Error {
-            // This seems ok, but fragile.
-            let _ = infcx.take_opaque_types();
-        }
+        let _ = infcx.take_opaque_types();
 
         result
     }

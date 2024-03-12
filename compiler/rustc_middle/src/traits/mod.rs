@@ -12,8 +12,8 @@ pub mod util;
 use crate::infer::canonical::Canonical;
 use crate::mir::ConstraintCategory;
 use crate::ty::abstract_const::NotConstEvaluatable;
-use crate::ty::GenericArgsRef;
 use crate::ty::{self, AdtKind, Ty};
+use crate::ty::{GenericArgsRef, TyCtxt};
 
 use rustc_data_structures::sync::Lrc;
 use rustc_errors::{Applicability, Diag, EmissionGuarantee};
@@ -1001,10 +1001,14 @@ pub enum CodegenObligationError {
 /// opaques are replaced with inference vars eagerly in the old solver (e.g.
 /// in projection, and in the signature during function type-checking).
 #[derive(Debug, PartialEq, Eq, Clone, Copy, Hash, HashStable, TypeFoldable, TypeVisitable)]
-pub enum DefiningAnchor {
-    /// Define opaques which are in-scope of the `LocalDefId`. Also, eagerly
-    /// replace opaque types in `replace_opaque_types_with_inference_vars`.
-    Bind(LocalDefId),
+pub enum DefiningAnchor<'tcx> {
+    /// Define opaques which are in-scope of the current item being analyzed.
+    /// Also, eagerly replace these opaque types in `replace_opaque_types_with_inference_vars`.
+    ///
+    /// If the list is empty, do not allow any opaques to be defined. This is used to catch type mismatch
+    /// errors when handling opaque types, and also should be used when we would
+    /// otherwise reveal opaques (such as [`Reveal::All`] reveal mode).
+    Bind(&'tcx ty::List<LocalDefId>),
     /// In contexts where we don't currently know what opaques are allowed to be
     /// defined, such as (old solver) canonical queries, we will simply allow
     /// opaques to be defined, but "bubble" them up in the canonical response or
@@ -1013,8 +1017,10 @@ pub enum DefiningAnchor {
     /// We do not eagerly replace opaque types in `replace_opaque_types_with_inference_vars`,
     /// which may affect what predicates pass and fail in the old trait solver.
     Bubble,
-    /// Do not allow any opaques to be defined. This is used to catch type mismatch
-    /// errors when handling opaque types, and also should be used when we would
-    /// otherwise reveal opaques (such as [`Reveal::All`] reveal mode).
-    Error,
+}
+
+impl<'tcx> DefiningAnchor<'tcx> {
+    pub fn bind(tcx: TyCtxt<'tcx>, item: LocalDefId) -> Self {
+        Self::Bind(tcx.opaque_types_defined_by(item))
+    }
 }

@@ -1,14 +1,15 @@
 //! The main loop of `rust-analyzer` responsible for dispatching LSP
 //! requests/replies and notifications back to the client.
-use crate::lsp::ext;
+
 use std::{
     fmt,
     time::{Duration, Instant},
 };
 
 use always_assert::always;
-use crossbeam_channel::{select, Receiver};
+use crossbeam_channel::{never, select, Receiver};
 use ide_db::base_db::{SourceDatabase, SourceDatabaseExt, VfsPath};
+use itertools::Itertools;
 use lsp_server::{Connection, Notification, Request};
 use lsp_types::notification::Notification as _;
 use stdx::thread::ThreadIntent;
@@ -19,8 +20,9 @@ use crate::{
     diagnostics::fetch_native_diagnostics,
     dispatch::{NotificationDispatcher, RequestDispatcher},
     global_state::{file_id_to_url, url_to_file_id, GlobalState},
+    hack_recover_crate_name,
     lsp::{
-        from_proto,
+        from_proto, to_proto,
         utils::{notification_is, Progress},
     },
     lsp_ext,
@@ -58,6 +60,7 @@ enum Event {
     QueuedTask(QueuedTask),
     Vfs(vfs::loader::Message),
     Flycheck(flycheck::Message),
+    TestResult(flycheck::CargoTestMessage),
 }
 
 impl fmt::Display for Event {
@@ -68,6 +71,7 @@ impl fmt::Display for Event {
             Event::Vfs(_) => write!(f, "Event::Vfs"),
             Event::Flycheck(_) => write!(f, "Event::Flycheck"),
             Event::QueuedTask(_) => write!(f, "Event::QueuedTask"),
+            Event::TestResult(_) => write!(f, "Event::TestResult"),
         }
     }
 }
@@ -81,9 +85,10 @@ pub(crate) enum QueuedTask {
 #[derive(Debug)]
 pub(crate) enum Task {
     Response(lsp_server::Response),
-    ClientNotification(ext::UnindexedProjectParams),
+    ClientNotification(lsp_ext::UnindexedProjectParams),
     Retry(lsp_server::Request),
     Diagnostics(Vec<(FileId, Vec<lsp_types::Diagnostic>)>),
+    DiscoverTest(lsp_ext::DiscoverTestResults),
     PrimeCaches(PrimeCachesProgress),
     FetchWorkspace(ProjectWorkspaceProgress),
     FetchBuildData(BuildDataProgress),
@@ -127,6 +132,7 @@ impl fmt::Debug for Event {
             Event::QueuedTask(it) => fmt::Debug::fmt(it, f),
             Event::Vfs(it) => fmt::Debug::fmt(it, f),
             Event::Flycheck(it) => fmt::Debug::fmt(it, f),
+            Event::TestResult(it) => fmt::Debug::fmt(it, f),
         }
     }
 }
@@ -214,6 +220,10 @@ impl GlobalState {
 
             recv(self.flycheck_receiver) -> task =>
                 Some(Event::Flycheck(task.unwrap())),
+
+            recv(self.test_run_session.as_ref().map(|s| s.receiver()).unwrap_or(&never())) -> task =>
+                Some(Event::TestResult(task.unwrap())),
+
         }
     }
 
@@ -322,6 +332,18 @@ impl GlobalState {
                     self.handle_flycheck_msg(message);
                 }
             }
+            Event::TestResult(message) => {
+                let _p =
+                    tracing::span!(tracing::Level::INFO, "GlobalState::handle_event/test_result")
+                        .entered();
+                self.handle_cargo_test_msg(message);
+                // Coalesce many test result event into a single loop turn
+                while let Some(message) =
+                    self.test_run_session.as_ref().and_then(|r| r.receiver().try_recv().ok())
+                {
+                    self.handle_cargo_test_msg(message);
+                }
+            }
         }
         let event_handling_duration = loop_start.elapsed();
 
@@ -364,10 +386,12 @@ impl GlobalState {
                 }
             }
 
-            let update_diagnostics = (!was_quiescent || state_changed || memdocs_added_or_removed)
-                && self.config.publish_diagnostics();
-            if update_diagnostics {
-                self.update_diagnostics()
+            let things_changed = !was_quiescent || state_changed || memdocs_added_or_removed;
+            if things_changed && self.config.publish_diagnostics() {
+                self.update_diagnostics();
+            }
+            if things_changed && self.config.test_explorer() {
+                self.update_tests();
             }
         }
 
@@ -488,6 +512,55 @@ impl GlobalState {
         });
     }
 
+    fn update_tests(&mut self) {
+        let db = self.analysis_host.raw_database();
+        let subscriptions = self
+            .mem_docs
+            .iter()
+            .map(|path| self.vfs.read().0.file_id(path).unwrap())
+            .filter(|&file_id| {
+                let source_root = db.file_source_root(file_id);
+                !db.source_root(source_root).is_library
+            })
+            .collect::<Vec<_>>();
+        tracing::trace!("updating tests for {:?}", subscriptions);
+
+        // Updating tests are triggered by the user typing
+        // so we run them on a latency sensitive thread.
+        self.task_pool.handle.spawn(ThreadIntent::LatencySensitive, {
+            let snapshot = self.snapshot();
+            move || {
+                let tests = subscriptions
+                    .into_iter()
+                    .filter_map(|f| snapshot.analysis.crates_for(f).ok())
+                    .flatten()
+                    .unique()
+                    .filter_map(|c| snapshot.analysis.discover_tests_in_crate(c).ok())
+                    .flatten()
+                    .collect::<Vec<_>>();
+                for t in &tests {
+                    hack_recover_crate_name::insert_name(t.id.clone());
+                }
+                let scope = tests
+                    .iter()
+                    .filter_map(|t| Some(t.id.split_once("::")?.0))
+                    .unique()
+                    .map(|it| it.to_owned())
+                    .collect();
+                Task::DiscoverTest(lsp_ext::DiscoverTestResults {
+                    tests: tests
+                        .into_iter()
+                        .map(|t| {
+                            let line_index = t.file.and_then(|f| snapshot.file_line_index(f).ok());
+                            to_proto::test_item(&snapshot, t, line_index.as_ref())
+                        })
+                        .collect(),
+                    scope,
+                })
+            }
+        });
+    }
+
     fn update_status_or_notify(&mut self) {
         let status = self.current_status();
         if self.last_reported_status.as_ref() != Some(&status) {
@@ -598,6 +671,9 @@ impl GlobalState {
                 }
             }
             Task::BuildDepsHaveChanged => self.build_deps_changed = true,
+            Task::DiscoverTest(tests) => {
+                self.send_notification::<lsp_ext::DiscoveredTests>(tests);
+            }
         }
     }
 
@@ -666,7 +742,7 @@ impl GlobalState {
                     let id = from_proto::file_id(&snap, &uri).expect("unable to get FileId");
                     if let Ok(crates) = &snap.analysis.crates_for(id) {
                         if crates.is_empty() {
-                            let params = ext::UnindexedProjectParams {
+                            let params = lsp_ext::UnindexedProjectParams {
                                 text_documents: vec![lsp_types::TextDocumentIdentifier { uri }],
                             };
                             sender.send(Task::ClientNotification(params)).unwrap();
@@ -694,6 +770,32 @@ impl GlobalState {
                         }
                     }
                 });
+            }
+        }
+    }
+
+    fn handle_cargo_test_msg(&mut self, message: flycheck::CargoTestMessage) {
+        match message {
+            flycheck::CargoTestMessage::Test { name, state } => {
+                let state = match state {
+                    flycheck::TestState::Started => lsp_ext::TestState::Started,
+                    flycheck::TestState::Ignored => lsp_ext::TestState::Skipped,
+                    flycheck::TestState::Ok => lsp_ext::TestState::Passed,
+                    flycheck::TestState::Failed { stdout } => {
+                        lsp_ext::TestState::Failed { message: stdout }
+                    }
+                };
+                let Some(test_id) = hack_recover_crate_name::lookup_name(name) else {
+                    return;
+                };
+                self.send_notification::<lsp_ext::ChangeTestState>(
+                    lsp_ext::ChangeTestStateParams { test_id, state },
+                );
+            }
+            flycheck::CargoTestMessage::Suite => (),
+            flycheck::CargoTestMessage::Finished => {
+                self.send_notification::<lsp_ext::EndRunTest>(());
+                self.test_run_session = None;
             }
         }
     }
@@ -803,6 +905,7 @@ impl GlobalState {
             .on_sync_mut::<lsp_ext::RebuildProcMacros>(handlers::handle_proc_macros_rebuild)
             .on_sync_mut::<lsp_ext::MemoryUsage>(handlers::handle_memory_usage)
             .on_sync_mut::<lsp_ext::ShuffleCrateGraph>(handlers::handle_shuffle_crate_graph)
+            .on_sync_mut::<lsp_ext::RunTest>(handlers::handle_run_test)
             // Request handlers which are related to the user typing
             // are run on the main thread to reduce latency:
             .on_sync::<lsp_ext::JoinLines>(handlers::handle_join_lines)
@@ -843,6 +946,7 @@ impl GlobalState {
             .on::<lsp_ext::ViewFileText>(handlers::handle_view_file_text)
             .on::<lsp_ext::ViewCrateGraph>(handlers::handle_view_crate_graph)
             .on::<lsp_ext::ViewItemTree>(handlers::handle_view_item_tree)
+            .on::<lsp_ext::DiscoverTest>(handlers::handle_discover_test)
             .on::<lsp_ext::ExpandMacro>(handlers::handle_expand_macro)
             .on::<lsp_ext::ParentModule>(handlers::handle_parent_module)
             .on::<lsp_ext::Runnables>(handlers::handle_runnables)
@@ -906,6 +1010,7 @@ impl GlobalState {
             .on_sync_mut::<lsp_ext::CancelFlycheck>(handlers::handle_cancel_flycheck)?
             .on_sync_mut::<lsp_ext::ClearFlycheck>(handlers::handle_clear_flycheck)?
             .on_sync_mut::<lsp_ext::RunFlycheck>(handlers::handle_run_flycheck)?
+            .on_sync_mut::<lsp_ext::AbortRunTest>(handlers::handle_abort_run_test)?
             .finish();
         Ok(())
     }

@@ -1,5 +1,5 @@
 //@ run-pass
-//@ ignore-emscripten no processes
+//@ ignore-wasm32 no processes
 //@ ignore-sgx no processes
 //@ needs-unwind
 

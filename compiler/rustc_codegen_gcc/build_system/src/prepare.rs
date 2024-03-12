@@ -1,10 +1,16 @@
 use crate::rustc_info::get_rustc_path;
-use crate::utils::{cargo_install, git_clone, run_command, run_command_with_output, walk_dir};
+use crate::utils::{
+    cargo_install, git_clone_root_dir, remove_file, run_command, run_command_with_output, walk_dir,
+};
 
 use std::fs;
 use std::path::Path;
 
-fn prepare_libcore(sysroot_path: &Path, libgccjit12_patches: bool, cross_compile: bool) -> Result<(), String> {
+fn prepare_libcore(
+    sysroot_path: &Path,
+    libgccjit12_patches: bool,
+    cross_compile: bool,
+) -> Result<(), String> {
     let rustc_path = match get_rustc_path() {
         Some(path) => path,
         None => return Err("`rustc` path not found".to_string()),
@@ -88,10 +94,14 @@ fn prepare_libcore(sysroot_path: &Path, libgccjit12_patches: bool, cross_compile
         },
     )?;
     if cross_compile {
-        walk_dir("cross_patches", |_| Ok(()), |file_path: &Path| {
-            patches.push(file_path.to_path_buf());
-            Ok(())
-        })?;
+        walk_dir(
+            "patches/cross_patches",
+            |_| Ok(()),
+            |file_path: &Path| {
+                patches.push(file_path.to_path_buf());
+                Ok(())
+            },
+        )?;
     }
     if libgccjit12_patches {
         walk_dir(
@@ -121,6 +131,30 @@ fn prepare_libcore(sysroot_path: &Path, libgccjit12_patches: bool, cross_compile
         )?;
     }
     println!("Successfully prepared libcore for building");
+
+    Ok(())
+}
+
+// TODO: remove when we can ignore warnings in rustdoc tests.
+fn prepare_rand() -> Result<(), String> {
+    // Apply patch for the rand crate.
+    let file_path = "patches/crates/0001-Remove-deny-warnings.patch";
+    let rand_dir = Path::new("build/rand");
+    println!("[GIT] apply `{}`", file_path);
+    let path = Path::new("../..").join(file_path);
+    run_command_with_output(&[&"git", &"apply", &path], Some(rand_dir))?;
+    run_command_with_output(&[&"git", &"add", &"-A"], Some(rand_dir))?;
+    run_command_with_output(
+        &[
+            &"git",
+            &"commit",
+            &"--no-gpg-sign",
+            &"-m",
+            &format!("Patch {}", path.display()),
+        ],
+        Some(rand_dir),
+    )?;
+
     Ok(())
 }
 
@@ -129,8 +163,7 @@ fn build_raytracer(repo_dir: &Path) -> Result<(), String> {
     run_command(&[&"cargo", &"build"], Some(repo_dir))?;
     let mv_target = repo_dir.join("raytracer_cg_llvm");
     if mv_target.is_file() {
-        std::fs::remove_file(&mv_target)
-            .map_err(|e| format!("Failed to remove file `{}`: {e:?}", mv_target.display()))?;
+        remove_file(&mv_target)?;
     }
     run_command(
         &[&"mv", &"target/debug/main", &"raytracer_cg_llvm"],
@@ -143,28 +176,13 @@ fn clone_and_setup<F>(repo_url: &str, checkout_commit: &str, extra: Option<F>) -
 where
     F: Fn(&Path) -> Result<(), String>,
 {
-    let clone_result = git_clone(repo_url, None)?;
+    let clone_result = git_clone_root_dir(repo_url, &Path::new(crate::BUILD_DIR), false)?;
     if !clone_result.ran_clone {
         println!("`{}` has already been cloned", clone_result.repo_name);
     }
-    let repo_path = Path::new(&clone_result.repo_name);
+    let repo_path = Path::new(crate::BUILD_DIR).join(&clone_result.repo_name);
     run_command(&[&"git", &"checkout", &"--", &"."], Some(&repo_path))?;
     run_command(&[&"git", &"checkout", &checkout_commit], Some(&repo_path))?;
-    let filter = format!("-{}-", clone_result.repo_name);
-    walk_dir(
-        "crate_patches",
-        |_| Ok(()),
-        |file_path| {
-            let patch = file_path.as_os_str().to_str().unwrap();
-            if patch.contains(&filter) && patch.ends_with(".patch") {
-                run_command_with_output(
-                    &[&"git", &"am", &file_path.canonicalize().unwrap()],
-                    Some(&repo_path),
-                )?;
-            }
-            Ok(())
-        },
-    )?;
     if let Some(extra) = extra {
         extra(&repo_path)?;
     }
@@ -210,8 +228,7 @@ impl PrepareArg {
     --only-libcore           : Only setup libcore and don't clone other repositories
     --cross                  : Apply the patches needed to do cross-compilation
     --libgccjit12-patches    : Apply patches needed for libgccjit12
-    --help                   : Show this help
-"#
+    --help                   : Show this help"#
         )
     }
 }
@@ -230,7 +247,7 @@ pub fn run() -> Result<(), String> {
         let to_clone = &[
             (
                 "https://github.com/rust-random/rand.git",
-                "0f933f9c7176e53b2a3c7952ded484e1783f0bf1",
+                "1f4507a8e1cf8050e4ceef95eeda8f64645b6719",
                 None,
             ),
             (
@@ -248,6 +265,8 @@ pub fn run() -> Result<(), String> {
         for (repo_url, checkout_commit, cb) in to_clone {
             clone_and_setup(repo_url, checkout_commit, *cb)?;
         }
+
+        prepare_rand()?;
     }
 
     println!("Successfully ran `prepare`");

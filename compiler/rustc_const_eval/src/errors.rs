@@ -1,7 +1,7 @@
 use std::borrow::Cow;
 
 use rustc_errors::{
-    codes::*, Diag, DiagArgValue, DiagCtxt, DiagMessage, EmissionGuarantee, IntoDiagnostic, Level,
+    codes::*, Diag, DiagArgValue, DiagCtxt, DiagMessage, Diagnostic, EmissionGuarantee, Level,
 };
 use rustc_hir::ConstContext;
 use rustc_macros::{Diagnostic, LintDiagnostic, Subdiagnostic};
@@ -239,7 +239,7 @@ pub(crate) struct NonConstImplNote {
     pub span: Span,
 }
 
-#[derive(Subdiagnostic, PartialEq, Eq, Clone)]
+#[derive(Subdiagnostic, Clone)]
 #[note(const_eval_frame_note)]
 pub struct FrameNote {
     #[primary_span]
@@ -858,8 +858,7 @@ impl<'tcx> ReportErrorExt for InvalidProgramInfo<'tcx> {
             InvalidProgramInfo::Layout(e) => {
                 // The level doesn't matter, `dummy_diag` is consumed without it being used.
                 let dummy_level = Level::Bug;
-                let dummy_diag: Diag<'_, ()> =
-                    e.into_diagnostic().into_diagnostic(diag.dcx, dummy_level);
+                let dummy_diag: Diag<'_, ()> = e.into_diagnostic().into_diag(diag.dcx, dummy_level);
                 for (name, val) in dummy_diag.args.iter() {
                     diag.arg(name.clone(), val.clone());
                 }
@@ -887,8 +886,8 @@ impl ReportErrorExt for ResourceExhaustionInfo {
     fn add_args<G: EmissionGuarantee>(self, _: &mut Diag<'_, G>) {}
 }
 
-impl rustc_errors::IntoDiagnosticArg for InternKind {
-    fn into_diagnostic_arg(self) -> DiagArgValue {
+impl rustc_errors::IntoDiagArg for InternKind {
+    fn into_diag_arg(self) -> DiagArgValue {
         DiagArgValue::Str(Cow::Borrowed(match self {
             InternKind::Static(Mutability::Not) => "static",
             InternKind::Static(Mutability::Mut) => "static_mut",

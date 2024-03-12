@@ -5,8 +5,6 @@
 //@ error-pattern: thread 'main' panicked
 //@ error-pattern: `async fn` resumed after completion
 //@ edition:2018
-//@ ignore-wasm no panic or subprocess support
-//@ ignore-emscripten no panic or subprocess support
 
 #![feature(coroutines, coroutine_trait)]
 

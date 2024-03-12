@@ -1,5 +1,5 @@
 warning: methods `good_virt` and `good_indirect` are never used
-  --> $DIR/manual-self-impl-for-unsafe-obj.rs:22:8
+  --> $DIR/manual-self-impl-for-unsafe-obj.rs:23:8
    |
 LL | trait Good {
    |       ---- methods in this trait

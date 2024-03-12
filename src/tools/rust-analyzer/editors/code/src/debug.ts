@@ -81,8 +81,9 @@ async function getDebugConfiguration(
     if (!editor) return;
 
     const knownEngines: Record<string, DebugConfigProvider> = {
-        "vadimcn.vscode-lldb": getLldbDebugConfig,
-        "ms-vscode.cpptools": getCppvsDebugConfig,
+        "ms-vscode.cpptools": getCCppDebugConfig,
+        "vadimcn.vscode-lldb": getCodeLldbDebugConfig,
+        "webfreak.debug": getNativeDebugConfig,
     };
     const debugOptions = ctx.config.debug;
 
@@ -97,12 +98,14 @@ async function getDebugConfiguration(
     }
 
     if (!debugEngine) {
+        const commandCCpp: string = createCommandLink("ms-vscode.cpptools");
         const commandCodeLLDB: string = createCommandLink("vadimcn.vscode-lldb");
-        const commandCpp: string = createCommandLink("ms-vscode.cpptools");
+        const commandNativeDebug: string = createCommandLink("webfreak.debug");
 
         await vscode.window.showErrorMessage(
             `Install [CodeLLDB](command:${commandCodeLLDB} "Open CodeLLDB")` +
-                ` or [C/C++](command:${commandCpp} "Open C/C++") extension for debugging.`,
+                `, [C/C++](command:${commandCCpp} "Open C/C++") ` +
+                `or [Native Debug](command:${commandNativeDebug} "Open Native Debug") for debugging.`,
         );
         return;
     }
@@ -184,7 +187,26 @@ async function getDebugExecutableInfo(
     return executableInfo;
 }
 
-function getLldbDebugConfig(
+function getCCppDebugConfig(
+    runnable: ra.Runnable,
+    executable: string,
+    cargoWorkspace: string,
+    env: Record<string, string>,
+    sourceFileMap?: Record<string, string>,
+): vscode.DebugConfiguration {
+    return {
+        type: os.platform() === "win32" ? "cppvsdbg" : "cppdbg",
+        request: "launch",
+        name: runnable.label,
+        program: executable,
+        args: runnable.args.executableArgs,
+        cwd: cargoWorkspace || runnable.args.workspaceRoot,
+        sourceFileMap,
+        env,
+    };
+}
+
+function getCodeLldbDebugConfig(
     runnable: ra.Runnable,
     executable: string,
     cargoWorkspace: string,
@@ -204,21 +226,37 @@ function getLldbDebugConfig(
     };
 }
 
-function getCppvsDebugConfig(
+function getNativeDebugConfig(
     runnable: ra.Runnable,
     executable: string,
     cargoWorkspace: string,
     env: Record<string, string>,
-    sourceFileMap?: Record<string, string>,
+    _sourceFileMap?: Record<string, string>,
 ): vscode.DebugConfiguration {
     return {
-        type: os.platform() === "win32" ? "cppvsdbg" : "cppdbg",
+        type: "gdb",
         request: "launch",
         name: runnable.label,
-        program: executable,
-        args: runnable.args.executableArgs,
+        target: executable,
+        // See https://github.com/WebFreak001/code-debug/issues/359
+        arguments: quote(runnable.args.executableArgs),
         cwd: cargoWorkspace || runnable.args.workspaceRoot,
-        sourceFileMap,
         env,
+        valuesFormatting: "prettyPrinters",
     };
+}
+
+// Based on https://github.com/ljharb/shell-quote/blob/main/quote.js
+function quote(xs: string[]) {
+    return xs
+        .map(function (s) {
+            if (/["\s]/.test(s) && !/'/.test(s)) {
+                return "'" + s.replace(/(['\\])/g, "\\$1") + "'";
+            }
+            if (/["'\s]/.test(s)) {
+                return '"' + s.replace(/(["\\$`!])/g, "\\$1") + '"';
+            }
+            return s.replace(/([A-Za-z]:)?([#!"$&'()*,:;<=>?@[\\\]^`{|}])/g, "$1\\$2");
+        })
+        .join(" ");
 }

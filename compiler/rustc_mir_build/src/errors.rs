@@ -1,8 +1,8 @@
 use crate::fluent_generated as fluent;
 use rustc_errors::DiagArgValue;
 use rustc_errors::{
-    codes::*, AddToDiagnostic, Applicability, Diag, DiagCtxt, EmissionGuarantee, IntoDiagnostic,
-    Level, MultiSpan, SubdiagMessageOp,
+    codes::*, Applicability, Diag, DiagCtxt, Diagnostic, EmissionGuarantee, Level, MultiSpan,
+    SubdiagMessageOp, Subdiagnostic,
 };
 use rustc_macros::{Diagnostic, LintDiagnostic, Subdiagnostic};
 use rustc_middle::ty::{self, Ty};
@@ -419,8 +419,8 @@ pub struct UnsafeNotInheritedLintNote {
     pub body_span: Span,
 }
 
-impl AddToDiagnostic for UnsafeNotInheritedLintNote {
-    fn add_to_diagnostic_with<G: EmissionGuarantee, F: SubdiagMessageOp<G>>(
+impl Subdiagnostic for UnsafeNotInheritedLintNote {
+    fn add_to_diag_with<G: EmissionGuarantee, F: SubdiagMessageOp<G>>(
         self,
         diag: &mut Diag<'_, G>,
         _f: F,
@@ -461,10 +461,8 @@ pub(crate) struct NonExhaustivePatternsTypeNotEmpty<'p, 'tcx, 'm> {
     pub ty: Ty<'tcx>,
 }
 
-impl<'a, G: EmissionGuarantee> IntoDiagnostic<'a, G>
-    for NonExhaustivePatternsTypeNotEmpty<'_, '_, '_>
-{
-    fn into_diagnostic(self, dcx: &'a DiagCtxt, level: Level) -> Diag<'_, G> {
+impl<'a, G: EmissionGuarantee> Diagnostic<'a, G> for NonExhaustivePatternsTypeNotEmpty<'_, '_, '_> {
+    fn into_diag(self, dcx: &'a DiagCtxt, level: Level) -> Diag<'_, G> {
         let mut diag =
             Diag::new(dcx, level, fluent::mir_build_non_exhaustive_patterns_type_not_empty);
         diag.span(self.span);
@@ -867,8 +865,8 @@ pub struct Variant {
     pub span: Span,
 }
 
-impl<'tcx> AddToDiagnostic for AdtDefinedHere<'tcx> {
-    fn add_to_diagnostic_with<G: EmissionGuarantee, F: SubdiagMessageOp<G>>(
+impl<'tcx> Subdiagnostic for AdtDefinedHere<'tcx> {
+    fn add_to_diag_with<G: EmissionGuarantee, F: SubdiagMessageOp<G>>(
         self,
         diag: &mut Diag<'_, G>,
         _f: F,

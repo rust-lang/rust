@@ -83,24 +83,28 @@ register_ast_id_node! {
     Item,
         Adt,
             Enum,
+                Variant,
             Struct,
+                RecordField,
+                TupleField,
             Union,
-        Const,
+        AssocItem,
+            Const,
+            Fn,
+            MacroCall,
+            TypeAlias,
         ExternBlock,
         ExternCrate,
-        Fn,
         Impl,
         Macro,
             MacroDef,
             MacroRules,
-        MacroCall,
         Module,
         Static,
         Trait,
         TraitAlias,
-        TypeAlias,
         Use,
-    AssocItem, BlockExpr, Variant, RecordField, TupleField, ConstArg, Param, SelfParam
+    BlockExpr, ConstArg, Param, SelfParam
 }
 
 /// Maps items' `SyntaxNode`s to `ErasedFileAstId`s and back.

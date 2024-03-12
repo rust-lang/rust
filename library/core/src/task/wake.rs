@@ -622,7 +622,7 @@ impl LocalWaker {
     ///
     /// [`poll()`]: crate::future::Future::poll
     #[inline]
-    #[stable(feature = "futures_api", since = "1.36.0")]
+    #[unstable(feature = "local_waker", issue = "118959")]
     pub fn wake(self) {
         // The actual wakeup call is delegated through a virtual function call
         // to the implementation which is defined by the executor.
@@ -644,7 +644,7 @@ impl LocalWaker {
     /// the case where an owned `Waker` is available. This method should be preferred to
     /// calling `waker.clone().wake()`.
     #[inline]
-    #[stable(feature = "futures_api", since = "1.36.0")]
+    #[unstable(feature = "local_waker", issue = "118959")]
     pub fn wake_by_ref(&self) {
         // The actual wakeup call is delegated through a virtual function call
         // to the implementation which is defined by the executor.
@@ -664,7 +664,7 @@ impl LocalWaker {
     /// avoid cloning the waker when they would wake the same task anyway.
     #[inline]
     #[must_use]
-    #[stable(feature = "futures_api", since = "1.36.0")]
+    #[unstable(feature = "local_waker", issue = "118959")]
     pub fn will_wake(&self, other: &LocalWaker) -> bool {
         self.waker == other.waker
     }
@@ -676,7 +676,7 @@ impl LocalWaker {
     /// Therefore this method is unsafe.
     #[inline]
     #[must_use]
-    #[stable(feature = "futures_api", since = "1.36.0")]
+    #[unstable(feature = "local_waker", issue = "118959")]
     #[rustc_const_unstable(feature = "const_waker", issue = "102012")]
     pub const unsafe fn from_raw(waker: RawWaker) -> LocalWaker {
         Self { waker }
@@ -748,7 +748,18 @@ impl AsRef<LocalWaker> for Waker {
     }
 }
 
-#[stable(feature = "futures_api", since = "1.36.0")]
+#[unstable(feature = "local_waker", issue = "118959")]
+impl Drop for LocalWaker {
+    #[inline]
+    fn drop(&mut self) {
+        // SAFETY: This is safe because `LocalWaker::from_raw` is the only way
+        // to initialize `drop` and `data` requiring the user to acknowledge
+        // that the contract of `RawWaker` is upheld.
+        unsafe { (self.waker.vtable.drop)(self.waker.data) }
+    }
+}
+
+#[unstable(feature = "local_waker", issue = "118959")]
 impl fmt::Debug for LocalWaker {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let vtable_ptr = self.waker.vtable as *const RawWakerVTable;

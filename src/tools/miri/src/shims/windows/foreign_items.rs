@@ -257,11 +257,11 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
             }
 
             // Time related shims
-            "GetSystemTimeAsFileTime" => {
+            "GetSystemTimeAsFileTime" | "GetSystemTimePreciseAsFileTime" => {
                 #[allow(non_snake_case)]
                 let [LPFILETIME] =
                     this.check_shim(abi, Abi::System { unwind: false }, link_name, args)?;
-                this.GetSystemTimeAsFileTime(LPFILETIME)?;
+                this.GetSystemTimeAsFileTime(link_name.as_str(), LPFILETIME)?;
             }
             "QueryPerformanceCounter" => {
                 #[allow(non_snake_case)]

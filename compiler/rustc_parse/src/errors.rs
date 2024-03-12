@@ -3,8 +3,8 @@ use std::borrow::Cow;
 use rustc_ast::token::Token;
 use rustc_ast::{Path, Visibility};
 use rustc_errors::{
-    codes::*, AddToDiagnostic, Applicability, Diag, DiagCtxt, EmissionGuarantee, IntoDiagnostic,
-    Level, SubdiagMessageOp,
+    codes::*, Applicability, Diag, DiagCtxt, Diagnostic, EmissionGuarantee, Level,
+    SubdiagMessageOp, Subdiagnostic,
 };
 use rustc_macros::{Diagnostic, Subdiagnostic};
 use rustc_session::errors::ExprParenthesesNeeded;
@@ -1065,9 +1065,9 @@ pub(crate) struct ExpectedIdentifier {
     pub help_cannot_start_number: Option<HelpIdentifierStartsWithNumber>,
 }
 
-impl<'a, G: EmissionGuarantee> IntoDiagnostic<'a, G> for ExpectedIdentifier {
+impl<'a, G: EmissionGuarantee> Diagnostic<'a, G> for ExpectedIdentifier {
     #[track_caller]
-    fn into_diagnostic(self, dcx: &'a DiagCtxt, level: Level) -> Diag<'a, G> {
+    fn into_diag(self, dcx: &'a DiagCtxt, level: Level) -> Diag<'a, G> {
         let token_descr = TokenDescription::from_token(&self.token);
 
         let mut diag = Diag::new(
@@ -1093,17 +1093,17 @@ impl<'a, G: EmissionGuarantee> IntoDiagnostic<'a, G> for ExpectedIdentifier {
         diag.arg("token", self.token);
 
         if let Some(sugg) = self.suggest_raw {
-            sugg.add_to_diagnostic(&mut diag);
+            sugg.add_to_diag(&mut diag);
         }
 
-        ExpectedIdentifierFound::new(token_descr, self.span).add_to_diagnostic(&mut diag);
+        ExpectedIdentifierFound::new(token_descr, self.span).add_to_diag(&mut diag);
 
         if let Some(sugg) = self.suggest_remove_comma {
-            sugg.add_to_diagnostic(&mut diag);
+            sugg.add_to_diag(&mut diag);
         }
 
         if let Some(help) = self.help_cannot_start_number {
-            help.add_to_diagnostic(&mut diag);
+            help.add_to_diag(&mut diag);
         }
 
         diag
@@ -1125,9 +1125,9 @@ pub(crate) struct ExpectedSemi {
     pub sugg: ExpectedSemiSugg,
 }
 
-impl<'a, G: EmissionGuarantee> IntoDiagnostic<'a, G> for ExpectedSemi {
+impl<'a, G: EmissionGuarantee> Diagnostic<'a, G> for ExpectedSemi {
     #[track_caller]
-    fn into_diagnostic(self, dcx: &'a DiagCtxt, level: Level) -> Diag<'a, G> {
+    fn into_diag(self, dcx: &'a DiagCtxt, level: Level) -> Diag<'a, G> {
         let token_descr = TokenDescription::from_token(&self.token);
 
         let mut diag = Diag::new(
@@ -1154,7 +1154,7 @@ impl<'a, G: EmissionGuarantee> IntoDiagnostic<'a, G> for ExpectedSemi {
             diag.span_label(unexpected_token_label, fluent::parse_label_unexpected_token);
         }
 
-        self.sugg.add_to_diagnostic(&mut diag);
+        self.sugg.add_to_diag(&mut diag);
 
         diag
     }
@@ -1466,8 +1466,8 @@ pub(crate) struct FnTraitMissingParen {
     pub machine_applicable: bool,
 }
 
-impl AddToDiagnostic for FnTraitMissingParen {
-    fn add_to_diagnostic_with<G: EmissionGuarantee, F: SubdiagMessageOp<G>>(
+impl Subdiagnostic for FnTraitMissingParen {
+    fn add_to_diag_with<G: EmissionGuarantee, F: SubdiagMessageOp<G>>(
         self,
         diag: &mut Diag<'_, G>,
         _: F,

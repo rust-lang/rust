@@ -1,3 +1,5 @@
+//! [`CString`] and its related types.
+
 #[cfg(test)]
 mod tests;
 

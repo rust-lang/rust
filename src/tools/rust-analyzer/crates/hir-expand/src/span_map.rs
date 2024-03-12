@@ -31,11 +31,13 @@ impl mbe::SpanMapper<Span> for SpanMap {
         self.span_for_range(range)
     }
 }
+
 impl mbe::SpanMapper<Span> for SpanMapRef<'_> {
     fn span_for(&self, range: TextRange) -> Span {
         self.span_for_range(range)
     }
 }
+
 impl SpanMap {
     pub fn span_for_range(&self, range: TextRange) -> Span {
         match self {

@@ -26,7 +26,6 @@ use crate::core::builder::{Builder, Compiler, Kind, RunConfig, ShouldRun, Step};
 use crate::core::config::flags::get_completion;
 use crate::core::config::flags::Subcommand;
 use crate::core::config::TargetSelection;
-use crate::utils::cache::{Interned, INTERNER};
 use crate::utils::exec::BootstrapCommand;
 use crate::utils::helpers::{
     self, add_link_lib_path, add_rustdoc_cargo_linker_args, dylib_path, dylib_path_var,
@@ -38,9 +37,9 @@ use crate::{envify, CLang, DocTests, GitRepo, Mode};
 
 const ADB_TEST_DIR: &str = "/data/local/tmp/work";
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct CrateBootstrap {
-    path: Interned<PathBuf>,
+    path: PathBuf,
     host: TargetSelection,
 }
 
@@ -58,7 +57,7 @@ impl Step for CrateBootstrap {
 
     fn make_run(run: RunConfig<'_>) {
         for path in run.paths {
-            let path = INTERNER.intern_path(path.assert_single_path().path.clone());
+            let path = path.assert_single_path().path.clone();
             run.builder.ensure(CrateBootstrap { host: run.target, path });
         }
     }
@@ -623,7 +622,7 @@ impl Step for Miri {
 
         // miri tests need to know about the stage sysroot
         cargo.env("MIRI_SYSROOT", &miri_sysroot);
-        cargo.env("MIRI_HOST_SYSROOT", sysroot);
+        cargo.env("MIRI_HOST_SYSROOT", &sysroot);
         cargo.env("MIRI", &miri);
         if builder.config.locked_deps {
             // enforce lockfiles
@@ -1646,8 +1645,10 @@ NOTE: if you're sure you want to do this, please open an issue as to why. In the
         }
 
         if suite == "debuginfo" {
-            builder
-                .ensure(dist::DebuggerScripts { sysroot: builder.sysroot(compiler), host: target });
+            builder.ensure(dist::DebuggerScripts {
+                sysroot: builder.sysroot(compiler).to_path_buf(),
+                host: target,
+            });
         }
 
         // Also provide `rust_test_helpers` for the host.
@@ -1656,8 +1657,8 @@ NOTE: if you're sure you want to do this, please open an issue as to why. In the
         // ensure that `libproc_macro` is available on the host.
         builder.ensure(compile::Std::new(compiler, compiler.host));
 
-        // As well as the target, except for plain wasm32, which can't build it
-        if suite != "mir-opt" && !target.contains("wasm") && !target.contains("emscripten") {
+        // As well as the target
+        if suite != "mir-opt" {
             builder.ensure(TestHelpers { target });
         }
 
@@ -1970,6 +1971,8 @@ NOTE: if you're sure you want to do this, please open an issue as to why. In the
 
         if builder.remote_tested(target) {
             cmd.arg("--remote-test-client").arg(builder.tool_exe(Tool::RemoteTestClient));
+        } else if let Some(tool) = builder.runner(target) {
+            cmd.arg("--runner").arg(tool);
         }
 
         if suite != "mir-opt" {
@@ -2378,7 +2381,7 @@ impl Step for RustcGuide {
 pub struct CrateLibrustc {
     compiler: Compiler,
     target: TargetSelection,
-    crates: Vec<Interned<String>>,
+    crates: Vec<String>,
 }
 
 impl Step for CrateLibrustc {
@@ -2394,8 +2397,11 @@ impl Step for CrateLibrustc {
         let builder = run.builder;
         let host = run.build_triple();
         let compiler = builder.compiler_for(builder.top_stage, host, host);
-        let crates =
-            run.paths.iter().map(|p| builder.crate_paths[&p.assert_single_path().path]).collect();
+        let crates = run
+            .paths
+            .iter()
+            .map(|p| builder.crate_paths[&p.assert_single_path().path].clone())
+            .collect();
 
         builder.ensure(CrateLibrustc { compiler, target: run.target, crates });
     }
@@ -2418,7 +2424,7 @@ impl Step for CrateLibrustc {
 fn run_cargo_test<'a>(
     cargo: impl Into<Command>,
     libtest_args: &[&str],
-    crates: &[Interned<String>],
+    crates: &[String],
     primary_crate: &str,
     description: impl Into<Option<&'a str>>,
     compiler: Compiler,
@@ -2449,7 +2455,7 @@ fn run_cargo_test<'a>(
 fn prepare_cargo_test(
     cargo: impl Into<Command>,
     libtest_args: &[&str],
-    crates: &[Interned<String>],
+    crates: &[String],
     primary_crate: &str,
     compiler: Compiler,
     target: TargetSelection,
@@ -2477,7 +2483,7 @@ fn prepare_cargo_test(
         DocTests::No => {
             let krate = &builder
                 .crates
-                .get(&INTERNER.intern_str(primary_crate))
+                .get(primary_crate)
                 .unwrap_or_else(|| panic!("missing crate {primary_crate}"));
             if krate.has_lib {
                 cargo.arg("--lib");
@@ -2487,7 +2493,7 @@ fn prepare_cargo_test(
         DocTests::Yes => {}
     }
 
-    for &krate in crates {
+    for krate in crates {
         cargo.arg("-p").arg(krate);
     }
 
@@ -2505,20 +2511,13 @@ fn prepare_cargo_test(
     dylib_path.insert(0, PathBuf::from(&*builder.sysroot_libdir(compiler, target)));
     cargo.env(dylib_path_var(), env::join_paths(&dylib_path).unwrap());
 
-    if target.contains("emscripten") {
-        cargo.env(
-            format!("CARGO_TARGET_{}_RUNNER", envify(&target.triple)),
-            builder.config.nodejs.as_ref().expect("nodejs not configured"),
-        );
-    } else if target.starts_with("wasm32") {
-        let node = builder.config.nodejs.as_ref().expect("nodejs not configured");
-        let runner = format!("{} {}/src/etc/wasm32-shim.js", node.display(), builder.src.display());
-        cargo.env(format!("CARGO_TARGET_{}_RUNNER", envify(&target.triple)), &runner);
-    } else if builder.remote_tested(target) {
+    if builder.remote_tested(target) {
         cargo.env(
             format!("CARGO_TARGET_{}_RUNNER", envify(&target.triple)),
             format!("{} run 0", builder.tool_exe(Tool::RemoteTestClient).display()),
         );
+    } else if let Some(tool) = builder.runner(target) {
+        cargo.env(format!("CARGO_TARGET_{}_RUNNER", envify(&target.triple)), tool);
     }
 
     cargo
@@ -2529,7 +2528,7 @@ pub struct Crate {
     pub compiler: Compiler,
     pub target: TargetSelection,
     pub mode: Mode,
-    pub crates: Vec<Interned<String>>,
+    pub crates: Vec<String>,
 }
 
 impl Step for Crate {
@@ -2544,8 +2543,11 @@ impl Step for Crate {
         let builder = run.builder;
         let host = run.build_triple();
         let compiler = builder.compiler_for(builder.top_stage, host, host);
-        let crates =
-            run.paths.iter().map(|p| builder.crate_paths[&p.assert_single_path().path]).collect();
+        let crates = run
+            .paths
+            .iter()
+            .map(|p| builder.crate_paths[&p.assert_single_path().path].clone())
+            .collect();
 
         builder.ensure(Crate { compiler, target: run.target, mode: Mode::Std, crates });
     }
@@ -2707,7 +2709,7 @@ impl Step for CrateRustdoc {
         run_cargo_test(
             cargo,
             &[],
-            &[INTERNER.intern_str("rustdoc:0.0.0")],
+            &["rustdoc:0.0.0".to_string()],
             "rustdoc",
             "rustdoc",
             compiler,
@@ -2768,7 +2770,7 @@ impl Step for CrateRustdocJsonTypes {
         run_cargo_test(
             cargo,
             libtest_args,
-            &[INTERNER.intern_str("rustdoc-json-types")],
+            &["rustdoc-json-types".to_string()],
             "rustdoc-json-types",
             "rustdoc-json-types",
             compiler,
@@ -3194,8 +3196,7 @@ impl Step for CodegenCranelift {
             return;
         }
 
-        if !builder.config.codegen_backends(run.target).contains(&INTERNER.intern_str("cranelift"))
-        {
+        if !builder.config.codegen_backends(run.target).contains(&"cranelift".to_owned()) {
             builder.info("cranelift not in rust.codegen-backends. skipping");
             return;
         }
@@ -3319,7 +3320,7 @@ impl Step for CodegenGCC {
             return;
         }
 
-        if !builder.config.codegen_backends(run.target).contains(&INTERNER.intern_str("gcc")) {
+        if !builder.config.codegen_backends(run.target).contains(&"gcc".to_owned()) {
             builder.info("gcc not in rust.codegen-backends. skipping");
             return;
         }
@@ -3394,7 +3395,6 @@ impl Step for CodegenGCC {
             .arg("--out-dir")
             .arg(builder.stage_out(compiler, Mode::ToolRustc).join("cg_gcc"))
             .arg("--release")
-            .arg("--no-default-features")
             .arg("--mini-tests")
             .arg("--std-tests");
         cargo.args(builder.config.test_args());

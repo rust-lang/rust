@@ -54,7 +54,7 @@ impl<'tcx> OpaqueTypeCollector<'tcx> {
         self.span = old;
     }
 
-    fn parent_trait_ref(&self) -> Option<ty::TraitRef<'tcx>> {
+    fn parent_impl_trait_ref(&self) -> Option<ty::TraitRef<'tcx>> {
         let parent = self.parent()?;
         if matches!(self.tcx.def_kind(parent), DefKind::Impl { .. }) {
             Some(self.tcx.impl_trait_ref(parent)?.instantiate_identity())
@@ -210,6 +210,7 @@ impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for OpaqueTypeCollector<'tcx> {
             ty::Alias(ty::Opaque, alias_ty) if alias_ty.def_id.is_local() => {
                 self.visit_opaque_ty(alias_ty);
             }
+            // Skips type aliases, as they are meant to be transparent.
             ty::Alias(ty::Weak, alias_ty) if alias_ty.def_id.is_local() => {
                 self.tcx
                     .type_of(alias_ty.def_id)
@@ -220,11 +221,11 @@ impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for OpaqueTypeCollector<'tcx> {
                 // This avoids having to do normalization of `Self::AssocTy` by only
                 // supporting the case of a method defining opaque types from assoc types
                 // in the same impl block.
-                if let Some(parent_trait_ref) = self.parent_trait_ref() {
+                if let Some(impl_trait_ref) = self.parent_impl_trait_ref() {
                     // If the trait ref of the associated item and the impl differs,
                     // then we can't use the impl's identity args below, so
                     // just skip.
-                    if alias_ty.trait_ref(self.tcx) == parent_trait_ref {
+                    if alias_ty.trait_ref(self.tcx) == impl_trait_ref {
                         let parent = self.parent().expect("we should have a parent here");
 
                         for &assoc in self.tcx.associated_items(parent).in_definition_order() {
@@ -241,7 +242,7 @@ impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for OpaqueTypeCollector<'tcx> {
 
                             let impl_args = alias_ty.args.rebase_onto(
                                 self.tcx,
-                                parent_trait_ref.def_id,
+                                impl_trait_ref.def_id,
                                 ty::GenericArgs::identity_for_item(self.tcx, parent),
                             );
 
@@ -259,6 +260,24 @@ impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for OpaqueTypeCollector<'tcx> {
                             }
                         }
                     }
+                } else if let Some(ty::ImplTraitInTraitData::Trait { fn_def_id, .. }) =
+                    self.tcx.opt_rpitit_info(alias_ty.def_id)
+                    && fn_def_id == self.item.into()
+                {
+                    // RPITIT in trait definitions get desugared to an associated type. For
+                    // default methods we also create an opaque type this associated type
+                    // normalizes to. The associated type is only known to normalize to the
+                    // opaque if it is fully concrete. There could otherwise be an impl
+                    // overwriting the default method.
+                    //
+                    // However, we have to be able to normalize the associated type while inside
+                    // of the default method. This is normally handled by adding an unchecked
+                    // `Projection(<Self as Trait>::synthetic_assoc_ty, trait_def::opaque)`
+                    // assumption to the `param_env` of the default method. We also separately
+                    // rely on that assumption here.
+                    let ty = self.tcx.type_of(alias_ty.def_id).instantiate(self.tcx, alias_ty.args);
+                    let ty::Alias(ty::Opaque, alias_ty) = ty.kind() else { bug!("{ty:?}") };
+                    self.visit_opaque_ty(alias_ty);
                 }
             }
             ty::Adt(def, _) if def.did().is_local() => {

@@ -595,7 +595,7 @@ impl ActiveQuery {
     fn remove_cycle_participants(&mut self, cycle: &Cycle) {
         if let Some(my_dependencies) = &mut self.dependencies {
             for p in cycle.participant_keys() {
-                my_dependencies.remove(&p);
+                my_dependencies.swap_remove(&p);
             }
         }
     }

@@ -1,16 +1,16 @@
 error[E0277]: the trait bound `dyn NotObject: NotObject` is not satisfied
-  --> $DIR/deny-builtin-object-impl.rs:18:23
+  --> $DIR/deny-builtin-object-impl.rs:19:23
    |
 LL |     test_not_object::<dyn NotObject>();
    |                       ^^^^^^^^^^^^^ the trait `NotObject` is not implemented for `dyn NotObject`
    |
 help: this trait has no implementations, consider adding one
-  --> $DIR/deny-builtin-object-impl.rs:10:1
+  --> $DIR/deny-builtin-object-impl.rs:11:1
    |
 LL | trait NotObject {}
    | ^^^^^^^^^^^^^^^
 note: required by a bound in `test_not_object`
-  --> $DIR/deny-builtin-object-impl.rs:14:23
+  --> $DIR/deny-builtin-object-impl.rs:15:23
    |
 LL | fn test_not_object<T: NotObject + ?Sized>() {}
    |                       ^^^^^^^^^ required by this bound in `test_not_object`

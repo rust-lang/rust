@@ -1,0 +1,8 @@
+error: the type `Foo::Bar<Vec<[u32]>>` is not well-formed
+  --> $DIR/wf-check-skipped.rs:17:14
+   |
+LL | fn main() -> Foo::Bar::<Vec<[u32]>> {}
+   |              ^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 1 previous error
+

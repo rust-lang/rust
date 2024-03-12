@@ -8,12 +8,12 @@ pub use crate::options::*;
 use crate::errors::FileWriteFail;
 use crate::search_paths::SearchPath;
 use crate::utils::{CanonicalizedPath, NativeLib, NativeLibKind};
-use crate::{lint, HashStableContext};
+use crate::{filesearch, lint, HashStableContext};
 use crate::{EarlyDiagCtxt, Session};
 use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexMap, FxIndexSet};
 use rustc_data_structures::stable_hasher::{StableOrd, ToStableHashKey};
 use rustc_errors::emitter::HumanReadableErrorType;
-use rustc_errors::{ColorConfig, DiagArgValue, DiagCtxtFlags, IntoDiagnosticArg};
+use rustc_errors::{ColorConfig, DiagArgValue, DiagCtxtFlags, IntoDiagArg};
 use rustc_feature::UnstableFeatures;
 use rustc_span::edition::{Edition, DEFAULT_EDITION, EDITION_NAME_LIST, LATEST_STABLE_EDITION};
 use rustc_span::source_map::FilePathMapping;
@@ -1564,7 +1564,7 @@ pub fn build_configuration(sess: &Session, mut user_cfg: Cfg) -> Cfg {
     user_cfg
 }
 
-pub(super) fn build_target_config(
+pub fn build_target_config(
     early_dcx: &EarlyDiagCtxt,
     opts: &Options,
     target_override: Option<Target>,
@@ -2863,16 +2863,8 @@ pub fn build_session_options(early_dcx: &mut EarlyDiagCtxt, matches: &getopts::M
 
     let logical_env = parse_logical_env(early_dcx, matches);
 
-    // Try to find a directory containing the Rust `src`, for more details see
-    // the doc comment on the `real_rust_source_base_dir` field.
-    let tmp_buf;
-    let sysroot = match &sysroot_opt {
-        Some(s) => s,
-        None => {
-            tmp_buf = crate::filesearch::get_or_default_sysroot().expect("Failed finding sysroot");
-            &tmp_buf
-        }
-    };
+    let sysroot = filesearch::materialize_sysroot(sysroot_opt);
+
     let real_rust_source_base_dir = {
         // This is the location used by the `rust-src` `rustup` component.
         let mut candidate = sysroot.join("lib/rustlib/src/rust");
@@ -2916,7 +2908,7 @@ pub fn build_session_options(early_dcx: &mut EarlyDiagCtxt, matches: &getopts::M
         describe_lints,
         output_types,
         search_paths,
-        maybe_sysroot: sysroot_opt,
+        maybe_sysroot: Some(sysroot),
         target_triple,
         test,
         incremental,
@@ -3098,9 +3090,9 @@ impl fmt::Display for CrateType {
     }
 }
 
-impl IntoDiagnosticArg for CrateType {
-    fn into_diagnostic_arg(self) -> DiagArgValue {
-        self.to_string().into_diagnostic_arg()
+impl IntoDiagArg for CrateType {
+    fn into_diag_arg(self) -> DiagArgValue {
+        self.to_string().into_diag_arg()
     }
 }
 

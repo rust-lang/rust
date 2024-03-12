@@ -28,9 +28,6 @@ jobs:
           # FIXME: re-enable asm tests when GCC can emit in the right syntax.
           # "--asm-tests",
           "--test-libcore",
-          "--extended-rand-tests",
-          "--extended-regex-example-tests",
-          "--extended-regex-tests",
           "--test-successful-rustc --nb-parts 2 --current-part 0",
           "--test-successful-rustc --nb-parts 2 --current-part 1",
         ]
@@ -38,42 +35,25 @@ jobs:
     steps:
     - uses: actions/checkout@v3
 
+    # `rustup show` installs from rust-toolchain.toml
+    - name: Setup rust toolchain
+      run: rustup show
+
+    - name: Setup rust cache
+      uses: Swatinem/rust-cache@v2
+
     - name: Install packages
       # `llvm-14-tools` is needed to install the `FileCheck` binary which is used for asm tests.
       run: sudo apt-get install ninja-build ripgrep llvm-14-tools libgccjit-12-dev
 
     - name: Setup path to libgccjit
-      run: echo /usr/lib/gcc/x86_64-linux-gnu/12 > gcc_path
+      run: echo 'gcc-path = "/usr/lib/gcc/x86_64-linux-gnu/12"' > config.toml
 
     - name: Set env
       run: |
-        echo "LIBRARY_PATH=$(cat gcc_path)" >> $GITHUB_ENV
-        echo "LD_LIBRARY_PATH=$(cat gcc_path)" >> $GITHUB_ENV
         echo "workspace="$GITHUB_WORKSPACE >> $GITHUB_ENV
-
-    - name: Cache cargo installed crates
-      uses: actions/cache@v3
-      with:
-        path: ~/.cargo/bin
-        key: cargo-installed-crates2-ubuntu-latest
-
-    - name: Cache cargo registry
-      uses: actions/cache@v3
-      with:
-        path: ~/.cargo/registry
-        key: ${{ runner.os }}-cargo-registry2-${{ hashFiles('**/Cargo.lock') }}
-
-    - name: Cache cargo index
-      uses: actions/cache@v3
-      with:
-        path: ~/.cargo/git
-        key: ${{ runner.os }}-cargo-index-${{ hashFiles('**/Cargo.lock') }}
-
-    - name: Cache cargo target dir
-      uses: actions/cache@v3
-      with:
-        path: target
-        key: ${{ runner.os }}-cargo-build-target-${{ hashFiles('rust-toolchain') }}
+        echo "LIBRARY_PATH=/usr/lib/gcc/x86_64-linux-gnu/12" >> $GITHUB_ENV
+        echo "LD_LIBRARY_PATH=/usr/lib/gcc/x86_64-linux-gnu/12" >> $GITHUB_ENV
 
     #- name: Cache rust repository
       ## We only clone the rust repository for rustc tests
@@ -89,7 +69,7 @@ jobs:
         ./y.sh prepare --only-libcore --libgccjit12-patches
         ./y.sh build --no-default-features --sysroot-panic-abort
         cargo test --no-default-features
-        ./clean_all.sh
+        ./y.sh clean all
 
     - name: Prepare dependencies
       run: |
@@ -97,19 +77,12 @@ jobs:
         git config --global user.name "User"
         ./y.sh prepare --libgccjit12-patches
 
-    # Compile is a separate step, as the actions-rs/cargo action supports error annotations
-    - name: Compile
-      uses: actions-rs/cargo@v1.0.3
-      with:
-        command: build
-        args: --release
-
     - name: Add more failing tests for GCC 12
-      run: cat failing-ui-tests12.txt >> failing-ui-tests.txt
+      run: cat tests/failing-ui-tests12.txt >> tests/failing-ui-tests.txt
 
     - name: Add more failing tests because the sysroot is not compiled with LTO
-      run: cat failing-non-lto-tests.txt >> failing-ui-tests.txt
+      run: cat tests/failing-non-lto-tests.txt >> tests/failing-ui-tests.txt
 
     - name: Run tests
       run: |
-        ./test.sh --release --clean --build-sysroot ${{ matrix.commands }} --no-default-features
+        ./y.sh test --release --clean --build-sysroot ${{ matrix.commands }} --no-default-features

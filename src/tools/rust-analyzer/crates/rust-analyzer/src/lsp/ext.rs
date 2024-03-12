@@ -163,6 +163,108 @@ impl Request for ViewItemTree {
     const METHOD: &'static str = "rust-analyzer/viewItemTree";
 }
 
+#[derive(Deserialize, Serialize, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct DiscoverTestParams {
+    pub test_id: Option<String>,
+}
+
+#[derive(Deserialize, Serialize, Debug)]
+#[serde(rename_all = "camelCase")]
+pub enum TestItemKind {
+    Package,
+    Module,
+    Test,
+}
+
+#[derive(Deserialize, Serialize, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct TestItem {
+    pub id: String,
+    pub label: String,
+    pub kind: TestItemKind,
+    pub can_resolve_children: bool,
+    pub parent: Option<String>,
+    pub text_document: Option<TextDocumentIdentifier>,
+    pub range: Option<Range>,
+    pub runnable: Option<Runnable>,
+}
+
+#[derive(Deserialize, Serialize, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct DiscoverTestResults {
+    pub tests: Vec<TestItem>,
+    pub scope: Vec<String>,
+}
+
+pub enum DiscoverTest {}
+
+impl Request for DiscoverTest {
+    type Params = DiscoverTestParams;
+    type Result = DiscoverTestResults;
+    const METHOD: &'static str = "experimental/discoverTest";
+}
+
+pub enum DiscoveredTests {}
+
+impl Notification for DiscoveredTests {
+    type Params = DiscoverTestResults;
+    const METHOD: &'static str = "experimental/discoveredTests";
+}
+
+#[derive(Deserialize, Serialize, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct RunTestParams {
+    pub include: Option<Vec<String>>,
+    pub exclude: Option<Vec<String>>,
+}
+
+pub enum RunTest {}
+
+impl Request for RunTest {
+    type Params = RunTestParams;
+    type Result = ();
+    const METHOD: &'static str = "experimental/runTest";
+}
+
+pub enum EndRunTest {}
+
+impl Notification for EndRunTest {
+    type Params = ();
+    const METHOD: &'static str = "experimental/endRunTest";
+}
+
+pub enum AbortRunTest {}
+
+impl Notification for AbortRunTest {
+    type Params = ();
+    const METHOD: &'static str = "experimental/abortRunTest";
+}
+
+#[derive(Deserialize, Serialize, Debug)]
+#[serde(rename_all = "camelCase", tag = "tag")]
+pub enum TestState {
+    Passed,
+    Failed { message: String },
+    Skipped,
+    Started,
+    Enqueued,
+}
+
+#[derive(Deserialize, Serialize, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct ChangeTestStateParams {
+    pub test_id: String,
+    pub state: TestState,
+}
+
+pub enum ChangeTestState {}
+
+impl Notification for ChangeTestState {
+    type Params = ChangeTestStateParams;
+    const METHOD: &'static str = "experimental/changeTestState";
+}
+
 pub enum ExpandMacro {}
 
 impl Request for ExpandMacro {

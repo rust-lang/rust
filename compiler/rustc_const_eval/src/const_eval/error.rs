@@ -1,6 +1,6 @@
 use std::mem;
 
-use rustc_errors::{DiagArgName, DiagArgValue, DiagMessage, IntoDiagnostic, IntoDiagnosticArg};
+use rustc_errors::{DiagArgName, DiagArgValue, DiagMessage, Diagnostic, IntoDiagArg};
 use rustc_hir::CRATE_HIR_ID;
 use rustc_middle::mir::AssertKind;
 use rustc_middle::query::TyCtxtAt;
@@ -40,10 +40,10 @@ impl MachineStopType for ConstEvalErrKind {
             RecursiveStatic | ConstAccessesMutGlobal | ModifiedGlobal => {}
             AssertFailure(kind) => kind.add_args(adder),
             Panic { msg, line, col, file } => {
-                adder("msg".into(), msg.into_diagnostic_arg());
-                adder("file".into(), file.into_diagnostic_arg());
-                adder("line".into(), line.into_diagnostic_arg());
-                adder("col".into(), col.into_diagnostic_arg());
+                adder("msg".into(), msg.into_diag_arg());
+                adder("file".into(), file.into_diag_arg());
+                adder("line".into(), line.into_diag_arg());
+                adder("col".into(), col.into_diag_arg());
             }
         }
     }
@@ -130,7 +130,7 @@ pub(super) fn report<'tcx, C, F, E>(
 where
     C: FnOnce() -> (Span, Vec<FrameNote>),
     F: FnOnce(Span, Vec<FrameNote>) -> E,
-    E: IntoDiagnostic<'tcx>,
+    E: Diagnostic<'tcx>,
 {
     // Special handling for certain errors
     match error {
@@ -168,7 +168,7 @@ pub(super) fn lint<'tcx, 'mir, L>(
     lint: &'static rustc_session::lint::Lint,
     decorator: impl FnOnce(Vec<errors::FrameNote>) -> L,
 ) where
-    L: for<'a> rustc_errors::DecorateLint<'a, ()>,
+    L: for<'a> rustc_errors::LintDiagnostic<'a, ()>,
 {
     let (span, frames) = get_span_and_frames(tcx, machine);
 

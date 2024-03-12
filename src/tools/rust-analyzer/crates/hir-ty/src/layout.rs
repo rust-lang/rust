@@ -1,7 +1,6 @@
 //! Compute the binary representation of a type
 
-use std::borrow::Cow;
-use std::fmt;
+use std::{borrow::Cow, fmt};
 
 use base_db::salsa::Cycle;
 use chalk_ir::{AdtId, FloatTy, IntTy, TyKind, UintTy};

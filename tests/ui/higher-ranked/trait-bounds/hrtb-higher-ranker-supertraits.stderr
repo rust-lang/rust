@@ -18,6 +18,19 @@ help: consider further restricting this bound
 LL |     where F : Foo<'x> + for<'tcx> Foo<'tcx>
    |                       +++++++++++++++++++++
 
+warning: function cannot return without recursing
+  --> $DIR/hrtb-higher-ranker-supertraits.rs:21:1
+   |
+LL | / fn want_foo_for_any_tcx<F>(f: &F)
+LL | |     where F : for<'tcx> Foo<'tcx>
+   | |_________________________________^ cannot return without recursing
+...
+LL |       want_foo_for_any_tcx(f);
+   |       ----------------------- recursive call site
+   |
+   = help: a `loop` may express intention better if this is on purpose
+   = note: `#[warn(unconditional_recursion)]` on by default
+
 error[E0277]: the trait bound `for<'ccx> B: Bar<'ccx>` is not satisfied
   --> $DIR/hrtb-higher-ranker-supertraits.rs:35:26
    |
@@ -37,19 +50,6 @@ help: consider further restricting this bound
    |
 LL |     where B : Bar<'x> + for<'ccx> Bar<'ccx>
    |                       +++++++++++++++++++++
-
-warning: function cannot return without recursing
-  --> $DIR/hrtb-higher-ranker-supertraits.rs:21:1
-   |
-LL | / fn want_foo_for_any_tcx<F>(f: &F)
-LL | |     where F : for<'tcx> Foo<'tcx>
-   | |_________________________________^ cannot return without recursing
-...
-LL |       want_foo_for_any_tcx(f);
-   |       ----------------------- recursive call site
-   |
-   = help: a `loop` may express intention better if this is on purpose
-   = note: `#[warn(unconditional_recursion)]` on by default
 
 warning: function cannot return without recursing
   --> $DIR/hrtb-higher-ranker-supertraits.rs:38:1
