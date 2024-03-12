@@ -14,12 +14,16 @@ fn main() {
     let waker = Waker::noop();
     let mut cx = Context::from_waker(&waker);
 
+    let i = 13;
     let fut = pin!(async {
         async_drop(Bar(0)).await;
         async_drop(Foo(0)).await;
         async_drop([Foo(1), Foo(2)]).await;
         async_drop((Foo(3), Foo(4))).await;
         async_drop(5).await;
+        let j = 42;
+        async_drop(&i).await;
+        async_drop(&j).await;
         async_drop(Baz { _b: Foo(8), _a: Foo(7), n: 6 }).await;
     });
 
