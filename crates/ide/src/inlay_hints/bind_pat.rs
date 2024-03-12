@@ -176,11 +176,7 @@ mod tests {
     use syntax::{TextRange, TextSize};
     use test_utils::extract_annotations;
 
-    use crate::{
-        fixture,
-        inlay_hints::{InlayHintsConfig, RangeLimit},
-        ClosureReturnTypeHints,
-    };
+    use crate::{fixture, inlay_hints::InlayHintsConfig, ClosureReturnTypeHints};
 
     use crate::inlay_hints::tests::{
         check, check_edit, check_no_edit, check_with_config, DISABLED_CONFIG, TEST_CONFIG,
@@ -403,7 +399,7 @@ fn main() {
             .inlay_hints(
                 &InlayHintsConfig { type_hints: true, ..DISABLED_CONFIG },
                 file_id,
-                Some(RangeLimit::Fixed(TextRange::new(TextSize::from(500), TextSize::from(600)))),
+                Some(TextRange::new(TextSize::from(500), TextSize::from(600))),
             )
             .unwrap();
         let actual =

@@ -800,6 +800,7 @@ pub struct CompletionResolveData {
 #[derive(Debug, Serialize, Deserialize)]
 pub struct InlayHintResolveData {
     pub file_id: u32,
+    pub hash: u64,
 }
 
 #[derive(Debug, Serialize, Deserialize)]

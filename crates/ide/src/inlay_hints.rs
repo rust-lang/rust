@@ -1,5 +1,6 @@
 use std::{
     fmt::{self, Write},
+    hash::{BuildHasher, BuildHasherDefault},
     mem::take,
 };
 
@@ -8,7 +9,7 @@ use hir::{
     known, ClosureStyle, HasVisibility, HirDisplay, HirDisplayError, HirWrite, ModuleDef,
     ModuleDefId, Semantics,
 };
-use ide_db::{base_db::FileRange, famous_defs::FamousDefs, RootDatabase};
+use ide_db::{base_db::FileRange, famous_defs::FamousDefs, FxHasher, RootDatabase};
 use itertools::Itertools;
 use smallvec::{smallvec, SmallVec};
 use stdx::never;
@@ -116,7 +117,7 @@ pub enum AdjustmentHintsMode {
     PreferPostfix,
 }
 
-#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
 pub enum InlayKind {
     Adjustment,
     BindingMode,
@@ -132,7 +133,7 @@ pub enum InlayKind {
     RangeExclusive,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Hash)]
 pub enum InlayHintPosition {
     Before,
     After,
@@ -151,6 +152,18 @@ pub struct InlayHint {
     pub label: InlayHintLabel,
     /// Text edit to apply when "accepting" this inlay hint.
     pub text_edit: Option<TextEdit>,
+}
+
+impl std::hash::Hash for InlayHint {
+    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+        self.range.hash(state);
+        self.position.hash(state);
+        self.pad_left.hash(state);
+        self.pad_right.hash(state);
+        self.kind.hash(state);
+        self.label.hash(state);
+        self.text_edit.is_some().hash(state);
+    }
 }
 
 impl InlayHint {
@@ -183,13 +196,13 @@ impl InlayHint {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Hash)]
 pub enum InlayTooltip {
     String(String),
     Markdown(String),
 }
 
-#[derive(Default)]
+#[derive(Default, Hash)]
 pub struct InlayHintLabel {
     pub parts: SmallVec<[InlayHintLabelPart; 1]>,
 }
@@ -267,6 +280,7 @@ impl fmt::Debug for InlayHintLabel {
     }
 }
 
+#[derive(Hash)]
 pub struct InlayHintLabelPart {
     pub text: String,
     /// Source location represented by this label part. The client will use this to fetch the part's
@@ -315,9 +329,7 @@ impl fmt::Write for InlayHintLabelBuilder<'_> {
 
 impl HirWrite for InlayHintLabelBuilder<'_> {
     fn start_location_link(&mut self, def: ModuleDefId) {
-        if self.location.is_some() {
-            never!("location link is already started");
-        }
+        never!(self.location.is_some(), "location link is already started");
         self.make_new_part();
         let Some(location) = ModuleDef::from(def).try_to_nav(self.db) else { return };
         let location = location.call_site();
@@ -427,11 +439,6 @@ fn ty_to_text_edit(
     Some(builder.finish())
 }
 
-pub enum RangeLimit {
-    Fixed(TextRange),
-    NearestParent(TextSize),
-}
-
 // Feature: Inlay Hints
 //
 // rust-analyzer shows additional information inline with the source code.
@@ -453,7 +460,7 @@ pub enum RangeLimit {
 pub(crate) fn inlay_hints(
     db: &RootDatabase,
     file_id: FileId,
-    range_limit: Option<RangeLimit>,
+    range_limit: Option<TextRange>,
     config: &InlayHintsConfig,
 ) -> Vec<InlayHint> {
     let _p = tracing::span!(tracing::Level::INFO, "inlay_hints").entered();
@@ -468,36 +475,51 @@ pub(crate) fn inlay_hints(
 
         let hints = |node| hints(&mut acc, &famous_defs, config, file_id, node);
         match range_limit {
-            Some(RangeLimit::Fixed(range)) => match file.covering_element(range) {
+            Some(range) => match file.covering_element(range) {
                 NodeOrToken::Token(_) => return acc,
                 NodeOrToken::Node(n) => n
                     .descendants()
                     .filter(|descendant| range.intersect(descendant.text_range()).is_some())
                     .for_each(hints),
             },
-            Some(RangeLimit::NearestParent(position)) => {
-                match file.token_at_offset(position).left_biased() {
-                    Some(token) => {
-                        if let Some(parent_block) =
-                            token.parent_ancestors().find_map(ast::BlockExpr::cast)
-                        {
-                            parent_block.syntax().descendants().for_each(hints)
-                        } else if let Some(parent_item) =
-                            token.parent_ancestors().find_map(ast::Item::cast)
-                        {
-                            parent_item.syntax().descendants().for_each(hints)
-                        } else {
-                            return acc;
-                        }
-                    }
-                    None => return acc,
-                }
-            }
             None => file.descendants().for_each(hints),
         };
     }
 
     acc
+}
+
+pub(crate) fn inlay_hints_resolve(
+    db: &RootDatabase,
+    file_id: FileId,
+    position: TextSize,
+    hash: u64,
+    config: &InlayHintsConfig,
+) -> Option<InlayHint> {
+    let _p = tracing::span!(tracing::Level::INFO, "inlay_hints").entered();
+    let sema = Semantics::new(db);
+    let file = sema.parse(file_id);
+    let file = file.syntax();
+
+    let scope = sema.scope(file)?;
+    let famous_defs = FamousDefs(&sema, scope.krate());
+    let mut acc = Vec::new();
+
+    let hints = |node| hints(&mut acc, &famous_defs, config, file_id, node);
+    match file.token_at_offset(position).left_biased() {
+        Some(token) => {
+            if let Some(parent_block) = token.parent_ancestors().find_map(ast::BlockExpr::cast) {
+                parent_block.syntax().descendants().for_each(hints)
+            } else if let Some(parent_item) = token.parent_ancestors().find_map(ast::Item::cast) {
+                parent_item.syntax().descendants().for_each(hints)
+            } else {
+                return None;
+            }
+        }
+        None => return None,
+    }
+
+    acc.into_iter().find(|hint| BuildHasherDefault::<FxHasher>::default().hash_one(hint) == hash)
 }
 
 fn hints(
