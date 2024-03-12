@@ -1788,7 +1788,12 @@ impl Step for Assemble {
         let src_libdir = builder.sysroot_libdir(build_compiler, host);
         for f in builder.read_dir(&src_libdir) {
             let filename = f.file_name().into_string().unwrap();
-            if (is_dylib(&filename) || is_debug_info(&filename)) && !proc_macros.contains(&filename)
+            let can_be_rustc_dep = filename.starts_with("rustc_driver-")
+                || filename.starts_with("librustc_driver-")
+                || build_compiler.stage == 0;
+            if can_be_rustc_dep
+                && (is_dylib(&filename) || is_debug_info(&filename))
+                && !proc_macros.contains(&filename)
             {
                 builder.copy(&f.path(), &rustc_libdir.join(&filename));
             }

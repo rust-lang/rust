@@ -1810,6 +1810,8 @@ options! {
         "use a more precise version of drop elaboration for matches on enums (default: yes). \
         This results in better codegen, but has caused miscompilations on some tier 2 platforms. \
         See #77382 and #74551."),
+    prefer_deps_of_dynamic: bool = (false, parse_bool, [TRACKED],
+        "prefer linking to static dependencies of dynamic libraries over available dynamic libraries (default: no)"),
     #[rustc_lint_opt_deny_field_access("use `Session::print_codegen_stats` instead of this field")]
     print_codegen_stats: bool = (false, parse_bool, [UNTRACKED],
         "print codegen statistics (default: no)"),

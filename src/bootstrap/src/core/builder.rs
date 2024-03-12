@@ -2028,8 +2028,14 @@ impl<'a> Builder<'a> {
         // When we build Rust dylibs they're all intended for intermediate
         // usage, so make sure we pass the -Cprefer-dynamic flag instead of
         // linking all deps statically into the dylib.
-        if matches!(mode, Mode::Std | Mode::Rustc) {
+        if matches!(mode, Mode::Std) {
             rustflags.arg("-Cprefer-dynamic");
+        }
+
+        // We need this to prevent users of `rustc_driver` from linking to dynamically to `std`
+        // which does not work as `std` is statically linked into `rustc_driver`.
+        if stage > 0 {
+            rustflags.arg("-Zprefer-deps-of-dynamic");
         }
 
         // When building incrementally we default to a lower ThinLTO import limit

@@ -799,6 +799,7 @@ fn test_unstable_options_tracking_hash() {
     tracked!(plt, Some(true));
     tracked!(polonius, Polonius::Legacy);
     tracked!(precise_enum_drop_elaboration, false);
+    tracked!(prefer_deps_of_dynamic, true);
     tracked!(print_fuel, Some("abc".to_string()));
     tracked!(profile, true);
     tracked!(profile_emit, Some(PathBuf::from("abc")));
