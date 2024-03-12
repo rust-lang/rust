@@ -20,6 +20,10 @@ use rustc_middle::ty;
 use crate::solve::inspect::ProofTreeBuilder;
 use crate::solve::{GenerateProofTree, InferCtxtEvalExt};
 
+pub struct InspectConfig {
+    pub max_depth: usize,
+}
+
 pub struct InspectGoal<'a, 'tcx> {
     infcx: &'a InferCtxt<'tcx>,
     depth: usize,
@@ -48,6 +52,34 @@ impl<'a, 'tcx> InspectCandidate<'a, 'tcx> {
         self.result.map(|c| c.value.certainty)
     }
 
+    pub fn visit_nested_no_probe<V: ProofTreeVisitor<'tcx>>(&self, visitor: &mut V) -> V::Result {
+        if self.goal.depth < visitor.config().max_depth {
+            let infcx = self.goal.infcx;
+            let mut instantiated_goals = vec![];
+            for goal in &self.nested_goals {
+                let goal = ProofTreeBuilder::instantiate_canonical_state(
+                    infcx,
+                    self.goal.goal.param_env,
+                    self.goal.orig_values,
+                    *goal,
+                );
+                instantiated_goals.push(goal);
+            }
+
+            for &goal in &instantiated_goals {
+                let (_, proof_tree) = infcx.evaluate_root_goal(goal, GenerateProofTree::Yes);
+                let proof_tree = proof_tree.unwrap();
+                try_visit!(visitor.visit_goal(&InspectGoal::new(
+                    infcx,
+                    self.goal.depth + 1,
+                    &proof_tree,
+                )));
+            }
+        }
+
+        V::Result::output()
+    }
+
     /// Visit the nested goals of this candidate.
     ///
     /// FIXME(@lcnr): we have to slightly adapt this API
@@ -55,8 +87,7 @@ impl<'a, 'tcx> InspectCandidate<'a, 'tcx> {
     /// for fulfillment errors. Will do that once we actually
     /// need it.
     pub fn visit_nested<V: ProofTreeVisitor<'tcx>>(&self, visitor: &mut V) -> V::Result {
-        // HACK: An arbitrary cutoff to avoid dealing with overflow and cycles.
-        if self.goal.depth <= 10 {
+        if self.goal.depth < visitor.config().max_depth {
             let infcx = self.goal.infcx;
             infcx.probe(|_| {
                 let mut instantiated_goals = vec![];
@@ -157,6 +188,16 @@ impl<'a, 'tcx> InspectGoal<'a, 'tcx> {
         }
     }
 
+    /// Returns the single candidate applicable for the current goal, if it exists.
+    ///
+    /// Returns `None` if there are no multiple applicable candidates.
+    pub fn unique_applicable_candidate(&'a self) -> Option<InspectCandidate<'a, 'tcx>> {
+        // FIXME(-Znext-solver): This does not handle impl candidates
+        // hidden by env candidates.
+        let mut candidates = self.candidates();
+        candidates.pop().filter(|_| candidates.is_empty())
+    }
+
     pub fn candidates(&'a self) -> Vec<InspectCandidate<'a, 'tcx>> {
         let mut candidates = vec![];
         let last_eval_step = match self.evaluation.evaluation.kind {
@@ -203,6 +244,10 @@ impl<'a, 'tcx> InspectGoal<'a, 'tcx> {
 pub trait ProofTreeVisitor<'tcx> {
     type Result: VisitorResult = ();
 
+    fn config(&self) -> InspectConfig {
+        InspectConfig { max_depth: 10 }
+    }
+
     fn visit_goal(&mut self, goal: &InspectGoal<'_, 'tcx>) -> Self::Result;
 }
 
@@ -213,10 +258,8 @@ impl<'tcx> InferCtxt<'tcx> {
         goal: Goal<'tcx, ty::Predicate<'tcx>>,
         visitor: &mut V,
     ) -> V::Result {
-        self.probe(|_| {
-            let (_, proof_tree) = self.evaluate_root_goal(goal, GenerateProofTree::Yes);
-            let proof_tree = proof_tree.unwrap();
-            visitor.visit_goal(&InspectGoal::new(self, 0, &proof_tree))
-        })
+        let (_, proof_tree) = self.evaluate_root_goal(goal, GenerateProofTree::Yes);
+        let proof_tree = proof_tree.unwrap();
+        visitor.visit_goal(&InspectGoal::new(self, 0, &proof_tree))
     }
 }
