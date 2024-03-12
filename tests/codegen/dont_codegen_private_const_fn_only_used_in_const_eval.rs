@@ -7,4 +7,4 @@ const fn foo() {}
 
 pub static FOO: () = foo();
 
-// CHECK: define{{.*}}foo{{.*}}
+// CHECK-NOT: define{{.*}}foo{{.*}}
