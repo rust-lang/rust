@@ -168,7 +168,8 @@ impl<'tcx> MirPass<'tcx> for EarlyOtherwiseBranch {
                 };
                 (value, targets.target_for_value(value))
             });
-            let eq_targets = SwitchTargets::new(eq_new_targets, opt_data.destination);
+            // The otherwise either is the same target branch or an unreachable.
+            let eq_targets = SwitchTargets::new(eq_new_targets, parent_targets.otherwise());
 
             // Create `bbEq` in example above
             let eq_switch = BasicBlockData::new(Some(Terminator {
