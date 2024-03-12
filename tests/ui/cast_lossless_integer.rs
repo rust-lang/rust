@@ -1,6 +1,8 @@
 #![allow(clippy::no_effect, clippy::unnecessary_operation, dead_code)]
 #![warn(clippy::cast_lossless)]
 
+type I64 = i64;
+
 fn main() {
     // Test clippy::cast_lossless with casts to integer types
     let _ = 1i8 as i16;
@@ -24,6 +26,8 @@ fn main() {
 
     // Test with an expression wrapped in parens
     let _ = (1u8 + 1u8) as u16;
+
+    let _ = 1i8 as I64;
 }
 
 // The lint would suggest using `f64::from(input)` here but the `XX::from` function is not const,
