@@ -147,7 +147,6 @@ pub(super) fn hints(
             None,
         );
         acc.push(InlayHint {
-            needs_resolve: label.needs_resolve(),
             range: expr.syntax().text_range(),
             pad_left: false,
             pad_right: false,

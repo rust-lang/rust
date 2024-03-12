@@ -31,7 +31,6 @@ pub(super) fn hints(
         if ty.lifetime().is_none() {
             let t = ty.amp_token()?;
             acc.push(InlayHint {
-                needs_resolve: false,
                 range: t.text_range(),
                 kind: InlayKind::Lifetime,
                 label: "'static".into(),

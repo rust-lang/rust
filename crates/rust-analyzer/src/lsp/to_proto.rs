@@ -446,7 +446,7 @@ pub(crate) fn inlay_hint(
     file_id: FileId,
     inlay_hint: InlayHint,
 ) -> Cancellable<lsp_types::InlayHint> {
-    let needs_resolve = inlay_hint.needs_resolve;
+    let needs_resolve = inlay_hint.needs_resolve();
     let (label, tooltip, mut something_to_resolve) =
         inlay_hint_label(snap, fields_to_resolve, needs_resolve, inlay_hint.label)?;
 

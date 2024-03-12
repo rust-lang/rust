@@ -109,7 +109,6 @@ pub(super) fn hints(
 
     let linked_location = name_range.map(|range| FileRange { file_id, range });
     acc.push(InlayHint {
-        needs_resolve: linked_location.is_some(),
         range: closing_token.text_range(),
         kind: InlayKind::ClosingBrace,
         label: InlayHintLabel::simple(label, None, linked_location),

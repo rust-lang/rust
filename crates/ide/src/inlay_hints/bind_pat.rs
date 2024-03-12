@@ -99,7 +99,6 @@ pub(super) fn hints(
         None => pat.syntax().text_range(),
     };
     acc.push(InlayHint {
-        needs_resolve: label.needs_resolve() || text_edit.is_some(),
         range: match type_ascriptable {
             Some(Some(t)) => text_range.cover(t.text_range()),
             _ => text_range,
