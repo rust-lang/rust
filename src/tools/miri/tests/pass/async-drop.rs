@@ -32,6 +32,9 @@ fn main() {
         let mut fut = pin!(unsafe { async_drop_in_place(fiz.as_mut_ptr()) });
         fut.as_mut().await;
         fut.await;
+
+        let foo = Foo(11);
+        async_drop(Qux { foo: &foo }).await;
     });
 
     let res = fut.poll(&mut cx);
@@ -46,6 +49,21 @@ impl AsyncDrop for Foo {
     fn async_drop(self: Pin<&mut Self>) -> Self::Dropper<'_> {
         async move {
             println!("<Foo as AsyncDrop>::Dropper::poll: {}", self.0);
+        }
+    }
+}
+
+struct Qux<'a> {
+    foo: &'a Foo,
+}
+
+impl AsyncDrop for Qux<'_> {
+    type Dropper<'b> = impl Future<Output = ()> + 'b
+        where Self: 'b;
+
+    fn async_drop(self: Pin<&mut Self>) -> Self::Dropper<'_> {
+        async move {
+            println!("<Qux as AsyncDrop>::Dropper::poll: {}", self.foo.0);
         }
     }
 }

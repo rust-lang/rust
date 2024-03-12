@@ -7,3 +7,4 @@
 <Foo as AsyncDrop>::Dropper::poll: 7
 <Foo as AsyncDrop>::Dropper::poll: 8
 <Fiz::A as AsyncDrop>::Dropper::poll: 10
+<Qux as AsyncDrop>::Dropper::poll: 11
