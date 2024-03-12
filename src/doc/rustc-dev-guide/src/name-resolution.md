@@ -7,7 +7,7 @@ is built with all `macros` expanded. We saw how doing that requires doing some
 name resolution to resolve imports and `macro` names. In this chapter, we show
 how this is actually done and more.
 
-[ast]: https://en.wikipedia.org/wiki/Abstract_syntax_tree
+[ast]: ./ast-validation.md
 
 In fact, we don't do full name resolution during `macro` expansion -- we only
 resolve imports and `macros` at that time. This is required to know what to even
