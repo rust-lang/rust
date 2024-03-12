@@ -1,5 +1,5 @@
 error[E0053]: method `early` has an incompatible type for trait
-  --> $DIR/method-signature-matches.rs:57:27
+  --> $DIR/method-signature-matches.rs:55:27
    |
 LL |     fn early<'late, T>(_: &'late ()) {}
    |                     -     ^^^^^^^^^
@@ -9,7 +9,7 @@ LL |     fn early<'late, T>(_: &'late ()) {}
    |                     expected this type parameter
    |
 note: type in trait
-  --> $DIR/method-signature-matches.rs:52:28
+  --> $DIR/method-signature-matches.rs:50:28
    |
 LL |     fn early<'early, T>(x: &'early T) -> impl Sized;
    |                            ^^^^^^^^^
