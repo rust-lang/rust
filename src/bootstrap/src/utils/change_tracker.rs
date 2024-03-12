@@ -151,4 +151,9 @@ pub const CONFIG_CHANGE_HISTORY: &[ChangeInfo] = &[
         severity: ChangeSeverity::Info,
         summary: "New option `rust.llvm-bitcode-linker` that will build the llvm-bitcode-linker.",
     },
+    ChangeInfo {
+        change_id: 121754,
+        severity: ChangeSeverity::Warning,
+        summary: "`rust.split-debuginfo` has been moved to `target.<triple>.split-debuginfo` and its default value is determined for each target individually.",
+    },
 ];

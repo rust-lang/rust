@@ -44,7 +44,7 @@ pub(crate) fn try_run_tests(builder: &Builder<'_>, cmd: &mut Command, stream: bo
 fn run_tests(builder: &Builder<'_>, cmd: &mut Command, stream: bool) -> bool {
     cmd.stdout(Stdio::piped());
 
-    builder.verbose(&format!("running: {cmd:?}"));
+    builder.verbose(|| println!("running: {cmd:?}"));
 
     let mut process = cmd.spawn().unwrap();
 

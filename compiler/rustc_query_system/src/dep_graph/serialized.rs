@@ -179,13 +179,15 @@ impl SerializedDepGraph {
     pub fn decode<D: Deps>(d: &mut MemDecoder<'_>) -> SerializedDepGraph {
         // The last 16 bytes are the node count and edge count.
         debug!("position: {:?}", d.position());
-        let (node_count, edge_count) =
-            d.with_position(d.len() - 2 * IntEncodedWithFixedSize::ENCODED_SIZE, |d| {
+        let (node_count, edge_count, graph_size) =
+            d.with_position(d.len() - 3 * IntEncodedWithFixedSize::ENCODED_SIZE, |d| {
                 debug!("position: {:?}", d.position());
                 let node_count = IntEncodedWithFixedSize::decode(d).0 as usize;
                 let edge_count = IntEncodedWithFixedSize::decode(d).0 as usize;
-                (node_count, edge_count)
+                let graph_size = IntEncodedWithFixedSize::decode(d).0 as usize;
+                (node_count, edge_count, graph_size)
             });
+        assert_eq!(d.len(), graph_size);
         debug!("position: {:?}", d.position());
 
         debug!(?node_count, ?edge_count);
@@ -491,6 +493,8 @@ impl<D: Deps> EncoderState<D> {
         debug!("position: {:?}", encoder.position());
         IntEncodedWithFixedSize(node_count).encode(&mut encoder);
         IntEncodedWithFixedSize(edge_count).encode(&mut encoder);
+        let graph_size = encoder.position() + IntEncodedWithFixedSize::ENCODED_SIZE;
+        IntEncodedWithFixedSize(graph_size as u64).encode(&mut encoder);
         debug!("position: {:?}", encoder.position());
         // Drop the encoder so that nothing is written after the counts.
         let result = encoder.finish();

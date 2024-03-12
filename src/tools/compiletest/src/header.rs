@@ -694,7 +694,6 @@ const KNOWN_DIRECTIVE_NAMES: &[&str] = &[
     "check-stdout",
     "check-test-line-numbers-match",
     "compile-flags",
-    "count",
     "dont-check-compiler-stderr",
     "dont-check-compiler-stdout",
     "dont-check-failure-status",
