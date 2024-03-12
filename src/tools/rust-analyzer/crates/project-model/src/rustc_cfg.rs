@@ -1,9 +1,8 @@
 //! Runs `rustc --print cfg` to get built-in cfg flags.
 
-use std::process::Command;
-
 use anyhow::Context;
 use rustc_hash::FxHashMap;
+use toolchain::Tool;
 
 use crate::{cfg_flag::CfgFlag, utf8_stdout, ManifestPath, Sysroot};
 
@@ -69,8 +68,8 @@ fn get_rust_cfgs(
 ) -> anyhow::Result<String> {
     let sysroot = match config {
         RustcCfgConfig::Cargo(sysroot, cargo_toml) => {
-            let mut cmd = Command::new(toolchain::Tool::Cargo.path());
-            Sysroot::set_rustup_toolchain_env(&mut cmd, sysroot);
+            let mut cmd = Sysroot::tool(sysroot, Tool::Cargo);
+
             cmd.envs(extra_env);
             cmd.current_dir(cargo_toml.parent())
                 .args(["rustc", "-Z", "unstable-options", "--print", "cfg"])
@@ -90,7 +89,7 @@ fn get_rust_cfgs(
         RustcCfgConfig::Rustc(sysroot) => sysroot,
     };
 
-    let mut cmd = Sysroot::rustc(sysroot);
+    let mut cmd = Sysroot::tool(sysroot, Tool::Rustc);
     cmd.envs(extra_env);
     cmd.args(["--print", "cfg", "-O"]);
     if let Some(target) = target {

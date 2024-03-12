@@ -15,7 +15,6 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
   sudo \
   xz-utils \
   tidy \
-  libgccjit-12-dev \
   \
 # Install dependencies for chromium browser
   gconf-service \
@@ -57,13 +56,17 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
   lsb-release \
   xdg-utils \
   wget \
+  # libgccjit dependencies
+  flex \
+  libmpfr-dev \
+  libgmp-dev \
+  libmpc3 \
+  libmpc-dev \
   && rm -rf /var/lib/apt/lists/*
 
 COPY scripts/sccache.sh /scripts/
 RUN sh /scripts/sccache.sh
 
-# Make `libgccjit.so` accessible.
-RUN ln -s /usr/lib/gcc/x86_64-linux-gnu/12/libgccjit.so /usr/lib/x86_64-linux-gnu/libgccjit.so
 # Fix rustc_codegen_gcc lto issues.
 ENV GCC_EXEC_PREFIX="/usr/lib/gcc/"
 
@@ -91,6 +94,10 @@ ENV RUST_CONFIGURE_ARGS \
   --enable-new-symbol-mangling
 
 ENV HOST_TARGET x86_64-unknown-linux-gnu
+
+COPY host-x86_64/dist-x86_64-linux/build-gccjit.sh /scripts/
+
+RUN sh /scripts/build-gccjit.sh /scripts
 
 ENV SCRIPT /tmp/checktools.sh ../x.py && \
   NODE_PATH=`npm root -g` python3 ../x.py test tests/rustdoc-gui --stage 2 \

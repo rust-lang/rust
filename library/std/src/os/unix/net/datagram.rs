@@ -6,6 +6,7 @@ use crate::io::{IoSlice, IoSliceMut};
 use crate::net::Shutdown;
 use crate::os::unix::io::{AsFd, AsRawFd, BorrowedFd, FromRawFd, IntoRawFd, OwnedFd, RawFd};
 use crate::path::Path;
+use crate::sealed::Sealed;
 use crate::sys::cvt;
 use crate::sys::net::Socket;
 use crate::sys_common::{AsInner, FromInner, IntoInner};
@@ -53,6 +54,10 @@ const MSG_NOSIGNAL: libc::c_int = 0x0;
 /// ```
 #[stable(feature = "unix_socket", since = "1.10.0")]
 pub struct UnixDatagram(Socket);
+
+/// Allows extension traits within `std`.
+#[unstable(feature = "sealed", issue = "none")]
+impl Sealed for UnixDatagram {}
 
 #[stable(feature = "unix_socket", since = "1.10.0")]
 impl fmt::Debug for UnixDatagram {
@@ -802,69 +807,6 @@ impl UnixDatagram {
         self.0.set_nonblocking(nonblocking)
     }
 
-    /// Moves the socket to pass unix credentials as control message in [`SocketAncillary`].
-    ///
-    /// Set the socket option `SO_PASSCRED`.
-    ///
-    /// # Examples
-    ///
-    #[cfg_attr(
-        any(
-            target_os = "android",
-            target_os = "linux",
-            target_os = "netbsd",
-            target_os = "freebsd",
-        ),
-        doc = "```no_run"
-    )]
-    #[cfg_attr(
-        not(any(
-            target_os = "android",
-            target_os = "linux",
-            target_os = "netbsd",
-            target_os = "freebsd"
-        )),
-        doc = "```ignore"
-    )]
-    /// #![feature(unix_socket_ancillary_data)]
-    /// use std::os::unix::net::UnixDatagram;
-    ///
-    /// fn main() -> std::io::Result<()> {
-    ///     let sock = UnixDatagram::unbound()?;
-    ///     sock.set_passcred(true).expect("set_passcred function failed");
-    ///     Ok(())
-    /// }
-    /// ```
-    #[cfg(any(
-        doc,
-        target_os = "android",
-        target_os = "linux",
-        target_os = "netbsd",
-        target_os = "freebsd"
-    ))]
-    #[unstable(feature = "unix_socket_ancillary_data", issue = "76915")]
-    pub fn set_passcred(&self, passcred: bool) -> io::Result<()> {
-        self.0.set_passcred(passcred)
-    }
-
-    /// Get the current value of the socket for passing unix credentials in [`SocketAncillary`].
-    /// This value can be change by [`set_passcred`].
-    ///
-    /// Get the socket option `SO_PASSCRED`.
-    ///
-    /// [`set_passcred`]: UnixDatagram::set_passcred
-    #[cfg(any(
-        doc,
-        target_os = "android",
-        target_os = "linux",
-        target_os = "netbsd",
-        target_os = "freebsd"
-    ))]
-    #[unstable(feature = "unix_socket_ancillary_data", issue = "76915")]
-    pub fn passcred(&self) -> io::Result<bool> {
-        self.0.passcred()
-    }
-
     /// Set the id of the socket for network filtering purpose
     ///
     #[cfg_attr(
@@ -1036,5 +978,12 @@ impl From<OwnedFd> for UnixDatagram {
     #[inline]
     fn from(owned: OwnedFd) -> Self {
         unsafe { Self::from_raw_fd(owned.into_raw_fd()) }
+    }
+}
+
+impl AsInner<Socket> for UnixDatagram {
+    #[inline]
+    fn as_inner(&self) -> &Socket {
+        &self.0
     }
 }

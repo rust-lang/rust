@@ -103,10 +103,10 @@ fn on_demand_input_durability() {
     expect_test::expect![[r#"
         RefCell {
             value: [
-                "Event { runtime_id: RuntimeId { counter: 0 }, kind: WillExecute { database_key: b(1) } }",
-                "Event { runtime_id: RuntimeId { counter: 0 }, kind: WillExecute { database_key: a(1) } }",
-                "Event { runtime_id: RuntimeId { counter: 0 }, kind: WillExecute { database_key: b(2) } }",
-                "Event { runtime_id: RuntimeId { counter: 0 }, kind: WillExecute { database_key: a(2) } }",
+                "Event { runtime_id: RuntimeId { counter: 0 }, kind: WillExecute { database_key: on_demand_inputs::BQuery::b(1) } }",
+                "Event { runtime_id: RuntimeId { counter: 0 }, kind: WillExecute { database_key: on_demand_inputs::AQuery::a(1) } }",
+                "Event { runtime_id: RuntimeId { counter: 0 }, kind: WillExecute { database_key: on_demand_inputs::BQuery::b(2) } }",
+                "Event { runtime_id: RuntimeId { counter: 0 }, kind: WillExecute { database_key: on_demand_inputs::AQuery::a(2) } }",
             ],
         }
     "#]].assert_debug_eq(&events);
@@ -119,11 +119,11 @@ fn on_demand_input_durability() {
     expect_test::expect![[r#"
         RefCell {
             value: [
-                "Event { runtime_id: RuntimeId { counter: 0 }, kind: WillExecute { database_key: c(1) } }",
-                "Event { runtime_id: RuntimeId { counter: 0 }, kind: DidValidateMemoizedValue { database_key: b(1) } }",
-                "Event { runtime_id: RuntimeId { counter: 0 }, kind: WillExecute { database_key: c(2) } }",
-                "Event { runtime_id: RuntimeId { counter: 0 }, kind: WillExecute { database_key: a(2) } }",
-                "Event { runtime_id: RuntimeId { counter: 0 }, kind: DidValidateMemoizedValue { database_key: b(2) } }",
+                "Event { runtime_id: RuntimeId { counter: 0 }, kind: WillExecute { database_key: on_demand_inputs::CQuery::c(1) } }",
+                "Event { runtime_id: RuntimeId { counter: 0 }, kind: DidValidateMemoizedValue { database_key: on_demand_inputs::BQuery::b(1) } }",
+                "Event { runtime_id: RuntimeId { counter: 0 }, kind: WillExecute { database_key: on_demand_inputs::CQuery::c(2) } }",
+                "Event { runtime_id: RuntimeId { counter: 0 }, kind: WillExecute { database_key: on_demand_inputs::AQuery::a(2) } }",
+                "Event { runtime_id: RuntimeId { counter: 0 }, kind: DidValidateMemoizedValue { database_key: on_demand_inputs::BQuery::b(2) } }",
             ],
         }
     "#]].assert_debug_eq(&events);
@@ -137,10 +137,10 @@ fn on_demand_input_durability() {
     expect_test::expect![[r#"
         RefCell {
             value: [
-                "Event { runtime_id: RuntimeId { counter: 0 }, kind: WillExecute { database_key: a(1) } }",
-                "Event { runtime_id: RuntimeId { counter: 0 }, kind: DidValidateMemoizedValue { database_key: c(1) } }",
-                "Event { runtime_id: RuntimeId { counter: 0 }, kind: WillExecute { database_key: a(2) } }",
-                "Event { runtime_id: RuntimeId { counter: 0 }, kind: DidValidateMemoizedValue { database_key: c(2) } }",
+                "Event { runtime_id: RuntimeId { counter: 0 }, kind: WillExecute { database_key: on_demand_inputs::AQuery::a(1) } }",
+                "Event { runtime_id: RuntimeId { counter: 0 }, kind: DidValidateMemoizedValue { database_key: on_demand_inputs::CQuery::c(1) } }",
+                "Event { runtime_id: RuntimeId { counter: 0 }, kind: WillExecute { database_key: on_demand_inputs::AQuery::a(2) } }",
+                "Event { runtime_id: RuntimeId { counter: 0 }, kind: DidValidateMemoizedValue { database_key: on_demand_inputs::CQuery::c(2) } }",
             ],
         }
     "#]].assert_debug_eq(&events);

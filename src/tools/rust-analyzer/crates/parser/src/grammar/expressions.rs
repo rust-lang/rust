@@ -211,9 +211,8 @@ fn current_op(p: &Parser<'_>) -> (u8, SyntaxKind, Associativity) {
         T![>] if p.at(T![>>])  => (9,  T![>>],  Left),
         T![>] if p.at(T![>=])  => (5,  T![>=],  Left),
         T![>]                  => (5,  T![>],   Left),
-        T![=] if p.at(T![=>])  => NOT_AN_OP,
         T![=] if p.at(T![==])  => (5,  T![==],  Left),
-        T![=]                  => (1,  T![=],   Right),
+        T![=] if !p.at(T![=>]) => (1,  T![=],   Right),
         T![<] if p.at(T![<=])  => (5,  T![<=],  Left),
         T![<] if p.at(T![<<=]) => (1,  T![<<=], Right),
         T![<] if p.at(T![<<])  => (9,  T![<<],  Left),
@@ -247,7 +246,7 @@ fn current_op(p: &Parser<'_>) -> (u8, SyntaxKind, Associativity) {
 fn expr_bp(
     p: &mut Parser<'_>,
     m: Option<Marker>,
-    mut r: Restrictions,
+    r: Restrictions,
     bp: u8,
 ) -> Option<(CompletedMarker, BlockLike)> {
     let m = m.unwrap_or_else(|| {
@@ -295,10 +294,6 @@ fn expr_bp(
         let m = lhs.precede(p);
         p.bump(op);
 
-        // test binop_resets_statementness
-        // fn f() { v = {1}&2; }
-        r = Restrictions { prefer_stmt: false, ..r };
-
         if is_range {
             // test postfix_range
             // fn foo() {
@@ -319,6 +314,9 @@ fn expr_bp(
             Associativity::Left => op_bp + 1,
             Associativity::Right => op_bp,
         };
+
+        // test binop_resets_statementness
+        // fn f() { v = {1}&2; }
         expr_bp(p, None, Restrictions { prefer_stmt: false, ..r }, op_bp);
         lhs = m.complete(p, if is_range { RANGE_EXPR } else { BIN_EXPR });
     }
@@ -345,7 +343,7 @@ fn lhs(p: &mut Parser<'_>, r: Restrictions) -> Option<(CompletedMarker, BlockLik
         T![&] => {
             m = p.start();
             p.bump(T![&]);
-            if p.at_contextual_kw(T![raw]) && (p.nth_at(1, T![mut]) || p.nth_at(1, T![const])) {
+            if p.at_contextual_kw(T![raw]) && [T![mut], T![const]].contains(&p.nth(1)) {
                 p.bump_remap(T![raw]);
                 p.bump_any();
             } else {

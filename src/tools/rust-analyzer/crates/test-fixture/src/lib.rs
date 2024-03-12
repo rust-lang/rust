@@ -7,7 +7,7 @@ use base_db::{
 };
 use cfg::CfgOptions;
 use hir_expand::{
-    change::Change,
+    change::ChangeWithProcMacros,
     db::ExpandDatabase,
     proc_macro::{
         ProcMacro, ProcMacroExpander, ProcMacroExpansionError, ProcMacroKind, ProcMacros,
@@ -103,7 +103,7 @@ impl<DB: ExpandDatabase + SourceDatabaseExt + Default + 'static> WithFixture for
 pub struct ChangeFixture {
     pub file_position: Option<(FileId, RangeOrOffset)>,
     pub files: Vec<FileId>,
-    pub change: Change,
+    pub change: ChangeWithProcMacros,
 }
 
 const SOURCE_ROOT_PREFIX: &str = "/";
@@ -149,15 +149,15 @@ impl ChangeFixture {
         for entry in fixture {
             let text = if entry.text.contains(CURSOR_MARKER) {
                 if entry.text.contains(ESCAPED_CURSOR_MARKER) {
-                    entry.text.replace(ESCAPED_CURSOR_MARKER, CURSOR_MARKER)
+                    entry.text.replace(ESCAPED_CURSOR_MARKER, CURSOR_MARKER).into()
                 } else {
                     let (range_or_offset, text) = extract_range_or_offset(&entry.text);
                     assert!(file_position.is_none());
                     file_position = Some((file_id, range_or_offset));
-                    text
+                    text.into()
                 }
             } else {
-                entry.text.clone()
+                entry.text.as_str().into()
             };
 
             let meta = FileMeta::from_fixture(entry, current_source_root_kind);
@@ -195,7 +195,10 @@ impl ChangeFixture {
                 let prev = crates.insert(crate_name.clone(), crate_id);
                 assert!(prev.is_none(), "multiple crates with same name: {}", crate_name);
                 for dep in meta.deps {
-                    let prelude = meta.extern_prelude.contains(&dep);
+                    let prelude = match &meta.extern_prelude {
+                        Some(v) => v.contains(&dep),
+                        None => true,
+                    };
                     let dep = CrateName::normalize_dashes(&dep);
                     crate_deps.push((crate_name.clone(), dep, prelude))
                 }
@@ -206,7 +209,7 @@ impl ChangeFixture {
                 default_env.extend(meta.env.iter().map(|(x, y)| (x.to_owned(), y.to_owned())));
             }
 
-            source_change.change_file(file_id, Some(text.into()));
+            source_change.change_file(file_id, Some(text));
             let path = VfsPath::new_virtual_path(meta.path);
             file_set.insert(file_id, path);
             files.push(file_id);
@@ -317,7 +320,7 @@ impl ChangeFixture {
         };
         roots.push(root);
 
-        let mut change = Change {
+        let mut change = ChangeWithProcMacros {
             source_change,
             proc_macros: proc_macros.is_empty().not().then_some(proc_macros),
             toolchains: Some(iter::repeat(toolchain).take(crate_graph.len()).collect()),
@@ -443,7 +446,7 @@ struct FileMeta {
     path: String,
     krate: Option<(String, CrateOrigin, Option<String>)>,
     deps: Vec<String>,
-    extern_prelude: Vec<String>,
+    extern_prelude: Option<Vec<String>>,
     cfg: CfgOptions,
     edition: Edition,
     env: Env,
@@ -473,7 +476,7 @@ impl FileMeta {
         Self {
             path: f.path,
             krate: f.krate.map(|it| parse_crate(it, current_source_root_kind, f.library)),
-            extern_prelude: f.extern_prelude.unwrap_or_else(|| deps.clone()),
+            extern_prelude: f.extern_prelude,
             deps,
             cfg,
             edition: f.edition.map_or(Edition::CURRENT, |v| Edition::from_str(&v).unwrap()),

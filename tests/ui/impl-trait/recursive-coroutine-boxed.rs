@@ -1,4 +1,5 @@
 //@ revisions: current next
+//@ ignore-compare-mode-next-solver (explicit revisions)
 //@[current] check-pass
 //@[next] compile-flags: -Znext-solver
 #![feature(coroutines, coroutine_trait)]

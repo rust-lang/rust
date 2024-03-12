@@ -1,4 +1,4 @@
-//@ run-pass
+//@ check-pass
 //@ edition:2018
 //@ aux-crate:issue_55779_extern_trait=issue-55779-extern-trait.rs
 

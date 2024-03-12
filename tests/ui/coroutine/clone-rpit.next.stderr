@@ -1,47 +1,47 @@
 error[E0391]: cycle detected when type-checking `foo`
-  --> $DIR/clone-rpit.rs:12:1
+  --> $DIR/clone-rpit.rs:13:1
    |
 LL | pub fn foo<'a, 'b>() -> impl Clone {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
 note: ...which requires coroutine witness types for `foo::{closure#0}`...
-  --> $DIR/clone-rpit.rs:13:5
+  --> $DIR/clone-rpit.rs:14:5
    |
 LL |     move |_: ()| {
    |     ^^^^^^^^^^^^
 note: ...which requires promoting constants in MIR for `foo::{closure#0}`...
-  --> $DIR/clone-rpit.rs:13:5
+  --> $DIR/clone-rpit.rs:14:5
    |
 LL |     move |_: ()| {
    |     ^^^^^^^^^^^^
 note: ...which requires preparing `foo::{closure#0}` for borrow checking...
-  --> $DIR/clone-rpit.rs:13:5
+  --> $DIR/clone-rpit.rs:14:5
    |
 LL |     move |_: ()| {
    |     ^^^^^^^^^^^^
 note: ...which requires checking if `foo::{closure#0}` contains FFI-unwind calls...
-  --> $DIR/clone-rpit.rs:13:5
+  --> $DIR/clone-rpit.rs:14:5
    |
 LL |     move |_: ()| {
    |     ^^^^^^^^^^^^
 note: ...which requires building MIR for `foo::{closure#0}`...
-  --> $DIR/clone-rpit.rs:13:5
+  --> $DIR/clone-rpit.rs:14:5
    |
 LL |     move |_: ()| {
    |     ^^^^^^^^^^^^
 note: ...which requires match-checking `foo::{closure#0}`...
-  --> $DIR/clone-rpit.rs:13:5
+  --> $DIR/clone-rpit.rs:14:5
    |
 LL |     move |_: ()| {
    |     ^^^^^^^^^^^^
 note: ...which requires type-checking `foo::{closure#0}`...
-  --> $DIR/clone-rpit.rs:13:5
+  --> $DIR/clone-rpit.rs:14:5
    |
 LL |     move |_: ()| {
    |     ^^^^^^^^^^^^
    = note: ...which again requires type-checking `foo`, completing the cycle
 note: cycle used when computing type of opaque `foo::{opaque#0}`
-  --> $DIR/clone-rpit.rs:12:25
+  --> $DIR/clone-rpit.rs:13:25
    |
 LL | pub fn foo<'a, 'b>() -> impl Clone {
    |                         ^^^^^^^^^^

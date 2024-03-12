@@ -971,7 +971,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         let mut visitor = ValidityVisitor { path, ref_tracking, ctfe_mode, ecx: self };
 
         // Run it.
-        match visitor.visit_value(op) {
+        match self.run_for_validation(|| visitor.visit_value(op)) {
             Ok(()) => Ok(()),
             // Pass through validation failures and "invalid program" issues.
             Err(err)

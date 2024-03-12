@@ -19,6 +19,7 @@ mod diagnostics;
 mod diff;
 mod dispatch;
 mod global_state;
+mod hack_recover_crate_name;
 mod line_index;
 mod main_loop;
 mod mem_docs;

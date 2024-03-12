@@ -2,7 +2,6 @@
 // on musl target
 // override -Ctarget-feature=-crt-static from compiletest
 //@ compile-flags: --crate-type proc-macro -Ctarget-feature=
-//@ ignore-wasm32
 //@ ignore-sgx no support for proc-macro crate type
 //@ build-pass
 //@ force-host

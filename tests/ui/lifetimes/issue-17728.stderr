@@ -1,3 +1,19 @@
+error: lifetime may not live long enough
+  --> $DIR/issue-17728.rs:15:28
+   |
+LL |     fn attemptTraverse(&self, room: &Room, directionStr: &str) -> Result<&Room, &str> {
+   |                        -            - let's call the lifetime of this reference `'1`
+   |                        |
+   |                        let's call the lifetime of this reference `'2`
+...
+LL |             Some(entry) => Ok(entry),
+   |                            ^^^^^^^^^ method was supposed to return data with lifetime `'2` but it is returning data with lifetime `'1`
+   |
+help: consider introducing a named lifetime parameter
+   |
+LL |     fn attemptTraverse<'a>(&'a self, room: &'a Room, directionStr: &str) -> Result<&Room, &str> {
+   |                       ++++  ++              ++
+
 error[E0308]: `match` arms have incompatible types
   --> $DIR/issue-17728.rs:108:14
    |
@@ -15,22 +31,6 @@ LL | |     }
    |
    = note: expected enum `RoomDirection`
               found enum `Option<_>`
-
-error: lifetime may not live long enough
-  --> $DIR/issue-17728.rs:15:28
-   |
-LL |     fn attemptTraverse(&self, room: &Room, directionStr: &str) -> Result<&Room, &str> {
-   |                        -            - let's call the lifetime of this reference `'1`
-   |                        |
-   |                        let's call the lifetime of this reference `'2`
-...
-LL |             Some(entry) => Ok(entry),
-   |                            ^^^^^^^^^ method was supposed to return data with lifetime `'2` but it is returning data with lifetime `'1`
-   |
-help: consider introducing a named lifetime parameter
-   |
-LL |     fn attemptTraverse<'a>(&'a self, room: &'a Room, directionStr: &str) -> Result<&Room, &str> {
-   |                       ++++  ++              ++
 
 error: aborting due to 2 previous errors
 

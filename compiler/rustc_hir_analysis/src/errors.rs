@@ -2,7 +2,7 @@
 
 use crate::fluent_generated as fluent;
 use rustc_errors::{
-    codes::*, Applicability, Diag, DiagCtxt, EmissionGuarantee, IntoDiagnostic, Level, MultiSpan,
+    codes::*, Applicability, Diag, DiagCtxt, Diagnostic, EmissionGuarantee, Level, MultiSpan,
 };
 use rustc_macros::{Diagnostic, LintDiagnostic, Subdiagnostic};
 use rustc_middle::ty::Ty;
@@ -355,10 +355,10 @@ pub struct MissingTypeParams {
     pub empty_generic_args: bool,
 }
 
-// Manual implementation of `IntoDiagnostic` to be able to call `span_to_snippet`.
-impl<'a, G: EmissionGuarantee> IntoDiagnostic<'a, G> for MissingTypeParams {
+// Manual implementation of `Diagnostic` to be able to call `span_to_snippet`.
+impl<'a, G: EmissionGuarantee> Diagnostic<'a, G> for MissingTypeParams {
     #[track_caller]
-    fn into_diagnostic(self, dcx: &'a DiagCtxt, level: Level) -> Diag<'a, G> {
+    fn into_diag(self, dcx: &'a DiagCtxt, level: Level) -> Diag<'a, G> {
         let mut err = Diag::new(dcx, level, fluent::hir_analysis_missing_type_params);
         err.span(self.span);
         err.code(E0393);

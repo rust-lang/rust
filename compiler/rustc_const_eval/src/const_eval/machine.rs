@@ -243,14 +243,12 @@ impl<'mir, 'tcx: 'mir> CompileTimeEvalContext<'mir, 'tcx> {
         } else if Some(def_id) == self.tcx.lang_items().panic_fmt() {
             // For panic_fmt, call const_panic_fmt instead.
             let const_def_id = self.tcx.require_lang_item(LangItem::ConstPanicFmt, None);
-            let new_instance = ty::Instance::resolve(
+            let new_instance = ty::Instance::expect_resolve(
                 *self.tcx,
                 ty::ParamEnv::reveal_all(),
                 const_def_id,
                 instance.args,
-            )
-            .unwrap()
-            .unwrap();
+            );
 
             return Ok(Some(new_instance));
         } else if Some(def_id) == self.tcx.lang_items().align_offset_fn() {

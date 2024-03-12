@@ -2266,6 +2266,17 @@ name = "lld-wrapper"
 version = "0.1.0"
 
 [[package]]
+name = "llvm-bitcode-linker"
+version = "0.0.1"
+dependencies = [
+ "anyhow",
+ "clap",
+ "thiserror",
+ "tracing",
+ "tracing-subscriber",
+]
+
+[[package]]
 name = "lock_api"
 version = "0.4.11"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3298,6 +3309,9 @@ dependencies = [
 [[package]]
 name = "run_make_support"
 version = "0.0.0"
+dependencies = [
+ "wasmparser",
+]
 
 [[package]]
 name = "rust-demangler"

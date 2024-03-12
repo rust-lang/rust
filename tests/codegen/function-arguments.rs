@@ -198,7 +198,7 @@ pub fn notunpin_box(x: Box<NotUnpin>) -> Box<NotUnpin> {
   x
 }
 
-// CHECK: @struct_return(ptr noalias nocapture noundef sret(%S) align 4 dereferenceable(32){{( %_0)?}})
+// CHECK: @struct_return(ptr noalias nocapture noundef sret([32 x i8]) align 4 dereferenceable(32){{( %_0)?}})
 #[no_mangle]
 pub fn struct_return() -> S {
   S {

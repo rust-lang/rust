@@ -38,7 +38,7 @@ pub enum DiagArgValue {
     Str(Cow<'static, str>),
     // This gets converted to a `FluentNumber`, which is an `f64`. An `i32`
     // safely fits in an `f64`. Any integers bigger than that will be converted
-    // to strings in `into_diagnostic_arg` and stored using the `Str` variant.
+    // to strings in `into_diag_arg` and stored using the `Str` variant.
     Number(i32),
     StrListSepByAnd(Vec<Cow<'static, str>>),
 }
@@ -112,48 +112,48 @@ impl EmissionGuarantee for rustc_span::fatal_error::FatalError {
 /// When implemented manually, it should be generic over the emission
 /// guarantee, i.e.:
 /// ```ignore (fragment)
-/// impl<'a, G: EmissionGuarantee> IntoDiagnostic<'a, G> for Foo { ... }
+/// impl<'a, G: EmissionGuarantee> Diagnostic<'a, G> for Foo { ... }
 /// ```
 /// rather than being specific:
 /// ```ignore (fragment)
-/// impl<'a> IntoDiagnostic<'a> for Bar { ... }  // the default type param is `ErrorGuaranteed`
-/// impl<'a> IntoDiagnostic<'a, ()> for Baz { ... }
+/// impl<'a> Diagnostic<'a> for Bar { ... }  // the default type param is `ErrorGuaranteed`
+/// impl<'a> Diagnostic<'a, ()> for Baz { ... }
 /// ```
 /// There are two reasons for this.
 /// - A diagnostic like `Foo` *could* be emitted at any level -- `level` is
-///   passed in to `into_diagnostic` from outside. Even if in practice it is
+///   passed in to `into_diag` from outside. Even if in practice it is
 ///   always emitted at a single level, we let the diagnostic creation/emission
 ///   site determine the level (by using `create_err`, `emit_warn`, etc.)
-///   rather than the `IntoDiagnostic` impl.
+///   rather than the `Diagnostic` impl.
 /// - Derived impls are always generic, and it's good for the hand-written
 ///   impls to be consistent with them.
-#[rustc_diagnostic_item = "IntoDiagnostic"]
-pub trait IntoDiagnostic<'a, G: EmissionGuarantee = ErrorGuaranteed> {
+#[rustc_diagnostic_item = "Diagnostic"]
+pub trait Diagnostic<'a, G: EmissionGuarantee = ErrorGuaranteed> {
     /// Write out as a diagnostic out of `DiagCtxt`.
     #[must_use]
-    fn into_diagnostic(self, dcx: &'a DiagCtxt, level: Level) -> Diag<'a, G>;
+    fn into_diag(self, dcx: &'a DiagCtxt, level: Level) -> Diag<'a, G>;
 }
 
-impl<'a, T, G> IntoDiagnostic<'a, G> for Spanned<T>
+impl<'a, T, G> Diagnostic<'a, G> for Spanned<T>
 where
-    T: IntoDiagnostic<'a, G>,
+    T: Diagnostic<'a, G>,
     G: EmissionGuarantee,
 {
-    fn into_diagnostic(self, dcx: &'a DiagCtxt, level: Level) -> Diag<'a, G> {
-        self.node.into_diagnostic(dcx, level).with_span(self.span)
+    fn into_diag(self, dcx: &'a DiagCtxt, level: Level) -> Diag<'a, G> {
+        self.node.into_diag(dcx, level).with_span(self.span)
     }
 }
 
-/// Converts a value of a type into a `DiagArg` (typically a field of an `IntoDiagnostic` struct).
+/// Converts a value of a type into a `DiagArg` (typically a field of an `Diag` struct).
 /// Implemented as a custom trait rather than `From` so that it is implemented on the type being
 /// converted rather than on `DiagArgValue`, which enables types from other `rustc_*` crates to
 /// implement this.
-pub trait IntoDiagnosticArg {
-    fn into_diagnostic_arg(self) -> DiagArgValue;
+pub trait IntoDiagArg {
+    fn into_diag_arg(self) -> DiagArgValue;
 }
 
-impl IntoDiagnosticArg for DiagArgValue {
-    fn into_diagnostic_arg(self) -> DiagArgValue {
+impl IntoDiagArg for DiagArgValue {
+    fn into_diag_arg(self) -> DiagArgValue {
         self
     }
 }
@@ -170,19 +170,19 @@ impl Into<FluentValue<'static>> for DiagArgValue {
 
 /// Trait implemented by error types. This should not be implemented manually. Instead, use
 /// `#[derive(Subdiagnostic)]` -- see [rustc_macros::Subdiagnostic].
-#[rustc_diagnostic_item = "AddToDiagnostic"]
-pub trait AddToDiagnostic
+#[rustc_diagnostic_item = "Subdiagnostic"]
+pub trait Subdiagnostic
 where
     Self: Sized,
 {
     /// Add a subdiagnostic to an existing diagnostic.
-    fn add_to_diagnostic<G: EmissionGuarantee>(self, diag: &mut Diag<'_, G>) {
-        self.add_to_diagnostic_with(diag, |_, m| m);
+    fn add_to_diag<G: EmissionGuarantee>(self, diag: &mut Diag<'_, G>) {
+        self.add_to_diag_with(diag, |_, m| m);
     }
 
     /// Add a subdiagnostic to an existing diagnostic where `f` is invoked on every message used
     /// (to optionally perform eager translation).
-    fn add_to_diagnostic_with<G: EmissionGuarantee, F: SubdiagMessageOp<G>>(
+    fn add_to_diag_with<G: EmissionGuarantee, F: SubdiagMessageOp<G>>(
         self,
         diag: &mut Diag<'_, G>,
         f: F,
@@ -193,8 +193,8 @@ pub trait SubdiagMessageOp<G> = Fn(&mut Diag<'_, G>, SubdiagMessage) -> SubdiagM
 
 /// Trait implemented by lint types. This should not be implemented manually. Instead, use
 /// `#[derive(LintDiagnostic)]` -- see [rustc_macros::LintDiagnostic].
-#[rustc_diagnostic_item = "DecorateLint"]
-pub trait DecorateLint<'a, G: EmissionGuarantee> {
+#[rustc_diagnostic_item = "LintDiagnostic"]
+pub trait LintDiagnostic<'a, G: EmissionGuarantee> {
     /// Decorate and emit a lint.
     fn decorate_lint<'b>(self, diag: &'b mut Diag<'a, G>);
 
@@ -419,8 +419,8 @@ impl DiagInner {
         self.children.push(sub);
     }
 
-    pub(crate) fn arg(&mut self, name: impl Into<DiagArgName>, arg: impl IntoDiagnosticArg) {
-        self.args.insert(name.into(), arg.into_diagnostic_arg());
+    pub(crate) fn arg(&mut self, name: impl Into<DiagArgName>, arg: impl IntoDiagArg) {
+        self.args.insert(name.into(), arg.into_diag_arg());
     }
 
     /// Fields used for Hash, and PartialEq trait.
@@ -482,7 +482,7 @@ pub struct Subdiag {
 /// - The `EmissionGuarantee`, which determines the type returned from `emit`.
 ///
 /// Each constructed `Diag` must be consumed by a function such as `emit`,
-/// `cancel`, `delay_as_bug`, or `into_diagnostic`. A panic occurrs if a `Diag`
+/// `cancel`, `delay_as_bug`, or `into_diag`. A panic occurrs if a `Diag`
 /// is dropped without being consumed by one of these functions.
 ///
 /// If there is some state in a downstream crate you would like to access in
@@ -1194,9 +1194,9 @@ impl<'a, G: EmissionGuarantee> Diag<'a, G> {
     pub fn subdiagnostic(
         &mut self,
         dcx: &crate::DiagCtxt,
-        subdiagnostic: impl AddToDiagnostic,
+        subdiagnostic: impl Subdiagnostic,
     ) -> &mut Self {
-        subdiagnostic.add_to_diagnostic_with(self, |diag, msg| {
+        subdiagnostic.add_to_diag_with(self, |diag, msg| {
             let args = diag.args.iter();
             let msg = diag.subdiagnostic_message_to_diagnostic_message(msg);
             dcx.eagerly_translate(msg, args)
@@ -1243,7 +1243,7 @@ impl<'a, G: EmissionGuarantee> Diag<'a, G> {
     pub fn arg(
         &mut self,
         name: impl Into<DiagArgName>,
-        arg: impl IntoDiagnosticArg,
+        arg: impl IntoDiagArg,
     ) -> &mut Self {
         self.deref_mut().arg(name, arg);
         self

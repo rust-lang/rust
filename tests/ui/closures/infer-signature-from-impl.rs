@@ -1,4 +1,5 @@
 //@ revisions: current next
+//@ ignore-compare-mode-next-solver (explicit revisions)
 //@[next] compile-flags: -Znext-solver
 //@[next] known-bug: trait-system-refactor-initiative#71
 //@[current] check-pass

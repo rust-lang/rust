@@ -1,5 +1,5 @@
 //@ run-pass
-//@ ignore-wasm32-bare no libc to test ffi with
+//@ ignore-wasm32 wasi-libc does not have lgamma
 //@ ignore-sgx no libc
 #![feature(rustc_private)]
 

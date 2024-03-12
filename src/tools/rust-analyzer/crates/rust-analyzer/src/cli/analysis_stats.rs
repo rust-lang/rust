@@ -371,7 +371,7 @@ impl flags::AnalysisStats {
 
             let parse = sema.parse(file_id);
             let file_txt = db.file_text(file_id);
-            let path = vfs.file_path(file_id).as_path().unwrap().to_owned();
+            let path = vfs.file_path(file_id).as_path().unwrap();
 
             for node in parse.syntax().descendants() {
                 let expr = match syntax::ast::Expr::cast(node.clone()) {
@@ -446,7 +446,7 @@ impl flags::AnalysisStats {
                     edit.apply(&mut txt);
 
                     if self.validate_term_search {
-                        std::fs::write(&path, txt).unwrap();
+                        std::fs::write(path, txt).unwrap();
 
                         let res = ws.run_build_scripts(&cargo_config, &|_| ()).unwrap();
                         if let Some(err) = res.error() {
@@ -495,7 +495,7 @@ impl flags::AnalysisStats {
             }
             // Revert file back to original state
             if self.validate_term_search {
-                std::fs::write(&path, file_txt.to_string()).unwrap();
+                std::fs::write(path, file_txt.to_string()).unwrap();
             }
 
             bar.inc(1);
@@ -982,6 +982,7 @@ impl flags::AnalysisStats {
                     },
                     prefer_no_std: false,
                     prefer_prelude: true,
+                    style_lints: false,
                 },
                 ide::AssistResolveStrategy::All,
                 file_id,
@@ -1077,12 +1078,12 @@ fn location_csv_pat(db: &RootDatabase, vfs: &Vfs, sm: &BodySourceMap, pat_id: Pa
     format!("{path},{}:{},{}:{}", start.line + 1, start.col, end.line + 1, end.col)
 }
 
-fn expr_syntax_range(
+fn expr_syntax_range<'a>(
     db: &RootDatabase,
-    vfs: &Vfs,
+    vfs: &'a Vfs,
     sm: &BodySourceMap,
     expr_id: ExprId,
-) -> Option<(VfsPath, LineCol, LineCol)> {
+) -> Option<(&'a VfsPath, LineCol, LineCol)> {
     let src = sm.expr_syntax(expr_id);
     if let Ok(src) = src {
         let root = db.parse_or_expand(src.file_id);
@@ -1098,12 +1099,12 @@ fn expr_syntax_range(
         None
     }
 }
-fn pat_syntax_range(
+fn pat_syntax_range<'a>(
     db: &RootDatabase,
-    vfs: &Vfs,
+    vfs: &'a Vfs,
     sm: &BodySourceMap,
     pat_id: PatId,
-) -> Option<(VfsPath, LineCol, LineCol)> {
+) -> Option<(&'a VfsPath, LineCol, LineCol)> {
     let src = sm.pat_syntax(pat_id);
     if let Ok(src) = src {
         let root = db.parse_or_expand(src.file_id);

@@ -347,7 +347,7 @@ fn check_opaque_meets_bounds<'tcx>(
 
     let infcx = tcx
         .infer_ctxt()
-        .with_opaque_type_inference(DefiningAnchor::Bind(defining_use_anchor))
+        .with_opaque_type_inference(DefiningAnchor::bind(tcx, defining_use_anchor))
         .build();
     let ocx = ObligationCtxt::new(&infcx);
 
@@ -1558,7 +1558,7 @@ pub(super) fn check_coroutine_obligations(
         .ignoring_regions()
         // Bind opaque types to type checking root, as they should have been checked by borrowck,
         // but may show up in some cases, like when (root) obligations are stalled in the new solver.
-        .with_opaque_type_inference(DefiningAnchor::Bind(typeck.hir_owner.def_id))
+        .with_opaque_type_inference(DefiningAnchor::bind(tcx, typeck.hir_owner.def_id))
         .build();
 
     let mut fulfillment_cx = <dyn TraitEngine<'_>>::new(&infcx);

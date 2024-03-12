@@ -16,7 +16,7 @@ use rustc_parse::maybe_new_parser_from_source_str;
 use rustc_query_impl::QueryCtxt;
 use rustc_query_system::query::print_query_stack;
 use rustc_session::config::{self, Cfg, CheckCfg, ExpectedValues, Input, OutFileName};
-use rustc_session::filesearch::sysroot_candidates;
+use rustc_session::filesearch::{self, sysroot_candidates};
 use rustc_session::parse::ParseSess;
 use rustc_session::{lint, CompilerIO, EarlyDiagCtxt, Session};
 use rustc_span::source_map::FileLoader;
@@ -339,15 +339,52 @@ pub fn run_compiler<R: Send>(config: Config, f: impl FnOnce(&Compiler) -> R + Se
 
             let early_dcx = EarlyDiagCtxt::new(config.opts.error_format);
 
-            let codegen_backend = if let Some(make_codegen_backend) = config.make_codegen_backend {
-                make_codegen_backend(&config.opts)
-            } else {
-                util::get_codegen_backend(
-                    &early_dcx,
-                    &config.opts.maybe_sysroot,
-                    config.opts.unstable_opts.codegen_backend.as_deref(),
-                )
+            let sysroot = filesearch::materialize_sysroot(config.opts.maybe_sysroot.clone());
+
+            let (codegen_backend, target_override) = match config.make_codegen_backend {
+                None => {
+                    // Build a target without override, so that it can override the backend if needed
+                    let target =
+                        config::build_target_config(&early_dcx, &config.opts, None, &sysroot);
+
+                    let backend = util::get_codegen_backend(
+                        &early_dcx,
+                        &sysroot,
+                        config.opts.unstable_opts.codegen_backend.as_deref(),
+                        &target,
+                    );
+
+                    // target_override is documented to be called before init(), so this is okay
+                    let target_override = backend.target_override(&config.opts);
+
+                    // Assert that we don't use target's override of the backend and
+                    // backend's override of the target at the same time
+                    if config.opts.unstable_opts.codegen_backend.is_none()
+                        && target.default_codegen_backend.is_some()
+                        && target_override.is_some()
+                    {
+                        rustc_middle::bug!(
+                            "Codegen backend requested target override even though the target requested the backend"
+                        );
+                    }
+
+                    (backend, target_override)
+                }
+                Some(make_codegen_backend) => {
+                    // N.B. `make_codegen_backend` takes precedence over `target.default_codegen_backend`,
+                    //      which is ignored in this case.
+                    let backend = make_codegen_backend(&config.opts);
+
+                    // target_override is documented to be called before init(), so this is okay
+                    let target_override = backend.target_override(&config.opts);
+
+                    (backend, target_override)
+                }
             };
+
+            // Re-build target with the (potential) override
+            let target_cfg =
+                config::build_target_config(&early_dcx, &config.opts, target_override, &sysroot);
 
             let temps_dir = config.opts.unstable_opts.temps_dir.as_deref().map(PathBuf::from);
 
@@ -367,9 +404,6 @@ pub fn run_compiler<R: Send>(config: Config, f: impl FnOnce(&Compiler) -> R + Se
             let mut locale_resources = Vec::from(config.locale_resources);
             locale_resources.push(codegen_backend.locale_resource());
 
-            // target_override is documented to be called before init(), so this is okay
-            let target_override = codegen_backend.target_override(&config.opts);
-
             let mut sess = rustc_session::build_session(
                 early_dcx,
                 config.opts,
@@ -384,7 +418,8 @@ pub fn run_compiler<R: Send>(config: Config, f: impl FnOnce(&Compiler) -> R + Se
                 locale_resources,
                 config.lint_caps,
                 config.file_loader,
-                target_override,
+                target_cfg,
+                sysroot,
                 util::rustc_version_str().unwrap_or("unknown"),
                 config.ice_file,
                 config.using_internal_features,

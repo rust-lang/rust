@@ -64,19 +64,18 @@ static FIXED_POINT_LIMIT: Limit = Limit::new(8192);
 pub(super) fn collect_defs(db: &dyn DefDatabase, def_map: DefMap, tree_id: TreeId) -> DefMap {
     let crate_graph = db.crate_graph();
 
-    let mut deps = FxHashMap::default();
-    // populate external prelude and dependency list
     let krate = &crate_graph[def_map.krate];
+
+    // populate external prelude and dependency list
+    let mut deps =
+        FxHashMap::with_capacity_and_hasher(krate.dependencies.len(), Default::default());
     for dep in &krate.dependencies {
         tracing::debug!("crate dep {:?} -> {:?}", dep.name, dep.crate_id);
 
         deps.insert(dep.as_name(), dep.clone());
     }
 
-    let cfg_options = &krate.cfg_options;
-
-    let is_proc_macro = krate.is_proc_macro;
-    let proc_macros = if is_proc_macro {
+    let proc_macros = if krate.is_proc_macro {
         match db.proc_macros().get(&def_map.krate) {
             Some(Ok(proc_macros)) => {
                 Ok(proc_macros
@@ -124,11 +123,11 @@ pub(super) fn collect_defs(db: &dyn DefDatabase, def_map: DefMap, tree_id: TreeI
         indeterminate_imports: Vec::new(),
         unresolved_macros: Vec::new(),
         mod_dirs: FxHashMap::default(),
-        cfg_options,
+        cfg_options: &krate.cfg_options,
         proc_macros,
         from_glob_import: Default::default(),
         skip_attrs: Default::default(),
-        is_proc_macro,
+        is_proc_macro: krate.is_proc_macro,
     };
     if tree_id.is_block() {
         collector.seed_with_inner(tree_id);
@@ -302,71 +301,50 @@ impl DefCollector<'_> {
                     return;
                 }
             }
-            let attr_name = match attr.path.as_ident() {
-                Some(name) => name,
-                None => continue,
-            };
+            let Some(attr_name) = attr.path.as_ident() else { continue };
 
-            if *attr_name == hir_expand::name![recursion_limit] {
-                if let Some(limit) = attr.string_value() {
-                    if let Ok(limit) = limit.parse() {
-                        crate_data.recursion_limit = Some(limit);
+            match () {
+                () if *attr_name == hir_expand::name![recursion_limit] => {
+                    if let Some(limit) = attr.string_value() {
+                        if let Ok(limit) = limit.parse() {
+                            crate_data.recursion_limit = Some(limit);
+                        }
                     }
                 }
-                continue;
-            }
-
-            if *attr_name == hir_expand::name![crate_type] {
-                if let Some("proc-macro") = attr.string_value().map(SmolStr::as_str) {
-                    self.is_proc_macro = true;
+                () if *attr_name == hir_expand::name![crate_type] => {
+                    if let Some("proc-macro") = attr.string_value().map(SmolStr::as_str) {
+                        self.is_proc_macro = true;
+                    }
                 }
-                continue;
-            }
-
-            if *attr_name == hir_expand::name![no_core] {
-                crate_data.no_core = true;
-                continue;
-            }
-
-            if *attr_name == hir_expand::name![no_std] {
-                crate_data.no_std = true;
-                continue;
-            }
-
-            if attr_name.as_text().as_deref() == Some("rustc_coherence_is_core") {
-                crate_data.rustc_coherence_is_core = true;
-                continue;
-            }
-
-            if *attr_name == hir_expand::name![feature] {
-                let features = attr
-                    .parse_path_comma_token_tree(self.db.upcast())
-                    .into_iter()
-                    .flatten()
-                    .filter_map(|(feat, _)| match feat.segments() {
-                        [name] => Some(name.to_smol_str()),
-                        _ => None,
-                    });
-                crate_data.unstable_features.extend(features);
-            }
-
-            let attr_is_register_like = *attr_name == hir_expand::name![register_attr]
-                || *attr_name == hir_expand::name![register_tool];
-            if !attr_is_register_like {
-                continue;
-            }
-
-            let registered_name = match attr.single_ident_value() {
-                Some(ident) => ident.as_name(),
-                _ => continue,
-            };
-
-            if *attr_name == hir_expand::name![register_attr] {
-                crate_data.registered_attrs.push(registered_name.to_smol_str());
-                cov_mark::hit!(register_attr);
-            } else {
-                crate_data.registered_tools.push(registered_name.to_smol_str());
-                cov_mark::hit!(register_tool);
+                () if *attr_name == hir_expand::name![no_core] => crate_data.no_core = true,
+                () if *attr_name == hir_expand::name![no_std] => crate_data.no_std = true,
+                () if attr_name.as_text().as_deref() == Some("rustc_coherence_is_core") => {
+                    crate_data.rustc_coherence_is_core = true;
+                }
+                () if *attr_name == hir_expand::name![feature] => {
+                    let features = attr
+                        .parse_path_comma_token_tree(self.db.upcast())
+                        .into_iter()
+                        .flatten()
+                        .filter_map(|(feat, _)| match feat.segments() {
+                            [name] => Some(name.to_smol_str()),
+                            _ => None,
+                        });
+                    crate_data.unstable_features.extend(features);
+                }
+                () if *attr_name == hir_expand::name![register_attr] => {
+                    if let Some(ident) = attr.single_ident_value() {
+                        crate_data.registered_attrs.push(ident.text.clone());
+                        cov_mark::hit!(register_attr);
+                    }
+                }
+                () if *attr_name == hir_expand::name![register_tool] => {
+                    if let Some(ident) = attr.single_ident_value() {
+                        crate_data.registered_tools.push(ident.text.clone());
+                        cov_mark::hit!(register_tool);
+                    }
+                }
+                () => (),
             }
         }
 
@@ -409,6 +387,7 @@ impl DefCollector<'_> {
         // main name resolution fixed-point loop.
         let mut i = 0;
         'resolve_attr: loop {
+            let _p = tracing::span!(tracing::Level::INFO, "resolve_macros loop").entered();
             'resolve_macros: loop {
                 self.db.unwind_if_cancelled();
 
@@ -466,9 +445,8 @@ impl DefCollector<'_> {
             // Additionally, while the proc macro entry points must be `pub`, they are not publicly
             // exported in type/value namespace. This function reduces the visibility of all items
             // in the crate root that aren't proc macros.
-            let root = DefMap::ROOT;
-            let module_id = self.def_map.module_id(root);
-            let root = &mut self.def_map.modules[root];
+            let module_id = self.def_map.module_id(DefMap::ROOT);
+            let root = &mut self.def_map.modules[DefMap::ROOT];
             root.scope.censor_non_proc_macros(module_id);
         }
     }
@@ -828,12 +806,10 @@ impl DefCollector<'_> {
                     return PartialResolvedImport::Unresolved;
                 }
 
-                if let Some(krate) = res.krate {
-                    if krate != self.def_map.krate {
-                        return PartialResolvedImport::Resolved(
-                            def.filter_visibility(|v| matches!(v, Visibility::Public)),
-                        );
-                    }
+                if res.from_differing_crate {
+                    return PartialResolvedImport::Resolved(
+                        def.filter_visibility(|v| matches!(v, Visibility::Public)),
+                    );
                 }
 
                 // Check whether all namespaces are resolved.
@@ -1408,7 +1384,9 @@ impl DefCollector<'_> {
         // First, fetch the raw expansion result for purposes of error reporting. This goes through
         // `parse_macro_expansion_error` to avoid depending on the full expansion result (to improve
         // incrementality).
-        let ExpandResult { value, err } = self.db.parse_macro_expansion_error(macro_call_id);
+        // FIXME: This kind of error fetching feels a bit odd?
+        let ExpandResult { value: errors, err } =
+            self.db.parse_macro_expansion_error(macro_call_id);
         if let Some(err) = err {
             let loc: MacroCallLoc = self.db.lookup_intern_macro_call(macro_call_id);
             let diag = match err {
@@ -1422,7 +1400,7 @@ impl DefCollector<'_> {
 
             self.def_map.diagnostics.push(diag);
         }
-        if let errors @ [_, ..] = &*value {
+        if !errors.is_empty() {
             let loc: MacroCallLoc = self.db.lookup_intern_macro_call(macro_call_id);
             let diag = DefDiagnostic::macro_expansion_parse_error(module_id, loc.kind, errors);
             self.def_map.diagnostics.push(diag);
@@ -1920,7 +1898,7 @@ impl ModCollector<'_, '_> {
     }
 
     fn collect_module(&mut self, module_id: FileItemTreeId<Mod>, attrs: &Attrs) {
-        let path_attr = attrs.by_key("path").string_value();
+        let path_attr = attrs.by_key("path").string_value().map(SmolStr::as_str);
         let is_macro_use = attrs.by_key("macro_use").exists();
         let module = &self.item_tree[module_id];
         match &module.kind {
@@ -1934,25 +1912,26 @@ impl ModCollector<'_, '_> {
                     module_id,
                 );
 
-                if let Some(mod_dir) = self.mod_dir.descend_into_definition(&module.name, path_attr)
-                {
-                    ModCollector {
-                        def_collector: &mut *self.def_collector,
-                        macro_depth: self.macro_depth,
-                        module_id,
-                        tree_id: self.tree_id,
-                        item_tree: self.item_tree,
-                        mod_dir,
-                    }
-                    .collect_in_top_module(items);
-                    if is_macro_use {
-                        self.import_all_legacy_macros(module_id);
-                    }
+                let Some(mod_dir) = self.mod_dir.descend_into_definition(&module.name, path_attr)
+                else {
+                    return;
+                };
+                ModCollector {
+                    def_collector: &mut *self.def_collector,
+                    macro_depth: self.macro_depth,
+                    module_id,
+                    tree_id: self.tree_id,
+                    item_tree: self.item_tree,
+                    mod_dir,
+                }
+                .collect_in_top_module(items);
+                if is_macro_use {
+                    self.import_all_legacy_macros(module_id);
                 }
             }
             // out of line module, resolve, parse and recurse
             ModKind::Outline => {
-                let ast_id = AstId::new(self.tree_id.file_id(), module.ast_id);
+                let ast_id = AstId::new(self.file_id(), module.ast_id);
                 let db = self.def_collector.db;
                 match self.mod_dir.resolve_declaration(db, self.file_id(), &module.name, path_attr)
                 {
@@ -2445,7 +2424,7 @@ mod tests {
     use base_db::SourceDatabase;
     use test_fixture::WithFixture;
 
-    use crate::test_db::TestDB;
+    use crate::{nameres::DefMapCrateData, test_db::TestDB};
 
     use super::*;
 
@@ -2476,8 +2455,12 @@ mod tests {
 
         let edition = db.crate_graph()[krate].edition;
         let module_origin = ModuleOrigin::CrateRoot { definition: file_id };
-        let def_map =
-            DefMap::empty(krate, edition, ModuleData::new(module_origin, Visibility::Public));
+        let def_map = DefMap::empty(
+            krate,
+            Arc::new(DefMapCrateData::new(edition)),
+            ModuleData::new(module_origin, Visibility::Public),
+            None,
+        );
         do_collect_defs(&db, def_map)
     }
 

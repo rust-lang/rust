@@ -12,7 +12,12 @@ pub fn target() -> Target {
 
     Target {
         llvm_target: "sparcv9-sun-solaris".into(),
-        description: None,
+        metadata: crate::spec::TargetMetadata {
+            description: None,
+            tier: None,
+            host_tools: None,
+            std: None,
+        },
         pointer_width: 64,
         data_layout: "E-m:e-i64:64-n32:64-S128".into(),
         // Use "sparc64" instead of "sparcv9" here, since the former is already

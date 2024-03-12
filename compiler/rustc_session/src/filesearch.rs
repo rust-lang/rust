@@ -193,6 +193,12 @@ pub fn sysroot_candidates() -> SmallVec<[PathBuf; 2]> {
     return sysroot_candidates;
 }
 
+/// Returns the provided sysroot or calls [`get_or_default_sysroot`] if it's none.
+/// Panics if [`get_or_default_sysroot`]  returns an error.
+pub fn materialize_sysroot(maybe_sysroot: Option<PathBuf>) -> PathBuf {
+    maybe_sysroot.unwrap_or_else(|| get_or_default_sysroot().expect("Failed finding sysroot"))
+}
+
 /// This function checks if sysroot is found using env::args().next(), and if it
 /// is not found, finds sysroot from current rustc_driver dll.
 pub fn get_or_default_sysroot() -> Result<PathBuf, String> {

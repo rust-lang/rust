@@ -115,14 +115,12 @@ pub(crate) fn maybe_create_entry_wrapper(
                         termination_trait,
                     )
                     .unwrap();
-                let report = Instance::resolve(
+                let report = Instance::expect_resolve(
                     tcx,
                     ParamEnv::reveal_all(),
                     report.def_id,
                     tcx.mk_args(&[GenericArg::from(main_ret_ty)]),
                 )
-                .unwrap()
-                .unwrap()
                 .polymorphize(tcx);
 
                 let report_name = tcx.symbol_name(report).name;
@@ -142,14 +140,12 @@ pub(crate) fn maybe_create_entry_wrapper(
                 }
             } else if is_main_fn {
                 let start_def_id = tcx.require_lang_item(LangItem::Start, None);
-                let start_instance = Instance::resolve(
+                let start_instance = Instance::expect_resolve(
                     tcx,
                     ParamEnv::reveal_all(),
                     start_def_id,
                     tcx.mk_args(&[main_ret_ty.into()]),
                 )
-                .unwrap()
-                .unwrap()
                 .polymorphize(tcx);
                 let start_func_id = import_function(tcx, m, start_instance);
 

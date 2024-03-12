@@ -1,5 +1,5 @@
 error[E0277]: `&T` needs to have the same ABI as a pointer
-  --> $DIR/check-size-at-cast-polymorphic-bad.rs:14:15
+  --> $DIR/check-size-at-cast-polymorphic-bad.rs:15:15
    |
 LL |     dyn_debug(t);
    |               ^ `&T` needs to be a pointer-like type

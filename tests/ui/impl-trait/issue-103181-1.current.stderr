@@ -1,5 +1,5 @@
 error[E0046]: not all trait items implemented, missing: `Error`
-  --> $DIR/issue-103181-1.rs:11:5
+  --> $DIR/issue-103181-1.rs:12:5
    |
 LL |         type Error;
    |         ---------- `Error` from trait

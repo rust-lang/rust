@@ -3,6 +3,7 @@
 
 //@ ignore-windows
 //@ ignore-macos
+//@ ignore-wasi
 
 //@ compile-flags: -g -C no-prepopulate-passes
 

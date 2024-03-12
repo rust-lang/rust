@@ -9,6 +9,7 @@ union Moo {
 }
 
 const CONST_BUG: Bug<u8, ()> = unsafe { Moo { y: () }.x };
+//~^ ERROR non-defining opaque type use
 
 fn make_bug<T, U: From<T>>() -> Bug<T, U> {
     |x| x.into() //~ ERROR the trait bound `U: From<T>` is not satisfied

@@ -178,7 +178,7 @@ pub(crate) fn runnables(db: &RootDatabase, file_id: FileId) -> Vec<Runnable> {
         }
     });
 
-    sema.to_module_defs(file_id)
+    sema.file_to_module_defs(file_id)
         .map(|it| runnable_mod_outline_definition(&sema, it))
         .for_each(|it| add_opt(it, None));
 

@@ -806,9 +806,9 @@ pub mod guard {
     #[cfg(any(
         target_os = "android",
         target_os = "freebsd",
+        target_os = "netbsd",
         target_os = "hurd",
         target_os = "linux",
-        target_os = "netbsd",
         target_os = "l4re"
     ))]
     unsafe fn get_stack_start() -> Option<*mut libc::c_void> {
@@ -911,9 +911,10 @@ pub mod guard {
                         }
                     }) * page_size;
             Some(guard)
-        } else if cfg!(target_os = "openbsd") {
+        } else if cfg!(any(target_os = "openbsd", target_os = "netbsd")) {
             // OpenBSD stack already includes a guard page, and stack is
             // immutable.
+            // NetBSD stack includes the guard page.
             //
             // We'll just note where we expect rlimit to start
             // faulting, so our handler can report "stack overflow", and

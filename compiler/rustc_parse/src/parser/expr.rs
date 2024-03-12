@@ -27,7 +27,7 @@ use rustc_ast::{Arm, BlockCheckMode, Expr, ExprKind, Label, Movability, RangeLim
 use rustc_ast::{ClosureBinder, MetaItemLit, StmtKind};
 use rustc_ast_pretty::pprust;
 use rustc_data_structures::stack::ensure_sufficient_stack;
-use rustc_errors::{AddToDiagnostic, Applicability, Diag, PResult, StashKey};
+use rustc_errors::{Applicability, Diag, PResult, StashKey, Subdiagnostic};
 use rustc_lexer::unescape::unescape_char;
 use rustc_macros::Subdiagnostic;
 use rustc_session::errors::{report_lit_error, ExprParenthesesNeeded};
@@ -3451,8 +3451,8 @@ impl<'a> Parser<'a> {
         let in_if_guard = self.restrictions.contains(Restrictions::IN_IF_GUARD);
 
         let async_block_err = |e: &mut Diag<'_>, span: Span| {
-            errors::AsyncBlockIn2015 { span }.add_to_diagnostic(e);
-            errors::HelpUseLatestEdition::new().add_to_diagnostic(e);
+            errors::AsyncBlockIn2015 { span }.add_to_diag(e);
+            errors::HelpUseLatestEdition::new().add_to_diag(e);
         };
 
         while self.token != token::CloseDelim(close_delim) {

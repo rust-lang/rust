@@ -471,6 +471,8 @@ declare_features! (
     (unstable, fn_align, "1.53.0", Some(82232)),
     /// Support delegating implementation of functions to other already implemented functions.
     (incomplete, fn_delegation, "1.76.0", Some(118212)),
+    /// Allows impls for the Freeze trait.
+    (internal, freeze_impls, "CURRENT_RUSTC_VERSION", Some(121675)),
     /// Allows defining gen blocks and `gen fn`.
     (unstable, gen_blocks, "1.75.0", Some(117078)),
     /// Infer generic args for both consts and types.

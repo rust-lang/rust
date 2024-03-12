@@ -1,11 +1,11 @@
 error[E0284]: type annotations needed: cannot satisfy `Foo == _`
-  --> $DIR/type-alias-impl-trait-tuple.rs:21:24
+  --> $DIR/type-alias-impl-trait-tuple.rs:22:24
    |
 LL |         Blah { my_foo: make_foo(), my_u8: 12 }
    |                        ^^^^^^^^^^ cannot satisfy `Foo == _`
 
 error[E0284]: type annotations needed: cannot satisfy `Foo == _`
-  --> $DIR/type-alias-impl-trait-tuple.rs:25:10
+  --> $DIR/type-alias-impl-trait-tuple.rs:26:10
    |
 LL |         (self.my_foo, self.my_u8, make_foo())
    |          ^^^^^^^^^^^ cannot satisfy `Foo == _`

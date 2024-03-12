@@ -1,6 +1,5 @@
 //@ run-pass
 //@ aux-build:foreign_lib.rs
-//@ ignore-wasm32-bare no libc to test ffi with
 
 // The purpose of this test is to check that we can
 // successfully (and safely) invoke external, cdecl

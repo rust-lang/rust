@@ -54,6 +54,7 @@ o("cargo-native-static", "build.cargo-native-static", "static native libraries i
 o("profiler", "build.profiler", "build the profiler runtime")
 o("full-tools", None, "enable all tools")
 o("lld", "rust.lld", "build lld")
+o("llvm-bitcode-linker", "rust.llvm-bitcode-linker", "build llvm bitcode linker")
 o("clang", "llvm.clang", "build clang")
 o("use-libcxx", "llvm.use-libcxx", "build LLVM with libc++")
 o("control-flow-guard", "rust.control-flow-guard", "Enable Control Flow Guard")
@@ -366,6 +367,7 @@ def apply_args(known_args, option_checking, config):
             set('rust.codegen-backends', ['llvm'], config)
             set('rust.lld', True, config)
             set('rust.llvm-tools', True, config)
+            set('rust.llvm-bitcode-linker', True, config)
             set('build.extended', True, config)
         elif option.name in ['option-checking', 'verbose-configure']:
             # this was handled above

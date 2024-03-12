@@ -6,7 +6,7 @@ mod utils;
 
 use diagnostic::{DiagnosticDerive, LintDiagnosticDerive};
 use proc_macro2::TokenStream;
-use subdiagnostic::SubdiagnosticDeriveBuilder;
+use subdiagnostic::SubdiagnosticDerive;
 use synstructure::Structure;
 
 /// Implements `#[derive(Diagnostic)]`, which allows for errors to be specified as a struct,
@@ -55,7 +55,7 @@ use synstructure::Structure;
 ///
 /// See rustc dev guide for more examples on using the `#[derive(Diagnostic)]`:
 /// <https://rustc-dev-guide.rust-lang.org/diagnostics/diagnostic-structs.html>
-pub fn session_diagnostic_derive(mut s: Structure<'_>) -> TokenStream {
+pub fn diagnostic_derive(mut s: Structure<'_>) -> TokenStream {
     s.underscore_const(true);
     DiagnosticDerive::new(s).into_tokens()
 }
@@ -153,7 +153,7 @@ pub fn lint_diagnostic_derive(mut s: Structure<'_>) -> TokenStream {
 ///
 /// diag.subdiagnostic(RawIdentifierSuggestion { span, applicability, ident });
 /// ```
-pub fn session_subdiagnostic_derive(mut s: Structure<'_>) -> TokenStream {
+pub fn subdiagnostic_derive(mut s: Structure<'_>) -> TokenStream {
     s.underscore_const(true);
-    SubdiagnosticDeriveBuilder::new().into_tokens(s)
+    SubdiagnosticDerive::new().into_tokens(s)
 }

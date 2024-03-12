@@ -79,6 +79,9 @@ jobs:
         if: matrix.os == 'ubuntu-latest'
         run: sed -i '/\[profile.dev]/a opt-level=1' Cargo.toml
 
+      - name: Codegen checks (rust-analyzer)
+        run: cargo codegen --check
+
       - name: Compile (tests)
         run: cargo test --no-run --locked ${{ env.USE_SYSROOT_ABI }}
 

@@ -37,9 +37,9 @@ extern crate self as rustc_errors;
 
 pub use codes::*;
 pub use diagnostic::{
-    AddToDiagnostic, BugAbort, DecorateLint, Diag, DiagArg, DiagArgMap, DiagArgName, DiagArgValue,
-    DiagInner, DiagStyledString, EmissionGuarantee, FatalAbort, IntoDiagnostic, IntoDiagnosticArg,
-    StringPart, Subdiag, SubdiagMessageOp,
+    BugAbort, Diag, DiagArg, DiagArgMap, DiagArgName, DiagArgValue, DiagInner, DiagStyledString,
+    Diagnostic, EmissionGuarantee, FatalAbort, IntoDiagArg, LintDiagnostic, StringPart, Subdiag,
+    SubdiagMessageOp, Subdiagnostic,
 };
 pub use diagnostic_impls::{
     DiagArgFromDisplay, DiagSymbolList, ExpectedLifetimeParameter, IndicateAnonymousLifetime,
@@ -442,8 +442,8 @@ struct DiagCtxtInner {
     emitter: Box<DynEmitter>,
 
     /// Must we produce a diagnostic to justify the use of the expensive
-    /// `trimmed_def_paths` function?
-    must_produce_diag: bool,
+    /// `trimmed_def_paths` function? Backtrace is the location of the call.
+    must_produce_diag: Option<Backtrace>,
 
     /// Has this diagnostic context printed any diagnostics? (I.e. has
     /// `self.emitter.emit_diagnostic()` been called?
@@ -572,10 +572,11 @@ impl Drop for DiagCtxtInner {
         }
 
         if !self.has_printed && !self.suppressed_expected_diag && !std::thread::panicking() {
-            if self.must_produce_diag {
+            if let Some(backtrace) = &self.must_produce_diag {
                 panic!(
-                    "must_produce_diag: trimmed_def_paths called but no diagnostics emitted; \
-                       use `DelayDm` for lints or `with_no_trimmed_paths` for debugging"
+                    "must_produce_diag: `trimmed_def_paths` called but no diagnostics emitted; \
+                       use `DelayDm` for lints or `with_no_trimmed_paths` for debugging. \
+                       called at: {backtrace}"
                 );
             }
         }
@@ -721,7 +722,7 @@ impl DiagCtxt {
         *delayed_bugs = Default::default();
         *deduplicated_err_count = 0;
         *deduplicated_warn_count = 0;
-        *must_produce_diag = false;
+        *must_produce_diag = None;
         *has_printed = false;
         *suppressed_expected_diag = false;
         *taught_diagnostics = Default::default();
@@ -1091,8 +1092,13 @@ impl DiagCtxt {
 
     /// Used when trimmed_def_paths is called and we must produce a diagnostic
     /// to justify its cost.
+    #[track_caller]
     pub fn set_must_produce_diag(&self) {
-        self.inner.borrow_mut().must_produce_diag = true;
+        assert!(
+            self.inner.borrow().must_produce_diag.is_none(),
+            "should only need to collect a backtrace once"
+        );
+        self.inner.borrow_mut().must_produce_diag = Some(Backtrace::capture());
     }
 }
 
@@ -1134,12 +1140,12 @@ impl DiagCtxt {
     }
 
     #[track_caller]
-    pub fn create_bug<'a>(&'a self, bug: impl IntoDiagnostic<'a, BugAbort>) -> Diag<'a, BugAbort> {
-        bug.into_diagnostic(self, Bug)
+    pub fn create_bug<'a>(&'a self, bug: impl Diagnostic<'a, BugAbort>) -> Diag<'a, BugAbort> {
+        bug.into_diag(self, Bug)
     }
 
     #[track_caller]
-    pub fn emit_bug<'a>(&'a self, bug: impl IntoDiagnostic<'a, BugAbort>) -> ! {
+    pub fn emit_bug<'a>(&'a self, bug: impl Diagnostic<'a, BugAbort>) -> ! {
         self.create_bug(bug).emit()
     }
 
@@ -1174,29 +1180,26 @@ impl DiagCtxt {
     #[track_caller]
     pub fn create_fatal<'a>(
         &'a self,
-        fatal: impl IntoDiagnostic<'a, FatalAbort>,
+        fatal: impl Diagnostic<'a, FatalAbort>,
     ) -> Diag<'a, FatalAbort> {
-        fatal.into_diagnostic(self, Fatal)
+        fatal.into_diag(self, Fatal)
     }
 
     #[track_caller]
-    pub fn emit_fatal<'a>(&'a self, fatal: impl IntoDiagnostic<'a, FatalAbort>) -> ! {
+    pub fn emit_fatal<'a>(&'a self, fatal: impl Diagnostic<'a, FatalAbort>) -> ! {
         self.create_fatal(fatal).emit()
     }
 
     #[track_caller]
     pub fn create_almost_fatal<'a>(
         &'a self,
-        fatal: impl IntoDiagnostic<'a, FatalError>,
+        fatal: impl Diagnostic<'a, FatalError>,
     ) -> Diag<'a, FatalError> {
-        fatal.into_diagnostic(self, Fatal)
+        fatal.into_diag(self, Fatal)
     }
 
     #[track_caller]
-    pub fn emit_almost_fatal<'a>(
-        &'a self,
-        fatal: impl IntoDiagnostic<'a, FatalError>,
-    ) -> FatalError {
+    pub fn emit_almost_fatal<'a>(&'a self, fatal: impl Diagnostic<'a, FatalError>) -> FatalError {
         self.create_almost_fatal(fatal).emit()
     }
 
@@ -1234,12 +1237,12 @@ impl DiagCtxt {
     }
 
     #[track_caller]
-    pub fn create_err<'a>(&'a self, err: impl IntoDiagnostic<'a>) -> Diag<'a> {
-        err.into_diagnostic(self, Error)
+    pub fn create_err<'a>(&'a self, err: impl Diagnostic<'a>) -> Diag<'a> {
+        err.into_diag(self, Error)
     }
 
     #[track_caller]
-    pub fn emit_err<'a>(&'a self, err: impl IntoDiagnostic<'a>) -> ErrorGuaranteed {
+    pub fn emit_err<'a>(&'a self, err: impl Diagnostic<'a>) -> ErrorGuaranteed {
         self.create_err(err).emit()
     }
 
@@ -1297,12 +1300,12 @@ impl DiagCtxt {
     }
 
     #[track_caller]
-    pub fn create_warn<'a>(&'a self, warning: impl IntoDiagnostic<'a, ()>) -> Diag<'a, ()> {
-        warning.into_diagnostic(self, Warning)
+    pub fn create_warn<'a>(&'a self, warning: impl Diagnostic<'a, ()>) -> Diag<'a, ()> {
+        warning.into_diag(self, Warning)
     }
 
     #[track_caller]
-    pub fn emit_warn<'a>(&'a self, warning: impl IntoDiagnostic<'a, ()>) {
+    pub fn emit_warn<'a>(&'a self, warning: impl Diagnostic<'a, ()>) {
         self.create_warn(warning).emit()
     }
 
@@ -1335,12 +1338,12 @@ impl DiagCtxt {
     }
 
     #[track_caller]
-    pub fn create_note<'a>(&'a self, note: impl IntoDiagnostic<'a, ()>) -> Diag<'a, ()> {
-        note.into_diagnostic(self, Note)
+    pub fn create_note<'a>(&'a self, note: impl Diagnostic<'a, ()>) -> Diag<'a, ()> {
+        note.into_diag(self, Note)
     }
 
     #[track_caller]
-    pub fn emit_note<'a>(&'a self, note: impl IntoDiagnostic<'a, ()>) {
+    pub fn emit_note<'a>(&'a self, note: impl Diagnostic<'a, ()>) {
         self.create_note(note).emit()
     }
 
@@ -1387,7 +1390,7 @@ impl DiagCtxtInner {
             deduplicated_err_count: 0,
             deduplicated_warn_count: 0,
             emitter,
-            must_produce_diag: false,
+            must_produce_diag: None,
             has_printed: false,
             suppressed_expected_diag: false,
             taught_diagnostics: Default::default(),

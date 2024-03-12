@@ -97,8 +97,11 @@ impl<T> Parse<T> {
     pub fn syntax_node(&self) -> SyntaxNode {
         SyntaxNode::new_root(self.green.clone())
     }
-    pub fn errors(&self) -> &[SyntaxError] {
-        self.errors.as_deref().unwrap_or_default()
+
+    pub fn errors(&self) -> Vec<SyntaxError> {
+        let mut errors = if let Some(e) = self.errors.as_deref() { e.to_vec() } else { vec![] };
+        validation::validate(&self.syntax_node(), &mut errors);
+        errors
     }
 }
 
@@ -111,10 +114,10 @@ impl<T: AstNode> Parse<T> {
         T::cast(self.syntax_node()).unwrap()
     }
 
-    pub fn ok(self) -> Result<T, Arc<[SyntaxError]>> {
-        match self.errors {
-            Some(e) => Err(e),
-            None => Ok(self.tree()),
+    pub fn ok(self) -> Result<T, Vec<SyntaxError>> {
+        match self.errors() {
+            errors if !errors.is_empty() => Err(errors),
+            _ => Ok(self.tree()),
         }
     }
 }
@@ -132,7 +135,7 @@ impl Parse<SyntaxNode> {
 impl Parse<SourceFile> {
     pub fn debug_dump(&self) -> String {
         let mut buf = format!("{:#?}", self.tree().syntax());
-        for err in self.errors.as_deref().into_iter().flat_map(<[_]>::iter) {
+        for err in self.errors() {
             format_to!(buf, "error {:?}: {}\n", err.range(), err);
         }
         buf
@@ -168,10 +171,9 @@ pub use crate::ast::SourceFile;
 
 impl SourceFile {
     pub fn parse(text: &str) -> Parse<SourceFile> {
-        let (green, mut errors) = parsing::parse_text(text);
+        let _p = tracing::span!(tracing::Level::INFO, "SourceFile::parse").entered();
+        let (green, errors) = parsing::parse_text(text);
         let root = SyntaxNode::new_root(green.clone());
-
-        errors.extend(validation::validate(&root));
 
         assert_eq!(root.kind(), SyntaxKind::SOURCE_FILE);
         Parse {

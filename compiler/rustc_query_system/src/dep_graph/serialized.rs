@@ -504,7 +504,8 @@ impl<D: Deps> EncoderState<D> {
 }
 
 pub struct GraphEncoder<D: Deps> {
-    status: Lock<EncoderState<D>>,
+    profiler: SelfProfilerRef,
+    status: Lock<Option<EncoderState<D>>>,
     record_graph: Option<Lock<DepGraphQuery>>,
 }
 
@@ -514,10 +515,11 @@ impl<D: Deps> GraphEncoder<D> {
         prev_node_count: usize,
         record_graph: bool,
         record_stats: bool,
+        profiler: &SelfProfilerRef,
     ) -> Self {
         let record_graph = record_graph.then(|| Lock::new(DepGraphQuery::new(prev_node_count)));
-        let status = Lock::new(EncoderState::new(encoder, record_stats));
-        GraphEncoder { status, record_graph }
+        let status = Lock::new(Some(EncoderState::new(encoder, record_stats)));
+        GraphEncoder { status, record_graph, profiler: profiler.clone() }
     }
 
     pub(crate) fn with_query(&self, f: impl Fn(&DepGraphQuery)) {
@@ -531,7 +533,8 @@ impl<D: Deps> GraphEncoder<D> {
         total_read_count: u64,
         total_duplicate_read_count: u64,
     ) {
-        let status = self.status.lock();
+        let mut status = self.status.lock();
+        let status = status.as_mut().unwrap();
         if let Some(record_stats) = &status.stats {
             let mut stats: Vec<_> = record_stats.values().collect();
             stats.sort_by_key(|s| -(s.node_counter as i64));
@@ -580,18 +583,18 @@ impl<D: Deps> GraphEncoder<D> {
 
     pub(crate) fn send(
         &self,
-        profiler: &SelfProfilerRef,
         node: DepNode,
         fingerprint: Fingerprint,
         edges: EdgesVec,
     ) -> DepNodeIndex {
-        let _prof_timer = profiler.generic_activity("incr_comp_encode_dep_graph");
+        let _prof_timer = self.profiler.generic_activity("incr_comp_encode_dep_graph");
         let node = NodeInfo { node, fingerprint, edges };
-        self.status.lock().encode_node(&node, &self.record_graph)
+        self.status.lock().as_mut().unwrap().encode_node(&node, &self.record_graph)
     }
 
-    pub fn finish(self, profiler: &SelfProfilerRef) -> FileEncodeResult {
-        let _prof_timer = profiler.generic_activity("incr_comp_encode_dep_graph");
-        self.status.into_inner().finish(profiler)
+    pub fn finish(&self) -> FileEncodeResult {
+        let _prof_timer = self.profiler.generic_activity("incr_comp_encode_dep_graph_finish");
+
+        self.status.lock().take().unwrap().finish(&self.profiler)
     }
 }

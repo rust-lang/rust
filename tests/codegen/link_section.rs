@@ -1,4 +1,4 @@
-//@ ignore-emscripten default visibility is hidden
+//@ ignore-wasm32 custom sections work differently on wasm
 //@ compile-flags: -C no-prepopulate-passes
 
 #![crate_type = "lib"]

@@ -86,7 +86,7 @@ pub fn parse_config(args: Vec<String>) -> Config {
         .optflag("", "exact", "filters match exactly")
         .optopt(
             "",
-            "runtool",
+            "runner",
             "supervisor program to run tests under \
              (eg. emulator, valgrind)",
             "PROGRAM",
@@ -256,7 +256,7 @@ pub fn parse_config(args: Vec<String>) -> Config {
             _ => panic!("unknown `--run` option `{}` given", mode),
         }),
         logfile: matches.opt_str("logfile").map(|s| PathBuf::from(&s)),
-        runtool: matches.opt_str("runtool"),
+        runner: matches.opt_str("runner"),
         host_rustcflags: matches.opt_strs("host-rustcflags"),
         target_rustcflags: matches.opt_strs("target-rustcflags"),
         optimize_tests: matches.opt_present("optimize-tests"),
@@ -341,7 +341,7 @@ pub fn log_config(config: &Config) {
         c,
         format!("force_pass_mode: {}", opt_str(&config.force_pass_mode.map(|m| format!("{}", m))),),
     );
-    logv(c, format!("runtool: {}", opt_str(&config.runtool)));
+    logv(c, format!("runner: {}", opt_str(&config.runner)));
     logv(c, format!("host-rustcflags: {:?}", config.host_rustcflags));
     logv(c, format!("target-rustcflags: {:?}", config.target_rustcflags));
     logv(c, format!("target: {}", config.target));

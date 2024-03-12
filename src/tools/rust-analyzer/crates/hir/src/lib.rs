@@ -126,7 +126,7 @@ pub use {
     },
     hir_expand::{
         attrs::{Attr, AttrId},
-        change::Change,
+        change::ChangeWithProcMacros,
         hygiene::{marks_rev, SyntaxContextExt},
         name::{known, Name},
         proc_macro::ProcMacros,
@@ -365,7 +365,7 @@ impl ModuleDef {
         Some(name)
     }
 
-    pub fn diagnostics(self, db: &dyn HirDatabase) -> Vec<AnyDiagnostic> {
+    pub fn diagnostics(self, db: &dyn HirDatabase, style_lints: bool) -> Vec<AnyDiagnostic> {
         let id = match self {
             ModuleDef::Adt(it) => match it {
                 Adt::Struct(it) => it.id.into(),
@@ -387,7 +387,7 @@ impl ModuleDef {
 
         match self.as_def_with_body() {
             Some(def) => {
-                def.diagnostics(db, &mut acc);
+                def.diagnostics(db, &mut acc, style_lints);
             }
             None => {
                 for diag in hir_ty::diagnostics::incorrect_case(db, id) {
@@ -541,7 +541,12 @@ impl Module {
     }
 
     /// Fills `acc` with the module's diagnostics.
-    pub fn diagnostics(self, db: &dyn HirDatabase, acc: &mut Vec<AnyDiagnostic>) {
+    pub fn diagnostics(
+        self,
+        db: &dyn HirDatabase,
+        acc: &mut Vec<AnyDiagnostic>,
+        style_lints: bool,
+    ) {
         let name = self.name(db);
         let _p = tracing::span!(tracing::Level::INFO, "Module::diagnostics", ?name);
         let def_map = self.id.def_map(db.upcast());
@@ -558,9 +563,9 @@ impl Module {
                 ModuleDef::Module(m) => {
                     // Only add diagnostics from inline modules
                     if def_map[m.id.local_id].origin.is_inline() {
-                        m.diagnostics(db, acc)
+                        m.diagnostics(db, acc, style_lints)
                     }
-                    acc.extend(def.diagnostics(db))
+                    acc.extend(def.diagnostics(db, style_lints))
                 }
                 ModuleDef::Trait(t) => {
                     for diag in db.trait_data_with_diagnostics(t.id).1.iter() {
@@ -568,10 +573,10 @@ impl Module {
                     }
 
                     for item in t.items(db) {
-                        item.diagnostics(db, acc);
+                        item.diagnostics(db, acc, style_lints);
                     }
 
-                    acc.extend(def.diagnostics(db))
+                    acc.extend(def.diagnostics(db, style_lints))
                 }
                 ModuleDef::Adt(adt) => {
                     match adt {
@@ -587,17 +592,17 @@ impl Module {
                         }
                         Adt::Enum(e) => {
                             for v in e.variants(db) {
-                                acc.extend(ModuleDef::Variant(v).diagnostics(db));
+                                acc.extend(ModuleDef::Variant(v).diagnostics(db, style_lints));
                                 for diag in db.enum_variant_data_with_diagnostics(v.id).1.iter() {
                                     emit_def_diagnostic(db, acc, diag);
                                 }
                             }
                         }
                     }
-                    acc.extend(def.diagnostics(db))
+                    acc.extend(def.diagnostics(db, style_lints))
                 }
                 ModuleDef::Macro(m) => emit_macro_def_diagnostics(db, acc, m),
-                _ => acc.extend(def.diagnostics(db)),
+                _ => acc.extend(def.diagnostics(db, style_lints)),
             }
         }
         self.legacy_macros(db).into_iter().for_each(|m| emit_macro_def_diagnostics(db, acc, m));
@@ -738,7 +743,7 @@ impl Module {
             }
 
             for &item in &db.impl_data(impl_def.id).items {
-                AssocItem::from(item).diagnostics(db, acc);
+                AssocItem::from(item).diagnostics(db, acc, style_lints);
             }
         }
     }
@@ -1616,14 +1621,19 @@ impl DefWithBody {
         }
     }
 
-    pub fn diagnostics(self, db: &dyn HirDatabase, acc: &mut Vec<AnyDiagnostic>) {
+    pub fn diagnostics(
+        self,
+        db: &dyn HirDatabase,
+        acc: &mut Vec<AnyDiagnostic>,
+        style_lints: bool,
+    ) {
         db.unwind_if_cancelled();
         let krate = self.module(db).id.krate();
 
         let (body, source_map) = db.body_with_source_map(self.into());
 
         for (_, def_map) in body.blocks(db.upcast()) {
-            Module { id: def_map.module_id(DefMap::ROOT) }.diagnostics(db, acc);
+            Module { id: def_map.module_id(DefMap::ROOT) }.diagnostics(db, acc, style_lints);
         }
 
         for diag in source_map.diagnostics() {
@@ -1784,7 +1794,7 @@ impl DefWithBody {
             }
         }
 
-        for diagnostic in BodyValidationDiagnostic::collect(db, self.into()) {
+        for diagnostic in BodyValidationDiagnostic::collect(db, self.into(), style_lints) {
             acc.extend(AnyDiagnostic::body_validation_diagnostic(db, diagnostic, &source_map));
         }
 
@@ -2098,6 +2108,14 @@ pub struct Param {
 }
 
 impl Param {
+    pub fn parent_fn(&self) -> Function {
+        self.func
+    }
+
+    pub fn index(&self) -> usize {
+        self.idx
+    }
+
     pub fn ty(&self) -> &Type {
         &self.ty
     }
@@ -2160,6 +2178,10 @@ impl SelfParam {
             .param_list()
             .and_then(|params| params.self_param())
             .map(|value| InFile { file_id, value })
+    }
+
+    pub fn parent_fn(&self) -> Function {
+        Function::from(self.func)
     }
 
     pub fn ty(&self, db: &dyn HirDatabase) -> Type {
@@ -2897,13 +2919,18 @@ impl AssocItem {
         }
     }
 
-    pub fn diagnostics(self, db: &dyn HirDatabase, acc: &mut Vec<AnyDiagnostic>) {
+    pub fn diagnostics(
+        self,
+        db: &dyn HirDatabase,
+        acc: &mut Vec<AnyDiagnostic>,
+        style_lints: bool,
+    ) {
         match self {
             AssocItem::Function(func) => {
-                DefWithBody::from(func).diagnostics(db, acc);
+                DefWithBody::from(func).diagnostics(db, acc, style_lints);
             }
             AssocItem::Const(const_) => {
-                DefWithBody::from(const_).diagnostics(db, acc);
+                DefWithBody::from(const_).diagnostics(db, acc, style_lints);
             }
             AssocItem::TypeAlias(type_alias) => {
                 for diag in hir_ty::diagnostics::incorrect_case(db, type_alias.id.into()) {

@@ -27,7 +27,6 @@ cfg.workspace = true
 hir-def.workspace = true
 hir-expand.workspace = true
 hir-ty.workspace = true
-profile.workspace = true
 stdx.workspace = true
 syntax.workspace = true
 tt.workspace = true

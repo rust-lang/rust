@@ -40,12 +40,6 @@ LL |     b += 1;
    = help: maybe it is overwritten before being read?
    = note: `#[warn(unused_assignments)]` implied by `#[warn(unused)]`
 
-warning: unused variable: `z`
-  --> $DIR/liveness-consts.rs:60:13
-   |
-LL |         let z = 42;
-   |             ^ help: if this is intentional, prefix it with an underscore: `_z`
-
 warning: value assigned to `t` is never read
   --> $DIR/liveness-consts.rs:42:9
    |
@@ -59,6 +53,12 @@ warning: unused variable: `w`
    |
 LL |         let w = 10;
    |             ^ help: if this is intentional, prefix it with an underscore: `_w`
+
+warning: unused variable: `z`
+  --> $DIR/liveness-consts.rs:60:13
+   |
+LL |         let z = 42;
+   |             ^ help: if this is intentional, prefix it with an underscore: `_z`
 
 warning: 8 warnings emitted
 

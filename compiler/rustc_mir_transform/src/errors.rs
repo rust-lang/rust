@@ -1,8 +1,8 @@
 use std::borrow::Cow;
 
 use rustc_errors::{
-    codes::*, Applicability, DecorateLint, Diag, DiagArgValue, DiagCtxt, DiagMessage,
-    EmissionGuarantee, IntoDiagnostic, Level,
+    codes::*, Applicability, Diag, DiagArgValue, DiagCtxt, DiagMessage, Diagnostic,
+    EmissionGuarantee, Level, LintDiagnostic,
 };
 use rustc_macros::{Diagnostic, LintDiagnostic, Subdiagnostic};
 use rustc_middle::mir::{AssertKind, UnsafetyViolationDetails};
@@ -62,9 +62,9 @@ pub(crate) struct RequiresUnsafe {
 // so we need to eagerly translate the label here, which isn't supported by the derive API
 // We could also exhaustively list out the primary messages for all unsafe violations,
 // but this would result in a lot of duplication.
-impl<'a, G: EmissionGuarantee> IntoDiagnostic<'a, G> for RequiresUnsafe {
+impl<'a, G: EmissionGuarantee> Diagnostic<'a, G> for RequiresUnsafe {
     #[track_caller]
-    fn into_diagnostic(self, dcx: &'a DiagCtxt, level: Level) -> Diag<'a, G> {
+    fn into_diag(self, dcx: &'a DiagCtxt, level: Level) -> Diag<'a, G> {
         let mut diag = Diag::new(dcx, level, fluent::mir_transform_requires_unsafe);
         diag.code(E0133);
         diag.span(self.span);
@@ -181,7 +181,7 @@ pub(crate) struct UnsafeOpInUnsafeFn {
     pub suggest_unsafe_block: Option<(Span, Span, Span)>,
 }
 
-impl<'a> DecorateLint<'a, ()> for UnsafeOpInUnsafeFn {
+impl<'a> LintDiagnostic<'a, ()> for UnsafeOpInUnsafeFn {
     #[track_caller]
     fn decorate_lint<'b>(self, diag: &'b mut Diag<'a, ()>) {
         let desc = diag.dcx.eagerly_translate_to_string(self.details.label(), [].into_iter());
@@ -215,7 +215,7 @@ pub(crate) enum AssertLintKind {
     UnconditionalPanic,
 }
 
-impl<'a, P: std::fmt::Debug> DecorateLint<'a, ()> for AssertLint<P> {
+impl<'a, P: std::fmt::Debug> LintDiagnostic<'a, ()> for AssertLint<P> {
     fn decorate_lint<'b>(self, diag: &'b mut Diag<'a, ()>) {
         let message = self.assert_kind.diagnostic_message();
         self.assert_kind.add_args(&mut |name, value| {
@@ -269,7 +269,7 @@ pub(crate) struct MustNotSupend<'tcx, 'a> {
 }
 
 // Needed for def_path_str
-impl<'a> DecorateLint<'a, ()> for MustNotSupend<'_, '_> {
+impl<'a> LintDiagnostic<'a, ()> for MustNotSupend<'_, '_> {
     fn decorate_lint<'b>(self, diag: &'b mut rustc_errors::Diag<'a, ()>) {
         diag.span_label(self.yield_sp, fluent::_subdiag::label);
         if let Some(reason) = self.reason {

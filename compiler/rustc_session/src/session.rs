@@ -22,8 +22,8 @@ use rustc_errors::emitter::{stderr_destination, DynEmitter, HumanEmitter, HumanR
 use rustc_errors::json::JsonEmitter;
 use rustc_errors::registry::Registry;
 use rustc_errors::{
-    codes::*, fallback_fluent_bundle, Diag, DiagCtxt, DiagMessage, ErrorGuaranteed, FatalAbort,
-    FluentBundle, IntoDiagnostic, LazyFallbackBundle, TerminalUrl,
+    codes::*, fallback_fluent_bundle, Diag, DiagCtxt, DiagMessage, Diagnostic, ErrorGuaranteed,
+    FatalAbort, FluentBundle, LazyFallbackBundle, TerminalUrl,
 };
 use rustc_macros::HashStable_Generic;
 pub use rustc_span::def_id::StableCrateId;
@@ -111,9 +111,9 @@ impl Mul<usize> for Limit {
     }
 }
 
-impl rustc_errors::IntoDiagnosticArg for Limit {
-    fn into_diagnostic_arg(self) -> rustc_errors::DiagArgValue {
-        self.to_string().into_diagnostic_arg()
+impl rustc_errors::IntoDiagArg for Limit {
+    fn into_diag_arg(self) -> rustc_errors::DiagArgValue {
+        self.to_string().into_diag_arg()
     }
 }
 
@@ -305,11 +305,7 @@ impl Session {
     }
 
     #[track_caller]
-    pub fn create_feature_err<'a>(
-        &'a self,
-        err: impl IntoDiagnostic<'a>,
-        feature: Symbol,
-    ) -> Diag<'a> {
+    pub fn create_feature_err<'a>(&'a self, err: impl Diagnostic<'a>, feature: Symbol) -> Diag<'a> {
         let mut err = self.dcx().create_err(err);
         if err.code.is_none() {
             #[allow(rustc::diagnostic_outside_of_impl)]
@@ -1020,7 +1016,8 @@ pub fn build_session(
     fluent_resources: Vec<&'static str>,
     driver_lint_caps: FxHashMap<lint::LintId, lint::Level>,
     file_loader: Option<Box<dyn FileLoader + Send + Sync + 'static>>,
-    target_override: Option<Target>,
+    target_cfg: Target,
+    sysroot: PathBuf,
     cfg_version: &'static str,
     ice_file: Option<PathBuf>,
     using_internal_features: Arc<AtomicBool>,
@@ -1037,12 +1034,6 @@ pub fn build_session(
     let cap_lints_allow = sopts.lint_cap.is_some_and(|cap| cap == lint::Allow);
     let can_emit_warnings = !(warnings_allow || cap_lints_allow);
 
-    let sysroot = match &sopts.maybe_sysroot {
-        Some(sysroot) => sysroot.clone(),
-        None => filesearch::get_or_default_sysroot().expect("Failed finding sysroot"),
-    };
-
-    let target_cfg = config::build_target_config(&early_dcx, &sopts, target_override, &sysroot);
     let host_triple = TargetTriple::from_triple(config::host_triple());
     let (host, target_warnings) = Target::search(&host_triple, &sysroot).unwrap_or_else(|e| {
         early_dcx.early_fatal(format!("Error loading host specification: {e}"))

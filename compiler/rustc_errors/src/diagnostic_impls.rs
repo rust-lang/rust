@@ -1,8 +1,8 @@
 use crate::diagnostic::DiagLocation;
-use crate::{fluent_generated as fluent, AddToDiagnostic};
+use crate::{fluent_generated as fluent, Subdiagnostic};
 use crate::{
-    Diag, DiagArgValue, DiagCtxt, EmissionGuarantee, ErrCode, IntoDiagnostic, IntoDiagnosticArg,
-    Level, SubdiagMessageOp,
+    Diag, DiagArgValue, DiagCtxt, Diagnostic, EmissionGuarantee, ErrCode, IntoDiagArg, Level,
+    SubdiagMessageOp,
 };
 use rustc_ast as ast;
 use rustc_ast_pretty::pprust;
@@ -22,9 +22,9 @@ use std::process::ExitStatus;
 
 pub struct DiagArgFromDisplay<'a>(pub &'a dyn fmt::Display);
 
-impl IntoDiagnosticArg for DiagArgFromDisplay<'_> {
-    fn into_diagnostic_arg(self) -> DiagArgValue {
-        self.0.to_string().into_diagnostic_arg()
+impl IntoDiagArg for DiagArgFromDisplay<'_> {
+    fn into_diag_arg(self) -> DiagArgValue {
+        self.0.to_string().into_diag_arg()
     }
 }
 
@@ -40,34 +40,34 @@ impl<'a, T: fmt::Display> From<&'a T> for DiagArgFromDisplay<'a> {
     }
 }
 
-impl<'a, T: Clone + IntoDiagnosticArg> IntoDiagnosticArg for &'a T {
-    fn into_diagnostic_arg(self) -> DiagArgValue {
-        self.clone().into_diagnostic_arg()
+impl<'a, T: Clone + IntoDiagArg> IntoDiagArg for &'a T {
+    fn into_diag_arg(self) -> DiagArgValue {
+        self.clone().into_diag_arg()
     }
 }
 
-macro_rules! into_diagnostic_arg_using_display {
+macro_rules! into_diag_arg_using_display {
     ($( $ty:ty ),+ $(,)?) => {
         $(
-            impl IntoDiagnosticArg for $ty {
-                fn into_diagnostic_arg(self) -> DiagArgValue {
-                    self.to_string().into_diagnostic_arg()
+            impl IntoDiagArg for $ty {
+                fn into_diag_arg(self) -> DiagArgValue {
+                    self.to_string().into_diag_arg()
                 }
             }
         )+
     }
 }
 
-macro_rules! into_diagnostic_arg_for_number {
+macro_rules! into_diag_arg_for_number {
     ($( $ty:ty ),+ $(,)?) => {
         $(
-            impl IntoDiagnosticArg for $ty {
-                fn into_diagnostic_arg(self) -> DiagArgValue {
+            impl IntoDiagArg for $ty {
+                fn into_diag_arg(self) -> DiagArgValue {
                     // Convert to a string if it won't fit into `Number`.
                     if let Ok(n) = TryInto::<i32>::try_into(self) {
                         DiagArgValue::Number(n)
                     } else {
-                        self.to_string().into_diagnostic_arg()
+                        self.to_string().into_diag_arg()
                     }
                 }
             }
@@ -75,7 +75,7 @@ macro_rules! into_diagnostic_arg_for_number {
     }
 }
 
-into_diagnostic_arg_using_display!(
+into_diag_arg_using_display!(
     ast::ParamKindOrd,
     std::io::Error,
     Box<dyn std::error::Error>,
@@ -92,10 +92,10 @@ into_diagnostic_arg_using_display!(
     ErrCode,
 );
 
-into_diagnostic_arg_for_number!(i8, u8, i16, u16, i32, u32, i64, u64, i128, u128, isize, usize);
+into_diag_arg_for_number!(i8, u8, i16, u16, i32, u32, i64, u64, i128, u128, isize, usize);
 
-impl IntoDiagnosticArg for bool {
-    fn into_diagnostic_arg(self) -> DiagArgValue {
+impl IntoDiagArg for bool {
+    fn into_diag_arg(self) -> DiagArgValue {
         if self {
             DiagArgValue::Str(Cow::Borrowed("true"))
         } else {
@@ -104,64 +104,64 @@ impl IntoDiagnosticArg for bool {
     }
 }
 
-impl IntoDiagnosticArg for char {
-    fn into_diagnostic_arg(self) -> DiagArgValue {
+impl IntoDiagArg for char {
+    fn into_diag_arg(self) -> DiagArgValue {
         DiagArgValue::Str(Cow::Owned(format!("{self:?}")))
     }
 }
 
-impl IntoDiagnosticArg for Vec<char> {
-    fn into_diagnostic_arg(self) -> DiagArgValue {
+impl IntoDiagArg for Vec<char> {
+    fn into_diag_arg(self) -> DiagArgValue {
         DiagArgValue::StrListSepByAnd(
             self.into_iter().map(|c| Cow::Owned(format!("{c:?}"))).collect(),
         )
     }
 }
 
-impl IntoDiagnosticArg for Symbol {
-    fn into_diagnostic_arg(self) -> DiagArgValue {
-        self.to_ident_string().into_diagnostic_arg()
+impl IntoDiagArg for Symbol {
+    fn into_diag_arg(self) -> DiagArgValue {
+        self.to_ident_string().into_diag_arg()
     }
 }
 
-impl<'a> IntoDiagnosticArg for &'a str {
-    fn into_diagnostic_arg(self) -> DiagArgValue {
-        self.to_string().into_diagnostic_arg()
+impl<'a> IntoDiagArg for &'a str {
+    fn into_diag_arg(self) -> DiagArgValue {
+        self.to_string().into_diag_arg()
     }
 }
 
-impl IntoDiagnosticArg for String {
-    fn into_diagnostic_arg(self) -> DiagArgValue {
+impl IntoDiagArg for String {
+    fn into_diag_arg(self) -> DiagArgValue {
         DiagArgValue::Str(Cow::Owned(self))
     }
 }
 
-impl<'a> IntoDiagnosticArg for Cow<'a, str> {
-    fn into_diagnostic_arg(self) -> DiagArgValue {
+impl<'a> IntoDiagArg for Cow<'a, str> {
+    fn into_diag_arg(self) -> DiagArgValue {
         DiagArgValue::Str(Cow::Owned(self.into_owned()))
     }
 }
 
-impl<'a> IntoDiagnosticArg for &'a Path {
-    fn into_diagnostic_arg(self) -> DiagArgValue {
+impl<'a> IntoDiagArg for &'a Path {
+    fn into_diag_arg(self) -> DiagArgValue {
         DiagArgValue::Str(Cow::Owned(self.display().to_string()))
     }
 }
 
-impl IntoDiagnosticArg for PathBuf {
-    fn into_diagnostic_arg(self) -> DiagArgValue {
+impl IntoDiagArg for PathBuf {
+    fn into_diag_arg(self) -> DiagArgValue {
         DiagArgValue::Str(Cow::Owned(self.display().to_string()))
     }
 }
 
-impl IntoDiagnosticArg for PanicStrategy {
-    fn into_diagnostic_arg(self) -> DiagArgValue {
+impl IntoDiagArg for PanicStrategy {
+    fn into_diag_arg(self) -> DiagArgValue {
         DiagArgValue::Str(Cow::Owned(self.desc().to_string()))
     }
 }
 
-impl IntoDiagnosticArg for hir::ConstContext {
-    fn into_diagnostic_arg(self) -> DiagArgValue {
+impl IntoDiagArg for hir::ConstContext {
+    fn into_diag_arg(self) -> DiagArgValue {
         DiagArgValue::Str(Cow::Borrowed(match self {
             hir::ConstContext::ConstFn => "const_fn",
             hir::ConstContext::Static(_) => "static",
@@ -170,58 +170,58 @@ impl IntoDiagnosticArg for hir::ConstContext {
     }
 }
 
-impl IntoDiagnosticArg for ast::Expr {
-    fn into_diagnostic_arg(self) -> DiagArgValue {
+impl IntoDiagArg for ast::Expr {
+    fn into_diag_arg(self) -> DiagArgValue {
         DiagArgValue::Str(Cow::Owned(pprust::expr_to_string(&self)))
     }
 }
 
-impl IntoDiagnosticArg for ast::Path {
-    fn into_diagnostic_arg(self) -> DiagArgValue {
+impl IntoDiagArg for ast::Path {
+    fn into_diag_arg(self) -> DiagArgValue {
         DiagArgValue::Str(Cow::Owned(pprust::path_to_string(&self)))
     }
 }
 
-impl IntoDiagnosticArg for ast::token::Token {
-    fn into_diagnostic_arg(self) -> DiagArgValue {
+impl IntoDiagArg for ast::token::Token {
+    fn into_diag_arg(self) -> DiagArgValue {
         DiagArgValue::Str(pprust::token_to_string(&self))
     }
 }
 
-impl IntoDiagnosticArg for ast::token::TokenKind {
-    fn into_diagnostic_arg(self) -> DiagArgValue {
+impl IntoDiagArg for ast::token::TokenKind {
+    fn into_diag_arg(self) -> DiagArgValue {
         DiagArgValue::Str(pprust::token_kind_to_string(&self))
     }
 }
 
-impl IntoDiagnosticArg for type_ir::FloatTy {
-    fn into_diagnostic_arg(self) -> DiagArgValue {
+impl IntoDiagArg for type_ir::FloatTy {
+    fn into_diag_arg(self) -> DiagArgValue {
         DiagArgValue::Str(Cow::Borrowed(self.name_str()))
     }
 }
 
-impl IntoDiagnosticArg for std::ffi::CString {
-    fn into_diagnostic_arg(self) -> DiagArgValue {
+impl IntoDiagArg for std::ffi::CString {
+    fn into_diag_arg(self) -> DiagArgValue {
         DiagArgValue::Str(Cow::Owned(self.to_string_lossy().into_owned()))
     }
 }
 
-impl IntoDiagnosticArg for rustc_data_structures::small_c_str::SmallCStr {
-    fn into_diagnostic_arg(self) -> DiagArgValue {
+impl IntoDiagArg for rustc_data_structures::small_c_str::SmallCStr {
+    fn into_diag_arg(self) -> DiagArgValue {
         DiagArgValue::Str(Cow::Owned(self.to_string_lossy().into_owned()))
     }
 }
 
-impl IntoDiagnosticArg for ast::Visibility {
-    fn into_diagnostic_arg(self) -> DiagArgValue {
+impl IntoDiagArg for ast::Visibility {
+    fn into_diag_arg(self) -> DiagArgValue {
         let s = pprust::vis_to_string(&self);
         let s = s.trim_end().to_string();
         DiagArgValue::Str(Cow::Owned(s))
     }
 }
 
-impl IntoDiagnosticArg for rustc_lint_defs::Level {
-    fn into_diagnostic_arg(self) -> DiagArgValue {
+impl IntoDiagArg for rustc_lint_defs::Level {
+    fn into_diag_arg(self) -> DiagArgValue {
         DiagArgValue::Str(Cow::Borrowed(self.to_cmd_flag()))
     }
 }
@@ -235,22 +235,22 @@ impl From<Vec<Symbol>> for DiagSymbolList {
     }
 }
 
-impl IntoDiagnosticArg for DiagSymbolList {
-    fn into_diagnostic_arg(self) -> DiagArgValue {
+impl IntoDiagArg for DiagSymbolList {
+    fn into_diag_arg(self) -> DiagArgValue {
         DiagArgValue::StrListSepByAnd(
             self.0.into_iter().map(|sym| Cow::Owned(format!("`{sym}`"))).collect(),
         )
     }
 }
 
-impl<Id> IntoDiagnosticArg for hir::def::Res<Id> {
-    fn into_diagnostic_arg(self) -> DiagArgValue {
+impl<Id> IntoDiagArg for hir::def::Res<Id> {
+    fn into_diag_arg(self) -> DiagArgValue {
         DiagArgValue::Str(Cow::Borrowed(self.descr()))
     }
 }
 
-impl<G: EmissionGuarantee> IntoDiagnostic<'_, G> for TargetDataLayoutErrors<'_> {
-    fn into_diagnostic(self, dcx: &DiagCtxt, level: Level) -> Diag<'_, G> {
+impl<G: EmissionGuarantee> Diagnostic<'_, G> for TargetDataLayoutErrors<'_> {
+    fn into_diag(self, dcx: &DiagCtxt, level: Level) -> Diag<'_, G> {
         match self {
             TargetDataLayoutErrors::InvalidAddressSpace { addr_space, err, cause } => {
                 Diag::new(dcx, level, fluent::errors_target_invalid_address_space)
@@ -297,8 +297,8 @@ pub struct SingleLabelManySpans {
     pub spans: Vec<Span>,
     pub label: &'static str,
 }
-impl AddToDiagnostic for SingleLabelManySpans {
-    fn add_to_diagnostic_with<G: EmissionGuarantee, F: SubdiagMessageOp<G>>(
+impl Subdiagnostic for SingleLabelManySpans {
+    fn add_to_diag_with<G: EmissionGuarantee, F: SubdiagMessageOp<G>>(
         self,
         diag: &mut Diag<'_, G>,
         _: F,
@@ -315,20 +315,20 @@ pub struct ExpectedLifetimeParameter {
     pub count: usize,
 }
 
-impl IntoDiagnosticArg for DiagLocation {
-    fn into_diagnostic_arg(self) -> DiagArgValue {
+impl IntoDiagArg for DiagLocation {
+    fn into_diag_arg(self) -> DiagArgValue {
         DiagArgValue::Str(Cow::from(self.to_string()))
     }
 }
 
-impl IntoDiagnosticArg for Backtrace {
-    fn into_diagnostic_arg(self) -> DiagArgValue {
+impl IntoDiagArg for Backtrace {
+    fn into_diag_arg(self) -> DiagArgValue {
         DiagArgValue::Str(Cow::from(self.to_string()))
     }
 }
 
-impl IntoDiagnosticArg for Level {
-    fn into_diagnostic_arg(self) -> DiagArgValue {
+impl IntoDiagArg for Level {
+    fn into_diag_arg(self) -> DiagArgValue {
         DiagArgValue::Str(Cow::from(self.to_string()))
     }
 }
@@ -342,8 +342,8 @@ pub struct IndicateAnonymousLifetime {
     pub suggestion: String,
 }
 
-impl IntoDiagnosticArg for type_ir::ClosureKind {
-    fn into_diagnostic_arg(self) -> DiagArgValue {
+impl IntoDiagArg for type_ir::ClosureKind {
+    fn into_diag_arg(self) -> DiagArgValue {
         DiagArgValue::Str(self.as_str().into())
     }
 }

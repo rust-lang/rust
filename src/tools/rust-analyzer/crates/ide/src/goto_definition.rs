@@ -537,6 +537,24 @@ fn bar() {
     }
 
     #[test]
+    fn goto_definition_works_for_consts_inside_range_pattern() {
+        check(
+            r#"
+//- /lib.rs
+const A: u32 = 0;
+    //^
+
+fn bar(v: u32) {
+    match v {
+        0..=$0A => {}
+        _ => {}
+    }
+}
+"#,
+        );
+    }
+
+    #[test]
     fn goto_def_for_use_alias() {
         check(
             r#"

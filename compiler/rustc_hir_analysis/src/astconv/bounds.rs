@@ -408,7 +408,7 @@ impl<'tcx> dyn AstConv<'tcx> + '_ {
             // Create the generic arguments for the associated type or constant by joining the
             // parent arguments (the arguments of the trait) and the own arguments (the ones of
             // the associated item itself) and construct an alias type using them.
-            candidate.map_bound(|trait_ref| {
+            let alias_ty = candidate.map_bound(|trait_ref| {
                 let ident = Ident::new(assoc_item.name, binding.ident.span);
                 let item_segment = hir::PathSegment {
                     ident,
@@ -430,7 +430,25 @@ impl<'tcx> dyn AstConv<'tcx> + '_ {
                 // *constants* to represent *const projections*. Alias *term* would be a more
                 // appropriate name but alas.
                 ty::AliasTy::new(tcx, assoc_item.def_id, alias_args)
-            })
+            });
+
+            // Provide the resolved type of the associated constant to `type_of(AnonConst)`.
+            if !speculative
+                && let hir::TypeBindingKind::Equality { term: hir::Term::Const(anon_const) } =
+                    binding.kind
+            {
+                let ty = alias_ty.map_bound(|ty| tcx.type_of(ty.def_id).instantiate(tcx, ty.args));
+                // Since the arguments passed to the alias type above may contain early-bound
+                // generic parameters, the instantiated type may contain some as well.
+                // Therefore wrap it in `EarlyBinder`.
+                // FIXME(fmease): Reject escaping late-bound vars.
+                tcx.feed_anon_const_type(
+                    anon_const.def_id,
+                    ty::EarlyBinder::bind(ty.skip_binder()),
+                );
+            }
+
+            alias_ty
         };
 
         match binding.kind {

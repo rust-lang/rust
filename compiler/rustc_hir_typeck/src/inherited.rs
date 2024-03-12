@@ -79,7 +79,7 @@ impl<'tcx> Inherited<'tcx> {
         let infcx = tcx
             .infer_ctxt()
             .ignoring_regions()
-            .with_opaque_type_inference(DefiningAnchor::Bind(def_id))
+            .with_opaque_type_inference(DefiningAnchor::bind(tcx, def_id))
             .build();
         let typeck_results = RefCell::new(ty::TypeckResults::new(hir_owner));
 

@@ -1,6 +1,7 @@
 use super::ty::{AllowPlus, RecoverQPath, RecoverReturnSign};
 use super::{Parser, Restrictions, TokenType};
 use crate::errors::PathSingleColon;
+use crate::parser::{CommaRecoveryMode, RecoverColon, RecoverComma};
 use crate::{errors, maybe_whole};
 use ast::token::IdentIsRaw;
 use rustc_ast::ptr::P;
@@ -10,7 +11,7 @@ use rustc_ast::{
     AssocConstraintKind, BlockCheckMode, GenericArg, GenericArgs, Generics, ParenthesizedArgs,
     Path, PathSegment, QSelf,
 };
-use rustc_errors::{Applicability, PResult};
+use rustc_errors::{Applicability, Diag, PResult};
 use rustc_span::symbol::{kw, sym, Ident};
 use rustc_span::{BytePos, Span};
 use std::mem;
@@ -373,7 +374,38 @@ impl<'a> Parser<'a> {
                     .into()
                 } else {
                     // `(T, U) -> R`
-                    let (inputs, _) = self.parse_paren_comma_seq(|p| p.parse_ty())?;
+
+                    let prev_token_before_parsing = self.prev_token.clone();
+                    let token_before_parsing = self.token.clone();
+                    let mut snapshot = None;
+                    if self.may_recover()
+                        && prev_token_before_parsing.kind == token::ModSep
+                        && (style == PathStyle::Expr && self.token.can_begin_expr()
+                            || style == PathStyle::Pat && self.token.can_begin_pattern())
+                    {
+                        snapshot = Some(self.create_snapshot_for_diagnostic());
+                    }
+
+                    let (inputs, _) = match self.parse_paren_comma_seq(|p| p.parse_ty()) {
+                        Ok(output) => output,
+                        Err(mut error) if prev_token_before_parsing.kind == token::ModSep => {
+                            error.span_label(
+                                prev_token_before_parsing.span.to(token_before_parsing.span),
+                                "while parsing this parenthesized list of type arguments starting here",
+                            );
+
+                            if let Some(mut snapshot) = snapshot {
+                                snapshot.recover_fn_call_leading_path_sep(
+                                    style,
+                                    prev_token_before_parsing,
+                                    &mut error,
+                                )
+                            }
+
+                            return Err(error);
+                        }
+                        Err(error) => return Err(error),
+                    };
                     let inputs_span = lo.to(self.prev_token.span);
                     let output =
                         self.parse_ret_ty(AllowPlus::No, RecoverQPath::No, RecoverReturnSign::No)?;
@@ -396,6 +428,56 @@ impl<'a> Parser<'a> {
                 Ok(ident)
             }
             _ => self.parse_ident(),
+        }
+    }
+
+    /// Recover `$path::(...)` as `$path(...)`.
+    ///
+    /// ```ignore (diagnostics)
+    /// foo::(420, "bar")
+    ///    ^^ remove extra separator to make the function call
+    /// // or
+    /// match x {
+    ///    Foo::(420, "bar") => { ... },
+    ///       ^^ remove extra separator to turn this into tuple struct pattern
+    ///    _ => { ... },
+    /// }
+    /// ```
+    fn recover_fn_call_leading_path_sep(
+        &mut self,
+        style: PathStyle,
+        prev_token_before_parsing: Token,
+        error: &mut Diag<'_>,
+    ) {
+        if ((style == PathStyle::Expr && self.parse_paren_comma_seq(|p| p.parse_expr()).is_ok())
+            || (style == PathStyle::Pat
+                && self
+                    .parse_paren_comma_seq(|p| {
+                        p.parse_pat_allow_top_alt(
+                            None,
+                            RecoverComma::No,
+                            RecoverColon::No,
+                            CommaRecoveryMode::LikelyTuple,
+                        )
+                    })
+                    .is_ok()))
+            && !matches!(self.token.kind, token::ModSep | token::RArrow)
+        {
+            error.span_suggestion_verbose(
+                prev_token_before_parsing.span,
+                format!(
+                    "consider removing the `::` here to {}",
+                    match style {
+                        PathStyle::Expr => "call the expression",
+                        PathStyle::Pat => "turn this into a tuple struct pattern",
+                        _ => {
+                            return;
+                        }
+                    }
+                ),
+                "",
+                Applicability::MaybeIncorrect,
+            );
         }
     }
 

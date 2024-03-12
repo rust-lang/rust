@@ -53,7 +53,7 @@
           StorageDead(_5);
           StorageDead(_4);
           StorageLive(_7);
-          _7 = const _;
+          _7 = const core::num::<impl i32>::MAX;
           StorageLive(_8);
           StorageLive(_9);
 -         _9 = _7;

@@ -8,7 +8,12 @@ use object::elf;
 pub fn target(target_cpu: &'static str, mmcu: &'static str) -> Target {
     Target {
         arch: "avr".into(),
-        description: None,
+        metadata: crate::spec::TargetMetadata {
+            description: None,
+            tier: None,
+            host_tools: None,
+            std: None,
+        },
         data_layout: "e-P1-p:16:8-i8:8-i16:8-i32:8-i64:8-f32:8-f64:8-n8-a:8".into(),
         llvm_target: "avr-unknown-unknown".into(),
         pointer_width: 16,

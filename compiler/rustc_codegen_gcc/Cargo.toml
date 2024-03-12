@@ -19,6 +19,7 @@ harness = false
 
 [features]
 master = ["gccjit/master"]
+default = ["master"]
 
 [dependencies]
 gccjit = { git = "https://github.com/antoyo/gccjit.rs" }
@@ -35,8 +36,9 @@ smallvec = { version = "1.6.1", features = ["union", "may_dangle"] }
 tempfile = "3.7.1"
 
 [dev-dependencies]
-lang_tester = "0.3.9"
+lang_tester = "0.8.0"
 tempfile = "3.1.0"
+boml = "0.3.1"
 
 [profile.dev]
 # By compiling dependencies with optimizations, performing tests gets much faster.
@@ -55,3 +57,6 @@ debug = false
 [profile.release.build-override]
 opt-level = 0
 debug = false
+
+[package.metadata.rust-analyzer]
+rustc_private = true
