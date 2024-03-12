@@ -2,7 +2,7 @@
 //@ aux-build:issue-12133-rlib.rs
 //@ aux-build:issue-12133-dylib.rs
 //@ aux-build:issue-12133-dylib2.rs
-//@ ignore-emscripten no dylib support
+//@ ignore-wasm32 no dylib support
 //@ ignore-musl
 //@ needs-dynamic-linking
 

@@ -10,7 +10,6 @@
 // See issue #59123 for a full explanation.
 
 //@ edition:2018
-//@ ignore-wasm32 issue #62807
 //@ needs-unwind Size of Closures change on panic=abort
 
 #![feature(coroutines, coroutine_trait)]

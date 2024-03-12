@@ -5,7 +5,7 @@
 #![allow(deprecated)]
 #![allow(unused_imports)]
 //@ compile-flags:--test
-//@ ignore-emscripten no processes
+//@ ignore-wasm32 no processes
 //@ ignore-sgx no processes
 //@ ignore-vxworks no 'cat' and 'sleep'
 //@ ignore-fuchsia no 'cat'

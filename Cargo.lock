@@ -3309,6 +3309,9 @@ dependencies = [
 [[package]]
 name = "run_make_support"
 version = "0.0.0"
+dependencies = [
+ "wasmparser",
+]
 
 [[package]]
 name = "rust-demangler"

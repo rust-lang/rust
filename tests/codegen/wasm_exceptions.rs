@@ -1,4 +1,4 @@
-//@ only-wasm32-bare
+//@ only-wasm32
 //@ compile-flags: -C panic=unwind
 
 #![crate_type = "lib"]

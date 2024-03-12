@@ -2,7 +2,7 @@
 //@ revisions: default strict
 //@ [strict]compile-flags: -Zstrict-init-checks
 // ignore-tidy-linelength
-//@ ignore-emscripten spawning processes is not supported
+//@ ignore-wasm32 spawning processes is not supported
 //@ ignore-sgx no processes
 //
 // This test checks panic emitted from `mem::{uninitialized,zeroed}`.

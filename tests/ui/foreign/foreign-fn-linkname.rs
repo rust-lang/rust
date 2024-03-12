@@ -1,5 +1,4 @@
 //@ run-pass
-//@ ignore-wasm32-bare no libc to test ffi with
 //@ ignore-sgx no libc
 
 // Ensure no false positive on "unused extern crate" lint

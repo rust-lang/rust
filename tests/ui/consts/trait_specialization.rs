@@ -1,4 +1,3 @@
-//@ ignore-wasm32-bare which doesn't support `std::process:exit()`
 //@ compile-flags: -Zmir-opt-level=3
 //@ run-pass
 

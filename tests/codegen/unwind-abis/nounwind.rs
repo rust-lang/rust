@@ -1,5 +1,5 @@
 //@ compile-flags: -C opt-level=0 -Cpanic=abort
-//@ ignore-wasm32-bare compiled with panic=abort by default
+//@ needs-unwind
 
 #![crate_type = "lib"]
 #![feature(c_unwind)]

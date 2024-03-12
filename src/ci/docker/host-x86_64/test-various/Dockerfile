@@ -3,6 +3,7 @@ FROM ubuntu:22.04
 ARG DEBIAN_FRONTEND=noninteractive
 RUN apt-get update && apt-get install -y --no-install-recommends \
   clang-11 \
+  llvm-11 \
   g++ \
   make \
   ninja-build \
@@ -38,10 +39,14 @@ WORKDIR /
 COPY scripts/sccache.sh /scripts/
 RUN sh /scripts/sccache.sh
 
+COPY host-x86_64/dist-various-2/build-wasi-toolchain.sh /tmp/
+RUN /tmp/build-wasi-toolchain.sh
+
 ENV RUST_CONFIGURE_ARGS \
   --musl-root-x86_64=/usr/local/x86_64-linux-musl \
   --set build.nodejs=/node-v18.12.0-linux-x64/bin/node \
-  --set rust.lld
+  --set rust.lld \
+  --set target.wasm32-wasip1.wasi-root=/wasm32-wasip1
 
 # Some run-make tests have assertions about code size, and enabling debug
 # assertions in libstd causes the binary to be much bigger than it would
@@ -50,7 +55,11 @@ ENV RUST_CONFIGURE_ARGS \
 ENV NO_DEBUG_ASSERTIONS=1
 ENV NO_OVERFLOW_CHECKS=1
 
-ENV WASM_TARGETS=wasm32-unknown-unknown
+RUN curl -L https://github.com/bytecodealliance/wasmtime/releases/download/v18.0.2/wasmtime-v18.0.2-x86_64-linux.tar.xz | \
+  tar -xJ
+ENV PATH "$PATH:/wasmtime-v18.0.2-x86_64-linux"
+
+ENV WASM_TARGETS=wasm32-wasip1
 ENV WASM_SCRIPT python3 /checkout/x.py --stage 2 test --host='' --target $WASM_TARGETS \
   tests/run-make \
   tests/ui \
@@ -59,7 +68,9 @@ ENV WASM_SCRIPT python3 /checkout/x.py --stage 2 test --host='' --target $WASM_T
   tests/codegen \
   tests/assembly \
   library/core
-ENV CC_wasm32_unknown_unknown=clang-11
+ENV CC_wasm32_wasip1=clang-11 \
+    CFLAGS_wasm32_wasip1="--sysroot /wasm32-wasip1" \
+    AR_wasm32_wasip1=llvm-ar-11
 
 ENV NVPTX_TARGETS=nvptx64-nvidia-cuda
 ENV NVPTX_SCRIPT python3 /checkout/x.py --stage 2 test --host='' --target $NVPTX_TARGETS \

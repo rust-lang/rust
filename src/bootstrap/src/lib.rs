@@ -1361,9 +1361,36 @@ impl Build {
     /// An example of this would be a WebAssembly runtime when testing the wasm
     /// targets.
     fn runner(&self, target: TargetSelection) -> Option<String> {
-        let target = self.config.target_config.get(&target)?;
-        let runner = target.runner.as_ref()?;
-        Some(runner.to_owned())
+        let configured_runner =
+            self.config.target_config.get(&target).and_then(|t| t.runner.as_ref()).map(|p| &**p);
+        if let Some(runner) = configured_runner {
+            return Some(runner.to_owned());
+        }
+
+        if target.starts_with("wasm") && target.contains("wasi") {
+            self.default_wasi_runner()
+        } else {
+            None
+        }
+    }
+
+    /// When a `runner` configuration is not provided and a WASI-looking target
+    /// is being tested this is consulted to prove the environment to see if
+    /// there's a runtime already lying around that seems reasonable to use.
+    fn default_wasi_runner(&self) -> Option<String> {
+        let mut finder = crate::core::sanity::Finder::new();
+
+        // Look for Wasmtime, and for its default options be sure to disable
+        // its caching system since we're executing quite a lot of tests and
+        // ideally shouldn't pollute the cache too much.
+        if let Some(path) = finder.maybe_have("wasmtime") {
+            if let Ok(mut path) = path.into_os_string().into_string() {
+                path.push_str(" run -C cache=n --dir .");
+                return Some(path);
+            }
+        }
+
+        None
     }
 
     /// Returns the root of the "rootfs" image that this target will be using,

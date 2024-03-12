@@ -1,8 +1,6 @@
 //@ run-pass
 #![allow(non_snake_case)]
 
-//@ ignore-wasm32-bare no libc to test ffi with
-
 #[derive(Clone, Copy)]
 #[repr(C)]
 struct LARGE_INTEGER_U {

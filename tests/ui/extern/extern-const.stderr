@@ -1,5 +1,5 @@
 error: extern items cannot be `const`
-  --> $DIR/extern-const.rs:15:11
+  --> $DIR/extern-const.rs:14:11
    |
 LL |     const rust_dbg_static_mut: libc::c_int;
    |     ------^^^^^^^^^^^^^^^^^^^

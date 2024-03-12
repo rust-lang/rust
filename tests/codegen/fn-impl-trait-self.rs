@@ -1,4 +1,5 @@
 //@ compile-flags: -g
+//@ ignore-wasi wasi codegens the main symbol differently
 //
 // CHECK-LABEL: @main
 // MSVC: {{.*}}DIDerivedType(tag: DW_TAG_pointer_type, name: "recursive_type$ (*)()",{{.*}}

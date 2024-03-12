@@ -1,7 +1,7 @@
 //@ run-pass
 //@ ignore-windows
 //@ ignore-android
-//@ ignore-emscripten no processes
+//@ ignore-wasm32 no processes
 //@ ignore-haiku
 //@ ignore-sgx no processes
 

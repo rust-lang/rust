@@ -493,12 +493,8 @@ impl<'test> TestCx<'test> {
         let expected_coverage_dump = self.load_expected_output(kind);
         let actual_coverage_dump = self.normalize_output(&proc_res.stdout, &[]);
 
-        let coverage_dump_errors = self.compare_output(
-            kind,
-            &actual_coverage_dump,
-            &expected_coverage_dump,
-            self.props.compare_output_lines_by_subset,
-        );
+        let coverage_dump_errors =
+            self.compare_output(kind, &actual_coverage_dump, &expected_coverage_dump);
 
         if coverage_dump_errors > 0 {
             self.fatal_proc_rec(
@@ -591,12 +587,8 @@ impl<'test> TestCx<'test> {
                 self.fatal_proc_rec(&err, &proc_res);
             });
 
-        let coverage_errors = self.compare_output(
-            kind,
-            &normalized_actual_coverage,
-            &expected_coverage,
-            self.props.compare_output_lines_by_subset,
-        );
+        let coverage_errors =
+            self.compare_output(kind, &normalized_actual_coverage, &expected_coverage);
 
         if coverage_errors > 0 {
             self.fatal_proc_rec(
@@ -2632,9 +2624,7 @@ impl<'test> TestCx<'test> {
         // double the length.
         let mut f = self.output_base_dir().join("a");
         // FIXME: This is using the host architecture exe suffix, not target!
-        if self.config.target.contains("emscripten") {
-            f = f.with_extra_extension("js");
-        } else if self.config.target.contains("wasm32") {
+        if self.config.target.starts_with("wasm") {
             f = f.with_extra_extension("wasm");
         } else if self.config.target.contains("spirv") {
             f = f.with_extra_extension("spv");
@@ -2648,32 +2638,6 @@ impl<'test> TestCx<'test> {
         // If we've got another tool to run under (valgrind),
         // then split apart its command
         let mut args = self.split_maybe_args(&self.config.runner);
-
-        // If this is emscripten, then run tests under nodejs
-        if self.config.target.contains("emscripten") {
-            if let Some(ref p) = self.config.nodejs {
-                args.push(p.into());
-            } else {
-                self.fatal("emscripten target requested and no NodeJS binary found (--nodejs)");
-            }
-        // If this is otherwise wasm, then run tests under nodejs with our
-        // shim
-        } else if self.config.target.contains("wasm32") {
-            if let Some(ref p) = self.config.nodejs {
-                args.push(p.into());
-            } else {
-                self.fatal("wasm32 target requested and no NodeJS binary found (--nodejs)");
-            }
-
-            let src = self
-                .config
-                .src_base
-                .parent()
-                .unwrap() // chop off `ui`
-                .parent()
-                .unwrap(); // chop off `tests`
-            args.push(src.join("src/etc/wasm32-shim.js").into_os_string());
-        }
 
         let exe_file = self.make_exe_name();
 
@@ -4079,35 +4043,17 @@ impl<'test> TestCx<'test> {
         match output_kind {
             TestOutput::Compile => {
                 if !self.props.dont_check_compiler_stdout {
-                    errors += self.compare_output(
-                        stdout_kind,
-                        &normalized_stdout,
-                        &expected_stdout,
-                        self.props.compare_output_lines_by_subset,
-                    );
+                    errors +=
+                        self.compare_output(stdout_kind, &normalized_stdout, &expected_stdout);
                 }
                 if !self.props.dont_check_compiler_stderr {
-                    errors += self.compare_output(
-                        stderr_kind,
-                        &normalized_stderr,
-                        &expected_stderr,
-                        self.props.compare_output_lines_by_subset,
-                    );
+                    errors +=
+                        self.compare_output(stderr_kind, &normalized_stderr, &expected_stderr);
                 }
             }
             TestOutput::Run => {
-                errors += self.compare_output(
-                    stdout_kind,
-                    &normalized_stdout,
-                    &expected_stdout,
-                    self.props.compare_output_lines_by_subset,
-                );
-                errors += self.compare_output(
-                    stderr_kind,
-                    &normalized_stderr,
-                    &expected_stderr,
-                    self.props.compare_output_lines_by_subset,
-                );
+                errors += self.compare_output(stdout_kind, &normalized_stdout, &expected_stdout);
+                errors += self.compare_output(stderr_kind, &normalized_stderr, &expected_stderr);
             }
         }
         errors
@@ -4201,12 +4147,7 @@ impl<'test> TestCx<'test> {
                 )
             });
 
-            errors += self.compare_output(
-                "fixed",
-                &fixed_code,
-                &expected_fixed,
-                self.props.compare_output_lines_by_subset,
-            );
+            errors += self.compare_output("fixed", &fixed_code, &expected_fixed);
         } else if !expected_fixed.is_empty() {
             panic!(
                 "the `//@ run-rustfix` directive wasn't found but a `*.fixed` \
@@ -4701,16 +4642,18 @@ impl<'test> TestCx<'test> {
         }
     }
 
-    fn compare_output(
-        &self,
-        kind: &str,
-        actual: &str,
-        expected: &str,
-        compare_output_by_lines: bool,
-    ) -> usize {
+    fn compare_output(&self, kind: &str, actual: &str, expected: &str) -> usize {
         if actual == expected {
             return 0;
         }
+
+        // If `compare-output-lines-by-subset` is not explicitly enabled then
+        // auto-enable it when a `runner` is in use since wrapper tools might
+        // provide extra output on failure, for example a WebAssembly runtime
+        // might print the stack trace of an `unreachable` instruction by
+        // default.
+        let compare_output_by_lines =
+            self.props.compare_output_lines_by_subset || self.config.runner.is_some();
 
         let tmp;
         let (expected, actual): (&str, &str) = if compare_output_by_lines {

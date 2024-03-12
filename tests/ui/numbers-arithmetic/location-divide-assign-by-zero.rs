@@ -1,5 +1,4 @@
 //@ run-fail
-//@ ignore-wasm32
 //@ error-pattern:location-divide-assign-by-zero.rs
 
 fn main() {

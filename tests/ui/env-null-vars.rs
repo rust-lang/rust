@@ -3,7 +3,6 @@
 #![allow(unused_imports)]
 
 //@ ignore-windows
-//@ ignore-wasm32-bare no libc to test ffi with
 
 // issue-53200
 
