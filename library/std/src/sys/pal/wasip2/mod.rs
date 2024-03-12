@@ -66,3 +66,5 @@ pub use helpers::decode_error_kind;
 use helpers::err2io;
 pub use helpers::hashmap_random_keys;
 pub use helpers::is_interrupted;
+
+mod cabi_realloc;
