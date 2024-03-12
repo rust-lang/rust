@@ -7,6 +7,7 @@
 //@ edition: 2021
 
 use core::future::{async_drop, AsyncDrop, Future};
+use core::mem::ManuallyDrop;
 use core::pin::{pin, Pin};
 use core::task::{Context, Poll, Waker};
 
@@ -25,6 +26,7 @@ fn main() {
         async_drop(&i).await;
         async_drop(&j).await;
         async_drop(Baz { _b: Foo(8), _a: Foo(7), n: 6 }).await;
+        async_drop(ManuallyDrop::new(Foo(9))).await;
     });
 
     let res = fut.poll(&mut cx);

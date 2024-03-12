@@ -1106,6 +1106,10 @@ impl<'tcx> AsyncDestructorCtorShimBuilder<'tcx> {
                 self.build_chain(false, elem_tys.iter())
             }
             ty::Adt(adt_def, args) if adt_def.is_struct() => {
+                if adt_def.is_manually_drop() {
+                    return self.build_nop();
+                }
+
                 debug_assert_eq!(adt_def.variants().len(), 1);
                 let has_surface_async_drop = self_ty.is_async_drop(tcx, defer_param_env());
                 let field_tys = adt_def.variant(VariantIdx::new(0)).fields.iter().map(|f| f.ty(tcx, args));

@@ -2329,6 +2329,12 @@ impl<'tcx> Ty<'tcx> {
             }
             ty::Tuple(tys) => Self::chain_async_destructor_ty(tcx, tys.iter(), None),
             ty::Adt(adt_def, args) if adt_def.is_struct() => {
+                if adt_def.is_manually_drop() {
+                    return tcx
+                        .type_of(tcx.require_lang_item(LangItem::AsyncDropNop, None))
+                        .instantiate_identity();
+                }
+
                 debug_assert_eq!(adt_def.variants().len(), 1);
                 Self::chain_async_destructor_ty(
                     tcx,
