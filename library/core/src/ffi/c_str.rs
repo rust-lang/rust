@@ -507,6 +507,13 @@ impl CStr {
         self.inner.as_ptr()
     }
 
+    /// We could eventually expose this publicly, if we wanted.
+    #[inline]
+    #[must_use]
+    const fn as_non_null_ptr(&self) -> NonNull<c_char> {
+        NonNull::from(&self.inner).as_non_null_ptr()
+    }
+
     /// Returns the length of `self`. Like C's `strlen`, this does not include the nul terminator.
     ///
     /// > **Note**: This method is currently implemented as a constant-time
@@ -776,12 +783,7 @@ pub struct Bytes<'a> {
 impl<'a> Bytes<'a> {
     #[inline]
     fn new(s: &'a CStr) -> Self {
-        Self {
-            // SAFETY: Because we have a valid reference to the string, we know
-            // that its pointer is non-null.
-            ptr: unsafe { NonNull::new_unchecked(s.as_ptr() as *const u8 as *mut u8) },
-            phantom: PhantomData,
-        }
+        Self { ptr: s.as_non_null_ptr().cast(), phantom: PhantomData }
     }
 
     #[inline]
@@ -789,7 +791,7 @@ impl<'a> Bytes<'a> {
         // SAFETY: We uphold that the pointer is always valid to dereference
         // by starting with a valid C string and then never incrementing beyond
         // the nul terminator.
-        unsafe { *self.ptr.as_ref() == 0 }
+        unsafe { self.ptr.read() == 0 }
     }
 }
 
@@ -806,11 +808,11 @@ impl Iterator for Bytes<'_> {
         // it and assume that adding 1 will create a new, non-null, valid
         // pointer.
         unsafe {
-            let ret = *self.ptr.as_ref();
+            let ret = self.ptr.read();
             if ret == 0 {
                 None
             } else {
-                self.ptr = NonNull::new_unchecked(self.ptr.as_ptr().offset(1));
+                self.ptr = self.ptr.offset(1);
                 Some(ret)
             }
         }
