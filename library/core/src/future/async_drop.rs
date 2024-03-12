@@ -138,6 +138,7 @@ where
     type Output = ();
 
     fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
+        // SAFETY: pin projection into `self.inner`
         unsafe {
             let this = self.get_unchecked_mut();
             if let Some(inner) = &mut this.inner {
