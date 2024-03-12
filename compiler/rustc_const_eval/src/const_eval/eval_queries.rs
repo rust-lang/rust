@@ -84,6 +84,9 @@ fn eval_body_using_ecx<'mir, 'tcx>(
     // Intern the result
     intern_const_alloc_recursive(ecx, intern_kind, &ret)?;
 
+    // Since evaluation had no errors, validate the resulting constant.
+    const_validate_mplace(&ecx, &ret, cid)?;
+
     Ok(ret)
 }
 
@@ -382,12 +385,7 @@ fn eval_in_interpreter<'tcx, R: InterpretationResult<'tcx>>(
                 },
             ))
         }
-        Ok(mplace) => {
-            // Since evaluation had no errors, validate the resulting constant.
-            const_validate_mplace(&ecx, &mplace, cid)?;
-
-            Ok(R::make_result(mplace, ecx))
-        }
+        Ok(mplace) => Ok(R::make_result(mplace, ecx)),
     }
 }
 
