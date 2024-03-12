@@ -1,0 +1,60 @@
+error[E0425]: cannot find value `bar` in this scope
+  --> $DIR/ice-hir-wf-check-anon-const-issue-122199.rs:1:30
+   |
+LL | trait Trait<const N: Trait = bar> {
+   |                              ^^^ not found in this scope
+
+warning: trait objects without an explicit `dyn` are deprecated
+  --> $DIR/ice-hir-wf-check-anon-const-issue-122199.rs:1:22
+   |
+LL | trait Trait<const N: Trait = bar> {
+   |                      ^^^^^
+   |
+   = warning: this is accepted in the current edition (Rust 2015) but is a hard error in Rust 2021!
+   = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2021/warnings-promoted-to-error.html>
+   = note: `#[warn(bare_trait_objects)]` on by default
+help: if this is an object-safe trait, use `dyn`
+   |
+LL | trait Trait<const N: dyn Trait = bar> {
+   |                      +++
+
+error[E0391]: cycle detected when computing type of `Trait::N`
+  --> $DIR/ice-hir-wf-check-anon-const-issue-122199.rs:1:22
+   |
+LL | trait Trait<const N: Trait = bar> {
+   |                      ^^^^^
+   |
+   = note: ...which immediately requires computing type of `Trait::N` again
+note: cycle used when computing explicit predicates of trait `Trait`
+  --> $DIR/ice-hir-wf-check-anon-const-issue-122199.rs:1:1
+   |
+LL | trait Trait<const N: Trait = bar> {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   = note: see https://rustc-dev-guide.rust-lang.org/overview.html#queries and https://rustc-dev-guide.rust-lang.org/query.html for more information
+
+error[E0391]: cycle detected when computing type of `Trait::N`
+  --> $DIR/ice-hir-wf-check-anon-const-issue-122199.rs:1:13
+   |
+LL | trait Trait<const N: Trait = bar> {
+   |             ^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: ...which immediately requires computing type of `Trait::N` again
+note: cycle used when computing explicit predicates of trait `Trait`
+  --> $DIR/ice-hir-wf-check-anon-const-issue-122199.rs:1:1
+   |
+LL | trait Trait<const N: Trait = bar> {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   = note: see https://rustc-dev-guide.rust-lang.org/overview.html#queries and https://rustc-dev-guide.rust-lang.org/query.html for more information
+
+error: `(dyn Trait<{const error}> + 'static)` is forbidden as the type of a const generic parameter
+  --> $DIR/ice-hir-wf-check-anon-const-issue-122199.rs:1:22
+   |
+LL | trait Trait<const N: Trait = bar> {
+   |                      ^^^^^
+   |
+   = note: the only supported types are integers, `bool` and `char`
+
+error: aborting due to 4 previous errors; 1 warning emitted
+
+Some errors have detailed explanations: E0391, E0425.
+For more information about an error, try `rustc --explain E0391`.
