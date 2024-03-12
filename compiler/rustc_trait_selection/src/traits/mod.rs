@@ -207,6 +207,10 @@ pub fn normalize_param_env_or_error<'tcx>(
     unnormalized_env: ty::ParamEnv<'tcx>,
     cause: ObligationCause<'tcx>,
 ) -> ty::ParamEnv<'tcx> {
+    if tcx.next_trait_solver_globally() {
+        return unnormalized_env;
+    }
+
     // I'm not wild about reporting errors here; I'd prefer to
     // have the errors get reported at a defined place (e.g.,
     // during typeck). Instead I have all parameter
@@ -221,9 +225,10 @@ pub fn normalize_param_env_or_error<'tcx>(
     // parameter environments once for every fn as it goes,
     // and errors will get reported then; so outside of type inference we
     // can be sure that no errors should occur.
-    let mut predicates: Vec<_> = util::elaborate(
-        tcx,
-        unnormalized_env.caller_bounds().into_iter().map(|predicate| {
+    let mut predicates: Vec<_> = unnormalized_env
+        .caller_bounds()
+        .into_iter()
+        .map(|predicate| {
             if tcx.features().generic_const_exprs {
                 return predicate;
             }
@@ -280,13 +285,13 @@ pub fn normalize_param_env_or_error<'tcx>(
             //
             // FIXME(-Znext-solver): remove this hack since we have deferred projection equality
             predicate.fold_with(&mut ConstNormalizer(tcx))
-        }),
-    )
-    .collect();
+        })
+        .collect();
 
     debug!("normalize_param_env_or_error: elaborated-predicates={:?}", predicates);
 
-    let elaborated_env = ty::ParamEnv::new(tcx.mk_clauses(&predicates), unnormalized_env.reveal());
+    let reveal = unnormalized_env.reveal();
+    let eager_evaluated_env = ty::ParamEnv::new(tcx.mk_clauses(&predicates), reveal);
 
     // HACK: we are trying to normalize the param-env inside *itself*. The problem is that
     // normalization expects its param-env to be already normalized, which means we have
@@ -317,11 +322,11 @@ pub fn normalize_param_env_or_error<'tcx>(
         predicates, outlives_predicates
     );
     let Ok(non_outlives_predicates) =
-        do_normalize_predicates(tcx, cause.clone(), elaborated_env, predicates)
+        do_normalize_predicates(tcx, cause.clone(), eager_evaluated_env, predicates)
     else {
         // An unnormalized env is better than nothing.
         debug!("normalize_param_env_or_error: errored resolving non-outlives predicates");
-        return elaborated_env;
+        return eager_evaluated_env;
     };
 
     debug!("normalize_param_env_or_error: non-outlives predicates={:?}", non_outlives_predicates);
@@ -330,21 +335,20 @@ pub fn normalize_param_env_or_error<'tcx>(
     // here. I believe they should not matter, because we are ignoring TypeOutlives param-env
     // predicates here anyway. Keeping them here anyway because it seems safer.
     let outlives_env = non_outlives_predicates.iter().chain(&outlives_predicates).cloned();
-    let outlives_env =
-        ty::ParamEnv::new(tcx.mk_clauses_from_iter(outlives_env), unnormalized_env.reveal());
+    let outlives_env = ty::ParamEnv::new(tcx.mk_clauses_from_iter(outlives_env), reveal);
     let Ok(outlives_predicates) =
         do_normalize_predicates(tcx, cause, outlives_env, outlives_predicates)
     else {
         // An unnormalized env is better than nothing.
         debug!("normalize_param_env_or_error: errored resolving outlives predicates");
-        return elaborated_env;
+        return eager_evaluated_env;
     };
     debug!("normalize_param_env_or_error: outlives predicates={:?}", outlives_predicates);
 
     let mut predicates = non_outlives_predicates;
     predicates.extend(outlives_predicates);
     debug!("normalize_param_env_or_error: final predicates={:?}", predicates);
-    ty::ParamEnv::new(tcx.mk_clauses(&predicates), unnormalized_env.reveal())
+    ty::ParamEnv::new(tcx.mk_clauses(&predicates), reveal)
 }
 
 /// Normalize a type and process all resulting obligations, returning any errors.
