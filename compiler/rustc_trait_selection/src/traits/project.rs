@@ -1061,8 +1061,9 @@ fn assemble_candidates_from_impls<'cx, 'tcx>(
                         // Integers and floats always have `u8` as their discriminant.
                         | ty::Infer(ty::InferTy::IntVar(_) | ty::InferTy::FloatVar(..)) => true,
 
-                         // type parameters, opaques, and unnormalized projections have pointer
-                        // metadata if they're known (e.g. by the param_env) to be sized
+                        // type parameters, opaques, and unnormalized projections don't have
+                        // a known discriminant and may need to be normalized further or rely
+                        // on param env for discriminant projections
                         ty::Param(_)
                         | ty::Alias(..)
                         | ty::Bound(..)
