@@ -1,3 +1,6 @@
+// We need this feature as it changes `dylib` linking behavior and allows us to link to
+// `rustc_driver`.
+#![feature(rustc_private)]
 #![feature(lazy_cell)]
 #![feature(is_sorted)]
 #![cfg_attr(feature = "deny-warnings", deny(warnings))]

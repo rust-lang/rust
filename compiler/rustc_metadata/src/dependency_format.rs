@@ -57,7 +57,7 @@ use crate::errors::{
     NonStaticCrateDep, RequiredPanicStrategy, RlibRequired, RustcLibRequired, TwoPanicRuntimes,
 };
 
-use rustc_data_structures::fx::FxHashMap;
+use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_hir::def_id::CrateNum;
 use rustc_middle::middle::dependency_format::{Dependencies, DependencyList, Linkage};
 use rustc_middle::ty::TyCtxt;
@@ -158,25 +158,49 @@ fn calculate_type(tcx: TyCtxt<'_>, ty: CrateType) -> DependencyList {
         Linkage::Dynamic | Linkage::IncludedFromDylib => {}
     }
 
+    let all_dylibs = || {
+        tcx.crates(()).iter().filter(|&&cnum| {
+            !tcx.dep_kind(cnum).macros_only() && tcx.used_crate_source(cnum).dylib.is_some()
+        })
+    };
+
+    let mut upstream_in_dylibs = FxHashSet::default();
+
+    if tcx.features().rustc_private {
+        // We need this to prevent users of `rustc_driver` from linking to dynamically to `std`
+        // which does not work as `std` is also statically linked into `rustc_driver`.
+
+        // Find all libraries statically linked to upstream dylibs.
+        for &cnum in all_dylibs() {
+            let deps = tcx.dylib_dependency_formats(cnum);
+            for &(depnum, style) in deps.iter() {
+                if let RequireStatic = style {
+                    upstream_in_dylibs.insert(depnum);
+                }
+            }
+        }
+    }
+
     let mut formats = FxHashMap::default();
 
     // Sweep all crates for found dylibs. Add all dylibs, as well as their
     // dependencies, ensuring there are no conflicts. The only valid case for a
     // dependency to be relied upon twice is for both cases to rely on a dylib.
-    for &cnum in tcx.crates(()).iter() {
-        if tcx.dep_kind(cnum).macros_only() {
+    for &cnum in all_dylibs() {
+        if upstream_in_dylibs.contains(&cnum) {
+            info!("skipping dylib: {}", tcx.crate_name(cnum));
+            // If this dylib is also available statically linked to another dylib
+            // we try to use that instead.
             continue;
         }
+
         let name = tcx.crate_name(cnum);
-        let src = tcx.used_crate_source(cnum);
-        if src.dylib.is_some() {
-            info!("adding dylib: {}", name);
-            add_library(tcx, cnum, RequireDynamic, &mut formats, &mut unavailable_as_static);
-            let deps = tcx.dylib_dependency_formats(cnum);
-            for &(depnum, style) in deps.iter() {
-                info!("adding {:?}: {}", style, tcx.crate_name(depnum));
-                add_library(tcx, depnum, style, &mut formats, &mut unavailable_as_static);
-            }
+        info!("adding dylib: {}", name);
+        add_library(tcx, cnum, RequireDynamic, &mut formats, &mut unavailable_as_static);
+        let deps = tcx.dylib_dependency_formats(cnum);
+        for &(depnum, style) in deps.iter() {
+            info!("adding {:?}: {}", style, tcx.crate_name(depnum));
+            add_library(tcx, depnum, style, &mut formats, &mut unavailable_as_static);
         }
     }
 
