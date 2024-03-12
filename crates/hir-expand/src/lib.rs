@@ -25,13 +25,16 @@ pub mod span_map;
 mod fixup;
 
 use attrs::collect_attrs;
+use rustc_hash::FxHashMap;
 use triomphe::Arc;
 
 use std::{fmt, hash::Hash};
 
 use base_db::{salsa::impl_intern_value_trivial, CrateId, Edition, FileId};
 use either::Either;
-use span::{ErasedFileAstId, FileRange, HirFileIdRepr, Span, SyntaxContextData, SyntaxContextId};
+use span::{
+    ErasedFileAstId, FileRange, HirFileIdRepr, Span, SpanAnchor, SyntaxContextData, SyntaxContextId,
+};
 use syntax::{
     ast::{self, AstNode},
     SyntaxNode, SyntaxToken, TextRange, TextSize,
@@ -683,6 +686,8 @@ impl ExpansionInfo {
     }
 
     /// Maps the passed in file range down into a macro expansion if it is the input to a macro call.
+    ///
+    /// Note this does a linear search through the entire backing vector of the spanmap.
     pub fn map_range_down(
         &self,
         span: Span,
@@ -793,7 +798,34 @@ impl ExpansionInfo {
     }
 }
 
+/// Maps up the text range out of the expansion hierarchy back into the original file its from only
+/// considering the root spans contained.
+/// Unlike [`map_node_range_up`], this will not return `None` if any anchors or syntax contexts differ.
+pub fn map_node_range_up_rooted(
+    db: &dyn ExpandDatabase,
+    exp_map: &ExpansionSpanMap,
+    range: TextRange,
+) -> Option<FileRange> {
+    let mut spans = exp_map.spans_for_range(range).filter(|span| span.ctx.is_root());
+    let Span { range, anchor, ctx: _ } = spans.next()?;
+    let mut start = range.start();
+    let mut end = range.end();
+
+    for span in spans {
+        if span.anchor != anchor {
+            return None;
+        }
+        start = start.min(span.range.start());
+        end = end.max(span.range.end());
+    }
+    let anchor_offset =
+        db.ast_id_map(anchor.file_id.into()).get_erased(anchor.ast_id).text_range().start();
+    Some(FileRange { file_id: anchor.file_id, range: TextRange::new(start, end) + anchor_offset })
+}
+
 /// Maps up the text range out of the expansion hierarchy back into the original file its from.
+///
+/// this will return `None` if any anchors or syntax contexts differ.
 pub fn map_node_range_up(
     db: &dyn ExpandDatabase,
     exp_map: &ExpansionSpanMap,
@@ -817,6 +849,29 @@ pub fn map_node_range_up(
         FileRange { file_id: anchor.file_id, range: TextRange::new(start, end) + anchor_offset },
         ctx,
     ))
+}
+
+/// Maps up the text range out of the expansion hierarchy back into the original file its from.
+/// This version will aggregate the ranges of all spans with the same anchor and syntax context.
+pub fn map_node_range_up_aggregated(
+    db: &dyn ExpandDatabase,
+    exp_map: &ExpansionSpanMap,
+    range: TextRange,
+) -> FxHashMap<(SpanAnchor, SyntaxContextId), TextRange> {
+    let mut map = FxHashMap::default();
+    for span in exp_map.spans_for_range(range) {
+        let range = map.entry((span.anchor, span.ctx)).or_insert_with(|| span.range);
+        *range = TextRange::new(
+            range.start().min(span.range.start()),
+            range.end().max(span.range.end()),
+        );
+    }
+    for ((anchor, _), range) in &mut map {
+        let anchor_offset =
+            db.ast_id_map(anchor.file_id.into()).get_erased(anchor.ast_id).text_range().start();
+        *range += anchor_offset;
+    }
+    map
 }
 
 /// Looks up the span at the given offset.

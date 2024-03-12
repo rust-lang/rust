@@ -852,7 +852,7 @@ fn orig_range(
     value: &SyntaxNode,
 ) -> UpmappingResult<(FileRange, Option<TextRange>)> {
     UpmappingResult {
-        call_site: (InFile::new(hir_file, value).original_file_range(db), None),
+        call_site: (InFile::new(hir_file, value).original_file_range_rooted(db), None),
         def_site: None,
     }
 }

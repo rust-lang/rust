@@ -114,10 +114,8 @@ fn add_variant_to_union(
 ) -> Option<Assist> {
     let adt_source = adt_union.source(ctx.sema.db)?;
     let adt_syntax = adt_source.syntax();
-    let Some(field_list) = adt_source.value.record_field_list() else {
-        return None;
-    };
-    let range = adt_syntax.original_file_range(ctx.sema.db);
+    let field_list = adt_source.value.record_field_list()?;
+    let range = adt_syntax.original_file_range_rooted(ctx.sema.db);
     let field_name = make::name(field_name);
 
     let (offset, record_field) =
@@ -144,7 +142,7 @@ fn add_field_to_struct_fix(
 ) -> Option<Assist> {
     let struct_source = adt_struct.source(ctx.sema.db)?;
     let struct_syntax = struct_source.syntax();
-    let struct_range = struct_syntax.original_file_range(ctx.sema.db);
+    let struct_range = struct_syntax.original_file_range_rooted(ctx.sema.db);
     let field_list = struct_source.value.field_list();
     match field_list {
         Some(FieldList::RecordFieldList(field_list)) => {

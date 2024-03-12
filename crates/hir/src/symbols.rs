@@ -49,7 +49,7 @@ impl DeclarationLocation {
             return FileRange { file_id, range: self.ptr.text_range() };
         }
         let node = resolve_node(db, self.hir_file_id, &self.ptr);
-        node.as_ref().original_file_range(db.upcast())
+        node.as_ref().original_file_range_rooted(db.upcast())
     }
 }
 

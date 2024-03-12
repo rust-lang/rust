@@ -960,7 +960,7 @@ impl<'db> SemanticsImpl<'db> {
     /// macro file the node resides in.
     pub fn original_range(&self, node: &SyntaxNode) -> FileRange {
         let node = self.find_file(node);
-        node.original_file_range(self.db.upcast())
+        node.original_file_range_rooted(self.db.upcast())
     }
 
     /// Attempts to map the node out of macro expanded files returning the original file range.
@@ -984,9 +984,9 @@ impl<'db> SemanticsImpl<'db> {
 
     /// Attempts to map the node out of macro expanded files.
     /// This only work for attribute expansions, as other ones do not have nodes as input.
-    pub fn original_syntax_node(&self, node: &SyntaxNode) -> Option<SyntaxNode> {
+    pub fn original_syntax_node_rooted(&self, node: &SyntaxNode) -> Option<SyntaxNode> {
         let InFile { file_id, .. } = self.find_file(node);
-        InFile::new(file_id, node).original_syntax_node(self.db.upcast()).map(
+        InFile::new(file_id, node).original_syntax_node_rooted(self.db.upcast()).map(
             |InRealFile { file_id, value }| {
                 self.cache(find_root(&value), file_id.into());
                 value
@@ -997,7 +997,7 @@ impl<'db> SemanticsImpl<'db> {
     pub fn diagnostics_display_range(&self, src: InFile<SyntaxNodePtr>) -> FileRange {
         let root = self.parse_or_expand(src.file_id);
         let node = src.map(|it| it.to_node(&root));
-        node.as_ref().original_file_range(self.db.upcast())
+        node.as_ref().original_file_range_rooted(self.db.upcast())
     }
 
     fn token_ancestors_with_macros(
