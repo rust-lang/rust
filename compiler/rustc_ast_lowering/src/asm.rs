@@ -196,7 +196,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                             .get_partial_res(sym.id)
                             .and_then(|res| res.full_res())
                             .and_then(|res| match res {
-                                Res::Def(DefKind::Static(_), def_id) => Some(def_id),
+                                Res::Def(DefKind::Static { .. }, def_id) => Some(def_id),
                                 _ => None,
                             });
 

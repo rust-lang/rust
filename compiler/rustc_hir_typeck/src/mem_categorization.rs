@@ -398,7 +398,7 @@ impl<'a, 'tcx> MemCategorizationContext<'a, 'tcx> {
             )
             | Res::SelfCtor(..) => Ok(self.cat_rvalue(hir_id, expr_ty)),
 
-            Res::Def(DefKind::Static(_), _) => {
+            Res::Def(DefKind::Static { .. }, _) => {
                 Ok(PlaceWithHirId::new(hir_id, expr_ty, PlaceBase::StaticItem, Vec::new()))
             }
 

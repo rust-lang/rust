@@ -26,6 +26,7 @@ use rustc_codegen_ssa::debuginfo::type_names::VTableNameKind;
 use rustc_codegen_ssa::traits::*;
 use rustc_fs_util::path_to_c_string;
 use rustc_hir::def::CtorKind;
+use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{DefId, LOCAL_CRATE};
 use rustc_middle::bug;
 use rustc_middle::ty::layout::{LayoutOf, TyAndLayout};
@@ -1309,6 +1310,11 @@ pub fn build_global_var_di_node<'ll>(cx: &CodegenCx<'ll, '_>, def_id: DefId, glo
     };
 
     let is_local_to_unit = is_node_local_to_unit(cx, def_id);
+
+    let DefKind::Static { nested, .. } = cx.tcx.def_kind(def_id) else { bug!() };
+    if nested {
+        return;
+    }
     let variable_type = Instance::mono(cx.tcx, def_id).ty(cx.tcx, ty::ParamEnv::reveal_all());
     let type_di_node = type_di_node(cx, variable_type);
     let var_name = tcx.item_name(def_id);

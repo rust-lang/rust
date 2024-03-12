@@ -182,7 +182,7 @@ pub fn check_crate(tcx: TyCtxt<'_>) {
     tcx.hir().par_body_owners(|item_def_id| {
         let def_kind = tcx.def_kind(item_def_id);
         match def_kind {
-            DefKind::Static(_) => tcx.ensure().eval_static_initializer(item_def_id),
+            DefKind::Static { .. } => tcx.ensure().eval_static_initializer(item_def_id),
             DefKind::Const => tcx.ensure().const_eval_poly(item_def_id.into()),
             _ => (),
         }

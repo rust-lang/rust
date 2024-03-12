@@ -48,8 +48,7 @@ fn is_path_static_mut(expr: hir::Expr<'_>) -> Option<String> {
     if let hir::ExprKind::Path(qpath) = expr.kind
         && let hir::QPath::Resolved(_, path) = qpath
         && let hir::def::Res::Def(def_kind, _) = path.res
-        && let hir::def::DefKind::Static(mt) = def_kind
-        && matches!(mt, Mutability::Mut)
+        && let hir::def::DefKind::Static { mutability: Mutability::Mut, nested: false } = def_kind
     {
         return Some(qpath_to_string(&qpath));
     }

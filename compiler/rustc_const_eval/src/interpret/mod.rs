@@ -22,7 +22,7 @@ pub use rustc_middle::mir::interpret::*; // have all the `interpret` symbols in 
 
 pub use self::eval_context::{format_interp_error, Frame, FrameInfo, InterpCx, StackPopCleanup};
 pub use self::intern::{
-    intern_const_alloc_for_constprop, intern_const_alloc_recursive, InternKind,
+    intern_const_alloc_for_constprop, intern_const_alloc_recursive, HasStaticRootDefId, InternKind,
 };
 pub use self::machine::{compile_time_machine, AllocMap, Machine, MayLeak, StackPopJump};
 pub use self::memory::{AllocKind, AllocRef, AllocRefMut, FnVal, Memory, MemoryKind};

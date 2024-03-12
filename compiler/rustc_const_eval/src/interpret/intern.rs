@@ -13,12 +13,16 @@
 //! but that would require relying on type information, and given how many ways Rust has to lie
 //! about type information, we want to avoid doing that.
 
+use hir::def::DefKind;
 use rustc_ast::Mutability;
 use rustc_data_structures::fx::{FxHashSet, FxIndexMap};
 use rustc_errors::ErrorGuaranteed;
 use rustc_hir as hir;
-use rustc_middle::mir::interpret::{CtfeProvenance, InterpResult};
+use rustc_middle::mir::interpret::{ConstAllocation, CtfeProvenance, InterpResult};
+use rustc_middle::query::TyCtxtAt;
 use rustc_middle::ty::layout::TyAndLayout;
+use rustc_span::def_id::LocalDefId;
+use rustc_span::sym;
 
 use super::{AllocId, Allocation, InterpCx, MPlaceTy, Machine, MemoryKind, PlaceTy};
 use crate::const_eval;
@@ -33,7 +37,19 @@ pub trait CompileTimeMachine<'mir, 'tcx: 'mir, T> = Machine<
         FrameExtra = (),
         AllocExtra = (),
         MemoryMap = FxIndexMap<AllocId, (MemoryKind<T>, Allocation)>,
-    >;
+    > + HasStaticRootDefId;
+
+pub trait HasStaticRootDefId {
+    /// Returns the `DefId` of the static item that is currently being evaluated.
+    /// Used for interning to be able to handle nested allocations.
+    fn static_def_id(&self) -> Option<LocalDefId>;
+}
+
+impl HasStaticRootDefId for const_eval::CompileTimeInterpreter<'_, '_> {
+    fn static_def_id(&self) -> Option<LocalDefId> {
+        Some(self.static_root_ids?.1)
+    }
+}
 
 /// Intern an allocation. Returns `Err` if the allocation does not exist in the local memory.
 ///
@@ -67,8 +83,33 @@ fn intern_shallow<'rt, 'mir, 'tcx, T, M: CompileTimeMachine<'mir, 'tcx, T>>(
     }
     // link the alloc id to the actual allocation
     let alloc = ecx.tcx.mk_const_alloc(alloc);
-    ecx.tcx.set_alloc_id_memory(alloc_id, alloc);
+    if let Some(static_id) = ecx.machine.static_def_id() {
+        intern_as_new_static(ecx.tcx, static_id, alloc_id, alloc);
+    } else {
+        ecx.tcx.set_alloc_id_memory(alloc_id, alloc);
+    }
     Ok(alloc.0.0.provenance().ptrs().iter().map(|&(_, prov)| prov))
+}
+
+/// Creates a new `DefId` and feeds all the right queries to make this `DefId`
+/// appear as if it were a user-written `static` (though it has no HIR).
+fn intern_as_new_static<'tcx>(
+    tcx: TyCtxtAt<'tcx>,
+    static_id: LocalDefId,
+    alloc_id: AllocId,
+    alloc: ConstAllocation<'tcx>,
+) {
+    let feed = tcx.create_def(
+        static_id,
+        sym::nested,
+        DefKind::Static { mutability: alloc.0.mutability, nested: true },
+    );
+    tcx.set_nested_alloc_id_static(alloc_id, feed.def_id());
+    feed.codegen_fn_attrs(tcx.codegen_fn_attrs(static_id).clone());
+    feed.eval_static_initializer(Ok(alloc));
+    feed.generics_of(tcx.generics_of(static_id).clone());
+    feed.def_ident_span(tcx.def_ident_span(static_id));
+    feed.explicit_predicates_of(tcx.explicit_predicates_of(static_id));
 }
 
 /// How a constant value should be interned.

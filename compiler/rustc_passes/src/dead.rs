@@ -801,7 +801,7 @@ fn check_foreign_item(
     worklist: &mut Vec<(LocalDefId, ComesFromAllowExpect)>,
     id: hir::ForeignItemId,
 ) {
-    if matches!(tcx.def_kind(id.owner_id), DefKind::Static(_) | DefKind::Fn)
+    if matches!(tcx.def_kind(id.owner_id), DefKind::Static { .. } | DefKind::Fn)
         && let Some(comes_from_allow) = has_allow_dead_code_or_lang_attr(tcx, id.owner_id.def_id)
     {
         worklist.push((id.owner_id.def_id, comes_from_allow));
@@ -1058,7 +1058,7 @@ impl<'tcx> DeadVisitor<'tcx> {
             DefKind::AssocConst
             | DefKind::AssocFn
             | DefKind::Fn
-            | DefKind::Static(_)
+            | DefKind::Static { .. }
             | DefKind::Const
             | DefKind::TyAlias
             | DefKind::Enum

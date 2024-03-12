@@ -264,7 +264,7 @@ impl<'tcx> Context for TablesWrapper<'tcx> {
         use rustc_hir::def::DefKind;
         match tcx.def_kind(def_id) {
             DefKind::Fn => ForeignItemKind::Fn(tables.fn_def(def_id)),
-            DefKind::Static(..) => ForeignItemKind::Static(tables.static_def(def_id)),
+            DefKind::Static { .. } => ForeignItemKind::Static(tables.static_def(def_id)),
             DefKind::ForeignTy => ForeignItemKind::Type(
                 tables.intern_ty(rustc_middle::ty::Ty::new_foreign(tcx, def_id)),
             ),

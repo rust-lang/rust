@@ -5,7 +5,9 @@ use crate::errors::SymbolAlreadyDefined;
 use crate::llvm;
 use crate::type_of::LayoutLlvmExt;
 use rustc_codegen_ssa::traits::*;
+use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{DefId, LOCAL_CRATE};
+use rustc_middle::bug;
 use rustc_middle::mir::mono::{Linkage, Visibility};
 use rustc_middle::ty::layout::{FnAbiOf, LayoutOf};
 use rustc_middle::ty::{self, Instance, TypeVisitableExt};
@@ -21,7 +23,14 @@ impl<'tcx> PreDefineMethods<'tcx> for CodegenCx<'_, 'tcx> {
         symbol_name: &str,
     ) {
         let instance = Instance::mono(self.tcx, def_id);
-        let ty = instance.ty(self.tcx, ty::ParamEnv::reveal_all());
+        let DefKind::Static { nested, .. } = self.tcx.def_kind(def_id) else { bug!() };
+        // Nested statics do not have a type, so pick a dummy type and let `codegen_static` figure out
+        // the llvm type from the actual evaluated initializer.
+        let ty = if nested {
+            self.tcx.types.unit
+        } else {
+            instance.ty(self.tcx, ty::ParamEnv::reveal_all())
+        };
         let llty = self.layout_of(ty).llvm_type(self);
 
         let g = self.define_global(symbol_name, llty).unwrap_or_else(|| {

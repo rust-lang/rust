@@ -343,7 +343,7 @@ impl<'hir> Map<'hir> {
             DefKind::InlineConst => BodyOwnerKind::Const { inline: true },
             DefKind::Ctor(..) | DefKind::Fn | DefKind::AssocFn => BodyOwnerKind::Fn,
             DefKind::Closure => BodyOwnerKind::Closure,
-            DefKind::Static(mt) => BodyOwnerKind::Static(mt),
+            DefKind::Static { mutability, nested: false } => BodyOwnerKind::Static(mutability),
             dk => bug!("{:?} is not a body node: {:?}", def_id, dk),
         }
     }
@@ -359,7 +359,7 @@ impl<'hir> Map<'hir> {
         let def_id = def_id.into();
         let ccx = match self.body_owner_kind(def_id) {
             BodyOwnerKind::Const { inline } => ConstContext::Const { inline },
-            BodyOwnerKind::Static(mt) => ConstContext::Static(mt),
+            BodyOwnerKind::Static(mutability) => ConstContext::Static(mutability),
 
             BodyOwnerKind::Fn if self.tcx.is_constructor(def_id) => return None,
             BodyOwnerKind::Fn | BodyOwnerKind::Closure if self.tcx.is_const_fn_raw(def_id) => {

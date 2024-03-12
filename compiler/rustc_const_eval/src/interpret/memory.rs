@@ -15,6 +15,7 @@ use std::ptr;
 
 use rustc_ast::Mutability;
 use rustc_data_structures::fx::{FxHashSet, FxIndexMap};
+use rustc_hir::def::DefKind;
 use rustc_middle::mir::display_allocation;
 use rustc_middle::ty::{self, Instance, ParamEnv, Ty, TyCtxt};
 use rustc_target::abi::{Align, HasDataLayout, Size};
@@ -761,19 +762,36 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         // be held throughout the match.
         match self.tcx.try_get_global_alloc(id) {
             Some(GlobalAlloc::Static(def_id)) => {
-                assert!(self.tcx.is_static(def_id));
                 // Thread-local statics do not have a constant address. They *must* be accessed via
                 // `ThreadLocalRef`; we can never have a pointer to them as a regular constant value.
                 assert!(!self.tcx.is_thread_local_static(def_id));
-                // Use size and align of the type.
-                let ty = self
-                    .tcx
-                    .type_of(def_id)
-                    .no_bound_vars()
-                    .expect("statics should not have generic parameters");
-                let layout = self.tcx.layout_of(ParamEnv::empty().and(ty)).unwrap();
-                assert!(layout.is_sized());
-                (layout.size, layout.align.abi, AllocKind::LiveData)
+
+                let DefKind::Static { nested, .. } = self.tcx.def_kind(def_id) else {
+                    bug!("GlobalAlloc::Static is not a static")
+                };
+
+                let (size, align) = if nested {
+                    // Nested anonymous statics are untyped, so let's get their
+                    // size and alignment from the allocaiton itself. This always
+                    // succeeds, as the query is fed at DefId creation time, so no
+                    // evaluation actually occurs.
+                    let alloc = self.tcx.eval_static_initializer(def_id).unwrap();
+                    (alloc.0.size(), alloc.0.align)
+                } else {
+                    // Use size and align of the type for everything else. We need
+                    // to do that to
+                    // * avoid cycle errors in case of self-referential statics,
+                    // * be able to get information on extern statics.
+                    let ty = self
+                        .tcx
+                        .type_of(def_id)
+                        .no_bound_vars()
+                        .expect("statics should not have generic parameters");
+                    let layout = self.tcx.layout_of(ParamEnv::empty().and(ty)).unwrap();
+                    assert!(layout.is_sized());
+                    (layout.size, layout.align.abi)
+                };
+                (size, align, AllocKind::LiveData)
             }
             Some(GlobalAlloc::Memory(alloc)) => {
                 // Need to duplicate the logic here, because the global allocations have

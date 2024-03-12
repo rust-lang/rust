@@ -123,7 +123,7 @@ impl Res {
             DefKind::Const | DefKind::ConstParam | DefKind::AssocConst | DefKind::AnonConst => {
                 "const"
             }
-            DefKind::Static(_) => "static",
+            DefKind::Static { .. } => "static",
             // Now handle things that don't have a specific disambiguator
             _ => match kind
                 .ns()
@@ -1514,7 +1514,7 @@ impl Disambiguator {
                 "union" => Kind(DefKind::Union),
                 "module" | "mod" => Kind(DefKind::Mod),
                 "const" | "constant" => Kind(DefKind::Const),
-                "static" => Kind(DefKind::Static(Mutability::Not)),
+                "static" => Kind(DefKind::Static { mutability: Mutability::Not, nested: false }),
                 "function" | "fn" | "method" => Kind(DefKind::Fn),
                 "derive" => Kind(DefKind::Macro(MacroKind::Derive)),
                 "type" => NS(Namespace::TypeNS),
@@ -1926,7 +1926,7 @@ fn resolution_failure(
                             | OpaqueTy
                             | TraitAlias
                             | TyParam
-                            | Static(_) => "associated item",
+                            | Static { .. } => "associated item",
                             Impl { .. } | GlobalAsm => unreachable!("not a path"),
                         }
                     } else {

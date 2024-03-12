@@ -526,7 +526,7 @@ pub(crate) fn register_res(cx: &mut DocContext<'_>, res: Res) -> DefId {
             | Mod
             | ForeignTy
             | Const
-            | Static(_)
+            | Static { .. }
             | Macro(..)
             | TraitAlias),
             did,

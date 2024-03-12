@@ -134,7 +134,7 @@ fn assumed_wf_types<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalDefId) -> &'tcx [(Ty<'
         | DefKind::TyParam
         | DefKind::Const
         | DefKind::ConstParam
-        | DefKind::Static(_)
+        | DefKind::Static { .. }
         | DefKind::Ctor(_, _)
         | DefKind::Macro(_)
         | DefKind::ExternCrate

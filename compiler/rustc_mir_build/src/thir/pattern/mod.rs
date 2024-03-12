@@ -453,7 +453,7 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
                     Res::Def(DefKind::ConstParam, _) => {
                         self.tcx.dcx().emit_err(ConstParamInPattern { span })
                     }
-                    Res::Def(DefKind::Static(_), _) => {
+                    Res::Def(DefKind::Static { .. }, _) => {
                         self.tcx.dcx().emit_err(StaticInPattern { span })
                     }
                     _ => self.tcx.dcx().emit_err(NonConstPath { span }),

@@ -109,7 +109,7 @@ fn collect_unsafe_exprs<'tcx>(
             ExprKind::Path(QPath::Resolved(
                 _,
                 hir::Path {
-                    res: Res::Def(DefKind::Static(Mutability::Mut), _),
+                    res: Res::Def(DefKind::Static{mutability:Mutability::Mut, ..}, _),
                     ..
                 },
             )) => {
@@ -149,7 +149,7 @@ fn collect_unsafe_exprs<'tcx>(
                     ExprKind::Path(QPath::Resolved(
                         _,
                         hir::Path {
-                            res: Res::Def(DefKind::Static(Mutability::Mut), _),
+                            res: Res::Def(DefKind::Static{mutability:Mutability::Mut, ..}, _),
                             ..
                         }
                     ))
