@@ -352,18 +352,6 @@ impl Session {
         self.opts.cg.instrument_coverage() != InstrumentCoverage::No
     }
 
-    pub fn instrument_coverage_branch(&self) -> bool {
-        self.opts.cg.instrument_coverage() == InstrumentCoverage::Branch
-    }
-
-    pub fn instrument_coverage_except_unused_generics(&self) -> bool {
-        self.opts.cg.instrument_coverage() == InstrumentCoverage::ExceptUnusedGenerics
-    }
-
-    pub fn instrument_coverage_except_unused_functions(&self) -> bool {
-        self.opts.cg.instrument_coverage() == InstrumentCoverage::ExceptUnusedFunctions
-    }
-
     pub fn is_sanitizer_cfi_enabled(&self) -> bool {
         self.opts.unstable_opts.sanitizer.contains(SanitizerSet::CFI)
     }

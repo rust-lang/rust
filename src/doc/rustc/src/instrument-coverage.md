@@ -346,15 +346,6 @@ $ llvm-cov report \
   more fine-grained coverage options are added.
   Using this value is currently not recommended.
 
-### Unstable values
-
-- `-Z unstable-options -C instrument-coverage=branch`:
-  Placeholder for potential branch coverage support in the future.
-- `-Z unstable-options -C instrument-coverage=except-unused-generics`:
-  Instrument all functions except unused generics.
-- `-Z unstable-options -C instrument-coverage=except-unused-functions`:
-  Instrument only used (called) functions and instantiated generic functions.
-
 ## Other references
 
 Rust's implementation and workflow for source-based code coverage is based on the same library and tools used to implement [source-based code coverage in Clang]. (This document is partially based on the Clang guide.)

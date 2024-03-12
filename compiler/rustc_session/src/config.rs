@@ -134,31 +134,13 @@ pub enum LtoCli {
 /// and higher). Nevertheless, there are many variables, depending on options
 /// selected, code structure, and enabled attributes. If errors are encountered,
 /// either while compiling or when generating `llvm-cov show` reports, consider
-/// lowering the optimization level, including or excluding `-C link-dead-code`,
-/// or using `-Zunstable-options -C instrument-coverage=except-unused-functions`
-/// or `-Zunstable-options -C instrument-coverage=except-unused-generics`.
-///
-/// Note that `ExceptUnusedFunctions` means: When `mapgen.rs` generates the
-/// coverage map, it will not attempt to generate synthetic functions for unused
-/// (and not code-generated) functions (whether they are generic or not). As a
-/// result, non-codegenned functions will not be included in the coverage map,
-/// and will not appear, as covered or uncovered, in coverage reports.
-///
-/// `ExceptUnusedGenerics` will add synthetic functions to the coverage map,
-/// unless the function has type parameters.
+/// lowering the optimization level, or including/excluding `-C link-dead-code`.
 #[derive(Clone, Copy, PartialEq, Hash, Debug)]
 pub enum InstrumentCoverage {
     /// `-C instrument-coverage=no` (or `off`, `false` etc.)
     No,
     /// `-C instrument-coverage` or `-C instrument-coverage=yes`
     Yes,
-    /// Additionally, instrument branches and output branch coverage.
-    /// `-Zunstable-options -C instrument-coverage=branch`
-    Branch,
-    /// `-Zunstable-options -C instrument-coverage=except-unused-generics`
-    ExceptUnusedGenerics,
-    /// `-Zunstable-options -C instrument-coverage=except-unused-functions`
-    ExceptUnusedFunctions,
 }
 
 /// Settings for `-Z instrument-xray` flag.
@@ -2713,24 +2695,6 @@ pub fn build_session_options(early_dcx: &mut EarlyDiagCtxt, matches: &getopts::M
             if !unstable_opts.unstable_options {
                 early_dcx.early_fatal(
                     "`-C symbol-mangling-version=hashed` requires `-Z unstable-options`",
-                );
-            }
-        }
-    }
-
-    // Check for unstable values of `-C instrument-coverage`.
-    // This is what prevents them from being used on stable compilers.
-    match cg.instrument_coverage {
-        // Stable values:
-        InstrumentCoverage::Yes | InstrumentCoverage::No => {}
-        // Unstable values:
-        InstrumentCoverage::Branch
-        | InstrumentCoverage::ExceptUnusedFunctions
-        | InstrumentCoverage::ExceptUnusedGenerics => {
-            if !unstable_opts.unstable_options {
-                early_dcx.early_fatal(
-                    "`-C instrument-coverage=branch` and `-C instrument-coverage=except-*` \
-                    require `-Z unstable-options`",
                 );
             }
         }
