@@ -3,6 +3,7 @@
 use std::fs::File;
 use std::io;
 use std::io::prelude::Write;
+use std::process::{Command, Stdio};
 use std::time::Instant;
 
 use super::{
@@ -289,50 +290,89 @@ fn on_test_event(
 }
 
 /// A simple console test runner.
-/// Runs provided tests reporting process and results to the stdout.
+/// Runs provided tests reporting process and results.
+///
+/// The results may optionally be piped to the specified postprocessor binary, otherwise written to stdout.
 pub fn run_tests_console(opts: &TestOpts, tests: Vec<TestDescAndFn>) -> io::Result<bool> {
-    let output = match term::stdout() {
-        None => OutputLocation::Raw(io::stdout()),
-        Some(t) => OutputLocation::Pretty(t),
+    let mut postprocessor = match &opts.output_postprocess_executable {
+        None => None,
+        Some(postprocess_executable) => Some(
+            Command::new(&postprocess_executable)
+                .args(&opts.output_postprocess_args)
+                .stdin(Stdio::piped())
+                .spawn()
+                .expect("failed to execute test output postprocessor"),
+        ),
     };
 
-    let max_name_len = tests
-        .iter()
-        .max_by_key(|t| len_if_padded(t))
-        .map(|t| t.desc.name.as_slice().len())
-        .unwrap_or(0);
+    let write_result;
+    {
+        // This inner block is to make sure `child_stdin` is dropped, so that the pipe
+        // and the postprocessor's stdin is closed to notify it of EOF.
+        //
+        // Otherwise, the postprocessor may be stuck waiting for more input.
 
-    let is_multithreaded = opts.test_threads.unwrap_or_else(get_concurrency) > 1;
+        let mut child_stdin;
+        let mut host_stdout;
+        let output = match (&mut postprocessor, term::stdout()) {
+            (Some(child), _) => OutputLocation::Raw({
+                child_stdin = child.stdin.take().unwrap();
+                &mut child_stdin as &mut dyn Write
+            }),
+            (None, None) => OutputLocation::Raw({
+                host_stdout = io::stdout();
+                &mut host_stdout as &mut dyn Write
+            }),
+            (None, Some(t)) => OutputLocation::Pretty(t),
+        };
 
-    let mut out: Box<dyn OutputFormatter> = match opts.format {
-        OutputFormat::Pretty => Box::new(PrettyFormatter::new(
-            output,
-            opts.use_color(),
-            max_name_len,
-            is_multithreaded,
-            opts.time_options,
-        )),
-        OutputFormat::Terse => {
-            Box::new(TerseFormatter::new(output, opts.use_color(), max_name_len, is_multithreaded))
-        }
-        OutputFormat::Json => Box::new(JsonFormatter::new(output)),
-        OutputFormat::Junit => Box::new(JunitFormatter::new(output)),
-    };
-    let mut st = ConsoleTestState::new(opts)?;
+        let max_name_len = tests
+            .iter()
+            .max_by_key(|t| len_if_padded(t))
+            .map(|t| t.desc.name.as_slice().len())
+            .unwrap_or(0);
 
-    // Prevent the usage of `Instant` in some cases:
-    // - It's currently not supported for wasm targets.
-    // - We disable it for miri because it's not available when isolation is enabled.
-    let is_instant_supported =
-        !cfg!(target_family = "wasm") && !cfg!(target_os = "zkvm") && !cfg!(miri);
+        let is_multithreaded = opts.test_threads.unwrap_or_else(get_concurrency) > 1;
 
-    let start_time = is_instant_supported.then(Instant::now);
-    run_tests(opts, tests, |x| on_test_event(&x, &mut st, &mut *out))?;
-    st.exec_time = start_time.map(|t| TestSuiteExecTime(t.elapsed()));
+        let mut out: Box<dyn OutputFormatter> = match opts.format {
+            OutputFormat::Pretty => Box::new(PrettyFormatter::new(
+                output,
+                opts.use_color(),
+                max_name_len,
+                is_multithreaded,
+                opts.time_options,
+            )),
+            OutputFormat::Terse => Box::new(TerseFormatter::new(
+                output,
+                opts.use_color(),
+                max_name_len,
+                is_multithreaded,
+            )),
+            OutputFormat::Json => Box::new(JsonFormatter::new(output)),
+            OutputFormat::Junit => Box::new(JunitFormatter::new(output)),
+        };
+        let mut st = ConsoleTestState::new(opts)?;
 
-    assert!(opts.fail_fast || st.current_test_count() == st.total);
+        // Prevent the usage of `Instant` in some cases:
+        // - It's currently not supported for wasm targets.
+        // - We disable it for miri because it's not available when isolation is enabled.
+        let is_instant_supported = !cfg!(target_family = "wasm") && !cfg!(miri);
 
-    out.write_run_finish(&st)
+        let start_time = is_instant_supported.then(Instant::now);
+        run_tests(opts, tests, |x| on_test_event(&x, &mut st, &mut *out))?;
+        st.exec_time = start_time.map(|t| TestSuiteExecTime(t.elapsed()));
+
+        assert!(opts.fail_fast || st.current_test_count() == st.total);
+
+        write_result = out.write_run_finish(&st);
+    }
+
+    if let Some(mut child) = postprocessor {
+        let status = child.wait().expect("failed to get test output postprocessor status");
+        assert!(status.success());
+    }
+
+    write_result
 }
 
 // Calculates padding for given test description.

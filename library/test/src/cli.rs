@@ -31,6 +31,13 @@ pub struct TestOpts {
     /// abort as soon as possible.
     pub fail_fast: bool,
     pub options: Options,
+    /// The test results text output may optionally be piped into the given executable running as
+    /// a child process. The child process inherits the environment variables passed to the test
+    /// binary.
+    ///
+    /// If this is unset, the test results will be written to stdout.
+    pub output_postprocess_executable: Option<PathBuf>,
+    pub output_postprocess_args: Vec<String>,
 }
 
 impl TestOpts {
@@ -148,6 +155,18 @@ fn optgroups() -> getopts::Options {
             "shuffle-seed",
             "Run tests in random order; seed the random number generator with SEED",
             "SEED",
+        )
+        .optopt(
+            "",
+            "output_postprocess_executable",
+            "Postprocess test results using the given executable",
+            "PATH",
+        )
+        .optmulti(
+            "",
+            "output_postprocess_args",
+            "When --output_postprocess_executable is set, pass the given command line arguments to the executable",
+            "ARGUMENT",
         );
     opts
 }
@@ -281,6 +300,9 @@ fn parse_opts_impl(matches: getopts::Matches) -> OptRes {
 
     let options = Options::new().display_output(matches.opt_present("show-output"));
 
+    let output_postprocess_executable = get_output_postprocess_executable(&matches)?;
+    let output_postprocess_args = matches.opt_strs("output_postprocess_args");
+
     let test_opts = TestOpts {
         list,
         filters,
@@ -301,6 +323,8 @@ fn parse_opts_impl(matches: getopts::Matches) -> OptRes {
         time_options,
         options,
         fail_fast: false,
+        output_postprocess_executable,
+        output_postprocess_args,
     };
 
     Ok(test_opts)
@@ -492,4 +516,10 @@ fn get_log_file(matches: &getopts::Matches) -> OptPartRes<Option<PathBuf>> {
     let logfile = matches.opt_str("logfile").map(|s| PathBuf::from(&s));
 
     Ok(logfile)
+}
+
+fn get_output_postprocess_executable(matches: &getopts::Matches) -> OptPartRes<Option<PathBuf>> {
+    let executable = matches.opt_str("output_postprocess_executable").map(|s| PathBuf::from(&s));
+
+    Ok(executable)
 }

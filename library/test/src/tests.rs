@@ -1,3 +1,7 @@
+use rand::RngCore;
+use std::fs;
+use std::path::PathBuf;
+
 use super::*;
 
 use crate::{
@@ -35,8 +39,40 @@ impl TestOpts {
             time_options: None,
             options: Options::new(),
             fail_fast: false,
+            output_postprocess_executable: None,
+            output_postprocess_args: vec![],
         }
     }
+}
+
+// These implementations of TempDir and tmpdir are forked from rust/library/std/src/sys_common/io.rs.
+struct TempDir(PathBuf);
+
+impl TempDir {
+    fn join(&self, path: &str) -> PathBuf {
+        let TempDir(ref p) = *self;
+        p.join(path)
+    }
+}
+
+impl Drop for TempDir {
+    fn drop(&mut self) {
+        let TempDir(ref p) = *self;
+        let result = fs::remove_dir_all(p);
+        // Avoid panicking while panicking as this causes the process to
+        // immediately abort, without displaying test results.
+        if !thread::panicking() {
+            result.unwrap();
+        }
+    }
+}
+
+fn tmpdir() -> TempDir {
+    let p = env::temp_dir();
+    let mut r = rand::thread_rng();
+    let ret = p.join(&format!("rust-{}", r.next_u32()));
+    fs::create_dir(&ret).unwrap();
+    TempDir(ret)
 }
 
 fn one_ignored_one_unignored_test() -> Vec<TestDescAndFn> {
@@ -476,6 +512,25 @@ fn parse_include_ignored_flag() {
     let args = vec!["progname".to_string(), "filter".to_string(), "--include-ignored".to_string()];
     let opts = parse_opts(&args).unwrap().unwrap();
     assert_eq!(opts.run_ignored, RunIgnored::Yes);
+}
+
+#[test]
+fn parse_output_postprocess() {
+    let args = vec![
+        "progname".to_string(),
+        "filter".to_string(),
+        "--output_postprocess_executable".to_string(),
+        "/tmp/postprocess.sh".to_string(),
+        "--output_postprocess_args".to_string(),
+        "--test1=a".to_string(),
+        "--output_postprocess_args=--test2=b".to_string(),
+    ];
+    let opts = parse_opts(&args).unwrap().unwrap();
+    assert_eq!(opts.output_postprocess_executable, Some(PathBuf::from("/tmp/postprocess.sh")));
+    assert_eq!(
+        opts.output_postprocess_args,
+        vec!["--test1=a".to_string(), "--test2=b".to_string()]
+    );
 }
 
 #[test]
@@ -921,4 +976,74 @@ fn test_dyn_bench_returning_err_fails_when_run_as_test() {
     run_tests(&TestOpts { run_tests: true, ..TestOpts::new() }, vec![desc], notify).unwrap();
     let result = rx.recv().unwrap().result;
     assert_eq!(result, TrFailed);
+}
+
+#[test]
+fn test_output_postprocessing() {
+    let desc = TestDescAndFn {
+        desc: TestDesc {
+            name: StaticTestName("whatever"),
+            ignore: false,
+            ignore_message: None,
+            source_file: "",
+            start_line: 0,
+            start_col: 0,
+            end_line: 0,
+            end_col: 0,
+            should_panic: ShouldPanic::No,
+            compile_fail: false,
+            no_run: false,
+            test_type: TestType::Unknown,
+        },
+        testfn: DynTestFn(Box::new(move || Ok(()))),
+    };
+
+    let mut test_postprocessor: PathBuf = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
+    if cfg!(target_os = "windows") {
+        test_postprocessor.push("src/testdata/postprocess.cmd");
+    } else {
+        test_postprocessor.push("src/testdata/postprocess.sh");
+    }
+
+    let tmpdir = tmpdir();
+    let output_path = &tmpdir.join("output.txt");
+
+    std::env::set_var("TEST_POSTPROCESSOR_OUTPUT_FILE", output_path);
+
+    let opts = TestOpts {
+        run_tests: true,
+        output_postprocess_executable: Some(test_postprocessor),
+        output_postprocess_args: vec!["--test1=a".to_string(), "--test2=b".to_string()],
+        format: OutputFormat::Json,
+        ..TestOpts::new()
+    };
+    run_tests_console(&opts, vec![desc]).unwrap();
+
+    // Read output and replace the decimal value at `"exec_time": 0.000084974` to make the text deterministic.
+    // This replacement could be done easier with a regex, but `std` has no regex.
+    let mut contents =
+        fs::read_to_string(output_path).expect("Test postprocessor did not create file");
+    let replace_trigger = r#""exec_time": "#;
+    let replace_start =
+        contents.find(replace_trigger).expect("exec_time not found in the output JSON")
+            + replace_trigger.len();
+    let replace_end = replace_start
+        + contents[replace_start..]
+            .find(' ')
+            .expect("No space found after the decimal value for exec_time");
+    contents.replace_range(replace_start..replace_end, "AAA.BBB");
+
+    // Split output at line breaks to make the comparison platform-agnostic regarding newline style.
+    let contents_lines = contents.as_str().lines().collect::<Vec<&str>>();
+
+    let expected_lines = vec![
+        r#"{ "type": "suite", "event": "started", "test_count": 1 }"#,
+        r#"{ "type": "test", "event": "started", "name": "whatever" }"#,
+        r#"{ "type": "test", "name": "whatever", "event": "ok" }"#,
+        r#"{ "type": "suite", "event": "ok", "passed": 1, "failed": 0, "ignored": 0, "measured": 0, "filtered_out": 0, "exec_time": AAA.BBB }"#,
+        r#"--test1=a"#,
+        r#"--test2=b"#,
+    ];
+
+    assert_eq!(contents_lines, expected_lines);
 }
