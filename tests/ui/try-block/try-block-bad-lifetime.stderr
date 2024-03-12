@@ -1,12 +1,12 @@
 error[E0597]: `my_string` does not live long enough
-  --> $DIR/try-block-bad-lifetime.rs:15:33
+  --> $DIR/try-block-bad-lifetime.rs:15:32
    |
 LL |         let result: Result<(), &str> = try {
    |             ------ borrow later stored here
 LL |             let my_string = String::from("");
    |                 --------- binding `my_string` declared here
-LL |             let my_str: & str = & my_string;
-   |                                 ^^^^^^^^^^^ borrowed value does not live long enough
+LL |             let my_str: &str = &my_string;
+   |                                ^^^^^^^^^^ borrowed value does not live long enough
 ...
 LL |         };
    |         - `my_string` dropped here while still borrowed
@@ -29,8 +29,8 @@ error[E0382]: use of moved value: `k`
 LL |         let k = &mut i;
    |             - move occurs because `k` has type `&mut i32`, which does not implement the `Copy` trait
 LL |         let mut j: Result<(), &mut i32> = try {
-LL |             Err(k) ?;
-   |                 - value moved here
+LL |             Err::<(), _>(k)?;
+   |                          - value moved here
 ...
 LL |         ::std::mem::drop(k);
    |                          ^ value used here after move
@@ -44,7 +44,7 @@ LL |         let k = &mut i;
 LL |         i = 40;
    |         ^^^^^^ `i` is assigned to here but it was already borrowed
 LL |
-LL |         let i_ptr = if let Err(i_ptr) = j { i_ptr } else { panic ! ("") };
+LL |         let i_ptr = if let Err(i_ptr) = j { i_ptr } else { panic!("") };
    |                                         - borrow later used here
 
 error: aborting due to 4 previous errors
