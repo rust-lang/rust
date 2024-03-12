@@ -3,51 +3,13 @@ use std::time::Duration;
 use rustc_target::abi::Size;
 
 use crate::concurrency::init_once::InitOnceStatus;
-use crate::concurrency::sync::{CondvarLock, RwLockMode};
 use crate::concurrency::thread::MachineCallback;
 use crate::*;
 
 impl<'mir, 'tcx> EvalContextExtPriv<'mir, 'tcx> for crate::MiriInterpCx<'mir, 'tcx> {}
 trait EvalContextExtPriv<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
-    /// Try to reacquire the lock associated with the condition variable after we
-    /// were signaled.
-    fn reacquire_cond_lock(
-        &mut self,
-        thread: ThreadId,
-        lock: RwLockId,
-        mode: RwLockMode,
-    ) -> InterpResult<'tcx> {
-        let this = self.eval_context_mut();
-        this.unblock_thread(thread);
-
-        match mode {
-            RwLockMode::Read =>
-                if this.rwlock_is_write_locked(lock) {
-                    this.rwlock_enqueue_and_block_reader(lock, thread);
-                } else {
-                    this.rwlock_reader_lock(lock, thread);
-                },
-            RwLockMode::Write =>
-                if this.rwlock_is_locked(lock) {
-                    this.rwlock_enqueue_and_block_writer(lock, thread);
-                } else {
-                    this.rwlock_writer_lock(lock, thread);
-                },
-        }
-
-        Ok(())
-    }
-
     // Windows sync primitives are pointer sized.
     // We only use the first 4 bytes for the id.
-
-    fn srwlock_get_id(
-        &mut self,
-        rwlock_op: &OpTy<'tcx, Provenance>,
-    ) -> InterpResult<'tcx, RwLockId> {
-        let this = self.eval_context_mut();
-        this.rwlock_get_or_create_id(rwlock_op, this.windows_ty_layout("SRWLOCK"), 0)
-    }
 
     fn init_once_get_id(
         &mut self,
@@ -56,117 +18,11 @@ trait EvalContextExtPriv<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         let this = self.eval_context_mut();
         this.init_once_get_or_create_id(init_once_op, this.windows_ty_layout("INIT_ONCE"), 0)
     }
-
-    fn condvar_get_id(
-        &mut self,
-        condvar_op: &OpTy<'tcx, Provenance>,
-    ) -> InterpResult<'tcx, CondvarId> {
-        let this = self.eval_context_mut();
-        this.condvar_get_or_create_id(condvar_op, this.windows_ty_layout("CONDITION_VARIABLE"), 0)
-    }
 }
 
 impl<'mir, 'tcx> EvalContextExt<'mir, 'tcx> for crate::MiriInterpCx<'mir, 'tcx> {}
 #[allow(non_snake_case)]
 pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
-    fn AcquireSRWLockExclusive(&mut self, lock_op: &OpTy<'tcx, Provenance>) -> InterpResult<'tcx> {
-        let this = self.eval_context_mut();
-        let id = this.srwlock_get_id(lock_op)?;
-        let active_thread = this.get_active_thread();
-
-        if this.rwlock_is_locked(id) {
-            // Note: this will deadlock if the lock is already locked by this
-            // thread in any way.
-            //
-            // FIXME: Detect and report the deadlock proactively. (We currently
-            // report the deadlock only when no thread can continue execution,
-            // but we could detect that this lock is already locked and report
-            // an error.)
-            this.rwlock_enqueue_and_block_writer(id, active_thread);
-        } else {
-            this.rwlock_writer_lock(id, active_thread);
-        }
-
-        Ok(())
-    }
-
-    fn TryAcquireSRWLockExclusive(
-        &mut self,
-        lock_op: &OpTy<'tcx, Provenance>,
-    ) -> InterpResult<'tcx, Scalar<Provenance>> {
-        let this = self.eval_context_mut();
-        let id = this.srwlock_get_id(lock_op)?;
-        let active_thread = this.get_active_thread();
-
-        if this.rwlock_is_locked(id) {
-            // Lock is already held.
-            Ok(Scalar::from_u8(0))
-        } else {
-            this.rwlock_writer_lock(id, active_thread);
-            Ok(Scalar::from_u8(1))
-        }
-    }
-
-    fn ReleaseSRWLockExclusive(&mut self, lock_op: &OpTy<'tcx, Provenance>) -> InterpResult<'tcx> {
-        let this = self.eval_context_mut();
-        let id = this.srwlock_get_id(lock_op)?;
-        let active_thread = this.get_active_thread();
-
-        if !this.rwlock_writer_unlock(id, active_thread) {
-            // The docs do not say anything about this case, but it seems better to not allow it.
-            throw_ub_format!(
-                "calling ReleaseSRWLockExclusive on an SRWLock that is not exclusively locked by the current thread"
-            );
-        }
-
-        Ok(())
-    }
-
-    fn AcquireSRWLockShared(&mut self, lock_op: &OpTy<'tcx, Provenance>) -> InterpResult<'tcx> {
-        let this = self.eval_context_mut();
-        let id = this.srwlock_get_id(lock_op)?;
-        let active_thread = this.get_active_thread();
-
-        if this.rwlock_is_write_locked(id) {
-            this.rwlock_enqueue_and_block_reader(id, active_thread);
-        } else {
-            this.rwlock_reader_lock(id, active_thread);
-        }
-
-        Ok(())
-    }
-
-    fn TryAcquireSRWLockShared(
-        &mut self,
-        lock_op: &OpTy<'tcx, Provenance>,
-    ) -> InterpResult<'tcx, Scalar<Provenance>> {
-        let this = self.eval_context_mut();
-        let id = this.srwlock_get_id(lock_op)?;
-        let active_thread = this.get_active_thread();
-
-        if this.rwlock_is_write_locked(id) {
-            Ok(Scalar::from_u8(0))
-        } else {
-            this.rwlock_reader_lock(id, active_thread);
-            Ok(Scalar::from_u8(1))
-        }
-    }
-
-    fn ReleaseSRWLockShared(&mut self, lock_op: &OpTy<'tcx, Provenance>) -> InterpResult<'tcx> {
-        let this = self.eval_context_mut();
-        let id = this.srwlock_get_id(lock_op)?;
-        let active_thread = this.get_active_thread();
-
-        if !this.rwlock_reader_unlock(id, active_thread) {
-            // The docs do not say anything about this case, but it seems better to not allow it.
-            throw_ub_format!(
-                "calling ReleaseSRWLockShared on an SRWLock that is not locked by the current thread"
-            );
-        }
-
-        Ok(())
-    }
-
     fn InitOnceBeginInitialize(
         &mut self,
         init_once_op: &OpTy<'tcx, Provenance>,
@@ -395,133 +251,6 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         while let Some(thread) = this.futex_wake(ptr.addr().bytes(), u32::MAX) {
             this.unblock_thread(thread);
             this.unregister_timeout_callback_if_exists(thread);
-        }
-
-        Ok(())
-    }
-
-    fn SleepConditionVariableSRW(
-        &mut self,
-        condvar_op: &OpTy<'tcx, Provenance>,
-        lock_op: &OpTy<'tcx, Provenance>,
-        timeout_op: &OpTy<'tcx, Provenance>,
-        flags_op: &OpTy<'tcx, Provenance>,
-        dest: &MPlaceTy<'tcx, Provenance>,
-    ) -> InterpResult<'tcx, Scalar<Provenance>> {
-        let this = self.eval_context_mut();
-
-        let condvar_id = this.condvar_get_id(condvar_op)?;
-        let lock_id = this.srwlock_get_id(lock_op)?;
-        let timeout_ms = this.read_scalar(timeout_op)?.to_u32()?;
-        let flags = this.read_scalar(flags_op)?.to_u32()?;
-
-        let timeout_time = if timeout_ms == this.eval_windows_u32("c", "INFINITE") {
-            None
-        } else {
-            let duration = Duration::from_millis(timeout_ms.into());
-            Some(this.machine.clock.now().checked_add(duration).unwrap())
-        };
-
-        let shared_mode = 0x1; // CONDITION_VARIABLE_LOCKMODE_SHARED is not in std
-        let mode = if flags == 0 {
-            RwLockMode::Write
-        } else if flags == shared_mode {
-            RwLockMode::Read
-        } else {
-            throw_unsup_format!("unsupported `Flags` {flags} in `SleepConditionVariableSRW`");
-        };
-
-        let active_thread = this.get_active_thread();
-
-        let was_locked = match mode {
-            RwLockMode::Read => this.rwlock_reader_unlock(lock_id, active_thread),
-            RwLockMode::Write => this.rwlock_writer_unlock(lock_id, active_thread),
-        };
-
-        if !was_locked {
-            throw_ub_format!(
-                "calling SleepConditionVariableSRW with an SRWLock that is not locked by the current thread"
-            );
-        }
-
-        this.block_thread(active_thread);
-        this.condvar_wait(condvar_id, active_thread, CondvarLock::RwLock { id: lock_id, mode });
-
-        if let Some(timeout_time) = timeout_time {
-            struct Callback<'tcx> {
-                thread: ThreadId,
-                condvar_id: CondvarId,
-                lock_id: RwLockId,
-                mode: RwLockMode,
-                dest: MPlaceTy<'tcx, Provenance>,
-            }
-
-            impl<'tcx> VisitProvenance for Callback<'tcx> {
-                fn visit_provenance(&self, visit: &mut VisitWith<'_>) {
-                    let Callback { thread: _, condvar_id: _, lock_id: _, mode: _, dest } = self;
-                    dest.visit_provenance(visit);
-                }
-            }
-
-            impl<'mir, 'tcx: 'mir> MachineCallback<'mir, 'tcx> for Callback<'tcx> {
-                fn call(&self, this: &mut MiriInterpCx<'mir, 'tcx>) -> InterpResult<'tcx> {
-                    this.reacquire_cond_lock(self.thread, self.lock_id, self.mode)?;
-
-                    this.condvar_remove_waiter(self.condvar_id, self.thread);
-
-                    let error_timeout = this.eval_windows("c", "ERROR_TIMEOUT");
-                    this.set_last_error(error_timeout)?;
-                    this.write_scalar(this.eval_windows("c", "FALSE"), &self.dest)?;
-                    Ok(())
-                }
-            }
-
-            this.register_timeout_callback(
-                active_thread,
-                Time::Monotonic(timeout_time),
-                Box::new(Callback {
-                    thread: active_thread,
-                    condvar_id,
-                    lock_id,
-                    mode,
-                    dest: dest.clone(),
-                }),
-            );
-        }
-
-        Ok(this.eval_windows("c", "TRUE"))
-    }
-
-    fn WakeConditionVariable(&mut self, condvar_op: &OpTy<'tcx, Provenance>) -> InterpResult<'tcx> {
-        let this = self.eval_context_mut();
-        let condvar_id = this.condvar_get_id(condvar_op)?;
-
-        if let Some((thread, lock)) = this.condvar_signal(condvar_id) {
-            if let CondvarLock::RwLock { id, mode } = lock {
-                this.reacquire_cond_lock(thread, id, mode)?;
-                this.unregister_timeout_callback_if_exists(thread);
-            } else {
-                panic!("mutexes should not exist on windows");
-            }
-        }
-
-        Ok(())
-    }
-
-    fn WakeAllConditionVariable(
-        &mut self,
-        condvar_op: &OpTy<'tcx, Provenance>,
-    ) -> InterpResult<'tcx> {
-        let this = self.eval_context_mut();
-        let condvar_id = this.condvar_get_id(condvar_op)?;
-
-        while let Some((thread, lock)) = this.condvar_signal(condvar_id) {
-            if let CondvarLock::RwLock { id, mode } = lock {
-                this.reacquire_cond_lock(thread, id, mode)?;
-                this.unregister_timeout_callback_if_exists(thread);
-            } else {
-                panic!("mutexes should not exist on windows");
-            }
         }
 
         Ok(())
