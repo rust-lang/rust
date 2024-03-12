@@ -1028,6 +1028,13 @@ fn build_async_destructor_ctor_shim<'tcx>(
 
 const ASYNC_DESTRUCTOR_CTOR_ARG_COUNT: usize = 1;
 
+/// Builder for async_drop_in_place shim. Functions as a stack machine
+/// to build up an expression using combinators. Stack contains pairs
+/// of locals and types. Combinator is a not yet instantiated pair of a
+/// function and a type, is considered to be an operator which consumes
+/// operands from the stack by instantiating its function and its type
+/// with operand types and moving locals into the function call. Top
+/// pair is considered to be the last operand.
 struct AsyncDestructorCtorShimBuilder<'tcx> {
     tcx: TyCtxt<'tcx>,
     def_id: DefId,
