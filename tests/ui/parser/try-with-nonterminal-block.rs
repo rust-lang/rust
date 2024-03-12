@@ -11,7 +11,7 @@ macro_rules! create_try {
 
 fn main() {
     let x: Option<&str> = create_try! {{
-        None?;
+        None::<()>?;
         "Hello world"
     }};
 

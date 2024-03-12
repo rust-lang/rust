@@ -5,14 +5,14 @@
 fn main() {
     let _: Result<(), ()> = try {
         'foo: {
-            Err(())?;
+            Err::<(), _>(())?;
             break 'foo;
         }
     };
 
     'foo: {
         let _: Result<(), ()> = try {
-            Err(())?;
+            Err::<(), _>(())?;
             break 'foo;
         };
     }

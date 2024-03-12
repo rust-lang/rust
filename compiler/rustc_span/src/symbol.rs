@@ -602,6 +602,7 @@ symbols! {
         const_try,
         constant,
         constructor,
+        convert_absurd,
         convert_identity,
         copy,
         copy_closures,

@@ -7,7 +7,7 @@
 
 fn main() {
     const fn result() -> Result<bool, ()> {
-        Err(())?;
+        Err::<(), _>(())?;
         Ok(true)
     }
 
@@ -15,7 +15,7 @@ fn main() {
     assert_eq!(Err(()), FOO);
 
     const fn option() -> Option<()> {
-        None?;
+        None::<()>?;
         Some(())
     }
     const BAR: Option<()> = option();

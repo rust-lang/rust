@@ -3,7 +3,6 @@
 #![allow(non_camel_case_types)]
 #![allow(dead_code)]
 //@ compile-flags: --edition 2018
-
 #![feature(try_blocks)]
 
 struct catch {}
@@ -16,7 +15,9 @@ pub fn main() {
     assert_eq!(catch_result, Some(5));
 
     let mut catch = true;
-    while catch { catch = false; }
+    while catch {
+        catch = false;
+    }
     assert_eq!(catch, false);
 
     catch = if catch { false } else { true };
@@ -27,13 +28,15 @@ pub fn main() {
     };
 
     let catch_err: Result<_, i32> = try {
-        Err(22)?;
+        Err::<(), _>(22)?;
         1
     };
     assert_eq!(catch_err, Err(22));
 
     let catch_okay: Result<i32, i32> = try {
-        if false { Err(25)?; }
+        if false {
+            Err::<(), _>(25)?;
+        }
         Ok::<(), i32>(())?;
         28
     };
@@ -41,7 +44,11 @@ pub fn main() {
 
     let catch_from_loop: Result<i32, i32> = try {
         for i in 0..10 {
-            if i < 5 { Ok::<i32, i32>(i)?; } else { Err(i)?; }
+            if i < 5 {
+                Ok::<i32, i32>(i)?;
+            } else {
+                Err::<(), _>(i)?;
+            }
         }
         22
     };
@@ -56,7 +63,7 @@ pub fn main() {
     let cfg_init_2;
     let _res: Result<(), ()> = try {
         cfg_init_2 = 6;
-        Err(())?;
+        Err::<(), _>(())?;
     };
     assert_eq!(cfg_init_2, 6);
 
@@ -70,6 +77,6 @@ pub fn main() {
     let my_opt: Option<_> = try { () };
     assert_eq!(my_opt, Some(()));
 
-    let my_opt: Option<_> = try { };
+    let my_opt: Option<_> = try {};
     assert_eq!(my_opt, Some(()));
 }

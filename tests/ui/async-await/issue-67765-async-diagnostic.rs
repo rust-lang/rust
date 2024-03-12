@@ -10,7 +10,7 @@ async fn func<'a>() -> Result<(), &'a str> {
 
     let b = &s[..];
 
-    Err(b)?; //~ ERROR cannot return value referencing local variable `s`
+    Err::<(), _>(b)?; //~ ERROR cannot return value referencing local variable `s`
 
     Ok(())
 }

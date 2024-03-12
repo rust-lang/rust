@@ -11,7 +11,7 @@ pub fn main() {
         // Test that a borrow which *might* be returned still freezes its referent
         let mut i = 222;
         let x: Result<&i32, ()> = try {
-            Err(())?;
+            Err::<(), _>(())?;
             &i
         };
         i = 0; //~ ERROR cannot assign to `i` because it is borrowed
@@ -22,7 +22,7 @@ pub fn main() {
     {
         let x = String::new();
         let _y: Result<(), ()> = try {
-            Err(())?;
+            Err::<(), _>(())?;
             ::std::mem::drop(x);
         };
         println!("{}", x); //~ ERROR borrow of moved value: `x`
@@ -34,7 +34,7 @@ pub fn main() {
         let mut i = 222;
         let mut j = &-1;
         let _x: Result<(), ()> = try {
-            Err(())?;
+            Err::<(), _>(())?;
             j = &i;
         };
         i = 0; //~ ERROR cannot assign to `i` because it is borrowed
