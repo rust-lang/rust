@@ -1,7 +1,6 @@
 //@ check-pass
 
 #![feature(lint_reasons)]
-#![allow(incomplete_features)]
 
 use std::fmt::Display;
 

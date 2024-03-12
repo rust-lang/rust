@@ -5,7 +5,6 @@
 #![crate_type = "lib"]
 #![feature(transmutability)]
 #![allow(dead_code)]
-#![allow(incomplete_features)]
 
 mod assert {
     use std::mem::BikeshedIntrinsicFrom;

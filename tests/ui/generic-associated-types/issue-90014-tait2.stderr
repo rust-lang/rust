@@ -1,5 +1,5 @@
 error[E0792]: expected generic lifetime parameter, found `'a`
-  --> $DIR/issue-90014-tait2.rs:27:9
+  --> $DIR/issue-90014-tait2.rs:26:9
    |
 LL | type Fut<'a> = impl Future<Output = ()>;
    |          -- this generic parameter must be used with a generic lifetime parameter

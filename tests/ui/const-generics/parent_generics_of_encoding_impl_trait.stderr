@@ -5,7 +5,7 @@ LL |     generics_of_parent_impl_trait::foo([()]);
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ cannot infer the value of const parameter `N` declared on the function `foo`
    |
 note: required by a bound in `foo`
-  --> $DIR/auxiliary/generics_of_parent_impl_trait.rs:6:48
+  --> $DIR/auxiliary/generics_of_parent_impl_trait.rs:5:48
    |
 LL | pub fn foo<const N: usize>(foo: impl Into<[(); N + 1]>) {
    |                                                ^^^^^ required by this bound in `foo`

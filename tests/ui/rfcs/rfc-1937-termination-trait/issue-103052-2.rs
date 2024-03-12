@@ -1,5 +1,3 @@
-#![allow(incomplete_features)]
-
 mod child {
     trait Main {
         fn main() -> impl std::process::Termination;
