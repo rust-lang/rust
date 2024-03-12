@@ -1,3 +1,4 @@
+use crate::rustc_middle::ty::TypeVisitableExt;
 use crate::FnCtxt;
 use rustc_infer::traits::solve::Goal;
 use rustc_infer::traits::{self, ObligationCause};
@@ -31,10 +32,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     ) -> bool {
         match predicate.kind().skip_binder() {
             ty::PredicateKind::Clause(ty::ClauseKind::Trait(data)) => {
-                self.self_type_matches_expected_vid(data.self_ty(), expected_vid)
+                self.type_matches_expected_vid(expected_vid, data.self_ty())
             }
             ty::PredicateKind::Clause(ty::ClauseKind::Projection(data)) => {
-                self.self_type_matches_expected_vid(data.projection_ty.self_ty(), expected_vid)
+                self.type_matches_expected_vid(expected_vid, data.projection_ty.self_ty())
             }
             ty::PredicateKind::Clause(ty::ClauseKind::ConstArgHasType(..))
             | ty::PredicateKind::Subtype(..)
@@ -52,11 +53,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     }
 
     #[instrument(level = "debug", skip(self), ret)]
-    fn self_type_matches_expected_vid(&self, self_ty: Ty<'tcx>, expected_vid: ty::TyVid) -> bool {
-        let self_ty = self.shallow_resolve(self_ty);
-        debug!(?self_ty);
+    fn type_matches_expected_vid(&self, expected_vid: ty::TyVid, ty: Ty<'tcx>) -> bool {
+        let ty = self.shallow_resolve(ty);
+        debug!(?ty);
 
-        match *self_ty.kind() {
+        match *ty.kind() {
             ty::Infer(ty::TyVar(found_vid)) => expected_vid == self.root_var(found_vid),
             _ => false,
         }
@@ -67,6 +68,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         self_ty: ty::TyVid,
     ) -> Vec<traits::PredicateObligation<'tcx>> {
         let obligations = self.fulfillment_cx.borrow().pending_obligations();
+        debug!(?obligations);
         let mut obligations_for_self_ty = vec![];
         for obligation in obligations {
             let mut visitor = NestedObligationsForSelfTy {
@@ -79,6 +81,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             let goal = Goal::new(self.tcx, obligation.param_env, obligation.predicate);
             self.visit_proof_tree(goal, &mut visitor);
         }
+
+        obligations_for_self_ty.retain_mut(|obligation| {
+            obligation.predicate = self.resolve_vars_if_possible(obligation.predicate);
+            !obligation.predicate.has_placeholders()
+        });
         obligations_for_self_ty
     }
 }
@@ -90,6 +97,19 @@ struct NestedObligationsForSelfTy<'a, 'tcx> {
     obligations_for_self_ty: &'a mut Vec<traits::PredicateObligation<'tcx>>,
 }
 
+impl<'a, 'tcx> NestedObligationsForSelfTy<'a, 'tcx> {
+    fn consider_goal(&mut self, goal: Goal<'tcx, ty::Predicate<'tcx>>) {
+        if self.fcx.predicate_has_self_ty(goal.predicate, self.ty_var_root) {
+            self.obligations_for_self_ty.push(traits::Obligation::new(
+                self.fcx.tcx,
+                self.root_cause.clone(),
+                goal.param_env,
+                goal.predicate,
+            ));
+        }
+    }
+}
+
 impl<'a, 'tcx> ProofTreeVisitor<'tcx> for NestedObligationsForSelfTy<'a, 'tcx> {
     type Result = ();
 
@@ -97,19 +117,45 @@ impl<'a, 'tcx> ProofTreeVisitor<'tcx> for NestedObligationsForSelfTy<'a, 'tcx> {
         // Using an intentionally low depth to minimize the chance of future
         // breaking changes in case we adapt the approach later on. This also
         // avoids any hangs for exponentially growing proof trees.
-        InspectConfig { max_depth: 3 }
+        InspectConfig { max_depth: 5 }
     }
 
     fn visit_goal(&mut self, inspect_goal: &InspectGoal<'_, 'tcx>) {
         let tcx = self.fcx.tcx;
         let goal = inspect_goal.goal();
-        if self.fcx.predicate_has_self_ty(goal.predicate, self.ty_var_root) {
-            self.obligations_for_self_ty.push(traits::Obligation::new(
-                tcx,
-                self.root_cause.clone(),
-                goal.param_env,
-                goal.predicate,
-            ));
+        self.consider_goal(goal);
+
+        // HACK: When proving `NormalizesTo(oapque; ?infer)` we don't emit the
+        // item bounds of the opaque as nested goals, so they never get picked up here.
+        // Manually add these as obligations instead.
+        //
+        // Alternatively, we could change the solver to always emit the item bounds
+        // as nested goals, even if the hidden type is an infer var. However, given that
+        // these nested goals would always just fail with ambiguity, that would be
+        // useless for everything apart from this exact `ProofTreeVisitor`, so we
+        // do it here.
+        match goal.predicate.kind().no_bound_vars() {
+            Some(ty::PredicateKind::NormalizesTo(ty::NormalizesTo { alias, term })) => {
+                if alias.is_opaque(tcx) {
+                    let hidden_ty = term.ty().unwrap();
+                    if self.fcx.type_matches_expected_vid(self.ty_var_root, hidden_ty) {
+                        let mut obligations = vec![];
+                        self.fcx.add_item_bounds_for_hidden_type(
+                            alias.def_id,
+                            alias.args,
+                            self.root_cause.clone(),
+                            goal.param_env,
+                            hidden_ty,
+                            &mut obligations,
+                        );
+                        debug!(?obligations);
+                        for obl in obligations {
+                            self.consider_goal(obl.into());
+                        }
+                    }
+                }
+            }
+            Some(_) | None => {}
         }
 
         if let Some(candidate) = inspect_goal.unique_applicable_candidate() {
