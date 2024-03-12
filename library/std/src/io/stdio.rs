@@ -451,6 +451,9 @@ impl Read for Stdin {
     fn read_exact(&mut self, buf: &mut [u8]) -> io::Result<()> {
         self.lock().read_exact(buf)
     }
+    fn read_buf_exact(&mut self, cursor: BorrowedCursor<'_>) -> io::Result<()> {
+        self.lock().read_buf_exact(cursor)
+    }
 }
 
 #[stable(feature = "read_shared_stdin", since = "CURRENT_RUSTC_VERSION")]
@@ -476,6 +479,9 @@ impl Read for &Stdin {
     }
     fn read_exact(&mut self, buf: &mut [u8]) -> io::Result<()> {
         self.lock().read_exact(buf)
+    }
+    fn read_buf_exact(&mut self, cursor: BorrowedCursor<'_>) -> io::Result<()> {
+        self.lock().read_buf_exact(cursor)
     }
 }
 
@@ -516,6 +522,10 @@ impl Read for StdinLock<'_> {
 
     fn read_exact(&mut self, buf: &mut [u8]) -> io::Result<()> {
         self.inner.read_exact(buf)
+    }
+
+    fn read_buf_exact(&mut self, cursor: BorrowedCursor<'_>) -> io::Result<()> {
+        self.inner.read_buf_exact(cursor)
     }
 }
 

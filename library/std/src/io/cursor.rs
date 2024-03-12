@@ -355,6 +355,13 @@ where
         self.pos += n as u64;
         Ok(())
     }
+
+    fn read_buf_exact(&mut self, cursor: BorrowedCursor<'_>) -> io::Result<()> {
+        let n = cursor.capacity();
+        Read::read_buf_exact(&mut self.remaining_slice(), cursor)?;
+        self.pos += n as u64;
+        Ok(())
+    }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
