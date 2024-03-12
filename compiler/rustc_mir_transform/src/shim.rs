@@ -1049,7 +1049,7 @@ struct AsyncDestructorCtorShimBuilder<'tcx> {
     bbs: IndexVec<BasicBlock, BasicBlockData<'tcx>>,
 
     // Cached stuff
-    ready_unit: Option<(DefId, Ty<'tcx>)>,
+    nop: Option<(DefId, Ty<'tcx>)>,
     surface_combinator: Option<(DefId, DefId)>,
     slice_combinator: Option<(DefId, EarlyBinder<Ty<'tcx>>)>,
     deferred_combinator: Option<(DefId, EarlyBinder<Ty<'tcx>>)>,
@@ -1082,7 +1082,7 @@ impl<'tcx> AsyncDestructorCtorShimBuilder<'tcx> {
             locals,
             bbs: IndexVec::from([BasicBlockData::new(None)]),
 
-            ready_unit: None,
+            nop: None,
             surface_combinator: None,
             slice_combinator: None,
             deferred_combinator: None,
@@ -1129,7 +1129,7 @@ impl<'tcx> AsyncDestructorCtorShimBuilder<'tcx> {
                 if self_ty.is_async_drop(tcx, defer_param_env()) {
                     self.build_surface()
                 } else {
-                    self.build_ready_unit()
+                    self.build_nop()
                 }
             }
 
@@ -1143,12 +1143,12 @@ impl<'tcx> AsyncDestructorCtorShimBuilder<'tcx> {
             | ty::Ref(_, _, _)
             | ty::FnDef(_, _)
             | ty::FnPtr(_)
-            | ty::Never => self.build_ready_unit(),
+            | ty::Never => self.build_nop(),
         }
     }
 
-    fn build_ready_unit(mut self) -> Body<'tcx> {
-        self.combine_ready_unit();
+    fn build_nop(mut self) -> Body<'tcx> {
+        self.put_nop();
         self.return_()
     }
 
@@ -1185,7 +1185,7 @@ impl<'tcx> AsyncDestructorCtorShimBuilder<'tcx> {
             })
             .count();
 
-        self.combine_ready_unit();
+        self.put_nop();
 
         for _ in 0..elem_count {
             self.combine_chain();
@@ -1320,9 +1320,9 @@ impl<'tcx> AsyncDestructorCtorShimBuilder<'tcx> {
         self.stack.push((field_ptr, ty));
     }
 
-    fn combine_ready_unit(&mut self) {
+    fn put_nop(&mut self) {
         let tcx = self.tcx;
-        let (function, ty) = *self.ready_unit.get_or_insert_with(|| {
+        let (function, ty) = *self.nop.get_or_insert_with(|| {
             (
                 tcx.require_lang_item(LangItem::AsyncDropNopCtor, Some(self.span)),
                 tcx.type_of(tcx.require_lang_item(LangItem::AsyncDropNop, Some(self.span)))
