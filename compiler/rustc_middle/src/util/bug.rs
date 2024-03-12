@@ -28,14 +28,17 @@ fn opt_span_bug_fmt<S: Into<MultiSpan>>(
     args: fmt::Arguments<'_>,
     location: &Location<'_>,
 ) -> ! {
-    tls::with_opt(move |tcx| {
-        let msg = format!("{location}: {args}");
-        match (tcx, span) {
-            (Some(tcx), Some(span)) => tcx.dcx().span_bug(span, msg),
-            (Some(tcx), None) => tcx.dcx().bug(msg),
-            (None, _) => panic_any(msg),
-        }
-    })
+    tls::with_opt(
+        #[track_caller]
+        move |tcx| {
+            let msg = format!("{location}: {args}");
+            match (tcx, span) {
+                (Some(tcx), Some(span)) => tcx.dcx().span_bug(span, msg),
+                (Some(tcx), None) => tcx.dcx().bug(msg),
+                (None, _) => panic_any(msg),
+            }
+        },
+    )
 }
 
 /// A query to trigger a delayed bug. Clearly, if one has a `tcx` one can already trigger a
