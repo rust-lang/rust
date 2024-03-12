@@ -190,7 +190,7 @@ target | std | notes
 `wasm32-unknown-unknown` | ✓ | WebAssembly
 `wasm32-wasi` | ✓ | WebAssembly with WASI (undergoing a [rename to `wasm32-wasip1`][wasi-rename])
 [`wasm32-wasip1`](platform-support/wasm32-wasip1.md) | ✓ | WebAssembly with WASI
-[`wasm32-wasi-preview1-threads`](platform-support/wasm32-wasi-preview1-threads.md) | ✓ |  | WebAssembly with WASI Preview 1 and threads
+[`wasm32-wasip1-threads`](platform-support/wasm32-wasip1-threads.md) | ✓ |  | WebAssembly with WASI Preview 1 and threads
 `x86_64-apple-ios` | ✓ | 64-bit x86 iOS
 [`x86_64-fortanix-unknown-sgx`](platform-support/x86_64-fortanix-unknown-sgx.md) | ✓ | [Fortanix ABI] for 64-bit Intel SGX
 `x86_64-fuchsia` | ✓ | Alias for `x86_64-unknown-fuchsia`

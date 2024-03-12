@@ -151,7 +151,7 @@
 //@ [r72] needs-llvm-components: webassembly
 //@ [r73] compile-flags:--target wasm32-wasip1
 //@ [r73] needs-llvm-components: webassembly
-//@ [r74] compile-flags:--target wasm32-wasi-preview1-threads
+//@ [r74] compile-flags:--target wasm32-wasip1-threads
 //@ [r74] needs-llvm-components: webassembly
 //@ [r75] compile-flags:--target x86_64-apple-ios
 //@ [r75] needs-llvm-components: x86
@@ -179,7 +179,6 @@
 //@ compile-flags: -C opt-level=2
 
 #![crate_type = "lib"]
-
 #![feature(no_core, lang_items)]
 #![crate_type = "lib"]
 #![no_core]
