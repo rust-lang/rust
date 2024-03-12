@@ -36,7 +36,7 @@ regex = "1.5.5"
 toml = "0.7.3"
 walkdir = "2.3"
 # This is used by the `collect-metadata` alias.
-filetime = "0.2"
+filetime = "0.2.9"
 itertools = "0.12"
 
 # UI test dependencies
