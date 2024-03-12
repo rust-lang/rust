@@ -1053,7 +1053,7 @@ fn location_csv_expr(db: &RootDatabase, vfs: &Vfs, sm: &BodySourceMap, expr_id: 
     };
     let root = db.parse_or_expand(src.file_id);
     let node = src.map(|e| e.to_node(&root).syntax().clone());
-    let original_range = node.as_ref().original_file_range(db);
+    let original_range = node.as_ref().original_file_range_rooted(db);
     let path = vfs.file_path(original_range.file_id);
     let line_index = db.line_index(original_range.file_id);
     let text_range = original_range.range;
@@ -1069,7 +1069,7 @@ fn location_csv_pat(db: &RootDatabase, vfs: &Vfs, sm: &BodySourceMap, pat_id: Pa
     };
     let root = db.parse_or_expand(src.file_id);
     let node = src.map(|e| e.to_node(&root).syntax().clone());
-    let original_range = node.as_ref().original_file_range(db);
+    let original_range = node.as_ref().original_file_range_rooted(db);
     let path = vfs.file_path(original_range.file_id);
     let line_index = db.line_index(original_range.file_id);
     let text_range = original_range.range;
@@ -1088,7 +1088,7 @@ fn expr_syntax_range<'a>(
     if let Ok(src) = src {
         let root = db.parse_or_expand(src.file_id);
         let node = src.map(|e| e.to_node(&root).syntax().clone());
-        let original_range = node.as_ref().original_file_range(db);
+        let original_range = node.as_ref().original_file_range_rooted(db);
         let path = vfs.file_path(original_range.file_id);
         let line_index = db.line_index(original_range.file_id);
         let text_range = original_range.range;
@@ -1109,7 +1109,7 @@ fn pat_syntax_range<'a>(
     if let Ok(src) = src {
         let root = db.parse_or_expand(src.file_id);
         let node = src.map(|e| e.to_node(&root).syntax().clone());
-        let original_range = node.as_ref().original_file_range(db);
+        let original_range = node.as_ref().original_file_range_rooted(db);
         let path = vfs.file_path(original_range.file_id);
         let line_index = db.line_index(original_range.file_id);
         let text_range = original_range.range;

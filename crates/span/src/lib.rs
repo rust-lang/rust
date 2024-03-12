@@ -56,6 +56,12 @@ pub struct SpanData<Ctx> {
     pub ctx: Ctx,
 }
 
+impl<Ctx: Copy> SpanData<Ctx> {
+    pub fn eq_ignoring_ctx(self, other: Self) -> bool {
+        self.anchor == other.anchor && self.range == other.range
+    }
+}
+
 impl Span {
     #[deprecated = "dummy spans will panic if surfaced incorrectly, as such they should be replaced appropriately"]
     pub const DUMMY: Self = SpanData {

@@ -190,22 +190,15 @@ impl SearchScope {
         let mut entries = IntMap::default();
 
         let (file_id, range) = {
-            let InFile { file_id, value } = module.definition_source(db);
+            let InFile { file_id, value } = module.definition_source_range(db);
             if let Some(InRealFile { file_id, value: call_source }) = file_id.original_call_node(db)
             {
                 (file_id, Some(call_source.text_range()))
             } else {
-                (
-                    file_id.original_file(db),
-                    match value {
-                        ModuleSource::SourceFile(_) => None,
-                        ModuleSource::Module(it) => Some(it.syntax().text_range()),
-                        ModuleSource::BlockExpr(it) => Some(it.syntax().text_range()),
-                    },
-                )
+                (file_id.original_file(db), Some(value))
             }
         };
-        entries.insert(file_id, range);
+        entries.entry(file_id).or_insert(range);
 
         let mut to_visit: Vec<_> = module.children(db).collect();
         while let Some(module) = to_visit.pop() {

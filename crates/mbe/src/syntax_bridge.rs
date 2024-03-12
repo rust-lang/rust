@@ -23,8 +23,11 @@ pub trait SpanMapper<S: Span> {
     fn span_for(&self, range: TextRange) -> S;
 }
 
-impl<S: Span> SpanMapper<S> for SpanMap<S> {
-    fn span_for(&self, range: TextRange) -> S {
+impl<S> SpanMapper<SpanData<S>> for SpanMap<S>
+where
+    SpanData<S>: Span,
+{
+    fn span_for(&self, range: TextRange) -> SpanData<S> {
         self.span_at(range.start())
     }
 }
@@ -121,7 +124,7 @@ where
 pub fn token_tree_to_syntax_node<Ctx>(
     tt: &tt::Subtree<SpanData<Ctx>>,
     entry_point: parser::TopEntryPoint,
-) -> (Parse<SyntaxNode>, SpanMap<SpanData<Ctx>>)
+) -> (Parse<SyntaxNode>, SpanMap<Ctx>)
 where
     SpanData<Ctx>: Span,
     Ctx: Copy,
@@ -833,7 +836,7 @@ where
     cursor: Cursor<'a, SpanData<Ctx>>,
     text_pos: TextSize,
     inner: SyntaxTreeBuilder,
-    token_map: SpanMap<SpanData<Ctx>>,
+    token_map: SpanMap<Ctx>,
 }
 
 impl<'a, Ctx> TtTreeSink<'a, Ctx>
@@ -850,7 +853,7 @@ where
         }
     }
 
-    fn finish(mut self) -> (Parse<SyntaxNode>, SpanMap<SpanData<Ctx>>) {
+    fn finish(mut self) -> (Parse<SyntaxNode>, SpanMap<Ctx>) {
         self.token_map.finish();
         (self.inner.finish(), self.token_map)
     }

@@ -164,7 +164,7 @@ fn check_impl(ra_fixture: &str, allow_none: bool, only_types: bool, display_sour
                 Some(value) => value,
                 None => continue,
             };
-            let range = node.as_ref().original_file_range(&db);
+            let range = node.as_ref().original_file_range_rooted(&db);
             if let Some(expected) = types.remove(&range) {
                 let actual = if display_source {
                     ty.display_source_code(&db, def.module(&db), true).unwrap()
@@ -180,7 +180,7 @@ fn check_impl(ra_fixture: &str, allow_none: bool, only_types: bool, display_sour
                 Some(value) => value,
                 None => continue,
             };
-            let range = node.as_ref().original_file_range(&db);
+            let range = node.as_ref().original_file_range_rooted(&db);
             if let Some(expected) = types.remove(&range) {
                 let actual = if display_source {
                     ty.display_source_code(&db, def.module(&db), true).unwrap()
@@ -211,7 +211,7 @@ fn check_impl(ra_fixture: &str, allow_none: bool, only_types: bool, display_sour
             }) else {
                 continue;
             };
-            let range = node.as_ref().original_file_range(&db);
+            let range = node.as_ref().original_file_range_rooted(&db);
             let actual = format!(
                 "expected {}, got {}",
                 mismatch.expected.display_test(&db),
