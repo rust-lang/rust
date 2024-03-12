@@ -10,8 +10,6 @@
 pub mod alloc;
 #[path = "../wasi/args.rs"]
 pub mod args;
-#[path = "../unix/cmath.rs"]
-pub mod cmath;
 #[path = "../wasi/env.rs"]
 pub mod env;
 #[path = "../wasi/fd.rs"]
@@ -28,10 +26,6 @@ pub mod io;
 pub mod net;
 #[path = "../wasi/os.rs"]
 pub mod os;
-#[path = "../unix/os_str.rs"]
-pub mod os_str;
-#[path = "../unix/path.rs"]
-pub mod path;
 #[path = "../unsupported/pipe.rs"]
 pub mod pipe;
 #[path = "../unsupported/process.rs"]
