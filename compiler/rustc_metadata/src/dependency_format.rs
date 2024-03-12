@@ -164,7 +164,7 @@ fn calculate_type(tcx: TyCtxt<'_>, ty: CrateType) -> DependencyList {
 
     let mut upstream_in_dylibs = FxHashSet::default();
 
-    if sess.opts.unstable_opts.prefer_deps_of_dynamic {
+    if sess.opts.unstable_opts.prefer_deps_of_dynamic || tcx.features().rustc_private {
         // Find all libraries statically linked to upstream dylibs.
         for &cnum in all_dylibs() {
             let deps = tcx.dylib_dependency_formats(cnum);
