@@ -1202,6 +1202,7 @@ impl<'tcx> AsyncDestructorCtorShimBuilder<'tcx> {
         self.return_()
     }
 
+    /// Puts pair (Self, to_drop: *mut Self) on top of the stack
     fn put_self(&mut self) {
         let last_bb = &mut self.bbs[self.last_bb];
         debug_assert!(last_bb.terminator.is_none());
@@ -1226,6 +1227,8 @@ impl<'tcx> AsyncDestructorCtorShimBuilder<'tcx> {
         self.stack.push((local, self.self_ty));
     }
 
+    /// Given that Self is [T; N] puts pair (T, to_drop: *mut [T])
+    /// on top of the stack
     fn put_array_as_slice(&mut self, elem_ty: Ty<'tcx>) {
         let last_bb = &mut self.bbs[self.last_bb];
         debug_assert!(last_bb.terminator.is_none());
@@ -1261,6 +1264,8 @@ impl<'tcx> AsyncDestructorCtorShimBuilder<'tcx> {
         self.stack.push((slice_ptr, elem_ty));
     }
 
+    /// Given that Self is [T] puts pair (T, to_drop: *mut [T]) on top
+    /// of the stack
     fn put_slice(&mut self, elem_ty: Ty<'tcx>) {
         let last_bb = &mut self.bbs[self.last_bb];
         debug_assert!(last_bb.terminator.is_none());
@@ -1288,6 +1293,8 @@ impl<'tcx> AsyncDestructorCtorShimBuilder<'tcx> {
         self.stack.push((slice_ptr, elem_ty));
     }
 
+    /// If given Self is a struct puts pair (Field, to_drop: *mut Field)
+    /// on top of the stack
     fn put_field(&mut self, field: FieldIdx, ty: Ty<'tcx>) {
         let last_bb = &mut self.bbs[self.last_bb];
         debug_assert!(last_bb.terminator.is_none());
@@ -1324,6 +1331,8 @@ impl<'tcx> AsyncDestructorCtorShimBuilder<'tcx> {
         self.stack.push((field_ptr, ty));
     }
 
+    /// Puts pair (async_drop::Nop, nop: async_drop::Nop) on top of
+    /// the stack
     fn put_nop(&mut self) {
         let tcx = self.tcx;
         let (function, ty) = *self.nop.get_or_insert_with(|| {
