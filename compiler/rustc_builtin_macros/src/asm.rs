@@ -5,7 +5,7 @@ use rustc_ast::token::{self, Delimiter};
 use rustc_ast::tokenstream::TokenStream;
 use rustc_data_structures::fx::{FxHashMap, FxIndexMap};
 use rustc_errors::PResult;
-use rustc_expand::base::{self, *};
+use rustc_expand::base::*;
 use rustc_index::bit_set::GrowableBitSet;
 use rustc_parse::parser::Parser;
 use rustc_parse_format as parse;
@@ -443,7 +443,7 @@ fn parse_reg<'a>(
 fn expand_preparsed_asm(
     ecx: &mut ExtCtxt<'_>,
     args: AsmArgs,
-) -> Result<ast::InlineAsm, ErrorGuaranteed> {
+) -> ExpandResult<Result<ast::InlineAsm, ErrorGuaranteed>, ()> {
     let mut template = vec![];
     // Register operands are implicitly used since they are not allowed to be
     // referenced in the template string.
@@ -465,16 +465,20 @@ fn expand_preparsed_asm(
 
         let msg = "asm template must be a string literal";
         let template_sp = template_expr.span;
-        let (template_str, template_style, template_span) =
-            match expr_to_spanned_string(ecx, template_expr, msg) {
+        let (template_str, template_style, template_span) = {
+            let ExpandResult::Ready(mac) = expr_to_spanned_string(ecx, template_expr, msg) else {
+                return ExpandResult::Retry(());
+            };
+            match mac {
                 Ok(template_part) => template_part,
                 Err(err) => {
-                    return Err(match err {
+                    return ExpandResult::Ready(Err(match err {
                         Ok((err, _)) => err.emit(),
                         Err(guar) => guar,
-                    });
+                    }));
                 }
-            };
+            }
+        };
 
         let str_style = match template_style {
             ast::StrStyle::Cooked => None,
@@ -562,7 +566,7 @@ fn expand_preparsed_asm(
                 e.span_label(err_sp, label);
             }
             let guar = e.emit();
-            return Err(guar);
+            return ExpandResult::Ready(Err(guar));
         }
 
         curarg = parser.curarg;
@@ -729,24 +733,27 @@ fn expand_preparsed_asm(
         }
     }
 
-    Ok(ast::InlineAsm {
+    ExpandResult::Ready(Ok(ast::InlineAsm {
         template,
         template_strs: template_strs.into_boxed_slice(),
         operands: args.operands,
         clobber_abis: args.clobber_abis,
         options: args.options,
         line_spans,
-    })
+    }))
 }
 
 pub(super) fn expand_asm<'cx>(
     ecx: &'cx mut ExtCtxt<'_>,
     sp: Span,
     tts: TokenStream,
-) -> Box<dyn base::MacResult + 'cx> {
-    match parse_args(ecx, sp, tts, false) {
+) -> MacroExpanderResult<'cx> {
+    ExpandResult::Ready(match parse_args(ecx, sp, tts, false) {
         Ok(args) => {
-            let expr = match expand_preparsed_asm(ecx, args) {
+            let ExpandResult::Ready(mac) = expand_preparsed_asm(ecx, args) else {
+                return ExpandResult::Retry(());
+            };
+            let expr = match mac {
                 Ok(inline_asm) => P(ast::Expr {
                     id: ast::DUMMY_NODE_ID,
                     kind: ast::ExprKind::InlineAsm(P(inline_asm)),
@@ -762,34 +769,39 @@ pub(super) fn expand_asm<'cx>(
             let guar = err.emit();
             DummyResult::any(sp, guar)
         }
-    }
+    })
 }
 
 pub(super) fn expand_global_asm<'cx>(
     ecx: &'cx mut ExtCtxt<'_>,
     sp: Span,
     tts: TokenStream,
-) -> Box<dyn base::MacResult + 'cx> {
-    match parse_args(ecx, sp, tts, true) {
-        Ok(args) => match expand_preparsed_asm(ecx, args) {
-            Ok(inline_asm) => MacEager::items(smallvec![P(ast::Item {
-                ident: Ident::empty(),
-                attrs: ast::AttrVec::new(),
-                id: ast::DUMMY_NODE_ID,
-                kind: ast::ItemKind::GlobalAsm(Box::new(inline_asm)),
-                vis: ast::Visibility {
-                    span: sp.shrink_to_lo(),
-                    kind: ast::VisibilityKind::Inherited,
+) -> MacroExpanderResult<'cx> {
+    ExpandResult::Ready(match parse_args(ecx, sp, tts, true) {
+        Ok(args) => {
+            let ExpandResult::Ready(mac) = expand_preparsed_asm(ecx, args) else {
+                return ExpandResult::Retry(());
+            };
+            match mac {
+                Ok(inline_asm) => MacEager::items(smallvec![P(ast::Item {
+                    ident: Ident::empty(),
+                    attrs: ast::AttrVec::new(),
+                    id: ast::DUMMY_NODE_ID,
+                    kind: ast::ItemKind::GlobalAsm(Box::new(inline_asm)),
+                    vis: ast::Visibility {
+                        span: sp.shrink_to_lo(),
+                        kind: ast::VisibilityKind::Inherited,
+                        tokens: None,
+                    },
+                    span: sp,
                     tokens: None,
-                },
-                span: sp,
-                tokens: None,
-            })]),
-            Err(guar) => DummyResult::any(sp, guar),
-        },
+                })]),
+                Err(guar) => DummyResult::any(sp, guar),
+            }
+        }
         Err(err) => {
             let guar = err.emit();
             DummyResult::any(sp, guar)
         }
-    }
+    })
 }

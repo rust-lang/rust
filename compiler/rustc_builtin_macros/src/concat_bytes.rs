@@ -1,5 +1,6 @@
 use rustc_ast::{ptr::P, token, tokenstream::TokenStream, ExprKind, LitIntType, LitKind, UintTy};
-use rustc_expand::base::{get_exprs_from_tts, DummyResult, ExtCtxt, MacEager, MacResult};
+use rustc_expand::base::get_exprs_from_tts;
+use rustc_expand::base::{DummyResult, ExpandResult, ExtCtxt, MacEager, MacroExpanderResult};
 use rustc_session::errors::report_lit_error;
 use rustc_span::{ErrorGuaranteed, Span};
 
@@ -111,10 +112,13 @@ pub fn expand_concat_bytes(
     cx: &mut ExtCtxt<'_>,
     sp: Span,
     tts: TokenStream,
-) -> Box<dyn MacResult + 'static> {
-    let es = match get_exprs_from_tts(cx, tts) {
+) -> MacroExpanderResult<'static> {
+    let ExpandResult::Ready(mac) = get_exprs_from_tts(cx, tts) else {
+        return ExpandResult::Retry(());
+    };
+    let es = match mac {
         Ok(es) => es,
-        Err(guar) => return DummyResult::any(sp, guar),
+        Err(guar) => return ExpandResult::Ready(DummyResult::any(sp, guar)),
     };
     let mut accumulator = Vec::new();
     let mut missing_literals = vec![];
@@ -170,12 +174,13 @@ pub fn expand_concat_bytes(
             }
         }
     }
-    if !missing_literals.is_empty() {
+    ExpandResult::Ready(if !missing_literals.is_empty() {
         let guar = cx.dcx().emit_err(errors::ConcatBytesMissingLiteral { spans: missing_literals });
-        return MacEager::expr(DummyResult::raw_expr(sp, Some(guar)));
+        MacEager::expr(DummyResult::raw_expr(sp, Some(guar)))
     } else if let Some(guar) = guar {
-        return MacEager::expr(DummyResult::raw_expr(sp, Some(guar)));
-    }
-    let sp = cx.with_def_site_ctxt(sp);
-    MacEager::expr(cx.expr_byte_str(sp, accumulator))
+        MacEager::expr(DummyResult::raw_expr(sp, Some(guar)))
+    } else {
+        let sp = cx.with_def_site_ctxt(sp);
+        MacEager::expr(cx.expr_byte_str(sp, accumulator))
+    })
 }

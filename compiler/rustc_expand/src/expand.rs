@@ -659,7 +659,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
 
         let (fragment_kind, span) = (invoc.fragment_kind, invoc.span());
         ExpandResult::Ready(match invoc.kind {
-            InvocationKind::Bang { mac, .. } => match ext {
+            InvocationKind::Bang { mac, span } => match ext {
                 SyntaxExtensionKind::Bang(expander) => {
                     match expander.expand(self.cx, span, mac.args.tokens.clone()) {
                         Ok(tok_result) => {
@@ -669,7 +669,16 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                     }
                 }
                 SyntaxExtensionKind::LegacyBang(expander) => {
-                    let tok_result = expander.expand(self.cx, span, mac.args.tokens.clone());
+                    let tok_result = match expander.expand(self.cx, span, mac.args.tokens.clone()) {
+                        ExpandResult::Ready(tok_result) => tok_result,
+                        ExpandResult::Retry(_) => {
+                            // retry the original
+                            return ExpandResult::Retry(Invocation {
+                                kind: InvocationKind::Bang { mac, span },
+                                ..invoc
+                            });
+                        }
+                    };
                     let result = if let Some(result) = fragment_kind.make_from(tok_result) {
                         result
                     } else {
