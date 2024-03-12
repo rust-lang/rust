@@ -1,4 +1,4 @@
-use crate::sys::locks::mutex::Mutex;
+use crate::sys::sync::mutex::Mutex;
 
 /// we do not supported rwlock, so use mutex to simulate rwlock.
 /// it's useful because so many code in std will use rwlock.

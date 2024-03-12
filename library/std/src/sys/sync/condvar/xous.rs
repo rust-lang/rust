@@ -1,6 +1,6 @@
 use crate::os::xous::ffi::{blocking_scalar, scalar};
 use crate::os::xous::services::{ticktimer_server, TicktimerScalar};
-use crate::sys::locks::Mutex;
+use crate::sys::sync::Mutex;
 use crate::time::Duration;
 use core::sync::atomic::{AtomicUsize, Ordering};
 

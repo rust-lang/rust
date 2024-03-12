@@ -6,7 +6,7 @@ use crate::fmt;
 use crate::ops::Deref;
 use crate::panic::{RefUnwindSafe, UnwindSafe};
 use crate::sync::atomic::{AtomicUsize, Ordering::Relaxed};
-use crate::sys::locks as sys;
+use crate::sys::sync as sys;
 
 /// A re-entrant mutual exclusion lock
 ///
