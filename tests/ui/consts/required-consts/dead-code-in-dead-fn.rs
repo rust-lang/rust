@@ -11,9 +11,13 @@ impl<T> Fail<T> {
 
 // This function is not actually called, but it is mentioned in dead code in a function that is
 // called. Make sure we still find this error.
+// This relies on mono-item collection checking `required_consts` in functions that syntactically
+// are called in collected functions (even inside dead code).
 #[inline(never)]
 fn not_called<T>() {
-    let _ = Fail::<T>::C;
+    if false {
+        let _ = Fail::<T>::C;
+    }
 }
 
 #[inline(never)]

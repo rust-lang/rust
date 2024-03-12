@@ -7,9 +7,9 @@ LL |     const C: () = panic!();
    = note: this error originates in the macro `$crate::panic::panic_2015` which comes from the expansion of the macro `panic` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 note: the above error was encountered while instantiating `fn <std::vec::Vec<i32> as MyTrait>::not_called`
-  --> $DIR/dead-code-in-dead-vtable.rs:28:40
+  --> $DIR/dead-code-in-dead-vtable.rs:30:40
    |
-LL |         let gen_vtable: &dyn MyTrait = &v;
+LL |         let gen_vtable: &dyn MyTrait = &v; // vtable "appears" here
    |                                        ^^
 
 error: aborting due to 1 previous error

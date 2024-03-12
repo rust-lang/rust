@@ -9,23 +9,13 @@ impl<T> Fail<T> {
     const C: () = panic!(); //~ERROR evaluation of `Fail::<i32>::C` failed
 }
 
-trait MyTrait {
-    fn not_called(&self);
-}
-
-// This function is not actually called, but it is mentioned in a vtable in a function that is
-// called. Make sure we still find this error.
-impl<T> MyTrait for Vec<T> {
-    fn not_called(&self) {
-        let _ = Fail::<T>::C;
-    }
-}
-
 #[inline(never)]
 fn called<T>() {
+    // Any function that is called is guaranteed to have all consts that syntactically
+    // appear in its body evaluated, even if they only appear in dead code.
+    // This relies on mono-item collection checking `required_consts` in collected functions.
     if false {
-        let v: Vec<T> = Vec::new();
-        let gen_vtable: &dyn MyTrait = &v;
+        let _ = Fail::<T>::C;
     }
 }
 
