@@ -105,6 +105,64 @@ pub const fn identity<T>(x: T) -> T {
     x
 }
 
+/// Converts [`!`] (the never type) to any type.
+///
+/// This is possible because `!` is uninhabited (has no values), so this function can't actually
+/// be ever called at runtime.
+///
+/// Even though `!` can be coerced to any type implicitly anyway (and indeed this function
+/// implemented by just "returning" the argument), this is still useful, as this prevents the
+/// fallback from happening during typechecking.
+///
+/// For example, this snippet type checks:
+///
+/// ```rust
+/// let x: Result<_, ()> = Err(());
+/// let y = match x {
+///     Ok(v) => v,
+///     Err(()) => return,
+/// };
+/// ```
+///
+/// This is a bit unexpected, because the type of `y` is seemingly unbound (indeed, it can be any
+/// type). However, the `match` unifies type of `v` with type of `return` (which is `!`), so `y`
+/// becomes `!` (or `()`, because of backwards compatibility shenanigans).
+///
+/// This can be avoided by adding `absurd`;
+///
+/// ```compile_fail,E0282
+/// use core::convert::absurd;
+///
+/// let x: Result<_, ()> = Err(());
+/// let y = match x { //~ error[E0282]: type annotations needed
+///     Ok(v) => v,
+///
+///     // the call to `absurd` *is* unreachable, but it's still important for type check reasons
+///     #[allow(unreachable_code)]
+///     Err(()) => absurd(return),
+/// };
+/// ```
+///
+/// This might be handy when writing macros.
+///
+/// `absurd` can also be passed to higher order functions, just like any other function:
+///
+/// ```
+/// #![feature(never_type, convert_absurd)]
+/// use core::convert::absurd;
+///
+/// let x: Result<_, !> = Ok(1);
+/// let x: u32 = x.unwrap_or_else(absurd);
+/// ```
+///
+/// [`!`]: ../../std/primitive.never.html
+#[inline(always)]
+#[unstable(feature = "convert_absurd", issue = "124310")]
+#[rustc_const_unstable(feature = "convert_absurd", issue = "124310")]
+pub const fn absurd<T>(x: !) -> T {
+    x
+}
+
 /// Used to do a cheap reference-to-reference conversion.
 ///
 /// This trait is similar to [`AsMut`] which is used for converting between mutable references.
