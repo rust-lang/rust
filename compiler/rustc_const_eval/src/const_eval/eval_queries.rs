@@ -290,7 +290,7 @@ pub fn eval_static_initializer_provider<'tcx>(
         // they do not have to behave "as if" they were evaluated at runtime.
         CompileTimeInterpreter::new(CanAccessMutGlobal::Yes, CheckAlignment::Error),
     );
-    eval_in_interpreter(ecx, cid, true)
+    eval_in_interpreter(ecx, cid)
 }
 
 pub trait InterpretationResult<'tcx> {
@@ -349,24 +349,20 @@ pub fn eval_to_allocation_raw_provider<'tcx>(
         // so we have to reject reading mutable global memory.
         CompileTimeInterpreter::new(CanAccessMutGlobal::from(is_static), CheckAlignment::Error),
     );
-    eval_in_interpreter(ecx, cid, is_static)
+    eval_in_interpreter(ecx, cid)
 }
 
 fn eval_in_interpreter<'mir, 'tcx, R: InterpretationResult<'tcx>>(
     mut ecx: InterpCx<'mir, 'tcx, CompileTimeInterpreter<'mir, 'tcx>>,
     cid: GlobalId<'tcx>,
-    is_static: bool,
 ) -> Result<R, ErrorHandled> {
-    // `is_static` just means "in static", it could still be a promoted!
-    debug_assert_eq!(is_static, ecx.tcx.static_mutability(cid.instance.def_id()).is_some());
-
     let res = ecx.load_mir(cid.instance.def, cid.promoted);
     match res.and_then(|body| eval_body_using_ecx(&mut ecx, cid, body)) {
         Err(error) => {
             let (error, backtrace) = error.into_parts();
             backtrace.print_backtrace();
 
-            let (kind, instance) = if is_static {
+            let (kind, instance) = if ecx.tcx.is_static(cid.instance.def_id()) {
                 ("static", String::new())
             } else {
                 // If the current item has generics, we'd like to enrich the message with the
