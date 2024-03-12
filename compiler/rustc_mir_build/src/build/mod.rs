@@ -1013,8 +1013,13 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         if let Some(source_scope) = scope {
             self.source_scope = source_scope;
         }
-
-        self.expr_into_dest(Place::return_place(), block, expr_id)
+        if self.tcx.intrinsic(self.def_id).is_some_and(|i| i.must_be_overridden) {
+            let source_info = self.source_info(rustc_span::DUMMY_SP);
+            self.cfg.terminate(block, source_info, TerminatorKind::Unreachable);
+            self.cfg.start_new_block().unit()
+        } else {
+            self.expr_into_dest(Place::return_place(), block, expr_id)
+        }
     }
 
     fn set_correct_source_scope_for_arg(

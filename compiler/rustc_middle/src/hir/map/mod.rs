@@ -1365,9 +1365,7 @@ impl<'hir> Visitor<'hir> for ItemCollector<'hir> {
 
     fn visit_impl_item(&mut self, item: &'hir ImplItem<'hir>) {
         if associated_body(Node::ImplItem(item)).is_some() {
-            if !self.tcx.has_attr(item.owner_id.def_id, sym::rustc_intrinsic_must_be_overridden) {
-                self.body_owners.push(item.owner_id.def_id);
-            }
+            self.body_owners.push(item.owner_id.def_id);
         }
 
         self.impl_items.push(item.impl_item_id());

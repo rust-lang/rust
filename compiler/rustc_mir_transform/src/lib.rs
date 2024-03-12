@@ -633,12 +633,6 @@ fn optimized_mir(tcx: TyCtxt<'_>, did: LocalDefId) -> &Body<'_> {
 }
 
 fn inner_optimized_mir(tcx: TyCtxt<'_>, did: LocalDefId) -> Body<'_> {
-    if tcx.intrinsic(did).is_some_and(|i| i.must_be_overridden) {
-        span_bug!(
-            tcx.def_span(did),
-            "this intrinsic must be overridden by the codegen backend, it has no meaningful body",
-        )
-    }
     if tcx.is_constructor(did.to_def_id()) {
         // There's no reason to run all of the MIR passes on constructors when
         // we can just output the MIR we want directly. This also saves const

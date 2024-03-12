@@ -1067,14 +1067,11 @@ fn should_encode_mir(
         // Full-fledged functions + closures
         DefKind::AssocFn | DefKind::Fn | DefKind::Closure => {
             let generics = tcx.generics_of(def_id);
-            let mut opt = tcx.sess.opts.unstable_opts.always_encode_mir
+            let opt = tcx.sess.opts.unstable_opts.always_encode_mir
                 || (tcx.sess.opts.output_types.should_codegen()
                     && reachable_set.contains(&def_id)
                     && (generics.requires_monomorphization(tcx)
                         || tcx.cross_crate_inlinable(def_id)));
-            if let Some(intrinsic) = tcx.intrinsic(def_id) {
-                opt &= !intrinsic.must_be_overridden;
-            }
             // The function has a `const` modifier or is in a `#[const_trait]`.
             let is_const_fn = tcx.is_const_fn_raw(def_id.to_def_id())
                 || tcx.is_const_default_method(def_id.to_def_id());
@@ -1704,10 +1701,8 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         {
             for &local_def_id in tcx.mir_keys(()) {
                 if let DefKind::AssocFn | DefKind::Fn = tcx.def_kind(local_def_id) {
-                    if tcx.intrinsic(local_def_id).map_or(true, |i| !i.must_be_overridden) {
-                        record_array!(self.tables.deduced_param_attrs[local_def_id.to_def_id()] <-
-                            self.tcx.deduced_param_attrs(local_def_id.to_def_id()));
-                    }
+                    record_array!(self.tables.deduced_param_attrs[local_def_id.to_def_id()] <-
+                        self.tcx.deduced_param_attrs(local_def_id.to_def_id()));
                 }
             }
         }
