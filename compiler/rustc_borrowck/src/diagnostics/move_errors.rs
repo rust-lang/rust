@@ -474,6 +474,11 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                     Some(desc) => format!("`{desc}`"),
                     None => "value".to_string(),
                 };
+
+                if let Some(expr) = self.find_expr(span) {
+                    self.suggest_cloning(err, place_ty, expr, span);
+                }
+
                 err.subdiagnostic(
                     self.dcx(),
                     crate::session_diagnostics::TypeNoCopy::Label {
@@ -582,6 +587,11 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
 
             if binds_to.len() == 1 {
                 let place_desc = &format!("`{}`", self.local_names[*local].unwrap());
+
+                if let Some(expr) = self.find_expr(binding_span) {
+                    self.suggest_cloning(err, bind_to.ty, expr, binding_span);
+                }
+
                 err.subdiagnostic(
                     self.dcx(),
                     crate::session_diagnostics::TypeNoCopy::Label {
