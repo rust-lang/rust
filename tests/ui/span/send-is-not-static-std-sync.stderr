@@ -14,8 +14,9 @@ LL |         *lock.lock().unwrap() = &z;
    |
 help: consider cloning the value if the performance cost is acceptable
    |
-LL |     *lock.lock().unwrap() = &*y.clone();
-   |                                ++++++++
+LL -     *lock.lock().unwrap() = &*y;
+LL +     *lock.lock().unwrap() = y.clone();
+   |
 
 error[E0597]: `z` does not live long enough
   --> $DIR/send-is-not-static-std-sync.rs:16:33
@@ -46,8 +47,9 @@ LL |         *lock.write().unwrap() = &z;
    |
 help: consider cloning the value if the performance cost is acceptable
    |
-LL |     *lock.write().unwrap() = &*y.clone();
-   |                                 ++++++++
+LL -     *lock.write().unwrap() = &*y;
+LL +     *lock.write().unwrap() = y.clone();
+   |
 
 error[E0597]: `z` does not live long enough
   --> $DIR/send-is-not-static-std-sync.rs:30:34
@@ -78,8 +80,9 @@ LL |         tx.send(&z).unwrap();
    |
 help: consider cloning the value if the performance cost is acceptable
    |
-LL |     tx.send(&*y.clone());
-   |                ++++++++
+LL -     tx.send(&*y);
+LL +     tx.send(y.clone());
+   |
 
 error[E0597]: `z` does not live long enough
   --> $DIR/send-is-not-static-std-sync.rs:46:17

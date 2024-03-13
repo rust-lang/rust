@@ -13,8 +13,9 @@ LL |     drop(hold_all);
    |
 help: consider cloning the value if the performance cost is acceptable
    |
-LL |     let hold_all = &arr.clone();
-   |                        ++++++++
+LL -     let hold_all = &arr;
+LL +     let hold_all = arr.clone();
+   |
 
 error[E0384]: cannot assign twice to immutable variable `_x1`
   --> $DIR/borrowck-move-ref-pattern.rs:9:5

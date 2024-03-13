@@ -16,8 +16,9 @@ LL |     println!("main function: {}", fancy_ref.num);
    |
 help: consider cloning the value if the performance cost is acceptable
    |
-LL |     let fancy_ref = &fancy_num.clone();
-   |                               ++++++++
+LL -     let fancy_ref = &fancy_num;
+LL +     let fancy_ref = fancy_num.clone();
+   |
 
 error: aborting due to 1 previous error
 
