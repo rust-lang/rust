@@ -2,6 +2,7 @@ use rustc_middle::mir::visit::Visitor;
 use rustc_middle::mir::{self, Const, ConstOperand, Location, RequiredItem};
 use rustc_middle::ty::{self, ConstKind, TyCtxt};
 
+#[allow(unused)]
 pub struct RequiredConstsVisitor<'a, 'tcx> {
     tcx: TyCtxt<'tcx>,
     body: &'a mir::Body<'tcx>,
@@ -39,7 +40,7 @@ impl<'tcx> Visitor<'tcx> for RequiredConstsVisitor<'_, 'tcx> {
         }
     }
 
-    fn visit_terminator(&mut self, terminator: &mir::Terminator<'tcx>, location: Location) {
+    /*fn visit_terminator(&mut self, terminator: &mir::Terminator<'tcx>, location: Location) {
         self.super_terminator(terminator, location);
 
         match terminator.kind {
@@ -51,5 +52,5 @@ impl<'tcx> Visitor<'tcx> for RequiredConstsVisitor<'_, 'tcx> {
             }
             _ => {}
         }
-    }
+    }*/
 }
