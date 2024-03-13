@@ -9,7 +9,12 @@ fn main() {
         return;
     }
 
-    rustc().arg("foo.rs").arg("--target=wasm32-wasip1").arg("-Clto").arg("-O").run();
+    rustc()
+        .input("foo.rs")
+        .target("wasm32-wasip1")
+        .arg("-Clto")
+        .opt()
+        .run();
 
     let bytes = std::fs::read(&out_dir().join("foo.wasm")).unwrap();
     println!("{}", bytes.len());

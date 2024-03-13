@@ -17,13 +17,13 @@ fn main() {
 
 fn test(cfg: &str) {
     eprintln!("running cfg {cfg:?}");
+
     rustc()
-        .arg("foo.rs")
-        .arg("--target=wasm32-wasip1")
+        .input("foo.rs")
+        .target("wasm32-wasip1")
         .arg("-Clto")
-        .arg("-O")
-        .arg("--cfg")
-        .arg(cfg)
+        .opt()
+        .cfg(cfg)
         .run();
 
     let bytes = std::fs::read(&out_dir().join("foo.wasm")).unwrap();
