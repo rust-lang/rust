@@ -1,20 +1,24 @@
+//@revisions: noopt opt
 //@ build-fail
-//@ compile-flags: -O
+//@[opt] compile-flags: -O
 //! Make sure we detect erroneous constants post-monomorphization even when they are unused. This is
 //! crucial, people rely on it for soundness. (https://github.com/rust-lang/rust/issues/112090)
 
-struct PrintName<T>(T);
-impl<T> PrintName<T> {
-    const VOID: () = panic!(); //~ERROR evaluation of `PrintName::<i32>::VOID` failed
+struct Fail<T>(T);
+impl<T> Fail<T> {
+    const C: () = panic!(); //~ERROR evaluation of `Fail::<i32>::C` failed
 }
 
-fn no_codegen<T>() {
+#[inline(never)]
+fn called<T>() {
     // Any function that is called is guaranteed to have all consts that syntactically
     // appear in its body evaluated, even if they only appear in dead code.
+    // This relies on mono-item collection checking `required_consts` in collected functions.
     if false {
-        let _ = PrintName::<T>::VOID;
+        let _ = Fail::<T>::C;
     }
 }
+
 pub fn main() {
-    no_codegen::<i32>();
+    called::<i32>();
 }

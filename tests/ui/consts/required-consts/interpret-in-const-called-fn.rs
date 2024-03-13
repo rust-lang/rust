@@ -1,16 +1,19 @@
+//@revisions: noopt opt
+//@[opt] compile-flags: -O
 //! Make sure we error on erroneous consts even if they are unused.
-#![allow(unconditional_panic)]
 
-struct PrintName<T>(T);
-impl<T> PrintName<T> {
-    const VOID: () = [()][2]; //~ERROR evaluation of `PrintName::<i32>::VOID` failed
+struct Fail<T>(T);
+impl<T> Fail<T> {
+    const C: () = panic!(); //~ERROR evaluation of `Fail::<i32>::C` failed
 }
 
+#[inline(never)]
 const fn no_codegen<T>() {
     if false {
         // This bad constant is only used in dead code in a no-codegen function... and yet we still
         // must make sure that the build fails.
-            PrintName::<T>::VOID; //~ constant
+        // This relies on const-eval evaluating all `required_consts` of `const fn`.
+        Fail::<T>::C; //~ constant
     }
 }
 
