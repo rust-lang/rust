@@ -614,7 +614,7 @@ struct Foo<'a, T> {
 }
 
 impl<'a, T> Foo<'a, T> {
-    $0fn bar(self, mut b: Vec<&'a Bar<T, 'a>>) -> &'a Bar<T, 'a> {
+    $0fn bar(self, mut b: Vec<&'a Bar<'a, T>>) -> &'a Bar<'a, T> {
         self.field.bar(b)
     }
 }

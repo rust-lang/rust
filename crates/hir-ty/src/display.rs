@@ -3,6 +3,7 @@
 //! purposes.
 
 use std::{
+    cmp::Ordering,
     fmt::{self, Debug},
     mem::size_of,
 };
@@ -953,11 +954,17 @@ impl HirDisplay for Ty {
                         // `parameters` are in the order of fn's params (including impl traits),
                         // parent's params (those from enclosing impl or trait, if any).
                         let parameters = parameters.as_slice(Interner);
-                        let fn_params_len =
-                            self_param + type_params + const_params + lifetime_params;
+                        let fn_params_len = self_param + type_params + const_params;
+                        // This will give slice till last type or const
                         let fn_params = parameters.get(..fn_params_len);
+                        let fn_lt_params =
+                            parameters.get(fn_params_len..(fn_params_len + lifetime_params));
                         let parent_params = parameters.get(parameters.len() - parent_params..);
-                        let params = parent_params.into_iter().chain(fn_params).flatten();
+                        let params = parent_params
+                            .into_iter()
+                            .chain(fn_lt_params)
+                            .chain(fn_params)
+                            .flatten();
                         write!(f, "<")?;
                         f.write_joined(params, ", ")?;
                         write!(f, ">")?;
@@ -1317,6 +1324,15 @@ fn hir_fmt_generics(
 ) -> Result<(), HirDisplayError> {
     let db = f.db;
     if parameters.len(Interner) > 0 {
+        let param_compare =
+            |a: &GenericArg, b: &GenericArg| match (a.data(Interner), b.data(Interner)) {
+                (crate::GenericArgData::Lifetime(_), crate::GenericArgData::Lifetime(_)) => {
+                    Ordering::Equal
+                }
+                (crate::GenericArgData::Lifetime(_), _) => Ordering::Less,
+                (_, crate::GenericArgData::Lifetime(_)) => Ordering::Less,
+                (_, _) => Ordering::Equal,
+            };
         let parameters_to_write = if f.display_target.is_source_code() || f.omit_verbose_types() {
             match generic_def
                 .map(|generic_def_id| db.generic_defaults(generic_def_id))
@@ -1367,6 +1383,9 @@ fn hir_fmt_generics(
         } else {
             parameters.as_slice(Interner)
         };
+        //FIXME: Should handle when creating substitutions
+        let mut parameters_to_write = parameters_to_write.to_vec();
+        parameters_to_write.sort_by(param_compare);
         if !parameters_to_write.is_empty() {
             write!(f, "<")?;
             let mut first = true;
