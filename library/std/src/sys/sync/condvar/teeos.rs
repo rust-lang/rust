@@ -1,7 +1,7 @@
 use crate::cell::UnsafeCell;
 use crate::ptr;
 use crate::sync::atomic::{AtomicPtr, Ordering::Relaxed};
-use crate::sys::locks::mutex::{self, Mutex};
+use crate::sys::sync::mutex::{self, Mutex};
 use crate::sys::time::TIMESPEC_MAX;
 use crate::sys_common::lazy_box::{LazyBox, LazyInit};
 use crate::time::Duration;

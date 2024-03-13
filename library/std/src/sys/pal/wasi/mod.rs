@@ -41,8 +41,6 @@ pub mod time;
 
 cfg_if::cfg_if! {
     if #[cfg(not(target_feature = "atomics"))] {
-        #[path = "../unsupported/once.rs"]
-        pub mod once;
         #[path = "../unsupported/thread_parking.rs"]
         pub mod thread_parking;
     }

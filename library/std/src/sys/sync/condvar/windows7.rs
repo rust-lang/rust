@@ -1,7 +1,7 @@
 use crate::cell::UnsafeCell;
 use crate::sys::c;
-use crate::sys::locks::{mutex, Mutex};
 use crate::sys::os;
+use crate::sys::sync::{mutex, Mutex};
 use crate::time::Duration;
 
 pub struct Condvar {

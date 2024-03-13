@@ -1006,15 +1006,17 @@ impl<'p, Cx: TypeCx> PatStack<'p, Cx> {
         ctor_arity: usize,
         ctor_is_relevant: bool,
     ) -> Result<PatStack<'p, Cx>, Cx::Error> {
-        // We pop the head pattern and push the new fields extracted from the arguments of
-        // `self.head()`.
-        let mut new_pats = self.head().specialize(ctor, ctor_arity);
-        if new_pats.len() != ctor_arity {
+        let head_pat = self.head();
+        if head_pat.as_pat().is_some_and(|pat| pat.arity() > ctor_arity) {
+            // Arity can be smaller in case of variable-length slices, but mustn't be larger.
             return Err(cx.bug(format_args!(
-                "uncaught type error: pattern {:?} has inconsistent arity (expected arity {ctor_arity})",
-                self.head().as_pat().unwrap()
+                "uncaught type error: pattern {:?} has inconsistent arity (expected arity <= {ctor_arity})",
+                head_pat.as_pat().unwrap()
             )));
         }
+        // We pop the head pattern and push the new fields extracted from the arguments of
+        // `self.head()`.
+        let mut new_pats = head_pat.specialize(ctor, ctor_arity);
         new_pats.extend_from_slice(&self.pats[1..]);
         // `ctor` is relevant for this row if it is the actual constructor of this row, or if the
         // row has a wildcard and `ctor` is relevant for wildcards.
@@ -1706,7 +1708,8 @@ fn collect_pattern_usefulness<'p, Cx: TypeCx>(
     ) -> bool {
         if useful_subpatterns.contains(&pat.uid) {
             true
-        } else if pat.is_or_pat() && pat.iter_fields().any(|f| pat_is_useful(useful_subpatterns, f))
+        } else if pat.is_or_pat()
+            && pat.iter_fields().any(|f| pat_is_useful(useful_subpatterns, &f.pat))
         {
             // We always expand or patterns in the matrix, so we will never see the actual
             // or-pattern (the one with constructor `Or`) in the column. As such, it will not be

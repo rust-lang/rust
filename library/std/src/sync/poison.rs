@@ -270,6 +270,8 @@ impl<T> fmt::Debug for TryLockError<T> {
         match *self {
             #[cfg(panic = "unwind")]
             TryLockError::Poisoned(..) => "Poisoned(..)".fmt(f),
+            #[cfg(not(panic = "unwind"))]
+            TryLockError::Poisoned(ref p) => match p._never {},
             TryLockError::WouldBlock => "WouldBlock".fmt(f),
         }
     }
@@ -281,6 +283,8 @@ impl<T> fmt::Display for TryLockError<T> {
         match *self {
             #[cfg(panic = "unwind")]
             TryLockError::Poisoned(..) => "poisoned lock: another task failed inside",
+            #[cfg(not(panic = "unwind"))]
+            TryLockError::Poisoned(ref p) => match p._never {},
             TryLockError::WouldBlock => "try_lock failed because the operation would block",
         }
         .fmt(f)
@@ -294,6 +298,8 @@ impl<T> Error for TryLockError<T> {
         match *self {
             #[cfg(panic = "unwind")]
             TryLockError::Poisoned(ref p) => p.description(),
+            #[cfg(not(panic = "unwind"))]
+            TryLockError::Poisoned(ref p) => match p._never {},
             TryLockError::WouldBlock => "try_lock failed because the operation would block",
         }
     }
@@ -303,6 +309,8 @@ impl<T> Error for TryLockError<T> {
         match *self {
             #[cfg(panic = "unwind")]
             TryLockError::Poisoned(ref p) => Some(p),
+            #[cfg(not(panic = "unwind"))]
+            TryLockError::Poisoned(ref p) => match p._never {},
             _ => None,
         }
     }

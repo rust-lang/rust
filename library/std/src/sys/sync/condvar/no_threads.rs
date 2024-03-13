@@ -1,4 +1,4 @@
-use crate::sys::locks::Mutex;
+use crate::sys::sync::Mutex;
 use crate::time::Duration;
 
 pub struct Condvar {}

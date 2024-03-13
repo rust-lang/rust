@@ -423,7 +423,7 @@ pub enum SliceKind {
 }
 
 impl SliceKind {
-    fn arity(self) -> usize {
+    pub fn arity(self) -> usize {
         match self {
             FixedLen(length) => length,
             VarLen(prefix, suffix) => prefix + suffix,
@@ -462,7 +462,7 @@ impl Slice {
         Slice { array_len, kind }
     }
 
-    pub(crate) fn arity(self) -> usize {
+    pub fn arity(self) -> usize {
         self.kind.arity()
     }
 
