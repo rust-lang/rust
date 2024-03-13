@@ -8,7 +8,7 @@ mod tests;
 
 use crate::fmt;
 use crate::panic::{RefUnwindSafe, UnwindSafe};
-use crate::sys_common::once as sys;
+use crate::sys::sync as sys;
 
 /// A synchronization primitive which can be used to run a one-time global
 /// initialization. Useful for one-time initialization for FFI or related

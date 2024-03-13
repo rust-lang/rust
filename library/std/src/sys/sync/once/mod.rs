@@ -30,6 +30,7 @@ cfg_if::cfg_if! {
         mod queue;
         pub use queue::{Once, OnceState};
     } else {
-        pub use crate::sys::once::{Once, OnceState};
+        mod no_threads;
+        pub use no_threads::{Once, OnceState};
     }
 }

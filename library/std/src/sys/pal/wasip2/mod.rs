@@ -51,10 +51,6 @@ cfg_if::cfg_if! {
     if #[cfg(target_feature = "atomics")] {
         compile_error!("The wasm32-wasip2 target does not support atomics");
     } else {
-        #[path = "../unsupported/locks/mod.rs"]
-        pub mod locks;
-        #[path = "../unsupported/once.rs"]
-        pub mod once;
         #[path = "../unsupported/thread_parking.rs"]
         pub mod thread_parking;
     }
