@@ -11,8 +11,6 @@ pub struct MirPatch<'tcx> {
     resume_block: Option<BasicBlock>,
     // Only for unreachable in cleanup path.
     unreachable_cleanup_block: Option<BasicBlock>,
-    // Only for unreachable not in cleanup path.
-    unreachable_no_cleanup_block: Option<BasicBlock>,
     // Cached block for UnwindTerminate (with reason)
     terminate_block: Option<(BasicBlock, UnwindTerminateReason)>,
     body_span: Span,
@@ -29,7 +27,6 @@ impl<'tcx> MirPatch<'tcx> {
             next_local: body.local_decls.len(),
             resume_block: None,
             unreachable_cleanup_block: None,
-            unreachable_no_cleanup_block: None,
             terminate_block: None,
             body_span: body.span,
         };
@@ -46,12 +43,9 @@ impl<'tcx> MirPatch<'tcx> {
             // Check if we already have an unreachable block
             if matches!(block.terminator().kind, TerminatorKind::Unreachable)
                 && block.statements.is_empty()
+                && block.is_cleanup
             {
-                if block.is_cleanup {
-                    result.unreachable_cleanup_block = Some(bb);
-                } else {
-                    result.unreachable_no_cleanup_block = Some(bb);
-                }
+                result.unreachable_cleanup_block = Some(bb);
                 continue;
             }
 
@@ -98,23 +92,6 @@ impl<'tcx> MirPatch<'tcx> {
             is_cleanup: true,
         });
         self.unreachable_cleanup_block = Some(bb);
-        bb
-    }
-
-    pub fn unreachable_no_cleanup_block(&mut self) -> BasicBlock {
-        if let Some(bb) = self.unreachable_no_cleanup_block {
-            return bb;
-        }
-
-        let bb = self.new_block(BasicBlockData {
-            statements: vec![],
-            terminator: Some(Terminator {
-                source_info: SourceInfo::outermost(self.body_span),
-                kind: TerminatorKind::Unreachable,
-            }),
-            is_cleanup: false,
-        });
-        self.unreachable_no_cleanup_block = Some(bb);
         bb
     }
 
