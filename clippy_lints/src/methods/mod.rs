@@ -3590,7 +3590,7 @@ declare_clippy_lint! {
     /// ```
     #[clippy::version = "1.73.0"]
     pub READONLY_WRITE_LOCK,
-    nursery,
+    perf,
     "acquiring a write lock when a read lock would work"
 }
 
