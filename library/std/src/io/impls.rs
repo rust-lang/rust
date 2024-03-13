@@ -329,8 +329,9 @@ impl Read for &[u8] {
     #[inline]
     fn read_to_string(&mut self, buf: &mut String) -> io::Result<usize> {
         let content = str::from_utf8(self).map_err(|_| io::Error::INVALID_UTF8)?;
-        buf.push_str(content);
         let len = self.len();
+        buf.try_reserve(len)?;
+        buf.push_str(content);
         *self = &self[len..];
         Ok(len)
     }
@@ -478,6 +479,7 @@ impl<A: Allocator> Read for VecDeque<u8, A> {
         let len = self.len();
         let content = self.make_contiguous();
         let string = str::from_utf8(content).map_err(|_| io::Error::INVALID_UTF8)?;
+        buf.try_reserve(len)?;
         buf.push_str(string);
         self.clear();
         Ok(len)

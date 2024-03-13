@@ -364,6 +364,27 @@ where
         self.pos += n as u64;
         Ok(())
     }
+
+    fn read_to_end(&mut self, buf: &mut Vec<u8>) -> io::Result<usize> {
+        let content = self.remaining_slice();
+        let len = content.len();
+        buf.try_reserve(len)?;
+        buf.extend_from_slice(content);
+        self.pos += len as u64;
+
+        Ok(len)
+    }
+
+    fn read_to_string(&mut self, buf: &mut String) -> io::Result<usize> {
+        let content =
+            crate::str::from_utf8(self.remaining_slice()).map_err(|_| io::Error::INVALID_UTF8)?;
+        let len = content.len();
+        buf.try_reserve(len)?;
+        buf.push_str(content);
+        self.pos += len as u64;
+
+        Ok(len)
+    }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
