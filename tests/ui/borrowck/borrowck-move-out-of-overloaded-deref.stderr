@@ -9,6 +9,11 @@ help: consider removing the dereference here
 LL -     let _x = *Rc::new("hi".to_string());
 LL +     let _x = Rc::new("hi".to_string());
    |
+help: consider cloning the value if the performance cost is acceptable
+   |
+LL -     let _x = *Rc::new("hi".to_string());
+LL +     let _x = Rc::new("hi".to_string()).clone();
+   |
 
 error: aborting due to 1 previous error
 
