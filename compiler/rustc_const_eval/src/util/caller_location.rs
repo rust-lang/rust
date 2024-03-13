@@ -64,8 +64,7 @@ pub(crate) fn const_caller_location_provider(
     );
 
     let loc_place = alloc_caller_location(&mut ecx, file, line, col);
-    if intern_const_alloc_recursive(&mut ecx, InternKind::Constant, &loc_place).is_err() {
-        bug!("intern_const_alloc_recursive should not error in this case")
-    }
+    patch_mutability_of_allocs(&mut ecx, InternKind::Constant, &loc_place).unwrap();
+    intern_const_alloc_recursive(&mut ecx, InternKind::Constant, &loc_place).unwrap();
     mir::ConstValue::Scalar(Scalar::from_maybe_pointer(loc_place.ptr(), &tcx))
 }

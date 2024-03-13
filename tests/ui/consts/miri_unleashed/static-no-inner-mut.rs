@@ -7,23 +7,14 @@
 use std::sync::atomic::*;
 
 static REF: &AtomicI32 = &AtomicI32::new(42);
-//~^ ERROR mutable pointer in final value
-//~| WARNING this was previously accepted by the compiler
+//~^ ERROR it is undefined behavior to use this value
 
 static REFMUT: &mut i32 = &mut 0;
-//~^ ERROR mutable pointer in final value
-//~| WARNING this was previously accepted by the compiler
-//~| ERROR it is undefined behavior to use this value
+//~^ ERROR it is undefined behavior to use this value
 
 // Different way of writing this that avoids promotion.
-static REF2: &AtomicI32 = {let x = AtomicI32::new(42); &{x}};
-//~^ ERROR mutable pointer in final value
-//~| WARNING this was previously accepted by the compiler
-
-static REFMUT2: &mut i32 = {let mut x = 0; &mut {x}};
-//~^ ERROR mutable pointer in final value
-//~| WARNING this was previously accepted by the compiler
-//~| ERROR it is undefined behavior to use this value
+static REF2: &AtomicI32 = {let x = AtomicI32::new(42); &{x}}; //~ERROR it is undefined behavior to use this value
+static REFMUT2: &mut i32 = {let mut x = 0; &mut {x}}; //~ERROR it is undefined behavior to use this value
 
 // This one is obvious, since it is non-Sync. (It also suppresses the other errors, so it is
 // commented out.)

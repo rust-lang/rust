@@ -26,10 +26,12 @@ use rustc_target::abi::{
 
 use std::hash::Hash;
 
+use crate::interpret::AllocKind;
+
 use super::{
-    format_interp_error, machine::AllocMap, AllocId, CheckInAllocMsg, GlobalAlloc, ImmTy,
-    Immediate, InterpCx, InterpResult, MPlaceTy, Machine, MemPlaceMeta, OpTy, Pointer, Projectable,
-    Scalar, ValueVisitor,
+    format_interp_error, AllocId, CheckInAllocMsg, GlobalAlloc, ImmTy, Immediate, InterpCx,
+    InterpResult, MPlaceTy, Machine, MemPlaceMeta, OpTy, Pointer, Projectable, Scalar,
+    ValueVisitor,
 };
 
 // for the validation errors
@@ -450,10 +452,8 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValidityVisitor<'rt, 'mir, '
             if let Ok((alloc_id, _offset, _prov)) = self.ecx.ptr_try_get_alloc_id(place.ptr()) {
                 let mut skip_recursive_check = false;
                 // Let's see what kind of memory this points to.
-                // `unwrap` since dangling pointers have already been handled.
-                let alloc_kind = self.ecx.tcx.try_get_global_alloc(alloc_id).unwrap();
-                let alloc_actual_mutbl = match alloc_kind {
-                    GlobalAlloc::Static(did) => {
+                let alloc_actual_mutbl = match self.ecx.tcx.try_get_global_alloc(alloc_id) {
+                    Some(GlobalAlloc::Static(did)) => {
                         // Special handling for pointers to statics (irrespective of their type).
                         assert!(!self.ecx.tcx.is_thread_local_static(did));
                         assert!(self.ecx.tcx.is_static(did));
@@ -504,11 +504,19 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValidityVisitor<'rt, 'mir, '
                             (Mutability::Not, false) => Mutability::Not,
                         }
                     }
-                    GlobalAlloc::Memory(alloc) => alloc.inner().mutability,
-                    GlobalAlloc::Function(..) | GlobalAlloc::VTable(..) => {
+                    Some(GlobalAlloc::Memory(alloc)) => alloc.inner().mutability,
+                    Some(GlobalAlloc::Function(..) | GlobalAlloc::VTable(..)) => {
                         // These are immutable, we better don't allow mutable pointers here.
                         Mutability::Not
                     }
+                    None => match self.ecx.get_alloc_info(alloc_id).2 {
+                        AllocKind::LiveData => self.ecx.get_alloc_mutability(alloc_id).unwrap(),
+                        AllocKind::Function | AllocKind::VTable => Mutability::Not,
+                        AllocKind::Dead => throw_validation_failure!(
+                            self.path,
+                            DanglingPtrUseAfterFree { ptr_kind }
+                        ),
+                    },
                 };
                 // Mutability check.
                 // If this allocation has size zero, there is no actual mutability here.
@@ -707,13 +715,7 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValidityVisitor<'rt, 'mir, '
     fn in_mutable_memory(&self, op: &OpTy<'tcx, M::Provenance>) -> bool {
         if let Some(mplace) = op.as_mplace_or_imm().left() {
             if let Some(alloc_id) = mplace.ptr().provenance.and_then(|p| p.get_alloc_id()) {
-                let mutability = match self.ecx.tcx.global_alloc(alloc_id) {
-                    GlobalAlloc::Static(_) => {
-                        self.ecx.memory.alloc_map.get(alloc_id).unwrap().1.mutability
-                    }
-                    GlobalAlloc::Memory(alloc) => alloc.inner().mutability,
-                    _ => span_bug!(self.ecx.tcx.span, "not a memory allocation"),
-                };
+                let mutability = self.ecx.get_alloc_mutability(alloc_id).unwrap();
                 return mutability == Mutability::Mut;
             }
         }

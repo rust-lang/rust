@@ -16,12 +16,12 @@ use super::{CanAccessMutGlobal, CompileTimeEvalContext, CompileTimeInterpreter};
 use crate::const_eval::CheckAlignment;
 use crate::errors;
 use crate::errors::ConstEvalError;
-use crate::interpret::eval_nullary_intrinsic;
 use crate::interpret::{
     create_static_alloc, intern_const_alloc_recursive, CtfeValidationMode, GlobalId, Immediate,
     InternKind, InterpCx, InterpError, InterpResult, MPlaceTy, MemoryKind, OpTy, RefTracking,
     StackPopCleanup,
 };
+use crate::interpret::{eval_nullary_intrinsic, patch_mutability_of_allocs};
 
 // Returns a pointer to where the result lives
 #[instrument(level = "trace", skip(ecx, body))]
@@ -81,11 +81,13 @@ fn eval_body_using_ecx<'mir, 'tcx, R: InterpretationResult<'tcx>>(
     // The main interpreter loop.
     while ecx.step()? {}
 
-    // Intern the result
-    intern_const_alloc_recursive(ecx, intern_kind, &ret)?;
+    patch_mutability_of_allocs(ecx, intern_kind, &ret)?;
 
     // Since evaluation had no errors, validate the resulting constant.
-    const_validate_mplace(&ecx, &ret, cid)?;
+    const_validate_mplace(ecx, &ret, cid)?;
+
+    // Intern the result
+    intern_const_alloc_recursive(ecx, intern_kind, &ret)?;
 
     Ok(R::make_result(ret, ecx))
 }

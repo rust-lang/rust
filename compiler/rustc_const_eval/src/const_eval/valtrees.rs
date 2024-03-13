@@ -10,11 +10,11 @@ use super::machine::CompileTimeEvalContext;
 use super::{ValTreeCreationError, ValTreeCreationResult, VALTREE_MAX_NODES};
 use crate::const_eval::CanAccessMutGlobal;
 use crate::errors::MaxNumNodesInConstErr;
-use crate::interpret::MPlaceTy;
 use crate::interpret::{
     intern_const_alloc_recursive, ImmTy, Immediate, InternKind, MemPlaceMeta, MemoryKind, PlaceTy,
     Projectable, Scalar,
 };
+use crate::interpret::{patch_mutability_of_allocs, MPlaceTy};
 
 #[instrument(skip(ecx), level = "debug")]
 fn branches<'tcx>(
@@ -323,6 +323,7 @@ pub fn valtree_to_const_value<'tcx>(
 
             valtree_into_mplace(&mut ecx, &place, valtree);
             dump_place(&ecx, &place);
+            patch_mutability_of_allocs(&mut ecx, InternKind::Constant, &place).unwrap();
             intern_const_alloc_recursive(&mut ecx, InternKind::Constant, &place).unwrap();
 
             op_to_const(&ecx, &place.into(), /* for diagnostics */ false)
@@ -359,6 +360,7 @@ fn valtree_to_ref<'tcx>(
 
     valtree_into_mplace(ecx, &pointee_place, valtree);
     dump_place(ecx, &pointee_place);
+    patch_mutability_of_allocs(ecx, InternKind::Constant, &pointee_place).unwrap();
     intern_const_alloc_recursive(ecx, InternKind::Constant, &pointee_place).unwrap();
 
     pointee_place.to_ref(&ecx.tcx)

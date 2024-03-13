@@ -62,26 +62,13 @@ impl HasStaticRootDefId for const_eval::CompileTimeInterpreter<'_, '_> {
 fn intern_shallow<'rt, 'mir, 'tcx, T, M: CompileTimeMachine<'mir, 'tcx, T>>(
     ecx: &'rt mut InterpCx<'mir, 'tcx, M>,
     alloc_id: AllocId,
-    mutability: Mutability,
 ) -> Result<impl Iterator<Item = CtfeProvenance> + 'tcx, ()> {
     trace!("intern_shallow {:?}", alloc_id);
     // remove allocation
     // FIXME(#120456) - is `swap_remove` correct?
-    let Some((_kind, mut alloc)) = ecx.memory.alloc_map.swap_remove(&alloc_id) else {
+    let Some((_kind, alloc)) = ecx.memory.alloc_map.swap_remove(&alloc_id) else {
         return Err(());
     };
-    // Set allocation mutability as appropriate. This is used by LLVM to put things into
-    // read-only memory, and also by Miri when evaluating other globals that
-    // access this one.
-    match mutability {
-        Mutability::Not => {
-            alloc.mutability = Mutability::Not;
-        }
-        Mutability::Mut => {
-            // This must be already mutable, we won't "un-freeze" allocations ever.
-            assert_eq!(alloc.mutability, Mutability::Mut);
-        }
-    }
     // link the alloc id to the actual allocation
     let alloc = ecx.tcx.mk_const_alloc(alloc);
     if let Some(static_id) = ecx.machine.static_def_id() {
@@ -123,6 +110,77 @@ pub enum InternKind {
     Promoted,
 }
 
+/// Now that evaluation is finished, and we are not going to modify allocations anymore,
+/// recursively mark all allocations as immutable if the item kind calls for it (const/promoted/immut static).
+pub fn patch_mutability_of_allocs<
+    'mir,
+    'tcx: 'mir,
+    M: CompileTimeMachine<'mir, 'tcx, const_eval::MemoryKind>,
+>(
+    ecx: &mut InterpCx<'mir, 'tcx, M>,
+    intern_kind: InternKind,
+    ret: &MPlaceTy<'tcx>,
+) -> Result<(), ErrorGuaranteed> {
+    // We are interning recursively, and for mutability we are distinguishing the "root" allocation
+    // that we are starting in, and all other allocations that we are encountering recursively.
+    let (base_mutability, inner_mutability) = match intern_kind {
+        InternKind::Constant | InternKind::Promoted => {
+            // Completely immutable. Interning anything mutably here can only lead to unsoundness,
+            // since all consts are conceptually independent values but share the same underlying
+            // memory.
+            (Mutability::Not, Mutability::Not)
+        }
+        InternKind::Static(Mutability::Not) => {
+            (
+                // Outermost allocation is mutable if `!Freeze`.
+                if ret.layout.ty.is_freeze(*ecx.tcx, ecx.param_env) {
+                    Mutability::Not
+                } else {
+                    Mutability::Mut
+                },
+                // Inner allocations are never mutable. They can only arise via the "tail
+                // expression" / "outer scope" rule, and we treat them consistently with `const`.
+                Mutability::Not,
+            )
+        }
+        InternKind::Static(Mutability::Mut) => {
+            // Just make everything mutable. We accept code like
+            // `static mut X = &mut [42]`, so even inner allocations need to be mutable.
+            (Mutability::Mut, Mutability::Mut)
+        }
+    };
+    let base_alloc_id = ret.ptr().provenance.unwrap().alloc_id();
+    let mut todo: Vec<_> = {
+        let base_alloc = &mut ecx.memory.alloc_map.get_mut(&base_alloc_id).unwrap().1;
+        base_alloc.mutability = base_mutability;
+        base_alloc.provenance().ptrs().iter().copied().collect()
+    };
+    let mut seen = FxHashSet::default();
+    seen.insert(base_alloc_id);
+    while let Some((_, prov)) = todo.pop() {
+        if !seen.insert(prov.alloc_id()) {
+            // Already processed
+            continue;
+        }
+        let Some((_, alloc)) = &mut ecx.memory.alloc_map.get_mut(&prov.alloc_id()) else {
+            continue;
+        };
+        // We always intern with `inner_mutability`, and furthermore we ensured above that if
+        // that is "immutable", then there are *no* mutable pointers anywhere in the newly
+        // interned memory -- justifying that we can indeed intern immutably. However this also
+        // means we can *not* easily intern immutably here if `prov.immutable()` is true and
+        // `inner_mutability` is `Mut`: there might be other pointers to that allocation, and
+        // we'd have to somehow check that they are *all* immutable before deciding that this
+        // allocation can be made immutable. In the future we could consider analyzing all
+        // pointers before deciding which allocations can be made immutable; but for now we are
+        // okay with losing some potential for immutability here. This can anyway only affect
+        // `static mut`.
+        alloc.mutability = inner_mutability;
+        todo.extend(alloc.provenance().ptrs().iter().copied());
+    }
+    Ok(())
+}
+
 /// Intern `ret` and everything it references.
 ///
 /// This *cannot raise an interpreter error*. Doing so is left to validation, which
@@ -139,50 +197,23 @@ pub fn intern_const_alloc_recursive<
     intern_kind: InternKind,
     ret: &MPlaceTy<'tcx>,
 ) -> Result<(), ErrorGuaranteed> {
-    // We are interning recursively, and for mutability we are distinguishing the "root" allocation
-    // that we are starting in, and all other allocations that we are encountering recursively.
-    let (base_mutability, inner_mutability, is_static) = match intern_kind {
-        InternKind::Constant | InternKind::Promoted => {
-            // Completely immutable. Interning anything mutably here can only lead to unsoundness,
-            // since all consts are conceptually independent values but share the same underlying
-            // memory.
-            (Mutability::Not, Mutability::Not, false)
-        }
-        InternKind::Static(Mutability::Not) => {
-            (
-                // Outermost allocation is mutable if `!Freeze`.
-                if ret.layout.ty.is_freeze(*ecx.tcx, ecx.param_env) {
-                    Mutability::Not
-                } else {
-                    Mutability::Mut
-                },
-                // Inner allocations are never mutable. They can only arise via the "tail
-                // expression" / "outer scope" rule, and we treat them consistently with `const`.
-                Mutability::Not,
-                true,
-            )
-        }
-        InternKind::Static(Mutability::Mut) => {
-            // Just make everything mutable. We accept code like
-            // `static mut X = &mut [42]`, so even inner allocations need to be mutable.
-            (Mutability::Mut, Mutability::Mut, true)
-        }
+    let (inner_mutability, is_static) = match intern_kind {
+        InternKind::Constant | InternKind::Promoted => (Mutability::Not, false),
+        InternKind::Static(mutability) => (mutability, true),
     };
 
     // Intern the base allocation, and initialize todo list for recursive interning.
     let base_alloc_id = ret.ptr().provenance.unwrap().alloc_id();
-    trace!(?base_alloc_id, ?base_mutability);
+    trace!(?base_alloc_id);
     // First we intern the base allocation, as it requires a different mutability.
     // This gives us the initial set of nested allocations, which will then all be processed
     // recursively in the loop below.
     let mut todo: Vec<_> = if is_static {
         // Do not steal the root allocation, we need it later to create the return value of `eval_static_initializer`.
-        // But still change its mutability to match the requested one.
-        let alloc = ecx.memory.alloc_map.get_mut(&base_alloc_id).unwrap();
-        alloc.1.mutability = base_mutability;
+        let alloc = ecx.memory.alloc_map.get(&base_alloc_id).unwrap();
         alloc.1.provenance().ptrs().iter().map(|&(_, prov)| prov).collect()
     } else {
-        intern_shallow(ecx, base_alloc_id, base_mutability).unwrap().collect()
+        intern_shallow(ecx, base_alloc_id).unwrap().collect()
     };
     // We need to distinguish "has just been interned" from "was already in `tcx`",
     // so we track this in a separate set.
@@ -248,17 +279,7 @@ pub fn intern_const_alloc_recursive<
             continue;
         }
         just_interned.insert(alloc_id);
-        // We always intern with `inner_mutability`, and furthermore we ensured above that if
-        // that is "immutable", then there are *no* mutable pointers anywhere in the newly
-        // interned memory -- justifying that we can indeed intern immutably. However this also
-        // means we can *not* easily intern immutably here if `prov.immutable()` is true and
-        // `inner_mutability` is `Mut`: there might be other pointers to that allocation, and
-        // we'd have to somehow check that they are *all* immutable before deciding that this
-        // allocation can be made immutable. In the future we could consider analyzing all
-        // pointers before deciding which allocations can be made immutable; but for now we are
-        // okay with losing some potential for immutability here. This can anyway only affect
-        // `static mut`.
-        todo.extend(intern_shallow(ecx, alloc_id, inner_mutability).map_err(|()| {
+        todo.extend(intern_shallow(ecx, alloc_id).map_err(|()| {
             ecx.tcx.dcx().emit_err(DanglingPtrInFinal { span: ecx.tcx.span, kind: intern_kind })
         })?);
     }
@@ -291,7 +312,8 @@ pub fn intern_const_alloc_for_constprop<
         return Ok(());
     }
     // Move allocation to `tcx`.
-    for _ in intern_shallow(ecx, alloc_id, Mutability::Not).map_err(|()| err_ub!(DeadLocal))? {
+    ecx.memory.alloc_map.get_mut(&alloc_id).unwrap().1.mutability = Mutability::Not;
+    for _ in intern_shallow(ecx, alloc_id).map_err(|()| err_ub!(DeadLocal))? {
         // We are not doing recursive interning, so we don't currently support provenance.
         // (If this assertion ever triggers, we should just implement a
         // proper recursive interning loop -- or just call `intern_const_alloc_recursive`.
@@ -318,7 +340,8 @@ impl<'mir, 'tcx: 'mir, M: super::intern::CompileTimeMachine<'mir, 'tcx, !>>
         let dest = self.allocate(layout, MemoryKind::Stack)?;
         f(self, &dest.clone().into())?;
         let alloc_id = dest.ptr().provenance.unwrap().alloc_id(); // this was just allocated, it must have provenance
-        for prov in intern_shallow(self, alloc_id, Mutability::Not).unwrap() {
+        self.memory.alloc_map.get_mut(&alloc_id).unwrap().1.mutability = Mutability::Not;
+        for prov in intern_shallow(self, alloc_id).unwrap() {
             // We are not doing recursive interning, so we don't currently support provenance.
             // (If this assertion ever triggers, we should just implement a
             // proper recursive interning loop -- or just call `intern_const_alloc_recursive`.
