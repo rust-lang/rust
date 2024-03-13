@@ -420,9 +420,9 @@ impl<'p, 'tcx> MatchVisitor<'p, 'tcx> {
             {
                 let mut redundant_subpats = redundant_subpats.clone();
                 // Emit lints in the order in which they occur in the file.
-                redundant_subpats.sort_unstable_by_key(|pat| pat.data().unwrap().span);
+                redundant_subpats.sort_unstable_by_key(|pat| pat.data().span);
                 for pat in redundant_subpats {
-                    report_unreachable_pattern(cx, arm.arm_data, pat.data().unwrap().span, None)
+                    report_unreachable_pattern(cx, arm.arm_data, pat.data().span, None)
                 }
             }
         }
@@ -905,10 +905,10 @@ fn report_arm_reachability<'p, 'tcx>(
     let mut catchall = None;
     for (arm, is_useful) in report.arm_usefulness.iter() {
         if matches!(is_useful, Usefulness::Redundant) {
-            report_unreachable_pattern(cx, arm.arm_data, arm.pat.data().unwrap().span, catchall)
+            report_unreachable_pattern(cx, arm.arm_data, arm.pat.data().span, catchall)
         }
         if !arm.has_guard && catchall.is_none() && pat_is_catchall(arm.pat) {
-            catchall = Some(arm.pat.data().unwrap().span);
+            catchall = Some(arm.pat.data().span);
         }
     }
 }
@@ -917,7 +917,9 @@ fn report_arm_reachability<'p, 'tcx>(
 fn pat_is_catchall(pat: &DeconstructedPat<'_, '_>) -> bool {
     match pat.ctor() {
         Constructor::Wildcard => true,
-        Constructor::Struct | Constructor::Ref => pat.iter_fields().all(|pat| pat_is_catchall(pat)),
+        Constructor::Struct | Constructor::Ref => {
+            pat.iter_fields().all(|ipat| pat_is_catchall(&ipat.pat))
+        }
         _ => false,
     }
 }
