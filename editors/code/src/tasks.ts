@@ -9,7 +9,7 @@ import { unwrapUndefinable } from "./undefinable";
 export const TASK_TYPE = "cargo";
 export const TASK_SOURCE = "rust";
 
-export interface CargoTaskDefinition extends vscode.TaskDefinition {
+export interface RustTargetDefinition extends vscode.TaskDefinition {
     command?: string;
     args?: string[];
     cwd?: string;
@@ -17,7 +17,7 @@ export interface CargoTaskDefinition extends vscode.TaskDefinition {
     overrideCargo?: string;
 }
 
-class CargoTaskProvider implements vscode.TaskProvider {
+class RustTaskProvider implements vscode.TaskProvider {
     private readonly config: Config;
 
     constructor(config: Config) {
@@ -42,7 +42,7 @@ class CargoTaskProvider implements vscode.TaskProvider {
         const tasks: vscode.Task[] = [];
         for (const workspaceTarget of vscode.workspace.workspaceFolders || []) {
             for (const def of defs) {
-                const vscodeTask = await buildCargoTask(
+                const vscodeTask = await buildRustTask(
                     workspaceTarget,
                     { type: TASK_TYPE, command: def.command },
                     `cargo ${def.command}`,
@@ -63,11 +63,11 @@ class CargoTaskProvider implements vscode.TaskProvider {
         // we need to inform VSCode how to execute that command by creating
         // a ShellExecution for it.
 
-        const definition = task.definition as CargoTaskDefinition;
+        const definition = task.definition as RustTargetDefinition;
 
         if (definition.type === TASK_TYPE && definition.command) {
             const args = [definition.command].concat(definition.args ?? []);
-            return await buildCargoTask(
+            return await buildRustTask(
                 task.scope,
                 definition,
                 task.name,
@@ -81,9 +81,9 @@ class CargoTaskProvider implements vscode.TaskProvider {
     }
 }
 
-export async function buildCargoTask(
+export async function buildRustTask(
     scope: vscode.WorkspaceFolder | vscode.TaskScope | undefined,
-    definition: CargoTaskDefinition,
+    definition: RustTargetDefinition,
     name: string,
     args: string[],
     problemMatcher: string[],
@@ -138,6 +138,6 @@ export async function buildCargoTask(
 }
 
 export function activateTaskProvider(config: Config): vscode.Disposable {
-    const provider = new CargoTaskProvider(config);
+    const provider = new RustTaskProvider(config);
     return vscode.tasks.registerTaskProvider(TASK_TYPE, provider);
 }
