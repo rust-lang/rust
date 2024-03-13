@@ -1002,20 +1002,22 @@ impl<'a> Parser<'a> {
         match self.token.uninterpolate().kind {
             token::Ident(..) => self.parse_dot_suffix(base, lo),
             token::Literal(token::Lit { kind: token::Integer, symbol, suffix }) => {
-                Ok(self.parse_expr_tuple_field_access(lo, base, symbol, suffix, None))
+                self.bump();
+                Ok(self.parse_expr_tuple_field_access(lo, base, symbol, suffix))
             }
             token::Literal(token::Lit { kind: token::Float, symbol, suffix }) => {
                 Ok(match self.break_up_float(symbol, self.token.span) {
                     // 1e2
                     DestructuredFloat::Single(sym, _sp) => {
-                        self.parse_expr_tuple_field_access(lo, base, sym, suffix, None)
+                        self.bump();
+                        self.parse_expr_tuple_field_access(lo, base, sym, suffix)
                     }
                     // 1.
                     DestructuredFloat::TrailingDot(sym, ident_span, dot_span) => {
                         assert!(suffix.is_none());
                         self.token = Token::new(token::Ident(sym, IdentIsRaw::No), ident_span);
-                        let next_token = (Token::new(token::Dot, dot_span), self.token_spacing);
-                        self.parse_expr_tuple_field_access(lo, base, sym, None, Some(next_token))
+                        self.bump_with((Token::new(token::Dot, dot_span), self.token_spacing));
+                        self.parse_expr_tuple_field_access(lo, base, sym, None)
                     }
                     // 1.2 | 1.2e3
                     DestructuredFloat::MiddleDot(
@@ -1028,18 +1030,13 @@ impl<'a> Parser<'a> {
                         self.token = Token::new(token::Ident(symbol1, IdentIsRaw::No), ident1_span);
                         // This needs to be `Spacing::Alone` to prevent regressions.
                         // See issue #76399 and PR #76285 for more details
-                        let next_token1 = (Token::new(token::Dot, dot_span), Spacing::Alone);
-                        let base1 = self.parse_expr_tuple_field_access(
-                            lo,
-                            base,
-                            symbol1,
-                            None,
-                            Some(next_token1),
-                        );
+                        self.bump_with((Token::new(token::Dot, dot_span), Spacing::Alone));
+                        let base1 = self.parse_expr_tuple_field_access(lo, base, symbol1, None);
                         let next_token2 =
                             Token::new(token::Ident(symbol2, IdentIsRaw::No), ident2_span);
                         self.bump_with((next_token2, self.token_spacing)); // `.`
-                        self.parse_expr_tuple_field_access(lo, base1, symbol2, suffix, None)
+                        self.bump();
+                        self.parse_expr_tuple_field_access(lo, base1, symbol2, suffix)
                     }
                     DestructuredFloat::Error => base,
                 })
@@ -1263,12 +1260,7 @@ impl<'a> Parser<'a> {
         base: P<Expr>,
         field: Symbol,
         suffix: Option<Symbol>,
-        next_token: Option<(Token, Spacing)>,
     ) -> P<Expr> {
-        match next_token {
-            Some(next_token) => self.bump_with(next_token),
-            None => self.bump(),
-        }
         let span = self.prev_token.span;
         let field = ExprKind::Field(base, Ident::new(field, span));
         if let Some(suffix) = suffix {
