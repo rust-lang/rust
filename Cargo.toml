@@ -99,12 +99,15 @@ overflow-checks = false
 # (more data to chew through) and binaries to be larger without really all that
 # much benefit. This section turns them all to down to have no debuginfo which
 # helps to improve link times a little bit.
+# For the same reason, we also use opt-level=s to save binary size, at a small
+# performance cost.
 [profile.release.package]
-addr2line.debug = 0
-adler.debug = 0
-gimli.debug = 0
-miniz_oxide.debug = 0
-object.debug = 0
+addr2line = { debug = 0, opt-level = 's' }
+adler = { debug = 0, opt-level = 's' }
+gimli = { debug = 0, opt-level = 's' }
+miniz_oxide = { debug = 0, opt-level = 's' }
+object = { debug = 0, opt-level = 's' }
+rustc-demangle = { debug = 0, opt-level = 's' }
 
 # These are very thin wrappers around executing lld with the right binary name.
 # Basically nothing within them can go wrong without having been explicitly logged anyway.
