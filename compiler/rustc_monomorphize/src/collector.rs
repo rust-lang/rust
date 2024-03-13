@@ -735,14 +735,16 @@ impl<'a, 'tcx> MirUsedCollector<'a, 'tcx> {
 
 impl<'a, 'tcx> MirVisitor<'tcx> for MirUsedCollector<'a, 'tcx> {
     fn visit_body(&mut self, body: &mir::Body<'tcx>) {
+        self.super_body(body);
+
+        // Go over `required_items` *after* body, so if an item appears in both we reach it the
+        // "normal" way, via the body.
         for item in &body.required_items {
             // All these also need monomorphization to ensure that if that leads to error, we find
             // those errors.
             let item = self.monomorphize(*item);
             visit_required_item(self.tcx, item, self.output);
         }
-
-        self.super_body(body);
     }
 
     fn visit_rvalue(&mut self, rvalue: &mir::Rvalue<'tcx>, location: Location) {
