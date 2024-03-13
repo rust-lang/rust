@@ -20,7 +20,7 @@ impl Copy for i32 {}
 
 #[no_sanitize(kcfi)]
 pub fn foo(f: fn(i32) -> i32, arg: i32) -> i32 {
-    // CHECK-LABEL: kcfi_emit_kcfi_operand_bundle_attr_no_sanitize::foo
+    // CHECK-LABEL: emit_kcfi_operand_bundle_attr_no_sanitize::foo
     // CHECK:       Function Attrs: {{.*}}
     // CHECK-LABEL: define{{.*}}foo{{.*}}!{{<unknown kind #36>|kcfi_type}} !{{[0-9]+}}
     // CHECK:       start:
