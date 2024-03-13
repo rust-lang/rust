@@ -449,9 +449,13 @@ impl<'a> Parser<'a> {
         prev_token_before_parsing: Token,
         error: &mut Diag<'_>,
     ) {
-        if ((style == PathStyle::Expr && self.parse_paren_comma_seq(|p| p.parse_expr()).is_ok())
-            || (style == PathStyle::Pat
-                && self
+        match style {
+            PathStyle::Expr
+                if let Ok(_) = self
+                    .parse_paren_comma_seq(|p| p.parse_expr())
+                    .map_err(|error| error.cancel()) => {}
+            PathStyle::Pat
+                if let Ok(_) = self
                     .parse_paren_comma_seq(|p| {
                         p.parse_pat_allow_top_alt(
                             None,
@@ -460,25 +464,31 @@ impl<'a> Parser<'a> {
                             CommaRecoveryMode::LikelyTuple,
                         )
                     })
-                    .is_ok()))
-            && !matches!(self.token.kind, token::ModSep | token::RArrow)
-        {
-            error.span_suggestion_verbose(
-                prev_token_before_parsing.span,
-                format!(
-                    "consider removing the `::` here to {}",
-                    match style {
-                        PathStyle::Expr => "call the expression",
-                        PathStyle::Pat => "turn this into a tuple struct pattern",
-                        _ => {
-                            return;
-                        }
-                    }
-                ),
-                "",
-                Applicability::MaybeIncorrect,
-            );
+                    .map_err(|error| error.cancel()) => {}
+            _ => {
+                return;
+            }
         }
+
+        if let token::ModSep | token::RArrow = self.token.kind {
+            return;
+        }
+
+        error.span_suggestion_verbose(
+            prev_token_before_parsing.span,
+            format!(
+                "consider removing the `::` here to {}",
+                match style {
+                    PathStyle::Expr => "call the expression",
+                    PathStyle::Pat => "turn this into a tuple struct pattern",
+                    _ => {
+                        return;
+                    }
+                }
+            ),
+            "",
+            Applicability::MaybeIncorrect,
+        );
     }
 
     /// Parses generic args (within a path segment) with recovery for extra leading angle brackets.
