@@ -375,7 +375,7 @@ impl Build {
             .parent()
             .unwrap()
             .to_path_buf();
-        // Since boostrap is hardlink to deps/boostrap-*, Solaris can sometimes give
+        // Since bootstrap is hardlink to deps/bootstrap-*, Solaris can sometimes give
         // path with deps/ which is bad and needs to be avoided.
         if bootstrap_out.ends_with("deps") {
             bootstrap_out.pop();
