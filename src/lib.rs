@@ -71,7 +71,6 @@ mod emitter;
 mod expr;
 mod format_report_formatter;
 pub(crate) mod formatting;
-pub(crate) mod header;
 mod ignore_path;
 mod imports;
 mod items;
