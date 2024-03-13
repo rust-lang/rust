@@ -325,6 +325,11 @@ fn test_range_advance_by() {
     assert_eq!(Ok(()), r.advance_back_by(usize::MAX));
 
     assert_eq!((r.start, r.end), (0u128 + usize::MAX as u128, u128::MAX - usize::MAX as u128));
+
+    // issue 122420, Step::forward_unchecked was unsound for signed integers
+    let mut r = -128i8..127;
+    assert_eq!(Ok(()), r.advance_by(200));
+    assert_eq!(r.next(), Some(72));
 }
 
 #[test]

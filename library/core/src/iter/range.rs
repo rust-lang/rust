@@ -184,8 +184,25 @@ pub trait Step: Clone + PartialOrd + Sized {
     }
 }
 
-// These are still macro-generated because the integer literals resolve to different types.
-macro_rules! step_identical_methods {
+// Separate impls for signed ranges because the distance within a signed range can be larger
+// than the signed::MAX value. Therefore `as` casting to the signed type would be incorrect.
+macro_rules! step_signed_methods {
+    ($unsigned: ty) => {
+        #[inline]
+        unsafe fn forward_unchecked(start: Self, n: usize) -> Self {
+            // SAFETY: the caller has to guarantee that `start + n` doesn't overflow.
+            unsafe { start.checked_add_unsigned(n as $unsigned).unwrap_unchecked() }
+        }
+
+        #[inline]
+        unsafe fn backward_unchecked(start: Self, n: usize) -> Self {
+            // SAFETY: the caller has to guarantee that `start - n` doesn't overflow.
+            unsafe { start.checked_sub_unsigned(n as $unsigned).unwrap_unchecked() }
+        }
+    };
+}
+
+macro_rules! step_unsigned_methods {
     () => {
         #[inline]
         unsafe fn forward_unchecked(start: Self, n: usize) -> Self {
@@ -198,7 +215,12 @@ macro_rules! step_identical_methods {
             // SAFETY: the caller has to guarantee that `start - n` doesn't overflow.
             unsafe { start.unchecked_sub(n as Self) }
         }
+    };
+}
 
+// These are still macro-generated because the integer literals resolve to different types.
+macro_rules! step_identical_methods {
+    () => {
         #[inline]
         #[allow(arithmetic_overflow)]
         #[rustc_inherit_overflow_checks]
@@ -239,6 +261,7 @@ macro_rules! step_integer_impls {
             #[unstable(feature = "step_trait", reason = "recently redesigned", issue = "42168")]
             impl Step for $u_narrower {
                 step_identical_methods!();
+                step_unsigned_methods!();
 
                 #[inline]
                 fn steps_between(start: &Self, end: &Self) -> Option<usize> {
@@ -271,6 +294,7 @@ macro_rules! step_integer_impls {
             #[unstable(feature = "step_trait", reason = "recently redesigned", issue = "42168")]
             impl Step for $i_narrower {
                 step_identical_methods!();
+                step_signed_methods!($u_narrower);
 
                 #[inline]
                 fn steps_between(start: &Self, end: &Self) -> Option<usize> {
@@ -335,6 +359,7 @@ macro_rules! step_integer_impls {
             #[unstable(feature = "step_trait", reason = "recently redesigned", issue = "42168")]
             impl Step for $u_wider {
                 step_identical_methods!();
+                step_unsigned_methods!();
 
                 #[inline]
                 fn steps_between(start: &Self, end: &Self) -> Option<usize> {
@@ -360,6 +385,7 @@ macro_rules! step_integer_impls {
             #[unstable(feature = "step_trait", reason = "recently redesigned", issue = "42168")]
             impl Step for $i_wider {
                 step_identical_methods!();
+                step_signed_methods!($u_wider);
 
                 #[inline]
                 fn steps_between(start: &Self, end: &Self) -> Option<usize> {
