@@ -4,7 +4,7 @@ include ../tools.mk
 
 all:
 	# Test that we don't have the full path to the PDB file in the binary
-	$(RUSTC) main.rs -g --crate-name my_crate_name --crate-type bin
+	$(RUSTC) main.rs -g --crate-name my_crate_name --crate-type bin -Cforce-frame-pointers
 	$(CGREP) "my_crate_name.pdb" < $(TMPDIR)/my_crate_name.exe
 	$(CGREP) -v "\\my_crate_name.pdb" < $(TMPDIR)/my_crate_name.exe
 
@@ -15,6 +15,6 @@ all:
 	$(CGREP) "pdb-alt-path\\main.rs:2" < $(TMPDIR)/backtrace.txt
 
 	# Test that explicitly passed `-Clink-arg=/PDBALTPATH:...` is respected
-	$(RUSTC) main.rs -g --crate-name my_crate_name --crate-type bin -Clink-arg=/PDBALTPATH:abcdefg.pdb
+	$(RUSTC) main.rs -g --crate-name my_crate_name --crate-type bin -Clink-arg=/PDBALTPATH:abcdefg.pdb -Cforce-frame-pointers
 	$(CGREP) "abcdefg.pdb" < $(TMPDIR)/my_crate_name.exe
 	$(CGREP) -v "my_crate_name.pdb" < $(TMPDIR)/my_crate_name.exe
