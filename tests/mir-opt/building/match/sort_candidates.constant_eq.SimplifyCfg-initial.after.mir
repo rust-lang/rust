@@ -1,0 +1,127 @@
+// MIR for `constant_eq` after SimplifyCfg-initial
+
+fn constant_eq(_1: &str, _2: bool) -> u32 {
+    debug s => _1;
+    debug b => _2;
+    let mut _0: u32;
+    let mut _3: (&str, bool);
+    let mut _4: &str;
+    let mut _5: bool;
+    let mut _6: bool;
+    let mut _7: bool;
+    let mut _8: bool;
+    let mut _9: &&str;
+    let mut _10: &bool;
+    let mut _11: bool;
+
+    bb0: {
+        StorageLive(_3);
+        StorageLive(_4);
+        _4 = _1;
+        StorageLive(_5);
+        _5 = _2;
+        _3 = (move _4, move _5);
+        StorageDead(_5);
+        StorageDead(_4);
+        PlaceMention(_3);
+        _8 = <str as PartialEq>::eq((_3.0: &str), const "a") -> [return: bb13, unwind: bb21];
+    }
+
+    bb1: {
+        _7 = <str as PartialEq>::eq((_3.0: &str), const "b") -> [return: bb11, unwind: bb21];
+    }
+
+    bb2: {
+        _6 = <str as PartialEq>::eq((_3.0: &str), const "a") -> [return: bb8, unwind: bb21];
+    }
+
+    bb3: {
+        switchInt((_3.1: bool)) -> [0: bb4, otherwise: bb5];
+    }
+
+    bb4: {
+        _0 = const 5_u32;
+        goto -> bb20;
+    }
+
+    bb5: {
+        falseEdge -> [real: bb19, imaginary: bb4];
+    }
+
+    bb6: {
+        switchInt((_3.1: bool)) -> [0: bb3, otherwise: bb7];
+    }
+
+    bb7: {
+        falseEdge -> [real: bb18, imaginary: bb5];
+    }
+
+    bb8: {
+        switchInt(move _6) -> [0: bb3, otherwise: bb6];
+    }
+
+    bb9: {
+        switchInt((_3.1: bool)) -> [0: bb2, otherwise: bb10];
+    }
+
+    bb10: {
+        falseEdge -> [real: bb17, imaginary: bb7];
+    }
+
+    bb11: {
+        switchInt(move _7) -> [0: bb2, otherwise: bb9];
+    }
+
+    bb12: {
+        falseEdge -> [real: bb14, imaginary: bb10];
+    }
+
+    bb13: {
+        switchInt(move _8) -> [0: bb1, otherwise: bb12];
+    }
+
+    bb14: {
+        _9 = &fake (_3.0: &str);
+        _10 = &fake (_3.1: bool);
+        StorageLive(_11);
+        _11 = const true;
+        switchInt(move _11) -> [0: bb16, otherwise: bb15];
+    }
+
+    bb15: {
+        StorageDead(_11);
+        FakeRead(ForMatchGuard, _9);
+        FakeRead(ForMatchGuard, _10);
+        _0 = const 1_u32;
+        goto -> bb20;
+    }
+
+    bb16: {
+        StorageDead(_11);
+        falseEdge -> [real: bb1, imaginary: bb10];
+    }
+
+    bb17: {
+        _0 = const 2_u32;
+        goto -> bb20;
+    }
+
+    bb18: {
+        _0 = const 3_u32;
+        goto -> bb20;
+    }
+
+    bb19: {
+        _0 = const 4_u32;
+        goto -> bb20;
+    }
+
+    bb20: {
+        StorageDead(_3);
+        return;
+    }
+
+    bb21 (cleanup): {
+        resume;
+    }
+}

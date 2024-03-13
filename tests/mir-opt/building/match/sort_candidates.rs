@@ -2,6 +2,18 @@
 // Check specific cases of sorting candidates in match lowering.
 #![feature(exclusive_range_pattern)]
 
+// EMIT_MIR sort_candidates.constant_eq.SimplifyCfg-initial.after.mir
+fn constant_eq(s: &str, b: bool) -> u32 {
+    // For now we test "a" twice.
+    match (s, b) {
+        ("a", _) if true => 1,
+        ("b", true) => 2,
+        ("a", true) => 3,
+        (_, true) => 4,
+        _ => 5,
+    }
+}
+
 // EMIT_MIR sort_candidates.disjoint_ranges.SimplifyCfg-initial.after.mir
 fn disjoint_ranges() {
     let x = 3;
