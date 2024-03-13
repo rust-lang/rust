@@ -382,7 +382,7 @@ fn eval_in_interpreter<'tcx, R: InterpretationResult<'tcx>>(
 }
 
 #[inline(always)]
-pub fn const_validate_mplace<'mir, 'tcx>(
+fn const_validate_mplace<'mir, 'tcx>(
     ecx: &InterpCx<'mir, 'tcx, CompileTimeInterpreter<'mir, 'tcx>>,
     mplace: &MPlaceTy<'tcx>,
     cid: GlobalId<'tcx>,
@@ -402,7 +402,9 @@ pub fn const_validate_mplace<'mir, 'tcx>(
             }
         };
         ecx.const_validate_operand(&mplace.into(), path, &mut ref_tracking, mode)
-            .map_err(|error| const_report_error(&ecx, error, alloc_id))?;
+            // Instead of just reporting the `InterpError` via the usual machinery, we give a more targetted
+            // error about the validation failure.
+            .map_err(|error| report_validation_error(&ecx, error, alloc_id))?;
         inner = true;
     }
 
@@ -410,7 +412,7 @@ pub fn const_validate_mplace<'mir, 'tcx>(
 }
 
 #[inline(always)]
-pub fn const_report_error<'mir, 'tcx>(
+fn report_validation_error<'mir, 'tcx>(
     ecx: &InterpCx<'mir, 'tcx, CompileTimeInterpreter<'mir, 'tcx>>,
     error: InterpErrorInfo<'tcx>,
     alloc_id: AllocId,
@@ -429,6 +431,6 @@ pub fn const_report_error<'mir, 'tcx>(
         error,
         None,
         || crate::const_eval::get_span_and_frames(ecx.tcx, ecx.stack()),
-        move |span, frames| errors::UndefinedBehavior { span, ub_note, frames, raw_bytes },
+        move |span, frames| errors::ValidationFailure { span, ub_note, frames, raw_bytes },
     )
 }
