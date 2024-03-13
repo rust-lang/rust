@@ -1206,6 +1206,7 @@ fn add_sanitizer_libraries(
     // Everywhere else the runtimes are currently distributed as static
     // libraries which should be linked to executables only.
     let needs_runtime = !sess.target.is_like_android
+        && !sess.opts.unstable_opts.external_clangrt
         && match crate_type {
             CrateType::Executable => true,
             CrateType::Dylib | CrateType::Cdylib | CrateType::ProcMacro => {
