@@ -99,6 +99,15 @@ pub enum RegionKind {
     /// associated with two counters, each representing the number of times the
     /// expression evaluates to true or false.
     BranchRegion = 4,
+
+    /// A DecisionRegion represents a top-level boolean expression and is
+    /// associated with a variable length bitmap index and condition number.
+    #[allow(dead_code)]
+    MCDCDecisionRegion = 5,
+
+    /// A Branch Region can be extended to include IDs to facilitate MC/DC.
+    #[allow(dead_code)]
+    MCDCBranchRegion = 6,
 }
 
 /// This struct provides LLVM's representation of a "CoverageMappingRegion", encoded into the

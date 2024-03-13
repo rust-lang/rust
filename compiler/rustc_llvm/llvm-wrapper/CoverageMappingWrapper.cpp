@@ -43,6 +43,8 @@ enum class LLVMRustCounterMappingRegionKind {
   SkippedRegion = 2,
   GapRegion = 3,
   BranchRegion = 4,
+  MCDCDecisionRegion = 5,
+  MCDCBranchRegion = 6,
 };
 
 static coverage::CounterMappingRegion::RegionKind
@@ -58,6 +60,10 @@ fromRust(LLVMRustCounterMappingRegionKind Kind) {
     return coverage::CounterMappingRegion::GapRegion;
   case LLVMRustCounterMappingRegionKind::BranchRegion:
     return coverage::CounterMappingRegion::BranchRegion;
+  case LLVMRustCounterMappingRegionKind::MCDCDecisionRegion:
+    return coverage::CounterMappingRegion::MCDCDecisionRegion;
+  case LLVMRustCounterMappingRegionKind::MCDCBranchRegion:
+    return coverage::CounterMappingRegion::MCDCBranchRegion;
   }
   report_fatal_error("Bad LLVMRustCounterMappingRegionKind!");
 }
