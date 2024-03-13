@@ -10,6 +10,11 @@ LL |         eat(x);
    |             ^ move out of `x` occurs here
 LL |         _ref_to_val.use_ref();
    |         ----------- borrow later used here
+   |
+help: consider cloning the value if the performance cost is acceptable
+   |
+LL |         let _ref_to_val: &Value = &x.clone();
+   |                                     ++++++++
 
 error: aborting due to 1 previous error
 

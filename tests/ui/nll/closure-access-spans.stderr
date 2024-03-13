@@ -57,6 +57,11 @@ LL |     || x;
    |     move out of `x` occurs here
 LL |     r.use_ref();
    |     - borrow later used here
+   |
+help: consider cloning the value if the performance cost is acceptable
+   |
+LL |     let r = &x.clone();
+   |               ++++++++
 
 error[E0382]: borrow of moved value: `x`
   --> $DIR/closure-access-spans.rs:35:5
