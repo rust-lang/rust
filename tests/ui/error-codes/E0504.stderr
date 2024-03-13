@@ -13,12 +13,6 @@ LL |         println!("child function: {}", fancy_num.num);
 ...
 LL |     println!("main function: {}", fancy_ref.num);
    |                                   ------------- borrow later used here
-   |
-help: consider cloning the value if the performance cost is acceptable
-   |
-LL -     let fancy_ref = &fancy_num;
-LL +     let fancy_ref = fancy_num.clone();
-   |
 
 error: aborting due to 1 previous error
 

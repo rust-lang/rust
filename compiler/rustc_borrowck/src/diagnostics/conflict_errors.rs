@@ -988,6 +988,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
     }
 
     pub(crate) fn suggest_cloning(&self, err: &mut Diag<'_>, ty: Ty<'tcx>, expr: &hir::Expr<'_>) {
+        let ty = ty.peel_refs();
         if let Some(clone_trait_def) = self.infcx.tcx.lang_items().clone_trait()
             && self
                 .infcx
