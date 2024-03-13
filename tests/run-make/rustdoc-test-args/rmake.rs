@@ -1,8 +1,8 @@
 extern crate run_make_support;
 
-use run_make_support::{out_dir, rustdoc};
-use std::{fs, iter};
+use run_make_support::{rustdoc, tmp_dir};
 use std::path::Path;
+use std::{fs, iter};
 
 fn generate_a_lot_of_cfgs(path: &Path) {
     let content = iter::repeat("--cfg=a\n").take(100_000).collect::<String>();
@@ -10,9 +10,8 @@ fn generate_a_lot_of_cfgs(path: &Path) {
 }
 
 fn main() {
-    let arg_file = out_dir().join("args");
+    let arg_file = tmp_dir().join("args");
     generate_a_lot_of_cfgs(&arg_file);
 
-    let arg_file = format!("@{}", arg_file.display());
-    rustdoc().arg("--test").arg(&arg_file).arg("foo.rs").run();
+    rustdoc().out_dir(tmp_dir()).input("foo.rs").arg_file(&arg_file).arg("--test").run();
 }

@@ -1,6 +1,6 @@
 extern crate run_make_support;
 
-use run_make_support::{out_dir, rustc, wasmparser};
+use run_make_support::{tmp_dir, wasmparser, rustc};
 use std::collections::HashMap;
 use std::path::Path;
 use wasmparser::ExternalKind::*;
@@ -17,16 +17,17 @@ fn main() {
 
 fn test(args: &[&str]) {
     eprintln!("running with {args:?}");
-    rustc().arg("bar.rs").arg("--target=wasm32-wasip1").args(args).run();
-    rustc().arg("foo.rs").arg("--target=wasm32-wasip1").args(args).run();
-    rustc().arg("main.rs").arg("--target=wasm32-wasip1").args(args).run();
+
+    rustc().input("bar.rs").target("wasm32-wasip1").args(args).run();
+    rustc().input("foo.rs").target("wasm32-wasip1").args(args).run();
+    rustc().input("main.rs").target("wasm32-wasip1").args(args).run();
 
     verify_exports(
-        &out_dir().join("foo.wasm"),
+        &tmp_dir().join("foo.wasm"),
         &[("foo", Func), ("FOO", Global), ("memory", Memory)],
     );
     verify_exports(
-        &out_dir().join("main.wasm"),
+        &tmp_dir().join("main.wasm"),
         &[
             ("foo", Func),
             ("FOO", Global),

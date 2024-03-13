@@ -1,6 +1,6 @@
 extern crate run_make_support;
 
-use run_make_support::{out_dir, rustc, wasmparser};
+use run_make_support::{tmp_dir, wasmparser, rustc};
 use std::collections::HashMap;
 use wasmparser::TypeRef::Func;
 
@@ -9,10 +9,15 @@ fn main() {
         return;
     }
 
-    rustc().arg("foo.rs").arg("--target=wasm32-wasip1").run();
-    rustc().arg("bar.rs").arg("--target=wasm32-wasip1").arg("-Clto").arg("-O").run();
+    rustc().input("foo.rs").target("wasm32-wasip1").run();
+    rustc()
+        .input("bar.rs")
+        .target("wasm32-wasip1")
+        .arg("-Clto")
+        .opt()
+        .run();
 
-    let file = std::fs::read(&out_dir().join("bar.wasm")).unwrap();
+    let file = std::fs::read(&tmp_dir().join("bar.wasm")).unwrap();
 
     let mut imports = HashMap::new();
     for payload in wasmparser::Parser::new(0).parse_all(&file) {
