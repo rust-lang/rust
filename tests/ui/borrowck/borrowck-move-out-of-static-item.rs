@@ -8,7 +8,8 @@ static BAR: Foo = Foo { foo: 5 };
 
 
 fn test(f: Foo) {
-    let _f = Foo{foo: 4, ..f};
+    let f = Foo { foo: 4, ..f };
+    println!("{}", f.foo);
 }
 
 fn main() {
