@@ -28,7 +28,7 @@ fn full_tested_match2() -> () {
         _2 = Option::<i32>::Some(const 42_i32);
         PlaceMention(_2);
         _3 = discriminant(_2);
-        switchInt(move _3) -> [0: bb2, 1: bb4, otherwise: bb1];
+        switchInt(move _3) -> [0: bb5, 1: bb2, otherwise: bb1];
     }
 
     bb1: {
@@ -37,18 +37,10 @@ fn full_tested_match2() -> () {
     }
 
     bb2: {
-        falseEdge -> [real: bb12, imaginary: bb5];
+        falseEdge -> [real: bb7, imaginary: bb5];
     }
 
     bb3: {
-        goto -> bb1;
-    }
-
-    bb4: {
-        falseEdge -> [real: bb7, imaginary: bb2];
-    }
-
-    bb5: {
         StorageLive(_9);
         _9 = ((_2 as Some).0: i32);
         StorageLive(_10);
@@ -57,6 +49,14 @@ fn full_tested_match2() -> () {
         StorageDead(_10);
         StorageDead(_9);
         goto -> bb13;
+    }
+
+    bb4: {
+        goto -> bb1;
+    }
+
+    bb5: {
+        falseEdge -> [real: bb12, imaginary: bb3];
     }
 
     bb6: {
@@ -97,7 +97,7 @@ fn full_tested_match2() -> () {
     bb11: {
         StorageDead(_7);
         StorageDead(_6);
-        falseEdge -> [real: bb5, imaginary: bb2];
+        falseEdge -> [real: bb3, imaginary: bb5];
     }
 
     bb12: {
