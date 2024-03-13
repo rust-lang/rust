@@ -12,12 +12,27 @@ error[E0492]: constants cannot refer to interior mutable data
 LL | const RAW_SYNC_C: SyncPtr<Cell<i32>> = SyncPtr { x: &Cell::new(42) };
    |                                                     ^^^^^^^^^^^^^^ this borrow of an interior mutable value may end up in the final value
 
-error: encountered mutable pointer in final value of constant
+warning: encountered mutable pointer in final value of constant
   --> $DIR/refs-to-cell-in-final.rs:30:1
    |
 LL | const UNDEFINED: &JsValue = &JsValue::Undefined;
    | ^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #122153 <https://github.com/rust-lang/rust/issues/122153>
+   = note: `#[warn(const_eval_mutable_ptr_in_final_value)]` on by default
 
-error: aborting due to 3 previous errors
+error: aborting due to 2 previous errors; 1 warning emitted
 
 For more information about this error, try `rustc --explain E0492`.
+Future incompatibility report: Future breakage diagnostic:
+warning: encountered mutable pointer in final value of constant
+  --> $DIR/refs-to-cell-in-final.rs:30:1
+   |
+LL | const UNDEFINED: &JsValue = &JsValue::Undefined;
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #122153 <https://github.com/rust-lang/rust/issues/122153>
+   = note: `#[warn(const_eval_mutable_ptr_in_final_value)]` on by default
+

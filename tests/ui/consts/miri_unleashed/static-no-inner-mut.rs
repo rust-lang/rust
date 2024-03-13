@@ -9,7 +9,6 @@ use std::sync::atomic::*;
 static REF: &AtomicI32 = &AtomicI32::new(42);
 //~^ ERROR mutable pointer in final value
 //~| WARNING this was previously accepted by the compiler
-//~| ERROR it is undefined behavior to use this value
 
 static REFMUT: &mut i32 = &mut 0;
 //~^ ERROR mutable pointer in final value
@@ -20,7 +19,6 @@ static REFMUT: &mut i32 = &mut 0;
 static REF2: &AtomicI32 = {let x = AtomicI32::new(42); &{x}};
 //~^ ERROR mutable pointer in final value
 //~| WARNING this was previously accepted by the compiler
-//~| ERROR it is undefined behavior to use this value
 
 static REFMUT2: &mut i32 = {let mut x = 0; &mut {x}};
 //~^ ERROR mutable pointer in final value
