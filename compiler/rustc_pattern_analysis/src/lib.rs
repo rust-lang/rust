@@ -179,10 +179,10 @@ pub fn analyze_match<'p, 'tcx>(
     pattern_complexity_limit: Option<usize>,
 ) -> Result<rustc::UsefulnessReport<'p, 'tcx>, ErrorGuaranteed> {
     use lints::lint_nonexhaustive_missing_variants;
-    use usefulness::{compute_match_usefulness, ValidityConstraint};
+    use usefulness::{compute_match_usefulness, PlaceValidity};
 
     let scrut_ty = tycx.reveal_opaque_ty(scrut_ty);
-    let scrut_validity = ValidityConstraint::from_bool(tycx.known_valid_scrutinee);
+    let scrut_validity = PlaceValidity::from_bool(tycx.known_valid_scrutinee);
     let report =
         compute_match_usefulness(tycx, arms, scrut_ty, scrut_validity, pattern_complexity_limit)?;
 

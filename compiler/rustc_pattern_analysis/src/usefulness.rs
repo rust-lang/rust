@@ -540,8 +540,8 @@
 //! We track in the algorithm whether a given place is known to contain valid data. This is done
 //! first by inspecting the scrutinee syntactically (which gives us `cx.known_valid_scrutinee`), and
 //! then by tracking validity of each column of the matrix (which correspond to places) as we
-//! recurse into subpatterns. That second part is done through [`ValidityConstraint`], most notably
-//! [`ValidityConstraint::specialize`].
+//! recurse into subpatterns. That second part is done through [`PlaceValidity`], most notably
+//! [`PlaceValidity::specialize`].
 //!
 //! Having said all that, in practice we don't fully follow what's been presented in this section.
 //! Let's call "toplevel exception" the case where the match scrutinee itself has type `!` or
@@ -718,7 +718,7 @@ use crate::constructor::{Constructor, ConstructorSet, IntRange};
 use crate::pat::{DeconstructedPat, PatId, PatOrWild, WitnessPat};
 use crate::{Captures, MatchArm, PrivateUninhabitedField, TypeCx};
 
-use self::ValidityConstraint::*;
+use self::PlaceValidity::*;
 
 #[cfg(feature = "rustc")]
 use rustc_data_structures::stack::ensure_sufficient_stack;
@@ -780,18 +780,14 @@ impl<'a, Cx: TypeCx> PlaceCtxt<'a, Cx> {
     }
 }
 
-/// Serves two purposes:
-/// - in a wildcard, tracks whether the wildcard matches only valid values (i.e. is a binding `_a`)
-///     or also invalid values (i.e. is a true `_` pattern).
-/// - in the matrix, track whether a given place (aka column) is known to contain a valid value or
-///     not.
+/// Track whether a given place (aka column) is known to contain a valid value or not.
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
-pub enum ValidityConstraint {
+pub enum PlaceValidity {
     ValidOnly,
     MaybeInvalid,
 }
 
-impl ValidityConstraint {
+impl PlaceValidity {
     pub fn from_bool(is_valid_only: bool) -> Self {
         if is_valid_only { ValidOnly } else { MaybeInvalid }
     }
@@ -817,7 +813,7 @@ impl ValidityConstraint {
     }
 }
 
-impl fmt::Display for ValidityConstraint {
+impl fmt::Display for PlaceValidity {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let s = match self {
             ValidOnly => "✓",
@@ -836,7 +832,7 @@ struct PlaceInfo<Cx: TypeCx> {
     /// so that we don't observe its emptiness.
     private_uninhabited: bool,
     /// Whether the place is known to contain valid data.
-    validity: ValidityConstraint,
+    validity: PlaceValidity,
     /// Whether the place is the scrutinee itself or a subplace of it.
     is_scrutinee: bool,
 }
@@ -1155,11 +1151,7 @@ impl<'p, Cx: TypeCx> Matrix<'p, Cx> {
     }
 
     /// Build a new matrix from an iterator of `MatchArm`s.
-    fn new(
-        arms: &[MatchArm<'p, Cx>],
-        scrut_ty: Cx::Ty,
-        scrut_validity: ValidityConstraint,
-    ) -> Self {
+    fn new(arms: &[MatchArm<'p, Cx>], scrut_ty: Cx::Ty, scrut_validity: PlaceValidity) -> Self {
         let place_info = PlaceInfo {
             ty: scrut_ty,
             private_uninhabited: false,
@@ -1754,7 +1746,7 @@ pub fn compute_match_usefulness<'p, Cx: TypeCx>(
     tycx: &Cx,
     arms: &[MatchArm<'p, Cx>],
     scrut_ty: Cx::Ty,
-    scrut_validity: ValidityConstraint,
+    scrut_validity: PlaceValidity,
     complexity_limit: Option<usize>,
 ) -> Result<UsefulnessReport<'p, Cx>, Cx::Error> {
     let mut cx = UsefulnessCtxt {
