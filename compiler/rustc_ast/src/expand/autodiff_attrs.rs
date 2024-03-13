@@ -1,8 +1,6 @@
 use crate::expand::typetree::TypeTree;
 use std::str::FromStr;
-use thin_vec::ThinVec;
 use std::fmt::{Display, Formatter};
-use crate::NestedMetaItem;
 use crate::ptr::P;
 use crate::{Ty, TyKind};
 
@@ -162,42 +160,12 @@ pub struct AutoDiffAttrs {
     pub input_activity: Vec<DiffActivity>,
 }
 
-fn first_ident(x: &NestedMetaItem) -> rustc_span::symbol::Ident {
-    let segments = &x.meta_item().unwrap().path.segments;
-    assert!(segments.len() == 1);
-    segments[0].ident
-}
-fn name(x: &NestedMetaItem) -> String {
-    first_ident(x).name.to_string()
-}
-
 impl AutoDiffAttrs {
     pub fn has_ret_activity(&self) -> bool {
         match self.ret_activity {
             DiffActivity::None => false,
             _ => true,
         }
-    }
-    pub fn from_ast(meta_item: &ThinVec<NestedMetaItem>, has_ret: bool) -> Self {
-        let mode = name(&meta_item[1]);
-        let mode = DiffMode::from_str(&mode).unwrap();
-        let activities: Vec<DiffActivity> = meta_item[2..]
-            .iter()
-            .map(|x| {
-                let activity_str = name(&x);
-                DiffActivity::from_str(&activity_str).unwrap()
-            })
-            .collect();
-
-        // If a return type exist, we need to split the last activity,
-        // otherwise we return None as placeholder.
-        let (ret_activity, input_activity) = if has_ret {
-            activities.split_last().unwrap()
-        } else {
-            (&DiffActivity::None, activities.as_slice())
-        };
-
-        AutoDiffAttrs { mode, ret_activity: *ret_activity, input_activity: input_activity.to_vec() }
     }
 }
 
@@ -221,7 +189,6 @@ impl AutoDiffAttrs {
         match self.mode {
             DiffMode::Inactive => false,
             _ => {
-                dbg!(&self);
                 true
             }
         }

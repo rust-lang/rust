@@ -181,6 +181,14 @@ pub(crate) struct AutoDiffInvalidApplicationModeAct {
 }
 
 #[derive(Diagnostic)]
+#[diag(builtin_macros_autodiff_mode)]
+pub(crate) struct AutoDiffInvalidMode {
+    #[primary_span]
+    pub(crate) span: Span,
+    pub(crate) mode: String,
+}
+
+#[derive(Diagnostic)]
 #[diag(builtin_macros_autodiff)]
 pub(crate) struct AutoDiffInvalidApplication {
     #[primary_span]

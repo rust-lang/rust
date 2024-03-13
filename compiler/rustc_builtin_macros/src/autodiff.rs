@@ -17,13 +17,7 @@ use rustc_span::Span;
 use rustc_span::Symbol;
 use std::string::String;
 use thin_vec::{thin_vec, ThinVec};
-
-#[cfg(llvm_enzyme)]
-fn first_ident(x: &NestedMetaItem) -> rustc_span::symbol::Ident {
-    let segments = &x.meta_item().unwrap().path.segments;
-    assert!(segments.len() == 1);
-    segments[0].ident
-}
+use std::str::FromStr;
 
 #[cfg(not(llvm_enzyme))]
 pub fn expand(
@@ -34,6 +28,48 @@ pub fn expand(
 ) -> Vec<Annotatable> {
     ecx.sess.dcx().emit_err(errors::AutoDiffSupportNotBuild { span: meta_item.span });
     return vec![item];
+}
+
+#[cfg(llvm_enzyme)]
+fn first_ident(x: &NestedMetaItem) -> rustc_span::symbol::Ident {
+    let segments = &x.meta_item().unwrap().path.segments;
+    assert!(segments.len() == 1);
+    segments[0].ident
+}
+
+#[cfg(llvm_enzyme)]
+fn name(x: &NestedMetaItem) -> String {
+    first_ident(x).name.to_string()
+}
+
+#[cfg(llvm_enzyme)]
+pub fn from_ast(ecx: &mut ExtCtxt<'_>, meta_item: &ThinVec<NestedMetaItem>, has_ret: bool) -> AutoDiffAttrs {
+
+    let mode = name(&meta_item[1]);
+    let mode = match DiffMode::from_str(&mode) {
+        Ok(x) => x,
+        Err(_) => {
+            ecx.sess.dcx().emit_err(errors::AutoDiffInvalidMode { span: meta_item[1].span(), mode});
+            return AutoDiffAttrs::inactive();
+        },
+    };
+    let activities: Vec<DiffActivity> = meta_item[2..]
+        .iter()
+        .map(|x| {
+            let activity_str = name(&x);
+            DiffActivity::from_str(&activity_str).unwrap()
+        })
+        .collect();
+
+    // If a return type exist, we need to split the last activity,
+    // otherwise we return None as placeholder.
+    let (ret_activity, input_activity) = if has_ret {
+        activities.split_last().unwrap()
+    } else {
+        (&DiffActivity::None, activities.as_slice())
+    };
+
+    AutoDiffAttrs { mode, ret_activity: *ret_activity, input_activity: input_activity.to_vec() }
 }
 
 #[cfg(llvm_enzyme)]
@@ -76,7 +112,12 @@ pub fn expand(
     }
     let ts: TokenStream = TokenStream::from_iter(ts);
 
-    let x: AutoDiffAttrs = AutoDiffAttrs::from_ast(&meta_item_vec, has_ret);
+    let x: AutoDiffAttrs = from_ast(ecx, &meta_item_vec, has_ret);
+    if !x.is_active() {
+        // We encountered an error, so we return the original item.
+        // This allows us to potentially parse other attributes.
+        return vec![item];
+    }
     dbg!(&x);
     let span = ecx.with_def_site_ctxt(expand_span);
 
