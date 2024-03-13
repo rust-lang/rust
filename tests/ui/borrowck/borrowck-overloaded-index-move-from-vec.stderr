@@ -8,6 +8,10 @@ help: consider borrowing here
    |
 LL |     let bad = &v[0];
    |               +
+help: consider cloning the value if the performance cost is acceptable
+   |
+LL |     let bad = v[0].clone();
+   |                   ++++++++
 
 error: aborting due to 1 previous error
 

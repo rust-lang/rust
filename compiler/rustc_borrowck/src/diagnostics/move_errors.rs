@@ -444,6 +444,10 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                         None => "value".to_string(),
                     };
 
+                    if let Some(expr) = self.find_expr(span) {
+                        self.suggest_cloning(err, place_ty, expr, span);
+                    }
+
                     err.subdiagnostic(
                         self.dcx(),
                         crate::session_diagnostics::TypeNoCopy::Label {

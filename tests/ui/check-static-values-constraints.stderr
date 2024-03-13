@@ -160,6 +160,10 @@ help: consider borrowing here
    |
 LL |         &x
    |         +
+help: consider cloning the value if the performance cost is acceptable
+   |
+LL |         x.clone()
+   |          ++++++++
 
 error: aborting due to 17 previous errors
 
