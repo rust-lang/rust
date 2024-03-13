@@ -19,7 +19,7 @@ use rustc_expand::base::{Annotatable, DeriveResolutions, Indeterminate, Resolver
 use rustc_expand::base::{SyntaxExtension, SyntaxExtensionKind};
 use rustc_expand::compile_declarative_macro;
 use rustc_expand::expand::{AstFragment, Invocation, InvocationKind, SupportsMacroExpansion};
-use rustc_hir::def::{self, DefKind, NonMacroAttrKind};
+use rustc_hir::def::{self, DefKind, Namespace, NonMacroAttrKind};
 use rustc_hir::def_id::{CrateNum, DefId, LocalDefId};
 use rustc_middle::middle::stability;
 use rustc_middle::ty::RegisteredTools;
@@ -431,40 +431,15 @@ impl<'a, 'tcx> ResolverExpand for Resolver<'a, 'tcx> {
         expn_id: LocalExpnId,
         path: &ast::Path,
     ) -> Result<bool, Indeterminate> {
-        let span = path.span;
-        let path = &Segment::from_path(path);
-        let parent_scope = self.invocation_parent_scopes[&expn_id];
+        self.path_accessible(expn_id, path, &[TypeNS, ValueNS, MacroNS])
+    }
 
-        let mut indeterminate = false;
-        for ns in [TypeNS, ValueNS, MacroNS].iter().copied() {
-            match self.maybe_resolve_path(path, Some(ns), &parent_scope) {
-                PathResult::Module(ModuleOrUniformRoot::Module(_)) => return Ok(true),
-                PathResult::NonModule(partial_res) if partial_res.unresolved_segments() == 0 => {
-                    return Ok(true);
-                }
-                PathResult::NonModule(..) |
-                // HACK(Urgau): This shouldn't be necessary
-                PathResult::Failed { is_error_from_last_segment: false, .. } => {
-                    self.dcx()
-                        .emit_err(errors::CfgAccessibleUnsure { span });
-
-                    // If we get a partially resolved NonModule in one namespace, we should get the
-                    // same result in any other namespaces, so we can return early.
-                    return Ok(false);
-                }
-                PathResult::Indeterminate => indeterminate = true,
-                // We can only be sure that a path doesn't exist after having tested all the
-                // possibilities, only at that time we can return false.
-                PathResult::Failed { .. } => {}
-                PathResult::Module(_) => panic!("unexpected path resolution"),
-            }
-        }
-
-        if indeterminate {
-            return Err(Indeterminate);
-        }
-
-        Ok(false)
+    fn macro_accessible(
+        &mut self,
+        expn_id: LocalExpnId,
+        path: &ast::Path,
+    ) -> Result<bool, Indeterminate> {
+        self.path_accessible(expn_id, path, &[MacroNS])
     }
 
     fn get_proc_macro_quoted_span(&self, krate: CrateNum, id: usize) -> Span {
@@ -959,5 +934,47 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
 
         let ItemKind::MacroDef(def) = &item.kind else { unreachable!() };
         MacroData { ext: Lrc::new(ext), rule_spans, macro_rules: def.macro_rules }
+    }
+
+    fn path_accessible(
+        &mut self,
+        expn_id: LocalExpnId,
+        path: &ast::Path,
+        namespaces: &[Namespace],
+    ) -> Result<bool, Indeterminate> {
+        let span = path.span;
+        let path = &Segment::from_path(path);
+        let parent_scope = self.invocation_parent_scopes[&expn_id];
+
+        let mut indeterminate = false;
+        for ns in namespaces {
+            match self.maybe_resolve_path(path, Some(*ns), &parent_scope) {
+                PathResult::Module(ModuleOrUniformRoot::Module(_)) => return Ok(true),
+                PathResult::NonModule(partial_res) if partial_res.unresolved_segments() == 0 => {
+                    return Ok(true);
+                }
+                PathResult::NonModule(..) |
+                // HACK(Urgau): This shouldn't be necessary
+                PathResult::Failed { is_error_from_last_segment: false, .. } => {
+                    self.dcx()
+                        .emit_err(errors::CfgAccessibleUnsure { span });
+
+                    // If we get a partially resolved NonModule in one namespace, we should get the
+                    // same result in any other namespaces, so we can return early.
+                    return Ok(false);
+                }
+                PathResult::Indeterminate => indeterminate = true,
+                // We can only be sure that a path doesn't exist after having tested all the
+                // possibilities, only at that time we can return false.
+                PathResult::Failed { .. } => {}
+                PathResult::Module(_) => panic!("unexpected path resolution"),
+            }
+        }
+
+        if indeterminate {
+            return Err(Indeterminate);
+        }
+
+        Ok(false)
     }
 }

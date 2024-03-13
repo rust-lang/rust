@@ -6,10 +6,8 @@
 use rustc_ast::token::{self, LitKind};
 use rustc_ast::tokenstream::TokenStream;
 use rustc_ast::{AstDeref, ExprKind, GenericArg, Mutability};
-use rustc_expand::base::{
-    expr_to_string, get_exprs_from_tts, get_single_str_from_tts, DummyResult, ExtCtxt, MacEager,
-    MacResult,
-};
+use rustc_expand::base::{expr_to_string, get_exprs_from_tts, get_single_str_from_tts};
+use rustc_expand::base::{DummyResult, ExpandResult, ExtCtxt, MacEager, MacroExpanderResult};
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
 use rustc_span::Span;
 use std::env;
@@ -31,10 +29,13 @@ pub fn expand_option_env<'cx>(
     cx: &'cx mut ExtCtxt<'_>,
     sp: Span,
     tts: TokenStream,
-) -> Box<dyn MacResult + 'cx> {
-    let var = match get_single_str_from_tts(cx, sp, tts, "option_env!") {
+) -> MacroExpanderResult<'cx> {
+    let ExpandResult::Ready(mac) = get_single_str_from_tts(cx, sp, tts, "option_env!") else {
+        return ExpandResult::Retry(());
+    };
+    let var = match mac {
         Ok(var) => var,
-        Err(guar) => return DummyResult::any(sp, guar),
+        Err(guar) => return ExpandResult::Ready(DummyResult::any(sp, guar)),
     };
 
     let sp = cx.with_def_site_ctxt(sp);
@@ -61,35 +62,48 @@ pub fn expand_option_env<'cx>(
             thin_vec![cx.expr_str(sp, value)],
         ),
     };
-    MacEager::expr(e)
+    ExpandResult::Ready(MacEager::expr(e))
 }
 
 pub fn expand_env<'cx>(
     cx: &'cx mut ExtCtxt<'_>,
     sp: Span,
     tts: TokenStream,
-) -> Box<dyn MacResult + 'cx> {
-    let mut exprs = match get_exprs_from_tts(cx, tts) {
+) -> MacroExpanderResult<'cx> {
+    let ExpandResult::Ready(mac) = get_exprs_from_tts(cx, tts) else {
+        return ExpandResult::Retry(());
+    };
+    let mut exprs = match mac {
         Ok(exprs) if exprs.is_empty() || exprs.len() > 2 => {
             let guar = cx.dcx().emit_err(errors::EnvTakesArgs { span: sp });
-            return DummyResult::any(sp, guar);
+            return ExpandResult::Ready(DummyResult::any(sp, guar));
         }
-        Err(guar) => return DummyResult::any(sp, guar),
+        Err(guar) => return ExpandResult::Ready(DummyResult::any(sp, guar)),
         Ok(exprs) => exprs.into_iter(),
     };
 
     let var_expr = exprs.next().unwrap();
-    let var = match expr_to_string(cx, var_expr.clone(), "expected string literal") {
+    let ExpandResult::Ready(mac) = expr_to_string(cx, var_expr.clone(), "expected string literal")
+    else {
+        return ExpandResult::Retry(());
+    };
+    let var = match mac {
         Ok((var, _)) => var,
-        Err(guar) => return DummyResult::any(sp, guar),
+        Err(guar) => return ExpandResult::Ready(DummyResult::any(sp, guar)),
     };
 
     let custom_msg = match exprs.next() {
         None => None,
-        Some(second) => match expr_to_string(cx, second, "expected string literal") {
-            Ok((s, _)) => Some(s),
-            Err(guar) => return DummyResult::any(sp, guar),
-        },
+        Some(second) => {
+            let ExpandResult::Ready(mac) = expr_to_string(cx, second, "expected string literal")
+            else {
+                return ExpandResult::Retry(());
+            };
+            match mac {
+                Ok((s, _)) => Some(s),
+                Err(guar) => return ExpandResult::Ready(DummyResult::any(sp, guar)),
+            }
+        }
     };
 
     let span = cx.with_def_site_ctxt(sp);
@@ -120,11 +134,11 @@ pub fn expand_env<'cx>(
                 })
             };
 
-            return DummyResult::any(sp, guar);
+            return ExpandResult::Ready(DummyResult::any(sp, guar));
         }
         Some(value) => cx.expr_str(span, value),
     };
-    MacEager::expr(e)
+    ExpandResult::Ready(MacEager::expr(e))
 }
 
 /// Returns `true` if an environment variable from `env!` is one used by Cargo.
