@@ -195,8 +195,6 @@ pub enum MaybeInfiniteInt {
     /// Encoded value. DO NOT CONSTRUCT BY HAND; use `new_finite_{int,uint}`.
     #[non_exhaustive]
     Finite(u128),
-    /// The integer after `u128::MAX`. We need it to represent `x..=u128::MAX` as an exclusive range.
-    JustAfterMax,
     PosInfinity,
 }
 
@@ -232,18 +230,18 @@ impl MaybeInfiniteInt {
     pub fn minus_one(self) -> Option<Self> {
         match self {
             Finite(n) => n.checked_sub(1).map(Finite),
-            JustAfterMax => Some(Finite(u128::MAX)),
             x => Some(x),
         }
     }
-    /// Note: this will not turn a finite value into an infinite one or vice-versa.
+    /// Note: this will turn `u128::MAX` into `PosInfinity`. This means `plus_one` and `minus_one`
+    /// are not strictly inverses, but that poses no problem in our use of them.
+    /// this will not turn a finite value into an infinite one or vice-versa.
     pub fn plus_one(self) -> Option<Self> {
         match self {
             Finite(n) => match n.checked_add(1) {
                 Some(m) => Some(Finite(m)),
-                None => Some(JustAfterMax),
+                None => Some(PosInfinity),
             },
-            JustAfterMax => None,
             x => Some(x),
         }
     }
@@ -277,8 +275,7 @@ impl IntRange {
     }
 
     /// Construct a range with these boundaries.
-    /// `lo` must not be `PosInfinity` or `JustAfterMax`. `hi` must not be `NegInfinity`.
-    /// If `end` is `Included`, `hi` must also not be `JustAfterMax`.
+    /// `lo` must not be `PosInfinity`. `hi` must not be `NegInfinity`.
     #[inline]
     pub fn from_range(lo: MaybeInfiniteInt, mut hi: MaybeInfiniteInt, end: RangeEnd) -> IntRange {
         if end == RangeEnd::Included {

@@ -710,7 +710,7 @@ impl<'p, 'tcx: 'p> RustcMatchCheckCtxt<'p, 'tcx> {
                     None => PatRangeBoundary::PosInfinity,
                 }
             }
-            JustAfterMax | PosInfinity => PatRangeBoundary::PosInfinity,
+            PosInfinity => PatRangeBoundary::PosInfinity,
         }
     }
 
