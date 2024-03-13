@@ -1279,6 +1279,40 @@ fn bar() {
 }
 
 #[test]
+fn argument_assoc_impl_trait() {
+    check_infer(
+        r#"
+trait Outer {
+    type Item;
+}
+
+trait Inner { }
+
+fn foo<T: Outer<Item = impl Inner>>(baz: T) {
+}
+
+impl Outer for usize {
+    type Item = usize;
+}
+
+impl Inner for usize {}
+
+fn main() {
+    foo(2);
+}
+"#,
+        expect![[r#"
+            85..88 'baz': T
+            93..96 '{ }': ()
+            182..197 '{     foo(2); }': ()
+            188..191 'foo': fn foo<usize>(usize)
+            188..194 'foo(2)': ()
+            192..193 '2': usize
+        "#]],
+    );
+}
+
+#[test]
 fn simple_return_pos_impl_trait() {
     cov_mark::check!(lower_rpit);
     check_infer(
