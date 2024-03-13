@@ -816,15 +816,37 @@ where
                     break;
                 }
             };
-            if let Some(pair) = common_prim {
-                // This is pretty conservative. We could go fancier
-                // by conflating things like i32 and u32, or even
-                // realising that (u8, u8) could just cohabit with
-                // u16 or even u32.
-                if pair != (prim, offset) {
+            if let Some((old_prim, common_offset)) = common_prim {
+                // All variants must be at the same offset
+                if offset != common_offset {
                     common_prim = None;
                     break;
                 }
+                // This is pretty conservative. We could go fancier
+                // by realising that (u8, u8) could just cohabit with
+                // u16 or even u32.
+                let new_prim = match (old_prim, prim) {
+                    // Allow all identical primitives.
+                    (x, y) if x == y => x,
+                    // Allow integers of the same size with differing signedness.
+                    // We arbitrarily choose the signedness of the first variant.
+                    (p @ Primitive::Int(x, _), Primitive::Int(y, _)) if x == y => p,
+                    // Allow integers mixed with pointers of the same layout.
+                    // We must represent this using a pointer, to avoid
+                    // roundtripping pointers through ptrtoint/inttoptr.
+                    (p @ Primitive::Pointer(_), i @ Primitive::Int(..))
+                    | (i @ Primitive::Int(..), p @ Primitive::Pointer(_))
+                        if p.size(dl) == i.size(dl) && p.align(dl) == i.align(dl) =>
+                    {
+                        p
+                    }
+                    _ => {
+                        common_prim = None;
+                        break;
+                    }
+                };
+                // We may be updating the primitive here, for example from int->ptr.
+                common_prim = Some((new_prim, common_offset));
             } else {
                 common_prim = Some((prim, offset));
             }
