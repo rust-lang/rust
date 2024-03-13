@@ -176,6 +176,7 @@ pub struct MacroCallLoc {
     // leakage problems here
     eager: Option<Arc<EagerCallInfo>>,
     pub kind: MacroCallKind,
+    // FIXME: Spans while relative to an anchor, are still rather unstable
     pub call_site: Span,
 }
 impl_intern_value_trivial!(MacroCallLoc);
