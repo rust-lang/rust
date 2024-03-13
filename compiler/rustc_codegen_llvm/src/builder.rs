@@ -1138,7 +1138,6 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
         // The only RMW operation that LLVM supports on pointers is compare-exchange.
         if self.val_ty(src) == self.type_ptr() {
             assert_eq!(op, rustc_codegen_ssa::common::AtomicRmwBinOp::AtomicXchg);
-            src = self.ptrtoint(src, self.type_isize());
         }
         unsafe {
             llvm::LLVMBuildAtomicRMW(
