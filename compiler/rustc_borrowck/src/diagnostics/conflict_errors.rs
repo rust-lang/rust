@@ -466,7 +466,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                 } else if self.suggest_hoisting_call_outside_loop(err, expr) {
                     // The place where the the type moves would be misleading to suggest clone.
                     // #121466
-                    self.suggest_cloning(err, ty, expr, move_span);
+                    self.suggest_cloning(err, ty, expr);
                 }
             }
             if let Some(pat) = finder.pat {
@@ -977,20 +977,14 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         can_suggest_clone
     }
 
-    pub(crate) fn suggest_cloning(
-        &self,
-        err: &mut Diag<'_>,
-        ty: Ty<'tcx>,
-        expr: &hir::Expr<'_>,
-        span: Span,
-    ) {
+    pub(crate) fn suggest_cloning(&self, err: &mut Diag<'_>, ty: Ty<'tcx>, expr: &hir::Expr<'_>) {
         if let Some(clone_trait_def) = self.infcx.tcx.lang_items().clone_trait()
             && self
                 .infcx
                 .type_implements_trait(clone_trait_def, [ty], self.param_env)
                 .must_apply_modulo_regions()
         {
-            self.suggest_cloning_inner(err, ty, expr, span);
+            self.suggest_cloning_inner(err, ty, expr);
         }
     }
 
@@ -1009,13 +1003,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         }
     }
 
-    fn suggest_cloning_inner(
-        &self,
-        err: &mut Diag<'_>,
-        ty: Ty<'tcx>,
-        expr: &hir::Expr<'_>,
-        span: Span,
-    ) {
+    fn suggest_cloning_inner(&self, err: &mut Diag<'_>, ty: Ty<'tcx>, expr: &hir::Expr<'_>) {
         let tcx = self.infcx.tcx;
         if let Some(_) = self.clone_on_reference(expr) {
             // Avoid redundant clone suggestion already suggested in `explain_captures`.
@@ -1043,7 +1031,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
             // Account for `(*x)` to suggest `x.clone()`.
             expr.span.with_lo(inner_expr.span.hi())
         } else {
-            span.shrink_to_hi()
+            expr.span.shrink_to_hi()
         };
         sugg.push((span, suggestion));
         let msg = if let ty::Adt(def, _) = ty.kind()
@@ -1163,7 +1151,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         if let Some(expr) = self.find_expr(borrow_span)
             && let Some(ty) = typeck_results.node_type_opt(expr.hir_id)
         {
-            self.suggest_cloning(&mut err, ty, expr, borrow_span);
+            self.suggest_cloning(&mut err, ty, expr);
         }
         self.buffer_error(err);
     }
