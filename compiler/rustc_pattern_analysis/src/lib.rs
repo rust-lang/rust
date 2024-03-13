@@ -173,7 +173,7 @@ impl<'p, Cx: PatCx> Copy for MatchArm<'p, Cx> {}
 /// useful, and runs some lints.
 #[cfg(feature = "rustc")]
 pub fn analyze_match<'p, 'tcx>(
-    tycx: &rustc::RustcMatchCheckCtxt<'p, 'tcx>,
+    tycx: &rustc::RustcPatCtxt<'p, 'tcx>,
     arms: &[rustc::MatchArm<'p, 'tcx>],
     scrut_ty: Ty<'tcx>,
     pattern_complexity_limit: Option<usize>,
