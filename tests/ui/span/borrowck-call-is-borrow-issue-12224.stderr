@@ -57,6 +57,11 @@ LL |     f(Box::new(|a| {
 LL |
 LL |         foo(f);
    |             - move occurs due to use in closure
+   |
+help: consider cloning the value if the performance cost is acceptable
+   |
+LL |     f.clone()(Box::new(|a| {
+   |      ++++++++
 
 error: aborting due to 5 previous errors
 

@@ -9,7 +9,7 @@ fn foo<T: Default + Clone>(list: &mut Vec<T>) {
     drop(cloned_items);
 }
 fn bar<T: std::fmt::Display + Clone>(x: T) {
-    let a = &x;
+    let a = &x.clone();
     let b = a.clone();
     drop(x);
     //~^ ERROR cannot move out of `x` because it is borrowed
@@ -19,7 +19,7 @@ fn bar<T: std::fmt::Display + Clone>(x: T) {
 #[derive(Clone)]
 struct A;
 fn qux(x: A) {
-    let a = &x;
+    let a = &x.clone();
     let b = a.clone();
     drop(x);
     //~^ ERROR cannot move out of `x` because it is borrowed

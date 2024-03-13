@@ -33,6 +33,11 @@ LL |     !x;
 ...
 LL |     use_mut(n); use_imm(m);
    |                         - borrow later used here
+   |
+help: consider cloning the value if the performance cost is acceptable
+   |
+LL |     let m = &x.clone();
+   |               ++++++++
 
 error[E0505]: cannot move out of `y` because it is borrowed
   --> $DIR/unop-move-semantics.rs:17:6

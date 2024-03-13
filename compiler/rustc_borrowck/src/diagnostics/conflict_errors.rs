@@ -987,6 +987,23 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         can_suggest_clone
     }
 
+    pub(crate) fn suggest_cloning(
+        &self,
+        err: &mut Diag<'_>,
+        ty: Ty<'tcx>,
+        expr: &hir::Expr<'_>,
+        span: Span,
+    ) {
+        if let Some(clone_trait_def) = self.infcx.tcx.lang_items().clone_trait()
+            && self
+                .infcx
+                .type_implements_trait(clone_trait_def, [ty], self.param_env)
+                .must_apply_modulo_regions()
+        {
+            self.suggest_cloning_inner(err, ty, expr, span);
+        }
+    }
+
     pub(crate) fn clone_on_reference(&self, expr: &hir::Expr<'_>) -> Option<Span> {
         let typeck_results = self.infcx.tcx.typeck(self.mir_def_id());
         if let hir::ExprKind::MethodCall(segment, rcvr, args, span) = expr.kind
@@ -1002,7 +1019,13 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         }
     }
 
-    fn suggest_cloning(&self, err: &mut Diag<'_>, ty: Ty<'tcx>, expr: &hir::Expr<'_>, span: Span) {
+    fn suggest_cloning_inner(
+        &self,
+        err: &mut Diag<'_>,
+        ty: Ty<'tcx>,
+        expr: &hir::Expr<'_>,
+        span: Span,
+    ) {
         let tcx = self.infcx.tcx;
         // Try to find predicates on *generic params* that would allow copying `ty`
         let suggestion =
@@ -1136,6 +1159,12 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                 None,
             );
         self.suggest_copy_for_type_in_cloned_ref(&mut err, place);
+        let typeck_results = self.infcx.tcx.typeck(self.mir_def_id());
+        if let Some(expr) = self.find_expr(borrow_span)
+            && let Some(ty) = typeck_results.node_type_opt(expr.hir_id)
+        {
+            self.suggest_cloning(&mut err, ty, expr, borrow_span);
+        }
         self.buffer_error(err);
     }
 
@@ -1553,22 +1582,32 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
             }
         }
         for ty in types_to_constrain {
-            self.suggest_adding_bounds(err, ty, clone, body.span);
-            if let ty::Adt(..) = ty.kind() {
-                // The type doesn't implement Clone.
-                let trait_ref = ty::Binder::dummy(ty::TraitRef::new(self.infcx.tcx, clone, [ty]));
-                let obligation = Obligation::new(
-                    self.infcx.tcx,
-                    ObligationCause::dummy(),
-                    self.param_env,
-                    trait_ref,
-                );
-                self.infcx.err_ctxt().suggest_derive(
-                    &obligation,
-                    err,
-                    trait_ref.to_predicate(self.infcx.tcx),
-                );
-            }
+            self.suggest_adding_bounds_or_derive(err, ty, clone, body.span);
+        }
+    }
+
+    pub(crate) fn suggest_adding_bounds_or_derive(
+        &self,
+        err: &mut Diag<'_>,
+        ty: Ty<'tcx>,
+        def_id: DefId,
+        span: Span,
+    ) {
+        self.suggest_adding_bounds(err, ty, def_id, span);
+        if let ty::Adt(..) = ty.kind() {
+            // The type doesn't implement DefId.
+            let trait_ref = ty::Binder::dummy(ty::TraitRef::new(self.infcx.tcx, def_id, [ty]));
+            let obligation = Obligation::new(
+                self.infcx.tcx,
+                ObligationCause::dummy(),
+                self.param_env,
+                trait_ref,
+            );
+            self.infcx.err_ctxt().suggest_derive(
+                &obligation,
+                err,
+                trait_ref.to_predicate(self.infcx.tcx),
+            );
         }
     }
 
