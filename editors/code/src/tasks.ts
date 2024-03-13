@@ -10,8 +10,7 @@ export const TASK_TYPE = "cargo";
 export const TASK_SOURCE = "rust";
 
 export interface RustTargetDefinition extends vscode.TaskDefinition {
-    command?: string;
-    args?: string[];
+    args: string[];
     cwd?: string;
     env?: { [key: string]: string };
     overrideCargo?: string;
@@ -44,9 +43,8 @@ class RustTaskProvider implements vscode.TaskProvider {
             for (const def of defs) {
                 const vscodeTask = await buildRustTask(
                     workspaceTarget,
-                    { type: TASK_TYPE, command: def.command },
+                    { type: TASK_TYPE, args: [def.command] },
                     `cargo ${def.command}`,
-                    [def.command],
                     this.config.problemMatcher,
                     this.config.cargoRunner,
                 );
@@ -65,13 +63,11 @@ class RustTaskProvider implements vscode.TaskProvider {
 
         const definition = task.definition as RustTargetDefinition;
 
-        if (definition.type === TASK_TYPE && definition.command) {
-            const args = [definition.command].concat(definition.args ?? []);
+        if (definition.type === TASK_TYPE) {
             return await buildRustTask(
                 task.scope,
                 definition,
                 task.name,
-                args,
                 this.config.problemMatcher,
                 this.config.cargoRunner,
             );
@@ -85,7 +81,6 @@ export async function buildRustTask(
     scope: vscode.WorkspaceFolder | vscode.TaskScope | undefined,
     definition: RustTargetDefinition,
     name: string,
-    args: string[],
     problemMatcher: string[],
     customRunner?: string,
     throwOnError: boolean = false,
@@ -95,7 +90,12 @@ export async function buildRustTask(
     if (customRunner) {
         const runnerCommand = `${customRunner}.buildShellExecution`;
         try {
-            const runnerArgs = { kind: TASK_TYPE, args, cwd: definition.cwd, env: definition.env };
+            const runnerArgs = {
+                kind: TASK_TYPE,
+                args: definition.args,
+                cwd: definition.cwd,
+                env: definition.env,
+            };
             const customExec = await vscode.commands.executeCommand(runnerCommand, runnerArgs);
             if (customExec) {
                 if (customExec instanceof vscode.ShellExecution) {
@@ -119,7 +119,7 @@ export async function buildRustTask(
         const cargoPath = await toolchain.cargoPath();
         const cargoCommand = overrideCargo?.split(" ") ?? [cargoPath];
 
-        const fullCommand = [...cargoCommand, ...args];
+        const fullCommand = [...cargoCommand, ...definition.args];
 
         const processName = unwrapUndefinable(fullCommand[0]);
         exec = new vscode.ProcessExecution(processName, fullCommand.slice(1), definition);

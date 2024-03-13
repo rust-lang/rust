@@ -115,8 +115,7 @@ export async function createTask(runnable: ra.Runnable, config: Config): Promise
 
     const definition: tasks.RustTargetDefinition = {
         type: tasks.TASK_TYPE,
-        command: args[0], // run, test, etc...
-        args: args.slice(1),
+        args,
         cwd: runnable.args.workspaceRoot || ".",
         env: prepareEnv(runnable, config.runnablesExtraEnv),
         overrideCargo: runnable.args.overrideCargo,
@@ -128,7 +127,6 @@ export async function createTask(runnable: ra.Runnable, config: Config): Promise
         target,
         definition,
         runnable.label,
-        args,
         config.problemMatcher,
         config.cargoRunner,
         true,
