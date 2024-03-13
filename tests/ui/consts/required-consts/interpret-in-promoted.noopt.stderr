@@ -1,0 +1,27 @@
+error[E0080]: evaluation of constant value failed
+  --> $SRC_DIR/core/src/hint.rs:LL:COL
+   |
+   = note: entering unreachable code
+   |
+note: inside `unreachable_unchecked`
+  --> $SRC_DIR/core/src/hint.rs:LL:COL
+note: inside `ub`
+  --> $DIR/interpret-in-promoted.rs:6:5
+   |
+LL |     std::hint::unreachable_unchecked();
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+note: inside `FOO`
+  --> $DIR/interpret-in-promoted.rs:12:28
+   |
+LL |     let _x: &'static () = &ub();
+   |                            ^^^^
+
+note: erroneous constant encountered
+  --> $DIR/interpret-in-promoted.rs:12:27
+   |
+LL |     let _x: &'static () = &ub();
+   |                           ^^^^^
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0080`.
