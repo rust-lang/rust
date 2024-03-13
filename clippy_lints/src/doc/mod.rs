@@ -611,6 +611,10 @@ fn check_doc<'a, Events: Iterator<Item = (pulldown_cmark::Event<'a>, Range<usize
                     code_level += 1;
                 } else if tag.starts_with("</code") {
                     code_level -= 1;
+                } else if tag.starts_with("<blockquote") || tag.starts_with("<q") {
+                    blockquote_level += 1;
+                } else if tag.starts_with("</blockquote") || tag.starts_with("</q") {
+                    blockquote_level -= 1;
                 }
             },
             Start(BlockQuote) => blockquote_level += 1,
