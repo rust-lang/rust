@@ -11,7 +11,7 @@ LL |     x;
    |
 help: consider cloning the value if the performance cost is acceptable
    |
-LL |     x.clone()
+LL |     x.clone();
    |      ++++++++
 
 error[E0596]: cannot borrow `y` as mutable, as it is not declared as mutable
