@@ -852,6 +852,7 @@ const KNOWN_DIRECTIVE_NAMES: &[&str] = &[
     "only-sparc64",
     "only-stable",
     "only-thumb",
+    "only-unix",
     "only-wasm32",
     "only-wasm32-bare",
     "only-windows",
