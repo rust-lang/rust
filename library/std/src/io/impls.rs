@@ -315,8 +315,9 @@ impl Read for &[u8] {
         let content = str::from_utf8(self).map_err(|_| {
             io::const_io_error!(ErrorKind::InvalidData, "stream did not contain valid UTF-8")
         })?;
-        buf.push_str(content);
         let len = self.len();
+        buf.try_reserve(len)?;
+        buf.push_str(content);
         *self = &self[len..];
         Ok(len)
     }
@@ -470,6 +471,7 @@ impl<A: Allocator> Read for VecDeque<u8, A> {
         let string = str::from_utf8(content).map_err(|_| {
             io::const_io_error!(ErrorKind::InvalidData, "stream did not contain valid UTF-8")
         })?;
+        buf.try_reserve(len)?;
         buf.push_str(string);
         self.clear();
         Ok(len)
