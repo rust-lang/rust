@@ -590,10 +590,10 @@ impl<'tcx> AdtDef<'tcx> {
         tcx.adt_destructor(self.did())
     }
 
-    /// Returns a list of types such that `Self: Sized` if and only if that
-    /// type is `Sized`, or `ty::Error` if this type has a recursive layout.
-    pub fn sized_constraint(self, tcx: TyCtxt<'tcx>) -> ty::EarlyBinder<&'tcx ty::List<Ty<'tcx>>> {
-        tcx.adt_sized_constraint(self.did())
+    /// Returns a type such that `Self: Sized` if and only if that type is `Sized`,
+    /// or `None` if the type is always sized.
+    pub fn sized_constraint(self, tcx: TyCtxt<'tcx>) -> Option<ty::EarlyBinder<Ty<'tcx>>> {
+        if self.is_struct() { tcx.adt_sized_constraint(self.did()) } else { None }
     }
 }
 

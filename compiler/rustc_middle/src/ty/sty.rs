@@ -2490,7 +2490,7 @@ impl<'tcx> Ty<'tcx> {
 
             ty::Tuple(tys) => tys.iter().all(|ty| ty.is_trivially_sized(tcx)),
 
-            ty::Adt(def, _args) => def.sized_constraint(tcx).skip_binder().is_empty(),
+            ty::Adt(def, _args) => def.sized_constraint(tcx).is_none(),
 
             ty::Alias(..) | ty::Param(_) | ty::Placeholder(..) | ty::Bound(..) => false,
 

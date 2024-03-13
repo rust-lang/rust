@@ -157,10 +157,20 @@ pub(in crate::solve) fn instantiate_constituent_tys_for_sized_trait<'tcx>(
         // impl Sized for (T1, T2, .., Tn) where T1: Sized, T2: Sized, .. Tn: Sized
         ty::Tuple(tys) => Ok(tys.iter().map(ty::Binder::dummy).collect()),
 
-        // impl Sized for Adt where T: Sized forall T in field types
+        // impl Sized for Adt<Args...> where sized_constraint(Adt)<Args...>: Sized
+        //   `sized_constraint(Adt)` is the deepest struct trail that can be determined
+        //   by the definition of `Adt`, independent of the generic args.
+        // impl Sized for Adt<Args...> if sized_constraint(Adt) == None
+        //   As a performance optimization, `sized_constraint(Adt)` can return `None`
+        //   if the ADTs definition implies that it is sized by for all possible args.
+        //   In this case, the builtin impl will have no nested subgoals. This is a
+        //   "best effort" optimization and `sized_constraint` may return `Some`, even
+        //   if the ADT is sized for all possible args.
         ty::Adt(def, args) => {
             let sized_crit = def.sized_constraint(ecx.tcx());
-            Ok(sized_crit.iter_instantiated(ecx.tcx(), args).map(ty::Binder::dummy).collect())
+            Ok(sized_crit.map_or_else(Vec::new, |ty| {
+                vec![ty::Binder::dummy(ty.instantiate(ecx.tcx(), args))]
+            }))
         }
     }
 }

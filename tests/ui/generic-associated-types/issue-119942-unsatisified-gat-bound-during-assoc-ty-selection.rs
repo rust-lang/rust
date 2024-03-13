@@ -29,5 +29,5 @@ where
 
 fn main() {
     let mut list = RcNode::<i32>::new();
-    //~^ ERROR the size for values of type `Node<i32, RcFamily>` cannot be known at compilation time
+    //~^ ERROR trait bounds were not satisfied
 }
