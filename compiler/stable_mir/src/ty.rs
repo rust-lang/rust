@@ -128,12 +128,37 @@ impl Const {
 
     /// Creates an interned usize constant.
     fn try_from_target_usize(val: u64) -> Result<Self, Error> {
-        with(|cx| cx.usize_to_const(val))
+        with(|cx| cx.try_new_const_uint(val.into(), UintTy::Usize))
     }
 
     /// Try to evaluate to a target `usize`.
     pub fn eval_target_usize(&self) -> Result<u64, Error> {
         with(|cx| cx.eval_target_usize(self))
+    }
+
+    /// Create a constant that represents a new zero-sized constant of type T.
+    /// Fails if the type is not a ZST or if it doesn't have a known size.
+    pub fn try_new_zero_sized(ty: Ty) -> Result<Const, Error> {
+        with(|cx| cx.try_new_const_zst(ty))
+    }
+
+    /// Build a new constant that represents the given string.
+    ///
+    /// Note that there is no guarantee today about duplication of the same constant.
+    /// I.e.: Calling this function multiple times with the same argument may or may not return
+    /// the same allocation.
+    pub fn from_str(value: &str) -> Const {
+        with(|cx| cx.new_const_str(value))
+    }
+
+    /// Build a new constant that represents the given boolean value.
+    pub fn from_bool(value: bool) -> Const {
+        with(|cx| cx.new_const_bool(value))
+    }
+
+    /// Build a new constant that represents the given unsigned integer.
+    pub fn try_from_uint(value: u128, uint_ty: UintTy) -> Result<Const, Error> {
+        with(|cx| cx.try_new_const_uint(value, uint_ty))
     }
 }
 
