@@ -395,7 +395,8 @@ mod desc {
     pub const parse_linker_flavor: &str = ::rustc_target::spec::LinkerFlavorCli::one_of();
     pub const parse_optimization_fuel: &str = "crate=integer";
     pub const parse_dump_mono_stats: &str = "`markdown` (default) or `json`";
-    pub const parse_instrument_coverage: &str = "either a boolean (`yes`, `no`, `on`, `off`, etc) or (unstable) one of `branch`, `except-unused-generics`, `except-unused-functions`";
+    pub const parse_instrument_coverage: &str = parse_bool;
+    pub const parse_coverage_options: &str = "`branch` or `no-branch`";
     pub const parse_instrument_xray: &str = "either a boolean (`yes`, `no`, `on`, `off`, etc), or a comma separated list of settings: `always` or `never` (mutually exclusive), `ignore-loops`, `instruction-threshold=N`, `skip-entry`, `skip-exit`";
     pub const parse_unpretty: &str = "`string` or `string=string`";
     pub const parse_treat_err_as_bug: &str = "either no value or a non-negative number";
@@ -928,18 +929,31 @@ mod parse {
             return true;
         };
 
+        // Parse values that have historically been accepted by stable compilers,
+        // even though they're currently just aliases for boolean values.
         *slot = match v {
             "all" => InstrumentCoverage::Yes,
-            "branch" => InstrumentCoverage::Branch,
-            "except-unused-generics" | "except_unused_generics" => {
-                InstrumentCoverage::ExceptUnusedGenerics
-            }
-            "except-unused-functions" | "except_unused_functions" => {
-                InstrumentCoverage::ExceptUnusedFunctions
-            }
             "0" => InstrumentCoverage::No,
             _ => return false,
         };
+        true
+    }
+
+    pub(crate) fn parse_coverage_options(slot: &mut CoverageOptions, v: Option<&str>) -> bool {
+        let Some(v) = v else { return true };
+
+        for option in v.split(',') {
+            let (option, enabled) = match option.strip_prefix("no-") {
+                Some(without_no) => (without_no, false),
+                None => (option, true),
+            };
+            let slot = match option {
+                "branch" => &mut slot.branch,
+                _ => return false,
+            };
+            *slot = enabled;
+        }
+
         true
     }
 
@@ -1445,14 +1459,9 @@ options! {
         "set the threshold for inlining a function"),
     #[rustc_lint_opt_deny_field_access("use `Session::instrument_coverage` instead of this field")]
     instrument_coverage: InstrumentCoverage = (InstrumentCoverage::No, parse_instrument_coverage, [TRACKED],
-        "instrument the generated code to support LLVM source-based code coverage \
-        reports (note, the compiler build config must include `profiler = true`); \
-        implies `-C symbol-mangling-version=v0`. Optional values are:
-        `=no` `=n` `=off` `=false` (default)
-        `=yes` `=y` `=on` `=true` (implicit value)
-        `=branch` (unstable)
-        `=except-unused-generics` (unstable)
-        `=except-unused-functions` (unstable)"),
+        "instrument the generated code to support LLVM source-based code coverage reports \
+        (note, the compiler build config must include `profiler = true`); \
+        implies `-C symbol-mangling-version=v0`"),
     link_arg: (/* redirected to link_args */) = ((), parse_string_push, [UNTRACKED],
         "a single extra argument to append to the linker invocation (can be used several times)"),
     link_args: Vec<String> = (Vec::new(), parse_list, [UNTRACKED],
@@ -1574,6 +1583,8 @@ options! {
         "set option to collapse debuginfo for macros"),
     combine_cgu: bool = (false, parse_bool, [TRACKED],
         "combine CGUs into a single one"),
+    coverage_options: CoverageOptions = (CoverageOptions::default(), parse_coverage_options, [TRACKED],
+        "control details of coverage instrumentation"),
     crate_attr: Vec<String> = (Vec::new(), parse_string_push, [TRACKED],
         "inject the given attribute in the crate"),
     cross_crate_inline_threshold: InliningThreshold = (InliningThreshold::Sometimes(100), parse_inlining_threshold, [TRACKED],
