@@ -3,42 +3,90 @@ error: encountered mutable pointer in final value of static
    |
 LL | static REF: &AtomicI32 = &AtomicI32::new(42);
    | ^^^^^^^^^^^^^^^^^^^^^^
-
-error: encountered mutable pointer in final value of static
-  --> $DIR/static-no-inner-mut.rs:10:1
    |
-LL | static REFMUT: &mut i32 = &mut 0;
-   | ^^^^^^^^^^^^^^^^^^^^^^^
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #122153 <https://github.com/rust-lang/rust/issues/122153>
+note: the lint level is defined here
+  --> $DIR/static-no-inner-mut.rs:6:9
+   |
+LL | #![deny(const_eval_mutable_ptr_in_final_value)]
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: encountered mutable pointer in final value of static
   --> $DIR/static-no-inner-mut.rs:13:1
    |
-LL | static REF2: &AtomicI32 = {let x = AtomicI32::new(42); &{x}};
+LL | static REFMUT: &mut i32 = &mut 0;
    | ^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #122153 <https://github.com/rust-lang/rust/issues/122153>
+
+error[E0080]: it is undefined behavior to use this value
+  --> $DIR/static-no-inner-mut.rs:13:1
+   |
+LL | static REFMUT: &mut i32 = &mut 0;
+   | ^^^^^^^^^^^^^^^^^^^^^^^ constructing invalid value: encountered mutable reference or box pointing to read-only memory
+   |
+   = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
+   = note: the raw bytes of the constant (size: 4, align: 4) {
+               ╾ALLOC0╼                                     │ ╾──╼
+           }
 
 error: encountered mutable pointer in final value of static
-  --> $DIR/static-no-inner-mut.rs:14:1
+  --> $DIR/static-no-inner-mut.rs:19:1
+   |
+LL | static REF2: &AtomicI32 = {let x = AtomicI32::new(42); &{x}};
+   | ^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #122153 <https://github.com/rust-lang/rust/issues/122153>
+
+error: encountered mutable pointer in final value of static
+  --> $DIR/static-no-inner-mut.rs:23:1
    |
 LL | static REFMUT2: &mut i32 = {let mut x = 0; &mut {x}};
    | ^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #122153 <https://github.com/rust-lang/rust/issues/122153>
+
+error[E0080]: it is undefined behavior to use this value
+  --> $DIR/static-no-inner-mut.rs:23:1
+   |
+LL | static REFMUT2: &mut i32 = {let mut x = 0; &mut {x}};
+   | ^^^^^^^^^^^^^^^^^^^^^^^^ constructing invalid value: encountered mutable reference or box pointing to read-only memory
+   |
+   = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
+   = note: the raw bytes of the constant (size: 4, align: 4) {
+               ╾ALLOC1╼                                     │ ╾──╼
+           }
 
 error: encountered mutable pointer in final value of static
-  --> $DIR/static-no-inner-mut.rs:29:1
+  --> $DIR/static-no-inner-mut.rs:41:1
    |
 LL | static RAW_SYNC: SyncPtr<AtomicI32> = SyncPtr { x: &AtomicI32::new(42) };
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #122153 <https://github.com/rust-lang/rust/issues/122153>
 
 error: encountered mutable pointer in final value of static
-  --> $DIR/static-no-inner-mut.rs:31:1
+  --> $DIR/static-no-inner-mut.rs:45:1
    |
 LL | static RAW_MUT_CAST: SyncPtr<i32> = SyncPtr { x : &mut 42 as *mut _ as *const _ };
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #122153 <https://github.com/rust-lang/rust/issues/122153>
 
 error: encountered mutable pointer in final value of static
-  --> $DIR/static-no-inner-mut.rs:33:1
+  --> $DIR/static-no-inner-mut.rs:49:1
    |
 LL | static RAW_MUT_COERCE: SyncPtr<i32> = SyncPtr { x: &mut 0 };
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #122153 <https://github.com/rust-lang/rust/issues/122153>
 
 warning: skipping const checks
    |
@@ -48,35 +96,141 @@ help: skipping check that does not even have a feature gate
 LL | static REF: &AtomicI32 = &AtomicI32::new(42);
    |                          ^^^^^^^^^^^^^^^^^^^
 help: skipping check that does not even have a feature gate
-  --> $DIR/static-no-inner-mut.rs:10:27
+  --> $DIR/static-no-inner-mut.rs:13:27
    |
 LL | static REFMUT: &mut i32 = &mut 0;
    |                           ^^^^^^
 help: skipping check that does not even have a feature gate
-  --> $DIR/static-no-inner-mut.rs:13:56
+  --> $DIR/static-no-inner-mut.rs:19:56
    |
 LL | static REF2: &AtomicI32 = {let x = AtomicI32::new(42); &{x}};
    |                                                        ^^^^
 help: skipping check that does not even have a feature gate
-  --> $DIR/static-no-inner-mut.rs:14:44
+  --> $DIR/static-no-inner-mut.rs:23:44
    |
 LL | static REFMUT2: &mut i32 = {let mut x = 0; &mut {x}};
    |                                            ^^^^^^^^
 help: skipping check that does not even have a feature gate
-  --> $DIR/static-no-inner-mut.rs:29:52
+  --> $DIR/static-no-inner-mut.rs:41:52
    |
 LL | static RAW_SYNC: SyncPtr<AtomicI32> = SyncPtr { x: &AtomicI32::new(42) };
    |                                                    ^^^^^^^^^^^^^^^^^^^
 help: skipping check that does not even have a feature gate
-  --> $DIR/static-no-inner-mut.rs:31:51
+  --> $DIR/static-no-inner-mut.rs:45:51
    |
 LL | static RAW_MUT_CAST: SyncPtr<i32> = SyncPtr { x : &mut 42 as *mut _ as *const _ };
    |                                                   ^^^^^^^
 help: skipping check that does not even have a feature gate
-  --> $DIR/static-no-inner-mut.rs:33:52
+  --> $DIR/static-no-inner-mut.rs:49:52
    |
 LL | static RAW_MUT_COERCE: SyncPtr<i32> = SyncPtr { x: &mut 0 };
    |                                                    ^^^^^^
 
-error: aborting due to 7 previous errors; 1 warning emitted
+error: aborting due to 9 previous errors; 1 warning emitted
+
+For more information about this error, try `rustc --explain E0080`.
+Future incompatibility report: Future breakage diagnostic:
+error: encountered mutable pointer in final value of static
+  --> $DIR/static-no-inner-mut.rs:9:1
+   |
+LL | static REF: &AtomicI32 = &AtomicI32::new(42);
+   | ^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #122153 <https://github.com/rust-lang/rust/issues/122153>
+note: the lint level is defined here
+  --> $DIR/static-no-inner-mut.rs:6:9
+   |
+LL | #![deny(const_eval_mutable_ptr_in_final_value)]
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Future breakage diagnostic:
+error: encountered mutable pointer in final value of static
+  --> $DIR/static-no-inner-mut.rs:13:1
+   |
+LL | static REFMUT: &mut i32 = &mut 0;
+   | ^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #122153 <https://github.com/rust-lang/rust/issues/122153>
+note: the lint level is defined here
+  --> $DIR/static-no-inner-mut.rs:6:9
+   |
+LL | #![deny(const_eval_mutable_ptr_in_final_value)]
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Future breakage diagnostic:
+error: encountered mutable pointer in final value of static
+  --> $DIR/static-no-inner-mut.rs:19:1
+   |
+LL | static REF2: &AtomicI32 = {let x = AtomicI32::new(42); &{x}};
+   | ^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #122153 <https://github.com/rust-lang/rust/issues/122153>
+note: the lint level is defined here
+  --> $DIR/static-no-inner-mut.rs:6:9
+   |
+LL | #![deny(const_eval_mutable_ptr_in_final_value)]
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Future breakage diagnostic:
+error: encountered mutable pointer in final value of static
+  --> $DIR/static-no-inner-mut.rs:23:1
+   |
+LL | static REFMUT2: &mut i32 = {let mut x = 0; &mut {x}};
+   | ^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #122153 <https://github.com/rust-lang/rust/issues/122153>
+note: the lint level is defined here
+  --> $DIR/static-no-inner-mut.rs:6:9
+   |
+LL | #![deny(const_eval_mutable_ptr_in_final_value)]
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Future breakage diagnostic:
+error: encountered mutable pointer in final value of static
+  --> $DIR/static-no-inner-mut.rs:41:1
+   |
+LL | static RAW_SYNC: SyncPtr<AtomicI32> = SyncPtr { x: &AtomicI32::new(42) };
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #122153 <https://github.com/rust-lang/rust/issues/122153>
+note: the lint level is defined here
+  --> $DIR/static-no-inner-mut.rs:6:9
+   |
+LL | #![deny(const_eval_mutable_ptr_in_final_value)]
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Future breakage diagnostic:
+error: encountered mutable pointer in final value of static
+  --> $DIR/static-no-inner-mut.rs:45:1
+   |
+LL | static RAW_MUT_CAST: SyncPtr<i32> = SyncPtr { x : &mut 42 as *mut _ as *const _ };
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #122153 <https://github.com/rust-lang/rust/issues/122153>
+note: the lint level is defined here
+  --> $DIR/static-no-inner-mut.rs:6:9
+   |
+LL | #![deny(const_eval_mutable_ptr_in_final_value)]
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Future breakage diagnostic:
+error: encountered mutable pointer in final value of static
+  --> $DIR/static-no-inner-mut.rs:49:1
+   |
+LL | static RAW_MUT_COERCE: SyncPtr<i32> = SyncPtr { x: &mut 0 };
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #122153 <https://github.com/rust-lang/rust/issues/122153>
+note: the lint level is defined here
+  --> $DIR/static-no-inner-mut.rs:6:9
+   |
+LL | #![deny(const_eval_mutable_ptr_in_final_value)]
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
