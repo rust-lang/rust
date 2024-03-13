@@ -1,19 +1,6 @@
-# Bootstrapping the compiler
+# What Bootstrapping does
 
 <!-- toc -->
-
-[*Bootstrapping*][boot] is the process of using a compiler to compile itself.
-More accurately, it means using an older compiler to compile a newer version
-of the same compiler.
-
-This raises a chicken-and-egg paradox: where did the first compiler come from?
-It must have been written in a different language. In Rust's case it was
-[written in OCaml][ocaml-compiler]. However it was abandoned long ago and the
-only way to build a modern version of rustc is a slightly less modern
-version.
-
-This is exactly how `x.py` works: it downloads the current beta release of
-rustc, then uses it to compile the new compiler.
 
 Note that this documentation mostly covers user-facing information. See
 [bootstrap/README.md][bootstrap-internals] to read about bootstrap internals.

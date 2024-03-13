@@ -33,7 +33,6 @@
     - [with Windows Performance Analyzer](./profiling/wpa_profiling.md)
 - [crates.io Dependencies](./crates-io.md)
 
-
 # Contributing to Rust
 
 - [Contribution Procedures](./contributing.md)
@@ -58,12 +57,17 @@
 - [Licenses](./licenses.md)
 - [Editions](guides/editions.md)
 
+# Bootstrapping
+
+- [Prologue](./building/bootstrapping/intro.md)
+- [What Bootstrapping does](./building/bootstrapping/what-bootstrapping-does.md)
+- [How Bootstrap does it](./building/bootstrapping/how-bootstrap-does-it.md)
+
 # High-level Compiler Architecture
 
 - [Prologue](./part-2-intro.md)
 - [Overview of the compiler](./overview.md)
 - [The compiler source code](./compiler-src.md)
-- [Bootstrapping](./building/bootstrapping.md)
 - [Queries: demand-driven compilation](./query.md)
     - [The Query Evaluation Model in Detail](./queries/query-evaluation-model-in-detail.md)
     - [Incremental compilation](./queries/incremental-compilation.md)
