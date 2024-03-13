@@ -606,6 +606,18 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValidityVisitor<'rt, 'mir, '
                 if place.layout.is_unsized() {
                     self.check_wide_ptr_meta(place.meta(), place.layout)?;
                 }
+                if let Some(prov) = place.ptr().provenance {
+                    if let Some(alloc_id) = prov.get_alloc_id() {
+                        if let AllocKind::Dead = self.ecx.get_alloc_info(alloc_id).2 {
+                            throw_validation_failure!(
+                                self.path,
+                                DanglingPtrUseAfterFree {
+                                    ptr_kind: PointerKind::Ref(Mutability::Not)
+                                }
+                            )
+                        }
+                    }
+                }
                 Ok(true)
             }
             ty::Ref(_, _ty, mutbl) => {

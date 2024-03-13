@@ -1,4 +1,4 @@
-const FOO: *const u32 = { //~ ERROR encountered dangling pointer in final value of constant
+const FOO: *const u32 = { //~ ERROR it is undefined behavior
     let x = 42;
     &x
 };
