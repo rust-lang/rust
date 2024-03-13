@@ -352,7 +352,7 @@ This unstable option provides finer control over some aspects of coverage
 instrumentation. Pass one or more of the following values, separated by commas.
 
 - `branch` or `no-branch`
-  - Placeholder for potential branch coverage support in the future.
+  - Enables or disables branch coverage instrumentation.
 
 ## Other references
 
