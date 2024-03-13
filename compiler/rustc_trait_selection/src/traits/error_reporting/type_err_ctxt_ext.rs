@@ -3091,6 +3091,13 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                     rustc_transmute::Reason::DstIsTooBig => {
                         format!("The size of `{src}` is smaller than the size of `{dst}`")
                     }
+                    rustc_transmute::Reason::DstRefIsTooBig { src, dst } => {
+                        let src_size = src.size;
+                        let dst_size = dst.size;
+                        format!(
+                            "The referent size of `{src}` ({src_size} bytes) is smaller than that of `{dst}` ({dst_size} bytes)"
+                        )
+                    }
                     rustc_transmute::Reason::SrcSizeOverflow => {
                         format!(
                             "values of the type `{src}` are too big for the current architecture"

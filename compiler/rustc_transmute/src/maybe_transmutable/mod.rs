@@ -266,6 +266,11 @@ where
                                                 src_min_align: src_ref.min_align(),
                                                 dst_min_align: dst_ref.min_align(),
                                             })
+                                        } else if dst_ref.size() > src_ref.size() {
+                                            Answer::No(Reason::DstRefIsTooBig {
+                                                src: src_ref,
+                                                dst: dst_ref,
+                                            })
                                         } else {
                                             // ...such that `src` is transmutable into `dst`, if
                                             // `src_ref` is transmutability into `dst_ref`.

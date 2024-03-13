@@ -35,6 +35,8 @@ pub(crate) trait Def: Debug + Hash + Eq + PartialEq + Copy + Clone {
 pub trait Ref: Debug + Hash + Eq + PartialEq + Copy + Clone {
     fn min_align(&self) -> usize;
 
+    fn size(&self) -> usize;
+
     fn is_mutable(&self) -> bool;
 }
 
@@ -48,6 +50,9 @@ impl Ref for ! {
     fn min_align(&self) -> usize {
         unreachable!()
     }
+    fn size(&self) -> usize {
+        unreachable!()
+    }
     fn is_mutable(&self) -> bool {
         unreachable!()
     }
@@ -57,6 +62,7 @@ impl Ref for ! {
 pub mod rustc {
     use rustc_middle::mir::Mutability;
     use rustc_middle::ty::{self, Ty};
+    use std::fmt::{self, Write};
 
     /// A reference in the layout.
     #[derive(Debug, Hash, Eq, PartialEq, PartialOrd, Ord, Clone, Copy)]
@@ -65,11 +71,16 @@ pub mod rustc {
         pub ty: Ty<'tcx>,
         pub mutability: Mutability,
         pub align: usize,
+        pub size: usize,
     }
 
     impl<'tcx> super::Ref for Ref<'tcx> {
         fn min_align(&self) -> usize {
             self.align
+        }
+
+        fn size(&self) -> usize {
+            self.size
         }
 
         fn is_mutable(&self) -> bool {
@@ -80,6 +91,16 @@ pub mod rustc {
         }
     }
     impl<'tcx> Ref<'tcx> {}
+
+    impl<'tcx> fmt::Display for Ref<'tcx> {
+        fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+            f.write_char('&')?;
+            if self.mutability == Mutability::Mut {
+                f.write_str("mut ")?;
+            }
+            self.ty.fmt(f)
+        }
+    }
 
     /// A visibility node in the layout.
     #[derive(Debug, Hash, Eq, PartialEq, Clone, Copy)]

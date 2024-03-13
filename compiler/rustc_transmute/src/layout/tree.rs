@@ -372,12 +372,15 @@ pub(crate) mod rustc {
                 }
 
                 ty::Ref(lifetime, ty, mutability) => {
-                    let align = layout_of(tcx, *ty)?.align();
+                    let layout = layout_of(tcx, *ty)?;
+                    let align = layout.align();
+                    let size = layout.size();
                     Ok(Tree::Ref(Ref {
                         lifetime: *lifetime,
                         ty: *ty,
                         mutability: *mutability,
                         align,
+                        size,
                     }))
                 }
 
