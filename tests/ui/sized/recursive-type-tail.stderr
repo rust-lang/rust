@@ -1,21 +1,21 @@
-error: reached the recursion limit finding the struct tail for `<() as A>::Assoc`
+error[E0275]: overflow evaluating the requirement `<Foo<()> as Pointee>::Metadata == ()`
+  --> $DIR/recursive-type-tail.rs:6:18
    |
-   = help: consider increasing the recursion limit by adding a `#![recursion_limit = "256"]`
-
-error: reached the recursion limit finding the struct tail for `<() as A>::Assoc`
+LL |     type Assoc = Foo<()>;
+   |                  ^^^^^^^
    |
-   = help: consider increasing the recursion limit by adding a `#![recursion_limit = "256"]`
-   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
-
-error: reached the recursion limit finding the struct tail for `<() as A>::Assoc`
+   = note: required for `<() as A>::Assoc` to implement `Thin`
+   = note: required for `<() as A>::Assoc` to implement `Sized`
+note: required by a bound in `A::Assoc`
+  --> $DIR/recursive-type-tail.rs:3:11
    |
-   = help: consider increasing the recursion limit by adding a `#![recursion_limit = "256"]`
-   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
-
-error: reached the recursion limit finding the struct tail for `<() as A>::Assoc`
+LL | trait A { type Assoc; }
+   |           ^^^^^^^^^^^ required by this bound in `A::Assoc`
+help: consider relaxing the implicit `Sized` restriction
    |
-   = help: consider increasing the recursion limit by adding a `#![recursion_limit = "256"]`
-   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+LL | trait A { type Assoc: ?Sized; }
+   |                     ++++++++
 
-error: aborting due to 4 previous errors
+error: aborting due to 1 previous error
 
+For more information about this error, try `rustc --explain E0275`.
