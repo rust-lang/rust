@@ -13,8 +13,8 @@ pub struct ModifierInfo {
 }
 
 impl From<(char, &'static str, u64)> for ModifierInfo {
-    fn from(value: (char, &'static str, u64)) -> Self {
-        Self { modifier: value.0, result: value.1, size: value.2 }
+    fn from((modifier, result, size): (char, &'static str, u64)) -> Self {
+        Self { modifier, result, size }
     }
 }
 
