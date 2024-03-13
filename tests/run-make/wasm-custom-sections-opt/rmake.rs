@@ -1,6 +1,6 @@
 extern crate run_make_support;
 
-use run_make_support::{out_dir, rustc, wasmparser};
+use run_make_support::{out_dir, wasmparser, rustc};
 use std::collections::HashMap;
 use std::path::Path;
 
@@ -9,7 +9,8 @@ fn main() {
         return;
     }
 
-    rustc().arg("foo.rs").arg("--target=wasm32-wasip1").arg("-O").run();
+    rustc().input("foo.rs").target("wasm32-wasip1").opt().run();
+
     verify(&out_dir().join("foo.wasm"));
 }
 

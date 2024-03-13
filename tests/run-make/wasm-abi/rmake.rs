@@ -9,7 +9,8 @@ fn main() {
         return;
     }
 
-    rustc().arg("foo.rs").arg("--target=wasm32-wasip1").run();
+    rustc().input("foo.rs").target("wasm32-wasip1").run();
+
     let file = out_dir().join("foo.wasm");
 
     let has_wasmtime = match Command::new("wasmtime").arg("--version").output() {
