@@ -381,10 +381,7 @@ pub fn eval_in_interpreter<'mir, 'tcx>(
         Ok(mplace) => {
             // Since evaluation had no errors, validate the resulting constant.
 
-            // Temporarily allow access to the static_root_ids for the purpose of validation.
-            let static_root_ids = ecx.machine.static_root_ids.take();
             let res = const_validate_mplace(&ecx, &mplace, cid);
-            ecx.machine.static_root_ids = static_root_ids;
 
             let alloc_id = mplace.ptr().provenance.unwrap().alloc_id();
 
