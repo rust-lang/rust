@@ -991,9 +991,39 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         &self,
         err: &mut Diag<'_>,
         ty: Ty<'tcx>,
-        expr: &hir::Expr<'_>,
-        other_expr: Option<&hir::Expr<'_>>,
+        mut expr: &'cx hir::Expr<'cx>,
+        mut other_expr: Option<&'cx hir::Expr<'cx>>,
     ) {
+        if let Some(some_other_expr) = other_expr
+            && let Some(parent_binop) =
+                self.infcx.tcx.hir().parent_iter(expr.hir_id).find_map(|n| {
+                    if let (hir_id, hir::Node::Expr(e)) = n
+                        && let hir::ExprKind::AssignOp(_binop, target, _arg) = e.kind
+                        && target.hir_id == expr.hir_id
+                    {
+                        Some(hir_id)
+                    } else {
+                        None
+                    }
+                })
+            && let Some(other_parent_binop) =
+                self.infcx.tcx.hir().parent_iter(some_other_expr.hir_id).find_map(|n| {
+                    if let (hir_id, hir::Node::Expr(expr)) = n
+                        && let hir::ExprKind::AssignOp(..) = expr.kind
+                    {
+                        Some(hir_id)
+                    } else {
+                        None
+                    }
+                })
+            && { true }
+            && parent_binop == other_parent_binop
+        {
+            // Explicitly look for `expr += other_expr;` and avoid suggesting
+            // `expr.clone() += other_expr;`, instead suggesting `expr += other_expr.clone();`.
+            other_expr = Some(expr);
+            expr = some_other_expr;
+        }
         'outer: {
             if let ty::Ref(..) = ty.kind() {
                 // We check for either `let binding = foo(expr, other_expr);` or
