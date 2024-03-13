@@ -1,5 +1,6 @@
 use std::ops::AddAssign;
 
+#[derive(Clone)]
 struct Int(i32);
 
 impl AddAssign for Int {
@@ -12,6 +13,7 @@ fn main() {
     let mut x = Int(1); //~ NOTE binding `x` declared here
     x
     //~^ NOTE borrow of `x` occurs here
+    //~| HELP consider cloning
     +=
     x;
     //~^ ERROR cannot move out of `x` because it is borrowed
