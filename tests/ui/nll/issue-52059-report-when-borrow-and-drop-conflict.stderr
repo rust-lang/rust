@@ -41,6 +41,10 @@ help: consider borrowing here
    |
 LL |     let p = &s.url; p
    |             +
+help: consider cloning the value if the performance cost is acceptable
+   |
+LL |     let p = s.url.clone(); p
+   |                  ++++++++
 
 error: aborting due to 4 previous errors
 

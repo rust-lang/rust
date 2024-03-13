@@ -10,12 +10,6 @@ LL |     let [ref _x0_hold, _x1, ref xs_hold @ ..] = arr;
 LL |     _x1 = U;
 LL |     drop(hold_all);
    |          -------- borrow later used here
-   |
-help: consider cloning the value if the performance cost is acceptable
-   |
-LL -     let hold_all = &arr;
-LL +     let hold_all = arr.clone();
-   |
 
 error[E0384]: cannot assign twice to immutable variable `_x1`
   --> $DIR/borrowck-move-ref-pattern.rs:9:5
