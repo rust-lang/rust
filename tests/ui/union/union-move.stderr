@@ -44,6 +44,11 @@ LL |         move_out(x.f1_nocopy);
    |                  |
    |                  cannot move out of here
    |                  move occurs because `x.f1_nocopy` has type `ManuallyDrop<RefCell<i32>>`, which does not implement the `Copy` trait
+   |
+help: consider cloning the value if the performance cost is acceptable
+   |
+LL |         move_out(x.f1_nocopy.clone());
+   |                             ++++++++
 
 error: aborting due to 3 previous errors
 

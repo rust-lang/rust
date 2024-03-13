@@ -7,6 +7,11 @@ LL |     let _f = to_fn(|| test(i));
    |                    --      ^ move occurs because `i` has type `Box<usize>`, which does not implement the `Copy` trait
    |                    |
    |                    captured by this `Fn` closure
+   |
+help: consider cloning the value if the performance cost is acceptable
+   |
+LL |     let _f = to_fn(|| test(i.clone()));
+   |                             ++++++++
 
 error: aborting due to 1 previous error
 

@@ -15,6 +15,11 @@ LL |     let _s2 = T{a: 2, ..s0};
    |               |
    |               cannot move out of here
    |               move occurs because `s0.mv` has type `Box<isize>`, which does not implement the `Copy` trait
+   |
+help: consider cloning the value if the performance cost is acceptable
+   |
+LL |     let _s2 = T{a: 2, ..s0}.clone();
+   |                            ++++++++
 
 error: aborting due to 2 previous errors
 
