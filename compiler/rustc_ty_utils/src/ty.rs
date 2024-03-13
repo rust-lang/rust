@@ -99,8 +99,8 @@ fn adt_sized_constraint<'tcx>(
     def_id: DefId,
 ) -> ty::EarlyBinder<&'tcx ty::List<Ty<'tcx>>> {
     if let Some(def_id) = def_id.as_local() {
-        if matches!(tcx.representability(def_id), ty::Representability::Infinite) {
-            return ty::EarlyBinder::bind(tcx.mk_type_list(&[Ty::new_misc_error(tcx)]));
+        if let ty::Representability::Infinite(guar) = tcx.representability(def_id) {
+            return ty::EarlyBinder::bind(tcx.mk_type_list(&[Ty::new_error(tcx, guar)]));
         }
     }
     let def = tcx.adt_def(def_id);

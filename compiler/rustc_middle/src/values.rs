@@ -106,8 +106,8 @@ impl<'tcx> Value<TyCtxt<'tcx>> for Representability {
                 representable_ids.insert(def_id);
             }
         }
-        recursive_type_error(tcx, item_and_field_ids, &representable_ids);
-        Representability::Infinite
+        let guar = recursive_type_error(tcx, item_and_field_ids, &representable_ids);
+        Representability::Infinite(guar)
     }
 }
 
@@ -268,7 +268,7 @@ pub fn recursive_type_error(
     tcx: TyCtxt<'_>,
     mut item_and_field_ids: Vec<(LocalDefId, LocalDefId)>,
     representable_ids: &FxHashSet<LocalDefId>,
-) {
+) -> ErrorGuaranteed {
     const ITEM_LIMIT: usize = 5;
 
     // Rotate the cycle so that the item with the lowest span is first
@@ -344,7 +344,7 @@ pub fn recursive_type_error(
         suggestion,
         Applicability::HasPlaceholders,
     )
-    .emit();
+    .emit()
 }
 
 fn find_item_ty_spans(

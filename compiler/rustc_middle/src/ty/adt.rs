@@ -601,5 +601,5 @@ impl<'tcx> AdtDef<'tcx> {
 #[derive(HashStable)]
 pub enum Representability {
     Representable,
-    Infinite,
+    Infinite(ErrorGuaranteed),
 }
