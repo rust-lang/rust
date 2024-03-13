@@ -377,6 +377,25 @@ trigger_files = [
     "compiler/rustc_middle/src/traits/solve"
 ]
 
+[autolabel."PG-exploit-mitigations"]
+trigger_files = [
+    "compiler/rustc_symbol_mangling/src/typeid",
+    "src/doc/rustc/src/exploit-mitigations.md",
+    "src/doc/unstable-book/src/compiler-flags/branch-protection.md",
+    "src/doc/unstable-book/src/compiler-flags/cf-protection.md",
+    "src/doc/unstable-book/src/compiler-flags/control-flow-guard.md",
+    "src/doc/unstable-book/src/compiler-flags/sanitizer.md",
+    "src/doc/unstable-book/src/language-features/cfg-sanitize.md",
+    "src/doc/unstable-book/src/language-features/cfi-encoding.md",
+    "src/doc/unstable-book/src/language-features/no-sanitize.md",
+    "tests/codegen/sanitizer",
+    "tests/codegen/split-lto-unit.rs",
+    "tests/codegen/stack-probes-inline.rs",
+    "tests/codegen/stack-protector.rs",
+    "tests/ui/sanitizer",
+    "tests/ui/stack-protector"
+]
+
 [notify-zulip."I-prioritize"]
 zulip_stream = 245100 # #t-compiler/wg-prioritization/alerts
 topic = "#{number} {title}"
@@ -642,6 +661,51 @@ cc = ["@nnethercote"]
 message = "Changes to the size of AST and/or HIR nodes."
 cc = ["@nnethercote"]
 
+[mentions."compiler/rustc_symbol_mangling/src/typeid"]
+cc = ["@rust-lang/project-exploit-mitigations", "@rcvalle"]
+
+[mentions."src/doc/rustc/src/exploit-mitigations.md"]
+cc = ["@rust-lang/project-exploit-mitigations", "@rcvalle"]
+
+[mentions."src/doc/unstable-book/src/compiler-flags/branch-protection.md"]
+cc = ["@rust-lang/project-exploit-mitigations", "@rcvalle"]
+
+[mentions."src/doc/unstable-book/src/compiler-flags/cf-protection.md"]
+cc = ["@rust-lang/project-exploit-mitigations", "@rcvalle"]
+
+[mentions."src/doc/unstable-book/src/compiler-flags/control-flow-guard.md"]
+cc = ["@rust-lang/project-exploit-mitigations", "@rcvalle"]
+
+[mentions."src/doc/unstable-book/src/compiler-flags/sanitizer.md"]
+cc = ["@rust-lang/project-exploit-mitigations", "@rcvalle"]
+
+[mentions."src/doc/unstable-book/src/language-features/cfg-sanitize.md"]
+cc = ["@rust-lang/project-exploit-mitigations", "@rcvalle"]
+
+[mentions."src/doc/unstable-book/src/language-features/cfi-encoding.md"]
+cc = ["@rust-lang/project-exploit-mitigations", "@rcvalle"]
+
+[mentions."src/doc/unstable-book/src/language-features/no-sanitize.md"]
+cc = ["@rust-lang/project-exploit-mitigations", "@rcvalle"]
+
+[mentions."tests/codegen/sanitizer"]
+cc = ["@rust-lang/project-exploit-mitigations", "@rcvalle"]
+
+[mentions."tests/codegen/split-lto-unit.rs"]
+cc = ["@rust-lang/project-exploit-mitigations", "@rcvalle"]
+
+[mentions."tests/codegen/stack-probes-inline.rs"]
+cc = ["@rust-lang/project-exploit-mitigations", "@rcvalle"]
+
+[mentions."tests/codegen/stack-protector.rs"]
+cc = ["@rust-lang/project-exploit-mitigations", "@rcvalle"]
+
+[mentions."tests/ui/sanitizer"]
+cc = ["@rust-lang/project-exploit-mitigations", "@rcvalle"]
+
+[mentions."tests/ui/stack-protector"]
+cc = ["@rust-lang/project-exploit-mitigations", "@rcvalle"]
+
 [assign]
 warn_non_default_branch = true
 contributing_url = "https://rustc-dev-guide.rust-lang.org/getting-started.html"
@@ -781,6 +845,11 @@ project-stable-mir = [
     "@oli-obk",
     "@spastorino",
     "@ouz-a",
+]
+
+project-exploit-mitigations = [
+    "@cuviper",
+    "@rcvalle",
 ]
 
 [assign.owners]
