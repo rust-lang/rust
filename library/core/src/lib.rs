@@ -203,8 +203,10 @@
 // Language features:
 // tidy-alphabetical-start
 #![cfg_attr(bootstrap, feature(diagnostic_namespace))]
+#![cfg_attr(bootstrap, feature(exhaustive_patterns))]
 #![cfg_attr(bootstrap, feature(platform_intrinsics))]
 #![cfg_attr(not(bootstrap), feature(freeze_impls))]
+#![cfg_attr(not(bootstrap), feature(min_exhaustive_patterns))]
 #![feature(abi_unadjusted)]
 #![feature(adt_const_params)]
 #![feature(allow_internal_unsafe)]
@@ -229,7 +231,6 @@
 #![feature(doc_cfg_hide)]
 #![feature(doc_notable_trait)]
 #![feature(effects)]
-#![feature(exhaustive_patterns)]
 #![feature(extern_types)]
 #![feature(fundamental)]
 #![feature(generic_arg_infer)]
