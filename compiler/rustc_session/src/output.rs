@@ -1,7 +1,7 @@
 //! Related to out filenames of compilation (e.g. binaries).
-use crate::config::{CrateType, Input, OutFileName, OutputFilenames, OutputType};
+use crate::config::{self, CrateType, Input, OutFileName, OutputFilenames, OutputType};
 use crate::errors::{
-    CrateNameDoesNotMatch, CrateNameEmpty, CrateNameInvalid, FileIsNotWriteable,
+    self, CrateNameDoesNotMatch, CrateNameEmpty, CrateNameInvalid, FileIsNotWriteable,
     InvalidCharacterInCrateName, InvalidCrateNameHelp,
 };
 use crate::Session;
@@ -199,4 +199,65 @@ pub fn invalid_output_for_target(sess: &Session, crate_type: CrateType) -> bool 
     }
 
     false
+}
+
+pub const CRATE_TYPES: &[(Symbol, CrateType)] = &[
+    (sym::rlib, CrateType::Rlib),
+    (sym::dylib, CrateType::Dylib),
+    (sym::cdylib, CrateType::Cdylib),
+    (sym::lib, config::default_lib_output()),
+    (sym::staticlib, CrateType::Staticlib),
+    (sym::proc_dash_macro, CrateType::ProcMacro),
+    (sym::bin, CrateType::Executable),
+];
+
+pub fn categorize_crate_type(s: Symbol) -> Option<CrateType> {
+    Some(CRATE_TYPES.iter().find(|(key, _)| *key == s)?.1)
+}
+
+pub fn collect_crate_types(session: &Session, attrs: &[ast::Attribute]) -> Vec<CrateType> {
+    // If we're generating a test executable, then ignore all other output
+    // styles at all other locations
+    if session.opts.test {
+        return vec![CrateType::Executable];
+    }
+
+    // Only check command line flags if present. If no types are specified by
+    // command line, then reuse the empty `base` Vec to hold the types that
+    // will be found in crate attributes.
+    // JUSTIFICATION: before wrapper fn is available
+    #[allow(rustc::bad_opt_access)]
+    let mut base = session.opts.crate_types.clone();
+    if base.is_empty() {
+        let attr_types = attrs.iter().filter_map(|a| {
+            if a.has_name(sym::crate_type)
+                && let Some(s) = a.value_str()
+            {
+                categorize_crate_type(s)
+            } else {
+                None
+            }
+        });
+        base.extend(attr_types);
+        if base.is_empty() {
+            base.push(default_output_for_target(session));
+        } else {
+            base.sort();
+            base.dedup();
+        }
+    }
+
+    base.retain(|crate_type| {
+        if invalid_output_for_target(session, *crate_type) {
+            session.dcx().emit_warn(errors::UnsupportedCrateTypeForTarget {
+                crate_type: *crate_type,
+                target_triple: &session.opts.target_triple,
+            });
+            false
+        } else {
+            true
+        }
+    });
+
+    base
 }

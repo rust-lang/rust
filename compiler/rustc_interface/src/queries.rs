@@ -18,7 +18,7 @@ use rustc_middle::ty::{GlobalCtxt, TyCtxt};
 use rustc_serialize::opaque::FileEncodeResult;
 use rustc_session::config::{self, CrateType, OutputFilenames, OutputType};
 use rustc_session::cstore::Untracked;
-use rustc_session::output::find_crate_name;
+use rustc_session::output::{collect_crate_types, find_crate_name};
 use rustc_session::Session;
 use rustc_span::symbol::sym;
 use std::any::Any;
@@ -128,7 +128,7 @@ impl<'tcx> Queries<'tcx> {
 
             // parse `#[crate_name]` even if `--crate-name` was passed, to make sure it matches.
             let crate_name = find_crate_name(sess, &pre_configured_attrs);
-            let crate_types = util::collect_crate_types(sess, &pre_configured_attrs);
+            let crate_types = collect_crate_types(sess, &pre_configured_attrs);
             let stable_crate_id = StableCrateId::new(
                 crate_name,
                 crate_types.contains(&CrateType::Executable),
@@ -136,7 +136,7 @@ impl<'tcx> Queries<'tcx> {
                 sess.cfg_version,
             );
             let outputs = util::build_output_filenames(&pre_configured_attrs, sess);
-            let dep_graph = setup_dep_graph(sess, crate_name, stable_crate_id)?;
+            let dep_graph = setup_dep_graph(sess)?;
 
             let cstore = FreezeLock::new(Box::new(CStore::new(
                 self.compiler.codegen_backend.metadata_loader(),

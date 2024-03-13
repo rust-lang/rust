@@ -7,14 +7,15 @@ use rustc_data_structures::sync;
 use rustc_metadata::{load_symbol_from_dylib, DylibError};
 use rustc_parse::validate_attr;
 use rustc_session as session;
-use rustc_session::config::{self, Cfg, CrateType, OutFileName, OutputFilenames, OutputTypes};
+use rustc_session::config::{Cfg, OutFileName, OutputFilenames, OutputTypes};
 use rustc_session::filesearch::sysroot_candidates;
 use rustc_session::lint::{self, BuiltinLintDiag, LintBuffer};
-use rustc_session::{filesearch, output, Session};
+use rustc_session::{filesearch, Session};
 use rustc_span::edit_distance::find_best_match_for_name;
 use rustc_span::edition::Edition;
-use rustc_span::symbol::{sym, Symbol};
+use rustc_span::symbol::sym;
 use rustc_target::spec::Target;
+use session::output::{categorize_crate_type, CRATE_TYPES};
 use session::EarlyDiagCtxt;
 use std::env::consts::{DLL_PREFIX, DLL_SUFFIX};
 use std::path::{Path, PathBuf};
@@ -397,67 +398,6 @@ pub(crate) fn check_attr_crate_type(
             }
         }
     }
-}
-
-const CRATE_TYPES: &[(Symbol, CrateType)] = &[
-    (sym::rlib, CrateType::Rlib),
-    (sym::dylib, CrateType::Dylib),
-    (sym::cdylib, CrateType::Cdylib),
-    (sym::lib, config::default_lib_output()),
-    (sym::staticlib, CrateType::Staticlib),
-    (sym::proc_dash_macro, CrateType::ProcMacro),
-    (sym::bin, CrateType::Executable),
-];
-
-fn categorize_crate_type(s: Symbol) -> Option<CrateType> {
-    Some(CRATE_TYPES.iter().find(|(key, _)| *key == s)?.1)
-}
-
-pub fn collect_crate_types(session: &Session, attrs: &[ast::Attribute]) -> Vec<CrateType> {
-    // If we're generating a test executable, then ignore all other output
-    // styles at all other locations
-    if session.opts.test {
-        return vec![CrateType::Executable];
-    }
-
-    // Only check command line flags if present. If no types are specified by
-    // command line, then reuse the empty `base` Vec to hold the types that
-    // will be found in crate attributes.
-    // JUSTIFICATION: before wrapper fn is available
-    #[allow(rustc::bad_opt_access)]
-    let mut base = session.opts.crate_types.clone();
-    if base.is_empty() {
-        let attr_types = attrs.iter().filter_map(|a| {
-            if a.has_name(sym::crate_type)
-                && let Some(s) = a.value_str()
-            {
-                categorize_crate_type(s)
-            } else {
-                None
-            }
-        });
-        base.extend(attr_types);
-        if base.is_empty() {
-            base.push(output::default_output_for_target(session));
-        } else {
-            base.sort();
-            base.dedup();
-        }
-    }
-
-    base.retain(|crate_type| {
-        if output::invalid_output_for_target(session, *crate_type) {
-            session.dcx().emit_warn(errors::UnsupportedCrateTypeForTarget {
-                crate_type: *crate_type,
-                target_triple: &session.opts.target_triple,
-            });
-            false
-        } else {
-            true
-        }
-    });
-
-    base
 }
 
 fn multiple_output_types_to_stdout(
