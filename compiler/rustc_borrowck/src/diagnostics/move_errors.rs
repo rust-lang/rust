@@ -435,7 +435,9 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
 
     fn add_move_hints(&self, error: GroupedMoveError<'tcx>, err: &mut Diag<'_>, span: Span) {
         match error {
-            GroupedMoveError::MovesFromPlace { mut binds_to, move_from, .. } => {
+            GroupedMoveError::MovesFromPlace {
+                mut binds_to, move_from, span: other_span, ..
+            } => {
                 self.add_borrow_suggestions(err, span);
                 if binds_to.is_empty() {
                     let place_ty = move_from.ty(self.body, self.infcx.tcx).ty;
@@ -445,7 +447,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                     };
 
                     if let Some(expr) = self.find_expr(span) {
-                        self.suggest_cloning(err, place_ty, expr);
+                        self.suggest_cloning(err, place_ty, expr, self.find_expr(other_span));
                     }
 
                     err.subdiagnostic(
@@ -472,15 +474,15 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
             }
             // No binding. Nothing to suggest.
             GroupedMoveError::OtherIllegalMove { ref original_path, use_spans, .. } => {
-                let span = use_spans.var_or_use();
+                let use_span = use_spans.var_or_use();
                 let place_ty = original_path.ty(self.body, self.infcx.tcx).ty;
                 let place_desc = match self.describe_place(original_path.as_ref()) {
                     Some(desc) => format!("`{desc}`"),
                     None => "value".to_string(),
                 };
 
-                if let Some(expr) = self.find_expr(span) {
-                    self.suggest_cloning(err, place_ty, expr);
+                if let Some(expr) = self.find_expr(use_span) {
+                    self.suggest_cloning(err, place_ty, expr, self.find_expr(span));
                 }
 
                 err.subdiagnostic(
@@ -489,7 +491,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                         is_partial_move: false,
                         ty: place_ty,
                         place: &place_desc,
-                        span,
+                        span: use_span,
                     },
                 );
 
@@ -593,7 +595,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                 let place_desc = &format!("`{}`", self.local_names[*local].unwrap());
 
                 if let Some(expr) = self.find_expr(binding_span) {
-                    self.suggest_cloning(err, bind_to.ty, expr);
+                    self.suggest_cloning(err, bind_to.ty, expr, None);
                 }
 
                 err.subdiagnostic(
