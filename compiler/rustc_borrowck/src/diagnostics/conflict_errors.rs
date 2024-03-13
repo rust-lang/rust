@@ -476,7 +476,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                 } else if self.suggest_hoisting_call_outside_loop(err, expr) {
                     // The place where the the type moves would be misleading to suggest clone.
                     // #121466
-                    self.suggest_cloning(err, ty, expr);
+                    self.suggest_cloning(err, ty, expr, None);
                 }
             }
             if let Some(pat) = finder.pat {
@@ -987,7 +987,78 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         can_suggest_clone
     }
 
-    pub(crate) fn suggest_cloning(&self, err: &mut Diag<'_>, ty: Ty<'tcx>, expr: &hir::Expr<'_>) {
+    pub(crate) fn suggest_cloning(
+        &self,
+        err: &mut Diag<'_>,
+        ty: Ty<'tcx>,
+        expr: &hir::Expr<'_>,
+        other_expr: Option<&hir::Expr<'_>>,
+    ) {
+        'outer: {
+            if let ty::Ref(..) = ty.kind() {
+                // We check for either `let binding = foo(expr, other_expr);` or
+                // `foo(expr, other_expr);` and if so we don't suggest an incorrect
+                // `foo(expr, other_expr).clone()`
+                if let Some(other_expr) = other_expr
+                    && let Some(parent_let) =
+                        self.infcx.tcx.hir().parent_iter(expr.hir_id).find_map(|n| {
+                            if let (hir_id, hir::Node::Local(_) | hir::Node::Stmt(_)) = n {
+                                Some(hir_id)
+                            } else {
+                                None
+                            }
+                        })
+                    && let Some(other_parent_let) =
+                        self.infcx.tcx.hir().parent_iter(other_expr.hir_id).find_map(|n| {
+                            if let (hir_id, hir::Node::Local(_) | hir::Node::Stmt(_)) = n {
+                                Some(hir_id)
+                            } else {
+                                None
+                            }
+                        })
+                    && parent_let == other_parent_let
+                {
+                    // Explicitly check that we don't have `foo(&*expr, other_expr)`, as cloning the
+                    // result of `foo(...)` won't help.
+                    break 'outer;
+                }
+
+                // We're suggesting `.clone()` on an borrowed value. See if the expression we have
+                // is an argument to a function or method call, and try to suggest cloning the
+                // *result* of the call, instead of the argument. This is closest to what people
+                // would actually be looking for in most cases, with maybe the exception of things
+                // like `fn(T) -> T`, but even then it is reasonable.
+                let typeck_results = self.infcx.tcx.typeck(self.mir_def_id());
+                let mut prev = expr;
+                while let hir::Node::Expr(parent) = self.infcx.tcx.parent_hir_node(prev.hir_id) {
+                    if let hir::ExprKind::Call(..) | hir::ExprKind::MethodCall(..) = parent.kind
+                        && let Some(call_ty) = typeck_results.node_type_opt(parent.hir_id)
+                        && let call_ty = call_ty.peel_refs()
+                        && (!call_ty
+                            .walk()
+                            .any(|t| matches!(t.unpack(), ty::GenericArgKind::Lifetime(_)))
+                            || if let ty::Alias(ty::Projection, _) = call_ty.kind() {
+                                // FIXME: this isn't quite right with lifetimes on assoc types,
+                                // but ignore for now. We will only suggest cloning if
+                                // `<Ty as Trait>::Assoc: Clone`, which should keep false positives
+                                // down to a managable ammount.
+                                true
+                            } else {
+                                false
+                            })
+                        && let Some(clone_trait_def) = self.infcx.tcx.lang_items().clone_trait()
+                        && self
+                            .infcx
+                            .type_implements_trait(clone_trait_def, [call_ty], self.param_env)
+                            .must_apply_modulo_regions()
+                        && self.suggest_cloning_inner(err, call_ty, parent)
+                    {
+                        return;
+                    }
+                    prev = parent;
+                }
+            }
+        }
         let ty = ty.peel_refs();
         if let Some(clone_trait_def) = self.infcx.tcx.lang_items().clone_trait()
             && self
@@ -1014,12 +1085,17 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         }
     }
 
-    fn suggest_cloning_inner(&self, err: &mut Diag<'_>, ty: Ty<'tcx>, expr: &hir::Expr<'_>) {
+    fn suggest_cloning_inner(
+        &self,
+        err: &mut Diag<'_>,
+        ty: Ty<'tcx>,
+        expr: &hir::Expr<'_>,
+    ) -> bool {
         let tcx = self.infcx.tcx;
         if let Some(_) = self.clone_on_reference(expr) {
             // Avoid redundant clone suggestion already suggested in `explain_captures`.
             // See `tests/ui/moves/needs-clone-through-deref.rs`
-            return;
+            return false;
         }
         // Try to find predicates on *generic params* that would allow copying `ty`
         let suggestion =
@@ -1036,7 +1112,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
             if let hir::ExprKind::AddrOf(_, hir::Mutability::Mut, _) = inner_expr.kind {
                 // We assume that `&mut` refs are desired for their side-effects, so cloning the
                 // value wouldn't do what the user wanted.
-                return;
+                return false;
             }
             inner_expr = inner;
         }
@@ -1059,6 +1135,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
             "consider cloning the value if the performance cost is acceptable"
         };
         err.multipart_suggestion_verbose(msg, sugg, Applicability::MachineApplicable);
+        true
     }
 
     fn suggest_adding_bounds(&self, err: &mut Diag<'_>, ty: Ty<'tcx>, def_id: DefId, span: Span) {
@@ -1167,7 +1244,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         if let Some(expr) = self.find_expr(borrow_span)
             && let Some(ty) = typeck_results.node_type_opt(expr.hir_id)
         {
-            self.suggest_cloning(&mut err, ty, expr);
+            self.suggest_cloning(&mut err, ty, expr, self.find_expr(span));
         }
         self.buffer_error(err);
     }
