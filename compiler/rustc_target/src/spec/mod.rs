@@ -211,7 +211,7 @@ impl ToJson for LldFlavor {
 
 impl LinkerFlavor {
     /// At this point the target's reference linker flavor doesn't yet exist and we need to infer
-    /// it. The inference always succeds and gives some result, and we don't report any flavor
+    /// it. The inference always succeeds and gives some result, and we don't report any flavor
     /// incompatibility errors for json target specs. The CLI flavor is used as the main source
     /// of truth, other flags are used in case of ambiguities.
     fn from_cli_json(cli: LinkerFlavorCli, lld_flavor: LldFlavor, is_gnu: bool) -> LinkerFlavor {
@@ -581,7 +581,7 @@ impl LinkSelfContainedDefault {
         self == LinkSelfContainedDefault::False
     }
 
-    /// Returns whether the target spec explictly requests self-contained linking, i.e. not via
+    /// Returns whether the target spec explicitly requests self-contained linking, i.e. not via
     /// inference.
     pub fn is_linker_enabled(self) -> bool {
         match self {
@@ -2090,7 +2090,7 @@ pub struct TargetOptions {
     /// If `None`, then `CFG_DEFAULT_CODEGEN_BACKEND` environmental variable captured when
     /// compiling `rustc` will be used instead (or llvm if it is not set).
     ///
-    /// N.B. when *using* the compiler, backend can always be overriden with `-Zcodegen-backend`.
+    /// N.B. when *using* the compiler, backend can always be overridden with `-Zcodegen-backend`.
     pub default_codegen_backend: Option<StaticCow<str>>,
 
     /// Whether to generate trap instructions in places where optimization would
