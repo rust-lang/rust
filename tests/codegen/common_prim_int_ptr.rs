@@ -1,6 +1,7 @@
 //@ compile-flags: -O
 
 #![crate_type = "lib"]
+#![feature(core_intrinsics)]
 
 // Tests that codegen works properly when enums like `Result<usize, Box<()>>`
 // are represented as `{ u64, ptr }`, i.e., for `Ok(123)`, `123` is stored
@@ -26,18 +27,25 @@ pub fn insert_box(x: Box<()>) -> Result<usize, Box<()>> {
 }
 
 // CHECK-LABEL: @extract_int
+// CHECK-NOT: nonnull
+// CHECK-SAME: (i{{[0-9]+}} {{[^,]+}} [[DISCRIMINANT:%[0-9]+]], ptr {{[^,]+}} [[PAYLOAD:%[0-9]+]])
 #[no_mangle]
 pub unsafe fn extract_int(x: Result<usize, Box<()>>) -> usize {
-    // CHECK: ptrtoint
-    x.unwrap_unchecked()
+    // CHECK: [[TEMP:%.+]] = ptrtoint ptr [[PAYLOAD]] to [[USIZE:i[0-9]+]]
+    // CHECK: ret [[USIZE]] [[TEMP]]
+    match x {
+        Ok(v) => v,
+        Err(_) => std::intrinsics::unreachable(),
+    }
 }
 
 // CHECK-LABEL: @extract_box
+// CHECK-SAME: (i{{[0-9]+}} {{[^,]+}} [[DISCRIMINANT:%[0-9]+]], ptr {{[^,]+}} [[PAYLOAD:%[0-9]+]])
 #[no_mangle]
-pub unsafe fn extract_box(x: Result<usize, Box<()>>) -> Box<()> {
-    // CHECK-NOT: ptrtoint
-    // CHECK-NOT: inttoptr
-    // CHECK-NOT: load
-    // CHECK-NOT: store
-    x.unwrap_err_unchecked()
+pub unsafe fn extract_box(x: Result<usize, Box<i32>>) -> Box<i32> {
+    // CHECK: ret ptr [[PAYLOAD]]
+    match x {
+        Ok(_) => std::intrinsics::unreachable(),
+        Err(e) => e,
+    }
 }
