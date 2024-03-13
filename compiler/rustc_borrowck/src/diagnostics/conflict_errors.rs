@@ -1027,6 +1027,11 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         span: Span,
     ) {
         let tcx = self.infcx.tcx;
+        if let Some(_) = self.clone_on_reference(expr) {
+            // Avoid redundant clone suggestion already suggested in `explain_captures`.
+            // See `tests/ui/moves/needs-clone-through-deref.rs`
+            return;
+        }
         // Try to find predicates on *generic params* that would allow copying `ty`
         let suggestion =
             if let Some(symbol) = tcx.hir().maybe_get_struct_pattern_shorthand_field(expr) {
