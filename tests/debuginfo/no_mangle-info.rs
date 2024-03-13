@@ -11,9 +11,9 @@
 // === LLDB TESTS ==================================================================================
 // lldb-command:run
 // lldb-command:p TEST
-// lldb-check: (unsigned long) $0 = 3735928559
+// lldb-check: (unsigned long) 3735928559
 // lldb-command:p OTHER_TEST
-// lldb-check: (unsigned long) $1 = 42
+// lldb-check: (unsigned long) 42
 
 // === CDB TESTS ==================================================================================
 // cdb-command: g

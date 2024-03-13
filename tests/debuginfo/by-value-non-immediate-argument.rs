@@ -42,27 +42,27 @@
 // lldb-command:run
 
 // lldb-command:print s
-// lldb-check:[...]$0 = Struct { a: 1, b: 2.5 }
+// lldb-check:[...] Struct { a: 1, b: 2.5 }
 // lldb-command:continue
 
 // lldb-command:print x
-// lldb-check:[...]$1 = Struct { a: 3, b: 4.5 }
+// lldb-check:[...] Struct { a: 3, b: 4.5 }
 // lldb-command:print y
-// lldb-check:[...]$2 = 5
+// lldb-check:[...] 5
 // lldb-command:print z
-// lldb-check:[...]$3 = 6.5
+// lldb-check:[...] 6.5
 // lldb-command:continue
 
 // lldb-command:print a
-// lldb-check:[...]$4 = (7, 8, 9.5, 10.5)
+// lldb-check:[...] (7, 8, 9.5, 10.5)
 // lldb-command:continue
 
 // lldb-command:print a
-// lldb-check:[...]$5 = Newtype(11.5, 12.5, 13, 14)
+// lldb-check:[...] Newtype(11.5, 12.5, 13, 14)
 // lldb-command:continue
 
 // lldb-command:print x
-// lldb-check:[...]$6 = Case1 { x: 0, y: 8970181431921507452 }
+// lldb-check:[...] Case1 { x: 0, y: 8970181431921507452 }
 // lldb-command:continue
 
 #![feature(omit_gdb_pretty_printer_section)]

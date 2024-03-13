@@ -98,27 +98,27 @@
 // lldb-command:run
 
 // lldb-command:print no_padding16
-// lldbg-check:[...]$0 = { x = 10000 y = -10001 }
+// lldbg-check:[...] { x = 10000 y = -10001 }
 // lldbr-check:(simple_struct::NoPadding16) no_padding16 = { x = 10000 y = -10001 }
 
 // lldb-command:print no_padding32
-// lldbg-check:[...]$1 = { x = -10002 y = -10003.5 z = 10004 }
+// lldbg-check:[...] { x = -10002 y = -10003.5 z = 10004 }
 // lldbr-check:(simple_struct::NoPadding32) no_padding32 = { x = -10002 y = -10003.5 z = 10004 }
 
 // lldb-command:print no_padding64
-// lldbg-check:[...]$2 = { x = -10005.5 y = 10006 z = 10007 }
+// lldbg-check:[...] { x = -10005.5 y = 10006 z = 10007 }
 // lldbr-check:(simple_struct::NoPadding64) no_padding64 = { x = -10005.5 y = 10006 z = 10007 }
 
 // lldb-command:print no_padding163264
-// lldbg-check:[...]$3 = { a = -10008 b = 10009 c = 10010 d = 10011 }
+// lldbg-check:[...] { a = -10008 b = 10009 c = 10010 d = 10011 }
 // lldbr-check:(simple_struct::NoPadding163264) no_padding163264 = { a = -10008 b = 10009 c = 10010 d = 10011 }
 
 // lldb-command:print internal_padding
-// lldbg-check:[...]$4 = { x = 10012 y = -10013 }
+// lldbg-check:[...] { x = 10012 y = -10013 }
 // lldbr-check:(simple_struct::InternalPadding) internal_padding = { x = 10012 y = -10013 }
 
 // lldb-command:print padding_at_end
-// lldbg-check:[...]$5 = { x = -10014 y = 10015 }
+// lldbg-check:[...] { x = -10014 y = 10015 }
 // lldbr-check:(simple_struct::PaddingAtEnd) padding_at_end = { x = -10014 y = 10015 }
 
 #![allow(unused_variables)]
