@@ -1,10 +1,9 @@
 // skip-filecheck
-// Make sure redundant testing paths in `match` expressions are sorted out.
-
+// Check specific cases of sorting candidates in match lowering.
 #![feature(exclusive_range_pattern)]
 
-// EMIT_MIR match_test.main.SimplifyCfg-initial.after.mir
-fn main() {
+// EMIT_MIR sort_candidates.disjoint_ranges.SimplifyCfg-initial.after.mir
+fn disjoint_ranges() {
     let x = 3;
     let b = true;
 
@@ -17,3 +16,5 @@ fn main() {
         _ => 3,
     };
 }
+
+fn main() {}

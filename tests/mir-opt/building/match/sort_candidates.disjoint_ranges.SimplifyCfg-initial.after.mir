@@ -1,6 +1,6 @@
-// MIR for `main` after SimplifyCfg-initial
+// MIR for `disjoint_ranges` after SimplifyCfg-initial
 
-fn main() -> () {
+fn disjoint_ranges() -> () {
     let mut _0: ();
     let _1: i32;
     let _3: i32;
