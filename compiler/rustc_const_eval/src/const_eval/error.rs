@@ -2,15 +2,16 @@ use std::mem;
 
 use rustc_errors::{DiagArgName, DiagArgValue, DiagMessage, Diagnostic, IntoDiagArg};
 use rustc_hir::CRATE_HIR_ID;
+use rustc_middle::mir::interpret::Provenance;
 use rustc_middle::mir::AssertKind;
 use rustc_middle::query::TyCtxtAt;
 use rustc_middle::ty::TyCtxt;
 use rustc_middle::ty::{layout::LayoutError, ConstInt};
 use rustc_span::{Span, Symbol, DUMMY_SP};
 
-use super::{CompileTimeInterpreter, InterpCx};
+use super::CompileTimeInterpreter;
 use crate::errors::{self, FrameNote, ReportErrorExt};
-use crate::interpret::{ErrorHandled, InterpError, InterpErrorInfo, MachineStopType};
+use crate::interpret::{ErrorHandled, Frame, InterpError, InterpErrorInfo, MachineStopType};
 
 /// The CTFE machine has some custom error kinds.
 #[derive(Clone, Debug)]
@@ -58,15 +59,12 @@ impl<'tcx> Into<InterpErrorInfo<'tcx>> for ConstEvalErrKind {
 
 pub fn get_span_and_frames<'tcx, 'mir>(
     tcx: TyCtxtAt<'tcx>,
-    machine: &CompileTimeInterpreter<'mir, 'tcx>,
+    stack: &[Frame<'mir, 'tcx, impl Provenance, impl Sized>],
 ) -> (Span, Vec<errors::FrameNote>)
 where
     'tcx: 'mir,
 {
-    let mut stacktrace =
-        InterpCx::<CompileTimeInterpreter<'mir, 'tcx>>::generate_stacktrace_from_stack(
-            &machine.stack,
-        );
+    let mut stacktrace = Frame::generate_stacktrace_from_stack(stack);
     // Filter out `requires_caller_location` frames.
     stacktrace.retain(|frame| !frame.instance.def.requires_caller_location(*tcx));
     let span = stacktrace.first().map(|f| f.span).unwrap_or(tcx.span);
@@ -170,7 +168,7 @@ pub(super) fn lint<'tcx, 'mir, L>(
 ) where
     L: for<'a> rustc_errors::LintDiagnostic<'a, ()>,
 {
-    let (span, frames) = get_span_and_frames(tcx, machine);
+    let (span, frames) = get_span_and_frames(tcx, &machine.stack);
 
     tcx.emit_node_span_lint(
         lint,
