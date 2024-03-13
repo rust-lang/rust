@@ -1789,6 +1789,9 @@ extern "C" {
     pub fn LLVMRustCoverageWriteFuncSectionNameToString(M: &Module, Str: &RustString);
 
     #[allow(improper_ctypes)]
+    pub fn LLVMRustCoverageWriteBitmapSectionNameToString(M: &Module, Str: &RustString);
+
+    #[allow(improper_ctypes)]
     pub fn LLVMRustCoverageWriteMappingVarNameToString(Str: &RustString);
 
     pub fn LLVMRustCoverageMappingVersion() -> u32;

@@ -204,6 +204,11 @@ extern "C" void LLVMRustCoverageWriteFuncSectionNameToString(LLVMModuleRef M,
   WriteSectionNameToString(M, IPSK_covfun, Str);
 }
 
+extern "C" void LLVMRustCoverageWriteBitmapSectionNameToString(LLVMModuleRef M,
+                                                             RustStringRef Str) {
+  WriteSectionNameToString(M, IPSK_bitmap, Str);
+}
+
 extern "C" void LLVMRustCoverageWriteMappingVarNameToString(RustStringRef Str) {
   auto name = getCoverageMappingVarName();
   auto OS = RawRustStringOstream(Str);
@@ -211,5 +216,5 @@ extern "C" void LLVMRustCoverageWriteMappingVarNameToString(RustStringRef Str) {
 }
 
 extern "C" uint32_t LLVMRustCoverageMappingVersion() {
-  return coverage::CovMapVersion::Version6;
+  return coverage::CovMapVersion::Version7;
 }

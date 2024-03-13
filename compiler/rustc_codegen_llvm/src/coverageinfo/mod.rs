@@ -278,3 +278,13 @@ pub(crate) fn covfun_section_name(cx: &CodegenCx<'_, '_>) -> String {
     })
     .expect("Rust Coverage function record section name failed UTF-8 conversion")
 }
+
+/// Returns the section name for the MC/DC Bitmap section passed to the linker.
+/// FIXME: Remove allow deadcode
+#[allow(dead_code)]
+pub(crate) fn prf_bits_section_name(cx: &CodegenCx<'_, '_>) -> String {
+    llvm::build_string(|s| unsafe {
+        llvm::LLVMRustCoverageWriteBitmapSectionNameToString(cx.llmod, s);
+    })
+    .expect("Rust Coverage function record section name failed UTF-8 conversion")
+}

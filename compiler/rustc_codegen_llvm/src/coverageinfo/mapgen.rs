@@ -31,10 +31,10 @@ use rustc_span::Symbol;
 pub fn finalize(cx: &CodegenCx<'_, '_>) {
     let tcx = cx.tcx;
 
-    // Ensure the installed version of LLVM supports Coverage Map Version 6
-    // (encoded as a zero-based value: 5), which was introduced with LLVM 13.
+    // Ensure the installed version of LLVM supports Coverage Map Version 7
+    // (encoded as a zero-based value: 6), which was introduced with LLVM 13.
     let version = coverageinfo::mapping_version();
-    assert_eq!(version, 5, "The `CoverageMappingVersion` exposed by `llvm-wrapper` is out of sync");
+    assert_eq!(version, 6, "The `CoverageMappingVersion` exposed by `llvm-wrapper` is out of sync");
 
     debug!("Generating coverage map for CodegenUnit: `{}`", cx.codegen_unit.name());
 
@@ -276,6 +276,7 @@ fn encode_mappings_for_function(
 /// Construct coverage map header and the array of function records, and combine them into the
 /// coverage map. Save the coverage map data into the LLVM IR as a static global using a
 /// specific, well-known section and name.
+/// https://llvm.org/docs/CoverageMappingFormat.html#llvm-ir-representation
 fn generate_coverage_map<'ll>(
     cx: &CodegenCx<'ll, '_>,
     version: u32,
