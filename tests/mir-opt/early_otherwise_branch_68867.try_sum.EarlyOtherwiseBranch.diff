@@ -78,7 +78,7 @@
           StorageDead(_5);
           _34 = deref_copy (_4.0: &ViewportPercentageLength);
           _11 = discriminant((*_34));
-          switchInt(move _11) -> [0: bb2, 1: bb3, 2: bb4, 3: bb5, otherwise: bb1];
+          switchInt(move _11) -> [0: bb2, 1: bb3, 2: bb4, 3: bb5, otherwise: bb12];
       }
   
       bb1: {
@@ -212,6 +212,10 @@
   
       bb11: {
           return;
+      }
+  
+      bb12: {
+          unreachable;
       }
   }
   
