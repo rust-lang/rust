@@ -1,7 +1,7 @@
 use std::env;
+use std::ffi::OsStr;
 use std::path::{Path, PathBuf};
 use std::process::{Command, Output};
-
 pub use wasmparser;
 
 pub fn out_dir() -> PathBuf {
@@ -43,7 +43,7 @@ impl RustcInvocationBuilder {
         Self { cmd }
     }
 
-    pub fn arg(&mut self, arg: &str) -> &mut RustcInvocationBuilder {
+    pub fn arg<S: AsRef<OsStr>>(&mut self, arg: S) -> &mut RustcInvocationBuilder {
         self.cmd.arg(arg);
         self
     }
