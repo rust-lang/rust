@@ -5,7 +5,7 @@ use std::fmt;
 use smallvec::{smallvec, SmallVec};
 
 use crate::constructor::{Constructor, Slice, SliceKind};
-use crate::{PrivateUninhabitedField, TypeCx};
+use crate::{PatCx, PrivateUninhabitedField};
 
 use self::Constructor::*;
 
@@ -21,7 +21,7 @@ impl PatId {
 }
 
 /// A pattern with an index denoting which field it corresponds to.
-pub struct IndexedPat<Cx: TypeCx> {
+pub struct IndexedPat<Cx: PatCx> {
     pub idx: usize,
     pub pat: DeconstructedPat<Cx>,
 }
@@ -29,7 +29,7 @@ pub struct IndexedPat<Cx: TypeCx> {
 /// Values and patterns can be represented as a constructor applied to some fields. This represents
 /// a pattern in this form. A `DeconstructedPat` will almost always come from user input; the only
 /// exception are some `Wildcard`s introduced during pattern lowering.
-pub struct DeconstructedPat<Cx: TypeCx> {
+pub struct DeconstructedPat<Cx: PatCx> {
     ctor: Constructor<Cx>,
     fields: Vec<IndexedPat<Cx>>,
     /// The number of fields in this pattern. E.g. if the pattern is `SomeStruct { field12: true, ..
@@ -43,7 +43,7 @@ pub struct DeconstructedPat<Cx: TypeCx> {
     pub(crate) uid: PatId,
 }
 
-impl<Cx: TypeCx> DeconstructedPat<Cx> {
+impl<Cx: PatCx> DeconstructedPat<Cx> {
     pub fn new(
         ctor: Constructor<Cx>,
         fields: Vec<IndexedPat<Cx>>,
@@ -136,7 +136,7 @@ impl<Cx: TypeCx> DeconstructedPat<Cx> {
 }
 
 /// This is best effort and not good enough for a `Display` impl.
-impl<Cx: TypeCx> fmt::Debug for DeconstructedPat<Cx> {
+impl<Cx: PatCx> fmt::Debug for DeconstructedPat<Cx> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let pat = self;
         let mut first = true;
@@ -219,14 +219,14 @@ impl<Cx: TypeCx> fmt::Debug for DeconstructedPat<Cx> {
 /// algorithm. Do not use `Wild` to represent a wildcard pattern comping from user input.
 ///
 /// This is morally `Option<&'p DeconstructedPat>` where `None` is interpreted as a wildcard.
-pub(crate) enum PatOrWild<'p, Cx: TypeCx> {
+pub(crate) enum PatOrWild<'p, Cx: PatCx> {
     /// A non-user-provided wildcard, created during specialization.
     Wild,
     /// A user-provided pattern.
     Pat(&'p DeconstructedPat<Cx>),
 }
 
-impl<'p, Cx: TypeCx> Clone for PatOrWild<'p, Cx> {
+impl<'p, Cx: PatCx> Clone for PatOrWild<'p, Cx> {
     fn clone(&self) -> Self {
         match self {
             PatOrWild::Wild => PatOrWild::Wild,
@@ -235,9 +235,9 @@ impl<'p, Cx: TypeCx> Clone for PatOrWild<'p, Cx> {
     }
 }
 
-impl<'p, Cx: TypeCx> Copy for PatOrWild<'p, Cx> {}
+impl<'p, Cx: PatCx> Copy for PatOrWild<'p, Cx> {}
 
-impl<'p, Cx: TypeCx> PatOrWild<'p, Cx> {
+impl<'p, Cx: PatCx> PatOrWild<'p, Cx> {
     pub(crate) fn as_pat(&self) -> Option<&'p DeconstructedPat<Cx>> {
         match self {
             PatOrWild::Wild => None,
@@ -283,7 +283,7 @@ impl<'p, Cx: TypeCx> PatOrWild<'p, Cx> {
     }
 }
 
-impl<'p, Cx: TypeCx> fmt::Debug for PatOrWild<'p, Cx> {
+impl<'p, Cx: PatCx> fmt::Debug for PatOrWild<'p, Cx> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             PatOrWild::Wild => write!(f, "_"),
@@ -295,19 +295,19 @@ impl<'p, Cx: TypeCx> fmt::Debug for PatOrWild<'p, Cx> {
 /// Same idea as `DeconstructedPat`, except this is a fictitious pattern built up for diagnostics
 /// purposes. As such they don't use interning and can be cloned.
 #[derive(Debug)]
-pub struct WitnessPat<Cx: TypeCx> {
+pub struct WitnessPat<Cx: PatCx> {
     ctor: Constructor<Cx>,
     pub(crate) fields: Vec<WitnessPat<Cx>>,
     ty: Cx::Ty,
 }
 
-impl<Cx: TypeCx> Clone for WitnessPat<Cx> {
+impl<Cx: PatCx> Clone for WitnessPat<Cx> {
     fn clone(&self) -> Self {
         Self { ctor: self.ctor.clone(), fields: self.fields.clone(), ty: self.ty.clone() }
     }
 }
 
-impl<Cx: TypeCx> WitnessPat<Cx> {
+impl<Cx: PatCx> WitnessPat<Cx> {
     pub(crate) fn new(ctor: Constructor<Cx>, fields: Vec<Self>, ty: Cx::Ty) -> Self {
         Self { ctor, fields, ty }
     }

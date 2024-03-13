@@ -84,7 +84,7 @@ pub struct PrivateUninhabitedField(pub bool);
 /// Context that provides type information about constructors.
 ///
 /// Most of the crate is parameterized on a type that implements this trait.
-pub trait TypeCx: Sized + fmt::Debug {
+pub trait PatCx: Sized + fmt::Debug {
     /// The type of a pattern.
     type Ty: Clone + fmt::Debug;
     /// Errors that can abort analysis.
@@ -155,19 +155,19 @@ pub trait TypeCx: Sized + fmt::Debug {
 
 /// The arm of a match expression.
 #[derive(Debug)]
-pub struct MatchArm<'p, Cx: TypeCx> {
+pub struct MatchArm<'p, Cx: PatCx> {
     pub pat: &'p DeconstructedPat<Cx>,
     pub has_guard: bool,
     pub arm_data: Cx::ArmData,
 }
 
-impl<'p, Cx: TypeCx> Clone for MatchArm<'p, Cx> {
+impl<'p, Cx: PatCx> Clone for MatchArm<'p, Cx> {
     fn clone(&self) -> Self {
         Self { pat: self.pat, has_guard: self.has_guard, arm_data: self.arm_data }
     }
 }
 
-impl<'p, Cx: TypeCx> Copy for MatchArm<'p, Cx> {}
+impl<'p, Cx: PatCx> Copy for MatchArm<'p, Cx> {}
 
 /// The entrypoint for this crate. Computes whether a match is exhaustive and which of its arms are
 /// useful, and runs some lints.

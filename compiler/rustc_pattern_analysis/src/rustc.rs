@@ -18,7 +18,7 @@ use rustc_target::abi::{FieldIdx, Integer, VariantIdx, FIRST_VARIANT};
 use crate::constructor::{
     IntRange, MaybeInfiniteInt, OpaqueId, RangeEnd, Slice, SliceKind, VariantVisibility,
 };
-use crate::{errors, Captures, PrivateUninhabitedField, TypeCx};
+use crate::{errors, Captures, PatCx, PrivateUninhabitedField};
 
 use crate::constructor::Constructor::*;
 
@@ -843,7 +843,7 @@ impl<'p, 'tcx: 'p> RustcMatchCheckCtxt<'p, 'tcx> {
     }
 }
 
-impl<'p, 'tcx: 'p> TypeCx for RustcMatchCheckCtxt<'p, 'tcx> {
+impl<'p, 'tcx: 'p> PatCx for RustcMatchCheckCtxt<'p, 'tcx> {
     type Ty = RevealedTy<'tcx>;
     type Error = ErrorGuaranteed;
     type VariantIdx = VariantIdx;
