@@ -128,7 +128,7 @@ pub(super) trait GoalKind<'tcx>:
         goal: Goal<'tcx, Self>,
     ) -> QueryResult<'tcx>;
 
-    /// A type is `Copy` or `Clone` if its components are `Sized`.
+    /// A type is `Sized` if its tail component is `Sized`.
     ///
     /// These components are given by built-in rules from
     /// [`structural_traits::instantiate_constituent_tys_for_sized_trait`].

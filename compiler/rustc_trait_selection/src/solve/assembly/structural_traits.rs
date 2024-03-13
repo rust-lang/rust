@@ -154,8 +154,9 @@ pub(in crate::solve) fn instantiate_constituent_tys_for_sized_trait<'tcx>(
             bug!("unexpected type `{ty}`")
         }
 
-        // impl Sized for (T1, T2, .., Tn) where T1: Sized, T2: Sized, .. Tn: Sized
-        ty::Tuple(tys) => Ok(tys.iter().map(ty::Binder::dummy).collect()),
+        // impl Sized for ()
+        // impl Sized for (T1, T2, .., Tn) where Tn: Sized if n >= 1
+        ty::Tuple(tys) => Ok(tys.last().map_or_else(Vec::new, |&ty| vec![ty::Binder::dummy(ty)])),
 
         // impl Sized for Adt<Args...> where sized_constraint(Adt)<Args...>: Sized
         //   `sized_constraint(Adt)` is the deepest struct trail that can be determined
