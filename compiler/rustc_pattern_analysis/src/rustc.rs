@@ -706,7 +706,7 @@ impl<'p, 'tcx: 'p> RustcPatCtxt<'p, 'tcx> {
                     None => PatRangeBoundary::PosInfinity,
                 }
             }
-            JustAfterMax | PosInfinity => PatRangeBoundary::PosInfinity,
+            PosInfinity => PatRangeBoundary::PosInfinity,
         }
     }
 
