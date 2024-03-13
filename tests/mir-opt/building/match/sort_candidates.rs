@@ -4,7 +4,7 @@
 
 // EMIT_MIR sort_candidates.constant_eq.SimplifyCfg-initial.after.mir
 fn constant_eq(s: &str, b: bool) -> u32 {
-    // For now we test "a" twice.
+    // Check that we only test "a" once
     match (s, b) {
         ("a", _) if true => 1,
         ("b", true) => 2,
