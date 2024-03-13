@@ -332,15 +332,16 @@ pub(crate) fn parse_with_map(
 fn macro_arg(
     db: &dyn ExpandDatabase,
     id: MacroCallId,
-    // FIXME: consider the following by putting fixup info into eager call info args
-    // ) -> ValueResult<Arc<(tt::Subtree, SyntaxFixupUndoInfo)>, Arc<Box<[SyntaxError]>>> {
 ) -> ValueResult<(Arc<tt::Subtree>, SyntaxFixupUndoInfo), Arc<Box<[SyntaxError]>>> {
     let loc = db.lookup_intern_macro_call(id);
-    if let Some(EagerCallInfo { arg, .. }) = matches!(loc.def.kind, MacroDefKind::BuiltInEager(..))
-        .then(|| loc.eager.as_deref())
-        .flatten()
+
+    if let MacroCallLoc {
+        def: MacroDefId { kind: MacroDefKind::BuiltInEager(..), .. },
+        kind: MacroCallKind::FnLike { eager: Some(eager), .. },
+        ..
+    } = &loc
     {
-        return ValueResult::ok((arg.clone(), SyntaxFixupUndoInfo::NONE));
+        return ValueResult::ok((eager.arg.clone(), SyntaxFixupUndoInfo::NONE));
     }
 
     let (parse, map) = parse_with_map(db, loc.kind.file_id());
@@ -518,7 +519,7 @@ fn macro_expand(
 ) -> ExpandResult<CowArc<tt::Subtree>> {
     let _p = tracing::span!(tracing::Level::INFO, "macro_expand").entered();
 
-    let ExpandResult { value: tt, mut err } = match loc.def.kind {
+    let ExpandResult { value: tt, err } = match loc.def.kind {
         MacroDefKind::ProcMacro(..) => return db.expand_proc_macro(macro_call_id).map(CowArc::Arc),
         _ => {
             let ValueResult { value: (macro_arg, undo_info), err } = db.macro_arg(macro_call_id);
@@ -541,23 +542,34 @@ fn macro_expand(
                 MacroDefKind::BuiltIn(it, _) => {
                     it.expand(db, macro_call_id, arg).map_err(Into::into)
                 }
-                // This might look a bit odd, but we do not expand the inputs to eager macros here.
-                // Eager macros inputs are expanded, well, eagerly when we collect the macro calls.
-                // That kind of expansion uses the ast id map of an eager macros input though which goes through
-                // the HirFileId machinery. As eager macro inputs are assigned a macro file id that query
-                // will end up going through here again, whereas we want to just want to inspect the raw input.
-                // As such we just return the input subtree here.
-                MacroDefKind::BuiltInEager(..) if loc.eager.is_none() => {
-                    return ExpandResult {
-                        value: CowArc::Arc(macro_arg.clone()),
-                        err: err.map(format_parse_err),
-                    };
-                }
                 MacroDefKind::BuiltInDerive(it, _) => {
                     it.expand(db, macro_call_id, arg).map_err(Into::into)
                 }
                 MacroDefKind::BuiltInEager(it, _) => {
-                    it.expand(db, macro_call_id, arg).map_err(Into::into)
+                    // This might look a bit odd, but we do not expand the inputs to eager macros here.
+                    // Eager macros inputs are expanded, well, eagerly when we collect the macro calls.
+                    // That kind of expansion uses the ast id map of an eager macros input though which goes through
+                    // the HirFileId machinery. As eager macro inputs are assigned a macro file id that query
+                    // will end up going through here again, whereas we want to just want to inspect the raw input.
+                    // As such we just return the input subtree here.
+                    let eager = match &loc.kind {
+                        MacroCallKind::FnLike { eager: None, .. } => {
+                            return ExpandResult {
+                                value: CowArc::Arc(macro_arg.clone()),
+                                err: err.map(format_parse_err),
+                            };
+                        }
+                        MacroCallKind::FnLike { eager: Some(eager), .. } => Some(&**eager),
+                        _ => None,
+                    };
+
+                    let mut res = it.expand(db, macro_call_id, arg).map_err(Into::into);
+
+                    if let Some(EagerCallInfo { error, .. }) = eager {
+                        // FIXME: We should report both errors!
+                        res.err = error.clone().or(res.err);
+                    }
+                    res
                 }
                 MacroDefKind::BuiltInAttr(it, _) => {
                     let mut res = it.expand(db, macro_call_id, arg);
@@ -573,11 +585,6 @@ fn macro_expand(
             }
         }
     };
-
-    if let Some(EagerCallInfo { error, .. }) = loc.eager.as_deref() {
-        // FIXME: We should report both errors!
-        err = error.clone().or(err);
-    }
 
     // Skip checking token tree limit for include! macro call
     if !loc.def.is_include() {

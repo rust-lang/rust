@@ -40,7 +40,6 @@ pub fn expand_eager_macro_input(
     resolver: &dyn Fn(ModPath) -> Option<MacroDefId>,
 ) -> ExpandResult<Option<MacroCallId>> {
     let ast_map = db.ast_id_map(macro_call.file_id);
-    // the expansion which the ast id map is built upon has no whitespace, so the offsets are wrong as macro_call is from the token tree that has whitespace!
     let call_id = InFile::new(macro_call.file_id, ast_map.ast_id(&macro_call.value));
     let expand_to = ExpandTo::from_call_site(&macro_call.value);
 
@@ -51,8 +50,7 @@ pub fn expand_eager_macro_input(
     let arg_id = MacroCallLoc {
         def,
         krate,
-        eager: None,
-        kind: MacroCallKind::FnLike { ast_id: call_id, expand_to: ExpandTo::Expr },
+        kind: MacroCallKind::FnLike { ast_id: call_id, expand_to: ExpandTo::Expr, eager: None },
         call_site,
     }
     .intern(db);
@@ -89,8 +87,16 @@ pub fn expand_eager_macro_input(
     let loc = MacroCallLoc {
         def,
         krate,
-        eager: Some(Arc::new(EagerCallInfo { arg: Arc::new(subtree), arg_id, error: err.clone() })),
-        kind: MacroCallKind::FnLike { ast_id: call_id, expand_to },
+
+        kind: MacroCallKind::FnLike {
+            ast_id: call_id,
+            expand_to,
+            eager: Some(Arc::new(EagerCallInfo {
+                arg: Arc::new(subtree),
+                arg_id,
+                error: err.clone(),
+            })),
+        },
         call_site,
     };
 
@@ -108,7 +114,12 @@ fn lazy_expand(
 
     let expand_to = ExpandTo::from_call_site(&macro_call.value);
     let ast_id = macro_call.with_value(ast_id);
-    let id = def.as_lazy_macro(db, krate, MacroCallKind::FnLike { ast_id, expand_to }, call_site);
+    let id = def.make_call(
+        db,
+        krate,
+        MacroCallKind::FnLike { ast_id, expand_to, eager: None },
+        call_site,
+    );
     let macro_file = id.as_macro_file();
 
     db.parse_macro_expansion(macro_file)

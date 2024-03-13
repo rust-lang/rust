@@ -1451,7 +1451,11 @@ impl DefCollector<'_> {
                     if let Err(UnresolvedMacro { path }) = macro_call_as_call_id {
                         self.def_map.diagnostics.push(DefDiagnostic::unresolved_macro_call(
                             directive.module_id,
-                            MacroCallKind::FnLike { ast_id: ast_id.ast_id, expand_to: *expand_to },
+                            MacroCallKind::FnLike {
+                                ast_id: ast_id.ast_id,
+                                expand_to: *expand_to,
+                                eager: None,
+                            },
                             path,
                         ));
                     }

@@ -116,7 +116,7 @@ pub(super) fn attr_macro_as_call_id(
         _ => None,
     };
 
-    def.as_lazy_macro(
+    def.make_call(
         db.upcast(),
         krate,
         MacroCallKind::Attr {
@@ -140,7 +140,7 @@ pub(super) fn derive_macro_as_call_id(
     let (macro_id, def_id) = resolver(item_attr.path.clone())
         .filter(|(_, def_id)| def_id.is_derive())
         .ok_or_else(|| UnresolvedMacro { path: item_attr.path.clone() })?;
-    let call_id = def_id.as_lazy_macro(
+    let call_id = def_id.make_call(
         db.upcast(),
         krate,
         MacroCallKind::Derive {

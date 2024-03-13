@@ -1410,10 +1410,10 @@ fn macro_call_as_call_id_with_eager(
             })
         }
         _ if def.is_fn_like() => ExpandResult {
-            value: Some(def.as_lazy_macro(
+            value: Some(def.make_call(
                 db,
                 krate,
-                MacroCallKind::FnLike { ast_id: call.ast_id, expand_to },
+                MacroCallKind::FnLike { ast_id: call.ast_id, expand_to, eager: None },
                 call_site,
             )),
             err: None,
