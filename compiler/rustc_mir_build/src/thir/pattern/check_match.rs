@@ -1,7 +1,7 @@
 use rustc_pattern_analysis::errors::Uncovered;
 use rustc_pattern_analysis::rustc::{
-    Constructor, DeconstructedPat, MatchArm, RustcMatchCheckCtxt as MatchCheckCtxt, Usefulness,
-    UsefulnessReport, WitnessPat,
+    Constructor, DeconstructedPat, MatchArm, RustcPatCtxt as PatCtxt, Usefulness, UsefulnessReport,
+    WitnessPat,
 };
 
 use crate::errors::*;
@@ -276,7 +276,7 @@ impl<'p, 'tcx> MatchVisitor<'p, 'tcx> {
 
     fn lower_pattern(
         &mut self,
-        cx: &MatchCheckCtxt<'p, 'tcx>,
+        cx: &PatCtxt<'p, 'tcx>,
         pat: &'p Pat<'tcx>,
     ) -> Result<&'p DeconstructedPat<'p, 'tcx>, ErrorGuaranteed> {
         if let Err(err) = pat.pat_error_reported() {
@@ -375,7 +375,7 @@ impl<'p, 'tcx> MatchVisitor<'p, 'tcx> {
         whole_match_span: Option<Span>,
         scrutinee: Option<&Expr<'tcx>>,
         scrut_span: Span,
-    ) -> MatchCheckCtxt<'p, 'tcx> {
+    ) -> PatCtxt<'p, 'tcx> {
         let refutable = match refutability {
             Irrefutable => false,
             Refutable => true,
@@ -384,7 +384,7 @@ impl<'p, 'tcx> MatchVisitor<'p, 'tcx> {
         // require validity.
         let known_valid_scrutinee =
             scrutinee.map(|scrut| self.is_known_valid_scrutinee(scrut)).unwrap_or(true);
-        MatchCheckCtxt {
+        PatCtxt {
             tcx: self.tcx,
             typeck_results: self.typeck_results,
             param_env: self.param_env,
@@ -400,7 +400,7 @@ impl<'p, 'tcx> MatchVisitor<'p, 'tcx> {
 
     fn analyze_patterns(
         &mut self,
-        cx: &MatchCheckCtxt<'p, 'tcx>,
+        cx: &PatCtxt<'p, 'tcx>,
         arms: &[MatchArm<'p, 'tcx>],
         scrut_ty: Ty<'tcx>,
     ) -> Result<UsefulnessReport<'p, 'tcx>, ErrorGuaranteed> {
@@ -584,7 +584,7 @@ impl<'p, 'tcx> MatchVisitor<'p, 'tcx> {
         pat: &'p Pat<'tcx>,
         refutability: RefutableFlag,
         scrut: Option<&Expr<'tcx>>,
-    ) -> Result<(MatchCheckCtxt<'p, 'tcx>, UsefulnessReport<'p, 'tcx>), ErrorGuaranteed> {
+    ) -> Result<(PatCtxt<'p, 'tcx>, UsefulnessReport<'p, 'tcx>), ErrorGuaranteed> {
         let cx = self.new_cx(refutability, None, scrut, pat.span);
         let pat = self.lower_pattern(&cx, pat)?;
         let arms = [MatchArm { pat, arm_data: self.lint_level, has_guard: false }];
@@ -849,7 +849,7 @@ fn check_for_bindings_named_same_as_variants(
 
 /// Check that never patterns are only used on inhabited types.
 fn check_never_pattern<'tcx>(
-    cx: &MatchCheckCtxt<'_, 'tcx>,
+    cx: &PatCtxt<'_, 'tcx>,
     pat: &Pat<'tcx>,
 ) -> Result<(), ErrorGuaranteed> {
     if let PatKind::Never = pat.kind {
@@ -884,7 +884,7 @@ fn report_irrefutable_let_patterns(
 
 /// Report unreachable arms, if any.
 fn report_unreachable_pattern<'p, 'tcx>(
-    cx: &MatchCheckCtxt<'p, 'tcx>,
+    cx: &PatCtxt<'p, 'tcx>,
     hir_id: HirId,
     span: Span,
     catchall: Option<Span>,
@@ -898,10 +898,7 @@ fn report_unreachable_pattern<'p, 'tcx>(
 }
 
 /// Report unreachable arms, if any.
-fn report_arm_reachability<'p, 'tcx>(
-    cx: &MatchCheckCtxt<'p, 'tcx>,
-    report: &UsefulnessReport<'p, 'tcx>,
-) {
+fn report_arm_reachability<'p, 'tcx>(cx: &PatCtxt<'p, 'tcx>, report: &UsefulnessReport<'p, 'tcx>) {
     let mut catchall = None;
     for (arm, is_useful) in report.arm_usefulness.iter() {
         if matches!(is_useful, Usefulness::Redundant) {
@@ -926,7 +923,7 @@ fn pat_is_catchall(pat: &DeconstructedPat<'_, '_>) -> bool {
 
 /// Report that a match is not exhaustive.
 fn report_non_exhaustive_match<'p, 'tcx>(
-    cx: &MatchCheckCtxt<'p, 'tcx>,
+    cx: &PatCtxt<'p, 'tcx>,
     thir: &Thir<'tcx>,
     scrut_ty: Ty<'tcx>,
     sp: Span,
@@ -1126,7 +1123,7 @@ fn report_non_exhaustive_match<'p, 'tcx>(
 }
 
 fn joined_uncovered_patterns<'p, 'tcx>(
-    cx: &MatchCheckCtxt<'p, 'tcx>,
+    cx: &PatCtxt<'p, 'tcx>,
     witnesses: &[WitnessPat<'p, 'tcx>],
 ) -> String {
     const LIMIT: usize = 3;
@@ -1147,7 +1144,7 @@ fn joined_uncovered_patterns<'p, 'tcx>(
 }
 
 fn collect_non_exhaustive_tys<'tcx>(
-    cx: &MatchCheckCtxt<'_, 'tcx>,
+    cx: &PatCtxt<'_, 'tcx>,
     pat: &WitnessPat<'_, 'tcx>,
     non_exhaustive_tys: &mut FxIndexSet<Ty<'tcx>>,
 ) {
