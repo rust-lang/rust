@@ -4,11 +4,12 @@ use rustc_data_structures::profiling::TimePassesFormat;
 use rustc_errors::{emitter::HumanReadableErrorType, registry, ColorConfig};
 use rustc_session::config::{
     build_configuration, build_session_options, rustc_optgroups, BranchProtection, CFGuard, Cfg,
-    CollapseMacroDebuginfo, DebugInfo, DumpMonoStatsFormat, ErrorOutputType, ExternEntry,
-    ExternLocation, Externs, FunctionReturn, InliningThreshold, Input, InstrumentCoverage,
-    InstrumentXRay, LinkSelfContained, LinkerPluginLto, LocationDetail, LtoCli, NextSolverConfig,
-    OomStrategy, Options, OutFileName, OutputType, OutputTypes, PAuthKey, PacRet, Passes, Polonius,
-    ProcMacroExecutionStrategy, Strip, SwitchWithOptPath, SymbolManglingVersion, WasiExecModel,
+    CollapseMacroDebuginfo, CoverageOptions, DebugInfo, DumpMonoStatsFormat, ErrorOutputType,
+    ExternEntry, ExternLocation, Externs, FunctionReturn, InliningThreshold, Input,
+    InstrumentCoverage, InstrumentXRay, LinkSelfContained, LinkerPluginLto, LocationDetail, LtoCli,
+    NextSolverConfig, OomStrategy, Options, OutFileName, OutputType, OutputTypes, PAuthKey, PacRet,
+    Passes, Polonius, ProcMacroExecutionStrategy, Strip, SwitchWithOptPath, SymbolManglingVersion,
+    WasiExecModel,
 };
 use rustc_session::lint::Level;
 use rustc_session::search_paths::SearchPath;
@@ -750,6 +751,7 @@ fn test_unstable_options_tracking_hash() {
     );
     tracked!(codegen_backend, Some("abc".to_string()));
     tracked!(collapse_macro_debuginfo, CollapseMacroDebuginfo::Yes);
+    tracked!(coverage_options, CoverageOptions { branch: true });
     tracked!(crate_attr, vec!["abc".to_string()]);
     tracked!(cross_crate_inline_threshold, InliningThreshold::Always);
     tracked!(debug_info_for_profiling, true);

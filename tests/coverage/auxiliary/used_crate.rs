@@ -76,13 +76,8 @@ fn use_this_lib_crate() {
 // ```
 //
 // The notice is triggered because the function is unused by the library itself,
-// and when the library is compiled, a synthetic function is generated, so
-// unused function coverage can be reported. Coverage can be skipped for unused
-// generic functions with:
-//
-// ```shell
-// $ `rustc -Zunstable-options -C instrument-coverage=except-unused-generics ...`
-// ```
+// so when the library is compiled, an "unused" set of mappings for that function
+// is included in the library's coverage metadata.
 //
 // Even though this function is used by `uses_crate.rs` (and
 // counted), with substitutions for `T`, those instantiations are only generated
@@ -98,6 +93,6 @@ fn use_this_lib_crate() {
 // another binary that never used this generic function, then it would be valid
 // to show the unused generic, with unknown substitution (`_`).
 //
-// The alternative is to exclude all generics from being included in the "unused
-// functions" list, which would then omit coverage results for
-// `unused_generic_function<T>()`, below.
+// The alternative would be to exclude all generics from being included in the
+// "unused functions" list, which would then omit coverage results for
+// `unused_generic_function<T>()`.

@@ -355,21 +355,20 @@ fn add_unused_functions(cx: &CodegenCx<'_, '_>) {
 
     let tcx = cx.tcx;
 
-    let ignore_unused_generics = tcx.sess.instrument_coverage_except_unused_generics();
-
     let eligible_def_ids = tcx.mir_keys(()).iter().filter_map(|local_def_id| {
         let def_id = local_def_id.to_def_id();
         let kind = tcx.def_kind(def_id);
         // `mir_keys` will give us `DefId`s for all kinds of things, not
         // just "functions", like consts, statics, etc. Filter those out.
-        // If `ignore_unused_generics` was specified, filter out any
-        // generic functions from consideration as well.
         if !matches!(kind, DefKind::Fn | DefKind::AssocFn | DefKind::Closure) {
             return None;
         }
-        if ignore_unused_generics && tcx.generics_of(def_id).requires_monomorphization(tcx) {
-            return None;
-        }
+
+        // FIXME(79651): Consider trying to filter out dummy instantiations of
+        // unused generic functions from library crates, because they can produce
+        // "unused instantiation" in coverage reports even when they are actually
+        // used by some downstream crate in the same binary.
+
         Some(local_def_id.to_def_id())
     });
 
