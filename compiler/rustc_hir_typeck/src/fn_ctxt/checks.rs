@@ -2174,7 +2174,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 let mut call_finder = FindClosureArg { tcx: self.tcx, calls: vec![] };
                 let node = self
                     .tcx
-                    .opt_local_def_id_to_hir_id(self.tcx.hir().get_parent_item(call_expr.hir_id))
+                    .opt_local_def_id_to_hir_id(
+                        self.tcx.hir().get_parent_item(call_expr.hir_id).def_id,
+                    )
                     .map(|hir_id| self.tcx.hir_node(hir_id));
                 match node {
                     Some(hir::Node::Item(item)) => call_finder.visit_item(item),

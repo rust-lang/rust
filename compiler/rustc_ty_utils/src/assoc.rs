@@ -1,10 +1,11 @@
 use rustc_data_structures::fx::FxIndexSet;
-use rustc_hir as hir;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{DefId, DefIdMap, LocalDefId};
 use rustc_hir::intravisit::{self, Visitor};
+use rustc_hir::{self as hir, HirId};
+use rustc_index::IndexVec;
 use rustc_middle::query::Providers;
-use rustc_middle::ty::{self, ImplTraitInTraitData, TyCtxt};
+use rustc_middle::ty::{self, ImplTraitInTraitData, TyCtxt, TyCtxtFeed};
 use rustc_span::symbol::kw;
 
 pub(crate) fn provide(providers: &mut Providers) {
@@ -237,6 +238,22 @@ fn associated_types_for_impl_traits_in_associated_fn(
     }
 }
 
+fn feed_hir(feed: &TyCtxtFeed<'_, LocalDefId>) {
+    feed.local_def_id_to_hir_id(HirId::make_owner(feed.def_id()));
+    feed.opt_hir_owner_nodes(Some(feed.tcx.arena.alloc(hir::OwnerNodes {
+        opt_hash_including_bodies: None,
+        nodes: IndexVec::from_elem_n(
+            hir::ParentedNode {
+                parent: hir::ItemLocalId::INVALID,
+                node: hir::Node::AssocOpaqueTy(&hir::AssocOpaqueTy {}),
+            },
+            1,
+        ),
+        bodies: Default::default(),
+    })));
+    feed.feed_owner_id().hir_attrs(hir::AttributeMap::EMPTY);
+}
+
 /// Given an `opaque_ty_def_id` corresponding to an `impl Trait` in an associated
 /// function from a trait, synthesize an associated type for that `impl Trait`
 /// that inherits properties that we infer from the method and the opaque type.
@@ -258,9 +275,7 @@ fn associated_type_for_impl_trait_in_trait(
     let local_def_id = trait_assoc_ty.def_id();
     let def_id = local_def_id.to_def_id();
 
-    // There's no HIR associated with this new synthesized `def_id`, so feed
-    // `opt_local_def_id_to_hir_id` with `None`.
-    trait_assoc_ty.opt_local_def_id_to_hir_id(None);
+    feed_hir(&trait_assoc_ty);
 
     // Copy span of the opaque.
     trait_assoc_ty.def_ident_span(Some(span));
@@ -318,9 +333,7 @@ fn associated_type_for_impl_trait_in_impl(
     let local_def_id = impl_assoc_ty.def_id();
     let def_id = local_def_id.to_def_id();
 
-    // There's no HIR associated with this new synthesized `def_id`, so feed
-    // `opt_local_def_id_to_hir_id` with `None`.
-    impl_assoc_ty.opt_local_def_id_to_hir_id(None);
+    feed_hir(&impl_assoc_ty);
 
     // Copy span of the opaque.
     impl_assoc_ty.def_ident_span(Some(span));

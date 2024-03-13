@@ -55,6 +55,7 @@ pub(super) fn index_hir<'hir>(
         OwnerNode::TraitItem(item) => collector.visit_trait_item(item),
         OwnerNode::ImplItem(item) => collector.visit_impl_item(item),
         OwnerNode::ForeignItem(item) => collector.visit_foreign_item(item),
+        OwnerNode::AssocOpaqueTy(..) => unreachable!(),
     };
 
     for (local_id, node) in collector.nodes.iter_enumerated() {

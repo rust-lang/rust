@@ -356,7 +356,7 @@ pub fn late_lint_mod<'tcx, T: LateLintPass<'tcx> + 'tcx>(
         cached_typeck_results: Cell::new(None),
         param_env: ty::ParamEnv::empty(),
         effective_visibilities: tcx.effective_visibilities(()),
-        last_node_with_lint_attrs: tcx.local_def_id_to_hir_id(module_def_id.into()),
+        last_node_with_lint_attrs: tcx.local_def_id_to_hir_id(module_def_id),
         generics: None,
         only_module: true,
     };

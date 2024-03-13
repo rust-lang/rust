@@ -589,6 +589,11 @@ impl<'tcx> TyCtxtFeed<'tcx, LocalDefId> {
     pub fn def_id(&self) -> LocalDefId {
         self.key
     }
+
+    // Caller must ensure that `self.key` ID is indeed an owner.
+    pub fn feed_owner_id(&self) -> TyCtxtFeed<'tcx, hir::OwnerId> {
+        TyCtxtFeed { tcx: self.tcx, key: hir::OwnerId { def_id: self.key } }
+    }
 }
 
 /// The central data structure of the compiler. It stores references
@@ -2350,8 +2355,8 @@ impl<'tcx> TyCtxt<'tcx> {
         self.intrinsic_raw(def_id)
     }
 
-    pub fn local_def_id_to_hir_id(self, local_def_id: LocalDefId) -> HirId {
-        self.opt_local_def_id_to_hir_id(local_def_id).unwrap()
+    pub fn opt_local_def_id_to_hir_id(self, local_def_id: LocalDefId) -> Option<HirId> {
+        Some(self.local_def_id_to_hir_id(local_def_id))
     }
 
     pub fn next_trait_solver_globally(self) -> bool {
