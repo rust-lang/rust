@@ -439,6 +439,7 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
         template!(List: r#"natvis_file = "...", gdb_script_file = "...""#),
         DuplicatesOk, @only_local: true
     ),
+    ungated!(collapse_debuginfo, Normal, template!(List: "no|external|yes"), ErrorFollowing),
 
     // ==========================================================================
     // Unstable attributes:
@@ -502,12 +503,6 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
     gated!(
         deprecated_safe, Normal, template!(List: r#"since = "version", note = "...""#), ErrorFollowing,
         experimental!(deprecated_safe),
-    ),
-
-    // `#[collapse_debuginfo]`
-    gated!(
-        collapse_debuginfo, Normal, template!(Word, List: "no|external|yes"), ErrorFollowing,
-        @only_local: true, experimental!(collapse_debuginfo)
     ),
 
     // RFC 2397

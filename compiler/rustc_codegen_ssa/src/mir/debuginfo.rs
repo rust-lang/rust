@@ -4,13 +4,12 @@ use rustc_index::IndexVec;
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use rustc_middle::mir;
 use rustc_middle::ty;
-use rustc_middle::ty::layout::TyAndLayout;
-use rustc_middle::ty::layout::{HasTyCtxt, LayoutOf};
+use rustc_middle::ty::layout::{LayoutOf, TyAndLayout};
 use rustc_middle::ty::Instance;
 use rustc_middle::ty::Ty;
 use rustc_session::config::DebugInfo;
 use rustc_span::symbol::{kw, Symbol};
-use rustc_span::{BytePos, Span};
+use rustc_span::{hygiene, BytePos, Span};
 use rustc_target::abi::{Abi, FieldIdx, FieldsShape, Size, VariantIdx};
 
 use super::operand::{OperandRef, OperandValue};
@@ -220,24 +219,9 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         &self,
         source_info: mir::SourceInfo,
     ) -> Option<(Bx::DIScope, Option<Bx::DILocation>, Span)> {
-        let span = self.adjust_span_for_debugging(source_info.span);
         let scope = &self.debug_context.as_ref()?.scopes[source_info.scope];
+        let span = hygiene::walk_chain_collapsed(source_info.span, self.mir.span);
         Some((scope.adjust_dbg_scope_for_span(self.cx, span), scope.inlined_at, span))
-    }
-
-    /// In order to have a good line stepping behavior in debugger, we overwrite debug
-    /// locations of macro expansions with that of the outermost expansion site (when the macro is
-    /// annotated with `#[collapse_debuginfo]` or when `-Zdebug-macros` is provided).
-    fn adjust_span_for_debugging(&self, span: Span) -> Span {
-        // Bail out if debug info emission is not enabled.
-        if self.debug_context.is_none() {
-            return span;
-        }
-        // Walk up the macro expansion chain until we reach a non-expanded span.
-        // We also stop at the function body level because no line stepping can occur
-        // at the level above that.
-        // Use span of the outermost expansion site, while keeping the original lexical scope.
-        self.cx.tcx().collapsed_debuginfo(span, self.mir.span)
     }
 
     fn spill_operand_to_stack(

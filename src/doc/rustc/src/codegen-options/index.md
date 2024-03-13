@@ -42,6 +42,18 @@ generated code, but may be slower to compile.
 The default value, if not specified, is 16 for non-incremental builds. For
 incremental builds the default is 256 which allows caching to be more granular.
 
+## collapse-macro-debuginfo
+
+This flag controls whether code locations from a macro definition are collapsed into a single
+location associated with that macro's call site, when generating debuginfo for this crate.
+
+This option, if passed, overrides both default collapsing behavior and `#[collapse_debuginfo]`
+attributes in code.
+
+* `y`, `yes`, `on`, `true`: collapse code locations in debuginfo.
+* `n`, `no`, `off` or `false`: do not collapse code locations in debuginfo.
+* `external`: collapse code locations in debuginfo only if the macro comes from a different crate.
+
 ## control-flow-guard
 
 This flag controls whether LLVM enables the Windows [Control Flow
