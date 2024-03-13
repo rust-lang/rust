@@ -72,13 +72,13 @@ extern crate rustc_target;
 #[allow(unused_extern_crates)]
 extern crate rustc_driver;
 
+mod alloc_addresses;
 mod borrow_tracker;
 mod clock;
 mod concurrency;
 mod diagnostics;
 mod eval;
 mod helpers;
-mod intptrcast;
 mod machine;
 mod mono_hash_map;
 mod operator;
@@ -101,6 +101,7 @@ pub use crate::shims::panic::{CatchUnwindData, EvalContextExt as _};
 pub use crate::shims::time::EvalContextExt as _;
 pub use crate::shims::tls::TlsData;
 
+pub use crate::alloc_addresses::{EvalContextExt as _, ProvenanceMode};
 pub use crate::borrow_tracker::stacked_borrows::{
     EvalContextExt as _, Item, Permission, Stack, Stacks,
 };
@@ -122,7 +123,6 @@ pub use crate::eval::{
     create_ecx, eval_entry, AlignmentCheck, BacktraceStyle, IsolatedOp, MiriConfig, RejectOpWith,
 };
 pub use crate::helpers::{AccessKind, EvalContextExt as _};
-pub use crate::intptrcast::{EvalContextExt as _, ProvenanceMode};
 pub use crate::machine::{
     AllocExtra, FrameExtra, MiriInterpCx, MiriInterpCxExt, MiriMachine, MiriMemoryKind,
     PrimitiveLayouts, Provenance, ProvenanceExtra,

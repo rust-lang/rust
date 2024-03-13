@@ -353,7 +353,8 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             &mut self.machine,
             &mut alloc.extra,
             (alloc_id, prov),
-            alloc_range(Size::ZERO, size),
+            size,
+            alloc.align,
         )?;
 
         // Don't forget to remember size and align of this now-dead allocation

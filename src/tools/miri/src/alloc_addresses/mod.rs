@@ -1,3 +1,8 @@
+//! This module is responsible for managing the absolute addresses that allocations are located at,
+//! and for casting between pointers and integers based on those addresses.
+
+mod reuse_pool;
+
 use std::cell::RefCell;
 use std::cmp::max;
 use std::collections::hash_map::Entry;
@@ -6,9 +11,10 @@ use rand::Rng;
 
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_span::Span;
-use rustc_target::abi::{HasDataLayout, Size};
+use rustc_target::abi::{Align, HasDataLayout, Size};
 
 use crate::*;
+use reuse_pool::ReusePool;
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub enum ProvenanceMode {
@@ -23,7 +29,7 @@ pub enum ProvenanceMode {
 
 pub type GlobalState = RefCell<GlobalStateInner>;
 
-#[derive(Clone, Debug)]
+#[derive(Debug)]
 pub struct GlobalStateInner {
     /// This is used as a map between the address of each allocation and its `AllocId`. It is always
     /// sorted by address. We cannot use a `HashMap` since we can be given an address that is offset
@@ -35,6 +41,8 @@ pub struct GlobalStateInner {
     /// they do not have an `AllocExtra`.
     /// This is the inverse of `int_to_ptr_map`.
     base_addr: FxHashMap<AllocId, u64>,
+    /// A pool of addresses we can reuse for future allocations.
+    reuse: ReusePool,
     /// Whether an allocation has been exposed or not. This cannot be put
     /// into `AllocExtra` for the same reason as `base_addr`.
     exposed: FxHashSet<AllocId>,
@@ -50,6 +58,7 @@ impl VisitProvenance for GlobalStateInner {
         let GlobalStateInner {
             int_to_ptr_map: _,
             base_addr: _,
+            reuse: _,
             exposed: _,
             next_base_addr: _,
             provenance_mode: _,
@@ -68,6 +77,7 @@ impl GlobalStateInner {
         GlobalStateInner {
             int_to_ptr_map: Vec::default(),
             base_addr: FxHashMap::default(),
+            reuse: ReusePool::new(),
             exposed: FxHashSet::default(),
             next_base_addr: stack_addr,
             provenance_mode: config.provenance_mode,
@@ -96,7 +106,7 @@ trait EvalContextExtPriv<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
     // or `None` if the addr is out of bounds
     fn alloc_id_from_addr(&self, addr: u64) -> Option<AllocId> {
         let ecx = self.eval_context_ref();
-        let global_state = ecx.machine.intptrcast.borrow();
+        let global_state = ecx.machine.alloc_addresses.borrow();
         assert!(global_state.provenance_mode != ProvenanceMode::Strict);
 
         let pos = global_state.int_to_ptr_map.binary_search_by_key(&addr, |(addr, _)| *addr);
@@ -133,12 +143,13 @@ trait EvalContextExtPriv<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
 
     fn addr_from_alloc_id(&self, alloc_id: AllocId) -> InterpResult<'tcx, u64> {
         let ecx = self.eval_context_ref();
-        let mut global_state = ecx.machine.intptrcast.borrow_mut();
+        let mut global_state = ecx.machine.alloc_addresses.borrow_mut();
         let global_state = &mut *global_state;
 
         Ok(match global_state.base_addr.entry(alloc_id) {
             Entry::Occupied(entry) => *entry.get(),
             Entry::Vacant(entry) => {
+                let mut rng = ecx.machine.rng.borrow_mut();
                 let (size, align, kind) = ecx.get_alloc_info(alloc_id);
                 // This is either called immediately after allocation (and then cached), or when
                 // adjusting `tcx` pointers (which never get freed). So assert that we are looking
@@ -147,44 +158,63 @@ trait EvalContextExtPriv<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                 // information was removed.
                 assert!(!matches!(kind, AllocKind::Dead));
 
-                // This allocation does not have a base address yet, pick one.
-                // Leave some space to the previous allocation, to give it some chance to be less aligned.
-                let slack = {
-                    let mut rng = ecx.machine.rng.borrow_mut();
-                    // This means that `(global_state.next_base_addr + slack) % 16` is uniformly distributed.
-                    rng.gen_range(0..16)
+                // This allocation does not have a base address yet, pick or reuse one.
+                let base_addr = if let Some(reuse_addr) =
+                    global_state.reuse.take_addr(&mut *rng, size, align)
+                {
+                    reuse_addr
+                } else {
+                    // We have to pick a fresh address.
+                    // Leave some space to the previous allocation, to give it some chance to be less aligned.
+                    // We ensure that `(global_state.next_base_addr + slack) % 16` is uniformly distributed.
+                    let slack = rng.gen_range(0..16);
+                    // From next_base_addr + slack, round up to adjust for alignment.
+                    let base_addr = global_state
+                        .next_base_addr
+                        .checked_add(slack)
+                        .ok_or_else(|| err_exhaust!(AddressSpaceFull))?;
+                    let base_addr = align_addr(base_addr, align.bytes());
+
+                    // Remember next base address.  If this allocation is zero-sized, leave a gap
+                    // of at least 1 to avoid two allocations having the same base address.
+                    // (The logic in `alloc_id_from_addr` assumes unique addresses, and different
+                    // function/vtable pointers need to be distinguishable!)
+                    global_state.next_base_addr = base_addr
+                        .checked_add(max(size.bytes(), 1))
+                        .ok_or_else(|| err_exhaust!(AddressSpaceFull))?;
+                    // Even if `Size` didn't overflow, we might still have filled up the address space.
+                    if global_state.next_base_addr > ecx.target_usize_max() {
+                        throw_exhaust!(AddressSpaceFull);
+                    }
+
+                    base_addr
                 };
-                // From next_base_addr + slack, round up to adjust for alignment.
-                let base_addr = global_state
-                    .next_base_addr
-                    .checked_add(slack)
-                    .ok_or_else(|| err_exhaust!(AddressSpaceFull))?;
-                let base_addr = align_addr(base_addr, align.bytes());
-                entry.insert(base_addr);
                 trace!(
-                    "Assigning base address {:#x} to allocation {:?} (size: {}, align: {}, slack: {})",
+                    "Assigning base address {:#x} to allocation {:?} (size: {}, align: {})",
                     base_addr,
                     alloc_id,
                     size.bytes(),
                     align.bytes(),
-                    slack,
                 );
 
-                // Remember next base address.  If this allocation is zero-sized, leave a gap
-                // of at least 1 to avoid two allocations having the same base address.
-                // (The logic in `alloc_id_from_addr` assumes unique addresses, and different
-                // function/vtable pointers need to be distinguishable!)
-                global_state.next_base_addr = base_addr
-                    .checked_add(max(size.bytes(), 1))
-                    .ok_or_else(|| err_exhaust!(AddressSpaceFull))?;
-                // Even if `Size` didn't overflow, we might still have filled up the address space.
-                if global_state.next_base_addr > ecx.target_usize_max() {
-                    throw_exhaust!(AddressSpaceFull);
-                }
-                // Also maintain the opposite mapping in `int_to_ptr_map`.
-                // Given that `next_base_addr` increases in each allocation, pushing the
-                // corresponding tuple keeps `int_to_ptr_map` sorted
-                global_state.int_to_ptr_map.push((base_addr, alloc_id));
+                // Store address in cache.
+                entry.insert(base_addr);
+
+                // Also maintain the opposite mapping in `int_to_ptr_map`, ensuring we keep it sorted.
+                // We have a fast-path for the common case that this address is bigger than all previous ones.
+                let pos = if global_state
+                    .int_to_ptr_map
+                    .last()
+                    .is_some_and(|(last_addr, _)| *last_addr < base_addr)
+                {
+                    global_state.int_to_ptr_map.len()
+                } else {
+                    global_state
+                        .int_to_ptr_map
+                        .binary_search_by_key(&base_addr, |(addr, _)| *addr)
+                        .unwrap_err()
+                };
+                global_state.int_to_ptr_map.insert(pos, (base_addr, alloc_id));
 
                 base_addr
             }
@@ -196,7 +226,7 @@ impl<'mir, 'tcx: 'mir> EvalContextExt<'mir, 'tcx> for crate::MiriInterpCx<'mir, 
 pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
     fn expose_ptr(&mut self, alloc_id: AllocId, tag: BorTag) -> InterpResult<'tcx> {
         let ecx = self.eval_context_mut();
-        let global_state = ecx.machine.intptrcast.get_mut();
+        let global_state = ecx.machine.alloc_addresses.get_mut();
         // In strict mode, we don't need this, so we can save some cycles by not tracking it.
         if global_state.provenance_mode == ProvenanceMode::Strict {
             return Ok(());
@@ -207,7 +237,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
             return Ok(());
         }
         trace!("Exposing allocation id {alloc_id:?}");
-        let global_state = ecx.machine.intptrcast.get_mut();
+        let global_state = ecx.machine.alloc_addresses.get_mut();
         global_state.exposed.insert(alloc_id);
         if ecx.machine.borrow_tracker.is_some() {
             ecx.expose_tag(alloc_id, tag)?;
@@ -219,7 +249,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         trace!("Casting {:#x} to a pointer", addr);
 
         let ecx = self.eval_context_ref();
-        let global_state = ecx.machine.intptrcast.borrow();
+        let global_state = ecx.machine.alloc_addresses.borrow();
 
         // Potentially emit a warning.
         match global_state.provenance_mode {
@@ -299,7 +329,13 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
 }
 
 impl GlobalStateInner {
-    pub fn free_alloc_id(&mut self, dead_id: AllocId) {
+    pub fn free_alloc_id(
+        &mut self,
+        rng: &mut impl Rng,
+        dead_id: AllocId,
+        size: Size,
+        align: Align,
+    ) {
         // We can *not* remove this from `base_addr`, since the interpreter design requires that we
         // be able to retrieve an AllocId + offset for any memory access *before* we check if the
         // access is valid. Specifically, `ptr_get_alloc` is called on each attempt at a memory
@@ -319,6 +355,8 @@ impl GlobalStateInner {
         // We can also remove it from `exposed`, since this allocation can anyway not be returned by
         // `alloc_id_from_addr` any more.
         self.exposed.remove(&dead_id);
+        // Also remember this address for future reuse.
+        self.reuse.add_addr(rng, addr, size, align)
     }
 }
 
