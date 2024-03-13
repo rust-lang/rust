@@ -17,14 +17,6 @@ use rustc_target::abi::{Size, WrappingRange};
 
 use crate::interpret::InternKind;
 
-#[derive(Diagnostic)]
-#[diag(const_eval_dangling_ptr_in_final)]
-pub(crate) struct DanglingPtrInFinal {
-    #[primary_span]
-    pub span: Span,
-    pub kind: InternKind,
-}
-
 #[derive(LintDiagnostic)]
 #[diag(const_eval_mutable_ptr_in_final)]
 pub(crate) struct MutablePtrInFinal {

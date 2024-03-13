@@ -606,17 +606,14 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValidityVisitor<'rt, 'mir, '
                 if place.layout.is_unsized() {
                     self.check_wide_ptr_meta(place.meta(), place.layout)?;
                 }
-                if let Some(prov) = place.ptr().provenance {
-                    if let Some(alloc_id) = prov.get_alloc_id() {
-                        if let AllocKind::Dead = self.ecx.get_alloc_info(alloc_id).2 {
-                            throw_validation_failure!(
-                                self.path,
-                                DanglingPtrUseAfterFree {
-                                    ptr_kind: PointerKind::Ref(Mutability::Not)
-                                }
-                            )
-                        }
-                    }
+                if self.ref_tracking.is_some()
+                    && let Some(alloc_id) = place.ptr().provenance.and_then(|p| p.get_alloc_id())
+                    && let AllocKind::Dead = self.ecx.get_alloc_info(alloc_id).2
+                {
+                    throw_validation_failure!(
+                        self.path,
+                        DanglingPtrUseAfterFree { ptr_kind: PointerKind::Ref(Mutability::Not) }
+                    )
                 }
                 Ok(true)
             }
@@ -988,7 +985,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         path: Vec<PathElem>,
         ref_tracking: Option<&mut RefTracking<MPlaceTy<'tcx, M::Provenance>, Vec<PathElem>>>,
         ctfe_mode: Option<CtfeValidationMode>,
-    ) -> InterpResult<'tcx> {
+    ) -> InterpResult<'tcx, Vec<PathElem>> {
         trace!("validate_operand_internal: {:?}, {:?}", *op, op.layout.ty);
 
         // Construct a visitor
@@ -996,7 +993,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
 
         // Run it.
         match self.run_for_validation(|| visitor.visit_value(op)) {
-            Ok(()) => Ok(()),
+            Ok(()) => Ok(visitor.path),
             // Pass through validation failures and "invalid program" issues.
             Err(err)
                 if matches!(
@@ -1016,7 +1013,9 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             }
         }
     }
+}
 
+impl<'mir, 'tcx> InterpCx<'mir, 'tcx, crate::const_eval::CompileTimeInterpreter<'mir, 'tcx>> {
     /// This function checks the data at `op` to be const-valid.
     /// `op` is assumed to cover valid memory if it is an indirect operand.
     /// It will error if the bits at the destination do not match the ones described by the layout.
@@ -1030,14 +1029,38 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     #[inline(always)]
     pub(crate) fn const_validate_operand(
         &self,
-        op: &OpTy<'tcx, M::Provenance>,
+        mplace: MPlaceTy<'tcx>,
         path: Vec<PathElem>,
-        ref_tracking: &mut RefTracking<MPlaceTy<'tcx, M::Provenance>, Vec<PathElem>>,
+        ref_tracking: &mut RefTracking<MPlaceTy<'tcx>, Vec<PathElem>>,
         ctfe_mode: CtfeValidationMode,
     ) -> InterpResult<'tcx> {
-        self.validate_operand_internal(op, path, Some(ref_tracking), Some(ctfe_mode))
-    }
+        let prov = mplace.ptr().provenance;
+        let path = self.validate_operand_internal(
+            &mplace.into(),
+            path,
+            Some(ref_tracking),
+            Some(ctfe_mode),
+        )?;
 
+        // There was no error, so let's check the rest of the relocations in the pointed-to allocation for
+        // dangling pointers.
+        if let Some(prov) = prov
+            && let Some((_, alloc)) = self.memory.alloc_map().get(&prov.alloc_id())
+        {
+            for (_, prov) in alloc.provenance().ptrs().iter() {
+                if let AllocKind::Dead = self.get_alloc_info(prov.alloc_id()).2 {
+                    throw_validation_failure!(
+                        path,
+                        DanglingPtrUseAfterFree { ptr_kind: PointerKind::Ref(Mutability::Not) }
+                    )
+                }
+            }
+        }
+        Ok(())
+    }
+}
+
+impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     /// This function checks the data at `op` to be runtime-valid.
     /// `op` is assumed to cover valid memory if it is an indirect operand.
     /// It will error if the bits at the destination do not match the ones described by the layout.
@@ -1047,6 +1070,6 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         // still correct to not use `ctfe_mode`: that mode is for validation of the final constant
         // value, it rules out things like `UnsafeCell` in awkward places. It also can make checking
         // recurse through references which, for now, we don't want here, either.
-        self.validate_operand_internal(op, vec![], None, None)
+        self.validate_operand_internal(op, vec![], None, None).map(drop)
     }
 }

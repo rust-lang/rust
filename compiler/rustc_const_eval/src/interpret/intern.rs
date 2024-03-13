@@ -27,7 +27,7 @@ use rustc_span::sym;
 
 use super::{AllocId, Allocation, InterpCx, MPlaceTy, Machine, MemoryKind, PlaceTy};
 use crate::const_eval;
-use crate::errors::{DanglingPtrInFinal, MutablePtrInFinal};
+use crate::errors::MutablePtrInFinal;
 
 pub trait CompileTimeMachine<'mir, 'tcx: 'mir, T> = Machine<
         'mir,
@@ -279,9 +279,7 @@ pub fn intern_const_alloc_recursive<
             continue;
         }
         just_interned.insert(alloc_id);
-        todo.extend(intern_shallow(ecx, alloc_id).map_err(|()| {
-            ecx.tcx.dcx().emit_err(DanglingPtrInFinal { span: ecx.tcx.span, kind: intern_kind })
-        })?);
+        todo.extend(intern_shallow(ecx, alloc_id).unwrap());
     }
     if found_bad_mutable_pointer {
         let err_diag = MutablePtrInFinal { span: ecx.tcx.span, kind: intern_kind };

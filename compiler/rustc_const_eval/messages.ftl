@@ -49,7 +49,6 @@ const_eval_dangling_int_pointer =
 const_eval_dangling_null_pointer =
     {$bad_pointer_message}: null pointer is a dangling pointer (it has no provenance)
 
-const_eval_dangling_ptr_in_final = encountered dangling pointer in final value of {const_eval_intern_kind}
 const_eval_dead_local =
     accessing a dead local variable
 const_eval_dealloc_immutable =

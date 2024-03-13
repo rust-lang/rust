@@ -7,7 +7,7 @@ union Union {
     ptr: *const u32
 }
 
-const BAR: Union = { //~ ERROR encountered dangling pointer in final value
+const BAR: Union = { //~ ERROR it is undefined behavior
     let x = 42;
     Union { ptr: &x }
 };

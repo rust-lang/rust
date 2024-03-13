@@ -403,7 +403,7 @@ fn const_validate_mplace<'mir, 'tcx>(
                 CtfeValidationMode::Const { allow_immutable_unsafe_cell: !inner }
             }
         };
-        ecx.const_validate_operand(&mplace.into(), path, &mut ref_tracking, mode)
+        ecx.const_validate_operand(mplace, path, &mut ref_tracking, mode)
             // Instead of just reporting the `InterpError` via the usual machinery, we give a more targetted
             // error about the validation failure.
             .map_err(|error| report_validation_error(&ecx, error, alloc_id))?;
