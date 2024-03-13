@@ -21,9 +21,9 @@ use rustc_hir as hir;
 use rustc_middle::mir::interpret::{ConstAllocation, CtfeProvenance, InterpResult};
 use rustc_middle::query::TyCtxtAt;
 use rustc_middle::ty::layout::TyAndLayout;
+use rustc_session::lint;
 use rustc_span::def_id::LocalDefId;
 use rustc_span::sym;
-use rustc_session::lint;
 
 use super::{AllocId, Allocation, InterpCx, MPlaceTy, Machine, MemoryKind, PlaceTy};
 use crate::const_eval;
