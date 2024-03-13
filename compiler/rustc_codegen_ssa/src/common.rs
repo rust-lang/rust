@@ -42,7 +42,7 @@ pub enum RealPredicate {
     RealPredicateTrue,
 }
 
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, PartialEq)]
 pub enum AtomicRmwBinOp {
     AtomicXchg,
     AtomicAdd,
