@@ -58,5 +58,41 @@ LL -     _ = mac2!().enumerate().map(|(_, _v)| {});
 LL +     _ = mac2!().map(|_v| {});
    |
 
-error: aborting due to 5 previous errors
+error: you seem to use `.enumerate()` and immediately discard the index
+  --> tests/ui/unused_enumerate_index.rs:94:39
+   |
+LL |     let v = [1, 2, 3].iter().copied().enumerate();
+   |                                       ^^^^^^^^^^^
+   |
+help: remove the `.enumerate()` call
+   |
+LL ~     let v = [1, 2, 3].iter().copied();
+LL ~     let x = v.map(|x: i32| x).sum::<i32>();
+   |
+
+error: you seem to use `.enumerate()` and immediately discard the index
+  --> tests/ui/unused_enumerate_index.rs:99:39
+   |
+LL |     let v = [1, 2, 3].iter().copied().enumerate();
+   |                                       ^^^^^^^^^^^
+   |
+help: remove the `.enumerate()` call
+   |
+LL ~     let v = [1, 2, 3].iter().copied();
+LL ~     let x = v.map(|x: i32| x).sum::<i32>();
+   |
+
+error: you seem to use `.enumerate()` and immediately discard the index
+  --> tests/ui/unused_enumerate_index.rs:103:39
+   |
+LL |     let v = [1, 2, 3].iter().copied().enumerate();
+   |                                       ^^^^^^^^^^^
+   |
+help: remove the `.enumerate()` call
+   |
+LL ~     let v = [1, 2, 3].iter().copied();
+LL ~     let x = v.map(|x| x).sum::<i32>();
+   |
+
+error: aborting due to 8 previous errors
 

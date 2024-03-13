@@ -1,4 +1,4 @@
-#![allow(unused)]
+#![allow(unused, clippy::map_identity)]
 #![warn(clippy::unused_enumerate_index)]
 
 use std::iter::Enumerate;
@@ -89,4 +89,18 @@ fn main() {
     #[allow(clippy::unused_enumerate_index)]
     let v = [1].iter().enumerate();
     v.map(|(_, _x)| {});
+
+    // This should keep the explicit type of `x`.
+    let v = [1, 2, 3].iter().copied().enumerate();
+    let x = v.map(|(_, x): (usize, i32)| x).sum::<i32>();
+    assert_eq!(x, 6);
+
+    // This should keep the explicit type of `x`.
+    let v = [1, 2, 3].iter().copied().enumerate();
+    let x = v.map(|(_, x): (_, i32)| x).sum::<i32>();
+    assert_eq!(x, 6);
+
+    let v = [1, 2, 3].iter().copied().enumerate();
+    let x = v.map(|(_, x)| x).sum::<i32>();
+    assert_eq!(x, 6);
 }
