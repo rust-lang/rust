@@ -9,4 +9,5 @@ const MOVE: fn(&String) -> String = {
 };
 
 fn main() {
+    println!("{}", MOVE(&String::new()));
 }

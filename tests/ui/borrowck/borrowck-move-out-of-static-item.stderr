@@ -1,5 +1,5 @@
 error[E0507]: cannot move out of static item `BAR`
-  --> $DIR/borrowck-move-out-of-static-item.rs:15:10
+  --> $DIR/borrowck-move-out-of-static-item.rs:16:10
    |
 LL |     test(BAR);
    |          ^^^ move occurs because `BAR` has type `Foo`, which does not implement the `Copy` trait
