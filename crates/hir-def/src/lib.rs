@@ -1403,12 +1403,15 @@ fn macro_call_as_call_id_with_eager(
         resolver(call.path.clone()).ok_or_else(|| UnresolvedMacro { path: call.path.clone() })?;
 
     let res = match def.kind {
-        MacroDefKind::BuiltInEager(..) => {
-            let macro_call = InFile::new(call.ast_id.file_id, call.ast_id.to_node(db));
-            expand_eager_macro_input(db, krate, macro_call, def, call_site, &|path| {
-                eager_resolver(path).filter(MacroDefId::is_fn_like)
-            })
-        }
+        MacroDefKind::BuiltInEager(..) => expand_eager_macro_input(
+            db,
+            krate,
+            &call.ast_id.to_node(db),
+            call.ast_id,
+            def,
+            call_site,
+            &|path| eager_resolver(path).filter(MacroDefId::is_fn_like),
+        ),
         _ if def.is_fn_like() => ExpandResult {
             value: Some(def.make_call(
                 db,

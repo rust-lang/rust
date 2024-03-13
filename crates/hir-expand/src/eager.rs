@@ -27,21 +27,20 @@ use crate::{
     ast::{self, AstNode},
     db::ExpandDatabase,
     mod_path::ModPath,
-    EagerCallInfo, ExpandError, ExpandResult, ExpandTo, ExpansionSpanMap, InFile, Intern,
+    AstId, EagerCallInfo, ExpandError, ExpandResult, ExpandTo, ExpansionSpanMap, InFile, Intern,
     MacroCallId, MacroCallKind, MacroCallLoc, MacroDefId, MacroDefKind,
 };
 
 pub fn expand_eager_macro_input(
     db: &dyn ExpandDatabase,
     krate: CrateId,
-    macro_call: InFile<ast::MacroCall>,
+    macro_call: &ast::MacroCall,
+    ast_id: AstId<ast::MacroCall>,
     def: MacroDefId,
     call_site: Span,
     resolver: &dyn Fn(ModPath) -> Option<MacroDefId>,
 ) -> ExpandResult<Option<MacroCallId>> {
-    let ast_map = db.ast_id_map(macro_call.file_id);
-    let call_id = InFile::new(macro_call.file_id, ast_map.ast_id(&macro_call.value));
-    let expand_to = ExpandTo::from_call_site(&macro_call.value);
+    let expand_to = ExpandTo::from_call_site(macro_call);
 
     // Note:
     // When `lazy_expand` is called, its *parent* file must already exist.
@@ -50,7 +49,7 @@ pub fn expand_eager_macro_input(
     let arg_id = MacroCallLoc {
         def,
         krate,
-        kind: MacroCallKind::FnLike { ast_id: call_id, expand_to: ExpandTo::Expr, eager: None },
+        kind: MacroCallKind::FnLike { ast_id, expand_to: ExpandTo::Expr, eager: None },
         call_site,
     }
     .intern(db);
@@ -87,9 +86,8 @@ pub fn expand_eager_macro_input(
     let loc = MacroCallLoc {
         def,
         krate,
-
         kind: MacroCallKind::FnLike {
-            ast_id: call_id,
+            ast_id,
             expand_to,
             eager: Some(Arc::new(EagerCallInfo {
                 arg: Arc::new(subtree),
@@ -106,14 +104,12 @@ pub fn expand_eager_macro_input(
 fn lazy_expand(
     db: &dyn ExpandDatabase,
     def: &MacroDefId,
-    macro_call: InFile<ast::MacroCall>,
+    macro_call: &ast::MacroCall,
+    ast_id: AstId<ast::MacroCall>,
     krate: CrateId,
     call_site: Span,
 ) -> ExpandResult<(InFile<Parse<SyntaxNode>>, Arc<ExpansionSpanMap>)> {
-    let ast_id = db.ast_id_map(macro_call.file_id).ast_id(&macro_call.value);
-
-    let expand_to = ExpandTo::from_call_site(&macro_call.value);
-    let ast_id = macro_call.with_value(ast_id);
+    let expand_to = ExpandTo::from_call_site(macro_call);
     let id = def.make_call(
         db,
         krate,
@@ -183,12 +179,14 @@ fn eager_macro_recur(
                 continue;
             }
         };
+        let ast_id = db.ast_id_map(curr.file_id).ast_id(&call);
         let ExpandResult { value, err } = match def.kind {
             MacroDefKind::BuiltInEager(..) => {
                 let ExpandResult { value, err } = expand_eager_macro_input(
                     db,
                     krate,
-                    curr.with_value(call.clone()),
+                    &call,
+                    curr.with_value(ast_id),
                     def,
                     call_site,
                     macro_resolver,
@@ -218,7 +216,7 @@ fn eager_macro_recur(
             | MacroDefKind::BuiltInDerive(..)
             | MacroDefKind::ProcMacro(..) => {
                 let ExpandResult { value: (parse, tm), err } =
-                    lazy_expand(db, &def, curr.with_value(call.clone()), krate, call_site);
+                    lazy_expand(db, &def, &call, curr.with_value(ast_id), krate, call_site);
 
                 // replace macro inside
                 let ExpandResult { value, err: error } = eager_macro_recur(

@@ -146,6 +146,10 @@ pub fn expand_speculative(
             mbe::syntax_node_to_token_tree(speculative_args, span_map, loc.call_site),
             SyntaxFixupUndoInfo::NONE,
         ),
+        MacroCallKind::Attr { .. } if loc.def.is_attribute_derive() => (
+            mbe::syntax_node_to_token_tree(speculative_args, span_map, loc.call_site),
+            SyntaxFixupUndoInfo::NONE,
+        ),
         MacroCallKind::Derive { derive_attr_index: index, .. }
         | MacroCallKind::Attr { invoc_attr_index: index, .. } => {
             let censor = if let MacroCallKind::Derive { .. } = loc.kind {
@@ -406,7 +410,11 @@ fn macro_arg(
                 );
             }
 
-            let tt = mbe::syntax_node_to_token_tree(tt.syntax(), map.as_ref(), loc.call_site);
+            let mut tt = mbe::syntax_node_to_token_tree(tt.syntax(), map.as_ref(), loc.call_site);
+            if loc.def.is_proc_macro() {
+                // proc macros expect their inputs without parentheses, MBEs expect it with them included
+                tt.delimiter.kind = tt::DelimiterKind::Invisible;
+            }
             let val = (Arc::new(tt), SyntaxFixupUndoInfo::NONE);
             return if matches!(loc.def.kind, MacroDefKind::BuiltInEager(..)) {
                 match parse.errors() {
