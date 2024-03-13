@@ -4,7 +4,7 @@ error[E0762]: unterminated character literal
 LL |     println!('hello world');
    |                          ^^^^
    |
-help: if you meant to write a `str` literal, use double quotes
+help: if you meant to write a string literal, use double quotes
    |
 LL |     println!("hello world");
    |              ~           ~

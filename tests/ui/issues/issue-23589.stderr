@@ -15,7 +15,7 @@ error[E0308]: mismatched types
 LL |     let v: Vec(&str) = vec!['1', '2'];
    |                             ^^^ expected `&str`, found `char`
    |
-help: if you meant to write a `str` literal, use double quotes
+help: if you meant to write a string literal, use double quotes
    |
 LL |     let v: Vec(&str) = vec!["1", '2'];
    |                             ~ ~

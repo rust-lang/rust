@@ -15,7 +15,7 @@ error: character literal may only contain one codepoint
 LL |     let _bar = 'hello';
    |                ^^^^^^^
    |
-help: if you meant to write a `str` literal, use double quotes
+help: if you meant to write a string literal, use double quotes
    |
 LL |     let _bar = "hello";
    |                ~     ~

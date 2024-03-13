@@ -419,7 +419,7 @@ impl<'psess, 'src> StringReader<'psess, 'src> {
                         .with_code(E0762);
                     if let Some(lt_sp) = self.last_lifetime {
                         err.multipart_suggestion(
-                            "if you meant to write a `str` literal, use double quotes",
+                            "if you meant to write a string literal, use double quotes",
                             vec![
                                 (lt_sp, "\"".to_string()),
                                 (self.mk_sp(start, start + BytePos(1)), "\"".to_string()),
