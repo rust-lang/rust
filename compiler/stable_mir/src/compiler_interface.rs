@@ -183,6 +183,7 @@ pub trait Context {
     fn vtable_allocation(&self, global_alloc: &GlobalAlloc) -> Option<AllocId>;
     fn krate(&self, def_id: DefId) -> Crate;
     fn instance_name(&self, def: InstanceDef, trimmed: bool) -> Symbol;
+    fn intrinsic_name(&self, def: InstanceDef) -> Symbol;
 
     /// Return information about the target machine.
     fn target_info(&self) -> MachineInfo;
