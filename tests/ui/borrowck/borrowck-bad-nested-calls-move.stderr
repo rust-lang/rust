@@ -13,8 +13,9 @@ LL |         a);
    |
 help: consider cloning the value if the performance cost is acceptable
    |
-LL |         &*a.clone(),
-   |            ++++++++
+LL -         &*a,
+LL +         a.clone(),
+   |
 
 error[E0505]: cannot move out of `a` because it is borrowed
   --> $DIR/borrowck-bad-nested-calls-move.rs:32:9
@@ -30,8 +31,9 @@ LL |         a);
    |
 help: consider cloning the value if the performance cost is acceptable
    |
-LL |         &*a.clone(),
-   |            ++++++++
+LL -         &*a,
+LL +         a.clone(),
+   |
 
 error: aborting due to 2 previous errors
 

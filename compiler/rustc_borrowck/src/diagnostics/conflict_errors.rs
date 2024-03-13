@@ -1034,27 +1034,32 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
             } else {
                 ".clone()".to_owned()
             };
-        if let Some(clone_trait_def) = tcx.lang_items().clone_trait()
-            && self
-                .infcx
-                .type_implements_trait(clone_trait_def, [ty], self.param_env)
-                .must_apply_modulo_regions()
+        let mut sugg = Vec::with_capacity(2);
+        let mut inner_expr = expr;
+        while let hir::ExprKind::AddrOf(.., inner) | hir::ExprKind::Unary(hir::UnOp::Deref, inner) =
+            &inner_expr.kind
         {
-            let msg = if let ty::Adt(def, _) = ty.kind()
-                && [tcx.get_diagnostic_item(sym::Arc), tcx.get_diagnostic_item(sym::Rc)]
-                    .contains(&Some(def.did()))
-            {
-                "clone the value to increment its reference count"
-            } else {
-                "consider cloning the value if the performance cost is acceptable"
-            };
-            err.span_suggestion_verbose(
-                span.shrink_to_hi(),
-                msg,
-                suggestion,
-                Applicability::MachineApplicable,
-            );
+            inner_expr = inner;
         }
+        if inner_expr.span.lo() != expr.span.lo() {
+            sugg.push((expr.span.with_hi(inner_expr.span.lo()), String::new()));
+        }
+        let span = if inner_expr.span.hi() != expr.span.hi() {
+            // Account for `(*x)` to suggest `x.clone()`.
+            expr.span.with_lo(inner_expr.span.hi())
+        } else {
+            span.shrink_to_hi()
+        };
+        sugg.push((span, suggestion));
+        let msg = if let ty::Adt(def, _) = ty.kind()
+            && [tcx.get_diagnostic_item(sym::Arc), tcx.get_diagnostic_item(sym::Rc)]
+                .contains(&Some(def.did()))
+        {
+            "clone the value to increment its reference count"
+        } else {
+            "consider cloning the value if the performance cost is acceptable"
+        };
+        err.multipart_suggestion_verbose(msg, sugg, Applicability::MachineApplicable);
     }
 
     fn suggest_adding_bounds(&self, err: &mut Diag<'_>, ty: Ty<'tcx>, def_id: DefId, span: Span) {

@@ -54,8 +54,9 @@ LL |     use_mut(n); use_imm(m);
    |
 help: consider cloning the value if the performance cost is acceptable
    |
-LL |     let m = &x.clone();
-   |               ++++++++
+LL -     let m = &x;
+LL +     let m = x.clone();
+   |
 
 error[E0505]: cannot move out of `y` because it is borrowed
   --> $DIR/binop-move-semantics.rs:23:5

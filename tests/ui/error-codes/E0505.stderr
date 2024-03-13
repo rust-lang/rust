@@ -13,8 +13,9 @@ LL |         _ref_to_val.use_ref();
    |
 help: consider cloning the value if the performance cost is acceptable
    |
-LL |         let _ref_to_val: &Value = &x.clone();
-   |                                     ++++++++
+LL -         let _ref_to_val: &Value = &x;
+LL +         let _ref_to_val: &Value = x.clone();
+   |
 
 error: aborting due to 1 previous error
 
