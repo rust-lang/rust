@@ -1033,6 +1033,11 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         while let hir::ExprKind::AddrOf(.., inner) | hir::ExprKind::Unary(hir::UnOp::Deref, inner) =
             &inner_expr.kind
         {
+            if let hir::ExprKind::AddrOf(_, hir::Mutability::Mut, _) = inner_expr.kind {
+                // We assume that `&mut` refs are desired for their side-effects, so cloning the
+                // value wouldn't do what the user wanted.
+                return;
+            }
             inner_expr = inner;
         }
         if inner_expr.span.lo() != expr.span.lo() {

@@ -27,12 +27,6 @@ LL |     let z = x;
    |             ^ move out of `x` occurs here
 LL |     y
    |     - returning this value requires that `*x` is borrowed for `'1`
-   |
-help: consider cloning the value if the performance cost is acceptable
-   |
-LL -     let y = &mut *x;
-LL +     let y = x.clone();
-   |
 
 error[E0505]: cannot move out of `s` because it is borrowed
   --> $DIR/polonius-smoke-test.rs:42:5
@@ -46,12 +40,6 @@ LL |     s;
    |     ^ move out of `s` occurs here
 LL |     tmp;
    |     --- borrow later used here
-   |
-help: consider cloning the value if the performance cost is acceptable
-   |
-LL -     let r = &mut *s;
-LL +     let r = s.clone();
-   |
 
 error: aborting due to 4 previous errors
 
