@@ -90,6 +90,17 @@ impl Instance {
         with(|context| context.instance_name(self.def, true))
     }
 
+    /// Retrieve the plain intrinsic name of an instance if it's an intrinsic.
+    ///
+    /// The plain name does not include type arguments (as `trimmed_name` does),
+    /// which is more convenient to match with intrinsic symbols.
+    pub fn intrinsic_name(&self) -> Option<Symbol> {
+        match self.kind {
+            InstanceKind::Intrinsic => Some(with(|context| context.intrinsic_name(self.def))),
+            InstanceKind::Item | InstanceKind::Virtual { .. } | InstanceKind::Shim => None,
+        }
+    }
+
     /// Resolve an instance starting from a function definition and generic arguments.
     pub fn resolve(def: FnDef, args: &GenericArgs) -> Result<Instance, crate::Error> {
         with(|context| {
