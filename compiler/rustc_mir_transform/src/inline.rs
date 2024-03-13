@@ -565,7 +565,8 @@ impl<'tcx> Inliner<'tcx> {
         mut callee_body: Body<'tcx>,
     ) {
         let terminator = caller_body[callsite.block].terminator.take().unwrap();
-        let TerminatorKind::Call { args, destination, unwind, target, .. } = terminator.kind else {
+        let TerminatorKind::Call { func, args, destination, unwind, target, .. } = terminator.kind
+        else {
             bug!("unexpected terminator kind {:?}", terminator.kind);
         };
 
@@ -717,6 +718,18 @@ impl<'tcx> Inliner<'tcx> {
                 Const::Val(..) | Const::Unevaluated(..) => true,
             },
         ));
+        //  Now that we incorporated the callee's `required_consts`, we can remove the callee from
+        //  `required_items` -- but we have to take their `required_consts` in return.
+        let callee_item = {
+            // We need to reconstruct the `required_item` for the callee.
+            let func_ty = func.ty(caller_body, self.tcx);
+            match func_ty.kind() {
+                ty::FnDef(def_id, args) => RequiredItem::Fn(*def_id, args),
+                _ => bug!(),
+            }
+        };
+        caller_body.required_items.retain(|item| *item != callee_item);
+        caller_body.required_items.extend(callee_body.required_items);
     }
 
     fn make_call_args(

@@ -311,7 +311,8 @@ impl<'tcx> CoroutineInfo<'tcx> {
 }
 
 /// Some item that needs to monomorphize successfully for a MIR body to be considered well-formed.
-#[derive(Copy, Clone, TyEncodable, TyDecodable, Debug, HashStable, TypeFoldable, TypeVisitable)]
+#[derive(Copy, Clone, PartialEq, Debug, HashStable, TyEncodable, TyDecodable)]
+#[derive(TypeFoldable, TypeVisitable)]
 pub enum RequiredItem<'tcx> {
     Fn(DefId, GenericArgsRef<'tcx>),
     Drop(Ty<'tcx>),

@@ -983,7 +983,7 @@ fn visit_instance_use<'tcx>(
     source: Span,
     output: &mut MonoItems<'tcx>,
 ) {
-    debug!("visit_item_use({:?}, is_direct_call={:?})", instance, is_direct_call);
+    debug!("visit_instance_use({:?}, is_direct_call={:?})", instance, is_direct_call);
     if !should_codegen_locally(tcx, &instance) {
         return;
     }
