@@ -557,6 +557,7 @@ declare_lint! {
     /// fn main() {
     ///     use foo::bar;
     ///     foo::bar();
+    ///     bar();
     /// }
     /// ```
     ///

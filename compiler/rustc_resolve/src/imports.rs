@@ -1306,7 +1306,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         None
     }
 
-    pub(crate) fn check_for_redundant_imports(&mut self, import: Import<'a>) {
+    pub(crate) fn check_for_redundant_imports(&mut self, import: Import<'a>) -> bool {
         // This function is only called for single imports.
         let ImportKind::Single {
             source, target, ref source_bindings, ref target_bindings, id, ..
@@ -1317,12 +1317,12 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
 
         // Skip if the import is of the form `use source as target` and source != target.
         if source != target {
-            return;
+            return false;
         }
 
         // Skip if the import was produced by a macro.
         if import.parent_scope.expansion != LocalExpnId::ROOT {
-            return;
+            return false;
         }
 
         // Skip if we are inside a named module (in contrast to an anonymous
@@ -1332,7 +1332,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         if import.used.get() == Some(Used::Other)
             || self.effective_visibilities.is_exported(self.local_def_id(id))
         {
-            return;
+            return false;
         }
 
         let mut is_redundant = true;
@@ -1375,7 +1375,10 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                 format!("the item `{source}` is imported redundantly"),
                 BuiltinLintDiag::RedundantImport(redundant_spans, source),
             );
+            return true;
         }
+
+        false
     }
 
     fn resolve_glob_import(&mut self, import: Import<'a>) {
