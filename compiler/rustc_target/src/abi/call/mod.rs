@@ -633,10 +633,8 @@ impl<'a, Ty> ArgAbi<'a, Ty> {
     /// If the resulting alignment differs from the type's alignment,
     /// the argument will be copied to an alloca with sufficient alignment,
     /// either in the caller (if the type's alignment is lower than the byval alignment)
-    /// or in the callee† (if the type's alignment is higher than the byval alignment),
+    /// or in the callee (if the type's alignment is higher than the byval alignment),
     /// to ensure that Rust code never sees an underaligned pointer.
-    ///
-    /// † This is currently broken, see <https://github.com/rust-lang/rust/pull/122212>.
     pub fn make_indirect_byval(&mut self, byval_align: Option<Align>) {
         assert!(!self.layout.is_unsized(), "used byval ABI for unsized layout");
         self.make_indirect();
