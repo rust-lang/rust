@@ -188,16 +188,6 @@ impl<'tcx> assembly::GoalKind<'tcx> for TraitPredicate<'tcx> {
         })
     }
 
-    /// ```rust,ignore (not valid rust syntax)
-    /// impl Sized for u*, i*, bool, f*, FnPtr, FnDef, *(const/mut) T, char, &mut? T, [T; N], dyn* Trait, !
-    ///
-    /// impl Sized for (T1, T2, .., Tn) where T1: Sized, T2: Sized, .. Tn: Sized
-    ///
-    /// impl Sized for Adt where T: Sized forall T in field types
-    /// ```
-    ///
-    /// note that `[T; N]` is unconditionally sized since `T: Sized` is required for the array type to be
-    /// well-formed.
     fn consider_builtin_sized_candidate(
         ecx: &mut EvalCtxt<'_, 'tcx>,
         goal: Goal<'tcx, Self>,
@@ -212,20 +202,6 @@ impl<'tcx> assembly::GoalKind<'tcx> for TraitPredicate<'tcx> {
         )
     }
 
-    /// ```rust,ignore (not valid rust syntax)
-    /// impl Copy/Clone for FnDef, FnPtr
-    ///
-    /// impl Copy/Clone for (T1, T2, .., Tn) where T1: Copy/Clone, T2: Copy/Clone, .. Tn: Copy/Clone
-    ///
-    /// impl Copy/Clone for Closure where T: Copy/Clone forall T in upvars
-    ///
-    /// // only when `coroutine_clone` is enabled and the coroutine is movable
-    /// impl Copy/Clone for Coroutine where T: Copy/Clone forall T in (upvars, witnesses)
-    ///
-    /// impl Copy/Clone for CoroutineWitness where T: Copy/Clone forall T in coroutine_hidden_types
-    /// ```
-    ///
-    /// Some built-in types don't have built-in impls because they can be implemented within the standard library.
     fn consider_builtin_copy_clone_candidate(
         ecx: &mut EvalCtxt<'_, 'tcx>,
         goal: Goal<'tcx, Self>,
@@ -240,9 +216,6 @@ impl<'tcx> assembly::GoalKind<'tcx> for TraitPredicate<'tcx> {
         )
     }
 
-    /// Implements `PointerLike` for types that are pointer-sized, pointer-aligned,
-    /// and have a initialized (non-union), scalar ABI.
-    // Please also update compiler/rustc_target/src/abi/mod.rs if the criteria changes
     fn consider_builtin_pointer_like_candidate(
         ecx: &mut EvalCtxt<'_, 'tcx>,
         goal: Goal<'tcx, Self>,
@@ -272,18 +245,13 @@ impl<'tcx> assembly::GoalKind<'tcx> for TraitPredicate<'tcx> {
         }
     }
 
-    /// ```rust,ignore (not valid rust syntax)
-    /// impl FnPtr for FnPtr {}
-    /// impl !FnPtr for T where T != FnPtr && T is rigid {}
-    /// ```
-    ///
-    /// Note: see [`Ty::is_known_rigid`] for what it means for the type to be rigid.
     fn consider_builtin_fn_ptr_trait_candidate(
         ecx: &mut EvalCtxt<'_, 'tcx>,
         goal: Goal<'tcx, Self>,
     ) -> QueryResult<'tcx> {
         let self_ty = goal.predicate.self_ty();
         match goal.predicate.polarity {
+            // impl FnPtr for FnPtr {}
             ty::ImplPolarity::Positive => {
                 if self_ty.is_fn_ptr() {
                     ecx.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
@@ -291,6 +259,7 @@ impl<'tcx> assembly::GoalKind<'tcx> for TraitPredicate<'tcx> {
                     Err(NoSolution)
                 }
             }
+            //  impl !FnPtr for T where T != FnPtr && T is rigid {}
             ty::ImplPolarity::Negative => {
                 // If a type is rigid and not a fn ptr, then we know for certain
                 // that it does *not* implement `FnPtr`.

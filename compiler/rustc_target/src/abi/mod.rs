@@ -121,7 +121,6 @@ impl<'a> Layout<'a> {
     ///
     /// Currently, that means that the type is pointer-sized, pointer-aligned,
     /// and has a initialized (non-union), scalar ABI.
-    // Please also update compiler/rustc_trait_selection/src/solve/trait_goals.rs if the criteria changes
     pub fn is_pointer_like(self, data_layout: &TargetDataLayout) -> bool {
         self.size() == data_layout.pointer_size
             && self.align().abi == data_layout.pointer_align.abi
