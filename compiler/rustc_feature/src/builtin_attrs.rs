@@ -894,56 +894,93 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
     ),
     rustc_attr!(TEST, rustc_insignificant_dtor, Normal, template!(Word), WarnFollowing),
     rustc_attr!(TEST, rustc_strict_coherence, Normal, template!(Word), WarnFollowing),
-    rustc_attr!(TEST, rustc_variance, Normal, template!(Word), WarnFollowing),
-    rustc_attr!(TEST, rustc_variance_of_opaques, Normal, template!(Word), WarnFollowing),
-    rustc_attr!(TEST, rustc_hidden_type_of_opaques, Normal, template!(Word), WarnFollowing),
+    rustc_attr!(TEST, rustc_variance, Normal, template!(Word), WarnFollowing, @only_local: true),
+    rustc_attr!(
+        TEST, rustc_variance_of_opaques, Normal, template!(Word),
+        WarnFollowing, @only_local: true
+    ),
+    rustc_attr!(
+        TEST, rustc_hidden_type_of_opaques, Normal, template!(Word),
+        WarnFollowing, @only_local: true),
     rustc_attr!(TEST, rustc_layout, Normal, template!(List: "field1, field2, ..."), WarnFollowing),
-    rustc_attr!(TEST, rustc_abi, Normal, template!(List: "field1, field2, ..."), WarnFollowing),
-    rustc_attr!(TEST, rustc_regions, Normal, template!(Word), WarnFollowing),
+    rustc_attr!(
+        TEST, rustc_abi, Normal, template!(List: "field1, field2, ..."),
+        WarnFollowing, @only_local: true
+    ),
+    rustc_attr!(
+        TEST, rustc_regions, Normal, template!(Word),
+        WarnFollowing, @only_local: true
+    ),
     rustc_attr!(
         TEST, rustc_error, Normal,
         template!(Word, List: "delayed_bug_from_inside_query"), WarnFollowingWordOnly
     ),
-    rustc_attr!(TEST, rustc_dump_user_args, Normal, template!(Word), WarnFollowing),
+    rustc_attr!(
+        TEST, rustc_dump_user_args, Normal, template!(Word), WarnFollowing,
+        @only_local: true
+    ),
     rustc_attr!(TEST, rustc_evaluate_where_clauses, Normal, template!(Word), WarnFollowing),
     rustc_attr!(
-        TEST, rustc_if_this_changed, Normal, template!(Word, List: "DepNode"), DuplicatesOk
+        TEST, rustc_if_this_changed, Normal, template!(Word, List: "DepNode"),
+        DuplicatesOk, @only_local: true
     ),
     rustc_attr!(
-        TEST, rustc_then_this_would_need, Normal, template!(List: "DepNode"), DuplicatesOk
+        TEST, rustc_then_this_would_need, Normal, template!(List: "DepNode"),
+        DuplicatesOk, @only_local: true
     ),
     rustc_attr!(
         TEST, rustc_clean, Normal,
         template!(List: r#"cfg = "...", /*opt*/ label = "...", /*opt*/ except = "...""#),
-        DuplicatesOk,
+        DuplicatesOk, @only_local: true
     ),
     rustc_attr!(
         TEST, rustc_partition_reused, Normal,
-        template!(List: r#"cfg = "...", module = "...""#), DuplicatesOk,
+        template!(List: r#"cfg = "...", module = "...""#), DuplicatesOk, @only_local: true
     ),
     rustc_attr!(
         TEST, rustc_partition_codegened, Normal,
-        template!(List: r#"cfg = "...", module = "...""#), DuplicatesOk,
+        template!(List: r#"cfg = "...", module = "...""#), DuplicatesOk, @only_local: true
     ),
     rustc_attr!(
         TEST, rustc_expected_cgu_reuse, Normal,
         template!(List: r#"cfg = "...", module = "...", kind = "...""#), DuplicatesOk,
+        @only_local: true
     ),
-    rustc_attr!(TEST, rustc_symbol_name, Normal, template!(Word), WarnFollowing),
+    rustc_attr!(
+        TEST, rustc_symbol_name, Normal, template!(Word), WarnFollowing,
+        @only_local: true
+    ),
     rustc_attr!(TEST, rustc_polymorphize_error, Normal, template!(Word), WarnFollowing),
-    rustc_attr!(TEST, rustc_def_path, Normal, template!(Word), WarnFollowing),
+    rustc_attr!(
+        TEST, rustc_def_path, Normal, template!(Word), WarnFollowing,
+        @only_local: true
+    ),
     rustc_attr!(TEST, rustc_mir, Normal, template!(List: "arg1, arg2, ..."), DuplicatesOk),
     gated!(
         custom_mir, Normal, template!(List: r#"dialect = "...", phase = "...""#),
-        ErrorFollowing, "the `#[custom_mir]` attribute is just used for the Rust test suite",
+        ErrorFollowing, @only_local: true,
+        "the `#[custom_mir]` attribute is just used for the Rust test suite",
     ),
-    rustc_attr!(TEST, rustc_dump_program_clauses, Normal, template!(Word), WarnFollowing),
-    rustc_attr!(TEST, rustc_dump_env_program_clauses, Normal, template!(Word), WarnFollowing),
-    rustc_attr!(TEST, rustc_object_lifetime_default, Normal, template!(Word), WarnFollowing),
+    rustc_attr!(
+        TEST, rustc_dump_program_clauses, Normal, template!(Word), WarnFollowing,
+        @only_local: true
+    ),
+    rustc_attr!(
+        TEST, rustc_dump_env_program_clauses, Normal, template!(Word), WarnFollowing,
+        @only_local: true
+    ),
+    rustc_attr!(
+        TEST, rustc_object_lifetime_default, Normal, template!(Word), WarnFollowing,
+        @only_local: true
+    ),
     rustc_attr!(TEST, rustc_dump_vtable, Normal, template!(Word), WarnFollowing),
-    rustc_attr!(TEST, rustc_dummy, Normal, template!(Word /* doesn't matter*/), DuplicatesOk),
+    rustc_attr!(
+        TEST, rustc_dummy, Normal, template!(Word /* doesn't matter*/), DuplicatesOk,
+        @only_local: true
+    ),
     gated!(
         omit_gdb_pretty_printer_section, Normal, template!(Word), WarnFollowing,
+        @only_local: true,
         "the `#[omit_gdb_pretty_printer_section]` attribute is just used for the Rust test suite",
     ),
     rustc_attr!(
