@@ -13,5 +13,5 @@ fn main() {
         *arg = true;
     };
     test(gen);
-    //~^ ERROR mismatched types
+    //~^ ERROR implementation of `Coroutine` is not general enough
 }

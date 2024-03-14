@@ -618,6 +618,7 @@ pub enum SelectionError<'tcx> {
     OpaqueTypeAutoTraitLeakageUnknown(DefId),
 }
 
+// FIXME(@lcnr): The `Binder` here should be unnecessary. Just use `TraitRef` instead.
 #[derive(Clone, Debug, TypeVisitable)]
 pub struct SignatureMismatchData<'tcx> {
     pub found_trait_ref: ty::PolyTraitRef<'tcx>,

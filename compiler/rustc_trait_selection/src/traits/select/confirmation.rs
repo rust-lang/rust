@@ -9,7 +9,7 @@
 use rustc_ast::Mutability;
 use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_hir::lang_items::LangItem;
-use rustc_infer::infer::BoundRegionConversionTime::HigherRankedType;
+use rustc_infer::infer::HigherRankedType;
 use rustc_infer::infer::{DefineOpaqueTypes, InferOk};
 use rustc_middle::traits::{BuiltinImplSource, SignatureMismatchData};
 use rustc_middle::ty::{
@@ -161,8 +161,6 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         let placeholder_trait_predicate =
             self.infcx.enter_forall_and_leak_universe(trait_predicate).trait_ref;
         let placeholder_self_ty = placeholder_trait_predicate.self_ty();
-        let placeholder_trait_predicate = ty::Binder::dummy(placeholder_trait_predicate);
-
         let candidate_predicate = self
             .for_each_item_bound(
                 placeholder_self_ty,
@@ -182,6 +180,11 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             .expect("projection candidate is not a trait predicate")
             .map_bound(|t| t.trait_ref);
 
+        let candidate = self.infcx.instantiate_binder_with_fresh_vars(
+            obligation.cause.span,
+            HigherRankedType,
+            candidate,
+        );
         let mut obligations = Vec::new();
         let candidate = normalize_with_depth_to(
             self,
@@ -195,7 +198,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         obligations.extend(
             self.infcx
                 .at(&obligation.cause, obligation.param_env)
-                .sup(DefineOpaqueTypes::No, placeholder_trait_predicate, candidate)
+                .eq(DefineOpaqueTypes::No, placeholder_trait_predicate, candidate)
                 .map(|InferOk { obligations, .. }| obligations)
                 .map_err(|_| Unimplemented)?,
         );
@@ -499,7 +502,6 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
         let trait_predicate = self.infcx.enter_forall_and_leak_universe(obligation.predicate);
         let self_ty = self.infcx.shallow_resolve(trait_predicate.self_ty());
-        let obligation_trait_ref = ty::Binder::dummy(trait_predicate.trait_ref);
         let ty::Dynamic(data, ..) = *self_ty.kind() else {
             span_bug!(obligation.cause.span, "object candidate with non-object");
         };
@@ -520,19 +522,24 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         let unnormalized_upcast_trait_ref =
             supertraits.nth(index).expect("supertraits iterator no longer has as many elements");
 
+        let upcast_trait_ref = self.infcx.instantiate_binder_with_fresh_vars(
+            obligation.cause.span,
+            HigherRankedType,
+            unnormalized_upcast_trait_ref,
+        );
         let upcast_trait_ref = normalize_with_depth_to(
             self,
             obligation.param_env,
             obligation.cause.clone(),
             obligation.recursion_depth + 1,
-            unnormalized_upcast_trait_ref,
+            upcast_trait_ref,
             &mut nested,
         );
 
         nested.extend(
             self.infcx
                 .at(&obligation.cause, obligation.param_env)
-                .sup(DefineOpaqueTypes::No, obligation_trait_ref, upcast_trait_ref)
+                .eq(DefineOpaqueTypes::No, trait_predicate.trait_ref, upcast_trait_ref)
                 .map(|InferOk { obligations, .. }| obligations)
                 .map_err(|_| Unimplemented)?,
         );
@@ -1021,7 +1028,13 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         obligation: &PolyTraitObligation<'tcx>,
         self_ty_trait_ref: ty::PolyTraitRef<'tcx>,
     ) -> Result<Vec<PredicateObligation<'tcx>>, SelectionError<'tcx>> {
-        let obligation_trait_ref = obligation.predicate.to_poly_trait_ref();
+        let obligation_trait_ref =
+            self.infcx.enter_forall_and_leak_universe(obligation.predicate.to_poly_trait_ref());
+        let self_ty_trait_ref = self.infcx.instantiate_binder_with_fresh_vars(
+            obligation.cause.span,
+            HigherRankedType,
+            self_ty_trait_ref,
+        );
         // Normalize the obligation and expected trait refs together, because why not
         let Normalized { obligations: nested, value: (obligation_trait_ref, expected_trait_ref) } =
             ensure_sufficient_stack(|| {
@@ -1037,15 +1050,15 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         // needed to define opaque types for tests/ui/type-alias-impl-trait/assoc-projection-ice.rs
         self.infcx
             .at(&obligation.cause, obligation.param_env)
-            .sup(DefineOpaqueTypes::Yes, obligation_trait_ref, expected_trait_ref)
+            .eq(DefineOpaqueTypes::Yes, obligation_trait_ref, expected_trait_ref)
             .map(|InferOk { mut obligations, .. }| {
                 obligations.extend(nested);
                 obligations
             })
             .map_err(|terr| {
                 SignatureMismatch(Box::new(SignatureMismatchData {
-                    expected_trait_ref: obligation_trait_ref,
-                    found_trait_ref: expected_trait_ref,
+                    expected_trait_ref: ty::Binder::dummy(obligation_trait_ref),
+                    found_trait_ref: ty::Binder::dummy(expected_trait_ref),
                     terr,
                 }))
             })
