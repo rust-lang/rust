@@ -16,7 +16,7 @@ LL + impl Index<str> for A {
    |
 
 error: unnecessary qualification
-  --> $DIR/issue-113808-invalid-unused-qualifications-suggestion.rs:29:6
+  --> $DIR/issue-113808-invalid-unused-qualifications-suggestion.rs:39:6
    |
 LL | impl inner::Trait<u8> for () {}
    |      ^^^^^^^^^^^^^^^^

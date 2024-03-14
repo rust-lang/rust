@@ -68,7 +68,7 @@ use std::fmt;
 
 use diagnostics::{ImportSuggestion, LabelSuggestion, Suggestion};
 use imports::{Import, ImportData, ImportKind, NameResolution};
-use late::{HasGenericParams, PathSource, PatternSource};
+use late::{HasGenericParams, PathSource, PatternSource, UnnecessaryQualification};
 use macros::{MacroRulesBinding, MacroRulesScope, MacroRulesScopeRef};
 
 use crate::effective_visibilities::EffectiveVisibilitiesVisitor;
@@ -372,7 +372,7 @@ impl<'a> From<&'a ast::PathSegment> for Segment {
 /// This refers to the thing referred by a name. The difference between `Res` and `Item` is that
 /// items are visible in their whole block, while `Res`es only from the place they are defined
 /// forward.
-#[derive(Debug)]
+#[derive(Debug, Copy, Clone)]
 enum LexicalScopeBinding<'a> {
     Item(NameBinding<'a>),
     Res(Res),
@@ -1105,6 +1105,8 @@ pub struct Resolver<'a, 'tcx> {
 
     potentially_unused_imports: Vec<Import<'a>>,
 
+    potentially_unnecessary_qualifications: Vec<UnnecessaryQualification<'a>>,
+
     /// Table for mapping struct IDs into struct constructor IDs,
     /// it's not used during normal resolution, only for better error reporting.
     /// Also includes of list of each fields visibility
@@ -1464,6 +1466,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             local_macro_def_scopes: FxHashMap::default(),
             name_already_seen: FxHashMap::default(),
             potentially_unused_imports: Vec::new(),
+            potentially_unnecessary_qualifications: Default::default(),
             struct_constructors: Default::default(),
             unused_macros: Default::default(),
             unused_macro_rules: Default::default(),
