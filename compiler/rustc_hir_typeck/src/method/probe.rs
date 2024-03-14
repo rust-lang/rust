@@ -1375,15 +1375,22 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
                     (xform_self_ty, xform_ret_ty) =
                         self.xform_self_ty(probe.item, impl_ty, impl_args);
                     xform_self_ty = ocx.normalize(cause, self.param_env, xform_self_ty);
-                    // FIXME: Weirdly, we normalize the ret ty in this candidate, but no other candidates.
-                    xform_ret_ty = ocx.normalize(cause, self.param_env, xform_ret_ty);
-                    match ocx.eq_no_opaques(cause, self.param_env, xform_self_ty, self_ty) {
-                        Ok(()) => {}
+                    // FIXME: Make this `ocx.eq` once we define opaques more eagerly.
+                    match self.at(cause, self.param_env).eq(
+                        DefineOpaqueTypes::No,
+                        xform_self_ty,
+                        self_ty,
+                    ) {
+                        Ok(infer_ok) => {
+                            ocx.register_infer_ok_obligations(infer_ok);
+                        }
                         Err(err) => {
                             debug!("--> cannot relate self-types {:?}", err);
                             return ProbeResult::NoMatch;
                         }
                     }
+                    // FIXME: Weirdly, we normalize the ret ty in this candidate, but no other candidates.
+                    xform_ret_ty = ocx.normalize(cause, self.param_env, xform_ret_ty);
                     // Check whether the impl imposes obligations we have to worry about.
                     let impl_def_id = probe.item.container_id(self.tcx);
                     let impl_bounds =
@@ -1425,11 +1432,19 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
                         infer::FnCall,
                         poly_trait_ref,
                     );
+                    let trait_ref = ocx.normalize(cause, self.param_env, trait_ref);
                     (xform_self_ty, xform_ret_ty) =
                         self.xform_self_ty(probe.item, trait_ref.self_ty(), trait_ref.args);
                     xform_self_ty = ocx.normalize(cause, self.param_env, xform_self_ty);
-                    match ocx.eq_no_opaques(cause, self.param_env, xform_self_ty, self_ty) {
-                        Ok(()) => {}
+                    // FIXME: Make this `ocx.eq` once we define opaques more eagerly.
+                    match self.at(cause, self.param_env).eq(
+                        DefineOpaqueTypes::No,
+                        xform_self_ty,
+                        self_ty,
+                    ) {
+                        Ok(infer_ok) => {
+                            ocx.register_infer_ok_obligations(infer_ok);
+                        }
                         Err(err) => {
                             debug!("--> cannot relate self-types {:?}", err);
                             return ProbeResult::NoMatch;
@@ -1452,8 +1467,15 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
                     (xform_self_ty, xform_ret_ty) =
                         self.xform_self_ty(probe.item, trait_ref.self_ty(), trait_ref.args);
                     xform_self_ty = ocx.normalize(cause, self.param_env, xform_self_ty);
-                    match ocx.eq_no_opaques(cause, self.param_env, xform_self_ty, self_ty) {
-                        Ok(()) => {}
+                    // FIXME: Make this `ocx.eq` once we define opaques more eagerly.
+                    match self.at(cause, self.param_env).eq(
+                        DefineOpaqueTypes::No,
+                        xform_self_ty,
+                        self_ty,
+                    ) {
+                        Ok(infer_ok) => {
+                            ocx.register_infer_ok_obligations(infer_ok);
+                        }
                         Err(err) => {
                             debug!("--> cannot relate self-types {:?}", err);
                             return ProbeResult::NoMatch;
