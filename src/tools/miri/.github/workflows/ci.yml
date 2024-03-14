@@ -165,7 +165,7 @@ jobs:
           ZULIP_API_TOKEN: ${{ secrets.ZULIP_API_TOKEN }}
         run: |
           ~/.local/bin/zulip-send --user $ZULIP_BOT_EMAIL --api-key $ZULIP_API_TOKEN --site https://rust-lang.zulipchat.com \
-            --stream miri --subject "Cron Job Failure (miri, $(date -u +%Y-%m))" \
+            --stream miri --subject "Miri Build Failure ($(date -u +%Y-%m))" \
             --message 'Dear @*T-miri*,
 
           It would appear that the [Miri cron job build]('"https://github.com/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"') failed.
