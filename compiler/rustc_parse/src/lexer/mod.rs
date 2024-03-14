@@ -698,13 +698,17 @@ impl<'psess, 'src> StringReader<'psess, 'src> {
         let expn_data = prefix_span.ctxt().outer_expn_data();
 
         if expn_data.edition >= Edition::Edition2021 {
+            let mut silence = false;
             // In Rust 2021, this is a hard error.
             let sugg = if prefix == "rb" {
                 Some(errors::UnknownPrefixSugg::UseBr(prefix_span))
             } else if expn_data.is_root() {
                 if self.cursor.first() == '\''
                     && let Some(start) = self.last_lifetime
+                    && self.cursor.third() != '\''
                 {
+                    // An "unclosed `char`" error will be emitted already, silence redundant error.
+                    silence = true;
                     Some(errors::UnknownPrefixSugg::MeantStr {
                         start,
                         end: self.mk_sp(self.pos, self.pos + BytePos(1)),
@@ -715,7 +719,12 @@ impl<'psess, 'src> StringReader<'psess, 'src> {
             } else {
                 None
             };
-            self.dcx().emit_err(errors::UnknownPrefix { span: prefix_span, prefix, sugg });
+            let err = errors::UnknownPrefix { span: prefix_span, prefix, sugg };
+            if silence {
+                self.dcx().create_err(err).delay_as_bug();
+            } else {
+                self.dcx().emit_err(err);
+            }
         } else {
             // Before Rust 2021, only emit a lint for migration.
             self.psess.buffer_lint_with_diagnostic(

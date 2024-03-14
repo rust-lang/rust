@@ -59,6 +59,15 @@ impl<'a> Cursor<'a> {
         iter.next().unwrap_or(EOF_CHAR)
     }
 
+    /// Peeks the third symbol from the input stream without consuming it.
+    pub fn third(&self) -> char {
+        // `.next()` optimizes better than `.nth(1)`
+        let mut iter = self.chars.clone();
+        iter.next();
+        iter.next();
+        iter.next().unwrap_or(EOF_CHAR)
+    }
+
     /// Checks if there is nothing more to consume.
     pub(crate) fn is_eof(&self) -> bool {
         self.chars.as_str().is_empty()

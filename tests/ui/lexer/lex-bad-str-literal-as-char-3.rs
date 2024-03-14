@@ -4,5 +4,4 @@
 fn main() {
     println!('hello world');
     //[rust2015,rust2018,rust2021]~^ ERROR unterminated character literal
-    //[rust2021]~^^ ERROR prefix `world` is unknown
 }
