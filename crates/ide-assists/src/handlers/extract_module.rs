@@ -1,10 +1,12 @@
 use std::iter;
 
-use hir::{HasSource, HirFileIdExt, ModuleSource};
+use hir::{HirFileIdExt, ModuleSource};
 use ide_db::{
     assists::{AssistId, AssistKind},
     base_db::FileId,
     defs::{Definition, NameClass, NameRefClass},
+    helpers::item_name,
+    items_locator::items_with_name,
     search::{FileReference, SearchScope},
     FxHashMap, FxHashSet,
 };
@@ -433,7 +435,7 @@ impl Module {
     fn process_def_in_sel(
         &mut self,
         def: Definition,
-        node_syntax: &SyntaxNode,
+        use_node: &SyntaxNode,
         curr_parent_module: &Option<ast::Module>,
         ctx: &AssistContext<'_>,
     ) -> Option<TextRange> {
@@ -491,7 +493,7 @@ impl Module {
 
             //If use_stmt exists, find the use_tree_str, reconstruct it inside new module
             //If not, insert a use stmt with super and the given nameref
-            match self.process_use_stmt_for_import_resolve(use_stmt, node_syntax) {
+            match self.process_use_stmt_for_import_resolve(use_stmt, use_node) {
                 Some((use_tree_str, _)) => use_tree_str_opt = Some(use_tree_str),
                 None if def_in_mod && def_out_sel => {
                     //Considered only after use_stmt is not present
@@ -502,7 +504,7 @@ impl Module {
                     // mod -> ust_stmt transversal
                     // true  | false -> super import insertion
                     // true  | true -> super import insertion
-                    self.make_use_stmt_of_node_with_super(node_syntax);
+                    self.make_use_stmt_of_node_with_super(use_node);
                 }
                 None => {}
             }
@@ -510,7 +512,7 @@ impl Module {
             //Changes to be made inside new module, and remove import from outside
 
             if let Some((mut use_tree_str, text_range_opt)) =
-                self.process_use_stmt_for_import_resolve(use_stmt, node_syntax)
+                self.process_use_stmt_for_import_resolve(use_stmt, use_node)
             {
                 if let Some(text_range) = text_range_opt {
                     import_path_to_be_removed = Some(text_range);
@@ -530,7 +532,7 @@ impl Module {
 
                 use_tree_str_opt = Some(use_tree_str);
             } else if def_in_mod && def_out_sel {
-                self.make_use_stmt_of_node_with_super(node_syntax);
+                self.make_use_stmt_of_node_with_super(use_node);
             }
         }
 
@@ -550,7 +552,20 @@ impl Module {
                 make::use_(None, make::use_tree(make::join_paths(use_tree_str), None, None, false));
             let item = ast::Item::from(use_);
 
-            if def_out_sel {
+            let is_item = match def {
+                Definition::Macro(_) => true,
+                Definition::Module(_) => true,
+                Definition::Function(_) => true,
+                Definition::Adt(_) => true,
+                Definition::Const(_) => true,
+                Definition::Static(_) => true,
+                Definition::Trait(_) => true,
+                Definition::TraitAlias(_) => true,
+                Definition::TypeAlias(_) => true,
+                _ => false,
+            };
+
+            if def_out_sel || !is_item {
                 self.use_items.insert(0, item.clone());
             }
         }
