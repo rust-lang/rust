@@ -71,7 +71,7 @@ pub(crate) fn eval_mir_constant<'tcx>(
     // This cannot fail because we checked all required_consts in advance.
     let val = cv
         .eval(fx.tcx, ty::ParamEnv::reveal_all(), Some(constant.span))
-        .expect("erroneous constant not captured by required_consts");
+        .expect("erroneous constant missed by mono item collection");
     (val, cv.ty())
 }
 
