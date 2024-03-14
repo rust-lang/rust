@@ -1,9 +1,0 @@
-error[E0275]: overflow evaluating the requirement `<fn() -> Foo {foo} as FnOnce<()>>::Output == Foo`
-  --> $DIR/issue-53398-cyclic-types.rs:5:13
-   |
-LL | fn foo() -> Foo {
-   |             ^^^
-
-error: aborting due to 1 previous error
-
-For more information about this error, try `rustc --explain E0275`.
