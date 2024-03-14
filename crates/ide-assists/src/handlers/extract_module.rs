@@ -462,7 +462,7 @@ impl Module {
             }
         }
 
-        let def_in_mod_and_out_sel =
+        let (def_in_mod, def_out_sel) =
             check_def_in_mod_and_out_sel(def, ctx, curr_parent_module, selection_range, file_id);
 
         // Find use stmt that use def in current file
@@ -493,9 +493,9 @@ impl Module {
             //If not, insert a use stmt with super and the given nameref
             match self.process_use_stmt_for_import_resolve(use_stmt, node_syntax) {
                 Some((use_tree_str, _)) => use_tree_str_opt = Some(use_tree_str),
-                None if def_in_mod_and_out_sel => {
+                None if def_in_mod && def_out_sel => {
                     //Considered only after use_stmt is not present
-                    //def_in_mod_and_out_sel | exists_outside_sel(exists_inside_sel =
+                    //def_in_mod && def_out_sel | exists_outside_sel(exists_inside_sel =
                     //true for all cases)
                     // false | false -> Do nothing
                     // false | true -> If source is in selection -> nothing to do, If source is outside
@@ -516,7 +516,7 @@ impl Module {
                     import_path_to_be_removed = Some(text_range);
                 }
 
-                if def_in_mod_and_out_sel {
+                if def_in_mod && def_out_sel {
                     if let Some(first_path_in_use_tree) = use_tree_str.last() {
                         let first_path_in_use_tree_str = first_path_in_use_tree.to_string();
                         if !first_path_in_use_tree_str.contains("super")
@@ -529,7 +529,7 @@ impl Module {
                 }
 
                 use_tree_str_opt = Some(use_tree_str);
-            } else if def_in_mod_and_out_sel {
+            } else if def_in_mod && def_out_sel {
                 self.make_use_stmt_of_node_with_super(node_syntax);
             }
         }
@@ -538,7 +538,7 @@ impl Module {
             let mut use_tree_str = use_tree_str;
             use_tree_str.reverse();
 
-            if exists_outside_sel || !exists_inside_sel || !def_in_mod_and_out_sel {
+            if exists_outside_sel || !exists_inside_sel || !def_in_mod || !def_out_sel {
                 if let Some(first_path_in_use_tree) = use_tree_str.first() {
                     if first_path_in_use_tree.to_string().contains("super") {
                         use_tree_str.insert(0, make::ext::ident_path("super"));
@@ -549,7 +549,10 @@ impl Module {
             let use_ =
                 make::use_(None, make::use_tree(make::join_paths(use_tree_str), None, None, false));
             let item = ast::Item::from(use_);
-            self.use_items.insert(0, item);
+
+            if def_out_sel {
+                self.use_items.insert(0, item.clone());
+            }
         }
 
         import_path_to_be_removed
@@ -624,7 +627,7 @@ fn check_def_in_mod_and_out_sel(
     curr_parent_module: &Option<ast::Module>,
     selection_range: TextRange,
     curr_file_id: FileId,
-) -> bool {
+) -> (bool, bool) {
     macro_rules! check_item {
         ($x:ident) => {
             if let Some(source) = $x.source(ctx.db()) {
@@ -634,9 +637,8 @@ fn check_def_in_mod_and_out_sel(
                     source.file_id.original_file(ctx.db()) == curr_file_id
                 };
 
-                if have_same_parent {
-                    return !selection_range.contains_range(source.value.syntax().text_range());
-                }
+                let in_sel = !selection_range.contains_range(source.value.syntax().text_range());
+                return (have_same_parent, in_sel);
             }
         };
     }
@@ -653,9 +655,12 @@ fn check_def_in_mod_and_out_sel(
 
             if have_same_parent {
                 if let ModuleSource::Module(module_) = source.value {
-                    return !selection_range.contains_range(module_.syntax().text_range());
+                    let in_sel = !selection_range.contains_range(module_.syntax().text_range());
+                    return (have_same_parent, in_sel);
                 }
             }
+
+            return (have_same_parent, false);
         }
         Definition::Function(x) => check_item!(x),
         Definition::Adt(x) => check_item!(x),
@@ -667,7 +672,7 @@ fn check_def_in_mod_and_out_sel(
         _ => {}
     }
 
-    false
+    (false, false)
 }
 
 fn get_replacements_for_visibility_change(
