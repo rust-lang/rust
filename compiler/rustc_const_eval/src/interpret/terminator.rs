@@ -631,7 +631,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                         body.args_iter()
                             .map(|local| (
                                 local,
-                                self.layout_of_local(self.frame(), local, None).unwrap().ty
+                                self.layout_of_local(self.frame(), local, None).unwrap().ty,
                             ))
                             .collect::<Vec<_>>()
                     );

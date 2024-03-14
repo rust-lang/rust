@@ -260,24 +260,6 @@ pub trait Machine<'mir, 'tcx: 'mir>: Sized {
         F2::NAN
     }
 
-    /// Called before writing the specified `local` of the `frame`.
-    /// Since writing a ZST is not actually accessing memory or locals, this is never invoked
-    /// for ZST reads.
-    ///
-    /// Due to borrow checker trouble, we indicate the `frame` as an index rather than an `&mut
-    /// Frame`.
-    #[inline(always)]
-    fn before_access_local_mut<'a>(
-        _ecx: &'a mut InterpCx<'mir, 'tcx, Self>,
-        _frame: usize,
-        _local: mir::Local,
-    ) -> InterpResult<'tcx>
-    where
-        'tcx: 'mir,
-    {
-        Ok(())
-    }
-
     /// Called before a basic block terminator is executed.
     #[inline]
     fn before_terminator(_ecx: &mut InterpCx<'mir, 'tcx, Self>) -> InterpResult<'tcx> {
@@ -531,7 +513,6 @@ pub trait Machine<'mir, 'tcx: 'mir>: Sized {
     #[inline(always)]
     fn after_local_allocated(
         _ecx: &mut InterpCx<'mir, 'tcx, Self>,
-        _frame: usize,
         _local: mir::Local,
         _mplace: &MPlaceTy<'tcx, Self::Provenance>,
     ) -> InterpResult<'tcx> {

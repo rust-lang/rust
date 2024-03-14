@@ -220,9 +220,6 @@ impl<'tcx, Prov: Provenance> LocalState<'tcx, Prov> {
 
     /// Overwrite the local. If the local can be overwritten in place, return a reference
     /// to do so; otherwise return the `MemPlace` to consult instead.
-    ///
-    /// Note: Before calling this, call the `before_access_local_mut` machine hook! You may be
-    /// invalidating machine invariants otherwise!
     #[inline(always)]
     pub(super) fn access_mut(&mut self) -> InterpResult<'tcx, &mut Operand<Prov>> {
         match &mut self.value {
@@ -278,6 +275,13 @@ impl<'mir, 'tcx, Prov: Provenance, Extra> Frame<'mir, 'tcx, Prov, Extra> {
                 mir::ClearCrossCrate::Clear => None,
             }
         })
+    }
+
+    /// Returns the address of the buffer where the locals are stored. This is used by `Place` as a
+    /// sanity check to detect bugs where we mix up which stack frame a place refers to.
+    #[inline(always)]
+    pub(super) fn locals_addr(&self) -> usize {
+        self.locals.raw.as_ptr().addr()
     }
 }
 
@@ -645,7 +649,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     }
 
     #[inline(always)]
-    pub fn layout_of_local(
+    pub(super) fn layout_of_local(
         &self,
         frame: &Frame<'mir, 'tcx, M::Provenance, M::FrameExtra>,
         local: mir::Local,
@@ -896,7 +900,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         // Copy return value. Must of course happen *before* we deallocate the locals.
         let copy_ret_result = if !unwinding {
             let op = self
-                .local_to_op(self.frame(), mir::RETURN_PLACE, None)
+                .local_to_op(mir::RETURN_PLACE, None)
                 .expect("return place should always be live");
             let dest = self.frame().return_place.clone();
             let err = if self.stack().len() == 1 {
@@ -1212,18 +1216,16 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> std::fmt::Debug
 {
     fn fmt(&self, fmt: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self.place {
-            Place::Local { frame, local, offset } => {
+            Place::Local { local, offset, locals_addr } => {
+                debug_assert_eq!(locals_addr, self.ecx.frame().locals_addr());
                 let mut allocs = Vec::new();
                 write!(fmt, "{local:?}")?;
                 if let Some(offset) = offset {
                     write!(fmt, "+{:#x}", offset.bytes())?;
                 }
-                if frame != self.ecx.frame_idx() {
-                    write!(fmt, " ({} frames up)", self.ecx.frame_idx() - frame)?;
-                }
                 write!(fmt, ":")?;
 
-                match self.ecx.stack()[frame].locals[local].value {
+                match self.ecx.frame().locals[local].value {
                     LocalValue::Dead => write!(fmt, " is dead")?,
                     LocalValue::Live(Operand::Immediate(Immediate::Uninit)) => {
                         write!(fmt, " is uninitialized")?
