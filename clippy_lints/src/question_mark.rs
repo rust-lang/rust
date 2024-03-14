@@ -109,7 +109,7 @@ fn find_let_else_ret_expression<'hir>(block: &'hir Block<'hir>) -> Option<&'hir 
 }
 
 fn check_let_some_else_return_none(cx: &LateContext<'_>, stmt: &Stmt<'_>) {
-    if let StmtKind::Local(Local {
+    if let StmtKind::Let(Local {
         pat,
         init: Some(init_expr),
         els: Some(els),

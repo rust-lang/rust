@@ -82,7 +82,7 @@ declare_lint_pass!(PatternTypeMismatch => [PATTERN_TYPE_MISMATCH]);
 
 impl<'tcx> LateLintPass<'tcx> for PatternTypeMismatch {
     fn check_stmt(&mut self, cx: &LateContext<'tcx>, stmt: &'tcx Stmt<'_>) {
-        if let StmtKind::Local(local) = stmt.kind {
+        if let StmtKind::Let(local) = stmt.kind {
             if in_external_macro(cx.sess(), local.pat.span) {
                 return;
             }

@@ -102,7 +102,7 @@ impl<'tcx> LateLintPass<'tcx> for ExplicitWrite {
 fn look_in_block<'tcx, 'hir>(cx: &LateContext<'tcx>, kind: &'tcx ExprKind<'hir>) -> &'tcx ExprKind<'hir> {
     if let ExprKind::Block(block, _label @ None) = kind
         && let Block {
-            stmts: [Stmt { kind: StmtKind::Local(local), .. }],
+            stmts: [Stmt { kind: StmtKind::Let(local), .. }],
             expr: Some(expr_end_of_block),
             rules: BlockCheckMode::DefaultBlock,
             ..
