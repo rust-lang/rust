@@ -463,15 +463,15 @@ impl FileAttr {
 #[cfg(target_os = "netbsd")]
 impl FileAttr {
     pub fn modified(&self) -> io::Result<SystemTime> {
-        Ok(SystemTime::new(self.stat.st_mtime as i64, self.stat.st_mtimensec as i64))
+        SystemTime::new(self.stat.st_mtime as i64, self.stat.st_mtimensec as i64)
     }
 
     pub fn accessed(&self) -> io::Result<SystemTime> {
-        Ok(SystemTime::new(self.stat.st_atime as i64, self.stat.st_atimensec as i64))
+        SystemTime::new(self.stat.st_atime as i64, self.stat.st_atimensec as i64)
     }
 
     pub fn created(&self) -> io::Result<SystemTime> {
-        Ok(SystemTime::new(self.stat.st_birthtime as i64, self.stat.st_birthtimensec as i64))
+        SystemTime::new(self.stat.st_birthtime as i64, self.stat.st_birthtimensec as i64)
     }
 }
 
@@ -503,16 +503,16 @@ impl FileAttr {
         #[cfg(target_pointer_width = "32")]
         cfg_has_statx! {
             if let Some(mtime) = self.stx_mtime() {
-                return Ok(SystemTime::new(mtime.tv_sec, mtime.tv_nsec as i64));
+                return SystemTime::new(mtime.tv_sec, mtime.tv_nsec as i64);
             }
         }
 
-        Ok(SystemTime::new(self.stat.st_mtime as i64, self.stat.st_mtime_nsec as i64))
+        SystemTime::new(self.stat.st_mtime as i64, self.stat.st_mtime_nsec as i64)
     }
 
     #[cfg(any(target_os = "vxworks", target_os = "espidf", target_os = "vita"))]
     pub fn modified(&self) -> io::Result<SystemTime> {
-        Ok(SystemTime::new(self.stat.st_mtime as i64, 0))
+        SystemTime::new(self.stat.st_mtime as i64, 0)
     }
 
     #[cfg(any(target_os = "horizon", target_os = "hurd"))]
@@ -531,16 +531,16 @@ impl FileAttr {
         #[cfg(target_pointer_width = "32")]
         cfg_has_statx! {
             if let Some(atime) = self.stx_atime() {
-                return Ok(SystemTime::new(atime.tv_sec, atime.tv_nsec as i64));
+                return SystemTime::new(atime.tv_sec, atime.tv_nsec as i64);
             }
         }
 
-        Ok(SystemTime::new(self.stat.st_atime as i64, self.stat.st_atime_nsec as i64))
+        SystemTime::new(self.stat.st_atime as i64, self.stat.st_atime_nsec as i64)
     }
 
     #[cfg(any(target_os = "vxworks", target_os = "espidf", target_os = "vita"))]
     pub fn accessed(&self) -> io::Result<SystemTime> {
-        Ok(SystemTime::new(self.stat.st_atime as i64, 0))
+        SystemTime::new(self.stat.st_atime as i64, 0)
     }
 
     #[cfg(any(target_os = "horizon", target_os = "hurd"))]
@@ -557,7 +557,7 @@ impl FileAttr {
         target_os = "watchos",
     ))]
     pub fn created(&self) -> io::Result<SystemTime> {
-        Ok(SystemTime::new(self.stat.st_birthtime as i64, self.stat.st_birthtime_nsec as i64))
+        SystemTime::new(self.stat.st_birthtime as i64, self.stat.st_birthtime_nsec as i64)
     }
 
     #[cfg(not(any(
@@ -573,7 +573,7 @@ impl FileAttr {
         cfg_has_statx! {
             if let Some(ext) = &self.statx_extra_fields {
                 return if (ext.stx_mask & libc::STATX_BTIME) != 0 {
-                    Ok(SystemTime::new(ext.stx_btime.tv_sec, ext.stx_btime.tv_nsec as i64))
+                    SystemTime::new(ext.stx_btime.tv_sec, ext.stx_btime.tv_nsec as i64)
                 } else {
                     Err(io::const_io_error!(
                         io::ErrorKind::Unsupported,
@@ -592,22 +592,22 @@ impl FileAttr {
 
     #[cfg(target_os = "vita")]
     pub fn created(&self) -> io::Result<SystemTime> {
-        Ok(SystemTime::new(self.stat.st_ctime as i64, 0))
+        SystemTime::new(self.stat.st_ctime as i64, 0)
     }
 }
 
 #[cfg(target_os = "nto")]
 impl FileAttr {
     pub fn modified(&self) -> io::Result<SystemTime> {
-        Ok(SystemTime::new(self.stat.st_mtim.tv_sec, self.stat.st_mtim.tv_nsec))
+        SystemTime::new(self.stat.st_mtim.tv_sec, self.stat.st_mtim.tv_nsec)
     }
 
     pub fn accessed(&self) -> io::Result<SystemTime> {
-        Ok(SystemTime::new(self.stat.st_atim.tv_sec, self.stat.st_atim.tv_nsec))
+        SystemTime::new(self.stat.st_atim.tv_sec, self.stat.st_atim.tv_nsec)
     }
 
     pub fn created(&self) -> io::Result<SystemTime> {
-        Ok(SystemTime::new(self.stat.st_ctim.tv_sec, self.stat.st_ctim.tv_nsec))
+        SystemTime::new(self.stat.st_ctim.tv_sec, self.stat.st_ctim.tv_nsec)
     }
 }
 
