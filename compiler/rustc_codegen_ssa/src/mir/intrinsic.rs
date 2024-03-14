@@ -350,14 +350,8 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                         if int_type_width_signed(ty, bx.tcx()).is_some() || ty.is_unsafe_ptr() {
                             let weak = instruction == "cxchgweak";
                             let dst = args[0].immediate();
-                            let mut cmp = args[1].immediate();
-                            let mut src = args[2].immediate();
-                            if ty.is_unsafe_ptr() {
-                                // Some platforms do not support atomic operations on pointers,
-                                // so we cast to integer first.
-                                cmp = bx.ptrtoint(cmp, bx.type_isize());
-                                src = bx.ptrtoint(src, bx.type_isize());
-                            }
+                            let cmp = args[1].immediate();
+                            let src = args[2].immediate();
                             let (val, success) = bx.atomic_cmpxchg(
                                 dst,
                                 cmp,
@@ -385,26 +379,12 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                             let layout = bx.layout_of(ty);
                             let size = layout.size;
                             let source = args[0].immediate();
-                            if ty.is_unsafe_ptr() {
-                                // Some platforms do not support atomic operations on pointers,
-                                // so we cast to integer first...
-                                let llty = bx.type_isize();
-                                let result = bx.atomic_load(
-                                    llty,
-                                    source,
-                                    parse_ordering(bx, ordering),
-                                    size,
-                                );
-                                // ... and then cast the result back to a pointer
-                                bx.inttoptr(result, bx.backend_type(layout))
-                            } else {
-                                bx.atomic_load(
-                                    bx.backend_type(layout),
-                                    source,
-                                    parse_ordering(bx, ordering),
-                                    size,
-                                )
-                            }
+                            bx.atomic_load(
+                                bx.backend_type(layout),
+                                source,
+                                parse_ordering(bx, ordering),
+                                size,
+                            )
                         } else {
                             invalid_monomorphization(ty);
                             return Ok(());
@@ -415,13 +395,8 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                         let ty = fn_args.type_at(0);
                         if int_type_width_signed(ty, bx.tcx()).is_some() || ty.is_unsafe_ptr() {
                             let size = bx.layout_of(ty).size;
-                            let mut val = args[1].immediate();
+                            let val = args[1].immediate();
                             let ptr = args[0].immediate();
-                            if ty.is_unsafe_ptr() {
-                                // Some platforms do not support atomic operations on pointers,
-                                // so we cast to integer first.
-                                val = bx.ptrtoint(val, bx.type_isize());
-                            }
                             bx.atomic_store(val, ptr, parse_ordering(bx, ordering), size);
                         } else {
                             invalid_monomorphization(ty);
@@ -465,12 +440,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                         let ty = fn_args.type_at(0);
                         if int_type_width_signed(ty, bx.tcx()).is_some() || ty.is_unsafe_ptr() {
                             let ptr = args[0].immediate();
-                            let mut val = args[1].immediate();
-                            if ty.is_unsafe_ptr() {
-                                // Some platforms do not support atomic operations on pointers,
-                                // so we cast to integer first.
-                                val = bx.ptrtoint(val, bx.type_isize());
-                            }
+                            let val = args[1].immediate();
                             bx.atomic_rmw(atom_op, ptr, val, parse_ordering(bx, ordering))
                         } else {
                             invalid_monomorphization(ty);

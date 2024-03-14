@@ -217,7 +217,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 bug!();
             };
             for stmt in block.stmts {
-                let hir::StmtKind::Local(hir::Local {
+                let hir::StmtKind::Let(hir::Local {
                     init: Some(init),
                     source: hir::LocalSource::AsyncFn,
                     pat,

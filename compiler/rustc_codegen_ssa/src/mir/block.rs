@@ -1237,6 +1237,16 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         }
     }
 
+    pub fn codegen_block_as_unreachable(&mut self, bb: mir::BasicBlock) {
+        let llbb = match self.try_llbb(bb) {
+            Some(llbb) => llbb,
+            None => return,
+        };
+        let bx = &mut Bx::build(self.cx, llbb);
+        debug!("codegen_block_as_unreachable({:?})", bb);
+        bx.unreachable();
+    }
+
     fn codegen_terminator(
         &mut self,
         bx: &mut Bx,

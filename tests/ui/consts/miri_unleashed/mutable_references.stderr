@@ -1,35 +1,66 @@
 error: encountered mutable pointer in final value of static
-  --> $DIR/mutable_references.rs:7:1
+  --> $DIR/mutable_references.rs:10:1
    |
 LL | static FOO: &&mut u32 = &&mut 42;
    | ^^^^^^^^^^^^^^^^^^^^^
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #122153 <https://github.com/rust-lang/rust/issues/122153>
+note: the lint level is defined here
+  --> $DIR/mutable_references.rs:5:9
+   |
+LL | #![deny(const_eval_mutable_ptr_in_final_value)]
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: encountered mutable pointer in final value of static
-  --> $DIR/mutable_references.rs:10:1
+  --> $DIR/mutable_references.rs:14:1
    |
 LL | static BAR: &mut () = &mut ();
    | ^^^^^^^^^^^^^^^^^^^
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #122153 <https://github.com/rust-lang/rust/issues/122153>
 
 error: encountered mutable pointer in final value of static
-  --> $DIR/mutable_references.rs:15:1
+  --> $DIR/mutable_references.rs:20:1
    |
 LL | static BOO: &mut Foo<()> = &mut Foo(());
    | ^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #122153 <https://github.com/rust-lang/rust/issues/122153>
 
 error: encountered mutable pointer in final value of static
-  --> $DIR/mutable_references.rs:22:1
+  --> $DIR/mutable_references.rs:28:1
    |
 LL | static MEH: Meh = Meh { x: &UnsafeCell::new(42) };
    | ^^^^^^^^^^^^^^^
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #122153 <https://github.com/rust-lang/rust/issues/122153>
 
 error: encountered mutable pointer in final value of static
-  --> $DIR/mutable_references.rs:25:1
+  --> $DIR/mutable_references.rs:32:1
    |
 LL | static OH_YES: &mut i32 = &mut 42;
    | ^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #122153 <https://github.com/rust-lang/rust/issues/122153>
+
+error[E0080]: it is undefined behavior to use this value
+  --> $DIR/mutable_references.rs:32:1
+   |
+LL | static OH_YES: &mut i32 = &mut 42;
+   | ^^^^^^^^^^^^^^^^^^^^^^^ constructing invalid value: encountered mutable reference or box pointing to read-only memory
+   |
+   = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
+   = note: the raw bytes of the constant (size: $SIZE, align: $ALIGN) {
+               HEX_DUMP
+           }
 
 error[E0594]: cannot assign to `*OH_YES`, as `OH_YES` is an immutable static item
-  --> $DIR/mutable_references.rs:32:5
+  --> $DIR/mutable_references.rs:41:5
    |
 LL |     *OH_YES = 99;
    |     ^^^^^^^^^^^^ cannot assign
@@ -37,31 +68,107 @@ LL |     *OH_YES = 99;
 warning: skipping const checks
    |
 help: skipping check that does not even have a feature gate
-  --> $DIR/mutable_references.rs:7:26
+  --> $DIR/mutable_references.rs:10:26
    |
 LL | static FOO: &&mut u32 = &&mut 42;
    |                          ^^^^^^^
 help: skipping check that does not even have a feature gate
-  --> $DIR/mutable_references.rs:10:23
+  --> $DIR/mutable_references.rs:14:23
    |
 LL | static BAR: &mut () = &mut ();
    |                       ^^^^^^^
 help: skipping check that does not even have a feature gate
-  --> $DIR/mutable_references.rs:15:28
+  --> $DIR/mutable_references.rs:20:28
    |
 LL | static BOO: &mut Foo<()> = &mut Foo(());
    |                            ^^^^^^^^^^^^
 help: skipping check that does not even have a feature gate
-  --> $DIR/mutable_references.rs:22:28
+  --> $DIR/mutable_references.rs:28:28
    |
 LL | static MEH: Meh = Meh { x: &UnsafeCell::new(42) };
    |                            ^^^^^^^^^^^^^^^^^^^^
 help: skipping check that does not even have a feature gate
-  --> $DIR/mutable_references.rs:25:27
+  --> $DIR/mutable_references.rs:32:27
    |
 LL | static OH_YES: &mut i32 = &mut 42;
    |                           ^^^^^^^
 
-error: aborting due to 6 previous errors; 1 warning emitted
+error: aborting due to 7 previous errors; 1 warning emitted
 
-For more information about this error, try `rustc --explain E0594`.
+Some errors have detailed explanations: E0080, E0594.
+For more information about an error, try `rustc --explain E0080`.
+Future incompatibility report: Future breakage diagnostic:
+error: encountered mutable pointer in final value of static
+  --> $DIR/mutable_references.rs:10:1
+   |
+LL | static FOO: &&mut u32 = &&mut 42;
+   | ^^^^^^^^^^^^^^^^^^^^^
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #122153 <https://github.com/rust-lang/rust/issues/122153>
+note: the lint level is defined here
+  --> $DIR/mutable_references.rs:5:9
+   |
+LL | #![deny(const_eval_mutable_ptr_in_final_value)]
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Future breakage diagnostic:
+error: encountered mutable pointer in final value of static
+  --> $DIR/mutable_references.rs:14:1
+   |
+LL | static BAR: &mut () = &mut ();
+   | ^^^^^^^^^^^^^^^^^^^
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #122153 <https://github.com/rust-lang/rust/issues/122153>
+note: the lint level is defined here
+  --> $DIR/mutable_references.rs:5:9
+   |
+LL | #![deny(const_eval_mutable_ptr_in_final_value)]
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Future breakage diagnostic:
+error: encountered mutable pointer in final value of static
+  --> $DIR/mutable_references.rs:20:1
+   |
+LL | static BOO: &mut Foo<()> = &mut Foo(());
+   | ^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #122153 <https://github.com/rust-lang/rust/issues/122153>
+note: the lint level is defined here
+  --> $DIR/mutable_references.rs:5:9
+   |
+LL | #![deny(const_eval_mutable_ptr_in_final_value)]
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Future breakage diagnostic:
+error: encountered mutable pointer in final value of static
+  --> $DIR/mutable_references.rs:28:1
+   |
+LL | static MEH: Meh = Meh { x: &UnsafeCell::new(42) };
+   | ^^^^^^^^^^^^^^^
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #122153 <https://github.com/rust-lang/rust/issues/122153>
+note: the lint level is defined here
+  --> $DIR/mutable_references.rs:5:9
+   |
+LL | #![deny(const_eval_mutable_ptr_in_final_value)]
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Future breakage diagnostic:
+error: encountered mutable pointer in final value of static
+  --> $DIR/mutable_references.rs:32:1
+   |
+LL | static OH_YES: &mut i32 = &mut 42;
+   | ^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #122153 <https://github.com/rust-lang/rust/issues/122153>
+note: the lint level is defined here
+  --> $DIR/mutable_references.rs:5:9
+   |
+LL | #![deny(const_eval_mutable_ptr_in_final_value)]
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+

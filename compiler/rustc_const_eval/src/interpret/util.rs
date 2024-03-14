@@ -1,11 +1,11 @@
 use crate::const_eval::CompileTimeEvalContext;
 use crate::interpret::{MemPlaceMeta, MemoryKind};
+use rustc_hir::def_id::LocalDefId;
 use rustc_middle::mir::interpret::{AllocId, Allocation, InterpResult, Pointer};
 use rustc_middle::ty::layout::TyAndLayout;
 use rustc_middle::ty::{
     self, Ty, TyCtxt, TypeSuperVisitable, TypeVisitable, TypeVisitableExt, TypeVisitor,
 };
-use rustc_span::def_id::DefId;
 use std::ops::ControlFlow;
 
 use super::MPlaceTy;
@@ -89,13 +89,13 @@ pub(crate) fn take_static_root_alloc<'mir, 'tcx: 'mir>(
 
 pub(crate) fn create_static_alloc<'mir, 'tcx: 'mir>(
     ecx: &mut CompileTimeEvalContext<'mir, 'tcx>,
-    static_def_id: DefId,
+    static_def_id: LocalDefId,
     layout: TyAndLayout<'tcx>,
 ) -> InterpResult<'tcx, MPlaceTy<'tcx>> {
     let alloc = Allocation::try_uninit(layout.size, layout.align.abi)?;
-    let alloc_id = ecx.tcx.reserve_and_set_static_alloc(static_def_id);
-    assert_eq!(ecx.machine.static_root_alloc_id, None);
-    ecx.machine.static_root_alloc_id = Some(alloc_id);
+    let alloc_id = ecx.tcx.reserve_and_set_static_alloc(static_def_id.into());
+    assert_eq!(ecx.machine.static_root_ids, None);
+    ecx.machine.static_root_ids = Some((alloc_id, static_def_id));
     assert!(ecx.memory.alloc_map.insert(alloc_id, (MemoryKind::Stack, alloc)).is_none());
     Ok(ecx.ptr_with_meta_to_mplace(Pointer::from(alloc_id).into(), MemPlaceMeta::None, layout))
 }

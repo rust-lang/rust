@@ -9,7 +9,7 @@ use rustc_ast::tokenstream::{DelimSpan, TokenStream};
 use rustc_ast::{DelimArgs, Expr, ExprKind, MacCall, Path, PathSegment, UnOp};
 use rustc_ast_pretty::pprust;
 use rustc_errors::PResult;
-use rustc_expand::base::{DummyResult, ExtCtxt, MacEager, MacResult};
+use rustc_expand::base::{DummyResult, ExpandResult, ExtCtxt, MacEager, MacroExpanderResult};
 use rustc_parse::parser::Parser;
 use rustc_span::symbol::{sym, Ident, Symbol};
 use rustc_span::{Span, DUMMY_SP};
@@ -19,12 +19,12 @@ pub fn expand_assert<'cx>(
     cx: &'cx mut ExtCtxt<'_>,
     span: Span,
     tts: TokenStream,
-) -> Box<dyn MacResult + 'cx> {
+) -> MacroExpanderResult<'cx> {
     let Assert { cond_expr, custom_message } = match parse_assert(cx, span, tts) {
         Ok(assert) => assert,
         Err(err) => {
             let guar = err.emit();
-            return DummyResult::any(span, guar);
+            return ExpandResult::Ready(DummyResult::any(span, guar));
         }
     };
 
@@ -92,7 +92,7 @@ pub fn expand_assert<'cx>(
         expr_if_not(cx, call_site_span, cond_expr, then, None)
     };
 
-    MacEager::expr(expr)
+    ExpandResult::Ready(MacEager::expr(expr))
 }
 
 struct Assert {

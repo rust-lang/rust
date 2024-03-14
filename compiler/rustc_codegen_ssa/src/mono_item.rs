@@ -30,7 +30,7 @@ impl<'a, 'tcx: 'a> MonoItemExt<'a, 'tcx> for MonoItem<'tcx> {
 
         match *self {
             MonoItem::Static(def_id) => {
-                cx.codegen_static(def_id, cx.tcx().is_mutable_static(def_id));
+                cx.codegen_static(def_id);
             }
             MonoItem::GlobalAsm(item_id) => {
                 let item = cx.tcx().hir().item(item_id);

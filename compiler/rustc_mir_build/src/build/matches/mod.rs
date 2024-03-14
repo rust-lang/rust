@@ -14,7 +14,6 @@ use rustc_data_structures::{
     fx::{FxHashSet, FxIndexMap, FxIndexSet},
     stack::ensure_sufficient_stack,
 };
-use rustc_index::bit_set::BitSet;
 use rustc_middle::middle::region;
 use rustc_middle::mir::{self, *};
 use rustc_middle::thir::{self, *};
@@ -1084,6 +1083,12 @@ enum TestCase<'pat, 'tcx> {
     Or { pats: Box<[FlatPat<'pat, 'tcx>]> },
 }
 
+impl<'pat, 'tcx> TestCase<'pat, 'tcx> {
+    fn as_range(&self) -> Option<&'pat PatRange<'tcx>> {
+        if let Self::Range(v) = self { Some(*v) } else { None }
+    }
+}
+
 #[derive(Debug, Clone)]
 pub(crate) struct MatchPair<'pat, 'tcx> {
     /// This place...
@@ -1108,19 +1113,10 @@ enum TestKind<'tcx> {
     Switch {
         /// The enum type being tested.
         adt_def: ty::AdtDef<'tcx>,
-        /// The set of variants that we should create a branch for. We also
-        /// create an additional "otherwise" case.
-        variants: BitSet<VariantIdx>,
     },
 
     /// Test what value an integer or `char` has.
-    SwitchInt {
-        /// The (ordered) set of values that we test for.
-        ///
-        /// We create a branch to each of the values in `options`, as well as an "otherwise" branch
-        /// for all other values, even in the (rare) case that `options` is exhaustive.
-        options: FxIndexMap<Const<'tcx>, u128>,
-    },
+    SwitchInt,
 
     /// Test what value a `bool` has.
     If,
@@ -1150,6 +1146,25 @@ enum TestKind<'tcx> {
 pub(crate) struct Test<'tcx> {
     span: Span,
     kind: TestKind<'tcx>,
+}
+
+/// The branch to be taken after a test.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+enum TestBranch<'tcx> {
+    /// Success branch, used for tests with two possible outcomes.
+    Success,
+    /// Branch corresponding to this constant.
+    Constant(Const<'tcx>, u128),
+    /// Branch corresponding to this variant.
+    Variant(VariantIdx),
+    /// Failure branch for tests with two possible outcomes, and "otherwise" branch for other tests.
+    Failure,
+}
+
+impl<'tcx> TestBranch<'tcx> {
+    fn as_constant(&self) -> Option<&Const<'tcx>> {
+        if let Self::Constant(v, _) = self { Some(v) } else { None }
+    }
 }
 
 /// `ArmHasGuard` is a wrapper around a boolean flag. It indicates whether
@@ -1561,30 +1576,9 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     ) -> (PlaceBuilder<'tcx>, Test<'tcx>) {
         // Extract the match-pair from the highest priority candidate
         let match_pair = &candidates.first().unwrap().match_pairs[0];
-        let mut test = self.test(match_pair);
+        let test = self.test(match_pair);
         let match_place = match_pair.place.clone();
-
         debug!(?test, ?match_pair);
-        // Most of the time, the test to perform is simply a function of the main candidate; but for
-        // a test like SwitchInt, we may want to add cases based on the candidates that are
-        // available
-        match test.kind {
-            TestKind::SwitchInt { ref mut options } => {
-                for candidate in candidates.iter() {
-                    if !self.add_cases_to_switch(&match_place, candidate, options) {
-                        break;
-                    }
-                }
-            }
-            TestKind::Switch { adt_def: _, ref mut variants } => {
-                for candidate in candidates.iter() {
-                    if !self.add_variants_to_switch(&match_place, candidate, variants) {
-                        break;
-                    }
-                }
-            }
-            _ => {}
-        }
 
         (match_place, test)
     }
@@ -1627,11 +1621,13 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         match_place: &PlaceBuilder<'tcx>,
         test: &Test<'tcx>,
         mut candidates: &'b mut [&'c mut Candidate<'pat, 'tcx>],
-    ) -> (&'b mut [&'c mut Candidate<'pat, 'tcx>], Vec<Vec<&'b mut Candidate<'pat, 'tcx>>>) {
-        // For each of the N possible outcomes, create a (initially empty) vector of candidates.
-        // Those are the candidates that apply if the test has that particular outcome.
-        let mut target_candidates: Vec<Vec<&mut Candidate<'pat, 'tcx>>> = vec![];
-        target_candidates.resize_with(test.targets(), Default::default);
+    ) -> (
+        &'b mut [&'c mut Candidate<'pat, 'tcx>],
+        FxIndexMap<TestBranch<'tcx>, Vec<&'b mut Candidate<'pat, 'tcx>>>,
+    ) {
+        // For each of the possible outcomes, collect vector of candidates that apply if the test
+        // has that particular outcome.
+        let mut target_candidates: FxIndexMap<_, Vec<&mut Candidate<'_, '_>>> = Default::default();
 
         let total_candidate_count = candidates.len();
 
@@ -1639,11 +1635,13 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         // point we may encounter a candidate where the test is not relevant; at that point, we stop
         // sorting.
         while let Some(candidate) = candidates.first_mut() {
-            let Some(idx) = self.sort_candidate(&match_place, &test, candidate) else {
+            let Some(branch) =
+                self.sort_candidate(&match_place, test, candidate, &target_candidates)
+            else {
                 break;
             };
             let (candidate, rest) = candidates.split_first_mut().unwrap();
-            target_candidates[idx].push(candidate);
+            target_candidates.entry(branch).or_insert_with(Vec::new).push(candidate);
             candidates = rest;
         }
 
@@ -1784,31 +1782,32 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             otherwise_block
         };
 
-        // For each outcome of test, process the candidates that still
-        // apply. Collect a list of blocks where control flow will
-        // branch if one of the `target_candidate` sets is not
-        // exhaustive.
-        let target_blocks: Vec<_> = target_candidates
+        // For each outcome of test, process the candidates that still apply.
+        let target_blocks: FxIndexMap<_, _> = target_candidates
             .into_iter()
-            .map(|mut candidates| {
-                if !candidates.is_empty() {
-                    let candidate_start = self.cfg.start_new_block();
-                    self.match_candidates(
-                        span,
-                        scrutinee_span,
-                        candidate_start,
-                        remainder_start,
-                        &mut *candidates,
-                    );
-                    candidate_start
-                } else {
-                    remainder_start
-                }
+            .map(|(branch, mut candidates)| {
+                let candidate_start = self.cfg.start_new_block();
+                self.match_candidates(
+                    span,
+                    scrutinee_span,
+                    candidate_start,
+                    remainder_start,
+                    &mut *candidates,
+                );
+                (branch, candidate_start)
             })
             .collect();
 
         // Perform the test, branching to one of N blocks.
-        self.perform_test(span, scrutinee_span, start_block, &match_place, &test, target_blocks);
+        self.perform_test(
+            span,
+            scrutinee_span,
+            start_block,
+            remainder_start,
+            &match_place,
+            &test,
+            target_blocks,
+        );
     }
 
     /// Determine the fake borrows that are needed from a set of places that

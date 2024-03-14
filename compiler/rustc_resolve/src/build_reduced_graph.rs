@@ -990,7 +990,7 @@ impl<'a, 'b, 'tcx> BuildReducedGraphVisitor<'a, 'b, 'tcx> {
             Res::Def(
                 DefKind::Fn
                 | DefKind::AssocFn
-                | DefKind::Static(_)
+                | DefKind::Static { .. }
                 | DefKind::Const
                 | DefKind::AssocConst
                 | DefKind::Ctor(..),

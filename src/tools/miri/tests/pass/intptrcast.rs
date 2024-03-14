@@ -67,8 +67,8 @@ fn ptr_eq_dangling() {
     drop(b);
     let b = Box::new(0);
     let y = &*b as *const i32; // different allocation
-    // They *could* be equal if memory was reused, but probably are not.
-    assert!(x != y);
+    // They *could* be equal if memory is reused...
+    assert!(x != y || x == y);
 }
 
 fn ptr_eq_out_of_bounds() {

@@ -145,7 +145,8 @@ impl<P: Step> Step for RustbookSrc<P> {
         let rustbook = builder.tool_exe(Tool::Rustbook);
         let mut rustbook_cmd = builder.tool_cmd(Tool::Rustbook);
 
-        if !builder.config.dry_run() && !(up_to_date(&src, &index) || up_to_date(&rustbook, &index))
+        if !builder.config.dry_run()
+            && (!up_to_date(&src, &index) || !up_to_date(&rustbook, &index))
         {
             builder.info(&format!("Rustbook ({target}) - {name}"));
             let _ = fs::remove_dir_all(&out);

@@ -574,7 +574,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             ResolutionError::GenericParamsFromOuterItem(outer_res, has_generic_params, def_kind) => {
                 use errs::GenericParamsFromOuterItemLabel as Label;
                 let static_or_const = match def_kind {
-                    DefKind::Static(_) => Some(errs::GenericParamsFromOuterItemStaticOrConst::Static),
+                    DefKind::Static{ .. } => Some(errs::GenericParamsFromOuterItemStaticOrConst::Static),
                     DefKind::Const => Some(errs::GenericParamsFromOuterItemStaticOrConst::Const),
                     _ => None,
                 };

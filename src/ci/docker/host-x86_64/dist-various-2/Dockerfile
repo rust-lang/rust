@@ -113,7 +113,7 @@ ENV TARGETS=$TARGETS,aarch64-unknown-fuchsia
 ENV TARGETS=$TARGETS,wasm32-unknown-unknown
 ENV TARGETS=$TARGETS,wasm32-wasi
 ENV TARGETS=$TARGETS,wasm32-wasip1
-ENV TARGETS=$TARGETS,wasm32-wasi-preview1-threads
+ENV TARGETS=$TARGETS,wasm32-wasip1-threads
 ENV TARGETS=$TARGETS,sparcv9-sun-solaris
 ENV TARGETS=$TARGETS,x86_64-pc-solaris
 ENV TARGETS=$TARGETS,x86_64-unknown-linux-gnux32
@@ -138,7 +138,7 @@ RUN ln -s /usr/include/x86_64-linux-gnu/asm /usr/local/include/asm
 ENV RUST_CONFIGURE_ARGS --enable-extended --enable-lld --enable-llvm-bitcode-linker --disable-docs \
   --set target.wasm32-wasi.wasi-root=/wasm32-wasip1 \
   --set target.wasm32-wasip1.wasi-root=/wasm32-wasip1 \
-  --set target.wasm32-wasi-preview1-threads.wasi-root=/wasm32-wasi-preview1-threads \
+  --set target.wasm32-wasip1-threads.wasi-root=/wasm32-wasip1-threads \
   --musl-root-armv7=/musl-armv7
 
 ENV SCRIPT python3 ../x.py dist --host='' --target $TARGETS

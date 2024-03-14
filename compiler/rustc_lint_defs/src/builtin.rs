@@ -30,6 +30,7 @@ declare_lint_pass! {
         CENUM_IMPL_DROP_CAST,
         COHERENCE_LEAK_CHECK,
         CONFLICTING_REPR_HINTS,
+        CONST_EVAL_MUTABLE_PTR_IN_FINAL_VALUE,
         CONST_EVALUATABLE_UNCHECKED,
         CONST_ITEM_MUTATION,
         DEAD_CODE,
@@ -2794,6 +2795,51 @@ declare_lint! {
     Allow,
     "a lossy pointer to integer cast is used",
     @feature_gate = sym::strict_provenance;
+}
+
+declare_lint! {
+    /// The `const_eval_mutable_ptr_in_final_value` lint detects if a mutable pointer
+    /// has leaked into the final value of a const expression.
+    ///
+    /// ### Example
+    ///
+    /// ```rust
+    /// pub enum JsValue {
+    ///     Undefined,
+    ///     Object(std::cell::Cell<bool>),
+    /// }
+    ///
+    /// impl ::std::ops::Drop for JsValue {
+    ///     fn drop(&mut self) {}
+    /// }
+    ///
+    /// const UNDEFINED: &JsValue = &JsValue::Undefined;
+    ///
+    /// fn main() {
+    /// }
+    /// ```
+    ///
+    /// {{produces}}
+    ///
+    /// ### Explanation
+    ///
+    /// In the 1.77 release, the const evaluation machinery adopted some
+    /// stricter rules to reject expressions with values that could
+    /// end up holding mutable references to state stored in static memory
+    /// (which is inherently immutable).
+    ///
+    /// This is a [future-incompatible] lint to ease the transition to an error.
+    /// See [issue #122153] for more details.
+    ///
+    /// [issue #122153]: https://github.com/rust-lang/rust/issues/122153
+    /// [future-incompatible]: ../index.md#future-incompatible-lints
+    pub CONST_EVAL_MUTABLE_PTR_IN_FINAL_VALUE,
+    Warn,
+    "detects a mutable pointer that has leaked into final value of a const expression",
+    @future_incompatible = FutureIncompatibleInfo {
+        reason: FutureIncompatibilityReason::FutureReleaseErrorReportInDeps,
+        reference: "issue #122153 <https://github.com/rust-lang/rust/issues/122153>",
+    };
 }
 
 declare_lint! {

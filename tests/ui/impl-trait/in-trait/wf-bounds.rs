@@ -1,7 +1,5 @@
 // issue #101663
 
-#![allow(incomplete_features)]
-
 use std::fmt::Display;
 
 trait Wf<T> {

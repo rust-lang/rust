@@ -198,7 +198,7 @@ fn indirect_usage<'tcx>(
     binding: HirId,
     ctxt: SyntaxContext,
 ) -> Option<IndirectUsage<'tcx>> {
-    if let StmtKind::Local(&Local {
+    if let StmtKind::Let(&Local {
         pat: Pat {
             kind: PatKind::Binding(BindingAnnotation::NONE, _, ident, None),
             ..

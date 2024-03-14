@@ -1,6 +1,6 @@
 use crate::constructor::{Constructor, SplitConstructorSet};
 use crate::pat::{DeconstructedPat, PatOrWild};
-use crate::{Captures, MatchArm, TypeCx};
+use crate::{Captures, MatchArm, PatCx};
 
 /// A column of patterns in a match, where a column is the intuitive notion of "subpatterns that
 /// inspect the same subvalue/place".
@@ -11,12 +11,12 @@ use crate::{Captures, MatchArm, TypeCx};
 ///
 /// This is not used in the usefulness algorithm; only in lints.
 #[derive(Debug)]
-pub struct PatternColumn<'p, Cx: TypeCx> {
+pub struct PatternColumn<'p, Cx: PatCx> {
     /// This must not contain an or-pattern. `expand_and_push` takes care to expand them.
     patterns: Vec<&'p DeconstructedPat<Cx>>,
 }
 
-impl<'p, Cx: TypeCx> PatternColumn<'p, Cx> {
+impl<'p, Cx: PatCx> PatternColumn<'p, Cx> {
     pub fn new(arms: &[MatchArm<'p, Cx>]) -> Self {
         let patterns = Vec::with_capacity(arms.len());
         let mut column = PatternColumn { patterns };

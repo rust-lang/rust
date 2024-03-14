@@ -457,15 +457,6 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValidityVisitor<'rt, 'mir, '
                         // Special handling for pointers to statics (irrespective of their type).
                         assert!(!self.ecx.tcx.is_thread_local_static(did));
                         assert!(self.ecx.tcx.is_static(did));
-                        let is_mut =
-                            matches!(self.ecx.tcx.def_kind(did), DefKind::Static(Mutability::Mut))
-                                || !self
-                                    .ecx
-                                    .tcx
-                                    .type_of(did)
-                                    .no_bound_vars()
-                                    .expect("statics should not have generic parameters")
-                                    .is_freeze(*self.ecx.tcx, ty::ParamEnv::reveal_all());
                         // Mode-specific checks
                         match self.ctfe_mode {
                             Some(
@@ -490,8 +481,28 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValidityVisitor<'rt, 'mir, '
                             }
                             None => {}
                         }
-                        // Return alloc mutability
-                        if is_mut { Mutability::Mut } else { Mutability::Not }
+                        // Return alloc mutability. For "root" statics we look at the type to account for interior
+                        // mutability; for nested statics we have no type and directly use the annotated mutability.
+                        let DefKind::Static { mutability, nested } = self.ecx.tcx.def_kind(did)
+                        else {
+                            bug!()
+                        };
+                        match (mutability, nested) {
+                            (Mutability::Mut, _) => Mutability::Mut,
+                            (Mutability::Not, true) => Mutability::Not,
+                            (Mutability::Not, false)
+                                if !self
+                                    .ecx
+                                    .tcx
+                                    .type_of(did)
+                                    .no_bound_vars()
+                                    .expect("statics should not have generic parameters")
+                                    .is_freeze(*self.ecx.tcx, ty::ParamEnv::reveal_all()) =>
+                            {
+                                Mutability::Mut
+                            }
+                            (Mutability::Not, false) => Mutability::Not,
+                        }
                     }
                     GlobalAlloc::Memory(alloc) => alloc.inner().mutability,
                     GlobalAlloc::Function(..) | GlobalAlloc::VTable(..) => {

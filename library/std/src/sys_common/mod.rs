@@ -24,7 +24,6 @@ pub mod backtrace;
 pub mod fs;
 pub mod io;
 pub mod lazy_box;
-pub mod once;
 pub mod process;
 pub mod thread;
 pub mod thread_info;

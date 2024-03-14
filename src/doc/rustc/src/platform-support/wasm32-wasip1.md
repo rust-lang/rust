@@ -49,7 +49,7 @@ this target are:
 
 This target is cross-compiled. The target includes support for `std` itself,
 but not all of the standard library works. For example spawning a thread will
-always return an error (see the `wasm32-wasi-preview1-threads` target for
+always return an error (see the `wasm32-wasip1-threads` target for
 example). Another example is that spawning a process will always return an
 error. Operations such as opening a file, however, will be implemented by
 calling WASI-defined APIs.

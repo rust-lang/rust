@@ -107,7 +107,7 @@ impl Target {
         match item.kind {
             ItemKind::ExternCrate(..) => Target::ExternCrate,
             ItemKind::Use(..) => Target::Use,
-            ItemKind::Static(..) => Target::Static,
+            ItemKind::Static { .. } => Target::Static,
             ItemKind::Const(..) => Target::Const,
             ItemKind::Fn(..) => Target::Fn,
             ItemKind::Macro(..) => Target::MacroDef,
@@ -130,7 +130,7 @@ impl Target {
         match def_kind {
             DefKind::ExternCrate => Target::ExternCrate,
             DefKind::Use => Target::Use,
-            DefKind::Static(..) => Target::Static,
+            DefKind::Static { .. } => Target::Static,
             DefKind::Const => Target::Const,
             DefKind::Fn => Target::Fn,
             DefKind::Macro(..) => Target::MacroDef,

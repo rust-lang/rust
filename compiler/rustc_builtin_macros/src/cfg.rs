@@ -8,17 +8,17 @@ use rustc_ast::token;
 use rustc_ast::tokenstream::TokenStream;
 use rustc_attr as attr;
 use rustc_errors::PResult;
-use rustc_expand::base::{DummyResult, ExtCtxt, MacEager, MacResult};
+use rustc_expand::base::{DummyResult, ExpandResult, ExtCtxt, MacEager, MacroExpanderResult};
 use rustc_span::Span;
 
 pub fn expand_cfg(
     cx: &mut ExtCtxt<'_>,
     sp: Span,
     tts: TokenStream,
-) -> Box<dyn MacResult + 'static> {
+) -> MacroExpanderResult<'static> {
     let sp = cx.with_def_site_ctxt(sp);
 
-    match parse_cfg(cx, sp, tts) {
+    ExpandResult::Ready(match parse_cfg(cx, sp, tts) {
         Ok(cfg) => {
             let matches_cfg = attr::cfg_matches(
                 &cfg,
@@ -32,7 +32,7 @@ pub fn expand_cfg(
             let guar = err.emit();
             DummyResult::any(sp, guar)
         }
-    }
+    })
 }
 
 fn parse_cfg<'a>(cx: &mut ExtCtxt<'a>, span: Span, tts: TokenStream) -> PResult<'a, ast::MetaItem> {

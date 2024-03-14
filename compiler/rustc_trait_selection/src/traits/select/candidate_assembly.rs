@@ -219,6 +219,13 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
     ) -> Result<(), SelectionError<'tcx>> {
         debug!(?stack.obligation);
 
+        // An error type will unify with anything. So, avoid
+        // matching an error type with `ParamCandidate`.
+        // This helps us avoid spurious errors like issue #121941.
+        if stack.obligation.predicate.references_error() {
+            return Ok(());
+        }
+
         let all_bounds = stack
             .obligation
             .param_env

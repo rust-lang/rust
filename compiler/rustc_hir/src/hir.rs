@@ -1209,7 +1209,7 @@ pub struct Stmt<'hir> {
 #[derive(Debug, Clone, Copy, HashStable_Generic)]
 pub enum StmtKind<'hir> {
     /// A local (`let`) binding.
-    Local(&'hir Local<'hir>),
+    Let(&'hir Local<'hir>),
 
     /// An item binding.
     Item(ItemId),
@@ -1253,11 +1253,11 @@ pub struct Arm<'hir> {
     pub body: &'hir Expr<'hir>,
 }
 
-/// Represents a `let <pat>[: <ty>] = <expr>` expression (not a Local), occurring in an `if-let` or
-/// `let-else`, evaluating to a boolean. Typically the pattern is refutable.
+/// Represents a `let <pat>[: <ty>] = <expr>` expression (not a [`Local`]), occurring in an `if-let`
+/// or `let-else`, evaluating to a boolean. Typically the pattern is refutable.
 ///
-/// In an if-let, imagine it as `if (let <pat> = <expr>) { ... }`; in a let-else, it is part of the
-/// desugaring to if-let. Only let-else supports the type annotation at present.
+/// In an `if let`, imagine it as `if (let <pat> = <expr>) { ... }`; in a let-else, it is part of
+/// the desugaring to if-let. Only let-else supports the type annotation at present.
 #[derive(Debug, Clone, Copy, HashStable_Generic)]
 pub struct Let<'hir> {
     pub span: Span,
@@ -1616,7 +1616,7 @@ impl Expr<'_> {
     pub fn is_place_expr(&self, mut allow_projections_from: impl FnMut(&Self) -> bool) -> bool {
         match self.kind {
             ExprKind::Path(QPath::Resolved(_, ref path)) => {
-                matches!(path.res, Res::Local(..) | Res::Def(DefKind::Static(_), _) | Res::Err)
+                matches!(path.res, Res::Local(..) | Res::Def(DefKind::Static { .. }, _) | Res::Err)
             }
 
             // Type ascription inherits its place expression kind from its

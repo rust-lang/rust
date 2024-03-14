@@ -1,0 +1,9 @@
+error[E0220]: associated type `Assoc` not found for `Trait`
+  --> $DIR/stranded-opaque.rs:8:31
+   |
+LL | fn produce<T>() -> impl Trait<Assoc = impl Trait> {
+   |                               ^^^^^ associated type `Assoc` not found
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0220`.

@@ -226,7 +226,7 @@ fn check_static_inhabited(tcx: TyCtxt<'_>, def_id: LocalDefId) {
         Ok(l) => l,
         // Foreign statics that overflow their allowed size should emit an error
         Err(LayoutError::SizeOverflow(_))
-            if matches!(tcx.def_kind(def_id), DefKind::Static(_)
+            if matches!(tcx.def_kind(def_id), DefKind::Static{ .. }
                 if tcx.def_kind(tcx.local_parent(def_id)) == DefKind::ForeignMod) =>
         {
             tcx.dcx().emit_err(errors::TooLargeStatic { span });
@@ -381,11 +381,17 @@ fn check_opaque_meets_bounds<'tcx>(
     match ocx.eq(&misc_cause, param_env, opaque_ty, hidden_ty) {
         Ok(()) => {}
         Err(ty_err) => {
+            // Some types may be left "stranded" if they can't be reached
+            // from an astconv'd bound but they're mentioned in the HIR. This
+            // will happen, e.g., when a nested opaque is inside of a non-
+            // existent associated type, like `impl Trait<Missing = impl Trait>`.
+            // See <tests/ui/impl-trait/stranded-opaque.rs>.
             let ty_err = ty_err.to_string(tcx);
-            tcx.dcx().span_bug(
+            let guar = tcx.dcx().span_delayed_bug(
                 span,
                 format!("could not unify `{hidden_ty}` with revealed type:\n{ty_err}"),
             );
+            return Err(guar);
         }
     }
 
@@ -505,7 +511,7 @@ fn check_static_linkage(tcx: TyCtxt<'_>, def_id: LocalDefId) {
 pub(crate) fn check_item_type(tcx: TyCtxt<'_>, def_id: LocalDefId) {
     let _indenter = indenter();
     match tcx.def_kind(def_id) {
-        DefKind::Static(..) => {
+        DefKind::Static { .. } => {
             tcx.ensure().typeck(def_id);
             maybe_check_static_with_link_section(tcx, def_id);
             check_static_inhabited(tcx, def_id);

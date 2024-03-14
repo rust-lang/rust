@@ -10,7 +10,7 @@ use crate::ty::print::{pretty_print_const, with_no_trimmed_paths};
 use crate::ty::print::{FmtPrinter, Printer};
 use crate::ty::visit::TypeVisitableExt;
 use crate::ty::{self, List, Ty, TyCtxt};
-use crate::ty::{AdtDef, InstanceDef, UserTypeAnnotationIndex};
+use crate::ty::{AdtDef, Instance, InstanceDef, UserTypeAnnotationIndex};
 use crate::ty::{GenericArg, GenericArgsRef};
 
 use rustc_data_structures::captures::Captures;
@@ -27,6 +27,8 @@ pub use rustc_ast::Mutability;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::graph::dominators::Dominators;
+use rustc_data_structures::stack::ensure_sufficient_stack;
+use rustc_index::bit_set::BitSet;
 use rustc_index::{Idx, IndexSlice, IndexVec};
 use rustc_serialize::{Decodable, Encodable};
 use rustc_span::symbol::Symbol;
@@ -638,6 +640,129 @@ impl<'tcx> Body<'tcx> {
     #[inline]
     pub fn is_custom_mir(&self) -> bool {
         self.injection_phase.is_some()
+    }
+
+    /// Finds which basic blocks are actually reachable for a specific
+    /// monomorphization of this body.
+    ///
+    /// This is allowed to have false positives; just because this says a block
+    /// is reachable doesn't mean that's necessarily true. It's thus always
+    /// legal for this to return a filled set.
+    ///
+    /// Regardless, the [`BitSet::domain_size`] of the returned set will always
+    /// exactly match the number of blocks in the body so that `contains`
+    /// checks can be done without worrying about panicking.
+    ///
+    /// This is mostly useful because it lets us skip lowering the `false` side
+    /// of `if <T as Trait>::CONST`, as well as `intrinsics::debug_assertions`.
+    pub fn reachable_blocks_in_mono(
+        &self,
+        tcx: TyCtxt<'tcx>,
+        instance: Instance<'tcx>,
+    ) -> BitSet<BasicBlock> {
+        let mut set = BitSet::new_empty(self.basic_blocks.len());
+        self.reachable_blocks_in_mono_from(tcx, instance, &mut set, START_BLOCK);
+        set
+    }
+
+    fn reachable_blocks_in_mono_from(
+        &self,
+        tcx: TyCtxt<'tcx>,
+        instance: Instance<'tcx>,
+        set: &mut BitSet<BasicBlock>,
+        bb: BasicBlock,
+    ) {
+        if !set.insert(bb) {
+            return;
+        }
+
+        let data = &self.basic_blocks[bb];
+
+        if let Some((bits, targets)) = Self::try_const_mono_switchint(tcx, instance, data) {
+            let target = targets.target_for_value(bits);
+            ensure_sufficient_stack(|| {
+                self.reachable_blocks_in_mono_from(tcx, instance, set, target)
+            });
+            return;
+        }
+
+        for target in data.terminator().successors() {
+            ensure_sufficient_stack(|| {
+                self.reachable_blocks_in_mono_from(tcx, instance, set, target)
+            });
+        }
+    }
+
+    /// If this basic block ends with a [`TerminatorKind::SwitchInt`] for which we can evaluate the
+    /// dimscriminant in monomorphization, we return the discriminant bits and the
+    /// [`SwitchTargets`], just so the caller doesn't also have to match on the terminator.
+    fn try_const_mono_switchint<'a>(
+        tcx: TyCtxt<'tcx>,
+        instance: Instance<'tcx>,
+        block: &'a BasicBlockData<'tcx>,
+    ) -> Option<(u128, &'a SwitchTargets)> {
+        // There are two places here we need to evaluate a constant.
+        let eval_mono_const = |constant: &ConstOperand<'tcx>| {
+            let env = ty::ParamEnv::reveal_all();
+            let mono_literal = instance.instantiate_mir_and_normalize_erasing_regions(
+                tcx,
+                env,
+                crate::ty::EarlyBinder::bind(constant.const_),
+            );
+            let Some(bits) = mono_literal.try_eval_bits(tcx, env) else {
+                bug!("Couldn't evaluate constant {:?} in mono {:?}", constant, instance);
+            };
+            bits
+        };
+
+        let TerminatorKind::SwitchInt { discr, targets } = &block.terminator().kind else {
+            return None;
+        };
+
+        // If this is a SwitchInt(const _), then we can just evaluate the constant and return.
+        let discr = match discr {
+            Operand::Constant(constant) => {
+                let bits = eval_mono_const(constant);
+                return Some((bits, targets));
+            }
+            Operand::Move(place) | Operand::Copy(place) => place,
+        };
+
+        // MIR for `if false` actually looks like this:
+        // _1 = const _
+        // SwitchInt(_1)
+        //
+        // And MIR for if intrinsics::debug_assertions() looks like this:
+        // _1 = cfg!(debug_assertions)
+        // SwitchInt(_1)
+        //
+        // So we're going to try to recognize this pattern.
+        //
+        // If we have a SwitchInt on a non-const place, we find the most recent statement that
+        // isn't a storage marker. If that statement is an assignment of a const to our
+        // discriminant place, we evaluate and return the const, as if we've const-propagated it
+        // into the SwitchInt.
+
+        let last_stmt = block.statements.iter().rev().find(|stmt| {
+            !matches!(stmt.kind, StatementKind::StorageDead(_) | StatementKind::StorageLive(_))
+        })?;
+
+        let (place, rvalue) = last_stmt.kind.as_assign()?;
+
+        if discr != place {
+            return None;
+        }
+
+        match rvalue {
+            Rvalue::NullaryOp(NullOp::UbCheck(_), _) => {
+                Some((tcx.sess.opts.debug_assertions as u128, targets))
+            }
+            Rvalue::Use(Operand::Constant(constant)) => {
+                let bits = eval_mono_const(constant);
+                Some((bits, targets))
+            }
+            _ => None,
+        }
     }
 
     /// For a `Location` in this scope, determine what the "caller location" at that point is. This

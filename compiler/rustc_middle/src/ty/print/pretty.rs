@@ -359,7 +359,7 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
             | DefKind::TyAlias
             | DefKind::Fn
             | DefKind::Const
-            | DefKind::Static(_) = kind
+            | DefKind::Static { .. } = kind
             {
             } else {
                 // If not covered above, like for example items out of `impl` blocks, fallback.

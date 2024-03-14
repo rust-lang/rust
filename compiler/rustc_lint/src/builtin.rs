@@ -989,7 +989,7 @@ fn warn_if_doc(cx: &EarlyContext<'_>, node_span: Span, node_kind: &str, attrs: &
 impl EarlyLintPass for UnusedDocComment {
     fn check_stmt(&mut self, cx: &EarlyContext<'_>, stmt: &ast::Stmt) {
         let kind = match stmt.kind {
-            ast::StmtKind::Local(..) => "statements",
+            ast::StmtKind::Let(..) => "statements",
             // Disabled pending discussion in #78306
             ast::StmtKind::Item(..) => return,
             // expressions will be reported by `check_expr`.

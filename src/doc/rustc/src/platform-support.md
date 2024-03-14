@@ -33,12 +33,12 @@ All tier 1 targets with host tools support the full standard library.
 target | notes
 -------|-------
 `aarch64-unknown-linux-gnu` | ARM64 Linux (kernel 4.1, glibc 2.17+)
-`i686-pc-windows-gnu` | 32-bit MinGW (Windows 7+) [^windows-support] [^x86_32-floats-return-ABI]
-`i686-pc-windows-msvc` | 32-bit MSVC (Windows 7+) [^windows-support] [^x86_32-floats-return-ABI]
+`i686-pc-windows-gnu` | 32-bit MinGW (Windows 10+) [^windows-support] [^x86_32-floats-return-ABI]
+`i686-pc-windows-msvc` | 32-bit MSVC (Windows 10+) [^windows-support] [^x86_32-floats-return-ABI]
 `i686-unknown-linux-gnu` | 32-bit Linux (kernel 3.2+, glibc 2.17+) [^x86_32-floats-return-ABI]
 `x86_64-apple-darwin` | 64-bit macOS (10.12+, Sierra+)
-`x86_64-pc-windows-gnu` | 64-bit MinGW (Windows 7+) [^windows-support]
-`x86_64-pc-windows-msvc` | 64-bit MSVC (Windows 7+) [^windows-support]
+`x86_64-pc-windows-gnu` | 64-bit MinGW (Windows 10+) [^windows-support]
+`x86_64-pc-windows-msvc` | 64-bit MSVC (Windows 10+) [^windows-support]
 `x86_64-unknown-linux-gnu` | 64-bit Linux (kernel 3.2+, glibc 2.17+)
 
 [^windows-support]: Only Windows 10 currently undergoes automated testing. Earlier versions of Windows rely on testing and support from the community.
@@ -190,7 +190,7 @@ target | std | notes
 `wasm32-unknown-unknown` | ✓ | WebAssembly
 `wasm32-wasi` | ✓ | WebAssembly with WASI (undergoing a [rename to `wasm32-wasip1`][wasi-rename])
 [`wasm32-wasip1`](platform-support/wasm32-wasip1.md) | ✓ | WebAssembly with WASI
-[`wasm32-wasi-preview1-threads`](platform-support/wasm32-wasi-preview1-threads.md) | ✓ |  | WebAssembly with WASI Preview 1 and threads
+[`wasm32-wasip1-threads`](platform-support/wasm32-wasip1-threads.md) | ✓ |  | WebAssembly with WASI Preview 1 and threads
 `x86_64-apple-ios` | ✓ | 64-bit x86 iOS
 [`x86_64-fortanix-unknown-sgx`](platform-support/x86_64-fortanix-unknown-sgx.md) | ✓ | [Fortanix ABI] for 64-bit Intel SGX
 `x86_64-fuchsia` | ✓ | Alias for `x86_64-unknown-fuchsia`
@@ -292,7 +292,6 @@ target | std | host | notes
 [`i586-pc-nto-qnx700`](platform-support/nto-qnx.md) | * |  | 32-bit x86 QNX Neutrino 7.0 RTOS  [^x86_32-floats-return-ABI]
 [`i586-unknown-netbsd`](platform-support/netbsd.md) | ✓ |  | 32-bit x86, restricted to Pentium
 `i686-apple-darwin` | ✓ | ✓ | 32-bit macOS (10.12+, Sierra+) [^x86_32-floats-return-ABI]
-`i686-pc-windows-msvc` | * |  | 32-bit Windows XP support [^x86_32-floats-return-ABI]
 [`i686-pc-windows-gnullvm`](platform-support/pc-windows-gnullvm.md) | ✓ | ✓ | [^x86_32-floats-return-ABI]
 `i686-unknown-haiku` | ✓ | ✓ | 32-bit Haiku [^x86_32-floats-return-ABI]
 [`i686-unknown-hurd-gnu`](platform-support/hurd.md) | ✓ | ✓ | 32-bit GNU/Hurd [^x86_32-floats-return-ABI]
@@ -369,7 +368,6 @@ target | std | host | notes
 [`x86_64-apple-watchos-sim`](platform-support/apple-watchos.md) | ✓ |  | x86 64-bit Apple WatchOS simulator
 [`x86_64-pc-nto-qnx710`](platform-support/nto-qnx.md) | ✓ |  | x86 64-bit QNX Neutrino 7.1 RTOS |
 [`x86_64-pc-windows-gnullvm`](platform-support/pc-windows-gnullvm.md) | ✓ | ✓ |
-`x86_64-pc-windows-msvc` | * |  | 64-bit Windows XP support
 [`x86_64-unikraft-linux-musl`](platform-support/unikraft-linux-musl.md) | ✓ |   | 64-bit Unikraft with musl 1.2.3
 `x86_64-unknown-dragonfly` | ✓ | ✓ | 64-bit DragonFlyBSD
 `x86_64-unknown-haiku` | ✓ | ✓ | 64-bit Haiku

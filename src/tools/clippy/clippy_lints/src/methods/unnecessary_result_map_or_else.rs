@@ -27,7 +27,7 @@ fn emit_lint(cx: &LateContext<'_>, expr: &Expr<'_>, recv: &Expr<'_>, def_arg: &E
 
 fn get_last_chain_binding_hir_id(mut hir_id: HirId, statements: &[Stmt<'_>]) -> Option<HirId> {
     for stmt in statements {
-        if let StmtKind::Local(local) = stmt.kind
+        if let StmtKind::Let(local) = stmt.kind
             && let Some(init) = local.init
             && let ExprKind::Path(QPath::Resolved(_, path)) = init.kind
             && let hir::def::Res::Local(local_hir_id) = path.res

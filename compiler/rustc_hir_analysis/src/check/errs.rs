@@ -27,7 +27,7 @@ pub fn maybe_expr_static_mut(tcx: TyCtxt<'_>, expr: hir::Expr<'_>) {
 
 /// Check for shared or mutable references of `static mut` inside statement
 pub fn maybe_stmt_static_mut(tcx: TyCtxt<'_>, stmt: hir::Stmt<'_>) {
-    if let hir::StmtKind::Local(loc) = stmt.kind
+    if let hir::StmtKind::Let(loc) = stmt.kind
         && let hir::PatKind::Binding(ba, _, _, _) = loc.pat.kind
         && matches!(ba.0, rustc_ast::ByRef::Yes)
         && let Some(init) = loc.init
@@ -48,8 +48,7 @@ fn is_path_static_mut(expr: hir::Expr<'_>) -> Option<String> {
     if let hir::ExprKind::Path(qpath) = expr.kind
         && let hir::QPath::Resolved(_, path) = qpath
         && let hir::def::Res::Def(def_kind, _) = path.res
-        && let hir::def::DefKind::Static(mt) = def_kind
-        && matches!(mt, Mutability::Mut)
+        && let hir::def::DefKind::Static { mutability: Mutability::Mut, nested: false } = def_kind
     {
         return Some(qpath_to_string(&qpath));
     }

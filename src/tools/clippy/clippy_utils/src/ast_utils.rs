@@ -267,7 +267,7 @@ pub fn eq_block(l: &Block, r: &Block) -> bool {
 pub fn eq_stmt(l: &Stmt, r: &Stmt) -> bool {
     use StmtKind::*;
     match (&l.kind, &r.kind) {
-        (Local(l), Local(r)) => {
+        (Let(l), Let(r)) => {
             eq_pat(&l.pat, &r.pat)
                 && both(&l.ty, &r.ty, |l, r| eq_ty(l, r))
                 && eq_local_kind(&l.kind, &r.kind)

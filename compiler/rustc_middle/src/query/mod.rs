@@ -1062,6 +1062,7 @@ rustc_queries! {
         }
         cache_on_disk_if { key.is_local() }
         separate_provide_extern
+        feedable
     }
 
     /// Evaluates const items or anonymous constants
@@ -1220,6 +1221,7 @@ rustc_queries! {
         arena_cache
         cache_on_disk_if { def_id.is_local() }
         separate_provide_extern
+        feedable
     }
 
     query asm_target_features(def_id: DefId) -> &'tcx FxIndexSet<Symbol> {

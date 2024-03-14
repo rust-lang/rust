@@ -262,7 +262,7 @@ impl<'tcx> LateLintPass<'tcx> for RedundantClosureCall {
         }
 
         for w in block.stmts.windows(2) {
-            if let hir::StmtKind::Local(local) = w[0].kind
+            if let hir::StmtKind::Let(local) = w[0].kind
                 && let Option::Some(t) = local.init
                 && let hir::ExprKind::Closure { .. } = t.kind
                 && let hir::PatKind::Binding(_, _, ident, _) = local.pat.kind

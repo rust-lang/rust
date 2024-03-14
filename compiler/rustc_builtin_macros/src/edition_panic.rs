@@ -20,7 +20,7 @@ pub fn expand_panic<'cx>(
     cx: &'cx mut ExtCtxt<'_>,
     sp: Span,
     tts: TokenStream,
-) -> Box<dyn MacResult + 'cx> {
+) -> MacroExpanderResult<'cx> {
     let mac = if use_panic_2021(sp) { sym::panic_2021 } else { sym::panic_2015 };
     expand(mac, cx, sp, tts)
 }
@@ -33,7 +33,7 @@ pub fn expand_unreachable<'cx>(
     cx: &'cx mut ExtCtxt<'_>,
     sp: Span,
     tts: TokenStream,
-) -> Box<dyn MacResult + 'cx> {
+) -> MacroExpanderResult<'cx> {
     let mac = if use_panic_2021(sp) { sym::unreachable_2021 } else { sym::unreachable_2015 };
     expand(mac, cx, sp, tts)
 }
@@ -43,10 +43,10 @@ fn expand<'cx>(
     cx: &'cx mut ExtCtxt<'_>,
     sp: Span,
     tts: TokenStream,
-) -> Box<dyn MacResult + 'cx> {
+) -> MacroExpanderResult<'cx> {
     let sp = cx.with_call_site_ctxt(sp);
 
-    MacEager::expr(
+    ExpandResult::Ready(MacEager::expr(
         cx.expr(
             sp,
             ExprKind::MacCall(P(MacCall {
@@ -66,7 +66,7 @@ fn expand<'cx>(
                 }),
             })),
         ),
-    )
+    ))
 }
 
 pub fn use_panic_2021(mut span: Span) -> bool {

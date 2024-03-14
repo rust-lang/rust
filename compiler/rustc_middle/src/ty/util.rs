@@ -616,12 +616,16 @@ impl<'tcx> TyCtxt<'tcx> {
     /// Returns `true` if the node pointed to by `def_id` is a `static` item.
     #[inline]
     pub fn is_static(self, def_id: DefId) -> bool {
-        matches!(self.def_kind(def_id), DefKind::Static(_))
+        matches!(self.def_kind(def_id), DefKind::Static { .. })
     }
 
     #[inline]
     pub fn static_mutability(self, def_id: DefId) -> Option<hir::Mutability> {
-        if let DefKind::Static(mt) = self.def_kind(def_id) { Some(mt) } else { None }
+        if let DefKind::Static { mutability, .. } = self.def_kind(def_id) {
+            Some(mutability)
+        } else {
+            None
+        }
     }
 
     /// Returns `true` if this is a `static` item with the `#[thread_local]` attribute.

@@ -1205,6 +1205,7 @@ symbols! {
         negative_bounds,
         negative_impls,
         neon,
+        nested,
         never,
         never_patterns,
         never_type,
