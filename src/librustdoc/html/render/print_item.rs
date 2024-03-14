@@ -517,6 +517,11 @@ fn item_module(w: &mut Buffer, cx: &mut Context<'_>, item: &clean::Item, items: 
                     }
                     _ => "",
                 };
+                let hidden_emoji = if myitem.is_doc_hidden() {
+                    "<span title=\"Hidden item\">&nbsp;👻</span> "
+                } else {
+                    ""
+                };
 
                 w.write_str(ITEM_TABLE_ROW_OPEN);
                 let docs =
@@ -531,6 +536,7 @@ fn item_module(w: &mut Buffer, cx: &mut Context<'_>, item: &clean::Item, items: 
                     "<div class=\"item-name\">\
                         <a class=\"{class}\" href=\"{href}\" title=\"{title}\">{name}</a>\
                         {visibility_emoji}\
+                        {hidden_emoji}\
                         {unsafety_flag}\
                         {stab_tags}\
                      </div>\
