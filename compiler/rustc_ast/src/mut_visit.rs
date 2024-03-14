@@ -1149,10 +1149,13 @@ pub fn noop_visit_item_kind<T: MutVisitor>(kind: &mut ItemKind, vis: &mut T) {
         }
         ItemKind::MacCall(m) => vis.visit_mac_call(m),
         ItemKind::MacroDef(def) => vis.visit_macro_def(def),
-        ItemKind::Delegation(box Delegation { id, qself, path, body }) => {
+        ItemKind::Delegation(box Delegation { id, qself, path, rename, body }) => {
             vis.visit_id(id);
             vis.visit_qself(qself);
             vis.visit_path(path);
+            if let Some(rename) = rename {
+                vis.visit_ident(rename);
+            }
             if let Some(body) = body {
                 vis.visit_block(body);
             }
@@ -1195,10 +1198,13 @@ pub fn noop_flat_map_assoc_item<T: MutVisitor>(
             visit_opt(ty, |ty| visitor.visit_ty(ty));
         }
         AssocItemKind::MacCall(mac) => visitor.visit_mac_call(mac),
-        AssocItemKind::Delegation(box Delegation { id, qself, path, body }) => {
+        AssocItemKind::Delegation(box Delegation { id, qself, path, rename, body }) => {
             visitor.visit_id(id);
             visitor.visit_qself(qself);
             visitor.visit_path(path);
+            if let Some(rename) = rename {
+                visitor.visit_ident(rename);
+            }
             if let Some(body) = body {
                 visitor.visit_block(body);
             }
