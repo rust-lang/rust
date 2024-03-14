@@ -97,7 +97,6 @@ pub(in crate::solve) fn replace_erased_lifetimes_with_bound_vars<'tcx>(
     tcx: TyCtxt<'tcx>,
     ty: Ty<'tcx>,
 ) -> ty::Binder<'tcx, Ty<'tcx>> {
-    debug_assert!(!ty.has_bound_regions());
     let mut counter = 0;
     let ty = tcx.fold_regions(ty, |r, current_depth| match r.kind() {
         ty::ReErased => {
