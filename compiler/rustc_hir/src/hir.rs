@@ -2553,6 +2553,11 @@ pub struct OpaqueTy<'hir> {
     pub in_trait: bool,
 }
 
+#[derive(Copy, Clone, Debug, HashStable_Generic)]
+pub struct AssocOpaqueTy {
+    // Add some data if necessary
+}
+
 /// From whence the opaque type came.
 #[derive(Copy, Clone, PartialEq, Eq, Debug, HashStable_Generic)]
 pub enum OpaqueTyOrigin {
@@ -3363,6 +3368,7 @@ pub enum OwnerNode<'hir> {
     TraitItem(&'hir TraitItem<'hir>),
     ImplItem(&'hir ImplItem<'hir>),
     Crate(&'hir Mod<'hir>),
+    AssocOpaqueTy(&'hir AssocOpaqueTy),
 }
 
 impl<'hir> OwnerNode<'hir> {
@@ -3372,7 +3378,7 @@ impl<'hir> OwnerNode<'hir> {
             | OwnerNode::ForeignItem(ForeignItem { ident, .. })
             | OwnerNode::ImplItem(ImplItem { ident, .. })
             | OwnerNode::TraitItem(TraitItem { ident, .. }) => Some(*ident),
-            OwnerNode::Crate(..) => None,
+            OwnerNode::Crate(..) | OwnerNode::AssocOpaqueTy(..) => None,
         }
     }
 
@@ -3385,6 +3391,7 @@ impl<'hir> OwnerNode<'hir> {
             | OwnerNode::ImplItem(ImplItem { span, .. })
             | OwnerNode::TraitItem(TraitItem { span, .. }) => span,
             OwnerNode::Crate(Mod { spans: ModSpans { inner_span, .. }, .. }) => inner_span,
+            OwnerNode::AssocOpaqueTy(..) => unreachable!(),
         }
     }
 
@@ -3443,6 +3450,7 @@ impl<'hir> OwnerNode<'hir> {
             | OwnerNode::ImplItem(ImplItem { owner_id, .. })
             | OwnerNode::ForeignItem(ForeignItem { owner_id, .. }) => *owner_id,
             OwnerNode::Crate(..) => crate::CRATE_HIR_ID.owner,
+            OwnerNode::AssocOpaqueTy(..) => unreachable!(),
         }
     }
 
@@ -3486,6 +3494,7 @@ impl<'hir> Into<Node<'hir>> for OwnerNode<'hir> {
             OwnerNode::ImplItem(n) => Node::ImplItem(n),
             OwnerNode::TraitItem(n) => Node::TraitItem(n),
             OwnerNode::Crate(n) => Node::Crate(n),
+            OwnerNode::AssocOpaqueTy(n) => Node::AssocOpaqueTy(n),
         }
     }
 }
@@ -3523,6 +3532,7 @@ pub enum Node<'hir> {
     WhereBoundPredicate(&'hir WhereBoundPredicate<'hir>),
     // FIXME: Merge into `Node::Infer`.
     ArrayLenInfer(&'hir InferArg),
+    AssocOpaqueTy(&'hir AssocOpaqueTy),
     // Span by reference to minimize `Node`'s size
     #[allow(rustc::pass_by_value)]
     Err(&'hir Span),
@@ -3573,6 +3583,7 @@ impl<'hir> Node<'hir> {
             | Node::Infer(..)
             | Node::WhereBoundPredicate(..)
             | Node::ArrayLenInfer(..)
+            | Node::AssocOpaqueTy(..)
             | Node::Err(..) => None,
         }
     }
@@ -3678,6 +3689,7 @@ impl<'hir> Node<'hir> {
             Node::TraitItem(i) => Some(OwnerNode::TraitItem(i)),
             Node::ImplItem(i) => Some(OwnerNode::ImplItem(i)),
             Node::Crate(i) => Some(OwnerNode::Crate(i)),
+            Node::AssocOpaqueTy(i) => Some(OwnerNode::AssocOpaqueTy(i)),
             _ => None,
         }
     }

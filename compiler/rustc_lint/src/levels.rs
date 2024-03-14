@@ -191,6 +191,7 @@ fn shallow_lint_levels_on(tcx: TyCtxt<'_>, owner: hir::OwnerId) -> ShallowLintLe
                 levels.add_id(hir::CRATE_HIR_ID);
                 levels.visit_mod(mod_, mod_.spans.inner_span, hir::CRATE_HIR_ID)
             }
+            hir::OwnerNode::AssocOpaqueTy(..) => unreachable!(),
         },
     }
 
