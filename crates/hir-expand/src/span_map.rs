@@ -1,4 +1,5 @@
 //! Span maps for real files and macro expansions.
+
 use span::{FileId, HirFileId, HirFileIdRepr, MacroFileId, Span, SyntaxContextId};
 use syntax::{AstNode, TextRange};
 use triomphe::Arc;

@@ -323,6 +323,9 @@ impl HirFileIdExt for HirFileId {
 }
 
 pub trait MacroFileIdExt {
+    fn is_env_or_option_env(&self, db: &dyn ExpandDatabase) -> bool;
+    fn is_include_like_macro(&self, db: &dyn ExpandDatabase) -> bool;
+    fn eager_arg(&self, db: &dyn ExpandDatabase) -> Option<MacroCallId>;
     fn expansion_level(self, db: &dyn ExpandDatabase) -> u32;
     /// If this is a macro call, returns the syntax node of the call.
     fn call_node(self, db: &dyn ExpandDatabase) -> InFile<SyntaxNode>;
@@ -389,18 +392,34 @@ impl MacroFileIdExt for MacroFileId {
         db.lookup_intern_macro_call(self.macro_call_id).def.is_include()
     }
 
+    fn is_include_like_macro(&self, db: &dyn ExpandDatabase) -> bool {
+        db.lookup_intern_macro_call(self.macro_call_id).def.is_include_like()
+    }
+
+    fn is_env_or_option_env(&self, db: &dyn ExpandDatabase) -> bool {
+        db.lookup_intern_macro_call(self.macro_call_id).def.is_env_or_option_env()
+    }
+
     fn is_eager(&self, db: &dyn ExpandDatabase) -> bool {
-        let loc: MacroCallLoc = db.lookup_intern_macro_call(self.macro_call_id);
+        let loc = db.lookup_intern_macro_call(self.macro_call_id);
         matches!(loc.def.kind, MacroDefKind::BuiltInEager(..))
     }
 
+    fn eager_arg(&self, db: &dyn ExpandDatabase) -> Option<MacroCallId> {
+        let loc = db.lookup_intern_macro_call(self.macro_call_id);
+        match &loc.kind {
+            MacroCallKind::FnLike { eager, .. } => eager.as_ref().map(|it| it.arg_id),
+            _ => None,
+        }
+    }
+
     fn is_attr_macro(&self, db: &dyn ExpandDatabase) -> bool {
-        let loc: MacroCallLoc = db.lookup_intern_macro_call(self.macro_call_id);
+        let loc = db.lookup_intern_macro_call(self.macro_call_id);
         matches!(loc.kind, MacroCallKind::Attr { .. })
     }
 
     fn is_derive_attr_pseudo_expansion(&self, db: &dyn ExpandDatabase) -> bool {
-        let loc: MacroCallLoc = db.lookup_intern_macro_call(self.macro_call_id);
+        let loc = db.lookup_intern_macro_call(self.macro_call_id);
         loc.def.is_attribute_derive()
     }
 }
@@ -477,6 +496,14 @@ impl MacroDefId {
 
     pub fn is_include(&self) -> bool {
         matches!(self.kind, MacroDefKind::BuiltInEager(expander, ..) if expander.is_include())
+    }
+
+    pub fn is_include_like(&self) -> bool {
+        matches!(self.kind, MacroDefKind::BuiltInEager(expander, ..) if expander.is_include_like())
+    }
+
+    pub fn is_env_or_option_env(&self) -> bool {
+        matches!(self.kind, MacroDefKind::BuiltInEager(expander, ..) if expander.is_env_or_option_env())
     }
 }
 
@@ -659,7 +686,7 @@ impl MacroCallKind {
 /// ExpansionInfo mainly describes how to map text range between src and expanded macro
 // FIXME: can be expensive to create, we should check the use sites and maybe replace them with
 // simpler function calls if the map is only used once
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct ExpansionInfo {
     pub expanded: InMacroFile<SyntaxNode>,
     /// The argument TokenTree or item for attributes
@@ -687,6 +714,22 @@ impl ExpansionInfo {
     }
 
     /// Maps the passed in file range down into a macro expansion if it is the input to a macro call.
+    ///
+    /// Note this does a linear search through the entire backing vector of the spanmap.
+    pub fn map_range_down_exact(
+        &self,
+        span: Span,
+    ) -> Option<InMacroFile<impl Iterator<Item = SyntaxToken> + '_>> {
+        let tokens = self
+            .exp_map
+            .ranges_with_span_exact(span)
+            .flat_map(move |range| self.expanded.value.covering_element(range).into_token());
+
+        Some(InMacroFile::new(self.expanded.file_id, tokens))
+    }
+
+    /// Maps the passed in file range down into a macro expansion if it is the input to a macro call.
+    /// Unlike [`map_range_down_exact`], this will consider spans that contain the given span.
     ///
     /// Note this does a linear search through the entire backing vector of the spanmap.
     pub fn map_range_down(
@@ -745,7 +788,7 @@ impl ExpansionInfo {
                 InFile::new(
                     self.arg.file_id,
                     arg_map
-                        .ranges_with_span(span)
+                        .ranges_with_span_exact(span)
                         .filter(|range| range.intersect(arg_range).is_some())
                         .collect(),
                 )

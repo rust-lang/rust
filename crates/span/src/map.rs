@@ -1,7 +1,7 @@
 //! A map that maps a span to every position in a file. Usually maps a span to some range of positions.
 //! Allows bidirectional lookup.
 
-use std::hash::Hash;
+use std::{fmt, hash::Hash};
 
 use stdx::{always, itertools::Itertools};
 use syntax::{TextRange, TextSize};
@@ -52,12 +52,31 @@ where
     /// Returns all [`TextRange`]s that correspond to the given span.
     ///
     /// Note this does a linear search through the entire backing vector.
-    pub fn ranges_with_span(&self, span: SpanData<S>) -> impl Iterator<Item = TextRange> + '_
+    pub fn ranges_with_span_exact(&self, span: SpanData<S>) -> impl Iterator<Item = TextRange> + '_
     where
         S: Copy,
     {
         self.spans.iter().enumerate().filter_map(move |(idx, &(end, s))| {
             if !s.eq_ignoring_ctx(span) {
+                return None;
+            }
+            let start = idx.checked_sub(1).map_or(TextSize::new(0), |prev| self.spans[prev].0);
+            Some(TextRange::new(start, end))
+        })
+    }
+
+    /// Returns all [`TextRange`]s whose spans contain the given span.
+    ///
+    /// Note this does a linear search through the entire backing vector.
+    pub fn ranges_with_span(&self, span: SpanData<S>) -> impl Iterator<Item = TextRange> + '_
+    where
+        S: Copy,
+    {
+        self.spans.iter().enumerate().filter_map(move |(idx, &(end, s))| {
+            if s.anchor != span.anchor {
+                return None;
+            }
+            if !s.range.contains_range(span.range) {
                 return None;
             }
             let start = idx.checked_sub(1).map_or(TextSize::new(0), |prev| self.spans[prev].0);
@@ -92,6 +111,16 @@ pub struct RealSpanMap {
     // FIXME: SortedVec<(TextSize, ErasedFileAstId)>?
     pairs: Box<[(TextSize, ErasedFileAstId)]>,
     end: TextSize,
+}
+
+impl fmt::Display for RealSpanMap {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        writeln!(f, "RealSpanMap({:?}):", self.file_id)?;
+        for span in self.pairs.iter() {
+            writeln!(f, "{}: {}", u32::from(span.0), span.1.into_raw().into_u32())?;
+        }
+        Ok(())
+    }
 }
 
 impl RealSpanMap {

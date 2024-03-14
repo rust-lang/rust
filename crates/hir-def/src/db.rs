@@ -298,6 +298,7 @@ fn macro_def(db: &dyn DefDatabase, id: MacroId) -> MacroDefId {
         }
     };
 
+    // FIXME: The def site spans here are wrong, those should point to the name, not the whole ast node
     match id {
         MacroId::Macro2Id(it) => {
             let loc: Macro2Loc = it.lookup(db);
@@ -315,7 +316,6 @@ fn macro_def(db: &dyn DefDatabase, id: MacroId) -> MacroDefId {
                 edition: loc.edition,
             }
         }
-
         MacroId::MacroRulesId(it) => {
             let loc: MacroRulesLoc = it.lookup(db);
 

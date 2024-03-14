@@ -560,17 +560,14 @@ impl<'a> Ctx<'a> {
 
     fn lower_macro_call(&mut self, m: &ast::MacroCall) -> Option<FileItemTreeId<MacroCall>> {
         let span_map = self.span_map();
-        let path = Interned::new(ModPath::from_src(self.db.upcast(), m.path()?, &mut |range| {
+        let path = m.path()?;
+        let range = path.syntax().text_range();
+        let path = Interned::new(ModPath::from_src(self.db.upcast(), path, &mut |range| {
             span_map.span_for_range(range).ctx
         })?);
         let ast_id = self.source_ast_id_map.ast_id(m);
         let expand_to = hir_expand::ExpandTo::from_call_site(m);
-        let res = MacroCall {
-            path,
-            ast_id,
-            expand_to,
-            call_site: span_map.span_for_range(m.syntax().text_range()),
-        };
+        let res = MacroCall { path, ast_id, expand_to, call_site: span_map.span_for_range(range) };
         Some(id(self.data().macro_calls.alloc(res)))
     }
 
