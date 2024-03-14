@@ -1213,16 +1213,16 @@ fn add_sanitizer_libraries(
         return;
     }
 
-    // On macOS the runtimes are distributed as dylibs which should be linked to
-    // both executables and dynamic shared objects. On most other platforms the
-    // runtimes are currently distributed as static libraries which should be
-    // linked to executables only.
     if matches!(crate_type, CrateType::Rlib | CrateType::Staticlib) {
         return;
     }
 
+    // On macOS and Windows using MSVC the runtimes are distributed as dylibs
+    // which should be linked to both executables and dynamic libraries.
+    // Everywhere else the runtimes are currently distributed as static
+    // libraries which should be linked to executables only.
     if matches!(crate_type, CrateType::Dylib | CrateType::Cdylib | CrateType::ProcMacro)
-        && (sess.target.is_like_osx || sess.target.is_like_msvc)
+        && !(sess.target.is_like_osx || sess.target.is_like_msvc)
     {
         return;
     }
