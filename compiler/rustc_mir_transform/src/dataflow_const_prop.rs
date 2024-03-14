@@ -393,7 +393,9 @@ impl<'a, 'tcx> ConstAnalysis<'a, 'tcx> {
                 }
             }
             Operand::Constant(box constant) => {
-                if let Ok(constant) = self.ecx.eval_mir_constant(&constant.const_, None, None) {
+                if let Ok(constant) =
+                    self.ecx.eval_mir_constant(&constant.const_, Some(constant.span), None)
+                {
                     self.assign_constant(state, place, constant, &[]);
                 }
             }

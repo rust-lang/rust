@@ -6,6 +6,12 @@ LL |     const C: () = panic!();
    |
    = note: this error originates in the macro `$crate::panic::panic_2015` which comes from the expansion of the macro `panic` (in Nightly builds, run with -Z macro-backtrace for more info)
 
+note: erroneous constant encountered
+  --> $DIR/collect-in-dead-vtable.rs:26:21
+   |
+LL |             let _ = Fail::<T>::C;
+   |                     ^^^^^^^^^^^^
+
 note: the above error was encountered while instantiating `fn <std::vec::Vec<i32> as MyTrait>::not_called`
   --> $DIR/collect-in-dead-vtable.rs:35:40
    |
