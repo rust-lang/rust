@@ -1052,6 +1052,7 @@ struct AsyncDestructorCtorShimBuilder<'tcx> {
     nop: Option<(DefId, Ty<'tcx>)>,
     fuse_combinator: Option<(DefId, EarlyBinder<Ty<'tcx>>)>,
     surface_combinator: Option<(DefId, DefId)>,
+    deep_combinator: Option<(DefId, DefId)>,
     slice_combinator: Option<(DefId, EarlyBinder<Ty<'tcx>>)>,
     deferred_combinator: Option<(DefId, EarlyBinder<Ty<'tcx>>)>,
     chain_combinator: Option<(DefId, EarlyBinder<Ty<'tcx>>)>,
@@ -1086,6 +1087,7 @@ impl<'tcx> AsyncDestructorCtorShimBuilder<'tcx> {
             nop: None,
             fuse_combinator: None,
             surface_combinator: None,
+            deep_combinator: None,
             slice_combinator: None,
             deferred_combinator: None,
             chain_combinator: None,
@@ -1177,30 +1179,30 @@ impl<'tcx> AsyncDestructorCtorShimBuilder<'tcx> {
 
     fn build_chain<I>(mut self, has_surface_async_drop: bool, elem_tys: I) -> Body<'tcx>
     where
-        I: Iterator<Item = Ty<'tcx>>,
+        I: Iterator<Item = Ty<'tcx>> + ExactSizeIterator,
     {
+        if elem_tys.len() == 0 {
+            return if has_surface_async_drop {
+                self.build_fused_surface()
+            } else {
+                self.build_nop()
+            };
+        }
+
+        let mut elems = elem_tys.enumerate().map(|(i, ty)| (FieldIdx::new(i), ty));
         if has_surface_async_drop {
             self.put_self();
             self.combine_surface();
+        } else {
+            let (field, ty) = elems.next().unwrap();
+            self.put_field(field, ty);
+            self.combine_deep();
         }
 
-        let elem_count = elem_tys
-            .enumerate()
-            .map(|(i, elem_ty)| {
-                self.put_field(FieldIdx::new(i), elem_ty);
-                self.combine_deferred();
-            })
-            .count();
-
-        self.put_nop();
-
-        for _ in 0..elem_count {
+        elems.for_each(|(field, elem_ty)| {
+            self.put_field(field, elem_ty);
             self.combine_chain();
-        }
-
-        if has_surface_async_drop {
-            self.combine_chain();
-        }
+        });
 
         self.return_()
     }
@@ -1366,6 +1368,21 @@ impl<'tcx> AsyncDestructorCtorShimBuilder<'tcx> {
         )
     }
 
+    fn combine_deep(&mut self) {
+        let tcx = self.tcx;
+        let (function, ty) = *self.deep_combinator.get_or_insert_with(|| {
+            (
+                tcx.require_lang_item(LangItem::AsyncDropInPlace, Some(self.span)),
+                tcx.associated_item_def_ids(
+                    tcx.require_lang_item(LangItem::AsyncDestruct, Some(self.span)),
+                )[0],
+            )
+        });
+        self.apply_combinator::<1, _>(function, |tcx, args| {
+            Ty::new_projection(tcx, ty, args.iter().copied())
+        })
+    }
+
     fn combine_fuse(&mut self) {
         let tcx = self.tcx;
         let (function, ty) = *self.fuse_combinator.get_or_insert_with(|| {
@@ -1403,8 +1420,8 @@ impl<'tcx> AsyncDestructorCtorShimBuilder<'tcx> {
         let tcx = self.tcx;
         let (function, ty) = *self.chain_combinator.get_or_insert_with(|| {
             (
-                tcx.require_lang_item(LangItem::FutureChainCtor, Some(self.span)),
-                tcx.type_of(tcx.require_lang_item(LangItem::FutureChain, Some(self.span))),
+                tcx.require_lang_item(LangItem::AsyncDropChainCtor, Some(self.span)),
+                tcx.type_of(tcx.require_lang_item(LangItem::AsyncDropChain, Some(self.span))),
             )
         });
         self.apply_combinator::<2, _>(function, |tcx, args| ty.instantiate(tcx, args))

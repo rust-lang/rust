@@ -170,8 +170,8 @@ language_item_table! {
     AsyncDropSliceCtor,      sym::async_drop_slice_ctor, async_drop_slice_fn,      Target::Fn,             GenericRequirement::Exact(1);
     DeferredAsyncDrop,       sym::deferred_async_drop, deferred_async_drop_type,   Target::Enum,           GenericRequirement::Exact(1);
     DeferredAsyncDropCtor,   sym::deferred_async_drop_ctor, deferred_async_drop_fn, Target::Fn,            GenericRequirement::Exact(1);
-    FutureChain,             sym::future_chain,        future_chain_type,          Target::Struct,         GenericRequirement::Exact(2);
-    FutureChainCtor,         sym::future_chain_ctor,   future_chain_ctor,          Target::Fn,             GenericRequirement::Exact(2);
+    AsyncDropChain,          sym::async_drop_chain,    async_drop_chain_type,      Target::Enum,           GenericRequirement::Exact(2);
+    AsyncDropChainCtor,      sym::async_drop_chain_ctor, async_drop_chain_ctor,    Target::Fn,             GenericRequirement::Exact(2);
     AsyncDropNop,            sym::async_drop_nop,      async_drop_nop_type,        Target::Struct,         GenericRequirement::Exact(0);
     AsyncDropNopCtor,        sym::async_drop_nop_ctor, async_drop_nop_ctor,        Target::Fn,             GenericRequirement::Exact(0);
     AsyncDropFuse,           sym::async_drop_fuse,     async_drop_fuse_type,       Target::Struct,         GenericRequirement::Exact(1);

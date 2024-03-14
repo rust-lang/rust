@@ -2403,32 +2403,47 @@ impl<'tcx> Ty<'tcx> {
 
     fn chain_async_destructor_ty<I>(
         tcx: TyCtxt<'tcx>,
-        tys: I,
+        mut tys: I,
         surface_drop: Option<Ty<'tcx>>,
     ) -> Ty<'tcx>
     where
-        I: Iterator<Item = Ty<'tcx>> + DoubleEndedIterator,
+        I: Iterator<Item = Ty<'tcx>> + ExactSizeIterator,
     {
-        let deferred_async_drop =
-            tcx.type_of(tcx.require_lang_item(hir::LangItem::DeferredAsyncDrop, None));
-        let future_chain = tcx.type_of(tcx.require_lang_item(hir::LangItem::FutureChain, None));
+        // - `Nop` if empty
+        // - `Fuse<<Self as AsyncDrop>::Dropper>` if surface drop only
+        // - `Chain<AsyncDropInPlace<F0>, F1>...` if any without surface drop
+        // - `Chain<Chain<<Self as AsyncDrop>::Dropper, F0>, F1>...` if any with surface drop
 
-        tys.rev()
-            .map(|ty| deferred_async_drop.instantiate(tcx, &[ty.into()]))
-            .chain(surface_drop.map(|self_ty| {
-                let assoc_items = tcx
-                    .associated_item_def_ids(tcx.require_lang_item(hir::LangItem::AsyncDrop, None));
-                Ty::new_projection(
-                    tcx,
-                    assoc_items[0],
-                    [ty::GenericArg::from(self_ty), tcx.lifetimes.re_static.into()],
-                )
-            }))
-            .fold(
-                tcx.type_of(tcx.require_lang_item(hir::LangItem::AsyncDropNop, None))
-                    .instantiate_identity(),
-                |dtor, ty| future_chain.instantiate(tcx, &[ty.into(), dtor.into()]),
+        let surface_drop = surface_drop.map(|self_ty| {
+            Ty::new_projection(
+                tcx,
+                tcx.associated_item_def_ids(tcx.require_lang_item(LangItem::AsyncDrop, None))[0],
+                [ty::GenericArg::from(self_ty), tcx.lifetimes.re_static.into()],
             )
+        });
+
+        if tys.len() == 0 {
+            return match surface_drop {
+                None => tcx
+                    .type_of(tcx.require_lang_item(LangItem::AsyncDropNop, None))
+                    .instantiate_identity(),
+                Some(surface_drop) => tcx
+                    .type_of(tcx.require_lang_item(LangItem::AsyncDropFuse, None))
+                    .instantiate(tcx, &[surface_drop.into()]),
+            };
+        }
+
+        let first_drop = surface_drop.unwrap_or_else(|| {
+            Ty::new_projection(
+                tcx,
+                tcx.associated_item_def_ids(tcx.require_lang_item(LangItem::AsyncDestruct, None))
+                    [0],
+                [tys.next().unwrap()],
+            )
+        });
+
+        let chain = tcx.type_of(tcx.require_lang_item(LangItem::AsyncDropChain, None));
+        tys.fold(first_drop, |dtor, ty| chain.instantiate(tcx, &[dtor.into(), ty.into()]))
     }
 
     /// Returns the type of metadata for (potentially fat) pointers to this type,
