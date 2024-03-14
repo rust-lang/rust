@@ -13,4 +13,4 @@ const fn bar() {}
 
 pub const BAR: () = bar();
 
-// CHECK: define{{.*}}bar{{.*}}
+// CHECK-NOT: define{{.*}}bar{{.*}}
