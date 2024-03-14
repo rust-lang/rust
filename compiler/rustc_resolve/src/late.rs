@@ -21,6 +21,7 @@ use rustc_hir::def::{self, CtorKind, DefKind, LifetimeRes, NonMacroAttrKind, Par
 use rustc_hir::def_id::{DefId, LocalDefId, CRATE_DEF_ID, LOCAL_CRATE};
 use rustc_hir::{MissingLifetimeKind, PrimTy, TraitCandidate};
 use rustc_middle::middle::resolve_bound_vars::Set1;
+use rustc_middle::ty::DelegationFnSig;
 use rustc_middle::{bug, span_bug};
 use rustc_session::config::{CrateType, ResolveDocLinks};
 use rustc_session::lint;
@@ -4749,12 +4750,13 @@ struct ItemInfoCollector<'a, 'b, 'tcx> {
 
 impl ItemInfoCollector<'_, '_, '_> {
     fn collect_fn_info(&mut self, sig: &FnSig, id: NodeId) {
-        let def_id = self.r.local_def_id(id);
-        self.r.fn_parameter_counts.insert(def_id, sig.decl.inputs.len());
-
-        if sig.decl.has_self() {
-            self.r.has_self.insert(def_id);
-        }
+        let sig = DelegationFnSig {
+            header: sig.header,
+            param_count: sig.decl.inputs.len(),
+            has_self: sig.decl.has_self(),
+            c_variadic: sig.decl.c_variadic(),
+        };
+        self.r.delegation_fn_sigs.insert(self.r.local_def_id(id), sig);
     }
 }
 

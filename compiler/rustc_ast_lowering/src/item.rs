@@ -1344,7 +1344,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         (generics, hir::FnSig { header, decl, span: self.lower_span(sig.span) })
     }
 
-    fn lower_fn_header(&mut self, h: FnHeader) -> hir::FnHeader {
+    pub(super) fn lower_fn_header(&mut self, h: FnHeader) -> hir::FnHeader {
         let asyncness = if let Some(CoroutineKind::Async { span, .. }) = h.coroutine_kind {
             hir::IsAsync::Async(span)
         } else {
