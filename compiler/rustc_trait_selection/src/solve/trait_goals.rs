@@ -250,6 +250,7 @@ impl<'tcx> assembly::GoalKind<'tcx> for TraitPredicate<'tcx> {
     ) -> QueryResult<'tcx> {
         let self_ty = goal.predicate.self_ty();
         match goal.predicate.polarity {
+            // impl FnPtr for FnPtr {}
             ty::ImplPolarity::Positive => {
                 if self_ty.is_fn_ptr() {
                     ecx.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
@@ -257,6 +258,7 @@ impl<'tcx> assembly::GoalKind<'tcx> for TraitPredicate<'tcx> {
                     Err(NoSolution)
                 }
             }
+            //  impl !FnPtr for T where T != FnPtr && T is rigid {}
             ty::ImplPolarity::Negative => {
                 // If a type is rigid and not a fn ptr, then we know for certain
                 // that it does *not* implement `FnPtr`.
@@ -374,6 +376,12 @@ impl<'tcx> assembly::GoalKind<'tcx> for TraitPredicate<'tcx> {
         }
     }
 
+    /// ```rust, ignore (not valid rust syntax)
+    /// impl Tuple for () {}
+    /// impl Tuple for (T1,) {}
+    /// impl Tuple for (T1, T2) {}
+    /// impl Tuple for (T1, .., Tn) {}
+    /// ```
     fn consider_builtin_tuple_candidate(
         ecx: &mut EvalCtxt<'_, 'tcx>,
         goal: Goal<'tcx, Self>,

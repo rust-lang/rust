@@ -5,7 +5,7 @@ use rustc_middle::mir::interpret::InterpErrorInfo;
 use rustc_middle::query::TyCtxtAt;
 use rustc_middle::ty::{self, Ty};
 
-use crate::interpret::{format_interp_error, InterpCx};
+use crate::interpret::format_interp_error;
 
 mod error;
 mod eval_queries;

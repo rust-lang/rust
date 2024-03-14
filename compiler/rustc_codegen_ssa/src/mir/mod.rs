@@ -211,7 +211,8 @@ pub fn codegen_mir<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
 
     // It may seem like we should iterate over `required_consts` to ensure they all successfully
     // evaluate; however, the `MirUsedCollector` already did that during the collection phase of
-    // monomorphization so we don't have to do it again.
+    // monomorphization, and if there is an error during collection then codegen never starts -- so
+    // we don't have to do it again.
 
     fx.per_local_var_debug_info = fx.compute_per_local_var_debug_info(&mut start_bx);
 

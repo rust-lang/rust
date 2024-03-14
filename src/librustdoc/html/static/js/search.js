@@ -81,6 +81,13 @@ const longItemTypes = [
 const TY_GENERIC = itemTypes.indexOf("generic");
 const ROOT_PATH = typeof window !== "undefined" ? window.rootPath : "../";
 
+// Hard limit on how deep to recurse into generics when doing type-driven search.
+// This needs limited, partially because
+// a search for `Ty` shouldn't match `WithInfcx<ParamEnvAnd<Vec<ConstTy<Interner<Ty=Ty>>>>>`,
+// but mostly because this is the simplest and most principled way to limit the number
+// of permutations we need to check.
+const UNBOXING_LIMIT = 5;
+
 // In the search display, allows to switch between tabs.
 function printTab(nb) {
     let iter = 0;
@@ -1458,10 +1465,23 @@ function initSearch(rawSearchIndex) {
          * @param {Map<number,number>|null} mgensIn
          *     - Map functions generics to query generics (never modified).
          * @param {null|Map<number,number> -> bool} solutionCb - Called for each `mgens` solution.
+         * @param {number} unboxingDepth
+         *     - Limit checks that Ty matches Vec<Ty>,
+         *       but not Vec<ParamEnvAnd<WithInfcx<ConstTy<Interner<Ty=Ty>>>>>
          *
          * @return {boolean} - Returns true if a match, false otherwise.
          */
-        function unifyFunctionTypes(fnTypesIn, queryElems, whereClause, mgensIn, solutionCb) {
+        function unifyFunctionTypes(
+            fnTypesIn,
+            queryElems,
+            whereClause,
+            mgensIn,
+            solutionCb,
+            unboxingDepth
+        ) {
+            if (unboxingDepth >= UNBOXING_LIMIT) {
+                return false;
+            }
             /**
              * @type Map<integer, integer>|null
              */
@@ -1480,7 +1500,7 @@ function initSearch(rawSearchIndex) {
                 && queryElems[0].bindings.size === 0) {
                 const queryElem = queryElems[0];
                 for (const fnType of fnTypesIn) {
-                    if (!unifyFunctionTypeIsMatchCandidate(fnType, queryElem, whereClause, mgens)) {
+                    if (!unifyFunctionTypeIsMatchCandidate(fnType, queryElem, mgens)) {
                         continue;
                     }
                     if (fnType.id < 0 && queryElem.id < 0) {
@@ -1499,7 +1519,13 @@ function initSearch(rawSearchIndex) {
                     }
                 }
                 for (const fnType of fnTypesIn) {
-                    if (!unifyFunctionTypeIsUnboxCandidate(fnType, queryElem, whereClause, mgens)) {
+                    if (!unifyFunctionTypeIsUnboxCandidate(
+                        fnType,
+                        queryElem,
+                        whereClause,
+                        mgens,
+                        unboxingDepth + 1
+                    )) {
                         continue;
                     }
                     if (fnType.id < 0) {
@@ -1514,7 +1540,8 @@ function initSearch(rawSearchIndex) {
                             queryElems,
                             whereClause,
                             mgensScratch,
-                            solutionCb
+                            solutionCb,
+                            unboxingDepth + 1
                         )) {
                             return true;
                         }
@@ -1523,7 +1550,8 @@ function initSearch(rawSearchIndex) {
                         queryElems,
                         whereClause,
                         mgens ? new Map(mgens) : null,
-                        solutionCb
+                        solutionCb,
+                        unboxingDepth + 1
                     )) {
                         return true;
                     }
@@ -1559,7 +1587,7 @@ function initSearch(rawSearchIndex) {
             let queryElemsTmp = null;
             for (let i = flast; i >= 0; i -= 1) {
                 const fnType = fnTypes[i];
-                if (!unifyFunctionTypeIsMatchCandidate(fnType, queryElem, whereClause, mgens)) {
+                if (!unifyFunctionTypeIsMatchCandidate(fnType, queryElem, mgens)) {
                     continue;
                 }
                 let mgensScratch;
@@ -1596,7 +1624,8 @@ function initSearch(rawSearchIndex) {
                             fnType,
                             queryElem,
                             whereClause,
-                            mgensScratch
+                            mgensScratch,
+                            unboxingDepth
                         );
                         if (!solution) {
                             return false;
@@ -1608,14 +1637,16 @@ function initSearch(rawSearchIndex) {
                                 queryElem.generics,
                                 whereClause,
                                 simplifiedMgens,
-                                solutionCb
+                                solutionCb,
+                                unboxingDepth
                             );
                             if (passesUnification) {
                                 return true;
                             }
                         }
                         return false;
-                    }
+                    },
+                    unboxingDepth
                 );
                 if (passesUnification) {
                     return true;
@@ -1627,7 +1658,13 @@ function initSearch(rawSearchIndex) {
             }
             for (let i = flast; i >= 0; i -= 1) {
                 const fnType = fnTypes[i];
-                if (!unifyFunctionTypeIsUnboxCandidate(fnType, queryElem, whereClause, mgens)) {
+                if (!unifyFunctionTypeIsUnboxCandidate(
+                    fnType,
+                    queryElem,
+                    whereClause,
+                    mgens,
+                    unboxingDepth + 1
+                )) {
                     continue;
                 }
                 let mgensScratch;
@@ -1651,7 +1688,8 @@ function initSearch(rawSearchIndex) {
                     queryElems,
                     whereClause,
                     mgensScratch,
-                    solutionCb
+                    solutionCb,
+                    unboxingDepth + 1
                 );
                 if (passesUnification) {
                     return true;
@@ -1670,11 +1708,10 @@ function initSearch(rawSearchIndex) {
          *
          * @param {FunctionType} fnType
          * @param {QueryElement} queryElem
-         * @param {[FunctionSearchType]} whereClause - Trait bounds for generic items.
          * @param {Map<number,number>|null} mgensIn - Map functions generics to query generics.
          * @returns {boolean}
          */
-        function unifyFunctionTypeIsMatchCandidate(fnType, queryElem, whereClause, mgensIn) {
+        function unifyFunctionTypeIsMatchCandidate(fnType, queryElem, mgensIn) {
             // type filters look like `trait:Read` or `enum:Result`
             if (!typePassesFilter(queryElem.typeFilter, fnType.ty)) {
                 return false;
@@ -1775,9 +1812,16 @@ function initSearch(rawSearchIndex) {
          * @param {[FunctionType]} whereClause - Trait bounds for generic items.
          * @param {Map<number,number>} mgensIn - Map functions generics to query generics.
          *                                            Never modified.
+         * @param {number} unboxingDepth
          * @returns {false|{mgens: [Map<number,number>], simplifiedGenerics: [FunctionType]}}
          */
-        function unifyFunctionTypeCheckBindings(fnType, queryElem, whereClause, mgensIn) {
+        function unifyFunctionTypeCheckBindings(
+            fnType,
+            queryElem,
+            whereClause,
+            mgensIn,
+            unboxingDepth
+        ) {
             if (fnType.bindings.size < queryElem.bindings.size) {
                 return false;
             }
@@ -1804,7 +1848,8 @@ function initSearch(rawSearchIndex) {
                                 // return `false` makes unifyFunctionTypes return the full set of
                                 // possible solutions
                                 return false;
-                            }
+                            },
+                            unboxingDepth
                         );
                         return newSolutions;
                     });
@@ -1834,9 +1879,19 @@ function initSearch(rawSearchIndex) {
          * @param {QueryElement} queryElem
          * @param {[FunctionType]} whereClause - Trait bounds for generic items.
          * @param {Map<number,number>|null} mgens - Map functions generics to query generics.
+         * @param {number} unboxingDepth
          * @returns {boolean}
          */
-        function unifyFunctionTypeIsUnboxCandidate(fnType, queryElem, whereClause, mgens) {
+        function unifyFunctionTypeIsUnboxCandidate(
+            fnType,
+            queryElem,
+            whereClause,
+            mgens,
+            unboxingDepth
+        ) {
+            if (unboxingDepth >= UNBOXING_LIMIT) {
+                return false;
+            }
             if (fnType.id < 0 && queryElem.id >= 0) {
                 if (!whereClause) {
                     return false;
@@ -1858,14 +1913,21 @@ function initSearch(rawSearchIndex) {
                     whereClause[(-fnType.id) - 1],
                     queryElem,
                     whereClause,
-                    mgensTmp
+                    mgensTmp,
+                    unboxingDepth
                 );
             } else if (fnType.generics.length > 0 || fnType.bindings.size > 0) {
                 const simplifiedGenerics = [
                     ...fnType.generics,
                     ...Array.from(fnType.bindings.values()).flat(),
                 ];
-                return checkIfInList(simplifiedGenerics, queryElem, whereClause, mgens);
+                return checkIfInList(
+                    simplifiedGenerics,
+                    queryElem,
+                    whereClause,
+                    mgens,
+                    unboxingDepth
+                );
             }
             return false;
         }
@@ -1877,13 +1939,14 @@ function initSearch(rawSearchIndex) {
           * @param {Array<FunctionType>} list
           * @param {QueryElement} elem          - The element from the parsed query.
           * @param {[FunctionType]} whereClause - Trait bounds for generic items.
-         * @param {Map<number,number>|null} mgens - Map functions generics to query generics.
+          * @param {Map<number,number>|null} mgens - Map functions generics to query generics.
+          * @param {number} unboxingDepth
           *
           * @return {boolean} - Returns true if found, false otherwise.
           */
-        function checkIfInList(list, elem, whereClause, mgens) {
+        function checkIfInList(list, elem, whereClause, mgens, unboxingDepth) {
             for (const entry of list) {
-                if (checkType(entry, elem, whereClause, mgens)) {
+                if (checkType(entry, elem, whereClause, mgens, unboxingDepth)) {
                     return true;
                 }
             }
@@ -1897,14 +1960,23 @@ function initSearch(rawSearchIndex) {
           * @param {Row} row
           * @param {QueryElement} elem          - The element from the parsed query.
           * @param {[FunctionType]} whereClause - Trait bounds for generic items.
-         * @param {Map<number,number>|null} mgens - Map functions generics to query generics.
+          * @param {Map<number,number>|null} mgens - Map functions generics to query generics.
           *
           * @return {boolean} - Returns true if the type matches, false otherwise.
           */
-        function checkType(row, elem, whereClause, mgens) {
+        function checkType(row, elem, whereClause, mgens, unboxingDepth) {
+            if (unboxingDepth >= UNBOXING_LIMIT) {
+                return false;
+            }
             if (row.bindings.size === 0 && elem.bindings.size === 0) {
-                if (elem.id < 0) {
-                    return row.id < 0 || checkIfInList(row.generics, elem, whereClause, mgens);
+                if (elem.id < 0 && mgens === null) {
+                    return row.id < 0 || checkIfInList(
+                        row.generics,
+                        elem,
+                        whereClause,
+                        mgens,
+                        unboxingDepth + 1
+                    );
                 }
                 if (row.id > 0 && elem.id > 0 && elem.pathWithoutLast.length === 0 &&
                     typePassesFilter(elem.typeFilter, row.ty) && elem.generics.length === 0 &&
@@ -1916,11 +1988,12 @@ function initSearch(rawSearchIndex) {
                         row.generics,
                         elem,
                         whereClause,
-                        mgens
+                        mgens,
+                        unboxingDepth
                     );
                 }
             }
-            return unifyFunctionTypes([row], [elem], whereClause, mgens);
+            return unifyFunctionTypes([row], [elem], whereClause, mgens, null, unboxingDepth);
         }
 
         /**
@@ -2135,9 +2208,9 @@ function initSearch(rawSearchIndex) {
             );
             if (tfpDist !== null) {
                 const in_args = row.type && row.type.inputs
-                    && checkIfInList(row.type.inputs, elem, row.type.where_clause);
+                    && checkIfInList(row.type.inputs, elem, row.type.where_clause, null, 0);
                 const returned = row.type && row.type.output
-                    && checkIfInList(row.type.output, elem, row.type.where_clause);
+                    && checkIfInList(row.type.output, elem, row.type.where_clause, null, 0);
                 if (in_args) {
                     results_in_args.max_dist = Math.max(results_in_args.max_dist || 0, tfpDist);
                     const maxDist = results_in_args.size < MAX_RESULTS ?
@@ -2223,9 +2296,12 @@ function initSearch(rawSearchIndex) {
                         row.type.output,
                         parsedQuery.returned,
                         row.type.where_clause,
-                        mgens
+                        mgens,
+                        null,
+                        0 // unboxing depth
                     );
-                }
+                },
+                0 // unboxing depth
             )) {
                 return;
             }
