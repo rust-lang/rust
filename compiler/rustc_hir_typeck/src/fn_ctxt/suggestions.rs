@@ -1599,7 +1599,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
     fn is_local_statement(&self, id: hir::HirId) -> bool {
         let node = self.tcx.hir_node(id);
-        matches!(node, Node::Stmt(Stmt { kind: StmtKind::Local(..), .. }))
+        matches!(node, Node::Stmt(Stmt { kind: StmtKind::Let(..), .. }))
     }
 
     /// Suggest that `&T` was cloned instead of `T` because `T` does not implement `Clone`,

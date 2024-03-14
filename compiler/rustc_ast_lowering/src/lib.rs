@@ -2356,7 +2356,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             span: self.lower_span(span),
             ty: None,
         };
-        self.stmt(span, hir::StmtKind::Local(self.arena.alloc(local)))
+        self.stmt(span, hir::StmtKind::Let(self.arena.alloc(local)))
     }
 
     fn block_expr(&mut self, expr: &'hir hir::Expr<'hir>) -> &'hir hir::Block<'hir> {

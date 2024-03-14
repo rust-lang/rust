@@ -148,7 +148,7 @@ fn check_manual_swap(cx: &LateContext<'_>, block: &Block<'_>) {
     }
 
     for [s1, s2, s3] in block.stmts.array_windows::<3>() {
-        if let StmtKind::Local(tmp) = s1.kind
+        if let StmtKind::Let(tmp) = s1.kind
             // let t = foo();
             && let Some(tmp_init) = tmp.init
             && let PatKind::Binding(.., ident, None) = tmp.pat.kind
@@ -243,7 +243,7 @@ fn parse<'a, 'hir>(stmt: &'a Stmt<'hir>) -> Option<(ExprOrIdent<'hir>, &'a Expr<
         if let ExprKind::Assign(lhs, rhs, _) = expr.kind {
             return Some((ExprOrIdent::Expr(lhs), rhs));
         }
-    } else if let StmtKind::Local(expr) = stmt.kind {
+    } else if let StmtKind::Let(expr) = stmt.kind {
         if let Some(rhs) = expr.init {
             if let PatKind::Binding(_, _, ident_l, _) = expr.pat.kind {
                 return Some((ExprOrIdent::Ident(ident_l), rhs));

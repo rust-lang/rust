@@ -174,7 +174,7 @@ impl NoEffect {
                 );
                 return true;
             }
-        } else if let StmtKind::Local(local) = stmt.kind {
+        } else if let StmtKind::Let(local) = stmt.kind {
             if !is_lint_allowed(cx, NO_EFFECT_UNDERSCORE_BINDING, local.hir_id)
                 && !matches!(local.source, LocalSource::AsyncFn)
                 && let Some(init) = local.init

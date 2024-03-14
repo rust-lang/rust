@@ -724,7 +724,7 @@ impl<'a, 'tcx> PrintVisitor<'a, 'tcx> {
         }
 
         match stmt.value.kind {
-            StmtKind::Local(local) => {
+            StmtKind::Let(local) => {
                 bind!(self, local);
                 kind!("Local({local})");
                 self.option(field!(local.init), "init", |init| {
