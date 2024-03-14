@@ -2617,6 +2617,15 @@ impl Macro {
         }
     }
 
+    pub fn is_env_or_option_env(&self, db: &dyn HirDatabase) -> bool {
+        match self.id {
+            MacroId::Macro2Id(it) => {
+                matches!(it.lookup(db.upcast()).expander, MacroExpander::BuiltInEager(eager) if eager.is_env_or_option_env())
+            }
+            MacroId::MacroRulesId(_) | MacroId::ProcMacroId(_) => false,
+        }
+    }
+
     pub fn is_attr(&self, db: &dyn HirDatabase) -> bool {
         matches!(self.kind(db), MacroKind::Attr)
     }

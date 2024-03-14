@@ -44,7 +44,7 @@ pub const FIXUP_ERASED_FILE_AST_ID_MARKER: ErasedFileAstId =
 
 pub type Span = SpanData<SyntaxContextId>;
 
-#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
+#[derive(Clone, Copy, PartialEq, Eq, Hash)]
 pub struct SpanData<Ctx> {
     /// The text range of this span, relative to the anchor.
     /// We need the anchor for incrementality, as storing absolute ranges will require
@@ -54,6 +54,26 @@ pub struct SpanData<Ctx> {
     pub anchor: SpanAnchor,
     /// The syntax context of the span.
     pub ctx: Ctx,
+}
+
+impl<Ctx: fmt::Debug> fmt::Debug for SpanData<Ctx> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        if f.alternate() {
+            fmt::Debug::fmt(&self.anchor.file_id.index(), f)?;
+            f.write_char(':')?;
+            fmt::Debug::fmt(&self.anchor.ast_id.into_raw(), f)?;
+            f.write_char('@')?;
+            fmt::Debug::fmt(&self.range, f)?;
+            f.write_char('#')?;
+            self.ctx.fmt(f)
+        } else {
+            f.debug_struct("SpanData")
+                .field("range", &self.range)
+                .field("anchor", &self.anchor)
+                .field("ctx", &self.ctx)
+                .finish()
+        }
+    }
 }
 
 impl<Ctx: Copy> SpanData<Ctx> {

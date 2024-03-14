@@ -201,10 +201,12 @@ impl Attr {
         span_map: SpanMapRef<'_>,
         id: AttrId,
     ) -> Option<Attr> {
-        let path = Interned::new(ModPath::from_src(db, ast.path()?, &mut |range| {
+        let path = ast.path()?;
+        let range = path.syntax().text_range();
+        let path = Interned::new(ModPath::from_src(db, path, &mut |range| {
             span_map.span_for_range(range).ctx
         })?);
-        let span = span_map.span_for_range(ast.syntax().text_range());
+        let span = span_map.span_for_range(range);
         let input = if let Some(ast::Expr::Literal(lit)) = ast.expr() {
             let value = match lit.kind() {
                 ast::LiteralKind::String(string) => string.value()?.into(),

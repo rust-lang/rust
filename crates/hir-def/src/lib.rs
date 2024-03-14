@@ -1342,16 +1342,17 @@ impl AsMacroCall for InFile<&ast::MacroCall> {
         let ast_id = AstId::new(self.file_id, db.ast_id_map(self.file_id).ast_id(self.value));
         let span_map = db.span_map(self.file_id);
         let path = self.value.path().and_then(|path| {
-            path::ModPath::from_src(db, path, &mut |range| {
+            let range = path.syntax().text_range();
+            let mod_path = path::ModPath::from_src(db, path, &mut |range| {
                 span_map.as_ref().span_for_range(range).ctx
-            })
+            })?;
+            let call_site = span_map.span_for_range(range);
+            Some((call_site, mod_path))
         });
 
-        let Some(path) = path else {
+        let Some((call_site, path)) = path else {
             return Ok(ExpandResult::only_err(ExpandError::other("malformed macro invocation")));
         };
-
-        let call_site = span_map.span_for_range(self.value.syntax().text_range());
 
         macro_call_as_call_id_with_eager(
             db,

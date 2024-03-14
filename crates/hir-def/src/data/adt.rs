@@ -191,9 +191,9 @@ impl StructData {
         let krate = loc.container.krate;
         let item_tree = loc.id.item_tree(db);
         let repr = repr_from_value(db, krate, &item_tree, ModItem::from(loc.id.value).into());
-        let cfg_options = db.crate_graph()[loc.container.krate].cfg_options.clone();
+        let cfg_options = db.crate_graph()[krate].cfg_options.clone();
 
-        let attrs = item_tree.attrs(db, loc.container.krate, ModItem::from(loc.id.value).into());
+        let attrs = item_tree.attrs(db, krate, ModItem::from(loc.id.value).into());
 
         let mut flags = StructFlags::NO_FLAGS;
         if attrs.by_key("rustc_has_incoherent_inherent_impls").exists() {
@@ -248,9 +248,9 @@ impl StructData {
         let krate = loc.container.krate;
         let item_tree = loc.id.item_tree(db);
         let repr = repr_from_value(db, krate, &item_tree, ModItem::from(loc.id.value).into());
-        let cfg_options = db.crate_graph()[loc.container.krate].cfg_options.clone();
+        let cfg_options = db.crate_graph()[krate].cfg_options.clone();
 
-        let attrs = item_tree.attrs(db, loc.container.krate, ModItem::from(loc.id.value).into());
+        let attrs = item_tree.attrs(db, krate, ModItem::from(loc.id.value).into());
         let mut flags = StructFlags::NO_FLAGS;
         if attrs.by_key("rustc_has_incoherent_inherent_impls").exists() {
             flags |= StructFlags::IS_RUSTC_HAS_INCOHERENT_INHERENT_IMPL;
