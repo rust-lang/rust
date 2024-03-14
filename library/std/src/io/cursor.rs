@@ -51,6 +51,8 @@ use crate::io::{self, BorrowedCursor, ErrorKind, IoSlice, IoSliceMut, SeekFrom};
 /// // We might want to use a BufReader here for efficiency, but let's
 /// // keep this example focused.
 /// let mut file = File::create("foo.txt")?;
+/// // First, we need to allocate 10 bytes to be able to write into.
+/// file.set_len(10)?;
 ///
 /// write_ten_bytes_at_end(&mut file)?;
 /// # Ok(())
