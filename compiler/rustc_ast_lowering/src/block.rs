@@ -32,7 +32,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         let mut expr = None;
         while let [s, tail @ ..] = ast_stmts {
             match &s.kind {
-                StmtKind::Local(local) => {
+                StmtKind::Let(local) => {
                     let hir_id = self.lower_node_id(s.id);
                     let local = self.lower_local(local);
                     self.alias_attrs(hir_id, local.hir_id);
