@@ -6,8 +6,8 @@
 
 // ignore-tidy-linelength
 
-// NONMSVC: ![[#FILE:]] = !DIFile({{.*}}filename:{{.*}}/issue-98678-closure-coroutine.rs{{".*}})
-// MSVC: ![[#FILE:]] = !DIFile({{.*}}filename:{{.*}}\\issue-98678-closure-coroutine.rs{{".*}})
+// NONMSVC-DAG: ![[#FILE:]] = !DIFile({{.*}}filename:{{.*}}/issue-98678-closure-coroutine.rs{{".*}})
+// MSVC-DAG: ![[#FILE:]] = !DIFile({{.*}}filename:{{.*}}\\issue-98678-closure-coroutine.rs{{".*}})
 
 pub fn foo() {
     // NONMSVC-DAG: !DICompositeType({{.*"}}{closure_env#0}{{".*}}file: ![[#FILE]]{{.*}}line: [[# @LINE + 2]],
@@ -15,8 +15,8 @@ pub fn foo() {
     let closure = |x| x;
     closure(0);
 
-    // NONMSVC-DAG: !DISubprogram({{.*"[{]}}coroutine_env#1{{[}]".*}}file: ![[#FILE]]{{.*}}line: [[# @LINE + 2]],
-    // MSVC-DAG: !DISubprogram({{.*".*foo::}}coroutine_env$1>{{".*}}file: ![[#FILE]]{{.*}}line: [[# @LINE + 1]],
+    // NONMSVC-DAG: !DICompositeType({{.*"[{]}}coroutine_env#1{{[}]".*}}file: ![[#FILE]]{{.*}}line: [[# @LINE + 2]],
+    // MSVC-DAG: !DICompositeType({{.*".*foo::}}coroutine_env$1>{{".*}}file: ![[#FILE]]{{.*}}line: [[# @LINE + 1]],
     let _coroutine = #[coroutine]
     || yield 1;
 }
