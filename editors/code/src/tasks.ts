@@ -2,7 +2,6 @@ import * as vscode from "vscode";
 import * as toolchain from "./toolchain";
 import type { Config } from "./config";
 import { log } from "./util";
-import { unwrapUndefinable } from "./undefinable";
 
 // This ends up as the `type` key in tasks.json. RLS also uses `cargo` and
 // our configuration should be compatible with it so use the same key.
@@ -10,10 +9,10 @@ export const TASK_TYPE = "cargo";
 export const TASK_SOURCE = "rust";
 
 export interface RustTargetDefinition extends vscode.TaskDefinition {
+    program: string;
     args: string[];
     cwd?: string;
     env?: { [key: string]: string };
-    overrideCargo?: string;
 }
 
 class RustTaskProvider implements vscode.TaskProvider {
@@ -38,12 +37,14 @@ class RustTaskProvider implements vscode.TaskProvider {
             { command: "run", group: undefined },
         ];
 
+        const cargoPath = await toolchain.cargoPath();
+
         const tasks: vscode.Task[] = [];
         for (const workspaceTarget of vscode.workspace.workspaceFolders || []) {
             for (const def of defs) {
                 const vscodeTask = await buildRustTask(
                     workspaceTarget,
-                    { type: TASK_TYPE, args: [def.command] },
+                    { type: TASK_TYPE, program: cargoPath, args: [def.command] },
                     `cargo ${def.command}`,
                     this.config.problemMatcher,
                     this.config.cargoRunner,
@@ -113,16 +114,7 @@ export async function buildRustTask(
     }
 
     if (!exec) {
-        // Check whether we must use a user-defined substitute for cargo.
-        // Split on spaces to allow overrides like "wrapper cargo".
-        const overrideCargo = definition.overrideCargo ?? definition.overrideCargo;
-        const cargoPath = await toolchain.cargoPath();
-        const cargoCommand = overrideCargo?.split(" ") ?? [cargoPath];
-
-        const fullCommand = [...cargoCommand, ...definition.args];
-
-        const processName = unwrapUndefinable(fullCommand[0]);
-        exec = new vscode.ProcessExecution(processName, fullCommand.slice(1), definition);
+        exec = new vscode.ProcessExecution(definition.program, definition.args, definition);
     }
 
     return new vscode.Task(
