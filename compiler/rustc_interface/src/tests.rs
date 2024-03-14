@@ -801,7 +801,7 @@ fn test_unstable_options_tracking_hash() {
     tracked!(mutable_noalias, false);
     tracked!(
         next_solver,
-        Some(NextSolverConfig { coherence: true, globally: false, dump_tree: Default::default() })
+        Some(NextSolverConfig { coherence: true, globally: true, dump_tree: Default::default() })
     );
     tracked!(no_generate_arange_section, true);
     tracked!(no_jump_tables, true);
