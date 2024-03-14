@@ -4,7 +4,6 @@ use crate::errors::OpaqueHiddenTypeDiag;
 use crate::infer::{InferCtxt, InferOk};
 use crate::traits::{self, PredicateObligation};
 use hir::def_id::{DefId, LocalDefId};
-use hir::OpaqueTyOrigin;
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_data_structures::sync::Lrc;
 use rustc_hir as hir;
@@ -54,16 +53,13 @@ impl<'tcx> InferCtxt<'tcx> {
         }
 
         let mut obligations = vec![];
-        let replace_opaque_type = |def_id: DefId| {
-            def_id.as_local().is_some_and(|def_id| self.opaque_type_origin(def_id).is_some())
-        };
         let value = value.fold_with(&mut BottomUpFolder {
             tcx: self.tcx,
             lt_op: |lt| lt,
             ct_op: |ct| ct,
             ty_op: |ty| match *ty.kind() {
                 ty::Alias(ty::Opaque, ty::AliasTy { def_id, .. })
-                    if replace_opaque_type(def_id) && !ty.has_escaping_bound_vars() =>
+                    if self.can_define_opaque_ty(def_id) && !ty.has_escaping_bound_vars() =>
                 {
                     let def_span = self.tcx.def_span(def_id);
                     let span = if span.contains(def_span) { def_span } else { span };
@@ -143,7 +139,7 @@ impl<'tcx> InferCtxt<'tcx> {
                 //     let x = || foo(); // returns the Opaque assoc with `foo`
                 // }
                 // ```
-                if self.opaque_type_origin(def_id).is_none() {
+                if !self.can_define_opaque_ty(def_id) {
                     return None;
                 }
 
@@ -153,8 +149,8 @@ impl<'tcx> InferCtxt<'tcx> {
                     // no one encounters it in practice.
                     // It does occur however in `fn fut() -> impl Future<Output = i32> { async { 42 } }`,
                     // where it is of no concern, so we only check for TAITs.
-                    if let Some(OpaqueTyOrigin::TyAlias { .. }) =
-                        b_def_id.as_local().and_then(|b_def_id| self.opaque_type_origin(b_def_id))
+                    if self.can_define_opaque_ty(b_def_id)
+                        && self.tcx.is_type_alias_impl_trait(b_def_id)
                     {
                         self.tcx.dcx().emit_err(OpaqueHiddenTypeDiag {
                             span: cause.span,
@@ -365,15 +361,6 @@ impl<'tcx> InferCtxt<'tcx> {
             tcx: self.tcx,
             op: |r| self.member_constraint(opaque_type_key, span, concrete_ty, r, &choice_regions),
         });
-    }
-
-    /// Returns the origin of the opaque type `def_id` if we're currently
-    /// in its defining scope.
-    #[instrument(skip(self), level = "trace", ret)]
-    pub fn opaque_type_origin(&self, def_id: LocalDefId) -> Option<OpaqueTyOrigin> {
-        let origin = self.tcx.opaque_type_origin(def_id);
-
-        self.defining_opaque_types.contains(&def_id).then_some(origin)
     }
 }
 

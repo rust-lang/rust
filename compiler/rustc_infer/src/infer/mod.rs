@@ -235,7 +235,7 @@ pub struct InferCtxt<'tcx> {
     pub tcx: TyCtxt<'tcx>,
 
     /// The `DefIds` of the opaque types that may have their hidden types constrained.
-    pub defining_opaque_types: &'tcx ty::List<LocalDefId>,
+    defining_opaque_types: &'tcx ty::List<LocalDefId>,
 
     /// Whether this inference context should care about region obligations in
     /// the root universe. Most notably, this is used during hir typeck as region
@@ -1217,6 +1217,12 @@ impl<'tcx> InferCtxt<'tcx> {
     #[instrument(level = "debug", skip(self), ret)]
     pub fn clone_opaque_types(&self) -> opaque_types::OpaqueTypeMap<'tcx> {
         self.inner.borrow().opaque_type_storage.opaque_types.clone()
+    }
+
+    #[inline(always)]
+    pub fn can_define_opaque_ty(&self, id: impl Into<DefId>) -> bool {
+        let Some(id) = id.into().as_local() else { return false };
+        self.defining_opaque_types.contains(&id)
     }
 
     pub fn ty_to_string(&self, t: Ty<'tcx>) -> String {

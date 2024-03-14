@@ -719,8 +719,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             for ty in ret_ty.walk() {
                 if let ty::GenericArgKind::Type(ty) = ty.unpack()
                     && let ty::Alias(ty::Opaque, ty::AliasTy { def_id, .. }) = *ty.kind()
-                    && let Some(def_id) = def_id.as_local()
-                    && self.opaque_type_origin(def_id).is_some()
+                    && self.can_define_opaque_ty(def_id)
                 {
                     return None;
                 }

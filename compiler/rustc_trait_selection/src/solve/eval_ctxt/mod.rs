@@ -1,5 +1,5 @@
 use rustc_data_structures::stack::ensure_sufficient_stack;
-use rustc_hir::def_id::{DefId, LocalDefId};
+use rustc_hir::def_id::DefId;
 use rustc_infer::infer::at::ToTrace;
 use rustc_infer::infer::canonical::CanonicalVarValues;
 use rustc_infer::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
@@ -883,8 +883,8 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
         }
     }
 
-    pub(super) fn can_define_opaque_ty(&self, def_id: LocalDefId) -> bool {
-        self.infcx.opaque_type_origin(def_id).is_some()
+    pub(super) fn can_define_opaque_ty(&self, def_id: impl Into<DefId>) -> bool {
+        self.infcx.can_define_opaque_ty(def_id)
     }
 
     pub(super) fn insert_hidden_type(
