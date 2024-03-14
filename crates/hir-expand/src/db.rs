@@ -7,6 +7,7 @@ use mbe::syntax_node_to_token_tree;
 use rustc_hash::FxHashSet;
 use span::{AstIdMap, Span, SyntaxContextData, SyntaxContextId};
 use syntax::{ast, AstNode, Parse, SyntaxElement, SyntaxError, SyntaxNode, SyntaxToken, T};
+use tracing::debug;
 use triomphe::Arc;
 
 use crate::{
@@ -353,7 +354,13 @@ fn smart_macro_arg(db: &dyn ExpandDatabase, id: MacroCallId) -> MacroArgResult {
     // FIXME: We called lookup_intern_macro_call twice.
     match loc.kind {
         // Get the macro arg for the derive macro
-        MacroCallKind::Derive { derive_macro_id, .. } => db.macro_arg(derive_macro_id),
+        MacroCallKind::Derive { derive_macro_id, .. } => {
+            debug!(
+                ?loc,
+                "{id:?} is a derive macro. Using the derive macro, id: {derive_macro_id:?}, attribute as the macro arg."
+            );
+            db.macro_arg(derive_macro_id)
+        }
         // Normal macro arg
         _ => db.macro_arg(id),
     }
