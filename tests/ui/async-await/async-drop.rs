@@ -7,6 +7,7 @@
 //@ edition: 2021
 
 use core::future::{async_drop, async_drop_in_place, AsyncDrop, Future};
+use core::hint::black_box;
 use core::mem::{ManuallyDrop, MaybeUninit};
 use core::pin::{pin, Pin};
 use core::task::{Context, Poll, Waker};
@@ -37,6 +38,9 @@ fn main() {
 
         let foo = Foo(11);
         async_drop(Qux { foo: &foo }).await;
+
+        let foo = Foo(12);
+        async_drop(|| black_box(foo)).await;
     });
     let res = fut.poll(&mut cx);
     assert_eq!(res, Poll::Ready(()));

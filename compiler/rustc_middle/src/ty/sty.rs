@@ -2342,6 +2342,9 @@ impl<'tcx> Ty<'tcx> {
                     self.is_async_drop(tcx, param_env).then_some(self),
                 )
             }
+            ty::Closure(_, args) => {
+                Self::chain_async_destructor_ty(tcx, args.as_closure().upvar_tys().iter(), None)
+            }
 
             ty::Bool
             | ty::Char
@@ -2359,7 +2362,6 @@ impl<'tcx> Ty<'tcx> {
 
             ty::Adt(..)
             | ty::Dynamic(..)
-            | ty::Closure(..)
             | ty::CoroutineClosure(..)
             | ty::CoroutineWitness(..)
             | ty::Never

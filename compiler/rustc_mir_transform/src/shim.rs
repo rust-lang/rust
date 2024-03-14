@@ -1119,12 +1119,14 @@ impl<'tcx> AsyncDestructorCtorShimBuilder<'tcx> {
                 let field_tys = adt_def.variant(VariantIdx::new(0)).fields.iter().map(|f| f.ty(tcx, args));
                 self.build_chain(has_surface_async_drop, field_tys)
             }
+            ty::Closure(_, args) => {
+                self.build_chain(false, args.as_closure().upvar_tys().iter())
+            }
 
             ty::Foreign(_)
             // TODO: implement enums, disallow unions
             | ty::Adt(_, _)
             | ty::Dynamic(_, _, _)
-            | ty::Closure(_, _)
             | ty::CoroutineClosure(_, _)
             | ty::Coroutine(_, _)
             | ty::CoroutineWitness(_, _)
