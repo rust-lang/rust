@@ -412,11 +412,11 @@ pub struct NullaryIntrinsicError {
 }
 
 #[derive(Diagnostic)]
-#[diag(const_eval_undefined_behavior, code = E0080)]
-pub struct UndefinedBehavior {
+#[diag(const_eval_validation_failure, code = E0080)]
+pub struct ValidationFailure {
     #[primary_span]
     pub span: Span,
-    #[note(const_eval_undefined_behavior_note)]
+    #[note(const_eval_validation_failure_note)]
     pub ub_note: Option<()>,
     #[subdiagnostic]
     pub frames: Vec<FrameNote>,
