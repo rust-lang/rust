@@ -403,6 +403,12 @@ pub struct Body<'tcx> {
 
     pub tainted_by_errors: Option<ErrorGuaranteed>,
 
+    /// Branch coverage information collected during MIR building, to be used by
+    /// the `InstrumentCoverage` pass.
+    ///
+    /// Only present if branch coverage is enabled and this function is eligible.
+    pub coverage_branch_info: Option<Box<coverage::BranchInfo>>,
+
     /// Per-function coverage information added by the `InstrumentCoverage`
     /// pass, to be used in conjunction with the coverage statements injected
     /// into this body's blocks.
@@ -450,6 +456,7 @@ impl<'tcx> Body<'tcx> {
             is_polymorphic: false,
             injection_phase: None,
             tainted_by_errors,
+            coverage_branch_info: None,
             function_coverage_info: None,
         };
         body.is_polymorphic = body.has_non_region_param();
@@ -479,6 +486,7 @@ impl<'tcx> Body<'tcx> {
             is_polymorphic: false,
             injection_phase: None,
             tainted_by_errors: None,
+            coverage_branch_info: None,
             function_coverage_info: None,
         };
         body.is_polymorphic = body.has_non_region_param();

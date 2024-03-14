@@ -146,7 +146,7 @@ pub enum InstrumentCoverage {
 /// Individual flag values controlled by `-Z coverage-options`.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub struct CoverageOptions {
-    /// Add branch coverage instrumentation (placeholder flag; not yet implemented).
+    /// Add branch coverage instrumentation.
     pub branch: bool,
 }
 
