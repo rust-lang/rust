@@ -3,58 +3,86 @@
 //! `DefCollector::collect` contains the fixed-point iteration loop which
 //! resolves imports and expands macros.
 
-use std::{cmp::Ordering, iter, mem, ops::Not};
+use std::{iter, mem};
 
+use crate::attr::Attrs;
+use crate::item_tree::Fields;
+use crate::item_tree::FileItemTreeId;
+use crate::item_tree::MacroCall;
+use crate::item_tree::MacroRules;
+use crate::item_tree::Mod;
+use crate::item_tree::ModKind;
+use crate::macro_call_as_call_id_with_eager;
+
+use crate::nameres::mod_resolution::ModDir;
+
+use crate::item_tree::ItemTree;
 use base_db::{CrateId, Dependency, FileId};
 use cfg::{CfgExpr, CfgOptions};
+
+use crate::item_tree::TreeId;
+
+use crate::LocalModuleId;
+use crate::{
+    item_tree::{ExternCrate, ItemTreeId, Macro2, ModItem},
+    nameres::{
+        diagnostics::DefDiagnostic, proc_macro::parse_macro_name_and_helper_attrs,
+        sub_namespace_match, BuiltinShadowMode, DefMap, MacroSubNs, ModuleData, ModuleOrigin,
+        ResolveMode,
+    },
+    path::ModPath,
+    per_ns::PerNs,
+    tt,
+    visibility::Visibility,
+    AstId, AstIdWithPath, ConstLoc, EnumLoc, EnumVariantLoc, ExternBlockLoc, ExternCrateId,
+    ExternCrateLoc, FunctionLoc, ImplLoc, Intern, ItemContainerId, Macro2Loc, MacroExpander,
+    MacroRulesLoc, MacroRulesLocFlags, ModuleDefId, ModuleId, StaticLoc, StructLoc, TraitAliasLoc,
+    TraitLoc, TypeAliasLoc, UnionLoc, UseLoc,
+};
+
+use std::{cmp::Ordering, ops::Not};
+
 use either::Either;
 use hir_expand::{
-    attrs::{Attr, AttrId},
-    builtin_attr_macro::{find_builtin_attr, BuiltinAttrExpander},
+    builtin_attr_macro::find_builtin_attr,
     builtin_derive_macro::find_builtin_derive,
     builtin_fn_macro::find_builtin_macro,
-    name::{name, AsName, Name},
-    proc_macro::CustomProcMacroExpander,
-    ExpandResult, ExpandTo, HirFileId, InFile, MacroCallId, MacroCallKind, MacroCallLoc,
-    MacroDefId, MacroDefKind,
+    name::{AsName, Name},
+    HirFileId, InFile,
 };
-use itertools::{izip, Itertools};
+
+use itertools::Itertools;
+use span::{ErasedFileAstId, FileAstId, Span, SyntaxContextId};
+
+use hir_expand::{
+    attrs::{Attr, AttrId},
+    builtin_attr_macro::BuiltinAttrExpander,
+    name::name,
+    proc_macro::CustomProcMacroExpander,
+    ExpandResult, ExpandTo, MacroCallId, MacroCallKind, MacroCallLoc, MacroDefId, MacroDefKind,
+};
+use itertools::izip;
 use la_arena::Idx;
 use limit::Limit;
 use rustc_hash::{FxHashMap, FxHashSet};
-use span::{Edition, ErasedFileAstId, FileAstId, Span, SyntaxContextId};
 use stdx::always;
 use syntax::{ast, SmolStr};
 use triomphe::Arc;
 
 use crate::{
-    attr::Attrs,
     db::DefDatabase,
     item_scope::{ImportId, ImportOrExternCrate, ImportType, PerNsGlobImports},
-    item_tree::{
-        self, ExternCrate, Fields, FileItemTreeId, ImportKind, ItemTree, ItemTreeId, ItemTreeNode,
-        Macro2, MacroCall, MacroRules, Mod, ModItem, ModKind, TreeId,
-    },
-    macro_call_as_call_id, macro_call_as_call_id_with_eager,
+    item_tree::{self, ImportKind, ItemTreeNode},
+    macro_call_as_call_id,
     nameres::{
         attr_resolution::{attr_macro_as_call_id, derive_macro_as_call_id},
-        diagnostics::DefDiagnostic,
-        mod_resolution::ModDir,
         path_resolution::ReachedFixedPoint,
-        proc_macro::{parse_macro_name_and_helper_attrs, ProcMacroDef, ProcMacroKind},
-        sub_namespace_match, BuiltinShadowMode, DefMap, MacroSubNs, ModuleData, ModuleOrigin,
-        ResolveMode,
+        proc_macro::{ProcMacroDef, ProcMacroKind},
     },
-    path::{ImportAlias, ModPath, PathKind},
-    per_ns::PerNs,
-    tt,
-    visibility::{RawVisibility, Visibility},
-    AdtId, AstId, AstIdWithPath, ConstLoc, CrateRootModuleId, EnumLoc, EnumVariantLoc,
-    ExternBlockLoc, ExternCrateId, ExternCrateLoc, FunctionId, FunctionLoc, ImplLoc, Intern,
-    ItemContainerId, LocalModuleId, Lookup, Macro2Id, Macro2Loc, MacroExpander, MacroId,
-    MacroRulesId, MacroRulesLoc, MacroRulesLocFlags, ModuleDefId, ModuleId, ProcMacroId,
-    ProcMacroLoc, StaticLoc, StructLoc, TraitAliasLoc, TraitLoc, TypeAliasLoc, UnionLoc,
-    UnresolvedMacro, UseId, UseLoc,
+    path::{ImportAlias, PathKind},
+    visibility::RawVisibility,
+    AdtId, CrateRootModuleId, FunctionId, Lookup, Macro2Id, MacroId, MacroRulesId, ProcMacroId,
+    ProcMacroLoc, UnresolvedMacro, UseId,
 };
 
 static GLOB_RECURSION_LIMIT: Limit = Limit::new(100);
@@ -237,6 +265,8 @@ enum MacroDirectiveKind {
         derive_attr: AttrId,
         derive_pos: usize,
         ctxt: SyntaxContextId,
+        /// The "parent" macro it is resolved to.
+        derive_macro_id: MacroCallId,
     },
     Attr {
         ast_id: AstIdWithPath<ast::Item>,
@@ -1146,7 +1176,13 @@ impl DefCollector<'_> {
                         return Resolved::Yes;
                     }
                 }
-                MacroDirectiveKind::Derive { ast_id, derive_attr, derive_pos, ctxt: call_site } => {
+                MacroDirectiveKind::Derive {
+                    ast_id,
+                    derive_attr,
+                    derive_pos,
+                    ctxt: call_site,
+                    derive_macro_id,
+                } => {
                     let id = derive_macro_as_call_id(
                         self.db,
                         ast_id,
@@ -1155,6 +1191,7 @@ impl DefCollector<'_> {
                         *call_site,
                         self.def_map.krate,
                         resolver,
+                        *derive_macro_id,
                     );
 
                     if let Ok((macro_id, def_id, call_id)) = id {
@@ -1223,7 +1260,9 @@ impl DefCollector<'_> {
                         Some(def) if def.is_attribute() => def,
                         _ => return Resolved::No,
                     };
-
+                    // We will treat derive macros as an attribute as a reference for the input to derives
+                    let call_id =
+                        attr_macro_as_call_id(self.db, file_ast_id, attr, self.def_map.krate, def);
                     if let MacroDefId {
                         kind:
                             MacroDefKind::BuiltInAttr(
@@ -1267,6 +1306,7 @@ impl DefCollector<'_> {
                                             derive_attr: attr.id,
                                             derive_pos: idx,
                                             ctxt: call_site.ctx,
+                                            derive_macro_id: call_id,
                                         },
                                         container: directive.container,
                                     });
@@ -1300,10 +1340,6 @@ impl DefCollector<'_> {
 
                         return recollect_without(self);
                     }
-
-                    // Not resolved to a derive helper or the derive attribute, so try to treat as a normal attribute.
-                    let call_id =
-                        attr_macro_as_call_id(self.db, file_ast_id, attr, self.def_map.krate, def);
 
                     // Skip #[test]/#[bench] expansion, which would merely result in more memory usage
                     // due to duplicating functions into macro expansions
@@ -1460,13 +1496,20 @@ impl DefCollector<'_> {
                         ));
                     }
                 }
-                MacroDirectiveKind::Derive { ast_id, derive_attr, derive_pos, ctxt: _ } => {
+                MacroDirectiveKind::Derive {
+                    ast_id,
+                    derive_attr,
+                    derive_pos,
+                    derive_macro_id,
+                    ..
+                } => {
                     self.def_map.diagnostics.push(DefDiagnostic::unresolved_macro_call(
                         directive.module_id,
                         MacroCallKind::Derive {
                             ast_id: ast_id.ast_id,
                             derive_attr_index: *derive_attr,
                             derive_index: *derive_pos as u32,
+                            derive_macro_id: *derive_macro_id,
                         },
                         ast_id.path.clone(),
                     ));
@@ -2289,7 +2332,7 @@ impl ModCollector<'_, '_> {
 
     fn collect_macro_call(
         &mut self,
-        &MacroCall { ref path, ast_id, expand_to, ctxt }: &MacroCall,
+        &MacroCall { ref path, ast_id, expand_to, ctxt, .. }: &MacroCall,
         container: ItemContainerId,
     ) {
         let ast_id = AstIdWithPath::new(self.file_id(), ast_id, ModPath::clone(path));
@@ -2428,7 +2471,10 @@ mod tests {
     use base_db::SourceDatabase;
     use test_fixture::WithFixture;
 
-    use crate::{nameres::DefMapCrateData, test_db::TestDB};
+    use crate::{
+        nameres::{DefMapCrateData, ModuleData, ModuleOrigin},
+        test_db::TestDB,
+    };
 
     use super::*;
 

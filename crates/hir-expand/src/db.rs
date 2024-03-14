@@ -338,13 +338,33 @@ pub(crate) fn parse_with_map(
         }
     }
 }
+/// This is just to ensure the types of smart_macro_arg and macro_arg are the same
+type MacroArgResult = (Arc<tt::Subtree>, SyntaxFixupUndoInfo, Span) ;
+/// Imagine the word smart in quotes.
+///
+/// This resolves the [MacroCallId] to check if it is a derive macro if so get the [macro_arg] for the derive.
+/// Other wise return the [macro_arg] for the macro_call_id.
+///
+/// This is not connected to the database so it does not cached the result. However, the inner [macro_arg] query is
+///
+/// FIXME: Pick a better name
+fn smart_macro_arg(db: &dyn ExpandDatabase, id: MacroCallId) -> MacroArgResult {
+    let loc = db.lookup_intern_macro_call(id);
+    // FIXME: We called lookup_intern_macro_call twice.
+    match loc.kind {
+        // Get the macro arg for the derive macro
+        MacroCallKind::Derive { derive_macro_id, .. } => db.macro_arg(derive_macro_id),
+        // Normal macro arg
+        _ => db.macro_arg(id),
+    }
+}
 
-// FIXME: for derive attributes, this will return separate copies of the same structures! Though
-// they may differ in spans due to differing call sites...
 fn macro_arg(
     db: &dyn ExpandDatabase,
     id: MacroCallId,
-) -> (Arc<tt::Subtree>, SyntaxFixupUndoInfo, Span) {
+    // FIXME: consider the following by putting fixup info into eager call info args
+    // ) -> ValueResult<Arc<(tt::Subtree, SyntaxFixupUndoInfo)>, Arc<Box<[SyntaxError]>>> {
+) -> MacroArgResult {
     let loc = db.lookup_intern_macro_call(id);
 
     if let MacroCallLoc {
@@ -526,7 +546,8 @@ fn macro_expand(
     let (ExpandResult { value: tt, err }, span) = match loc.def.kind {
         MacroDefKind::ProcMacro(..) => return db.expand_proc_macro(macro_call_id).map(CowArc::Arc),
         _ => {
-            let (macro_arg, undo_info, span) = db.macro_arg(macro_call_id);
+            let (macro_arg, undo_info, span) =
+                smart_macro_arg(db, macro_call_id);
 
             let arg = &*macro_arg;
             let res =
@@ -603,7 +624,7 @@ fn proc_macro_span(db: &dyn ExpandDatabase, ast: AstId<ast::Fn>) -> Span {
 
 fn expand_proc_macro(db: &dyn ExpandDatabase, id: MacroCallId) -> ExpandResult<Arc<tt::Subtree>> {
     let loc = db.lookup_intern_macro_call(id);
-    let (macro_arg, undo_info, span) = db.macro_arg(id);
+    let (macro_arg, undo_info, span) = smart_macro_arg(db, id);
 
     let (expander, ast) = match loc.def.kind {
         MacroDefKind::ProcMacro(expander, _, ast) => (expander, ast),

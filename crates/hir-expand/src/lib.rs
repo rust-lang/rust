@@ -224,6 +224,9 @@ pub enum MacroCallKind {
         derive_attr_index: AttrId,
         /// Index of the derive macro in the derive attribute
         derive_index: u32,
+        /// The "parent" macro call.
+        /// We will resolve the same token tree for all derive macros in the same derive attribute.
+        derive_macro_id: MacroCallId,
     },
     Attr {
         ast_id: AstId<ast::Item>,
