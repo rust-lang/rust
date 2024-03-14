@@ -7,15 +7,16 @@ use rustc_span::{Span, DUMMY_SP};
 
 use crate::traits::ObligationCtxt;
 
-pub enum Ambiguity {
+#[derive(Debug)]
+pub enum CandidateSource {
     DefId(DefId),
     ParamEnv(Span),
 }
 
-pub fn recompute_applicable_impls<'tcx>(
+pub fn compute_applicable_impls_for_diagnostics<'tcx>(
     infcx: &InferCtxt<'tcx>,
     obligation: &PolyTraitObligation<'tcx>,
-) -> Vec<Ambiguity> {
+) -> Vec<CandidateSource> {
     let tcx = infcx.tcx;
     let param_env = obligation.param_env;
 
@@ -97,7 +98,7 @@ pub fn recompute_applicable_impls<'tcx>(
         obligation.predicate.skip_binder().trait_ref.self_ty(),
         |impl_def_id| {
             if infcx.probe(|_| impl_may_apply(impl_def_id)) {
-                ambiguities.push(Ambiguity::DefId(impl_def_id))
+                ambiguities.push(CandidateSource::DefId(impl_def_id))
             }
         },
     );
@@ -112,9 +113,9 @@ pub fn recompute_applicable_impls<'tcx>(
             if kind.rebind(trait_pred.trait_ref)
                 == ty::Binder::dummy(ty::TraitRef::identity(tcx, trait_pred.def_id()))
             {
-                ambiguities.push(Ambiguity::ParamEnv(tcx.def_span(trait_pred.def_id())))
+                ambiguities.push(CandidateSource::ParamEnv(tcx.def_span(trait_pred.def_id())))
             } else {
-                ambiguities.push(Ambiguity::ParamEnv(span))
+                ambiguities.push(CandidateSource::ParamEnv(span))
             }
         }
     }
