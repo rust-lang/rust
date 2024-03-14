@@ -10,9 +10,9 @@ all:
 
 	# Test that backtraces still can find debuginfo by checking that they contain symbol names and
 	# source locations.
-	RUST_BACKTRACE="full" $(TMPDIR)/my_crate_name.exe &> $(TMPDIR)/backtrace.txt || exit 0
-	$(CGREP) "my_crate_name::main" < $(TMPDIR)/backtrace.txt
-	$(CGREP) "pdb-alt-path\\main.rs:2" < $(TMPDIR)/backtrace.txt
+	$(TMPDIR)/my_crate_name.exe &> $(TMPDIR)/backtrace.txt
+	$(CGREP) "my_crate_name::fn_in_backtrace" < $(TMPDIR)/backtrace.txt
+	$(CGREP) "main.rs:15" < $(TMPDIR)/backtrace.txt
 
 	# Test that explicitly passed `-Clink-arg=/PDBALTPATH:...` is respected
 	$(RUSTC) main.rs -g --crate-name my_crate_name --crate-type bin -Clink-arg=/PDBALTPATH:abcdefg.pdb -Cforce-frame-pointers
