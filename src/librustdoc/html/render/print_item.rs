@@ -514,10 +514,10 @@ fn item_module(w: &mut Buffer, cx: &mut Context<'_>, item: &clean::Item, items: 
                 let visibility_and_hidden = match myitem.visibility(tcx) {
                     Some(ty::Visibility::Restricted(_)) => {
                         if myitem.is_doc_hidden() {
-                            "<span title=\"Restricted Visibility\">&nbsp;🔒</span> "
-                        } else {
                             // Don't separate with a space when there are two of them
                             "<span title=\"Restricted Visibility\">&nbsp;🔒</span><span title=\"Hidden item\">👻</span> "
+                        } else {
+                            "<span title=\"Restricted Visibility\">&nbsp;🔒</span> "
                         }
                     }
                     _ if myitem.is_doc_hidden() => "<span title=\"Hidden item\">&nbsp;👻</span> ",
