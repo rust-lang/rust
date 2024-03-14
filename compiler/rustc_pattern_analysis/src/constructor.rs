@@ -40,7 +40,7 @@
 //! - That have no non-trivial intersection with any of the constructors in the column (i.e. they're
 //!     each either disjoint with or covered by any given column constructor).
 //!
-//! We compute this in two steps: first [`TypeCx::ctors_for_ty`] determines the
+//! We compute this in two steps: first [`PatCx::ctors_for_ty`] determines the
 //! set of all possible constructors for the type. Then [`ConstructorSet::split`] looks at the
 //! column of constructors and splits the set into groups accordingly. The precise invariants of
 //! [`ConstructorSet::split`] is described in [`SplitConstructorSet`].
@@ -136,7 +136,7 @@
 //! the algorithm can't distinguish them from a nonempty constructor. The only known case where this
 //! could happen is the `[..]` pattern on `[!; N]` with `N > 0` so we must take care to not emit it.
 //!
-//! This is all handled by [`TypeCx::ctors_for_ty`] and
+//! This is all handled by [`PatCx::ctors_for_ty`] and
 //! [`ConstructorSet::split`]. The invariants of [`SplitConstructorSet`] are also of interest.
 //!
 //!
@@ -162,7 +162,7 @@ use self::MaybeInfiniteInt::*;
 use self::SliceKind::*;
 
 use crate::index;
-use crate::TypeCx;
+use crate::PatCx;
 
 /// Whether we have seen a constructor in the column or not.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
@@ -195,8 +195,6 @@ pub enum MaybeInfiniteInt {
     /// Encoded value. DO NOT CONSTRUCT BY HAND; use `new_finite_{int,uint}`.
     #[non_exhaustive]
     Finite(u128),
-    /// The integer after `u128::MAX`. We need it to represent `x..=u128::MAX` as an exclusive range.
-    JustAfterMax,
     PosInfinity,
 }
 
@@ -232,18 +230,18 @@ impl MaybeInfiniteInt {
     pub fn minus_one(self) -> Option<Self> {
         match self {
             Finite(n) => n.checked_sub(1).map(Finite),
-            JustAfterMax => Some(Finite(u128::MAX)),
             x => Some(x),
         }
     }
-    /// Note: this will not turn a finite value into an infinite one or vice-versa.
+    /// Note: this will turn `u128::MAX` into `PosInfinity`. This means `plus_one` and `minus_one`
+    /// are not strictly inverses, but that poses no problem in our use of them.
+    /// this will not turn a finite value into an infinite one or vice-versa.
     pub fn plus_one(self) -> Option<Self> {
         match self {
             Finite(n) => match n.checked_add(1) {
                 Some(m) => Some(Finite(m)),
-                None => Some(JustAfterMax),
+                None => Some(PosInfinity),
             },
-            JustAfterMax => None,
             x => Some(x),
         }
     }
@@ -277,8 +275,7 @@ impl IntRange {
     }
 
     /// Construct a range with these boundaries.
-    /// `lo` must not be `PosInfinity` or `JustAfterMax`. `hi` must not be `NegInfinity`.
-    /// If `end` is `Included`, `hi` must also not be `JustAfterMax`.
+    /// `lo` must not be `PosInfinity`. `hi` must not be `NegInfinity`.
     #[inline]
     pub fn from_range(lo: MaybeInfiniteInt, mut hi: MaybeInfiniteInt, end: RangeEnd) -> IntRange {
         if end == RangeEnd::Included {
@@ -651,7 +648,7 @@ impl OpaqueId {
 /// constructor. `Constructor::apply` reconstructs the pattern from a pair of `Constructor` and
 /// `Fields`.
 #[derive(Debug)]
-pub enum Constructor<Cx: TypeCx> {
+pub enum Constructor<Cx: PatCx> {
     /// Tuples and structs.
     Struct,
     /// Enum variants.
@@ -696,7 +693,7 @@ pub enum Constructor<Cx: TypeCx> {
     PrivateUninhabited,
 }
 
-impl<Cx: TypeCx> Clone for Constructor<Cx> {
+impl<Cx: PatCx> Clone for Constructor<Cx> {
     fn clone(&self) -> Self {
         match self {
             Constructor::Struct => Constructor::Struct,
@@ -720,7 +717,7 @@ impl<Cx: TypeCx> Clone for Constructor<Cx> {
     }
 }
 
-impl<Cx: TypeCx> Constructor<Cx> {
+impl<Cx: PatCx> Constructor<Cx> {
     pub(crate) fn is_non_exhaustive(&self) -> bool {
         matches!(self, NonExhaustive)
     }
@@ -838,7 +835,7 @@ pub enum VariantVisibility {
 /// In terms of division of responsibility, [`ConstructorSet::split`] handles all of the
 /// `exhaustive_patterns` feature.
 #[derive(Debug)]
-pub enum ConstructorSet<Cx: TypeCx> {
+pub enum ConstructorSet<Cx: PatCx> {
     /// The type is a tuple or struct. `empty` tracks whether the type is empty.
     Struct { empty: bool },
     /// This type has the following list of constructors. If `variants` is empty and
@@ -889,13 +886,13 @@ pub enum ConstructorSet<Cx: TypeCx> {
 /// of the `ConstructorSet` for the type, yet if we forgot to include them in `present` we would be
 /// ignoring any row with `Opaque`s in the algorithm. Hence the importance of point 4.
 #[derive(Debug)]
-pub struct SplitConstructorSet<Cx: TypeCx> {
+pub struct SplitConstructorSet<Cx: PatCx> {
     pub present: SmallVec<[Constructor<Cx>; 1]>,
     pub missing: Vec<Constructor<Cx>>,
     pub missing_empty: Vec<Constructor<Cx>>,
 }
 
-impl<Cx: TypeCx> ConstructorSet<Cx> {
+impl<Cx: PatCx> ConstructorSet<Cx> {
     /// This analyzes a column of constructors to 1/ determine which constructors of the type (if
     /// any) are missing; 2/ split constructors to handle non-trivial intersections e.g. on ranges
     /// or slices. This can get subtle; see [`SplitConstructorSet`] for details of this operation

@@ -381,11 +381,17 @@ fn check_opaque_meets_bounds<'tcx>(
     match ocx.eq(&misc_cause, param_env, opaque_ty, hidden_ty) {
         Ok(()) => {}
         Err(ty_err) => {
+            // Some types may be left "stranded" if they can't be reached
+            // from an astconv'd bound but they're mentioned in the HIR. This
+            // will happen, e.g., when a nested opaque is inside of a non-
+            // existent associated type, like `impl Trait<Missing = impl Trait>`.
+            // See <tests/ui/impl-trait/stranded-opaque.rs>.
             let ty_err = ty_err.to_string(tcx);
-            tcx.dcx().span_bug(
+            let guar = tcx.dcx().span_delayed_bug(
                 span,
                 format!("could not unify `{hidden_ty}` with revealed type:\n{ty_err}"),
             );
+            return Err(guar);
         }
     }
 

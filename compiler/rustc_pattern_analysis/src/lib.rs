@@ -84,7 +84,7 @@ pub struct PrivateUninhabitedField(pub bool);
 /// Context that provides type information about constructors.
 ///
 /// Most of the crate is parameterized on a type that implements this trait.
-pub trait TypeCx: Sized + fmt::Debug {
+pub trait PatCx: Sized + fmt::Debug {
     /// The type of a pattern.
     type Ty: Clone + fmt::Debug;
     /// Errors that can abort analysis.
@@ -155,34 +155,34 @@ pub trait TypeCx: Sized + fmt::Debug {
 
 /// The arm of a match expression.
 #[derive(Debug)]
-pub struct MatchArm<'p, Cx: TypeCx> {
+pub struct MatchArm<'p, Cx: PatCx> {
     pub pat: &'p DeconstructedPat<Cx>,
     pub has_guard: bool,
     pub arm_data: Cx::ArmData,
 }
 
-impl<'p, Cx: TypeCx> Clone for MatchArm<'p, Cx> {
+impl<'p, Cx: PatCx> Clone for MatchArm<'p, Cx> {
     fn clone(&self) -> Self {
         Self { pat: self.pat, has_guard: self.has_guard, arm_data: self.arm_data }
     }
 }
 
-impl<'p, Cx: TypeCx> Copy for MatchArm<'p, Cx> {}
+impl<'p, Cx: PatCx> Copy for MatchArm<'p, Cx> {}
 
 /// The entrypoint for this crate. Computes whether a match is exhaustive and which of its arms are
 /// useful, and runs some lints.
 #[cfg(feature = "rustc")]
 pub fn analyze_match<'p, 'tcx>(
-    tycx: &rustc::RustcMatchCheckCtxt<'p, 'tcx>,
+    tycx: &rustc::RustcPatCtxt<'p, 'tcx>,
     arms: &[rustc::MatchArm<'p, 'tcx>],
     scrut_ty: Ty<'tcx>,
     pattern_complexity_limit: Option<usize>,
 ) -> Result<rustc::UsefulnessReport<'p, 'tcx>, ErrorGuaranteed> {
     use lints::lint_nonexhaustive_missing_variants;
-    use usefulness::{compute_match_usefulness, ValidityConstraint};
+    use usefulness::{compute_match_usefulness, PlaceValidity};
 
     let scrut_ty = tycx.reveal_opaque_ty(scrut_ty);
-    let scrut_validity = ValidityConstraint::from_bool(tycx.known_valid_scrutinee);
+    let scrut_validity = PlaceValidity::from_bool(tycx.known_valid_scrutinee);
     let report =
         compute_match_usefulness(tycx, arms, scrut_ty, scrut_validity, pattern_complexity_limit)?;
 

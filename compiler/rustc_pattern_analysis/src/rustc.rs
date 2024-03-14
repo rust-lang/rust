@@ -18,20 +18,19 @@ use rustc_target::abi::{FieldIdx, Integer, VariantIdx, FIRST_VARIANT};
 use crate::constructor::{
     IntRange, MaybeInfiniteInt, OpaqueId, RangeEnd, Slice, SliceKind, VariantVisibility,
 };
-use crate::{errors, Captures, PrivateUninhabitedField, TypeCx};
+use crate::{errors, Captures, PatCx, PrivateUninhabitedField};
 
 use crate::constructor::Constructor::*;
 
 // Re-export rustc-specific versions of all these types.
-pub type Constructor<'p, 'tcx> = crate::constructor::Constructor<RustcMatchCheckCtxt<'p, 'tcx>>;
-pub type ConstructorSet<'p, 'tcx> =
-    crate::constructor::ConstructorSet<RustcMatchCheckCtxt<'p, 'tcx>>;
-pub type DeconstructedPat<'p, 'tcx> = crate::pat::DeconstructedPat<RustcMatchCheckCtxt<'p, 'tcx>>;
-pub type MatchArm<'p, 'tcx> = crate::MatchArm<'p, RustcMatchCheckCtxt<'p, 'tcx>>;
-pub type Usefulness<'p, 'tcx> = crate::usefulness::Usefulness<'p, RustcMatchCheckCtxt<'p, 'tcx>>;
+pub type Constructor<'p, 'tcx> = crate::constructor::Constructor<RustcPatCtxt<'p, 'tcx>>;
+pub type ConstructorSet<'p, 'tcx> = crate::constructor::ConstructorSet<RustcPatCtxt<'p, 'tcx>>;
+pub type DeconstructedPat<'p, 'tcx> = crate::pat::DeconstructedPat<RustcPatCtxt<'p, 'tcx>>;
+pub type MatchArm<'p, 'tcx> = crate::MatchArm<'p, RustcPatCtxt<'p, 'tcx>>;
+pub type Usefulness<'p, 'tcx> = crate::usefulness::Usefulness<'p, RustcPatCtxt<'p, 'tcx>>;
 pub type UsefulnessReport<'p, 'tcx> =
-    crate::usefulness::UsefulnessReport<'p, RustcMatchCheckCtxt<'p, 'tcx>>;
-pub type WitnessPat<'p, 'tcx> = crate::pat::WitnessPat<RustcMatchCheckCtxt<'p, 'tcx>>;
+    crate::usefulness::UsefulnessReport<'p, RustcPatCtxt<'p, 'tcx>>;
+pub type WitnessPat<'p, 'tcx> = crate::pat::WitnessPat<RustcPatCtxt<'p, 'tcx>>;
 
 /// A type which has gone through `cx.reveal_opaque_ty`, i.e. if it was opaque it was replaced by
 /// the hidden type if allowed in the current body. This ensures we consistently inspect the hidden
@@ -62,7 +61,7 @@ impl<'tcx> RevealedTy<'tcx> {
 }
 
 #[derive(Clone)]
-pub struct RustcMatchCheckCtxt<'p, 'tcx: 'p> {
+pub struct RustcPatCtxt<'p, 'tcx: 'p> {
     pub tcx: TyCtxt<'tcx>,
     pub typeck_results: &'tcx ty::TypeckResults<'tcx>,
     /// The module in which the match occurs. This is necessary for
@@ -87,22 +86,19 @@ pub struct RustcMatchCheckCtxt<'p, 'tcx: 'p> {
     pub known_valid_scrutinee: bool,
 }
 
-impl<'p, 'tcx: 'p> fmt::Debug for RustcMatchCheckCtxt<'p, 'tcx> {
+impl<'p, 'tcx: 'p> fmt::Debug for RustcPatCtxt<'p, 'tcx> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_struct("RustcMatchCheckCtxt").finish()
+        f.debug_struct("RustcPatCtxt").finish()
     }
 }
 
-impl<'p, 'tcx: 'p> RustcMatchCheckCtxt<'p, 'tcx> {
+impl<'p, 'tcx: 'p> RustcPatCtxt<'p, 'tcx> {
     /// Type inference occasionally gives us opaque types in places where corresponding patterns
     /// have more specific types. To avoid inconsistencies as well as detect opaque uninhabited
     /// types, we use the corresponding concrete type if possible.
     #[inline]
     pub fn reveal_opaque_ty(&self, ty: Ty<'tcx>) -> RevealedTy<'tcx> {
-        fn reveal_inner<'tcx>(
-            cx: &RustcMatchCheckCtxt<'_, 'tcx>,
-            ty: Ty<'tcx>,
-        ) -> RevealedTy<'tcx> {
+        fn reveal_inner<'tcx>(cx: &RustcPatCtxt<'_, 'tcx>, ty: Ty<'tcx>) -> RevealedTy<'tcx> {
             let ty::Alias(ty::Opaque, alias_ty) = *ty.kind() else { bug!() };
             if let Some(local_def_id) = alias_ty.def_id.as_local() {
                 let key = ty::OpaqueTypeKey { def_id: local_def_id, args: alias_ty.args };
@@ -199,7 +195,7 @@ impl<'p, 'tcx: 'p> RustcMatchCheckCtxt<'p, 'tcx> {
     + ExactSizeIterator
     + Captures<'a> {
         fn reveal_and_alloc<'a, 'tcx>(
-            cx: &'a RustcMatchCheckCtxt<'_, 'tcx>,
+            cx: &'a RustcPatCtxt<'_, 'tcx>,
             iter: impl Iterator<Item = Ty<'tcx>>,
         ) -> &'a [(RevealedTy<'tcx>, PrivateUninhabitedField)] {
             cx.dropless_arena.alloc_from_iter(
@@ -218,7 +214,7 @@ impl<'p, 'tcx: 'p> RustcMatchCheckCtxt<'p, 'tcx> {
                         reveal_and_alloc(cx, once(args.type_at(0)))
                     } else {
                         let variant =
-                            &adt.variant(RustcMatchCheckCtxt::variant_index_for_adt(&ctor, *adt));
+                            &adt.variant(RustcPatCtxt::variant_index_for_adt(&ctor, *adt));
 
                         // In the cases of either a `#[non_exhaustive]` field list or a non-public
                         // field, we skip uninhabited fields in order not to reveal the
@@ -270,7 +266,7 @@ impl<'p, 'tcx: 'p> RustcMatchCheckCtxt<'p, 'tcx> {
                         // patterns. If we're here we can assume this is a box pattern.
                         1
                     } else {
-                        let variant_idx = RustcMatchCheckCtxt::variant_index_for_adt(&ctor, *adt);
+                        let variant_idx = RustcPatCtxt::variant_index_for_adt(&ctor, *adt);
                         adt.variant(variant_idx).fields.len()
                     }
                 }
@@ -506,7 +502,7 @@ impl<'p, 'tcx: 'p> RustcMatchCheckCtxt<'p, 'tcx> {
                             _ => bug!(),
                         };
                         let variant =
-                            &adt.variant(RustcMatchCheckCtxt::variant_index_for_adt(&ctor, *adt));
+                            &adt.variant(RustcPatCtxt::variant_index_for_adt(&ctor, *adt));
                         arity = variant.fields.len();
                         fields = subpatterns
                             .iter()
@@ -710,7 +706,7 @@ impl<'p, 'tcx: 'p> RustcMatchCheckCtxt<'p, 'tcx> {
                     None => PatRangeBoundary::PosInfinity,
                 }
             }
-            JustAfterMax | PosInfinity => PatRangeBoundary::PosInfinity,
+            PosInfinity => PatRangeBoundary::PosInfinity,
         }
     }
 
@@ -774,8 +770,7 @@ impl<'p, 'tcx: 'p> RustcMatchCheckCtxt<'p, 'tcx> {
                     PatKind::Deref { subpattern: subpatterns.next().unwrap() }
                 }
                 ty::Adt(adt_def, args) => {
-                    let variant_index =
-                        RustcMatchCheckCtxt::variant_index_for_adt(&pat.ctor(), *adt_def);
+                    let variant_index = RustcPatCtxt::variant_index_for_adt(&pat.ctor(), *adt_def);
                     let subpatterns = subpatterns
                         .enumerate()
                         .map(|(i, pattern)| FieldPat { field: FieldIdx::new(i), pattern })
@@ -843,7 +838,7 @@ impl<'p, 'tcx: 'p> RustcMatchCheckCtxt<'p, 'tcx> {
     }
 }
 
-impl<'p, 'tcx: 'p> TypeCx for RustcMatchCheckCtxt<'p, 'tcx> {
+impl<'p, 'tcx: 'p> PatCx for RustcPatCtxt<'p, 'tcx> {
     type Ty = RevealedTy<'tcx>;
     type Error = ErrorGuaranteed;
     type VariantIdx = VariantIdx;

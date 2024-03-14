@@ -1831,7 +1831,9 @@ options! {
     print_llvm_passes: bool = (false, parse_bool, [UNTRACKED],
         "print the LLVM optimization passes being run (default: no)"),
     print_mono_items: Option<String> = (None, parse_opt_string, [UNTRACKED],
-        "print the result of the monomorphization collection pass"),
+        "print the result of the monomorphization collection pass. \
+         Value `lazy` means to use normal collection; `eager` means to collect all items.
+         Note that this overwrites the effect `-Clink-dead-code` has on collection!"),
     print_type_sizes: bool = (false, parse_bool, [UNTRACKED],
         "print layout information for each type encountered (default: no)"),
     print_vtable_sizes: bool = (false, parse_bool, [UNTRACKED],
