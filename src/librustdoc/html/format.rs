@@ -1509,7 +1509,9 @@ pub(crate) fn visibility_print_with_space<'a, 'tcx: 'a>(
     cx: &'a Context<'tcx>,
 ) -> impl Display + 'a + Captures<'tcx> {
     use std::fmt::Write as _;
-    let to_print: Cow<'static, str> = match item.visibility(cx.tcx()) {
+
+    let hidden: &'static str = if item.is_doc_hidden() { "#[doc(hidden)] " } else { "" };
+    let vis: Cow<'static, str> = match item.visibility(cx.tcx()) {
         None => "".into(),
         Some(ty::Visibility::Public) => "pub ".into(),
         Some(ty::Visibility::Restricted(vis_did)) => {
@@ -1544,7 +1546,10 @@ pub(crate) fn visibility_print_with_space<'a, 'tcx: 'a>(
             }
         }
     };
-    display_fn(move |f| f.write_str(&to_print))
+    display_fn(move |f| {
+        f.write_str(&hidden)?;
+        f.write_str(&vis)
+    })
 }
 
 /// This function is the same as print_with_space, except that it renders no links.
@@ -1554,9 +1559,10 @@ pub(crate) fn visibility_to_src_with_space<'a, 'tcx: 'a>(
     visibility: Option<ty::Visibility<DefId>>,
     tcx: TyCtxt<'tcx>,
     item_did: DefId,
-    _is_doc_hidden: bool,
+    is_doc_hidden: bool,
 ) -> impl Display + 'a + Captures<'tcx> {
-    let to_print: Cow<'static, str> = match visibility {
+    let hidden: &'static str = if is_doc_hidden { "#[doc(hidden)] " } else { "" };
+    let vis: Cow<'static, str> = match visibility {
         None => "".into(),
         Some(ty::Visibility::Public) => "pub ".into(),
         Some(ty::Visibility::Restricted(vis_did)) => {
@@ -1580,7 +1586,10 @@ pub(crate) fn visibility_to_src_with_space<'a, 'tcx: 'a>(
             }
         }
     };
-    display_fn(move |f| f.write_str(&to_print))
+    display_fn(move |f| {
+        f.write_str(&hidden)?;
+        f.write_str(&vis)
+    })
 }
 
 pub(crate) trait PrintWithSpace {
