@@ -7,7 +7,7 @@ use crate::fmt;
 use crate::fs;
 use crate::io;
 use crate::marker::PhantomData;
-use crate::mem::forget;
+use crate::mem::{forget, ManuallyDrop};
 use crate::ptr;
 use crate::sys;
 use crate::sys::cvt;
@@ -91,7 +91,7 @@ pub struct OwnedHandle {
 #[repr(transparent)]
 #[stable(feature = "io_safety", since = "1.63.0")]
 #[derive(Debug)]
-pub struct HandleOrNull(OwnedHandle);
+pub struct HandleOrNull(RawHandle);
 
 /// FFI type for handles in return values or out parameters, where `INVALID_HANDLE_VALUE` is used
 /// as a sentry value to indicate errors, such as in the return value of `CreateFileW`. This uses
@@ -110,7 +110,7 @@ pub struct HandleOrNull(OwnedHandle);
 #[repr(transparent)]
 #[stable(feature = "io_safety", since = "1.63.0")]
 #[derive(Debug)]
-pub struct HandleOrInvalid(OwnedHandle);
+pub struct HandleOrInvalid(RawHandle);
 
 // The Windows [`HANDLE`] type may be transferred across and shared between
 // thread boundaries (despite containing a `*mut void`, which in general isn't
@@ -163,15 +163,24 @@ impl TryFrom<HandleOrNull> for OwnedHandle {
 
     #[inline]
     fn try_from(handle_or_null: HandleOrNull) -> Result<Self, NullHandleError> {
-        let owned_handle = handle_or_null.0;
-        if owned_handle.handle.is_null() {
-            // Don't call `CloseHandle`; it'd be harmless, except that it could
-            // overwrite the `GetLastError` error.
-            forget(owned_handle);
-
-            Err(NullHandleError(()))
+        let handle_or_null = ManuallyDrop::new(handle_or_null);
+        if handle_or_null.is_valid() {
+            // SAFETY: The handle is not null.
+            Ok(unsafe { OwnedHandle::from_raw_handle(handle_or_null.0) })
         } else {
-            Ok(owned_handle)
+            Err(NullHandleError(()))
+        }
+    }
+}
+
+#[stable(feature = "io_safety", since = "1.63.0")]
+impl Drop for HandleOrNull {
+    #[inline]
+    fn drop(&mut self) {
+        if self.is_valid() {
+            unsafe {
+                let _ = sys::c::CloseHandle(self.0);
+            }
         }
     }
 }
@@ -232,15 +241,24 @@ impl TryFrom<HandleOrInvalid> for OwnedHandle {
 
     #[inline]
     fn try_from(handle_or_invalid: HandleOrInvalid) -> Result<Self, InvalidHandleError> {
-        let owned_handle = handle_or_invalid.0;
-        if owned_handle.handle == sys::c::INVALID_HANDLE_VALUE {
-            // Don't call `CloseHandle`; it'd be harmless, except that it could
-            // overwrite the `GetLastError` error.
-            forget(owned_handle);
-
-            Err(InvalidHandleError(()))
+        let handle_or_invalid = ManuallyDrop::new(handle_or_invalid);
+        if handle_or_invalid.is_valid() {
+            // SAFETY: The handle is not invalid.
+            Ok(unsafe { OwnedHandle::from_raw_handle(handle_or_invalid.0) })
         } else {
-            Ok(owned_handle)
+            Err(InvalidHandleError(()))
+        }
+    }
+}
+
+#[stable(feature = "io_safety", since = "1.63.0")]
+impl Drop for HandleOrInvalid {
+    #[inline]
+    fn drop(&mut self) {
+        if self.is_valid() {
+            unsafe {
+                let _ = sys::c::CloseHandle(self.0);
+            }
         }
     }
 }
@@ -333,7 +351,11 @@ impl HandleOrNull {
     #[stable(feature = "io_safety", since = "1.63.0")]
     #[inline]
     pub unsafe fn from_raw_handle(handle: RawHandle) -> Self {
-        Self(OwnedHandle::from_raw_handle(handle))
+        Self(handle)
+    }
+
+    fn is_valid(&self) -> bool {
+        !self.0.is_null()
     }
 }
 
@@ -356,7 +378,11 @@ impl HandleOrInvalid {
     #[stable(feature = "io_safety", since = "1.63.0")]
     #[inline]
     pub unsafe fn from_raw_handle(handle: RawHandle) -> Self {
-        Self(OwnedHandle::from_raw_handle(handle))
+        Self(handle)
+    }
+
+    fn is_valid(&self) -> bool {
+        self.0 != sys::c::INVALID_HANDLE_VALUE
     }
 }
 
