@@ -1509,8 +1509,6 @@ pub(crate) fn visibility_print_with_space<'a, 'tcx: 'a>(
     cx: &'a Context<'tcx>,
 ) -> impl Display + 'a + Captures<'tcx> {
     use std::fmt::Write as _;
-
-    let hidden: &'static str = if item.is_doc_hidden() { "#[doc(hidden)] " } else { "" };
     let vis: Cow<'static, str> = match item.visibility(cx.tcx()) {
         None => "".into(),
         Some(ty::Visibility::Public) => "pub ".into(),
@@ -1546,8 +1544,13 @@ pub(crate) fn visibility_print_with_space<'a, 'tcx: 'a>(
             }
         }
     };
+
+    let is_doc_hidden = item.is_doc_hidden();
     display_fn(move |f| {
-        f.write_str(&hidden)?;
+        if is_doc_hidden {
+            f.write_str("#[doc(hidden)] ")?;
+        }
+
         f.write_str(&vis)
     })
 }
@@ -1561,7 +1564,6 @@ pub(crate) fn visibility_to_src_with_space<'a, 'tcx: 'a>(
     item_did: DefId,
     is_doc_hidden: bool,
 ) -> impl Display + 'a + Captures<'tcx> {
-    let hidden: &'static str = if is_doc_hidden { "#[doc(hidden)] " } else { "" };
     let vis: Cow<'static, str> = match visibility {
         None => "".into(),
         Some(ty::Visibility::Public) => "pub ".into(),
@@ -1587,7 +1589,9 @@ pub(crate) fn visibility_to_src_with_space<'a, 'tcx: 'a>(
         }
     };
     display_fn(move |f| {
-        f.write_str(&hidden)?;
+        if is_doc_hidden {
+            f.write_str("#[doc(hidden)] ")?;
+        }
         f.write_str(&vis)
     })
 }
