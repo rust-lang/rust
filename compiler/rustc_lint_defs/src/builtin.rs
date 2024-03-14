@@ -4341,7 +4341,6 @@ declare_lint! {
     pub UNKNOWN_OR_MALFORMED_DIAGNOSTIC_ATTRIBUTES,
     Warn,
     "unrecognized or malformed diagnostic attribute",
-    @feature_gate = sym::diagnostic_namespace;
 }
 
 declare_lint! {
