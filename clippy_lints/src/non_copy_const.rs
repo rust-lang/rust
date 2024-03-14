@@ -290,14 +290,14 @@ impl NonCopyConst {
             promoted: None,
         };
         let param_env = cx.tcx.param_env(def_id).with_reveal_all_normalized(cx.tcx);
-        let result = cx.tcx.const_eval_global_id_for_typeck(param_env, cid, None);
+        let result = cx.tcx.const_eval_global_id_for_typeck(param_env, cid, rustc_span::DUMMY_SP);
         self.is_value_unfrozen_raw(cx, result, ty)
     }
 
     fn is_value_unfrozen_expr<'tcx>(&self, cx: &LateContext<'tcx>, hir_id: HirId, def_id: DefId, ty: Ty<'tcx>) -> bool {
         let args = cx.typeck_results().node_args(hir_id);
 
-        let result = Self::const_eval_resolve(cx.tcx, cx.param_env, ty::UnevaluatedConst::new(def_id, args), None);
+        let result = Self::const_eval_resolve(cx.tcx, cx.param_env, ty::UnevaluatedConst::new(def_id, args), rustc_span::DUMMY_SP);
         self.is_value_unfrozen_raw(cx, result, ty)
     }
 
@@ -305,7 +305,7 @@ impl NonCopyConst {
         tcx: TyCtxt<'tcx>,
         param_env: ty::ParamEnv<'tcx>,
         ct: ty::UnevaluatedConst<'tcx>,
-        span: Option<Span>,
+        span: Span,
     ) -> EvalToValTreeResult<'tcx> {
         match ty::Instance::resolve(tcx, param_env, ct.def, ct.args) {
             Ok(Some(instance)) => {
@@ -315,8 +315,8 @@ impl NonCopyConst {
                 };
                 tcx.const_eval_global_id_for_typeck(param_env, cid, span)
             },
-            Ok(None) => Err(ErrorHandled::TooGeneric(span.unwrap_or(rustc_span::DUMMY_SP))),
-            Err(err) => Err(ErrorHandled::Reported(err.into(), span.unwrap_or(rustc_span::DUMMY_SP))),
+            Ok(None) => Err(ErrorHandled::TooGeneric(span)),
+            Err(err) => Err(ErrorHandled::Reported(err.into(), span)),
         }
     }
 }
