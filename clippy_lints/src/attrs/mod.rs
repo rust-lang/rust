@@ -465,10 +465,20 @@ declare_clippy_lint! {
 
 declare_clippy_lint! {
     /// ### What it does
-    /// Checks that an item has only one kind of attributes.
+    /// Checks for items that have the same kind of attributes with mixed styles (inner/outer).
     ///
     /// ### Why is this bad?
-    /// Having both kinds of attributes makes it more complicated to read code.
+    /// Having both style of said attributes makes it more complicated to read code.
+    ///
+    /// ### Known problems
+    /// This lint currently has false-negatives when mixing same attributes
+    /// but they have different path symbols, for example:
+    /// ```ignore
+    /// #[custom_attribute]
+    /// pub fn foo() {
+    ///     #![my_crate::custom_attribute]
+    /// }
+    /// ```
     ///
     /// ### Example
     /// ```no_run
@@ -523,6 +533,7 @@ declare_lint_pass!(Attributes => [
     USELESS_ATTRIBUTE,
     BLANKET_CLIPPY_RESTRICTION_LINTS,
     SHOULD_PANIC_WITHOUT_EXPECT,
+    MIXED_ATTRIBUTES_STYLE,
 ]);
 
 impl<'tcx> LateLintPass<'tcx> for Attributes {
@@ -566,6 +577,7 @@ impl<'tcx> LateLintPass<'tcx> for Attributes {
             ItemKind::ExternCrate(..) | ItemKind::Use(..) => useless_attribute::check(cx, item, attrs),
             _ => {},
         }
+        mixed_attributes_style::check(cx, item.span, attrs);
     }
 
     fn check_impl_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx ImplItem<'_>) {
@@ -594,7 +606,6 @@ impl_lint_pass!(EarlyAttributes => [
     MAYBE_MISUSED_CFG,
     DEPRECATED_CLIPPY_CFG_ATTR,
     UNNECESSARY_CLIPPY_CFG,
-    MIXED_ATTRIBUTES_STYLE,
     DUPLICATED_ATTRIBUTES,
 ]);
 
@@ -605,7 +616,6 @@ impl EarlyLintPass for EarlyAttributes {
 
     fn check_item(&mut self, cx: &EarlyContext<'_>, item: &rustc_ast::Item) {
         empty_line_after::check(cx, item);
-        mixed_attributes_style::check(cx, item);
         duplicated_attributes::check(cx, &item.attrs);
     }
 
