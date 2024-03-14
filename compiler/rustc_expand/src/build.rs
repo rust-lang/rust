@@ -218,7 +218,7 @@ impl<'a> ExtCtxt<'a> {
     }
 
     pub fn stmt_local(&self, local: P<ast::Local>, span: Span) -> ast::Stmt {
-        ast::Stmt { id: ast::DUMMY_NODE_ID, kind: ast::StmtKind::Local(local), span }
+        ast::Stmt { id: ast::DUMMY_NODE_ID, kind: ast::StmtKind::Let(local), span }
     }
 
     pub fn stmt_item(&self, sp: Span, item: P<ast::Item>) -> ast::Stmt {

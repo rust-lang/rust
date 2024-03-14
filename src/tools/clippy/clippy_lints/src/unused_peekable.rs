@@ -56,7 +56,7 @@ impl<'tcx> LateLintPass<'tcx> for UnusedPeekable {
 
         for (idx, stmt) in block.stmts.iter().enumerate() {
             if !stmt.span.from_expansion()
-                && let StmtKind::Local(local) = stmt.kind
+                && let StmtKind::Let(local) = stmt.kind
                 && let PatKind::Binding(_, binding, ident, _) = local.pat.kind
                 && let Some(init) = local.init
                 && !init.span.from_expansion()
@@ -197,7 +197,7 @@ impl<'tcx> Visitor<'tcx> for PeekableVisitor<'_, 'tcx> {
                     },
                     Node::Stmt(stmt) => {
                         match stmt.kind {
-                            StmtKind::Local(_) | StmtKind::Item(_) => self.found_peek_call = true,
+                            StmtKind::Let(_) | StmtKind::Item(_) => self.found_peek_call = true,
                             StmtKind::Expr(_) | StmtKind::Semi(_) => {},
                         }
 

@@ -410,7 +410,7 @@ fn get_assignments<'a, 'tcx>(
     stmts
         .iter()
         .filter_map(move |stmt| match stmt.kind {
-            StmtKind::Local(..) | StmtKind::Item(..) => None,
+            StmtKind::Let(..) | StmtKind::Item(..) => None,
             StmtKind::Expr(e) | StmtKind::Semi(e) => Some(e),
         })
         .chain(*expr)

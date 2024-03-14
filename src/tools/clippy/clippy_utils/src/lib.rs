@@ -2161,7 +2161,7 @@ pub fn is_expr_used_or_unified(tcx: TyCtxt<'_>, expr: &Expr<'_>) -> bool {
             Node::Stmt(Stmt {
                 kind: StmtKind::Expr(_)
                     | StmtKind::Semi(_)
-                    | StmtKind::Local(Local {
+                    | StmtKind::Let(Local {
                         pat: Pat {
                             kind: PatKind::Wild,
                             ..

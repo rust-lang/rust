@@ -653,7 +653,7 @@ impl<'hir> Map<'hir> {
                 | Node::ForeignItem(_)
                 | Node::TraitItem(_)
                 | Node::ImplItem(_)
-                | Node::Stmt(Stmt { kind: StmtKind::Local(_), .. }) => break,
+                | Node::Stmt(Stmt { kind: StmtKind::Let(_), .. }) => break,
                 Node::Expr(expr @ Expr { kind: ExprKind::If(..) | ExprKind::Match(..), .. }) => {
                     return Some(expr);
                 }

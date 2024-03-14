@@ -277,7 +277,7 @@ impl<'v> hir_visit::Visitor<'v> for StatCollector<'v> {
     fn visit_stmt(&mut self, s: &'v hir::Stmt<'v>) {
         record_variants!(
             (self, s, s.kind, Id::Node(s.hir_id), hir, Stmt, StmtKind),
-            [Local, Item, Expr, Semi]
+            [Let, Item, Expr, Semi]
         );
         hir_visit::walk_stmt(self, s)
     }
@@ -539,7 +539,7 @@ impl<'v> ast_visit::Visitor<'v> for StatCollector<'v> {
     fn visit_stmt(&mut self, s: &'v ast::Stmt) {
         record_variants!(
             (self, s, s.kind, Id::None, ast, Stmt, StmtKind),
-            [Local, Item, Expr, Semi, Empty, MacCall]
+            [Let, Item, Expr, Semi, Empty, MacCall]
         );
         ast_visit::walk_stmt(self, s)
     }

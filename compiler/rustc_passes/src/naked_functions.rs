@@ -280,7 +280,7 @@ impl<'tcx> Visitor<'tcx> for CheckInlineAssembly<'tcx> {
     fn visit_stmt(&mut self, stmt: &'tcx hir::Stmt<'tcx>) {
         match stmt.kind {
             StmtKind::Item(..) => {}
-            StmtKind::Local(..) => {
+            StmtKind::Let(..) => {
                 self.items.push((ItemKind::NonAsm, stmt.span));
             }
             StmtKind::Expr(expr) | StmtKind::Semi(expr) => {

@@ -585,7 +585,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
             }
 
             fn visit_stmt(&mut self, ex: &'v hir::Stmt<'v>) -> Self::Result {
-                if let hir::StmtKind::Local(hir::Local {
+                if let hir::StmtKind::Let(hir::Local {
                     span,
                     pat: hir::Pat { .. },
                     ty: None,
@@ -824,7 +824,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
 
         let hir = self.tcx.hir();
         for stmt in blk.stmts.iter().rev() {
-            let hir::StmtKind::Local(local) = &stmt.kind else {
+            let hir::StmtKind::Let(local) = &stmt.kind else {
                 continue;
             };
             local.pat.walk(&mut find_compatible_candidates);
