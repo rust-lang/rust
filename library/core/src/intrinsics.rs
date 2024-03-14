@@ -1186,7 +1186,7 @@ extern "rust-intrinsic" {
     ///
     /// Transmuting *pointers to integers* in a `const` context is [undefined behavior][ub], unless
     /// the pointer was originally created *from* an integer. (That includes this function
-    /// specifically, integer-to-pointer casts, and helpers like [`invalid`][crate::ptr::dangling],
+    /// specifically, integer-to-pointer casts, and helpers like [`dangling`][crate::ptr::dangling],
     /// but also semantically-equivalent conversions such as punning through `repr(C)` union
     /// fields.) Any attempt to use the resulting value for integer operations will abort
     /// const-evaluation. (And even outside `const`, such transmutation is touching on many
@@ -1206,7 +1206,11 @@ extern "rust-intrinsic" {
     /// In particular, doing a pointer-to-integer-to-pointer roundtrip via `transmute` is *not* a
     /// lossless process. If you want to round-trip a pointer through an integer in a way that you
     /// can get back the original pointer, you need to use `as` casts, or replace the integer type
-    /// by `MaybeUninit<$int>` (and never call `assume_init()`).
+    /// by `MaybeUninit<$int>` (and never call `assume_init()`). If you are looking for a way to
+    /// store data of arbitrary type, also use `MaybeUninit<T>` (that will also handle uninitialized
+    /// memory due to padding). If you specifically need to store something that is "either an
+    /// integer or a pointer", use `*mut ()`: integers can be converted to pointers and back without
+    /// any loss (via `as` casts or via `transmute`).
     ///
     /// # Examples
     ///
