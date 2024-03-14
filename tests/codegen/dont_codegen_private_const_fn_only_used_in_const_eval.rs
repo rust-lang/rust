@@ -8,3 +8,9 @@ const fn foo() {}
 pub static FOO: () = foo();
 
 // CHECK-NOT: define{{.*}}foo{{.*}}
+
+const fn bar() {}
+
+pub const BAR: () = bar();
+
+// CHECK: define{{.*}}bar{{.*}}
