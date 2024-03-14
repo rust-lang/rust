@@ -1,12 +1,10 @@
 use std::iter;
 
-use hir::{HirFileIdExt, ModuleSource};
+use hir::{HasSource, HirFileIdExt, ModuleSource};
 use ide_db::{
     assists::{AssistId, AssistKind},
     base_db::FileId,
     defs::{Definition, NameClass, NameRefClass},
-    helpers::item_name,
-    items_locator::items_with_name,
     search::{FileReference, SearchScope},
     FxHashMap, FxHashSet,
 };
@@ -473,6 +471,9 @@ impl Module {
             .filter(|(use_file_id, _)| *use_file_id == file_id)
             .flat_map(|(_, refs)| refs.into_iter().rev())
             .find_map(|fref| find_node_at_range(file.syntax(), fref.range));
+        let use_stmt_not_in_sel = use_stmt.as_ref().is_some_and(|use_stmt| {
+            !selection_range.contains_range(use_stmt.syntax().text_range())
+        });
 
         let mut use_tree_str_opt: Option<Vec<ast::Path>> = None;
         //Exists inside and outside selection
@@ -565,7 +566,7 @@ impl Module {
                 _ => false,
             };
 
-            if def_out_sel || !is_item {
+            if (def_out_sel || !is_item) && use_stmt_not_in_sel {
                 self.use_items.insert(0, item.clone());
             }
         }
