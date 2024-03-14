@@ -16,6 +16,7 @@ use crate::{Interner, PlaceholderLike, UniverseIndex};
 pub struct Canonical<I: Interner, V> {
     pub value: V,
     pub max_universe: UniverseIndex,
+    // FIXME(lcnr, oli-obk): try moving this into the query inputs instead
     pub defining_opaque_types: I::DefiningOpaqueTypes,
     pub variables: I::CanonicalVars,
 }
