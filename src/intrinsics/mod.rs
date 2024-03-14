@@ -728,8 +728,10 @@ fn codegen_regular_intrinsic_call<'tcx>(
         | sym::variant_count => {
             intrinsic_args!(fx, args => (); intrinsic);
 
-            let const_val =
-                fx.tcx.const_eval_instance(ParamEnv::reveal_all(), instance, None).unwrap();
+            let const_val = fx
+                .tcx
+                .const_eval_instance(ParamEnv::reveal_all(), instance, source_info.span)
+                .unwrap();
             let val = crate::constant::codegen_const_value(fx, const_val, ret.layout().ty);
             ret.write_cvalue(fx, val);
         }
