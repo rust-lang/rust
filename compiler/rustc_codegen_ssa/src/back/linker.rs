@@ -1640,16 +1640,7 @@ impl<'a> Linker for AixLinker<'a> {
 
     fn ehcont_guard(&mut self) {}
 
-    fn debuginfo(&mut self, strip: Strip, _: &[PathBuf]) {
-        match strip {
-            Strip::None => {}
-            // FIXME: -s strips the symbol table, line number information
-            // and relocation information.
-            Strip::Debuginfo | Strip::Symbols => {
-                self.cmd.arg("-s");
-            }
-        }
-    }
+    fn debuginfo(&mut self, _: Strip, _: &[PathBuf]) {}
 
     fn no_crt_objects(&mut self) {}
 
