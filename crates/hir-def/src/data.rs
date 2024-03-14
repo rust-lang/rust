@@ -745,6 +745,7 @@ impl<'a> AssocItemCollector<'a> {
                         self.collect_macro_items(res, &|| hir_expand::MacroCallKind::FnLike {
                             ast_id: InFile::new(file_id, ast_id),
                             expand_to: hir_expand::ExpandTo::Items,
+                            eager: None,
                         });
                     }
                     Ok(None) => (),
@@ -754,6 +755,7 @@ impl<'a> AssocItemCollector<'a> {
                             MacroCallKind::FnLike {
                                 ast_id: InFile::new(file_id, ast_id),
                                 expand_to,
+                                eager: None,
                             },
                             Clone::clone(path),
                         ));

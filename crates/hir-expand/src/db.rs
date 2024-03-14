@@ -6,19 +6,16 @@ use limit::Limit;
 use mbe::{syntax_node_to_token_tree, ValueResult};
 use rustc_hash::FxHashSet;
 use span::{AstIdMap, SyntaxContextData, SyntaxContextId};
-use syntax::{
-    ast::{self, HasAttrs},
-    AstNode, Parse, SyntaxElement, SyntaxError, SyntaxNode, SyntaxToken, T,
-};
+use syntax::{ast, AstNode, Parse, SyntaxElement, SyntaxError, SyntaxNode, SyntaxToken, T};
 use triomphe::Arc;
 
 use crate::{
-    attrs::collect_attrs,
+    attrs::{collect_attrs, AttrId},
     builtin_attr_macro::pseudo_derive_attr_expansion,
     builtin_fn_macro::EagerExpander,
     cfg_process,
     declarative::DeclarativeMacroExpander,
-    fixup::{self, reverse_fixups, SyntaxFixupUndoInfo},
+    fixup::{self, SyntaxFixupUndoInfo},
     hygiene::{span_with_call_site_ctxt, span_with_def_site_ctxt, span_with_mixed_site_ctxt},
     proc_macro::ProcMacros,
     span_map::{RealSpanMap, SpanMap, SpanMapRef},
@@ -149,8 +146,18 @@ pub fn expand_speculative(
             mbe::syntax_node_to_token_tree(speculative_args, span_map, loc.call_site),
             SyntaxFixupUndoInfo::NONE,
         ),
-        MacroCallKind::Derive { .. } | MacroCallKind::Attr { .. } => {
-            let censor = censor_for_macro_input(&loc, speculative_args);
+        MacroCallKind::Attr { .. } if loc.def.is_attribute_derive() => (
+            mbe::syntax_node_to_token_tree(speculative_args, span_map, loc.call_site),
+            SyntaxFixupUndoInfo::NONE,
+        ),
+        MacroCallKind::Derive { derive_attr_index: index, .. }
+        | MacroCallKind::Attr { invoc_attr_index: index, .. } => {
+            let censor = if let MacroCallKind::Derive { .. } = loc.kind {
+                censor_derive_input(index, &ast::Adt::cast(speculative_args.clone())?)
+            } else {
+                censor_attr_input(index, &ast::Item::cast(speculative_args.clone())?)
+            };
+
             let censor_cfg =
                 cfg_process::process_cfg_attrs(speculative_args, &loc, db).unwrap_or_default();
             let mut fixups = fixup::fixup_syntax(span_map, speculative_args, loc.call_site);
@@ -324,185 +331,173 @@ pub(crate) fn parse_with_map(
     }
 }
 
-// FIXME: for derive attributes, this will return separate copies of the same structures!
+// FIXME: for derive attributes, this will return separate copies of the same structures! Though
+// they may differ in spans due to differing call sites...
 fn macro_arg(
     db: &dyn ExpandDatabase,
     id: MacroCallId,
-    // FIXME: consider the following by putting fixup info into eager call info args
-    // ) -> ValueResult<Arc<(tt::Subtree, SyntaxFixupUndoInfo)>, Arc<Box<[SyntaxError]>>> {
 ) -> ValueResult<(Arc<tt::Subtree>, SyntaxFixupUndoInfo), Arc<Box<[SyntaxError]>>> {
     let loc = db.lookup_intern_macro_call(id);
-    if let Some(EagerCallInfo { arg, .. }) = matches!(loc.def.kind, MacroDefKind::BuiltInEager(..))
-        .then(|| loc.eager.as_deref())
-        .flatten()
+
+    if let MacroCallLoc {
+        def: MacroDefId { kind: MacroDefKind::BuiltInEager(..), .. },
+        kind: MacroCallKind::FnLike { eager: Some(eager), .. },
+        ..
+    } = &loc
     {
-        ValueResult::ok((arg.clone(), SyntaxFixupUndoInfo::NONE))
-    } else {
-        let (parse, map) = parse_with_map(db, loc.kind.file_id());
-        let root = parse.syntax_node();
-
-        let syntax = match loc.kind {
-            MacroCallKind::FnLike { ast_id, .. } => {
-                let dummy_tt = |kind| {
-                    (
-                        Arc::new(tt::Subtree {
-                            delimiter: tt::Delimiter {
-                                open: loc.call_site,
-                                close: loc.call_site,
-                                kind,
-                            },
-                            token_trees: Box::default(),
-                        }),
-                        SyntaxFixupUndoInfo::default(),
-                    )
-                };
-
-                let node = &ast_id.to_ptr(db).to_node(&root);
-                let offset = node.syntax().text_range().start();
-                let Some(tt) = node.token_tree() else {
-                    return ValueResult::new(
-                        dummy_tt(tt::DelimiterKind::Invisible),
-                        Arc::new(Box::new([SyntaxError::new_at_offset(
-                            "missing token tree".to_owned(),
-                            offset,
-                        )])),
-                    );
-                };
-                let first = tt.left_delimiter_token().map(|it| it.kind()).unwrap_or(T!['(']);
-                let last = tt.right_delimiter_token().map(|it| it.kind()).unwrap_or(T![.]);
-
-                let mismatched_delimiters = !matches!(
-                    (first, last),
-                    (T!['('], T![')']) | (T!['['], T![']']) | (T!['{'], T!['}'])
-                );
-                if mismatched_delimiters {
-                    // Don't expand malformed (unbalanced) macro invocations. This is
-                    // less than ideal, but trying to expand unbalanced  macro calls
-                    // sometimes produces pathological, deeply nested code which breaks
-                    // all kinds of things.
-                    //
-                    // So instead, we'll return an empty subtree here
-                    cov_mark::hit!(issue9358_bad_macro_stack_overflow);
-
-                    let kind = match first {
-                        _ if loc.def.is_proc_macro() => tt::DelimiterKind::Invisible,
-                        T!['('] => tt::DelimiterKind::Parenthesis,
-                        T!['['] => tt::DelimiterKind::Bracket,
-                        T!['{'] => tt::DelimiterKind::Brace,
-                        _ => tt::DelimiterKind::Invisible,
-                    };
-                    return ValueResult::new(
-                        dummy_tt(kind),
-                        Arc::new(Box::new([SyntaxError::new_at_offset(
-                            "mismatched delimiters".to_owned(),
-                            offset,
-                        )])),
-                    );
-                }
-                tt.syntax().clone()
-            }
-            MacroCallKind::Derive { ast_id, .. } => {
-                ast_id.to_ptr(db).to_node(&root).syntax().clone()
-            }
-            MacroCallKind::Attr { ast_id, .. } => ast_id.to_ptr(db).to_node(&root).syntax().clone(),
-        };
-        let (mut tt, undo_info) = match loc.kind {
-            MacroCallKind::FnLike { .. } => (
-                mbe::syntax_node_to_token_tree(&syntax, map.as_ref(), loc.call_site),
-                SyntaxFixupUndoInfo::NONE,
-            ),
-            MacroCallKind::Derive { .. } | MacroCallKind::Attr { .. } => {
-                let censor = censor_for_macro_input(&loc, &syntax);
-                let censor_cfg =
-                    cfg_process::process_cfg_attrs(&syntax, &loc, db).unwrap_or_default();
-                let mut fixups = fixup::fixup_syntax(map.as_ref(), &syntax, loc.call_site);
-                fixups.append.retain(|it, _| match it {
-                    syntax::NodeOrToken::Token(_) => true,
-                    it => !censor.contains(it) && !censor_cfg.contains(it),
-                });
-                fixups.remove.extend(censor);
-                fixups.remove.extend(censor_cfg);
-
-                {
-                    let mut tt = mbe::syntax_node_to_token_tree_modified(
-                        &syntax,
-                        map.as_ref(),
-                        fixups.append.clone(),
-                        fixups.remove.clone(),
-                        loc.call_site,
-                    );
-                    reverse_fixups(&mut tt, &fixups.undo_info);
-                }
-                (
-                    mbe::syntax_node_to_token_tree_modified(
-                        &syntax,
-                        map,
-                        fixups.append,
-                        fixups.remove,
-                        loc.call_site,
-                    ),
-                    fixups.undo_info,
-                )
-            }
-        };
-
-        if loc.def.is_proc_macro() {
-            // proc macros expect their inputs without parentheses, MBEs expect it with them included
-            tt.delimiter.kind = tt::DelimiterKind::Invisible;
-        }
-
-        if matches!(loc.def.kind, MacroDefKind::BuiltInEager(..)) {
-            match parse.errors() {
-                errors if errors.is_empty() => ValueResult::ok((Arc::new(tt), undo_info)),
-                errors => ValueResult::new(
-                    (Arc::new(tt), undo_info),
-                    // Box::<[_]>::from(res.errors()), not stable yet
-                    Arc::new(errors.to_vec().into_boxed_slice()),
-                ),
-            }
-        } else {
-            ValueResult::ok((Arc::new(tt), undo_info))
-        }
+        return ValueResult::ok((eager.arg.clone(), SyntaxFixupUndoInfo::NONE));
     }
+
+    let (parse, map) = parse_with_map(db, loc.kind.file_id());
+    let root = parse.syntax_node();
+
+    let (censor, item_node) = match loc.kind {
+        MacroCallKind::FnLike { ast_id, .. } => {
+            let dummy_tt = |kind| {
+                (
+                    Arc::new(tt::Subtree {
+                        delimiter: tt::Delimiter {
+                            open: loc.call_site,
+                            close: loc.call_site,
+                            kind,
+                        },
+                        token_trees: Box::default(),
+                    }),
+                    SyntaxFixupUndoInfo::default(),
+                )
+            };
+
+            let node = &ast_id.to_ptr(db).to_node(&root);
+            let offset = node.syntax().text_range().start();
+            let Some(tt) = node.token_tree() else {
+                return ValueResult::new(
+                    dummy_tt(tt::DelimiterKind::Invisible),
+                    Arc::new(Box::new([SyntaxError::new_at_offset(
+                        "missing token tree".to_owned(),
+                        offset,
+                    )])),
+                );
+            };
+            let first = tt.left_delimiter_token().map(|it| it.kind()).unwrap_or(T!['(']);
+            let last = tt.right_delimiter_token().map(|it| it.kind()).unwrap_or(T![.]);
+
+            let mismatched_delimiters = !matches!(
+                (first, last),
+                (T!['('], T![')']) | (T!['['], T![']']) | (T!['{'], T!['}'])
+            );
+            if mismatched_delimiters {
+                // Don't expand malformed (unbalanced) macro invocations. This is
+                // less than ideal, but trying to expand unbalanced  macro calls
+                // sometimes produces pathological, deeply nested code which breaks
+                // all kinds of things.
+                //
+                // So instead, we'll return an empty subtree here
+                cov_mark::hit!(issue9358_bad_macro_stack_overflow);
+
+                let kind = match first {
+                    _ if loc.def.is_proc_macro() => tt::DelimiterKind::Invisible,
+                    T!['('] => tt::DelimiterKind::Parenthesis,
+                    T!['['] => tt::DelimiterKind::Bracket,
+                    T!['{'] => tt::DelimiterKind::Brace,
+                    _ => tt::DelimiterKind::Invisible,
+                };
+                return ValueResult::new(
+                    dummy_tt(kind),
+                    Arc::new(Box::new([SyntaxError::new_at_offset(
+                        "mismatched delimiters".to_owned(),
+                        offset,
+                    )])),
+                );
+            }
+
+            let mut tt = mbe::syntax_node_to_token_tree(tt.syntax(), map.as_ref(), loc.call_site);
+            if loc.def.is_proc_macro() {
+                // proc macros expect their inputs without parentheses, MBEs expect it with them included
+                tt.delimiter.kind = tt::DelimiterKind::Invisible;
+            }
+            let val = (Arc::new(tt), SyntaxFixupUndoInfo::NONE);
+            return if matches!(loc.def.kind, MacroDefKind::BuiltInEager(..)) {
+                match parse.errors() {
+                    errors if errors.is_empty() => ValueResult::ok(val),
+                    errors => ValueResult::new(
+                        val,
+                        // Box::<[_]>::from(res.errors()), not stable yet
+                        Arc::new(errors.to_vec().into_boxed_slice()),
+                    ),
+                }
+            } else {
+                ValueResult::ok(val)
+            };
+        }
+        MacroCallKind::Derive { ast_id, derive_attr_index, .. } => {
+            let node = ast_id.to_ptr(db).to_node(&root);
+            (censor_derive_input(derive_attr_index, &node), node.into())
+        }
+        MacroCallKind::Attr { ast_id, invoc_attr_index, .. } => {
+            let node = ast_id.to_ptr(db).to_node(&root);
+            (censor_attr_input(invoc_attr_index, &node), node)
+        }
+    };
+
+    let (mut tt, undo_info) = {
+        let syntax = item_node.syntax();
+        let censor_cfg = cfg_process::process_cfg_attrs(syntax, &loc, db).unwrap_or_default();
+        let mut fixups = fixup::fixup_syntax(map.as_ref(), syntax, loc.call_site);
+        fixups.append.retain(|it, _| match it {
+            syntax::NodeOrToken::Token(_) => true,
+            it => !censor.contains(it) && !censor_cfg.contains(it),
+        });
+        fixups.remove.extend(censor);
+        fixups.remove.extend(censor_cfg);
+
+        (
+            mbe::syntax_node_to_token_tree_modified(
+                syntax,
+                map,
+                fixups.append,
+                fixups.remove,
+                loc.call_site,
+            ),
+            fixups.undo_info,
+        )
+    };
+
+    if loc.def.is_proc_macro() {
+        // proc macros expect their inputs without parentheses, MBEs expect it with them included
+        tt.delimiter.kind = tt::DelimiterKind::Invisible;
+    }
+
+    ValueResult::ok((Arc::new(tt), undo_info))
 }
 
 // FIXME: Censoring info should be calculated by the caller! Namely by name resolution
-/// Certain macro calls expect some nodes in the input to be preprocessed away, namely:
-/// - derives expect all `#[derive(..)]` invocations up to the currently invoked one to be stripped
-/// - attributes expect the invoking attribute to be stripped
-fn censor_for_macro_input(loc: &MacroCallLoc, node: &SyntaxNode) -> FxHashSet<SyntaxElement> {
+/// Derives expect all `#[derive(..)]` invocations up to the currently invoked one to be stripped
+fn censor_derive_input(derive_attr_index: AttrId, node: &ast::Adt) -> FxHashSet<SyntaxElement> {
     // FIXME: handle `cfg_attr`
-    (|| {
-        let censor = match loc.kind {
-            MacroCallKind::FnLike { .. } => return None,
-            MacroCallKind::Derive { derive_attr_index, .. } => {
-                cov_mark::hit!(derive_censoring);
-                ast::Item::cast(node.clone())?
-                    .attrs()
-                    .take(derive_attr_index.ast_index() + 1)
-                    // FIXME, this resolution should not be done syntactically
-                    // derive is a proper macro now, no longer builtin
-                    // But we do not have resolution at this stage, this means
-                    // we need to know about all macro calls for the given ast item here
-                    // so we require some kind of mapping...
-                    .filter(|attr| attr.simple_name().as_deref() == Some("derive"))
-                    .map(|it| it.syntax().clone().into())
-                    .collect()
-            }
-            MacroCallKind::Attr { .. } if loc.def.is_attribute_derive() => return None,
-            MacroCallKind::Attr { invoc_attr_index, .. } => {
-                cov_mark::hit!(attribute_macro_attr_censoring);
-                collect_attrs(&ast::Item::cast(node.clone())?)
-                    .nth(invoc_attr_index.ast_index())
-                    .and_then(|x| Either::left(x.1))
-                    .map(|attr| attr.syntax().clone().into())
-                    .into_iter()
-                    .collect()
-            }
-        };
-        Some(censor)
-    })()
-    .unwrap_or_default()
+    cov_mark::hit!(derive_censoring);
+    collect_attrs(node)
+        .take(derive_attr_index.ast_index() + 1)
+        .filter_map(|(_, attr)| Either::left(attr))
+        // FIXME, this resolution should not be done syntactically
+        // derive is a proper macro now, no longer builtin
+        // But we do not have resolution at this stage, this means
+        // we need to know about all macro calls for the given ast item here
+        // so we require some kind of mapping...
+        .filter(|attr| attr.simple_name().as_deref() == Some("derive"))
+        .map(|it| it.syntax().clone().into())
+        .collect()
+}
+
+/// Attributes expect the invoking attribute to be stripped\
+fn censor_attr_input(invoc_attr_index: AttrId, node: &ast::Item) -> FxHashSet<SyntaxElement> {
+    // FIXME: handle `cfg_attr`
+    cov_mark::hit!(attribute_macro_attr_censoring);
+    collect_attrs(node)
+        .nth(invoc_attr_index.ast_index())
+        .and_then(|(_, attr)| Either::left(attr))
+        .map(|attr| attr.syntax().clone().into())
+        .into_iter()
+        .collect()
 }
 
 impl TokenExpander {
@@ -532,7 +527,7 @@ fn macro_expand(
 ) -> ExpandResult<CowArc<tt::Subtree>> {
     let _p = tracing::span!(tracing::Level::INFO, "macro_expand").entered();
 
-    let ExpandResult { value: tt, mut err } = match loc.def.kind {
+    let ExpandResult { value: tt, err } = match loc.def.kind {
         MacroDefKind::ProcMacro(..) => return db.expand_proc_macro(macro_call_id).map(CowArc::Arc),
         _ => {
             let ValueResult { value: (macro_arg, undo_info), err } = db.macro_arg(macro_call_id);
@@ -555,23 +550,34 @@ fn macro_expand(
                 MacroDefKind::BuiltIn(it, _) => {
                     it.expand(db, macro_call_id, arg).map_err(Into::into)
                 }
-                // This might look a bit odd, but we do not expand the inputs to eager macros here.
-                // Eager macros inputs are expanded, well, eagerly when we collect the macro calls.
-                // That kind of expansion uses the ast id map of an eager macros input though which goes through
-                // the HirFileId machinery. As eager macro inputs are assigned a macro file id that query
-                // will end up going through here again, whereas we want to just want to inspect the raw input.
-                // As such we just return the input subtree here.
-                MacroDefKind::BuiltInEager(..) if loc.eager.is_none() => {
-                    return ExpandResult {
-                        value: CowArc::Arc(macro_arg.clone()),
-                        err: err.map(format_parse_err),
-                    };
-                }
                 MacroDefKind::BuiltInDerive(it, _) => {
                     it.expand(db, macro_call_id, arg).map_err(Into::into)
                 }
                 MacroDefKind::BuiltInEager(it, _) => {
-                    it.expand(db, macro_call_id, arg).map_err(Into::into)
+                    // This might look a bit odd, but we do not expand the inputs to eager macros here.
+                    // Eager macros inputs are expanded, well, eagerly when we collect the macro calls.
+                    // That kind of expansion uses the ast id map of an eager macros input though which goes through
+                    // the HirFileId machinery. As eager macro inputs are assigned a macro file id that query
+                    // will end up going through here again, whereas we want to just want to inspect the raw input.
+                    // As such we just return the input subtree here.
+                    let eager = match &loc.kind {
+                        MacroCallKind::FnLike { eager: None, .. } => {
+                            return ExpandResult {
+                                value: CowArc::Arc(macro_arg.clone()),
+                                err: err.map(format_parse_err),
+                            };
+                        }
+                        MacroCallKind::FnLike { eager: Some(eager), .. } => Some(&**eager),
+                        _ => None,
+                    };
+
+                    let mut res = it.expand(db, macro_call_id, arg).map_err(Into::into);
+
+                    if let Some(EagerCallInfo { error, .. }) = eager {
+                        // FIXME: We should report both errors!
+                        res.err = error.clone().or(res.err);
+                    }
+                    res
                 }
                 MacroDefKind::BuiltInAttr(it, _) => {
                     let mut res = it.expand(db, macro_call_id, arg);
@@ -587,11 +593,6 @@ fn macro_expand(
             }
         }
     };
-
-    if let Some(EagerCallInfo { error, .. }) = loc.eager.as_deref() {
-        // FIXME: We should report both errors!
-        err = error.clone().or(err);
-    }
 
     // Skip checking token tree limit for include! macro call
     if !loc.def.is_include() {

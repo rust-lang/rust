@@ -117,7 +117,7 @@ fn derive_expand(
 }
 
 pub fn pseudo_derive_attr_expansion(
-    tt: &tt::Subtree,
+    _: &tt::Subtree,
     args: &tt::Subtree,
     call_site: Span,
 ) -> ExpandResult<tt::Subtree> {
@@ -141,7 +141,7 @@ pub fn pseudo_derive_attr_expansion(
         token_trees.push(mk_leaf(']'));
     }
     ExpandResult::ok(tt::Subtree {
-        delimiter: tt.delimiter,
+        delimiter: args.delimiter,
         token_trees: token_trees.into_boxed_slice(),
     })
 }

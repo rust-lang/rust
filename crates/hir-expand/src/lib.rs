@@ -170,12 +170,8 @@ impl fmt::Display for ExpandError {
 pub struct MacroCallLoc {
     pub def: MacroDefId,
     pub krate: CrateId,
-    /// Some if this is a macro call for an eager macro. Note that this is `None`
-    /// for the eager input macro file.
-    // FIXME: This is being interned, subtrees can vary quickly differ just slightly causing
-    // leakage problems here
-    eager: Option<Arc<EagerCallInfo>>,
     pub kind: MacroCallKind,
+    // FIXME: Spans while relative to an anchor, are still rather unstable
     pub call_site: Span,
 }
 impl_intern_value_trivial!(MacroCallLoc);
@@ -214,6 +210,11 @@ pub enum MacroCallKind {
     FnLike {
         ast_id: AstId<ast::MacroCall>,
         expand_to: ExpandTo,
+        /// Some if this is a macro call for an eager macro. Note that this is `None`
+        /// for the eager input macro file.
+        // FIXME: This is being interned, subtrees can vary quickly differ just slightly causing
+        // leakage problems here
+        eager: Option<Arc<EagerCallInfo>>,
     },
     Derive {
         ast_id: AstId<ast::Adt>,
@@ -275,7 +276,7 @@ impl HirFileIdExt for HirFileId {
                 HirFileIdRepr::MacroFile(file) => {
                     let loc = db.lookup_intern_macro_call(file.macro_call_id);
                     if loc.def.is_include() {
-                        if let Some(eager) = &loc.eager {
+                        if let MacroCallKind::FnLike { eager: Some(eager), .. } = &loc.kind {
                             if let Ok(it) = builtin_fn_macro::include_input_to_file_id(
                                 db,
                                 file.macro_call_id,
@@ -405,14 +406,14 @@ impl MacroFileIdExt for MacroFileId {
 }
 
 impl MacroDefId {
-    pub fn as_lazy_macro(
+    pub fn make_call(
         self,
         db: &dyn ExpandDatabase,
         krate: CrateId,
         kind: MacroCallKind,
         call_site: Span,
     ) -> MacroCallId {
-        MacroCallLoc { def: self, krate, eager: None, kind, call_site }.intern(db)
+        MacroCallLoc { def: self, krate, kind, call_site }.intern(db)
     }
 
     pub fn definition_range(&self, db: &dyn ExpandDatabase) -> InFile<TextRange> {
@@ -534,7 +535,7 @@ impl MacroCallLoc {
         macro_call_id: MacroCallId,
     ) -> Option<FileId> {
         if self.def.is_include() {
-            if let Some(eager) = &self.eager {
+            if let MacroCallKind::FnLike { eager: Some(eager), .. } = &self.kind {
                 if let Ok(it) =
                     builtin_fn_macro::include_input_to_file_id(db, macro_call_id, &eager.arg)
                 {
