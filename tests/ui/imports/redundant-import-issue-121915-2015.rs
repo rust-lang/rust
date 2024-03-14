@@ -6,6 +6,6 @@ extern crate aux_issue_121915;
 #[deny(unused_imports)]
 fn main() {
     use aux_issue_121915;
-    //~^ ERROR the item `aux_issue_121915` is imported redundantly
+    //~^ ERROR redundant import
     aux_issue_121915::item();
 }

@@ -1,4 +1,4 @@
-error: the item `S` is imported redundantly
+error: redundant import: `S`
   --> $DIR/issue-59896.rs:6:9
    |
 LL | struct S;

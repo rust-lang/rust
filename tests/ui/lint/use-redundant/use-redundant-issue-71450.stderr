@@ -1,5 +1,5 @@
-warning: the item `String` is imported redundantly
-  --> $DIR/use-redundant-issue-71450.rs:26:13
+warning: redundant import: `std::string::String`
+  --> $DIR/use-redundant-issue-71450.rs:25:13
    |
 LL |         use std::string::String;
    |             ^^^^^^^^^^^^^^^^^^^

@@ -1306,7 +1306,10 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         None
     }
 
-    pub(crate) fn check_for_redundant_imports(&mut self, import: Import<'a>) {
+    pub(crate) fn check_for_redundant_imports(
+        &mut self,
+        import: Import<'a>,
+    ) -> Option<Vec<(Span, bool)>> {
         // This function is only called for single imports.
         let ImportKind::Single {
             source, target, ref source_bindings, ref target_bindings, id, ..
@@ -1317,12 +1320,12 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
 
         // Skip if the import is of the form `use source as target` and source != target.
         if source != target {
-            return;
+            return None;
         }
 
         // Skip if the import was produced by a macro.
         if import.parent_scope.expansion != LocalExpnId::ROOT {
-            return;
+            return None;
         }
 
         // Skip if we are inside a named module (in contrast to an anonymous
@@ -1332,7 +1335,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         if import.used.get() == Some(Used::Other)
             || self.effective_visibilities.is_exported(self.local_def_id(id))
         {
-            return;
+            return None;
         }
 
         let mut is_redundant = true;
@@ -1368,14 +1371,9 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             let mut redundant_spans: Vec<_> = redundant_span.present_items().collect();
             redundant_spans.sort();
             redundant_spans.dedup();
-            self.lint_buffer.buffer_lint_with_diagnostic(
-                UNUSED_IMPORTS,
-                id,
-                import.span,
-                format!("the item `{source}` is imported redundantly"),
-                BuiltinLintDiag::RedundantImport(redundant_spans, source),
-            );
+            return Some(redundant_spans);
         }
+        None
     }
 
     fn resolve_glob_import(&mut self, import: Import<'a>) {

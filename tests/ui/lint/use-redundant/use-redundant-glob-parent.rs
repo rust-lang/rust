@@ -9,7 +9,7 @@ pub mod bar {
 use bar::*;
 
 pub fn warning() -> Foo {
-    use bar::Foo; //~ WARNING imported redundantly
+    use bar::Foo; //~ WARNING redundant import
     Foo(Bar('a'))
 }
 

@@ -1,4 +1,4 @@
-error: the item `aux_issue_121915` is imported redundantly
+error: redundant import: `aux_issue_121915`
   --> $DIR/redundant-import-issue-121915-2015.rs:8:9
    |
 LL | extern crate aux_issue_121915;
