@@ -686,6 +686,8 @@ impl<'a> Parser<'a> {
             (None, self.parse_path(PathStyle::Expr)?)
         };
 
+        let rename = if self.eat_keyword(kw::As) { Some(self.parse_ident()?) } else { None };
+
         let body = if self.check(&token::OpenDelim(Delimiter::Brace)) {
             Some(self.parse_block()?)
         } else {
@@ -695,11 +697,9 @@ impl<'a> Parser<'a> {
         let span = span.to(self.prev_token.span);
         self.psess.gated_spans.gate(sym::fn_delegation, span);
 
-        let ident = path.segments.last().map(|seg| seg.ident).unwrap_or(Ident::empty());
-        Ok((
-            ident,
-            ItemKind::Delegation(Box::new(Delegation { id: DUMMY_NODE_ID, qself, path, body })),
-        ))
+        let ident = rename.unwrap_or_else(|| path.segments.last().unwrap().ident);
+        let deleg = Delegation { id: DUMMY_NODE_ID, qself, path, rename, body };
+        Ok((ident, ItemKind::Delegation(Box::new(deleg))))
     }
 
     fn parse_item_list<T>(
