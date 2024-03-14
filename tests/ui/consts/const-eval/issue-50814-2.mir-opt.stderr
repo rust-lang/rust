@@ -10,6 +10,52 @@ note: erroneous constant encountered
 LL |     &<A<T> as Foo<T>>::BAR
    |      ^^^^^^^^^^^^^^^^^^^^^
 
+note: erroneous constant encountered
+  --> $DIR/issue-50814-2.rs:20:5
+   |
+LL |     &<A<T> as Foo<T>>::BAR
+   |     ^^^^^^^^^^^^^^^^^^^^^^
+
+note: erroneous constant encountered
+  --> $DIR/issue-50814-2.rs:20:5
+   |
+LL |     &<A<T> as Foo<T>>::BAR
+   |     ^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+note: erroneous constant encountered
+  --> $DIR/issue-50814-2.rs:20:5
+   |
+LL |     &<A<T> as Foo<T>>::BAR
+   |     ^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+note: erroneous constant encountered
+  --> $DIR/issue-50814-2.rs:20:5
+   |
+LL |     &<A<T> as Foo<T>>::BAR
+   |     ^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+note: erroneous constant encountered
+  --> $DIR/issue-50814-2.rs:20:6
+   |
+LL |     &<A<T> as Foo<T>>::BAR
+   |      ^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+note: erroneous constant encountered
+  --> $DIR/issue-50814-2.rs:20:6
+   |
+LL |     &<A<T> as Foo<T>>::BAR
+   |      ^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
 error: aborting due to 1 previous error
 
 For more information about this error, try `rustc --explain E0080`.

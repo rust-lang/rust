@@ -825,14 +825,17 @@ impl<'a, 'tcx> MirVisitor<'tcx> for MirUsedCollector<'a, 'tcx> {
     fn visit_constant(&mut self, constant: &mir::ConstOperand<'tcx>, location: Location) {
         let const_ = self.monomorphize(constant.const_);
         let param_env = ty::ParamEnv::reveal_all();
-        let val = match const_.eval(self.tcx, param_env, None) {
+        let val = match const_.eval(self.tcx, param_env, Some(constant.span)) {
             Ok(v) => v,
-            Err(ErrorHandled::Reported(..)) => return,
             Err(ErrorHandled::TooGeneric(..)) => span_bug!(
                 self.body.source_info(location).span,
                 "collection encountered polymorphic constant: {:?}",
                 const_
             ),
+            Err(err @ ErrorHandled::Reported(..)) => {
+                err.emit_note(self.tcx);
+                return;
+            }
         };
         collect_const_value(self.tcx, val, self.output);
         MirVisitor::visit_ty(self, const_.ty(), TyContext::Location(location));
