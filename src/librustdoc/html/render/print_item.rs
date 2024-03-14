@@ -511,16 +511,17 @@ fn item_module(w: &mut Buffer, cx: &mut Context<'_>, item: &clean::Item, items: 
                     _ => "",
                 };
 
-                let visibility_emoji = match myitem.visibility(tcx) {
+                let visibility_and_hidden = match myitem.visibility(tcx) {
                     Some(ty::Visibility::Restricted(_)) => {
-                        "<span title=\"Restricted Visibility\">&nbsp;🔒</span> "
+                        if myitem.is_doc_hidden() {
+                            "<span title=\"Restricted Visibility\">&nbsp;🔒</span> "
+                        } else {
+                            // Don't separate with a space when there are two of them
+                            "<span title=\"Restricted Visibility\">&nbsp;🔒</span><span title=\"Hidden item\">👻</span> "
+                        }
                     }
+                    _ if myitem.is_doc_hidden() => "<span title=\"Hidden item\">&nbsp;👻</span> ",
                     _ => "",
-                };
-                let hidden_emoji = if myitem.is_doc_hidden() {
-                    "<span title=\"Hidden item\">&nbsp;👻</span> "
-                } else {
-                    ""
                 };
 
                 w.write_str(ITEM_TABLE_ROW_OPEN);
@@ -535,14 +536,13 @@ fn item_module(w: &mut Buffer, cx: &mut Context<'_>, item: &clean::Item, items: 
                     w,
                     "<div class=\"item-name\">\
                         <a class=\"{class}\" href=\"{href}\" title=\"{title}\">{name}</a>\
-                        {visibility_emoji}\
-                        {hidden_emoji}\
+                        {visibility_and_hidden}\
                         {unsafety_flag}\
                         {stab_tags}\
                      </div>\
                      {docs_before}{docs}{docs_after}",
                     name = myitem.name.unwrap(),
-                    visibility_emoji = visibility_emoji,
+                    visibility_and_hidden = visibility_and_hidden,
                     stab_tags = extra_info_tags(myitem, item, tcx),
                     class = myitem.type_(),
                     unsafety_flag = unsafety_flag,
