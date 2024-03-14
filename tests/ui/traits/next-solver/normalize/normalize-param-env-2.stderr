@@ -19,12 +19,6 @@ error[E0275]: overflow evaluating the requirement `<() as A<T>>::Assoc: A<T>`
 LL |         Self::Assoc: A<T>,
    |                      ^^^^
 
-error[E0275]: overflow evaluating the requirement `<() as A<T>>::Assoc well-formed`
-  --> $DIR/normalize-param-env-2.rs:24:22
-   |
-LL |         Self::Assoc: A<T>,
-   |                      ^^^^
-
 error[E0275]: overflow evaluating the requirement `(): A<T>`
   --> $DIR/normalize-param-env-2.rs:27:10
    |
@@ -46,6 +40,6 @@ LL |     where
 LL |         Self::Assoc: A<T>,
    |                      ^^^^ required by this bound in `A::f`
 
-error: aborting due to 5 previous errors
+error: aborting due to 4 previous errors
 
 For more information about this error, try `rustc --explain E0275`.
