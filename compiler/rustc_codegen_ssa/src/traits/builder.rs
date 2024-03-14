@@ -382,6 +382,13 @@ pub trait BuilderMethods<'a, 'tcx>:
         index: Self::Value,
     );
 
+    fn instrprof_mcdc_parameters(
+        &mut self,
+        fn_name: Self::Value,
+        hash: Self::Value,
+        num_bitmap_bytes: Self::Value
+    );
+
     fn call(
         &mut self,
         llty: Self::Type,

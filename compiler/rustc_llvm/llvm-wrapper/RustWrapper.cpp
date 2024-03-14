@@ -1528,6 +1528,11 @@ extern "C" LLVMValueRef LLVMRustGetInstrProfIncrementIntrinsic(LLVMModuleRef M) 
               (llvm::Intrinsic::ID)llvm::Intrinsic::instrprof_increment));
 }
 
+extern "C" LLVMValueRef LLVMRustGetInstrProfMCDCParametersIntrinsic(LLVMModuleRef M) {
+  return wrap(llvm::Intrinsic::getDeclaration(unwrap(M),
+              (llvm::Intrinsic::ID)llvm::Intrinsic::instrprof_mcdc_parameters));
+}
+
 extern "C" LLVMValueRef LLVMRustBuildMemCpy(LLVMBuilderRef B,
                                             LLVMValueRef Dst, unsigned DstAlign,
                                             LLVMValueRef Src, unsigned SrcAlign,

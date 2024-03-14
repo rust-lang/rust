@@ -1238,6 +1238,38 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
         }
     }
 
+    fn instrprof_mcdc_parameters(
+        &mut self,
+        fn_name: Self::Value,
+        hash: Self::Value,
+        num_bitmap_bytes: Self::Value,
+    ) {
+        debug!(
+            "instrprof_mcdc_parameters() with args ({:?}, {:?}, {:?})",
+            fn_name, hash, num_bitmap_bytes
+        );
+
+        let llfn = unsafe { llvm::LLVMRustGetInstrProfMCDCParametersIntrinsic(self.cx().llmod) };
+        let llty = self.cx.type_func(
+            &[self.cx.type_ptr(), self.cx.type_i64(), self.cx.type_i32()],
+            self.cx.type_void(),
+        );
+        let args = &[fn_name, hash, num_bitmap_bytes];
+        let args = self.check_call("call", llty, llfn, args);
+
+        unsafe {
+            let _ = llvm::LLVMRustBuildCall(
+                self.llbuilder,
+                llty,
+                llfn,
+                args.as_ptr() as *const &llvm::Value,
+                args.len() as c_uint,
+                [].as_ptr(),
+                0 as c_uint,
+            );
+        }
+    }
+
     fn call(
         &mut self,
         llty: &'ll Type,
