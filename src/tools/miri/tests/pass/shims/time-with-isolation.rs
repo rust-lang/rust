@@ -24,7 +24,8 @@ fn test_time_passes() {
     assert_eq!(now2 - diff, now1);
     // The virtual clock is deterministic and I got 15ms on a 64-bit Linux machine. However, this
     // changes according to the platform so we use an interval to be safe. This should be updated
-    // if `NANOSECONDS_PER_BASIC_BLOCK` changes.
+    // if `NANOSECONDS_PER_BASIC_BLOCK` changes. It may also need updating if the standard library
+    // code that runs in the loop above changes.
     assert!(diff.as_millis() > 5);
     assert!(diff.as_millis() < 20);
 }
@@ -37,8 +38,18 @@ fn test_block_for_one_second() {
     while Instant::now() < end {}
 }
 
+/// Ensures that we get the same behavior across all targets.
+fn test_deterministic() {
+    let begin = Instant::now();
+    for _ in 0..100_000 {}
+    let time = begin.elapsed();
+    println!("The loop took around {}s", time.as_secs());
+    println!("(It's fine for this number to change when you `--bless` this test.)")
+}
+
 fn main() {
     test_time_passes();
     test_block_for_one_second();
     test_sleep();
+    test_deterministic();
 }
