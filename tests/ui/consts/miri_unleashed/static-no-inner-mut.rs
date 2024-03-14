@@ -3,15 +3,27 @@
 #![feature(const_refs_to_cell, const_mut_refs)]
 // All "inner" allocations that come with a `static` are interned immutably. This means it is
 // crucial that we do not accept any form of (interior) mutability there.
-
+#![deny(const_eval_mutable_ptr_in_final_value)]
 use std::sync::atomic::*;
 
-static REF: &AtomicI32 = &AtomicI32::new(42); //~ERROR mutable pointer in final value
-static REFMUT: &mut i32 = &mut 0; //~ERROR mutable pointer in final value
+static REF: &AtomicI32 = &AtomicI32::new(42);
+//~^ ERROR mutable pointer in final value
+//~| WARNING this was previously accepted by the compiler
+
+static REFMUT: &mut i32 = &mut 0;
+//~^ ERROR mutable pointer in final value
+//~| WARNING this was previously accepted by the compiler
+//~| ERROR it is undefined behavior to use this value
 
 // Different way of writing this that avoids promotion.
-static REF2: &AtomicI32 = {let x = AtomicI32::new(42); &{x}}; //~ERROR mutable pointer in final value
-static REFMUT2: &mut i32 = {let mut x = 0; &mut {x}}; //~ERROR mutable pointer in final value
+static REF2: &AtomicI32 = {let x = AtomicI32::new(42); &{x}};
+//~^ ERROR mutable pointer in final value
+//~| WARNING this was previously accepted by the compiler
+
+static REFMUT2: &mut i32 = {let mut x = 0; &mut {x}};
+//~^ ERROR mutable pointer in final value
+//~| WARNING this was previously accepted by the compiler
+//~| ERROR it is undefined behavior to use this value
 
 // This one is obvious, since it is non-Sync. (It also suppresses the other errors, so it is
 // commented out.)
@@ -28,9 +40,14 @@ unsafe impl<T> Sync for SyncPtr<T> {}
 // non-dangling raw pointers.
 static RAW_SYNC: SyncPtr<AtomicI32> = SyncPtr { x: &AtomicI32::new(42) };
 //~^ ERROR mutable pointer in final value
+//~| WARNING this was previously accepted by the compiler
+
 static RAW_MUT_CAST: SyncPtr<i32> = SyncPtr { x : &mut 42 as *mut _ as *const _ };
 //~^ ERROR mutable pointer in final value
+//~| WARNING this was previously accepted by the compiler
+
 static RAW_MUT_COERCE: SyncPtr<i32> = SyncPtr { x: &mut 0 };
 //~^ ERROR mutable pointer in final value
+//~| WARNING this was previously accepted by the compiler
 
 fn main() {}

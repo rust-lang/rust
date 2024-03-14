@@ -863,7 +863,7 @@ fn should_encode_span(def_kind: DefKind) -> bool {
         | DefKind::LifetimeParam
         | DefKind::Fn
         | DefKind::Const
-        | DefKind::Static(_)
+        | DefKind::Static { .. }
         | DefKind::Ctor(..)
         | DefKind::AssocFn
         | DefKind::AssocConst
@@ -894,7 +894,7 @@ fn should_encode_attrs(def_kind: DefKind) -> bool {
         | DefKind::AssocTy
         | DefKind::Fn
         | DefKind::Const
-        | DefKind::Static(_)
+        | DefKind::Static { nested: false, .. }
         | DefKind::AssocFn
         | DefKind::AssocConst
         | DefKind::Macro(_)
@@ -915,6 +915,7 @@ fn should_encode_attrs(def_kind: DefKind) -> bool {
         | DefKind::InlineConst
         | DefKind::OpaqueTy
         | DefKind::LifetimeParam
+        | DefKind::Static { nested: true, .. }
         | DefKind::GlobalAsm => false,
     }
 }
@@ -936,7 +937,7 @@ fn should_encode_expn_that_defined(def_kind: DefKind) -> bool {
         | DefKind::Fn
         | DefKind::Const
         | DefKind::ConstParam
-        | DefKind::Static(_)
+        | DefKind::Static { .. }
         | DefKind::Ctor(..)
         | DefKind::AssocFn
         | DefKind::AssocConst
@@ -968,7 +969,7 @@ fn should_encode_visibility(def_kind: DefKind) -> bool {
         | DefKind::AssocTy
         | DefKind::Fn
         | DefKind::Const
-        | DefKind::Static(..)
+        | DefKind::Static { nested: false, .. }
         | DefKind::Ctor(..)
         | DefKind::AssocFn
         | DefKind::AssocConst
@@ -981,6 +982,7 @@ fn should_encode_visibility(def_kind: DefKind) -> bool {
         | DefKind::LifetimeParam
         | DefKind::AnonConst
         | DefKind::InlineConst
+        | DefKind::Static { nested: true, .. }
         | DefKind::OpaqueTy
         | DefKind::GlobalAsm
         | DefKind::Impl { .. }
@@ -1001,7 +1003,7 @@ fn should_encode_stability(def_kind: DefKind) -> bool {
         | DefKind::AssocConst
         | DefKind::TyParam
         | DefKind::ConstParam
-        | DefKind::Static(..)
+        | DefKind::Static { .. }
         | DefKind::Const
         | DefKind::Fn
         | DefKind::ForeignMod
@@ -1099,7 +1101,7 @@ fn should_encode_variances<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId, def_kind: Def
         | DefKind::AssocConst
         | DefKind::TyParam
         | DefKind::ConstParam
-        | DefKind::Static(..)
+        | DefKind::Static { .. }
         | DefKind::Const
         | DefKind::ForeignMod
         | DefKind::Impl { .. }
@@ -1131,7 +1133,7 @@ fn should_encode_generics(def_kind: DefKind) -> bool {
         | DefKind::AssocTy
         | DefKind::Fn
         | DefKind::Const
-        | DefKind::Static(..)
+        | DefKind::Static { .. }
         | DefKind::Ctor(..)
         | DefKind::AssocFn
         | DefKind::AssocConst
@@ -1163,7 +1165,7 @@ fn should_encode_type(tcx: TyCtxt<'_>, def_id: LocalDefId, def_kind: DefKind) ->
         | DefKind::Field
         | DefKind::Fn
         | DefKind::Const
-        | DefKind::Static(..)
+        | DefKind::Static { nested: false, .. }
         | DefKind::TyAlias
         | DefKind::ForeignTy
         | DefKind::Impl { .. }
@@ -1205,6 +1207,7 @@ fn should_encode_type(tcx: TyCtxt<'_>, def_id: LocalDefId, def_kind: DefKind) ->
         | DefKind::Mod
         | DefKind::ForeignMod
         | DefKind::Macro(..)
+        | DefKind::Static { nested: true, .. }
         | DefKind::Use
         | DefKind::LifetimeParam
         | DefKind::GlobalAsm
@@ -1222,7 +1225,7 @@ fn should_encode_fn_sig(def_kind: DefKind) -> bool {
         | DefKind::Variant
         | DefKind::Field
         | DefKind::Const
-        | DefKind::Static(..)
+        | DefKind::Static { .. }
         | DefKind::Ctor(..)
         | DefKind::TyAlias
         | DefKind::OpaqueTy
@@ -1263,7 +1266,7 @@ fn should_encode_constness(def_kind: DefKind) -> bool {
         | DefKind::Const
         | DefKind::AssocConst
         | DefKind::AnonConst
-        | DefKind::Static(..)
+        | DefKind::Static { .. }
         | DefKind::TyAlias
         | DefKind::OpaqueTy
         | DefKind::Impl { of_trait: false }
@@ -1295,7 +1298,7 @@ fn should_encode_const(def_kind: DefKind) -> bool {
         | DefKind::Ctor(..)
         | DefKind::Field
         | DefKind::Fn
-        | DefKind::Static(..)
+        | DefKind::Static { .. }
         | DefKind::TyAlias
         | DefKind::OpaqueTy
         | DefKind::ForeignTy
@@ -1469,7 +1472,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                     .coroutine_for_closure
                     .set_some(def_id.index, self.tcx.coroutine_for_closure(def_id).into());
             }
-            if let DefKind::Static(_) = def_kind {
+            if let DefKind::Static { .. } = def_kind {
                 if !self.tcx.is_foreign_item(def_id) {
                     let data = self.tcx.eval_static_initializer(def_id).unwrap();
                     record!(self.tables.eval_static_initializer[def_id] <- data);

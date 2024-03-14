@@ -291,7 +291,7 @@ impl PathSet {
 const PATH_REMAP: &[(&str, &[&str])] = &[
     // config.toml uses `rust-analyzer-proc-macro-srv`, but the
     // actual path is `proc-macro-srv-cli`
-    ("rust-analyzer-proc-macro-srv", &["proc-macro-srv-cli"]),
+    ("rust-analyzer-proc-macro-srv", &["src/tools/rust-analyzer/crates/proc-macro-srv-cli"]),
     // Make `x test tests` function the same as `x t tests/*`
     (
         "tests",
@@ -382,10 +382,12 @@ impl StepDescription {
         }
 
         if !builder.config.skip.is_empty() && !matches!(builder.config.dry_run, DryRun::SelfCheck) {
-            builder.verbose(&format!(
-                "{:?} not skipped for {:?} -- not in {:?}",
-                pathset, self.name, builder.config.skip
-            ));
+            builder.verbose(|| {
+                println!(
+                    "{:?} not skipped for {:?} -- not in {:?}",
+                    pathset, self.name, builder.config.skip
+                )
+            });
         }
         false
     }
@@ -1093,10 +1095,9 @@ impl<'a> Builder<'a> {
                 // Avoid deleting the rustlib/ directory we just copied
                 // (in `impl Step for Sysroot`).
                 if !builder.download_rustc() {
-                    builder.verbose(&format!(
-                        "Removing sysroot {} to avoid caching bugs",
-                        sysroot.display()
-                    ));
+                    builder.verbose(|| {
+                        println!("Removing sysroot {} to avoid caching bugs", sysroot.display())
+                    });
                     let _ = fs::remove_dir_all(&sysroot);
                     t!(fs::create_dir_all(&sysroot));
                 }
@@ -1436,7 +1437,7 @@ impl<'a> Builder<'a> {
 
         let sysroot_str = sysroot.as_os_str().to_str().expect("sysroot should be UTF-8");
         if !matches!(self.config.dry_run, DryRun::SelfCheck) {
-            self.verbose_than(0, &format!("using sysroot {sysroot_str}"));
+            self.verbose_than(0, || println!("using sysroot {sysroot_str}"));
         }
 
         let mut rustflags = Rustflags::new(target);
@@ -1731,15 +1732,16 @@ impl<'a> Builder<'a> {
             },
         );
 
+        let split_debuginfo = self.config.split_debuginfo(target);
         let split_debuginfo_is_stable = target.contains("linux")
             || target.contains("apple")
-            || (target.is_msvc() && self.config.rust_split_debuginfo == SplitDebuginfo::Packed)
-            || (target.is_windows() && self.config.rust_split_debuginfo == SplitDebuginfo::Off);
+            || (target.is_msvc() && split_debuginfo == SplitDebuginfo::Packed)
+            || (target.is_windows() && split_debuginfo == SplitDebuginfo::Off);
 
         if !split_debuginfo_is_stable {
             rustflags.arg("-Zunstable-options");
         }
-        match self.config.rust_split_debuginfo {
+        match split_debuginfo {
             SplitDebuginfo::Packed => rustflags.arg("-Csplit-debuginfo=packed"),
             SplitDebuginfo::Unpacked => rustflags.arg("-Csplit-debuginfo=unpacked"),
             SplitDebuginfo::Off => rustflags.arg("-Csplit-debuginfo=off"),
@@ -2102,11 +2104,11 @@ impl<'a> Builder<'a> {
                 panic!("{}", out);
             }
             if let Some(out) = self.cache.get(&step) {
-                self.verbose_than(1, &format!("{}c {:?}", "  ".repeat(stack.len()), step));
+                self.verbose_than(1, || println!("{}c {:?}", "  ".repeat(stack.len()), step));
 
                 return out;
             }
-            self.verbose_than(1, &format!("{}> {:?}", "  ".repeat(stack.len()), step));
+            self.verbose_than(1, || println!("{}> {:?}", "  ".repeat(stack.len()), step));
             stack.push(Box::new(step.clone()));
         }
 
@@ -2144,7 +2146,7 @@ impl<'a> Builder<'a> {
             let cur_step = stack.pop().expect("step stack empty");
             assert_eq!(cur_step.downcast_ref(), Some(&step));
         }
-        self.verbose_than(1, &format!("{}< {:?}", "  ".repeat(self.stack.borrow().len()), step));
+        self.verbose_than(1, || println!("{}< {:?}", "  ".repeat(self.stack.borrow().len()), step));
         self.cache.put(step, out.clone());
         out
     }

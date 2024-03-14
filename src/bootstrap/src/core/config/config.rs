@@ -256,7 +256,7 @@ pub struct Config {
     pub rust_debuginfo_level_std: DebuginfoLevel,
     pub rust_debuginfo_level_tools: DebuginfoLevel,
     pub rust_debuginfo_level_tests: DebuginfoLevel,
-    pub rust_split_debuginfo: SplitDebuginfo,
+    pub rust_split_debuginfo_for_build_triple: Option<SplitDebuginfo>, // FIXME: Deprecated field. Remove in Q3'24.
     pub rust_rpath: bool,
     pub rust_strip: bool,
     pub rust_frame_pointers: bool,
@@ -574,6 +574,7 @@ pub struct Target {
     pub ranlib: Option<PathBuf>,
     pub default_linker: Option<PathBuf>,
     pub linker: Option<PathBuf>,
+    pub split_debuginfo: Option<SplitDebuginfo>,
     pub sanitizers: Option<bool>,
     pub profiler: Option<StringOrBool>,
     pub rpath: Option<bool>,
@@ -1133,6 +1134,7 @@ define_config! {
         ranlib: Option<String> = "ranlib",
         default_linker: Option<PathBuf> = "default-linker",
         linker: Option<String> = "linker",
+        split_debuginfo: Option<String> = "split-debuginfo",
         llvm_config: Option<String> = "llvm-config",
         llvm_has_rust_patches: Option<bool> = "llvm-has-rust-patches",
         llvm_filecheck: Option<String> = "llvm-filecheck",
@@ -1627,11 +1629,18 @@ impl Config {
             debuginfo_level_tools = debuginfo_level_tools_toml;
             debuginfo_level_tests = debuginfo_level_tests_toml;
 
-            config.rust_split_debuginfo = split_debuginfo
+            config.rust_split_debuginfo_for_build_triple = split_debuginfo
                 .as_deref()
                 .map(SplitDebuginfo::from_str)
-                .map(|v| v.expect("invalid value for rust.split_debuginfo"))
-                .unwrap_or(SplitDebuginfo::default_for_platform(config.build));
+                .map(|v| v.expect("invalid value for rust.split-debuginfo"));
+
+            if config.rust_split_debuginfo_for_build_triple.is_some() {
+                println!(
+                    "WARNING: specifying `rust.split-debuginfo` is deprecated, use `target.{}.split-debuginfo` instead",
+                    config.build
+                );
+            }
+
             optimize = optimize_toml;
             omit_git_hash = omit_git_hash_toml;
             config.rust_new_symbol_mangling = new_symbol_mangling;
@@ -1853,10 +1862,11 @@ impl Config {
                 if let Some(ref s) = cfg.llvm_filecheck {
                     target.llvm_filecheck = Some(config.src.join(s));
                 }
-                target.llvm_libunwind = cfg
-                    .llvm_libunwind
-                    .as_ref()
-                    .map(|v| v.parse().expect("failed to parse rust.llvm-libunwind"));
+                target.llvm_libunwind = cfg.llvm_libunwind.as_ref().map(|v| {
+                    v.parse().unwrap_or_else(|_| {
+                        panic!("failed to parse target.{triple}.llvm-libunwind")
+                    })
+                });
                 if let Some(s) = cfg.no_std {
                     target.no_std = s;
                 }
@@ -1892,6 +1902,12 @@ impl Config {
                         s.clone()
                     }).collect());
                 }
+
+                target.split_debuginfo = cfg.split_debuginfo.as_ref().map(|v| {
+                    v.parse().unwrap_or_else(|_| {
+                        panic!("invalid value for target.{triple}.split-debuginfo")
+                    })
+                });
 
                 config.target_config.insert(TargetSelection::from_user(&triple), target);
             }
@@ -2043,7 +2059,7 @@ impl Config {
         if self.dry_run() {
             return Ok(());
         }
-        self.verbose(&format!("running: {cmd:?}"));
+        self.verbose(|| println!("running: {cmd:?}"));
         build_helper::util::try_run(cmd, self.is_verbose())
     }
 
@@ -2230,9 +2246,10 @@ impl Config {
         }
     }
 
-    pub fn verbose(&self, msg: &str) {
+    /// Runs a function if verbosity is greater than 0
+    pub fn verbose(&self, f: impl Fn()) {
         if self.verbose > 0 {
-            println!("{msg}");
+            f()
         }
     }
 
@@ -2289,6 +2306,16 @@ impl Config {
             } else {
                 LlvmLibunwind::No
             })
+    }
+
+    pub fn split_debuginfo(&self, target: TargetSelection) -> SplitDebuginfo {
+        self.target_config
+            .get(&target)
+            .and_then(|t| t.split_debuginfo)
+            .or_else(|| {
+                if self.build == target { self.rust_split_debuginfo_for_build_triple } else { None }
+            })
+            .unwrap_or_else(|| SplitDebuginfo::default_for_platform(target))
     }
 
     pub fn submodules(&self, rust_info: &GitInfo) -> bool {

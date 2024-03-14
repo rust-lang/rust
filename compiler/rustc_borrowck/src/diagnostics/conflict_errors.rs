@@ -616,7 +616,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
 
                     // FIXME: We make sure that this is a normal top-level binding,
                     // but we could suggest `todo!()` for all uninitalized bindings in the pattern pattern
-                    if let hir::StmtKind::Local(hir::Local { span, ty, init: None, pat, .. }) =
+                    if let hir::StmtKind::Let(hir::Local { span, ty, init: None, pat, .. }) =
                         &ex.kind
                         && let hir::PatKind::Binding(..) = pat.kind
                         && span.contains(self.decl_span)

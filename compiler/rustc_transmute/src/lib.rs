@@ -23,7 +23,7 @@ pub struct Assume {
 #[derive(Debug, Hash, Eq, PartialEq, Clone)]
 pub enum Answer<R> {
     Yes,
-    No(Reason),
+    No(Reason<R>),
     If(Condition<R>),
 }
 
@@ -42,7 +42,7 @@ pub enum Condition<R> {
 
 /// Answers "why wasn't the source type transmutable into the destination type?"
 #[derive(Debug, Hash, Eq, PartialEq, PartialOrd, Ord, Clone)]
-pub enum Reason {
+pub enum Reason<T> {
     /// The layout of the source type is unspecified.
     SrcIsUnspecified,
     /// The layout of the destination type is unspecified.
@@ -53,6 +53,13 @@ pub enum Reason {
     DstMayHaveSafetyInvariants,
     /// `Dst` is larger than `Src`, and the excess bytes were not exclusively uninitialized.
     DstIsTooBig,
+    /// A referent of `Dst` is larger than a referent in `Src`.
+    DstRefIsTooBig {
+        /// The referent of the source type.
+        src: T,
+        /// The too-large referent of the destination type.
+        dst: T,
+    },
     /// Src should have a stricter alignment than Dst, but it does not.
     DstHasStricterAlignment { src_min_align: usize, dst_min_align: usize },
     /// Can't go from shared pointer to unique pointer

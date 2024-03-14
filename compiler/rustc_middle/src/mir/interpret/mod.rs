@@ -130,7 +130,7 @@ use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::sync::{HashMapExt, Lock};
 use rustc_data_structures::tiny_list::TinyList;
 use rustc_errors::ErrorGuaranteed;
-use rustc_hir::def_id::DefId;
+use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_macros::HashStable;
 use rustc_middle::ty::print::with_no_trimmed_paths;
 use rustc_serialize::{Decodable, Encodable};
@@ -623,6 +623,16 @@ impl<'tcx> TyCtxt<'tcx> {
     /// call this function twice, even with the same `Allocation` will ICE the compiler.
     pub fn set_alloc_id_memory(self, id: AllocId, mem: ConstAllocation<'tcx>) {
         if let Some(old) = self.alloc_map.lock().alloc_map.insert(id, GlobalAlloc::Memory(mem)) {
+            bug!("tried to set allocation ID {id:?}, but it was already existing as {old:#?}");
+        }
+    }
+
+    /// Freezes an `AllocId` created with `reserve` by pointing it at a static item. Trying to
+    /// call this function twice, even with the same `DefId` will ICE the compiler.
+    pub fn set_nested_alloc_id_static(self, id: AllocId, def_id: LocalDefId) {
+        if let Some(old) =
+            self.alloc_map.lock().alloc_map.insert(id, GlobalAlloc::Static(def_id.to_def_id()))
+        {
             bug!("tried to set allocation ID {id:?}, but it was already existing as {old:#?}");
         }
     }

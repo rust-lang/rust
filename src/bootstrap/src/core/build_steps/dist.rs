@@ -2107,7 +2107,7 @@ fn maybe_install_llvm(
     {
         let mut cmd = Command::new(llvm_config);
         cmd.arg("--libfiles");
-        builder.verbose(&format!("running {cmd:?}"));
+        builder.verbose(|| println!("running {cmd:?}"));
         let files = if builder.config.dry_run() { "".into() } else { output(&mut cmd) };
         let build_llvm_out = &builder.llvm_out(builder.config.build);
         let target_llvm_out = &builder.llvm_out(target);

@@ -543,23 +543,15 @@
 # FIXME(#61117): Some tests fail when this option is enabled.
 #debuginfo-level-tests = 0
 
-# Should rustc be build with split debuginfo? Default is platform dependent.
-# Valid values are the same as those accepted by `-C split-debuginfo`
-# (`off`/`unpacked`/`packed`).
+# Should rustc and the standard library be built with split debuginfo? Default
+# is platform dependent.
 #
-# On Linux, split debuginfo is disabled by default.
+# This field is deprecated, use `target.<triple>.split-debuginfo` instead.
 #
-# On Apple platforms, unpacked split debuginfo is used by default. Unpacked
-# debuginfo does not run `dsymutil`, which packages debuginfo from disparate
-# object files into a single `.dSYM` file. `dsymutil` adds time to builds for
-# no clear benefit, and also makes it more difficult for debuggers to find
-# debug info. The compiler currently defaults to running `dsymutil` to preserve
-# its historical default, but when compiling the compiler itself, we skip it by
-# default since we know it's safe to do so in that case.
+# The value specified here is only used when targeting the `build.build` triple,
+# and is overridden by `target.<triple>.split-debuginfo` if specified.
 #
-# On Windows platforms, packed debuginfo is the only supported option,
-# producing a `.pdb` file.
-#split-debuginfo = if linux { off } else if windows { packed } else if apple { unpacked }
+#split-debuginfo = see target.<triple>.split-debuginfo
 
 # Whether or not `panic!`s generate backtraces (RUST_BACKTRACE)
 #backtrace = true
@@ -772,6 +764,26 @@
 # what platform is crossing to what platform.
 # Setting this will override the `use-lld` option for Rust code when targeting MSVC.
 #linker = "cc" (path)
+
+# Should rustc and the standard library be built with split debuginfo? Default
+# is platform dependent.
+#
+# Valid values are the same as those accepted by `-C split-debuginfo`
+# (`off`/`unpacked`/`packed`).
+#
+# On Linux, split debuginfo is disabled by default.
+#
+# On Apple platforms, unpacked split debuginfo is used by default. Unpacked
+# debuginfo does not run `dsymutil`, which packages debuginfo from disparate
+# object files into a single `.dSYM` file. `dsymutil` adds time to builds for
+# no clear benefit, and also makes it more difficult for debuggers to find
+# debug info. The compiler currently defaults to running `dsymutil` to preserve
+# its historical default, but when compiling the compiler itself, we skip it by
+# default since we know it's safe to do so in that case.
+#
+# On Windows platforms, packed debuginfo is the only supported option,
+# producing a `.pdb` file.
+#split-debuginfo = if linux { off } else if windows { packed } else if apple { unpacked }
 
 # Path to the `llvm-config` binary of the installation of a custom LLVM to link
 # against. Note that if this is specified we don't compile LLVM at all for this

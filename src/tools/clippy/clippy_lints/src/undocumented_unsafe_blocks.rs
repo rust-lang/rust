@@ -158,7 +158,7 @@ impl<'tcx> LateLintPass<'tcx> for UndocumentedUnsafeBlocks {
     }
 
     fn check_stmt(&mut self, cx: &LateContext<'tcx>, stmt: &hir::Stmt<'tcx>) {
-        let (hir::StmtKind::Local(&hir::Local { init: Some(expr), .. })
+        let (hir::StmtKind::Let(&hir::Local { init: Some(expr), .. })
         | hir::StmtKind::Expr(expr)
         | hir::StmtKind::Semi(expr)) = stmt.kind
         else {
@@ -358,7 +358,7 @@ fn block_parents_have_safety_comment(
         },
         Node::Stmt(hir::Stmt {
             kind:
-                hir::StmtKind::Local(hir::Local { span, hir_id, .. })
+                hir::StmtKind::Let(hir::Local { span, hir_id, .. })
                 | hir::StmtKind::Expr(hir::Expr { span, hir_id, .. })
                 | hir::StmtKind::Semi(hir::Expr { span, hir_id, .. }),
             ..

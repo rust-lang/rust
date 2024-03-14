@@ -333,7 +333,7 @@ fn mir_promoted(
         }
         DefKind::AssocConst
         | DefKind::Const
-        | DefKind::Static(_)
+        | DefKind::Static { .. }
         | DefKind::InlineConst
         | DefKind::AnonConst => tcx.mir_const_qualif(def),
         _ => ConstQualifs::default(),

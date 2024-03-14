@@ -143,7 +143,7 @@ impl<'tcx> LateLintPass<'tcx> for LintPass {
 
     fn check_stmt(&mut self, cx: &LateContext<'tcx>, stmt: &'tcx Stmt<'_>) {
         if !in_external_macro(cx.tcx.sess, stmt.span)
-            && let StmtKind::Local(local) = stmt.kind
+            && let StmtKind::Let(local) = stmt.kind
             && let PatKind::Binding(BindingAnnotation(ByRef::Yes, mutabl), .., name, None) = local.pat.kind
             && let Some(init) = local.init
             // Do not emit if clippy::ref_patterns is not allowed to avoid having two lints for the same issue.

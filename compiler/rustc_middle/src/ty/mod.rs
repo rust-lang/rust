@@ -1708,7 +1708,7 @@ impl<'tcx> TyCtxt<'tcx> {
                 debug!("returned from def_kind: {:?}", def_kind);
                 match def_kind {
                     DefKind::Const
-                    | DefKind::Static(..)
+                    | DefKind::Static { .. }
                     | DefKind::AssocConst
                     | DefKind::Ctor(..)
                     | DefKind::AnonConst

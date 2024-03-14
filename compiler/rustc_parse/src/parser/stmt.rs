@@ -254,7 +254,7 @@ impl<'a> Parser<'a> {
                 let local = this.parse_local(attrs)?;
                 // FIXME - maybe capture semicolon in recovery?
                 Ok((
-                    this.mk_stmt(lo.to(this.prev_token.span), StmtKind::Local(local)),
+                    this.mk_stmt(lo.to(this.prev_token.span), StmtKind::Let(local)),
                     TrailingToken::None,
                 ))
             })?;
@@ -278,7 +278,7 @@ impl<'a> Parser<'a> {
             } else {
                 TrailingToken::None
             };
-            Ok((this.mk_stmt(lo.to(this.prev_token.span), StmtKind::Local(local)), trailing))
+            Ok((this.mk_stmt(lo.to(this.prev_token.span), StmtKind::Let(local)), trailing))
         })
     }
 
@@ -764,7 +764,7 @@ impl<'a> Parser<'a> {
                 }
             }
             StmtKind::Expr(_) | StmtKind::MacCall(_) => {}
-            StmtKind::Local(local) if let Err(mut e) = self.expect_semi() => {
+            StmtKind::Let(local) if let Err(mut e) = self.expect_semi() => {
                 // We might be at the `,` in `let x = foo<bar, baz>;`. Try to recover.
                 match &mut local.kind {
                     LocalKind::Init(expr) | LocalKind::InitElse(expr, _) => {
@@ -820,7 +820,7 @@ impl<'a> Parser<'a> {
                 }
                 eat_semi = false;
             }
-            StmtKind::Empty | StmtKind::Item(_) | StmtKind::Local(_) | StmtKind::Semi(_) => {
+            StmtKind::Empty | StmtKind::Item(_) | StmtKind::Let(_) | StmtKind::Semi(_) => {
                 eat_semi = false
             }
         }

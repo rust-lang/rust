@@ -942,7 +942,7 @@ impl<'tcx> Cx<'tcx> {
 
             // We encode uses of statics as a `*&STATIC` where the `&STATIC` part is
             // a constant reference (or constant raw pointer for `static mut`) in MIR
-            Res::Def(DefKind::Static(_), id) => {
+            Res::Def(DefKind::Static { .. }, id) => {
                 let ty = self.tcx.static_ptr_ty(id);
                 let temp_lifetime = self
                     .rvalue_scopes

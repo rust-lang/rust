@@ -443,7 +443,8 @@ pub trait Machine<'mir, 'tcx: 'mir>: Sized {
         _machine: &mut Self,
         _alloc_extra: &mut Self::AllocExtra,
         _prov: (AllocId, Self::ProvenanceExtra),
-        _range: AllocRange,
+        _size: Size,
+        _align: Align,
     ) -> InterpResult<'tcx> {
         Ok(())
     }

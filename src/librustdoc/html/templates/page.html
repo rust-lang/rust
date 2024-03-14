@@ -6,11 +6,13 @@
     <meta name="generator" content="rustdoc"> {# #}
     <meta name="description" content="{{page.description}}"> {# #}
     <title>{{page.title}}</title> {# #}
+    <script> if (window.location.protocol !== "file:") document.write(` {# Hack to skip preloading fonts locally - see #98769 #}
     <link rel="preload" as="font" type="font/woff2" crossorigin href="{{static_root_path|safe}}{{files.source_serif_4_regular}}"> {# #}
     <link rel="preload" as="font" type="font/woff2" crossorigin href="{{static_root_path|safe}}{{files.fira_sans_regular}}"> {# #}
     <link rel="preload" as="font" type="font/woff2" crossorigin href="{{static_root_path|safe}}{{files.fira_sans_medium}}"> {# #}
     <link rel="preload" as="font" type="font/woff2" crossorigin href="{{static_root_path|safe}}{{files.source_code_pro_regular}}"> {# #}
     <link rel="preload" as="font" type="font/woff2" crossorigin href="{{static_root_path|safe}}{{files.source_code_pro_semibold}}"> {# #}
+    `)</script> {# #}
     <link rel="stylesheet" {#+ #}
           href="{{static_root_path|safe}}{{files.normalize_css}}"> {# #}
     <link rel="stylesheet" {#+ #}

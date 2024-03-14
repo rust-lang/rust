@@ -769,13 +769,10 @@ impl DiagCtxt {
                     format!("invalid level in `stash_diagnostic`: {:?}", diag.level),
                 );
             }
-            Error => {
-                // This `unchecked_error_guaranteed` is valid. It is where the
-                // `ErrorGuaranteed` for stashed errors originates. See
-                // `DiagCtxtInner::drop`.
-                #[allow(deprecated)]
-                Some(ErrorGuaranteed::unchecked_error_guaranteed())
-            }
+            // We delay a bug here so that `-Ztreat-err-as-bug -Zeagerly-emit-delayed-bugs`
+            // can be used to create a backtrace at the stashing site insted of whenever the
+            // diagnostic context is dropped and thus delayed bugs are emitted.
+            Error => Some(self.span_delayed_bug(span, "stashing {key:?}")),
             DelayedBug => return self.inner.borrow_mut().emit_diagnostic(diag),
             ForceWarning(_) | Warning | Note | OnceNote | Help | OnceHelp | FailureNote | Allow
             | Expect(_) => None,

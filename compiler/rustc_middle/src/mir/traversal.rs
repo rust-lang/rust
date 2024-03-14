@@ -1,5 +1,3 @@
-use rustc_index::bit_set::BitSet;
-
 use super::*;
 
 /// Preorder traversal of a graph.

@@ -558,7 +558,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                     hir::intravisit::walk_stmt(self, stmt);
                     let expr = match stmt.kind {
                         hir::StmtKind::Semi(expr) | hir::StmtKind::Expr(expr) => expr,
-                        hir::StmtKind::Local(hir::Local { init: Some(expr), .. }) => expr,
+                        hir::StmtKind::Let(hir::Local { init: Some(expr), .. }) => expr,
                         _ => {
                             return;
                         }
@@ -1305,7 +1305,7 @@ struct BindingFinder {
 impl<'tcx> Visitor<'tcx> for BindingFinder {
     type Result = ControlFlow<hir::HirId>;
     fn visit_stmt(&mut self, s: &'tcx hir::Stmt<'tcx>) -> Self::Result {
-        if let hir::StmtKind::Local(local) = s.kind
+        if let hir::StmtKind::Let(local) = s.kind
             && local.pat.span == self.span
         {
             ControlFlow::Break(local.hir_id)

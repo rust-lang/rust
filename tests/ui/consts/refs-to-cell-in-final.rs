@@ -28,7 +28,8 @@ impl Drop for JsValue {
     fn drop(&mut self) {}
 }
 const UNDEFINED: &JsValue = &JsValue::Undefined;
-//~^ERROR: mutable pointer in final value of constant
+//~^ WARNING: mutable pointer in final value of constant
+//~| WARNING: this was previously accepted by the compiler but is being phased out
 
 // In contrast, this one works since it is being promoted.
 const NONE: &'static Option<Cell<i32>> = &None;

@@ -1,5 +1,5 @@
-use crate::base::{DummyResult, ExtCtxt, MacResult, TTMacroExpander};
-use crate::base::{SyntaxExtension, SyntaxExtensionKind};
+use crate::base::{DummyResult, SyntaxExtension, SyntaxExtensionKind};
+use crate::base::{ExpandResult, ExtCtxt, MacResult, MacroExpanderResult, TTMacroExpander};
 use crate::expand::{ensure_complete_parse, parse_ast_fragment, AstFragment, AstFragmentKind};
 use crate::mbe;
 use crate::mbe::diagnostics::{annotate_doc_comment, parse_failure_msg};
@@ -111,8 +111,8 @@ impl TTMacroExpander for MacroRulesMacroExpander {
         cx: &'cx mut ExtCtxt<'_>,
         sp: Span,
         input: TokenStream,
-    ) -> Box<dyn MacResult + 'cx> {
-        expand_macro(
+    ) -> MacroExpanderResult<'cx> {
+        ExpandResult::Ready(expand_macro(
             cx,
             sp,
             self.span,
@@ -122,7 +122,7 @@ impl TTMacroExpander for MacroRulesMacroExpander {
             input,
             &self.lhses,
             &self.rhses,
-        )
+        ))
     }
 }
 
@@ -134,8 +134,8 @@ impl TTMacroExpander for DummyExpander {
         _: &'cx mut ExtCtxt<'_>,
         span: Span,
         _: TokenStream,
-    ) -> Box<dyn MacResult + 'cx> {
-        DummyResult::any(span, self.0)
+    ) -> ExpandResult<Box<dyn MacResult + 'cx>, ()> {
+        ExpandResult::Ready(DummyResult::any(span, self.0))
     }
 }
 

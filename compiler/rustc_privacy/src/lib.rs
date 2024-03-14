@@ -549,7 +549,7 @@ impl<'tcx> EmbargoVisitor<'tcx> {
         self.update(def_id, macro_ev, Level::Reachable);
         match def_kind {
             // No type privacy, so can be directly marked as reachable.
-            DefKind::Const | DefKind::Static(_) | DefKind::TraitAlias | DefKind::TyAlias => {
+            DefKind::Const | DefKind::Static { .. } | DefKind::TraitAlias | DefKind::TyAlias => {
                 if vis.is_accessible_from(module, self.tcx) {
                     self.update(def_id, macro_ev, Level::Reachable);
                 }
@@ -1170,12 +1170,12 @@ impl<'tcx> Visitor<'tcx> for TypePrivacyVisitor<'tcx> {
         let def = def.filter(|(kind, _)| {
             matches!(
                 kind,
-                DefKind::AssocFn | DefKind::AssocConst | DefKind::AssocTy | DefKind::Static(_)
+                DefKind::AssocFn | DefKind::AssocConst | DefKind::AssocTy | DefKind::Static { .. }
             )
         });
         if let Some((kind, def_id)) = def {
             let is_local_static =
-                if let DefKind::Static(_) = kind { def_id.is_local() } else { false };
+                if let DefKind::Static { .. } = kind { def_id.is_local() } else { false };
             if !self.item_is_accessible(def_id) && !is_local_static {
                 let name = match *qpath {
                     hir::QPath::LangItem(it, ..) => {
@@ -1496,7 +1496,7 @@ impl<'tcx> PrivateItemsInPublicInterfacesChecker<'tcx, '_> {
         let def_kind = tcx.def_kind(def_id);
 
         match def_kind {
-            DefKind::Const | DefKind::Static(_) | DefKind::Fn | DefKind::TyAlias => {
+            DefKind::Const | DefKind::Static { .. } | DefKind::Fn | DefKind::TyAlias => {
                 if let DefKind::TyAlias = def_kind {
                     self.check_unnameable(def_id, effective_vis);
                 }

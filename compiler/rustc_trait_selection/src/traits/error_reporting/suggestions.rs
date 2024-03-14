@@ -763,7 +763,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
 
         let hir_id = self.tcx.local_def_id_to_hir_id(def_id.as_local()?);
         match self.tcx.parent_hir_node(hir_id) {
-            hir::Node::Stmt(hir::Stmt { kind: hir::StmtKind::Local(local), .. }) => {
+            hir::Node::Stmt(hir::Stmt { kind: hir::StmtKind::Let(local), .. }) => {
                 get_name(err, &local.pat.kind)
             }
             // Different to previous arm because one is `&hir::Local` and the other

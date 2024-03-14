@@ -321,6 +321,8 @@ impl Compiler {
             }
 
             self.sess.time("serialize_dep_graph", || gcx.enter(rustc_incremental::save_dep_graph));
+
+            gcx.enter(rustc_query_impl::query_key_hash_verify_all);
         }
 
         // The timer's lifetime spans the dropping of `queries`, which contains

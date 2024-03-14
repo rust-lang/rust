@@ -380,8 +380,12 @@ fn collect_items_rec<'tcx>(
             // Sanity check whether this ended up being collected accidentally
             debug_assert!(should_codegen_locally(tcx, &instance));
 
-            let ty = instance.ty(tcx, ty::ParamEnv::reveal_all());
-            visit_drop_use(tcx, ty, true, starting_item.span, &mut used_items);
+            let DefKind::Static { nested, .. } = tcx.def_kind(def_id) else { bug!() };
+            // Nested statics have no type.
+            if !nested {
+                let ty = instance.ty(tcx, ty::ParamEnv::reveal_all());
+                visit_drop_use(tcx, ty, true, starting_item.span, &mut used_items);
+            }
 
             recursion_depth_reset = None;
 
@@ -1037,7 +1041,7 @@ fn should_codegen_locally<'tcx>(tcx: TyCtxt<'tcx>, instance: &Instance<'tcx>) ->
         return false;
     }
 
-    if let DefKind::Static(_) = tcx.def_kind(def_id) {
+    if let DefKind::Static { .. } = tcx.def_kind(def_id) {
         // We cannot monomorphize statics from upstream crates.
         return false;
     }
@@ -1254,7 +1258,7 @@ impl<'v> RootCollector<'_, 'v> {
                 );
                 self.output.push(dummy_spanned(MonoItem::GlobalAsm(id)));
             }
-            DefKind::Static(..) => {
+            DefKind::Static { .. } => {
                 let def_id = id.owner_id.to_def_id();
                 debug!("RootCollector: ItemKind::Static({})", self.tcx.def_path_str(def_id));
                 self.output.push(dummy_spanned(MonoItem::Static(def_id)));

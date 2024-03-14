@@ -73,7 +73,7 @@ pub fn is_available() -> bool {
 
 /// The main type provided by this crate, representing an abstract stream of
 /// tokens, or, more specifically, a sequence of token trees.
-/// The type provide interfaces for iterating over those token trees and, conversely,
+/// The type provides interfaces for iterating over those token trees and, conversely,
 /// collecting a number of token trees into one stream.
 ///
 /// This is both the input and output of `#[proc_macro]`, `#[proc_macro_attribute]`

@@ -1,7 +1,6 @@
 //@ check-pass
 
 #![feature(lint_reasons)]
-#![allow(incomplete_features)]
 
 pub struct Wrapper<T>(T);
 

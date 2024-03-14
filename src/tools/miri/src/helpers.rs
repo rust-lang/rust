@@ -5,6 +5,8 @@ use std::num::NonZero;
 use std::sync::Mutex;
 use std::time::Duration;
 
+use rand::RngCore;
+
 use rustc_apfloat::ieee::{Double, Single};
 use rustc_apfloat::Float;
 use rustc_hir::def::{DefKind, Namespace};
@@ -19,8 +21,6 @@ use rustc_middle::ty::{
 use rustc_span::{def_id::CrateNum, sym, Span, Symbol};
 use rustc_target::abi::{Align, FieldIdx, FieldsShape, Size, Variants};
 use rustc_target::spec::abi::Abi;
-
-use rand::RngCore;
 
 use crate::*;
 

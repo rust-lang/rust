@@ -40,21 +40,21 @@ pub fn main() {
 
 extern "C" fn callback_isize(data: libc::uintptr_t) {
     unsafe {
-        let data: *const isize = mem::transmute(data);
+        let data = data as *const isize;
         assert_eq!(*data, 100);
     }
 }
 
 extern "C" fn callback_i64(data: libc::uintptr_t) {
     unsafe {
-        let data: *const i64 = mem::transmute(data);
+        let data = data as *const i64;
         assert_eq!(*data, 100);
     }
 }
 
 extern "C" fn callback_i32(data: libc::uintptr_t) {
     unsafe {
-        let data: *const i32 = mem::transmute(data);
+        let data = data as *const i32;
         assert_eq!(*data, 100);
     }
 }

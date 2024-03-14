@@ -1327,6 +1327,9 @@ pub fn install_ice_hook(
     panic::update_hook(Box::new(
         move |default_hook: &(dyn Fn(&PanicInfo<'_>) + Send + Sync + 'static),
               info: &PanicInfo<'_>| {
+            // Lock stderr to prevent interleaving of concurrent panics.
+            let _guard = io::stderr().lock();
+
             // If the error was caused by a broken pipe then this is not a bug.
             // Write the error and return immediately. See #98700.
             #[cfg(windows)]

@@ -1567,7 +1567,7 @@ pub fn noop_flat_map_stmt_kind<T: MutVisitor>(
     vis: &mut T,
 ) -> SmallVec<[StmtKind; 1]> {
     match kind {
-        StmtKind::Local(mut local) => smallvec![StmtKind::Local({
+        StmtKind::Let(mut local) => smallvec![StmtKind::Let({
             vis.visit_local(&mut local);
             local
         })],

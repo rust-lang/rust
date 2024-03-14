@@ -288,7 +288,7 @@ macro_rules! forward {
 }
 
 forward! {
-    verbose(msg: &str),
+    verbose(f: impl Fn()),
     is_verbose() -> bool,
     create(path: &Path, s: &str),
     remove(f: &Path),
@@ -440,11 +440,11 @@ impl Build {
             .unwrap()
             .trim();
         if local_release.split('.').take(2).eq(version.split('.').take(2)) {
-            build.verbose(&format!("auto-detected local-rebuild {local_release}"));
+            build.verbose(|| println!("auto-detected local-rebuild {local_release}"));
             build.local_rebuild = true;
         }
 
-        build.verbose("finding compilers");
+        build.verbose(|| println!("finding compilers"));
         utils::cc_detect::find(&build);
         // When running `setup`, the profile is about to change, so any requirements we have now may
         // be different on the next invocation. Don't check for them until the next time x.py is
@@ -452,7 +452,7 @@ impl Build {
         //
         // Similarly, for `setup` we don't actually need submodules or cargo metadata.
         if !matches!(build.config.cmd, Subcommand::Setup { .. }) {
-            build.verbose("running sanity check");
+            build.verbose(|| println!("running sanity check"));
             crate::core::sanity::check(&mut build);
 
             // Make sure we update these before gathering metadata so we don't get an error about missing
@@ -464,7 +464,7 @@ impl Build {
             // Now, update all existing submodules.
             build.update_existing_submodules();
 
-            build.verbose("learning about cargo");
+            build.verbose(|| println!("learning about cargo"));
             crate::core::metadata::build(&mut build);
         }
 
@@ -693,7 +693,7 @@ impl Build {
         let stamp = dir.join(".stamp");
         let mut cleared = false;
         if mtime(&stamp) < mtime(input) {
-            self.verbose(&format!("Dirty - {}", dir.display()));
+            self.verbose(|| println!("Dirty - {}", dir.display()));
             let _ = fs::remove_dir_all(dir);
             cleared = true;
         } else if stamp.exists() {
@@ -986,7 +986,7 @@ impl Build {
         }
 
         let command = cmd.into();
-        self.verbose(&format!("running: {command:?}"));
+        self.verbose(|| println!("running: {command:?}"));
 
         let (output, print_error) = match command.output_mode {
             mode @ (OutputMode::PrintAll | OutputMode::PrintOutput) => (
@@ -1044,14 +1044,15 @@ impl Build {
         }
     }
 
+    /// Check if verbosity is greater than the `level`
     pub fn is_verbose_than(&self, level: usize) -> bool {
         self.verbosity > level
     }
 
-    /// Prints a message if this build is configured in more verbose mode than `level`.
-    fn verbose_than(&self, level: usize, msg: &str) {
+    /// Runs a function if verbosity is greater than `level`.
+    fn verbose_than(&self, level: usize, f: impl Fn()) {
         if self.is_verbose_than(level) {
-            println!("{msg}");
+            f()
         }
     }
 
@@ -1654,7 +1655,7 @@ impl Build {
         if self.config.dry_run() {
             return;
         }
-        self.verbose_than(1, &format!("Copy {src:?} to {dst:?}"));
+        self.verbose_than(1, || println!("Copy {src:?} to {dst:?}"));
         if src == dst {
             return;
         }
@@ -1745,7 +1746,7 @@ impl Build {
             return;
         }
         let dst = dstdir.join(src.file_name().unwrap());
-        self.verbose_than(1, &format!("Install {src:?} to {dst:?}"));
+        self.verbose_than(1, || println!("Install {src:?} to {dst:?}"));
         t!(fs::create_dir_all(dstdir));
         if !src.exists() {
             panic!("ERROR: File \"{}\" not found!", src.display());

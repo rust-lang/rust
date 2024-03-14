@@ -37,7 +37,7 @@ fn eval_body_using_ecx<'mir, 'tcx>(
             || matches!(
                 ecx.tcx.def_kind(cid.instance.def_id()),
                 DefKind::Const
-                    | DefKind::Static(_)
+                    | DefKind::Static { .. }
                     | DefKind::ConstParam
                     | DefKind::AnonConst
                     | DefKind::InlineConst
@@ -59,7 +59,7 @@ fn eval_body_using_ecx<'mir, 'tcx>(
     };
 
     let ret = if let InternKind::Static(_) = intern_kind {
-        create_static_alloc(ecx, cid.instance.def_id(), layout)?
+        create_static_alloc(ecx, cid.instance.def_id().expect_local(), layout)?
     } else {
         ecx.allocate(layout, MemoryKind::Stack)?
     };
@@ -380,7 +380,11 @@ pub fn eval_in_interpreter<'mir, 'tcx>(
         }
         Ok(mplace) => {
             // Since evaluation had no errors, validate the resulting constant.
+
+            // Temporarily allow access to the static_root_ids for the purpose of validation.
+            let static_root_ids = ecx.machine.static_root_ids.take();
             let res = const_validate_mplace(&ecx, &mplace, cid);
+            ecx.machine.static_root_ids = static_root_ids;
 
             let alloc_id = mplace.ptr().provenance.unwrap().alloc_id();
 

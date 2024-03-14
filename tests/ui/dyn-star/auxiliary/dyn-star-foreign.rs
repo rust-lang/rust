@@ -1,5 +1,4 @@
 #![feature(dyn_star)]
-#![allow(incomplete_features)]
 
 use std::fmt::Display;
 

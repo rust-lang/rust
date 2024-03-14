@@ -175,9 +175,7 @@ where
     }
 
     // Mark one CGU for dead code, if necessary.
-    let instrument_dead_code =
-        tcx.sess.instrument_coverage() && !tcx.sess.instrument_coverage_except_unused_functions();
-    if instrument_dead_code {
+    if tcx.sess.instrument_coverage() {
         mark_code_coverage_dead_code_cgu(&mut codegen_units);
     }
 

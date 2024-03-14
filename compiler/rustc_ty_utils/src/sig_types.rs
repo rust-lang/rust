@@ -41,9 +41,9 @@ pub fn walk_types<'tcx, V: SpannedTypeVisitor<'tcx>>(
             }
         }
         // Walk over the type behind the alias
-        DefKind::TyAlias {..} | DefKind::AssocTy |
+        DefKind::TyAlias { .. } | DefKind::AssocTy |
         // Walk over the type of the item
-        DefKind::Static(_) | DefKind::Const | DefKind::AssocConst | DefKind::AnonConst => {
+        DefKind::Static { .. } | DefKind::Const | DefKind::AssocConst | DefKind::AnonConst => {
             if let Some(ty) = tcx.hir_node_by_def_id(item).ty() {
                 // If the type of the item uses `_`, we're gonna error out anyway, but
                 // typeck (which type_of invokes below), will call back into opaque_types_defined_by

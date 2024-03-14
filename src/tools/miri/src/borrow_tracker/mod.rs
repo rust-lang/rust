@@ -485,14 +485,14 @@ impl AllocState {
         &mut self,
         alloc_id: AllocId,
         prov_extra: ProvenanceExtra,
-        range: AllocRange,
+        size: Size,
         machine: &MiriMachine<'_, 'tcx>,
     ) -> InterpResult<'tcx> {
         match self {
             AllocState::StackedBorrows(sb) =>
-                sb.get_mut().before_memory_deallocation(alloc_id, prov_extra, range, machine),
+                sb.get_mut().before_memory_deallocation(alloc_id, prov_extra, size, machine),
             AllocState::TreeBorrows(tb) =>
-                tb.get_mut().before_memory_deallocation(alloc_id, prov_extra, range, machine),
+                tb.get_mut().before_memory_deallocation(alloc_id, prov_extra, size, machine),
         }
     }
 

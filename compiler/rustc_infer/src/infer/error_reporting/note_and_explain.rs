@@ -372,7 +372,7 @@ impl<T> Trait<T> for X {
                             && matches!(
                                 tcx.def_kind(body_owner_def_id),
                                 DefKind::Fn
-                                    | DefKind::Static(_)
+                                    | DefKind::Static { .. }
                                     | DefKind::Const
                                     | DefKind::AssocFn
                                     | DefKind::AssocConst

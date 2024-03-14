@@ -13,6 +13,7 @@ use rustc_hir::intravisit::{self, Visitor};
 use rustc_hir::Node;
 use rustc_middle::middle::codegen_fn_attrs::{CodegenFnAttrFlags, CodegenFnAttrs};
 use rustc_middle::middle::privacy::{self, Level};
+use rustc_middle::mir::interpret::{ConstAllocation, GlobalAlloc};
 use rustc_middle::query::Providers;
 use rustc_middle::ty::{self, TyCtxt};
 use rustc_session::config::CrateType;
@@ -73,7 +74,7 @@ impl<'tcx> Visitor<'tcx> for ReachableContext<'tcx> {
                 match res {
                     // Reachable constants and reachable statics can have their contents inlined
                     // into other crates. Mark them as reachable and recurse into their body.
-                    Res::Def(DefKind::Const | DefKind::AssocConst | DefKind::Static(_), _) => {
+                    Res::Def(DefKind::Const | DefKind::AssocConst | DefKind::Static { .. }, _) => {
                         self.worklist.push(def_id);
                     }
                     _ => {
@@ -197,8 +198,21 @@ impl<'tcx> ReachableContext<'tcx> {
                     // Reachable constants will be inlined into other crates
                     // unconditionally, so we need to make sure that their
                     // contents are also reachable.
-                    hir::ItemKind::Const(_, _, init) | hir::ItemKind::Static(_, _, init) => {
+                    hir::ItemKind::Const(_, _, init) => {
                         self.visit_nested_body(init);
+                    }
+
+                    // Reachable statics are inlined if read from another constant or static
+                    // in other crates. Additionally anonymous nested statics may be created
+                    // when evaluating a static, so preserve those, too.
+                    hir::ItemKind::Static(_, _, init) => {
+                        // FIXME(oli-obk): remove this body walking and instead walk the evaluated initializer
+                        // to find nested items that end up in the final value instead of also marking symbols
+                        // as reachable that are only needed for evaluation.
+                        self.visit_nested_body(init);
+                        if let Ok(alloc) = self.tcx.eval_static_initializer(item.owner_id.def_id) {
+                            self.propagate_statics_from_alloc(item.owner_id.def_id, alloc);
+                        }
                     }
 
                     // These are normal, nothing reachable about these
@@ -263,6 +277,29 @@ impl<'tcx> ReachableContext<'tcx> {
                     self.tcx.hir().node_to_string(self.tcx.local_def_id_to_hir_id(search_item)),
                     node,
                 );
+            }
+        }
+    }
+
+    /// Finds anonymous nested statics created for nested allocations and adds them to `reachable_symbols`.
+    fn propagate_statics_from_alloc(&mut self, root: LocalDefId, alloc: ConstAllocation<'tcx>) {
+        if !self.any_library {
+            return;
+        }
+        for (_, prov) in alloc.0.provenance().ptrs().iter() {
+            match self.tcx.global_alloc(prov.alloc_id()) {
+                GlobalAlloc::Static(def_id) => {
+                    if let Some(def_id) = def_id.as_local()
+                        && self.tcx.local_parent(def_id) == root
+                        // This is the main purpose of this function: add the def_id we find
+                        // to `reachable_symbols`.
+                        && self.reachable_symbols.insert(def_id)
+                        && let Ok(alloc) = self.tcx.eval_static_initializer(def_id)
+                    {
+                        self.propagate_statics_from_alloc(root, alloc);
+                    }
+                }
+                GlobalAlloc::Function(_) | GlobalAlloc::VTable(_, _) | GlobalAlloc::Memory(_) => {}
             }
         }
     }

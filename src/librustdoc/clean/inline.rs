@@ -120,7 +120,7 @@ pub(crate) fn try_inline(
             record_extern_fqn(cx, did, ItemType::Module);
             clean::ModuleItem(build_module(cx, did, visited))
         }
-        Res::Def(DefKind::Static(_), did) => {
+        Res::Def(DefKind::Static { .. }, did) => {
             record_extern_fqn(cx, did, ItemType::Static);
             cx.with_param_env(did, |cx| {
                 clean::StaticItem(build_static(cx, did, cx.tcx.is_mutable_static(did)))
