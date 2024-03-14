@@ -877,7 +877,13 @@ pub(crate) unsafe fn enzyme_rust_forward_diff(
 
     // We don't support volatile / extern / (global?) values.
     // Just because I didn't had time to test them, and it seems less urgent.
-    let args_uncacheable = vec![0; input_activity.len()];
+    dbg!(&fnc);
+    let args_uncacheable = vec![0; input_tts.len()];
+    assert!(args_uncacheable.len() == input_activity.len());
+    let num_fnc_args = LLVMCountParams(fnc);
+    println!("num_fnc_args: {}", num_fnc_args);
+    println!("input_activity.len(): {}", input_activity.len());
+    assert!(num_fnc_args == input_activity.len() as u32);
 
     let kv_tmp = IntList { data: std::ptr::null_mut(), size: 0 };
 

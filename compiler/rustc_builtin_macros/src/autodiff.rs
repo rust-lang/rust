@@ -128,6 +128,7 @@ pub fn expand(
     let new_decl_span = d_sig.span;
     let d_body = gen_enzyme_body(
         ecx,
+        &x,
         n_active,
         &sig,
         &d_sig,
@@ -231,6 +232,7 @@ fn assure_mut_ref(ty: &ast::Ty) -> ast::Ty {
 #[cfg(llvm_enzyme)]
 fn gen_enzyme_body(
     ecx: &ExtCtxt<'_>,
+    x: &AutoDiffAttrs,
     n_active: u32,
     sig: &ast::FnSig,
     d_sig: &ast::FnSig,
@@ -242,7 +244,6 @@ fn gen_enzyme_body(
     idents: Vec<Ident>,
 ) -> P<ast::Block> {
     let blackbox_path = ecx.std_path(&[Symbol::intern("hint"), Symbol::intern("black_box")]);
-    //let default_path = ecx.def_site_path(&[Symbol::intern("f32"), Symbol::intern("default")]);
     let empty_loop_block = ecx.block(span, ThinVec::new());
     let noop = ast::InlineAsm {
         template: vec![ast::InlineAsmTemplatePiece::String("NOP".to_string())],
@@ -265,12 +266,9 @@ fn gen_enzyme_body(
     let unsf_expr = ecx.expr_block(P(unsf_block));
     let _loop_expr = ecx.expr_loop(span, empty_loop_block);
     let blackbox_call_expr = ecx.expr_path(ecx.path(span, blackbox_path));
-    //let default_call_expr = ecx.expr_path(ecx.path(span, default_path));
     let primal_call = gen_primal_call(ecx, span, primal, idents);
-    // create ::core::hint::black_box(array(arr));
     let black_box_primal_call =
         ecx.expr_call(new_decl_span, blackbox_call_expr.clone(), thin_vec![primal_call.clone()]);
-    // create ::core::hint::black_box((grad_arr, tang_y));
     let tup_args = new_names
         .iter()
         .map(|arg| ecx.expr_path(ecx.path_ident(span, Ident::from_str(arg))))
@@ -295,7 +293,7 @@ fn gen_enzyme_body(
 
     let primal_ret = sig.decl.output.has_ret();
 
-    if primal_ret && n_active == 0 {
+    if primal_ret && n_active == 0 && x.mode == DiffMode::Reverse {
         // We only have the primal ret.
         body.stmts.push(ecx.stmt_expr(black_box_primal_call.clone()));
         return body;
@@ -342,24 +340,40 @@ fn gen_enzyme_body(
             panic!("Did not expect non-tuple ret ty: {:?}", d_ret_ty);
         }
     };
-    if primal_ret {
-        // We have extra handling above for the primal ret
-        d_ret_ty = d_ret_ty[1..].to_vec().into();
-    }
+    if x.mode == DiffMode::Forward {
+        if x.ret_activity == DiffActivity::Dual {
+            assert!(d_ret_ty.len() == 2);
+            // both should be identical, by construction
+            let arg = d_ret_ty[0].kind.is_simple_path().unwrap();
+            let arg2 = d_ret_ty[1].kind.is_simple_path().unwrap();
+            assert!(arg == arg2);
+            let sl: Vec<Symbol> = vec![arg, Symbol::intern("default")];
+            let tmp = ecx.def_site_path(&sl);
+            let default_call_expr = ecx.expr_path(ecx.path(span, tmp));
+            let default_call_expr = ecx.expr_call(new_decl_span, default_call_expr, thin_vec![]);
+            exprs.push(default_call_expr);
+        }
+    } else {
+        assert!(x.mode == DiffMode::Reverse);
 
-    for arg in d_ret_ty.iter() {
-        let arg = arg.kind.is_simple_path().unwrap();
-        let sl: Vec<Symbol> = vec![arg, Symbol::intern("default")];
-        let tmp = ecx.def_site_path(&sl);
-        let default_call_expr = ecx.expr_path(ecx.path(span, tmp));
-        let default_call_expr = ecx.expr_call(new_decl_span, default_call_expr, thin_vec![]);
-        exprs.push(default_call_expr);
-    };
+        if primal_ret {
+            // We have extra handling above for the primal ret
+            d_ret_ty = d_ret_ty[1..].to_vec().into();
+        }
+
+        for arg in d_ret_ty.iter() {
+            let arg = arg.kind.is_simple_path().unwrap();
+            let sl: Vec<Symbol> = vec![arg, Symbol::intern("default")];
+            let tmp = ecx.def_site_path(&sl);
+            let default_call_expr = ecx.expr_path(ecx.path(span, tmp));
+            let default_call_expr = ecx.expr_call(new_decl_span, default_call_expr, thin_vec![]);
+            exprs.push(default_call_expr);
+        };
+    }
 
     let ret_tuple: P<ast::Expr> = ecx.expr_tuple(span, exprs);
     let ret = ecx.expr_call(new_decl_span, blackbox_call_expr.clone(), thin_vec![ret_tuple]);
     body.stmts.push(ecx.stmt_expr(ret));
-    //body.stmts.push(ecx.stmt_expr(ret_tuple));
 
     body
 }
@@ -504,6 +518,22 @@ fn gen_enzyme_decl(
         }
     }
     d_decl.inputs = d_inputs.into();
+
+    if let DiffMode::Forward = x.mode {
+        if let DiffActivity::Dual = x.ret_activity {
+            let ty = match d_decl.output {
+                FnRetTy::Ty(ref ty) => ty.clone(),
+                FnRetTy::Default(span) => {
+                    panic!("Did not expect Default ret ty: {:?}", span);
+                }
+            };
+            // Dual can only be used for f32/f64 ret.
+            // In that case we return now a tuple with two floats.
+            let kind = TyKind::Tup(thin_vec![ty.clone(), ty.clone()]);
+            let ty = P(rustc_ast::Ty { kind, id: ty.id, span: ty.span, tokens: None });
+            d_decl.output = FnRetTy::Ty(ty);
+        }
+    }
 
     // If we have an active input scalar, add it's gradient to the
     // return type. This might require changing the return type to a

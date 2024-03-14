@@ -717,14 +717,13 @@ fn autodiff_attrs(tcx: TyCtxt<'_>, id: DefId) -> AutoDiffAttrs {
             return AutoDiffAttrs::inactive();
         }
     };
-    dbg!("autodiff_attr = {:?}", &attr);
 
     let list = attr.meta_item_list().unwrap_or_default();
-    dbg!("autodiff_attrs list = {:?}", &list);
+    //dbg!("autodiff_attrs list = {:?}", &list);
 
     // empty autodiff attribute macros (i.e. `#[autodiff]`) are used to mark source functions
     if list.len() == 0 {
-        dbg!("autodiff_attrs: source");
+        //dbg!("autodiff_attrs: source");
         return AutoDiffAttrs::source();
     }
 

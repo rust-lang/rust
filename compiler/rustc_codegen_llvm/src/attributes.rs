@@ -314,8 +314,6 @@ pub fn from_fn_attrs<'ll, 'tcx>(
         if codegen_fn_attrs.inline == InlineAttr::None && instance.def.requires_inline(cx.tcx) {
             InlineAttr::Hint
         } else if autodiff_attrs.is_active() {
-            dbg!("autodiff_attrs.is_active()");
-            dbg!(&autodiff_attrs);
             InlineAttr::Never
         } else {
             codegen_fn_attrs.inline
