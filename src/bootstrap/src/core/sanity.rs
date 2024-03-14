@@ -192,7 +192,7 @@ than building it.
         let target_str = target.to_string();
 
         // Ignore fake targets that are only used for unit tests in bootstrap.
-        if !["A", "B", "C"].contains(&target_str.as_str()) {
+        if !["A-A", "B-B", "C-C"].contains(&target_str.as_str()) {
             let mut has_target = false;
 
             let supported_target_list =
