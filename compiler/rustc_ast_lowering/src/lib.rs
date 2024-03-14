@@ -642,23 +642,8 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         let bodies = SortedMap::from_presorted_elements(bodies);
 
         // Don't hash unless necessary, because it's expensive.
-        let (opt_hash_including_bodies, attrs_hash) = if self.tcx.needs_crate_hash() {
-            self.tcx.with_stable_hashing_context(|mut hcx| {
-                let mut stable_hasher = StableHasher::new();
-                node.hash_stable(&mut hcx, &mut stable_hasher);
-                // Bodies are stored out of line, so we need to pull them explicitly in the hash.
-                bodies.hash_stable(&mut hcx, &mut stable_hasher);
-                let h1 = stable_hasher.finish();
-
-                let mut stable_hasher = StableHasher::new();
-                attrs.hash_stable(&mut hcx, &mut stable_hasher);
-                let h2 = stable_hasher.finish();
-
-                (Some(h1), Some(h2))
-            })
-        } else {
-            (None, None)
-        };
+        let (opt_hash_including_bodies, attrs_hash) =
+            self.tcx.hash_owner_nodes(node, &bodies, &attrs);
         let num_nodes = self.item_local_id_counter.as_usize();
         let (nodes, parenting) = index::index_hir(self.tcx, node, &bodies, num_nodes);
         let nodes = hir::OwnerNodes { opt_hash_including_bodies, nodes, bodies };
