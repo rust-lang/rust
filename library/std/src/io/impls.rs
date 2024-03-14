@@ -474,15 +474,8 @@ impl<A: Allocator> Read for VecDeque<u8, A> {
 
     #[inline]
     fn read_to_string(&mut self, buf: &mut String) -> io::Result<usize> {
-        // We have to use a single contiguous slice because the `VecDequeue` might be split in the
-        // middle of an UTF-8 character.
-        let len = self.len();
-        let content = self.make_contiguous();
-        let string = str::from_utf8(content).map_err(|_| io::Error::INVALID_UTF8)?;
-        buf.try_reserve(len)?;
-        buf.push_str(string);
-        self.clear();
-        Ok(len)
+        // SAFETY: We only append to the buffer
+        unsafe { io::append_to_string(buf, |buf| self.read_to_end(buf)) }
     }
 }
 
