@@ -74,15 +74,6 @@ help: consider restricting type parameter `T`
 LL | fn g<T: std::marker::Copy>(val: T) {
    |       +++++++++++++++++++
 
-error: lifetime may not live long enough
-  --> $DIR/kindck-impl-type-params.rs:30:13
-   |
-LL | fn foo<'a>() {
-   |        -- lifetime `'a` defined here
-LL |     let t: S<&'a isize> = S(marker::PhantomData);
-LL |     let a = &t as &dyn Gettable<&'a isize>;
-   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ type annotation requires that `'a` must outlive `'static`
-
 error[E0277]: the trait bound `String: Copy` is not satisfied
   --> $DIR/kindck-impl-type-params.rs:36:13
    |
@@ -119,6 +110,15 @@ help: consider annotating `Foo` with `#[derive(Copy)]`
 LL +     #[derive(Copy)]
 LL |     struct Foo; // does not impl Copy
    |
+
+error: lifetime may not live long enough
+  --> $DIR/kindck-impl-type-params.rs:30:13
+   |
+LL | fn foo<'a>() {
+   |        -- lifetime `'a` defined here
+LL |     let t: S<&'a isize> = S(marker::PhantomData);
+LL |     let a = &t as &dyn Gettable<&'a isize>;
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ type annotation requires that `'a` must outlive `'static`
 
 error: aborting due to 7 previous errors
 

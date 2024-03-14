@@ -336,8 +336,7 @@ pub fn print<'tcx>(sess: &Session, ppm: PpMode, ex: PrintExtra<'tcx>) {
         ThirTree => {
             let tcx = ex.tcx();
             let mut out = String::new();
-            rustc_hir_analysis::check_crate(tcx);
-            if tcx.dcx().has_errors().is_some() {
+            if rustc_hir_analysis::check_crate(tcx).is_err() {
                 FatalError.raise();
             }
             debug!("pretty printing THIR tree");
@@ -349,8 +348,7 @@ pub fn print<'tcx>(sess: &Session, ppm: PpMode, ex: PrintExtra<'tcx>) {
         ThirFlat => {
             let tcx = ex.tcx();
             let mut out = String::new();
-            rustc_hir_analysis::check_crate(tcx);
-            if tcx.dcx().has_errors().is_some() {
+            if rustc_hir_analysis::check_crate(tcx).is_err() {
                 FatalError.raise();
             }
             debug!("pretty printing THIR flat");

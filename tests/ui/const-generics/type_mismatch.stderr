@@ -11,18 +11,18 @@ LL | fn bar<const N: u8>() -> [u8; N] {}
    |        ^^^^^^^^^^^ required by this bound in `bar`
 
 error[E0308]: mismatched types
-  --> $DIR/type_mismatch.rs:2:11
-   |
-LL |     bar::<N>()
-   |           ^ expected `u8`, found `usize`
-
-error[E0308]: mismatched types
   --> $DIR/type_mismatch.rs:6:26
    |
 LL | fn bar<const N: u8>() -> [u8; N] {}
    |    ---                   ^^^^^^^ expected `[u8; N]`, found `()`
    |    |
    |    implicitly returns `()` as its body has no tail or `return` expression
+
+error[E0308]: mismatched types
+  --> $DIR/type_mismatch.rs:2:11
+   |
+LL |     bar::<N>()
+   |           ^ expected `u8`, found `usize`
 
 error[E0308]: mismatched types
   --> $DIR/type_mismatch.rs:6:31

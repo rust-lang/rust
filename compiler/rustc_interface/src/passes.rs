@@ -734,22 +734,19 @@ fn analysis(tcx: TyCtxt<'_>, (): ()) -> Result<()> {
     });
 
     // passes are timed inside typeck
-    rustc_hir_analysis::check_crate(tcx);
+    rustc_hir_analysis::check_crate(tcx)?;
 
-    sess.time("typeck_and_mir_analyses", || {
+    sess.time("MIR_borrow_checking", || {
         tcx.hir().par_body_owners(|def_id| {
-            let def_kind = tcx.def_kind(def_id);
-            // FIXME: Remove this when we implement creating `DefId`s
-            // for anon constants during their parents' typeck.
-            // Typeck all body owners in parallel will produce queries
-            // cycle errors because it may typeck on anon constants directly.
-            if !matches!(def_kind, rustc_hir::def::DefKind::AnonConst) {
-                tcx.ensure().typeck(def_id);
-            }
             // Run unsafety check because it's responsible for stealing and
             // deallocating THIR.
             tcx.ensure().check_unsafety(def_id);
-            tcx.ensure().mir_borrowck(def_id);
+            tcx.ensure().mir_borrowck(def_id)
+        });
+    });
+
+    sess.time("MIR_effect_checking", || {
+        for def_id in tcx.hir().body_owners() {
             if !tcx.sess.opts.unstable_opts.thir_unsafeck {
                 rustc_mir_transform::check_unsafety::check_unsafety(tcx, def_id);
             }
@@ -764,15 +761,15 @@ fn analysis(tcx: TyCtxt<'_>, (): ()) -> Result<()> {
                 tcx.ensure().mir_drops_elaborated_and_const_checked(def_id);
                 tcx.ensure().unused_generic_params(ty::InstanceDef::Item(def_id.to_def_id()));
             }
-
-            if tcx.is_coroutine(def_id.to_def_id()) {
-                tcx.ensure().mir_coroutine_witnesses(def_id);
-                tcx.ensure().check_coroutine_obligations(def_id);
-            }
-        })
+        }
     });
 
-    tcx.ensure().check_unused_traits(());
+    tcx.hir().par_body_owners(|def_id| {
+        if tcx.is_coroutine(def_id.to_def_id()) {
+            tcx.ensure().mir_coroutine_witnesses(def_id);
+            tcx.ensure().check_coroutine_obligations(def_id);
+        }
+    });
 
     sess.time("layout_testing", || layout_test::test_layout(tcx));
     sess.time("abi_testing", || abi_test::test_abi(tcx));
