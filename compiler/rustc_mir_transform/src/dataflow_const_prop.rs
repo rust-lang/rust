@@ -903,6 +903,12 @@ impl<'mir, 'tcx: 'mir> rustc_const_eval::interpret::Machine<'mir, 'tcx> for Dumm
     const PANIC_ON_ALLOC_FAIL: bool = true;
 
     #[inline(always)]
+    fn all_required_consts_are_checked(_ecx: &InterpCx<'mir, 'tcx, Self>) -> bool {
+        // We want to just eval random consts in the program, so `eval_mir_const` can fail.
+        false
+    }
+
+    #[inline(always)]
     fn enforce_alignment(_ecx: &InterpCx<'mir, 'tcx, Self>) -> bool {
         false // no reason to enforce alignment
     }

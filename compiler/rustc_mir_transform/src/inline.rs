@@ -706,17 +706,7 @@ impl<'tcx> Inliner<'tcx> {
         });
 
         // Copy only unevaluated constants from the callee_body into the caller_body.
-        // Although we are only pushing `ConstKind::Unevaluated` consts to
-        // `required_consts`, here we may not only have `ConstKind::Unevaluated`
-        // because we are calling `instantiate_and_normalize_erasing_regions`.
-        caller_body.required_consts.extend(callee_body.required_consts.iter().copied().filter(
-            |&ct| match ct.const_ {
-                Const::Ty(_) => {
-                    bug!("should never encounter ty::UnevaluatedConst in `required_consts`")
-                }
-                Const::Val(..) | Const::Unevaluated(..) => true,
-            },
-        ));
+        caller_body.required_consts.extend(callee_body.required_consts);
     }
 
     fn make_call_args(

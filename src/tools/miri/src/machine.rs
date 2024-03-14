@@ -873,6 +873,12 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for MiriMachine<'mir, 'tcx> {
     const PANIC_ON_ALLOC_FAIL: bool = false;
 
     #[inline(always)]
+    fn all_required_consts_are_checked(_ecx: &InterpCx<'mir, 'tcx, Self>) -> bool {
+        // We want to catch any cases of missing required_consts
+        true
+    }
+
+    #[inline(always)]
     fn enforce_alignment(ecx: &MiriInterpCx<'mir, 'tcx>) -> bool {
         ecx.machine.check_alignment != AlignmentCheck::None
     }
