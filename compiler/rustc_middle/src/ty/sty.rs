@@ -2436,8 +2436,9 @@ impl<'tcx> Ty<'tcx> {
             },
 
             // "Bound" types appear in canonical queries when the
-            // closure type is not yet known
-            Bound(..) | Param(_) | Infer(_) => None,
+            // closure type is not yet known, and `Placeholder` and `Param`
+            // may be encountered in generic `AsyncFnKindHelper` goals.
+            Bound(..) | Placeholder(_) | Param(_) | Infer(_) => None,
 
             Error(_) => Some(ty::ClosureKind::Fn),
 
