@@ -5,8 +5,11 @@ use crate::error::Error;
 use crate::ffi::c_char;
 use crate::fmt;
 use crate::intrinsics;
+use crate::iter::FusedIterator;
+use crate::marker::PhantomData;
 use crate::ops;
 use crate::ptr::addr_of;
+use crate::ptr::NonNull;
 use crate::slice;
 use crate::slice::memchr;
 use crate::str;
@@ -504,6 +507,13 @@ impl CStr {
         self.inner.as_ptr()
     }
 
+    /// We could eventually expose this publicly, if we wanted.
+    #[inline]
+    #[must_use]
+    const fn as_non_null_ptr(&self) -> NonNull<c_char> {
+        NonNull::from(&self.inner).as_non_null_ptr()
+    }
+
     /// Returns the length of `self`. Like C's `strlen`, this does not include the nul terminator.
     ///
     /// > **Note**: This method is currently implemented as a constant-time
@@ -615,6 +625,26 @@ impl CStr {
         // SAFETY: Transmuting a slice of `c_char`s to a slice of `u8`s
         // is safe on all supported targets.
         unsafe { &*(addr_of!(self.inner) as *const [u8]) }
+    }
+
+    /// Iterates over the bytes in this C string.
+    ///
+    /// The returned iterator will **not** contain the trailing nul terminator
+    /// that this C string has.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(cstr_bytes)]
+    /// use std::ffi::CStr;
+    ///
+    /// let cstr = CStr::from_bytes_with_nul(b"foo\0").expect("CStr::from_bytes_with_nul failed");
+    /// assert!(cstr.bytes().eq(*b"foo"));
+    /// ```
+    #[inline]
+    #[unstable(feature = "cstr_bytes", issue = "112115")]
+    pub fn bytes(&self) -> Bytes<'_> {
+        Bytes::new(self)
     }
 
     /// Yields a <code>&[str]</code> slice if the `CStr` contains valid UTF-8.
@@ -735,3 +765,64 @@ const unsafe fn const_strlen(ptr: *const c_char) -> usize {
         intrinsics::const_eval_select((ptr,), strlen_ct, strlen_rt)
     }
 }
+
+/// An iterator over the bytes of a [`CStr`], without the nul terminator.
+///
+/// This struct is created by the [`bytes`] method on [`CStr`].
+/// See its documentation for more.
+///
+/// [`bytes`]: CStr::bytes
+#[must_use = "iterators are lazy and do nothing unless consumed"]
+#[unstable(feature = "cstr_bytes", issue = "112115")]
+#[derive(Clone, Debug)]
+pub struct Bytes<'a> {
+    // since we know the string is nul-terminated, we only need one pointer
+    ptr: NonNull<u8>,
+    phantom: PhantomData<&'a u8>,
+}
+impl<'a> Bytes<'a> {
+    #[inline]
+    fn new(s: &'a CStr) -> Self {
+        Self { ptr: s.as_non_null_ptr().cast(), phantom: PhantomData }
+    }
+
+    #[inline]
+    fn is_empty(&self) -> bool {
+        // SAFETY: We uphold that the pointer is always valid to dereference
+        // by starting with a valid C string and then never incrementing beyond
+        // the nul terminator.
+        unsafe { self.ptr.read() == 0 }
+    }
+}
+
+#[unstable(feature = "cstr_bytes", issue = "112115")]
+impl Iterator for Bytes<'_> {
+    type Item = u8;
+
+    #[inline]
+    fn next(&mut self) -> Option<u8> {
+        // SAFETY: We only choose a pointer from a valid C string, which must
+        // be non-null and contain at least one value. Since we always stop at
+        // the nul terminator, which is guaranteed to exist, we can assume that
+        // the pointer is non-null and valid. This lets us safely dereference
+        // it and assume that adding 1 will create a new, non-null, valid
+        // pointer.
+        unsafe {
+            let ret = self.ptr.read();
+            if ret == 0 {
+                None
+            } else {
+                self.ptr = self.ptr.offset(1);
+                Some(ret)
+            }
+        }
+    }
+
+    #[inline]
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        if self.is_empty() { (0, Some(0)) } else { (1, None) }
+    }
+}
+
+#[unstable(feature = "cstr_bytes", issue = "112115")]
+impl FusedIterator for Bytes<'_> {}
