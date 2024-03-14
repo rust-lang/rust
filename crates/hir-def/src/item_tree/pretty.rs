@@ -498,13 +498,23 @@ impl Printer<'_> {
                 wln!(self, "{}!(...);", path.display(self.db.upcast()));
             }
             ModItem::MacroRules(it) => {
-                let MacroRules { name, ast_id } = &self.tree[it];
-                self.print_ast_id(ast_id.erase());
+                let MacroRules { name, ast_id, def_site } = &self.tree[it];
+                let _ = writeln!(
+                    self,
+                    "// AstId: {:?}, Span: {}",
+                    ast_id.erase().into_raw(),
+                    def_site,
+                );
                 wln!(self, "macro_rules! {} {{ ... }}", name.display(self.db.upcast()));
             }
             ModItem::Macro2(it) => {
-                let Macro2 { name, visibility, ast_id } = &self.tree[it];
-                self.print_ast_id(ast_id.erase());
+                let Macro2 { name, visibility, ast_id, def_site } = &self.tree[it];
+                let _ = writeln!(
+                    self,
+                    "// AstId: {:?}, Span: {}",
+                    ast_id.erase().into_raw(),
+                    def_site,
+                );
                 self.print_visibility(*visibility);
                 wln!(self, "macro {} {{ ... }}", name.display(self.db.upcast()));
             }

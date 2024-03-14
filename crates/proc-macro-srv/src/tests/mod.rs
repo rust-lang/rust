@@ -8,7 +8,12 @@ use expect_test::expect;
 
 #[test]
 fn test_derive_empty() {
-    assert_expand("DeriveEmpty", r#"struct S;"#, expect!["SUBTREE $$ 1 1"], expect!["SUBTREE $$ 42:2@0..100#0 42:2@0..100#0"]);
+    assert_expand(
+        "DeriveEmpty",
+        r#"struct S;"#,
+        expect!["SUBTREE $$ 1 1"],
+        expect!["SUBTREE $$ 42:2@0..100#0 42:2@0..100#0"],
+    );
 }
 
 #[test]

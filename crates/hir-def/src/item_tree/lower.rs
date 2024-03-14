@@ -572,20 +572,22 @@ impl<'a> Ctx<'a> {
     }
 
     fn lower_macro_rules(&mut self, m: &ast::MacroRules) -> Option<FileItemTreeId<MacroRules>> {
-        let name = m.name().map(|it| it.as_name())?;
+        let name = m.name()?;
+        let def_site = self.span_map().span_for_range(name.syntax().text_range());
         let ast_id = self.source_ast_id_map.ast_id(m);
 
-        let res = MacroRules { name, ast_id };
+        let res = MacroRules { name: name.as_name(), ast_id, def_site };
         Some(id(self.data().macro_rules.alloc(res)))
     }
 
     fn lower_macro_def(&mut self, m: &ast::MacroDef) -> Option<FileItemTreeId<Macro2>> {
-        let name = m.name().map(|it| it.as_name())?;
+        let name = m.name()?;
+        let def_site = self.span_map().span_for_range(name.syntax().text_range());
 
         let ast_id = self.source_ast_id_map.ast_id(m);
         let visibility = self.lower_visibility(m);
 
-        let res = Macro2 { name, ast_id, visibility };
+        let res = Macro2 { name: name.as_name(), ast_id, visibility, def_site };
         Some(id(self.data().macro_defs.alloc(res)))
     }
 

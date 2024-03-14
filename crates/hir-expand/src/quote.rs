@@ -269,7 +269,8 @@ mod tests {
         let t = format!("{quoted:#?}");
         expect![[r#"
             SUBTREE $$ 937550:0@0..0#0 937550:0@0..0#0
-              IDENT   hello 937550:0@0..0#0"#]].assert_eq(&t);
+              IDENT   hello 937550:0@0..0#0"#]]
+        .assert_eq(&t);
     }
 
     #[test]
