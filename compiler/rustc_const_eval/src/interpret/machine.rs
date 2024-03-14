@@ -140,8 +140,9 @@ pub trait Machine<'mir, 'tcx: 'mir>: Sized {
     /// Should the machine panic on allocation failures?
     const PANIC_ON_ALLOC_FAIL: bool;
 
-    /// Should post-monomorphization checks be run when a stack frame is pushed?
-    const POST_MONO_CHECKS: bool = true;
+    /// Determines whether `eval_mir_constant` can never fail because all required consts have
+    /// already been checked before.
+    fn all_required_consts_are_checked(ecx: &InterpCx<'mir, 'tcx, Self>) -> bool;
 
     /// Whether memory accesses should be alignment-checked.
     fn enforce_alignment(ecx: &InterpCx<'mir, 'tcx, Self>) -> bool;

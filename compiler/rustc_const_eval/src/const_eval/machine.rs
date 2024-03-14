@@ -375,6 +375,20 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for CompileTimeInterpreter<'mir,
 
     const PANIC_ON_ALLOC_FAIL: bool = false; // will be raised as a proper error
 
+    #[inline]
+    fn all_required_consts_are_checked(ecx: &InterpCx<'mir, 'tcx, Self>) -> bool {
+        // Generally we expect required_consts to be properly filled, except for promoteds where
+        // storing these consts shows up negatively in benchmarks. A promoted can only be relevant
+        // if its parent MIR is relevant, and the consts in the promoted will be in the parent's
+        // `required_consts`, so we are still sure to catch any const-eval bugs, just a bit less
+        // directly.
+        if ecx.frame_idx() == 0 && ecx.frame().body.source.promoted.is_some() {
+            false
+        } else {
+            true
+        }
+    }
+
     #[inline(always)]
     fn enforce_alignment(ecx: &InterpCx<'mir, 'tcx, Self>) -> bool {
         matches!(ecx.machine.check_alignment, CheckAlignment::Error)
