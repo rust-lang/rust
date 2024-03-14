@@ -566,7 +566,7 @@ impl<'tcx> Context for TablesWrapper<'tcx> {
         let result = tcx.const_eval_instance(
             ParamEnv::reveal_all(),
             instance,
-            Some(tcx.def_span(instance.def_id())),
+            tcx.def_span(instance.def_id()),
         );
         result
             .map(|const_val| {

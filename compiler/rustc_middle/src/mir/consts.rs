@@ -2,7 +2,7 @@ use std::fmt::{self, Debug, Display, Formatter};
 
 use rustc_hir::def_id::DefId;
 use rustc_session::RemapFileNameExt;
-use rustc_span::Span;
+use rustc_span::{Span, DUMMY_SP};
 use rustc_target::abi::{HasDataLayout, Size};
 
 use crate::mir::interpret::{alloc_range, AllocId, ConstAllocation, ErrorHandled, Scalar};
@@ -273,7 +273,7 @@ impl<'tcx> Const<'tcx> {
         self,
         tcx: TyCtxt<'tcx>,
         param_env: ty::ParamEnv<'tcx>,
-        span: Option<Span>,
+        span: Span,
     ) -> Result<ConstValue<'tcx>, ErrorHandled> {
         match self {
             Const::Ty(c) => {
@@ -293,7 +293,7 @@ impl<'tcx> Const<'tcx> {
     /// Normalizes the constant to a value or an error if possible.
     #[inline]
     pub fn normalize(self, tcx: TyCtxt<'tcx>, param_env: ty::ParamEnv<'tcx>) -> Self {
-        match self.eval(tcx, param_env, None) {
+        match self.eval(tcx, param_env, DUMMY_SP) {
             Ok(val) => Self::Val(val, self.ty()),
             Err(ErrorHandled::Reported(guar, _span)) => {
                 Self::Ty(ty::Const::new_error(tcx, guar.into(), self.ty()))
@@ -313,10 +313,10 @@ impl<'tcx> Const<'tcx> {
                 // Avoid the `valtree_to_const_val` query. Can only be done on primitive types that
                 // are valtree leaves, and *not* on references. (References should return the
                 // pointer here, which valtrees don't represent.)
-                let val = c.eval(tcx, param_env, None).ok()?;
+                let val = c.eval(tcx, param_env, DUMMY_SP).ok()?;
                 Some(val.unwrap_leaf().into())
             }
-            _ => self.eval(tcx, param_env, None).ok()?.try_to_scalar(),
+            _ => self.eval(tcx, param_env, DUMMY_SP).ok()?.try_to_scalar(),
         }
     }
 

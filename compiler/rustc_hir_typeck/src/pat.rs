@@ -2178,7 +2178,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         len: ty::Const<'tcx>,
         min_len: u64,
     ) -> (Option<Ty<'tcx>>, Ty<'tcx>) {
-        let len = match len.eval(self.tcx, self.param_env, None) {
+        let len = match len.eval(self.tcx, self.param_env, span) {
             Ok(val) => val
                 .try_to_scalar()
                 .and_then(|scalar| scalar.try_to_int().ok())

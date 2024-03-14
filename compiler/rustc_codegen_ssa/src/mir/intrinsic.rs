@@ -130,7 +130,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             | sym::variant_count => {
                 let value = bx
                     .tcx()
-                    .const_eval_instance(ty::ParamEnv::reveal_all(), instance, None)
+                    .const_eval_instance(ty::ParamEnv::reveal_all(), instance, span)
                     .unwrap();
                 OperandRef::from_const(bx, value, ret_ty).immediate_or_packed_pair(bx)
             }
