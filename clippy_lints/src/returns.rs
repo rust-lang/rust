@@ -222,7 +222,7 @@ impl<'tcx> LateLintPass<'tcx> for Return {
         // we need both a let-binding stmt and an expr
         if let Some(retexpr) = block.expr
             && let Some(stmt) = block.stmts.iter().last()
-            && let StmtKind::Local(local) = &stmt.kind
+            && let StmtKind::Let(local) = &stmt.kind
             && local.ty.is_none()
             && cx.tcx.hir().attrs(local.hir_id).is_empty()
             && let Some(initexpr) = &local.init
