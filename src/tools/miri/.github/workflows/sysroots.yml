@@ -53,7 +53,7 @@ jobs:
           ~/.local/bin/zulip-send --user $ZULIP_BOT_EMAIL --api-key $ZULIP_API_TOKEN --site https://rust-lang.zulipchat.com \
             --stream miri --subject "Sysroot Build Errors ($(date -u +%Y-%m))" \
             --message 'It would appear that the [Miri sysroots cron job build]('"https://github.com/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"') failed to build these targets:
-          $(ls failures)
+          '"$(ls failures)"'
 
           Would you mind investigating this issue?
 
