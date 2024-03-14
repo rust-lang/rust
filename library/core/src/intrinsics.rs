@@ -2224,24 +2224,27 @@ extern "rust-intrinsic" {
     /// Returns the result of an unchecked addition, resulting in
     /// undefined behavior when `x + y > T::MAX` or `x + y < T::MIN`.
     ///
-    /// This intrinsic does not have a stable counterpart.
-    #[rustc_const_unstable(feature = "const_int_unchecked_arith", issue = "none")]
+    /// The stable counterpart of this intrinsic is `unchecked_add` on the various
+    /// integer types, such as [`u16::unchecked_add`] and [`i64::unchecked_add`].
+    #[rustc_const_stable(feature = "unchecked_math", since = "CURRENT_RUSTC_VERSION")]
     #[rustc_nounwind]
     pub fn unchecked_add<T: Copy>(x: T, y: T) -> T;
 
     /// Returns the result of an unchecked subtraction, resulting in
     /// undefined behavior when `x - y > T::MAX` or `x - y < T::MIN`.
     ///
-    /// This intrinsic does not have a stable counterpart.
-    #[rustc_const_unstable(feature = "const_int_unchecked_arith", issue = "none")]
+    /// The stable counterpart of this intrinsic is `unchecked_sub` on the various
+    /// integer types, such as [`u16::unchecked_sub`] and [`i64::unchecked_sub`].
+    #[rustc_const_stable(feature = "unchecked_math", since = "CURRENT_RUSTC_VERSION")]
     #[rustc_nounwind]
     pub fn unchecked_sub<T: Copy>(x: T, y: T) -> T;
 
     /// Returns the result of an unchecked multiplication, resulting in
     /// undefined behavior when `x * y > T::MAX` or `x * y < T::MIN`.
     ///
-    /// This intrinsic does not have a stable counterpart.
-    #[rustc_const_unstable(feature = "const_int_unchecked_arith", issue = "none")]
+    /// The stable counterpart of this intrinsic is `unchecked_mul` on the various
+    /// integer types, such as [`u16::unchecked_mul`] and [`i64::unchecked_mul`].
+    #[rustc_const_stable(feature = "unchecked_math", since = "CURRENT_RUSTC_VERSION")]
     #[rustc_nounwind]
     pub fn unchecked_mul<T: Copy>(x: T, y: T) -> T;
 

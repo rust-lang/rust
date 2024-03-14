@@ -702,8 +702,6 @@ impl<T: ?Sized> NonNull<T> {
     #[unstable(feature = "non_null_convenience", issue = "117691")]
     #[rustc_const_unstable(feature = "non_null_convenience", issue = "117691")]
     #[must_use = "returns a new pointer rather than modifying its argument"]
-    // We could always go back to wrapping if unchecked becomes unacceptable
-    #[rustc_allow_const_fn_unstable(const_int_unchecked_arith)]
     #[inline(always)]
     #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
     pub const unsafe fn sub(self, count: usize) -> Self

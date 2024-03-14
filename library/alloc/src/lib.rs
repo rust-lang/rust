@@ -165,7 +165,6 @@
 #![feature(try_trait_v2)]
 #![feature(try_with_capacity)]
 #![feature(tuple_trait)]
-#![feature(unchecked_math)]
 #![feature(unicode_internals)]
 #![feature(unsize)]
 #![feature(utf8_chunks)]

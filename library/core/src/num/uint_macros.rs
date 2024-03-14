@@ -500,21 +500,25 @@ macro_rules! uint_impl {
         /// Unchecked integer addition. Computes `self + rhs`, assuming overflow
         /// cannot occur.
         ///
+        /// Calling `x.unchecked_add(y)` is semantically equivalent to calling
+        /// `x.`[`checked_add`]`(y).`[`unwrap_unchecked`]`()`.
+        ///
+        /// If you're just trying to avoid the panic in debug mode, then **do not**
+        /// use this.  Instead, you're looking for [`wrapping_add`].
+        ///
         /// # Safety
         ///
         /// This results in undefined behavior when
         #[doc = concat!("`self + rhs > ", stringify!($SelfT), "::MAX` or `self + rhs < ", stringify!($SelfT), "::MIN`,")]
         /// i.e. when [`checked_add`] would return `None`.
         ///
+        /// [`unwrap_unchecked`]: Option::unwrap_unchecked
         #[doc = concat!("[`checked_add`]: ", stringify!($SelfT), "::checked_add")]
-        #[unstable(
-            feature = "unchecked_math",
-            reason = "niche optimization path",
-            issue = "85122",
-        )]
+        #[doc = concat!("[`wrapping_add`]: ", stringify!($SelfT), "::wrapping_add")]
+        #[stable(feature = "unchecked_math", since = "CURRENT_RUSTC_VERSION")]
+        #[rustc_const_stable(feature = "unchecked_math", since = "CURRENT_RUSTC_VERSION")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
-        #[rustc_const_unstable(feature = "unchecked_math", issue = "85122")]
         #[inline(always)]
         #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
         pub const unsafe fn unchecked_add(self, rhs: Self) -> Self {
@@ -644,21 +648,25 @@ macro_rules! uint_impl {
         /// Unchecked integer subtraction. Computes `self - rhs`, assuming overflow
         /// cannot occur.
         ///
+        /// Calling `x.unchecked_sub(y)` is semantically equivalent to calling
+        /// `x.`[`checked_sub`]`(y).`[`unwrap_unchecked`]`()`.
+        ///
+        /// If you're just trying to avoid the panic in debug mode, then **do not**
+        /// use this.  Instead, you're looking for [`wrapping_sub`].
+        ///
         /// # Safety
         ///
         /// This results in undefined behavior when
         #[doc = concat!("`self - rhs > ", stringify!($SelfT), "::MAX` or `self - rhs < ", stringify!($SelfT), "::MIN`,")]
         /// i.e. when [`checked_sub`] would return `None`.
         ///
+        /// [`unwrap_unchecked`]: Option::unwrap_unchecked
         #[doc = concat!("[`checked_sub`]: ", stringify!($SelfT), "::checked_sub")]
-        #[unstable(
-            feature = "unchecked_math",
-            reason = "niche optimization path",
-            issue = "85122",
-        )]
+        #[doc = concat!("[`wrapping_sub`]: ", stringify!($SelfT), "::wrapping_sub")]
+        #[stable(feature = "unchecked_math", since = "CURRENT_RUSTC_VERSION")]
+        #[rustc_const_stable(feature = "unchecked_math", since = "CURRENT_RUSTC_VERSION")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
-        #[rustc_const_unstable(feature = "unchecked_math", issue = "85122")]
         #[inline(always)]
         #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
         pub const unsafe fn unchecked_sub(self, rhs: Self) -> Self {
@@ -726,21 +734,25 @@ macro_rules! uint_impl {
         /// Unchecked integer multiplication. Computes `self * rhs`, assuming overflow
         /// cannot occur.
         ///
+        /// Calling `x.unchecked_mul(y)` is semantically equivalent to calling
+        /// `x.`[`checked_mul`]`(y).`[`unwrap_unchecked`]`()`.
+        ///
+        /// If you're just trying to avoid the panic in debug mode, then **do not**
+        /// use this.  Instead, you're looking for [`wrapping_mul`].
+        ///
         /// # Safety
         ///
         /// This results in undefined behavior when
         #[doc = concat!("`self * rhs > ", stringify!($SelfT), "::MAX` or `self * rhs < ", stringify!($SelfT), "::MIN`,")]
         /// i.e. when [`checked_mul`] would return `None`.
         ///
+        /// [`unwrap_unchecked`]: Option::unwrap_unchecked
         #[doc = concat!("[`checked_mul`]: ", stringify!($SelfT), "::checked_mul")]
-        #[unstable(
-            feature = "unchecked_math",
-            reason = "niche optimization path",
-            issue = "85122",
-        )]
+        #[doc = concat!("[`wrapping_mul`]: ", stringify!($SelfT), "::wrapping_mul")]
+        #[stable(feature = "unchecked_math", since = "CURRENT_RUSTC_VERSION")]
+        #[rustc_const_stable(feature = "unchecked_math", since = "CURRENT_RUSTC_VERSION")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
-        #[rustc_const_unstable(feature = "unchecked_math", issue = "85122")]
         #[inline(always)]
         #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
         pub const unsafe fn unchecked_mul(self, rhs: Self) -> Self {
