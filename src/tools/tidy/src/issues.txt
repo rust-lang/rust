@@ -4147,7 +4147,6 @@
 "ui/type-alias-impl-trait/issue-53092-2.rs",
 "ui/type-alias-impl-trait/issue-53092.rs",
 "ui/type-alias-impl-trait/issue-53096.rs",
-"ui/type-alias-impl-trait/issue-53398-cyclic-types.rs",
 "ui/type-alias-impl-trait/issue-53598.rs",
 "ui/type-alias-impl-trait/issue-53678-coroutine-and-const-fn.rs",
 "ui/type-alias-impl-trait/issue-55099-lifetime-inference.rs",

@@ -1,5 +1,5 @@
-error[E0275]: overflow evaluating the requirement `<Foo as Bar<Foo>>::Item == Foo`
-  --> $DIR/type-alias-impl-trait-with-cycle-error2.rs:9:21
+error[E0275]: overflow evaluating the requirement `<Foo as FnOnce<()>>::Output == Foo`
+  --> $DIR/type-alias-impl-trait-with-cycle-error-1.rs:6:21
    |
 LL | fn crash(x: Foo) -> Foo {
    |                     ^^^
