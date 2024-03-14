@@ -18,18 +18,18 @@ use crate::errors;
 use crate::errors::ConstEvalError;
 use crate::interpret::eval_nullary_intrinsic;
 use crate::interpret::{
-    create_static_alloc, intern_const_alloc_recursive, take_static_root_alloc, CtfeValidationMode,
-    GlobalId, Immediate, InternKind, InterpCx, InterpError, InterpResult, MPlaceTy, MemoryKind,
-    OpTy, RefTracking, StackPopCleanup,
+    create_static_alloc, intern_const_alloc_recursive, CtfeValidationMode, GlobalId, Immediate,
+    InternKind, InterpCx, InterpError, InterpResult, MPlaceTy, MemoryKind, OpTy, RefTracking,
+    StackPopCleanup,
 };
 
 // Returns a pointer to where the result lives
-#[instrument(level = "trace", skip(ecx, body), ret)]
-fn eval_body_using_ecx<'mir, 'tcx>(
+#[instrument(level = "trace", skip(ecx, body))]
+fn eval_body_using_ecx<'mir, 'tcx, R: InterpretationResult<'tcx>>(
     ecx: &mut CompileTimeEvalContext<'mir, 'tcx>,
     cid: GlobalId<'tcx>,
     body: &'mir mir::Body<'tcx>,
-) -> InterpResult<'tcx, MPlaceTy<'tcx>> {
+) -> InterpResult<'tcx, R> {
     trace!(?ecx.param_env);
     let tcx = *ecx.tcx;
     assert!(
@@ -84,7 +84,10 @@ fn eval_body_using_ecx<'mir, 'tcx>(
     // Intern the result
     intern_const_alloc_recursive(ecx, intern_kind, &ret)?;
 
-    Ok(ret)
+    // Since evaluation had no errors, validate the resulting constant.
+    const_validate_mplace(&ecx, &ret, cid)?;
+
+    Ok(R::make_result(ret, ecx))
 }
 
 /// The `InterpCx` is only meant to be used to do field and index projections into constants for
@@ -282,18 +285,26 @@ pub fn eval_static_initializer_provider<'tcx>(
 
     let instance = ty::Instance::mono(tcx, def_id.to_def_id());
     let cid = rustc_middle::mir::interpret::GlobalId { instance, promoted: None };
-    let mut ecx = InterpCx::new(
-        tcx,
-        tcx.def_span(def_id),
-        ty::ParamEnv::reveal_all(),
-        // Statics (and promoteds inside statics) may access other statics, because unlike consts
-        // they do not have to behave "as if" they were evaluated at runtime.
-        CompileTimeInterpreter::new(CanAccessMutGlobal::Yes, CheckAlignment::Error),
-    );
-    let alloc_id = eval_in_interpreter(&mut ecx, cid, true)?.alloc_id;
-    let alloc = take_static_root_alloc(&mut ecx, alloc_id);
-    let alloc = tcx.mk_const_alloc(alloc);
-    Ok(alloc)
+    eval_in_interpreter(tcx, cid, ty::ParamEnv::reveal_all())
+}
+
+pub trait InterpretationResult<'tcx> {
+    /// This function takes the place where the result of the evaluation is stored
+    /// and prepares it for returning it in the appropriate format needed by the specific
+    /// evaluation query.
+    fn make_result<'mir>(
+        mplace: MPlaceTy<'tcx>,
+        ecx: &mut InterpCx<'mir, 'tcx, CompileTimeInterpreter<'mir, 'tcx>>,
+    ) -> Self;
+}
+
+impl<'tcx> InterpretationResult<'tcx> for ConstAlloc<'tcx> {
+    fn make_result<'mir>(
+        mplace: MPlaceTy<'tcx>,
+        _ecx: &mut InterpCx<'mir, 'tcx, CompileTimeInterpreter<'mir, 'tcx>>,
+    ) -> Self {
+        ConstAlloc { alloc_id: mplace.ptr().provenance.unwrap().alloc_id(), ty: mplace.layout.ty }
+    }
 }
 
 #[instrument(skip(tcx), level = "debug")]
@@ -319,92 +330,64 @@ pub fn eval_to_allocation_raw_provider<'tcx>(
         trace!("const eval: {:?} ({})", key, instance);
     }
 
-    let cid = key.value;
+    eval_in_interpreter(tcx, key.value, key.param_env)
+}
+
+fn eval_in_interpreter<'tcx, R: InterpretationResult<'tcx>>(
+    tcx: TyCtxt<'tcx>,
+    cid: GlobalId<'tcx>,
+    param_env: ty::ParamEnv<'tcx>,
+) -> Result<R, ErrorHandled> {
     let def = cid.instance.def.def_id();
     let is_static = tcx.is_static(def);
 
     let mut ecx = InterpCx::new(
         tcx,
         tcx.def_span(def),
-        key.param_env,
+        param_env,
         // Statics (and promoteds inside statics) may access mutable global memory, because unlike consts
         // they do not have to behave "as if" they were evaluated at runtime.
         // For consts however we want to ensure they behave "as if" they were evaluated at runtime,
         // so we have to reject reading mutable global memory.
         CompileTimeInterpreter::new(CanAccessMutGlobal::from(is_static), CheckAlignment::Error),
     );
-    eval_in_interpreter(&mut ecx, cid, is_static)
-}
-
-pub fn eval_in_interpreter<'mir, 'tcx>(
-    ecx: &mut InterpCx<'mir, 'tcx, CompileTimeInterpreter<'mir, 'tcx>>,
-    cid: GlobalId<'tcx>,
-    is_static: bool,
-) -> ::rustc_middle::mir::interpret::EvalToAllocationRawResult<'tcx> {
-    // `is_static` just means "in static", it could still be a promoted!
-    debug_assert_eq!(is_static, ecx.tcx.static_mutability(cid.instance.def_id()).is_some());
-
     let res = ecx.load_mir(cid.instance.def, cid.promoted);
-    match res.and_then(|body| eval_body_using_ecx(ecx, cid, body)) {
-        Err(error) => {
-            let (error, backtrace) = error.into_parts();
-            backtrace.print_backtrace();
+    res.and_then(|body| eval_body_using_ecx(&mut ecx, cid, body)).map_err(|error| {
+        let (error, backtrace) = error.into_parts();
+        backtrace.print_backtrace();
 
-            let (kind, instance) = if is_static {
-                ("static", String::new())
+        let (kind, instance) = if ecx.tcx.is_static(cid.instance.def_id()) {
+            ("static", String::new())
+        } else {
+            // If the current item has generics, we'd like to enrich the message with the
+            // instance and its args: to show the actual compile-time values, in addition to
+            // the expression, leading to the const eval error.
+            let instance = &cid.instance;
+            if !instance.args.is_empty() {
+                let instance = with_no_trimmed_paths!(instance.to_string());
+                ("const_with_path", instance)
             } else {
-                // If the current item has generics, we'd like to enrich the message with the
-                // instance and its args: to show the actual compile-time values, in addition to
-                // the expression, leading to the const eval error.
-                let instance = &cid.instance;
-                if !instance.args.is_empty() {
-                    let instance = with_no_trimmed_paths!(instance.to_string());
-                    ("const_with_path", instance)
-                } else {
-                    ("const", String::new())
-                }
-            };
-
-            Err(super::report(
-                *ecx.tcx,
-                error,
-                None,
-                || super::get_span_and_frames(ecx.tcx, &ecx.machine),
-                |span, frames| ConstEvalError {
-                    span,
-                    error_kind: kind,
-                    instance,
-                    frame_notes: frames,
-                },
-            ))
-        }
-        Ok(mplace) => {
-            // Since evaluation had no errors, validate the resulting constant.
-
-            // Temporarily allow access to the static_root_ids for the purpose of validation.
-            let static_root_ids = ecx.machine.static_root_ids.take();
-            let res = const_validate_mplace(&ecx, &mplace, cid);
-            ecx.machine.static_root_ids = static_root_ids;
-
-            let alloc_id = mplace.ptr().provenance.unwrap().alloc_id();
-
-            // Validation failed, report an error.
-            if let Err(error) = res {
-                Err(const_report_error(&ecx, error, alloc_id))
-            } else {
-                // Convert to raw constant
-                Ok(ConstAlloc { alloc_id, ty: mplace.layout.ty })
+                ("const", String::new())
             }
-        }
-    }
+        };
+
+        super::report(
+            *ecx.tcx,
+            error,
+            None,
+            || super::get_span_and_frames(ecx.tcx, ecx.stack()),
+            |span, frames| ConstEvalError { span, error_kind: kind, instance, frame_notes: frames },
+        )
+    })
 }
 
 #[inline(always)]
-pub fn const_validate_mplace<'mir, 'tcx>(
+fn const_validate_mplace<'mir, 'tcx>(
     ecx: &InterpCx<'mir, 'tcx, CompileTimeInterpreter<'mir, 'tcx>>,
     mplace: &MPlaceTy<'tcx>,
     cid: GlobalId<'tcx>,
-) -> InterpResult<'tcx> {
+) -> Result<(), ErrorHandled> {
+    let alloc_id = mplace.ptr().provenance.unwrap().alloc_id();
     let mut ref_tracking = RefTracking::new(mplace.clone());
     let mut inner = false;
     while let Some((mplace, path)) = ref_tracking.todo.pop() {
@@ -418,7 +401,10 @@ pub fn const_validate_mplace<'mir, 'tcx>(
                 CtfeValidationMode::Const { allow_immutable_unsafe_cell: !inner }
             }
         };
-        ecx.const_validate_operand(&mplace.into(), path, &mut ref_tracking, mode)?;
+        ecx.const_validate_operand(&mplace.into(), path, &mut ref_tracking, mode)
+            // Instead of just reporting the `InterpError` via the usual machinery, we give a more targetted
+            // error about the validation failure.
+            .map_err(|error| report_validation_error(&ecx, error, alloc_id))?;
         inner = true;
     }
 
@@ -426,7 +412,7 @@ pub fn const_validate_mplace<'mir, 'tcx>(
 }
 
 #[inline(always)]
-pub fn const_report_error<'mir, 'tcx>(
+fn report_validation_error<'mir, 'tcx>(
     ecx: &InterpCx<'mir, 'tcx, CompileTimeInterpreter<'mir, 'tcx>>,
     error: InterpErrorInfo<'tcx>,
     alloc_id: AllocId,
@@ -444,7 +430,7 @@ pub fn const_report_error<'mir, 'tcx>(
         *ecx.tcx,
         error,
         None,
-        || crate::const_eval::get_span_and_frames(ecx.tcx, &ecx.machine),
-        move |span, frames| errors::UndefinedBehavior { span, ub_note, frames, raw_bytes },
+        || crate::const_eval::get_span_and_frames(ecx.tcx, ecx.stack()),
+        move |span, frames| errors::ValidationFailure { span, ub_note, frames, raw_bytes },
     )
 }

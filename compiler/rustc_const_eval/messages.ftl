@@ -374,12 +374,6 @@ const_eval_unallowed_op_in_const_context =
 const_eval_unavailable_target_features_for_fn =
     calling a function that requires unavailable target features: {$unavailable_feats}
 
-const_eval_undefined_behavior =
-    it is undefined behavior to use this value
-
-const_eval_undefined_behavior_note =
-    The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
-
 const_eval_uninhabited_enum_variant_read =
     read discriminant of an uninhabited enum variant
 const_eval_uninhabited_enum_variant_written =
@@ -433,6 +427,12 @@ const_eval_validation_expected_int = expected an integer
 const_eval_validation_expected_raw_ptr = expected a raw pointer
 const_eval_validation_expected_ref = expected a reference
 const_eval_validation_expected_str = expected a string
+
+const_eval_validation_failure =
+    it is undefined behavior to use this value
+
+const_eval_validation_failure_note =
+    The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
 
 const_eval_validation_front_matter_invalid_value = constructing invalid value
 const_eval_validation_front_matter_invalid_value_with_path = constructing invalid value at {$path}
