@@ -28,19 +28,20 @@ pub enum CargoTestMessage {
     },
     Suite,
     Finished,
+    Custom {
+        text: String,
+    },
 }
 
 impl ParseFromLine for CargoTestMessage {
-    fn from_line(line: &str, error: &mut String) -> Option<Self> {
+    fn from_line(line: &str, _: &mut String) -> Option<Self> {
         let mut deserializer = serde_json::Deserializer::from_str(line);
         deserializer.disable_recursion_limit();
         if let Ok(message) = CargoTestMessage::deserialize(&mut deserializer) {
             return Some(message);
         }
 
-        error.push_str(line);
-        error.push('\n');
-        None
+        Some(CargoTestMessage::Custom { text: line.to_owned() })
     }
 
     fn from_eof() -> Option<Self> {
