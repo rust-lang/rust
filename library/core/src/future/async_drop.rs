@@ -264,15 +264,22 @@ where
     }
 }
 
-#[derive(Clone, Copy)]
 #[lang = "into_async_destructor"]
-struct IntoAsyncDestructor<T: ?Sized>(ptr::NonNull<T>);
+struct IntoAsyncDestructor<T: ?Sized>(ptr::NonNull<T>, PhantomPinned);
 
 #[lang = "into_async_destructor_ctor"]
 unsafe fn into_async_destructor<T: ?Sized>(to_drop: *mut T) -> IntoAsyncDestructor<T> {
     // SAFETY: same safety requirements as `async_drop_in_place`
-    IntoAsyncDestructor(unsafe { ptr::NonNull::new_unchecked(to_drop) })
+    IntoAsyncDestructor(unsafe { ptr::NonNull::new_unchecked(to_drop) }, PhantomPinned)
 }
+
+impl<T: ?Sized> Clone for IntoAsyncDestructor<T> {
+    fn clone(&self) -> Self {
+        *self
+    }
+}
+
+impl<T: ?Sized> Copy for IntoAsyncDestructor<T> {}
 
 impl<T: ?Sized> IntoFuture for IntoAsyncDestructor<T> {
     type Output = ();
