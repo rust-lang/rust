@@ -89,6 +89,7 @@ mod lint;
 mod lower_intrinsics;
 mod lower_slice_len;
 mod match_branches;
+mod mentioned_items;
 mod multiple_return_terminators;
 mod normalize_array_len;
 mod nrvo;
@@ -566,6 +567,10 @@ fn run_optimization_passes<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
         tcx,
         body,
         &[
+            // Before doing anything, remember which items are being mentioned so that the set of items
+            // visited does not depend on the optimization level.
+            &mentioned_items::MentionedItems,
+            // Add some UB checks before any UB gets optimized away.
             &check_alignment::CheckAlignment,
             // Before inlining: trim down MIR with passes to reduce inlining work.
 

@@ -137,21 +137,41 @@
 //! just linked to and no node is created; which is exactly what we want, since
 //! no machine code should be generated in the current crate for such an item.
 //!
-//! Eager and Lazy Collection Mode
-//! ------------------------------
-//! Mono item collection can be performed in one of two modes:
+//! Eager and Lazy Collection Strategy
+//! ----------------------------------
+//! Mono item collection can be performed with one of two strategies:
 //!
-//! - Lazy mode means that items will only be instantiated when actually
+//! - Lazy strategy means that items will only be instantiated when actually
 //!   used. The goal is to produce the least amount of machine code
 //!   possible.
 //!
-//! - Eager mode is meant to be used in conjunction with incremental compilation
+//! - Eager strategy is meant to be used in conjunction with incremental compilation
 //!   where a stable set of mono items is more important than a minimal
-//!   one. Thus, eager mode will instantiate drop-glue for every drop-able type
+//!   one. Thus, eager strategy will instantiate drop-glue for every drop-able type
 //!   in the crate, even if no drop call for that type exists (yet). It will
 //!   also instantiate default implementations of trait methods, something that
 //!   otherwise is only done on demand.
 //!
+//! Collection-time const evaluation and "mentioned" items
+//! ------------------------------------------------------
+//!
+//! One important role of collection is to evaluate all constants that are used by all the items
+//! which are being collected. Codegen can then rely on only encountering constants that evaluate
+//! successfully, and if a constant fails to evaluate, the collector has much better context to be
+//! able to show where this constant comes up.
+//!
+//! However, the exact set of "used" items (collected as described above), and therefore the exact
+//! set of used constants, can depend on optimizations. Optimizing away dead code may optimize away
+//! a function call that uses a failing constant, so an unoptimized build may fail where an
+//! optimized build succeeds. This is undesirable.
+//!
+//! To avoid this, the collector has the concept of "mentioned" items. Some time during the MIR
+//! pipeline, before any optimization-level-dependent optimizations, we compute a list of all items
+//! that syntactically appear in the code. These are considered "mentioned", and even if they are in
+//! dead code and get optimized away (which makes them no longer "used"), they are still
+//! "mentioned". For every used item, the collector ensures that all mentioned items, recursively,
+//! do not use a failing constant. This is reflected via the [`CollectionMode`], which determines
+//! whether we are visiting a used item or merely a mentioned item.
 //!
 //! Open Issues
 //! -----------
@@ -165,15 +185,16 @@
 //! regardless of whether it is actually needed or not.
 
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
-use rustc_data_structures::sync::{par_for_each_in, MTLock, MTLockRef};
+use rustc_data_structures::sync::{par_for_each_in, LRef, MTLock};
 use rustc_hir as hir;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{DefId, DefIdMap, LocalDefId};
 use rustc_hir::lang_items::LangItem;
+use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use rustc_middle::mir::interpret::{AllocId, ErrorHandled, GlobalAlloc, Scalar};
 use rustc_middle::mir::mono::{InstantiationMode, MonoItem};
 use rustc_middle::mir::visit::Visitor as MirVisitor;
-use rustc_middle::mir::{self, Location};
+use rustc_middle::mir::{self, Location, MentionedItem};
 use rustc_middle::query::TyCtxtAt;
 use rustc_middle::ty::adjustment::{CustomCoerceUnsized, PointerCoercion};
 use rustc_middle::ty::layout::ValidityRequirement;
@@ -183,7 +204,6 @@ use rustc_middle::ty::{
     TypeVisitableExt, VtblEntry,
 };
 use rustc_middle::ty::{GenericArgKind, GenericArgs};
-use rustc_middle::{middle::codegen_fn_attrs::CodegenFnAttrFlags, mir::visit::TyContext};
 use rustc_session::config::EntryFnType;
 use rustc_session::lint::builtin::LARGE_ASSIGNMENTS;
 use rustc_session::Limit;
@@ -199,7 +219,7 @@ use crate::errors::{
 };
 
 #[derive(PartialEq)]
-pub enum MonoItemCollectionMode {
+pub enum MonoItemCollectionStrategy {
     Eager,
     Lazy,
 }
@@ -213,6 +233,35 @@ pub struct UsageMap<'tcx> {
 }
 
 type MonoItems<'tcx> = Vec<Spanned<MonoItem<'tcx>>>;
+
+/// The state that is shared across the concurrent threads that are doing collection.
+struct SharedState<'tcx> {
+    /// Items that have been or are currently being recursively collected.
+    visited: MTLock<FxHashSet<MonoItem<'tcx>>>,
+    /// Items that have been or are currently being recursively treated as "mentioned", i.e., their
+    /// consts are evaluated but nothing is added to the collection.
+    mentioned: MTLock<FxHashSet<MonoItem<'tcx>>>,
+    /// Which items are being used where, for better errors.
+    usage_map: MTLock<UsageMap<'tcx>>,
+}
+
+/// See module-level docs on some contect for "mentioned" items.
+#[derive(Copy, Clone, Debug, PartialEq)]
+enum CollectionMode {
+    /// Collect items that are used, i.e., actually needed for codegen.
+    ///
+    /// Which items are used can depend on optimization levels, as MIR optimizations can remove
+    /// uses.
+    UsedItems,
+    /// Collect items that are mentioned. The goal of this mode is that it is independent of
+    /// optimizations: the set of "mentioned" items is computed before optimizations are run.
+    ///
+    /// The exact contents of this set are *not* a stable guarantee. (For instance, it is currently
+    /// computed after drop-elaboration. If we ever do some optimizations even in debug builds, we
+    /// might decide to run them before computing mentioned items.) The key property of this set is
+    /// that it is optimization-independent.
+    MentionedItems,
+}
 
 impl<'tcx> UsageMap<'tcx> {
     fn new() -> UsageMap<'tcx> {
@@ -253,25 +302,28 @@ impl<'tcx> UsageMap<'tcx> {
     }
 }
 
-#[instrument(skip(tcx, mode), level = "debug")]
+#[instrument(skip(tcx, strategy), level = "debug")]
 pub fn collect_crate_mono_items(
     tcx: TyCtxt<'_>,
-    mode: MonoItemCollectionMode,
+    strategy: MonoItemCollectionStrategy,
 ) -> (FxHashSet<MonoItem<'_>>, UsageMap<'_>) {
     let _prof_timer = tcx.prof.generic_activity("monomorphization_collector");
 
-    let roots =
-        tcx.sess.time("monomorphization_collector_root_collections", || collect_roots(tcx, mode));
+    let roots = tcx
+        .sess
+        .time("monomorphization_collector_root_collections", || collect_roots(tcx, strategy));
 
     debug!("building mono item graph, beginning at roots");
 
-    let mut visited = MTLock::new(FxHashSet::default());
-    let mut usage_map = MTLock::new(UsageMap::new());
+    let mut state = SharedState {
+        visited: MTLock::new(FxHashSet::default()),
+        mentioned: MTLock::new(FxHashSet::default()),
+        usage_map: MTLock::new(UsageMap::new()),
+    };
     let recursion_limit = tcx.recursion_limit();
 
     {
-        let visited: MTLockRef<'_, _> = &mut visited;
-        let usage_map: MTLockRef<'_, _> = &mut usage_map;
+        let state: LRef<'_, _> = &mut state;
 
         tcx.sess.time("monomorphization_collector_graph_walk", || {
             par_for_each_in(roots, |root| {
@@ -279,22 +331,22 @@ pub fn collect_crate_mono_items(
                 collect_items_rec(
                     tcx,
                     dummy_spanned(root),
-                    visited,
+                    state,
                     &mut recursion_depths,
                     recursion_limit,
-                    usage_map,
+                    CollectionMode::UsedItems,
                 );
             });
         });
     }
 
-    (visited.into_inner(), usage_map.into_inner())
+    (state.visited.into_inner(), state.usage_map.into_inner())
 }
 
 // Find all non-generic items by walking the HIR. These items serve as roots to
 // start monomorphizing from.
 #[instrument(skip(tcx, mode), level = "debug")]
-fn collect_roots(tcx: TyCtxt<'_>, mode: MonoItemCollectionMode) -> Vec<MonoItem<'_>> {
+fn collect_roots(tcx: TyCtxt<'_>, mode: MonoItemCollectionStrategy) -> Vec<MonoItem<'_>> {
     debug!("collecting roots");
     let mut roots = Vec::new();
 
@@ -303,7 +355,7 @@ fn collect_roots(tcx: TyCtxt<'_>, mode: MonoItemCollectionMode) -> Vec<MonoItem<
 
         debug!("collect_roots: entry_fn = {:?}", entry_fn);
 
-        let mut collector = RootCollector { tcx, mode, entry_fn, output: &mut roots };
+        let mut collector = RootCollector { tcx, strategy: mode, entry_fn, output: &mut roots };
 
         let crate_items = tcx.hir_crate_items(());
 
@@ -331,21 +383,38 @@ fn collect_roots(tcx: TyCtxt<'_>, mode: MonoItemCollectionMode) -> Vec<MonoItem<
 
 /// Collect all monomorphized items reachable from `starting_point`, and emit a note diagnostic if a
 /// post-monomorphization error is encountered during a collection step.
-#[instrument(skip(tcx, visited, recursion_depths, recursion_limit, usage_map), level = "debug")]
+///
+/// `mode` determined whether we are scanning for [used items][CollectionMode::UsedItems]
+/// or [mentioned items][CollectionMode::MentionedItems].
+#[instrument(skip(tcx, state, recursion_depths, recursion_limit), level = "debug")]
 fn collect_items_rec<'tcx>(
     tcx: TyCtxt<'tcx>,
     starting_item: Spanned<MonoItem<'tcx>>,
-    visited: MTLockRef<'_, FxHashSet<MonoItem<'tcx>>>,
+    state: LRef<'_, SharedState<'tcx>>,
     recursion_depths: &mut DefIdMap<usize>,
     recursion_limit: Limit,
-    usage_map: MTLockRef<'_, UsageMap<'tcx>>,
+    mode: CollectionMode,
 ) {
-    if !visited.lock_mut().insert(starting_item.node) {
-        // We've been here already, no need to search again.
-        return;
+    if mode == CollectionMode::UsedItems {
+        if !state.visited.lock_mut().insert(starting_item.node) {
+            // We've been here already, no need to search again.
+            return;
+        }
+    } else {
+        if state.visited.lock().contains(&starting_item.node) {
+            // We've already done a *full* visit on this one, no need to do the "mention" visit.
+            return;
+        }
+        if !state.mentioned.lock_mut().insert(starting_item.node) {
+            // We've been here already, no need to search again.
+            return;
+        }
+        // There's some risk that we first do a 'mention' visit and then a full visit. But there's no
+        // harm in that, the mention visit will trigger all the queries and the results are cached.
     }
 
-    let mut used_items = Vec::new();
+    let mut used_items = MonoItems::new();
+    let mut mentioned_items = MonoItems::new();
     let recursion_depth_reset;
 
     // Post-monomorphization errors MVP
@@ -373,37 +442,48 @@ fn collect_items_rec<'tcx>(
     // FIXME: don't rely on global state, instead bubble up errors. Note: this is very hard to do.
     let error_count = tcx.dcx().err_count();
 
+    // In `mentioned_items` we collect items that were mentioned in this MIR but possibly do not
+    // need to be monomorphized. This is done to ensure that optimizing away function calls does not
+    // hide const-eval errors that those calls would otherwise have triggered.
     match starting_item.node {
         MonoItem::Static(def_id) => {
-            let instance = Instance::mono(tcx, def_id);
-
-            // Sanity check whether this ended up being collected accidentally
-            debug_assert!(should_codegen_locally(tcx, &instance));
-
-            let DefKind::Static { nested, .. } = tcx.def_kind(def_id) else { bug!() };
-            // Nested statics have no type.
-            if !nested {
-                let ty = instance.ty(tcx, ty::ParamEnv::reveal_all());
-                visit_drop_use(tcx, ty, true, starting_item.span, &mut used_items);
-            }
-
             recursion_depth_reset = None;
 
-            if let Ok(alloc) = tcx.eval_static_initializer(def_id) {
-                for &prov in alloc.inner().provenance().ptrs().values() {
-                    collect_alloc(tcx, prov.alloc_id(), &mut used_items);
+            // Statics always get evaluted (which is possible because they can't be generic), so for
+            // `MentionedItems` collection there's nothing to do here.
+            if mode == CollectionMode::UsedItems {
+                let instance = Instance::mono(tcx, def_id);
+
+                // Sanity check whether this ended up being collected accidentally
+                debug_assert!(should_codegen_locally(tcx, &instance));
+
+                let DefKind::Static { nested, .. } = tcx.def_kind(def_id) else { bug!() };
+                // Nested statics have no type.
+                if !nested {
+                    let ty = instance.ty(tcx, ty::ParamEnv::reveal_all());
+                    visit_drop_use(tcx, ty, true, starting_item.span, &mut used_items);
+                }
+
+                if let Ok(alloc) = tcx.eval_static_initializer(def_id) {
+                    for &prov in alloc.inner().provenance().ptrs().values() {
+                        collect_alloc(tcx, prov.alloc_id(), &mut used_items);
+                    }
+                }
+
+                if tcx.needs_thread_local_shim(def_id) {
+                    used_items.push(respan(
+                        starting_item.span,
+                        MonoItem::Fn(Instance {
+                            def: InstanceDef::ThreadLocalShim(def_id),
+                            args: GenericArgs::empty(),
+                        }),
+                    ));
                 }
             }
 
-            if tcx.needs_thread_local_shim(def_id) {
-                used_items.push(respan(
-                    starting_item.span,
-                    MonoItem::Fn(Instance {
-                        def: InstanceDef::ThreadLocalShim(def_id),
-                        args: GenericArgs::empty(),
-                    }),
-                ));
-            }
+            // mentioned_items stays empty since there's no codegen for statics. statics don't get
+            // optimized, and if they did then the const-eval interpreter would have to worry about
+            // mentioned_items.
         }
         MonoItem::Fn(instance) => {
             // Sanity check whether this ended up being collected accidentally
@@ -420,10 +500,20 @@ fn collect_items_rec<'tcx>(
             check_type_length_limit(tcx, instance);
 
             rustc_data_structures::stack::ensure_sufficient_stack(|| {
-                collect_used_items(tcx, instance, &mut used_items);
+                collect_items_of_instance(
+                    tcx,
+                    instance,
+                    &mut used_items,
+                    &mut mentioned_items,
+                    mode,
+                )
             });
         }
         MonoItem::GlobalAsm(item_id) => {
+            assert!(
+                mode == CollectionMode::UsedItems,
+                "should never encounter global_asm when collecting mentioned items"
+            );
             recursion_depth_reset = None;
 
             let item = tcx.hir().item(item_id);
@@ -459,8 +549,10 @@ fn collect_items_rec<'tcx>(
             } else {
                 span_bug!(item.span, "Mismatch between hir::Item type and MonoItem type")
             }
+
+            // mention_items stays empty as nothing gets optimized here.
         }
-    }
+    };
 
     // Check for PMEs and emit a diagnostic if one happened. To try to show relevant edges of the
     // mono item graph.
@@ -474,10 +566,41 @@ fn collect_items_rec<'tcx>(
             formatted_item,
         });
     }
-    usage_map.lock_mut().record_used(starting_item.node, &used_items);
+    // Only updating `usage_map` for used items as otherwise we may be inserting the same item
+    // multiple times (if it is first 'mentioned' and then later actuall used), and the usage map
+    // logic does not like that.
+    // This is part of the output of collection and hence only relevant for "used" items.
+    // ("Mentioned" items are only considered internally during collection.)
+    if mode == CollectionMode::UsedItems {
+        state.usage_map.lock_mut().record_used(starting_item.node, &used_items);
+    }
 
-    for used_item in used_items {
-        collect_items_rec(tcx, used_item, visited, recursion_depths, recursion_limit, usage_map);
+    if mode == CollectionMode::MentionedItems {
+        assert!(used_items.is_empty(), "'mentioned' collection should never encounter used items");
+    } else {
+        for used_item in used_items {
+            collect_items_rec(
+                tcx,
+                used_item,
+                state,
+                recursion_depths,
+                recursion_limit,
+                CollectionMode::UsedItems,
+            );
+        }
+    }
+
+    // Walk over mentioned items *after* used items, so that if an item is both mentioned and used then
+    // the loop above has fully collected it, so this loop will skip it.
+    for mentioned_item in mentioned_items {
+        collect_items_rec(
+            tcx,
+            mentioned_item,
+            state,
+            recursion_depths,
+            recursion_limit,
+            CollectionMode::MentionedItems,
+        );
     }
 
     if let Some((def_id, depth)) = recursion_depth_reset {
@@ -596,7 +719,7 @@ fn check_type_length_limit<'tcx>(tcx: TyCtxt<'tcx>, instance: Instance<'tcx>) {
 struct MirUsedCollector<'a, 'tcx> {
     tcx: TyCtxt<'tcx>,
     body: &'a mir::Body<'tcx>,
-    output: &'a mut MonoItems<'tcx>,
+    used_items: &'a mut MonoItems<'tcx>,
     instance: Instance<'tcx>,
     /// Spans for move size lints already emitted. Helps avoid duplicate lints.
     move_size_spans: Vec<Span>,
@@ -735,6 +858,31 @@ impl<'a, 'tcx> MirUsedCollector<'a, 'tcx> {
         );
         self.move_size_spans.push(span);
     }
+
+    /// Evaluates a *not yet monomorphized* constant.
+    fn eval_constant(
+        &mut self,
+        constant: &mir::ConstOperand<'tcx>,
+    ) -> Option<mir::ConstValue<'tcx>> {
+        let const_ = self.monomorphize(constant.const_);
+        let param_env = ty::ParamEnv::reveal_all();
+        // Evaluate the constant. This makes const eval failure a collection-time error (rather than
+        // a codegen-time error). rustc stops after collection if there was an error, so this
+        // ensures codegen never has to worry about failing consts.
+        // (codegen relies on this and ICEs will happen if this is violated.)
+        match const_.eval(self.tcx, param_env, constant.span) {
+            Ok(v) => Some(v),
+            Err(ErrorHandled::TooGeneric(..)) => span_bug!(
+                constant.span,
+                "collection encountered polymorphic constant: {:?}",
+                const_
+            ),
+            Err(err @ ErrorHandled::Reported(..)) => {
+                err.emit_note(self.tcx);
+                return None;
+            }
+        }
+    }
 }
 
 impl<'a, 'tcx> MirVisitor<'tcx> for MirUsedCollector<'a, 'tcx> {
@@ -769,7 +917,7 @@ impl<'a, 'tcx> MirVisitor<'tcx> for MirUsedCollector<'a, 'tcx> {
                         target_ty,
                         source_ty,
                         span,
-                        self.output,
+                        self.used_items,
                     );
                 }
             }
@@ -780,7 +928,7 @@ impl<'a, 'tcx> MirVisitor<'tcx> for MirUsedCollector<'a, 'tcx> {
             ) => {
                 let fn_ty = operand.ty(self.body, self.tcx);
                 let fn_ty = self.monomorphize(fn_ty);
-                visit_fn_use(self.tcx, fn_ty, false, span, self.output);
+                visit_fn_use(self.tcx, fn_ty, false, span, self.used_items);
             }
             mir::Rvalue::Cast(
                 mir::CastKind::PointerCoercion(PointerCoercion::ClosureFnPointer(_)),
@@ -798,7 +946,7 @@ impl<'a, 'tcx> MirVisitor<'tcx> for MirUsedCollector<'a, 'tcx> {
                             ty::ClosureKind::FnOnce,
                         );
                         if should_codegen_locally(self.tcx, &instance) {
-                            self.output.push(create_fn_mono_item(self.tcx, instance, span));
+                            self.used_items.push(create_fn_mono_item(self.tcx, instance, span));
                         }
                     }
                     _ => bug!(),
@@ -809,7 +957,7 @@ impl<'a, 'tcx> MirVisitor<'tcx> for MirUsedCollector<'a, 'tcx> {
                 let instance = Instance::mono(self.tcx, def_id);
                 if should_codegen_locally(self.tcx, &instance) {
                     trace!("collecting thread-local static {:?}", def_id);
-                    self.output.push(respan(span, MonoItem::Static(def_id)));
+                    self.used_items.push(respan(span, MonoItem::Static(def_id)));
                 }
             }
             _ => { /* not interesting */ }
@@ -822,26 +970,9 @@ impl<'a, 'tcx> MirVisitor<'tcx> for MirUsedCollector<'a, 'tcx> {
     /// to ensure that the constant evaluates successfully and walk the result.
     #[instrument(skip(self), level = "debug")]
     fn visit_constant(&mut self, constant: &mir::ConstOperand<'tcx>, location: Location) {
-        let const_ = self.monomorphize(constant.const_);
-        let param_env = ty::ParamEnv::reveal_all();
-        // Evaluate the constant. This makes const eval failure a collection-time error (rather than
-        // a codegen-time error). rustc stops after collection if there was an error, so this
-        // ensures codegen never has to worry about failing consts.
-        // (codegen relies on this and ICEs will happen if this is violated.)
-        let val = match const_.eval(self.tcx, param_env, constant.span) {
-            Ok(v) => v,
-            Err(ErrorHandled::TooGeneric(..)) => span_bug!(
-                self.body.source_info(location).span,
-                "collection encountered polymorphic constant: {:?}",
-                const_
-            ),
-            Err(err @ ErrorHandled::Reported(..)) => {
-                err.emit_note(self.tcx);
-                return;
-            }
-        };
-        collect_const_value(self.tcx, val, self.output);
-        MirVisitor::visit_ty(self, const_.ty(), TyContext::Location(location));
+        // No `super_constant` as we don't care about `visit_ty`/`visit_ty_const`.
+        let Some(val) = self.eval_constant(constant) else { return };
+        collect_const_value(self.tcx, val, self.used_items);
     }
 
     fn visit_terminator(&mut self, terminator: &mir::Terminator<'tcx>, location: Location) {
@@ -852,7 +983,7 @@ impl<'a, 'tcx> MirVisitor<'tcx> for MirUsedCollector<'a, 'tcx> {
         let push_mono_lang_item = |this: &mut Self, lang_item: LangItem| {
             let instance = Instance::mono(tcx, tcx.require_lang_item(lang_item, Some(source)));
             if should_codegen_locally(tcx, &instance) {
-                this.output.push(create_fn_mono_item(tcx, instance, source));
+                this.used_items.push(create_fn_mono_item(tcx, instance, source));
             }
         };
 
@@ -861,25 +992,25 @@ impl<'a, 'tcx> MirVisitor<'tcx> for MirUsedCollector<'a, 'tcx> {
                 let callee_ty = func.ty(self.body, tcx);
                 let callee_ty = self.monomorphize(callee_ty);
                 self.check_fn_args_move_size(callee_ty, args, *fn_span, location);
-                visit_fn_use(self.tcx, callee_ty, true, source, &mut self.output)
+                visit_fn_use(self.tcx, callee_ty, true, source, &mut self.used_items)
             }
             mir::TerminatorKind::Drop { ref place, .. } => {
                 let ty = place.ty(self.body, self.tcx).ty;
                 let ty = self.monomorphize(ty);
-                visit_drop_use(self.tcx, ty, true, source, self.output);
+                visit_drop_use(self.tcx, ty, true, source, self.used_items);
             }
             mir::TerminatorKind::InlineAsm { ref operands, .. } => {
                 for op in operands {
                     match *op {
                         mir::InlineAsmOperand::SymFn { ref value } => {
                             let fn_ty = self.monomorphize(value.const_.ty());
-                            visit_fn_use(self.tcx, fn_ty, false, source, self.output);
+                            visit_fn_use(self.tcx, fn_ty, false, source, self.used_items);
                         }
                         mir::InlineAsmOperand::SymStatic { def_id } => {
                             let instance = Instance::mono(self.tcx, def_id);
                             if should_codegen_locally(self.tcx, &instance) {
                                 trace!("collecting asm sym static {:?}", def_id);
-                                self.output.push(respan(source, MonoItem::Static(def_id)));
+                                self.used_items.push(respan(source, MonoItem::Static(def_id)));
                             }
                         }
                         _ => {}
@@ -1239,7 +1370,7 @@ fn create_mono_items_for_vtable_methods<'tcx>(
 
 struct RootCollector<'a, 'tcx> {
     tcx: TyCtxt<'tcx>,
-    mode: MonoItemCollectionMode,
+    strategy: MonoItemCollectionStrategy,
     output: &'a mut MonoItems<'tcx>,
     entry_fn: Option<(DefId, EntryFnType)>,
 }
@@ -1248,7 +1379,7 @@ impl<'v> RootCollector<'_, 'v> {
     fn process_item(&mut self, id: hir::ItemId) {
         match self.tcx.def_kind(id.owner_id) {
             DefKind::Enum | DefKind::Struct | DefKind::Union => {
-                if self.mode == MonoItemCollectionMode::Eager
+                if self.strategy == MonoItemCollectionStrategy::Eager
                     && self.tcx.generics_of(id.owner_id).count() == 0
                 {
                     debug!("RootCollector: ADT drop-glue for `{id:?}`",);
@@ -1279,7 +1410,7 @@ impl<'v> RootCollector<'_, 'v> {
                 }
             }
             DefKind::Impl { .. } => {
-                if self.mode == MonoItemCollectionMode::Eager {
+                if self.strategy == MonoItemCollectionStrategy::Eager {
                     create_mono_items_for_default_impls(self.tcx, id, self.output);
                 }
             }
@@ -1298,9 +1429,9 @@ impl<'v> RootCollector<'_, 'v> {
 
     fn is_root(&self, def_id: LocalDefId) -> bool {
         !self.tcx.generics_of(def_id).requires_monomorphization(self.tcx)
-            && match self.mode {
-                MonoItemCollectionMode::Eager => true,
-                MonoItemCollectionMode::Lazy => {
+            && match self.strategy {
+                MonoItemCollectionStrategy::Eager => true,
+                MonoItemCollectionStrategy::Lazy => {
                     self.entry_fn.and_then(|(id, _)| id.as_local()) == Some(def_id)
                         || self.tcx.is_reachable_non_generic(def_id)
                         || self
@@ -1497,26 +1628,67 @@ fn build_skip_move_check_fns(tcx: TyCtxt<'_>) -> Vec<DefId> {
 }
 
 /// Scans the MIR in order to find function calls, closures, and drop-glue.
-#[instrument(skip(tcx, output), level = "debug")]
-fn collect_used_items<'tcx>(
+///
+/// Anything that's found is added to `output`. Furthermore the "mentioned items" of the MIR are returned.
+#[instrument(skip(tcx, used_items, mentioned_items), level = "debug")]
+fn collect_items_of_instance<'tcx>(
     tcx: TyCtxt<'tcx>,
     instance: Instance<'tcx>,
-    output: &mut MonoItems<'tcx>,
+    used_items: &mut MonoItems<'tcx>,
+    mentioned_items: &mut MonoItems<'tcx>,
+    mode: CollectionMode,
 ) {
     let body = tcx.instance_mir(instance.def);
-
-    // Here we rely on the visitor also visiting `required_consts`, so that we evaluate them
-    // and abort compilation if any of them errors.
-    MirUsedCollector {
+    let mut collector = MirUsedCollector {
         tcx,
-        body: body,
-        output,
+        body,
+        used_items,
         instance,
         move_size_spans: vec![],
         visiting_call_terminator: false,
         skip_move_check_fns: None,
+    };
+
+    if mode == CollectionMode::UsedItems {
+        // Visit everything. Here we rely on the visitor also visiting `required_consts`, so that we
+        // evaluate them and abort compilation if any of them errors.
+        collector.visit_body(body);
+    } else {
+        // We only need to evaluate all constants, but can ignore the rest of the MIR.
+        for const_op in &body.required_consts {
+            if let Some(val) = collector.eval_constant(const_op) {
+                collect_const_value(tcx, val, mentioned_items);
+            }
+        }
     }
-    .visit_body(body);
+
+    // Always gather mentioned items.
+    for item in &body.mentioned_items {
+        let item_mono = collector.monomorphize(item.node);
+        visit_mentioned_item(tcx, &item_mono, item.span, mentioned_items);
+    }
+}
+
+/// `item` must be already monomorphized
+fn visit_mentioned_item<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    item: &MentionedItem<'tcx>,
+    span: Span,
+    output: &mut MonoItems<'tcx>,
+) {
+    match *item {
+        MentionedItem::Fn(def_id, args) => {
+            let instance = Instance::expect_resolve(tcx, ty::ParamEnv::reveal_all(), def_id, args);
+            // `visit_instance_use` was written for "used" item collection but works just as well
+            // for "mentioned" item collection.
+            // We can set `is_direct_call`; that just means we'll skip a bunch of shims that anyway
+            // can't have their own failing constants.
+            visit_instance_use(tcx, instance, /*is_direct_call*/ true, span, output);
+        }
+        MentionedItem::Drop(ty) => {
+            visit_drop_use(tcx, ty, /*is_direct_call*/ true, span, output);
+        }
+    }
 }
 
 #[instrument(skip(tcx, output), level = "debug")]

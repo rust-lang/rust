@@ -1,8 +1,7 @@
 //@revisions: noopt opt
 //@ build-fail
 //@[opt] compile-flags: -O
-//! Make sure we detect erroneous constants post-monomorphization even when they are unused. This is
-//! crucial, people rely on it for soundness. (https://github.com/rust-lang/rust/issues/112090)
+//! This fails without optimizations, so it should also fail with optimizations.
 
 struct Fail<T>(T);
 impl<T> Fail<T> {
@@ -11,8 +10,7 @@ impl<T> Fail<T> {
 
 // This function is not actually called, but it is mentioned in dead code in a function that is
 // called. Make sure we still find this error.
-// This relies on mono-item collection checking `required_consts` in functions that syntactically
-// are called in collected functions (even inside dead code).
+// This ensures that we consider ReifyFnPointer coercions when gathering "mentioned" items.
 #[inline(never)]
 fn not_called<T>() {
     if false {
@@ -23,7 +21,9 @@ fn not_called<T>() {
 #[inline(never)]
 fn called<T>() {
     if false {
-        not_called::<T>();
+        // We don't call the function, but turn it to a function pointer.
+        // Make sure it still gest added to `mentioned_items`.
+        let _fnptr: fn() = not_called::<T>;
     }
 }
 

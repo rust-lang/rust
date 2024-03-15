@@ -17,7 +17,7 @@ use std::iter;
 
 use crate::{
     abort_unwinding_calls, add_call_guards, add_moves_for_packed_drops, deref_separator,
-    pass_manager as pm, remove_noop_landing_pads, simplify,
+    mentioned_items, pass_manager as pm, remove_noop_landing_pads, simplify,
 };
 use rustc_middle::mir::patch::MirPatch;
 use rustc_mir_dataflow::elaborate_drops::{self, DropElaborator, DropFlagMode, DropStyle};
@@ -147,6 +147,7 @@ fn make_shim<'tcx>(tcx: TyCtxt<'tcx>, instance: ty::InstanceDef<'tcx>) -> Body<'
                     tcx,
                     &mut body,
                     &[
+                        &mentioned_items::MentionedItems,
                         &abort_unwinding_calls::AbortUnwindingCalls,
                         &add_call_guards::CriticalCallEdges,
                     ],
@@ -178,6 +179,7 @@ fn make_shim<'tcx>(tcx: TyCtxt<'tcx>, instance: ty::InstanceDef<'tcx>) -> Body<'
         tcx,
         &mut result,
         &[
+            &mentioned_items::MentionedItems,
             &add_moves_for_packed_drops::AddMovesForPackedDrops,
             &deref_separator::Derefer,
             &remove_noop_landing_pads::RemoveNoopLandingPads,
