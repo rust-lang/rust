@@ -805,7 +805,7 @@ impl ExpansionInfo {
         let (parse, exp_map) = db.parse_macro_expansion(macro_file).value;
         let expanded = InMacroFile { file_id: macro_file, value: parse.syntax_node() };
 
-        let (macro_arg, _) = db.macro_arg(macro_file.macro_call_id).value;
+        let (macro_arg, _) = db.macro_arg(macro_file.macro_call_id);
 
         let def = loc.def.ast_id().left().and_then(|id| {
             let def_tt = match id.to_node(db) {

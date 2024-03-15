@@ -3,7 +3,7 @@
 use base_db::{salsa, CrateId, FileId, SourceDatabase};
 use either::Either;
 use limit::Limit;
-use mbe::{syntax_node_to_token_tree, ValueResult};
+use mbe::syntax_node_to_token_tree;
 use rustc_hash::FxHashSet;
 use span::{AstIdMap, Span, SyntaxContextData, SyntaxContextId};
 use syntax::{ast, AstNode, Parse, SyntaxElement, SyntaxError, SyntaxNode, SyntaxToken, T};
@@ -98,10 +98,7 @@ pub trait ExpandDatabase: SourceDatabase {
     /// Lowers syntactic macro call to a token tree representation. That's a firewall
     /// query, only typing in the macro call itself changes the returned
     /// subtree.
-    fn macro_arg(
-        &self,
-        id: MacroCallId,
-    ) -> ValueResult<(Arc<tt::Subtree>, SyntaxFixupUndoInfo), Arc<Box<[SyntaxError]>>>;
+    fn macro_arg(&self, id: MacroCallId) -> (Arc<tt::Subtree>, SyntaxFixupUndoInfo);
     /// Fetches the expander for this macro.
     #[salsa::transparent]
     #[salsa::invoke(TokenExpander::macro_expander)]
@@ -341,10 +338,7 @@ pub(crate) fn parse_with_map(
 
 // FIXME: for derive attributes, this will return separate copies of the same structures! Though
 // they may differ in spans due to differing call sites...
-fn macro_arg(
-    db: &dyn ExpandDatabase,
-    id: MacroCallId,
-) -> ValueResult<(Arc<tt::Subtree>, SyntaxFixupUndoInfo), Arc<Box<[SyntaxError]>>> {
+fn macro_arg(db: &dyn ExpandDatabase, id: MacroCallId) -> (Arc<tt::Subtree>, SyntaxFixupUndoInfo) {
     let loc = db.lookup_intern_macro_call(id);
 
     if let MacroCallLoc {
@@ -353,7 +347,7 @@ fn macro_arg(
         ..
     } = &loc
     {
-        return ValueResult::ok((eager.arg.clone(), SyntaxFixupUndoInfo::NONE));
+        return (eager.arg.clone(), SyntaxFixupUndoInfo::NONE);
     }
 
     let (parse, map) = parse_with_map(db, loc.kind.file_id());
@@ -376,15 +370,8 @@ fn macro_arg(
             };
 
             let node = &ast_id.to_ptr(db).to_node(&root);
-            let offset = node.syntax().text_range().start();
             let Some(tt) = node.token_tree() else {
-                return ValueResult::new(
-                    dummy_tt(tt::DelimiterKind::Invisible),
-                    Arc::new(Box::new([SyntaxError::new_at_offset(
-                        "missing token tree".to_owned(),
-                        offset,
-                    )])),
-                );
+                return dummy_tt(tt::DelimiterKind::Invisible);
             };
             let first = tt.left_delimiter_token().map(|it| it.kind()).unwrap_or(T!['(']);
             let last = tt.right_delimiter_token().map(|it| it.kind()).unwrap_or(T![.]);
@@ -409,13 +396,7 @@ fn macro_arg(
                     T!['{'] => tt::DelimiterKind::Brace,
                     _ => tt::DelimiterKind::Invisible,
                 };
-                return ValueResult::new(
-                    dummy_tt(kind),
-                    Arc::new(Box::new([SyntaxError::new_at_offset(
-                        "mismatched delimiters".to_owned(),
-                        offset,
-                    )])),
-                );
+                return dummy_tt(kind);
             }
 
             let mut tt = mbe::syntax_node_to_token_tree(tt.syntax(), map.as_ref(), loc.call_site);
@@ -423,19 +404,7 @@ fn macro_arg(
                 // proc macros expect their inputs without parentheses, MBEs expect it with them included
                 tt.delimiter.kind = tt::DelimiterKind::Invisible;
             }
-            let val = (Arc::new(tt), SyntaxFixupUndoInfo::NONE);
-            return if matches!(loc.def.kind, MacroDefKind::BuiltInEager(..)) {
-                match parse.errors() {
-                    errors if errors.is_empty() => ValueResult::ok(val),
-                    errors => ValueResult::new(
-                        val,
-                        // Box::<[_]>::from(res.errors()), not stable yet
-                        Arc::new(errors.to_vec().into_boxed_slice()),
-                    ),
-                }
-            } else {
-                ValueResult::ok(val)
-            };
+            return (Arc::new(tt), SyntaxFixupUndoInfo::NONE);
         }
         MacroCallKind::Derive { ast_id, derive_attr_index, .. } => {
             let node = ast_id.to_ptr(db).to_node(&root);
@@ -475,7 +444,7 @@ fn macro_arg(
         tt.delimiter.kind = tt::DelimiterKind::Invisible;
     }
 
-    ValueResult::ok((Arc::new(tt), undo_info))
+    (Arc::new(tt), undo_info)
 }
 
 // FIXME: Censoring info should be calculated by the caller! Namely by name resolution
@@ -538,17 +507,7 @@ fn macro_expand(
     let ExpandResult { value: tt, err } = match loc.def.kind {
         MacroDefKind::ProcMacro(..) => return db.expand_proc_macro(macro_call_id).map(CowArc::Arc),
         _ => {
-            let ValueResult { value: (macro_arg, undo_info), err } = db.macro_arg(macro_call_id);
-            let format_parse_err = |err: Arc<Box<[SyntaxError]>>| {
-                let mut buf = String::new();
-                for err in &**err {
-                    use std::fmt::Write;
-                    _ = write!(buf, "{}, ", err);
-                }
-                buf.pop();
-                buf.pop();
-                ExpandError::other(buf)
-            };
+            let (macro_arg, undo_info) = db.macro_arg(macro_call_id);
 
             let arg = &*macro_arg;
             let res = match loc.def.kind {
@@ -570,10 +529,7 @@ fn macro_expand(
                     // As such we just return the input subtree here.
                     let eager = match &loc.kind {
                         MacroCallKind::FnLike { eager: None, .. } => {
-                            return ExpandResult {
-                                value: CowArc::Arc(macro_arg.clone()),
-                                err: err.map(format_parse_err),
-                            };
+                            return ExpandResult::ok(CowArc::Arc(macro_arg.clone()));
                         }
                         MacroCallKind::FnLike { eager: Some(eager), .. } => Some(&**eager),
                         _ => None,
@@ -594,11 +550,7 @@ fn macro_expand(
                 }
                 _ => unreachable!(),
             };
-            ExpandResult {
-                value: res.value,
-                // if the arg had parse errors, show them instead of the expansion errors
-                err: err.map(format_parse_err).or(res.err),
-            }
+            ExpandResult { value: res.value, err: res.err }
         }
     };
 
@@ -631,7 +583,7 @@ fn proc_macro_span(db: &dyn ExpandDatabase, ast: AstId<ast::Fn>) -> Span {
 
 fn expand_proc_macro(db: &dyn ExpandDatabase, id: MacroCallId) -> ExpandResult<Arc<tt::Subtree>> {
     let loc = db.lookup_intern_macro_call(id);
-    let (macro_arg, undo_info) = db.macro_arg(id).value;
+    let (macro_arg, undo_info) = db.macro_arg(id);
 
     let (expander, ast) = match loc.def.kind {
         MacroDefKind::ProcMacro(expander, _, ast) => (expander, ast),
