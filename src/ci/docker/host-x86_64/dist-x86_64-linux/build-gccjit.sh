@@ -16,16 +16,16 @@ mkdir ../gcc-build ../gcc-install
 cd ../gcc-build
 
 # Building GCC.
-../gcc-src/configure \
+hide_output \
+  ../gcc-src/configure \
     --enable-host-shared \
     --enable-languages=jit \
     --enable-checking=release \
     --disable-bootstrap \
     --disable-multilib \
     --prefix=$(pwd)/../gcc-install \
-    --quiet
 
-hide_output make
+hide_output make -j$(nproc)
 hide_output make install
 
 rm -rf ../gcc-src
