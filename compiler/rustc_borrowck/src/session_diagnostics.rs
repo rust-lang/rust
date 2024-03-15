@@ -368,6 +368,11 @@ pub(crate) enum CaptureReasonNote {
         #[primary_span]
         var_span: Span,
     },
+    #[note(borrowck_calling_operator_moves)]
+    UnOpMoveByOperator {
+        #[primary_span]
+        span: Span,
+    },
     #[note(borrowck_calling_operator_moves_lhs)]
     LhsMoveByOperator {
         #[primary_span]

@@ -29,7 +29,7 @@ LL |         Ok(ref a @ b) | Err(b @ ref a) => {
    |                             ^   ----- value borrowed here after move
    |                             |
    |                             value moved into `b` here
-   |                             move occurs because `b` has type `NotCopy` which does not implement the `Copy` trait
+   |                             move occurs because `b` has type `NotCopy`, which does not implement the `Copy` trait
    |
 help: borrow this binding in the pattern to avoid moving the value
    |
