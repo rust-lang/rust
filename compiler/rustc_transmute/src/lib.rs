@@ -43,10 +43,10 @@ pub enum Condition<R> {
 /// Answers "why wasn't the source type transmutable into the destination type?"
 #[derive(Debug, Hash, Eq, PartialEq, PartialOrd, Ord, Clone)]
 pub enum Reason<T> {
-    /// The layout of the source type is unspecified.
-    SrcIsUnspecified,
-    /// The layout of the destination type is unspecified.
-    DstIsUnspecified,
+    /// The layout of the source type is not yet supported.
+    SrcIsNotYetSupported,
+    /// The layout of the destination type is not yet supported.
+    DstIsNotYetSupported,
     /// The layout of the destination type is bit-incompatible with the source type.
     DstIsBitIncompatible,
     /// The destination type may carry safety invariants.

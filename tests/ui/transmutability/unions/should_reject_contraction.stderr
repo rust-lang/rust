@@ -2,7 +2,7 @@ error[E0277]: `Superset` cannot be safely transmuted into `Subset`
   --> $DIR/should_reject_contraction.rs:34:41
    |
 LL |     assert::is_transmutable::<Superset, Subset>();
-   |                                         ^^^^^^ At least one value of `Superset` isn't a bit-valid value of `Subset`
+   |                                         ^^^^^^ at least one value of `Superset` isn't a bit-valid value of `Subset`
    |
 note: required by a bound in `is_transmutable`
   --> $DIR/should_reject_contraction.rs:12:14
