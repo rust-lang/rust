@@ -110,8 +110,8 @@ static void BadAllocErrorHandler(void *UserData,
 }
 
 extern "C" void LLVMRustInstallErrorHandlers() {
-  install_fatal_error_handler(FatalErrorHandler);
   install_bad_alloc_error_handler(BadAllocErrorHandler);
+  install_fatal_error_handler(FatalErrorHandler);
   install_out_of_memory_new_handler();
 }
 
