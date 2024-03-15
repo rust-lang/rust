@@ -53,7 +53,6 @@ struct TwoStrs(str, str) where str: Sized; //~ ERROR
 
 
 fn unsized_local() where Dst<dyn A>: Sized { //~ ERROR
-//~^ ERROR type mismatch resolving `<Dst<dyn A> as Pointee>::Metadata == ()`
     let x: Dst<dyn A> = *(Box::new(Dst { x: 1 }) as Box<Dst<dyn A>>);
 }
 

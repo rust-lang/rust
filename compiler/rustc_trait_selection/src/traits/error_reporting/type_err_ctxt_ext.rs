@@ -103,9 +103,9 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
         };
 
         #[derive(Debug)]
-        struct ErrorDescriptor<'tcx> {
+        struct ErrorDescriptor<'tcx, 'err> {
             predicate: ty::Predicate<'tcx>,
-            index: Option<usize>, // None if this is an old error
+            source: Option<(usize, &'err FulfillmentError<'tcx>)>, // None if this is an old error
         }
 
         let mut error_map: FxIndexMap<_, Vec<_>> = self
@@ -117,7 +117,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                 let span = strip_desugaring(span);
                 let reported_errors = predicates
                     .iter()
-                    .map(|&predicate| ErrorDescriptor { predicate, index: None })
+                    .map(|&predicate| ErrorDescriptor { predicate, source: None })
                     .collect();
                 (span, reported_errors)
             })
@@ -154,7 +154,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
             let span = strip_desugaring(error.obligation.cause.span);
             error_map.entry(span).or_default().push(ErrorDescriptor {
                 predicate: error.obligation.predicate,
-                index: Some(index),
+                source: Some((index, error)),
             });
         }
 
@@ -164,19 +164,34 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
         for (_, error_set) in error_map.iter() {
             // We want to suppress "duplicate" errors with the same span.
             for error in error_set {
-                let Some(index) = error.index else {
+                let Some((index, error_source)) = error.source else {
                     continue;
                 };
 
-                // Suppress errors that are either:
-                // 1) strictly implied by another error.
-                // 2) implied by an error with a smaller index.
                 for error2 in error_set {
-                    if self.error_implies(error2.predicate, error.predicate)
-                        && (!error2.index.is_some_and(|index2| index2 >= index)
-                            || !self.error_implies(error.predicate, error2.predicate))
+                    // Suppress errors that are either:
+                    // 1) strictly implied by another error.
+                    // 2) implied by an error with a smaller index.
+                    if self.error_implied_by(error.predicate, error2.predicate)
+                        && (!error2.source.is_some_and(|(index2, _)| index2 >= index)
+                            || !self.error_implied_by(error2.predicate, error.predicate))
                     {
                         info!("skipping `{}` (implied by `{}`)", error.predicate, error2.predicate);
+                        is_suppressed[index] = true;
+                        break;
+                    }
+
+                    // Also suppress the error if we are absolutely certain that a different
+                    // error is the one that the user should fix. This will suppress errors
+                    // about `<T as Pointee>::Metadata == ()` that can be fixed by `T: Sized`.
+                    if error.predicate.to_opt_poly_projection_pred().is_some()
+                        && error2.predicate.to_opt_poly_trait_pred().is_some()
+                        && self.error_fixed_by(
+                            error_source.obligation.clone(),
+                            error2.predicate.expect_clause(),
+                        )
+                    {
+                        info!("skipping `{}` (fixed by `{}`)", error.predicate, error2.predicate);
                         is_suppressed[index] = true;
                         break;
                     }
@@ -1474,10 +1489,10 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
             && self.can_eq(param_env, goal.term, assumption.term)
     }
 
-    // returns if `cond` not occurring implies that `error` does not occur - i.e., that
-    // `error` occurring implies that `cond` occurs.
+    /// Returns whether `cond` not occurring implies that `error` does not occur - i.e., that
+    /// `error` occurring implies that `cond` occurs.
     #[instrument(level = "debug", skip(self), ret)]
-    fn error_implies(&self, cond: ty::Predicate<'tcx>, error: ty::Predicate<'tcx>) -> bool {
+    fn error_implied_by(&self, error: ty::Predicate<'tcx>, cond: ty::Predicate<'tcx>) -> bool {
         if cond == error {
             return true;
         }
@@ -1497,6 +1512,29 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
         } else {
             false
         }
+    }
+
+    /// Returns whether fixing `cond` will also fix `error`.
+    #[instrument(level = "debug", skip(self), ret)]
+    fn error_fixed_by(&self, mut error: PredicateObligation<'tcx>, cond: ty::Clause<'tcx>) -> bool {
+        self.probe(|_| {
+            let ocx = ObligationCtxt::new(self);
+
+            let clauses = elaborate(self.tcx, std::iter::once(cond)).collect::<Vec<_>>();
+            let clauses = ocx.normalize(&error.cause, error.param_env, clauses);
+            let mut clauses = self.resolve_vars_if_possible(clauses);
+
+            if clauses.has_infer() {
+                return false;
+            }
+
+            clauses.extend(error.param_env.caller_bounds());
+            let clauses = self.tcx.mk_clauses(&clauses);
+            error.param_env = ty::ParamEnv::new(clauses, error.param_env.reveal());
+
+            ocx.register_obligation(error);
+            ocx.select_all_or_error().is_empty()
+        })
     }
 
     #[instrument(skip(self), level = "debug")]

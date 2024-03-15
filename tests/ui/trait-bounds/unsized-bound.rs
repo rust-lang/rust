@@ -2,17 +2,14 @@ trait Trait<A> {}
 impl<A, B> Trait<(A, B)> for (A, B) where A: ?Sized, B: ?Sized, {}
 //~^ ERROR E0277
 //~| ERROR E0277
-//~| ERROR type mismatch resolving `<(A, B) as Pointee>::Metadata == ()` [E0271]
 impl<A, B: ?Sized, C: ?Sized> Trait<(A, B, C)> for (A, B, C) where A: ?Sized, {}
 //~^ ERROR E0277
 //~| ERROR E0277
 //~| ERROR E0277
-//~| ERROR type mismatch resolving `<(A, B, C) as Pointee>::Metadata == ()` [E0271]
 trait Trait2<A> {}
 impl<A: ?Sized, B: ?Sized> Trait2<(A, B)> for (A, B) {}
 //~^ ERROR E0277
 //~| ERROR E0277
-//~| ERROR type mismatch resolving `<(A, B) as Pointee>::Metadata == ()` [E0271]
 trait Trait3<A> {}
 impl<A> Trait3<A> for A where A: ?Sized {}
 //~^ ERROR E0277
