@@ -1003,6 +1003,8 @@ symbols! {
         instruction_set,
         integer_: "integer", // underscore to avoid clashing with the function `sym::integer` below
         integral,
+        into_async_destructor,
+        into_async_destructor_ctor,
         into_async_iter_into_iter,
         into_future,
         into_iter,

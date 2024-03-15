@@ -1,7 +1,7 @@
 #![unstable(feature = "async_drop", issue = "none")]
 
 use crate::fmt;
-use crate::future::Future;
+use crate::future::{Future, IntoFuture};
 use crate::marker::PhantomPinned;
 use crate::mem::MaybeUninit;
 use crate::pin::Pin;
@@ -242,16 +242,17 @@ unsafe fn deferred_async_drop<T>(item: *mut T) -> DeferredAsyncDrop<T> {
     }
 }
 
-/// Awaits the `F` future and then asynchronously destroys `T`.
+/// Awaits the `F` future and then awaits `G::IntoFuture`.
 #[lang = "async_drop_chain"]
-enum Chain<F, T: ?Sized> {
-    First(F, ptr::NonNull<T>, PhantomPinned),
-    Last(AsyncDropInPlace<T>),
+enum Chain<F, G: IntoFuture> {
+    First(F, Option<G>),
+    Last(G::IntoFuture),
 }
 
-impl<F, T: ?Sized> Future for Chain<F, T>
+impl<F, G> Future for Chain<F, G>
 where
     F: Future<Output = ()>,
+    G: IntoFuture<Output = ()>,
 {
     type Output = ();
 
@@ -260,31 +261,46 @@ where
         let this = unsafe { self.get_unchecked_mut() };
         loop {
             match this {
-                Chain::First(fut, to_drop, _) => {
+                Chain::First(first, last) => {
                     // SAFETY: simple pin projection
-                    ready!(unsafe { Pin::new_unchecked(fut) }.poll(cx));
-                    // It might be important to destroy the first future
-                    // so that it wouldn't possibly hold any mutable
-                    // reference long enough to cause aliasing problems.
-                    // SAFETY:
-                    *this = Chain::Last(unsafe { async_drop_in_place(to_drop.as_ptr()) });
+                    ready!(unsafe { Pin::new_unchecked(first) }.poll(cx));
+                    // It might be important to destroy the first
+                    // future so that it wouldn't possibly hold anything
+                    // important long enough to cause problems.
+                    *this = Chain::Last(last.take().unwrap().into_future());
                 }
                 // SAFETY: simple pin projection
-                Chain::Last(dtor) => return unsafe { Pin::new_unchecked(dtor) }.poll(cx),
+                Chain::Last(last) => return unsafe { Pin::new_unchecked(last) }.poll(cx),
             }
         }
     }
 }
 
 /// Construct async drop chain
-///
-/// # Safety
-///
-/// `last` will be passed into `async_drop_in_place`
 #[lang = "async_drop_chain_ctor"]
-unsafe fn chain<F, T: ?Sized>(first: F, last: *mut T) -> Chain<F, T> {
-    // SAFETY: Guaranteed by the safety section of this funtion's documentation
-    Chain::First(first, unsafe { ptr::NonNull::new_unchecked(last) }, PhantomPinned)
+fn chain<F, G: IntoFuture>(first: F, last: G) -> Chain<F, G> {
+    Chain::First(first, Some(last))
+}
+
+#[derive(Clone, Copy)]
+#[lang = "into_async_destructor"]
+struct IntoAsyncDestructor<T: ?Sized>(ptr::NonNull<T>);
+
+impl<T: ?Sized> IntoFuture for IntoAsyncDestructor<T> {
+    type Output = ();
+
+    type IntoFuture = <T as AsyncDestruct>::AsyncDestructor;
+
+    fn into_future(self) -> Self::IntoFuture {
+        // SAFETY: same safety requirements as `async_drop_in_place`
+        unsafe { async_drop_in_place_raw(self.0.as_ptr()) }
+    }
+}
+
+#[lang = "into_async_destructor_ctor"]
+unsafe fn into_async_destructor<T: ?Sized>(to_drop: *mut T) -> IntoAsyncDestructor<T> {
+    // SAFETY: same safety requirements as `async_drop_in_place`
+    IntoAsyncDestructor(unsafe { ptr::NonNull::new_unchecked(to_drop) })
 }
 
 /// Used for nop async destructors. We don't use [`core::future::Ready`]

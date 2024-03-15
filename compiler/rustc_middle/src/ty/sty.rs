@@ -2413,8 +2413,8 @@ impl<'tcx> Ty<'tcx> {
     {
         // - `Nop` if empty
         // - `Fuse<<Self as AsyncDrop>::Dropper>` if surface drop only
-        // - `Chain<AsyncDropInPlace<F0>, F1>...` if any without surface drop
-        // - `Chain<Chain<<Self as AsyncDrop>::Dropper, F0>, F1>...` if any with surface drop
+        // - `Chain<AsyncDropInPlace<F0>, IntoAsyncDestruct<F1>>...` if any without surface drop
+        // - `Chain<Chain<<Self as AsyncDrop>::Dropper, IntoAsyncDestruct<F0>>, IntoAsyncDestruct<F1>>...` if any with surface drop
 
         let surface_drop = surface_drop.map(|self_ty| {
             Ty::new_projection(
@@ -2445,7 +2445,14 @@ impl<'tcx> Ty<'tcx> {
         });
 
         let chain = tcx.type_of(tcx.require_lang_item(LangItem::AsyncDropChain, None));
-        tys.fold(first_drop, |dtor, ty| chain.instantiate(tcx, &[dtor.into(), ty.into()]))
+        let into_async_destructor =
+            tcx.type_of(tcx.require_lang_item(LangItem::IntoAsyncDestructor, None));
+        tys.fold(first_drop, |dtor, ty| {
+            chain.instantiate(
+                tcx,
+                &[dtor.into(), into_async_destructor.instantiate(tcx, &[ty.into()]).into()],
+            )
+        })
     }
 
     /// Returns the type of metadata for (potentially fat) pointers to this type,
