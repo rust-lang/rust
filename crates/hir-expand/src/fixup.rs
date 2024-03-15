@@ -3,7 +3,7 @@
 
 use rustc_hash::{FxHashMap, FxHashSet};
 use smallvec::SmallVec;
-use span::{ErasedFileAstId, Span, SpanAnchor, SpanData, FIXUP_ERASED_FILE_AST_ID_MARKER};
+use span::{ErasedFileAstId, Span, SpanAnchor, FIXUP_ERASED_FILE_AST_ID_MARKER};
 use stdx::never;
 use syntax::{
     ast::{self, AstNode, HasLoopBody},
@@ -57,7 +57,7 @@ pub(crate) fn fixup_syntax(
     let dummy_range = FIXUP_DUMMY_RANGE;
     let fake_span = |range| {
         let span = span_map.span_for_range(range);
-        SpanData {
+        Span {
             range: dummy_range,
             anchor: SpanAnchor { ast_id: FIXUP_DUMMY_AST_ID, ..span.anchor },
             ctx: span.ctx,
@@ -76,7 +76,7 @@ pub(crate) fn fixup_syntax(
             let span = span_map.span_for_range(node_range);
             let replacement = Leaf::Ident(Ident {
                 text: "__ra_fixup".into(),
-                span: SpanData {
+                span: Span {
                     range: TextRange::new(TextSize::new(idx), FIXUP_DUMMY_RANGE_END),
                     anchor: SpanAnchor { ast_id: FIXUP_DUMMY_AST_ID, ..span.anchor },
                     ctx: span.ctx,
@@ -305,8 +305,8 @@ pub(crate) fn reverse_fixups(tt: &mut Subtree, undo_info: &SyntaxFixupUndoInfo) 
         tt.delimiter.close.anchor.ast_id == FIXUP_DUMMY_AST_ID
             || tt.delimiter.open.anchor.ast_id == FIXUP_DUMMY_AST_ID
     ) {
-        tt.delimiter.close = SpanData::DUMMY;
-        tt.delimiter.open = SpanData::DUMMY;
+        tt.delimiter.close = Span::DUMMY;
+        tt.delimiter.open = Span::DUMMY;
     }
     reverse_fixups_(tt, undo_info);
 }

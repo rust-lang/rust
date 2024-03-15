@@ -41,32 +41,30 @@ impl<S: Span, SM: SpanMapper<S>> SpanMapper<S> for &SM {
 /// Dummy things for testing where spans don't matter.
 pub(crate) mod dummy_test_span_utils {
 
+    use span::{Span, SyntaxContextId};
+
     use super::*;
 
-    pub type DummyTestSpanData = span::SpanData<DummyTestSyntaxContext>;
-    pub const DUMMY: DummyTestSpanData = span::SpanData {
+    pub const DUMMY: Span = Span {
         range: TextRange::empty(TextSize::new(0)),
         anchor: span::SpanAnchor {
             file_id: span::FileId::BOGUS,
             ast_id: span::ROOT_ERASED_FILE_AST_ID,
         },
-        ctx: DummyTestSyntaxContext,
+        ctx: SyntaxContextId::ROOT,
     };
-
-    #[derive(Debug, Copy, Clone, PartialEq, Eq)]
-    pub struct DummyTestSyntaxContext;
 
     pub struct DummyTestSpanMap;
 
-    impl SpanMapper<span::SpanData<DummyTestSyntaxContext>> for DummyTestSpanMap {
-        fn span_for(&self, range: syntax::TextRange) -> span::SpanData<DummyTestSyntaxContext> {
-            span::SpanData {
+    impl SpanMapper<Span> for DummyTestSpanMap {
+        fn span_for(&self, range: syntax::TextRange) -> Span {
+            Span {
                 range,
                 anchor: span::SpanAnchor {
                     file_id: span::FileId::BOGUS,
                     ast_id: span::ROOT_ERASED_FILE_AST_ID,
                 },
-                ctx: DummyTestSyntaxContext,
+                ctx: SyntaxContextId::ROOT,
             }
         }
     }

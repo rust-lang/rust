@@ -697,7 +697,7 @@ impl<'db> SemanticsImpl<'db> {
             };
 
             // get mapped token in the include! macro file
-            let span = span::SpanData {
+            let span = span::Span {
                 range: token.text_range(),
                 anchor: span::SpanAnchor { file_id, ast_id: ROOT_ERASED_FILE_AST_ID },
                 ctx: SyntaxContextId::ROOT,
