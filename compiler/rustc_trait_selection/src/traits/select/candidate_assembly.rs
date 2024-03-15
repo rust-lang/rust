@@ -925,6 +925,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 // since we don't actually use them.
                 &mut vec![],
             )
+            .ok()?
             .ty()
             .unwrap();
 

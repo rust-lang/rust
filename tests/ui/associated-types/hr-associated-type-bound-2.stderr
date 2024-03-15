@@ -1,7 +1,8 @@
-error[E0275]: overflow evaluating the requirement `for<'b> u32: X<'b>`
+error[E0275]: overflow evaluating the requirement `for<'b> <u32 as X<'b>>::U: Clone`
   --> $DIR/hr-associated-type-bound-2.rs:11:1
    |
 LL | / impl X<'_> for u32
+LL | |
 LL | | where
 LL | |     for<'b> <Self as X<'b>>::U: Clone,
    | |______________________________________^
@@ -12,7 +13,7 @@ note: required for `u32` to implement `for<'b> X<'b>`
    |
 LL | impl X<'_> for u32
    |      ^^^^^     ^^^
-LL | where
+...
 LL |     for<'b> <Self as X<'b>>::U: Clone,
    |                                 ----- unsatisfied trait bound introduced here
    = note: 128 redundant requirements hidden

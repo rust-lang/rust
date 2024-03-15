@@ -46,7 +46,14 @@ pub type ProjectionObligation<'tcx> = Obligation<'tcx, ty::ProjectionPredicate<'
 
 pub type ProjectionTyObligation<'tcx> = Obligation<'tcx, ty::AliasTy<'tcx>>;
 
-pub(super) struct InProgress;
+/// Signals the various ways in which we can fail to normalize a projection
+#[derive(Debug)]
+pub enum ProjectionNormalizationFailure {
+    /// Blocked on inference variables resolving
+    InProgress,
+    /// Fatal failure, overflow occurred.
+    Overflow(OverflowError),
+}
 
 /// When attempting to resolve `<T as TraitRef>::Name` ...
 #[derive(Debug)]
@@ -252,7 +259,10 @@ fn project_and_unify_type<'cx, 'tcx>(
     ) {
         Ok(Some(n)) => n,
         Ok(None) => return ProjectAndUnifyResult::FailedNormalization,
-        Err(InProgress) => return ProjectAndUnifyResult::Recursive,
+        Err(
+            ProjectionNormalizationFailure::InProgress
+            | ProjectionNormalizationFailure::Overflow(_),
+        ) => return ProjectAndUnifyResult::Recursive,
     };
     debug!(?normalized, ?obligations, "project_and_unify_type result");
     let actual = obligation.predicate.term;
@@ -298,24 +308,29 @@ pub fn normalize_projection_type<'a, 'b, 'tcx>(
     cause: ObligationCause<'tcx>,
     depth: usize,
     obligations: &mut Vec<PredicateObligation<'tcx>>,
-) -> Term<'tcx> {
-    opt_normalize_projection_type(
+) -> Result<Term<'tcx>, OverflowError> {
+    let normalized = opt_normalize_projection_type(
         selcx,
         param_env,
         projection_ty,
         cause.clone(),
         depth,
         obligations,
-    )
-    .ok()
-    .flatten()
-    .unwrap_or_else(move || {
-        // if we bottom out in ambiguity, create a type variable
-        // and a deferred predicate to resolve this when more type
-        // information is available.
+    );
+    match normalized {
+        Ok(Some(term)) => Ok(term),
+        Ok(None) | Err(ProjectionNormalizationFailure::InProgress) => {
+            // if we bottom out in ambiguity, create a type variable
+            // and a deferred predicate to resolve this when more type
+            // information is available.
 
-        selcx.infcx.infer_projection(param_env, projection_ty, cause, depth + 1, obligations).into()
-    })
+            Ok(selcx
+                .infcx
+                .infer_projection(param_env, projection_ty, cause, depth + 1, obligations)
+                .into())
+        }
+        Err(ProjectionNormalizationFailure::Overflow(oflo)) => Err(oflo),
+    }
 }
 
 /// The guts of `normalize`: normalize a specific projection like `<T
@@ -328,7 +343,7 @@ pub fn normalize_projection_type<'a, 'b, 'tcx>(
 /// often immediately appended to another obligations vector. So now this
 /// function takes an obligations vector and appends to it directly, which is
 /// slightly uglier but avoids the need for an extra short-lived allocation.
-#[instrument(level = "debug", skip(selcx, param_env, cause, obligations))]
+#[instrument(level = "debug", skip(selcx, param_env, cause, obligations), ret)]
 pub(super) fn opt_normalize_projection_type<'a, 'b, 'tcx>(
     selcx: &'a mut SelectionContext<'b, 'tcx>,
     param_env: ty::ParamEnv<'tcx>,
@@ -336,7 +351,7 @@ pub(super) fn opt_normalize_projection_type<'a, 'b, 'tcx>(
     cause: ObligationCause<'tcx>,
     depth: usize,
     obligations: &mut Vec<PredicateObligation<'tcx>>,
-) -> Result<Option<Term<'tcx>>, InProgress> {
+) -> Result<Option<Term<'tcx>>, ProjectionNormalizationFailure> {
     let infcx = selcx.infcx;
     debug_assert!(!selcx.infcx.next_trait_solver());
     // Don't use the projection cache in intercrate mode -
@@ -387,11 +402,11 @@ pub(super) fn opt_normalize_projection_type<'a, 'b, 'tcx>(
             if use_cache {
                 infcx.inner.borrow_mut().projection_cache().recur(cache_key);
             }
-            return Err(InProgress);
+            return Err(ProjectionNormalizationFailure::InProgress);
         }
         Err(ProjectionCacheEntry::Recur) => {
             debug!("recur cache");
-            return Err(InProgress);
+            return Err(ProjectionNormalizationFailure::InProgress);
         }
         Err(ProjectionCacheEntry::NormalizedTy { ty, complete: _ }) => {
             // This is the hottest path in this function.
@@ -470,6 +485,12 @@ pub(super) fn opt_normalize_projection_type<'a, 'b, 'tcx>(
                 infcx.inner.borrow_mut().projection_cache().ambiguous(cache_key);
             }
             Ok(None)
+        }
+        Err(ProjectionError::TraitSelectionError(SelectionError::Overflow(oflo))) => {
+            if use_cache {
+                infcx.inner.borrow_mut().projection_cache().error(cache_key);
+            }
+            Err(ProjectionNormalizationFailure::Overflow(oflo))
         }
         Err(ProjectionError::TraitSelectionError(_)) => {
             debug!("opt_normalize_projection_type: ERROR");

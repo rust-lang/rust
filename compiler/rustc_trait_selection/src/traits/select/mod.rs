@@ -23,6 +23,7 @@ use crate::solve::InferCtxtSelectExt;
 use crate::traits::error_reporting::TypeErrCtxtExt;
 use crate::traits::normalize::normalize_with_depth;
 use crate::traits::normalize::normalize_with_depth_to;
+use crate::traits::normalize::try_normalize_with_depth_to;
 use crate::traits::project::ProjectAndUnifyResult;
 use crate::traits::project::ProjectionCacheKeyExt;
 use crate::traits::ProjectionCacheKey;
@@ -41,11 +42,13 @@ use rustc_middle::dep_graph::DepNodeIndex;
 use rustc_middle::mir::interpret::ErrorHandled;
 use rustc_middle::ty::_match::MatchAgainstFreshVars;
 use rustc_middle::ty::abstract_const::NotConstEvaluatable;
+use rustc_middle::ty::error::TypeError;
 use rustc_middle::ty::relate::TypeRelation;
 use rustc_middle::ty::GenericArgsRef;
 use rustc_middle::ty::{self, PolyProjectionPredicate, ToPredicate};
 use rustc_middle::ty::{Ty, TyCtxt, TypeFoldable, TypeVisitableExt};
 use rustc_span::symbol::sym;
+use rustc_span::ErrorGuaranteed;
 use rustc_span::Symbol;
 
 use std::cell::{Cell, RefCell};
@@ -2083,6 +2086,16 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
     }
 }
 
+#[derive(Debug)]
+enum MatchImplFailure<'tcx> {
+    ReservationImpl,
+    #[allow(dead_code)]
+    TypeError(TypeError<'tcx>),
+    #[allow(dead_code)]
+    Overflow(OverflowError),
+    Error(ErrorGuaranteed),
+}
+
 impl<'tcx> SelectionContext<'_, 'tcx> {
     fn sized_conditions(
         &mut self,
@@ -2435,9 +2448,11 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
         let impl_trait_header = self.tcx().impl_trait_header(impl_def_id).unwrap();
         match self.match_impl(impl_def_id, impl_trait_header, obligation) {
             Ok(args) => args,
-            Err(()) => {
+            Err(err) => {
                 let predicate = self.infcx.resolve_vars_if_possible(obligation.predicate);
-                bug!("impl {impl_def_id:?} was matchable against {predicate:?} but now is not")
+                bug!(
+                    "impl {impl_def_id:?} was matchable against {predicate:?} but now is not: {err:?}"
+                )
             }
         }
     }
@@ -2448,7 +2463,7 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
         impl_def_id: DefId,
         impl_trait_header: ty::ImplTraitHeader<'tcx>,
         obligation: &PolyTraitObligation<'tcx>,
-    ) -> Result<Normalized<'tcx, GenericArgsRef<'tcx>>, ()> {
+    ) -> Result<Normalized<'tcx, GenericArgsRef<'tcx>>, MatchImplFailure<'tcx>> {
         let placeholder_obligation =
             self.infcx.enter_forall_and_leak_universe(obligation.predicate);
         let placeholder_obligation_trait_ref = placeholder_obligation.trait_ref;
@@ -2456,22 +2471,22 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
         let impl_args = self.infcx.fresh_args_for_item(obligation.cause.span, impl_def_id);
 
         let trait_ref = impl_trait_header.trait_ref.instantiate(self.tcx(), impl_args);
-        if trait_ref.references_error() {
-            return Err(());
-        }
+        trait_ref.error_reported().map_err(MatchImplFailure::Error)?;
 
         debug!(?impl_trait_header);
 
-        let Normalized { value: impl_trait_ref, obligations: mut nested_obligations } =
-            ensure_sufficient_stack(|| {
-                normalize_with_depth(
-                    self,
-                    obligation.param_env,
-                    obligation.cause.clone(),
-                    obligation.recursion_depth + 1,
-                    trait_ref,
-                )
-            });
+        let mut nested_obligations = vec![];
+        let impl_trait_ref = ensure_sufficient_stack(|| {
+            try_normalize_with_depth_to(
+                self,
+                obligation.param_env,
+                obligation.cause.clone(),
+                obligation.recursion_depth + 1,
+                trait_ref,
+                &mut nested_obligations,
+            )
+        })
+        .map_err(MatchImplFailure::Overflow)?;
 
         debug!(?impl_trait_ref, ?placeholder_obligation_trait_ref);
 
@@ -2485,14 +2500,12 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
             .infcx
             .at(&cause, obligation.param_env)
             .eq(DefineOpaqueTypes::No, placeholder_obligation_trait_ref, impl_trait_ref)
-            .map_err(|e| {
-                debug!("match_impl: failed eq_trait_refs due to `{}`", e.to_string(self.tcx()))
-            })?;
+            .map_err(MatchImplFailure::TypeError)?;
         nested_obligations.extend(obligations);
 
         if !self.is_intercrate() && impl_trait_header.polarity == ty::ImplPolarity::Reservation {
             debug!("reservation impls only apply in intercrate mode");
-            return Err(());
+            return Err(MatchImplFailure::ReservationImpl);
         }
 
         Ok(Normalized { value: impl_args, obligations: nested_obligations })

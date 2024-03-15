@@ -1,4 +1,6 @@
 //! Deeply normalize types using the old trait solver.
+use crate::traits::project::ProjectionNormalizationFailure;
+
 use super::error_reporting::OverflowCause;
 use super::error_reporting::TypeErrCtxtExt;
 use super::SelectionContext;
@@ -6,6 +8,7 @@ use super::{project, with_replaced_escaping_bound_vars, BoundVarReplacer, Placeh
 use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_infer::infer::at::At;
 use rustc_infer::infer::InferOk;
+use rustc_infer::traits::OverflowError;
 use rustc_infer::traits::PredicateObligation;
 use rustc_infer::traits::{FulfillmentError, Normalized, Obligation, TraitEngine};
 use rustc_middle::traits::{ObligationCause, ObligationCauseCode, Reveal};
@@ -97,6 +100,27 @@ where
     result
 }
 
+#[instrument(level = "info", skip(selcx, param_env, cause, obligations))]
+pub(crate) fn try_normalize_with_depth_to<'a, 'b, 'tcx, T>(
+    selcx: &'a mut SelectionContext<'b, 'tcx>,
+    param_env: ty::ParamEnv<'tcx>,
+    cause: ObligationCause<'tcx>,
+    depth: usize,
+    value: T,
+    obligations: &mut Vec<PredicateObligation<'tcx>>,
+) -> Result<T, OverflowError>
+where
+    T: TypeFoldable<TyCtxt<'tcx>>,
+{
+    debug!(obligations.len = obligations.len());
+    let mut normalizer = AssocTypeNormalizer::new(selcx, param_env, cause, depth, obligations);
+    let result = ensure_sufficient_stack(|| normalizer.fold(value));
+    debug!(?result, obligations.len = normalizer.obligations.len());
+    debug!(?normalizer.obligations,);
+    normalizer.overflowed?;
+    Ok(result)
+}
+
 pub(super) fn needs_normalization<'tcx, T: TypeVisitable<TyCtxt<'tcx>>>(
     value: &T,
     reveal: Reveal,
@@ -121,6 +145,11 @@ struct AssocTypeNormalizer<'a, 'b, 'tcx> {
     obligations: &'a mut Vec<PredicateObligation<'tcx>>,
     depth: usize,
     universes: Vec<Option<ty::UniverseIndex>>,
+    /// Signals that there was an overflow during normalization somewhere.
+    /// We use this side channel instead of a `FallibleTypeFolder`, because
+    /// most code expects to get their value back on error, and we'd have to
+    /// clone the original value before normalization to achieve this.
+    overflowed: Result<(), OverflowError>,
 }
 
 impl<'a, 'b, 'tcx> AssocTypeNormalizer<'a, 'b, 'tcx> {
@@ -132,7 +161,15 @@ impl<'a, 'b, 'tcx> AssocTypeNormalizer<'a, 'b, 'tcx> {
         obligations: &'a mut Vec<PredicateObligation<'tcx>>,
     ) -> AssocTypeNormalizer<'a, 'b, 'tcx> {
         debug_assert!(!selcx.infcx.next_trait_solver());
-        AssocTypeNormalizer { selcx, param_env, cause, obligations, depth, universes: vec![] }
+        AssocTypeNormalizer {
+            selcx,
+            param_env,
+            cause,
+            obligations,
+            depth,
+            universes: vec![],
+            overflowed: Ok(()),
+        }
     }
 
     fn fold<T: TypeFoldable<TyCtxt<'tcx>>>(&mut self, value: T) -> T {
@@ -243,6 +280,13 @@ impl<'a, 'b, 'tcx> TypeFolder<TyCtxt<'tcx>> for AssocTypeNormalizer<'a, 'b, 'tcx
                     self.depth,
                     self.obligations,
                 );
+                let normalized_ty = match normalized_ty {
+                    Ok(term) => term.ty().unwrap(),
+                    Err(oflo) => {
+                        self.overflowed = Err(oflo);
+                        return ty;
+                    }
+                };
                 debug!(
                     ?self.depth,
                     ?ty,
@@ -250,7 +294,7 @@ impl<'a, 'b, 'tcx> TypeFolder<TyCtxt<'tcx>> for AssocTypeNormalizer<'a, 'b, 'tcx
                     obligations.len = ?self.obligations.len(),
                     "AssocTypeNormalizer: normalized type"
                 );
-                normalized_ty.ty().unwrap()
+                normalized_ty
             }
 
             ty::Projection => {
@@ -277,21 +321,24 @@ impl<'a, 'b, 'tcx> TypeFolder<TyCtxt<'tcx>> for AssocTypeNormalizer<'a, 'b, 'tcx
                     self.cause.clone(),
                     self.depth,
                     self.obligations,
-                )
-                .ok()
-                .flatten()
-                .map(|term| term.ty().unwrap())
-                .map(|normalized_ty| {
-                    PlaceholderReplacer::replace_placeholders(
+                );
+                let normalized_ty = match normalized_ty {
+                    Ok(Some(term)) => PlaceholderReplacer::replace_placeholders(
                         infcx,
                         mapped_regions,
                         mapped_types,
                         mapped_consts,
                         &self.universes,
-                        normalized_ty,
-                    )
-                })
-                .unwrap_or_else(|| ty.super_fold_with(self));
+                        term.ty().unwrap(),
+                    ),
+                    Ok(None) | Err(ProjectionNormalizationFailure::InProgress) => {
+                        ty.super_fold_with(self)
+                    }
+                    Err(ProjectionNormalizationFailure::Overflow(oflo)) => {
+                        self.overflowed = Err(oflo);
+                        return ty;
+                    }
+                };
 
                 debug!(
                     ?self.depth,
