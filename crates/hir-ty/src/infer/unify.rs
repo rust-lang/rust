@@ -10,6 +10,7 @@ use chalk_solve::infer::ParameterEnaVariableExt;
 use either::Either;
 use ena::unify::UnifyKey;
 use hir_expand::name;
+use rustc_hash::FxHashMap;
 use smallvec::SmallVec;
 use triomphe::Arc;
 
@@ -18,8 +19,9 @@ use crate::{
     consteval::unknown_const, db::HirDatabase, fold_tys_and_consts, static_lifetime,
     to_chalk_trait_id, traits::FnTrait, AliasEq, AliasTy, BoundVar, Canonical, Const, ConstValue,
     DebruijnIndex, DomainGoal, GenericArg, GenericArgData, Goal, GoalData, Guidance, InEnvironment,
-    InferenceVar, Interner, Lifetime, ParamKind, ProjectionTy, ProjectionTyExt, Scalar, Solution,
-    Substitution, TraitEnvironment, Ty, TyBuilder, TyExt, TyKind, VariableKind, WhereClause,
+    InferenceVar, Interner, Lifetime, OpaqueTyId, ParamKind, ProjectionTy, ProjectionTyExt, Scalar,
+    Solution, Substitution, TraitEnvironment, Ty, TyBuilder, TyExt, TyKind, VariableKind,
+    WhereClause,
 };
 
 impl InferenceContext<'_> {
@@ -239,6 +241,7 @@ type ChalkInferenceTable = chalk_solve::infer::InferenceTable<Interner>;
 pub(crate) struct InferenceTable<'a> {
     pub(crate) db: &'a dyn HirDatabase,
     pub(crate) trait_env: Arc<TraitEnvironment>,
+    pub(crate) atpit_coercion_table: Option<FxHashMap<OpaqueTyId, Ty>>,
     var_unification_table: ChalkInferenceTable,
     type_variable_table: SmallVec<[TypeVariableFlags; 16]>,
     pending_obligations: Vec<Canonicalized<InEnvironment<Goal>>>,
@@ -258,6 +261,7 @@ impl<'a> InferenceTable<'a> {
         InferenceTable {
             db,
             trait_env,
+            atpit_coercion_table: None,
             var_unification_table: ChalkInferenceTable::new(),
             type_variable_table: SmallVec::new(),
             pending_obligations: Vec::new(),
