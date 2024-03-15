@@ -10,6 +10,7 @@ use rustc_span::{BytePos, ExpnKind, MacroKind, Span};
 use crate::diagnostics::CapturedMessageOpt;
 use crate::diagnostics::{DescribePlaceOpt, UseSpans};
 use crate::prefixes::PrefixSet;
+use crate::session_diagnostics::AddMoveErr;
 use crate::MirBorrowckCtxt;
 
 #[derive(Debug)]
@@ -575,9 +576,9 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
             let binding_span = bind_to.source_info.span;
 
             if j == 0 {
-                err.span_label(binding_span, "data moved here");
+                err.subdiagnostic(self.dcx(), AddMoveErr::Here { binding_span });
             } else {
-                err.span_label(binding_span, "...and here");
+                err.subdiagnostic(self.dcx(), AddMoveErr::AndHere { binding_span });
             }
 
             if binds_to.len() == 1 {
@@ -595,10 +596,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
         }
 
         if binds_to.len() > 1 {
-            err.note(
-                "move occurs because these variables have types that don't implement the `Copy` \
-                 trait",
-            );
+            err.subdiagnostic(self.dcx(), AddMoveErr::MovedNotCopy);
         }
     }
 

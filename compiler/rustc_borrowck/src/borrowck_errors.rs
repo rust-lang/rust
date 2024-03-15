@@ -5,6 +5,14 @@ use rustc_errors::{codes::*, struct_span_code_err, Diag, DiagCtxt};
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_span::Span;
 
+use crate::{
+    diagnostics::PlaceAndReason,
+    session_diagnostics::{
+        AssignBorrowErr, AssignErr, BorrowAcrossCoroutineYield, BorrowAcrossDestructor,
+        InteriorDropMoveErr, MutBorrowErr, PathShortLive, UseMutBorrowErr,
+    },
+};
+
 impl<'cx, 'tcx> crate::MirBorrowckCtxt<'cx, 'tcx> {
     pub fn dcx(&self) -> &'tcx DiagCtxt {
         self.infcx.dcx()
@@ -34,64 +42,49 @@ impl<'cx, 'tcx> crate::MirBorrowckCtxt<'cx, 'tcx> {
         borrow_span: Span,
         borrow_desc: &str,
     ) -> Diag<'tcx> {
-        struct_span_code_err!(
-            self.dcx(),
-            span,
-            E0503,
-            "cannot use {} because it was mutably borrowed",
-            desc,
-        )
-        .with_span_label(borrow_span, format!("{borrow_desc} is borrowed here"))
-        .with_span_label(span, format!("use of borrowed {borrow_desc}"))
+        self.dcx().create_err(UseMutBorrowErr { desc, borrow_desc, span, borrow_span })
     }
 
     pub(crate) fn cannot_mutably_borrow_multiply(
         &self,
         new_loan_span: Span,
-        desc: &str,
-        opt_via: &str,
+        new_place_name: &str,
+        place: &str,
         old_loan_span: Span,
-        old_opt_via: &str,
+        old_place: &str,
         old_load_end_span: Option<Span>,
     ) -> Diag<'tcx> {
-        let via = |msg: &str| if msg.is_empty() { "".to_string() } else { format!(" (via {msg})") };
-        let mut err = struct_span_code_err!(
-            self.dcx(),
-            new_loan_span,
-            E0499,
-            "cannot borrow {}{} as mutable more than once at a time",
-            desc,
-            via(opt_via),
-        );
-        if old_loan_span == new_loan_span {
+        use crate::session_diagnostics::MutBorrowMulti::*;
+        let via = place.is_empty();
+        self.dcx().create_err(if old_loan_span == new_loan_span {
             // Both borrows are happening in the same place
             // Meaning the borrow is occurring in a loop
-            err.span_label(
+            SameSpan {
+                new_place_name,
+                place,
+                old_place,
+                is_place_empty: via,
                 new_loan_span,
-                format!(
-                    "{}{} was mutably borrowed here in the previous iteration of the loop{}",
-                    desc,
-                    via(opt_via),
-                    opt_via,
-                ),
-            );
-            if let Some(old_load_end_span) = old_load_end_span {
-                err.span_label(old_load_end_span, "mutable borrow ends here");
+                old_load_end_span,
+                eager_label: crate::session_diagnostics::MutMultiLoopLabel {
+                    new_place_name,
+                    place,
+                    is_place_empty: via,
+                    new_loan_span,
+                },
             }
         } else {
-            err.span_label(
-                old_loan_span,
-                format!("first mutable borrow occurs here{}", via(old_opt_via)),
-            );
-            err.span_label(
+            ChangedSpan {
+                new_place_name,
+                place,
+                old_place,
+                is_place_empty: via,
+                is_old_place_empty: old_place.is_empty(),
                 new_loan_span,
-                format!("second mutable borrow occurs here{}", via(opt_via)),
-            );
-            if let Some(old_load_end_span) = old_load_end_span {
-                err.span_label(old_load_end_span, "first borrow ends here");
+                old_loan_span,
+                old_load_end_span,
             }
-        }
-        err
+        })
     }
 
     pub(crate) fn cannot_uniquely_borrow_by_two_closures(
@@ -101,26 +94,19 @@ impl<'cx, 'tcx> crate::MirBorrowckCtxt<'cx, 'tcx> {
         old_loan_span: Span,
         old_load_end_span: Option<Span>,
     ) -> Diag<'tcx> {
-        let mut err = struct_span_code_err!(
-            self.dcx(),
-            new_loan_span,
-            E0524,
-            "two closures require unique access to {} at the same time",
-            desc,
-        );
-        if old_loan_span == new_loan_span {
-            err.span_label(
-                old_loan_span,
-                "closures are constructed here in different iterations of loop",
-            );
+        use crate::session_diagnostics::ClosureConstructLabel::*;
+        let (case, diff_span) = if old_loan_span == new_loan_span {
+            (Both { old_loan_span }, None)
         } else {
-            err.span_label(old_loan_span, "first closure is constructed here");
-            err.span_label(new_loan_span, "second closure is constructed here");
-        }
-        if let Some(old_load_end_span) = old_load_end_span {
-            err.span_label(old_load_end_span, "borrow from first closure ends here");
-        }
-        err
+            (First { old_loan_span }, Some(new_loan_span))
+        };
+        self.dcx().create_err(crate::session_diagnostics::TwoClosuresUniquelyBorrowErr {
+            desc,
+            case,
+            new_loan_span,
+            old_load_end_span,
+            diff_span,
+        })
     }
 
     pub(crate) fn cannot_uniquely_borrow_by_one_closure(
@@ -134,24 +120,16 @@ impl<'cx, 'tcx> crate::MirBorrowckCtxt<'cx, 'tcx> {
         old_opt_via: &str,
         previous_end_span: Option<Span>,
     ) -> Diag<'tcx> {
-        let mut err = struct_span_code_err!(
-            self.dcx(),
+        self.dcx().create_err(crate::session_diagnostics::ClosureUniquelyBorrowErr {
             new_loan_span,
-            E0500,
-            "closure requires unique access to {} but {} is already borrowed{}",
+            container_name,
             desc_new,
+            opt_via,
+            old_loan_span,
             noun_old,
             old_opt_via,
-        );
-        err.span_label(
-            new_loan_span,
-            format!("{container_name} construction occurs here{opt_via}"),
-        );
-        err.span_label(old_loan_span, format!("borrow occurs here{old_opt_via}"));
-        if let Some(previous_end_span) = previous_end_span {
-            err.span_label(previous_end_span, "borrow ends here");
-        }
-        err
+            previous_end_span,
+        })
     }
 
     pub(crate) fn cannot_reborrow_already_uniquely_borrowed(
@@ -166,24 +144,17 @@ impl<'cx, 'tcx> crate::MirBorrowckCtxt<'cx, 'tcx> {
         previous_end_span: Option<Span>,
         second_borrow_desc: &str,
     ) -> Diag<'tcx> {
-        let mut err = struct_span_code_err!(
-            self.dcx(),
+        self.dcx().create_err(crate::session_diagnostics::ClosureReBorrowErr {
             new_loan_span,
-            E0501,
-            "cannot borrow {}{} as {} because previous closure requires unique access",
+            container_name,
             desc_new,
             opt_via,
             kind_new,
-        );
-        err.span_label(new_loan_span, format!("{second_borrow_desc}borrow occurs here{opt_via}"));
-        err.span_label(
             old_loan_span,
-            format!("{container_name} construction occurs here{old_opt_via}"),
-        );
-        if let Some(previous_end_span) = previous_end_span {
-            err.span_label(previous_end_span, "borrow from closure ends here");
-        }
-        err
+            old_opt_via,
+            previous_end_span,
+            second_borrow_desc,
+        })
     }
 
     pub(crate) fn cannot_reborrow_already_borrowed(
@@ -198,39 +169,32 @@ impl<'cx, 'tcx> crate::MirBorrowckCtxt<'cx, 'tcx> {
         msg_old: &str,
         old_load_end_span: Option<Span>,
     ) -> Diag<'tcx> {
-        let via = |msg: &str| if msg.is_empty() { "".to_string() } else { format!(" (via {msg})") };
-        let mut err = struct_span_code_err!(
-            self.dcx(),
-            span,
-            E0502,
-            "cannot borrow {}{} as {} because {} is also borrowed as {}{}",
+        use crate::session_diagnostics::BorrowOccurLabel::*;
+        let via = |msg: &str| msg.is_empty();
+        let (new_occur, old_occur) = if msg_new == "" {
+            // If `msg_new` is empty, then this isn't a borrow of a union field.
+            (Here { span, kind: kind_new }, Here { span: old_span, kind: kind_old })
+        } else {
+            // If `msg_new` isn't empty, then this a borrow of a union field.
+            (
+                HereOverlap { span, kind_new, msg_new, msg_old },
+                HereVia { span: old_span, kind_old, is_msg_old_empty: via(msg_old), msg_old },
+            )
+        };
+        self.dcx().create_err(crate::session_diagnostics::ReborrowBorrowedErr {
             desc_new,
-            via(msg_new),
+            is_msg_new_empty: via(msg_new),
+            msg_new,
             kind_new,
             noun_old,
             kind_old,
-            via(msg_old),
-        );
-
-        if msg_new == "" {
-            // If `msg_new` is empty, then this isn't a borrow of a union field.
-            err.span_label(span, format!("{kind_new} borrow occurs here"));
-            err.span_label(old_span, format!("{kind_old} borrow occurs here"));
-        } else {
-            // If `msg_new` isn't empty, then this a borrow of a union field.
-            err.span_label(
-                span,
-                format!(
-                    "{kind_new} borrow of {msg_new} -- which overlaps with {msg_old} -- occurs here",
-                ),
-            );
-            err.span_label(old_span, format!("{} borrow occurs here{}", kind_old, via(msg_old)));
-        }
-
-        if let Some(old_load_end_span) = old_load_end_span {
-            err.span_label(old_load_end_span, format!("{kind_old} borrow ends here"));
-        }
-        err
+            is_msg_old_empty: via(msg_old),
+            msg_old,
+            span,
+            old_load_end_span,
+            new_occur,
+            old_occur,
+        })
     }
 
     pub(crate) fn cannot_assign_to_borrowed(
@@ -239,15 +203,7 @@ impl<'cx, 'tcx> crate::MirBorrowckCtxt<'cx, 'tcx> {
         borrow_span: Span,
         desc: &str,
     ) -> Diag<'tcx> {
-        struct_span_code_err!(
-            self.dcx(),
-            span,
-            E0506,
-            "cannot assign to {} because it is borrowed",
-            desc,
-        )
-        .with_span_label(borrow_span, format!("{desc} is borrowed here"))
-        .with_span_label(span, format!("{desc} is assigned to here but it was already borrowed"))
+        self.dcx().create_err(AssignBorrowErr { desc, span, borrow_span })
     }
 
     pub(crate) fn cannot_reassign_immutable(
@@ -256,12 +212,78 @@ impl<'cx, 'tcx> crate::MirBorrowckCtxt<'cx, 'tcx> {
         desc: &str,
         is_arg: bool,
     ) -> Diag<'tcx> {
-        let msg = if is_arg { "to immutable argument" } else { "twice to immutable variable" };
-        struct_span_code_err!(self.dcx(), span, E0384, "cannot assign {} {}", msg, desc)
+        use crate::session_diagnostics::ReassignImmut::*;
+        self.dcx().create_err(if is_arg {
+            Arg { span, place: desc }
+        } else {
+            Var { span, place: desc }
+        })
     }
 
-    pub(crate) fn cannot_assign(&self, span: Span, desc: &str) -> Diag<'tcx> {
-        struct_span_code_err!(self.dcx(), span, E0594, "cannot assign to {}", desc)
+    pub(crate) fn cannot_assign(
+        &self,
+        span: Span,
+        path_and_reason: PlaceAndReason<'_>,
+    ) -> Diag<'tcx> {
+        let diag = match path_and_reason {
+            PlaceAndReason::DeclaredImmute(place, name) => {
+                if let Some(name) = name {
+                    AssignErr::SymbolDeclaredImmute { span, place, name }
+                } else {
+                    AssignErr::PlaceDeclaredImmute { span, place }
+                }
+            }
+            PlaceAndReason::InPatternGuard(place) => AssignErr::PatternGuardImmute { span, place },
+            PlaceAndReason::StaticItem(place, name) => {
+                if let Some(name) = name {
+                    AssignErr::SymbolStatic { span, place, static_name: name }
+                } else {
+                    AssignErr::PlaceStatic { span, place }
+                }
+            }
+            PlaceAndReason::UpvarCaptured(place) => AssignErr::UpvarInFn { span, place },
+            PlaceAndReason::SelfCaptured(place) => AssignErr::CapturedInFn { span, place },
+            PlaceAndReason::BehindPointer(place, pointer_ty, name) => {
+                if place.0.is_some() {
+                    match pointer_ty {
+                        crate::diagnostics::BorrowedContentSource::DerefRawPointer => {
+                            AssignErr::PlaceBehindRawPointer { span, place }
+                        }
+                        crate::diagnostics::BorrowedContentSource::DerefMutableRef => {
+                            unreachable!()
+                        }
+                        crate::diagnostics::BorrowedContentSource::DerefSharedRef => {
+                            AssignErr::PlaceBehindSharedRef { span, place }
+                        }
+                        crate::diagnostics::BorrowedContentSource::OverloadedDeref(_) => {
+                            AssignErr::PlaceBehindDeref { span, place, name }
+                        }
+                        crate::diagnostics::BorrowedContentSource::OverloadedIndex(_) => {
+                            AssignErr::PlaceBehindIndex { span, place, name }
+                        }
+                    }
+                } else {
+                    match pointer_ty {
+                        crate::diagnostics::BorrowedContentSource::DerefRawPointer => {
+                            AssignErr::DataBehindRawPointer { span }
+                        }
+                        crate::diagnostics::BorrowedContentSource::DerefMutableRef => {
+                            unreachable!()
+                        }
+                        crate::diagnostics::BorrowedContentSource::DerefSharedRef => {
+                            AssignErr::DataBehindSharedRef { span }
+                        }
+                        crate::diagnostics::BorrowedContentSource::OverloadedDeref(_) => {
+                            AssignErr::DataBehindDeref { span, name }
+                        }
+                        crate::diagnostics::BorrowedContentSource::OverloadedIndex(_) => {
+                            AssignErr::DataBehindIndex { span, name }
+                        }
+                    }
+                }
+            }
+        };
+        self.dcx().create_err(diag)
     }
 
     pub(crate) fn cannot_move_out_of(
@@ -308,14 +330,7 @@ impl<'cx, 'tcx> crate::MirBorrowckCtxt<'cx, 'tcx> {
         move_from_span: Span,
         container_ty: Ty<'_>,
     ) -> Diag<'tcx> {
-        struct_span_code_err!(
-            self.dcx(),
-            move_from_span,
-            E0509,
-            "cannot move out of type `{}`, which implements the `Drop` trait",
-            container_ty,
-        )
-        .with_span_label(move_from_span, "cannot move out of here")
+        self.dcx().create_err(InteriorDropMoveErr { container_ty, move_from_span })
     }
 
     pub(crate) fn cannot_act_on_moved_value(
@@ -341,17 +356,69 @@ impl<'cx, 'tcx> crate::MirBorrowckCtxt<'cx, 'tcx> {
     pub(crate) fn cannot_borrow_path_as_mutable_because(
         &self,
         span: Span,
-        path: &str,
-        reason: &str,
+        path_and_reason: PlaceAndReason<'_>,
     ) -> Diag<'tcx> {
-        struct_span_code_err!(
-            self.dcx(),
-            span,
-            E0596,
-            "cannot borrow {} as mutable{}",
-            path,
-            reason
-        )
+        let diag = match path_and_reason {
+            PlaceAndReason::DeclaredImmute(place, name) => {
+                if let Some(name) = name {
+                    MutBorrowErr::SymbolDeclaredImmute { span, place, name }
+                } else {
+                    MutBorrowErr::PlaceDeclaredImmute { span, place }
+                }
+            }
+            PlaceAndReason::InPatternGuard(place) => {
+                MutBorrowErr::PatternGuardImmute { span, place }
+            }
+            PlaceAndReason::StaticItem(place, name) => {
+                if let Some(name) = name {
+                    MutBorrowErr::SymbolStatic { span, place, static_name: name }
+                } else {
+                    MutBorrowErr::PlaceStatic { span, place }
+                }
+            }
+            PlaceAndReason::UpvarCaptured(place) => MutBorrowErr::UpvarInFn { span, place },
+            PlaceAndReason::SelfCaptured(place) => MutBorrowErr::CapturedInFn { span, place },
+            PlaceAndReason::BehindPointer(place, pointer_ty, name) => {
+                if place.0.is_some() {
+                    match pointer_ty {
+                        crate::diagnostics::BorrowedContentSource::DerefRawPointer => {
+                            MutBorrowErr::SelfBehindRawPointer { span, place }
+                        }
+                        crate::diagnostics::BorrowedContentSource::DerefSharedRef => {
+                            MutBorrowErr::SelfBehindSharedRef { span, place }
+                        }
+                        crate::diagnostics::BorrowedContentSource::OverloadedDeref(_) => {
+                            MutBorrowErr::SelfBehindDeref { span, place, name }
+                        }
+                        crate::diagnostics::BorrowedContentSource::OverloadedIndex(_) => {
+                            MutBorrowErr::SelfBehindIndex { span, place, name }
+                        }
+                        crate::diagnostics::BorrowedContentSource::DerefMutableRef => {
+                            unreachable!()
+                        }
+                    }
+                } else {
+                    match pointer_ty {
+                        crate::diagnostics::BorrowedContentSource::DerefRawPointer => {
+                            MutBorrowErr::DataBehindRawPointer { span }
+                        }
+                        crate::diagnostics::BorrowedContentSource::DerefMutableRef => {
+                            unreachable!()
+                        }
+                        crate::diagnostics::BorrowedContentSource::DerefSharedRef => {
+                            MutBorrowErr::DataBehindSharedRef { span }
+                        }
+                        crate::diagnostics::BorrowedContentSource::OverloadedDeref(_) => {
+                            MutBorrowErr::DataBehindDeref { span, name }
+                        }
+                        crate::diagnostics::BorrowedContentSource::OverloadedIndex(_) => {
+                            MutBorrowErr::DataBehindIndex { span, name }
+                        }
+                    }
+                }
+            }
+        };
+        self.dcx().create_err(diag)
     }
 
     pub(crate) fn cannot_mutate_in_immutable_section(
@@ -381,26 +448,19 @@ impl<'cx, 'tcx> crate::MirBorrowckCtxt<'cx, 'tcx> {
         yield_span: Span,
     ) -> Diag<'tcx> {
         let coroutine_kind = self.body.coroutine.as_ref().unwrap().coroutine_kind;
-        struct_span_code_err!(
-            self.dcx(),
+        self.dcx().create_err(BorrowAcrossCoroutineYield {
             span,
-            E0626,
-            "borrow may still be in use when {coroutine_kind:#} yields",
-        )
-        .with_span_label(yield_span, "possible yield occurs here")
+            yield_span,
+            coroutine_kind: format!("{coroutine_kind:#}"),
+        })
     }
 
     pub(crate) fn cannot_borrow_across_destructor(&self, borrow_span: Span) -> Diag<'tcx> {
-        struct_span_code_err!(
-            self.dcx(),
-            borrow_span,
-            E0713,
-            "borrow may still be in use when destructor runs",
-        )
+        self.dcx().create_err(BorrowAcrossDestructor { borrow_span })
     }
 
     pub(crate) fn path_does_not_live_long_enough(&self, span: Span, path: &str) -> Diag<'tcx> {
-        struct_span_code_err!(self.dcx(), span, E0597, "{} does not live long enough", path,)
+        self.dcx().create_err(PathShortLive { path, span })
     }
 
     pub(crate) fn cannot_return_reference_to_local(

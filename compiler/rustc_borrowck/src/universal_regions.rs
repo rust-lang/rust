@@ -32,6 +32,7 @@ use rustc_span::Symbol;
 use std::iter;
 
 use crate::renumber::RegionCtxt;
+use crate::session_diagnostics::DefiningTypeNote;
 use crate::BorrowckInferCtxt;
 
 #[derive(Debug)]
@@ -352,11 +353,13 @@ impl<'tcx> UniversalRegions<'tcx> {
                         .map(|arg| arg.to_string())
                         .collect::<Vec<_>>()
                 );
-                err.note(format!(
-                    "defining type: {} with closure args [\n    {},\n]",
-                    tcx.def_path_str_with_args(def_id, args),
-                    v.join(",\n    "),
-                ));
+                err.subdiagnostic(
+                    tcx.dcx(),
+                    DefiningTypeNote::Closure {
+                        type_name: &tcx.def_path_str_with_args(def_id, args),
+                        subsets: &v.join(",\n    "),
+                    },
+                );
 
                 // FIXME: It'd be nice to print the late-bound regions
                 // here, but unfortunately these wind up stored into
@@ -377,11 +380,13 @@ impl<'tcx> UniversalRegions<'tcx> {
                         .map(|arg| arg.to_string())
                         .collect::<Vec<_>>()
                 );
-                err.note(format!(
-                    "defining type: {} with coroutine args [\n    {},\n]",
-                    tcx.def_path_str_with_args(def_id, args),
-                    v.join(",\n    "),
-                ));
+                err.subdiagnostic(
+                    tcx.dcx(),
+                    DefiningTypeNote::Generator {
+                        type_name: &tcx.def_path_str_with_args(def_id, &args),
+                        subsets: &v.join(",\n    "),
+                    },
+                );
 
                 // FIXME: As above, we'd like to print out the region
                 // `r` but doing so is not stable across architectures
@@ -391,19 +396,28 @@ impl<'tcx> UniversalRegions<'tcx> {
                 });
             }
             DefiningTy::FnDef(def_id, args) => {
-                err.note(format!("defining type: {}", tcx.def_path_str_with_args(def_id, args),));
+                err.subdiagnostic(
+                    tcx.dcx(),
+                    DefiningTypeNote::FnDef {
+                        type_name: &tcx.def_path_str_with_args(def_id, &args),
+                    },
+                );
             }
             DefiningTy::Const(def_id, args) => {
-                err.note(format!(
-                    "defining constant type: {}",
-                    tcx.def_path_str_with_args(def_id, args),
-                ));
+                err.subdiagnostic(
+                    tcx.dcx(),
+                    DefiningTypeNote::Const {
+                        type_name: &tcx.def_path_str_with_args(def_id, &args),
+                    },
+                );
             }
             DefiningTy::InlineConst(def_id, args) => {
-                err.note(format!(
-                    "defining inline constant type: {}",
-                    tcx.def_path_str_with_args(def_id, args),
-                ));
+                err.subdiagnostic(
+                    tcx.dcx(),
+                    DefiningTypeNote::InlineConst {
+                        type_name: &tcx.def_path_str_with_args(def_id, &args),
+                    },
+                );
             }
         }
     }
