@@ -16,6 +16,9 @@ borrowck_borrow_due_to_use_closure =
 borrowck_borrow_due_to_use_coroutine =
     borrow occurs due to use in coroutine
 
+borrowck_calling_operator_moves =
+    calling this operator moves the value
+
 borrowck_calling_operator_moves_lhs =
     calling this operator moves the left-hand side
 

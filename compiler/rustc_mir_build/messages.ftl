@@ -24,7 +24,7 @@ mir_build_borrow_of_layout_constrained_field_requires_unsafe_unsafe_op_in_unsafe
 
 mir_build_borrow_of_moved_value = borrow of moved value
     .label = value moved into `{$name}` here
-    .occurs_because_label = move occurs because `{$name}` has type `{$ty}` which does not implement the `Copy` trait
+    .occurs_because_label = move occurs because `{$name}` has type `{$ty}`, which does not implement the `Copy` trait
     .value_borrowed_label = value borrowed here after move
     .suggestion = borrow this binding in the pattern to avoid moving the value
 
