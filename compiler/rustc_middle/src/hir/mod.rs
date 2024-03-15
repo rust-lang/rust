@@ -8,6 +8,9 @@ pub mod place;
 
 use crate::query::Providers;
 use crate::ty::{EarlyBinder, ImplSubject, TyCtxt};
+use rustc_data_structures::fingerprint::Fingerprint;
+use rustc_data_structures::sorted_map::SortedMap;
+use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_data_structures::sync::{try_par_for_each_in, DynSend, DynSync};
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{DefId, LocalDefId, LocalModDefId};
@@ -120,6 +123,30 @@ impl<'tcx> TyCtxt<'tcx> {
     pub fn is_foreign_item(self, def_id: impl Into<DefId>) -> bool {
         self.opt_parent(def_id.into())
             .is_some_and(|parent| matches!(self.def_kind(parent), DefKind::ForeignMod))
+    }
+
+    pub fn hash_owner_nodes(
+        self,
+        node: OwnerNode<'_>,
+        bodies: &SortedMap<ItemLocalId, &Body<'_>>,
+        attrs: &SortedMap<ItemLocalId, &[rustc_ast::Attribute]>,
+    ) -> (Option<Fingerprint>, Option<Fingerprint>) {
+        if self.needs_crate_hash() {
+            self.with_stable_hashing_context(|mut hcx| {
+                let mut stable_hasher = StableHasher::new();
+                node.hash_stable(&mut hcx, &mut stable_hasher);
+                // Bodies are stored out of line, so we need to pull them explicitly in the hash.
+                bodies.hash_stable(&mut hcx, &mut stable_hasher);
+                let h1 = stable_hasher.finish();
+
+                let mut stable_hasher = StableHasher::new();
+                attrs.hash_stable(&mut hcx, &mut stable_hasher);
+                let h2 = stable_hasher.finish();
+                (Some(h1), Some(h2))
+            })
+        } else {
+            (None, None)
+        }
     }
 }
 
