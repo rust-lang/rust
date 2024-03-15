@@ -62,8 +62,8 @@ impl BuiltinFnLikeExpander {
         db: &dyn ExpandDatabase,
         id: MacroCallId,
         tt: &tt::Subtree,
+        span: Span,
     ) -> ExpandResult<tt::Subtree> {
-        let span = db.lookup_intern_macro_call(id).call_site;
         let span = span_with_def_site_ctxt(db, span, id);
         self.expander()(db, id, tt, span)
     }
@@ -75,8 +75,8 @@ impl EagerExpander {
         db: &dyn ExpandDatabase,
         id: MacroCallId,
         tt: &tt::Subtree,
+        span: Span,
     ) -> ExpandResult<tt::Subtree> {
-        let span = db.lookup_intern_macro_call(id).call_site;
         let span = span_with_def_site_ctxt(db, span, id);
         self.expander()(db, id, tt, span)
     }

@@ -487,12 +487,12 @@ impl Printer<'_> {
                 }
             }
             ModItem::MacroCall(it) => {
-                let MacroCall { path, ast_id, expand_to, call_site } = &self.tree[it];
+                let MacroCall { path, ast_id, expand_to, ctxt } = &self.tree[it];
                 let _ = writeln!(
                     self,
-                    "// AstId: {:?}, Span: {}, ExpandTo: {:?}",
+                    "// AstId: {:?}, SyntaxContext: {}, ExpandTo: {:?}",
                     ast_id.erase().into_raw(),
-                    call_site,
+                    ctxt,
                     expand_to
                 );
                 wln!(self, "{}!(...);", path.display(self.db.upcast()));
