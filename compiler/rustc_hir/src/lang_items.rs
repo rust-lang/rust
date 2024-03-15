@@ -171,11 +171,11 @@ language_item_table! {
     DeferredAsyncDrop,       sym::deferred_async_drop, deferred_async_drop_type,   Target::Enum,           GenericRequirement::Exact(1);
     DeferredAsyncDropCtor,   sym::deferred_async_drop_ctor, deferred_async_drop_fn, Target::Fn,            GenericRequirement::Exact(1);
     AsyncDropChain,          sym::async_drop_chain,    async_drop_chain_type,      Target::Enum,           GenericRequirement::Exact(2);
-    AsyncDropChainCtor,      sym::async_drop_chain_ctor, async_drop_chain_ctor,    Target::Fn,             GenericRequirement::Exact(2);
+    AsyncDropChainCtor,      sym::async_drop_chain_ctor, async_drop_chain_fn,      Target::Fn,             GenericRequirement::Exact(2);
     AsyncDropNop,            sym::async_drop_nop,      async_drop_nop_type,        Target::Struct,         GenericRequirement::Exact(0);
-    AsyncDropNopCtor,        sym::async_drop_nop_ctor, async_drop_nop_ctor,        Target::Fn,             GenericRequirement::Exact(0);
+    AsyncDropNopCtor,        sym::async_drop_nop_ctor, async_drop_nop_fn,          Target::Fn,             GenericRequirement::Exact(0);
     AsyncDropFuse,           sym::async_drop_fuse,     async_drop_fuse_type,       Target::Struct,         GenericRequirement::Exact(1);
-    AsyncDropFuseCtor,       sym::async_drop_fuse_ctor, async_drop_fuse_ctor,      Target::Fn,             GenericRequirement::Exact(1);
+    AsyncDropFuseCtor,       sym::async_drop_fuse_ctor, async_drop_fuse_fn,        Target::Fn,             GenericRequirement::Exact(1);
 
     CoerceUnsized,           sym::coerce_unsized,      coerce_unsized_trait,       Target::Trait,          GenericRequirement::Minimum(1);
     DispatchFromDyn,         sym::dispatch_from_dyn,   dispatch_from_dyn_trait,    Target::Trait,          GenericRequirement::Minimum(1);

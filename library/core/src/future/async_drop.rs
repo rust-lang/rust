@@ -63,7 +63,6 @@ pub unsafe fn async_drop_in_place<T: ?Sized>(to_drop: *mut T) -> AsyncDropInPlac
 
 /// A future returned by the [`async_drop_in_place`].
 #[unstable(feature = "async_drop", issue = "none")]
-// FIXME: Consider if it should be always `!Unpin`
 pub struct AsyncDropInPlace<T: ?Sized>(<T as AsyncDestruct>::AsyncDestructor);
 
 #[unstable(feature = "async_drop", issue = "none")]
