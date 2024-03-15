@@ -283,7 +283,19 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                 Some(name) => format!("`{name}`"),
                 None => "value".to_owned(),
             };
-            if self.suggest_borrow_fn_like(&mut err, ty, &move_site_vec, &note_msg) {
+            if self.suggest_borrow_fn_like(&mut err, ty, &move_site_vec, &note_msg)
+                || if let UseSpans::FnSelfUse { kind, .. } = use_spans
+                    && let CallKind::FnCall { fn_trait_id, self_ty } = kind
+                    && let ty::Param(_) = self_ty.kind()
+                    && ty == self_ty
+                    && Some(fn_trait_id) == self.infcx.tcx.lang_items().fn_once_trait()
+                {
+                    // this is a type parameter `T: FnOnce()`, don't suggest `T: FnOnce() + Clone`.
+                    true
+                } else {
+                    false
+                }
+            {
                 // Suppress the next suggestion since we don't want to put more bounds onto
                 // something that already has `Fn`-like bounds (or is a closure), so we can't
                 // restrict anyways.
@@ -1016,7 +1028,6 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                         None
                     }
                 })
-            && { true }
             && parent_binop == other_parent_binop
         {
             // Explicitly look for `expr += other_expr;` and avoid suggesting

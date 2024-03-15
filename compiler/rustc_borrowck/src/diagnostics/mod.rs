@@ -5,6 +5,7 @@ use crate::session_diagnostics::{
     CaptureVarKind, CaptureVarPathUseCause, OnClosureNote,
 };
 use rustc_errors::{Applicability, Diag};
+use rustc_errors::{DiagCtxt, MultiSpan};
 use rustc_hir as hir;
 use rustc_hir::def::{CtorKind, Namespace};
 use rustc_hir::CoroutineKind;
@@ -28,6 +29,8 @@ use rustc_target::abi::{FieldIdx, VariantIdx};
 use rustc_trait_selection::infer::InferCtxtExt;
 use rustc_trait_selection::traits::error_reporting::suggestions::TypeErrCtxtExt as _;
 use rustc_trait_selection::traits::type_known_to_meet_bound_modulo_regions;
+
+use crate::fluent_generated as fluent;
 
 use super::borrow_set::BorrowData;
 use super::MirBorrowckCtxt;
@@ -587,7 +590,7 @@ impl UseSpans<'_> {
     #[allow(rustc::diagnostic_outside_of_impl)]
     pub(super) fn args_subdiag(
         self,
-        dcx: &rustc_errors::DiagCtxt,
+        dcx: &DiagCtxt,
         err: &mut Diag<'_>,
         f: impl FnOnce(Span) -> CaptureArgLabel,
     ) {
@@ -601,7 +604,7 @@ impl UseSpans<'_> {
     #[allow(rustc::diagnostic_outside_of_impl)]
     pub(super) fn var_path_only_subdiag(
         self,
-        dcx: &rustc_errors::DiagCtxt,
+        dcx: &DiagCtxt,
         err: &mut Diag<'_>,
         action: crate::InitializationRequiringAction,
     ) {
@@ -639,7 +642,7 @@ impl UseSpans<'_> {
     #[allow(rustc::diagnostic_outside_of_impl)]
     pub(super) fn var_subdiag(
         self,
-        dcx: &rustc_errors::DiagCtxt,
+        dcx: &DiagCtxt,
         err: &mut Diag<'_>,
         kind: Option<rustc_middle::mir::BorrowKind>,
         f: impl FnOnce(hir::ClosureKind, Span) -> CaptureVarCause,
@@ -1034,7 +1037,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                 .map(|n| format!("`{n}`"))
                 .unwrap_or_else(|| "value".to_owned());
             match kind {
-                CallKind::FnCall { fn_trait_id, .. }
+                CallKind::FnCall { fn_trait_id, self_ty }
                     if Some(fn_trait_id) == self.infcx.tcx.lang_items().fn_once_trait() =>
                 {
                     err.subdiagnostic(
@@ -1046,7 +1049,58 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                             is_loop_message,
                         },
                     );
-                    err.subdiagnostic(self.dcx(), CaptureReasonNote::FnOnceMoveInCall { var_span });
+                    if let ty::Param(param_ty) = self_ty.kind()
+                        && let generics = self.infcx.tcx.generics_of(self.mir_def_id())
+                        && let param = generics.type_param(param_ty, self.infcx.tcx)
+                        && let Some(hir_generics) = self
+                            .infcx
+                            .tcx
+                            .typeck_root_def_id(self.mir_def_id().to_def_id())
+                            .as_local()
+                            .and_then(|def_id| self.infcx.tcx.hir().get_generics(def_id))
+                        && let spans = hir_generics
+                            .predicates
+                            .iter()
+                            .filter_map(|pred| match pred {
+                                hir::WherePredicate::BoundPredicate(pred) => Some(pred),
+                                _ => None,
+                            })
+                            .filter(|pred| {
+                                if let Some((id, _)) = pred.bounded_ty.as_generic_param() {
+                                    id == param.def_id
+                                } else {
+                                    false
+                                }
+                            })
+                            .flat_map(|pred| pred.bounds)
+                            .filter_map(|bound| {
+                                if let Some(trait_ref) = bound.trait_ref()
+                                    && let Some(trait_def_id) = trait_ref.trait_def_id()
+                                    && trait_def_id == fn_trait_id
+                                {
+                                    Some(bound.span())
+                                } else {
+                                    None
+                                }
+                            })
+                            .collect::<Vec<Span>>()
+                        && !spans.is_empty()
+                    {
+                        let mut span: MultiSpan = spans.clone().into();
+                        for sp in spans {
+                            span.push_span_label(sp, fluent::borrowck_moved_a_fn_once_in_call_def);
+                        }
+                        span.push_span_label(
+                            fn_call_span,
+                            fluent::borrowck_moved_a_fn_once_in_call,
+                        );
+                        err.span_note(span, fluent::borrowck_moved_a_fn_once_in_call_call);
+                    } else {
+                        err.subdiagnostic(
+                            self.dcx(),
+                            CaptureReasonNote::FnOnceMoveInCall { var_span },
+                        );
+                    }
                 }
                 CallKind::Operator { self_arg, trait_id, .. } => {
                     let self_arg = self_arg.unwrap();
