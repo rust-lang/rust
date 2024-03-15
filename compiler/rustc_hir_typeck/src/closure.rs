@@ -780,7 +780,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         decl: &hir::FnDecl<'tcx>,
         closure_kind: hir::ClosureKind,
     ) -> ty::PolyFnSig<'tcx> {
-        let astconv: &dyn AstConv<'_> = self;
+        let astconv = self.astconv();
 
         trace!("decl = {:#?}", decl);
         debug!(?closure_kind);
@@ -985,7 +985,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         decl: &hir::FnDecl<'tcx>,
         guar: ErrorGuaranteed,
     ) -> ty::PolyFnSig<'tcx> {
-        let astconv: &dyn AstConv<'_> = self;
+        let astconv = self.astconv();
         let err_ty = Ty::new_error(self.tcx, guar);
 
         let supplied_arguments = decl.inputs.iter().map(|a| {

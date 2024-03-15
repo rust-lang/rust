@@ -8,7 +8,7 @@ use rustc_trait_selection::traits::error_reporting::suggestions::NextTypeParamNa
 
 use super::AstConv;
 
-impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
+impl<'tcx> dyn AstConv<'tcx> + '_ {
     /// Make sure that we are in the condition to suggest the blanket implementation.
     pub(super) fn maybe_lint_blanket_trait_impl<G: EmissionGuarantee>(
         &self,

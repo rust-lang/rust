@@ -17,7 +17,7 @@ use smallvec::{smallvec, SmallVec};
 
 use super::AstConv;
 
-impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
+impl<'tcx> dyn AstConv<'tcx> + '_ {
     pub(super) fn conv_object_ty_poly_trait_ref(
         &self,
         span: Span,
