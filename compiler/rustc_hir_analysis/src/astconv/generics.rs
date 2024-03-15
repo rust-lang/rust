@@ -409,15 +409,12 @@ pub fn check_generic_arg_count_for_call(
     seg: &hir::PathSegment<'_>,
     is_method_call: IsMethodCall,
 ) -> GenericArgCountResult {
-    let empty_args = hir::GenericArgs::none();
-    let gen_args = seg.args.unwrap_or(&empty_args);
     let gen_pos = match is_method_call {
         IsMethodCall::Yes => GenericArgPosition::MethodCall,
         IsMethodCall::No => GenericArgPosition::Value,
     };
     let has_self = generics.parent.is_none() && generics.has_self;
-
-    check_generic_arg_count(tcx, def_id, seg, generics, gen_args, gen_pos, has_self, seg.infer_args)
+    check_generic_arg_count(tcx, def_id, seg, generics, gen_pos, has_self)
 }
 
 /// Checks that the correct number of generic arguments have been provided.
@@ -428,11 +425,10 @@ pub(crate) fn check_generic_arg_count(
     def_id: DefId,
     seg: &hir::PathSegment<'_>,
     gen_params: &ty::Generics,
-    gen_args: &hir::GenericArgs<'_>,
     gen_pos: GenericArgPosition,
     has_self: bool,
-    infer_args: bool,
 ) -> GenericArgCountResult {
+    let gen_args = seg.args();
     let default_counts = gen_params.own_defaults();
     let param_counts = gen_params.own_counts();
 
@@ -453,7 +449,7 @@ pub(crate) fn check_generic_arg_count(
         .count();
     let named_const_param_count = param_counts.consts - synth_const_param_count;
     let infer_lifetimes =
-        (gen_pos != GenericArgPosition::Type || infer_args) && !gen_args.has_lifetime_params();
+        (gen_pos != GenericArgPosition::Type || seg.infer_args) && !gen_args.has_lifetime_params();
 
     if gen_pos != GenericArgPosition::Type
         && let Some(b) = gen_args.bindings.first()
@@ -586,7 +582,7 @@ pub(crate) fn check_generic_arg_count(
     };
 
     let args_correct = {
-        let expected_min = if infer_args {
+        let expected_min = if seg.infer_args {
             0
         } else {
             param_counts.consts + named_type_param_count

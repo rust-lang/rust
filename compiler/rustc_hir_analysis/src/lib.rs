@@ -100,18 +100,15 @@ mod variance;
 
 use rustc_errors::ErrorGuaranteed;
 use rustc_hir as hir;
+use rustc_hir::def::DefKind;
 use rustc_middle::middle;
 use rustc_middle::query::Providers;
-use rustc_middle::ty::{self, Ty, TyCtxt};
+use rustc_middle::ty::{Ty, TyCtxt};
 use rustc_middle::util;
 use rustc_session::parse::feature_err;
-use rustc_span::{symbol::sym, Span, DUMMY_SP};
+use rustc_span::{symbol::sym, Span};
 use rustc_target::spec::abi::Abi;
 use rustc_trait_selection::traits;
-
-use astconv::{AstConv, OnlySelfBounds};
-use bounds::Bounds;
-use rustc_hir::def::DefKind;
 
 rustc_fluent_macro::fluent_messages! { "../messages.ftl" }
 
@@ -222,31 +219,5 @@ pub fn hir_ty_to_ty<'tcx>(tcx: TyCtxt<'tcx>, hir_ty: &hir::Ty<'tcx>) -> Ty<'tcx>
     // def-ID that will be used to determine the traits/predicates in
     // scope. This is derived from the enclosing item-like thing.
     let env_def_id = tcx.hir().get_parent_item(hir_ty.hir_id);
-    let item_cx = self::collect::ItemCtxt::new(tcx, env_def_id.def_id);
-    item_cx.astconv().ast_ty_to_ty(hir_ty)
-}
-
-pub fn hir_trait_to_predicates<'tcx>(
-    tcx: TyCtxt<'tcx>,
-    hir_trait: &hir::TraitRef<'tcx>,
-    self_ty: Ty<'tcx>,
-) -> Bounds<'tcx> {
-    // In case there are any projections, etc., find the "environment"
-    // def-ID that will be used to determine the traits/predicates in
-    // scope. This is derived from the enclosing item-like thing.
-    let env_def_id = tcx.hir().get_parent_item(hir_trait.hir_ref_id);
-    let item_cx = self::collect::ItemCtxt::new(tcx, env_def_id.def_id);
-    let mut bounds = Bounds::default();
-    let _ = &item_cx.astconv().instantiate_poly_trait_ref(
-        hir_trait,
-        DUMMY_SP,
-        ty::BoundConstness::NotConst,
-        ty::ImplPolarity::Positive,
-        self_ty,
-        &mut bounds,
-        true,
-        OnlySelfBounds(false),
-    );
-
-    bounds
+    collect::ItemCtxt::new(tcx, env_def_id.def_id).to_ty(hir_ty)
 }
