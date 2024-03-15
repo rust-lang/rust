@@ -580,6 +580,13 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
         "`may_dangle` has unstable semantics and may be removed in the future",
     ),
 
+    rustc_attr!(
+        rustc_never_type_mode, Normal, template!(NameValueStr: "fallback_to_unit|fallback_to_niko|fallback_to_never|no_fallback"), ErrorFollowing,
+        @only_local: true,
+        "`rustc_never_type_fallback` is used to experiment with never type fallback and work on \
+         never type stabilization, and will never be stable"
+    ),
+
     // ==========================================================================
     // Internal attributes: Runtime related:
     // ==========================================================================
