@@ -348,9 +348,10 @@ where
         loop {
             match this {
                 Either::Unresumed { this_enum, discr, matched, other, _pinned: _ } => {
-                    // SAFETY: simple pin projection + it's fine to create
-                    //   immutable references from pinned mutable references.
-                    if discriminant_value(unsafe { this_enum.as_ref() }) == *discr {
+                    // SAFETY: simple pin projection + it's fine to
+                    //   immutably borrow pointee from pinned mutable
+                    //   references.
+                    if unsafe { discriminant_value(this_enum.as_ref()) } == *discr {
                         *this = Either::Matched(matched.into_future())
                     } else {
                         *this = Either::Other(other.into_future())
