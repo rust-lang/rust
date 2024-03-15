@@ -147,6 +147,10 @@ impl<'a, 'tcx> TerminatorCodegenHelper<'tcx> {
 
     /// Call `fn_ptr` of `fn_abi` with the arguments `llargs`, the optional
     /// return destination `destination` and the unwind action `unwind`.
+    ///
+    /// You must provide `instance` if it might affect the alias set of the target.
+    /// This will never be the case for direct calls. It is currently only required
+    /// for `Virtual` calls, but providing it when available will avoid complications.
     fn do_call<Bx: BuilderMethods<'a, 'tcx>>(
         &self,
         fx: &mut FunctionCx<'a, 'tcx, Bx>,
@@ -158,6 +162,7 @@ impl<'a, 'tcx> TerminatorCodegenHelper<'tcx> {
         mut unwind: mir::UnwindAction,
         copied_constant_arguments: &[PlaceRef<'tcx, <Bx as BackendTypes>::Value>],
         mergeable_succ: bool,
+        instance: Option<Instance<'tcx>>,
     ) -> MergingSucc {
         // If there is a cleanup block and the function we're calling can unwind, then
         // do an invoke, otherwise do a call.
@@ -210,6 +215,7 @@ impl<'a, 'tcx> TerminatorCodegenHelper<'tcx> {
                 ret_llbb,
                 unwind_block,
                 self.funclet(fx),
+                instance,
             );
             if fx.mir[self.bb].is_cleanup {
                 bx.apply_attrs_to_cleanup_callsite(invokeret);
@@ -225,7 +231,8 @@ impl<'a, 'tcx> TerminatorCodegenHelper<'tcx> {
             }
             MergingSucc::False
         } else {
-            let llret = bx.call(fn_ty, fn_attrs, Some(fn_abi), fn_ptr, llargs, self.funclet(fx));
+            let llret =
+                bx.call(fn_ty, fn_attrs, Some(fn_abi), fn_ptr, llargs, self.funclet(fx), instance);
             if fx.mir[self.bb].is_cleanup {
                 bx.apply_attrs_to_cleanup_callsite(llret);
             }
@@ -495,7 +502,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             args1 = [place.llval];
             &args1[..]
         };
-        let (drop_fn, fn_abi) =
+        let (drop_fn, fn_abi, drop_instance) =
             match ty.kind() {
                 // FIXME(eddyb) perhaps move some of this logic into
                 // `Instance::resolve_drop_in_place`?
@@ -527,6 +534,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                         meth::VirtualIndex::from_index(ty::COMMON_VTABLE_ENTRIES_DROPINPLACE)
                             .get_fn(bx, vtable, ty, fn_abi),
                         fn_abi,
+                        virtual_drop,
                     )
                 }
                 ty::Dynamic(_, _, ty::DynStar) => {
@@ -569,9 +577,14 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                         meth::VirtualIndex::from_index(ty::COMMON_VTABLE_ENTRIES_DROPINPLACE)
                             .get_fn(bx, meta.immediate(), ty, fn_abi),
                         fn_abi,
+                        virtual_drop,
                     )
                 }
-                _ => (bx.get_fn_addr(drop_fn), bx.fn_abi_of_instance(drop_fn, ty::List::empty())),
+                _ => (
+                    bx.get_fn_addr(drop_fn),
+                    bx.fn_abi_of_instance(drop_fn, ty::List::empty()),
+                    drop_fn,
+                ),
             };
         helper.do_call(
             self,
@@ -583,6 +596,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             unwind,
             &[],
             mergeable_succ,
+            Some(drop_instance),
         )
     }
 
@@ -661,7 +675,8 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         let (fn_abi, llfn) = common::build_langcall(bx, Some(span), lang_item);
 
         // Codegen the actual panic invoke/call.
-        let merging_succ = helper.do_call(self, bx, fn_abi, llfn, &args, None, unwind, &[], false);
+        let merging_succ =
+            helper.do_call(self, bx, fn_abi, llfn, &args, None, unwind, &[], false, None);
         assert_eq!(merging_succ, MergingSucc::False);
         MergingSucc::False
     }
@@ -690,6 +705,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             mir::UnwindAction::Unreachable,
             &[],
             false,
+            None,
         );
         assert_eq!(merging_succ, MergingSucc::False);
     }
@@ -752,6 +768,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     unwind,
                     &[],
                     mergeable_succ,
+                    None,
                 )
             } else {
                 // a NOP
@@ -1107,6 +1124,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             unwind,
             &copied_constant_arguments,
             mergeable_succ,
+            instance,
         )
     }
 
@@ -1667,7 +1685,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         let (fn_abi, fn_ptr) = common::build_langcall(&bx, None, reason.lang_item());
         let fn_ty = bx.fn_decl_backend_type(fn_abi);
 
-        let llret = bx.call(fn_ty, None, Some(fn_abi), fn_ptr, &[], funclet.as_ref());
+        let llret = bx.call(fn_ty, None, Some(fn_abi), fn_ptr, &[], funclet.as_ref(), None);
         bx.apply_attrs_to_cleanup_callsite(llret);
 
         bx.unreachable();

@@ -462,27 +462,34 @@ pub fn maybe_create_entry_wrapper<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
         let ptr_ty = cx.type_ptr();
         let (arg_argc, arg_argv) = get_argc_argv(cx, &mut bx);
 
-        let (start_fn, start_ty, args) = if let EntryFnType::Main { sigpipe } = entry_type {
+        let (start_fn, start_ty, args, instance) = if let EntryFnType::Main { sigpipe } = entry_type
+        {
             let start_def_id = cx.tcx().require_lang_item(LangItem::Start, None);
-            let start_fn = cx.get_fn_addr(ty::Instance::expect_resolve(
+            let start_instance = ty::Instance::expect_resolve(
                 cx.tcx(),
                 ty::ParamEnv::reveal_all(),
                 start_def_id,
                 cx.tcx().mk_args(&[main_ret_ty.into()]),
-            ));
+            );
+            let start_fn = cx.get_fn_addr(start_instance);
 
             let i8_ty = cx.type_i8();
             let arg_sigpipe = bx.const_u8(sigpipe);
 
             let start_ty = cx.type_func(&[cx.val_ty(rust_main), isize_ty, ptr_ty, i8_ty], isize_ty);
-            (start_fn, start_ty, vec![rust_main, arg_argc, arg_argv, arg_sigpipe])
+            (
+                start_fn,
+                start_ty,
+                vec![rust_main, arg_argc, arg_argv, arg_sigpipe],
+                Some(start_instance),
+            )
         } else {
             debug!("using user-defined start fn");
             let start_ty = cx.type_func(&[isize_ty, ptr_ty], isize_ty);
-            (rust_main, start_ty, vec![arg_argc, arg_argv])
+            (rust_main, start_ty, vec![arg_argc, arg_argv], None)
         };
 
-        let result = bx.call(start_ty, None, None, start_fn, &args, None);
+        let result = bx.call(start_ty, None, None, start_fn, &args, None, instance);
         if cx.sess().target.os.contains("uefi") {
             bx.ret(result);
         } else {

@@ -69,7 +69,15 @@ pub fn size_and_align_of_dst<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
             // (But we are in good company, this code is duplicated plenty of times.)
             let fn_ty = bx.fn_decl_backend_type(fn_abi);
 
-            bx.call(fn_ty, /* fn_attrs */ None, Some(fn_abi), llfn, &[msg.0, msg.1], None);
+            bx.call(
+                fn_ty,
+                /* fn_attrs */ None,
+                Some(fn_abi),
+                llfn,
+                &[msg.0, msg.1],
+                None,
+                None,
+            );
 
             // This function does not return so we can now return whatever we want.
             let size = bx.const_usize(layout.size.bytes());
