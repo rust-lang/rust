@@ -153,7 +153,7 @@ where
 #[lang = "async_drop_slice"]
 struct Slice<T> {
     left_slice: ptr::NonNull<[T]>,
-    elem_dtor: Option<AsyncDropInPlace<T>>,
+    elem_dtor: Option<<T as AsyncDestruct>::AsyncDestructor>,
     _pinned: PhantomPinned,
 }
 
@@ -194,7 +194,7 @@ impl<T> Future for Slice<T> {
             this.left_slice = ptr::NonNull::slice_from_raw_parts(new_ptr, new_len);
             // SAFETY: cur_ptr points to some element of our slice
             //   because slice wasn't empty.
-            this.elem_dtor = Some(unsafe { async_drop_in_place(cur_ptr.as_ptr()) });
+            this.elem_dtor = Some(unsafe { async_drop_in_place_raw(cur_ptr.as_ptr()) });
         }
     }
 }
@@ -204,7 +204,7 @@ impl<T> Future for Slice<T> {
 #[lang = "deferred_async_drop"]
 enum DeferredAsyncDrop<T> {
     Init { ptr: ptr::NonNull<T>, _pinned: PhantomPinned },
-    Running { dtor: AsyncDropInPlace<T> },
+    Running { dtor: <T as AsyncDestruct>::AsyncDestructor },
 }
 
 impl<T> Future for DeferredAsyncDrop<T> {
@@ -216,7 +216,7 @@ impl<T> Future for DeferredAsyncDrop<T> {
         if let DeferredAsyncDrop::Init { ptr, _pinned: _ } = *this {
             // SAFETY: Guaranteed to be safe by [`deferred_async_drop`]'s
             //   safety requirements
-            let dtor = unsafe { async_drop_in_place(ptr.as_ptr()) };
+            let dtor = unsafe { async_drop_in_place_raw(ptr.as_ptr()) };
             *this = DeferredAsyncDrop::Running { dtor };
         }
 
