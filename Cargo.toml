@@ -65,6 +65,14 @@ exclude = [
   "library/stdarch",
 ]
 
+# Building these core crates with 1 CGU makes them a lot smaller.
+[profile.release.package.core]
+codegen-units = 1
+[profile.release.package.alloc]
+codegen-units = 1
+[profile.release.package.std]
+codegen-units = 1
+
 [profile.release.package.compiler_builtins]
 # The compiler-builtins crate cannot reference libcore, and its own CI will
 # verify that this is the case. This requires, however, that the crate is built
