@@ -340,7 +340,7 @@ pub(crate) fn parse_with_map(
     }
 }
 /// This is just to ensure the types of smart_macro_arg and macro_arg are the same
-type MacroArgResult = (Arc<tt::Subtree>, SyntaxFixupUndoInfo, Span) ;
+type MacroArgResult = (Arc<tt::Subtree>, SyntaxFixupUndoInfo, Span);
 /// Imagine the word smart in quotes.
 ///
 /// This resolves the [MacroCallId] to check if it is a derive macro if so get the [macro_arg] for the derive.
@@ -553,8 +553,7 @@ fn macro_expand(
     let (ExpandResult { value: tt, err }, span) = match loc.def.kind {
         MacroDefKind::ProcMacro(..) => return db.expand_proc_macro(macro_call_id).map(CowArc::Arc),
         _ => {
-            let (macro_arg, undo_info, span) =
-                smart_macro_arg(db, macro_call_id);
+            let (macro_arg, undo_info, span) = smart_macro_arg(db, macro_call_id);
 
             let arg = &*macro_arg;
             let res =

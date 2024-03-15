@@ -17,8 +17,6 @@ use crate::macro_call_as_call_id_with_eager;
 use crate::nameres::mod_resolution::ModDir;
 
 use crate::item_tree::ItemTree;
-use base_db::{CrateId, Dependency, FileId};
-use cfg::{CfgExpr, CfgOptions};
 
 use crate::item_tree::TreeId;
 
