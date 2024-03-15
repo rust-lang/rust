@@ -798,7 +798,6 @@ pub struct MacroRules {
     /// The name of the declared macro.
     pub name: Name,
     pub ast_id: FileAstId<ast::MacroRules>,
-    pub def_site: Span,
 }
 
 /// "Macros 2.0" macro definition.
@@ -807,7 +806,6 @@ pub struct Macro2 {
     pub name: Name,
     pub visibility: RawVisibilityId,
     pub ast_id: FileAstId<ast::MacroDef>,
-    pub def_site: Span,
 }
 
 impl Use {

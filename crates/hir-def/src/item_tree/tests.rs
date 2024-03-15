@@ -272,10 +272,10 @@ pub macro m2() {}
 m!();
         "#,
         expect![[r#"
-            // AstId: 1, Span: 0:1@13..14#0
+            // AstId: 1
             macro_rules! m { ... }
 
-            // AstId: 2, Span: 0:2@10..12#0
+            // AstId: 2
             pub macro m2 { ... }
 
             // AstId: 3, Span: 0:3@0..1#0, ExpandTo: Items
