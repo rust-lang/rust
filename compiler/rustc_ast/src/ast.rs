@@ -2961,6 +2961,7 @@ impl Item {
             | ItemKind::GlobalAsm(_)
             | ItemKind::MacCall(_)
             | ItemKind::Delegation(_)
+            | ItemKind::DelegationMac(_)
             | ItemKind::MacroDef(_) => None,
             ItemKind::Static(_) => None,
             ItemKind::Const(i) => Some(&i.generics),
@@ -3123,8 +3124,16 @@ pub struct Delegation {
     /// Path resolution id.
     pub id: NodeId,
     pub qself: Option<P<QSelf>>,
-    pub rename: Option<Ident>,
     pub path: Path,
+    pub rename: Option<Ident>,
+    pub body: Option<P<Block>>,
+}
+
+#[derive(Clone, Encodable, Decodable, Debug)]
+pub struct DelegationMac {
+    pub qself: Option<P<QSelf>>,
+    pub prefix: Path,
+    pub suffixes: ThinVec<(Ident, Option<Ident>)>,
     pub body: Option<P<Block>>,
 }
 
@@ -3243,10 +3252,13 @@ pub enum ItemKind {
     /// A macro definition.
     MacroDef(MacroDef),
 
-    /// A delegation item (`reuse`).
+    /// A single delegation item (`reuse`).
     ///
     /// E.g. `reuse <Type as Trait>::name { target_expr_template }`.
     Delegation(Box<Delegation>),
+    /// A list delegation item (`reuse prefix::{a, b, c}`).
+    /// Treated similarly to a macro call and expanded early.
+    DelegationMac(Box<DelegationMac>),
 }
 
 impl ItemKind {
@@ -3255,7 +3267,7 @@ impl ItemKind {
         match self {
             Use(..) | Static(..) | Const(..) | Fn(..) | Mod(..) | GlobalAsm(..) | TyAlias(..)
             | Struct(..) | Union(..) | Trait(..) | TraitAlias(..) | MacroDef(..)
-            | Delegation(..) => "a",
+            | Delegation(..) | DelegationMac(..) => "a",
             ExternCrate(..) | ForeignMod(..) | MacCall(..) | Enum(..) | Impl { .. } => "an",
         }
     }
@@ -3280,6 +3292,7 @@ impl ItemKind {
             ItemKind::MacroDef(..) => "macro definition",
             ItemKind::Impl { .. } => "implementation",
             ItemKind::Delegation(..) => "delegated function",
+            ItemKind::DelegationMac(..) => "delegation",
         }
     }
 
@@ -3323,6 +3336,8 @@ pub enum AssocItemKind {
     MacCall(P<MacCall>),
     /// An associated delegation item.
     Delegation(Box<Delegation>),
+    /// An associated delegation item list.
+    DelegationMac(Box<DelegationMac>),
 }
 
 impl AssocItemKind {
@@ -3331,7 +3346,9 @@ impl AssocItemKind {
             Self::Const(box ConstItem { defaultness, .. })
             | Self::Fn(box Fn { defaultness, .. })
             | Self::Type(box TyAlias { defaultness, .. }) => defaultness,
-            Self::MacCall(..) | Self::Delegation(..) => Defaultness::Final,
+            Self::MacCall(..) | Self::Delegation(..) | Self::DelegationMac(..) => {
+                Defaultness::Final
+            }
         }
     }
 }
@@ -3344,6 +3361,7 @@ impl From<AssocItemKind> for ItemKind {
             AssocItemKind::Type(ty_alias_kind) => ItemKind::TyAlias(ty_alias_kind),
             AssocItemKind::MacCall(a) => ItemKind::MacCall(a),
             AssocItemKind::Delegation(delegation) => ItemKind::Delegation(delegation),
+            AssocItemKind::DelegationMac(delegation) => ItemKind::DelegationMac(delegation),
         }
     }
 }
@@ -3358,6 +3376,7 @@ impl TryFrom<ItemKind> for AssocItemKind {
             ItemKind::TyAlias(ty_kind) => AssocItemKind::Type(ty_kind),
             ItemKind::MacCall(a) => AssocItemKind::MacCall(a),
             ItemKind::Delegation(d) => AssocItemKind::Delegation(d),
+            ItemKind::DelegationMac(d) => AssocItemKind::DelegationMac(d),
             _ => return Err(item_kind),
         })
     }

@@ -1170,6 +1170,19 @@ impl NoopVisitItemKind for ItemKind {
                     vis.visit_block(body);
                 }
             }
+            ItemKind::DelegationMac(box DelegationMac { qself, prefix, suffixes, body }) => {
+                vis.visit_qself(qself);
+                vis.visit_path(prefix);
+                for (ident, rename) in suffixes {
+                    vis.visit_ident(ident);
+                    if let Some(rename) = rename {
+                        vis.visit_ident(rename);
+                    }
+                }
+                if let Some(body) = body {
+                    vis.visit_block(body);
+                }
+            }
         }
     }
 }
@@ -1208,6 +1221,19 @@ impl NoopVisitItemKind for AssocItemKind {
                 visitor.visit_path(path);
                 if let Some(rename) = rename {
                     visitor.visit_ident(rename);
+                }
+                if let Some(body) = body {
+                    visitor.visit_block(body);
+                }
+            }
+            AssocItemKind::DelegationMac(box DelegationMac { qself, prefix, suffixes, body }) => {
+                visitor.visit_qself(qself);
+                visitor.visit_path(prefix);
+                for (ident, rename) in suffixes {
+                    visitor.visit_ident(ident);
+                    if let Some(rename) = rename {
+                        visitor.visit_ident(rename);
+                    }
                 }
                 if let Some(body) = body {
                     visitor.visit_block(body);

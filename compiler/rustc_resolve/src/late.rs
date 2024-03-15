@@ -2561,7 +2561,9 @@ impl<'a: 'ast, 'b, 'ast, 'tcx> LateResolutionVisitor<'a, 'b, 'ast, 'tcx> {
 
             ItemKind::ExternCrate(..) => {}
 
-            ItemKind::MacCall(_) => panic!("unexpanded macro in resolve!"),
+            ItemKind::MacCall(_) | ItemKind::DelegationMac(..) => {
+                panic!("unexpanded macro in resolve!")
+            }
         }
     }
 
@@ -2849,7 +2851,7 @@ impl<'a: 'ast, 'b, 'ast, 'tcx> LateResolutionVisitor<'a, 'b, 'ast, 'tcx> {
                     .with_lifetime_rib(LifetimeRibKind::AnonymousReportError, |this| {
                         walk_assoc_item(this, generics, LifetimeBinderKind::Item, item)
                     }),
-                AssocItemKind::MacCall(_) => {
+                AssocItemKind::MacCall(_) | AssocItemKind::DelegationMac(..) => {
                     panic!("unexpanded macro in resolve!")
                 }
             };
@@ -3116,7 +3118,7 @@ impl<'a: 'ast, 'b, 'ast, 'tcx> LateResolutionVisitor<'a, 'b, 'ast, 'tcx> {
                     },
                 );
             }
-            AssocItemKind::MacCall(_) => {
+            AssocItemKind::MacCall(_) | AssocItemKind::DelegationMac(..) => {
                 panic!("unexpanded macro in resolve!")
             }
         }
@@ -3218,7 +3220,9 @@ impl<'a: 'ast, 'b, 'ast, 'tcx> LateResolutionVisitor<'a, 'b, 'ast, 'tcx> {
             AssocItemKind::Fn(..) => (E0324, "method"),
             AssocItemKind::Type(..) => (E0325, "type"),
             AssocItemKind::Delegation(..) => (E0324, "method"),
-            AssocItemKind::MacCall(..) => span_bug!(span, "unexpanded macro"),
+            AssocItemKind::MacCall(..) | AssocItemKind::DelegationMac(..) => {
+                span_bug!(span, "unexpanded macro")
+            }
         };
         let trait_path = path_names_to_string(path);
         self.report_error(
@@ -4790,7 +4794,8 @@ impl<'ast> Visitor<'ast> for ItemInfoCollector<'_, '_, '_> {
             | ItemKind::ExternCrate(..)
             | ItemKind::MacroDef(..)
             | ItemKind::GlobalAsm(..)
-            | ItemKind::MacCall(..) => {}
+            | ItemKind::MacCall(..)
+            | ItemKind::DelegationMac(..) => {}
             ItemKind::Delegation(..) => {
                 // Delegated functions have lifetimes, their count is not necessarily zero.
                 // But skipping the delegation items here doesn't mean that the count will be considered zero,

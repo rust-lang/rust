@@ -403,6 +403,19 @@ impl WalkItemKind for ItemKind {
                 visit_opt!(visitor, visit_ident, *rename);
                 visit_opt!(visitor, visit_block, body);
             }
+            ItemKind::DelegationMac(box DelegationMac { qself, prefix, suffixes, body }) => {
+                if let Some(qself) = qself {
+                    try_visit!(visitor.visit_ty(&qself.ty));
+                }
+                try_visit!(visitor.visit_path(prefix, item.id));
+                for (ident, rename) in suffixes {
+                    visitor.visit_ident(*ident);
+                    if let Some(rename) = rename {
+                        visitor.visit_ident(*rename);
+                    }
+                }
+                visit_opt!(visitor, visit_block, body);
+            }
         }
         V::Result::output()
     }
@@ -813,6 +826,19 @@ impl WalkItemKind for AssocItemKind {
                 }
                 try_visit!(visitor.visit_path(path, *id));
                 visit_opt!(visitor, visit_ident, *rename);
+                visit_opt!(visitor, visit_block, body);
+            }
+            AssocItemKind::DelegationMac(box DelegationMac { qself, prefix, suffixes, body }) => {
+                if let Some(qself) = qself {
+                    try_visit!(visitor.visit_ty(&qself.ty));
+                }
+                try_visit!(visitor.visit_path(prefix, item.id));
+                for (ident, rename) in suffixes {
+                    visitor.visit_ident(*ident);
+                    if let Some(rename) = rename {
+                        visitor.visit_ident(*rename);
+                    }
+                }
                 visit_opt!(visitor, visit_block, body);
             }
         }
