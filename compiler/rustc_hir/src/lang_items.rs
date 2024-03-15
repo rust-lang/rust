@@ -178,6 +178,8 @@ language_item_table! {
     AsyncDropFuseCtor,       sym::async_drop_fuse_ctor, async_drop_fuse_fn,        Target::Fn,             GenericRequirement::Exact(1);
     IntoAsyncDestructor,     sym::into_async_destructor, into_async_destructor_type, Target::Struct,       GenericRequirement::Exact(1);
     IntoAsyncDestructorCtor, sym::into_async_destructor_ctor, into_async_destructor_fn, Target::Fn,        GenericRequirement::Exact(1);
+    AsyncDropEither,         sym::async_drop_either,   async_drop_either_type,     Target::Enum,           GenericRequirement::Exact(3);
+    AsyncDropEitherCtor,     sym::async_drop_either_ctor, async_drop_either_fn,    Target::Fn,             GenericRequirement::Exact(3);
 
     CoerceUnsized,           sym::coerce_unsized,      coerce_unsized_trait,       Target::Trait,          GenericRequirement::Minimum(1);
     DispatchFromDyn,         sym::dispatch_from_dyn,   dispatch_from_dyn_trait,    Target::Trait,          GenericRequirement::Minimum(1);

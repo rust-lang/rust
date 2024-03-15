@@ -427,6 +427,8 @@ symbols! {
         async_drop,
         async_drop_chain,
         async_drop_chain_ctor,
+        async_drop_either,
+        async_drop_either_ctor,
         async_drop_fuse,
         async_drop_fuse_ctor,
         async_drop_in_place,

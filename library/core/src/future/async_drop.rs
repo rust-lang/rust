@@ -2,7 +2,8 @@
 
 use crate::fmt;
 use crate::future::{Future, IntoFuture};
-use crate::marker::PhantomPinned;
+use crate::intrinsics::discriminant_value;
+use crate::marker::{DiscriminantKind, PhantomPinned};
 use crate::mem::MaybeUninit;
 use crate::pin::Pin;
 use crate::ptr;
@@ -292,6 +293,79 @@ impl<T: ?Sized> IntoFuture for IntoAsyncDestructor<T> {
     fn into_future(self) -> Self::IntoFuture {
         // SAFETY: same safety requirements as `async_drop_in_place`
         unsafe { async_drop_in_place_raw(self.0.as_ptr()) }
+    }
+}
+
+/// If `T`'s discriminant is equal to the stored one then asynchronously
+/// destructs `T` otherwise awaits the `F` future.
+#[lang = "async_drop_either"]
+enum Either<T, F: IntoFuture, G: IntoFuture> {
+    Unresumed {
+        this_enum: ptr::NonNull<T>,
+        discr: <T as DiscriminantKind>::Discriminant,
+        matched: F,
+        other: G,
+        _pinned: PhantomPinned,
+    },
+    Matched(F::IntoFuture),
+    Other(G::IntoFuture),
+}
+
+/// Construct async drop either
+///
+/// # Safety
+///
+/// `last` will be passed into `async_drop_in_place`
+#[lang = "async_drop_either_ctor"]
+unsafe fn either<T, F: IntoFuture, G: IntoFuture>(
+    this: *mut T,
+    discr: <T as DiscriminantKind>::Discriminant,
+    matched: F,
+    other: G,
+) -> Either<T, F, G> {
+    // SAFETY: Guaranteed by the safety section of this funtion's documentation
+    Either::Unresumed {
+        this_enum: unsafe { ptr::NonNull::new_unchecked(this) },
+        discr,
+        matched,
+        other,
+        _pinned: PhantomPinned,
+    }
+}
+
+impl<T, F, G> Future for Either<T, F, G>
+where
+    // Copy there so that we don't need to wrap `F` and `G` with `Option`
+    // to move from it
+    F: IntoFuture<Output = ()> + Copy,
+    G: IntoFuture<Output = ()> + Copy,
+{
+    type Output = ();
+
+    fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<()> {
+        // SAFETY: We do not move any possibly immovable object from self
+        let this = unsafe { self.get_unchecked_mut() };
+        loop {
+            match this {
+                Either::Unresumed { this_enum, discr, matched, other, _pinned: _ } => {
+                    // SAFETY: simple pin projection + it's fine to create
+                    //   immutable references from pinned mutable references.
+                    if discriminant_value(unsafe { this_enum.as_ref() }) == *discr {
+                        *this = Either::Matched(matched.into_future())
+                    } else {
+                        *this = Either::Other(other.into_future())
+                    }
+                }
+                Either::Matched(fut) => {
+                    // SAFETY: simple pin projection
+                    return unsafe { Pin::new_unchecked(fut) }.poll(cx);
+                }
+                Either::Other(fut) => {
+                    // SAFETY: simple pin projection
+                    return unsafe { Pin::new_unchecked(fut) }.poll(cx);
+                }
+            }
+        }
     }
 }
 
