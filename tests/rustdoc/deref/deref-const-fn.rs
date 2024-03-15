@@ -26,7 +26,7 @@ pub struct Foo {
 
 // @has 'foo/struct.Foo.html'
 // @has - '//*[@id="method.len"]' 'pub fn len(&self) -> usize'
-// @!has - '//*[@id="method.len"]//span[@class="since"]' '1.0.0'
+// @has - '//*[@id="method.len"]//span[@class="since"]' '1.0.0'
 // @!has - '//*[@id="method.len"]//span[@class="since"]' '(const: 1.0.0)'
 #[stable(feature = "rust1", since = "1.0.0")]
 impl std::ops::Deref for Foo {

@@ -1020,32 +1020,20 @@ fn assoc_method(
 /// consequence of the above rules.
 fn render_stability_since_raw_with_extra(
     w: &mut Buffer,
-    ver: Option<StableSince>,
+    stable_version: Option<StableSince>,
     const_stability: Option<ConstStability>,
-    containing_ver: Option<StableSince>,
-    containing_const_ver: Option<StableSince>,
     extra_class: &str,
 ) -> bool {
-    let stable_version = if ver != containing_ver
-        && let Some(ver) = &ver
-    {
-        since_to_string(ver)
-    } else {
-        None
-    };
-
     let mut title = String::new();
     let mut stability = String::new();
 
-    if let Some(ver) = stable_version {
-        stability.push_str(ver.as_str());
-        title.push_str(&format!("Stable since Rust version {ver}"));
+    if let Some(version) = stable_version.and_then(|version| since_to_string(&version)) {
+        stability.push_str(&version);
+        title.push_str(&format!("Stable since Rust version {version}"));
     }
 
     let const_title_and_stability = match const_stability {
-        Some(ConstStability { level: StabilityLevel::Stable { since, .. }, .. })
-            if Some(since) != containing_const_ver =>
-        {
+        Some(ConstStability { level: StabilityLevel::Stable { since, .. }, .. }) => {
             since_to_string(&since)
                 .map(|since| (format!("const since {since}"), format!("const: {since}")))
         }
@@ -1100,17 +1088,8 @@ fn render_stability_since_raw(
     w: &mut Buffer,
     ver: Option<StableSince>,
     const_stability: Option<ConstStability>,
-    containing_ver: Option<StableSince>,
-    containing_const_ver: Option<StableSince>,
 ) -> bool {
-    render_stability_since_raw_with_extra(
-        w,
-        ver,
-        const_stability,
-        containing_ver,
-        containing_const_ver,
-        "",
-    )
+    render_stability_since_raw_with_extra(w, ver, const_stability, "")
 }
 
 fn render_assoc_item(
@@ -1609,7 +1588,6 @@ fn render_impl(
         cx: &mut Context<'_>,
         item: &clean::Item,
         parent: &clean::Item,
-        containing_item: &clean::Item,
         link: AssocItemLink<'_>,
         render_mode: RenderMode,
         is_default_item: bool,
@@ -1704,7 +1682,7 @@ fn render_impl(
                         })
                         .map(|item| format!("{}.{name}", item.type_()));
                     write!(w, "<section id=\"{id}\" class=\"{item_type}{in_trait_class}\">");
-                    render_rightside(w, cx, item, containing_item, render_mode);
+                    render_rightside(w, cx, item, render_mode);
                     if trait_.is_some() {
                         // Anchors are only used on trait impls.
                         write!(w, "<a href=\"#{id}\" class=\"anchor\">§</a>");
@@ -1726,7 +1704,7 @@ fn render_impl(
                 let source_id = format!("{item_type}.{name}");
                 let id = cx.derive_id(&source_id);
                 write!(w, "<section id=\"{id}\" class=\"{item_type}{in_trait_class}\">");
-                render_rightside(w, cx, item, containing_item, render_mode);
+                render_rightside(w, cx, item, render_mode);
                 if trait_.is_some() {
                     // Anchors are only used on trait impls.
                     write!(w, "<a href=\"#{id}\" class=\"anchor\">§</a>");
@@ -1812,7 +1790,6 @@ fn render_impl(
             cx,
             trait_item,
             if trait_.is_some() { &i.impl_item } else { parent },
-            parent,
             link,
             render_mode,
             false,
@@ -1828,7 +1805,6 @@ fn render_impl(
         t: &clean::Trait,
         i: &clean::Impl,
         parent: &clean::Item,
-        containing_item: &clean::Item,
         render_mode: RenderMode,
         rendering_params: ImplRenderingParameters,
     ) {
@@ -1856,7 +1832,6 @@ fn render_impl(
                 cx,
                 trait_item,
                 parent,
-                containing_item,
                 assoc_link,
                 render_mode,
                 true,
@@ -1879,7 +1854,6 @@ fn render_impl(
                 t,
                 i.inner_impl(),
                 &i.impl_item,
-                parent,
                 render_mode,
                 rendering_params,
             );
@@ -1900,7 +1874,6 @@ fn render_impl(
             w,
             cx,
             i,
-            parent,
             parent,
             rendering_params.show_def_docs,
             use_absolute,
@@ -1949,20 +1922,14 @@ fn render_impl(
 
 // Render the items that appear on the right side of methods, impls, and
 // associated types. For example "1.0.0 (const: 1.39.0) · source".
-fn render_rightside(
-    w: &mut Buffer,
-    cx: &Context<'_>,
-    item: &clean::Item,
-    containing_item: &clean::Item,
-    render_mode: RenderMode,
-) {
+fn render_rightside(w: &mut Buffer, cx: &Context<'_>, item: &clean::Item, render_mode: RenderMode) {
     let tcx = cx.tcx();
 
     // FIXME: Once https://github.com/rust-lang/rust/issues/67792 is implemented, we can remove
     // this condition.
-    let (const_stability, const_stable_since) = match render_mode {
-        RenderMode::Normal => (item.const_stability(tcx), containing_item.const_stable_since(tcx)),
-        RenderMode::ForDeref { .. } => (None, None),
+    let const_stability = match render_mode {
+        RenderMode::Normal => item.const_stability(tcx),
+        RenderMode::ForDeref { .. } => None,
     };
     let src_href = cx.src_href(item);
     let has_src_ref = src_href.is_some();
@@ -1972,8 +1939,6 @@ fn render_rightside(
         &mut rightside,
         item.stable_since(tcx),
         const_stability,
-        containing_item.stable_since(tcx),
-        const_stable_since,
         if has_src_ref { "" } else { " rightside" },
     );
     if let Some(link) = src_href {
@@ -1995,7 +1960,6 @@ pub(crate) fn render_impl_summary(
     cx: &mut Context<'_>,
     i: &Impl,
     parent: &clean::Item,
-    containing_item: &clean::Item,
     show_def_docs: bool,
     use_absolute: Option<bool>,
     // This argument is used to reference same type with different paths to avoid duplication
@@ -2010,7 +1974,7 @@ pub(crate) fn render_impl_summary(
         format!(" data-aliases=\"{}\"", aliases.join(","))
     };
     write!(w, "<section id=\"{id}\" class=\"impl\"{aliases}>");
-    render_rightside(w, cx, &i.impl_item, containing_item, RenderMode::Normal);
+    render_rightside(w, cx, &i.impl_item, RenderMode::Normal);
     write!(
         w,
         "<a href=\"#{id}\" class=\"anchor\">§</a>\
