@@ -4,8 +4,22 @@ use rustc_data_structures::{
     graph::{iterate::DepthFirstSearch, vec_graph::VecGraph},
     unord::{UnordBag, UnordMap, UnordSet},
 };
+use rustc_hir::def_id::CRATE_DEF_ID;
 use rustc_infer::infer::{DefineOpaqueTypes, InferOk};
 use rustc_middle::ty::{self, Ty};
+use rustc_span::sym;
+
+enum DivergingFallbackBehavior {
+    /// Always fallback to `()` (aka "always spontaneous decay")
+    FallbackToUnit,
+    /// Sometimes fallback to `!`, but mainly fallback to `()` so that most of the crates are not broken.
+    FallbackToNiko,
+    /// Always fallback to `!` (which should be equivalent to never falling back + not making
+    /// never-to-any coercions unless necessary)
+    FallbackToNever,
+    /// Don't fallback at all
+    NoFallback,
+}
 
 impl<'tcx> FnCtxt<'_, 'tcx> {
     /// Performs type inference fallback, setting `FnCtxt::fallback_has_occurred`
@@ -64,7 +78,9 @@ impl<'tcx> FnCtxt<'_, 'tcx> {
             return false;
         }
 
-        let diverging_fallback = self.calculate_diverging_fallback(&unresolved_variables);
+        let diverging_behavior = self.diverging_fallback_behavior();
+        let diverging_fallback =
+            self.calculate_diverging_fallback(&unresolved_variables, diverging_behavior);
 
         // We do fallback in two passes, to try to generate
         // better error messages.
@@ -76,6 +92,32 @@ impl<'tcx> FnCtxt<'_, 'tcx> {
         }
 
         fallback_occurred
+    }
+
+    fn diverging_fallback_behavior(&self) -> DivergingFallbackBehavior {
+        let Some((mode, span)) = self
+            .tcx
+            .get_attr(CRATE_DEF_ID, sym::rustc_never_type_mode)
+            .map(|attr| (attr.value_str().unwrap(), attr.span))
+        else {
+            if self.tcx.features().never_type_fallback {
+                return DivergingFallbackBehavior::FallbackToNiko;
+            }
+
+            return DivergingFallbackBehavior::FallbackToUnit;
+        };
+
+        match mode {
+            sym::fallback_to_unit => DivergingFallbackBehavior::FallbackToUnit,
+            sym::fallback_to_niko => DivergingFallbackBehavior::FallbackToNiko,
+            sym::fallback_to_never => DivergingFallbackBehavior::FallbackToNever,
+            sym::no_fallback => DivergingFallbackBehavior::NoFallback,
+            _ => {
+                self.tcx.dcx().span_err(span, format!("unknown never type mode: `{mode}` (supported: `fallback_to_unit`, `fallback_to_niko`, `fallback_to_never` and `no_fallback`)"));
+
+                DivergingFallbackBehavior::FallbackToUnit
+            }
+        }
     }
 
     fn fallback_effects(&self) -> bool {
@@ -232,6 +274,7 @@ impl<'tcx> FnCtxt<'_, 'tcx> {
     fn calculate_diverging_fallback(
         &self,
         unresolved_variables: &[Ty<'tcx>],
+        behavior: DivergingFallbackBehavior,
     ) -> UnordMap<Ty<'tcx>, Ty<'tcx>> {
         debug!("calculate_diverging_fallback({:?})", unresolved_variables);
 
@@ -345,39 +388,61 @@ impl<'tcx> FnCtxt<'_, 'tcx> {
                 output: infer_var_infos.items().any(|info| info.output),
             };
 
-            if found_infer_var_info.self_in_trait && found_infer_var_info.output {
-                // This case falls back to () to ensure that the code pattern in
-                // tests/ui/never_type/fallback-closure-ret.rs continues to
-                // compile when never_type_fallback is enabled.
-                //
-                // This rule is not readily explainable from first principles,
-                // but is rather intended as a patchwork fix to ensure code
-                // which compiles before the stabilization of never type
-                // fallback continues to work.
-                //
-                // Typically this pattern is encountered in a function taking a
-                // closure as a parameter, where the return type of that closure
-                // (checked by `relationship.output`) is expected to implement
-                // some trait (checked by `relationship.self_in_trait`). This
-                // can come up in non-closure cases too, so we do not limit this
-                // rule to specifically `FnOnce`.
-                //
-                // When the closure's body is something like `panic!()`, the
-                // return type would normally be inferred to `!`. However, it
-                // needs to fall back to `()` in order to still compile, as the
-                // trait is specifically implemented for `()` but not `!`.
-                //
-                // For details on the requirements for these relationships to be
-                // set, see the relationship finding module in
-                // compiler/rustc_trait_selection/src/traits/relationships.rs.
-                debug!("fallback to () - found trait and projection: {:?}", diverging_vid);
-                diverging_fallback.insert(diverging_ty, self.tcx.types.unit);
-            } else if can_reach_non_diverging {
-                debug!("fallback to () - reached non-diverging: {:?}", diverging_vid);
-                diverging_fallback.insert(diverging_ty, self.tcx.types.unit);
-            } else {
-                debug!("fallback to ! - all diverging: {:?}", diverging_vid);
-                diverging_fallback.insert(diverging_ty, Ty::new_diverging_default(self.tcx));
+            use DivergingFallbackBehavior::*;
+            match behavior {
+                FallbackToUnit => {
+                    debug!("fallback to () - legacy: {:?}", diverging_vid);
+                    diverging_fallback.insert(diverging_ty, self.tcx.types.unit);
+                }
+                FallbackToNiko => {
+                    if found_infer_var_info.self_in_trait && found_infer_var_info.output {
+                        // This case falls back to () to ensure that the code pattern in
+                        // tests/ui/never_type/fallback-closure-ret.rs continues to
+                        // compile when never_type_fallback is enabled.
+                        //
+                        // This rule is not readily explainable from first principles,
+                        // but is rather intended as a patchwork fix to ensure code
+                        // which compiles before the stabilization of never type
+                        // fallback continues to work.
+                        //
+                        // Typically this pattern is encountered in a function taking a
+                        // closure as a parameter, where the return type of that closure
+                        // (checked by `relationship.output`) is expected to implement
+                        // some trait (checked by `relationship.self_in_trait`). This
+                        // can come up in non-closure cases too, so we do not limit this
+                        // rule to specifically `FnOnce`.
+                        //
+                        // When the closure's body is something like `panic!()`, the
+                        // return type would normally be inferred to `!`. However, it
+                        // needs to fall back to `()` in order to still compile, as the
+                        // trait is specifically implemented for `()` but not `!`.
+                        //
+                        // For details on the requirements for these relationships to be
+                        // set, see the relationship finding module in
+                        // compiler/rustc_trait_selection/src/traits/relationships.rs.
+                        debug!("fallback to () - found trait and projection: {:?}", diverging_vid);
+                        diverging_fallback.insert(diverging_ty, self.tcx.types.unit);
+                    } else if can_reach_non_diverging {
+                        debug!("fallback to () - reached non-diverging: {:?}", diverging_vid);
+                        diverging_fallback.insert(diverging_ty, self.tcx.types.unit);
+                    } else {
+                        debug!("fallback to ! - all diverging: {:?}", diverging_vid);
+                        diverging_fallback.insert(diverging_ty, self.tcx.types.never);
+                    }
+                }
+                FallbackToNever => {
+                    debug!(
+                        "fallback to ! - `rustc_never_type_mode = \"fallback_to_never\")`: {:?}",
+                        diverging_vid
+                    );
+                    diverging_fallback.insert(diverging_ty, self.tcx.types.never);
+                }
+                NoFallback => {
+                    debug!(
+                        "no fallback - `rustc_never_type_mode = \"no_fallback\"`: {:?}",
+                        diverging_vid
+                    );
+                }
             }
         }
 
