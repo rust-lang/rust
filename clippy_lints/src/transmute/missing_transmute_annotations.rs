@@ -1,10 +1,9 @@
+use clippy_utils::diagnostics::span_lint_and_sugg;
 use rustc_errors::Applicability;
 use rustc_hir::{GenericArg, HirId, Local, Node, Path, TyKind};
 use rustc_lint::LateContext;
 use rustc_middle::lint::in_external_macro;
 use rustc_middle::ty::Ty;
-
-use clippy_utils::diagnostics::span_lint_and_sugg;
 
 use crate::transmute::MISSING_TRANSMUTE_ANNOTATIONS;
 
@@ -27,6 +26,15 @@ fn get_parent_local_binding_ty<'tcx>(cx: &LateContext<'tcx>, expr_hir_id: HirId)
     } else {
         None
     }
+}
+
+fn is_function_block(cx: &LateContext<'_>, expr_hir_id: HirId) -> bool {
+    let def_id = cx.tcx.hir().enclosing_body_owner(expr_hir_id);
+    if let Some(body_id) = cx.tcx.hir().maybe_body_owned_by(def_id) {
+        let body = cx.tcx.hir().body(body_id);
+        return body.value.peel_blocks().hir_id == expr_hir_id;
+    }
+    false
 }
 
 pub(super) fn check<'tcx>(
@@ -54,14 +62,17 @@ pub(super) fn check<'tcx>(
         return false;
     }
     // If it's being set as a local variable value...
-    if let Some(local) = get_parent_local_binding_ty(cx, expr_hir_id)
+    if let Some(local) = get_parent_local_binding_ty(cx, expr_hir_id) {
         // ... which does have type annotations.
-        && let Some(ty) = local.ty
-    {
-        // If this is a `let x: _ =`, we shouldn't lint.
-        if !matches!(ty.kind, TyKind::Infer) {
+        if let Some(ty) = local.ty
+            // If this is a `let x: _ =`, we should lint.
+            && !matches!(ty.kind, TyKind::Infer)
+        {
             return false;
         }
+    // We check if this transmute is not the only element in the function
+    } else if is_function_block(cx, expr_hir_id) {
+        return false;
     }
     span_lint_and_sugg(
         cx,

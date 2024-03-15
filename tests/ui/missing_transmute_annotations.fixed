@@ -9,6 +9,7 @@ extern crate macro_rules;
 macro_rules! local_bad_transmute {
     ($e:expr) => {
         std::mem::transmute::<[u16; 2], i32>($e)
+        //~^ ERROR: transmute used without annotations
     };
 }
 
@@ -17,55 +18,46 @@ fn bar(x: i32) -> i32 {
 }
 
 unsafe fn foo1() -> i32 {
-    std::mem::transmute::<[u16; 2], i32>([1u16, 2u16])
-    //~^ ERROR: transmute used without annotations
+    // Should not warn!
+    std::mem::transmute([1u16, 2u16])
 }
 
-unsafe fn foo2() -> i32 {
-    std::mem::transmute::<[u16; 2], i32>([1u16, 2u16])
-    //~^ ERROR: transmute used without annotations
-}
-
-unsafe fn foo3() -> i32 {
-    std::mem::transmute::<[u16; 2], i32>([1u16, 2u16])
-    //~^ ERROR: transmute used without annotations
-}
-
-unsafe fn foo4() -> i32 {
-    std::mem::transmute::<[u16; 2], i32>([1u16, 2u16])
-    //~^ ERROR: transmute used without annotations
-}
-
-unsafe fn foo5() -> i32 {
-    let x: i32 = bar(std::mem::transmute::<[u16; 2], i32>([1u16, 2u16]));
-    //~^ ERROR: transmute used without annotations
-    bar(std::mem::transmute::<[u16; 2], i32>([1u16, 2u16]))
-    //~^ ERROR: transmute used without annotations
-}
-
-unsafe fn foo6() -> i32 {
-    local_bad_transmute!([1u16, 2u16])
-    //~^ ERROR: transmute used without annotations
-}
-
-unsafe fn foo7() -> i32 {
-    // Should not warn.
-    bad_transmute!([1u16, 2u16])
-}
+// Should not warn!
+const _: i32 = unsafe { std::mem::transmute([1u16, 2u16]) };
 
 #[repr(i32)]
 enum Foo {
     A = 0,
 }
 
-unsafe fn foo8() -> Foo {
-    std::mem::transmute::<i32, Foo>(0i32)
+unsafe fn foo2() -> i32 {
+    let mut i: i32 = 0;
+    i = std::mem::transmute::<[u16; 2], i32>([1u16, 2u16]);
     //~^ ERROR: transmute used without annotations
-}
+    i = std::mem::transmute::<[u16; 2], i32>([1u16, 2u16]);
+    //~^ ERROR: transmute used without annotations
+    i = std::mem::transmute::<[u16; 2], i32>([1u16, 2u16]);
+    //~^ ERROR: transmute used without annotations
+    i = std::mem::transmute::<[u16; 2], i32>([1u16, 2u16]);
+    //~^ ERROR: transmute used without annotations
 
-unsafe fn foo9() -> i32 {
-    std::mem::transmute::<Foo, i32>(Foo::A)
+    let x: i32 = bar(std::mem::transmute::<[u16; 2], i32>([1u16, 2u16]));
     //~^ ERROR: transmute used without annotations
+    bar(std::mem::transmute::<[u16; 2], i32>([1u16, 2u16]));
+    //~^ ERROR: transmute used without annotations
+
+    i = local_bad_transmute!([1u16, 2u16]);
+
+    // Should not warn.
+    i = bad_transmute!([1u16, 2u16]);
+
+    i = std::mem::transmute::<[i16; 2], i32>([0i16, 0i16]);
+    //~^ ERROR: transmute used without annotations
+
+    i = std::mem::transmute::<Foo, i32>(Foo::A);
+    //~^ ERROR: transmute used without annotations
+
+    i
 }
 
 fn main() {
