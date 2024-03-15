@@ -3082,20 +3082,20 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                     }
 
                     rustc_transmute::Reason::DstIsBitIncompatible => {
-                        format!("At least one value of `{src}` isn't a bit-valid value of `{dst}`")
+                        format!("at least one value of `{src}` isn't a bit-valid value of `{dst}`")
                     }
 
                     rustc_transmute::Reason::DstMayHaveSafetyInvariants => {
                         format!("`{dst}` may carry safety invariants")
                     }
                     rustc_transmute::Reason::DstIsTooBig => {
-                        format!("The size of `{src}` is smaller than the size of `{dst}`")
+                        format!("the size of `{src}` is smaller than the size of `{dst}`")
                     }
                     rustc_transmute::Reason::DstRefIsTooBig { src, dst } => {
                         let src_size = src.size;
                         let dst_size = dst.size;
                         format!(
-                            "The referent size of `{src}` ({src_size} bytes) is smaller than that of `{dst}` ({dst_size} bytes)"
+                            "the referent size of `{src}` ({src_size} bytes) is smaller than that of `{dst}` ({dst_size} bytes)"
                         )
                     }
                     rustc_transmute::Reason::SrcSizeOverflow => {
@@ -3113,7 +3113,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                         dst_min_align,
                     } => {
                         format!(
-                            "The minimum alignment of `{src}` ({src_min_align}) should be greater than that of `{dst}` ({dst_min_align})"
+                            "the minimum alignment of `{src}` ({src_min_align}) should be greater than that of `{dst}` ({dst_min_align})"
                         )
                     }
                     rustc_transmute::Reason::DstIsMoreUnique => {

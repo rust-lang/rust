@@ -2,7 +2,7 @@ error[E0277]: `A` cannot be safely transmuted into `B`
   --> $DIR/should_reject_intersecting.rs:35:34
    |
 LL |     assert::is_transmutable::<A, B>();
-   |                                  ^ At least one value of `A` isn't a bit-valid value of `B`
+   |                                  ^ at least one value of `A` isn't a bit-valid value of `B`
    |
 note: required by a bound in `is_transmutable`
   --> $DIR/should_reject_intersecting.rs:13:14
@@ -17,7 +17,7 @@ error[E0277]: `B` cannot be safely transmuted into `A`
   --> $DIR/should_reject_intersecting.rs:36:34
    |
 LL |     assert::is_transmutable::<B, A>();
-   |                                  ^ At least one value of `B` isn't a bit-valid value of `A`
+   |                                  ^ at least one value of `B` isn't a bit-valid value of `A`
    |
 note: required by a bound in `is_transmutable`
   --> $DIR/should_reject_intersecting.rs:13:14
