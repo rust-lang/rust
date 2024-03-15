@@ -18,7 +18,7 @@ use rustc_middle::ty::{
 use rustc_session::impl_lint_pass;
 use rustc_span::symbol::sym;
 use rustc_trait_selection::traits::query::evaluate_obligation::InferCtxtExt as _;
-use rustc_trait_selection::traits::{Obligation, ObligationCause};
+use rustc_trait_selection::traits::{self, Obligation, ObligationCause};
 use std::collections::VecDeque;
 
 declare_clippy_lint! {
@@ -171,6 +171,10 @@ fn needless_borrow_count<'tcx>(
     let sized_trait_def_id = cx.tcx.lang_items().sized_trait();
     let drop_trait_def_id = cx.tcx.lang_items().drop_trait();
 
+    let sized_super_def_ids = sized_trait_def_id.map_or_else(Vec::new, |sized_def_id| {
+        traits::supertrait_def_ids(cx.tcx, sized_def_id).collect()
+    });
+
     let fn_sig = cx.tcx.fn_sig(fn_id).instantiate_identity().skip_binder();
     let predicates = cx.tcx.param_env(fn_id).caller_bounds();
     let projection_predicates = predicates
@@ -203,7 +207,7 @@ fn needless_borrow_count<'tcx>(
         })
         .all(|trait_def_id| {
             Some(trait_def_id) == destruct_trait_def_id
-                || Some(trait_def_id) == sized_trait_def_id
+                || sized_super_def_ids.contains(&trait_def_id)
                 || cx.tcx.is_diagnostic_item(sym::Any, trait_def_id)
         })
     {
