@@ -3073,12 +3073,12 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                 let src = trait_ref.args.type_at(1);
                 let err_msg = format!("`{src}` cannot be safely transmuted into `{dst}`");
                 let safe_transmute_explanation = match reason {
-                    rustc_transmute::Reason::SrcIsUnspecified => {
-                        format!("`{src}` does not have a well-specified layout")
+                    rustc_transmute::Reason::SrcIsNotYetSupported => {
+                        format!("analyzing the transmutability of `{src}` is not yet supported.")
                     }
 
-                    rustc_transmute::Reason::DstIsUnspecified => {
-                        format!("`{dst}` does not have a well-specified layout")
+                    rustc_transmute::Reason::DstIsNotYetSupported => {
+                        format!("analyzing the transmutability of `{dst}` is not yet supported.")
                     }
 
                     rustc_transmute::Reason::DstIsBitIncompatible => {

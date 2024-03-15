@@ -2,7 +2,7 @@ error[E0277]: `should_reject_repr_rust::repr_rust` cannot be safely transmuted i
   --> $DIR/should_require_well_defined_layout.rs:29:48
    |
 LL |     assert::is_maybe_transmutable::<repr_rust, ()>();
-   |                                                ^^ `should_reject_repr_rust::repr_rust` does not have a well-specified layout
+   |                                                ^^ analyzing the transmutability of `should_reject_repr_rust::repr_rust` is not yet supported.
    |
 note: required by a bound in `is_maybe_transmutable`
   --> $DIR/should_require_well_defined_layout.rs:12:14
@@ -24,7 +24,7 @@ error[E0277]: `u128` cannot be safely transmuted into `should_reject_repr_rust::
   --> $DIR/should_require_well_defined_layout.rs:30:43
    |
 LL |     assert::is_maybe_transmutable::<u128, repr_rust>();
-   |                                           ^^^^^^^^^ `should_reject_repr_rust::repr_rust` does not have a well-specified layout
+   |                                           ^^^^^^^^^ analyzing the transmutability of `should_reject_repr_rust::repr_rust` is not yet supported.
    |
 note: required by a bound in `is_maybe_transmutable`
   --> $DIR/should_require_well_defined_layout.rs:12:14
