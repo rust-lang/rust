@@ -12,6 +12,7 @@
 #![feature(proc_macro_internals)]
 #![feature(proc_macro_span)]
 #![feature(try_blocks)]
+#![feature(yeet_expr)]
 #![allow(rustc::diagnostic_outside_of_impl)]
 #![allow(internal_features)]
 
