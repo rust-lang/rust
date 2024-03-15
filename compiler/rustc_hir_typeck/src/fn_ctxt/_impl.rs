@@ -11,12 +11,10 @@ use rustc_hir::def::{CtorOf, DefKind, Res};
 use rustc_hir::def_id::DefId;
 use rustc_hir::lang_items::LangItem;
 use rustc_hir::{ExprKind, GenericArg, Node, QPath};
-use rustc_hir_analysis::astconv::generics::{
-    check_generic_arg_count_for_call, create_args_for_parent_generic_args,
-};
+use rustc_hir_analysis::astconv::generics::{check_generic_arg_count_for_call, lower_generic_args};
 use rustc_hir_analysis::astconv::{
-    AstConv, CreateInstantiationsForGenericArgsCtxt, ExplicitLateBound, GenericArgCountMismatch,
-    GenericArgCountResult, IsMethodCall, PathSeg,
+    ExplicitLateBound, GenericArgCountMismatch, GenericArgCountResult, GenericArgsLowerer,
+    GenericPathSegment, HirTyLowerer, IsMethodCall,
 };
 use rustc_infer::infer::canonical::{Canonical, OriginalQueryValues, QueryResponse};
 use rustc_infer::infer::error_reporting::TypeAnnotationNeeded::E0282;
@@ -394,14 +392,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
     }
 
-    pub fn to_ty(&self, ast_t: &hir::Ty<'tcx>) -> LoweredTy<'tcx> {
-        let t = self.astconv().ast_ty_to_ty(ast_t);
+    pub fn lower_ty(&self, ast_t: &hir::Ty<'tcx>) -> LoweredTy<'tcx> {
+        let t = self.lowerer().lower_ty(ast_t);
         self.register_wf_obligation(t.into(), ast_t.span, traits::WellFormed(None));
         LoweredTy::from_raw(self, ast_t.span, t)
     }
 
-    pub fn to_ty_saving_user_provided_ty(&self, ast_ty: &hir::Ty<'tcx>) -> Ty<'tcx> {
-        let ty = self.to_ty(ast_ty);
+    pub fn lower_ty_saving_user_provided_ty(&self, ast_ty: &hir::Ty<'tcx>) -> Ty<'tcx> {
+        let ty = self.lower_ty(ast_ty);
         debug!("to_ty_saving_user_provided_ty: ty={:?}", ty);
 
         if Self::can_contain_user_lifetime_bounds(ty.raw) {
@@ -424,7 +422,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
     }
 
-    pub fn array_length_to_const(&self, length: &hir::ArrayLen) -> ty::Const<'tcx> {
+    pub fn lower_array_length(&self, length: &hir::ArrayLen) -> ty::Const<'tcx> {
         match length {
             hir::ArrayLen::Infer(inf) => self.ct_infer(self.tcx.types.usize, None, inf.span),
             hir::ArrayLen::Body(anon_const) => {
@@ -436,11 +434,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
     }
 
-    pub fn const_arg_to_const(
-        &self,
-        ast_c: &hir::AnonConst,
-        param_def_id: DefId,
-    ) -> ty::Const<'tcx> {
+    pub fn lower_const_arg(&self, ast_c: &hir::AnonConst, param_def_id: DefId) -> ty::Const<'tcx> {
         let did = ast_c.def_id;
         self.tcx.feed_anon_const_type(did, self.tcx.type_of(param_def_id));
         let c = ty::Const::from_anon_const(self.tcx, did);
@@ -827,7 +821,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             QPath::Resolved(ref opt_qself, path) => {
                 return (
                     path.res,
-                    opt_qself.as_ref().map(|qself| self.to_ty(qself)),
+                    opt_qself.as_ref().map(|qself| self.lower_ty(qself)),
                     path.segments,
                 );
             }
@@ -841,7 +835,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 // to be object-safe.
                 // We manually call `register_wf_obligation` in the success path
                 // below.
-                let ty = self.astconv().ast_ty_to_ty_in_path(qself);
+                let ty = self.lowerer().lower_ty_in_path(qself);
                 (LoweredTy::from_raw(self, span, ty), qself, segment)
             }
             QPath::LangItem(..) => {
@@ -1119,9 +1113,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     ) -> (Ty<'tcx>, Res) {
         let tcx = self.tcx;
 
-        let path_segs = match res {
+        let generic_segments = match res {
             Res::Local(_) | Res::SelfCtor(_) => vec![],
-            Res::Def(kind, def_id) => self.astconv().def_ids_for_value_path_segments(
+            Res::Def(kind, def_id) => self.lowerer().probe_generic_path_segments(
                 segments,
                 self_ty.map(|ty| ty.raw),
                 kind,
@@ -1178,14 +1172,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // provided (if any) into their appropriate spaces. We'll also report
         // errors if type parameters are provided in an inappropriate place.
 
-        let generic_segs: FxHashSet<_> = path_segs.iter().map(|PathSeg(_, index)| index).collect();
-        let generics_has_err = self.astconv().prohibit_generics(
+        let indices: FxHashSet<_> =
+            generic_segments.iter().map(|GenericPathSegment(_, index)| index).collect();
+        let generics_has_err = self.lowerer().prohibit_generic_args(
             segments.iter().enumerate().filter_map(|(index, seg)| {
-                if !generic_segs.contains(&index) || is_alias_variant_ctor {
-                    Some(seg)
-                } else {
-                    None
-                }
+                if !indices.contains(&index) || is_alias_variant_ctor { Some(seg) } else { None }
             }),
             |_| {},
         );
@@ -1212,7 +1203,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let mut infer_args_for_err = FxHashSet::default();
 
         let mut explicit_late_bound = ExplicitLateBound::No;
-        for &PathSeg(def_id, index) in &path_segs {
+        for &GenericPathSegment(def_id, index) in &generic_segments {
             let seg = &segments[index];
             let generics = tcx.generics_of(def_id);
 
@@ -1233,8 +1224,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             }
         }
 
-        let has_self =
-            path_segs.last().is_some_and(|PathSeg(def_id, _)| tcx.generics_of(*def_id).has_self);
+        let has_self = generic_segments
+            .last()
+            .is_some_and(|GenericPathSegment(def_id, _)| tcx.generics_of(*def_id).has_self);
 
         let (res, self_ctor_args) = if let Res::SelfCtor(impl_def_id) = res {
             let ty = LoweredTy::from_raw(
@@ -1294,22 +1286,20 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             },
         };
 
-        struct CreateCtorInstantiationsContext<'a, 'tcx> {
+        struct CtorGenericArgsCtxt<'a, 'tcx> {
             fcx: &'a FnCtxt<'a, 'tcx>,
             span: Span,
-            path_segs: &'a [PathSeg],
+            generic_segments: &'a [GenericPathSegment],
             infer_args_for_err: &'a FxHashSet<usize>,
             segments: &'tcx [hir::PathSegment<'tcx>],
         }
-        impl<'tcx, 'a> CreateInstantiationsForGenericArgsCtxt<'a, 'tcx>
-            for CreateCtorInstantiationsContext<'a, 'tcx>
-        {
+        impl<'tcx, 'a> GenericArgsLowerer<'a, 'tcx> for CtorGenericArgsCtxt<'a, 'tcx> {
             fn args_for_def_id(
                 &mut self,
                 def_id: DefId,
             ) -> (Option<&'a hir::GenericArgs<'tcx>>, bool) {
-                if let Some(&PathSeg(_, index)) =
-                    self.path_segs.iter().find(|&PathSeg(did, _)| *did == def_id)
+                if let Some(&GenericPathSegment(_, index)) =
+                    self.generic_segments.iter().find(|&GenericPathSegment(did, _)| *did == def_id)
                 {
                     // If we've encountered an `impl Trait`-related error, we're just
                     // going to infer the arguments for better error messages.
@@ -1332,13 +1322,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             ) -> ty::GenericArg<'tcx> {
                 match (&param.kind, arg) {
                     (GenericParamDefKind::Lifetime, GenericArg::Lifetime(lt)) => {
-                        self.fcx.astconv().ast_region_to_region(lt, Some(param)).into()
+                        self.fcx.lowerer().lower_lifetime(lt, Some(param)).into()
                     }
                     (GenericParamDefKind::Type { .. }, GenericArg::Type(ty)) => {
-                        self.fcx.to_ty(ty).raw.into()
+                        self.fcx.lower_ty(ty).raw.into()
                     }
                     (GenericParamDefKind::Const { .. }, GenericArg::Const(ct)) => {
-                        self.fcx.const_arg_to_const(&ct.value, param.def_id).into()
+                        self.fcx.lower_const_arg(&ct.value, param.def_id).into()
                     }
                     (GenericParamDefKind::Type { .. }, GenericArg::Infer(inf)) => {
                         self.fcx.ty_infer(Some(param), inf.span).into()
@@ -1420,17 +1410,17 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
 
         let args_raw = self_ctor_args.unwrap_or_else(|| {
-            create_args_for_parent_generic_args(
+            lower_generic_args(
                 tcx,
                 def_id,
                 &[],
                 has_self,
                 self_ty.map(|s| s.raw),
                 &arg_count,
-                &mut CreateCtorInstantiationsContext {
+                &mut CtorGenericArgsCtxt {
                     fcx: self,
                     span,
-                    path_segs: &path_segs,
+                    generic_segments: &generic_segments,
                     infer_args_for_err: &infer_args_for_err,
                     segments,
                 },

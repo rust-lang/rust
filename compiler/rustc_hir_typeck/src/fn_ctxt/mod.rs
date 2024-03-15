@@ -12,7 +12,7 @@ use hir::def_id::CRATE_DEF_ID;
 use rustc_errors::{DiagCtxt, ErrorGuaranteed};
 use rustc_hir as hir;
 use rustc_hir::def_id::{DefId, LocalDefId};
-use rustc_hir_analysis::astconv::AstConv;
+use rustc_hir_analysis::astconv::HirTyLowerer;
 use rustc_infer::infer;
 use rustc_infer::infer::error_reporting::sub_relations::SubRelations;
 use rustc_infer::infer::error_reporting::TypeErrCtxt;
@@ -212,7 +212,7 @@ impl<'a, 'tcx> Deref for FnCtxt<'a, 'tcx> {
     }
 }
 
-impl<'a, 'tcx> AstConv<'tcx> for FnCtxt<'a, 'tcx> {
+impl<'a, 'tcx> HirTyLowerer<'tcx> for FnCtxt<'a, 'tcx> {
     fn tcx<'b>(&'b self) -> TyCtxt<'tcx> {
         self.tcx
     }
@@ -221,7 +221,7 @@ impl<'a, 'tcx> AstConv<'tcx> for FnCtxt<'a, 'tcx> {
         self.body_id.to_def_id()
     }
 
-    fn get_type_parameter_bounds(
+    fn probe_ty_param_bounds(
         &self,
         _: Span,
         def_id: LocalDefId,
@@ -256,7 +256,7 @@ impl<'a, 'tcx> AstConv<'tcx> for FnCtxt<'a, 'tcx> {
         Some(self.next_region_var(v))
     }
 
-    fn allow_ty_infer(&self) -> bool {
+    fn allow_infer(&self) -> bool {
         true
     }
 
@@ -292,7 +292,7 @@ impl<'a, 'tcx> AstConv<'tcx> for FnCtxt<'a, 'tcx> {
         }
     }
 
-    fn projected_ty_from_poly_trait_ref(
+    fn lower_assoc_ty(
         &self,
         span: Span,
         item_def_id: DefId,
@@ -305,7 +305,7 @@ impl<'a, 'tcx> AstConv<'tcx> for FnCtxt<'a, 'tcx> {
             poly_trait_ref,
         );
 
-        let item_args = self.astconv().create_args_for_associated_item(
+        let item_args = self.lowerer().lower_generic_args_of_assoc_item(
             span,
             item_def_id,
             item_segment,

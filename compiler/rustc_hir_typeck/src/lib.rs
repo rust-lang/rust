@@ -57,7 +57,7 @@ use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::intravisit::Visitor;
 use rustc_hir::{HirIdMap, Node};
-use rustc_hir_analysis::astconv::AstConv;
+use rustc_hir_analysis::astconv::HirTyLowerer;
 use rustc_hir_analysis::check::check_abi;
 use rustc_infer::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
 use rustc_infer::traits::{ObligationCauseCode, ObligationInspector, WellFormedLoc};
@@ -178,7 +178,7 @@ fn typeck_with_fallback<'tcx>(
 
     if let Some(hir::FnSig { header, decl, .. }) = fn_sig {
         let fn_sig = if decl.output.get_infer_ret_ty().is_some() {
-            fcx.astconv().ty_of_fn(id, header.unsafety, header.abi, decl, None, None)
+            fcx.lowerer().lower_fn_ty(id, header.unsafety, header.abi, decl, None, None)
         } else {
             tcx.fn_sig(def_id).instantiate_identity()
         };

@@ -1,7 +1,7 @@
 use super::IsMethodCall;
 use crate::astconv::{
-    errors::prohibit_assoc_ty_binding, CreateInstantiationsForGenericArgsCtxt, ExplicitLateBound,
-    GenericArgCountMismatch, GenericArgCountResult, GenericArgPosition,
+    errors::prohibit_assoc_item_binding, ExplicitLateBound, GenericArgCountMismatch,
+    GenericArgCountResult, GenericArgPosition, GenericArgsLowerer,
 };
 use crate::structured_errors::{GenericArgsInfo, StructuredDiag, WrongNumberOfGenericArgs};
 use rustc_ast::ast::ParamKindOrd;
@@ -172,14 +172,14 @@ fn generic_arg_mismatch_err(
 ///   instantiate a `GenericArg`.
 /// - `inferred_kind`: if no parameter was provided, and inference is enabled, then
 ///   creates a suitable inference variable.
-pub fn create_args_for_parent_generic_args<'tcx: 'a, 'a>(
+pub fn lower_generic_args<'tcx: 'a, 'a>(
     tcx: TyCtxt<'tcx>,
     def_id: DefId,
     parent_args: &[ty::GenericArg<'tcx>],
     has_self: bool,
     self_ty: Option<Ty<'tcx>>,
     arg_count: &GenericArgCountResult,
-    ctx: &mut impl CreateInstantiationsForGenericArgsCtxt<'a, 'tcx>,
+    ctx: &mut impl GenericArgsLowerer<'a, 'tcx>,
 ) -> GenericArgsRef<'tcx> {
     // Collect the segments of the path; we need to instantiate arguments
     // for parameters throughout the entire path (wherever there are
@@ -456,7 +456,7 @@ pub(crate) fn check_generic_arg_count(
     if gen_pos != GenericArgPosition::Type
         && let Some(b) = gen_args.bindings.first()
     {
-        prohibit_assoc_ty_binding(tcx, b.span, None);
+        prohibit_assoc_item_binding(tcx, b.span, None);
     }
 
     let explicit_late_bound =

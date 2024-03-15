@@ -4,10 +4,8 @@ use crate::{callee, FnCtxt};
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
 use rustc_hir::GenericArg;
-use rustc_hir_analysis::astconv::generics::{
-    check_generic_arg_count_for_call, create_args_for_parent_generic_args,
-};
-use rustc_hir_analysis::astconv::{AstConv, CreateInstantiationsForGenericArgsCtxt, IsMethodCall};
+use rustc_hir_analysis::astconv::generics::{check_generic_arg_count_for_call, lower_generic_args};
+use rustc_hir_analysis::astconv::{GenericArgsLowerer, HirTyLowerer, IsMethodCall};
 use rustc_infer::infer::{self, DefineOpaqueTypes, InferOk};
 use rustc_middle::traits::{ObligationCauseCode, UnifyReceiverContext};
 use rustc_middle::ty::adjustment::{Adjust, Adjustment, PointerCoercion};
@@ -366,14 +364,12 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
         // combining parameters from the type and those from the method.
         assert_eq!(generics.parent_count, parent_args.len());
 
-        struct MethodInstantiationsCtxt<'a, 'tcx> {
+        struct GenericArgsCtxt<'a, 'tcx> {
             cfcx: &'a ConfirmContext<'a, 'tcx>,
             pick: &'a probe::Pick<'tcx>,
             seg: &'a hir::PathSegment<'tcx>,
         }
-        impl<'a, 'tcx> CreateInstantiationsForGenericArgsCtxt<'a, 'tcx>
-            for MethodInstantiationsCtxt<'a, 'tcx>
-        {
+        impl<'a, 'tcx> GenericArgsLowerer<'a, 'tcx> for GenericArgsCtxt<'a, 'tcx> {
             fn args_for_def_id(
                 &mut self,
                 def_id: DefId,
@@ -393,13 +389,13 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
             ) -> ty::GenericArg<'tcx> {
                 match (&param.kind, arg) {
                     (GenericParamDefKind::Lifetime, GenericArg::Lifetime(lt)) => {
-                        self.cfcx.fcx.astconv().ast_region_to_region(lt, Some(param)).into()
+                        self.cfcx.fcx.lowerer().lower_lifetime(lt, Some(param)).into()
                     }
                     (GenericParamDefKind::Type { .. }, GenericArg::Type(ty)) => {
-                        self.cfcx.to_ty(ty).raw.into()
+                        self.cfcx.lower_ty(ty).raw.into()
                     }
                     (GenericParamDefKind::Const { .. }, GenericArg::Const(ct)) => {
-                        self.cfcx.const_arg_to_const(&ct.value, param.def_id).into()
+                        self.cfcx.lower_const_arg(&ct.value, param.def_id).into()
                     }
                     (GenericParamDefKind::Type { .. }, GenericArg::Infer(inf)) => {
                         self.cfcx.ty_infer(Some(param), inf.span).into()
@@ -432,14 +428,14 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
             }
         }
 
-        let args = create_args_for_parent_generic_args(
+        let args = lower_generic_args(
             self.tcx,
             pick.item.def_id,
             parent_args,
             false,
             None,
             &arg_count_correct,
-            &mut MethodInstantiationsCtxt { cfcx: self, pick, seg },
+            &mut GenericArgsCtxt { cfcx: self, pick, seg },
         );
 
         // When the method is confirmed, the `args` includes

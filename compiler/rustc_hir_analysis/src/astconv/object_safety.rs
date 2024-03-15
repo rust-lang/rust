@@ -11,14 +11,14 @@ use rustc_middle::ty::{self, Ty};
 use rustc_middle::ty::{DynKind, ToPredicate};
 use rustc_span::Span;
 use rustc_trait_selection::traits::error_reporting::report_object_safety_error;
-use rustc_trait_selection::traits::{self, astconv_object_safety_violations};
+use rustc_trait_selection::traits::{self, hir_ty_lowering_object_safety_violations};
 
 use smallvec::{smallvec, SmallVec};
 
-use super::AstConv;
+use super::HirTyLowerer;
 
-impl<'tcx> dyn AstConv<'tcx> + '_ {
-    pub(super) fn conv_object_ty_poly_trait_ref(
+impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
+    pub(super) fn lower_trait_object_ty(
         &self,
         span: Span,
         hir_id: hir::HirId,
@@ -37,7 +37,7 @@ impl<'tcx> dyn AstConv<'tcx> + '_ {
                 correct:
                     Err(GenericArgCountMismatch { invalid_args: cur_potential_assoc_types, .. }),
                 ..
-            } = self.instantiate_poly_trait_ref(
+            } = self.lower_poly_trait_ref(
                 &trait_bound.trait_ref,
                 trait_bound.span,
                 ty::BoundConstness::NotConst,
@@ -133,7 +133,7 @@ impl<'tcx> dyn AstConv<'tcx> + '_ {
         // to avoid ICEs.
         for item in &regular_traits {
             let object_safety_violations =
-                astconv_object_safety_violations(tcx, item.trait_ref().def_id());
+                hir_ty_lowering_object_safety_violations(tcx, item.trait_ref().def_id());
             if !object_safety_violations.is_empty() {
                 let reported = report_object_safety_error(
                     tcx,
@@ -231,7 +231,7 @@ impl<'tcx> dyn AstConv<'tcx> + '_ {
             def_ids.retain(|def_id| !tcx.generics_require_sized_self(def_id));
         }
 
-        self.complain_about_missing_associated_types(
+        self.complain_about_missing_assoc_tys(
             associated_types,
             potential_assoc_types,
             hir_trait_bounds,
@@ -362,11 +362,11 @@ impl<'tcx> dyn AstConv<'tcx> + '_ {
 
         // Use explicitly-specified region bound.
         let region_bound = if !lifetime.is_elided() {
-            self.ast_region_to_region(lifetime, None)
+            self.lower_lifetime(lifetime, None)
         } else {
             self.compute_object_lifetime_bound(span, existential_predicates).unwrap_or_else(|| {
                 if tcx.named_bound_var(lifetime.hir_id).is_some() {
-                    self.ast_region_to_region(lifetime, None)
+                    self.lower_lifetime(lifetime, None)
                 } else {
                     self.re_infer(None, span).unwrap_or_else(|| {
                         let err = struct_span_code_err!(

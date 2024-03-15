@@ -21,7 +21,7 @@ use rustc_hir::{
     CoroutineDesugaring, CoroutineKind, CoroutineSource, Expr, ExprKind, GenericBound, HirId, Node,
     Path, QPath, Stmt, StmtKind, TyKind, WherePredicate,
 };
-use rustc_hir_analysis::astconv::AstConv;
+use rustc_hir_analysis::astconv::HirTyLowerer;
 use rustc_infer::traits::{self};
 use rustc_middle::lint::in_external_macro;
 use rustc_middle::middle::stability::EvalResult;
@@ -877,7 +877,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     // Only point to return type if the expected type is the return type, as if they
                     // are not, the expectation must have been caused by something else.
                     debug!("return type {:?}", hir_ty);
-                    let ty = self.astconv().ast_ty_to_ty(hir_ty);
+                    let ty = self.lowerer().lower_ty(hir_ty);
                     debug!("return type {:?}", ty);
                     debug!("expected type {:?}", expected);
                     let bound_vars = self.tcx.late_bound_vars(hir_ty.hir_id.owner.into());
@@ -958,7 +958,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     ..
                 }) => {
                     // FIXME: Maybe these calls to `ast_ty_to_ty` can be removed (and the ones below)
-                    let ty = self.astconv().ast_ty_to_ty(bounded_ty);
+                    let ty = self.lowerer().lower_ty(bounded_ty);
                     Some((ty, bounds))
                 }
                 _ => None,
@@ -996,7 +996,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let all_bounds_str = all_matching_bounds_strs.join(" + ");
 
         let ty_param_used_in_fn_params = fn_parameters.iter().any(|param| {
-                let ty = self.astconv().ast_ty_to_ty( param);
+                let ty = self.lowerer().lower_ty( param);
                 matches!(ty.kind(), ty::Param(fn_param_ty_param) if expected_ty_as_param == fn_param_ty_param)
             });
 
@@ -1071,7 +1071,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         let can_return = match fn_decl.output {
             hir::FnRetTy::Return(ty) => {
-                let ty = self.astconv().ast_ty_to_ty(ty);
+                let ty = self.lowerer().lower_ty(ty);
                 let bound_vars = self.tcx.late_bound_vars(fn_id);
                 let ty = self
                     .tcx

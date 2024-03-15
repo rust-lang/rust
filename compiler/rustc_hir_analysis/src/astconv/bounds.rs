@@ -12,13 +12,13 @@ use rustc_trait_selection::traits;
 use rustc_type_ir::visit::{TypeSuperVisitable, TypeVisitable, TypeVisitableExt, TypeVisitor};
 use smallvec::SmallVec;
 
-use crate::astconv::{AstConv, OnlySelfBounds, PredicateFilter};
+use crate::astconv::{HirTyLowerer, OnlySelfBounds, PredicateFilter};
 use crate::bounds::Bounds;
 use crate::errors;
 
-impl<'tcx> dyn AstConv<'tcx> + '_ {
+impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
     /// Sets `implicitly_sized` to true on `Bounds` if necessary
-    pub(crate) fn add_implicitly_sized(
+    pub(crate) fn add_sized_bound(
         &self,
         bounds: &mut Bounds<'tcx>,
         self_ty: Ty<'tcx>,
@@ -117,7 +117,7 @@ impl<'tcx> dyn AstConv<'tcx> + '_ {
     /// `param_ty` and `ast_bounds`. See `instantiate_poly_trait_ref`
     /// for more details.
     #[instrument(level = "debug", skip(self, ast_bounds, bounds))]
-    pub(crate) fn add_bounds<'hir, I: Iterator<Item = &'hir hir::GenericBound<'tcx>>>(
+    pub(crate) fn lower_poly_bounds<'hir, I: Iterator<Item = &'hir hir::GenericBound<'tcx>>>(
         &self,
         param_ty: Ty<'tcx>,
         ast_bounds: I,
@@ -145,7 +145,7 @@ impl<'tcx> dyn AstConv<'tcx> + '_ {
                         }
                         hir::TraitBoundModifier::Maybe => continue,
                     };
-                    let _ = self.instantiate_poly_trait_ref(
+                    let _ = self.lower_poly_trait_ref(
                         &poly_trait_ref.trait_ref,
                         poly_trait_ref.span,
                         constness,
@@ -156,7 +156,7 @@ impl<'tcx> dyn AstConv<'tcx> + '_ {
                     );
                 }
                 hir::GenericBound::Outlives(lifetime) => {
-                    let region = self.ast_region_to_region(lifetime, None);
+                    let region = self.lower_lifetime(lifetime, None);
                     bounds.push_region_bound(
                         self.tcx(),
                         ty::Binder::bind_with_vars(
@@ -186,7 +186,7 @@ impl<'tcx> dyn AstConv<'tcx> + '_ {
     /// example above, but is not true in supertrait listings like `trait Foo: Bar + Baz`.
     ///
     /// `span` should be the declaration size of the parameter.
-    pub(crate) fn compute_bounds(
+    pub(crate) fn lower_mono_bounds(
         &self,
         param_ty: Ty<'tcx>,
         ast_bounds: &[hir::GenericBound<'tcx>],
@@ -201,7 +201,7 @@ impl<'tcx> dyn AstConv<'tcx> + '_ {
             PredicateFilter::SelfOnly | PredicateFilter::SelfThatDefines(_) => OnlySelfBounds(true),
         };
 
-        self.add_bounds(
+        self.lower_poly_bounds(
             param_ty,
             ast_bounds.iter().filter(|bound| match filter {
                 PredicateFilter::All
@@ -234,7 +234,7 @@ impl<'tcx> dyn AstConv<'tcx> + '_ {
     /// `trait_ref` here will be `for<'a> T: Iterator`. The `binding` data however is from *inside*
     /// the binder (e.g., `&'a u32`) and hence may reference bound regions.
     #[instrument(level = "debug", skip(self, bounds, dup_bindings, path_span))]
-    pub(super) fn add_predicates_for_ast_type_binding(
+    pub(super) fn lower_assoc_item_binding(
         &self,
         hir_ref_id: hir::HirId,
         trait_ref: ty::PolyTraitRef<'tcx>,
@@ -272,7 +272,7 @@ impl<'tcx> dyn AstConv<'tcx> + '_ {
             ty::AssocKind::Type
         };
 
-        let candidate = if self.trait_defines_associated_item_named(
+        let candidate = if self.probe_trait_that_defines_assoc_item(
             trait_ref.def_id(),
             assoc_kind,
             binding.ident,
@@ -282,7 +282,7 @@ impl<'tcx> dyn AstConv<'tcx> + '_ {
         } else {
             // Otherwise, we have to walk through the supertraits to find
             // one that does define it.
-            self.one_bound_for_assoc_item(
+            self.probe_single_bound_for_assoc_item(
                 || traits::supertraits(tcx, trait_ref),
                 trait_ref.skip_binder().print_only_trait_name(),
                 None,
@@ -417,7 +417,7 @@ impl<'tcx> dyn AstConv<'tcx> + '_ {
                     infer_args: false,
                 };
 
-                let alias_args = self.create_args_for_associated_item(
+                let alias_args = self.lower_generic_args_of_assoc_item(
                     path_span,
                     assoc_item.def_id,
                     &item_segment,
@@ -451,7 +451,7 @@ impl<'tcx> dyn AstConv<'tcx> + '_ {
             }
             hir::TypeBindingKind::Equality { term } => {
                 let term = match term {
-                    hir::Term::Ty(ty) => self.ast_ty_to_ty(ty).into(),
+                    hir::Term::Ty(ty) => self.lower_ty(ty).into(),
                     hir::Term::Const(ct) => ty::Const::from_anon_const(tcx, ct.def_id).into(),
                 };
 
@@ -514,7 +514,7 @@ impl<'tcx> dyn AstConv<'tcx> + '_ {
                 // for the `Self` type.
                 if !only_self_bounds.0 {
                     let param_ty = Ty::new_alias(tcx, ty::Projection, projection_ty.skip_binder());
-                    self.add_bounds(
+                    self.lower_poly_bounds(
                         param_ty,
                         ast_bounds.iter(),
                         bounds,

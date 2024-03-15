@@ -68,7 +68,7 @@ fn diagnostic_hir_wf_check<'tcx>(
             let infcx = self.tcx.infer_ctxt().build();
             let ocx = ObligationCtxt::new(&infcx);
 
-            let tcx_ty = self.icx.to_ty(ty);
+            let tcx_ty = self.icx.lower_ty(ty);
             // This visitor can walk into binders, resulting in the `tcx_ty` to
             // potentially reference escaping bound variables. We simply erase
             // those here.

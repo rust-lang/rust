@@ -1,4 +1,4 @@
-use crate::astconv::AstConv;
+use crate::astconv::HirTyLowerer;
 use crate::errors::{
     self, AssocTypeBindingNotAllowed, ManualImplementation, MissingTypeParams,
     ParenthesizedFnTraitExpansion,
@@ -22,7 +22,7 @@ use rustc_span::symbol::{sym, Ident};
 use rustc_span::{Span, Symbol, DUMMY_SP};
 use rustc_trait_selection::traits::object_safety_violations_for_assoc_item;
 
-impl<'tcx> dyn AstConv<'tcx> + '_ {
+impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
     /// On missing type parameters, emit an E0393 error and provide a structured suggestion using
     /// the type parameter's name as a placeholder.
     pub(crate) fn complain_about_missing_type_params(
@@ -311,7 +311,7 @@ impl<'tcx> dyn AstConv<'tcx> + '_ {
         // FIXME(associated_const_equality): This has quite a few false positives and negatives.
         let wrap_in_braces_sugg = if let Some(binding) = binding
             && let hir::TypeBindingKind::Equality { term: hir::Term::Ty(hir_ty) } = binding.kind
-            && let ty = self.ast_ty_to_ty(hir_ty)
+            && let ty = self.lower_ty(hir_ty)
             && (ty.is_enum() || ty.references_error())
             && tcx.features().associated_const_equality
         {
@@ -349,7 +349,7 @@ impl<'tcx> dyn AstConv<'tcx> + '_ {
         })
     }
 
-    pub(super) fn report_ambiguous_associated_type(
+    pub(super) fn report_ambiguous_assoc_ty(
         &self,
         span: Span,
         types: &[String],
@@ -458,7 +458,7 @@ impl<'tcx> dyn AstConv<'tcx> + '_ {
         reported
     }
 
-    pub(crate) fn complain_about_ambiguous_inherent_assoc_type(
+    pub(crate) fn complain_about_ambiguous_inherent_assoc_ty(
         &self,
         name: Ident,
         candidates: Vec<DefId>,
@@ -471,14 +471,14 @@ impl<'tcx> dyn AstConv<'tcx> + '_ {
             "multiple applicable items in scope"
         );
         err.span_label(name.span, format!("multiple `{name}` found"));
-        self.note_ambiguous_inherent_assoc_type(&mut err, candidates, span);
+        self.note_ambiguous_inherent_assoc_ty(&mut err, candidates, span);
         let reported = err.emit();
         self.set_tainted_by_errors(reported);
         reported
     }
 
     // FIXME(fmease): Heavily adapted from `rustc_hir_typeck::method::suggest`. Deduplicate.
-    fn note_ambiguous_inherent_assoc_type(
+    fn note_ambiguous_inherent_assoc_ty(
         &self,
         err: &mut Diag<'_>,
         candidates: Vec<DefId>,
@@ -521,7 +521,7 @@ impl<'tcx> dyn AstConv<'tcx> + '_ {
     }
 
     // FIXME(inherent_associated_types): Find similarly named associated types and suggest them.
-    pub(crate) fn complain_about_inherent_assoc_type_not_found(
+    pub(crate) fn complain_about_inherent_assoc_ty_not_found(
         &self,
         name: Ident,
         self_ty: Ty<'tcx>,
@@ -697,7 +697,7 @@ impl<'tcx> dyn AstConv<'tcx> + '_ {
     /// reasonable suggestion on how to write it. For the case of multiple associated types in the
     /// same trait bound have the same name (as they come from different supertraits), we instead
     /// emit a generic note suggesting using a `where` clause to constraint instead.
-    pub(crate) fn complain_about_missing_associated_types(
+    pub(crate) fn complain_about_missing_assoc_tys(
         &self,
         associated_types: FxIndexMap<Span, FxIndexSet<DefId>>,
         potential_assoc_types: Vec<Span>,
@@ -1027,7 +1027,7 @@ impl<'tcx> dyn AstConv<'tcx> + '_ {
 }
 
 /// Emits an error regarding forbidden type binding associations
-pub fn prohibit_assoc_ty_binding(
+pub fn prohibit_assoc_item_binding(
     tcx: TyCtxt<'_>,
     span: Span,
     segment: Option<(&hir::PathSegment<'_>, Span)>,

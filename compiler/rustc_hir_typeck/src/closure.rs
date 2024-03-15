@@ -5,7 +5,7 @@ use super::{check_fn, CoroutineTypes, Expectation, FnCtxt};
 use rustc_errors::ErrorGuaranteed;
 use rustc_hir as hir;
 use rustc_hir::lang_items::LangItem;
-use rustc_hir_analysis::astconv::AstConv;
+use rustc_hir_analysis::astconv::HirTyLowerer;
 use rustc_infer::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
 use rustc_infer::infer::{BoundRegionConversionTime, DefineOpaqueTypes};
 use rustc_infer::infer::{InferOk, InferResult};
@@ -784,7 +784,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         decl: &hir::FnDecl<'tcx>,
         closure_kind: hir::ClosureKind,
     ) -> ty::PolyFnSig<'tcx> {
-        let astconv = self.astconv();
+        let lowerer = self.lowerer();
 
         trace!("decl = {:#?}", decl);
         debug!(?closure_kind);
@@ -793,9 +793,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let bound_vars = self.tcx.late_bound_vars(hir_id);
 
         // First, convert the types that the user supplied (if any).
-        let supplied_arguments = decl.inputs.iter().map(|a| astconv.ast_ty_to_ty(a));
+        let supplied_arguments = decl.inputs.iter().map(|a| lowerer.lower_ty(a));
         let supplied_return = match decl.output {
-            hir::FnRetTy::Return(ref output) => astconv.ast_ty_to_ty(output),
+            hir::FnRetTy::Return(ref output) => lowerer.lower_ty(output),
             hir::FnRetTy::DefaultReturn(_) => match closure_kind {
                 // In the case of the async block that we create for a function body,
                 // we expect the return type of the block to match that of the enclosing
@@ -813,7 +813,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         // easily (and locally) prove that we
                         // *have* reported an
                         // error. --nikomatsakis
-                        astconv.ty_infer(None, decl.output.span())
+                        lowerer.ty_infer(None, decl.output.span())
                     })
                 }
                 // All `gen {}` and `async gen {}` must return unit.
@@ -832,7 +832,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 | hir::ClosureKind::Coroutine(hir::CoroutineKind::Coroutine(_))
                 | hir::ClosureKind::Closure
                 | hir::ClosureKind::CoroutineClosure(_) => {
-                    astconv.ty_infer(None, decl.output.span())
+                    lowerer.ty_infer(None, decl.output.span())
                 }
             },
         };
@@ -989,17 +989,17 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         decl: &hir::FnDecl<'tcx>,
         guar: ErrorGuaranteed,
     ) -> ty::PolyFnSig<'tcx> {
-        let astconv = self.astconv();
+        let lowerer = self.lowerer();
         let err_ty = Ty::new_error(self.tcx, guar);
 
         let supplied_arguments = decl.inputs.iter().map(|a| {
             // Convert the types that the user supplied (if any), but ignore them.
-            astconv.ast_ty_to_ty(a);
+            lowerer.lower_ty(a);
             err_ty
         });
 
         if let hir::FnRetTy::Return(ref output) = decl.output {
-            astconv.ast_ty_to_ty(output);
+            lowerer.lower_ty(output);
         }
 
         let result = ty::Binder::dummy(self.tcx.mk_fn_sig(

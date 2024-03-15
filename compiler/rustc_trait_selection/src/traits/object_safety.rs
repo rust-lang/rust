@@ -36,7 +36,7 @@ pub use crate::traits::{MethodViolationCode, ObjectSafetyViolation};
 /// astconv -- currently, `Self` in supertraits. This is needed
 /// because `object_safety_violations` can't be used during
 /// type collection.
-pub fn astconv_object_safety_violations(
+pub fn hir_ty_lowering_object_safety_violations(
     tcx: TyCtxt<'_>,
     trait_def_id: DefId,
 ) -> Vec<ObjectSafetyViolation> {
