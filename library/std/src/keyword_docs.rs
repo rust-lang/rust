@@ -48,7 +48,7 @@ mod as_keyword {}
 
 #[doc(keyword = "break")]
 //
-/// Exit early from a loop.
+/// Exit early from a loop or labelled block.
 ///
 /// When `break` is encountered, execution of the associated loop body is
 /// immediately terminated.
