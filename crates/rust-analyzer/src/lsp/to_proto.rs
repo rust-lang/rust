@@ -1519,13 +1519,28 @@ pub(crate) fn test_item(
         id: test_item.id,
         label: test_item.label,
         kind: match test_item.kind {
-            ide::TestItemKind::Crate => lsp_ext::TestItemKind::Package,
+            ide::TestItemKind::Crate(id) => 'b: {
+                let Some((cargo_ws, target)) = snap.cargo_target_for_crate_root(id) else {
+                    break 'b lsp_ext::TestItemKind::Package;
+                };
+                let target = &cargo_ws[target];
+                match target.kind {
+                    project_model::TargetKind::Bin
+                    | project_model::TargetKind::Lib { .. }
+                    | project_model::TargetKind::Example
+                    | project_model::TargetKind::BuildScript
+                    | project_model::TargetKind::Other => lsp_ext::TestItemKind::Package,
+                    project_model::TargetKind::Test | project_model::TargetKind::Bench => {
+                        lsp_ext::TestItemKind::Test
+                    }
+                }
+            }
             ide::TestItemKind::Module => lsp_ext::TestItemKind::Module,
             ide::TestItemKind::Function => lsp_ext::TestItemKind::Test,
         },
         can_resolve_children: matches!(
             test_item.kind,
-            ide::TestItemKind::Crate | ide::TestItemKind::Module
+            ide::TestItemKind::Crate(_) | ide::TestItemKind::Module
         ),
         parent: test_item.parent,
         text_document: test_item
