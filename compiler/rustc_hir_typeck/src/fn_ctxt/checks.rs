@@ -1593,7 +1593,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // Don't do all the complex logic below for `DeclItem`.
         match stmt.kind {
             hir::StmtKind::Item(..) => return,
-            hir::StmtKind::Local(..) | hir::StmtKind::Expr(..) | hir::StmtKind::Semi(..) => {}
+            hir::StmtKind::Let(..) | hir::StmtKind::Expr(..) | hir::StmtKind::Semi(..) => {}
         }
 
         self.warn_if_unreachable(stmt.hir_id, stmt.span, "statement");
@@ -1602,7 +1602,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let old_diverges = self.diverges.replace(Diverges::Maybe);
 
         match stmt.kind {
-            hir::StmtKind::Local(l) => {
+            hir::StmtKind::Let(l) => {
                 self.check_decl_local(l);
             }
             // Ignore for now.
@@ -1765,7 +1765,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                             [
                                                 hir::Stmt {
                                                     kind:
-                                                        hir::StmtKind::Local(hir::Local {
+                                                        hir::StmtKind::Let(hir::Local {
                                                             source:
                                                                 hir::LocalSource::AssignDesugar(_),
                                                             ..

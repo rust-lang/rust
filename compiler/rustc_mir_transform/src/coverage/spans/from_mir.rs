@@ -1,7 +1,9 @@
 use rustc_data_structures::captures::Captures;
 use rustc_data_structures::fx::FxHashSet;
+use rustc_index::IndexVec;
+use rustc_middle::mir::coverage::{BlockMarkerId, BranchSpan, CoverageKind};
 use rustc_middle::mir::{
-    self, AggregateKind, FakeReadCause, Rvalue, Statement, StatementKind, Terminator,
+    self, AggregateKind, BasicBlock, FakeReadCause, Rvalue, Statement, StatementKind, Terminator,
     TerminatorKind,
 };
 use rustc_span::{ExpnKind, MacroKind, Span, Symbol};
@@ -9,6 +11,7 @@ use rustc_span::{ExpnKind, MacroKind, Span, Symbol};
 use crate::coverage::graph::{
     BasicCoverageBlock, BasicCoverageBlockData, CoverageGraph, START_BCB,
 };
+use crate::coverage::spans::{BcbMapping, BcbMappingKind};
 use crate::coverage::ExtractedHirInfo;
 
 /// Traverses the MIR body to produce an initial collection of coverage-relevant
@@ -179,8 +182,6 @@ fn is_closure_like(statement: &Statement<'_>) -> bool {
 /// If the MIR `Statement` has a span contributive to computing coverage spans,
 /// return it; otherwise return `None`.
 fn filtered_statement_span(statement: &Statement<'_>) -> Option<Span> {
-    use mir::coverage::CoverageKind;
-
     match statement.kind {
         // These statements have spans that are often outside the scope of the executed source code
         // for their parent `BasicBlock`.
@@ -224,6 +225,11 @@ fn filtered_statement_span(statement: &Statement<'_>) -> Option<Span> {
         | StatementKind::AscribeUserType(_, _) => {
             Some(statement.source_info.span)
         }
+
+        StatementKind::Coverage(box mir::Coverage {
+            // Block markers are used for branch coverage, so ignore them here.
+            kind: CoverageKind::BlockMarker {..}
+        }) => None,
 
         StatementKind::Coverage(box mir::Coverage {
             // These coverage statements should not exist prior to coverage instrumentation.
@@ -357,4 +363,52 @@ impl SpanFromMir {
     ) -> Self {
         Self { span, visible_macro, bcb, is_hole }
     }
+}
+
+pub(super) fn extract_branch_mappings(
+    mir_body: &mir::Body<'_>,
+    body_span: Span,
+    basic_coverage_blocks: &CoverageGraph,
+) -> Vec<BcbMapping> {
+    let Some(branch_info) = mir_body.coverage_branch_info.as_deref() else {
+        return vec![];
+    };
+
+    let mut block_markers = IndexVec::<BlockMarkerId, Option<BasicBlock>>::from_elem_n(
+        None,
+        branch_info.num_block_markers,
+    );
+
+    // Fill out the mapping from block marker IDs to their enclosing blocks.
+    for (bb, data) in mir_body.basic_blocks.iter_enumerated() {
+        for statement in &data.statements {
+            if let StatementKind::Coverage(coverage) = &statement.kind
+                && let CoverageKind::BlockMarker { id } = coverage.kind
+            {
+                block_markers[id] = Some(bb);
+            }
+        }
+    }
+
+    branch_info
+        .branch_spans
+        .iter()
+        .filter_map(|&BranchSpan { span: raw_span, true_marker, false_marker }| {
+            // For now, ignore any branch span that was introduced by
+            // expansion. This makes things like assert macros less noisy.
+            if !raw_span.ctxt().outer_expn_data().is_root() {
+                return None;
+            }
+            let (span, _) = unexpand_into_body_span_with_visible_macro(raw_span, body_span)?;
+
+            let bcb_from_marker = |marker: BlockMarkerId| {
+                Some(basic_coverage_blocks.bcb_from_bb(block_markers[marker]?)?)
+            };
+
+            let true_bcb = bcb_from_marker(true_marker)?;
+            let false_bcb = bcb_from_marker(false_marker)?;
+
+            Some(BcbMapping { kind: BcbMappingKind::Branch { true_bcb, false_bcb }, span })
+        })
+        .collect::<Vec<_>>()
 }

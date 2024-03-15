@@ -60,6 +60,7 @@ pub(super) fn build_custom_mir<'tcx>(
         tainted_by_errors: None,
         injection_phase: None,
         pass_count: 0,
+        coverage_branch_info: None,
         function_coverage_info: None,
     };
 

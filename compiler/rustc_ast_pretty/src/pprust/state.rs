@@ -1212,7 +1212,7 @@ impl<'a> State<'a> {
     fn print_stmt(&mut self, st: &ast::Stmt) {
         self.maybe_print_comment(st.span.lo());
         match &st.kind {
-            ast::StmtKind::Local(loc) => {
+            ast::StmtKind::Let(loc) => {
                 self.print_outer_attributes(&loc.attrs);
                 self.space_if_not_bol();
                 self.ibox(INDENT_UNIT);

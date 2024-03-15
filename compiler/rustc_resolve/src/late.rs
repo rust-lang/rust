@@ -580,6 +580,15 @@ impl MaybeExported<'_> {
     }
 }
 
+/// Used for recording UnnecessaryQualification.
+#[derive(Debug)]
+pub(crate) struct UnnecessaryQualification<'a> {
+    pub binding: LexicalScopeBinding<'a>,
+    pub node_id: NodeId,
+    pub path_span: Span,
+    pub removal_span: Span,
+}
+
 #[derive(Default)]
 struct DiagMetadata<'ast> {
     /// The current trait's associated items' ident, used for diagnostic suggestions.
@@ -4654,20 +4663,16 @@ impl<'a: 'ast, 'b, 'ast, 'tcx> LateResolutionVisitor<'a, 'b, 'ast, 'tcx> {
             let ns = if i + 1 == path.len() { ns } else { TypeNS };
             let res = self.r.partial_res_map.get(&seg.id?)?.full_res()?;
             let binding = self.resolve_ident_in_lexical_scope(seg.ident, ns, None, None)?;
-
-            (res == binding.res()).then_some(seg)
+            (res == binding.res()).then_some((seg, binding))
         });
 
-        if let Some(unqualified) = unqualified {
-            self.r.lint_buffer.buffer_lint_with_diagnostic(
-                lint::builtin::UNUSED_QUALIFICATIONS,
-                finalize.node_id,
-                finalize.path_span,
-                "unnecessary qualification",
-                lint::BuiltinLintDiag::UnusedQualifications {
-                    removal_span: path[0].ident.span.until(unqualified.ident.span),
-                },
-            );
+        if let Some((seg, binding)) = unqualified {
+            self.r.potentially_unnecessary_qualifications.push(UnnecessaryQualification {
+                binding,
+                node_id: finalize.node_id,
+                path_span: finalize.path_span,
+                removal_span: path[0].ident.span.until(seg.ident.span),
+            });
         }
     }
 }

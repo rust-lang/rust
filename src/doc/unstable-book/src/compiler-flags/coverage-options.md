@@ -5,4 +5,4 @@ This option controls details of the coverage instrumentation performed by
 
 Multiple options can be passed, separated by commas. Valid options are:
 
-- `branch` or `no-branch`: Placeholder for future branch coverage support.
+- `branch` or `no-branch`: Enables or disables branch coverage instrumentation.

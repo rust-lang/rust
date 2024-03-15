@@ -787,7 +787,7 @@ pub fn walk_block<'a, V: Visitor<'a>>(visitor: &mut V, block: &'a Block) -> V::R
 
 pub fn walk_stmt<'a, V: Visitor<'a>>(visitor: &mut V, statement: &'a Stmt) -> V::Result {
     match &statement.kind {
-        StmtKind::Local(local) => try_visit!(visitor.visit_local(local)),
+        StmtKind::Let(local) => try_visit!(visitor.visit_local(local)),
         StmtKind::Item(item) => try_visit!(visitor.visit_item(item)),
         StmtKind::Expr(expr) | StmtKind::Semi(expr) => try_visit!(visitor.visit_expr(expr)),
         StmtKind::Empty => {}

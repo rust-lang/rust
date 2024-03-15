@@ -864,7 +864,7 @@ impl<'a> State<'a> {
     fn print_stmt(&mut self, st: &hir::Stmt<'_>) {
         self.maybe_print_comment(st.span.lo());
         match st.kind {
-            hir::StmtKind::Local(loc) => {
+            hir::StmtKind::Let(loc) => {
                 self.print_local(loc.init, loc.els, |this| this.print_local_decl(loc));
             }
             hir::StmtKind::Item(item) => self.ann.nested(self, Nested::Item(item)),
@@ -2307,7 +2307,7 @@ fn expr_requires_semi_to_be_stmt(e: &hir::Expr<'_>) -> bool {
 /// seen the semicolon, and thus don't need another.
 fn stmt_ends_with_semi(stmt: &hir::StmtKind<'_>) -> bool {
     match *stmt {
-        hir::StmtKind::Local(_) => true,
+        hir::StmtKind::Let(_) => true,
         hir::StmtKind::Item(_) => false,
         hir::StmtKind::Expr(e) => expr_requires_semi_to_be_stmt(e),
         hir::StmtKind::Semi(..) => false,

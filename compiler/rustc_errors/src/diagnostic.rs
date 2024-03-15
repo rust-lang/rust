@@ -189,7 +189,8 @@ where
     );
 }
 
-pub trait SubdiagMessageOp<G> = Fn(&mut Diag<'_, G>, SubdiagMessage) -> SubdiagMessage;
+pub trait SubdiagMessageOp<G: EmissionGuarantee> =
+    Fn(&mut Diag<'_, G>, SubdiagMessage) -> SubdiagMessage;
 
 /// Trait implemented by lint types. This should not be implemented manually. Instead, use
 /// `#[derive(LintDiagnostic)]` -- see [rustc_macros::LintDiagnostic].

@@ -27,7 +27,7 @@ pub fn maybe_expr_static_mut(tcx: TyCtxt<'_>, expr: hir::Expr<'_>) {
 
 /// Check for shared or mutable references of `static mut` inside statement
 pub fn maybe_stmt_static_mut(tcx: TyCtxt<'_>, stmt: hir::Stmt<'_>) {
-    if let hir::StmtKind::Local(loc) = stmt.kind
+    if let hir::StmtKind::Let(loc) = stmt.kind
         && let hir::PatKind::Binding(ba, _, _, _) = loc.pat.kind
         && matches!(ba.0, rustc_ast::ByRef::Yes)
         && let Some(init) = loc.init

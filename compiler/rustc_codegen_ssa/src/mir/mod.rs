@@ -377,29 +377,45 @@ fn arg_local_refs<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
                 }
             }
 
-            if arg.is_sized_indirect() {
-                // Don't copy an indirect argument to an alloca, the caller
-                // already put it in a temporary alloca and gave it up.
-                // FIXME: lifetimes
-                let llarg = bx.get_param(llarg_idx);
-                llarg_idx += 1;
-                LocalRef::Place(PlaceRef::new_sized(llarg, arg.layout))
-            } else if arg.is_unsized_indirect() {
-                // As the storage for the indirect argument lives during
-                // the whole function call, we just copy the fat pointer.
-                let llarg = bx.get_param(llarg_idx);
-                llarg_idx += 1;
-                let llextra = bx.get_param(llarg_idx);
-                llarg_idx += 1;
-                let indirect_operand = OperandValue::Pair(llarg, llextra);
+            match arg.mode {
+                // Sized indirect arguments
+                PassMode::Indirect { attrs, meta_attrs: None, on_stack: _ } => {
+                    // Don't copy an indirect argument to an alloca, the caller already put it
+                    // in a temporary alloca and gave it up.
+                    // FIXME: lifetimes
+                    if let Some(pointee_align) = attrs.pointee_align
+                        && pointee_align < arg.layout.align.abi
+                    {
+                        // ...unless the argument is underaligned, then we need to copy it to
+                        // a higher-aligned alloca.
+                        let tmp = PlaceRef::alloca(bx, arg.layout);
+                        bx.store_fn_arg(arg, &mut llarg_idx, tmp);
+                        LocalRef::Place(tmp)
+                    } else {
+                        let llarg = bx.get_param(llarg_idx);
+                        llarg_idx += 1;
+                        LocalRef::Place(PlaceRef::new_sized(llarg, arg.layout))
+                    }
+                }
+                // Unsized indirect qrguments
+                PassMode::Indirect { attrs: _, meta_attrs: Some(_), on_stack: _ } => {
+                    // As the storage for the indirect argument lives during
+                    // the whole function call, we just copy the fat pointer.
+                    let llarg = bx.get_param(llarg_idx);
+                    llarg_idx += 1;
+                    let llextra = bx.get_param(llarg_idx);
+                    llarg_idx += 1;
+                    let indirect_operand = OperandValue::Pair(llarg, llextra);
 
-                let tmp = PlaceRef::alloca_unsized_indirect(bx, arg.layout);
-                indirect_operand.store(bx, tmp);
-                LocalRef::UnsizedPlace(tmp)
-            } else {
-                let tmp = PlaceRef::alloca(bx, arg.layout);
-                bx.store_fn_arg(arg, &mut llarg_idx, tmp);
-                LocalRef::Place(tmp)
+                    let tmp = PlaceRef::alloca_unsized_indirect(bx, arg.layout);
+                    indirect_operand.store(bx, tmp);
+                    LocalRef::UnsizedPlace(tmp)
+                }
+                _ => {
+                    let tmp = PlaceRef::alloca(bx, arg.layout);
+                    bx.store_fn_arg(arg, &mut llarg_idx, tmp);
+                    LocalRef::Place(tmp)
+                }
             }
         })
         .collect::<Vec<_>>();

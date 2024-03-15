@@ -221,7 +221,7 @@ impl<'a, 'tcx> Visitor<'tcx> for NumericFallbackVisitor<'a, 'tcx> {
     fn visit_stmt(&mut self, stmt: &'tcx Stmt<'_>) {
         match stmt.kind {
             // we cannot check the exact type since it's a hir::Ty which does not implement `is_numeric`
-            StmtKind::Local(local) => self.ty_bounds.push(ExplicitTyBound(local.ty.is_some())),
+            StmtKind::Let(local) => self.ty_bounds.push(ExplicitTyBound(local.ty.is_some())),
 
             _ => self.ty_bounds.push(ExplicitTyBound(false)),
         }

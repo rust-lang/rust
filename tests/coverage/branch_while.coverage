@@ -1,0 +1,74 @@
+   LL|       |#![feature(coverage_attribute)]
+   LL|       |//@ edition: 2021
+   LL|       |//@ compile-flags: -Zcoverage-options=branch
+   LL|       |//@ llvm-cov-flags: --show-branches=count
+   LL|       |
+   LL|       |macro_rules! no_merge {
+   LL|       |    () => {
+   LL|       |        for _ in 0..1 {}
+   LL|       |    };
+   LL|       |}
+   LL|       |
+   LL|      1|fn while_cond() {
+   LL|      1|    no_merge!();
+   LL|       |
+   LL|      1|    let mut a = 8;
+   LL|      9|    while a > 0 {
+  ------------------
+  |  Branch (LL:11): [True: 8, False: 1]
+  ------------------
+   LL|      8|        a -= 1;
+   LL|      8|    }
+   LL|      1|}
+   LL|       |
+   LL|      1|fn while_cond_not() {
+   LL|      1|    no_merge!();
+   LL|       |
+   LL|      1|    let mut a = 8;
+   LL|      9|    while !(a == 0) {
+  ------------------
+  |  Branch (LL:11): [True: 8, False: 1]
+  ------------------
+   LL|      8|        a -= 1;
+   LL|      8|    }
+   LL|      1|}
+   LL|       |
+   LL|      1|fn while_op_and() {
+   LL|      1|    no_merge!();
+   LL|       |
+   LL|      1|    let mut a = 8;
+   LL|      1|    let mut b = 4;
+   LL|      5|    while a > 0 && b > 0 {
+  ------------------
+  |  Branch (LL:11): [True: 5, False: 0]
+  |  Branch (LL:20): [True: 4, False: 1]
+  ------------------
+   LL|      4|        a -= 1;
+   LL|      4|        b -= 1;
+   LL|      4|    }
+   LL|      1|}
+   LL|       |
+   LL|      1|fn while_op_or() {
+   LL|      1|    no_merge!();
+   LL|       |
+   LL|      1|    let mut a = 4;
+   LL|      1|    let mut b = 8;
+   LL|      9|    while a > 0 || b > 0 {
+                                 ^5
+  ------------------
+  |  Branch (LL:11): [True: 4, False: 5]
+  |  Branch (LL:20): [True: 4, False: 1]
+  ------------------
+   LL|      8|        a -= 1;
+   LL|      8|        b -= 1;
+   LL|      8|    }
+   LL|      1|}
+   LL|       |
+   LL|       |#[coverage(off)]
+   LL|       |fn main() {
+   LL|       |    while_cond();
+   LL|       |    while_cond_not();
+   LL|       |    while_op_and();
+   LL|       |    while_op_or();
+   LL|       |}
+

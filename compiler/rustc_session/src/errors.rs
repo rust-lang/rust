@@ -10,7 +10,7 @@ use rustc_macros::Diagnostic;
 use rustc_span::{Span, Symbol};
 use rustc_target::spec::{SplitDebuginfo, StackProtector, TargetTriple};
 
-use crate::parse::ParseSess;
+use crate::{config::CrateType, parse::ParseSess};
 
 pub struct FeatureGateError {
     pub span: MultiSpan,
@@ -343,6 +343,13 @@ pub(crate) struct BinaryFloatLiteralNotSupported {
     #[primary_span]
     #[label(session_not_supported)]
     pub span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(session_unsupported_crate_type_for_target)]
+pub struct UnsupportedCrateTypeForTarget<'a> {
+    pub crate_type: CrateType,
+    pub target_triple: &'a TargetTriple,
 }
 
 pub fn report_lit_error(
