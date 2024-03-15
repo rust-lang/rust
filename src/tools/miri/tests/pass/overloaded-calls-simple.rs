@@ -1,4 +1,4 @@
-#![feature(lang_items, unboxed_closures, fn_traits)]
+#![feature(unboxed_closures, fn_traits)]
 
 struct S3 {
     x: i32,

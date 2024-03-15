@@ -297,32 +297,6 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
             }
 
             // Synchronization primitives
-            "AcquireSRWLockExclusive" => {
-                let [ptr] = this.check_shim(abi, Abi::System { unwind: false }, link_name, args)?;
-                this.AcquireSRWLockExclusive(ptr)?;
-            }
-            "ReleaseSRWLockExclusive" => {
-                let [ptr] = this.check_shim(abi, Abi::System { unwind: false }, link_name, args)?;
-                this.ReleaseSRWLockExclusive(ptr)?;
-            }
-            "TryAcquireSRWLockExclusive" => {
-                let [ptr] = this.check_shim(abi, Abi::System { unwind: false }, link_name, args)?;
-                let ret = this.TryAcquireSRWLockExclusive(ptr)?;
-                this.write_scalar(ret, dest)?;
-            }
-            "AcquireSRWLockShared" => {
-                let [ptr] = this.check_shim(abi, Abi::System { unwind: false }, link_name, args)?;
-                this.AcquireSRWLockShared(ptr)?;
-            }
-            "ReleaseSRWLockShared" => {
-                let [ptr] = this.check_shim(abi, Abi::System { unwind: false }, link_name, args)?;
-                this.ReleaseSRWLockShared(ptr)?;
-            }
-            "TryAcquireSRWLockShared" => {
-                let [ptr] = this.check_shim(abi, Abi::System { unwind: false }, link_name, args)?;
-                let ret = this.TryAcquireSRWLockShared(ptr)?;
-                this.write_scalar(ret, dest)?;
-            }
             "InitOnceBeginInitialize" => {
                 let [ptr, flags, pending, context] =
                     this.check_shim(abi, Abi::System { unwind: false }, link_name, args)?;
@@ -334,25 +308,6 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                     this.check_shim(abi, Abi::System { unwind: false }, link_name, args)?;
                 let result = this.InitOnceComplete(ptr, flags, context)?;
                 this.write_scalar(result, dest)?;
-            }
-            "SleepConditionVariableSRW" => {
-                let [condvar, lock, timeout, flags] =
-                    this.check_shim(abi, Abi::System { unwind: false }, link_name, args)?;
-
-                let result = this.SleepConditionVariableSRW(condvar, lock, timeout, flags, dest)?;
-                this.write_scalar(result, dest)?;
-            }
-            "WakeConditionVariable" => {
-                let [condvar] =
-                    this.check_shim(abi, Abi::System { unwind: false }, link_name, args)?;
-
-                this.WakeConditionVariable(condvar)?;
-            }
-            "WakeAllConditionVariable" => {
-                let [condvar] =
-                    this.check_shim(abi, Abi::System { unwind: false }, link_name, args)?;
-
-                this.WakeAllConditionVariable(condvar)?;
             }
             "WaitOnAddress" => {
                 let [ptr_op, compare_op, size_op, timeout_op] =

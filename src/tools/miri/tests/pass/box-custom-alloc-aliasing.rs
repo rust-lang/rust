@@ -10,9 +10,9 @@
 use std::{
     alloc::{AllocError, Allocator, Layout},
     cell::{Cell, UnsafeCell},
+    mem,
     ptr::{self, addr_of, NonNull},
     thread::{self, ThreadId},
-    mem,
 };
 
 const BIN_SIZE: usize = 8;
@@ -33,7 +33,7 @@ impl MyBin {
         }
         // Cast the *entire* thing to a raw pointer to not restrict its provenance.
         let bin = self as *const MyBin;
-        let base_ptr = UnsafeCell::raw_get(unsafe{ addr_of!((*bin).memory )}).cast::<usize>();
+        let base_ptr = UnsafeCell::raw_get(unsafe { addr_of!((*bin).memory) }).cast::<usize>();
         let ptr = unsafe { NonNull::new_unchecked(base_ptr.add(top)) };
         self.top.set(top + 1);
         Some(ptr.cast())
@@ -64,22 +64,14 @@ impl MyAllocator {
         MyAllocator {
             thread_id,
             bins: Box::new(
-                [MyBin {
-                    top: Cell::new(0),
-                    thread_id,
-                    memory: UnsafeCell::default(),
-                }; 1],
+                [MyBin { top: Cell::new(0), thread_id, memory: UnsafeCell::default() }; 1],
             ),
         }
     }
 
     // Pretends to be expensive finding a suitable bin for the layout.
     fn find_bin(&self, layout: Layout) -> Option<&MyBin> {
-        if layout == Layout::new::<usize>() {
-            Some(&self.bins[0])
-        } else {
-            None
-        }
+        if layout == Layout::new::<usize>() { Some(&self.bins[0]) } else { None }
     }
 }
 
