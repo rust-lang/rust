@@ -1162,7 +1162,14 @@ impl NoopVisitItemKind for ItemKind {
             }
             ItemKind::MacCall(m) => vis.visit_mac_call(m),
             ItemKind::MacroDef(def) => vis.visit_macro_def(def),
-            ItemKind::Delegation(box Delegation { id, qself, path, rename, body }) => {
+            ItemKind::Delegation(box Delegation {
+                id,
+                qself,
+                path,
+                rename,
+                body,
+                from_glob: _,
+            }) => {
                 vis.visit_id(id);
                 vis.visit_qself(qself);
                 vis.visit_path(path);
@@ -1176,10 +1183,12 @@ impl NoopVisitItemKind for ItemKind {
             ItemKind::DelegationMac(box DelegationMac { qself, prefix, suffixes, body }) => {
                 vis.visit_qself(qself);
                 vis.visit_path(prefix);
-                for (ident, rename) in suffixes {
-                    vis.visit_ident(ident);
-                    if let Some(rename) = rename {
-                        vis.visit_ident(rename);
+                if let Some(suffixes) = suffixes {
+                    for (ident, rename) in suffixes {
+                        vis.visit_ident(ident);
+                        if let Some(rename) = rename {
+                            vis.visit_ident(rename);
+                        }
                     }
                 }
                 if let Some(body) = body {
@@ -1218,7 +1227,14 @@ impl NoopVisitItemKind for AssocItemKind {
                 visit_opt(ty, |ty| visitor.visit_ty(ty));
             }
             AssocItemKind::MacCall(mac) => visitor.visit_mac_call(mac),
-            AssocItemKind::Delegation(box Delegation { id, qself, path, rename, body }) => {
+            AssocItemKind::Delegation(box Delegation {
+                id,
+                qself,
+                path,
+                rename,
+                body,
+                from_glob: _,
+            }) => {
                 visitor.visit_id(id);
                 visitor.visit_qself(qself);
                 visitor.visit_path(path);
@@ -1232,10 +1248,12 @@ impl NoopVisitItemKind for AssocItemKind {
             AssocItemKind::DelegationMac(box DelegationMac { qself, prefix, suffixes, body }) => {
                 visitor.visit_qself(qself);
                 visitor.visit_path(prefix);
-                for (ident, rename) in suffixes {
-                    visitor.visit_ident(ident);
-                    if let Some(rename) = rename {
-                        visitor.visit_ident(rename);
+                if let Some(suffixes) = suffixes {
+                    for (ident, rename) in suffixes {
+                        visitor.visit_ident(ident);
+                        if let Some(rename) = rename {
+                            visitor.visit_ident(rename);
+                        }
                     }
                 }
                 if let Some(body) = body {

@@ -144,8 +144,9 @@ impl<'a, 'b, 'tcx> visit::Visitor<'a> for DefCollector<'a, 'b, 'tcx> {
             }
             ItemKind::GlobalAsm(..) => DefKind::GlobalAsm,
             ItemKind::Use(..) => return visit::walk_item(self, i),
-            ItemKind::MacCall(..) => return self.visit_macro_invoc(i.id),
-            ItemKind::DelegationMac(..) => unreachable!(),
+            ItemKind::MacCall(..) | ItemKind::DelegationMac(..) => {
+                return self.visit_macro_invoc(i.id);
+            }
         };
         let def_id = self.create_def(i.id, i.ident.name, def_kind, i.span);
 
@@ -294,8 +295,9 @@ impl<'a, 'b, 'tcx> visit::Visitor<'a> for DefCollector<'a, 'b, 'tcx> {
             AssocItemKind::Fn(..) | AssocItemKind::Delegation(..) => DefKind::AssocFn,
             AssocItemKind::Const(..) => DefKind::AssocConst,
             AssocItemKind::Type(..) => DefKind::AssocTy,
-            AssocItemKind::MacCall(..) => return self.visit_macro_invoc(i.id),
-            AssocItemKind::DelegationMac(..) => unreachable!(),
+            AssocItemKind::MacCall(..) | AssocItemKind::DelegationMac(..) => {
+                return self.visit_macro_invoc(i.id);
+            }
         };
 
         let def = self.create_def(i.id, i.ident.name, def_kind, i.span);

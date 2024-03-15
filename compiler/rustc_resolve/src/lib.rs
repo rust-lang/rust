@@ -1089,7 +1089,7 @@ pub struct Resolver<'a, 'tcx> {
     single_segment_macro_resolutions:
         Vec<(Ident, MacroKind, ParentScope<'a>, Option<NameBinding<'a>>)>,
     multi_segment_macro_resolutions:
-        Vec<(Vec<Segment>, Span, MacroKind, ParentScope<'a>, Option<Res>)>,
+        Vec<(Vec<Segment>, Span, MacroKind, ParentScope<'a>, Option<Res>, Namespace)>,
     builtin_attrs: Vec<(Ident, ParentScope<'a>)>,
     /// `derive(Copy)` marks items they are applied to so they are treated specially later.
     /// Derive macros cannot modify the item themselves and have to store the markers in the global
@@ -1163,6 +1163,15 @@ pub struct Resolver<'a, 'tcx> {
     doc_link_resolutions: FxHashMap<LocalDefId, DocLinkResMap>,
     doc_link_traits_in_scope: FxHashMap<LocalDefId, Vec<DefId>>,
     all_macro_rules: FxHashMap<Symbol, Res>,
+
+    /// Invocation ids of all glob delegations.
+    glob_delegation_invoc_ids: FxHashSet<LocalExpnId>,
+    /// Analogue of module `unexpanded_invocations` but in trait impls, excluding glob delegations.
+    /// Needed because glob delegations wait for all other neighboring macros to expand.
+    impl_unexpanded_invocations: FxHashMap<LocalDefId, FxHashSet<LocalExpnId>>,
+    /// Simplified analogue of module `resolutions` but in trait impls, excluding glob delegations.
+    /// Needed because glob delegations exclude explicitly defined names.
+    impl_binding_keys: FxHashMap<LocalDefId, FxHashSet<BindingKey>>,
 }
 
 /// Nothing really interesting here; it just provides memory for the rest of the crate.
@@ -1504,6 +1513,9 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             doc_link_traits_in_scope: Default::default(),
             all_macro_rules: Default::default(),
             delegation_fn_sigs: Default::default(),
+            glob_delegation_invoc_ids: Default::default(),
+            impl_unexpanded_invocations: Default::default(),
+            impl_binding_keys: Default::default(),
         };
 
         let root_parent_scope = ParentScope::module(graph_root, &resolver);

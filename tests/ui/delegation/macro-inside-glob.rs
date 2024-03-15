@@ -16,7 +16,7 @@ struct S(u8);
 macro_rules! u8 { () => { u8 } }
 macro_rules! self_0 { ($self:ident) => { &$self.0 } }
 impl Trait for S {
-    reuse <u8!() as Trait>::{foo, bar} { self_0!(self) }
+    reuse <u8!() as Trait>::* { self_0!(self) }
 }
 
 fn main() {
