@@ -220,7 +220,7 @@ impl<'tcx> LateLintPass<'tcx> for MissingFieldsInDebug {
             && let self_ty = cx.tcx.type_of(self_path_did).skip_binder().peel_refs()
             && let Some(self_adt) = self_ty.ty_adt_def()
             && let Some(self_def_id) = self_adt.did().as_local()
-            && let Some(Node::Item(self_item)) = cx.tcx.opt_hir_node_by_def_id(self_def_id)
+            && let Node::Item(self_item) = cx.tcx.hir_node_by_def_id(self_def_id)
             // NB: can't call cx.typeck_results() as we are not in a body
             && let typeck_results = cx.tcx.typeck_body(*body_id)
             && should_lint(cx, typeck_results, block)

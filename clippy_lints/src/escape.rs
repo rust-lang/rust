@@ -76,10 +76,9 @@ impl<'tcx> LateLintPass<'tcx> for BoxedLocal {
             .hir()
             .get_parent_item(cx.tcx.local_def_id_to_hir_id(fn_def_id))
             .def_id;
-        let parent_node = cx.tcx.opt_hir_node_by_def_id(parent_id);
 
         let mut trait_self_ty = None;
-        if let Some(Node::Item(item)) = parent_node {
+        if let Node::Item(item) = cx.tcx.hir_node_by_def_id(parent_id) {
             // If the method is an impl for a trait, don't warn.
             if let ItemKind::Impl(Impl { of_trait: Some(_), .. }) = item.kind {
                 return;
