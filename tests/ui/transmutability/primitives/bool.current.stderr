@@ -2,7 +2,7 @@ error[E0277]: `u8` cannot be safely transmuted into `bool`
   --> $DIR/bool.rs:21:35
    |
 LL |     assert::is_transmutable::<u8, bool>();
-   |                                   ^^^^ At least one value of `u8` isn't a bit-valid value of `bool`
+   |                                   ^^^^ at least one value of `u8` isn't a bit-valid value of `bool`
    |
 note: required by a bound in `is_transmutable`
   --> $DIR/bool.rs:11:14
