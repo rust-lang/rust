@@ -25,7 +25,7 @@ use tempfile::Builder as TempFileBuilder;
 use std::env;
 use std::io::{self, Write};
 use std::panic;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::process::{self, Command, Stdio};
 use std::str;
 use std::sync::atomic::{AtomicUsize, Ordering};
@@ -306,6 +306,18 @@ fn add_exe_suffix(input: String, target: &TargetTriple) -> String {
     input + &exe_suffix
 }
 
+fn wrapped_rustc_command(rustc_wrappers: &[PathBuf], rustc_binary: &Path) -> Command {
+    let mut args = rustc_wrappers.iter().map(PathBuf::as_path).chain([rustc_binary].into_iter());
+
+    let exe = args.next().expect("unable to create rustc command");
+    let mut command = Command::new(exe);
+    for arg in args {
+        command.arg(arg);
+    }
+
+    command
+}
+
 fn run_test(
     test: &str,
     crate_name: &str,
@@ -334,7 +346,7 @@ fn run_test(
         .test_builder
         .as_deref()
         .unwrap_or_else(|| rustc_interface::util::rustc_path().expect("found rustc"));
-    let mut compiler = Command::new(&rustc_binary);
+    let mut compiler = wrapped_rustc_command(&rustdoc_options.test_builder_wrappers, rustc_binary);
     compiler.arg("--crate-type").arg("bin");
     for cfg in &rustdoc_options.cfgs {
         compiler.arg("--cfg").arg(&cfg);

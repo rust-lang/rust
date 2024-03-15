@@ -147,6 +147,8 @@ Options:
                         
         --test-builder PATH
                         The rustc-like binary to use as the test builder
+        --test-builder-wrapper PATH
+                        Wrapper program to pass test-builder and arguments
         --check         Run rustdoc checks
         --generate-redirect-map 
                         Generate JSON file at the top level instead of
