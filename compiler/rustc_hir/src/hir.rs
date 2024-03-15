@@ -1848,10 +1848,10 @@ pub enum ExprKind<'hir> {
     /// This construct only exists to tweak the drop order in HIR lowering.
     /// An example of that is the desugaring of `for` loops.
     DropTemps(&'hir Expr<'hir>),
-    /// A `let $pat = $expr` expression.
-    ///
-    /// These are not `Local` and only occur as expressions.
+    /// These are not [`Local`] and only occur as expressions.
     /// The `let Some(x) = foo()` in `if let Some(x) = foo()` is an example of `Let(..)`.
+    ///
+    /// A `let $pat = $expr` expression.
     Let(&'hir Let<'hir>),
     /// An `if` block, with an optional else block.
     ///
