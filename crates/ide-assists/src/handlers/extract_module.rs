@@ -20,7 +20,7 @@ use syntax::{
     },
     match_ast, ted, AstNode,
     SyntaxKind::{self, WHITESPACE},
-    SyntaxNode, TextRange,
+    SyntaxNode, TextRange, TextSize,
 };
 
 use crate::{AssistContext, Assists};
@@ -109,7 +109,14 @@ pub(crate) fn extract_module(acc: &mut Assists, ctx: &AssistContext<'_>) -> Opti
 
             //We are getting item usages and record_fields together, record_fields
             //for change_visibility and usages for first point mentioned above in the process
-            let (usages_to_be_processed, record_fields) = module.get_usages_and_record_fields(ctx);
+
+            let (usages_to_be_processed, record_fields, use_stmts_to_be_inserted) =
+                module.get_usages_and_record_fields(ctx);
+
+            builder.edit_file(ctx.file_id());
+            use_stmts_to_be_inserted.into_iter().for_each(|(_, use_stmt)| {
+                builder.insert(ctx.selection_trimmed().end(), format!("\n{use_stmt}"));
+            });
 
             let import_paths_to_be_removed = module.resolve_imports(curr_parent_module, ctx);
             module.change_visibility(record_fields);
@@ -224,9 +231,12 @@ impl Module {
     fn get_usages_and_record_fields(
         &self,
         ctx: &AssistContext<'_>,
-    ) -> (FxHashMap<FileId, Vec<(TextRange, String)>>, Vec<SyntaxNode>) {
+    ) -> (FxHashMap<FileId, Vec<(TextRange, String)>>, Vec<SyntaxNode>, FxHashMap<TextSize, ast::Use>)
+    {
         let mut adt_fields = Vec::new();
         let mut refs: FxHashMap<FileId, Vec<(TextRange, String)>> = FxHashMap::default();
+        // use `TextSize` as key to avoid repeated use stmts
+        let mut use_stmts_to_be_inserted = FxHashMap::default();
 
         //Here impl is not included as each item inside impl will be tied to the parent of
         //implementing block(a struct, enum, etc), if the parent is in selected module, it will
@@ -238,7 +248,7 @@ impl Module {
                     ast::Adt(it) => {
                         if let Some( nod ) = ctx.sema.to_def(&it) {
                             let node_def = Definition::Adt(nod);
-                            self.expand_and_group_usages_file_wise(ctx, node_def, &mut refs);
+                            self.expand_and_group_usages_file_wise(ctx, node_def, &mut refs, &mut use_stmts_to_be_inserted);
 
                             //Enum Fields are not allowed to explicitly specify pub, it is implied
                             match it {
@@ -272,30 +282,30 @@ impl Module {
                     ast::TypeAlias(it) => {
                         if let Some( nod ) = ctx.sema.to_def(&it) {
                             let node_def = Definition::TypeAlias(nod);
-                            self.expand_and_group_usages_file_wise(ctx, node_def, &mut refs);
+                            self.expand_and_group_usages_file_wise(ctx, node_def, &mut refs, &mut use_stmts_to_be_inserted);
                         }
                     },
                     ast::Const(it) => {
                         if let Some( nod ) = ctx.sema.to_def(&it) {
                             let node_def = Definition::Const(nod);
-                            self.expand_and_group_usages_file_wise(ctx, node_def, &mut refs);
+                            self.expand_and_group_usages_file_wise(ctx, node_def, &mut refs, &mut use_stmts_to_be_inserted);
                         }
                     },
                     ast::Static(it) => {
                         if let Some( nod ) = ctx.sema.to_def(&it) {
                             let node_def = Definition::Static(nod);
-                            self.expand_and_group_usages_file_wise(ctx, node_def, &mut refs);
+                            self.expand_and_group_usages_file_wise(ctx, node_def, &mut refs, &mut use_stmts_to_be_inserted);
                         }
                     },
                     ast::Fn(it) => {
                         if let Some( nod ) = ctx.sema.to_def(&it) {
                             let node_def = Definition::Function(nod);
-                            self.expand_and_group_usages_file_wise(ctx, node_def, &mut refs);
+                            self.expand_and_group_usages_file_wise(ctx, node_def, &mut refs, &mut use_stmts_to_be_inserted);
                         }
                     },
                     ast::Macro(it) => {
                         if let Some(nod) = ctx.sema.to_def(&it) {
-                            self.expand_and_group_usages_file_wise(ctx, Definition::Macro(nod), &mut refs);
+                            self.expand_and_group_usages_file_wise(ctx, Definition::Macro(nod), &mut refs, &mut use_stmts_to_be_inserted);
                         }
                     },
                     _ => (),
@@ -303,7 +313,7 @@ impl Module {
             }
         }
 
-        (refs, adt_fields)
+        (refs, adt_fields, use_stmts_to_be_inserted)
     }
 
     fn expand_and_group_usages_file_wise(
@@ -311,20 +321,45 @@ impl Module {
         ctx: &AssistContext<'_>,
         node_def: Definition,
         refs_in_files: &mut FxHashMap<FileId, Vec<(TextRange, String)>>,
+        use_stmts_to_be_inserted: &mut FxHashMap<TextSize, ast::Use>,
     ) {
         let mod_name = self.name;
+        let covering_node = match ctx.covering_element() {
+            syntax::NodeOrToken::Node(node) => node,
+            syntax::NodeOrToken::Token(tok) => tok.parent().unwrap(), // won't panic
+        };
         let out_of_sel = |node: &SyntaxNode| !self.text_range.contains_range(node.text_range());
+        let mut use_stmts_set = FxHashSet::default();
 
         for (file_id, refs) in node_def.usages(&ctx.sema).all() {
             let source_file = ctx.sema.parse(file_id);
-            let usages = refs.into_iter().filter_map(|FileReference { range, name, .. }| {
+            let usages = refs.into_iter().filter_map(|FileReference { range, .. }| {
                 // handle normal usages
                 let name_ref = find_node_at_range::<ast::NameRef>(source_file.syntax(), range)?;
-                let name = name.syntax().to_string();
 
                 if out_of_sel(name_ref.syntax()) {
                     let new_ref = format!("{mod_name}::{name_ref}");
-                    return Some((name_ref.syntax().text_range(), new_ref));
+                    return Some((range, new_ref));
+                } else if let Some(use_) = name_ref.syntax().ancestors().find_map(ast::Use::cast) {
+                    // handle usages in use_stmts which is in_sel
+                    // check if `use` is top stmt in selection
+                    if use_.syntax().parent().is_some_and(|parent| parent == covering_node)
+                        && use_stmts_set.insert(use_.syntax().text_range().start())
+                    {
+                        let use_ = use_stmts_to_be_inserted
+                            .entry(use_.syntax().text_range().start())
+                            .or_insert_with(|| use_.clone_subtree().clone_for_update());
+                        for seg in use_
+                            .syntax()
+                            .descendants()
+                            .filter_map(ast::NameRef::cast)
+                            .filter(|seg| seg.syntax().to_string() == name_ref.to_string())
+                        {
+                            let new_ref = make::path_from_text(&format!("{mod_name}::{seg}"))
+                                .clone_for_update();
+                            ted::replace(seg.syntax().parent()?, new_ref.syntax());
+                        }
+                    }
                 }
 
                 None
