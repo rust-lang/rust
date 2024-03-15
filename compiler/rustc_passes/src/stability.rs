@@ -567,6 +567,8 @@ impl<'tcx> Visitor<'tcx> for MissingStabilityAnnotations<'tcx> {
             i.kind,
             hir::ItemKind::Impl(hir::Impl { of_trait: None, .. })
                 | hir::ItemKind::ForeignMod { .. }
+                // [[[[ /!\ CRATER-ONLY /!\ ]]]]
+                | hir::ItemKind::TyAlias(..)
         ) {
             self.check_missing_stability(i.owner_id.def_id, i.span);
         }
@@ -585,8 +587,13 @@ impl<'tcx> Visitor<'tcx> for MissingStabilityAnnotations<'tcx> {
     fn visit_impl_item(&mut self, ii: &'tcx hir::ImplItem<'tcx>) {
         let impl_def_id = self.tcx.hir().get_parent_item(ii.hir_id());
         if self.tcx.impl_trait_ref(impl_def_id).is_none() {
-            self.check_missing_stability(ii.owner_id.def_id, ii.span);
-            self.check_missing_const_stability(ii.owner_id.def_id, ii.span);
+            // [[[[ /!\ CRATER-ONLY /!\ ]]]]
+            // FIXME(fmease): The proper fix would be to peel_off_weak_alias_tys(impl_self_ty)
+            // and to get the owner this way. Not entirely sure.
+            if false {
+                self.check_missing_stability(ii.owner_id.def_id, ii.span);
+                self.check_missing_const_stability(ii.owner_id.def_id, ii.span);
+            }
         }
         intravisit::walk_impl_item(self, ii);
     }

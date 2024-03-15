@@ -801,6 +801,7 @@ impl<'a, 'tcx> TypeVisitor<TyCtxt<'tcx>> for WfPredicates<'a, 'tcx> {
                 }
             }
 
+            // NOTE(fmease): It should be fine to keep this.
             ty::Alias(ty::Weak, ty::AliasTy { def_id, args, .. }) => {
                 let obligations = self.nominal_obligations(def_id, args);
                 self.out.extend(obligations);

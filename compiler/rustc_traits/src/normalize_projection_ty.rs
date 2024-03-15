@@ -79,6 +79,7 @@ fn normalize_canonicalized_weak_ty<'tcx>(
     tcx.infer_ctxt().enter_canonical_trait_query(
         &goal,
         |ocx, ParamEnvAnd { param_env, value: goal }| {
+            // NOTE(fmease): It should be fine to keep this for the crater run.
             let obligations = tcx.predicates_of(goal.def_id).instantiate_own(tcx, goal.args).map(
                 |(predicate, span)| {
                     traits::Obligation::new(
