@@ -430,6 +430,8 @@ symbols! {
         async_drop_fuse,
         async_drop_fuse_ctor,
         async_drop_in_place,
+        async_drop_into_chain,
+        async_drop_into_chain_ctor,
         async_drop_nop,
         async_drop_nop_ctor,
         async_drop_slice,

@@ -282,6 +282,31 @@ fn chain<F, G: IntoFuture>(first: F, last: G) -> Chain<F, G> {
     Chain::First(first, Some(last))
 }
 
+#[lang = "async_drop_into_chain"]
+struct IntoChain<F, G> {
+    first: F,
+    last: G,
+}
+
+impl<F, G> IntoFuture for IntoChain<F, G>
+where
+    F: IntoFuture<Output = ()>,
+    G: IntoFuture<Output = ()>,
+{
+    type Output = ();
+
+    type IntoFuture = Chain<F::IntoFuture, G>;
+
+    fn into_future(self) -> Self::IntoFuture {
+        chain(self.first.into_future(), self.last)
+    }
+}
+
+#[lang = "async_drop_into_chain_ctor"]
+fn into_chain<F, G>(first: F, last: G) -> IntoChain<F, G> {
+    IntoChain { first, last }
+}
+
 #[derive(Clone, Copy)]
 #[lang = "into_async_destructor"]
 struct IntoAsyncDestructor<T: ?Sized>(ptr::NonNull<T>);
