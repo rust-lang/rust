@@ -87,6 +87,12 @@ borrowck_move_unsized =
 borrowck_moved_a_fn_once_in_call =
     this value implements `FnOnce`, which causes it to be moved when called
 
+borrowck_moved_a_fn_once_in_call_call =
+    `FnOnce` closures can only be called once
+
+borrowck_moved_a_fn_once_in_call_def =
+    `{$ty}` is made to be an `FnOnce` closure here
+
 borrowck_moved_due_to_await =
     {$place_name} {$is_partial ->
         [true] partially moved
