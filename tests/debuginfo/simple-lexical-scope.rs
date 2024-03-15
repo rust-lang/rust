@@ -39,37 +39,37 @@
 
 // lldb-command:run
 
-// lldb-command:print x
+// lldb-command:v x
 // lldbg-check:[...] false
 // lldbr-check:(bool) x = false
 // lldb-command:continue
 
-// lldb-command:print x
+// lldb-command:v x
 // lldbg-check:[...] false
 // lldbr-check:(bool) x = false
 // lldb-command:continue
 
-// lldb-command:print x
+// lldb-command:v x
 // lldbg-check:[...] 10
 // lldbr-check:(i32) x = 10
 // lldb-command:continue
 
-// lldb-command:print x
+// lldb-command:v x
 // lldbg-check:[...] 10
 // lldbr-check:(i32) x = 10
 // lldb-command:continue
 
-// lldb-command:print x
+// lldb-command:v x
 // lldbg-check:[...] 10.5
 // lldbr-check:(f64) x = 10.5
 // lldb-command:continue
 
-// lldb-command:print x
+// lldb-command:v x
 // lldbg-check:[...] 10
 // lldbr-check:(i32) x = 10
 // lldb-command:continue
 
-// lldb-command:print x
+// lldb-command:v x
 // lldbg-check:[...] false
 // lldbr-check:(bool) x = false
 // lldb-command:continue

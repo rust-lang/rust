@@ -39,22 +39,22 @@
 // === LLDB TESTS ==================================================================================
 // lldb-command:run
 
-// lldb-command:print eight_bytes1
+// lldb-command:v eight_bytes1
 // lldb-check:[...] Variant1(100)
-// lldb-command:print four_bytes1
+// lldb-command:v four_bytes1
 // lldb-check:[...] Variant1(101)
-// lldb-command:print two_bytes1
+// lldb-command:v two_bytes1
 // lldb-check:[...] Variant1(102)
-// lldb-command:print one_byte1
+// lldb-command:v one_byte1
 // lldb-check:[...] Variant1('A')
 
-// lldb-command:print eight_bytes2
+// lldb-command:v eight_bytes2
 // lldb-check:[...] Variant2(100)
-// lldb-command:print four_bytes2
+// lldb-command:v four_bytes2
 // lldb-check:[...] Variant2(101)
-// lldb-command:print two_bytes2
+// lldb-command:v two_bytes2
 // lldb-check:[...] Variant2(102)
-// lldb-command:print one_byte2
+// lldb-command:v one_byte2
 // lldb-check:[...] Variant2('A')
 
 // lldb-command:continue

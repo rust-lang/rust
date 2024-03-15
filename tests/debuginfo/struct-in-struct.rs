@@ -23,35 +23,35 @@
 
 // lldb-command:run
 
-// lldb-command:print three_simple_structs
+// lldb-command:v three_simple_structs
 // lldbg-check:[...] { x = { x = 1 } y = { x = 2 } z = { x = 3 } }
 // lldbr-check:(struct_in_struct::ThreeSimpleStructs) three_simple_structs = { x = { x = 1 } y = { x = 2 } z = { x = 3 } }
 
-// lldb-command:print internal_padding_parent
+// lldb-command:v internal_padding_parent
 // lldbg-check:[...] { x = { x = 4 y = 5 } y = { x = 6 y = 7 } z = { x = 8 y = 9 } }
 // lldbr-check:(struct_in_struct::InternalPaddingParent) internal_padding_parent = { x = { x = 4 y = 5 } y = { x = 6 y = 7 } z = { x = 8 y = 9 } }
 
-// lldb-command:print padding_at_end_parent
+// lldb-command:v padding_at_end_parent
 // lldbg-check:[...] { x = { x = 10 y = 11 } y = { x = 12 y = 13 } z = { x = 14 y = 15 } }
 // lldbr-check:(struct_in_struct::PaddingAtEndParent) padding_at_end_parent = { x = { x = 10 y = 11 } y = { x = 12 y = 13 } z = { x = 14 y = 15 } }
 
-// lldb-command:print mixed
+// lldb-command:v mixed
 // lldbg-check:[...] { x = { x = 16 y = 17 } y = { x = 18 y = 19 } z = { x = 20 } w = 21 }
 // lldbr-check:(struct_in_struct::Mixed) mixed = { x = { x = 16 y = 17 } y = { x = 18 y = 19 } z = { x = 20 } w = 21 }
 
-// lldb-command:print bag
+// lldb-command:v bag
 // lldbg-check:[...] { x = { x = 22 } }
 // lldbr-check:(struct_in_struct::Bag) bag = { x = { x = 22 } }
 
-// lldb-command:print bag_in_bag
+// lldb-command:v bag_in_bag
 // lldbg-check:[...] { x = { x = { x = 23 } } }
 // lldbr-check:(struct_in_struct::BagInBag) bag_in_bag = { x = { x = { x = 23 } } }
 
-// lldb-command:print tjo
+// lldb-command:v tjo
 // lldbg-check:[...] { x = { x = { x = { x = 24 } } } }
 // lldbr-check:(struct_in_struct::ThatsJustOverkill) tjo = { x = { x = { x = { x = 24 } } } }
 
-// lldb-command:print tree
+// lldb-command:v tree
 // lldbg-check:[...] { x = { x = 25 } y = { x = { x = 26 y = 27 } y = { x = 28 y = 29 } z = { x = 30 y = 31 } } z = { x = { x = { x = 32 } } } }
 // lldbr-check:(struct_in_struct::Tree) tree = { x = { x = 25 } y = { x = { x = 26 y = 27 } y = { x = 28 y = 29 } z = { x = 30 y = 31 } } z = { x = { x = { x = 32 } } } }
 

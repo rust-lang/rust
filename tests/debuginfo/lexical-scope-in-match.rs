@@ -63,72 +63,72 @@
 
 // lldb-command:run
 
-// lldb-command:print shadowed
+// lldb-command:v shadowed
 // lldbg-check:[...] 231
 // lldbr-check:(i32) shadowed = 231
-// lldb-command:print not_shadowed
+// lldb-command:v not_shadowed
 // lldbg-check:[...] 232
 // lldbr-check:(i32) not_shadowed = 232
 // lldb-command:continue
 
-// lldb-command:print shadowed
+// lldb-command:v shadowed
 // lldbg-check:[...] 233
 // lldbr-check:(i32) shadowed = 233
-// lldb-command:print not_shadowed
+// lldb-command:v not_shadowed
 // lldbg-check:[...] 232
 // lldbr-check:(i32) not_shadowed = 232
-// lldb-command:print local_to_arm
+// lldb-command:v local_to_arm
 // lldbg-check:[...] 234
 // lldbr-check:(i32) local_to_arm = 234
 // lldb-command:continue
 
-// lldb-command:print shadowed
+// lldb-command:v shadowed
 // lldbg-check:[...] 236
 // lldbr-check:(i32) shadowed = 236
-// lldb-command:print not_shadowed
+// lldb-command:v not_shadowed
 // lldbg-check:[...] 232
 // lldbr-check:(i32) not_shadowed = 232
 // lldb-command:continue
 
-// lldb-command:print shadowed
+// lldb-command:v shadowed
 // lldbg-check:[...] 237
 // lldbr-check:(isize) shadowed = 237
-// lldb-command:print not_shadowed
+// lldb-command:v not_shadowed
 // lldbg-check:[...] 232
 // lldbr-check:(i32) not_shadowed = 232
-// lldb-command:print local_to_arm
+// lldb-command:v local_to_arm
 // lldbg-check:[...] 238
 // lldbr-check:(isize) local_to_arm = 238
 // lldb-command:continue
 
-// lldb-command:print shadowed
+// lldb-command:v shadowed
 // lldbg-check:[...] 239
 // lldbr-check:(isize) shadowed = 239
-// lldb-command:print not_shadowed
+// lldb-command:v not_shadowed
 // lldbg-check:[...] 232
 // lldbr-check:(i32) not_shadowed = 232
 // lldb-command:continue
 
-// lldb-command:print shadowed
+// lldb-command:v shadowed
 // lldbg-check:[...] 241
 // lldbr-check:(isize) shadowed = 241
-// lldb-command:print not_shadowed
+// lldb-command:v not_shadowed
 // lldbg-check:[...] 232
 // lldbr-check:(i32) not_shadowed = 232
 // lldb-command:continue
 
-// lldb-command:print shadowed
+// lldb-command:v shadowed
 // lldbg-check:[...] 243
 // lldbr-check:(i32) shadowed = 243
-// lldb-command:print *local_to_arm
+// lldb-command:v *local_to_arm
 // lldbg-check:[...] 244
 // lldbr-check:(i32) *local_to_arm = 244
 // lldb-command:continue
 
-// lldb-command:print shadowed
+// lldb-command:v shadowed
 // lldbg-check:[...] 231
 // lldbr-check:(i32) shadowed = 231
-// lldb-command:print not_shadowed
+// lldb-command:v not_shadowed
 // lldbg-check:[...] 232
 // lldbr-check:(i32) not_shadowed = 232
 // lldb-command:continue

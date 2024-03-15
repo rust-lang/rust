@@ -34,27 +34,27 @@
 
 // lldb-command:run
 
-// lldb-command:print packed
+// lldb-command:v packed
 // lldbg-check:[...] { x = 123 y = 234 z = 345 }
 // lldbr-check:(packed_struct::Packed) packed = { x = 123 y = 234 z = 345 }
 
-// lldb-command:print packedInPacked
+// lldb-command:v packedInPacked
 // lldbg-check:[...] { a = 1111 b = { x = 2222 y = 3333 z = 4444 } c = 5555 d = { x = 6666 y = 7777 z = 8888 } }
 // lldbr-check:(packed_struct::PackedInPacked) packedInPacked = { a = 1111 b = { x = 2222 y = 3333 z = 4444 } c = 5555 d = { x = 6666 y = 7777 z = 8888 } }
 
-// lldb-command:print packedInUnpacked
+// lldb-command:v packedInUnpacked
 // lldbg-check:[...] { a = -1111 b = { x = -2222 y = -3333 z = -4444 } c = -5555 d = { x = -6666 y = -7777 z = -8888 } }
 // lldbr-check:(packed_struct::PackedInUnpacked) packedInUnpacked = { a = -1111 b = { x = -2222 y = -3333 z = -4444 } c = -5555 d = { x = -6666 y = -7777 z = -8888 } }
 
-// lldb-command:print unpackedInPacked
+// lldb-command:v unpackedInPacked
 // lldbg-check:[...] { a = 987 b = { x = 876 y = 765 z = 654 w = 543 } c = { x = 432 y = 321 z = 210 w = 109 } d = -98 }
 // lldbr-check:(packed_struct::UnpackedInPacked) unpackedInPacked = { a = 987 b = { x = 876 y = 765 z = 654 w = 543 } c = { x = 432 y = 321 z = 210 w = 109 } d = -98 }
 
-// lldb-command:print sizeof(packed)
+// lldb-command:dwim-print sizeof(packed)
 // lldbg-check:[...] 14
 // lldbr-check:(usize) = 14
 
-// lldb-command:print sizeof(packedInPacked)
+// lldb-command:dwim-print sizeof(packedInPacked)
 // lldbg-check:[...] 40
 // lldbr-check:(usize) = 40
 

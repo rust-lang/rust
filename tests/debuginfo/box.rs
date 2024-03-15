@@ -16,10 +16,10 @@
 // === LLDB TESTS ==================================================================================
 
 // lldb-command:run
-// lldb-command:print *a
+// lldb-command:v *a
 // lldbg-check:[...] 1
 // lldbr-check:(i32) *a = 1
-// lldb-command:print *b
+// lldb-command:v *b
 // lldbg-check:[...] { 0 = 2 1 = 3.5 }
 // lldbr-check:((i32, f64)) *b = { 0 = 2 1 = 3.5 }
 

@@ -18,7 +18,7 @@
 // === LLDB TESTS ==================================================================================
 
 // lldb-command:run
-// lldb-command:print u
+// lldb-command:v u
 // lldbg-check:[...] { a = { 0 = '\x02' 1 = '\x02' } b = 514 }
 // lldbr-check:(union_smoke::U) u = { a = { 0 = '\x02' 1 = '\x02' } b = 514 }
 

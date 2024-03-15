@@ -23,13 +23,13 @@
 
 // lldb-command:run
 
-// lldb-command:print constant
+// lldb-command:v constant
 // lldbg-check:[...] 1
 // lldbr-check:(isize) constant = 1
-// lldb-command:print a_struct
+// lldb-command:v a_struct
 // lldbg-check:[...] { a = -2 b = 3.5 c = 4 }
 // lldbr-check:(var_captured_in_sendable_closure::Struct) a_struct = { a = -2 b = 3.5 c = 4 }
-// lldb-command:print *owned
+// lldb-command:v *owned
 // lldbg-check:[...] 5
 // lldbr-check:(isize) *owned = 5
 

@@ -41,27 +41,27 @@
 
 // lldb-command:run
 
-// lldb-command:print s
+// lldb-command:v s
 // lldb-check:[...] Struct { a: 1, b: 2.5 }
 // lldb-command:continue
 
-// lldb-command:print x
+// lldb-command:v x
 // lldb-check:[...] Struct { a: 3, b: 4.5 }
-// lldb-command:print y
+// lldb-command:v y
 // lldb-check:[...] 5
-// lldb-command:print z
+// lldb-command:v z
 // lldb-check:[...] 6.5
 // lldb-command:continue
 
-// lldb-command:print a
+// lldb-command:v a
 // lldb-check:[...] (7, 8, 9.5, 10.5)
 // lldb-command:continue
 
-// lldb-command:print a
+// lldb-command:v a
 // lldb-check:[...] Newtype(11.5, 12.5, 13, 14)
 // lldb-command:continue
 
-// lldb-command:print x
+// lldb-command:v x
 // lldb-check:[...] Case1 { x: 0, y: 8970181431921507452 }
 // lldb-command:continue
 

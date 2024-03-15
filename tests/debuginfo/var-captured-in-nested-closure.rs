@@ -43,42 +43,42 @@
 
 // lldb-command:run
 
-// lldb-command:print variable
+// lldb-command:v variable
 // lldbg-check:[...] 1
 // lldbr-check:(isize) variable = 1
-// lldb-command:print constant
+// lldb-command:v constant
 // lldbg-check:[...] 2
 // lldbr-check:(isize) constant = 2
-// lldb-command:print a_struct
+// lldb-command:v a_struct
 // lldbg-check:[...] { a = -3 b = 4.5 c = 5 }
 // lldbr-check:(var_captured_in_nested_closure::Struct) a_struct = { a = -3 b = 4.5 c = 5 }
-// lldb-command:print *struct_ref
+// lldb-command:v *struct_ref
 // lldbg-check:[...] { a = -3 b = 4.5 c = 5 }
 // lldbr-check:(var_captured_in_nested_closure::Struct) *struct_ref = { a = -3 b = 4.5 c = 5 }
-// lldb-command:print *owned
+// lldb-command:v *owned
 // lldbg-check:[...] 6
 // lldbr-check:(isize) *owned = 6
-// lldb-command:print closure_local
+// lldb-command:v closure_local
 // lldbg-check:[...] 8
 // lldbr-check:(isize) closure_local = 8
 // lldb-command:continue
 
-// lldb-command:print variable
+// lldb-command:v variable
 // lldbg-check:[...] 1
 // lldbr-check:(isize) variable = 1
-// lldb-command:print constant
+// lldb-command:v constant
 // lldbg-check:[...] 2
 // lldbr-check:(isize) constant = 2
-// lldb-command:print a_struct
+// lldb-command:v a_struct
 // lldbg-check:[...] { a = -3 b = 4.5 c = 5 }
 // lldbr-check:(var_captured_in_nested_closure::Struct) a_struct = { a = -3 b = 4.5 c = 5 }
-// lldb-command:print *struct_ref
+// lldb-command:v *struct_ref
 // lldbg-check:[...] { a = -3 b = 4.5 c = 5 }
 // lldbr-check:(var_captured_in_nested_closure::Struct) *struct_ref = { a = -3 b = 4.5 c = 5 }
-// lldb-command:print *owned
+// lldb-command:v *owned
 // lldbg-check:[...] 6
 // lldbr-check:(isize) *owned = 6
-// lldb-command:print closure_local
+// lldb-command:v closure_local
 // lldbg-check:[...] 8
 // lldbr-check:(isize) closure_local = 8
 // lldb-command:continue

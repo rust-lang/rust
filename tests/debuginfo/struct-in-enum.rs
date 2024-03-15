@@ -26,12 +26,12 @@
 
 // lldb-command:run
 
-// lldb-command:print case1
+// lldb-command:v case1
 // lldb-check:[...] Case1(0, Struct { x: 2088533116, y: 2088533116, z: 31868 })
-// lldb-command:print case2
+// lldb-command:v case2
 // lldb-check:[...] Case2(0, 1229782938247303441, 4369)
 
-// lldb-command:print univariant
+// lldb-command:v univariant
 // lldb-check:[...] TheOnlyCase(Struct { x: 123, y: 456, z: 789 })
 
 #![allow(unused_variables)]

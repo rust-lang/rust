@@ -56,34 +56,34 @@
 
 // lldb-command:run
 
-// lldb-command:print a
+// lldb-command:v a
 // lldbg-check:[...] 10
 // lldbr-check:(i32) a = 10
-// lldb-command:print b
+// lldb-command:v b
 // lldbg-check:[...] 34
 // lldbr-check:(i32) b = 34
 // lldb-command:continue
 
-// lldb-command:print a
+// lldb-command:v a
 // lldbg-check:[...] 890242
 // lldbr-check:(i32) a = 10
-// lldb-command:print b
+// lldb-command:v b
 // lldbg-check:[...] 34
 // lldbr-check:(i32) b = 34
 // lldb-command:continue
 
-// lldb-command:print a
+// lldb-command:v a
 // lldbg-check:[...] 10
 // lldbr-check:(i32) a = 10
-// lldb-command:print b
+// lldb-command:v b
 // lldbg-check:[...] 34
 // lldbr-check:(i32) b = 34
 // lldb-command:continue
 
-// lldb-command:print a
+// lldb-command:v a
 // lldbg-check:[...] 102
 // lldbr-check:(i32) a = 10
-// lldb-command:print b
+// lldb-command:v b
 // lldbg-check:[...] 34
 // lldbr-check:(i32) b = 34
 // lldb-command:continue

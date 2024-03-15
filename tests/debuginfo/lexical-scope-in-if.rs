@@ -68,73 +68,73 @@
 // lldb-command:run
 
 // BEFORE if
-// lldb-command:print x
+// lldb-command:v x
 // lldbg-check:[...] 999
 // lldbr-check:(i32) x = 999
-// lldb-command:print y
+// lldb-command:v y
 // lldbg-check:[...] -1
 // lldbr-check:(i32) y = -1
 // lldb-command:continue
 
 // AT BEGINNING of 'then' block
-// lldb-command:print x
+// lldb-command:v x
 // lldbg-check:[...] 999
 // lldbr-check:(i32) x = 999
-// lldb-command:print y
+// lldb-command:v y
 // lldbg-check:[...] -1
 // lldbr-check:(i32) y = -1
 // lldb-command:continue
 
 // AFTER 1st redeclaration of 'x'
-// lldb-command:print x
+// lldb-command:v x
 // lldbg-check:[...] 1001
 // lldbr-check:(i32) x = 1001
-// lldb-command:print y
+// lldb-command:v y
 // lldbg-check:[...] -1
 // lldbr-check:(i32) y = -1
 // lldb-command:continue
 
 // AFTER 2st redeclaration of 'x'
-// lldb-command:print x
+// lldb-command:v x
 // lldbg-check:[...] 1002
 // lldbr-check:(i32) x = 1002
-// lldb-command:print y
+// lldb-command:v y
 // lldbg-check:[...] 1003
 // lldbr-check:(i32) y = 1003
 // lldb-command:continue
 
 // AFTER 1st if expression
-// lldb-command:print x
+// lldb-command:v x
 // lldbg-check:[...] 999
 // lldbr-check:(i32) x = 999
-// lldb-command:print y
+// lldb-command:v y
 // lldbg-check:[...] -1
 // lldbr-check:(i32) y = -1
 // lldb-command:continue
 
 // BEGINNING of else branch
-// lldb-command:print x
+// lldb-command:v x
 // lldbg-check:[...] 999
 // lldbr-check:(i32) x = 999
-// lldb-command:print y
+// lldb-command:v y
 // lldbg-check:[...] -1
 // lldbr-check:(i32) y = -1
 // lldb-command:continue
 
 // BEGINNING of else branch
-// lldb-command:print x
+// lldb-command:v x
 // lldbg-check:[...] 1004
 // lldbr-check:(i32) x = 1004
-// lldb-command:print y
+// lldb-command:v y
 // lldbg-check:[...] 1005
 // lldbr-check:(i32) y = 1005
 // lldb-command:continue
 
 // BEGINNING of else branch
-// lldb-command:print x
+// lldb-command:v x
 // lldbg-check:[...] 999
 // lldbr-check:(i32) x = 999
-// lldb-command:print y
+// lldb-command:v y
 // lldbg-check:[...] -1
 // lldbr-check:(i32) y = -1
 // lldb-command:continue

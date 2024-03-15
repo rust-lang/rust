@@ -17,9 +17,9 @@
 
 // lldb-command:run
 
-// lldb-command:print rc
+// lldb-command:v rc
 // lldb-check:[...] strong=11, weak=1 { value = 111 }
-// lldb-command:print arc
+// lldb-command:v arc
 // lldb-check:[...] strong=21, weak=1 { data = 222 }
 
 // === CDB TESTS ==================================================================================
