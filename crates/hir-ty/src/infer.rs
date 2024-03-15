@@ -832,7 +832,7 @@ impl<'a> InferenceContext<'a> {
         self.return_coercion = Some(CoerceMany::new(self.return_ty.clone()));
 
         // Functions might be associated items that define ATPITs.
-        // To define an ATPITs, that ATPIT must appear in the function's signitures.
+        // To define an ATPITs, that ATPIT must appear in the function's signatures.
         // So, it suffices to check for params and return types.
         params_and_ret_tys.push(self.return_ty.clone());
         self.insert_atpit_coercion_table(params_and_ret_tys.iter());
