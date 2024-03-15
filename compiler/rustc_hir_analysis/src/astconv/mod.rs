@@ -214,7 +214,7 @@ pub trait CreateInstantiationsForGenericArgsCtxt<'a, 'tcx> {
     ) -> ty::GenericArg<'tcx>;
 }
 
-impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
+impl<'tcx> dyn AstConv<'tcx> + '_ {
     #[instrument(level = "debug", skip(self), ret)]
     pub fn ast_region_to_region(
         &self,
@@ -284,8 +284,6 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             def_id,
             &[],
             item_segment,
-            item_segment.args(),
-            item_segment.infer_args,
             None,
             ty::BoundConstness::NotConst,
         );
@@ -330,14 +328,12 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
     /// type itself: `['a]`. The returned `GenericArgsRef` concatenates these two
     /// lists: `[Vec<u8>, u8, 'a]`.
     #[instrument(level = "debug", skip(self, span), ret)]
-    fn create_args_for_ast_path<'a>(
+    fn create_args_for_ast_path(
         &self,
         span: Span,
         def_id: DefId,
         parent_args: &[ty::GenericArg<'tcx>],
-        seg: &hir::PathSegment<'_>,
-        generic_args: &'a hir::GenericArgs<'tcx>,
-        infer_args: bool,
+        segment: &hir::PathSegment<'tcx>,
         self_ty: Option<Ty<'tcx>>,
         constness: ty::BoundConstness,
     ) -> (GenericArgsRef<'tcx>, GenericArgCountResult) {
@@ -365,12 +361,10 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         let mut arg_count = check_generic_arg_count(
             tcx,
             def_id,
-            seg,
+            segment,
             generics,
-            generic_args,
             GenericArgPosition::Type,
             self_ty.is_some(),
-            infer_args,
         );
 
         if let Err(err) = &arg_count.correct
@@ -388,7 +382,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         }
 
         struct InstantiationsForAstPathCtxt<'a, 'tcx> {
-            astconv: &'a (dyn AstConv<'tcx> + 'a),
+            astconv: &'a dyn AstConv<'tcx>,
             def_id: DefId,
             generic_args: &'a GenericArgs<'tcx>,
             span: Span,
@@ -547,9 +541,9 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             astconv: self,
             def_id,
             span,
-            generic_args,
+            generic_args: segment.args(),
             inferred_params: vec![],
-            infer_args,
+            infer_args: segment.infer_args,
         };
         if let ty::BoundConstness::Const | ty::BoundConstness::ConstIfConst = constness
             && generics.has_self
@@ -592,8 +586,6 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             item_def_id,
             parent_args,
             item_segment,
-            item_segment.args(),
-            item_segment.infer_args,
             None,
             ty::BoundConstness::NotConst,
         );
@@ -661,7 +653,6 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
     ) -> GenericArgCountResult {
         let trait_def_id = trait_ref.trait_def_id().unwrap_or_else(|| FatalError.raise());
         let trait_segment = trait_ref.path.segments.last().unwrap();
-        let args = trait_segment.args();
 
         self.prohibit_generics(trait_ref.path.segments.split_last().unwrap().1.iter(), |_| {});
         self.complain_about_internal_fn_trait(span, trait_def_id, trait_segment, false);
@@ -671,8 +662,6 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             trait_def_id,
             &[],
             trait_segment,
-            args,
-            trait_segment.infer_args,
             Some(self_ty),
             constness,
         );
@@ -690,7 +679,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         bounds.push_trait_bound(tcx, poly_trait_ref, span, polarity);
 
         let mut dup_bindings = FxIndexMap::default();
-        for binding in args.bindings {
+        for binding in trait_segment.args().bindings {
             // Don't register additional associated type bounds for negative bounds,
             // since we should have emitten an error for them earlier, and they will
             // not be well-formed!
@@ -729,42 +718,20 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         // FIXME(effects) move all host param things in astconv to hir lowering
         constness: ty::BoundConstness,
     ) -> ty::TraitRef<'tcx> {
-        let (generic_args, _) = self.create_args_for_ast_trait_ref(
+        self.complain_about_internal_fn_trait(span, trait_def_id, trait_segment, is_impl);
+
+        let (generic_args, _) = self.create_args_for_ast_path(
             span,
             trait_def_id,
-            self_ty,
+            &[],
             trait_segment,
-            is_impl,
+            Some(self_ty),
             constness,
         );
         if let Some(b) = trait_segment.args().bindings.first() {
             prohibit_assoc_ty_binding(self.tcx(), b.span, Some((trait_segment, span)));
         }
         ty::TraitRef::new(self.tcx(), trait_def_id, generic_args)
-    }
-
-    #[instrument(level = "debug", skip(self, span))]
-    fn create_args_for_ast_trait_ref<'a>(
-        &self,
-        span: Span,
-        trait_def_id: DefId,
-        self_ty: Ty<'tcx>,
-        trait_segment: &'a hir::PathSegment<'tcx>,
-        is_impl: bool,
-        constness: ty::BoundConstness,
-    ) -> (GenericArgsRef<'tcx>, GenericArgCountResult) {
-        self.complain_about_internal_fn_trait(span, trait_def_id, trait_segment, is_impl);
-
-        self.create_args_for_ast_path(
-            span,
-            trait_def_id,
-            &[],
-            trait_segment,
-            trait_segment.args(),
-            trait_segment.infer_args,
-            Some(self_ty),
-            constness,
-        )
     }
 
     fn trait_defines_associated_item_named(
@@ -799,115 +766,6 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         } else {
             tcx.at(span).type_of(did).instantiate(tcx, args)
         }
-    }
-
-    fn report_ambiguous_associated_type(
-        &self,
-        span: Span,
-        types: &[String],
-        traits: &[String],
-        name: Symbol,
-    ) -> ErrorGuaranteed {
-        let mut err =
-            struct_span_code_err!(self.tcx().dcx(), span, E0223, "ambiguous associated type");
-        if self
-            .tcx()
-            .resolutions(())
-            .confused_type_with_std_module
-            .keys()
-            .any(|full_span| full_span.contains(span))
-        {
-            err.span_suggestion_verbose(
-                span.shrink_to_lo(),
-                "you are looking for the module in `std`, not the primitive type",
-                "std::",
-                Applicability::MachineApplicable,
-            );
-        } else {
-            let mut types = types.to_vec();
-            types.sort();
-            let mut traits = traits.to_vec();
-            traits.sort();
-            match (&types[..], &traits[..]) {
-                ([], []) => {
-                    err.span_suggestion_verbose(
-                        span,
-                        format!(
-                            "if there were a type named `Type` that implements a trait named \
-                             `Trait` with associated type `{name}`, you could use the \
-                             fully-qualified path",
-                        ),
-                        format!("<Type as Trait>::{name}"),
-                        Applicability::HasPlaceholders,
-                    );
-                }
-                ([], [trait_str]) => {
-                    err.span_suggestion_verbose(
-                        span,
-                        format!(
-                            "if there were a type named `Example` that implemented `{trait_str}`, \
-                             you could use the fully-qualified path",
-                        ),
-                        format!("<Example as {trait_str}>::{name}"),
-                        Applicability::HasPlaceholders,
-                    );
-                }
-                ([], traits) => {
-                    err.span_suggestions(
-                        span,
-                        format!(
-                            "if there were a type named `Example` that implemented one of the \
-                             traits with associated type `{name}`, you could use the \
-                             fully-qualified path",
-                        ),
-                        traits.iter().map(|trait_str| format!("<Example as {trait_str}>::{name}")),
-                        Applicability::HasPlaceholders,
-                    );
-                }
-                ([type_str], []) => {
-                    err.span_suggestion_verbose(
-                        span,
-                        format!(
-                            "if there were a trait named `Example` with associated type `{name}` \
-                             implemented for `{type_str}`, you could use the fully-qualified path",
-                        ),
-                        format!("<{type_str} as Example>::{name}"),
-                        Applicability::HasPlaceholders,
-                    );
-                }
-                (types, []) => {
-                    err.span_suggestions(
-                        span,
-                        format!(
-                            "if there were a trait named `Example` with associated type `{name}` \
-                             implemented for one of the types, you could use the fully-qualified \
-                             path",
-                        ),
-                        types
-                            .into_iter()
-                            .map(|type_str| format!("<{type_str} as Example>::{name}")),
-                        Applicability::HasPlaceholders,
-                    );
-                }
-                (types, traits) => {
-                    let mut suggestions = vec![];
-                    for type_str in types {
-                        for trait_str in traits {
-                            suggestions.push(format!("<{type_str} as {trait_str}>::{name}"));
-                        }
-                    }
-                    err.span_suggestions(
-                        span,
-                        "use fully-qualified syntax",
-                        suggestions,
-                        Applicability::MachineApplicable,
-                    );
-                }
-            }
-        }
-        let reported = err.emit();
-        self.set_tainted_by_errors(reported);
-        reported
     }
 
     // Search for a bound on a type parameter which includes the associated item
@@ -2471,8 +2329,6 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                     def_id,
                     &[],
                     &hir::PathSegment::invalid(),
-                    &GenericArgs::none(),
-                    true,
                     None,
                     ty::BoundConstness::NotConst,
                 );
@@ -2552,9 +2408,9 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
 
     pub fn ty_of_arg(&self, ty: &hir::Ty<'tcx>, expected_ty: Option<Ty<'tcx>>) -> Ty<'tcx> {
         match ty.kind {
-            hir::TyKind::Infer if expected_ty.is_some() => {
-                self.record_ty(ty.hir_id, expected_ty.unwrap(), ty.span);
-                expected_ty.unwrap()
+            hir::TyKind::Infer if let Some(expected_ty) = expected_ty => {
+                self.record_ty(ty.hir_id, expected_ty, ty.span);
+                expected_ty
             }
             _ => self.ast_ty_to_ty(ty),
         }
