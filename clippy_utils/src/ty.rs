@@ -1343,8 +1343,8 @@ pub fn deref_chain<'cx, 'tcx>(cx: &'cx LateContext<'tcx>, ty: Ty<'tcx>) -> impl 
 }
 
 /// Checks if a Ty<'_> has some inherent method Symbol.
-/// This does not look for impls in the type's Deref::Target type.
-/// If you need this, you should wrap this call in clippy_utils::ty::deref_chain().any(...).
+/// This does not look for impls in the type's `Deref::Target` type.
+/// If you need this, you should wrap this call in `clippy_utils::ty::deref_chain().any(...)`.
 pub fn adt_has_inherent_method(cx: &LateContext<'_>, ty: Ty<'_>, method_name: Symbol) -> bool {
     if let Some(ty_did) = ty.ty_adt_def().map(ty::AdtDef::did) {
         cx.tcx.inherent_impls(ty_did).into_iter().flatten().any(|&did| {
