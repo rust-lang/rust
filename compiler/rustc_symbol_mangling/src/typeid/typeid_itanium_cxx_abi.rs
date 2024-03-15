@@ -1153,6 +1153,10 @@ pub fn typeid_for_instance<'tcx>(
         instance.args = tcx.mk_args_trait(invoke_ty, instance.args.into_iter().skip(1));
     }
 
+    if matches!(instance.def, InstanceDef::Virtual(..)) {
+        instance.args = strip_receiver_auto(tcx, instance.args)
+    }
+
     let fn_abi = tcx
         .fn_abi_of_instance(tcx.param_env(instance.def_id()).and((instance, ty::List::empty())))
         .unwrap_or_else(|instance| {
@@ -1160,4 +1164,24 @@ pub fn typeid_for_instance<'tcx>(
         });
 
     typeid_for_fnabi(tcx, fn_abi, options)
+}
+
+fn strip_receiver_auto<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    args: ty::GenericArgsRef<'tcx>,
+) -> ty::GenericArgsRef<'tcx> {
+    let ty = args.type_at(0);
+    let ty::Dynamic(preds, lifetime, kind) = ty.kind() else {
+        bug!("Tried to strip auto traits from non-dynamic type {ty}");
+    };
+    let filtered_preds =
+        if preds.principal().is_some() {
+            tcx.mk_poly_existential_predicates_from_iter(preds.into_iter().filter(|pred| {
+                !matches!(pred.skip_binder(), ty::ExistentialPredicate::AutoTrait(..))
+            }))
+        } else {
+            ty::List::empty()
+        };
+    let new_rcvr = Ty::new_dynamic(tcx, filtered_preds, *lifetime, *kind);
+    tcx.mk_args_trait(new_rcvr, args.into_iter().skip(1))
 }
