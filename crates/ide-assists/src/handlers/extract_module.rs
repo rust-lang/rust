@@ -314,19 +314,17 @@ impl Module {
     ) {
         let mod_name = self.name;
         let out_of_sel = |node: &SyntaxNode| !self.text_range.contains_range(node.text_range());
+
         for (file_id, refs) in node_def.usages(&ctx.sema).all() {
             let source_file = ctx.sema.parse(file_id);
             let usages = refs.into_iter().filter_map(|FileReference { range, name, .. }| {
-                let path: ast::Path = find_node_at_range(source_file.syntax(), range)?;
+                // handle normal usages
+                let name_ref = find_node_at_range::<ast::NameRef>(source_file.syntax(), range)?;
                 let name = name.syntax().to_string();
 
-                for desc in path.syntax().descendants() {
-                    if desc.to_string() == name && out_of_sel(&desc) {
-                        if let Some(name_ref) = ast::NameRef::cast(desc) {
-                            let new_ref = format!("{mod_name}::{name_ref}");
-                            return Some((name_ref.syntax().text_range(), new_ref));
-                        }
-                    }
+                if out_of_sel(name_ref.syntax()) {
+                    let new_ref = format!("{mod_name}::{name_ref}");
+                    return Some((name_ref.syntax().text_range(), new_ref));
                 }
 
                 None
