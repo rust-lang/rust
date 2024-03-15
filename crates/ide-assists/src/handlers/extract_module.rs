@@ -1708,6 +1708,27 @@ fn main() {
 }
 "#,
             r#"
+mod modname {
+    use Direction::{Horizontal, Vertical};
+
+    pub(crate) struct Point;
+
+    impl Point {
+        pub const fn direction(self, other: Self) -> Option<Direction> {
+            Some(Vertical)
+        }
+    }
+
+    pub enum Direction {
+        Horizontal,
+        Vertical,
+    }
+}
+use modname::Direction::{Horizontal, Vertical};
+
+fn main() {
+    let x = Vertical;
+}
 "#,
         );
     }
