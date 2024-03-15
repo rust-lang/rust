@@ -4672,7 +4672,9 @@ impl<'a: 'ast, 'b, 'ast, 'tcx> LateResolutionVisitor<'a, 'b, 'ast, 'tcx> {
             return;
         }
 
-        if path.iter().any(|seg| seg.ident.span.from_expansion()) {
+        if finalize.path_span.from_expansion()
+            || path.iter().any(|seg| seg.ident.span.from_expansion())
+        {
             return;
         }
 
