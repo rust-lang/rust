@@ -527,8 +527,7 @@ impl<'mir, 'tcx> MiriMachine<'mir, 'tcx> {
     pub fn emit_diagnostic(&self, e: NonHaltingDiagnostic) {
         use NonHaltingDiagnostic::*;
 
-        let stacktrace =
-            Frame::generate_stacktrace_from_stack(self.threads.active_thread_stack());
+        let stacktrace = Frame::generate_stacktrace_from_stack(self.threads.active_thread_stack());
         let (stacktrace, _was_pruned) = prune_stacktrace(stacktrace, self);
 
         let (title, diag_level) = match &e {
