@@ -2794,7 +2794,8 @@ fn clean_maybe_renamed_item<'tcx>(
             ItemKind::Macro(ref macro_def, MacroKind::Bang) => {
                 let ty_vis = cx.tcx.visibility(def_id);
                 MacroItem(Macro {
-                    source: display_macro_source(cx, name, macro_def, def_id, ty_vis),
+                    // FIXME this shouldn't be false
+                    source: display_macro_source(cx, name, macro_def, def_id, ty_vis, false),
                 })
             }
             ItemKind::Macro(_, macro_kind) => clean_proc_macro(item, &mut name, macro_kind, cx),
