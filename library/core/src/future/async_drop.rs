@@ -199,49 +199,6 @@ impl<T> Future for Slice<T> {
     }
 }
 
-/// Used to defer creation of mutable references to not cause any
-/// aliasing issues.
-#[lang = "deferred_async_drop"]
-enum DeferredAsyncDrop<T> {
-    Init { ptr: ptr::NonNull<T>, _pinned: PhantomPinned },
-    Running { dtor: <T as AsyncDestruct>::AsyncDestructor },
-}
-
-/// Same as [`async_drop_in_place`] but with a deferred call to the
-/// `AsyncDrop::async_drop`.
-///
-/// # Safety
-///
-/// Same as [`async_drop_in_place`], but creation of the pinned mutable
-/// reference is deferred until first [`DeferredAsyncDrop::poll`] call.
-#[lang = "deferred_async_drop_ctor"]
-unsafe fn deferred_async_drop<T>(item: *mut T) -> DeferredAsyncDrop<T> {
-    DeferredAsyncDrop::Init {
-        // SAFETY: Guaranteed by current function's safety requirements
-        ptr: unsafe { ptr::NonNull::new_unchecked(item) },
-        _pinned: PhantomPinned,
-    }
-}
-
-impl<T> Future for DeferredAsyncDrop<T> {
-    type Output = ();
-
-    fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<()> {
-        // SAFETY: We never move out possibly immovable objects (Running::dtor)
-        let this = unsafe { self.get_unchecked_mut() };
-        if let DeferredAsyncDrop::Init { ptr, _pinned: _ } = *this {
-            // SAFETY: Guaranteed to be safe by [`deferred_async_drop`]'s
-            //   safety requirements
-            let dtor = unsafe { async_drop_in_place_raw(ptr.as_ptr()) };
-            *this = DeferredAsyncDrop::Running { dtor };
-        }
-
-        let DeferredAsyncDrop::Running { dtor } = this else { unreachable!() };
-        // SAFETY: forwarding `poll` to the destructor
-        unsafe { Pin::new_unchecked(dtor) }.poll(cx)
-    }
-}
-
 /// Awaits the `F` future and then awaits `G::IntoFuture`.
 #[lang = "async_drop_chain"]
 enum Chain<F, G: IntoFuture> {

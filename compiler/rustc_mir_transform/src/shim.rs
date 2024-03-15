@@ -1054,7 +1054,6 @@ struct AsyncDestructorCtorShimBuilder<'tcx> {
     surface_combinator: Option<(DefId, DefId)>,
     deep_combinator: Option<(DefId, DefId)>,
     slice_combinator: Option<(DefId, EarlyBinder<Ty<'tcx>>)>,
-    deferred_combinator: Option<(DefId, EarlyBinder<Ty<'tcx>>)>,
     into_async_destructor_combinator: Option<(DefId, EarlyBinder<Ty<'tcx>>)>,
     chain_combinator: Option<(DefId, EarlyBinder<Ty<'tcx>>)>,
 }
@@ -1090,7 +1089,6 @@ impl<'tcx> AsyncDestructorCtorShimBuilder<'tcx> {
             surface_combinator: None,
             deep_combinator: None,
             slice_combinator: None,
-            deferred_combinator: None,
             into_async_destructor_combinator: None,
             chain_combinator: None,
         }
@@ -1405,17 +1403,6 @@ impl<'tcx> AsyncDestructorCtorShimBuilder<'tcx> {
             (
                 tcx.require_lang_item(LangItem::AsyncDropSliceCtor, Some(self.span)),
                 tcx.type_of(tcx.require_lang_item(LangItem::AsyncDropSlice, Some(self.span))),
-            )
-        });
-        self.apply_combinator::<1, _>(function, |tcx, args| ty.instantiate(tcx, args))
-    }
-
-    fn combine_deferred(&mut self) {
-        let tcx = self.tcx;
-        let (function, ty) = *self.deferred_combinator.get_or_insert_with(|| {
-            (
-                tcx.require_lang_item(LangItem::DeferredAsyncDropCtor, Some(self.span)),
-                tcx.type_of(tcx.require_lang_item(LangItem::DeferredAsyncDrop, Some(self.span))),
             )
         });
         self.apply_combinator::<1, _>(function, |tcx, args| ty.instantiate(tcx, args))

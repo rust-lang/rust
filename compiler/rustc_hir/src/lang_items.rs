@@ -168,8 +168,6 @@ language_item_table! {
     SurfaceAsyncDropInPlace, sym::surface_async_drop_in_place, surface_async_drop_in_place_fn, Target::Fn, GenericRequirement::Exact(1);
     AsyncDropSlice,          sym::async_drop_slice,    async_drop_slice_ty,        Target::Struct,         GenericRequirement::Exact(1);
     AsyncDropSliceCtor,      sym::async_drop_slice_ctor, async_drop_slice_fn,      Target::Fn,             GenericRequirement::Exact(1);
-    DeferredAsyncDrop,       sym::deferred_async_drop, deferred_async_drop_type,   Target::Enum,           GenericRequirement::Exact(1);
-    DeferredAsyncDropCtor,   sym::deferred_async_drop_ctor, deferred_async_drop_fn, Target::Fn,            GenericRequirement::Exact(1);
     AsyncDropChain,          sym::async_drop_chain,    async_drop_chain_type,      Target::Enum,           GenericRequirement::Exact(2);
     AsyncDropChainCtor,      sym::async_drop_chain_ctor, async_drop_chain_fn,      Target::Fn,             GenericRequirement::Exact(2);
     AsyncDropIntoChain,      sym::async_drop_into_chain, async_drop_into_chain_type, Target::Struct,       GenericRequirement::Exact(2);

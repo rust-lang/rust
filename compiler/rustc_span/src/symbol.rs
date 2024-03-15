@@ -678,8 +678,6 @@ symbols! {
         default_method_body_is_const,
         default_type_parameter_fallback,
         default_type_params,
-        deferred_async_drop,
-        deferred_async_drop_ctor,
         delayed_bug_from_inside_query,
         deny,
         deprecated,
