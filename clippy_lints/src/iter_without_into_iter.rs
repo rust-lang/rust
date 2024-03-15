@@ -1,7 +1,7 @@
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::get_parent_as_impl;
 use clippy_utils::source::snippet;
-use clippy_utils::ty::{implements_trait, make_normalized_projection};
+use clippy_utils::ty::{adt_has_inherent_method, deref_chain, implements_trait, make_normalized_projection};
 use rustc_ast::Mutability;
 use rustc_errors::Applicability;
 use rustc_hir::{FnRetTy, ImplItemKind, ImplicitSelfKind, ItemKind, TyKind};
@@ -9,8 +9,7 @@ use rustc_lint::{LateContext, LateLintPass, LintContext};
 use rustc_middle::lint::in_external_macro;
 use rustc_middle::ty::{self, Ty};
 use rustc_session::declare_lint_pass;
-use rustc_span::{sym, Symbol};
-use std::iter;
+use rustc_span::sym;
 
 declare_clippy_lint! {
     /// ### What it does
@@ -122,33 +121,6 @@ fn is_ty_exported(cx: &LateContext<'_>, ty: Ty<'_>) -> bool {
     ty.ty_adt_def()
         .and_then(|adt| adt.did().as_local())
         .is_some_and(|did| cx.effective_visibilities.is_exported(did))
-}
-
-/// Returns the deref chain of a type, starting with the type itself.
-fn deref_chain<'cx, 'tcx>(cx: &'cx LateContext<'tcx>, ty: Ty<'tcx>) -> impl Iterator<Item = Ty<'tcx>> + 'cx {
-    iter::successors(Some(ty), |&ty| {
-        if let Some(deref_did) = cx.tcx.lang_items().deref_trait()
-            && implements_trait(cx, ty, deref_did, &[])
-        {
-            make_normalized_projection(cx.tcx, cx.param_env, deref_did, sym::Target, [ty])
-        } else {
-            None
-        }
-    })
-}
-
-fn adt_has_inherent_method(cx: &LateContext<'_>, ty: Ty<'_>, method_name: Symbol) -> bool {
-    if let Some(ty_did) = ty.ty_adt_def().map(ty::AdtDef::did) {
-        cx.tcx.inherent_impls(ty_did).into_iter().flatten().any(|&did| {
-            cx.tcx
-                .associated_items(did)
-                .filter_by_name_unhygienic(method_name)
-                .next()
-                .is_some_and(|item| item.kind == ty::AssocKind::Fn)
-        })
-    } else {
-        false
-    }
 }
 
 impl LateLintPass<'_> for IterWithoutIntoIter {

@@ -1328,3 +1328,33 @@ pub fn normalize_with_regions<'tcx>(tcx: TyCtxt<'tcx>, param_env: ParamEnv<'tcx>
 pub fn is_manually_drop(ty: Ty<'_>) -> bool {
     ty.ty_adt_def().map_or(false, AdtDef::is_manually_drop)
 }
+
+/// Returns the deref chain of a type, starting with the type itself.
+pub fn deref_chain<'cx, 'tcx>(cx: &'cx LateContext<'tcx>, ty: Ty<'tcx>) -> impl Iterator<Item = Ty<'tcx>> + 'cx {
+    iter::successors(Some(ty), |&ty| {
+        if let Some(deref_did) = cx.tcx.lang_items().deref_trait()
+            && implements_trait(cx, ty, deref_did, &[])
+        {
+            make_normalized_projection(cx.tcx, cx.param_env, deref_did, sym::Target, [ty])
+        } else {
+            None
+        }
+    })
+}
+
+/// Checks if a Ty<'_> has some inherent method Symbol.
+/// This does not look for impls in the type's Deref::Target type.
+/// If you need this, you should wrap this call in clippy_utils::ty::deref_chain().any(...).
+pub fn adt_has_inherent_method(cx: &LateContext<'_>, ty: Ty<'_>, method_name: Symbol) -> bool {
+    if let Some(ty_did) = ty.ty_adt_def().map(ty::AdtDef::did) {
+        cx.tcx.inherent_impls(ty_did).into_iter().flatten().any(|&did| {
+            cx.tcx
+                .associated_items(did)
+                .filter_by_name_unhygienic(method_name)
+                .next()
+                .is_some_and(|item| item.kind == ty::AssocKind::Fn)
+        })
+    } else {
+        false
+    }
+}

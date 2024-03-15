@@ -3,6 +3,21 @@
 // we want to avoid false positives.
 #![warn(clippy::out_of_bounds_indexing)]
 #![allow(clippy::no_effect, clippy::unnecessary_operation, clippy::useless_vec)]
+#![warn(clippy::indexing_slicing)]
+
+use std::ops::Index;
+
+struct BoolMap<T> {
+    false_value: T,
+    true_value: T,
+}
+
+impl<T> Index<bool> for BoolMap<T> {
+    type Output = T;
+    fn index(&self, index: bool) -> &T {
+        if index { &self.true_value } else { &self.false_value }
+    }
+}
 
 fn main() {
     let x = [1, 2, 3, 4];
@@ -51,4 +66,11 @@ fn main() {
     //~^ ERROR: slicing may panic
 
     &v[..]; // Ok, should not produce stderr.
+
+    let map = BoolMap {
+        false_value: 2,
+        true_value: 4,
+    };
+
+    map[true]; // Ok, because `get` does not exist (custom indexing)
 }

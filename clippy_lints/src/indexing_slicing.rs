@@ -3,6 +3,7 @@
 use clippy_utils::consts::{constant, Constant};
 use clippy_utils::diagnostics::{span_lint, span_lint_and_then};
 use clippy_utils::higher;
+use clippy_utils::ty::{adt_has_inherent_method, deref_chain};
 use rustc_ast::ast::RangeLimits;
 use rustc_hir::{Expr, ExprKind};
 use rustc_lint::{LateContext, LateLintPass};
@@ -104,7 +105,15 @@ impl<'tcx> LateLintPass<'tcx> for IndexingSlicing {
             return;
         }
 
-        if let ExprKind::Index(array, index, _) = &expr.kind {
+        if let ExprKind::Index(array, index, _) = &expr.kind
+            && let expr_ty = cx.typeck_results().expr_ty(array)
+            && let mut deref = deref_chain(cx, expr_ty)
+            && deref.any(|l| {
+                l.peel_refs().is_slice()
+                    || l.peel_refs().is_array()
+                    || adt_has_inherent_method(cx, l.peel_refs(), sym!(get))
+            })
+        {
             let note = "the suggestion might not be applicable in constant blocks";
             let ty = cx.typeck_results().expr_ty(array).peel_refs();
             if let Some(range) = higher::Range::hir(index) {
