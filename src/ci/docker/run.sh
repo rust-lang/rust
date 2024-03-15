@@ -92,21 +92,38 @@ if [ -f "$docker_dir/$image/Dockerfile" ]; then
     # Print docker version
     docker --version
 
-    # On non-CI or PR jobs, we don't have permissions to write to the registry cache, so we should
-    # not use `docker login` nor caching.
-    if [[ "$CI" == "" ]] || [[ "$PR_CI_JOB" == "1" ]];
+    REGISTRY=ghcr.io
+    # PR CI runs on rust-lang, but we want to use the cache from rust-lang-ci
+    REGISTRY_USERNAME=rust-lang-ci
+    # Tag used to push the final Docker image, so that it can be pulled by e.g. rustup
+    IMAGE_TAG=${REGISTRY}/${REGISTRY_USERNAME}/rust-ci:${cksum}
+    # Tag used to cache the Docker build
+    # It seems that it cannot be the same as $IMAGE_TAG, otherwise it overwrites the cache
+    CACHE_IMAGE_TAG=${REGISTRY}/${REGISTRY_USERNAME}/rust-ci-cache:${cksum}
+
+    # On non-CI jobs, we don't do any caching.
+    if [[ "$CI" == "" ]];
     then
         retry docker build --rm -t rust-ci -f "$dockerfile" "$context"
-    else
-        REGISTRY=ghcr.io
-        # Most probably rust-lang-ci, but in general the owner of the repository where CI runs
-        REGISTRY_USERNAME=${GITHUB_REPOSITORY_OWNER}
-        # Tag used to push the final Docker image, so that it can be pulled by e.g. rustup
-        IMAGE_TAG=${REGISTRY}/${REGISTRY_USERNAME}/rust-ci:${cksum}
-        # Tag used to cache the Docker build
-        # It seems that it cannot be the same as $IMAGE_TAG, otherwise it overwrites the cache
-        CACHE_IMAGE_TAG=${REGISTRY}/${REGISTRY_USERNAME}/rust-ci-cache:${cksum}
+    # On PR CI jobs, we don't have permissions to write to the registry cache,
+    # but we can still read from it.
+    elif [[ "$PR_CI_JOB" == "1" ]];
+    then
+        # Enable a new Docker driver so that --cache-from works with a registry backend
+        docker buildx create --use --driver docker-container
 
+        # Build the image using registry caching backend
+        retry docker \
+          buildx \
+          build \
+          --rm \
+          -t rust-ci \
+          -f "$dockerfile" \
+          --cache-from type=registry,ref=${CACHE_IMAGE_TAG} \
+          --output=type=docker \
+          "$context"
+    # On auto/try builds, we can also write to the cache.
+    else
         # Log into the Docker registry, so that we can read/write cache and the final image
         echo ${DOCKER_TOKEN} | docker login ${REGISTRY} \
             --username ${REGISTRY_USERNAME} \
