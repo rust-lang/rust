@@ -207,6 +207,22 @@ enum DeferredAsyncDrop<T> {
     Running { dtor: <T as AsyncDestruct>::AsyncDestructor },
 }
 
+/// Same as [`async_drop_in_place`] but with a deferred call to the
+/// `AsyncDrop::async_drop`.
+///
+/// # Safety
+///
+/// Same as [`async_drop_in_place`], but creation of the pinned mutable
+/// reference is deferred until first [`DeferredAsyncDrop::poll`] call.
+#[lang = "deferred_async_drop_ctor"]
+unsafe fn deferred_async_drop<T>(item: *mut T) -> DeferredAsyncDrop<T> {
+    DeferredAsyncDrop::Init {
+        // SAFETY: Guaranteed by current function's safety requirements
+        ptr: unsafe { ptr::NonNull::new_unchecked(item) },
+        _pinned: PhantomPinned,
+    }
+}
+
 impl<T> Future for DeferredAsyncDrop<T> {
     type Output = ();
 
@@ -226,27 +242,17 @@ impl<T> Future for DeferredAsyncDrop<T> {
     }
 }
 
-/// Same as [`async_drop_in_place`] but with a deferred call to the
-/// `AsyncDrop::async_drop`.
-///
-/// # Safety
-///
-/// Same as [`async_drop_in_place`], but creation of the pinned mutable
-/// reference is deferred until first [`DeferredAsyncDrop::poll`] call.
-#[lang = "deferred_async_drop_ctor"]
-unsafe fn deferred_async_drop<T>(item: *mut T) -> DeferredAsyncDrop<T> {
-    DeferredAsyncDrop::Init {
-        // SAFETY: Guaranteed by current function's safety requirements
-        ptr: unsafe { ptr::NonNull::new_unchecked(item) },
-        _pinned: PhantomPinned,
-    }
-}
-
 /// Awaits the `F` future and then awaits `G::IntoFuture`.
 #[lang = "async_drop_chain"]
 enum Chain<F, G: IntoFuture> {
     First(F, Option<G>),
     Last(G::IntoFuture),
+}
+
+/// Construct async drop chain
+#[lang = "async_drop_chain_ctor"]
+fn chain<F, G: IntoFuture>(first: F, last: G) -> Chain<F, G> {
+    Chain::First(first, Some(last))
 }
 
 impl<F, G> Future for Chain<F, G>
@@ -276,16 +282,15 @@ where
     }
 }
 
-/// Construct async drop chain
-#[lang = "async_drop_chain_ctor"]
-fn chain<F, G: IntoFuture>(first: F, last: G) -> Chain<F, G> {
-    Chain::First(first, Some(last))
-}
-
 #[lang = "async_drop_into_chain"]
 struct IntoChain<F, G> {
     first: F,
     last: G,
+}
+
+#[lang = "async_drop_into_chain_ctor"]
+fn into_chain<F, G>(first: F, last: G) -> IntoChain<F, G> {
+    IntoChain { first, last }
 }
 
 impl<F, G> IntoFuture for IntoChain<F, G>
@@ -302,14 +307,15 @@ where
     }
 }
 
-#[lang = "async_drop_into_chain_ctor"]
-fn into_chain<F, G>(first: F, last: G) -> IntoChain<F, G> {
-    IntoChain { first, last }
-}
-
 #[derive(Clone, Copy)]
 #[lang = "into_async_destructor"]
 struct IntoAsyncDestructor<T: ?Sized>(ptr::NonNull<T>);
+
+#[lang = "into_async_destructor_ctor"]
+unsafe fn into_async_destructor<T: ?Sized>(to_drop: *mut T) -> IntoAsyncDestructor<T> {
+    // SAFETY: same safety requirements as `async_drop_in_place`
+    IntoAsyncDestructor(unsafe { ptr::NonNull::new_unchecked(to_drop) })
+}
 
 impl<T: ?Sized> IntoFuture for IntoAsyncDestructor<T> {
     type Output = ();
@@ -322,17 +328,16 @@ impl<T: ?Sized> IntoFuture for IntoAsyncDestructor<T> {
     }
 }
 
-#[lang = "into_async_destructor_ctor"]
-unsafe fn into_async_destructor<T: ?Sized>(to_drop: *mut T) -> IntoAsyncDestructor<T> {
-    // SAFETY: same safety requirements as `async_drop_in_place`
-    IntoAsyncDestructor(unsafe { ptr::NonNull::new_unchecked(to_drop) })
-}
-
 /// Used for nop async destructors. We don't use [`core::future::Ready`]
 /// because it panics after its second poll, which could be potentially
 /// bad if that would happen during the cleanup.
 #[lang = "async_drop_nop"]
 struct Nop;
+
+#[lang = "async_drop_nop_ctor"]
+fn nop() -> Nop {
+    Nop
+}
 
 impl Future for Nop {
     type Output = ();
@@ -340,9 +345,4 @@ impl Future for Nop {
     fn poll(self: Pin<&mut Self>, _: &mut Context<'_>) -> Poll<Self::Output> {
         Poll::Ready(())
     }
-}
-
-#[lang = "async_drop_nop_ctor"]
-fn nop() -> Nop {
-    Nop
 }
