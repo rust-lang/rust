@@ -59,27 +59,35 @@ use crate::cell::Cell;
 use crate::fmt;
 use crate::ptr;
 use crate::sync as public;
-use crate::sync::atomic::{AtomicBool, AtomicPtr, Ordering};
+use crate::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 use crate::sync::once::ExclusiveState;
 use crate::thread::{self, Thread};
 
-type Masked = ();
+// FIXME(#121950): don't use fuzzy provenance.
+// Using pointers here can result in ABA-problems because CAS does not check for
+// equal provenance, which means it can succeed even though the pointer in the
+// `next` field needs updating. This can lead to a situation where we try to access
+// a freshly allocated `Waiter` with a pointer to a previous allocation at the same
+// address, which is UB. By exposing all `Waiters`, we ensure that the
+// `from_exposed_addr` can guess the right provenance.
+type State = usize;
+type AtomicState = AtomicUsize;
 
 pub struct Once {
-    state_and_queue: AtomicPtr<Masked>,
+    state_and_queue: AtomicState,
 }
 
 pub struct OnceState {
     poisoned: bool,
-    set_state_on_drop_to: Cell<*mut Masked>,
+    set_state_on_drop_to: Cell<State>,
 }
 
 // Four states that a Once can be in, encoded into the lower bits of
 // `state_and_queue` in the Once structure.
-const INCOMPLETE: usize = 0x0;
-const POISONED: usize = 0x1;
+const INCOMPLETE: State = 0x0;
+const POISONED: State = 0x1;
 const RUNNING: usize = 0x2;
-const COMPLETE: usize = 0x3;
+const COMPLETE: State = 0x3;
 
 // Mask to learn about the state. All other bits are the queue of waiters if
 // this is in the RUNNING state.
@@ -95,22 +103,22 @@ const STATE_MASK: usize = 0x3;
 struct Waiter {
     thread: Cell<Option<Thread>>,
     signaled: AtomicBool,
-    next: *const Waiter,
+    next: usize, // actually an exposed pointer
 }
 
 // Head of a linked list of waiters.
 // Every node is a struct on the stack of a waiting thread.
 // Will wake up the waiters when it gets dropped, i.e. also on panic.
 struct WaiterQueue<'a> {
-    state_and_queue: &'a AtomicPtr<Masked>,
-    set_state_on_drop_to: *mut Masked,
+    state_and_queue: &'a AtomicState,
+    set_state_on_drop_to: State,
 }
 
 impl Once {
     #[inline]
     #[rustc_const_stable(feature = "const_once_new", since = "1.32.0")]
     pub const fn new() -> Once {
-        Once { state_and_queue: AtomicPtr::new(ptr::without_provenance_mut(INCOMPLETE)) }
+        Once { state_and_queue: AtomicState::new(INCOMPLETE) }
     }
 
     #[inline]
@@ -119,12 +127,12 @@ impl Once {
         // operations visible to us, and, this being a fast path, weaker
         // ordering helps with performance. This `Acquire` synchronizes with
         // `Release` operations on the slow path.
-        self.state_and_queue.load(Ordering::Acquire).addr() == COMPLETE
+        self.state_and_queue.load(Ordering::Acquire) == COMPLETE
     }
 
     #[inline]
     pub(crate) fn state(&mut self) -> ExclusiveState {
-        match self.state_and_queue.get_mut().addr() {
+        match *self.state_and_queue.get_mut() {
             INCOMPLETE => ExclusiveState::Incomplete,
             POISONED => ExclusiveState::Poisoned,
             COMPLETE => ExclusiveState::Complete,
@@ -148,7 +156,7 @@ impl Once {
     pub fn call(&self, ignore_poisoning: bool, init: &mut dyn FnMut(&public::OnceState)) {
         let mut state_and_queue = self.state_and_queue.load(Ordering::Acquire);
         loop {
-            match state_and_queue.addr() {
+            match state_and_queue {
                 COMPLETE => break,
                 POISONED if !ignore_poisoning => {
                     // Panic to propagate the poison.
@@ -158,7 +166,7 @@ impl Once {
                     // Try to register this thread as the one RUNNING.
                     let exchange_result = self.state_and_queue.compare_exchange(
                         state_and_queue,
-                        ptr::without_provenance_mut(RUNNING),
+                        RUNNING,
                         Ordering::Acquire,
                         Ordering::Acquire,
                     );
@@ -170,14 +178,14 @@ impl Once {
                     // wake them up on drop.
                     let mut waiter_queue = WaiterQueue {
                         state_and_queue: &self.state_and_queue,
-                        set_state_on_drop_to: ptr::without_provenance_mut(POISONED),
+                        set_state_on_drop_to: POISONED,
                     };
                     // Run the initialization function, letting it know if we're
                     // poisoned or not.
                     let init_state = public::OnceState {
                         inner: OnceState {
-                            poisoned: state_and_queue.addr() == POISONED,
-                            set_state_on_drop_to: Cell::new(ptr::without_provenance_mut(COMPLETE)),
+                            poisoned: state_and_queue == POISONED,
+                            set_state_on_drop_to: Cell::new(COMPLETE),
                         },
                     };
                     init(&init_state);
@@ -187,7 +195,7 @@ impl Once {
                 _ => {
                     // All other values must be RUNNING with possibly a
                     // pointer to the waiter queue in the more significant bits.
-                    assert!(state_and_queue.addr() & STATE_MASK == RUNNING);
+                    assert!(state_and_queue & STATE_MASK == RUNNING);
                     wait(&self.state_and_queue, state_and_queue);
                     state_and_queue = self.state_and_queue.load(Ordering::Acquire);
                 }
@@ -196,13 +204,13 @@ impl Once {
     }
 }
 
-fn wait(state_and_queue: &AtomicPtr<Masked>, mut current_state: *mut Masked) {
+fn wait(state_and_queue: &AtomicState, mut current_state: State) {
     // Note: the following code was carefully written to avoid creating a
     // mutable reference to `node` that gets aliased.
     loop {
         // Don't queue this thread if the status is no longer running,
         // otherwise we will not be woken up.
-        if current_state.addr() & STATE_MASK != RUNNING {
+        if current_state & STATE_MASK != RUNNING {
             return;
         }
 
@@ -210,15 +218,15 @@ fn wait(state_and_queue: &AtomicPtr<Masked>, mut current_state: *mut Masked) {
         let node = Waiter {
             thread: Cell::new(Some(thread::current())),
             signaled: AtomicBool::new(false),
-            next: current_state.with_addr(current_state.addr() & !STATE_MASK) as *const Waiter,
+            next: current_state & !STATE_MASK,
         };
-        let me = core::ptr::addr_of!(node) as *const Masked as *mut Masked;
+        let me = core::ptr::addr_of!(node).expose_addr();
 
         // Try to slide in the node at the head of the linked list, making sure
         // that another thread didn't just replace the head of the linked list.
         let exchange_result = state_and_queue.compare_exchange(
             current_state,
-            me.with_addr(me.addr() | RUNNING),
+            me | RUNNING,
             Ordering::Release,
             Ordering::Relaxed,
         );
@@ -257,7 +265,7 @@ impl Drop for WaiterQueue<'_> {
             self.state_and_queue.swap(self.set_state_on_drop_to, Ordering::AcqRel);
 
         // We should only ever see an old state which was RUNNING.
-        assert_eq!(state_and_queue.addr() & STATE_MASK, RUNNING);
+        assert_eq!(state_and_queue & STATE_MASK, RUNNING);
 
         // Walk the entire linked list of waiters and wake them up (in lifo
         // order, last to register is first to wake up).
@@ -266,15 +274,12 @@ impl Drop for WaiterQueue<'_> {
             // free `node` if there happens to be has a spurious wakeup.
             // So we have to take out the `thread` field and copy the pointer to
             // `next` first.
-            let mut queue =
-                state_and_queue.with_addr(state_and_queue.addr() & !STATE_MASK) as *const Waiter;
+            let mut queue = ptr::from_exposed_addr::<Waiter>(state_and_queue & !STATE_MASK);
             while !queue.is_null() {
                 let next = (*queue).next;
                 let thread = (*queue).thread.take().unwrap();
                 (*queue).signaled.store(true, Ordering::Release);
-                // ^- FIXME (maybe): This is another case of issue #55005
-                // `store()` has a potentially dangling ref to `signaled`.
-                queue = next;
+                queue = ptr::from_exposed_addr::<Waiter>(next);
                 thread.unpark();
             }
         }
@@ -289,6 +294,6 @@ impl OnceState {
 
     #[inline]
     pub fn poison(&self) {
-        self.set_state_on_drop_to.set(ptr::without_provenance_mut(POISONED));
+        self.set_state_on_drop_to.set(POISONED);
     }
 }
