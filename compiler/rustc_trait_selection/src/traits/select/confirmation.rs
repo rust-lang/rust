@@ -11,6 +11,7 @@ use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_hir::lang_items::LangItem;
 use rustc_infer::infer::HigherRankedType;
 use rustc_infer::infer::{DefineOpaqueTypes, InferOk};
+use rustc_infer::traits::OverflowError;
 use rustc_middle::traits::{BuiltinImplSource, SignatureMismatchData};
 use rustc_middle::ty::{
     self, GenericArgs, GenericArgsRef, GenericParamDefKind, ToPolyTraitRef, ToPredicate,
@@ -63,7 +64,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             }
 
             ImplCandidate(impl_def_id) => {
-                ImplSource::UserDefined(self.confirm_impl_candidate(obligation, impl_def_id))
+                ImplSource::UserDefined(self.confirm_impl_candidate(obligation, impl_def_id)?)
             }
 
             AutoImplCandidate => {
@@ -441,14 +442,14 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         &mut self,
         obligation: &PolyTraitObligation<'tcx>,
         impl_def_id: DefId,
-    ) -> ImplSourceUserDefinedData<'tcx, PredicateObligation<'tcx>> {
+    ) -> Result<ImplSourceUserDefinedData<'tcx, PredicateObligation<'tcx>>, OverflowError> {
         debug!(?obligation, ?impl_def_id, "confirm_impl_candidate");
 
         // First, create the generic parameters by matching the impl again,
         // this time not in a probe.
-        let args = self.rematch_impl(impl_def_id, obligation);
+        let args = self.rematch_impl(impl_def_id, obligation)?;
         debug!(?args, "impl args");
-        ensure_sufficient_stack(|| {
+        Ok(ensure_sufficient_stack(|| {
             self.vtable_impl(
                 impl_def_id,
                 args,
@@ -457,7 +458,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 obligation.param_env,
                 obligation.predicate,
             )
-        })
+        }))
     }
 
     fn vtable_impl(
@@ -1370,7 +1371,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 trait_pred.trait_ref.def_id = drop_trait;
                 trait_pred
             });
-            let args = self.rematch_impl(impl_def_id, &new_obligation);
+            let args = self.rematch_impl(impl_def_id, &new_obligation)?;
             debug!(?args, "impl args");
 
             let cause = obligation.derived_cause(|derived| {

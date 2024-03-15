@@ -7,6 +7,7 @@ use self::SelectionCandidate::*;
 
 use super::coherence::{self, Conflict};
 use super::const_evaluatable;
+use super::error_reporting::OverflowCause;
 use super::project;
 use super::project::ProjectionTyObligation;
 use super::util;
@@ -499,7 +500,12 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                     Ok(Some(EvaluatedCandidate { candidate: c, evaluation: eval }))
                 }
                 Ok(_) => Ok(None),
-                Err(OverflowError::Canonical) => Err(Overflow(OverflowError::Canonical)),
+                Err(OverflowError::Canonical) => {
+                    // In standard mode, overflow must have been caught and reported
+                    // earlier.
+                    assert!(self.query_mode == TraitQueryMode::Canonical);
+                    Err(Overflow(OverflowError::Canonical))
+                }
                 Err(OverflowError::Error(e)) => Err(Overflow(OverflowError::Error(e))),
             })
             .flat_map(Result::transpose)
@@ -1235,7 +1241,12 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         match self.candidate_from_obligation(stack) {
             Ok(Some(c)) => self.evaluate_candidate(stack, &c),
             Ok(None) => Ok(EvaluatedToAmbig),
-            Err(Overflow(OverflowError::Canonical)) => Err(OverflowError::Canonical),
+            Err(Overflow(OverflowError::Canonical)) => {
+                // In standard mode, overflow must have been caught and reported
+                // earlier.
+                assert!(self.query_mode == TraitQueryMode::Canonical);
+                Err(OverflowError::Canonical)
+            }
             Err(..) => Ok(EvaluatedToErr),
         }
     }
@@ -2444,10 +2455,21 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
         &mut self,
         impl_def_id: DefId,
         obligation: &PolyTraitObligation<'tcx>,
-    ) -> Normalized<'tcx, GenericArgsRef<'tcx>> {
+    ) -> Result<Normalized<'tcx, GenericArgsRef<'tcx>>, OverflowError> {
         let impl_trait_header = self.tcx().impl_trait_header(impl_def_id).unwrap();
         match self.match_impl(impl_def_id, impl_trait_header, obligation) {
-            Ok(args) => args,
+            Ok(args) => Ok(args),
+            Err(MatchImplFailure::Overflow(OverflowError::Canonical)) => Err(OverflowError::Error(
+                self.infcx
+                    .err_ctxt()
+                    .build_overflow_error(
+                        OverflowCause::TraitSolver(obligation.predicate.to_predicate(self.tcx())),
+                        obligation.cause.span,
+                        true,
+                    )
+                    .emit(),
+            )),
+            Err(MatchImplFailure::Overflow(oflo @ OverflowError::Error(_))) => Err(oflo),
             Err(err) => {
                 let predicate = self.infcx.resolve_vars_if_possible(obligation.predicate);
                 bug!(

@@ -1,0 +1,32 @@
+error[E0275]: overflow evaluating the requirement `&[u8]: Archive`
+   |
+   = help: consider increasing the recursion limit by adding a `#![recursion_limit = "256"]` attribute to your crate (`impl_unconstrained_lifetime`)
+
+error[E0275]: overflow evaluating the requirement `&[u8]: Archive`
+  --> $DIR/impl-unconstrained-lifetime.rs:8:10
+   |
+LL | impl<'a> Archive for <&'a [u8] as Archive>::Archived {
+   |          ^^^^^^^
+   |
+   = help: consider increasing the recursion limit by adding a `#![recursion_limit = "256"]` attribute to your crate (`impl_unconstrained_lifetime`)
+
+error[E0277]: the trait bound `&'a [u8]: Archive` is not satisfied
+  --> $DIR/impl-unconstrained-lifetime.rs:8:10
+   |
+LL | impl<'a> Archive for <&'a [u8] as Archive>::Archived {
+   |          ^^^^^^^ the trait `Archive` is not implemented for `&'a [u8]`
+   |
+   = help: the trait `Archive` is implemented for `<&'a [u8] as Archive>::Archived`
+
+error[E0277]: the trait bound `&'a [u8]: Archive` is not satisfied
+  --> $DIR/impl-unconstrained-lifetime.rs:8:22
+   |
+LL | impl<'a> Archive for <&'a [u8] as Archive>::Archived {
+   |                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `Archive` is not implemented for `&'a [u8]`
+   |
+   = help: the trait `Archive` is implemented for `<&'a [u8] as Archive>::Archived`
+
+error: aborting due to 4 previous errors
+
+Some errors have detailed explanations: E0275, E0277.
+For more information about an error, try `rustc --explain E0275`.
