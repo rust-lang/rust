@@ -5,6 +5,7 @@ use std::mem;
 
 pub struct S<T: Tr> {
     pub f: <T as Tr>::I,
+    _tail: (), // without this, we get an overflow error instead
 }
 
 pub trait Tr {
