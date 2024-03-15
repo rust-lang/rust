@@ -11,7 +11,10 @@ use rustc_hir::lang_items::LangItem;
 use rustc_middle::query::{Providers, TyCtxtAt};
 use rustc_middle::traits;
 use rustc_middle::ty::adjustment::CustomCoerceUnsized;
+use rustc_middle::ty::Instance;
+use rustc_middle::ty::TyCtxt;
 use rustc_middle::ty::{self, Ty};
+use rustc_span::def_id::LOCAL_CRATE;
 use rustc_span::ErrorGuaranteed;
 
 mod collector;
@@ -19,6 +22,8 @@ mod errors;
 mod partitioning;
 mod polymorphize;
 mod util;
+
+use collector::should_codegen_locally;
 
 rustc_fluent_macro::fluent_messages! { "../messages.ftl" }
 
@@ -43,6 +48,22 @@ fn custom_coerce_unsize_info<'tcx>(
             bug!("invalid `CoerceUnsized` impl_source: {:?}", impl_source);
         }
     }
+}
+
+/// Returns whether a call from the current crate to the [`Instance`] would produce a call
+/// from `compiler_builtins` to a symbol the linker must resolve.
+///
+/// Such calls from `compiler_bultins` are effectively impossible for the linker to handle. Some
+/// linkers will optimize such that dead calls to unresolved symbols are not an error, but this is
+/// not guaranteed. So we used this function in codegen backends to ensure we do not generate any
+/// unlinkable calls.
+pub fn is_call_from_compiler_builtins_to_upstream_monomorphization<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    instance: Instance<'tcx>,
+) -> bool {
+    !instance.def_id().is_local()
+        && tcx.is_compiler_builtins(LOCAL_CRATE)
+        && !should_codegen_locally(tcx, &instance)
 }
 
 pub fn provide(providers: &mut Providers) {

@@ -1030,3 +1030,10 @@ pub struct FailedToGetLayout<'tcx> {
 pub struct ErrorCreatingRemarkDir {
     pub error: std::io::Error,
 }
+
+#[derive(Diagnostic)]
+#[diag(codegen_ssa_compiler_builtins_cannot_call)]
+pub struct CompilerBuiltinsCannotCall {
+    pub caller: String,
+    pub callee: String,
+}

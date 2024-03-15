@@ -8,8 +8,11 @@ use std::borrow::Cow;
 
 use cranelift_codegen::ir::SigRef;
 use cranelift_module::ModuleError;
+use rustc_codegen_ssa::errors::CompilerBuiltinsCannotCall;
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use rustc_middle::ty::layout::FnAbiOf;
+use rustc_middle::ty::print::with_no_trimmed_paths;
+use rustc_monomorphize::is_call_from_compiler_builtins_to_upstream_monomorphization;
 use rustc_session::Session;
 use rustc_span::source_map::Spanned;
 use rustc_target::abi::call::{Conv, FnAbi};
@@ -371,6 +374,17 @@ pub(crate) fn codegen_terminator_call<'tcx>(
         let instance =
             ty::Instance::expect_resolve(fx.tcx, ty::ParamEnv::reveal_all(), def_id, fn_args)
                 .polymorphize(fx.tcx);
+
+        if is_call_from_compiler_builtins_to_upstream_monomorphization(fx.tcx, instance) {
+            if target.is_some() {
+                let caller = with_no_trimmed_paths!(fx.tcx.def_path_str(fx.instance.def_id()));
+                let callee = with_no_trimmed_paths!(fx.tcx.def_path_str(def_id));
+                fx.tcx.dcx().emit_err(CompilerBuiltinsCannotCall { caller, callee });
+            } else {
+                fx.bcx.ins().trap(TrapCode::User(0));
+                return;
+            }
+        }
 
         if fx.tcx.symbol_name(instance).name.starts_with("llvm.") {
             crate::intrinsics::codegen_llvm_intrinsic_call(
