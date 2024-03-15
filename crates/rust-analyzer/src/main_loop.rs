@@ -799,6 +799,9 @@ impl GlobalState {
                 self.send_notification::<lsp_ext::EndRunTest>(());
                 self.test_run_session = None;
             }
+            flycheck::CargoTestMessage::Custom { text } => {
+                self.send_notification::<lsp_ext::AppendOutputToRunTest>(text);
+            }
         }
     }
 
