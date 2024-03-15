@@ -50,13 +50,13 @@
 // lldbg-check:[...] { a = 987 b = { x = 876 y = 765 z = 654 w = 543 } c = { x = 432 y = 321 z = 210 w = 109 } d = -98 }
 // lldbr-check:(packed_struct::UnpackedInPacked) unpackedInPacked = { a = 987 b = { x = 876 y = 765 z = 654 w = 543 } c = { x = 432 y = 321 z = 210 w = 109 } d = -98 }
 
-// lldb-command:dwim-print sizeof(packed)
+// lldb-command:expr sizeof(packed)
 // lldbg-check:[...] 14
-// lldbr-check:(usize) = 14
+// lldbr-check:(usize) [...] 14
 
-// lldb-command:dwim-print sizeof(packedInPacked)
+// lldb-command:expr sizeof(packedInPacked)
 // lldbg-check:[...] 40
-// lldbr-check:(usize) = 40
+// lldbr-check:(usize) [...] 40
 
 #![allow(unused_variables)]
 #![feature(omit_gdb_pretty_printer_section)]
