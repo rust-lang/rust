@@ -1488,14 +1488,13 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for MiriMachine<'mir, 'tcx> {
 
     fn after_local_allocated(
         ecx: &mut InterpCx<'mir, 'tcx, Self>,
-        frame: usize,
         local: mir::Local,
         mplace: &MPlaceTy<'tcx, Provenance>,
     ) -> InterpResult<'tcx> {
         let Some(Provenance::Concrete { alloc_id, .. }) = mplace.ptr().provenance else {
             panic!("after_local_allocated should only be called on fresh allocations");
         };
-        let local_decl = &ecx.active_thread_stack()[frame].body.local_decls[local];
+        let local_decl = &ecx.frame().body.local_decls[local];
         let span = local_decl.source_info.span;
         ecx.machine.allocation_spans.borrow_mut().insert(alloc_id, (span, None));
         Ok(())

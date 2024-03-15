@@ -413,7 +413,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                 .ok_or_else(|| err_ub_format!("callee has fewer arguments than expected"))?;
             // Make the local live, and insert the initial value.
             this.storage_live(local)?;
-            let callee_arg = this.local_to_place(this.frame_idx(), local)?;
+            let callee_arg = this.local_to_place(local)?;
             this.write_immediate(*arg, &callee_arg)?;
         }
         if callee_args.next().is_some() {

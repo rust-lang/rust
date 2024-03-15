@@ -14,7 +14,7 @@ use crate::ty::{
     AdtDef, AdtKind, Allocation, ClosureDef, ClosureKind, Const, FieldDef, FnDef, ForeignDef,
     ForeignItemKind, ForeignModule, ForeignModuleDef, GenericArgs, GenericPredicates, Generics,
     ImplDef, ImplTrait, LineInfo, PolyFnSig, RigidTy, Span, TraitDecl, TraitDef, Ty, TyKind,
-    VariantDef,
+    UintTy, VariantDef,
 };
 use crate::{
     mir, Crate, CrateItem, CrateItems, CrateNum, DefId, Error, Filename, ImplTraitDecls, ItemKind,
@@ -101,8 +101,17 @@ pub trait Context {
     /// Evaluate constant as a target usize.
     fn eval_target_usize(&self, cnst: &Const) -> Result<u64, Error>;
 
-    /// Create a target usize constant for the given value.
-    fn usize_to_const(&self, val: u64) -> Result<Const, Error>;
+    /// Create a new zero-sized constant.
+    fn try_new_const_zst(&self, ty: Ty) -> Result<Const, Error>;
+
+    /// Create a new constant that represents the given string value.
+    fn new_const_str(&self, value: &str) -> Const;
+
+    /// Create a new constant that represents the given boolean value.
+    fn new_const_bool(&self, value: bool) -> Const;
+
+    /// Create a new constant that represents the given value.
+    fn try_new_const_uint(&self, value: u128, uint_ty: UintTy) -> Result<Const, Error>;
 
     /// Create a new type from the given kind.
     fn new_rigid_ty(&self, kind: RigidTy) -> Ty;
@@ -200,7 +209,7 @@ pub trait Context {
 
 // A thread local variable that stores a pointer to the tables mapping between TyCtxt
 // datastructures and stable MIR datastructures
-scoped_thread_local! (static TLV: Cell<*const ()>);
+scoped_thread_local!(static TLV: Cell<*const ()>);
 
 pub fn run<F, T>(context: &dyn Context, f: F) -> Result<T, Error>
 where

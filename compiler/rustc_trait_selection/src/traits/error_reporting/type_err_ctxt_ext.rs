@@ -3409,6 +3409,8 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
         self.dcx().try_steal_replace_and_emit_err(self.tcx.def_span(def_id), StashKey::Cycle, err)
     }
 
+    // FIXME(@lcnr): This function could be changed to trait `TraitRef` directly
+    // instead of using a `Binder`.
     fn report_signature_mismatch_error(
         &self,
         obligation: &PredicateObligation<'tcx>,

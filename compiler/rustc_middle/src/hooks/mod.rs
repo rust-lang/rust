@@ -6,6 +6,7 @@
 use crate::mir;
 use crate::query::TyCtxtAt;
 use crate::ty::{Ty, TyCtxt};
+use rustc_span::def_id::LocalDefId;
 use rustc_span::DUMMY_SP;
 
 macro_rules! declare_hooks {
@@ -70,4 +71,10 @@ declare_hooks! {
 
     /// Getting a &core::panic::Location referring to a span.
     hook const_caller_location(file: rustc_span::Symbol, line: u32, col: u32) -> mir::ConstValue<'tcx>;
+
+    /// Returns `true` if this def is a function-like thing that is eligible for
+    /// coverage instrumentation under `-Cinstrument-coverage`.
+    ///
+    /// (Eligible functions might nevertheless be skipped for other reasons.)
+    hook is_eligible_for_coverage(key: LocalDefId) -> bool;
 }

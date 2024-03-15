@@ -26,8 +26,8 @@ static SOME_STRUCT: &SomeStruct = &SomeStruct {
     foo: &Foo { bools: &[false, true] },
     bar: &Bar { bools: &[true, true] },
     f: &id,
-    //~^ ERROR mismatched types
-    //~| ERROR mismatched types
+    //~^ ERROR implementation of `Fn` is not general enough
+    //~| ERROR implementation of `Fn` is not general enough
     //~| ERROR implementation of `FnOnce` is not general enough
     //~| ERROR implementation of `FnOnce` is not general enough
 };

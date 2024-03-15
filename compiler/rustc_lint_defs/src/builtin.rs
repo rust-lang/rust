@@ -557,6 +557,7 @@ declare_lint! {
     /// fn main() {
     ///     use foo::bar;
     ///     foo::bar();
+    ///     bar();
     /// }
     /// ```
     ///
@@ -704,6 +705,20 @@ declare_lint! {
     /// `PhantomData`.
     ///
     /// Otherwise consider removing the unused code.
+    ///
+    /// ### Limitations
+    ///
+    /// Removing fields that are only used for side-effects and never
+    /// read will result in behavioral changes. Examples of this
+    /// include:
+    ///
+    /// - If a field's value performs an action when it is dropped.
+    /// - If a field's type does not implement an auto trait
+    ///   (e.g. `Send`, `Sync`, `Unpin`).
+    ///
+    /// For side-effects from dropping field values, this lint should
+    /// be allowed on those fields. For side-effects from containing
+    /// field types, `PhantomData` should be used.
     pub DEAD_CODE,
     Warn,
     "detect unused, unexported items"
@@ -4341,7 +4356,6 @@ declare_lint! {
     pub UNKNOWN_OR_MALFORMED_DIAGNOSTIC_ATTRIBUTES,
     Warn,
     "unrecognized or malformed diagnostic attribute",
-    @feature_gate = sym::diagnostic_namespace;
 }
 
 declare_lint! {

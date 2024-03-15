@@ -1,21 +1,20 @@
-error[E0308]: mismatched types
+error: implementation of `Fn` is not general enough
   --> $DIR/rfc1623-2.rs:28:8
    |
 LL |     f: &id,
-   |        ^^^ one type is more general than the other
+   |        ^^^ implementation of `Fn` is not general enough
    |
-   = note: expected trait `for<'a, 'b> Fn(&'a Foo<'b>)`
-              found trait `Fn(&Foo<'_>)`
+   = note: `fn(&'2 Foo<'_>) -> &'2 Foo<'_> {id::<&'2 Foo<'_>>}` must implement `Fn<(&'1 Foo<'b>,)>`, for any lifetime `'1`...
+   = note: ...but it actually implements `Fn<(&'2 Foo<'_>,)>`, for some specific lifetime `'2`
 
-error[E0308]: mismatched types
+error: implementation of `Fn` is not general enough
   --> $DIR/rfc1623-2.rs:28:8
    |
 LL |     f: &id,
-   |        ^^^ one type is more general than the other
+   |        ^^^ implementation of `Fn` is not general enough
    |
-   = note: expected trait `for<'a, 'b> Fn(&'a Foo<'b>)`
-              found trait `Fn(&Foo<'_>)`
-   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+   = note: `fn(&Foo<'2>) -> &Foo<'2> {id::<&Foo<'2>>}` must implement `Fn<(&'a Foo<'1>,)>`, for any lifetime `'1`...
+   = note: ...but it actually implements `Fn<(&Foo<'2>,)>`, for some specific lifetime `'2`
 
 error: implementation of `FnOnce` is not general enough
   --> $DIR/rfc1623-2.rs:28:8
@@ -37,4 +36,3 @@ LL |     f: &id,
 
 error: aborting due to 4 previous errors
 
-For more information about this error, try `rustc --explain E0308`.

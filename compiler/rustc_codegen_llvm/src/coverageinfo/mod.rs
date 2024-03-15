@@ -88,7 +88,7 @@ impl<'tcx> CoverageInfoBuilderMethods<'tcx> for Builder<'_, '_, 'tcx> {
         match coverage.kind {
             // Marker statements have no effect during codegen,
             // so return early and don't create `func_coverage`.
-            CoverageKind::SpanMarker => return,
+            CoverageKind::SpanMarker | CoverageKind::BlockMarker { .. } => return,
             // Match exhaustively to ensure that newly-added kinds are classified correctly.
             CoverageKind::CounterIncrement { .. } | CoverageKind::ExpressionUsed { .. } => {}
         }
@@ -108,7 +108,7 @@ impl<'tcx> CoverageInfoBuilderMethods<'tcx> for Builder<'_, '_, 'tcx> {
 
         let Coverage { kind } = coverage;
         match *kind {
-            CoverageKind::SpanMarker => unreachable!(
+            CoverageKind::SpanMarker | CoverageKind::BlockMarker { .. } => unreachable!(
                 "unexpected marker statement {kind:?} should have caused an early return"
             ),
             CoverageKind::CounterIncrement { id } => {

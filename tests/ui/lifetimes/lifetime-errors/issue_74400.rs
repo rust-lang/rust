@@ -13,6 +13,6 @@ fn g<T>(data: &[T]) {
     //~^ ERROR the parameter type
     //~| ERROR the parameter type
     //~| ERROR the parameter type
-    //~| ERROR mismatched types
     //~| ERROR implementation of `FnOnce` is not general
+    //~| ERROR implementation of `Fn` is not general enough
 }

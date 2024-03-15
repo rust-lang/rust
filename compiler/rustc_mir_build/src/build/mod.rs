@@ -234,6 +234,10 @@ struct Builder<'a, 'tcx> {
     // the root (most of them do) and saves us from retracing many sub-paths
     // many times, and rechecking many nodes.
     lint_level_roots_cache: GrowableBitSet<hir::ItemLocalId>,
+
+    /// Collects additional coverage information during MIR building.
+    /// Only present if branch coverage is enabled and this function is eligible.
+    coverage_branch_info: Option<coverageinfo::BranchInfoBuilder>,
 }
 
 type CaptureMap<'tcx> = SortedIndexMultiMap<usize, hir::HirId, Capture<'tcx>>;
@@ -807,6 +811,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             unit_temp: None,
             var_debug_info: vec![],
             lint_level_roots_cache: GrowableBitSet::new_empty(),
+            coverage_branch_info: coverageinfo::BranchInfoBuilder::new_if_enabled(tcx, def),
         };
 
         assert_eq!(builder.cfg.start_new_block(), START_BLOCK);
@@ -826,7 +831,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             }
         }
 
-        Body::new(
+        let mut body = Body::new(
             MirSource::item(self.def_id.to_def_id()),
             self.cfg.basic_blocks,
             self.source_scopes,
@@ -837,7 +842,9 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             self.fn_span,
             self.coroutine,
             None,
-        )
+        );
+        body.coverage_branch_info = self.coverage_branch_info.and_then(|b| b.into_done());
+        body
     }
 
     fn insert_upvar_arg(&mut self) {
@@ -1111,6 +1118,7 @@ pub(crate) fn parse_float_into_scalar(
 
 mod block;
 mod cfg;
+mod coverageinfo;
 mod custom;
 mod expr;
 mod matches;

@@ -33,6 +33,7 @@ use rustc_errors::{Diag, EmissionGuarantee};
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
 use rustc_infer::infer::BoundRegionConversionTime;
+use rustc_infer::infer::BoundRegionConversionTime::HigherRankedType;
 use rustc_infer::infer::DefineOpaqueTypes;
 use rustc_infer::traits::TraitObligation;
 use rustc_middle::dep_graph::dep_kinds;
@@ -42,7 +43,7 @@ use rustc_middle::ty::_match::MatchAgainstFreshVars;
 use rustc_middle::ty::abstract_const::NotConstEvaluatable;
 use rustc_middle::ty::relate::TypeRelation;
 use rustc_middle::ty::GenericArgsRef;
-use rustc_middle::ty::{self, PolyProjectionPredicate, ToPolyTraitRef, ToPredicate};
+use rustc_middle::ty::{self, PolyProjectionPredicate, ToPredicate};
 use rustc_middle::ty::{Ty, TyCtxt, TypeFoldable, TypeVisitableExt};
 use rustc_span::symbol::sym;
 use rustc_span::Symbol;
@@ -1651,15 +1652,20 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
     fn match_normalize_trait_ref(
         &mut self,
         obligation: &PolyTraitObligation<'tcx>,
-        trait_bound: ty::PolyTraitRef<'tcx>,
         placeholder_trait_ref: ty::TraitRef<'tcx>,
-    ) -> Result<Option<ty::PolyTraitRef<'tcx>>, ()> {
+        trait_bound: ty::PolyTraitRef<'tcx>,
+    ) -> Result<Option<ty::TraitRef<'tcx>>, ()> {
         debug_assert!(!placeholder_trait_ref.has_escaping_bound_vars());
         if placeholder_trait_ref.def_id != trait_bound.def_id() {
             // Avoid unnecessary normalization
             return Err(());
         }
 
+        let trait_bound = self.infcx.instantiate_binder_with_fresh_vars(
+            obligation.cause.span,
+            HigherRankedType,
+            trait_bound,
+        );
         let Normalized { value: trait_bound, obligations: _ } = ensure_sufficient_stack(|| {
             normalize_with_depth(
                 self,
@@ -1671,7 +1677,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         });
         self.infcx
             .at(&obligation.cause, obligation.param_env)
-            .sup(DefineOpaqueTypes::No, ty::Binder::dummy(placeholder_trait_ref), trait_bound)
+            .eq(DefineOpaqueTypes::No, placeholder_trait_ref, trait_bound)
             .map(|InferOk { obligations: _, value: () }| {
                 // This method is called within a probe, so we can't have
                 // inference variables and placeholders escape.
@@ -1683,7 +1689,6 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             })
             .map_err(|_| ())
     }
-
     fn where_clause_may_apply<'o>(
         &mut self,
         stack: &TraitObligationStack<'o, 'tcx>,
@@ -1733,7 +1738,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         let is_match = self
             .infcx
             .at(&obligation.cause, obligation.param_env)
-            .sup(DefineOpaqueTypes::No, obligation.predicate, infer_projection)
+            .eq(DefineOpaqueTypes::No, obligation.predicate, infer_projection)
             .is_ok_and(|InferOk { obligations, value: () }| {
                 self.evaluate_predicates_recursively(
                     TraitObligationStackList::empty(&ProvisionalEvaluationCache::default()),
@@ -2533,7 +2538,7 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
                     nested.extend(
                         self.infcx
                             .at(&obligation.cause, obligation.param_env)
-                            .sup(
+                            .eq(
                                 DefineOpaqueTypes::No,
                                 upcast_principal.map_bound(|trait_ref| {
                                     ty::ExistentialTraitRef::erase_self_ty(tcx, trait_ref)
@@ -2571,7 +2576,7 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
                     nested.extend(
                         self.infcx
                             .at(&obligation.cause, obligation.param_env)
-                            .sup(DefineOpaqueTypes::No, source_projection, target_projection)
+                            .eq(DefineOpaqueTypes::No, source_projection, target_projection)
                             .map_err(|_| SelectionError::Unimplemented)?
                             .into_obligations(),
                     );
@@ -2615,9 +2620,15 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
         obligation: &PolyTraitObligation<'tcx>,
         poly_trait_ref: ty::PolyTraitRef<'tcx>,
     ) -> Result<Vec<PredicateObligation<'tcx>>, ()> {
+        let predicate = self.infcx.enter_forall_and_leak_universe(obligation.predicate);
+        let trait_ref = self.infcx.instantiate_binder_with_fresh_vars(
+            obligation.cause.span,
+            HigherRankedType,
+            poly_trait_ref,
+        );
         self.infcx
             .at(&obligation.cause, obligation.param_env)
-            .sup(DefineOpaqueTypes::No, obligation.predicate.to_poly_trait_ref(), poly_trait_ref)
+            .eq(DefineOpaqueTypes::No, predicate.trait_ref, trait_ref)
             .map(|InferOk { obligations, .. }| obligations)
             .map_err(|_| ())
     }

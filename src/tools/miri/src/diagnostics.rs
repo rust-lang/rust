@@ -528,7 +528,7 @@ impl<'mir, 'tcx> MiriMachine<'mir, 'tcx> {
         use NonHaltingDiagnostic::*;
 
         let stacktrace =
-            MiriInterpCx::generate_stacktrace_from_stack(self.threads.active_thread_stack());
+            Frame::generate_stacktrace_from_stack(self.threads.active_thread_stack());
         let (stacktrace, _was_pruned) = prune_stacktrace(stacktrace, self);
 
         let (title, diag_level) = match &e {

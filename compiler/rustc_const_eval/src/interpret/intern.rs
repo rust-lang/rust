@@ -176,7 +176,7 @@ pub fn intern_const_alloc_recursive<
     // This gives us the initial set of nested allocations, which will then all be processed
     // recursively in the loop below.
     let mut todo: Vec<_> = if is_static {
-        // Do not steal the root allocation, we need it later for `take_static_root_alloc`
+        // Do not steal the root allocation, we need it later to create the return value of `eval_static_initializer`.
         // But still change its mutability to match the requested one.
         let alloc = ecx.memory.alloc_map.get_mut(&base_alloc_id).unwrap();
         alloc.1.mutability = base_mutability;

@@ -1,0 +1,48 @@
+error[E0283]: type annotations needed
+  --> $DIR/ambig-hr-projection-issue-93340.rs:16:5
+   |
+LL |     cmp_eq
+   |     ^^^^^^ cannot infer type of the type parameter `A` declared on the function `cmp_eq`
+   |
+   = note: cannot satisfy `_: Scalar`
+note: required by a bound in `cmp_eq`
+  --> $DIR/ambig-hr-projection-issue-93340.rs:9:22
+   |
+LL | fn cmp_eq<'a, 'b, A: Scalar, B: Scalar, O: Scalar>(a: A::RefType<'a>, b: B::RefType<'b>) -> O {
+   |                      ^^^^^^ required by this bound in `cmp_eq`
+help: consider specifying the generic arguments
+   |
+LL |     cmp_eq::<A, B, O>
+   |           +++++++++++
+
+error[E0275]: overflow evaluating the requirement `impl for<'a, 'b> Fn(<A as Scalar>::RefType<'a>, <B as Scalar>::RefType<'b>) -> O == for<'a, 'b> fn(..., ...) -> ... {cmp_eq::<..., ..., ...>}`
+  --> $DIR/ambig-hr-projection-issue-93340.rs:16:5
+   |
+LL |     cmp_eq
+   |     ^^^^^^
+
+error[E0275]: overflow evaluating the requirement `impl for<'a, 'b> Fn(<A as Scalar>::RefType<'a>, <B as Scalar>::RefType<'b>) -> O == for<'a, 'b> fn(..., ...) -> ... {cmp_eq::<..., ..., ...>}`
+  --> $DIR/ambig-hr-projection-issue-93340.rs:16:5
+   |
+LL |     cmp_eq
+   |     ^^^^^^
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error[E0275]: overflow evaluating the requirement `for<'a, 'b> fn(<O as Scalar>::RefType<'a>, <_ as Scalar>::RefType<'b>) -> _ {cmp_eq::<O, ..., ...>} <: ...`
+  --> $DIR/ambig-hr-projection-issue-93340.rs:14:51
+   |
+LL |   ) -> impl Fn(A::RefType<'_>, B::RefType<'_>) -> O {
+   |  ___________________________________________________^
+LL | |
+LL | |     cmp_eq
+LL | |
+LL | |
+LL | |
+LL | | }
+   | |_^
+
+error: aborting due to 4 previous errors
+
+Some errors have detailed explanations: E0275, E0283.
+For more information about an error, try `rustc --explain E0275`.

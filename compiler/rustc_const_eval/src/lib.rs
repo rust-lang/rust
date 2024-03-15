@@ -14,6 +14,7 @@ Rust MIR: a lowered representation of Rust.
 #![feature(generic_nonzero)]
 #![feature(let_chains)]
 #![feature(slice_ptr_get)]
+#![feature(strict_provenance)]
 #![feature(never_type)]
 #![feature(trait_alias)]
 #![feature(try_blocks)]

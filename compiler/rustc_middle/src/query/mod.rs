@@ -174,10 +174,8 @@ rustc_queries! {
         cache_on_disk_if { true }
     }
 
-    /// Gives access to the HIR ID for the given `LocalDefId` owner `key` if any.
-    ///
-    /// Definitions that were generated with no HIR, would be fed to return `None`.
-    query opt_local_def_id_to_hir_id(key: LocalDefId) -> Option<hir::HirId>{
+    /// Returns HIR ID for the given `LocalDefId`.
+    query local_def_id_to_hir_id(key: LocalDefId) -> hir::HirId {
         desc { |tcx| "getting HIR ID of `{}`", tcx.def_path_str(key) }
         feedable
     }
@@ -196,6 +194,7 @@ rustc_queries! {
     /// Avoid calling this query directly.
     query opt_hir_owner_nodes(key: LocalDefId) -> Option<&'tcx hir::OwnerNodes<'tcx>> {
         desc { |tcx| "getting HIR owner items in `{}`", tcx.def_path_str(key) }
+        feedable
     }
 
     /// Gives access to the HIR attributes inside the HIR owner `key`.
@@ -204,6 +203,7 @@ rustc_queries! {
     /// Avoid calling this query directly.
     query hir_attrs(key: hir::OwnerId) -> &'tcx hir::AttributeMap<'tcx> {
         desc { |tcx| "getting HIR owner attributes in `{}`", tcx.def_path_str(key) }
+        feedable
     }
 
     /// Given the def_id of a const-generic parameter, computes the associated default const
