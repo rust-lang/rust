@@ -1,3 +1,4 @@
+
 thread 'main' panicked at tests/fail/function_calls/exported_symbol_bad_unwind2.rs:LL:CC:
 explicit panic
 note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace

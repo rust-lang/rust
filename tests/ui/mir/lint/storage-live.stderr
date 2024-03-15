@@ -11,6 +11,7 @@ note: delayed at compiler/rustc_mir_transform/src/lint.rs:LL:CC - disabled backt
 LL |             StorageLive(a);
    |             ^^^^^^^^^^^^^^
 
+
 aborting due to `-Z treat-err-as-bug=1`
 error: the compiler unexpectedly panicked. this is a bug.
 
