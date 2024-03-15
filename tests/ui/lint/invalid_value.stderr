@@ -320,23 +320,19 @@ error: the type `(NonZero<u32>, i32)` does not permit zero-initialization
   --> $DIR/invalid_value.rs:94:41
    |
 LL |         let _val: (NonZero<u32>, i32) = mem::zeroed();
-   |                                         ^^^^^^^^^^^^^
-   |                                         |
-   |                                         this code causes undefined behavior when executed
-   |                                         help: use `MaybeUninit<T>` instead, and only call `assume_init` after initialization is done
+   |                                         ^^^^^^^^^^^^^ this code causes undefined behavior when executed
    |
    = note: `std::num::NonZero<u32>` must be non-null
+   = note: because `core::num::nonzero::private::NonZeroU32Inner` must be non-null
 
 error: the type `(NonZero<u32>, i32)` does not permit being left uninitialized
   --> $DIR/invalid_value.rs:95:41
    |
 LL |         let _val: (NonZero<u32>, i32) = mem::uninitialized();
-   |                                         ^^^^^^^^^^^^^^^^^^^^
-   |                                         |
-   |                                         this code causes undefined behavior when executed
-   |                                         help: use `MaybeUninit<T>` instead, and only call `assume_init` after initialization is done
+   |                                         ^^^^^^^^^^^^^^^^^^^^ this code causes undefined behavior when executed
    |
    = note: `std::num::NonZero<u32>` must be non-null
+   = note: because `core::num::nonzero::private::NonZeroU32Inner` must be non-null
    = note: integers must be initialized
 
 error: the type `*const dyn Send` does not permit zero-initialization
@@ -411,10 +407,7 @@ error: the type `OneFruitNonZero` does not permit zero-initialization
   --> $DIR/invalid_value.rs:106:37
    |
 LL |         let _val: OneFruitNonZero = mem::zeroed();
-   |                                     ^^^^^^^^^^^^^
-   |                                     |
-   |                                     this code causes undefined behavior when executed
-   |                                     help: use `MaybeUninit<T>` instead, and only call `assume_init` after initialization is done
+   |                                     ^^^^^^^^^^^^^ this code causes undefined behavior when executed
    |
    = note: `OneFruitNonZero` must be non-null
 note: because `std::num::NonZero<u32>` must be non-null (in this field of the only potentially inhabited enum variant)
@@ -422,15 +415,13 @@ note: because `std::num::NonZero<u32>` must be non-null (in this field of the on
    |
 LL |     Banana(NonZero<u32>),
    |            ^^^^^^^^^^^^
+   = note: because `core::num::nonzero::private::NonZeroU32Inner` must be non-null
 
 error: the type `OneFruitNonZero` does not permit being left uninitialized
   --> $DIR/invalid_value.rs:107:37
    |
 LL |         let _val: OneFruitNonZero = mem::uninitialized();
-   |                                     ^^^^^^^^^^^^^^^^^^^^
-   |                                     |
-   |                                     this code causes undefined behavior when executed
-   |                                     help: use `MaybeUninit<T>` instead, and only call `assume_init` after initialization is done
+   |                                     ^^^^^^^^^^^^^^^^^^^^ this code causes undefined behavior when executed
    |
    = note: `OneFruitNonZero` must be non-null
 note: because `std::num::NonZero<u32>` must be non-null (in this field of the only potentially inhabited enum variant)
@@ -438,6 +429,7 @@ note: because `std::num::NonZero<u32>` must be non-null (in this field of the on
    |
 LL |     Banana(NonZero<u32>),
    |            ^^^^^^^^^^^^
+   = note: because `core::num::nonzero::private::NonZeroU32Inner` must be non-null
    = note: integers must be initialized
 
 error: the type `bool` does not permit being left uninitialized
@@ -607,12 +599,10 @@ error: the type `NonZero<u32>` does not permit zero-initialization
   --> $DIR/invalid_value.rs:153:34
    |
 LL |         let _val: NonZero<u32> = mem::transmute(0);
-   |                                  ^^^^^^^^^^^^^^^^^
-   |                                  |
-   |                                  this code causes undefined behavior when executed
-   |                                  help: use `MaybeUninit<T>` instead, and only call `assume_init` after initialization is done
+   |                                  ^^^^^^^^^^^^^^^^^ this code causes undefined behavior when executed
    |
    = note: `std::num::NonZero<u32>` must be non-null
+   = note: because `core::num::nonzero::private::NonZeroU32Inner` must be non-null
 
 error: the type `NonNull<i32>` does not permit zero-initialization
   --> $DIR/invalid_value.rs:156:34

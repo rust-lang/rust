@@ -21,10 +21,10 @@
 // lldb-command:run
 
 // lldb-command:print g
-// lldbg-check:(issue_57822::main::{closure_env#1}) $0 = { f = { x = 1 } }
+// lldbg-check:(issue_57822::main::{closure_env#1}) { f = { x = 1 } }
 
 // lldb-command:print b
-// lldbg-check:(issue_57822::main::{coroutine_env#3}) $1 =
+// lldbg-check:(issue_57822::main::{coroutine_env#3})
 
 #![feature(omit_gdb_pretty_printer_section, coroutines, coroutine_trait)]
 #![omit_gdb_pretty_printer_section]

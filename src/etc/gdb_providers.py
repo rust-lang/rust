@@ -245,7 +245,14 @@ class StdNonZeroNumberProvider(printer_base):
         fields = valobj.type.fields()
         assert len(fields) == 1
         field = list(fields)[0]
-        self._value = str(valobj[field.name])
+
+        inner_valobj = valobj[field.name]
+
+        inner_fields = inner_valobj.type.fields()
+        assert len(inner_fields) == 1
+        inner_field = list(inner_fields)[0]
+
+        self._value = str(inner_valobj[inner_field.name])
 
     def to_string(self):
         return self._value

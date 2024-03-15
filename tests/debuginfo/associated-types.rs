@@ -43,41 +43,41 @@
 // lldb-command:run
 
 // lldb-command:print arg
-// lldbg-check:[...]$0 = { b = -1, b1 = 0 }
+// lldbg-check:[...] { b = -1, b1 = 0 }
 // lldbr-check:(associated_types::Struct<i32>) arg = { b = -1, b1 = 0 }
 // lldb-command:continue
 
 // lldb-command:print inferred
-// lldbg-check:[...]$1 = 1
+// lldbg-check:[...] 1
 // lldbr-check:(i64) inferred = 1
 // lldb-command:print explicitly
-// lldbg-check:[...]$2 = 1
+// lldbg-check:[...] 1
 // lldbr-check:(i64) explicitly = 1
 // lldb-command:continue
 
 // lldb-command:print arg
-// lldbg-check:[...]$3 = 2
+// lldbg-check:[...] 2
 // lldbr-check:(i64) arg = 2
 // lldb-command:continue
 
 // lldb-command:print arg
-// lldbg-check:[...]$4 = (4, 5)
+// lldbg-check:[...] (4, 5)
 // lldbr-check:((i32, i64)) arg = { = 4 = 5 }
 // lldb-command:continue
 
 // lldb-command:print a
-// lldbg-check:[...]$5 = 6
+// lldbg-check:[...] 6
 // lldbr-check:(i32) a = 6
 // lldb-command:print b
-// lldbg-check:[...]$6 = 7
+// lldbg-check:[...] 7
 // lldbr-check:(i64) b = 7
 // lldb-command:continue
 
 // lldb-command:print a
-// lldbg-check:[...]$7 = 8
+// lldbg-check:[...] 8
 // lldbr-check:(i64) a = 8
 // lldb-command:print b
-// lldbg-check:[...]$8 = 9
+// lldbg-check:[...] 9
 // lldbr-check:(i32) b = 9
 // lldb-command:continue
 
