@@ -171,8 +171,7 @@ pub struct MacroCallLoc {
     pub def: MacroDefId,
     pub krate: CrateId,
     pub kind: MacroCallKind,
-    // FIXME: Spans while relative to an anchor, are still rather unstable
-    pub call_site: Span,
+    pub ctxt: SyntaxContextId,
 }
 impl_intern_value_trivial!(MacroCallLoc);
 
@@ -202,6 +201,8 @@ pub struct EagerCallInfo {
     /// Call id of the eager macro's input file (this is the macro file for its fully expanded input).
     arg_id: MacroCallId,
     error: Option<ExpandError>,
+    /// TODO: Doc
+    span: Span,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -429,9 +430,9 @@ impl MacroDefId {
         db: &dyn ExpandDatabase,
         krate: CrateId,
         kind: MacroCallKind,
-        call_site: Span,
+        ctxt: SyntaxContextId,
     ) -> MacroCallId {
-        MacroCallLoc { def: self, krate, kind, call_site }.intern(db)
+        MacroCallLoc { def: self, krate, kind, ctxt }.intern(db)
     }
 
     pub fn definition_range(&self, db: &dyn ExpandDatabase) -> InFile<TextRange> {
@@ -805,7 +806,7 @@ impl ExpansionInfo {
         let (parse, exp_map) = db.parse_macro_expansion(macro_file).value;
         let expanded = InMacroFile { file_id: macro_file, value: parse.syntax_node() };
 
-        let (macro_arg, _) = db.macro_arg(macro_file.macro_call_id);
+        let (macro_arg, _, _) = db.macro_arg(macro_file.macro_call_id);
 
         let def = loc.def.ast_id().left().and_then(|id| {
             let def_tt = match id.to_node(db) {

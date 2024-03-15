@@ -11,7 +11,7 @@ macro_rules! register_builtin {
         }
 
         impl BuiltinAttrExpander {
-            pub fn expander(&self) -> fn (&dyn ExpandDatabase, MacroCallId, &tt::Subtree) -> ExpandResult<tt::Subtree>  {
+            pub fn expander(&self) -> fn (&dyn ExpandDatabase, MacroCallId, &tt::Subtree, Span) -> ExpandResult<tt::Subtree>  {
                 match *self {
                     $( BuiltinAttrExpander::$variant => $expand, )*
                 }
@@ -34,8 +34,9 @@ impl BuiltinAttrExpander {
         db: &dyn ExpandDatabase,
         id: MacroCallId,
         tt: &tt::Subtree,
+        span: Span,
     ) -> ExpandResult<tt::Subtree> {
-        self.expander()(db, id, tt)
+        self.expander()(db, id, tt, span)
     }
 
     pub fn is_derive(self) -> bool {
@@ -71,6 +72,7 @@ fn dummy_attr_expand(
     _db: &dyn ExpandDatabase,
     _id: MacroCallId,
     tt: &tt::Subtree,
+    _span: Span,
 ) -> ExpandResult<tt::Subtree> {
     ExpandResult::ok(tt.clone())
 }
@@ -100,6 +102,7 @@ fn derive_expand(
     db: &dyn ExpandDatabase,
     id: MacroCallId,
     tt: &tt::Subtree,
+    span: Span,
 ) -> ExpandResult<tt::Subtree> {
     let loc = db.lookup_intern_macro_call(id);
     let derives = match &loc.kind {
@@ -107,13 +110,10 @@ fn derive_expand(
             attr_args
         }
         _ => {
-            return ExpandResult::ok(tt::Subtree::empty(tt::DelimSpan {
-                open: loc.call_site,
-                close: loc.call_site,
-            }))
+            return ExpandResult::ok(tt::Subtree::empty(tt::DelimSpan { open: span, close: span }))
         }
     };
-    pseudo_derive_attr_expansion(tt, derives, loc.call_site)
+    pseudo_derive_attr_expansion(tt, derives, span)
 }
 
 pub fn pseudo_derive_attr_expansion(

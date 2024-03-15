@@ -567,7 +567,7 @@ impl<'a> Ctx<'a> {
         })?);
         let ast_id = self.source_ast_id_map.ast_id(m);
         let expand_to = hir_expand::ExpandTo::from_call_site(m);
-        let res = MacroCall { path, ast_id, expand_to, call_site: span_map.span_for_range(range) };
+        let res = MacroCall { path, ast_id, expand_to, ctxt: span_map.span_for_range(range).ctx };
         Some(id(self.data().macro_calls.alloc(res)))
     }
 
