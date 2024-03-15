@@ -103,9 +103,9 @@ static void BadAllocErrorHandler(void *UserData,
                                  const char* Reason,
                                  bool GenCrashDiag) {
   const char *OOM = "rustc-LLVM ERROR: out of memory\n";
-  write(2, OOM, strlen(OOM));
-  write(2, Reason, strlen(Reason));
-  write(2, "\n", 1);
+  (void)!::write(2, OOM, strlen(OOM));
+  (void)!::write(2, Reason, strlen(Reason));
+  (void)!::write(2, "\n", 1);
   abort();
 }
 
