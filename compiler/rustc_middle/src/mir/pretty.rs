@@ -1159,7 +1159,7 @@ impl<'tcx> Debug for Operand<'tcx> {
         use self::Operand::*;
         match *self {
             Constant(ref a) => write!(fmt, "{a:?}"),
-            Copy(ref place) => write!(fmt, "{place:?}"),
+            Copy(ref place) => write!(fmt, "copy {place:?}"),
             Move(ref place) => write!(fmt, "move {place:?}"),
         }
     }
