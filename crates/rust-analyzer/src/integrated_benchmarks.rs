@@ -56,8 +56,6 @@ fn integrated_highlighting_benchmark() {
         vfs.file_id(&path).unwrap_or_else(|| panic!("can't find virtual file for {path}"))
     };
 
-    let _g = crate::tracing::hprof::init("*>150");
-
     {
         let _it = stdx::timeit("initial");
         let analysis = host.analysis();
@@ -67,13 +65,16 @@ fn integrated_highlighting_benchmark() {
     {
         let _it = stdx::timeit("change");
         let mut text = host.analysis().file_text(file_id).unwrap().to_string();
-        text.push_str("\npub fn _dummy() {}\n");
+        text = text.replace(
+            "self.data.cargo_buildScripts_rebuildOnSave",
+            "self. data. cargo_buildScripts_rebuildOnSave",
+        );
         let mut change = ChangeWithProcMacros::new();
         change.change_file(file_id, Some(text));
         host.apply_change(change);
     }
 
-    let _g = crate::tracing::hprof::init("*>50");
+    let _g = crate::tracing::hprof::init("*>20");
 
     {
         let _it = stdx::timeit("after change");
