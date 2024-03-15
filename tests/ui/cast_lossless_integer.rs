@@ -2,6 +2,7 @@
 #![warn(clippy::cast_lossless)]
 
 type I64 = i64;
+type U128 = u128;
 
 fn main() {
     // Test clippy::cast_lossless with casts to integer types
@@ -28,6 +29,11 @@ fn main() {
     let _ = (1u8 + 1u8) as u16;
 
     let _ = 1i8 as I64;
+
+    // Do not lint if destination type is u128
+    // see https://github.com/rust-lang/rust-clippy/issues/12492
+    let _ = 1u8 as u128;
+    let _ = 1u8 as U128;
 }
 
 // The lint would suggest using `f64::from(input)` here but the `XX::from` function is not const,

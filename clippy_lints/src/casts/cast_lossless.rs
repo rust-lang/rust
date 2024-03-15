@@ -6,7 +6,7 @@ use clippy_utils::ty::is_isize_or_usize;
 use rustc_errors::Applicability;
 use rustc_hir::{Expr, ExprKind, QPath, TyKind};
 use rustc_lint::LateContext;
-use rustc_middle::ty::{self, FloatTy, Ty};
+use rustc_middle::ty::{self, FloatTy, Ty, UintTy};
 
 use super::{utils, CAST_LOSSLESS};
 
@@ -77,7 +77,10 @@ pub(super) fn check(
 
 fn should_lint(cx: &LateContext<'_>, expr: &Expr<'_>, cast_from: Ty<'_>, cast_to: Ty<'_>, msrv: &Msrv) -> bool {
     // Do not suggest using From in consts/statics until it is valid to do so (see #2267).
-    if in_constant(cx, expr.hir_id) {
+    //
+    // If destination is u128, do not lint because source type cannot be larger
+    // If source is bool, still lint due to the lint message differing (refers to style)
+    if in_constant(cx, expr.hir_id) || (!cast_from.is_bool() && matches!(cast_to.kind(), ty::Uint(UintTy::U128))) {
         return false;
     }
 
