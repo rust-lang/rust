@@ -91,7 +91,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
     /// Used to set on_unimplemented's `ItemContext`
     /// to be the enclosing (async) block/function/closure
     fn describe_enclosure(&self, def_id: LocalDefId) -> Option<&'static str> {
-        match self.tcx.opt_hir_node_by_def_id(def_id)? {
+        match self.tcx.hir_node_by_def_id(def_id) {
             hir::Node::Item(hir::Item { kind: hir::ItemKind::Fn(..), .. }) => Some("a function"),
             hir::Node::TraitItem(hir::TraitItem { kind: hir::TraitItemKind::Fn(..), .. }) => {
                 Some("a trait method")

@@ -234,11 +234,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
 
         // Next, make sure that we have no type expectation.
-        let Some(ret) = self
-            .tcx
-            .opt_hir_node_by_def_id(self.body_id)
-            .and_then(|owner| owner.fn_decl())
-            .map(|decl| decl.output.span())
+        let Some(ret) =
+            self.tcx.hir_node_by_def_id(self.body_id).fn_decl().map(|decl| decl.output.span())
         else {
             return;
         };

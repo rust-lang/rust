@@ -1,8 +1,10 @@
-#!/bin/sh
+#!/usr/bin/env bash
 
 set -ex
 
 cd $1
+
+source shared.sh
 
 # Setting up folders for GCC
 git clone https://github.com/antoyo/gcc gcc-src
@@ -14,15 +16,17 @@ mkdir ../gcc-build ../gcc-install
 cd ../gcc-build
 
 # Building GCC.
-../gcc-src/configure \
+hide_output \
+  ../gcc-src/configure \
     --enable-host-shared \
     --enable-languages=jit \
     --enable-checking=release \
     --disable-bootstrap \
     --disable-multilib \
-    --prefix=$(pwd)/../gcc-install
-make
-make install
+    --prefix=$(pwd)/../gcc-install \
+
+hide_output make -j$(nproc)
+hide_output make install
 
 rm -rf ../gcc-src
 ln -s /scripts/gcc-install/lib/libgccjit.so /usr/lib/x86_64-linux-gnu/libgccjit.so

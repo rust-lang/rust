@@ -39,7 +39,7 @@ use crate::diagnostics::conflict_errors::StorageDeadOrDrop::LocalStorageDead;
 use crate::diagnostics::{find_all_local_uses, CapturedMessageOpt};
 use crate::{
     borrow_set::BorrowData, diagnostics::Instance, prefixes::IsPrefixOf,
-    InitializationRequiringAction, MirBorrowckCtxt, PrefixSet, WriteKind,
+    InitializationRequiringAction, MirBorrowckCtxt, WriteKind,
 };
 
 use super::{
@@ -114,7 +114,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
             self.buffer_error(err);
         } else {
             if let Some((reported_place, _)) = self.has_move_error(&move_out_indices) {
-                if self.prefixes(*reported_place, PrefixSet::All).any(|p| p == used_place) {
+                if used_place.is_prefix_of(*reported_place) {
                     debug!(
                         "report_use_of_moved_or_uninitialized place: error suppressed mois={:?}",
                         move_out_indices
@@ -422,8 +422,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                     (None, &[][..], 0)
                 };
                 if let Some(def_id) = def_id
-                    && let node =
-                        self.infcx.tcx.hir_node(self.infcx.tcx.local_def_id_to_hir_id(def_id))
+                    && let node = self.infcx.tcx.hir_node_by_def_id(def_id)
                     && let Some(fn_sig) = node.fn_sig()
                     && let Some(ident) = node.ident()
                     && let Some(pos) = args.iter().position(|arg| arg.hir_id == expr.hir_id)
@@ -1995,21 +1994,14 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         kind: Option<WriteKind>,
     ) {
         let drop_span = place_span.1;
-        let root_place =
-            self.prefixes(borrow.borrowed_place.as_ref(), PrefixSet::All).last().unwrap();
+        let borrowed_local = borrow.borrowed_place.local;
 
         let borrow_spans = self.retrieve_borrow_spans(borrow);
         let borrow_span = borrow_spans.var_or_use_path_span();
 
-        assert!(root_place.projection.is_empty());
-        let proper_span = self.body.local_decls[root_place.local].source_info.span;
+        let proper_span = self.body.local_decls[borrowed_local].source_info.span;
 
-        let root_place_projection = self.infcx.tcx.mk_place_elems(root_place.projection);
-
-        if self.access_place_error_reported.contains(&(
-            Place { local: root_place.local, projection: root_place_projection },
-            borrow_span,
-        )) {
+        if self.access_place_error_reported.contains(&(Place::from(borrowed_local), borrow_span)) {
             debug!(
                 "suppressing access_place error when borrow doesn't live long enough for {:?}",
                 borrow_span
@@ -2017,12 +2009,8 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
             return;
         }
 
-        self.access_place_error_reported.insert((
-            Place { local: root_place.local, projection: root_place_projection },
-            borrow_span,
-        ));
+        self.access_place_error_reported.insert((Place::from(borrowed_local), borrow_span));
 
-        let borrowed_local = borrow.borrowed_place.local;
         if self.body.local_decls[borrowed_local].is_ref_to_thread_local() {
             let err =
                 self.report_thread_local_value_does_not_live_long_enough(drop_span, borrow_span);
@@ -2544,9 +2532,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
             };
             (format!("{local_kind}`{place_desc}`"), format!("`{place_desc}` is borrowed here"))
         } else {
-            let root_place =
-                self.prefixes(borrow.borrowed_place.as_ref(), PrefixSet::All).last().unwrap();
-            let local = root_place.local;
+            let local = borrow.borrowed_place.local;
             match self.body.local_kind(local) {
                 LocalKind::Arg => (
                     "function parameter".to_string(),

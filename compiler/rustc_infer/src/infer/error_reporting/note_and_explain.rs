@@ -804,23 +804,22 @@ fn foo(&self) -> Self::T { String::new() }
     ) -> bool {
         let tcx = self.tcx;
 
-        let Some(hir_id) = body_owner_def_id.as_local() else {
+        let Some(def_id) = body_owner_def_id.as_local() else {
             return false;
         };
-        let Some(hir_id) = tcx.opt_local_def_id_to_hir_id(hir_id) else {
-            return false;
-        };
+
         // When `body_owner` is an `impl` or `trait` item, look in its associated types for
         // `expected` and point at it.
+        let hir_id = tcx.local_def_id_to_hir_id(def_id);
         let parent_id = tcx.hir().get_parent_item(hir_id);
-        let item = tcx.opt_hir_node_by_def_id(parent_id.def_id);
+        let item = tcx.hir_node_by_def_id(parent_id.def_id);
 
         debug!("expected_projection parent item {:?}", item);
 
         let param_env = tcx.param_env(body_owner_def_id);
 
         match item {
-            Some(hir::Node::Item(hir::Item { kind: hir::ItemKind::Trait(.., items), .. })) => {
+            hir::Node::Item(hir::Item { kind: hir::ItemKind::Trait(.., items), .. }) => {
                 // FIXME: account for `#![feature(specialization)]`
                 for item in &items[..] {
                     match item.kind {
@@ -845,10 +844,10 @@ fn foo(&self) -> Self::T { String::new() }
                     }
                 }
             }
-            Some(hir::Node::Item(hir::Item {
+            hir::Node::Item(hir::Item {
                 kind: hir::ItemKind::Impl(hir::Impl { items, .. }),
                 ..
-            })) => {
+            }) => {
                 for item in &items[..] {
                     if let hir::AssocItemKind::Type = item.kind {
                         let assoc_ty = tcx.type_of(item.id.owner_id).instantiate_identity();
