@@ -36,6 +36,9 @@ pub enum StackPopJump {
     /// Indicates that we should *not* jump to the return/unwind address, as the callback already
     /// took care of everything.
     NoJump,
+
+    /// Returned by [`InterpCx::pop_stack_frame`] when no cleanup should be done.
+    NoCleanup,
 }
 
 /// Whether this kind of memory is allowed to leak

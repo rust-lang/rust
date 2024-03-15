@@ -4,9 +4,8 @@ use either::Either;
 use rustc_middle::ty::TyCtxt;
 use tracing::trace;
 
-use rustc_middle::span_bug;
 use rustc_middle::{
-    mir,
+    bug, mir, span_bug,
     ty::{
         self,
         layout::{FnAbiOf, IntegerExt, LayoutOf, TyAndLayout},
@@ -26,7 +25,10 @@ use super::{
     InterpResult, MPlaceTy, Machine, OpTy, PlaceTy, Projectable, Provenance, Scalar,
     StackPopCleanup,
 };
-use crate::fluent_generated as fluent;
+use crate::{
+    fluent_generated as fluent,
+    interpret::{eval_context::StackPop, StackPopJump},
+};
 
 /// An argment passed to a function.
 #[derive(Clone, Debug)]
@@ -93,7 +95,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         use rustc_middle::mir::TerminatorKind::*;
         match terminator.kind {
             Return => {
-                self.pop_stack_frame(/* unwinding */ false)?
+                self.return_from_current_stack_frame(/* unwinding */ false)?
             }
 
             Goto { target } => self.go_to_block(target),
@@ -160,35 +162,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 let EvaluatedCalleeAndArgs { callee, args, fn_sig, fn_abi, with_caller_location } =
                     self.eval_callee_and_args(terminator, func, args)?;
 
-                // This is the "canonical" implementation of tails calls,
-                // a pop of the current stack frame, followed by a normal call
-                // which pushes a new stack frame, with the return address from
-                // the popped stack frame.
-                //
-                // Note that we can't use `pop_stack_frame` as it "executes"
-                // the goto to the return block, but we don't want to,
-                // only the tail called function should return to the current
-                // return block.
-                let Some(prev_frame) = self.stack_mut().pop() else {
-                    span_bug!(
-                        terminator.source_info.span,
-                        "empty stack while evaluating this tail call"
-                    )
-                };
-
-                let StackPopCleanup::Goto { ret, unwind } = prev_frame.return_to_block else {
-                    span_bug!(terminator.source_info.span, "tail call with the root stack frame")
-                };
-
-                self.eval_fn_call(
-                    callee,
-                    (fn_sig.abi, fn_abi),
-                    &args,
-                    with_caller_location,
-                    &prev_frame.return_place,
-                    ret,
-                    unwind,
-                )?;
+                self.eval_fn_tail_call(callee, (fn_sig.abi, fn_abi), &args, with_caller_location)?;
 
                 if self.frame_idx() != old_frame_idx {
                     span_bug!(
@@ -235,7 +209,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 trace!("unwinding: resuming from cleanup");
                 // By definition, a Resume terminator means
                 // that we're unwinding
-                self.pop_stack_frame(/* unwinding */ true)?;
+                self.return_from_current_stack_frame(/* unwinding */ true)?;
                 return Ok(());
             }
 
@@ -987,6 +961,46 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 )
             }
         }
+    }
+
+    pub(crate) fn eval_fn_tail_call(
+        &mut self,
+        fn_val: FnVal<'tcx, M::ExtraFnVal>,
+        (caller_abi, caller_fn_abi): (Abi, &FnAbi<'tcx, Ty<'tcx>>),
+        args: &[FnArg<'tcx, M::Provenance>],
+        with_caller_location: bool,
+    ) -> InterpResult<'tcx> {
+        trace!("eval_fn_call: {:#?}", fn_val);
+
+        // This is the "canonical" implementation of tails calls,
+        // a pop of the current stack frame, followed by a normal call
+        // which pushes a new stack frame, with the return address from
+        // the popped stack frame.
+        //
+        // Note that we can't use `pop_stack_frame` as it "executes"
+        // the goto to the return block, but we don't want to,
+        // only the tail called function should return to the current
+        // return block.
+
+        M::before_stack_pop(self, self.frame())?;
+
+        let StackPop { jump, target, destination } = self.pop_stack_frame(false)?;
+
+        assert_eq!(jump, StackPopJump::Normal);
+
+        let StackPopCleanup::Goto { ret, unwind } = target else {
+            bug!("can't tailcall as root");
+        };
+
+        self.eval_fn_call(
+            fn_val,
+            (caller_abi, caller_fn_abi),
+            args,
+            with_caller_location,
+            &destination,
+            ret,
+            unwind,
+        )
     }
 
     fn check_fn_target_features(&self, instance: ty::Instance<'tcx>) -> InterpResult<'tcx, ()> {
