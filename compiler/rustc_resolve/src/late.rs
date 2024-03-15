@@ -4645,6 +4645,13 @@ impl<'a: 'ast, 'b, 'ast, 'tcx> LateResolutionVisitor<'a, 'b, 'ast, 'tcx> {
     }
 
     fn lint_unused_qualifications(&mut self, path: &[Segment], ns: Namespace, finalize: Finalize) {
+        // Don't lint on global paths because the user explicitly wrote out the full path.
+        if let Some(seg) = path.first()
+            && seg.ident.name == kw::PathRoot
+        {
+            return;
+        }
+
         if path.iter().any(|seg| seg.ident.span.from_expansion()) {
             return;
         }
