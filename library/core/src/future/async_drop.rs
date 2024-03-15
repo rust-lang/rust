@@ -241,6 +241,7 @@ where
     }
 }
 
+#[derive(Clone, Copy)]
 #[lang = "async_drop_into_chain"]
 struct IntoChain<F, G> {
     first: F,
