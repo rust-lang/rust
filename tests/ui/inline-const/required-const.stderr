@@ -6,6 +6,12 @@ LL |         const { panic!() }
    |
    = note: this error originates in the macro `$crate::panic::panic_2015` which comes from the expansion of the macro `panic` (in Nightly builds, run with -Z macro-backtrace for more info)
 
+note: erroneous constant encountered
+  --> $DIR/required-const.rs:7:9
+   |
+LL |         const { panic!() }
+   |         ^^^^^^^^^^^^^^^^^^
+
 error: aborting due to 1 previous error
 
 For more information about this error, try `rustc --explain E0080`.
