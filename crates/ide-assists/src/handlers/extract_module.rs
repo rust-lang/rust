@@ -467,9 +467,9 @@ impl Module {
                 .filter(|x| find_node_at_range::<ast::Use>(file.syntax(), x.range).is_none())
                 .filter_map(|x| find_node_at_range::<ast::Path>(file.syntax(), x.range))
             {
-                let in_selectin = selection_range.contains_range(x.syntax().text_range());
-                uses_exist_in_sel |= in_selectin;
-                uses_exist_out_sel |= !in_selectin;
+                let in_selection = selection_range.contains_range(x.syntax().text_range());
+                uses_exist_in_sel |= in_selection;
+                uses_exist_out_sel |= !in_selection;
 
                 if uses_exist_in_sel && uses_exist_out_sel {
                     break 'outside;
