@@ -11,6 +11,7 @@
 #![feature(exact_size_is_empty)]
 #![feature(extern_types)]
 #![feature(hash_raw_entry)]
+#![feature(inline_const)]
 #![feature(iter_intersperse)]
 #![feature(let_chains)]
 #![feature(impl_trait_in_assoc_type)]

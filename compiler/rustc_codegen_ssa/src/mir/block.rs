@@ -83,8 +83,11 @@ impl<'a, 'tcx> TerminatorCodegenHelper<'tcx> {
             // Cross-funclet jump - need a trampoline
             debug_assert!(base::wants_new_eh_instructions(fx.cx.tcx().sess));
             debug!("llbb_with_cleanup: creating cleanup trampoline for {:?}", target);
-            let name = &format!("{:?}_cleanup_trampoline_{:?}", self.bb, target);
-            let trampoline_llbb = Bx::append_block(fx.cx, fx.llfn, name);
+            let trampoline_llbb = Bx::append_block(
+                fx.cx,
+                fx.llfn,
+                format_args!("{:?}_cleanup_trampoline_{:?}", self.bb, target),
+            );
             let mut trampoline_bx = Bx::build(fx.cx, trampoline_llbb);
             trampoline_bx.cleanup_ret(self.funclet(fx).unwrap(), Some(lltarget));
             trampoline_llbb
@@ -1565,7 +1568,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
     fn landing_pad_for_uncached(&mut self, bb: mir::BasicBlock) -> Bx::BasicBlock {
         let llbb = self.llbb(bb);
         if base::wants_new_eh_instructions(self.cx.sess()) {
-            let cleanup_bb = Bx::append_block(self.cx, self.llfn, &format!("funclet_{bb:?}"));
+            let cleanup_bb = Bx::append_block(self.cx, self.llfn, format_args!("funclet_{bb:?}"));
             let mut cleanup_bx = Bx::build(self.cx, cleanup_bb);
             let funclet = cleanup_bx.cleanup_pad(None, &[]);
             cleanup_bx.br(llbb);
@@ -1688,8 +1691,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
     pub fn try_llbb(&mut self, bb: mir::BasicBlock) -> Option<Bx::BasicBlock> {
         match self.cached_llbbs[bb] {
             CachedLlbb::None => {
-                // FIXME(eddyb) only name the block if `fewer_names` is `false`.
-                let llbb = Bx::append_block(self.cx, self.llfn, &format!("{bb:?}"));
+                let llbb = Bx::append_block(self.cx, self.llfn, format_args!("{bb:?}"));
                 self.cached_llbbs[bb] = CachedLlbb::Some(llbb);
                 Some(llbb)
             }
