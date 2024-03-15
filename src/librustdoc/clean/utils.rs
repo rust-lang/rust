@@ -664,9 +664,10 @@ pub(crate) fn inherits_doc_hidden(
         def_id = id;
         if tcx.is_doc_hidden(def_id.to_def_id()) {
             return true;
-        } else if let Some(node) = tcx.opt_hir_node_by_def_id(def_id)
-            && matches!(node, hir::Node::Item(hir::Item { kind: hir::ItemKind::Impl(_), .. }),)
-        {
+        } else if matches!(
+            tcx.hir_node_by_def_id(def_id),
+            hir::Node::Item(hir::Item { kind: hir::ItemKind::Impl(_), .. })
+        ) {
             // `impl` blocks stand a bit on their own: unless they have `#[doc(hidden)]` directly
             // on them, they don't inherit it from the parent context.
             return false;

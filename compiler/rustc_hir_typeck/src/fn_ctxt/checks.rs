@@ -2172,16 +2172,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 // Try to find earlier invocations of this closure to find if the type mismatch
                 // is because of inference. If we find one, point at them.
                 let mut call_finder = FindClosureArg { tcx: self.tcx, calls: vec![] };
-                let node = self
-                    .tcx
-                    .opt_local_def_id_to_hir_id(
-                        self.tcx.hir().get_parent_item(call_expr.hir_id).def_id,
-                    )
-                    .map(|hir_id| self.tcx.hir_node(hir_id));
-                match node {
-                    Some(hir::Node::Item(item)) => call_finder.visit_item(item),
-                    Some(hir::Node::TraitItem(item)) => call_finder.visit_trait_item(item),
-                    Some(hir::Node::ImplItem(item)) => call_finder.visit_impl_item(item),
+                let parent_def_id = self.tcx.hir().get_parent_item(call_expr.hir_id).def_id;
+                match self.tcx.hir_node_by_def_id(parent_def_id) {
+                    hir::Node::Item(item) => call_finder.visit_item(item),
+                    hir::Node::TraitItem(item) => call_finder.visit_trait_item(item),
+                    hir::Node::ImplItem(item) => call_finder.visit_impl_item(item),
                     _ => {}
                 }
                 let typeck = self.typeck_results.borrow();

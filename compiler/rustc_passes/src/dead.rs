@@ -33,15 +33,13 @@ use crate::errors::{
 // may need to be marked as live.
 fn should_explore(tcx: TyCtxt<'_>, def_id: LocalDefId) -> bool {
     matches!(
-        tcx.opt_hir_node_by_def_id(def_id),
-        Some(
-            Node::Item(..)
-                | Node::ImplItem(..)
-                | Node::ForeignItem(..)
-                | Node::TraitItem(..)
-                | Node::Variant(..)
-                | Node::AnonConst(..)
-        )
+        tcx.hir_node_by_def_id(def_id),
+        Node::Item(..)
+            | Node::ImplItem(..)
+            | Node::ForeignItem(..)
+            | Node::TraitItem(..)
+            | Node::Variant(..)
+            | Node::AnonConst(..)
     )
 }
 
@@ -316,33 +314,31 @@ impl<'tcx> MarkSymbolVisitor<'tcx> {
             // tuple struct constructor function
             let id = self.struct_constructors.get(&id).copied().unwrap_or(id);
 
-            if let Some(node) = self.tcx.opt_hir_node_by_def_id(id) {
-                // When using `#[allow]` or `#[expect]` of `dead_code`, we do a QOL improvement
-                // by declaring fn calls, statics, ... within said items as live, as well as
-                // the item itself, although technically this is not the case.
-                //
-                // This means that the lint for said items will never be fired.
-                //
-                // This doesn't make any difference for the item declared with `#[allow]`, as
-                // the lint firing will be a nop, as it will be silenced by the `#[allow]` of
-                // the item.
-                //
-                // However, for `#[expect]`, the presence or absence of the lint is relevant,
-                // so we don't add it to the list of live symbols when it comes from a
-                // `#[expect]`. This means that we will correctly report an item as live or not
-                // for the `#[expect]` case.
-                //
-                // Note that an item can and will be duplicated on the worklist with different
-                // `ComesFromAllowExpect`, particularly if it was added from the
-                // `effective_visibilities` query or from the `#[allow]`/`#[expect]` checks,
-                // this "duplication" is essential as otherwise a function with `#[expect]`
-                // called from a `pub fn` may be falsely reported as not live, falsely
-                // triggering the `unfulfilled_lint_expectations` lint.
-                if comes_from_allow_expect != ComesFromAllowExpect::Yes {
-                    self.live_symbols.insert(id);
-                }
-                self.visit_node(node);
+            // When using `#[allow]` or `#[expect]` of `dead_code`, we do a QOL improvement
+            // by declaring fn calls, statics, ... within said items as live, as well as
+            // the item itself, although technically this is not the case.
+            //
+            // This means that the lint for said items will never be fired.
+            //
+            // This doesn't make any difference for the item declared with `#[allow]`, as
+            // the lint firing will be a nop, as it will be silenced by the `#[allow]` of
+            // the item.
+            //
+            // However, for `#[expect]`, the presence or absence of the lint is relevant,
+            // so we don't add it to the list of live symbols when it comes from a
+            // `#[expect]`. This means that we will correctly report an item as live or not
+            // for the `#[expect]` case.
+            //
+            // Note that an item can and will be duplicated on the worklist with different
+            // `ComesFromAllowExpect`, particularly if it was added from the
+            // `effective_visibilities` query or from the `#[allow]`/`#[expect]` checks,
+            // this "duplication" is essential as otherwise a function with `#[expect]`
+            // called from a `pub fn` may be falsely reported as not live, falsely
+            // triggering the `unfulfilled_lint_expectations` lint.
+            if comes_from_allow_expect != ComesFromAllowExpect::Yes {
+                self.live_symbols.insert(id);
             }
+            self.visit_node(self.tcx.hir_node_by_def_id(id));
         }
     }
 
@@ -739,8 +735,8 @@ fn check_item<'tcx>(
             for local_def_id in local_def_ids {
                 // check the function may construct Self
                 let mut may_construct_self = true;
-                if let Some(hir_id) = tcx.opt_local_def_id_to_hir_id(local_def_id)
-                    && let Some(fn_sig) = tcx.hir().fn_sig_by_hir_id(hir_id)
+                if let Some(fn_sig) =
+                    tcx.hir().fn_sig_by_hir_id(tcx.local_def_id_to_hir_id(local_def_id))
                 {
                     may_construct_self =
                         matches!(fn_sig.decl.implicit_self, hir::ImplicitSelfKind::None);

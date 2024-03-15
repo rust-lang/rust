@@ -116,26 +116,25 @@ impl<'tcx> ReachableContext<'tcx> {
             return false;
         };
 
-        match self.tcx.opt_hir_node_by_def_id(def_id) {
-            Some(Node::Item(item)) => match item.kind {
+        match self.tcx.hir_node_by_def_id(def_id) {
+            Node::Item(item) => match item.kind {
                 hir::ItemKind::Fn(..) => item_might_be_inlined(self.tcx, def_id.into()),
                 _ => false,
             },
-            Some(Node::TraitItem(trait_method)) => match trait_method.kind {
+            Node::TraitItem(trait_method) => match trait_method.kind {
                 hir::TraitItemKind::Const(_, ref default) => default.is_some(),
                 hir::TraitItemKind::Fn(_, hir::TraitFn::Provided(_)) => true,
                 hir::TraitItemKind::Fn(_, hir::TraitFn::Required(_))
                 | hir::TraitItemKind::Type(..) => false,
             },
-            Some(Node::ImplItem(impl_item)) => match impl_item.kind {
+            Node::ImplItem(impl_item) => match impl_item.kind {
                 hir::ImplItemKind::Const(..) => true,
                 hir::ImplItemKind::Fn(..) => {
                     item_might_be_inlined(self.tcx, impl_item.hir_id().owner.to_def_id())
                 }
                 hir::ImplItemKind::Type(_) => false,
             },
-            Some(_) => false,
-            None => false, // This will happen for default methods.
+            _ => false,
         }
     }
 
@@ -147,9 +146,7 @@ impl<'tcx> ReachableContext<'tcx> {
                 continue;
             }
 
-            if let Some(ref item) = self.tcx.opt_hir_node_by_def_id(search_item) {
-                self.propagate_node(item, search_item);
-            }
+            self.propagate_node(&self.tcx.hir_node_by_def_id(search_item), search_item);
         }
     }
 

@@ -112,10 +112,7 @@ fn check_closures<'tcx>(
         }
         ctx.prev_bind = None;
         ctx.prev_move_to_closure.clear();
-        if let Some(body) = cx
-            .tcx
-            .opt_hir_node_by_def_id(closure)
-            .and_then(associated_body)
+        if let Some(body) = associated_body(cx.tcx.hir_node_by_def_id(closure))
             .map(|(_, body_id)| hir.body(body_id))
         {
             euv::ExprUseVisitor::new(ctx, infcx, closure, cx.param_env, cx.typeck_results()).consume_body(body);

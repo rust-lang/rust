@@ -422,8 +422,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                     (None, &[][..], 0)
                 };
                 if let Some(def_id) = def_id
-                    && let node =
-                        self.infcx.tcx.hir_node(self.infcx.tcx.local_def_id_to_hir_id(def_id))
+                    && let node = self.infcx.tcx.hir_node_by_def_id(def_id)
                     && let Some(fn_sig) = node.fn_sig()
                     && let Some(ident) = node.ident()
                     && let Some(pos) = args.iter().position(|arg| arg.hir_id == expr.hir_id)
