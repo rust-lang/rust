@@ -6,17 +6,17 @@
 // an error, but the regression test is here to ensure
 // that it does not ICE. See discussion on #74889 for details.
 
-pub trait T {
+pub trait Trait {
     fn t<F: Fn()>(&self, _: F) {}
 }
 
 pub fn crash<V>(v: &V)
 where
-    for<'a> &'a V: T + 'static,
+    for<'a> &'a V: Trait + 'static,
 {
     v.t(|| {});
-    //~^ ERROR: higher-ranked lifetime error
-    //~| ERROR: higher-ranked lifetime error
+    //~^ ERROR: implementation of `Trait` is not general enough
+    //~| ERROR: implementation of `Trait` is not general enough
     //~| ERROR: higher-ranked lifetime error
 }
 

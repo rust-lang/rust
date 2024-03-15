@@ -25,28 +25,14 @@ LL |     take_foo(|a| a);
    = note: closure with signature `fn(&'2 i32) -> &i32` must implement `FnOnce<(&'1 i32,)>`, for any lifetime `'1`...
    = note: ...but it actually implements `FnOnce<(&'2 i32,)>`, for some specific lifetime `'2`
 
-error[E0308]: mismatched types
+error: implementation of `Fn` is not general enough
   --> $DIR/issue-79187-2.rs:8:5
    |
 LL |     take_foo(|a| a);
-   |     ^^^^^^^^^^^^^^^ one type is more general than the other
+   |     ^^^^^^^^^^^^^^^ implementation of `Fn` is not general enough
    |
-   = note: expected trait `for<'a> Fn(&'a i32)`
-              found trait `Fn(&i32)`
-note: this closure does not fulfill the lifetime requirements
-  --> $DIR/issue-79187-2.rs:8:14
-   |
-LL |     take_foo(|a| a);
-   |              ^^^
-note: the lifetime requirement is introduced here
-  --> $DIR/issue-79187-2.rs:5:21
-   |
-LL | fn take_foo(_: impl Foo) {}
-   |                     ^^^
-help: consider specifying the type of the closure parameters
-   |
-LL |     take_foo(|a: &_| a);
-   |              ~~~~~~~
+   = note: closure with signature `fn(&'2 i32) -> &i32` must implement `Fn<(&'1 i32,)>`, for any lifetime `'1`...
+   = note: ...but it actually implements `Fn<(&'2 i32,)>`, for some specific lifetime `'2`
 
 error[E0308]: mismatched types
   --> $DIR/issue-79187-2.rs:11:5

@@ -270,7 +270,8 @@ impl<'tcx> ReachableContext<'tcx> {
             | Node::Ctor(..)
             | Node::Field(_)
             | Node::Ty(_)
-            | Node::Crate(_) => {}
+            | Node::Crate(_)
+            | Node::AssocOpaqueTy(..) => {}
             _ => {
                 bug!(
                     "found unexpected node kind in worklist: {} ({:?})",

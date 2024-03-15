@@ -164,6 +164,15 @@ impl CounterMappingRegion {
                 end_line,
                 end_col,
             ),
+            MappingKind::Branch { true_term, false_term } => Self::branch_region(
+                Counter::from_term(true_term),
+                Counter::from_term(false_term),
+                local_file_id,
+                start_line,
+                start_col,
+                end_line,
+                end_col,
+            ),
         }
     }
 
@@ -188,9 +197,6 @@ impl CounterMappingRegion {
         }
     }
 
-    // This function might be used in the future; the LLVM API is still evolving, as is coverage
-    // support.
-    #[allow(dead_code)]
     pub(crate) fn branch_region(
         counter: Counter,
         false_counter: Counter,

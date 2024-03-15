@@ -1,0 +1,32 @@
+Function name: branch_guard::branch_match_guard
+Raw bytes (85): 0x[01, 01, 06, 19, 0d, 05, 09, 0f, 15, 13, 11, 17, 0d, 05, 09, 0d, 01, 0c, 01, 01, 10, 1d, 03, 0b, 00, 0c, 15, 01, 14, 02, 0a, 0d, 03, 0e, 00, 0f, 19, 00, 14, 00, 19, 20, 0d, 02, 00, 14, 00, 1e, 0d, 00, 1d, 02, 0a, 11, 03, 0e, 00, 0f, 1d, 00, 14, 00, 19, 20, 11, 09, 00, 14, 00, 1e, 11, 00, 1d, 02, 0a, 17, 03, 0e, 02, 0a, 0b, 04, 01, 00, 02]
+Number of files: 1
+- file 0 => global file 1
+Number of expressions: 6
+- expression 0 operands: lhs = Counter(6), rhs = Counter(3)
+- expression 1 operands: lhs = Counter(1), rhs = Counter(2)
+- expression 2 operands: lhs = Expression(3, Add), rhs = Counter(5)
+- expression 3 operands: lhs = Expression(4, Add), rhs = Counter(4)
+- expression 4 operands: lhs = Expression(5, Add), rhs = Counter(3)
+- expression 5 operands: lhs = Counter(1), rhs = Counter(2)
+Number of file 0 mappings: 13
+- Code(Counter(0)) at (prev + 12, 1) to (start + 1, 16)
+- Code(Counter(7)) at (prev + 3, 11) to (start + 0, 12)
+- Code(Counter(5)) at (prev + 1, 20) to (start + 2, 10)
+- Code(Counter(3)) at (prev + 3, 14) to (start + 0, 15)
+- Code(Counter(6)) at (prev + 0, 20) to (start + 0, 25)
+- Branch { true: Counter(3), false: Expression(0, Sub) } at (prev + 0, 20) to (start + 0, 30)
+    true  = c3
+    false = (c6 - c3)
+- Code(Counter(3)) at (prev + 0, 29) to (start + 2, 10)
+- Code(Counter(4)) at (prev + 3, 14) to (start + 0, 15)
+- Code(Counter(7)) at (prev + 0, 20) to (start + 0, 25)
+- Branch { true: Counter(4), false: Counter(2) } at (prev + 0, 20) to (start + 0, 30)
+    true  = c4
+    false = c2
+- Code(Counter(4)) at (prev + 0, 29) to (start + 2, 10)
+- Code(Expression(5, Add)) at (prev + 3, 14) to (start + 2, 10)
+    = (c1 + c2)
+- Code(Expression(2, Add)) at (prev + 4, 1) to (start + 0, 2)
+    = ((((c1 + c2) + c3) + c4) + c5)
+

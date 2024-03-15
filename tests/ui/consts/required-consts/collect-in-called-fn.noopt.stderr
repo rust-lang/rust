@@ -1,0 +1,17 @@
+error[E0080]: evaluation of `Fail::<i32>::C` failed
+  --> $DIR/collect-in-called-fn.rs:9:19
+   |
+LL |     const C: () = panic!();
+   |                   ^^^^^^^^ the evaluated program panicked at 'explicit panic', $DIR/collect-in-called-fn.rs:9:19
+   |
+   = note: this error originates in the macro `$crate::panic::panic_2015` which comes from the expansion of the macro `panic` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+note: the above error was encountered while instantiating `fn called::<i32>`
+  --> $DIR/collect-in-called-fn.rs:23:5
+   |
+LL |     called::<i32>();
+   |     ^^^^^^^^^^^^^^^
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0080`.

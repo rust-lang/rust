@@ -187,11 +187,13 @@ pub(super) enum Place<Prov: Provenance = CtfeProvenance> {
     /// where in the local this place is located; if it is `None`, no projection has been applied.
     /// Such projections are meaningful even if the offset is 0, since they can change layouts.
     /// (Without that optimization, we'd just always be a `MemPlace`.)
-    /// Note that this only stores the frame index, not the thread this frame belongs to -- that is
-    /// implicit. This means a `Place` must never be moved across interpreter thread boundaries!
+    /// `Local` places always refer to the current stack frame, so they are unstable under
+    /// function calls/returns and switching betweens stacks of different threads!
+    /// We carry around the address of the `locals` buffer of the correct stack frame as a sanity
+    /// chec to be able to catch some cases of using a dangling `Place`.
     ///
     /// This variant shall not be used for unsized types -- those must always live in memory.
-    Local { frame: usize, local: mir::Local, offset: Option<Size> },
+    Local { local: mir::Local, offset: Option<Size>, locals_addr: usize },
 }
 
 /// An evaluated place, together with its type.
@@ -233,10 +235,10 @@ impl<'tcx, Prov: Provenance> PlaceTy<'tcx, Prov> {
     #[inline(always)]
     pub fn as_mplace_or_local(
         &self,
-    ) -> Either<MPlaceTy<'tcx, Prov>, (usize, mir::Local, Option<Size>)> {
+    ) -> Either<MPlaceTy<'tcx, Prov>, (mir::Local, Option<Size>, usize)> {
         match self.place {
             Place::Ptr(mplace) => Left(MPlaceTy { mplace, layout: self.layout }),
-            Place::Local { frame, local, offset } => Right((frame, local, offset)),
+            Place::Local { local, offset, locals_addr } => Right((local, offset, locals_addr)),
         }
     }
 
@@ -279,7 +281,7 @@ impl<'tcx, Prov: Provenance> Projectable<'tcx, Prov> for PlaceTy<'tcx, Prov> {
     ) -> InterpResult<'tcx, Self> {
         Ok(match self.as_mplace_or_local() {
             Left(mplace) => mplace.offset_with_meta(offset, mode, meta, layout, ecx)?.into(),
-            Right((frame, local, old_offset)) => {
+            Right((local, old_offset, locals_addr)) => {
                 debug_assert!(layout.is_sized(), "unsized locals should live in memory");
                 assert_matches!(meta, MemPlaceMeta::None); // we couldn't store it anyway...
                 // `Place::Local` are always in-bounds of their surrounding local, so we can just
@@ -292,7 +294,10 @@ impl<'tcx, Prov: Provenance> Projectable<'tcx, Prov> for PlaceTy<'tcx, Prov> {
                         .offset(old_offset.unwrap_or(Size::ZERO).bytes(), offset.bytes())?,
                 );
 
-                PlaceTy { place: Place::Local { frame, local, offset: Some(new_offset) }, layout }
+                PlaceTy {
+                    place: Place::Local { local, offset: Some(new_offset), locals_addr },
+                    layout,
+                }
             }
         })
     }
@@ -331,7 +336,7 @@ impl<'tcx, Prov: Provenance> OpTy<'tcx, Prov> {
 pub trait Writeable<'tcx, Prov: Provenance>: Projectable<'tcx, Prov> {
     fn as_mplace_or_local(
         &self,
-    ) -> Either<MPlaceTy<'tcx, Prov>, (usize, mir::Local, Option<Size>, TyAndLayout<'tcx>)>;
+    ) -> Either<MPlaceTy<'tcx, Prov>, (mir::Local, Option<Size>, usize, TyAndLayout<'tcx>)>;
 
     fn force_mplace<'mir, M: Machine<'mir, 'tcx, Provenance = Prov>>(
         &self,
@@ -343,9 +348,9 @@ impl<'tcx, Prov: Provenance> Writeable<'tcx, Prov> for PlaceTy<'tcx, Prov> {
     #[inline(always)]
     fn as_mplace_or_local(
         &self,
-    ) -> Either<MPlaceTy<'tcx, Prov>, (usize, mir::Local, Option<Size>, TyAndLayout<'tcx>)> {
+    ) -> Either<MPlaceTy<'tcx, Prov>, (mir::Local, Option<Size>, usize, TyAndLayout<'tcx>)> {
         self.as_mplace_or_local()
-            .map_right(|(frame, local, offset)| (frame, local, offset, self.layout))
+            .map_right(|(local, offset, locals_addr)| (local, offset, locals_addr, self.layout))
     }
 
     #[inline(always)]
@@ -361,7 +366,7 @@ impl<'tcx, Prov: Provenance> Writeable<'tcx, Prov> for MPlaceTy<'tcx, Prov> {
     #[inline(always)]
     fn as_mplace_or_local(
         &self,
-    ) -> Either<MPlaceTy<'tcx, Prov>, (usize, mir::Local, Option<Size>, TyAndLayout<'tcx>)> {
+    ) -> Either<MPlaceTy<'tcx, Prov>, (mir::Local, Option<Size>, usize, TyAndLayout<'tcx>)> {
         Left(self.clone())
     }
 
@@ -501,21 +506,21 @@ where
         Ok((mplace, len))
     }
 
+    /// Turn a local in the current frame into a place.
     pub fn local_to_place(
         &self,
-        frame: usize,
         local: mir::Local,
     ) -> InterpResult<'tcx, PlaceTy<'tcx, M::Provenance>> {
         // Other parts of the system rely on `Place::Local` never being unsized.
         // So we eagerly check here if this local has an MPlace, and if yes we use it.
-        let frame_ref = &self.stack()[frame];
-        let layout = self.layout_of_local(frame_ref, local, None)?;
+        let frame = self.frame();
+        let layout = self.layout_of_local(frame, local, None)?;
         let place = if layout.is_sized() {
             // We can just always use the `Local` for sized values.
-            Place::Local { frame, local, offset: None }
+            Place::Local { local, offset: None, locals_addr: frame.locals_addr() }
         } else {
             // Unsized `Local` isn't okay (we cannot store the metadata).
-            match frame_ref.locals[local].access()? {
+            match frame.locals[local].access()? {
                 Operand::Immediate(_) => bug!(),
                 Operand::Indirect(mplace) => Place::Ptr(*mplace),
             }
@@ -530,7 +535,7 @@ where
         &self,
         mir_place: mir::Place<'tcx>,
     ) -> InterpResult<'tcx, PlaceTy<'tcx, M::Provenance>> {
-        let mut place = self.local_to_place(self.frame_idx(), mir_place.local)?;
+        let mut place = self.local_to_place(mir_place.local)?;
         // Using `try_fold` turned out to be bad for performance, hence the loop.
         for elem in mir_place.projection.iter() {
             place = self.project(&place, elem)?
@@ -611,15 +616,15 @@ where
         // See if we can avoid an allocation. This is the counterpart to `read_immediate_raw`,
         // but not factored as a separate function.
         let mplace = match dest.as_mplace_or_local() {
-            Right((frame, local, offset, layout)) => {
+            Right((local, offset, locals_addr, layout)) => {
                 if offset.is_some() {
                     // This has been projected to a part of this local. We could have complicated
                     // logic to still keep this local as an `Operand`... but it's much easier to
                     // just fall back to the indirect path.
                     dest.force_mplace(self)?
                 } else {
-                    M::before_access_local_mut(self, frame, local)?;
-                    match self.stack_mut()[frame].locals[local].access_mut()? {
+                    debug_assert_eq!(locals_addr, self.frame().locals_addr());
+                    match self.frame_mut().locals[local].access_mut()? {
                         Operand::Immediate(local_val) => {
                             // Local can be updated in-place.
                             *local_val = src;
@@ -627,7 +632,7 @@ where
                             // (*After* doing the update for borrow checker reasons.)
                             if cfg!(debug_assertions) {
                                 let local_layout =
-                                    self.layout_of_local(&self.stack()[frame], local, None)?;
+                                    self.layout_of_local(&self.frame(), local, None)?;
                                 match (src, local_layout.abi) {
                                     (Immediate::Scalar(scalar), Abi::Scalar(s)) => {
                                         assert_eq!(scalar.size(), s.size(self))
@@ -725,7 +730,7 @@ where
     ) -> InterpResult<'tcx> {
         let mplace = match dest.as_mplace_or_local() {
             Left(mplace) => mplace,
-            Right((frame, local, offset, layout)) => {
+            Right((local, offset, locals_addr, layout)) => {
                 if offset.is_some() {
                     // This has been projected to a part of this local. We could have complicated
                     // logic to still keep this local as an `Operand`... but it's much easier to
@@ -733,8 +738,8 @@ where
                     // FIXME: share the logic with `write_immediate_no_validate`.
                     dest.force_mplace(self)?
                 } else {
-                    M::before_access_local_mut(self, frame, local)?;
-                    match self.stack_mut()[frame].locals[local].access_mut()? {
+                    debug_assert_eq!(locals_addr, self.frame().locals_addr());
+                    match self.frame_mut().locals[local].access_mut()? {
                         Operand::Immediate(local) => {
                             *local = Immediate::Uninit;
                             return Ok(());
@@ -912,17 +917,16 @@ where
         place: &PlaceTy<'tcx, M::Provenance>,
     ) -> InterpResult<'tcx, MPlaceTy<'tcx, M::Provenance>> {
         let mplace = match place.place {
-            Place::Local { frame, local, offset } => {
-                M::before_access_local_mut(self, frame, local)?;
-                let whole_local = match self.stack_mut()[frame].locals[local].access_mut()? {
+            Place::Local { local, offset, locals_addr } => {
+                debug_assert_eq!(locals_addr, self.frame().locals_addr());
+                let whole_local = match self.frame_mut().locals[local].access_mut()? {
                     &mut Operand::Immediate(local_val) => {
                         // We need to make an allocation.
 
                         // We need the layout of the local. We can NOT use the layout we got,
                         // that might e.g., be an inner field of a struct with `Scalar` layout,
                         // that has different alignment than the outer field.
-                        let local_layout =
-                            self.layout_of_local(&self.stack()[frame], local, None)?;
+                        let local_layout = self.layout_of_local(&self.frame(), local, None)?;
                         assert!(local_layout.is_sized(), "unsized locals cannot be immediate");
                         let mplace = self.allocate(local_layout, MemoryKind::Stack)?;
                         // Preserve old value. (As an optimization, we can skip this if it was uninit.)
@@ -936,11 +940,11 @@ where
                                 mplace.mplace,
                             )?;
                         }
-                        M::after_local_allocated(self, frame, local, &mplace)?;
+                        M::after_local_allocated(self, local, &mplace)?;
                         // Now we can call `access_mut` again, asserting it goes well, and actually
                         // overwrite things. This points to the entire allocation, not just the part
                         // the place refers to, i.e. we do this before we apply `offset`.
-                        *self.stack_mut()[frame].locals[local].access_mut().unwrap() =
+                        *self.frame_mut().locals[local].access_mut().unwrap() =
                             Operand::Indirect(mplace.mplace);
                         mplace.mplace
                     }

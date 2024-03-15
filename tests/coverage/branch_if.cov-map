@@ -1,0 +1,188 @@
+Function name: branch_if::branch_and
+Raw bytes (56): 0x[01, 01, 04, 05, 09, 0d, 02, 11, 0f, 0d, 02, 08, 01, 2b, 01, 01, 10, 05, 03, 08, 00, 09, 20, 09, 02, 00, 08, 00, 09, 09, 00, 0d, 00, 0e, 20, 11, 0d, 00, 0d, 00, 0e, 11, 00, 0f, 02, 06, 0f, 02, 0c, 02, 06, 0b, 03, 01, 00, 02]
+Number of files: 1
+- file 0 => global file 1
+Number of expressions: 4
+- expression 0 operands: lhs = Counter(1), rhs = Counter(2)
+- expression 1 operands: lhs = Counter(3), rhs = Expression(0, Sub)
+- expression 2 operands: lhs = Counter(4), rhs = Expression(3, Add)
+- expression 3 operands: lhs = Counter(3), rhs = Expression(0, Sub)
+Number of file 0 mappings: 8
+- Code(Counter(0)) at (prev + 43, 1) to (start + 1, 16)
+- Code(Counter(1)) at (prev + 3, 8) to (start + 0, 9)
+- Branch { true: Counter(2), false: Expression(0, Sub) } at (prev + 0, 8) to (start + 0, 9)
+    true  = c2
+    false = (c1 - c2)
+- Code(Counter(2)) at (prev + 0, 13) to (start + 0, 14)
+- Branch { true: Counter(4), false: Counter(3) } at (prev + 0, 13) to (start + 0, 14)
+    true  = c4
+    false = c3
+- Code(Counter(4)) at (prev + 0, 15) to (start + 2, 6)
+- Code(Expression(3, Add)) at (prev + 2, 12) to (start + 2, 6)
+    = (c3 + (c1 - c2))
+- Code(Expression(2, Add)) at (prev + 3, 1) to (start + 0, 2)
+    = (c4 + (c3 + (c1 - c2)))
+
+Function name: branch_if::branch_not
+Raw bytes (224): 0x[01, 01, 29, 05, 09, 09, 02, a3, 01, 0d, 09, 02, a3, 01, 0d, 09, 02, 0d, 9e, 01, a3, 01, 0d, 09, 02, 9b, 01, 11, 0d, 9e, 01, a3, 01, 0d, 09, 02, 9b, 01, 11, 0d, 9e, 01, a3, 01, 0d, 09, 02, 11, 96, 01, 9b, 01, 11, 0d, 9e, 01, a3, 01, 0d, 09, 02, 93, 01, 15, 11, 96, 01, 9b, 01, 11, 0d, 9e, 01, a3, 01, 0d, 09, 02, 93, 01, 15, 11, 96, 01, 9b, 01, 11, 0d, 9e, 01, a3, 01, 0d, 09, 02, 15, 8e, 01, 93, 01, 15, 11, 96, 01, 9b, 01, 11, 0d, 9e, 01, a3, 01, 0d, 09, 02, 12, 01, 0c, 01, 01, 10, 05, 03, 08, 00, 09, 20, 09, 02, 00, 08, 00, 09, 09, 01, 09, 00, 11, 02, 01, 06, 00, 07, a3, 01, 01, 08, 00, 0a, 20, 9e, 01, 0d, 00, 08, 00, 0a, 9e, 01, 00, 0b, 02, 06, 0d, 02, 06, 00, 07, 9b, 01, 01, 08, 00, 0b, 20, 11, 96, 01, 00, 08, 00, 0b, 11, 00, 0c, 02, 06, 96, 01, 02, 06, 00, 07, 93, 01, 01, 08, 00, 0c, 20, 8e, 01, 15, 00, 08, 00, 0c, 8e, 01, 00, 0d, 02, 06, 15, 02, 06, 00, 07, 8b, 01, 01, 01, 00, 02]
+Number of files: 1
+- file 0 => global file 1
+Number of expressions: 41
+- expression 0 operands: lhs = Counter(1), rhs = Counter(2)
+- expression 1 operands: lhs = Counter(2), rhs = Expression(0, Sub)
+- expression 2 operands: lhs = Expression(40, Add), rhs = Counter(3)
+- expression 3 operands: lhs = Counter(2), rhs = Expression(0, Sub)
+- expression 4 operands: lhs = Expression(40, Add), rhs = Counter(3)
+- expression 5 operands: lhs = Counter(2), rhs = Expression(0, Sub)
+- expression 6 operands: lhs = Counter(3), rhs = Expression(39, Sub)
+- expression 7 operands: lhs = Expression(40, Add), rhs = Counter(3)
+- expression 8 operands: lhs = Counter(2), rhs = Expression(0, Sub)
+- expression 9 operands: lhs = Expression(38, Add), rhs = Counter(4)
+- expression 10 operands: lhs = Counter(3), rhs = Expression(39, Sub)
+- expression 11 operands: lhs = Expression(40, Add), rhs = Counter(3)
+- expression 12 operands: lhs = Counter(2), rhs = Expression(0, Sub)
+- expression 13 operands: lhs = Expression(38, Add), rhs = Counter(4)
+- expression 14 operands: lhs = Counter(3), rhs = Expression(39, Sub)
+- expression 15 operands: lhs = Expression(40, Add), rhs = Counter(3)
+- expression 16 operands: lhs = Counter(2), rhs = Expression(0, Sub)
+- expression 17 operands: lhs = Counter(4), rhs = Expression(37, Sub)
+- expression 18 operands: lhs = Expression(38, Add), rhs = Counter(4)
+- expression 19 operands: lhs = Counter(3), rhs = Expression(39, Sub)
+- expression 20 operands: lhs = Expression(40, Add), rhs = Counter(3)
+- expression 21 operands: lhs = Counter(2), rhs = Expression(0, Sub)
+- expression 22 operands: lhs = Expression(36, Add), rhs = Counter(5)
+- expression 23 operands: lhs = Counter(4), rhs = Expression(37, Sub)
+- expression 24 operands: lhs = Expression(38, Add), rhs = Counter(4)
+- expression 25 operands: lhs = Counter(3), rhs = Expression(39, Sub)
+- expression 26 operands: lhs = Expression(40, Add), rhs = Counter(3)
+- expression 27 operands: lhs = Counter(2), rhs = Expression(0, Sub)
+- expression 28 operands: lhs = Expression(36, Add), rhs = Counter(5)
+- expression 29 operands: lhs = Counter(4), rhs = Expression(37, Sub)
+- expression 30 operands: lhs = Expression(38, Add), rhs = Counter(4)
+- expression 31 operands: lhs = Counter(3), rhs = Expression(39, Sub)
+- expression 32 operands: lhs = Expression(40, Add), rhs = Counter(3)
+- expression 33 operands: lhs = Counter(2), rhs = Expression(0, Sub)
+- expression 34 operands: lhs = Counter(5), rhs = Expression(35, Sub)
+- expression 35 operands: lhs = Expression(36, Add), rhs = Counter(5)
+- expression 36 operands: lhs = Counter(4), rhs = Expression(37, Sub)
+- expression 37 operands: lhs = Expression(38, Add), rhs = Counter(4)
+- expression 38 operands: lhs = Counter(3), rhs = Expression(39, Sub)
+- expression 39 operands: lhs = Expression(40, Add), rhs = Counter(3)
+- expression 40 operands: lhs = Counter(2), rhs = Expression(0, Sub)
+Number of file 0 mappings: 18
+- Code(Counter(0)) at (prev + 12, 1) to (start + 1, 16)
+- Code(Counter(1)) at (prev + 3, 8) to (start + 0, 9)
+- Branch { true: Counter(2), false: Expression(0, Sub) } at (prev + 0, 8) to (start + 0, 9)
+    true  = c2
+    false = (c1 - c2)
+- Code(Counter(2)) at (prev + 1, 9) to (start + 0, 17)
+- Code(Expression(0, Sub)) at (prev + 1, 6) to (start + 0, 7)
+    = (c1 - c2)
+- Code(Expression(40, Add)) at (prev + 1, 8) to (start + 0, 10)
+    = (c2 + (c1 - c2))
+- Branch { true: Expression(39, Sub), false: Counter(3) } at (prev + 0, 8) to (start + 0, 10)
+    true  = ((c2 + (c1 - c2)) - c3)
+    false = c3
+- Code(Expression(39, Sub)) at (prev + 0, 11) to (start + 2, 6)
+    = ((c2 + (c1 - c2)) - c3)
+- Code(Counter(3)) at (prev + 2, 6) to (start + 0, 7)
+- Code(Expression(38, Add)) at (prev + 1, 8) to (start + 0, 11)
+    = (c3 + ((c2 + (c1 - c2)) - c3))
+- Branch { true: Counter(4), false: Expression(37, Sub) } at (prev + 0, 8) to (start + 0, 11)
+    true  = c4
+    false = ((c3 + ((c2 + (c1 - c2)) - c3)) - c4)
+- Code(Counter(4)) at (prev + 0, 12) to (start + 2, 6)
+- Code(Expression(37, Sub)) at (prev + 2, 6) to (start + 0, 7)
+    = ((c3 + ((c2 + (c1 - c2)) - c3)) - c4)
+- Code(Expression(36, Add)) at (prev + 1, 8) to (start + 0, 12)
+    = (c4 + ((c3 + ((c2 + (c1 - c2)) - c3)) - c4))
+- Branch { true: Expression(35, Sub), false: Counter(5) } at (prev + 0, 8) to (start + 0, 12)
+    true  = ((c4 + ((c3 + ((c2 + (c1 - c2)) - c3)) - c4)) - c5)
+    false = c5
+- Code(Expression(35, Sub)) at (prev + 0, 13) to (start + 2, 6)
+    = ((c4 + ((c3 + ((c2 + (c1 - c2)) - c3)) - c4)) - c5)
+- Code(Counter(5)) at (prev + 2, 6) to (start + 0, 7)
+- Code(Expression(34, Add)) at (prev + 1, 1) to (start + 0, 2)
+    = (c5 + ((c4 + ((c3 + ((c2 + (c1 - c2)) - c3)) - c4)) - c5))
+
+Function name: branch_if::branch_not_as
+Raw bytes (124): 0x[01, 01, 16, 05, 09, 09, 02, 57, 0d, 09, 02, 57, 0d, 09, 02, 0d, 52, 57, 0d, 09, 02, 4f, 11, 0d, 52, 57, 0d, 09, 02, 4f, 11, 0d, 52, 57, 0d, 09, 02, 11, 4a, 4f, 11, 0d, 52, 57, 0d, 09, 02, 0e, 01, 1d, 01, 01, 10, 05, 03, 08, 00, 14, 20, 02, 09, 00, 08, 00, 14, 02, 00, 15, 02, 06, 09, 02, 06, 00, 07, 57, 01, 08, 00, 15, 20, 0d, 52, 00, 08, 00, 15, 0d, 00, 16, 02, 06, 52, 02, 06, 00, 07, 4f, 01, 08, 00, 16, 20, 4a, 11, 00, 08, 00, 16, 4a, 00, 17, 02, 06, 11, 02, 06, 00, 07, 47, 01, 01, 00, 02]
+Number of files: 1
+- file 0 => global file 1
+Number of expressions: 22
+- expression 0 operands: lhs = Counter(1), rhs = Counter(2)
+- expression 1 operands: lhs = Counter(2), rhs = Expression(0, Sub)
+- expression 2 operands: lhs = Expression(21, Add), rhs = Counter(3)
+- expression 3 operands: lhs = Counter(2), rhs = Expression(0, Sub)
+- expression 4 operands: lhs = Expression(21, Add), rhs = Counter(3)
+- expression 5 operands: lhs = Counter(2), rhs = Expression(0, Sub)
+- expression 6 operands: lhs = Counter(3), rhs = Expression(20, Sub)
+- expression 7 operands: lhs = Expression(21, Add), rhs = Counter(3)
+- expression 8 operands: lhs = Counter(2), rhs = Expression(0, Sub)
+- expression 9 operands: lhs = Expression(19, Add), rhs = Counter(4)
+- expression 10 operands: lhs = Counter(3), rhs = Expression(20, Sub)
+- expression 11 operands: lhs = Expression(21, Add), rhs = Counter(3)
+- expression 12 operands: lhs = Counter(2), rhs = Expression(0, Sub)
+- expression 13 operands: lhs = Expression(19, Add), rhs = Counter(4)
+- expression 14 operands: lhs = Counter(3), rhs = Expression(20, Sub)
+- expression 15 operands: lhs = Expression(21, Add), rhs = Counter(3)
+- expression 16 operands: lhs = Counter(2), rhs = Expression(0, Sub)
+- expression 17 operands: lhs = Counter(4), rhs = Expression(18, Sub)
+- expression 18 operands: lhs = Expression(19, Add), rhs = Counter(4)
+- expression 19 operands: lhs = Counter(3), rhs = Expression(20, Sub)
+- expression 20 operands: lhs = Expression(21, Add), rhs = Counter(3)
+- expression 21 operands: lhs = Counter(2), rhs = Expression(0, Sub)
+Number of file 0 mappings: 14
+- Code(Counter(0)) at (prev + 29, 1) to (start + 1, 16)
+- Code(Counter(1)) at (prev + 3, 8) to (start + 0, 20)
+- Branch { true: Expression(0, Sub), false: Counter(2) } at (prev + 0, 8) to (start + 0, 20)
+    true  = (c1 - c2)
+    false = c2
+- Code(Expression(0, Sub)) at (prev + 0, 21) to (start + 2, 6)
+    = (c1 - c2)
+- Code(Counter(2)) at (prev + 2, 6) to (start + 0, 7)
+- Code(Expression(21, Add)) at (prev + 1, 8) to (start + 0, 21)
+    = (c2 + (c1 - c2))
+- Branch { true: Counter(3), false: Expression(20, Sub) } at (prev + 0, 8) to (start + 0, 21)
+    true  = c3
+    false = ((c2 + (c1 - c2)) - c3)
+- Code(Counter(3)) at (prev + 0, 22) to (start + 2, 6)
+- Code(Expression(20, Sub)) at (prev + 2, 6) to (start + 0, 7)
+    = ((c2 + (c1 - c2)) - c3)
+- Code(Expression(19, Add)) at (prev + 1, 8) to (start + 0, 22)
+    = (c3 + ((c2 + (c1 - c2)) - c3))
+- Branch { true: Expression(18, Sub), false: Counter(4) } at (prev + 0, 8) to (start + 0, 22)
+    true  = ((c3 + ((c2 + (c1 - c2)) - c3)) - c4)
+    false = c4
+- Code(Expression(18, Sub)) at (prev + 0, 23) to (start + 2, 6)
+    = ((c3 + ((c2 + (c1 - c2)) - c3)) - c4)
+- Code(Counter(4)) at (prev + 2, 6) to (start + 0, 7)
+- Code(Expression(17, Add)) at (prev + 1, 1) to (start + 0, 2)
+    = (c4 + ((c3 + ((c2 + (c1 - c2)) - c3)) - c4))
+
+Function name: branch_if::branch_or
+Raw bytes (56): 0x[01, 01, 04, 05, 09, 09, 0d, 0f, 11, 09, 0d, 08, 01, 35, 01, 01, 10, 05, 03, 08, 00, 09, 20, 09, 02, 00, 08, 00, 09, 02, 00, 0d, 00, 0e, 20, 0d, 11, 00, 0d, 00, 0e, 0f, 00, 0f, 02, 06, 11, 02, 0c, 02, 06, 0b, 03, 01, 00, 02]
+Number of files: 1
+- file 0 => global file 1
+Number of expressions: 4
+- expression 0 operands: lhs = Counter(1), rhs = Counter(2)
+- expression 1 operands: lhs = Counter(2), rhs = Counter(3)
+- expression 2 operands: lhs = Expression(3, Add), rhs = Counter(4)
+- expression 3 operands: lhs = Counter(2), rhs = Counter(3)
+Number of file 0 mappings: 8
+- Code(Counter(0)) at (prev + 53, 1) to (start + 1, 16)
+- Code(Counter(1)) at (prev + 3, 8) to (start + 0, 9)
+- Branch { true: Counter(2), false: Expression(0, Sub) } at (prev + 0, 8) to (start + 0, 9)
+    true  = c2
+    false = (c1 - c2)
+- Code(Expression(0, Sub)) at (prev + 0, 13) to (start + 0, 14)
+    = (c1 - c2)
+- Branch { true: Counter(3), false: Counter(4) } at (prev + 0, 13) to (start + 0, 14)
+    true  = c3
+    false = c4
+- Code(Expression(3, Add)) at (prev + 0, 15) to (start + 2, 6)
+    = (c2 + c3)
+- Code(Counter(4)) at (prev + 2, 12) to (start + 2, 6)
+- Code(Expression(2, Add)) at (prev + 3, 1) to (start + 0, 2)
+    = ((c2 + c3) + c4)
+

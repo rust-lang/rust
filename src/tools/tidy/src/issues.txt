@@ -1107,7 +1107,6 @@
 "ui/generic-associated-types/issue-92954.rs",
 "ui/generic-associated-types/issue-93141.rs",
 "ui/generic-associated-types/issue-93262.rs",
-"ui/generic-associated-types/issue-93340.rs",
 "ui/generic-associated-types/issue-93341.rs",
 "ui/generic-associated-types/issue-93342.rs",
 "ui/generic-associated-types/issue-93874.rs",

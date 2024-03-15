@@ -1081,6 +1081,21 @@ fn link_natively<'a>(
         }
     }
 
+    if sess.target.is_like_aix {
+        let stripcmd = "/usr/bin/strip";
+        match strip {
+            Strip::Debuginfo => {
+                // FIXME: AIX's strip utility only offers option to strip line number information.
+                strip_symbols_with_external_utility(sess, stripcmd, out_filename, Some("-l"))
+            }
+            Strip::Symbols => {
+                // Must be noted this option might remove symbol __aix_rust_metadata and thus removes .info section which contains metadata.
+                strip_symbols_with_external_utility(sess, stripcmd, out_filename, Some("-r"))
+            }
+            Strip::None => {}
+        }
+    }
+
     Ok(())
 }
 

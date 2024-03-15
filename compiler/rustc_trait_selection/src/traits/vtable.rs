@@ -320,6 +320,7 @@ fn vtable_entries<'tcx>(
 }
 
 /// Find slot base for trait methods within vtable entries of another trait
+// FIXME(@lcnr): This isn't a query, so why does it take a tuple as its argument.
 pub(super) fn vtable_trait_first_method_offset<'tcx>(
     tcx: TyCtxt<'tcx>,
     key: (

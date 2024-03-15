@@ -13,9 +13,9 @@ use rustc_middle::{mir, ty};
 use rustc_target::abi::{self, Abi, HasDataLayout, Size};
 
 use super::{
-    alloc_range, from_known_layout, mir_assign_valid_types, CtfeProvenance, Frame, InterpCx,
-    InterpResult, MPlaceTy, Machine, MemPlace, MemPlaceMeta, OffsetMode, PlaceTy, Pointer,
-    Projectable, Provenance, Scalar,
+    alloc_range, from_known_layout, mir_assign_valid_types, CtfeProvenance, InterpCx, InterpResult,
+    MPlaceTy, Machine, MemPlace, MemPlaceMeta, OffsetMode, PlaceTy, Pointer, Projectable,
+    Provenance, Scalar,
 };
 
 /// An `Immediate` represents a single immediate self-contained Rust value.
@@ -633,17 +633,17 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         }
     }
 
-    /// Read from a local.
+    /// Read from a local of the current frame.
     /// Will not access memory, instead an indirect `Operand` is returned.
     ///
     /// This is public because it is used by [priroda](https://github.com/oli-obk/priroda) to get an
     /// OpTy from a local.
     pub fn local_to_op(
         &self,
-        frame: &Frame<'mir, 'tcx, M::Provenance, M::FrameExtra>,
         local: mir::Local,
         layout: Option<TyAndLayout<'tcx>>,
     ) -> InterpResult<'tcx, OpTy<'tcx, M::Provenance>> {
+        let frame = self.frame();
         let layout = self.layout_of_local(frame, local, layout)?;
         let op = *frame.locals[local].access()?;
         if matches!(op, Operand::Immediate(_)) {
@@ -661,9 +661,10 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     ) -> InterpResult<'tcx, OpTy<'tcx, M::Provenance>> {
         match place.as_mplace_or_local() {
             Left(mplace) => Ok(mplace.into()),
-            Right((frame, local, offset)) => {
+            Right((local, offset, locals_addr)) => {
                 debug_assert!(place.layout.is_sized()); // only sized locals can ever be `Place::Local`.
-                let base = self.local_to_op(&self.stack()[frame], local, None)?;
+                debug_assert_eq!(locals_addr, self.frame().locals_addr());
+                let base = self.local_to_op(local, None)?;
                 Ok(match offset {
                     Some(offset) => base.offset(offset, place.layout, self)?,
                     None => {
@@ -687,7 +688,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         // here is not the entire place.
         let layout = if mir_place.projection.is_empty() { layout } else { None };
 
-        let mut op = self.local_to_op(self.frame(), mir_place.local, layout)?;
+        let mut op = self.local_to_op(mir_place.local, layout)?;
         // Using `try_fold` turned out to be bad for performance, hence the loop.
         for elem in mir_place.projection.iter() {
             op = self.project(&op, elem)?

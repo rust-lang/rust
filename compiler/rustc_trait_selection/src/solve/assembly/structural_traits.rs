@@ -120,6 +120,8 @@ pub(in crate::solve) fn instantiate_constituent_tys_for_sized_trait<'tcx>(
     ty: Ty<'tcx>,
 ) -> Result<Vec<ty::Binder<'tcx, Ty<'tcx>>>, NoSolution> {
     match *ty.kind() {
+        // impl Sized for u*, i*, bool, f*, FnDef, FnPtr, *(const/mut) T, char, &mut? T, [T; N], dyn* Trait, !
+        // impl Sized for Coroutine, CoroutineWitness, Closure, CoroutineClosure
         ty::Infer(ty::IntVar(_) | ty::FloatVar(_))
         | ty::Uint(_)
         | ty::Int(_)
@@ -152,8 +154,10 @@ pub(in crate::solve) fn instantiate_constituent_tys_for_sized_trait<'tcx>(
             bug!("unexpected type `{ty}`")
         }
 
+        // impl Sized for (T1, T2, .., Tn) where T1: Sized, T2: Sized, .. Tn: Sized
         ty::Tuple(tys) => Ok(tys.iter().map(ty::Binder::dummy).collect()),
 
+        // impl Sized for Adt where T: Sized forall T in field types
         ty::Adt(def, args) => {
             let sized_crit = def.sized_constraint(ecx.tcx());
             Ok(sized_crit.iter_instantiated(ecx.tcx(), args).map(ty::Binder::dummy).collect())
@@ -167,6 +171,7 @@ pub(in crate::solve) fn instantiate_constituent_tys_for_copy_clone_trait<'tcx>(
     ty: Ty<'tcx>,
 ) -> Result<Vec<ty::Binder<'tcx, Ty<'tcx>>>, NoSolution> {
     match *ty.kind() {
+        // impl Copy/Clone for FnDef, FnPtr
         ty::FnDef(..) | ty::FnPtr(_) | ty::Error(_) => Ok(vec![]),
 
         // Implementations are provided in core
@@ -196,12 +201,16 @@ pub(in crate::solve) fn instantiate_constituent_tys_for_copy_clone_trait<'tcx>(
             bug!("unexpected type `{ty}`")
         }
 
+        // impl Copy/Clone for (T1, T2, .., Tn) where T1: Copy/Clone, T2: Copy/Clone, .. Tn: Copy/Clone
         ty::Tuple(tys) => Ok(tys.iter().map(ty::Binder::dummy).collect()),
 
+        // impl Copy/Clone for Closure where Self::TupledUpvars: Copy/Clone
         ty::Closure(_, args) => Ok(vec![ty::Binder::dummy(args.as_closure().tupled_upvars_ty())]),
 
         ty::CoroutineClosure(..) => Err(NoSolution),
 
+        // only when `coroutine_clone` is enabled and the coroutine is movable
+        // impl Copy/Clone for Coroutine where T: Copy/Clone forall T in (upvars, witnesses)
         ty::Coroutine(def_id, args) => match ecx.tcx().coroutine_movability(def_id) {
             Movability::Static => Err(NoSolution),
             Movability::Movable => {
@@ -217,6 +226,7 @@ pub(in crate::solve) fn instantiate_constituent_tys_for_copy_clone_trait<'tcx>(
             }
         },
 
+        // impl Copy/Clone for CoroutineWitness where T: Copy/Clone forall T in coroutine_hidden_types
         ty::CoroutineWitness(def_id, args) => Ok(ecx
             .tcx()
             .coroutine_hidden_types(def_id)

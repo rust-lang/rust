@@ -114,7 +114,7 @@ const PARSED = [
         original: "(p -> p",
         returned: [],
         userQuery: "(p -> p",
-        error: "Unexpected `-` after `(`",
+        error: "Unclosed `(`",
     },
     {
         query: "::a::b",
@@ -195,7 +195,7 @@ const PARSED = [
         original: "a (b:",
         returned: [],
         userQuery: "a (b:",
-        error: "Expected `,`, `:` or `->`, found `(`",
+        error: "Unclosed `(`",
     },
     {
         query: "_:",
@@ -330,7 +330,7 @@ const PARSED = [
         original: 'a<->',
         returned: [],
         userQuery: 'a<->',
-        error: 'Unexpected `-` after `<`',
+        error: 'Unclosed `<`',
     },
     {
         query: "a<a>:",
@@ -357,7 +357,16 @@ const PARSED = [
         original: "a,:",
         returned: [],
         userQuery: "a,:",
-        error: 'Unexpected `,` in type filter (before `:`)',
+        error: 'Expected type filter before `:`',
+    },
+    {
+        query: "a!:",
+        elems: [],
+        foundElems: 0,
+        original: "a!:",
+        returned: [],
+        userQuery: "a!:",
+        error: 'Unexpected `!` in type filter (before `:`)',
     },
     {
         query: "  a<>  :",
@@ -366,7 +375,7 @@ const PARSED = [
         original: "a<>  :",
         returned: [],
         userQuery: "a<>  :",
-        error: 'Unexpected `<` in type filter (before `:`)',
+        error: 'Expected `,`, `:` or `->` after `>`, found `:`',
     },
     {
         query: "mod : :",

@@ -21,11 +21,11 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
     }
 
     pub fn eval_mir_constant(&self, constant: &mir::ConstOperand<'tcx>) -> mir::ConstValue<'tcx> {
-        // `MirUsedCollector` visited all constants before codegen began, so if we got here there
-        // can be no more constants that fail to evaluate.
+        // `MirUsedCollector` visited all required_consts before codegen began, so if we got here
+        // there can be no more constants that fail to evaluate.
         self.monomorphize(constant.const_)
             .eval(self.cx.tcx(), ty::ParamEnv::reveal_all(), Some(constant.span))
-            .expect("erroneous constant not captured by required_consts")
+            .expect("erroneous constant missed by mono item collection")
     }
 
     /// This is a convenience helper for `simd_shuffle_indices`. It has the precondition

@@ -856,6 +856,48 @@ impl Duration {
         (self.secs as f32) + (self.nanos.0 as f32) / (NANOS_PER_SEC as f32)
     }
 
+    /// Returns the number of milliseconds contained by this `Duration` as `f64`.
+    ///
+    /// The returned value does include the fractional (nanosecond) part of the duration.
+    ///
+    /// # Examples
+    /// ```
+    /// #![feature(duration_millis_float)]
+    /// use std::time::Duration;
+    ///
+    /// let dur = Duration::new(2, 345_678_000);
+    /// assert_eq!(dur.as_millis_f64(), 2345.678);
+    /// ```
+    #[unstable(feature = "duration_millis_float", issue = "122451")]
+    #[must_use]
+    #[inline]
+    #[rustc_const_unstable(feature = "duration_consts_float", issue = "72440")]
+    pub const fn as_millis_f64(&self) -> f64 {
+        (self.secs as f64) * (MILLIS_PER_SEC as f64)
+            + (self.nanos.0 as f64) / (NANOS_PER_MILLI as f64)
+    }
+
+    /// Returns the number of milliseconds contained by this `Duration` as `f32`.
+    ///
+    /// The returned value does include the fractional (nanosecond) part of the duration.
+    ///
+    /// # Examples
+    /// ```
+    /// #![feature(duration_millis_float)]
+    /// use std::time::Duration;
+    ///
+    /// let dur = Duration::new(2, 345_678_000);
+    /// assert_eq!(dur.as_millis_f32(), 2345.678);
+    /// ```
+    #[unstable(feature = "duration_millis_float", issue = "122451")]
+    #[must_use]
+    #[inline]
+    #[rustc_const_unstable(feature = "duration_consts_float", issue = "72440")]
+    pub const fn as_millis_f32(&self) -> f32 {
+        (self.secs as f32) * (MILLIS_PER_SEC as f32)
+            + (self.nanos.0 as f32) / (NANOS_PER_MILLI as f32)
+    }
+
     /// Creates a new `Duration` from the specified number of seconds represented
     /// as `f64`.
     ///
