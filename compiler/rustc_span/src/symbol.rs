@@ -815,6 +815,7 @@ symbols! {
         fadd_algebraic,
         fadd_fast,
         fake_variadic,
+        fallback_to_never,
         fallback_to_niko,
         fallback_to_unit,
         fdiv_algebraic,

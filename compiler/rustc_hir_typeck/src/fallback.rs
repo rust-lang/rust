@@ -14,6 +14,9 @@ enum DivergingFallbackBehavior {
     FallbackToUnit,
     /// Sometimes fallback to `!`, but mainly fallback to `()` so that most of the crates are not broken.
     FallbackToNiko,
+    /// Always fallback to `!` (which should be equivalent to never falling back + not making
+    /// never-to-any coercions unless necessary)
+    FallbackToNever,
     /// Don't fallback at all
     NoFallback,
 }
@@ -107,9 +110,10 @@ impl<'tcx> FnCtxt<'_, 'tcx> {
         match mode {
             sym::fallback_to_unit => DivergingFallbackBehavior::FallbackToUnit,
             sym::fallback_to_niko => DivergingFallbackBehavior::FallbackToNiko,
+            sym::fallback_to_never => DivergingFallbackBehavior::FallbackToNever,
             sym::no_fallback => DivergingFallbackBehavior::NoFallback,
             _ => {
-                self.tcx.dcx().span_err(span, format!("unknown never type mode: `{mode}` (supported: `fallback_to_unit`, `fallback_to_niko`, and `no_fallback`)"));
+                self.tcx.dcx().span_err(span, format!("unknown never type mode: `{mode}` (supported: `fallback_to_unit`, `fallback_to_niko`, `fallback_to_never` and `no_fallback`)"));
 
                 DivergingFallbackBehavior::FallbackToUnit
             }
@@ -426,8 +430,18 @@ impl<'tcx> FnCtxt<'_, 'tcx> {
                         diverging_fallback.insert(diverging_ty, self.tcx.types.never);
                     }
                 }
+                FallbackToNever => {
+                    debug!(
+                        "fallback to ! - `rustc_never_type_mode = \"fallback_to_never\")`: {:?}",
+                        diverging_vid
+                    );
+                    diverging_fallback.insert(diverging_ty, self.tcx.types.never);
+                }
                 NoFallback => {
-                    debug!("no fallback - `rustc_never_type_mode = "no_fallback"`: {:?}", diverging_vid);
+                    debug!(
+                        "no fallback - `rustc_never_type_mode = \"no_fallback\"`: {:?}",
+                        diverging_vid
+                    );
                 }
             }
         }
