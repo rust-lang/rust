@@ -373,6 +373,7 @@ where
 /// Used for nop async destructors. We don't use [`core::future::Ready`]
 /// because it panics after its second poll, which could be potentially
 /// bad if that would happen during the cleanup.
+#[derive(Clone, Copy)]
 #[lang = "async_drop_nop"]
 struct Nop;
 
