@@ -6,6 +6,12 @@ LL |     const { assert!(std::mem::size_of::<T>() == 0); }
    |
    = note: this error originates in the macro `assert` (in Nightly builds, run with -Z macro-backtrace for more info)
 
+note: erroneous constant encountered
+  --> $DIR/const-expr-generic-err.rs:5:5
+   |
+LL |     const { assert!(std::mem::size_of::<T>() == 0); }
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
 note: the above error was encountered while instantiating `fn foo::<i32>`
   --> $DIR/const-expr-generic-err.rs:13:5
    |
@@ -17,6 +23,20 @@ error[E0080]: evaluation of `bar::<0>::{constant#0}` failed
    |
 LL |     const { N - 1 }
    |             ^^^^^ attempt to compute `0_usize - 1_usize`, which would overflow
+
+note: erroneous constant encountered
+  --> $DIR/const-expr-generic-err.rs:9:5
+   |
+LL |     const { N - 1 }
+   |     ^^^^^^^^^^^^^^^
+
+note: erroneous constant encountered
+  --> $DIR/const-expr-generic-err.rs:9:5
+   |
+LL |     const { N - 1 }
+   |     ^^^^^^^^^^^^^^^
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 note: the above error was encountered while instantiating `fn bar::<0>`
   --> $DIR/const-expr-generic-err.rs:14:5

@@ -1071,7 +1071,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     err.span_suggestion_verbose(
                         *span,
                         "use the type name directly",
-                        self.tcx.value_path_str_with_args(*alias_to, e_args),
+                        self.tcx.value_path_str_with_args(e_def.did(), e_args),
                         Applicability::MaybeIncorrect,
                     );
                 }
