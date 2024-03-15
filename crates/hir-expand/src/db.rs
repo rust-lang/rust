@@ -5,7 +5,7 @@ use either::Either;
 use limit::Limit;
 use mbe::{syntax_node_to_token_tree, ValueResult};
 use rustc_hash::FxHashSet;
-use span::{AstIdMap, SyntaxContextData, SyntaxContextId};
+use span::{AstIdMap, Span, SyntaxContextData, SyntaxContextId};
 use syntax::{ast, AstNode, Parse, SyntaxElement, SyntaxError, SyntaxNode, SyntaxToken, T};
 use triomphe::Arc;
 
@@ -118,6 +118,12 @@ pub trait ExpandDatabase: SourceDatabase {
     /// non-determinism breaks salsa in a very, very, very bad way.
     /// @edwin0cheng heroically debugged this once! See #4315 for details
     fn expand_proc_macro(&self, call: MacroCallId) -> ExpandResult<Arc<tt::Subtree>>;
+    /// Retrieves the span to be used for a proc-macro expansions spans.
+    /// This is a firewall query as it requires parsing the file, which we don't want proc-macros to
+    /// directly depend on as that would cause to frequent invalidations, mainly because of the
+    /// parse queries being LRU cached. If they weren't the invalidations would only happen if the
+    /// user wrote in the file that defines the proc-macro.
+    fn proc_macro_span(&self, fun: AstId<ast::Fn>) -> Span;
     /// Firewall query that returns the errors from the `parse_macro_expansion` query.
     fn parse_macro_expansion_error(
         &self,
@@ -137,6 +143,7 @@ pub fn expand_speculative(
 ) -> Option<(SyntaxNode, SyntaxToken)> {
     let loc = db.lookup_intern_macro_call(actual_macro_call);
 
+    // FIXME: This BOGUS here is dangerous once the proc-macro server can call back into the database!
     let span_map = RealSpanMap::absolute(FileId::BOGUS);
     let span_map = SpanMapRef::RealSpanMap(&span_map);
 
@@ -211,17 +218,18 @@ pub fn expand_speculative(
     // Do the actual expansion, we need to directly expand the proc macro due to the attribute args
     // Otherwise the expand query will fetch the non speculative attribute args and pass those instead.
     let mut speculative_expansion = match loc.def.kind {
-        MacroDefKind::ProcMacro(expander, ..) => {
+        MacroDefKind::ProcMacro(expander, _, ast) => {
             tt.delimiter = tt::Delimiter::invisible_spanned(loc.call_site);
+            let span = db.proc_macro_span(ast);
             expander.expand(
                 db,
                 loc.def.krate,
                 loc.krate,
                 &tt,
                 attr_arg.as_ref(),
-                span_with_def_site_ctxt(db, loc.def.span, actual_macro_call),
-                span_with_call_site_ctxt(db, loc.def.span, actual_macro_call),
-                span_with_mixed_site_ctxt(db, loc.def.span, actual_macro_call),
+                span_with_def_site_ctxt(db, span, actual_macro_call),
+                span_with_call_site_ctxt(db, span, actual_macro_call),
+                span_with_mixed_site_ctxt(db, span, actual_macro_call),
             )
         }
         MacroDefKind::BuiltInAttr(BuiltinAttrExpander::Derive, _) => {
@@ -610,12 +618,23 @@ fn macro_expand(
     ExpandResult { value: CowArc::Owned(tt), err }
 }
 
+fn proc_macro_span(db: &dyn ExpandDatabase, ast: AstId<ast::Fn>) -> Span {
+    let root = db.parse_or_expand(ast.file_id);
+    let ast_id_map = &db.ast_id_map(ast.file_id);
+    let span_map = &db.span_map(ast.file_id);
+
+    let node = ast_id_map.get(ast.value).to_node(&root);
+    let range = ast::HasName::name(&node)
+        .map_or_else(|| node.syntax().text_range(), |name| name.syntax().text_range());
+    span_map.span_for_range(range)
+}
+
 fn expand_proc_macro(db: &dyn ExpandDatabase, id: MacroCallId) -> ExpandResult<Arc<tt::Subtree>> {
     let loc = db.lookup_intern_macro_call(id);
     let (macro_arg, undo_info) = db.macro_arg(id).value;
 
-    let expander = match loc.def.kind {
-        MacroDefKind::ProcMacro(expander, ..) => expander,
+    let (expander, ast) = match loc.def.kind {
+        MacroDefKind::ProcMacro(expander, _, ast) => (expander, ast),
         _ => unreachable!(),
     };
 
@@ -624,15 +643,16 @@ fn expand_proc_macro(db: &dyn ExpandDatabase, id: MacroCallId) -> ExpandResult<A
         _ => None,
     };
 
+    let span = db.proc_macro_span(ast);
     let ExpandResult { value: mut tt, err } = expander.expand(
         db,
         loc.def.krate,
         loc.krate,
         &macro_arg,
         attr_arg,
-        span_with_def_site_ctxt(db, loc.def.span, id),
-        span_with_call_site_ctxt(db, loc.def.span, id),
-        span_with_mixed_site_ctxt(db, loc.def.span, id),
+        span_with_def_site_ctxt(db, span, id),
+        span_with_call_site_ctxt(db, span, id),
+        span_with_mixed_site_ctxt(db, span, id),
     );
 
     // Set a hard limit for the expanded tt

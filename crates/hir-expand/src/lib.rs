@@ -183,7 +183,6 @@ pub struct MacroDefId {
     pub kind: MacroDefKind,
     pub local_inner: bool,
     pub allow_internal_unsafe: bool,
-    pub span: Span,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
