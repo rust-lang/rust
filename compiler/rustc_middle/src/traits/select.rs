@@ -324,9 +324,6 @@ TrivialTypeTraversalImpls! { OverflowError }
 
 impl<'tcx> From<OverflowError> for SelectionError<'tcx> {
     fn from(overflow_error: OverflowError) -> SelectionError<'tcx> {
-        match overflow_error {
-            OverflowError::Error(e) => SelectionError::Overflow(OverflowError::Error(e)),
-            OverflowError::Canonical => SelectionError::Overflow(OverflowError::Canonical),
-        }
+        SelectionError::Overflow(overflow_error)
     }
 }
