@@ -2,8 +2,6 @@
 //! This module exists because some integer types are not supported on some gcc platforms, e.g.
 //! 128-bit integers on 32-bit platforms and thus require to be handled manually.
 
-use std::convert::TryFrom;
-
 use gccjit::{BinaryOp, ComparisonOp, FunctionType, Location, RValue, ToRValue, Type, UnaryOp};
 use rustc_codegen_ssa::common::{IntPredicate, TypeKind};
 use rustc_codegen_ssa::traits::{BackendTypes, BaseTypeMethods, BuilderMethods, OverflowOp};
@@ -40,7 +38,7 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
             self.cx.context.new_unary_op(self.location, operation, typ, a)
         } else {
             let element_type = typ.dyncast_array().expect("element type");
-            self.from_low_high_rvalues(
+            self.concat_low_high_rvalues(
                 typ,
                 self.cx.context.new_unary_op(
                     self.location,
@@ -114,7 +112,7 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
             let shift_value = self.gcc_sub(b, sixty_four);
             let high = self.high(a);
             let sign = if a_type.is_signed(self) { high >> sixty_three } else { zero };
-            let array_value = self.from_low_high_rvalues(a_type, high >> shift_value, sign);
+            let array_value = self.concat_low_high_rvalues(a_type, high >> shift_value, sign);
             then_block.add_assignment(self.location, result, array_value);
             then_block.end_with_jump(self.location, after_block);
 
@@ -126,12 +124,15 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
 
             let shift_value = self.gcc_sub(sixty_four, b);
             // NOTE: cast low to its unsigned type in order to perform a logical right shift.
-            let unsigned_type = native_int_type.to_unsigned(&self.cx);
+            let unsigned_type = native_int_type.to_unsigned(self.cx);
             let casted_low = self.context.new_cast(self.location, self.low(a), unsigned_type);
             let shifted_low = casted_low >> self.context.new_cast(self.location, b, unsigned_type);
             let shifted_low = self.context.new_cast(self.location, shifted_low, native_int_type);
-            let array_value =
-                self.from_low_high_rvalues(a_type, (high << shift_value) | shifted_low, high >> b);
+            let array_value = self.concat_low_high_rvalues(
+                a_type,
+                (high << shift_value) | shifted_low,
+                high >> b,
+            );
             actual_else_block.add_assignment(self.location, result, array_value);
             actual_else_block.end_with_jump(self.location, after_block);
 
@@ -255,10 +256,10 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
     ) -> (<Self as BackendTypes>::Value, <Self as BackendTypes>::Value) {
         use rustc_middle::ty::{Int, IntTy::*, Uint, UintTy::*};
 
-        let new_kind = match typ.kind() {
+        let new_kind = match *typ.kind() {
             Int(t @ Isize) => Int(t.normalize(self.tcx.sess.target.pointer_width)),
             Uint(t @ Usize) => Uint(t.normalize(self.tcx.sess.target.pointer_width)),
-            t @ (Uint(_) | Int(_)) => t.clone(),
+            t @ (Uint(_) | Int(_)) => t,
             _ => panic!("tried to get overflow intrinsic for op applied to non-int type"),
         };
 
@@ -344,7 +345,7 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
             }
         };
 
-        let intrinsic = self.context.get_builtin_function(&name);
+        let intrinsic = self.context.get_builtin_function(name);
         let res = self
             .current_func()
             // TODO(antoyo): is it correct to use rhs type instead of the parameter typ?
@@ -454,7 +455,7 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
             let native_int_type = a_type.dyncast_array().expect("get element type");
             // NOTE: cast low to its unsigned type in order to perform a comparison correctly (e.g.
             // the sign is only on high).
-            let unsigned_type = native_int_type.to_unsigned(&self.cx);
+            let unsigned_type = native_int_type.to_unsigned(self.cx);
 
             let lhs_low = self.context.new_cast(self.location, self.low(lhs), unsigned_type);
             let rhs_low = self.context.new_cast(self.location, self.low(rhs), unsigned_type);
@@ -589,7 +590,7 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
                 | IntPredicate::IntULT
                 | IntPredicate::IntULE => {
                     if !a_type.is_vector() {
-                        let unsigned_type = a_type.to_unsigned(&self.cx);
+                        let unsigned_type = a_type.to_unsigned(self.cx);
                         lhs = self.context.new_cast(self.location, lhs, unsigned_type);
                         rhs = self.context.new_cast(self.location, rhs, unsigned_type);
                     }
@@ -612,7 +613,7 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
         {
             a ^ b
         } else {
-            self.from_low_high_rvalues(
+            self.concat_low_high_rvalues(
                 a_type,
                 self.low(a) ^ self.low(b),
                 self.high(a) ^ self.high(b),
@@ -661,7 +662,7 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
             self.llbb().end_with_conditional(self.location, condition, then_block, else_block);
 
             let array_value =
-                self.from_low_high_rvalues(a_type, zero, self.low(a) << (b - sixty_four));
+                self.concat_low_high_rvalues(a_type, zero, self.low(a) << (b - sixty_four));
             then_block.add_assignment(self.location, result, array_value);
             then_block.end_with_jump(self.location, after_block);
 
@@ -673,13 +674,13 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
 
             // NOTE: cast low to its unsigned type in order to perform a logical right shift.
             // TODO(antoyo): adjust this ^ comment.
-            let unsigned_type = native_int_type.to_unsigned(&self.cx);
+            let unsigned_type = native_int_type.to_unsigned(self.cx);
             let casted_low = self.context.new_cast(self.location, self.low(a), unsigned_type);
             let shift_value = self.context.new_cast(self.location, sixty_four - b, unsigned_type);
             let high_low =
                 self.context.new_cast(self.location, casted_low >> shift_value, native_int_type);
 
-            let array_value = self.from_low_high_rvalues(
+            let array_value = self.concat_low_high_rvalues(
                 a_type,
                 self.low(a) << b,
                 (self.high(a) << b) | high_low,
@@ -708,7 +709,7 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
 
             // NOTE: we also need to swap the two elements here, in addition to swapping inside
             // the elements themselves like done above.
-            return self.from_low_high_rvalues(arg_type, swapped_msb, swapped_lsb);
+            return self.concat_low_high_rvalues(arg_type, swapped_msb, swapped_lsb);
         }
 
         // TODO(antoyo): check if it's faster to use string literals and a
@@ -727,10 +728,10 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
 impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
     pub fn gcc_int(&self, typ: Type<'gcc>, int: i64) -> RValue<'gcc> {
         if self.is_native_int_type_or_bool(typ) {
-            self.context.new_rvalue_from_long(typ, i64::try_from(int).expect("i64::try_from"))
+            self.context.new_rvalue_from_long(typ, int)
         } else {
             // NOTE: set the sign in high.
-            self.from_low_high(typ, int, -(int.is_negative() as i64))
+            self.concat_low_high(typ, int, -(int.is_negative() as i64))
         }
     }
 
@@ -740,10 +741,9 @@ impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
             let num = self.context.new_rvalue_from_long(self.u64_type, int as i64);
             self.gcc_int_cast(num, typ)
         } else if self.is_native_int_type_or_bool(typ) {
-            self.context
-                .new_rvalue_from_long(typ, u64::try_from(int).expect("u64::try_from") as i64)
+            self.context.new_rvalue_from_long(typ, int as i64)
         } else {
-            self.from_low_high(typ, int as i64, 0)
+            self.concat_low_high(typ, int as i64, 0)
         }
     }
 
@@ -760,7 +760,7 @@ impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
                 let shift = high << sixty_four;
                 shift | self.context.new_cast(None, low, typ)
             } else {
-                self.from_low_high(typ, low as i64, high as i64)
+                self.concat_low_high(typ, low as i64, high as i64)
             }
         } else if typ.is_i128(self) {
             // FIXME(antoyo): libgccjit cannot create 128-bit values yet.
@@ -775,7 +775,7 @@ impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
         if self.is_native_int_type_or_bool(typ) {
             self.context.new_rvalue_zero(typ)
         } else {
-            self.from_low_high(typ, 0, 0)
+            self.concat_low_high(typ, 0, 0)
         }
     }
 
@@ -813,7 +813,7 @@ impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
                 "both types should either be native or non-native for or operation"
             );
             let native_int_type = a_type.dyncast_array().expect("get element type");
-            self.from_low_high_rvalues(
+            self.concat_low_high_rvalues(
                 a_type,
                 self.context.new_binary_op(
                     loc,
@@ -858,7 +858,7 @@ impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
             let is_negative =
                 self.context.new_comparison(None, ComparisonOp::LessThan, value, zero);
             let is_negative = self.gcc_int_cast(is_negative, dest_element_type);
-            self.from_low_high_rvalues(
+            self.concat_low_high_rvalues(
                 dest_typ,
                 self.context.new_cast(None, value, dest_element_type),
                 self.context.new_unary_op(None, UnaryOp::Minus, dest_element_type, is_negative),
@@ -978,7 +978,7 @@ impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
             .to_rvalue()
     }
 
-    fn from_low_high_rvalues(
+    fn concat_low_high_rvalues(
         &self,
         typ: Type<'gcc>,
         low: RValue<'gcc>,
@@ -993,7 +993,7 @@ impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
         self.context.new_array_constructor(None, typ, &values)
     }
 
-    fn from_low_high(&self, typ: Type<'gcc>, low: i64, high: i64) -> RValue<'gcc> {
+    fn concat_low_high(&self, typ: Type<'gcc>, low: i64, high: i64) -> RValue<'gcc> {
         let (first, last) = match self.sess().target.options.endian {
             Endian::Little => (low, high),
             Endian::Big => (high, low),

@@ -29,6 +29,7 @@
 #![warn(rust_2018_idioms)]
 #![warn(unused_lifetimes)]
 #![deny(clippy::pattern_type_mismatch)]
+#![allow(clippy::needless_lifetimes)]
 
 extern crate rustc_apfloat;
 extern crate rustc_ast;

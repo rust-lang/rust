@@ -384,7 +384,7 @@ impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
     }
 
     pub fn sess(&self) -> &'tcx Session {
-        &self.tcx.sess
+        self.tcx.sess
     }
 
     pub fn bitcast_if_needed(
@@ -431,7 +431,7 @@ impl<'gcc, 'tcx> MiscMethods<'tcx> for CodegenCx<'gcc, 'tcx> {
         let func_name = self.tcx.symbol_name(instance).name;
 
         let func = if self.intrinsics.borrow().contains_key(func_name) {
-            self.intrinsics.borrow()[func_name].clone()
+            self.intrinsics.borrow()[func_name]
         } else {
             get_fn(self, instance)
         };
@@ -485,7 +485,7 @@ impl<'gcc, 'tcx> MiscMethods<'tcx> for CodegenCx<'gcc, 'tcx> {
                 let symbol_name = tcx.symbol_name(instance).name;
                 let fn_abi = self.fn_abi_of_instance(instance, ty::List::empty());
                 self.linkage.set(FunctionType::Extern);
-                let func = self.declare_fn(symbol_name, &fn_abi);
+                let func = self.declare_fn(symbol_name, fn_abi);
                 let func: RValue<'gcc> = unsafe { std::mem::transmute(func) };
                 func
             }
@@ -505,7 +505,7 @@ impl<'gcc, 'tcx> MiscMethods<'tcx> for CodegenCx<'gcc, 'tcx> {
     }
 
     fn sess(&self) -> &Session {
-        &self.tcx.sess
+        self.tcx.sess
     }
 
     fn check_overflow(&self) -> bool {
@@ -612,7 +612,7 @@ impl<'b, 'tcx> CodegenCx<'b, 'tcx> {
         // user defined names
         let mut name = String::with_capacity(prefix.len() + 6);
         name.push_str(prefix);
-        name.push_str(".");
+        name.push('.');
         base_n::push_str(idx as u128, base_n::ALPHANUMERIC_ONLY, &mut name);
         name
     }

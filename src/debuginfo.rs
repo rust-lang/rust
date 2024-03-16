@@ -91,7 +91,7 @@ fn compute_mir_scopes<'gcc, 'tcx>(
 /// FIXME(tempdragon/?): Add Scope Support Here.
 fn make_mir_scope<'gcc, 'tcx>(
     cx: &CodegenCx<'gcc, 'tcx>,
-    instance: Instance<'tcx>,
+    _instance: Instance<'tcx>,
     mir: &Body<'tcx>,
     variables: &Option<BitSet<SourceScope>>,
     debug_context: &mut FunctionDebugContext<'tcx, (), Location<'gcc>>,
@@ -104,7 +104,7 @@ fn make_mir_scope<'gcc, 'tcx>(
 
     let scope_data = &mir.source_scopes[scope];
     let parent_scope = if let Some(parent) = scope_data.parent_scope {
-        make_mir_scope(cx, instance, mir, variables, debug_context, instantiated, parent);
+        make_mir_scope(cx, _instance, mir, variables, debug_context, instantiated, parent);
         debug_context.scopes[parent]
     } else {
         // The root is the function itself.
@@ -118,7 +118,7 @@ fn make_mir_scope<'gcc, 'tcx>(
         return;
     };
 
-    if let Some(vars) = variables {
+    if let Some(ref vars) = *variables {
         if !vars.contains(scope) && scope_data.inlined.is_none() {
             // Do not create a DIScope if there are no variables defined in this
             // MIR `SourceScope`, and it's not `inlined`, to avoid debuginfo bloat.
@@ -136,8 +136,14 @@ fn make_mir_scope<'gcc, 'tcx>(
     let inlined_at = scope_data.inlined.map(|(_, callsite_span)| {
         // FIXME(eddyb) this doesn't account for the macro-related
         // `Span` fixups that `rustc_codegen_ssa::mir::debuginfo` does.
-        let callsite_scope = parent_scope.adjust_dbg_scope_for_span(cx, callsite_span);
-        cx.dbg_loc(callsite_scope, parent_scope.inlined_at, callsite_span)
+
+        // TODO(tempdragon): Add scope support and then revert to cg_llvm version of this closure
+        // NOTE: These variables passed () here.
+        // Changed to comply to clippy.
+
+        /* let callsite_scope =  */
+        parent_scope.adjust_dbg_scope_for_span(cx, callsite_span);
+        cx.dbg_loc(/* callsite_scope */ (), parent_scope.inlined_at, callsite_span)
     });
     let p_inlined_at = parent_scope.inlined_at;
     // TODO(tempdragon): dbg_scope: Add support for scope extension here.
@@ -225,7 +231,7 @@ impl<'gcc, 'tcx> DebugInfoMethods<'tcx> for CodegenCx<'gcc, 'tcx> {
             file_end_pos: BytePos(0),
         };
         let mut fn_debug_context = FunctionDebugContext {
-            scopes: IndexVec::from_elem(empty_scope, &mir.source_scopes.as_slice()),
+            scopes: IndexVec::from_elem(empty_scope, mir.source_scopes.as_slice()),
             inlined_function_scopes: Default::default(),
         };
 
@@ -274,16 +280,19 @@ impl<'gcc, 'tcx> DebugInfoMethods<'tcx> for CodegenCx<'gcc, 'tcx> {
     ) -> Self::DILocation {
         let pos = span.lo();
         let DebugLoc { file, line, col } = self.lookup_debug_loc(pos);
-        let loc = match &file.name {
-            rustc_span::FileName::Real(name) => match name {
-                rustc_span::RealFileName::LocalPath(name) => {
+        let loc = match file.name {
+            rustc_span::FileName::Real(ref name) => match *name {
+                rustc_span::RealFileName::LocalPath(ref name) => {
                     if let Some(name) = name.to_str() {
                         self.context.new_location(name, line as i32, col as i32)
                     } else {
                         Location::null()
                     }
                 }
-                rustc_span::RealFileName::Remapped { local_path, virtual_name: _ } => {
+                rustc_span::RealFileName::Remapped {
+                    ref local_path,
+                    virtual_name: ref _unused,
+                } => {
                     if let Some(name) = local_path.as_ref() {
                         if let Some(name) = name.to_str() {
                             self.context.new_location(name, line as i32, col as i32)
