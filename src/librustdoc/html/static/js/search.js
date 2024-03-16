@@ -426,7 +426,7 @@ function initSearch(rawSearchIndex) {
         return c === "," || c === "=";
     }
 
-/**
+    /**
      * Returns `true` if the given `c` character is a path separator. For example
      * `:` in `a::b` or a whitespace in `a b`.
      *
