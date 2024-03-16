@@ -398,8 +398,16 @@ pub fn lint_level(
             }
         }
 
-        // Finally, run `decorate`.
-        decorate(&mut err);
+        // Finally, run `decorate`. This is guarded by a `can_emit_warnings()` check so that any
+        // `def_path_str` called within `decorate` won't trigger a `must_produce_diag` ICE if the
+        // `err` isn't eventually emitted (e.g. due to `-A warnings`). If an `err` is force-warn,
+        // it's going to be emitted anyway.
+        if matches!(err_level, rustc_errors::Level::ForceWarning(_))
+            || sess.dcx().can_emit_warnings()
+        {
+            decorate(&mut err);
+        }
+
         explain_lint_level_source(lint, level, src, &mut err);
         err.emit()
     }
