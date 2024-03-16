@@ -30,7 +30,7 @@ impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
     }
 }
 
-pub fn bytes_in_context<'gcc>(cx: &CodegenCx<'gcc, '_>, bytes: &[u8]) -> RValue<'gcc> {
+pub fn bytes_in_context<'gcc, 'tcx>(cx: &CodegenCx<'gcc, 'tcx>, bytes: &[u8]) -> RValue<'gcc> {
     let context = &cx.context;
     let byte_type = context.new_type::<u8>();
     let typ = context.new_array_type(None, byte_type, bytes.len() as u64);

@@ -691,7 +691,7 @@ fn reg_to_gcc(reg: InlineAsmRegOrRegClass) -> ConstraintOrRegister {
 
 /// Type to use for outputs that are discarded. It doesn't really matter what
 /// the type is, as long as it is valid for the constraint code.
-fn dummy_output_type<'gcc>(cx: &CodegenCx<'gcc, '_>, reg: InlineAsmRegClass) -> Type<'gcc> {
+fn dummy_output_type<'gcc, 'tcx>(cx: &CodegenCx<'gcc, 'tcx>, reg: InlineAsmRegClass) -> Type<'gcc> {
     match reg {
         InlineAsmRegClass::AArch64(AArch64InlineAsmRegClass::reg) => cx.type_i32(),
         InlineAsmRegClass::AArch64(AArch64InlineAsmRegClass::preg) => unimplemented!(),

@@ -29,6 +29,7 @@
 #![warn(rust_2018_idioms)]
 #![warn(unused_lifetimes)]
 #![deny(clippy::pattern_type_mismatch)]
+#![allow(clippy::needless_lifetimes)]
 
 extern crate rustc_apfloat;
 extern crate rustc_ast;
@@ -270,7 +271,7 @@ impl CodegenBackend for GccCodegenBackend {
     }
 }
 
-fn new_context<'gcc>(tcx: TyCtxt<'_>) -> Context<'gcc> {
+fn new_context<'gcc, 'tcx>(tcx: TyCtxt<'tcx>) -> Context<'gcc> {
     let context = Context::default();
     if tcx.sess.target.arch == "x86" || tcx.sess.target.arch == "x86_64" {
         context.add_command_line_option("-masm=intel");

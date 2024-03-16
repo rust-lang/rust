@@ -692,11 +692,11 @@ pub fn generic_simd_intrinsic<'a, 'gcc, 'tcx>(
     }
 
     #[cfg(feature = "master")]
-    fn gather<'gcc>(
+    fn gather<'a, 'gcc, 'tcx>(
         default: RValue<'gcc>,
         pointers: RValue<'gcc>,
         mask: RValue<'gcc>,
-        bx: &mut Builder<'_, 'gcc, '_>,
+        bx: &mut Builder<'a, 'gcc, 'tcx>,
         in_len: u64,
         invert: bool,
     ) -> RValue<'gcc> {

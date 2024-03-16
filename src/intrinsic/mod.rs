@@ -1093,8 +1093,8 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
     }
 }
 
-fn try_intrinsic<'gcc>(
-    bx: &mut Builder<'_, 'gcc, '_>,
+fn try_intrinsic<'a, 'b, 'gcc, 'tcx>(
+    bx: &'b mut Builder<'a, 'gcc, 'tcx>,
     try_func: RValue<'gcc>,
     data: RValue<'gcc>,
     _catch_func: RValue<'gcc>,
