@@ -164,8 +164,7 @@ impl<'a, 'gcc, 'tcx> IntrinsicCallMethods<'tcx> for Builder<'a, 'gcc, 'tcx> {
                 let tp_ty = fn_args.type_at(0);
                 let ptr = args[0].immediate();
                 // The reference was changed to clone to comply to clippy.
-                let load = if let PassMode::Cast { cast: ty, pad_i32: _ } = fn_abi.ret.mode.clone()
-                {
+                let load = if let PassMode::Cast { cast: ref ty, pad_i32: _ } = fn_abi.ret.mode {
                     let gcc_ty = ty.gcc_type(self);
                     self.volatile_load(gcc_ty, ptr)
                 } else {
@@ -386,7 +385,7 @@ impl<'a, 'gcc, 'tcx> IntrinsicCallMethods<'tcx> for Builder<'a, 'gcc, 'tcx> {
 
         if !fn_abi.ret.is_ignore() {
             // The reference was changed to clone to comply to clippy.
-            if let PassMode::Cast { cast: ty, .. } = fn_abi.ret.mode.clone() {
+            if let PassMode::Cast { cast: ref ty, .. } = fn_abi.ret.mode {
                 let ptr_llty = self.type_ptr_to(ty.gcc_type(self));
                 let ptr = self.pointercast(result.llval, ptr_llty);
                 self.store(llval, ptr, result.align);
