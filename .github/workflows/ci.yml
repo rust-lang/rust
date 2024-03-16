@@ -52,6 +52,9 @@ jobs:
     - name: Install rustfmt
       run: rustup component add rustfmt
 
+    - name: Install clippy
+      run: rustup component add clippy
+
     - name: Download artifact
       run: curl -LO https://github.com/antoyo/gcc/releases/latest/download/${{ matrix.libgccjit_version.gcc }}
 
@@ -97,6 +100,11 @@ jobs:
 
     - name: Check formatting
       run: cargo fmt -- --check
+
+     - name: clippy
+      run: |
+        cargo clippy --all-targets -- -D warnings
+        cargo clippy --all-targets --features master -- -D warnings
 
   duplicates:
     runs-on: ubuntu-latest
