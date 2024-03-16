@@ -1,4 +1,6 @@
 use crate::fmt;
+#[cfg(not(bootstrap))]
+use crate::marker::PhantomData;
 
 /// A struct containing information about the location of a panic.
 ///
@@ -28,12 +30,73 @@ use crate::fmt;
 /// Files are compared as strings, not `Path`, which could be unexpected.
 /// See [`Location::file`]'s documentation for more discussion.
 #[lang = "panic_location"]
-#[derive(Copy, Clone, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
+#[derive(Copy, Clone, Eq)]
+#[cfg_attr(bootstrap, derive(Debug, PartialEq, PartialOrd, Ord, Hash))]
 #[stable(feature = "panic_hooks", since = "1.10.0")]
+#[cfg_attr(not(doc), repr(C))]
 pub struct Location<'a> {
+    #[cfg(bootstrap)]
     file: &'a str,
     line: u32,
     col: u32,
+    #[cfg(not(bootstrap))]
+    length: u16,
+    // The file path is stored inline to the &Location allocated by caller_location().
+    // This avoids adding indirection to access the file path through another pointer, and
+    // eliminates generating a relocation at compile-time for the file path.
+    #[cfg(not(bootstrap))]
+    file: [u8; 0],
+    #[cfg(not(bootstrap))]
+    marker: PhantomData<&'a str>,
+}
+
+#[stable(feature = "panic_hooks", since = "1.10.0")]
+#[cfg(not(bootstrap))]
+impl crate::fmt::Debug for Location<'_> {
+    fn fmt(&self, f: &mut crate::fmt::Formatter<'_>) -> crate::fmt::Result {
+        f.debug_struct("Location")
+            .field("file", &self.file())
+            .field("line", &self.line())
+            .field("col", &self.column())
+            .finish()
+    }
+}
+
+#[stable(feature = "panic_hooks", since = "1.10.0")]
+#[cfg(not(bootstrap))]
+impl crate::cmp::PartialEq for Location<'_> {
+    fn eq(&self, other: &Self) -> bool {
+        self.file() == other.file() && self.line == other.line && self.col == other.col
+    }
+}
+
+#[stable(feature = "panic_hooks", since = "1.10.0")]
+#[cfg(not(bootstrap))]
+impl crate::cmp::PartialOrd for Location<'_> {
+    fn partial_cmp(&self, other: &Self) -> Option<crate::cmp::Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+#[stable(feature = "panic_hooks", since = "1.10.0")]
+#[cfg(not(bootstrap))]
+impl crate::cmp::Ord for Location<'_> {
+    fn cmp(&self, other: &Self) -> crate::cmp::Ordering {
+        self.file()
+            .cmp(&other.file())
+            .then_with(|| self.line().cmp(&other.line()))
+            .then_with(|| self.column().cmp(&other.column()))
+    }
+}
+
+#[stable(feature = "panic_hooks", since = "1.10.0")]
+#[cfg(not(bootstrap))]
+impl crate::hash::Hash for Location<'_> {
+    fn hash<H: crate::hash::Hasher>(&self, state: &mut H) {
+        self.file().hash(state);
+        self.line.hash(state);
+        self.col.hash(state);
+    }
 }
 
 impl<'a> Location<'a> {
@@ -126,7 +189,20 @@ impl<'a> Location<'a> {
     #[rustc_const_unstable(feature = "const_location_fields", issue = "102911")]
     #[inline]
     pub const fn file(&self) -> &str {
-        self.file
+        #[cfg(bootstrap)]
+        {
+            self.file
+        }
+
+        #[cfg(not(bootstrap))]
+        {
+            unsafe {
+                crate::str::from_raw_parts(
+                    &self.file as *const _ as *const u8,
+                    self.length as usize,
+                )
+            }
+        }
     }
 
     /// Returns the line number from which the panic originated.
@@ -180,21 +256,9 @@ impl<'a> Location<'a> {
     }
 }
 
-#[unstable(
-    feature = "panic_internals",
-    reason = "internal details of the implementation of the `panic!` and related macros",
-    issue = "none"
-)]
-impl<'a> Location<'a> {
-    #[doc(hidden)]
-    pub const fn internal_constructor(file: &'a str, line: u32, col: u32) -> Self {
-        Location { file, line, col }
-    }
-}
-
 #[stable(feature = "panic_hook_display", since = "1.26.0")]
 impl fmt::Display for Location<'_> {
     fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(formatter, "{}:{}:{}", self.file, self.line, self.col)
+        write!(formatter, "{}:{}:{}", self.file(), self.line, self.col)
     }
 }

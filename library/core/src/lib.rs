@@ -264,6 +264,7 @@
 #![feature(unboxed_closures)]
 #![feature(unsized_fn_params)]
 #![feature(with_negative_coherence)]
+#![feature(str_from_raw_parts)]
 // tidy-alphabetical-end
 //
 // Target features:

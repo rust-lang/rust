@@ -1,9 +1,10 @@
 use rustc_hir::LangItem;
 use rustc_middle::mir;
 use rustc_middle::query::TyCtxtAt;
+use rustc_middle::ty;
 use rustc_middle::ty::layout::LayoutOf;
-use rustc_middle::ty::{self, Mutability};
 use rustc_span::symbol::Symbol;
+use rustc_target::abi::Size;
 
 use crate::const_eval::{mk_eval_cx_to_read_const_val, CanAccessMutGlobal, CompileTimeEvalContext};
 use crate::interpret::*;
@@ -19,14 +20,16 @@ fn alloc_caller_location<'mir, 'tcx>(
     // This can fail if rustc runs out of memory right here. Trying to emit an error would be
     // pointless, since that would require allocating more memory than these short strings.
     let file = if loc_details.file {
-        ecx.allocate_str(filename.as_str(), MemoryKind::CallerLocation, Mutability::Not).unwrap()
+        filename.as_str()
+        //ecx.allocate_str(filename.as_str(), MemoryKind::CallerLocation, Mutability::Not).unwrap()
     } else {
         // FIXME: This creates a new allocation each time. It might be preferable to
         // perform this allocation only once, and re-use the `MPlaceTy`.
         // See https://github.com/rust-lang/rust/pull/89920#discussion_r730012398
-        ecx.allocate_str("<redacted>", MemoryKind::CallerLocation, Mutability::Not).unwrap()
+        //ecx.allocate_str("<redacted>", MemoryKind::CallerLocation, Mutability::Not).unwrap()
+        "<redacted>"
     };
-    let file = file.map_provenance(CtfeProvenance::as_immutable);
+    //let file = file.map_provenance(CtfeProvenance::as_immutable);
     let line = if loc_details.line { Scalar::from_u32(line) } else { Scalar::from_u32(0) };
     let col = if loc_details.column { Scalar::from_u32(col) } else { Scalar::from_u32(0) };
 
@@ -36,15 +39,31 @@ fn alloc_caller_location<'mir, 'tcx>(
         .type_of(ecx.tcx.require_lang_item(LangItem::PanicLocation, None))
         .instantiate(*ecx.tcx, ecx.tcx.mk_args(&[ecx.tcx.lifetimes.re_erased.into()]));
     let loc_layout = ecx.layout_of(loc_ty).unwrap();
-    let location = ecx.allocate(loc_layout, MemoryKind::CallerLocation).unwrap();
+    let ptr = ecx
+        .allocate_ptr(
+            loc_layout.layout.size() + Size::from_bytes(file.len()),
+            loc_layout.layout.align().abi,
+            MemoryKind::CallerLocation,
+        )
+        .unwrap();
+    let location = ecx.ptr_with_meta_to_mplace(ptr.into(), MemPlaceMeta::None, loc_layout);
 
     // Initialize fields.
-    ecx.write_immediate(file.to_ref(ecx), &ecx.project_field(&location, 0).unwrap())
+    ecx.write_scalar(line, &ecx.project_field(&location, 0).unwrap())
         .expect("writing to memory we just allocated cannot fail");
-    ecx.write_scalar(line, &ecx.project_field(&location, 1).unwrap())
+    ecx.write_scalar(col, &ecx.project_field(&location, 1).unwrap())
         .expect("writing to memory we just allocated cannot fail");
-    ecx.write_scalar(col, &ecx.project_field(&location, 2).unwrap())
-        .expect("writing to memory we just allocated cannot fail");
+    ecx.write_scalar(
+        // FIXME: proper error?
+        Scalar::from_u16(file.len().try_into().unwrap()),
+        &ecx.project_field(&location, 2).unwrap(),
+    )
+    .expect("writing to memory we just allocated cannot fail");
+    ecx.write_bytes_ptr(
+        ecx.project_field(&location, 3).unwrap().ptr(),
+        file.as_bytes().iter().copied(),
+    )
+    .expect("writing to memory we just allocated cannot fail");
 
     location
 }
