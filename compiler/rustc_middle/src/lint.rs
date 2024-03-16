@@ -398,14 +398,23 @@ pub fn lint_level(
             }
         }
 
-        // Finally, run `decorate`. This is guarded by a `can_emit_warnings()` check so that any
-        // `def_path_str` called within `decorate` won't trigger a `must_produce_diag` ICE if the
-        // `err` isn't eventually emitted (e.g. due to `-A warnings`). If an `err` is force-warn,
-        // it's going to be emitted anyway.
-        if matches!(err_level, rustc_errors::Level::ForceWarning(_))
-            || sess.dcx().can_emit_warnings()
+        // Finally, run `decorate`. `decorate` can call `trimmed_path_str` (directly or indirectly),
+        // so we need to make sure when we do call `decorate` that the diagnostic is eventually
+        // emitted or we'll get a `must_produce_diag` ICE.
+        //
+        // When is a diagnostic *eventually* emitted? Well, that is determined by 2 factors:
+        // 1. If the corresponding `rustc_errors::Level` is beyond warning, i.e. `ForceWarning(_)`
+        //    or `Error`, then the diagnostic will be emitted regardless of CLI options.
+        // 2. If the corresponding `rustc_errors::Level` is warning, then that can be affected by
+        //    `-A warnings` or `--cap-lints=xxx` on the command line. In which case, the diagnostic
+        //    will be emitted if `can_emit_warnings` is true.
         {
-            decorate(&mut err);
+            use rustc_errors::Level as ELevel;
+            if matches!(err_level, ELevel::ForceWarning(_) | ELevel::Error)
+                || sess.dcx().can_emit_warnings()
+            {
+                decorate(&mut err);
+            }
         }
 
         explain_lint_level_source(lint, level, src, &mut err);
