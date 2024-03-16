@@ -62,12 +62,43 @@ fn test_is_lowercase() {
 }
 
 #[test]
+fn test_is_titlecase() {
+    assert!('ǅ'.is_titlecase());
+    assert!('ᾨ'.is_titlecase());
+    assert!(!'h'.is_titlecase());
+    assert!(!'ä'.is_titlecase());
+    assert!(!'ß'.is_titlecase());
+    assert!(!'Ö'.is_titlecase());
+    assert!(!'T'.is_titlecase());
+}
+
+#[test]
 fn test_is_uppercase() {
     assert!(!'h'.is_uppercase());
     assert!(!'ä'.is_uppercase());
     assert!(!'ß'.is_uppercase());
     assert!('Ö'.is_uppercase());
     assert!('T'.is_uppercase());
+}
+
+#[test]
+fn titlecase_fast_path() {
+    for c in '\0'..='\u{01C4}' {
+        assert!(!(c.is_cased() && !c.is_lowercase() && !c.is_uppercase()))
+    }
+}
+
+#[test]
+fn at_most_one_case() {
+    for c in '\0'..='\u{10FFFF}' {
+        assert_eq!(
+            !c.is_cased() as u8
+                + c.is_lowercase() as u8
+                + c.is_uppercase() as u8
+                + c.is_titlecase() as u8,
+            1
+        );
+    }
 }
 
 #[test]

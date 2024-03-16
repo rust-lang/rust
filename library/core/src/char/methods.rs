@@ -822,6 +822,39 @@ impl char {
         }
     }
 
+    /// Returns `true` if this `char` has the general category for titlecase letters.
+    ///
+    /// Titlecase letters (code points with the general category of `Lt`) are described in Chapter 4
+    /// (Character Properties) of the [Unicode Standard] and specified in the [Unicode Character
+    /// Database][ucd] [`UnicodeData.txt`].
+    ///
+    /// [Unicode Standard]: https://www.unicode.org/versions/latest/
+    /// [ucd]: https://www.unicode.org/reports/tr44/
+    /// [`UnicodeData.txt`]: https://www.unicode.org/Public/UCD/latest/ucd/UnicodeData.txt
+    ///
+    /// # Examples
+    ///
+    /// Basic usage:
+    ///
+    /// ```
+    /// #![feature(titlecase)]
+    /// assert!('ǅ'.is_titlecase());
+    /// assert!('ᾨ'.is_titlecase());
+    /// assert!(!'D'.is_titlecase());
+    /// assert!(!'z'.is_titlecase());
+    /// assert!(!'中'.is_titlecase());
+    /// assert!(!' '.is_titlecase());
+    /// ```
+    #[must_use]
+    #[unstable(feature = "titlecase", issue = "none")]
+    #[inline]
+    pub fn is_titlecase(self) -> bool {
+        match self {
+            '\0'..='\u{01C4}' => false,
+            _ => self.is_cased() && !self.is_lowercase() && !self.is_uppercase(),
+        }
+    }
+
     /// Returns `true` if this `char` has the `Uppercase` property.
     ///
     /// `Uppercase` is described in Chapter 4 (Character Properties) of the [Unicode Standard] and
