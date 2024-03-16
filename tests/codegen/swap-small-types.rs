@@ -70,10 +70,7 @@ pub fn swap_slices<'a>(x: &mut &'a [u32], y: &mut &'a [u32]) {
     // CHECK-NOT: alloca
     // CHECK: load ptr
     // CHECK: load i64
-    // CHECK: load ptr
-    // CHECK: load i64
-    // CHECK: store ptr
-    // CHECK: store i64
+    // CHECK: call void @llvm.memcpy.p0.p0.i64({{.+}}, i64 16, i1 false)
     // CHECK: store ptr
     // CHECK: store i64
     swap(x, y)
