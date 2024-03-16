@@ -15,7 +15,7 @@ use rustc_hir::{
     Body, FnDecl, FnRetTy, GenericArg, ImplItem, ImplItemKind, Item, ItemKind, Local, MutTy, QPath, TraitItem,
     TraitItemKind, TyKind,
 };
-use rustc_lint::{LateContext, LateLintPass, LintContext};
+use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::impl_lint_pass;
 use rustc_span::def_id::LocalDefId;
 use rustc_span::Span;
@@ -392,7 +392,7 @@ impl<'tcx> LateLintPass<'tcx> for Types {
     }
 
     fn check_field_def(&mut self, cx: &LateContext<'tcx>, field: &hir::FieldDef<'tcx>) {
-        if rustc_middle::lint::in_external_macro(cx.sess(), field.span) {
+        if field.span.from_expansion() {
             return;
         }
 
