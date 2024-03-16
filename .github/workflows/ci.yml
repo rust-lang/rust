@@ -98,6 +98,11 @@ jobs:
     - name: Check formatting
       run: cargo fmt -- --check
 
+    - name: clippy
+      run: |
+        cargo clippy --all-targets -- -D warnings
+        cargo clippy --all-targets --features master -- -D warnings
+
   duplicates:
     runs-on: ubuntu-latest
     steps:
