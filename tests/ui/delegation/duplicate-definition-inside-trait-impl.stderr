@@ -1,0 +1,23 @@
+error[E0201]: duplicate definitions with name `foo`:
+  --> $DIR/duplicate-definition-inside-trait-impl.rs:19:5
+   |
+LL |     fn foo(&self) -> u32 { 0 }
+   |     -------------------------- item in trait
+...
+LL |     reuse to_reuse::foo { self }
+   |     ---------------------------- previous definition here
+LL |     reuse Trait::foo;
+   |     ^^^^^^^^^^^^^^^^^ duplicate definition
+
+warning: the feature `fn_delegation` is incomplete and may not be safe to use and/or cause compiler crashes
+  --> $DIR/duplicate-definition-inside-trait-impl.rs:1:12
+   |
+LL | #![feature(fn_delegation)]
+   |            ^^^^^^^^^^^^^
+   |
+   = note: see issue #118212 <https://github.com/rust-lang/rust/issues/118212> for more information
+   = note: `#[warn(incomplete_features)]` on by default
+
+error: aborting due to 1 previous error; 1 warning emitted
+
+For more information about this error, try `rustc --explain E0201`.
