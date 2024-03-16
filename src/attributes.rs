@@ -15,7 +15,10 @@ use crate::{context::CodegenCx, errors::TiedTargetFeatures};
 /// Get GCC attribute for the provided inline heuristic.
 #[cfg(feature = "master")]
 #[inline]
-fn inline_attr<'gcc>(cx: &CodegenCx<'gcc, '_>, inline: InlineAttr) -> Option<FnAttribute<'gcc>> {
+fn inline_attr<'gcc, 'tcx>(
+    cx: &CodegenCx<'gcc, 'tcx>,
+    inline: InlineAttr,
+) -> Option<FnAttribute<'gcc>> {
     match inline {
         InlineAttr::Hint => Some(FnAttribute::Inline),
         InlineAttr::Always => Some(FnAttribute::AlwaysInline),

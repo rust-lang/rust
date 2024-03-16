@@ -18,7 +18,11 @@ use crate::context::CodegenCx;
 use crate::errors::InvalidMinimumAlignment;
 use crate::type_of::LayoutGccExt;
 
-fn set_global_alignment<'gcc>(cx: &CodegenCx<'gcc, '_>, gv: LValue<'gcc>, mut align: Align) {
+fn set_global_alignment<'gcc, 'tcx>(
+    cx: &CodegenCx<'gcc, 'tcx>,
+    gv: LValue<'gcc>,
+    mut align: Align,
+) {
     // The target may require greater alignment for globals than the type does.
     // Note: GCC and Clang also allow `__attribute__((aligned))` on variables,
     // which can force it to be smaller. Rust doesn't support this yet.
