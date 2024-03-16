@@ -1704,7 +1704,6 @@ impl Build {
                 t!(fs::create_dir_all(&dst));
                 self.cp_link_r(&path, &dst);
             } else {
-                let _ = fs::remove_file(&dst);
                 self.copy_link(&path, &dst);
             }
         }
