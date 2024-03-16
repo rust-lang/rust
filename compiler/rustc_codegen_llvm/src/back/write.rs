@@ -740,6 +740,9 @@ pub(crate) unsafe fn codegen(
                     .generic_activity_with_arg("LLVM_module_codegen_embed_bitcode", &*module.name);
                 embed_bitcode(cgcx, llcx, llmod, &config.bc_cmdline, data);
             }
+            if config.json_artifact_notifications && config.emit_bc {
+                dcx.emit_artifact_notification(&bc_out, "llvm-bc");
+            }
         }
 
         if config.emit_ir {
@@ -781,6 +784,10 @@ pub(crate) unsafe fn codegen(
             }
 
             result.into_result().map_err(|()| llvm_err(dcx, LlvmError::WriteIr { path: &out }))?;
+
+            if config.json_artifact_notifications {
+                dcx.emit_artifact_notification(&out, "llvm-ir");
+            }
         }
 
         if config.emit_asm {
@@ -809,6 +816,10 @@ pub(crate) unsafe fn codegen(
                     &cgcx.prof,
                 )
             })?;
+
+            if config.json_artifact_notifications {
+                dcx.emit_artifact_notification(&path, "asm");
+            }
         }
 
         match config.emit_obj {
@@ -844,6 +855,10 @@ pub(crate) unsafe fn codegen(
                         &cgcx.prof,
                     )
                 })?;
+
+                if config.json_artifact_notifications {
+                    dcx.emit_artifact_notification(&obj_out, "obj");
+                }
             }
 
             EmitObj::Bitcode => {
