@@ -122,6 +122,7 @@ rm -r tests/run-make/optimization-remarks-dir # remarks are LLVM specific
 rm tests/ui/mir/mir_misc_casts.rs # depends on deduplication of constants
 rm tests/ui/mir/mir_raw_fat_ptr.rs # same
 rm tests/ui/consts/issue-33537.rs # same
+rm tests/ui/consts/const-mut-refs-crate.rs # same
 
 # rustdoc-clif passes extra args, suppressing the help message when no args are passed
 rm -r tests/run-make/issue-88756-default-output
