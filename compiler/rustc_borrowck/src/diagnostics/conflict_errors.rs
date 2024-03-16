@@ -631,7 +631,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                     }
 
                     // FIXME: We make sure that this is a normal top-level binding,
-                    // but we could suggest `todo!()` for all uninitalized bindings in the pattern pattern
+                    // but we could suggest `todo!()` for all uninitialized bindings in the pattern pattern
                     if let hir::StmtKind::Let(hir::LetStmt { span, ty, init: None, pat, .. }) =
                         &ex.kind
                         && let hir::PatKind::Binding(..) = pat.kind
@@ -759,7 +759,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         true
     }
 
-    /// In a move error that occurs on a call wihtin a loop, we try to identify cases where cloning
+    /// In a move error that occurs on a call within a loop, we try to identify cases where cloning
     /// the value would lead to a logic error. We infer these cases by seeing if the moved value is
     /// part of the logic to break the loop, either through an explicit `break` or if the expression
     /// is part of a `while let`.
@@ -960,7 +960,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
             {
                 // FIXME: We could check that the call's *parent* takes `&mut val` to make the
                 // suggestion more targeted to the `mk_iter(val).next()` case. Maybe do that only to
-                // check for wheter to suggest `let value` or `let mut value`.
+                // check for whether to suggest `let value` or `let mut value`.
 
                 let span = in_loop.span;
                 if !finder.found_breaks.is_empty()
