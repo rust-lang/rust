@@ -1,6 +1,6 @@
 // Test that `-Cinstrument-coverage=off` does not add coverage instrumentation to LLVM IR.
 
-//@ needs-profiler-support
+//@ compile-flags: -Zno-profiler-runtime
 //@ revisions: n no off false zero
 //@ [n] compile-flags: -Cinstrument-coverage=n
 //@ [no] compile-flags: -Cinstrument-coverage=no
