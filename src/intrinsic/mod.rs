@@ -119,6 +119,7 @@ impl<'a, 'gcc, 'tcx> IntrinsicCallMethods<'tcx> for Builder<'a, 'gcc, 'tcx> {
         let result = PlaceRef::new_sized(llresult, fn_abi.ret.layout);
 
         let simple = get_simple_intrinsic(self, name);
+        #[allow(clippy::suspicious_else_formatting)]
         let llval = match name {
             _ if simple.is_some() => {
                 // FIXME(antoyo): remove this cast when the API supports function.
