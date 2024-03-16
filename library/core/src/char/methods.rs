@@ -783,6 +783,70 @@ impl char {
         }
     }
 
+    /// Returns `true` if this `char` has the `Cased` property.
+    /// A character is cased if and only if it is uppercase, lowercase, or titlecase.
+    ///
+    /// `Cased` is described in Chapter 4 (Character Properties) of the [Unicode Standard] and
+    /// specified in the [Unicode Character Database][ucd] [`DerivedCoreProperties.txt`].
+    ///
+    /// [Unicode Standard]: https://www.unicode.org/versions/latest/
+    /// [ucd]: https://www.unicode.org/reports/tr44/
+    /// [`DerivedCoreProperties.txt`]: https://www.unicode.org/Public/UCD/latest/ucd/DerivedCoreProperties.txt
+    ///
+    /// # Examples
+    ///
+    /// Basic usage:
+    ///
+    /// ```
+    /// #![feature(titlecase)]
+    /// assert!('A'.is_cased());
+    /// assert!('a'.is_cased());
+    /// assert!(!'京'.is_cased());
+    /// ```
+    #[must_use]
+    #[unstable(feature = "titlecase", issue = "none")]
+    #[inline]
+    pub fn is_cased(self) -> bool {
+        match self {
+            'A'..='Z' | 'a'..='z' => true,
+            '\0'..='\u{A9}' => false,
+            _ => unicode::Cased(self),
+        }
+    }
+
+    /// Returns the case of this character:
+    /// [`Some(CharCase::Upper)`][`CharCase::Upper`] if [`self.is_uppercase()`][`char::is_uppercase`],
+    /// [`Some(CharCase::Lower)`][`CharCase::Lower`] if [`self.is_lowercase()`][`char::is_lowercase`],
+    /// [`Some(CharCase::Title)`][`CharCase::Title`] if [`self.is_titlecase()`][`char::is_titlecase`], and
+    /// `None` if [`!self.is_cased()`][`char::is_cased`].
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(titlecase)]
+    /// use core::char::CharCase;
+    /// assert_eq!('a'.case(), Some(CharCase::Lower));
+    /// assert_eq!('δ'.case(), Some(CharCase::Lower));
+    /// assert_eq!('A'.case(), Some(CharCase::Upper));
+    /// assert_eq!('Δ'.case(), Some(CharCase::Upper));
+    /// assert_eq!('ǅ'.case(), Some(CharCase::Title));
+    /// assert_eq!('中'.case(), None);
+    /// ```
+    #[must_use]
+    #[unstable(feature = "titlecase", issue = "none")]
+    #[inline]
+    pub fn case(self) -> Option<CharCase> {
+        match self {
+            'A'..='Z' => Some(CharCase::Upper),
+            'a'..='z' => Some(CharCase::Lower),
+            '\0'..='\u{A9}' => None,
+            _ if !unicode::Cased(self) => None,
+            _ if unicode::Lowercase(self) => Some(CharCase::Lower),
+            _ if unicode::Uppercase(self) => Some(CharCase::Upper),
+            _ => Some(CharCase::Title),
+        }
+    }
+
     /// Returns `true` if this `char` has the `Lowercase` property.
     ///
     /// `Lowercase` is described in Chapter 4 (Character Properties) of the [Unicode Standard] and
@@ -1007,37 +1071,6 @@ impl char {
     #[inline]
     pub(crate) fn is_grapheme_extended(self) -> bool {
         self > '\u{02FF}' && unicode::Grapheme_Extend(self)
-    }
-
-    /// Returns `true` if this `char` has the `Cased` property.
-    /// A character is cased if and only if it is uppercase, lowercase, or titlecase.
-    ///
-    /// `Cased` is described in Chapter 4 (Character Properties) of the [Unicode Standard] and
-    /// specified in the [Unicode Character Database][ucd] [`DerivedCoreProperties.txt`].
-    ///
-    /// [Unicode Standard]: https://www.unicode.org/versions/latest/
-    /// [ucd]: https://www.unicode.org/reports/tr44/
-    /// [`DerivedCoreProperties.txt`]: https://www.unicode.org/Public/UCD/latest/ucd/DerivedCoreProperties.txt
-    ///
-    /// # Examples
-    ///
-    /// Basic usage:
-    ///
-    /// ```
-    /// #![feature(titlecase)]
-    /// assert!('A'.is_cased());
-    /// assert!('a'.is_cased());
-    /// assert!(!'京'.is_cased());
-    /// ```
-    #[must_use]
-    #[unstable(feature = "titlecase", issue = "none")]
-    #[inline]
-    pub fn is_cased(self) -> bool {
-        match self {
-            'A'..='Z' | 'a'..='z' => true,
-            '\0'..='\u{A9}' => false,
-            _ => unicode::Cased(self),
-        }
     }
 
     /// Returns `true` if this `char` has the `Case_Ignorable` property.

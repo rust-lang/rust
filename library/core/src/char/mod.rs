@@ -603,3 +603,16 @@ impl fmt::Display for TryFromCharError {
 
 #[stable(feature = "u8_from_char", since = "1.59.0")]
 impl Error for TryFromCharError {}
+
+/// The case of a cased character,
+/// as returned by [`char::case`].
+#[unstable(feature = "titlecase", issue = "none")]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
+pub enum CharCase {
+    /// Lowercase. Corresponds to the `Lowercase` Unicode property.
+    Lower = 0b00,
+    /// Titlecase. Corresponds to the `Titlecase_Letter` Unicode general category.
+    Title = 0b10,
+    /// Uppercase. Corresponds to the `Uppercase` Unicode property.
+    Upper = 0b11,
+}
