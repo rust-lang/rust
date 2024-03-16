@@ -351,6 +351,7 @@ hir_analysis_rpitit_refined = impl trait in impl method signature does not match
     .label = return type from trait method defined here
     .unmatched_bound_label = this bound is stronger than that defined on the trait
     .note = add `#[allow(refining_impl_trait)]` if it is intended for this to be part of the public API of this crate
+    .feedback_note = we are soliciting feedback, see issue #121718 <https://github.com/rust-lang/rust/issues/121718> for more information
 
 hir_analysis_self_in_impl_self =
     `Self` is not valid in the self type of an impl block
