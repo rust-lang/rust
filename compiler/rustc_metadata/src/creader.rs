@@ -398,7 +398,8 @@ impl<'a, 'tcx> CrateLoader<'a, 'tcx> {
         name: Symbol,
         private_dep: Option<bool>,
     ) -> Result<CrateNum, CrateError> {
-        let _prof_timer = self.sess.prof.generic_activity("metadata_register_crate");
+        let _prof_timer =
+            self.sess.prof.generic_activity_with_arg("metadata_register_crate", name.as_str());
 
         let Library { source, metadata } = lib;
         let crate_root = metadata.get_root();
