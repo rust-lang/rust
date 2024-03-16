@@ -999,6 +999,93 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         can_suggest_clone
     }
 
+    fn suggest_cloning_on_spread_operator(
+        &self,
+        err: &mut Diag<'_>,
+        ty: Ty<'tcx>,
+        expr: &'cx hir::Expr<'cx>,
+    ) {
+        let typeck_results = self.infcx.tcx.typeck(self.mir_def_id());
+        let hir::ExprKind::Struct(struct_qpath, fields, Some(base)) = expr.kind else { return };
+        let hir::QPath::Resolved(_, path) = struct_qpath else { return };
+        let hir::def::Res::Def(_, def_id) = path.res else { return };
+        let Some(expr_ty) = typeck_results.node_type_opt(expr.hir_id) else { return };
+        let ty::Adt(def, args) = expr_ty.kind() else { return };
+        let hir::ExprKind::Path(hir::QPath::Resolved(None, path)) = base.kind else { return };
+        let (hir::def::Res::Local(_)
+        | hir::def::Res::Def(
+            DefKind::Const | DefKind::ConstParam | DefKind::Static { .. } | DefKind::AssocConst,
+            _,
+        )) = path.res
+        else {
+            return;
+        };
+        let Ok(base_str) = self.infcx.tcx.sess.source_map().span_to_snippet(base.span) else {
+            return;
+        };
+
+        // 1. look for the fields of type `ty`.
+        // 2. check if they are clone and add them to suggestion
+        // 3. check if there are any values left to `..` and remove it if not
+        // 4. emit suggestion to clone the field directly as `bar: base.bar.clone()`
+
+        let mut final_field_count = fields.len();
+        let Some(variant) = def.variants().iter().find(|variant| variant.def_id == def_id) else {
+            // When we have an enum, look for the variant that corresponds to the variant the user
+            // wrote.
+            return;
+        };
+        let mut sugg = vec![];
+        for field in &variant.fields {
+            // In practice unless there are more than one field with the same type, we'll be
+            // suggesting a single field at a type, because we don't aggregate multiple borrow
+            // checker errors involving the spread operator into a single one.
+            let field_ty = field.ty(self.infcx.tcx, args);
+            let ident = field.ident(self.infcx.tcx);
+            if field_ty == ty && fields.iter().all(|field| field.ident.name != ident.name) {
+                // Suggest adding field and cloning it.
+                sugg.push(format!("{ident}: {base_str}.{ident}.clone()"));
+                final_field_count += 1;
+            }
+        }
+        let (span, sugg) = match fields {
+            [.., last] => (
+                if final_field_count == variant.fields.len() {
+                    // We'll remove the `..base` as there aren't any fields left.
+                    last.span.shrink_to_hi().with_hi(base.span.hi())
+                } else {
+                    last.span.shrink_to_hi()
+                },
+                format!(", {}", sugg.join(", ")),
+            ),
+            // Account for no fields in suggestion span.
+            [] => (
+                expr.span.with_lo(struct_qpath.span().hi()),
+                if final_field_count == variant.fields.len() {
+                    // We'll remove the `..base` as there aren't any fields left.
+                    format!(" {{ {} }}", sugg.join(", "))
+                } else {
+                    format!(" {{ {}, ..{base_str} }}", sugg.join(", "))
+                },
+            ),
+        };
+        let prefix = if !self.implements_clone(ty) {
+            let msg = format!("`{ty}` doesn't implement `Copy` or `Clone`");
+            if let ty::Adt(def, _) = ty.kind() {
+                err.span_note(self.infcx.tcx.def_span(def.did()), msg);
+            } else {
+                err.note(msg);
+            }
+            format!("if `{ty}` implemented `Clone`, you could ")
+        } else {
+            String::new()
+        };
+        let msg = format!(
+            "{prefix}clone the value from the field instead of using the spread operator syntax",
+        );
+        err.span_suggestion_verbose(span, msg, sugg, Applicability::MachineApplicable);
+    }
+
     pub(crate) fn suggest_cloning(
         &self,
         err: &mut Diag<'_>,
@@ -1006,6 +1093,15 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         mut expr: &'cx hir::Expr<'cx>,
         mut other_expr: Option<&'cx hir::Expr<'cx>>,
     ) {
+        if let hir::ExprKind::Struct(_, _, Some(_)) = expr.kind {
+            // We have `S { foo: val, ..base }`. In `check_aggregate_rvalue` we have a single
+            // `Location` that covers both the `S { ... }` literal, all of its fields and the
+            // `base`. If the move happens because of `S { foo: val, bar: base.bar }` the `expr`
+            //  will already be correct. Instead, we see if we can suggest writing.
+            self.suggest_cloning_on_spread_operator(err, ty, expr);
+            return;
+        }
+
         if let Some(some_other_expr) = other_expr
             && let Some(parent_binop) =
                 self.infcx.tcx.hir().parent_iter(expr.hir_id).find_map(|n| {
@@ -1087,11 +1183,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                             } else {
                                 false
                             })
-                        && let Some(clone_trait_def) = self.infcx.tcx.lang_items().clone_trait()
-                        && self
-                            .infcx
-                            .type_implements_trait(clone_trait_def, [call_ty], self.param_env)
-                            .must_apply_modulo_regions()
+                        && self.implements_clone(call_ty)
                         && self.suggest_cloning_inner(err, call_ty, parent)
                     {
                         return;
@@ -1101,14 +1193,18 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
             }
         }
         let ty = ty.peel_refs();
-        if let Some(clone_trait_def) = self.infcx.tcx.lang_items().clone_trait()
-            && self
-                .infcx
-                .type_implements_trait(clone_trait_def, [ty], self.param_env)
-                .must_apply_modulo_regions()
-        {
+        if self.implements_clone(ty) {
             self.suggest_cloning_inner(err, ty, expr);
+            // } else {
+            //     err.note(format!("if `{ty}` implemented `Clone`, you could clone the value"));
         }
+    }
+
+    fn implements_clone(&self, ty: Ty<'tcx>) -> bool {
+        let Some(clone_trait_def) = self.infcx.tcx.lang_items().clone_trait() else { return false };
+        self.infcx
+            .type_implements_trait(clone_trait_def, [ty], self.param_env)
+            .must_apply_modulo_regions()
     }
 
     pub(crate) fn clone_on_reference(&self, expr: &hir::Expr<'_>) -> Option<Span> {
