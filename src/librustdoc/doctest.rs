@@ -16,7 +16,7 @@ use rustc_session::config::{self, CrateType, ErrorOutputType};
 use rustc_session::parse::ParseSess;
 use rustc_session::{lint, Session};
 use rustc_span::edition::Edition;
-use rustc_span::source_map::SourceMap;
+use rustc_span::source_map::{FilePathMapping, SourceMap};
 use rustc_span::symbol::sym;
 use rustc_span::{BytePos, FileName, Pos, Span, DUMMY_SP};
 use rustc_target::spec::{Target, TargetTriple};
@@ -86,6 +86,7 @@ pub(crate) fn run(options: RustdocOptions) -> Result<(), ErrorGuaranteed> {
         edition: options.edition,
         target_triple: options.target.clone(),
         crate_name: options.crate_name.clone(),
+        remap_path_prefix: options.remap_path_prefix.clone(),
         ..config::Options::default()
     };
 
@@ -577,7 +578,6 @@ pub(crate) fn make_test(
             use rustc_errors::emitter::{Emitter, HumanEmitter};
             use rustc_errors::DiagCtxt;
             use rustc_parse::parser::ForceCollect;
-            use rustc_span::source_map::FilePathMapping;
 
             let filename = FileName::anon_source_code(s);
             let source = crates + everything_else;
@@ -768,7 +768,6 @@ fn check_if_attr_is_complete(source: &str, edition: Edition) -> bool {
         rustc_span::create_session_if_not_set_then(edition, |_| {
             use rustc_errors::emitter::HumanEmitter;
             use rustc_errors::DiagCtxt;
-            use rustc_span::source_map::FilePathMapping;
 
             let filename = FileName::anon_source_code(source);
             // Any errors in parsing should also appear when the doctest is compiled for real, so just
@@ -976,7 +975,7 @@ impl Collector {
         if !item_path.is_empty() {
             item_path.push(' ');
         }
-        format!("{} - {item_path}(line {line})", filename.prefer_local())
+        format!("{} - {item_path}(line {line})", filename.prefer_remapped_unconditionaly())
     }
 
     pub(crate) fn set_position(&mut self, position: Span) {
@@ -986,11 +985,15 @@ impl Collector {
     fn get_filename(&self) -> FileName {
         if let Some(ref source_map) = self.source_map {
             let filename = source_map.span_to_filename(self.position);
-            if let FileName::Real(ref filename) = filename
-                && let Ok(cur_dir) = env::current_dir()
-                && let Some(local_path) = filename.local_path()
-                && let Ok(path) = local_path.strip_prefix(&cur_dir)
-            {
+            if let FileName::Real(ref filename) = filename {
+                let path = filename.remapped_path_if_available();
+
+                // Strip the cwd prefix from the path. This will likely exist if
+                // the path was not remapped.
+                let path = env::current_dir()
+                    .map(|cur_dir| path.strip_prefix(&cur_dir).unwrap_or(path))
+                    .unwrap_or(path);
+
                 return path.to_owned().into();
             }
             filename
@@ -1021,20 +1024,13 @@ impl Tester for Collector {
         }
 
         let path = match &filename {
-            FileName::Real(path) => {
-                if let Some(local_path) = path.local_path() {
-                    local_path.to_path_buf()
-                } else {
-                    // Somehow we got the filename from the metadata of another crate, should never happen
-                    unreachable!("doctest from a different crate");
-                }
-            }
+            FileName::Real(path) => path.remapped_path_if_available().to_path_buf(),
             _ => PathBuf::from(r"doctest.rs"),
         };
 
         // For example `module/file.rs` would become `module_file_rs`
         let file = filename
-            .prefer_local()
+            .prefer_remapped_unconditionaly()
             .to_string_lossy()
             .chars()
             .map(|c| if c.is_ascii_alphanumeric() { c } else { '_' })
