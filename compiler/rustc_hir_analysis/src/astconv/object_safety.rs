@@ -44,7 +44,6 @@ impl<'tcx> dyn AstConv<'tcx> + '_ {
                 ty::ImplPolarity::Positive,
                 dummy_self,
                 &mut bounds,
-                false,
                 // True so we don't populate `bounds` with associated type bounds, even
                 // though they're disallowed from object types.
                 OnlySelfBounds(true),
