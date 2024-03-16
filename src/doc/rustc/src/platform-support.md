@@ -33,15 +33,13 @@ All tier 1 targets with host tools support the full standard library.
 target | notes
 -------|-------
 `aarch64-unknown-linux-gnu` | ARM64 Linux (kernel 4.1, glibc 2.17+)
-`i686-pc-windows-gnu` | 32-bit MinGW (Windows 10+) [^windows-support] [^x86_32-floats-return-ABI]
-`i686-pc-windows-msvc` | 32-bit MSVC (Windows 10+) [^windows-support] [^x86_32-floats-return-ABI]
+`i686-pc-windows-gnu` | 32-bit MinGW (Windows 10+) [^x86_32-floats-return-ABI]
+`i686-pc-windows-msvc` | 32-bit MSVC (Windows 10+) [^x86_32-floats-return-ABI]
 `i686-unknown-linux-gnu` | 32-bit Linux (kernel 3.2+, glibc 2.17+) [^x86_32-floats-return-ABI]
 `x86_64-apple-darwin` | 64-bit macOS (10.12+, Sierra+)
-`x86_64-pc-windows-gnu` | 64-bit MinGW (Windows 10+) [^windows-support]
-`x86_64-pc-windows-msvc` | 64-bit MSVC (Windows 10+) [^windows-support]
+`x86_64-pc-windows-gnu` | 64-bit MinGW (Windows 10+)
+`x86_64-pc-windows-msvc` | 64-bit MSVC (Windows 10+)
 `x86_64-unknown-linux-gnu` | 64-bit Linux (kernel 3.2+, glibc 2.17+)
-
-[^windows-support]: Only Windows 10 currently undergoes automated testing. Earlier versions of Windows rely on testing and support from the community.
 
 [^x86_32-floats-return-ABI]: Due to limitations of the C ABI, floating-point support on `i686` targets is non-compliant: floating-point return values are passed via an x87 register, so NaN payload bits can be lost. See [issue #114479][x86-32-float-issue].
 
