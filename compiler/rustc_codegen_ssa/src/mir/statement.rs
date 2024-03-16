@@ -6,9 +6,22 @@ use super::FunctionCx;
 use super::LocalRef;
 use crate::traits::*;
 
+use std::ops::ControlFlow;
+
 impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
+    /// Lower a single MIR statement, returning [`ControlFlow::Break`] if we must not continue lowering
+    /// the rest of the statements in the block.
+    ///
+    /// Since we are lowering a polymorphic MIR body, we can discover only at this point that we
+    /// are lowering `assume(false)`. If we encounter such a statement, there is no reason to lower
+    /// the rest of the block; we just emit an unreachable terminator and return
+    /// [`ControlFlow::Break`].
     #[instrument(level = "debug", skip(self, bx))]
-    pub fn codegen_statement(&mut self, bx: &mut Bx, statement: &mir::Statement<'tcx>) {
+    pub fn codegen_statement(
+        &mut self,
+        bx: &mut Bx,
+        statement: &mir::Statement<'tcx>,
+    ) -> ControlFlow<()> {
         self.set_debug_loc(bx, statement.source_info);
         match statement.kind {
             mir::StatementKind::Assign(box (ref place, ref rvalue)) => {
@@ -70,7 +83,17 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             mir::StatementKind::Intrinsic(box NonDivergingIntrinsic::Assume(ref op)) => {
                 if !matches!(bx.tcx().sess.opts.optimize, OptLevel::No | OptLevel::Less) {
                     let op_val = self.codegen_operand(bx, op);
-                    bx.assume(op_val.immediate());
+                    let imm = op_val.immediate();
+                    if let Some(value) = bx.const_to_opt_uint(imm) {
+                        // If we are lowering assume(false), just produce an unreachable
+                        // terminator. We don't emit anything for assume(true).
+                        if value == 0 {
+                            bx.unreachable();
+                            return ControlFlow::Break(());
+                        }
+                    } else {
+                        bx.assume(imm);
+                    }
                 }
             }
             mir::StatementKind::Intrinsic(box NonDivergingIntrinsic::CopyNonOverlapping(
@@ -97,5 +120,6 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             | mir::StatementKind::PlaceMention(..)
             | mir::StatementKind::Nop => {}
         }
+        ControlFlow::Continue(())
     }
 }

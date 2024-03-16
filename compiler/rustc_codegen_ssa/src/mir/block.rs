@@ -23,6 +23,7 @@ use rustc_target::abi::{self, HasDataLayout, WrappingRange};
 use rustc_target::spec::abi::Abi;
 
 use std::cmp;
+use std::ops::ControlFlow;
 
 // Indicates if we are in the middle of merging a BB's successor into it. This
 // can happen when BB jumps directly to its successor and the successor has no
@@ -1213,10 +1214,17 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
 
             debug!("codegen_block({:?}={:?})", bb, data);
 
+            let mut replaced_terminator = false;
             for statement in &data.statements {
-                self.codegen_statement(bx, statement);
+                if let ControlFlow::Break(()) = self.codegen_statement(bx, statement) {
+                    replaced_terminator = true;
+                    break;
+                }
             }
 
+            if replaced_terminator {
+                break;
+            }
             let merging_succ = self.codegen_terminator(bx, bb, data.terminator());
             if let MergingSucc::False = merging_succ {
                 break;
