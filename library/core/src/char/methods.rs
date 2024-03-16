@@ -742,8 +742,9 @@ impl char {
     #[inline]
     pub fn is_alphabetic(self) -> bool {
         match self {
-            'a'..='z' | 'A'..='Z' => true,
-            c => c > '\x7f' && unicode::Alphabetic(c),
+            'A'..='Z' | 'a'..='z' => true,
+            '\0'..='\u{A9}' => false,
+            _ => unicode::Alphabetic(self),
         }
     }
 
@@ -785,7 +786,8 @@ impl char {
     pub const fn is_lowercase(self) -> bool {
         match self {
             'a'..='z' => true,
-            c => c > '\x7f' && unicode::Lowercase(c),
+            '\0'..='\u{A9}' => false,
+            _ => unicode::Lowercase(self),
         }
     }
 
@@ -827,7 +829,8 @@ impl char {
     pub const fn is_uppercase(self) -> bool {
         match self {
             'A'..='Z' => true,
-            c => c > '\x7f' && unicode::Uppercase(c),
+            '\0'..='\u{BF}' => false,
+            _ => unicode::Uppercase(self),
         }
     }
 
@@ -859,7 +862,8 @@ impl char {
     pub fn is_whitespace(self) -> bool {
         match self {
             ' ' | '\x09'..='\x0d' => true,
-            c => c > '\x7f' && unicode::White_Space(c),
+            '\0'..='\u{84}' => false,
+            _ => unicode::White_Space(self),
         }
     }
 
@@ -927,7 +931,7 @@ impl char {
     #[must_use]
     #[inline]
     pub(crate) fn is_grapheme_extended(self) -> bool {
-        self > '\x7f' && unicode::Grapheme_Extend(self)
+        self > '\u{02FF}' && unicode::Grapheme_Extend(self)
     }
 
     /// Returns `true` if this `char` has one of the general categories for numbers.
@@ -969,7 +973,8 @@ impl char {
     pub fn is_numeric(self) -> bool {
         match self {
             '0'..='9' => true,
-            c => c > '\x7f' && unicode::N(c),
+            '\0'..='\u{B1}' => false,
+            _ => unicode::N(self),
         }
     }
 
