@@ -119,6 +119,10 @@ impl<'a, 'gcc, 'tcx> IntrinsicCallMethods<'tcx> for Builder<'a, 'gcc, 'tcx> {
         let result = PlaceRef::new_sized(llresult, fn_abi.ret.layout);
 
         let simple = get_simple_intrinsic(self, name);
+
+        // FIXME(tempdragon): Re-enable `clippy::suspicious_else_formatting` if the following issue is solved:
+        // https://github.com/rust-lang/rust-clippy/issues/12497
+        // and leave `else if use_integer_compare` to be placed "as is".
         #[allow(clippy::suspicious_else_formatting)]
         let llval = match name {
             _ if simple.is_some() => {
@@ -164,7 +168,6 @@ impl<'a, 'gcc, 'tcx> IntrinsicCallMethods<'tcx> for Builder<'a, 'gcc, 'tcx> {
             sym::volatile_load | sym::unaligned_volatile_load => {
                 let tp_ty = fn_args.type_at(0);
                 let ptr = args[0].immediate();
-                // The reference was changed to clone to comply to clippy.
                 let load = if let PassMode::Cast { cast: ref ty, pad_i32: _ } = fn_abi.ret.mode {
                     let gcc_ty = ty.gcc_type(self);
                     self.volatile_load(gcc_ty, ptr)
@@ -307,8 +310,6 @@ impl<'a, 'gcc, 'tcx> IntrinsicCallMethods<'tcx> for Builder<'a, 'gcc, 'tcx> {
                 let b = args[1].immediate();
                 if layout.size().bytes() == 0 {
                     self.const_bool(true)
-                    // The else if an immediate neighbor of this block.
-                    // It is moved here to comply to Clippy.
                 }
                 /*else if use_integer_compare {
                     let integer_ty = self.type_ix(layout.size.bits()); // FIXME(antoyo): LLVM creates an integer of 96 bits for [i32; 3], but gcc doesn't support this, so it creates an integer of 128 bits.
@@ -386,7 +387,6 @@ impl<'a, 'gcc, 'tcx> IntrinsicCallMethods<'tcx> for Builder<'a, 'gcc, 'tcx> {
         };
 
         if !fn_abi.ret.is_ignore() {
-            // The reference was changed to clone to comply to clippy.
             if let PassMode::Cast { cast: ref ty, .. } = fn_abi.ret.mode {
                 let ptr_llty = self.type_ptr_to(ty.gcc_type(self));
                 let ptr = self.pointercast(result.llval, ptr_llty);
