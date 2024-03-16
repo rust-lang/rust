@@ -779,6 +779,39 @@ impl char {
         }
     }
 
+    /// Returns the case of this character:
+    /// [`Some(CharCase::Upper)`][`CharCase::Upper`] if [`self.is_uppercase()`][`char::is_uppercase`],
+    /// [`Some(CharCase::Lower)`][`CharCase::Lower`] if [`self.is_lowercase()`][`char::is_lowercase`],
+    /// [`Some(CharCase::Title)`][`CharCase::Title`] if [`self.is_titlecase()`][`char::is_titlecase`], and
+    /// `None` if [`!self.is_cased()`][`char::is_cased`].
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(titlecase)]
+    /// use core::char::CharCase;
+    /// assert_eq!('a'.case(), Some(CharCase::Lower));
+    /// assert_eq!('δ'.case(), Some(CharCase::Lower));
+    /// assert_eq!('A'.case(), Some(CharCase::Upper));
+    /// assert_eq!('Δ'.case(), Some(CharCase::Upper));
+    /// assert_eq!('ǅ'.case(), Some(CharCase::Title));
+    /// assert_eq!('中'.case(), None);
+    /// ```
+    #[must_use]
+    #[unstable(feature = "titlecase", issue = "none")]
+    #[inline]
+    pub fn case(self) -> Option<CharCase> {
+        match self {
+            'A'..='Z' => Some(CharCase::Upper),
+            'a'..='z' => Some(CharCase::Lower),
+            '\0'..='\u{A9}' => None,
+            _ if !self.is_cased() => None,
+            _ if self.is_lowercase() => Some(CharCase::Lower),
+            _ if self.is_uppercase() => Some(CharCase::Upper),
+            _ => Some(CharCase::Title),
+        }
+    }
+
     /// Returns `true` if this `char` has the `Lowercase` property.
     ///
     /// `Lowercase` is described in Chapter 4 (Character Properties) of the [Unicode Standard] and

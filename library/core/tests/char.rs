@@ -1,5 +1,8 @@
 use std::str::FromStr;
-use std::{char, str};
+use std::{
+    char::{self, CharCase},
+    str,
+};
 
 #[test]
 fn test_convert() {
@@ -50,6 +53,18 @@ fn test_is_cased() {
     assert!('P'.is_cased());
     assert!('ª'.is_cased());
     assert!(!'攂'.is_cased());
+}
+
+#[test]
+fn test_char_case() {
+    for c in '\0'..='\u{10FFFF}' {
+        match c.case() {
+            None => assert!(!c.is_cased()),
+            Some(CharCase::Lower) => assert!(c.is_lowercase()),
+            Some(CharCase::Upper) => assert!(c.is_uppercase()),
+            Some(CharCase::Title) => assert!(c.is_titlecase()),
+        }
+    }
 }
 
 #[test]
