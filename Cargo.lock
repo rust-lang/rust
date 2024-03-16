@@ -4400,6 +4400,7 @@ dependencies = [
  "rustc_lexer",
  "rustc_macros",
  "rustc_middle",
+ "rustc_privacy",
  "rustc_session",
  "rustc_span",
  "rustc_target",
