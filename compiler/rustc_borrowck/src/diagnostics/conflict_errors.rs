@@ -4,6 +4,7 @@
 #![allow(rustc::untranslatable_diagnostic)]
 
 use either::Either;
+use hir::ClosureKind;
 use rustc_data_structures::captures::Captures;
 use rustc_data_structures::fx::FxIndexSet;
 use rustc_errors::{codes::*, struct_span_code_err, Applicability, Diag, MultiSpan};
@@ -463,6 +464,15 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                 } else if let UseSpans::FnSelfUse { kind: CallKind::Normal { .. }, .. } = move_spans
                 {
                     // We already suggest cloning for these cases in `explain_captures`.
+                } else if let UseSpans::ClosureUse {
+                    closure_kind:
+                        ClosureKind::Coroutine(CoroutineKind::Desugared(_, CoroutineSource::Block)),
+                    args_span: _,
+                    capture_kind_span: _,
+                    path_span,
+                } = move_spans
+                {
+                    self.suggest_cloning(err, ty, expr, path_span);
                 } else if self.suggest_hoisting_call_outside_loop(err, expr) {
                     // The place where the the type moves would be misleading to suggest clone.
                     // #121466
