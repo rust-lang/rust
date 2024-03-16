@@ -308,16 +308,17 @@ impl<'a, 'gcc, 'tcx> IntrinsicCallMethods<'tcx> for Builder<'a, 'gcc, 'tcx> {
                     self.const_bool(true)
                     // The else if an immediate neighbor of this block.
                     // It is moved here to comply to Clippy.
-                    /*else if use_integer_compare {
-                        let integer_ty = self.type_ix(layout.size.bits()); // FIXME(antoyo): LLVM creates an integer of 96 bits for [i32; 3], but gcc doesn't support this, so it creates an integer of 128 bits.
-                        let ptr_ty = self.type_ptr_to(integer_ty);
-                        let a_ptr = self.bitcast(a, ptr_ty);
-                        let a_val = self.load(integer_ty, a_ptr, layout.align.abi);
-                        let b_ptr = self.bitcast(b, ptr_ty);
-                        let b_val = self.load(integer_ty, b_ptr, layout.align.abi);
-                        self.icmp(IntPredicate::IntEQ, a_val, b_val)
-                    }*/
-                } else {
+                }
+                /*else if use_integer_compare {
+                    let integer_ty = self.type_ix(layout.size.bits()); // FIXME(antoyo): LLVM creates an integer of 96 bits for [i32; 3], but gcc doesn't support this, so it creates an integer of 128 bits.
+                    let ptr_ty = self.type_ptr_to(integer_ty);
+                    let a_ptr = self.bitcast(a, ptr_ty);
+                    let a_val = self.load(integer_ty, a_ptr, layout.align.abi);
+                    let b_ptr = self.bitcast(b, ptr_ty);
+                    let b_val = self.load(integer_ty, b_ptr, layout.align.abi);
+                    self.icmp(IntPredicate::IntEQ, a_val, b_val)
+                }*/
+                else {
                     let void_ptr_type = self.context.new_type::<*const ()>();
                     let a_ptr = self.bitcast(a, void_ptr_type);
                     let b_ptr = self.bitcast(b, void_ptr_type);

@@ -137,6 +137,7 @@ fn make_mir_scope<'gcc, 'tcx>(
         // FIXME(eddyb) this doesn't account for the macro-related
         // `Span` fixups that `rustc_codegen_ssa::mir::debuginfo` does.
 
+        // TODO(tempdragon): Add scope support and then revert to cg_llvm version of this closure
         // NOTE: These variables passed () here.
         // Changed to comply to clippy.
 
