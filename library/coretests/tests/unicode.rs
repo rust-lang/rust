@@ -27,17 +27,21 @@ fn test_boolean_property(ranges: &[RangeInclusive<char>], lookup: fn(char) -> bo
 }
 
 #[track_caller]
-fn test_case_mapping(ranges: &[(char, [char; 3])], lookup: fn(char) -> [char; 3]) {
+fn test_case_mapping(
+    ranges: &[(char, [char; 3])],
+    lookup: fn(char) -> [char; 3],
+    fallback: fn(char) -> [char; 3],
+) {
     let mut start = '\u{80}';
     for &(key, val) in ranges {
         for c in start..key {
-            assert_eq!(lookup(c), [c, '\0', '\0'], "{c:?}");
+            assert_eq!(lookup(c), fallback(c), "{c:?}");
         }
         assert_eq!(lookup(key), val, "{key:?}");
         start = char::from_u32(key as u32 + 1).unwrap();
     }
     for c in start..=char::MAX {
-        assert_eq!(lookup(c), [c, '\0', '\0'], "{c:?}");
+        assert_eq!(lookup(c), fallback(c), "{c:?}");
     }
 }
 
@@ -45,6 +49,7 @@ fn test_case_mapping(ranges: &[(char, [char; 3])], lookup: fn(char) -> [char; 3]
 #[cfg_attr(miri, ignore)] // Miri is too slow
 fn alphabetic() {
     test_boolean_property(test_data::ALPHABETIC, unicode_data::alphabetic::lookup);
+    test_boolean_property(test_data::ALPHABETIC, char::is_alphabetic);
 }
 
 #[test]
@@ -57,6 +62,7 @@ fn case_ignorable() {
 #[cfg_attr(miri, ignore)] // Miri is too slow
 fn cased() {
     test_boolean_property(test_data::CASED, unicode_data::cased::lookup);
+    test_boolean_property(test_data::CASED, char::is_cased);
 }
 
 #[test]
@@ -69,34 +75,52 @@ fn grapheme_extend() {
 #[cfg_attr(miri, ignore)] // Miri is too slow
 fn lowercase() {
     test_boolean_property(test_data::LOWERCASE, unicode_data::lowercase::lookup);
+    test_boolean_property(test_data::LOWERCASE, char::is_lowercase);
 }
 
 #[test]
 #[cfg_attr(miri, ignore)] // Miri is too slow
 fn n() {
     test_boolean_property(test_data::N, unicode_data::n::lookup);
+    test_boolean_property(test_data::N, char::is_numeric);
 }
 
 #[test]
 #[cfg_attr(miri, ignore)] // Miri is too slow
 fn uppercase() {
     test_boolean_property(test_data::UPPERCASE, unicode_data::uppercase::lookup);
+    test_boolean_property(test_data::UPPERCASE, char::is_uppercase);
 }
 
 #[test]
 #[cfg_attr(miri, ignore)] // Miri is too slow
 fn white_space() {
     test_boolean_property(test_data::WHITE_SPACE, unicode_data::white_space::lookup);
+    test_boolean_property(test_data::WHITE_SPACE, char::is_whitespace);
 }
 
 #[test]
 #[cfg_attr(miri, ignore)] // Miri is too slow
 fn to_lowercase() {
-    test_case_mapping(test_data::TO_LOWER, unicode_data::conversions::to_lower);
+    test_case_mapping(test_data::TO_LOWER, unicode_data::conversions::to_lower, |c| {
+        [c, '\0', '\0']
+    });
 }
 
 #[test]
 #[cfg_attr(miri, ignore)] // Miri is too slow
 fn to_uppercase() {
-    test_case_mapping(test_data::TO_UPPER, unicode_data::conversions::to_upper);
+    test_case_mapping(test_data::TO_UPPER, unicode_data::conversions::to_upper, |c| {
+        [c, '\0', '\0']
+    });
+}
+
+#[test]
+#[cfg_attr(miri, ignore)] // Miri is too slow
+fn to_titlecase() {
+    test_case_mapping(
+        test_data::TO_TITLE,
+        unicode_data::conversions::to_title,
+        unicode_data::conversions::to_upper,
+    );
 }
