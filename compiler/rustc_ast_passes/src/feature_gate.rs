@@ -1,7 +1,7 @@
 use rustc_ast as ast;
 use rustc_ast::visit::{self, AssocCtxt, FnCtxt, FnKind, Visitor};
 use rustc_ast::{attr, AssocConstraint, AssocConstraintKind, NodeId};
-use rustc_ast::{PatKind, RangeEnd};
+use rustc_ast::{token, PatKind, RangeEnd};
 use rustc_feature::{AttributeGate, BuiltinAttribute, Features, GateIssue, BUILTIN_ATTRIBUTE_MAP};
 use rustc_session::parse::{feature_err, feature_err_issue, feature_warn};
 use rustc_session::Session;
@@ -377,6 +377,17 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
         match e.kind {
             ast::ExprKind::TryBlock(_) => {
                 gate!(&self, try_blocks, e.span, "`try` expression is experimental");
+            }
+            ast::ExprKind::Lit(token::Lit { kind: token::LitKind::Float, suffix, .. }) => {
+                match suffix {
+                    Some(sym::f16) => {
+                        gate!(&self, f16, e.span, "the type `f16` is unstable")
+                    }
+                    Some(sym::f128) => {
+                        gate!(&self, f128, e.span, "the type `f128` is unstable")
+                    }
+                    _ => (),
+                }
             }
             _ => {}
         }
