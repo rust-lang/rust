@@ -785,7 +785,7 @@ fn link_natively<'a>(
     let mut i = 0;
     loop {
         i += 1;
-        prog = sess.time("run_linker", || exec_linker(sess, &cmd, out_filename, tmpdir));
+        prog = sess.time("run_linker", || exec_linker(sess, &cmd, out_filename, flavor, tmpdir));
         let Ok(ref output) = prog else {
             break;
         };
@@ -1576,6 +1576,7 @@ fn exec_linker(
     sess: &Session,
     cmd: &Command,
     out_filename: &Path,
+    flavor: LinkerFlavor,
     tmpdir: &Path,
 ) -> io::Result<Output> {
     // When attempting to spawn the linker we run a risk of blowing out the
@@ -1584,9 +1585,9 @@ fn exec_linker(
     //
     // Here we attempt to handle errors from the OS saying "your list of
     // arguments is too big" by reinvoking the linker again with an `@`-file
-    // that contains all the arguments. The theory is that this is then
-    // accepted on all linkers and the linker will read all its options out of
-    // there instead of looking at the command line.
+    // that contains all the arguments (aka 'response' files).
+    // The theory is that this is then accepted on all linkers and the linker
+    // will read all its options out of there instead of looking at the command line.
     if !cmd.very_likely_to_exceed_some_spawn_limit() {
         match cmd.command().stdout(Stdio::piped()).stderr(Stdio::piped()).spawn() {
             Ok(child) => {
@@ -1606,8 +1607,12 @@ fn exec_linker(
     let mut args = String::new();
     for arg in cmd2.take_args() {
         args.push_str(
-            &Escape { arg: arg.to_str().unwrap(), is_like_msvc: sess.target.is_like_msvc }
-                .to_string(),
+            &Escape {
+                arg: arg.to_str().unwrap(),
+                // LLD also uses MSVC-like parsing for @-files on windows
+                is_like_msvc: sess.target.is_like_msvc || (cfg!(windows) && flavor.uses_lld()),
+            }
+            .to_string(),
         );
         args.push('\n');
     }
