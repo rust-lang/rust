@@ -520,7 +520,10 @@ impl Step for SharedAssets {
             t!(fs::write(&version_info, info));
         }
 
-        builder.copy(&builder.src.join("src").join("doc").join("rust.css"), &out.join("rust.css"));
+        builder.copy_link(
+            &builder.src.join("src").join("doc").join("rust.css"),
+            &out.join("rust.css"),
+        );
 
         SharedAssetsPaths { version_info }
     }
@@ -718,7 +721,7 @@ fn doc_std(
     let _guard = builder.msg_doc(compiler, description, target);
 
     builder.run(&mut cargo.into());
-    builder.cp_r(&out_dir, out);
+    builder.cp_link_r(&out_dir, out);
 }
 
 #[derive(Debug, Clone, Hash, PartialEq, Eq)]
@@ -1151,7 +1154,7 @@ impl Step for RustcBook {
         let out_base = builder.md_doc_out(self.target).join("rustc");
         t!(fs::create_dir_all(&out_base));
         let out_listing = out_base.join("src/lints");
-        builder.cp_r(&builder.src.join("src/doc/rustc"), &out_base);
+        builder.cp_link_r(&builder.src.join("src/doc/rustc"), &out_base);
         builder.info(&format!("Generating lint docs ({})", self.target));
 
         let rustc = builder.rustc(self.compiler);
