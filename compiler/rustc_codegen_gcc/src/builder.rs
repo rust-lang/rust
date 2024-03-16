@@ -1,7 +1,6 @@
 use std::borrow::Cow;
 use std::cell::Cell;
 use std::convert::TryFrom;
-use std::fmt::Display;
 use std::ops::Deref;
 
 use gccjit::{
@@ -527,14 +526,14 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
         self.block
     }
 
-    fn append_block(cx: &'a CodegenCx<'gcc, 'tcx>, func: RValue<'gcc>, name: impl Display) -> Block<'gcc> {
+    fn append_block(cx: &'a CodegenCx<'gcc, 'tcx>, func: RValue<'gcc>, name: &str) -> Block<'gcc> {
         let func = cx.rvalue_as_function(func);
-        func.new_block(name.to_string())
+        func.new_block(name)
     }
 
-    fn append_sibling_block(&mut self, name: impl Display) -> Block<'gcc> {
+    fn append_sibling_block(&mut self, name: &str) -> Block<'gcc> {
         let func = self.current_func();
-        func.new_block(name.to_string())
+        func.new_block(name)
     }
 
     fn switch_to_block(&mut self, block: Self::BasicBlock) {

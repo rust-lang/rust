@@ -26,7 +26,6 @@ use rustc_target::abi::{self, call::FnAbi, Align, Size, WrappingRange};
 use rustc_target::spec::{HasTargetSpec, SanitizerSet, Target};
 use smallvec::SmallVec;
 use std::borrow::Cow;
-use std::fmt::Display;
 use std::iter;
 use std::ops::Deref;
 use std::ptr;
@@ -154,24 +153,14 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
 
     fn set_span(&mut self, _span: Span) {}
 
-    fn append_block(
-        cx: &'a CodegenCx<'ll, 'tcx>,
-        llfn: &'ll Value,
-        name: impl Display,
-    ) -> &'ll BasicBlock {
+    fn append_block(cx: &'a CodegenCx<'ll, 'tcx>, llfn: &'ll Value, name: &str) -> &'ll BasicBlock {
         unsafe {
-            let c_str_name;
-            let name_ptr = if cx.tcx.sess.fewer_names() {
-                const { c"".as_ptr().cast() }
-            } else {
-                c_str_name = SmallCStr::new(&name.to_string());
-                c_str_name.as_ptr()
-            };
-            llvm::LLVMAppendBasicBlockInContext(cx.llcx, llfn, name_ptr)
+            let name = SmallCStr::new(name);
+            llvm::LLVMAppendBasicBlockInContext(cx.llcx, llfn, name.as_ptr())
         }
     }
 
-    fn append_sibling_block(&mut self, name: impl Display) -> &'ll BasicBlock {
+    fn append_sibling_block(&mut self, name: &str) -> &'ll BasicBlock {
         Self::append_block(self.cx, self.llfn(), name)
     }
 

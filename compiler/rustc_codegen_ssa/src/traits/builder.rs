@@ -22,8 +22,6 @@ use rustc_target::abi::call::FnAbi;
 use rustc_target::abi::{Abi, Align, Scalar, Size, WrappingRange};
 use rustc_target::spec::HasTargetSpec;
 
-use std::fmt::Display;
-
 #[derive(Copy, Clone)]
 pub enum OverflowOp {
     Add,
@@ -51,13 +49,9 @@ pub trait BuilderMethods<'a, 'tcx>:
     fn set_span(&mut self, span: Span);
 
     // FIXME(eddyb) replace uses of this with `append_sibling_block`.
-    fn append_block(
-        cx: &'a Self::CodegenCx,
-        llfn: Self::Function,
-        name: impl Display,
-    ) -> Self::BasicBlock;
+    fn append_block(cx: &'a Self::CodegenCx, llfn: Self::Function, name: &str) -> Self::BasicBlock;
 
-    fn append_sibling_block(&mut self, name: impl Display) -> Self::BasicBlock;
+    fn append_sibling_block(&mut self, name: &str) -> Self::BasicBlock;
 
     fn switch_to_block(&mut self, llbb: Self::BasicBlock);
 
