@@ -977,6 +977,7 @@ impl char {
     }
 
     /// Returns `true` if this `char` has the `Cased` property.
+    /// A character is cased if and only if it is uppercase, lowercase, or titlecase.
     ///
     /// `Cased` is described in Chapter 4 (Character Properties) of the [Unicode Standard] and
     /// specified in the [Unicode Character Database][ucd] [`DerivedCoreProperties.txt`].
@@ -984,10 +985,20 @@ impl char {
     /// [Unicode Standard]: https://www.unicode.org/versions/latest/
     /// [ucd]: https://www.unicode.org/reports/tr44/
     /// [`DerivedCoreProperties.txt`]: https://www.unicode.org/Public/UCD/latest/ucd/DerivedCoreProperties.txt
+    ///
+    /// # Examples
+    ///
+    /// Basic usage:
+    ///
+    /// ```
+    /// #![feature(titlecase)]
+    /// assert!('A'.is_cased());
+    /// assert!('a'.is_cased());
+    /// assert!(!'京'.is_cased());
+    /// ```
     #[must_use]
+    #[unstable(feature = "titlecase", issue = "none")]
     #[inline]
-    #[doc(hidden)]
-    #[unstable(feature = "char_internals", reason = "exposed only for libstd", issue = "none")]
     pub fn is_cased(self) -> bool {
         match self {
             'A'..='Z' | 'a'..='z' => true,
