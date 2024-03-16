@@ -548,6 +548,10 @@ cc = ["@GuillaumeGomez"]
 message = "Some changes occurred in GUI tests."
 cc = ["@GuillaumeGomez"]
 
+[mentions."tests/run-make/"]
+message = "Some changes occurred in run-make tests."
+cc = ["@jieyouxu"]
+
 [mentions."src/librustdoc/html/static/css/themes/ayu.css"]
 message = "A change occurred in the Ayu theme."
 cc = ["@Cldfire"]
@@ -571,9 +575,16 @@ cc = ["@ehuss"]
 [mentions."src/tools/clippy"]
 cc = ["@rust-lang/clippy"]
 
+[mentions."src/tools/compiletest"]
+cc = ["@jieyouxu"]
+
 [mentions."src/tools/miri"]
 message = "The Miri subtree was changed"
 cc = ["@rust-lang/miri"]
+
+[mentions."src/tools/run-make-support"]
+message = "The run-make-support library was changed"
+cc = ["@jieyouxu"]
 
 [mentions."src/tools/rust-analyzer"]
 message = """
