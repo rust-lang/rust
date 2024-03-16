@@ -373,6 +373,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                         (trait_ref, lowered_ty)
                     });
 
+                self.is_in_trait_impl = trait_ref.is_some();
                 let new_impl_items = self
                     .arena
                     .alloc_from_iter(impl_items.iter().map(|item| self.lower_impl_item_ref(item)));
@@ -978,13 +979,6 @@ impl<'hir> LoweringContext<'_, 'hir> {
     }
 
     fn lower_impl_item_ref(&mut self, i: &AssocItem) -> hir::ImplItemRef {
-        let trait_item_def_id = self
-            .resolver
-            .get_partial_res(i.id)
-            .map(|r| r.expect_full_res().opt_def_id())
-            .unwrap_or(None);
-        self.is_in_trait_impl = trait_item_def_id.is_some();
-
         hir::ImplItemRef {
             id: hir::ImplItemId { owner_id: hir::OwnerId { def_id: self.local_def_id(i.id) } },
             ident: self.lower_ident(i.ident),
@@ -1000,7 +994,11 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 },
                 AssocItemKind::MacCall(..) => unimplemented!(),
             },
-            trait_item_def_id,
+            trait_item_def_id: self
+                .resolver
+                .get_partial_res(i.id)
+                .map(|r| r.expect_full_res().opt_def_id())
+                .unwrap_or(None),
         }
     }
 
