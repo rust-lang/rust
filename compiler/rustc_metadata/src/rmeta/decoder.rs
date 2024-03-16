@@ -1590,17 +1590,17 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
             })
         }
 
-        // Translate the virtual `/rustc/$hash` prefix back to a real directory
-        // that should hold actual sources, where possible.
-        //
-        // NOTE: if you update this, you might need to also update bootstrap's code for generating
-        // the `rust-src` component in `Src::run` in `src/bootstrap/dist.rs`.
-        let virtual_rust_source_base_dir = [
-            filter(sess, option_env!("CFG_VIRTUAL_RUST_SOURCE_BASE_DIR").map(Path::new)),
-            filter(sess, sess.opts.unstable_opts.simulate_remapped_rust_src_base.as_deref()),
-        ];
-
         let try_to_translate_virtual_to_real = |name: &mut rustc_span::FileName| {
+            // Translate the virtual `/rustc/$hash` prefix back to a real directory
+            // that should hold actual sources, where possible.
+            //
+            // NOTE: if you update this, you might need to also update bootstrap's code for generating
+            // the `rust-src` component in `Src::run` in `src/bootstrap/dist.rs`.
+            let virtual_rust_source_base_dir = [
+                filter(sess, option_env!("CFG_VIRTUAL_RUST_SOURCE_BASE_DIR").map(Path::new)),
+                filter(sess, sess.opts.unstable_opts.simulate_remapped_rust_src_base.as_deref()),
+            ];
+
             debug!(
                 "try_to_translate_virtual_to_real(name={:?}): \
                  virtual_rust_source_base_dir={:?}, real_rust_source_base_dir={:?}",
