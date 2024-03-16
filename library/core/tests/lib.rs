@@ -68,6 +68,7 @@
 #![feature(str_internals)]
 #![feature(std_internals)]
 #![feature(test)]
+#![feature(titlecase)]
 #![feature(trusted_len)]
 #![feature(try_blocks)]
 #![feature(try_trait_v2)]

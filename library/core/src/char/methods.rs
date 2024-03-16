@@ -748,6 +748,37 @@ impl char {
         }
     }
 
+    /// Returns `true` if this `char` has the `Cased` property.
+    /// A character is cased if and only if it is uppercase, lowercase, or titlecase.
+    ///
+    /// `Cased` is described in Chapter 3 (Conformance) of the [Unicode Standard] and
+    /// specified in the [Unicode Character Database][ucd] [`DerivedCoreProperties.txt`].
+    ///
+    /// [Unicode Standard]: https://www.unicode.org/versions/latest/
+    /// [ucd]: https://www.unicode.org/reports/tr44/
+    /// [`DerivedCoreProperties.txt`]: https://www.unicode.org/Public/UCD/latest/ucd/DerivedCoreProperties.txt
+    ///
+    /// # Examples
+    ///
+    /// Basic usage:
+    ///
+    /// ```
+    /// #![feature(titlecase)]
+    /// assert!('A'.is_cased());
+    /// assert!('a'.is_cased());
+    /// assert!(!'京'.is_cased());
+    /// ```
+    #[must_use]
+    #[unstable(feature = "titlecase", issue = "none")]
+    #[inline]
+    pub fn is_cased(self) -> bool {
+        match self {
+            'A'..='Z' | 'a'..='z' => true,
+            '\0'..='\u{A9}' => false,
+            _ => unicode::Cased(self),
+        }
+    }
+
     /// Returns `true` if this `char` has the `Lowercase` property.
     ///
     /// `Lowercase` is described in Chapter 4 (Character Properties) of the [Unicode Standard] and

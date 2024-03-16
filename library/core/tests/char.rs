@@ -42,6 +42,17 @@ fn test_from_str() {
 }
 
 #[test]
+fn test_is_cased() {
+    assert!('a'.is_cased());
+    assert!('ö'.is_cased());
+    assert!('ß'.is_cased());
+    assert!('Ü'.is_cased());
+    assert!('P'.is_cased());
+    assert!('ª'.is_cased());
+    assert!(!'攂'.is_cased());
+}
+
+#[test]
 fn test_is_lowercase() {
     assert!('a'.is_lowercase());
     assert!('ö'.is_lowercase());
