@@ -197,7 +197,7 @@ impl<'a> Tarball<'a> {
     ) {
         let destdir = self.image_dir.join(destdir.as_ref());
         t!(std::fs::create_dir_all(&destdir));
-        self.builder.copy(src.as_ref(), &destdir.join(new_name));
+        self.builder.copy_link(src.as_ref(), &destdir.join(new_name));
     }
 
     pub(crate) fn add_legal_and_readme_to(&self, destdir: impl AsRef<Path>) {
@@ -210,7 +210,7 @@ impl<'a> Tarball<'a> {
         let dest = self.image_dir.join(dest.as_ref());
 
         t!(std::fs::create_dir_all(&dest));
-        self.builder.cp_r(src.as_ref(), &dest);
+        self.builder.cp_link_r(src.as_ref(), &dest);
     }
 
     pub(crate) fn add_bulk_dir(&mut self, src: impl AsRef<Path>, dest: impl AsRef<Path>) {

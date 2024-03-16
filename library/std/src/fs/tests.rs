@@ -1782,6 +1782,7 @@ fn windows_unix_socket_exists() {
         }
         let mut addr = c::SOCKADDR_UN { sun_family: c::AF_UNIX, sun_path: mem::zeroed() };
         let bytes = socket_path.as_os_str().as_encoded_bytes();
+        let bytes = core::slice::from_raw_parts(bytes.as_ptr().cast::<i8>(), bytes.len());
         addr.sun_path[..bytes.len()].copy_from_slice(bytes);
         let len = mem::size_of_val(&addr) as i32;
         let result = c::bind(socket, ptr::addr_of!(addr).cast::<c::SOCKADDR>(), len);
