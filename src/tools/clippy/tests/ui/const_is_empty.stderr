@@ -158,10 +158,16 @@ LL |     let _ = val.is_empty();
    |             ^^^^^^^^^^^^^^
 
 error: this expression always evaluates to true
-  --> tests/ui/const_is_empty.rs:202:9
+  --> tests/ui/const_is_empty.rs:198:17
+   |
+LL |         assert!(EMPTY_STR.is_empty());
+   |                 ^^^^^^^^^^^^^^^^^^^^
+
+error: this expression always evaluates to true
+  --> tests/ui/const_is_empty.rs:203:9
    |
 LL |         EMPTY_STR.is_empty();
    |         ^^^^^^^^^^^^^^^^^^^^
 
-error: aborting due to 27 previous errors
+error: aborting due to 28 previous errors
 
