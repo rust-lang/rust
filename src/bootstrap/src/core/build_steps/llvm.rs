@@ -94,6 +94,7 @@ pub fn prebuilt_llvm_config(
         }
     }
 
+    builder.update_submodule(&Path::new("src").join("llvm-project"));
     let root = "src/llvm-project/llvm";
     let out_dir = builder.llvm_out(target);
 
@@ -279,7 +280,6 @@ impl Step for Llvm {
             Err(m) => m,
         };
 
-        builder.update_submodule(&Path::new("src").join("llvm-project"));
         if builder.llvm_link_shared() && target.is_windows() {
             panic!("shared linking to LLVM is not currently supported on {}", target.triple);
         }
