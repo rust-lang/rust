@@ -312,7 +312,7 @@ pub(crate) fn render_expr(
         None => ctx.source_range(),
     };
 
-    let mut item = CompletionItem::new(CompletionItemKind::Expression, source_range, label.clone());
+    let mut item = CompletionItem::new(CompletionItemKind::Expression, source_range, label);
 
     let snippet = format!(
         "{}$0",

@@ -399,9 +399,9 @@ pub fn diagnostics(
         .iter_mut()
         .filter_map(|it| {
             Some((
-                it.main_node
-                    .map(|ptr| ptr.map(|node| node.to_node(&ctx.sema.parse_or_expand(ptr.file_id))))
-                    .clone()?,
+                it.main_node.map(|ptr| {
+                    ptr.map(|node| node.to_node(&ctx.sema.parse_or_expand(ptr.file_id)))
+                })?,
                 it,
             ))
         })

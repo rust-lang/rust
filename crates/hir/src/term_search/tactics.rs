@@ -177,7 +177,7 @@ pub(super) fn type_constructor<'a, DB: HirDatabase>(
                 // Note that we need special case for 0 param constructors because of multi cartesian
                 // product
                 let variant_exprs: Vec<Expr> = if param_exprs.is_empty() {
-                    vec![Expr::Variant { variant, generics: generics.clone(), params: Vec::new() }]
+                    vec![Expr::Variant { variant, generics, params: Vec::new() }]
                 } else {
                     param_exprs
                         .into_iter()

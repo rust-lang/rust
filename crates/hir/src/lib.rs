@@ -1099,7 +1099,7 @@ impl Field {
             VariantDef::Union(it) => it.id.into(),
             VariantDef::Variant(it) => it.parent_enum(db).id.into(),
         };
-        let mut generics = generics.map(|it| it.ty.clone());
+        let mut generics = generics.map(|it| it.ty);
         let substs = TyBuilder::subst_for_def(db, def_id, None)
             .fill(|x| match x {
                 ParamKind::Type => {
@@ -1440,7 +1440,7 @@ impl Adt {
     /// the greatest API, FIXME find a better one.
     pub fn ty_with_args(self, db: &dyn HirDatabase, args: impl Iterator<Item = Type>) -> Type {
         let id = AdtId::from(self);
-        let mut it = args.map(|t| t.ty.clone());
+        let mut it = args.map(|t| t.ty);
         let ty = TyBuilder::def_ty(db, id.into(), None)
             .fill(|x| {
                 let r = it.next().unwrap_or_else(|| TyKind::Error.intern(Interner));
@@ -1859,7 +1859,7 @@ impl Function {
             ItemContainerId::TraitId(it) => Some(it.into()),
             ItemContainerId::ModuleId(_) | ItemContainerId::ExternBlockId(_) => None,
         };
-        let mut generics = generics.map(|it| it.ty.clone());
+        let mut generics = generics.map(|it| it.ty);
         let mut filler = |x: &_| match x {
             ParamKind::Type => {
                 generics.next().unwrap_or_else(|| TyKind::Error.intern(Interner)).cast(Interner)
@@ -1954,7 +1954,7 @@ impl Function {
             ItemContainerId::TraitId(it) => Some(it.into()),
             ItemContainerId::ModuleId(_) | ItemContainerId::ExternBlockId(_) => None,
         };
-        let mut generics = generics.map(|it| it.ty.clone());
+        let mut generics = generics.map(|it| it.ty);
         let parent_substs = parent_id.map(|id| {
             TyBuilder::subst_for_def(db, id, None)
                 .fill(|x| match x {
@@ -2215,7 +2215,7 @@ impl SelfParam {
             }
         };
 
-        let mut generics = generics.map(|it| it.ty.clone());
+        let mut generics = generics.map(|it| it.ty);
         let mut filler = |x: &_| match x {
             ParamKind::Type => {
                 generics.next().unwrap_or_else(|| TyKind::Error.intern(Interner)).cast(Interner)
