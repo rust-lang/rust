@@ -966,7 +966,7 @@ pub fn iterate_method_candidates_dyn(
             // the methods by autoderef order of *receiver types*, not *self
             // types*.
 
-            let mut table = InferenceTable::new(db, env.clone());
+            let mut table = InferenceTable::new(db, env);
             let ty = table.instantiate_canonical(ty.clone());
             let deref_chain = autoderef_method_receiver(&mut table, ty);
 
@@ -1044,7 +1044,7 @@ fn iterate_method_candidates_with_autoref(
     let ref_muted = Canonical {
         value: TyKind::Ref(Mutability::Mut, static_lifetime(), receiver_ty.value.clone())
             .intern(Interner),
-        binders: receiver_ty.binders.clone(),
+        binders: receiver_ty.binders,
     };
 
     iterate_method_candidates_by_receiver(ref_muted, first_adjustment.with_autoref(Mutability::Mut))
@@ -1060,7 +1060,7 @@ fn iterate_method_candidates_by_receiver(
     name: Option<&Name>,
     mut callback: &mut dyn FnMut(ReceiverAdjustments, AssocItemId, bool) -> ControlFlow<()>,
 ) -> ControlFlow<()> {
-    let receiver_ty = table.instantiate_canonical(receiver_ty.clone());
+    let receiver_ty = table.instantiate_canonical(receiver_ty);
     // We're looking for methods with *receiver* type receiver_ty. These could
     // be found in any of the derefs of receiver_ty, so we have to go through
     // that, including raw derefs.
@@ -1456,7 +1456,7 @@ fn is_valid_trait_method_candidate(
                 if let Some(receiver_ty) = receiver_ty {
                     check_that!(data.has_self_param());
 
-                    let fn_subst = TyBuilder::subst_for_def(db, fn_id, Some(impl_subst.clone()))
+                    let fn_subst = TyBuilder::subst_for_def(db, fn_id, Some(impl_subst))
                         .fill_with_inference_vars(table)
                         .build();
 
