@@ -83,6 +83,9 @@ struct PatInfo<'tcx, 'a> {
     binding_mode: BindingMode,
     top_info: TopInfo<'tcx>,
     decl_origin: Option<DeclOrigin<'a>>,
+
+    /// The depth of current pattern
+    current_depth: u32,
 }
 
 impl<'tcx> FnCtxt<'_, 'tcx> {
@@ -152,7 +155,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         decl_origin: Option<DeclOrigin<'tcx>>,
     ) {
         let info = TopInfo { expected, origin_expr, span };
-        let pat_info = PatInfo { binding_mode: INITIAL_BM, top_info: info, decl_origin };
+        let pat_info =
+            PatInfo { binding_mode: INITIAL_BM, top_info: info, decl_origin, current_depth: 0 };
         self.check_pat(pat, expected, pat_info);
     }
 
@@ -163,7 +167,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     /// Conversely, inside this module, `check_pat_top` should never be used.
     #[instrument(level = "debug", skip(self, pat_info))]
     fn check_pat(&self, pat: &'tcx Pat<'tcx>, expected: Ty<'tcx>, pat_info: PatInfo<'tcx, '_>) {
-        let PatInfo { binding_mode: def_bm, top_info: ti, .. } = pat_info;
+        let PatInfo { binding_mode: def_bm, top_info: ti, current_depth, .. } = pat_info;
+
         let path_res = match &pat.kind {
             PatKind::Path(qpath) => Some(
                 self.resolve_ty_and_res_fully_qualified_call(qpath, pat.hir_id, pat.span, None),
@@ -172,8 +177,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         };
         let adjust_mode = self.calc_adjust_mode(pat, path_res.map(|(res, ..)| res));
         let (expected, def_bm) = self.calc_default_binding_mode(pat, expected, def_bm, adjust_mode);
-        let pat_info =
-            PatInfo { binding_mode: def_bm, top_info: ti, decl_origin: pat_info.decl_origin };
+        let pat_info = PatInfo {
+            binding_mode: def_bm,
+            top_info: ti,
+            decl_origin: pat_info.decl_origin,
+            current_depth: current_depth + 1,
+        };
 
         let ty = match pat.kind {
             PatKind::Wild | PatKind::Err(_) => expected,
@@ -1046,14 +1055,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         expected: Ty<'tcx>,
         pat_info: PatInfo<'tcx, '_>,
     ) -> Ty<'tcx> {
-        let PatInfo { binding_mode: def_bm, top_info: ti, decl_origin } = pat_info;
+        let PatInfo { binding_mode: def_bm, top_info: ti, decl_origin, current_depth } = pat_info;
         let tcx = self.tcx;
         let on_error = |e| {
             for pat in subpats {
                 self.check_pat(
                     pat,
                     Ty::new_error(tcx, e),
-                    PatInfo { binding_mode: def_bm, top_info: ti, decl_origin },
+                    PatInfo { binding_mode: def_bm, top_info: ti, decl_origin, current_depth },
                 );
             }
         };
@@ -1120,7 +1129,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 self.check_pat(
                     subpat,
                     field_ty,
-                    PatInfo { binding_mode: def_bm, top_info: ti, decl_origin },
+                    PatInfo { binding_mode: def_bm, top_info: ti, decl_origin, current_depth },
                 );
 
                 self.tcx.check_stability(
@@ -2134,7 +2143,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // The expected type must be an array or slice, but was neither, so error.
             _ => {
                 let guar = expected.error_reported().err().unwrap_or_else(|| {
-                    self.error_expected_array_or_slice(span, expected, pat_info.top_info)
+                    self.error_expected_array_or_slice(span, expected, pat_info)
                 });
                 let err = Ty::new_error(self.tcx, guar);
                 (err, Some(err), err)
@@ -2273,8 +2282,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         &self,
         span: Span,
         expected_ty: Ty<'tcx>,
-        ti: TopInfo<'tcx>,
+        pat_info: PatInfo<'tcx, '_>,
     ) -> ErrorGuaranteed {
+        let PatInfo { top_info: ti, current_depth, .. } = pat_info;
+
         let mut err = struct_span_code_err!(
             self.dcx(),
             span,
@@ -2292,9 +2303,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             && let Some(_) = ti.origin_expr
             && let Ok(snippet) = self.tcx.sess.source_map().span_to_snippet(span)
         {
-            let ty = self.resolve_vars_if_possible(ti.expected);
-            let is_slice_or_array_or_vector = self.is_slice_or_array_or_vector(ty);
-            match is_slice_or_array_or_vector.1.kind() {
+            let resolved_ty = self.resolve_vars_if_possible(ti.expected);
+            let (is_slice_or_array_or_vector, resolved_ty) =
+                self.is_slice_or_array_or_vector(resolved_ty);
+            match resolved_ty.kind() {
                 ty::Adt(adt_def, _)
                     if self.tcx.is_diagnostic_item(sym::Option, adt_def.did())
                         || self.tcx.is_diagnostic_item(sym::Result, adt_def.did()) =>
@@ -2309,7 +2321,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 }
                 _ => (),
             }
-            if is_slice_or_array_or_vector.0 {
+
+            let is_top_level = current_depth <= 1;
+            if is_slice_or_array_or_vector && is_top_level {
                 err.span_suggestion(
                     span,
                     "consider slicing here",
