@@ -435,6 +435,22 @@ impl<'a, 'tcx> WrongNumberOfGenericArgs<'a, 'tcx> {
         &self,
         num_params_to_take: usize,
     ) -> String {
+        let is_in_a_method_call = self
+            .tcx
+            .hir()
+            .parent_iter(self.path_segment.hir_id)
+            .skip(1)
+            .find_map(|(_, node)| match node {
+                hir::Node::Expr(expr) => Some(expr),
+                _ => None,
+            })
+            .is_some_and(|expr| {
+                matches!(
+                    expr.kind,
+                    hir::ExprKind::MethodCall(hir::PathSegment { args: Some(_), .. }, ..)
+                )
+            });
+
         let fn_sig = self.tcx.hir().get_if_local(self.def_id).and_then(hir::Node::fn_sig);
         let is_used_in_input = |def_id| {
             fn_sig.is_some_and(|fn_sig| {
@@ -453,14 +469,17 @@ impl<'a, 'tcx> WrongNumberOfGenericArgs<'a, 'tcx> {
             .skip(self.params_offset + self.num_provided_type_or_const_args())
             .take(num_params_to_take)
             .map(|param| match param.kind {
-                // This is being inferred from the item's inputs, no need to set it.
-                ty::GenericParamDefKind::Type { .. } if is_used_in_input(param.def_id) => {
-                    "_".to_string()
+                // If it's in method call (turbofish), it might be inferred from the expression (e.g. `.collect::<Vec<_>>()`)
+                // If it is being inferred from the item's inputs, no need to set it.
+                ty::GenericParamDefKind::Type { .. }
+                    if is_in_a_method_call || is_used_in_input(param.def_id) =>
+                {
+                    "_"
                 }
-                _ => param.name.to_string(),
+                _ => param.name.as_str(),
             })
-            .collect::<Vec<_>>()
-            .join(", ")
+            .intersperse(", ")
+            .collect()
     }
 
     fn get_unbound_associated_types(&self) -> Vec<String> {
