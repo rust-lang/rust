@@ -49,7 +49,7 @@ use intern::Interned;
 use la_arena::{Arena, Idx, IdxRange, RawIdx};
 use rustc_hash::FxHashMap;
 use smallvec::SmallVec;
-use span::{AstIdNode, FileAstId, Span};
+use span::{AstIdNode, FileAstId, SyntaxContextId};
 use stdx::never;
 use syntax::{ast, match_ast, SyntaxKind};
 use triomphe::Arc;
@@ -790,8 +790,7 @@ pub struct MacroCall {
     pub path: Interned<ModPath>,
     pub ast_id: FileAstId<ast::MacroCall>,
     pub expand_to: ExpandTo,
-    // FIXME: We need to move this out. It invalidates the item tree when typing inside the macro call.
-    pub call_site: Span,
+    pub ctxt: SyntaxContextId,
 }
 
 #[derive(Debug, Clone, Eq, PartialEq)]

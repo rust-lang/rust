@@ -206,7 +206,7 @@ pub(crate) fn inline_call(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<
     let fn_body = fn_source.value.body()?;
     let param_list = fn_source.value.param_list()?;
 
-    let FileRange { file_id, range } = fn_source.syntax().original_file_range(ctx.sema.db);
+    let FileRange { file_id, range } = fn_source.syntax().original_file_range_rooted(ctx.sema.db);
     if file_id == ctx.file_id() && range.contains(ctx.offset()) {
         cov_mark::hit!(inline_call_recursive);
         return None;

@@ -29,6 +29,7 @@ pre                 { color: #DCDCCC; background: #3F3F3F; font-size: 22px; padd
 .numeric_literal    { color: #BFEBBF; }
 .bool_literal       { color: #BFE6EB; }
 .macro              { color: #94BFF3; }
+.proc_macro         { color: #94BFF3; text-decoration: underline; }
 .derive             { color: #94BFF3; font-style: italic; }
 .module             { color: #AFD8AF; }
 .value_param        { color: #DCDCCC; }
@@ -45,12 +46,12 @@ pre                 { color: #DCDCCC; background: #3F3F3F; font-size: 22px; padd
 </style>
 <pre><code><span class="keyword">use</span> <span class="module crate_root library">proc_macros</span><span class="operator">::</span><span class="brace">{</span><span class="function library">mirror</span><span class="comma">,</span> <span class="function library">identity</span><span class="comma">,</span> <span class="derive library">DeriveIdentity</span><span class="brace">}</span><span class="semicolon">;</span>
 
-<span class="macro library">mirror</span><span class="macro_bang">!</span> <span class="brace macro">{</span>
-    <span class="brace macro">{</span>
-        <span class="comma macro">,</span><span class="builtin_type macro">i32</span> <span class="colon macro">:</span><span class="field declaration macro public">x</span> <span class="keyword macro">pub</span>
-        <span class="comma macro">,</span><span class="builtin_type macro">i32</span> <span class="colon macro">:</span><span class="field declaration macro public">y</span> <span class="keyword macro">pub</span>
-    <span class="brace macro">}</span> <span class="struct declaration macro">Foo</span> <span class="keyword macro">struct</span>
-<span class="brace macro">}</span>
+<span class="proc_macro library">mirror</span><span class="macro_bang">!</span> <span class="brace macro proc_macro">{</span>
+    <span class="brace macro proc_macro">{</span>
+        <span class="comma macro proc_macro">,</span><span class="builtin_type macro proc_macro">i32</span> <span class="colon macro proc_macro">:</span><span class="field declaration macro proc_macro public">x</span> <span class="keyword macro proc_macro">pub</span>
+        <span class="comma macro proc_macro">,</span><span class="builtin_type macro proc_macro">i32</span> <span class="colon macro proc_macro">:</span><span class="field declaration macro proc_macro public">y</span> <span class="keyword macro proc_macro">pub</span>
+    <span class="brace macro proc_macro">}</span> <span class="struct declaration macro proc_macro">Foo</span> <span class="keyword macro proc_macro">struct</span>
+<span class="brace macro proc_macro">}</span>
 <span class="keyword">macro_rules</span><span class="macro_bang">!</span> <span class="macro declaration">def_fn</span> <span class="brace">{</span>
     <span class="parenthesis">(</span><span class="punctuation">$</span><span class="parenthesis">(</span><span class="punctuation">$</span>tt<span class="colon">:</span>tt<span class="parenthesis">)</span><span class="punctuation">*</span><span class="parenthesis">)</span> <span class="operator">=</span><span class="angle">&gt;</span> <span class="brace">{</span><span class="punctuation">$</span><span class="parenthesis">(</span><span class="punctuation">$</span>tt<span class="parenthesis">)</span><span class="punctuation">*</span><span class="brace">}</span>
 <span class="brace">}</span>
@@ -93,7 +94,7 @@ pre                 { color: #DCDCCC; background: #3F3F3F; font-size: 22px; padd
 <span class="brace">}</span>
 
 
-<span class="macro default_library library">include</span><span class="macro_bang">!</span><span class="parenthesis macro">(</span><span class="none macro">concat</span><span class="punctuation macro">!</span><span class="parenthesis macro">(</span><span class="string_literal macro">"foo/"</span><span class="comma macro">,</span> <span class="string_literal macro">"foo.rs"</span><span class="parenthesis macro">)</span><span class="parenthesis macro">)</span><span class="semicolon">;</span>
+<span class="macro default_library library">include</span><span class="macro_bang">!</span><span class="parenthesis macro">(</span><span class="macro default_library library macro">concat</span><span class="macro_bang macro">!</span><span class="parenthesis macro">(</span><span class="string_literal macro">"foo/"</span><span class="string_literal macro">,</span> <span class="string_literal macro">"foo.rs"</span><span class="parenthesis macro">)</span><span class="parenthesis macro">)</span><span class="semicolon">;</span>
 
 <span class="keyword">fn</span> <span class="function declaration">main</span><span class="parenthesis">(</span><span class="parenthesis">)</span> <span class="brace">{</span>
     <span class="macro default_library library">format_args</span><span class="macro_bang">!</span><span class="parenthesis macro">(</span><span class="string_literal macro">"Hello, </span><span class="format_specifier">{</span><span class="format_specifier">}</span><span class="string_literal macro">!"</span><span class="comma macro">,</span> <span class="parenthesis macro">(</span><span class="numeric_literal macro">92</span><span class="comma macro">,</span><span class="parenthesis macro">)</span><span class="operator macro">.</span><span class="field library macro">0</span><span class="parenthesis macro">)</span><span class="semicolon">;</span>

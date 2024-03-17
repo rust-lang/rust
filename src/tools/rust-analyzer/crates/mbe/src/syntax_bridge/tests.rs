@@ -1,4 +1,5 @@
 use rustc_hash::FxHashMap;
+use span::Span;
 use syntax::{ast, AstNode};
 use test_utils::extract_annotations;
 use tt::{
@@ -6,7 +7,7 @@ use tt::{
     Leaf, Punct, Spacing,
 };
 
-use crate::{syntax_node_to_token_tree, DummyTestSpanData, DummyTestSpanMap, DUMMY};
+use crate::{syntax_node_to_token_tree, DummyTestSpanMap, DUMMY};
 
 fn check_punct_spacing(fixture: &str) {
     let source_file = ast::SourceFile::parse(fixture).ok().unwrap();
@@ -28,7 +29,7 @@ fn check_punct_spacing(fixture: &str) {
     while !cursor.eof() {
         while let Some(token_tree) = cursor.token_tree() {
             if let TokenTreeRef::Leaf(
-                Leaf::Punct(Punct { spacing, span: DummyTestSpanData { range, .. }, .. }),
+                Leaf::Punct(Punct { spacing, span: Span { range, .. }, .. }),
                 _,
             ) = token_tree
             {

@@ -1710,7 +1710,7 @@ use proc_macros::mirror;
 mirror$0! {}
 "#,
             expect![[r#"
-                mirror Macro FileId(1) 1..77 22..28
+                mirror ProcMacro FileId(1) 1..77 22..28
 
                 FileId(0) 26..32
             "#]],

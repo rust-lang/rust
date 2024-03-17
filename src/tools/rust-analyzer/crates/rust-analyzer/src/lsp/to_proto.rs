@@ -15,6 +15,7 @@ use ide::{
 };
 use ide_db::rust_doc::format_docs;
 use itertools::Itertools;
+use semver::VersionReq;
 use serde_json::to_value;
 use vfs::AbsPath;
 
@@ -56,6 +57,7 @@ pub(crate) fn symbol_kind(symbol_kind: SymbolKind) -> lsp_types::SymbolKind {
         SymbolKind::Variant => lsp_types::SymbolKind::ENUM_MEMBER,
         SymbolKind::Trait | SymbolKind::TraitAlias => lsp_types::SymbolKind::INTERFACE,
         SymbolKind::Macro
+        | SymbolKind::ProcMacro
         | SymbolKind::BuiltinAttr
         | SymbolKind::Attribute
         | SymbolKind::Derive
@@ -138,6 +140,7 @@ pub(crate) fn completion_item_kind(
             SymbolKind::LifetimeParam => lsp_types::CompletionItemKind::TYPE_PARAMETER,
             SymbolKind::Local => lsp_types::CompletionItemKind::VARIABLE,
             SymbolKind::Macro => lsp_types::CompletionItemKind::FUNCTION,
+            SymbolKind::ProcMacro => lsp_types::CompletionItemKind::FUNCTION,
             SymbolKind::Module => lsp_types::CompletionItemKind::MODULE,
             SymbolKind::SelfParam => lsp_types::CompletionItemKind::VALUE,
             SymbolKind::SelfType => lsp_types::CompletionItemKind::TYPE_PARAMETER,
@@ -443,17 +446,24 @@ pub(crate) fn inlay_hint(
     file_id: FileId,
     inlay_hint: InlayHint,
 ) -> Cancellable<lsp_types::InlayHint> {
-    let is_visual_studio_code = snap.config.is_visual_studio_code();
     let needs_resolve = inlay_hint.needs_resolve;
     let (label, tooltip, mut something_to_resolve) =
         inlay_hint_label(snap, fields_to_resolve, needs_resolve, inlay_hint.label)?;
-    let text_edits =
-        if !is_visual_studio_code && needs_resolve && fields_to_resolve.resolve_text_edits {
-            something_to_resolve |= inlay_hint.text_edit.is_some();
-            None
-        } else {
-            inlay_hint.text_edit.map(|it| text_edit_vec(line_index, it))
-        };
+
+    let text_edits = if snap
+        .config
+        .visual_studio_code_version()
+        // https://github.com/microsoft/vscode/issues/193124
+        .map_or(true, |version| VersionReq::parse(">=1.86.0").unwrap().matches(version))
+        && needs_resolve
+        && fields_to_resolve.resolve_text_edits
+    {
+        something_to_resolve |= inlay_hint.text_edit.is_some();
+        None
+    } else {
+        inlay_hint.text_edit.map(|it| text_edit_vec(line_index, it))
+    };
+
     let data = if needs_resolve && something_to_resolve {
         Some(to_value(lsp_ext::InlayHintResolveData { file_id: file_id.index() }).unwrap())
     } else {
@@ -667,6 +677,7 @@ fn semantic_token_type_and_modifiers(
             SymbolKind::Trait => semantic_tokens::INTERFACE,
             SymbolKind::TraitAlias => semantic_tokens::INTERFACE,
             SymbolKind::Macro => semantic_tokens::MACRO,
+            SymbolKind::ProcMacro => semantic_tokens::PROC_MACRO,
             SymbolKind::BuiltinAttr => semantic_tokens::BUILTIN_ATTRIBUTE,
             SymbolKind::ToolModule => semantic_tokens::TOOL_MODULE,
         },
@@ -720,6 +731,7 @@ fn semantic_token_type_and_modifiers(
             HlMod::IntraDocLink => semantic_tokens::INTRA_DOC_LINK,
             HlMod::Library => semantic_tokens::LIBRARY,
             HlMod::Macro => semantic_tokens::MACRO_MODIFIER,
+            HlMod::ProcMacro => semantic_tokens::PROC_MACRO_MODIFIER,
             HlMod::Mutable => semantic_tokens::MUTABLE,
             HlMod::Public => semantic_tokens::PUBLIC,
             HlMod::Reference => semantic_tokens::REFERENCE,
@@ -1507,13 +1519,28 @@ pub(crate) fn test_item(
         id: test_item.id,
         label: test_item.label,
         kind: match test_item.kind {
-            ide::TestItemKind::Crate => lsp_ext::TestItemKind::Package,
+            ide::TestItemKind::Crate(id) => 'b: {
+                let Some((cargo_ws, target)) = snap.cargo_target_for_crate_root(id) else {
+                    break 'b lsp_ext::TestItemKind::Package;
+                };
+                let target = &cargo_ws[target];
+                match target.kind {
+                    project_model::TargetKind::Bin
+                    | project_model::TargetKind::Lib { .. }
+                    | project_model::TargetKind::Example
+                    | project_model::TargetKind::BuildScript
+                    | project_model::TargetKind::Other => lsp_ext::TestItemKind::Package,
+                    project_model::TargetKind::Test | project_model::TargetKind::Bench => {
+                        lsp_ext::TestItemKind::Test
+                    }
+                }
+            }
             ide::TestItemKind::Module => lsp_ext::TestItemKind::Module,
             ide::TestItemKind::Function => lsp_ext::TestItemKind::Test,
         },
         can_resolve_children: matches!(
             test_item.kind,
-            ide::TestItemKind::Crate | ide::TestItemKind::Module
+            ide::TestItemKind::Crate(_) | ide::TestItemKind::Module
         ),
         parent: test_item.parent,
         text_document: test_item

@@ -16,6 +16,7 @@ use std::{env, fs, path::PathBuf, process::ExitCode, sync::Arc};
 use anyhow::Context;
 use lsp_server::Connection;
 use rust_analyzer::{cli::flags, config::Config, from_json};
+use semver::Version;
 use tracing_subscriber::fmt::writer::BoxMakeWriter;
 use vfs::AbsPathBuf;
 
@@ -193,10 +194,18 @@ fn run_server() -> anyhow::Result<()> {
         }
     };
 
-    let mut is_visual_studio_code = false;
+    let mut visual_studio_code_version = None;
     if let Some(client_info) = client_info {
-        tracing::info!("Client '{}' {}", client_info.name, client_info.version.unwrap_or_default());
-        is_visual_studio_code = client_info.name.starts_with("Visual Studio Code");
+        tracing::info!(
+            "Client '{}' {}",
+            client_info.name,
+            client_info.version.as_deref().unwrap_or_default()
+        );
+        visual_studio_code_version = client_info
+            .name
+            .starts_with("Visual Studio Code")
+            .then(|| client_info.version.as_deref().map(Version::parse).and_then(Result::ok))
+            .flatten();
     }
 
     let workspace_roots = workspace_folders
@@ -210,7 +219,8 @@ fn run_server() -> anyhow::Result<()> {
         })
         .filter(|workspaces| !workspaces.is_empty())
         .unwrap_or_else(|| vec![root_path.clone()]);
-    let mut config = Config::new(root_path, capabilities, workspace_roots, is_visual_studio_code);
+    let mut config =
+        Config::new(root_path, capabilities, workspace_roots, visual_studio_code_version);
     if let Some(json) = initialization_options {
         if let Err(e) = config.update(json) {
             use lsp_types::{

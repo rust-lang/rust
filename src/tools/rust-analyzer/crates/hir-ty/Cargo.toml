@@ -23,10 +23,10 @@ oorandom = "11.1.3"
 tracing.workspace = true
 rustc-hash.workspace = true
 scoped-tls = "1.0.0"
-chalk-solve = { version = "0.96.0", default-features = false }
-chalk-ir = "0.96.0"
-chalk-recursive = { version = "0.96.0", default-features = false }
-chalk-derive = "0.96.0"
+chalk-solve.workspace = true
+chalk-ir.workspace = true
+chalk-recursive.workspace = true
+chalk-derive.workspace = true
 la-arena.workspace = true
 once_cell = "1.17.0"
 triomphe.workspace = true

@@ -177,17 +177,19 @@ fn print_debug_subtree<S: fmt::Debug>(
     let align = "  ".repeat(level);
 
     let Delimiter { kind, open, close } = &subtree.delimiter;
-    let aux = match kind {
-        DelimiterKind::Invisible => format!("$$ {:?} {:?}", open, close),
-        DelimiterKind::Parenthesis => format!("() {:?} {:?}", open, close),
-        DelimiterKind::Brace => format!("{{}} {:?} {:?}", open, close),
-        DelimiterKind::Bracket => format!("[] {:?} {:?}", open, close),
+    let delim = match kind {
+        DelimiterKind::Invisible => "$$",
+        DelimiterKind::Parenthesis => "()",
+        DelimiterKind::Brace => "{}",
+        DelimiterKind::Bracket => "[]",
     };
 
-    if subtree.token_trees.is_empty() {
-        write!(f, "{align}SUBTREE {aux}")?;
-    } else {
-        writeln!(f, "{align}SUBTREE {aux}")?;
+    write!(f, "{align}SUBTREE {delim} ",)?;
+    fmt::Debug::fmt(&open, f)?;
+    write!(f, " ")?;
+    fmt::Debug::fmt(&close, f)?;
+    if !subtree.token_trees.is_empty() {
+        writeln!(f)?;
         for (idx, child) in subtree.token_trees.iter().enumerate() {
             print_debug_token(f, child, level + 1)?;
             if idx != subtree.token_trees.len() - 1 {
@@ -208,16 +210,24 @@ fn print_debug_token<S: fmt::Debug>(
 
     match tkn {
         TokenTree::Leaf(leaf) => match leaf {
-            Leaf::Literal(lit) => write!(f, "{}LITERAL {} {:?}", align, lit.text, lit.span)?,
-            Leaf::Punct(punct) => write!(
-                f,
-                "{}PUNCH   {} [{}] {:?}",
-                align,
-                punct.char,
-                if punct.spacing == Spacing::Alone { "alone" } else { "joint" },
-                punct.span
-            )?,
-            Leaf::Ident(ident) => write!(f, "{}IDENT   {} {:?}", align, ident.text, ident.span)?,
+            Leaf::Literal(lit) => {
+                write!(f, "{}LITERAL {}", align, lit.text)?;
+                fmt::Debug::fmt(&lit.span, f)?;
+            }
+            Leaf::Punct(punct) => {
+                write!(
+                    f,
+                    "{}PUNCH   {} [{}] ",
+                    align,
+                    punct.char,
+                    if punct.spacing == Spacing::Alone { "alone" } else { "joint" },
+                )?;
+                fmt::Debug::fmt(&punct.span, f)?;
+            }
+            Leaf::Ident(ident) => {
+                write!(f, "{}IDENT   {} ", align, ident.text)?;
+                fmt::Debug::fmt(&ident.span, f)?;
+            }
         },
         TokenTree::Subtree(subtree) => {
             print_debug_subtree(f, subtree, level)?;

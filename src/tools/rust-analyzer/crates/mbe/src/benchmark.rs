@@ -1,6 +1,7 @@
 //! This module add real world mbe example for benchmark tests
 
 use rustc_hash::FxHashMap;
+use span::Span;
 use syntax::{
     ast::{self, HasName},
     AstNode, SmolStr,
@@ -9,7 +10,7 @@ use test_utils::{bench, bench_fixture, skip_slow_tests};
 
 use crate::{
     parser::{MetaVarKind, Op, RepeatKind, Separator},
-    syntax_node_to_token_tree, DeclarativeMacro, DummyTestSpanData, DummyTestSpanMap, DUMMY,
+    syntax_node_to_token_tree, DeclarativeMacro, DummyTestSpanMap, DUMMY,
 };
 
 #[test]
@@ -50,14 +51,14 @@ fn benchmark_expand_macro_rules() {
     assert_eq!(hash, 69413);
 }
 
-fn macro_rules_fixtures() -> FxHashMap<String, DeclarativeMacro<DummyTestSpanData>> {
+fn macro_rules_fixtures() -> FxHashMap<String, DeclarativeMacro<Span>> {
     macro_rules_fixtures_tt()
         .into_iter()
         .map(|(id, tt)| (id, DeclarativeMacro::parse_macro_rules(&tt, true, true)))
         .collect()
 }
 
-fn macro_rules_fixtures_tt() -> FxHashMap<String, tt::Subtree<DummyTestSpanData>> {
+fn macro_rules_fixtures_tt() -> FxHashMap<String, tt::Subtree<Span>> {
     let fixture = bench_fixture::numerous_macro_rules();
     let source_file = ast::SourceFile::parse(&fixture).ok().unwrap();
 
@@ -79,8 +80,8 @@ fn macro_rules_fixtures_tt() -> FxHashMap<String, tt::Subtree<DummyTestSpanData>
 
 /// Generate random invocation fixtures from rules
 fn invocation_fixtures(
-    rules: &FxHashMap<String, DeclarativeMacro<DummyTestSpanData>>,
-) -> Vec<(String, tt::Subtree<DummyTestSpanData>)> {
+    rules: &FxHashMap<String, DeclarativeMacro<Span>>,
+) -> Vec<(String, tt::Subtree<Span>)> {
     let mut seed = 123456789;
     let mut res = Vec::new();
 
@@ -128,8 +129,8 @@ fn invocation_fixtures(
     return res;
 
     fn collect_from_op(
-        op: &Op<DummyTestSpanData>,
-        token_trees: &mut Vec<tt::TokenTree<DummyTestSpanData>>,
+        op: &Op<Span>,
+        token_trees: &mut Vec<tt::TokenTree<Span>>,
         seed: &mut usize,
     ) {
         return match op {
@@ -221,19 +222,19 @@ fn invocation_fixtures(
             *seed = usize::wrapping_add(usize::wrapping_mul(*seed, a), c);
             *seed
         }
-        fn make_ident(ident: &str) -> tt::TokenTree<DummyTestSpanData> {
+        fn make_ident(ident: &str) -> tt::TokenTree<Span> {
             tt::Leaf::Ident(tt::Ident { span: DUMMY, text: SmolStr::new(ident) }).into()
         }
-        fn make_punct(char: char) -> tt::TokenTree<DummyTestSpanData> {
+        fn make_punct(char: char) -> tt::TokenTree<Span> {
             tt::Leaf::Punct(tt::Punct { span: DUMMY, char, spacing: tt::Spacing::Alone }).into()
         }
-        fn make_literal(lit: &str) -> tt::TokenTree<DummyTestSpanData> {
+        fn make_literal(lit: &str) -> tt::TokenTree<Span> {
             tt::Leaf::Literal(tt::Literal { span: DUMMY, text: SmolStr::new(lit) }).into()
         }
         fn make_subtree(
             kind: tt::DelimiterKind,
-            token_trees: Option<Vec<tt::TokenTree<DummyTestSpanData>>>,
-        ) -> tt::TokenTree<DummyTestSpanData> {
+            token_trees: Option<Vec<tt::TokenTree<Span>>>,
+        ) -> tt::TokenTree<Span> {
             tt::Subtree {
                 delimiter: tt::Delimiter { open: DUMMY, close: DUMMY, kind },
                 token_trees: token_trees.map(Vec::into_boxed_slice).unwrap_or_default(),

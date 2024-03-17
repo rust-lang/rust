@@ -234,6 +234,13 @@ impl Notification for EndRunTest {
     const METHOD: &'static str = "experimental/endRunTest";
 }
 
+pub enum AppendOutputToRunTest {}
+
+impl Notification for AppendOutputToRunTest {
+    type Params = String;
+    const METHOD: &'static str = "experimental/appendOutputToRunTest";
+}
+
 pub enum AbortRunTest {}
 
 impl Notification for AbortRunTest {
