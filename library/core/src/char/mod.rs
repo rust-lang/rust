@@ -443,10 +443,10 @@ impl ExactSizeIterator for ToUppercase {}
 
 #[derive(Debug, Clone)]
 enum CaseMappingIter {
-    Three(char, char, char),
-    Two(char, char),
-    One(char),
     Zero,
+    One(char),
+    Two([char; 2]),
+    Three([char; 3]),
 }
 
 impl CaseMappingIter {
@@ -455,10 +455,10 @@ impl CaseMappingIter {
             if chars[1] == '\0' {
                 CaseMappingIter::One(chars[0]) // Including if chars[0] == '\0'
             } else {
-                CaseMappingIter::Two(chars[0], chars[1])
+                CaseMappingIter::Two([chars[0], chars[1]])
             }
         } else {
-            CaseMappingIter::Three(chars[0], chars[1], chars[2])
+            CaseMappingIter::Three([chars[0], chars[1], chars[2]])
         }
     }
 }
@@ -467,28 +467,28 @@ impl Iterator for CaseMappingIter {
     type Item = char;
     fn next(&mut self) -> Option<char> {
         match *self {
-            CaseMappingIter::Three(a, b, c) => {
-                *self = CaseMappingIter::Two(b, c);
-                Some(a)
-            }
-            CaseMappingIter::Two(b, c) => {
-                *self = CaseMappingIter::One(c);
-                Some(b)
-            }
+            CaseMappingIter::Zero => None,
             CaseMappingIter::One(c) => {
                 *self = CaseMappingIter::Zero;
                 Some(c)
             }
-            CaseMappingIter::Zero => None,
+            CaseMappingIter::Two([b, c]) => {
+                *self = CaseMappingIter::One(c);
+                Some(b)
+            }
+            CaseMappingIter::Three([a, b, c]) => {
+                *self = CaseMappingIter::Two([b, c]);
+                Some(a)
+            }
         }
     }
 
     fn size_hint(&self) -> (usize, Option<usize>) {
         let size = match self {
-            CaseMappingIter::Three(..) => 3,
-            CaseMappingIter::Two(..) => 2,
-            CaseMappingIter::One(_) => 1,
             CaseMappingIter::Zero => 0,
+            CaseMappingIter::One(_) => 1,
+            CaseMappingIter::Two(..) => 2,
+            CaseMappingIter::Three(..) => 3,
         };
         (size, Some(size))
     }
@@ -497,19 +497,19 @@ impl Iterator for CaseMappingIter {
 impl DoubleEndedIterator for CaseMappingIter {
     fn next_back(&mut self) -> Option<char> {
         match *self {
-            CaseMappingIter::Three(a, b, c) => {
-                *self = CaseMappingIter::Two(a, b);
-                Some(c)
-            }
-            CaseMappingIter::Two(b, c) => {
-                *self = CaseMappingIter::One(b);
-                Some(c)
-            }
+            CaseMappingIter::Zero => None,
             CaseMappingIter::One(c) => {
                 *self = CaseMappingIter::Zero;
                 Some(c)
             }
-            CaseMappingIter::Zero => None,
+            CaseMappingIter::Two([b, c]) => {
+                *self = CaseMappingIter::One(b);
+                Some(c)
+            }
+            CaseMappingIter::Three([a, b, c]) => {
+                *self = CaseMappingIter::Two([a, b]);
+                Some(c)
+            }
         }
     }
 }
@@ -517,17 +517,17 @@ impl DoubleEndedIterator for CaseMappingIter {
 impl fmt::Display for CaseMappingIter {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match *self {
-            CaseMappingIter::Three(a, b, c) => {
+            CaseMappingIter::Zero => Ok(()),
+            CaseMappingIter::One(c) => f.write_char(c),
+            CaseMappingIter::Two([b, c]) => {
+                f.write_char(b)?;
+                f.write_char(c)
+            }
+            CaseMappingIter::Three([a, b, c]) => {
                 f.write_char(a)?;
                 f.write_char(b)?;
                 f.write_char(c)
             }
-            CaseMappingIter::Two(b, c) => {
-                f.write_char(b)?;
-                f.write_char(c)
-            }
-            CaseMappingIter::One(c) => f.write_char(c),
-            CaseMappingIter::Zero => Ok(()),
         }
     }
 }
