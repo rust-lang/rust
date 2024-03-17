@@ -726,6 +726,30 @@ cc = ["@rust-lang/project-exploit-mitigations", "@rcvalle"]
 [mentions."tests/ui/check-cfg"]
 cc = ["@Urgau"]
 
+[mentions."compiler/rustc_middle/src/mir/coverage.rs"]
+message = "Some changes occurred in coverage instrumentation."
+cc = ["@Zalathar"]
+
+[mentions."compiler/rustc_mir_build/src/build/coverageinfo.rs"]
+message = "Some changes occurred in coverage instrumentation."
+cc = ["@Zalathar"]
+
+[mentions."compiler/rustc_mir_transform/src/coverage"]
+message = "Some changes occurred in coverage instrumentation."
+cc = ["@Zalathar"]
+
+[mentions."compiler/rustc_codegen_llvm/src/coverageinfo"]
+message = "Some changes occurred in coverage instrumentation."
+cc = ["@Zalathar"]
+
+[mentions."compiler/rustc_codegen_ssa/src/mir/coverageinfo.rs"]
+message = "Some changes occurred in coverage instrumentation."
+cc = ["@Zalathar"]
+
+[mentions."tests/coverage"]
+message = "Some changes occurred in coverage tests."
+cc = ["@Zalathar"]
+
 [assign]
 warn_non_default_branch = true
 contributing_url = "https://rustc-dev-guide.rust-lang.org/getting-started.html"
