@@ -1,5 +1,5 @@
 error: environment variable `\t` not defined at compile time
-  --> $DIR/issue-110547.rs:4:5
+  --> $DIR/name-whitespace-issue-110547.rs:4:5
    |
 LL |     env!{"\t"};
    |     ^^^^^^^^^^
@@ -8,7 +8,7 @@ LL |     env!{"\t"};
    = note: this error originates in the macro `env` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: environment variable `\t` not defined at compile time
-  --> $DIR/issue-110547.rs:5:5
+  --> $DIR/name-whitespace-issue-110547.rs:5:5
    |
 LL |     env!("\t");
    |     ^^^^^^^^^^
@@ -17,7 +17,7 @@ LL |     env!("\t");
    = note: this error originates in the macro `env` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: environment variable `\u{2069}` not defined at compile time
-  --> $DIR/issue-110547.rs:6:5
+  --> $DIR/name-whitespace-issue-110547.rs:6:5
    |
 LL |     env!("\u{2069}");
    |     ^^^^^^^^^^^^^^^^

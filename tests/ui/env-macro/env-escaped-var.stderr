@@ -1,5 +1,5 @@
 error: environment variable `\t` not defined at compile time
-  --> $DIR/extenv-escaped-var.rs:2:5
+  --> $DIR/env-escaped-var.rs:2:5
    |
 LL |     env!("\t");
    |     ^^^^^^^^^^
