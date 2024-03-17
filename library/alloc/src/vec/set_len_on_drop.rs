@@ -14,9 +14,12 @@ impl<'a> SetLenOnDrop<'a> {
         SetLenOnDrop { local_len: *len, len }
     }
 
+    /// # Safety
+    /// `self.current_len() + increment` must not overflow.
     #[inline]
-    pub(super) fn increment_len(&mut self, increment: usize) {
-        self.local_len += increment;
+    pub(super) unsafe fn increment_len_unchecked(&mut self, increment: usize) {
+        // SAFETY: This is our precondition
+        self.local_len = unsafe { self.local_len.unchecked_add(increment) };
     }
 
     #[inline]
