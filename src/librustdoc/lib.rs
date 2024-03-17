@@ -530,6 +530,14 @@ fn opts() -> Vec<RustcOptGroup> {
         unstable("test-builder", |o| {
             o.optopt("", "test-builder", "The rustc-like binary to use as the test builder", "PATH")
         }),
+        unstable("test-builder-wrapper", |o| {
+            o.optmulti(
+                "",
+                "test-builder-wrapper",
+                "Wrapper program to pass test-builder and arguments",
+                "PATH",
+            )
+        }),
         unstable("check", |o| o.optflagmulti("", "check", "Run rustdoc checks")),
         unstable("generate-redirect-map", |o| {
             o.optflagmulti(

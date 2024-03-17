@@ -883,7 +883,7 @@ fn assoc_const(
         w,
         "{indent}{vis}const <a{href} class=\"constant\">{name}</a>{generics}: {ty}",
         indent = " ".repeat(indent),
-        vis = visibility_print_with_space(it.visibility(tcx), it.item_id, cx),
+        vis = visibility_print_with_space(it, cx),
         href = assoc_href_attr(it, link, cx),
         name = it.name.as_ref().unwrap(),
         generics = generics.print(cx),
@@ -912,12 +912,11 @@ fn assoc_type(
     indent: usize,
     cx: &Context<'_>,
 ) {
-    let tcx = cx.tcx();
     write!(
         w,
         "{indent}{vis}type <a{href} class=\"associatedtype\">{name}</a>{generics}",
         indent = " ".repeat(indent),
-        vis = visibility_print_with_space(it.visibility(tcx), it.item_id, cx),
+        vis = visibility_print_with_space(it, cx),
         href = assoc_href_attr(it, link, cx),
         name = it.name.as_ref().unwrap(),
         generics = generics.print(cx),
@@ -945,7 +944,7 @@ fn assoc_method(
     let tcx = cx.tcx();
     let header = meth.fn_header(tcx).expect("Trying to get header from a non-function item");
     let name = meth.name.as_ref().unwrap();
-    let vis = visibility_print_with_space(meth.visibility(tcx), meth.item_id, cx).to_string();
+    let vis = visibility_print_with_space(meth, cx).to_string();
     let defaultness = print_default_space(meth.is_default());
     // FIXME: Once https://github.com/rust-lang/rust/issues/67792 is implemented, we can remove
     // this condition.
@@ -1698,9 +1697,10 @@ fn render_impl(
                     let id = cx.derive_id(format!("{item_type}.{name}"));
                     let source_id = trait_
                         .and_then(|trait_| {
-                            trait_.items.iter().find(|item| {
-                                item.name.map(|n| n.as_str().eq(name.as_str())).unwrap_or(false)
-                            })
+                            trait_
+                                .items
+                                .iter()
+                                .find(|item| item.name.map(|n| n == *name).unwrap_or(false))
                         })
                         .map(|item| format!("{}.{name}", item.type_()));
                     write!(w, "<section id=\"{id}\" class=\"{item_type}{in_trait_class}\">");

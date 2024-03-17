@@ -108,8 +108,7 @@ fn anon_const_type_of<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalDefId) -> Ty<'tcx> {
                 .unwrap()
                 .0
                 .def_id;
-            let item_ctxt = &ItemCtxt::new(tcx, item_def_id) as &dyn crate::astconv::AstConv<'_>;
-            let ty = item_ctxt.ast_ty_to_ty(hir_ty);
+            let ty = ItemCtxt::new(tcx, item_def_id).to_ty(hir_ty);
 
             // Iterate through the generics of the projection to find the one that corresponds to
             // the def_id that this query was called with. We filter to only type and const args here

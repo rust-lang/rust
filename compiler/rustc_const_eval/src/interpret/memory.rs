@@ -949,6 +949,8 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     /// Runs the close in "validation" mode, which means the machine's memory read hooks will be
     /// suppressed. Needless to say, this must only be set with great care! Cannot be nested.
     pub(super) fn run_for_validation<R>(&self, f: impl FnOnce() -> R) -> R {
+        // This deliberately uses `==` on `bool` to follow the pattern
+        // `assert!(val.replace(new) == old)`.
         assert!(
             self.memory.validation_in_progress.replace(true) == false,
             "`validation_in_progress` was already set"

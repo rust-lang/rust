@@ -10,6 +10,20 @@ note: erroneous constant encountered
 LL |     &<A<T> as Foo<T>>::BAR
    |      ^^^^^^^^^^^^^^^^^^^^^
 
+note: erroneous constant encountered
+  --> $DIR/issue-50814-2.rs:20:5
+   |
+LL |     &<A<T> as Foo<T>>::BAR
+   |     ^^^^^^^^^^^^^^^^^^^^^^
+
+note: erroneous constant encountered
+  --> $DIR/issue-50814-2.rs:20:6
+   |
+LL |     &<A<T> as Foo<T>>::BAR
+   |      ^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
 note: the above error was encountered while instantiating `fn foo::<()>`
   --> $DIR/issue-50814-2.rs:32:22
    |

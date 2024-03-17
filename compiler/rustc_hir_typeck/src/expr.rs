@@ -890,21 +890,19 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         let encl_item_id = self.tcx.hir().get_parent_item(expr.hir_id);
 
-        if let Some(hir::Node::Item(hir::Item {
-            kind: hir::ItemKind::Fn(..),
-            span: encl_fn_span,
-            ..
-        }))
-        | Some(hir::Node::TraitItem(hir::TraitItem {
+        if let hir::Node::Item(hir::Item {
+            kind: hir::ItemKind::Fn(..), span: encl_fn_span, ..
+        })
+        | hir::Node::TraitItem(hir::TraitItem {
             kind: hir::TraitItemKind::Fn(_, hir::TraitFn::Provided(_)),
             span: encl_fn_span,
             ..
-        }))
-        | Some(hir::Node::ImplItem(hir::ImplItem {
+        })
+        | hir::Node::ImplItem(hir::ImplItem {
             kind: hir::ImplItemKind::Fn(..),
             span: encl_fn_span,
             ..
-        })) = self.tcx.opt_hir_node_by_def_id(encl_item_id.def_id)
+        }) = self.tcx.hir_node_by_def_id(encl_item_id.def_id)
         {
             // We are inside a function body, so reporting "return statement
             // outside of function body" needs an explanation.

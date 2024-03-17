@@ -1161,7 +1161,7 @@ impl Attributes {
         false
     }
 
-    fn is_doc_hidden(&self) -> bool {
+    pub(crate) fn is_doc_hidden(&self) -> bool {
         self.has_doc_flag(sym::hidden)
     }
 

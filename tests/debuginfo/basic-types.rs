@@ -50,49 +50,49 @@
 // === LLDB TESTS ==================================================================================
 
 // lldb-command:run
-// lldb-command:print b
-// lldbg-check:[...]$0 = false
+// lldb-command:v b
+// lldbg-check:[...] false
 // lldbr-check:(bool) b = false
-// lldb-command:print i
-// lldbg-check:[...]$1 = -1
+// lldb-command:v i
+// lldbg-check:[...] -1
 // lldbr-check:(isize) i = -1
 
 // NOTE: only rust-enabled lldb supports 32bit chars
 // lldbr-command:print c
 // lldbr-check:(char) c = 'a'
 
-// lldb-command:print i8
-// lldbg-check:[...]$2 = 'D'
+// lldb-command:v i8
+// lldbg-check:[...] 'D'
 // lldbr-check:(i8) i8 = 68
-// lldb-command:print i16
-// lldbg-check:[...]$3 = -16
+// lldb-command:v i16
+// lldbg-check:[...] -16
 // lldbr-check:(i16) i16 = -16
-// lldb-command:print i32
-// lldbg-check:[...]$4 = -32
+// lldb-command:v i32
+// lldbg-check:[...] -32
 // lldbr-check:(i32) i32 = -32
-// lldb-command:print i64
-// lldbg-check:[...]$5 = -64
+// lldb-command:v i64
+// lldbg-check:[...] -64
 // lldbr-check:(i64) i64 = -64
-// lldb-command:print u
-// lldbg-check:[...]$6 = 1
+// lldb-command:v u
+// lldbg-check:[...] 1
 // lldbr-check:(usize) u = 1
-// lldb-command:print u8
-// lldbg-check:[...]$7 = 'd'
+// lldb-command:v u8
+// lldbg-check:[...] 'd'
 // lldbr-check:(u8) u8 = 100
-// lldb-command:print u16
-// lldbg-check:[...]$8 = 16
+// lldb-command:v u16
+// lldbg-check:[...] 16
 // lldbr-check:(u16) u16 = 16
-// lldb-command:print u32
-// lldbg-check:[...]$9 = 32
+// lldb-command:v u32
+// lldbg-check:[...] 32
 // lldbr-check:(u32) u32 = 32
-// lldb-command:print u64
-// lldbg-check:[...]$10 = 64
+// lldb-command:v u64
+// lldbg-check:[...] 64
 // lldbr-check:(u64) u64 = 64
-// lldb-command:print f32
-// lldbg-check:[...]$11 = 2.5
+// lldb-command:v f32
+// lldbg-check:[...] 2.5
 // lldbr-check:(f32) f32 = 2.5
-// lldb-command:print f64
-// lldbg-check:[...]$12 = 3.5
+// lldb-command:v f64
+// lldbg-check:[...] 3.5
 // lldbr-check:(f64) f64 = 3.5
 
 // === CDB TESTS ===================================================================================

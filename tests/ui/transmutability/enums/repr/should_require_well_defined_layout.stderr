@@ -2,7 +2,7 @@ error[E0277]: `void::repr_rust` cannot be safely transmuted into `()`
   --> $DIR/should_require_well_defined_layout.rs:27:52
    |
 LL |         assert::is_maybe_transmutable::<repr_rust, ()>();
-   |                                                    ^^ `void::repr_rust` does not have a well-specified layout
+   |                                                    ^^ analyzing the transmutability of `void::repr_rust` is not yet supported.
    |
 note: required by a bound in `is_maybe_transmutable`
   --> $DIR/should_require_well_defined_layout.rs:13:14
@@ -24,7 +24,7 @@ error[E0277]: `u128` cannot be safely transmuted into `void::repr_rust`
   --> $DIR/should_require_well_defined_layout.rs:28:47
    |
 LL |         assert::is_maybe_transmutable::<u128, repr_rust>();
-   |                                               ^^^^^^^^^ `void::repr_rust` does not have a well-specified layout
+   |                                               ^^^^^^^^^ analyzing the transmutability of `void::repr_rust` is not yet supported.
    |
 note: required by a bound in `is_maybe_transmutable`
   --> $DIR/should_require_well_defined_layout.rs:13:14
@@ -46,7 +46,7 @@ error[E0277]: `singleton::repr_rust` cannot be safely transmuted into `()`
   --> $DIR/should_require_well_defined_layout.rs:33:52
    |
 LL |         assert::is_maybe_transmutable::<repr_rust, ()>();
-   |                                                    ^^ `singleton::repr_rust` does not have a well-specified layout
+   |                                                    ^^ analyzing the transmutability of `singleton::repr_rust` is not yet supported.
    |
 note: required by a bound in `is_maybe_transmutable`
   --> $DIR/should_require_well_defined_layout.rs:13:14
@@ -68,7 +68,7 @@ error[E0277]: `u128` cannot be safely transmuted into `singleton::repr_rust`
   --> $DIR/should_require_well_defined_layout.rs:34:47
    |
 LL |         assert::is_maybe_transmutable::<u128, repr_rust>();
-   |                                               ^^^^^^^^^ `singleton::repr_rust` does not have a well-specified layout
+   |                                               ^^^^^^^^^ analyzing the transmutability of `singleton::repr_rust` is not yet supported.
    |
 note: required by a bound in `is_maybe_transmutable`
   --> $DIR/should_require_well_defined_layout.rs:13:14
@@ -90,7 +90,7 @@ error[E0277]: `duplex::repr_rust` cannot be safely transmuted into `()`
   --> $DIR/should_require_well_defined_layout.rs:39:52
    |
 LL |         assert::is_maybe_transmutable::<repr_rust, ()>();
-   |                                                    ^^ `duplex::repr_rust` does not have a well-specified layout
+   |                                                    ^^ analyzing the transmutability of `duplex::repr_rust` is not yet supported.
    |
 note: required by a bound in `is_maybe_transmutable`
   --> $DIR/should_require_well_defined_layout.rs:13:14
@@ -112,7 +112,7 @@ error[E0277]: `u128` cannot be safely transmuted into `duplex::repr_rust`
   --> $DIR/should_require_well_defined_layout.rs:40:47
    |
 LL |         assert::is_maybe_transmutable::<u128, repr_rust>();
-   |                                               ^^^^^^^^^ `duplex::repr_rust` does not have a well-specified layout
+   |                                               ^^^^^^^^^ analyzing the transmutability of `duplex::repr_rust` is not yet supported.
    |
 note: required by a bound in `is_maybe_transmutable`
   --> $DIR/should_require_well_defined_layout.rs:13:14

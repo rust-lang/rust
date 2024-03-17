@@ -92,7 +92,7 @@ fn check_result_large_err<'tcx>(cx: &LateContext<'tcx>, err_ty: Ty<'tcx>, hir_ty
             .expect("already checked this is adt")
             .did()
             .as_local()
-        && let Some(hir::Node::Item(item)) = cx.tcx.opt_hir_node_by_def_id(local_def_id)
+        && let hir::Node::Item(item) = cx.tcx.hir_node_by_def_id(local_def_id)
         && let hir::ItemKind::Enum(ref def, _) = item.kind
     {
         let variants_size = AdtVariantInfo::new(cx, *adt, subst);

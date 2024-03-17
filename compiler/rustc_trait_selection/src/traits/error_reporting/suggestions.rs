@@ -261,7 +261,8 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
 
         // FIXME: Add check for trait bound that is already present, particularly `?Sized` so we
         //        don't suggest `T: Sized + ?Sized`.
-        while let Some(node) = self.tcx.opt_hir_node_by_def_id(body_id) {
+        loop {
+            let node = self.tcx.hir_node_by_def_id(body_id);
             match node {
                 hir::Node::Item(hir::Item {
                     ident,
@@ -987,15 +988,44 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
             else {
                 return false;
             };
-            let arg_node = self.tcx.hir_node(*arg_hir_id);
-            let Node::Expr(Expr { kind: hir::ExprKind::Path(_), .. }) = arg_node else {
-                return false;
-            };
 
             let clone_trait = self.tcx.require_lang_item(LangItem::Clone, None);
             let has_clone = |ty| {
                 self.type_implements_trait(clone_trait, [ty], obligation.param_env)
                     .must_apply_modulo_regions()
+            };
+
+            let existing_clone_call = match self.tcx.hir_node(*arg_hir_id) {
+                // It's just a variable. Propose cloning it.
+                Node::Expr(Expr { kind: hir::ExprKind::Path(_), .. }) => None,
+                // It's already a call to `clone()`. We might be able to suggest
+                // adding a `+ Clone` bound, though.
+                Node::Expr(Expr {
+                    kind:
+                        hir::ExprKind::MethodCall(
+                            hir::PathSegment { ident, .. },
+                            _receiver,
+                            &[],
+                            call_span,
+                        ),
+                    hir_id,
+                    ..
+                }) if ident.name == sym::clone
+                    && !call_span.from_expansion()
+                    && !has_clone(*inner_ty) =>
+                {
+                    // We only care about method calls corresponding to the real `Clone` trait.
+                    let Some(typeck_results) = self.typeck_results.as_ref() else { return false };
+                    let Some((DefKind::AssocFn, did)) = typeck_results.type_dependent_def(*hir_id)
+                    else {
+                        return false;
+                    };
+                    if self.tcx.trait_of_item(did) != Some(clone_trait) {
+                        return false;
+                    }
+                    Some(ident.span)
+                }
+                _ => return false,
             };
 
             let new_obligation = self.mk_trait_obligation_with_new_self_ty(
@@ -1015,12 +1045,23 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                         None,
                     );
                 }
-                err.span_suggestion_verbose(
-                    obligation.cause.span.shrink_to_hi(),
-                    "consider using clone here",
-                    ".clone()".to_string(),
-                    Applicability::MaybeIncorrect,
-                );
+                if let Some(existing_clone_call) = existing_clone_call {
+                    err.span_note(
+                        existing_clone_call,
+                        format!(
+                            "this `clone()` copies the reference, \
+                            which does not do anything, \
+                            because `{inner_ty}` does not implement `Clone`"
+                        ),
+                    );
+                } else {
+                    err.span_suggestion_verbose(
+                        obligation.cause.span.shrink_to_hi(),
+                        "consider using clone here",
+                        ".clone()".to_string(),
+                        Applicability::MaybeIncorrect,
+                    );
+                }
                 return true;
             }
             false
@@ -1685,8 +1726,8 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
         trait_pred: ty::PolyTraitPredicate<'tcx>,
     ) -> bool {
         let hir = self.tcx.hir();
-        let node = self.tcx.opt_hir_node_by_def_id(obligation.cause.body_id);
-        if let Some(hir::Node::Item(hir::Item { kind: hir::ItemKind::Fn(sig, _, body_id), .. })) = node
+        let node = self.tcx.hir_node_by_def_id(obligation.cause.body_id);
+        if let hir::Node::Item(hir::Item { kind: hir::ItemKind::Fn(sig, _, body_id), .. }) = node
             && let hir::ExprKind::Block(blk, _) = &hir.body(*body_id).value.kind
             && sig.decl.output.span().overlaps(span)
             && blk.expr.is_none()
@@ -1720,8 +1761,8 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
     }
 
     fn return_type_span(&self, obligation: &PredicateObligation<'tcx>) -> Option<Span> {
-        let Some(hir::Node::Item(hir::Item { kind: hir::ItemKind::Fn(sig, ..), .. })) =
-            self.tcx.opt_hir_node_by_def_id(obligation.cause.body_id)
+        let hir::Node::Item(hir::Item { kind: hir::ItemKind::Fn(sig, ..), .. }) =
+            self.tcx.hir_node_by_def_id(obligation.cause.body_id)
         else {
             return None;
         };
@@ -1813,10 +1854,8 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
         }
 
         let hir = self.tcx.hir();
-        let node = self.tcx.opt_hir_node_by_def_id(obligation.cause.body_id);
-        if let Some(hir::Node::Item(hir::Item { kind: hir::ItemKind::Fn(_, _, body_id), .. })) =
-            node
-        {
+        let node = self.tcx.hir_node_by_def_id(obligation.cause.body_id);
+        if let hir::Node::Item(hir::Item { kind: hir::ItemKind::Fn(_, _, body_id), .. }) = node {
             let body = hir.body(*body_id);
             // Point at all the `return`s in the function as they have failed trait bounds.
             let mut visitor = ReturnsVisitor::default();
@@ -4450,7 +4489,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
             }
             return;
         };
-        let Some(hir::Node::TraitItem(item)) = self.tcx.opt_hir_node_by_def_id(fn_def_id) else {
+        let hir::Node::TraitItem(item) = self.tcx.hir_node_by_def_id(fn_def_id) else {
             return;
         };
 

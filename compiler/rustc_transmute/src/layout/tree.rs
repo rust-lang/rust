@@ -186,8 +186,8 @@ pub(crate) mod rustc {
 
     #[derive(Debug, Copy, Clone)]
     pub(crate) enum Err {
-        /// The layout of the type is unspecified.
-        Unspecified,
+        /// The layout of the type is not yet supported.
+        NotYetSupported,
         /// This error will be surfaced elsewhere by rustc, so don't surface it.
         UnknownLayout,
         /// Overflow size
@@ -288,14 +288,14 @@ pub(crate) mod rustc {
                     if members.len() == 0 {
                         Ok(Tree::unit())
                     } else {
-                        Err(Err::Unspecified)
+                        Err(Err::NotYetSupported)
                     }
                 }
 
                 ty::Array(ty, len) => {
                     let len = len
                         .try_eval_target_usize(tcx, ParamEnv::reveal_all())
-                        .ok_or(Err::Unspecified)?;
+                        .ok_or(Err::NotYetSupported)?;
                     let elt = Tree::from_ty(*ty, tcx)?;
                     Ok(std::iter::repeat(elt)
                         .take(len as usize)
@@ -307,7 +307,7 @@ pub(crate) mod rustc {
 
                     // If the layout is ill-specified, halt.
                     if !(adt_def.repr().c() || adt_def.repr().int.is_some()) {
-                        return Err(Err::Unspecified);
+                        return Err(Err::NotYetSupported);
                     }
 
                     // Compute a summary of the type's layout.
@@ -348,7 +348,7 @@ pub(crate) mod rustc {
                         AdtKind::Union => {
                             // is the layout well-defined?
                             if !adt_def.repr().c() {
-                                return Err(Err::Unspecified);
+                                return Err(Err::NotYetSupported);
                             }
 
                             let ty_layout = layout_of(tcx, ty)?;
@@ -384,7 +384,7 @@ pub(crate) mod rustc {
                     }))
                 }
 
-                _ => Err(Err::Unspecified),
+                _ => Err(Err::NotYetSupported),
             }
         }
 

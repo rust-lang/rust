@@ -70,28 +70,28 @@
 
 // lldb-command:run
 
-// lldb-command:print empty
-// lldbg-check:[...]$0 = size=0
+// lldb-command:v empty
+// lldbg-check:[...] size=0
 // lldbr-check:(&[i64]) empty = size=0
 
-// lldb-command:print singleton
-// lldbg-check:[...]$1 = size=1 { [0] = 1 }
+// lldb-command:v singleton
+// lldbg-check:[...] size=1 { [0] = 1 }
 // lldbr-check:(&[i64]) singleton = &[1]
 
-// lldb-command:print multiple
-// lldbg-check:[...]$2 = size=4 { [0] = 2 [1] = 3 [2] = 4 [3] = 5 }
+// lldb-command:v multiple
+// lldbg-check:[...] size=4 { [0] = 2 [1] = 3 [2] = 4 [3] = 5 }
 // lldbr-check:(&[i64]) multiple = size=4 { [0] = 2 [1] = 3 [2] = 4 [3] = 5 }
 
-// lldb-command:print slice_of_slice
-// lldbg-check:[...]$3 = size=2 { [0] = 3 [1] = 4 }
+// lldb-command:v slice_of_slice
+// lldbg-check:[...] size=2 { [0] = 3 [1] = 4 }
 // lldbr-check:(&[i64]) slice_of_slice = size=2 { [0] = 3 [1] = 4 }
 
-// lldb-command:print padded_tuple
-// lldbg-check:[...]$4 = size=2 { [0] = { 0 = 6 1 = 7 } [1] = { 0 = 8 1 = 9 } }
+// lldb-command:v padded_tuple
+// lldbg-check:[...] size=2 { [0] = { 0 = 6 1 = 7 } [1] = { 0 = 8 1 = 9 } }
 // lldbr-check:(&[(i32, i16)]) padded_tuple = size=2 { [0] = { 0 = 6 1 = 7 } [1] = { 0 = 8 1 = 9 } }
 
-// lldb-command:print padded_struct
-// lldbg-check:[...]$5 = size=2 { [0] = { x = 10 y = 11 z = 12 } [1] = { x = 13 y = 14 z = 15 } }
+// lldb-command:v padded_struct
+// lldbg-check:[...] size=2 { [0] = { x = 10 y = 11 z = 12 } [1] = { x = 13 y = 14 z = 15 } }
 // lldbr-check:(&[vec_slices::AStruct]) padded_struct = size=2 { [0] = { x = 10 y = 11 z = 12 } [1] = { x = 13 y = 14 z = 15 } }
 
 #![allow(dead_code, unused_variables)]

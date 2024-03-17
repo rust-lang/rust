@@ -95,9 +95,10 @@ ENV RUST_CONFIGURE_ARGS \
 
 ENV HOST_TARGET x86_64-unknown-linux-gnu
 
+COPY host-x86_64/dist-x86_64-linux/shared.sh /scripts/
 COPY host-x86_64/dist-x86_64-linux/build-gccjit.sh /scripts/
 
-RUN sh /scripts/build-gccjit.sh /scripts
+RUN /scripts/build-gccjit.sh /scripts
 
 ENV SCRIPT /tmp/checktools.sh ../x.py && \
   NODE_PATH=`npm root -g` python3 ../x.py test tests/rustdoc-gui --stage 2 \

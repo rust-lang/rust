@@ -25,17 +25,17 @@
 // === LLDB TESTS ==================================================================================
 
 // lldb-command:run
-// lldb-command:print b
-// lldbg-check:(coroutine_objects::main::{coroutine_env#0}) $0 =
+// lldb-command:v b
+// lldbg-check:(coroutine_objects::main::{coroutine_env#0}) b =
 // lldb-command:continue
-// lldb-command:print b
-// lldbg-check:(coroutine_objects::main::{coroutine_env#0}) $1 =
+// lldb-command:v b
+// lldbg-check:(coroutine_objects::main::{coroutine_env#0}) b =
 // lldb-command:continue
-// lldb-command:print b
-// lldbg-check:(coroutine_objects::main::{coroutine_env#0}) $2 =
+// lldb-command:v b
+// lldbg-check:(coroutine_objects::main::{coroutine_env#0}) b =
 // lldb-command:continue
-// lldb-command:print b
-// lldbg-check:(coroutine_objects::main::{coroutine_env#0}) $3 =
+// lldb-command:v b
+// lldbg-check:(coroutine_objects::main::{coroutine_env#0}) b =
 
 // === CDB TESTS ===================================================================================
 

@@ -5,8 +5,10 @@ use rustc_middle::bug;
 use rustc_middle::ty;
 use rustc_session::lint::builtin::PROC_MACRO_DERIVE_RESOLUTION_FALLBACK;
 use rustc_session::lint::BuiltinLintDiag;
+use rustc_session::parse::feature_err;
 use rustc_span::def_id::LocalDefId;
 use rustc_span::hygiene::{ExpnId, ExpnKind, LocalExpnId, MacroKind, SyntaxContext};
+use rustc_span::sym;
 use rustc_span::symbol::{kw, Ident};
 use rustc_span::Span;
 
@@ -598,7 +600,35 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                         result
                     }
                     Scope::BuiltinTypes => match this.builtin_types_bindings.get(&ident.name) {
-                        Some(binding) => Ok((*binding, Flags::empty())),
+                        Some(binding) => {
+                            if matches!(ident.name, sym::f16)
+                                && !this.tcx.features().f16
+                                && !ident.span.allows_unstable(sym::f16)
+                                && finalize.is_some()
+                            {
+                                feature_err(
+                                    this.tcx.sess,
+                                    sym::f16,
+                                    ident.span,
+                                    "the type `f16` is unstable",
+                                )
+                                .emit();
+                            }
+                            if matches!(ident.name, sym::f128)
+                                && !this.tcx.features().f128
+                                && !ident.span.allows_unstable(sym::f128)
+                                && finalize.is_some()
+                            {
+                                feature_err(
+                                    this.tcx.sess,
+                                    sym::f128,
+                                    ident.span,
+                                    "the type `f128` is unstable",
+                                )
+                                .emit();
+                            }
+                            Ok((*binding, Flags::empty()))
+                        }
                         None => Err(Determinacy::Determined),
                     },
                 };

@@ -1339,8 +1339,8 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             is_doc_hidden: false,
         };
         let attr_iter = tcx
-            .opt_local_def_id_to_hir_id(def_id)
-            .map_or(Default::default(), |hir_id| tcx.hir().attrs(hir_id))
+            .hir()
+            .attrs(tcx.local_def_id_to_hir_id(def_id))
             .iter()
             .filter(|attr| analyze_attr(attr, &mut state));
 

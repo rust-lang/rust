@@ -56,8 +56,8 @@ mod rustc {
                 }
                 (Err(Err::UnknownLayout), _) => Answer::No(Reason::SrcLayoutUnknown),
                 (_, Err(Err::UnknownLayout)) => Answer::No(Reason::DstLayoutUnknown),
-                (Err(Err::Unspecified), _) => Answer::No(Reason::SrcIsUnspecified),
-                (_, Err(Err::Unspecified)) => Answer::No(Reason::DstIsUnspecified),
+                (Err(Err::NotYetSupported), _) => Answer::No(Reason::SrcIsNotYetSupported),
+                (_, Err(Err::NotYetSupported)) => Answer::No(Reason::DstIsNotYetSupported),
                 (Err(Err::SizeOverflow), _) => Answer::No(Reason::SrcSizeOverflow),
                 (_, Err(Err::SizeOverflow)) => Answer::No(Reason::DstSizeOverflow),
                 (Ok(src), Ok(dst)) => MaybeTransmutableQuery { src, dst, assume, context }.answer(),

@@ -9,7 +9,7 @@ LL |
 LL |     x.clone();
    |     ^ value borrowed here after move
    |
-note: calling this operator moves the left-hand side
+note: calling this operator moves the value
   --> $SRC_DIR/core/src/ops/bit.rs:LL:COL
 help: consider cloning the value if the performance cost is acceptable
    |
@@ -57,7 +57,7 @@ LL |     !*m;
    |     |move occurs because `*m` has type `T`, which does not implement the `Copy` trait
    |     `*m` moved due to usage in operator
    |
-note: calling this operator moves the left-hand side
+note: calling this operator moves the value
   --> $SRC_DIR/core/src/ops/bit.rs:LL:COL
 
 error[E0507]: cannot move out of `*n` which is behind a shared reference

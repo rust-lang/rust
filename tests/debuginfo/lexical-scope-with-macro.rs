@@ -56,57 +56,57 @@
 
 // lldb-command:run
 
-// lldb-command:print a
-// lldbg-check:[...]$0 = 10
+// lldb-command:v a
+// lldbg-check:[...] 10
 // lldbr-check:(i32) a = 10
-// lldb-command:print b
-// lldbg-check:[...]$1 = 34
+// lldb-command:v b
+// lldbg-check:[...] 34
 // lldbr-check:(i32) b = 34
 // lldb-command:continue
 
-// lldb-command:print a
-// lldbg-check:[...]$2 = 890242
+// lldb-command:v a
+// lldbg-check:[...] 890242
 // lldbr-check:(i32) a = 10
-// lldb-command:print b
-// lldbg-check:[...]$3 = 34
+// lldb-command:v b
+// lldbg-check:[...] 34
 // lldbr-check:(i32) b = 34
 // lldb-command:continue
 
-// lldb-command:print a
-// lldbg-check:[...]$4 = 10
+// lldb-command:v a
+// lldbg-check:[...] 10
 // lldbr-check:(i32) a = 10
-// lldb-command:print b
-// lldbg-check:[...]$5 = 34
+// lldb-command:v b
+// lldbg-check:[...] 34
 // lldbr-check:(i32) b = 34
 // lldb-command:continue
 
-// lldb-command:print a
-// lldbg-check:[...]$6 = 102
+// lldb-command:v a
+// lldbg-check:[...] 102
 // lldbr-check:(i32) a = 10
-// lldb-command:print b
-// lldbg-check:[...]$7 = 34
+// lldb-command:v b
+// lldbg-check:[...] 34
 // lldbr-check:(i32) b = 34
 // lldb-command:continue
 
 // Don't test this with rust-enabled lldb for now; see issue #48807
 // lldbg-command:print a
-// lldbg-check:[...]$8 = 110
+// lldbg-check:[...] 110
 // lldbg-command:print b
-// lldbg-check:[...]$9 = 34
+// lldbg-check:[...] 34
 // lldbg-command:continue
 
 // lldbg-command:print a
-// lldbg-check:[...]$10 = 10
+// lldbg-check:[...] 10
 // lldbg-command:print b
-// lldbg-check:[...]$11 = 34
+// lldbg-check:[...] 34
 // lldbg-command:continue
 
 // lldbg-command:print a
-// lldbg-check:[...]$12 = 10
+// lldbg-check:[...] 10
 // lldbg-command:print b
-// lldbg-check:[...]$13 = 34
+// lldbg-check:[...] 34
 // lldbg-command:print c
-// lldbg-check:[...]$14 = 400
+// lldbg-check:[...] 400
 // lldbg-command:continue
 
 

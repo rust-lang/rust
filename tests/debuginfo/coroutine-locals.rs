@@ -27,32 +27,24 @@
 // === LLDB TESTS ==================================================================================
 
 // lldb-command:run
-// lldb-command:print a
-// lldbg-check:(int) $0 = 5
-// lldbr-check:(int) a = 5
-// lldb-command:print c
-// lldbg-check:(int) $1 = 6
-// lldbr-check:(int) c = 6
-// lldb-command:print d
-// lldbg-check:(int) $2 = 7
-// lldbr-check:(int) d = 7
+// lldb-command:v a
+// lldb-check:(int) a = 5
+// lldb-command:v c
+// lldb-check:(int) c = 6
+// lldb-command:v d
+// lldb-check:(int) d = 7
 // lldb-command:continue
-// lldb-command:print a
-// lldbg-check:(int) $3 = 7
-// lldbr-check:(int) a = 7
-// lldb-command:print c
-// lldbg-check:(int) $4 = 6
-// lldbr-check:(int) c = 6
-// lldb-command:print e
-// lldbg-check:(int) $5 = 8
-// lldbr-check:(int) e = 8
+// lldb-command:v a
+// lldb-check:(int) a = 7
+// lldb-command:v c
+// lldb-check:(int) c = 6
+// lldb-command:v e
+// lldb-check:(int) e = 8
 // lldb-command:continue
-// lldb-command:print a
-// lldbg-check:(int) $6 = 8
-// lldbr-check:(int) a = 8
-// lldb-command:print c
-// lldbg-check:(int) $7 = 6
-// lldbr-check:(int) c = 6
+// lldb-command:v a
+// lldb-check:(int) a = 8
+// lldb-command:v c
+// lldb-check:(int) c = 6
 
 #![feature(omit_gdb_pretty_printer_section, coroutines, coroutine_trait)]
 #![omit_gdb_pretty_printer_section]

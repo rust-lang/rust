@@ -44,41 +44,41 @@
 // lldb-command:run
 
 // FIRST ITERATION
-// lldb-command:print x
-// lldbg-check:[...]$0 = 1
+// lldb-command:v x
+// lldbg-check:[...] 1
 // lldbr-check:(i32) x = 1
 // lldb-command:continue
 
-// lldb-command:print x
-// lldbg-check:[...]$1 = -1
+// lldb-command:v x
+// lldbg-check:[...] -1
 // lldbr-check:(i32) x = -1
 // lldb-command:continue
 
 // SECOND ITERATION
-// lldb-command:print x
-// lldbg-check:[...]$2 = 2
+// lldb-command:v x
+// lldbg-check:[...] 2
 // lldbr-check:(i32) x = 2
 // lldb-command:continue
 
-// lldb-command:print x
-// lldbg-check:[...]$3 = -2
+// lldb-command:v x
+// lldbg-check:[...] -2
 // lldbr-check:(i32) x = -2
 // lldb-command:continue
 
 // THIRD ITERATION
-// lldb-command:print x
-// lldbg-check:[...]$4 = 3
+// lldb-command:v x
+// lldbg-check:[...] 3
 // lldbr-check:(i32) x = 3
 // lldb-command:continue
 
-// lldb-command:print x
-// lldbg-check:[...]$5 = -3
+// lldb-command:v x
+// lldbg-check:[...] -3
 // lldbr-check:(i32) x = -3
 // lldb-command:continue
 
 // AFTER LOOP
-// lldb-command:print x
-// lldbg-check:[...]$6 = 1000000
+// lldb-command:v x
+// lldbg-check:[...] 1000000
 // lldbr-check:(i32) x = 1000000
 // lldb-command:continue
 

@@ -828,14 +828,17 @@ impl<'a, 'tcx> MirVisitor<'tcx> for MirUsedCollector<'a, 'tcx> {
         // a codegen-time error). rustc stops after collection if there was an error, so this
         // ensures codegen never has to worry about failing consts.
         // (codegen relies on this and ICEs will happen if this is violated.)
-        let val = match const_.eval(self.tcx, param_env, None) {
+        let val = match const_.eval(self.tcx, param_env, Some(constant.span)) {
             Ok(v) => v,
-            Err(ErrorHandled::Reported(..)) => return,
             Err(ErrorHandled::TooGeneric(..)) => span_bug!(
                 self.body.source_info(location).span,
                 "collection encountered polymorphic constant: {:?}",
                 const_
             ),
+            Err(err @ ErrorHandled::Reported(..)) => {
+                err.emit_note(self.tcx);
+                return;
+            }
         };
         collect_const_value(self.tcx, val, self.output);
         MirVisitor::visit_ty(self, const_.ty(), TyContext::Location(location));

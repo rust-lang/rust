@@ -127,7 +127,7 @@ impl Step for ToolBuild {
             }
             let cargo_out = builder.cargo_out(compiler, self.mode, target).join(exe(tool, target));
             let bin = builder.tools_dir(compiler).join(exe(tool, target));
-            builder.copy(&cargo_out, &bin);
+            builder.copy_link(&cargo_out, &bin);
             bin
         }
     }
@@ -507,7 +507,7 @@ impl Step for Rustdoc {
             t!(fs::create_dir_all(&bindir));
             let bin_rustdoc = bindir.join(exe("rustdoc", target_compiler.host));
             let _ = fs::remove_file(&bin_rustdoc);
-            builder.copy(&tool_rustdoc, &bin_rustdoc);
+            builder.copy_link(&tool_rustdoc, &bin_rustdoc);
             bin_rustdoc
         } else {
             tool_rustdoc
@@ -686,7 +686,7 @@ impl Step for RustAnalyzerProcMacroSrv {
         // so that r-a can use it.
         let libexec_path = builder.sysroot(self.compiler).join("libexec");
         t!(fs::create_dir_all(&libexec_path));
-        builder.copy(&path, &libexec_path.join("rust-analyzer-proc-macro-srv"));
+        builder.copy_link(&path, &libexec_path.join("rust-analyzer-proc-macro-srv"));
 
         Some(path)
     }
@@ -765,7 +765,7 @@ macro_rules! tool_extended {
                     $(for add_bin in $add_bins_to_sysroot {
                         let bin_source = tools_out.join(exe(add_bin, $sel.target));
                         let bin_destination = bindir.join(exe(add_bin, $sel.compiler.host));
-                        $builder.copy(&bin_source, &bin_destination);
+                        $builder.copy_link(&bin_source, &bin_destination);
                     })?
 
                     let tool = bindir.join(exe($tool_name, $sel.compiler.host));

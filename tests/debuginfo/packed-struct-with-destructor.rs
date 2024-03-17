@@ -44,36 +44,36 @@
 
 // lldb-command:run
 
-// lldb-command:print packed
-// lldbg-check:[...]$0 = { x = 123 y = 234 z = 345 }
+// lldb-command:v packed
+// lldbg-check:[...] { x = 123 y = 234 z = 345 }
 // lldbr-check:(packed_struct_with_destructor::Packed) packed = { x = 123 y = 234 z = 345 }
 
-// lldb-command:print packedInPacked
-// lldbg-check:[...]$1 = { a = 1111 b = { x = 2222 y = 3333 z = 4444 } c = 5555 d = { x = 6666 y = 7777 z = 8888 } }
+// lldb-command:v packedInPacked
+// lldbg-check:[...] { a = 1111 b = { x = 2222 y = 3333 z = 4444 } c = 5555 d = { x = 6666 y = 7777 z = 8888 } }
 // lldbr-check:(packed_struct_with_destructor::PackedInPacked) packedInPacked = { a = 1111 b = { x = 2222 y = 3333 z = 4444 } c = 5555 d = { x = 6666 y = 7777 z = 8888 } }
 
-// lldb-command:print packedInUnpacked
-// lldbg-check:[...]$2 = { a = -1111 b = { x = -2222 y = -3333 z = -4444 } c = -5555 d = { x = -6666 y = -7777 z = -8888 } }
+// lldb-command:v packedInUnpacked
+// lldbg-check:[...] { a = -1111 b = { x = -2222 y = -3333 z = -4444 } c = -5555 d = { x = -6666 y = -7777 z = -8888 } }
 // lldbr-check:(packed_struct_with_destructor::PackedInUnpacked) packedInUnpacked = { a = -1111 b = { x = -2222 y = -3333 z = -4444 } c = -5555 d = { x = -6666 y = -7777 z = -8888 } }
 
-// lldb-command:print unpackedInPacked
-// lldbg-check:[...]$3 = { a = 987 b = { x = 876 y = 765 z = 654 } c = { x = 543 y = 432 z = 321 } d = 210 }
+// lldb-command:v unpackedInPacked
+// lldbg-check:[...] { a = 987 b = { x = 876 y = 765 z = 654 } c = { x = 543 y = 432 z = 321 } d = 210 }
 // lldbr-check:(packed_struct_with_destructor::UnpackedInPacked) unpackedInPacked = { a = 987 b = { x = 876 y = 765 z = 654 } c = { x = 543 y = 432 z = 321 } d = 210 }
 
-// lldb-command:print packedInPackedWithDrop
-// lldbg-check:[...]$4 = { a = 11 b = { x = 22 y = 33 z = 44 } c = 55 d = { x = 66 y = 77 z = 88 } }
+// lldb-command:v packedInPackedWithDrop
+// lldbg-check:[...] { a = 11 b = { x = 22 y = 33 z = 44 } c = 55 d = { x = 66 y = 77 z = 88 } }
 // lldbr-check:(packed_struct_with_destructor::PackedInPackedWithDrop) packedInPackedWithDrop = { a = 11 b = { x = 22 y = 33 z = 44 } c = 55 d = { x = 66 y = 77 z = 88 } }
 
-// lldb-command:print packedInUnpackedWithDrop
-// lldbg-check:[...]$5 = { a = -11 b = { x = -22 y = -33 z = -44 } c = -55 d = { x = -66 y = -77 z = -88 } }
+// lldb-command:v packedInUnpackedWithDrop
+// lldbg-check:[...] { a = -11 b = { x = -22 y = -33 z = -44 } c = -55 d = { x = -66 y = -77 z = -88 } }
 // lldbr-check:(packed_struct_with_destructor::PackedInUnpackedWithDrop) packedInUnpackedWithDrop = { a = -11 b = { x = -22 y = -33 z = -44 } c = -55 d = { x = -66 y = -77 z = -88 } }
 
-// lldb-command:print unpackedInPackedWithDrop
-// lldbg-check:[...]$6 = { a = 98 b = { x = 87 y = 76 z = 65 } c = { x = 54 y = 43 z = 32 } d = 21 }
+// lldb-command:v unpackedInPackedWithDrop
+// lldbg-check:[...] { a = 98 b = { x = 87 y = 76 z = 65 } c = { x = 54 y = 43 z = 32 } d = 21 }
 // lldbr-check:(packed_struct_with_destructor::UnpackedInPackedWithDrop) unpackedInPackedWithDrop = { a = 98 b = { x = 87 y = 76 z = 65 } c = { x = 54 y = 43 z = 32 } d = 21 }
 
-// lldb-command:print deeplyNested
-// lldbg-check:[...]$7 = { a = { a = 1 b = { x = 2 y = 3 z = 4 } c = 5 d = { x = 6 y = 7 z = 8 } } b = { a = 9 b = { x = 10 y = 11 z = 12 } c = { x = 13 y = 14 z = 15 } d = 16 } c = { a = 17 b = { x = 18 y = 19 z = 20 } c = 21 d = { x = 22 y = 23 z = 24 } } d = { a = 25 b = { x = 26 y = 27 z = 28 } c = 29 d = { x = 30 y = 31 z = 32 } } e = { a = 33 b = { x = 34 y = 35 z = 36 } c = { x = 37 y = 38 z = 39 } d = 40 } f = { a = 41 b = { x = 42 y = 43 z = 44 } c = 45 d = { x = 46 y = 47 z = 48 } } }
+// lldb-command:v deeplyNested
+// lldbg-check:[...] { a = { a = 1 b = { x = 2 y = 3 z = 4 } c = 5 d = { x = 6 y = 7 z = 8 } } b = { a = 9 b = { x = 10 y = 11 z = 12 } c = { x = 13 y = 14 z = 15 } d = 16 } c = { a = 17 b = { x = 18 y = 19 z = 20 } c = 21 d = { x = 22 y = 23 z = 24 } } d = { a = 25 b = { x = 26 y = 27 z = 28 } c = 29 d = { x = 30 y = 31 z = 32 } } e = { a = 33 b = { x = 34 y = 35 z = 36 } c = { x = 37 y = 38 z = 39 } d = 40 } f = { a = 41 b = { x = 42 y = 43 z = 44 } c = 45 d = { x = 46 y = 47 z = 48 } } }
 // lldbr-check:(packed_struct_with_destructor::DeeplyNested) deeplyNested = { a = { a = 1 b = { x = 2 y = 3 z = 4 } c = 5 d = { x = 6 y = 7 z = 8 } } b = { a = 9 b = { x = 10 y = 11 z = 12 } c = { x = 13 y = 14 z = 15 } d = 16 } c = { a = 17 b = { x = 18 y = 19 z = 20 } c = 21 d = { x = 22 y = 23 z = 24 } } d = { a = 25 b = { x = 26 y = 27 z = 28 } c = 29 d = { x = 30 y = 31 z = 32 } } e = { a = 33 b = { x = 34 y = 35 z = 36 } c = { x = 37 y = 38 z = 39 } d = 40 } f = { a = 41 b = { x = 42 y = 43 z = 44 } c = 45 d = { x = 46 y = 47 z = 48 } } }
 
 

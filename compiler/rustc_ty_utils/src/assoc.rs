@@ -325,11 +325,7 @@ fn associated_type_for_impl_trait_in_impl(
 ) -> LocalDefId {
     let impl_local_def_id = tcx.local_parent(impl_fn_def_id);
 
-    let decl = tcx
-        .opt_hir_node_by_def_id(impl_fn_def_id)
-        .expect("expected item")
-        .fn_decl()
-        .expect("expected decl");
+    let decl = tcx.hir_node_by_def_id(impl_fn_def_id).fn_decl().expect("expected decl");
     let span = match decl.output {
         hir::FnRetTy::DefaultReturn(_) => tcx.def_span(impl_fn_def_id),
         hir::FnRetTy::Return(ty) => ty.span,

@@ -6,6 +6,7 @@
 // reachable as well.
 
 use hir::def_id::LocalDefIdSet;
+use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::{DefId, LocalDefId};
@@ -15,7 +16,8 @@ use rustc_middle::middle::codegen_fn_attrs::{CodegenFnAttrFlags, CodegenFnAttrs}
 use rustc_middle::middle::privacy::{self, Level};
 use rustc_middle::mir::interpret::{ConstAllocation, GlobalAlloc};
 use rustc_middle::query::Providers;
-use rustc_middle::ty::{self, TyCtxt};
+use rustc_middle::ty::{self, ExistentialTraitRef, TyCtxt};
+use rustc_privacy::DefIdVisitor;
 use rustc_session::config::CrateType;
 use rustc_target::spec::abi::Abi;
 
@@ -65,23 +67,8 @@ impl<'tcx> Visitor<'tcx> for ReachableContext<'tcx> {
             _ => None,
         };
 
-        if let Some(res) = res
-            && let Some(def_id) = res.opt_def_id().and_then(|el| el.as_local())
-        {
-            if self.def_id_represents_local_inlined_item(def_id.to_def_id()) {
-                self.worklist.push(def_id);
-            } else {
-                match res {
-                    // Reachable constants and reachable statics can have their contents inlined
-                    // into other crates. Mark them as reachable and recurse into their body.
-                    Res::Def(DefKind::Const | DefKind::AssocConst | DefKind::Static { .. }, _) => {
-                        self.worklist.push(def_id);
-                    }
-                    _ => {
-                        self.reachable_symbols.insert(def_id);
-                    }
-                }
-            }
+        if let Some(res) = res {
+            self.propagate_item(res);
         }
 
         intravisit::walk_expr(self, expr)
@@ -116,26 +103,25 @@ impl<'tcx> ReachableContext<'tcx> {
             return false;
         };
 
-        match self.tcx.opt_hir_node_by_def_id(def_id) {
-            Some(Node::Item(item)) => match item.kind {
+        match self.tcx.hir_node_by_def_id(def_id) {
+            Node::Item(item) => match item.kind {
                 hir::ItemKind::Fn(..) => item_might_be_inlined(self.tcx, def_id.into()),
                 _ => false,
             },
-            Some(Node::TraitItem(trait_method)) => match trait_method.kind {
+            Node::TraitItem(trait_method) => match trait_method.kind {
                 hir::TraitItemKind::Const(_, ref default) => default.is_some(),
                 hir::TraitItemKind::Fn(_, hir::TraitFn::Provided(_)) => true,
                 hir::TraitItemKind::Fn(_, hir::TraitFn::Required(_))
                 | hir::TraitItemKind::Type(..) => false,
             },
-            Some(Node::ImplItem(impl_item)) => match impl_item.kind {
+            Node::ImplItem(impl_item) => match impl_item.kind {
                 hir::ImplItemKind::Const(..) => true,
                 hir::ImplItemKind::Fn(..) => {
                     item_might_be_inlined(self.tcx, impl_item.hir_id().owner.to_def_id())
                 }
                 hir::ImplItemKind::Type(_) => false,
             },
-            Some(_) => false,
-            None => false, // This will happen for default methods.
+            _ => false,
         }
     }
 
@@ -147,9 +133,7 @@ impl<'tcx> ReachableContext<'tcx> {
                 continue;
             }
 
-            if let Some(ref item) = self.tcx.opt_hir_node_by_def_id(search_item) {
-                self.propagate_node(item, search_item);
-            }
+            self.propagate_node(&self.tcx.hir_node_by_def_id(search_item), search_item);
         }
     }
 
@@ -201,17 +185,9 @@ impl<'tcx> ReachableContext<'tcx> {
                     hir::ItemKind::Const(_, _, init) => {
                         self.visit_nested_body(init);
                     }
-
-                    // Reachable statics are inlined if read from another constant or static
-                    // in other crates. Additionally anonymous nested statics may be created
-                    // when evaluating a static, so preserve those, too.
-                    hir::ItemKind::Static(_, _, init) => {
-                        // FIXME(oli-obk): remove this body walking and instead walk the evaluated initializer
-                        // to find nested items that end up in the final value instead of also marking symbols
-                        // as reachable that are only needed for evaluation.
-                        self.visit_nested_body(init);
+                    hir::ItemKind::Static(..) => {
                         if let Ok(alloc) = self.tcx.eval_static_initializer(item.owner_id.def_id) {
-                            self.propagate_statics_from_alloc(item.owner_id.def_id, alloc);
+                            self.propagate_from_alloc(alloc);
                         }
                     }
 
@@ -282,27 +258,88 @@ impl<'tcx> ReachableContext<'tcx> {
         }
     }
 
-    /// Finds anonymous nested statics created for nested allocations and adds them to `reachable_symbols`.
-    fn propagate_statics_from_alloc(&mut self, root: LocalDefId, alloc: ConstAllocation<'tcx>) {
+    /// Finds things to add to `reachable_symbols` within allocations.
+    /// In contrast to visit_nested_body this ignores things that were only needed to evaluate
+    /// the allocation.
+    fn propagate_from_alloc(&mut self, alloc: ConstAllocation<'tcx>) {
         if !self.any_library {
             return;
         }
         for (_, prov) in alloc.0.provenance().ptrs().iter() {
             match self.tcx.global_alloc(prov.alloc_id()) {
                 GlobalAlloc::Static(def_id) => {
-                    if let Some(def_id) = def_id.as_local()
-                        && self.tcx.local_parent(def_id) == root
-                        // This is the main purpose of this function: add the def_id we find
-                        // to `reachable_symbols`.
-                        && self.reachable_symbols.insert(def_id)
-                        && let Ok(alloc) = self.tcx.eval_static_initializer(def_id)
-                    {
-                        self.propagate_statics_from_alloc(root, alloc);
+                    self.propagate_item(Res::Def(self.tcx.def_kind(def_id), def_id))
+                }
+                GlobalAlloc::Function(instance) => {
+                    // Manually visit to actually see the instance's `DefId`. Type visitors won't see it
+                    self.propagate_item(Res::Def(
+                        self.tcx.def_kind(instance.def_id()),
+                        instance.def_id(),
+                    ));
+                    self.visit(instance.args);
+                }
+                GlobalAlloc::VTable(ty, trait_ref) => {
+                    self.visit(ty);
+                    // Manually visit to actually see the trait's `DefId`. Type visitors won't see it
+                    if let Some(trait_ref) = trait_ref {
+                        let ExistentialTraitRef { def_id, args } = trait_ref.skip_binder();
+                        self.visit_def_id(def_id, "", &"");
+                        self.visit(args);
                     }
                 }
-                GlobalAlloc::Function(_) | GlobalAlloc::VTable(_, _) | GlobalAlloc::Memory(_) => {}
+                GlobalAlloc::Memory(alloc) => self.propagate_from_alloc(alloc),
             }
         }
+    }
+
+    fn propagate_item(&mut self, res: Res) {
+        let Res::Def(kind, def_id) = res else { return };
+        let Some(def_id) = def_id.as_local() else { return };
+        match kind {
+            DefKind::Static { nested: true, .. } => {
+                // This is the main purpose of this function: add the def_id we find
+                // to `reachable_symbols`.
+                if self.reachable_symbols.insert(def_id) {
+                    if let Ok(alloc) = self.tcx.eval_static_initializer(def_id) {
+                        // This cannot cause infinite recursion, because we abort by inserting into the
+                        // work list once we hit a normal static. Nested statics, even if they somehow
+                        // become recursive, are also not infinitely recursing, because of the
+                        // `reachable_symbols` check above.
+                        // We still need to protect against stack overflow due to deeply nested statics.
+                        ensure_sufficient_stack(|| self.propagate_from_alloc(alloc));
+                    }
+                }
+            }
+            // Reachable constants and reachable statics can have their contents inlined
+            // into other crates. Mark them as reachable and recurse into their body.
+            DefKind::Const | DefKind::AssocConst | DefKind::Static { .. } => {
+                self.worklist.push(def_id);
+            }
+            _ => {
+                if self.def_id_represents_local_inlined_item(def_id.to_def_id()) {
+                    self.worklist.push(def_id);
+                } else {
+                    self.reachable_symbols.insert(def_id);
+                }
+            }
+        }
+    }
+}
+
+impl<'tcx> DefIdVisitor<'tcx> for ReachableContext<'tcx> {
+    type Result = ();
+
+    fn tcx(&self) -> TyCtxt<'tcx> {
+        self.tcx
+    }
+
+    fn visit_def_id(
+        &mut self,
+        def_id: DefId,
+        _kind: &str,
+        _descr: &dyn std::fmt::Display,
+    ) -> Self::Result {
+        self.propagate_item(Res::Def(self.tcx.def_kind(def_id), def_id))
     }
 }
 

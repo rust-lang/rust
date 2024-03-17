@@ -10,10 +10,10 @@
 
 // === LLDB TESTS ==================================================================================
 // lldb-command:run
-// lldb-command:p TEST
-// lldb-check: (unsigned long) $0 = 3735928559
-// lldb-command:p OTHER_TEST
-// lldb-check: (unsigned long) $1 = 42
+// lldb-command:v TEST
+// lldb-check:(unsigned long) TEST = 3735928559
+// lldb-command:v OTHER_TEST
+// lldb-check:(unsigned long) no_mangle_info::namespace::OTHER_TEST::[...] = 42
 
 // === CDB TESTS ==================================================================================
 // cdb-command: g

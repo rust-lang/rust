@@ -29,8 +29,7 @@ use rustc_target::spec::abi::Abi;
 use itertools::Itertools;
 
 use crate::clean::{
-    self, types::ExternalLocation, utils::find_nearest_parent_module, ExternalCrate, ItemId,
-    PrimitiveType,
+    self, types::ExternalLocation, utils::find_nearest_parent_module, ExternalCrate, PrimitiveType,
 };
 use crate::formats::cache::Cache;
 use crate::formats::item_type::ItemType;
@@ -1506,20 +1505,18 @@ impl clean::FnDecl {
 }
 
 pub(crate) fn visibility_print_with_space<'a, 'tcx: 'a>(
-    visibility: Option<ty::Visibility<DefId>>,
-    item_did: ItemId,
+    item: &clean::Item,
     cx: &'a Context<'tcx>,
 ) -> impl Display + 'a + Captures<'tcx> {
     use std::fmt::Write as _;
-
-    let to_print: Cow<'static, str> = match visibility {
+    let vis: Cow<'static, str> = match item.visibility(cx.tcx()) {
         None => "".into(),
         Some(ty::Visibility::Public) => "pub ".into(),
         Some(ty::Visibility::Restricted(vis_did)) => {
             // FIXME(camelid): This may not work correctly if `item_did` is a module.
             //                 However, rustdoc currently never displays a module's
             //                 visibility, so it shouldn't matter.
-            let parent_module = find_nearest_parent_module(cx.tcx(), item_did.expect_def_id());
+            let parent_module = find_nearest_parent_module(cx.tcx(), item.item_id.expect_def_id());
 
             if vis_did.is_crate_root() {
                 "pub(crate) ".into()
@@ -1547,7 +1544,15 @@ pub(crate) fn visibility_print_with_space<'a, 'tcx: 'a>(
             }
         }
     };
-    display_fn(move |f| f.write_str(&to_print))
+
+    let is_doc_hidden = item.is_doc_hidden();
+    display_fn(move |f| {
+        if is_doc_hidden {
+            f.write_str("#[doc(hidden)] ")?;
+        }
+
+        f.write_str(&vis)
+    })
 }
 
 /// This function is the same as print_with_space, except that it renders no links.
@@ -1557,8 +1562,9 @@ pub(crate) fn visibility_to_src_with_space<'a, 'tcx: 'a>(
     visibility: Option<ty::Visibility<DefId>>,
     tcx: TyCtxt<'tcx>,
     item_did: DefId,
+    is_doc_hidden: bool,
 ) -> impl Display + 'a + Captures<'tcx> {
-    let to_print: Cow<'static, str> = match visibility {
+    let vis: Cow<'static, str> = match visibility {
         None => "".into(),
         Some(ty::Visibility::Public) => "pub ".into(),
         Some(ty::Visibility::Restricted(vis_did)) => {
@@ -1582,7 +1588,12 @@ pub(crate) fn visibility_to_src_with_space<'a, 'tcx: 'a>(
             }
         }
     };
-    display_fn(move |f| f.write_str(&to_print))
+    display_fn(move |f| {
+        if is_doc_hidden {
+            f.write_str("#[doc(hidden)] ")?;
+        }
+        f.write_str(&vis)
+    })
 }
 
 pub(crate) trait PrintWithSpace {
