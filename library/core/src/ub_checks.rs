@@ -1,7 +1,7 @@
 //! Provides the [`assert_unsafe_precondition`] macro as well as some utility functions that cover
 //! common preconditions.
 
-use crate::intrinsics::const_eval_select;
+use crate::intrinsics::{self, const_eval_select};
 
 /// Check that the preconditions of an unsafe function are followed. The check is enabled at
 /// runtime if debug assertions are enabled when the caller is monomorphized. In const-eval/Miri
@@ -45,7 +45,7 @@ use crate::intrinsics::const_eval_select;
 /// order to call it. Since the precompiled standard library is built with full debuginfo and these
 /// variables cannot be optimized out in MIR, an innocent-looking `let` can produce enough
 /// debuginfo to have a measurable compile-time impact on debug builds.
-#[allow_internal_unstable(ub_checks)] // permit this to be called in stably-const fn
+#[allow_internal_unstable(const_ub_checks)] // permit this to be called in stably-const fn
 macro_rules! assert_unsafe_precondition {
     ($kind:ident, $message:expr, ($($name:ident:$ty:ty = $arg:expr),*$(,)?) => $e:expr $(,)?) => {
         {
@@ -60,7 +60,7 @@ macro_rules! assert_unsafe_precondition {
             #[rustc_no_mir_inline]
             #[inline]
             #[rustc_nounwind]
-            #[rustc_const_unstable(feature = "ub_checks", issue = "none")]
+            #[rustc_const_unstable(feature = "const_ub_checks", issue = "none")]
             const fn precondition_check($($name:$ty),*) {
                 if !$e {
                     ::core::panicking::panic_nounwind(
@@ -69,13 +69,40 @@ macro_rules! assert_unsafe_precondition {
                 }
             }
 
-            if ::core::intrinsics::$kind() {
+            if ::core::ub_checks::$kind() {
                 precondition_check($($arg,)*);
             }
         }
     };
 }
 pub(crate) use assert_unsafe_precondition;
+
+/// Checking library UB is always enabled when UB-checking is done
+/// (and we use a reexport so that there is no unnecessary wrapper function).
+pub(crate) use intrinsics::ub_checks as check_library_ub;
+
+/// Determines whether we should check for language UB.
+///
+/// The intention is to not do that when running in the interpreter, as that one has its own
+/// language UB checks which generally produce better errors.
+#[rustc_const_unstable(feature = "const_ub_checks", issue = "none")]
+#[inline]
+pub(crate) const fn check_language_ub() -> bool {
+    #[inline]
+    fn runtime() -> bool {
+        // Disable UB checks in Miri.
+        !cfg!(miri)
+    }
+
+    #[inline]
+    const fn comptime() -> bool {
+        // Always disable UB checks.
+        false
+    }
+
+    // Only used for UB checks so we may const_eval_select.
+    intrinsics::ub_checks() && const_eval_select((), comptime, runtime)
+}
 
 /// Checks whether `ptr` is properly aligned with respect to
 /// `align_of::<T>()`.

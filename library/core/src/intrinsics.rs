@@ -2661,38 +2661,22 @@ pub const unsafe fn typed_swap<T>(x: *mut T, y: *mut T) {
     unsafe { ptr::swap_nonoverlapping(x, y, 1) };
 }
 
-/// Returns whether we should check for library UB. This evaluate to the value of `cfg!(debug_assertions)`
-/// during monomorphization.
+/// Returns whether we should perform some UB-checking at runtime. This evaluate to the value of
+/// `cfg!(debug_assertions)` during monomorphization.
 ///
-/// This intrinsic is evaluated after monomorphization, and therefore branching on this value can
-/// be used to implement debug assertions that are included in the precompiled standard library,
-/// but can be optimized out by builds that monomorphize the standard library code with debug
-/// assertions disabled. This intrinsic is primarily used by [`assert_unsafe_precondition`].
-///
-/// We have separate intrinsics for library UB and language UB because checkers like the const-eval
-/// interpreter and Miri already implement checks for language UB. Since such checkers do not know
-/// about library preconditions, checks guarded by this intrinsic let them find more UB.
-#[rustc_const_unstable(feature = "ub_checks", issue = "none")]
+/// This intrinsic is evaluated after monomorphization, which is relevant when mixing crates
+/// compiled with and without debug_assertions. The common case here is a user program built with
+/// debug_assertions linked against the distributed sysroot which is built without debug_assertions.
+/// For code that gets monomorphized in the user crate (i.e., generic functions and functions with
+/// `#[inline]`), gating assertions on `ub_checks()` rather than `cfg!(debug_assertions)` means that
+/// assertions are enabled whenever the *user crate* has debug assertions enabled. However if the
+/// user has debug assertions disabled, the checks will still get optimized out. This intrinsic is
+/// primarily used by [`ub_checks::assert_unsafe_precondition`].
+#[rustc_const_unstable(feature = "const_ub_checks", issue = "none")]
 #[unstable(feature = "core_intrinsics", issue = "none")]
 #[inline(always)]
-#[rustc_intrinsic]
-pub(crate) const fn check_library_ub() -> bool {
-    cfg!(debug_assertions)
-}
-
-/// Returns whether we should check for language UB. This evaluate to the value of `cfg!(debug_assertions)`
-/// during monomorphization.
-///
-/// Since checks implemented at the source level must come strictly before the operation that
-/// executes UB, if we enabled language UB checks in const-eval/Miri we would miss out on the
-/// interpreter's improved diagnostics for the cases that our source-level checks catch.
-///
-/// See `check_library_ub` for more information.
-#[rustc_const_unstable(feature = "ub_checks", issue = "none")]
-#[unstable(feature = "core_intrinsics", issue = "none")]
-#[inline(always)]
-#[rustc_intrinsic]
-pub(crate) const fn check_language_ub() -> bool {
+#[cfg_attr(not(bootstrap), rustc_intrinsic)] // just make it a regular fn in bootstrap
+pub(crate) const fn ub_checks() -> bool {
     cfg!(debug_assertions)
 }
 

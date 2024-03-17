@@ -28,6 +28,10 @@
                               let mut _10: *mut ();
                               let mut _11: *const [bool; 0];
                               scope 13 {
+                                  scope 14 (inlined core::ub_checks::check_language_ub) {
+                                      scope 15 (inlined core::ub_checks::check_language_ub::runtime) {
+                                      }
+                                  }
                               }
                           }
                       }
@@ -60,7 +64,7 @@
           StorageDead(_7);
           StorageLive(_11);
           StorageLive(_8);
-          _8 = UbCheck(LanguageUb);
+          _8 = UbChecks();
           switchInt(move _8) -> [0: bb5, otherwise: bb3];
       }
   
