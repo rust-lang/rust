@@ -13,7 +13,7 @@ impl<'a, 'tcx> VirtualIndex {
         VirtualIndex(index as u64)
     }
 
-    pub fn get_fn<Bx: BuilderMethods<'a, 'tcx>>(
+    pub fn get_optional_fn<Bx: BuilderMethods<'a, 'tcx>>(
         self,
         bx: &mut Bx,
         llvtable: Bx::Value,
@@ -35,15 +35,27 @@ impl<'a, 'tcx> VirtualIndex {
                 .typeid_metadata(typeid_for_trait_ref(bx.tcx(), expect_dyn_trait_in_self(ty)))
                 .unwrap();
             let func = bx.type_checked_load(llvtable, vtable_byte_offset, typeid);
+            // FIXME: can be null
             func
         } else {
             let gep = bx.inbounds_ptradd(llvtable, bx.const_usize(vtable_byte_offset));
             let ptr = bx.load(llty, gep, ptr_align);
-            bx.nonnull_metadata(ptr);
             // VTable loads are invariant.
             bx.set_invariant_load(ptr);
             ptr
         }
+    }
+
+    pub fn get_fn<Bx: BuilderMethods<'a, 'tcx>>(
+        self,
+        bx: &mut Bx,
+        llvtable: Bx::Value,
+        ty: Ty<'tcx>,
+        fn_abi: &FnAbi<'tcx, Ty<'tcx>>,
+    ) -> Bx::Value {
+        let ptr = self.get_optional_fn(bx, llvtable, ty, fn_abi);
+        bx.nonnull_metadata(ptr);
+        ptr
     }
 
     pub fn get_usize<Bx: BuilderMethods<'a, 'tcx>>(
