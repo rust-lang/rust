@@ -191,7 +191,7 @@ pub enum Color {
 pub enum Version {
     /// 1.x.y. When specified, rustfmt will format in the same style as 1.0.0.
     One,
-    /// 2.x.y. When specified, rustfmt will format in the the latest style.
+    /// 2.x.y. When specified, rustfmt will format in the latest style.
     Two,
 }
 
@@ -416,7 +416,7 @@ pub trait CliOptions {
     fn config_path(&self) -> Option<&Path>;
 }
 
-/// The edition of the syntax and semntics of code (RFC 2052).
+/// The edition of the syntax and semantics of code (RFC 2052).
 #[config_type]
 pub enum Edition {
     #[value = "2015"]
