@@ -865,24 +865,6 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         this.sb_retag_reference(val, new_perm, RetagInfo { cause, in_field: false })
     }
 
-    fn sb_retag_box_to_raw(
-        &mut self,
-        val: &ImmTy<'tcx, Provenance>,
-        alloc_ty: Ty<'tcx>,
-    ) -> InterpResult<'tcx, ImmTy<'tcx, Provenance>> {
-        let this = self.eval_context_mut();
-        let is_global_alloc = alloc_ty.ty_adt_def().is_some_and(|adt| {
-            let global_alloc = this.tcx.require_lang_item(rustc_hir::LangItem::GlobalAlloc, None);
-            adt.did() == global_alloc
-        });
-        if is_global_alloc {
-            // Retag this as-if it was a mutable reference.
-            this.sb_retag_ptr_value(RetagKind::Raw, val)
-        } else {
-            Ok(val.clone())
-        }
-    }
-
     fn sb_retag_place_contents(
         &mut self,
         kind: RetagKind,
