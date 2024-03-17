@@ -463,7 +463,9 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                 } else if let UseSpans::FnSelfUse { kind: CallKind::Normal { .. }, .. } = move_spans
                 {
                     // We already suggest cloning for these cases in `explain_captures`.
-                } else {
+                } else if self.suggest_hoisting_call_outside_loop(err, expr) {
+                    // The place where the the type moves would be misleading to suggest clone.
+                    // #121466
                     self.suggest_cloning(err, ty, expr, move_span);
                 }
             }
@@ -977,11 +979,6 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
 
     fn suggest_cloning(&self, err: &mut Diag<'_>, ty: Ty<'tcx>, expr: &hir::Expr<'_>, span: Span) {
         let tcx = self.infcx.tcx;
-        if !self.suggest_hoisting_call_outside_loop(err, expr) {
-            // The place where the the type moves would be misleading to suggest clone. (#121466)
-            return;
-        }
-
         // Try to find predicates on *generic params* that would allow copying `ty`
         let suggestion =
             if let Some(symbol) = tcx.hir().maybe_get_struct_pattern_shorthand_field(expr) {
