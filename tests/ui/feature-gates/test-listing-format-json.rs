@@ -5,6 +5,7 @@
 //@ check-run-results
 //@ ignore-nightly
 //@ unset-exec-env:RUSTC_BOOTSTRAP
+//@ ignore-wasi cannot unset RUSTC_BOOTSTRAP
 
 #![cfg(test)]
 #[test]
