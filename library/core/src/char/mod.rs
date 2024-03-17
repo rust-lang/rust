@@ -363,13 +363,21 @@ impl fmt::Display for EscapeDebug {
 }
 
 macro_rules! casemappingiter_impls {
-    ($(#[$attr:meta])* $ITER_NAME:ident) => {
+    (
+        #[$stab:meta]
+        #[$dendstab:meta]
+        #[$fusedstab:meta]
+        #[$exactstab:meta]
+        #[$displaystab:meta]
+        $(#[$attr:meta])*
+        $ITER_NAME:ident
+    ) => {
         $(#[$attr])*
-        #[stable(feature = "rust1", since = "1.0.0")]
+        #[$stab]
         #[derive(Debug, Clone)]
         pub struct $ITER_NAME(CaseMappingIter);
 
-        #[stable(feature = "rust1", since = "1.0.0")]
+        #[$stab]
         impl Iterator for $ITER_NAME {
             type Item = char;
             fn next(&mut self) -> Option<char> {
@@ -405,7 +413,7 @@ macro_rules! casemappingiter_impls {
             }
         }
 
-        #[stable(feature = "case_mapping_double_ended", since = "1.59.0")]
+        #[$dendstab]
         impl DoubleEndedIterator for $ITER_NAME {
             fn next_back(&mut self) -> Option<char> {
                 self.0.next_back()
@@ -423,10 +431,10 @@ macro_rules! casemappingiter_impls {
             }
         }
 
-        #[stable(feature = "fused", since = "1.26.0")]
+        #[$fusedstab]
         impl FusedIterator for $ITER_NAME {}
 
-        #[stable(feature = "exact_size_case_mapping_iter", since = "1.35.0")]
+        #[$exactstab]
         impl ExactSizeIterator for $ITER_NAME {
             fn len(&self) -> usize {
                 self.0.len()
@@ -453,7 +461,7 @@ macro_rules! casemappingiter_impls {
         #[unstable(feature = "std_internals", issue = "none")]
         unsafe impl TrustedRandomAccess for $ITER_NAME {}
 
-        #[stable(feature = "char_struct_display", since = "1.16.0")]
+        #[$displaystab]
         impl fmt::Display for $ITER_NAME {
             #[inline]
             fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -464,16 +472,11 @@ macro_rules! casemappingiter_impls {
 }
 
 casemappingiter_impls! {
-    /// Returns an iterator that yields the lowercase equivalent of a `char`.
-    ///
-    /// This `struct` is created by the [`to_lowercase`] method on [`char`]. See
-    /// its documentation for more.
-    ///
-    /// [`to_lowercase`]: char::to_lowercase
-    ToLowercase
-}
-
-casemappingiter_impls! {
+    #[stable(feature = "rust1", since = "1.0.0")]
+    #[stable(feature = "case_mapping_double_ended", since = "1.59.0")]
+    #[stable(feature = "fused", since = "1.26.0")]
+    #[stable(feature = "exact_size_case_mapping_iter", since = "1.35.0")]
+    #[stable(feature = "char_struct_display", since = "1.16.0")]
     /// Returns an iterator that yields the uppercase equivalent of a `char`.
     ///
     /// This `struct` is created by the [`to_uppercase`] method on [`char`]. See
@@ -481,6 +484,36 @@ casemappingiter_impls! {
     ///
     /// [`to_uppercase`]: char::to_uppercase
     ToUppercase
+}
+
+casemappingiter_impls! {
+    #[unstable(feature = "titlecase", issue = "none")]
+    #[unstable(feature = "titlecase", issue = "none")]
+    #[unstable(feature = "titlecase", issue = "none")]
+    #[unstable(feature = "titlecase", issue = "none")]
+    #[unstable(feature = "titlecase", issue = "none")]
+    /// Returns an iterator that yields the titlecase equivalent of a `char`.
+    ///
+    /// This `struct` is created by the [`to_titlecase`] method on [`char`]. See
+    /// its documentation for more.
+    ///
+    /// [`to_titlecase`]: char::to_titlecase
+    ToTitlecase
+}
+
+casemappingiter_impls! {
+    #[stable(feature = "rust1", since = "1.0.0")]
+    #[stable(feature = "case_mapping_double_ended", since = "1.59.0")]
+    #[stable(feature = "fused", since = "1.26.0")]
+    #[stable(feature = "exact_size_case_mapping_iter", since = "1.35.0")]
+    #[stable(feature = "char_struct_display", since = "1.16.0")]
+    /// Returns an iterator that yields the lowercase equivalent of a `char`.
+    ///
+    /// This `struct` is created by the [`to_lowercase`] method on [`char`]. See
+    /// its documentation for more.
+    ///
+    /// [`to_lowercase`]: char::to_lowercase
+    ToLowercase
 }
 
 #[derive(Debug, Clone)]

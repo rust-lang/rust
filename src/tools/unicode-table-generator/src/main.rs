@@ -99,32 +99,25 @@ static PROPERTIES: &[&str] = &[
 
 struct UnicodeData {
     ranges: Vec<(&'static str, Vec<Range<u32>>)>,
+    /// Only stores mappings that are not to self
     to_upper: BTreeMap<u32, [u32; 3]>,
+    /// Only stores mappings that differ from `to_upper`
+    to_title: BTreeMap<u32, [u32; 3]>,
+    /// Only stores mappings that are not to self
     to_lower: BTreeMap<u32, [u32; 3]>,
 }
 
-fn to_mapping(origin: u32, codepoints: Vec<ucd_parse::Codepoint>) -> Option<[u32; 3]> {
-    let mut a = None;
-    let mut b = None;
-    let mut c = None;
-
-    for codepoint in codepoints {
-        if origin == codepoint.value() {
-            return None;
-        }
-
-        if a.is_none() {
-            a = Some(codepoint.value());
-        } else if b.is_none() {
-            b = Some(codepoint.value());
-        } else if c.is_none() {
-            c = Some(codepoint.value());
-        } else {
-            panic!("more than 3 mapped codepoints")
-        }
+fn to_mapping(
+    if_different_from: &[ucd_parse::Codepoint],
+    codepoints: &[ucd_parse::Codepoint],
+) -> Option<[u32; 3]> {
+    if codepoints == if_different_from {
+        return None;
     }
 
-    Some([a.unwrap(), b.unwrap_or(0), c.unwrap_or(0)])
+    let mut ret = [ucd_parse::Codepoint::default(); 3];
+    ret[0..codepoints.len()].copy_from_slice(codepoints);
+    Some(ret.map(ucd_parse::Codepoint::value))
 }
 
 static UNICODE_DIRECTORY: &str = "unicode-downloads";
@@ -146,6 +139,7 @@ fn load_data() -> UnicodeData {
 
     let mut to_lower = BTreeMap::new();
     let mut to_upper = BTreeMap::new();
+    let mut to_title = BTreeMap::new();
     for row in ucd_parse::UnicodeDataExpander::new(
         ucd_parse::parse::<_, ucd_parse::UnicodeData>(&UNICODE_DIRECTORY).unwrap(),
     ) {
@@ -171,6 +165,11 @@ fn load_data() -> UnicodeData {
         {
             to_upper.insert(row.codepoint.value(), [mapped.value(), 0, 0]);
         }
+        if let Some(mapped) = row.simple_titlecase_mapping
+            && Some(mapped) != row.simple_uppercase_mapping
+        {
+            to_title.insert(row.codepoint.value(), [mapped.value(), 0, 0]);
+        }
     }
 
     for row in ucd_parse::parse::<_, ucd_parse::SpecialCaseMapping>(&UNICODE_DIRECTORY).unwrap() {
@@ -180,11 +179,14 @@ fn load_data() -> UnicodeData {
         }
 
         let key = row.codepoint.value();
-        if let Some(lower) = to_mapping(key, row.lowercase) {
+        if let Some(lower) = to_mapping(&[row.codepoint], &row.lowercase) {
             to_lower.insert(key, lower);
         }
-        if let Some(upper) = to_mapping(key, row.uppercase) {
+        if let Some(upper) = to_mapping(&[row.codepoint], &row.uppercase) {
             to_upper.insert(key, upper);
+        }
+        if let Some(title) = to_mapping(&row.uppercase, &row.titlecase) {
+            to_title.insert(key, title);
         }
     }
 
@@ -203,7 +205,7 @@ fn load_data() -> UnicodeData {
         .collect();
 
     properties.sort_by_key(|p| p.0);
-    UnicodeData { ranges: properties, to_lower, to_upper }
+    UnicodeData { ranges: properties, to_lower, to_title, to_upper }
 }
 
 fn main() {
