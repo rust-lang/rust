@@ -2,7 +2,7 @@ use rustc_data_structures::fx::FxIndexSet;
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
 use rustc_infer::infer::{outlives::env::OutlivesEnvironment, TyCtxtInferExt};
-use rustc_lint_defs::builtin::REFINING_IMPL_TRAIT;
+use rustc_lint_defs::builtin::{REFINING_IMPL_TRAIT_INTERNAL, REFINING_IMPL_TRAIT_REACHABLE};
 use rustc_middle::traits::{ObligationCause, Reveal};
 use rustc_middle::ty::{
     self, Ty, TyCtxt, TypeFoldable, TypeFolder, TypeSuperVisitable, TypeVisitable, TypeVisitor,
@@ -23,26 +23,23 @@ pub(super) fn check_refining_return_position_impl_trait_in_trait<'tcx>(
     if !tcx.impl_method_has_trait_impl_trait_tys(impl_m.def_id) {
         return;
     }
+
     // unreachable traits don't have any library guarantees, there's no need to do this check.
-    if trait_m
+    let is_internal = trait_m
         .container_id(tcx)
         .as_local()
         .is_some_and(|trait_def_id| !tcx.effective_visibilities(()).is_reachable(trait_def_id))
-    {
-        return;
-    }
+        // If a type in the trait ref is private, then there's also no reason to do this check.
+        || impl_trait_ref.args.iter().any(|arg| {
+            if let Some(ty) = arg.as_type()
+                && let Some(self_visibility) = type_visibility(tcx, ty)
+            {
+                return !self_visibility.is_public();
+            }
+            false
+        });
 
-    // If a type in the trait ref is private, then there's also no reason to do this check.
     let impl_def_id = impl_m.container_id(tcx);
-    for arg in impl_trait_ref.args {
-        if let Some(ty) = arg.as_type()
-            && let Some(self_visibility) = type_visibility(tcx, ty)
-            && !self_visibility.is_public()
-        {
-            return;
-        }
-    }
-
     let impl_m_args = ty::GenericArgs::identity_for_item(tcx, impl_m.def_id);
     let trait_m_to_impl_m_args = impl_m_args.rebase_onto(tcx, impl_def_id, impl_trait_ref.args);
     let bound_trait_m_sig = tcx.fn_sig(trait_m.def_id).instantiate(tcx, trait_m_to_impl_m_args);
@@ -85,6 +82,7 @@ pub(super) fn check_refining_return_position_impl_trait_in_trait<'tcx>(
                 trait_m.def_id,
                 impl_m.def_id,
                 None,
+                is_internal,
             );
             return;
         };
@@ -104,6 +102,7 @@ pub(super) fn check_refining_return_position_impl_trait_in_trait<'tcx>(
                 trait_m.def_id,
                 impl_m.def_id,
                 None,
+                is_internal,
             );
             return;
         }
@@ -198,6 +197,7 @@ pub(super) fn check_refining_return_position_impl_trait_in_trait<'tcx>(
                 trait_m.def_id,
                 impl_m.def_id,
                 Some(span),
+                is_internal,
             );
             return;
         }
@@ -235,6 +235,7 @@ fn report_mismatched_rpitit_signature<'tcx>(
     trait_m_def_id: DefId,
     impl_m_def_id: DefId,
     unmatched_bound: Option<Span>,
+    is_internal: bool,
 ) {
     let mapping = std::iter::zip(
         tcx.fn_sig(trait_m_def_id).skip_binder().bound_vars(),
@@ -287,7 +288,7 @@ fn report_mismatched_rpitit_signature<'tcx>(
 
     let span = unmatched_bound.unwrap_or(span);
     tcx.emit_node_span_lint(
-        REFINING_IMPL_TRAIT,
+        if is_internal { REFINING_IMPL_TRAIT_INTERNAL } else { REFINING_IMPL_TRAIT_REACHABLE },
         tcx.local_def_id_to_hir_id(impl_m_def_id.expect_local()),
         span,
         crate::errors::ReturnPositionImplTraitInTraitRefined {

@@ -313,6 +313,12 @@ fn register_builtins(store: &mut LintStore) {
                                        // MACRO_USE_EXTERN_CRATE
     );
 
+    add_lint_group!(
+        "refining_impl_trait",
+        REFINING_IMPL_TRAIT_REACHABLE,
+        REFINING_IMPL_TRAIT_INTERNAL
+    );
+
     // Register renamed and removed lints.
     store.register_renamed("single_use_lifetime", "single_use_lifetimes");
     store.register_renamed("elided_lifetime_in_path", "elided_lifetimes_in_paths");

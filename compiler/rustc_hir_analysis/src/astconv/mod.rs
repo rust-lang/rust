@@ -639,7 +639,7 @@ impl<'tcx> dyn AstConv<'tcx> + '_ {
     /// where `'a` is a bound region at depth 0. Similarly, the `poly_trait_ref` would be
     /// `Bar<'a>`. The returned poly-trait-ref will have this binder instantiated explicitly,
     /// however.
-    #[instrument(level = "debug", skip(self, span, constness, bounds, speculative))]
+    #[instrument(level = "debug", skip(self, span, constness, bounds))]
     pub(crate) fn instantiate_poly_trait_ref(
         &self,
         trait_ref: &hir::TraitRef<'tcx>,
@@ -648,7 +648,6 @@ impl<'tcx> dyn AstConv<'tcx> + '_ {
         polarity: ty::ImplPolarity,
         self_ty: Ty<'tcx>,
         bounds: &mut Bounds<'tcx>,
-        speculative: bool,
         only_self_bounds: OnlySelfBounds,
     ) -> GenericArgCountResult {
         let trait_def_id = trait_ref.trait_def_id().unwrap_or_else(|| FatalError.raise());
@@ -697,7 +696,6 @@ impl<'tcx> dyn AstConv<'tcx> + '_ {
                 poly_trait_ref,
                 binding,
                 bounds,
-                speculative,
                 &mut dup_bindings,
                 binding.span,
                 only_self_bounds,
