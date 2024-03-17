@@ -208,7 +208,7 @@ pub(crate) fn combine_strs_with_missing_comments(
 
     // We have a missing comment between the first expression and the second expression.
 
-    // Peek the the original source code and find out whether there is a newline between the first
+    // Peek at the original source code and find out whether there is a newline between the first
     // expression and the second expression or the missing comment. We will preserve the original
     // layout whenever possible.
     let original_snippet = context.snippet(span);
@@ -509,7 +509,7 @@ impl ItemizedBlock {
         if line.trim_start().starts_with(">") {
             // remove the original +2 indent because there might be multiple nested block quotes
             // and it's easier to reason about the final indent by just taking the length
-            // of the new line_start. We update the indent because it effects the max width
+            // of the new line_start. We update the indent because it affects the max width
             // of each formatted line.
             line_start = itemized_block_quote_start(line, line_start, 2);
             indent = line_start.len();
