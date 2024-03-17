@@ -35,12 +35,14 @@ where
         data.last_offset = data.last_offset + Reg::i32().size;
     }
 
-    for _ in 0..((offset - data.last_offset).bits() / 64)
-        .min((data.prefix.len() - data.prefix_index) as u64)
-    {
-        data.prefix[data.prefix_index] = Some(Reg::i64());
-        data.prefix_index += 1;
-        data.last_offset = data.last_offset + Reg::i64().size;
+    if data.last_offset < offset {
+        for _ in 0..((offset - data.last_offset).bits() / 64)
+            .min((data.prefix.len() - data.prefix_index) as u64)
+        {
+            data.prefix[data.prefix_index] = Some(Reg::i64());
+            data.prefix_index += 1;
+            data.last_offset = data.last_offset + Reg::i64().size;
+        }
     }
 
     if data.last_offset < offset {
