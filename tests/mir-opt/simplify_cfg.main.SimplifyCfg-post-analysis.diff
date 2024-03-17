@@ -1,5 +1,5 @@
-- // MIR for `main` before SimplifyCfg-early-opt
-+ // MIR for `main` after SimplifyCfg-early-opt
+- // MIR for `main` before SimplifyCfg-post-analysis
++ // MIR for `main` after SimplifyCfg-post-analysis
   
   fn main() -> () {
       let mut _0: ();

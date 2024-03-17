@@ -1,4 +1,4 @@
-// MIR for `array_casts` after SimplifyCfg-elaborate-drops
+// MIR for `array_casts` after SimplifyCfg-pre-optimizations
 
 fn array_casts() -> () {
     let mut _0: ();

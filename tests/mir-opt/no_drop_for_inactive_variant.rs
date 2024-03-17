@@ -4,7 +4,7 @@
 // Ensure that there are no drop terminators in `unwrap<T>` (except the one along the cleanup
 // path).
 
-// EMIT_MIR no_drop_for_inactive_variant.unwrap.SimplifyCfg-elaborate-drops.after.mir
+// EMIT_MIR no_drop_for_inactive_variant.unwrap.SimplifyCfg-pre-optimizations.after.mir
 fn unwrap<T>(opt: Option<T>) -> T {
     match opt {
         Some(x) => x,

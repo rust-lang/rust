@@ -1,4 +1,4 @@
-// MIR for `unwrap` after SimplifyCfg-elaborate-drops
+// MIR for `unwrap` after SimplifyCfg-pre-optimizations
 
 fn unwrap(_1: Option<T>) -> T {
     debug opt => _1;
@@ -24,7 +24,7 @@ fn unwrap(_1: Option<T>) -> T {
 
     bb2: {
         StorageLive(_4);
-        _4 = begin_panic::<&str>(const "explicit panic") -> unwind unreachable;
+        _4 = begin_panic::<&str>(const "explicit panic") -> bb4;
     }
 
     bb3: {
@@ -34,5 +34,10 @@ fn unwrap(_1: Option<T>) -> T {
         StorageDead(_3);
         _5 = discriminant(_1);
         return;
+    }
+
+    bb4 (cleanup): {
+        _7 = discriminant(_1);
+        resume;
     }
 }

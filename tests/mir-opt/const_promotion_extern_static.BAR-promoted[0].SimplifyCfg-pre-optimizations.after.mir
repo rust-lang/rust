@@ -1,4 +1,4 @@
-// MIR for `BAR::promoted[0]` after SimplifyCfg-elaborate-drops
+// MIR for `BAR::promoted[0]` after SimplifyCfg-pre-optimizations
 
 const BAR::promoted[0]: &[&i32; 1] = {
     let mut _0: &[&i32; 1];
