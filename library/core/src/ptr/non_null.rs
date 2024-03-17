@@ -2,7 +2,6 @@ use crate::cmp::Ordering;
 use crate::fmt;
 use crate::hash;
 use crate::intrinsics;
-use crate::intrinsics::assert_unsafe_precondition;
 use crate::marker::Unsize;
 use crate::mem::{MaybeUninit, SizedTypeProperties};
 use crate::num::NonZero;
@@ -10,6 +9,7 @@ use crate::ops::{CoerceUnsized, DispatchFromDyn};
 use crate::ptr;
 use crate::ptr::Unique;
 use crate::slice::{self, SliceIndex};
+use crate::ub_checks::assert_unsafe_precondition;
 
 /// `*mut T` but non-zero and [covariant].
 ///

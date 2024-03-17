@@ -367,6 +367,7 @@ pub mod hint;
 pub mod intrinsics;
 pub mod mem;
 pub mod ptr;
+mod ub_checks;
 
 /* Core language traits */
 

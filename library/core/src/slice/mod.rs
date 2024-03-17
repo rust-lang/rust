@@ -9,7 +9,6 @@
 use crate::cmp::Ordering::{self, Equal, Greater, Less};
 use crate::fmt;
 use crate::hint;
-use crate::intrinsics::assert_unsafe_precondition;
 use crate::intrinsics::exact_div;
 use crate::mem::{self, SizedTypeProperties};
 use crate::num::NonZero;
@@ -17,6 +16,7 @@ use crate::ops::{Bound, OneSidedRange, Range, RangeBounds};
 use crate::ptr;
 use crate::simd::{self, Simd};
 use crate::slice;
+use crate::ub_checks::assert_unsafe_precondition;
 
 #[unstable(
     feature = "slice_internals",

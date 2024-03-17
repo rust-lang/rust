@@ -1,10 +1,10 @@
 //! Trait implementations for `str`.
 
 use crate::cmp::Ordering;
-use crate::intrinsics::assert_unsafe_precondition;
 use crate::ops;
 use crate::ptr;
 use crate::slice::SliceIndex;
+use crate::ub_checks::assert_unsafe_precondition;
 
 use super::ParseBoolError;
 
