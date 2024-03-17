@@ -369,6 +369,7 @@ macro_rules! casemappingiter_impls {
         #[$fusedstab:meta]
         #[$exactstab:meta]
         #[$displaystab:meta]
+        #[$partialstab:meta]
         $(#[$attr:meta])*
         $ITER_NAME:ident
     ) => {
@@ -468,6 +469,38 @@ macro_rules! casemappingiter_impls {
                 fmt::Display::fmt(&self.0, f)
             }
         }
+
+        #[$partialstab]
+        impl PartialEq<ToUppercase> for $ITER_NAME {
+            #[inline]
+            fn eq(&self, other: &ToUppercase) -> bool {
+                self.0 == other.0
+            }
+        }
+
+        #[unstable(feature = "titlecase", issue = "none")]
+        impl PartialEq<ToTitlecase> for $ITER_NAME {
+            #[inline]
+            fn eq(&self, other: &ToTitlecase) -> bool {
+                self.0 == other.0
+            }
+        }
+
+        #[$partialstab]
+        impl PartialEq<ToLowercase> for $ITER_NAME {
+            #[inline]
+            fn eq(&self, other: &ToLowercase) -> bool {
+                self.0 == other.0
+            }
+        }
+
+        #[$partialstab]
+        impl PartialEq<char> for $ITER_NAME {
+            #[inline]
+            fn eq(&self, other: &char) -> bool {
+                self.0 == *other
+            }
+        }
     }
 }
 
@@ -477,6 +510,7 @@ casemappingiter_impls! {
     #[stable(feature = "fused", since = "1.26.0")]
     #[stable(feature = "exact_size_case_mapping_iter", since = "1.35.0")]
     #[stable(feature = "char_struct_display", since = "1.16.0")]
+    #[stable(feature = "iter_partialeq", since = "CURRENT_RUSTC_VERSION")]
     /// Returns an iterator that yields the uppercase equivalent of a `char`.
     ///
     /// This `struct` is created by the [`to_uppercase`] method on [`char`]. See
@@ -487,6 +521,7 @@ casemappingiter_impls! {
 }
 
 casemappingiter_impls! {
+    #[unstable(feature = "titlecase", issue = "none")]
     #[unstable(feature = "titlecase", issue = "none")]
     #[unstable(feature = "titlecase", issue = "none")]
     #[unstable(feature = "titlecase", issue = "none")]
@@ -507,6 +542,7 @@ casemappingiter_impls! {
     #[stable(feature = "fused", since = "1.26.0")]
     #[stable(feature = "exact_size_case_mapping_iter", since = "1.35.0")]
     #[stable(feature = "char_struct_display", since = "1.16.0")]
+    #[stable(feature = "iter_partialeq", since = "CURRENT_RUSTC_VERSION")]
     /// Returns an iterator that yields the lowercase equivalent of a `char`.
     ///
     /// This `struct` is created by the [`to_lowercase`] method on [`char`]. See
@@ -619,6 +655,22 @@ impl fmt::Display for CaseMappingIter {
             f.write_char(c)?;
         }
         Ok(())
+    }
+}
+
+impl PartialEq for CaseMappingIter {
+    #[inline]
+    fn eq(&self, other: &Self) -> bool {
+        self.0.as_slice() == other.0.as_slice()
+    }
+}
+
+impl Eq for CaseMappingIter {}
+
+impl PartialEq<char> for CaseMappingIter {
+    #[inline]
+    fn eq(&self, other: &char) -> bool {
+        self.0.as_slice() == &[*other]
     }
 }
 
