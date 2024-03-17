@@ -1,19 +1,19 @@
 error[E0080]: evaluation of `Fail::<i32>::C` failed
-  --> $DIR/collect-in-dead-vtable.rs:12:19
+  --> $DIR/collect-in-dead-vtable.rs:11:19
    |
 LL |     const C: () = panic!();
-   |                   ^^^^^^^^ the evaluated program panicked at 'explicit panic', $DIR/collect-in-dead-vtable.rs:12:19
+   |                   ^^^^^^^^ the evaluated program panicked at 'explicit panic', $DIR/collect-in-dead-vtable.rs:11:19
    |
    = note: this error originates in the macro `$crate::panic::panic_2015` which comes from the expansion of the macro `panic` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 note: erroneous constant encountered
-  --> $DIR/collect-in-dead-vtable.rs:26:21
+  --> $DIR/collect-in-dead-vtable.rs:25:21
    |
 LL |             let _ = Fail::<T>::C;
    |                     ^^^^^^^^^^^^
 
 note: the above error was encountered while instantiating `fn <std::vec::Vec<i32> as MyTrait>::not_called`
-  --> $DIR/collect-in-dead-vtable.rs:35:40
+  --> $DIR/collect-in-dead-vtable.rs:34:40
    |
 LL |         let gen_vtable: &dyn MyTrait = &v; // vtable "appears" here
    |                                        ^^

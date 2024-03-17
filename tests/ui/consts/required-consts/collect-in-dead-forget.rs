@@ -1,8 +1,7 @@
 //@revisions: noopt opt
 //@build-pass
 //@[opt] compile-flags: -O
-//! Make sure we detect erroneous constants post-monomorphization even when they are unused. This is
-//! crucial, people rely on it for soundness. (https://github.com/rust-lang/rust/issues/112090)
+//! This passes without optimizations, so it can (and should) also pass with optimizations.
 
 struct Fail<T>(T);
 impl<T> Fail<T> {

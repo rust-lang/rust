@@ -4,8 +4,7 @@
 //FIXME: `opt` revision currently does not stop with an error due to
 //<https://github.com/rust-lang/rust/issues/107503>.
 //@[opt] build-pass
-//! Make sure we detect erroneous constants post-monomorphization even when they are unused. This is
-//! crucial, people rely on it for soundness. (https://github.com/rust-lang/rust/issues/112090)
+//! This fails without optimizations, so it should also fail with optimizations.
 
 struct Fail<T>(T);
 impl<T> Fail<T> {
