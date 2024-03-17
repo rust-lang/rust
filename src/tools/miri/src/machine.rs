@@ -36,6 +36,9 @@ use crate::{
     *,
 };
 
+use self::concurrency::data_race::NaReadType;
+use self::concurrency::data_race::NaWriteType;
+
 /// First real-time signal.
 /// `signal(7)` says this must be between 32 and 64 and specifies 34 or 35
 /// as typical values.
@@ -1241,7 +1244,7 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for MiriMachine<'mir, 'tcx> {
                 .emit_diagnostic(NonHaltingDiagnostic::AccessedAlloc(alloc_id, AccessKind::Read));
         }
         if let Some(data_race) = &alloc_extra.data_race {
-            data_race.read(alloc_id, range, machine)?;
+            data_race.read(alloc_id, range, NaReadType::Read, None, machine)?;
         }
         if let Some(borrow_tracker) = &alloc_extra.borrow_tracker {
             borrow_tracker.before_memory_read(alloc_id, prov_extra, range, machine)?;
@@ -1265,7 +1268,7 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for MiriMachine<'mir, 'tcx> {
                 .emit_diagnostic(NonHaltingDiagnostic::AccessedAlloc(alloc_id, AccessKind::Write));
         }
         if let Some(data_race) = &mut alloc_extra.data_race {
-            data_race.write(alloc_id, range, machine)?;
+            data_race.write(alloc_id, range, NaWriteType::Write, None, machine)?;
         }
         if let Some(borrow_tracker) = &mut alloc_extra.borrow_tracker {
             borrow_tracker.before_memory_write(alloc_id, prov_extra, range, machine)?;
@@ -1289,7 +1292,13 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for MiriMachine<'mir, 'tcx> {
             machine.emit_diagnostic(NonHaltingDiagnostic::FreedAlloc(alloc_id));
         }
         if let Some(data_race) = &mut alloc_extra.data_race {
-            data_race.deallocate(alloc_id, size, machine)?;
+            data_race.write(
+                alloc_id,
+                alloc_range(Size::ZERO, size),
+                NaWriteType::Deallocate,
+                None,
+                machine,
+            )?;
         }
         if let Some(borrow_tracker) = &mut alloc_extra.borrow_tracker {
             borrow_tracker.before_memory_deallocation(alloc_id, prove_extra, size, machine)?;
