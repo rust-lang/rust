@@ -15,7 +15,10 @@ extern crate rustc_abi;
 #[cfg(not(feature = "in-rust-tree"))]
 extern crate ra_ap_rustc_abi as rustc_abi;
 
-// No need to use the in-tree one.
+#[cfg(feature = "in-rust-tree")]
+extern crate rustc_pattern_analysis;
+
+#[cfg(not(feature = "in-rust-tree"))]
 extern crate ra_ap_rustc_pattern_analysis as rustc_pattern_analysis;
 
 mod builder;
