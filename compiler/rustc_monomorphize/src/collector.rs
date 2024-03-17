@@ -720,6 +720,9 @@ struct MirUsedCollector<'a, 'tcx> {
     tcx: TyCtxt<'tcx>,
     body: &'a mir::Body<'tcx>,
     used_items: &'a mut MonoItems<'tcx>,
+    /// See the comment in `collect_items_of_instance` for the purpose of this set.
+    /// Note that this contains *not-monomorphized* items!
+    used_mentioned_items: &'a mut FxHashSet<MentionedItem<'tcx>>,
     instance: Instance<'tcx>,
     /// Spans for move size lints already emitted. Helps avoid duplicate lints.
     move_size_spans: Vec<Span>,
@@ -990,12 +993,18 @@ impl<'a, 'tcx> MirVisitor<'tcx> for MirUsedCollector<'a, 'tcx> {
         match terminator.kind {
             mir::TerminatorKind::Call { ref func, ref args, ref fn_span, .. } => {
                 let callee_ty = func.ty(self.body, tcx);
+                // *Before* monomorphizing, record that we already handled this mention.
+                if let ty::FnDef(def_id, args) = callee_ty.kind() {
+                    self.used_mentioned_items.insert(MentionedItem::Fn(*def_id, args));
+                }
                 let callee_ty = self.monomorphize(callee_ty);
                 self.check_fn_args_move_size(callee_ty, args, *fn_span, location);
                 visit_fn_use(self.tcx, callee_ty, true, source, &mut self.used_items)
             }
             mir::TerminatorKind::Drop { ref place, .. } => {
                 let ty = place.ty(self.body, self.tcx).ty;
+                // *Before* monomorphizing, record that we already handled this mention.
+                self.used_mentioned_items.insert(MentionedItem::Drop(ty));
                 let ty = self.monomorphize(ty);
                 visit_drop_use(self.tcx, ty, true, source, self.used_items);
             }
@@ -1639,10 +1648,22 @@ fn collect_items_of_instance<'tcx>(
     mode: CollectionMode,
 ) {
     let body = tcx.instance_mir(instance.def);
+    // Naively, in "used" collection mode, all functions get added to *both* `used_items` and
+    // `mentioned_items`. Mentioned items processing will then notice that they have already been
+    // visited, but at that point each mentioned item has been monomorphized, added to the
+    // `mentioned_items` worklist, and checked in the global set of visited items. To removes that
+    // overhead, we have a special optimization that avoids adding items to `mentioned_items` when
+    // they are already added in `used_items`. We could just scan `used_items`, but that's a linear
+    // scan and not very efficient. Furthermore we can only do that *after* monomorphizing the
+    // mentioned item. So instead we collect all pre-monomorphized `MentionedItem` that were already
+    // added to `used_items` in a hash set, which can efficiently query in the
+    // `body.mentioned_items` loop below.
+    let mut used_mentioned_items = FxHashSet::<MentionedItem<'tcx>>::default();
     let mut collector = MirUsedCollector {
         tcx,
         body,
         used_items,
+        used_mentioned_items: &mut used_mentioned_items,
         instance,
         move_size_spans: vec![],
         visiting_call_terminator: false,
@@ -1662,10 +1683,13 @@ fn collect_items_of_instance<'tcx>(
         }
     }
 
-    // Always gather mentioned items.
+    // Always gather mentioned items. We try to avoid processing items that we have already added to
+    // `used_items` above.
     for item in &body.mentioned_items {
-        let item_mono = collector.monomorphize(item.node);
-        visit_mentioned_item(tcx, &item_mono, item.span, mentioned_items);
+        if !collector.used_mentioned_items.contains(&item.node) {
+            let item_mono = collector.monomorphize(item.node);
+            visit_mentioned_item(tcx, &item_mono, item.span, mentioned_items);
+        }
     }
 }
 
