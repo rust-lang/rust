@@ -21,17 +21,24 @@ use crate::{
 pub(crate) fn remove_unnecessary_else(
     ctx: &DiagnosticsContext<'_>,
     d: &RemoveUnnecessaryElse,
-) -> Diagnostic {
+) -> Option<Diagnostic> {
+    if d.if_expr.file_id.macro_file().is_some() {
+        // FIXME: Our infra can't handle allow from within macro expansions rn
+        return None;
+    }
+
     let display_range = adjusted_display_range(ctx, d.if_expr, &|if_expr| {
         if_expr.else_token().as_ref().map(SyntaxToken::text_range)
     });
-    Diagnostic::new(
-        DiagnosticCode::Ra("remove-unnecessary-else", Severity::WeakWarning),
-        "remove unnecessary else block",
-        display_range,
+    Some(
+        Diagnostic::new(
+            DiagnosticCode::Ra("remove-unnecessary-else", Severity::WeakWarning),
+            "remove unnecessary else block",
+            display_range,
+        )
+        .experimental()
+        .with_fixes(fixes(ctx, d)),
     )
-    .experimental()
-    .with_fixes(fixes(ctx, d))
 }
 
 fn fixes(ctx: &DiagnosticsContext<'_>, d: &RemoveUnnecessaryElse) -> Option<Vec<Assist>> {
