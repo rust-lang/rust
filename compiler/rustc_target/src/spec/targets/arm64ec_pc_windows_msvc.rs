@@ -1,14 +1,15 @@
-use crate::spec::{add_link_args, base, LinkerFlavor, Lld, Target};
+use crate::spec::{base, LinkerFlavor, Lld, MaybeLazy, Target, TargetOptions};
 
 pub fn target() -> Target {
     let mut base = base::windows_msvc::opts();
     base.max_atomic_width = Some(128);
     base.features = "+v8a,+neon,+fp-armv8".into();
-    add_link_args(
-        &mut base.late_link_args,
-        LinkerFlavor::Msvc(Lld::No),
-        &["/machine:arm64ec", "softintrin.lib"],
-    );
+    base.late_link_args = MaybeLazy::lazy(|| {
+        TargetOptions::link_args(
+            LinkerFlavor::Msvc(Lld::No),
+            &["/machine:arm64ec", "softintrin.lib"],
+        )
+    });
 
     Target {
         llvm_target: "arm64ec-pc-windows-msvc".into(),

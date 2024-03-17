@@ -1,10 +1,13 @@
-use crate::spec::base::apple::{ios_llvm_target, opts, Arch, TargetAbi};
-use crate::spec::{Target, TargetOptions};
+use crate::spec::base::apple::{ios_llvm_target, opts, pre_link_args, Arch, TargetAbi};
+use crate::spec::{MaybeLazy, Target, TargetOptions};
 
 pub fn target() -> Target {
-    let arch = Arch::Armv7s;
+    const ARCH: Arch = Arch::Armv7s;
+    const OS: &'static str = "ios";
+    const ABI: TargetAbi = TargetAbi::Normal;
+
     Target {
-        llvm_target: ios_llvm_target(arch).into(),
+        llvm_target: ios_llvm_target(ARCH).into(),
         metadata: crate::spec::TargetMetadata {
             description: None,
             tier: None,
@@ -13,11 +16,11 @@ pub fn target() -> Target {
         },
         pointer_width: 32,
         data_layout: "e-m:o-p:32:32-Fi8-f64:32:64-v64:32:64-v128:32:128-a:0:32-n32-S32".into(),
-        arch: arch.target_arch(),
+        arch: ARCH.target_arch(),
         options: TargetOptions {
             features: "+v7,+vfp4,+neon".into(),
             max_atomic_width: Some(64),
-            ..opts("ios", arch, TargetAbi::Normal)
+            ..opts(OS, ARCH, ABI, MaybeLazy::lazy(|| pre_link_args(OS, ARCH, ABI)))
         },
     }
 }

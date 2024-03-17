@@ -1,6 +1,6 @@
 use std::{borrow::Cow, env};
 
-use crate::spec::{add_link_args, add_link_args_iter};
+use crate::spec::{add_link_args, add_link_args_iter, MaybeLazy};
 use crate::spec::{cvs, Cc, DebuginfoKind, FramePointer, LinkArgs, LinkerFlavor, Lld};
 use crate::spec::{SplitDebuginfo, StackProbeType, StaticCow, Target, TargetOptions};
 
@@ -94,7 +94,7 @@ impl TargetAbi {
     }
 }
 
-fn pre_link_args(os: &'static str, arch: Arch, abi: TargetAbi) -> LinkArgs {
+pub fn pre_link_args(os: &'static str, arch: Arch, abi: TargetAbi) -> LinkArgs {
     let platform_name: StaticCow<str> = match abi {
         TargetAbi::Normal => os.into(),
         TargetAbi::Simulator => format!("{os}-simulator").into(),
@@ -140,7 +140,12 @@ fn pre_link_args(os: &'static str, arch: Arch, abi: TargetAbi) -> LinkArgs {
     args
 }
 
-pub fn opts(os: &'static str, arch: Arch, abi: TargetAbi) -> TargetOptions {
+pub fn opts(
+    os: &'static str,
+    arch: Arch,
+    abi: TargetAbi,
+    pre_link_args: MaybeLazy<LinkArgs>,
+) -> TargetOptions {
     TargetOptions {
         abi: abi.target_abi().into(),
         os: os.into(),
@@ -151,7 +156,7 @@ pub fn opts(os: &'static str, arch: Arch, abi: TargetAbi) -> TargetOptions {
         // macOS has -dead_strip, which doesn't rely on function_sections
         function_sections: false,
         dynamic_linking: true,
-        pre_link_args: pre_link_args(os, arch, abi),
+        pre_link_args,
         families: cvs!["unix"],
         is_like_osx: true,
         // LLVM notes that macOS 10.11+ and iOS 9+ default

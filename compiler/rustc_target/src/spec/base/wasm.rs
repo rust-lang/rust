@@ -1,6 +1,6 @@
 use crate::spec::{
-    add_link_args, cvs, Cc, LinkSelfContainedDefault, LinkerFlavor, PanicStrategy, RelocModel,
-    TargetOptions, TlsModel,
+    add_link_args, cvs, Cc, LinkSelfContainedDefault, LinkerFlavor, MaybeLazy, PanicStrategy,
+    RelocModel, TargetOptions, TlsModel,
 };
 
 pub fn options() -> TargetOptions {
@@ -48,8 +48,11 @@ pub fn options() -> TargetOptions {
         };
     }
 
-    let mut pre_link_args = TargetOptions::link_args(LinkerFlavor::WasmLld(Cc::No), args!(""));
-    add_link_args(&mut pre_link_args, LinkerFlavor::WasmLld(Cc::Yes), args!("-Wl,"));
+    let pre_link_args = MaybeLazy::lazy(|| {
+        let mut pre_link_args = TargetOptions::link_args(LinkerFlavor::WasmLld(Cc::No), args!(""));
+        add_link_args(&mut pre_link_args, LinkerFlavor::WasmLld(Cc::Yes), args!("-Wl,"));
+        pre_link_args
+    });
 
     TargetOptions {
         is_like_wasm: true,

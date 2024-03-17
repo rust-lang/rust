@@ -2027,24 +2027,24 @@ pub struct TargetOptions {
     pub link_self_contained: LinkSelfContainedDefault,
 
     /// Linker arguments that are passed *before* any user-defined libraries.
-    pub pre_link_args: LinkArgs,
+    pub pre_link_args: MaybeLazy<LinkArgs>,
     pre_link_args_json: LinkArgsCli,
     /// Linker arguments that are unconditionally passed after any
     /// user-defined but before post-link objects. Standard platform
     /// libraries that should be always be linked to, usually go here.
-    pub late_link_args: LinkArgs,
+    pub late_link_args: MaybeLazy<LinkArgs>,
     late_link_args_json: LinkArgsCli,
     /// Linker arguments used in addition to `late_link_args` if at least one
     /// Rust dependency is dynamically linked.
-    pub late_link_args_dynamic: LinkArgs,
+    pub late_link_args_dynamic: MaybeLazy<LinkArgs>,
     late_link_args_dynamic_json: LinkArgsCli,
     /// Linker arguments used in addition to `late_link_args` if all Rust
     /// dependencies are statically linked.
-    pub late_link_args_static: LinkArgs,
+    pub late_link_args_static: MaybeLazy<LinkArgs>,
     late_link_args_static_json: LinkArgsCli,
     /// Linker arguments that are unconditionally passed *after* any
     /// user-defined libraries.
-    pub post_link_args: LinkArgs,
+    pub post_link_args: MaybeLazy<LinkArgs>,
     post_link_args_json: LinkArgsCli,
 
     /// Optional link script applied to `dylib` and `executable` crate types.
@@ -2407,14 +2407,14 @@ impl TargetOptions {
             self.lld_flavor_json,
             self.linker_is_gnu_json,
         );
-        for (args, args_json) in [
+        for (real_args, args_json) in [
             (&mut self.pre_link_args, &self.pre_link_args_json),
             (&mut self.late_link_args, &self.late_link_args_json),
             (&mut self.late_link_args_dynamic, &self.late_link_args_dynamic_json),
             (&mut self.late_link_args_static, &self.late_link_args_static_json),
             (&mut self.post_link_args, &self.post_link_args_json),
         ] {
-            args.clear();
+            let mut args = LinkArgs::new();
             for (flavor, args_json) in args_json {
                 let linker_flavor = self.linker_flavor.with_cli_hints(*flavor);
                 // Normalize to no lld to avoid asserts.
@@ -2425,9 +2425,10 @@ impl TargetOptions {
                     _ => linker_flavor,
                 };
                 if !args.contains_key(&linker_flavor) {
-                    add_link_args_iter(args, linker_flavor, args_json.iter().cloned());
+                    add_link_args_iter(&mut args, linker_flavor, args_json.iter().cloned());
                 }
             }
+            *real_args = MaybeLazy::owned(args);
         }
     }
 
@@ -2509,15 +2510,15 @@ impl Default for TargetOptions {
             pre_link_objects_self_contained: Default::default(),
             post_link_objects_self_contained: Default::default(),
             link_self_contained: LinkSelfContainedDefault::False,
-            pre_link_args: LinkArgs::new(),
+            pre_link_args: MaybeLazy::lazy(LinkArgs::new),
             pre_link_args_json: LinkArgsCli::new(),
-            late_link_args: LinkArgs::new(),
+            late_link_args: MaybeLazy::lazy(LinkArgs::new),
             late_link_args_json: LinkArgsCli::new(),
-            late_link_args_dynamic: LinkArgs::new(),
+            late_link_args_dynamic: MaybeLazy::lazy(LinkArgs::new),
             late_link_args_dynamic_json: LinkArgsCli::new(),
-            late_link_args_static: LinkArgs::new(),
+            late_link_args_static: MaybeLazy::lazy(LinkArgs::new),
             late_link_args_static_json: LinkArgsCli::new(),
-            post_link_args: LinkArgs::new(),
+            post_link_args: MaybeLazy::lazy(LinkArgs::new),
             post_link_args_json: LinkArgsCli::new(),
             link_env: cvs![],
             link_env_remove: cvs![],
