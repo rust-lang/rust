@@ -408,13 +408,10 @@ pub fn lint_level(
         // 2. If the corresponding `rustc_errors::Level` is warning, then that can be affected by
         //    `-A warnings` or `--cap-lints=xxx` on the command line. In which case, the diagnostic
         //    will be emitted if `can_emit_warnings` is true.
-        {
-            use rustc_errors::Level as ELevel;
-            if matches!(err_level, ELevel::ForceWarning(_) | ELevel::Error)
-                || sess.dcx().can_emit_warnings()
-            {
-                decorate(&mut err);
-            }
+        let skip = err_level == rustc_errors::Level::Warning && !sess.dcx().can_emit_warnings();
+
+        if !skip {
+            decorate(&mut err);
         }
 
         explain_lint_level_source(lint, level, src, &mut err);
